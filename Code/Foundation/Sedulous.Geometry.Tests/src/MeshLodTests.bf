@@ -4,9 +4,9 @@ using Sedulous.Geometry;
 
 namespace Sedulous.Geometry.Tests;
 
-/// The LOD chain. Raptor has no tests for this at all, and the selection path is exactly
-/// where malformed data arrives: a cooked mesh whose LOD table does not match its submesh
-/// count has to render coarsely rather than index past the end of an array.
+/// The LOD chain. The selection path is exactly where malformed data arrives: a cooked
+/// mesh whose LOD table does not match its submesh count has to render coarsely rather
+/// than index past the end of an array.
 class MeshLodTests
 {
 	/// Builds a mesh with `submeshes` submeshes at level 0 and `levels` LOD levels total.

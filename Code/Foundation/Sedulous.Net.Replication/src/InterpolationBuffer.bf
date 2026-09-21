@@ -11,10 +11,9 @@ namespace Sedulous.Net.Replication;
 /// interpolation delay. Record on network receive; Sample each frame to write the
 /// interpolated fields onto the live component. Genre neutral.
 ///
-/// DIVERGES from Raptor in what a sample holds. Raptor stores each replicated field as a
-/// Variant; Beef's Variant allocates, so a sample here is a flat BYTE COPY of the component
-/// and the fields are read back out at their own offsets. Only replicated fields are ever
-/// read, so the two behave identically, and nothing in the copy is ever dereferenced or
+/// A sample is a flat BYTE COPY of the component and the fields are read back out at their
+/// own offsets, rather than one Variant per replicated field: Beef's Variant allocates.
+/// Only replicated fields are ever read, and nothing in the copy is ever dereferenced or
 /// destructed.
 class InterpolationBuffer
 {

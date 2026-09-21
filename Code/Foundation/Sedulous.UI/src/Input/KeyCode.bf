@@ -2,10 +2,10 @@ namespace Sedulous.UI;
 
 /// Keyboard key codes.
 ///
-/// SDL scancode values, taken from Raptor unchanged. They deliberately do NOT match
-/// Sedulous.Shell.KeyCode, which numbers its keys sequentially, so a shell to UI bridge must
-/// MAP rather than cast. Note the digits: SDL runs Num1 through Num9 and then Num0, where the
-/// shell's run Num0 first, which is one more reason a cast would not survive contact.
+/// SDL scancode values. They deliberately do NOT match Sedulous.Shell.KeyCode, which
+/// numbers its keys sequentially, so a shell to UI bridge must MAP rather than cast. Note
+/// the digits: SDL runs Num1 through Num9 and then Num0, where the shell's run Num0 first,
+/// which is one more reason a cast would not survive contact.
 enum KeyCode : uint32
 {
 	case Unknown = 0;

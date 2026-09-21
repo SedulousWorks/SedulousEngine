@@ -37,9 +37,9 @@ namespace Sedulous.Engine.UI;
 /// UI ticks on UNSCALED time, which is why the work runs in the frame's opening lane: menus
 /// have to animate while the game is paused.
 ///
-/// PARTIAL PORT. The context, both tiers, the scene roots, the screen overlays, the theme and
-/// font binding and the GPU bring up are here. The canvas synchronisation, the input pump,
-/// the overlay drawing and the render texture canvases are still in the ledger.
+/// The context, both tiers, the scene roots, the screen overlays, the theme and font
+/// binding, the GPU bring up, the canvas synchronisation, the input pump, the overlay
+/// drawing and the render texture canvases.
 class UISubsystem : Subsystem, ISceneObserver
 {
 	/// Before the scene subsystem, so a page reading canvas visibility sees this frame's.

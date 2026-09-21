@@ -3,9 +3,8 @@ using Sedulous.Core.Logging;
 
 namespace Sedulous.Core.Tests;
 
-/// The composite is what Raptor's sink list becomes. These cover the parts that only
-/// exist because it is a logger rather than a list: each child keeps its own level and
-/// its own formatter.
+/// The composite. These cover the parts that only exist because it is a logger rather
+/// than a sink list: each child keeps its own level and its own formatter.
 class CompositeLoggerTests
 {
 	[Test]

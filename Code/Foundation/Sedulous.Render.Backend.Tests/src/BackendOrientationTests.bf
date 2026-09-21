@@ -17,9 +17,8 @@ namespace Sedulous.Render.Backend.Tests;
 /// in that class swaps the halves or culls the plane, so it fails here, loudly and
 /// specifically, rather than in somebody's eyes a week later.
 ///
-/// Raptor runs the same probe on Vulkan AND WebGPU and then checks the two agree. The WebGPU
-/// backend is not ported yet, so the cross backend half is absent rather than failing: what
-/// is here still catches the whole class WITHIN Vulkan.
+/// The probe runs on Vulkan here; the WebGPU backend's cross check lives with its own
+/// suite. What is here catches the whole class WITHIN Vulkan.
 class BackendOrientationTests
 {
 	private const uint32 cSize = 128;
@@ -308,7 +307,7 @@ class BackendOrientationTests
 		}
 	}
 
-	/// Cross backend tolerance, Raptor's epsilon.
+	/// Cross backend tolerance.
 	private const double cParity = 0.05;
 
 	private static void Parity(StringView what, double actual, double expected)

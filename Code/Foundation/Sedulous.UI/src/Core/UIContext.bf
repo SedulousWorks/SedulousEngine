@@ -7,10 +7,9 @@ namespace Sedulous.UI;
 
 /// The root of one UI tree: its frame damage, its style generation, and the theme sheet.
 ///
-/// PARTIAL PORT. Damage tracking, the style generation and sheet epoch, the mutation queue,
-/// the transition list, the clipboard and font service seams are here. The six managers, the
-/// root view list, the frame lifecycle and the draw path stay in the ledger's View.cppm and
-/// UIClusterImpl.cpp until those subsystems land.
+/// Also the damage tracking, the style generation and sheet epoch, the mutation queue, the
+/// transition list, the clipboard and font service seams, the six managers, the root view
+/// list, the frame lifecycle and the draw path.
 class UIContext
 {
 	private UIContextPhase mPhase = .Idle;
@@ -37,7 +36,7 @@ class UIContext
 	private IClipboard mClipboard = null;
 	private IFontService mFontService = null;
 
-	/// OWNED. Only their state is ported so far; see each manager.
+	/// OWNED.
 	private InputManager mInputManager ~ delete _;
 	private FocusManager mFocusManager ~ delete _;
 	private ShortcutManager mShortcutManager ~ delete _;

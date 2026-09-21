@@ -5,11 +5,10 @@ namespace Sedulous.UI;
 
 /// A tagged value stored in a style rule.
 ///
-/// A payload enum, which is what legacy Sedulous used and what Beef is built for. Raptor
-/// spells it as a class holding every payload side by side plus a Kind, because C++ has no
-/// such thing; that costs about a hundred and thirty bytes per value where this costs around
-/// thirty two, and it lets a caller read a payload the tag says is not there. Here exactly one
-/// payload exists and the compiler will not let you reach the others.
+/// A payload enum, which is what Beef is built for: exactly one payload exists and the
+/// compiler will not let you reach the others. A class holding every payload side by side
+/// plus a Kind would cost about a hundred and thirty bytes per value where this costs
+/// around thirty two, and would let a caller read a payload the tag says is not there.
 ///
 /// The reference payloads are BORROWED: the StyleRule holding the value owns them, since an
 /// enum has no destructor to release anything with.

@@ -3,8 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Raptor's "color32: packed byte color and conversions" case. The sRGB transfer
-/// functions and ToLinear are not covered by Raptor at all.
+/// Packed byte colour and conversions, the sRGB transfer functions and ToLinear.
 class Color32Tests
 {
 	[Test]
@@ -46,9 +45,8 @@ class Color32Tests
 		Test.Assert(ToColor32(Color(1.4f / 255.0f, 0.0f, 0.0f, 1.0f)).R == 1);
 	}
 
-	/// ToColor maps alpha linearly, like every other channel. Raptor only converts
-	/// colours whose alpha is 255, where any transfer function is the identity, so the
-	/// alpha path is untested there.
+	/// ToColor maps alpha linearly, like every other channel. A colour whose alpha is 255
+	/// would not tell, since any transfer function is the identity there.
 	[Test]
 	public static void ToColorMapsAlphaLinearly()
 	{

@@ -14,8 +14,8 @@ class FlexWrapTests
 	///
 	/// Layout SNAPS bounds to whole device pixels, so a line at 36.67 arrives as 37 and an
 	/// expectation written as the exact fraction is right about the intent and wrong by up to
-	/// half a pixel about the result. Raptor's doctest epsilon is RELATIVE, which hides this;
-	/// saying half a pixel says what is actually being allowed.
+	/// half a pixel about the result. A relative epsilon hides this; saying half a pixel says
+	/// what is actually being allowed.
 	private static bool NearSnapped(float a, float b) => Abs(a - b) <= 0.5f;
 
 	/// A flex of a FIXED size, hosted inside a frame.

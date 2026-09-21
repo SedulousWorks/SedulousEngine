@@ -18,7 +18,7 @@ corlib = "*"
 # conditioned on the platform, so DXC is in the browser build whether or not a browser can use
 # it. Dxc-Beef resolves dxcompiler at RUN TIME off Windows, so that reference is not a link
 # error any more: the load simply misses and ShaderCompiler.Initialize logs and returns an
-# error, which is what Raptor does. Vulkan was never part of this - Bulkan already dlopens.
+# error. Vulkan was never part of this - Bulkan already dlopens.
 #
 # The DATA the engine opens is preloaded into the package: a browser has no filesystem to
 # walk, so the .dataroot marker, the cooked WGSL shader pack and the bundled font are baked
@@ -44,7 +44,7 @@ corlib = "*"
 # from the extension and silently drops --shell-file without one.
 # The stack is 2 MB, not emscripten's default 64 KB. That default is sized for tiny demos and
 # engine startup overflows it immediately, which traps and takes the whole tab down with no JS
-# exception to read. Raptor sets exactly this, for exactly this reason.
+# exception to read.
 [Configs.Debug.wasm32]
 TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"

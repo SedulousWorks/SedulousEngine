@@ -16,7 +16,7 @@ using Sedulous.Editor.Preview;
 namespace Sedulous.Editor.App;
 
 /// The project lifecycle: the built-in project manager opens and closes projects at runtime.
-/// The native game module is NOT PORTED: the manifest's NativeModule is left alone.
+/// Native game modules are not supported: the manifest's NativeModule is left alone.
 extension EditorApplication
 {
 	/// Loads the per-user editor settings from <user-data>/editor.settings.xml, registering
@@ -131,8 +131,6 @@ extension EditorApplication
 			mResources.AddFactory(factory);
 		mContext.Resources = mResources;
 		mEmbeddedApp.AttachResourceManager(mResources, mEmbeddedHost);
-
-		// NOT PORTED: the native game module load against the embedded runtime context.
 
 		// The GPU half of thumbnails, constructed after the resource manager exists since the
 		// stage captures it. The host is the embedded one: scene and render subsystems live on

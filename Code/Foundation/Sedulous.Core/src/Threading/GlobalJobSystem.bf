@@ -5,10 +5,9 @@ namespace Sedulous.Core;
 /// The process-wide JobSystem.
 ///
 /// Threading a pool through every call site that might parallelise costs more than it
-/// buys, and Raptor's global worked well in practice, so this is a deliberate exception
-/// to passing dependencies down. The application brackets its lifetime: initialise
-/// before any subsystem starts, shut down after every subsystem has torn down, so it
-/// outlives its users.
+/// buys, so this is a deliberate exception to passing dependencies down. The application
+/// brackets its lifetime: initialise before any subsystem starts, shut down after every
+/// subsystem has torn down, so it outlives its users.
 ///
 /// Code that parallelises must tolerate its absence and fall back to serial. A unit test
 /// or headless tool that never starts an application never initialises it, which is why

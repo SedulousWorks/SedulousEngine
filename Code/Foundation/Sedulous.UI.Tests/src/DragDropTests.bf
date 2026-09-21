@@ -7,8 +7,8 @@ namespace Sedulous.UI.Tests;
 
 /// The drag state machine.
 ///
-/// NEW rather than ported: Raptor has no drag and drop suite, only the assertion that a
-/// context has a manager. The state machine has real invariants, so it gets covered here.
+/// The state machine has real invariants beyond a context having a manager, so it gets
+/// covered head on.
 class DragDropTests
 {
 	private static void MakeTree(out UIContext context, out RootView root)

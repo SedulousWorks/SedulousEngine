@@ -11,8 +11,7 @@ namespace Sedulous.UI;
 ///
 /// Ref counted, so one sheet can be shared between contexts.
 ///
-/// The resolution methods, which all take a View, are NOT here: their bodies read the view
-/// tree and are ported with the View cluster.
+/// The resolution methods all take a View, since a rule's match reads the view tree.
 class StyleSheet : RefCounted
 {
 	private List<StyleRule> mRules = new .() ~ ReleaseRules(_);

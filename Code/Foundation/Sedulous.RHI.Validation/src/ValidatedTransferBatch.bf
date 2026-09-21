@@ -52,8 +52,8 @@ class ValidatedTransferBatch : ITransferBatch
 			return;
 		}
 		// A zero in any dimension writes nothing, which is almost always a size that was
-		// never filled in rather than a deliberate empty write. Depth is checked too, which
-		// Raptor does not: a flat write into a volume is the same mistake.
+		// never filled in rather than a deliberate empty write. Depth is checked too: a flat
+		// write into a volume is the same mistake.
 		if ((extent.Width == 0) || (extent.Height == 0) || (extent.Depth == 0))
 		{
 			ValidationLog.Error("TransferBatch.WriteTexture: extent has a zero dimension");

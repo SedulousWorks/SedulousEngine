@@ -5,8 +5,8 @@ namespace Sedulous.Core;
 /// The cross-type bounding volume tests.
 ///
 /// These relate two types apiece, so they have no single home under the one-type-per-file
-/// rule and live together here, matching Raptor's BoundingVolumes partition. The types
-/// themselves are in Ray, BoundingSphere, BoundingFrustum, AABB and Plane.
+/// rule and live together here. The types themselves are in Ray, BoundingSphere,
+/// BoundingFrustum, AABB and Plane.
 ///
 /// Frustum planes point OUTWARD throughout: a volume is inside when it is on the
 /// negative side of all six.

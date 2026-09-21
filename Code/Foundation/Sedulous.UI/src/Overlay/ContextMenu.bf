@@ -423,7 +423,7 @@ class ContextMenu : View, IPopupOwner
 		mSubmenuLayer = root.GetPopupLayer();
 
 		// AddRef because the layer RELEASES on close, and the owning reference belongs to the
-		// MenuItem. This is what Raptor spells as ownsView:false.
+		// MenuItem.
 		submenu.AddRef();
 		root.GetPopupLayer().ShowPopup(submenu, this, position.X, position.Y, false, false, false);
 	}

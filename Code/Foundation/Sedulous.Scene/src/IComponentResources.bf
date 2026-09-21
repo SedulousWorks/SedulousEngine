@@ -8,9 +8,8 @@ namespace Sedulous.Scene;
 /// the database the scene came from, which the loader has no business knowing about. The
 /// post load pass walks the scene and calls this.
 ///
-/// DIVERGES from Raptor, which finds a free ResolveResources by argument dependent lookup
-/// and so needs no declaration at all. Beef has no such thing, so a component with
-/// references says so, and a component with none pays nothing.
+/// An interface rather than a free function found by lookup, which Beef has no such thing
+/// as: a component with references says so, and a component with none pays nothing.
 interface IComponentResources
 {
 	/// Binds every reference this component holds. IDEMPOTENT: re binding something

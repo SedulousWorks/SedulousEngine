@@ -6,9 +6,8 @@ namespace Sedulous.UI;
 /// A value picked by dragging a thumb along a track.
 ///
 /// The Min and Max PROPERTIES shadow Core's free Min and Max functions inside this class, so
-/// the clamping is spelled as Clamp, which is the same thing and reads better anyway. Raptor
-/// qualifies with core:: instead; Beef's free functions live in an anonymous static block and
-/// have no name to qualify with.
+/// the clamping is spelled as Clamp, which is the same thing and reads better anyway. Beef's
+/// free functions live in an anonymous static block and have no name to qualify with.
 class Slider : View
 {
 	public Property<float> Value = new .(0.0f) ~ delete _;

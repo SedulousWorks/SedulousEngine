@@ -4,8 +4,8 @@ namespace Sedulous.UI;
 
 /// Comparing and interpolating style values, which is what transitions are built on.
 ///
-/// Raptor's VariableFallback free function has no counterpart: its only job is to unbox a
-/// StyleValueBox, and this port holds the fallback on VariableReference directly.
+/// A variable's fallback is held on VariableReference directly, so there is no boxed
+/// fallback to unwrap here.
 static class StyleValueOps
 {
 	/// Whether two values are the same for the purpose of RETARGETING a transition.

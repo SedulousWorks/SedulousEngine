@@ -10,8 +10,8 @@ namespace Sedulous.UI;
 /// The default member values ARE the dark palette, so Dark simply returns a default.
 struct ThemePalette
 {
-	/// Written as bytes over 255 to match how the colours were picked and how Raptor states
-	/// them, rather than as opaque fractions.
+	/// Written as bytes over 255 to match how the colours were picked, rather than as opaque
+	/// fractions.
 	private static Color Rgb(float r, float g, float b) =>
 		.(r / 255.0f, g / 255.0f, b / 255.0f, 1.0f);
 

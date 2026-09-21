@@ -6,17 +6,13 @@ namespace Sedulous.RHI.WebGPU;
 /// What the backend needs around the raw WebGPU entry points: how a future is waited
 /// on, and the two flags the rest of the backend reads.
 ///
-/// Raptor carries a loaded FUNCTION TABLE here, because its C++ never links wgpu at
-/// build time: desktop dlopens the wgpu-native sidecar and resolves one symbol per
-/// call, web binds the browser's symbols, and backend code calls through the table so
-/// the two paths look the same above it. Beef needs none of that. wgpu-Beef links the
-/// sidecar as an ordinary library, so the entry points ARE the table, and what is left
-/// here is the part that was never about loading.
+/// No loaded FUNCTION TABLE here: wgpu-Beef links the sidecar as an ordinary library, so
+/// the entry points ARE the table, and what is left is the part that was never about
+/// loading.
 ///
 /// The web half of that story is the NativeOnly class below: a browser has none of the
-/// wgpu-native extensions, so every call to one is compiled out of the wasm build there.
-/// Raptor cannot do that and instead forward declares the whole extension list on web, as
-/// symbols that are never defined or bound, so that taking their address still compiles.
+/// wgpu-native extensions, so every call to one is compiled out of the wasm build there,
+/// rather than forward declared as a symbol that is never bound.
 static class WebGpuApi
 {
 	/// wgpu-native v29 PANICS inside wgpuInstanceWaitAny with a nonzero timeout - "not

@@ -4,9 +4,8 @@ namespace Sedulous.Core;
 
 /// One unit of work queued on the pool.
 ///
-/// Raptor type-erases the callable by hand, into a void* plus invoke and destroy
-/// function pointers, because a C++ lambda has no common type. A Beef delegate already
-/// is that erasure, so the item is just the delegate and the counter it signals.
+/// A Beef delegate already type-erases the callable, so the item is just the delegate and
+/// the counter it signals; no hand-rolled void* plus invoke and destroy function pointers.
 ///
 /// The pool OWNS Work and deletes it once it has run.
 struct JobItem

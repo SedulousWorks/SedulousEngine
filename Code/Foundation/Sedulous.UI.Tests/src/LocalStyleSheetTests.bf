@@ -410,8 +410,8 @@ class LocalStyleSheetTests
 		root.AddView(outer);
 		outer.AddView(inner);
 
-		// A type that appears nowhere in this chain. Raptor uses Label here; the substitution
-		// keeps the point, which is that the type simply does not occur above the view.
+		// A type that appears nowhere in this chain, the point being that the type simply does
+		// not occur above the view.
 		SetupLocalSheet(outer).ForType(typeof(FrameLayout)).Set(.FontFamily, "JungleAdventurer");
 
 		Test.Assert(inner.ResolveStyle(.FontFamily).IsNone);

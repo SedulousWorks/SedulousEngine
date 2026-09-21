@@ -554,7 +554,7 @@ class RenderFrame
 			// The one mesh specific need, a skinned caster's sphere, asks the data what it IS.
 			// It used to gate on RendererId == 0, which is only the first REGISTERED renderer:
 			// the terrain probe registers terrain alone, so that read bones out of terrain
-			// fields. Raptor's static_cast did it silently; this one's checked cast trapped.
+			// fields, and the checked cast trapped on it.
 			if (data.Kind == .Mesh)
 			{
 				let mesh = (MeshRenderData)data;

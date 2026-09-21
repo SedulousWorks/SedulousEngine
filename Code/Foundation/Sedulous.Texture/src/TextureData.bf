@@ -90,8 +90,8 @@ struct TextureData
 	/// Bytes one texel occupies, or ZERO for a block compressed format, which has no per
 	/// texel size at all: CalculateMipSize sizes those by block.
 	///
-	/// One table, the RHI's. Raptor carried a second copy here that defaulted unknown
-	/// formats to four, which was wrong for RGBA16Unorm and Stencil8.
+	/// One table, the RHI's. A second copy here defaulting unknown formats to four would be
+	/// wrong for RGBA16Unorm and Stencil8.
 	public static uint32 GetBytesPerPixel(TextureFormat format)
 		=> TextureFormats.BytesPerPixel(format);
 

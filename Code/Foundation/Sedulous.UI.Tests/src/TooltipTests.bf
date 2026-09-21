@@ -6,8 +6,8 @@ namespace Sedulous.UI.Tests;
 
 /// Tooltip timing and placement.
 ///
-/// NEW rather than ported: Raptor has no tooltip suite. The delays and the owner resolution
-/// are what make tooltips usable rather than infuriating, so they are covered here.
+/// The delays and the owner resolution are what make tooltips usable rather than
+/// infuriating, so they are covered here.
 class TooltipTests
 {
 	private static bool Near(float a, float b, float epsilon = 0.01f) => Abs(a - b) <= epsilon;

@@ -42,8 +42,7 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 
 		let slot = mDense.Count;
 		// CONSTRUCTED, not zeroed: a component's field initialisers are its defaults, and
-		// `default` would silently replace them with zero. Raptor gets this from C++ value
-		// initialisation, which runs the member initialisers.
+		// `default` would silently replace them with zero.
 		mDense.Add(T());
 		mOwners.Add(entity);
 		mSparse[entity.Index] = (uint32)slot;
@@ -131,9 +130,8 @@ class ComponentManager<T> : ComponentManagerBase where T : struct, new
 	/// Sweeps whatever is still held, so a component that owns heap data is torn down by the
 	/// same hook a removal uses.
 	///
-	/// Raptor gets this free: its dense array is a C++ vector, and destroying it destroys
-	/// every component in it. A Beef List of structs frees only the storage, so a manager
-	/// that never had its components removed would leak whatever they own.
+	/// A Beef List of structs frees only the storage, so a manager that never had its
+	/// components removed would otherwise leak whatever they own.
 	public ~this()
 	{
 		for (int i = 0; i < mDense.Count; i++)

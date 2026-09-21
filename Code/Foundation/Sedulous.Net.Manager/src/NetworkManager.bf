@@ -15,9 +15,8 @@ namespace Sedulous.Net.Manager;
 /// networking state, so an endpoint lives with the instance that runs it: N instances hold N
 /// independent endpoints.
 ///
-/// DIVERGES from Raptor by carrying no script service. The Net facade, its binding and
-/// INetworkController exist only to reach this from AngelScript or Luau, and none of that is
-/// ported.
+/// No script service here: a Net facade, its binding and a network controller interface
+/// would only exist to reach this from a script, and that surface has not been asked for.
 class NetworkManager
 {
 	/// Reserved for replication deltas, alongside NetSession.ControlChannel at 255 and

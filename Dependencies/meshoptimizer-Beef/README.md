@@ -10,7 +10,7 @@ wrapper in between.
 
 ## Trimmed vendoring
 
-`meshoptimizer/` carries the same subset Raptor vendors: index and vertex optimisation,
+`meshoptimizer/` carries a subset: index and vertex optimisation,
 simplification, and the analyzers. No codecs, clusterizer, meshlets or stripifier.
 
 The binding declares **only what those translation units define**. The upstream header

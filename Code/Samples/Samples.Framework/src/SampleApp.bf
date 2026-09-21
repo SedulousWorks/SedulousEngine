@@ -58,10 +58,10 @@ abstract class SampleApp
 
 	/// How many frames to render before quitting, or zero to run until the window closes.
 	///
-	/// NOT in Raptor, and not engine behaviour: it exists so a sweep across every sample can
-	/// exercise the REAL shutdown path. Killing a sample on a timeout instead leaves teardown
-	/// untested, which is exactly how a double free in the backend's surface list survived a
-	/// green looking run of the whole suite.
+	/// Not engine behaviour: it exists so a sweep across every sample can exercise the REAL
+	/// shutdown path. Killing a sample on a timeout instead leaves teardown untested, which
+	/// is exactly how a double free in the backend's surface list survived a green looking
+	/// run of the whole suite.
 	private int mFrameLimit = 0;
 	private int mFramesRendered = 0;
 	protected virtual TextureFormat SwapChainFormat => .RGBA8UnormSrgb;
@@ -70,10 +70,10 @@ abstract class SampleApp
 
 	/// How many DEDICATED compute queues the sample needs.
 	///
-	/// One by default, matching Raptor, which now asks unconditionally. The device clamps
-	/// the request to what the adapter actually has, so a GPU with no compute only family
-	/// still gets zero and a sample that checks GetQueueCount sees the real answer rather
-	/// than the framework's silence. A sample wanting none, or more, says so here.
+	/// One by default, asked for unconditionally. The device clamps the request to what the
+	/// adapter actually has, so a GPU with no compute only family still gets zero and a
+	/// sample that checks GetQueueCount sees the real answer rather than the framework's
+	/// silence. A sample wanting none, or more, says so here.
 	protected virtual uint32 ComputeQueueCount => 1;
 
 	/// How many dedicated transfer queues the sample needs.

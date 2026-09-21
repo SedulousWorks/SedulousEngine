@@ -4,7 +4,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// BoundingSphere. Raptor has no direct tests for this.
+/// BoundingSphere.
 class BoundingSphereTests
 {
 	[Test]

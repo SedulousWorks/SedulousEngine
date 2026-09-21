@@ -3,8 +3,8 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Raptor's seven curve cases, plus Clear, mixed interpolation modes across a single
-/// curve, and per-segment tangents, none of which it reaches.
+/// The curve: keys, evaluation and clamping, Clear, mixed interpolation modes across a
+/// single curve, and per-segment tangents.
 class CurveTests
 {
 	[Test]
@@ -165,8 +165,8 @@ class CurveTests
 		Test.Assert(NearlyEqual(c.Keys[2].Value, 3.0f));
 	}
 
-	/// Each segment reads its own left key's mode, so a curve can mix them. Raptor only
-	/// ever builds curves whose keys all share one mode.
+	/// Each segment reads its own left key's mode, so a curve can mix them; a curve whose
+	/// keys all share one mode would not tell.
 	[Test]
 	public static void InterpolationIsPerSegment()
 	{

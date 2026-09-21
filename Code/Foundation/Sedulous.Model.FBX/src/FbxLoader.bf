@@ -825,8 +825,8 @@ class FbxLoader : IModelLoader
 		// Keying on the hash alone welds two genuinely different vertices whenever their
 		// hashes collide. That is rare and, when it happens, shows up as a pulled seam that
 		// no amount of staring at the source file explains. Hashing to a bucket and then
-		// comparing costs one comparison and cannot do that. Raptor was keyed on the hash
-		// until this port found it, and now compares the same way.
+		// comparing costs one comparison and cannot do that. The loader was keyed on the hash
+		// alone once, and the seam is how it was found.
 		let hash = (int)HashBytes(vertex, layout.Stride);
 		if (buckets.TryGetValue(hash, let existing))
 		{

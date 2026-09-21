@@ -8,7 +8,7 @@ namespace Dxc_Beef;
 /// references it, and a browser has no dxcompiler at all: the wasm link then fails on a symbol
 /// for a path that is never taken there, because shaders arrive cooked in a pack and nothing
 /// compiles at run time. Loading it instead means the failure lands where it belongs, as a
-/// ShaderCompiler.Initialize that returns an error and logs a line, which is what Raptor does.
+/// ShaderCompiler.Initialize that returns an error and logs a line.
 ///
 /// Windows keeps the import library: it is the platform where the compiler is always wanted,
 /// its loader semantics differ, and nothing there needs the graceful miss.

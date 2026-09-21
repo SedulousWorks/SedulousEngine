@@ -388,10 +388,10 @@ sealed class WebGpuSwapChain : ISwapChain
 				}
 
 				// A requested format the surface does not offer is a PANIC inside configure,
-				// not an error return, so it has to be caught here. Raptor passes the
-				// requested format straight through, which holds on Windows, where a surface
-				// offers both channel orders; an X11 surface through wgpu's Vulkan backend
-				// offers only the BGRA pair, and the engine's RGBA8UnormSrgb default kills it.
+				// not an error return, so it has to be caught here. Passing the requested
+				// format straight through holds on Windows, where a surface offers both
+				// channel orders; an X11 surface through wgpu's Vulkan backend offers only the
+				// BGRA pair, and the engine's RGBA8UnormSrgb default kills it.
 				//
 				// So negotiate, the way the web branch above already does for the canvas:
 				// take what the surface offers and retarget the engine to it. Callers read

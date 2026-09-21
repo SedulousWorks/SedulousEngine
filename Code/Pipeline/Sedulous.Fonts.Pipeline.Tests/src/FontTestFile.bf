@@ -44,7 +44,7 @@ static class FontTestFile
 	/// Copies the face into a mount directory under the given name.
 	///
 	/// FALSE rather than a failed assertion when the data is not there, so a checkout without
-	/// it skips these rather than reporting the port broken.
+	/// it skips these rather than reporting the font code broken.
 	public static bool StageInto(StringView directory, StringView name)
 	{
 		let source = scope String();

@@ -212,7 +212,7 @@ static
 	/// TRS decompose of a row-vector S*R*T matrix: translation from row 3, per-axis
 	/// scale from the basis row lengths, rotation from the normalized basis. Returns
 	/// false with identity outputs when a scale axis is zero, since the rotation is then
-	/// unrecoverable. As in Raptor, a mirrored matrix lands the sign on an arbitrary axis.
+	/// unrecoverable. A mirrored matrix lands the sign on an arbitrary axis.
 	[Scriptable]
 	public static bool Decompose(Float4x4 m, out Float3 translation, out Quaternion rotation,
 		out Float3 scale)

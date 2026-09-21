@@ -155,9 +155,9 @@ class RangeEditor : PropertyEditor
 	/// The longer of the two ends decides the digit count; a range that reaches below zero buys
 	/// one more character for the sign.
 	///
-	/// The digits are COUNTED rather than taken from a base ten logarithm, which is what the
-	/// C++ does: at an exact power of ten the log lands a hair under the integer and truncates
-	/// to one digit too few, so a range ending at 1000 would size its field for 999.
+	/// The digits are COUNTED rather than taken from a base ten logarithm: at an exact power
+	/// of ten the log lands a hair under the integer and truncates to one digit too few, so a
+	/// range ending at 1000 would size its field for 999.
 	private float ComputeNumericFieldWidth()
 	{
 		let absMax = Max(Abs(mMin), Abs(mMax));

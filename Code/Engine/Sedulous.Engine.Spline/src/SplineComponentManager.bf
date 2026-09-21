@@ -8,8 +8,7 @@ namespace Sedulous.Engine.Spline;
 /// The pool of authored curves.
 ///
 /// It creates and frees the curve each component points at: a component is a struct in a
-/// packed pool, so it cannot own one itself. Raptor holds the curve BY VALUE and lets the
-/// vector's destructor deal with it.
+/// packed pool, so it cannot own one itself.
 class SplineComponentManager : SerializableComponentManager<SplineComponent>
 {
 	/// BORROWED: the scene owns this manager. Needed because every query answers in WORLD
@@ -40,10 +39,9 @@ class SplineComponentManager : SerializableComponentManager<SplineComponent>
 
 	// ---- queries -------------------------------------------------------------------------
 	//
-	// Raptor exposes these on a free SceneSplines facade bound to a scene, because a script
-	// needs a value it can hold. They live on the manager here: it already owns the
-	// components and knows the scene, so the facade's scene argument and its "is this my
-	// scene" guard have nothing left to do.
+	// They live on the manager rather than on a facade bound to a scene: it already owns the
+	// components and knows the scene, so a facade's scene argument and its "is this my
+	// scene" guard would have nothing left to do.
 	//
 	// Points are stored ENTITY LOCAL and every answer is world space: the entity transform is
 	// what places the curve.
@@ -92,8 +90,8 @@ class SplineComponentManager : SerializableComponentManager<SplineComponent>
 
 	/// The point on the curve nearest a WORLD position.
 	///
-	/// Takes a Float3 where Raptor takes three floats, which is a script signature rather
-	/// than a choice about the query.
+	/// Takes a Float3; a script signature might spell it as three floats, but that is the
+	/// binding's business, not the query's.
 	public SplineHit ClosestPoint(EntityHandle entity, Float3 world)
 	{
 		let component = Get(entity);

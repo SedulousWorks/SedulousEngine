@@ -5,7 +5,7 @@ namespace Sedulous.Core;
 
 /// 3x3 row-major matrix under the row-vector convention: rotation and normal matrices.
 ///
-/// Element access is a two-argument indexer where Raptor spells it operator()(row, col).
+/// Element access is a two-argument indexer, M[row, col].
 [CRepr]
 [Scriptable(.AllPublic)]
 struct Float3x3

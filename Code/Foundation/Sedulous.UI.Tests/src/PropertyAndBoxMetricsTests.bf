@@ -171,8 +171,8 @@ class PropertyAndBoxMetricsTests
 		Test.Assert(chrome.Top == 13.0f);
 	}
 
-	/// A stylesheet declared padding on a CONTAINER has to reach its measure. Raptor's case
-	/// uses Panel; a plain group is the same measure path without the control.
+	/// A stylesheet declared padding on a CONTAINER has to reach its measure. A plain group is
+	/// the measure path without a control in the way.
 	[Test]
 	public static void StyleDeclaredPaddingGrowsAContainersMeasure()
 	{

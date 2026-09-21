@@ -10,7 +10,7 @@ namespace Sedulous.Editor.App;
 
 /// The menu bar and its keyboard equivalents. File holds the document and app essentials;
 /// per-user prefs live under Edit; project-scoped concerns (settings, export, templates) get
-/// the Project menu; Build stays cook-only. The native module items are NOT PORTED.
+/// the Project menu; Build stays cook-only. There are no native module items.
 extension EditorApplication
 {
 	private void BuildMenus()
@@ -116,7 +116,8 @@ extension EditorApplication
 						dialog.Show(mUiHost.Context);
 					}
 				});
-			// NOT PORTED: Add Native Code..., Build Native Module, Reload Native Module.
+			// No native module items (Add Native Code, Build, Reload): native game modules are
+			// not supported.
 			project.AddSeparator();
 			project.AddItem("Export...", new () => { OpenExportPresetsPanel(); });
 			project.AddItem("Manage Templates...", new () => { OpenTemplatesManager(); });

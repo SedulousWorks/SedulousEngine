@@ -8,18 +8,16 @@ namespace Sedulous.Editor.Core;
 /// Where the Beef build puts things, for the tools that ship them. A workspace builds into
 /// Code/build/<Config>_<Platform>/<Project>/, every executable in its own directory with the
 /// shared libraries CopyToDependents placed beside it; the web player lands in its project's
-/// dist/ as an .html with its .js and .wasm. Raptor's CMake layout, Bin/<Config>/<Platform>-
-/// <Compiler> with a build emitted runtime-libs list, maps onto this: the player directory
-/// is a sibling of the tool's, and the sidecars are the shared libraries found beside the
-/// player.
+/// dist/ as an .html with its .js and .wasm. The player directory is a sibling of the tool's,
+/// and the sidecars are the shared libraries found beside the player.
 static class BuildLayout
 {
 	public const String cPlayerBaseName = "Sedulous.Engine.Player.Desktop";
 	public const String cWebPlayerBaseName = "Sedulous.Engine.Player.Web";
-	/// The template id prefix, Raptor's CMake baked TEMPLATE_ID_PREFIX.
+	/// The template id prefix.
 	public const String cTemplateIdPrefix = "sedulous";
 	public const String cCompilerName = "Beef";
-	/// The platform tag of the web build, Raptor's; the Beef directory says wasm32.
+	/// The platform tag of the web build; the Beef directory says wasm32.
 	public const String cWebPlatform = "Web";
 
 	public static StringView HostPlatformName

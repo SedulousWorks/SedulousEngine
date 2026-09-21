@@ -9,14 +9,14 @@ namespace Sedulous.Profiler;
 /// Scopes nest into a per thread tree; at frame end every thread's samples merge into the
 /// completed frame snapshot, which is what a report or an overlay reads.
 ///
-/// An ordinary object rather than Raptor's singleton, so a test can hold its own and two
-/// of them cannot see each other's threads. The process wide one that instrumentation
-/// reaches for is installed separately, the same way the logger is.
+/// An ordinary object rather than a singleton, so a test can hold its own and two of them
+/// cannot see each other's threads. The process wide one that instrumentation reaches for
+/// is installed separately, the same way the logger is.
 ///
 /// Thread safety: BeginScope and EndScope touch only their own thread's data. The thread
 /// registry and the frame swap are guarded. EndFrame drains the worker buffers WITHOUT
 /// their owners' cooperation, which is safe only because a frame ends when the workers are
-/// idle; that is the same contract Raptor's has.
+/// idle; that is the contract.
 class Profiler
 {
 	private const int32 kHistory = 64;
@@ -152,10 +152,10 @@ class Profiler
 
 	/// A human readable dump: the frame headline, then the scope tree indented by depth.
 	///
-	/// Ordered by start tick and THEN by depth. Raptor orders by start tick alone and
-	/// relies on the sort being stable, which puts a child before its parent whenever the
-	/// two share a tick; at microsecond resolution they routinely do. Depth breaks the tie
-	/// correctly, since a parent both starts no later than its child and is shallower.
+	/// Ordered by start tick and THEN by depth. Start tick alone, relying on the sort being
+	/// stable, puts a child before its parent whenever the two share a tick; at microsecond
+	/// resolution they routinely do. Depth breaks the tie correctly, since a parent both
+	/// starts no later than its child and is shallower.
 	public void BuildReport(String outReport)
 	{
 		let frame = mCompleted;

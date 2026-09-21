@@ -202,12 +202,6 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		return cb;
 	}
 
-	// ==================================================================
-	// PARTIALLY PORTED. The barriers, the copies, the blit and mipmap paths, the resolve and
-	// the whole ray tracing extension are still in RaptorCode/Foundation/RHI.DX12, which says
-	// what remains. They answer as no-ops here rather than pretending to record.
-	// ==================================================================
-
 	/// One coalesced transition for a single subresource: where it started, where it ends.
 	private struct CoalescedEntry
 	{

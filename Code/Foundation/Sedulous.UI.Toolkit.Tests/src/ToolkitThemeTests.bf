@@ -164,9 +164,9 @@ class ToolkitThemeTests
 	}
 
 	/// THE TRIPWIRE. A selector naming a type nobody registered resolves to nothing and styles
-	/// nothing, in silence, which is exactly how the fragments' Timeline block sat dead in
-	/// Raptor. Reading the names out of the sheets rather than counting registrations is what
-	/// makes this catch the next one.
+	/// nothing, in silence, which is exactly how the fragments' Timeline block once sat dead.
+	/// Reading the names out of the sheets rather than counting registrations is what makes
+	/// this catch the next one.
 	[Test]
 	public static void EverySelectorInTheFragmentsResolves()
 	{

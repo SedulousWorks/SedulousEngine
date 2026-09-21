@@ -10,9 +10,7 @@ namespace Sedulous.Core;
 /// composition reads left to right; XNA style right-handed projections with NDC depth
 /// in [0, 1]; translation in the last row.
 ///
-/// Raptor spells element access operator()(row, col), which Beef has no equivalent for,
-/// so it is a two-argument indexer here. Large matrices are taken by `in` where Raptor
-/// takes const&.
+/// Element access is a two-argument indexer, M[row, col]. Large matrices are taken by `in`.
 [CRepr]
 [Scriptable(.AllPublic)]
 struct Float4x4

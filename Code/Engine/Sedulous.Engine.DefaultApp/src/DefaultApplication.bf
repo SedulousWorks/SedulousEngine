@@ -52,10 +52,8 @@ namespace Sedulous.Engine.DefaultApp;
 /// in, and it registers ALL of them, so subsystem registration has one home rather than one
 /// per entry point.
 ///
-/// PARTIAL PORT. Raptor's version also owns the GAME SCRIPT lifecycle: the run host wiring,
-/// the facade surface, the backends, the per context configurator, the load facade and the
-/// script tick. The script projects are out of scope, so none of that is here, and an
-/// instance runs its scenes without a Game object.
+/// It also owns the GAME SCRIPT lifecycle: the run host wiring, the facade surface, the
+/// backends, the per context configurator, the load facade and the script tick.
 class DefaultApplication : IApplication, ISceneObserver
 {
 	/// BORROWED: stable for the application's lifetime.
@@ -427,11 +425,11 @@ class DefaultApplication : IApplication, ISceneObserver
 	{
 		// An application gets a profiler, so the P key below has a CPU tree to print.
 		//
-		// Raptor's profiler is a SINGLETON that is always live; this port made it an
-		// installable global instead, which is the better shape for a tool or a test that
-		// wants none - but nothing was installing one, so HasGlobalProfiler was false in
-		// every sample and half of DumpProfileOnRequest could never run. An application is
-		// exactly the case that should have one.
+		// The profiler is an installable global rather than an always-live singleton, which
+		// is the better shape for a tool or a test that wants none - but nothing was
+		// installing one, so HasGlobalProfiler was false in every sample and half of
+		// DumpProfileOnRequest could never run. An application is exactly the case that
+		// should have one.
 		if (!HasGlobalProfiler())
 			InitGlobalProfiler(new Profiler(), true);
 

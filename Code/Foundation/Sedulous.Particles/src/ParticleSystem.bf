@@ -352,9 +352,8 @@ class ParticleSystem
 
 	/// The emitter's own velocity, which a velocity initializer can inherit.
 	///
-	/// Divided by the TOTAL time rather than the step, which is what Sedulous shipped and
-	/// what Raptor kept: the inherited velocity therefore fades as the effect runs. Kept as
-	/// it is because content is authored against it.
+	/// Divided by the TOTAL time rather than the step, so the inherited velocity fades as
+	/// the effect runs. Kept as it is because content is authored against it.
 	private Float3 EmitterVelocity
 	{
 		get

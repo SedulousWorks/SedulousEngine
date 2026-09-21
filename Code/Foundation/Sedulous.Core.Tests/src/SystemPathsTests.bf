@@ -3,7 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Ported from Raptor's "core/system: GetEnvironmentVariable + UserDataDir".
+/// GetEnvironmentVariable and UserDataDir.
 class SystemPathsTests
 {
 	[Test]

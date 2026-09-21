@@ -10,7 +10,7 @@ namespace Sedulous.Core.Serialization;
 static
 {
 	/// A chain longer than this is not a chain, it is a corrupt length being trusted.
-	/// Raptor reads the first sixteen and leaves the rest in the stream, which desyncs
+	/// Reading the first sixteen and leaving the rest in the stream would desync
 	/// everything after it; failing outright says so instead.
 	private const uint32 cMaxChainLength = 64;
 

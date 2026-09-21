@@ -252,8 +252,8 @@ class ParticleEffectResourceTests
 	/// This is what the framing is for. Unframed, an unknown module's parameters stay in the
 	/// positional stream and everything behind them slides: the next system's particle budget
 	/// is then read out of the middle of a curve, and a budget read as garbage is a runaway
-	/// allocation rather than a wrong-looking effect. Raptor cannot skip at all for exactly
-	/// this reason; the frame is what buys the choice.
+	/// allocation rather than a wrong-looking effect. Without the frame a reader could not
+	/// skip at all; the frame is what buys the choice.
 	[Test]
 	public static void ASkippedModuleDoesNotShiftTheNextSystem()
 	{

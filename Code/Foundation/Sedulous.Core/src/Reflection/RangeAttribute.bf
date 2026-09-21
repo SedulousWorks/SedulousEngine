@@ -7,8 +7,7 @@ namespace Sedulous.Core;
 /// A reader turns a bounded number into a slider and an unbounded one into a plain field,
 /// so applying this is also the statement "this is a magnitude, not an arbitrary number".
 ///
-/// Step zero means unspecified: the reader picks. Raptor carries {min, max, step, unused}
-/// as a Float4, and the fourth component is documented unused, so it is not here.
+/// Step zero means unspecified: the reader picks.
 [AttributeUsage(.Field | .Property,
 	.NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
 struct RangeAttribute : Attribute

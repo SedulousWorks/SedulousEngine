@@ -8,8 +8,7 @@ namespace Sedulous.Shell.SDL3.Tests;
 
 /// The SDL3 desktop backend, driven headlessly with synthetic events.
 ///
-/// Covers Raptor's Shell.Desktop suite. Its RunApplication case has no counterpart yet:
-/// that is the desktop runner in Runtime.Client, which is not ported.
+/// The desktop runner in Runtime.Client has its own suite.
 class SDL3ShellTests
 {
 	[Test]

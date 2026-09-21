@@ -8,9 +8,9 @@ namespace Sedulous.Engine.Project.Tests;
 
 /// The manifest a project and a distribution are both described by.
 ///
-/// Raptor writes the field list out by hand in Serialize; here the [Serializable] generator
-/// walks the declaration, so what is on the wire follows from the field ORDER and NAMES.
-/// These pin both, because a rename or a reorder would change the document silently.
+/// The [Serializable] generator walks the declaration, so what is on the wire follows from
+/// the field ORDER and NAMES. These pin both, because a rename or a reorder would change
+/// the document silently.
 class ProjectManifestTests
 {
 	private const String kScratch = "scratch_engine_project";

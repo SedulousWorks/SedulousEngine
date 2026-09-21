@@ -64,9 +64,8 @@ static
 
 	/// The extension including its dot, or empty.
 	///
-	/// A leading-dot name such as .gitignore is all name and no extension, which is
-	/// Raptor's rule. corlib's GetExtension answers ".gitignore" for that, so it is not
-	/// used here.
+	/// A leading-dot name such as .gitignore is all name and no extension. corlib's
+	/// GetExtension answers ".gitignore" for that, so it is not used here.
 	public static void PathExtension(StringView path, String outExtension)
 	{
 		outExtension.Clear();

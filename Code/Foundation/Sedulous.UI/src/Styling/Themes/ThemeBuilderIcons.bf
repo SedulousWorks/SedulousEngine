@@ -6,8 +6,8 @@ namespace Sedulous.UI;
 /// Binding the built in chrome glyphs onto a hand built theme sheet.
 ///
 /// It is shared by the three legacy rule builders because all three bind the SAME set of glyphs
-/// to the same pseudo elements and differ only in the tint. Raptor repeats the block in each
-/// theme; one copy is the same styling with one place to change it.
+/// to the same pseudo elements and differ only in the tint: one copy is the same styling with
+/// one place to change it.
 static class ThemeBuilderIcons
 {
 	/// A missing glyph is SKIPPED rather than substituted: the control's own fallback drawing

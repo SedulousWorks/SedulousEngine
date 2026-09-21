@@ -5,8 +5,8 @@ namespace Sedulous.UI;
 
 /// The global and scoped keyboard shortcuts, owned by the context.
 ///
-/// PARTIAL PORT: registration and removal are here. TryDispatch and its scope test walk the
-/// focused view's parent chain and stay in the ledger.
+/// Registration, removal, and the dispatch that walks the focused view's parent chain for
+/// a scoped match.
 class ShortcutManager
 {
 	/// BORROWED: the context owns this.

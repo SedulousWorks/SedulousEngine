@@ -3,8 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Rectangles. Raptor covers these in its "geometry: Rectangle contains and
-/// intersects" case; Rectangle.Intersect it does not cover at all.
+/// Rectangles: contains, intersects, and Rectangle.Intersect.
 class RectangleTests
 {
 	[Test]
@@ -19,8 +18,8 @@ class RectangleTests
 		Test.Assert(!r.Intersects(Rectangle(10.0f, 10.0f, 1.0f, 1.0f)));
 	}
 
-	/// Contains is inclusive on all four edges. Raptor checks one inside point and one
-	/// far outside, so a half-open rectangle would pass its case and differ here.
+	/// Contains is inclusive on all four edges. One inside point and one far outside would
+	/// not tell, since a half-open rectangle passes those and differs here.
 	[Test]
 	public static void RectangleEdgesAreInclusive()
 	{
@@ -39,7 +38,7 @@ class RectangleTests
 		Test.Assert(r.Intersects(Rectangle(4.0f, 0.0f, 1.0f, 2.0f)));
 	}
 
-	/// Rectangle.Intersect, the overlap rectangle, is not covered by Raptor at all.
+	/// Rectangle.Intersect, the overlap rectangle.
 	[Test]
 	public static void RectangleIntersectComputesTheOverlap()
 	{

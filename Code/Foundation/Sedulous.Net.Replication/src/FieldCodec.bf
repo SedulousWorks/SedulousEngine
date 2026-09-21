@@ -7,10 +7,9 @@ namespace Sedulous.Net.Replication;
 
 /// The field codec: one reflected field between memory and the bit stream.
 ///
-/// DIVERGES from Raptor, which passes values through a Variant. Beef's Variant allocates, and
-/// this is a per frame path for every replicated field of every networked entity, so the
-/// codec reads and writes the field's storage DIRECTLY at its offset. The wire format is
-/// unchanged; only the way the value is reached differs.
+/// No Variant in the middle. Beef's Variant allocates, and this is a per frame path for
+/// every replicated field of every networked entity, so the codec reads and writes the
+/// field's storage DIRECTLY at its offset.
 static class FieldCodec
 {
 	/// Encodes one field value read from `address`. False, writing nothing, for an

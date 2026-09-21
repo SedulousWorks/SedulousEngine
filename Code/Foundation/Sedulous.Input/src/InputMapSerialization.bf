@@ -7,10 +7,9 @@ namespace Sedulous.Input;
 
 /// Reading and writing an input map, one bidirectional pass.
 ///
-/// ONE supported layout: the current one. Raptor still gates its binding fields on a
-/// stored version, which predates its own "one layout per type" rule and was simply never
-/// revisited. Nothing has been written in an older layout here, so this writes the current
-/// version and REFUSES any other rather than guessing which fields are present.
+/// ONE supported layout: the current one. Nothing has been written in an older layout, so
+/// this writes the current version and REFUSES any other rather than gating fields on a
+/// stored version and guessing which are present.
 static class InputMapSerialization
 {
 	public const uint32 cVersion = 2;

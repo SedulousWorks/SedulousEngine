@@ -60,8 +60,8 @@ class AnimationChannel
 				let result = Slerp(a, b, t);
 				return .(result.X, result.Y, result.Z, result.W);
 			}
-			// Cubic spline falls through to linear, as it does in Raptor. A file asking
-			// for it gets a straight line between its keys rather than a refusal.
+			// Cubic spline falls through to linear. A file asking for it gets a straight line
+			// between its keys rather than a refusal.
 			return Lerp4(first.Value, second.Value, t);
 		}
 	}

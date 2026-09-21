@@ -7,8 +7,7 @@ namespace Sedulous.Pipeline.Core;
 /// Reading a builder's source bytes, THROUGH THE MOUNT rather than off a path.
 ///
 /// Free functions rather than a base class every builder has to inherit: a Beef interface
-/// cannot carry statics, and inheritance bought Raptor's version nothing but the two helpers
-/// below.
+/// cannot carry statics, and inheritance would buy nothing but the two helpers below.
 static class AssetSource
 {
 	/// A whole source file, mount relative. The CALLER owns what it filled in.

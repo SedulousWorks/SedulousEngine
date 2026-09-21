@@ -7,10 +7,9 @@ namespace Sedulous.UI.Toolkit;
 /// What the Float2, Float3 and Float4 editors share: a row of numeric fields, one per axis,
 /// each behind a coloured letter.
 ///
-/// FACTORED rather than written three times. The C++ carries three copies and says so, calling
-/// the second and third "mechanical siblings" of the first; every line of them differs only in
-/// the axis count and which component a field writes. Those two things are what a subclass
-/// supplies here, and its public surface stays exactly the C++ one, typed to its own vector.
+/// FACTORED rather than written three times as mechanical siblings differing only in the
+/// axis count and which component a field writes. Those two things are what a subclass
+/// supplies here, and its public surface stays typed to its own vector.
 ///
 /// The transaction spans the WHOLE row: focus moving from X to Y is still one edit, because a
 /// person typing a position is doing one thing, not three.

@@ -7,9 +7,9 @@ namespace Samples.UISandbox;
 
 /// A tree row that draws its own text, indented to clear the expander column.
 ///
-/// It takes the indent from the tree that owns it rather than writing a pixel constant. Raptor
-/// writes twenty here, which drifts the moment the tree's indent width changes and puts the
-/// chevron through the text.
+/// It takes the indent from the tree that owns it rather than writing a pixel constant,
+/// which drifts the moment the tree's indent width changes and puts the chevron through
+/// the text.
 class TreeItemView : View
 {
 	private String mText = new .() ~ delete _;

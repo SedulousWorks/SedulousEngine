@@ -2,7 +2,7 @@ using System;
 
 namespace System.Numerics;
 
-/// The two float4 operations Raptor's f32x4 has and corlib's does not.
+/// The two float4 operations a matrix transform wants and corlib's float4 does not have.
 ///
 /// Extended rather than wrapped, because everything else in that type is already what the
 /// SIMD vectors want, and a wrapper would exist only to carry these two. Both are what LLVM
@@ -15,7 +15,7 @@ extension float4
 	[Inline]
 	public static float4 operator-(float4 v) => 0.0f - v;
 
-	/// One lane broadcast to all four, Raptor's SplatX through SplatW.
+	/// One lane broadcast to all four: SplatX through SplatW.
 	///
 	/// A shuffle with four equal indices, which is what the hardware broadcast is anyway. Named
 	/// because a matrix transform does twelve of them and `ShuffleVector(v, 1, 1, 1, 1)` reads
@@ -25,7 +25,7 @@ extension float4
 	[Inline] public static float4 SplatZ(float4 v) => ShuffleVector(v, 2, 2, 2, 2);
 	[Inline] public static float4 SplatW(float4 v) => ShuffleVector(v, 3, 3, 3, 3);
 
-	/// Horizontal sum: every lane added together, Raptor's HSum4.
+	/// Horizontal sum: every lane added together.
 	///
 	/// There is no horizontal add in the portable vector set, so the sum FOLDS: add the pair
 	/// swapped halves to get x+z and y+w in the low lanes, then add those two. Two shuffles

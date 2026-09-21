@@ -10,7 +10,7 @@ namespace Sedulous.Fonts.TrueType.Tests;
 class TrueTypeFontServiceTests
 {
 	/// The asset, or an empty view when this checkout has no data: the tests then skip
-	/// rather than report the port broken.
+	/// rather than report the font code broken.
 	private static bool FontPath(String outPath) => TestFont.FindPath(outPath);
 
 	private static FontLoadOptions Options(float pixelHeight, AtlasMode mode = .Coverage)

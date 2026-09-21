@@ -131,8 +131,8 @@ class PathCache
 
 	/// Evicts down to the capacity, oldest first.
 	///
-	/// A linear scan per eviction, which is what Raptor does: the cache holds a few hundred
-	/// entries and evicts rarely, so a heap would cost more to maintain than it saves.
+	/// A linear scan per eviction: the cache holds a few hundred entries and evicts rarely,
+	/// so a heap would cost more to maintain than it saves.
 	private void EvictIfNeeded()
 	{
 		while (mCache.Count >= mCapacity)

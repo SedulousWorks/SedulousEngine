@@ -6,8 +6,8 @@ using Sedulous.Core.Serialization;
 
 namespace Sedulous.Core.Tests;
 
-/// The comptime walker. Raptor has no equivalent: a type there is described by hand in
-/// Serialize.cppm, or through the external RTTI module it has to be registered with.
+/// The comptime walker: the field list a type is serialized by is read off its
+/// declaration rather than written out by hand.
 class GeneratedSerializeTests
 {
 	private static readonly Guid cSampleGuid = Guid.Parse("2f1b8c74-9a3d-4e51-b6f0-1c2d3e4f5a6b").Value;

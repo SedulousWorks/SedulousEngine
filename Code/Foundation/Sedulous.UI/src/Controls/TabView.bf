@@ -183,8 +183,7 @@ class TabView : ViewGroup
 	}
 
 	/// Hover is tracked in OnMouseMove, which stops arriving once the pointer leaves, so the
-	/// last tab would otherwise stay lit. Raptor notes this as its own divergence from the
-	/// original, which had no OnMouseLeave at all.
+	/// last tab would otherwise stay lit.
 	public override void OnMouseLeave()
 	{
 		if (mHoveredTabIndex == -1)

@@ -89,9 +89,9 @@ class VulkanRayTracingPipeline : IRayTracingPipeline
 		return .Ok;
 	}
 
-	/// Anything that is not a ray tracing stage falls back to ray generation, matching
-	/// Raptor: a pipeline built from a mislabelled stage fails at creation with a driver
-	/// message rather than silently doing something else.
+	/// Anything that is not a ray tracing stage falls back to ray generation: a pipeline
+	/// built from a mislabelled stage fails at creation with a driver message rather than
+	/// silently doing something else.
 	private static VkShaderStageFlags ToRayTracingStage(ShaderStage stage)
 	{
 		switch (stage)

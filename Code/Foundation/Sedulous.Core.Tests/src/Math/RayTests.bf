@@ -3,7 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Ray and its intersections. Raptor has no direct tests for any of this.
+/// Ray and its intersections.
 class RayTests
 {
 	[Test]

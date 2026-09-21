@@ -9,10 +9,8 @@ namespace Sedulous.UI;
 /// staging problem the shader sidecars already taught. The same files double as asset
 /// templates.
 ///
-/// DIVERGES from Raptor in HOW they are embedded, not in what. Raptor substitutes the file
-/// contents into a template at CMake configure time; Beef reads them at COMPILE time through
-/// Compiler.ReadText, so the .sss files beside this one are the single source and editing one
-/// rebuilds rather than needing a re-configure.
+/// Beef reads them at COMPILE time through Compiler.ReadText, so the .sss files beside this
+/// one are the single source and editing one rebuilds; no configure-time substitution step.
 static class EmbeddedThemes
 {
 	public const String Dark = Compiler.ReadText("src/Styling/Themes/dark.sss");

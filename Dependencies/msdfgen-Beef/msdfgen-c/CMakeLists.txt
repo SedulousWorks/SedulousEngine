@@ -24,7 +24,7 @@ set(MSDFGEN_USE_VCPKG        OFF CACHE BOOL "" FORCE)
 set(MSDFGEN_INSTALL          OFF CACHE BOOL "" FORCE)
 
 # msdfgen 1.12 declares cmake_minimum_required below what current CMake accepts without
-# it; Raptor sets the same shim around its add_subdirectory.
+# it; the same shim goes around the add_subdirectory.
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../msdfgen ${CMAKE_BINARY_DIR}/msdfgen)
 unset(CMAKE_POLICY_VERSION_MINIMUM)

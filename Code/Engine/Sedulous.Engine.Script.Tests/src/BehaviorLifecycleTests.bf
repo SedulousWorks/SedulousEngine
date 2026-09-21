@@ -7,8 +7,8 @@ using Sedulous.Engine.Script;
 
 namespace Sedulous.Engine.Script.Tests;
 
-/// The behaviour lifecycle, as Raptor's ScriptSceneTests pin it: the deferred start, the
-/// active edges, the enable edges, destroy, faults, reload, throttling.
+/// The behaviour lifecycle: the deferred start, the active edges, the enable edges,
+/// destroy, faults, reload, throttling.
 static class BehaviorLifecycleTests
 {
 	private const String cCounter = """

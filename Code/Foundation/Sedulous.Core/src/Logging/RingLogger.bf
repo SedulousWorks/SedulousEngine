@@ -5,9 +5,8 @@ namespace Sedulous.Core.Logging;
 
 /// Retains the most recent messages, for tools and in-app consoles.
 ///
-/// Raptor holds these in a RingBuffer; this uses a List with an explicit head index
-/// until Containers is ported, so a full buffer overwrites in place rather than shifting
-/// every record on each write.
+/// A List with an explicit head index rather than a ring buffer type, so a full buffer
+/// overwrites in place rather than shifting every record on each write.
 class RingLogger : BaseLogger
 {
 	private List<LogRecord> mRecords = new .() ~ delete _;

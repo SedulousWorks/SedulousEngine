@@ -5,9 +5,8 @@ namespace Sedulous.Core;
 /// Standard easing functions, each mapping an interpolation factor t in [0,1] to an
 /// eased value, itself roughly in [0,1]. Consumed by animation and UI transitions.
 ///
-/// Several of these mutate t as they go, which Raptor does by taking it by value. Beef
-/// parameters are immutable, so `var t;` aliases the parameter into a mutable local and
-/// the bodies stay identical to the originals.
+/// Several of these mutate t as they go. Beef parameters are immutable, so `var t;`
+/// aliases the parameter into a mutable local and the bodies read as the textbook forms.
 static
 {
 	/// A function mapping t in [0,1] to an eased interpolation factor.

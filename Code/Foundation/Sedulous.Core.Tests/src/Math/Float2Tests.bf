@@ -15,8 +15,7 @@ static
 	}
 }
 
-/// Raptor covers Float2 only inside two shared cases. Everything else here is new:
-/// Distance, DistanceSquared, the operators and the indexer are otherwise unexercised.
+/// Distance, DistanceSquared, the operators and the indexer.
 class Float2Tests
 {
 	[Test]

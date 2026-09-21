@@ -3,8 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Raptor's "color: pack/unpack and operations" case, plus the clamping, the Rgb helper
-/// and addition, which it does not reach.
+/// Pack/unpack and operations, plus the clamping, the Rgb helper and addition.
 class ColorTests
 {
 	[Test]

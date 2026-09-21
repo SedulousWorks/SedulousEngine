@@ -3,9 +3,9 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Raptor's endpoint sweep and known values, plus the properties that actually
-/// distinguish one easing from another: the in/out duality, monotonicity, and the
-/// overshoot that defines the back and elastic families.
+/// The endpoint sweep and known values, plus the properties that actually distinguish
+/// one easing from another: the in/out duality, monotonicity, and the overshoot that
+/// defines the back and elastic families.
 class EasingsTests
 {
 	private static EasingFunction[?] cAll = .(
@@ -48,8 +48,8 @@ class EasingsTests
 	}
 
 	/// The defining relationship of an ease-out: it is the ease-in run backwards,
-	/// out(t) == 1 - in(1 - t). Raptor checks endpoints and a couple of midpoints, which
-	/// an out function derived from the wrong family would also pass.
+	/// out(t) == 1 - in(1 - t). Endpoints and a couple of midpoints would not tell, since an
+	/// out function derived from the wrong family also passes those.
 	[Test]
 	public static void EaseOutIsEaseInReversed()
 	{

@@ -12,22 +12,19 @@ namespace Sedulous.Mcp.Reflection;
 /// project or pipeline dependency. A module contributes its own tools, and this is the
 /// reflection module's contribution.
 ///
-/// Two deliberate divergences from Raptor, both because Beef's reflection replaces Raptor's
-/// hand-rolled TypeRegistry rather than mirroring it:
+/// Two consequences of the reflection being Beef's own rather than a hand-rolled registry:
 ///
-/// - No `domain` or `inPlayer` key. TypeDomain is a property of Raptor's registry, which
-///   Sedulous does not have and Beef offers nothing equivalent to. Reporting a guess would be
-///   worse than omitting the field.
-/// - The `properties` array carries Beef FIELDS. Raptor's PropertyInfo is its reflection of a
-///   data member, and FieldInfo is the same idea here. The key keeps Raptor's name so one agent
-///   prompt works against both engines.
+/// - No `domain` or `inPlayer` key. Beef offers nothing to derive one from, and reporting
+///   a guess would be worse than omitting the field.
+/// - The `properties` array carries Beef FIELDS: a field is the reflection of a data
+///   member, and the key keeps the generic name so one agent prompt reads naturally.
 static class ReflectionTools
 {
 	/// Registers type_list and type_info against `server`.
 	///
 	/// Beef's type table is global and process-wide, so there is no registry to pass and no
-	/// lifetime to manage: unlike Raptor, this cannot be pointed at a private registry. The
-	/// table is read LIVE at call time.
+	/// lifetime to manage: this cannot be pointed at a private registry. The table is read
+	/// LIVE at call time.
 	public static void Register(McpServer server)
 	{
 		let listSchema = scope SchemaBuilder();
@@ -193,8 +190,8 @@ static class ReflectionTools
 	/// Whether a type is one somebody WROTE, rather than one the compiler derived from it.
 	///
 	/// Beef's table holds every pointer, array, boxed wrapper and generic parameter it ever
-	/// built; Raptor's registry only ever held authored types. Listing the derived ones would
-	/// bury the authored surface these tools exist to expose.
+	/// built. Listing the derived ones would bury the authored surface these tools exist to
+	/// expose.
 	private static bool IsAuthoredType(Type type)
 	{
 		if (!(type is TypeInstance))
@@ -232,8 +229,8 @@ static class ReflectionTools
 		outName.Set(full.Substring(dot + 1));
 	}
 
-	/// A member type's name, or "void" when there is none. Raptor spells the absent return type
-	/// that way and an agent reads it the same.
+	/// A member type's name, or "void" when there is none, which is how an agent reads an
+	/// absent return type.
 	private static void TypeName(Type type, String outName)
 	{
 		if (type == null)

@@ -161,9 +161,8 @@ static class VulkanBarrierHelper
 			// application's access masks can describe.
 			result.StageMask |= .VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
 		}
-		// The synchronization2 spellings, not the legacy ones Raptor uses here. They are
-		// numerically identical, so the C++ mix is harmless; Beef types Flags2 separately
-		// and will not take the legacy names at all.
+		// The synchronization2 spellings, not the legacy ones. They are numerically
+		// identical, but Beef types Flags2 separately and will not take the legacy names.
 		if (state.HasFlag(.AccelStructRead))
 		{
 			result.StageMask |= .VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR

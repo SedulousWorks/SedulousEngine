@@ -3,7 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Ported from Raptor's Core.Tests/RandomTests.cpp.
+/// The random stream: seeding, ranges, and the pinned default sequence.
 class RandomTests
 {
 	[Test]
@@ -47,10 +47,9 @@ class RandomTests
 		}
 	}
 
-	/// Not in Raptor's suite, but the stream is a compatibility surface: content generated
-	/// from a seed has to come out the same next year, so the first values of the default
-	/// stream are pinned here. A change to the constants or the output function breaks
-	/// this, which is the point.
+	/// The stream is a compatibility surface: content generated from a seed has to come
+	/// out the same next year, so the first values of the default stream are pinned here.
+	/// A change to the constants or the output function breaks this, which is the point.
 	[Test]
 	public static void TheDefaultStreamIsPinned()
 	{

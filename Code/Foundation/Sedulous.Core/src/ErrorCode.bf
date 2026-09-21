@@ -4,9 +4,8 @@ namespace Sedulous.Core;
 
 /// Why an operation failed.
 ///
-/// Raptor pairs this enum with a Status class and a Result of its own, and gives the enum
-/// an Ok member so Status can hold it. Beef already has Result<T, TErr>, so Status is just
-/// Result<void, ErrorCode> here and success is the Ok case rather than an enum member.
+/// Beef already has Result<T, TErr>, so a status is Result<void, ErrorCode> and success is
+/// the Ok case rather than an enum member: the enum names failures only.
 [Scriptable(.AllPublic)]
 enum ErrorCode
 {

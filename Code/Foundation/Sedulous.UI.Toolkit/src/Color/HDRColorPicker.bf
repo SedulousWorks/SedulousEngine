@@ -12,8 +12,8 @@ namespace Sedulous.UI.Toolkit;
 /// colour at full brightness, and intensity scales it afterwards. Editing an eight times white
 /// as raw channels would leave the saturation and value controls pinned and useless.
 ///
-/// It shares its square and strips with [[ColorPicker]] through [[IHSVSource]]; the C++ carries
-/// a second copy of all three, identical but for which picker they point at.
+/// It shares its square and strips with [[ColorPicker]] through [[IHSVSource]] rather than
+/// carrying a second copy of all three, identical but for which picker they point at.
 class HDRColorPicker : ViewGroup, IHSVSource
 {
 	public Event<delegate void(HDRColorPicker, Float4)> OnColorChanged ~ _.Dispose();

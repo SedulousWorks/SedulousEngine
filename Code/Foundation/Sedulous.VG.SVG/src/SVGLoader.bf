@@ -644,8 +644,7 @@ static class SVGLoader
 	/// Skipping only the opening tag would leave an unrecognised element's children at
 	/// this level, and its closing tag would then end the level: a `<metadata>` or
 	/// `<style>` block near the top of an editor's file would drop every sibling after it,
-	/// which in practice is the whole drawing. Raptor skips only the opening tag and has
-	/// exactly that defect.
+	/// which in practice is the whole drawing.
 	private static void SkipTag(StringView content, ref int pos)
 	{
 		if (SkipComment(content, ref pos))
@@ -748,8 +747,8 @@ static class SVGLoader
 
 	/// Steps over a closing tag when one is next.
 	///
-	/// The NAME is not checked, matching Raptor: the reader is positional, and a mismatched
-	/// close in a malformed file would leave it stuck rather than recovering.
+	/// The NAME is not checked: the reader is positional, and a mismatched close in a
+	/// malformed file would leave it stuck rather than recovering.
 	private static void SkipClosingTag(StringView content, ref int pos)
 	{
 		SVGScan.SkipWhitespace(content, ref pos);

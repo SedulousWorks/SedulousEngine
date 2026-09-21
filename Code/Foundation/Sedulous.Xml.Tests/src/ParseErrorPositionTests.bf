@@ -5,9 +5,8 @@ namespace Sedulous.Xml.Tests;
 
 /// Where a parse failed, not just that it did.
 ///
-/// An error code alone makes a person hunt through the file. Raptor declares these fields
-/// and never updates them, so they always report line one there; they are tracked properly
-/// here.
+/// An error code alone makes a person hunt through the file, and a position that is
+/// declared but never updated is worse than none: it always says line one.
 class ParseErrorPositionTests
 {
 	private static void Fails(StringView text, int32 line, int32 column)
@@ -94,7 +93,7 @@ class ParseErrorPositionTests
 	}
 
 	/// The column counts CODE POINTS, so a multi byte character before the error advances it
-	/// by one, not by its byte length. Adopted from Raptor's own fix.
+	/// by one, not by its byte length.
 	[Test]
 	public static void TheColumnCountsCodePointsNotBytes()
 	{

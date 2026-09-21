@@ -68,7 +68,7 @@ class DxRayTracingPipeline : IRayTracingPipeline
 		let wideNames = scope List<List<char16>>();
 		defer { for (let w in wideNames) delete w; }
 
-		// One entry per stage that has a module, matching the C++ order.
+		// One entry per stage that has a module, in stage order.
 		for (let stage in desc.Stages)
 		{
 			if ((stage.Module as DxShaderModule) == null)

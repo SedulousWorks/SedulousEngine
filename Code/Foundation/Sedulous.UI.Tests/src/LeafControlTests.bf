@@ -192,8 +192,8 @@ class LeafControlTests
 
 	/// A drawable view OWNS its drawable, so replacing one releases the one held before.
 	///
-	/// Raptor gets this from RefPtr; we hold the reference by hand, and this is exactly where
-	/// the two ownership bugs already found in this port lived.
+	/// The reference is held by hand rather than by a smart pointer, and this is exactly where
+	/// two ownership bugs have lived.
 	[Test]
 	public static void ReplacingADrawableReleasesTheOneHeldBefore()
 	{

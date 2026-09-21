@@ -15,7 +15,7 @@ namespace Sedulous.UI.Toolkit;
 /// field's end followed by the new field's begin. Closing immediately would end the row's edit
 /// in the gap between the two; deferring lets the incoming begin cancel the pending close.
 ///
-/// FACTORED over the axis count. The C++ carries Vector2, Vector3 and Vector4 as three full
+/// FACTORED over the axis count, rather than Vector2, Vector3 and Vector4 as three full
 /// copies differing only in how many fields they build and which component each writes.
 abstract class AggregatingVectorField : FlexLayout
 {

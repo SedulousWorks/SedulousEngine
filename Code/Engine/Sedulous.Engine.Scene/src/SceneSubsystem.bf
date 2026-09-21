@@ -38,8 +38,8 @@ class SceneSubsystem : Subsystem
 		// Composing fires BEFORE assembly and SystemsReady after every module installed.
 		//
 		// NO composition set is a scene with no modules, not a fault: the registry starts
-		// null and says so by guarding its own RegisterReflection the same way. Raptor
-		// reaches an empty composition here, which installs nothing either.
+		// null and says so by guarding its own RegisterReflection the same way. An empty
+		// composition installs nothing either.
 		mInstaller = new (scene) =>
 			{
 				mScenes.Notify(.Composing, scene);

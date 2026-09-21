@@ -8,11 +8,11 @@ namespace Sedulous.UI;
 
 /// Parses style sheet text into a StyleSheet.
 ///
-/// DIVERGES from Raptor in who owns a parsed drawable. Raptor refcounts, so a factory can
-/// register with the sheet AND hand the same drawable to a rule or a composite. With single
-/// ownership that is a double free, so ParseDrawableValue answers an OWNED reference and the
-/// CALLER decides where it goes: a drawable property gives it to the sheet and lets the rule
-/// borrow, while a composite factory such as state-list or layer consumes it outright.
+/// Who owns a parsed drawable: with single ownership, a factory registering a drawable
+/// with the sheet AND handing the same one to a rule or a composite is a double free, so
+/// ParseDrawableValue answers an OWNED reference and the CALLER decides where it goes: a
+/// drawable property gives it to the sheet and lets the rule borrow, while a composite
+/// factory such as state-list or layer consumes it outright.
 class SSSParser
 {
 	/// What a compound's pseudo element parse produced. Null when the caller is an ancestor

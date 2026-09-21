@@ -11,12 +11,11 @@ namespace Sedulous.Engine.Audio;
 /// absolute, which is how an options menu is expected to behave. A host loads it at startup
 /// and captures it at shutdown.
 ///
-/// The volumes are LISTS rather than a fixed pair of arrays, which is where this diverges
-/// from Raptor. Raptor hand writes a bus count and then a pair per bus, so a file written by
-/// a build with more buses reads back into one with fewer. A list carries that same length
-/// itself, and the generated body walks it, so the tolerance comes for free instead of from a
-/// body that has to be kept in step with the bus enum. The cost is two small allocations for
-/// a blob that is read once at startup.
+/// The volumes are LISTS rather than a fixed pair of arrays. A hand written bus count and
+/// then a pair per bus means a file written by a build with more buses reads back into one
+/// with fewer. A list carries that same length itself, and the generated body walks it, so
+/// the tolerance comes for free instead of from a body that has to be kept in step with the
+/// bus enum. The cost is two small allocations for a blob that is read once at startup.
 [Serializable(1)]
 class AudioUserSettings
 {

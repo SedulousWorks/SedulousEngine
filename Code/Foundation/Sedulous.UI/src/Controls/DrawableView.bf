@@ -40,8 +40,8 @@ class DrawableView : View
 	/// CONSUMES the caller's reference, and releases the one held before.
 	///
 	/// Handing back the drawable already held still consumes: the reference is dropped rather
-	/// than the field being rewritten, so the same call is safe either way round. Raptor gets
-	/// this from RefPtr's self assignment; here it is spelled out.
+	/// than the field being rewritten, so the same call is safe either way round, the way a
+	/// smart pointer's self assignment would be.
 	public void SetDrawable(Drawable drawable)
 	{
 		if (mDrawable == drawable)

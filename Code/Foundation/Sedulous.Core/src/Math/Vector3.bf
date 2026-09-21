@@ -32,7 +32,7 @@ struct Vector3
 	[Inline] public static Vector3 operator-(Vector3 v) => .(-v.R);
 	[Inline] public static Vector3 operator+(Vector3 a, Vector3 b) => .(a.R + b.R);
 	[Inline] public static Vector3 operator-(Vector3 a, Vector3 b) => .(a.R - b.R);
-	/// COMPONENT WISE, as in Raptor. Dot is the dot product.
+	/// COMPONENT WISE. Dot is the dot product.
 	[Inline] public static Vector3 operator*(Vector3 a, Vector3 b) => .(a.R * b.R);
 	[Inline, Commutable] public static Vector3 operator*(Vector3 v, float s) => .(v.R * s);
 	[Inline] public static Vector3 operator/(Vector3 v, float s) => .(v.R / s);

@@ -5,8 +5,8 @@ namespace Sedulous.Core.Logging;
 /// The level-named frontend, as an extension so it exists once for every ILogger rather
 /// than being repeated per implementation or forced through a base class.
 ///
-/// This is what replaces Raptor's LOG_* macros. The arguments reach Log unformatted, so
-/// a disabled level costs the boxing of the arguments but not the formatting.
+/// The arguments reach Log unformatted, so a disabled level costs the boxing of the
+/// arguments but not the formatting.
 extension ILogger
 {
 	public void LogTrace(StringView format, params Object[] args) =>

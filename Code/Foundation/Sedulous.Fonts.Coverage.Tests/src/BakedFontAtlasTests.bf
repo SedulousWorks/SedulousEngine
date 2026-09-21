@@ -13,8 +13,7 @@ class BakedFontAtlasTests
 	private static int32 Cp(char8 c) => (int32)c;
 
 	/// A 128 by 128 atlas with one glyph at texels (16,32) sized 12 by 14, offset (1,-10)
-	/// and advancing 13.5. The same figures Raptor's cases use, so the arithmetic below is
-	/// comparable line for line.
+	/// and advancing 13.5, so the arithmetic below can be checked by hand.
 	/// Returns an OWNED atlas; `scope` cannot be applied to a call, so the caller defers a
 	/// delete.
 	private static BakedFontAtlas MakeAtlas(uint32 size = 128)

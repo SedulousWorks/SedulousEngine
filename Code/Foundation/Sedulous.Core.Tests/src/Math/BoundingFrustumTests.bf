@@ -3,9 +3,9 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// BoundingFrustum. Raptor has no direct tests for this, and it is the highest-stakes
-/// file in the batch: an inverted plane sign culls either everything or nothing, and
-/// both look plausible until someone notices the scene is empty.
+/// BoundingFrustum, the highest-stakes type in the batch: an inverted plane sign culls
+/// either everything or nothing, and both look plausible until someone notices the
+/// scene is empty.
 ///
 /// The fixture is a camera at the origin looking down -Z with a 90 degree vertical FOV,
 /// square aspect, near 1 and far 100. That makes the frustum half-extent equal to the

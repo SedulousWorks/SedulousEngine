@@ -347,9 +347,9 @@ static class JsonParser
 		if (state.Peek == '-')
 			state.Position++;
 
-		// The integer part is one zero, or a run that does not begin with one. Raptor scans
-		// digits loosely and lets the conversion decide, which accepts "01"; JSON does not,
-		// and a leading zero is far more often a typo or a padded field than a number.
+		// The integer part is one zero, or a run that does not begin with one. Scanning digits
+		// loosely and letting the conversion decide would accept "01"; JSON does not, and a
+		// leading zero is far more often a typo or a padded field than a number.
 		let integerStart = state.Position;
 		SkipDigits(ref state);
 		let integerLength = state.Position - integerStart;

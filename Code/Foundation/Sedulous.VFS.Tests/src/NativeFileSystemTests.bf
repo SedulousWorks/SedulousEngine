@@ -59,9 +59,8 @@ class NativeFileSystemTests
 		Test.Assert(RemoveDirectoryRecursive(kScratch));
 	}
 
-	/// Raptor asks for capabilities through virtual AsEnumerable/AsWritable/AsStat methods,
-	/// because C++ has no real interfaces and it builds with RTTI off. Beef has both, so
-	/// the whole As family is just `as`.
+	/// A capability is asked for with `as`, so a backend that implements one is found and one
+	/// that does not answers null.
 	[Test]
 	public static void CapabilitiesAreOrdinaryInterfaces()
 	{

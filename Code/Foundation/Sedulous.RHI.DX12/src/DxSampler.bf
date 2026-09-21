@@ -12,8 +12,7 @@ namespace Sedulous.RHI.DX12;
 /// belongs to the device and outlives every sampler cut from it.
 class DxSampler : ISampler
 {
-	// Kept because ISampler asks for it. The C++ has no equivalent: its Sampler base carries
-	// no descriptor, so nothing there had to remember what it was made from.
+	// Kept because ISampler asks for it: D3D12 keeps no sampler object to read it back from.
 	private SamplerDesc mDesc = .();
 	private D3D12_CPU_DESCRIPTOR_HANDLE mHandle = .();
 	private DxDescriptorHeapAllocator mSamplerHeap = null; // NOT owned, the device's

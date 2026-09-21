@@ -10,9 +10,8 @@ namespace Sedulous.Resource.Tests;
 /// The async surface a loading screen and a scene load are built out of: the ready
 /// callback, the bind mode, the batch, and the pump budget.
 ///
-/// Ported from Raptor's AsyncResourceTests.cpp cases that had no counterpart here, which
-/// is how the absence of the surface stayed invisible: the tests were written against what
-/// had been ported rather than against what Raptor has.
+/// Written against what the surface has to offer rather than against what happened to
+/// exist, which is how the absence of a piece of it stays visible.
 class AsyncSurfaceTests
 {
 	/// The transition, not the state: a handle that is already ready fires nothing, and a

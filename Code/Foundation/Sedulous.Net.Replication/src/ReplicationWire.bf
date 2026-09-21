@@ -32,8 +32,8 @@ static class ReplicationWire
 		outText.Append(StringView((char8*)&bytes[0], (int)count));
 	}
 
-	/// The 16 raw bytes. DIVERGES from Raptor, which writes two u64 halves, because Beef's
-	/// Guid does not expose them; the byte count and the round trip are the same.
+	/// The 16 raw bytes, not two u64 halves, because Beef's Guid does not expose them; the
+	/// byte count and the round trip are the same.
 	public static void WriteGuid(BitWriter writer, Guid value)
 	{
 		var value;

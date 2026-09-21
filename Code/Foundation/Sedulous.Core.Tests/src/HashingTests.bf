@@ -3,8 +3,8 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Ported from Raptor's "hash: integers and strings hash deterministically" and
-/// "core: StringHash - constexpr identity over UTF-8 text".
+/// Integers and strings hash deterministically, and StringHash is a constant identity
+/// over UTF-8 text.
 class HashingTests
 {
 	[Test]

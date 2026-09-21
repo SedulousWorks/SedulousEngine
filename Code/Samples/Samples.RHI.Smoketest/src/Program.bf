@@ -19,7 +19,7 @@ namespace Samples.RHI.Smoketest;
 /// Not a rendering sample: nothing is drawn beyond a bare transition to Present, and the
 /// point is that every create and destroy pair on every backend survives being called for
 /// real. It is what gets run first on a new machine, or after a backend change, to say
-/// whether the port is alive at all before a sample is blamed for anything.
+/// whether the backend is alive at all before a sample is blamed for anything.
 class Program
 {
 	/// A no-op SPIR-V fragment shader: a module has to be created from SOMETHING, and this
@@ -542,8 +542,7 @@ class Program
 	private static void RunNull()
 	{
 		let backend = NullRhi.CreateBackend();
-		// DIVERGES from Raptor, whose null objects are destroyed one by one. Here the
-		// backend OWNS its adapter, its devices and its surfaces, so deleting it frees
+		// The backend OWNS its adapter, its devices and its surfaces, so deleting it frees
 		// them and calling DestroySurface as well would be a double free.
 		defer delete backend;
 

@@ -9,10 +9,10 @@ namespace Sedulous.Core.IO;
 /// about a short transfer are BinaryReader and BinaryWriter, and they accumulate it into
 /// one sticky flag rather than testing every call.
 ///
-/// An abstract class rather than an interface, as in Raptor, because of the typed
-/// conveniences below. A Beef extension on an interface only resolves when the static type
-/// IS the interface, so as an interface these would be unreachable through a FileStream or
-/// a MemoryStream held as itself, which is how streams are usually held.
+/// An abstract class rather than an interface, because of the typed conveniences below.
+/// A Beef extension on an interface only resolves when the static type IS the interface,
+/// so as an interface these would be unreachable through a FileStream or a MemoryStream
+/// held as itself, which is how streams are usually held.
 abstract class IStream
 {
 	/// False once the stream is unusable: a file that failed to open, or one closed since.
@@ -28,9 +28,8 @@ abstract class IStream
 
 	/// Writes one value as stored. False on a short write.
 	///
-	/// The struct constraint stands in for Raptor's is_trivially_copyable static_assert:
-	/// it is the strongest thing Beef can say here, and it keeps a class reference from
-	/// being written out as the pointer it is.
+	/// The struct constraint is the strongest thing Beef can say about "trivially copyable"
+	/// here, and it keeps a class reference from being written out as the pointer it is.
 	public bool WriteValue<T>(T value) where T : struct
 	{
 		// A local copy, because the address of a parameter is the address of something

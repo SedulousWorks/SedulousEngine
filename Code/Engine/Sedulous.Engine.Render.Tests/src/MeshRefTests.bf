@@ -203,9 +203,8 @@ class MeshRefTests
 		Test.Assert(component.Materials.Count == 2);
 	}
 
-	/// The manager's live swap pair, which Raptor reached through its SceneRender script
-	/// facade. With no resource manager the id is set and nothing is bound, which is what a
-	/// bare tool gets.
+	/// The manager's live swap pair. With no resource manager the id is set and nothing is
+	/// bound, which is what a bare tool gets.
 	[Test]
 	public static void TheManagerSwapsAMeshAndAMaterialSlotById()
 	{

@@ -10,8 +10,7 @@ namespace Sedulous.Model.FBX.Tests;
 
 /// The ufbx backed loader, driven with OBJ fixtures.
 ///
-/// Raptor has no tests for this loader at all, so these are not a port of anything: they
-/// cover the parts that are this loader's own work rather than ufbx's, which is the
+/// These cover the parts that are this loader's own work rather than ufbx's: the
 /// triangulation, the deduplication, the vertex layout and the material mapping.
 class FbxLoaderTests
 {

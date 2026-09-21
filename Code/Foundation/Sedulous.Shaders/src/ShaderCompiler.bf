@@ -13,8 +13,7 @@ namespace Sedulous.Shaders;
 /// a cook that never opens a device.
 ///
 /// The Beef binding links dxcompiler directly and widens the argument strings itself, so
-/// there is no counterpart here to Raptor's manual library loading or its hand rolled
-/// UTF-8 to wide conversion.
+/// there is no manual library loading here and no hand rolled UTF-8 to wide conversion.
 class ShaderCompiler
 {
 	private IDxcCompiler3* mCompiler = null;

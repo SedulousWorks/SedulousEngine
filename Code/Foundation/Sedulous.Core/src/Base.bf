@@ -2,15 +2,15 @@ using System;
 
 namespace Sedulous.Core;
 
-/// The pieces of Raptor's Core :base partition that have a Beef counterpart.
+/// The small generic helpers everything else leans on.
 ///
-/// The integer and float aliases (i32, f32, usize) are not ported: they exist because
-/// C++ spells its fixed-width types awkwardly, and Beef's int32/float/int already say
-/// exactly what they mean.
+/// No integer or float aliases (i32, f32, usize): they exist where a language spells its
+/// fixed-width types awkwardly, and Beef's int32/float/int already say exactly what they
+/// mean.
 static
 {
 	/// Generic ordering helpers. The Float3 overloads in Float3.bf are component-wise
-	/// and sit in the same overload set, which is how Raptor spells it too.
+	/// and sit in the same overload set.
 	public static T Min<T>(T a, T b)
 		where bool : operator T < T
 	{

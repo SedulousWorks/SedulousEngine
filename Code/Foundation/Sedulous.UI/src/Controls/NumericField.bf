@@ -526,8 +526,8 @@ class NumericField : View, ITextEditHost
 
 	/// A held spin button keeps stepping, after a delay and then at an interval.
 	///
-	/// Driven from the DRAW rather than an update, and approximated at sixty frames a second,
-	/// which is what Raptor does. It works because a held button is redrawing anyway.
+	/// Driven from the DRAW rather than an update, and approximated at sixty frames a second.
+	/// It works because a held button is redrawing anyway.
 	private void UpdateSpinRepeat()
 	{
 		if (mPressedButton == 0)

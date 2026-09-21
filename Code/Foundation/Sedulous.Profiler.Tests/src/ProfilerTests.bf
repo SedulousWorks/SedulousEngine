@@ -5,8 +5,7 @@ using Sedulous.Profiler;
 
 namespace Sedulous.Profiler.Tests;
 
-/// Raptor's cases are ported. Its four all poke the singleton and so run against shared
-/// state; each of these builds its own profiler instead.
+/// Each case builds its own profiler rather than poking a shared singleton.
 class ProfilerTests
 {
 	[Test]
@@ -311,9 +310,8 @@ class ProfilerTests
 		Test.Assert(seen.Count == 4, "four distinct thread indices");
 	}
 
-	/// Two profilers do not see each other's threads. Raptor's singleton cannot express
-	/// this; the cached thread slot is tagged with its owner so that it does not leak
-	/// across them.
+	/// Two profilers do not see each other's threads: the cached thread slot is tagged with
+	/// its owner so that it does not leak across them, which a singleton could never express.
 	[Test]
 	public static void TwoProfilersDoNotShareThreadState()
 	{

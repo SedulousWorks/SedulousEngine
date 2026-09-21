@@ -10,11 +10,11 @@ namespace Sedulous.Engine.DefaultApp.Integration.Tests;
 /// The client side net spawn resolver, against a REAL content database.
 ///
 /// This is the body a replicated spawn runs: a prefab guid arrives over the wire, and the
-/// resolver has to turn it into a live entity in the scene the endpoint replicates. Raptor
-/// covers the WIRING of this (that the factory reaches each endpoint and survives a
-/// reconnect, in GameInstanceTests) and the handler CONTRACT with a stand in lambda (in
-/// ReplicationTests), but never the body itself, on either side. Ours was a stub answering
-/// no entity until 2026-09-18, so a replicated spawn was silently inert.
+/// resolver has to turn it into a live entity in the scene the endpoint replicates. The
+/// WIRING (that the factory reaches each endpoint and survives a reconnect) and the
+/// handler CONTRACT (with a stand in lambda) are covered elsewhere; this is the body
+/// itself, which was once a stub answering no entity, so a replicated spawn was silently
+/// inert.
 ///
 /// Every failure path matters as much as the success one, because each answers the same
 /// unassigned handle and none of them logs: a spawn that quietly produces nothing is the

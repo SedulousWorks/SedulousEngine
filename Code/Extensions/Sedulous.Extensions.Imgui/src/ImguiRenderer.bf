@@ -43,10 +43,10 @@ class ImguiRenderer
 		~ { for (let slot in _) delete slot; }
 
 	/// Bind groups replaced mid frame, held until every frame that could still name them has
-	/// been through. Raptor never needs this: it reads the atlas at startup, so its bind groups
-	/// are made once and only ever destroyed at shutdown. The library asks for its texture on a
-	/// frame here instead, which means rebinding while the previous frame's command buffer is
-	/// still recorded against the old set.
+	/// been through. Reading the atlas once at startup would make the bind groups once and
+	/// destroy them only at shutdown; the library asks for its texture on a frame here
+	/// instead, which means rebinding while the previous frame's command buffer is still
+	/// recorded against the old set.
 	private List<(IBindGroup Group, uint32 FramesLeft)> mRetired = new .() ~ delete _;
 
 	public this(IDevice device, ShaderSystem shaders, uint32 framesInFlight)

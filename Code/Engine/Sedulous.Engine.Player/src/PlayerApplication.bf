@@ -34,9 +34,8 @@ namespace Sedulous.Engine.Player;
 /// understood, and a staged distribution WINS where both are present, because a distribution
 /// can sit inside the project tree it was built from.
 ///
-/// PARTIAL PORT. Raptor launches the project's game script before the scene and lets a script
-/// own boot entirely. The script projects are out of scope, so the startup script is not
-/// loaded and a project with no default scene simply has nothing to run.
+/// The project's game script is launched before the scene, so a script can own boot
+/// entirely: a project with no default scene and a running script has something to run.
 class PlayerApplication : DefaultApplication
 {
 	private PlayerOptions mOptions;

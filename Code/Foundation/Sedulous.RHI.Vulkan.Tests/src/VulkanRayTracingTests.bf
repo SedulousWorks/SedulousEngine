@@ -10,7 +10,7 @@ namespace Sedulous.RHI.Vulkan.Tests;
 /// The geometry is described in a form the driver accepts, the device addresses resolve,
 /// and both builds run clean under the validation layers.
 ///
-/// KNOWN LIMIT, shared with Raptor: AccelStructDesc carries no geometry and no size, so
+/// KNOWN LIMIT: AccelStructDesc carries no geometry and no size, so
 /// CreateAccelStruct cannot query a build size and allocates a flat 256 KB instead. That
 /// covers the structures here and everything the engine builds today, but a structure whose
 /// build needs more FAILS, and the build call is where it surfaces. Closing it needs a

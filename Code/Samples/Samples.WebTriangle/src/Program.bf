@@ -9,7 +9,7 @@ namespace Samples.WebTriangle;
 /// The smallest thing that proves the browser stack is wired: a canvas shell, a WebGPU
 /// device on it, a swap chain, and one WGSL triangle recorded into it every frame.
 ///
-/// Deliberately NOT a raw wgpu sample. The point is the chain the port added, shell to
+/// Deliberately NOT a raw wgpu sample. The point is the chain the engine adds, shell to
 /// surface to backend, which is what the rest of the web tier stands on; a triangle through
 /// wgpu directly would skip exactly that.
 ///

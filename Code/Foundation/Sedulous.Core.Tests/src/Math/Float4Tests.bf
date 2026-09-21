@@ -17,8 +17,7 @@ static
 	}
 }
 
-/// Raptor covers Float4 inside two shared cases. The operators, the indexer, Lerp and
-/// NearlyEqual are added here.
+/// Float4: the operators, the indexer, Lerp and NearlyEqual.
 class Float4Tests
 {
 	[Test]

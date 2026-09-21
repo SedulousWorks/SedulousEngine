@@ -395,9 +395,9 @@ class ActionRuntime
 	/// Whether a key is down AND its required modifiers are satisfied.
 	///
 	/// Each modifier GROUP is satisfied by any of its bits: a binding asking for Shift
-	/// means either shift, not both at once. Raptor requires every bit of the mask, which
-	/// makes a Shift binding unreachable, since nobody holds both shifts to fire one
-	/// action. A specific side still works, because naming one bit leaves one bit to match.
+	/// means either shift, not both at once. Requiring every bit of the mask would make a
+	/// Shift binding unreachable, since nobody holds both shifts to fire one action. A
+	/// specific side still works, because naming one bit leaves one bit to match.
 	private static bool KeyDown(IKeyboard keyboard, uint32 code, uint32 modifiers)
 	{
 		if (keyboard == null)

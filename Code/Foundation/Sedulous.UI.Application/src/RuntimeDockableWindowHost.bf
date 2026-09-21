@@ -130,7 +130,6 @@ class RuntimeDockableWindowHost : IDockableWindowHost
 
 		// TWO references, because two things outlive this call: AttachWindow CONSUMES the one
 		// it is handed, and the entry below holds the root until the window is destroyed.
-		// Raptor passes a RefPtr by value and copies it into the entry, which is the same two.
 		// Sharing one drives the root's count negative on teardown, and its children with it:
 		// the dock tree's queued node deletion then trips on a view already at nought.
 		root.AddRef();

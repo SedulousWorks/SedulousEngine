@@ -4,7 +4,7 @@ namespace Sedulous.Core;
 
 /// Show this member only while another member says so.
 ///
-/// Two forms, both Raptor's:
+/// Two forms:
 ///
 ///   "loop"          visible while `loop` is truthy
 ///   "mode=1,2"      visible while `mode`'s raw integer value is 1 or 2

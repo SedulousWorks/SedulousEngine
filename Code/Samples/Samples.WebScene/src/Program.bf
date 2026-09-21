@@ -20,8 +20,8 @@ class Program
 {
 	public static int Main(String[] args)
 	{
-		// See the web entry: GlobalLog is a no-op until a logger exists, and Raptor's
-		// APP_MAIN installs a console sink on both bodies.
+		// See the web entry: GlobalLog is a no-op until a logger exists, so a console sink
+		// goes in first on both bodies.
 		InitGlobalLogger(new ConsoleLogger(.Information, "WebScene"), true);
 		defer ShutdownGlobalLogger();
 

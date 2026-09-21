@@ -13,9 +13,8 @@ namespace Sedulous.UI;
 /// and a font size, which the full Resolve takes and the DPI-only Resolve treats as absent.
 ///
 /// The component fields are lower case against the house style, which reserves PascalCase for
-/// public fields. Raptor reached the same answer for the same reason: the static factories
-/// have to be Dp, Pt, Px, Percent and Em so a call site reads `Unit.Dp(8)`, and an identifier
-/// cannot be both.
+/// public fields: the static factories have to be Dp, Pt, Px, Percent and Em so a call site
+/// reads `Unit.Dp(8)`, and an identifier cannot be both.
 struct Unit
 {
 	/// Which component a single unit value was built from. Kept for display, and for callers

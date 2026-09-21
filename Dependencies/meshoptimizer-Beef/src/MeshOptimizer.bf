@@ -9,7 +9,7 @@ namespace meshoptimizer_Beef;
  * Version: MESHOPTIMIZER_VERSION 1020 (v1.2)
  * License: MIT (meshoptimizer/LICENSE.md)
  *
- * TRIMMED VENDORING, following Raptor's: index and vertex optimisation
+ * TRIMMED VENDORING: index and vertex optimisation
  * (vcache/overdraw/vfetch plus the remap generators), simplification, and the
  * analyzers. No codecs, clusterizer, meshlets or stripifier.
  *

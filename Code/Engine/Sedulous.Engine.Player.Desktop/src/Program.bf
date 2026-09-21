@@ -20,8 +20,7 @@ namespace Sedulous.Engine.Player.Desktop;
 /// because what differs is not code. The dependencies differ (Shell.SDL3 and Runtime.SDL3
 /// against Shell.Web and Runtime.Web) and a compile time branch cannot drop a dependency, so
 /// one project would link SDL3 into the wasm build. The link flags and the target name differ
-/// too, and both live in BeefProj.toml where no #if reaches. Raptor splits it the same way:
-/// PlayerMain.cpp imports shell.desktop outright, and WebMain.cpp is its own boot beside it.
+/// too, and both live in BeefProj.toml where no #if reaches.
 ///
 /// The APPLICATION is Sedulous.Engine.Player and is shared. This file is only the boot: read
 /// the command line, find the project, bring up a shell and a device, and run.

@@ -7,9 +7,8 @@ namespace Sedulous.VFS;
 
 /// Backs logical paths with a real directory prefix.
 ///
-/// Reads, enumerates, writes, stats and watches, so it implements every capability. In
-/// Raptor that means five base classes and five As* overrides; here it is one class and a
-/// list of interfaces.
+/// Reads, enumerates, writes, stats and watches, so it implements every capability: one
+/// class and a list of interfaces.
 class NativeFileSystem : IFileSystem, IEnumerableFileSystem, IWritableFileSystem, IStatFileSystem, IWatchableFileSystem
 {
 	private String mRoot = new .() ~ delete _;

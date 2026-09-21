@@ -69,10 +69,10 @@ static class Process
 		// CONCURRENTLY, one thread per pipe, because these reads BLOCK. Reading them by
 		// turns instead deadlocks the moment a child writes hard to one and stays silent on
 		// the other: the turn to read the quiet pipe never returns, and the busy one fills.
-		// Raptor has no such problem because it points both of the child's descriptors at a
-		// SINGLE pipe; Beef's process API gives two, so they get drained in parallel to the
-		// same effect. tint is the specimen - it prints whole shaders to stdout and nothing
-		// to stderr, and hung the cook on the first file bigger than a pipe buffer.
+		// Pointing both of the child's descriptors at ONE pipe would avoid this, but Beef's
+		// process API gives two, so they get drained in parallel to the same effect. tint is
+		// the specimen - it prints whole shaders to stdout and nothing to stderr, and hung the
+		// cook on the first file bigger than a pipe buffer.
 		let errorText = scope String();
 		let errorStream = haveError ? standardError : null;
 		let outputStream = haveOutput ? standardOutput : null;

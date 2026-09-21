@@ -431,11 +431,10 @@ class ResourceManager
 			else if (handle.Product != null)
 			{
 				row.Live++;
-				// Raptor counts STRONG references and calls one cache-only, because its
-				// proxies own the handle. Here a proxy observes it WEAKLY and the cache is
-				// the only strong owner by design, so the same question is asked of the
-				// weak count: the control block starts at one for the cache itself, and
-				// anything above that is a stored proxy still watching.
+				// A proxy observes the handle WEAKLY and the cache is the only strong owner by
+				// design, so cache-only is a question about the weak count: the control block
+				// starts at one for the cache itself, and anything above that is a stored proxy
+				// still watching.
 				if (handle.Control.WeakCount == 1)
 					row.Unreferenced++;
 			}

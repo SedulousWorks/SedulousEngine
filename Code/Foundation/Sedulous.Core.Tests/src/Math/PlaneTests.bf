@@ -3,7 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Planes. Raptor covers these in its "geometry: Plane signed distance" case.
+/// Planes: signed distance, normalization, construction.
 class PlaneTests
 {
 	[Test]
@@ -19,8 +19,8 @@ class PlaneTests
 		Test.Assert(NearlyEqual(Length(unnormalized.Normalized().Normal), 1.0f));
 	}
 
-	/// Raptor's plane passes through the origin, so d is zero and an implementation that
-	/// dropped the point term entirely would pass. This one is offset.
+	/// A plane through the origin would not tell: d is zero there and an implementation
+	/// that dropped the point term entirely would pass. This one is offset.
 	[Test]
 	public static void PlaneThroughAnOffsetPoint()
 	{
@@ -41,10 +41,10 @@ class PlaneTests
 		Test.Assert(NearlyEqual(degenerate.Normalized().D, 3.0f));
 	}
 
-	/// Normalizing has to scale d as well as the normal. Raptor's case uses d = 0 and
-	/// the offset case above already has a unit normal, so in both of them scaling d is
-	/// a no-op: an implementation that left d alone passes. This one has a non-unit
-	/// normal and a non-zero d, so the plane it describes only stays put if both scale.
+	/// Normalizing has to scale d as well as the normal. A plane with d = 0, or the offset
+	/// case above with its unit normal, would not tell: scaling d is a no-op in both, so an
+	/// implementation that left d alone passes. This one has a non-unit normal and a
+	/// non-zero d, so the plane it describes only stays put if both scale.
 	[Test]
 	public static void PlaneNormalizedScalesDistanceToo()
 	{

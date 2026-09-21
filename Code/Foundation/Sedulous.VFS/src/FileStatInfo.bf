@@ -4,8 +4,7 @@ namespace Sedulous.VFS;
 struct FileStatInfo
 {
 	public int64 Size;
-	/// Platform ticks, as Core reports them. Raptor stores whole seconds, which cannot
-	/// distinguish two edits within the same second, and that is exactly what a sweep is
-	/// looking for.
+	/// Platform ticks, as Core reports them. Whole seconds cannot distinguish two edits
+	/// within the same second, and that is exactly what a sweep is looking for.
 	public int64 ModifiedTicks;
 }

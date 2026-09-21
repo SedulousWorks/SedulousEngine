@@ -153,7 +153,7 @@ class ButtonVariantTests
 
 	// ---- ContentButton ------------------------------------------------------------------------
 	//
-	// Raptor has no suite for this one; these are ours to mirror back.
+	// The variant with the least coverage elsewhere.
 
 	/// The content is measured loose and the chrome is added around it.
 	[Test]

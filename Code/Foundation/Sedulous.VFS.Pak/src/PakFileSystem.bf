@@ -24,8 +24,8 @@ class PakFileSystem : IFileSystem, IEnumerableFileSystem
 
 	private String mPath = new .() ~ delete _;
 	private List<Entry> mEntries = new .() ~ delete _;
-	/// Locator to index. Raptor scans the entry list for every lookup, which is fine for a
-	/// handful of files and quadratic for an archive that ships a whole game.
+	/// Locator to index. Scanning the entry list for every lookup is fine for a handful of
+	/// files and quadratic for an archive that ships a whole game.
 	private Dictionary<String, int> mByLocator = new .() ~ delete _;
 	private bool mIsValid;
 
@@ -148,8 +148,7 @@ class PakFileSystem : IFileSystem, IEnumerableFileSystem
 			return;
 
 		// The header is the least trustworthy part of a corrupt file, and everything below
-		// is sized from it. Raptor seeks to tocOffset and loops entryCount times without
-		// asking whether either could be real.
+		// is sized from it, so tocOffset and entryCount are checked before either is trusted.
 		if ((tocOffset < (uint64)cPakHeaderSize) || (tocOffset > (uint64)fileSize))
 			return;
 		if (tocSize > (uint64)fileSize - tocOffset)

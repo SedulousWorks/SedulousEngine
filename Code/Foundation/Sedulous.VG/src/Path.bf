@@ -22,7 +22,7 @@ class Path
 	/// A tessellation cache keys on THIS, never on the reference. After a delete the
 	/// allocator can hand a new path the same address, and a pointer keyed cache then
 	/// serves the dead path's geometry: the same rule ImageData states, for the same
-	/// reason. Raptor's path cache is keyed by pointer and has that hazard.
+	/// reason.
 	public readonly uint64 InstanceId = (uint64)Interlocked.Increment(ref sNextInstanceId);
 
 	public this() {}
@@ -148,8 +148,8 @@ class Path
 
 	/// The total arc length.
 	///
-	/// A Close contributes NOTHING, matching Raptor: its implicit line back to the subpath
-	/// start is not counted, so a closed shape's length is the length of what was drawn.
+	/// A Close contributes NOTHING: its implicit line back to the subpath start is not
+	/// counted, so a closed shape's length is the length of what was drawn.
 	public float GetLength()
 	{
 		var total = 0.0f;

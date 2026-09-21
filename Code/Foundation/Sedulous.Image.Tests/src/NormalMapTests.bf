@@ -134,10 +134,10 @@ class NormalMapTests
 	/// The brick generator is FLAT, and this records that rather than hiding it.
 	///
 	/// Every normal it builds is (0, 0, positive), which normalises to straight up
-	/// whatever the Z was, so mortar and brick face encode the same. Raptor shares the
-	/// defect; its test missed it because the truncating encoder made every pixel differ
-	/// from neutral, which is all that test asked about. If the generator is ever made
-	/// real, this test SHOULD fail, and that is the point of it.
+	/// whatever the Z was, so mortar and brick face encode the same. A test asking only that
+	/// every pixel differ from neutral misses it under a truncating encoder, which is how it
+	/// survived. If the generator is ever made real, this test SHOULD fail, and that is the
+	/// point of it.
 	[Test]
 	public static void TheBrickIsCurrentlyFlat()
 	{

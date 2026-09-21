@@ -114,8 +114,8 @@ class ViewportViewTests
 		Test.Assert(view.IsReady, "rebuilt at the new size, not left torn down");
 
 		// NOT asserted: that the new view is a different POINTER. An allocator may hand back
-		// the address it just freed, which is the stale-identity trap this port has hit before.
-		// The size is the observable fact; the address is not.
+		// the address it just freed, which is the stale-identity trap this codebase has hit
+		// before. The size is the observable fact; the address is not.
 
 		// Still registered, so the renderer can sample the rebuilt target.
 		let vg = scope VGContext();

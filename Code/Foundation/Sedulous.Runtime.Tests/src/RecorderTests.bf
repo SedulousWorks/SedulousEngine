@@ -8,9 +8,8 @@ namespace Sedulous.Runtime.Tests;
 /// The extension point that lets a layer ABOVE Runtime have its registrations reversed by
 /// the same unload.
 ///
-/// Ported from Raptor's cross-plugin test, which drives a SceneContributionRecorder over
-/// the scene manager's contribution table. Scene is not ported yet, so the recorder here is
-/// over a stand-in table; the contract being tested is the host's, not the table's.
+/// The recorder here is over a stand-in table rather than a scene manager's contribution
+/// table; the contract being tested is the host's, not the table's.
 class RecorderTests
 {
 	[Test]

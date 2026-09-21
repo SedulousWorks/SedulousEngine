@@ -12,8 +12,8 @@ class ComponentTests
 	/// Teardown runs the destroy hook for whatever is STILL held.
 	///
 	/// The hook is where a component's heap data is freed, and a manager whose components
-	/// were never removed would otherwise drop the lot. Raptor gets this from its dense
-	/// array: destroying a C++ vector destroys every element in it.
+	/// were never removed would otherwise drop the lot: a List of structs frees only the
+	/// storage.
 	[Test]
 	public static void DestroyingTheManagerRunsTheHookForWhatIsLeft()
 	{
@@ -37,7 +37,7 @@ class ComponentTests
 	///
 	/// The pool used to zero the slot, which silently replaced every non zero default with
 	/// nought: a scale of one became a scale of nothing, and a flag that starts set started
-	/// clear. Raptor gets the defaults from C++ value initialisation.
+	/// clear.
 	[Test]
 	public static void ANewComponentStartsFromItsDeclaredDefaults()
 	{

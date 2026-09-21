@@ -13,11 +13,10 @@ namespace Sedulous.Core;
 /// The conversions are EXPLICIT on purpose. Crossing packed to SIMD is a deliberate boundary,
 /// not something that should happen because two overloads looked alike.
 ///
-/// Raptor backs this with its own f32x4, which selects SSE2 by hand and falls back to scalar
-/// on ARM and wasm. System.Numerics.float4 is a native vector type lowered through LLVM, so
-/// it gets SSE2, NEON and wasm SIMD alike, and Beef passes it in a REGISTER rather than
-/// through memory the way it passes an ordinary small struct. That is why there is no f32x4
-/// layer here: corlib already is one, and a better one.
+/// System.Numerics.float4 is a native vector type lowered through LLVM, so it gets SSE2,
+/// NEON and wasm SIMD alike, and Beef passes it in a REGISTER rather than through memory
+/// the way it passes an ordinary small struct. That is why there is no hand-rolled f32x4
+/// layer selecting SSE2 by hand: corlib already is one, and a better one.
 [Align(16)]
 struct Vector4
 {
@@ -43,7 +42,7 @@ struct Vector4
 	[Inline] public static Vector4 operator-(Vector4 v) => .(-v.R);
 	[Inline] public static Vector4 operator+(Vector4 a, Vector4 b) => .(a.R + b.R);
 	[Inline] public static Vector4 operator-(Vector4 a, Vector4 b) => .(a.R - b.R);
-	/// COMPONENT WISE, as in Raptor. Dot is the dot product.
+	/// COMPONENT WISE. Dot is the dot product.
 	[Inline] public static Vector4 operator*(Vector4 a, Vector4 b) => .(a.R * b.R);
 	[Inline, Commutable] public static Vector4 operator*(Vector4 v, float s) => .(v.R * s);
 	[Inline] public static Vector4 operator/(Vector4 v, float s) => .(v.R / s);

@@ -3,8 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// ContentFit has no direct unit tests in Raptor: it is exercised only indirectly,
-/// through Input and UI.Viewport. These cover it head on.
+/// ContentFit head on, rather than only indirectly through Input and UI.Viewport.
 ///
 /// The fixture throughout is a 16:9 region holding 4:3 content, so the aspect-preserving
 /// modes have something real to do. A square-in-square fixture would let Letterbox and

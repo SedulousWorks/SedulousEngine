@@ -6,8 +6,7 @@ namespace Sedulous.Scene.Tests;
 /// Shared state the composition probes write into.
 ///
 /// A module's install and reflection hooks are FUNCTION POINTERS, which carry no capture,
-/// so a file local counter and an order string are the only way to observe them. That is
-/// the same constraint Raptor's tests work under, for the same reason.
+/// so a file local counter and an order string are the only way to observe them.
 static class CompositionProbes
 {
 	public static String InstallOrder = new .() ~ delete _;

@@ -121,8 +121,7 @@ static class PrefabRebuild
 
 		scene.ForEachPrefabInstance(scope (state) =>
 		{
-			// A nested instance rebuilds with its owner rather than on its own. Nesting
-			// itself is not ported yet, so this is the guard rather than the mechanism.
+			// A nested instance rebuilds with its owner rather than on its own.
 			if (state.OwnerRootEntityId != Guid())
 				return;
 

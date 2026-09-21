@@ -7,10 +7,9 @@ namespace Sedulous.Content.Tests;
 /// A database resolves stored type names through the registry it was GIVEN, not through
 /// a global.
 ///
-/// Raptor injects the registry with the global as the default; the port reached for the
-/// global directly, which quietly removed the ability to run two databases with different
-/// registrations in one process. Raptor's Settings and Core IO suites both build local
-/// registries, so the capability is load bearing rather than theoretical.
+/// Reaching for the global directly would quietly remove the ability to run two databases
+/// with different registrations in one process, which the Settings and Core IO suites both
+/// depend on: the capability is load bearing rather than theoretical.
 class InjectedRegistryTests
 {
 	/// Two databases over the same files, one able to construct the stored type and one

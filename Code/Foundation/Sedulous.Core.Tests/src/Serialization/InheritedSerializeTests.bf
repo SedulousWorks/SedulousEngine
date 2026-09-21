@@ -10,8 +10,8 @@ namespace Sedulous.Core.Tests;
 ///
 /// It did not, and that failed silently: a derived type wrote only its own fields, and a
 /// binary read is positional, so the base state was gone with nothing reporting a
-/// problem. Raptor leans on this shape throughout, so it is worth pinning down rather
-/// than trusting.
+/// problem. The resource types lean on this shape throughout, so it is worth pinning
+/// down rather than trusting.
 class InheritedSerializeTests
 {
 	[Test]

@@ -222,9 +222,9 @@ class TextureUploadTests
 		Test.Assert(writes[0].Layout.BytesPerRow == 16);
 	}
 
-	/// A compressed CUBE sizes its faces by block too. Raptor measures a cube face per
-	/// texel, which for a BC format gives zero bytes per pixel and so six empty writes: the
-	/// faces silently never upload.
+	/// A compressed CUBE sizes its faces by block too. Measuring a cube face per texel gives
+	/// zero bytes per pixel for a BC format and so six empty writes: the faces silently
+	/// never upload.
 	[Test]
 	public static void ACompressedCubeSizesItsFacesByBlock()
 	{

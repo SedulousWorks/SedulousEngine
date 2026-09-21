@@ -416,9 +416,8 @@ class InlineStyleTests
 		Test.Assert(TrackingDrawable.LiveCount == before);
 	}
 
-	/// A caller that wants to KEEP a reference takes one first. Raptor expresses the same
-	/// choice as a RefPtr copy against a move; Beef has no overload for it, so the caller says
-	/// so explicitly.
+	/// A caller that wants to KEEP a reference takes one first; with no copy-versus-move
+	/// overload to express it, the caller says so explicitly.
 	[Test]
 	public static void ACallerKeepsItsOwnReferenceByTakingOneFirst()
 	{

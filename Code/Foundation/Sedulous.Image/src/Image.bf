@@ -73,10 +73,10 @@ class Image : ImageData
 
 	/// Clears every byte to zero.
 	///
-	/// Raptor branches here, filling with transparent where the format has alpha. That is
-	/// the same bytes for every 8 bit format, and WRONG for a float one: RGBA16F and
-	/// RGBA32F report alpha, so they take the fill path, and the fill has no meaning for a
-	/// half or a float and writes nothing at all. The buffer is then whatever it was.
+	/// Zero for every format, with no branch filling transparent where the format has
+	/// alpha. That would be the same bytes for every 8 bit format, and WRONG for a float
+	/// one: RGBA16F and RGBA32F report alpha, so they would take the fill path, and a byte
+	/// fill has no meaning for a half or a float. Zero is transparent in all of them.
 	public void Clear()
 	{
 		if (!mPixels.IsEmpty)

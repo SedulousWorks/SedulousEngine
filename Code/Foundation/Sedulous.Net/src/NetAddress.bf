@@ -12,9 +12,8 @@ static class NetAddress
 	/// The port a socket actually bound to.
 	///
 	/// Beef's corlib socket can bind port zero and let the operating system choose, but it
-	/// never reports back which port that was, so this asks the socket directly. Raptor gets
-	/// the same answer out of its own Core/System layer; here corlib supplies everything
-	/// EXCEPT this one call.
+	/// never reports back which port that was, so this asks the socket directly: corlib
+	/// supplies everything EXCEPT this one call.
 	[CLink]
 	private static extern int32 getsockname(Socket.HSocket socket, Socket.SockAddr* address,
 		int32* addressLength);
@@ -84,7 +83,7 @@ static class NetAddress
 		outIp = 0;
 
 		// Windows resolves an EMPTY name to the local host where Linux calls it unknown, so
-		// the refusal has to be ours. Raptor's Win32System.cpp:667 rejects it the same way.
+		// the refusal has to be ours.
 		if (host.IsEmpty)
 			return false;
 

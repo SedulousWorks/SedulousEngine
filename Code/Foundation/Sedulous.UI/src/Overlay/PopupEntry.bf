@@ -15,8 +15,8 @@ struct PopupEntry
 	///
 	/// RECORDED ONLY: ShowPopup always consumes the caller's reference and ClosePopup always
 	/// releases it, whatever this says. A caller that keeps its own reference AddRefs before
-	/// showing, which is what TooltipManager and the modal backdrop do. Raptor drives the
-	/// lifetime from this flag instead; here it survives as description, not mechanism.
+	/// showing, which is what TooltipManager and the modal backdrop do. The flag is
+	/// description, not mechanism.
 	public bool OwnsView = true;
 	/// Whether this popup took focus when it opened, and so restores on close.
 	public bool PushedFocus = false;

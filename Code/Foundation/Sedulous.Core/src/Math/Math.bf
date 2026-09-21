@@ -8,16 +8,13 @@ namespace Sedulous.Core;
 /// aligned SIMD types are separate. Conventions throughout: row major matrices, row
 /// vectors, XNA style.
 ///
-/// These are free functions in an anonymous static block, which is how Raptor's
-/// namespace-scope functions are spelled in Beef. Raptor also carries an empty `struct
-/// Math` so scripts have something to hang the reflected statics on, because C++ cannot
-/// reflect a namespace. Comptime reflects this block directly, so the anchor is not
-/// ported.
+/// These are free functions in an anonymous static block, which is how namespace-scope
+/// functions are spelled in Beef. Comptime reflects the block directly, so no empty
+/// `struct Math` is needed for scripts to hang the statics on.
 ///
-/// Raptor overloads Abs for i32/i64/f64 so integer arguments do not silently narrow
-/// through the float version, which MSVC warns about as C4244. Beef has no implicit
-/// narrowing, so those overloads carry no safety here; they are kept because index and
-/// pixel code reads better calling Abs than writing the conditional.
+/// Abs is overloaded for the integer widths as well as the floats. Beef has no implicit
+/// narrowing, so the overloads buy no safety; they are kept because index and pixel code
+/// reads better calling Abs than writing the conditional.
 static
 {
 	public const float Pi = 3.14159265358979323846f;

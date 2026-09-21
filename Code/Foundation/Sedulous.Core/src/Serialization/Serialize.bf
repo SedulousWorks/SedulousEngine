@@ -12,8 +12,8 @@ static
 {
 	// ---- scalars ----
 	//
-	// One overload apiece rather than Raptor's ScalarKindOf trait cascade: the compiler
-	// already knows which is which, and overload resolution says so without the cascade.
+	// One overload apiece rather than a scalar-kind trait cascade: the compiler already
+	// knows which is which, and overload resolution says so without the cascade.
 
 	public static void Serialize(ISerializer ar, ref bool value) => ar.Scalar(&value, .Bool);
 	public static void Serialize(ISerializer ar, ref int8 value) => ar.Scalar(&value, .Int8);

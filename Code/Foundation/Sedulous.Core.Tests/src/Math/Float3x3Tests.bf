@@ -3,7 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Raptor's static_assert on the identity diagonal.
+/// The identity diagonal, at compile time.
 static
 {
 	private static void Assert_Float3x3Identity()
@@ -68,8 +68,8 @@ class Float3x3Tests
 		Test.Assert(NearlyEqual(Inverse(zero), Float3x3.Identity()));
 	}
 
-	/// Raptor only inverts a rotation, where the inverse happens to equal the transpose,
-	/// so a transposing implementation would pass. This uses a non-orthogonal matrix.
+	/// Inverting a rotation would not tell, since its inverse happens to equal the
+	/// transpose and a transposing implementation passes. This uses a non-orthogonal matrix.
 	[Test]
 	public static void InverseHandlesNonOrthogonalMatrices()
 	{

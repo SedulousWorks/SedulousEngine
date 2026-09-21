@@ -13,7 +13,7 @@ namespace Sedulous.Profiler;
 /// code must tolerate its absence, since a unit test or a headless tool never installs
 /// one.
 ///
-/// This is where Raptor's PROFILE_SCOPE macros land. Beef has no macros, and does not need
+/// Instrumentation lands here rather than in a macro. Beef has no macros, and does not need
 /// them: [SkipCall] removes the call at the CALL SITE, arguments and all, so an
 /// uninstrumented build pays nothing at all rather than paying for a check.
 ///

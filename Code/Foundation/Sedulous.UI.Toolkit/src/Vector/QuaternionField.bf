@@ -47,13 +47,13 @@ class QuaternionField : AggregatingVectorField
 
 	// ---- Conversion -----------------------------------------------------------------------------
 
-	/// DIVERGES FROM RAPTOR, which is wrong here.
+	/// THE MIDDLE AXIS TAKES THE ARCSINE.
 	///
 	/// The forward composition is Z then Y then X, so the MIDDLE axis is Y, and the middle axis
 	/// is the one that must be extracted with an arcsine while the outer two come from an
-	/// arctangent. The C++ puts the arcsine on X and the arctangents on Y and Z, which inverts
-	/// correctly for a rotation about one axis and is wrong for every combination of two or
-	/// more: a rotation typed as 30, 45, 60 reads back as -16.3, 50.4, 39.6.
+	/// arctangent. Putting the arcsine on X and the arctangents on Y and Z inverts correctly
+	/// for a rotation about one axis and is wrong for every combination of two or more: a
+	/// rotation typed as 30, 45, 60 reads back as -16.3, 50.4, 39.6.
 	///
 	/// That matters because the field caches these angles and rebuilds the quaternion from
 	/// them, so a compound rotation would show wrong numbers and then be REWRITTEN to match

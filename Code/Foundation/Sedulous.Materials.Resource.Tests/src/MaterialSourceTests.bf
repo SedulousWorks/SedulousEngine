@@ -149,7 +149,7 @@ class MaterialSourceTests
 		Test.Assert(created is MaterialSource);
 	}
 
-	/// The cooked record carries an EXPLICIT data version, matching what Raptor stamps.
+	/// The cooked record carries an EXPLICIT data version.
 	[Test]
 	public static void TheCookedRecordIsVersioned()
 	{

@@ -4,10 +4,9 @@ namespace Sedulous.Core.IO;
 
 /// An IStream over a file.
 ///
-/// Raptor talks to its own System file primitives; this wraps corlib's FileStream, which
-/// is the same BeefPlatform calls one layer down. What Core owns is the contract above it:
-/// four file modes, transferred counts rather than Results, and a seek that answers with
-/// the new absolute position.
+/// Wraps corlib's FileStream, which is the BeefPlatform calls one layer down. What Core
+/// owns is the contract above it: four file modes, transferred counts rather than Results,
+/// and a seek that answers with the new absolute position.
 class FileStream : IStream
 {
 	private System.IO.FileStream mFile = new .() ~ delete _;

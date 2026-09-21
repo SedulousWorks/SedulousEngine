@@ -3,8 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Axis-aligned bounding boxes. Raptor covers these in its "geometry: AABB contains,
-/// expand, merge" case.
+/// Axis-aligned bounding boxes: contains, expand, merge.
 class AABBTests
 {
 	[Test]
@@ -35,8 +34,8 @@ class AABBTests
 		Test.Assert(m.Intersects(a));
 	}
 
-	/// Containment and intersection are inclusive at the boundary. Raptor tests a point
-	/// well inside and one well outside, which a strict comparison would also pass.
+	/// Containment and intersection are inclusive at the boundary. A point well inside and
+	/// one well outside would not tell, since a strict comparison also passes those.
 	[Test]
 	public static void AabbBoundariesAreInclusive()
 	{

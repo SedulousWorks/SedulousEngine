@@ -6,9 +6,9 @@ namespace Sedulous.Core.Serialization;
 /// Generates a RegisterAll that registers every [Serializable] type declared in the
 /// project this is applied in.
 ///
-/// Raptor maintains that list by hand, which is a second place to update and a silent
-/// failure when someone forgets: the type simply never loads. Here it is read off the
-/// declarations, so forgetting is not available.
+/// A hand-maintained list would be a second place to update and a silent failure when
+/// someone forgets: the type simply never loads. Here it is read off the declarations, so
+/// forgetting is not available.
 ///
 /// Registers the [Serializable] types declared in the NAMESPACE this is applied in.
 ///

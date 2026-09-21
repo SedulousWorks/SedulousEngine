@@ -39,8 +39,8 @@ struct BoundingSphere
 
 	/// Ritter-style enclosing sphere of a point set.
 	///
-	/// Sedulous's X-axis branch has a copy-paste bug, interpolating minX with minY; this
-	/// is ported correctly, as Raptor's is.
+	/// The X-axis branch interpolates minX with maxX, not minY: an easy copy-paste slip
+	/// that an earlier implementation had, and that the tests pin.
 	public static BoundingSphere FromPoints(Span<Float3> points)
 	{
 		if (points.IsEmpty)

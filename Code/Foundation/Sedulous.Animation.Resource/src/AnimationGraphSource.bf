@@ -11,9 +11,8 @@ namespace Sedulous.Animation.Resource;
 /// never nests.
 ///
 /// A layer indexes runs of the state and transition pools, a state indexes a run of the
-/// blend entry pool, and a transition indexes a run of the condition pool. Raptor nests
-/// these as arrays of structs holding arrays; the same shape flattened is what this
-/// serializer can carry.
+/// blend entry pool, and a transition indexes a run of the condition pool: arrays of
+/// structs holding arrays, flattened into what this serializer can carry.
 ///
 /// The graph is AUTHORED, unlike a skeleton or a clip which are captured from a model, so
 /// this record is the authoritative form rather than a derived one.

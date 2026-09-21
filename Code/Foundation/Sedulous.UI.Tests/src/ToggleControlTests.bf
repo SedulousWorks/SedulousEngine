@@ -317,10 +317,9 @@ class ToggleControlTests
 
 	/// Built without text, these measure their box and nothing else.
 	///
-	/// Raptor's String property default constructs to an empty string, so its text reads are
-	/// unconditionally safe. A Beef reference defaults to null instead, and every one of these
-	/// measures asks the text whether it is empty, so a text-less control walked straight into
-	/// a null dereference. The properties now start on an owned empty string.
+	/// A Beef reference defaults to null, and every one of these measures asks the text
+	/// whether it is empty, so a text-less control walked straight into a null dereference.
+	/// The properties now start on an owned empty string.
 	[Test]
 	public static void ControlsBuiltWithoutTextMeasureTheirBoxAlone()
 	{

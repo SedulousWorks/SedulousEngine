@@ -57,7 +57,7 @@ class WebGpuDeviceTests
 		Test.Assert(device.MaxColorDepthSampleCount == 4);
 	}
 
-	/// The format table is the SPEC's, not the driver's, so these are a check on the port
+	/// The format table is the SPEC's, not the driver's, so these are a check on the backend
 	/// rather than on the machine. The classes that differ from the common colour case
 	/// are the ones worth pinning.
 	[Test]

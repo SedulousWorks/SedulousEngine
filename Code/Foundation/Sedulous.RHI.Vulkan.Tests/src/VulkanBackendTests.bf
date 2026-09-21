@@ -8,7 +8,7 @@ namespace Sedulous.RHI.Vulkan.Tests;
 /// The Vulkan backend against whatever hardware is actually present.
 ///
 /// These SKIP rather than fail when there is no loader or no device: a CI box without a
-/// GPU should report the port fine, not broken. Where a device is present they are real.
+/// GPU should report the backend fine, not broken. Where a device is present they are real.
 class VulkanBackendTests
 {
 	/// The backend, or null when this machine cannot run Vulkan at all.

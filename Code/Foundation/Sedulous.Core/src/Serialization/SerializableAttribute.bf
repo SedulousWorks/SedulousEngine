@@ -7,11 +7,9 @@ namespace Sedulous.Core.Serialization;
 /// Generates a Serialize body that walks the type's public instance fields, and adds
 /// ISerializable.
 ///
-/// This is the default way to make a type serializable. Raptor cannot do it: describing a
-/// type's data there means writing the field list out by hand in Serialize.cppm, or
-/// standing up the external RTTI-driven module and registering the type with it. Comptime
-/// reflection reads the fields that are already declared, so the declaration IS the
-/// description and the two cannot drift.
+/// This is the default way to make a type serializable. Comptime reflection reads the
+/// fields that are already declared, so the declaration IS the description and the two
+/// cannot drift, where a hand-written field list or an external registration would.
 ///
 /// A key is emitted for every field whatever the backend is. Binary ignores it and stays
 /// positional; a text backend needs it. One shape serves both.

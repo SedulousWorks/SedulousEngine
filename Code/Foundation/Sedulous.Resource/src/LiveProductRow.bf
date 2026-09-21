@@ -18,8 +18,8 @@ struct LiveProductRow
 	/// Live AND watched by nothing but the cache: exactly what a purge would release.
 	///
 	/// Counted from the WEAK references, because a Proxy here observes its handle weakly
-	/// and the cache is the only strong owner. Raptor's proxies own the handle, so it asks
-	/// the same question of the strong count.
+	/// and the cache is the only strong owner; a proxy that owned the handle would ask the
+	/// same question of the strong count.
 	public int Unreferenced;
 
 	public this()

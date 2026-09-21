@@ -7,8 +7,7 @@ namespace Sedulous.UI;
 /// View's computed style: the cascade cache, the keyword and variable resolution, and the
 /// transitions overlaid on top.
 ///
-/// Kept beside View rather than inside it because it is a subsystem of its own, and because
-/// Raptor keeps these bodies in a separate implementation unit for the same reason.
+/// Kept beside View rather than inside it because it is a subsystem of its own.
 extension View
 {
 	private const int cPropertyCount = (int)StyleProperty.COUNT;
@@ -582,8 +581,8 @@ extension View
 	/// font service's default.
 	///
 	/// Appended to a caller's String rather than returned, because ResolveStyle hands back a
-	/// StyleValue by value and the StringView inside it borrows from that temporary. Raptor
-	/// returns by value for exactly the same reason, its comment recording an ASAN catch.
+	/// StyleValue by value and the StringView inside it borrows from that temporary; a view
+	/// returned from here would dangle.
 	public void ResolveStyleFontFamily(String outFamily)
 	{
 		// Held in a NAMED local: AsString borrows into the value, which would dangle if the

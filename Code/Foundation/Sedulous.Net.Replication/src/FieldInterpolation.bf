@@ -5,8 +5,8 @@ namespace Sedulous.Net.Replication;
 
 /// Interpolating one reflected field between two received samples.
 ///
-/// Operates on ADDRESSES rather than Raptor's Variants, for the reason FieldCodec gives: this
-/// runs per field, per component, per frame.
+/// Operates on ADDRESSES rather than Variants, for the reason FieldCodec gives: this runs
+/// per field, per component, per frame.
 static class FieldInterpolation
 {
 	/// Whether this field type is smoothly interpolated rather than snapped.

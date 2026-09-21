@@ -13,9 +13,8 @@ namespace Sedulous.UI;
 /// multiline editor without knowing which it is in.
 ///
 /// The ITextEditHost members are EXPLICIT implementations, because several of them collide by
-/// name with this class's own Property fields. Raptor renames its host members with a Get
-/// prefix to dodge the same clash; an explicit implementation says the same thing without
-/// touching the interface.
+/// name with this class's own Property fields; an explicit implementation resolves the clash
+/// without renaming the interface's members.
 class EditText : View, ITextEditHost
 {
 	/// How long the caret stays on, and off, in seconds.

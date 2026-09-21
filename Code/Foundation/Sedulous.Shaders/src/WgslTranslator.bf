@@ -187,11 +187,11 @@ class WgslTranslator
 
 	/// Why a tool failed, always naming the tool.
 	///
-	/// DIVERGES from Raptor, which names the tool only when the process could not be
-	/// started. On this platform a missing executable still spawns and then exits non zero
-	/// with nothing on either pipe, so Raptor's rule would leave an empty message for the
-	/// one failure that most needs explaining. Naming it unconditionally costs a few words
-	/// and never loses the tool's own diagnostic, which is appended when there is one.
+	/// Unconditionally, not only when the process could not be started: on this platform a
+	/// missing executable still spawns and then exits non zero with nothing on either pipe,
+	/// which would leave an empty message for the one failure that most needs explaining.
+	/// Naming it costs a few words and never loses the tool's own diagnostic, which is
+	/// appended when there is one.
 	private static void Describe(StringView tool, StringView path, ProcessResult result,
 		String outError)
 	{

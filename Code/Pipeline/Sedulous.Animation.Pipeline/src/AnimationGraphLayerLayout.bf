@@ -10,8 +10,8 @@ namespace Sedulous.Animation.Pipeline;
 /// wire. The state positions run parallel to the layer's states and the page keeps them in step
 /// as states come and go.
 ///
-/// One record per layer rather than Raptor's two parallel arrays: nothing depends on its
-/// stored shape, and a pair of lists that have to stay the same length is a bug waiting to be
+/// One record per layer rather than two parallel arrays: nothing depends on its stored
+/// shape, and a pair of lists that have to stay the same length is a bug waiting to be
 /// written.
 [Serializable]
 class AnimationGraphLayerLayout

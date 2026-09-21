@@ -1,7 +1,6 @@
 # Roboto
 
-`Roboto-Regular.ttf`, vendored from Raptor's `Data/Assets/fonts/roboto` so the font tests
-have a real typeface to parse and bake.
+`Roboto-Regular.ttf`, vendored so the font tests have a real typeface to parse and bake.
 
 - **License:** Apache License 2.0
 - **Source:** https://fonts.google.com/specimen/Roboto

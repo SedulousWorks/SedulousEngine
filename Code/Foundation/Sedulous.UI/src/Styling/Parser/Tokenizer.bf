@@ -90,9 +90,8 @@ class Tokenizer
 			if ((mPos + 1 < Length) && IsDigitC(At(mPos + 1)))
 				return ReadNumber(startLine, startCol);
 			Advance();
-			// Raptor answers a COLON here, carrying the dot as its text. Kept as is: a lone
-			// dot is not valid anywhere in the grammar, so nothing reads the kind, and
-			// changing it would be a silent divergence rather than a fix.
+			// A COLON, carrying the dot as its text. A lone dot is not valid anywhere in the
+			// grammar, so nothing reads the kind.
 			return .(.Colon, ".", startLine, startCol);
 		}
 

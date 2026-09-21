@@ -4,7 +4,7 @@ using Sedulous.UI;
 
 namespace Sedulous.UI.Tests;
 
-/// The API a consumer reaches for that the port itself does not happen to call.
+/// The API a consumer reaches for that nothing inside the framework happens to call.
 ///
 /// A method nothing internal uses is exactly the one that quietly goes missing, so these are
 /// here to keep the surface honest rather than because the machinery below them is in doubt.

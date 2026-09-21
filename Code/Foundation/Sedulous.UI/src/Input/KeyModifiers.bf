@@ -2,11 +2,9 @@ namespace Sedulous.UI;
 
 /// Keyboard modifier flags.
 ///
-/// These values are SDL's, taken from Raptor unchanged. They deliberately do NOT match
-/// Sedulous.Shell.KeyModifiers, which numbers its flags compactly (LeftCtrl is 4 there and
-/// 0x40 here), so a shell to UI bridge must MAP rather than cast. Raptor's comment claims the
-/// cast is safe because the engine it came from used SDL values on both sides; ours does not,
-/// and a cast would silently turn Ctrl into something else.
+/// These values are SDL's. They deliberately do NOT match Sedulous.Shell.KeyModifiers, which
+/// numbers its flags compactly (LeftCtrl is 4 there and 0x40 here), so a shell to UI bridge
+/// must MAP rather than cast: a cast would silently turn Ctrl into something else.
 enum KeyModifiers : uint32
 {
 	case None = 0;
@@ -33,7 +31,7 @@ enum KeyModifiers : uint32
 	public static KeyModifiers operator&(KeyModifiers a, KeyModifiers b) =>
 		(KeyModifiers)((uint32)a & (uint32)b);
 
-	/// ANY of the given bits, which is what Raptor's free HasFlag means.
+	/// ANY of the given bits.
 	///
 	/// Spelled out rather than left to the compiler generated HasFlag, whose C# ancestor
 	/// tests that EVERY bit is present. That distinction is invisible for a single flag and

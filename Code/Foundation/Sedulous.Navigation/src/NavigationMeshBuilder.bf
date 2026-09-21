@@ -23,9 +23,9 @@ static class NavigationMeshBuilder
 
 	/// And the most kept ACROSS a whole bake, applied as the tiles are concatenated.
 	///
-	/// Deliberately tighter than Raptor, which bounds each tile and not the total: a grid of
-	/// many tiles there can hand a debug overlay millions of points. The per tile bound stays
-	/// as well, because it is what makes each tile's capture independent of every other and so
+	/// A bound on the total as well as on each tile: bounding each tile alone lets a grid of
+	/// many tiles hand a debug overlay millions of points. The per tile bound stays as well,
+	/// because it is what makes each tile's capture independent of every other and so
 	/// identical whether the tiles baked in parallel or one after another.
 	private const int cMaxBakeSamples = 240000;
 

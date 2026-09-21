@@ -5,8 +5,7 @@ using Sedulous.Model;
 
 namespace Sedulous.Model.Tests;
 
-/// The importer's model representation. Raptor has one trivial test here, so these are
-/// written from scratch against what the types are actually for.
+/// The importer's model representation, written against what the types are actually for.
 class ModelTests
 {
 	private static bool Near(float a, float b, float tolerance = 0.0001f) => Abs(a - b) <= tolerance;

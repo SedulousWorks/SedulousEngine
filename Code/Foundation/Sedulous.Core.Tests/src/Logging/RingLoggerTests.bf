@@ -3,8 +3,8 @@ using Sedulous.Core.Logging;
 
 namespace Sedulous.Core.Tests;
 
-/// Retained messages, for tools and in-app consoles. Raptor's equivalent case is
-/// "log: RingLogSink keeps the most recent records".
+/// Retained messages, for tools and in-app consoles: the ring keeps the most recent
+/// records.
 class RingLoggerTests
 {
 	[Test]

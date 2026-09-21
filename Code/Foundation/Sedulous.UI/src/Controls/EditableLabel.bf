@@ -68,7 +68,7 @@ class EditableLabel : EditText
 	/// is typing, and a background update must not yank it away mid rename.
 	///
 	/// SHADOWS EditText.SetText rather than overriding it, so a caller holding an EditText
-	/// reference reaches the base and can still write through. Raptor hides it the same way.
+	/// reference reaches the base and can still write through.
 	public new void SetText(StringView text)
 	{
 		if (mIsEditing)

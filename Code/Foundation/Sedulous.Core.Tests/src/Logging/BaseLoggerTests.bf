@@ -3,10 +3,9 @@ using Sedulous.Core.Logging;
 
 namespace Sedulous.Core.Tests;
 
-/// Level filtering, formatting and formatter ownership. Raptor's equivalent case is
-/// "log: dispatch, formatting, and level filtering", which it runs against the global
-/// logger; here the logger is constructed by the test, which is the point of dropping
-/// the global.
+/// Level filtering, formatting and formatter ownership. The logger is constructed by the
+/// test rather than reached through the global, which is the point of dropping the
+/// global from the contract.
 class BaseLoggerTests
 {
 	[Test]

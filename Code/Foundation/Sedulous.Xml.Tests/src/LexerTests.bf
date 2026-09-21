@@ -30,8 +30,8 @@ class LexerTests
 		Test.Assert(!XmlLexer.IsWhitespace((char8)0));
 	}
 
-	/// Raptor keeps 256-byte tables for these two. The predicates have to agree with the
-	/// rule over every byte value, including the non-ASCII ones a UTF-8 name is made of.
+	/// The predicates stand in for 256-byte tables, so they have to agree with the rule over
+	/// every byte value, including the non-ASCII ones a UTF-8 name is made of.
 	[Test]
 	public static void NameCharacterClassesCoverEveryByte()
 	{
@@ -267,9 +267,8 @@ class LexerTests
 		Test.Assert(XmlLexer.DecodeReference("&unknown;", out length, output) == .EntityUnknown);
 		Test.Assert(XmlLexer.DecodeReference("&amp", out length, output) == .EntityMalformed, "no semicolon");
 		// An EMPTY name reads as unknown rather than malformed: the loop that validates
-		// each name character never runs, so nothing rejects the absence of one. Raptor
-		// behaves the same way, and it is the source of truth here, so this pins what it
-		// does rather than what it arguably should.
+		// each name character never runs, so nothing rejects the absence of one. This pins
+		// what the lexer does rather than what it arguably should.
 		Test.Assert(XmlLexer.DecodeReference("&;", out length, output) == .EntityUnknown);
 		Test.Assert(XmlLexer.DecodeReference("nothing", out length, output) == .EntityMalformed);
 

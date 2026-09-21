@@ -8,9 +8,9 @@ namespace Sedulous.Xml;
 /// A node OWNS its children: deleting one deletes the subtree under it. Detaching with
 /// RemoveChild hands that ownership back to the caller, which is why it does not delete.
 ///
-/// Raptor threads an allocator through every node so a whole tree shares the document's
-/// decision. Beef allocates through new, so the parameter, the field and the rule that
-/// detached subtrees keep their creator's allocator all go away.
+/// No allocator is threaded through the nodes: Beef allocates through new, so there is no
+/// per document decision for a tree to share, and no rule that detached subtrees keep
+/// their creator's allocator.
 abstract class XmlNode
 {
 	private XmlNodeType mNodeType;

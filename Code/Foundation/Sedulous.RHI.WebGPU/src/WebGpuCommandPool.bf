@@ -66,9 +66,9 @@ sealed class WebGpuCommandPool : ICommandPool
 		// The BUNDLE ENCODERS are. The renderer's parallel emit mints one per worker pool
 		// EVERY frame and relies on this reset to reclaim it - "the pool never holds an open
 		// primary list and its per frame reset stays legal on every backend", as ForwardPass
-		// puts it. Raptor's WebGPU pool resets nothing, so those accumulated for the life of
-		// the pool, holding a finished WGPURenderBundle each and, through it, every resource
-		// that bundle referenced. Vulkan's pool has always reclaimed them here.
+		// puts it. A pool that reset nothing would accumulate those for its whole life,
+		// holding a finished WGPURenderBundle each and, through it, every resource that
+		// bundle referenced. Vulkan's pool has always reclaimed them here.
 		ClearAndDeleteItems!(mBundleEncoders);
 	}
 

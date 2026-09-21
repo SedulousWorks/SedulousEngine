@@ -5,17 +5,16 @@ namespace Sedulous.Core;
 
 /// The few things about the host a program has to ask for by name.
 ///
-/// Most of Raptor's System module is corlib here: ticks, core counts, page sizes and file
-/// primitives all have Beef equivalents, and the executable's directory is already in
-/// Core.IO. What is left is the environment lookup and the per-user data directory built
+/// Most of what a system module would carry is corlib here: ticks, core counts, page sizes
+/// and file primitives all have Beef equivalents, and the executable's directory is already
+/// in Core.IO. What is left is the environment lookup and the per-user data directory built
 /// on it, which no standard library gives portably.
 static
 {
 	/// The application's folder name under the per-user data directory.
 	///
-	/// Raptor bakes this in from the build system so the name exists in exactly one place.
-	/// There is no such hook here, so it is a constant, which is the same property: one
-	/// place to change it.
+	/// A constant rather than something baked in by the build, since there is no build hook
+	/// to bake it with; the property that matters is the same: one place to change it.
 	public const String UserDataDirectoryName = "Sedulous";
 
 	/// An environment variable's value, or Err when it is unset.

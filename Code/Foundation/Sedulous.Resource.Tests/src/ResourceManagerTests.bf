@@ -264,11 +264,11 @@ class ResourceManagerTests
 
 	/// A reload cascade must survive the handle map GROWING underneath it.
 	///
-	/// Raptor's crash came from holding a raw pointer into the map across the recursive
-	/// rebuild: the rebuild's own child binds grew the map, a rehash moved the slots, and the
-	/// pointer then read freed memory. Beef looks up a handle OBJECT rather than a slot, so
-	/// the shape cannot recur, but the cascade is the only place the map grows mid walk and
-	/// nothing held that.
+	/// The classic crash here is holding a raw pointer into the map across the recursive
+	/// rebuild: the rebuild's own child binds grow the map, a rehash moves the slots, and the
+	/// pointer then reads freed memory. The manager looks up a handle OBJECT rather than a
+	/// slot, so the shape cannot recur, but the cascade is the only place the map grows mid
+	/// walk and nothing held that.
 	[Test]
 	public static void ReloadSurvivesTheHandleMapGrowingMidCascade()
 	{

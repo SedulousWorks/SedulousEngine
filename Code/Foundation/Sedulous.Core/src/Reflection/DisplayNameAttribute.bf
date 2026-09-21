@@ -8,8 +8,7 @@ namespace Sedulous.Core;
 /// Shadows" is what an inspector row is labelled. Absent, a reader derives one from the
 /// identifier, so this is for the cases where deriving gets it wrong.
 ///
-/// Raptor carries the same thing as the "displayName" attribute, on types and properties
-/// alike, and it is by far its most used: 167 sites.
+/// On types and properties alike, and by far the most used of the reflection marks.
 [AttributeUsage(.Types | .Field | .Property | .Method,
 	.NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
 struct DisplayNameAttribute : Attribute

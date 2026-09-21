@@ -9,9 +9,8 @@ namespace Sedulous.UI;
 /// the default: that is the CSS inline style rule, and without the flag there would be no way
 /// to tell "the author wrote width: wrap" from "nobody said".
 ///
-/// DIVERGES from Raptor in how the value is reached. C++ gives it an implicit conversion and
-/// `operator->`; Beef has the conversion but no arrow, so member access reads `.Value` and the
-/// conversion carries the rest.
+/// The value is reached through an implicit conversion, and member access reads `.Value`,
+/// since Beef has no `operator->`.
 struct Declared<T> where bool : operator T == T
 {
 	public T Value;

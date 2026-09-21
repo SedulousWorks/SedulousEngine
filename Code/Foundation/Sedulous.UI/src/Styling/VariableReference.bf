@@ -17,10 +17,8 @@ class VariableReference : RefCounted
 	public uint64 NameHash = 0;
 	/// Used when the variable is unset. May itself be a reference, giving nested fallbacks.
 	///
-	/// DIVERGES from Raptor, which boxes this in a StyleValueBox object purely so that C++
-	/// can define StyleValue without the type referring to itself. Beef needs no such trick:
-	/// StyleValue is a struct holding only a REFERENCE to this class, so the sizes resolve.
-	/// A fallback of kind None means there is none.
+	/// StyleValue is a struct holding only a REFERENCE to this class, so the sizes resolve
+	/// without boxing the fallback. A fallback of kind None means there is none.
 	public StyleValue Fallback = .None;
 
 	public this() {}

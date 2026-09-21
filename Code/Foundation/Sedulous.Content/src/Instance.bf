@@ -22,9 +22,8 @@ class Instance
 	private String mName = new .() ~ delete _;
 	/// The qualified name of the primary object's type, as stored.
 	///
-	/// Raptor keeps a namespace and a name separately, because its own RTTI has them
-	/// apart. Beef gives one qualified name, and splitting it at the last dot would be
-	/// inventing a boundary the language does not draw.
+	/// One qualified name rather than a namespace and a name apart: Beef gives one, and
+	/// splitting it at the last dot would be inventing a boundary the language does not draw.
 	private String mTypeName = new .() ~ delete _;
 
 	public this(ContentDatabase database, Group group, Guid id, StringView name, StringView typeName)

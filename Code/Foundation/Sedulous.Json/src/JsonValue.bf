@@ -7,9 +7,7 @@ namespace Sedulous.Json;
 ///
 /// A value OWNS its children, and Add and Set TAKE OWNERSHIP of what they are given. At and
 /// Get hand back a BORROWED reference to the live child, which is the same shape the XML
-/// document uses. Raptor returns owned copies instead, because its values marshal into a
-/// script VM and an interior reference into a reallocating document would dangle there; here
-/// a caller who wants an independent value asks for one with Clone.
+/// document uses; a caller who wants an independent value asks for one with Clone.
 ///
 /// A missing element or member is NULL rather than a null-typed value, so an absent member
 /// and a member that is present and null are distinguishable, and nothing shares a mutable
@@ -183,7 +181,7 @@ class JsonValue
 		return mKeys[index];
 	}
 
-	/// An INDEPENDENT copy, owned by the caller. What Raptor's accessors return every time.
+	/// An INDEPENDENT copy, owned by the caller.
 	public JsonValue Clone()
 	{
 		let copy = new JsonValue();

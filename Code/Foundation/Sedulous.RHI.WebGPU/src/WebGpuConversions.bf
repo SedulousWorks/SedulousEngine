@@ -405,9 +405,8 @@ static class WebGpuConversions
 		}
 	}
 
-	// The two-way ones, which the C++ spells as ternaries rather than switches. Each
-	// names the ONE value that is not the default, so a new enum member lands on the
-	// default rather than silently on the named one.
+	// The two-way ones. Each names the ONE value that is not the default, so a new enum
+	// member lands on the default rather than silently on the named one.
 
 	public static WGPUFilterMode ToWgpuFilterMode(FilterMode filter)
 	{

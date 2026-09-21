@@ -84,8 +84,8 @@ class ColorPickerTests
 		Test.Assert((black.R == 0.0f) && (black.G == 0.0f) && (black.B == 0.0f));
 	}
 
-	/// A REGRESSION GATE on dropping the C++'s two calls to fmod: the hue from a red dominant
-	/// colour is negative before the wrap, which is the case the modulus looked like it was for.
+	/// A REGRESSION GATE on the wrap: the hue from a red dominant colour is negative before
+	/// it, and a modulus in place of the wrap looks right and is not.
 	[Test]
 	public static void RGBToHSVInvertsHSVToRGB()
 	{

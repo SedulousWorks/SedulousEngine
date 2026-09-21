@@ -7,9 +7,9 @@ namespace Sedulous.Geometry.Resource.Tests;
 
 /// The LOD chain across the cook and build boundary.
 ///
-/// Raptor has no tests here at all, and this is the load path that has to survive
-/// malformed data: a cooked table that disagrees with its own submesh count must render
-/// at level 0 rather than slice past the end of a list.
+/// This is the load path that has to survive malformed data: a cooked table that
+/// disagrees with its own submesh count must render at level 0 rather than slice past the
+/// end of a list.
 class MeshLodResourceTests
 {
 	/// A two submesh, three level mesh with the levels packed into one index buffer.

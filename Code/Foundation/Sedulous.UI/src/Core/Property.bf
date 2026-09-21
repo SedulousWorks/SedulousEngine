@@ -4,8 +4,7 @@ namespace Sedulous.UI;
 
 /// An observable value with change notification and owner invalidation.
 ///
-/// DIVERGES from Raptor, which hand rolls an Event over its Function type because C++ has no
-/// multicast delegate. Beef's corlib Event is exactly that, so this uses it and the port
+/// Beef's corlib Event is a multicast delegate, so change notification is that and the UI
 /// carries no Event type of its own.
 class Property<T> where bool : operator T == T
 {

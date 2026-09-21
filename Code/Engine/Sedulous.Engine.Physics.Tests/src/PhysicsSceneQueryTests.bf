@@ -8,8 +8,7 @@ using Sedulous.Scene;
 namespace Sedulous.Engine.Physics.Tests;
 
 /// The scene level queries: what a ray or a swept sphere meets, what overlaps a point, and
-/// how heavy the world is. Raptor keeps these on a ScenePhysics facade; ours are on the
-/// system itself, and these are its four cases.
+/// how heavy the world is. They are on the system itself, and these are its four cases.
 static class PhysicsSceneQueryTests
 {
 	private static bool Near(float a, float b, float epsilon) => Math.Abs(a - b) <= epsilon;

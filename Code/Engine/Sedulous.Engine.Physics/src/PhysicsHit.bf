@@ -9,9 +9,8 @@ namespace Sedulous.Engine.Physics;
 /// there is no last-hit state on the system to go stale between two queries. Hit is false on
 /// a miss, and every other field is then meaningless rather than zero-meaningful.
 ///
-/// Raptor's RayCastHit carries a packed entity and unpacks on demand through a script
-/// accessor. Ours holds the handle outright, because there is no facade between the query
-/// and the caller to need the packing.
+/// It holds the entity handle outright: there is no facade between the query and the
+/// caller to need a packed form unpacked on demand.
 [Scriptable(.AllPublic)]
 struct PhysicsHit
 {

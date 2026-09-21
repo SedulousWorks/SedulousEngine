@@ -6,8 +6,8 @@ namespace Sedulous.UI;
 /// Character counting and indexing over UTF-8, for the text controls.
 ///
 /// The editing behaviour counts in CHARACTERS while the buffers are bytes, so every host has to
-/// convert between the two. Raptor carries the same conversion separately in EditText and in
-/// NumericField; it is one thing, so it lives in one place.
+/// convert between the two. EditText and NumericField both need it; it is one thing, so it
+/// lives in one place.
 ///
 /// No decoder is needed for either job. A continuation byte is 10xxxxxx and every other byte
 /// starts a character: that is the whole rule.

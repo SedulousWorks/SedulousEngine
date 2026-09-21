@@ -6,7 +6,7 @@ namespace Sedulous.Particles;
 /// rebuilt from the type ids in its record.
 ///
 /// [SerializableRegistry] reads the [Serializable] types declared in this namespace off the
-/// declarations, which is why there is no hand kept list here the way Raptor keeps one.
+/// declarations, which is why there is no hand kept list here.
 [SerializableRegistry]
 static class ParticleModules
 {

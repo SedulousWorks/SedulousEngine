@@ -122,8 +122,8 @@ static class SVGTransformParser
 		//
 		// Composed as ONE factor and then pre multiplied, because these matrices are row
 		// vector: in `a * b` the left one is applied FIRST, so writing the three steps as
-		// three successive pre multiplications would run them backwards. Raptor does
-		// exactly that, and its rotate about a point does not leave that point fixed.
+		// three successive pre multiplications would run them backwards and the rotation
+		// would not leave the point fixed.
 		let toOrigin = Float4x4.Translation(.(-cx, -cy, 0.0f));
 		let back = Float4x4.Translation(.(cx, cy, 0.0f));
 		return (toOrigin * Float4x4.RotationZ(angle) * back) * running;

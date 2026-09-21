@@ -710,11 +710,9 @@ class TextEditingBehavior
 		return p;
 	}
 
-	/// DIVERGES from Raptor, which approximates this as ASCII alphanumerics plus anything at
-	/// or above 0x80, and says so: C++ has no Unicode classification to hand. Beef does, and
-	/// Raptor's comment names it as the thing being approximated, so the real test is used
-	/// here. The two agree on ASCII, which is what Raptor's tests cover; they differ on
-	/// non-ASCII punctuation, where treating an em dash as a letter is simply wrong.
+	/// The real Unicode classification, not an ASCII alphanumerics plus anything above 0x80
+	/// approximation: the two agree on ASCII and differ on non-ASCII punctuation, where
+	/// treating an em dash as a letter is simply wrong.
 	private static bool IsWordChar(char32 character) =>
 		character.IsLetterOrDigit || (character == '_');
 }

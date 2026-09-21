@@ -6,9 +6,9 @@ namespace Sedulous.Shell.SDL3.Tests;
 
 /// The scancode table.
 ///
-/// Raptor carries a case for exactly this because KP_ENTER was silently Unknown: a key that
-/// maps to nothing produces no error, it just never does anything, and that is only ever
-/// found by someone pressing it. Checked through the real pump, so the mapping and the fold
+/// A case for exactly this because KP_ENTER was once silently Unknown: a key that maps
+/// to nothing produces no error, it just never does anything, and that is only ever found
+/// by someone pressing it. Checked through the real pump, so the mapping and the fold
 /// into the snapshot are both covered.
 class ScancodeMapTests
 {

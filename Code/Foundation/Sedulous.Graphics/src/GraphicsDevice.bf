@@ -16,8 +16,8 @@ namespace Sedulous.Graphics;
 class GraphicsDevice
 {
 	private IBackend mBackend;
-	/// The unwrapped backend, which is what has to be destroyed. DIVERGES from Raptor,
-	/// whose validation wrapper destroys its inner; ours borrows, so both are kept.
+	/// The unwrapped backend, which is what has to be destroyed: the validation wrapper
+	/// borrows its inner, so both are kept.
 	private IBackend mInnerBackend;
 	private IDevice mDevice;
 	private IQueue mQueue;
@@ -52,8 +52,7 @@ class GraphicsDevice
 		if (mInnerBackend != null)
 		{
 			// Destroy tears the native state down and frees what the backend owns; the
-			// OBJECT is the owner's to free. Raptor's Destroy self-deletes, so its
-			// destructor needs no counterpart to this.
+			// OBJECT is the owner's to free.
 			mInnerBackend.Destroy();
 			delete mInnerBackend;
 			mInnerBackend = null;

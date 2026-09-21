@@ -11,8 +11,8 @@ namespace Sedulous.UI.Tests;
 /// builds through ParallelFor. Two builders at the same dependency level therefore race.
 ///
 /// A plain "have I run yet" flag does not survive that. Both workers read false, both run the
-/// registration, and two threads rehash the same dictionary. Raptor hit the same class of bug
-/// as a heap corruption abort while cooking a sample project (2026-09-18).
+/// registration, and two threads rehash the same dictionary, which surfaces as a heap
+/// corruption abort while cooking a sample project.
 static class ConcurrentRegistrationTests
 {
 	private const int cThreads = 8;

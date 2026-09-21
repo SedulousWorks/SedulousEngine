@@ -6,10 +6,10 @@ namespace Samples.VGSandbox;
 
 /// Finds the repository's data next to wherever this was run from.
 ///
-/// Raptor bakes the paths in at compile time from the source root. A Beef workspace has no
-/// equivalent, so the directory is WALKED UP from the working directory instead: the sample
-/// runs from the workspace root, from its own project directory, or from the build output,
-/// and the data sits at the repository root in all three cases.
+/// A Beef workspace has no way to bake a source root in at compile time, so the directory
+/// is WALKED UP from the working directory instead: the sample runs from the workspace
+/// root, from its own project directory, or from the build output, and the data sits at
+/// the repository root in all three cases.
 static class SandboxContent
 {
 	public const String cFontFile = "Assets/fonts/roboto/Roboto-Regular.ttf";

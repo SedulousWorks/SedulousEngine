@@ -9,9 +9,8 @@ class InputMapAssetTests
 	/// The editor page never opens on a void: a fresh asset carries one gameplay set with the
 	/// four actions nearly every game has, their bindings left for the author.
 	///
-	/// Raptor's case reaches this through its reflection tables, proving the tree is
-	/// traversable. Beef's reflection is the language's own and needs no registration, so what
-	/// is left to measure is the CONTENT, which is what the tree was being walked for.
+	/// Beef's reflection is the language's own and needs no registration, so there is no
+	/// traversability to prove; what is measured is the CONTENT.
 	[Test]
 	public static void AFreshAssetSeedsTheConventionalStarterSet()
 	{

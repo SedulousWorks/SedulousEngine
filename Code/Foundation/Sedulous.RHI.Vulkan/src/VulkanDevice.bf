@@ -7,10 +7,6 @@ using Sedulous.RHI;
 namespace Sedulous.RHI.Vulkan;
 
 /// The logical device: queues, enabled features, and everything created from it.
-///
-/// NOT YET COMPLETE. Initialization is ported in full; the resource creation entry points
-/// are filled in as each resource type lands, and until then they refuse loudly rather
-/// than returning something half built.
 class VulkanDevice : IDevice
 {
 	private VulkanAdapter mAdapter;
@@ -279,7 +275,7 @@ class VulkanDevice : IDevice
 		VulkanConversions.SetDepthFormatSupport(depth24Stencil8, depth24);
 	}
 
-	// ---- IDevice: what is ported ----
+	// ---- IDevice ----
 
 	public DeviceType Type => .Vulkan;
 	public DeviceFeatures Features => mFeatures;
@@ -771,16 +767,16 @@ class VulkanDevice : IDevice
 			return .Err;
 		}
 
-		// A FLAT allocation, with no build sizes query, matching Raptor.
+		// A FLAT allocation, with no build sizes query.
 		//
 		// The query cannot be asked here: AccelStructDesc carries no geometry, and asking
 		// with a geometry count of zero is invalid for a top level structure and useless for
 		// a bottom level one. So the size is a fixed ceiling instead, large enough for the
 		// structures the engine builds.
 		//
-		// KNOWN LIMIT, shared with Raptor: a structure whose build needs more than this
-		// FAILS, and the build call is where that surfaces. Closing it needs a sizing query
-		// on the RHI surface and a size on the descriptor, which touches every backend.
+		// KNOWN LIMIT: a structure whose build needs more than this FAILS, and the build call
+		// is where that surfaces. Closing it needs a sizing query on the RHI surface and a
+		// size on the descriptor, which touches every backend.
 		const uint64 cAccelStructSize = 256 * 1024;
 		let size = cAccelStructSize;
 

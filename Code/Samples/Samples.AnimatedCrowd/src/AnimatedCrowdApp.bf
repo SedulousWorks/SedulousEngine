@@ -424,9 +424,8 @@ class AnimatedCrowdApp : DefaultApplication
 				component.Mesh.SetDirect(drawMeshes[p]);
 				component.Material.SetDirect(drawMaterials[p]);
 
-				// COPIED, never assigned. The pool creates and frees each of these lists, and
-				// Raptor's component holds them by value, so its assignments copy. Handing the
-				// component a list this method owns instead would leave it pointing at freed
+				// COPIED, never assigned. The pool creates and frees each of these lists. Handing
+				// the component a list this method owns instead would leave it pointing at freed
 				// memory the moment the scope below ran, and leak the pool's own list.
 				component.SubmeshMaterials.Clear();
 				component.SubmeshMaterials.AddRange(mModel.Materials);

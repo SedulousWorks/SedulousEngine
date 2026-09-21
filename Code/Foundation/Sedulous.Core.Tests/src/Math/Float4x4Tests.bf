@@ -3,9 +3,8 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Raptor's Float4x4 cases. doctest's Approx is a relative comparison; NearlyEqual is
-/// absolute, so the epsilons here are chosen to be at least as tight for the magnitudes
-/// involved.
+/// Float4x4. NearlyEqual is an absolute comparison, so the epsilons here are chosen for
+/// the magnitudes involved.
 class Float4x4Tests
 {
 	[Test]
@@ -45,8 +44,8 @@ class Float4x4Tests
 		Test.Assert(NearlyEqual(TransformDirection(Float3.UnitZ, ry), Float3.UnitX));
 	}
 
-	/// Raptor does not cover RotationX. A matrix with its sign convention flipped would
-	/// pass the Y and Z cases and fail here.
+	/// RotationX on its own: a matrix with its sign convention flipped would pass the Y
+	/// and Z cases and fail here.
 	[Test]
 	public static void RotationXMapsYToZ()
 	{
@@ -155,8 +154,8 @@ class Float4x4Tests
 		Test.Assert(NearlyEqual(NdcDepthAt(ortho, 26.0f), 0.5f, 1.0e-6f));
 	}
 
-	/// LookAt is untested in Raptor. The camera looks down -Z, so a camera at +Z looking
-	/// at the origin leaves the world axes alone.
+	/// LookAt. The camera looks down -Z, so a camera at +Z looking at the origin leaves
+	/// the world axes alone.
 	[Test]
 	public static void LookAtPlacesTheCamera()
 	{

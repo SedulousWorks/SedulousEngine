@@ -7,7 +7,7 @@ namespace Sedulous.Terrain.Resource;
 ///
 /// The two pixel blobs ride sidecar streams rather than sitting in here, the way an image's
 /// pixels do.
-/// Version one, matching the cooked layout Raptor stamps.
+/// Version one.
 [Serializable(1)]
 class SplatWeightsSource
 {

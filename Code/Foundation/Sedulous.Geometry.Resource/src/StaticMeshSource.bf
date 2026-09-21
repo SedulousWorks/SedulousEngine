@@ -14,10 +14,9 @@ namespace Sedulous.Geometry;
 /// derivable from the vertices, and a stored copy is one more thing that can disagree with
 /// the data it came from.
 ///
-/// Raptor carries migrations here for two older payload shapes, a Float3 tangent and a
-/// mis-gated LOD block. Neither is ported: no Sedulous payload was ever written in either
-/// shape, and migration code for data that never existed is untestable by construction.
-/// This is version 1 of a fresh format.
+/// No migrations: no payload was ever written in an older shape, and migration code for
+/// data that never existed is untestable by construction. This is version 1 of a fresh
+/// format.
 [Serializable(1)]
 class StaticMeshSource
 {

@@ -3,8 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Ported from Raptor's "runtime: fixed stepper - exact cadence, alpha, and the hitch
-/// clamp". The type is Core's; Raptor tests it through Runtime.
+/// The fixed stepper: exact cadence, alpha, and the hitch clamp.
 class FixedStepperTests
 {
 	private static bool Near(float a, float b, float tolerance = 0.001f) => Abs(a - b) <= tolerance;
@@ -65,8 +64,8 @@ class FixedStepperTests
 		Test.Assert(degenerate.Advance(1.0f) == 0, "a zero step must not spin");
 	}
 
-	/// Ported from Raptor's "runtime: time scale clamps at zero and defaults to realtime":
-	/// the half speed half of it, which is the stepper's side of that test.
+	/// The time scale clamps at zero and defaults to realtime: the half speed half of it,
+	/// which is the stepper's side of that contract.
 	[Test]
 	public static void ScaledTimeYieldsProportionallyFewerSteps()
 	{

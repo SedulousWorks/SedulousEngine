@@ -150,8 +150,8 @@ class ParticleEffectRefTests
 		Test.Assert(component.Instance.Effect.GetSystem(0).AliveCount == alive);
 	}
 
-	/// The manager's playback controls, which Raptor reached through its SceneParticles script
-	/// facade. Stop lets what is alive run out; SetPaused freezes it where it stands.
+	/// The manager's playback controls. Stop lets what is alive run out; SetPaused freezes it
+	/// where it stands.
 	[Test]
 	public static void TheManagerDrivesPlaybackPerEntity()
 	{

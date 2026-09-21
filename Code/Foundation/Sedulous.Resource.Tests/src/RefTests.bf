@@ -114,8 +114,8 @@ class RefTests
 		Test.Assert(live.Get.Area == 9, "rebinding reaches the new one");
 	}
 
-	/// The case the comment in Raptor calls out specifically: reading a nil identity has
-	/// to unbind, not leave the old resource in place.
+	/// The case worth calling out specifically: reading a nil identity has to unbind, not
+	/// leave the old resource in place.
 	[Test]
 	public static void ReadingANilIdentityUnbinds()
 	{

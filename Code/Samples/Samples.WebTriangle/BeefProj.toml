@@ -19,7 +19,7 @@ corlib = "*"
 # The first wasm build fetches the port from Dawn's releases.
 # The stack is 2 MB, not emscripten's default 64 KB. That default is sized for tiny demos and
 # engine startup overflows it immediately, which traps and takes the whole tab down with no JS
-# exception to read. Raptor sets exactly this, for exactly this reason.
+# exception to read.
 [Configs.Debug.wasm32]
 TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"

@@ -19,10 +19,9 @@ namespace Sedulous.Core;
 /// process-wide instance also exists, in GlobalJobSystem, for the call sites that
 /// threading a pool through would cost more than it buys.
 ///
-/// Raptor uses a condition variable for the sleep and wake path. Beef's Monitor has no
-/// wait, so this uses a WaitEvent, which latches: a Set that arrives between a worker's
-/// last check and its wait is not lost, so the idle mutex Raptor needs to close that
-/// window is not needed here.
+/// The sleep and wake path uses a WaitEvent rather than a condition variable, because
+/// Beef's Monitor has no wait. The event LATCHES: a Set that arrives between a worker's
+/// last check and its wait is not lost, so no idle mutex is needed to close that window.
 class JobSystem
 {
 	private class Deque
@@ -33,7 +32,7 @@ class JobSystem
 
 	/// The slot of the calling thread, and which pool it belongs to.
 	///
-	/// Raptor keys this on a bare thread-local index, which is wrong once two pools
+	/// Keyed on the pool, not on a bare thread-local index, which goes wrong once two pools
 	/// exist: a worker of a four-worker pool submitting to a two-worker pool would index
 	/// a deque that is not there. The owning pool is identified by a never-reused id
 	/// rather than by pointer, because a freed pool's address can be handed to the next
@@ -56,11 +55,11 @@ class JobSystem
 
 	/// Passed as the worker count to pick logical cores minus one. This is the default.
 	///
-	/// Raptor spells auto as zero, which leaves a caller no way to ask for a pool with no
-	/// workers at all. That configuration is not a curiosity: it is single-threaded WASM,
-	/// and it is the one path where caller participation is load bearing rather than
-	/// merely efficient. It is worth being able to name, and worth being able to test on a
-	/// desktop with cores to spare, so zero means zero here.
+	/// A separate sentinel rather than zero, so a caller CAN ask for a pool with no workers
+	/// at all. That configuration is not a curiosity: it is single-threaded WASM, and it is
+	/// the one path where caller participation is load bearing rather than merely
+	/// efficient. It is worth being able to name, and worth being able to test on a desktop
+	/// with cores to spare, so zero means zero.
 	public const int32 Auto = -1;
 
 	/// A negative worker count picks logical cores minus one. Zero is a pool with no
@@ -144,8 +143,7 @@ class JobSystem
 	///
 	/// The counter is CALLER SEEDED: this does not add to it. Seed it with the number of
 	/// jobs about to be submitted against it. Adding here would read better at the call
-	/// site, but it would make a pre-seeded gate impossible to express, and it would
-	/// silently double count every site ported from Raptor, which spells it this way.
+	/// site, but it would make a pre-seeded gate impossible to express.
 	public void Submit(delegate void() work, Counter signal = null)
 	{
 		Schedule(JobItem(work, signal));

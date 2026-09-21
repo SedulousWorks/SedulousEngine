@@ -128,7 +128,7 @@ static class ShellInputMapping
 
 		// HasANY, not HasFlag. Shift is both shift bits and HasFlag demands every bit of its
 		// argument, so it answers false for the one shift a person actually holds. Both enums
-		// carry HasAny for exactly this, and it is what Raptor's `(mods & Shift) != None` is.
+		// carry HasAny for exactly this.
 		//
 		// The composite goes out rather than the side that came in, which is what lets the
 		// whole UI ask HasFlag(.Shift) downstream and be right.

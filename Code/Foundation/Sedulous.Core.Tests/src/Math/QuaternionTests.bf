@@ -78,8 +78,8 @@ class QuaternionTests
 	}
 
 	/// Slerp takes the shortest arc, so it has to negate one input when they point into
-	/// opposite hemispheres. Raptor never exercises that branch, nor the near-parallel
-	/// lerp fallback.
+	/// opposite hemispheres. That branch, and the near-parallel lerp fallback, are easy to
+	/// leave unexercised.
 	[Test]
 	public static void SlerpTakesTheShortestArc()
 	{

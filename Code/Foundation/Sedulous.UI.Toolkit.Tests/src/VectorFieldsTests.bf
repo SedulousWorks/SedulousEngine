@@ -141,9 +141,9 @@ class VectorFieldsTests
 		Test.Assert(back.Z == back.Z);
 	}
 
-	/// A REGRESSION GATE on the corrected decomposition: the C++ inverts single axis rotations
-	/// correctly and every combination of two or more incorrectly, so a test that only tried
-	/// one axis at a time would pass over the defect.
+	/// A REGRESSION GATE on the decomposition: an arcsine on the wrong axis inverts single
+	/// axis rotations correctly and every combination of two or more incorrectly, so a test
+	/// that only tried one axis at a time would pass over the defect.
 	[Test]
 	public static void ACompoundRotationRoundTripsOnEveryAxis()
 	{

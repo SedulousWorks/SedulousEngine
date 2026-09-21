@@ -170,10 +170,9 @@ class GridView : ViewGroup, IListAdapterObserver
 	{
 		RecycleAllActive();
 
-		// DIVERGES from Raptor, which recycles and stops. The selection is positional, and a
-		// shrunken data set otherwise leaves a stale index quietly highlighting whichever cell
-		// inherits it. Raptor's ListView prunes here for exactly that reason; its GridView was
-		// not given the same treatment.
+		// Pruned rather than merely recycled: the selection is positional, and a shrunken data
+		// set otherwise leaves a stale index quietly highlighting whichever cell inherits it.
+		// ListView prunes here for exactly that reason.
 		Selection.PruneFrom((mAdapter != null) ? mAdapter.ItemCount : 0);
 		Invalidate();
 	}
@@ -406,11 +405,9 @@ class GridView : ViewGroup, IListAdapterObserver
 			mActiveViews[position] = view;
 		}
 
-		// DIVERGES from Raptor, which rebinds an already-active cell here on every layout
-		// pass. GetOrCreate binds on acquire and every data change path rebinds, so the
-		// per-pass rebind is pure cost, and it clobbers any state a bound cell is holding.
-		// Raptor's ListView carries a comment about having fixed exactly this; its GridView
-		// still has the unfixed version.
+		// No rebind of an already-active cell on a layout pass. GetOrCreate binds on acquire
+		// and every data change path rebinds, so a per-pass rebind is pure cost, and it
+		// clobbers any state a bound cell is holding.
 		let view = mActiveViews[position];
 		let row = position / mColumnsCount;
 		let column = position % mColumnsCount;

@@ -44,8 +44,7 @@ class ModelBone
 	/// Delegated to Core's Transform, which composes S * R with the translation in the
 	/// LAST ROW: the engine's row vector convention, where a point transforms as p * M.
 	/// Composing it here by hand would be a second definition of that convention, free to
-	/// drift from the one in Transform. Raptor had exactly that drift and now delegates
-	/// too.
+	/// drift from the one in Transform, which is exactly what happened once.
 	public void UpdateLocalTransform()
 	{
 		LocalTransform = Transform(Translation, Rotation, Scale).ToMatrix();

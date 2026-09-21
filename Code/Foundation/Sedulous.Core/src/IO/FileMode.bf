@@ -3,9 +3,8 @@ namespace Sedulous.Core.IO;
 
 /// How a file is opened.
 ///
-/// Four modes, as in Raptor. Corlib spreads the same ground over FileMode, FileAccess and
-/// FileShare, which is more than a stream needs to be told; FileStream maps these onto
-/// that triple.
+/// Four modes. Corlib spreads the same ground over FileMode, FileAccess and FileShare,
+/// which is more than a stream needs to be told; FileStream maps these onto that triple.
 [Scriptable(.AllPublic)]
 enum FileMode
 {

@@ -53,8 +53,8 @@ static
 	/// Calls onEntry for each immediate child of a directory, with the entry's NAME rather
 	/// than its path. False when the directory cannot be opened.
 	///
-	/// A callback rather than a filled list, as in Raptor: the name is only valid during
-	/// the call, and Core has no business deciding who owns a copy of it.
+	/// A callback rather than a filled list: the name is only valid during the call, and
+	/// Core has no business deciding who owns a copy of it.
 	public static bool ListDirectory(StringView path, delegate void(StringView name, bool isDirectory) onEntry)
 	{
 		if (!System.IO.Directory.Exists(path))
@@ -75,9 +75,9 @@ static
 
 	/// Size and last-write time of one regular file. False when the path is not one.
 	///
-	/// The time is in platform ticks rather than Raptor's whole seconds. A stat sweep
-	/// diffs these to find what changed, and a file edited twice within one second is
-	/// exactly the case a second-granularity stamp cannot see.
+	/// The time is in platform ticks rather than whole seconds. A stat sweep diffs these to
+	/// find what changed, and a file edited twice within one second is exactly the case a
+	/// second-granularity stamp cannot see.
 	public static bool FileStat(StringView path, out int64 size, out int64 modifiedTicks)
 	{
 		size = 0;

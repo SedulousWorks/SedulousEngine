@@ -27,8 +27,7 @@ class Program
 
 		GraphicsDeviceDesc deviceDesc = .();
 		// Vulkan unless the command line says otherwise, which is what lets one built binary
-		// be pointed at whichever backend a machine has. Raptor's sandbox reads the same
-		// flags through the same helper.
+		// be pointed at whichever backend a machine has.
 		deviceDesc.Backend = BackendSelection.FromArguments(args);
 		deviceDesc.EnableValidation = true;
 

@@ -10,7 +10,7 @@ namespace Sedulous.Resource.Tests;
 /// Freeing it the instant a hot reload lands is a use after free on the GPU side, which
 /// surfaces as a driver crash somewhere unrelated. So it waits out a few frames.
 ///
-/// Ported from Raptor's "garbage collection survives destructor re-entry into the manager".
+/// Garbage collection also survives destructor re-entry into the manager.
 class GraveyardTests
 {
 	[Test]

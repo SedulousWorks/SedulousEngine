@@ -3,9 +3,9 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Raptor's static_assert(Float3{1,0,0} == Float3::UnitX), plus the CRepr layout, which
-/// is a compile-time fact and part of the contract because these reach GPU buffers. A
-/// layout change should stop the build, not wait for a test run.
+/// The constants, plus the CRepr layout, which is a compile-time fact and part of the
+/// contract because these reach GPU buffers. A layout change should stop the build, not
+/// wait for a test run.
 static
 {
 	private static void Assert_Float3ConstantsFold()
@@ -24,9 +24,8 @@ static
 	}
 }
 
-/// Ported from Raptor's Float3 cases. Adds the division operators, Distance, the
-/// indexer setter, the Float2 constructor and the anti-commutativity of Cross, none of
-/// which Raptor reaches.
+/// Float3: the operators including division, Distance, the indexer setter, the Float2
+/// constructor and the anti-commutativity of Cross.
 class Float3Tests
 {
 	[Test]
@@ -112,8 +111,8 @@ class Float3Tests
 		Test.Assert(Normalized(Float3.Zero) == Float3.Zero);
 	}
 
-	/// Raptor checks two positive cross products, which a sign-flipped implementation
-	/// would also pass. These pin the sign and the perpendicularity.
+	/// Two positive cross products would not tell, since a sign-flipped implementation
+	/// also passes those. These pin the sign and the perpendicularity.
 	[Test]
 	public static void CrossIsAntiCommutativeAndPerpendicular()
 	{

@@ -12,7 +12,7 @@ namespace Sedulous.RHI.WebGPU.Tests;
 /// read back out of the sidecar catches a stale one beside the executable.
 class WebGpuBindingTests
 {
-	/// The vendored sidecar, which Raptor pins and the generator's headers came from.
+	/// The vendored sidecar, whose headers the generator's bindings came from.
 	private const uint32 cExpectedVersion = 0x1D000101; // v29.0.1.1
 
 	[Test]

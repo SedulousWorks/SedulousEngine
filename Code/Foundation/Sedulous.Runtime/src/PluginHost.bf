@@ -23,12 +23,11 @@ namespace Sedulous.Runtime;
 /// already existed would be reversed although another party still owns it. The observer
 /// fires only on a real insert, which is exactly the set that has to come back out.
 ///
-/// Raptor reverses a runtime type registry as well. Beef resolves types at compile time
-/// and ids are hashed from names, so there is no such table to reverse here: that half is
-/// a difference in what the languages need, not a decision. What is NOT a difference is
-/// the extension point. Anything a plugin registers in a layer ABOVE Runtime (a scene
-/// manager's contributions being the case that exists today) plugs in through AddRecorder,
-/// so one unload still reverses everything the plugin did.
+/// There is no runtime type registry to reverse: Beef resolves types at compile time and
+/// ids are hashed from names. What the extension point does cover is anything a plugin
+/// registers in a layer ABOVE Runtime (a scene manager's contributions being the case that
+/// exists today), which plugs in through AddRecorder, so one unload still reverses
+/// everything the plugin did.
 class PluginHost
 {
 	private Context mContext;

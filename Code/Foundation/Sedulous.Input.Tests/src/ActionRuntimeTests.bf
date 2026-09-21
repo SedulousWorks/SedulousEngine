@@ -71,9 +71,8 @@ class ActionRuntimeTests
 		Test.Assert(runtime.IsDown(quickSave));
 	}
 
-	/// A modifier GROUP is satisfied by either side. Raptor requires every bit of the mask,
-	/// which makes a Shift binding unreachable: nobody holds both shifts to fire one
-	/// action.
+	/// A modifier GROUP is satisfied by either side. Requiring every bit of the mask would
+	/// make a Shift binding unreachable: nobody holds both shifts to fire one action.
 	[Test]
 	public static void AModifierGroupIsSatisfiedByEitherSide()
 	{

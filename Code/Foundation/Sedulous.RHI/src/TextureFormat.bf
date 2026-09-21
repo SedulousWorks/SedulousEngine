@@ -150,8 +150,8 @@ static class TextureFormats
 	///
 	/// EVERY uncompressed member is listed. The table used to omit sixteen ordinary ones,
 	/// the Snorm, Uint and Sint variants of R8, RG8 and RGBA8 among them, so anything sizing
-	/// an upload from one of those got zero bytes. Found by this port and fixed in Raptor as
-	/// 561a1896; a member missing from here is a defect, not a default.
+	/// an upload from one of those got zero bytes. A member missing from here is a defect,
+	/// not a default.
 	public static uint32 BytesPerPixel(TextureFormat f)
 	{
 		switch (f)

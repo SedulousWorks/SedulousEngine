@@ -36,9 +36,8 @@ class AssetBuildContext
 
 	/// How to make a serializer, for a builder that has to round trip data through one.
 	///
-	/// Not in Raptor's version, which deep copies with a copy constructor. Beef has none, so a
-	/// faithful clone of a polymorphic graph goes out through a serializer and back, and the
-	/// factory is the driver's to choose.
+	/// Beef has no copy constructor, so a faithful clone of a polymorphic graph goes out
+	/// through a serializer and back, and the factory is the driver's to choose.
 	public SerializerFactory Serializers = null;
 
 	/// The target being produced for, which a variant builder reads its encoder profile from.

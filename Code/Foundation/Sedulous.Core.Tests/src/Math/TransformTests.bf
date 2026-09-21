@@ -57,8 +57,8 @@ class TransformTests
 		Test.Assert(NearlyEqual(at1.Position, b.Position));
 	}
 
-	/// Raptor's Lerp case uses identity rotations at both ends, so the slerp inside it
-	/// is never actually exercised.
+	/// A Lerp with identity rotations at both ends would never exercise the slerp inside
+	/// it; these rotate.
 	[Test]
 	public static void LerpSlerpsTheRotation()
 	{

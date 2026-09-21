@@ -48,7 +48,7 @@ static class TestFont
 	/// The font at the default size, or null when the asset is not there.
 	///
 	/// Null rather than a failed assertion, so a checkout without the data skips these
-	/// rather than reporting the port broken.
+	/// rather than reporting the baker broken.
 	public static TrueTypeFont Load(float pixelHeight = 32.0f)
 	{
 		let path = scope String();

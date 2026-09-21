@@ -62,12 +62,12 @@ static class RenderExtract
 		// late cook or a hot reload heals live rather than pinning whatever was null at
 		// resolve time.
 		//
-		// BORROWED, where Raptor's cache holds a strong reference per entry. Material is not
-		// reference counted here, and the render data beside it already borrows the primary
-		// material the same way, so this follows the port rather than introducing a second
-		// rule. It IS a weaker guarantee: Raptor keeps each material alive from extract until
-		// the snapshot is recorded, and this relies on the material system outliving the
-		// frame. Whoever makes materials individually releasable has to revisit it.
+		// BORROWED. Material is not reference counted here, and the render data beside it
+		// already borrows the primary material the same way, so this follows the same rule
+		// rather than introducing a second. It IS a weaker guarantee than a strong reference
+		// per entry, which would keep each material alive from extract until the snapshot is
+		// recorded; this relies on the material system outliving the frame. Whoever makes
+		// materials individually releasable has to revisit it.
 		component.MaterialCache.Clear();
 		for (int i < component.Materials.Count)
 			component.MaterialCache.Add(component.Materials[i].Get);

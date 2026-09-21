@@ -5,9 +5,8 @@ namespace Sedulous.UI;
 
 /// The registered theme extensions, applied to every theme sheet the factories build.
 ///
-/// The registry holds NON owning references: the application owns each extension's lifetime.
-/// Raptor makes the same choice, for the same reason in reverse: it dodges C++ static
-/// destruction order, and here it stops a global outliving what registered with it.
+/// The registry holds NON owning references: the application owns each extension's lifetime,
+/// which stops a global outliving what registered with it.
 static class ThemeRegistry
 {
 	private static List<IThemeExtension> sExtensions = new .() ~ delete _;

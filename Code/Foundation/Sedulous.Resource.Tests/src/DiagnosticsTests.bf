@@ -8,8 +8,8 @@ namespace Sedulous.Resource.Tests;
 /// What the cache can be asked about itself: what failed to resolve, what is resident, and
 /// what is only resident because the cache is holding it.
 ///
-/// Ported from Raptor's "unresolved binds are enumerable, and heal off the list" and "the
-/// live-product report counts by type and flags cache-only handles".
+/// Unresolved binds are enumerable and heal off the list; the live-product report counts
+/// by type and flags cache-only handles.
 class DiagnosticsTests
 {
 	/// A bind against an identity with no backing instance stays cached with no product.

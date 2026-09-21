@@ -269,9 +269,9 @@ class PakTests
 	}
 
 	/// The header is the least trustworthy part of a corrupt file, and everything below it
-	/// is sized from it. Raptor seeks to tocOffset and loops entryCount times without
-	/// asking whether either could be real, so a damaged byte becomes a wild seek or an
-	/// allocation of whatever the count happened to be.
+	/// is sized from it. Seeking to tocOffset and looping entryCount times without asking
+	/// whether either could be real turns a damaged byte into a wild seek or an allocation
+	/// of whatever the count happened to be.
 	[Test]
 	public static void AnImpossibleHeaderIsRejectedRatherThanFollowed()
 	{

@@ -9,8 +9,7 @@ namespace Sedulous.Core;
 /// end values outside the key range: loop and pingpong wrapping is the clip's job, not
 /// the curve's.
 ///
-/// Raptor holds the keys in its own Array; this uses corlib's List until Containers is
-/// ported, which is the only difference in shape.
+/// The keys are a corlib List.
 class Curve
 {
 	private List<CurveKey> mKeys = new .() ~ delete _;

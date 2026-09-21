@@ -6,10 +6,9 @@ namespace Sedulous.UI;
 
 /// The base of the retained mode view hierarchy.
 ///
-/// PARTIAL PORT. This carries View's identity, geometry, flags, tree links and coordinate
-/// conversion. The style cascade, measure and arrange, invalidation, transitions and
-/// everything reaching a manager through the context are still in the ledger's View.cppm and
-/// UIClusterImpl.cpp, and land with the subsystems they need.
+/// This carries View's identity, geometry, flags, tree links and coordinate conversion;
+/// the style cascade, measure and arrange, invalidation and transitions are in the
+/// partial files beside it.
 ///
 /// Ref counted: a parent owns its children by reference, and the back pointers here are
 /// borrowed.
@@ -135,9 +134,9 @@ class View : RefCounted, IPropertyOwner
 
 	/// The dpi scale of the root a view sits under, and one when it is unparented.
 	///
-	/// Raptor keeps this on ViewGroup; here it is on View, which is where the callers are.
-	/// Callers that DIVIDE by it clamp it themselves: a root reporting nought is a host bug
-	/// rather than something to paper over silently everywhere.
+	/// On View rather than ViewGroup, which is where the callers are. Callers that DIVIDE
+	/// by it clamp it themselves: a root reporting nought is a host bug rather than
+	/// something to paper over silently everywhere.
 	protected static float RootDpiScale(RootView root) => (root != null) ? root.DpiScale : 1.0f;
 
 	public Float2 ScreenToLocal(Float2 screen)
@@ -166,10 +165,9 @@ class View : RefCounted, IPropertyOwner
 
 	/// The same thing.
 	///
-	/// Raptor keeps both names, its RemoveView taking a `deleteChild` flag that its own
-	/// comment marks advisory: under reference counted ownership, dropping the tree's
-	/// reference frees the view unless something else holds one, whichever name was used.
-	/// Kept so calling code ported from Raptor reads unchanged.
+	/// Both names are kept. A `deleteChild` flag would only be advisory: under reference
+	/// counted ownership, dropping the tree's reference frees the view unless something
+	/// else holds one, whichever name was used.
 	public void QueueDestroy() => QueueRemove();
 
 	// ---- User data -----------------------------------------------------------------------------

@@ -24,7 +24,6 @@ class Program
 		// A CONSOLE SINK, first thing. GlobalLog drops every record when no logger is
 		// installed, so without this the engine's own diagnostics are invisible and a
 		// failure in the browser looks like a blank canvas with a silent console.
-		// Raptor installs one in APP_MAIN, on the desktop and the web body alike.
 		InitGlobalLogger(new ConsoleLogger(.Information, "WebScene"), true);
 
 		let shell = new WebShell();

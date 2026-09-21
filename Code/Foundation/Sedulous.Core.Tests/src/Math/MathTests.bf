@@ -3,7 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Core.Tests;
 
-/// Raptor's static_asserts. Compiler.Assert has to sit in a function body, so the
+/// The compile-time facts. Compiler.Assert has to sit in a function body, so the
 /// convention is a private, never-called Assert_* method: it is evaluated at compile
 /// time regardless, and a failure stops the build rather than the run.
 static
@@ -20,9 +20,8 @@ static
 	}
 }
 
-/// Scalar math. Raptor's "math: scalar helpers" is the first case; the rest close gaps
-/// it leaves, notably the Round tie rule on both parities and both signs, and the
-/// trigonometry and exponentials which it does not reach at all.
+/// Scalar math: the helpers, the Round tie rule on both parities and both signs, and
+/// the trigonometry and exponentials.
 class MathTests
 {
 	[Test]
@@ -54,8 +53,8 @@ class MathTests
 
 	/// Floor(x + 0.5f) is the obvious way to write half-away-from-zero and it is wrong:
 	/// for the largest float below 0.5 the addition rounds up to exactly 1.0f, so the
-	/// result is 1 where it should be 0. Neither Raptor nor the cases above catch this,
-	/// because every value they use is comfortably away from the representable boundary.
+	/// result is 1 where it should be 0. The cases above do not catch this, because every
+	/// value they use is comfortably away from the representable boundary.
 	[Test]
 	public static void RoundIsExactAtTheRepresentableBoundary()
 	{
@@ -72,7 +71,7 @@ class MathTests
 		Test.Assert(Abs((int64)-3) == 3);
 		Test.Assert(Abs(-3.0) == 3.0);
 
-		// int32.MinValue has no positive counterpart; this wraps, as Raptor's does.
+		// int32.MinValue has no positive counterpart; this wraps.
 		Test.Assert(Abs(int32.MinValue) == int32.MinValue);
 	}
 

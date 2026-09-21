@@ -9,8 +9,8 @@ namespace Sedulous.Particles;
 /// sequence: a system with a seed replays exactly.
 ///
 /// The emitter's own position and velocity ride here rather than being pushed onto the
-/// modules before a burst, which is how Raptor carries them. A module that reads the emitter
-/// then holds no state of its own, so nothing transient ends up in its stored record.
+/// modules before a burst. A module that reads the emitter then holds no state of its own,
+/// so nothing transient ends up in its stored record.
 struct ParticleUpdateContext
 {
 	public float TotalTime = 0.0f;

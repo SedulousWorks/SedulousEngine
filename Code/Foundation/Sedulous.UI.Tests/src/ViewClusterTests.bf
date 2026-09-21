@@ -537,11 +537,10 @@ class ViewClusterTests
 
 	/// The typed getter hands back a pointer to the stored DATA, so it suits a value type.
 	///
-	/// Raptor's version of this test stores a String, which works there because a C++ String is
-	/// a value and `&str` is a pointer to it. In Beef a String is a reference, so the address
-	/// stored is the object's and `String*` would be a pointer to a reference slot: a different
-	/// thing entirely, and dereferencing it would read the wrong memory. A class comes back
-	/// through GetUserData plus a cast instead, which is what the case above does.
+	/// Storing a String here would be wrong: a String is a reference, so the address stored
+	/// is the object's and `String*` would be a pointer to a reference slot, a different thing
+	/// entirely, and dereferencing it would read the wrong memory. A class comes back through
+	/// GetUserData plus a cast instead, which is what the case above does.
 	[Test]
 	public static void TheTypedGetterSuitsAValueType()
 	{

@@ -45,8 +45,8 @@ class DragAdorner : ViewGroup
 	/// A size to show when there is no visual at all, so the ghost is visible rather than
 	/// collapsing to nothing.
 	///
-	/// With a visual, the base group's own max of children measure is exactly right, so unlike
-	/// Raptor this does not restate it: Raptor's ViewGroup has no such default and had to.
+	/// With a visual, the base group's own max of children measure is exactly right, so it is
+	/// not restated here.
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
 		if (ChildCount > 0)

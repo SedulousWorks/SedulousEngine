@@ -21,7 +21,7 @@ namespace Sedulous.Editor.Core;
 /// editor's Export menu, the CLI and the MCP host share, so a preset produces the same dist
 /// whichever surface triggers it.
 ///
-/// A project naming a native module is refused: that story is not ported yet.
+/// A project naming a native module is refused: native game modules are not supported.
 static class ExportDriver
 {
 	// ---- the reachable closure ----

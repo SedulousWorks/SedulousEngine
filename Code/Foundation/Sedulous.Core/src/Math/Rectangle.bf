@@ -36,9 +36,8 @@ struct Rectangle
 	/// The overlapping rectangle of two rects, empty with zero size when they are
 	/// disjoint.
 	///
-	/// Raptor writes this with ternaries rather than the free Min/Max because its
-	/// Min()/Max() member accessors shadow them inside the struct. Beef has the same
-	/// shadowing, so the shape is kept.
+	/// Written with ternaries rather than the free Min/Max because the Min()/Max() member
+	/// accessors shadow them inside the struct.
 	public static Rectangle Intersect(Rectangle a, Rectangle b)
 	{
 		let ax1 = a.X + a.Width;

@@ -13,11 +13,11 @@ namespace Sedulous.Materials;
 ///
 /// THE MATERIAL IS BORROWED, and that has a consequence a renderer has to answer for.
 ///
-/// Raptor's instance holds a reference counted pointer, and its mesh renderer leans on that
-/// twice. Its instance cache is keyed by material uid and prunes an entry once the
-/// material's count drops to one, meaning only the cache still holds it. And the same
-/// strong reference is what keeps a RELOADED-AWAY material alive until that prune runs, so
-/// bind groups pointing at the old texture views retire on schedule instead of dangling.
+/// An instance holding a reference counted material would get two things for free: an
+/// instance cache keyed by material uid could prune an entry once the material's count
+/// drops to one, meaning only the cache still holds it; and the same strong reference
+/// would keep a RELOADED-AWAY material alive until that prune runs, so bind groups
+/// pointing at the old texture views retire on schedule instead of dangling.
 ///
 /// Here the material is a resource the manager owns and the handle is what survives a
 /// reload, so neither of those falls out for free. A renderer built on this owes two

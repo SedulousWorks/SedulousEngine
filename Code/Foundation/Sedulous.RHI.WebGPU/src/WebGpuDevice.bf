@@ -543,10 +543,9 @@ sealed class WebGpuDevice : IDevice
 	}
 
 	/// Nothing to do, and deliberately so: the BACKEND owns every surface it made and
-	/// frees them at its own teardown, the same way the Vulkan backend does. Raptor's
-	/// device deletes the surface here instead, because its backend keeps no list; doing
-	/// both is a double free, and a host that calls this before Destroy hits it every
-	/// time.
+	/// frees them at its own teardown, the same way the Vulkan backend does. Deleting the
+	/// surface here as well is a double free, and a host that calls this before Destroy
+	/// hits it every time.
 	public void DestroySurface(ref ISurface x)
 	{
 		x = null;

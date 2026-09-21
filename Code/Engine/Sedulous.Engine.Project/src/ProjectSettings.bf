@@ -16,8 +16,7 @@ namespace Sedulous.Engine.Project;
 ///
 /// FIELD ORDER IS THE WIRE: the generator walks the declaration, so inserting a field in the
 /// middle changes what existing manifests mean. Append, and bump the version when the shape
-/// has to change. The order happens to follow Raptor's, which is no constraint: projects are
-/// not shared between the two engines.
+/// has to change.
 [Serializable(9)]
 class ProjectSettings
 {

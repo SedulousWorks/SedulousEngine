@@ -31,9 +31,8 @@ class OwnedImageData : ImageData
 
 	/// Takes the list ITSELF, which the caller must not touch afterwards.
 	///
-	/// Raptor spells this as a move constructor. The point is the same either way: a
-	/// producer that already built the buffer hands it over rather than paying to copy a
-	/// whole image it is about to drop.
+	/// A move, in effect: a producer that already built the buffer hands it over rather
+	/// than paying to copy a whole image it is about to drop.
 	public this(uint32 width, uint32 height, PixelFormat format, List<uint8> pixels,
 		ImageColorSpace colorSpace = .Srgb)
 	{

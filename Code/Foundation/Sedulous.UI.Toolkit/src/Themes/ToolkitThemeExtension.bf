@@ -57,11 +57,11 @@ class ToolkitThemeExtension : IThemeExtension
 		UITypeRegistry.Register("PropertyGrid", typeof(PropertyGrid));
 		UITypeRegistry.Register("ToastCard", typeof(ToastCard));
 		UITypeRegistry.Register("CurveCanvas", typeof(CurveCanvas));
-		// DIVERGES from Raptor, which never registers Timeline even though both fragments
-		// carry a Timeline block. Those rules resolved to nothing and styled nothing, and the
-		// hand-kept type COUNT that was meant to be the tripwire agreed with the registrations
-		// rather than with the sheets, so it could not catch it. The gate is a test that every
-		// selector in the fragments resolves.
+		// Easy to forget, and the fragments both carry a Timeline block: unregistered, those
+		// rules resolve to nothing and style nothing, in silence. A hand-kept type COUNT
+		// meant as the tripwire agrees with the registrations rather than with the sheets, so
+		// it cannot catch that. The gate is a test that every selector in the fragments
+		// resolves.
 		UITypeRegistry.Register("Timeline", typeof(Timeline));
 	}
 

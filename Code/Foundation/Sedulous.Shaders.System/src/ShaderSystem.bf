@@ -41,8 +41,8 @@ class ShaderSystem
 	/// BORROWED from whoever set it, usually the file provider.
 	private IShaderIncludeResolver mIncludeResolver = null;
 
-	/// The DXC optimization level every on demand compile asks for. Three is what Raptor
-	/// compiles at and what a build wants.
+	/// The DXC optimization level every on demand compile asks for. Three is what a build
+	/// wants.
 	///
 	/// A test suite is the reason this is settable: optimization is most of what DXC spends
 	/// its time on, and a test that only needs a module back gets it nearly three times

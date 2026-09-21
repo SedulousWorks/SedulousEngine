@@ -75,9 +75,8 @@ class XmlDocument : XmlNode
 	///
 	/// Both are 1 after a parse that succeeded, and after no parse at all.
 	///
-	/// Raptor declares these and never updates them, so they always answer 1 there and the
-	/// editor pages that subtract one from the line always mark line zero. Tracked properly
-	/// here rather than the stub being carried across.
+	/// Tracked properly rather than declared and never updated, which would leave an editor
+	/// page subtracting one from the line always marking line zero.
 	public int32 ErrorLine => mErrorLine;
 	public int32 ErrorColumn => mErrorColumn;
 
@@ -85,12 +84,12 @@ class XmlDocument : XmlNode
 	///
 	/// The column counts CODE POINTS, not bytes: a UTF-8 continuation byte does not advance
 	/// it, so a line holding a multi byte character reports the column a person counting
-	/// characters would. This matches Raptor.
+	/// characters would.
 	///
 	/// CRLF counts as one ending, and a lone CR counts as an ending too, so a file written
-	/// on any of the three conventions reports the line a person would count. Raptor breaks
-	/// on newline alone, which reports line 1 for everything in a CR only file; XML treats
-	/// all three as line endings, so the wider handling is kept here.
+	/// on any of the three conventions reports the line a person would count; breaking on
+	/// newline alone would report line 1 for everything in a CR only file, and XML treats
+	/// all three as line endings.
 	private void LocateOffset(StringView text, int offset)
 	{
 		int32 line = 1;

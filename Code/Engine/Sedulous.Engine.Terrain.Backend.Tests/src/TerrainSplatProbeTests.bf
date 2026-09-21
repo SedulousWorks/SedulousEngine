@@ -20,8 +20,8 @@ class TerrainSplatProbeTests
 {
 	private const int cBands = TerrainProbe.Bands;
 
-	/// Cross backend tolerance. Raptor's epsilon, wide enough for driver rounding and far too
-	/// narrow to hide a frontend that blends differently.
+	/// Cross backend tolerance: wide enough for driver rounding and far too narrow to hide a
+	/// frontend that blends differently.
 	private const double cParity = 0.05;
 
 	/// Assert a WebGPU measurement against the Vulkan one it must match.

@@ -76,8 +76,8 @@ static class SVGColorParser
 
 	/// The named colours SVG defines that anything here is likely to use.
 	///
-	/// A subset rather than the full list, matching Raptor: the rest fail to parse, which
-	/// an importer reports rather than guessing a colour for.
+	/// A subset rather than the full list: the rest fail to parse, which an importer reports
+	/// rather than guessing a colour for.
 	private static Result<Color32, ErrorCode> ParseNamed(StringView name)
 	{
 		let named = scope (StringView Name, Color32 Value)[](

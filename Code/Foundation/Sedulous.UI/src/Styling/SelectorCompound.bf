@@ -5,10 +5,9 @@ namespace Sedulous.UI;
 
 /// One compound of a selector: every constraint here must hold on ONE view.
 ///
-/// DIVERGES from Raptor, which makes this a struct and copies it. It owns strings, and a Beef
-/// struct copy would alias them, so it is a class and the ancestor step that holds one owns
-/// it. StyleSelector.Subject goes with the copy: its only caller wanted the specificity, which
-/// is now a shared static.
+/// A class, not a struct: it owns strings, and a Beef struct copy would alias them, so the
+/// ancestor step that holds one owns it. StyleSelector.Subject's only caller wanted the
+/// specificity, which is a shared static.
 class SelectorCompound
 {
 	/// The view type to match. Null matches any type.

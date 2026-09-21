@@ -174,9 +174,8 @@ class GridViewTests
 
 	/// An ordinary layout pass rebinds NOTHING.
 	///
-	/// Raptor's GridView rebinds every visible cell every pass, which its ListView carries a
-	/// comment about having fixed. This port applies the same fix, so the cost is not paid and
-	/// a cell holding state is not clobbered under it.
+	/// Rebinding every visible cell every pass is pure cost, and it clobbers any state a
+	/// bound cell is holding; ListView has the same rule.
 	[Test]
 	public static void AnOrdinaryLayoutPassRebindsNothing()
 	{
@@ -226,8 +225,7 @@ class GridViewTests
 
 	/// The selection is POSITIONAL, so a shrinking data set drops what no longer exists.
 	///
-	/// Raptor's GridView does not prune here, though its ListView does and says why. This port
-	/// prunes in both.
+	/// ListView prunes here and says why; GridView prunes the same way.
 	[Test]
 	public static void ShrinkingTheDataDropsSelectionPastTheEnd()
 	{

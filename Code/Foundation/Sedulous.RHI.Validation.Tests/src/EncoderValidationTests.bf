@@ -379,8 +379,8 @@ class EncoderValidationTests
 	/// barrier or a second BeginRenderPass issued while a pass is open is invalid, and a
 	/// backend's response runs from a validation error to undefined behaviour.
 	///
-	/// This is the case the port was missing: it gated everything on "not finished" alone,
-	/// so only finishing with a pass open was caught.
+	/// Gating everything on "not finished" alone catches only finishing with a pass open;
+	/// this is the rest.
 	[Test]
 	public static void OperationsInsideAnOpenPassAreRefused()
 	{

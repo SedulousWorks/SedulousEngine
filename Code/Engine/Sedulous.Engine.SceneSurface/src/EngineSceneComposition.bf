@@ -25,16 +25,16 @@ namespace Sedulous.Engine.SceneSurface;
 /// subsystem exists, and an absent subsystem simply leaves its systems unwired, as inert
 /// pools and ticks that do nothing.
 ///
-/// A module of its own, as Raptor keeps it, so a tool reaches it without the application:
-/// the MCP host's scene_validate and the reference scans behind asset_uses and
-/// project_health load arbitrary scenes headlessly, and the export packager will.
+/// A module of its own, so a tool reaches it without the application: the MCP host's
+/// scene_validate and the reference scans behind asset_uses and project_health load
+/// arbitrary scenes headlessly, and the export packager will.
 ///
 /// A manager added to a domain's own install function is picked up automatically: there is no
 /// second list here to forget.
 static class EngineSceneComposition
 {
-	/// Ordering alone, with no dependencies declared, exactly as Raptor has it: what matters
-	/// is that the order is fixed, not that any domain needs another built first.
+	/// Ordering alone, with no dependencies declared: what matters is that the order is
+	/// fixed, not that any domain needs another built first.
 	private static SceneModule[12] sModules = .(
 		.("prefabs", => PrefabSpawnScene.AddPrefabSpawnSceneManagers, null),
 		.("script", => ScriptScene.AddScriptSceneManagers, null),
@@ -49,8 +49,8 @@ static class EngineSceneComposition
 		.("net", => NetworkScene.AddNetworkSceneManagers, null),
 		.("spline", => SplineScene.AddSplineSceneManagers, null));
 
-	/// No reflection registrars: Beef's own reflection replaces the tables Raptor registers
-	/// per domain, so every module here declares none.
+	/// No reflection registrars: Beef's own reflection is the table, so every module here
+	/// declares none.
 	public static SceneComposition Build()
 	{
 		let pointers = scope SceneModule*[sModules.Count];

@@ -307,9 +307,8 @@ class ButtonTests
 
 	/// A Label built with no text measures and draws as an empty one rather than crashing.
 	///
-	/// Raptor's String property default constructs to an empty string; a Beef reference
-	/// defaults to null, and the measure asks the text whether it is empty. The property now
-	/// starts on an owned empty string.
+	/// A Beef reference defaults to null, and the measure asks the text whether it is empty,
+	/// so the property starts on an owned empty string.
 	[Test]
 	public static void ALabelBuiltWithNoTextIsEmptyNotNull()
 	{

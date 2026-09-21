@@ -9,8 +9,8 @@ namespace Sedulous.Core.Tests;
 // safe here because every case waits for its work before the captured locals leave
 // scope; a job outliving them would be reading freed stack.
 
-/// The job system. Raptor's cases are ported; the allocator one is not, since the pool
-/// does not take an allocator yet, and the multi-pool isolation case is new.
+/// The job system: submission, dependencies, fan-out, caller participation, and the
+/// isolation of two pools from each other.
 class JobSystemTests
 {
 	[Test]
@@ -52,9 +52,8 @@ class JobSystemTests
 		Test.Assert(ran == 10);
 	}
 
-	/// Zero means zero, where Raptor reads it as auto. Without this the single-threaded
-	/// path is unreachable through the API, and so untestable anywhere with cores to
-	/// spare.
+	/// Zero means zero, not auto. Without this the single-threaded path is unreachable
+	/// through the API, and so untestable anywhere with cores to spare.
 	[Test]
 	public static void AutoIsDistinctFromAnExplicitZero()
 	{
@@ -282,10 +281,10 @@ class JobSystemTests
 		Test.Assert(jobs.CurrentSlot == jobs.WorkerCount);
 	}
 
-	/// Raptor keys the worker slot on a bare thread-local index, which two pools would
-	/// share: a worker of a four-worker pool submitting into a two-worker pool would
-	/// index a deque that is not there. The slot is tagged with its owning pool here, so
-	/// a thread is only a worker of the pool it belongs to.
+	/// A worker slot keyed on a bare thread-local index would be shared by two pools: a
+	/// worker of a four-worker pool submitting into a two-worker pool would index a deque
+	/// that is not there. The slot is tagged with its owning pool, so a thread is only a
+	/// worker of the pool it belongs to.
 	[Test]
 	public static void SlotsAreIsolatedBetweenPools()
 	{

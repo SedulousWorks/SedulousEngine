@@ -16,7 +16,7 @@ namespace Sedulous.Materials.Resource;
 /// substitutes a neutral texture at bind time, and storing white in every asset would be a
 /// thousand copies of a decision that belongs in one place. The texture slots that ARE
 /// bound are stored, by resource id.
-/// Version three, matching the cooked layout Raptor stamps.
+/// Version three.
 [Serializable(3)]
 class MaterialSource
 {

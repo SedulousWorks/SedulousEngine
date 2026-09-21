@@ -12,9 +12,8 @@ namespace Sedulous.Scene;
 /// not from this manager: the id describes the TYPE, and stating it here would let two
 /// managers of the same component disagree about what it is called.
 ///
-/// DIVERGES from Raptor in how the payload is reached. Raptor finds a free Serialize by
-/// argument dependent lookup; Beef has no such thing, so the component states it by
-/// implementing ISerializable, which the constraint here requires.
+/// The payload is reached through ISerializable, which the constraint here requires: the
+/// component states how it is stored rather than a free Serialize being found by lookup.
 class SerializableComponentManager<T> : ComponentManager<T>
 	where T : struct, ISerializable, new
 {

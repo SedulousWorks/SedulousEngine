@@ -43,7 +43,7 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 	/// system at extract.
 	private Float4x4 mEmitterWorld = Float4x4.Identity();
 	/// Nothing sets this yet, so the sorting and the ribbon orientation both work from the
-	/// origin. Raptor has the same gap: the field is read in three places and written in none.
+	/// origin: the field is read in three places and written in none.
 	private Float3 mCameraPos = .(0, 0, 0);
 
 	private List<int32> mSortOrder = new .() ~ delete _;
@@ -142,9 +142,8 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 
 	// ---- the control surface ----
 	//
-	// Raptor offers these through the SceneParticles script facade; they belong here, beside
-	// the components, and match the shape AudioSceneSystem already uses for a sound source.
-	// Each is a no-op on an entity with no effect attached yet.
+	// They belong here, beside the components, and match the shape AudioSceneSystem already
+	// uses for a sound source. Each is a no-op on an entity with no effect attached yet.
 
 	/// Begins, or resumes, emission on the entity's effect.
 	public void Play(EntityHandle entity)

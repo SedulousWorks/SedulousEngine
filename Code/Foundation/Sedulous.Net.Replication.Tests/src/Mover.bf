@@ -9,8 +9,8 @@ namespace Sedulous.Net.Replication.Tests;
 /// A stand in networked component: a transform like mix of replicated and local only fields,
 /// plus a marked but UNSUPPORTED field, so layout exclusion is exercised.
 ///
-/// Raptor uses a String for the unsupported case; a Guid tests the same rule without giving a
-/// value component something to own.
+/// A Guid for the unsupported case: it tests the rule without giving a value component
+/// something to own.
 [SerializableComponent("test.Mover")]
 struct Mover : ISerializable
 {

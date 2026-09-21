@@ -580,8 +580,8 @@ class ValidatedDevice : IDevice
 	///
 	/// An untracked object is a double destroy, or one from another device. The destroy is
 	/// then NOT forwarded: freeing it again is a double free, and turning a mistake this
-	/// layer just detected into a crash is the opposite of its job. Raptor forwards and
-	/// relies on the allocator to survive it; refusing is the safer read of the same rule.
+	/// layer just detected into a crash is the opposite of its job. Forwarding and relying
+	/// on the allocator to survive it would be the other read of the rule; refusing is safer.
 	private bool Untrack(TrackedResources tracker, Object resource, StringView operation)
 	{
 		if (resource == null)

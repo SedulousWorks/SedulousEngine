@@ -52,15 +52,14 @@ static class NormalMaps
 
 	/// Brickwork.
 	///
-	/// NOTE: as ported, this produces a FLAT map. Every normal it builds is of the form
+	/// NOTE: this produces a FLAT map. Every normal it builds is of the form
 	/// (0, 0, positive), and normalising that gives (0, 0, 1) whatever the Z was, so the
-	/// mortar and the brick faces encode identically. Raptor has the same defect, and its
-	/// test does not catch it because the truncated encoding above made every pixel differ
-	/// from neutral, which is what that test checked for.
+	/// mortar and the brick faces encode identically. A test phrased as "every pixel differs
+	/// from neutral" would not catch it under a truncating encoder, which is how it survived.
 	///
-	/// Kept faithful rather than quietly redesigned: making it real means deriving the
-	/// normal from the height field by finite differences, the way CreateWave does, and
-	/// that is a change to what the engine draws rather than a port.
+	/// Kept as is rather than quietly redesigned: making it real means deriving the normal
+	/// from the height field by finite differences, the way CreateWave does, and that is a
+	/// change to what the engine draws.
 	public static Image CreateBrick(uint32 width = 256, uint32 height = 256,
 		uint32 bricksX = 8, uint32 bricksY = 4, float mortarDepth = 0.3f,
 		PixelFormat format = .RGBA8)
@@ -256,11 +255,11 @@ static class NormalMaps
 
 	/// Encodes a unit normal into RGB, opaque.
 	///
-	/// ROUNDED, not truncated. Raptor truncates, which puts the neutral normal at 127
-	/// rather than the 128 its own comment documents, because (0 * 0.5 + 0.5) * 255 is
-	/// 127.5. That is half a channel of bias on every axis, and it also makes any test
-	/// phrased as "this pixel differs from neutral" pass for every pixel of every map.
-	/// Core's Color32 rounds for the same reason.
+	/// ROUNDED, not truncated. Truncating puts the neutral normal at 127 rather than the
+	/// 128 the encoding documents, because (0 * 0.5 + 0.5) * 255 is 127.5. That is half a
+	/// channel of bias on every axis, and it also makes any test phrased as "this pixel
+	/// differs from neutral" pass for every pixel of every map. Core's Color32 rounds for
+	/// the same reason.
 	public static Color32 Encode(Float3 normal)
 	{
 		return .(Channel(normal.X), Channel(normal.Y), Channel(normal.Z), 255);

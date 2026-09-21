@@ -36,9 +36,9 @@ class XmlSerializer : Serializer
 
 	/// The key named for the NEXT value, if there was one.
 	///
-	/// Raptor keeps a borrowed pointer here. A copy costs one allocation the first time
-	/// and reuses the buffer after, and it cannot dangle if a caller keys with a string
-	/// that goes out of scope before the value is written.
+	/// A copy rather than a borrowed pointer: it costs one allocation the first time and
+	/// reuses the buffer after, and it cannot dangle if a caller keys with a string that
+	/// goes out of scope before the value is written.
 	private String mPendingKey = new .() ~ delete _;
 	private bool mHasPendingKey;
 

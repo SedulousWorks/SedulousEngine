@@ -378,8 +378,8 @@ class TransitionTests
 		Test.Assert(leaf.ResolveStyle(.Transition).AsTransitions == null);
 		Test.Assert(group.ResolveStyle(.Transition).AsTransitions == null);
 
-		// Raptor opts ButtonBase out here; a group stands in, the point being that a later
-		// type rule overrides the View wide one.
+		// A group is opted out here, the point being that a later type rule overrides the View
+		// wide one.
 		fixture.Context.SetStyleSheet(LoadSSS("""
 			View { transition: all 120ms ease-out; }
 			TestGroup { transition: none; }

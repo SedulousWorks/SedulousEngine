@@ -5,8 +5,7 @@ namespace Sedulous.Core.Logging;
 /// The process-wide logger.
 ///
 /// The same exception the job system makes, for the same reason: threading a logger
-/// through everything that might want to say something costs more than it buys, and
-/// Raptor's global worked well.
+/// through everything that might want to say something costs more than it buys.
 ///
 /// Ownership still flows down. The application constructs whatever logger it wants,
 /// composite or otherwise, and installs it here; owns says whether this should delete it

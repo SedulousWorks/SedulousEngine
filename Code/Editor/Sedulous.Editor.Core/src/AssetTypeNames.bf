@@ -4,8 +4,8 @@ namespace Sedulous.Editor.Core;
 
 /// A content instance's type name is the asset type's FULL name
 /// ("Sedulous.Geometry.Pipeline.StaticMeshAsset"); the editor's filters, icons and thumbnail
-/// generators name asset types by their SHORT name ("StaticMeshAsset"), as Raptor did. These
-/// bridge the two.
+/// generators name asset types by their SHORT name ("StaticMeshAsset"). These bridge the
+/// two.
 static class AssetTypeNames
 {
 	/// The segment after the last dot, or the whole name when it has none.

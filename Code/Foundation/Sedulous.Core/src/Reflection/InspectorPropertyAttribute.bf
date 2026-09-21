@@ -7,7 +7,6 @@ namespace Sedulous.Core;
 ///
 /// For a value that is not a field: a flag inside a class the component only points at,
 /// a count. A field is a row by being public; this is the same opt in for a method pair.
-/// Raptor's TypeBuilder::AccessorProperty and ComputedProperty.
 [AttributeUsage(.Method, .NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
 struct InspectorPropertyAttribute : Attribute
 {

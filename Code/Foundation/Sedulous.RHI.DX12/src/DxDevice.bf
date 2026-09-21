@@ -702,12 +702,6 @@ class DxDevice : IDevice
 		surface = null;
 	}
 
-	// ==================================================================
-	// PARTIALLY PORTED. Format support, the indirect command signatures, the internal blit
-	// pipeline and extension detection are still in RaptorCode, which says what remains.
-	// The command pool and the swap chain wait on their own types.
-	// ==================================================================
-
 	/// The blit pipeline: a fullscreen triangle generated from the vertex id, sampling one
 	/// texture. D3D12 has no blit of its own, so Blit and GenerateMipmaps draw with this.
 	///

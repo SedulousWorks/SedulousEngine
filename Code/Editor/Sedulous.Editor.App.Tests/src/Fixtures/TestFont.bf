@@ -34,7 +34,7 @@ static class TestFont
 	}
 
 	/// Null when the asset is not there, so a checkout without the data skips rather than
-	/// reporting the port broken.
+	/// reporting the editor broken.
 	public static IFont Load()
 	{
 		let path = scope String();

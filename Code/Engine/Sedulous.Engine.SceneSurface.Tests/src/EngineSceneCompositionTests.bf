@@ -29,8 +29,7 @@ static class EngineSceneCompositionTests
 		let scratch = scope Scene("surface");
 		EngineSceneComposition.AddAllSceneManagers(scratch);
 
-		// Each of these was missing from an export tool's private copy of the list at some
-		// point in Raptor's history.
+		// Each of these is the kind that goes missing from a tool's private copy of the list.
 		Test.Assert(scratch.HasSystem<PropertyAnimatorComponentManager>());
 		Test.Assert(scratch.HasSystem<PostProcessSystem>());
 		Test.Assert(scratch.HasSystem<ScriptComponentManager>());

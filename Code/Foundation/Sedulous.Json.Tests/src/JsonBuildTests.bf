@@ -59,8 +59,8 @@ class JsonBuildTests
 		defer delete object;
 		object.Set("args", JsonValue.MakeArray());
 
-		// BORROWED, not a copy: this is where Beef parts company with Raptor, whose
-		// accessors return an owned value because theirs cross into a script VM.
+		// BORROWED, not a copy: accessors hand back the live child, and Clone is the way to
+		// an independent value.
 		object.Get("args").Add(JsonValue.MakeNumber(1));
 		Test.Assert(object.Get("args").Count == 1);
 	}

@@ -28,9 +28,9 @@ class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>
 	/// Points the entity's mesh at a resource ID and binds it through the manager the scene
 	/// was resolved with, so the swap takes effect live.
 	///
-	/// Raptor offers this through the SceneRender script facade; it belongs here, where the
-	/// components already are. Before any resolve there is no manager: the id is set and
-	/// nothing binds, which is what a bare tool gets.
+	/// It belongs here, where the components already are, rather than on a script facade.
+	/// Before any resolve there is no manager: the id is set and nothing binds, which is what
+	/// a bare tool gets.
 	public bool SetMesh(EntityHandle entity, Guid id)
 	{
 		let component = Get(entity);
@@ -45,9 +45,9 @@ class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>
 
 	/// Points one of the entity's material slots at a resource ID and binds it.
 	///
-	/// The counterpart to SetMesh, and Raptor's other half of the same facade. Slot 0 is the
-	/// whole-mesh slot a single material mesh uses, so it is the default; the list grows to
-	/// reach a higher slot, because a mesh may be bound before its materials are.
+	/// The counterpart to SetMesh. Slot 0 is the whole-mesh slot a single material mesh uses,
+	/// so it is the default; the list grows to reach a higher slot, because a mesh may be
+	/// bound before its materials are.
 	public bool SetMaterial(EntityHandle entity, Guid id, int slot = 0)
 	{
 		let component = Get(entity);

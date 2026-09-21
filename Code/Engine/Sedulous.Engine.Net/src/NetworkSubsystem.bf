@@ -23,9 +23,8 @@ class NetworkSubsystem : Subsystem
 	public void SetEndpointSource(delegate void(delegate void(NetworkManager)) source) =>
 		mEndpoints = source;
 
-	// Raptor registers the reflected network component in OnInit. Here the component's own
-	// reflection is what the serializer reads, so there is no registration to make and no
-	// OnInit to write.
+	// The component's own reflection is what the serializer reads, so there is no reflected
+	// component to register and no OnInit to write.
 
 	/// The transport pump, on the Context lane.
 	///

@@ -67,14 +67,13 @@ class PhysicsSceneSystem : SceneSystem
 	/// missing body would drop it silently and leave the thing to fall. The queue is flushed
 	/// once, where the body is created.
 	///
-	/// Raptor reaches this through its script facade; the port puts it here, because it is
-	/// the world that makes it possible and the facade only forwarded.
+	/// It lives here rather than on a script facade, because it is the world that makes it
+	/// possible and a facade would only forward.
 	// ---- scene queries --------------------------------------------------------------------
 	//
-	// Raptor keeps these on a ScenePhysics facade that forwards to the world. There is no
-	// facade here, so they live where the world does, and they are the script surface for
-	// asking the scene about space: what is at a point, what a ray meets, how heavy the world
-	// is. Every one answers something explicit rather than mutating state to read back.
+	// They live where the world does, and they are the script surface for asking the scene
+	// about space: what is at a point, what a ray meets, how heavy the world is. Every one
+	// answers something explicit rather than mutating state to read back.
 
 	public void SetGravity(Float3 gravity)
 	{

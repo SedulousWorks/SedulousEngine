@@ -12,9 +12,9 @@ namespace Sedulous.Terrain.Resource;
 /// them. The base is what shows wherever the painted weights do not sum to one; it is not
 /// part of the palette and is never painted directly. An unset map identity is that feature's
 /// off path rather than an error.
-/// Version five, matching the cooked layout Raptor stamps: the base and palette maps, the
-/// height blend and the coverage masks each added fields, and a payload from before any of
-/// them is refused rather than read as though those fields were there.
+/// Version five: the base and palette maps, the height blend and the coverage masks each
+/// added fields, and a payload from before any of them is refused rather than read as
+/// though those fields were there.
 [Serializable(5)]
 class TerrainSource
 {

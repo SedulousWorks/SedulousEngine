@@ -12,10 +12,9 @@ namespace Sedulous.PropertyAnimation;
 /// instance, and the engine is what binds an entity to a component. That is what lets a
 /// headless consumer, an editor page or a test, evaluate a clip without any of the scene.
 ///
-/// Raptor carries its own reflection tables, because C++ has none. Beef's reflection IS the
-/// language's, so the chain here is the language's own field descriptions rather than a
-/// parallel set of them; the shape, and what resolving and writing mean, are unchanged. A type
-/// must be marked for reflection for its fields to be found.
+/// Beef's reflection IS the language's, so the chain here is the language's own field
+/// descriptions rather than a parallel set of them. A type must be marked for reflection
+/// for its fields to be found.
 static class PropertyBindingResolver
 {
 	/// Resolves a dot joined path against a type, walking a nested struct for each

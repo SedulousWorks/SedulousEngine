@@ -23,8 +23,8 @@ static class XmlLexer
 	/// What a name may START with: a letter, an underscore, or a colon, plus every byte
 	/// above ASCII.
 	///
-	/// Raptor keeps 256-byte lookup tables for these. The predicate form says the rule
-	/// rather than encoding it, and a test walks all 256 values to prove the two agree.
+	/// A predicate rather than a 256-byte lookup table: it says the rule rather than
+	/// encoding it, and a test walks all 256 values to prove the two agree.
 	/// Bytes above 0x7F are accepted wholesale because a UTF-8 lead or continuation byte
 	/// belongs to a character this byte-wise scan does not decode, and the alternative is
 	/// rejecting every non-ASCII name.

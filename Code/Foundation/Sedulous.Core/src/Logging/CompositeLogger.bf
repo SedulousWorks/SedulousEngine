@@ -5,9 +5,9 @@ namespace Sedulous.Core.Logging;
 
 /// Fans one log call out to several loggers.
 ///
-/// This is what Raptor's sink list becomes. Keeping it as an ILogger rather than as a
-/// list inside every logger means a caller who wants console-and-file composes two
-/// loggers, and a caller who wants one pays for nothing.
+/// Keeping it as an ILogger rather than as a sink list inside every logger means a caller
+/// who wants console-and-file composes two loggers, and a caller who wants one pays for
+/// nothing.
 ///
 /// It implements ILogger directly rather than extending BaseLogger, so each child
 /// applies its OWN level filter and formatter. Formatting here and passing the result

@@ -2,7 +2,7 @@ namespace Sedulous.Engine.Terrain.Backend.Tests;
 
 /// Which RHI backend a probe fixture builds its device on.
 ///
-/// Vulkan is the REFERENCE. Every ported case asserts against pixels a Vulkan device wrote,
+/// Vulkan is the REFERENCE. Every case asserts against pixels a Vulkan device wrote,
 /// and the cross backend case compares the others to it rather than to a constant.
 ///
 /// WebGpu is the DESKTOP WebGPU backend, not the browser one. That is the point: the shader

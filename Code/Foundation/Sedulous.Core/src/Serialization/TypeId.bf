@@ -7,10 +7,10 @@ static
 {
 	/// A stable type id, hashed from the type's qualified name with FNV-1a.
 	///
-	/// Raptor keeps a hand-maintained number per type, which is one more thing to get
-	/// wrong and one more thing to remember. A name hash needs nobody to maintain it and
-	/// is stable across builds, which a runtime type id is not. The only thing that
-	/// changes it is renaming or moving the type, and that IS a format change.
+	/// A hand-maintained number per type would be one more thing to get wrong and one more
+	/// thing to remember. A name hash needs nobody to maintain it and is stable across
+	/// builds, which a runtime type id is not. The only thing that changes it is renaming
+	/// or moving the type, and that IS a format change.
 	public static uint64 TypeIdOf(StringView qualifiedName)
 	{
 		var hash = 0xCBF29CE484222325UL;
