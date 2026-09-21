@@ -115,13 +115,12 @@ static class ScriptThunkTests
 		let ctx = scope ScratchCallContext();
 		let thing = scope $"{cFixture}.Thing";
 
-		// The factory hands the object over.
+		// The factory lends the object: the fixture keeps what it makes.
 		var frame = ScriptCallFrame(ctx, default);
 		Method(s, thing, "Make").Invoke(ref frame);
 		Test.Assert(frame.Result.Kind == .Object);
 		let made = frame.Result.AsObject as Thing;
 		Test.Assert(made != null);
-		defer delete made;
 
 		frame = ScriptCallFrame(ctx, default);
 		frame.Self = .FromObject(made);
