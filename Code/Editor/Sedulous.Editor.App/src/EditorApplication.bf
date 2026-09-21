@@ -67,7 +67,6 @@ class EditorApplication : IApplication
 	private List<EditorLogEntry> mPendingLog = new .() ~ DeleteContainerAndItems!(_);
 	private uint64 mLogSequence = 0;
 
-	private EditorContext mContext = new .() ~ delete _;
 	private EditorProject mProject = null ~ delete _;
 	/// Exe-assembled through RegisterEditors.
 	private BuilderRegistry mBuilders = new .() ~ delete _;
@@ -115,6 +114,10 @@ class EditorApplication : IApplication
 	/// The data mount.
 	private NativeFileSystem mDataFileSystem = null ~ delete _;
 	private UIHost mUiHost = null ~ delete _;
+	/// Owns the pages, and a page owns its content view: a NumericField in a closed scene
+	/// page's inspector detaches its decorations from its context on the way out, so the
+	/// context has to still be there.
+	private EditorContext mContext = new .() ~ delete _;
 	/// The content scale the icon set was last baked for.
 	private float mIconBakeScale = 0.0f;
 	/// Built on the first EnterManagerMode.
@@ -643,6 +646,7 @@ class EditorApplication : IApplication
 		}
 
 		mElapsed += dt;
+		LeakProbe.Update(dt);
 		if (!mConfig.ScreenshotPath.IsEmpty && !mScreenshotFired && (mElapsed >= mConfig.ScreenshotAfterSeconds))
 		{
 			mScreenshotFired = true;

@@ -86,8 +86,10 @@ class SceneEditorPage : UIEditorPage
 	private SelectTransformTool mSelectTool = null;
 	private GizmoRendererRegistry mComponentGizmos = new .() ~ delete _;
 
-	private PropertyAnimationPanel mPropAnimPanel = null;
-	private FlexLayout mToolPanelSlot = null;
+	/// The dock BORROWS a tab's content and takes a reference of its own, unlike AddView,
+	/// so these two keep the page's reference and give it back in the destructor.
+	private PropertyAnimationPanel mPropAnimPanel = null ~ { if (_ != null) _.ReleaseRef(); };
+	private FlexLayout mToolPanelSlot = null ~ { if (_ != null) _.ReleaseRef(); };
 	private Panel mToolOverlay = null;
 	private AbsoluteLayout mToolFloatLayer = null;
 	private FloatingPanel mToolFloat = null;
