@@ -94,6 +94,35 @@ class InspectorViewTests
 		Test.Assert(list.SlotNames[2] == "(missing)"); // a guid no entity answers to
 	}
 
+	/// An entity ref row's refresher runs on every later Refresh, long after the section that
+	/// built it went out of scope; it must read the name through the target, not the section.
+	[Test]
+	public static void AnEntityRefRowFollowsARenameAcrossRefreshes()
+	{
+		SceneInspectors.RegisterBuiltin();
+		let scene = scope Scene();
+		let followers = scene.AddSystem<PathFollowComponentManager>();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let editor = scope EditorContext();
+		let inspector = new SceneInspectorView(editor, edit);
+		defer inspector.ReleaseRef();
+
+		let cart = edit.CreateEntity("Cart");
+		let track = edit.CreateEntity("Track");
+		followers.Add(scene.FindEntity(cart)).Spline = EntityRef(track);
+
+		edit.EntitySelection.Set(cart);
+		inspector.Refresh();
+		Test.Assert((Find(inspector, "Spline") as ResourceRefEditor).ValueText == "Track");
+
+		// The rename lands through the refresher, with the building section long gone.
+		edit.RenameEntity(track, "Loop");
+		inspector.Refresh();
+		inspector.Refresh();
+		Test.Assert((Find(inspector, "Spline") as ResourceRefEditor).ValueText == "Loop");
+	}
+
 	[Test]
 	public static void GeneratedLightRowsCarryRangesLabelsAndConditions()
 	{

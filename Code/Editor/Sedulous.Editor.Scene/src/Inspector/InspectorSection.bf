@@ -279,7 +279,7 @@ class InspectorSection
 		Keep(read);
 		let target = mTarget;
 		let owner = mOwner;
-		let editor = new ResourceRefEditor(field, EntityNameFor(Read(read, Guid()), .. scope .()), mCategory);
+		let editor = new ResourceRefEditor(field, EntityNameFor(target, Read(read, Guid()), .. scope .()), mCategory);
 		editor.OnPick = new [=owner, =target, =key, =read]() =>
 		{
 			if (owner.Context == null)
@@ -288,9 +288,9 @@ class InspectorSection
 			dialog.OnPicked = new [=target, =key](picked) => { target.SetEntityRef(key, picked); };
 			dialog.Show(owner.Context);
 		};
-		Add(editor, new [=this, =editor, =read, =target]() =>
+		Add(editor, new [=editor, =read, =target]() =>
 		{
-			editor.SetValueText(EntityNameFor(Read(read, target, Guid()), .. scope .()));
+			editor.SetValueText(EntityNameFor(target, Read(read, target, Guid()), .. scope .()));
 		});
 	}
 
@@ -391,14 +391,14 @@ class InspectorSection
 		let target = mTarget;
 		let owner = mOwner;
 		let list = new ContainerListEditor(field, mCategory);
-		delegate void(List<String> outNames) computeNames = new [=this, =read, =target](outNames) =>
+		delegate void(List<String> outNames) computeNames = new [=read, =target](outNames) =>
 		{
 			ClearAndDeleteItems(outNames);
 			let p = target.Address;
 			if (p == null)
 				return;
 			for (let reference in read(p))
-				outNames.Add(reference.IsNil ? new String("None") : EntityNameFor(reference.Id, .. new String()));
+				outNames.Add(reference.IsNil ? new String("None") : EntityNameFor(target, reference.Id, .. new String()));
 		};
 		Keep(computeNames);
 		computeNames(list.SlotNames);
@@ -612,15 +612,17 @@ class InspectorSection
 			target.Edit.SetSceneSettingResourceRef<T>(settings.Type, key, id, resources);
 	}
 
-	private void EntityNameFor(Guid target, String outName)
+	/// STATIC, taking the target: the section is scoped to the build and gone by the time a
+	/// refresher runs, so a closure must never capture it.
+	private static void EntityNameFor(InspectorTarget target, Guid id, String outName)
 	{
-		if (target.IsNil)
+		if (id.IsNil)
 		{
 			outName.Set("(none)");
 			return;
 		}
-		let scene = mTarget.Edit.Scene;
-		let h = scene.FindEntity(target);
+		let scene = target.Edit.Scene;
+		let h = scene.FindEntity(id);
 		outName.Set(h.IsAssigned ? scene.GetEntityName(h) : "(missing)");
 	}
 
