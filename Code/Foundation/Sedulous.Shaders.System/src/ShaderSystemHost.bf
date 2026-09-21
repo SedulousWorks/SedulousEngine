@@ -70,7 +70,10 @@ class ShaderSystemHost
 
 		mDataFileSystem = dataFileSystem;
 
-		let haveSources = (dataFileSystem != null) && dataFileSystem.Exists(cShaderFolder);
+		// Sources present means stage files, not the folder: a dist stages ONLY the cooked
+		// pack under Shaders/, and an editor dist ships DXC too, so judging by the folder alone
+		// put that dist in development mode over an empty corpus.
+		let haveSources = (dataFileSystem != null) && HasShaderSources(dataFileSystem);
 		let devPossible = (mCompiler != null) && haveSources;
 		let wantPack = WantPack(policy, devPossible);
 		let havePack = wantPack && LoadPack();
@@ -94,6 +97,34 @@ class ShaderSystemHost
 		}
 		AttachFileProvider();
 		return .Ok;
+	}
+
+	/// True when Shaders/ holds at least one .hlsl stage file or .hlsli include, the
+	/// development corpus; false for a missing folder or one holding only the cooked pack.
+	private static bool HasShaderSources(IFileSystem dataFileSystem)
+	{
+		if (!dataFileSystem.Exists(cShaderFolder))
+			return false;
+		let enumerable = dataFileSystem as IEnumerableFileSystem;
+		if (enumerable == null)
+			return true; // a mount that cannot list: the folder is the only evidence
+
+		let entries = scope List<DirEntry>();
+		defer
+		{
+			for (var entry in ref entries)
+				entry.Dispose();
+		}
+		if (enumerable.Enumerate(cShaderFolder, entries) case .Err)
+			return false;
+		for (let entry in entries)
+		{
+			if (entry.IsDirectory)
+				continue;
+			if (entry.Name.EndsWith(".hlsl") || entry.Name.EndsWith(".hlsli"))
+				return true;
+		}
+		return false;
 	}
 
 	private bool WantPack(ShaderPackPolicy policy, bool devPossible)

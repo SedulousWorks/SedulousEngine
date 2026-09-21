@@ -170,4 +170,55 @@ class ShaderSystemHostTests
 		host.Shutdown();
 		Test.Assert(!host.IsReady, "a second shutdown changes nothing");
 	}
+
+	/// A dist data root holds ONLY the pack under Shaders/, no .hlsl sources, and an editor
+	/// dist ships DXC beside it: the folder's existence must not read as sources present,
+	/// which put the shipped editor in development mode over an empty corpus.
+	[Test]
+	public static void ADistRootWithOnlyThePackEntersPackMode()
+	{
+		let root = scope String();
+		global::System.IO.Path.GetTempPath(root).IgnoreError();
+		root.Append("sedulous_host_dist");
+		RemoveDirectoryRecursive(root);
+		let shaderDir = PathJoin(root, ShaderSystemHost.cShaderFolder, .. scope String());
+		CreateDirectory(shaderDir);
+		defer { RemoveDirectoryRecursive(root); }
+		{
+			let pack = scope CookedShaderPack();
+			var blob = uint8[1](1);
+			pack.Add("x", .Vertex, .None, .SpirV, .(&blob[0], 1));
+			let output = scope FileStream(PathJoin(root, ShaderSystemHost.cShaderPackPath, .. scope String()), .Write);
+			Test.Assert(output.IsValid);
+			Test.Assert(pack.Write(output) case .Ok);
+		}
+
+		IBackend backend = null;
+		let device = MakeDevice(&backend);
+		Test.Assert(device != null);
+		defer
+		{
+			device.Destroy();
+			backend.Destroy();
+			delete backend;
+		}
+
+		{
+			let host = scope ShaderSystemHost();
+			Test.Assert(host.Initialize(device, scope NativeFileSystem(root)) case .Ok); // Automatic
+			Test.Assert(host.UsingPack, "a root holding only the pack is a dist");
+			Test.Assert(host.PackVariantCount == 1);
+		}
+
+		// A stage file beside the pack is a corpus again: development first with a compiler,
+		// else the pack still serves.
+		let path = PathJoin(shaderDir, "hosted.vs.hlsl", .. scope String());
+		let source = "float4 main(uint id : SV_VertexID) : SV_Position { return float4(0, 0, 0, 1); }\n";
+		WriteFile(path, .((uint8*)source.Ptr, source.Length)).IgnoreError();
+		{
+			let host = scope ShaderSystemHost();
+			Test.Assert(host.Initialize(device, scope NativeFileSystem(root)) case .Ok);
+			Test.Assert(host.UsingPack == !HaveDxc());
+		}
+	}
 }
