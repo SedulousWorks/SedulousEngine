@@ -100,8 +100,7 @@ extension AssetsView
 					entry.Described = true;
 				}
 			};
-		for (let entry in dialog.Files)
-			dialog.DescribeFile(entry);
+		dialog.DescribeAll(); // describes the inline files AND refreshes the detail and the Import gate
 
 		// Worker prepares queue on the job service and stream into the open dialog, which
 		// holds a reference for each in-flight job.

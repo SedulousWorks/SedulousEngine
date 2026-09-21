@@ -94,6 +94,26 @@ class BatchImportDialog : Dialog
 			mDestinationText.SetText(destination);
 	}
 
+	/// Describes every file through DescribeFile, then refreshes the detail and the Import
+	/// gate. The owner assigns DescribeFile AFTER construction, so the constructor's detail
+	/// and gate saw nothing described; the owner calls this once before showing the dialog,
+	/// and worker prepared files stay reading until their OnFilePrepared. Without the refresh
+	/// an inline importer left the dialog gated for good: Import disabled, the detail stuck on
+	/// reading the file.
+	public void DescribeAll()
+	{
+		if (DescribeFile != null)
+		{
+			for (let entry in mFiles)
+				DescribeFile(entry);
+		}
+		QueueRebuildDetail();
+		SyncImportEnabled();
+	}
+
+	/// The Import gate as the button shows it: every enabled file described.
+	public bool ImportEnabled => (mImportButton != null) && mImportButton.IsEnabled;
+
 	/// A worker prepare landed for the index; the owner filled Prepared, Plan and Described.
 	/// Refreshes the detail, if that file is selected, and the Import gate.
 	public void OnFilePrepared(int index)
