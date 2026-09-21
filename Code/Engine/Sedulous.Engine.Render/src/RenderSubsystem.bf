@@ -39,6 +39,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	private OverlayRegistry<IScreenOverlay> mScreenOverlays = new .() ~ delete _;
 
 	private RenderFrame mFrame = null ~ delete _;
+	/// The GPU picker, created on the first request; owned, and freed after the frame.
+	private PickSystem mPickSystem = null ~ delete _;
 	// ---- the pass set, all OWNED and all OPTIONAL ----
 	//
 	// Every one of these degrades rather than fails: no clustering falls back to the shader's
@@ -442,6 +444,53 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		return created;
 	}
 
+	// ---- GPU picking ------------------------------------------------------------------------
+
+	/// Asks for the entities under a viewport rect, in the coordinates of the viewport's last
+	/// RenderScene. Returns the request id, or PickSystem.cInvalidRequest for a null key. The
+	/// pass is declared in the next frame that renders the viewport, and the result is
+	/// readable a couple of frames later through TryTakePickResult.
+	public uint32 RequestPick(void* viewportKey, int32 x, int32 y, uint32 width = 1,
+		uint32 height = 1)
+	{
+		if ((viewportKey == null) || (mDevice == null))
+			return PickSystem.cInvalidRequest;
+		EnsurePickSystem();
+		return mPickSystem.Request(viewportKey, .(x, y, width, height));
+	}
+
+	/// Takes a finished request's hits. False while it is still in flight, or once it has
+	/// expired or been cancelled.
+	public bool TryTakePickResult(uint32 request, PickResult outResult)
+	{
+		if (mPickSystem == null)
+			return false;
+		return mPickSystem.TryTakeResult(request, outResult);
+	}
+
+	public bool IsPickPending(uint32 request)
+	{
+		return (mPickSystem != null) && mPickSystem.IsPending(request);
+	}
+
+	/// Drops every request against a viewport: for a viewport closing while a pick is in
+	/// flight.
+	public void CancelPicks(void* viewportKey)
+	{
+		if (mPickSystem != null)
+			mPickSystem.Cancel(viewportKey);
+	}
+
+	private void EnsurePickSystem()
+	{
+		if (mPickSystem != null)
+			return;
+		mPickSystem = new PickSystem(mDevice);
+		mPickSystem.SetRetireQueue(mRetireQueue);
+		if (mFrame != null)
+			mFrame.SetPick(mPickSystem);
+	}
+
 	// ---- environment source -----------------------------------------------------------------
 
 	/// Sets the scene's equirectangular environment, as four floats per texel.
@@ -621,6 +670,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			mFxaaPass, mExposurePass, mDebugBlitPass);
 		// Per pass timestamps, cheap enough to leave on and read from a debug dump.
 		mFrame.EnableGpuProfiling();
+		if (mPickSystem != null)
+			mFrame.SetPick(mPickSystem);
 	}
 
 	/// Registers as a scene observer, which is how the borrowed providers get cleaned up.
@@ -664,6 +715,9 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		//
 		// Nulled as they go, so the `~ delete _` on each field is a no-op afterwards.
 		DeleteAndNullify!(mFrame);
+		// After the frame, which records through it; its readback buffers go straight to the
+		// idle device.
+		DeleteAndNullify!(mPickSystem);
 
 		DeleteAndNullify!(mClusterSystem);
 		DeleteAndNullify!(mTonemapPass);
@@ -846,6 +900,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		settings.ViewportY = viewport.Y;
 		settings.ViewportWidth = viewport.Width;
 		settings.ViewportHeight = viewport.Height;
+		// The picker matches requests to views by this key.
+		settings.ViewportKey = viewportKey;
 		settings.TargetTexture = targetState.Texture;
 		settings.TargetCurrentState = targetState.CurrentState;
 		settings.TargetFinalState = targetState.FinalState;

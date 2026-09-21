@@ -84,6 +84,37 @@ class SceneEditorPage : UIEditorPage
 	private ViewportToolManager mViewportTools = new .() ~ delete _;
 	/// Borrowed; the manager owns the default tool.
 	private SelectTransformTool mSelectTool = null;
+
+	/// The GPU pick seam the tools see: the render subsystem's RequestPick keyed by THIS
+	/// page's viewport, the same key its RenderScene call carries, hits decoded to entity
+	/// handles.
+	private class ViewportPicker : IViewportPicker
+	{
+		private SceneEditorPage mPage;
+		private PickResult mResult = new .() ~ delete _;
+
+		public this(SceneEditorPage page) { mPage = page; }
+
+		public uint32 RequestPick(int32 x, int32 y, uint32 width, uint32 height)
+		{
+			let render = mPage.mRender;
+			if ((render == null) || !render.IsReady || (mPage.mViewport == null))
+				return 0;
+			return render.RequestPick(Internal.UnsafeCastToPtr(mPage.mViewport), x, y, width, height);
+		}
+
+		public bool TryTakePick(uint32 request, List<EntityHandle> hits)
+		{
+			let render = mPage.mRender;
+			if ((render == null) || !render.TryTakePickResult(request, mResult))
+				return false;
+			hits.Clear();
+			for (let hit in mResult.Hits)
+				hits.Add(.(hit.EntityIndex, hit.Generation));
+			return true;
+		}
+	}
+	private ViewportPicker mPicker = new .(this) ~ delete _;
 	private GizmoRendererRegistry mComponentGizmos = new .() ~ delete _;
 
 	/// The dock BORROWS a tab's content and takes a reference of its own, unlike AddView,
@@ -151,12 +182,14 @@ class SceneEditorPage : UIEditorPage
 			mInspector = new SceneInspectorView(context, mEditContext);
 
 			mSelectTool = (SelectTransformTool)mViewportTools.Add(new SelectTransformTool(mEditContext)); // the default
+			mSelectTool.SetPicker(mPicker); // GPU pick over this page's viewport
 			var toolHost = ViewportToolHostContext();
 			toolHost.Scene = mScene;
 			toolHost.Commands = Commands;
 			toolHost.EntitySelection = mEditContext.EntitySelection;
 			toolHost.AssetEdits = context;
 			toolHost.EditorContext = context;
+			toolHost.Picker = mPicker;
 			ViewportToolProviderRegistry.CreateAll(mViewportTools, toolHost);
 			BuiltinGizmoRenderers.Register(mComponentGizmos);
 		}
@@ -528,6 +561,8 @@ class SceneEditorPage : UIEditorPage
 			mOpenAssetInterceptorId = 0;
 		}
 		mCamera.ReleaseCapture((mViewport != null) ? mViewport.Mouse : null); // never close captured
+		if (mRender != null)
+			mRender.CancelPicks(Internal.UnsafeCastToPtr(mViewport)); // the key dies with the viewport
 		mViewport.Shutdown();
 		if (mPreviewViewport != null)
 			mPreviewViewport.Shutdown();

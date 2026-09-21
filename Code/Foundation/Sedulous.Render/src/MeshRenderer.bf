@@ -32,6 +32,8 @@ class MeshRenderer : Renderer
 	private const uint32 cMaxLights = 256;
 	/// One per shadow pass and category run, sized with headroom since a slot is tiny.
 	private const uint32 cMaxShadowPasses = 256;
+	/// The instanced sets a pick pass can id per frame, each taking a shadow view ring slot.
+	private const uint32 cMaxPickMultiMeshSets = 64;
 	private const uint32 cMaxLocalShadows = RenderLimits.MaxLocalShadowEntries;
 	/// The skinning pool: the staging ring and its device mirror START here and GROW, by
 	/// powers of two up to the cap, the first frame that needs more.
@@ -235,6 +237,8 @@ class MeshRenderer : Renderer
 	private uint32 mLocalShadowBase = 0;
 	private uint32 mLocalShadowPassCount = 0;
 	private uint32 mCaptureFacePasses = 0;
+	/// The pick passes re-emitting the draws this frame.
+	private uint32 mPickPasses = 0;
 
 	private ISampler mEnvSampler = null;
 	private IBuffer mDummyShBuffer = null;
@@ -438,6 +442,11 @@ class MeshRenderer : Renderer
 	}
 
 	/// Each probe capture face is a forward pass of its own, so they count into the rings.
+	public override void SetPickPasses(uint32 passes)
+	{
+		mPickPasses = passes;
+	}
+
 	public override void SetCaptureFacePasses(uint32 passes)
 	{
 		mCaptureFacePasses = passes;
@@ -492,9 +501,12 @@ class MeshRenderer : Renderer
 		// capture face. Under counting overflows the rings at high draw counts, and an
 		// allocation that fails is a draw that silently disappears.
 		let drawCap = maxDraws * (2 + (uint32)ShadowCascades.Count + mLocalShadowPassCount
-			+ mCaptureFacePasses);
+			+ mCaptureFacePasses + mPickPasses);
+		// A pick pass takes shadow view slots too: one for itself and one per instanced set
+		// it ids.
+		let shadowViewCap = cMaxShadowPasses + mPickPasses * (1 + cMaxPickMultiMeshSets);
 
-		if (!mViewRing.Reserve(maxDraws) || !mShadowViewRing.Reserve(cMaxShadowPasses)
+		if (!mViewRing.Reserve(maxDraws) || !mShadowViewRing.Reserve(shadowViewCap)
 			|| !mObjectRing.Reserve(drawCap) || !mInstanceRing.Reserve(drawCap)
 			|| !mOffsetsRing.Reserve(drawCap) || !mLightRing.Reserve(cMaxLights)
 			|| !mLocalShadowRing.Reserve(cMaxLocalShadows) || !mBoneRing.Reserve(mBoneSlotsWanted))
@@ -1230,6 +1242,24 @@ class MeshRenderer : Renderer
 	public override void ResolveDepthOnly(RenderRecordContext context, Span<DrawItem> items,
 		List<ResolvedDraw> outDraws)
 	{
+		ResolveDepthLike(context, items, outDraws, false);
+	}
+
+	/// Re-emits this view's draws as PICK ID writers, the context's matrix being the cropped
+	/// camera projection and its colour format the RG32Uint id target: the depth only path
+	/// with the pick_ids shader, whose fragment writes each draw's entity index plus one and
+	/// generation. Static, skinned, instanced and multi mesh draws all pick; a masked material
+	/// keeps its cutout.
+	public override void ResolvePickIds(RenderRecordContext context, Span<DrawItem> items,
+		List<ResolvedDraw> outDraws)
+	{
+		ResolveDepthLike(context, items, outDraws, true);
+	}
+
+	/// The shared body of the depth only and the pick id paths.
+	private void ResolveDepthLike(RenderRecordContext context, Span<DrawItem> items,
+		List<ResolvedDraw> outDraws, bool pick)
+	{
 		if (!mReady || items.IsEmpty)
 			return;
 
@@ -1237,7 +1267,18 @@ class MeshRenderer : Renderer
 		if (!shadowView.Ok)
 			return;
 
-		*(MeshShadowViewData*)shadowView.Ptr = .(context.ViewProj);
+		if (pick)
+		{
+			// The pass level view: the cropped matrix and no group id, the draws carrying
+			// their own.
+			var pickView = MeshPickViewData();
+			pickView.ViewProj = context.ViewProj;
+			*(MeshPickViewData*)shadowView.Ptr = pickView;
+		}
+		else
+		{
+			*(MeshShadowViewData*)shadowView.Ptr = .(context.ViewProj);
+		}
 		let shadowViewOffset = shadowView.ByteOffset;
 
 		var i = 0;
@@ -1256,7 +1297,7 @@ class MeshRenderer : Renderer
 			{
 				if (mMeshes.GetOrUpload(head.Mesh) case .Ok(let gpuMesh))
 					ResolveMultiMeshDepth(context, shadowViewOffset, (MultiMeshRenderData)head,
-						gpuMesh, outDraws);
+						gpuMesh, outDraws, pick);
 				i++;
 				continue;
 			}
@@ -1278,9 +1319,9 @@ class MeshRenderer : Renderer
 			{
 				if ((runLength >= 2) || headSkinned)
 					ResolveDepthInstanced(context, shadowViewOffset, items, i, runLength, gpuMesh,
-						outDraws);
+						outDraws, pick);
 				else
-					ResolveDepthSingle(context, shadowViewOffset, head, gpuMesh, outDraws);
+					ResolveDepthSingle(context, shadowViewOffset, head, gpuMesh, outDraws, pick);
 			}
 
 			i = j;
@@ -1495,7 +1536,7 @@ class MeshRenderer : Renderer
 	}
 
 	private void ResolveDepthSingle(RenderRecordContext context, uint32 shadowViewOffset,
-		MeshRenderData md, GpuMesh mesh, List<ResolvedDraw> outDraws)
+		MeshRenderData md, GpuMesh mesh, List<ResolvedDraw> outDraws, bool pick)
 	{
 		uint32 boneBase = 0;
 		var skinned = (md.BoneMatrices != null) && (md.BoneCount > 0) && (md.Mesh != null)
@@ -1503,7 +1544,10 @@ class MeshRenderer : Renderer
 
 		// A masked caster casts a HOLEY shadow through the alpha test, which needs its material.
 		let masked = (md.Material != null) && (md.Material.Pipeline.BlendMode == .Masked);
-		var config = ShadowConfigFor(context, false, masked);
+		var config = pick ? PickConfigFor(context, false, masked) : ShadowConfigFor(context, false, masked);
+		// A two sided material picks both faces.
+		if (pick && (md.Material != null))
+			config.CullMode = md.Material.Pipeline.CullMode;
 
 		if (skinned)
 		{
@@ -1530,11 +1574,11 @@ class MeshRenderer : Renderer
 			{
 				layout = mShadowPipelineLayoutSingle;
 				materialSet = null;
-				config = ShadowConfigFor(context, false, false);
+				config = pick ? PickConfigFor(context, false, false) : ShadowConfigFor(context, false, false);
 			}
 		}
 
-		let pipeline = mPsoCache.GetPipeline(config, layout, .Undefined);
+		let pipeline = mPsoCache.GetPipeline(config, layout, pick ? context.ColorFormat : .Undefined);
 		if (pipeline == null)
 			return;
 
@@ -1548,6 +1592,9 @@ class MeshRenderer : Renderer
 		objectData.PrevWorld = md.World;
 		objectData.Tint = md.Color;
 		objectData.BoneBase = boneBase;
+		// The pick pass reads these; nought is nothing.
+		objectData.PickIndex = EntityTag.Index(md.EntityId) + 1;
+		objectData.PickGeneration = EntityTag.Generation(md.EntityId);
 		*(MeshObjectData*)object.Ptr = objectData;
 
 		var draw = ResolvedDraw();
@@ -1576,14 +1623,17 @@ class MeshRenderer : Renderer
 	}
 
 	private void ResolveDepthInstanced(RenderRecordContext context, uint32 shadowViewOffset,
-		Span<DrawItem> items, int first, uint32 count, GpuMesh mesh, List<ResolvedDraw> outDraws)
+		Span<DrawItem> items, int first, uint32 count, GpuMesh mesh, List<ResolvedDraw> outDraws,
+		bool pick)
 	{
 		let head = (MeshRenderData)items[first].Data;
 		let skinned = (head.BoneMatrices != null) && (head.Mesh != null) && head.Mesh.IsSkinned
 			&& (mesh.SkinBuffer != null);
 		let masked = (head.Material != null) && (head.Material.Pipeline.BlendMode == .Masked);
 
-		var config = ShadowConfigFor(context, true, masked);
+		var config = pick ? PickConfigFor(context, true, masked) : ShadowConfigFor(context, true, masked);
+		if (pick && (head.Material != null))
+			config.CullMode = head.Material.Pipeline.CullMode;
 		if (skinned)
 		{
 			config.VertexLayout = .SkinnedMesh;
@@ -1601,7 +1651,7 @@ class MeshRenderer : Renderer
 			{
 				layout = mShadowPipelineLayoutInstanced;
 				materialSet = null;
-				config = ShadowConfigFor(context, true, false);
+				config = pick ? PickConfigFor(context, true, false) : ShadowConfigFor(context, true, false);
 				if (skinned)
 				{
 					config.VertexLayout = .SkinnedMesh;
@@ -1610,7 +1660,7 @@ class MeshRenderer : Renderer
 			}
 		}
 
-		let pipeline = mPsoCache.GetPipeline(config, layout, .Undefined);
+		let pipeline = mPsoCache.GetPipeline(config, layout, pick ? context.ColorFormat : .Undefined);
 		if (pipeline == null)
 			return;
 
@@ -1642,7 +1692,12 @@ class MeshRenderer : Renderer
 				boneBase = slot.Base;
 				prevBase = slot.PrevBase;
 			}
-			offsetData[k] = .(instances.SlotIndex + k, boneBase, prevBase, 0);
+			// The pick pass carries the entity id in .z and .w: this fill is the pass's own,
+			// never shared with the forward, which reads the previous base from .z.
+			offsetData[k] = pick
+				? .(instances.SlotIndex + k, boneBase, EntityTag.Generation(md.EntityId),
+					EntityTag.Index(md.EntityId) + 1)
+				: .(instances.SlotIndex + k, boneBase, prevBase, 0);
 		}
 
 		if (feedsForward)
@@ -1763,7 +1818,7 @@ class MeshRenderer : Renderer
 	/// The depth only draw for an instanced caster, in the camera prepass and in every cascade:
 	/// the same persistent buffer and ramp, under the shadow layout.
 	private void ResolveMultiMeshDepth(RenderRecordContext context, uint32 shadowViewOffset,
-		MultiMeshRenderData multiMesh, GpuMesh mesh, List<ResolvedDraw> outDraws)
+		MultiMeshRenderData multiMesh, GpuMesh mesh, List<ResolvedDraw> outDraws, bool pick)
 	{
 		if (!mMultiMeshSets.TryGetValue(multiMesh.Key, let set))
 			return;
@@ -1774,9 +1829,29 @@ class MeshRenderer : Renderer
 		if (!skinned && (mRampBuffer == null))
 			return;
 
+		var viewOffset = shadowViewOffset;
+		if (pick)
+		{
+			// The set is ONE entity: its id rides a private view slot, since the persistent
+			// instance data and the shared ramp carry no per set id. Budgeted by
+			// cMaxPickMultiMeshSets; a set past the budget is not pickable this frame, and the
+			// editor's CPU pick still finds it.
+			let pickView = mShadowViewRing.Allocate();
+			if (!pickView.Ok)
+				return;
+			var data = MeshPickViewData();
+			data.ViewProj = context.ViewProj;
+			data.PickIndex = EntityTag.Index(multiMesh.EntityId) + 1;
+			data.PickGeneration = EntityTag.Generation(multiMesh.EntityId);
+			*(MeshPickViewData*)pickView.Ptr = data;
+			viewOffset = pickView.ByteOffset;
+		}
+
 		let masked = (multiMesh.Material != null)
 			&& (multiMesh.Material.Pipeline.BlendMode == .Masked);
-		var config = ShadowConfigFor(context, true, masked);
+		var config = pick ? PickConfigFor(context, true, masked) : ShadowConfigFor(context, true, masked);
+		if (pick && (multiMesh.Material != null))
+			config.CullMode = multiMesh.Material.Pipeline.CullMode;
 		if (skinned)
 		{
 			config.VertexLayout = .SkinnedMesh;
@@ -1794,7 +1869,7 @@ class MeshRenderer : Renderer
 			{
 				layout = mShadowPipelineLayoutInstanced;
 				materialSet = null;
-				config = ShadowConfigFor(context, true, false);
+				config = pick ? PickConfigFor(context, true, false) : ShadowConfigFor(context, true, false);
 				if (skinned)
 				{
 					config.VertexLayout = .SkinnedMesh;
@@ -1803,14 +1878,14 @@ class MeshRenderer : Renderer
 			}
 		}
 
-		let pipeline = mPsoCache.GetPipeline(config, layout, .Undefined);
+		let pipeline = mPsoCache.GetPipeline(config, layout, pick ? context.ColorFormat : .Undefined);
 		if (pipeline == null)
 			return;
 
 		var draw = ResolvedDraw();
 		draw.Pso = pipeline;
 		draw.ViewSet = mShadowViewBindGroup;
-		draw.ViewOffset = shadowViewOffset;
+		draw.ViewOffset = viewOffset;
 		draw.ViewDynamic = true;
 		draw.DrawSet = set.ActiveInstanceBindGroup;
 		draw.DrawDynamic = false;
@@ -1884,6 +1959,36 @@ class MeshRenderer : Renderer
 			config.DepthBiasSlopeScale = Depth.SlopeBiasAwayFromViewer(1.5f);
 		}
 
+		return config;
+	}
+
+	/// The pick id configuration: the depth only layouts with the pick_ids fragment writing the
+	/// RG32Uint id target, single sampled, no bias, a masked material alpha tested. Callers
+	/// override the cull mode from the material.
+	private static PipelineConfig PickConfigFor(RenderRecordContext context, bool instanced,
+		bool masked)
+	{
+		var config = PipelineConfig();
+		config.ShaderName = "pick_ids";
+		config.VertexLayout = .Mesh;
+		config.Instanced = instanced;
+		if (instanced)
+			config.ShaderFlags |= .Instanced;
+		// A cutout is not a pickable hole.
+		if (masked)
+			config.ShaderFlags |= .AlphaTest;
+		// The id writing fragment, into one integer target: no blend.
+		config.DepthOnly = false;
+		config.ColorTargetCount = 1;
+		config.ColorFormats[0] = context.ColorFormat;
+		config.BlendMode = .Opaque;
+		config.ColorWriteMask = .All;
+		config.DepthFormat = context.DepthFormat;
+		config.SampleCount = 1;
+		config.DepthMode = .ReadWrite;
+		// The nearest surface owns the texel.
+		config.DepthCompare = Depth.Nearer;
+		config.CullMode = .Back;
 		return config;
 	}
 
@@ -2253,8 +2358,11 @@ class MeshRenderer : Renderer
 		if ((buffer == null) || (boneBuffer == null))
 			return false;
 
+		// The range is the larger of the two layouts that read this slot: the shadow view (64)
+		// and the pick pass's view (80). WebGPU validates the bound size against the shader's
+		// declared block, so the range must cover both; the slot has room.
 		var entries = BindGroupEntry[2](
-			BindGroupEntry.BufferEntry(buffer, 0, sizeof(MeshShadowViewData)),
+			BindGroupEntry.BufferEntry(buffer, 0, sizeof(MeshPickViewData)),
 			BindGroupEntry.BufferEntry(boneBuffer, 0, mBoneDeviceBytes));
 
 		var desc = BindGroupDesc();

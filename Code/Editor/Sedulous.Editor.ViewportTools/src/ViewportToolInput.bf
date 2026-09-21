@@ -18,6 +18,13 @@ struct ViewportToolInput
 	/// aborts an in-flight gesture.
 	public bool PointerValid = true;
 
+	/// The pointer in view pixels (y down, row nought at the top) and the view's size: what a
+	/// GPU pick needs. Meaningful only while PointerValid and the size is non-zero.
+	public int32 PointerX = 0;
+	public int32 PointerY = 0;
+	public uint32 ViewportWidth = 0;
+	public uint32 ViewportHeight = 0;
+
 	/// Strictly "the pointer is over the viewport" (PointerValid also admits focused but not
 	/// hovered, so hotkeys keep working); click-initiated gestures require this one.
 	public bool PointerOver = true;

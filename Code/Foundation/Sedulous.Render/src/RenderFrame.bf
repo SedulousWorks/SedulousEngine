@@ -104,6 +104,11 @@ class RenderFrame
 
 	private List<ResolvedDraw> mPrepassResolved = new .() ~ delete _;
 	private List<ResolvedDraw> mShadowResolved = new .() ~ delete _;
+	/// The id draws of the pick passes, reused across them.
+	private List<ResolvedDraw> mPickResolved = new .() ~ delete _;
+	/// BORROWED: the subsystem owns it. Null means no pick passes.
+	private PickSystem mPick = null;
+	private PickRecordDelegate mPickRecord = new => RecordPickIds ~ delete _;
 
 	/// Slot k is the k-th distinct scene this frame.
 	private List<SceneShadowContext> mSceneShadowPool = new .() ~ DeleteContainerAndItems!(_);
@@ -324,6 +329,66 @@ class RenderFrame
 		mPass.SetShadowFarFade(mShadowFarFade);
 
 		mGraph.BeginFrame((int32)frameIndex);
+		if (mPick != null)
+			mPick.BeginFrame(frameIndex); // retire and decode the completed pick readbacks
+	}
+
+	/// GPU picking. Begin retires its readbacks; a view whose settings carry a viewport key
+	/// with pending requests declares its pick passes.
+	public void SetPick(PickSystem pick) => mPick = pick;
+
+	/// The pick system's record entry: re-emits a view's opaque, masked and blended draws as
+	/// pick id writers with the cropped world to clip.
+	private void RecordPickIds(IRenderPassEncoder pass, Float4x4 viewProj, PickRect rect,
+		Object viewContext)
+	{
+		let view = viewContext as RenderView;
+		if (view == null)
+			return;
+		uint32 viewIndex = 0;
+		for (int k < mViews.ActiveCount)
+		{
+			if (mViews.At(k) === view)
+			{
+				viewIndex = (uint32)k;
+				break;
+			}
+		}
+
+		var context = RenderRecordContext();
+		context.View = view;
+		context.Pass = pass;
+		context.ViewProj = viewProj; // the CROPPED camera projection
+		context.ViewMatrix = view.Camera.View; // the per view level selection, like the prepass
+		context.CameraPos = view.Camera.Position;
+		context.ColorFormat = PickSystem.cIdFormat;
+		context.DepthFormat = mPass.DepthFormat;
+		context.SampleCount = 1;
+		context.DepthPrepass = false;
+		context.FrameIndex = mFrameIndex;
+		context.ViewIndex = viewIndex;
+		context.FillInstanceCache = false; // never feeds the forward
+		context.NeedsMotion = false;
+
+		mPickResolved.Clear();
+		let items = view.DrawList;
+		var i = 0;
+		while (i < items.Length)
+		{
+			// Grouped by category AND renderer, the prepass rule: a run never crosses renderers.
+			let category = items[i].Data.Category;
+			let rendererId = items[i].Data.RendererId;
+			var j = i + 1;
+			while ((j < items.Length) && (items[j].Data.Category == category)
+				&& (items[j].Data.RendererId == rendererId))
+				j++;
+			let renderer = mRegistry.ById(rendererId);
+			if (renderer != null)
+				renderer.ResolvePickIds(context, .(items.Ptr + i, j - i), mPickResolved);
+			i = j;
+		}
+		for (let draw in mPickResolved)
+			DrawEmitter.EmitDraw(pass, draw);
 	}
 
 	/// Collects a view over a scene. Its sorted draw list is built NOW; the recording is
@@ -938,6 +1003,9 @@ class RenderFrame
 		let captureFaces = ((mProbeSystem != null) && !mProbeSystem.Captures.IsEmpty) ? (uint32)6 : 0;
 		for (let renderer in mRegistry.Unique)
 			renderer.SetCaptureFacePasses(captureFaces);
+		let pickPasses = (mPick != null) ? mPick.PendingTotal() : 0;
+		for (let renderer in mRegistry.Unique)
+			renderer.SetPickPasses(pickPasses);
 
 		if ((mProbeSystem != null) && (mProbeSystem.ActiveCount > 0))
 		{
@@ -1407,6 +1475,17 @@ class RenderFrame
 		// is applied BEFORE the matrix is read, so the prepass, the forward and the sky all use
 		// the SAME jittered one: a mismatch would break the early rejection.
 		let unjitteredViewProj = view.Camera.ViewProjection;
+		// GPU picking: a view whose viewport has pending requests re-emits its draws as id
+		// writers into per request rect sized targets. Declared BEFORE the jitter below moves
+		// the camera: a pick must see the unjittered pixel grid, or a one texel crop slides by
+		// up to half a pixel.
+		if ((mPick != null) && (view.Settings.ViewportKey != null)
+			&& (mPick.PendingCount(view.Settings.ViewportKey) > 0))
+		{
+			mPick.DeclarePasses(mGraph, view.Settings.ViewportKey, view.Camera.View,
+				view.Camera.Projection, view.ViewportWidth, view.ViewportHeight, mPass.DepthFormat,
+				mFrameIndex, mPickRecord, view);
+		}
 		var jitter = Float2(0.0f, 0.0f);
 		if (post.TaaEnabled && (mTaa != null))
 		{

@@ -153,6 +153,10 @@ over. New:
   properties, conditional visibility and ranges, where v0 described properties at runtime.
 - A viewport tool framework: select and transform, terrain sculpt and paint, and spline
   editing are all tools on the same footing.
+- GPU picking renders only the requested pixels. v0's pick pass drew the whole view into an
+  8 bit id buffer and waited a fixed two frames. Now a click renders a 1x1 id target through a
+  cropped projection, a marquee renders its rect, the readback is retired with the frame ring,
+  and ids carry the entity generation so a stale hit is never mistaken for a live entity.
 - The asset browser sits on top of the cook: cook status badges, favourites, and import
   through the pipeline.
 - Pages for audio bus layouts, input maps, collision shapes, heightfields, terrain,
@@ -169,6 +173,5 @@ using baked in paths.
 
 ## Coming back
 
-GPU entity picking through an id buffer is planned; for now the select tool picks by
-distance to the entity origin. Some other things from v0, such as the manual and the sample
-projects, will return as this branch settles.
+Some things from v0, such as the manual and the sample projects, will return as this branch
+settles.

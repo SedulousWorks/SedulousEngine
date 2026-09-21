@@ -143,6 +143,7 @@ class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent
 		data.HeightView = heightView;
 
 		data.ChunkToWorld = (mScene != null) ? mScene.GetWorldMatrix(owner) : Float4x4.Identity();
+		data.EntityId = EntityTag.Pack(owner.Index, owner.Generation); // the GPU pick's tag
 		data.GridSize = heightfield.Size;
 		data.WorldSizeXZ = heightfield.WorldSize;
 		data.MinY = heightfield.MinY;

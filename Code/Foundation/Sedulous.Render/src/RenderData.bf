@@ -36,4 +36,19 @@ class RenderData
 	/// Folds a mesh and material identity into the sort, so same state draws stay contiguous.
 	/// Opaque work only: blended work zeroes it, since depth has to dominate there.
 	public uint32 SortBatchKey = 0;
+	/// The producer's entity tag, in EntityTag's layout: what the GPU pick pass writes and its
+	/// readback decodes. Nought is untagged. Every producer whose draws should be pickable
+	/// stamps it: meshes, instanced sets, terrain.
+	public uint64 EntityId = 0;
+}
+
+/// The one layout of the tag a producer stamps on RenderData for picking: the scene entity's
+/// slot index in the low word, its generation in the high word. Producers pack, the pick
+/// readback unpacks; nothing in between interprets it.
+static class EntityTag
+{
+	public static uint64 Pack(uint32 index, uint32 generation) =>
+		((uint64)generation << 32) | (uint64)index;
+	public static uint32 Index(uint64 tag) => (uint32)(tag & 0xFFFFFFFF);
+	public static uint32 Generation(uint64 tag) => (uint32)(tag >> 32);
 }

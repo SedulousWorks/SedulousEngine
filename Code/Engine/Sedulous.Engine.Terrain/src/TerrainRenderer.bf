@@ -94,6 +94,30 @@ class TerrainRenderer : Renderer
 		public this() {}
 	}
 
+	/// The pick pass's view slot: the placement and the cropped projection where the depth
+	/// pass reads them, then the terrain entity's id. Mirrors terrain_pick.vs's prefix.
+	[CRepr]
+	private struct PickViewUniforms
+	{
+		public Float4x4 ChunkToWorld;
+		public Float4x4 ViewProj;
+		/// The entity index plus one; nought is nothing.
+		public uint32 PickIndex;
+		public uint32 PickGeneration;
+		public uint32 Pad0;
+		public uint32 Pad1;
+	}
+
+	private struct PickPso
+	{
+		public IRenderPipeline Pso = null;
+		public TextureFormat ColorFormat = .Undefined;
+		public TextureFormat DepthFormat = .Undefined;
+		public uint64 ShaderVersion = 0;
+
+		public this() {}
+	}
+
 	/// Keyed by the view's address, VALIDATED by its identity: a destroyed view's address is
 	/// handed straight back to the next allocation, and the cached group would then be
 	/// sampling a dead image.
@@ -204,6 +228,7 @@ class TerrainRenderer : Renderer
 	/// Nought is the camera prepass, which takes no bias; one is the shadow cascade, which
 	/// does.
 	private DepthPso[2] mDepthPso = .();
+	private PickPso mPickPso = .();
 	private TextureFormat mDepthFormat = .Undefined;
 
 	/// Scratch, reused per terrain: resolving is single threaded.
@@ -411,12 +436,29 @@ class TerrainRenderer : Renderer
 	public override void ResolveDepthOnly(RenderRecordContext context, Span<DrawItem> items,
 		List<ResolvedDraw> outDraws)
 	{
+		ResolveDepthLike(context, items, outDraws, false);
+	}
+
+	/// The terrain as a PICK ID writer: the depth cast with the pick fragment, every chunk
+	/// carrying the terrain entity's id through the view slot.
+	public override void ResolvePickIds(RenderRecordContext context, Span<DrawItem> items,
+		List<ResolvedDraw> outDraws)
+	{
+		ResolveDepthLike(context, items, outDraws, true);
+	}
+
+	private void ResolveDepthLike(RenderRecordContext context, Span<DrawItem> items,
+		List<ResolvedDraw> outDraws, bool pick)
+	{
 		if (items.IsEmpty)
 			return;
 
-		mDepthFormat = context.DepthFormat;
+		if (!pick)
+			mDepthFormat = context.DepthFormat;
 
-		let pso = EnsureDepthPipeline(context.DepthFormat, !context.DepthPrepass);
+		let pso = pick
+			? EnsurePickPipeline(context.ColorFormat, context.DepthFormat)
+			: EnsureDepthPipeline(context.DepthFormat, !context.DepthPrepass);
 		let viewBindGroup = EnsureDepthViewBindGroup();
 		let chunkBindGroup = EnsureChunkBindGroup();
 		if ((pso == null) || (viewBindGroup == null) || (chunkBindGroup == null))
@@ -440,12 +482,26 @@ class TerrainRenderer : Renderer
 			if (!viewRange.Ok)
 				continue;
 
-			// The depth vertex shader reads the placement and the view projection alone; the
-			// rest of the slot goes unread.
-			var uniforms = ViewUniforms();
-			uniforms.ChunkToWorld = data.ChunkToWorld;
-			uniforms.ViewProj = context.ViewProj;
-			Internal.MemCpy(viewRange.Ptr, &uniforms, sizeof(ViewUniforms));
+			if (pick)
+			{
+				// The pick vertex shader reads the placement, the cropped projection and the
+				// id; the id sits where the colour pass keeps its view matrix.
+				var uniforms = PickViewUniforms();
+				uniforms.ChunkToWorld = data.ChunkToWorld;
+				uniforms.ViewProj = context.ViewProj;
+				uniforms.PickIndex = EntityTag.Index(data.EntityId) + 1;
+				uniforms.PickGeneration = EntityTag.Generation(data.EntityId);
+				Internal.MemCpy(viewRange.Ptr, &uniforms, sizeof(PickViewUniforms));
+			}
+			else
+			{
+				// The depth vertex shader reads the placement and the view projection alone;
+				// the rest of the slot goes unread.
+				var uniforms = ViewUniforms();
+				uniforms.ChunkToWorld = data.ChunkToWorld;
+				uniforms.ViewProj = context.ViewProj;
+				Internal.MemCpy(viewRange.Ptr, &uniforms, sizeof(ViewUniforms));
+			}
 
 			BuildDraws(context, data, projection);
 			if (mDraws.IsEmpty)
@@ -944,6 +1000,64 @@ class TerrainRenderer : Renderer
 		return pso;
 	}
 
+	/// The pick pipeline: the depth cast's layout and vertex path with the id writing fragment
+	/// into the single RG32Uint target, no bias, the nearest surface owning the texel.
+	private IRenderPipeline EnsurePickPipeline(TextureFormat colorFormat,
+		TextureFormat depthFormat)
+	{
+		let shaderVersion = mShaders.Version("terrain_pick");
+		if ((mPickPso.Pso != null) && (mPickPso.ColorFormat == colorFormat)
+			&& (mPickPso.DepthFormat == depthFormat) && (mPickPso.ShaderVersion == shaderVersion))
+			return mPickPso.Pso;
+
+		if (mPickPso.Pso != null)
+			mDevice.DestroyRenderPipeline(ref mPickPso.Pso);
+
+		let vs = mShaders.GetVariant("terrain_pick", .Vertex, .None);
+		let ps = mShaders.GetVariant("terrain_pick", .Fragment, .None);
+		if ((vs == null) || (ps == null))
+			return null;
+
+		var attributes = VertexAttribute[1](.(.Float32x3, 0, 0));
+
+		var layout = VertexBufferLayout();
+		layout.Stride = sizeof(Float3);
+		layout.StepMode = .Vertex;
+		layout.Attributes = .(&attributes[0], 1);
+
+		var targets = ColorTargetState[1](.());
+		targets[0].Format = colorFormat;
+
+		var fragment = FragmentState();
+		fragment.Shader = .(ps, "main", .Fragment);
+		fragment.Targets = .(&targets[0], 1);
+
+		var depthStencil = DepthStencilState();
+		depthStencil.Format = depthFormat;
+		depthStencil.DepthTestEnabled = true;
+		depthStencil.DepthWriteEnabled = true;
+		depthStencil.DepthCompare = Depth.Nearer;
+
+		var desc = RenderPipelineDesc();
+		desc.Layout = mDepthPipelineLayout;
+		desc.Vertex.Shader = .(vs, "main", .Vertex);
+		desc.Vertex.Buffers = .(&layout, 1);
+		desc.Fragment = fragment;
+		desc.DepthStencil = depthStencil;
+		desc.Primitive.Topology = .TriangleList;
+		desc.Primitive.CullMode = .Back;
+		desc.Label = "terrain.pick";
+
+		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(let pso)))
+			return null;
+
+		mPickPso.Pso = pso;
+		mPickPso.ColorFormat = colorFormat;
+		mPickPso.DepthFormat = depthFormat;
+		mPickPso.ShaderVersion = shaderVersion;
+		return pso;
+	}
+
 	// ==================== Creation ====================
 
 	private Result<void> CreateLayouts()
@@ -1310,6 +1424,8 @@ class TerrainRenderer : Renderer
 			if (mDepthPso[i].Pso != null)
 				mDevice.DestroyRenderPipeline(ref mDepthPso[i].Pso);
 		}
+		if (mPickPso.Pso != null)
+			mDevice.DestroyRenderPipeline(ref mPickPso.Pso);
 
 		for (int i < mLodMeshes.Count)
 		{

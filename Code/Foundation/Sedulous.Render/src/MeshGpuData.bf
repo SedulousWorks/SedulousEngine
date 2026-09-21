@@ -79,8 +79,10 @@ struct MeshObjectData
 	public Color Tint = .(1, 1, 1, 1);
 	public uint32 BoneBase = 0;
 	public uint32 PrevBoneBase = 0;
-	public uint32 Pad0 = 0;
-	public uint32 Pad1 = 0;
+	/// The pick pass alone reads these: the entity index plus one, nought being nothing, and
+	/// the generation. The forward's layout has them as padding.
+	public uint32 PickIndex = 0;
+	public uint32 PickGeneration = 0;
 
 	public this() {}
 }
@@ -138,4 +140,20 @@ struct MeshShadowViewData
 	{
 		LightViewProj = lightViewProj;
 	}
+}
+
+/// The pick pass's set nought view, the PickView block of pick_ids.vs: the cropped world to
+/// clip plus a per DRAW GROUP id override. An instanced set is one entity for all its
+/// instances and its instance data is persistent, so its id rides the view slot instead;
+/// nought means each draw carries its own. Shares the shadow view ring's slots.
+[CRepr]
+struct MeshPickViewData
+{
+	public Float4x4 ViewProj = .Identity();
+	public uint32 PickIndex = 0;
+	public uint32 PickGeneration = 0;
+	public uint32 Pad0 = 0;
+	public uint32 Pad1 = 0;
+
+	public this() {}
 }

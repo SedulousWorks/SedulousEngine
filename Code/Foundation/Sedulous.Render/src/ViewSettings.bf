@@ -29,5 +29,9 @@ struct ViewSettings
 	/// What to show instead of the final image. Null is the final image.
 	public ViewDebugView Debug = null;
 
+	/// The opaque per viewport key the RenderScene call carried, null being unkeyed. Pick
+	/// requests bind to it: only the view rendered with a matching key answers them.
+	public void* ViewportKey = null;
+
 	public this() {}
 }

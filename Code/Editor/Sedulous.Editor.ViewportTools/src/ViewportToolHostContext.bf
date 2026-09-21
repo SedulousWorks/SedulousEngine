@@ -18,4 +18,6 @@ struct ViewportToolHostContext
 	/// Thumbnails and the source content database, so a tool panel can present asset-backed
 	/// choices richly.
 	public EditorContext EditorContext = null;
+	/// The GPU pick seam; null means CPU picking only. Borrowed, the page owns it.
+	public IViewportPicker Picker = null;
 }

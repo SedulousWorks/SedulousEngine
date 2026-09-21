@@ -23,7 +23,7 @@ static class RenderExtract
 	/// Packs an entity into the opaque id the renderer carries for picking. Opaque to the
 	/// renderer, which never takes it apart.
 	public static uint64 PackEntity(EntityHandle entity) =>
-		((uint64)entity.Generation << 32) | (uint64)entity.Index;
+		EntityTag.Pack(entity.Index, entity.Generation); // the one layout the pick readback decodes
 
 	/// Maps a material's blend preset onto the category that decides dispatch and sort order.
 	public static uint16 CategoryForMaterial(Material material)

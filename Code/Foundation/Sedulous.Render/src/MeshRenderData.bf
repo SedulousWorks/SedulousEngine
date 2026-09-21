@@ -27,10 +27,6 @@ class MeshRenderData : RenderData
 	public Material* SubmeshMaterials = null;
 	public uint32 SubmeshMaterialCount = 0;
 
-	/// An opaque tag the producer may set, a packed entity handle say, for picking. It means
-	/// nothing to the renderer.
-	public uint64 EntityId = 0;
-
 	/// GPU skinning: the per bone matrices, borrowed for the frame from an animation player.
 	/// With these and a skinned mesh the renderer uploads them and draws the skinned
 	/// permutation; without them the mesh draws in its bind pose.

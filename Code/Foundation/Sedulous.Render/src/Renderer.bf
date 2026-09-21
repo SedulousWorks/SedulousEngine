@@ -53,6 +53,19 @@ abstract class Renderer
 	/// pass of its own.
 	public virtual void SetCaptureFacePasses(uint32 passes) {}
 
+	/// Re-emits these items as PICK ID writers: the context's matrix is the pick view's cropped
+	/// world to clip, its colour format the RG32Uint id target and its depth format that
+	/// target's depth. Each draw's fragment writes its RenderData tag as (entity index plus
+	/// one, generation); the pass's own depth keeps the nearest. Nothing by default, so a
+	/// renderer whose draws are not pickable, sprites and particles, costs nothing; the
+	/// editor's CPU pick covers their entities.
+	public virtual void ResolvePickIds(RenderRecordContext context, Span<DrawItem> items,
+		List<ResolvedDraw> outDraws) {}
+
+	/// How many pick passes will re-emit this renderer's draws this frame, for the per object
+	/// ring sizing, like the capture faces. Called before PrepareFrame.
+	public virtual void SetPickPasses(uint32 passes) {}
+
 	/// This frame's probes: the prefiltered cube array, the metadata, and how many are active.
 	public virtual void SetProbes(ITextureView cubeArray, IBuffer probeBuffer, uint32 count) {}
 

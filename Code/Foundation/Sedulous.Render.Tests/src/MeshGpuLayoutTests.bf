@@ -27,6 +27,7 @@ class MeshGpuLayoutTests
 	public static void TheShadowViewBlockIsOneMatrix()
 	{
 		Test.Assert(sizeof(MeshShadowViewData) == 64);
+		Test.Assert(sizeof(MeshPickViewData) == 80); // cbuffer PickView in pick_ids.vs
 	}
 
 	/// The instance stepped attribute is one vector of four, which is what a normalised
@@ -46,6 +47,7 @@ class MeshGpuLayoutTests
 		Test.Assert((sizeof(MeshObjectData) % 16) == 0);
 		Test.Assert((sizeof(MeshInstanceData) % 16) == 0);
 		Test.Assert((sizeof(MeshShadowViewData) % 16) == 0);
+		Test.Assert((sizeof(MeshPickViewData) % 16) == 0);
 		Test.Assert((sizeof(MeshDataOffsets) % 16) == 0);
 	}
 
@@ -62,6 +64,7 @@ class MeshGpuLayoutTests
 	{
 		Test.Assert(sizeof(MeshObjectData) <= 256);
 		Test.Assert(sizeof(MeshShadowViewData) <= 256);
+		Test.Assert(sizeof(MeshPickViewData) <= 256);
 	}
 
 	/// The probe record is four vectors of four, which the probe system's own buffer stride

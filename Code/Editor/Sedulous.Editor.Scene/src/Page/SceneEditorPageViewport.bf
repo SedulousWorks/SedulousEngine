@@ -72,6 +72,12 @@ extension SceneEditorPage
 		}
 		input.WheelDelta = mouse.ScrollY;
 		input.Keyboard = cameraOwnsMouse ? null : kb;
+		// The pointer's view pixel and the view's size: the GPU pick's input, in the space of
+		// the RenderScene viewport rect, which is the full render target.
+		input.PointerX = (int32)mouse.X;
+		input.PointerY = (int32)mouse.Y;
+		input.ViewportWidth = mViewport.RenderWidth;
+		input.ViewportHeight = mViewport.RenderHeight;
 		return mViewportTools.Update(input);
 	}
 
