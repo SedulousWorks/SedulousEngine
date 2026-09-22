@@ -1,7 +1,7 @@
 using Sedulous.Core;
 using Sedulous.UI;
 
-namespace Sedulous.Editor.Terrain;
+namespace Sedulous.Editor.App;
 
 /// A fixed size icon tinted with the current text colour, the content of a mode toggle.
 class IconGlyph : View

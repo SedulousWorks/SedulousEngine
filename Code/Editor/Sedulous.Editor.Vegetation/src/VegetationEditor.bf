@@ -17,6 +17,9 @@ static class VegetationEditor
 		VegetationPipeline.RegisterAll();
 	}
 
+	/// The brush's floating panel, once for the process.
+	public static void RegisterToolPanels() => VegetationToolPanels.Register();
+
 	/// The paint brush into every viewport tool set, once for the process.
 	public static void RegisterViewportTools()
 	{

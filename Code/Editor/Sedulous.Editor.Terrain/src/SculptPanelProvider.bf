@@ -18,8 +18,8 @@ class SculptPanelProvider : IViewportToolPanelProvider
 		let t = tool as TerrainSculptTool; // id matched, so the type is known
 		if (t == null)
 			return null;
-		let root = TerrainToolPanels.MakePanelRoot();
-		root.AddView(TerrainToolPanels.MakeRow("Sculpt mode", 12.0f));
+		let root = ToolPanelWidgets.MakePanelRoot();
+		root.AddView(ToolPanelWidgets.MakeRow("Sculpt mode", 12.0f));
 
 		let modes = new SegmentedToggle();
 		modes.Build(4,
@@ -38,11 +38,11 @@ class SculptPanelProvider : IViewportToolPanelProvider
 		root.AddView(modes);
 
 		let grid = new PropertyGrid();
-		let radius = TerrainToolPanels.AddFloat(grid, "Radius", t.Radius, 0.5, 128.0, 1.0, 1, new [=t](v) => { t.SetRadius((float)v); });
-		TerrainToolPanels.AddFloat(grid, "Strength", t.Strength, 0.0, 50.0, 0.5, 1, new [=t](v) => { t.SetStrength((float)v); });
+		let radius = ToolPanelWidgets.AddFloat(grid, "Radius", t.Radius, 0.5, 128.0, 1.0, 1, new [=t](v) => { t.SetRadius((float)v); });
+		ToolPanelWidgets.AddFloat(grid, "Strength", t.Strength, 0.0, 50.0, 0.5, 1, new [=t](v) => { t.SetStrength((float)v); });
 		delete t.OnRadiusChanged;
 		t.OnRadiusChanged = new [=radius](r) => { radius.SetValue(r); };
-		TerrainToolPanels.AddGrid(root, grid);
+		ToolPanelWidgets.AddGrid(root, grid);
 		return root;
 	}
 }

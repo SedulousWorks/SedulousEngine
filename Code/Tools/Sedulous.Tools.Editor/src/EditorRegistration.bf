@@ -69,6 +69,7 @@ static class EditorRegistration
 
 		VegetationEditor.Register(context, host, uiHost);
 		VegetationEditor.RegisterViewportTools(); // the scene viewport vegetation brush
+		VegetationEditor.RegisterToolPanels(); // the brush's settings panel
 		FontEditor.Register(context);
 		CollisionShapeEditor.Register(context, host, uiHost);
 		GenericAssetPageFactory.Register(context);

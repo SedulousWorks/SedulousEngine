@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.UI;
 
-namespace Sedulous.Editor.Terrain;
+namespace Sedulous.Editor.App;
 
 /// A row of toggle buttons where exactly one reads as chosen: each press reports its
 /// index and the row re-pulls the current choice, so a choice made elsewhere (a hotkey)

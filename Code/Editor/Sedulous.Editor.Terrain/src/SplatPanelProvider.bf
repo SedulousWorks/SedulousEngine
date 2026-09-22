@@ -33,16 +33,16 @@ class SplatPanelProvider : IViewportToolPanelProvider
 		for (let id in layers.Ids)
 			layerNames.Add(SwatchAssetName(editorContext, id, .. new .()));
 
-		let root = TerrainToolPanels.MakePanelRoot();
+		let root = ToolPanelWidgets.MakePanelRoot();
 		if (useThumbs)
 		{
-			root.AddView(TerrainToolPanels.MakeRow("Base (erase to reveal)", 11.0f));
+			root.AddView(ToolPanelWidgets.MakeRow("Base (erase to reveal)", 11.0f));
 			let baseSwatch = new LayerSwatch(thumbs, layers.BaseId, fallbackIcon, 24.0f);
 			SwatchAssetName(editorContext, layers.BaseId, baseSwatch.TooltipText);
 			root.AddView(baseSwatch);
 		}
 
-		root.AddView(TerrainToolPanels.MakeRow("Paint layer", 12.0f));
+		root.AddView(ToolPanelWidgets.MakeRow("Paint layer", 12.0f));
 		let paletteCount = (layers.Count > 0) ? (int32)layers.Count : 4;
 		let toggle = new SegmentedToggle();
 		toggle.Build(paletteCount + 2,
@@ -87,13 +87,13 @@ class SplatPanelProvider : IViewportToolPanelProvider
 		root.AddView(toggle);
 
 		let grid = new PropertyGrid();
-		let radius = TerrainToolPanels.AddFloat(grid, "Radius", t.Radius, 0.5, 128.0, 1.0, 1, new [=t](v) => { t.SetRadius((float)v); });
-		TerrainToolPanels.AddFloat(grid, "Strength", t.Strength, 0.0, 1.0, 0.05, 2, new [=t](v) => { t.SetStrength((float)v); });
-		TerrainToolPanels.AddFloat(grid, "Spacing", t.Spacing, 0.05, 1.0, 0.05, 2, new [=t](v) => { t.SetSpacing((float)v); });
+		let radius = ToolPanelWidgets.AddFloat(grid, "Radius", t.Radius, 0.5, 128.0, 1.0, 1, new [=t](v) => { t.SetRadius((float)v); });
+		ToolPanelWidgets.AddFloat(grid, "Strength", t.Strength, 0.0, 1.0, 0.05, 2, new [=t](v) => { t.SetStrength((float)v); });
+		ToolPanelWidgets.AddFloat(grid, "Spacing", t.Spacing, 0.05, 1.0, 0.05, 2, new [=t](v) => { t.SetSpacing((float)v); });
 		grid.AddProperty(new BoolEditor("Airbrush", t.IsAirbrush, new [=t](v) => { t.SetAirbrush(v); }));
 		delete t.OnRadiusChanged;
 		t.OnRadiusChanged = new [=radius](r) => { radius.SetValue(r); };
-		TerrainToolPanels.AddGrid(root, grid);
+		ToolPanelWidgets.AddGrid(root, grid);
 		return root;
 	}
 
