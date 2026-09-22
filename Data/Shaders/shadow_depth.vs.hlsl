@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026-Present Robert Campbell
 
-// variants: SKINNED INSTANCED ALPHA_TEST
+// variants: SKINNED INSTANCED ALPHA_TEST WIND
 cbuffer ShadowView : register(b0, space0) {
     row_major float4x4 LightViewProj;
+    float4             ShadowWind;   // x = time (s) for the WIND sway; yzw spare
 };
+#ifdef WIND
+#include "wind.hlsli"
+#endif
 #ifdef SKINNED
 // Same skinning pool as the forward path (set-0 t4 SRV); skinned casters deform their shadow too.
 struct BoneMatrix { float4 Row0, Row1, Row2, Row3; };
@@ -75,6 +79,9 @@ float4 main(VSInput input) : SV_Position {
     lp = mul(float4(lp, 1.0), BlendBones(j, input.weights, boneBase)).xyz;
 #endif
     float4 worldPos = mul(float4(lp, 1.0), world);
+#ifdef WIND
+    worldPos.xyz += WindSway(worldPos.xyz, lp.y, ShadowWind.x);
+#endif
 #ifdef ALPHA_TEST
     o.pos = mul(worldPos, LightViewProj);
     o.uv  = input.uv;

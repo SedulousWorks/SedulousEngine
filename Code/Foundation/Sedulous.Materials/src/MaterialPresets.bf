@@ -24,11 +24,19 @@ static class MaterialPresets
 			..Color("BaseColor", baseColor)
 			..Float("Metallic", metallic)
 			..Float("Roughness", roughness)
+			// The wind lanes, at offsets 24, 28 and 60: the block's spare slots, so it stays
+			// sixty four bytes and a material without them reads nought, which is no sway.
+			// Metres of sway at a full height mask, radians per second, and the local height
+			// at which the sway is full. A strength above nought selects the WIND vertex
+			// variant.
+			..Float("WindStrength", 0.0f)
+			..Float("WindSpeed", 0.0f)
 			// Black means none: the emissive map multiplies through this.
 			..Color("EmissiveColor", .(0, 0, 0, 1))
 			..Float("OcclusionStrength", 1.0f)
 			..Float("NormalScale", 1.0f)
 			..Float("AlphaCutoff", 0.5f)
+			..Float("WindHeight", 1.0f)
 			..Texture("AlbedoMap")
 			..Texture("NormalMap")
 			..Texture("MetallicRoughnessMap")

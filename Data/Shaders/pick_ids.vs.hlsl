@@ -10,12 +10,16 @@
 //                      pick pass fills its own ramp, so these never collide with the forward's);
 //   - MultiMesh set:   cbuffer PickView's SetPickId (one entity for the whole set; its instance
 //                      buffer is persistent and its ramp shared, so the id rides the view slot).
-// variants: SKINNED INSTANCED ALPHA_TEST
+// variants: SKINNED INSTANCED ALPHA_TEST WIND
 cbuffer PickView : register(b0, space0) {
     row_major float4x4 ViewProj;   // the cropped world->clip
     uint2              SetPickId;  // x != 0: every draw in this group is this entity
-    uint2              _pvPad;
+    float              WindTime;   // time (s) for the WIND sway: the pick follows the swayed card
+    uint               _pvPad;
 };
+#ifdef WIND
+#include "wind.hlsli"
+#endif
 #ifdef SKINNED
 struct BoneMatrix { float4 Row0, Row1, Row2, Row3; };
 StructuredBuffer<BoneMatrix> BoneMatrices : register(t4, space0);
@@ -87,6 +91,9 @@ PickVSOut main(VSInput input) {
     lp = mul(float4(lp, 1.0), BlendBones(j, input.weights, boneBase)).xyz;
 #endif
     float4 worldPos = mul(float4(lp, 1.0), world);
+#ifdef WIND
+    worldPos.xyz += WindSway(worldPos.xyz, lp.y, WindTime);
+#endif
     o.pos = mul(worldPos, ViewProj);
     o.id  = (SetPickId.x != 0u) ? SetPickId : drawId;
 #ifdef ALPHA_TEST

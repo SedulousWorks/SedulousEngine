@@ -116,8 +116,9 @@ class MaterialSystem : IMaterialInstanceSink
 				break;
 			}
 		}
+		// The vertex stage too: the WIND variant reads the material's wind lanes.
 		if (hasUniforms && (material.UniformDataSize > 0))
-			entries.Add(BindGroupLayoutEntry.UniformBuffer(0, .Fragment));
+			entries.Add(BindGroupLayoutEntry.UniformBuffer(0, .Vertex | .Fragment));
 
 		// Textures and samplers number SEPARATELY: the two occupy different binding spaces
 		// on the backends that separate them, and one shared counter would leave holes.

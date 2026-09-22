@@ -60,6 +60,9 @@ class RenderFrame
 	private bool mOverlayStencilProbed = false;
 
 	private float mExposure = 1.0f;
+	/// The WIND sway's clock: this frame's seconds, and last frame's.
+	private float mTimeSeconds = 0.0f;
+	private float mPrevTimeSeconds = 0.0f;
 	private bool mFxaaEnabled = false;
 	private float mFxaaSubpixel = 0.75f;
 	/// Sharing the prepass's instance data with the forward, which is on by default. Off
@@ -211,6 +214,17 @@ class RenderFrame
 
 	public void SetExposure(float exposure) => mExposure = exposure;
 
+	/// The frame's time in seconds, which is the application's run clock and the WIND
+	/// vertex sway's phase. Set once per frame before the frame begins; last frame's value
+	/// rides along for the motion vectors.
+	public void SetTime(float seconds)
+	{
+		mPrevTimeSeconds = mTimeSeconds;
+		mTimeSeconds = seconds;
+	}
+
+	public float TimeSeconds => mTimeSeconds;
+
 	public void SetBloom(float intensity, float threshold, float knee)
 	{
 		mBloomIntensity = intensity;
@@ -327,6 +341,7 @@ class RenderFrame
 		mPass.SetMotionNeeded(mTaaEnabled
 			|| ((mSsr != null) && mSsrEnabled && mSsrParams.Temporal));
 		mPass.SetShadowFarFade(mShadowFarFade);
+		mPass.SetTime(mTimeSeconds, mPrevTimeSeconds);
 
 		mGraph.BeginFrame((int32)frameIndex);
 		if (mPick != null)
@@ -356,6 +371,8 @@ class RenderFrame
 		}
 
 		var context = RenderRecordContext();
+		context.TimeSeconds = mTimeSeconds;
+		context.PrevTimeSeconds = mPrevTimeSeconds;
 		context.View = view;
 		context.Pass = pass;
 		context.ViewProj = viewProj; // the CROPPED camera projection
@@ -420,6 +437,8 @@ class RenderFrame
 		RendererRegistry registry, uint32 viewIndex)
 	{
 		var context = RenderRecordContext();
+		context.TimeSeconds = mTimeSeconds;
+		context.PrevTimeSeconds = mPrevTimeSeconds;
 		// The share cache is keyed by the view: the prepass fills it and the forward reuses it.
 		context.View = view;
 		context.ViewProj = view.Camera.ViewProjection;
@@ -488,6 +507,8 @@ class RenderFrame
 		RenderView lodView = null)
 	{
 		var context = RenderRecordContext();
+		context.TimeSeconds = mTimeSeconds;
+		context.PrevTimeSeconds = mPrevTimeSeconds;
 		// The level coupling only; the light's own matrices follow.
 		context.View = lodView;
 		if (lodView != null)

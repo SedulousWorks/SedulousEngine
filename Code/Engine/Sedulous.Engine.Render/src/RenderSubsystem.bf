@@ -97,6 +97,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	// editor's path, the scene's own settings drive.
 	private bool mGlobalPostActive = false;
 	private float mExposure = 1.0f;
+	/// The WIND sway's clock.
+	private float mTimeSeconds = 0.0f;
 	private bool mBloomEnabled = true;
 	private float mBloomIntensity = 0.05f;
 	private float mBloomThreshold = 1.0f;
@@ -226,6 +228,15 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	/// Whether any global setter has been touched. Until one is, the scene's authored settings
 	/// are what resolve.
 	public bool GlobalPostActive => mGlobalPostActive;
+
+	/// The application's run clock in seconds, handed to the frame every time rendering
+	/// begins: the WIND vertex sway's phase. Not a post setting, so it does not take the
+	/// global override with it.
+	public float TimeSeconds
+	{
+		get => mTimeSeconds;
+		set => mTimeSeconds = value;
+	}
 
 	/// The linear multiplier the tonemap applies.
 	public float Exposure
@@ -774,6 +785,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		mRetireQueue.Tick();
 
 		mFrame.SetExposure(mExposure);
+		// The previous value stays behind in the frame, for the motion vectors.
+		mFrame.SetTime(mTimeSeconds);
 		mFrame.SetBloom(mBloomEnabled ? mBloomIntensity : 0.0f, mBloomThreshold, mBloomKnee);
 		mFrame.SetTaa(mTaaEnabled, mTaaBlend, mTaaGamma, mTaaMotionScale);
 		mFrame.SetShadowParams(mShadowDistance, mShadowFarFade);

@@ -154,18 +154,18 @@ class MaterialBuilderTests
 
 		Test.Assert(material.ShaderName == "forward");
 		Test.Assert(material.Pipeline.VertexLayout == .Mesh);
-		Test.Assert(material.PropertyCount == 13, "seven uniforms, five maps, one sampler");
+		Test.Assert(material.PropertyCount == 16, "ten uniforms, five maps, one sampler");
 
 		Test.Assert(material.FindProperty("Metallic", let metallic) && metallic.IsUniform);
 		Test.Assert(material.FindProperty("AlbedoMap", let albedo) && albedo.IsTexture);
 		Test.Assert(material.FindProperty("MainSampler", let sampler) && sampler.IsSampler);
 
 		// The maps come out in the order the bind group contract expects.
-		Test.Assert(material.GetPropertyIndex("AlbedoMap") == 7);
-		Test.Assert(material.GetPropertyIndex("NormalMap") == 8);
-		Test.Assert(material.GetPropertyIndex("MetallicRoughnessMap") == 9);
-		Test.Assert(material.GetPropertyIndex("OcclusionMap") == 10);
-		Test.Assert(material.GetPropertyIndex("EmissiveMap") == 11);
+		Test.Assert(material.GetPropertyIndex("AlbedoMap") == 10);
+		Test.Assert(material.GetPropertyIndex("NormalMap") == 11);
+		Test.Assert(material.GetPropertyIndex("MetallicRoughnessMap") == 12);
+		Test.Assert(material.GetPropertyIndex("OcclusionMap") == 13);
+		Test.Assert(material.GetPropertyIndex("EmissiveMap") == 14);
 	}
 
 	[Test]

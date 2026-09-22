@@ -128,11 +128,13 @@ struct MeshDataOffsets
 	}
 }
 
-/// The depth only pass's constants: just the light's matrix.
+/// The depth only pass's constants: the light's matrix and the wind clock.
 [CRepr]
 struct MeshShadowViewData
 {
 	public Float4x4 LightViewProj = .Identity();
+	/// x is the time in seconds the WIND sway reads; yzw are spare.
+	public Float4 Wind = .(0, 0, 0, 0);
 
 	public this() {}
 
@@ -152,7 +154,8 @@ struct MeshPickViewData
 	public Float4x4 ViewProj = .Identity();
 	public uint32 PickIndex = 0;
 	public uint32 PickGeneration = 0;
-	public uint32 Pad0 = 0;
+	/// The time in seconds the WIND sway reads, so the pick follows the swayed card.
+	public float WindTime = 0.0f;
 	public uint32 Pad1 = 0;
 
 	public this() {}

@@ -87,5 +87,10 @@ struct RenderRecordContext
 	public float IblDiffuseIntensity = 1.0f;
 	public float IblSpecularIntensity = 1.0f;
 
+	/// The frame's clock in seconds, which is the WIND sway's phase, and last frame's, which
+	/// the previous position sways by so the motion vectors follow.
+	public float TimeSeconds = 0.0f;
+	public float PrevTimeSeconds = 0.0f;
+
 	public this() {}
 }

@@ -19,4 +19,6 @@ enum ShaderFlags : uint32
 	case ReceiveShadows = 64;
 	/// Forward MRT: the stage also writes a view space normal and motion.
 	case GBuffer = 128;
+	/// A vertex sway driven by the material's Wind properties.
+	case Wind = 256;
 }

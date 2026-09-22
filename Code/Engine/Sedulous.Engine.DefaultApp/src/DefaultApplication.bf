@@ -485,6 +485,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		}
 
 		mRunSeconds += deltaTime;
+		if (mRender != null)
+			mRender.TimeSeconds = mRunSeconds; // the WIND sway's clock
 		if ((mExitAfterSeconds > 0.0f) && (mRunSeconds >= mExitAfterSeconds))
 			host.RequestExit(0);
 

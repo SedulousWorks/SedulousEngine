@@ -27,6 +27,9 @@ class ForwardPass
 	/// Per frame: whether any temporal effect reads the velocity this frame.
 	private bool mMotionNeeded = true;
 	private float mShadowFarFade = 40.0f;
+	/// The WIND sway's clock: this frame's seconds and last frame's.
+	private float mTimeSeconds = 0.0f;
+	private float mPrevTimeSeconds = 0.0f;
 
 	/// Reused, and drained by each pass.
 	private List<ResolvedDraw> mResolved = new .() ~ delete _;
@@ -54,6 +57,14 @@ class ForwardPass
 	/// the resolve skips the per instance previous world lookup and the velocity is nought.
 	public void SetMotionNeeded(bool needed) => mMotionNeeded = needed;
 	public void SetShadowFarFade(float value) => mShadowFarFade = value;
+
+	/// The frame's clock, this frame's seconds and last frame's, which is the WIND sway's
+	/// phase. Set once per frame.
+	public void SetTime(float seconds, float prevSeconds)
+	{
+		mTimeSeconds = seconds;
+		mPrevTimeSeconds = prevSeconds;
+	}
 
 	/// Once per frame, before composing: provisions and resets the per worker pools.
 	///
@@ -285,6 +296,8 @@ class ForwardPass
 		context.Ibl = ibl;
 		context.NeedsMotion = view.Settings.Post.NeedsMotion;
 		context.ShadowFarFade = mShadowFarFade;
+		context.TimeSeconds = mTimeSeconds;
+		context.PrevTimeSeconds = mPrevTimeSeconds;
 		context.DebugSemantic = (view.Settings.Debug != null)
 			? (uint8)view.Settings.Debug.Semantic
 			: 0;

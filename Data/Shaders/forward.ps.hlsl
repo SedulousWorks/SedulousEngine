@@ -204,13 +204,13 @@ cbuffer Material : register(b0, space2) {    // data-driven PBR material (inferr
     float4 BaseColor;
     float  Metallic;
     float  Roughness;
-    float  _matPad0;
-    float  _matPad1;
+    float  WindStrength;       // the vertex sway (wind.hlsli); the fragment never reads a Wind lane
+    float  WindSpeed;
     float4 EmissiveColor;      // rgb x EmissiveMap = emitted radiance (offset 32)
     float  OcclusionStrength;  // 0..1 blend toward the sampled AO (glTF occlusionStrength; offset 48)
     float  NormalScale;        // scales the tangent-space XY perturbation (glTF normalScale)
     float  AlphaCutoff;        // ALPHA_TEST threshold (glTF alphaCutoff; 0.5 = the spec default)
-    float  _matPad2;
+    float  WindHeight;         // the vertex sway's height mask (wind.hlsli)
     // (pre-straggler materials upgrade at load: emissive black, strength/scale 1, cutoff 0.5)
 };
 // Standard PBR material maps (the fixed forward set-2 contract, Sedulous-aligned). Unset maps bind a

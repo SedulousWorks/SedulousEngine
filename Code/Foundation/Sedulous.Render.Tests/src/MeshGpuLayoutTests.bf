@@ -24,9 +24,9 @@ class MeshGpuLayoutTests
 	}
 
 	[Test]
-	public static void TheShadowViewBlockIsOneMatrix()
+	public static void TheShadowViewBlockIsAMatrixAndTheWindLane()
 	{
-		Test.Assert(sizeof(MeshShadowViewData) == 64);
+		Test.Assert(sizeof(MeshShadowViewData) == 80);
 		Test.Assert(sizeof(MeshPickViewData) == 80); // cbuffer PickView in pick_ids.vs
 	}
 

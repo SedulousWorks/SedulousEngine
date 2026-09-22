@@ -46,6 +46,27 @@ class MeshRenderer : Renderer
 	/// backend asks for. An odd count bound region one unaligned and WebGPU refused the bind
 	/// group where Vulkan had accepted it.
 	public static uint32 MultiMeshRegionCapacity(uint32 count) => (count + 15) & ~15;
+
+	/// Whether a material opts into the WIND vertex variant: it declares a WindStrength float
+	/// whose default is above nought.
+	///
+	/// Every other material keeps the configuration it had, so a scene with no windy material
+	/// renders exactly as it did before the flag existed.
+	public static bool MaterialWantsWind(Material material)
+	{
+		if (material == null)
+			return false;
+		if (!material.FindProperty("WindStrength", let strength) || (strength.Type != .Float))
+			return false;
+
+		let defaults = material.DefaultUniformData;
+		if (((int)strength.Offset + sizeof(float)) > defaults.Length)
+			return false;
+
+		var value = 0.0f;
+		Internal.MemCpy(&value, defaults.Ptr + strength.Offset, sizeof(float));
+		return value > 0.0f;
+	}
 	private const uint32 cMaxLocalShadows = RenderLimits.MaxLocalShadowEntries;
 	/// The skinning pool: the staging ring and its device mirror START here and GROW, by
 	/// powers of two up to the cap, the first frame that needs more.
@@ -1240,7 +1261,9 @@ class MeshRenderer : Renderer
 		// lookup onto one row of the atlas.
 		viewData.ShadowParams.Y = mDevice.NeedsClipSpaceYFlip ? 1.0f : -1.0f;
 		viewData.DebugParams.X = (float)context.DebugSemantic;
-		viewData.IblParams = .(context.IblDiffuseIntensity, context.IblSpecularIntensity, 0, 0);
+		// zw are the WIND sway's clock: this frame's seconds and last frame's.
+		viewData.IblParams = .(context.IblDiffuseIntensity, context.IblSpecularIntensity,
+			context.TimeSeconds, context.PrevTimeSeconds);
 
 		// The ring's base plus THIS view's scene's, the scenes' entries being concatenated and
 		// each light's index being relative to its own scene.
@@ -1353,11 +1376,14 @@ class MeshRenderer : Renderer
 			// their own.
 			var pickView = MeshPickViewData();
 			pickView.ViewProj = context.ViewProj;
+			pickView.WindTime = context.TimeSeconds;
 			*(MeshPickViewData*)shadowView.Ptr = pickView;
 		}
 		else
 		{
-			*(MeshShadowViewData*)shadowView.Ptr = .(context.ViewProj);
+			var shadowData = MeshShadowViewData(context.ViewProj);
+			shadowData.Wind.X = context.TimeSeconds;
+			*(MeshShadowViewData*)shadowView.Ptr = shadowData;
 		}
 		let shadowViewOffset = shadowView.ByteOffset;
 
@@ -1624,7 +1650,11 @@ class MeshRenderer : Renderer
 
 		// A masked caster casts a HOLEY shadow through the alpha test, which needs its material.
 		let masked = (md.Material != null) && (md.Material.Pipeline.BlendMode == .Masked);
-		var config = pick ? PickConfigFor(context, false, masked) : ShadowConfigFor(context, false, masked);
+		// A windy caster needs set two as well, the sway reading the material's wind lanes.
+		let wind = MaterialWantsWind(md.Material);
+		var config = pick
+			? PickConfigFor(context, false, masked, wind)
+			: ShadowConfigFor(context, false, masked, wind);
 		// A two sided material picks both faces.
 		if (pick && (md.Material != null))
 			config.CullMode = md.Material.Pipeline.CullMode;
@@ -1645,7 +1675,7 @@ class MeshRenderer : Renderer
 
 		IBindGroup materialSet = null;
 		var layout = mShadowPipelineLayoutSingle;
-		if (masked)
+		if (masked || wind)
 		{
 			let set2 = mMaterials.GetOrCreateLayout(md.Material);
 			layout = GetOrCreateShadowMaskedLayout(set2, false);
@@ -1710,8 +1740,12 @@ class MeshRenderer : Renderer
 		let skinned = (head.BoneMatrices != null) && (head.Mesh != null) && head.Mesh.IsSkinned
 			&& (mesh.SkinBuffer != null);
 		let masked = (head.Material != null) && (head.Material.Pipeline.BlendMode == .Masked);
+		// Set two as well, for the sway.
+		let wind = MaterialWantsWind(head.Material);
 
-		var config = pick ? PickConfigFor(context, true, masked) : ShadowConfigFor(context, true, masked);
+		var config = pick
+			? PickConfigFor(context, true, masked, wind)
+			: ShadowConfigFor(context, true, masked, wind);
 		if (pick && (head.Material != null))
 			config.CullMode = head.Material.Pipeline.CullMode;
 		if (skinned)
@@ -1722,7 +1756,7 @@ class MeshRenderer : Renderer
 
 		IBindGroup materialSet = null;
 		var layout = mShadowPipelineLayoutInstanced;
-		if (masked)
+		if (masked || wind)
 		{
 			let set2 = mMaterials.GetOrCreateLayout(head.Material);
 			layout = GetOrCreateShadowMaskedLayout(set2, true);
@@ -1921,6 +1955,7 @@ class MeshRenderer : Renderer
 				return;
 			var data = MeshPickViewData();
 			data.ViewProj = context.ViewProj;
+			data.WindTime = context.TimeSeconds;
 			data.PickIndex = EntityTag.Index(multiMesh.EntityId) + 1;
 			data.PickGeneration = EntityTag.Generation(multiMesh.EntityId);
 			*(MeshPickViewData*)pickView.Ptr = data;
@@ -1929,7 +1964,11 @@ class MeshRenderer : Renderer
 
 		let masked = (multiMesh.Material != null)
 			&& (multiMesh.Material.Pipeline.BlendMode == .Masked);
-		var config = pick ? PickConfigFor(context, true, masked) : ShadowConfigFor(context, true, masked);
+		// Set two as well, for the sway.
+		let wind = MaterialWantsWind(multiMesh.Material);
+		var config = pick
+			? PickConfigFor(context, true, masked, wind)
+			: ShadowConfigFor(context, true, masked, wind);
 		if (pick && (multiMesh.Material != null))
 			config.CullMode = multiMesh.Material.Pipeline.CullMode;
 		if (skinned)
@@ -1940,7 +1979,7 @@ class MeshRenderer : Renderer
 
 		IBindGroup materialSet = null;
 		var layout = mShadowPipelineLayoutInstanced;
-		if (masked)
+		if (masked || wind)
 		{
 			let set2 = mMaterials.GetOrCreateLayout(multiMesh.Material);
 			layout = GetOrCreateShadowMaskedLayout(set2, true);
@@ -1997,10 +2036,13 @@ class MeshRenderer : Renderer
 
 	/// The depth only configuration for a shadow pass.
 	private static PipelineConfig ShadowConfigFor(RenderRecordContext context, bool instanced,
-		bool masked = false)
+		bool masked = false, bool wind = false)
 	{
 		var config = PipelineConfig();
 		config.ShaderName = "shadow_depth";
+		// The caster sways with the card it casts from.
+		if (wind)
+			config.ShaderFlags |= .Wind;
 		config.VertexLayout = .Mesh;
 		config.Instanced = instanced;
 		if (instanced)
@@ -2046,10 +2088,13 @@ class MeshRenderer : Renderer
 	/// RG32Uint id target, single sampled, no bias, a masked material alpha tested. Callers
 	/// override the cull mode from the material.
 	private static PipelineConfig PickConfigFor(RenderRecordContext context, bool instanced,
-		bool masked)
+		bool masked, bool wind = false)
 	{
 		var config = PipelineConfig();
 		config.ShaderName = "pick_ids";
+		// The pick follows the swayed card.
+		if (wind)
+			config.ShaderFlags |= .Wind;
 		config.VertexLayout = .Mesh;
 		config.Instanced = instanced;
 		if (instanced)
@@ -2088,6 +2133,9 @@ class MeshRenderer : Renderer
 		config.Instanced = instanced;
 		if (instanced)
 			config.ShaderFlags |= .Instanced;
+		// The material's wind lanes sway it.
+		if (MaterialWantsWind(md.Material))
+			config.ShaderFlags |= .Wind;
 
 		// Opaque and masked draws write the whole set of targets: the shaded colour, then the
 		// view space normal, the motion vector, and the roughness and metallic the reflections
@@ -2438,11 +2486,12 @@ class MeshRenderer : Renderer
 		if ((buffer == null) || (boneBuffer == null))
 			return false;
 
-		// The range is the larger of the two layouts that read this slot: the shadow view (64)
+		// The range is the larger of the two layouts that read this slot: the shadow view (80)
 		// and the pick pass's view (80). WebGPU validates the bound size against the shader's
 		// declared block, so the range must cover both; the slot has room.
 		var entries = BindGroupEntry[2](
-			BindGroupEntry.BufferEntry(buffer, 0, sizeof(MeshPickViewData)),
+			BindGroupEntry.BufferEntry(buffer, 0,
+				(uint64)Max(sizeof(MeshPickViewData), sizeof(MeshShadowViewData))),
 			BindGroupEntry.BufferEntry(boneBuffer, 0, mBoneDeviceBytes));
 
 		var desc = BindGroupDesc();

@@ -21,8 +21,11 @@ cbuffer View : register(b0, space0) {
     float4 ProbeBoxMax;                // xyz = probe box max corner,  w = probe intensity
     float4 ShadowParams;               // x = CSM far-fade width in WORLD UNITS; yzw spare
     float4 DebugParams;                // x = semantic debug-view mode (0 = off); yzw spare
-    float4 IblParams;                  // x = IBL diffuse intensity, y = IBL specular intensity; zw spare
+    float4 IblParams;                  // x = IBL diffuse intensity, y = IBL specular intensity, z = time (s), w = last frame's time
 };
+#ifdef WIND
+#include "wind.hlsli"
+#endif
 #ifdef SKINNED
 // GPU skinning: per-bone skinning matrices (= inverseBind * worldPose), v * skin (row-vector).
 // A per-frame pool shared by all skinned draws; BoneBase (Object cbuffer) selects this draw's run.
@@ -117,6 +120,11 @@ VSOutput main(VSInput input) {
 #endif
     float4 worldPos     = mul(float4(lp, 1.0), world);
     float4 prevWorldPos = mul(float4(lpPrev, 1.0), prevWorld);
+#ifdef WIND
+    // IblParams.z = this frame's time, .w = last frame's: the previous position sways with it.
+    worldPos.xyz     += WindSway(worldPos.xyz, lp.y, IblParams.z);
+    prevWorldPos.xyz += WindSway(prevWorldPos.xyz, lpPrev.y, IblParams.w);
+#endif
     o.clip      = mul(worldPos, ViewProj);
     o.normalWS  = normalize(mul(float4(ln, 0.0), world).xyz);
     o.color     = input.color * tint;                           // vertex color * per-instance tint

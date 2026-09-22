@@ -148,6 +148,10 @@ class TerrainPlaygroundApp : DefaultApplication
 			mGrassMesh = Primitives.Cone(0.24f, 1.4f); // a tuft
 			mGrassMaterial = MaterialPresets.CreatePbr("grass", .(0.25f, 0.62f, 0.18f, 1.0f),
 				0.0f, 0.85f);
+			// The tufts sway at their tips; the cone's base sits at a local y of -0.7.
+			mGrassMaterial.SetDefaultFloat("WindStrength", 0.18f);
+			mGrassMaterial.SetDefaultFloat("WindSpeed", 2.4f);
+			mGrassMaterial.SetDefaultFloat("WindHeight", 0.7f);
 
 			let component = vegetation.Add(mTerrain);
 			let layer = new VegetationLayer();
