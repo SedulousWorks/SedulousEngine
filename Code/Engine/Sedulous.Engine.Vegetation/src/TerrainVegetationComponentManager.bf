@@ -123,6 +123,10 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 			mPendingRegions.Add(region);
 	}
 
+	/// The region notices waiting for the next extraction, which is what a brush test reads
+	/// to see that a stamp scoped its regrow.
+	public int PendingRegionCount => mPendingRegions.Count;
+
 	/// The same notice from a nought to one FOOTPRINT rect, which is a mask or splat texel
 	/// rect over the terrain footprint, mapped onto the heightfield's sample grid.
 	public void InvalidateFootprint(float u0, float v0, float u1, float v1, int32 gridSize)

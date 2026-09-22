@@ -17,6 +17,7 @@ using Sedulous.Editor.Texture;
 using Sedulous.Editor.Image;
 using Sedulous.Editor.Heightfield;
 using Sedulous.Editor.Terrain;
+using Sedulous.Editor.Vegetation;
 using Sedulous.Editor.Spline;
 using Sedulous.Editor.Fonts;
 using Sedulous.Editor.Physics;
@@ -65,6 +66,9 @@ static class EditorRegistration
 		TerrainEditor.RegisterViewportTools(); // the scene viewport sculpt and splat brushes
 		SplineEditor.RegisterViewportTools(); // the scene viewport spline control point editor
 		TerrainEditor.RegisterToolPanels(); // the brushes' settings panels
+
+		VegetationEditor.Register(context, host, uiHost);
+		VegetationEditor.RegisterViewportTools(); // the scene viewport vegetation brush
 		FontEditor.Register(context);
 		CollisionShapeEditor.Register(context, host, uiHost);
 		GenericAssetPageFactory.Register(context);

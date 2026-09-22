@@ -1,0 +1,29 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Vegetation"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Vegetation.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Render" = "*"
+"Sedulous.Heightfield" = "*"
+"Sedulous.Terrain" = "*"
+"Sedulous.Terrain.Resource" = "*"
+"Sedulous.Vegetation" = "*"
+"Sedulous.Vegetation.Resource" = "*"
+"Sedulous.Vegetation.Pipeline" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Engine.Terrain" = "*"
+"Sedulous.Engine.Vegetation" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Toolkit" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.ViewportTools" = "*"
+"Sedulous.Editor.App" = "*"
