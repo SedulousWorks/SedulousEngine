@@ -44,7 +44,7 @@ class ComponentTarget : InspectorTarget
 		=> mEdit.SetComponentEntityRef(Id, Type, field, target);
 
 	/// Only a serializable component can be snapshotted; anything else is left alone.
-	public override void Mutate(delegate void(void* instance) mutate)
+	public override void Mutate(delegate void(void* instance) mutate, StringView mergeKey)
 	{
 		let e = mEdit.Resolve(Id);
 		let mgr = mEdit.FindManager(Type);
@@ -62,7 +62,7 @@ class ComponentTarget : InspectorTarget
 		mEdit.CopyComponent(Id, Type, after); // snapshot B
 		RestoreBlob(mgr, e, before); // back to A, so the paste below is the one undoable step
 		if (!after.IsEmpty)
-			mEdit.PasteComponent(Id, after);
+			mEdit.PasteComponent(Id, after, mergeKey);
 	}
 
 	/// Reads a copied component blob (its manager id, then the component) straight back in.

@@ -6,6 +6,7 @@ using Sedulous.Engine.Navigation;
 using Sedulous.Engine.Particles;
 using Sedulous.Engine.Spline;
 using Sedulous.Engine.Terrain;
+using Sedulous.Engine.Vegetation;
 using Sedulous.Engine.UI;
 using Sedulous.Engine.Script;
 
@@ -50,6 +51,7 @@ static class SceneInspectors
 		InspectorRegistry.Register<SplineComponent>();
 		InspectorRegistry.Register<PathFollowComponent>();
 		InspectorRegistry.Register<TerrainComponent>();
+		InspectorRegistry.Register<TerrainVegetationComponent>();
 		InspectorRegistry.Register<UIBillboardComponent>();
 		InspectorRegistry.Register<UICanvasComponent>();
 		InspectorRegistry.Register<UIWorldPanelComponent>();

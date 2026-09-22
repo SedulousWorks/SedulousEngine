@@ -129,8 +129,8 @@ extension SceneEditContext
 
 	/// Pastes a component blob onto an entity, adding or overwriting; false when the blob
 	/// names a manager this scene lacks.
-	public bool PasteComponent(Guid entity, Span<uint8> blob)
-		=> mCommands.Execute(new PasteComponentCommand(this, entity, blob));
+	public bool PasteComponent(Guid entity, Span<uint8> blob, StringView mergeKey = default)
+		=> mCommands.Execute(new PasteComponentCommand(this, entity, blob, mergeKey));
 
 	/// CONSUMES `records`.
 	private Guid RunPasteCommand(List<SubtreeRecord> records, Guid parent)

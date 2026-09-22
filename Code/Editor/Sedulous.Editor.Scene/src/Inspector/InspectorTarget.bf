@@ -31,5 +31,11 @@ abstract class InspectorTarget
 	/// An in place edit that does not fit a property command, as one undo step: the instance
 	/// is snapshotted, mutated, restored, and the mutated form re-applied through the
 	/// undoable path.
-	public abstract void Mutate(delegate void(void* instance) mutate);
+	///
+	/// A non empty `mergeKey` collapses consecutive edits carrying the same key into one
+	/// step, which is what makes a slider drag over a nested value a single undo.
+	public abstract void Mutate(delegate void(void* instance) mutate, StringView mergeKey);
+
+	/// The common case: its own undo step, merging with nothing.
+	public void Mutate(delegate void(void* instance) mutate) => Mutate(mutate, default);
 }

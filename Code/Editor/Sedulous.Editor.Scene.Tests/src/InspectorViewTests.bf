@@ -8,6 +8,7 @@ using Sedulous.Editor.App;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Spline;
+using Sedulous.Engine.Vegetation;
 using Sedulous.Spline;
 
 namespace Sedulous.Editor.Scene.Tests;
@@ -262,4 +263,71 @@ class InspectorViewTests
 		commands.Undo();
 		Test.Assert(wind.Settings.Speed == 1.0f);
 	}
+
+	/// A list of reflected objects gets a section of the ELEMENT's own rows per slot, so a
+	/// layer's fields read, write and undo like a component's. Before this the list showed a
+	/// column of type labels and nothing could be edited.
+	[Test]
+	public static void AListOfReflectedObjectsEditsPerSlot()
+	{
+		SceneInspectors.RegisterBuiltin();
+		let scene = scope Scene();
+		VegetationScene.AddVegetationSceneManagers(scene);
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let editor = scope EditorContext();
+		let inspector = new SceneInspectorView(editor, edit);
+		defer inspector.ReleaseRef();
+
+		let manager = scene.GetSystem<TerrainVegetationComponentManager>();
+		Test.Assert(manager != null);
+
+		let terrain = edit.CreateEntity("Terrain");
+		edit.AddComponent(terrain, typeof(TerrainVegetationComponent));
+		scene.InitializePendingComponents();
+
+		let component = manager.Get(edit.Resolve(terrain));
+		Test.Assert(component != null);
+		let grass = new VegetationLayer();
+		grass.Name.Set("Grass");
+		grass.Density = 2.0f;
+		component.Layers.Add(grass);
+		let rocks = new VegetationLayer();
+		rocks.Name.Set("Rocks");
+		rocks.Density = 0.5f;
+		component.Layers.Add(rocks);
+
+		edit.EntitySelection.Set(terrain);
+		inspector.Refresh();
+
+		// Each slot's rows are titled by the element's own name.
+		let density = Find(inspector, "Density") as FloatEditor;
+		Test.Assert(density != null, "a slot field has a row of its own");
+		Test.Assert(density.Category.Contains("Grass"), scope $"titled by the name: {density.Category}");
+
+		// Writing a slot field lands on THAT slot and is one undo step.
+		let before = commands.Count;
+		density.Setter(3.5f);
+		Test.Assert(Near(component.Layers[0].Density, 3.5f), "the first slot took the write");
+		Test.Assert(Near(component.Layers[1].Density, 0.5f), "the second slot is untouched");
+		Test.Assert(commands.Count == before + 1);
+
+		commands.Undo();
+		Test.Assert(Near(component.Layers[0].Density, 2.0f), "and it undoes");
+
+		// Consecutive edits of the SAME slot field merge, so a slider drag is ONE undo step:
+		// a single undo goes back past the whole drag rather than one frame of it.
+		density.Setter(4.0f);
+		density.Setter(5.0f);
+		density.Setter(6.0f);
+		Test.Assert(Near(component.Layers[0].Density, 6.0f));
+		commands.Undo();
+		Test.Assert(Near(component.Layers[0].Density, 2.0f), "one undo covers the whole drag");
+
+		// The second slot kept its own value throughout: the slot is part of the merge key,
+		// so one slot's drag never absorbs another's edit.
+		Test.Assert(Near(component.Layers[1].Density, 0.5f));
+	}
+
+	private static bool Near(float a, float b) => Math.Abs(a - b) <= 0.001f;
 }

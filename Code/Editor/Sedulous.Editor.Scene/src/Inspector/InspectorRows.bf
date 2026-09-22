@@ -237,11 +237,55 @@ static class InspectorRows<T>
 				}
 				if (element.IsObject && !element.IsAbstract)
 				{
-					row.AppendF("s.ObjectListRow<{}>({}, {}, {});\n", element.GetFullName(.. scope .()),
+					let elementName = element.GetFullName(.. scope .());
+					row.AppendF("s.ObjectListRow<{}>({}, {}, {});\n", elementName,
 						quoted, reader, Quote(elementLabel, .. scope .()));
+					// A reflected element gets its own rows per slot, so a list of structs is
+					// editable rather than a column of type labels. The slot's title is the
+					// element's `Name`, when it has one, else the type label.
+					if (HasEditableRows(element))
+					{
+						let titled = HasNameField(element);
+						row.AppendF(
+							"s.SlotSections<{}>({}, {}, new (e, outTitle) => {{ outTitle.AppendF(\"{{}} {{}}\", {}, {}); }});\n",
+							elementName, quoted, reader,
+							Quote(elementLabel, .. scope .()),
+							titled ? "e.Name" : "\"\"");
+					}
 					return true;
 				}
 			}
+		}
+		return false;
+	}
+
+	/// Whether a list element is worth its own rows: a public instance field the emitter can
+	/// build a row for. A bag with nothing editable keeps the plain list.
+	[Comptime]
+	private static bool HasEditableRows(Type element)
+	{
+		for (let field in element.GetFields())
+		{
+			if (!field.IsInstanceField || !field.IsPublic)
+				continue;
+			if (field.GetCustomAttribute<HiddenAttribute>() case .Ok)
+				continue;
+			let row = scope String();
+			if (EmitRow(field, field.FieldType, "\"x\"", "x", row))
+				return true;
+		}
+		return false;
+	}
+
+	/// Whether the element titles its own slot, which is a public `String Name`.
+	[Comptime]
+	private static bool HasNameField(Type element)
+	{
+		for (let field in element.GetFields())
+		{
+			if (field.IsInstanceField && field.IsPublic && (field.Name == "Name")
+				&& (field.FieldType == typeof(String)))
+				return true;
 		}
 		return false;
 	}

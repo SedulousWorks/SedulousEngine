@@ -20,12 +20,28 @@ class PasteComponentCommand : EditorCommand
 	private List<uint8> mPrevious = new .() ~ delete _;
 	private bool mHadComponent = false;
 	private bool mCaptured = false;
+	/// Non empty makes consecutive pastes of the SAME key one undo step, which is what turns
+	/// a slider drag over a nested value into a single entry. Empty never merges.
+	private String mMergeKey = new .() ~ delete _;
 
-	public this(SceneEditContext ctx, Guid entity, Span<uint8> blob)
+	public this(SceneEditContext ctx, Guid entity, Span<uint8> blob, StringView mergeKey = default)
 	{
 		mCtx = ctx;
 		mEntity = entity;
 		mBlob.AddRange(blob);
+		mMergeKey.Set(mergeKey);
+	}
+
+	public override bool MergeInto(EditorCommand previous)
+	{
+		let prev = previous as PasteComponentCommand;
+		if ((prev == null) || mMergeKey.IsEmpty || (prev.mMergeKey != mMergeKey)
+			|| (prev.mEntity != mEntity))
+			return false;
+		// The previous keeps its ORIGINAL prior state and takes over this one's blob.
+		prev.mBlob.Clear();
+		prev.mBlob.AddRange(mBlob);
+		return true;
 	}
 
 	public override bool Execute()

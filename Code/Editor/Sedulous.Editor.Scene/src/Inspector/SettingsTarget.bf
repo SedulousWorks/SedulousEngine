@@ -34,7 +34,7 @@ class SettingsTarget : InspectorTarget
 	/// A settings block holds no entity references.
 	public override void SetEntityRef(StringView field, Guid target) {}
 
-	public override void Mutate(delegate void(void* instance) mutate)
+	public override void Mutate(delegate void(void* instance) mutate, StringView mergeKey)
 	{
 		let system = mEdit.FindSystemBySettingsType(Type);
 		if (system == null)
