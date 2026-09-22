@@ -163,8 +163,46 @@ class TerrainComponentTests
 		retire.Tick();
 		Test.Assert(retire.PendingCount == 0);
 
-		// The shutdown path stays direct, the device having been idled by then.
+		// Clear with the queue wired RETIRES the live pair too, a scene destroy mid frame
+		// being the same in flight hazard as the rebuild; the drain frees everything.
 		cache.Clear(fixture.Device);
+		Test.Assert(retire.PendingCount == 2);
+		retire.Flush();
+	}
+
+	/// Stopping play in the editor destroys the run's scenes from a toolbar click, mid frame
+	/// loop: the terrain's height texture is still bound by a submitted frame's descriptor
+	/// set, and ClearGpu destroyed it in place, which validation reported on every stop. Clear
+	/// now routes through the frame aged queue like the version bump rebuild; without a queue
+	/// it stays direct.
+	[Test]
+	public static void ClearRetiresLiveEntriesWhenAQueueIsWired()
+	{
+		let fixture = scope NullDeviceFixture();
+		let retire = scope GpuRetireQueue();
+		retire.Initialize(fixture.Device, 2);
+		let grid = scope Heightfield(65, .(64.0f, 64.0f), 0.0f, 10.0f);
+		{
+			let cache = scope TerrainHeightTextureCache();
+			cache.SetRetireQueue(retire);
+			Test.Assert(cache.GetOrCreate(fixture.Device, grid, grid.Version) != null);
+			Test.Assert(retire.PendingCount == 0);
+			cache.Clear(fixture.Device);
+			Test.Assert(cache.Size == 0);
+			Test.Assert(retire.PendingCount == 2, "the view and the texture aged, NOT destroyed in place");
+			retire.Tick();
+			retire.Tick();
+			Test.Assert(retire.PendingCount == 2);
+			retire.Tick();
+			Test.Assert(retire.PendingCount == 0, "freed once every in flight frame cycled");
+		}
+		{
+			let cache = scope TerrainHeightTextureCache(); // no queue: direct destroy
+			Test.Assert(cache.GetOrCreate(fixture.Device, grid, grid.Version) != null);
+			cache.Clear(fixture.Device);
+			Test.Assert(cache.Size == 0);
+			Test.Assert(retire.PendingCount == 0);
+		}
 	}
 
 	[Test]

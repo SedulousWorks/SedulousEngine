@@ -84,11 +84,15 @@ class TerrainHeightTextureCache
 		return fresh.View;
 	}
 
-	/// Destroys everything cached. Call it while the device is still alive.
+	/// Drops every entry. Runs at SCENE DESTROY as well as at shutdown, stopping play in the
+	/// editor destroying the run's scenes mid frame loop, so a live entry may still sit in a
+	/// submitted frame's descriptor set: with a retire queue wired the GPU objects age past
+	/// every in flight frame before they are freed; without one, the Null device tests, they
+	/// are destroyed in place.
 	public void Clear(IDevice device)
 	{
 		for (let entry in mEntries)
-			Destroy(device, entry);
+			RetireOrDestroy(device, entry);
 
 		ClearAndDeleteItems!(mEntries);
 	}

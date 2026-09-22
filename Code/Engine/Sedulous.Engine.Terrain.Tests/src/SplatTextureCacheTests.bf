@@ -67,7 +67,10 @@ class SplatTextureCacheTests
 		Test.Assert(cache.Size == 1);
 		Test.Assert(retire.PendingCount == 4);
 
+		// Clear with the queue wired RETIRES the live pair too, a scene destroy mid frame
+		// being the same in flight hazard as the rebuild; the drain frees everything.
 		cache.Clear(fixture.Device);
+		Test.Assert(retire.PendingCount == 8, "the rebuilt pair joins the retired pair");
 		retire.Flush();
 	}
 
@@ -158,8 +161,12 @@ class SplatTextureCacheTests
 		Test.Assert(third.ArrayView !== second.ArrayView);
 		Test.Assert(cache.Size == 2);
 
+		// Clear with the queue wired retires both live entries, three objects each, behind
+		// the three already aging: a scene destroy mid frame must never free a bound array
+		// texture.
 		cache.Clear(fixture.Device);
 		Test.Assert(cache.Size == 0);
+		Test.Assert(retire.PendingCount == 9);
 		retire.Flush();
 	}
 
