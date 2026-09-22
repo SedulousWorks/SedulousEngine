@@ -69,15 +69,20 @@ class TerrainSubsystem : Subsystem, ISceneObserver
 		EnsureRenderer();
 	}
 
-	protected override void OnShutdown()
+	protected override void OnPrepareShutdown()
 	{
-		// A scene still alive at shutdown clears its GPU state HERE, while the device is:
-		// terrain shuts down before render, being the later addition, so its managers'
-		// destructors later find nothing left to leak.
+		// A scene still alive at shutdown clears its GPU state HERE, in the prepare phase:
+		// every subsystem prepares before any shuts down, so the caches' retired textures land
+		// in the render subsystem's queue before it flushes. Shutdown runs in reverse update
+		// order, render first, so clearing in OnShutdown retired into a queue already flushed
+		// and the images leaked.
 		for (let manager in mManagers)
 			manager.ClearGpu();
 		mManagers.Clear();
+	}
 
+	protected override void OnShutdown()
+	{
 		if (Context == null)
 			return;
 

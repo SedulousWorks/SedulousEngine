@@ -36,6 +36,10 @@ class RenderData
 	/// Folds a mesh and material identity into the sort, so same state draws stay contiguous.
 	/// Opaque work only: blended work zeroes it, since depth has to dominate there.
 	public uint32 SortBatchKey = 0;
+	/// Whether this item is a shadow caster, for the sun cascades and the local light tiles.
+	/// A producer drawing dense fillers, vegetation, opts out; everything else casts.
+	public bool CastShadows = true;
+
 	/// The producer's entity tag, in EntityTag's layout: what the GPU pick pass writes and its
 	/// readback decodes. Nought is untagged. Every producer whose draws should be pickable
 	/// stamps it: meshes, instanced sets, terrain.

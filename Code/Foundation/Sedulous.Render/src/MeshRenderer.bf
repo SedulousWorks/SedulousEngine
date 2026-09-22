@@ -34,6 +34,18 @@ class MeshRenderer : Renderer
 	private const uint32 cMaxShadowPasses = 256;
 	/// The instanced sets a pick pass can id per frame, each taking a shadow view ring slot.
 	private const uint32 cMaxPickMultiMeshSets = 64;
+	/// A set not extracted for this many upload frames releases its buffers and bind groups,
+	/// through the retire queue when one is wired, and leaves the pool: per chunk vegetation
+	/// sets come and go with the camera, and a set seen once must not pin its buffer for the
+	/// rest of the run.
+	public const uint32 cMultiMeshEvictFrames = 120;
+
+	/// The instances a set's per region slice holds for `count` live ones: rounded up to a
+	/// multiple of 16, so every region's byte offset, capacity times the instance stride, is a
+	/// multiple of 16 strides, which covers the strictest storage buffer offset alignment any
+	/// backend asks for. An odd count bound region one unaligned and WebGPU refused the bind
+	/// group where Vulkan had accepted it.
+	public static uint32 MultiMeshRegionCapacity(uint32 count) => (count + 15) & ~15;
 	private const uint32 cMaxLocalShadows = RenderLimits.MaxLocalShadowEntries;
 	/// The skinning pool: the staging ring and its device mirror START here and GROW, by
 	/// powers of two up to the cap, the first frame that needs more.
@@ -763,9 +775,12 @@ class MeshRenderer : Renderer
 	/// Brings every instanced set's persistent buffer up to date and grows the shared ramp to
 	/// the largest of them. A static set falls through instantly after its first upload, and
 	/// that constant cost per frame is the whole point.
-	private void UploadMultiMeshes(ExtractedScene scene)
+	/// PUBLIC for the lifecycle tests, which drive the pool directly; UploadSkinning is the
+	/// frame's own caller.
+	public void UploadMultiMeshes(ExtractedScene scene)
 	{
 		mMultiMeshFrame++;
+		EvictStaleMultiMeshSets(); // before any early return: a frame with no sets still ages them
 
 		uint32 maxCount = 0;
 		for (let data in scene.Items)
@@ -854,6 +869,68 @@ class MeshRenderer : Renderer
 
 	/// Brings one set's persistent buffer and its per region groups up to date, reallocating
 	/// on first sight or a grow and re-uploading only when the version has moved.
+	/// Releases one set's GPU objects: retired when a queue is wired, destroyed in place
+	/// otherwise, which is the Null device tests and a shutdown after the device idled.
+	private void ReleaseMultiMeshSet(MultiMeshSet set)
+	{
+		for (int r < MultiMeshSet.cMaxFramesInFlight)
+		{
+			if (set.InstanceBindGroups[r] == null)
+				continue;
+
+			if (mRetire != null)
+				mRetire.Retire(set.InstanceBindGroups[r]);
+			else
+				mDevice.DestroyBindGroup(ref set.InstanceBindGroups[r]);
+			set.InstanceBindGroups[r] = null;
+		}
+		set.ActiveInstanceBindGroup = null;
+
+		if (set.InstanceBuffer != null)
+		{
+			if (mRetire != null)
+				mRetire.Retire(set.InstanceBuffer);
+			else
+				mDevice.DestroyBuffer(ref set.InstanceBuffer);
+			set.InstanceBuffer = null;
+		}
+		if (set.OffsetsBuffer != null)
+		{
+			if (mRetire != null)
+				mRetire.Retire(set.OffsetsBuffer);
+			else
+				mDevice.DestroyBuffer(ref set.OffsetsBuffer);
+			set.OffsetsBuffer = null;
+		}
+		set.Capacity = 0;
+		set.OffsetsCapacity = 0;
+	}
+
+	/// Drops the sets whose last extraction is further back than the eviction window.
+	private void EvictStaleMultiMeshSets()
+	{
+		if (mMultiMeshSets.IsEmpty)
+			return;
+
+		let stale = scope List<uint64>();
+		for (let pair in mMultiMeshSets)
+		{
+			if ((mMultiMeshFrame - pair.value.LastFrame) > cMultiMeshEvictFrames)
+				stale.Add(pair.key);
+		}
+		for (let key in stale)
+		{
+			if (mMultiMeshSets.GetAndRemove(key) case .Ok(let pair))
+			{
+				ReleaseMultiMeshSet(pair.value);
+				delete pair.value;
+			}
+		}
+	}
+
+	/// How many instanced sets the pool holds, for the lifecycle tests.
+	public int MultiMeshSetCount => mMultiMeshSets.Count;
+
 	private void EnsureMultiMeshSet(MultiMeshRenderData multiMesh)
 	{
 		MultiMeshSet set;
@@ -896,7 +973,10 @@ class MeshRenderer : Renderer
 				set.InstanceBuffer = null;
 			}
 
-			let regionBytes = (uint64)multiMesh.InstanceCount * sizeof(MeshInstanceData);
+			// The capacity is ROUNDED so region r's byte offset meets every backend's storage
+			// buffer offset alignment.
+			let capacity = MultiMeshRegionCapacity(multiMesh.InstanceCount);
+			let regionBytes = (uint64)capacity * sizeof(MeshInstanceData);
 			var desc = BufferDesc();
 			desc.Size = (uint64)regions * regionBytes;
 			desc.Usage = .StorageRead | .CopyDst;
@@ -941,7 +1021,7 @@ class MeshRenderer : Renderer
 				return;
 			}
 
-			set.Capacity = multiMesh.InstanceCount;
+			set.Capacity = capacity;
 			// Force a re-upload of every region after a reallocation.
 			set.UploadedVersion = 0;
 			set.DirtyFrames = regions;

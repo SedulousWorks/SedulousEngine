@@ -19,6 +19,13 @@ class ExtractedScene
 	private List<ReflectionProbe> mProbes = new .() ~ delete _;
 
 	private Float3 mAmbient = .(0.03f, 0.03f, 0.03f);
+	/// The world position of the FIRST view that renders this snapshot, set by the render
+	/// subsystem before the scene's providers extract: a producer that thins by distance, the
+	/// vegetation fade prefix, reads it. One snapshot serves every view of the scene, so a
+	/// second view sees the first view's thinning; a per view prefix is a follow on.
+	private Float3 mViewOrigin = .(0, 0, 0);
+	/// False for a headless extraction, where nothing is thinned.
+	private bool mHasViewOrigin = false;
 	private SkySnapshot mSky = .();
 	private DirectionalShadow mShadow = .();
 
@@ -76,6 +83,14 @@ class ExtractedScene
 	/// The flat indirect term, premultiplied by its intensity, applied as a multiple of the
 	/// albedo in the forward shading.
 	public void SetAmbient(Float3 ambient) => mAmbient = ambient;
+
+	public void SetViewOrigin(Float3 origin)
+	{
+		mViewOrigin = origin;
+		mHasViewOrigin = true;
+	}
+	public Float3 ViewOrigin => mViewOrigin;
+	public bool HasViewOrigin => mHasViewOrigin;
 	public Float3 Ambient => mAmbient;
 
 	public void SetSky(SkySnapshot sky) => mSky = sky;
@@ -104,6 +119,8 @@ class ExtractedScene
 		mArena.Reset();
 
 		mAmbient = .(0.03f, 0.03f, 0.03f);
+		mViewOrigin = .(0, 0, 0);
+		mHasViewOrigin = false;
 		mSky = .();
 		mShadow = .();
 	}

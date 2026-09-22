@@ -609,6 +609,8 @@ class RenderFrame
 			if ((data.Category != RenderCategories.Opaque)
 				&& (data.Category != RenderCategories.Masked))
 				continue;
+			if (!data.CastShadows)
+				continue; // the producer opted out, vegetation fillers
 
 			// The list is HETEROGENEOUS: any renderer, terrain or an external one, can produce
 			// a caster. Only the GENERIC base fields are read here, SortBatchKey included:
