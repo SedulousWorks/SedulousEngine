@@ -63,14 +63,13 @@ class VegetationComponentTests
 		public TerrainResource Resource = new .() ~ delete _;
 		public StaticMesh Mesh ~ delete _;
 		public EntityHandle Terrain = .();
-		public EntityHandle Grass = .();
-		public VegetationLayerComponentManager Manager = null;
+		public TerrainVegetationComponentManager Manager = null;
 
 		public this(bool withSplat = true)
 		{
 			TerrainScene.AddTerrainSceneManagers(Scene);
 			VegetationScene.AddVegetationSceneManagers(Scene);
-			Manager = Scene.GetSystem<VegetationLayerComponentManager>();
+			Manager = Scene.GetSystem<TerrainVegetationComponentManager>();
 			Test.Assert(Manager != null);
 
 			Grid = MakeFlat(2.0f);
@@ -85,9 +84,10 @@ class VegetationComponentTests
 			Scene.GetSystem<TerrainComponentManager>().Add(Terrain).Terrain.SetDirect(Resource);
 
 			Mesh = Primitives.Cube(0.5f);
-			Grass = Scene.CreateEntity("grass");
-			Scene.SetParent(Grass, Terrain);
-			let c = Manager.Add(Grass);
+			// The layers live in slots on the TERRAIN entity's vegetation component.
+			let component = Manager.Add(Terrain);
+			let c = new VegetationLayer();
+			c.Name.Set("Grass");
 			c.Mesh.SetDirect(Mesh);
 			c.Placement = withSplat ? .Splat : .Uniform;
 			c.SplatLayer = 0;
@@ -95,10 +95,12 @@ class VegetationComponentTests
 			c.MaxSlopeDegrees = 90.0f;
 			c.FadeStart = 40.0f;
 			c.FadeEnd = 80.0f;
+			component.Layers.Add(c);
 			Scene.Start();
 		}
 
-		public VegetationLayerComponent* Layer => Manager.Get(Grass);
+		public TerrainVegetationComponent* Component => Manager.Get(Terrain);
+		public VegetationLayer Layer => Component.Layers[0];
 
 		/// Extracts with the view at an origin, or headless, collecting the emitted sets.
 		public void Extract(ExtractedScene snapshot, Float3* origin, List<MultiMeshRenderData> outSets)
@@ -153,7 +155,7 @@ class VegetationComponentTests
 			Test.Assert(s.Category == RenderCategories.Opaque);
 			Test.Assert(s.WorldCenter.X < 0.0f); // the painted chunks
 			Test.Assert(s.WorldRadius > 32.0f);
-			Test.Assert(EntityTag.Index(s.EntityId) == f.Grass.Index);
+			Test.Assert(EntityTag.Index(s.EntityId) == f.Terrain.Index);
 			for (uint32 i = 0; i < s.InstanceCount; i++)
 			{
 				Test.Assert(s.Transforms[i].M[3][0] < 0.0f);
@@ -321,7 +323,7 @@ class VegetationComponentTests
 		let bare = scope Scene();
 		TerrainScene.AddTerrainSceneManagers(bare);
 		VegetationScene.AddVegetationSceneManagers(bare);
-		let bareManager = bare.GetSystem<VegetationLayerComponentManager>();
+		let bareManager = bare.GetSystem<TerrainVegetationComponentManager>();
 		Test.Assert(bareManager != null);
 		bare.Start();
 		let snapshot = scope ExtractedScene();
@@ -338,15 +340,18 @@ class VegetationComponentTests
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.Count == 4);
 
-		// An inactive entity is absent, and so is a layer with no terrain above it.
-		f.Scene.SetActive(f.Grass, false);
+		// A hidden COMPONENT draws nothing either, and its layers keep their caches.
+		f.Component.Visible = false;
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.IsEmpty);
-		f.Scene.SetActive(f.Grass, true);
-		f.Scene.SetParent(f.Grass, EntityHandle());
+		Test.Assert(f.Manager.BuiltSetCount == 4, "a hidden component keeps its sets");
+		f.Component.Visible = true;
+
+		// An inactive entity is absent.
+		f.Scene.SetActive(f.Terrain, false);
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.IsEmpty);
-		f.Scene.SetParent(f.Grass, f.Terrain);
+		f.Scene.SetActive(f.Terrain, true);
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.Count == 4);
 
@@ -355,13 +360,65 @@ class VegetationComponentTests
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.IsEmpty);
 
-		// A removed layer drops its cache.
+		// A removed component drops every cache.
 		f.Layer.Mesh.SetDirect(f.Mesh);
 		f.Extract(snapshot, null, sets);
 		Test.Assert(f.Manager.BuiltSetCount == 4);
-		f.Manager.Remove(f.Grass);
+		f.Manager.Remove(f.Terrain);
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.IsEmpty);
 		Test.Assert(f.Manager.BuiltSetCount == 0);
+	}
+
+	/// Two layer slots are two independent families of sets, and removing one slot drops
+	/// exactly its caches while the other keeps drawing.
+	[Test]
+	public static void TwoLayerSlotsAreTwoFamiliesAndARemovedSlotDropsItsSets()
+	{
+		let f = scope Fixture(false); // Uniform, so all four chunks grow
+		f.Manager.SetBuildBudget(100);
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+
+		let second = new VegetationLayer();
+		second.Name.Set("Rocks");
+		second.Mesh.SetDirect(f.Mesh);
+		second.Placement = .Uniform;
+		second.Density = 0.1f;
+		second.MaxSlopeDegrees = 90.0f;
+		second.CastShadows = true;
+		f.Component.Layers.Add(second);
+
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 8, "four chunks each, for two slots");
+		Test.Assert(f.Manager.BuiltSetCount == 8);
+
+		// The slots' keys never collide: the seed hashes the slot index too.
+		let keys = scope List<uint64>();
+		for (let s in sets)
+		{
+			Test.Assert(!keys.Contains(s.Key), "every set has its own key");
+			keys.Add(s.Key);
+		}
+
+		// Each family keeps its own draw state.
+		var casting = 0;
+		for (let s in sets)
+			casting += s.CastShadows ? 1 : 0;
+		Test.Assert(casting == 4, "only the rock slot casts");
+
+		// A hidden SLOT keeps its sets and stops drawing; the other is untouched.
+		second.Visible = false;
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4);
+		Test.Assert(f.Manager.BuiltSetCount == 8, "the hidden slot keeps its sets");
+		second.Visible = true;
+
+		// Removing the slot drops exactly its caches.
+		f.Component.Layers.RemoveAt(1);
+		delete second;
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4);
+		Test.Assert(f.Manager.BuiltSetCount == 4, "the removed slot's sets are gone");
 	}
 }

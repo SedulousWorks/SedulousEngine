@@ -42,8 +42,7 @@ class TerrainPlaygroundApp : DefaultApplication
 	private TerrainResource mTerrainResource = null ~ delete _;
 	private SplatWeights mSplat = null ~ delete _;
 
-	/// The grass layer entity under the terrain, and what its heads up display edits.
-	private EntityHandle mGrass = .Invalid;
+	/// What the grass layer's heads up display edits.
 	private StaticMesh mGrassMesh = null ~ delete _;
 	private Material mGrassMaterial = null ~ delete _;
 	private float mGrassDensity = 1.5f;
@@ -141,17 +140,18 @@ class TerrainPlaygroundApp : DefaultApplication
 			component.LodBias = mLodBias;
 		}
 
-		// The grass: a vegetation layer entity under the terrain following splat layer nought,
-		// so it grows on the painted half, not on the other, and thins to nothing at the fade.
-		mGrass = mScene.CreateEntity("grass");
-		mScene.SetParent(mGrass, mTerrain);
-		if (let layers = mScene.GetSystem<VegetationLayerComponentManager>())
+		// The grass: one layer slot on the terrain's vegetation component, following splat
+		// layer nought, so it grows on the painted half, not on the other, and thins to
+		// nothing at the fade.
+		if (let vegetation = mScene.GetSystem<TerrainVegetationComponentManager>())
 		{
 			mGrassMesh = Primitives.Cone(0.24f, 1.4f); // a tuft
 			mGrassMaterial = MaterialPresets.CreatePbr("grass", .(0.25f, 0.62f, 0.18f, 1.0f),
 				0.0f, 0.85f);
 
-			let layer = layers.Add(mGrass);
+			let component = vegetation.Add(mTerrain);
+			let layer = new VegetationLayer();
+			layer.Name.Set("Grass");
 			layer.Mesh.SetDirect(mGrassMesh);
 			layer.Material.SetDirect(mGrassMaterial);
 			layer.Placement = .Splat;
@@ -162,6 +162,7 @@ class TerrainPlaygroundApp : DefaultApplication
 			layer.FadeStart = mGrassFadeStart;
 			layer.FadeEnd = mGrassFadeEnd;
 			layer.CastShadows = mGrassShadows;
+			component.Layers.Add(layer);
 		}
 
 		// A sphere that orbits overhead, so the cascaded shadow is something that MOVES: a
@@ -314,10 +315,12 @@ class TerrainPlaygroundApp : DefaultApplication
 
 			igSeparator();
 			igTextDisabled("Grass - splat layer 0, the painted half only");
-			if (let layers = mScene.GetSystem<VegetationLayerComponentManager>())
+			if (let vegetation = mScene.GetSystem<TerrainVegetationComponentManager>())
 			{
-				if (let layer = layers.Get(mGrass))
+				let component = vegetation.Get(mTerrain);
+				if ((component != null) && !component.Layers.IsEmpty)
 				{
+					let layer = component.Layers[0];
 					// Density is a SCATTER parameter, so editing it regrows the sets; the fade
 					// and the shadow flag are draw state and take effect the same frame.
 					var changed = igSliderFloat("density /m2", &mGrassDensity, 0.0f, 4.0f, "%.2f", 0);
@@ -331,7 +334,7 @@ class TerrainPlaygroundApp : DefaultApplication
 						layer.FadeEnd = Math.Max(mGrassFadeEnd, mGrassFadeStart);
 						layer.CastShadows = mGrassShadows;
 					}
-					igText(scope $"sets {layers.BuiltSetCount}, instances {layers.InstanceCount}");
+					igText(scope $"sets {vegetation.BuiltSetCount}, instances {vegetation.InstanceCount}");
 				}
 			}
 

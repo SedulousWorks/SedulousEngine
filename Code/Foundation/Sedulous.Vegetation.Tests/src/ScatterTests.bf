@@ -74,9 +74,9 @@ class ScatterTests
 		return sw;
 	}
 
-	private static VegetationLayer Uniform(float density)
+	private static ScatterLayer Uniform(float density)
 	{
-		var layer = VegetationLayer();
+		var layer = ScatterLayer();
 		layer.Placement = .Uniform;
 		layer.Density = density;
 		layer.MaxSlopeDegrees = 90.0f;
@@ -104,8 +104,8 @@ class ScatterTests
 		defer delete grid;
 		let chunk = ChunkOf(grid);
 		let layer = Uniform(0.25f);
-		let layerId = Guid(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
-		let seed = Scatter.ChunkSeed(layerId, 0, 0);
+		let ownerId = Guid(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+		let seed = Scatter.ChunkSeed(ownerId, 0, 0, 0);
 
 		let a = scope ScatterResult();
 		let b = scope ScatterResult();
@@ -124,12 +124,14 @@ class ScatterTests
 			Test.Assert(m.M[3][2] <= chunk.Bounds.Max.Z);
 		}
 
-		// The seed IS the identity: a neighbouring chunk or another layer scatters differently.
-		Test.Assert(Scatter.ChunkSeed(layerId, 1, 0) != seed);
-		Test.Assert(Scatter.ChunkSeed(layerId, 0, 1) != seed);
-		Test.Assert(Scatter.ChunkSeed(Guid(9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), 0, 0) != seed);
+		// The seed IS the identity: a neighbouring chunk, another slot on the same entity, or
+		// another entity all scatter differently.
+		Test.Assert(Scatter.ChunkSeed(ownerId, 0, 1, 0) != seed);
+		Test.Assert(Scatter.ChunkSeed(ownerId, 0, 0, 1) != seed);
+		Test.Assert(Scatter.ChunkSeed(ownerId, 1, 0, 0) != seed);
+		Test.Assert(Scatter.ChunkSeed(Guid(9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), 0, 0, 0) != seed);
 		let c = scope ScatterResult();
-		Scatter.ScatterChunk(Scatter.ChunkSeed(layerId, 1, 0), chunk, grid, null, layer,
+		Scatter.ScatterChunk(Scatter.ChunkSeed(ownerId, 0, 1, 0), chunk, grid, null, layer,
 			AABB.Empty(), c);
 		Test.Assert(!SameTransforms(a.Transforms, c.Transforms));
 	}
@@ -181,7 +183,7 @@ class ScatterTests
 		let splat = MakeHalfSplat();
 		defer delete splat;
 
-		var grass = VegetationLayer();
+		var grass = ScatterLayer();
 		grass.Placement = .Splat;
 		grass.SplatLayer = 0;
 		grass.SplatThreshold = 0.25f;
@@ -199,7 +201,7 @@ class ScatterTests
 
 		// The base layer is the complement.
 		var baseLayer = grass;
-		baseLayer.SplatLayer = VegetationLayer.cSplatBaseLayer;
+		baseLayer.SplatLayer = ScatterLayer.cSplatBaseLayer;
 		let unpainted = scope ScatterResult();
 		Scatter.ScatterChunk(3, chunk, grid, splat, baseLayer, AABB.Empty(), unpainted);
 		Test.Assert(!unpainted.Transforms.IsEmpty);
@@ -412,7 +414,7 @@ class ScatterTests
 	[Test]
 	public static void TheScatterHashCoversTheScatterParametersNotTheDrawState()
 	{
-		let a = VegetationLayer();
+		let a = ScatterLayer();
 		var b = a;
 		Test.Assert(VegetationLayers.LayerScatterHash(a) == VegetationLayers.LayerScatterHash(b));
 		b.Density = 3.0f;

@@ -49,15 +49,17 @@ class ScatterResult
 /// origin; the terrain entity's world matrix places them.
 static class Scatter
 {
-	/// The seed of one layer and chunk pair: a hash over the layer's PERSISTENT identity and
-	/// the chunk index, never a pointer and never a frame counter. The renderer keys its
-	/// persistent instance buffer on the same value.
-	public static uint64 ChunkSeed(Guid layerId, int32 chunkX, int32 chunkZ)
+	/// The seed of one layer and chunk pair: a hash over the OWNING entity's persistent id,
+	/// the layer's index and the chunk index, never a pointer and never a frame counter. The
+	/// renderer keys its persistent instance buffer on the same value.
+	public static uint64 ChunkSeed(Guid ownerId, uint32 layerIndex, int32 chunkX, int32 chunkZ)
 	{
-		var layerId;
+		var ownerId;
+		var layerIndex;
 		var chunkX;
 		var chunkZ;
-		var h = HashBytes(&layerId, sizeof(Guid));
+		var h = HashBytes(&ownerId, sizeof(Guid));
+		h = HashBytes(&layerIndex, sizeof(uint32), h);
 		h = HashBytes(&chunkX, sizeof(int32), h);
 		h = HashBytes(&chunkZ, sizeof(int32), h);
 		return (h == 0) ? 1 : h; // nought is the no set key downstream
@@ -105,7 +107,7 @@ static class Scatter
 		let v = Clamp(localZ / Max(size.Y, 1e-6f) + 0.5f, 0.0f, 1.0f);
 		let sx = Clamp((int32)(u * (float)(splat.Width - 1) + 0.5f), 0, splat.Width - 1);
 		let sy = Clamp((int32)(v * (float)(splat.Height - 1) + 0.5f), 0, splat.Height - 1);
-		let w = (paletteIndex == VegetationLayer.cSplatBaseLayer)
+		let w = (paletteIndex == ScatterLayer.cSplatBaseLayer)
 			? splat.BaseWeight(sx, sy)
 			: splat.WeightOfLayer(sx, sy, paletteIndex);
 		return (float)w / 255.0f;
@@ -114,7 +116,7 @@ static class Scatter
 	/// The placement source's share, nought to one, at a terrain local XZ point: one for
 	/// Uniform and for Mask until the mask lands, the splat layer's painted weight for Splat
 	/// and nought with no splat, nought for Scattered.
-	public static float PlacementShareAt(VegetationLayer layer, Heightfield heightfield,
+	public static float PlacementShareAt(ScatterLayer layer, Heightfield heightfield,
 		SplatWeights splat, float localX, float localZ)
 	{
 		switch (layer.Placement)
@@ -157,7 +159,7 @@ static class Scatter
 	/// grows the chunk's bounds by the maximum scale; an empty box leaves the terrain bounds
 	/// as they are.
 	public static void ScatterChunk(uint64 seed, TerrainChunk chunk, Heightfield heightfield,
-		SplatWeights splat, VegetationLayer layer, AABB meshLocalBounds, ScatterResult outResult)
+		SplatWeights splat, ScatterLayer layer, AABB meshLocalBounds, ScatterResult outResult)
 	{
 		outResult.Clear();
 		outResult.LocalBounds = chunk.Bounds;

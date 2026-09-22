@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Geometry;
@@ -9,20 +10,15 @@ using Sedulous.Vegetation;
 
 namespace Sedulous.Engine.Vegetation;
 
-/// One vegetation layer on an entity.
+/// One authored vegetation layer.
 ///
-/// ONE LAYER PER COMPONENT: a grass layer, a rock layer and a flower layer are three entities
-/// under, or on, the terrain entity, each with one of these. The manager finds the terrain by
-/// walking the entity's ancestry for a TerrainComponent, so the entity's name IS the layer's
-/// name, its active flag toggles the layer, the hierarchy orders it, and a prefab can carry it.
-///
-/// The scatter parameters mirror Sedulous.Vegetation's VegetationLayer FLAT, the inspector
-/// editing leaf fields rather than nested structs; ToLayer is the bridge to the pure scatter.
-[SerializableComponent("vegetationLayer")]
-[DisplayName("Vegetation Layer")]
-[Category("Terrain")]
-struct VegetationLayerComponent : ISerializable, IComponentResources
+/// The scatter parameters mirror Sedulous.Vegetation's ScatterLayer FLAT, the inspector
+/// editing leaf fields; ToScatterLayer is the bridge to the pure scatter.
+[Reflect(.All)]
+class VegetationLayer : ISerializable
 {
+	/// The inspector's slot label.
+	public String Name = new .("Layer") ~ delete _;
 	/// The instanced mesh: a grass card, a tuft, a rock.
 	[Description("The instanced mesh: a grass card, a tuft, a rock.")]
 	public Ref<StaticMesh> Mesh = .(Guid());
@@ -32,7 +28,6 @@ struct VegetationLayerComponent : ISerializable, IComponentResources
 
 	[Description("Where it grows: everywhere (Uniform), where a terrain splat layer is painted (Splat), a painted mask (Mask), or authored instances (Scattered).")]
 	public VegetationPlacement Placement = .Splat;
-	/// Splat placement: the terrain palette index to follow.
 	[DisplayName("Splat Layer")]
 	[Description("Splat placement: the terrain palette index to follow.")]
 	public uint32 SplatLayer = 0;
@@ -70,9 +65,9 @@ struct VegetationLayerComponent : ISerializable, IComponentResources
 	public this() {}
 
 	/// The bridge to the pure scatter.
-	public VegetationLayer ToLayer()
+	public ScatterLayer ToScatterLayer()
 	{
-		var layer = VegetationLayer();
+		var layer = ScatterLayer();
 		layer.Placement = Placement;
 		layer.SplatLayer = SplatLayer;
 		layer.SplatThreshold = SplatThreshold;
@@ -89,14 +84,15 @@ struct VegetationLayerComponent : ISerializable, IComponentResources
 		return layer;
 	}
 
-	public void ResolveResources(ResourceManager manager) mut
+	public void ResolveResources(ResourceManager manager)
 	{
 		Mesh.Bind(manager);
 		Material.Bind(manager);
 	}
 
-	public void Serialize(ISerializer ar) mut
+	public void Serialize(ISerializer ar)
 	{
+		Sedulous.Core.Serialization.Serialize(ar, "name", Name);
 		SerializeValue(ar, "mesh", ref Mesh.Id);
 		SerializeValue(ar, "material", ref Material.Id);
 		ar.Key("placement");
@@ -115,6 +111,34 @@ struct VegetationLayerComponent : ISerializable, IComponentResources
 		SerializeValue(ar, "fadeEnd", ref FadeEnd);
 		SerializeValue(ar, "castShadows", ref CastShadows);
 		SerializeValue(ar, "maxInstancesPerChunk", ref MaxInstancesPerChunk);
+		SerializeValue(ar, "visible", ref Visible);
+	}
+}
+
+/// The vegetation over one terrain: its layers, on the terrain component's entity, or on a
+/// child of it since the manager walks the ancestry.
+[SerializableComponent("terrainVegetation")]
+[DisplayName("Terrain Vegetation")]
+[Category("Terrain")]
+struct TerrainVegetationComponent : ISerializable, IComponentResources
+{
+	/// OWNED, but created and freed by the manager: a struct component cannot carry a field
+	/// destructor.
+	public List<VegetationLayer> Layers = null;
+	public bool Visible = true;
+
+	public this() {}
+
+	public void ResolveResources(ResourceManager manager) mut
+	{
+		for (let layer in Layers)
+			layer.ResolveResources(manager);
+	}
+
+	public void Serialize(ISerializer ar) mut
+	{
+		ar.Key("layers");
+		SerializeList(ar, Layers);
 		SerializeValue(ar, "visible", ref Visible);
 	}
 }

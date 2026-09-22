@@ -21,7 +21,7 @@ enum VegetationPlacement : uint8
 ///
 /// Plain data, hashed for cache invalidation. The scene component mirrors these fields flat,
 /// the reflected inspector editing leaf fields rather than nested structs.
-struct VegetationLayer
+struct ScatterLayer
 {
 	/// The base, unpainted terrain layer as a SplatLayer value: grows where NO palette layer
 	/// is painted, which is the implicit base weight.
@@ -59,7 +59,7 @@ static class VegetationLayers
 {
 	/// A hash of every parameter that changes the SCATTER, which is the cache invalidation key
 	/// for a layer. The fade and the shadow flag are per frame draw state, so not part of it.
-	public static uint64 LayerScatterHash(VegetationLayer layer)
+	public static uint64 LayerScatterHash(ScatterLayer layer)
 	{
 		var layer;
 		var h = HashBytes(&layer.Placement, sizeof(VegetationPlacement));

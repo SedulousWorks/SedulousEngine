@@ -10,6 +10,6 @@ static class VegetationScene
 {
 	public static void AddVegetationSceneManagers(Scene scene)
 	{
-		scene.AddSystem<VegetationLayerComponentManager>();
+		scene.AddSystem<TerrainVegetationComponentManager>();
 	}
 }

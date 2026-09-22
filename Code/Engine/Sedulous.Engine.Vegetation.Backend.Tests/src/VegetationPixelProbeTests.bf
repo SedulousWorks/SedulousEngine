@@ -113,7 +113,7 @@ class VegetationPixelProbeTests
 		let world = scope Scene();
 		TerrainScene.AddTerrainSceneManagers(world);
 		VegetationScene.AddVegetationSceneManagers(world);
-		let manager = world.GetSystem<VegetationLayerComponentManager>();
+		let manager = world.GetSystem<TerrainVegetationComponentManager>();
 		Test.Assert(manager != null);
 		manager.SetBuildBudget(100);
 
@@ -133,9 +133,9 @@ class VegetationPixelProbeTests
 		let green = MaterialPresets.CreatePbr("grass", .(0.1f, 0.9f, 0.1f, 1.0f), 0.0f, 0.9f);
 		defer delete green;
 
-		let grass = world.CreateEntity("grass");
-		world.SetParent(grass, terrain);
-		let layer = manager.Add(grass);
+		let component = manager.Add(terrain);
+		let layer = new VegetationLayer();
+		layer.Name.Set("Grass");
 		layer.Mesh.SetDirect(tuft);
 		layer.Material.SetDirect(green);
 		layer.Placement = .Splat;
@@ -144,6 +144,7 @@ class VegetationPixelProbeTests
 		layer.MaxSlopeDegrees = 90.0f;
 		layer.FadeStart = fadeStart;
 		layer.FadeEnd = fadeEnd;
+		component.Layers.Add(layer);
 		world.Start();
 
 		let snapshot = scope ExtractedScene();

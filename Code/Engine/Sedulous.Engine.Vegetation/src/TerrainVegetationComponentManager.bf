@@ -26,7 +26,7 @@ namespace Sedulous.Engine.Vegetation;
 /// Invalidation: the heightfield uid and version, the splat uid and version, the entity world
 /// matrix and the layer's scatter hash. A region notice, which the editor brushes send,
 /// regrows only the touched chunks.
-class VegetationLayerComponentManager : ResourceBindingComponentManager<VegetationLayerComponent>,
+class TerrainVegetationComponentManager : ResourceBindingComponentManager<TerrainVegetationComponent>,
 	IRenderDataProvider
 {
 	/// The chunks scattered per extraction, per layer: a cold start spreads over frames.
@@ -54,7 +54,8 @@ class VegetationLayerComponentManager : ResourceBindingComponentManager<Vegetati
 	/// One layer entity's cache.
 	private class LayerCache
 	{
-		public Guid LayerId = .();
+		public Guid OwnerId = .();
+		public uint32 LayerIndex = 0;
 		public uint64 HeightfieldUid = 0;
 		public uint64 HeightfieldVersion = 0;
 		public uint64 SplatUid = 0;
@@ -86,6 +87,21 @@ class VegetationLayerComponentManager : ResourceBindingComponentManager<Vegetati
 	public override void OnSceneCreate(Scene scene)
 	{
 		mScene = scene;
+	}
+
+	/// The component is a struct, so it cannot carry a field destructor: the manager owns the
+	/// layer list's lifetime.
+	protected override void OnComponentCreated(TerrainVegetationComponent* component,
+		EntityHandle entity)
+	{
+		component.Layers = new List<VegetationLayer>();
+	}
+
+	protected override void OnComponentDestroyed(TerrainVegetationComponent* component,
+		EntityHandle entity)
+	{
+		DeleteContainerAndItems!(component.Layers);
+		component.Layers = null;
 	}
 
 	/// Vegetation draws in an editor as well as in a player, so this is NOT simulation gated.
@@ -165,20 +181,31 @@ class VegetationLayerComponentManager : ResourceBindingComponentManager<Vegetati
 		return Max(sx, Max(sy, sz));
 	}
 
-	private LayerCache CacheFor(EntityHandle layerEntity)
+	/// One cache per layer SLOT of an entity: the entity tag hashed with the slot index, so
+	/// removing a slot drops exactly its cache.
+	private static uint64 CacheKey(EntityHandle owner, uint32 layerIndex)
 	{
-		let key = RenderExtract.PackEntity(layerEntity);
+		var layerIndex;
+		let entity = RenderExtract.PackEntity(owner);
+		return HashBytes(&layerIndex, sizeof(uint32), entity);
+	}
+
+	private LayerCache CacheFor(EntityHandle owner, uint32 layerIndex)
+	{
+		let key = CacheKey(owner, layerIndex);
 		if (mCaches.TryGetValue(key, let found))
 			return found;
 
 		let created = new LayerCache();
+		created.LayerIndex = layerIndex;
 		mCaches[key] = created;
 		return created;
 	}
 
-	private void ResetCache(LayerCache cache, Heightfield hf, Guid layerId)
+	private void ResetCache(LayerCache cache, Heightfield hf, Guid ownerId, uint32 layerIndex)
 	{
-		cache.LayerId = layerId;
+		cache.OwnerId = ownerId;
+		cache.LayerIndex = layerIndex;
 		cache.HeightfieldUid = hf.Uid;
 		cache.HeightfieldVersion = hf.Version;
 		cache.SplatUid = 0;
@@ -191,7 +218,7 @@ class VegetationLayerComponentManager : ResourceBindingComponentManager<Vegetati
 		for (let chunk in cache.Chunks)
 		{
 			let set = new ChunkSet();
-			set.Key = Scatter.ChunkSeed(layerId, chunk.ChunkX, chunk.ChunkZ);
+			set.Key = Scatter.ChunkSeed(ownerId, layerIndex, chunk.ChunkX, chunk.ChunkZ);
 			cache.Sets.Add(set);
 		}
 	}
@@ -226,7 +253,7 @@ class VegetationLayerComponentManager : ResourceBindingComponentManager<Vegetati
 	}
 
 	private void BuildSet(LayerCache cache, int chunkIndex, Heightfield hf, SplatWeights splat,
-		VegetationLayer layer, AABB meshBounds)
+		ScatterLayer layer, AABB meshBounds)
 	{
 		let set = cache.Sets[chunkIndex];
 		Scatter.ScatterChunk(set.Key, cache.Chunks[chunkIndex], hf, splat, layer, meshBounds,
@@ -251,8 +278,142 @@ class VegetationLayerComponentManager : ResourceBindingComponentManager<Vegetati
 		mBuilds++;
 	}
 
-	/// One MultiMeshRenderData per layer and chunk in range of the snapshot's view origin, or
-	/// every chunk when the snapshot has none, which is a headless extraction.
+	/// One layer slot's sets: the cache, its invalidation, and the emit of every chunk in
+	/// range with the fade prefix as its count.
+	private void ExtractLayer(ExtractedScene snapshot, EntityHandle owner, Guid ownerId,
+		uint32 layerIndex, VegetationLayer authored, Heightfield hf, SplatWeights splat,
+		Float4x4 entityWorld, ref uint32 budget)
+	{
+		let cache = CacheFor(owner, layerIndex);
+		cache.SeenThisFrame = true; // a hidden layer keeps its sets, so unhiding regrows nothing
+		if (!authored.Visible)
+			return;
+
+		let mesh = authored.Mesh.Get;
+		if (mesh == null)
+			return;
+
+		let layer = authored.ToScatterLayer();
+		let layerHash = VegetationLayers.LayerScatterHash(layer);
+
+		// An identity change rebuilds the whole cache: another heightfield or its size, the
+		// owner's persistent id, the mesh, or any scatter parameter.
+		if (cache.Chunks.IsEmpty || (cache.HeightfieldUid != hf.Uid) || (cache.OwnerId != ownerId)
+			|| (cache.MeshUid != mesh.Uid) || (cache.LayerHash != layerHash))
+		{
+			ResetCache(cache, hf, ownerId, layerIndex);
+			cache.LayerHash = layerHash;
+			cache.MeshUid = mesh.Uid;
+			cache.WarnedClamp = false;
+		}
+
+		// A content change, a sculpt or a paint, regrows the touched chunks when the editor
+		// said which, else every chunk.
+		let splatUid = (splat != null) ? splat.Uid : 0;
+		let splatVersion = (splat != null) ? splat.Version : 0;
+		if ((cache.HeightfieldVersion != hf.Version) || (cache.SplatUid != splatUid)
+			|| (cache.SplatVersion != splatVersion))
+		{
+			if (mPendingRegions.IsEmpty)
+			{
+				DirtyAll(cache);
+			}
+			else
+			{
+				mTouchedScratch.Clear();
+				for (let region in mPendingRegions)
+					Scatter.ChunksTouchedBy(region, cache.ChunksPerSide, mTouchedScratch);
+				for (let index in mTouchedScratch)
+				{
+					if (index < (uint32)cache.Sets.Count)
+						cache.Sets[(int)index].Dirty = true;
+				}
+			}
+			cache.HeightfieldVersion = hf.Version;
+			cache.SplatUid = splatUid;
+			cache.SplatVersion = splatVersion;
+		}
+
+		// The terrain entity's world matrix places the terrain local instances; a move
+		// recomposes the built sets without rescattering them.
+		if (!cache.Composed || (cache.EntityWorld != entityWorld))
+		{
+			cache.EntityWorld = entityWorld;
+			cache.Composed = true;
+			for (let set in cache.Sets)
+			{
+				if (set.Built)
+					Compose(cache, set);
+			}
+		}
+
+		let hasOrigin = snapshot.HasViewOrigin;
+		let origin = snapshot.ViewOrigin;
+		let entityScale = MaxAxisScale(entityWorld);
+		let material = authored.Material.Get;
+		for (int i < cache.Sets.Count)
+		{
+			let set = cache.Sets[i];
+			// The distance from the view to the chunk: its built bounds, else the terrain's.
+			var distance = 0.0f;
+			if (hasOrigin)
+			{
+				var center = set.WorldCenter;
+				var radius = set.WorldRadius;
+				if (!set.Built)
+				{
+					let chunk = cache.Chunks[i];
+					center = TransformPoint(chunk.Bounds.Center(), entityWorld);
+					radius = Length(chunk.Bounds.Extents()) * entityScale;
+				}
+				distance = Max(0.0f, Length(origin - center) - radius);
+				// Out of range: absent from the snapshot, and the renderer evicts it.
+				if (distance >= layer.FadeEnd)
+					continue;
+			}
+
+			if (set.Dirty)
+			{
+				if (budget == 0)
+					continue; // next frame: the build budget spreads a cold start
+
+				BuildSet(cache, i, hf, splat, layer, mesh.Bounds);
+				budget--;
+			}
+			if (set.World.IsEmpty)
+				continue;
+
+			let density = hasOrigin
+				? Scatter.DensityAtDistance(distance, layer.FadeStart, layer.FadeEnd)
+				: 1.0f;
+			let count = Scatter.FadePrefix((uint32)set.World.Count, density);
+			if (count == 0)
+				continue;
+
+			let rd = snapshot.Add<MultiMeshRenderData>();
+			if (rd == null)
+				return;
+
+			// The renderer dispatches on this flag, not on the type.
+			rd.MultiMesh = true;
+			rd.Key = set.Key;
+			rd.Transforms = set.World.Ptr; // borrowed for the frame, the snapshot being immutable
+			rd.InstanceCount = count; // the fade prefix, per frame
+			rd.Version = set.Version; // the scatter, so a re-upload only on a change
+			rd.Mesh = mesh;
+			rd.Material = material;
+			rd.WorldCenter = set.WorldCenter;
+			rd.WorldRadius = set.WorldRadius;
+			rd.EntityId = RenderExtract.PackEntity(owner);
+			rd.Category = RenderExtract.CategoryForMaterial(material);
+			rd.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(mesh),
+				(material != null) ? Internal.UnsafeCastToPtr(material) : null);
+			rd.CastShadows = layer.CastShadows;
+		}
+	}
+
+	/// One MultiMeshRenderData per layer slot and chunk in range of the snapshot's view
+	/// origin, or every chunk when the snapshot has none, which is a headless extraction.
 	public void ExtractRenderData(ExtractedScene snapshot)
 	{
 		if (mScene == null)
@@ -261,156 +422,36 @@ class VegetationLayerComponentManager : ResourceBindingComponentManager<Vegetati
 		for (let entry in mCaches)
 			entry.value.SeenThisFrame = false;
 
-		let hasOrigin = snapshot.HasViewOrigin;
-		let origin = snapshot.ViewOrigin;
 		var budget = mBuildBudget;
 
 		ForEach(scope [&] (component, owner) =>
 			{
-				let cache = CacheFor(owner);
-				cache.SeenThisFrame = true; // a hidden layer keeps its sets, so unhiding regrows nothing
-				if (!component.Visible || !mScene.IsEffectivelyActive(owner))
-					return;
-
-				let mesh = component.Mesh.Get;
-				if (mesh == null)
-					return;
-
-				let tc = FindTerrainFor(owner, let terrainEntity);
-				if (tc == null)
-					return;
-
-				let res = tc.Terrain.Get;
-				if (res == null)
-					return;
-
-				let hf = res.Heightfield.Get;
+				// Hidden or inactive: the layers keep their caches, marked seen, and draw
+				// nothing.
+				let active = component.Visible && mScene.IsEffectivelyActive(owner);
+				EntityHandle terrainEntity = .();
+				let tc = active ? FindTerrainFor(owner, out terrainEntity) : null;
+				let res = (tc != null) ? tc.Terrain.Get : null;
+				let hf = (res != null) ? res.Heightfield.Get : null;
 				if ((hf == null) || hf.IsEmpty)
+				{
+					for (int li < component.Layers.Count)
+						CacheFor(owner, (uint32)li).SeenThisFrame = true;
 					return;
+				}
 
 				let splat = res.Weights.Get;
-				let layerId = mScene.GetEntityId(owner);
-				let layer = component.ToLayer();
-				let layerHash = VegetationLayers.LayerScatterHash(layer);
-
-				// An identity change rebuilds the whole cache: another heightfield or its
-				// size, the layer's persistent id, the mesh, or any scatter parameter.
-				if (cache.Chunks.IsEmpty || (cache.HeightfieldUid != hf.Uid)
-					|| (cache.LayerId != layerId) || (cache.MeshUid != mesh.Uid)
-					|| (cache.LayerHash != layerHash))
-				{
-					ResetCache(cache, hf, layerId);
-					cache.LayerHash = layerHash;
-					cache.MeshUid = mesh.Uid;
-					cache.WarnedClamp = false;
-				}
-
-				// A content change, a sculpt or a paint, regrows the touched chunks when the
-				// editor said which, else every chunk.
-				let splatUid = (splat != null) ? splat.Uid : 0;
-				let splatVersion = (splat != null) ? splat.Version : 0;
-				if ((cache.HeightfieldVersion != hf.Version) || (cache.SplatUid != splatUid)
-					|| (cache.SplatVersion != splatVersion))
-				{
-					if (mPendingRegions.IsEmpty)
-					{
-						DirtyAll(cache);
-					}
-					else
-					{
-						mTouchedScratch.Clear();
-						for (let region in mPendingRegions)
-							Scatter.ChunksTouchedBy(region, cache.ChunksPerSide, mTouchedScratch);
-						for (let index in mTouchedScratch)
-						{
-							if (index < (uint32)cache.Sets.Count)
-								cache.Sets[(int)index].Dirty = true;
-						}
-					}
-					cache.HeightfieldVersion = hf.Version;
-					cache.SplatUid = splatUid;
-					cache.SplatVersion = splatVersion;
-				}
-
-				// The terrain entity's world matrix places the terrain local instances; a move
-				// recomposes the built sets without rescattering them.
+				let ownerId = mScene.GetEntityId(owner);
 				let entityWorld = mScene.GetWorldMatrix(terrainEntity);
-				if (!cache.Composed || (cache.EntityWorld != entityWorld))
+				for (int li < component.Layers.Count)
 				{
-					cache.EntityWorld = entityWorld;
-					cache.Composed = true;
-					for (let set in cache.Sets)
-					{
-						if (set.Built)
-							Compose(cache, set);
-					}
-				}
-
-				let entityScale = MaxAxisScale(entityWorld);
-				let material = component.Material.Get;
-				for (int i < cache.Sets.Count)
-				{
-					let set = cache.Sets[i];
-					// The distance from the view to the chunk: its built bounds, else the
-					// terrain's own.
-					var distance = 0.0f;
-					if (hasOrigin)
-					{
-						var center = set.WorldCenter;
-						var radius = set.WorldRadius;
-						if (!set.Built)
-						{
-							let chunk = cache.Chunks[i];
-							center = TransformPoint(chunk.Bounds.Center(), entityWorld);
-							radius = Length(chunk.Bounds.Extents()) * entityScale;
-						}
-						distance = Max(0.0f, Length(origin - center) - radius);
-						// Out of range: absent from the snapshot, and the renderer evicts it.
-						if (distance >= layer.FadeEnd)
-							continue;
-					}
-
-					if (set.Dirty)
-					{
-						if (budget == 0)
-							continue; // next frame: the build budget spreads a cold start
-
-						BuildSet(cache, i, hf, splat, layer, mesh.Bounds);
-						budget--;
-					}
-					if (set.World.IsEmpty)
-						continue;
-
-					let density = hasOrigin
-						? Scatter.DensityAtDistance(distance, layer.FadeStart, layer.FadeEnd)
-						: 1.0f;
-					let count = Scatter.FadePrefix((uint32)set.World.Count, density);
-					if (count == 0)
-						continue;
-
-					let rd = snapshot.Add<MultiMeshRenderData>();
-					if (rd == null)
-						return;
-
-					// The renderer dispatches on this flag, not on the type.
-					rd.MultiMesh = true;
-					rd.Key = set.Key;
-					rd.Transforms = set.World.Ptr; // borrowed for the frame, the snapshot being immutable
-					rd.InstanceCount = count; // the fade prefix, per frame
-					rd.Version = set.Version; // the scatter, so a re-upload only on a change
-					rd.Mesh = mesh;
-					rd.Material = material;
-					rd.WorldCenter = set.WorldCenter;
-					rd.WorldRadius = set.WorldRadius;
-					rd.EntityId = RenderExtract.PackEntity(owner);
-					rd.Category = RenderExtract.CategoryForMaterial(material);
-					rd.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(mesh),
-						(material != null) ? Internal.UnsafeCastToPtr(material) : null);
-					rd.CastShadows = layer.CastShadows;
+					ExtractLayer(snapshot, owner, ownerId, (uint32)li, component.Layers[li], hf,
+						splat, entityWorld, ref budget);
 				}
 			});
 
-		// A layer that no longer exists drops its cache, and the renderer evicts its buffers.
+		// A layer slot that no longer exists, a removed slot, a removed component or a
+		// destroyed entity, drops its cache, and the renderer evicts its buffers.
 		mStaleScratch.Clear();
 		for (let entry in mCaches)
 		{

@@ -18,7 +18,7 @@ class VegetationSubsystem : Subsystem, ISceneObserver
 
 	public void OnSystemsReady(Scene scene)
 	{
-		let manager = scene.GetSystem<VegetationLayerComponentManager>();
+		let manager = scene.GetSystem<TerrainVegetationComponentManager>();
 		if ((manager == null) || (mRender == null))
 			return;
 
