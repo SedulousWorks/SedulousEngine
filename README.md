@@ -8,6 +8,8 @@ emscripten, in the browser.
 This is the second iteration of the engine. The previous one continues on the `v0` branch;
 [Documentation/Changes.md](Documentation/Changes.md) shows what changed between the two.
 
+![Sedulous Editor](Documentation/Images/Editor.png)
+
 ## What is here
 
 **Rendering.** A render graph over an abstract RHI: forward PBR with a depth prepass,
