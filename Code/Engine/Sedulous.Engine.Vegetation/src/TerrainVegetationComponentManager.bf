@@ -10,6 +10,7 @@ using Sedulous.Scene;
 using Sedulous.Terrain;
 using Sedulous.Terrain.Resource;
 using Sedulous.Vegetation;
+using Sedulous.Vegetation.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Terrain;
 
@@ -60,6 +61,8 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		public uint64 HeightfieldVersion = 0;
 		public uint64 SplatUid = 0;
 		public uint64 SplatVersion = 0;
+		public uint64 MaskUid = 0;
+		public uint64 MaskVersion = 0;
 		public uint64 LayerHash = 0;
 		public uint64 MeshUid = 0;
 		public Float4x4 EntityWorld = .Identity();
@@ -118,6 +121,22 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 	{
 		if (!region.IsEmpty)
 			mPendingRegions.Add(region);
+	}
+
+	/// The same notice from a nought to one FOOTPRINT rect, which is a mask or splat texel
+	/// rect over the terrain footprint, mapped onto the heightfield's sample grid.
+	public void InvalidateFootprint(float u0, float v0, float u1, float v1, int32 gridSize)
+	{
+		if ((gridSize <= 1) || (u1 < u0) || (v1 < v0))
+			return;
+
+		let span = (float)(gridSize - 1);
+		var region = HeightfieldRegion();
+		region.MinX = Clamp((int32)Math.Floor(Clamp(u0, 0.0f, 1.0f) * span), 0, gridSize - 1);
+		region.MaxX = Clamp((int32)Math.Ceiling(Clamp(u1, 0.0f, 1.0f) * span), 0, gridSize - 1);
+		region.MinZ = Clamp((int32)Math.Floor(Clamp(v0, 0.0f, 1.0f) * span), 0, gridSize - 1);
+		region.MaxZ = Clamp((int32)Math.Ceiling(Clamp(v1, 0.0f, 1.0f) * span), 0, gridSize - 1);
+		InvalidateRegion(region);
 	}
 
 	/// The sets holding instances, for the tests and the heads up display.
@@ -253,10 +272,10 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 	}
 
 	private void BuildSet(LayerCache cache, int chunkIndex, Heightfield hf, SplatWeights splat,
-		ScatterLayer layer, AABB meshBounds)
+		VegetationMask mask, ScatterLayer layer, AABB meshBounds)
 	{
 		let set = cache.Sets[chunkIndex];
-		Scatter.ScatterChunk(set.Key, cache.Chunks[chunkIndex], hf, splat, layer, meshBounds,
+		Scatter.ScatterChunk(set.Key, cache.Chunks[chunkIndex], hf, splat, mask, layer, meshBounds,
 			mScatterScratch);
 		if (mScatterScratch.DensityClamped && !cache.WarnedClamp)
 		{
@@ -282,7 +301,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 	/// range with the fade prefix as its count.
 	private void ExtractLayer(ExtractedScene snapshot, EntityHandle owner, Guid ownerId,
 		uint32 layerIndex, VegetationLayer authored, Heightfield hf, SplatWeights splat,
-		Float4x4 entityWorld, ref uint32 budget)
+		VegetationMask mask, Float4x4 entityWorld, ref uint32 budget)
 	{
 		let cache = CacheFor(owner, layerIndex);
 		cache.SeenThisFrame = true; // a hidden layer keeps its sets, so unhiding regrows nothing
@@ -311,8 +330,11 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		// said which, else every chunk.
 		let splatUid = (splat != null) ? splat.Uid : 0;
 		let splatVersion = (splat != null) ? splat.Version : 0;
+		let maskUid = (mask != null) ? mask.Uid : 0;
+		let maskVersion = (mask != null) ? mask.Version : 0;
 		if ((cache.HeightfieldVersion != hf.Version) || (cache.SplatUid != splatUid)
-			|| (cache.SplatVersion != splatVersion))
+			|| (cache.SplatVersion != splatVersion) || (cache.MaskUid != maskUid)
+			|| (cache.MaskVersion != maskVersion))
 		{
 			if (mPendingRegions.IsEmpty)
 			{
@@ -332,6 +354,8 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 			cache.HeightfieldVersion = hf.Version;
 			cache.SplatUid = splatUid;
 			cache.SplatVersion = splatVersion;
+			cache.MaskUid = maskUid;
+			cache.MaskVersion = maskVersion;
 		}
 
 		// The terrain entity's world matrix places the terrain local instances; a move
@@ -377,7 +401,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 				if (budget == 0)
 					continue; // next frame: the build budget spreads a cold start
 
-				BuildSet(cache, i, hf, splat, layer, mesh.Bounds);
+				BuildSet(cache, i, hf, splat, mask, layer, mesh.Bounds);
 				budget--;
 			}
 			if (set.World.IsEmpty)
@@ -441,12 +465,13 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 				}
 
 				let splat = res.Weights.Get;
+				let mask = component.Mask.Get;
 				let ownerId = mScene.GetEntityId(owner);
 				let entityWorld = mScene.GetWorldMatrix(terrainEntity);
 				for (int li < component.Layers.Count)
 				{
 					ExtractLayer(snapshot, owner, ownerId, (uint32)li, component.Layers[li], hf,
-						splat, entityWorld, ref budget);
+						splat, mask, entityWorld, ref budget);
 				}
 			});
 

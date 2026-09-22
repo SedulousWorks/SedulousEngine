@@ -5,6 +5,7 @@ using Sedulous.Heightfield;
 using Sedulous.Terrain;
 using Sedulous.Terrain.Resource;
 using Sedulous.Vegetation;
+using Sedulous.Vegetation.Resource;
 
 namespace Sedulous.Vegetation.Tests;
 
@@ -109,8 +110,8 @@ class ScatterTests
 
 		let a = scope ScatterResult();
 		let b = scope ScatterResult();
-		Scatter.ScatterChunk(seed, chunk, grid, null, layer, AABB.Empty(), a);
-		Scatter.ScatterChunk(seed, chunk, grid, null, layer, AABB.Empty(), b);
+		Scatter.ScatterChunk(seed, chunk, grid, null, null, layer, AABB.Empty(), a);
+		Scatter.ScatterChunk(seed, chunk, grid, null, null, layer, AABB.Empty(), b);
 		Test.Assert(!a.Transforms.IsEmpty);
 		Test.Assert(SameTransforms(a.Transforms, b.Transforms));
 
@@ -131,7 +132,7 @@ class ScatterTests
 		Test.Assert(Scatter.ChunkSeed(ownerId, 1, 0, 0) != seed);
 		Test.Assert(Scatter.ChunkSeed(Guid(9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), 0, 0, 0) != seed);
 		let c = scope ScatterResult();
-		Scatter.ScatterChunk(Scatter.ChunkSeed(ownerId, 0, 1, 0), chunk, grid, null, layer,
+		Scatter.ScatterChunk(Scatter.ChunkSeed(ownerId, 0, 1, 0), chunk, grid, null, null, layer,
 			AABB.Empty(), c);
 		Test.Assert(!SameTransforms(a.Transforms, c.Transforms));
 	}
@@ -144,9 +145,9 @@ class ScatterTests
 		let chunk = ChunkOf(grid);
 
 		let one = scope ScatterResult();
-		Scatter.ScatterChunk(7, chunk, grid, null, Uniform(0.25f), AABB.Empty(), one);
+		Scatter.ScatterChunk(7, chunk, grid, null, null, Uniform(0.25f), AABB.Empty(), one);
 		let two = scope ScatterResult();
-		Scatter.ScatterChunk(7, chunk, grid, null, Uniform(0.5f), AABB.Empty(), two);
+		Scatter.ScatterChunk(7, chunk, grid, null, null, Uniform(0.5f), AABB.Empty(), two);
 		Test.Assert(one.CandidateCount == 1024); // a quarter per square metre over 4096
 		Test.Assert(two.CandidateCount == 2048);
 		Test.Assert(one.Transforms.Count == 1024); // Uniform on a flat field keeps every one
@@ -158,7 +159,7 @@ class ScatterTests
 		var dense = Uniform(10.0f); // 40960 wanted
 		dense.MaxInstancesPerChunk = 4096;
 		let capped = scope ScatterResult();
-		Scatter.ScatterChunk(7, chunk, grid, null, dense, AABB.Empty(), capped);
+		Scatter.ScatterChunk(7, chunk, grid, null, null, dense, AABB.Empty(), capped);
 		Test.Assert(capped.CandidateCount == 4096);
 		Test.Assert(capped.DensityClamped);
 		Test.Assert(Near(capped.EffectiveDensity, 1.0f, 0.0001f));
@@ -166,11 +167,11 @@ class ScatterTests
 
 		// Nothing to do: no density, or an authored, Scattered, layer.
 		let none = scope ScatterResult();
-		Scatter.ScatterChunk(7, chunk, grid, null, Uniform(0.0f), AABB.Empty(), none);
+		Scatter.ScatterChunk(7, chunk, grid, null, null, Uniform(0.0f), AABB.Empty(), none);
 		Test.Assert(none.Transforms.IsEmpty);
 		var authored = Uniform(1.0f);
 		authored.Placement = .Scattered;
-		Scatter.ScatterChunk(7, chunk, grid, null, authored, AABB.Empty(), none);
+		Scatter.ScatterChunk(7, chunk, grid, null, null, authored, AABB.Empty(), none);
 		Test.Assert(none.Transforms.IsEmpty);
 	}
 
@@ -191,7 +192,7 @@ class ScatterTests
 		grass.MaxSlopeDegrees = 90.0f;
 
 		let painted = scope ScatterResult();
-		Scatter.ScatterChunk(3, chunk, grid, splat, grass, AABB.Empty(), painted);
+		Scatter.ScatterChunk(3, chunk, grid, splat, null, grass, AABB.Empty(), painted);
 		Test.Assert(!painted.Transforms.IsEmpty);
 		// Roughly half the candidates: the painted half at share one keeps every one of them.
 		Test.Assert(painted.Transforms.Count > (int)painted.CandidateCount / 3);
@@ -203,7 +204,7 @@ class ScatterTests
 		var baseLayer = grass;
 		baseLayer.SplatLayer = ScatterLayer.cSplatBaseLayer;
 		let unpainted = scope ScatterResult();
-		Scatter.ScatterChunk(3, chunk, grid, splat, baseLayer, AABB.Empty(), unpainted);
+		Scatter.ScatterChunk(3, chunk, grid, splat, null, baseLayer, AABB.Empty(), unpainted);
 		Test.Assert(!unpainted.Transforms.IsEmpty);
 		for (let m in unpainted.Transforms)
 			Test.Assert(m.M[3][0] > 0.0f);
@@ -212,19 +213,19 @@ class ScatterTests
 		var rocks = grass;
 		rocks.SplatLayer = 3;
 		let none = scope ScatterResult();
-		Scatter.ScatterChunk(3, chunk, grid, splat, rocks, AABB.Empty(), none);
+		Scatter.ScatterChunk(3, chunk, grid, splat, null, rocks, AABB.Empty(), none);
 		Test.Assert(none.Transforms.IsEmpty);
 		var strict = grass;
 		strict.SplatThreshold = 1.5f;
-		Scatter.ScatterChunk(3, chunk, grid, splat, strict, AABB.Empty(), none);
+		Scatter.ScatterChunk(3, chunk, grid, splat, null, strict, AABB.Empty(), none);
 		Test.Assert(none.Transforms.IsEmpty);
-		Scatter.ScatterChunk(3, chunk, grid, null, grass, AABB.Empty(), none);
+		Scatter.ScatterChunk(3, chunk, grid, null, null, grass, AABB.Empty(), none);
 		Test.Assert(none.Transforms.IsEmpty);
 
 		// The share IS the sampled weight.
-		Test.Assert(Near(Scatter.PlacementShareAt(grass, grid, splat, -16.0f, 0.0f), 1.0f, 0.001f));
-		Test.Assert(Near(Scatter.PlacementShareAt(grass, grid, splat, 16.0f, 0.0f), 0.0f, 0.001f));
-		Test.Assert(Near(Scatter.PlacementShareAt(baseLayer, grid, splat, 16.0f, 0.0f), 1.0f, 0.001f));
+		Test.Assert(Near(Scatter.PlacementShareAt(grass, grid, splat, null, -16.0f, 0.0f), 1.0f, 0.001f));
+		Test.Assert(Near(Scatter.PlacementShareAt(grass, grid, splat, null, 16.0f, 0.0f), 0.0f, 0.001f));
+		Test.Assert(Near(Scatter.PlacementShareAt(baseLayer, grid, splat, null, 16.0f, 0.0f), 1.0f, 0.001f));
 	}
 
 	[Test]
@@ -240,20 +241,20 @@ class ScatterTests
 		// the clamped x edges, about 13.3 degrees there, so ten keeps rejecting at the rim too.
 		gentle.MaxSlopeDegrees = 10.0f;
 		let none = scope ScatterResult();
-		Scatter.ScatterChunk(11, chunk, ramp, null, gentle, AABB.Empty(), none);
+		Scatter.ScatterChunk(11, chunk, ramp, null, null, gentle, AABB.Empty(), none);
 		Test.Assert(none.Transforms.IsEmpty);
 
 		var steep = Uniform(0.25f);
 		steep.MaxSlopeDegrees = 35.0f; // allowed
 		let all = scope ScatterResult();
-		Scatter.ScatterChunk(11, chunk, ramp, null, steep, AABB.Empty(), all);
+		Scatter.ScatterChunk(11, chunk, ramp, null, null, steep, AABB.Empty(), all);
 		Test.Assert(all.Transforms.Count == (int)all.CandidateCount);
 
 		// The height window: only the band eight to sixteen metres up the ramp.
 		var band = steep;
 		band.HeightRange = .(8.0f, 16.0f);
 		let banded = scope ScatterResult();
-		Scatter.ScatterChunk(11, chunk, ramp, null, band, AABB.Empty(), banded);
+		Scatter.ScatterChunk(11, chunk, ramp, null, null, band, AABB.Empty(), banded);
 		Test.Assert(!banded.Transforms.IsEmpty);
 		Test.Assert(banded.Transforms.Count < all.Transforms.Count);
 		for (let m in banded.Transforms)
@@ -274,7 +275,7 @@ class ScatterTests
 		var flat = Uniform(0.05f);
 		flat.ScaleRange = .(2.0f, 2.0f);
 		let upright = scope ScatterResult();
-		Scatter.ScatterChunk(5, chunk, ramp, null, flat, AABB.Empty(), upright);
+		Scatter.ScatterChunk(5, chunk, ramp, null, null, flat, AABB.Empty(), upright);
 		Test.Assert(!upright.Transforms.IsEmpty);
 		for (let m in upright.Transforms)
 		{
@@ -286,7 +287,7 @@ class ScatterTests
 		var aligned = flat;
 		aligned.AlignToNormal = true;
 		let tilted = scope ScatterResult();
-		Scatter.ScatterChunk(5, chunk, ramp, null, aligned, AABB.Empty(), tilted);
+		Scatter.ScatterChunk(5, chunk, ramp, null, null, aligned, AABB.Empty(), tilted);
 		// The same candidates and the same keeps.
 		Test.Assert(tilted.Transforms.Count == upright.Transforms.Count);
 		for (let m in tilted.Transforms)
@@ -317,7 +318,7 @@ class ScatterTests
 		let blade = AABB.FromCenterExtents(.(0.0f, 0.5f, 0.0f), .(0.1f, 0.5f, 0.1f));
 
 		let r = scope ScatterResult();
-		Scatter.ScatterChunk(9, chunk, grid, null, layer, blade, r);
+		Scatter.ScatterChunk(9, chunk, grid, null, null, layer, blade, r);
 		Test.Assert(!r.Transforms.IsEmpty);
 		// The reach is the extent length plus the centre length, times the largest scale.
 		let grow = (Length(Float3(0.1f, 0.5f, 0.1f)) + 0.5f) * 3.0f;
@@ -325,7 +326,7 @@ class ScatterTests
 		Test.Assert(Near(r.LocalBounds.Max.Y, chunk.Bounds.Max.Y + grow, 0.01f));
 
 		let bare = scope ScatterResult();
-		Scatter.ScatterChunk(9, chunk, grid, null, layer, AABB.Empty(), bare);
+		Scatter.ScatterChunk(9, chunk, grid, null, null, layer, AABB.Empty(), bare);
 		Test.Assert(Near(bare.LocalBounds.Min.X, chunk.Bounds.Min.X, 0.01f));
 	}
 
@@ -432,5 +433,84 @@ class ScatterTests
 			b.Placement = p;
 			Test.Assert(VegetationLayers.LayerScatterHash(a) != VegetationLayers.LayerScatterHash(b));
 		}
+	}
+
+	/// A painted mask grows where it has density, and carves a splat layer when the two
+	/// multiply. The splat threshold gates only the splat modes: a mask's density IS its
+	/// share, so a faint paint thins rather than disappearing.
+	[Test]
+	public static void TheMaskPlacementGrowsWhereThePlaneHasDensity()
+	{
+		let grid = MakeFlat(1.0f);
+		defer delete grid;
+		let chunk = ChunkOf(grid);
+
+		// Full density over the left half of the footprint, on plane one.
+		let mask = scope VegetationMask(32, 32, 2);
+		for (int32 y = 0; y < 32; y++)
+			for (int32 x = 0; x < 16; x++)
+				mask.SetDensity(1, x, y, 255);
+
+		var layer = Uniform(0.25f);
+		layer.Placement = .Mask;
+		layer.MaskPlane = 1;
+
+		let painted = scope ScatterResult();
+		Scatter.ScatterChunk(5, chunk, grid, null, mask, layer, AABB.Empty(), painted);
+		Test.Assert(!painted.Transforms.IsEmpty);
+		for (let m in painted.Transforms)
+			Test.Assert(m.M[3][0] < 0.0f, "only where the plane is painted");
+
+		// An unpainted plane grows nothing, and neither does a missing mask.
+		var other = layer;
+		other.MaskPlane = 0;
+		let none = scope ScatterResult();
+		Scatter.ScatterChunk(5, chunk, grid, null, mask, other, AABB.Empty(), none);
+		Test.Assert(none.Transforms.IsEmpty);
+		Scatter.ScatterChunk(5, chunk, grid, null, null, layer, AABB.Empty(), none);
+		Test.Assert(none.Transforms.IsEmpty);
+
+		// A HALF density plane thins rather than disappearing: the threshold is a splat rule.
+		let faint = scope VegetationMask(32, 32, 1);
+		for (int32 y = 0; y < 32; y++)
+			for (int32 x = 0; x < 32; x++)
+				faint.SetDensity(0, x, y, 128);
+		var half = Uniform(0.25f);
+		half.Placement = .Mask;
+		half.MaskPlane = 0;
+		half.SplatThreshold = 0.9f; // ignored for a mask
+		let thinned = scope ScatterResult();
+		Scatter.ScatterChunk(5, chunk, grid, null, faint, half, AABB.Empty(), thinned);
+		Test.Assert(!thinned.Transforms.IsEmpty, "a faint mask still grows");
+		Test.Assert(thinned.Transforms.Count < (int)thinned.CandidateCount * 3 / 4);
+		Test.Assert(thinned.Transforms.Count > (int)thinned.CandidateCount / 4);
+
+		// SplatTimesMask is the PRODUCT: the painted splat half carved by the mask half.
+		let splat = MakeHalfSplat();
+		defer delete splat;
+		var carved = Uniform(0.5f);
+		carved.Placement = .SplatTimesMask;
+		carved.SplatLayer = 0;
+		carved.SplatThreshold = 0.25f;
+		carved.MaskPlane = 0;
+		// The mask covers the upper half of the footprint.
+		let band = scope VegetationMask(32, 32, 1);
+		for (int32 y = 0; y < 16; y++)
+			for (int32 x = 0; x < 32; x++)
+				band.SetDensity(0, x, y, 255);
+		let product = scope ScatterResult();
+		Scatter.ScatterChunk(5, chunk, grid, splat, band, carved, AABB.Empty(), product);
+		Test.Assert(!product.Transforms.IsEmpty);
+		for (let m in product.Transforms)
+		{
+			Test.Assert(m.M[3][0] < 0.0f, "inside the painted splat half");
+			Test.Assert(m.M[3][2] < 0.0f, "and inside the masked band");
+		}
+
+		// Either side missing makes the product nothing.
+		Scatter.ScatterChunk(5, chunk, grid, null, band, carved, AABB.Empty(), none);
+		Test.Assert(none.Transforms.IsEmpty);
+		Scatter.ScatterChunk(5, chunk, grid, splat, null, carved, AABB.Empty(), none);
+		Test.Assert(none.Transforms.IsEmpty);
 	}
 }

@@ -8,6 +8,7 @@ using Sedulous.Scene;
 using Sedulous.Terrain;
 using Sedulous.Terrain.Resource;
 using Sedulous.Vegetation;
+using Sedulous.Vegetation.Resource;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.Vegetation;
 
@@ -420,5 +421,48 @@ class VegetationComponentTests
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.Count == 4);
 		Test.Assert(f.Manager.BuiltSetCount == 4, "the removed slot's sets are gone");
+	}
+
+	/// A mask bump regrows like a splat bump, and a footprint rect regrows only the chunks it
+	/// covers: that is what a brush stamp sends, so painting one corner never rescatters the
+	/// whole terrain.
+	[Test]
+	public static void AMaskBumpRegrowsAndAFootprintRectScopesIt()
+	{
+		let f = scope Fixture(false); // Uniform, so all four chunks grow
+		f.Manager.SetBuildBudget(100);
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+
+		let mask = scope VegetationMask(64, 64, 1);
+		for (int32 y = 0; y < 64; y++)
+			for (int32 x = 0; x < 64; x++)
+				mask.SetDensity(0, x, y, 255);
+		f.Component.Mask.SetDirect(mask);
+		f.Layer.Placement = .Mask;
+		f.Layer.MaskPlane = 0;
+
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4);
+		let built = f.Manager.BuildCount;
+
+		// A mask version bump with no region notice regrows every chunk.
+		mask.BumpVersion();
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuildCount == built + 4);
+
+		// A footprint rect over ONE corner regrows only the chunks it touches.
+		let scoped = f.Manager.BuildCount;
+		mask.BumpVersion();
+		f.Manager.InvalidateFootprint(0.02f, 0.02f, 0.08f, 0.08f, f.Grid.Size);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuildCount == scoped + 1, "one chunk regrew, not four");
+
+		// A degenerate rect or a degenerate grid is a no op, so nothing regrows at all.
+		let quiet = f.Manager.BuildCount;
+		mask.BumpVersion();
+		f.Manager.InvalidateFootprint(0.5f, 0.5f, 0.1f, 0.1f, f.Grid.Size); // inverted
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuildCount == quiet + 4, "an unusable rect falls back to everything");
 	}
 }

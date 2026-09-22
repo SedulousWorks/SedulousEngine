@@ -7,6 +7,7 @@ using Sedulous.Materials;
 using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Vegetation;
+using Sedulous.Vegetation.Resource;
 
 namespace Sedulous.Engine.Vegetation;
 
@@ -35,6 +36,7 @@ class VegetationLayer : ISerializable
 	[Description("Splat placement: the painted share, nought to one, below which nothing grows.")]
 	public float SplatThreshold = 0.25f;
 	[DisplayName("Mask Plane")]
+	[Description("Mask placement: the plane of the component's mask this layer follows; the Paint Vegetation brush paints it.")]
 	public uint32 MaskPlane = 0;
 	[Description("Instances per square metre.")]
 	public float Density = 2.0f;
@@ -125,18 +127,24 @@ struct TerrainVegetationComponent : ISerializable, IComponentResources
 	/// OWNED, but created and freed by the manager: a struct component cannot carry a field
 	/// destructor.
 	public List<VegetationLayer> Layers = null;
+	/// The painted mask, density planes over the footprint; none means no Mask placement
+	/// grows. A layer with Mask or SplatTimesMask placement names its plane.
+	[Description("The painted vegetation mask, one density plane per layer that uses Mask placement; the Paint Vegetation brush paints it.")]
+	public Ref<VegetationMask> Mask = .(Guid());
 	public bool Visible = true;
 
 	public this() {}
 
 	public void ResolveResources(ResourceManager manager) mut
 	{
+		Mask.Bind(manager);
 		for (let layer in Layers)
 			layer.ResolveResources(manager);
 	}
 
 	public void Serialize(ISerializer ar) mut
 	{
+		SerializeValue(ar, "mask", ref Mask.Id);
 		ar.Key("layers");
 		SerializeList(ar, Layers);
 		SerializeValue(ar, "visible", ref Visible);

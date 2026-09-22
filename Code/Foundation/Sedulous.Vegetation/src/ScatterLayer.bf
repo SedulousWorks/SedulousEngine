@@ -10,10 +10,12 @@ enum VegetationPlacement : uint8
 	case Uniform;
 	/// Where the terrain's painted splat layer clears the threshold.
 	case Splat;
-	/// A painted vegetation mask plane; grows like Uniform until the mask lands.
+	/// Where the painted vegetation mask plane has density.
 	case Mask;
 	/// Authored instances, with no procedural scatter.
 	case Scattered;
+	/// The splat share TIMES the mask density, so a mask carves a painted layer.
+	case SplatTimesMask;
 }
 
 /// The parameters of one vegetation layer: WHERE it grows, the placement source, HOW DENSE,

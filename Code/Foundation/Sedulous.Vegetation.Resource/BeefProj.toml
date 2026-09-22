@@ -1,0 +1,12 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Vegetation.Resource"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Vegetation.Resource.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Resource" = "*"

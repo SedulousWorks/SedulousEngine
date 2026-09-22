@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Heightfield;
 using Sedulous.Terrain;
 using Sedulous.Terrain.Resource;
+using Sedulous.Vegetation.Resource;
 
 namespace Sedulous.Vegetation;
 
@@ -113,19 +114,39 @@ static class Scatter
 		return (float)w / 255.0f;
 	}
 
+	/// The mask plane's density, nought to one, under a terrain local XZ point: the nearest
+	/// texel, on the same footprint mapping as the splat.
+	private static float MaskShare(VegetationMask mask, Heightfield heightfield, uint32 plane,
+		float localX, float localZ)
+	{
+		let size = heightfield.WorldSize;
+		let u = localX / Max(size.X, 1e-6f) + 0.5f;
+		let v = localZ / Max(size.Y, 1e-6f) + 0.5f;
+		return mask.ShareAt(plane, u, v);
+	}
+
 	/// The placement source's share, nought to one, at a terrain local XZ point: one for
 	/// Uniform and for Mask until the mask lands, the splat layer's painted weight for Splat
 	/// and nought with no splat, nought for Scattered.
 	public static float PlacementShareAt(ScatterLayer layer, Heightfield heightfield,
-		SplatWeights splat, float localX, float localZ)
+		SplatWeights splat, VegetationMask mask, float localX, float localZ)
 	{
 		switch (layer.Placement)
 		{
-		case .Uniform, .Mask: // the mask plane multiplies in here once it lands
+		case .Uniform:
 			return 1.0f;
 		case .Splat:
 			return (splat != null)
 				? SplatShare(splat, heightfield, layer.SplatLayer, localX, localZ)
+				: 0.0f;
+		case .Mask:
+			return (mask != null)
+				? MaskShare(mask, heightfield, layer.MaskPlane, localX, localZ)
+				: 0.0f;
+		case .SplatTimesMask:
+			return ((splat != null) && (mask != null))
+				? SplatShare(splat, heightfield, layer.SplatLayer, localX, localZ)
+					* MaskShare(mask, heightfield, layer.MaskPlane, localX, localZ)
 				: 0.0f;
 		case .Scattered:
 			return 0.0f;
@@ -159,7 +180,8 @@ static class Scatter
 	/// grows the chunk's bounds by the maximum scale; an empty box leaves the terrain bounds
 	/// as they are.
 	public static void ScatterChunk(uint64 seed, TerrainChunk chunk, Heightfield heightfield,
-		SplatWeights splat, ScatterLayer layer, AABB meshLocalBounds, ScatterResult outResult)
+		SplatWeights splat, VegetationMask mask, ScatterLayer layer, AABB meshLocalBounds,
+		ScatterResult outResult)
 	{
 		outResult.Clear();
 		outResult.LocalBounds = chunk.Bounds;
@@ -211,8 +233,11 @@ static class Scatter
 			let yaw = rng.NextFloat() * (Math.PI_f * 2.0f);
 			let scale = scaleMin + rng.NextFloat() * (scaleMax - scaleMin);
 
-			let share = PlacementShareAt(layer, heightfield, splat, x, z);
-			if ((share <= 0.0f) || (share < layer.SplatThreshold) || (keep >= share))
+			let share = PlacementShareAt(layer, heightfield, splat, mask, x, z);
+			// The threshold gates only the SPLAT modes: a mask's density IS the share.
+			let thresholded = (layer.Placement == .Splat) || (layer.Placement == .SplatTimesMask);
+			if ((share <= 0.0f) || (thresholded && (share < layer.SplatThreshold))
+				|| (keep >= share))
 				continue;
 
 			let normal = heightfield.GetNormalAt(x, z);
