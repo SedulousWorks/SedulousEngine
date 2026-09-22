@@ -20,6 +20,7 @@ using Sedulous.Scene.Resource;
 using Sedulous.Script.Resource;
 using Sedulous.Shaders.Resource;
 using Sedulous.Terrain.Resource;
+using Sedulous.Vegetation.Resource;
 using Sedulous.Texture.Resource;
 using Sedulous.UI.Resource;
 
@@ -98,6 +99,7 @@ extension DefaultApplication
 		AddOwnedFactory(resources, new HeightfieldFactory());
 		AddOwnedFactory(resources, new TerrainFactory());
 		AddOwnedFactory(resources, new SplatWeightsFactory());
+		AddOwnedFactory(resources, new VegetationMaskFactory());
 		AddOwnedFactory(resources, new ImageFactory());
 
 		// The textures are device backed, so they only register where there IS a device: a

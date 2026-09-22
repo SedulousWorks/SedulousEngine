@@ -44,6 +44,8 @@ using Sedulous.Script.AngelScript.Pipeline;
 using Sedulous.Script.Pipeline;
 using Sedulous.Shaders.Pipeline;
 using Sedulous.Terrain.Pipeline;
+using Sedulous.Vegetation.Pipeline;
+using Sedulous.Vegetation.Resource;
 using Sedulous.Texture.Pipeline;
 using Sedulous.UI.Pipeline;
 
@@ -63,8 +65,8 @@ namespace Sedulous.Pipeline.Registration;
 /// matching constant DELIBERATELY, and a lost registration then fails the test loudly.
 static class PipelineRegistration
 {
-	public const int cBuilderCount = 26;
-	public const int cImporterCount = 9;
+	public const int cBuilderCount = 27;
+	public const int cImporterCount = 10;
 
 	/// The pipeline surface the script cooks compile against, made by the type registration
 	/// and released by Teardown.
@@ -101,6 +103,7 @@ static class PipelineRegistration
 		ScriptResources.RegisterAll();
 		ShaderResources.RegisterAll();
 		TerrainResources.RegisterAll();
+		VegetationResources.RegisterAll();
 		TextureResources.RegisterAll();
 		UIResources.RegisterAll();
 
@@ -153,6 +156,7 @@ static class PipelineRegistration
 		registry.Register(new HeightfieldAssetBuilder());
 		registry.Register(new TerrainAssetBuilder());
 		registry.Register(new SplatmapAssetBuilder());
+		registry.Register(new VegetationMaskAssetBuilder());
 		registry.Register(new StaticMeshAssetBuilder());
 		registry.Register(new SkinnedMeshAssetBuilder());
 		registry.Register(new SkeletonAssetBuilder());
@@ -188,5 +192,6 @@ static class PipelineRegistration
 		registry.Register(new ImageFileImporter());
 		registry.Register(new HeightfieldFileImporter());
 		registry.Register(new SplatmapFileImporter());
+		registry.Register(new VegetationMaskFileImporter());
 	}
 }
