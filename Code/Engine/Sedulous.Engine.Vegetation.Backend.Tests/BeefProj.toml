@@ -1,0 +1,30 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Vegetation.Backend.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Engine.Vegetation.Backend.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Heightfield" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Materials.PipelineCache" = "*"
+"Sedulous.Render" = "*"
+"Sedulous.Render.Api" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.TestSupport" = "*"
+"Sedulous.RHI.DX12" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+"Sedulous.RHI.WebGPU" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Shaders.System" = "*"
+"Sedulous.Terrain" = "*"
+"Sedulous.Terrain.Resource" = "*"
+"Sedulous.Vegetation" = "*"
+"Sedulous.Engine.Terrain" = "*"
+"Sedulous.Engine.Vegetation" = "*"
