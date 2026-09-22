@@ -25,6 +25,7 @@ using Sedulous.Script;
 using Sedulous.Script.AngelScript;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Terrain;
+using Sedulous.Engine.Vegetation;
 using Sedulous.Engine.UI;
 using Sedulous.Engine.UI.Script;
 using Sedulous.UI.Resource;
@@ -247,6 +248,9 @@ class DefaultApplication : IApplication, ISceneObserver
 			// The terrain renderer registers itself on the opaque category and wires the
 			// manager scene composition already injected.
 			host.Context.AddSubsystem<TerrainSubsystem>();
+			// Vegetation scatters onto that terrain and emits instanced sets through the mesh
+			// renderer, so it follows terrain.
+			host.Context.AddSubsystem<VegetationSubsystem>();
 		}
 
 		mPhysics = host.Context.AddSubsystem<PhysicsSubsystem>();

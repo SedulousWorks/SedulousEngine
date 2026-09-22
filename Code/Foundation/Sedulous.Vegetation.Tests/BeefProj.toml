@@ -1,0 +1,14 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Vegetation.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Vegetation.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Heightfield" = "*"
+"Sedulous.Terrain" = "*"
+"Sedulous.Terrain.Resource" = "*"
+"Sedulous.Vegetation" = "*"

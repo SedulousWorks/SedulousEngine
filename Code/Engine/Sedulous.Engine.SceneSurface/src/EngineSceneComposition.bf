@@ -9,6 +9,7 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.Script;
 using Sedulous.Engine.Spline;
 using Sedulous.Engine.Terrain;
+using Sedulous.Engine.Vegetation;
 using Sedulous.Engine.UI;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
@@ -35,7 +36,7 @@ static class EngineSceneComposition
 {
 	/// Ordering alone, with no dependencies declared: what matters is that the order is
 	/// fixed, not that any domain needs another built first.
-	private static SceneModule[12] sModules = .(
+	private static SceneModule[13] sModules = .(
 		.("prefabs", => PrefabSpawnScene.AddPrefabSpawnSceneManagers, null),
 		.("script", => ScriptScene.AddScriptSceneManagers, null),
 		.("render", => RenderScene.AddRenderSceneManagers, null),
@@ -43,6 +44,7 @@ static class EngineSceneComposition
 		.("particles", => ParticleScene.AddParticleSceneManagers, null),
 		.("physics", => PhysicsScene.AddPhysicsSceneManagers, null),
 		.("terrain", => TerrainScene.AddTerrainSceneManagers, null),
+		.("vegetation", => VegetationScene.AddVegetationSceneManagers, null),
 		.("navigation", => NavigationScene.AddNavigationSceneManagers, null),
 		.("audio", => AudioScene.AddAudioSceneManagers, null),
 		.("ui", => UIScene.AddUISceneManagers, null),

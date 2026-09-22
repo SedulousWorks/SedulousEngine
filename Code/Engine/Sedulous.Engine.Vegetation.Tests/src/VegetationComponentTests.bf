@@ -1,0 +1,367 @@
+using System;
+using System.Collections;
+using Sedulous.Core;
+using Sedulous.Geometry;
+using Sedulous.Heightfield;
+using Sedulous.Render;
+using Sedulous.Scene;
+using Sedulous.Terrain;
+using Sedulous.Terrain.Resource;
+using Sedulous.Vegetation;
+using Sedulous.Engine.Terrain;
+using Sedulous.Engine.Vegetation;
+
+namespace Sedulous.Engine.Vegetation.Tests;
+
+/// The layer manager: one set per layer and chunk in range, the splat picking the chunks, the
+/// fade prefix, region scoped regrow, the build budget, and what extracts nothing.
+class VegetationComponentTests
+{
+	/// Two by two chunks.
+	private const int32 cGrid = 129;
+	/// A metre per quad, so the chunks are 64 by 64 metres, centred on the origin.
+	private const float cWorld = 128.0f;
+
+	private static bool Near(float a, float b, float epsilon = 0.01f) => Math.Abs(a - b) <= epsilon;
+
+	private static Heightfield MakeFlat(float height)
+	{
+		let grid = new Heightfield(cGrid, .(cWorld, cWorld), 0.0f, 40.0f);
+		let sample = grid.WorldYToSample(height);
+		for (int32 z = 0; z < cGrid; z++)
+			for (int32 x = 0; x < cGrid; x++)
+				grid.SetSample(x, z, sample);
+		return grid;
+	}
+
+	/// Palette layer nought one hot on the left half, base on the right.
+	private static SplatWeights MakeHalfSplat()
+	{
+		const int32 n = 64;
+		let sw = new SplatWeights(n, n);
+		let idx = sw.Indices;
+		let wts = sw.Weights;
+		for (int32 y = 0; y < n; y++)
+		{
+			for (int32 x = 0; x < n / 2; x++)
+			{
+				let at = sw.TexelOffset(x, y);
+				idx[at + 0] = 0;
+				wts[at + 0] = 255;
+			}
+		}
+		sw.BumpVersion();
+		return sw;
+	}
+
+	/// A scene with a terrain entity and one grass layer entity under it.
+	private class Fixture
+	{
+		public Scene Scene = new .() ~ delete _;
+		public Heightfield Grid ~ delete _;
+		public SplatWeights Splat ~ delete _;
+		public TerrainResource Resource = new .() ~ delete _;
+		public StaticMesh Mesh ~ delete _;
+		public EntityHandle Terrain = .();
+		public EntityHandle Grass = .();
+		public VegetationLayerComponentManager Manager = null;
+
+		public this(bool withSplat = true)
+		{
+			TerrainScene.AddTerrainSceneManagers(Scene);
+			VegetationScene.AddVegetationSceneManagers(Scene);
+			Manager = Scene.GetSystem<VegetationLayerComponentManager>();
+			Test.Assert(Manager != null);
+
+			Grid = MakeFlat(2.0f);
+			Resource.Heightfield.SetDirect(Grid);
+			if (withSplat)
+			{
+				Splat = MakeHalfSplat();
+				Resource.Weights.SetDirect(Splat);
+			}
+
+			Terrain = Scene.CreateEntity("terrain");
+			Scene.GetSystem<TerrainComponentManager>().Add(Terrain).Terrain.SetDirect(Resource);
+
+			Mesh = Primitives.Cube(0.5f);
+			Grass = Scene.CreateEntity("grass");
+			Scene.SetParent(Grass, Terrain);
+			let c = Manager.Add(Grass);
+			c.Mesh.SetDirect(Mesh);
+			c.Placement = withSplat ? .Splat : .Uniform;
+			c.SplatLayer = 0;
+			c.Density = 0.25f; // 1024 candidates per chunk
+			c.MaxSlopeDegrees = 90.0f;
+			c.FadeStart = 40.0f;
+			c.FadeEnd = 80.0f;
+			Scene.Start();
+		}
+
+		public VegetationLayerComponent* Layer => Manager.Get(Grass);
+
+		/// Extracts with the view at an origin, or headless, collecting the emitted sets.
+		public void Extract(ExtractedScene snapshot, Float3* origin, List<MultiMeshRenderData> outSets)
+		{
+			snapshot.Reset();
+			if (origin != null)
+				snapshot.SetViewOrigin(*origin);
+			Manager.ExtractRenderData(snapshot);
+
+			outSets.Clear();
+			for (let item in snapshot.Items)
+			{
+				let mm = item as MultiMeshRenderData;
+				Test.Assert(mm != null);
+				outSets.Add(mm);
+			}
+		}
+	}
+
+	private static uint32 TotalInstances(List<MultiMeshRenderData> sets)
+	{
+		var n = (uint32)0;
+		for (let s in sets)
+			n += s.InstanceCount;
+		return n;
+	}
+
+	[Test]
+	public static void OneSetPerLayerAndChunkInRangeAndTheSplatPicksTheChunks()
+	{
+		let f = scope Fixture();
+		f.Manager.SetBuildBudget(100);
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+
+		// Headless: every chunk is in range, and only the painted half grows, so the two
+		// chunks on that side emit while the other two scatter to nothing.
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuildCount == 4); // all four chunks scattered
+		Test.Assert(sets.Count == 2);
+		Test.Assert(f.Manager.BuiltSetCount == 2);
+		Test.Assert((uint32)f.Manager.InstanceCount == TotalInstances(sets));
+		for (let s in sets)
+		{
+			Test.Assert(s.Key != 0);
+			// The splat share is one on the painted half, so every candidate is kept.
+			Test.Assert(s.InstanceCount == 1024);
+			Test.Assert(s.Transforms != null);
+			Test.Assert(s.Mesh === f.Mesh);
+			Test.Assert(s.Version > 0);
+			Test.Assert(!s.CastShadows); // the grass default
+			Test.Assert(s.Category == RenderCategories.Opaque);
+			Test.Assert(s.WorldCenter.X < 0.0f); // the painted chunks
+			Test.Assert(s.WorldRadius > 32.0f);
+			Test.Assert(EntityTag.Index(s.EntityId) == f.Grass.Index);
+			for (uint32 i = 0; i < s.InstanceCount; i++)
+			{
+				Test.Assert(s.Transforms[i].M[3][0] < 0.0f);
+				Test.Assert(Near(s.Transforms[i].M[3][1], 2.0f, 0.05f));
+			}
+		}
+		Test.Assert(sets[0].Key != sets[1].Key);
+
+		// A rock layer casts.
+		f.Layer.CastShadows = true;
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 2);
+		Test.Assert(sets[0].CastShadows);
+		Test.Assert(f.Manager.BuildCount == 4); // a fade or shadow change never rescatters
+
+		// A second extraction re-emits the same sets: the same keys and versions, so the
+		// renderer re-uploads nothing.
+		let key0 = sets[0].Key;
+		let version0 = sets[0].Version;
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 2);
+		Test.Assert(sets[0].Key == key0);
+		Test.Assert(sets[0].Version == version0);
+	}
+
+	[Test]
+	public static void TheFadePrefixThinsByDistanceAndOutOfRangeChunksAreAbsent()
+	{
+		let f = scope Fixture(false); // Uniform, so all four chunks grow
+		f.Manager.SetBuildBudget(100);
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+
+		// The view over one chunk's centre: that chunk is at no distance, the diagonal one is
+		// inside the fade, so it draws a partial prefix while the near ones are full.
+		var near = Float3(-32.0f, 12.0f, -32.0f);
+		f.Extract(snapshot, &near, sets);
+		Test.Assert(sets.Count == 4);
+		var full = 0;
+		var partial = 0;
+		for (let s in sets)
+		{
+			Test.Assert(s.InstanceCount > 0);
+			Test.Assert(s.InstanceCount <= 1024);
+			if (s.InstanceCount == 1024)
+				full++;
+			else
+				partial++;
+		}
+		Test.Assert(full >= 1);
+		Test.Assert(partial >= 1);
+
+		// Far away nothing is in range and nothing new is built: a hidden viewport never
+		// grows anything.
+		let builds = f.Manager.BuildCount;
+		var far = Float3(2000.0f, 12.0f, 0.0f);
+		f.Extract(snapshot, &far, sets);
+		Test.Assert(sets.IsEmpty);
+		Test.Assert(f.Manager.BuildCount == builds);
+		Test.Assert(f.Manager.BuiltSetCount == 4); // the sets stay cached for the return
+
+		// Back in range: the cached sets return without a rebuild.
+		f.Extract(snapshot, &near, sets);
+		Test.Assert(sets.Count == 4);
+		Test.Assert(f.Manager.BuildCount == builds);
+	}
+
+	[Test]
+	public static void AVersionBumpRegrowsOnlyTheTouchedChunksWhenARegionSaysWhich()
+	{
+		let f = scope Fixture(false);
+		f.Manager.SetBuildBudget(100);
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4);
+		Test.Assert(f.Manager.BuildCount == 4);
+
+		let versions = scope List<uint32>();
+		let keys = scope List<uint64>();
+		for (let s in sets)
+		{
+			versions.Add(s.Version);
+			keys.Add(s.Key);
+		}
+
+		// A sculpt inside ONE chunk: the bump plus the region rebuilds only it, so its
+		// version moves and the other three keep theirs.
+		f.Grid.BumpVersion();
+		var region = HeightfieldRegion();
+		region.MinX = 10;
+		region.MaxX = 20;
+		region.MinZ = 10;
+		region.MaxZ = 20;
+		f.Manager.InvalidateRegion(region);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4);
+		Test.Assert(f.Manager.BuildCount == 5);
+		var bumped = 0;
+		for (let s in sets)
+		{
+			for (int i < keys.Count)
+			{
+				if (keys[i] == s.Key)
+					bumped += (s.Version != versions[i]) ? 1 : 0;
+			}
+		}
+		Test.Assert(bumped == 1);
+
+		// A bump with NO region notice regrows everything, the conservative fallback.
+		f.Grid.BumpVersion();
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuildCount == 9);
+
+		// A new splat identity regrows every chunk, and a scatter parameter change resets the
+		// whole layer.
+		let splat = MakeHalfSplat();
+		defer delete splat;
+		f.Resource.Weights.SetDirect(splat);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuildCount == 13);
+		f.Layer.Density = 0.5f;
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuildCount == 17);
+		for (let s in sets)
+			Test.Assert(s.InstanceCount == 2048);
+
+		// Moving the terrain entity RECOMPOSES, so the versions move without a rescatter.
+		f.Scene.SetLocalPosition(f.Terrain, .(100.0f, 0.0f, 0.0f));
+		f.Scene.UpdateTransforms();
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuildCount == 17);
+		Test.Assert(sets.Count == 4);
+		for (let s in sets)
+		{
+			Test.Assert(s.WorldCenter.X > 30.0f); // shifted along
+			Test.Assert(s.Transforms[0].M[3][0] > 30.0f);
+		}
+	}
+
+	[Test]
+	public static void TheBuildBudgetSpreadsAColdStartOverExtractions()
+	{
+		let f = scope Fixture(false);
+		f.Manager.SetBuildBudget(1);
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 1);
+		Test.Assert(f.Manager.BuildCount == 1);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 2);
+		f.Extract(snapshot, null, sets);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4);
+		Test.Assert(f.Manager.BuildCount == 4);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuildCount == 4); // warm, so no more builds
+	}
+
+	[Test]
+	public static void NoLayerHiddenOffTerrainOrNoMeshExtractsNothing()
+	{
+		let bare = scope Scene();
+		TerrainScene.AddTerrainSceneManagers(bare);
+		VegetationScene.AddVegetationSceneManagers(bare);
+		let bareManager = bare.GetSystem<VegetationLayerComponentManager>();
+		Test.Assert(bareManager != null);
+		bare.Start();
+		let snapshot = scope ExtractedScene();
+		bareManager.ExtractRenderData(snapshot);
+		Test.Assert(snapshot.IsEmpty);
+
+		let f = scope Fixture(false);
+		f.Manager.SetBuildBudget(100);
+		let sets = scope List<MultiMeshRenderData>();
+		f.Layer.Visible = false;
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.IsEmpty);
+		f.Layer.Visible = true;
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4);
+
+		// An inactive entity is absent, and so is a layer with no terrain above it.
+		f.Scene.SetActive(f.Grass, false);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.IsEmpty);
+		f.Scene.SetActive(f.Grass, true);
+		f.Scene.SetParent(f.Grass, EntityHandle());
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.IsEmpty);
+		f.Scene.SetParent(f.Grass, f.Terrain);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4);
+
+		// No mesh: nothing to instance.
+		f.Layer.Mesh.SetDirect(null);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.IsEmpty);
+
+		// A removed layer drops its cache.
+		f.Layer.Mesh.SetDirect(f.Mesh);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuiltSetCount == 4);
+		f.Manager.Remove(f.Grass);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.IsEmpty);
+		Test.Assert(f.Manager.BuiltSetCount == 0);
+	}
+}

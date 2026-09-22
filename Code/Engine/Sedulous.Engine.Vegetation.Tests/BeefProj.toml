@@ -1,0 +1,22 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Vegetation.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Engine.Vegetation.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Heightfield" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Render" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Terrain" = "*"
+"Sedulous.Terrain.Resource" = "*"
+"Sedulous.Vegetation" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Engine.Terrain" = "*"
+"Sedulous.Engine.Vegetation" = "*"
