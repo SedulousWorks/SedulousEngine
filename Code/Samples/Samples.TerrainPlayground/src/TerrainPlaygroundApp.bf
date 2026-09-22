@@ -11,6 +11,8 @@ using Sedulous.Materials;
 using Sedulous.Runtime.Client;
 using Sedulous.Scene;
 using Sedulous.Terrain.Resource;
+using Sedulous.Vegetation;
+using Sedulous.Engine.Vegetation;
 using Samples.Common;
 using cimgui_Beef;
 
@@ -25,6 +27,7 @@ class TerrainPlaygroundApp : DefaultApplication
 {
 	/// Four by four chunks, which is the smallest grid that shows the level of detail seams.
 	private const int32 cGridSize = 257;
+	private const int32 cSplatSize = 128;
 	private const float cWorldSize = 256.0f;
 	private const float cMaxHeight = 60.0f;
 	private const float cCasterRadius = 8.0f;
@@ -37,6 +40,16 @@ class TerrainPlaygroundApp : DefaultApplication
 
 	private Heightfield mHeightfield = null ~ delete _;
 	private TerrainResource mTerrainResource = null ~ delete _;
+	private SplatWeights mSplat = null ~ delete _;
+
+	/// The grass layer entity under the terrain, and what its heads up display edits.
+	private EntityHandle mGrass = .Invalid;
+	private StaticMesh mGrassMesh = null ~ delete _;
+	private Material mGrassMaterial = null ~ delete _;
+	private float mGrassDensity = 1.5f;
+	private float mGrassFadeStart = 60.0f;
+	private float mGrassFadeEnd = 140.0f;
+	private bool mGrassShadows = false;
 	private StaticMesh mCasterMesh = null ~ delete _;
 	private Material mCasterMaterial = null ~ delete _;
 
@@ -113,12 +126,42 @@ class TerrainPlaygroundApp : DefaultApplication
 		mTerrainResource = new TerrainResource();
 		mTerrainResource.Heightfield.SetDirect(mHeightfield); // the product itself, not an id
 
+		// A splat with palette layer nought painted on one half. There are no palette
+		// textures here, so the terrain still shades from its height ramp: the paint is what
+		// drives the GRASS.
+		mSplat = new SplatWeights(cSplatSize, cSplatSize);
+		PaintHalfSplat(mSplat);
+		mTerrainResource.Weights.SetDirect(mSplat);
+
 		mTerrain = mScene.CreateEntity("terrain");
 		if (let terrains = mScene.GetSystem<TerrainComponentManager>())
 		{
 			let component = terrains.Add(mTerrain);
 			component.Terrain.SetDirect(mTerrainResource);
 			component.LodBias = mLodBias;
+		}
+
+		// The grass: a vegetation layer entity under the terrain following splat layer nought,
+		// so it grows on the painted half, not on the other, and thins to nothing at the fade.
+		mGrass = mScene.CreateEntity("grass");
+		mScene.SetParent(mGrass, mTerrain);
+		if (let layers = mScene.GetSystem<VegetationLayerComponentManager>())
+		{
+			mGrassMesh = Primitives.Cone(0.24f, 1.4f); // a tuft
+			mGrassMaterial = MaterialPresets.CreatePbr("grass", .(0.25f, 0.62f, 0.18f, 1.0f),
+				0.0f, 0.85f);
+
+			let layer = layers.Add(mGrass);
+			layer.Mesh.SetDirect(mGrassMesh);
+			layer.Material.SetDirect(mGrassMaterial);
+			layer.Placement = .Splat;
+			layer.SplatLayer = 0;
+			layer.Density = mGrassDensity;
+			layer.ScaleRange = .(0.7f, 1.4f);
+			layer.MaxSlopeDegrees = 40.0f;
+			layer.FadeStart = mGrassFadeStart;
+			layer.FadeEnd = mGrassFadeEnd;
+			layer.CastShadows = mGrassShadows;
 		}
 
 		// A sphere that orbits overhead, so the cascaded shadow is something that MOVES: a
@@ -178,6 +221,23 @@ class TerrainPlaygroundApp : DefaultApplication
 
 	/// The light's forward is its travel direction: yaw about up, then pitch DOWN by the
 	/// elevation, so a higher elevation is a higher sun.
+	/// Palette layer nought one hot on one half; the base owns the rest.
+	private static void PaintHalfSplat(SplatWeights splat)
+	{
+		let idx = splat.Indices;
+		let wts = splat.Weights;
+		for (int32 y = 0; y < splat.Height; y++)
+		{
+			for (int32 x = 0; x < splat.Width / 2; x++)
+			{
+				let at = splat.TexelOffset(x, y);
+				idx[at + 0] = 0;
+				wts[at + 0] = 255;
+			}
+		}
+		splat.BumpVersion();
+	}
+
 	private void ApplySun()
 	{
 		if (mScene == null)
@@ -251,6 +311,29 @@ class TerrainPlaygroundApp : DefaultApplication
 			igCheckbox("orbit", &mOrbit);
 			igSliderFloat("caster height", &mCasterHeight, 12.0f, 130.0f, "%.0f", 0);
 			igSliderFloat("orbit radius", &mOrbitRadius, 0.0f, 115.0f, "%.0f", 0);
+
+			igSeparator();
+			igTextDisabled("Grass - splat layer 0, the painted half only");
+			if (let layers = mScene.GetSystem<VegetationLayerComponentManager>())
+			{
+				if (let layer = layers.Get(mGrass))
+				{
+					// Density is a SCATTER parameter, so editing it regrows the sets; the fade
+					// and the shadow flag are draw state and take effect the same frame.
+					var changed = igSliderFloat("density /m2", &mGrassDensity, 0.0f, 4.0f, "%.2f", 0);
+					changed |= igSliderFloat("fade start", &mGrassFadeStart, 0.0f, 300.0f, "%.0f", 0);
+					changed |= igSliderFloat("fade end", &mGrassFadeEnd, 0.0f, 400.0f, "%.0f", 0);
+					changed |= igCheckbox("grass casts shadows", &mGrassShadows);
+					if (changed)
+					{
+						layer.Density = mGrassDensity;
+						layer.FadeStart = mGrassFadeStart;
+						layer.FadeEnd = Math.Max(mGrassFadeEnd, mGrassFadeStart);
+						layer.CastShadows = mGrassShadows;
+					}
+					igText(scope $"sets {layers.BuiltSetCount}, instances {layers.InstanceCount}");
+				}
+			}
 
 			igSeparator();
 			igTextDisabled("WASD and QE to fly, hold the right button to look, Shift is fast.");
