@@ -54,7 +54,9 @@ class ExtractedScene
 		if (source.IsEmpty)
 			return .();
 
-		let bytes = source.Length * sizeof(T);
+		// STRIDE, not size: sizeof leaves a struct's tail padding out, and a copy measured by
+		// it drops the last element's final bytes, which then read as whatever the arena held.
+		let bytes = source.Length * strideof(T);
 		let memory = mArena.Allocate(bytes, alignof(T));
 		if (memory == null)
 			return .();

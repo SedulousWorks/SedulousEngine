@@ -181,4 +181,39 @@ class FrameArenaTests
 		scene.SetDirectionalShadow(.() { Direction = .(0, -1, 0), Valid = true });
 		Test.Assert(scene.DirectionalShadowData.Valid);
 	}
+
+	/// A struct whose size falls short of its stride: four bytes of payload and a trailing
+	/// byte, so the stride is eight while `sizeof` is five.
+	private struct Padded
+	{
+		public int32 Value = 0;
+		public uint8 Flag = 0;
+
+		public this() {}
+	}
+
+	[Test]
+	public static void AnArrayCopyIsMeasuredByStrideRatherThanSize()
+	{
+		// Measured by size instead, the copy falls short by the tail padding of ONE element,
+		// so the last element's trailing bytes come back as whatever the arena last held: the
+		// flag on the final entry reads false while every earlier one survives.
+		Test.Assert(sizeof(Padded) < strideof(Padded), "the struct has tail padding");
+
+		let source = scope Padded[4];
+		for (int32 i < 4)
+		{
+			source[i].Value = i;
+			source[i].Flag = 1;
+		}
+
+		let scene = scope ExtractedScene();
+		let copy = scene.AddArray<Padded>(source);
+		Test.Assert(copy.Length == 4);
+		for (int32 i < 4)
+		{
+			Test.Assert(copy[i].Value == i);
+			Test.Assert(copy[i].Flag == 1, scope $"element {i} kept its trailing byte");
+		}
+	}
 }
