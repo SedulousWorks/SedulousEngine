@@ -26,10 +26,15 @@ class MultiMeshSet
 	/// Live instances this frame.
 	public uint32 Count = 0;
 
-	/// The component version last written. Nought means never; versions start at one.
-	public uint32 UploadedVersion = 0;
-	/// Regions still to write after a version change, counting down.
-	public uint32 DirtyFrames = 0;
+	/// PER REGION: the component version its bytes hold, nought meaning never, versions
+	/// starting at one, and how many instances were written with it.
+	///
+	/// A region is rewritten when either falls behind what the frame's item asks for: a new
+	/// version, or a draw count that has grown past what this region holds, which a distance
+	/// fade opening up within the rounded capacity does. Without the count, the tail draws
+	/// whatever that region held before, and since it differs per region, the set flickers.
+	public uint32[cMaxFramesInFlight] RegionVersion;
+	public uint32[cMaxFramesInFlight] RegionCount;
 	/// The last frame this set was extracted, for eviction.
 	public uint32 LastFrame = 0;
 

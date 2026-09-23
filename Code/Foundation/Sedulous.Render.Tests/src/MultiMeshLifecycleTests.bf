@@ -13,7 +13,8 @@ namespace Sedulous.Render.Tests;
 class MultiMeshLifecycleTests
 {
 	private static void AddSet(ExtractedScene scene, uint64 key, StaticMesh mesh, Material material,
-		Float4x4* transforms, uint32 count, uint16 rendererId)
+		Float4x4* transforms, uint32 count, uint16 rendererId, uint32 version = 1,
+		uint32 uploadCount = 0)
 	{
 		let rd = scene.Add<MultiMeshRenderData>();
 		Test.Assert(rd != null);
@@ -21,7 +22,8 @@ class MultiMeshLifecycleTests
 		rd.Key = key;
 		rd.Transforms = transforms;
 		rd.InstanceCount = count;
-		rd.Version = 1;
+		rd.UploadCount = uploadCount;
+		rd.Version = version;
 		rd.Mesh = mesh;
 		rd.Material = material;
 		rd.Category = RenderCategories.Opaque;
@@ -154,5 +156,125 @@ class MultiMeshLifecycleTests
 			Test.Assert(((uint64)capacity * stride) % 256 == 0,
 				scope $"count {count} leaves region one unaligned");
 		}
+	}
+
+	/// A draw count that grows within the capacity rewrites the region it outgrew.
+	///
+	/// The vegetation fade draws a PREFIX of a set's instances that moves with the camera
+	/// under one unchanged version. A region written with a short prefix and then drawn with
+	/// a longer one showed stale bytes for the tail, and stale differently per region, so the
+	/// tail blinked between frames in flight.
+	[Test]
+	public static void ADrawCountThatGrowsRewritesTheRegionItOutgrew()
+	{
+		let fixture = scope RenderFrameFixture(64, 64);
+		if (!fixture.Ready)
+			return;
+
+		let renderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		if (renderer.Initialize() case .Err)
+			return;
+
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let material = MaterialPresets.CreatePbr("lit", .(1, 1, 1, 1), 0.0f, 0.5f);
+		defer delete material;
+
+		// Eight distinct translations, one set.
+		let transforms = scope List<Float4x4>();
+		for (uint32 i < 8)
+			transforms.Add(Float4x4.Translation(.((float)i, 0.0f, 0.0f)));
+
+		void Frame(uint32 index, uint32 count, uint32 version)
+		{
+			let scene = scope ExtractedScene();
+			AddSet(scene, 0x77, cube, material, transforms.Ptr, count, renderer.RendererId,
+				version);
+			renderer.PrepareFrame(2, index % 2);
+			renderer.UploadMultiMeshes(scene);
+		}
+
+		// Frame nought draws three, being far away, and frame one all eight, so region one
+		// holds them all.
+		Frame(0, 3, 1);
+		Frame(1, 8, 1);
+		Test.Assert(renderer.ReadMultiMeshInstance(0x77, 1, 7, let farWorld));
+		Test.Assert(Math.Abs(farWorld.M[3][0] - 7.0f) < 0.001f);
+
+		// And frame two draws eight from region nought, which only ever held three: rewritten.
+		Frame(2, 8, 1);
+		Test.Assert(renderer.ReadMultiMeshInstance(0x77, 0, 7, let nearWorld));
+		Test.Assert(Math.Abs(nearWorld.M[3][0] - 7.0f) < 0.001f);
+
+		// A new version rewrites each region on its next frame, even at the same count.
+		for (int i < transforms.Count)
+			transforms[i].M[3][2] = 5.0f;
+		Frame(3, 8, 2);
+		Frame(4, 8, 2);
+		Test.Assert(renderer.ReadMultiMeshInstance(0x77, 0, 0, let bumped0));
+		Test.Assert(Math.Abs(bumped0.M[3][2] - 5.0f) < 0.001f);
+		Test.Assert(renderer.ReadMultiMeshInstance(0x77, 1, 0, let bumped1));
+		Test.Assert(Math.Abs(bumped1.M[3][2] - 5.0f) < 0.001f);
+
+		// A shrink under the same version writes nothing: the regions already hold the longer
+		// prefix. A change the renderer was not told about stays invisible to it.
+		transforms[7].M[3][1] = 9.0f;
+		Frame(5, 4, 2);
+		Frame(6, 4, 2);
+		Test.Assert(renderer.ReadMultiMeshInstance(0x77, 1, 7, let untouched1));
+		Test.Assert(Math.Abs(untouched1.M[3][1]) < 0.001f);
+		Test.Assert(renderer.ReadMultiMeshInstance(0x77, 0, 7, let untouched0));
+		Test.Assert(Math.Abs(untouched0.M[3][1]) < 0.001f);
+	}
+
+	/// A set carrying an upload count holds its WHOLE list from the first frame, and the draw
+	/// prefix never re-uploads: the GPU buffer holds the full chunk once and only the draw
+	/// count moves with distance.
+	[Test]
+	public static void AnUploadCountHoldsTheWholeListFromTheFirstFrame()
+	{
+		let fixture = scope RenderFrameFixture(64, 64);
+		if (!fixture.Ready)
+			return;
+
+		let renderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		if (renderer.Initialize() case .Err)
+			return;
+
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let material = MaterialPresets.CreatePbr("lit", .(1, 1, 1, 1), 0.0f, 0.5f);
+		defer delete material;
+
+		let transforms = scope List<Float4x4>();
+		for (uint32 i < 8)
+			transforms.Add(Float4x4.Translation(.((float)i, 0.0f, 0.0f)));
+
+		void Frame(uint32 index, uint32 drawCount)
+		{
+			let scene = scope ExtractedScene();
+			AddSet(scene, 0x99, cube, material, transforms.Ptr, drawCount, renderer.RendererId,
+				1, 8);
+			renderer.PrepareFrame(2, index % 2);
+			renderer.UploadMultiMeshes(scene);
+		}
+
+		// Far away: it draws three and holds eight.
+		Frame(0, 3);
+		Test.Assert(renderer.ReadMultiMeshInstance(0x99, 0, 7, let held));
+		Test.Assert(Math.Abs(held.M[3][0] - 7.0f) < 0.001f);
+		Frame(1, 3);
+
+		// The camera comes closer, so the prefix grows to eight under the same version.
+		// Nothing is rewritten, a change the renderer was not told about being invisible.
+		transforms[7].M[3][1] = 9.0f;
+		Frame(2, 8);
+		Frame(3, 8);
+		Test.Assert(renderer.ReadMultiMeshInstance(0x99, 0, 7, let quiet0));
+		Test.Assert(Math.Abs(quiet0.M[3][1]) < 0.001f);
+		Test.Assert(renderer.ReadMultiMeshInstance(0x99, 1, 7, let quiet1));
+		Test.Assert(Math.Abs(quiet1.M[3][1]) < 0.001f);
 	}
 }

@@ -515,6 +515,9 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 			rd.Key = set.Key;
 			rd.Transforms = set.World.Ptr; // borrowed for the frame, the snapshot being immutable
 			rd.InstanceCount = count; // the fade prefix, per frame
+			// The WHOLE set, uploaded once: the prefix then moves with the camera without a
+			// re-upload, and no region ever draws a tail it was not written with.
+			rd.UploadCount = (uint32)set.World.Count;
 			rd.Version = set.Version; // the scatter, so a re-upload only on a change
 			rd.Mesh = mesh;
 			rd.Material = material;

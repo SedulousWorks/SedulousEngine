@@ -20,6 +20,12 @@ class MultiMeshRenderData : MeshRenderData
 	/// Optional per instance tints. Null uses the shared colour.
 	public Color* Tints = null;
 	public uint32 InstanceCount = 0;
+	/// Instances to UPLOAD when more than InstanceCount are borrowed; nought means the
+	/// instance count.
+	///
+	/// A distance faded set uploads its whole list ONCE and then draws a prefix that moves
+	/// with the camera without re-uploading, so Transforms and Tints hold this many entries.
+	public uint32 UploadCount = 0;
 	/// Bumped when the transforms change, so the renderer re-uploads only then.
 	public uint32 Version = 0;
 

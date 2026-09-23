@@ -952,6 +952,27 @@ class MeshRenderer : Renderer
 	/// How many instanced sets the pool holds, for the lifecycle tests.
 	public int MultiMeshSetCount => mMultiMeshSets.Count;
 
+	/// A test readback: the world matrix uploaded for one instance of one REGION of the set
+	/// keyed `key`, false when there is no such set, region or slot.
+	///
+	/// Maps the buffer, so it is for a host visible test device and nothing else.
+	public bool ReadMultiMeshInstance(uint64 key, uint32 region, uint32 index, out Float4x4 world)
+	{
+		world = .Identity();
+		if (!mMultiMeshSets.TryGetValue(key, let set))
+			return false;
+		if ((set.InstanceBuffer == null) || (region >= (uint32)MultiMeshSet.cMaxFramesInFlight)
+			|| (index >= set.Capacity))
+			return false;
+
+		let mapped = (MeshInstanceData*)set.InstanceBuffer.Map();
+		if (mapped == null)
+			return false;
+		world = mapped[(int)region * (int)set.Capacity + (int)index].World;
+		set.InstanceBuffer.Unmap();
+		return true;
+	}
+
 	private void EnsureMultiMeshSet(MultiMeshRenderData multiMesh)
 	{
 		MultiMeshSet set;
@@ -964,8 +985,10 @@ class MeshRenderer : Renderer
 
 		let regions = Min(mFramesInFlight, (uint32)MultiMeshSet.cMaxFramesInFlight);
 		let region = mFrameIndex % regions;
+		// The whole list when the item carries one: a faded set draws a prefix of it.
+		let uploadCount = Max(multiMesh.InstanceCount, multiMesh.UploadCount);
 
-		if ((set.InstanceBuffer == null) || (multiMesh.InstanceCount > set.Capacity))
+		if ((set.InstanceBuffer == null) || (uploadCount > set.Capacity))
 		{
 			// A frame in flight may still reference the old buffer and groups: retire them
 			// when a queue is wired, else drain the device once for the whole replacement.
@@ -996,7 +1019,7 @@ class MeshRenderer : Renderer
 
 			// The capacity is ROUNDED so region r's byte offset meets every backend's storage
 			// buffer offset alignment.
-			let capacity = MultiMeshRegionCapacity(multiMesh.InstanceCount);
+			let capacity = MultiMeshRegionCapacity(uploadCount);
 			let regionBytes = (uint64)capacity * sizeof(MeshInstanceData);
 			var desc = BufferDesc();
 			desc.Size = (uint64)regions * regionBytes;
@@ -1043,40 +1066,40 @@ class MeshRenderer : Renderer
 			}
 
 			set.Capacity = capacity;
-			// Force a re-upload of every region after a reallocation.
-			set.UploadedVersion = 0;
-			set.DirtyFrames = regions;
+			// Fresh bytes, so every region is behind.
+			for (int r < MultiMeshSet.cMaxFramesInFlight)
+			{
+				set.RegionVersion[r] = 0;
+				set.RegionCount[r] = 0;
+			}
 		}
 
 		set.Count = multiMesh.InstanceCount;
 		set.ActiveInstanceBindGroup = set.InstanceBindGroups[region];
 
-		// A version change re-uploads for as many frames as there are regions, so every one
-		// ends up current, and then stops. A static set therefore writes only that many times
-		// and a per frame dynamic one writes every frame, both without a hazard: a frame only
-		// ever writes ITS OWN region while the GPU reads the previous one.
-		if (set.UploadedVersion != multiMesh.Version)
-		{
-			set.UploadedVersion = multiMesh.Version;
-			set.DirtyFrames = regions;
-		}
-
-		if ((set.DirtyFrames > 0) && (set.InstanceBuffer != null)
-			&& (multiMesh.Transforms != null))
+		// A frame writes ONLY its own region while the GPU reads the previous one, which is
+		// what makes this hazard free, and only when that region is behind the item: a new
+		// version, so a static set writes once per region and a per frame dynamic one every
+		// frame, or a draw count above what the region was last written with, whose tail
+		// would otherwise be stale bytes, and stale differently per region.
+		let behind = (set.RegionVersion[region] != multiMesh.Version)
+			|| (set.RegionCount[region] < uploadCount);
+		if (behind && (set.InstanceBuffer != null) && (multiMesh.Transforms != null))
 		{
 			let mapped = (MeshInstanceData*)set.InstanceBuffer.Map();
 			if (mapped != null)
 			{
 				let destination = mapped + (int)region * (int)set.Capacity;
-				for (uint32 i = 0; i < multiMesh.InstanceCount; i++)
+				for (uint32 i = 0; i < uploadCount; i++)
 				{
 					let tint = (multiMesh.Tints != null) ? multiMesh.Tints[i] : multiMesh.Color;
 					// Static content has no motion, so the previous world is the current one.
 					destination[i] = .(multiMesh.Transforms[i], multiMesh.Transforms[i], tint);
 				}
 				set.InstanceBuffer.Unmap();
+				set.RegionVersion[region] = multiMesh.Version;
+				set.RegionCount[region] = uploadCount;
 			}
-			set.DirtyFrames--;
 		}
 
 		// A skinned crowd needs its own offsets buffer, whose bone bases change every frame.
