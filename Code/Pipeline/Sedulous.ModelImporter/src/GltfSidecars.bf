@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core.Logging;
 using Sedulous.Core.IO;
 using Sedulous.Pipeline.Importer;
 
@@ -87,6 +88,17 @@ static class GltfSidecars
 			let from = scope String(dir);
 			from.Append(uri);
 
+			// A uri the package does not SHIP, and a Lumberyard export names a PNG twin for
+			// every DDS it never included, is a warning rather than a failed write: the
+			// editor's deferred flush must not fail a whole import over one, which is what
+			// the inline copy below has always done by simply skipping it.
+			if (!FileExists(from))
+			{
+				GlobalLog(.Warning, "Import: the glTF sidecar '{}' is missing, so it is skipped",
+					uri);
+				continue;
+			}
+
 			if (deferredWrites != null)
 			{
 				let copy = new DeferredImportWrite();
@@ -98,7 +110,7 @@ static class GltfSidecars
 
 			let payload = scope List<uint8>();
 			if (ReadFile(from, payload) case .Err)
-				continue; // a missing sidecar, which the model itself already worked without
+				continue; // unreadable rather than absent, and the model worked without it
 
 			let target = scope String();
 			PathJoin(context.SourcesRoot, uri, target);

@@ -7,6 +7,7 @@ using Sedulous.Image;
 using Sedulous.Image.DDS;
 using Sedulous.Model;
 using Sedulous.Pipeline.Cook;
+using Sedulous.Pipeline.Importer;
 using Sedulous.RHI;
 using Sedulous.Texture.Pipeline;
 using Sedulous.Texture.Resource;
@@ -224,5 +225,43 @@ class ModelDdsImportTests
 			Test.Assert(cooked.Format == .RGBA8Unorm);
 			Test.Assert(cooked.MipLevels == 3);
 		}
+	}
+
+	/// The editor's path DEFERS the bulk writes to a worker, so every queued write has to
+	/// succeed: one failure fails the whole import.
+	///
+	/// The PNG twins the document names but the package never shipped must therefore be
+	/// warnings rather than queued copies.
+	[Test]
+	public static void EveryDeferredWriteOfADdsModelImportExecutes()
+	{
+		let fixture = scope ImportFixture("scratch_dds_model_deferred");
+		let dropped = scope String();
+		WriteDdsTriangle(fixture, dropped);
+
+		let deferred = scope List<DeferredImportWrite>();
+		defer { ClearAndDeleteItems!(deferred); }
+
+		let importer = scope ModelFileImporter();
+		let imported = importer.Import(dropped, fixture.Context, fixture.RootGroup, null, null,
+			deferred);
+		Test.Assert(imported case .Ok);
+		Test.Assert(!deferred.IsEmpty);
+
+		for (let write in deferred)
+			Test.Assert(write.Execute() case .Ok, scope $"{write.Label}");
+
+		for (let relative in scope String[]("Sources/tex/albedo.dds", "Sources/tex/normal.dds",
+			"Sources/tri.bin"))
+		{
+			let path = scope String();
+			fixture.SubPath(relative, path);
+			Test.Assert(FileExists(path), relative);
+		}
+
+		// The PNG the document names is not in the package, so nothing was written for it.
+		let missing = scope String();
+		fixture.SubPath("Sources/tex/albedo.png", missing);
+		Test.Assert(!FileExists(missing));
 	}
 }
