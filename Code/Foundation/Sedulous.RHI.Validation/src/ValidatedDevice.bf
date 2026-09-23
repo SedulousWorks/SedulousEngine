@@ -118,7 +118,7 @@ class ValidatedDevice : IDevice
 			ValidationLog.Error("Device.CreateBuffer: Storage usage is not compatible with GpuToCpu memory. A DX12 readback heap cannot allow unordered access.");
 			return .Err;
 		}
-		return TrackCreated(mInner.CreateBuffer(desc), mBuffers);
+		return TrackCreated(mInner.CreateBuffer(desc), mBuffers, desc.Label);
 	}
 
 	public Result<ITexture> CreateTexture(TextureDesc desc)
@@ -130,7 +130,7 @@ class ValidatedDevice : IDevice
 			ValidationLog.Error("Device.CreateTexture: width or height is zero");
 			return .Err;
 		}
-		return TrackCreated(mInner.CreateTexture(desc), mTextures);
+		return TrackCreated(mInner.CreateTexture(desc), mTextures, desc.Label);
 	}
 
 	/// The use after destroy check: a texture the device does not know about was either
@@ -146,7 +146,12 @@ class ValidatedDevice : IDevice
 		}
 		if (!mTextures.Contains(texture))
 			ValidationLog.Error("Device.CreateTextureView: the texture was destroyed, or was not created by this device");
-		return TrackCreated(mInner.CreateTextureView(texture, desc), mTextureViews);
+		// A view is named after its texture, so a leaked view says whose it is.
+		let owner = scope String();
+		if (!mTextures.TryGetLabel(texture, owner))
+			owner.Set(TrackedResources.cUnlabelled);
+		return TrackCreated(mInner.CreateTextureView(texture, desc), mTextureViews,
+			scope $"{owner}/view");
 	}
 
 	public Result<ISampler> CreateSampler(SamplerDesc desc)
@@ -538,8 +543,12 @@ class ValidatedDevice : IDevice
 		}
 		for (let tracker in mTracked)
 		{
-			if (tracker.Count > 0)
-				ValidationLog.Warn(scope $"Device destroyed with {tracker.Count} live {tracker.Name}(s)");
+			if (tracker.Count == 0)
+				continue;
+			ValidationLog.Warn(scope $"Device destroyed with {tracker.Count} live {tracker.Name}(s)");
+			// And WHICH ones: a count alone cannot be chased, a label can be grepped.
+			for (int i < tracker.Count)
+				ValidationLog.Warn(scope $"  live {tracker.Name}: {tracker.LabelAt(i)}");
 		}
 		mDestroyed = true;
 		mInner.Destroy();
@@ -569,10 +578,11 @@ class ValidatedDevice : IDevice
 		}
 	}
 
-	private Result<T> TrackCreated<T>(Result<T> result, TrackedResources tracker) where T : class
+	private Result<T> TrackCreated<T>(Result<T> result, TrackedResources tracker,
+		StringView label = TrackedResources.cUnlabelled) where T : class
 	{
 		if (result case .Ok(let value))
-			tracker.Add(value);
+			tracker.Add(value, label);
 		return result;
 	}
 

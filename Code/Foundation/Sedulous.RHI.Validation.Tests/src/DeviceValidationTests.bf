@@ -207,6 +207,9 @@ class DeviceValidationTests
 
 		Test.Assert(fixture.Messages.HasWarning("2 live Buffer(s)"), "the count and the kind");
 		Test.Assert(fixture.Messages.HasWarning("1 live Texture(s)"));
+		// And WHICH ones, by their creation label: a count alone cannot be chased.
+		Test.Assert(fixture.Messages.HasWarning("live Texture: ValidationFixture.MakeTexture"));
+		Test.Assert(fixture.Messages.HasWarning("live Buffer: ValidationFixture.MakeBuffer"));
 
 		// And destroying it again is itself an error.
 		fixture.Messages.Clear();
@@ -288,5 +291,33 @@ class DeviceValidationTests
 		Test.Assert(fixture.Messages.Count == 0);
 		fixture.Device.DestroyBindGroup(ref group);
 		fixture.Device.DestroyBindGroupLayout(ref layout);
+	}
+
+	/// A leak report NAMES what leaked: a texture and its view by their creation labels, and
+	/// a destroyed one is not named at all.
+	[Test]
+	public static void ALeakReportNamesTheSurvivorsByLabel()
+	{
+		let fixture = scope ValidationFixture();
+
+		var leakedDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4);
+		leakedDesc.Label = "leak.probe.texture";
+		Test.Assert(fixture.Device.CreateTexture(leakedDesc) case .Ok(let leaked));
+		fixture.Own(leaked);
+		Test.Assert(fixture.Device.CreateTextureView(leaked, .()) case .Ok(let view));
+		fixture.Own(view);
+
+		var freedDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 4, 4);
+		freedDesc.Label = "freed.texture";
+		Test.Assert(fixture.Device.CreateTexture(freedDesc) case .Ok(var freed));
+		fixture.Device.DestroyTexture(ref freed); // destroyed: forgotten, never reported
+
+		fixture.Messages.Clear();
+		fixture.Device.Destroy();
+
+		Test.Assert(fixture.Messages.HasWarning("live Texture: leak.probe.texture"));
+		// A view is named after its texture, so a leaked view says whose it is.
+		Test.Assert(fixture.Messages.HasWarning("live TextureView: leak.probe.texture/view"));
+		Test.Assert(!fixture.Messages.HasWarning("freed.texture"));
 	}
 }
