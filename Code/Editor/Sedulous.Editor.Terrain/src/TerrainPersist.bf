@@ -38,7 +38,17 @@ static class TerrainPersist
 				asset.MaxY = grid.MaxY;
 				if (inst.WriteObject(asset) case .Err(let error))
 					return .Err(error);
-				return inst.WriteData(HeightfieldSource.HeightStream, HeightfieldSource.HeightBlob(grid));
+				// BOTH sidecars. The heights because clearing the file name makes them the
+				// truth, so an IMPORTED heightfield would otherwise lose its image born
+				// heights; the holes because they are half the grid's shape and the cook
+				// reads them beside it.
+				if (inst.WriteData(HeightfieldSource.HeightStream,
+					HeightfieldSource.HeightBlob(grid)) case .Err(let heightError))
+				{
+					return .Err(heightError);
+				}
+				return inst.WriteData(HeightfieldSource.HoleStream,
+					HeightfieldSource.HoleBlob(grid));
 			};
 	}
 

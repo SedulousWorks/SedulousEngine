@@ -1,10 +1,16 @@
 using Sedulous.Core;
 using Sedulous.Heightfield;
 using Sedulous.Resource;
+using Sedulous.Scene;
+using Sedulous.Engine.Terrain;
+using Sedulous.Editor.ViewportTools;
 
 namespace Sedulous.Editor.Terrain;
 
-/// Where the sculpt brush's ray met a terrain: the grid it hit, in heightfield local space.
+/// Where a terrain brush's ray met a terrain: the grid it hit, in heightfield local space.
+///
+/// BOTH the sculpt and the hole brush resolve through this: they ask the same question of the
+/// same managers, and one answer is easier to keep honest than two.
 struct SculptPick
 {
 	/// The heightfield reference as the terrain holds it: the live grid plus the SOURCE
@@ -19,4 +25,75 @@ struct SculptPick
 	public bool Valid = false;
 
 	public this() {}
+
+	/// The NEAREST terrain the ray hits, in that terrain's own local space.
+	///
+	/// The ray query passes THROUGH a cut cell, so a brush cannot pick inside a hole: to fill
+	/// one, the author picks from its rim outward and lets the disc cover the cut.
+	public static SculptPick Resolve(Scene scene, in ViewportToolInput input)
+	{
+		var best = SculptPick();
+		let manager = (scene != null) ? scene.GetSystem<TerrainComponentManager>() : null;
+		if (manager == null)
+			return best;
+
+		let rayOrigin = input.Ray.Origin;
+		let rayDirection = input.Ray.Direction;
+		var bestDistance = float.MaxValue;
+		manager.ForEach(scope [&] (component, owner) =>
+			{
+				let resource = component.Terrain.Get;
+				if (resource == null)
+					return;
+				let grid = resource.Heightfield.Get;
+				if ((grid == null) || grid.IsEmpty)
+					return;
+
+				let world = scene.GetWorldMatrix(owner);
+				let inverse = Inverse(world);
+				let localOrigin = TransformPoint(rayOrigin, inverse);
+				let localDirection = TransformDirection(rayDirection, inverse);
+				float t = 0.0f;
+				if (!grid.QueryRay(localOrigin, localDirection, out t))
+					return;
+
+				let localHit = localOrigin + Normalized(localDirection) * t;
+				let worldHit = TransformPoint(localHit, world);
+				let distance = Length(worldHit - rayOrigin);
+				if (distance >= bestDistance)
+					return;
+
+				bestDistance = distance;
+				best.Grid = resource.Heightfield;
+				best.LocalX = localHit.X;
+				best.LocalZ = localHit.Z;
+				best.LocalY = localHit.Y;
+				best.WorldHit = worldHit;
+				best.WorldNormal = Normalized(TransformDirection(
+					grid.GetNormalAt(localHit.X, localHit.Z), world));
+				best.Valid = true;
+			});
+		return best;
+	}
+
+	/// Whether the scene holds ANY terrain with a heightfield, which is what a terrain
+	/// brush's relevance turns on.
+	public static bool AnyTerrain(Scene scene)
+	{
+		let manager = (scene != null) ? scene.GetSystem<TerrainComponentManager>() : null;
+		if (manager == null)
+			return false;
+
+		var any = false;
+		manager.ForEach(scope [&] (component, owner) =>
+			{
+				if (any)
+					return;
+				let resource = component.Terrain.Get;
+				let grid = (resource != null) ? resource.Heightfield.Get : null;
+				if ((grid != null) && !grid.IsEmpty)
+					any = true;
+			});
+		return any;
+	}
 }

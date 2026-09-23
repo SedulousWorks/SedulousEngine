@@ -35,8 +35,10 @@ class PanelProviderTests
 		let registry = ViewportToolPanelRegistry.Global;
 		let sculptProvider = registry.FindByToolId("terrain.sculpt");
 		let splatProvider = registry.FindByToolId("terrain.splat");
+		let holeProvider = registry.FindByToolId("terrain.hole");
 		Test.Assert(sculptProvider != null);
 		Test.Assert(splatProvider != null);
+		Test.Assert(holeProvider != null);
 		Test.Assert(sculptProvider.Placement == .Float);
 		Test.Assert(registry.FindByToolId("select") == null); // the default tool has no panel
 
@@ -61,9 +63,12 @@ class PanelProviderTests
 		var context = ViewportToolHostContext();
 		context.Scene = scene;
 		context.Commands = commands;
+		let hole = scope TerrainHoleTool(scene, commands, null);
 		let sculptPanel = sculptProvider.CreatePanel(sculpt, context);
 		let splatPanel = splatProvider.CreatePanel(splat, context);
-		defer { sculptPanel.ReleaseRef(); splatPanel.ReleaseRef(); }
+		let holePanel = holeProvider.CreatePanel(hole, context);
+		defer { sculptPanel.ReleaseRef(); splatPanel.ReleaseRef(); holePanel.ReleaseRef(); }
+		Test.Assert(holePanel != null);
 		Test.Assert(sculptPanel != null);
 		Test.Assert(splatPanel != null); // the six palette slots plus the eraser and smooth
 
@@ -104,6 +109,7 @@ class PanelProviderTests
 		provider.CreateTools(manager, context);
 		Test.Assert(manager.FindById("terrain.sculpt") != null);
 		Test.Assert(manager.FindById("terrain.splat") != null);
+		Test.Assert(manager.FindById("terrain.hole") != null);
 
 		let bare = scope ViewportToolManager();
 		provider.CreateTools(bare, ViewportToolHostContext()); // no scene: nothing to brush

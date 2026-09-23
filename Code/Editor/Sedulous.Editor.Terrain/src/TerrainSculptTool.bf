@@ -130,7 +130,7 @@ class TerrainSculptTool : IViewportTool
 		if (input.PointerOver && (input.WheelDelta != 0.0f))
 			SetRadius(mRadius * (1.0f + 0.12f * input.WheelDelta));
 
-		let pick = ResolvePick(input);
+		let pick = SculptPick.Resolve(mScene, input);
 		if (pick.Valid)
 		{
 			mHasHover = true;
@@ -180,47 +180,6 @@ class TerrainSculptTool : IViewportTool
 	}
 
 	/// The nearest terrain the ray hits, in that terrain's local space.
-	private SculptPick ResolvePick(in ViewportToolInput input)
-	{
-		var best = SculptPick();
-		let manager = (mScene != null) ? mScene.GetSystem<TerrainComponentManager>() : null;
-		if (manager == null)
-			return best;
-		let rayOrigin = input.Ray.Origin;
-		let rayDirection = input.Ray.Direction;
-		var bestDistance = float.MaxValue;
-		manager.ForEach(scope [&] (component, owner) =>
-			{
-				let res = component.Terrain.Get;
-				if (res == null)
-					return;
-				let grid = res.Heightfield.Get;
-				if ((grid == null) || grid.IsEmpty)
-					return;
-				let world = mScene.GetWorldMatrix(owner);
-				let inv = Inverse(world);
-				let localOrigin = TransformPoint(rayOrigin, inv);
-				let localDir = TransformDirection(rayDirection, inv);
-				float t = 0.0f;
-				if (!grid.QueryRay(localOrigin, localDir, out t))
-					return;
-				let localHit = localOrigin + Normalized(localDir) * t;
-				let worldHit = TransformPoint(localHit, world);
-				let distance = Length(worldHit - rayOrigin);
-				if (distance >= bestDistance)
-					return;
-				bestDistance = distance;
-				best.Grid = res.Heightfield;
-				best.LocalX = localHit.X;
-				best.LocalZ = localHit.Z;
-				best.LocalY = localHit.Y;
-				best.WorldHit = worldHit;
-				best.WorldNormal = Normalized(TransformDirection(grid.GetNormalAt(localHit.X, localHit.Z), world));
-				best.Valid = true;
-			});
-		return best;
-	}
-
 	private void BeginStroke(in SculptPick pick)
 	{
 		mStroking = true;
