@@ -87,7 +87,7 @@ static class HeightfieldSculpt
 	///
 	/// The rectangle covers what was ACTUALLY touched rather than the whole clamped scan
 	/// box, because the disc's corners are outside it and re-uploading them would be waste.
-	private static HeightfieldRegion VisitBrush(Heightfield field, float worldX, float worldZ,
+	public static HeightfieldRegion VisitBrush(Heightfield field, float worldX, float worldZ,
 		float radius, delegate void(int32 gx, int32 gz, float weight) apply)
 	{
 		var region = HeightfieldRegion();

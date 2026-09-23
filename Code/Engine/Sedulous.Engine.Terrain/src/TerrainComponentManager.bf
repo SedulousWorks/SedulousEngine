@@ -30,6 +30,8 @@ class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent
 	private uint16 mRendererId = 0;
 
 	private TerrainHeightTextureCache mHeightTextures = new .() ~ delete _;
+	/// The holed chunks' own index buffers, which only a terrain with a cut sample has.
+	private TerrainHoledMeshCache mHoledMeshes = new .() ~ delete _;
 	private TerrainSplatTextureCache mSplatTextures = new .() ~ delete _;
 	private TerrainPaletteTextureCache mPaletteTextures = new .() ~ delete _;
 
@@ -56,6 +58,7 @@ class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent
 		mDevice = device;
 		mRendererId = rendererId;
 		mHeightTextures.SetRetireQueue(retire);
+		mHoledMeshes.SetRetireQueue(retire);
 		mSplatTextures.SetRetireQueue(retire);
 		mPaletteTextures.SetRetireQueue(retire);
 	}
@@ -72,12 +75,16 @@ class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent
 			return;
 
 		mHeightTextures.Clear(mDevice);
+		mHoledMeshes.Clear(mDevice);
 		mSplatTextures.Clear(mDevice);
 		mPaletteTextures.Clear(mDevice);
 		mDevice = null;
 	}
 
 	public int HeightTextureCount => mHeightTextures.Size;
+
+	/// The holed chunk meshes cached for a heightfield, which is the holes test's observable.
+	public int HoledMeshCount(uint64 heightfieldUid) => mHoledMeshes.MeshCount(heightfieldUid);
 	public int SplatTextureCount => mSplatTextures.Size;
 	public int PaletteTextureCount => mPaletteTextures.Size;
 
@@ -141,6 +148,17 @@ class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent
 		data.ChunkCount = (uint32)chunkCopy.Length;
 		data.NodeCount = (uint32)nodeCopy.Length;
 		data.HeightView = heightView;
+
+		// The holed chunks' own buffers, none for the common terrain, copied into the arena
+		// too: the records are by value and the buffers outlive the frame through the queue.
+		let holed = mHoledMeshes.GetOrBuild(mDevice, heightfield, cache.Chunks,
+			heightfield.Version);
+		if (!holed.IsEmpty)
+		{
+			let holedCopy = snapshot.AddArray<HoledChunkMesh>(holed);
+			data.HoledMeshes = holedCopy.Ptr;
+			data.HoledMeshCount = (uint32)holedCopy.Length;
+		}
 
 		data.ChunkToWorld = (mScene != null) ? mScene.GetWorldMatrix(owner) : Float4x4.Identity();
 		data.EntityId = EntityTag.Pack(owner.Index, owner.Generation); // the GPU pick's tag

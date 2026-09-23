@@ -74,6 +74,35 @@ class TerrainRenderer : Renderer
 		public Float2 Skirt;
 	}
 
+	/// A chunk with holes draws its OWN buffers, which the render data carries per chunk; a
+	/// chunk cut everywhere draws nothing; every other chunk draws the shared grid the caller
+	/// already put in `mesh`.
+	///
+	/// False means there is nothing to draw for this chunk at this level.
+	private static bool SelectChunkMesh(TerrainRenderData data, uint32 chunkIndex, uint32 lod,
+		ref LodMesh mesh)
+	{
+		let chunk = data.Chunks[chunkIndex];
+		if (chunk.AllCut)
+			return false;
+		if (!chunk.HasHoles)
+			return true;
+
+		for (uint32 i = 0; i < data.HoledMeshCount; i++)
+		{
+			let holed = data.HoledMeshes[i];
+			if (holed.ChunkIndex != chunkIndex)
+				continue;
+
+			mesh.IndexBuffer = holed.IndexBuffers[lod];
+			mesh.IndexCount = holed.IndexCounts[lod];
+			mesh.SurfaceIndexCount = holed.SurfaceIndexCounts[lod];
+			return (mesh.IndexBuffer != null) && (mesh.IndexCount != 0);
+		}
+		// A holed chunk without its buffers, which a failed upload leaves, draws nothing.
+		return false;
+	}
+
 	private struct LodMesh
 	{
 		public IBuffer IndexBuffer = null;
@@ -394,7 +423,10 @@ class TerrainRenderer : Renderer
 			for (let draw in mDraws)
 			{
 				let lod = Math.Min(draw.Lod, TerrainMesh.MaxChunkLod);
-				let mesh = mLodMeshes[lod];
+				// The shared grid, or a holed chunk's own buffers.
+				var mesh = mLodMeshes[lod];
+				if (!SelectChunkMesh(data, (uint32)draw.ChunkIndex, lod, ref mesh))
+					continue;
 				if ((mesh.IndexBuffer == null) || (mesh.IndexCount == 0))
 					continue;
 
@@ -514,7 +546,9 @@ class TerrainRenderer : Renderer
 			for (let draw in mDraws)
 			{
 				let lod = Math.Min(draw.Lod, TerrainMesh.MaxChunkLod);
-				let mesh = mLodMeshes[lod];
+				var mesh = mLodMeshes[lod];
+				if (!SelectChunkMesh(data, (uint32)draw.ChunkIndex, lod, ref mesh))
+					continue;
 				if ((mesh.IndexBuffer == null) || (mesh.SurfaceIndexCount == 0))
 					continue;
 

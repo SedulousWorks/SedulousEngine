@@ -78,8 +78,10 @@ class HeightfieldResourceTests
 
 		let blob = HeightfieldSource.HeightBlob(ramp);
 		Test.Assert(blob.Length == 65 * 65 * sizeof(uint16));
+		let holes = HeightfieldSource.HoleBlob(ramp);
+		Test.Assert(holes.Length == 65 * 65, "the plane rides beside the heights, always");
 
-		let built = source.Build(blob);
+		let built = source.Build(blob, holes);
 		defer delete built;
 
 		Test.Assert(built.Size == 65);
@@ -103,8 +105,10 @@ class HeightfieldResourceTests
 
 		let bytes = scope List<uint8>();
 		bytes.Resize(64 * 64 * sizeof(uint16));
+		let plane = scope List<uint8>();
+		plane.Resize(64 * 64);
 
-		let built = source.Build(.(bytes.Ptr, bytes.Count));
+		let built = source.Build(.(bytes.Ptr, bytes.Count), .(plane.Ptr, plane.Count));
 		defer delete built;
 		Test.Assert(built.IsEmpty);
 	}
@@ -119,15 +123,28 @@ class HeightfieldResourceTests
 		source.WorldSize = .(64.0f, 64.0f);
 		source.MaxY = 10.0f;
 
+		let plane = scope List<uint8>();
+		plane.Resize(65 * 65);
+
 		let tooShort = scope List<uint8>();
 		tooShort.Resize(10);
-		let built = source.Build(.(tooShort.Ptr, tooShort.Count));
+		let built = source.Build(.(tooShort.Ptr, tooShort.Count), .(plane.Ptr, plane.Count));
 		defer delete built;
 		Test.Assert(built.IsEmpty);
 
-		let empty = source.Build(.());
+		let empty = source.Build(.(), .(plane.Ptr, plane.Count));
 		defer delete empty;
 		Test.Assert(empty.IsEmpty, "and so does no blob at all");
+
+		// And a hole plane that does not match is the same refusal: one layout, both streams.
+		let heights = scope List<uint8>();
+		heights.Resize(65 * 65 * sizeof(uint16));
+		let shortPlane = scope List<uint8>();
+		shortPlane.Resize(4);
+		let mismatched = source.Build(.(heights.Ptr, heights.Count),
+			.(shortPlane.Ptr, shortPlane.Count));
+		defer delete mismatched;
+		Test.Assert(mismatched.IsEmpty);
 	}
 
 	/// A cook with NO sample stream fails the same way, which is what a truncated asset
@@ -186,7 +203,7 @@ class HeightfieldResourceTests
 	[Test]
 	public static void TheCookedRecordIsVersioned()
 	{
-		Test.Assert(HeightfieldSource.DataVersion == 1);
+		Test.Assert(HeightfieldSource.DataVersion == 2, "two since the holes stream joined");
 	}
 
 }

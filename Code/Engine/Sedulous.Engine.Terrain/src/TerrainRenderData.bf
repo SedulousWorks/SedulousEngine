@@ -22,6 +22,14 @@ class TerrainRenderData : RenderData
 	public uint32 ChunkCount = 0;
 	public uint32 NodeCount = 0;
 
+	/// The HOLED chunks' own index buffers, an arena copy with one record per chunk that has
+	/// holes, in chunk order.
+	///
+	/// The renderer draws these for a chunk whose holes flag is set and skips an entirely cut
+	/// chunk outright; every other chunk draws the shared grid.
+	public HoledChunkMesh* HoledMeshes = null;
+	public uint32 HoledMeshCount = 0;
+
 	/// The height texture, fetched exactly rather than filtered.
 	public ITextureView HeightView = null;
 

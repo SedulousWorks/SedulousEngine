@@ -131,6 +131,15 @@ static class NavigationBake
 					{
 						for (uint32 col = 0; col + 1 < columns; col++)
 						{
+							// A hole anywhere in this BLOCK, which is the stride square with
+							// its interior, is no walkable surface: the block's two triangles
+							// are left out, so the navmesh opens there and agents route round.
+							if (field.BlockHasHole(xs[(int)col], zs[(int)row],
+								xs[(int)col + 1], zs[(int)row + 1]))
+							{
+								continue;
+							}
+
 							let v00 = firstVertex + row * columns + col;
 							let v10 = v00 + 1;
 							let v01 = v00 + columns;

@@ -131,6 +131,14 @@ static class Scatter
 	public static float PlacementShareAt(ScatterLayer layer, Heightfield heightfield,
 		SplatWeights splat, VegetationMask mask, float localX, float localZ)
 	{
+		// A CUT cell has no surface, so nothing grows there whatever the placement says.
+		if (heightfield.HasHoles)
+		{
+			heightfield.CellOfLocal(localX, localZ, let cx, let cz);
+			if (heightfield.CellHasHole(cx, cz))
+				return 0.0f;
+		}
+
 		switch (layer.Placement)
 		{
 		case .Uniform:
@@ -361,6 +369,17 @@ static class Scatter
 			let scale = scaleMin + rng.NextFloat() * (scaleMax - scaleMin);
 			let x = centreX + Cos(angle) * r;
 			let z = centreZ + Sin(angle) * r;
+
+			// No prop stands over a cut cell.
+			if (heightfield.HasHoles)
+			{
+				heightfield.CellOfLocal(x, z, let cx, let cz);
+				if (heightfield.CellHasHole(cx, cz))
+				{
+					result.RejectedRules++;
+					continue;
+				}
+			}
 
 			let normal = heightfield.GetNormalAt(x, z);
 			let y = heightfield.GetHeightAt(x, z);

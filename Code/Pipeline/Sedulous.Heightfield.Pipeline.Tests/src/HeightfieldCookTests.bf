@@ -226,8 +226,10 @@ class HeightfieldCookTests
 		{
 			let dependencies = scope AssetDependencies();
 			builder.ScanDependencies(asset, scope AssetBuildContext(), dependencies);
-			Test.Assert(dependencies.SourceStreams.Count == 1);
+			// Both authored sidecars: a hole stroke has to re-cook as surely as a sculpt.
+			Test.Assert(dependencies.SourceStreams.Count == 2);
 			Test.Assert(dependencies.SourceStreams[0] == HeightfieldSource.HeightStream);
+			Test.Assert(dependencies.SourceStreams[1] == HeightfieldSource.HoleStream);
 
 			let imported = scope HeightfieldAsset();
 			imported.FileName.Set("some.png");

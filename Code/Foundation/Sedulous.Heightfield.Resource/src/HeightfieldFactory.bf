@@ -41,17 +41,19 @@ class HeightfieldFactory : IResourceFactory
 		}
 		defer delete source;
 
-		let blob = scope List<uint8>();
-		ReadHeights(instance, blob);
-		return source.Build(.(blob.Ptr, blob.Count));
+		let heights = scope List<uint8>();
+		let holes = scope List<uint8>();
+		ReadStream(instance, HeightfieldSource.HeightStream, heights);
+		ReadStream(instance, HeightfieldSource.HoleStream, holes);
+		return source.Build(.(heights.Ptr, heights.Count), .(holes.Ptr, holes.Count));
 	}
 
-	/// The sidecar samples. An absent or short stream leaves the blob EMPTY, which the
+	/// One sidecar stream. An absent or short stream leaves the blob EMPTY, which the
 	/// source's build then refuses: a partial grid is worse than no grid, because it looks
 	/// like terrain.
-	private static void ReadHeights(Instance instance, List<uint8> outBlob)
+	private static void ReadStream(Instance instance, StringView name, List<uint8> outBlob)
 	{
-		let stream = instance.ReadData(HeightfieldSource.HeightStream);
+		let stream = instance.ReadData(name);
 		if (stream == null)
 			return;
 		defer delete stream;

@@ -113,6 +113,80 @@ static class TerrainMesh
 		}
 	}
 
+	/// The indices of ONE HOLED chunk at a level: the same walk as the shared grid's, with
+	/// every quad dropped whose sample block, the stride square it spans with its interior,
+	/// holds a cut sample, and every skirt segment dropped whose border quad was, so no wall
+	/// hangs under a cut rim.
+	///
+	/// A hole never SHRINKS with distance: a coarse quad covering any cut sample goes, which
+	/// is why the whole block is asked rather than its corners. Neighbours share the edge
+	/// samples, so both sides make the same call about a rim.
+	///
+	/// The surface prefix count, which is the depth and pick draw range, comes back too.
+	public static void BuildHoledChunkIndices(Sedulous.Heightfield.Heightfield field,
+		int32 gridX0, int32 gridZ0, uint32 lod, List<uint32> outIndices,
+		out uint32 outSurfaceIndexCount)
+	{
+		outIndices.Clear();
+		outSurfaceIndexCount = 0;
+		if (lod > MaxChunkLod)
+			return;
+
+		let stride = (int32)1 << lod;
+		let quads = ChunkQuads / stride;
+
+		bool QuadKept(int32 qx, int32 qz)
+		{
+			let x0 = gridX0 + qx * stride;
+			let z0 = gridZ0 + qz * stride;
+			return !field.BlockHasHole(x0, z0, x0 + stride, z0 + stride);
+		}
+
+		outIndices.Reserve(quads * quads * 6 + quads * 4 * 6);
+		for (int32 qz = 0; qz < quads; qz++)
+		{
+			for (int32 qx = 0; qx < quads; qx++)
+			{
+				if (!QuadKept(qx, qz))
+					continue;
+
+				let x0 = qx * stride;
+				let z0 = qz * stride;
+				let x1 = x0 + stride;
+				let z1 = z0 + stride;
+				outIndices.Add(Surface(x0, z0));
+				outIndices.Add(Surface(x0, z1));
+				outIndices.Add(Surface(x1, z1));
+				outIndices.Add(Surface(x0, z0));
+				outIndices.Add(Surface(x1, z1));
+				outIndices.Add(Surface(x1, z0));
+			}
+		}
+		outSurfaceIndexCount = (uint32)outIndices.Count;
+
+		// A skirt segment rides on its border quad: dropped with it, so no wall is left
+		// hanging under a rim that was cut away.
+		for (int32 q = 0; q < quads; q++)
+		{
+			let i = q * stride;
+			let j = i + stride;
+			if (QuadKept(q, 0)) // the z nought edge, under the first row's quads
+				Wall(outIndices, Surface(i, 0), Surface(j, 0), Skirt(i, 0), Skirt(j, 0));
+			if (QuadKept(q, quads - 1)) // and the z maximum edge
+			{
+				Wall(outIndices, Surface(i, ChunkQuads), Surface(j, ChunkQuads),
+					Skirt(i, ChunkQuads), Skirt(j, ChunkQuads));
+			}
+			if (QuadKept(0, q)) // the x nought edge
+				Wall(outIndices, Surface(0, i), Surface(0, j), Skirt(0, i), Skirt(0, j));
+			if (QuadKept(quads - 1, q)) // and the x maximum edge
+			{
+				Wall(outIndices, Surface(ChunkQuads, i), Surface(ChunkQuads, j),
+					Skirt(ChunkQuads, i), Skirt(ChunkQuads, j));
+			}
+		}
+	}
+
 	private static uint32 Surface(int32 x, int32 z) => (uint32)(z * ChunkVerts + x);
 	private static uint32 Skirt(int32 x, int32 z) => Surface(x, z) + SurfaceVertexCount;
 

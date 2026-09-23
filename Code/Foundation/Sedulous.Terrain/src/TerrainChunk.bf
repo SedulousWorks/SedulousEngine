@@ -13,5 +13,11 @@ struct TerrainChunk
 	public int32 GridZ0 = 0;
 	public AABB Bounds = AABB.Empty();
 
+	/// A cut sample somewhere in this chunk's block, its edges shared with the neighbours:
+	/// the chunk then draws its OWN index buffers rather than the shared grid's.
+	public bool HasHoles = false;
+	/// EVERY sample cut, so the chunk has no surface at all and is not drawn.
+	public bool AllCut = false;
+
 	public this() {}
 }

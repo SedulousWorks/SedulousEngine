@@ -23,8 +23,9 @@ class HeightfieldAssetBuilder : IAssetBuilder
 	/// textures.
 	public Type ProductType => typeof(HeightfieldSource);
 
-	/// Two, since the cooked form changed from the runtime grid to its source.
-	public int32 Version => 2;
+	/// Two, since the cooked form changed from the runtime grid to its source; three since
+	/// 2026-09-23, when the holes stream joined the heights, so every heightfield re-cooks.
+	public int32 Version => 3;
 
 	/// An EMBEDDED heightfield, meaning one with no file name, reads its authored heights
 	/// sidecar, so the recipe hash has to chain those bytes: the envelope hash does not cover a
@@ -34,7 +35,10 @@ class HeightfieldAssetBuilder : IAssetBuilder
 	{
 		let field = (HeightfieldAsset)asset;
 		if (field.FileName.IsEmpty)
+		{
 			outDeps.AddSourceStream(HeightfieldSource.HeightStream);
+			outDeps.AddSourceStream(HeightfieldSource.HoleStream);
+		}
 	}
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
@@ -99,6 +103,22 @@ class HeightfieldAssetBuilder : IAssetBuilder
 					}
 				}
 			}
+
+			// The authored HOLES sidecar, which the hole brush persists. Absent, meaning a
+			// heightfield painted before holes existed, or mismatched, leaves the plane solid.
+			let holeStream = context.Source.ReadData(HeightfieldSource.HoleStream);
+			if (holeStream != null)
+			{
+				defer delete holeStream;
+				let streamSize = holeStream.Size();
+				if (streamSize == ((int64)size * (int64)size))
+				{
+					let plane = scope List<uint8>();
+					plane.Resize((int)streamSize);
+					if (holeStream.Read(.(plane.Ptr, (int)streamSize)) == (int)streamSize)
+						field.SetHoles(plane);
+				}
+			}
 		}
 
 		let cooked = scope HeightfieldSource();
@@ -106,7 +126,14 @@ class HeightfieldAssetBuilder : IAssetBuilder
 		if (context.Output.WriteObject(cooked) case .Err(let writeError))
 			return .Err(writeError);
 
-		return context.Output.WriteData(HeightfieldSource.HeightStream,
-			HeightfieldSource.HeightBlob(field));
+		if (context.Output.WriteData(HeightfieldSource.HeightStream,
+			HeightfieldSource.HeightBlob(field)) case .Err(let heightError))
+		{
+			return .Err(heightError);
+		}
+
+		// ALWAYS, which is the one layout rule: a solid plane is bytes too.
+		return context.Output.WriteData(HeightfieldSource.HoleStream,
+			HeightfieldSource.HoleBlob(field));
 	}
 }

@@ -63,6 +63,9 @@ class TerrainFixture
 		Test.Assert(instance.WriteObject(record) case .Ok);
 		Test.Assert(instance.WriteData(HeightfieldSource.HeightStream,
 			HeightfieldSource.HeightBlob(grid)) case .Ok);
+		// Both streams, always: the loader refuses a grid whose plane does not match.
+		Test.Assert(instance.WriteData(HeightfieldSource.HoleStream,
+			HeightfieldSource.HoleBlob(grid)) case .Ok);
 		return instance.Id;
 	}
 

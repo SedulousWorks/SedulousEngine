@@ -616,4 +616,43 @@ class ScatterTests
 		Test.Assert(Scatter.ScatterStamp(1, grid, rocks, rock, 0, 0, 5.0f, 0.0f, 1.0f, 0.0f,
 			default, null, none).Candidates == 0);
 	}
+
+	/// A CUT cell has no surface, so nothing grows over it and no prop stands on it: the same
+	/// rule the renderer's indices and the physics body follow.
+	[Test]
+	public static void NothingGrowsOverACutCell()
+	{
+		let grid = MakeFlat(2.0f);
+		defer delete grid;
+		let chunk = ChunkOf(grid);
+
+		var grass = Uniform(2.0f);
+		grass.MaxSlopeDegrees = 90.0f;
+
+		let before = scope ScatterResult();
+		Scatter.ScatterChunk(9, chunk, grid, null, null, grass, AABB.Empty(), before);
+		Test.Assert(!before.Transforms.IsEmpty);
+
+		// Cut the whole grid: the placement share is nought everywhere, so nothing is placed.
+		for (int32 z = 0; z < cGrid; z++)
+			for (int32 x = 0; x < cGrid; x++)
+				grid.SetHole(x, z, true);
+
+		let after = scope ScatterResult();
+		Scatter.ScatterChunk(9, chunk, grid, null, null, grass, AABB.Empty(), after);
+		Test.Assert(after.Transforms.IsEmpty, "a cut field grows nothing");
+		Test.Assert(Scatter.PlacementShareAt(grass, grid, null, null, 0.0f, 0.0f) == 0.0f);
+
+		// And the prop stamp rejects every candidate for the same reason, counting them as a
+		// rules rejection rather than silently placing none.
+		var rocks = grass;
+		rocks.Placement = .Scattered;
+		rocks.ScaleRange = .(1.0f, 1.0f);
+		let props = scope List<Float4x4>();
+		let stamp = Scatter.ScatterStamp(3, grid, rocks, AABB.Empty(), 0.0f, 0.0f, 6.0f, 0.5f,
+			1.0f, 0.0f, default, null, props);
+		Test.Assert(props.IsEmpty);
+		Test.Assert(stamp.Candidates > 0);
+		Test.Assert(stamp.RejectedRules == stamp.Candidates);
+	}
 }

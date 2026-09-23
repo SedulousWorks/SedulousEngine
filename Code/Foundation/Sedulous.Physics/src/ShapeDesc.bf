@@ -6,6 +6,10 @@ namespace Sedulous.Physics;
 /// One shape. A body carries one or more, and more than one is a compound.
 struct ShapeDesc
 {
+	/// A height sample with NO surface, which is Jolt's own no collision value: every triangle
+	/// touching it is not collidable, and that is the terrain holes rule.
+	public const float NoCollisionHeight = 3.402823466e38f;
+
 	public ShapeKind Kind = .Box;
 
 	/// Box.

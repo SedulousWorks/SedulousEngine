@@ -644,9 +644,16 @@ class PhysicsSceneSystem : SceneSystem
 		mHeightBuffers.Add(buffer);
 
 		let samples = heightfield.Samples;
+		// A CUT sample has no surface: the no collision height takes every triangle that
+		// touches it out of the body, which is the same rule the renderer's indices follow.
+		let holes = heightfield.Holes;
 		buffer.Resize(samples.Length);
 		for (int i < samples.Length)
-			buffer[i] = heightfield.SampleToWorldY((float)samples[i]);
+		{
+			buffer[i] = ((i < holes.Length) && (holes[i] != 0))
+				? ShapeDesc.NoCollisionHeight
+				: heightfield.SampleToWorldY((float)samples[i]);
+		}
 
 		shape.HeightSamples = .(buffer.Ptr, buffer.Count);
 		shape.HeightSampleCount = (uint32)heightfield.Size;

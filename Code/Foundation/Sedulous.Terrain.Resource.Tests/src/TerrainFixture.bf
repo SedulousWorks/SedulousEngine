@@ -73,6 +73,9 @@ class TerrainFixture
 		instance.WriteObject(source).IgnoreError();
 		instance.WriteData(HeightfieldSource.HeightStream,
 			HeightfieldSource.HeightBlob(field)).IgnoreError();
+		// Both streams, always: the loader refuses a grid whose plane does not match.
+		instance.WriteData(HeightfieldSource.HoleStream,
+			HeightfieldSource.HoleBlob(field)).IgnoreError();
 		return instance.Id;
 	}
 

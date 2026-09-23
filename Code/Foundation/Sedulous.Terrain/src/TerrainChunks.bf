@@ -46,6 +46,24 @@ static class TerrainChunks
 				chunk.GridX0 = gx0;
 				chunk.GridZ0 = gz0;
 				chunk.Bounds = .(.(w0.X, minY, w0.Y), .(w1.X, maxY, w1.Y));
+				chunk.HasHoles = field.BlockHasHole(gx0, gz0, gx0 + TerrainMesh.ChunkQuads,
+					gz0 + TerrainMesh.ChunkQuads);
+				if (chunk.HasHoles)
+				{
+					var all = true;
+					for (int32 gz = gz0; (gz <= (gz0 + TerrainMesh.ChunkQuads)) && all; gz++)
+					{
+						for (int32 gx = gx0; gx <= (gx0 + TerrainMesh.ChunkQuads); gx++)
+						{
+							if (!field.IsHole(gx, gz))
+							{
+								all = false;
+								break;
+							}
+						}
+					}
+					chunk.AllCut = all;
+				}
 				outChunks.Add(chunk);
 			}
 		}
