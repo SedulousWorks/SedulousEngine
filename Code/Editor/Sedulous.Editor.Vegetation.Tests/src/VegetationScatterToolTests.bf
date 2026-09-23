@@ -270,4 +270,27 @@ class VegetationScatterToolTests
 		commands.Undo();
 		Test.Assert(ScatterFixture.SameInstances(fx.Rocks, placed));
 	}
+	/// SHIFT and the wheel resizes the brush; the bare wheel belongs to the camera, so it can
+	/// dolly while a brush is active.
+	[Test]
+	public static void TheWheelResizesTheBrushOnlyWithShift()
+	{
+		let fx = scope ScatterFixture();
+		let commands = scope EditorCommandStack();
+		let tool = scope VegetationScatterTool(fx.Scene, commands);
+		let before = tool.Radius;
+
+		var wheel = VegetationFixture.RayAt(0.0f, 0.0f);
+		wheel.WheelDelta = 1.0f;
+		tool.Update(wheel);
+		Test.Assert(tool.Radius == before, "the bare wheel is the camera's scroll");
+
+		wheel.Shift = true;
+		tool.Update(wheel);
+		Test.Assert(tool.Radius > before);
+
+		wheel.WheelDelta = -1.0f;
+		tool.Update(wheel);
+		Test.Assert(tool.Radius < before * 1.13f, "and it shrinks back down again");
+	}
 }

@@ -388,8 +388,14 @@ class SceneEditorPage : UIEditorPage
 		let viewportActive = mViewport.IsHovered() || mViewport.IsFocused();
 		if (viewportActive)
 		{
+			// The first consumer rule: a modal tool owns SHIFT and the wheel to resize itself,
+			// so the camera must not dolly on that same scroll. The bare wheel stays the
+			// camera's even under a brush, which is what zooming while painting needs.
 			let modalToolActive = (mViewportTools.ActiveTool != null) && (mViewportTools.ActiveTool != mSelectTool);
-			mCamera.Update(mViewport.Keyboard, mViewport.Mouse, dt, !modalToolActive);
+			let keyboard = mViewport.Keyboard;
+			let shiftDown = (keyboard != null)
+				&& (keyboard.IsKeyDown(.LeftShift) || keyboard.IsKeyDown(.RightShift));
+			mCamera.Update(keyboard, mViewport.Mouse, dt, !(modalToolActive && shiftDown));
 		}
 		else
 		{

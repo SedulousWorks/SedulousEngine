@@ -197,7 +197,8 @@ class VegetationScatterTool : IViewportTool
 			if (kb.IsKeyPressed(.Num9)) SetLayer(8);
 			if (kb.IsKeyPressed(.Num0)) SetEraser(true);
 		}
-		if (input.PointerOver && (input.WheelDelta != 0.0f))
+		// SHIFT and the wheel resizes the brush; the bare wheel stays the camera's dolly.
+		if (input.PointerOver && input.Shift && (input.WheelDelta != 0.0f))
 			SetRadius(mRadius * (1.0f + 0.12f * input.WheelDelta));
 
 		// The prop brush picks the terrain PLANE, cut or not. The stamp itself refuses a cut
@@ -404,7 +405,7 @@ class VegetationScatterTool : IViewportTool
 	private void UpdateStatus()
 	{
 		let radius = (int32)(mRadius + 0.5f);
-		let keys = "(1-9 layer, 0 erase, wheel size)";
+		let keys = "(1-9 layer, 0 erase, Shift+wheel size)";
 		// The mode AND the layer, so the erase target is never a guess.
 		let mode = mErase ? "ERASE" : "paint";
 		mStatus.Set(scope $"Paint Props [{mode} layer {mLayer}]  radius {radius}  {keys}");

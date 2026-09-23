@@ -16,7 +16,7 @@ namespace Sedulous.Editor.Terrain;
 /// The terrain sculpt brush: raise, lower, smooth or flatten the heightfield under the
 /// cursor. A press-drag-release is one stroke, one undo step over the touched region, and
 /// one registered asset edit persisting the grid back to its source. Keys 1 to 4 pick the
-/// mode, the wheel sizes the brush, Ctrl+click picks the flatten target.
+/// mode, Shift and the wheel size the brush, Ctrl+click picks the flatten target.
 ///
 /// The scene, commands and edit sink are BORROWED from the host; a null sink means no
 /// persistence, which is what a test wants.
@@ -127,7 +127,8 @@ class TerrainSculptTool : IViewportTool
 			if (kb.IsKeyPressed(.Num3)) mMode = .Smooth;
 			if (kb.IsKeyPressed(.Num4)) mMode = .Flatten;
 		}
-		if (input.PointerOver && (input.WheelDelta != 0.0f))
+		// SHIFT and the wheel resizes the brush; the bare wheel stays the camera's dolly.
+		if (input.PointerOver && input.Shift && (input.WheelDelta != 0.0f))
 			SetRadius(mRadius * (1.0f + 0.12f * input.WheelDelta));
 
 		let pick = SculptPick.Resolve(mScene, input);
@@ -246,6 +247,6 @@ class TerrainSculptTool : IViewportTool
 		case .Smooth: modeText = "Smooth";
 		case .Flatten: modeText = "Flatten";
 		}
-		mStatus.Set(scope $"Sculpt [{modeText}]  radius {(int32)(mRadius + 0.5f)}  strength {(int32)(mStrength + 0.5f)}  (1-4 mode, wheel size, Ctrl+click = flatten target)");
+		mStatus.Set(scope $"Sculpt [{modeText}]  radius {(int32)(mRadius + 0.5f)}  strength {(int32)(mStrength + 0.5f)}  (1-4 mode, Shift+wheel size, Ctrl+click = flatten target)");
 	}
 }

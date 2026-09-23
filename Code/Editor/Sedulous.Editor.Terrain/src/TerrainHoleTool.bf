@@ -105,7 +105,8 @@ class TerrainHoleTool : IViewportTool
 			if (kb.IsKeyPressed(.Num1)) SetMode(.Cut);
 			if (kb.IsKeyPressed(.Num2)) SetMode(.Fill);
 		}
-		if (input.PointerOver && (input.WheelDelta != 0.0f))
+		// SHIFT and the wheel resizes the brush; the bare wheel stays the camera's dolly.
+		if (input.PointerOver && input.Shift && (input.WheelDelta != 0.0f))
 			SetRadius(mRadius * (1.0f + 0.12f * input.WheelDelta));
 
 		// The brush works ON the hole plane, so its pick takes a cut as surface: fill can land
@@ -230,6 +231,6 @@ class TerrainHoleTool : IViewportTool
 	{
 		let radius = (int32)(mRadius + 0.5f);
 		let mode = (mMode == .Cut) ? "CUT" : "FILL";
-		mStatus.Set(scope $"Cut Holes [{mode}]  radius {radius}  (1 cut, 2 fill, wheel size)");
+		mStatus.Set(scope $"Cut Holes [{mode}]  radius {radius}  (1 cut, 2 fill, Shift+wheel size)");
 	}
 }

@@ -63,6 +63,9 @@ class EditorCamera
 		}
 	}
 
+	/// `allowZoom` goes false while a modal viewport tool owns the scroll, a brush resizing
+	/// on SHIFT and the wheel: the first consumer rule keeps that same scroll from dollying
+	/// the camera as well. The bare wheel stays the camera's, brush or no brush.
 	public void Update(IKeyboard keyboard, IMouse mouse, float dt, bool allowZoom = true)
 	{
 		if (keyboard == null)

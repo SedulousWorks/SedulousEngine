@@ -17,7 +17,7 @@ namespace Sedulous.Editor.Terrain;
 /// drag by a fraction of the radius, so holding still adds nothing unless airbrush mode
 /// is on, which stamps on a time cadence instead. A stroke is one undo step over both
 /// rasters and one registered asset edit. Keys 1 to 9 pick a layer, 0 the eraser, minus
-/// smooth, the wheel sizes the brush.
+/// smooth, Shift and the wheel size the brush.
 ///
 /// The scene, commands and edit sink are BORROWED from the host; a null sink means no
 /// persistence.
@@ -177,7 +177,8 @@ class TerrainSplatTool : IViewportTool
 			if (kb.IsKeyPressed(.Num0)) SetEraser(true);
 			if (kb.IsKeyPressed(.Minus)) SetSmooth(true);
 		}
-		if (input.PointerOver && (input.WheelDelta != 0.0f))
+		// SHIFT and the wheel resizes the brush; the bare wheel stays the camera's dolly.
+		if (input.PointerOver && input.Shift && (input.WheelDelta != 0.0f))
 			SetRadius(mRadius * (1.0f + 0.12f * input.WheelDelta));
 
 		let pick = ResolvePick(input);
@@ -380,10 +381,10 @@ class TerrainSplatTool : IViewportTool
 	{
 		let radius = (int32)(mRadius + 0.5f);
 		if (mSmooth)
-			mStatus.Set(scope $"Paint Splat [SMOOTH]  radius {radius}  (1-9 layer, 0 eraser, - smooth, wheel size)");
+			mStatus.Set(scope $"Paint Splat [SMOOTH]  radius {radius}  (1-9 layer, 0 eraser, - smooth, Shift+wheel size)");
 		else if (mErase)
-			mStatus.Set(scope $"Paint Splat [ERASER]  radius {radius}  (1-9 layer, 0 eraser, - smooth, wheel size)");
+			mStatus.Set(scope $"Paint Splat [ERASER]  radius {radius}  (1-9 layer, 0 eraser, - smooth, Shift+wheel size)");
 		else
-			mStatus.Set(scope $"Paint Splat [layer {mPaletteIndex}]  radius {radius}  (1-9 layer, 0 eraser, - smooth, wheel size)");
+			mStatus.Set(scope $"Paint Splat [layer {mPaletteIndex}]  radius {radius}  (1-9 layer, 0 eraser, - smooth, Shift+wheel size)");
 	}
 }

@@ -228,4 +228,27 @@ class HoleToolTests
 		Test.Assert(cooked.IsHole(32, 32));
 		Test.Assert(cooked.GetSample(10, 10) == 32768, "and so did the heights");
 	}
+	/// SHIFT and the wheel resizes the brush; the bare wheel belongs to the camera, so it can
+	/// dolly while a brush is active.
+	[Test]
+	public static void TheWheelResizesTheBrushOnlyWithShift()
+	{
+		let fx = scope TerrainFixture();
+		let commands = scope EditorCommandStack();
+		let tool = scope TerrainHoleTool(fx.Scene, commands, null);
+		let before = tool.Radius;
+
+		var wheel = TerrainFixture.RayAt(0.0f, 0.0f);
+		wheel.WheelDelta = 1.0f;
+		tool.Update(wheel);
+		Test.Assert(tool.Radius == before, "the bare wheel is the camera's scroll");
+
+		wheel.Shift = true;
+		tool.Update(wheel);
+		Test.Assert(tool.Radius > before);
+
+		wheel.WheelDelta = -1.0f;
+		tool.Update(wheel);
+		Test.Assert(tool.Radius < before * 1.13f, "and it shrinks back down again");
+	}
 }

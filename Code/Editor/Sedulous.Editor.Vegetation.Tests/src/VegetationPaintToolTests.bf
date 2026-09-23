@@ -148,10 +148,11 @@ class VegetationPaintToolTests
 		let commands = scope EditorCommandStack();
 		let tool = scope VegetationPaintTool(fx.Scene, commands, null);
 
-		// The wheel sizes the brush, clamped at both ends.
+		// Shift and the wheel size the brush, clamped at both ends.
 		let before = tool.Radius;
 		var wheel = VegetationFixture.RayAt(0.0f, 0.0f);
 		wheel.WheelDelta = 1.0f;
+		wheel.Shift = true;
 		tool.Update(wheel);
 		Test.Assert(tool.Radius > before);
 		tool.SetRadius(1000.0f);
@@ -180,5 +181,28 @@ class VegetationPaintToolTests
 			tool.Update(VegetationFixture.Drag(0.0f, 0.0f, 0.1f));
 		Test.Assert(fx.Mask.DensityAt(0, 16, 16) > once, "airbrush builds while held");
 		tool.Update(VegetationFixture.Release());
+	}
+	/// SHIFT and the wheel resizes the brush; the bare wheel belongs to the camera, so it can
+	/// dolly while a brush is active.
+	[Test]
+	public static void TheWheelResizesTheBrushOnlyWithShift()
+	{
+		let fx = scope VegetationFixture();
+		let commands = scope EditorCommandStack();
+		let tool = scope VegetationPaintTool(fx.Scene, commands, null);
+		let before = tool.Radius;
+
+		var wheel = VegetationFixture.RayAt(0.0f, 0.0f);
+		wheel.WheelDelta = 1.0f;
+		tool.Update(wheel);
+		Test.Assert(tool.Radius == before, "the bare wheel is the camera's scroll");
+
+		wheel.Shift = true;
+		tool.Update(wheel);
+		Test.Assert(tool.Radius > before);
+
+		wheel.WheelDelta = -1.0f;
+		tool.Update(wheel);
+		Test.Assert(tool.Radius < before * 1.13f, "and it shrinks back down again");
 	}
 }

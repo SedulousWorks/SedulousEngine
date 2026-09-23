@@ -17,7 +17,7 @@ namespace Sedulous.Editor.Vegetation;
 /// back, or smooths a painted edge. Stamps are spaced along the drag by a fraction of the
 /// radius, so holding still adds nothing unless airbrush mode is on, which stamps on a time
 /// cadence instead. A stroke is one undo step over the plane and one registered asset edit.
-/// Keys 1 to 9 pick a plane, 0 the eraser, minus smooth, and the wheel sizes the brush.
+/// Keys 1 to 9 pick a plane, 0 the eraser, minus smooth, and Shift and the wheel size the brush.
 ///
 /// Every stamp tells the vegetation manager the footprint it touched, so only the chunks
 /// under the brush regrow rather than the whole terrain.
@@ -164,7 +164,8 @@ class VegetationPaintTool : IViewportTool
 			if (kb.IsKeyPressed(.Num0)) SetEraser(true);
 			if (kb.IsKeyPressed(.Minus)) SetSmooth(true);
 		}
-		if (input.PointerOver && (input.WheelDelta != 0.0f))
+		// SHIFT and the wheel resizes the brush; the bare wheel stays the camera's dolly.
+		if (input.PointerOver && input.Shift && (input.WheelDelta != 0.0f))
 			SetRadius(mRadius * (1.0f + 0.12f * input.WheelDelta));
 
 		let pick = VegetationPick.Resolve(mScene, input.Ray.Origin, input.Ray.Direction, true);
@@ -362,7 +363,7 @@ class VegetationPaintTool : IViewportTool
 	private void UpdateStatus()
 	{
 		let radius = (int32)(mRadius + 0.5f);
-		let keys = "(1-9 plane, 0 erase, - smooth, wheel size)";
+		let keys = "(1-9 plane, 0 erase, - smooth, Shift+wheel size)";
 		// The mode AND the plane, so the erase target is never a guess.
 		let mode = mSmooth ? "SMOOTH" : (mErase ? "ERASE" : "paint");
 		mStatus.Set(scope $"Paint Vegetation [{mode} plane {mPlane}]  radius {radius}  {keys}");

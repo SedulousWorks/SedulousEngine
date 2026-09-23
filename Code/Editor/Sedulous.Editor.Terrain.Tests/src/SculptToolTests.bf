@@ -150,6 +150,7 @@ class SculptToolTests
 		tool.OnRadiusChanged = new [&reported](r) => { reported = r; };
 		var wheel = TerrainFixture.RayAt(0, 0);
 		wheel.WheelDelta = 1.0f;
+		wheel.Shift = true;
 		tool.Update(wheel);
 		Test.Assert(tool.Radius > 10.0f);
 		Test.Assert(reported == tool.Radius);
@@ -234,5 +235,28 @@ class SculptToolTests
 			Test.Assert(cooked.Get != null);
 			Test.Assert(cooked.Get.GetSample(32, 32) == sculpted);
 		}
+	}
+	/// SHIFT and the wheel resizes the brush; the bare wheel belongs to the camera, so it can
+	/// dolly while a brush is active.
+	[Test]
+	public static void TheWheelResizesTheBrushOnlyWithShift()
+	{
+		let fx = scope TerrainFixture();
+		let commands = scope EditorCommandStack();
+		let tool = scope TerrainSculptTool(fx.Scene, commands, null);
+		let before = tool.Radius;
+
+		var wheel = TerrainFixture.RayAt(0.0f, 0.0f);
+		wheel.WheelDelta = 1.0f;
+		tool.Update(wheel);
+		Test.Assert(tool.Radius == before, "the bare wheel is the camera's scroll");
+
+		wheel.Shift = true;
+		tool.Update(wheel);
+		Test.Assert(tool.Radius > before);
+
+		wheel.WheelDelta = -1.0f;
+		tool.Update(wheel);
+		Test.Assert(tool.Radius < before * 1.13f, "and it shrinks back down again");
 	}
 }
