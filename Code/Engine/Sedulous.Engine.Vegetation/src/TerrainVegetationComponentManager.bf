@@ -63,6 +63,8 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		public uint64 SplatVersion = 0;
 		public uint64 MaskUid = 0;
 		public uint64 MaskVersion = 0;
+		/// Scattered: a content hash of the authored instances.
+		public uint64 InstancesHash = 0;
 		public uint64 LayerHash = 0;
 		public uint64 MeshUid = 0;
 		public Float4x4 EntityWorld = .Identity();
@@ -275,12 +277,52 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		set.Version++; // the renderer re-uploads the set's buffer on a version change
 	}
 
+	/// The chunk an authored instance belongs to, by its terrain local XZ: exactly one, so a
+	/// prop is never drawn twice.
+	private static void ChunkOfInstance(LayerCache cache, Float4x4 instance, out int32 outX,
+		out int32 outZ)
+	{
+		let origin = cache.Chunks[0];
+		let width = Max(origin.Bounds.Max.X - origin.Bounds.Min.X, 1.0e-6f);
+		let depth = Max(origin.Bounds.Max.Z - origin.Bounds.Min.Z, 1.0e-6f);
+		let last = cache.ChunksPerSide - 1;
+		outX = Clamp((int32)Floor((instance.M[3][0] - origin.Bounds.Min.X) / width), 0, last);
+		outZ = Clamp((int32)Floor((instance.M[3][2] - origin.Bounds.Min.Z) / depth), 0, last);
+	}
+
+	/// The authored instances this chunk holds, with the bounds grown as the scatter's are.
+	private void BucketAuthored(LayerCache cache, int chunkIndex, ScatterLayer layer,
+		AABB meshBounds, Span<Float4x4> authored)
+	{
+		let chunk = cache.Chunks[chunkIndex];
+		mScatterScratch.Clear();
+		mScatterScratch.LocalBounds = chunk.Bounds;
+		for (let instance in authored)
+		{
+			ChunkOfInstance(cache, instance, let cx, let cz);
+			if ((cx == chunk.ChunkX) && (cz == chunk.ChunkZ))
+				mScatterScratch.Transforms.Add(instance);
+		}
+		if (!mScatterScratch.Transforms.IsEmpty && (meshBounds.Max.X >= meshBounds.Min.X))
+		{
+			let reach = Length(meshBounds.Extents()) + Length(meshBounds.Center());
+			let grow = reach * Max(layer.ScaleRange.X, layer.ScaleRange.Y);
+			mScatterScratch.LocalBounds.Min = mScatterScratch.LocalBounds.Min - Float3(grow, grow, grow);
+			mScatterScratch.LocalBounds.Max = mScatterScratch.LocalBounds.Max + Float3(grow, grow, grow);
+		}
+	}
+
 	private void BuildSet(LayerCache cache, int chunkIndex, Heightfield hf, SplatWeights splat,
-		VegetationMask mask, ScatterLayer layer, AABB meshBounds)
+		VegetationMask mask, ScatterLayer layer, AABB meshBounds, Span<Float4x4> authored)
 	{
 		let set = cache.Sets[chunkIndex];
-		Scatter.ScatterChunk(set.Key, cache.Chunks[chunkIndex], hf, splat, mask, layer, meshBounds,
-			mScatterScratch);
+		// A Scattered layer is authored rather than grown: its instances are bucketed by
+		// their own position, and the procedural scatter is not run at all.
+		if (layer.Placement == .Scattered)
+			BucketAuthored(cache, chunkIndex, layer, meshBounds, authored);
+		else
+			Scatter.ScatterChunk(set.Key, cache.Chunks[chunkIndex], hf, splat, mask, layer,
+				meshBounds, mScatterScratch);
 		if (mScatterScratch.DensityClamped && !cache.WarnedClamp)
 		{
 			cache.WarnedClamp = true;
@@ -328,6 +370,26 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 			cache.LayerHash = layerHash;
 			cache.MeshUid = mesh.Uid;
 			cache.WarnedClamp = false;
+		}
+
+		// The authored instances ARE the content of a Scattered layer, so a stroke, or an
+		// undo of one, is a hash change and the whole layer re-buckets. Props are few, and a
+		// sculpt regrows everything anyway.
+		var instancesHash = (uint64)0;
+		if (layer.Placement == .Scattered)
+		{
+			var count = (uint64)authored.Instances.Count;
+			instancesHash = HashBytes(&count, sizeof(uint64), 0x9E3779B97F4A7C15UL);
+			if (count > 0)
+			{
+				instancesHash = HashBytes(authored.Instances.Ptr,
+					authored.Instances.Count * strideof(Float4x4), instancesHash);
+			}
+		}
+		if (cache.InstancesHash != instancesHash)
+		{
+			DirtyAll(cache);
+			cache.InstancesHash = instancesHash;
 		}
 
 		// A content change, a sculpt or a paint, regrows the touched chunks when the editor
@@ -405,7 +467,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 				if (budget == 0)
 					continue; // next frame: the build budget spreads a cold start
 
-				BuildSet(cache, i, hf, splat, mask, layer, mesh.Bounds);
+				BuildSet(cache, i, hf, splat, mask, layer, mesh.Bounds, authored.Instances);
 				budget--;
 			}
 			if (set.World.IsEmpty)

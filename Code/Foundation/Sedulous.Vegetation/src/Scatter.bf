@@ -266,6 +266,157 @@ static class Scatter
 		}
 	}
 
+	// ==================== The prop scatter brush ====================
+
+	/// Where an instance may NOT go, asked of a candidate's terrain local position and its
+	/// world radius. Null means nowhere is blocked.
+	public typealias BlockedQuery = delegate bool(Float3 localPosition, float radius);
+
+	/// What one stamp did: the points tried, the instances placed, and why the rest were not.
+	public struct StampResult
+	{
+		/// Points tried.
+		public uint32 Candidates = 0;
+		/// Instances appended.
+		public uint32 Placed = 0;
+		public uint32 RejectedSpacing = 0;
+		public uint32 RejectedBlocked = 0;
+		/// The slope limit or the height window.
+		public uint32 RejectedRules = 0;
+
+		public this() {}
+	}
+
+	/// Whether a candidate at x, z sits within `reach` of an instance already there: the
+	/// layer's existing ones, and the ones this stamp has placed so far.
+	private static bool TooClose(Span<Float4x4> existing, List<Float4x4> placed, int firstNew,
+		float x, float z, float reach)
+	{
+		let reachSquared = reach * reach;
+		for (let m in existing)
+		{
+			let dx = m[3, 0] - x;
+			let dz = m[3, 2] - z;
+			if (((dx * dx) + (dz * dz)) < reachSquared)
+				return true;
+		}
+		for (int i = firstNew; i < placed.Count; i++)
+		{
+			let m = placed[i];
+			let dx = m[3, 0] - x;
+			let dz = m[3, 2] - z;
+			if (((dx * dx) + (dz * dz)) < reachSquared)
+				return true;
+		}
+		return false;
+	}
+
+	/// One brush stamp of authored instances into a Scattered layer.
+	///
+	/// `density` per square metre over the disc of `radius` at the terrain local centre,
+	/// scaled by `amount` from nought to one. Each candidate takes a uniform point in the
+	/// disc and the layer's own rules, the slope limit, the height window, the scale range
+	/// and the alignment, exactly as the procedural scatter does, and then two rejections:
+	/// the SPACING rule, no instance within `spacing` times the mesh's radius times its
+	/// scale of one already there, and the `blocked` query, which the editor wires to the
+	/// physics world so nothing lands inside an existing body.
+	///
+	/// DETERMINISTIC for a seed: a scripted stroke places the same instances every run.
+	/// `existing` are the layer's current instances and `outInstances` receives the new ones,
+	/// appended, with the spacing test seeing both.
+	public static StampResult ScatterStamp(uint64 seed, Heightfield heightfield,
+		ScatterLayer layer, AABB meshLocalBounds, float centreX, float centreZ, float radius,
+		float density, float amount, float spacing, Span<Float4x4> existing,
+		BlockedQuery blocked, List<Float4x4> outInstances)
+	{
+		var result = StampResult();
+		if (heightfield.IsEmpty || (radius <= 0.0f) || (density <= 0.0f) || (amount <= 0.0f))
+			return result;
+
+		let area = Math.PI_f * radius * radius;
+		let candidates = (uint32)((density * area * Clamp(amount, 0.0f, 1.0f)) + 0.5f);
+		result.Candidates = candidates;
+		if (candidates == 0)
+			return result;
+
+		let scaleMin = Min(layer.ScaleRange.X, layer.ScaleRange.Y);
+		let scaleMax = Max(layer.ScaleRange.X, layer.ScaleRange.Y);
+		let minNormalY = Cos(Clamp(layer.MaxSlopeDegrees, 0.0f, 90.0f) * (Math.PI_f / 180.0f));
+		let heightMin = Min(layer.HeightRange.X, layer.HeightRange.Y);
+		let heightMax = Max(layer.HeightRange.X, layer.HeightRange.Y);
+		let hasBounds = meshLocalBounds.Max.X >= meshLocalBounds.Min.X;
+		let meshRadius = hasBounds ? Length(meshLocalBounds.Extents()) : 0.5f;
+		let firstNew = outInstances.Count;
+
+		var rng = Random(seed);
+		for (uint32 i = 0; i < candidates; i++)
+		{
+			// Every random number a candidate CAN consume is drawn up front, so a rejection
+			// never shifts the stream of the ones after it.
+			let angle = rng.NextFloat() * (Math.PI_f * 2.0f);
+			// The square root is what makes the point uniform over the disc rather than
+			// crowded at its centre.
+			let r = radius * Sqrt(rng.NextFloat());
+			let yaw = rng.NextFloat() * (Math.PI_f * 2.0f);
+			let scale = scaleMin + rng.NextFloat() * (scaleMax - scaleMin);
+			let x = centreX + Cos(angle) * r;
+			let z = centreZ + Sin(angle) * r;
+
+			let normal = heightfield.GetNormalAt(x, z);
+			let y = heightfield.GetHeightAt(x, z);
+			if ((normal.Y < minNormalY) || (y < heightMin) || (y > heightMax))
+			{
+				result.RejectedRules++;
+				continue;
+			}
+
+			let reach = Max(spacing, 0.0f) * meshRadius * scale;
+			if ((reach > 0.0f) && TooClose(existing, outInstances, firstNew, x, z, reach))
+			{
+				result.RejectedSpacing++;
+				continue;
+			}
+
+			if ((blocked != null) && blocked(.(x, y, z), meshRadius * scale))
+			{
+				result.RejectedBlocked++;
+				continue;
+			}
+
+			let rotation = layer.AlignToNormal ? FrameFromUp(normal, yaw) : Float4x4.RotationY(yaw);
+			outInstances.Add(
+				Float4x4.Scale(.(scale, scale, scale)) * rotation
+					* Float4x4.Translation(.(x, y, z)));
+			result.Placed++;
+		}
+		return result;
+	}
+
+	/// Removes every instance whose terrain local XZ lies inside the disc, and answers how
+	/// many went.
+	public static uint32 EraseInstancesInDisc(List<Float4x4> instances, float centreX,
+		float centreZ, float radius)
+	{
+		let radiusSquared = radius * radius;
+		var removed = (uint32)0;
+		var write = 0;
+		for (int i = 0; i < instances.Count; i++)
+		{
+			let dx = instances[i][3, 0] - centreX;
+			let dz = instances[i][3, 2] - centreZ;
+			if (((dx * dx) + (dz * dz)) <= radiusSquared)
+			{
+				removed++;
+				continue;
+			}
+			if (write != i)
+				instances[write] = instances[i];
+			write++;
+		}
+		instances.Count = write;
+		return removed;
+	}
+
 	/// The chunk indices, row major as cz times the side plus cx, whose growth a sculpt or a
 	/// paint over the region in sample grid coordinates can change. Chunks share edge samples,
 	/// so a region on a boundary sample touches both neighbours. Appends unique indices,

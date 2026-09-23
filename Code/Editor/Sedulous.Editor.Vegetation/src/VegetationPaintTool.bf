@@ -129,28 +129,7 @@ class VegetationPaintTool : IViewportTool
 
 	/// Any terrain in the scene whose vegetation component resolves a non empty mask, and
 	/// whose heightfield is what the ray hits.
-	public bool IsAvailable
-	{
-		get
-		{
-			let manager = (mScene != null) ? mScene.GetSystem<TerrainVegetationComponentManager>() : null;
-			if (manager == null)
-				return false;
-
-			var any = false;
-			manager.ForEach(scope [&] (component, owner) =>
-				{
-					if (any)
-						return;
-					let mask = component.Mask.Get;
-					if ((mask == null) || mask.IsEmpty)
-						return;
-					if (GridFor(owner) != null)
-						any = true;
-				});
-			return any;
-		}
-	}
+	public bool IsAvailable => VegetationPick.AnyFootprint(mScene, true);
 
 	public void OnActivate() {}
 
@@ -183,7 +162,7 @@ class VegetationPaintTool : IViewportTool
 		if (input.PointerOver && (input.WheelDelta != 0.0f))
 			SetRadius(mRadius * (1.0f + 0.12f * input.WheelDelta));
 
-		let pick = ResolvePick(input);
+		let pick = VegetationPick.Resolve(mScene, input.Ray.Origin, input.Ray.Direction, true);
 		if (pick.Valid)
 		{
 			mHasHover = true;
@@ -231,82 +210,6 @@ class VegetationPaintTool : IViewportTool
 		drawList.DrawCircleNormal(mHoverWorld, mRadius, mHoverNormal, ring, 40, true);
 		drawList.DrawCircleNormal(mHoverWorld, mRadius * 0.5f, mHoverNormal,
 			.(ring.R, ring.G, ring.B, 0.5f), 32, true);
-	}
-
-	/// The heightfield an entity's terrain resolves, walking the ancestry the way the
-	/// vegetation manager does, or null when there is none.
-	private Sedulous.Heightfield.Heightfield GridFor(EntityHandle entity)
-	{
-		let terrains = (mScene != null) ? mScene.GetSystem<TerrainComponentManager>() : null;
-		if (terrains == null)
-			return null;
-
-		var e = entity;
-		for (uint32 depth = 0; (depth < 64) && e.IsAssigned; depth++)
-		{
-			let tc = terrains.Get(e);
-			if (tc != null)
-			{
-				let res = tc.Terrain.Get;
-				let grid = (res != null) ? res.Heightfield.Get : null;
-				return ((grid != null) && !grid.IsEmpty) ? grid : null;
-			}
-			e = mScene.GetParent(e);
-		}
-		return null;
-	}
-
-	/// The nearest terrain the ray hits whose entity carries a mask, as a footprint uv.
-	private VegetationPick ResolvePick(in ViewportToolInput input)
-	{
-		var best = VegetationPick();
-		let manager = (mScene != null) ? mScene.GetSystem<TerrainVegetationComponentManager>() : null;
-		if (manager == null)
-			return best;
-
-		let rayOrigin = input.Ray.Origin;
-		let rayDirection = input.Ray.Direction;
-		var bestDistance = float.MaxValue;
-		manager.ForEach(scope [&] (component, owner) =>
-			{
-				let mask = component.Mask.Get;
-				if ((mask == null) || mask.IsEmpty)
-					return;
-				let grid = GridFor(owner);
-				if (grid == null)
-					return;
-
-				let world = mScene.GetWorldMatrix(owner);
-				let inv = Inverse(world);
-				let localOrigin = TransformPoint(rayOrigin, inv);
-				let localDir = TransformDirection(rayDirection, inv);
-				float t = 0.0f;
-				if (!grid.QueryRay(localOrigin, localDir, out t))
-					return;
-
-				let localHit = localOrigin + Normalized(localDir) * t;
-				let worldHit = TransformPoint(localHit, world);
-				let distance = Length(worldHit - rayOrigin);
-				if (distance >= bestDistance)
-					return;
-
-				let ws = grid.WorldSize;
-				let sizeX = (ws.X != 0.0f) ? ws.X : 1.0f;
-				let sizeY = (ws.Y != 0.0f) ? ws.Y : 1.0f;
-				bestDistance = distance;
-				best.Mask = component.Mask;
-				best.Owner = owner;
-				best.UvX = localHit.X / sizeX + 0.5f;
-				best.UvY = localHit.Z / sizeY + 0.5f;
-				best.WorldSizeX = sizeX;
-				best.WorldSizeY = sizeY;
-				best.GridSize = grid.Size;
-				best.WorldHit = worldHit;
-				best.WorldNormal = Normalized(TransformDirection(
-					grid.GetNormalAt(localHit.X, localHit.Z), world));
-				best.Valid = true;
-			});
-		return best;
 	}
 
 	private void BeginStroke(in VegetationPick pick)

@@ -63,6 +63,12 @@ class VegetationLayer : ISerializable
 	[Description("The memory bound per chunk set; the density scales down to fit.")]
 	public uint32 MaxInstancesPerChunk = 4096;
 	public bool Visible = true;
+	/// Scattered placement: the authored instances, TERRAIN LOCAL like the procedural
+	/// scatter's, which the Paint Props brush paints and the manager buckets per chunk.
+	///
+	/// Not an inspector row: a list of matrices has no editor, and the brush IS the editor.
+	[Hidden]
+	public List<Float4x4> Instances = new .() ~ delete _;
 
 	public this() {}
 
@@ -114,6 +120,8 @@ class VegetationLayer : ISerializable
 		SerializeValue(ar, "castShadows", ref CastShadows);
 		SerializeValue(ar, "maxInstancesPerChunk", ref MaxInstancesPerChunk);
 		SerializeValue(ar, "visible", ref Visible);
+		ar.Key("instances");
+		SerializeList(ar, Instances);
 	}
 }
 

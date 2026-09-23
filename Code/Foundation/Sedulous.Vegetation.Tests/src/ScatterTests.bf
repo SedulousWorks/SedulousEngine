@@ -513,4 +513,107 @@ class ScatterTests
 		Scatter.ScatterChunk(5, chunk, grid, splat, null, carved, AABB.Empty(), none);
 		Test.Assert(none.Transforms.IsEmpty);
 	}
+
+	/// The brush stamp: a deterministic count inside the disc, and each rejection rule.
+	[Test]
+	public static void ASeededStampPlacesInsideTheDiscAndTheRulesReject()
+	{
+		let grid = MakeFlat(2.0f);
+		defer delete grid;
+
+		var rocks = Uniform(0.0f);
+		rocks.Placement = .Scattered;
+		rocks.ScaleRange = .(1.0f, 1.0f);
+		rocks.MaxSlopeDegrees = 90.0f;
+		let rock = AABB.FromCenterExtents(.(0, 0.5f, 0), .(0.5f, 0.5f, 0.5f));
+
+		let a = scope List<Float4x4>();
+		let placed = Scatter.ScatterStamp(99, grid, rocks, rock, 4.0f, -3.0f, 6.0f, 0.5f, 1.0f,
+			0.0f, default, null, a);
+		// Half a rock per square metre over a disc of six metres.
+		Test.Assert(placed.Candidates == 57);
+		// Flat, unspaced and unblocked: every candidate lands.
+		Test.Assert(placed.Placed == 57);
+		Test.Assert(a.Count == 57);
+		for (let m in a)
+		{
+			let dx = m.M[3][0] - 4.0f;
+			let dz = m.M[3][2] + 3.0f;
+			Test.Assert(((dx * dx) + (dz * dz)) <= (36.0f + 0.001f), "inside the disc");
+			Test.Assert(Near(m.M[3][1], 2.0f), "on the field");
+		}
+
+		// The same seed places the same instances and another seed does not; the amount scales
+		// the count.
+		let b = scope List<Float4x4>();
+		Scatter.ScatterStamp(99, grid, rocks, rock, 4.0f, -3.0f, 6.0f, 0.5f, 1.0f, 0.0f, default,
+			null, b);
+		Test.Assert(SameTransforms(a, b));
+		let c = scope List<Float4x4>();
+		Scatter.ScatterStamp(100, grid, rocks, rock, 4.0f, -3.0f, 6.0f, 0.5f, 1.0f, 0.0f, default,
+			null, c);
+		Test.Assert(!SameTransforms(a, c));
+		let half = scope List<Float4x4>();
+		Test.Assert(Scatter.ScatterStamp(99, grid, rocks, rock, 4.0f, -3.0f, 6.0f, 0.5f, 0.5f,
+			0.0f, default, null, half).Candidates == 28);
+
+		// Spacing: a rock of about 0.87 metres of radius at a spacing of two keeps the props
+		// some 1.7 metres apart, so far fewer land and none of them is within reach of one
+		// that was already there.
+		let spaced = scope List<Float4x4>();
+		let spacedResult = Scatter.ScatterStamp(99, grid, rocks, rock, 4.0f, -3.0f, 6.0f, 2.0f,
+			1.0f, 2.0f, a, null, spaced);
+		Test.Assert(spacedResult.RejectedSpacing > 0);
+		Test.Assert((spacedResult.Placed + spacedResult.RejectedSpacing) == spacedResult.Candidates);
+		let reach = 2.0f * Length(rock.Extents());
+		for (let m in spaced)
+		{
+			for (let e in a)
+			{
+				let dx = m.M[3][0] - e.M[3][0];
+				let dz = m.M[3][2] - e.M[3][2];
+				Test.Assert(((dx * dx) + (dz * dz)) >= ((reach * reach) - 0.001f), "kept apart");
+			}
+		}
+
+		// The blocked query, which the editor wires to the physics world's overlap.
+		let blocked = scope List<Float4x4>();
+		let blockedResult = Scatter.ScatterStamp(99, grid, rocks, rock, 4.0f, -3.0f, 6.0f, 0.5f,
+			1.0f, 0.0f, default, scope (position, radius) => position.X > 4.0f, blocked);
+		Test.Assert(blockedResult.RejectedBlocked > 0);
+		Test.Assert((blockedResult.Placed + blockedResult.RejectedBlocked) == blockedResult.Candidates);
+		for (let m in blocked)
+			Test.Assert(m.M[3][0] <= 4.0f, "nothing lands where the query says no");
+
+		// The slope rule: a steep ramp under a tight limit places nothing.
+		let ramp = MakeRamp(32.0f);
+		defer delete ramp;
+		var gentle = rocks;
+		gentle.MaxSlopeDegrees = 10.0f;
+		let none = scope List<Float4x4>();
+		let noneResult = Scatter.ScatterStamp(5, ramp, gentle, rock, 0.0f, 0.0f, 6.0f, 0.5f,
+			1.0f, 0.0f, default, null, none);
+		Test.Assert(none.IsEmpty);
+		Test.Assert(noneResult.RejectedRules == noneResult.Candidates);
+
+		// The eraser takes what is inside the disc and leaves the rest in order.
+		let field = scope List<Float4x4>();
+		field.AddRange(a);
+		let removed = Scatter.EraseInstancesInDisc(field, 4.0f, -3.0f, 3.0f);
+		Test.Assert(removed > 0);
+		Test.Assert((field.Count + (int)removed) == a.Count);
+		for (let m in field)
+		{
+			let dx = m.M[3][0] - 4.0f;
+			let dz = m.M[3][2] + 3.0f;
+			Test.Assert(((dx * dx) + (dz * dz)) > 9.0f, "what is left is outside the disc");
+		}
+		Test.Assert(Scatter.EraseInstancesInDisc(field, 100.0f, 100.0f, 1.0f) == 0);
+
+		// Degenerate inputs place nothing.
+		Test.Assert(Scatter.ScatterStamp(1, grid, rocks, rock, 0, 0, 0.0f, 1.0f, 1.0f, 0.0f,
+			default, null, none).Candidates == 0);
+		Test.Assert(Scatter.ScatterStamp(1, grid, rocks, rock, 0, 0, 5.0f, 0.0f, 1.0f, 0.0f,
+			default, null, none).Candidates == 0);
+	}
 }

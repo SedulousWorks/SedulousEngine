@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
+using Sedulous.Core.Serialization;
 using Sedulous.Geometry;
 using Sedulous.Heightfield;
 using Sedulous.Render;
@@ -464,5 +466,99 @@ class VegetationComponentTests
 		f.Manager.InvalidateFootprint(0.5f, 0.5f, 0.1f, 0.1f, f.Grid.Size); // inverted
 		f.Extract(snapshot, null, sets);
 		Test.Assert(f.Manager.BuildCount == quiet + 4, "an unusable rect falls back to everything");
+	}
+
+	/// A Scattered layer draws what was authored, bucketed by position, and re-buckets when
+	/// the authored set changes.
+	[Test]
+	public static void AScatteredLayerBucketsItsAuthoredInstancesAndReBucketsOnAChange()
+	{
+		let f = scope Fixture(false);
+		f.Manager.SetBuildBudget(100);
+		let rocks = f.Layer;
+		rocks.Placement = .Scattered;
+		rocks.ScaleRange = .(1.0f, 1.0f);
+		// Three props in the negative chunk and one in the positive one; the other two chunks
+		// hold none.
+		rocks.Instances.Add(Float4x4.Translation(.(-40.0f, 2.0f, -40.0f)));
+		rocks.Instances.Add(Float4x4.Translation(.(-10.0f, 2.0f, -50.0f)));
+		rocks.Instances.Add(Float4x4.Translation(.(-30.0f, 2.0f, -1.0f)));
+		rocks.Instances.Add(Float4x4.Translation(.(20.0f, 2.0f, 20.0f)));
+
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 2, "only the two chunks holding props emit");
+
+		var three = 0;
+		var one = 0;
+		for (let set in sets)
+		{
+			if (set.InstanceCount == 3)
+			{
+				three++;
+				Test.Assert(set.WorldCenter.X < 0.0f);
+				Test.Assert(set.WorldCenter.Z < 0.0f);
+				for (uint32 i < 3)
+					Test.Assert(set.Transforms[(int)i].M[3][0] < 0.0f, "each prop in its own chunk");
+			}
+			else if (set.InstanceCount == 1)
+			{
+				one++;
+				Test.Assert(Near(set.Transforms[0].M[3][0], 20.0f));
+			}
+		}
+		Test.Assert(three == 1);
+		Test.Assert(one == 1);
+		Test.Assert(f.Manager.BuildCount == 4, "every chunk is bucketed once");
+
+		// Unchanged instances rebuild nothing; a stroke, which is a new instance, re-buckets
+		// the whole layer.
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuildCount == 4);
+		f.Layer.Instances.Add(Float4x4.Translation(.(50.0f, 2.0f, -50.0f)));
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuildCount == 8, "a content change re-buckets every chunk");
+		Test.Assert(sets.Count == 3);
+
+		// Erasing back to the old content is another hash and another re-bucket.
+		f.Layer.Instances.RemoveAt(4);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 2);
+
+		// The fade prefix applies as it does to any set: a distant view thins the props away.
+		var far = Float3(2000.0f, 5.0f, 0.0f);
+		f.Extract(snapshot, &far, sets);
+		Test.Assert(sets.IsEmpty);
+	}
+
+	/// The authored props ride the wire with their layer.
+	[Test]
+	public static void TheAuthoredInstancesRoundTrip()
+	{
+		let blob = scope MemoryStream();
+		{
+			let authored = scope VegetationLayer();
+			authored.Name.Set("Rocks");
+			authored.Placement = .Scattered;
+			authored.Density = 0.05f;
+			authored.Instances.Add(Float4x4.Translation(.(1.0f, 2.0f, 3.0f)));
+			authored.Instances.Add(Float4x4.Translation(.(7.0f, 2.0f, 3.0f)));
+
+			let writer = scope BinarySerializer(blob, .Write);
+			authored.Serialize(writer);
+			Test.Assert(writer.IsOk);
+		}
+
+		blob.Seek(0, .Begin);
+		let loaded = scope VegetationLayer();
+		let reader = scope BinarySerializer(blob, .Read);
+		loaded.Serialize(reader);
+		Test.Assert(reader.IsOk);
+
+		Test.Assert(loaded.Name == "Rocks");
+		Test.Assert(loaded.Placement == .Scattered);
+		Test.Assert(loaded.Instances.Count == 2);
+		Test.Assert(Near(loaded.Instances[1].M[3][0], 7.0f));
 	}
 }
