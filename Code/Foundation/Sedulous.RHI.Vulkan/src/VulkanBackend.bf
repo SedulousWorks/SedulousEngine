@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Collections;
 using Bulkan;
 using Sedulous.Core;
@@ -292,6 +293,14 @@ class VulkanBackend : IBackend
 			&mDebugMessenger);
 	}
 
+	/// Every validation ERROR the messenger has seen, process wide: the messenger is per
+	/// backend but the count is one, so a test can snapshot it around a frame and fail on a
+	/// stage interface or layout mistake the driver itself tolerates.
+	private static int32 sValidationErrorCount = 0;
+
+	/// The count so far, nought where validation is off or the layer is not installed.
+	public static int32 ValidationErrorCount => System.Threading.Interlocked.Load(ref sValidationErrorCount);
+
 	/// Prints validation output straight out rather than only through a log sink, because a
 	/// swallowed sink defeats the whole point of running with the layers on.
 	private static VkBool32 DebugCallback(VkDebugUtilsMessageSeverityFlagsEXT severity,
@@ -302,7 +311,10 @@ class VulkanBackend : IBackend
 		{
 			let message = StringView(data.pMessage);
 			if (severity.HasFlag(.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT))
+			{
+				System.Threading.Interlocked.Increment(ref sValidationErrorCount);
 				Console.Error.WriteLine(scope $"[Vulkan ERROR] {message}");
+			}
 			else if (severity.HasFlag(.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT))
 				Console.Error.WriteLine(scope $"[Vulkan WARN] {message}");
 		}
@@ -315,6 +327,11 @@ class VulkanBackend : IBackend
 /// Bringing the Vulkan backend up.
 static class VulkanRhi
 {
+	/// Every validation ERROR the layers have reported in this process, nought where
+	/// validation is off or the layer is not installed. A test snapshots it around a frame,
+	/// so a stage interface or layout mistake the driver tolerates still fails.
+	public static int32 ValidationErrorCount => VulkanBackend.ValidationErrorCount;
+
 	/// A Vulkan backend, or an error when there is no loader, no surface extension, or no
 	/// instance. The CALLER owns what comes back.
 	public static Result<IBackend> CreateBackend(bool enableValidation = false)

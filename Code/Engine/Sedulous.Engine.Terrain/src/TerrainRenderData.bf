@@ -30,6 +30,10 @@ class TerrainRenderData : RenderData
 	public HoledChunkMesh* HoledMeshes = null;
 	public uint32 HoledMeshCount = 0;
 
+	/// The R8 hole MASK, null for a grid with no holes: the HOLES pixel shaders sample it
+	/// bilinearly to shape a holed chunk's rim.
+	public ITextureView HoleView = null;
+
 	/// The height texture, fetched exactly rather than filtered.
 	public ITextureView HeightView = null;
 

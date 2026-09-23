@@ -123,6 +123,15 @@ class TerrainRenderer : Renderer
 		public this() {}
 	}
 
+	private struct ColorPso
+	{
+		public IRenderPipeline Pso = null;
+		public TextureFormat Format = .Undefined;
+		public uint64 ShaderVersion = 0;
+
+		public this() {}
+	}
+
 	/// The pick pass's view slot: the placement and the cropped projection where the depth
 	/// pass reads them, then the terrain entity's id. Mirrors terrain_pick.vs's prefix.
 	[CRepr]
@@ -156,6 +165,14 @@ class TerrainRenderer : Renderer
 		public uint64 ViewId;
 	}
 
+	/// The holed twin, keyed by the MASK view and validated by both identities.
+	private struct HeightHoleBindGroup
+	{
+		public IBindGroup BindGroup;
+		public uint64 HeightId;
+		public uint64 HoleId;
+	}
+
 	/// The same contract over the whole splat set: index, weight, base albedo, palette, then
 	/// the base and array normal, ORM, height, and the coverage mask.
 	private struct MaterialBindGroup
@@ -176,12 +193,17 @@ class TerrainRenderer : Renderer
 	private IBindGroupLayout mViewLayout = null;
 	private IBindGroupLayout mChunkLayout = null;
 	private IBindGroupLayout mHeightLayout = null;
+	/// Set two for a holed chunk: the height texture plus the mask and its sampler.
+	private IBindGroupLayout mHeightHoleLayout = null;
 	private IBindGroupLayout mMaterialLayout = null;
 	/// The colour pass binds all four sets.
 	private IPipelineLayout mPipelineLayout = null;
 	/// The depth pass leaves the material out, so the backend's rule that every declared set
 	/// is bound holds without a spurious bind.
 	private IPipelineLayout mDepthPipelineLayout = null;
+	/// The HOLES twins of both, set two carrying the mask.
+	private IPipelineLayout mHolePipelineLayout = null;
+	private IPipelineLayout mHoleDepthPipelineLayout = null;
 
 	private IBuffer mGridVertexBuffer = null;
 	private uint32 mGridVertexCount = 0;
@@ -204,11 +226,14 @@ class TerrainRenderer : Renderer
 	private uint32 mChunkBindGroupGeneration = 0;
 
 	private Dictionary<int, HeightBindGroup> mHeightBindGroups = new .() ~ delete _;
+	private Dictionary<int, HeightHoleBindGroup> mHeightHoleBindGroups = new .() ~ delete _;
 	private Dictionary<int, MaterialBindGroup> mMaterialBindGroups = new .() ~ delete _;
 
 	/// Repeat and trilinear, for the base and the palette slices. The splat rasters are read
 	/// exactly, so they have no sampler at all.
 	private ISampler mAlbedoSampler = null;
+	/// The hole mask's bilinear clamp sampler: the rim is that mask's half iso line.
+	private ISampler mHoleSampler = null;
 	/// The stand ins an absent slot binds: zero weights read as pure base, and a white base
 	/// leaves the albedo untinted.
 	private ITexture mWhiteTexture = null;
@@ -251,13 +276,15 @@ class TerrainRenderer : Renderer
 	/// an image that was never written.
 	private bool mDummyDepthInitialized = false;
 
-	private IRenderPipeline mPso = null;
-	private TextureFormat mPsoFormat = .Undefined;
-	private uint64 mPsoShaderVersion = 0;
+	/// The colour pass, and its HOLES twin for a holed chunk.
+	private ColorPso mColorPso = .();
+	private ColorPso mHoleColorPso = .();
 	/// Nought is the camera prepass, which takes no bias; one is the shadow cascade, which
 	/// does.
 	private DepthPso[2] mDepthPso = .();
+	private DepthPso[2] mHoleDepthPso = .();
 	private PickPso mPickPso = .();
+	private PickPso mHolePickPso = .();
 	private TextureFormat mDepthFormat = .Undefined;
 
 	/// Scratch, reused per terrain: resolving is single threaded.
@@ -420,6 +447,12 @@ class TerrainRenderer : Renderer
 			if ((heightBindGroup == null) || (materialBindGroup == null))
 				continue;
 
+			// A cut terrain also carries the HOLES twin and the mask set, for its holed chunks.
+			let holePso = (data.HoleView != null) ? EnsurePipeline(context.ColorFormat, true) : null;
+			let holeBindGroup = (data.HoleView != null)
+				? EnsureHeightHoleBindGroup(data.HeightView, data.HoleView)
+				: null;
+
 			for (let draw in mDraws)
 			{
 				let lod = Math.Min(draw.Lod, TerrainMesh.MaxChunkLod);
@@ -440,15 +473,18 @@ class TerrainRenderer : Renderer
 				var chunkUniforms = MakeChunkUniforms(data, data.Chunks[draw.ChunkIndex]);
 				Internal.MemCpy(chunkRange.Ptr, &chunkUniforms, sizeof(ChunkUniforms));
 
+				let holed = data.Chunks[draw.ChunkIndex].HasHoles && (holePso != null)
+					&& (holeBindGroup != null);
+
 				var resolved = ResolvedDraw();
-				resolved.Pso = pso;
+				resolved.Pso = holed ? holePso : pso;
 				resolved.ViewSet = viewBindGroup;
 				resolved.ViewDynamic = true;
 				resolved.ViewOffset = viewRange.ByteOffset;
 				resolved.DrawSet = chunkBindGroup;
 				resolved.DrawDynamic = true;
 				resolved.DrawOffset = chunkRange.ByteOffset;
-				resolved.MaterialSet = heightBindGroup;
+				resolved.MaterialSet = holed ? holeBindGroup : heightBindGroup;
 				resolved.ClusterSet = materialBindGroup;
 				resolved.VertexBuffer0 = mGridVertexBuffer;
 				resolved.IndexBuffer = mesh.IndexBuffer;
@@ -543,6 +579,16 @@ class TerrainRenderer : Renderer
 			if (heightBindGroup == null)
 				continue;
 
+			IRenderPipeline holePso = null;
+			IBindGroup holeBindGroup = null;
+			if (data.HoleView != null)
+			{
+				holePso = pick
+					? EnsurePickPipeline(context.ColorFormat, context.DepthFormat, true)
+					: EnsureDepthPipeline(context.DepthFormat, !context.DepthPrepass, true);
+				holeBindGroup = EnsureHeightHoleBindGroup(data.HeightView, data.HoleView);
+			}
+
 			for (let draw in mDraws)
 			{
 				let lod = Math.Min(draw.Lod, TerrainMesh.MaxChunkLod);
@@ -561,8 +607,11 @@ class TerrainRenderer : Renderer
 				var chunkUniforms = MakeChunkUniforms(data, data.Chunks[draw.ChunkIndex]);
 				Internal.MemCpy(chunkRange.Ptr, &chunkUniforms, sizeof(ChunkUniforms));
 
+				let holed = data.Chunks[draw.ChunkIndex].HasHoles && (holePso != null)
+					&& (holeBindGroup != null);
+
 				var resolved = ResolvedDraw();
-				resolved.Pso = pso;
+				resolved.Pso = holed ? holePso : pso;
 				resolved.ViewSet = viewBindGroup;
 				resolved.ViewDynamic = true;
 				resolved.ViewOffset = viewRange.ByteOffset;
@@ -570,8 +619,8 @@ class TerrainRenderer : Renderer
 				resolved.DrawDynamic = true;
 				resolved.DrawOffset = chunkRange.ByteOffset;
 				// The vertex shader displaces from the height texture, so the depth pass needs
-				// it just as much as the colour one.
-				resolved.MaterialSet = heightBindGroup;
+				// it just as much as the colour one; a holed chunk's set carries the mask too.
+				resolved.MaterialSet = holed ? holeBindGroup : heightBindGroup;
 				resolved.VertexBuffer0 = mGridVertexBuffer;
 				resolved.IndexBuffer = mesh.IndexBuffer;
 				resolved.IndexFormat = .UInt32;
@@ -808,6 +857,42 @@ class TerrainRenderer : Renderer
 		return created;
 	}
 
+	/// Set two for a HOLED chunk: the height texture, the mask and the bilinear sampler.
+	///
+	/// Keyed by the MASK view's address and validated against BOTH identities, for the reason
+	/// the height group is: an address is handed straight back to the next allocation.
+	private IBindGroup EnsureHeightHoleBindGroup(ITextureView height, ITextureView hole)
+	{
+		if ((height == null) || (hole == null) || (mHoleSampler == null))
+			return null;
+
+		let key = (int)(void*)Internal.UnsafeCastToPtr(hole);
+		if (mHeightHoleBindGroups.TryGetValue(key, var found))
+		{
+			if ((found.HeightId == height.UniqueId) && (found.HoleId == hole.UniqueId))
+				return found.BindGroup;
+
+			if (found.BindGroup != null)
+				RetireBindGroup(ref found.BindGroup);
+			mHeightHoleBindGroups.Remove(key);
+		}
+
+		// Positional, in the layout's entry order: height, mask, then the sampler.
+		var entries = BindGroupEntry[3](BindGroupEntry.TextureEntry(height),
+			BindGroupEntry.TextureEntry(hole), BindGroupEntry.SamplerEntry(mHoleSampler));
+
+		var desc = BindGroupDesc();
+		desc.Layout = mHeightHoleLayout;
+		desc.Entries = .(&entries[0], 3);
+		if (!(mDevice.CreateBindGroup(desc) case .Ok(let created)))
+			return null;
+
+		mHeightHoleBindGroups[key] = .() {
+			BindGroup = created, HeightId = height.UniqueId, HoleId = hole.UniqueId
+		};
+		return created;
+	}
+
 	/// The splat material set. Keyed by the WEIGHT view's address, but validated against the
 	/// identity of EVERY view plus the tile buffer's generation: addresses alias across a
 	/// reload, and identities do not.
@@ -904,17 +989,22 @@ class TerrainRenderer : Renderer
 
 	// ==================== Pipelines ====================
 
-	private IRenderPipeline EnsurePipeline(TextureFormat colorFormat)
+	/// `holes` selects the HOLES twin, which a holed chunk draws with: set two carries the
+	/// mask and the pixel shader discards by it.
+	private IRenderPipeline EnsurePipeline(TextureFormat colorFormat, bool holes = false)
 	{
 		let shaderVersion = mShaders.Version("terrain");
-		if ((mPso != null) && (mPsoFormat == colorFormat) && (mPsoShaderVersion == shaderVersion))
-			return mPso;
+		let entry = holes ? &mHoleColorPso : &mColorPso;
+		if ((entry.Pso != null) && (entry.Format == colorFormat)
+			&& (entry.ShaderVersion == shaderVersion))
+			return entry.Pso;
 
-		if (mPso != null)
-			mDevice.DestroyRenderPipeline(ref mPso);
+		if (entry.Pso != null)
+			mDevice.DestroyRenderPipeline(ref entry.Pso);
 
-		let vs = mShaders.GetVariant("terrain", .Vertex, .None);
-		let ps = mShaders.GetVariant("terrain", .Fragment, .None);
+		let flags = holes ? ShaderFlags.Holes : ShaderFlags.None;
+		let vs = mShaders.GetVariant("terrain", .Vertex, flags);
+		let ps = mShaders.GetVariant("terrain", .Fragment, flags);
 		if ((vs == null) || (ps == null))
 			return null;
 
@@ -946,7 +1036,7 @@ class TerrainRenderer : Renderer
 		depthStencil.DepthCompare = Depth.NearerOrEqual;
 
 		var desc = RenderPipelineDesc();
-		desc.Layout = mPipelineLayout;
+		desc.Layout = holes ? mHolePipelineLayout : mPipelineLayout;
 		desc.Vertex.Shader = .(vs, "main", .Vertex);
 		desc.Vertex.Buffers = .(&layout, 1);
 		desc.Fragment = fragment;
@@ -956,14 +1046,14 @@ class TerrainRenderer : Renderer
 		// so the top surface IS the front: cull the backs. Getting this the other way round
 		// culls the top and the frame goes black.
 		desc.Primitive.CullMode = .Back;
-		desc.Label = "terrain";
+		desc.Label = holes ? "terrain.holes" : "terrain";
 
 		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(let pso)))
 			return null;
 
-		mPso = pso;
-		mPsoFormat = colorFormat;
-		mPsoShaderVersion = shaderVersion;
+		entry.Pso = pso;
+		entry.Format = colorFormat;
+		entry.ShaderVersion = shaderVersion;
 		return pso;
 	}
 
@@ -979,10 +1069,20 @@ class TerrainRenderer : Renderer
 	/// there being no fragment stage, and the vertex shader touches the first three sets only,
 	/// so the three set layout still fits. The shadow passes keep the cheap depth shader,
 	/// cascade depth never being tested against the colour pass.
-	private IRenderPipeline EnsureDepthPipeline(TextureFormat depthFormat, bool biased)
+	///
+	/// `holes` selects the HOLES twin: the depth pass's fragment stage, which discards by the
+	/// mask, so the prepass depth and the cascades open where the colour pass does.
+	///
+	/// That twin ALWAYS takes the main terrain vertex module, cascades included. The depth
+	/// fragment stage declares that module's whole output struct, the stage interface being
+	/// matched by location rather than by semantic, so a shorter one is a mismatch and not a
+	/// subset. A holed chunk is rare, so the cascade's extra interpolants cost nothing that
+	/// matters, and its prepass and colour draws then share one vertex bytecode.
+	private IRenderPipeline EnsureDepthPipeline(TextureFormat depthFormat, bool biased,
+		bool holes = false)
 	{
-		let shaderName = biased ? "terrain_depth" : "terrain";
-		var entry = ref mDepthPso[biased ? 1 : 0];
+		let shaderName = (biased && !holes) ? "terrain_depth" : "terrain";
+		let entry = holes ? &mHoleDepthPso[biased ? 1 : 0] : &mDepthPso[biased ? 1 : 0];
 
 		let shaderVersion = mShaders.Version(shaderName);
 		if ((entry.Pso != null) && (entry.Format == depthFormat)
@@ -992,8 +1092,10 @@ class TerrainRenderer : Renderer
 		if (entry.Pso != null)
 			mDevice.DestroyRenderPipeline(ref entry.Pso);
 
-		let vs = mShaders.GetVariant(shaderName, .Vertex, .None);
-		if (vs == null)
+		let flags = holes ? ShaderFlags.Holes : ShaderFlags.None;
+		let vs = mShaders.GetVariant(shaderName, .Vertex, flags);
+		let holePs = holes ? mShaders.GetVariant("terrain_depth", .Fragment, flags) : null;
+		if ((vs == null) || (holes && (holePs == null)))
 			return null;
 
 		var attributes = VertexAttribute[1](.(.Float32x3, 0, 0));
@@ -1016,14 +1118,21 @@ class TerrainRenderer : Renderer
 
 		var desc = RenderPipelineDesc();
 		// Three sets, the material left out: the depth vertex shader samples none of it.
-		desc.Layout = mDepthPipelineLayout;
+		desc.Layout = holes ? mHoleDepthPipelineLayout : mDepthPipelineLayout;
 		desc.Vertex.Shader = .(vs, "main", .Vertex);
 		desc.Vertex.Buffers = .(&layout, 1);
-		// No fragment stage and no colour targets is what makes it depth only.
+		// No fragment stage and no colour targets is what makes it depth only; the HOLES twin
+		// adds the discarding stage, still with no colour target.
+		if (holes)
+		{
+			var holeFragment = FragmentState();
+			holeFragment.Shader = .(holePs, "main", .Fragment);
+			desc.Fragment = holeFragment;
+		}
 		desc.DepthStencil = depthStencil;
 		desc.Primitive.Topology = .TriangleList;
 		desc.Primitive.CullMode = .Back;
-		desc.Label = "terrain.depth";
+		desc.Label = holes ? "terrain.depth.holes" : "terrain.depth";
 
 		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(let pso)))
 			return null;
@@ -1037,18 +1146,20 @@ class TerrainRenderer : Renderer
 	/// The pick pipeline: the depth cast's layout and vertex path with the id writing fragment
 	/// into the single RG32Uint target, no bias, the nearest surface owning the texel.
 	private IRenderPipeline EnsurePickPipeline(TextureFormat colorFormat,
-		TextureFormat depthFormat)
+		TextureFormat depthFormat, bool holes = false)
 	{
 		let shaderVersion = mShaders.Version("terrain_pick");
-		if ((mPickPso.Pso != null) && (mPickPso.ColorFormat == colorFormat)
-			&& (mPickPso.DepthFormat == depthFormat) && (mPickPso.ShaderVersion == shaderVersion))
-			return mPickPso.Pso;
+		let entry = holes ? &mHolePickPso : &mPickPso;
+		if ((entry.Pso != null) && (entry.ColorFormat == colorFormat)
+			&& (entry.DepthFormat == depthFormat) && (entry.ShaderVersion == shaderVersion))
+			return entry.Pso;
 
-		if (mPickPso.Pso != null)
-			mDevice.DestroyRenderPipeline(ref mPickPso.Pso);
+		if (entry.Pso != null)
+			mDevice.DestroyRenderPipeline(ref entry.Pso);
 
-		let vs = mShaders.GetVariant("terrain_pick", .Vertex, .None);
-		let ps = mShaders.GetVariant("terrain_pick", .Fragment, .None);
+		let flags = holes ? ShaderFlags.Holes : ShaderFlags.None;
+		let vs = mShaders.GetVariant("terrain_pick", .Vertex, flags);
+		let ps = mShaders.GetVariant("terrain_pick", .Fragment, flags);
 		if ((vs == null) || (ps == null))
 			return null;
 
@@ -1073,22 +1184,22 @@ class TerrainRenderer : Renderer
 		depthStencil.DepthCompare = Depth.Nearer;
 
 		var desc = RenderPipelineDesc();
-		desc.Layout = mDepthPipelineLayout;
+		desc.Layout = holes ? mHoleDepthPipelineLayout : mDepthPipelineLayout;
 		desc.Vertex.Shader = .(vs, "main", .Vertex);
 		desc.Vertex.Buffers = .(&layout, 1);
 		desc.Fragment = fragment;
 		desc.DepthStencil = depthStencil;
 		desc.Primitive.Topology = .TriangleList;
 		desc.Primitive.CullMode = .Back;
-		desc.Label = "terrain.pick";
+		desc.Label = holes ? "terrain.pick.holes" : "terrain.pick";
 
 		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(let pso)))
 			return null;
 
-		mPickPso.Pso = pso;
-		mPickPso.ColorFormat = colorFormat;
-		mPickPso.DepthFormat = depthFormat;
-		mPickPso.ShaderVersion = shaderVersion;
+		entry.Pso = pso;
+		entry.ColorFormat = colorFormat;
+		entry.DepthFormat = depthFormat;
+		entry.ShaderVersion = shaderVersion;
 		return pso;
 	}
 
@@ -1140,6 +1251,18 @@ class TerrainRenderer : Renderer
 			return .Err;
 		mHeightLayout = heightLayout;
 
+		// Set two for a HOLED chunk: the same height texture, plus the R8 hole mask and the
+		// bilinear sampler the HOLES pixel shaders discard by.
+		var holeMaskEntry = BindGroupLayoutEntry.SampledTexture(1, .Fragment);
+		var holeEntries = BindGroupLayoutEntry[3](heightEntry, holeMaskEntry,
+			BindGroupLayoutEntry.Sampler(0, .Fragment));
+
+		var heightHoleDesc = BindGroupLayoutDesc();
+		heightHoleDesc.Entries = .(&holeEntries[0], 3);
+		if (!(mDevice.CreateBindGroupLayout(heightHoleDesc) case .Ok(let heightHoleLayout)))
+			return .Err;
+		mHeightHoleLayout = heightHoleLayout;
+
 		// Set three: the top layer splat material. The indices and the weights are read
 		// exactly; filtering a layer id would interpolate one layer into another and produce
 		// a layer nobody painted.
@@ -1183,6 +1306,22 @@ class TerrainRenderer : Renderer
 		if (!(mDevice.CreatePipelineLayout(depthDesc) case .Ok(let depthPipelineLayout)))
 			return .Err;
 		mDepthPipelineLayout = depthPipelineLayout;
+
+		// The HOLES twins, the same sets with the mask carrying set two.
+		var holeColorLayouts = IBindGroupLayout[4](mViewLayout, mChunkLayout, mHeightHoleLayout,
+			mMaterialLayout);
+		var holeColorDesc = PipelineLayoutDesc();
+		holeColorDesc.BindGroupLayouts = .(&holeColorLayouts[0], 4);
+		if (!(mDevice.CreatePipelineLayout(holeColorDesc) case .Ok(let holePipelineLayout)))
+			return .Err;
+		mHolePipelineLayout = holePipelineLayout;
+
+		var holeDepthLayouts = IBindGroupLayout[3](mViewLayout, mChunkLayout, mHeightHoleLayout);
+		var holeDepthDesc = PipelineLayoutDesc();
+		holeDepthDesc.BindGroupLayouts = .(&holeDepthLayouts[0], 3);
+		if (!(mDevice.CreatePipelineLayout(holeDepthDesc) case .Ok(let holeDepthPipelineLayout)))
+			return .Err;
+		mHoleDepthPipelineLayout = holeDepthPipelineLayout;
 
 		return .Ok;
 	}
@@ -1295,6 +1434,19 @@ class TerrainRenderer : Renderer
 		if (!(mDevice.CreateSampler(samplerDesc) case .Ok(let sampler)))
 			return .Err;
 		mAlbedoSampler = sampler;
+
+		// The hole mask's, bilinear and clamped: the rim IS the half iso line of that filter.
+		var holeSamplerDesc = SamplerDesc();
+		holeSamplerDesc.MinFilter = .Linear;
+		holeSamplerDesc.MagFilter = .Linear;
+		holeSamplerDesc.MipmapFilter = .Nearest;
+		holeSamplerDesc.AddressU = .ClampToEdge;
+		holeSamplerDesc.AddressV = .ClampToEdge;
+		holeSamplerDesc.AddressW = .ClampToEdge;
+		holeSamplerDesc.Label = "terrain.holeSampler";
+		if (!(mDevice.CreateSampler(holeSamplerDesc) case .Ok(let holeSampler)))
+			return .Err;
+		mHoleSampler = holeSampler;
 
 		if (CreateFallback("terrain.white", .RGBA8Unorm, false, ref mWhiteTexture,
 			ref mWhiteView) case .Err)
@@ -1436,6 +1588,14 @@ class TerrainRenderer : Renderer
 		}
 		mHeightBindGroups.Clear();
 
+		for (var pair in mHeightHoleBindGroups)
+		{
+			var group = pair.value.BindGroup;
+			if (group != null)
+				mDevice.DestroyBindGroup(ref group);
+		}
+		mHeightHoleBindGroups.Clear();
+
 		for (var pair in mMaterialBindGroups)
 		{
 			var group = pair.value.BindGroup;
@@ -1451,15 +1611,21 @@ class TerrainRenderer : Renderer
 		if (mChunkBindGroup != null)
 			mDevice.DestroyBindGroup(ref mChunkBindGroup);
 
-		if (mPso != null)
-			mDevice.DestroyRenderPipeline(ref mPso);
+		if (mColorPso.Pso != null)
+			mDevice.DestroyRenderPipeline(ref mColorPso.Pso);
+		if (mHoleColorPso.Pso != null)
+			mDevice.DestroyRenderPipeline(ref mHoleColorPso.Pso);
 		for (int i < mDepthPso.Count)
 		{
 			if (mDepthPso[i].Pso != null)
 				mDevice.DestroyRenderPipeline(ref mDepthPso[i].Pso);
+			if (mHoleDepthPso[i].Pso != null)
+				mDevice.DestroyRenderPipeline(ref mHoleDepthPso[i].Pso);
 		}
 		if (mPickPso.Pso != null)
 			mDevice.DestroyRenderPipeline(ref mPickPso.Pso);
+		if (mHolePickPso.Pso != null)
+			mDevice.DestroyRenderPipeline(ref mHolePickPso.Pso);
 
 		for (int i < mLodMeshes.Count)
 		{
@@ -1493,16 +1659,24 @@ class TerrainRenderer : Renderer
 			mDevice.DestroyBuffer(ref mDummyTileBuffer);
 		if (mAlbedoSampler != null)
 			mDevice.DestroySampler(ref mAlbedoSampler);
+		if (mHoleSampler != null)
+			mDevice.DestroySampler(ref mHoleSampler);
 
 		if (mDepthPipelineLayout != null)
 			mDevice.DestroyPipelineLayout(ref mDepthPipelineLayout);
+		if (mHoleDepthPipelineLayout != null)
+			mDevice.DestroyPipelineLayout(ref mHoleDepthPipelineLayout);
 		if (mPipelineLayout != null)
 			mDevice.DestroyPipelineLayout(ref mPipelineLayout);
+		if (mHolePipelineLayout != null)
+			mDevice.DestroyPipelineLayout(ref mHolePipelineLayout);
 
 		if (mMaterialLayout != null)
 			mDevice.DestroyBindGroupLayout(ref mMaterialLayout);
 		if (mHeightLayout != null)
 			mDevice.DestroyBindGroupLayout(ref mHeightLayout);
+		if (mHeightHoleLayout != null)
+			mDevice.DestroyBindGroupLayout(ref mHeightHoleLayout);
 		if (mChunkLayout != null)
 			mDevice.DestroyBindGroupLayout(ref mChunkLayout);
 		if (mViewLayout != null)

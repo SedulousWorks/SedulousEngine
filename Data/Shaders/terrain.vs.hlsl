@@ -2,6 +2,9 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 #pragma pack_matrix(row_major)
+// variants: HOLES
+// HOLES changes nothing in this stage: the variant exists so a holed chunk's prepass and colour
+// draws share ONE vertex module (bit-identical clip positions), as the unholed ones do.
 
 // Terrain chunk VS. ONE 65x65 grid (+ a skirt copy) is drawn for every chunk; this shader places each
 // grid vertex in the WORLD (per-chunk OriginXZ + SizeXZ, then ChunkToWorld) and lifts it to the sampled

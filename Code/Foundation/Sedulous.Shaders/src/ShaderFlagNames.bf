@@ -12,7 +12,7 @@ namespace Sedulous.Shaders;
 /// about.
 static class ShaderFlagNames
 {
-	public static ShaderFlagName[9] Table = .(
+	public static ShaderFlagName[10] Table = .(
 		.(.Skinned, "SKINNED"),
 		.(.Instanced, "INSTANCED"),
 		.(.AlphaTest, "ALPHA_TEST"),
@@ -21,7 +21,8 @@ static class ShaderFlagNames
 		.(.Emissive, "EMISSIVE"),
 		.(.VertexColors, "VERTEX_COLORS"),
 		.(.ReceiveShadows, "RECEIVE_SHADOWS"),
-		.(.Wind, "WIND"));
+		.(.Wind, "WIND"),
+		.(.Holes, "HOLES"));
 
 	/// A `#define NAME 1` for every set flag.
 	///

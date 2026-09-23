@@ -29,5 +29,10 @@ struct CompileOptions
 	/// or its bindings land unshifted.
 	public uint32 BindingShiftSets = 1;
 
+	/// SPIR-V only: keeps unused stage interface variables rather than stripping them, which
+	/// is what makes a declared but unread input still occupy its location. Set from a stage's
+	/// `// preserve-interface` directive.
+	public bool PreserveInterface = false;
+
 	public this() {}
 }

@@ -17,6 +17,9 @@ class TerrainProbeConfig
 	public float Fov = 1.0f;
 	public ClearColor Clear = ClearColor.Black;
 	public bool Skirts = true;
+	/// Binds the R8 hole mask a cut grid carries. False leaves the geometry rule alone, which
+	/// is what the rim the pixel shader discards is measured against.
+	public bool HoleMask = true;
 	/// Stands a cascaded shadow system up for the frame, so the terrain both casts into the
 	/// cascade and samples it.
 	public bool Shadows = false;

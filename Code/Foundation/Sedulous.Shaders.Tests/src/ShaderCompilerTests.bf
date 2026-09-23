@@ -26,6 +26,67 @@ class ShaderCompilerTests
 
 	private static Span<uint8> AsBytes(StringView text) => .((uint8*)text.Ptr, text.Length);
 
+	/// The `OpDecorate <id> Location <n>` instructions in a SPIR-V blob, one per stage
+	/// interface variable, inputs and outputs alike, that survived the compile.
+	private static int CountLocationDecorations(Span<uint8> words)
+	{
+		const uint32 cOpDecorate = 71;
+		const uint32 cDecorationLocation = 30;
+
+		var count = 0;
+		let total = words.Length / 4;
+		let data = (uint32*)words.Ptr;
+		var w = 5; // past the five word header
+		while (w < total)
+		{
+			let wordCount = data[w] >> 16;
+			let opcode = data[w] & 0xFFFF;
+			if (wordCount == 0)
+				break;
+
+			if ((opcode == cOpDecorate) && (wordCount >= 4) && ((w + 2) < total)
+				&& (data[w + 2] == cDecorationLocation))
+				count++;
+
+			w += (int)wordCount;
+		}
+		return count;
+	}
+
+	/// PreserveInterface keeps a declared but unread fragment input in the interface.
+	///
+	/// Optimisation otherwise strips it, and a stage whose input list is SHORTER than the
+	/// vertex stage's output list is a Vulkan interface error rather than a subset: the
+	/// interface is matched by location, so the pairing has to be exact.
+	[Test]
+	public static void PreserveInterfaceKeepsAnUnreadFragmentInput()
+	{
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+
+		let ps = """
+			struct In { float4 pos : SV_Position; float3 a : TEXCOORD0; float2 b : TEXCOORD1; };
+			float4 main(In i) : SV_Target0 { return float4(i.b, 0, 1); }
+			""";
+
+		int[2] locations = .(0, 0);
+		for (int pass < 2)
+		{
+			var options = CompileOptions();
+			options.PreserveInterface = pass == 1;
+
+			var result = compiler.Compile(AsBytes(ps), .Fragment, "main", .SPIRV, options);
+			defer result.Dispose();
+			Test.Assert(result.Success, "the fragment shader compiled");
+			locations[pass] = CountLocationDecorations(.(result.Bytecode.Ptr,
+				result.Bytecode.Count));
+		}
+
+		Test.Assert(locations[0] == 2, "stripped: the read input and the colour output");
+		Test.Assert(locations[1] == 3, "preserved: the unread input holds its location too");
+	}
+
 	/// HLSL in, SPIR-V out, checked by its magic word rather than merely by a non-empty
 	/// buffer: a blob whose first word is not the magic is not something a driver accepts.
 	[Test]

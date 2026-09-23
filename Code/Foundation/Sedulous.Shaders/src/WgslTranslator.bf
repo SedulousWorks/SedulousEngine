@@ -122,6 +122,7 @@ class WgslTranslator
 		options.BindingShiftSets = 4;
 		options.Defines = defines;
 		options.IncludePaths = includePaths;
+		options.PreserveInterface = ShaderVariants.ParsePreserveInterfaceDirective(hlsl);
 
 		var compiled = mCompiler.Compile(.((uint8*)hlsl.Ptr, hlsl.Length), stage, "main",
 			.SPIRV, options);

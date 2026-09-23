@@ -32,14 +32,16 @@ class TerrainProbeFixture
 	/// Which backend this fixture was asked for, so a skip message can name it.
 	public ProbeBackend Kind { get; private set; }
 
-	public this(ProbeBackend kind = .Vulkan)
+	/// `validation` turns the Vulkan layers on, which a case asserting on the error count
+	/// needs. It costs frame time, so it is opt in.
+	public this(ProbeBackend kind = .Vulkan, bool validation = false)
 	{
 		Kind = kind;
 
 		switch (kind)
 		{
 		case .Vulkan:
-			if (!(VulkanRhi.CreateBackend(false) case .Ok(let backend)))
+			if (!(VulkanRhi.CreateBackend(validation) case .Ok(let backend)))
 				return;
 			Backend = backend;
 		case .WebGpu:

@@ -320,6 +320,7 @@ class ShaderSystem
 		options.OptimizationLevel = OptimizationLevel;
 		options.Defines = defines;
 		options.IncludeResolver = mIncludeResolver;
+		options.PreserveInterface = ShaderVariants.ParsePreserveInterfaceDirective(source);
 		if (!isDX12)
 		{
 			// Vulkan and WebGPU: shift the register spaces so HLSL b, t, u and s registers

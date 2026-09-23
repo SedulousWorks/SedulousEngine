@@ -2,6 +2,7 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 #pragma pack_matrix(row_major)
+// variants: HOLES
 #include "depth.hlsli"
 
 // Terrain chunk PS. Terrain is always opaque, so it writes the full forward GBUFFER (like unlit.ps):
@@ -37,6 +38,20 @@ struct PSIn {
     float2 localXZ  : TEXCOORD5; // terrain-LOCAL XZ (pre-ChunkToWorld) for albedo tiling
     float2 splatUV  : TEXCOORD6; // 0..1 across the terrain footprint (splatmap lookup)
 };
+
+#ifdef HOLES
+// Terrain holes (Specs/terrain-holes.md, P2): the R8 hole mask over the samples, sampled
+// BILINEARLY; a fragment whose mask is above one half is inside the cut. The geometry already
+// drops the quads cut at every corner; this shapes the rim between cut and solid samples into a
+// smooth iso-line instead of a staircase of whole triangles, at every LOD.
+Texture2D    HoleMask    : register(t1, space2);
+SamplerState HoleSampler : register(s0, space2);
+float HoleCoverage(float2 splatUV) {
+    float2 dims;
+    HoleMask.GetDimensions(dims.x, dims.y);
+    return HoleMask.Sample(HoleSampler, splatUV + 0.5 / max(dims, float2(1.0, 1.0))).r;
+}
+#endif
 
 // Top-K splat material (set 3): per texel, up to 4 (palette index,
 // weight) pairs; the BASE layer owns the remainder (1 - sum). The index map is INTEGER and
@@ -137,6 +152,9 @@ float2 OctEncode(float3 n) {
 }
 
 PSOutput main(PSIn i) {
+#ifdef HOLES
+    if (HoleCoverage(i.splatUV) > 0.5) { discard; }
+#endif
     float3 n = normalize(i.normal);
     float3 sun = normalize(LightDir.xyz);
 

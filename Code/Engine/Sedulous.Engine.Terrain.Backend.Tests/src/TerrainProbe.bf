@@ -15,6 +15,9 @@ class TerrainProbe
 	/// Brighter than the black background.
 	public int Filled = 0;
 
+	/// The middle sixteenth of the frame, which is what a cut at the grid's centre opens.
+	public double CenterLuma = 0.0;
+
 	public double LeftLuma = 0.0;
 	public double RightLuma = 0.0;
 	public double TopLuma = 0.0;

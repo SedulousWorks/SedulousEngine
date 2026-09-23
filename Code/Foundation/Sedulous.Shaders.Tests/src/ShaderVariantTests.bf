@@ -27,6 +27,21 @@ class ShaderVariantTests
 		Test.Assert(absent.Mask == .None);
 	}
 
+	/// The preserve interface directive is its own per stage flag, independent of the mask.
+	[Test]
+	public static void ThePreserveInterfaceDirectiveIsItsOwnFlag()
+	{
+		Test.Assert(ShaderVariants.ParsePreserveInterfaceDirective("""
+			// variants: HOLES
+			// preserve-interface
+			void main(){}
+			"""));
+		Test.Assert(!ShaderVariants.ParsePreserveInterfaceDirective("""
+			// variants: HOLES
+			void main(){}
+			"""));
+	}
+
 	/// A token that is not a known flag is ignored rather than failing, so a shader may name
 	/// a flag that does not exist yet.
 	[Test]

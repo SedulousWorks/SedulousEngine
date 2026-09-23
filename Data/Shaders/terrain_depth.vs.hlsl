@@ -10,6 +10,8 @@
 // renderer binds only the surface index range), so the skirt flag is ignored here.
 //
 // Declares only the two matrices it needs from the shared TerrainView cbuffer (offsets 0 and 64).
+// No HOLES variant: a holed chunk's depth draws (prepass AND cascades) use the "terrain" VS module
+// the colour pass rasterizes with, paired with terrain_depth.ps (see TerrainRenderer's depth PSO).
 
 cbuffer TerrainView : register(b0, space0) {
     float4x4 ChunkToWorld; // heightfield-local -> world

@@ -103,8 +103,10 @@ class TerrainHoledMeshCache
 			mesh.ChunkIndex = (uint32)i;
 			for (uint32 lod = 0; lod <= TerrainMesh.MaxChunkLod; lod++)
 			{
+				// The DRAW rule: a quad goes only when every sample in its block is cut, and
+				// the HOLES pixel shaders' mask shapes the rim inside the ones that stay.
 				TerrainMesh.BuildHoledChunkIndices(field, chunk.GridX0, chunk.GridZ0, lod,
-					indices, let surface);
+					indices, let surface, false);
 				mesh.IndexCounts[lod] = (uint32)indices.Count;
 				mesh.SurfaceIndexCounts[lod] = surface;
 				// This level's quads all went: no buffer, and so no draw.

@@ -61,6 +61,25 @@ static class ShaderVariants
 		return result;
 	}
 
+	/// Whether a stage carries the `// preserve-interface` directive.
+	///
+	/// It keeps EVERY declared stage input and output in the SPIR-V interface even where the
+	/// body never reads one, which optimisation otherwise strips. A fragment stage declaring
+	/// another family's whole output struct to read one member of it needs this, the interface
+	/// being matched by LOCATION: a shorter input list is a mismatch, not a subset.
+	public static bool ParsePreserveInterfaceDirective(StringView source)
+	{
+		const String cPreserveTag = "preserve-interface";
+
+		let length = source.Length;
+		for (int i = 0; i + cPreserveTag.Length <= length; ++i)
+		{
+			if (source.Substring(i, cPreserveTag.Length) == cPreserveTag)
+				return true;
+		}
+		return false;
+	}
+
 	/// The variant a request actually resolves to: only the bits the stage declared survive.
 	///
 	/// Applied in development and in a shipped build identically, which is what makes the two

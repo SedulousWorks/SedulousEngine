@@ -21,4 +21,6 @@ enum ShaderFlags : uint32
 	case GBuffer = 128;
 	/// A vertex sway driven by the material's Wind properties.
 	case Wind = 256;
+	/// Terrain: a holed chunk's fragments discard against the bilinear hole mask.
+	case Holes = 512;
 }

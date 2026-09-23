@@ -220,6 +220,8 @@ class ShaderCompiler
 		}
 
 		arguments.Add("-spirv");
+		if (options.PreserveInterface)
+			arguments.Add("-fspv-preserve-interface");
 		let targetEnvironment = Own("-fspv-target-env=");
 		targetEnvironment.Append(options.SpirvTargetEnvironment);
 		arguments.Add(targetEnvironment);

@@ -60,6 +60,18 @@ static class TerrainProbeRenderer
 		// The cache owns the height texture, so it must let go before the device does.
 		defer heightCache.Clear(device);
 
+		// A cut grid's holed chunks carry their own index buffers, and the mask the HOLES
+		// pixel shaders cut the rim against. Both empty for a solid grid.
+		let holedCache = scope TerrainHoledMeshCache();
+		let holed = holedCache.GetOrBuild(device, terrain, chunks, 1);
+		defer holedCache.Clear(device);
+
+		let holeCache = scope TerrainHoleTextureCache();
+		let holeView = (config.HoleMask && terrain.HasHoles)
+			? holeCache.GetOrCreate(device, terrain, 1)
+			: null;
+		defer holeCache.Clear(device);
+
 		let scene = scope ExtractedScene();
 		scene.SetAmbient(.(1.0f, 1.0f, 1.0f));
 
@@ -94,6 +106,12 @@ static class TerrainProbeRenderer
 		data.Nodes = tree.Nodes.Ptr;
 		data.NodeCount = (uint32)tree.Nodes.Length;
 		data.HeightView = heightView;
+		if (!holed.IsEmpty)
+		{
+			data.HoledMeshes = holed.Ptr;
+			data.HoledMeshCount = (uint32)holed.Length;
+		}
+		data.HoleView = holeView;
 		data.ChunkToWorld = config.ChunkToWorld;
 		data.GridSize = terrain.Size;
 		data.WorldSizeXZ = terrain.WorldSize;
@@ -239,6 +257,11 @@ static class TerrainProbeRenderer
 					probe.TopLuma += luma;
 				else
 					probe.BottomLuma += luma;
+
+				// The centre block, which a cut at the grid's middle empties.
+				if ((x >= Size / 2 - 8) && (x < Size / 2 + 8)
+					&& (y >= Size / 2 - 8) && (y < Size / 2 + 8))
+					probe.CenterLuma += luma;
 
 				// The flat ground either side of a central ridge, leaving the ridge stripe and
 				// the rim out of both.

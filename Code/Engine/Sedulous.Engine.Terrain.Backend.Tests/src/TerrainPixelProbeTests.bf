@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.RHI.Vulkan;
 
 namespace Sedulous.Engine.Terrain.Backend.Tests;
 
@@ -169,6 +170,77 @@ class TerrainPixelProbeTests
 			Within(kind, "total", probe.Total, expected.Total, 0.05);
 			Within(kind, "left luma", probe.LeftLuma, expected.LeftLuma, 0.05);
 			Within(kind, "bottom luma", probe.BottomLuma, expected.BottomLuma, 0.05);
+		}
+	}
+
+	/// A cut at the dome's centre opens the frame to the clear colour, and the MASK is what
+	/// shapes its rim.
+	///
+	/// Two readings of the same cut. With the mask bound, the pixel shaders discard inside it
+	/// and the rim is the mask's half iso line. With it unbound, the geometry rule draws
+	/// alone, a quad surviving while one corner is still solid, so the half cell ring the
+	/// shader would have discarded comes back as lit pixels. The difference between the two
+	/// IS the alpha tested rim.
+	///
+	/// Vulkan runs with validation ON here: the HOLES depth pipeline pairs the terrain vertex
+	/// stage with the depth pass's fragment stage, and a mismatch between them is a validation
+	/// error a driver will otherwise run straight past, discarding by whatever the interpolant
+	/// happened to hold.
+	[Test]
+	public static void ACutAtTheDomesCentreShowsTheClearColourAndTheMaskCutsItsRim()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu))
+		{
+			let fixture = scope:: TerrainProbeFixture(kind, kind == .Vulkan);
+			if (!fixture.Ready)
+				continue;
+
+			let errorsBefore = VulkanRhi.ValidationErrorCount;
+
+			let solid = TerrainFixtures.MakeDome();
+			defer:: delete solid;
+			let solidConfig = scope:: TerrainProbeConfig();
+			solidConfig.Terrain = solid;
+			let reference = TerrainProbeRenderer.Render(fixture, solidConfig);
+			defer:: delete reference;
+			if (!reference.Valid)
+				continue;
+
+			// Seventeen cut samples a side, so the readout block at the centre lies inside it.
+			let holed = TerrainFixtures.MakeDome();
+			defer:: delete holed;
+			let centre = holed.Size / 2;
+			for (int32 z = centre - 8; z <= centre + 8; z++)
+				for (int32 x = centre - 8; x <= centre + 8; x++)
+					holed.SetHole(x, z, true);
+
+			let holedConfig = scope:: TerrainProbeConfig();
+			holedConfig.Terrain = holed;
+			let cut = TerrainProbeRenderer.Render(fixture, holedConfig);
+			defer:: delete cut;
+			Test.Assert(cut.Valid, scope $"{kind}: the cut frame rendered");
+
+			Test.Assert(reference.CenterLuma > 0.0, scope $"{kind}: the dome's top is lit");
+			Test.Assert(cut.CenterLuma == 0.0, scope $"{kind}: and the cut shows the clear");
+			Test.Assert(cut.Filled < reference.Filled, scope $"{kind}: the cut removed pixels");
+			Test.Assert(cut.Filled > reference.Filled / 2,
+				scope $"{kind}: and the rest of the dome is still there");
+
+			// The same cut with the mask unbound: the geometry rule alone.
+			holedConfig.HoleMask = false;
+			let geometryOnly = TerrainProbeRenderer.Render(fixture, holedConfig);
+			defer:: delete geometryOnly;
+			Test.Assert(geometryOnly.Valid, scope $"{kind}: the unmasked frame rendered");
+			Test.Assert(geometryOnly.CenterLuma == 0.0,
+				scope $"{kind}: the centre sits inside the quads the rule dropped");
+			Test.Assert(geometryOnly.Filled > cut.Filled + 64,
+				scope $"{kind}: the rim ring only the mask removes");
+
+			if (kind == .Vulkan)
+			{
+				Test.Assert(VulkanRhi.ValidationErrorCount == errorsBefore,
+					"the HOLES pipelines drew without a validation error");
+			}
 		}
 	}
 

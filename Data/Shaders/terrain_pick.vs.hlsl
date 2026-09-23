@@ -2,6 +2,7 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 #pragma pack_matrix(row_major)
+// variants: HOLES
 
 // Terrain GPU-pick VS: terrain_depth.vs's exact displacement + placement, plus the terrain
 // entity's id for the fragment. The renderer writes a PickView layout into the shared TerrainView
@@ -36,6 +37,9 @@ float SampleHeightY(int2 texel) {
 struct PickVSOut {
     float4 pos : SV_Position;
     nointerpolation uint2 id : TEXCOORD0;
+#ifdef HOLES
+    float2 splatUV : TEXCOORD6; // the hole mask's footprint UV (terrain_pick.ps discards by it)
+#endif
 };
 
 PickVSOut main(float3 grid : TEXCOORD0) {
@@ -48,5 +52,8 @@ PickVSOut main(float3 grid : TEXCOORD0) {
     PickVSOut o;
     o.pos = mul(float4(worldPos, 1.0), ViewProj);
     o.id  = PickId;
+#ifdef HOLES
+    o.splatUV = texelF / max(GridSize, float2(1.0, 1.0));
+#endif
     return o;
 }

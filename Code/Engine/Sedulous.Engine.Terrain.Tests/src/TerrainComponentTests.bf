@@ -205,6 +205,73 @@ class TerrainComponentTests
 		}
 	}
 
+	/// A cut grid extracts its holed chunks' own buffers and the mask beside them, and the
+	/// teardown drops both.
+	[Test]
+	public static void ACutHeightfieldExtractsItsHoledChunksAndItsMask()
+	{
+		let fixture = scope NullDeviceFixture();
+
+		let scene = scope Scene();
+		TerrainScene.AddTerrainSceneManagers(scene);
+
+		let manager = scene.GetSystem<TerrainComponentManager>();
+		Test.Assert(manager != null);
+		manager.SetRenderContext(fixture.Device, 7);
+
+		// Two chunks a side, so one cut sample lands in exactly one of the four.
+		let grid = scope Heightfield(129, .(128.0f, 128.0f), 0.0f, 10.0f);
+		let resource = scope TerrainResource();
+		resource.Heightfield.SetDirect(grid);
+
+		let entity = scene.CreateEntity("terrain");
+		manager.Add(entity).Terrain.SetDirect(resource);
+		scene.Start();
+
+		let solid = scope ExtractedScene();
+		manager.ExtractRenderData(solid);
+		Test.Assert(manager.HoledMeshCount(grid.Uid) == 0, "no cut, so nothing allocated");
+		Test.Assert(manager.HoleTextureCount == 0);
+		var data = solid.Items[0] as TerrainRenderData;
+		Test.Assert(data.HoledMeshCount == 0);
+		Test.Assert(data.HoleView == null);
+
+		grid.SetHole(100, 100, true); // inside the last chunk alone
+		grid.BumpVersion();
+
+		let cut = scope ExtractedScene();
+		manager.ExtractRenderData(cut);
+		Test.Assert(manager.HoledMeshCount(grid.Uid) == 1);
+		Test.Assert(manager.HoleTextureCount == 1, "the mask the HOLES shaders sample");
+		data = cut.Items[0] as TerrainRenderData;
+		Test.Assert(data.HoleView != null);
+		Test.Assert(data.HoledMeshCount == 1);
+		Test.Assert(data.HoledMeshes[0].ChunkIndex == 3);
+		Test.Assert(data.HoledMeshes[0].IndexBuffers[0] != null);
+		// The DRAW rule: one cut sample drops no quad, the mask cutting the rim instead.
+		Test.Assert(data.HoledMeshes[0].SurfaceIndexCounts[0] == 64 * 64 * 6);
+		// The LAST chunk, which is also the one a size measured arena copy truncates.
+		Test.Assert(data.Chunks[3].HasHoles);
+		Test.Assert(!data.Chunks[0].HasHoles);
+
+		// Filled back in, and the record goes with it.
+		grid.SetHole(100, 100, false);
+		grid.BumpVersion();
+		let filled = scope ExtractedScene();
+		manager.ExtractRenderData(filled);
+		Test.Assert(manager.HoledMeshCount(grid.Uid) == 0);
+
+		grid.SetHole(5, 5, true);
+		grid.BumpVersion();
+		let again = scope ExtractedScene();
+		manager.ExtractRenderData(again);
+		Test.Assert(manager.HoledMeshCount(grid.Uid) == 1);
+
+		manager.ClearGpu();
+		Test.Assert(manager.HoledMeshCount(grid.Uid) == 0);
+		Test.Assert(manager.HoleTextureCount == 0);
+	}
+
 	[Test]
 	public static void ClearGpuFreesWhileTheDeviceIsStillAlive()
 	{

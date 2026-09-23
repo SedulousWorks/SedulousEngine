@@ -297,6 +297,7 @@ static class ShaderPackCooker
 		compileOptions.OptimizationLevel = 3;
 		compileOptions.Defines = defines;
 		compileOptions.IncludePaths = includePaths;
+		compileOptions.PreserveInterface = ShaderVariants.ParsePreserveInterfaceDirective(source);
 
 		ShaderTarget target = .SPIRV;
 		if (format == .SpirV)

@@ -32,6 +32,8 @@ class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent
 	private TerrainHeightTextureCache mHeightTextures = new .() ~ delete _;
 	/// The holed chunks' own index buffers, which only a terrain with a cut sample has.
 	private TerrainHoledMeshCache mHoledMeshes = new .() ~ delete _;
+	/// The R8 hole mask the HOLES shaders sample, which only a cut terrain has.
+	private TerrainHoleTextureCache mHoleTextures = new .() ~ delete _;
 	private TerrainSplatTextureCache mSplatTextures = new .() ~ delete _;
 	private TerrainPaletteTextureCache mPaletteTextures = new .() ~ delete _;
 
@@ -59,6 +61,7 @@ class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent
 		mRendererId = rendererId;
 		mHeightTextures.SetRetireQueue(retire);
 		mHoledMeshes.SetRetireQueue(retire);
+		mHoleTextures.SetRetireQueue(retire);
 		mSplatTextures.SetRetireQueue(retire);
 		mPaletteTextures.SetRetireQueue(retire);
 	}
@@ -76,6 +79,7 @@ class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent
 
 		mHeightTextures.Clear(mDevice);
 		mHoledMeshes.Clear(mDevice);
+		mHoleTextures.Clear(mDevice);
 		mSplatTextures.Clear(mDevice);
 		mPaletteTextures.Clear(mDevice);
 		mDevice = null;
@@ -85,6 +89,8 @@ class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent
 
 	/// The holed chunk meshes cached for a heightfield, which is the holes test's observable.
 	public int HoledMeshCount(uint64 heightfieldUid) => mHoledMeshes.MeshCount(heightfieldUid);
+	/// The hole masks cached, one per cut heightfield.
+	public int HoleTextureCount => mHoleTextures.Size;
 	public int SplatTextureCount => mSplatTextures.Size;
 	public int PaletteTextureCount => mPaletteTextures.Size;
 
@@ -159,6 +165,10 @@ class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent
 			data.HoledMeshes = holedCopy.Ptr;
 			data.HoledMeshCount = (uint32)holedCopy.Length;
 		}
+
+		// The mask the rim is cut against, asked for only where there is something to cut.
+		if (heightfield.HasHoles)
+			data.HoleView = mHoleTextures.GetOrCreate(mDevice, heightfield, heightfield.Version);
 
 		data.ChunkToWorld = (mScene != null) ? mScene.GetWorldMatrix(owner) : Float4x4.Identity();
 		data.EntityId = EntityTag.Pack(owner.Index, owner.Generation); // the GPU pick's tag

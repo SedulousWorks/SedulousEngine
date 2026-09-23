@@ -108,4 +108,41 @@ class TerrainHoleIndexTests
 		Test.Assert(chunks[0].HasHoles);
 		Test.Assert(!chunks[0].AllCut, "one cut sample is not a cut chunk");
 	}
+
+	[Test]
+	public static void TheRenderRuleKeepsAQuadWhileOneSampleIsSolid()
+	{
+		let field = MakeGrid();
+		defer delete field;
+
+		// One cut sample touches four quads at the finest level. The strict rule drops all
+		// four; the draw rule drops none, no quad being cut at every corner, and the mask
+		// shapes the rim inside them.
+		field.SetHole(10, 10, true);
+		let strict = scope List<uint32>();
+		let render = scope List<uint32>();
+		TerrainMesh.BuildHoledChunkIndices(field, 0, 0, 0, strict, let strictSurface, true);
+		TerrainMesh.BuildHoledChunkIndices(field, 0, 0, 0, render, let renderSurface, false);
+		Test.Assert(strictSurface == (64 * 64 - 4) * 6);
+		Test.Assert(renderSurface == 64 * 64 * 6);
+		Test.Assert(render.Count == strict.Count + 4 * 6);
+
+		// A whole three by three block cut: now four quads ARE cut at every corner, and the
+		// draw rule drops exactly those.
+		for (int32 z = 20; z <= 22; z++)
+			for (int32 x = 20; x <= 22; x++)
+				field.SetHole(x, z, true);
+
+		TerrainMesh.BuildHoledChunkIndices(field, 0, 0, 0, render, let blockSurface, false);
+		Test.Assert(blockSurface == (64 * 64 - 4) * 6);
+
+		// At the coarsest level the single quad spans every sample: the draw rule keeps it,
+		// most of it being solid, and the strict rule drops it for the one cut.
+		TerrainMesh.BuildHoledChunkIndices(field, 0, 0, TerrainMesh.MaxChunkLod, render,
+			let coarseRender, false);
+		Test.Assert(coarseRender == 6);
+		TerrainMesh.BuildHoledChunkIndices(field, 0, 0, TerrainMesh.MaxChunkLod, strict,
+			let coarseStrict, true);
+		Test.Assert(coarseStrict == 0);
+	}
 }

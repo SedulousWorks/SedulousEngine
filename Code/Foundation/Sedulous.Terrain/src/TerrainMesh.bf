@@ -114,18 +114,20 @@ static class TerrainMesh
 	}
 
 	/// The indices of ONE HOLED chunk at a level: the same walk as the shared grid's, with
-	/// every quad dropped whose sample block, the stride square it spans with its interior,
-	/// holds a cut sample, and every skirt segment dropped whose border quad was, so no wall
-	/// hangs under a cut rim.
+	/// quads dropped by their sample block, the stride square they span with its interior,
+	/// and every skirt segment dropped whose border quad was, so no wall hangs under a cut
+	/// rim.
 	///
-	/// A hole never SHRINKS with distance: a coarse quad covering any cut sample goes, which
-	/// is why the whole block is asked rather than its corners. Neighbours share the edge
-	/// samples, so both sides make the same call about a rim.
+	/// TWO rules. `dropWhenAnyCut` drops a quad holding ANY cut sample, which is what every
+	/// consumer off the GPU applies: a hole never SHRINKS with distance. Otherwise a quad
+	/// goes only when EVERY sample in its block is cut, which is the DRAW rule: the pixel
+	/// shaders' bilinear mask then shapes the rim inside the quads that survive, at every
+	/// level. Neighbours share the edge samples, so both sides make the same call about a rim.
 	///
 	/// The surface prefix count, which is the depth and pick draw range, comes back too.
 	public static void BuildHoledChunkIndices(Sedulous.Heightfield.Heightfield field,
 		int32 gridX0, int32 gridZ0, uint32 lod, List<uint32> outIndices,
-		out uint32 outSurfaceIndexCount)
+		out uint32 outSurfaceIndexCount, bool dropWhenAnyCut = true)
 	{
 		outIndices.Clear();
 		outSurfaceIndexCount = 0;
@@ -139,7 +141,18 @@ static class TerrainMesh
 		{
 			let x0 = gridX0 + qx * stride;
 			let z0 = gridZ0 + qz * stride;
-			return !field.BlockHasHole(x0, z0, x0 + stride, z0 + stride);
+			if (dropWhenAnyCut)
+				return !field.BlockHasHole(x0, z0, x0 + stride, z0 + stride);
+
+			for (int32 gz = z0; gz <= z0 + stride; gz++) // kept while one sample is still solid
+			{
+				for (int32 gx = x0; gx <= x0 + stride; gx++)
+				{
+					if (!field.IsHole(gx, gz))
+						return true;
+				}
+			}
+			return false;
 		}
 
 		outIndices.Reserve(quads * quads * 6 + quads * 4 * 6);
