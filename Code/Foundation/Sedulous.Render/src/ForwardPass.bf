@@ -296,8 +296,15 @@ class ForwardPass
 		context.Ibl = ibl;
 		context.NeedsMotion = view.Settings.Post.NeedsMotion;
 		context.ShadowFarFade = mShadowFarFade;
+		// The WIND clock is the view's SCENE clock, which is scaled and pausable; the frame's
+		// own stands in only for a snapshot no scene stamped.
 		context.TimeSeconds = mTimeSeconds;
 		context.PrevTimeSeconds = mPrevTimeSeconds;
+		if ((view.Scene != null) && view.Scene.HasTime)
+		{
+			context.TimeSeconds = view.Scene.TimeSeconds;
+			context.PrevTimeSeconds = view.Scene.PrevTimeSeconds;
+		}
 		context.DebugSemantic = (view.Settings.Debug != null)
 			? (uint8)view.Settings.Debug.Semantic
 			: 0;

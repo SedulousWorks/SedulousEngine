@@ -26,6 +26,9 @@ class ExtractedScene
 	private Float3 mViewOrigin = .(0, 0, 0);
 	/// False for a headless extraction, where nothing is thinned.
 	private bool mHasViewOrigin = false;
+	private float mTimeSeconds = 0.0f;
+	private float mPrevTimeSeconds = 0.0f;
+	private bool mHasTime = false;
 	private SkySnapshot mSky = .();
 	private DirectionalShadow mShadow = .();
 
@@ -91,6 +94,23 @@ class ExtractedScene
 	}
 	public Float3 ViewOrigin => mViewOrigin;
 	public bool HasViewOrigin => mHasViewOrigin;
+
+	/// The SCENE's clock, this frame's seconds and last frame's, stamped by the environment
+	/// extraction from a clock that accumulates the scene's OWN delta, so the context, group
+	/// and scene time scales, and a pause, all reach it: a paused world's grass stands still,
+	/// and the editor's Simulate ticks the editing scene, so it sways there.
+	///
+	/// This is the WIND sway's phase. A snapshot no scene stamped, a probe, has none, and the
+	/// frame's own clock stands in.
+	public void SetTime(float seconds, float prevSeconds)
+	{
+		mTimeSeconds = seconds;
+		mPrevTimeSeconds = prevSeconds;
+		mHasTime = true;
+	}
+	public float TimeSeconds => mTimeSeconds;
+	public float PrevTimeSeconds => mPrevTimeSeconds;
+	public bool HasTime => mHasTime;
 	public Float3 Ambient => mAmbient;
 
 	public void SetSky(SkySnapshot sky) => mSky = sky;
@@ -121,6 +141,9 @@ class ExtractedScene
 		mAmbient = .(0.03f, 0.03f, 0.03f);
 		mViewOrigin = .(0, 0, 0);
 		mHasViewOrigin = false;
+		mTimeSeconds = 0.0f;
+		mPrevTimeSeconds = 0.0f;
+		mHasTime = false;
 		mSky = .();
 		mShadow = .();
 	}

@@ -57,4 +57,22 @@ class WindTests
 		// The flag names its define, so a stage's variants line can declare it.
 		Test.Assert(ShaderFlagNames.FlagFromName("WIND") == .Wind);
 	}
+
+	/// The snapshot carries its scene's clock, and a reset clears it, so the frame's own
+	/// clock stands in for a snapshot nothing stamped.
+	[Test]
+	public static void TheSnapshotCarriesItsScenesClockAndAResetClearsIt()
+	{
+		let scene = scope ExtractedScene();
+		Test.Assert(!scene.HasTime);
+
+		scene.SetTime(12.5f, 12.4f);
+		Test.Assert(scene.HasTime);
+		Test.Assert(scene.TimeSeconds == 12.5f);
+		Test.Assert(scene.PrevTimeSeconds == 12.4f);
+
+		scene.Reset();
+		Test.Assert(!scene.HasTime);
+		Test.Assert(scene.TimeSeconds == 0.0f);
+	}
 }

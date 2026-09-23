@@ -371,8 +371,14 @@ class RenderFrame
 		}
 
 		var context = RenderRecordContext();
+		// The WIND clock: the view's SCENE clock, else the frame's fallback.
 		context.TimeSeconds = mTimeSeconds;
 		context.PrevTimeSeconds = mPrevTimeSeconds;
+		if ((view.Scene != null) && view.Scene.HasTime)
+		{
+			context.TimeSeconds = view.Scene.TimeSeconds;
+			context.PrevTimeSeconds = view.Scene.PrevTimeSeconds;
+		}
 		context.View = view;
 		context.Pass = pass;
 		context.ViewProj = viewProj; // the CROPPED camera projection
@@ -437,8 +443,14 @@ class RenderFrame
 		RendererRegistry registry, uint32 viewIndex)
 	{
 		var context = RenderRecordContext();
+		// The WIND clock: the view's SCENE clock, else the frame's fallback.
 		context.TimeSeconds = mTimeSeconds;
 		context.PrevTimeSeconds = mPrevTimeSeconds;
+		if ((view.Scene != null) && view.Scene.HasTime)
+		{
+			context.TimeSeconds = view.Scene.TimeSeconds;
+			context.PrevTimeSeconds = view.Scene.PrevTimeSeconds;
+		}
 		// The share cache is keyed by the view: the prepass fills it and the forward reuses it.
 		context.View = view;
 		context.ViewProj = view.Camera.ViewProjection;
@@ -504,11 +516,18 @@ class RenderFrame
 	private void RecordShadowCasters(IRenderPassEncoder encoder, Span<DrawItem> casters,
 		RendererRegistry registry, Float4x4 lightViewProj, Float3 cullCenter = .(0, 0, 0),
 		float cullRadius = 0.0f, bool frustumCull = false, Span<Float4> cullBounds = default,
-		RenderView lodView = null)
+		RenderView lodView = null, ExtractedScene scene = null)
 	{
 		var context = RenderRecordContext();
+		// The WIND clock: the CASTERS' scene clock, else the frame's fallback. A caster sways
+		// with the scene it belongs to, which need not be the one the level view came from.
 		context.TimeSeconds = mTimeSeconds;
 		context.PrevTimeSeconds = mPrevTimeSeconds;
+		if ((scene != null) && scene.HasTime)
+		{
+			context.TimeSeconds = scene.TimeSeconds;
+			context.PrevTimeSeconds = scene.PrevTimeSeconds;
+		}
 		// The level coupling only; the light's own matrices follow.
 		context.View = lodView;
 		if (lodView != null)
@@ -1180,7 +1199,7 @@ class RenderFrame
 								// shadow matches what that view draws.
 								RecordShadowCasters(encoder, context.Casters, mRegistry,
 									cascadeViewProj, .(0, 0, 0), 0.0f, true, context.CasterBounds,
-									view);
+									view, context.Scene);
 							});
 					});
 			}
@@ -1264,7 +1283,8 @@ class RenderFrame
 							encoder.SetScissor((int32)tile.X, (int32)tile.Y, tile.Width,
 								tile.Height);
 							RecordShadowCasters(encoder, draw.Context.Casters, mRegistry,
-								tile.ViewProjection, tile.CullCenter, tile.CullRadius);
+								tile.ViewProjection, tile.CullCenter, tile.CullRadius, false,
+								default, null, draw.Context.Scene);
 						}
 					});
 			});

@@ -51,4 +51,44 @@ class EnvironmentExtractTests
 			Test.Assert(snapshot.Sky.TextureUid == 0);
 		}
 	}
+
+	/// The scene's render clock: it adds the scene's OWN delta, holds still at nought, and
+	/// rides the snapshot.
+	[Test]
+	public static void TheSceneClockAddsTheScenesOwnDeltaAndRidesTheSnapshot()
+	{
+		let scene = scope Scene("s");
+		RenderScene.AddRenderSceneManagers(scene);
+		let system = scene.GetSystem<EnvironmentSystem>();
+		Test.Assert(system != null);
+		scene.Start();
+		Test.Assert(system.TimeSeconds == 0.0f);
+
+		// The delta a scene is updated with is the one its manager composed, the context,
+		// group and scene scales together: the clock adds exactly that, once a frame, keeping
+		// last frame's value for the motion vectors.
+		scene.Update(0.5f);
+		Test.Assert(Near(system.TimeSeconds, 0.5f));
+		Test.Assert(Near(system.PrevTimeSeconds, 0.0f));
+		scene.Update(0.25f);
+		Test.Assert(Near(system.TimeSeconds, 0.75f));
+		Test.Assert(Near(system.PrevTimeSeconds, 0.5f));
+
+		// A paused scene, whose scale takes the delta to nought, holds still.
+		scene.Update(0.0f);
+		Test.Assert(Near(system.TimeSeconds, 0.75f));
+		Test.Assert(Near(system.PrevTimeSeconds, 0.75f));
+
+		let snapshot = scope ExtractedScene();
+		RenderExtract.ExtractEnvironmentInto(scene, snapshot);
+		Test.Assert(snapshot.HasTime);
+		Test.Assert(Near(snapshot.TimeSeconds, 0.75f));
+		Test.Assert(Near(snapshot.PrevTimeSeconds, 0.75f));
+
+		// A scene without the system stamps none, and the frame's own clock stands in.
+		let bare = scope Scene("bare");
+		let none = scope ExtractedScene();
+		RenderExtract.ExtractEnvironmentInto(bare, none);
+		Test.Assert(!none.HasTime);
+	}
 }

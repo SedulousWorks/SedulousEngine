@@ -523,6 +523,9 @@ static class RenderExtract
 		if (system == null)
 			return;
 
+		// The scene's own clock, which is what the WIND sway reads.
+		outScene.SetTime(system.TimeSeconds, system.PrevTimeSeconds);
+
 		let settings = system.Environment;
 		// The flat fill is premultiplied here, so the snapshot carries one colour rather than
 		// a colour and a scale that every reader has to remember to combine.

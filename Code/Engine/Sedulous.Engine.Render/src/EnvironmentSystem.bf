@@ -13,8 +13,27 @@ namespace Sedulous.Engine.Render;
 class EnvironmentSystem : SceneSystem
 {
 	private EnvironmentSettings mEnvironment = .();
+	/// The scene's render clock, and last frame's value for the motion vectors.
+	private float mTimeSeconds = 0.0f;
+	private float mPrevTimeSeconds = 0.0f;
 
 	public EnvironmentSettings* Environment => &mEnvironment;
+
+	/// The scene's render clock: seconds accumulated from the scene's OWN delta, which is the
+	/// context, group and scene time scales composed by the scene manager, so time driven
+	/// shading, the WIND sway, pauses and slows with the scene it belongs to.
+	///
+	/// Advanced once a frame, in the update phase. RUNTIME state, never serialized.
+	public override void OnUpdate(ScenePhase phase, float deltaTime)
+	{
+		if (phase != .Update)
+			return;
+		mPrevTimeSeconds = mTimeSeconds;
+		mTimeSeconds += deltaTime;
+	}
+
+	public float TimeSeconds => mTimeSeconds;
+	public float PrevTimeSeconds => mPrevTimeSeconds;
 
 	public override Type SettingsType => typeof(EnvironmentSettings);
 	public override void* SettingsInstance => &mEnvironment;
