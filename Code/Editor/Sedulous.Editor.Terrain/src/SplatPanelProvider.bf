@@ -89,7 +89,7 @@ class SplatPanelProvider : IViewportToolPanelProvider
 		let grid = new PropertyGrid();
 		let radius = ToolPanelWidgets.AddFloat(grid, "Radius", t.Radius, 0.5, 128.0, 1.0, 1, new [=t](v) => { t.SetRadius((float)v); });
 		ToolPanelWidgets.AddFloat(grid, "Strength", t.Strength, 0.0, 1.0, 0.05, 2, new [=t](v) => { t.SetStrength((float)v); });
-		ToolPanelWidgets.AddFloat(grid, "Spacing", t.Spacing, 0.05, 1.0, 0.05, 2, new [=t](v) => { t.SetSpacing((float)v); });
+		ToolPanelWidgets.AddFloat(grid, "Stamp spacing", t.Spacing, 0.05, 1.0, 0.05, 2, new [=t](v) => { t.SetSpacing((float)v); });
 		grid.AddProperty(new BoolEditor("Airbrush", t.IsAirbrush, new [=t](v) => { t.SetAirbrush(v); }));
 		delete t.OnRadiusChanged;
 		t.OnRadiusChanged = new [=radius](r) => { radius.SetValue(r); };

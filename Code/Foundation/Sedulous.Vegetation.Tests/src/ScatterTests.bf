@@ -138,7 +138,7 @@ class ScatterTests
 	}
 
 	[Test]
-	public static void DensityScalesTheCandidateCountAndTheCapScalesDensityDown()
+	public static void DensityScalesTheCandidateCountAndTheCapStopsPlacingWhenFull()
 	{
 		let grid = MakeFlat(1.0f);
 		defer delete grid;
@@ -155,15 +155,26 @@ class ScatterTests
 		Test.Assert(!one.DensityClamped);
 		Test.Assert(Near(one.EffectiveDensity, 0.25f, 0.0001f));
 
-		// Over budget: the cap wins and the density reports what was actually used.
+		// Over budget: the loop stops once the chunk holds the cap, and the reported density
+		// is what the chunk actually carries.
 		var dense = Uniform(10.0f); // 40960 wanted
 		dense.MaxInstancesPerChunk = 4096;
 		let capped = scope ScatterResult();
 		Scatter.ScatterChunk(7, chunk, grid, null, null, dense, AABB.Empty(), capped);
-		Test.Assert(capped.CandidateCount == 4096);
+		Test.Assert(capped.CandidateCount == 4096); // every candidate placed, then it stopped
 		Test.Assert(capped.DensityClamped);
 		Test.Assert(Near(capped.EffectiveDensity, 1.0f, 0.0001f));
 		Test.Assert(capped.Transforms.Count == 4096);
+
+		// And what it kept is a PREFIX of the uncapped set: the candidate stream is stable, so
+		// raising the cap only ever appends.
+		var roomy = Uniform(10.0f);
+		roomy.MaxInstancesPerChunk = 1 << 20;
+		let full = scope ScatterResult();
+		Scatter.ScatterChunk(7, chunk, grid, null, null, roomy, AABB.Empty(), full);
+		Test.Assert(full.Transforms.Count > 4096);
+		Test.Assert(Internal.MemCmp(full.Transforms.Ptr, capped.Transforms.Ptr,
+			4096 * strideof(Float4x4)) == 0);
 
 		// Nothing to do: no density, or an authored, Scattered, layer.
 		let none = scope ScatterResult();
@@ -173,6 +184,54 @@ class ScatterTests
 		authored.Placement = .Scattered;
 		Scatter.ScatterChunk(7, chunk, grid, null, null, authored, AABB.Empty(), none);
 		Test.Assert(none.Transforms.IsEmpty);
+	}
+
+	/// The cap counts PLACED instances rather than candidates, so a painted patch covering a
+	/// slice of the chunk grows at the layer's own density.
+	///
+	/// The cap used to scale the density over the WHOLE chunk area before the mask was even
+	/// consulted, so a small patch could never reach the density the layer asked for.
+	[Test]
+	public static void ACappedLayerStillGrowsAPaintedPatchAtItsFullDensity()
+	{
+		let grid = MakeFlat(1.0f);
+		defer delete grid;
+		let chunk = ChunkOf(grid);
+
+		// A quarter of the footprint painted, which is 1024 of the chunk's 4096 square metres.
+		let quarter = scope VegetationMask(32, 32, 1);
+		for (int32 y = 0; y < 16; y++)
+			for (int32 x = 0; x < 16; x++)
+				quarter.SetDensity(0, x, y, 255);
+
+		var patch = ScatterLayer();
+		patch.Placement = .Mask;
+		patch.MaskPlane = 0;
+		patch.Density = 2.0f;
+		patch.MaxSlopeDegrees = 90.0f;
+		patch.MaxInstancesPerChunk = 4096;
+
+		let grown = scope ScatterResult();
+		Scatter.ScatterChunk(7, chunk, grid, null, quarter, patch, AABB.Empty(), grown);
+		Test.Assert(grown.CandidateCount == 8192, "two per square metre over the whole chunk");
+		Test.Assert(!grown.DensityClamped, "the patch never filled the cap");
+		Test.Assert(Near(grown.EffectiveDensity, 2.0f, 0.0001f));
+		// Two per square metre over the painted 1024, not the one per metre the old scaling
+		// would have left.
+		Test.Assert(grown.Transforms.Count > 1800);
+		Test.Assert(grown.Transforms.Count < 2300);
+
+		// A cap below that fills the patch to exactly the cap, and every one is inside it.
+		patch.MaxInstancesPerChunk = 512;
+		Scatter.ScatterChunk(7, chunk, grid, null, quarter, patch, AABB.Empty(), grown);
+		Test.Assert(grown.Transforms.Count == 512);
+		Test.Assert(grown.DensityClamped);
+		Test.Assert(grown.CandidateCount < 8192, "it stopped before the stream ran out");
+		for (let m in grown.Transforms)
+		{
+			Test.Assert(m.M[3][0] < 0.0f);
+			Test.Assert(m.M[3][2] < 0.0f);
+		}
 	}
 
 	[Test]

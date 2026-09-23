@@ -15,11 +15,11 @@ class ScatterResult
 	public List<Float4x4> Transforms = new .() ~ delete _;
 	/// The chunk's terrain box grown by the mesh extent.
 	public AABB LocalBounds = AABB.Empty();
-	/// Points tried, which is density times area, capped.
+	/// Points tried, which is density times area, or fewer where the cap filled first.
 	public uint32 CandidateCount = 0;
-	/// The density actually used.
+	/// The layer's density, or the cap over the area where the chunk filled.
 	public float EffectiveDensity = 0.0f;
-	/// True when MaxInstancesPerChunk scaled the density down.
+	/// True when the chunk holds MaxInstancesPerChunk with candidates still to come.
 	public bool DensityClamped = false;
 
 	public void Clear()
@@ -50,6 +50,12 @@ class ScatterResult
 /// origin; the terrain entity's world matrix places them.
 static class Scatter
 {
+	/// The candidate ceiling per chunk: a bound on the WORK of one rebuild, density times
+	/// area being something a layer can ask anything of, never a bound on the picture. What a
+	/// chunk holds is the layer's MaxInstancesPerChunk, counted against PLACED instances, so a
+	/// candidate the mask rejects costs nothing and a painted patch grows at full density.
+	public const uint32 cMaxCandidatesPerChunk = 1 << 20;
+
 	/// The seed of one layer and chunk pair: a hash over the OWNING entity's persistent id,
 	/// the layer's index and the chunk index, never a pointer and never a frame counter. The
 	/// renderer keys its persistent instance buffer on the same value.
@@ -205,20 +211,16 @@ static class Scatter
 		if (area <= 0.0f)
 			return;
 
-		// The candidate budget is density times area, capped per chunk: a layer over budget
-		// scales its density down, the memory bound per set being the cap and not the density.
-		var density = layer.Density;
-		var wanted = density * area;
-		let cap = (float)layer.MaxInstancesPerChunk;
-		if (wanted > cap)
-		{
-			density = cap / area;
-			wanted = cap;
-			outResult.DensityClamped = true;
-		}
+		// Candidates are the layer's OWN density times the chunk area, under a ceiling that
+		// bounds the work rather than the picture. The cap bounds what the chunk HOLDS: the
+		// loop stops once it is full, so a mask patch covering a slice of the chunk still
+		// grows at the layer's density, a candidate outside the patch costing no cap at all,
+		// and only a chunk that fills up is clamped.
+		let wanted = Min(layer.Density * area, (float)cMaxCandidatesPerChunk);
 		let candidates = (uint32)(wanted + 0.5f);
+		let cap = layer.MaxInstancesPerChunk;
 		outResult.CandidateCount = candidates;
-		outResult.EffectiveDensity = density;
+		outResult.EffectiveDensity = layer.Density;
 		if (candidates == 0)
 			return;
 
@@ -229,9 +231,18 @@ static class Scatter
 		let heightMax = Max(layer.HeightRange.X, layer.HeightRange.Y);
 
 		var rng = Random(seed);
-		outResult.Transforms.Reserve((int)candidates);
+		outResult.Transforms.Reserve((int)Min(candidates, cap));
 		for (uint32 i = 0; i < candidates; i++)
 		{
+			// Full: what holds is the cap, not the density.
+			if ((uint32)outResult.Transforms.Count >= cap)
+			{
+				outResult.DensityClamped = true;
+				outResult.EffectiveDensity = (float)cap / area;
+				outResult.CandidateCount = i;
+				break;
+			}
+
 			// Draw every random number a candidate CAN consume up front, so a rejection never
 			// shifts the stream of the ones after it: the accepted set stays a stable prefix
 			// thinning of the candidate set as the parameters move.

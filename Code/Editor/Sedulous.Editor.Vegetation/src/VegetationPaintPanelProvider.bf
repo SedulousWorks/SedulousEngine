@@ -66,7 +66,7 @@ class VegetationPaintPanelProvider : IViewportToolPanelProvider
 			new [=t](v) => { t.SetRadius((float)v); });
 		ToolPanelWidgets.AddFloat(grid, "Strength", t.Strength, 0.0, 1.0, 0.05, 2,
 			new [=t](v) => { t.SetStrength((float)v); });
-		ToolPanelWidgets.AddFloat(grid, "Spacing", t.Spacing, 0.05, 1.0, 0.05, 2,
+		ToolPanelWidgets.AddFloat(grid, "Stamp spacing", t.Spacing, 0.05, 1.0, 0.05, 2,
 			new [=t](v) => { t.SetSpacing((float)v); });
 		ToolPanelWidgets.AddBool(grid, "Airbrush", t.IsAirbrush,
 			new [=t](v) => { t.SetAirbrush(v); });

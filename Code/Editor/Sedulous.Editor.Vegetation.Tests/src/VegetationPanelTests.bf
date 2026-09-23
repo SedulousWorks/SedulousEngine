@@ -102,7 +102,7 @@ class VegetationPanelTests
 
 		let radius = Find(panel, "Radius") as FloatEditor;
 		let strength = Find(panel, "Strength") as FloatEditor;
-		let spacing = Find(panel, "Spacing") as FloatEditor;
+		let spacing = Find(panel, "Stamp spacing") as FloatEditor;
 		let airbrush = Find(panel, "Airbrush") as BoolEditor;
 		Test.Assert((radius != null) && (strength != null) && (spacing != null)
 			&& (airbrush != null));
