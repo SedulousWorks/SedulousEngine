@@ -19,6 +19,8 @@ class SerializableComponentManager<T> : ComponentManager<T>
 {
 	private String mTypeId = new .() ~ delete _;
 	private uint32 mDataVersion = 1;
+	/// The oldest stored version a legacy reader accepts; nought is the current one alone.
+	private uint32 mMinReadDataVersion = 0;
 
 	public this()
 	{
@@ -52,6 +54,9 @@ class SerializableComponentManager<T> : ComponentManager<T>
 			code.Append("\");\n");
 			code.Append("mDataVersion = ");
 			attribute.DataVersion.ToString(code);
+			code.Append(";\n");
+			code.Append("mMinReadDataVersion = ");
+			attribute.MinReadDataVersion.ToString(code);
 			code.Append(";");
 			Compiler.MixinRoot(code);
 			return;
@@ -94,7 +99,7 @@ class SerializableComponentManager<T> : ComponentManager<T>
 		if (component == null)
 			component = Add(entity);
 
-		BeginVersionedPayload(ar, TypeIdOf(mTypeId), mDataVersion);
+		BeginVersionedPayload(ar, TypeIdOf(mTypeId), mDataVersion, mMinReadDataVersion);
 		component.Serialize(ar);
 		EndVersionedPayload(ar);
 	}

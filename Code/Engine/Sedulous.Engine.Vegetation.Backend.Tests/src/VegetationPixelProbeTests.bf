@@ -134,7 +134,7 @@ class VegetationPixelProbeTests
 		defer delete green;
 
 		let component = manager.Add(terrain);
-		let layer = new VegetationLayer();
+		let layer = new ProceduralVegetationLayer();
 		layer.Name.Set("Grass");
 		layer.Mesh.SetDirect(tuft);
 		layer.Material.SetDirect(green);
@@ -144,7 +144,7 @@ class VegetationPixelProbeTests
 		layer.MaxSlopeDegrees = 90.0f;
 		layer.FadeStart = fadeStart;
 		layer.FadeEnd = fadeEnd;
-		component.Layers.Add(layer);
+		component.ProceduralLayers.Add(layer);
 		world.Start();
 
 		let snapshot = scope ExtractedScene();

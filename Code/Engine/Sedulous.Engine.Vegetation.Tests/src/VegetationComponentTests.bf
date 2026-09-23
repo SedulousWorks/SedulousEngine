@@ -89,7 +89,7 @@ class VegetationComponentTests
 			Mesh = Primitives.Cube(0.5f);
 			// The layers live in slots on the TERRAIN entity's vegetation component.
 			let component = Manager.Add(Terrain);
-			let c = new VegetationLayer();
+			let c = new ProceduralVegetationLayer();
 			c.Name.Set("Grass");
 			c.Mesh.SetDirect(Mesh);
 			c.Placement = withSplat ? .Splat : .Uniform;
@@ -98,12 +98,26 @@ class VegetationComponentTests
 			c.MaxSlopeDegrees = 90.0f;
 			c.FadeStart = 40.0f;
 			c.FadeEnd = 80.0f;
-			component.Layers.Add(c);
+			component.ProceduralLayers.Add(c);
 			Scene.Start();
 		}
 
 		public TerrainVegetationComponent* Component => Manager.Get(Terrain);
-		public VegetationLayer Layer => Component.Layers[0];
+		public ProceduralVegetationLayer Layer => Component.ProceduralLayers[0];
+		public PropVegetationLayer PropLayer => Component.PropLayers[0];
+
+		/// A prop layer carrying the fixture's mesh, which is what a prop test paints into.
+		public PropVegetationLayer AddPropLayer()
+		{
+			let layer = new PropVegetationLayer();
+			layer.Name.Set("Props");
+			layer.Mesh.SetDirect(Mesh);
+			layer.MaxSlopeDegrees = 90.0f;
+			layer.FadeStart = 40.0f;
+			layer.FadeEnd = 80.0f;
+			Component.PropLayers.Add(layer);
+			return layer;
+		}
 
 		/// Extracts with the view at an origin, or headless, collecting the emitted sets.
 		public void Extract(ExtractedScene snapshot, Float3* origin, List<MultiMeshRenderData> outSets)
@@ -386,14 +400,14 @@ class VegetationComponentTests
 		let snapshot = scope ExtractedScene();
 		let sets = scope List<MultiMeshRenderData>();
 
-		let second = new VegetationLayer();
+		let second = new ProceduralVegetationLayer();
 		second.Name.Set("Rocks");
 		second.Mesh.SetDirect(f.Mesh);
 		second.Placement = .Uniform;
 		second.Density = 0.1f;
 		second.MaxSlopeDegrees = 90.0f;
 		second.CastShadows = true;
-		f.Component.Layers.Add(second);
+		f.Component.ProceduralLayers.Add(second);
 
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.Count == 8, "four chunks each, for two slots");
@@ -421,7 +435,7 @@ class VegetationComponentTests
 		second.Visible = true;
 
 		// Removing the slot drops exactly its caches.
-		f.Component.Layers.RemoveAt(1);
+		f.Component.ProceduralLayers.RemoveAt(1);
 		delete second;
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.Count == 4);
@@ -471,15 +485,15 @@ class VegetationComponentTests
 		Test.Assert(f.Manager.BuildCount == quiet + 4, "an unusable rect falls back to everything");
 	}
 
-	/// A Scattered layer draws what was authored, bucketed by position, and re-buckets when
-	/// the authored set changes.
+	/// A PROP layer draws what was placed, bucketed by position, and re-buckets when the
+	/// placed set changes.
 	[Test]
-	public static void AScatteredLayerBucketsItsAuthoredInstancesAndReBucketsOnAChange()
+	public static void APropLayerBucketsItsPlacedInstancesAndReBucketsOnAChange()
 	{
 		let f = scope Fixture(false);
 		f.Manager.SetBuildBudget(100);
-		let rocks = f.Layer;
-		rocks.Placement = .Scattered;
+		f.Layer.Visible = false; // the grass out of the way: the props are what is measured
+		let rocks = f.AddPropLayer();
 		rocks.ScaleRange = .(1.0f, 1.0f);
 		// Three props in the negative chunk and one in the positive one; the other two chunks
 		// hold none.
@@ -519,13 +533,13 @@ class VegetationComponentTests
 		// the whole layer.
 		f.Extract(snapshot, null, sets);
 		Test.Assert(f.Manager.BuildCount == 4);
-		f.Layer.Instances.Add(Float4x4.Translation(.(50.0f, 2.0f, -50.0f)));
+		rocks.Instances.Add(Float4x4.Translation(.(50.0f, 2.0f, -50.0f)));
 		f.Extract(snapshot, null, sets);
 		Test.Assert(f.Manager.BuildCount == 8, "a content change re-buckets every chunk");
 		Test.Assert(sets.Count == 3);
 
 		// Erasing back to the old content is another hash and another re-bucket.
-		f.Layer.Instances.RemoveAt(4);
+		rocks.Instances.RemoveAt(4);
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.Count == 2);
 
@@ -541,10 +555,9 @@ class VegetationComponentTests
 	{
 		let blob = scope MemoryStream();
 		{
-			let authored = scope VegetationLayer();
+			let authored = scope PropVegetationLayer();
 			authored.Name.Set("Rocks");
-			authored.Placement = .Scattered;
-			authored.Density = 0.05f;
+			authored.MaxSlopeDegrees = 12.5f;
 			authored.Instances.Add(Float4x4.Translation(.(1.0f, 2.0f, 3.0f)));
 			authored.Instances.Add(Float4x4.Translation(.(7.0f, 2.0f, 3.0f)));
 
@@ -554,13 +567,13 @@ class VegetationComponentTests
 		}
 
 		blob.Seek(0, .Begin);
-		let loaded = scope VegetationLayer();
+		let loaded = scope PropVegetationLayer();
 		let reader = scope BinarySerializer(blob, .Read);
 		loaded.Serialize(reader);
 		Test.Assert(reader.IsOk);
 
 		Test.Assert(loaded.Name == "Rocks");
-		Test.Assert(loaded.Placement == .Scattered);
+		Test.Assert(Near(loaded.MaxSlopeDegrees, 12.5f));
 		Test.Assert(loaded.Instances.Count == 2);
 		Test.Assert(Near(loaded.Instances[1].M[3][0], 7.0f));
 	}
@@ -594,7 +607,7 @@ class VegetationComponentTests
 		Test.Assert(f.Manager.BuildCount == 8, "all caught up");
 
 		// A COLD set, never built, still waits its turn: a fresh layer under the same budget.
-		let flowers = new VegetationLayer();
+		let flowers = new ProceduralVegetationLayer();
 		flowers.Name.Set("Flowers");
 		flowers.Mesh.SetDirect(f.Mesh);
 		flowers.Placement = .Uniform;
@@ -602,60 +615,56 @@ class VegetationComponentTests
 		flowers.MaxSlopeDegrees = 90.0f;
 		flowers.FadeStart = f.Layer.FadeStart;
 		flowers.FadeEnd = f.Layer.FadeEnd;
-		f.Component.Layers.Add(flowers);
+		f.Component.ProceduralLayers.Add(flowers);
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.Count == 5, "the four grass sets and the one flower chunk built here");
 
 		// Authored props re-bucket outside the budget, so a stroke lands whole in one
 		// extraction.
-		f.Component.Layers.RemoveAt(1);
+		f.Component.ProceduralLayers.RemoveAt(1);
 		delete flowers;
-		f.Layer.Placement = .Scattered;
+		f.Layer.Visible = false; // the grass out of the way: the props are what is measured
+		let props = f.AddPropLayer();
 		for (int32 i < 4)
 		{
-			f.Layer.Instances.Add(Float4x4.Translation(
+			props.Instances.Add(Float4x4.Translation(
 				.(((i % 2) == 0) ? -30.0f : 30.0f, 2.0f, (i < 2) ? -30.0f : 30.0f)));
 		}
-		// The placement change resets the layer, so this extraction rebuilds all four.
+		// A fresh layer buckets all four chunks on its first extraction.
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.Count == 4);
 
 		let builds = f.Manager.BuildCount;
-		f.Layer.Instances.Add(Float4x4.Translation(.(-31.0f, 2.0f, -31.0f)));
+		props.Instances.Add(Float4x4.Translation(.(-31.0f, 2.0f, -31.0f)));
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.Count == 4);
 		Test.Assert(f.Manager.BuildCount == (builds + 4), "every chunk re-bucketed, budget one");
 		Test.Assert(TotalInstances(sets) == 5);
 	}
 
-	/// A freshly added layer is MANUAL: exactly what the inspector's add button makes, plus a
-	/// mesh, grows nothing until it is painted or given a source.
+	/// A freshly added PROCEDURAL layer follows the plane you paint: exactly what the
+	/// inspector's add button makes, plus a mesh, grows nothing until that plane has paint.
 	[Test]
-	public static void AFreshLayerWithAMeshGrowsNothingUntilPaintedOrSourced()
+	public static void AFreshProceduralLayerGrowsNothingUntilItsPlaneIsPainted()
 	{
 		// The splat has palette nought painted, so a Splat default would grow at once.
 		let f = scope Fixture();
 		f.Manager.SetBuildBudget(100);
 
-		let fresh = new VegetationLayer();
+		let fresh = new ProceduralVegetationLayer();
 		fresh.Mesh.SetDirect(f.Mesh);
-		Test.Assert(fresh.Placement == .Scattered, "a new layer is manual");
-		Test.Assert(fresh.ToScatterLayer().Placement == .Scattered);
-		f.Component.Layers.Add(fresh);
+		fresh.MaxSlopeDegrees = 90.0f;
+		Test.Assert(fresh.Placement == .Mask, "a new layer follows the plane you paint");
+		Test.Assert(fresh.ToScatterLayer().Placement == .Mask);
+		f.Component.ProceduralLayers.Add(fresh);
 
 		let snapshot = scope ExtractedScene();
 		let sets = scope List<MultiMeshRenderData>();
 		f.Extract(snapshot, null, sets);
-		Test.Assert(sets.Count == 2, "the fixture's grass alone; the new layer grows nothing");
+		Test.Assert(sets.Count == 2, "the fixture's grass alone; there is no mask to read");
 
-		// One painted prop draws it, and choosing Splat makes it grow like the grass.
-		f.Component.Layers[1].Instances.Add(Float4x4.Translation(.(10.0f, 2.0f, 10.0f)));
-		f.Extract(snapshot, null, sets);
-		Test.Assert(sets.Count == 3);
-
-		f.Component.Layers[1].Instances.Clear();
-		f.Component.Layers[1].Placement = .Splat;
-		f.Component.Layers[1].MaxSlopeDegrees = 90.0f;
+		// Choosing a source it can actually read makes it grow like the grass.
+		fresh.Placement = .Splat;
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.Count == 4);
 	}
@@ -724,9 +733,9 @@ class VegetationComponentTests
 	{
 		let f = scope Fixture(false);
 		f.Manager.SetBuildBudget(100);
+		f.Layer.Visible = false; // the grass out of the way: the props are what is measured
 
-		let rocks = f.Layer;
-		rocks.Placement = .Scattered;
+		let rocks = f.AddPropLayer();
 		rocks.ScaleRange = .(1.0f, 1.0f);
 		rocks.Instances.Add(Float4x4.Translation(.(-40.0f, 2.0f, -40.0f)));
 		rocks.Instances.Add(Float4x4.Translation(.(-20.0f, 2.0f, -20.0f)));
@@ -740,7 +749,7 @@ class VegetationComponentTests
 		HeightfieldHoles.Cut(f.Grid, -20.0f, -20.0f, 3.0f); // under the second prop alone
 		f.Extract(snapshot, null, sets);
 		Test.Assert(TotalInstances(sets) == 2);
-		Test.Assert(f.Layer.Instances.Count == 3, "the authored data keeps it");
+		Test.Assert(f.PropLayer.Instances.Count == 3, "the placed data keeps it");
 		for (let set in sets)
 		{
 			for (uint32 i = 0; i < set.InstanceCount; i++)
@@ -750,5 +759,132 @@ class VegetationComponentTests
 		HeightfieldHoles.Fill(f.Grid, -20.0f, -20.0f, 3.0f);
 		f.Extract(snapshot, null, sets);
 		Test.Assert(TotalInstances(sets) == 3, "and the fill brings it back");
+	}
+
+	/// A hand written VERSION ONE payload, the single list layout, splits into the two lists
+	/// and re-saves as version two.
+	///
+	/// The bytes are laid out here rather than captured from an old build, so the test
+	/// describes the layout it claims to read: a chain of one entry at version 1, then the
+	/// mask, then the layer array in version 1's field order, then visible.
+	[Test]
+	public static void AVersionOnePayloadSplitsIntoTheTwoLists()
+	{
+		let blob = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(blob, .Write);
+			// The envelope the component manager would have written under version 1.
+			SerializedDataVersion[1] chain = .(.(TypeIdOf("terrainVegetation"), 1));
+			BeginVersionedPayload(writer, .(&chain[0], 1));
+
+			Guid maskId = default;
+			SerializeValue(writer, "mask", ref maskId);
+
+			var count = (uint32)2;
+			writer.Key("layers");
+			writer.BeginArray(ref count);
+			WriteLayerV1(writer, "Grass", 1, 7); // Splat: a procedural layer
+			WriteLayerV1(writer, "Rocks", 3, 0); // the retired Scattered: a prop layer
+			writer.EndArray();
+
+			var visible = true;
+			SerializeValue(writer, "visible", ref visible);
+			EndVersionedPayload(writer);
+			Test.Assert(writer.IsOk);
+		}
+
+		// Read it back THROUGH the manager, which is what applies the floor.
+		let scene = scope Scene();
+		VegetationScene.AddVegetationSceneManagers(scene);
+		let manager = scene.GetSystem<TerrainVegetationComponentManager>();
+		let entity = scene.CreateEntity("terrain");
+		manager.Add(entity);
+
+		Test.Assert(blob.Seek(0, .Begin) == 0);
+		let reader = scope BinarySerializer(blob, .Read);
+		manager.ReadComponent(reader, entity);
+		Test.Assert(reader.IsOk, "the version one payload was accepted by the floor");
+
+		let component = manager.Get(entity);
+		Test.Assert(component.ProceduralLayers.Count == 1, "the Splat layer grew");
+		Test.Assert(component.PropLayers.Count == 1, "and the Scattered one became a prop layer");
+		Test.Assert(component.ProceduralLayers[0].Name == "Grass");
+		Test.Assert(component.ProceduralLayers[0].Placement == .Splat);
+		Test.Assert(component.ProceduralLayers[0].SplatLayer == 7);
+		Test.Assert(component.PropLayers[0].Name == "Rocks");
+		Test.Assert(component.PropLayers[0].Instances.Count == 1);
+
+		// And what goes back out is version TWO, in the new shape.
+		let resaved = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(resaved, .Write);
+			manager.WriteComponent(writer, entity);
+			Test.Assert(writer.IsOk);
+		}
+
+		let second = scope Scene();
+		VegetationScene.AddVegetationSceneManagers(second);
+		let secondManager = second.GetSystem<TerrainVegetationComponentManager>();
+		let secondEntity = second.CreateEntity("terrain");
+		secondManager.Add(secondEntity);
+		Test.Assert(resaved.Seek(0, .Begin) == 0);
+		let back = scope BinarySerializer(resaved, .Read);
+		secondManager.ReadComponent(back, secondEntity);
+		Test.Assert(back.IsOk, "the re-saved payload reads as the current version");
+
+		let round = secondManager.Get(secondEntity);
+		Test.Assert(round.ProceduralLayers.Count == 1);
+		Test.Assert(round.PropLayers.Count == 1);
+		Test.Assert(round.PropLayers[0].Instances.Count == 1);
+	}
+
+	/// One version 1 layer in version 1's field order.
+	private static void WriteLayerV1(ISerializer ar, StringView name, uint8 placement,
+		uint32 splatLayer)
+	{
+		var name;
+		var placement;
+		var splatLayer;
+		let owned = scope String(name);
+		Sedulous.Core.Serialization.Serialize(ar, "name", owned);
+		Guid mesh = default;
+		Guid material = default;
+		SerializeValue(ar, "mesh", ref mesh);
+		SerializeValue(ar, "material", ref material);
+		SerializeValue(ar, "placement", ref placement);
+		SerializeValue(ar, "splatLayer", ref splatLayer);
+		var splatThreshold = 0.25f;
+		SerializeValue(ar, "splatThreshold", ref splatThreshold);
+		var maskPlane = (uint32)0;
+		SerializeValue(ar, "maskPlane", ref maskPlane);
+		var density = 2.0f;
+		SerializeValue(ar, "density", ref density);
+		var scaleRange = Float2(0.8f, 1.2f);
+		ar.Key("scaleRange");
+		Sedulous.Core.Serialization.Serialize(ar, ref scaleRange);
+		var maxSlope = 35.0f;
+		SerializeValue(ar, "maxSlopeDegrees", ref maxSlope);
+		var heightRange = Float2(-1.0e6f, 1.0e6f);
+		ar.Key("heightRange");
+		Sedulous.Core.Serialization.Serialize(ar, ref heightRange);
+		var alignToNormal = false;
+		SerializeValue(ar, "alignToNormal", ref alignToNormal);
+		var fadeStart = 40.0f;
+		SerializeValue(ar, "fadeStart", ref fadeStart);
+		var fadeEnd = 80.0f;
+		SerializeValue(ar, "fadeEnd", ref fadeEnd);
+		var castShadows = false;
+		SerializeValue(ar, "castShadows", ref castShadows);
+		var maxPerChunk = (uint32)4096;
+		SerializeValue(ar, "maxInstancesPerChunk", ref maxPerChunk);
+		var visible = true;
+		SerializeValue(ar, "visible", ref visible);
+
+		// A prop layer carried one placed instance; a procedural one carried an empty array.
+		let instances = scope List<Float4x4>();
+		if (placement == VegetationLayerV1.cPlacementScattered)
+			instances.Add(Float4x4.Translation(.(3.0f, 2.0f, 4.0f)));
+		ar.Key("instances");
+		SerializeList(ar, instances);
 	}
 }

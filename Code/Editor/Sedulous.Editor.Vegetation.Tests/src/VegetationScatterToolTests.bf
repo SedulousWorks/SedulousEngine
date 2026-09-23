@@ -23,7 +23,7 @@ class VegetationScatterToolTests
 		let tool = scope VegetationScatterTool(fx.Scene, commands);
 		Test.Assert(tool.IsAvailable);
 		Test.Assert(tool.Id == "vegetation.scatter");
-		tool.SetLayer(1);
+		tool.SetLayer(0);
 		tool.SetRadius(6.0f);
 		tool.SetDensity(0.5f);
 		tool.SetSpacing(0.0f);
@@ -53,7 +53,7 @@ class VegetationScatterToolTests
 		let again = scope ScatterFixture();
 		let commands2 = scope EditorCommandStack();
 		let tool2 = scope VegetationScatterTool(again.Scene, commands2);
-		tool2.SetLayer(1);
+		tool2.SetLayer(0);
 		tool2.SetRadius(6.0f);
 		tool2.SetDensity(0.5f);
 		tool2.SetSpacing(0.0f);
@@ -69,9 +69,9 @@ class VegetationScatterToolTests
 		// The eraser takes what is under the brush and nothing else. The layer stays
 		// selected, erasing being per layer, and the status names both.
 		tool.SetEraser(true);
-		tool.SetLayer(1);
+		tool.SetLayer(0);
 		Test.Assert(tool.IsEraser);
-		Test.Assert(tool.StatusText.Contains("ERASE layer 1"));
+		Test.Assert(tool.StatusText.Contains("ERASE layer 0"));
 		fx.Stroke(tool, -20.0f, 10.0f, -10.0f, 10.0f, 4);
 		Test.Assert(fx.Rocks.Count < placed.Count);
 		for (let m in fx.Rocks)
@@ -92,10 +92,10 @@ class VegetationScatterToolTests
 		// A ramp climbing 64 metres over 128, which is 26.6 degrees, under a limit of ten:
 		// nothing lands, and nothing changed means no command.
 		let steep = scope ScatterFixture(true, 64.0f);
-		steep.Vegetation.Get(steep.Terrain).Layers[1].MaxSlopeDegrees = 10.0f;
+		steep.Vegetation.Get(steep.Terrain).PropLayers[0].MaxSlopeDegrees = 10.0f;
 		let commands = scope EditorCommandStack();
 		let tool = scope VegetationScatterTool(steep.Scene, commands);
-		tool.SetLayer(1);
+		tool.SetLayer(0);
 		tool.SetRadius(6.0f);
 		tool.SetDensity(1.0f);
 		steep.Stroke(tool, -10.0f, 0.0f, 10.0f, 0.0f);
@@ -107,7 +107,7 @@ class VegetationScatterToolTests
 		let flat = scope ScatterFixture();
 		let commands2 = scope EditorCommandStack();
 		let blocked = scope VegetationScatterTool(flat.Scene, commands2);
-		blocked.SetLayer(1);
+		blocked.SetLayer(0);
 		blocked.SetRadius(6.0f);
 		blocked.SetDensity(1.0f);
 		blocked.SetSpacing(0.0f);
@@ -122,7 +122,7 @@ class VegetationScatterToolTests
 		let spaced = scope ScatterFixture();
 		let commands3 = scope EditorCommandStack();
 		let sparse = scope VegetationScatterTool(spaced.Scene, commands3);
-		sparse.SetLayer(1);
+		sparse.SetLayer(0);
 		sparse.SetRadius(8.0f);
 		sparse.SetDensity(4.0f);
 		sparse.SetSpacing(2.0f);
@@ -142,23 +142,24 @@ class VegetationScatterToolTests
 	}
 
 	[Test]
-	public static void UnavailableWithoutAScatteredLayerAndNoEditsUnderSimulate()
+	public static void UnavailableWithoutAPropLayerAndNoEditsUnderSimulate()
 	{
 		let bare = scope ScatterFixture(false);
 		let commands = scope EditorCommandStack();
 		let none = scope VegetationScatterTool(bare.Scene, commands);
-		Test.Assert(!none.IsAvailable);
+		Test.Assert(!none.IsAvailable, "a procedural layer alone is nothing this brush places into");
 		// The toolbar's refusal notice names what the scene lacks.
 		Test.Assert(!none.UnavailableReason.IsEmpty);
 
 		let fx = scope ScatterFixture();
 		let tool = scope VegetationScatterTool(fx.Scene, commands);
-		// The Uniform grass layer is not one this brush writes into.
-		tool.SetLayer(0);
+		// A slot past the end of the prop list writes nothing; the grass is in the other list
+		// and this brush cannot reach it at all.
+		tool.SetLayer(4);
 		fx.Stroke(tool, 0.0f, 0.0f, 5.0f, 0.0f, 2);
 		Test.Assert(!commands.CanUndo);
 
-		tool.SetLayer(1);
+		tool.SetLayer(0);
 		var locked = VegetationFixture.Press(0.0f, 0.0f);
 		locked.EditingLocked = true;
 		tool.Update(locked);
@@ -183,7 +184,7 @@ class VegetationScatterToolTests
 		let fx = scope ScatterFixture();
 		let commands = scope EditorCommandStack();
 		let tool = scope VegetationScatterTool(fx.Scene, commands);
-		tool.SetLayer(1);
+		tool.SetLayer(0);
 		var context = ViewportToolHostContext();
 		context.Scene = fx.Scene;
 		context.Commands = commands;
@@ -191,7 +192,7 @@ class VegetationScatterToolTests
 		let panel = provider.CreatePanel(tool, context);
 		Test.Assert(panel != null);
 		defer panel.ReleaseRef();
-		Test.Assert(tool.Layer == 1);
+		Test.Assert(tool.Layer == 0);
 
 		// Wheel sizing feeds the radius row back, which is what the panel wired up.
 		Test.Assert(tool.OnRadiusChanged != null);
@@ -208,14 +209,14 @@ class VegetationScatterToolTests
 		let fx = scope ScatterFixture();
 		let commands = scope EditorCommandStack();
 		let tool = scope VegetationScatterTool(fx.Scene, commands);
-		tool.SetLayer(1);
+		tool.SetLayer(0);
 
 		// The reference resolves to nothing.
-		fx.Vegetation.Get(fx.Terrain).Layers[1].Mesh = .(Guid());
+		fx.Vegetation.Get(fx.Terrain).PropLayers[0].Mesh = .(Guid());
 		tool.Update(VegetationFixture.RayAt(0.0f, 0.0f)); // a hover resolves the layer's state
 		Test.Assert(tool.StatusText.Contains("no mesh"));
 
-		fx.Vegetation.Get(fx.Terrain).Layers[1].Mesh.SetDirect(fx.Mesh);
+		fx.Vegetation.Get(fx.Terrain).PropLayers[0].Mesh.SetDirect(fx.Mesh);
 		tool.Update(VegetationFixture.RayAt(0.0f, 0.0f));
 		Test.Assert(!tool.StatusText.Contains("no mesh"));
 	}
@@ -231,7 +232,7 @@ class VegetationScatterToolTests
 		let fx = scope ScatterFixture();
 		let commands = scope EditorCommandStack();
 		let tool = scope VegetationScatterTool(fx.Scene, commands);
-		tool.SetLayer(1);
+		tool.SetLayer(0);
 		tool.SetRadius(6.0f);
 		tool.SetDensity(0.5f);
 		tool.SetSpacing(0.0f);

@@ -56,7 +56,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 	private class LayerCache
 	{
 		public Guid OwnerId = .();
-		public uint32 LayerIndex = 0;
+		public uint32 Slot = 0;
 		public uint64 HeightfieldUid = 0;
 		public uint64 HeightfieldVersion = 0;
 		public uint64 SplatUid = 0;
@@ -101,15 +101,27 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 	protected override void OnComponentCreated(TerrainVegetationComponent* component,
 		EntityHandle entity)
 	{
-		component.Layers = new List<VegetationLayer>();
+		component.ProceduralLayers = new List<ProceduralVegetationLayer>();
+		component.PropLayers = new List<PropVegetationLayer>();
 	}
 
 	protected override void OnComponentDestroyed(TerrainVegetationComponent* component,
 		EntityHandle entity)
 	{
-		DeleteContainerAndItems!(component.Layers);
-		component.Layers = null;
+		DeleteContainerAndItems!(component.ProceduralLayers);
+		component.ProceduralLayers = null;
+		DeleteContainerAndItems!(component.PropLayers);
+		component.PropLayers = null;
 	}
+
+	/// A layer's SLOT: its index in its own list, with the PROP list flagged in the top bit.
+	///
+	/// The cache key, the chunk seed, which is the renderer's persistent buffer key, and the
+	/// log lines all speak in slots, so a procedural layer and a prop layer at the same index
+	/// never collide.
+	public const uint32 cPropSlotBit = 0x80000000;
+	public static uint32 ProceduralSlot(uint32 index) => index;
+	public static uint32 PropSlot(uint32 index) => index | cPropSlotBit;
 
 	/// Vegetation draws in an editor as well as in a player, so this is NOT simulation gated.
 	public override bool IsSimulationOnly => false;
@@ -210,29 +222,29 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 
 	/// One cache per layer SLOT of an entity: the entity tag hashed with the slot index, so
 	/// removing a slot drops exactly its cache.
-	private static uint64 CacheKey(EntityHandle owner, uint32 layerIndex)
+	private static uint64 CacheKey(EntityHandle owner, uint32 slot)
 	{
-		var layerIndex;
+		var slot;
 		let entity = RenderExtract.PackEntity(owner);
-		return HashBytes(&layerIndex, sizeof(uint32), entity);
+		return HashBytes(&slot, sizeof(uint32), entity);
 	}
 
-	private LayerCache CacheFor(EntityHandle owner, uint32 layerIndex)
+	private LayerCache CacheFor(EntityHandle owner, uint32 slot)
 	{
-		let key = CacheKey(owner, layerIndex);
+		let key = CacheKey(owner, slot);
 		if (mCaches.TryGetValue(key, let found))
 			return found;
 
 		let created = new LayerCache();
-		created.LayerIndex = layerIndex;
+		created.Slot = slot;
 		mCaches[key] = created;
 		return created;
 	}
 
-	private void ResetCache(LayerCache cache, Heightfield hf, Guid ownerId, uint32 layerIndex)
+	private void ResetCache(LayerCache cache, Heightfield hf, Guid ownerId, uint32 slot)
 	{
 		cache.OwnerId = ownerId;
-		cache.LayerIndex = layerIndex;
+		cache.Slot = slot;
 		cache.HeightfieldUid = hf.Uid;
 		cache.HeightfieldVersion = hf.Version;
 		cache.SplatUid = 0;
@@ -245,7 +257,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		for (let chunk in cache.Chunks)
 		{
 			let set = new ChunkSet();
-			set.Key = Scatter.ChunkSeed(ownerId, layerIndex, chunk.ChunkX, chunk.ChunkZ);
+			set.Key = Scatter.ChunkSeed(ownerId, slot, chunk.ChunkX, chunk.ChunkZ);
 			cache.Sets.Add(set);
 		}
 	}
@@ -327,12 +339,13 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 	}
 
 	private void BuildSet(LayerCache cache, int chunkIndex, Heightfield hf, SplatWeights splat,
-		VegetationMask mask, ScatterLayer layer, AABB meshBounds, Span<Float4x4> authored)
+		VegetationMask mask, ScatterLayer layer, AABB meshBounds, Span<Float4x4> authored,
+		bool isProp)
 	{
 		let set = cache.Sets[chunkIndex];
-		// A Scattered layer is authored rather than grown: its instances are bucketed by
-		// their own position, and the procedural scatter is not run at all.
-		if (layer.Placement == .Scattered)
+		// A PROP layer is placed rather than grown: its instances are bucketed by their own
+		// position, and the procedural scatter is not run at all.
+		if (isProp)
 			BucketAuthored(cache, chunkIndex, layer, meshBounds, authored, hf);
 		else
 			Scatter.ScatterChunk(set.Key, cache.Chunks[chunkIndex], hf, splat, mask, layer,
@@ -360,10 +373,12 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 	/// One layer slot's sets: the cache, its invalidation, and the emit of every chunk in
 	/// range with the fade prefix as its count.
 	private void ExtractLayer(ExtractedScene snapshot, EntityHandle owner, Guid ownerId,
-		uint32 layerIndex, VegetationLayer authored, Heightfield hf, SplatWeights splat,
-		VegetationMask mask, Float4x4 entityWorld, ref uint32 budget)
+		uint32 slot, VegetationLayerBase authored, ScatterLayer layer, Span<Float4x4> instances,
+		Heightfield hf, SplatWeights splat, VegetationMask mask, Float4x4 entityWorld,
+		ref uint32 budget)
 	{
-		let cache = CacheFor(owner, layerIndex);
+		let isProp = (slot & cPropSlotBit) != 0;
+		let cache = CacheFor(owner, slot);
 		cache.SeenThisFrame = true; // a hidden layer keeps its sets, so unhiding regrows nothing
 		if (!authored.Visible)
 			return;
@@ -379,14 +394,13 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 			{
 				cache.WarnedNoMesh = true;
 				GlobalLog(.Warning,
-					"Vegetation: layer {} '{}' has a mesh reference that does not resolve, one deleted, uncooked or stale, so nothing will draw",
-					layerIndex, authored.Name);
+					"Vegetation: {} layer {} '{}' has a mesh reference that does not resolve, one deleted, uncooked or stale, so nothing will draw",
+					isProp ? "prop" : "procedural", slot & ~cPropSlotBit, authored.Name);
 			}
 			return;
 		}
 		cache.WarnedNoMesh = false;
 
-		let layer = authored.ToScatterLayer();
 		let layerHash = VegetationLayers.LayerScatterHash(layer);
 
 		// An identity change rebuilds the whole cache: another heightfield or its size, the
@@ -394,25 +408,22 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		if (cache.Chunks.IsEmpty || (cache.HeightfieldUid != hf.Uid) || (cache.OwnerId != ownerId)
 			|| (cache.MeshUid != mesh.Uid) || (cache.LayerHash != layerHash))
 		{
-			ResetCache(cache, hf, ownerId, layerIndex);
+			ResetCache(cache, hf, ownerId, slot);
 			cache.LayerHash = layerHash;
 			cache.MeshUid = mesh.Uid;
 			cache.WarnedClamp = false;
 		}
 
-		// The authored instances ARE the content of a Scattered layer, so a stroke, or an
-		// undo of one, is a hash change and the whole layer re-buckets. Props are few, and a
-		// sculpt regrows everything anyway.
+		// The placed instances ARE the content of a prop layer, so a stroke, or an undo of
+		// one, is a hash change and the whole layer re-buckets. Props are few, and a sculpt
+		// regrows everything anyway.
 		var instancesHash = (uint64)0;
-		if (layer.Placement == .Scattered)
+		if (isProp)
 		{
-			var count = (uint64)authored.Instances.Count;
+			var count = (uint64)instances.Length;
 			instancesHash = HashBytes(&count, sizeof(uint64), 0x9E3779B97F4A7C15UL);
 			if (count > 0)
-			{
-				instancesHash = HashBytes(authored.Instances.Ptr,
-					authored.Instances.Count * strideof(Float4x4), instancesHash);
-			}
+				instancesHash = HashBytes(instances.Ptr, instances.Length * strideof(Float4x4), instancesHash);
 		}
 		if (cache.InstancesHash != instancesHash)
 		{
@@ -496,11 +507,10 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 				// the procedural scatter, so a stroke lands whole. A procedural set past the
 				// budget waits for a later frame, but one that was ALREADY built keeps drawing
 				// what it had meanwhile: a dropped frame under a brush is a flicker.
-				let scattered = layer.Placement == .Scattered;
-				if (scattered || (budget > 0))
+				if (isProp || (budget > 0))
 				{
-					BuildSet(cache, i, hf, splat, mask, layer, mesh.Bounds, authored.Instances);
-					if (!scattered)
+					BuildSet(cache, i, hf, splat, mask, layer, mesh.Bounds, instances, isProp);
+					if (!isProp)
 						budget--;
 				}
 				else if (!set.Built)
@@ -571,8 +581,10 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 				let hf = (res != null) ? res.Heightfield.Get : null;
 				if ((hf == null) || hf.IsEmpty)
 				{
-					for (int li < component.Layers.Count)
-						CacheFor(owner, (uint32)li).SeenThisFrame = true;
+					for (int li < component.ProceduralLayers.Count)
+						CacheFor(owner, ProceduralSlot((uint32)li)).SeenThisFrame = true;
+					for (int li < component.PropLayers.Count)
+						CacheFor(owner, PropSlot((uint32)li)).SeenThisFrame = true;
 					return;
 				}
 
@@ -580,10 +592,19 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 				let mask = component.Mask.Get;
 				let ownerId = mScene.GetEntityId(owner);
 				let entityWorld = mScene.GetWorldMatrix(terrainEntity);
-				for (int li < component.Layers.Count)
+				for (int li < component.ProceduralLayers.Count)
 				{
-					ExtractLayer(snapshot, owner, ownerId, (uint32)li, component.Layers[li], hf,
-						splat, mask, entityWorld, ref budget);
+					let authored = component.ProceduralLayers[li];
+					ExtractLayer(snapshot, owner, ownerId, ProceduralSlot((uint32)li), authored,
+						authored.ToScatterLayer(), default, hf, splat, mask, entityWorld,
+						ref budget);
+				}
+				for (int li < component.PropLayers.Count)
+				{
+					let authored = component.PropLayers[li];
+					ExtractLayer(snapshot, owner, ownerId, PropSlot((uint32)li), authored,
+						authored.ToScatterLayer(), authored.Instances, hf, splat, mask,
+						entityWorld, ref budget);
 				}
 			});
 

@@ -133,7 +133,7 @@ static class Scatter
 
 	/// The placement source's share, nought to one, at a terrain local XZ point: one for
 	/// Uniform and for Mask until the mask lands, the splat layer's painted weight for Splat
-	/// and nought with no splat, nought for Scattered.
+	/// and nought with no splat.
 	public static float PlacementShareAt(ScatterLayer layer, Heightfield heightfield,
 		SplatWeights splat, VegetationMask mask, float localX, float localZ)
 	{
@@ -162,8 +162,6 @@ static class Scatter
 				? SplatShare(splat, heightfield, layer.SplatLayer, localX, localZ)
 					* MaskShare(mask, heightfield, layer.MaskPlane, localX, localZ)
 				: 0.0f;
-		case .Scattered:
-			return 0.0f;
 		}
 	}
 
@@ -199,8 +197,7 @@ static class Scatter
 	{
 		outResult.Clear();
 		outResult.LocalBounds = chunk.Bounds;
-		if (heightfield.IsEmpty || (layer.Placement == .Scattered) || (layer.Density <= 0.0f)
-			|| (layer.MaxInstancesPerChunk == 0))
+		if (heightfield.IsEmpty || (layer.Density <= 0.0f) || (layer.MaxInstancesPerChunk == 0))
 			return;
 
 		let minX = chunk.Bounds.Min.X;
@@ -330,7 +327,7 @@ static class Scatter
 		return false;
 	}
 
-	/// One brush stamp of authored instances into a Scattered layer.
+	/// One brush stamp of authored instances into a PROP layer.
 	///
 	/// `density` per square metre over the disc of `radius` at the terrain local centre,
 	/// scaled by `amount` from nought to one. Each candidate takes a uniform point in the

@@ -5,8 +5,10 @@ namespace Sedulous.Core.Serialization;
 
 /// Brackets a payload stamped with its type's data version.
 ///
-/// ONE supported layout per type: the current one. A payload written under any other
-/// version is refused, not migrated.
+/// ONE supported layout per type by default: the current one. A payload written under any
+/// other version is refused, not migrated. The one allowance is a type that keeps a LEGACY
+/// READER, which names the oldest concrete version it still understands; the scope then
+/// reports the STORED version so its body can branch on it.
 static
 {
 	/// A chain longer than this is not a chain, it is a corrupt length being trusted.
@@ -22,7 +24,11 @@ static
 	/// REFUSES anything but the declared chain, so a body reads one layout: the scope is
 	/// what the data said rather than what this build assumed, and a mismatch has already
 	/// failed the payload by the time the body runs.
-	public static void BeginVersionedPayload(ISerializer ar, Span<SerializedDataVersion> declared)
+	/// `minReadVersion` is the oldest CONCRETE version a legacy reader still accepts, nought
+	/// meaning the current one alone. Only the first entry, the concrete type's, is relaxed:
+	/// a base in the chain stays exact, since nothing branches on a base's version.
+	public static void BeginVersionedPayload(ISerializer ar, Span<SerializedDataVersion> declared,
+		uint32 minReadVersion = 0)
 	{
 		let chain = scope List<SerializedDataVersion>();
 		uint32 count = 0;
@@ -61,20 +67,23 @@ static
 
 		ar.EndArray();
 
-		// ONE supported layout per type: the current one.
+		// ONE supported layout per type, unless a legacy reader says otherwise.
 		//
 		// A stored chain that differs in any way, its length, a type id or a version, is
-		// REFUSED rather than migrated. There is no migration path: bump the data version
-		// when the wire changes, and re-save what was written under the old one. A reader
-		// that guessed at an older layout would decode the wrong fields and hand back a
-		// value that looks plausible, which is worse than saying no.
+		// REFUSED rather than guessed at: a reader that assumed an older layout would decode
+		// the wrong fields and hand back a value that looks plausible, which is worse than
+		// saying no. The exception is a version at or above `minReadVersion` in the concrete
+		// slot, which a type with a legacy reader has declared it can still decode.
 		if (ar.Mode == .Read)
 		{
 			var matches = (int)count == declared.Length;
 			for (int i = 0; matches && (i < (int)count); i++)
 			{
+				let legacy = (i == 0) && (minReadVersion != 0)
+					&& (chain[i].Version >= minReadVersion)
+					&& (chain[i].Version < declared[i].Version);
 				matches = (chain[i].TypeId == declared[i].TypeId)
-					&& (chain[i].Version == declared[i].Version);
+					&& ((chain[i].Version == declared[i].Version) || legacy);
 			}
 			if (!matches)
 				ar.FailPayload(.NotSupported);
@@ -85,10 +94,11 @@ static
 	}
 
 	/// One type's own version, which is the common case: no versioned bases.
-	public static void BeginVersionedPayload(ISerializer ar, uint64 typeId, uint32 version)
+	public static void BeginVersionedPayload(ISerializer ar, uint64 typeId, uint32 version,
+		uint32 minReadVersion = 0)
 	{
 		SerializedDataVersion[1] one = .(.(typeId, version));
-		BeginVersionedPayload(ar, .(&one[0], 1));
+		BeginVersionedPayload(ar, .(&one[0], 1), minReadVersion);
 	}
 
 	public static void EndVersionedPayload(ISerializer ar) => ar.PopVersionScope();

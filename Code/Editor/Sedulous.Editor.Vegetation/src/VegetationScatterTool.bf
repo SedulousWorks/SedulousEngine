@@ -90,7 +90,7 @@ class VegetationScatterTool : IViewportTool
 	public StringView StatusText => mStatus;
 
 	public uint32 Layer => mLayer;
-	/// The layer the brush works on, which has to be a Scattered one.
+	/// The PROP layer the brush works on, by its index in the component's prop list.
 	///
 	/// The MODE is a separate choice and STAYS: erasing is per layer, so picking layer two
 	/// while erasing erases layer two rather than quietly going back to painting.
@@ -142,8 +142,8 @@ class VegetationScatterTool : IViewportTool
 	public bool IsStroking => mStroking;
 	public bool HasHover => mHasHover;
 
-	/// A footprint over a terrain AND at least one Scattered layer to paint into: without
-	/// one there is nothing this brush can do.
+	/// A footprint over a terrain AND at least one PROP layer to paint into: without one
+	/// there is nothing this brush can do.
 	public bool IsAvailable
 	{
 		get
@@ -158,17 +158,14 @@ class VegetationScatterTool : IViewportTool
 			var any = false;
 			manager.ForEach(scope [&] (component, owner) =>
 				{
-					if (component.Layers == null)
-						return;
-					for (let layer in component.Layers)
-						any |= layer.Placement == .Scattered;
+					any |= (component.PropLayers != null) && !component.PropLayers.IsEmpty;
 				});
 			return any;
 		}
 	}
 
 	public StringView UnavailableReason =>
-		"Paint Props needs a Terrain Vegetation component with a layer whose Placement is Scattered, on a terrain.";
+		"Paint Props needs a Terrain Vegetation component with at least one prop layer, on a terrain.";
 
 	public void OnActivate() {}
 
@@ -251,20 +248,16 @@ class VegetationScatterTool : IViewportTool
 			.(ring.R, ring.G, ring.B, 0.5f), 32, true);
 	}
 
-	/// The selected slot exists and is a Scattered layer: anything else is a layer this
-	/// brush has no business writing into.
-	private bool Paintable(in VegetationPick pick)
-	{
-		let layer = LayerAt(pick, mLayer);
-		return (layer != null) && (layer.Placement == .Scattered);
-	}
+	/// The selected slot exists in the PROP list: the procedural layers are grown rather
+	/// than placed, and are no business of this brush.
+	private bool Paintable(in VegetationPick pick) => LayerAt(pick, mLayer) != null;
 
-	private static VegetationLayer LayerAt(in VegetationPick pick, uint32 index)
+	private static PropVegetationLayer LayerAt(in VegetationPick pick, uint32 index)
 	{
-		if (!pick.Valid || (pick.Component == null) || (pick.Component.Layers == null)
-			|| ((int)index >= pick.Component.Layers.Count))
+		if (!pick.Valid || (pick.Component == null) || (pick.Component.PropLayers == null)
+			|| ((int)index >= pick.Component.PropLayers.Count))
 			return null;
-		return pick.Component.Layers[(int)index];
+		return pick.Component.PropLayers[(int)index];
 	}
 
 	private void BeginStroke(in VegetationPick pick, in ViewportToolInput input)
@@ -378,10 +371,10 @@ class VegetationScatterTool : IViewportTool
 			let manager = (mScene != null)
 				? mScene.GetSystem<TerrainVegetationComponentManager>() : null;
 			let component = (manager != null) ? manager.Get(mStrokeOwner) : null;
-			if ((component != null) && (component.Layers != null)
-				&& ((int)mStrokeLayer < component.Layers.Count))
+			if ((component != null) && (component.PropLayers != null)
+				&& ((int)mStrokeLayer < component.PropLayers.Count))
 			{
-				let after = component.Layers[(int)mStrokeLayer].Instances;
+				let after = component.PropLayers[(int)mStrokeLayer].Instances;
 				var changed = after.Count != mBefore.Count;
 				if (!changed && !after.IsEmpty)
 				{

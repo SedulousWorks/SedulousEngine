@@ -234,4 +234,68 @@ class VersionedPayloadTests
 		Test.Assert(reader.Version == 0, "no version came out of a chain that was not read");
 		EndVersionedPayload(reader);
 	}
+
+	/// A LEGACY READER moves the floor: a stored version at or above it is accepted and the
+	/// scope reports what the DATA said, so the body can branch; below the floor, and above
+	/// the current version, are still refused.
+	[Test]
+	public static void ALegacyReaderAcceptsDownToItsFloorAndNoFurther()
+	{
+		const uint64 cTypeId = 0xFEED;
+		const uint32 cCurrent = 3;
+		const uint32 cFloor = 2;
+
+		/// A payload carrying exactly `stored` in its chain.
+		static void Write(MemoryStream into, uint32 stored)
+		{
+			let writer = scope BinarySerializer(into, .Write);
+			SerializedDataVersion[1] chain = .(.(cTypeId, stored));
+			BeginVersionedPayload(writer, .(&chain[0], 1));
+			EndVersionedPayload(writer);
+		}
+
+		/// Reads it back under the floor, answering what the scope reported.
+		static void Read(MemoryStream from, uint32 floor, out bool ok, out uint32 version)
+		{
+			Test.Assert(from.Seek(0, .Begin) == 0);
+			let reader = scope BinarySerializer(from, .Read);
+			BeginVersionedPayload(reader, cTypeId, cCurrent, floor);
+			ok = reader.IsOk;
+			version = reader.Version;
+			EndVersionedPayload(reader);
+		}
+
+		// At the floor: accepted, and the STORED version is what the body sees.
+		let atFloor = scope MemoryStream();
+		Write(atFloor, cFloor);
+		Read(atFloor, cFloor, let floorOk, let floorVersion);
+		Test.Assert(floorOk, "a payload at the floor is accepted");
+		Test.Assert(floorVersion == cFloor, "and the scope reports what the data said");
+
+		// The current version still reads as itself.
+		let current = scope MemoryStream();
+		Write(current, cCurrent);
+		Read(current, cFloor, let currentOk, let currentVersion);
+		Test.Assert(currentOk);
+		Test.Assert(currentVersion == cCurrent);
+
+		// BELOW the floor: refused, the reader having declared it cannot decode that layout.
+		let older = scope MemoryStream();
+		Write(older, cFloor - 1);
+		Read(older, cFloor, let olderOk, ?);
+		Test.Assert(!olderOk, "below the floor is still refused");
+
+		// ABOVE the current version: refused whatever the floor says, since data from a later
+		// build describes fields this one does not have.
+		let newer = scope MemoryStream();
+		Write(newer, cCurrent + 1);
+		Read(newer, cFloor, let newerOk, ?);
+		Test.Assert(!newerOk, "a future version is refused, floor or no floor");
+
+		// And with NO floor the old rule holds exactly.
+		let strict = scope MemoryStream();
+		Write(strict, cFloor);
+		Read(strict, 0, let strictOk, ?);
+		Test.Assert(!strictOk, "no floor means the current version alone");
+	}
 }

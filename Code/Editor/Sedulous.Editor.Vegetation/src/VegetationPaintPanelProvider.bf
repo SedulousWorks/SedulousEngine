@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using Sedulous.Scene;
 using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Editor.App;
@@ -33,9 +35,14 @@ class VegetationPaintPanelProvider : IViewportToolPanelProvider
 			new [=t]() => (int32)t.Plane,
 			new (i, outTooltip) =>
 			{
-				outTooltip.Set("The plane the brush works on; a layer with Mask placement names it");
+				outTooltip.Set("The plane the brush works on; a procedural layer with Mask placement names it");
 			});
 		root.AddView(planes);
+
+		// What each plane GROWS, which is what a stroke on it actually means.
+		let line = scope String();
+		AppendPlaneReaders(context.Scene, 4, line);
+		root.AddView(ToolPanelWidgets.MakeRow(line, 11.0f));
 
 		root.AddView(ToolPanelWidgets.MakeRow("Mode", 12.0f));
 		let modes = new SegmentedToggle();
@@ -77,5 +84,58 @@ class VegetationPaintPanelProvider : IViewportToolPanelProvider
 
 		ToolPanelWidgets.AddGrid(root, grid);
 		return root;
+	}
+
+	/// "Grows:  0: Grass, 1: Flowers" — the procedural layers that read each plane, so the
+	/// panel says what painting a plane will grow rather than leaving it to be discovered.
+	private static void AppendPlaneReaders(Scene scene, int planeCount, String outLine)
+	{
+		let manager = (scene != null)
+			? scene.GetSystem<Sedulous.Engine.Vegetation.TerrainVegetationComponentManager>()
+			: null;
+
+		let readers = scope List<String>();
+		defer { ClearAndDeleteItems!(readers); }
+		for (int i < planeCount)
+			readers.Add(new String());
+
+		if (manager != null)
+		{
+			var taken = false;
+			manager.ForEach(scope [&] (component, owner) =>
+				{
+					if (taken || (component.ProceduralLayers == null))
+						return;
+					taken = true;
+					for (int i < component.ProceduralLayers.Count)
+					{
+						let layer = component.ProceduralLayers[i];
+						if ((layer.Placement != .Mask) && (layer.Placement != .SplatTimesMask))
+							continue;
+						if (layer.MaskPlane >= (uint32)planeCount)
+							continue;
+
+						let into = readers[(int)layer.MaskPlane];
+						if (!into.IsEmpty)
+							into.Append(", ");
+						if (layer.Name.IsEmpty)
+							into.AppendF("Procedural layer {}", i + 1);
+						else
+							into.Append(layer.Name);
+					}
+				});
+		}
+
+		outLine.Set("Grows:");
+		var any = false;
+		for (int i < readers.Count)
+		{
+			if (readers[i].IsEmpty)
+				continue;
+			any = true;
+			outLine.AppendF("  {}: {}", i, readers[i]);
+		}
+		if (!any)
+			outLine.Set("Grows: no procedural layer reads a plane yet");
 	}
 }

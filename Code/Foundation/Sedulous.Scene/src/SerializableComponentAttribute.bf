@@ -19,15 +19,23 @@ struct SerializableComponentAttribute : Attribute
 	public String TypeId;
 	/// Bumped when the stored shape changes.
 	///
-	/// There is no migration: a payload stamped with any other version is REFUSED, so a
-	/// bump means the data written under the old one has to be re-saved. A reader that
-	/// guessed at an older layout would decode the wrong fields and hand back something
-	/// that looks plausible, which is worse than saying no.
+	/// A payload stamped with any other version is REFUSED, so a bump means the data written
+	/// under the old one has to be re-saved. A reader that guessed at an older layout would
+	/// decode the wrong fields and hand back something that looks plausible, which is worse
+	/// than saying no.
 	public uint32 DataVersion;
+	/// The oldest stored version a LEGACY READER still accepts, nought meaning the current
+	/// one alone.
+	///
+	/// Set it alongside a bump when the component keeps a reader for the layout before, and
+	/// its Serialize body branches on `ar.Version`. One version back, named in the commit
+	/// that adds it, and deleted once the saved data has moved on.
+	public uint32 MinReadDataVersion;
 
-	public this(String typeId, uint32 dataVersion = 1)
+	public this(String typeId, uint32 dataVersion = 1, uint32 minReadDataVersion = 0)
 	{
 		TypeId = typeId;
 		DataVersion = dataVersion;
+		MinReadDataVersion = minReadDataVersion;
 	}
 }

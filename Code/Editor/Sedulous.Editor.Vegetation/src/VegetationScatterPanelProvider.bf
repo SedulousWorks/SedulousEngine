@@ -14,9 +14,8 @@ namespace Sedulous.Editor.Vegetation;
 /// segmented rows over a radius, density, strength and spacing grid.
 ///
 /// TWO rows rather than one, because erasing is per LAYER: with the eraser as a slot beside
-/// the layers, choosing it unlit the layer and the erase target vanished. A slot that is not
-/// a Scattered layer, or whose mesh does not resolve, says so rather than silently doing
-/// nothing.
+/// the layers, choosing it unlit the layer and the erase target vanished. A slot whose mesh
+/// does not resolve says so rather than silently doing nothing.
 class VegetationScatterPanelProvider : IViewportToolPanelProvider
 {
 	public StringView ToolId => "vegetation.scatter";
@@ -33,20 +32,18 @@ class VegetationScatterPanelProvider : IViewportToolPanelProvider
 		var taken = false;
 		manager.ForEach(scope [&] (component, owner) =>
 			{
-				if (taken || (component.Layers == null) || component.Layers.IsEmpty)
+				if (taken || (component.PropLayers == null) || component.PropLayers.IsEmpty)
 					return;
 				taken = true;
-				for (int i < component.Layers.Count)
+				for (int i < component.PropLayers.Count)
 				{
-					let layer = component.Layers[i];
+					let layer = component.PropLayers[i];
 					let label = new String();
 					if (layer.Name.IsEmpty)
 						label.AppendF("Layer {}", i + 1);
 					else
 						label.Set(layer.Name);
-					if (layer.Placement != .Scattered)
-						label.Append(" (not scattered)");
-					else if (layer.Mesh.Get == null)
+					if (layer.Mesh.Get == null)
 						label.Append(" (no mesh)"); // nothing would draw
 					outLabels.Add(label);
 				}
@@ -66,11 +63,11 @@ class VegetationScatterPanelProvider : IViewportToolPanelProvider
 		let count = (int32)labels.Count;
 
 		let root = ToolPanelWidgets.MakePanelRoot();
-		root.AddView(ToolPanelWidgets.MakeRow("Prop layer (Scattered)", 12.0f));
+		root.AddView(ToolPanelWidgets.MakeRow("Prop layer", 12.0f));
 		if (count == 0)
 		{
 			root.AddView(ToolPanelWidgets.MakeRow(
-				"No vegetation layers here, add a Scattered layer", 11.0f));
+				"No prop layers here, add one to the component", 11.0f));
 		}
 
 		// The layer the brush works on, always lit whatever the mode, then the mode itself.

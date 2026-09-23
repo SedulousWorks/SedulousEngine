@@ -42,11 +42,11 @@ class ScatterStrokeCommand : EditorCommand
 	{
 		let manager = (mScene != null) ? mScene.GetSystem<TerrainVegetationComponentManager>() : null;
 		let component = (manager != null) ? manager.Get(mOwner) : null;
-		if ((component == null) || (component.Layers == null)
-			|| ((int)mLayer >= component.Layers.Count))
+		if ((component == null) || (component.PropLayers == null)
+			|| ((int)mLayer >= component.PropLayers.Count))
 			return false;
 
-		let target = component.Layers[(int)mLayer].Instances;
+		let target = component.PropLayers[(int)mLayer].Instances;
 		target.Clear();
 		target.AddRange(instances);
 		return true;

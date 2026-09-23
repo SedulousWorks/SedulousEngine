@@ -41,11 +41,11 @@ class VegetationFixture
 			vegetation.Mask.SetDirect(Mask);
 			vegetation.Mask.SetId(MaskId);
 		}
-		let layer = new VegetationLayer();
+		let layer = new ProceduralVegetationLayer();
 		layer.Name.Set("Grass");
 		layer.Placement = .Mask;
 		layer.MaskPlane = 0;
-		vegetation.Layers.Add(layer);
+		vegetation.ProceduralLayers.Add(layer);
 
 		Scene.Start();
 	}
@@ -89,7 +89,7 @@ class VegetationFixture
 }
 
 /// A headless scene with a 128 metre terrain, two by two chunks, carrying a vegetation
-/// component with a Uniform grass layer and, optionally, a Scattered rock layer.
+/// component with a Uniform grass layer and, optionally, a rock PROP layer.
 ///
 /// `rise` above nought makes the terrain a ramp climbing with x, which is how the slope rule
 /// is put under test.
@@ -104,7 +104,7 @@ class ScatterFixture
 	public EntityHandle Terrain = .();
 	public TerrainVegetationComponentManager Vegetation = null;
 
-	public this(bool withScatteredLayer = true, float rise = 0.0f)
+	public this(bool withPropLayer = true, float rise = 0.0f)
 	{
 		TerrainScene.AddTerrainSceneManagers(Scene);
 		VegetationScene.AddVegetationSceneManagers(Scene);
@@ -126,26 +126,25 @@ class ScatterFixture
 
 		Mesh = Primitives.Cube(1.0f);
 		let component = Vegetation.Add(Terrain);
-		let grass = new VegetationLayer();
+		let grass = new ProceduralVegetationLayer();
 		grass.Name.Set("Grass");
 		grass.Mesh.SetDirect(Mesh);
 		grass.Placement = .Uniform;
-		component.Layers.Add(grass);
-		if (withScatteredLayer)
+		component.ProceduralLayers.Add(grass);
+		if (withPropLayer)
 		{
-			let rocks = new VegetationLayer();
+			let rocks = new PropVegetationLayer();
 			rocks.Name.Set("Rocks");
 			rocks.Mesh.SetDirect(Mesh);
-			rocks.Placement = .Scattered;
 			rocks.ScaleRange = .(1.0f, 1.0f);
 			rocks.MaxSlopeDegrees = 35.0f;
-			component.Layers.Add(rocks);
+			component.PropLayers.Add(rocks);
 		}
 		Scene.Start();
 	}
 
-	/// The Scattered layer's authored instances.
-	public List<Float4x4> Rocks => Vegetation.Get(Terrain).Layers[1].Instances;
+	/// The prop layer's placed instances.
+	public List<Float4x4> Rocks => Vegetation.Get(Terrain).PropLayers[0].Instances;
 
 	/// Drives a press, some drags and a release along a terrain local line.
 	public void Stroke(VegetationScatterTool tool, float x0, float z0, float x1, float z1,

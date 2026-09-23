@@ -158,7 +158,7 @@ class TerrainPlaygroundApp : DefaultApplication
 			mGrassMaterial.SetDefaultFloat("WindHeight", 0.7f);
 
 			let component = vegetation.Add(mTerrain);
-			let layer = new VegetationLayer();
+			let layer = new ProceduralVegetationLayer();
 			layer.Name.Set("Grass");
 			layer.Mesh.SetDirect(mGrassMesh);
 			layer.Material.SetDirect(mGrassMaterial);
@@ -170,7 +170,7 @@ class TerrainPlaygroundApp : DefaultApplication
 			layer.FadeStart = mGrassFadeStart;
 			layer.FadeEnd = mGrassFadeEnd;
 			layer.CastShadows = mGrassShadows;
-			component.Layers.Add(layer);
+			component.ProceduralLayers.Add(layer);
 		}
 
 		// A sphere that orbits overhead, so the cascaded shadow is something that MOVES: a
@@ -348,9 +348,9 @@ class TerrainPlaygroundApp : DefaultApplication
 			if (let vegetation = mScene.GetSystem<TerrainVegetationComponentManager>())
 			{
 				let component = vegetation.Get(mTerrain);
-				if ((component != null) && !component.Layers.IsEmpty)
+				if ((component != null) && !component.ProceduralLayers.IsEmpty)
 				{
-					let layer = component.Layers[0];
+					let layer = component.ProceduralLayers[0];
 					// Density is a SCATTER parameter, so editing it regrows the sets; the fade
 					// and the shadow flag are draw state and take effect the same frame.
 					var changed = igSliderFloat("density /m2", &mGrassDensity, 0.0f, 4.0f, "%.2f", 0);

@@ -180,9 +180,10 @@ class ScatterTests
 		let none = scope ScatterResult();
 		Scatter.ScatterChunk(7, chunk, grid, null, null, Uniform(0.0f), AABB.Empty(), none);
 		Test.Assert(none.Transforms.IsEmpty);
-		var authored = Uniform(1.0f);
-		authored.Placement = .Scattered;
-		Scatter.ScatterChunk(7, chunk, grid, null, null, authored, AABB.Empty(), none);
+		// A layer whose cap is nought holds nothing however dense it is.
+		var capped = Uniform(1.0f);
+		capped.MaxInstancesPerChunk = 0;
+		Scatter.ScatterChunk(7, chunk, grid, null, null, capped, AABB.Empty(), none);
 		Test.Assert(none.Transforms.IsEmpty);
 	}
 
@@ -581,7 +582,6 @@ class ScatterTests
 		defer delete grid;
 
 		var rocks = Uniform(0.0f);
-		rocks.Placement = .Scattered;
 		rocks.ScaleRange = .(1.0f, 1.0f);
 		rocks.MaxSlopeDegrees = 90.0f;
 		let rock = AABB.FromCenterExtents(.(0, 0.5f, 0), .(0.5f, 0.5f, 0.5f));
@@ -705,7 +705,6 @@ class ScatterTests
 		// And the prop stamp rejects every candidate for the same reason, counting them as a
 		// rules rejection rather than silently placing none.
 		var rocks = grass;
-		rocks.Placement = .Scattered;
 		rocks.ScaleRange = .(1.0f, 1.0f);
 		let props = scope List<Float4x4>();
 		let stamp = Scatter.ScatterStamp(3, grid, rocks, AABB.Empty(), 0.0f, 0.0f, 6.0f, 0.5f,

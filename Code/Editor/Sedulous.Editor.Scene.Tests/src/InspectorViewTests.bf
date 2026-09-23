@@ -288,14 +288,14 @@ class InspectorViewTests
 
 		let component = manager.Get(edit.Resolve(terrain));
 		Test.Assert(component != null);
-		let grass = new VegetationLayer();
+		let grass = new ProceduralVegetationLayer();
 		grass.Name.Set("Grass");
 		grass.Density = 2.0f;
-		component.Layers.Add(grass);
-		let rocks = new VegetationLayer();
+		component.ProceduralLayers.Add(grass);
+		let rocks = new ProceduralVegetationLayer();
 		rocks.Name.Set("Rocks");
 		rocks.Density = 0.5f;
-		component.Layers.Add(rocks);
+		component.ProceduralLayers.Add(rocks);
 
 		edit.EntitySelection.Set(terrain);
 		inspector.Refresh();
@@ -308,25 +308,25 @@ class InspectorViewTests
 		// Writing a slot field lands on THAT slot and is one undo step.
 		let before = commands.Count;
 		density.Setter(3.5f);
-		Test.Assert(Near(component.Layers[0].Density, 3.5f), "the first slot took the write");
-		Test.Assert(Near(component.Layers[1].Density, 0.5f), "the second slot is untouched");
+		Test.Assert(Near(component.ProceduralLayers[0].Density, 3.5f), "the first slot took the write");
+		Test.Assert(Near(component.ProceduralLayers[1].Density, 0.5f), "the second slot is untouched");
 		Test.Assert(commands.Count == before + 1);
 
 		commands.Undo();
-		Test.Assert(Near(component.Layers[0].Density, 2.0f), "and it undoes");
+		Test.Assert(Near(component.ProceduralLayers[0].Density, 2.0f), "and it undoes");
 
 		// Consecutive edits of the SAME slot field merge, so a slider drag is ONE undo step:
 		// a single undo goes back past the whole drag rather than one frame of it.
 		density.Setter(4.0f);
 		density.Setter(5.0f);
 		density.Setter(6.0f);
-		Test.Assert(Near(component.Layers[0].Density, 6.0f));
+		Test.Assert(Near(component.ProceduralLayers[0].Density, 6.0f));
 		commands.Undo();
-		Test.Assert(Near(component.Layers[0].Density, 2.0f), "one undo covers the whole drag");
+		Test.Assert(Near(component.ProceduralLayers[0].Density, 2.0f), "one undo covers the whole drag");
 
 		// The second slot kept its own value throughout: the slot is part of the merge key,
 		// so one slot's drag never absorbs another's edit.
-		Test.Assert(Near(component.Layers[1].Density, 0.5f));
+		Test.Assert(Near(component.ProceduralLayers[1].Density, 0.5f));
 	}
 
 	private static bool Near(float a, float b) => Math.Abs(a - b) <= 0.001f;

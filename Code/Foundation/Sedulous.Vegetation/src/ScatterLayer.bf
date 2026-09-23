@@ -12,10 +12,12 @@ enum VegetationPlacement : uint8
 	case Splat;
 	/// Where the painted vegetation mask plane has density.
 	case Mask;
-	/// Authored instances, with no procedural scatter.
-	case Scattered;
+	// Three WAS Scattered, authored instances, until the props moved to their own list on
+	// the component: a prop layer is a kind of layer now rather than a placement. The
+	// enumerator is RETIRED rather than reused, so every value already written still means
+	// what it did.
 	/// The splat share TIMES the mask density, so a mask carves a painted layer.
-	case SplatTimesMask;
+	case SplatTimesMask = 4;
 }
 
 /// The parameters of one vegetation layer: WHERE it grows, the placement source, HOW DENSE,
