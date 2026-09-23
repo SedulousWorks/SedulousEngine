@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Image;
+using Sedulous.Image.DDS;
 using Sedulous.Image.IO;
 using Sedulous.Pipeline.Core;
 using Sedulous.RHI;
@@ -76,10 +78,22 @@ class TextureAssetBuilder : IAssetBuilder
 		if (AssetSource.ReadBytes(context, texture.FileName.Value, bytes) case .Err(let readError))
 			return .Err(readError);
 
+		// A DDS is GPU ready already: its levels pass through when they fit, else level nought
+		// decodes and cooks like any image. Sniffed by MAGIC, never by extension.
+		if (Dds.IsDds(bytes))
+			return BuildDds(texture, context, bytes);
+
 		let image = scope Image();
 		if (ImageIO.LoadImageFromMemory(bytes, image) case .Err(let decodeError))
 			return .Err(decodeError);
+		return BuildFromImage(texture, context, image);
+	}
 
+	/// The image path: a decoded two dimensional image, mips by the asset's flag, and the
+	/// format the policy picks.
+	private static Result<void, ErrorCode> BuildFromImage(TextureAsset texture,
+		AssetBuildContext context, Image image)
+	{
 		let record = scope TextureResource();
 		record.Width = image.Width;
 		record.Height = image.Height;
@@ -114,6 +128,121 @@ class TextureAssetBuilder : IAssetBuilder
 		if (context.Output.WriteObject(record) case .Err(let writeError))
 			return .Err(writeError);
 		return context.Output.WriteData(cPixelStreamName, pixels);
+	}
+
+	// ==================== DDS sources ====================
+	//
+	// A DDS carries GPU ready levels, BC blocks and a mip chain. They pass through UNTOUCHED,
+	// lossless against the package and with no encode, when the authored compression is not
+	// None, the target reads BC, the block format fits the asset's usage by the policy table's
+	// own rules, and the file carries the mip chain the asset asks for. Otherwise level nought
+	// decodes and cooks as a plain image, mips generated and format by policy, which is also
+	// the route for an ASTC or uncompressed target.
+
+	private static TextureFormat DdsFormatToRhi(DdsFormat format, bool srgb)
+	{
+		switch (DdsFormats.WithSrgb(format, srgb))
+		{
+		case .BC1: return .BC1RGBAUnorm;
+		case .BC1Srgb: return .BC1RGBAUnormSrgb;
+		case .BC2: return .BC2RGBAUnorm;
+		case .BC2Srgb: return .BC2RGBAUnormSrgb;
+		case .BC3: return .BC3RGBAUnorm;
+		case .BC3Srgb: return .BC3RGBAUnormSrgb;
+		case .BC4: return .BC4RUnorm;
+		case .BC4Snorm: return .BC4RSnorm;
+		case .BC5: return .BC5RGUnorm;
+		case .BC5Snorm: return .BC5RGSnorm;
+		case .BC6HUf: return .BC6HRGBUfloat;
+		case .BC6HSf: return .BC6HRGBFloat;
+		case .BC7: return .BC7RGBAUnorm;
+		case .BC7Srgb: return .BC7RGBAUnormSrgb;
+		default: return .RGBA8Unorm; // an uncompressed format never passes through
+		}
+	}
+
+	/// Whether a block format is one this usage may carry.
+	///
+	/// Normal is BC7 ALONE rather than BC5, until the shaders reconstruct Z: a BC5 normal map
+	/// has no blue channel, and the forward pass reads one.
+	///
+	/// The usage is the SourceUsage alias because RHI has a TextureUsage of its own, which is
+	/// a bind flag set rather than what a texture is for.
+	private static bool DdsFitsUsage(DdsFormat format,
+		Sedulous.Texture.Compression.SourceUsage usage)
+	{
+		// The sRGB twin is the asset's call, not the file's.
+		let f = DdsFormats.WithSrgb(format, false);
+		switch (usage)
+		{
+		case .Color: return (f == .BC1) || (f == .BC2) || (f == .BC3) || (f == .BC7);
+		case .Normal: return f == .BC7;
+		case .Mask: return (f == .BC4) || (f == .BC7);
+		case .HDR: return (f == .BC6HUf) || (f == .BC6HSf);
+		default: return false;
+		}
+	}
+
+	private static bool DdsPassesThrough(TextureAsset texture, DdsImage dds,
+		Sedulous.Texture.Compression.TargetProfile profile)
+	{
+		if ((texture.Compression == .None) || !profile.Bc)
+			return false;
+		if (!DdsFormats.IsBlockCompressed(dds.Format) || !DdsFitsUsage(dds.Format, texture.Usage))
+			return false;
+
+		// Mips wanted but not in the file: decode and generate them.
+		let hasSize = (dds.Width > 1) || (dds.Height > 1);
+		if (texture.GenerateMipmaps && (dds.MipLevels < 2) && hasSize)
+			return false;
+		return true;
+	}
+
+	private static Result<void, ErrorCode> BuildDds(TextureAsset texture,
+		AssetBuildContext context, Span<uint8> raw)
+	{
+		let dds = scope DdsImage();
+		if (Dds.LoadDds(raw, dds) case .Err(let loadError))
+		{
+			GlobalLog(.Error, "Texture: {} is not a readable DDS, being {}", texture.FileName.Value,
+				(loadError == .NotSupported)
+					? "a volume or a format outside the engine's set"
+					: "truncated or malformed");
+			return .Err(loadError);
+		}
+		if (dds.Cubemap || (dds.ArrayLayers != 1) || (texture.Shape != .Texture2D))
+		{
+			GlobalLog(.Error,
+				"Texture: {} is a cubemap or array DDS, and only two dimensional DDS sources cook",
+				texture.FileName.Value);
+			return .Err(.NotSupported);
+		}
+
+		if (!DdsPassesThrough(texture, dds, TextureCompress.ProfileFor(context)))
+		{
+			let image = scope Image();
+			if (DdsDecode.DecodeLevel(dds, 0, 0, image) case .Err(let decodeError))
+				return .Err(decodeError);
+			return BuildFromImage(texture, context, image);
+		}
+
+		// No mips asked for means level nought alone.
+		let levels = texture.GenerateMipmaps ? dds.MipLevels : 1;
+		var payload = 0;
+		for (uint32 level = 0; level < levels; level++)
+			payload += dds.LevelSize(level);
+
+		let record = scope TextureResource();
+		record.Width = dds.Width;
+		record.Height = dds.Height;
+		record.DepthOrArrayLayers = 1;
+		record.MipLevels = levels;
+		record.Format = DdsFormatToRhi(dds.Format, texture.ColorSpace == .Srgb);
+		FillSampler(texture, record);
+
+		if (context.Output.WriteObject(record) case .Err(let writeError))
+			return .Err(writeError);
+		return context.Output.WriteData(cPixelStreamName, .(dds.Data.Ptr, payload));
 	}
 
 	private static void FillSampler(TextureAsset texture, TextureResource record)

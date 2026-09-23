@@ -3,6 +3,8 @@ using System.Collections;
 using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Image;
+using Sedulous.Image.DDS;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 
@@ -11,8 +13,9 @@ namespace Sedulous.Texture.Pipeline;
 /// Imports an image file as a texture, preset by intent.
 ///
 /// A radiance file becomes an equirectangular sky. A file whose name matches a cube face
-/// convention, with all six siblings beside it, becomes ONE cube asset. Anything else takes
-/// the surface preset, with its usage inferred from the name.
+/// convention, with all six siblings beside it, becomes ONE cube asset. A DDS names its own
+/// facts, its block format saying what it holds. Anything else takes the surface preset, with
+/// its usage inferred from the name.
 class TextureFileImporter : IFileImporter
 {
 	private const String cAssetType = "Sedulous.Texture.Pipeline.TextureAsset";
@@ -23,7 +26,7 @@ class TextureFileImporter : IFileImporter
 	{
 		switch (@extension)
 		{
-		case "png", "jpg", "jpeg", "tga", "bmp", "hdr":
+		case "png", "jpg", "jpeg", "tga", "bmp", "hdr", "dds":
 			return true;
 		default:
 			return false;
@@ -76,27 +79,62 @@ class TextureFileImporter : IFileImporter
 		let suffix = scope String();
 		ImportPaths.ExtensionLower(sourcePath, suffix);
 		if (suffix == "hdr")
-		{
 			asset.SetupForEquirectangularSkybox(); // radiance is an environment, not a surface
-		}
+		else if (suffix == "dds")
+			SetupForDds(asset, sourcePath, stem);
 		else
-		{
-			// The inference only sets the stored fields: the page shows what it guessed and
-			// the author corrects it like any other edit.
-			switch (TextureUsageInference.Infer(stem))
-			{
-			case .Normal:
-				asset.SetupForNormalMap();
-			case .Mask:
-				asset.SetupForDataMask();
-			default:
-				asset.SetupFor3D();
-			}
-		}
+			SetupForInferredUsage(asset, stem);
 
 		if (instance.WriteObject(asset) case .Err(let writeError))
 			return .Err(writeError);
 		return .Ok(instance);
+	}
+
+	/// The usage the universal texture pack name tokens imply.
+	///
+	/// The inference only sets the STORED fields: the page shows what it guessed and the
+	/// author corrects it like any other edit. A name nobody recognises keeps the colour
+	/// default.
+	private static void SetupForInferredUsage(TextureAsset asset, StringView stem)
+	{
+		switch (TextureUsageInference.Infer(stem))
+		{
+		case .Normal:
+			asset.SetupForNormalMap();
+		case .Mask:
+			asset.SetupForDataMask();
+		default:
+			asset.SetupFor3D();
+		}
+	}
+
+	/// A DDS names its OWN facts: BC5 is a normal map, BC4 a data mask, a float format an HDR
+	/// environment, and a DX10 header settles the colour space for a colour map. The name
+	/// tokens decide whatever the file does not.
+	///
+	/// A DDS that cannot be read imports like any other file, and the cook is what says why.
+	private static void SetupForDds(TextureAsset asset, StringView sourcePath, StringView stem)
+	{
+		let bytes = scope List<uint8>();
+		let dds = scope DdsImage();
+		if ((System.IO.File.ReadAll(scope String(sourcePath), bytes) case .Err)
+			|| (Dds.LoadDds(bytes, dds) case .Err))
+		{
+			SetupForInferredUsage(asset, stem);
+			return;
+		}
+
+		if (DdsFormats.IsHdr(dds.Format))
+			asset.SetupForEquirectangularSkybox();
+		else if ((dds.Format == .BC5) || (dds.Format == .BC5Snorm))
+			asset.SetupForNormalMap();
+		else if ((dds.Format == .BC4) || (dds.Format == .BC4Snorm))
+			asset.SetupForDataMask();
+		else
+			SetupForInferredUsage(asset, stem);
+
+		if (dds.ColorSpaceKnown && (asset.Usage == .Color))
+			asset.ColorSpace = DdsFormats.IsSrgb(dds.Format) ? .Srgb : .Linear;
 	}
 
 	/// Copies all six faces into the sources tree and creates ONE cube asset naming the +X

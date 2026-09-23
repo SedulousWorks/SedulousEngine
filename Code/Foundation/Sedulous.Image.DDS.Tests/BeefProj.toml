@@ -1,13 +1,12 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Image.IO.Tests"
+Name = "Sedulous.Image.DDS.Tests"
 TargetType = "BeefTest"
-StartupObject = "Sedulous.Image.IO.Tests.Program"
+StartupObject = "Sedulous.Image.DDS.Tests.Program"
 
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
 "Sedulous.Image" = "*"
 "Sedulous.Image.DDS" = "*"
-"Sedulous.Image.IO" = "*"

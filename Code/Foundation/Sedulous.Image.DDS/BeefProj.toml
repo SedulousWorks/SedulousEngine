@@ -1,13 +1,12 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Image.IO"
+Name = "Sedulous.Image.DDS"
 TargetType = "BeefLib"
-StartupObject = "Sedulous.Image.IO.Program"
+StartupObject = "Sedulous.Image.DDS.Program"
 
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
 "Sedulous.Image" = "*"
-"Sedulous.Image.DDS" = "*"
-"stb_image-Beef" = "*"
+"bcdec-Beef" = "*"

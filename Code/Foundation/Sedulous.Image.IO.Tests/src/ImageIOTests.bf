@@ -1,7 +1,9 @@
 using System;
+using System.Collections;
 using Sedulous.Core.IO;
 using Sedulous.Core;
 using Sedulous.Image;
+using Sedulous.Image.DDS;
 using Sedulous.Image.IO;
 
 namespace Sedulous.Image.IO.Tests;
@@ -253,5 +255,51 @@ class ImageIOTests
 		Test.Assert(image.Format == .RGBA8, "and reformatted");
 		Test.Assert(image.DataSize == 16);
 		Test.Assert(image.InstanceId == id, "in place, so a cache keyed on it still finds it");
+	}
+
+	/// A DDS reaches the generic loader as its DECODED level nought, so every image consumer
+	/// reads one without knowing it did. The magic is what says so, never the extension.
+	[Test]
+	public static void ADdsLoadsThroughTheGenericLoaderAsItsDecodedLevelNought()
+	{
+		let source = scope DdsImage();
+		source.Width = 1;
+		source.Height = 1;
+		source.Format = .RGBA8Srgb;
+		source.ColorSpaceKnown = true;
+		source.Data.Add(9);
+		source.Data.Add(8);
+		source.Data.Add(7);
+		source.Data.Add(255);
+
+		let file = scope List<uint8>();
+		Test.Assert(Dds.WriteDds(source, file) case .Ok);
+
+		let image = scope Image();
+		Test.Assert(ImageIO.LoadImageFromMemory(file, image) case .Ok);
+		Test.Assert(image.Format == .RGBA8);
+		Test.Assert(image.ColorSpace == .Srgb);
+		let p = image.GetPixel(0, 0);
+		Test.Assert(p.R == 9);
+		Test.Assert(p.G == 8);
+		Test.Assert(p.B == 7);
+
+		// And from a path, where the sniff reads the magic and then the file.
+		let path = "scratch_image_io_probe.dds";
+		let stream = scope System.IO.FileStream();
+		Test.Assert(stream.Create(path) case .Ok);
+		Test.Assert(stream.TryWrite(file) case .Ok);
+		stream.Close();
+		defer System.IO.File.Delete(path);
+
+		let fromPath = scope Image();
+		Test.Assert(ImageIO.LoadImage(path, fromPath) case .Ok);
+		Test.Assert(fromPath.GetPixel(0, 0).R == 9);
+
+		// A file that is not a DDS still goes to stb, extension or not.
+		let png = scope Image();
+		Test.Assert(ImageIO.LoadImageFromMemory(
+			.(&Fixtures.Rgba2x2Png[0], Fixtures.Rgba2x2Png.Count), png) case .Ok);
+		Test.Assert(png.Width == 2);
 	}
 }

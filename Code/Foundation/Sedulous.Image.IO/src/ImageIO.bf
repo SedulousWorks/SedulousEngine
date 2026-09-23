@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Image;
+using Sedulous.Image.DDS;
 using stb_image;
 
 namespace Sedulous.Image.IO;
@@ -10,6 +12,11 @@ namespace Sedulous.Image.IO;
 /// A direct dependency rather than an abstract loader interface: there is one decoder, the
 /// formats it handles are the formats the engine handles, and an interface with a single
 /// implementation is a layer that only ever costs.
+///
+/// A DDS is the ONE exception, and it is sniffed by its magic rather than its extension: the
+/// container is GPU ready rather than an encoded image, so it goes to the DDS reader and
+/// comes back as its decoded level nought. Every image consumer, a thumbnail or a model
+/// loader, therefore reads a DDS without knowing that it did.
 static class ImageIO
 {
 	/// Every load asks for four channels, so the caller always gets RGBA and never has to
@@ -23,6 +30,16 @@ static class ImageIO
 	/// the file itself is what says which.
 	public static Result<void, ErrorCode> LoadImage(StringView path, Image image)
 	{
+		// A four byte probe rather than a read: stb still streams a PNG or a JPEG from the
+		// path itself, and a file that cannot be opened falls through for stb to report.
+		if (Dds.IsDdsFile(path))
+		{
+			let bytes = scope List<uint8>();
+			if (System.IO.File.ReadAll(scope String(path), bytes) case .Err)
+				return .Err(.NotFound);
+			return Dds.LoadDdsAsImage(bytes, image);
+		}
+
 		let terminated = scope String(path);
 		let isHdr = stbi_is_hdr(terminated) != 0;
 
@@ -40,6 +57,8 @@ static class ImageIO
 	{
 		if (buffer.IsEmpty)
 			return .Err(.InvalidArgument);
+		if (Dds.IsDds(buffer))
+			return Dds.LoadDdsAsImage(buffer, image); // level nought, decoded
 
 		let isHdr = stbi_is_hdr_from_memory(buffer.Ptr, (int32)buffer.Length) != 0;
 
