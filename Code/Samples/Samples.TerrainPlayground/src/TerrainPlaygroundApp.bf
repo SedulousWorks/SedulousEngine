@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.DefaultApp;
@@ -65,6 +66,8 @@ class TerrainPlaygroundApp : DefaultApplication
 	private TerrainType mType = .Hills;
 	private float mAmplitude = 0.7f;
 	private float mFrequency = 0.06f;
+	private bool mHole = true;
+	private float mHoleRadius = 16.0f;
 	private bool mOrbit = true;
 	private float mOrbitTime = 0.0f;
 	private float mOrbitSpeed = 0.6f;
@@ -121,6 +124,7 @@ class TerrainPlaygroundApp : DefaultApplication
 
 		mHeightfield = new Heightfield(cGridSize, .(cWorldSize, cWorldSize), 0.0f, cMaxHeight);
 		HeightfieldShapes.Generate(mHeightfield, mType, mAmplitude, mFrequency);
+		ApplyHole();
 
 		mTerrainResource = new TerrainResource();
 		mTerrainResource.Heightfield.SetDirect(mHeightfield); // the product itself, not an id
@@ -243,6 +247,21 @@ class TerrainPlaygroundApp : DefaultApplication
 		splat.BumpVersion();
 	}
 
+	/// The whole plane solid, then one cut disc when the hole is on. Kept apart from the shape
+	/// generator so a regenerate leaves the cut where it is.
+	private void ApplyHole()
+	{
+		if (mHeightfield == null)
+			return;
+
+		let solid = scope List<uint8>();
+		solid.Resize(mHeightfield.Holes.Length);
+		mHeightfield.SetHoles(.(solid.Ptr, solid.Count));
+		if (mHole)
+			HeightfieldHoles.Cut(mHeightfield, -30.0f, 70.0f, mHoleRadius);
+		mHeightfield.BumpVersion();
+	}
+
 	private void ApplySun()
 	{
 		if (mScene == null)
@@ -310,6 +329,13 @@ class TerrainPlaygroundApp : DefaultApplication
 				if (mHeightfield != null)
 					HeightfieldShapes.Generate(mHeightfield, mType, mAmplitude, mFrequency);
 			}
+
+			// A cut disc off centre: nothing draws, casts, collides or grows there, and the sky
+			// shows through from above.
+			var holeChanged = igCheckbox("hole (a cut disc at -30, 70)", &mHole);
+			holeChanged |= igSliderFloat("hole radius", &mHoleRadius, 2.0f, 40.0f, "%.0f", 0);
+			if (holeChanged)
+				ApplyHole();
 
 			igSeparator();
 			igTextDisabled("Shadow caster - watch its shadow sweep the terrain");
