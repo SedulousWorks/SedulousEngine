@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using Sedulous.Content;
 using Sedulous.Core;
+using Sedulous.Image;
+using Sedulous.Image.IO;
 using Sedulous.Model;
 using Sedulous.RHI;
 using Sedulous.Texture.Resource;
@@ -10,10 +12,13 @@ namespace Sedulous.ModelImporter;
 
 /// Cooking a model's textures straight into the output database.
 ///
-/// The loaders DECODE every texture into raw pixels already, whether it came from a file
-/// beside the model, a data reference inside it, or a buffer view in a binary container. So
-/// the cook works from those bytes: no file is read again, and an embedded texture works
-/// exactly like an external one.
+/// The loaders DECODE most textures into raw pixels already, whether one came from a file
+/// beside the model, a data reference inside it, or a buffer view in a binary container, so
+/// the cook works from those bytes and an embedded texture works exactly like an external one.
+///
+/// A texture the loader left ON DISK, a GPU ready DDS, is the exception and is decoded here.
+/// This DIRECT path has no pass through, that being the asset pipeline's, so its level nought
+/// cooks as RGBA8 like everything else.
 static class ModelCookTextures
 {
 	/// The stream the pixels travel in, which is the same one a cooked texture uses.
@@ -29,14 +34,30 @@ static class ModelCookTextures
 		ModelTextureClassify.LinearTextures(model, linear);
 
 		let textures = model.Textures;
+		let decoded = scope Image();
 		for (int i < textures.Length)
 		{
 			let texture = textures[i];
+			var pixels = (texture != null) ? texture.Data : Span<uint8>();
+			var width = (texture != null) ? (uint32)Math.Max(texture.Width, 0) : 0;
+			var height = (texture != null) ? (uint32)Math.Max(texture.Height, 0) : 0;
+
+			// A texture the loader left on disk decodes here, its level nought standing in.
+			if ((texture != null) && pixels.IsEmpty && !texture.SourceFile.IsEmpty)
+			{
+				if ((ImageIO.LoadImage(texture.SourceFile, decoded) case .Ok)
+					&& (decoded.Format == .RGBA8))
+				{
+					pixels = decoded.PixelData;
+					width = decoded.Width;
+					height = decoded.Height;
+				}
+			}
+
 			// The loaders decode to four bytes a texel; anything else is not something this
 			// can cook, and an empty identity says so.
-			let usable = (texture != null) && !texture.Data.IsEmpty && (texture.Width > 0)
-				&& (texture.Height > 0)
-				&& (texture.DataSize == (int)texture.Width * (int)texture.Height * 4);
+			let usable = !pixels.IsEmpty && (width > 0) && (height > 0)
+				&& (pixels.Length == (int)width * (int)height * 4);
 			if (!usable)
 			{
 				outGuids.Add(.Empty);
@@ -44,8 +65,8 @@ static class ModelCookTextures
 			}
 
 			let record = scope TextureResource();
-			record.Width = (uint32)texture.Width;
-			record.Height = (uint32)texture.Height;
+			record.Width = width;
+			record.Height = height;
 			// The colour space follows USAGE: a data map stays linear, since decoding one as
 			// sRGB corrupts its values, and a colour map is sRGB encoded.
 			record.Format = ((i < linear.Count) && linear[i]) ? TextureFormat.RGBA8Unorm
@@ -65,7 +86,7 @@ static class ModelCookTextures
 				continue;
 			}
 
-			let wrote = instance.WriteData(cDataStream, texture.Data);
+			let wrote = instance.WriteData(cDataStream, pixels);
 			outGuids.Add((wrote case .Ok) ? instance.Id : Guid.Empty);
 		}
 	}

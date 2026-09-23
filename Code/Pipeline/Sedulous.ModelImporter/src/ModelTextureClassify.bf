@@ -38,4 +38,23 @@ static class ModelTextureClassify
 			Mark(material.OcclusionTextureIndex);
 		}
 	}
+
+	/// Marks every texture a material binds in its NORMAL slot.
+	///
+	/// That is the usage a file backed texture asset carries; the other linear slots, the
+	/// packed or separate metal and roughness ones and occlusion, are data masks instead.
+	public static void NormalTextures(Model model, List<bool> outNormal)
+	{
+		outNormal.Clear();
+		outNormal.Count = model.Textures.Length;
+
+		for (let material in model.Materials)
+		{
+			if (material == null)
+				continue;
+			let index = material.NormalTextureIndex;
+			if ((index >= 0) && (index < outNormal.Count))
+				outNormal[index] = true;
+		}
+	}
 }

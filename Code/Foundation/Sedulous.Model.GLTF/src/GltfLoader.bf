@@ -5,6 +5,7 @@ using Sedulous.Core.IO;
 using Sedulous.Model;
 using Sedulous.Model.IO;
 using Sedulous.Image;
+using Sedulous.Image.DDS;
 using Sedulous.Image.IO;
 using cgltf_Beef;
 
@@ -157,6 +158,23 @@ class GltfLoader : IModelLoader
 					material.MetallicRoughnessTextureIndex =
 						(int32)cgltf_texture_index(mData, pbr.metallic_roughness_texture.texture);
 			}
+			else if (source.has_pbr_specular_glossiness != 0)
+			{
+				// KHR_materials_pbrSpecularGlossiness, which is what a Lumberyard export ships:
+				// the diffuse map and factor stand in for the base colour, the glossiness
+				// inverts to roughness, and the surface is taken as dielectric. The specular
+				// map is NOT converted, a true specular gloss to metal rough conversion being
+				// a step of its own. Only reached when the material carries no metallic
+				// roughness block, which is the one the standard prefers.
+				let sg = &source.pbr_specular_glossiness;
+				material.BaseColorFactor = .(sg.diffuse_factor[0], sg.diffuse_factor[1],
+					sg.diffuse_factor[2], sg.diffuse_factor[3]);
+				if (sg.diffuse_texture.texture != null)
+					material.BaseColorTextureIndex =
+						(int32)cgltf_texture_index(mData, sg.diffuse_texture.texture);
+				material.MetallicFactor = 0.0f;
+				material.RoughnessFactor = 1.0f - sg.glossiness_factor;
+			}
 
 			if (source.normal_texture.texture != null)
 			{
@@ -248,9 +266,24 @@ class GltfLoader : IModelLoader
 			if (source.sampler != null)
 				texture.SamplerIndex = (int32)cgltf_sampler_index(mData, source.sampler);
 
-			if (source.image != null)
+			// MSFT_texture_dds: the texture names a PNG or a JPEG source for readers without
+			// DDS, and the GPU ready DDS in the extension. The DDS is preferred where both are
+			// shipped, which is what a Lumberyard export does.
+			var preferred = source.image;
+			for (cgltf_size e = 0; e < source.extensions_count; e++)
 			{
-				let image = source.image;
+				let ext = source.extensions[e];
+				if ((ext.name == null) || (ext.data == null)
+					|| (StringView(ext.name) != "MSFT_texture_dds"))
+					continue;
+				let ddsIndex = ParseExtensionSource(ext.data);
+				if ((ddsIndex >= 0) && ((cgltf_size)ddsIndex < mData.images_count))
+					preferred = &mData.images[ddsIndex];
+			}
+
+			if (preferred != null)
+			{
+				let image = preferred;
 
 				if (image.mime_type != null)
 					AppendCString(texture.MimeType, image.mime_type);
@@ -272,9 +305,18 @@ class GltfLoader : IModelLoader
 					{
 						let imagePath = scope String();
 						PathJoin(mBasePath, uri, imagePath);
-						let external = scope Image();
-						if (ImageIO.LoadImage(imagePath, external) case .Ok)
-							StoreImageData(external, texture);
+						// A DDS stays UNDECODED: it is GPU ready, and the pipeline passes its
+						// levels through from the file rather than re-encoding them.
+						if (Dds.IsDdsFile(imagePath))
+						{
+							texture.SourceFile.Set(imagePath);
+						}
+						else
+						{
+							let external = scope Image();
+							if (ImageIO.LoadImage(imagePath, external) case .Ok)
+								StoreImageData(external, texture);
+						}
 					}
 				}
 				else if (image.buffer_view != null)
@@ -345,6 +387,34 @@ class GltfLoader : IModelLoader
 	///
 	/// cgltf's own base64 decoder is used rather than a second one, so a payload it can
 	/// read here is one it could read anywhere else in the file.
+	/// The `source` integer of a `{"source": N}` extension body, cgltf handing an extension
+	/// over as raw JSON, or minus one when there is none.
+	private static int ParseExtensionSource(char8* json)
+	{
+		let text = StringView(json);
+		let key = text.IndexOf("\"source\"");
+		if (key < 0)
+			return -1;
+
+		var at = key + 8;
+		while ((at < text.Length)
+			&& ((text[at] == ' ') || (text[at] == ':') || (text[at] == '\t')
+				|| (text[at] == '\n') || (text[at] == '\r')))
+		{
+			at++;
+		}
+		if ((at >= text.Length) || (text[at] < '0') || (text[at] > '9'))
+			return -1;
+
+		var value = 0;
+		while ((at < text.Length) && (text[at] >= '0') && (text[at] <= '9'))
+		{
+			value = value * 10 + (int)(text[at] - '0');
+			at++;
+		}
+		return value;
+	}
+
 	private bool LoadImageFromDataUri(char8* dataUri, Image outImage)
 	{
 		// The shape is data:image/png;base64,<payload>, and only the payload matters.

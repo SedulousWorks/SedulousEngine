@@ -5,6 +5,7 @@ using Sedulous.Core.IO;
 using Sedulous.Model;
 using Sedulous.Model.IO;
 using Sedulous.Image;
+using Sedulous.Image.DDS;
 using Sedulous.Image.IO;
 using ufbx_Beef;
 
@@ -403,16 +404,25 @@ class FbxLoader : IModelLoader
 	/// an unbounded walk of a deep tree costs a stat per level per texture.
 	private const int cParentSearchDepth = 5;
 
+	/// Takes the file at `path`: a DDS stays UNDECODED, being GPU ready, so the pipeline
+	/// passes its levels through from the file; anything else decodes here.
 	private bool TryLoadInto(StringView path, ModelTexture texture)
 	{
 		if (!FileExists(path))
 			return false;
 
-		let image = scope Image();
-		if (!(ImageIO.LoadImage(path, image) case .Ok))
-			return false;
+		if (Dds.IsDdsFile(path))
+		{
+			texture.SourceFile.Set(path);
+		}
+		else
+		{
+			let image = scope Image();
+			if (!(ImageIO.LoadImage(path, image) case .Ok))
+				return false;
+			StoreImageData(image, texture);
+		}
 
-		StoreImageData(image, texture);
 		// Recorded so a later step can tell two textures apart by where they came from,
 		// which is how the importer avoids importing one image twice.
 		texture.Uri.Set(path);

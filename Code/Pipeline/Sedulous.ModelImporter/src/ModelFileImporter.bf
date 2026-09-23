@@ -218,7 +218,8 @@ class ModelFileImporter : IFileImporter
 
 		let suffix = scope String();
 		ImportPaths.ExtensionLower(sourcePath, suffix);
-		if (suffix == "gltf")
+		let sidecarsCopied = suffix == "gltf";
+		if (sidecarsCopied)
 			GltfSidecars.Copy(sourcePath, context, deferredWrites);
 
 		let stem = ImportPaths.StemOf(fileName);
@@ -248,8 +249,8 @@ class ModelFileImporter : IFileImporter
 		let textureGuids = scope List<Guid>();
 		if (opt.ImportTextures)
 		{
-			ModelImportTextures.Import(model, modelGroup, opt, textureGuids, claimed,
-				deferredWrites);
+			ModelImportTextures.Import(model, context, sidecarsCopied, modelGroup, opt,
+				textureGuids, claimed, deferredWrites);
 		}
 		else
 		{

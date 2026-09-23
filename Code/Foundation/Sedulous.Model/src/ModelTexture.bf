@@ -11,6 +11,13 @@ class ModelTexture
 {
 	public String Name = new .() ~ delete _;
 	public String Uri = new .() ~ delete _;
+	/// The resolved ON DISK file when the loader left the texture UNDECODED because it is a
+	/// GPU ready container, which today means a DDS: block compressed levels a pipeline passes
+	/// through rather than re-encodes.
+	///
+	/// Empty when the loader decoded the pixels, or found nothing. A consumer that needs
+	/// pixels loads this file through the generic image loader, which decodes level nought.
+	public String SourceFile = new .() ~ delete _;
 	/// The encoded form, such as "image/png".
 	public String MimeType = new .() ~ delete _;
 

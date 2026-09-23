@@ -113,7 +113,7 @@ class TextureFileImporter : IFileImporter
 	/// tokens decide whatever the file does not.
 	///
 	/// A DDS that cannot be read imports like any other file, and the cook is what says why.
-	private static void SetupForDds(TextureAsset asset, StringView sourcePath, StringView stem)
+	public static void SetupForDds(TextureAsset asset, StringView sourcePath, StringView stem)
 	{
 		let bytes = scope List<uint8>();
 		let dds = scope DdsImage();
