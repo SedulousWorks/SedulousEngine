@@ -176,14 +176,14 @@ class ScatterTests
 		Test.Assert(Internal.MemCmp(full.Transforms.Ptr, capped.Transforms.Ptr,
 			4096 * strideof(Float4x4)) == 0);
 
-		// Nothing to do: no density, or an authored, Scattered, layer.
+		// Nothing to do: no density at all.
 		let none = scope ScatterResult();
 		Scatter.ScatterChunk(7, chunk, grid, null, null, Uniform(0.0f), AABB.Empty(), none);
 		Test.Assert(none.Transforms.IsEmpty);
 		// A layer whose cap is nought holds nothing however dense it is.
-		var capped = Uniform(1.0f);
-		capped.MaxInstancesPerChunk = 0;
-		Scatter.ScatterChunk(7, chunk, grid, null, null, capped, AABB.Empty(), none);
+		var noRoom = Uniform(1.0f);
+		noRoom.MaxInstancesPerChunk = 0;
+		Scatter.ScatterChunk(7, chunk, grid, null, null, noRoom, AABB.Empty(), none);
 		Test.Assert(none.Transforms.IsEmpty);
 	}
 
