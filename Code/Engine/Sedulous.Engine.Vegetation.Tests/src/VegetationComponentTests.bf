@@ -149,6 +149,9 @@ class VegetationComponentTests
 		for (let s in sets)
 		{
 			Test.Assert(s.Key != 0);
+			// The layer's window, which the vertex shaders dissolve against per instance.
+			Test.Assert(Near(s.FadeStart, 40.0f));
+			Test.Assert(Near(s.FadeEnd, 80.0f));
 			// The splat share is one on the painted half, so every candidate is kept.
 			Test.Assert(s.InstanceCount == 1024);
 			Test.Assert(s.Transforms != null);

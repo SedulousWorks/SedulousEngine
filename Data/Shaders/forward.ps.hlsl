@@ -21,7 +21,7 @@ cbuffer View : register(b0, space0) {        // shared with the VS (same layout)
     float4 ProbeCenter;                // xyz = reflection-probe center (world), w = probe count (0 = none)
     float4 ProbeBoxMin;                // xyz = probe box min corner,  w = probe cube slice (index into ProbeArray)
     float4 ProbeBoxMax;                // xyz = probe box max corner,  w = probe intensity
-    float4 ShadowParams;               // x = CSM far-fade width in WORLD UNITS; yzw spare
+    float4 ShadowParams;               // x = CSM far-fade width in WORLD UNITS, y = clip-space Y sign, zw = the instance fade window (the vertex stage's)
     float4 DebugParams;                // x = semantic debug-view mode (0 = off); yzw spare
     float4 IblParams;                  // x = IBL diffuse intensity, y = IBL specular intensity; zw spare
 };

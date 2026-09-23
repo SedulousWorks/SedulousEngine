@@ -4,7 +4,8 @@
 // variants: SKINNED INSTANCED ALPHA_TEST WIND
 cbuffer ShadowView : register(b0, space0) {
     row_major float4x4 LightViewProj;
-    float4             ShadowWind;   // x = time (s) for the WIND sway; yzw spare
+    float4             ShadowWind;   // x = time (s) for the WIND sway, y/z = the instance fade start/end (a faded set's private slot; 0 = none)
+    float4             ShadowCamera; // xyz = the CAMERA's position: the fade is by camera distance, not the light's
 };
 #ifdef WIND
 #include "wind.hlsli"
@@ -29,6 +30,7 @@ float4x4 BlendBones(uint4 j, float4 w, uint base) {
 #ifdef INSTANCED
 struct InstanceData { row_major float4x4 World; row_major float4x4 PrevWorld; float4 Tint; };
 StructuredBuffer<InstanceData> Instances : register(t0, space1);
+#include "instance_fade.hlsli"
 #else
 cbuffer Object : register(b0, space1) {
     row_major float4x4 World;
@@ -64,10 +66,15 @@ float4 main(VSInput input) : SV_Position {
 #endif
 #ifdef INSTANCED
     float4x4 world = Instances[input.dataOffsets.x].World;
+    float fadeKeep = InstanceFadeKeep(world[3].xyz, ShadowCamera.xyz,
+                                      Instances[input.dataOffsets.x].Tint.a, ShadowWind.yz);
 #else
     float4x4 world = World;
 #endif
     float3 lp = input.position;
+#ifdef INSTANCED
+    lp *= fadeKeep; // a faded out instance casts nothing
+#endif
 #ifdef SKINNED
   #ifdef INSTANCED
     uint boneBase = input.dataOffsets.y;

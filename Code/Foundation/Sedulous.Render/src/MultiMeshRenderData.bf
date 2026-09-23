@@ -20,6 +20,17 @@ class MultiMeshRenderData : MeshRenderData
 	/// Optional per instance tints. Null uses the shared colour.
 	public Color* Tints = null;
 	public uint32 InstanceCount = 0;
+	/// The per instance distance fade in metres, nought or below at the end meaning none:
+	/// full density inside the start and a smoothstep to nothing at the end, evaluated PER
+	/// INSTANCE in the vertex shaders against its own camera distance and its rank, which is
+	/// its place in the set's random order and which the renderer writes into its tint's alpha
+	/// at upload.
+	///
+	/// The draw count prefix stays the coarse bound; this is what removes the SEAM between
+	/// neighbouring chunks, a vegetation layer's window being what fills it in.
+	public float FadeStart = 0.0f;
+	public float FadeEnd = 0.0f;
+
 	/// Instances to UPLOAD when more than InstanceCount are borrowed; nought means the
 	/// instance count.
 	///

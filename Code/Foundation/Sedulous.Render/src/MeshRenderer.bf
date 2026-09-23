@@ -34,6 +34,11 @@ class MeshRenderer : Renderer
 	private const uint32 cMaxShadowPasses = 256;
 	/// The instanced sets a pick pass can id per frame, each taking a shadow view ring slot.
 	private const uint32 cMaxPickMultiMeshSets = 64;
+	/// The FADED instanced sets per frame that get a PRIVATE view slot carrying their window:
+	/// the forward view ring and the shadow view ring each budget this many beyond their own
+	/// passes. A set past the budget draws through the pass's own slot, so it is visible and
+	/// simply not faded, which beats dropping it.
+	private const uint32 cMaxFadedSetSlots = 256;
 	/// A set not extracted for this many upload frames releases its buffers and bind groups,
 	/// through the retire queue when one is wired, and leaves the pool: per chunk vegetation
 	/// sets come and go with the camera, and a set seen once must not pin its buffer for the
@@ -192,6 +197,8 @@ class MeshRenderer : Renderer
 	private Dictionary<uint64, InstanceEntry> mInstances = new .() ~ delete _;
 
 	private DynamicUniformRing mViewRing ~ delete _;
+	/// The pass's own view block, kept so a FADED instanced set can copy it with its window.
+	private MeshViewData mPassView = .();
 	private DynamicUniformRing mShadowViewRing ~ delete _;
 	private DynamicUniformRing mObjectRing ~ delete _;
 	private DynamicUniformRing mInstanceRing ~ delete _;
@@ -537,9 +544,12 @@ class MeshRenderer : Renderer
 			+ mCaptureFacePasses + mPickPasses);
 		// A pick pass takes shadow view slots too: one for itself and one per instanced set
 		// it ids.
-		let shadowViewCap = cMaxShadowPasses + mPickPasses * (1 + cMaxPickMultiMeshSets);
+		let shadowViewCap = cMaxShadowPasses + mPickPasses * (1 + cMaxPickMultiMeshSets)
+			+ cMaxFadedSetSlots;
 
-		if (!mViewRing.Reserve(maxDraws) || !mShadowViewRing.Reserve(shadowViewCap)
+		// The view ring takes one slot per pass view, plus the faded sets' private copies.
+		if (!mViewRing.Reserve(maxDraws + cMaxFadedSetSlots)
+			|| !mShadowViewRing.Reserve(shadowViewCap)
 			|| !mObjectRing.Reserve(drawCap) || !mInstanceRing.Reserve(drawCap)
 			|| !mOffsetsRing.Reserve(drawCap) || !mLightRing.Reserve(cMaxLights)
 			|| !mLocalShadowRing.Reserve(cMaxLocalShadows) || !mBoneRing.Reserve(mBoneSlotsWanted))
@@ -952,6 +962,25 @@ class MeshRenderer : Renderer
 	/// How many instanced sets the pool holds, for the lifecycle tests.
 	public int MultiMeshSetCount => mMultiMeshSets.Count;
 
+	/// A test readback of the TINT written for one instance: a faded set's rank rides its
+	/// alpha, so this is how the rank is checked without a GPU.
+	public bool ReadMultiMeshInstanceTint(uint64 key, uint32 region, uint32 index, out Color tint)
+	{
+		tint = .(1, 1, 1, 1);
+		if (!mMultiMeshSets.TryGetValue(key, let set))
+			return false;
+		if ((set.InstanceBuffer == null) || (region >= (uint32)MultiMeshSet.cMaxFramesInFlight)
+			|| (index >= set.Capacity))
+			return false;
+
+		let mapped = (MeshInstanceData*)set.InstanceBuffer.Map();
+		if (mapped == null)
+			return false;
+		tint = mapped[(int)region * (int)set.Capacity + (int)index].Tint;
+		set.InstanceBuffer.Unmap();
+		return true;
+	}
+
 	/// A test readback: the world matrix uploaded for one instance of one REGION of the set
 	/// keyed `key`, false when there is no such set, region or slot.
 	///
@@ -1090,9 +1119,14 @@ class MeshRenderer : Renderer
 			if (mapped != null)
 			{
 				let destination = mapped + (int)region * (int)set.Capacity;
+				// A FADED set carries each instance's rank in its tint's alpha, which is what
+				// the vertex shaders dissolve against; see instance_fade.hlsli.
+				let ranked = multiMesh.FadeEnd > 0.0f;
 				for (uint32 i = 0; i < uploadCount; i++)
 				{
-					let tint = (multiMesh.Tints != null) ? multiMesh.Tints[i] : multiMesh.Color;
+					var tint = (multiMesh.Tints != null) ? multiMesh.Tints[i] : multiMesh.Color;
+					if (ranked)
+						tint.A = ((float)i + 0.5f) / (float)uploadCount;
 					// Static content has no motion, so the previous world is the current one.
 					destination[i] = .(multiMesh.Transforms[i], multiMesh.Transforms[i], tint);
 				}
@@ -1307,6 +1341,8 @@ class MeshRenderer : Renderer
 		}
 
 		*(MeshViewData*)view.Ptr = viewData;
+		// A faded instanced set copies this with its own window; see ResolveMultiMesh.
+		mPassView = viewData;
 		let viewOffset = view.ByteOffset;
 
 		// A blended run is never instanced: its back to front order has to dominate.
@@ -1400,12 +1436,17 @@ class MeshRenderer : Renderer
 			var pickView = MeshPickViewData();
 			pickView.ViewProj = context.ViewProj;
 			pickView.WindTime = context.TimeSeconds;
+			// The camera the instance fade measures from; an unfaded pass leaves w at nought.
+			pickView.Camera = .(context.CameraPos.X, context.CameraPos.Y, context.CameraPos.Z,
+				0.0f);
 			*(MeshPickViewData*)shadowView.Ptr = pickView;
 		}
 		else
 		{
 			var shadowData = MeshShadowViewData(context.ViewProj);
 			shadowData.Wind.X = context.TimeSeconds;
+			shadowData.Camera = .(context.CameraPos.X, context.CameraPos.Y, context.CameraPos.Z,
+				0.0f);
 			*(MeshShadowViewData*)shadowView.Ptr = shadowData;
 		}
 		let shadowViewOffset = shadowView.ByteOffset;
@@ -1916,6 +1957,24 @@ class MeshRenderer : Renderer
 		if (!skinned && (mRampBuffer == null))
 			return;
 
+		// A FADED set draws through a private copy of the pass's view block carrying its
+		// window in ShadowParams.zw: the instanced path binds no per draw block of its own,
+		// so this is where the window can ride. See instance_fade.hlsli.
+		var setViewOffset = viewOffset;
+		if (multiMesh.FadeEnd > 0.0f)
+		{
+			let slot = mViewRing.Allocate();
+			// Past the budget: the pass's slot, drawn unfaded rather than dropped.
+			if (slot.Ok)
+			{
+				var faded = mPassView;
+				faded.ShadowParams.Z = multiMesh.FadeStart;
+				faded.ShadowParams.W = multiMesh.FadeEnd;
+				*(MeshViewData*)slot.Ptr = faded;
+				setViewOffset = slot.ByteOffset;
+			}
+		}
+
 		let material = (multiMesh.Material != null) ? multiMesh.Material : mDefaultMaterial;
 		var config = ConfigFor(multiMesh, context, true);
 		if (skinned)
@@ -1926,7 +1985,7 @@ class MeshRenderer : Renderer
 
 		var template = ResolvedDraw();
 		template.ViewSet = mViewBindGroup;
-		template.ViewOffset = viewOffset;
+		template.ViewOffset = setViewOffset;
 		template.ViewDynamic = true;
 		template.DrawSet = set.ActiveInstanceBindGroup;
 		template.DrawDynamic = false;
@@ -1979,10 +2038,29 @@ class MeshRenderer : Renderer
 			var data = MeshPickViewData();
 			data.ViewProj = context.ViewProj;
 			data.WindTime = context.TimeSeconds;
+			data.FadeStart = multiMesh.FadeStart;
+			data.Camera = .(context.CameraPos.X, context.CameraPos.Y, context.CameraPos.Z,
+				multiMesh.FadeEnd);
 			data.PickIndex = EntityTag.Index(multiMesh.EntityId) + 1;
 			data.PickGeneration = EntityTag.Generation(multiMesh.EntityId);
 			*(MeshPickViewData*)pickView.Ptr = data;
 			viewOffset = pickView.ByteOffset;
+		}
+		else if ((multiMesh.FadeEnd > 0.0f) && (context.View != null))
+		{
+			// A faded set's SHADOW: its window rides a private shadow view slot, the fade
+			// measured from the CAMERA the pass is coupled to. No view means a pass with no
+			// camera, and so no fade.
+			let shadowView = mShadowViewRing.Allocate();
+			// Past the budget: the pass's slot, unfaded rather than dropped.
+			if (shadowView.Ok)
+			{
+				var data = MeshShadowViewData(context.ViewProj);
+				data.Wind = .(context.TimeSeconds, multiMesh.FadeStart, multiMesh.FadeEnd, 0.0f);
+				data.Camera = .(context.CameraPos.X, context.CameraPos.Y, context.CameraPos.Z, 0.0f);
+				*(MeshShadowViewData*)shadowView.Ptr = data;
+				viewOffset = shadowView.ByteOffset;
+			}
 		}
 
 		let masked = (multiMesh.Material != null)

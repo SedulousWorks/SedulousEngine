@@ -277,4 +277,64 @@ class MultiMeshLifecycleTests
 		Test.Assert(renderer.ReadMultiMeshInstance(0x99, 1, 7, let quiet1));
 		Test.Assert(Math.Abs(quiet1.M[3][1]) < 0.001f);
 	}
+
+	/// A faded set uploads each instance's RANK in its tint's alpha, and an unfaded one keeps
+	/// the tint it was given.
+	///
+	/// The vertex shaders dissolve an instance whose rank is above the density at its own
+	/// distance, so the rank is its place in the set's random order.
+	[Test]
+	public static void AFadedSetUploadsEachInstancesRankInItsTintAlpha()
+	{
+		let fixture = scope RenderFrameFixture(64, 64);
+		if (!fixture.Ready)
+			return;
+
+		let renderer = scope MeshRenderer(fixture.Device, fixture.Shaders, fixture.PsoCache,
+			fixture.Materials, 2);
+		if (renderer.Initialize() case .Err)
+			return;
+
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let material = MaterialPresets.CreatePbr("lit", .(1, 1, 1, 1), 0.0f, 0.5f);
+		defer delete material;
+
+		let transforms = scope List<Float4x4>();
+		for (int i < 4)
+			transforms.Add(Float4x4.Identity());
+
+		let scene = scope ExtractedScene();
+		AddSet(scene, 0x51, cube, material, transforms.Ptr, 4, renderer.RendererId);
+
+		let faded = scene.Add<MultiMeshRenderData>();
+		Test.Assert(faded != null);
+		faded.MultiMesh = true;
+		faded.Key = 0x52;
+		faded.Transforms = transforms.Ptr;
+		faded.InstanceCount = 2; // the prefix: the far half is already out
+		faded.UploadCount = 4; // and the whole list carries its ranks
+		faded.Version = 1;
+		faded.Mesh = cube;
+		faded.Material = material;
+		faded.RendererId = renderer.RendererId;
+		faded.Category = RenderCategories.Opaque;
+		faded.WorldRadius = 2.0f;
+		faded.FadeStart = 40.0f;
+		faded.FadeEnd = 80.0f;
+
+		renderer.PrepareFrame(2, 0);
+		renderer.UploadMultiMeshes(scene);
+
+		// Unfaded: the shared colour, its alpha untouched.
+		Test.Assert(renderer.ReadMultiMeshInstanceTint(0x51, 0, 0, let plain));
+		Test.Assert(Math.Abs(plain.A - 1.0f) < 0.001f);
+
+		for (uint32 i < 4)
+		{
+			Test.Assert(renderer.ReadMultiMeshInstanceTint(0x52, 0, i, let ranked));
+			let expected = ((float)i + 0.5f) / 4.0f;
+			Test.Assert(Math.Abs(ranked.A - expected) < 0.001f, scope $"instance {i}");
+		}
+	}
 }

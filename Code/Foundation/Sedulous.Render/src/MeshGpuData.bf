@@ -133,8 +133,10 @@ struct MeshDataOffsets
 struct MeshShadowViewData
 {
 	public Float4x4 LightViewProj = .Identity();
-	/// x is the time in seconds the WIND sway reads; yzw are spare.
+	/// x is the time in seconds the WIND sway reads, and y and z a faded set's window.
 	public Float4 Wind = .(0, 0, 0, 0);
+	/// xyz is the CAMERA's position: an instance fade is by camera distance, not the light's.
+	public Float4 Camera = .(0, 0, 0, 0);
 
 	public this() {}
 
@@ -156,7 +158,10 @@ struct MeshPickViewData
 	public uint32 PickGeneration = 0;
 	/// The time in seconds the WIND sway reads, so the pick follows the swayed card.
 	public float WindTime = 0.0f;
-	public uint32 Pad1 = 0;
+	/// A faded set's window start; Camera.w carries its end, and nought means no fade.
+	public float FadeStart = 0.0f;
+	/// xyz is the camera's position and w the fade window's end.
+	public Float4 Camera = .(0, 0, 0, 0);
 
 	public this() {}
 }

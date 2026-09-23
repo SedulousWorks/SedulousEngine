@@ -15,7 +15,8 @@ cbuffer PickView : register(b0, space0) {
     row_major float4x4 ViewProj;   // the cropped world->clip
     uint2              SetPickId;  // x != 0: every draw in this group is this entity
     float              WindTime;   // time (s) for the WIND sway: the pick follows the swayed card
-    uint               _pvPad;
+    float              FadeStart;  // a faded set's window start (its private slot; FadeEnd at or below nought = none)
+    float4             PickCamera; // xyz = the camera's position, w = the fade window's end
 };
 #ifdef WIND
 #include "wind.hlsli"
@@ -38,6 +39,7 @@ float4x4 BlendBones(uint4 j, float4 w, uint base) {
 #ifdef INSTANCED
 struct InstanceData { row_major float4x4 World; row_major float4x4 PrevWorld; float4 Tint; };
 StructuredBuffer<InstanceData> Instances : register(t0, space1);
+#include "instance_fade.hlsli"
 #else
 cbuffer Object : register(b0, space1) {
     row_major float4x4 World;
@@ -75,11 +77,17 @@ PickVSOut main(VSInput input) {
 #ifdef INSTANCED
     float4x4 world = Instances[input.dataOffsets.x].World;
     uint2 drawId = uint2(input.dataOffsets.w, input.dataOffsets.z);
+    float fadeKeep = InstanceFadeKeep(world[3].xyz, PickCamera.xyz,
+                                      Instances[input.dataOffsets.x].Tint.a,
+                                      float2(FadeStart, PickCamera.w));
 #else
     float4x4 world = World;
     uint2 drawId = uint2(PickIndex, PickGeneration);
 #endif
     float3 lp = input.position;
+#ifdef INSTANCED
+    lp *= fadeKeep; // a faded out instance cannot be picked
+#endif
 #ifdef SKINNED
   #ifdef INSTANCED
     uint boneBase = input.dataOffsets.y;

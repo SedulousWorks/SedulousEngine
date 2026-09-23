@@ -19,7 +19,7 @@ cbuffer View : register(b0, space0) {
     float4 ProbeCenter;                // xyz = reflection-probe center (world), w = probe count (0 = none)
     float4 ProbeBoxMin;                // xyz = probe box min corner,  w = probe cube slice (index into ProbeArray)
     float4 ProbeBoxMax;                // xyz = probe box max corner,  w = probe intensity
-    float4 ShadowParams;               // x = CSM far-fade width in WORLD UNITS; yzw spare
+    float4 ShadowParams;               // x = CSM far-fade width in WORLD UNITS, y = clip-space Y sign, zw = instance fade start/end (an instanced set's private view slot; 0 = none)
     float4 DebugParams;                // x = semantic debug-view mode (0 = off); yzw spare
     float4 IblParams;                  // x = IBL diffuse intensity, y = IBL specular intensity, z = time (s), w = last frame's time
 };
@@ -47,6 +47,7 @@ float4x4 BlendBones(uint4 j, float4 w, uint base) {
 #ifdef INSTANCED
 struct InstanceData { row_major float4x4 World; row_major float4x4 PrevWorld; float4 Tint; };
 StructuredBuffer<InstanceData> Instances : register(t0, space1);
+#include "instance_fade.hlsli"
 #else
 cbuffer Object : register(b0, space1) {
     row_major float4x4 World;
@@ -89,6 +90,10 @@ VSOutput main(VSInput input) {
     float4x4 world     = Instances[input.dataOffsets.x].World;
     float4x4 prevWorld = Instances[input.dataOffsets.x].PrevWorld;
     float4   tint      = Instances[input.dataOffsets.x].Tint;
+    // A faded set: Tint.a is the instance's rank and the window rides ShadowParams.zw, so the
+    // alpha goes back to one once it has been read (instance_fade.hlsli).
+    float    fadeKeep  = InstanceFadeKeep(world[3].xyz, CameraPos, tint.a, ShadowParams.zw);
+    if (ShadowParams.w > 0.0) tint.a = 1.0;
 #else
     float4x4 world     = World;
     float4x4 prevWorld = PrevWorld;
@@ -117,6 +122,13 @@ VSOutput main(VSInput input) {
     lp = mul(float4(lp, 1.0), skin).xyz;
     ln = mul(float4(ln, 0.0), skin).xyz;
     lt = mul(float4(lt, 0.0), skin).xyz;
+#endif
+#ifdef INSTANCED
+    // A faded out instance collapses to its origin: zero area, so nothing is rasterised. Kept
+    // under INSTANCED because a multiply by a literal one still emits an op, and a draw that
+    // can never fade should not pay for one per vertex.
+    lp *= fadeKeep;
+    lpPrev *= fadeKeep;
 #endif
     float4 worldPos     = mul(float4(lp, 1.0), world);
     float4 prevWorldPos = mul(float4(lpPrev, 1.0), prevWorld);

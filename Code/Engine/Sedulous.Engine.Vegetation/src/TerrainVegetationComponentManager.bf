@@ -518,6 +518,11 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 			// The WHOLE set, uploaded once: the prefix then moves with the camera without a
 			// re-upload, and no region ever draws a tail it was not written with.
 			rd.UploadCount = (uint32)set.World.Count;
+			// The layer's own window, which is what the vertex shaders dissolve against per
+			// instance: the prefix above stays the coarse bound and this removes the seam
+			// between neighbouring chunks.
+			rd.FadeStart = layer.FadeStart;
+			rd.FadeEnd = layer.FadeEnd;
 			rd.Version = set.Version; // the scatter, so a re-upload only on a change
 			rd.Mesh = mesh;
 			rd.Material = material;
