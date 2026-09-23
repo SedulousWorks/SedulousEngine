@@ -27,8 +27,11 @@ class VegetationLayer : ISerializable
 	[Description("Optional override; none uses the mesh's own.")]
 	public Ref<Material> Material = .(Guid());
 
-	[Description("Where it grows: everywhere (Uniform), where a terrain splat layer is painted (Splat), a painted mask (Mask), or authored instances (Scattered).")]
-	public VegetationPlacement Placement = .Splat;
+	[Description("Where it grows: everywhere (Uniform), where a terrain splat layer is painted (Splat), a painted mask (Mask), or authored instances (Scattered, the default: paint them with Paint Props, or pick a source and the layer grows on its own).")]
+	/// A NEW layer is MANUAL: nothing grows until the author paints props into it or picks a
+	/// procedural source. A procedural default grew the moment a mesh was assigned, which
+	/// reads as a scatter nobody asked for.
+	public VegetationPlacement Placement = .Scattered;
 	[DisplayName("Splat Layer")]
 	[Description("Splat placement: the terrain palette index to follow.")]
 	public uint32 SplatLayer = 0;

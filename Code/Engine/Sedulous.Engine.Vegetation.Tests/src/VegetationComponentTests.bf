@@ -624,4 +624,36 @@ class VegetationComponentTests
 		Test.Assert(f.Manager.BuildCount == (builds + 4), "every chunk re-bucketed, budget one");
 		Test.Assert(TotalInstances(sets) == 5);
 	}
+
+	/// A freshly added layer is MANUAL: exactly what the inspector's add button makes, plus a
+	/// mesh, grows nothing until it is painted or given a source.
+	[Test]
+	public static void AFreshLayerWithAMeshGrowsNothingUntilPaintedOrSourced()
+	{
+		// The splat has palette nought painted, so a Splat default would grow at once.
+		let f = scope Fixture();
+		f.Manager.SetBuildBudget(100);
+
+		let fresh = new VegetationLayer();
+		fresh.Mesh.SetDirect(f.Mesh);
+		Test.Assert(fresh.Placement == .Scattered, "a new layer is manual");
+		Test.Assert(fresh.ToScatterLayer().Placement == .Scattered);
+		f.Component.Layers.Add(fresh);
+
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 2, "the fixture's grass alone; the new layer grows nothing");
+
+		// One painted prop draws it, and choosing Splat makes it grow like the grass.
+		f.Component.Layers[1].Instances.Add(Float4x4.Translation(.(10.0f, 2.0f, 10.0f)));
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 3);
+
+		f.Component.Layers[1].Instances.Clear();
+		f.Component.Layers[1].Placement = .Splat;
+		f.Component.Layers[1].MaxSlopeDegrees = 90.0f;
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4);
+	}
 }
