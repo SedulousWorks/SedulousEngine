@@ -245,15 +245,27 @@ class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 			root.GetPopupLayer().ShowPopup(window, this, x, y, false, false, true);
 	}
 
-	/// Undocks and destroys a panel.
+	/// Undocks a panel, and destroys it only if it is a PAGE panel.
+	///
+	/// A TOOL panel, which is one carrying a persistence id, HIDES: the registry keeps it, so
+	/// a layout reset or a restore re-docks the same object and whoever borrowed its pointer,
+	/// the editor shell among them, never dangles. Destroying it left a closed panel's address
+	/// live in those borrowers until the next reset read it.
+	///
+	/// A page panel has no persistence id, its content dying with the page that made it, so it
+	/// is destroyed as before.
 	public void ClosePanel(DockablePanel panel)
 	{
 		UndockPanel(panel);
+		if (!panel.PersistenceId.IsEmpty)
+			return;
+
 		// Queued FIRST, which keeps the panel alive across the deferred boundary, and only then
 		// dropped from the registry.
 		QueueDeleteNode(panel);
 		ErasePanel(panel);
 	}
+
 
 	/// Selects a panel's tab within its group.
 	public void ActivatePanel(DockablePanel panel)

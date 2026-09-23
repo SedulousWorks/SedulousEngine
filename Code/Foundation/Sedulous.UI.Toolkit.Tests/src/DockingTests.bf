@@ -489,10 +489,13 @@ class DockingTests
 		Test.Assert(bed.Manager.FindPanelById("doc") == panel);
 
 		allow = true;
-		host.LastOnClose(host.Created[0]);
+		host.LastOnClose(host.Created[0]); // allowed, so the window is torn down...
 		Test.Assert(asked == 2);
 		Test.Assert(host.Destroyed == 1);
-		Test.Assert(bed.Manager.FindPanelById("doc") == null);
+		// ...and the panel, which carries a persistence id and is therefore a TOOL panel,
+		// hides: registered, out of the tree, alive for a layout reset or a restore.
+		Test.Assert(bed.Manager.FindPanelById("doc") == panel);
+		Test.Assert(panel.Parent == null);
 	}
 
 	/// A float and re-dock round trip must leave the panel's reference count exactly where it
@@ -748,5 +751,71 @@ class DockingTests
 			Test.Assert(tool.RefCount == docked,
 				scope $"ending {ending}: refs {tool.RefCount}, expected {docked}");
 		}
+	}
+
+	/// The editor's Reset Layout crash: the shell borrows raw pointers to its tool panels, the
+	/// author closes Assets, and rebuilding the default arrangement reads the closed panel's
+	/// parent. A tool panel now HIDES on close and stays registered, so the defaults can be
+	/// laid over it; a page panel, which has no persistence id, is still destroyed.
+	[Test]
+	public static void ClosingAToolPanelHidesItAndTheDefaultLayoutRebuildsOverIt()
+	{
+		let bed = scope DockBed();
+
+		let welcome = bed.Manager.AddPanel("Welcome", new Label("w"));
+		welcome.SetPersistenceId("welcome");
+		welcome.Closable = false;
+		let console = bed.Manager.AddPanel("Console", new Label("c"));
+		console.SetPersistenceId("console");
+		let assets = bed.Manager.AddPanel("Assets", new Label("a"));
+		assets.SetPersistenceId("assets");
+
+		// The editor shell's DockDefaults, verbatim.
+		void DockDefaults()
+		{
+			bed.Manager.DockPanel(welcome, .Center);
+			bed.Manager.DockPanel(console, .Bottom);
+			bed.Manager.DockPanelRelativeTo(assets, .Center, console.Parent);
+			bed.Manager.ActivatePanel(console);
+		}
+
+		DockDefaults();
+		bed.Layout();
+		Test.Assert((assets.Parent as DockTabGroup) != null);
+		Test.Assert(bed.Manager.PanelCount == 3);
+
+		// The author closes Assets: undocked, still registered, still alive.
+		assets.OnCloseRequested(assets);
+		bed.Layout(); // the deferred deletes run here, and must not take the panel
+		bed.Layout();
+		Test.Assert(assets.Parent == null);
+		Test.Assert(bed.Manager.PanelCount == 3);
+		Test.Assert(bed.Manager.FindPanelById("assets") == assets);
+		Test.Assert(!assets.IsPendingDeletion);
+
+		// Reset Layout: the same three borrowed pointers, the same sequence, and Assets is back
+		// where the default puts it.
+		DockDefaults();
+		bed.Layout();
+		Test.Assert((assets.Parent as DockTabGroup) != null);
+		Test.Assert((console.Parent as DockTabGroup) != null);
+		Test.Assert(assets.Parent == console.Parent, "tabbed with the console, as the default says");
+
+		DockDefaults(); // and again with nothing closed: idempotent
+		bed.Layout();
+		Test.Assert(bed.Manager.PanelCount == 3);
+		Test.Assert((assets.Parent as DockTabGroup) != null);
+
+		// A PAGE panel, which carries no persistence id, still dies on close.
+		let page = bed.Manager.AddPanel("Scene", new Label("s"));
+		bed.Manager.DockPanelRelativeTo(page, .Center, welcome.Parent);
+		bed.Layout();
+		Test.Assert(bed.Manager.PanelCount == 4);
+
+		page.AddRef(); // observe the deletion without reading freed memory
+		defer page.ReleaseRef();
+		page.OnCloseRequested(page);
+		Test.Assert(bed.Manager.PanelCount == 3);
+		Test.Assert(page.IsPendingDeletion);
 	}
 }
