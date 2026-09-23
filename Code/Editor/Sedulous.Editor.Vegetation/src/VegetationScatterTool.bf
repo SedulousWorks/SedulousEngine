@@ -90,11 +90,14 @@ class VegetationScatterTool : IViewportTool
 	public StringView StatusText => mStatus;
 
 	public uint32 Layer => mLayer;
-	/// Picking a layer leaves the eraser.
+	/// The layer the brush works on, which has to be a Scattered one.
+	///
+	/// The MODE is a separate choice and STAYS: erasing is per layer, so picking layer two
+	/// while erasing erases layer two rather than quietly going back to painting.
 	public void SetLayer(uint32 index)
 	{
 		mLayer = index;
-		mErase = false;
+		// The status names the layer and the mode at once, without waiting for a frame.
 		UpdateStatus();
 	}
 
@@ -398,14 +401,13 @@ class VegetationScatterTool : IViewportTool
 	private void UpdateStatus()
 	{
 		let radius = (int32)(mRadius + 0.5f);
-		let keys = "(1-9 layer, 0 eraser, wheel size)";
+		let keys = "(1-9 layer, 0 erase, wheel size)";
+		// The mode AND the layer, so the erase target is never a guess.
+		let mode = mErase ? "ERASE" : "paint";
+		mStatus.Set(scope $"Paint Props [{mode} layer {mLayer}]  radius {radius}  {keys}");
 		if (mErase)
-		{
-			mStatus.Set(scope $"Paint Props [ERASER]  radius {radius}  {keys}");
 			return;
-		}
 
-		mStatus.Set(scope $"Paint Props [layer {mLayer}]  radius {radius}  {keys}");
 		// Props would place and nothing would draw, which without saying so reads as a brush
 		// that does not work.
 		if (!mLayerHasMesh)

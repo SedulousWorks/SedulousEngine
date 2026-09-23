@@ -6,11 +6,12 @@ using Sedulous.Editor.ViewportTools;
 
 namespace Sedulous.Editor.Vegetation;
 
-/// The vegetation brush's floating panel: the three modes as a segmented toggle over a
-/// radius, strength, spacing and airbrush grid; wheel sizing feeds the radius row back.
+/// The vegetation brush's floating panel: the plane the brush works on and the mode it
+/// works in, as two segmented rows over a radius, strength, spacing and airbrush grid;
+/// wheel sizing feeds the radius row back.
 ///
-/// The mode row shows what is being painted, so the ERASE target is never ambiguous: the
-/// lit segment names it.
+/// TWO rows rather than one, because erasing is per PLANE: with the eraser as a slot beside
+/// the planes, choosing it unlit the plane and the erase target vanished.
 class VegetationPaintPanelProvider : IViewportToolPanelProvider
 {
 	public StringView ToolId => "vegetation.paint";
@@ -23,8 +24,20 @@ class VegetationPaintPanelProvider : IViewportToolPanelProvider
 			return null;
 
 		let root = ToolPanelWidgets.MakePanelRoot();
-		root.AddView(ToolPanelWidgets.MakeRow("Vegetation mode", 12.0f));
+		// The plane the brush works on, always lit whatever the mode, then the mode itself.
+		root.AddView(ToolPanelWidgets.MakeRow("Mask plane", 12.0f));
+		let planes = new SegmentedToggle();
+		planes.Build(4,
+			new (i) => new Label(scope $"{i}"),
+			new [=t](i) => { t.SetPlane((uint32)i); },
+			new [=t]() => (int32)t.Plane,
+			new (i, outTooltip) =>
+			{
+				outTooltip.Set("The plane the brush works on; a layer with Mask placement names it");
+			});
+		root.AddView(planes);
 
+		root.AddView(ToolPanelWidgets.MakeRow("Mode", 12.0f));
 		let modes = new SegmentedToggle();
 		modes.Build(3,
 			new (i) =>
@@ -34,30 +47,18 @@ class VegetationPaintPanelProvider : IViewportToolPanelProvider
 			},
 			new [=t](i) =>
 			{
-				switch (i)
-				{
-				case 1: t.SetEraser(true);
-				case 2: t.SetSmooth(true);
-				default: t.SetPlane(t.Plane); // paint: leaves both modes
-				}
+				t.SetEraser(i == 1);
+				t.SetSmooth(i == 2);
 			},
 			new [=t]() => t.IsSmooth ? 2 : (t.IsEraser ? 1 : 0),
 			new (i, outTooltip) =>
 			{
-				StringView[3] tips = .("Grow the layer's mask", "Clear it back",
-					"Feather a painted edge");
+				StringView[3] tips = .("Paint the plane, density up",
+					"Erase the plane under the brush, so nothing grows",
+					"Smooth, which feathers a painted edge");
 				outTooltip.Set(tips[i]);
 			});
 		root.AddView(modes);
-
-		root.AddView(ToolPanelWidgets.MakeRow("Plane", 12.0f));
-		let planes = new SegmentedToggle();
-		planes.Build(4,
-			new (i) => new Label(scope $"{i}"),
-			new [=t](i) => { t.SetPlane((uint32)i); },
-			new [=t]() => (int32)t.Plane,
-			new (i, outTooltip) => { outTooltip.Set(scope $"Paint mask plane {i}"); });
-		root.AddView(planes);
 
 		let grid = new PropertyGrid();
 		let radius = ToolPanelWidgets.AddFloat(grid, "Radius", t.Radius,

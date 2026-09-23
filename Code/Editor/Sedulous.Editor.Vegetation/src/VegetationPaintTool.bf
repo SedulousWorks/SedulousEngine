@@ -79,12 +79,14 @@ class VegetationPaintTool : IViewportTool
 	public StringView StatusText => mStatus;
 
 	public uint32 Plane => mPlane;
-	/// Picking a plane leaves eraser and smooth mode.
+	/// The mask PLANE the brush works on; a layer with Mask placement names its plane.
+	///
+	/// The MODE is a separate choice and STAYS: erasing is per plane, so picking plane two
+	/// while erasing erases plane two rather than quietly going back to painting.
 	public void SetPlane(uint32 plane)
 	{
 		mPlane = Math.Min(plane, VegetationMask.cMaxPlanes - 1);
-		mErase = false;
-		mSmooth = false;
+		// The status names the plane and the mode at once, without waiting for a frame.
 		UpdateStatus();
 	}
 
@@ -360,12 +362,9 @@ class VegetationPaintTool : IViewportTool
 	private void UpdateStatus()
 	{
 		let radius = (int32)(mRadius + 0.5f);
-		let keys = "(1-9 plane, 0 eraser, - smooth, wheel size)";
-		if (mSmooth)
-			mStatus.Set(scope $"Paint Vegetation [SMOOTH]  radius {radius}  {keys}");
-		else if (mErase)
-			mStatus.Set(scope $"Paint Vegetation [ERASER]  radius {radius}  {keys}");
-		else
-			mStatus.Set(scope $"Paint Vegetation [plane {mPlane}]  radius {radius}  {keys}");
+		let keys = "(1-9 plane, 0 erase, - smooth, wheel size)";
+		// The mode AND the plane, so the erase target is never a guess.
+		let mode = mSmooth ? "SMOOTH" : (mErase ? "ERASE" : "paint");
+		mStatus.Set(scope $"Paint Vegetation [{mode} plane {mPlane}]  radius {radius}  {keys}");
 	}
 }

@@ -65,8 +65,12 @@ class VegetationScatterToolTests
 		commands.Redo();
 		Test.Assert(ScatterFixture.SameInstances(fx.Rocks, placed));
 
-		// The eraser takes what is under the brush and nothing else.
+		// The eraser takes what is under the brush and nothing else. The layer stays
+		// selected, erasing being per layer, and the status names both.
 		tool.SetEraser(true);
+		tool.SetLayer(1);
+		Test.Assert(tool.IsEraser);
+		Test.Assert(tool.StatusText.Contains("ERASE layer 1"));
 		fx.Stroke(tool, -20.0f, 10.0f, -10.0f, 10.0f, 4);
 		Test.Assert(fx.Rocks.Count < placed.Count);
 		for (let m in fx.Rocks)

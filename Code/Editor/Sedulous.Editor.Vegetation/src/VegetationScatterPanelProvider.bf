@@ -10,11 +10,13 @@ using Sedulous.Editor.ViewportTools;
 
 namespace Sedulous.Editor.Vegetation;
 
-/// The prop brush's floating panel: the scene's vegetation layers as a segmented toggle,
-/// with the eraser as its last segment, over a radius, density, strength and spacing grid.
+/// The prop brush's floating panel: the scene's vegetation layers and the mode, as two
+/// segmented rows over a radius, density, strength and spacing grid.
 ///
-/// The layer row NAMES what is being painted, so the erase target is never ambiguous, and a
-/// slot that is not a Scattered layer says so rather than silently doing nothing.
+/// TWO rows rather than one, because erasing is per LAYER: with the eraser as a slot beside
+/// the layers, choosing it unlit the layer and the erase target vanished. A slot that is not
+/// a Scattered layer, or whose mesh does not resolve, says so rather than silently doing
+/// nothing.
 class VegetationScatterPanelProvider : IViewportToolPanelProvider
 {
 	public StringView ToolId => "vegetation.scatter";
@@ -71,31 +73,32 @@ class VegetationScatterPanelProvider : IViewportToolPanelProvider
 				"No vegetation layers here, add a Scattered layer", 11.0f));
 		}
 
-		// The last segment is the eraser.
+		// The layer the brush works on, always lit whatever the mode, then the mode itself.
 		let choices = new SegmentedToggle();
-		choices.Build(count + 1,
-			new [=labels, =count](i) =>
-			{
-				if (i == count)
-					return new Label("E");
-				return new Label(labels[i]);
-			},
-			new [=t, =count](i) =>
-			{
-				if (i == count)
-					t.SetEraser(true);
-				else
-					t.SetLayer((uint32)i);
-			},
-			new [=t, =count]() => t.IsEraser ? count : (int32)t.Layer,
-			new [=count](i, outTooltip) =>
-			{
-				if (i == count)
-					outTooltip.Set("Eraser: removes the props under the brush");
-				else
-					outTooltip.Set("Paint this layer's props");
-			});
+		choices.Build(count,
+			new [=labels](i) => new Label(labels[i]),
+			new [=t](i) => { t.SetLayer((uint32)i); },
+			new [=t]() => (int32)t.Layer,
+			new (i, outTooltip) => { outTooltip.Set("The layer the brush works on"); });
 		root.AddView(choices);
+
+		root.AddView(ToolPanelWidgets.MakeRow("Mode", 12.0f));
+		let modes = new SegmentedToggle();
+		modes.Build(2,
+			new (i) =>
+			{
+				StringView[2] names = .("Paint", "Erase");
+				return new Label(names[i]);
+			},
+			new [=t](i) => { t.SetEraser(i == 1); },
+			new [=t]() => t.IsEraser ? 1 : 0,
+			new (i, outTooltip) =>
+			{
+				StringView[2] tips = .("Place props into the layer",
+					"Remove the layer's props under the brush");
+				outTooltip.Set(tips[i]);
+			});
+		root.AddView(modes);
 
 		let grid = new PropertyGrid();
 		let radius = ToolPanelWidgets.AddFloat(grid, "Radius", t.Radius,

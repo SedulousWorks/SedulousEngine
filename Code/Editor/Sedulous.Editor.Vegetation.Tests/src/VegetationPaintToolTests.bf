@@ -100,10 +100,22 @@ class VegetationPaintToolTests
 		tool.Update(VegetationFixture.Release());
 		Test.Assert(fx.Mask.DensityAt(0, 16, 16) > 0, "the empty side gained");
 
-		// Picking a plane leaves both modes.
-		tool.SetPlane(1);
-		Test.Assert(!tool.IsSmooth && !tool.IsEraser);
-		Test.Assert(tool.Plane == 1);
+		// The plane and the mode are SEPARATE choices: picking a plane while erasing keeps
+		// erasing, that plane, and the status names both.
+		tool.SetSmooth(false);
+		tool.SetEraser(true);
+		tool.SetPlane(0);
+		Test.Assert(tool.IsEraser);
+		Test.Assert(tool.Plane == 0);
+		Test.Assert(tool.StatusText.Contains("ERASE plane 0"));
+
+		tool.SetEraser(false);
+		Test.Assert(!tool.IsEraser);
+		tool.SetSmooth(true);
+		Test.Assert(tool.IsSmooth && !tool.IsEraser);
+		// Erase and smooth exclude each other.
+		tool.SetEraser(true);
+		Test.Assert(!tool.IsSmooth);
 	}
 
 	[Test]
