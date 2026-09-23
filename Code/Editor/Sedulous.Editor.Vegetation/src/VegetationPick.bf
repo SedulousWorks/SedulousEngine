@@ -97,8 +97,12 @@ struct VegetationPick
 	///
 	/// `requireMask` takes only components whose mask resolves, which is the mask brush;
 	/// without it any component over a terrain answers, which is the prop brush.
+	///
+	/// `ignoreHoles` picks the terrain plane THROUGH a cut, which the prop brush wants so
+	/// that what stands over a hole can still be erased. The mask brush keeps the surface
+	/// rule, a cut having no surface to paint.
 	public static VegetationPick Resolve(Scene scene, Float3 rayOrigin, Float3 rayDirection,
-		bool requireMask)
+		bool requireMask, bool ignoreHoles = false)
 	{
 		var best = VegetationPick();
 		let manager = (scene != null) ? scene.GetSystem<TerrainVegetationComponentManager>() : null;
@@ -124,7 +128,10 @@ struct VegetationPick
 				let localOrigin = TransformPoint(rayOrigin, inverse);
 				let localDirection = TransformDirection(rayDirection, inverse);
 				float t = 0.0f;
-				if (!grid.QueryRay(localOrigin, localDirection, out t))
+				let hit = ignoreHoles
+					? grid.QueryRayIgnoringHoles(localOrigin, localDirection, out t)
+					: grid.QueryRay(localOrigin, localDirection, out t);
+				if (!hit)
 					return;
 
 				let localHit = localOrigin + Normalized(localDirection) * t;

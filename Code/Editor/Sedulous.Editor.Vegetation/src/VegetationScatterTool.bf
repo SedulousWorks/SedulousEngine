@@ -200,7 +200,10 @@ class VegetationScatterTool : IViewportTool
 		if (input.PointerOver && (input.WheelDelta != 0.0f))
 			SetRadius(mRadius * (1.0f + 0.12f * input.WheelDelta));
 
-		let pick = VegetationPick.Resolve(mScene, input.Ray.Origin, input.Ray.Direction, false);
+		// The prop brush picks the terrain PLANE, cut or not. The stamp itself refuses a cut
+		// cell; the eraser has to reach the props left standing over one.
+		let pick = VegetationPick.Resolve(mScene, input.Ray.Origin, input.Ray.Direction, false,
+			true);
 		if (pick.Valid)
 		{
 			mHasHover = true;

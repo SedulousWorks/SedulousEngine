@@ -271,7 +271,21 @@ class Heightfield
 	/// A height field march: clip to the grid's box, step by about half a cell, and bisect
 	/// wherever the ray drops through the bilinear surface. Robust enough for editor picking,
 	/// which is what it is for.
+	///
+	/// A crossing inside a CUT cell is no surface: the ray passes through to whatever sits
+	/// below, which is the rule a gameplay trace wants.
 	public bool QueryRay(Float3 origin, Float3 direction, out float outT)
+		=> MarchRay(origin, direction, out outT, true);
+
+	/// The same march with the cut samples taken as SURFACE.
+	///
+	/// What the brushes that work ON a hole pick with: Fill, and the prop brush reaching
+	/// what stands over a cut. They want the plane where the terrain used to be rather than
+	/// to fall through it. Never a gameplay query.
+	public bool QueryRayIgnoringHoles(Float3 origin, Float3 direction, out float outT)
+		=> MarchRay(origin, direction, out outT, false);
+
+	private bool MarchRay(Float3 origin, Float3 direction, out float outT, bool skipHoles)
 	{
 		outT = 0.0f;
 		if (IsEmpty)
@@ -295,7 +309,7 @@ class Heightfield
 		var tPrevious = t0;
 		var gapPrevious = SignedGap(origin, dir, t0);
 		// Already at or under the surface where the ray entered the box.
-		if ((gapPrevious <= 0.0f) && !HoleAt(origin, dir, t0))
+		if ((gapPrevious <= 0.0f) && !(skipHoles && HoleAt(origin, dir, t0)))
 		{
 			outT = t0;
 			return true;
@@ -325,7 +339,7 @@ class Heightfield
 				// A crossing inside a CUT cell is no surface: the ray passes through to
 				// whatever sits below, a cave floor or the physics world, and the march goes
 				// on, needing to come back above the field before another crossing counts.
-				if (!HoleAt(origin, dir, hit))
+				if (!(skipHoles && HoleAt(origin, dir, hit)))
 				{
 					outT = hit;
 					return true;

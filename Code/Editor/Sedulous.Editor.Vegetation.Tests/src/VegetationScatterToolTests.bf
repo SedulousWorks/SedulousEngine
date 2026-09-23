@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Render;
+using Sedulous.Heightfield;
 using Sedulous.UI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
@@ -217,5 +218,56 @@ class VegetationScatterToolTests
 		fx.Vegetation.Get(fx.Terrain).Layers[1].Mesh.SetDirect(fx.Mesh);
 		tool.Update(VegetationFixture.RayAt(0.0f, 0.0f));
 		Test.Assert(!tool.StatusText.Contains("no mesh"));
+	}
+
+	/// The eraser reaches the props left standing over a cut.
+	///
+	/// A hole hides them rather than deleting them, so the eraser is what takes them away,
+	/// and for that the brush has to pick the plane INSIDE the cut: the surface rule alone
+	/// passes straight through and the brush would never activate over a hole at all.
+	[Test]
+	public static void TheEraserReachesThePropsLeftStandingOverACut()
+	{
+		let fx = scope ScatterFixture();
+		let commands = scope EditorCommandStack();
+		let tool = scope VegetationScatterTool(fx.Scene, commands);
+		tool.SetLayer(1);
+		tool.SetRadius(6.0f);
+		tool.SetDensity(0.5f);
+		tool.SetSpacing(0.0f);
+
+		fx.Stroke(tool, -20.0f, 10.0f, 20.0f, 10.0f);
+		let placed = scope List<Float4x4>();
+		placed.AddRange(fx.Rocks);
+		Test.Assert(placed.Count > 4);
+
+		// How many sit inside the disc the eraser will sweep.
+		var underCut = 0;
+		for (let m in placed)
+		{
+			let dx = m.M[3][0];
+			let dz = m.M[3][2] - 10.0f;
+			if (((dx * dx) + (dz * dz)) < (6.0f * 6.0f))
+				underCut++;
+		}
+		Test.Assert(underCut > 0);
+
+		HeightfieldHoles.Cut(fx.Grid, 0.0f, 10.0f, 12.0f); // 24 across the stroke's middle
+		Test.Assert(fx.Grid.HasHoles);
+		Test.Assert(fx.Rocks.Count == placed.Count, "the cut itself deletes nothing");
+
+		tool.SetEraser(true);
+		fx.Stroke(tool, 0.0f, 10.0f, 0.0f, 10.0f, 1); // a press inside the hole
+		Test.Assert((fx.Rocks.Count + underCut) == placed.Count, "exactly those, and no others");
+		for (let m in fx.Rocks)
+		{
+			let dx = m.M[3][0];
+			let dz = m.M[3][2] - 10.0f;
+			Test.Assert(((dx * dx) + (dz * dz)) >= (6.0f * 6.0f),
+				"nothing left under the eraser's disc");
+		}
+
+		commands.Undo();
+		Test.Assert(ScatterFixture.SameInstances(fx.Rocks, placed));
 	}
 }

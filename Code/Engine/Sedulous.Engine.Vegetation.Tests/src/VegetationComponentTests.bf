@@ -659,4 +659,96 @@ class VegetationComponentTests
 		f.Extract(snapshot, null, sets);
 		Test.Assert(sets.Count == 4);
 	}
+
+	/// The instances inside a disc about the origin, which is where the cuts below are made.
+	private static uint32 CountInside(List<MultiMeshRenderData> sets, float radius,
+		bool leftHalfOnly = false)
+	{
+		var n = (uint32)0;
+		for (let set in sets)
+		{
+			for (uint32 i = 0; i < set.InstanceCount; i++)
+			{
+				let x = set.Transforms[i].M[3][0];
+				let z = set.Transforms[i].M[3][2];
+				if (leftHalfOnly && (x >= 0.0f))
+					continue;
+				if (((x * x) + (z * z)) < (radius * radius))
+					n++;
+			}
+		}
+		return n;
+	}
+
+	/// Cutting a hole bumps the version, so every set regrows, and the regrown scatter leaves
+	/// the cut cells bare. Uniform and splat placed alike.
+	[Test]
+	public static void CuttingAHoleRegrowsTheLayerWithNothingInsideTheCut()
+	{
+		for (let withSplat in scope bool[](false, true))
+		{
+			let f = scope:: Fixture(withSplat);
+			f.Manager.SetBuildBudget(100);
+			let snapshot = scope:: ExtractedScene();
+			let sets = scope:: List<MultiMeshRenderData>();
+
+			// The splat half is x < 0, so only two of the four chunks grow there.
+			let grown = withSplat ? 2 : 4;
+			f.Extract(snapshot, null, sets);
+			Test.Assert(sets.Count == grown);
+			let before = TotalInstances(sets);
+			Test.Assert(before > 0);
+			Test.Assert(CountInside(sets, 10.0f, withSplat) > 0, "grass grew where the cut goes");
+
+			HeightfieldHoles.Cut(f.Grid, 0.0f, 0.0f, 12.0f); // 24 across the centre, all chunks
+			Test.Assert(f.Grid.HasHoles);
+
+			f.Extract(snapshot, null, sets);
+			Test.Assert(sets.Count == grown);
+			// All four chunks are scattered either way; only the ones that grew anything
+			// emit a set, so the build count is four and then four again.
+			Test.Assert(f.Manager.BuildCount == 8, "every chunk regrew");
+			// A two metre margin in from the rim, so no rounding sits on the boundary.
+			Test.Assert(CountInside(sets, 10.0f) == 0, "and nothing grew inside the cut");
+			Test.Assert(TotalInstances(sets) < before);
+		}
+	}
+
+	/// A STAMPED prop over a cut does not draw, and comes back with the fill.
+	///
+	/// The authored list is left alone, a terrain brush not being an editor of vegetation
+	/// data, so the eraser can still reach the prop through the hole; the bucketed set simply
+	/// leaves it out while its cell is cut.
+	[Test]
+	public static void AStampedPropOverACutDoesNotDrawAndComesBackWithTheFill()
+	{
+		let f = scope Fixture(false);
+		f.Manager.SetBuildBudget(100);
+
+		let rocks = f.Layer;
+		rocks.Placement = .Scattered;
+		rocks.ScaleRange = .(1.0f, 1.0f);
+		rocks.Instances.Add(Float4x4.Translation(.(-40.0f, 2.0f, -40.0f)));
+		rocks.Instances.Add(Float4x4.Translation(.(-20.0f, 2.0f, -20.0f)));
+		rocks.Instances.Add(Float4x4.Translation(.(20.0f, 2.0f, 20.0f)));
+
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+		f.Extract(snapshot, null, sets);
+		Test.Assert(TotalInstances(sets) == 3);
+
+		HeightfieldHoles.Cut(f.Grid, -20.0f, -20.0f, 3.0f); // under the second prop alone
+		f.Extract(snapshot, null, sets);
+		Test.Assert(TotalInstances(sets) == 2);
+		Test.Assert(f.Layer.Instances.Count == 3, "the authored data keeps it");
+		for (let set in sets)
+		{
+			for (uint32 i = 0; i < set.InstanceCount; i++)
+				Test.Assert(set.Transforms[i].M[3][0] != -20.0f);
+		}
+
+		HeightfieldHoles.Fill(f.Grid, -20.0f, -20.0f, 3.0f);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(TotalInstances(sets) == 3, "and the fill brings it back");
+	}
 }

@@ -18,8 +18,8 @@ namespace Sedulous.Editor.Terrain;
 /// one region delta undo command per stroke over the hole plane. On save the registered
 /// closure writes the grid back to its source asset.
 ///
-/// The ray query passes THROUGH a cut, so the brush cannot pick inside a hole: to fill one,
-/// the author picks from its rim outward and the disc covers the cut.
+/// Its pick takes a cut sample as SURFACE, unlike a gameplay trace, so the brush reaches the
+/// hole plane itself: a fill lands inside a cut rather than only from its rim.
 ///
 /// The scene, commands and edit sink are BORROWED from the host; a null sink means no
 /// persistence, which is what a test wants.
@@ -108,7 +108,9 @@ class TerrainHoleTool : IViewportTool
 		if (input.PointerOver && (input.WheelDelta != 0.0f))
 			SetRadius(mRadius * (1.0f + 0.12f * input.WheelDelta));
 
-		let pick = SculptPick.Resolve(mScene, input);
+		// The brush works ON the hole plane, so its pick takes a cut as surface: fill can land
+		// inside a cut rather than only from the rim, and a cut over a cut is consumed.
+		let pick = SculptPick.Resolve(mScene, input, true);
 		if (pick.Valid)
 		{
 			mHasHover = true;

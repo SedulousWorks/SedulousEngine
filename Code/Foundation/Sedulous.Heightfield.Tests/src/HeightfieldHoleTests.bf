@@ -106,6 +106,38 @@ class HeightfieldHoleTests
 		let elsewhere = Float3(20.0f, 50.0f, 20.0f);
 		Test.Assert(field.QueryRay(elsewhere, down, let farT));
 		Test.Assert(Math.Abs(farT - 45.0f) < 0.5f);
+
+		// The brushes' pick takes the cut as surface, so the same ray lands on the plane.
+		Test.Assert(field.QueryRayIgnoringHoles(origin, down, let planeT));
+		Test.Assert(Math.Abs(planeT - 45.0f) < 0.5f, "the plane where the terrain used to be");
+	}
+
+	/// An ANGLED ray whose crossing lies inside the cut, which is the case a straight down
+	/// ray cannot tell apart: the surface rule passes through and never comes back above the
+	/// field, so there is no hit at all, while the brushes' rule lands on the plane there.
+	[Test]
+	public static void AnAngledCrossingInsideACutIsAMissForTheSurfaceRuleAndAPlaneForTheBrushes()
+	{
+		let field = MakeFlat();
+		defer delete field;
+
+		// A block of cut cells about the middle, wide enough for the crossing to fall inside.
+		field.CellOfLocal(0.0f, 0.0f, let cx, let cz);
+		for (int32 z = cz - 2; z <= cz + 3; z++)
+			for (int32 x = cx - 2; x <= cx + 3; x++)
+				field.SetHole(x, z, true);
+
+		// Entering well left and just above the surface, falling slowly: it crosses near the
+		// middle, inside the cut.
+		let origin = Float3(-6.0f, 5.25f, 0.0f);
+		let direction = Float3(1.0f, -0.05f, 0.0f);
+		Test.Assert(!field.QueryRay(origin, direction, let missed),
+			"the crossing is inside the cut, and the ray never rises above the field again");
+
+		Test.Assert(field.QueryRayIgnoringHoles(origin, direction, let t));
+		let hitX = origin.X + t * (1.0f / Math.Sqrt(1.0f + 0.05f * 0.05f));
+		Test.Assert(hitX > -3.0f, "and it landed on the plane inside the cut");
+		Test.Assert(hitX < 3.0f);
 	}
 
 	[Test]

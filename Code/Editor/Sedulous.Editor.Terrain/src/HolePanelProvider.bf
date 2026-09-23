@@ -38,7 +38,7 @@ class HolePanelProvider : IViewportToolPanelProvider
 			{
 				StringView[2] tips = .(
 					"Remove the surface under the brush",
-					"Restore it; pick from a hole's rim, since the brush cannot pick inside one");
+					"Restore it; the brush picks the hole plane, so a click inside a cut works");
 				outTooltip.Set(tips[i]);
 			});
 		root.AddView(modes);

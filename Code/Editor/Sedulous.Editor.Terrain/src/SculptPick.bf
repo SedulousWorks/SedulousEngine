@@ -28,9 +28,11 @@ struct SculptPick
 
 	/// The NEAREST terrain the ray hits, in that terrain's own local space.
 	///
-	/// The ray query passes THROUGH a cut cell, so a brush cannot pick inside a hole: to fill
-	/// one, the author picks from its rim outward and lets the disc cover the cut.
-	public static SculptPick Resolve(Scene scene, in ViewportToolInput input)
+	/// `ignoreHoles` takes the cut samples as SURFACE, which is what a brush working ON the
+	/// hole plane wants: fill lands inside a cut rather than only from its rim. The sculpt
+	/// brush leaves it off, a cut having no surface to raise or lower.
+	public static SculptPick Resolve(Scene scene, in ViewportToolInput input,
+		bool ignoreHoles = false)
 	{
 		var best = SculptPick();
 		let manager = (scene != null) ? scene.GetSystem<TerrainComponentManager>() : null;
@@ -54,7 +56,10 @@ struct SculptPick
 				let localOrigin = TransformPoint(rayOrigin, inverse);
 				let localDirection = TransformDirection(rayDirection, inverse);
 				float t = 0.0f;
-				if (!grid.QueryRay(localOrigin, localDirection, out t))
+				let hit = ignoreHoles
+					? grid.QueryRayIgnoringHoles(localOrigin, localDirection, out t)
+					: grid.QueryRay(localOrigin, localDirection, out t);
+				if (!hit)
 					return;
 
 				let localHit = localOrigin + Normalized(localDirection) * t;

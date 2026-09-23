@@ -294,16 +294,28 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 
 	/// The authored instances this chunk holds, with the bounds grown as the scatter's are.
 	private void BucketAuthored(LayerCache cache, int chunkIndex, ScatterLayer layer,
-		AABB meshBounds, Span<Float4x4> authored)
+		AABB meshBounds, Span<Float4x4> authored, Heightfield hf)
 	{
 		let chunk = cache.Chunks[chunkIndex];
+		let holes = (hf != null) && hf.HasHoles;
 		mScatterScratch.Clear();
 		mScatterScratch.LocalBounds = chunk.Bounds;
 		for (let instance in authored)
 		{
 			ChunkOfInstance(cache, instance, let cx, let cz);
-			if ((cx == chunk.ChunkX) && (cz == chunk.ChunkZ))
-				mScatterScratch.Transforms.Add(instance);
+			if ((cx != chunk.ChunkX) || (cz != chunk.ChunkZ))
+				continue;
+
+			// A prop standing over a CUT cell has no surface under it. It stays in the
+			// authored list, so a fill brings it back and the eraser can still reach it, but
+			// it does not draw: the one rule everywhere, props included.
+			if (holes)
+			{
+				hf.CellOfLocal(instance.M[3][0], instance.M[3][2], let hx, let hz);
+				if (hf.CellHasHole(hx, hz))
+					continue;
+			}
+			mScatterScratch.Transforms.Add(instance);
 		}
 		if (!mScatterScratch.Transforms.IsEmpty && (meshBounds.Max.X >= meshBounds.Min.X))
 		{
@@ -321,7 +333,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		// A Scattered layer is authored rather than grown: its instances are bucketed by
 		// their own position, and the procedural scatter is not run at all.
 		if (layer.Placement == .Scattered)
-			BucketAuthored(cache, chunkIndex, layer, meshBounds, authored);
+			BucketAuthored(cache, chunkIndex, layer, meshBounds, authored, hf);
 		else
 			Scatter.ScatterChunk(set.Key, cache.Chunks[chunkIndex], hf, splat, mask, layer,
 				meshBounds, mScatterScratch);

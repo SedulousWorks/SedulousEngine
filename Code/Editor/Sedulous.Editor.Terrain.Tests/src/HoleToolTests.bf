@@ -68,7 +68,7 @@ class HoleToolTests
 	}
 
 	[Test]
-	public static void FillRestoresACutFromTheRimAndAFillOverSolidGroundIsNoCommand()
+	public static void FillRestoresACutFromInsideItAndAFillOverSolidGroundIsNoCommand()
 	{
 		let fx = scope TerrainFixture();
 		let commands = scope EditorCommandStack();
@@ -77,12 +77,11 @@ class HoleToolTests
 		Stroke(tool, 0.0f, 0.0f);
 		Test.Assert(fx.Grid.HasHoles);
 
-		// The brush cannot pick INSIDE the cut, the ray passing through it, so the fill lands
-		// from the rim: a stroke beside the centre with a radius that covers the cut.
+		// The brush picks the hole PLANE, so the fill lands inside the cut at the same spot
+		// and the same radius: no dance around the rim.
 		tool.SetMode(.Fill);
 		Test.Assert(tool.StatusText.Contains("FILL"));
-		tool.SetRadius(8.0f);
-		Stroke(tool, 4.0f, 0.0f);
+		Stroke(tool, 0.0f, 0.0f);
 		Test.Assert(!fx.Grid.HasHoles);
 		Test.Assert(commands.CanUndo);
 
@@ -95,7 +94,7 @@ class HoleToolTests
 	}
 
 	[Test]
-	public static void ARayStraightIntoACutFindsNoTerrain()
+	public static void ARayStraightIntoACutFindsThePlaneAndACutOverACutIsNoCommand()
 	{
 		let fx = scope TerrainFixture();
 		let commands = scope EditorCommandStack();
@@ -104,12 +103,17 @@ class HoleToolTests
 		cutter.SetRadius(3.0f);
 		Stroke(cutter, 0.0f, 0.0f);
 		Test.Assert(fx.Grid.HasHoles);
+		let cutCount = fx.Grid.HoleCount;
 
-		// Nothing under the cursor, so the click is not consumed: that is what makes a fill
-		// something the author does from the rim.
-		let over = scope TerrainHoleTool(fx.Scene, commands, null);
+		// The plane is under the cursor, so the brush is live over a hole and the stroke
+		// begins; cutting what is already cut then changes nothing and pushes no command.
+		let again = scope EditorCommandStack();
+		let over = scope TerrainHoleTool(fx.Scene, again, null);
 		over.SetRadius(1.0f);
-		Test.Assert(!over.Update(TerrainFixture.Press()));
+		Test.Assert(over.Update(TerrainFixture.Press()));
+		over.Update(TerrainFixture.Release());
+		Test.Assert(fx.Grid.HoleCount == cutCount);
+		Test.Assert(!again.CanUndo);
 	}
 
 	[Test]
