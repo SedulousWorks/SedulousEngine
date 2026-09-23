@@ -162,6 +162,9 @@ class VegetationScatterTool : IViewportTool
 		}
 	}
 
+	public StringView UnavailableReason =>
+		"Paint Props needs a Terrain Vegetation component with a layer whose Placement is Scattered, on a terrain.";
+
 	public void OnActivate() {}
 
 	public void OnDeactivate()

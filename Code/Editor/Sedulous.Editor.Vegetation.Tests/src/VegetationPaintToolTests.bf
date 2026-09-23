@@ -123,6 +123,8 @@ class VegetationPaintToolTests
 		let bare = scope VegetationFixture(false);
 		let bareTool = scope VegetationPaintTool(bare.Scene, commands, null);
 		Test.Assert(!bareTool.IsAvailable);
+		// The toolbar's refusal notice names what the scene lacks.
+		Test.Assert(!bareTool.UnavailableReason.IsEmpty);
 		bareTool.Update(VegetationFixture.Press());
 		Test.Assert(!commands.CanUndo);
 	}

@@ -143,6 +143,8 @@ class VegetationScatterToolTests
 		let commands = scope EditorCommandStack();
 		let none = scope VegetationScatterTool(bare.Scene, commands);
 		Test.Assert(!none.IsAvailable);
+		// The toolbar's refusal notice names what the scene lacks.
+		Test.Assert(!none.UnavailableReason.IsEmpty);
 
 		let fx = scope ScatterFixture();
 		let tool = scope VegetationScatterTool(fx.Scene, commands);

@@ -10,6 +10,7 @@ using Sedulous.Audio.Pipeline;
 using Sedulous.UI.Pipeline;
 using Sedulous.Heightfield.Pipeline;
 using Sedulous.Terrain.Pipeline;
+using Sedulous.Vegetation.Pipeline;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Tools.Editor;
@@ -57,6 +58,16 @@ static class EditorCreators
 			CreateDefault(ctx, group, "Terrain", typeof(TerrainAsset), scope TerrainAsset())));
 		context.RegisterCreator(new AssetCreator("Splatmap", "Terrain", new (ctx, group) =>
 			CreateDefault(ctx, group, "Splatmap", typeof(SplatmapAsset), scope SplatmapAsset()))); // 1024 square by default
+		// An empty mask for the Paint Vegetation brush to fill; its page raises the plane
+		// count when a second layer wants one.
+		context.RegisterCreator(new AssetCreator("Vegetation Mask", "Terrain", new (ctx, group) =>
+			{
+				let asset = scope VegetationMaskAsset();
+				asset.Width = 1024;
+				asset.Height = 1024;
+				asset.PlaneCount = 1;
+				return CreateDefault(ctx, group, "VegetationMask", typeof(VegetationMaskAsset), asset);
+			}));
 	}
 
 	private static Group TargetGroup(EditorContext ctx, Group group)

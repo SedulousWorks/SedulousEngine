@@ -75,7 +75,16 @@ extension SceneEditorPage
 				toggle.OnCheckedChanged.Add(new [=this, =id](t, value) =>
 				{
 					if (value)
-						mViewportTools.ActivateById(id);
+					{
+						// A refusal, the tool having nothing here to work on, is SAID rather
+						// than swallowed; the toggle snaps back through the sync below.
+						if (!mViewportTools.ActivateById(id))
+						{
+							let refused = mViewportTools.FindById(id);
+							if (refused != null)
+								mContext.Notify(.Warning, refused.UnavailableReason);
+						}
+					}
 					else if ((mViewportTools.ActiveTool != null) && (mViewportTools.ActiveTool.Id == id))
 						mViewportTools.ActivateDefault();
 					SyncToolbar();

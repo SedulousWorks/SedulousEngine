@@ -204,4 +204,58 @@ class VegetationMaskCookTests
 		Test.Assert(asset.FileName.IsEmpty, "an authored mask is embedded until imported");
 		Test.Assert(asset.PlaneCount == 1);
 	}
+
+	/// Raising the plane count on a painted mask keeps what was painted: a fresh plane starts
+	/// empty and the rest survive, rather than the whole painting being dropped.
+	[Test]
+	public static void APlaneCountChangeKeepsThePlanesThatStillExist()
+	{
+		MakeRoots();
+		defer { RemoveRoots(); }
+
+		let painted = scope VegetationMask(8, 8, 2);
+		MaskBrush.Paint(painted, 0, 0.5f, 0.5f, 0.4f, 0.4f, 1.0f);
+		MaskBrush.Paint(painted, 1, 0.5f, 0.5f, 0.2f, 0.2f, 1.0f);
+		Test.Assert(painted.DensityAt(0, 4, 4) > 0);
+		Test.Assert(painted.DensityAt(1, 4, 4) > 0);
+
+		let mount = scope NativeFileSystem(cRoot);
+		let sourceMount = scope NativeFileSystem(cSourceRoot);
+		SerializerFactory serializers = scope (stream, mode) =>
+			new BinarySerializerContext(stream, mode);
+
+		Guid maskId;
+		{
+			let database = scope ContentDatabase(mount, serializers, "rasset");
+			let instance = database.RootGroup.CreateInstance("mask", cProductType);
+			Test.Assert(instance != null);
+			maskId = instance.Id;
+			Test.Assert(instance.WriteData(VegetationMaskSource.DensityStream,
+				VegetationMaskSource.DensityBlob(painted)) case .Ok);
+
+			// The author raised the count to three AFTER painting two.
+			let asset = scope VegetationMaskAsset();
+			asset.Width = 8;
+			asset.Height = 8;
+			asset.PlaneCount = 3;
+
+			let context = scope AssetBuildContext();
+			context.Sources = sourceMount;
+			context.Source = instance;
+			context.Output = instance;
+			Test.Assert(scope VegetationMaskAssetBuilder().Build(asset, context) case .Ok);
+		}
+
+		let database = scope ContentDatabase(mount, serializers, "rasset");
+		let manager = scope ResourceManager(database, null);
+		let factory = scope VegetationMaskFactory();
+		manager.AddFactory(factory);
+
+		let loaded = manager.Bind<VegetationMask>(maskId).Get;
+		Test.Assert(loaded != null);
+		Test.Assert(loaded.PlaneCount == 3);
+		Test.Assert(loaded.DensityAt(0, 4, 4) == painted.DensityAt(0, 4, 4));
+		Test.Assert(loaded.DensityAt(1, 4, 4) == painted.DensityAt(1, 4, 4));
+		Test.Assert(loaded.DensityAt(2, 4, 4) == 0, "a fresh plane starts empty");
+	}
 }

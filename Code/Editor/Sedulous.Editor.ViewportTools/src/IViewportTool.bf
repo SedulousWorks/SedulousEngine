@@ -17,6 +17,10 @@ interface IViewportTool
 	/// terrain). Checked every frame for the active tool; the manager falls back to the
 	/// default tool when it turns false.
 	bool IsAvailable { get; }
+	/// Why IsAvailable is false, for the person who has just clicked the tool: the host says
+	/// it as a notice when it refuses the activation, a toggle that silently snaps back
+	/// reading as a dead button. One sentence naming what the scene lacks.
+	StringView UnavailableReason => "This tool has nothing to work on in this scene.";
 	void OnActivate();
 	/// Must end any in-flight gesture so no half-applied command group survives a switch;
 	/// the manager calls it before another tool activates.

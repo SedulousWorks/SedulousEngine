@@ -131,6 +131,9 @@ class VegetationPaintTool : IViewportTool
 	/// whose heightfield is what the ray hits.
 	public bool IsAvailable => VegetationPick.AnyFootprint(mScene, true);
 
+	public StringView UnavailableReason =>
+		"Paint Vegetation needs a Terrain Vegetation component with a Mask asset, on a terrain (Create, Terrain, Vegetation Mask, then pick it in Mask).";
+
 	public void OnActivate() {}
 
 	public void OnDeactivate()

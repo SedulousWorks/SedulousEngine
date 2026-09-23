@@ -122,6 +122,9 @@ class TerrainSplatTool : IViewportTool
 
 	/// Any terrain in the scene with resolved, non empty weights AND heightfield: the
 	/// heightfield is what the ray hits.
+	public StringView UnavailableReason =>
+		"Paint Splat needs a terrain whose splatmap and heightfield resolve.";
+
 	public bool IsAvailable
 	{
 		get

@@ -65,6 +65,8 @@ class SplineEditToolTests
 		let tool = scope SplineEditTool(Host(scene, commands, selection));
 		Test.Assert(tool.Id == "spline.edit");
 		Test.Assert(!tool.IsAvailable);
+		// The toolbar's refusal notice names what the scene lacks.
+		Test.Assert(!tool.UnavailableReason.IsEmpty);
 		Guid id = .();
 		Rig(scene, selection, out id);
 		Test.Assert(tool.IsAvailable);

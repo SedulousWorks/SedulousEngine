@@ -53,6 +53,8 @@ class SplineEditTool : IViewportTool
 	public StringView Id => "spline.edit";
 	public StringView DisplayName => "Spline";
 	public bool IsAvailable => TargetComponent() != null;
+	public StringView UnavailableReason =>
+		"Edit Spline needs a selected entity with a Spline component.";
 	public StringView StatusText => "drag point/handle (Shift: break pair) | Ctrl+click segment: insert | Del/X: remove";
 	public int32 HoverPoint => mHoverPoint;
 	public int32 SelectedPoint => mSelectedPoint;

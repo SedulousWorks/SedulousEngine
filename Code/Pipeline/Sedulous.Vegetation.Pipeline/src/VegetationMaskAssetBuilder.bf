@@ -103,11 +103,22 @@ class VegetationMaskAssetBuilder : IAssetBuilder
 			{
 				defer delete stream;
 				let streamSize = stream.Size();
-				let expected = (int64)width * (int64)height * (int64)planes;
-				if (streamSize == expected)
+				let planeBytes = (int64)width * (int64)height;
+				let expected = planeBytes * (int64)planes;
+				// A blob that is a whole number of planes but not this many is an author who
+				// changed the plane COUNT after painting: keep the planes that still exist,
+				// a fresh one starting empty and a dropped one simply gone. Anything else is
+				// a dimension change, and there is no sensible way to carry a painting across
+				// that, so the planes stay empty.
+				let readable = (streamSize == expected)
+					? streamSize
+					: (((planeBytes > 0) && ((streamSize % planeBytes) == 0))
+						? Math.Min(streamSize, expected)
+						: 0);
+				if (readable > 0)
 				{
 					let densities = mask.Densities;
-					if (stream.Read(.(densities.Ptr, (int)streamSize)) != (int)streamSize)
+					if (stream.Read(.(densities.Ptr, (int)readable)) != (int)readable)
 					{
 						// A partial read: an empty mask beats half a painting.
 						for (int i < densities.Length)

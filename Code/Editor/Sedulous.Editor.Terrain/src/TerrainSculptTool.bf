@@ -81,6 +81,9 @@ class TerrainSculptTool : IViewportTool
 	public bool HasHover => mHasHover;
 
 	/// Any terrain in the scene with a resolved, non empty heightfield.
+	public StringView UnavailableReason =>
+		"Sculpt needs a terrain with a heightfield in the scene.";
+
 	public bool IsAvailable
 	{
 		get
