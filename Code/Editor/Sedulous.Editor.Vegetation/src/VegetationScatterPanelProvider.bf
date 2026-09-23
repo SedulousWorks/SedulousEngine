@@ -44,6 +44,8 @@ class VegetationScatterPanelProvider : IViewportToolPanelProvider
 						label.Set(layer.Name);
 					if (layer.Placement != .Scattered)
 						label.Append(" (not scattered)");
+					else if (layer.Mesh.Get == null)
+						label.Append(" (no mesh)"); // nothing would draw
 					outLabels.Add(label);
 				}
 			});

@@ -76,6 +76,8 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		public bool SeenThisFrame = false;
 		/// The over budget warning fires once per layer.
 		public bool WarnedClamp = false;
+		/// And the unresolved mesh warning, likewise once per layer.
+		public bool WarnedNoMesh = false;
 	}
 
 	/// BORROWED: the scene outlives its systems.
@@ -356,7 +358,21 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 
 		let mesh = authored.Mesh.Get;
 		if (mesh == null)
+		{
+			// A reference that NAMES an asset but resolves to nothing, one deleted, uncooked
+			// or left behind by a stale database, draws nothing: say so once, because a
+			// silently empty layer reads as a broken brush. A nil reference is just an
+			// unfinished layer, so it stays quiet.
+			if ((authored.Mesh.Id != Guid()) && !cache.WarnedNoMesh)
+			{
+				cache.WarnedNoMesh = true;
+				GlobalLog(.Warning,
+					"Vegetation: layer {} '{}' has a mesh reference that does not resolve, one deleted, uncooked or stale, so nothing will draw",
+					layerIndex, authored.Name);
+			}
 			return;
+		}
+		cache.WarnedNoMesh = false;
 
 		let layer = authored.ToScatterLayer();
 		let layerHash = VegetationLayers.LayerScatterHash(layer);

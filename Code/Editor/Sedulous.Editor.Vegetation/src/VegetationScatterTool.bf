@@ -60,6 +60,8 @@ class VegetationScatterTool : IViewportTool
 	private bool mHasHover = false;
 	private Float3 mHoverWorld = .Zero;
 	private Float3 mHoverNormal = .(0.0f, 1.0f, 0.0f);
+	/// Whether the hovered component's SELECTED layer resolves its mesh.
+	private bool mLayerHasMesh = true;
 
 	private bool mStroking = false;
 	private EntityHandle mStrokeOwner = .();
@@ -201,6 +203,8 @@ class VegetationScatterTool : IViewportTool
 			mHasHover = true;
 			mHoverWorld = pick.WorldHit;
 			mHoverNormal = pick.WorldNormal;
+			let hovered = LayerAt(pick, mLayer);
+			mLayerHasMesh = (hovered == null) || (hovered.Mesh.Get != null);
 		}
 
 		var consumed = mStroking;
@@ -396,8 +400,15 @@ class VegetationScatterTool : IViewportTool
 		let radius = (int32)(mRadius + 0.5f);
 		let keys = "(1-9 layer, 0 eraser, wheel size)";
 		if (mErase)
+		{
 			mStatus.Set(scope $"Paint Props [ERASER]  radius {radius}  {keys}");
-		else
-			mStatus.Set(scope $"Paint Props [layer {mLayer}]  radius {radius}  {keys}");
+			return;
+		}
+
+		mStatus.Set(scope $"Paint Props [layer {mLayer}]  radius {radius}  {keys}");
+		// Props would place and nothing would draw, which without saying so reads as a brush
+		// that does not work.
+		if (!mLayerHasMesh)
+			mStatus.AppendF("  - layer {} has no mesh: props place but nothing draws", mLayer);
 	}
 }

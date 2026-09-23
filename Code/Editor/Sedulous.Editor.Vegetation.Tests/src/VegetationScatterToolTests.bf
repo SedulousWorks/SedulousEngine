@@ -193,4 +193,25 @@ class VegetationScatterToolTests
 		tool.SetRadius(9.0f);
 		Test.Assert(tool.Radius == 9.0f);
 	}
+
+	/// A layer whose mesh does not resolve is NAMED in the status: props would place and
+	/// nothing would draw, which is otherwise indistinguishable from a brush that does not
+	/// work.
+	[Test]
+	public static void ALayerWithoutAMeshIsNamedInTheStatus()
+	{
+		let fx = scope ScatterFixture();
+		let commands = scope EditorCommandStack();
+		let tool = scope VegetationScatterTool(fx.Scene, commands);
+		tool.SetLayer(1);
+
+		// The reference resolves to nothing.
+		fx.Vegetation.Get(fx.Terrain).Layers[1].Mesh = .(Guid());
+		tool.Update(VegetationFixture.RayAt(0.0f, 0.0f)); // a hover resolves the layer's state
+		Test.Assert(tool.StatusText.Contains("no mesh"));
+
+		fx.Vegetation.Get(fx.Terrain).Layers[1].Mesh.SetDirect(fx.Mesh);
+		tool.Update(VegetationFixture.RayAt(0.0f, 0.0f));
+		Test.Assert(!tool.StatusText.Contains("no mesh"));
+	}
 }

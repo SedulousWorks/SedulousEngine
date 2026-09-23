@@ -79,10 +79,22 @@ class EnvironmentExtractTests
 		Test.Assert(Near(system.TimeSeconds, 0.75f));
 		Test.Assert(Near(system.PrevTimeSeconds, 0.75f));
 
+		// The editor's editing scene ticks with simulation DISABLED, Simulate being what
+		// enables it: the clock does not advance there, so a frozen world's grass stands still.
+		scene.SetSimulationEnabled(false);
+		scene.Update(0.5f);
+		Test.Assert(Near(system.TimeSeconds, 0.75f));
+		Test.Assert(Near(system.PrevTimeSeconds, 0.75f));
+		scene.SetSimulationEnabled(true);
+		scene.Update(0.5f);
+		Test.Assert(Near(system.TimeSeconds, 1.25f));
+		scene.SetSimulationEnabled(false);
+		scene.Update(0.5f);
+
 		let snapshot = scope ExtractedScene();
 		RenderExtract.ExtractEnvironmentInto(scene, snapshot);
 		Test.Assert(snapshot.HasTime);
-		Test.Assert(Near(snapshot.TimeSeconds, 0.75f));
+		Test.Assert(Near(snapshot.TimeSeconds, 1.25f));
 		Test.Assert(Near(snapshot.PrevTimeSeconds, 0.75f));
 
 		// A scene without the system stamps none, and the frame's own clock stands in.

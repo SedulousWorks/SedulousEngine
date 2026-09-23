@@ -23,10 +23,15 @@ class EnvironmentSystem : SceneSystem
 	/// context, group and scene time scales composed by the scene manager, so time driven
 	/// shading, the WIND sway, pauses and slows with the scene it belongs to.
 	///
-	/// Advanced once a frame, in the update phase. RUNTIME state, never serialized.
+	/// Advanced once a frame, in the update phase, and ONLY while the scene simulates: the
+	/// editor's editing scene ticks every frame with simulation disabled, Simulate being what
+	/// enables it, and a frozen world's grass has to stand still there. RUNTIME state, never
+	/// serialized.
 	public override void OnUpdate(ScenePhase phase, float deltaTime)
 	{
 		if (phase != .Update)
+			return;
+		if ((Scene != null) && !Scene.SimulationEnabled)
 			return;
 		mPrevTimeSeconds = mTimeSeconds;
 		mTimeSeconds += deltaTime;
