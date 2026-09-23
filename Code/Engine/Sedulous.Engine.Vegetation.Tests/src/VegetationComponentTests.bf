@@ -561,4 +561,67 @@ class VegetationComponentTests
 		Test.Assert(loaded.Instances.Count == 2);
 		Test.Assert(Near(loaded.Instances[1].M[3][0], 7.0f));
 	}
+
+	/// An invalidated set keeps drawing what it had until its rebuild's turn comes, so a
+	/// brush stroke never blinks the ground out from under itself; props rebuild whole.
+	[Test]
+	public static void AnInvalidatedSetKeepsDrawingUntilItsRebuildLands()
+	{
+		let f = scope Fixture(false);
+		f.Manager.SetBuildBudget(100);
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4, "warm");
+		Test.Assert(f.Manager.BuildCount == 4);
+
+		// A sculpt, which dirties every chunk, under a budget of one: every frame still draws
+		// all four sets, the three not yet rebuilt showing what they had, while one rebuilds
+		// per extraction.
+		f.Manager.SetBuildBudget(1);
+		f.Grid.BumpVersion();
+		for (uint32 frame = 1; frame <= 4; frame++)
+		{
+			f.Extract(snapshot, null, sets);
+			Test.Assert(sets.Count == 4);
+			Test.Assert(f.Manager.BuildCount == (4 + frame));
+		}
+		f.Extract(snapshot, null, sets);
+		Test.Assert(f.Manager.BuildCount == 8, "all caught up");
+
+		// A COLD set, never built, still waits its turn: a fresh layer under the same budget.
+		let flowers = new VegetationLayer();
+		flowers.Name.Set("Flowers");
+		flowers.Mesh.SetDirect(f.Mesh);
+		flowers.Placement = .Uniform;
+		flowers.Density = f.Layer.Density;
+		flowers.MaxSlopeDegrees = 90.0f;
+		flowers.FadeStart = f.Layer.FadeStart;
+		flowers.FadeEnd = f.Layer.FadeEnd;
+		f.Component.Layers.Add(flowers);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 5, "the four grass sets and the one flower chunk built here");
+
+		// Authored props re-bucket outside the budget, so a stroke lands whole in one
+		// extraction.
+		f.Component.Layers.RemoveAt(1);
+		delete flowers;
+		f.Layer.Placement = .Scattered;
+		for (int32 i < 4)
+		{
+			f.Layer.Instances.Add(Float4x4.Translation(
+				.(((i % 2) == 0) ? -30.0f : 30.0f, 2.0f, (i < 2) ? -30.0f : 30.0f)));
+		}
+		// The placement change resets the layer, so this extraction rebuilds all four.
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4);
+
+		let builds = f.Manager.BuildCount;
+		f.Layer.Instances.Add(Float4x4.Translation(.(-31.0f, 2.0f, -31.0f)));
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets.Count == 4);
+		Test.Assert(f.Manager.BuildCount == (builds + 4), "every chunk re-bucketed, budget one");
+		Test.Assert(TotalInstances(sets) == 5);
+	}
 }

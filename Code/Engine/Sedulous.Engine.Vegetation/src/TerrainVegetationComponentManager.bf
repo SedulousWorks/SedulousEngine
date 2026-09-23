@@ -480,11 +480,21 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 
 			if (set.Dirty)
 			{
-				if (budget == 0)
-					continue; // next frame: the build budget spreads a cold start
-
-				BuildSet(cache, i, hf, splat, mask, layer, mesh.Bounds, authored.Instances);
-				budget--;
+				// Authored props re-bucket in one copy, outside the budget, which exists for
+				// the procedural scatter, so a stroke lands whole. A procedural set past the
+				// budget waits for a later frame, but one that was ALREADY built keeps drawing
+				// what it had meanwhile: a dropped frame under a brush is a flicker.
+				let scattered = layer.Placement == .Scattered;
+				if (scattered || (budget > 0))
+				{
+					BuildSet(cache, i, hf, splat, mask, layer, mesh.Bounds, authored.Instances);
+					if (!scattered)
+						budget--;
+				}
+				else if (!set.Built)
+				{
+					continue; // never built: nothing stale to show until its turn
+				}
 			}
 			if (set.World.IsEmpty)
 				continue;
