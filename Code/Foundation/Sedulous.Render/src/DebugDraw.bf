@@ -443,6 +443,22 @@ class DebugDraw
 			});
 	}
 
+	/// The pixel x a 2D text command starts at.
+	///
+	/// A left aligned command stores its x directly; DrawScreenTextRight stores
+	/// -(margin + 1), and its left edge is the viewport width less the margin less the text's
+	/// width in glyph cells. The LIST cannot resolve that, not knowing the viewport, so the
+	/// pass does it at draw time through here.
+	public static float ResolveScreenTextX(float storedX, int32 textLength, float glyphWidth,
+		uint32 viewportWidth)
+	{
+		if (storedX >= 0.0f)
+			return storedX;
+
+		let margin = -storedX - 1.0f;
+		return (float)viewportWidth - margin - ((float)textLength * glyphWidth);
+	}
+
 	public void DrawScreenTextRight(float rightMargin, float y, StringView text, Color color,
 		float scale = 1.0f)
 	{

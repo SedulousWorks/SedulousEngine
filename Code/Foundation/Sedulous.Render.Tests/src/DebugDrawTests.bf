@@ -178,6 +178,38 @@ class DebugDrawTests
 		Test.Assert(draw.Commands2D[0].Position.X < 0.0f);
 	}
 
+	/// And the PASS resolves that encoding against the viewport, rather than drawing at the
+	/// raw negative x, which put right-aligned text off the left edge over the tool status.
+	[Test]
+	public static void TheRightAlignedMarginResolvesAgainstTheViewportWidth()
+	{
+		let draw = scope DebugDraw();
+		draw.DrawScreenText(12.0f, 12.0f, "status", .(1, 1, 1, 1));
+		draw.DrawScreenTextRight(12.0f, 12.0f, "60 fps  16.7 ms", .(1, 1, 1, 1));
+		Test.Assert(draw.Commands2D.Length == 2);
+
+		let left = draw.Commands2D[0];
+		let right = draw.Commands2D[1];
+		Test.Assert(left.Position.X == 12.0f);
+		Test.Assert(right.Position.X < 0.0f, "the encoding is -(margin + 1)");
+		Test.Assert(right.TextLength == 15);
+
+		let glyph = (float)DebugFont.cCharWidth;
+		// A left x passes straight through.
+		Test.Assert(DebugDraw.ResolveScreenTextX(left.Position.X, left.TextLength, glyph, 800)
+			== 12.0f);
+
+		// A right one lands so the text ENDS twelve pixels in from the right edge.
+		let x = DebugDraw.ResolveScreenTextX(right.Position.X, right.TextLength, glyph, 800);
+		Test.Assert(Math.Abs(x - (800.0f - 12.0f - (15.0f * glyph))) < 0.001f);
+		Test.Assert(Math.Abs((x + (15.0f * glyph)) - 788.0f) < 0.001f);
+
+		// Scale widens the glyph cell, and the resolve follows it.
+		let scaled = DebugDraw.ResolveScreenTextX(right.Position.X, right.TextLength,
+			glyph * 2.0f, 800);
+		Test.Assert(Math.Abs(scaled - (800.0f - 12.0f - (15.0f * glyph * 2.0f))) < 0.001f);
+	}
+
 	[Test]
 	public static void ARectangleCarriesNoText()
 	{

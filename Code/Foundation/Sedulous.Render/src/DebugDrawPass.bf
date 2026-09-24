@@ -287,7 +287,10 @@ class DebugDrawPass
 
 			let width = (float)DebugFont.cCharWidth * command.Scale;
 			let height = (float)DebugFont.cCharHeight * command.Scale;
-			var x = command.Position.X;
+			// A NEGATIVE x is DrawScreenTextRight's margin encoding: the pass drew those at
+			// the raw negative x, which put right-aligned text off the LEFT edge.
+			var x = DebugDraw.ResolveScreenTextX(command.Position.X, command.TextLength, width,
+				viewportWidth);
 			let y = command.Position.Y;
 
 			for (int32 i = 0; i < command.TextLength; i++)
