@@ -69,7 +69,7 @@ class RenderFrame
 	/// re-fills in the forward, for comparison.
 	private bool mInstanceSharing = true;
 	/// View frustum culling of the camera draw lists, off by default.
-	private bool mViewCulling = false;
+	private bool mViewCulling = true;
 
 	private float mShadowDistance = 300.0f;
 	private float mShadowFarFade = 40.0f;
@@ -428,7 +428,7 @@ class RenderFrame
 		view.SetDebugScene(debugScene);
 		view.SetDebugView(debugView);
 		view.SetSceneKey(sceneKey);
-		view.BuildDrawList(mSortScratch, mViewCulling);
+		view.BuildDrawList(mSortScratch, mViewCulling && settings.FrustumCull);
 		return view;
 	}
 

@@ -379,6 +379,9 @@ extension SceneEditorPage
 		menu.AddItem(scope $"{Mark(mPostOverride.DisableSsr)}No SSR", new [=this]() => { mPostOverride.DisableSsr = !mPostOverride.DisableSsr; });
 		menu.AddItem(scope $"{Mark(mPostOverride.DisableSsgi)}No SSGI", new [=this]() => { mPostOverride.DisableSsgi = !mPostOverride.DisableSsgi; });
 		menu.AddItem(scope $"{Mark(mPostOverride.DisableAa)}No AA (crisp)", new [=this]() => { mPostOverride.DisableAa = !mPostOverride.DisableAa; });
+		// Not post processing, but the same kind of thing: an ephemeral per view "draw it
+		// all" for measuring what the frustum cull saves in this viewport.
+		menu.AddItem(scope $"{Mark(mPostOverride.DisableCulling)}No frustum culling (draw everything)", new [=this]() => { mPostOverride.DisableCulling = !mPostOverride.DisableCulling; });
 		menu.AddSeparator();
 		for (let level in MsaaLevels.All)
 		{

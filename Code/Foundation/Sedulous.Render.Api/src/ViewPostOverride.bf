@@ -19,6 +19,11 @@ struct ViewPostOverride
 	public bool DisableAa = false;
 	public bool DisableSsgi = false;
 
+	/// Draws EVERYTHING in the scene for this view with the frustum test off: the A/B for
+	/// what view frustum culling saves. Not post processing, but the same kind of ephemeral
+	/// per view switch, so it rides here rather than growing a second override type.
+	public bool DisableCulling = false;
+
 	/// The scene pass's multisampling for this view: zero leaves the resolved count alone,
 	/// and one, two or four force it. An editor viewport is the source of its own count,
 	/// since the scene authors none. Clamped to what the adapter has further down.

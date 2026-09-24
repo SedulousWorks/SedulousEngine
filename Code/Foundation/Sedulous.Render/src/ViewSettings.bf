@@ -33,5 +33,9 @@ struct ViewSettings
 	/// requests bind to it: only the view rendered with a matching key answers them.
 	public void* ViewportKey = null;
 
+	/// Whether this view may frustum cull its draw list; the frame's global switch still
+	/// gates it. A per view override clears it for an A/B of what the cull saves.
+	public bool FrustumCull = true;
+
 	public this() {}
 }

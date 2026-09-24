@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.RHI;
+using Sedulous.RHI.Null;
 using Sedulous.Render;
 
 namespace Sedulous.Render.Tests;
@@ -257,5 +258,42 @@ class RenderViewTests
 		Test.Assert(view.DebugScene == &sceneDebug);
 		Test.Assert(view.DebugViewList == &viewDebug);
 		Test.Assert(view.SceneKey == &key);
+	}
+
+	/// The frame gates the cull by BOTH its own switch, on by default, and the view's
+	/// setting, which a "draw everything" override clears for an A/B.
+	[Test]
+	public static void TheFrameGatesCullingByItsSwitchAndTheViewsSetting()
+	{
+		let backend = NullRhi.CreateBackend();
+		defer delete backend;
+		let device = backend.EnumerateAdapters()[0].CreateDevice(.()).Value;
+
+		let scene = scope ExtractedScene();
+		AddMeshAt(scene, 10.0f, RenderCategories.Opaque);
+		let behind = scene.Add<MeshRenderData>();
+		behind.WorldCenter = .(0, 0, 500);
+		behind.WorldRadius = 1.0f;
+
+		let registry = scope RendererRegistry(); // AddView only builds the draw list
+		let frame = scope RenderFrame(device, registry, 2);
+		Test.Assert(frame.ViewCulling); // on by default, for every host
+
+		let culled = frame.AddView(scene, LookingForward(), .(), null, .BGRA8Unorm, 800, 600);
+		Test.Assert(culled.DrawList.Length == 1);
+		Test.Assert(culled.CulledCount == 1);
+
+		// The view opting out draws everything even with the frame's switch on.
+		var optOut = ViewSettings();
+		optOut.FrustumCull = false;
+		let all = frame.AddView(scene, LookingForward(), optOut, null, .BGRA8Unorm, 800, 600);
+		Test.Assert(all.DrawList.Length == 2);
+		Test.Assert(all.CulledCount == 0);
+
+		// And the frame's switch off overrides a view that would have culled.
+		frame.SetViewCulling(false);
+		let none = frame.AddView(scene, LookingForward(), .(), null, .BGRA8Unorm, 800, 600);
+		Test.Assert(none.DrawList.Length == 2);
+		Test.Assert(none.CulledCount == 0);
 	}
 }

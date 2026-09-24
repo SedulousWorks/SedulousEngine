@@ -118,7 +118,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	/// Null means multisampling is unavailable, whatever the device reports.
 	private MsaaResolvePass mMsaaResolvePass = null ~ delete _;
 	private bool mInstanceSharing = true;
-	private bool mViewCulling = false;
+	private bool mViewCulling = true;
 	private bool mFxaaEnabled = false;
 	private float mFxaaSubpixel = 0.75f;
 	private bool mTaaEnabled = false;
@@ -953,7 +953,10 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		// An editor viewport's show flags: ephemeral per view overrides that strip effects for
 		// editing clarity, layered ON TOP of the resolved settings and never written back.
 		if (postOverride != null)
+		{
 			ScenePost.ApplyOverride(ref settings.Post, *postOverride);
+			settings.FrustumCull = !postOverride.DisableCulling;
+		}
 
 		// The editor's debug view: a pass through selection, validated per view at declare
 		// time, so an unknown resource name simply shows the final image.

@@ -16,6 +16,9 @@ class DebugViewIsolationTests
 	{
 		let device = scope NullDevice();
 		let subsystem = scope RenderSubsystem(device, 2, null);
+		// View frustum culling is on by default for every host of the subsystem, the editor,
+		// the player and the samples alike; a per view DisableCulling override is the A/B.
+		Test.Assert(subsystem.ViewCulling);
 
 		// Two distinct keys, which is the main editor viewport and the camera preview inset.
 		int32 mainKey = 0;
