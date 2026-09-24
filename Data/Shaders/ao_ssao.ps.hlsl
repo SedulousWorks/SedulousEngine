@@ -67,6 +67,8 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float occlusion = 0.0; int valid = 0;
     [loop] for (int i = 0; i < count; ++i) {
         float3 k = KERNEL[i];
+        k.z = abs(k.z);   // HEMISPHERE: the table is a sphere; a sample below the surface reads the
+                          // surface itself as its occluder (a flat floor came out half occluded)
         float3 rot = float3(k.x * ca - k.y * sa, k.x * sa + k.y * ca, k.z);   // rotate in tangent plane
         float3 off = tangent * rot.x + bitangent * rot.y + N * rot.z;         // orient to hemisphere
         float  scale = (float(i) + 1.0) / float(count);
@@ -76,7 +78,11 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
         float2 sUv = ViewToUv(samplePos);
         if (any(sUv < 0.0) || any(sUv > 1.0)) { continue; }
         float  sampleZ = ViewPos(sUv, DepthTex.SampleLevel(PointSamp, sUv, 0).r).z;
-        float  diff = sampleZ - P.z;   // RH view space: an occluder (closer) is less negative -> larger
+        // The scene surface under the SAMPLE's pixel against the SAMPLE point, not against P:
+        // RH view space, an occluder (closer) is less negative -> positive diff. Comparing to P
+        // instead darkened every oblique flat surface, the floor's own depth gradient toward the
+        // camera reading as occlusion, and moved it with the view.
+        float  diff = sampleZ - samplePos.z;
         // Smooth occlusion ramp, NOT a hard step: under TAA the depth is jittered sub-pixel each frame, so
         // a binary test flips samples on/off between frames -> shimmer. A soft band makes SSAO continuous
         // in its inputs (like GTAO's arc integral), so TAA can stabilize it.

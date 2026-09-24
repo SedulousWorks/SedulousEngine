@@ -24,8 +24,12 @@ class MsaaProbeTests
 		public bool Taa = false;
 		public bool Fxaa = false;
 		public bool Ssr = false;
-		/// Nought is off.
+		/// Nought is off, one GTAO, two SSAO.
 		public uint32 AoMode = 0;
+		/// A large thin slab tilted so its top face crosses the whole view at a grazing
+		/// angle, a floor seen from just above it, in place of the small rotated cube: the
+		/// flat surface AO probe. Thin, so the camera at z=6 is never inside it.
+		public bool ObliquePlane = false;
 
 		public this() {}
 	}
@@ -105,8 +109,14 @@ class MsaaProbeTests
 		scene.SetAmbient(.(1.0f, 1.0f, 1.0f));
 
 		let cube = scene.Add<MeshRenderData>();
-		cube.World = Float4x4.RotationY(0.6f) * Float4x4.RotationX(0.5f);
-		cube.WorldCenter = .(0.0f, 0.0f, 0.0f);
+		// The slab is 40 by 0.2 by 40, tilted 0.35 radians about X and pushed back to z = -8,
+		// so its top face spans the view with its normal about seventy degrees off the view
+		// direction.
+		cube.World = config.ObliquePlane
+			? Float4x4.Scale(.(40.0f, 0.2f, 40.0f)) * Float4x4.RotationX(0.35f) * Float4x4.Translation(.(0, 0, -8))
+			: Float4x4.RotationY(0.6f) * Float4x4.RotationX(0.5f);
+		cube.WorldCenter = config.ObliquePlane ? Float3(0.0f, 0.0f, -8.0f) : Float3(0.0f, 0.0f, 0.0f);
+		cube.WorldRadius = config.ObliquePlane ? 30.0f : 2.0f;
 		cube.Mesh = cubeMesh;
 		cube.Material = cubeMaterial;
 		cube.Category = RenderCategories.Opaque;
@@ -300,6 +310,63 @@ class MsaaProbeTests
 			Test.Assert(max > 300, scope $"{kind} {run.Name}: lit");
 			Test.Assert(max <= 765, scope $"{kind} {run.Name}: not overflowed");
 			Test.Assert(lit > 200, scope $"{kind} {run.Name}: covers an area");
+		}
+	}
+
+	/// The mean luminance over a rectangle, which is what a flat surface's brightness is
+	/// measured by: a maximum would miss a uniform darkening.
+	private static uint32 MeanLuma(CapturedImage image, uint32 x0, uint32 y0, uint32 x1, uint32 y1)
+	{
+		uint64 sum = 0;
+		for (uint32 y = y0; y < y1; y++)
+		{
+			for (uint32 x = x0; x < x1; x++)
+				sum += image.Luma(x, y);
+		}
+		return (uint32)(sum / (uint64)((x1 - x0) * (y1 - y0)));
+	}
+
+	/// A flat surface has NO ambient occlusion: a floor seen at a grazing angle comes out as
+	/// bright with SSAO, and with GTAO, as with AO off.
+	///
+	/// SSAO compared each sample's scene depth against the CENTRE pixel and drew its kernel
+	/// from a sphere, so an oblique floor's own depth gradient read as occlusion and the
+	/// darkening moved with the camera.
+	[Test]
+	public static void AFlatSurfaceIsNotSelfOccluded()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+			FlatSurfaceAoOn(kind);
+	}
+
+	private static void FlatSurfaceAoOn(ProbeBackend kind)
+	{
+		let fixture = scope BackendProbeFixture(kind);
+		if (!fixture.Ready)
+			return;
+
+		let off = RenderMsaa(fixture, .() { ObliquePlane = true });
+		defer delete off;
+		Test.Assert((off != null) && off.Valid, scope $"{kind}: the plane rendered");
+		let unoccluded = MeanLuma(off, 32, 32, 96, 96);
+		Test.Assert(unoccluded > 100, scope $"{kind}: the plane fills the probe region and is lit");
+
+		for (let run in scope EffectRun[2](
+			.("gtao", .() { AoMode = 1, ObliquePlane = true }),
+			.("ssao", .() { AoMode = 2, ObliquePlane = true })))
+		{
+			let image = RenderMsaa(fixture, run.Config);
+			defer delete image;
+			Test.Assert((image != null) && image.Valid, scope $"{kind} {run.Name}: rendered");
+			let lit = MeanLuma(image, 32, 32, 96, 96);
+			// Within two percent of the unoccluded surface: a plane never occludes itself.
+			// Measured here at 521 against 524 fixed, and 506 with the kernel left as a full
+			// sphere, so the band separates those with room on both sides. Raptor's own five
+			// percent band does not, this scene darkening less than theirs did. The per
+			// sample comparison moves it by one unit, which no band could separate: the
+			// hemisphere half is what this probe guards. GTAO sits at 523 throughout.
+			Test.Assert(lit * 100 >= unoccluded * 98,
+				scope $"{kind} {run.Name}: flat surface mean luma {lit} against {unoccluded} with AO off");
 		}
 	}
 }
