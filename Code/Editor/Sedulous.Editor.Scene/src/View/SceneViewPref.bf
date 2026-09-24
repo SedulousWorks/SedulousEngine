@@ -9,8 +9,8 @@ namespace Sedulous.Editor.Scene;
 ///
 /// Version 2 adds the editor CAMERA and the entity SELECTION, so a scene reopens where it was
 /// left rather than at the default framing with nothing picked; version 3 adds the entity
-/// marker toggle. An older file is read by the gates below and re-saved at the current
-/// version.
+/// marker toggle, version 4 the frame rate readout. An older file is read by the gates below
+/// and re-saved at the current version.
 /// HAND WRITTEN rather than generated: the body has to branch on the stored version, which a
 /// field walk cannot.
 class SceneViewPref : ISerializable
@@ -18,7 +18,7 @@ class SceneViewPref : ISerializable
 	/// The same identity the generated attribute would have emitted, from the qualified name.
 	public static readonly uint64 TypeId =
 		Sedulous.Core.Serialization.TypeIdOf("Sedulous.Editor.Scene.SceneViewPref");
-	public const uint32 DataVersion = 3;
+	public const uint32 DataVersion = 4;
 	/// The oldest layout the reader below still understands.
 	public const uint32 MinReadDataVersion = 1;
 
@@ -27,6 +27,7 @@ class SceneViewPref : ISerializable
 	public bool ShowLodOverlay = false;
 	public bool ShowColliders = false;
 	public bool ShowMarkers = true;
+	public bool ShowFps = false;
 
 	/// False until a page has saved one; the camera then keeps its default framing.
 	public bool HasCamera = false;
@@ -36,7 +37,7 @@ class SceneViewPref : ISerializable
 	/// dropped on restore rather than failing the load.
 	public List<Guid> Selection = new .() ~ delete _;
 
-	public SceneViewState State => .(ShowGrid, ShowLodOverlay, ShowColliders, ShowMarkers);
+	public SceneViewState State => .(ShowGrid, ShowLodOverlay, ShowColliders, ShowMarkers, ShowFps);
 
 	public void Set(Guid scene, SceneViewState state)
 	{
@@ -45,6 +46,7 @@ class SceneViewPref : ISerializable
 		ShowLodOverlay = state.ShowLodOverlay;
 		ShowColliders = state.ShowColliders;
 		ShowMarkers = state.ShowMarkers;
+		ShowFps = state.ShowFps;
 	}
 
 	public void Serialize(ISerializer ar)
@@ -72,6 +74,8 @@ class SceneViewPref : ISerializable
 		}
 		if (ar.Version >= 3)
 			SerializeValue(ar, "showMarkers", ref ShowMarkers);
+		if (ar.Version >= 4)
+			SerializeValue(ar, "showFps", ref ShowFps);
 
 		ar.EndObject();
 		Sedulous.Core.Serialization.EndVersionedPayload(ar);

@@ -75,9 +75,14 @@ class SceneEditorPage : UIEditorPage
 	private ToolbarToggle mRotateToggle = null;
 	private ToolbarToggle mScaleToggle = null;
 	private ToolbarToggle mSpaceToggle = null;
-	/// One dropdown over the editor's debug draws: grid, entity markers, LOD overlay and
-	/// the edit time collider wireframes. Borrowed; the toolbar owns it.
+	/// One dropdown over the editor's debug draws: grid, entity markers, LOD overlay, the
+	/// edit time collider wireframes and the frame rate. Borrowed; the toolbar owns it.
 	private ToolbarMenuButton mOverlaysButton = null;
+
+	// The frame rate readout samples half second windows, so it is legible rather than a blur.
+	private double mFpsWindowSeconds = 0.0;
+	private uint32 mFpsWindowFrames = 0;
+	private String mFpsText = new .() ~ delete _;
 	private SceneViewState mView = .();
 	private List<(ToolbarToggle toggle, String id)> mToolToggles = new .() ~ { for (var t in _) delete t.id; delete _; };
 	/// A category's dropdown over the tools registered under it.
@@ -424,6 +429,7 @@ class SceneEditorPage : UIEditorPage
 				dd.DrawLine(.Zero, .(0, 0, 1), .(0.2f, 0.4f, 0.95f, 1.0f));
 			}
 			DrawEntityMarkers(dd);
+			DrawFrameRate(dd, dt);
 			DrawGizmos(dd);
 			if (mPropAnimPanel != null)
 				mPropAnimPanel.DrawOverlay(dd); // the live preview entity marker

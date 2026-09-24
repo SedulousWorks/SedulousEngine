@@ -9,14 +9,17 @@ struct SceneViewState
 	public bool ShowColliders = false;
 	/// The origin cross on every entity; off for a scene with thousands of them.
 	public bool ShowMarkers = true;
+	/// The frame rate readout in the viewport's top right corner.
+	public bool ShowFps = false;
 
 	public this() {}
 	public this(bool showGrid, bool showLodOverlay, bool showColliders = false,
-		bool showMarkers = true)
+		bool showMarkers = true, bool showFps = false)
 	{
 		ShowGrid = showGrid;
 		ShowLodOverlay = showLodOverlay;
 		ShowColliders = showColliders;
 		ShowMarkers = showMarkers;
+		ShowFps = showFps;
 	}
 }

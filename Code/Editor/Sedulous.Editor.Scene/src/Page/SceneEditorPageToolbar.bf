@@ -335,6 +335,8 @@ extension SceneEditorPage
 		menu.AddSeparator();
 		menu.AddItem(scope $"{Mark(mView.ShowLodOverlay)}LOD overlay", new [=this]() => { mView.ShowLodOverlay = !mView.ShowLodOverlay; SaveViewPrefs(); });
 		menu.AddItem(scope $"{Mark(mView.ShowColliders)}Colliders", new [=this]() => { mView.ShowColliders = !mView.ShowColliders; SaveViewPrefs(); });
+		menu.AddSeparator();
+		menu.AddItem(scope $"{Mark(mView.ShowFps)}FPS", new [=this]() => { mView.ShowFps = !mView.ShowFps; SaveViewPrefs(); });
 		let pos = anchor.LocalToScreen(.(0.0f, anchor.Height));
 		menu.Show(anchor.Context, pos.X, pos.Y);
 	}

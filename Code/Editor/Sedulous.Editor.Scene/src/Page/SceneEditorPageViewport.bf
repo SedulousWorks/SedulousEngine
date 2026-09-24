@@ -113,6 +113,29 @@ extension SceneEditorPage
 		});
 	}
 
+	/// The frame rate in the viewport's top right corner, clear of the tool status text in
+	/// the top left. Sampled over half second windows of THIS page's update dt, which is the
+	/// rate the person editing sees rather than the application's.
+	private void DrawFrameRate(DebugDraw dd, float dt)
+	{
+		if (!mView.ShowFps)
+		{
+			mFpsWindowSeconds = 0.0;
+			mFpsWindowFrames = 0;
+			mFpsText.Clear();
+			return;
+		}
+		mFpsWindowSeconds += (double)dt;
+		mFpsWindowFrames++;
+		if ((mFpsWindowSeconds >= 0.5) || mFpsText.IsEmpty)
+		{
+			FrameRateOverlay.Text(mFpsWindowSeconds, mFpsWindowFrames, mFpsText);
+			mFpsWindowSeconds = 0.0;
+			mFpsWindowFrames = 0;
+		}
+		dd.DrawScreenTextRight(12.0f, 12.0f, mFpsText, .(0.85f, 0.85f, 0.85f, 1.0f));
+	}
+
 	/// A small cross at every entity, and the selection's bounds.
 	private void DrawEntityMarkers(DebugDraw dd)
 	{

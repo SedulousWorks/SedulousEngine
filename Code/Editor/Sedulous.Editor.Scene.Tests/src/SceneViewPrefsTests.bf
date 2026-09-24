@@ -127,4 +127,48 @@ class SceneViewPrefsTests
 		Test.Assert(SceneViewPrefs.Load(loaded, sceneA, fb).ShowColliders);
 		Test.Assert(SceneViewPrefs.Load(loaded, sceneB, fb).ShowMarkers); // untouched: the default
 	}
+
+	/// The frame rate readout: off by default, round tripping per scene beside its siblings.
+	[Test]
+	public static void TheFpsToggleDefaultsOffAndSurvivesPerScene()
+	{
+		SceneEditorSerializables.RegisterAll();
+		let sceneA = Guid(15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16);
+		let sceneB = Guid(17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18);
+		let fb = SceneViewState();
+		Test.Assert(!fb.ShowFps);
+
+		let store = scope Settings();
+		Test.Assert(SceneViewPrefs.Save(store, sceneA, .(true, true, true, false, true)));
+		Test.Assert(SceneViewPrefs.Save(store, sceneB, .(true, false)));
+
+		let buffer = scope MemoryStream();
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		Test.Assert(store.Save(buffer, factory) case .Ok);
+		buffer.Seek(0, .Begin);
+		let loaded = scope Settings();
+		Test.Assert(loaded.Load(buffer, factory) case .Ok);
+
+		Test.Assert(SceneViewPrefs.Load(loaded, sceneA, fb).ShowFps);
+		Test.Assert(!SceneViewPrefs.Load(loaded, sceneA, fb).ShowMarkers); // siblings intact
+		Test.Assert(!SceneViewPrefs.Load(loaded, sceneB, fb).ShowFps);
+	}
+
+	/// The readout itself: a window with no frames says so rather than dividing by nought.
+	[Test]
+	public static void TheFrameRateTextReadsTheWindowsRateAndMeanFrameTime()
+	{
+		let text = scope String();
+		FrameRateOverlay.Text(0.0, 0, text);
+		Test.Assert(text == "-- fps");
+		FrameRateOverlay.Text(0.5, 0, text);
+		Test.Assert(text == "-- fps");
+		FrameRateOverlay.Text(0.5, 30, text);
+		Test.Assert(text == "60 fps  16.7 ms");
+		FrameRateOverlay.Text(1.0, 144, text);
+		Test.Assert(text == "144 fps  6.9 ms");
+		FrameRateOverlay.Text(0.5, 12, text);
+		Test.Assert(text == "24 fps  41.7 ms");
+	}
 }
