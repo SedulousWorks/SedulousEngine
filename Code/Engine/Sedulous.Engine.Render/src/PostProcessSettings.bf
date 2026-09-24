@@ -11,6 +11,9 @@ namespace Sedulous.Engine.Render;
 ///
 /// ONE per scene, like the environment. The defaults match what the subsystem used before
 /// any of this was authorable, so a scene looks the same until someone edits the block.
+// The inspector writes a field through RUNTIME reflection, so every field needs its
+// data emitted; an attribute on a field forces that, a bare field has nothing to.
+[Reflect(.Type | .NonStaticFields)]
 [DisplayName("Post Processing")]
 [Category("Rendering")]
 [Scriptable(.AllPublic)]

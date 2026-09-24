@@ -1,7 +1,12 @@
 using System;
 using System.Reflection;
 using Sedulous.Core;
+using Sedulous.Render;
 using Sedulous.Engine.Render;
+using Sedulous.Engine.Physics;
+using Sedulous.Engine.Navigation;
+using Sedulous.Engine.Script;
+using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -79,5 +84,51 @@ class InspectorHelperTests
 		Test.Assert(env.GetField("SkyZenith") case .Ok(let zenith));
 		Test.Assert(zenith.GetCustomAttribute<DisplayNameAttribute>() case .Ok(let label));
 		Test.Assert(label.Name == "Sky Zenith / Color");
+	}
+
+	/// Every field of a settings block a scene inspector edits must carry RUNTIME reflection
+	/// data, not only the ones an attribute forced it on.
+	///
+	/// The inspector's rows are generated at comptime, where every field is visible, but the
+	/// write goes through Type.GetField at runtime. A field the reflection tables omit renders
+	/// a row that silently refuses every edit: the sky mode dropdown sat on Procedural
+	/// whatever was picked, because SkyMode and AmbientColor were the two fields with no
+	/// attribute above them to pull them in.
+	[Test]
+	public static void EverySettingsFieldIsReflectedAtRuntimeNotJustTheAnnotatedOnes()
+	{
+		for (let type in scope Type[](typeof(EnvironmentSettings), typeof(PostProcessSettings),
+			typeof(PhysicsSceneSettings), typeof(NavigationSceneSettings), typeof(SceneScriptSettings)))
+		{
+			var reflected = 0;
+			for (let f in type.GetFields())
+			{
+				if (f.IsInstanceField)
+					reflected++;
+			}
+			Test.Assert(reflected > 0, scope $"{type.GetName(.. scope .())} reflects no field at all");
+		}
+
+		// The two that had none, by name: the dropdown and the colour the inspector writes.
+		let env = typeof(EnvironmentSettings);
+		Test.Assert(env.GetField("SkyMode") case .Ok);
+		Test.Assert(env.GetField("AmbientColor") case .Ok);
+	}
+
+	/// The dropdown's edit reaches the live settings and undoes, which is the whole path the
+	/// inspector row drives: a raw enum write through the command stack.
+	[Test]
+	public static void TheSkyModeEditReachesTheEnvironmentAndUndoes()
+	{
+		let scene = scope Sedulous.Scene.Scene("s");
+		let env = scene.AddSystem<EnvironmentSystem>();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+
+		Test.Assert(env.Environment.SkyMode == .Procedural);
+		edit.SetSceneSettingPropertyRaw(typeof(EnvironmentSettings), "SkyMode", (int64)SkyMode.Cubemap);
+		Test.Assert(env.Environment.SkyMode == .Cubemap);
+		commands.Undo();
+		Test.Assert(env.Environment.SkyMode == .Procedural);
 	}
 }

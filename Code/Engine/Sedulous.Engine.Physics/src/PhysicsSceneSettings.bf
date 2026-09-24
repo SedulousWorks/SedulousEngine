@@ -13,6 +13,9 @@ namespace Sedulous.Engine.Physics;
 ///
 /// The lists are OWNED by this block rather than by a manager, because a settings block is one
 /// per scene and is a plain object rather than a component in a pool.
+// The inspector writes a field through RUNTIME reflection, so every field needs its
+// data emitted; an attribute on a field forces that, a bare field has nothing to.
+[Reflect(.Type | .NonStaticFields)]
 [DisplayName("Physics Settings")]
 [Category("Physics")]
 [Scriptable]

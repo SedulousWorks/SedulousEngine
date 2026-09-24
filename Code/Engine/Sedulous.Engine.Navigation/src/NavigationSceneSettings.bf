@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core.Serialization;
 
 using Sedulous.Core;
@@ -8,6 +9,9 @@ namespace Sedulous.Engine.Navigation;
 ///
 /// Both overlays work in an editor AND in a player, following the physics debugging
 /// precedent: gated here, drawn by the runtime subsystem.
+// The inspector writes a field through RUNTIME reflection, so every field needs its
+// data emitted; an attribute on a field forces that, a bare field has nothing to.
+[Reflect(.Type | .NonStaticFields)]
 [DisplayName("Navigation Settings")]
 [Category("Navigation")]
 [Scriptable]

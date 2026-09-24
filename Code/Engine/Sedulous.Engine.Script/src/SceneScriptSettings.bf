@@ -10,6 +10,9 @@ namespace Sedulous.Engine.Script;
 /// The scene's own script: one `Level` class per scene, an enable flag, and the property
 /// values the author changed from the class's defaults. Serialized with the scene through
 /// the system settings seam.
+// The inspector writes a field through RUNTIME reflection, so every field needs its
+// data emitted; an attribute on a field forces that, a bare field has nothing to.
+[Reflect(.Type | .NonStaticFields)]
 [Scriptable]
 class SceneScriptSettings : ISerializable
 {
