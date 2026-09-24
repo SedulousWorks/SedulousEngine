@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
@@ -104,11 +105,18 @@ class TextureAssetBuilder : IAssetBuilder
 		let pixels = scope List<uint8>();
 		pixels.AddRange(image.PixelData);
 
+		// The cook's own profile per texture, so a slow phase NAMES itself rather than being
+		// guessed at from a total.
+		let clock = scope Stopwatch(true);
+		var mipsMs = (int64)0;
+		var compressMs = (int64)0;
+
 		let srgb = texture.ColorSpace == .Srgb;
 		if (image.Format == .RGBA8)
 		{
 			if (texture.GenerateMipmaps && (texture.Shape == .Texture2D))
 				record.MipLevels = TextureMipChain.Append(pixels, image.Width, image.Height, srgb);
+			mipsMs = clock.ElapsedMilliseconds;
 
 			if (texture.Shape == .Texture2D)
 			{
@@ -116,6 +124,7 @@ class TextureAssetBuilder : IAssetBuilder
 					srgb, texture.Usage, texture.Compression, TextureCompress.ProfileFor(context),
 					ref record.Format, context.Jobs);
 			}
+			compressMs = clock.ElapsedMilliseconds - mipsMs;
 		}
 		else if ((texture.Shape == .Texture2D) && (image.Format == .RGBA32F))
 		{
@@ -127,7 +136,14 @@ class TextureAssetBuilder : IAssetBuilder
 		FillSampler(texture, record);
 		if (context.Output.WriteObject(record) case .Err(let writeError))
 			return .Err(writeError);
-		return context.Output.WriteData(cPixelStreamName, pixels);
+
+		let beforeWrite = clock.ElapsedMilliseconds;
+		let written = context.Output.WriteData(cPixelStreamName, pixels);
+		GlobalLog(.Information,
+			"Cook: texture {}x{}, {} level(s): mips {} ms, compress {} ms, write {} ms",
+			image.Width, image.Height, record.MipLevels, mipsMs, compressMs,
+			clock.ElapsedMilliseconds - beforeWrite);
+		return written;
 	}
 
 	// ==================== DDS sources ====================

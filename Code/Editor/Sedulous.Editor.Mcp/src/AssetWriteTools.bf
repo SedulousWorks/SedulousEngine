@@ -148,7 +148,12 @@ static class AssetWriteTools
 		// persists its records through these; the source and cooked databases are open already.
 		let sourcesMount = scope NativeFileSystem(project.SourcesRoot(.. scope .()));
 		let cacheMount = scope NativeFileSystem(project.CacheRoot(.. scope .()));
-		let driver = scope CookDriver(project.SourceDb, project.CookedDb, context.Builders, sourcesMount, cacheMount);
+		// Workers, rather than the hard-coded serial cook this tool used to run: the driver
+		// fans its asset batch out over these, and hands them to every build through the
+		// context so a texture's block rows and mip rows split too.
+		let jobs = scope JobSystem();
+		let driver = scope CookDriver(project.SourceDb, project.CookedDb, context.Builders,
+			sourcesMount, cacheMount, jobs);
 		let plan = scope CookPlan();
 		driver.Plan(plan, force);
 		let stats = scope CookStats();
