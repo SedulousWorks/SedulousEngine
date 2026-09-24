@@ -37,6 +37,16 @@ class DxBackend : IBackend
 	public Result<void> Initialize(bool enableValidation)
 	{
 		mValidationEnabled = enableValidation;
+		// The same announcement the Vulkan backend makes: a profile taken with the debug
+		// layer on measures the layer, not the engine.
+		if (enableValidation)
+		{
+			Console.Error.WriteLine("[DX12] debug layer: ENABLED - this build has device validation enabled, which is known to be slow. For real numbers use a build with device validation disabled (Release, or --no-gpu-validation).");
+		}
+		else
+		{
+			Console.Error.WriteLine("[DX12] debug layer: DISABLED");
+		}
 
 		// The debug layer has to be switched on BEFORE any device is made, including the
 		// throwaway ones the adapters create to answer feature questions.

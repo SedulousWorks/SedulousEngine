@@ -37,6 +37,16 @@ class VulkanBackend : IBackend
 		VulkanNative.LoadPreInstanceFunctions();
 
 		mValidationEnabled = enableValidation;
+		// Announced so a perf run can confirm the layers are off: the layer validates every
+		// command, and a profile taken with it on measures the layer rather than the engine.
+		if (enableValidation)
+		{
+			Log("[Vulkan] validation layers: ENABLED - this build has device validation enabled, which is known to be slow. For real numbers use a build with device validation disabled (Release, or --no-gpu-validation).");
+		}
+		else
+		{
+			Log("[Vulkan] validation layers: DISABLED");
+		}
 
 		VkApplicationInfo appInfo = .();
 		appInfo.pApplicationName = "Sedulous";
