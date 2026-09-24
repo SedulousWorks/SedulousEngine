@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 using Sedulous.Content;
 using Sedulous.Core.Serialization;
 using Sedulous.VFS;
@@ -42,4 +43,8 @@ class AssetBuildContext
 
 	/// The target being produced for, which a variant builder reads its encoder profile from.
 	public CookTarget Target = .Host;
+	/// The cook's job system, or null when the caller has none: a builder with work that
+	/// splits, a texture's block rows, fans it out over this rather than standing up its own.
+	/// BORROWED, and outlives the build.
+	public JobSystem Jobs = null;
 }

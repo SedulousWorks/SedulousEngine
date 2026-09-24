@@ -33,6 +33,9 @@ class CookDriver
 	private IFileSystem mSources;
 	/// Nullable: a one shot cook and a test both run without persistence.
 	private IFileSystem mCache;
+	/// BORROWED from the caller: the cook fans its own asset batch out over this, and now
+	/// hands it to every build through the context so a builder whose work splits, a texture's
+	/// block rows, uses it rather than standing up a pool per asset.
 	private JobSystem mJobs;
 
 	private CookDb mDb = new .() ~ delete _;
@@ -46,7 +49,6 @@ class CookDriver
 		~ { for (let entry in _) DeleteContainerAndItems!(entry.value); delete _; };
 
 	private Monitor mRecordLock = new .() ~ delete _;
-
 	public this(ContentDatabase sourceDb, ContentDatabase cookedDb, BuilderRegistry builders,
 		IFileSystem sourcesMount, IFileSystem cacheMount, JobSystem jobs = null)
 	{

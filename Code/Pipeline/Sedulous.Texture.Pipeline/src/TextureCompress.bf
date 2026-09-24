@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 using System.Collections;
 using Sedulous.Pipeline.Core;
 using Sedulous.RHI;
@@ -23,9 +24,10 @@ static class TextureCompress
 	/// Encodes an RGBA8 mip chain in place when the policy picks a block format, and updates
 	/// the format to match. The chain is levels nought to N tightly concatenated, and the
 	/// compressed one replaces it one for one.
+	/// `jobs`, when the cook has one, fans each level's block rows out over it.
 	public static void MaybeCompress(List<uint8> pixels, uint32 width, uint32 height,
 		uint32 mipLevels, bool srgb, SourceUsage usage, CompressionChoice choice,
-		TargetProfile profile, ref TextureFormat format)
+		TargetProfile profile, ref TextureFormat format, JobSystem jobs = null)
 	{
 		if (choice == .None)
 			return;
@@ -63,7 +65,7 @@ static class TextureCompress
 			let levelBytes = (int)levelWidth * (int)levelHeight * 4;
 			let before = encoded.Count;
 			TextureCompression.EncodeBlockCompressed(pixels.Ptr + sourceOffset, levelWidth,
-				levelHeight, chosen, quality, encoded);
+				levelHeight, chosen, quality, encoded, jobs);
 			if (encoded.Count == before)
 				return; // the encode failed, so the uncompressed chain stands
 

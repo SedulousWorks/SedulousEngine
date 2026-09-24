@@ -211,8 +211,15 @@ static class Dds
 	///
 	/// A volume, or a format outside the table, is not supported; a truncated payload is an
 	/// invalid argument.
-	public static Result<void, ErrorCode> LoadDds(Span<uint8> bytes, DdsImage outImage)
+	/// Magic plus the header plus the DX10 extension: the most bytes any header can take.
+	public const int cDdsHeaderBytes = 4 + cHeaderSize + cDx10HeaderSize;
+
+	/// The header parse LoadDds and ParseDdsHeader share: the facts, and where the payload
+	/// starts.
+	private static Result<void, ErrorCode> ParseHeader(Span<uint8> bytes, DdsHeader outHeader,
+		out int outPayloadStart)
 	{
+		outPayloadStart = 0;
 		if ((bytes.Length < cFileHeaderBytes) || !IsDds(bytes))
 			return .Err(.InvalidArgument);
 
@@ -233,10 +240,9 @@ static class Dds
 		let aMask = ReadU32(h + 100);
 		let caps2 = ReadU32(h + 108);
 
-		outImage.Data.Clear();
-		outImage.Width = width;
-		outImage.Height = height;
-		outImage.MipLevels = (((flags & cFlagMipMapCount) != 0) && (mipCount > 0)) ? mipCount : 1;
+		outHeader.Width = width;
+		outHeader.Height = height;
+		outHeader.MipLevels = (((flags & cFlagMipMapCount) != 0) && (mipCount > 0)) ? mipCount : 1;
 
 		var payloadStart = cFileHeaderBytes;
 		var cube = (caps2 & cCaps2Cubemap) != 0;
@@ -253,8 +259,8 @@ static class Dds
 			let dimension = ReadU32(x + 4);
 			let misc = ReadU32(x + 8);
 			arraySize = ReadU32(x + 12);
-			outImage.Format = FromDxgi(dxgi);
-			outImage.ColorSpaceKnown = true;
+			outHeader.Format = FromDxgi(dxgi);
+			outHeader.ColorSpaceKnown = true;
 			cube = cube || ((misc & cMiscTextureCube) != 0);
 			volume = volume || (dimension == cDimensionTexture3D);
 			// Nothing in the engine wants a one dimensional texture.
@@ -264,21 +270,72 @@ static class Dds
 		}
 		else
 		{
-			outImage.Format = FromLegacy(pfFlags, fourCC, bitCount, rMask, gMask, bMask, aMask);
-			outImage.ColorSpaceKnown = false;
+			outHeader.Format = FromLegacy(pfFlags, fourCC, bitCount, rMask, gMask, bMask, aMask);
+			outHeader.ColorSpaceKnown = false;
 		}
 
 		if (volume)
 			return .Err(.NotSupported);
-		if ((outImage.Format == .Unknown) || (width == 0) || (height == 0) || (arraySize == 0))
+		if ((outHeader.Format == .Unknown) || (width == 0) || (height == 0) || (arraySize == 0))
 			return .Err(.NotSupported);
 		// A partial cubemap has no fixed layout.
 		if (cube && ((caps2 & cCaps2Cubemap) != 0)
 			&& ((caps2 & cCaps2CubemapAllFaces) != cCaps2CubemapAllFaces))
 			return .Err(.NotSupported);
 
-		outImage.Cubemap = cube;
-		outImage.ArrayLayers = cube ? (arraySize * 6) : arraySize;
+		outHeader.Cubemap = cube;
+		outHeader.ArrayLayers = cube ? (arraySize * 6) : arraySize;
+		outPayloadStart = payloadStart;
+		return .Ok;
+	}
+
+	/// Parses ONLY the header, legacy or DX10, from the first bytes of a file.
+	///
+	/// cDdsHeaderBytes is always enough; a legacy header needs 128. The same refusals as
+	/// LoadDds, and nothing about the payload is checked.
+	public static Result<void, ErrorCode> ParseDdsHeader(Span<uint8> bytes, DdsHeader outHeader)
+	{
+		return ParseHeader(bytes, outHeader, var payloadStart);
+	}
+
+	/// ParseDdsHeader over the first cDdsHeaderBytes of a file: a HEADER read, never a file
+	/// read.
+	///
+	/// What an importer needs to decide a texture's usage, a BC5 is a normal map and a BC4 a
+	/// mask, and its colour space. Reading those used to mean reading the whole file.
+	public static Result<void, ErrorCode> ReadDdsHeader(StringView path, DdsHeader outHeader)
+	{
+		let stream = scope FileStream();
+		if (stream.Open(path, .Open, .Read, .Read) case .Err)
+			return .Err(.NotFound);
+
+		uint8[cDdsHeaderBytes] buffer = .();
+		switch (stream.TryRead(.(&buffer[0], cDdsHeaderBytes)))
+		{
+		case .Ok(let read):
+			// A legacy header stops at 128, so a short read is only fatal below that.
+			if (read < cFileHeaderBytes)
+				return .Err(.InvalidArgument);
+			return ParseDdsHeader(.(&buffer[0], read), outHeader);
+		case .Err:
+			return .Err(.InvalidArgument);
+		}
+	}
+
+	public static Result<void, ErrorCode> LoadDds(Span<uint8> bytes, DdsImage outImage)
+	{
+		let header = scope DdsHeader();
+		if (ParseHeader(bytes, header, var payloadStart) case .Err(let error))
+			return .Err(error);
+
+		outImage.Data.Clear();
+		outImage.Width = header.Width;
+		outImage.Height = header.Height;
+		outImage.MipLevels = header.MipLevels;
+		outImage.Format = header.Format;
+		outImage.ColorSpaceKnown = header.ColorSpaceKnown;
+		outImage.Cubemap = header.Cubemap;
+		outImage.ArrayLayers = header.ArrayLayers;
 
 		let payload = outImage.LayerSize() * (int)outImage.ArrayLayers;
 		if (bytes.Length < (payloadStart + payload))

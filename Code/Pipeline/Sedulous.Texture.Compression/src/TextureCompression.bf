@@ -1,5 +1,7 @@
 using System;
 using System.Collections;
+using System.Threading;
+using Sedulous.Core;
 using Sedulous.RHI;
 using static Sedulous.RHI.TextureFormats;
 using astcenc_Beef;
@@ -120,8 +122,11 @@ static class TextureCompression
 	///
 	/// Edge blocks on a level that is not a multiple of four are clamp padded from the border
 	/// texels. `quality` runs 0 to 255 and maps onto each encoder's own effort scale.
+	/// `jobs`, when given, fans the BLOCK ROWS out over the job system. Each row writes its
+	/// own slice of the output and every block encodes on its own, the encoders keeping no
+	/// state past EnsureInit, so the result is byte identical to the serial loop.
 	public static void EncodeBlockCompressed(uint8* rgba, uint32 width, uint32 height,
-		TextureFormat format, uint8 quality, List<uint8> outBytes)
+		TextureFormat format, uint8 quality, List<uint8> outBytes, JobSystem jobs = null)
 	{
 		if ((rgba == null) || (width == 0) || (height == 0) || !IsCompressed(format))
 			return;
@@ -145,18 +150,25 @@ static class TextureCompression
 		outBytes.Count = start + (int)BlockCompressedSize(format, width, height);
 
 		// The BC1 and BC3 encoder takes a level up to its own maximum; the BC7 one takes an
-		// uber level of 0 to 4. Both come off the same 0 to 255 quality.
+		// uber level of 0 to 4, off the same 0 to 255 quality.
+		//
+		// The DEFAULT maps to uber 0, which is bc7enc's own default: the mid level cost about
+		// four times as much for a fraction of a decibel, which on a 4k texture is most of a
+		// minute of CPU. Only an explicit top quality asks for the export grade effort.
 		let rgbcxLevel = ((uint32)quality * bc7encc_rgbcx_max_level()) / 255;
-		let uberLevel = (uint32)Math.Min(4, (int)quality / 51);
+		let uberLevel = (quality >= 255) ? (uint32)4 : ((quality >= 192) ? (uint32)2 : (uint32)0);
 
-		uint8[64] block = .();
-		var offset = start;
-		for (uint32 y < blocksY)
+		let rowBytes = (int)blocksX * blockBytes;
+		let outPtr = outBytes.Ptr;
+
+		void EncodeRow(int32 y)
 		{
+			uint8[64] block = .();
+			var offset = start + (int)y * rowBytes;
 			for (uint32 x < blocksX)
 			{
-				GatherBlock(rgba, width, height, x, y, &block);
-				let dst = &outBytes[offset];
+				GatherBlock(rgba, width, height, x, (uint32)y, &block);
+				let dst = outPtr + offset;
 				switch (format)
 				{
 				case .BC1RGBAUnorm, .BC1RGBAUnormSrgb:
@@ -170,11 +182,18 @@ static class TextureCompression
 				case .BC7RGBAUnorm, .BC7RGBAUnormSrgb:
 					bc7encc_encode_bc7(dst, &block, uberLevel);
 				default:
-					outBytes.Count = start; // unreachable: BlockBytesFor already rejected it
-					return;
+					return; // unreachable: BlockBytesFor already rejected it
 				}
 				offset += blockBytes;
 			}
+		}
+
+		if (jobs != null)
+			jobs.ParallelFor((int32)blocksY, scope => EncodeRow);
+		else
+		{
+			for (int32 y = 0; y < (int32)blocksY; y++)
+				EncodeRow(y);
 		}
 	}
 

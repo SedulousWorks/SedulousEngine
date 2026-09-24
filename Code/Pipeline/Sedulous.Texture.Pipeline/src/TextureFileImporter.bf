@@ -113,28 +113,30 @@ class TextureFileImporter : IFileImporter
 	/// tokens decide whatever the file does not.
 	///
 	/// A DDS that cannot be read imports like any other file, and the cook is what says why.
+	///
+	/// The HEADER is all this needs, so it reads a header rather than the file: an import of a
+	/// few hundred DDS textures otherwise pulls gigabytes off the disk to learn a few hundred
+	/// bytes' worth of formats, on whichever thread called Import.
 	public static void SetupForDds(TextureAsset asset, StringView sourcePath, StringView stem)
 	{
-		let bytes = scope List<uint8>();
-		let dds = scope DdsImage();
-		if ((System.IO.File.ReadAll(scope String(sourcePath), bytes) case .Err)
-			|| (Dds.LoadDds(bytes, dds) case .Err))
+		let header = scope DdsHeader();
+		if (Dds.ReadDdsHeader(sourcePath, header) case .Err)
 		{
 			SetupForInferredUsage(asset, stem);
 			return;
 		}
 
-		if (DdsFormats.IsHdr(dds.Format))
+		if (DdsFormats.IsHdr(header.Format))
 			asset.SetupForEquirectangularSkybox();
-		else if ((dds.Format == .BC5) || (dds.Format == .BC5Snorm))
+		else if ((header.Format == .BC5) || (header.Format == .BC5Snorm))
 			asset.SetupForNormalMap();
-		else if ((dds.Format == .BC4) || (dds.Format == .BC4Snorm))
+		else if ((header.Format == .BC4) || (header.Format == .BC4Snorm))
 			asset.SetupForDataMask();
 		else
 			SetupForInferredUsage(asset, stem);
 
-		if (dds.ColorSpaceKnown && (asset.Usage == .Color))
-			asset.ColorSpace = DdsFormats.IsSrgb(dds.Format) ? .Srgb : .Linear;
+		if (header.ColorSpaceKnown && (asset.Usage == .Color))
+			asset.ColorSpace = DdsFormats.IsSrgb(header.Format) ? .Srgb : .Linear;
 	}
 
 	/// Copies all six faces into the sources tree and creates ONE cube asset naming the +X

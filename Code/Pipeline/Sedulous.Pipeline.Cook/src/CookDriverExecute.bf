@@ -193,6 +193,7 @@ extension CookDriver
 		context.SourceDatabase = mSourceDb; // and a cross asset SOURCE read against envelopes
 		context.Serializers = mCookedDb.Serializers;
 		context.Target = mTarget;
+		context.Jobs = mJobs;
 
 		let built = item.Builder.Build(asset, context);
 		let ok = built case .Ok;

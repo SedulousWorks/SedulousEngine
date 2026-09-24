@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.RHI;
 
 namespace Sedulous.Texture.Compression.Tests;
@@ -97,5 +98,44 @@ class CompressionEncodeTests
 		TextureCompression.EncodeBlockCompressed(&image[0], cWidth, cHeight, .BC6HRGBUfloat, 128,
 			encoded);
 		Test.Assert(encoded.IsEmpty);
+	}
+
+	/// Fanning the block rows out changes nothing about the bytes.
+	///
+	/// Each row writes its own slice and the encoders keep no state between blocks, so the
+	/// parallel result must equal the serial one exactly, for every format this path writes.
+	[Test]
+	public static void TheRowFanOutIsByteIdenticalToTheSerialLoop()
+	{
+		// Not a multiple of four either way, so the edge blocks are clamp padded too.
+		const uint32 cWidth = 67;
+		const uint32 cHeight = 39;
+
+		let rgba = scope uint8[(int)cWidth * (int)cHeight * 4];
+		var seed = (uint32)0x9E3779B9;
+		for (int i < rgba.Count)
+		{
+			seed = (seed &* 1664525) &+ 1013904223;
+			rgba[i] = (uint8)(seed >> 24);
+		}
+
+		let jobs = scope JobSystem(4);
+
+		let formats = scope TextureFormat[](.BC1RGBAUnorm, .BC3RGBAUnorm, .BC4RUnorm,
+			.BC5RGUnorm, .BC7RGBAUnorm);
+		for (let format in formats)
+		{
+			let serial = scope:: List<uint8>();
+			let parallel = scope:: List<uint8>();
+			TextureCompression.EncodeBlockCompressed(rgba.Ptr, cWidth, cHeight, format, 128,
+				serial);
+			TextureCompression.EncodeBlockCompressed(rgba.Ptr, cWidth, cHeight, format, 128,
+				parallel, jobs);
+
+			Test.Assert(serial.Count == parallel.Count, scope $"{format}: same size");
+			Test.Assert(!serial.IsEmpty, scope $"{format}: encoded something");
+			Test.Assert(Internal.MemCmp(serial.Ptr, parallel.Ptr, serial.Count) == 0,
+				scope $"{format}: the fan-out is byte identical");
+		}
 	}
 }

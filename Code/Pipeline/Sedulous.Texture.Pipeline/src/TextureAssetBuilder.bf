@@ -114,7 +114,7 @@ class TextureAssetBuilder : IAssetBuilder
 			{
 				TextureCompress.MaybeCompress(pixels, image.Width, image.Height, record.MipLevels,
 					srgb, texture.Usage, texture.Compression, TextureCompress.ProfileFor(context),
-					ref record.Format);
+					ref record.Format, context.Jobs);
 			}
 		}
 		else if ((texture.Shape == .Texture2D) && (image.Format == .RGBA32F))
@@ -359,7 +359,7 @@ class TextureAssetBuilder : IAssetBuilder
 		{
 			TextureCompress.MaybeCompress(pixels, texture.EmbeddedWidth, texture.EmbeddedHeight,
 				record.MipLevels, srgb, texture.Usage, texture.Compression,
-				TextureCompress.ProfileFor(context), ref record.Format);
+				TextureCompress.ProfileFor(context), ref record.Format, context.Jobs);
 		}
 
 		FillSampler(texture, record);
