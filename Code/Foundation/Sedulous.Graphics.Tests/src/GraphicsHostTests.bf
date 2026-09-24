@@ -174,4 +174,50 @@ class GraphicsHostTests
 		Test.Assert(!frame.Valid);
 		window.EndFrame(ref frame);
 	}
+
+	/// The desc follows the build config and the command line overrides it, so one binary
+	/// can be debugged and measured without a rebuild.
+	[Test]
+	public static void ValidationFollowsTheBuildConfigAndTheCommandLineOverridesIt()
+	{
+		GraphicsDeviceDesc desc = .();
+#if RELEASE
+		Test.Assert(!desc.EnableValidation); // an optimized build measures the real cost
+#else
+		Test.Assert(desc.EnableValidation); // a dev build catches API misuse
+#endif
+		let configDefault = desc.EnableValidation;
+
+		// No flag, and a null argument list: the default stands.
+		String[] none = scope .("editor", "--vulkan");
+		Test.Assert(ValidationSelection.FromArguments(none, configDefault) == configDefault);
+		Test.Assert(ValidationSelection.FromArguments(null, configDefault) == configDefault);
+
+		String[] off = scope .("editor", "--no-gpu-validation");
+		Test.Assert(!ValidationSelection.FromArguments(off, true));
+		String[] on = scope .("editor", "--gpu-validation");
+		Test.Assert(ValidationSelection.FromArguments(on, false));
+
+		// The last one given wins, and a longer argument sharing a prefix is not a match.
+		String[] both = scope .("editor", "--gpu-validation", "--no-gpu-validation");
+		Test.Assert(!ValidationSelection.FromArguments(both, true));
+		String[] prefix = scope .("editor", "--gpu-validation-extra");
+		Test.Assert(!ValidationSelection.FromArguments(prefix, false));
+	}
+
+	/// The backend scan alongside it: it owns no argument but its own, and anything
+	/// unrecognised leaves the fallback standing.
+	[Test]
+	public static void TheBackendComesFromTheCommandLineOrTheFallback()
+	{
+		String[] vulkan = scope .("editor", "--vk");
+		Test.Assert(BackendSelection.FromArguments(vulkan, .Null) == .Vulkan);
+		String[] dx12 = scope .("editor", "--d3d12");
+		Test.Assert(BackendSelection.FromArguments(dx12, .Null) == .DX12);
+		String[] webgpu = scope .("editor", "--wgpu");
+		Test.Assert(BackendSelection.FromArguments(webgpu, .Null) == .WebGPU);
+		String[] none = scope .("editor", "--project", "Foo");
+		Test.Assert(BackendSelection.FromArguments(none, .Null) == .Null);
+		Test.Assert(BackendSelection.FromArguments(null, .WebGPU) == .WebGPU);
+	}
 }

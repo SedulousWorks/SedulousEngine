@@ -8,10 +8,14 @@ struct GraphicsDeviceDesc
 
 	/// Both the RHI's own validation wrapper and the backend's layers.
 	///
-	/// ON here, because Beef has no release define to switch on. A shipping host sets it
-	/// false itself, which is the same decision made one level up rather than by the build
-	/// type.
+	/// Follows the build config: ON for a dev build, which is there to catch API misuse, and
+	/// OFF for an optimized one, which is there to measure. A host overrides it either way,
+	/// and ValidationSelection reads the command line flags that do so.
+#if RELEASE
+	public bool EnableValidation = false;
+#else
 	public bool EnableValidation = true;
+#endif
 
 	/// How far ahead of the GPU the CPU may run.
 	public uint32 FramesInFlight = 2;

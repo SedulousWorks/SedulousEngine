@@ -24,6 +24,8 @@ namespace Sedulous.Tools.Editor;
 /// Usage: Sedulous.Tools.Editor [projectDirectory] [--project <dir>] [--data-root <dir>]
 ///   [--exit-after <s>] [--rebuild-after <s>] [--screenshot <png> [--screenshot-after <s>]]
 ///   [--seed] [--seed-primitives] [--version]
+///   GPU: [--vulkan|--dx12|--webgpu|--null-gpu] [--gpu-validation|--no-gpu-validation]
+///   (validation defaults on for a dev build, off for an optimized one).
 ///   With a project (positional or --project): opens it directly, scaffolding the manifest
 ///   and the content tree on first run; the single project lifecycle.
 ///   With NO project: starts on the built in PROJECT MANAGER (recent projects from the per
@@ -97,7 +99,9 @@ class Program
 
 		GraphicsDeviceDesc deviceDesc = .();
 		deviceDesc.Backend = BackendSelection.FromArguments(args);
-		deviceDesc.EnableValidation = true;
+		// Validation follows the build config unless the command line says otherwise: an
+		// optimized editor is for measuring, not for carrying the layer's cost.
+		deviceDesc.EnableValidation = ValidationSelection.FromArguments(args, deviceDesc.EnableValidation);
 		if (!(GpuGraphics.CreateDevice(deviceDesc) case .Ok(let graphics)))
 		{
 			Console.Error.WriteLine("Sedulous.Tools.Editor: the graphics device could not be created");
