@@ -61,12 +61,12 @@ class EditorPreferencesDialog : Dialog
 
 		float uiScale = 1.0f;
 		if (let u = store.Find<EditorUiSettings>())
-			uiScale = Math.Clamp(u.UiScale, 1.0f, 2.0f);
+			uiScale = Math.Clamp(u.UiScale, EditorUiSettings.MinUiScale, EditorUiSettings.MaxUiScale);
 		{
 			let row = AddRow(column, "UI scale");
 			let slider = new Slider();
-			slider.Min.Value = 1.0f;
-			slider.Max.Value = 2.0f;
+			slider.Min.Value = EditorUiSettings.MinUiScale;
+			slider.Max.Value = EditorUiSettings.MaxUiScale;
 			slider.Step.Value = 0.05f;
 			slider.Value.Value = uiScale;
 			mUiScaleSlider = slider;
@@ -173,7 +173,7 @@ class EditorPreferencesDialog : Dialog
 		fontPrefs.FontPath.Set(mFontEdit.Text);
 		fontPrefs.MonoFontPath.Set(mMonoFontEdit.Text);
 		mSettings.MarkChanged<EditorFontSettings>();
-		let uiScale = Math.Clamp(mUiScaleSlider.Value.Value, 1.0f, 2.0f);
+		let uiScale = Math.Clamp(mUiScaleSlider.Value.Value, EditorUiSettings.MinUiScale, EditorUiSettings.MaxUiScale);
 		mSettings.Section<EditorUiSettings>().UiScale = uiScale;
 		mSettings.MarkChanged<EditorUiSettings>();
 		if (OnUiScaleApplied != null)

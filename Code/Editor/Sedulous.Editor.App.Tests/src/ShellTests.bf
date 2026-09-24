@@ -50,6 +50,27 @@ static class ShellTests
 		ctx.SetStatus("hello");
 	}
 
+	/// What a first user sees: most of the window is the document, and the tool pane below
+	/// opens on Assets rather than on the log.
+	[Test]
+	public static void TheDefaultLayoutGivesTheDocumentMostOfTheWindowAndLeadsWithAssets()
+	{
+		let ctx = scope EditorContext();
+		let shell = scope EditorShell();
+		shell.Build(ctx, null, 1280, 720);
+
+		let split = shell.Docks.RootNode as DockSplit;
+		Test.Assert(split != null);
+		Test.Assert(Math.Abs(split.SplitRatio - 0.7f) < 0.0001f); // the first, top child's share
+
+		let pane = shell.AssetsPanel.Parent as DockTabGroup;
+		Test.Assert(pane != null);
+		Test.Assert(pane.PanelCount == 2);
+		Test.Assert(pane.GetPanel(0) === shell.AssetsPanel);
+		Test.Assert(pane.GetPanel(1) === shell.ConsolePanel);
+		Test.Assert(pane.SelectedPanel === shell.AssetsPanel);
+	}
+
 	[Test]
 	public static void PagePanelsDockIntoTheCentreDocumentAreaAsClosableTabs()
 	{

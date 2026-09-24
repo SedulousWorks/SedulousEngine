@@ -251,7 +251,7 @@ class EditorApplication : IApplication
 		{
 			float uiScale = 1.0f;
 			if (let uiPrefs = mEditorSettings.Find<EditorUiSettings>())
-				uiScale = Math.Clamp(uiPrefs.UiScale, 1.0f, 2.0f);
+				uiScale = Math.Clamp(uiPrefs.UiScale, EditorUiSettings.MinUiScale, EditorUiSettings.MaxUiScale);
 			mUiHost.SetUiScale(uiScale);
 			BakeEditorIcons(mainRw.Window.ContentScale * uiScale);
 			if (EditorIcons.Close != null)
