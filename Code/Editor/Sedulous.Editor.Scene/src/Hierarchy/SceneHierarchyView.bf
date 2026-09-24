@@ -79,6 +79,17 @@ class SceneHierarchyView : ViewGroup
 
 	public void SetEditorContext(EditorContext context) => mEditor = context;
 
+	/// Puts an entity's PERSISTENT id on the OS text clipboard: the id the scene file, the
+	/// prefab deltas and a script all name it by. False with a bare view, which has no UI
+	/// context to reach a clipboard through, or a nil entity.
+	public bool CopyEntityId(Guid id)
+	{
+		let clipboard = (Context != null) ? Context.Clipboard : null;
+		if ((clipboard == null) || id.IsNil)
+			return false;
+		return clipboard.SetText(scope $"{id}") case .Ok;
+	}
+
 	public SceneEditContext Edit => mEdit;
 	public DraggableTreeView Tree => mTree;
 	public int NodeCount => mSnapshot.Count;

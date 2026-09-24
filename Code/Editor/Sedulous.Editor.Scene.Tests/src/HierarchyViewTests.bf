@@ -1,6 +1,7 @@
 using System;
 using Sedulous.Core;
 using Sedulous.Scene;
+using Sedulous.UI;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene.Tests;
@@ -9,6 +10,25 @@ namespace Sedulous.Editor.Scene.Tests;
 /// selection model driving the scene selection.
 class HierarchyViewTests
 {
+	private class TestClipboard : IClipboard
+	{
+		public String Stored = new .() ~ delete _;
+
+		public Result<void> GetText(String outText)
+		{
+			outText.Set(Stored);
+			return .Ok;
+		}
+
+		public Result<void> SetText(StringView text)
+		{
+			Stored.Set(text);
+			return .Ok;
+		}
+
+		public bool HasText => !Stored.IsEmpty;
+	}
+
 	[Test]
 	public static void CollapseStateSurvivesSnapshotRebuilds()
 	{
@@ -126,5 +146,32 @@ class HierarchyViewTests
 		Test.Assert(SceneHierarchyView.MatchesFilter("Sun Light", ""));
 		Test.Assert(!SceneHierarchyView.MatchesFilter("Sun", "light"));
 		Test.Assert(!SceneHierarchyView.MatchesFilter("Su", "sun"));
+	}
+
+	/// Copy ID puts the entity's persistent guid on the clipboard, and a view with no UI
+	/// context behind it refuses rather than reaching through a null.
+	[Test]
+	public static void CopyIdPutsThePersistentGuidOnTheClipboard()
+	{
+		let scene = scope Scene();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let hierarchy = new SceneHierarchyView(edit);
+		defer hierarchy.ReleaseRef();
+
+		let entity = edit.CreateEntity("Crate");
+		Test.Assert(!hierarchy.CopyEntityId(entity)); // no context: nothing to copy onto
+
+		let context = scope UIContext();
+		let clipboard = scope TestClipboard();
+		let root = new RootView();
+		root.ViewportSize = .(400, 300);
+		context.AddRootView(root);
+		context.SetClipboard(clipboard);
+		root.AddView(hierarchy..AddRef());
+
+		Test.Assert(hierarchy.CopyEntityId(entity));
+		Test.Assert(clipboard.Stored == scope $"{entity}");
+		Test.Assert(!hierarchy.CopyEntityId(.())); // a nil entity names nothing
 	}
 }

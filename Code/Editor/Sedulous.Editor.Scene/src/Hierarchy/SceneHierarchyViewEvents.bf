@@ -90,6 +90,7 @@ extension SceneHierarchyView
 		defer menu.ReleaseRef();
 		menu.AddItem("Create Child", new [=edit, =id]() => { edit.CreateEntity("Entity", id); });
 		menu.AddItem("Rename", new [=this, =id]() => { BeginRename(id); });
+		menu.AddItem("Copy ID", new [=this, =id]() => { CopyEntityId(id); });
 		menu.AddSeparator();
 		menu.AddItem("Duplicate", new [=edit, =id]() => { edit.DuplicateEntity(id); });
 		menu.AddItem("Create Prefab from Selection", new [=this, =id]() => { if (OnCreatePrefab != null) OnCreatePrefab(id); });
