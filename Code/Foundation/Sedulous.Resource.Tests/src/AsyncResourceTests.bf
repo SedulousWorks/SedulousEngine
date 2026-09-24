@@ -328,4 +328,46 @@ class AsyncResourceTests
 
 		Test.Assert(factory.DecodesFinished == 1, "the decode ran to completion during teardown");
 	}
+
+	/// A synchronous bind of a pending id finalizes THAT id, and the rest keep their turn.
+	///
+	/// The unbounded drain this replaced made one sync bind pay for every decode that had
+	/// completed so far, GPU uploads included, on the caller's thread: the stall that opening
+	/// a large prefab turned into.
+	[Test]
+	public static void ASyncBindOfAPendingIdFinalizesThatIdAlone()
+	{
+		let fixture = scope ResourceFixture("scratch_sync_one");
+		let factory = scope AsyncProductFactory();
+		let jobs = scope JobSystem(3);
+		let manager = scope ResourceManager(fixture.Database, jobs);
+		manager.AddFactory(factory);
+
+		let a = fixture.Author("a", 1, 1);
+		let b = fixture.Author("b", 2, 1);
+		let c = fixture.Author("c", 3, 1);
+		let pa = manager.BindAsync<TestProduct>(a);
+		let pb = manager.BindAsync<TestProduct>(b);
+		let pc = manager.BindAsync<TestProduct>(c);
+
+		// Let every decode finish on the workers WITHOUT pumping: three completed entries
+		// are then queued, none of them finalized.
+		while (factory.DecodesFinished < 3)
+			Thread.Sleep(1);
+		Test.Assert(factory.Finalizes == 0, "nothing finalizes without a pump");
+
+		// A synchronous bind of b upgrades b ALONE.
+		let sync = manager.Bind<TestProduct>(b);
+		Test.Assert(sync.Get != null);
+		Test.Assert(factory.Finalizes == 1, "one finalize, not the whole backlog");
+		Test.Assert(pb.Get != null, "b is ready");
+		Test.Assert(pa.Get == null, "a still waits its turn");
+		Test.Assert(pc.Get == null, "and so does c");
+
+		// The others finalize on the next pump.
+		manager.Pump(double.MaxValue);
+		Test.Assert(factory.Finalizes == 3);
+		Test.Assert(pa.Get != null);
+		Test.Assert(pc.Get != null);
+	}
 }

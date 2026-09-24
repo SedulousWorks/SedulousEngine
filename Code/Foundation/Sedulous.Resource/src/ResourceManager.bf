@@ -637,6 +637,19 @@ class ResourceManager
 		// staying half empty.
 		let dependents = scope List<Guid>();
 		GetDependents(entry.Id, dependents);
+		if (dependents.IsEmpty)
+			return;
+
+		// The rebuild runs with ASYNC binds on whatever the caller's mode is. A material
+		// reloading for its first texture must not block complete its other, still pending
+		// textures: a synchronous bind of a pending id waits out that decode and then
+		// finalizes everything decoded so far, which reloads more materials, nested. Pending
+		// slots stay skipped, and each one reloads again when it settles, which is the pop in
+		// the composition is designed around.
+		let previousAsync = mAsyncBinds;
+		mAsyncBinds = true;
+		defer { mAsyncBinds = previousAsync; }
+
 		for (let dependent in dependents)
 			Reload(dependent);
 	}
@@ -648,6 +661,33 @@ class ResourceManager
 		if (mPending.TryGetValue(id, let record) && (mJobs != null))
 			mJobs.Wait(record.Counter); // runs the decode here if no worker has
 
+		// Finalize THIS id alone. Draining every decoded entry here, which an unbounded Pump
+		// does, made one synchronous bind pay for the whole burst's finalizes, GPU uploads
+		// included, on the caller's thread; the rest keep their turn in Pump.
+		CompletedDecode entry = default;
+		var have = false;
+		using (mCompletedLock.Enter())
+		{
+			for (int i < mCompleted.Count)
+			{
+				if (mCompleted[i].Id == id)
+				{
+					entry = mCompleted[i];
+					mCompleted.RemoveAt(i);
+					have = true;
+					break;
+				}
+			}
+		}
+
+		if (have)
+		{
+			FinalizeCompleted(entry);
+			ReapPending();
+			return;
+		}
+
+		// Not in the completed queue, which a foreign wait racing it can cause: drain.
 		Pump(double.MaxValue);
 	}
 

@@ -200,4 +200,40 @@ class BinarySerializerTests
 		let writer = scope BinarySerializer(stream, .Write);
 		Test.Assert(!writer.IsSelfDescribing, "a positional format needs explicit framing");
 	}
+
+	/// A list of scalars moves as ONE blob, and the bytes are exactly what the per element
+	/// loop wrote: the count, then the elements packed.
+	///
+	/// The size assertion is what makes this a format test rather than a round trip: if the
+	/// bulk path ever wrote a length prefix of its own, or padded, the stream would grow.
+	[Test]
+	public static void AScalarListMovesAsOneBlobAndKeepsItsBytes()
+	{
+		let values = scope List<float>();
+		for (int i < 64)
+			values.Add((float)i * 1.5f);
+
+		let stream = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(stream, .Write);
+			Test.Assert(writer.BulkScalarArrays, "the binary backend takes the bulk path");
+			writer.Key("values");
+			SerializeList(writer, values);
+			Test.Assert(writer.IsOk);
+		}
+
+		// The count, then 64 floats, and nothing else.
+		Test.Assert(stream.Size() == (sizeof(uint32) + (64 * sizeof(float))),
+			scope $"one count plus packed elements, got {stream.Size()} bytes");
+
+		stream.Seek(0, .Begin);
+		let back = scope List<float>();
+		let reader = scope BinarySerializer(stream, .Read);
+		reader.Key("values");
+		SerializeList(reader, back);
+		Test.Assert(reader.IsOk);
+		Test.Assert(back.Count == 64);
+		for (int i < 64)
+			Test.Assert(back[i] == values[i], scope $"element {i}");
+	}
 }

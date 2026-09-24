@@ -186,6 +186,20 @@ static
 		uint32 count = (uint32)list.Count;
 		ar.BeginArray(ref count);
 
+		// A run of scalars in a backend whose element layout IS the raw run moves as ONE blob.
+		// Byte identical to the per element loop below, each element being a scalar of exactly
+		// its own size, so the stored format is unchanged; what changes is one virtual call
+		// per list instead of one per element.
+		if (ar.BulkScalarArrays && IsScalarRun<T>())
+		{
+			if (ar.Mode == .Read)
+				list.Resize((int)count);
+			if (count > 0)
+				ar.Blob(list.Ptr, (int)count * strideof(T));
+			ar.EndArray();
+			return;
+		}
+
 		if (ar.Mode == .Read)
 		{
 			list.Clear();
@@ -204,6 +218,15 @@ static
 		}
 
 		ar.EndArray();
+	}
+
+	/// Whether T is a scalar whose stored bytes ARE its memory, which is what makes the bulk
+	/// path byte identical. Bool is excluded: its stored width is its own question.
+	[Comptime]
+	private static bool IsScalarRun<T>() where T : ValueType
+	{
+		let t = typeof(T);
+		return (t.IsPrimitive && (t != typeof(bool))) || (t == typeof(uint8)) || (t == typeof(int8));
 	}
 
 	/// The same for a list of STRINGS, which the value type overload cannot take: a string

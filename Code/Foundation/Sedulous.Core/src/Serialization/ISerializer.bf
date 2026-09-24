@@ -40,6 +40,11 @@ interface ISerializer
 	/// Moves an opaque blob: raw in binary, encoded in text.
 	void Blob(void* data, int size);
 
+	/// True when a run of scalar elements is laid out EXACTLY as its raw bytes, which the
+	/// binary backend is: a list of them then moves as one Blob rather than one virtual call
+	/// per element. The bytes are the same either way, so nothing about the format changes.
+	bool BulkScalarArrays => false;
+
 	/// Moves a guid as whatever primitive the backend prefers. Binary stores the raw
 	/// sixteen bytes, which is compact; text stores the canonical thirty six character
 	/// form, which is readable and copyable as one value.

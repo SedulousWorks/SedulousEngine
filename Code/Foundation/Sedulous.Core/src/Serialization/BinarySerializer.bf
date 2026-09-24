@@ -11,6 +11,10 @@ namespace Sedulous.Core.Serialization;
 /// length prefixed.
 class BinarySerializer : Serializer
 {
+	/// The binary layout of a scalar run IS its raw bytes, so a list of them moves as one
+	/// blob rather than one virtual call per element.
+	public bool BulkScalarArrays => true;
+
 	/// One open framed region: where to put the bytes back, and the buffer holding them.
 	private struct Frame
 	{
