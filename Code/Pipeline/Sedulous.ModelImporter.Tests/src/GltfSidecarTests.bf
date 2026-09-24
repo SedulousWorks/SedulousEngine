@@ -97,4 +97,59 @@ class GltfSidecarTests
 		Test.Assert(object != null);
 		delete Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object));
 	}
+
+	/// The lazy geometry path must produce exactly what the eager one does.
+	///
+	/// A prepared model outlives the flush, so its mesh conversion, level chain and
+	/// serialization ride the deferred write and run on the worker; an inline model has that
+	/// work done during the import call. Same model, same bytes, or the deferral changed the
+	/// asset rather than only when it was built.
+	[Test]
+	public static void TheLazyGeometryMatchesTheEagerGeometryByteForByte()
+	{
+		/// Imports once and returns the Prop mesh's geometry stream.
+		static void ImportAndRead(StringView scratch, bool deferred, List<uint8> outBytes)
+		{
+			let fixture = scope ImportFixture(scratch);
+			let dropped = scope String();
+			WriteSource(fixture, dropped);
+
+			// The SAME prepared model both ways, so the only variable is when its geometry is
+			// built: deferring parks the work, and no writes list does it during the call.
+			let payload = scope LoadedModel();
+			ModelFixture.Character(payload.Model);
+
+			let writes = scope List<DeferredImportWrite>();
+			defer { ClearAndDeleteItems!(writes); }
+
+			let importer = scope ModelFileImporter();
+			let imported = importer.Import(dropped, fixture.Context, fixture.RootGroup, null,
+				payload, deferred ? writes : null);
+			Test.Assert(imported case .Ok);
+			for (let write in writes)
+				Test.Assert(write.Execute() case .Ok, scope String(write.Label));
+
+			let group = imported.Value.OwningGroup;
+			let prop = group.GetInstance("Prop");
+			Test.Assert(prop != null);
+			let stream = prop.ReadData(Sedulous.Geometry.Pipeline.MeshAssetStorage.cGeometryStreamName);
+			Test.Assert(stream != null);
+			defer delete stream;
+			let size = (int)stream.Size();
+			outBytes.Resize(size);
+			if (size > 0)
+				Test.Assert(stream.Read(.(outBytes.Ptr, size)) == size);
+		}
+
+		let eager = scope List<uint8>();
+		let lazy = scope List<uint8>();
+		ImportAndRead("scratch_geometry_eager", false, eager);
+		ImportAndRead("scratch_geometry_lazy", true, lazy);
+
+		Test.Assert(!eager.IsEmpty, "the eager import wrote geometry");
+		Test.Assert(eager.Count == lazy.Count,
+			scope $"same size: eager {eager.Count}, lazy {lazy.Count}");
+		Test.Assert(Internal.MemCmp(eager.Ptr, lazy.Ptr, eager.Count) == 0,
+			"deferring WHEN the geometry is built must not change WHAT is built");
+	}
 }

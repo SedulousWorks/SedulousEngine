@@ -35,6 +35,20 @@ class DeferredImportWrite
 	/// Owned bytes, which take precedence over the borrowed view when present.
 	public List<uint8> Owned = new .() ~ delete _;
 
+	/// A LAZY payload: run on the worker immediately before the write, filling `Owned`.
+	///
+	/// What it holds is the import's CPU bulk, a mesh's conversion, its level of detail chain
+	/// and its geometry serialization, so queueing the write costs microseconds and the work
+	/// itself happens off the calling thread. OWNED here.
+	///
+	/// Whatever it captures has to outlive the FLUSH, not the import call: the caller keeps
+	/// the prepared payload alive for exactly this reason.
+	public delegate Result<void, ErrorCode>(List<uint8>) Produce = null ~ delete _;
+
+	/// Scratch the producer captures and this write OWNS, so a lazy payload can hold a small
+	/// working set without leaking it when the write is dropped unexecuted.
+	public List<Object> ProduceOwned = new .() ~ DeleteContainerAndItems!(_);
+
 	/// A raw copy when both paths are set.
 	public String CopyFrom = new .() ~ delete _;
 	public String CopyTo = new .() ~ delete _;
@@ -49,9 +63,18 @@ class DeferredImportWrite
 
 	public Span<uint8> Bytes => Owned.IsEmpty ? View : Span<uint8>(Owned.Ptr, Owned.Count);
 
-	/// Runs the write on the worker.
+	/// Runs the write on the worker, producing its bytes first when the payload is lazy.
 	public Result<void, ErrorCode> Execute()
 	{
+		if (Produce != null)
+		{
+			if (Produce(Owned) case .Err(let error))
+				return .Err(error);
+			// Dropped once it has run, so a repeated Execute writes what was produced rather
+			// than producing it again.
+			DeleteAndNullify!(Produce);
+		}
+
 		if (!CopyFrom.IsEmpty && !CopyTo.IsEmpty)
 			return ExecuteCopy();
 

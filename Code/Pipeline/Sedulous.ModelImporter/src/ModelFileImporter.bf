@@ -207,9 +207,14 @@ class ModelFileImporter : IFileImporter
 		// from, not beside the copy in the sources tree.
 		let inlineModel = scope Model();
 		var model = inlineModel;
+		// A PREPARED model outlives the deferred flush, the caller holding it for exactly
+		// that; an inline one dies with this call. Only the former can have its mesh work
+		// deferred onto the worker.
+		var preparedModel = false;
 		if (let payload = prepared as LoadedModel)
 		{
 			model = payload.Model;
+			preparedModel = true;
 		}
 		else if (ModelFileLoad.Load(sourcePath, inlineModel) != .Ok)
 		{
@@ -272,7 +277,8 @@ class ModelFileImporter : IFileImporter
 		let meshSourceNames = scope List<String>();
 		defer { ClearAndDeleteItems!(meshSourceNames); }
 		if (ModelImportMeshes.Import(model, modelGroup, manifest, claimed, deferredWrites,
-			opt.GenerateLods, opt, meshSourceNames) case .Err(let meshError))
+			opt.GenerateLods, opt, meshSourceNames, preparedModel && (deferredWrites != null))
+			case .Err(let meshError))
 		{
 			return .Err(meshError);
 		}

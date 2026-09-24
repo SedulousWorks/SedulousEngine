@@ -26,7 +26,7 @@ static class ModelImportMeshes
 	public static Result<void, ErrorCode> Import(Model model, Group group,
 		ModelManifestSource manifest, List<String> claimed,
 		List<DeferredImportWrite> deferredWrites, bool generateLods, ImportOptions options,
-		List<String> outMeshSourceNames)
+		List<String> outMeshSourceNames, bool lazyGeometry = false)
 	{
 		let hasSkin = !model.Skins.IsEmpty;
 		let meshes = model.Meshes;
@@ -100,14 +100,12 @@ static class ModelImportMeshes
 				var ownsAsset = true;
 				defer { if (ownsAsset) delete asset; }
 
-				MeshConvert.StaticFromModel(mesh, asset.Source);
-				for (let levelIndex in lodLevels[i])
-					LodChain.AppendFromModel(meshes[levelIndex], asset.Source);
-				if ((asset.Source.LodCount <= 1) && generateLods
-					&& (asset.Source.IndexData.Count >= cAutoLodIndexThreshold))
-				{
-					MeshOptimize.GenerateLodChain(asset.Source);
-				}
+				// The conversion, the level chain and the serialization are the import's CPU
+				// bulk. They run HERE only when this call owns the model; when the caller
+				// keeps a prepared one alive through the flush they ride the deferred write
+				// and happen on the worker instead.
+				if (!lazyGeometry)
+					BuildStaticSource(mesh, meshes, lodLevels[i], generateLods, asset);
 
 				instance = ClaimedInstances.Claim(group, name, cStaticType, claimed);
 				if (instance == null)
@@ -115,9 +113,17 @@ static class ModelImportMeshes
 
 				if (deferredWrites != null)
 				{
-					let geometry = scope List<uint8>();
-					MeshAssetStorage.StaticGeometryBytes(asset, geometry);
-					Defer(deferredWrites, instance, asset, geometry);
+					if (lazyGeometry)
+					{
+						DeferLazyStatic(deferredWrites, instance, asset, mesh, meshes,
+							lodLevels[i], generateLods);
+					}
+					else
+					{
+						let geometry = scope List<uint8>();
+						MeshAssetStorage.StaticGeometryBytes(asset, geometry);
+						Defer(deferredWrites, instance, asset, geometry);
+					}
 					ownsAsset = false;
 				}
 				else if (MeshAssetStorage.WriteStatic(instance, asset) case .Err(let error))
@@ -133,6 +139,53 @@ static class ModelImportMeshes
 			manifest.MeshMaterial.Add(parts.IsEmpty ? -1 : parts[0].MaterialIndex);
 		}
 		return .Ok;
+	}
+
+	/// The conversion, the authored level chain and the auto-generated ladder: a mesh's whole
+	/// source, built from the model.
+	private static void BuildStaticSource(ModelMesh mesh, Span<ModelMesh> meshes,
+		List<int> levelIndices, bool generateLods, StaticMeshAsset asset)
+	{
+		MeshConvert.StaticFromModel(mesh, asset.Source);
+		for (let levelIndex in levelIndices)
+			LodChain.AppendFromModel(meshes[levelIndex], asset.Source);
+		if ((asset.Source.LodCount <= 1) && generateLods
+			&& (asset.Source.IndexData.Count >= cAutoLodIndexThreshold))
+		{
+			MeshOptimize.GenerateLodChain(asset.Source);
+		}
+	}
+
+	/// Parks a static mesh's two writes with the GEOMETRY still unbuilt: the produce runs the
+	/// conversion, the chain and the serialization on the worker.
+	///
+	/// Safe only because the caller keeps the model alive through the flush; the level indices
+	/// are copied, the scope list they came from dying with the import call.
+	private static void DeferLazyStatic(List<DeferredImportWrite> deferredWrites,
+		Instance instance, StaticMeshAsset asset, ModelMesh mesh, Span<ModelMesh> meshes,
+		List<int> levelIndices, bool generateLods)
+	{
+		let sidecar = new DeferredImportWrite();
+		sidecar.Instance = instance;
+		sidecar.StreamName.Set(MeshAssetStorage.cGeometryStreamName);
+
+		let levels = new List<int>();
+		levels.AddRange(levelIndices);
+		sidecar.ProduceOwned.Add(levels);
+
+		sidecar.Produce = new [=asset, =mesh, =meshes, =levels, =generateLods] (bytes) =>
+			{
+				BuildStaticSource(mesh, meshes, levels, generateLods, asset);
+				MeshAssetStorage.StaticGeometryBytes(asset, bytes);
+				return (Result<void, ErrorCode>).Ok;
+			};
+
+		// The ENVELOPE last, so its stored source sees the built chain.
+		let envelope = new DeferredImportWrite();
+		envelope.Instance = instance;
+		envelope.Object = asset;
+		deferredWrites.Add(sidecar);
+		deferredWrites.Add(envelope);
 	}
 
 	/// Parks both halves of a mesh write, the envelope and its geometry sidecar.
