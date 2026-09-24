@@ -98,4 +98,33 @@ class SceneViewPrefsTests
 		Test.Assert(SceneViewPrefs.Find(loaded, scene).HasCamera);
 		Test.Assert(SceneViewPrefs.Find(loaded, scene).Selection.Count == 2);
 	}
+
+	/// The entity origin crosses: on by default, and an off choice survives per scene while
+	/// its siblings stay put.
+	[Test]
+	public static void TheMarkerToggleDefaultsOnAndSurvivesPerScene()
+	{
+		SceneEditorSerializables.RegisterAll();
+		let sceneA = Guid(11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12);
+		let sceneB = Guid(13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14);
+		let fb = SceneViewState();
+		Test.Assert(fb.ShowMarkers);
+
+		let store = scope Settings();
+		Test.Assert(SceneViewPrefs.Load(store, sceneA, fb).ShowMarkers);
+		Test.Assert(SceneViewPrefs.Save(store, sceneA, .(true, true, true, false)));
+		Test.Assert(SceneViewPrefs.Save(store, sceneB, .(true, false)));
+
+		let buffer = scope MemoryStream();
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		Test.Assert(store.Save(buffer, factory) case .Ok);
+		buffer.Seek(0, .Begin);
+		let loaded = scope Settings();
+		Test.Assert(loaded.Load(buffer, factory) case .Ok);
+
+		Test.Assert(!SceneViewPrefs.Load(loaded, sceneA, fb).ShowMarkers);
+		Test.Assert(SceneViewPrefs.Load(loaded, sceneA, fb).ShowColliders);
+		Test.Assert(SceneViewPrefs.Load(loaded, sceneB, fb).ShowMarkers); // untouched: the default
+	}
 }

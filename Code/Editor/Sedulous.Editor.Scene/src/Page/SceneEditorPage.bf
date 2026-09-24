@@ -78,6 +78,7 @@ class SceneEditorPage : UIEditorPage
 	private ToolbarToggle mGridToggle = null;
 	private ToolbarToggle mLodToggle = null;
 	private ToolbarToggle mCollidersToggle = null;
+	private ToolbarToggle mMarkersToggle = null; // the origin cross on every entity
 	private SceneViewState mView = .();
 	private List<(ToolbarToggle toggle, String id)> mToolToggles = new .() ~ { for (var t in _) delete t.id; delete _; };
 

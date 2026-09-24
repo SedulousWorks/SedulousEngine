@@ -55,6 +55,11 @@ extension SceneEditorPage
 		mLodToggle.OnCheckedChanged.Add(new [=this](t, value) => { mView.ShowLodOverlay = value; SaveViewPrefs(); });
 		mCollidersToggle = mToolbar.AddToggle("Colliders");
 		mCollidersToggle.OnCheckedChanged.Add(new [=this](t, value) => { mView.ShowColliders = value; SaveViewPrefs(); });
+		// The cross at every entity's origin. On by default, but a scene of thousands of
+		// nodes is all crosses, so it is a toggle; off keeps the SELECTED entity's marker
+		// and bounds, which are selection feedback rather than clutter.
+		mMarkersToggle = mToolbar.AddToggle("Markers");
+		mMarkersToggle.OnCheckedChanged.Add(new [=this](t, value) => { mView.ShowMarkers = value; SaveViewPrefs(); });
 		LoadViewPrefs();
 
 		let postButton = mToolbar.AddButton("Post");
@@ -256,6 +261,8 @@ extension SceneEditorPage
 			mLodToggle.IsChecked = mView.ShowLodOverlay;
 		if (mCollidersToggle != null)
 			mCollidersToggle.IsChecked = mView.ShowColliders;
+		if (mMarkersToggle != null)
+			mMarkersToggle.IsChecked = mView.ShowMarkers;
 
 		let activeTool = mViewportTools.ActiveTool;
 		let activeId = (activeTool != null) ? activeTool.Id : StringView();

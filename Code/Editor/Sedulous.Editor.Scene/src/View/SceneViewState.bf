@@ -7,12 +7,16 @@ struct SceneViewState
 	public bool ShowLodOverlay = false;
 	/// Edit time physics collider wireframes.
 	public bool ShowColliders = false;
+	/// The origin cross on every entity; off for a scene with thousands of them.
+	public bool ShowMarkers = true;
 
 	public this() {}
-	public this(bool showGrid, bool showLodOverlay, bool showColliders = false)
+	public this(bool showGrid, bool showLodOverlay, bool showColliders = false,
+		bool showMarkers = true)
 	{
 		ShowGrid = showGrid;
 		ShowLodOverlay = showLodOverlay;
 		ShowColliders = showColliders;
+		ShowMarkers = showMarkers;
 	}
 }

@@ -127,6 +127,8 @@ extension SceneEditorPage
 			let world = scene.GetWorldMatrix(e);
 			let p = Float3(world.M[3][0], world.M[3][1], world.M[3][2]);
 			let selected = selection.Contains(scene.GetEntityId(e));
+			if (!selected && !mView.ShowMarkers)
+				return; // the Markers toggle: an unselected origin draws nothing
 			let s = 0.25f;
 			let color = selected ? Color(1.0f, 0.85f, 0.25f, 1.0f) : Color(0.75f, 0.75f, 0.80f, 1.0f);
 			dd.DrawLine(p - Float3(s, 0, 0), p + Float3(s, 0, 0), color);
