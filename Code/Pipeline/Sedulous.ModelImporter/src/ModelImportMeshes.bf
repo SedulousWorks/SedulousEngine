@@ -54,6 +54,7 @@ static class ModelImportMeshes
 				manifest.MeshGuid.Add(.Empty);
 				manifest.MeshSkinned.Add(skinned);
 				manifest.MeshMaterial.Add(parts.IsEmpty ? -1 : parts[0].MaterialIndex);
+				manifest.AddMeshMaterialSlots(.()); // a held slot draws nothing
 				continue;
 			}
 
@@ -137,6 +138,9 @@ static class ModelImportMeshes
 			// ONE material per mesh, taken from the first submesh, which is what a manifest can
 			// carry: a mesh with several keeps them in its own submesh table.
 			manifest.MeshMaterial.Add(parts.IsEmpty ? -1 : parts[0].MaterialIndex);
+			let slots = scope List<int32>();
+			MeshConvert.CollectMaterialSlots(mesh, slots);
+			manifest.AddMeshMaterialSlots(slots);
 		}
 		return .Ok;
 	}

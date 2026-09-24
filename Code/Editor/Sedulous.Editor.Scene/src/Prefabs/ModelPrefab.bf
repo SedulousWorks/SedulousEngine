@@ -70,8 +70,7 @@ static class ModelPrefab
 				continue;
 			let mc = meshes.Add(entities[i]);
 			mc.Mesh.SetId(manifest.MeshGuid[meshIndex]);
-			for (let g in manifest.MaterialGuid)
-				mc.Materials.Add(Ref<Material>(g));
+			BindMeshMaterials(manifest, meshIndex, mc.Materials);
 
 			if ((colliders != null) && (meshIndex < manifest.CollisionGuid.Count)
 				&& !manifest.CollisionGuid[meshIndex].IsNil)
@@ -193,5 +192,31 @@ static class ModelPrefab
 		if (instance == null)
 			instance = group.CreateInstance(name, typeName);
 		return instance;
+	}
+
+	/// Fills a mesh component's material list from the manifest.
+	///
+	/// The manifest records the slots each mesh uses and its submeshes index THAT run, so an
+	/// entity binds only the materials it draws rather than the model's whole table: a model
+	/// sharing one table across thousands of nodes gave every one of them all of it. A
+	/// manifest recording no slots leaves the whole table, which is what its submeshes index.
+	public static void BindMeshMaterials(ModelManifestSource manifest, int meshIndex,
+		List<Ref<Material>> outMaterials)
+	{
+		let slots = manifest.MaterialSlotsOf(meshIndex);
+		if (slots.IsEmpty)
+		{
+			for (let g in manifest.MaterialGuid)
+				outMaterials.Add(Ref<Material>(g));
+			return;
+		}
+		for (let slot in slots)
+		{
+			// An unresolvable slot stays an EMPTY ref rather than shifting the ones after it,
+			// which would bind every later submesh to the wrong material.
+			let resolved = ((slot >= 0) && (slot < manifest.MaterialGuid.Count))
+				? manifest.MaterialGuid[slot] : Guid.Empty;
+			outMaterials.Add(Ref<Material>(resolved));
+		}
 	}
 }

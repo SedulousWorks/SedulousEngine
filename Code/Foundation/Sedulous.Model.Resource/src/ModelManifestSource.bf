@@ -14,7 +14,11 @@ namespace Sedulous.Model.Resource;
 ///
 /// FLAT PARALLEL ARRAYS, so the serializer never nests: the node hierarchy is spread across
 /// six arrays rather than an array of records holding strings.
-[Serializable]
+///
+/// Data version 2 records the per mesh material slots. There is ONE supported layout, so a
+/// manifest written before it is refused rather than guessed at: the remedy is a re-import,
+/// which rewrites the manifest beside freshly cooked meshes.
+[Serializable(2)]
 class ModelManifestSource
 {
 	// Per mesh.
@@ -25,6 +29,14 @@ class ModelManifestSource
 	public List<int32> MeshMaterial = new .() ~ delete _;
 	/// The cooked collision shape per mesh, nil for none.
 	public List<Guid> CollisionGuid = new .() ~ delete _;
+	/// The material slots every mesh uses, concatenated; MeshSlotStart and MeshSlotCount cut
+	/// it up per mesh. Each entry is an index into MaterialGuid, and a cooked submesh's
+	/// material index is a POSITION in its mesh's run rather than an index into MaterialGuid
+	/// directly. A mesh with no parts, a held LOD slot among them, has a count of nought.
+	public List<int32> MeshMaterialSlot = new .() ~ delete _;
+	/// Parallel to MeshGuid.
+	public List<int32> MeshSlotStart = new .() ~ delete _;
+	public List<int32> MeshSlotCount = new .() ~ delete _;
 
 	// Per material.
 	public List<Guid> MaterialGuid = new .() ~ delete _;
@@ -47,6 +59,28 @@ class ModelManifestSource
 	/// load a single mesh.
 	public Float3 BoundsMin = .(0, 0, 0);
 	public Float3 BoundsMax = .(0, 0, 0);
+
+	/// Appends one mesh's material slots, keeping the three arrays in step. Called once per
+	/// mesh, in the same order the mesh ids are added.
+	public void AddMeshMaterialSlots(Span<int32> slots)
+	{
+		MeshSlotStart.Add((int32)MeshMaterialSlot.Count);
+		MeshSlotCount.Add((int32)slots.Length);
+		for (let slot in slots)
+			MeshMaterialSlot.Add(slot);
+	}
+
+	/// One mesh's material slots, empty when it has none or the manifest records none.
+	public Span<int32> MaterialSlotsOf(int meshIndex)
+	{
+		if ((meshIndex < 0) || (meshIndex >= MeshSlotStart.Count) || (meshIndex >= MeshSlotCount.Count))
+			return .();
+		let start = MeshSlotStart[meshIndex];
+		let count = MeshSlotCount[meshIndex];
+		if ((start < 0) || (count <= 0) || (start + count > MeshMaterialSlot.Count))
+			return .();
+		return .(&MeshMaterialSlot[start], count);
+	}
 
 	/// Rebuilds the hierarchy into owned nodes.
 	///

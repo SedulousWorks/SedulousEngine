@@ -165,6 +165,9 @@ static class ModelCook
 			// can carry: a mesh with several materials keeps them in its own submesh table.
 			let parts = mesh.Parts;
 			manifest.MeshMaterial.Add(parts.IsEmpty ? -1 : parts[0].MaterialIndex);
+			let slots = scope List<int32>();
+			MeshConvert.CollectMaterialSlots(mesh, slots);
+			manifest.AddMeshMaterialSlots(slots);
 		}
 		return .Ok;
 	}

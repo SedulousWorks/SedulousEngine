@@ -62,8 +62,7 @@ class ModelManifestThumbnailGenerator : ISceneThumbnailGenerator
 					continue;
 				let component = meshes.Add(entities[i]);
 				component.Mesh.SetId(manifest.MeshGuid[meshIndex]);
-				for (let materialId in manifest.MaterialGuid)
-					component.Materials.Add(Ref<Material>(materialId));
+				ModelPrefab.BindMeshMaterials(manifest, meshIndex, component.Materials);
 			}
 			SceneResolve.ResolveSceneResources(stage, resources);
 			ThumbnailStaging.AddSun(stage);

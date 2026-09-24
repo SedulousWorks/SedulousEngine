@@ -38,6 +38,24 @@ static class MeshConvert
 		}
 	}
 
+	/// The model wide material indices ONE mesh's parts use, in first appearance order.
+	///
+	/// A cooked submesh's material index is a position in THIS list, a per mesh slot, never
+	/// the model wide index, so the entity binds only the materials the mesh draws. A large
+	/// model shares one material table across thousands of nodes: without the remap every
+	/// one of them carries the whole table to reach the one or two materials it needs.
+	public static void CollectMaterialSlots(ModelMesh mesh, List<int32> outSlots)
+	{
+		outSlots.Clear();
+		for (let part in mesh.Parts)
+		{
+			if (part.MaterialIndex < 0)
+				continue; // a part with no material claims no slot
+			if (!outSlots.Contains(part.MaterialIndex))
+				outSlots.Add(part.MaterialIndex);
+		}
+	}
+
 	/// The model's parts as submesh ranges. A mesh with NO explicit parts becomes one submesh
 	/// over the whole index buffer, which is what an unpartitioned mesh means.
 	public static void CopyParts(ModelMesh mesh, StaticMeshSource outSource)
@@ -57,11 +75,14 @@ static class MeshConvert
 			return;
 		}
 
+		let slots = scope List<int32>();
+		CollectMaterialSlots(mesh, slots);
 		for (int i < parts.Length)
 		{
 			outSource.SubStart.Add(parts[i].IndexStart);
 			outSource.SubCount.Add(parts[i].IndexCount);
-			outSource.SubMaterial.Add(parts[i].MaterialIndex);
+			// The per mesh slot, minus one for a part with no material.
+			outSource.SubMaterial.Add((int32)slots.IndexOf(parts[i].MaterialIndex));
 			outSource.SubPrimitive.Add((uint8)PrimitiveType.Triangles);
 		}
 	}

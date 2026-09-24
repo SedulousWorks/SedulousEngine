@@ -153,6 +153,69 @@ class ModelPrefabTests
 		Test.Assert(again.Instance.Id == prefabId);
 	}
 
+	/// A manifest that records slots binds only what each mesh draws; one that records none
+	/// keeps the whole table, which is what its submeshes index.
+	[Test]
+	public static void ASlottedMeshBindsOnlyItsOwnMaterials()
+	{
+		let fx = scope Fixture("scratch_model_prefab_slot_db");
+		let meshNarrow = G(0x53, 1);
+		let meshWhole = G(0x54, 2);
+		let matA = G(0x61, 1);
+		let matB = G(0x62, 2);
+		let matC = G(0x63, 3);
+
+		let asset = scope ModelManifestAsset();
+		let m = asset.Manifest;
+		m.MeshGuid.Add(meshNarrow);
+		m.MeshGuid.Add(meshWhole);
+		m.MeshSkinned.Add(false);
+		m.MeshSkinned.Add(false);
+		m.MaterialGuid.Add(matA);
+		m.MaterialGuid.Add(matB);
+		m.MaterialGuid.Add(matC);
+		int32[2] narrow = .(2, 0); // the third material, then the first
+		m.AddMeshMaterialSlots(.(&narrow[0], narrow.Count));
+		m.AddMeshMaterialSlots(.()); // no slots recorded for the second
+		AddNode(asset, "Root", -1, -1, .(0, 0, 0));
+		AddNode(asset, "Narrow", 0, 0, .(0, 0, 0));
+		AddNode(asset, "Whole", 0, 1, .(0, 0, 0));
+
+		let group = fx.Database.RootGroup.CreateGroup("Slots");
+		Test.Assert(group != null);
+		let manifest = group.CreateInstance("Slots", typeof(ModelManifestAsset).GetFullName(.. scope .()));
+		Test.Assert(manifest != null);
+		Test.Assert(manifest.WriteObject(asset) case .Ok);
+
+		let generated = ModelPrefab.GenerateModelPrefab(manifest);
+		Test.Assert(generated.Instance != null);
+		let payload = generated.Instance.ReadData("scene");
+		Test.Assert(payload != null);
+		defer delete payload;
+		let level = scope Scene("level");
+		let meshes = level.AddSystem<MeshComponentManager>();
+		Test.Assert(PrefabSpawn.Spawn(level, payload, generated.Instance.Id).IsAssigned);
+
+		var sawNarrow = false, sawWhole = false;
+		meshes.ForEach(scope [&](c, e) =>
+		{
+			if (c.Mesh.Id == meshNarrow)
+			{
+				sawNarrow = true;
+				// The slots in their own order, which is what its submeshes index.
+				Test.Assert(c.Materials.Count == 2);
+				Test.Assert(c.Materials[0].Id == matC);
+				Test.Assert(c.Materials[1].Id == matA);
+			}
+			if (c.Mesh.Id == meshWhole)
+			{
+				sawWhole = true;
+				Test.Assert(c.Materials.Count == 3);
+			}
+		});
+		Test.Assert(sawNarrow && sawWhole);
+	}
+
 	[Test]
 	public static void AManifestBecomesAStandaloneSceneAndRegenerationReusesTheInstance()
 	{
