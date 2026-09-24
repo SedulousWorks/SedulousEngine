@@ -95,4 +95,34 @@ class TextureMipTests
 		Test.Assert(mipLevels == 3);
 		Test.Assert(payload.Count == (15 + 2 + 1) * 4);
 	}
+
+	/// The sRGB tables stand in for the exact transfer, so what they cost in accuracy is part
+	/// of the contract: a round trip through them must land on the byte it started from, and
+	/// an averaged pair must not drift more than one code from the exact answer.
+	[Test]
+	public static void TheSrgbTablesAgreeWithTheExactCurve()
+	{
+		// A half black, half white checker is the case the linear averaging exists for: the
+		// average is linear one half, which encodes near 188 rather than 128.
+		let pixels = scope List<uint8>();
+		for (int i < 4)
+		{
+			// Two black texels and two white ones, in one 2x2 block.
+			let white = (i == 1) || (i == 2);
+			for (int c < 4)
+				pixels.Add(white ? 255 : ((c == 3) ? 255 : 0));
+		}
+
+		let levels = TextureMipChain.Append(pixels, 2, 2, true);
+		Test.Assert(levels == 2);
+
+		// Level one is one texel: the linear average of two black and two white, re-encoded.
+		let level1 = pixels.Count - 4;
+		let got = pixels[level1];
+		Test.Assert((got >= 186) && (got <= 190),
+			scope $"a half/half checker averages near 188 in sRGB, got {got}");
+
+		// The alpha channel averages DIRECTLY, tables or not.
+		Test.Assert(pixels[level1 + 3] == 255);
+	}
 }

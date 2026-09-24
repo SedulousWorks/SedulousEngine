@@ -10,18 +10,48 @@ namespace Sedulous.Texture.Pipeline;
 /// not 128. Averaging the stored bytes directly darkens every level.
 static class TextureMipChain
 {
-	private static float SrgbToLinear(uint8 value)
+	private static float SrgbToLinearExact(uint8 value)
 	{
 		let c = (float)value / 255.0f;
 		return (c <= 0.04045f) ? (c / 12.92f) : Math.Pow((c + 0.055f) / 1.055f, 2.4f);
 	}
 
-	private static uint8 LinearToSrgb(float value)
+	private static uint8 LinearToSrgbExact(float value)
 	{
 		let c = Math.Clamp(value, 0.0f, 1.0f);
 		let encoded = (c <= 0.0031308f) ? (c * 12.92f)
 			: (1.055f * Math.Pow(c, 1.0f / 2.4f) - 0.055f);
 		return (uint8)(encoded * 255.0f + 0.5f);
+	}
+
+	/// The transfer functions as TABLES, built once per chain.
+	///
+	/// Nine kilobytes and about eight thousand Pow calls to fill, which is nothing beside a
+	/// texture, against roughly ninety million evaluations for a 4k chain: the per texel Pow
+	/// was most of the sRGB mip cost. Decoding is exact, the input being eight bit; encoding
+	/// quantizes linear to one part in 8191 before the exact curve, well under an sRGB code
+	/// step everywhere but the first few codes, where it stays within one.
+	///
+	/// Per chain rather than static, so nothing here is process wide state.
+	private class SrgbTables
+	{
+		public float[256] ToLinear = .();
+		public uint8[8192] ToSrgb = .();
+
+		public this()
+		{
+			for (int i < 256)
+				ToLinear[i] = SrgbToLinearExact((uint8)i);
+			for (int i < 8192)
+				ToSrgb[i] = LinearToSrgbExact((float)i / 8191.0f);
+		}
+
+		[Inline]
+		public uint8 Encode(float linear)
+		{
+			let c = Math.Clamp(linear, 0.0f, 1.0f);
+			return ToSrgb[(int)(c * 8191.0f + 0.5f)];
+		}
 	}
 
 	/// Appends every level below the first to `pixels`, which already holds level nought as
@@ -31,6 +61,7 @@ static class TextureMipChain
 	/// Returns the TOTAL level count, the first one included.
 	public static uint32 Append(List<uint8> pixels, uint32 width, uint32 height, bool srgb)
 	{
+		let tables = srgb ? scope SrgbTables() : null;
 		uint32 levels = 1;
 		var sourceOffset = 0;
 		var sourceWidth = width;
@@ -65,9 +96,9 @@ static class TextureMipChain
 					{
 						if (srgb && (c < 3))
 						{
-							let average = (SrgbToLinear(p00[c]) + SrgbToLinear(p01[c])
-								+ SrgbToLinear(p10[c]) + SrgbToLinear(p11[c])) * 0.25f;
-							outTexel[c] = LinearToSrgb(average);
+							let average = (tables.ToLinear[p00[c]] + tables.ToLinear[p01[c]]
+								+ tables.ToLinear[p10[c]] + tables.ToLinear[p11[c]]) * 0.25f;
+							outTexel[c] = tables.Encode(average);
 						}
 						else
 						{
