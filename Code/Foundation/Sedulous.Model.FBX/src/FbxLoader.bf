@@ -359,45 +359,54 @@ class FbxLoader : IModelLoader
 	{
 		let relative = scope String();
 		AppendUfbx(relative, source.relative_filename);
-		if (relative.IsEmpty)
-			return;
-
 		let candidate = scope String();
 
-		// As recorded, relative to the model.
-		PathJoin(mBasePath, relative, candidate);
-		if (TryLoadInto(candidate, texture))
-			return;
-
-		// Just the filename, beside the model: the usual case when a project has been
-		// copied and the directories above it differ.
-		let filename = scope String();
-		PathFilename(relative, filename);
-		if (!filename.IsEmpty)
+		// A file that records no relative name at all still has the absolute one below.
+		if (!relative.IsEmpty)
 		{
-			candidate.Clear();
-			PathJoin(mBasePath, filename, candidate);
-			if (TryLoadInto(candidate, texture))
-				return;
-		}
-
-		// Then upwards, a few levels: a textures directory beside the models directory is
-		// the common layout, and the recorded path is relative to the project root.
-		let searchDir = scope String(mBasePath);
-		for (int depth < cParentSearchDepth)
-		{
-			let parent = scope:: String();
-			PathParent(searchDir, parent);
-			if (parent.IsEmpty || (parent == searchDir))
-				break;
-
-			candidate.Clear();
-			PathJoin(parent, relative, candidate);
+			// As recorded, relative to the model.
+			PathJoin(mBasePath, relative, candidate);
 			if (TryLoadInto(candidate, texture))
 				return;
 
-			searchDir.Set(parent);
+			// Just the filename, beside the model: the usual case when a project has been
+			// copied and the directories above it differ.
+			let filename = scope String();
+			PathFilename(relative, filename);
+			if (!filename.IsEmpty)
+			{
+				candidate.Clear();
+				PathJoin(mBasePath, filename, candidate);
+				if (TryLoadInto(candidate, texture))
+					return;
+			}
+
+			// Then upwards, a few levels: a textures directory beside the models directory is
+			// the common layout, and the recorded path is relative to the project root.
+			let searchDir = scope String(mBasePath);
+			for (int depth < cParentSearchDepth)
+			{
+				let parent = scope:: String();
+				PathParent(searchDir, parent);
+				if (parent.IsEmpty || (parent == searchDir))
+					break;
+
+				candidate.Clear();
+				PathJoin(parent, relative, candidate);
+				if (TryLoadInto(candidate, texture))
+					return;
+
+				searchDir.Set(parent);
+			}
 		}
+
+		// Last, the absolute name. ufbx resolves the recorded path against the file it came
+		// from and normalises it, so this is usually the one that lands when the content sits
+		// where the model says it does and only the separators were foreign.
+		let absolute = scope String();
+		AppendUfbx(absolute, source.filename);
+		if (!absolute.IsEmpty)
+			TryLoadInto(absolute, texture);
 	}
 
 	/// How far up to look for a texture the recorded path does not find. Bounded, because
