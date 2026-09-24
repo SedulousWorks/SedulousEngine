@@ -61,6 +61,7 @@ class TerrainSculptTool : IViewportTool
 
 	public StringView Id => "terrain.sculpt";
 	public StringView DisplayName => "Sculpt Terrain";
+	public StringView Category => "Terrain";
 	public StringView StatusText => mStatus;
 
 	public SculptMode Mode => mMode;

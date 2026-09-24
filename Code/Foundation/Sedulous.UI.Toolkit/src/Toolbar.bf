@@ -51,6 +51,15 @@ class Toolbar : FlexLayout
 		return toggle;
 	}
 
+	/// Adds a dropdown button, returned BORROWED; wire OnClick to show the menu.
+	public ToolbarMenuButton AddMenuButton(StringView text)
+	{
+		let button = new ToolbarMenuButton();
+		button.SetText(text);
+		AddItem(button);
+		return button;
+	}
+
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		let bounds = Rectangle(0, 0, Width, Height);

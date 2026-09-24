@@ -75,12 +75,13 @@ class SceneEditorPage : UIEditorPage
 	private ToolbarToggle mRotateToggle = null;
 	private ToolbarToggle mScaleToggle = null;
 	private ToolbarToggle mSpaceToggle = null;
-	private ToolbarToggle mGridToggle = null;
-	private ToolbarToggle mLodToggle = null;
-	private ToolbarToggle mCollidersToggle = null;
-	private ToolbarToggle mMarkersToggle = null; // the origin cross on every entity
+	/// One dropdown over the editor's debug draws: grid, entity markers, LOD overlay and
+	/// the edit time collider wireframes. Borrowed; the toolbar owns it.
+	private ToolbarMenuButton mOverlaysButton = null;
 	private SceneViewState mView = .();
 	private List<(ToolbarToggle toggle, String id)> mToolToggles = new .() ~ { for (var t in _) delete t.id; delete _; };
+	/// A category's dropdown over the tools registered under it.
+	private List<ToolMenu> mToolMenus = new .() ~ DeleteContainerAndItems!(_);
 
 	private ViewportToolManager mViewportTools = new .() ~ delete _;
 	/// Borrowed; the manager owns the default tool.

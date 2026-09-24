@@ -72,6 +72,7 @@ class TerrainSplatTool : IViewportTool
 
 	public StringView Id => "terrain.splat";
 	public StringView DisplayName => "Paint Splat";
+	public StringView Category => "Terrain";
 	public StringView StatusText => mStatus;
 
 	public uint32 PaletteIndex => mPaletteIndex;

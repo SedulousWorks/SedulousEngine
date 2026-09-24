@@ -9,6 +9,7 @@ class TestTool : IViewportTool
 	private ToolLog mLog;
 	public bool Available = true;
 	public bool Consume = false;
+	private String mCategory = new .() ~ delete _;
 
 	public this(StringView id, ToolLog log)
 	{
@@ -16,8 +17,14 @@ class TestTool : IViewportTool
 		mLog = log;
 	}
 
+	public this(StringView id, StringView category, ToolLog log) : this(id, log)
+	{
+		mCategory.Set(category);
+	}
+
 	public StringView Id => mId;
 	public StringView DisplayName => mId;
+	public StringView Category => mCategory;
 	public bool IsAvailable => Available;
 	public void OnActivate() { mLog.Activations++; }
 	public void OnDeactivate() { mLog.Deactivations++; }

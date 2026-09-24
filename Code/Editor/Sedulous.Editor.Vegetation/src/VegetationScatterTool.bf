@@ -87,6 +87,7 @@ class VegetationScatterTool : IViewportTool
 
 	public StringView Id => "vegetation.scatter";
 	public StringView DisplayName => "Paint Props";
+	public StringView Category => "Vegetation";
 	public StringView StatusText => mStatus;
 
 	public uint32 Layer => mLayer;

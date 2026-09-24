@@ -9,6 +9,7 @@ using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
+using Sedulous.Editor.ViewportTools;
 
 namespace Sedulous.Editor.Scene;
 
@@ -48,53 +49,53 @@ extension SceneEditorPage
 
 		mToolbar.AddSeparator();
 
-		mGridToggle = mToolbar.AddToggle("");
-		mGridToggle.SetIcon(new (ctx, rect) => { DrawIcon(EditorIcons.Grid, ctx, rect); });
-		mGridToggle.OnCheckedChanged.Add(new [=this](t, value) => { mView.ShowGrid = value; SaveViewPrefs(); });
-		mLodToggle = mToolbar.AddToggle("LOD");
-		mLodToggle.OnCheckedChanged.Add(new [=this](t, value) => { mView.ShowLodOverlay = value; SaveViewPrefs(); });
-		mCollidersToggle = mToolbar.AddToggle("Colliders");
-		mCollidersToggle.OnCheckedChanged.Add(new [=this](t, value) => { mView.ShowColliders = value; SaveViewPrefs(); });
-		// The cross at every entity's origin. On by default, but a scene of thousands of
-		// nodes is all crosses, so it is a toggle; off keeps the SELECTED entity's marker
-		// and bounds, which are selection feedback rather than clutter.
-		mMarkersToggle = mToolbar.AddToggle("Markers");
-		mMarkersToggle.OnCheckedChanged.Add(new [=this](t, value) => { mView.ShowMarkers = value; SaveViewPrefs(); });
+		// ONE dropdown for the editor's own debug draws instead of a toggle each: they are
+		// one kind of thing and the bar was full.
+		mOverlaysButton = mToolbar.AddMenuButton("Overlays");
+		mOverlaysButton.SetIcon(new (ctx, rect) => { DrawIcon(EditorIcons.Grid, ctx, rect); });
+		mOverlaysButton.OnClick.Add(new [=this](btn) => { ShowOverlaysMenu(btn); });
 		LoadViewPrefs();
 
-		let postButton = mToolbar.AddButton("Post");
+		let postButton = mToolbar.AddMenuButton("Post");
 		postButton.OnClick.Add(new [=this](btn) => { ShowPostFlagsMenu(btn); });
-		let debugButton = mToolbar.AddButton("Debug");
+		let debugButton = mToolbar.AddMenuButton("Debug");
 		debugButton.OnClick.Add(new [=this](btn) => { ShowDebugViewMenu(btn); });
 
+		// The tool palette, appended after the built-ins so the fixed shape of the bar never
+		// shifts as tool modules come and go. Index 0 is the default select tool, driven by
+		// the gizmo toggles above. A category with two or more tools is ONE dropdown; a lone
+		// tool is a toggle. Picking one activates it, which docks its panel; picking the
+		// active one again returns to the default.
 		if (mViewportTools.Count > 1)
 		{
 			mToolbar.AddSeparator();
-			for (int i = 1; i < mViewportTools.Count; i++)
+			let groups = scope List<ViewportToolGroup>();
+			defer { for (let g in groups) delete g; }
+			ViewportToolGrouping.Group(mViewportTools, groups);
+			for (let group in groups)
 			{
-				let tool = mViewportTools.ToolAt(i);
-				if (tool == null)
-					continue;
-				let id = new String(tool.Id);
-				let toggle = mToolbar.AddToggle(tool.DisplayName);
-				toggle.OnCheckedChanged.Add(new [=this, =id](t, value) =>
+				if (group.Category.IsEmpty || (group.ToolIds.Count < 2))
 				{
-					if (value)
+					for (let toolId in group.ToolIds)
 					{
-						// A refusal, the tool having nothing here to work on, is SAID rather
-						// than swallowed; the toggle snaps back through the sync below.
-						if (!mViewportTools.ActivateById(id))
-						{
-							let refused = mViewportTools.FindById(id);
-							if (refused != null)
-								mContext.Notify(.Warning, refused.UnavailableReason);
-						}
+						let tool = mViewportTools.FindById(toolId);
+						if (tool == null)
+							continue;
+						let id = new String(toolId);
+						let toggle = mToolbar.AddToggle(tool.DisplayName);
+						toggle.OnCheckedChanged.Add(new [=this, =id](t, value) => { ToggleViewportTool(id, value); });
+						mToolToggles.Add((toggle, id));
 					}
-					else if ((mViewportTools.ActiveTool != null) && (mViewportTools.ActiveTool.Id == id))
-						mViewportTools.ActivateDefault();
-					SyncToolbar();
-				});
-				mToolToggles.Add((toggle, id));
+					continue;
+				}
+				let menu = new ToolMenu();
+				menu.Category.Set(group.Category);
+				for (let toolId in group.ToolIds)
+					menu.Ids.Add(new String(toolId));
+				menu.Label.Set(menu.Category);
+				menu.Button = mToolbar.AddMenuButton(menu.Label);
+				menu.Button.OnClick.Add(new [=this, =menu](btn) => { ShowToolMenu(menu, btn); });
+				mToolMenus.Add(menu);
 			}
 		}
 
@@ -256,13 +257,6 @@ extension SceneEditorPage
 		mRotateToggle.IsChecked = mode == .Rotate;
 		mScaleToggle.IsChecked = mode == .Scale;
 		mSpaceToggle.IsChecked = mSelectTool.Gizmos.Space == .World;
-		mGridToggle.IsChecked = mView.ShowGrid;
-		if (mLodToggle != null)
-			mLodToggle.IsChecked = mView.ShowLodOverlay;
-		if (mCollidersToggle != null)
-			mCollidersToggle.IsChecked = mView.ShowColliders;
-		if (mMarkersToggle != null)
-			mMarkersToggle.IsChecked = mView.ShowMarkers;
 
 		let activeTool = mViewportTools.ActiveTool;
 		let activeId = (activeTool != null) ? activeTool.Id : StringView();
@@ -271,11 +265,103 @@ extension SceneEditorPage
 			if (tt.toggle != null)
 				tt.toggle.IsChecked = tt.id == activeId;
 		}
+		// A tool dropdown reads its active tool ("Terrain: Sculpt Terrain", highlighted) or
+		// just its category. This runs every frame, so the text is set only when it changes.
+		for (let menu in mToolMenus)
+		{
+			var on = false;
+			for (let id in menu.Ids)
+			{
+				if (id == activeId)
+				{
+					on = true;
+					break;
+				}
+			}
+			let label = scope String(menu.Category);
+			if (on && (activeTool != null))
+			{
+				label.Append(": ");
+				label.Append(activeTool.DisplayName);
+			}
+			if (menu.Button == null)
+				continue;
+			menu.Button.IsChecked = on;
+			if (label != menu.Label)
+			{
+				menu.Label.Set(label);
+				menu.Button.SetText(menu.Label);
+			}
+		}
+	}
+
+	/// Activates a palette tool, or releases it back to the default, saying a refusal.
+	private void ToggleViewportTool(StringView id, bool on)
+	{
+		if (on)
+		{
+			// A refusal, the tool having nothing here to work on, is SAID rather than
+			// swallowed; the toggle or dropdown snaps back through the sync below.
+			if (!mViewportTools.ActivateById(id))
+			{
+				let refused = mViewportTools.FindById(id);
+				if (refused != null)
+					mContext.Notify(.Warning, refused.UnavailableReason);
+			}
+		}
+		else if ((mViewportTools.ActiveTool != null) && (mViewportTools.ActiveTool.Id == id))
+			mViewportTools.ActivateDefault();
+		SyncToolbar();
 	}
 
 	// ---- menus ----
 
 	private static StringView Mark(bool on) => on ? "[x] " : "[ ] ";
+
+	/// The editor's own debug draws into this viewport, never the scene's and never the
+	/// game's: the ground grid and world axes; the origin cross on every entity, off for a
+	/// large scene, the selected one keeping its cross and bounds; the LOD overlay tinting
+	/// each chained mesh by the level this camera picks; the edit time collider wireframes,
+	/// drawn from the component shapes with no world, which is what separates them from the
+	/// runtime physics debug draw.
+	private void ShowOverlaysMenu(View anchor)
+	{
+		if (anchor == null)
+			return;
+		let menu = new ContextMenu();
+		defer menu.ReleaseRef();
+		menu.AddItem(scope $"{Mark(mView.ShowGrid)}Grid", new [=this]() => { mView.ShowGrid = !mView.ShowGrid; SaveViewPrefs(); });
+		menu.AddItem(scope $"{Mark(mView.ShowMarkers)}Entity markers", new [=this]() => { mView.ShowMarkers = !mView.ShowMarkers; SaveViewPrefs(); });
+		menu.AddSeparator();
+		menu.AddItem(scope $"{Mark(mView.ShowLodOverlay)}LOD overlay", new [=this]() => { mView.ShowLodOverlay = !mView.ShowLodOverlay; SaveViewPrefs(); });
+		menu.AddItem(scope $"{Mark(mView.ShowColliders)}Colliders", new [=this]() => { mView.ShowColliders = !mView.ShowColliders; SaveViewPrefs(); });
+		let pos = anchor.LocalToScreen(.(0.0f, anchor.Height));
+		menu.Show(anchor.Context, pos.X, pos.Y);
+	}
+
+	/// A tool dropdown: one checkable item per tool of the category. Picking one activates
+	/// it; picking the active one returns to the default tool.
+	private void ShowToolMenu(ToolMenu toolMenu, View anchor)
+	{
+		if (anchor == null)
+			return;
+		let menu = new ContextMenu();
+		defer menu.ReleaseRef();
+		let activeTool = mViewportTools.ActiveTool;
+		let activeId = (activeTool != null) ? activeTool.Id : StringView();
+		for (let id in toolMenu.Ids)
+		{
+			let tool = mViewportTools.FindById(id);
+			if (tool == null)
+				continue;
+			let on = id == activeId;
+			// `id` is owned by the ToolMenu, which outlives this popup, so the item captures
+			// it rather than a copy nothing would free.
+			menu.AddItem(scope $"{Mark(on)}{tool.DisplayName}", new [=this, =id, =on]() => { ToggleViewportTool(id, !on); });
+		}
+		let pos = anchor.LocalToScreen(.(0.0f, anchor.Height));
+		menu.Show(anchor.Context, pos.X, pos.Y);
+	}
 
 	/// The viewport's post flags: each a toggle, then the MSAA levels.
 	private void ShowPostFlagsMenu(View anchor)

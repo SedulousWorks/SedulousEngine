@@ -13,6 +13,10 @@ interface IViewportTool
 	StringView Id { get; }
 	/// Palette label.
 	StringView DisplayName { get; }
+	/// Palette group ("Terrain", "Vegetation"); empty leaves the tool standing alone. A
+	/// category with two or more tools folds into one dropdown labelled by it, so a domain
+	/// takes one slot on the bar however many brushes it registers. Never localised here.
+	StringView Category => "";
 	/// Registration is unconditional, relevance is contextual (a terrain brush needs a
 	/// terrain). Checked every frame for the active tool; the manager falls back to the
 	/// default tool when it turns false.

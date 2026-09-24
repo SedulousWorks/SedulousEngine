@@ -63,13 +63,16 @@ static class EditorRegistration
 		ImageEditor.Register(context);
 		HeightfieldEditor.Register(context);
 		TerrainEditor.Register(context, host, uiHost);
+		// Palette order is registration order: the Terrain dropdown, the Vegetation
+		// dropdown, then the lone Spline tool.
 		TerrainEditor.RegisterViewportTools(); // the scene viewport sculpt and splat brushes
-		SplineEditor.RegisterViewportTools(); // the scene viewport spline control point editor
 		TerrainEditor.RegisterToolPanels(); // the brushes' settings panels
 
 		VegetationEditor.Register(context, host, uiHost);
-		VegetationEditor.RegisterViewportTools(); // the scene viewport vegetation brush
-		VegetationEditor.RegisterToolPanels(); // the brush's settings panel
+		VegetationEditor.RegisterViewportTools(); // the scene viewport vegetation brushes
+		VegetationEditor.RegisterToolPanels(); // the brushes' settings panels
+
+		SplineEditor.RegisterViewportTools(); // the scene viewport spline control point editor
 		FontEditor.Register(context);
 		CollisionShapeEditor.Register(context, host, uiHost);
 		GenericAssetPageFactory.Register(context);

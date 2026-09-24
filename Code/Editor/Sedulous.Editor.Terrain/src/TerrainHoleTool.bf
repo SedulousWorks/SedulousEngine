@@ -60,6 +60,7 @@ class TerrainHoleTool : IViewportTool
 
 	public StringView Id => "terrain.hole";
 	public StringView DisplayName => "Cut Holes";
+	public StringView Category => "Terrain";
 	public StringView StatusText => mStatus;
 
 	public StringView UnavailableReason =>

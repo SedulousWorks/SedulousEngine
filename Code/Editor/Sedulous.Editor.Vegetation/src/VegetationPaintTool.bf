@@ -76,6 +76,7 @@ class VegetationPaintTool : IViewportTool
 
 	public StringView Id => "vegetation.paint";
 	public StringView DisplayName => "Paint Vegetation";
+	public StringView Category => "Vegetation";
 	public StringView StatusText => mStatus;
 
 	public uint32 Plane => mPlane;

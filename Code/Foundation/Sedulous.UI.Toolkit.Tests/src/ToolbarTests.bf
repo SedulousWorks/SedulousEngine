@@ -80,4 +80,30 @@ class ToolbarTests
 		button.SetIcon(new (ctx, rect) => {});
 		button.SetIcon(new (ctx, rect) => {});
 	}
+
+	/// A menu button clicks like a button rather than flipping itself, carries a checked
+	/// state the caller sets, and reserves the caret's strip in its width.
+	[Test]
+	public static void AMenuButtonOpensRatherThanToggling()
+	{
+		let bar = new Toolbar();
+		defer bar.ReleaseRef();
+
+		let plain = bar.AddButton("Overlays");
+		let menuButton = bar.AddMenuButton("Overlays");
+		var clicks = 0;
+		menuButton.OnClick.Add(new [&clicks](sender) => { clicks++; });
+
+		menuButton.OnClick(menuButton);
+		Test.Assert(clicks == 1);
+		Test.Assert(!menuButton.IsChecked); // clicking opens; it never checks itself
+
+		menuButton.IsChecked = true;
+		Test.Assert(menuButton.IsChecked);
+
+		let constraints = BoxConstraints.Loose(400.0f, 40.0f);
+		plain.Measure(constraints);
+		menuButton.Measure(constraints);
+		Test.Assert(menuButton.MeasuredSize.X == plain.MeasuredSize.X + ToolbarMenuButton.CaretWidth);
+	}
 }

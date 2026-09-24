@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 
 namespace Sedulous.Editor.ViewportTools.Tests;
 
@@ -112,5 +113,35 @@ static class ViewportToolManagerTests
 		Test.Assert(provided != null);
 		Test.Assert(manager.ActiveTool.Id == "select", "provider tools never default");
 		Test.Assert(log.Activations == 0);
+	}
+
+	/// The palette grouping: a category with two or more tools is one group, a lone tool or
+	/// an uncategorised one stands by itself, and the default at index 0 never appears.
+	[Test]
+	public static void ToolsGroupByCategoryInFirstAppearanceOrder()
+	{
+		let log = scope ToolLog();
+		let manager = scope ViewportToolManager();
+		manager.Add(new TestTool("select", log)); // the default, never palette
+		manager.Add(new TestTool("terrain.sculpt", "Terrain", log));
+		manager.Add(new TestTool("vegetation.paint", "Vegetation", log));
+		manager.Add(new TestTool("terrain.splat", "Terrain", log));
+		manager.Add(new TestTool("spline", log)); // uncategorised: stands alone
+
+		let groups = scope List<ViewportToolGroup>();
+		defer { for (let g in groups) delete g; }
+		ViewportToolGrouping.Group(manager, groups);
+
+		Test.Assert(groups.Count == 3);
+		// Registration order decides where a category sits, not where its second tool lands.
+		Test.Assert(groups[0].Category == "Terrain");
+		Test.Assert(groups[0].ToolIds.Count == 2);
+		Test.Assert(groups[0].ToolIds[0] == "terrain.sculpt");
+		Test.Assert(groups[0].ToolIds[1] == "terrain.splat");
+		Test.Assert(groups[1].Category == "Vegetation");
+		Test.Assert(groups[1].ToolIds.Count == 1);
+		Test.Assert(groups[2].Category.IsEmpty);
+		Test.Assert(groups[2].ToolIds.Count == 1);
+		Test.Assert(groups[2].ToolIds[0] == "spline");
 	}
 }
