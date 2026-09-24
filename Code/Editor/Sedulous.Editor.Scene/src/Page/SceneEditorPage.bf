@@ -306,7 +306,10 @@ class SceneEditorPage : UIEditorPage
 		mContent = topContent;
 
 		mRouter = new InputRouter(host.Shell.Input);
+		// Framed on the origin, the orbit pivot there and the horizon level - then where this
+		// scene was last left, if a page saved that.
 		mCamera.LookAt(.Zero);
+		RestoreViewState();
 	}
 
 	public ~this()
@@ -561,6 +564,8 @@ class SceneEditorPage : UIEditorPage
 
 	public override void OnClose()
 	{
+		if (mScene != null)
+			SaveViewState(); // where the scene was left, for the next open
 		if (mOpenAssetInterceptorId != 0)
 		{
 			mContext.RemoveOpenAssetInterceptor(mOpenAssetInterceptorId);

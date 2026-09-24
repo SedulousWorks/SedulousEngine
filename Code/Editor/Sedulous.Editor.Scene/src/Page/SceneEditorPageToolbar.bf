@@ -208,6 +208,40 @@ extension SceneEditorPage
 			mContext.RequestProjectEditorSettingsSave();
 	}
 
+	/// Persists the camera framing and the entity selection, written when the page closes.
+	private void SaveViewState()
+	{
+		let camera = SceneViewCamera(mCamera.Position, mCamera.Yaw, mCamera.Pitch, mCamera.FocusDistance);
+		let selection = (mEditContext != null) ? mEditContext.EntitySelection.Items : Span<Guid>();
+		if (SceneViewPrefs.SaveView(mContext.ProjectEditorSettings, InstanceId, camera, selection))
+			mContext.RequestProjectEditorSettingsSave();
+	}
+
+	/// Restores that framing and selection, after the scene's content has loaded so the ids
+	/// can be checked. A pref with no camera leaves the default framing standing.
+	private void RestoreViewState()
+	{
+		let pref = SceneViewPrefs.Find(mContext.ProjectEditorSettings, InstanceId);
+		if ((pref == null) || !pref.HasCamera)
+			return;
+		mCamera.Position = pref.Camera.Position;
+		mCamera.Yaw = pref.Camera.Yaw;
+		mCamera.Pitch = pref.Camera.Pitch;
+		mCamera.FocusDistance = pref.Camera.FocusDistance;
+		if ((mEditContext == null) || (mScene == null) || pref.Selection.IsEmpty)
+			return;
+		// Only ids the scene still has: one deleted since, or spawned by a Simulate run that
+		// has ended, must not come back as a selected ghost.
+		List<Guid> live = scope .();
+		for (let id in pref.Selection)
+		{
+			if (mScene.FindEntity(id).IsAssigned)
+				live.Add(id);
+		}
+		if (!live.IsEmpty)
+			mEditContext.EntitySelection.Set(live);
+	}
+
 	private void SyncToolbar()
 	{
 		if ((mToolbar == null) || (mSelectTool == null))

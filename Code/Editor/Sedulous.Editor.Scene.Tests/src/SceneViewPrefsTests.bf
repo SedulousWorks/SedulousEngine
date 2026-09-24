@@ -51,4 +51,51 @@ class SceneViewPrefsTests
 		Test.Assert(SceneViewPrefs.Load(loaded, sceneB, fb).ShowGrid == true);
 		Test.Assert(SceneViewPrefs.Load(loaded, sceneB, fb).ShowLodOverlay == false);
 	}
+
+	[Test]
+	public static void TheCameraAndSelectionRoundTripAndLeaveTheTogglesAlone()
+	{
+		SceneEditorSerializables.RegisterAll();
+		let scene = Guid(5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6);
+		let entityA = Guid(7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8);
+		let entityB = Guid(9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10);
+
+		let store = scope Settings();
+		// Nothing saved: no entry at all, so the page keeps its default framing.
+		Test.Assert(SceneViewPrefs.Find(store, scene) == null);
+		Test.Assert(!SceneViewPrefs.SaveView(null, scene, .(), Span<Guid>()));
+		Test.Assert(!SceneViewPrefs.SaveView(store, Guid(), .(), Span<Guid>()));
+
+		Test.Assert(SceneViewPrefs.Save(store, scene, .(false, true, true)));
+		// An entry with toggles but no camera still reads as unframed.
+		Test.Assert(!SceneViewPrefs.Find(store, scene).HasCamera);
+
+		Guid[2] selection = .(entityA, entityB);
+		Test.Assert(SceneViewPrefs.SaveView(store, scene, .(.(1.0f, 2.0f, 3.0f), 0.5f, -0.25f, 7.5f),
+			.(&selection[0], selection.Count)));
+
+		let buffer = scope MemoryStream();
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		Test.Assert(store.Save(buffer, factory) case .Ok);
+		buffer.Seek(0, .Begin);
+		let loaded = scope Settings();
+		Test.Assert(loaded.Load(buffer, factory) case .Ok);
+
+		let pref = SceneViewPrefs.Find(loaded, scene);
+		Test.Assert(pref != null);
+		Test.Assert(pref.HasCamera);
+		Test.Assert(pref.Camera.Position == Float3(1.0f, 2.0f, 3.0f));
+		Test.Assert(pref.Camera.Yaw == 0.5f);
+		Test.Assert(pref.Camera.Pitch == -0.25f);
+		Test.Assert(pref.Camera.FocusDistance == 7.5f);
+		Test.Assert(pref.Selection.Count == 2);
+		Test.Assert(pref.Selection[0] == entityA);
+		Test.Assert(pref.Selection[1] == entityB);
+		// Saving the view never resurrects a toggle default, and the toggles never clear it.
+		Test.Assert(!pref.ShowGrid && pref.ShowLodOverlay && pref.ShowColliders);
+		Test.Assert(SceneViewPrefs.Save(loaded, scene, .(true, false, false)));
+		Test.Assert(SceneViewPrefs.Find(loaded, scene).HasCamera);
+		Test.Assert(SceneViewPrefs.Find(loaded, scene).Selection.Count == 2);
+	}
 }
