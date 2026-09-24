@@ -122,18 +122,22 @@ class EditorShell
 
 	/// The document area's share of the window height in the default layout.
 	private const float cDefaultDocumentShare = 0.7f;
+	/// The asset browser's share of the bottom pane's width; the console takes the rest.
+	private const float cDefaultAssetsShare = 0.65f;
 
 	private void DockDefaults()
 	{
-		// Documents centre, the south-stacked tool pane below; scene-scoped views live
-		// inside the pages. Assets leads it and the Console is its second tab. A bottom
-		// dock inserts at half the height, so the ratio, which is the first (top) child's
-		// share, is set afterwards.
+		// Documents centre, the south tool pane below; scene-scoped views live inside the
+		// pages. The pane is Assets on the left and the Console on the right, side by side
+		// so both show at once. A dock inserts its split at half, so both ratios are set
+		// afterwards; a ratio is the FIRST child's share, the document's for the root and
+		// Assets' for the pane.
 		mDock.DockPanel(mWelcome, .Center);
 		mDock.DockPanel(mAssets, .Bottom);
-		mDock.DockPanelRelativeTo(mConsole, .Center, mAssets.Parent);
-		mDock.ActivatePanel(mAssets);
+		mDock.DockPanelRelativeTo(mConsole, .Right, mAssets.Parent);
 		if (let split = mDock.RootNode as DockSplit)
 			split.SplitRatio = cDefaultDocumentShare;
+		if (let pane = ((mAssets.Parent != null) ? mAssets.Parent.Parent : null) as DockSplit)
+			pane.SplitRatio = cDefaultAssetsShare;
 	}
 }
