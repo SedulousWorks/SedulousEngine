@@ -17,7 +17,8 @@ class AudioClipThumbnailGenerator : IThumbnailGenerator
 {
 	public void AssetTypeNames(List<StringView> outNames) => outNames.Add("AudioClipAsset");
 
-	public Result<void, ErrorCode> Prepare(Instance instance, IFileSystem sources, List<uint8> outPayload)
+	public Result<void, ErrorCode> Prepare(Instance instance, IFileSystem sources,
+		ThumbnailPrepared outPrepared)
 	{
 		let object = instance.ReadObject();
 		defer delete object;
@@ -30,14 +31,14 @@ class AudioClipThumbnailGenerator : IThumbnailGenerator
 			delete stream;
 			return .Err(.NotFound);
 		}
-		defer delete stream;
-		let size = (int)stream.Size();
-		if (size <= 0)
+		if (stream.Size() <= 0)
+		{
+			delete stream;
 			return .Err(.NotFound);
-		outPayload.Resize(size);
-		stream.Seek(0, .Begin);
-		let read = stream.Read(Span<uint8>(outPayload.Ptr, size));
-		return (read == size) ? .Ok : .Err(.Internal);
+		}
+		// Handed over UNREAD: the file is drained on the worker.
+		outPrepared.TakeStream(stream);
+		return .Ok;
 	}
 
 	public Result<void, ErrorCode> Generate(Span<uint8> payload, Image outImage)

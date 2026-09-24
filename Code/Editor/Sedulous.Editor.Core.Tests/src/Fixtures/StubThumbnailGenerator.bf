@@ -17,11 +17,12 @@ class StubThumbnailGenerator : IThumbnailGenerator
 
 	public void AssetTypeNames(List<StringView> outNames) => outNames.Add("StubAsset");
 
-	public Result<void, ErrorCode> Prepare(Instance instance, IFileSystem sources, List<uint8> outPayload)
+	public Result<void, ErrorCode> Prepare(Instance instance, IFileSystem sources,
+		ThumbnailPrepared outPrepared)
 	{
 		if (PrepareCount != null)
 			(*PrepareCount)++;
-		outPayload.Add(42);
+		outPrepared.Header.Add(42);
 		return .Ok;
 	}
 

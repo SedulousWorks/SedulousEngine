@@ -60,6 +60,8 @@ class ThumbnailService
 		/// The worker's output; handed to the drawable on success.
 		public Image Pixels = new .() ~ delete _;
 		public List<uint8> Payload = new .() ~ delete _;
+		/// What Prepare handed over: the header, and a stream the WORKER drains into Payload.
+		public ThumbnailPrepared Prepared = new .() ~ delete _;
 		/// Empty is RAM only: an unknown content hash.
 		public String DiskPath = new .() ~ delete _;
 		/// Borrowed; the generators live on the service. Null on a load only slot.
@@ -267,7 +269,7 @@ class ThumbnailService
 		{
 			// MAIN thread Prepare: the worker never touches the content database. A failure
 			// is a negative entry, logged once here rather than every frame.
-			if (generator.Prepare(instance, mSources, slot.Payload) case .Err(let error))
+			if (generator.Prepare(instance, mSources, slot.Prepared) case .Err(let error))
 			{
 				GlobalLog(.Warning, "Thumbnails: prepare failed for '{}' ({}): {}", instance.Name, instance.TypeName, error);
 				Store(id, null);
@@ -288,6 +290,30 @@ class ThumbnailService
 			slot.Ok = true;
 			return;
 		}
+
+		// The READ happens here, on the worker: the header Prepare composed, then whatever the
+		// stream it opened holds. This is the whole point of the split.
+		if (slot.Generator != null)
+		{
+			slot.Payload.Clear();
+			slot.Payload.AddRange(slot.Prepared.Header);
+			if (slot.Prepared.Stream != null)
+			{
+				let stream = slot.Prepared.Stream;
+				let size = (int)stream.Size();
+				if (size > 0)
+				{
+					let at = slot.Payload.Count;
+					slot.Payload.Count = at + size;
+					if (stream.Read(.(slot.Payload.Ptr + at, size)) != size)
+					{
+						slot.Negative = true;
+						return;
+					}
+				}
+			}
+		}
+
 		if ((slot.Generator == null) || (slot.Payload.IsEmpty && !slot.DiskPath.IsEmpty))
 		{
 			// A load only slot whose file would not load, or a file that existed at

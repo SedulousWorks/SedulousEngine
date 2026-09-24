@@ -31,7 +31,8 @@ class SplatmapThumbnailGenerator : IThumbnailGenerator
 
 	public void AssetTypeNames(List<StringView> outNames) => outNames.Add("SplatmapAsset");
 
-	public Result<void, ErrorCode> Prepare(Instance instance, IFileSystem sources, List<uint8> outPayload)
+	public Result<void, ErrorCode> Prepare(Instance instance, IFileSystem sources,
+		ThumbnailPrepared outPrepared)
 	{
 		let object = instance.ReadObject();
 		defer delete object;
@@ -43,21 +44,20 @@ class SplatmapThumbnailGenerator : IThumbnailGenerator
 			let stream = sources.Open(asset.FileName.Value, .Read);
 			if ((stream != null) && stream.IsValid)
 			{
-				defer delete stream;
-				return ReadAll(stream, outPayload); // the encoded image bytes, no header
+				// Handed over UNREAD: the encoded image is drained on the worker, no header.
+				outPrepared.TakeStream(stream);
+				return .Ok;
 			}
 			delete stream;
 		}
 		let weights = instance.ReadData("pixels");
 		if (weights == null)
 			return .Err(.NotFound);
-		defer delete weights;
-		let raster = scope List<uint8>();
-		if (ReadAll(weights, raster) case .Err(let error))
-			return .Err(error);
-		outPayload.Clear();
-		WriteRawHeader(outPayload, (uint32)Math.Max(asset.Width, 1), (uint32)Math.Max(asset.Height, 1));
-		outPayload.AddRange(raster);
+		// The header says how large the raster is; the weights follow from the stream, on the
+		// worker.
+		WriteRawHeader(outPrepared.Header, (uint32)Math.Max(asset.Width, 1),
+			(uint32)Math.Max(asset.Height, 1));
+		outPrepared.TakeStream(weights);
 		return .Ok;
 	}
 

@@ -22,7 +22,8 @@ class HeightfieldThumbnailGenerator : IThumbnailGenerator
 
 	public void AssetTypeNames(List<StringView> outNames) => outNames.Add("HeightfieldAsset");
 
-	public Result<void, ErrorCode> Prepare(Instance instance, IFileSystem sources, List<uint8> outPayload)
+	public Result<void, ErrorCode> Prepare(Instance instance, IFileSystem sources,
+		ThumbnailPrepared outPrepared)
 	{
 		let object = instance.ReadObject();
 		defer delete object;
@@ -34,21 +35,19 @@ class HeightfieldThumbnailGenerator : IThumbnailGenerator
 			let stream = sources.Open(asset.FileName.Value, .Read);
 			if ((stream != null) && stream.IsValid)
 			{
-				defer delete stream;
-				return ReadAll(stream, outPayload); // the encoded image bytes, no header
+				// Handed over UNREAD: the encoded image is drained on the worker, no header.
+				outPrepared.TakeStream(stream);
+				return .Ok;
 			}
 			delete stream;
 		}
 		let heights = instance.ReadData("heights");
 		if (heights == null)
 			return .Err(.NotFound);
-		defer delete heights;
-		let samples = scope List<uint8>();
-		if (ReadAll(heights, samples) case .Err(let error))
-			return .Err(error);
-		outPayload.Clear();
-		WriteRawHeader(outPayload, (uint32)Math.Max(asset.Size, 1));
-		outPayload.AddRange(samples);
+		// The header says how wide the grid is; the samples follow from the stream, on the
+		// worker.
+		WriteRawHeader(outPrepared.Header, (uint32)Math.Max(asset.Size, 1));
+		outPrepared.TakeStream(heights);
 		return .Ok;
 	}
 

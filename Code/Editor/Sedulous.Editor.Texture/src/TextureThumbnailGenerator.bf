@@ -22,7 +22,8 @@ class TextureThumbnailGenerator : IThumbnailGenerator
 
 	public void AssetTypeNames(List<StringView> outNames) => outNames.Add("TextureAsset");
 
-	public Result<void, ErrorCode> Prepare(Instance instance, IFileSystem sources, List<uint8> outPayload)
+	public Result<void, ErrorCode> Prepare(Instance instance, IFileSystem sources,
+		ThumbnailPrepared outPrepared)
 	{
 		let object = instance.ReadObject();
 		defer delete object;
@@ -34,8 +35,9 @@ class TextureThumbnailGenerator : IThumbnailGenerator
 			let stream = sources.Open(asset.FileName.Value, .Read);
 			if ((stream != null) && stream.IsValid)
 			{
-				defer delete stream;
-				return ReadAll(stream, outPayload);
+				// Handed over UNREAD: the encoded file is drained on the worker.
+				outPrepared.TakeStream(stream);
+				return .Ok;
 			}
 			delete stream;
 		}
@@ -44,13 +46,10 @@ class TextureThumbnailGenerator : IThumbnailGenerator
 			let stream = instance.ReadData("pixels");
 			if (stream == null)
 				return .Err(.NotFound);
-			defer delete stream;
-			let pixels = scope List<uint8>();
-			if (ReadAll(stream, pixels) case .Err(let error))
-				return .Err(error);
-			outPayload.Clear();
-			WriteRawHeader(outPayload, asset.EmbeddedWidth, asset.EmbeddedHeight);
-			outPayload.AddRange(pixels);
+			// The header says how to read the raw texels; the texels themselves follow from
+			// the stream, on the worker.
+			WriteRawHeader(outPrepared.Header, asset.EmbeddedWidth, asset.EmbeddedHeight);
+			outPrepared.TakeStream(stream);
 			return .Ok;
 		}
 		return .Err(.NotFound);
