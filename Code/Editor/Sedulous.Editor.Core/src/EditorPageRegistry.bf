@@ -67,7 +67,11 @@ class EditorPageRegistry
 		let name = scope String();
 		for (let type in Type.Types)
 		{
-			if (!(type is TypeInstance) || type.IsBoxed || type.IsPointer || type.IsArray || type.IsGenericParam)
+			// A TUPLE has no name to ask for, and GetFullName on one FATALS rather than
+			// answering empty, which took the whole walk down. Sized arrays go for the same
+			// reason. Nothing skipped here can be a content asset type.
+			if (!(type is TypeInstance) || type.IsBoxed || type.IsPointer || type.IsArray
+				|| type.IsSizedArray || type.IsGenericParam || type.IsTuple)
 				continue;
 			name.Clear();
 			type.GetFullName(name);
