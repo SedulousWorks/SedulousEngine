@@ -88,7 +88,7 @@ class FontAtlasDiskCache : IFontAtlasCache
 			atlas.SetRegion(r.Codepoint, AtlasRegion(r.X, r.Y, r.Width, r.Height, r.OffsetX, r.OffsetY, r.AdvanceX));
 		}
 		let pixels = new List<uint8>();
-		pixels.Resize(header.PixelBytes);
+		pixels.Resize((int)header.PixelBytes);
 		if (stream.Read(.(pixels.Ptr, pixels.Count)) != pixels.Count)
 		{
 			delete pixels;

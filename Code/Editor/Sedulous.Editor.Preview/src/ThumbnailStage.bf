@@ -399,7 +399,7 @@ class ThumbnailStage
 				float[4] sum = .(0, 0, 0, 0);
 				for (uint32 sy = 0; sy < cSupersample; sy++)
 				{
-					let row = src + (int)(y * cSupersample + sy) * srcRowBytes + (int)x * cSupersample * 8;
+					let row = src + (int)(y * cSupersample + sy) * (int)srcRowBytes + (int)(x * cSupersample) * 8;
 					for (uint32 sx = 0; sx < cSupersample; sx++)
 					{
 						let texel = (uint16*)(row + sx * 8);
@@ -409,7 +409,7 @@ class ThumbnailStage
 						sum[3] += HalfToFloat(texel[3]);
 					}
 				}
-				let texel = dst + ((int)y * cTileSize + x) * 4;
+				let texel = dst + ((int)y * (int)cTileSize + (int)x) * 4;
 				for (int c < 4)
 					texel[c] = (uint8)(Math.Clamp(sum[c] * cInvSamples, 0.0f, 1.0f) * 255.0f + 0.5f);
 			}

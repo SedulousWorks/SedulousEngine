@@ -33,7 +33,7 @@ static class MeshStats
 				int64 indexTotal = 0;
 				for (let sm in mesh.SubMeshesForLod(l))
 					indexTotal += sm.IndexCount;
-				let threshold = (l < (uint32)mesh.LodCoverage.Count) ? mesh.LodCoverage[l] : 0.0f;
+				let threshold = (l < (uint32)mesh.LodCoverage.Count) ? mesh.LodCoverage[(int)l] : 0.0f;
 				if (l == 0)
 					outLines.Add(new $"  LOD 0: {indexTotal / 3} triangles");
 				else

@@ -139,8 +139,10 @@ extension PropertyAnimationPanel
 					return;
 				}
 				let r = sel.Back;
-				if ((r.Lane < mLaneKeyTimes.Count) && (r.Index < mLaneKeyTimes[r.Lane].Count))
-					mView.ShowSelectedKey(r.Lane, -1, mLaneKeyTimes[r.Lane][r.Index]);
+				let lane = (int)r.Lane;
+				let index = (int)r.Index;
+				if ((lane < mLaneKeyTimes.Count) && (index < mLaneKeyTimes[lane].Count))
+					mView.ShowSelectedKey(lane, -1, mLaneKeyTimes[lane][index]);
 			});
 		mTimelineParams = RowStyle(cTimelineMinHeight);
 		mBody.AddView(mTimeline, mTimelineParams);
@@ -337,8 +339,10 @@ extension PropertyAnimationPanel
 			mTimeline.GetSelection(sel);
 			for (let r in sel)
 			{
-				if ((r.Lane < mLaneKeyTimes.Count) && (r.Index < mLaneKeyTimes[r.Lane].Count))
-					marks.Add(.(r.Lane, mLaneKeyTimes[r.Lane][r.Index]));
+				let lane = (int)r.Lane;
+				let index = (int)r.Index;
+				if ((lane < mLaneKeyTimes.Count) && (index < mLaneKeyTimes[lane].Count))
+					marks.Add(.(r.Lane, mLaneKeyTimes[lane][index]));
 			}
 		}
 
@@ -363,9 +367,9 @@ extension PropertyAnimationPanel
 		let newSel = scope List<DopesheetKeyRef>();
 		for (let mark in marks)
 		{
-			if (mark.Lane >= mLaneKeyTimes.Count)
+			if ((int)mark.Lane >= mLaneKeyTimes.Count)
 				continue;
-			let lt = mLaneKeyTimes[mark.Lane];
+			let lt = mLaneKeyTimes[(int)mark.Lane];
 			for (int i < lt.Count)
 			{
 				if (Math.Abs(lt[i] - mark.Time) < TrackKeys.cTimeEps)
@@ -401,11 +405,13 @@ extension PropertyAnimationPanel
 		let marks = scope List<ReselectMark>();
 		for (let r in sel)
 		{
-			if ((r.Lane >= after.Tracks.Count) || (r.Lane >= mLaneKeyTimes.Count) || (r.Index >= mLaneKeyTimes[r.Lane].Count))
+			let lane = (int)r.Lane;
+			let index = (int)r.Index;
+			if ((lane >= after.Tracks.Count) || (lane >= mLaneKeyTimes.Count) || (index >= mLaneKeyTimes[lane].Count))
 				continue;
-			let t0 = mLaneKeyTimes[r.Lane][r.Index];
+			let t0 = mLaneKeyTimes[lane][index];
 			let t1 = Math.Max(t0 + deltaSeconds, 0.0f);
-			TrackKeys.RetimeTrackKeysAt(after.Tracks[r.Lane], t0, t1);
+			TrackKeys.RetimeTrackKeysAt(after.Tracks[lane], t0, t1);
 			marks.Add(.(r.Lane, t1));
 		}
 		if (marks.IsEmpty)
