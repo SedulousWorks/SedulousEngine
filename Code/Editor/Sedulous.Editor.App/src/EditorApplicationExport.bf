@@ -111,6 +111,7 @@ extension EditorApplication
 		{
 			SceneReferenceScanner adapter = scope (inst, db, refs) => { mContext.SceneRefScanner(inst, db, refs.Resources, refs.Prefabs); };
 			let seeds = scope List<ExportRoot>();
+			defer ClearAndDeleteItems(seeds); // the caller owns the roots
 			ExportDriver.CollectExportRoots(project, seeds);
 			ExportDriver.ExpandReachableRoots(project, seeds, adapter, mExportReachableRoots);
 			mExportReachableValid = true;
