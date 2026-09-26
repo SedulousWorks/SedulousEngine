@@ -8,9 +8,13 @@ namespace Sedulous.Http;
 /// The pump model HTTP server.
 ///
 /// Each Pump accepts what is pending, reads, and for every COMPLETE request calls the handler
-/// and writes the response with Connection: close. An event stream response instead writes the
-/// stream headers and hands the connection over. Malformed input gets a 400 and a close; no
-/// handler gets a 404.
+/// and writes the response with Connection: close. Two exceptions to answer and close: an
+/// event stream response writes the stream headers and hands the connection over, and a
+/// handler that answers NOT YET (null) keeps the request pending on its connection and is
+/// asked again with the same request on every Pump until it answers - a handler that must
+/// let its host make progress, an MCP tool waiting on a background cook say. A peer that
+/// leaves while waiting is dropped. Malformed input gets a 400 and a close; no handler gets a
+/// 404.
 ///
 /// SINGLE THREADED: Start, Pump and Stop from ONE thread. Pump it from a dedicated thread or
 /// from a frame loop.
@@ -25,6 +29,10 @@ class HttpServer
 	{
 		public TcpSocket Socket ~ delete _;
 		public HttpMessageParser Parser ~ delete _;
+		/// The parsed request, valid while Pending.
+		public HttpRequest Request ~ delete _;
+		/// A complete request awaits its answer, not yet given.
+		public bool Pending = false;
 
 		public this(TcpSocket socket, int maxBodyBytes)
 		{
@@ -33,6 +41,11 @@ class HttpServer
 		}
 	}
 
+	/// The request handler: a one shot response, the EventStream marker, or NOT YET (null).
+	/// Not yet keeps the request pending on its connection, and the handler sees it again on
+	/// the next Pump. A handler that waits this way keeps its own progress state and its own
+	/// timeout: a server that stops pumping and a handler that never answers look the same
+	/// to the peer. THE SERVER OWNS a returned response.
 	public typealias RequestHandler = delegate HttpResponse(HttpRequest request);
 	public typealias StreamHandler = delegate void(HttpRequest request, SseStream stream);
 
@@ -107,8 +120,9 @@ class HttpServer
 		mStreamHandler = handler;
 	}
 
-	/// One pump: accept, read, dispatch, write. Returns how many requests completed, so a
-	/// caller can sleep briefly on nought rather than spinning.
+	/// One pump: accept, read, dispatch, write. Returns how many requests were ANSWERED, so a
+	/// caller can sleep briefly on nought rather than spinning. A request answered not yet
+	/// counts when it is finally answered, not on the pumps it waits.
 	public int Pump()
 	{
 		if (mListener == null)
@@ -118,6 +132,22 @@ class HttpServer
 		let completed = ServiceConnections();
 		SweepStreams();
 		return completed;
+	}
+
+	/// Requests whose handler answered not yet and that are still waiting. A host whose loop
+	/// sleeps when idle must keep pumping while this is non zero.
+	public int PendingRequestCount
+	{
+		get
+		{
+			var pending = 0;
+			for (let connection in mConnections)
+			{
+				if (connection.Pending)
+					pending++;
+			}
+			return pending;
+		}
 	}
 
 	private void AcceptPending()
@@ -149,7 +179,22 @@ class HttpServer
 			let connection = mConnections[i];
 			var done = false;
 
-			for (;;)
+			if (connection.Pending)
+			{
+				// A request answered not yet. The peer has nothing more to say on a one shot
+				// connection, so the read only probes whether it is still there; then the
+				// handler is asked again.
+				if (connection.Socket.Receive(buffer) < 0)
+				{
+					done = true; // the peer left while waiting, so there is nobody to answer
+				}
+				else if (Dispatch(connection))
+				{
+					completed++;
+					done = true;
+				}
+			}
+			else for (;;)
 			{
 				let n = connection.Socket.Receive(buffer);
 				if (n > 0)
@@ -157,9 +202,12 @@ class HttpServer
 					let state = connection.Parser.Push(.(&buffer[0], (int)n));
 					if (state == .Complete)
 					{
-						Dispatch(connection);
-						completed++;
-						done = true;
+						TakeRequest(connection);
+						if (Dispatch(connection))
+						{
+							completed++;
+							done = true;
+						}
 						break;
 					}
 					if (state == .Failed)
@@ -212,24 +260,39 @@ class HttpServer
 		}
 	}
 
-	private void Dispatch(Connection connection)
+	/// Moves the parser's complete request onto the connection, where it stays while the
+	/// handler answers not yet.
+	private static void TakeRequest(Connection connection)
 	{
-		let request = scope HttpRequest();
+		let request = new HttpRequest();
 		request.Method.Set(connection.Parser.Method);
 		request.Target.Set(connection.Parser.Target);
 		for (let header in connection.Parser.Headers)
 			request.Headers.Add(new HttpHeader(header.Name, header.Value));
 		request.Body.AddRange(Span<uint8>(connection.Parser.Body.Ptr, connection.Parser.Body.Count));
+		delete connection.Request;
+		connection.Request = request;
+		connection.Pending = true;
+	}
 
+	/// Hands the connection's pending request to the handler. True when it was answered, or
+	/// handed to a stream, and the connection is finished with; false when the handler
+	/// answered not yet and the request stays pending.
+	private bool Dispatch(Connection connection)
+	{
+		let request = connection.Request;
 		let response = (mHandler != null)
 			? mHandler(request)
 			: HttpResponse.Text(404, "text/plain", "no handler registered");
+		if (response == null)
+			return false; // not yet: the handler sees the same request next Pump
 		defer delete response;
+		connection.Pending = false;
 
 		if (!response.EventStream)
 		{
 			WriteResponse(connection.Socket, response);
-			return;
+			return true;
 		}
 
 		let head = scope String();
@@ -240,7 +303,7 @@ class HttpServer
 
 		let sent = connection.Socket.Send(.((uint8*)head.Ptr, head.Length));
 		if (sent != (int64)head.Length)
-			return;
+			return true;
 
 		// The connection is handed to the stream, so the Connection must not delete it.
 		let stream = new SseStream(connection.Socket);
@@ -252,6 +315,7 @@ class HttpServer
 			// The handler takes its own reference if it keeps the stream.
 			mStreamHandler(request, stream);
 		}
+		return true;
 	}
 
 	/// Writes the status line, the handler's headers, the framing headers and the body.

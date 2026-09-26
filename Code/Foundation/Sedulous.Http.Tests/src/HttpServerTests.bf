@@ -357,4 +357,84 @@ class HttpServerTests
 			Test.FatalError("a fetch against a closed port must not succeed");
 		}
 	}
+
+	/// A handler that answers NOT YET keeps the request pending on its connection and sees it
+	/// again every pump until it answers; a peer that leaves while waiting is dropped without
+	/// ever being answered.
+	[Test]
+	public static void ANotYetRequestIsAskedAgainEveryPumpAndADepartedPeerIsDropped()
+	{
+		let server = scope HttpServer();
+		Test.Assert(server.Start(.()));
+		let port = server.BoundPort;
+		Test.Assert(port != 0);
+
+		var calls = 0;
+		var answerOnCall = 3;
+		server.SetHandler(new [&calls, &answerOnCall] (request) =>
+			{
+				calls++;
+				if (calls < answerOnCall)
+					return null; // not yet
+				return HttpResponse.Json(200, scope $"{{\"calls\":{calls},\"target\":\"{request.Target}\"}}");
+			});
+
+		// The client blocks on one GET; the handler says not yet twice and answers on the
+		// third pump.
+		var done = false;
+		HttpResponse outcome = null;
+		let client = scope Thread(new [&done, &outcome, &port]() =>
+			{
+				let get = scope HttpRequest("GET", "/wait");
+				if (HttpClient.Fetch("127.0.0.1", port, get) case .Ok(let got))
+					outcome = got;
+				done = true;
+			});
+		client.Start(false);
+
+		// Pumped by hand so the wait is observable: a pump whose handler says not yet answers
+		// nothing and leaves exactly one request pending.
+		var sawPending = false;
+		var answered = 0;
+		for (int i = 0; (i < cPumpLimit) && !done; i++)
+		{
+			answered += server.Pump();
+			if (server.PendingRequestCount == 1)
+				sawPending = true;
+			Thread.Sleep(1);
+		}
+		client.Join();
+
+		Test.Assert(outcome != null);
+		defer delete outcome;
+		Test.Assert(outcome.Status == 200);
+		Test.Assert(outcome.BodyText == "{\"calls\":3,\"target\":\"/wait\"}");
+		Test.Assert(calls == 3);
+		Test.Assert(sawPending);
+		Test.Assert(answered == 1, "a request counts once, when it is finally answered");
+		Test.Assert(server.PendingRequestCount == 0);
+
+		// A peer that sends a request and leaves while the handler keeps saying not yet is
+		// dropped: the pending count returns to nought without the handler ever answering.
+		calls = 0;
+		answerOnCall = int.MaxValue; // never
+		let departing = scope Thread(new [&port]() =>
+			{
+				let raw = ConnectRaw(port);
+				raw.Send(Bytes("GET /gone HTTP/1.1\r\nHost: x\r\n\r\n"));
+				delete raw; // closes it
+			});
+		departing.Start(false);
+		departing.Join();
+
+		var dropped = false;
+		for (int i = 0; (i < cPumpLimit) && !dropped; i++)
+		{
+			server.Pump();
+			dropped = (calls > 0) && (server.PendingRequestCount == 0);
+			Thread.Sleep(1);
+		}
+		Test.Assert(dropped);
+		Test.Assert(calls >= 1);
+	}
 }
