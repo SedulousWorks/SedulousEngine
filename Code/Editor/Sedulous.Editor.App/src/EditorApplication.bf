@@ -136,6 +136,11 @@ class EditorApplication : IApplication
 	/// References the UI host; dies first.
 	private RuntimeDockableWindowHost mDockHost = null ~ delete _;
 	private EditorShell mShell = new .() ~ delete _;
+	/// The menu bar and the global shortcuts, generated from the action registry. Declared
+	/// after the shell and the context, so they go first: they unsubscribe from the registry
+	/// and clear the bar they built.
+	private ActionMenuBar mActionMenus = null ~ delete _;
+	private ActionShortcuts mActionShortcuts = null ~ delete _;
 	private AssetsView mAssetsView = null ~ { if (_ != null) _.ReleaseRef(); };
 	/// Borrowed; the shell root owns it.
 	private ToastHost mToastHost = null;
@@ -332,6 +337,9 @@ class EditorApplication : IApplication
 			mEmbeddedApp.Input.UnboundScenePolicy = .ScreenTierOnly;
 		mRuntimeContext.Startup();
 		mEmbeddedApp.OnStartup(mEmbeddedHost);
+
+		// The editor-wide actions first: the menu bar follows registration order.
+		RegisterActions();
 
 		// The per-subsystem editor plugins register here, receiving the embedded host so
 		// every page's context resolves to the runtime context. Once per run: the factories
@@ -556,11 +564,10 @@ class EditorApplication : IApplication
 		mToastHost.Show(request);
 	}
 
-	public void SaveActivePage()
+	/// Saves `page` (the action file.save over its subject page) and flushes the pending asset
+	/// edits; the outcome as a notice.
+	public void SavePage(EditorPage page)
 	{
-		let page = mContext.ActivePage;
-		if (page == null)
-			return;
 		if (page.Save() case .Ok)
 			mContext.Notify(.Success, scope $"Saved '{page.Title}'.");
 		else

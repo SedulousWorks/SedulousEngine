@@ -161,13 +161,12 @@ static class EditorContextTests
 	}
 
 	[Test]
-	public static void UndoAndRedoRouteToTheActivePage()
+	public static void APageOwnsItsCommandStackAndTheActivePageIsTheOneEditActsOn()
 	{
 		let db = scope Db("scratch_editor_ctx_undo");
 		let a = db.Database.RootGroup.CreateInstance("a", FullName(typeof(BaseAsset), .. scope .()));
 		let context = scope EditorContext();
-		Test.Assert(!context.CanUndo, "no active page");
-		context.Undo();
+		Test.Assert(context.ActivePage == null, "no active page: nothing to undo anywhere");
 		context.Pages.Register(new TestPageFactory(typeof(BaseAsset), "base"));
 		let page = context.OpenPage(a);
 		Test.Assert(page != null);
@@ -176,11 +175,14 @@ static class EditorContextTests
 		Test.Assert(page.Commands.Execute(new FlipCommand(&flag)));
 		Test.Assert(flag);
 		Test.Assert(page.IsDirty, "a command marks the page dirty");
-		Test.Assert(context.CanUndo);
-		context.Undo();
+		// Edit > Undo and Redo are the edit.undo and edit.redo actions over the active page's
+		// stack (the application declares them); the page owns the stack.
+		Test.Assert(context.ActivePage == page);
+		Test.Assert(page.Commands.CanUndo);
+		page.Commands.Undo();
 		Test.Assert(!flag);
-		Test.Assert(context.CanRedo);
-		context.Redo();
+		Test.Assert(page.Commands.CanRedo);
+		page.Commands.Redo();
 		Test.Assert(flag);
 		Test.Assert(page.Save() case .Ok);
 		Test.Assert(!page.IsDirty);

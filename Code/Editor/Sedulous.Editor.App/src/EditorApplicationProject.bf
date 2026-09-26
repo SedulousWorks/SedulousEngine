@@ -721,12 +721,11 @@ extension EditorApplication
 		OpenInstancePage(instance);
 	}
 
-	/// Save As: writes the page's current content to a new asset beside the original and
-	/// rebinds the page to it. The original keeps its on-disk state.
-	private void SaveActivePageAs()
+	/// Save As (the action file.saveAs over its subject page): writes the page's current
+	/// content to a new asset beside the original and rebinds the page to it. The original keeps its on-disk state.
+	private void SavePageAs(EditorPage page)
 	{
-		let page = mContext.ActivePage;
-		if ((page == null) || (mProject == null) || (mUiHost == null))
+		if ((mProject == null) || (mUiHost == null))
 			return;
 		let original = mProject.SourceDb.GetInstance(page.InstanceId);
 		if (original == null)

@@ -56,6 +56,7 @@ class EditorContext : IAssetEditSink
 	private List<ImportListener> mImportListeners = new .() ~ DeleteContainerAndItems!(_);
 	private List<EditorPage> mPages = new .() ~ DeleteContainerAndItems!(_);
 	private EditorPage mActivePage = null;
+	private EditorActionRegistry mActions = new .() ~ delete _;
 	private Selection<Instance> mAssetSelection = new .() ~ delete _;
 	private List<InterceptorEntry> mOpenInterceptors = new .() ~ DeleteContainerAndItems!(_);
 	private uint64 mNextInterceptorId = 0;
@@ -63,6 +64,13 @@ class EditorContext : IAssetEditSink
 	private List<ScriptBreakpoint> mBreakpoints = new .() ~ DeleteContainerAndItems!(_);
 	private ScriptExecutionPoint mExecutionPoint = new .() ~ delete _;
 	private uint64 mExecutionPointVersion = 0;
+
+	public this()
+	{
+		// The nullary action calls (the menu bar, a chord, the MCP bridge) run over the active
+		// page; a page's own toolbar names its page instead.
+		mActions.ActiveSubject = new () => mActivePage;
+	}
 
 	// ---- events and seams the app or a plugin wires; all owned ----
 
@@ -480,22 +488,12 @@ class EditorContext : IAssetEditSink
 		NotifyPagesChanged();
 	}
 
-	// ---- edit routing: Edit > Undo and Redo go to the active page's stack ----
+	// ---- actions ----
 
-	public bool CanUndo => (mActivePage != null) && mActivePage.Commands.CanUndo;
-	public bool CanRedo => (mActivePage != null) && mActivePage.Commands.CanRedo;
-
-	public void Undo()
-	{
-		if (mActivePage != null)
-			mActivePage.Commands.Undo();
-	}
-
-	public void Redo()
-	{
-		if (mActivePage != null)
-			mActivePage.Commands.Redo();
-	}
+	/// The editor's actions (see EditorActions): registered in the composition roots, every
+	/// surface built from them, executed through them. Edit > Undo and Redo are the edit.undo
+	/// and edit.redo actions over the subject page's own stack.
+	public EditorActionRegistry Actions => mActions;
 
 	// ---- selection ----
 
