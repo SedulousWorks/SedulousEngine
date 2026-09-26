@@ -42,6 +42,11 @@ Engine verbs live on facades, in script shape: `scene.Physics.RayCast(...)`,
 `Ui`, `Run`, `Random`; and the globals `Print`, `PrintWarning`, `PrintError` with the math
 free functions. `script_api` lists exactly what each one binds.
 
+Components are not script types: a script reaches one through the facade that fronts it,
+passing the entity. A character controller, for instance, is driven with
+`scene.Physics.MoveCharacter(self, vx, vz)`, `JumpCharacter`, `SetCharacterPosition` and
+`IsCharacterGrounded`.
+
 ## Editor properties
 
 Public fields of the authored kinds (float, int, bool, string, Float3, Color, asset

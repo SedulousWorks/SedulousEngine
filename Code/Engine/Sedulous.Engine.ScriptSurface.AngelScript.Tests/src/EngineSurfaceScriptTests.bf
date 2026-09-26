@@ -122,4 +122,52 @@ static class EngineSurfaceScriptTests
 		Test.Assert(r.AsInt == 5, scope $"got {r.AsInt}");
 		Test.Assert((a.EntityCount == 1) && (b.EntityCount == 1));
 	}
+
+	/// A character controller is reached through scene.Physics, never a component handle:
+	/// the verbs write the intent the physics step consumes, and an entity with no character
+	/// is a no-op rather than a fault.
+	[Test]
+	public static void AScriptSteersACharacterThroughThePhysicsFacade()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("game", "game.as", """
+			bool drive(Scene@ scene, const Entity &in rider, const Entity &in bystander)
+			{
+				scene.Physics.MoveCharacter(rider, 3.0f, -4.0f);
+				scene.Physics.JumpCharacter(rider, 5.5f);
+				scene.Physics.SetCharacterPosition(rider, Float3(1, 2, 3));
+				// No character on the bystander: every verb quietly does nothing.
+				scene.Physics.MoveCharacter(bystander, 9.0f, 9.0f);
+				return scene.Physics.IsCharacterGrounded(rider) || scene.Physics.IsCharacterGrounded(bystander);
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene("chars");
+		defer Sedulous.Script.SceneFacades.Release(scene);
+		scene.AddSystem<Sedulous.Engine.Physics.PhysicsSceneSystem>();
+		let characters = scene.AddSystem<Sedulous.Engine.Physics.CharacterComponentManager>();
+		let rider = scene.CreateEntity("rider");
+		let bystander = scene.CreateEntity("bystander");
+		characters.Add(rider);
+
+		var args = ScriptValue[3](.FromObject(scene), .FromEntity(rider, scene), .FromEntity(bystander, scene));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("game", "bool drive(Scene@, const Entity &in, const Entity &in)", args, ref r), "ran");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(!r.AsBool, "never stepped, so nothing is grounded");
+
+		let character = characters.Get(rider);
+		Test.Assert((character.MoveVelocity.X == 3.0f) && (character.MoveVelocity.Y == 0.0f) && (character.MoveVelocity.Z == -4.0f));
+		Test.Assert(character.JumpSpeed == 5.5f);
+		Test.Assert(character.TeleportPending && (character.TeleportTo.X == 1.0f) && (character.TeleportTo.Z == 3.0f));
+		Test.Assert(!characters.Has(bystander), "a verb never adds a character");
+	}
 }
