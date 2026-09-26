@@ -51,6 +51,21 @@ class EditorMcpHostTests
 		return JsonValue.Parse(response.Get("result").Get("content").At(0).Get("text").AsString());
 	}
 
+	/// A page that counts how often its asset changed under it.
+	class WatchingPage : EditorPage
+	{
+		public int Told = 0;
+
+		public this(Guid asset)
+		{
+			InstanceId = asset;
+		}
+
+		public override StringView Title => "watching";
+		public override Result<void, ErrorCode> Save() => .Ok;
+		public override void OnAssetExternallyModified() { Told++; }
+	}
+
 	[Test]
 	public static void ServesTheEngineSurfaceOverTheLiveProjectAndReportsItsFinishedCalls()
 	{
@@ -80,6 +95,21 @@ class EditorMcpHostTests
 		defer ClearAndDeleteItems(finished);
 		host.OnToolFinished = new (tool, isError) => finished.Add(new $"{tool}:{isError ? "err" : "ok"}");
 		Test.Assert(!host.IsRunning);
+
+		// The host wires a tool's write over a source asset to the open pages editing it, the
+		// way any change made outside a page reaches them.
+		{
+			var rng = Sedulous.Core.Random(5);
+			let edited = Guid.Generate(ref rng);
+			let page = new WatchingPage(edited);
+			context.AdoptPage(page);
+			Test.Assert(session.OnAssetWritten != null);
+			session.OnAssetWritten(edited);
+			Test.Assert(page.Told == 1);
+			session.OnAssetWritten(Guid.Generate(ref rng));
+			Test.Assert(page.Told == 1);
+			context.ClosePage(page);
+		}
 
 		EditorMcpHostConfig config = .();
 		config.Port = 0;

@@ -14,7 +14,12 @@ one writer), so an agent can work on what the user is looking at. Tell them apar
 `host_info.serverName` and `host_info.host.kind`. What differs: the stdio host has
 `project_create` and `project_open` (the editor's project is the editor's), and the editor's
 long tools (a cook) keep the call open until the editor's own background service finishes:
-give the client a generous timeout rather than polling.
+give the client a generous timeout rather than polling. The editor adds the page tools
+(`page_list`, `page_open`, `page_reload`, `page_close`) and the scene page's live tools
+(`selection_get`, `selection_set`, `simulate_start`, `simulate_stop`, each addressed by the
+page's asset guid). A `scene_write` or `prefab_write` over an asset the user has open reaches
+its page at once: a clean page reloads in place, a page with unsaved edits keeps them and
+warns the user. Ask before `page_reload` with `force`, which discards them.
 
 ## First moves in a session
 

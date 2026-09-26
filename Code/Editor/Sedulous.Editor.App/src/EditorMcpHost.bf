@@ -57,6 +57,11 @@ class EditorMcpHost
 		mServer.SetServerInfo("engine-editor-mcp", "0.1.0");
 		EngineTools.Register(mServer, mSession, builders, importers, logBuffer, paths, operations);
 		context.ApplyMcpToolContributions(mServer); // the domains' live tools
+		// An agent's write over a source asset is a change made outside its page, like an apply
+		// to prefab: the open pages editing it are told and refresh by their own rule (a clean
+		// page reloads, a dirty one warns and keeps its edits).
+		delete mSession.OnAssetWritten;
+		mSession.OnAssetWritten = new (assetId) => { context.NotifyAssetExternallyModified(assetId); };
 		McpHostInfo.Register(mServer, buildStamp,
 			new (outState) =>
 			{
@@ -75,6 +80,8 @@ class EditorMcpHost
 	public ~this()
 	{
 		Stop();
+		// The session outlives this host; what it announces to must not.
+		DeleteAndNullify!(mSession.OnAssetWritten);
 	}
 
 	public bool IsRunning => mHttp.IsRunning;

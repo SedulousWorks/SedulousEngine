@@ -78,11 +78,18 @@ static class SceneFlowTests
 			Test.Assert(report.Get("warnings").Count >= 1, "the skipped record is reported");
 		}
 
+		// Every successful write announces the asset to the host (the editor host tells the open
+		// pages editing it); a refused write announces nothing.
+		let announced = scope System.Collections.List<Guid>();
+		session.OnAssetWritten = new [&announced](id) => { announced.Add(id); };
+
 		// scene_write creates a new scene from the xml; the stored stream is byte identical.
 		let written = CallOk(server, "scene_write", With(With(With(Obj(), "xml", seedXml), "name", "authored"), "group", "levels"));
 		defer delete written;
 		Test.Assert(written.Get("written").AsBool());
 		let newGuid = scope String(written.Get("guid").AsString());
+		Test.Assert(announced.Count == 1);
+		Test.Assert(announced[0] == Guid.Parse(newGuid).Get());
 		let readBack = CallOk(server, "scene_read", With(Obj(), "guid", newGuid));
 		defer delete readBack;
 		Test.Assert(readBack.Get("xml").AsString() == seedXml, "verbatim storage");
@@ -105,11 +112,13 @@ static class SceneFlowTests
 		let both = scope String();
 		CallErr(server, "scene_validate", With(With(Obj(), "xml", "x"), "guid", newGuid), both);
 		Test.Assert(neither.Contains("exactly one") && both.Contains("exactly one"));
+		Test.Assert(announced.Count == 1, "nothing written, nothing announced");
 
 		// A single root scene is a legal prefab; two roots are refused with the reason.
 		let okPrefab = CallOk(server, "prefab_write", With(With(Obj(), "xml", seedXml), "name", "goodprefab"));
 		defer delete okPrefab;
 		Test.Assert(okPrefab.Get("written").AsBool());
+		Test.Assert(announced.Count == 2, "the prefab write announced too");
 		{
 			let twoRoots = scope Scene("pair");
 			EngineSceneComposition.AddAllSceneManagers(twoRoots);

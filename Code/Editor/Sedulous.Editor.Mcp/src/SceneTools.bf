@@ -262,6 +262,8 @@ static class SceneTools
 		outResult.Set("guid", McpTools.GuidToJson(instance.Id));
 		outResult.Set("name", JsonValue.MakeString(instance.Name));
 		outResult.Set("written", JsonValue.MakeBool(true));
+		if (document.Session.OnAssetWritten != null)
+			document.Session.OnAssetWritten(instance.Id);
 		return true;
 	}
 }
