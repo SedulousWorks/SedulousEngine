@@ -356,10 +356,18 @@ extension EditorApplication
 		let paths = scope EngineToolPaths();
 		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .())));
 		mMcpSession.Project = mProject;
-		// The export stages the player from beside this executable and cooks shaders from the
-		// data root: the same two things the stdio host hands its inline operations.
-		mMcpOperations = new InlineProjectOperations(mMcpSession, mBuilders,
-			BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), .. scope .()), mConfig.DataRoot);
+		// The operations run on THIS application's services, so an agent's cook, import or
+		// export takes the same background paths the menus do and the editor stays live.
+		let seams = new EditorProjectOperationsSeams();
+		seams.Project = mProject;
+		seams.Context = mContext;
+		seams.Cook = mCookService;
+		seams.Jobs = mJobService;
+		seams.Builders = mBuilders;
+		BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), seams.PlayerDir);
+		TemplatesRoot(seams.TemplatesRoot);
+		seams.DataRoot.Set(mConfig.DataRoot);
+		mMcpOperations = new EditorProjectOperations(seams);
 		mMcpHost = new EditorMcpHost(mMcpSession, mConfig.LogBuffer, mBuilders, mContext.Importers,
 			paths, mMcpOperations, BuildStamp(.. scope .()));
 		mMcpHost.OnToolFinished = new (tool, isError) =>

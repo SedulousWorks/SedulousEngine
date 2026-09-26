@@ -500,4 +500,36 @@ static class ExportDriverTests
 		Test.Assert(pack.Find("tonemap", .Fragment, .None, .Wgsl) case .Ok, "WGSL for the browser");
 		Test.Assert(pack.Find("tonemap", .Fragment, .None, .SpirV) case .Err, "and nothing the browser cannot use");
 	}
+
+	[Test]
+	public static void CollectSceneStreamsKeysWhatTheStagerAcceptsWalkingNestedGroups()
+	{
+		let dir = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_scene_streams", .. scope .());
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "Streams") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		let root = project.SourceDb.RootGroup;
+		let top = root.CreateInstance("Top", McpDocumentNames.cSceneDocument);
+		let nested = root.CreateGroup("nested");
+		let deep = nested.CreateInstance("Deep", McpDocumentNames.cSceneDocument);
+		nested.CreateInstance("NotAScene", McpDocumentNames.cSceneDocument);
+
+		// The stager decides: anything named "NotAScene" is declined and stays out of the map.
+		let streams = scope Dictionary<Guid, List<uint8>>();
+		defer { for (let entry in streams) delete entry.value; }
+		ExportDriver.CollectSceneStreams(root, scope (instance, outBytes) =>
+			{
+				if (instance.Name == "NotAScene")
+					return false;
+				outBytes.Add((uint8)instance.Name.Length);
+				return true;
+			}, streams);
+		Test.Assert(streams.Count == 2);
+		Test.Assert(streams.ContainsKey(top.Id));
+		Test.Assert(streams.ContainsKey(deep.Id));
+		Test.Assert(streams[deep.Id].Count == 1);
+	}
 }

@@ -24,6 +24,33 @@ namespace Sedulous.Editor.Core;
 /// A project naming a native module is refused: native game modules are not supported.
 static class ExportDriver
 {
+	// ---- the scene streams ----
+
+	/// The scene and prefab TEXT sources under the group, pre-transcoded to the binary wire by
+	/// the stager (the editor's SceneStreamStager: main thread only) and keyed by instance for
+	/// the export's packer. The map owns its lists. An instance the stager declines (not a
+	/// scene, or a failure) is left out; the exporter then stages its source verbatim.
+	public static void CollectSceneStreams(Group group, delegate bool(Instance instance, List<uint8> outBytes) stager,
+		Dictionary<Guid, List<uint8>> outStreams)
+	{
+		for (let instance in group.Instances)
+		{
+			let bytes = new List<uint8>();
+			if (stager(instance, bytes))
+			{
+				if (outStreams.TryGetValue(instance.Id, let old))
+					delete old;
+				outStreams[instance.Id] = bytes;
+			}
+			else
+			{
+				delete bytes;
+			}
+		}
+		for (let child in group.Groups)
+			CollectSceneStreams(child, stager, outStreams);
+	}
+
 	// ---- the reachable closure ----
 
 	/// The seeds: the manifest's guid fields, the Always Export instances and the members of

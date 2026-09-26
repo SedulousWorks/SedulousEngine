@@ -39,28 +39,6 @@ extension EditorApplication
 		mCookService.RequestCook(false); // the safe background cook; OnUpdate fires the job after it
 	}
 
-	/// The recursive walk feeding the export pre-transcode, main thread: scene and prefab
-	/// typed instances only, the stager filters.
-	private void CollectSceneStreams(Group group)
-	{
-		for (let instance in group.Instances)
-		{
-			let bytes = new List<uint8>();
-			if (mContext.SceneStreamStager(instance, bytes))
-			{
-				if (mExportSceneStreams.TryGetValue(instance.Id, let old))
-					delete old;
-				mExportSceneStreams[instance.Id] = bytes;
-			}
-			else
-			{
-				delete bytes;
-			}
-		}
-		for (let child in group.Groups)
-			CollectSceneStreams(child);
-	}
-
 	/// The editor's export templates root: the EditorExportSettings override when set, else
 	/// the environment, else the user-data default, the same order as the CLI.
 	private void TemplatesRoot(String outPath)
@@ -112,7 +90,7 @@ extension EditorApplication
 			delete e.value;
 		mExportSceneStreams.Clear();
 		if (mContext.SceneStreamStager != null)
-			CollectSceneStreams(mProject.SourceDb.RootGroup);
+			ExportDriver.CollectSceneStreams(mProject.SourceDb.RootGroup, mContext.SceneStreamStager, mExportSceneStreams);
 
 		// The presets load on the main thread: the pre-scan needs to know whether pruning is
 		// requested, and the job reuses this copy.

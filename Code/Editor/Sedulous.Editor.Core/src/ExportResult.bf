@@ -12,4 +12,13 @@ class ExportResult
 	/// Set when the resolved template was built against another engine version.
 	public String EngineVersionWarning = new .() ~ delete _;
 	public PruningReport Pruning = new .() ~ delete _;
+
+	public void CopyTo(ExportResult other)
+	{
+		Content.CopyTo(other.Content);
+		other.FilesStaged = FilesStaged;
+		other.OutputDir.Set(OutputDir);
+		other.EngineVersionWarning.Set(EngineVersionWarning);
+		Pruning.CopyTo(other.Pruning);
+	}
 }

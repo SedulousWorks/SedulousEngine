@@ -73,10 +73,10 @@ class EditorApplication : IApplication
 	private BuilderRegistry mBuilders = new .() ~ delete _;
 	private EditorCookService mCookService = new .() ~ delete _;
 	/// The MCP host and what it serves through, per project: the session points at the open
-	/// project, the operations are how this host runs the cook, import and export (inline for
-	/// now: the editor's own background services take over as they are wired), the host last.
+	/// project, the operations run the cook, import and export on this application's services
+	/// (the cook service, the job service: the paths the menus take), the host last.
 	private ProjectSession mMcpSession = new .() ~ delete _;
-	private InlineProjectOperations mMcpOperations = null ~ delete _;
+	private EditorProjectOperations mMcpOperations = null ~ delete _;
 	/// Started after the services are up, gone before they go.
 	private EditorMcpHost mMcpHost = null ~ delete _;
 	private ThumbnailService mThumbnailService = new .() ~ delete _;
