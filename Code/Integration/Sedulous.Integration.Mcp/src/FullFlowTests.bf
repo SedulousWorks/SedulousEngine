@@ -1,4 +1,6 @@
 using System;
+using Sedulous.Content;
+using System.Collections;
 using System.IO;
 using Sedulous.Core;
 using Sedulous.Core.IO;
@@ -319,5 +321,75 @@ static class FullFlowTests
 			Test.Assert(result.Get("isError").AsBool());
 			Test.Assert(result.Get("content").At(0).Get("text").AsString() == "a cook is already running (the editor's build lock)");
 		}
+	}
+
+	/// A two phase importer: the worker "reads" the file into a payload, placement puts the
+	/// asset in the group, and one deferred stream write carries the bulk.
+	class TwoPhaseImporter : IFileImporter
+	{
+		public int Prepares = 0;
+		public bool SawPrepared = false;
+
+		public StringView Label => "TwoPhase";
+		public bool Accepts(StringView @extension) => @extension == "two";
+		public bool WantsWorkerPrepare => true;
+
+		public Object PrepareOnWorker(StringView sourcePath)
+		{
+			Prepares++;
+			return new Object();
+		}
+
+		public Result<Instance, ErrorCode> Import(StringView sourcePath, ImportContext context, Group group,
+			ImportOptions options, Object prepared, List<DeferredImportWrite> deferredWrites)
+		{
+			SawPrepared = (prepared != null);
+			let instance = group.CreateInstance("Imported", "Tests.Blob");
+			if (deferredWrites != null)
+			{
+				let write = new DeferredImportWrite();
+				write.Instance = instance;
+				write.StreamName.Set("bulk");
+				write.Owned.Add(7);
+				write.Owned.Add(9);
+				deferredWrites.Add(write);
+			}
+			return instance;
+		}
+	}
+
+	/// The stdio host's import is the editor's path run inline: the worker prepare, the
+	/// placement with a deferred list, then the flush, each timed, and the bulk lands.
+	[Test]
+	public static void TheInlineImportRunsTheTwoPhasePath()
+	{
+		let dir = Scratch("mcp_inline_import", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "Inline") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		let session = scope ProjectSession();
+		session.Project = project;
+		let builders = scope BuilderRegistry();
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let importer = scope TwoPhaseImporter();
+		ImportRequest request = .();
+		request.Source = "anything.two";
+		request.Importer = importer;
+		let outcome = scope ImportOutcome();
+		let error = scope String();
+		Test.Assert(operations.Import(request, outcome, error) == .Finished, error);
+		Test.Assert(importer.Prepares == 1);
+		Test.Assert(importer.SawPrepared, "placement received the worker's payload");
+		Test.Assert(outcome.DeferredWrites == 1);
+		Test.Assert(outcome.Name == "Imported");
+		Test.Assert(outcome.TypeNamespace == "Tests");
+		let instance = project.SourceDb.GetInstance(outcome.Id);
+		Test.Assert(instance != null);
+		let bulk = instance.ReadData("bulk");
+		Test.Assert(bulk != null, "the deferred write was flushed");
+		defer delete bulk;
+		Test.Assert(bulk.Size() == 2);
 	}
 }

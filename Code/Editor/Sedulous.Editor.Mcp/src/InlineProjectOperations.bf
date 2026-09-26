@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Diagnostics;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.VFS;
@@ -14,7 +15,9 @@ namespace Sedulous.Editor.Mcp;
 /// The stdio host's operations: everything runs on the calling thread and every step answers
 /// at once. The cook is the driver's plan and execute over second mounts on Sources/ and
 /// .cache/ with its own job system (so its timings mean what the editor's would); the import
-/// is the importer run inline; the export is RunExport. The player directory and the data
+/// is the editor's two phase path run inline (the worker prepare, the main thread placement,
+/// the deferred flush), timed apart so the tool reports what the editor's interface thread
+/// would have paid; the export is RunExport. The player directory and the data
 /// root are the export's.
 class InlineProjectOperations : IProjectOperations
 {
@@ -63,16 +66,37 @@ class InlineProjectOperations : IProjectOperations
 		let project = mSession.Project;
 		let group = McpTools.ResolveGroupPath(project.SourceDb.RootGroup, request.GroupPath);
 		let importContext = scope ImportContext(project.SourcesRoot(.. scope .()));
-		let imported = request.Importer.Import(request.Source, importContext, group, null, null, null);
+		let importer = request.Importer;
+
+		var started = Stopwatch.GetTimestamp();
+		let prepared = importer.WantsWorkerPrepare ? importer.PrepareOnWorker(request.Source) : null;
+		defer { if (prepared != null) delete prepared; }
+		outOutcome.PrepareMs = (Stopwatch.GetTimestamp() - started) / 1000;
+
+		// The writes borrow from the prepared payload, so they go before it.
+		let deferred = scope List<DeferredImportWrite>();
+		defer ClearAndDeleteItems(deferred);
+		started = Stopwatch.GetTimestamp();
+		let imported = importer.Import(request.Source, importContext, group, null, prepared, deferred);
+		outOutcome.MainMs = (Stopwatch.GetTimestamp() - started) / 1000;
 		if (imported case .Err(let error))
 		{
 			outError.AppendF("import of '{}' failed ({})", request.Source, error);
 			return .Failed;
 		}
-		let instance = imported.Get();
-		outOutcome.Id = instance.Id;
-		outOutcome.Name.Set(instance.Name);
-		outOutcome.Type.Set(instance.TypeName);
+
+		started = Stopwatch.GetTimestamp();
+		for (let write in deferred)
+		{
+			if (write.Execute() case .Err)
+			{
+				outError.AppendF("import of '{}': deferred write '{}' failed", request.Source, write.Label);
+				return .Failed;
+			}
+		}
+		outOutcome.FlushMs = (Stopwatch.GetTimestamp() - started) / 1000;
+		outOutcome.DeferredWrites = deferred.Count;
+		outOutcome.SetIdentity(imported.Get());
 		return .Finished;
 	}
 

@@ -284,15 +284,17 @@ class EditorProjectOperations : IProjectOperations
 			let project = mSeams.Project;
 			let group = McpTools.ResolveGroupPath(project.SourceDb.RootGroup, request.GroupPath);
 			let context = scope ImportContext(project.SourcesRoot(.. scope .()));
+			let placeStarted = Stopwatch.GetTimestamp();
 			let imported = request.Importer.Import(request.Source, context, group, null, mImport.Prepared, mImport.Writes);
+			mImportOutcome.MainMs = (Stopwatch.GetTimestamp() - placeStarted) / 1000;
 			if (imported case .Err(let error))
 				return FailImport(outError, scope $"import of '{request.Source}' failed ({error}) - see log_read, category Import");
 			let instance = imported.Get();
 			if (instance == null)
 				return FailImport(outError, scope $"import of '{request.Source}' failed - see log_read, category Import");
-			mImportOutcome.Id = instance.Id;
-			mImportOutcome.Name.Set(instance.Name);
-			mImportOutcome.Type.Set(instance.TypeName);
+			mImportOutcome.SetIdentity(instance);
+			mImportOutcome.DeferredWrites = mImport.Writes.Count;
+			mImportOutcome.PrepareMs = mImport.PrepareMs;
 			if (mImport.Writes.IsEmpty)
 				return FinishImport(outOutcome);
 			// Phase 3, the bulk stream writes, on the worker.
@@ -314,9 +316,8 @@ class EditorProjectOperations : IProjectOperations
 
 	private OperationStep FinishImport(ImportOutcome outOutcome)
 	{
-		outOutcome.Id = mImportOutcome.Id;
-		outOutcome.Name.Set(mImportOutcome.Name);
-		outOutcome.Type.Set(mImportOutcome.Type);
+		mImportOutcome.FlushMs = mImport.FlushMs;
+		mImportOutcome.CopyTo(outOutcome);
 		ResetImport();
 		return .Finished;
 	}

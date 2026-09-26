@@ -152,6 +152,9 @@ static class ProjectFlowTests
 		Test.Assert(imported.Get("type").AsString() == "Sedulous.Script.Pipeline.ScriptClassAsset");
 		Test.Assert(imported.Get("name").AsString() == "mcp_write_as_src");
 		Test.Assert(imported.Get("importer").AsString() == "Script");
+		Test.Assert(imported.Get("typeNamespace").AsString() == "Sedulous.Script.Pipeline");
+		for (let timing in StringView[?]("deferredWrites", "prepareMs", "mainMs", "flushMs"))
+			Test.Assert(imported.Get(timing) != null, scope $"the result reports {timing}");
 		Test.Assert(imported.Get("alsoClaimableBy") == null, "one claimant, nothing to choose");
 		let guid = scope String(imported.Get("guid").AsString());
 		let list = CallOk(server, "asset_list", Obj());

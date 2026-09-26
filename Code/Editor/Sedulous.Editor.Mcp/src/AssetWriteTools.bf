@@ -107,6 +107,11 @@ static class AssetWriteTools
 		outResult.Set("guid", McpTools.GuidToJson(done.Id));
 		outResult.Set("name", JsonValue.MakeString(done.Name));
 		outResult.Set("type", JsonValue.MakeString(done.Type));
+		outResult.Set("typeNamespace", JsonValue.MakeString(done.TypeNamespace));
+		outResult.Set("deferredWrites", JsonValue.MakeNumber((double)done.DeferredWrites));
+		outResult.Set("prepareMs", JsonValue.MakeNumber((double)done.PrepareMs));
+		outResult.Set("mainMs", JsonValue.MakeNumber((double)done.MainMs));
+		outResult.Set("flushMs", JsonValue.MakeNumber((double)done.FlushMs));
 		outResult.Set("importer", JsonValue.MakeString(importer.Label));
 		if (claimants.Count > 1)
 		{

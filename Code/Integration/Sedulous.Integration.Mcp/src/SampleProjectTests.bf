@@ -21,7 +21,9 @@ namespace Sedulous.Integration.Mcp;
 /// CURRENT data versions: a wire version bump or a key rename that forgets to upgrade its
 /// sources leaves it refused by the strict readers. This registers the whole pipeline the way
 /// the cook tool does, opens a scratch copy (so opening never writes into the tracked tree),
-/// reads every instance back, and cooks it through the tools an agent uses.
+/// reads every instance back, and cooks it through the tools an agent uses. It registers
+/// what it needs itself (the pipeline types; the component reflection and the script surface
+/// are comptime here), so it holds when run alone.
 static class SampleProjectTests
 {
 	/// Every instance under a group, recursively, reads back. A scene or prefab is its STREAM,
@@ -70,7 +72,10 @@ static class SampleProjectTests
 			Test.Assert(project != null);
 			defer delete project;
 			let read = ReadAllInstances(project.SourceDb.RootGroup);
-			Test.Assert(read > 0);
+			// Every instance, counted: a floor catches a group silently skipped. PaperKid has
+			// 24: 2 scenes, 1 prefab, 5 scripts, 6 meshes, 6 UI documents, a font, an input
+			// map, a bus layout and a texture. Raise the floor when the sample grows.
+			Test.Assert(read >= 24, scope $"read {read} instances");
 		}
 
 		// And it COOKS, through the same tools an agent uses.
@@ -89,7 +94,9 @@ static class SampleProjectTests
 		force.Set("force", JsonValue.MakeBool(true));
 		let cooked = CallOk(server, "asset_cook", force);
 		defer delete cooked;
-		Test.Assert(cooked.Get("cooked").AsInt() > 0);
+		// Every buildable asset cooked: 21, all but the two scenes and the prefab, which stage
+		// rather than cook. And nothing failed.
+		Test.Assert(cooked.Get("cooked").AsInt() >= 21, scope $"cooked {cooked.Get("cooked").AsInt()}");
 		Test.Assert(cooked.Get("failed").AsInt() == 0, scope $"{cooked.Get("failed").AsInt()} failed");
 	}
 }

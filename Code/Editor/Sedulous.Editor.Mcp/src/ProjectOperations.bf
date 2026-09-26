@@ -34,12 +34,41 @@ struct ImportRequest
 	public IFileImporter Importer = null;
 }
 
-/// What asset_import reports: the created asset's identity.
+/// What asset_import reports: the created asset's identity and where the time went (the
+/// main thread share is the number that must stay small in the editor).
 class ImportOutcome
 {
 	public Guid Id;
 	public String Name = new .() ~ delete _;
+	/// The content type's full name, and the namespace part of it.
 	public String Type = new .() ~ delete _;
+	public String TypeNamespace = new .() ~ delete _;
+	public int DeferredWrites = 0;
+	public int64 PrepareMs = 0;
+	public int64 MainMs = 0;
+	public int64 FlushMs = 0;
+
+	/// The identity from the instance an import placed.
+	public void SetIdentity(Sedulous.Content.Instance instance)
+	{
+		Id = instance.Id;
+		Name.Set(instance.Name);
+		Type.Set(instance.TypeName);
+		let dot = instance.TypeName.LastIndexOf('.');
+		TypeNamespace.Set((dot > 0) ? StringView(instance.TypeName, 0, dot) : "");
+	}
+
+	public void CopyTo(ImportOutcome other)
+	{
+		other.Id = Id;
+		other.Name.Set(Name);
+		other.Type.Set(Type);
+		other.TypeNamespace.Set(TypeNamespace);
+		other.DeferredWrites = DeferredWrites;
+		other.PrepareMs = PrepareMs;
+		other.MainMs = MainMs;
+		other.FlushMs = FlushMs;
+	}
 }
 
 /// project_export's resolved request: the preset the tool resolved by name, the output root,
