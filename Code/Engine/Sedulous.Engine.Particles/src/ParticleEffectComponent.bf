@@ -70,6 +70,7 @@ struct ParticleEffectComponent : ISerializable, IComponentResources
 	/// extract so a mesh system's render data can borrow a stable per submesh array for the
 	/// frame. This mirrors the mesh component's own material cache, and for the same reason: a
 	/// late cook heals rather than staying null until the scene is reopened.
+	[Hidden]
 	public List<List<Material>> EffectMaterialCache = null;
 
 	public this() {}

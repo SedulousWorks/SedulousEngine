@@ -17,6 +17,7 @@ namespace Sedulous.Engine.Script;
 [Scriptable]
 struct ScriptComponent : ISerializable, IComponentResources
 {
+	[Hidden]
 	public List<ScriptBehavior> Behaviors = null;
 
 	public this() {}

@@ -28,7 +28,9 @@ class PhysicsSceneSettings : ISerializable
 	[Scriptable]
 	public bool DebugDraw = false;
 
+	[Hidden]
 	public List<String> GroupNames = new .() ~ DeleteContainerAndItems!(_);
+	[Hidden]
 	public List<uint32> GroupCollides = new .() ~ delete _;
 
 	/// Whether two groups collide. A row the matrix does not reach collides with everything,

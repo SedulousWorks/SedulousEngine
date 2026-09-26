@@ -35,6 +35,7 @@ struct MeshComponent : ISerializable, IComponentResources
 	/// The raw view EXTRACTION refreshes from the proxies EVERY frame, so a late cook or a
 	/// hot reload heals live. Snapshotting it once at resolve would pin a pre cook null until
 	/// the page was reopened.
+	[Hidden]
 	public List<Material> MaterialCache = null;
 	/// A per instance tint, multiplied into the shaded colour. Distinct per entity even when
 	/// many share one mesh and material, so it rides the per instance path.

@@ -9,6 +9,8 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Spline;
 using Sedulous.Engine.Vegetation;
+using Sedulous.Engine.Script;
+using Sedulous.Script.Resource;
 using Sedulous.Spline;
 
 namespace Sedulous.Editor.Scene.Tests;
@@ -122,6 +124,41 @@ class InspectorViewTests
 		inspector.Refresh();
 		inspector.Refresh();
 		Test.Assert((Find(inspector, "Spline") as ResourceRefEditor).ValueText == "Loop");
+	}
+
+	/// The generated rows skip what a hand written section already draws and what only the
+	/// runtime holds: a script component's behaviours and their overrides render once, through
+	/// the script section, and a mesh's material cache or a sprite's render flag never shows.
+	[Test]
+	public static void HiddenFieldsGenerateNoRows()
+	{
+		SceneInspectors.RegisterBuiltin();
+		let scene = scope Scene();
+		let scripts = scene.AddSystem<ScriptComponentManager>();
+		let meshes = scene.AddSystem<MeshComponentManager>();
+		let sprites = scene.AddSystem<SpriteComponentManager>();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let editor = scope EditorContext();
+		let inspector = new SceneInspectorView(editor, edit);
+		defer inspector.ReleaseRef();
+
+		let camera = edit.CreateEntity("Camera");
+		let script = scripts.Add(edit.Resolve(camera));
+		let behavior = new ScriptBehavior();
+		behavior.SetOverride(ScriptPropertyNames.HashOf("target"), .Entity(Guid.Create()));
+		script.Behaviors.Add(behavior);
+		meshes.Add(edit.Resolve(camera));
+		sprites.Add(edit.Resolve(camera));
+		edit.EntitySelection.Set(camera);
+		inspector.Refresh();
+
+		// The script section's own rows, once.
+		Test.Assert(Find(inspector, "Enabled") != null);
+		Test.Assert(Find(inspector, "Update Interval") != null);
+		// No generated rows for the hidden fields.
+		for (let name in StringView[?]("Behaviors", "Overrides", "Hash", "MaterialCache", "PostTonemap"))
+			Test.Assert(Find(inspector, name) == null, scope $"a generated '{name}' row");
 	}
 
 	[Test]

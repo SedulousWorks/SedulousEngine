@@ -35,6 +35,7 @@ struct SpriteComponent : ISerializable, IComponentResources
 	[Scriptable]
 	public bool Additive = false;
 	/// Drawn AFTER tonemap, so world UI keeps the colours it was authored in.
+	[Hidden]
 	public bool PostTonemap = false;
 	[Scriptable]
 	public bool Visible = true;

@@ -35,6 +35,7 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	/// Optional per submesh materials, indexed by the submesh's material index. Non empty
 	/// means each submesh draws with its own; otherwise the one above covers the whole mesh.
 	/// Runtime only, because a per submesh material REF belongs to a prefab.
+	[Hidden]
 	public List<Material> SubmeshMaterials = null;
 	/// ENTITY RELATIVE: instance i draws at Instances[i] times the entity's world matrix, so
 	/// moving the entity moves the whole set.
@@ -54,7 +55,9 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	/// Last frame's palettes, for per bone motion vectors. Null reuses the current ones.
 	public Float4x4* PrevPosePool = null;
 	/// The number of distinct phase buckets.
+	[Hidden]
 	public uint32 PoseCount = 0;
+	[Hidden]
 	public uint32 BoneCount = 0;
 
 	/// How an instance picks its pose. Hashed scatters each one to an unrelated pose, which
@@ -63,26 +66,35 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	/// Explicit with a missing or mismatched list falls back to Hashed.
 	///
 	/// NOT a mutator: it is read each frame while filling the offsets rather than uploaded.
+	[Hidden]
 	public PoseAssignment PoseAssignment = .Hashed;
+	[Hidden]
 	public List<uint32> PoseIndices = null;
 
 	/// Bumped by every mutator. Starts at one so the first extract, which has uploaded
 	/// version zero, always uploads.
+	[Hidden]
 	public uint32 Version = 1;
 
 	/// The composed world transforms, rebuilt by extraction when the authored set OR the
 	/// entity's world matrix changed. ComposedVersion is what the renderer keys its upload
 	/// on, so moving the entity re uploads like any other mutation. Runtime only.
+	[Hidden]
 	public List<Float4x4> WorldTransforms = null;
 	public Float4x4 ComposedEntityWorld = Float4x4.Identity();
 	/// The authored version the cache was built from. Zero means never.
+	[Hidden]
 	public uint32 ComposedFromVersion = 0;
+	[Hidden]
 	public uint32 ComposedVersion = 0;
 
 	/// The merged world bounds, recomputed at extraction when they fall behind the composed
 	/// version. This is what lets a static set skip the per frame bounds pass.
+	[Hidden]
 	public Float3 CachedCenter = .Zero;
+	[Hidden]
 	public float CachedRadius = 0.0f;
+	[Hidden]
 	public uint32 BoundsVersion = 0;
 
 	public this() {}
