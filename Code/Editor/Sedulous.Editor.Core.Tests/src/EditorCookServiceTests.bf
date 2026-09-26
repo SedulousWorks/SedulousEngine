@@ -113,7 +113,7 @@ static class EditorCookServiceTests
 		Test.Assert(sawPlanned && sawCooked, "the progress lines reached the status");
 
 		// A scoped request for the same asset finds nothing to do and reports silently.
-		lines.Clear();
+		ClearAndDeleteItems(lines);
 		Guid[1] roots = .(instance.Id);
 		cook.RequestCookFor(roots);
 		PumpUntilIdle(cook, lines);
