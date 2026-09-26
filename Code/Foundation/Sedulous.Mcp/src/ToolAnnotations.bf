@@ -31,4 +31,6 @@ struct ToolAnnotations
 	public static Self Overwrites => .(false, true, true, false);
 	/// Regenerates derived output (a cook, a dist, the open project); nothing authored is lost.
 	public static Self Rebuilds => .(false, false, true, false);
+	/// Changes the editor's SESSION (a page opened, a selection) and no authored data.
+	public static Self Adjusts => .(false, false, true, false);
 }

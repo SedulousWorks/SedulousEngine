@@ -374,6 +374,31 @@ extension EditorApplication
 			{
 				mContext.SetStatus(scope $"MCP: {tool} {isError ? "failed" : "done"}");
 			};
+		// This host's live additions: the pages, over the same open and close paths the tabs take.
+		let pageSeams = new PageToolSeams();
+		pageSeams.Context = mContext;
+		pageSeams.OpenPage = new (id) =>
+			{
+				if (mProject == null)
+					return null;
+				let instance = mProject.SourceDb.GetInstance(id);
+				return (instance != null) ? OpenInstancePage(instance) : null;
+			};
+		pageSeams.ClosePage = new (page) =>
+			{
+				for (let entry in mPagePanels)
+				{
+					if (entry.Page == page)
+					{
+						let closing = entry; // the tab close pair: panel, then page
+						if ((mShell.Docks != null) && (closing.Panel != null))
+							mShell.Docks.ClosePanel(closing.Panel);
+						ClosePage(closing.Page);
+						return;
+					}
+				}
+			};
+		EditorPageTools.Register(mMcpHost.Server, pageSeams);
 		EditorMcpHostConfig config = .();
 		config.Port = (uint16)((mConfig.McpPort != 0) ? mConfig.McpPort : settings.Port);
 		config.Token = settings.Token;
