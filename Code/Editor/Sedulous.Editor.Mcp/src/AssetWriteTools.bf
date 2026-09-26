@@ -5,17 +5,15 @@ using Sedulous.Core.IO;
 using Sedulous.Content;
 using Sedulous.Json;
 using Sedulous.Mcp;
-using Sedulous.VFS;
-using Sedulous.Pipeline.Core;
-using Sedulous.Pipeline.Cook;
 using Sedulous.Pipeline.Importer;
 
 namespace Sedulous.Editor.Mcp;
 
-/// asset_import / asset_cook: the WRITE side, headless. Import routes an OS file through the
-/// host's importer set into the open project's source database; cook runs the incremental
-/// cook driver over the project. The registries are the host's, populated once from
-/// Pipeline.Registration, and outlive the server.
+/// asset_import / asset_cook: the WRITE side. Routing (which importer, by extension and
+/// hint), refusals and the result shapes are here, shared by every host; the work runs through
+/// the host's IProjectOperations: inline on the stdio host, the editor's cook and job services
+/// otherwise, the tool re-entered each pump until they finish. The importer registry is the
+/// host's (the same set the editor's drag and drop routes through) and outlives the server.
 ///
 /// Import resolves the extension with FindAllFor, the interactive path's call, not the
 /// singular FindFor whose first claimant always won: `.png` is claimed by the texture, the
@@ -26,17 +24,17 @@ static class AssetWriteTools
 	private class Context
 	{
 		public ProjectSession Session;
-		public BuilderRegistry Builders;
 		public ImporterRegistry Importers;
+		public IProjectOperations Operations;
 	}
 
-	public static void Register(McpServer server, ProjectSession session, BuilderRegistry builders,
-		ImporterRegistry importers)
+	public static void Register(McpServer server, ProjectSession session, ImporterRegistry importers,
+		IProjectOperations operations)
 	{
 		let context = new Context();
 		context.Session = session;
-		context.Builders = builders;
 		context.Importers = importers;
+		context.Operations = operations;
 
 		let importSchema = scope SchemaBuilder();
 		importSchema.Str("source", "absolute path to the file to import", true);
@@ -58,7 +56,7 @@ static class AssetWriteTools
 			new (arguments, outResult, outError) => Cook(context, arguments, outResult, outError));
 	}
 
-	private static bool Import(Context context, JsonValue arguments, JsonValue outResult, String outError)
+	private static ToolOutcome Import(Context context, JsonValue arguments, JsonValue outResult, String outError)
 	{
 		let session = context.Session;
 		if (!session.IsOpen)
@@ -95,19 +93,20 @@ static class AssetWriteTools
 			}
 		}
 
-		let group = McpTools.ResolveGroupPath(session.Project.SourceDb.RootGroup,
-			McpTools.ArgString(arguments, "group", .. scope .()));
-		let importContext = scope ImportContext(session.Project.SourcesRoot(.. scope .()));
-		let imported = importer.Import(source, importContext, group, null, null, null);
-		if (imported case .Err(let error))
+		ImportRequest request = .();
+		request.Source = source;
+		request.GroupPath = McpTools.ArgString(arguments, "group", .. scope .());
+		request.Importer = importer;
+		let done = scope ImportOutcome();
+		switch (context.Operations.Import(request, done, outError))
 		{
-			outError.AppendF("import of '{}' failed ({})", source, error);
-			return false;
+		case .Failed: return .Failed;
+		case .NotYet: return .NotFinished; // the host's import is still running
+		case .Finished:
 		}
-		let instance = imported.Get();
-		outResult.Set("guid", McpTools.GuidToJson(instance.Id));
-		outResult.Set("name", JsonValue.MakeString(instance.Name));
-		outResult.Set("type", JsonValue.MakeString(instance.TypeName));
+		outResult.Set("guid", McpTools.GuidToJson(done.Id));
+		outResult.Set("name", JsonValue.MakeString(done.Name));
+		outResult.Set("type", JsonValue.MakeString(done.Type));
 		outResult.Set("importer", JsonValue.MakeString(importer.Label));
 		if (claimants.Count > 1)
 		{
@@ -134,37 +133,26 @@ static class AssetWriteTools
 		}
 	}
 
-	private static bool Cook(Context context, JsonValue arguments, JsonValue outResult, String outError)
+	private static ToolOutcome Cook(Context context, JsonValue arguments, JsonValue outResult, String outError)
 	{
-		let session = context.Session;
-		if (!session.IsOpen)
+		if (!context.Session.IsOpen)
 		{
 			outError.Append(McpTools.cNoProject);
-			return false;
+			return .Failed;
 		}
-		let force = McpTools.ArgBool(arguments, "force");
-		let project = session.Project;
-		// Second mounts on Sources/ and .cache/: the cook driver hashes source files and
-		// persists its records through these; the source and cooked databases are open already.
-		let sourcesMount = scope NativeFileSystem(project.SourcesRoot(.. scope .()));
-		let cacheMount = scope NativeFileSystem(project.CacheRoot(.. scope .()));
-		// Workers, rather than the hard-coded serial cook this tool used to run: the driver
-		// fans its asset batch out over these, and hands them to every build through the
-		// context so a texture's block rows and mip rows split too.
-		let jobs = scope JobSystem();
-		let driver = scope CookDriver(project.SourceDb, project.CookedDb, context.Builders,
-			sourcesMount, cacheMount, jobs);
-		let plan = scope CookPlan();
-		driver.Plan(plan, force);
-		let stats = scope CookStats();
-		driver.Execute(plan, stats);
-
-		outResult.Set("planned", JsonValue.MakeNumber((double)plan.Dirty.Count));
-		outResult.Set("cooked", JsonValue.MakeNumber((double)stats.Cooked));
-		outResult.Set("failed", JsonValue.MakeNumber((double)stats.Failed));
-		outResult.Set("orphansSwept", JsonValue.MakeNumber((double)stats.OrphansSwept));
-		outResult.Set("upToDate", JsonValue.MakeNumber((double)plan.UpToDate));
-		outResult.Set("unbuildable", JsonValue.MakeNumber((double)plan.Unbuildable));
-		return true;
+		CookOutcome done = .();
+		switch (context.Operations.Cook(McpTools.ArgBool(arguments, "force"), ref done, outError))
+		{
+		case .Failed: return .Failed;
+		case .NotYet: return .NotFinished; // the host's cook is still running
+		case .Finished:
+		}
+		outResult.Set("planned", JsonValue.MakeNumber((double)done.Planned));
+		outResult.Set("cooked", JsonValue.MakeNumber((double)done.Cooked));
+		outResult.Set("failed", JsonValue.MakeNumber((double)done.Failed));
+		outResult.Set("orphansSwept", JsonValue.MakeNumber((double)done.OrphansSwept));
+		outResult.Set("upToDate", JsonValue.MakeNumber((double)done.UpToDate));
+		outResult.Set("unbuildable", JsonValue.MakeNumber((double)done.Unbuildable));
+		return .Answered;
 	}
 }

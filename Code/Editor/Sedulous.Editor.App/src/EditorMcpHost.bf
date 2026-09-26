@@ -37,22 +37,24 @@ class EditorMcpHost
 
 	private McpServer mServer = new .() ~ delete _;
 	private McpHttpHost mHttp ~ delete _;
-	private ProjectSession mSession = new .() ~ delete _;
+	private ProjectSession mSession;
 
 	/// Told (tool, isError) after every finished tools/call: the application shows the
 	/// agent's activity. Owned.
 	public delegate void(StringView tool, bool isError) OnToolFinished ~ delete _;
 
-	/// Registers the shared engine surface over the project and this host's host_info. Every
-	/// reference must outlive the host: the application owns them all for the project's life.
-	public this(EditorProject project, EditorLogBuffer logBuffer, BuilderRegistry builders,
-		ImporterRegistry importers, EngineToolPaths paths, StringView buildStamp)
+	/// Registers the shared engine surface over the session (pointed at the editor's live
+	/// project) and this host's host_info; the operations are how this host runs the cook,
+	/// import and export behind their tools. Every reference must outlive the host: the
+	/// application owns them all for the project's life.
+	public this(ProjectSession session, EditorLogBuffer logBuffer, BuilderRegistry builders,
+		ImporterRegistry importers, EngineToolPaths paths, IProjectOperations operations, StringView buildStamp)
 	{
 		mHttp = new .(mServer);
-		mSession.Project = project;
+		mSession = session;
 		// Distinct from the stdio host's "engine-mcp": an agent talking to both tells them apart.
 		mServer.SetServerInfo("engine-editor-mcp", "0.1.0");
-		EngineTools.Register(mServer, mSession, builders, importers, logBuffer, paths);
+		EngineTools.Register(mServer, mSession, builders, importers, logBuffer, paths, operations);
 		McpHostInfo.Register(mServer, buildStamp,
 			new (outState) =>
 			{

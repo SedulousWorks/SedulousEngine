@@ -64,7 +64,10 @@ class EditorMcpHostTests
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
 
-		let host = scope EditorMcpHost(project, logBuffer, builders, importers, scope EngineToolPaths(), "test-stamp");
+		let session = scope ProjectSession();
+		session.Project = project;
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let host = scope EditorMcpHost(session, logBuffer, builders, importers, scope EngineToolPaths(), operations, "test-stamp");
 		let finished = scope List<String>();
 		defer ClearAndDeleteItems(finished);
 		host.OnToolFinished = new (tool, isError) => finished.Add(new $"{tool}:{isError ? "err" : "ok"}");
@@ -158,7 +161,10 @@ class EditorMcpHostTests
 		let logBuffer = scope EditorLogBuffer();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
-		let host = scope EditorMcpHost(project, logBuffer, builders, importers, scope EngineToolPaths(), "test-stamp");
+		let session = scope ProjectSession();
+		session.Project = project;
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		let host = scope EditorMcpHost(session, logBuffer, builders, importers, scope EngineToolPaths(), operations, "test-stamp");
 		EditorMcpHostConfig config = .(); // no token
 		Test.Assert(!host.Start(config));
 		Test.Assert(!host.IsRunning);

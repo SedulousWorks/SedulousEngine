@@ -71,12 +71,14 @@ class Program
 		let session = scope ProjectSession();
 		// The engine surface every host serves, one list in Editor.Mcp, with the paths only
 		// this host knows how to find: the curated docs and known issues by the walk up from
-		// the executable, the player beside it, and the data root above.
+		// the executable.
 		let paths = scope EngineToolPaths();
 		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .())));
-		BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), paths.PlayerDir);
-		paths.DataRoot.Set(dataRoot);
-		EngineTools.Register(server, session, builders, importers, logBuffer, paths);
+		// This host runs the cook, import and export INLINE: the export stages the player from
+		// beside this executable and cooks shaders from the data root.
+		let operations = scope InlineProjectOperations(session, builders,
+			BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), .. scope .()), dataRoot);
+		EngineTools.Register(server, session, builders, importers, logBuffer, paths, operations);
 		// This host's additions: an agent opens, or scaffolds, the project it wants.
 		ProjectOpenTools.Register(server, session, owner);
 

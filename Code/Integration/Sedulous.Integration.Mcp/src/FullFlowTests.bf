@@ -40,7 +40,8 @@ static class FullFlowTests
 		let logBuffer = scope EditorLogBuffer();
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
-		EngineTools.Register(server, session, builders, importers, logBuffer, scope EngineToolPaths());
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		EngineTools.Register(server, session, builders, importers, logBuffer, scope EngineToolPaths(), operations);
 		ProjectOpenTools.Register(server, session, owner);
 
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Full"));
@@ -100,7 +101,8 @@ static class FullFlowTests
 		let session = scope ProjectSession();
 
 		let server = scope McpServer();
-		EngineTools.Register(server, session, builders, importers, logBuffer, scope EngineToolPaths());
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		EngineTools.Register(server, session, builders, importers, logBuffer, scope EngineToolPaths(), operations);
 		Test.Assert(server.ToolCount == EngineTools.cEngineToolCount, scope $"{server.ToolCount} tools");
 
 		let listed = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
@@ -170,6 +172,152 @@ static class FullFlowTests
 			paths.LocateShippingDocs(scope StringView[]("mcp_docs_nowhere/q"));
 			Test.Assert(paths.KnownIssues.IsEmpty);
 			Test.Assert(paths.ShippingDocsDir.IsEmpty);
+		}
+	}
+
+	/// A host whose operations take several pumps: every step answers not yet until the
+	/// configured entry, then the outcome. The shape of the editor's background services,
+	/// minus the services.
+	class SlowOperations : IProjectOperations
+	{
+		public int AnswerOnEntry = 3;
+		public int CookEntries = 0;
+		public int ImportEntries = 0;
+		public int ExportEntries = 0;
+		public bool RefuseCook = false;
+
+		public OperationStep Cook(bool force, ref CookOutcome outOutcome, String outError)
+		{
+			CookEntries++;
+			if (RefuseCook)
+			{
+				outError.Set("a cook is already running (the editor's build lock)");
+				return .Failed;
+			}
+			if (CookEntries < AnswerOnEntry)
+				return .NotYet;
+			outOutcome.Planned = force ? 7 : 2;
+			outOutcome.Cooked = outOutcome.Planned;
+			return .Finished;
+		}
+
+		public OperationStep Import(ImportRequest request, ImportOutcome outOutcome, String outError)
+		{
+			ImportEntries++;
+			if (ImportEntries < AnswerOnEntry)
+				return .NotYet;
+			outOutcome.Name.Set("Mover");
+			return .Finished;
+		}
+
+		public OperationStep Export(ExportRequest request, ExportResult outResult, String outError)
+		{
+			ExportEntries++;
+			if (ExportEntries < AnswerOnEntry)
+				return .NotYet;
+			PathJoin(request.OutRoot, request.Preset.Name, outResult.OutputDir);
+			outResult.FilesStaged = 1;
+			return .Finished;
+		}
+	}
+
+	private static String ToolCallLine(StringView tool, StringView argumentsJson, String outLine)
+	{
+		outLine.AppendF("{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{{\"name\":\"{}\",\"arguments\":{}}}}}", tool, argumentsJson);
+		return outLine;
+	}
+
+	/// Handles a line expected to be answered: the parsed response, OWNED by the caller.
+	private static JsonValue Answered(McpServer server, StringView line)
+	{
+		let reply = scope String();
+		Test.Assert(server.HandleLine(line, reply) == .Answered);
+		return JsonValue.Parse(reply);
+	}
+
+	/// The write tools ride a host's operations: not finished until the host says so, then the
+	/// shared result shape; a refusal is the tool's error.
+	[Test]
+	public static void TheWriteToolsRideAHostsOperations()
+	{
+		let dir = Scratch("mcp_slow_project", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let importers = scope ImporterRegistry();
+		PipelineRegistration.RegisterAllImporters(importers);
+
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		let slow = scope SlowOperations();
+		ProjectOpenTools.Register(server, session, owner);
+		AssetWriteTools.Register(server, session, importers, slow);
+		ProjectExportTool.Register(server, session, slow);
+		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Slow"));
+		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
+		let ignored = scope String();
+
+		// asset_cook: two not yet re-entries with the SAME line, then the counts.
+		let cook = ToolCallLine("asset_cook", "{\"force\":true}", .. scope .());
+		Test.Assert(server.HandleLine(cook, ignored) == .NotFinished);
+		Test.Assert(server.HandleLine(cook, ignored) == .NotFinished);
+		{
+			let response = Answered(server, cook);
+			defer delete response;
+			let result = response.Get("result");
+			Test.Assert(!result.Get("isError").AsBool());
+			let payload = JsonValue.Parse(result.Get("content").At(0).Get("text").AsString());
+			defer delete payload;
+			Test.Assert(payload.Get("planned").AsInt() == 7);
+		}
+		Test.Assert(slow.CookEntries == 3);
+
+		// asset_import: the routing refusal never reaches the operations; a routed file does.
+		{
+			let response = Answered(server, ToolCallLine("asset_import", "{\"source\":\"nothing.zzz\"}", .. scope .()));
+			defer delete response;
+			let result = response.Get("result");
+			Test.Assert(result.Get("isError").AsBool());
+		}
+		Test.Assert(slow.ImportEntries == 0);
+		let import = ToolCallLine("asset_import", "{\"source\":\"Mover.as\"}", .. scope .());
+		Test.Assert(server.HandleLine(import, ignored) == .NotFinished);
+		Test.Assert(server.HandleLine(import, ignored) == .NotFinished);
+		{
+			let response = Answered(server, import);
+			defer delete response;
+			let result = response.Get("result");
+			Test.Assert(!result.Get("isError").AsBool());
+			let payload = JsonValue.Parse(result.Get("content").At(0).Get("text").AsString());
+			defer delete payload;
+			Test.Assert(payload.Get("name").AsString() == "Mover");
+		}
+
+		// project_export: the preset is resolved by the tool (the synthesized host preset
+		// here), the work by the operations.
+		let export = ToolCallLine("project_export", "{}", .. scope .());
+		Test.Assert(server.HandleLine(export, ignored) == .NotFinished);
+		Test.Assert(server.HandleLine(export, ignored) == .NotFinished);
+		{
+			let response = Answered(server, export);
+			defer delete response;
+			let result = response.Get("result");
+			Test.Assert(!result.Get("isError").AsBool());
+			let payload = JsonValue.Parse(result.Get("content").At(0).Get("text").AsString());
+			defer delete payload;
+			Test.Assert(payload.Get("filesStaged").AsInt() == 1);
+		}
+		Test.Assert(slow.ExportEntries == 3);
+
+		// A refusal from the operations is the tool's error text, at once.
+		slow.RefuseCook = true;
+		{
+			let response = Answered(server, cook);
+			defer delete response;
+			let result = response.Get("result");
+			Test.Assert(result.Get("isError").AsBool());
+			Test.Assert(result.Get("content").At(0).Get("text").AsString() == "a cook is already running (the editor's build lock)");
 		}
 	}
 }

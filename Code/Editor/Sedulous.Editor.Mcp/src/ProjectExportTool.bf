@@ -5,37 +5,28 @@ using Sedulous.Core.IO;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.VFS;
-using Sedulous.Engine.SceneSurface;
-using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Mcp;
 
-/// project_export: a thin wrapper over the ONE export entry point, the same call the
-/// editor's Export menu and the CLI make, so an MCP export produces an identical dist. The
-/// presets come from the project's export_presets.xml, else the synthesized host preset;
-/// the templates from the root plus the player beside the host tool; the scene streams
-/// pre-transcoded and the pruning scanner over the full composition.
+/// project_export: preset resolution and the result shape here, the work through the host's
+/// operations (inline on the stdio host, the editor's export job otherwise), which reach the
+/// ONE export entry point, the same call the editor's Export menu and the CLI make, so an MCP
+/// export produces an identical dist. The presets come from the project's
+/// export_presets.xml, else the synthesized host preset.
 static class ProjectExportTool
 {
 	private class Context
 	{
 		public ProjectSession Session;
-		public BuilderRegistry Builders;
-		/// Where the player beside the host lives: the export's host template.
-		public String PlayerDir = new .() ~ delete _;
-		/// The engine data root the shader cook reads.
-		public String DataRoot = new .() ~ delete _;
+		public IProjectOperations Operations;
 	}
 
-	public static void Register(McpServer server, ProjectSession session, BuilderRegistry builders,
-		StringView playerDir, StringView dataRoot)
+	public static void Register(McpServer server, ProjectSession session, IProjectOperations operations)
 	{
 		let context = new Context();
 		context.Session = session;
-		context.Builders = builders;
-		context.PlayerDir.Set(playerDir);
-		context.DataRoot.Set(dataRoot);
+		context.Operations = operations;
 
 		let schema = scope SchemaBuilder();
 		schema.Str("preset", "preset name (default: the project's first preset)");
@@ -50,7 +41,7 @@ static class ProjectExportTool
 			context);
 	}
 
-	private static bool Export(Context context, JsonValue arguments, JsonValue outResult, String outError)
+	private static ToolOutcome Export(Context context, JsonValue arguments, JsonValue outResult, String outError)
 	{
 		let session = context.Session;
 		if (!session.IsOpen)
@@ -76,28 +67,22 @@ static class ProjectExportTool
 			return false;
 		}
 
-		let templates = scope TemplateRegistry();
-		templates.Refresh(ExportTemplates.ResolveRoot("", .. scope .()), context.PlayerDir);
-		let sceneStreams = scope Dictionary<Guid, List<uint8>>();
-		defer { for (let entry in sceneStreams) delete entry.value; }
-		SceneExportSupport.CollectSceneStreams(project.SourceDb.RootGroup, sceneStreams);
-		SceneReferenceScanner scanner = scope (instance, db, outReferences) =>
-			{
-				SceneExportSupport.ScanSceneReferences(instance, db, outReferences.Resources, outReferences.Prefabs);
-			};
 		let outArg = McpTools.ArgString(arguments, "out", .. scope .());
 		let outRoot = scope String();
 		if (!outArg.IsEmpty)
 			outRoot.Set(outArg);
 		else
 			PathJoin(project.Directory, "Dist", outRoot);
-		let rebuild = McpTools.ArgBool(arguments, "rebuild");
-
+		ExportRequest request = .();
+		request.Preset = preset;
+		request.OutRoot = outRoot;
+		request.Rebuild = McpTools.ArgBool(arguments, "rebuild");
 		let result = scope ExportResult();
-		if (ExportDriver.ExportOne(project, preset, templates, context.Builders, outRoot, context.DataRoot, rebuild, result, null, true, sceneStreams, scanner) case .Err)
+		switch (context.Operations.Export(request, result, outError))
 		{
-			outError.AppendF("export of preset '{}' failed - read log_read (category Export/Cook) for the failing step", preset.Name);
-			return false;
+		case .Failed: return .Failed;
+		case .NotYet: return .NotFinished; // the host's export is still running
+		case .Finished:
 		}
 		outResult.Set("exported", JsonValue.MakeBool(true));
 		outResult.Set("preset", JsonValue.MakeString(preset.Name));

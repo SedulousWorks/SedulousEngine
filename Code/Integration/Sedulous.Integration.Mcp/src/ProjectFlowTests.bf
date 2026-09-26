@@ -129,7 +129,8 @@ static class ProjectFlowTests
 		ProjectOpenTools.Register(server, session, owner);
 		ProjectInfoTool.Register(server, session);
 		AssetTools.Register(server, session);
-		AssetWriteTools.Register(server, session, builders, importers);
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		AssetWriteTools.Register(server, session, importers, operations);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Write"));
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
 
@@ -197,7 +198,8 @@ static class ProjectFlowTests
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
 		ProjectInfoTool.Register(server, session);
-		AssetWriteTools.Register(server, session, builders, importers);
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		AssetWriteTools.Register(server, session, importers, operations);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Hint"));
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
 

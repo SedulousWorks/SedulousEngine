@@ -44,7 +44,8 @@ static class ExportFlowTests
 		let owner = scope ProjectOwner();
 		ProjectOpenTools.Register(server, session, owner);
 		ProjectInfoTool.Register(server, session);
-		ProjectExportTool.Register(server, session, builders, playerDir, dataRoot);
+		let operations = scope InlineProjectOperations(session, builders, playerDir, dataRoot);
+		ProjectExportTool.Register(server, session, operations);
 
 		let noProject = scope String();
 		CallErr(server, "project_export", Obj(), noProject);

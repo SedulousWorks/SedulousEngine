@@ -23,6 +23,7 @@ using Sedulous.Resource;
 using Sedulous.Settings;
 using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Mcp;
 using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.App;
@@ -71,7 +72,12 @@ class EditorApplication : IApplication
 	/// Exe-assembled through RegisterEditors.
 	private BuilderRegistry mBuilders = new .() ~ delete _;
 	private EditorCookService mCookService = new .() ~ delete _;
-	/// Per project: started after the services are up, gone before they go.
+	/// The MCP host and what it serves through, per project: the session points at the open
+	/// project, the operations are how this host runs the cook, import and export (inline for
+	/// now: the editor's own background services take over as they are wired), the host last.
+	private ProjectSession mMcpSession = new .() ~ delete _;
+	private InlineProjectOperations mMcpOperations = null ~ delete _;
+	/// Started after the services are up, gone before they go.
 	private EditorMcpHost mMcpHost = null ~ delete _;
 	private ThumbnailService mThumbnailService = new .() ~ delete _;
 	/// The GPU half, per project.

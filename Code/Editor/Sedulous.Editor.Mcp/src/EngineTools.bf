@@ -25,15 +25,17 @@ static class EngineTools
 	public const int cEngineToolCount = 21;
 
 	/// The pipeline's types, builders and script surface must already be registered: the
-	/// script tools read that surface, the asset tools the two registries.
+	/// script tools read that surface, the asset tools the two registries. The operations are
+	/// how THIS host runs the cook, import and export behind their tools (IProjectOperations).
 	public static void Register(McpServer server, ProjectSession session, BuilderRegistry builders,
-		ImporterRegistry importers, EditorLogBuffer logBuffer, EngineToolPaths paths)
+		ImporterRegistry importers, EditorLogBuffer logBuffer, EngineToolPaths paths,
+		IProjectOperations operations)
 	{
 		ReflectionTools.Register(server);
 		ScriptTools.Register(server, PipelineRegistration.Surface);
 		ProjectInfoTool.Register(server, session);
 		AssetTools.Register(server, session);
-		AssetWriteTools.Register(server, session, builders, importers);
+		AssetWriteTools.Register(server, session, importers, operations);
 		AssetUsesTool.Register(server, session, builders);
 		ProjectHealthTool.Register(server, session, builders);
 		LogTools.Register(server, logBuffer, paths.KnownIssues);
@@ -43,6 +45,6 @@ static class EngineTools
 		ProjectResources.Register(server, session);
 		ScriptValidateTool.Register(server);
 		ScriptCreateTool.Register(server, session);
-		ProjectExportTool.Register(server, session, builders, paths.PlayerDir, paths.DataRoot);
+		ProjectExportTool.Register(server, session, operations);
 	}
 }

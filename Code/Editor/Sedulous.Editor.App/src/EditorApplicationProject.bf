@@ -355,10 +355,13 @@ extension EditorApplication
 		}
 		let paths = scope EngineToolPaths();
 		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .())));
-		BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), paths.PlayerDir);
-		paths.DataRoot.Set(mConfig.DataRoot);
-		mMcpHost = new EditorMcpHost(mProject, mConfig.LogBuffer, mBuilders, mContext.Importers,
-			paths, BuildStamp(.. scope .()));
+		mMcpSession.Project = mProject;
+		// The export stages the player from beside this executable and cooks shaders from the
+		// data root: the same two things the stdio host hands its inline operations.
+		mMcpOperations = new InlineProjectOperations(mMcpSession, mBuilders,
+			BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), .. scope .()), mConfig.DataRoot);
+		mMcpHost = new EditorMcpHost(mMcpSession, mConfig.LogBuffer, mBuilders, mContext.Importers,
+			paths, mMcpOperations, BuildStamp(.. scope .()));
 		mMcpHost.OnToolFinished = new (tool, isError) =>
 			{
 				mContext.SetStatus(scope $"MCP: {tool} {isError ? "failed" : "done"}");
@@ -371,7 +374,7 @@ extension EditorApplication
 		if (!mMcpHost.Start(config))
 		{
 			GlobalLog(.Warning, scope $"MCP: could not listen on 127.0.0.1:{config.Port}, another editor may hold the port; pass --mcp-port <n> or change it in Preferences");
-			DeleteAndNullify!(mMcpHost);
+			StopMcpHost();
 			return;
 		}
 		GlobalLog(.Information, scope $"MCP: listening on 127.0.0.1:{mMcpHost.BoundPort} (the token is in <user-data>/{EditorMcpHost.cTokenFileName})");
@@ -383,6 +386,8 @@ extension EditorApplication
 	private void StopMcpHost()
 	{
 		DeleteAndNullify!(mMcpHost);
+		DeleteAndNullify!(mMcpOperations);
+		mMcpSession.Project = null;
 	}
 
 	/// The inverse of OpenProjectAt: saves the layout and pages, closes every page, shuts
