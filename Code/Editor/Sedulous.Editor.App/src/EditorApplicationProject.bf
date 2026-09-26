@@ -236,8 +236,8 @@ extension EditorApplication
 				assets.Rebuild();
 				// The result toast: failures are sticky, the Console has the log; silent when the
 				// cook was a no-op, since the watcher fires those constantly.
-				let failed = mCookService.LastFailedCount;
-				let cooked = mCookService.LastCookedCount;
+				let failed = mCookService.LastCookSummary.Failed;
+				let cooked = mCookService.LastCookSummary.Cooked;
 				if (failed > 0)
 					ShowToast(.Error, scope $"Cook: {failed} failed, {cooked} cooked (see Console).");
 				else if (cooked > 0)

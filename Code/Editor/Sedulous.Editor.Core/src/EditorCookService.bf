@@ -28,6 +28,19 @@ namespace Sedulous.Editor.Core;
 ///
 /// The v1 hazard Traktor shares: editing a source asset WHILE a cook runs races the
 /// driver's reads; the UI disables the cook triggers during a cook but does not lock edits.
+/// What the most recent cook did: the plan's split (Planned is the dirty items, UpToDate,
+/// Unbuildable) and the build's counts. Valid when OnCookFinished fires, until the next cook
+/// finishes: the app's result toast and the MCP asset_cook read it.
+struct CookSummary
+{
+	public int Planned = 0;
+	public int Cooked = 0;
+	public int Failed = 0;
+	public int OrphansSwept = 0;
+	public int UpToDate = 0;
+	public int Unbuildable = 0;
+}
+
 class EditorCookService
 {
 	private const double cWatchPollSeconds = 2.0;
@@ -48,10 +61,11 @@ class EditorCookService
 	/// Worker written under the queue lock; the main thread copies at the finish.
 	private List<Guid> mLastCooked = new .() ~ delete _;
 	private List<Guid> mLastCookedMain = new .() ~ delete _;
-	private int mLastCookedCount = 0;
-	private int mLastFailedCount = 0;
-	private int mLastCookedCountMain = 0;
-	private int mLastFailedCountMain = 0;
+	/// The plan half main written at StartBuilds, the build half worker written, both under
+	/// the queue lock.
+	private CookSummary mLastSummary = .();
+	/// The main thread copy (LastCookSummary).
+	private CookSummary mLastSummaryMain = .();
 	/// Main thread deferred mutations.
 	private List<delegate void()> mIdleQueue = new .() ~ DeleteContainerAndItems!(_);
 	/// A RequestCook that arrived while cooking.
@@ -103,6 +117,17 @@ class EditorCookService
 	public void Shutdown()
 	{
 		JoinWorker();
+		// Quiescent, whatever phase the join cut short: a worker joined mid plan never reaches
+		// the build that clears mCooking, and a stuck flag would make the NEXT project's first
+		// request remembered forever. The deferred mutations belonged to the closed project.
+		Interlocked.Exchange(ref mCooking, 0);
+		Interlocked.Exchange(ref mPlanReady, 0);
+		Interlocked.Exchange(ref mFinishedPending, 0);
+		mPendingCook = false;
+		mPendingForce = false;
+		mPendingRoots.Clear();
+		mPendingRootsForce = false;
+		ClearAndDeleteItems(mIdleQueue);
 		mWatcher = null;
 		DeleteAndNullify!(mDriver);
 		DeleteAndNullify!(mJobs);
@@ -204,6 +229,13 @@ class EditorCookService
 		JoinWorker();
 		mDriver.PrepareProducts(mPlan);
 		let total = mPlan.Dirty.Count;
+		using (mQueueLock.Enter())
+		{
+			mLastSummary = .();
+			mLastSummary.Planned = total;
+			mLastSummary.UpToDate = mPlan.UpToDate;
+			mLastSummary.Unbuildable = mPlan.Unbuildable;
+		}
 		// A zero work plan runs SILENTLY: a page open or an import is cheap to request and
 		// often finds everything cooked already.
 		if ((total > 0) || !mPlan.Orphans.IsEmpty)
@@ -230,8 +262,9 @@ class EditorCookService
 				{
 					mLastCooked.Clear();
 					mLastCooked.AddRange(stats.CookedProducts);
-					mLastCookedCount = stats.Cooked;
-					mLastFailedCount = stats.Failed;
+					mLastSummary.Cooked = stats.Cooked;
+					mLastSummary.Failed = stats.Failed;
+					mLastSummary.OrphansSwept = stats.OrphansSwept;
 				}
 				Interlocked.Exchange(ref mCooking, 0);
 				Interlocked.Exchange(ref mFinishedPending, 1);
@@ -268,8 +301,7 @@ class EditorCookService
 			{
 				mLastCookedMain.Clear();
 				mLastCookedMain.AddRange(mLastCooked);
-				mLastCookedCountMain = mLastCookedCount;
-				mLastFailedCountMain = mLastFailedCount;
+				mLastSummaryMain = mLastSummary;
 			}
 			if (OnCookFinished != null)
 				OnCookFinished();
@@ -346,8 +378,9 @@ class EditorCookService
 	/// The products the most recent cook rebuilt, valid once OnCookFinished fired until the
 	/// next finish. The app hot reloads these through the ResourceManager.
 	public Span<Guid> LastCookedProducts => mLastCookedMain;
-	public int LastCookedCount => mLastCookedCountMain;
-	public int LastFailedCount => mLastFailedCountMain;
+	/// The most recent cook's counts, valid when OnCookFinished fires, like
+	/// LastCookedProducts.
+	public CookSummary LastCookSummary => mLastSummaryMain;
 
 	public CookBadge BadgeFor(Instance instance)
 	{

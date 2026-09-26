@@ -118,8 +118,68 @@ static class EditorCookServiceTests
 		cook.RequestCookFor(roots);
 		PumpUntilIdle(cook, lines);
 		Test.Assert(finished == 3);
-		Test.Assert(cook.LastCookedCount == 0);
+		Test.Assert(cook.LastCookSummary.Cooked == 0);
 		cook.Shutdown();
 		Test.Assert(!cook.IsReady);
+	}
+
+	/// Pumps until done says so, or about five seconds pass: a cook of nothing takes far less.
+	private static bool PumpUntil(EditorCookService cook, delegate bool() done)
+	{
+		for (int i < 5000)
+		{
+			cook.Update();
+			if (done())
+				return true;
+			System.Threading.Thread.Sleep(1);
+		}
+		return false;
+	}
+
+	[Test]
+	public static void ARequestLandsThroughUpdateWithItsSummaryAndShutdownLeavesItQuiescent()
+	{
+		let dir = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_cook_service_summary", .. scope .());
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "Cooked") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		let builders = scope BuilderRegistry(); // nothing buildable: an empty plan
+
+		let cook = scope EditorCookService();
+		Test.Assert(!cook.IsReady);
+		cook.Initialize(project, builders);
+		Test.Assert(cook.IsReady);
+		Test.Assert(cook.IsIdle);
+		Test.Assert(cook.Revision == 0);
+		int finished = 0;
+		cook.OnCookFinished = new [&finished]() => { finished++; };
+
+		// One cook: it runs on the worker and is observed only through Update on this thread.
+		cook.RequestCook(false);
+		Test.Assert(!cook.IsIdle);
+		Test.Assert(PumpUntil(cook, scope [&]() => (cook.Revision == 1) && cook.IsIdle));
+		Test.Assert(finished == 1);
+		let summary = cook.LastCookSummary;
+		Test.Assert(summary.Planned == 0);
+		Test.Assert(summary.Cooked == 0);
+		Test.Assert(summary.Failed == 0);
+		Test.Assert(cook.LastCookedProducts.Length == 0);
+
+		// A request while one is in flight is REMEMBERED and re-issued: two cooks land.
+		cook.RequestCook(false);
+		cook.RequestCook(true); // arrives mid cook, or just after the plan: never lost
+		Test.Assert(PumpUntil(cook, scope [&]() => (cook.Revision == 3) && cook.IsIdle));
+		Test.Assert(finished == 3);
+
+		// Shutdown joins whatever is running and leaves the service quiescent; a request after
+		// it is ignored.
+		cook.RequestCook(false);
+		cook.Shutdown();
+		Test.Assert(!cook.IsReady);
+		cook.RequestCook(false);
+		Test.Assert(cook.IsIdle);
 	}
 }
