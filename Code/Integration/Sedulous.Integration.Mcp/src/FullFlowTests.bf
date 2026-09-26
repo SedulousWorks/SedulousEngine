@@ -126,4 +126,50 @@ static class FullFlowTests
 		Test.Assert(!Has("project_create"));
 		Test.Assert(!Has("host_info"));
 	}
+
+	/// LocateShippingDocs walks up to the checkout layout, accepts the distribution layout,
+	/// and leaves a miss empty.
+	[Test]
+	public static void LocateShippingDocsFindsTheCheckoutAndTheDistribution()
+	{
+		RemoveDirectoryRecursive("mcp_docs_checkout");
+		RemoveDirectoryRecursive("mcp_docs_dist");
+		defer { RemoveDirectoryRecursive("mcp_docs_checkout"); RemoveDirectoryRecursive("mcp_docs_dist"); }
+		for (let d in scope String[]("mcp_docs_checkout", "mcp_docs_checkout/Documentation",
+			"mcp_docs_checkout/Documentation/Shipping", "mcp_docs_checkout/Bin", "mcp_docs_checkout/Bin/Debug",
+			"mcp_docs_dist", "mcp_docs_dist/tool"))
+			CreateDirectory(d);
+		File.WriteAllText("mcp_docs_checkout/Documentation/Shipping/KnownIssues.md", "# known").IgnoreError();
+		File.WriteAllText("mcp_docs_checkout/Documentation/Shipping/McpGuide.md", "# guide").IgnoreError();
+		File.WriteAllText("mcp_docs_dist/KnownIssues.md", "# staged").IgnoreError();
+
+		// The engine checkout: the executable sits under Bin, the docs two levels up.
+		{
+			let paths = scope EngineToolPaths();
+			paths.LocateShippingDocs(scope StringView[]("mcp_docs_checkout/Bin/Debug"));
+			Test.Assert(paths.ShippingDocsDir == "mcp_docs_checkout/Documentation/Shipping");
+			Test.Assert(paths.KnownIssues == "mcp_docs_checkout/Documentation/Shipping/KnownIssues.md");
+		}
+		// A distribution: KnownIssues.md staged beside the tool, no docs directory at all.
+		{
+			let paths = scope EngineToolPaths();
+			paths.LocateShippingDocs(scope StringView[]("mcp_docs_dist/tool"));
+			Test.Assert(paths.KnownIssues == "mcp_docs_dist/KnownIssues.md");
+			Test.Assert(paths.ShippingDocsDir.IsEmpty);
+		}
+		// A later start fills what an earlier one could not.
+		{
+			let paths = scope EngineToolPaths();
+			paths.LocateShippingDocs(scope StringView[]("mcp_docs_dist/tool", "mcp_docs_checkout/Bin/Debug"));
+			Test.Assert(paths.KnownIssues == "mcp_docs_dist/KnownIssues.md"); // the first hit stands
+			Test.Assert(paths.ShippingDocsDir == "mcp_docs_checkout/Documentation/Shipping");
+		}
+		// Nowhere: both fields stay empty and nothing is invented.
+		{
+			let paths = scope EngineToolPaths();
+			paths.LocateShippingDocs(scope StringView[]("mcp_docs_nowhere/q"));
+			Test.Assert(paths.KnownIssues.IsEmpty);
+			Test.Assert(paths.ShippingDocsDir.IsEmpty);
+		}
+	}
 }

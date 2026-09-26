@@ -73,8 +73,7 @@ class Program
 		// this host knows how to find: the curated docs and known issues by the walk up from
 		// the executable, the player beside it, and the data root above.
 		let paths = scope EngineToolPaths();
-		ShippingDocs.FindKnownIssues(paths.KnownIssues);
-		ShippingDocs.FindDirectory(paths.ShippingDocsDir);
+		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .())));
 		BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), paths.PlayerDir);
 		paths.DataRoot.Set(dataRoot);
 		EngineTools.Register(server, session, builders, importers, logBuffer, paths);
