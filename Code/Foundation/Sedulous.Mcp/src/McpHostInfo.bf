@@ -40,7 +40,7 @@ static class McpHostInfo
 		description.Append("Read this first in a new session.");
 
 		let schema = scope SchemaBuilder();
-		server.RegisterTool("host_info", description, schema.Build(),
+		server.RegisterTool("host_info", description, schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
 				outResult.Set("pid", JsonValue.MakeNumber((double)Process.CurrentId));

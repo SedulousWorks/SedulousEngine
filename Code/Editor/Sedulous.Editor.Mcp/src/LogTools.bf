@@ -69,7 +69,7 @@ static class LogTools
 			"""
 			Read the host's captured engine log (cook warnings, scene-load errors, subsystem output, agent markers). Poll incrementally: pass the lastSequence from the previous call as sinceSequence to get only what is new. Returns the newest `limit` matching entries; `dropped` > 0 means the ring overflowed and old entries were lost.
 			""",
-			readSchema.Build(),
+			readSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Read(context, arguments, outResult),
 			context);
 
@@ -80,14 +80,14 @@ static class LogTools
 			"""
 			Write a marker line into the host's engine log (category 'Agent'). Use it to correlate your actions with engine output: drop a marker before a risky operation, then log_read from the returned sequence to see exactly what the engine said afterwards.
 			""",
-			writeSchema.Build(),
+			writeSchema.Build(), .Creates,
 			new (arguments, outResult, outError) => Write(context, arguments, outResult, outError));
 
 		server.RegisterTool("known_issues",
 			"""
 			The engine's curated known-issues register (read-only): user-visible limitations with impact and workaround. Check it when you hit an error or odd behavior BEFORE re-diagnosing: if the symptom matches a recorded issue, report the match and apply its workaround instead of proposing a fix for something already known or deliberately deferred.
 			""",
-			scope SchemaBuilder().Build(),
+			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => KnownIssues(context, outResult, outError));
 	}
 

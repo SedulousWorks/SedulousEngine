@@ -17,7 +17,7 @@ static class AssetTools
 		listSchema.Enum("database", cDatabases, "which content database (default: source)");
 		server.RegisterTool("asset_list",
 			"List the assets in the open project's content database (guid, name, type, group).",
-			listSchema.Build(),
+			listSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => List(session, arguments, outResult, outError));
 
 		let infoSchema = scope SchemaBuilder();
@@ -25,7 +25,7 @@ static class AssetTools
 		infoSchema.Enum("database", cDatabases, "which content database (default: source)");
 		server.RegisterTool("asset_info",
 			"Details about one asset in the open project, by guid.",
-			infoSchema.Build(),
+			infoSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Info(session, arguments, outResult, outError));
 	}
 

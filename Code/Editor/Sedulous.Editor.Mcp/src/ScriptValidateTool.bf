@@ -37,7 +37,7 @@ static class ScriptValidateTool
 			"""
 			COMPILE-CHECK a script source against a backend without saving: the exact compile the asset cook would run. Returns compile errors with line numbers, and on success the harvested metadata (className, handlers, properties, usesCoroutines) - confirm the engine recognized what you wrote. Use as the validation loop while authoring scripts, BEFORE creating the asset. Limits: compile only - a misspelled engine method is a compile error only where the language sees the call; check signatures with script_api.
 			""",
-			schema.Build(),
+			schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Validate(arguments, outResult, outError));
 	}
 

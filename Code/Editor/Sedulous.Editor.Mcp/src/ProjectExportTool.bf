@@ -36,7 +36,7 @@ static class ProjectExportTool
 			"""
 			Export the open project into a shippable dist: cook everything, stage the scenes, pack the content, cook the shader pack, and stage the preset's player template - the same single entry point the editor's Export menu and the export CLI use, so the result is identical. Long-running (a full cook may run). Presets come from the project's export_presets.xml (default: the first; no file = a synthesized host-platform preset). Returns the output directory and the cook/stage/pack counts; run project_health first to catch breakage before a long export.
 			""",
-			schema.Build(),
+			schema.Build(), .Rebuilds,
 			new (arguments, outResult, outError) => Export(context, arguments, outResult, outError),
 			context);
 	}

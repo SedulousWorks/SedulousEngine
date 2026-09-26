@@ -56,7 +56,7 @@ static class ProjectHealthTool
 			"""
 			Full project soundness sweep: dangling references (any asset/scene/settings edge whose target is missing from the source database), sources that no longer deserialize, scenes/prefabs that no longer load, plus the cook state (dirty vs up-to-date, orphaned products, sources with no builder, last-cook failures). Also warns (without flipping sound) on emptyCues: sound cues with no clip assigned. Returns sound=true only when nothing is broken; a dirty count alone is normal - run asset_cook to clear it. Call after destructive changes (delete/rename) or before an export to catch breakage early; fix dangling refs by re-pointing or restoring the missing asset (asset_uses on the missing guid's users shows impact).
 			""",
-			scope SchemaBuilder().Build(),
+			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Health(context, outResult, outError),
 			context);
 	}

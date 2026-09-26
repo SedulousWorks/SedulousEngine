@@ -73,7 +73,7 @@ class McpHttpHostTests
 	{
 		let server = scope McpServer();
 		server.SetServerInfo("http-host", "1.0.0");
-		server.RegisterTool("ping_tool", "answers pong", scope SchemaBuilder().Build(),
+		server.RegisterTool("ping_tool", "answers pong", scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
 				outResult.Set("pong", JsonValue.MakeBool(true));
@@ -272,7 +272,7 @@ class McpHttpHostTests
 	{
 		let server = scope McpServer();
 		var calls = 0;
-		server.RegisterTool("slow", "answers on its third entry", scope SchemaBuilder().Build(),
+		server.RegisterTool("slow", "answers on its third entry", scope SchemaBuilder().Build(), .ReadOnly,
 			new [&calls] (arguments, outResult, outError) =>
 			{
 				calls++;

@@ -44,7 +44,7 @@ static class ScriptCreateTool
 			"""
 			Create a new script asset from the backend's starter template: writes Sources/<name>.<ext> with the tier's starter source and creates the script asset referencing it. Tiers: 'behavior' (per-entity, attach via a Script component), 'level' (per-scene, reserved class Level, set on the scene's script settings), 'game' (the run's orchestrator, reserved class Game). Returns the asset guid and the source file path - edit the FILE to write your gameplay code, use script_validate as the loop, then asset_cook to make the class attachable.
 			""",
-			schema.Build(),
+			schema.Build(), .Creates,
 			new (arguments, outResult, outError) => Create(session, arguments, outResult, outError));
 	}
 

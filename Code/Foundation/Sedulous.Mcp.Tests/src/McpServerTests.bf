@@ -87,12 +87,44 @@ class McpServerTests
 	}
 
 	[Test]
+	public static void ToolsListEmitsEveryToolsAnnotationsAsTheMcpHints()
+	{
+		let server = scope McpServer();
+		server.RegisterTool("echo", "echoes", scope SchemaBuilder().Build(), .ReadOnly,
+			new (arguments, outResult, outError) => true);
+		server.RegisterTool("clobber", "replaces a thing", scope SchemaBuilder().Build(), .Overwrites,
+			new (arguments, outResult, outError) => true);
+		let response = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
+		defer delete response;
+		let tools = response.Get("result").Get("tools");
+		Test.Assert(tools.Count == 2);
+		JsonValue Find(StringView name)
+		{
+			for (int i < tools.Count)
+				if (tools.At(i).Get("name").AsString() == name)
+					return tools.At(i).Get("annotations");
+			return null;
+		}
+		let echo = Find("echo");
+		Test.Assert(echo != null);
+		Test.Assert(echo.Get("readOnlyHint").AsBool());
+		Test.Assert(!echo.Get("destructiveHint").AsBool());
+		Test.Assert(echo.Get("idempotentHint").AsBool());
+		Test.Assert(!echo.Get("openWorldHint").AsBool());
+		let clobber = Find("clobber");
+		Test.Assert(clobber != null);
+		Test.Assert(!clobber.Get("readOnlyHint").AsBool());
+		Test.Assert(clobber.Get("destructiveHint").AsBool());
+		Test.Assert(clobber.Get("idempotentHint").AsBool());
+	}
+
+	[Test]
 	public static void ToolsListEmitsNamesDescriptionsAndSchemas()
 	{
 		let server = scope McpServer();
 		let schema = scope SchemaBuilder();
 		schema.Str("path", "where to look", true);
-		server.RegisterTool("find", "finds things", schema.Build(),
+		server.RegisterTool("find", "finds things", schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => true);
 
 		let response = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
@@ -112,7 +144,7 @@ class McpServerTests
 		let server = scope McpServer();
 		let schema = scope SchemaBuilder();
 		schema.Str("name", "who to greet", true);
-		server.RegisterTool("greet", "says hello", schema.Build(),
+		server.RegisterTool("greet", "says hello", schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
 				outResult.Set("greeting",
@@ -135,7 +167,7 @@ class McpServerTests
 	public static void AToolFailureIsASuccessfulResponseCarryingTheRealText()
 	{
 		let server = scope McpServer();
-		server.RegisterTool("boom", "always fails", scope SchemaBuilder().Build(),
+		server.RegisterTool("boom", "always fails", scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
 				outError.Set("the pipeline is not built");
@@ -161,7 +193,7 @@ class McpServerTests
 		let server = scope McpServer();
 		let schema = scope SchemaBuilder();
 		schema.Str("path", "where", true);
-		server.RegisterTool("find", "finds", schema.Build(),
+		server.RegisterTool("find", "finds", schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => true);
 
 		let response = Ask(server,
@@ -179,7 +211,7 @@ class McpServerTests
 		let server = scope McpServer();
 		let schema = scope SchemaBuilder();
 		schema.Integer("count", "how many", true);
-		server.RegisterTool("take", "takes", schema.Build(),
+		server.RegisterTool("take", "takes", schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => true);
 
 		let response = Ask(server,
@@ -197,7 +229,7 @@ class McpServerTests
 		let schema = scope SchemaBuilder();
 		let choices = scope StringView[](  "read", "write");
 		schema.Enum("mode", choices, "how", true);
-		server.RegisterTool("open", "opens", schema.Build(),
+		server.RegisterTool("open", "opens", schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => true);
 
 		let response = Ask(server,
@@ -213,7 +245,7 @@ class McpServerTests
 		let server = scope McpServer();
 		let schema = scope SchemaBuilder();
 		schema.Str("path", "where", true);
-		server.RegisterTool("find", "finds", schema.Build(),
+		server.RegisterTool("find", "finds", schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => true);
 
 		// This subset does not enforce additionalProperties, so an extra field passes.
@@ -280,9 +312,9 @@ class McpServerTests
 		let server = scope McpServer();
 		let schema = scope SchemaBuilder();
 		schema.Str("message", "what to echo", true);
-		server.RegisterTool("echo", "echoes", schema.Build(),
+		server.RegisterTool("echo", "echoes", schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => true);
-		server.RegisterTool("fail", "always fails", scope SchemaBuilder().Build(),
+		server.RegisterTool("fail", "always fails", scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
 				outError.Set("no");
@@ -321,7 +353,7 @@ class McpServerTests
 	/// shape of a tool waiting on a background job, minus the job.
 	private static void RegisterSlow(McpServer server, SlowTool slow)
 	{
-		server.RegisterTool("slow", "answers after a few re-entries", scope SchemaBuilder().Build(),
+		server.RegisterTool("slow", "answers after a few re-entries", scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
 				slow.Calls++;

@@ -39,7 +39,7 @@ static class ScriptTools
 			"""
 			The per-backend bound scripting API: every script-visible type and member a language actually binds, spelled the way scripts use it, each type with its availability domain (inPlayer=false means authoring only: the type exists for tools and cooks but not in a shipped player). Use it to write correct scripts. Optional 'language' narrows to one backend.
 			""",
-			schema.Build(),
+			schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => ScriptApi(context, arguments, outResult, outError),
 			context);
 	}

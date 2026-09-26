@@ -13,7 +13,7 @@ static class ProjectInfoTool
 	{
 		server.RegisterTool("project_info",
 			"Details about the currently open project (name, directory, sources root).",
-			scope SchemaBuilder().Build(),
+			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Info(session, outResult, outError));
 	}
 

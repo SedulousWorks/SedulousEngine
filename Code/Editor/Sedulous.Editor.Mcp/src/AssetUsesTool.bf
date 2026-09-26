@@ -58,7 +58,7 @@ static class AssetUsesTool
 			"""
 			REVERSE dependency query: every DIRECT user of an asset, with the edge kind - 'reads' (an asset's cook consumes its content), 'references' (an asset's cooked product refers to it at runtime), 'scene-resource' (a scene/prefab component references it), 'prefab-instance' (a scene/prefab instantiates it), plus any project-settings fields pointing at it (default scene, startup script, ...). Computed live from the source database. Call this BEFORE deleting, renaming, or moving an asset; an empty result means nothing in the source database or project settings points at it. Direct users only - re-run on a user to walk the chain.
 			""",
-			schema.Build(),
+			schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Uses(context, arguments, outResult, outError),
 			context);
 	}

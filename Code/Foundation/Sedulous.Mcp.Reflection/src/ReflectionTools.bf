@@ -31,7 +31,7 @@ static class ReflectionTools
 		listSchema.Str("namespace", "only types whose namespace starts with this prefix");
 		server.RegisterTool("type_list",
 			"List reflected types (name + namespace), optionally filtered by a namespace prefix.",
-			listSchema.Build(),
+			listSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => TypeList(arguments, outResult));
 
 		let infoSchema = scope SchemaBuilder();
@@ -39,7 +39,7 @@ static class ReflectionTools
 		infoSchema.Str("namespace", "the exact namespace, to disambiguate a duplicated name");
 		server.RegisterTool("type_info",
 			"Describe a reflected type: its fields, methods (with params/returns), and enum values.",
-			infoSchema.Build(),
+			infoSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => TypeInfo(arguments, outResult, outError));
 	}
 

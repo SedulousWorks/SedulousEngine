@@ -37,7 +37,7 @@ static class SceneTools
 			"""
 			Validate scene/prefab XML without writing anything - use this as the validation loop when authoring scenes. Pass `xml` (raw text) OR `guid` (validate the stored stream). Returns {valid, error?, warnings[], sceneName, entityCount, rootCount}. Component payloads are parsed through every engine manager, so a warning names a genuinely unknown component type.
 			""",
-			validateSchema.Build(),
+			validateSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Validate(session, arguments, outResult, outError));
 
 		RegisterWrite(server, session, "scene_write", McpTools.cSceneDocument, "prefab_write", "scene", false);
@@ -64,7 +64,7 @@ static class SceneTools
 		schema.Str("guid", scope $"the {kind} asset's guid", true);
 		server.RegisterTool(tool,
 			scope $"Read a {kind}'s XML source (the exact text the editor saves and the cook consumes). Returns {{name, xml}}. Read this before editing; write changes back with {kind}_write.",
-			schema.Build(),
+			schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Read(document, arguments, outResult, outError),
 			document);
 	}
@@ -80,7 +80,7 @@ static class SceneTools
 		schema.Str("group", "slash-joined group path for a NEW asset (default root)");
 		server.RegisterTool(tool,
 			scope $"Write a {kind}'s XML source. VALIDATES FIRST and refuses with the reasons on failure (nothing is written then). Pass `guid` to overwrite an existing {kind} OR `name` (+ optional `group` path) to create a new one. On success the XML is stored verbatim as the asset's source of truth.",
-			schema.Build(),
+			schema.Build(), .Overwrites,
 			new (arguments, outResult, outError) => Write(document, arguments, outResult, outError),
 			document);
 	}

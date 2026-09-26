@@ -44,7 +44,7 @@ static class AssetWriteTools
 			"""
 			Import an OS file into the open project: copy it under Sources/ and create the typed asset in the source database, routed by extension. When several importers claim the extension the first is used and the result names the alternatives; pass `importer` to choose. Does not cook - call asset_cook next.
 			""",
-			importSchema.Build(),
+			importSchema.Build(), .Creates,
 			new (arguments, outResult, outError) => Import(context, arguments, outResult, outError),
 			context);
 
@@ -52,7 +52,7 @@ static class AssetWriteTools
 		cookSchema.Boolean("force", "re-cook every buildable asset regardless of cleanliness");
 		server.RegisterTool("asset_cook",
 			"Run the incremental cook over the open project: plan the dirty set and build it into the cooked database. Returns the cook stats (planned/cooked/failed/orphans).",
-			cookSchema.Build(),
+			cookSchema.Build(), .Rebuilds,
 			new (arguments, outResult, outError) => Cook(context, arguments, outResult, outError));
 	}
 

@@ -20,18 +20,21 @@ class Tool
 	public String Description = new .() ~ delete _;
 	/// Owned. Emitted verbatim in tools/list and used to validate a call.
 	public JsonValue InputSchema ~ delete _;
+	/// What the tool does to the world, emitted in tools/list.
+	public ToolAnnotations Annotations;
 	public Handler Run ~ delete _;
 	/// State the handler closes over, OWNED here so it dies with the tool. A Beef closure has
 	/// no destructor of its own, so anything the handler allocates has to hang off something
 	/// that does.
 	public Object Context ~ delete _;
 
-	public this(StringView name, StringView description, JsonValue inputSchema, Handler run,
-		Object context = null)
+	public this(StringView name, StringView description, JsonValue inputSchema,
+		ToolAnnotations annotations, Handler run, Object context = null)
 	{
 		Name.Set(name);
 		Description.Set(description);
 		InputSchema = inputSchema;
+		Annotations = annotations;
 		Run = run;
 		Context = context;
 	}

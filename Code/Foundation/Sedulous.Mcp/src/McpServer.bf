@@ -46,12 +46,13 @@ class McpServer
 	}
 
 	/// Registers a tool. OWNERSHIP of the schema and the handler transfers.
-	/// The context, when given, is owned by the tool and deleted with it: a handler's closure
-	/// cannot clean up after itself.
+	/// The annotations say what the tool does to the world, and have no default: an
+	/// unannotated write would read as a read. The context, when given, is owned by the tool
+	/// and deleted with it: a handler's closure cannot clean up after itself.
 	public void RegisterTool(StringView name, StringView description, JsonValue inputSchema,
-		Tool.Handler handler, Object context = null)
+		ToolAnnotations annotations, Tool.Handler handler, Object context = null)
 	{
-		mTools.Add(new Tool(name, description, inputSchema, handler, context));
+		mTools.Add(new Tool(name, description, inputSchema, annotations, handler, context));
 	}
 
 	/// Registers a static resource. OWNERSHIP of the reader and the context transfers.
@@ -161,6 +162,12 @@ class McpServer
 			entry.Set("name", JsonValue.MakeString(tool.Name));
 			entry.Set("description", JsonValue.MakeString(tool.Description));
 			entry.Set("inputSchema", tool.InputSchema.Clone());
+			let hints = JsonValue.MakeObject();
+			hints.Set("readOnlyHint", JsonValue.MakeBool(tool.Annotations.IsReadOnly));
+			hints.Set("destructiveHint", JsonValue.MakeBool(tool.Annotations.IsDestructive));
+			hints.Set("idempotentHint", JsonValue.MakeBool(tool.Annotations.IsIdempotent));
+			hints.Set("openWorldHint", JsonValue.MakeBool(tool.Annotations.IsOpenWorld));
+			entry.Set("annotations", hints);
 			tools.Add(entry);
 		}
 

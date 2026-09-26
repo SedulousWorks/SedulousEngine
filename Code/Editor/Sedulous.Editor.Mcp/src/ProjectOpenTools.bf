@@ -19,14 +19,14 @@ static class ProjectOpenTools
 		createSchema.Str("name", "the project's display name", true);
 		server.RegisterTool("project_create",
 			"Scaffold a new project (the manifest + the standard directory layout) at a directory. Does not open it - call project_open next.",
-			createSchema.Build(),
+			createSchema.Build(), .Creates,
 			new (arguments, outResult, outError) => Create(arguments, outResult, outError));
 
 		let openSchema = scope SchemaBuilder();
 		openSchema.Str("directory", "the project directory", true);
 		server.RegisterTool("project_open",
 			"Open a project (mounts its source + cooked content databases) as the session's current project.",
-			openSchema.Build(),
+			openSchema.Build(), .Rebuilds,
 			new (arguments, outResult, outError) => Open(session, owner, arguments, outResult, outError));
 	}
 
