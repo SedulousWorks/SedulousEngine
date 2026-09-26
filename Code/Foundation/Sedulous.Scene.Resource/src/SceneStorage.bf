@@ -18,7 +18,8 @@ static class SceneStorage
 	public const String cStreamName = "scene";
 
 	/// Reads the instance's scene stream into `scene`, which must ALREADY have its
-	/// component managers: load deserializes into them rather than creating them.
+	/// component managers: load deserializes into them rather than creating them. Fails with
+	/// the reader's error when it refused the stream.
 	public static Result<void, ErrorCode> LoadScene(Instance instance, Scene scene)
 	{
 		let stream = instance.ReadData(cStreamName);
@@ -31,7 +32,11 @@ static class SceneStorage
 			return .Err(.Internal);
 
 		SceneSerializer.SerializeScene(ar, scene, .Referenced, true, reader.Encoding);
-		return .Ok;
+		// The reader's verdict IS the load's: a refused payload (a stale data version, a
+		// retired section layout, a short stream) leaves the scene partially filled, and every
+		// caller treats a failure as "did not load" rather than showing that partial scene as
+		// the asset.
+		return ar.Status;
 	}
 
 	public static Result<void, ErrorCode> SaveScene(Scene scene, Instance instance)

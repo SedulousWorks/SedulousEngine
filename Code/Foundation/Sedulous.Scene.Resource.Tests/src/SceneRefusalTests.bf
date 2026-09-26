@@ -209,4 +209,45 @@ class SceneRefusalTests
 
 		Test.Assert(scene.EntityCount == 12, "every entity is distinct and addressable");
 	}
+
+	/// LoadScene reports the reader's verdict: a component record re-stamped to a data version
+	/// this build never wrote is a failed load, not a partial scene with a good status.
+	[Test]
+	public static void LoadSceneReportsAStaleComponentPayloadAsAFailedLoad()
+	{
+		let fixture = scope PrefabDatabaseFixture("scratch_scene_load_verdict");
+		let instance = fixture.Database.RootGroup.CreateInstance("level", "Sedulous.Scene.Resource.SceneDocument");
+		{
+			let scene = scope Scene("arena");
+			scene.AddSystem<HealthManager>().Add(scene.CreateEntity("hero")).Value = 5.0f;
+			Test.Assert(SceneStorage.SaveScene(scene, instance) case .Ok);
+		}
+
+		// Re-stamp the Health record's data version in the TEXT stream to one this build never
+		// wrote: what a source saved by a later build looks like.
+		{
+			let stream = instance.ReadData(SceneStorage.cStreamName);
+			Test.Assert(stream != null);
+			let bytes = scope List<uint8>();
+			bytes.Resize((int)stream.Size());
+			stream.Read(bytes);
+			delete stream;
+			let text = scope String((char8*)bytes.Ptr, bytes.Count);
+			let chain = text.IndexOf("name=\"dataVersions\"");
+			Test.Assert(chain >= 0, "the component record carries its version chain");
+			let stamp = "<u32 name=\"version\">";
+			let at = text.IndexOf(stamp, chain);
+			Test.Assert(at >= 0);
+			let digits = at + stamp.Length;
+			let end = text.IndexOf('<', digits);
+			text.Remove(digits, end - digits);
+			text.Insert(digits, "99");
+			Test.Assert(instance.WriteData(SceneStorage.cStreamName, .((uint8*)text.Ptr, text.Length), .Text) case .Ok);
+		}
+
+		let scene = scope Scene();
+		scene.AddSystem<HealthManager>();
+		let loaded = SceneStorage.LoadScene(instance, scene);
+		Test.Assert(loaded case .Err(.NotSupported), "the refused payload is the load's verdict");
+	}
 }
