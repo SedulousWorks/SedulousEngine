@@ -18,6 +18,11 @@ namespace Sedulous.Resource;
 /// gives a struct no destructor, so a field cannot release what it points at, and pretending
 /// otherwise would be a leak with extra steps. A stored binding is retained and forgotten by
 /// the component that holds it, for the same reason.
+///
+/// REFLECTED at run time, fields and methods, whatever T: generic tooling (an agent's
+/// entity_inspect and component_set) reads and writes a reference by its identity through
+/// ReferenceShape, without naming T.
+[Reflect(.NonStaticFields | .Methods)]
 struct Ref<T> where T : class
 {
 	/// The serialized identity. Nil means unset, or an object that only exists in code.

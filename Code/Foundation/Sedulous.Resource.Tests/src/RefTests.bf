@@ -178,4 +178,48 @@ class RefTests
 		reference.Bind(null);
 		Test.Assert(!reference.IsBound);
 	}
+
+	/// A Ref<T> is reference shaped: through its run time reflection, knowing only its type and
+	/// address, a tool reads the identity, and a write either drops the stale binding (no
+	/// manager) or rebinds it to the new identity.
+	[Test]
+	public static void AReferenceIsReadAndWrittenByIdentityWithoutNamingItsType()
+	{
+		let fixture = scope ResourceFixture("scratch_ref_shape");
+		let factory = scope TestProductFactory();
+		fixture.Manager.AddFactory(factory);
+		let first = fixture.Author("a", 2, 2);
+		let second = fixture.Author("b", 3, 3);
+
+		var reference = Ref<TestProduct>(first);
+		reference.Bind(fixture.Manager);
+		Test.Assert(reference.Get.Area == 4);
+		let type = typeof(Ref<TestProduct>);
+		Test.Assert(ReferenceShape.Is(type));
+		Test.Assert(!ReferenceShape.Is(typeof(Guid)));
+		Test.Assert(!ReferenceShape.Is(typeof(TestComponent)));
+		Test.Assert(ReferenceShape.Id(type, &reference) case .Ok(first));
+
+		// With a manager: the identity lands and the binding follows it.
+		Test.Assert(ReferenceShape.Assign(type, &reference, second, fixture.Manager) case .Ok);
+		Test.Assert(reference.Id == second);
+		Test.Assert(reference.IsBound);
+		Test.Assert(reference.Get.Area == 9, "bound to the new resource");
+
+		// With none: the identity lands and the stale binding and any override go.
+		let procedural = scope TestProduct();
+		reference.SetDirect(procedural);
+		Test.Assert(ReferenceShape.Assign(type, &reference, first, null) case .Ok);
+		Test.Assert(reference.Id == first);
+		Test.Assert(!reference.IsBound);
+		Test.Assert(reference.Get == null, "the override went with the binding");
+
+		// Reached as a component field is: the field's type and its address inside the owner.
+		let component = scope TestComponent();
+		component.Mesh.SetId(second);
+		let field = typeof(TestComponent).GetField("Mesh").Value;
+		let address = (uint8*)Internal.UnsafeCastToPtr(component) + field.MemberOffset;
+		Test.Assert(ReferenceShape.Is(field.FieldType));
+		Test.Assert(ReferenceShape.Id(field.FieldType, address) case .Ok(second));
+	}
 }
