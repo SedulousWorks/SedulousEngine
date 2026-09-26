@@ -51,7 +51,7 @@ static class EngineSurfaceScriptTests
 		File.WriteAllText(apiPath, text).IgnoreError();
 		// One bound type per surface type: the facades, the components, the values they pass,
 		// the globals.
-		Test.Assert(api.Count == 87, scope $"{api.Count} bound types");
+		Test.Assert(api.Count == 90, scope $"{api.Count} bound types");
 		// Spot checks of the spelling at the engine's scale.
 		var scene = (ScriptApiType)null;
 		for (let t in api)
@@ -222,5 +222,50 @@ static class EngineSurfaceScriptTests
 		var missing = ScriptValue[1](.FromEntity(bystander, scene));
 		Test.Assert(!vm.Call("game", "float probe(const Entity &in)", missing, ref r), "no character: refused");
 		Test.Assert(!characters.Has(bystander), "reading never adds a character");
+	}
+
+	/// A network identity through its component: a script gates on Authority (the owning
+	/// side drives) and reads Id; replication owns both, so an assignment never compiles.
+	[Test]
+	public static void AScriptReadsANetworkIdentityAndWritesNothing()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("net", "net.as", """
+			int gate(const Entity &in e)
+			{
+				NetworkComponent network = NetworkComponent(e);
+				int owned = (network.Authority == NetworkAuthority::Server) ? 1000 : 0;
+				return owned + int(network.Id.Value);
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "the reads compile");
+
+		let scene = scope Scene("net");
+		defer Sedulous.Script.SceneFacades.Release(scene);
+		let networks = scene.AddSystem<Sedulous.Net.Replication.NetworkComponentManager>();
+		let e = scene.CreateEntity("replicated");
+		networks.Add(e);
+		networks.Get(e).Id = .(42);
+
+		var args = ScriptValue[1](.FromEntity(e, scene));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("net", "int gate(const Entity &in)", args, ref r), "ran");
+		Test.Assert(r.AsInt == 1042, scope $"read {r.AsInt}");
+		Test.Assert(networks.Get(e).Authority == .Server, "read, untouched");
+
+		let writer = scope AngelScriptRuntime();
+		writer.Bind(s);
+		Test.Assert(!writer.Compile("w", "w.as", """
+			void flip(const Entity &in e) { NetworkComponent(e).Authority = NetworkAuthority::Client; }
+			"""), "no setter: the assignment does not compile");
+		Test.Assert(!writer.Compile("w2", "w2.as", """
+			void renumber(const Entity &in e) { NetworkComponent network = NetworkComponent(e); network.Id = NetworkId(7); }
+			"""), "Id has no setter either");
 	}
 }

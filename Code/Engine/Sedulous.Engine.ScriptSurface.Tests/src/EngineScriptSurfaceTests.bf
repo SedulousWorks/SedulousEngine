@@ -40,7 +40,7 @@ static class EngineScriptSurfaceTests
 		Test.Assert(s.Types.Count == EngineScriptSurface.TypeCount);
 		// Bump deliberately when a type is marked or unmarked; a surprise here is a lost or
 		// stray dependency of the root.
-		Test.Assert(EngineScriptSurface.TypeCount == 88, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		Test.Assert(EngineScriptSurface.TypeCount == 91, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]
@@ -102,6 +102,15 @@ static class EngineScriptSurfaceTests
 		Test.Assert(Field(sprite, "TextureAsset") != null);
 		Test.Assert(Field(sprite, "Texture") == null);
 		Test.Assert(Field(s.Find("Sedulous.Engine.Particles.ParticleEffectComponent"), "Effect") == null);
+		// A network identity reads and writes nothing: replication owns it, and the prefab is
+		// its bookkeeping.
+		let network = s.Find("Sedulous.Net.Replication.NetworkComponent");
+		Test.Assert((network != null) && (network.Role == .Component));
+		let authority = Field(network, "Authority");
+		Test.Assert((authority != null) && !authority.CanWrite && (authority.Set == null));
+		let id = Field(network, "Id");
+		Test.Assert((id != null) && !id.CanWrite && (id.Set == null));
+		Test.Assert(Field(network, "Prefab") == null);
 
 		// And what the engine keeps to itself: no subsystem or manager is a script contract by
 		// being linked, and neither is a component with nothing for gameplay code.
@@ -109,7 +118,7 @@ static class EngineScriptSurfaceTests
 		Test.Assert(s.Find("Sedulous.Engine.Animation.SkeletalAnimationComponentManager") == null);
 		Test.Assert(s.Find("Sedulous.Engine.Audio.AudioSubsystem") == null);
 		Test.Assert(s.Find("Sedulous.Engine.Render.RenderSubsystem") == null);
-		for (let excluded in StringView[?]("Sedulous.Engine.Script.ScriptComponent", "Sedulous.Net.Replication.NetworkComponent",
+		for (let excluded in StringView[?]("Sedulous.Engine.Script.ScriptComponent",
 			"Sedulous.Net.Replication.NetworkedTransform", "Sedulous.Engine.Navigation.NavMeshZoneComponent"))
 			Test.Assert(s.Find(excluded) == null, scope String(excluded));
 		for (let t in s.Types)

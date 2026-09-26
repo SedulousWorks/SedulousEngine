@@ -34,6 +34,9 @@ Handlers dispatch **by presence**: implement only what you need.
   `scene.Scripts.Emit("Name", payload)` or `Run.Emit(...)` to everyone listening. In a game run
   the scene's event bus IS the run's bus: one bus per run, heard by every behaviour, each Level
   and the Game. Emit an event once; emitting it through both calls delivers it twice.
+- Networked entities: gate on `NetworkComponent(self).Authority` (`NetworkAuthority::Server` or
+  `Client`): the owning side drives, the rest interpolate. It reads; replication owns the
+  identity, so nothing on it is assignable from a script.
 
 ## The engine from a script
 
@@ -49,7 +52,8 @@ fields and calls its verbs (`character.Move(vx, vz)`, `character.Jump(speed)`). 
 the entity, so it always reaches the component the entity has now; on an entity without one,
 the access fails the handler. An asset field takes the asset's guid (`sprite.TextureAsset`).
 Components with nothing for gameplay code are not script types: the script component itself
-(use `scene.Scripts`), the replication components, and a navigation zone's bake settings.
+(use `scene.Scripts`), the networked transform (replication drives it), and a navigation
+zone's bake settings. A network identity is one, read only.
 
 The facades are the stable verbs and the first place to look; a component is the direct route
 to its data. `script_api` lists both.
@@ -93,3 +97,5 @@ property with its description as the tooltip and saves per instance values over 
   whenever the module builds, cook time included, so keep it to plain values.
 - A plain field is not a property: if the inspector does not show a field, it has no
   annotation.
+- Some engine fields are read only on purpose (a network identity's `Authority` and `Id`):
+  a script reads them, and an assignment fails to compile, since no setter exists.

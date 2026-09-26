@@ -13,11 +13,17 @@ namespace Sedulous.Net.Replication;
 /// own fields are IDENTITY, not replicated state: none carries [Replicated], so the field
 /// codec never touches them.
 ///
-/// Not a script type: replication owns it.
+/// A script READS the identity and writes nothing: Authority is the gate a behaviour needs
+/// (the owning side drives, the rest interpolate) and Id is for logging. Replication owns
+/// both, and neither is itself replicated, so a script assigning Authority would desync the
+/// two sides silently. Prefab is replication's bookkeeping, off the surface.
 [SerializableComponent("net.Network")]
+[Scriptable]
 struct NetworkComponent : ISerializable
 {
+	[Scriptable, ReadOnly]
 	public NetworkId Id = .();
+	[Scriptable, ReadOnly]
 	public NetworkAuthority Authority = .Server;
 	/// The source prefab for a network spawn. Unset means a bare, non prefab networked entity.
 	public Guid Prefab = .();

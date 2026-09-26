@@ -17,7 +17,7 @@ static class PipelineScriptSurfaceTests
 		Test.Assert(s.Types.Count == PipelineScriptSurface.TypeCount);
 		// Bump deliberately when a type is marked or unmarked: the runtime's 88 and the two
 		// Pipeline domain enums.
-		Test.Assert(PipelineScriptSurface.TypeCount == 90, scope $"the pipeline surface has {PipelineScriptSurface.TypeCount} types");
+		Test.Assert(PipelineScriptSurface.TypeCount == 93, scope $"the pipeline surface has {PipelineScriptSurface.TypeCount} types");
 	}
 
 	[Test]
