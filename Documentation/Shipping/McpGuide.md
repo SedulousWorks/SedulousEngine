@@ -15,7 +15,11 @@ one writer), so an agent can work on what the user is looking at. Tell them apar
 `project_create` and `project_open` (the editor's project is the editor's), and the editor's
 long tools (a cook) keep the call open until the editor's own background service finishes:
 give the client a generous timeout rather than polling. The editor adds the page tools
-(`page_list`, `page_open`, `page_reload`, `page_close`) and the scene page's live tools
+(`page_list`, `page_open`, `page_reload`, `page_close`), the action bridge (`action_list`,
+`action_state`, `action_execute`: everything a user can do by menu, chord, toolbar or context
+menu, over the active page, executed unattended; a dialog an action would open is closed as
+cancelled and named under `suppressedDialogs`, so the action most likely did nothing: use a
+dedicated tool or ask the user) and the scene page's live tools
 (`selection_get`, `selection_set`, `simulate_start`, `simulate_stop`, each addressed by the
 page's asset guid). A `scene_write` or `prefab_write` over an asset the user has open reaches
 its page at once: a clean page reloads in place, a page with unsaved edits keeps them and

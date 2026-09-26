@@ -399,6 +399,12 @@ extension EditorApplication
 				}
 			};
 		EditorPageTools.Register(mMcpHost.Server, pageSeams);
+		// The action bridge: everything a user can do by command, unattended (the dialogs an
+		// action opens are suppressed and reported).
+		let actionSeams = new ActionToolSeams();
+		actionSeams.Context = mContext;
+		actionSeams.Ui = mUiHost.Context;
+		EditorActionTools.Register(mMcpHost.Server, actionSeams);
 		EditorMcpHostConfig config = .();
 		config.Port = (uint16)((mConfig.McpPort != 0) ? mConfig.McpPort : settings.Port);
 		config.Token = settings.Token;
