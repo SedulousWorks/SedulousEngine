@@ -52,6 +52,10 @@ class McpHttpHost
 	public uint16 BoundPort => mHttp.BoundPort;
 	public int ListenerCount => mListeners.Count;
 
+	/// A tool call is waiting on a tool that is not finished. A host that idles must keep
+	/// pumping until it is answered.
+	public bool HasPendingRequest => mHttp.PendingRequestCount > 0;
+
 	/// Binds and starts serving. False on an empty token, which is refused BEFORE the socket
 	/// opens: a host that serves without a lock is worse than one that does not start.
 	public bool Start(McpHttpConfig config)

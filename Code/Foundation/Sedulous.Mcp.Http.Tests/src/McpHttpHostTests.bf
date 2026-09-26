@@ -263,4 +263,68 @@ class McpHttpHostTests
 		Test.Assert(host.ListenerCount == 0);
 		Test.Assert(host.Broadcast("progress", "anyone?") == 0);
 	}
+
+	/// A tool that is not finished keeps the caller waiting across pumps, reported as a
+	/// pending request in between so an idling host knows to keep pumping, and a later pump
+	/// answers it.
+	[Test]
+	public static void ANotFinishedToolKeepsTheCallerWaitingAcrossPumps()
+	{
+		let server = scope McpServer();
+		var calls = 0;
+		server.RegisterTool("slow", "answers on its third entry", scope SchemaBuilder().Build(),
+			new [&calls] (arguments, outResult, outError) =>
+			{
+				calls++;
+				if (calls < 3)
+					return .NotFinished;
+				outResult.Set("calls", JsonValue.MakeNumber(calls));
+				return .Answered;
+			});
+
+		let host = scope McpHttpHost(server);
+		McpHttpConfig config = .();
+		config.Token = cToken;
+		Test.Assert(host.Start(config));
+		let port = host.BoundPort;
+		Test.Assert(port != 0);
+		Test.Assert(!host.HasPendingRequest);
+
+		var done = false;
+		var status = (int32)0;
+		let body = scope String();
+		let client = scope Thread(new [&done, &status, &port, &body]() =>
+			{
+				status = Fetch(port, Post(cToken,
+					"{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"slow\",\"arguments\":{}}}"), body);
+				done = true;
+			});
+		client.Start(false);
+
+		// Pumped by hand so the wait is observable.
+		var sawPending = false;
+		var answered = 0;
+		for (int i = 0; (i < cPumpLimit) && !done; i++)
+		{
+			answered += host.Pump();
+			if (host.HasPendingRequest)
+				sawPending = true;
+			Thread.Sleep(1);
+		}
+		client.Join();
+
+		Test.Assert(status == 200);
+		let response = JsonValue.Parse(body);
+		Test.Assert(response != null);
+		defer delete response;
+		Test.Assert(response.Get("id").AsInt() == 5);
+		Test.Assert(!response.Get("result").Get("isError").AsBool());
+		let payload = JsonValue.Parse(response.Get("result").Get("content").At(0).Get("text").AsString());
+		defer delete payload;
+		Test.Assert(payload.Get("calls").AsInt() == 3);
+		Test.Assert(calls == 3);
+		Test.Assert(sawPending);
+		Test.Assert(answered == 1);
+		Test.Assert(!host.HasPendingRequest);
+	}
 }
