@@ -102,6 +102,9 @@ extension EditorApplication
 							let content = (mainRw != null) ? mainRw.Window.ContentScale : 1.0f;
 							BakeEditorIcons(content * uiScale);
 						};
+					// The MCP host follows the saved preference at once: started, moved to the
+					// new port, or stopped.
+					dialog.OnMcpSettingsApplied = new () => { StartMcpHost(); };
 					dialog.Show(mUiHost.Context);
 				});
 		}

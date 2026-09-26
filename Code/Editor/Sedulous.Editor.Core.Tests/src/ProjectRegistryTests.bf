@@ -203,6 +203,26 @@ static class ProjectRegistryTests
 	}
 
 	[Test]
+	public static void TheMcpSectionTakesThePreferencesFieldsRefusingABadPort()
+	{
+		let mcp = scope EditorMcpSettings();
+		mcp.Token.Set("old");
+		Test.Assert(mcp.ApplyFromPreferences(true, "7500", "new"));
+		Test.Assert(mcp.Enabled);
+		Test.Assert(mcp.Port == 7500);
+		Test.Assert(mcp.Token == "new");
+		// A port outside 1024..65535, or not a number, is refused and the port stands.
+		Test.Assert(!mcp.ApplyFromPreferences(true, "80", "new"));
+		Test.Assert(!mcp.ApplyFromPreferences(true, "70000", "new"));
+		Test.Assert(!mcp.ApplyFromPreferences(true, "lots", "new"));
+		Test.Assert(mcp.Port == 7500);
+		// Disabling with an empty token: off, and the next enable mints a fresh secret.
+		Test.Assert(mcp.ApplyFromPreferences(false, "7500", ""));
+		Test.Assert(!mcp.Enabled);
+		Test.Assert(mcp.Token.IsEmpty);
+	}
+
+	[Test]
 	public static void AStoreWithEverySectionRoundTrips()
 	{
 		EditorSerializables.RegisterAll();

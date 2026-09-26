@@ -10,7 +10,8 @@ namespace Sedulous.Editor.App;
 /// <user-data>/editor.settings.xml; distinct from ProjectSettingsDialog, which edits the
 /// project manifest. Fields: the export templates root (blank means $SEDULOUS_TEMPLATES_DIR,
 /// else <user-data>/templates, shown as the placeholder), the editor font paths (blank is
-/// the built-in chain), the UI scale, and every domain-contributed category. Save writes
+/// the built-in chain), the UI scale, agent access (the MCP host), and every
+/// domain-contributed category. Save writes
 /// the sections back and persists them; font changes apply on the next start. Cancel
 /// discards.
 class EditorPreferencesDialog : Dialog
@@ -18,6 +19,9 @@ class EditorPreferencesDialog : Dialog
 	/// Fired on Apply with the new UI scale so the app can apply it live (the host's scale
 	/// plus an icon re-bake); the saved setting covers the next launch. Owned.
 	public delegate void(float scale) OnUiScaleApplied ~ delete _;
+	/// Fired on Apply after the MCP section changed, so the app restarts (or stops) the host
+	/// for the open project without a reopen. Owned.
+	public delegate void() OnMcpSettingsApplied ~ delete _;
 
 	private EditorContext mContext;
 	private Settings mSettings;
@@ -27,6 +31,9 @@ class EditorPreferencesDialog : Dialog
 	private EditText mMonoFontEdit = null;
 	private Slider mUiScaleSlider = null;
 	private Label mUiScaleLabel = null;
+	private CheckBox mMcpEnabled = null;
+	private EditText mMcpPortEdit = null;
+	private EditText mMcpTokenEdit = null;
 
 	public this(EditorContext context, Settings store) : base("Preferences")
 	{
@@ -86,6 +93,30 @@ class EditorPreferencesDialog : Dialog
 		}
 		{
 			let note = new Label("Font changes apply on restart.");
+			note.FontSize.Value = 11.0f;
+			note.TextColor.Value = Color(0.55f, 0.55f, 0.55f, 1.0f);
+			column.AddView(note);
+		}
+
+		// Agent access: the MCP host over the open project (EditorMcpSettings).
+		{
+			let header = new Label("Agent access (MCP)");
+			header.FontSize.Value = 13.0f;
+			column.AddView(header);
+			let mcp = store.Find<EditorMcpSettings>();
+			let check = new CheckBox("Serve the open project to agents", (mcp != null) && mcp.Enabled);
+			check.FontSize.Value = 12.0f;
+			check.TooltipText.Set("An MCP host on 127.0.0.1 for the project this editor has open; the token below is the secret an agent presents");
+			mMcpEnabled = check;
+			var style = LayoutStyle();
+			style.Width = SizeSpec.Match();
+			style.Height = SizeSpec.Fixed(Unit.Dp(22.0f));
+			column.AddView(check, style);
+			let port = (mcp != null) ? mcp.Port : EditorMcpSettings.DefaultPort;
+			mMcpPortEdit = AddTextRow(column, "MCP port", scope $"{port}");
+			mMcpTokenEdit = AddTextRow(column, "MCP token", (mcp != null) ? mcp.Token : "");
+			mMcpTokenEdit.Placeholder.Value.Set("minted on first enable");
+			let note = new Label("Applies to the open project on Save; the token is also written to <user-data>/mcp-token for a local agent.");
 			note.FontSize.Value = 11.0f;
 			note.TextColor.Value = Color(0.55f, 0.55f, 0.55f, 1.0f);
 			column.AddView(note);
@@ -178,6 +209,11 @@ class EditorPreferencesDialog : Dialog
 		mSettings.MarkChanged<EditorUiSettings>();
 		if (OnUiScaleApplied != null)
 			OnUiScaleApplied(uiScale); // live: the host scale and the icon re-bake
+		if (!mSettings.Section<EditorMcpSettings>().ApplyFromPreferences(mMcpEnabled.IsChecked.Value, mMcpPortEdit.Text, mMcpTokenEdit.Text))
+			mContext.Notify(.Warning, "MCP port must be a number in 1024..65535, kept the old one.");
+		mSettings.MarkChanged<EditorMcpSettings>();
+		if (OnMcpSettingsApplied != null)
+			OnMcpSettingsApplied(); // live: the host follows the new enabled, port and token
 		if (EditorSettingsStore.SaveToUserData(mSettings) case .Ok)
 			mContext.SetStatus("Preferences saved.");
 		else
