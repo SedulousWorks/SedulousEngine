@@ -136,6 +136,14 @@ class SceneEditContext
 		=> mCommands.Execute(new SetResourceRefCommand<T>(this, entity, componentType, property,
 			value, resources));
 
+	/// The same for a reference-shaped field known only by its type (an agent's
+	/// component_set): no T is named. `resources` is nullable; the reference then binds on the
+	/// next resolve.
+	public void SetComponentReference(Guid entity, Type componentType, StringView property,
+		Guid value, ResourceManager resources)
+		=> mCommands.Execute(new SetReferenceCommand(this, entity, componentType, property,
+			value, resources));
+
 	/// Points a component's EntityRef field at another entity.
 	public void SetComponentEntityRef(Guid entity, Type componentType, StringView property,
 		Guid target)
