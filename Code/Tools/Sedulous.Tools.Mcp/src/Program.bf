@@ -53,22 +53,9 @@ class Program
 
 		let server = scope McpServer();
 		server.SetServerInfo("engine-mcp", "0.1.0");
-		ReflectionTools.Register(server);
-		ScriptTools.Register(server, PipelineRegistration.Surface);
 
-		// The host's current project, populated by project_open and create.
-		let session = scope ProjectSession();
-		ProjectTools.Register(server, session);
-		AssetTools.Register(server, session);
-		AssetWriteTools.Register(server, session, builders, importers);
-		AssetUsesTool.Register(server, session, builders);
-		ProjectHealthTool.Register(server, session, builders);
-		SceneTools.Register(server, session);
-		ScriptValidateTool.Register(server);
-		ScriptCreateTool.Register(server, session);
-		LogTools.Register(server, logBuffer, ShippingDocs.FindKnownIssues(.. scope .()));
-		// project_export: the ONE export entry point. The engine data root, whose Shaders
-		// the export cooks: --data-root, else the Data/.dataroot walk from this tool.
+		// The engine data root, whose Shaders the export cooks: --data-root, else the
+		// Data/.dataroot walk from this tool.
 		let dataRoot = scope String();
 		ResolveDataRoot(args, dataRoot);
 		if (dataRoot.IsEmpty)
@@ -76,13 +63,23 @@ class Program
 			Console.Error.WriteLine("Sedulous.Tools.Mcp: no data root (put Data/ with its .dataroot marker beside the tool, or pass --data-root <dir>)");
 			return 1;
 		}
-		let playerDir = BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), .. scope .());
-		ProjectExportTool.Register(server, session, builders, playerDir, dataRoot);
 
-		let docs = ShippingDocs.FindDirectory(.. scope .());
-		if (!docs.IsEmpty)
-			ShippingDocs.Register(server, docs);
-		ProjectResources.Register(server, session);
+		// The session every tool works through. This host OWNS the project it opens:
+		// project_open stores it in the owner and points the session at it. Both outlive
+		// the server.
+		let owner = scope ProjectOwner();
+		let session = scope ProjectSession();
+		// The engine surface every host serves, one list in Editor.Mcp, with the paths only
+		// this host knows how to find: the curated docs and known issues by the walk up from
+		// the executable, the player beside it, and the data root above.
+		let paths = scope EngineToolPaths();
+		ShippingDocs.FindKnownIssues(paths.KnownIssues);
+		ShippingDocs.FindDirectory(paths.ShippingDocsDir);
+		BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), paths.PlayerDir);
+		paths.DataRoot.Set(dataRoot);
+		EngineTools.Register(server, session, builders, importers, logBuffer, paths);
+		// This host's additions: an agent opens, or scaffolds, the project it wants.
+		ProjectOpenTools.Register(server, session, owner);
 
 		// The build stamp is the executable's own write time: what was linked, whatever
 		// was or was not recompiled into it.

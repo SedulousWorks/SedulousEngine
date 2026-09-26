@@ -6,11 +6,13 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Mcp;
 
-/// project_create / project_open / project_info: an agent scaffolds and opens a project
-/// HEADLESSLY, the editor closed, and inspects it, over the headless EditorProject.
-static class ProjectTools
+/// project_create and project_open: the STDIO host's additions, which let an agent scaffold
+/// and open a project HEADLESSLY, the editor closed. What project_open opens goes into the
+/// owner and the session is pointed at it; the editor host, whose project is the editor's own,
+/// registers neither.
+static class ProjectOpenTools
 {
-	public static void Register(McpServer server, ProjectSession session)
+	public static void Register(McpServer server, ProjectSession session, ProjectOwner owner)
 	{
 		let createSchema = scope SchemaBuilder();
 		createSchema.Str("directory", "path to create the project at", true);
@@ -25,12 +27,7 @@ static class ProjectTools
 		server.RegisterTool("project_open",
 			"Open a project (mounts its source + cooked content databases) as the session's current project.",
 			openSchema.Build(),
-			new (arguments, outResult, outError) => Open(session, arguments, outResult, outError));
-
-		server.RegisterTool("project_info",
-			"Details about the currently open project (name, directory, sources root).",
-			scope SchemaBuilder().Build(),
-			new (arguments, outResult, outError) => Info(session, outResult, outError));
+			new (arguments, outResult, outError) => Open(session, owner, arguments, outResult, outError));
 	}
 
 	private static bool Create(JsonValue arguments, JsonValue outResult, String outError)
@@ -47,7 +44,7 @@ static class ProjectTools
 		return true;
 	}
 
-	private static bool Open(ProjectSession session, JsonValue arguments, JsonValue outResult, String outError)
+	private static bool Open(ProjectSession session, ProjectOwner owner, JsonValue arguments, JsonValue outResult, String outError)
 	{
 		let directory = McpTools.ArgString(arguments, "directory", .. scope .());
 		let opened = EditorProject.Open(directory);
@@ -58,21 +55,7 @@ static class ProjectTools
 		}
 		outResult.Set("name", JsonValue.MakeString(opened.Name));
 		outResult.Set("directory", JsonValue.MakeString(opened.Directory));
-		session.Open(opened);
-		return true;
-	}
-
-	private static bool Info(ProjectSession session, JsonValue outResult, String outError)
-	{
-		if (!session.IsOpen)
-		{
-			outError.Append(McpTools.cNoProject);
-			return false;
-		}
-		let project = session.Project;
-		outResult.Set("name", JsonValue.MakeString(project.Name));
-		outResult.Set("directory", JsonValue.MakeString(project.Directory));
-		outResult.Set("sourcesRoot", JsonValue.MakeString(project.SourcesRoot(.. scope .())));
+		owner.Open(session, opened);
 		return true;
 	}
 }

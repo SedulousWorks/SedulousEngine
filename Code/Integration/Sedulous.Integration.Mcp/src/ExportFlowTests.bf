@@ -41,7 +41,9 @@ static class ExportFlowTests
 		PipelineRegistration.RegisterAllBuilders(builders);
 		let server = scope McpServer();
 		let session = scope ProjectSession();
-		ProjectTools.Register(server, session);
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
 		ProjectExportTool.Register(server, session, builders, playerDir, dataRoot);
 
 		let noProject = scope String();

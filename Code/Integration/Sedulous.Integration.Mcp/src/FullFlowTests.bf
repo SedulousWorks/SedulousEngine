@@ -11,6 +11,7 @@ using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
 using Sedulous.Script.Pipeline;
+using Sedulous.Editor.Core;
 using Sedulous.Editor.Mcp;
 using static Sedulous.Integration.Mcp.McpCalls;
 
@@ -33,13 +34,14 @@ static class FullFlowTests
 		PipelineRegistration.RegisterAllBuilders(builders);
 		PipelineRegistration.RegisterAllImporters(importers);
 
+		// The flow runs over the SHARED engine surface (what every host serves) plus the
+		// stdio host's project_create and project_open.
 		let server = scope McpServer();
+		let logBuffer = scope EditorLogBuffer();
 		let session = scope ProjectSession();
-		ProjectTools.Register(server, session);
-		AssetTools.Register(server, session);
-		AssetWriteTools.Register(server, session, builders, importers);
-		SceneTools.Register(server, session);
-		ProjectHealthTool.Register(server, session, builders);
+		let owner = scope ProjectOwner();
+		EngineTools.Register(server, session, builders, importers, logBuffer, scope EngineToolPaths());
+		ProjectOpenTools.Register(server, session, owner);
 
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Full"));
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
@@ -83,5 +85,45 @@ static class FullFlowTests
 		Test.Assert(health.Get("sound").AsBool());
 		Test.Assert(health.Get("dirty").AsInt() == 0, scope $"{health.Get("dirty").AsInt()} dirty");
 		Test.Assert(health.Get("failedCooks").AsInt() == 0);
+	}
+
+	/// EngineTools registers exactly cEngineToolCount tools: the surface every host serves,
+	/// and only that.
+	[Test]
+	public static void EngineToolsRegistersExactlyTheSharedSurface()
+	{
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let builders = scope BuilderRegistry();
+		let importers = scope ImporterRegistry();
+		let logBuffer = scope EditorLogBuffer();
+		let session = scope ProjectSession();
+
+		let server = scope McpServer();
+		EngineTools.Register(server, session, builders, importers, logBuffer, scope EngineToolPaths());
+		Test.Assert(server.ToolCount == EngineTools.cEngineToolCount, scope $"{server.ToolCount} tools");
+
+		let listed = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
+		defer delete listed;
+		let tools = listed.Get("result").Get("tools");
+		bool Has(StringView name)
+		{
+			for (int i < tools.Count)
+				if (tools.At(i).Get("name").AsString() == name)
+					return true;
+			return false;
+		}
+		// Spot checks across the families the root gathers ...
+		Test.Assert(Has("type_list"));
+		Test.Assert(Has("script_api"));
+		Test.Assert(Has("project_info"));
+		Test.Assert(Has("asset_cook"));
+		Test.Assert(Has("scene_write"));
+		Test.Assert(Has("project_export"));
+		Test.Assert(Has("known_issues"));
+		// ... and what a HOST adds itself: never part of the shared surface.
+		Test.Assert(!Has("project_open"));
+		Test.Assert(!Has("project_create"));
+		Test.Assert(!Has("host_info"));
 	}
 }

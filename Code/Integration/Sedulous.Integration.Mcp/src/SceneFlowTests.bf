@@ -25,7 +25,9 @@ static class SceneFlowTests
 		defer RemoveDirectoryRecursive(dir);
 		let server = scope McpServer();
 		let session = scope ProjectSession();
-		ProjectTools.Register(server, session);
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
 		SceneTools.Register(server, session);
 		ProjectResources.Register(server, session);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "SceneFix"));
@@ -145,7 +147,9 @@ static class SceneFlowTests
 		let server = scope McpServer();
 		server.SetServerInfo("test-host", "9.9.9");
 		let session = scope ProjectSession();
-		ProjectTools.Register(server, session);
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
 		McpHostInfo.Register(server, "stamp-abc123", new (outState) =>
 			{
 				outState.Set("projectOpen", JsonValue.MakeBool(session.IsOpen));

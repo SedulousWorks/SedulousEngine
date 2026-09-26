@@ -27,7 +27,9 @@ static class ProjectFlowTests
 		let server = scope McpServer();
 		let session = scope ProjectSession();
 		ReflectionTools.Register(server);
-		ProjectTools.Register(server, session);
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
 
 		// The surface an agent lists before guessing.
 		let listed = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
@@ -58,7 +60,9 @@ static class ProjectFlowTests
 	{
 		let server = scope McpServer();
 		let session = scope ProjectSession();
-		ProjectTools.Register(server, session);
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
 		let text = scope String();
 		CallErr(server, "project_info", Obj(), text);
 		Test.Assert(text.Contains("project_open"));
@@ -71,7 +75,9 @@ static class ProjectFlowTests
 		defer RemoveDirectoryRecursive(dir);
 		let server = scope McpServer();
 		let session = scope ProjectSession();
-		ProjectTools.Register(server, session);
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
 		AssetTools.Register(server, session);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Assets"));
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
@@ -119,7 +125,9 @@ static class ProjectFlowTests
 
 		let server = scope McpServer();
 		let session = scope ProjectSession();
-		ProjectTools.Register(server, session);
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
 		AssetTools.Register(server, session);
 		AssetWriteTools.Register(server, session, builders, importers);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Write"));
@@ -186,7 +194,9 @@ static class ProjectFlowTests
 		PipelineRegistration.RegisterAllImporters(importers);
 		let server = scope McpServer();
 		let session = scope ProjectSession();
-		ProjectTools.Register(server, session);
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
 		AssetWriteTools.Register(server, session, builders, importers);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Hint"));
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));

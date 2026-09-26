@@ -3,22 +3,14 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Mcp;
 
-/// The MCP host's current project: null until project_open succeeds, replaced by the next
-/// open. Owned by the host and must outlive the server the tools are registered on, since
-/// every project tool reads or mutates it.
+/// The project every tool works on, null until one is open.
+///
+/// NON OWNING: the editor host points it at the editor's live project, so there is one
+/// content database and one writer, and the stdio host at the project it opened and keeps in
+/// its ProjectOwner. The project must outlive the server the tools are registered on.
 class ProjectSession
 {
-	public EditorProject Project ~ delete _;
+	public EditorProject Project = null;
 
 	public bool IsOpen => Project != null;
-
-	/// Takes ownership of `project`, releasing whatever was open.
-	public void Open(EditorProject project)
-	{
-		if (Project != null)
-			delete Project;
-		Project = project;
-	}
-
-	public void Close() => Open(null);
 }

@@ -73,7 +73,9 @@ static class ScriptToolsTests
 		defer PipelineRegistration.Teardown();
 		let server = scope McpServer();
 		let session = scope ProjectSession();
-		ProjectTools.Register(server, session);
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
 		AssetTools.Register(server, session);
 		ScriptValidateTool.Register(server);
 		ScriptCreateTool.Register(server, session);

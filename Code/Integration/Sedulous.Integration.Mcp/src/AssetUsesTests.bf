@@ -37,7 +37,9 @@ static class AssetUsesTests
 		PipelineRegistration.RegisterAllBuilders(builders);
 		let server = scope McpServer();
 		let session = scope ProjectSession();
-		ProjectTools.Register(server, session);
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
 		AssetUsesTool.Register(server, session, builders);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Uses"));
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
@@ -119,7 +121,9 @@ static class AssetUsesTests
 		PipelineRegistration.RegisterAllBuilders(builders);
 		let server = scope McpServer();
 		let session = scope ProjectSession();
-		ProjectTools.Register(server, session);
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
 		ProjectHealthTool.Register(server, session, builders);
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Health"));
 		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
