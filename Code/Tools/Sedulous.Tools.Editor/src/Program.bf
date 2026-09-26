@@ -23,6 +23,8 @@ namespace Sedulous.Tools.Editor;
 ///
 /// Usage: Sedulous.Tools.Editor [projectDirectory] [--project <dir>] [--data-root <dir>]
 ///   [--exit-after <s>] [--rebuild-after <s>] [--screenshot <png> [--screenshot-after <s>]]
+///   [--mcp] [--mcp-port <n>] (the MCP host for this run: agent access to the open project
+///   over 127.0.0.1; the persisted preference is in Preferences)
 ///   [--seed] [--seed-primitives] [--version]
 ///   GPU: [--vulkan|--dx12|--webgpu|--null-gpu] [--gpu-validation|--no-gpu-validation]
 ///   (validation defaults on for a dev build, off for an optimized one).
@@ -133,11 +135,18 @@ class Program
 				config.ScreenshotPath.Set(args[i + 1]);
 			else if (args[i] == "--screenshot-after")
 				config.ScreenshotAfterSeconds = float.Parse(args[i + 1]).GetValueOrDefault();
+			else if (args[i] == "--mcp-port")
+			{
+				config.McpPort = uint32.Parse(args[i + 1]).GetValueOrDefault();
+				config.McpEnabled = true; // naming a port means serving on it
+			}
 		}
 		for (let arg in args)
 		{
 			if (arg == "--seed")
 				config.SeedOnScaffold = true; // a scaffolded project also gets the starter content
+			else if (arg == "--mcp")
+				config.McpEnabled = true; // the MCP host for this run, whatever the preference says
 			else if (arg == "--seed-primitives")
 			{
 				config.SeedOnScaffold = true;

@@ -11,6 +11,7 @@ using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Mcp;
 using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.App;
@@ -160,6 +161,7 @@ extension EditorApplication
 		// still waiting to re-issue.
 		delete mContext.CookBusy;
 		mContext.CookBusy = new () => mCookService.IsReady && !mCookService.IsIdle;
+		StartMcpHost(); // the agent surface over this project, if enabled
 		// Background jobs read the source database structure and pack cooked files from their
 		// worker: database mutations and new cooks hold off while one runs.
 		delete mCookService.ExternalMutationLock;
@@ -330,6 +332,59 @@ extension EditorApplication
 		return false;
 	}
 
+	/// The MCP host rides the project: started, when the preference or --mcp enables it, once
+	/// the project's services are up.
+	private void StartMcpHost()
+	{
+		StopMcpHost();
+		let settings = mEditorSettings.Section<EditorMcpSettings>();
+		if (!(settings.Enabled || mConfig.McpEnabled) || (mProject == null))
+			return;
+		if (mConfig.LogBuffer == null)
+		{
+			GlobalLog(.Warning, "MCP: no log capture was installed, the host is not started");
+			return;
+		}
+		if (settings.Token.IsEmpty)
+		{
+			// First enable: mint the secret once and keep it, so the token file and the
+			// Preferences display stay valid across runs.
+			EditorMcpSettings.GenerateToken(settings.Token);
+			if (EditorSettingsStore.SaveToUserData(mEditorSettings) case .Err)
+				GlobalLog(.Warning, "MCP: the minted token could not be saved to the editor settings; it changes on the next run");
+		}
+		let paths = scope EngineToolPaths();
+		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .())));
+		BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), paths.PlayerDir);
+		paths.DataRoot.Set(mConfig.DataRoot);
+		mMcpHost = new EditorMcpHost(mProject, mConfig.LogBuffer, mBuilders, mContext.Importers,
+			paths, BuildStamp(.. scope .()));
+		mMcpHost.OnToolFinished = new (tool, isError) =>
+			{
+				mContext.SetStatus(scope $"MCP: {tool} {isError ? "failed" : "done"}");
+			};
+		EditorMcpHostConfig config = .();
+		config.Port = (uint16)((mConfig.McpPort != 0) ? mConfig.McpPort : settings.Port);
+		config.Token = settings.Token;
+		let userData = GetUserDataDirectory(.. scope .());
+		config.TokenFileDirectory = userData;
+		if (!mMcpHost.Start(config))
+		{
+			GlobalLog(.Warning, scope $"MCP: could not listen on 127.0.0.1:{config.Port}, another editor may hold the port; pass --mcp-port <n> or change it in Preferences");
+			DeleteAndNullify!(mMcpHost);
+			return;
+		}
+		GlobalLog(.Information, scope $"MCP: listening on 127.0.0.1:{mMcpHost.BoundPort} (the token is in <user-data>/{EditorMcpHost.cTokenFileName})");
+		mContext.SetStatus(scope $"MCP host on 127.0.0.1:{mMcpHost.BoundPort}");
+	}
+
+	/// Stops and releases the host, before the project's services go; a waiting agent sees
+	/// its connection close.
+	private void StopMcpHost()
+	{
+		DeleteAndNullify!(mMcpHost);
+	}
+
 	/// The inverse of OpenProjectAt: saves the layout and pages, closes every page, shuts
 	/// the cook service down, detaches the resources from the embedded runtime, releases
 	/// the project, and returns to the manager. Pages must already be clean or confirmed.
@@ -340,6 +395,7 @@ extension EditorApplication
 			EnterManagerMode();
 			return;
 		}
+		StopMcpHost(); // no agent call may run against services that are going away
 		mCookService.Shutdown(); // joins any in-flight cook before the databases go away
 		DeleteAndNullify!(mThumbnailStage); // unstages and drops GPU objects while the renderer lives
 		mThumbnailService.Reset(); // in-flight slots outlive harmlessly; entries drop

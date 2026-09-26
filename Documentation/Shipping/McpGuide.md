@@ -6,6 +6,16 @@ and script workflow with the editor closed. This is the operating manual for any
 connected to it. It is itself served as `docs://McpGuide.md`, so you can re-read it over
 the wire.
 
+## Two hosts, one surface
+
+The headless host above is `Sedulous.Tools.Mcp`. The EDITOR serves the same engine tools over
+HTTP (`engine-editor-mcp`) for the project it has open (the live one, one content database,
+one writer), so an agent can work on what the user is looking at. Tell them apart by
+`host_info.serverName` and `host_info.host.kind`. What differs: the stdio host has
+`project_create` and `project_open` (the editor's project is the editor's), and the editor's
+long tools (a cook) keep the call open until the editor's own background service finishes:
+give the client a generous timeout rather than polling.
+
 ## First moves in a session
 
 1. `tools/list`: read the real surface before guessing; the descriptions carry the contract.

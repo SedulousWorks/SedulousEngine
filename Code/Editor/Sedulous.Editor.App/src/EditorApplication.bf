@@ -71,6 +71,8 @@ class EditorApplication : IApplication
 	/// Exe-assembled through RegisterEditors.
 	private BuilderRegistry mBuilders = new .() ~ delete _;
 	private EditorCookService mCookService = new .() ~ delete _;
+	/// Per project: started after the services are up, gone before they go.
+	private EditorMcpHost mMcpHost = null ~ delete _;
 	private ThumbnailService mThumbnailService = new .() ~ delete _;
 	/// The GPU half, per project.
 	private ThumbnailStage mThumbnailStage = null ~ delete _;
@@ -596,6 +598,8 @@ class EditorApplication : IApplication
 	{
 		if (mThumbnailStage != null)
 			mThumbnailStage.Update(); // the next queued GPU thumbnail job
+		if (mMcpHost != null)
+			mMcpHost.Pump(); // answers a waiting agent call HERE: tools touch main-thread state
 		// A periodic resident-product report while a project is open: the background work
 		// after open is what accumulates, so a single post-open snapshot misses it.
 		if (mProject != null)
@@ -833,6 +837,7 @@ class EditorApplication : IApplication
 	public void OnShutdown(IApplicationHost host)
 	{
 		FontAtlasBakerFactory.SetAtlasCache(null); // ours dies with this app
+		StopMcpHost();
 		mCookService.Shutdown(); // joins any in-flight cook before the databases go away
 		// Page resources release while the device and windows are alive; pages destroy their
 		// scenes in the runtime context, so it outlives them.

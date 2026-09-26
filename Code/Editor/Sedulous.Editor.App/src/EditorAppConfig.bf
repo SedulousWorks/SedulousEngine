@@ -49,6 +49,11 @@ class EditorAppConfig
 	/// never), once ScreenshotAfterSeconds have run, so a run proves what it drew.
 	public String ScreenshotPath = new .() ~ delete _;
 	public float ScreenshotAfterSeconds = 0.0f;
+	/// The MCP host for THIS run: --mcp enables it regardless of the preference and
+	/// --mcp-port <n> picks its port (0 is the preference's), so an agent that launches the
+	/// editor itself needs no UI. EditorMcpSettings is the persisted preference.
+	public bool McpEnabled = false;
+	public uint32 McpPort = 0;
 
 	/// From Configure: registers the engine subsystems. Owned.
 	public delegate void(IApplicationHost host) ConfigureEngine ~ delete _;
