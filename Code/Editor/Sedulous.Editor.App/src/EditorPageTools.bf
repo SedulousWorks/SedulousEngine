@@ -75,7 +75,7 @@ static class EditorPageTools
 		reloadSchema.Str("guid", "the open page's asset", true);
 		reloadSchema.Boolean("force", "discard the page's unsaved changes (default false)");
 		server.RegisterTool("page_reload",
-			"Reload an open page from its asset's source on disk, after scene_write or prefab_write changed what the page shows. REFUSED while the page has unsaved changes unless `force` is true, which discards them. Returns the reopened page's identity.",
+			"Reload an open page from its asset's source on disk, after scene_write or prefab_write changed what the page shows. The page stays open and refreshes in place (its undo history goes). REFUSED while the page has unsaved changes unless `force` is true, which discards them first. Returns the page's identity.",
 			reloadSchema.Build(), .Overwrites,
 			new (arguments, outResult, outError) =>
 			{
@@ -89,20 +89,20 @@ static class EditorPageTools
 					outError.AppendF("no open page for guid '{}' (page_list shows the open ones; page_open opens one)", text);
 					return false;
 				}
-				if (page.IsDirty && !McpTools.ArgBool(arguments, "force"))
+				if (page.IsDirty)
 				{
-					UnsavedChangesRefusal(page, "force", outError);
-					return false;
+					if (!McpTools.ArgBool(arguments, "force"))
+					{
+						UnsavedChangesRefusal(page, "force", outError);
+						return false;
+					}
+					// The page's own discard, then the refresh a clean page takes: a page
+					// refreshes only when clean (an apply to prefab or a re-import leaves a
+					// dirty page alone with a warning), so the discard comes first.
+					page.DiscardChanges();
 				}
-				seams.ClosePage(page);
-				let reopened = seams.OpenPage(id);
-				if (reopened == null)
-				{
-					outError.AppendF("the page closed but its asset '{}' could not be reopened (see log_read, category Editor)", text);
-					return false;
-				}
-				seams.Context.SetActivePage(reopened);
-				CopyIdentity(seams.Context, reopened, outResult);
+				page.OnAssetExternallyModified();
+				CopyIdentity(seams.Context, page, outResult);
 				return true;
 			});
 

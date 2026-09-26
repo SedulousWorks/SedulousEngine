@@ -10,8 +10,9 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.App.Tests;
 
 /// The page tools over a real EditorContext with a test page factory: the list, opening by
-/// guid (and focusing an already open page), the unsaved changes refusals of reload and close
-/// and the arguments that override them, and the identity every tool returns.
+/// guid (and focusing an already open page), the in place reload through the page's own hook,
+/// the unsaved changes refusals of reload and close and the arguments that override them, and
+/// the identity every tool returns.
 class EditorPageToolsTests
 {
 	class PagedAsset
@@ -34,6 +35,9 @@ class EditorPageToolsTests
 			ClearDirty();
 			return .Ok;
 		}
+
+		public int Reloads = 0;
+		public override void OnAssetExternallyModified() { Reloads++; }
 	}
 
 	class TestPageFactory : IEditorPageFactory
@@ -164,27 +168,41 @@ class EditorPageToolsTests
 			Test.Assert(malformed.Error.StartsWith("invalid guid"), malformed.Error);
 		}
 
-		// A dirty page refuses reload and close; force and discard override, and reload reopens.
-		context.ActivePage.MarkDirty();
+		// A clean page reloads in place: the same page object, refreshed through its hook, never
+		// closed or recreated.
+		let pageOne = (TestPage)context.ActivePage;
+		{
+			let reload = Call(server, "page_reload", oneGuid);
+			defer delete reload;
+			Test.Assert(reload.Ok, reload.Error);
+			Test.Assert(pageOne.Reloads == 1);
+			Test.Assert(closes == 0);
+			Test.Assert(factory.Created == 2);
+			Test.Assert(context.ActivePage == pageOne);
+		}
+		// A dirty page refuses reload and close; force discards THEN refreshes, discard drops.
+		pageOne.MarkDirty();
 		{
 			let reload = Call(server, "page_reload", oneGuid);
 			defer delete reload;
 			Test.Assert(!reload.Ok);
 			Test.Assert(reload.Error.StartsWith("page 'One' has unsaved changes"), reload.Error);
-			Test.Assert(closes == 0);
+			Test.Assert(pageOne.Reloads == 1);
 		}
 		{
 			let reload = Call(server, "page_reload", GuidArgument(one.Id, ",\"force\":true", .. scope .()));
 			defer delete reload;
 			Test.Assert(reload.Ok, reload.Error);
-			Test.Assert(closes == 1);
-			Test.Assert(factory.Created == 3); // closed and reopened
+			Test.Assert(pageOne.Reloads == 2);
+			Test.Assert(!pageOne.IsDirty);
+			Test.Assert(closes == 0);
+			Test.Assert(factory.Created == 2);
 			Test.Assert(!reload.Payload.Get("dirty").AsBool());
 			Test.Assert(reload.Payload.Get("active").AsBool());
 			Test.Assert(context.OpenPages.Count == 2);
 		}
 
-		context.ActivePage.MarkDirty();
+		pageOne.MarkDirty();
 		{
 			let close = Call(server, "page_close", oneGuid);
 			defer delete close;
@@ -196,7 +214,7 @@ class EditorPageToolsTests
 			defer delete close;
 			Test.Assert(close.Ok, close.Error);
 			Test.Assert(close.Payload.Get("closed").AsBool());
-			Test.Assert(closes == 2);
+			Test.Assert(closes == 1);
 			Test.Assert(context.OpenPages.Count == 1);
 		}
 		// Reloading a page that is not open is a refusal that points at the tools to use.
