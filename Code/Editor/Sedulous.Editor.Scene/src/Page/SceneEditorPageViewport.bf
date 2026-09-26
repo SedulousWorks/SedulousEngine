@@ -53,7 +53,10 @@ extension SceneEditorPage
 		input.Ray.Direction = ray.Direction;
 		input.PointerOver = mViewport.IsHovered();
 		if (!input.PointerValid)
+		{
+			mCameraOwnsInput = mCamera.MouseCaptured;
 			return mViewportTools.Update(input);
+		}
 
 		let mouse = mViewport.Mouse;
 		let kb = mViewport.Keyboard;
@@ -72,6 +75,7 @@ extension SceneEditorPage
 		}
 		input.WheelDelta = mouse.ScrollY;
 		input.Keyboard = cameraOwnsMouse ? null : kb;
+		mCameraOwnsInput = cameraOwnsMouse;
 		// The pointer's view pixel and the view's size: the GPU pick's input, in the space of
 		// the RenderScene viewport rect, which is the full render target.
 		input.PointerX = (int32)mouse.X;

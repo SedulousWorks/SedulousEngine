@@ -85,42 +85,29 @@ extension SceneHierarchyView
 			return;
 		mEdit.EntitySelection.Set(id);
 
-		let edit = mEdit;
+		// The scene editor's actions over the page (the right-click selected this entity, so
+		// they act on it), with the view's own items between.
 		let menu = new ContextMenu();
 		defer menu.ReleaseRef();
-		menu.AddItem("Create Child", new [=edit, =id]() => { edit.CreateEntity("Entity", id); });
+		if (mActions != null)
+			mActions.AppendActionItems(menu, mSubject, SceneActionIds.EntityCreateChild);
 		menu.AddItem("Rename", new [=this, =id]() => { BeginRename(id); });
 		menu.AddItem("Copy ID", new [=this, =id]() => { CopyEntityId(id); });
-		menu.AddSeparator();
-		menu.AddItem("Duplicate", new [=edit, =id]() => { edit.DuplicateEntity(id); });
-		menu.AddItem("Create Prefab from Selection", new [=this, =id]() => { if (OnCreatePrefab != null) OnCreatePrefab(id); });
-		menu.AddItem("Spawn Prefab as Child", new [=this, =id]() => { if (OnSpawnPrefab != null) OnSpawnPrefab(id); });
-		menu.AddItem("Spawn Prefab at Root", new [=this]() => { if (OnSpawnPrefab != null) OnSpawnPrefab(.()); });
-		PrefabMemberInfo member = ?;
-		if (PrefabOverrides.FindMember(edit.Scene, id, out member))
+		if (mActions != null)
 		{
-			let rootId = member.State.RootEntityId;
 			menu.AddSeparator();
-			menu.AddItem("Apply to Prefab", new [=this, =rootId]() => { if (OnApplyPrefab != null) OnApplyPrefab(rootId); });
-			menu.AddItem("Revert Instance", new [=this, =rootId]() => { if (OnRevertPrefab != null) OnRevertPrefab(rootId); });
-		}
-		if (let editor = mEditor)
-		{
-			menu.AddItem("Copy", new [=edit, =editor, =id]() =>
+			mActions.AppendActionItems(menu, mSubject, SceneActionIds.EntityDuplicate, SceneActionIds.EntityCreatePrefab,
+				SceneActionIds.EntitySpawnPrefabAsChild, SceneActionIds.EntitySpawnPrefab);
+			if (mActions.IsEnabled(SceneActionIds.PrefabApply, mSubject))
 			{
-				let blob = scope List<uint8>();
-				edit.CopyEntity(id, blob);
-				if (!blob.IsEmpty)
-					editor.SetClipboard("entities", blob);
-			});
-			let clip = editor.ClipboardData("entities");
-			menu.AddItem("Paste as Child", new [=edit, =editor, =id]() =>
-			{
-				edit.PasteEntities(editor.ClipboardData("entities"), id);
-			}, !clip.IsEmpty);
+				menu.AddSeparator();
+				mActions.AppendActionItems(menu, mSubject, SceneActionIds.PrefabApply, SceneActionIds.PrefabRevert);
+			}
+			menu.AddSeparator();
+			mActions.AppendActionItems(menu, mSubject, SceneActionIds.EntityCopy, SceneActionIds.EntityPasteAsChild);
+			menu.AddSeparator();
+			mActions.AppendActionItems(menu, mSubject, SceneActionIds.EntityDelete);
 		}
-		menu.AddSeparator();
-		menu.AddItem("Delete", new [=edit, =id]() => { edit.DestroyEntity(id); });
 		let screenPos = mTree.InternalTreeView.LocalToScreen(.(x, y));
 		menu.Show(Context, screenPos.X, screenPos.Y);
 	}
@@ -129,19 +116,10 @@ extension SceneHierarchyView
 	{
 		if (Context == null)
 			return;
-		let edit = mEdit;
 		let menu = new ContextMenu();
 		defer menu.ReleaseRef();
-		menu.AddItem("Create Entity", new [=edit]() => { edit.CreateEntity("Entity"); });
-		menu.AddItem("Spawn Prefab...", new [=this]() => { if (OnSpawnPrefab != null) OnSpawnPrefab(.()); });
-		if (let editor = mEditor)
-		{
-			let clip = editor.ClipboardData("entities");
-			menu.AddItem("Paste", new [=edit, =editor]() =>
-			{
-				edit.PasteEntities(editor.ClipboardData("entities"));
-			}, !clip.IsEmpty);
-		}
+		if (mActions != null)
+			mActions.AppendActionItems(menu, mSubject, SceneActionIds.EntityCreate, SceneActionIds.EntitySpawnPrefab, SceneActionIds.EntityPaste);
 		let screenPos = mTree.InternalTreeView.InternalListView.LocalToScreen(.(x, y));
 		menu.Show(Context, screenPos.X, screenPos.Y);
 	}

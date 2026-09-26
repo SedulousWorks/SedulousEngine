@@ -13,20 +13,16 @@ namespace Sedulous.Editor.Scene;
 /// state and the selection survive a rebuild. Selection flows both ways: a click or a
 /// keyboard move sets the scene selection, and a scene selection change selects the row.
 ///
-/// The edit context is borrowed; the page owns it. The prefab verbs are delegated out
-/// through the four callbacks, which the view owns.
+/// The edit context is borrowed; the page owns it. The context menus are the scene editor's
+/// actions (create, duplicate, delete, the prefab flows, the clipboard) over the page this
+/// hierarchy belongs to, around the view's own rename and copy id items.
 class SceneHierarchyView : ViewGroup
 {
-	public delegate void(Guid) OnCreatePrefab ~ delete _;
-	public delegate void(Guid) OnSpawnPrefab ~ delete _;
-	/// An instance root: write the instance back to its asset.
-	public delegate void(Guid) OnApplyPrefab ~ delete _;
-	/// An instance root: discard its deltas.
-	public delegate void(Guid) OnRevertPrefab ~ delete _;
-
 	private SceneEditContext mEdit;
-	/// Borrowed; the clipboard's home. Optional.
-	private EditorContext mEditor = null;
+	/// BORROWED: the context owns the registry, the page owns this view. Null without actions
+	/// (a bare view in a test): the menus then carry only the view's own items.
+	private EditorActionRegistry mActions = null;
+	private EditorPage mSubject = null;
 	private DraggableTreeView mTree;
 	private EditText mFilterEdit;
 	private EntityTreeSnapshot mSnapshot = new .() ~ delete _;
@@ -77,7 +73,12 @@ class SceneHierarchyView : ViewGroup
 		mTree.SetAdapter(null);
 	}
 
-	public void SetEditorContext(EditorContext context) => mEditor = context;
+	/// The scene editor's actions over `subject`, the page this hierarchy belongs to.
+	public void SetActions(EditorActionRegistry actions, EditorPage subject)
+	{
+		mActions = actions;
+		mSubject = subject;
+	}
 
 	/// Puts an entity's PERSISTENT id on the OS text clipboard: the id the scene file, the
 	/// prefab deltas and a script all name it by. False with a bare view, which has no UI
@@ -129,9 +130,8 @@ class SceneHierarchyView : ViewGroup
 		{
 			let menu = new ContextMenu();
 			defer menu.ReleaseRef();
-			let edit = mEdit;
-			menu.AddItem("Create Entity", new [=edit]() => { edit.CreateEntity("Entity"); });
-			menu.AddItem("Spawn Prefab...", new [=this]() => { if (OnSpawnPrefab != null) OnSpawnPrefab(.()); });
+			if (mActions != null)
+				mActions.AppendActionItems(menu, mSubject, SceneActionIds.EntityCreate, SceneActionIds.EntitySpawnPrefab, SceneActionIds.EntityPaste);
 			let screenPos = LocalToScreen(.(e.X, e.Y));
 			menu.Show(Context, screenPos.X, screenPos.Y);
 			e.Handled = true;

@@ -71,6 +71,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private SceneSnapshot mSimSnapshot = null ~ delete _;
 	private bool mIsSimulating = false;
 	private bool mIsPaused = false;
+	/// The camera owned the pointer and keys last frame (a fly, an orbit, a capture): the gizmo
+	/// keys are the camera's then, so the gizmo mode actions refuse.
+	private bool mCameraOwnsInput = false;
 	private ToolbarToggle mTranslateToggle = null;
 	private ToolbarToggle mRotateToggle = null;
 	private ToolbarToggle mScaleToggle = null;
@@ -181,11 +184,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mEditContext.SetResources(context.Resources);
 			mEditContext.SetPrefabResolver(GameEditorPage.ProjectPrefabResolver(context));
 			mHierarchy = new SceneHierarchyView(mEditContext);
-			mHierarchy.SetEditorContext(context);
-			mHierarchy.OnCreatePrefab = new [=this](entity) => { CreatePrefabFromEntity(entity); };
-			mHierarchy.OnSpawnPrefab = new [=this](parent) => { PickAndSpawnPrefab(parent); };
-			mHierarchy.OnApplyPrefab = new [=this](root) => { ApplyInstanceToPrefab(root); };
-			mHierarchy.OnRevertPrefab = new [=this](root) => { RevertInstance(root); };
+			// Its context menus are the scene editor's actions over THIS page.
+			mHierarchy.SetActions(context.Actions, this);
 			mInspector = new SceneInspectorView(context, mEditContext);
 
 			mSelectTool = (SelectTransformTool)mViewportTools.Add(new SelectTransformTool(mEditContext)); // the default
@@ -335,6 +335,16 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public EditorCamera Camera => mCamera;
 	public SceneEditContext EditContext => mEditContext;
 	public bool IsSimulating => mIsSimulating;
+	public bool IsPaused => mIsPaused;
+	public GizmoController Gizmos => (mSelectTool != null) ? mSelectTool.Gizmos : null;
+	public bool MarkersShown => mView.ShowMarkers;
+	public bool CameraOwnsInput => mCameraOwnsInput;
+
+	public void SetMarkersShown(bool shown)
+	{
+		mView.ShowMarkers = shown;
+		SaveViewPrefs();
+	}
 
 	/// Loads the instance's scene stream, then binds and spawns; a missing stream is a new
 	/// scene.

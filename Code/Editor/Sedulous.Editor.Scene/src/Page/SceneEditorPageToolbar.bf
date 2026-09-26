@@ -22,15 +22,15 @@ extension SceneEditorPage
 		mToolbar = new Toolbar();
 		let gizmos = (mSelectTool != null) ? mSelectTool.Gizmos : null;
 
-		mTranslateToggle = mToolbar.AddToggle("");
+		// The gizmo toggles are the scene editor's actions over THIS page. A checked toggle
+		// clicked again stays checked: SyncToolbar re-reads the registry's answer.
+		let actions = mContext.Actions;
+		mTranslateToggle = ModeToggle(actions, SceneActionIds.GizmoTranslate);
 		mTranslateToggle.SetIcon(new (ctx, rect) => { DrawIcon(EditorIcons.Translate, ctx, rect); });
-		mTranslateToggle.OnCheckedChanged.Add(new [=gizmos](t, value) => { if (value && (gizmos != null)) gizmos.SetMode(.Translate); });
-		mRotateToggle = mToolbar.AddToggle("");
+		mRotateToggle = ModeToggle(actions, SceneActionIds.GizmoRotate);
 		mRotateToggle.SetIcon(new (ctx, rect) => { DrawIcon(EditorIcons.Rotate, ctx, rect); });
-		mRotateToggle.OnCheckedChanged.Add(new [=gizmos](t, value) => { if (value && (gizmos != null)) gizmos.SetMode(.Rotate); });
-		mScaleToggle = mToolbar.AddToggle("");
+		mScaleToggle = ModeToggle(actions, SceneActionIds.GizmoScale);
 		mScaleToggle.SetIcon(new (ctx, rect) => { DrawIcon(EditorIcons.Scale, ctx, rect); });
-		mScaleToggle.OnCheckedChanged.Add(new [=gizmos](t, value) => { if (value && (gizmos != null)) gizmos.SetMode(.Scale); });
 
 		mToolbar.AddSeparator();
 
@@ -40,11 +40,13 @@ extension SceneEditorPage
 			let world = (gizmos == null) || (gizmos.Space == .World);
 			DrawIcon(world ? EditorIcons.WorldSpace : EditorIcons.LocalSpace, ctx, rect);
 		});
-		mSpaceToggle.OnCheckedChanged.Add(new [=gizmos](toggle, value) =>
+		mSpaceToggle.OnCheckedChanged.Add(new [=this, =actions](toggle, value) =>
 		{
-			if (gizmos != null)
-				gizmos.SetSpace(value ? .World : .Local);
-			toggle.SetText(value ? "World" : "Local");
+			// The action flips the space; a change that already shows the answer (a resync)
+			// is not a flip.
+			if (actions.IsChecked(SceneActionIds.GizmoWorldSpace, this) != value)
+				actions.Execute(SceneActionIds.GizmoWorldSpace, this).IgnoreError();
+			SyncToolbar();
 		});
 
 		mToolbar.AddSeparator();
@@ -104,16 +106,36 @@ extension SceneEditorPage
 		grow.FlexGrow = 1.0f;
 		mToolbar.AddView(spacer, grow);
 
+		// Simulate: the scene editor's actions over THIS page.
 		mPlayButton = mToolbar.AddButton("Play");
-		mPlayButton.OnClick.Add(new [=this](b) => { StartSimulation(); });
+		mPlayButton.OnClick.Add(new [=this, =actions](b) => { actions.Execute(SceneActionIds.SimulateStart, this).IgnoreError(); });
 		mPauseToggle = mToolbar.AddToggle("Pause");
-		mPauseToggle.OnCheckedChanged.Add(new [=this](t, value) => { PauseSimulation(value); });
+		mPauseToggle.OnCheckedChanged.Add(new [=this, =actions](t, value) =>
+			{
+				if (actions.IsChecked(SceneActionIds.SimulatePause, this) != value)
+					actions.Execute(SceneActionIds.SimulatePause, this).IgnoreError();
+				RefreshSimToolbar();
+			});
 		mStopButton = mToolbar.AddButton("Stop");
-		mStopButton.OnClick.Add(new [=this](b) => { StopSimulation(); });
+		mStopButton.OnClick.Add(new [=this, =actions](b) => { actions.Execute(SceneActionIds.SimulateStop, this).IgnoreError(); });
 		mSimLabel = new Label("");
 		mSimLabel.FontSize.Value = 13.0f;
 		mToolbar.AddItem(mSimLabel);
 		RefreshSimToolbar();
+	}
+
+	/// A gizmo mode toggle executing its action over this page when switched on.
+	private ToolbarToggle ModeToggle(EditorActionRegistry actions, StringView id)
+	{
+		let toggle = mToolbar.AddToggle("");
+		let action = actions.Find(id);
+		toggle.OnCheckedChanged.Add(new [=this, =actions, =action](t, value) =>
+			{
+				if (value && (action != null))
+					actions.Execute(action.Id, this).IgnoreError();
+				SyncToolbar();
+			});
+		return toggle;
 	}
 
 	private static void DrawIcon(SVGDrawable drawable, UIDrawContext ctx, Rectangle rect)
@@ -178,10 +200,11 @@ extension SceneEditorPage
 	{
 		if (mPlayButton == null)
 			return;
-		mPlayButton.IsEnabled = !mIsSimulating;
-		mPauseToggle.IsEnabled = mIsSimulating;
-		mStopButton.IsEnabled = mIsSimulating;
-		mPauseToggle.IsChecked = mIsPaused;
+		let actions = mContext.Actions;
+		mPlayButton.IsEnabled = actions.IsEnabled(SceneActionIds.SimulateStart, this);
+		mPauseToggle.IsEnabled = actions.IsEnabled(SceneActionIds.SimulatePause, this);
+		mStopButton.IsEnabled = actions.IsEnabled(SceneActionIds.SimulateStop, this);
+		mPauseToggle.IsChecked = actions.IsChecked(SceneActionIds.SimulatePause, this);
 		if (mSimLabel != null)
 		{
 			if (!mIsSimulating)
@@ -252,11 +275,15 @@ extension SceneEditorPage
 	{
 		if ((mToolbar == null) || (mSelectTool == null))
 			return;
-		let mode = mSelectTool.Gizmos.Mode;
-		mTranslateToggle.IsChecked = mode == .Translate;
-		mRotateToggle.IsChecked = mode == .Rotate;
-		mScaleToggle.IsChecked = mode == .Scale;
-		mSpaceToggle.IsChecked = mSelectTool.Gizmos.Space == .World;
+		let actions = mContext.Actions;
+		mTranslateToggle.IsChecked = actions.IsChecked(SceneActionIds.GizmoTranslate, this);
+		mRotateToggle.IsChecked = actions.IsChecked(SceneActionIds.GizmoRotate, this);
+		mScaleToggle.IsChecked = actions.IsChecked(SceneActionIds.GizmoScale, this);
+		let world = actions.IsChecked(SceneActionIds.GizmoWorldSpace, this);
+		mSpaceToggle.IsChecked = world;
+		let spaceText = world ? "World" : "Local";
+		if (mSpaceToggle.Text != spaceText)
+			mSpaceToggle.SetText(spaceText);
 
 		let activeTool = mViewportTools.ActiveTool;
 		let activeId = (activeTool != null) ? activeTool.Id : StringView();

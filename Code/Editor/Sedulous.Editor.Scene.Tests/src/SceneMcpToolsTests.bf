@@ -37,6 +37,15 @@ class SceneMcpToolsTests
 		public void StopSimulation() { mSimulating = false; }
 		public void PauseSimulation(bool paused) {}
 		public bool IsSimulating => mSimulating;
+		public bool IsPaused => false;
+		public GizmoController Gizmos => null;
+		public bool CameraOwnsInput => false;
+		public bool MarkersShown => true;
+		public void SetMarkersShown(bool shown) {}
+		public void CreatePrefabFromEntity(Guid entity) {}
+		public void PickAndSpawnPrefab(Guid parent) {}
+		public void ApplyInstanceToPrefab(Guid root) {}
+		public void RevertInstance(Guid root) {}
 	}
 
 	class PlainPage : EditorPage
