@@ -275,4 +275,41 @@ class ContextMenuTests
 		menu.OnMouseDown(onSubmenu);
 		Test.Assert(ran == 1, "a submenu row is entered, not chosen");
 	}
+
+	/// ItemAt answers null past either end; ClearItems empties the menu; OnOpening runs at Show,
+	/// so a menu built from live state fills itself at the moment it opens.
+	[Test]
+	public static void ItemAtClearItemsAndOnOpeningRebuildingAtShow()
+	{
+		let menu = new ContextMenu();
+		defer menu.ReleaseRef();
+		menu.AddItem("One", new () => {});
+		menu.AddSeparator();
+		menu.AddItem("Two", new () => {}, false);
+		Test.Assert(menu.ItemCount == 3);
+		Test.Assert(menu.ItemAt(0).Label == "One");
+		Test.Assert(menu.ItemAt(1).IsSeparator);
+		Test.Assert(!menu.ItemAt(2).Enabled);
+		Test.Assert(menu.ItemAt(3) == null);
+		Test.Assert(menu.ItemAt(-1) == null);
+		menu.ClearItems();
+		Test.Assert(menu.ItemCount == 0);
+
+		let context = scope UIContext();
+		let root = new RootView();
+		defer root.ReleaseRef();
+		UITest.Init(context, root);
+		int opened = 0;
+		menu.OnOpening = new [&opened](opening) =>
+			{
+				opened++;
+				opening.ClearItems();
+				opening.AddItem("Fresh", new () => {});
+			};
+		menu.Show(context, 10, 10);
+		Test.Assert(opened == 1);
+		Test.Assert((menu.ItemCount == 1) && (menu.ItemAt(0).Label == "Fresh"));
+		menu.Close();
+		context.MutationQueue.Drain();
+	}
 }

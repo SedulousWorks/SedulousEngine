@@ -69,6 +69,37 @@ class MenuBar : ViewGroup, IPopupOwner
 		return entry.Menu;
 	}
 
+	/// The menu at `index`, BORROWED; null when out of range.
+	public ContextMenu MenuAt(int index) => ((index >= 0) && (index < mMenus.Count)) ? mMenus[index].Menu : null;
+
+	/// The title at `index`; empty when out of range.
+	public StringView MenuTitle(int index) => ((index >= 0) && (index < mMenus.Count)) ? mMenus[index].Title : "";
+
+	/// Removes every menu, an open one closed first: a bar built from a registry rebuilds
+	/// through this when the registry changes.
+	public void ClearMenus()
+	{
+		if (mActiveIndex >= 0)
+			CloseActiveMenu();
+		for (let entry in mMenus)
+		{
+			delete entry.Title;
+			entry.Menu.ReleaseRef();
+		}
+		mMenus.Clear();
+		mItemRects.Clear();
+		mActiveIndex = -1;
+		mHoveredIndex = -1;
+		mMenuMode = false;
+		Invalidate();
+	}
+
+	/// Opens the menu at `index` as a click on its title does: keyboard access, and tests.
+	public void OpenMenuAt(int index) => OpenMenu((int32)index);
+
+	/// The open menu's index, or -1.
+	public int ActiveIndex => mActiveIndex;
+
 	// ---- IPopupOwner ----------------------------------------------------------------------------
 
 	public void OnPopupClosed(View popup)
@@ -235,7 +266,11 @@ class MenuBar : ViewGroup, IPopupOwner
 		// sitting on it and reading as one shape with the bar.
 		let screenPos = LocalToScreen(.(rect.X, mItemHeight + 2.0f));
 
+		// A menu built from live state fills itself now, before it measures: the bar shows it
+		// through the popup layer directly, so ContextMenu.Show's own call never runs here.
 		let menu = mMenus[index].Menu;
+		if (menu.OnOpening != null)
+			menu.OnOpening(menu);
 		menu.Measure(BoxConstraints.Loose(root.ViewportSize.X, root.ViewportSize.Y));
 
 		// The popup layer CONSUMES a reference whatever it is told about ownership, and the bar

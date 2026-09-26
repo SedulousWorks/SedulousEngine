@@ -49,8 +49,22 @@ class ContextMenu : View, IPopupOwner
 
 	public int32 ItemCount => (int32)mItems.Count;
 
-	/// Borrowed.
-	public MenuItem GetItem(int index) => mItems[index];
+	/// Borrowed; null when `index` is out of range.
+	public MenuItem ItemAt(int index) => ((index >= 0) && (index < mItems.Count)) ? mItems[index] : null;
+
+	/// Runs at the start of every Show, before the menu measures: a menu whose items are built
+	/// from live state (an action registry's enabled flags) rebuilds them here, so what the user
+	/// sees is the state at the moment the menu opens. OWNED.
+	public delegate void(ContextMenu) OnOpening ~ delete _;
+
+	/// Removes every item; a submenu goes with its row, closed first when it is open.
+	public void ClearItems()
+	{
+		CloseOpenSubmenu();
+		ClearAndDeleteItems!(mItems);
+		mHoveredIndex = -1;
+		mScrollY = 0;
+	}
 
 	/// The row drawn highlighted, or -1 for none.
 	public int32 HoveredIndex => mHoveredIndex;
@@ -97,6 +111,8 @@ class ContextMenu : View, IPopupOwner
 		// pointer first moved.
 		mHoveredIndex = -1;
 		mScrollY = 0;
+		if (OnOpening != null)
+			OnOpening(this);
 
 		// Cleared BEFORE the root is checked, so a show that cannot go ahead still leaves the
 		// menu in the state the next one expects.
