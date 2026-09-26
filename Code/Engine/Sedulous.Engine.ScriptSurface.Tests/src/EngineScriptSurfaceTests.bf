@@ -24,6 +24,14 @@ static class EngineScriptSurfaceTests
 		return null;
 	}
 
+	private static ScriptFieldInfo Field(ScriptTypeInfo t, StringView name)
+	{
+		for (let f in t.Fields)
+			if (f.Name == name)
+				return f;
+		return null;
+	}
+
 	[Test]
 	public static void TheCountIsATripwire()
 	{
@@ -32,7 +40,7 @@ static class EngineScriptSurfaceTests
 		Test.Assert(s.Types.Count == EngineScriptSurface.TypeCount);
 		// Bump deliberately when a type is marked or unmarked; a surprise here is a lost or
 		// stray dependency of the root.
-		Test.Assert(EngineScriptSurface.TypeCount == 46, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		Test.Assert(EngineScriptSurface.TypeCount == 88, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]
@@ -83,17 +91,31 @@ static class EngineScriptSurfaceTests
 		Test.Assert((core != null) && (core.Kind == .Global) && (core.Methods.Count > 100), "the math free functions");
 		Test.Assert(s.Find("Sedulous.Scene.Scene") != null, "the scene, the facades' home");
 
-		// And what the engine keeps to itself: no subsystem, manager or component is a
-		// script contract by being linked.
+		// The components, as data with their few verbs: a script takes one from an entity,
+		// `CharacterComponent(self)`, and reaches its fields through the manager.
+		let character = s.Find("Sedulous.Engine.Physics.CharacterComponent");
+		Test.Assert((character != null) && (character.Role == .Component));
+		Test.Assert(Method(character, "Move") != null);
+		Test.Assert(s.Find("Sedulous.Engine.Animation.SkeletalAnimationComponent").Role == .Component);
+		// An asset field is what a script sets, never the runtime object behind it.
+		let sprite = s.Find("Sedulous.Engine.Render.SpriteComponent");
+		Test.Assert(Field(sprite, "TextureAsset") != null);
+		Test.Assert(Field(sprite, "Texture") == null);
+		Test.Assert(Field(s.Find("Sedulous.Engine.Particles.ParticleEffectComponent"), "Effect") == null);
+
+		// And what the engine keeps to itself: no subsystem or manager is a script contract by
+		// being linked, and neither is a component with nothing for gameplay code.
 		Test.Assert(s.Find("Sedulous.Engine.Physics.PhysicsSceneSystem") == null);
-		Test.Assert(s.Find("Sedulous.Engine.Animation.SkeletalAnimationComponent") == null);
 		Test.Assert(s.Find("Sedulous.Engine.Animation.SkeletalAnimationComponentManager") == null);
 		Test.Assert(s.Find("Sedulous.Engine.Audio.AudioSubsystem") == null);
 		Test.Assert(s.Find("Sedulous.Engine.Render.RenderSubsystem") == null);
+		for (let excluded in StringView[?]("Sedulous.Engine.Script.ScriptComponent", "Sedulous.Net.Replication.NetworkComponent",
+			"Sedulous.Net.Replication.NetworkedTransform", "Sedulous.Engine.Navigation.NavMeshZoneComponent"))
+			Test.Assert(s.Find(excluded) == null, scope String(excluded));
 		for (let t in s.Types)
-			Test.Assert((t.Role != .SceneSystem) && (t.Role != .ComponentManager) && (t.Role != .Component), t.FullName);
+			Test.Assert((t.Role != .SceneSystem) && (t.Role != .ComponentManager), t.FullName);
 
-		// A facade surface blocks nothing: a member the frame cannot carry is a facade bug.
+		// The surface blocks nothing: a member the frame cannot carry is a surface bug.
 		for (let t in s.Types)
 		{
 			for (let f in t.Fields)

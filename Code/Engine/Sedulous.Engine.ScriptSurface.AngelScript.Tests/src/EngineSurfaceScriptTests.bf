@@ -49,8 +49,9 @@ static class EngineSurfaceScriptTests
 		let apiPath = scope String();
 		Path.GetAbsolutePath("../../build/engine-script-api-angelscript.txt", Directory.GetCurrentDirectory(.. scope .()), apiPath);
 		File.WriteAllText(apiPath, text).IgnoreError();
-		// One bound type per surface type: the facades, the values they pass, the globals.
-		Test.Assert(api.Count == 45, scope $"{api.Count} bound types");
+		// One bound type per surface type: the facades, the components, the values they pass,
+		// the globals.
+		Test.Assert(api.Count == 87, scope $"{api.Count} bound types");
 		// Spot checks of the spelling at the engine's scale.
 		var scene = (ScriptApiType)null;
 		for (let t in api)
@@ -123,9 +124,8 @@ static class EngineSurfaceScriptTests
 		Test.Assert((a.EntityCount == 1) && (b.EntityCount == 1));
 	}
 
-	/// A character controller is reached through scene.Physics, never a component handle:
-	/// the verbs write the intent the physics step consumes, and an entity with no character
-	/// is a no-op rather than a fault.
+	/// A character controller through scene.Physics: the verbs write the intent the physics
+	/// step consumes, and an entity with no character is a no-op rather than a fault.
 	[Test]
 	public static void AScriptSteersACharacterThroughThePhysicsFacade()
 	{
@@ -169,5 +169,58 @@ static class EngineSurfaceScriptTests
 		Test.Assert(character.JumpSpeed == 5.5f);
 		Test.Assert(character.TeleportPending && (character.TeleportTo.X == 1.0f) && (character.TeleportTo.Z == 3.0f));
 		Test.Assert(!characters.Has(bystander), "a verb never adds a character");
+	}
+
+	/// The same character through its component: a script takes it from an entity, sets a
+	/// field and calls its verbs, and the component the engine holds is the one it changed. An
+	/// entity with no character refuses rather than reading anything.
+	[Test]
+	public static void AScriptDrivesACharacterThroughItsComponent()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("game", "game.as", """
+			float drive(const Entity &in rider)
+			{
+				CharacterComponent character = CharacterComponent(rider);
+				character.StepUp = 0.6f;
+				character.Move(3.0f, -4.0f);
+				character.Jump(5.5f);
+				return character.StepUp;
+			}
+			float probe(const Entity &in bystander)
+			{
+				return CharacterComponent(bystander).StepUp;
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene("chars");
+		defer Sedulous.Script.SceneFacades.Release(scene);
+		scene.AddSystem<Sedulous.Engine.Physics.PhysicsSceneSystem>();
+		let characters = scene.AddSystem<Sedulous.Engine.Physics.CharacterComponentManager>();
+		let rider = scene.CreateEntity("rider");
+		let bystander = scene.CreateEntity("bystander");
+		characters.Add(rider);
+
+		var args = ScriptValue[1](.FromEntity(rider, scene));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("game", "float drive(const Entity &in)", args, ref r), "ran");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(Math.Abs(r.AsFloat - 0.6f) < 1e-5, scope $"read back {r.AsFloat}");
+		let character = characters.Get(rider);
+		Test.Assert(Math.Abs(character.StepUp - 0.6f) < 1e-5, "the field write reached the component");
+		Test.Assert((character.MoveVelocity.X == 3.0f) && (character.MoveVelocity.Z == -4.0f));
+		Test.Assert(character.JumpSpeed == 5.5f);
+
+		var missing = ScriptValue[1](.FromEntity(bystander, scene));
+		Test.Assert(!vm.Call("game", "float probe(const Entity &in)", missing, ref r), "no character: refused");
+		Test.Assert(!characters.Has(bystander), "reading never adds a character");
 	}
 }

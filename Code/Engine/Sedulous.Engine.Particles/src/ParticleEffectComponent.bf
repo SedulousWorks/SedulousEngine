@@ -28,8 +28,8 @@ namespace Sedulous.Engine.Particles;
 [Scriptable]
 struct ParticleEffectComponent : ISerializable, IComponentResources
 {
-	/// BORROWED on the code path, and the clone below on the authored one.
-	[Scriptable]
+	/// BORROWED on the code path, and the clone below on the authored one. Code only; a script
+	/// sets the asset.
 	public ParticleEffect Effect = null;
 	/// The runtime simulation, created when an effect attaches.
 	public ParticleEffectInstance Instance = null;
@@ -60,6 +60,7 @@ struct ParticleEffectComponent : ISerializable, IComponentResources
 
 	// ---- the cooked path ----
 
+	[Scriptable]
 	public Ref<ParticleEffectResource> EffectAsset = .(Guid());
 	/// This component's OWN clone, which the instance simulates.
 	public ParticleEffect OwnedEffect = null;

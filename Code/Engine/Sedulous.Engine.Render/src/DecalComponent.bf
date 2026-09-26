@@ -19,9 +19,11 @@ namespace Sedulous.Engine.Render;
 [Scriptable]
 struct DecalComponent : ISerializable, IComponentResources
 {
-	/// A runtime override, which WINS over the asset. BORROWED.
-	[Scriptable]
+	/// A runtime override, which WINS over the asset. BORROWED. Code only; a script sets the
+	/// asset.
 	public ITextureView Texture = null;
+	/// The cooked texture: what an editor picks, what a script sets and what serializes.
+	[Scriptable]
 	public Ref<Texture> TextureAsset = .(Guid());
 	[Scriptable]
 	public Float3 Size = .(1.0f, 1.0f, 1.0f);

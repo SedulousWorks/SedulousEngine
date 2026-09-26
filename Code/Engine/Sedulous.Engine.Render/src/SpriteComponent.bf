@@ -16,10 +16,12 @@ namespace Sedulous.Engine.Render;
 struct SpriteComponent : ISerializable, IComponentResources
 {
 	/// A runtime override for a sample or procedural art, which WINS over the asset.
-	/// BORROWED: whoever made it keeps it alive while the component is attached.
-	[Scriptable]
+	/// BORROWED: whoever made it keeps it alive while the component is attached. Code only;
+	/// a script sets the asset.
 	public ITextureView Texture = null;
-	/// The cooked texture, which is what an editor picks and what serializes.
+	/// The cooked texture, which is what an editor picks, what a script sets and what
+	/// serializes.
+	[Scriptable]
 	public Ref<Texture> TextureAsset = .(Guid());
 	/// Width and height in world units.
 	[Scriptable]

@@ -234,7 +234,7 @@ static class ProjectFlowTests
 	}
 
 	/// script_api reports the COMPLETE engine surface, headless, no device: the pipeline
-	/// surface the cooks compile against contains the runtime's facades.
+	/// surface the cooks compile against contains the runtime's facades and components.
 	[Test]
 	public static void ScriptApiReportsTheCompleteEngineSurfaceHeadless()
 	{
@@ -250,10 +250,11 @@ static class ProjectFlowTests
 		for (let name in scope String[]("Scene", "PhysicsFacade", "AudioFacade", "InputFacade", "GameInstance", "UiScript", "Float3", "FontBakeMode"))
 			Test.Assert(TypeEndingIn(types, name) != null, name);
 		Test.Assert(Named(types, "scriptName", "Entity") != null, "the entity, as a script spells it");
-		// The runtime surface and the pipeline's own types, and never a component: a component
-		// here would validate code the game's runtime cannot compile.
+		// The runtime surface and the pipeline's own types: the facades, and the components a
+		// script takes from an entity.
 		Test.Assert(reported.Get("typeCount").AsInt() > 40);
-		Test.Assert(TypeEndingIn(types, "CharacterComponent") == null, "components are not script types");
+		Test.Assert(TypeEndingIn(types, "RigidBodyComponent") != null, "components are script types");
+		Test.Assert(TypeEndingIn(types, "CharacterComponent") != null);
 		// The domain rides along: a pipeline type exists for tools, the facade for the player.
 		let bakeMode = TypeEndingIn(types, "FontBakeMode");
 		Test.Assert(!bakeMode.Get("inPlayer").AsBool() && (bakeMode.Get("domain").AsString() == "Pipeline"));

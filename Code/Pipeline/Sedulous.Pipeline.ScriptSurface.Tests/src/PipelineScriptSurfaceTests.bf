@@ -15,9 +15,9 @@ static class PipelineScriptSurfaceTests
 		let s = scope ScriptSurface();
 		PipelineScriptSurface.Populate(s);
 		Test.Assert(s.Types.Count == PipelineScriptSurface.TypeCount);
-		// Bump deliberately when a type is marked or unmarked: the runtime's 46 and the two
+		// Bump deliberately when a type is marked or unmarked: the runtime's 88 and the two
 		// Pipeline domain enums.
-		Test.Assert(PipelineScriptSurface.TypeCount == 48, scope $"the pipeline surface has {PipelineScriptSurface.TypeCount} types");
+		Test.Assert(PipelineScriptSurface.TypeCount == 90, scope $"the pipeline surface has {PipelineScriptSurface.TypeCount} types");
 	}
 
 	[Test]
@@ -32,9 +32,9 @@ static class PipelineScriptSurfaceTests
 		Test.Assert(pipeline.Types.Count >= runtime.Types.Count);
 	}
 
-	/// Nothing beyond the runtime surface but the Pipeline domain's own types. A component is
-	/// an editor mark, and a script cook or an MCP check that saw one would pass code the
-	/// running game cannot compile: `CharacterComponent(self)` validated and then failed.
+	/// Nothing beyond the runtime surface but the Pipeline domain's own types, so a script cook
+	/// or an MCP check passes exactly the code the running game compiles. The components are on
+	/// both: `CharacterComponent(self)` validates and runs.
 	[Test]
 	public static void OnlyTheToolingIsAddedToTheRuntime()
 	{
@@ -48,9 +48,8 @@ static class PipelineScriptSurfaceTests
 				continue;
 			Test.Assert(t.Domain == ScriptDomains.Pipeline, scope $"{t.FullName} is on the pipeline surface, not the runtime's, and is {t.Domain}");
 		}
-		Test.Assert(pipeline.Find("Sedulous.Engine.Physics.CharacterComponent") == null);
-		for (let t in pipeline.Types)
-			Test.Assert(t.Role != .Component, t.FullName);
+		Test.Assert(pipeline.Find("Sedulous.Engine.Physics.CharacterComponent").Role == .Component);
+		Test.Assert(runtime.Find("Sedulous.Engine.Physics.CharacterComponent") != null);
 	}
 
 	/// A type in a pipeline module is the Pipeline domain, never Editor and never left to

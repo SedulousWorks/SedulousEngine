@@ -42,10 +42,16 @@ Engine verbs live on facades, in script shape: `scene.Physics.RayCast(...)`,
 `Ui`, `Run`, `Random`; and the globals `Print`, `PrintWarning`, `PrintError` with the math
 free functions. `script_api` lists exactly what each one binds.
 
-Components are not script types: a script reaches one through the facade that fronts it,
-passing the entity. A character controller, for instance, is driven with
-`scene.Physics.MoveCharacter(self, vx, vz)`, `JumpCharacter`, `SetCharacterPosition` and
-`IsCharacterGrounded`.
+Components are script types too, as data with a few verbs: a script takes one from an
+entity, `CharacterComponent character = CharacterComponent(self);`, then reads and sets its
+fields and calls its verbs (`character.Move(vx, vz)`, `character.Jump(speed)`). The handle is
+the entity, so it always reaches the component the entity has now; on an entity without one,
+the access fails the handler. An asset field takes the asset's guid (`sprite.TextureAsset`).
+Components with nothing for gameplay code are not script types: the script component itself
+(use `scene.Scripts`), the replication components, and a navigation zone's bake settings.
+
+The facades are the stable verbs and the first place to look; a component is the direct route
+to its data. `script_api` lists both.
 
 ## Editor properties
 

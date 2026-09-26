@@ -12,16 +12,14 @@ namespace Sedulous.Net.Replication;
 /// can mark an entity networked in the editor, so it rides SerializableComponentManager. Its
 /// own fields are IDENTITY, not replicated state: none carries [Replicated], so the field
 /// codec never touches them.
+///
+/// Not a script type: replication owns it.
 [SerializableComponent("net.Network")]
-[Scriptable]
 struct NetworkComponent : ISerializable
 {
-	[Scriptable]
 	public NetworkId Id = .();
-	[Scriptable]
 	public NetworkAuthority Authority = .Server;
 	/// The source prefab for a network spawn. Unset means a bare, non prefab networked entity.
-	[Scriptable]
 	public Guid Prefab = .();
 
 	public this() {}

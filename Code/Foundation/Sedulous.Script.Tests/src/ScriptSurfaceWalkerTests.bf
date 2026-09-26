@@ -234,18 +234,19 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(NullScriptRuntime.Short("float", .. scope .()) == "float");
 	}
 
-	/// The facade closure keeps only what a script reaches from the facades and the
-	/// globals, transitively through their members, and cuts the rest however marked.
+	/// The facade closure keeps what a script reaches from the facades, the globals and the
+	/// marked components (a component bringing its marked manager), transitively through their
+	/// members, and cuts the rest however marked.
 	[Test]
 	public static void TheFacadeClosureIsWhatTheFacadesReach()
 	{
 		let s = scope ScriptSurface();
 		FixtureFacadeSurface.Populate(s);
-		Test.Assert(FixtureFacadeSurface.TypeCount == 2, scope $"found {FixtureFacadeSurface.TypeCount}");
+		Test.Assert(FixtureFacadeSurface.TypeCount == 4, scope $"found {FixtureFacadeSurface.TypeCount}");
 		Test.Assert(s.Find(scope $"{cFixture}.WidgetsFacade") != null, "the facade");
 		Test.Assert(s.Find(scope $"{cFixture}.Thing") == null, "a marked class nothing reaches");
-		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponent") == null, "a component marked for the editor");
-		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponentManager") == null);
+		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponent").Role == .Component, "a marked component");
+		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponentManager") != null, "and its marked manager");
 		let text = scope String();
 		let vm = scope Sedulous.Script.Null.NullScriptRuntime();
 		vm.Bind(s);
@@ -255,18 +256,17 @@ static class ScriptSurfaceWalkerTests
 	}
 
 	/// The runtime and domains closure is the runtime's plus the domain's own types: a check
-	/// made against it never passes a component the runtime does not bind.
+	/// made against it passes exactly what the runtime binds, and the domain types.
 	[Test]
 	public static void TheRuntimeAndDomainsClosureIsTheRuntimeAndTheDomainTypes()
 	{
 		let s = scope ScriptSurface();
 		FixtureDomainsSurface.Populate(s);
-		Test.Assert(FixtureDomainsSurface.TypeCount == 3, scope $"found {FixtureDomainsSurface.TypeCount}");
+		Test.Assert(FixtureDomainsSurface.TypeCount == 5, scope $"found {FixtureDomainsSurface.TypeCount}");
 		Test.Assert(s.Find(scope $"{cFixture}.WidgetsFacade") != null, "the facade");
 		Test.Assert(s.Find(scope $"{cFixture}.Cooker") != null, "the Pipeline domain type");
 		Test.Assert(s.Find(scope $"{cFixture}.Thing") == null, "a marked class nothing reaches");
-		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponent") == null, "a component marked for the editor");
-		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponentManager") == null);
+		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponent") != null, "the component, as on the runtime closure");
 
 		// Everything the runtime closure has, this one has too.
 		let runtime = scope ScriptSurface();

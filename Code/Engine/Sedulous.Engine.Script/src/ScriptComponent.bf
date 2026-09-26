@@ -11,10 +11,11 @@ namespace Sedulous.Engine.Script;
 ///
 /// The list is OWNED BY THE MANAGER, because a component is a struct in a packed pool and
 /// cannot own heap data.
+///
+/// Not a script type: scripts reach each other through scene.Scripts.
 [SerializableComponent("script")]
 [DisplayName("Script")]
 [Category("Scripting")]
-[Scriptable]
 struct ScriptComponent : ISerializable, IComponentResources
 {
 	[Hidden]
@@ -35,6 +36,5 @@ struct ScriptComponent : ISerializable, IComponentResources
 	}
 
 	/// How many behaviours the entity carries.
-	[Scriptable]
 	public int32 Count => (int32)Behaviors.Count;
 }

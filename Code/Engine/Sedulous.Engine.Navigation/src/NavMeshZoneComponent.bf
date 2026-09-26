@@ -12,31 +12,24 @@ namespace Sedulous.Engine.Navigation;
 ///
 /// The bake profile is AUTHORING only. An editor's bake action reads it; the runtime reads the
 /// cooked product and nothing else.
+///
+/// Not a script type: its fields are bake settings, read only when the zone is baked.
 [SerializableComponent("navigation.Zone")]
 [DisplayName("Nav Mesh Zone")]
 [Category("Navigation")]
-[Scriptable]
 struct NavMeshZoneComponent : ISerializable, IComponentResources
 {
 	/// The zone's half extents in the entity's LOCAL space, which is the bake region.
-	[Scriptable]
 	public Float3 Extents = .(20.0f, 10.0f, 20.0f);
 
-	[Scriptable]
 	public float CellSize = 0.3f;
-	[Scriptable]
 	public float CellHeight = 0.2f;
-	[Scriptable]
 	public float AgentRadius = 0.6f;
-	[Scriptable]
 	public float AgentHeight = 2.0f;
-	[Scriptable]
 	public float AgentMaxClimb = 0.9f;
-	[Scriptable]
 	public float AgentMaxSlopeDegrees = 45.0f;
 
 	/// The cooked navmesh this zone loads.
-	[Scriptable]
 	public Ref<NavigationZoneResource> Zone = .(Guid());
 
 	/// TRANSIENT: the index into the scene system's live zones, minus one until it starts.

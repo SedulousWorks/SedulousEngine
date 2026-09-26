@@ -254,9 +254,10 @@ static class ScriptSurfaceWalker
 
 	// ---- the facade closure ----
 
-	/// Keeps of the marked candidates only what a script can reach from the facades: the
-	/// seeds are the scene and service facades, the global static blocks and the Scene; then
-	/// every type a kept type's members name, transitively, a component bringing its
+	/// Keeps of the marked candidates only what a script can reach: the seeds are the scene
+	/// and service facades, the global static blocks, the Scene, and every marked component
+	/// that has a manager (a script takes one from an entity, `CharacterComponent(self)`);
+	/// then every type a kept type's members name, transitively, a component bringing its
 	/// manager. `known` is cut to the same set, so the closure check speaks of this surface.
 	/// `withTooling` seeds every candidate outside the Runtime domain as well.
 	[Comptime]
@@ -272,7 +273,8 @@ static class ScriptSurfaceWalker
 			let isStaticBlock = decl.GetName(.. scope .()) == cStaticBlockName;
 			var seed = isStaticBlock || (fullName == "Sedulous.Scene.Scene")
 				|| ((type != null) && (type.HasCustomAttribute<SceneFacadeAttribute>()
-					|| type.HasCustomAttribute<ServiceFacadeAttribute>() || type.HasCustomAttribute<ScriptServiceAttribute>()));
+					|| type.HasCustomAttribute<ServiceFacadeAttribute>() || type.HasCustomAttribute<ScriptServiceAttribute>()))
+				|| (managers.IndexOf(fullName) >= 0);
 			if (!seed && withTooling && (type != null))
 				seed = !IsRuntimeDomain(type);
 			if (!seed)
@@ -280,6 +282,14 @@ static class ScriptSurfaceWalker
 			kept.Add(new String(fullName));
 			if (type != null)
 				work.Add(type);
+			// A seeded component reaches its scripts through its manager, as a reached one does.
+			let at = managers.IndexOf(fullName);
+			if ((at >= 0) && !IsKnown(managers.Managers[at], kept) && IsKnown(managers.Managers[at], known))
+			{
+				kept.Add(new String(managers.Managers[at]));
+				if (let manager = ResolvedCandidate(candidates, managers.Managers[at]))
+					work.Add(manager);
+			}
 		}
 
 		let names = scope List<String>();
