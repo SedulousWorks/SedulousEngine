@@ -124,7 +124,7 @@ class CollisionShapeEditorPage : UIEditorPage
 		split.SplitRatio = 0.62f;
 		split.SetPanes(mPreview.View, column);
 
-		mToolbar = new PageToolbar(this);
+		mToolbar = new PageToolbar(this, mContext.Actions);
 		let pageColumn = new FlexLayout();
 		pageColumn.Direction = .Vertical;
 		var matchTop = LayoutStyle();

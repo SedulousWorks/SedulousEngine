@@ -106,7 +106,7 @@ class AudioBusLayoutEditorPage : UIEditorPage
 		let split = new SplitView();
 		split.SplitRatio = 0.34f;
 		split.SetPanes(leftColumn, rightColumn);
-		mToolbar = new PageToolbar(this);
+		mToolbar = new PageToolbar(this, mContext.Actions);
 		let column = new FlexLayout();
 		column.Direction = .Vertical;
 		column.AddView(mToolbar, match);

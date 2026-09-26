@@ -63,7 +63,7 @@ class SoundCueEditorPage : UIEditorPage
 		let column = new FlexLayout();
 		column.Direction = .Vertical;
 		column.Spacing = 6.0f;
-		mToolbar = new PageToolbar(this);
+		mToolbar = new PageToolbar(this, mContext.Actions);
 		var match = LayoutStyle();
 		match.Width = SizeSpec.Match();
 		column.AddView(mToolbar, match);

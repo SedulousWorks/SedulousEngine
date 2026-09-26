@@ -1,59 +1,103 @@
 using System;
+using System.Collections;
 using Sedulous.UI.Toolkit;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-/// The standard per-page action bar: Save, Undo, Redo, Discard Changes, plus a slot for
-/// page-specific buttons. Wired to the page's Save, command stack and DiscardChanges;
-/// Refresh syncs the enabled states to the page's dirty and undo/redo availability. A page
-/// prepends this to its ContentView and calls Refresh each frame.
+/// A page's action bar, built from the action registry OVER THAT PAGE. The standard set
+/// (file.save, edit.undo, edit.redo, page.discardChanges) comes first; a page adds its own
+/// domain actions by id (AddAction). Every button shows the declaration's label, executes
+/// through the registry with this page as the subject - not the active page, since a split
+/// layout shows two pages and only one is active - and Refresh syncs enabled and checked from
+/// the registry's answer over this page. A page prepends this to its ContentView and calls
+/// Refresh each frame (cheap).
 class PageToolbar : Toolbar
 {
-	private EditorPage mPage;
-	private ToolbarButton mSave;
-	private ToolbarButton mUndo;
-	private ToolbarButton mRedo;
-	private ToolbarButton mDiscard;
-	private bool mPageSlotOpen = false;
+	private struct Bound
+	{
+		/// BORROWED: the registry owns the declaration.
+		public EditorActionDeclaration Action;
+		/// BORROWED: the toolbar owns its buttons.
+		public ToolbarButton Button;
+		/// The same button when the action is a Toggle or Window.
+		public ToolbarToggle Toggle;
+	}
 
-	public this(EditorPage page)
+	/// BORROWED: the page owns this toolbar; the context owns the registry.
+	private EditorPage mPage;
+	private EditorActionRegistry mActions;
+	private List<Bound> mBound = new .() ~ delete _;
+
+	public this(EditorPage page, EditorActionRegistry actions)
 	{
 		mPage = page;
-		mSave = AddButton("Save");
-		mSave.OnClick.Add(new (b) => { mPage.Save().IgnoreError(); });
+		mActions = actions;
+		AddAction("file.save");
 		AddSeparator();
-		mUndo = AddButton("Undo");
-		mUndo.OnClick.Add(new (b) => { mPage.Commands.Undo(); });
-		mRedo = AddButton("Redo");
-		mRedo.OnClick.Add(new (b) => { mPage.Commands.Redo(); });
+		AddAction("edit.undo");
+		AddAction("edit.redo");
 		AddSeparator();
-		mDiscard = AddButton("Discard Changes");
-		mDiscard.OnClick.Add(new (b) => { mPage.DiscardChanges(); });
+		AddAction("page.discardChanges");
 		Refresh();
 	}
 
-	/// A page-specific action to the right of the standard set ("Audition"). Takes ownership
-	/// of the delegate.
-	public ToolbarButton AddPageButton(StringView label, delegate void() onClick)
+	/// A button for the action `id`, over this page: a Command as a button, a Toggle or Window
+	/// as a toggle showing the checked state. Null when no such action is registered (the page
+	/// asked for a name its domain never declared).
+	public ToolbarButton AddAction(StringView id)
 	{
-		if (!mPageSlotOpen)
+		let action = mActions.Find(id);
+		if (action == null)
+			return null;
+		let registry = mActions;
+		let page = mPage;
+		Bound bound = .();
+		bound.Action = action;
+		if (action.Kind == .Command)
 		{
-			AddSeparator();
-			mPageSlotOpen = true;
+			bound.Button = AddButton(action.Label);
+			bound.Button.OnClick.Add(new [=registry, =action, =page](button) => { registry.Execute(action.Id, page).IgnoreError(); });
 		}
-		let button = AddButton(label);
-		button.OnClick.Add(new [=onClick](b) => { if (onClick != null) onClick(); } ~ delete onClick);
-		return button;
+		else
+		{
+			// A toggle flips itself on a click; the action runs when that differs from the
+			// registry's answer, and the next Refresh shows the answer after.
+			let toggle = AddToggle(action.Label);
+			toggle.OnCheckedChanged.Add(new [=registry, =action, =page](t, value) =>
+				{
+					if (registry.IsChecked(action.Id, page) != value)
+						registry.Execute(action.Id, page).IgnoreError();
+				});
+			bound.Toggle = toggle;
+			bound.Button = toggle;
+		}
+		mBound.Add(bound);
+		return bound.Button;
 	}
 
-	/// Syncs the enabled states to the page; cheap, per frame from the page's OnUpdate.
+	/// Syncs every button's enabled (and a toggle's checked) state to the registry's answer
+	/// over this page. Cheap; call per frame from the page's OnUpdate.
 	public void Refresh()
 	{
-		let dirty = mPage.IsDirty;
-		mSave.IsEnabled = dirty;
-		mDiscard.IsEnabled = dirty;
-		mUndo.IsEnabled = mPage.Commands.CanUndo;
-		mRedo.IsEnabled = mPage.Commands.CanRedo;
+		for (let bound in mBound)
+		{
+			bound.Button.IsEnabled = EditorActionRegistry.IsEnabled(bound.Action, mPage);
+			if (bound.Toggle != null)
+				bound.Toggle.IsChecked = EditorActionRegistry.IsChecked(bound.Action, mPage);
+		}
+	}
+
+	public int BoundCount => mBound.Count;
+
+	/// The button bound to `id`, or null: a page that wants to decorate one; the tests.
+	public ToolbarButton ButtonFor(StringView id)
+	{
+		for (let bound in mBound)
+		{
+			if (bound.Action.Id == id)
+				return bound.Button;
+		}
+		return null;
 	}
 }

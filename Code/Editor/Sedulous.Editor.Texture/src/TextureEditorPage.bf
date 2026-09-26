@@ -100,7 +100,7 @@ class TextureEditorPage : UIEditorPage
 		split.SplitRatio = 0.55f;
 		split.SetPanes(previewColumn, gridColumn);
 
-		mToolbar = new PageToolbar(this);
+		mToolbar = new PageToolbar(this, mContext.Actions);
 		let pageColumn = new FlexLayout();
 		pageColumn.Direction = .Vertical;
 		pageColumn.AddView(mToolbar, match);
