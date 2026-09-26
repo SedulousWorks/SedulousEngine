@@ -206,6 +206,58 @@
 	</array>
 	<array name="components" count="21">
 		<object>
+			<string name="owner">d675703d-69d7-4fc7-8e99-aebee4267072</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">9f204350-9342-3842-9ea7-cb2dcdd12781</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">e808c920-48c0-4320-b925-5a6d3cfa9042</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">d083e97f-6ed9-0d4d-8f82-b40e79d7122b</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="1">
+						<u64 name="nameHash">8677635130031352134</u64>
+						<u8 name="kind">7</u8>
+						<string name="id">d675703d-69d7-4fc7-8e99-aebee4267072</string>
+					</array>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">8092f5e4-bca1-49a8-b6a1-b152ea706b03</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">5dea890e-edc4-8449-b773-c7a3207e4cc8</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+		<object>
 			<string name="owner">b1e1a434-be56-468d-aadd-8c949f1b63f5</string>
 			<string name="type">mesh</string>
 			<object name="data">
@@ -214,7 +266,7 @@
 					<u32 name="version">4</u32>
 				</array>
 				<string name="mesh">2e49450f-ef49-044e-8e69-0319e297ad16</string>
-				<array name="materials" count="0" />
+				<array name="materials" count="0"/>
 				<object name="color">
 					<f32 name="r">1</f32>
 					<f32 name="g">1</f32>
@@ -235,7 +287,7 @@
 					<u32 name="version">4</u32>
 				</array>
 				<string name="mesh">d76ee842-f66c-8544-84d3-58fc4047fd0f</string>
-				<array name="materials" count="0" />
+				<array name="materials" count="0"/>
 				<object name="color">
 					<f32 name="r">1</f32>
 					<f32 name="g">1</f32>
@@ -256,7 +308,7 @@
 					<u32 name="version">4</u32>
 				</array>
 				<string name="mesh">d76ee842-f66c-8544-84d3-58fc4047fd0f</string>
-				<array name="materials" count="0" />
+				<array name="materials" count="0"/>
 				<object name="color">
 					<f32 name="r">1</f32>
 					<f32 name="g">1</f32>
@@ -277,7 +329,7 @@
 					<u32 name="version">4</u32>
 				</array>
 				<string name="mesh">d76ee842-f66c-8544-84d3-58fc4047fd0f</string>
-				<array name="materials" count="0" />
+				<array name="materials" count="0"/>
 				<object name="color">
 					<f32 name="r">1</f32>
 					<f32 name="g">1</f32>
@@ -298,7 +350,7 @@
 					<u32 name="version">4</u32>
 				</array>
 				<string name="mesh">d76ee842-f66c-8544-84d3-58fc4047fd0f</string>
-				<array name="materials" count="0" />
+				<array name="materials" count="0"/>
 				<object name="color">
 					<f32 name="r">1</f32>
 					<f32 name="g">1</f32>
@@ -319,7 +371,7 @@
 					<u32 name="version">4</u32>
 				</array>
 				<string name="mesh">d76ee842-f66c-8544-84d3-58fc4047fd0f</string>
-				<array name="materials" count="0" />
+				<array name="materials" count="0"/>
 				<object name="color">
 					<f32 name="r">0.56379414</f32>
 					<f32 name="g">0.93064237</f32>
@@ -340,7 +392,7 @@
 					<u32 name="version">4</u32>
 				</array>
 				<string name="mesh">d76ee842-f66c-8544-84d3-58fc4047fd0f</string>
-				<array name="materials" count="0" />
+				<array name="materials" count="0"/>
 				<object name="color">
 					<f32 name="r">0.20212853</f32>
 					<f32 name="g">0.21208903</f32>
@@ -361,7 +413,7 @@
 					<u32 name="version">4</u32>
 				</array>
 				<string name="mesh">d76ee842-f66c-8544-84d3-58fc4047fd0f</string>
-				<array name="materials" count="0" />
+				<array name="materials" count="0"/>
 				<object name="color">
 					<f32 name="r">0.8602431</f32>
 					<f32 name="g">0.09683335</f32>
@@ -659,64 +711,20 @@
 				<f32 name="stepDown">0.5</f32>
 			</object>
 		</object>
-		<object>
-			<string name="owner">d675703d-69d7-4fc7-8e99-aebee4267072</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">9f204350-9342-3842-9ea7-cb2dcdd12781</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="1">
-						<u64 name="nameHash">5312283033137526150</u64>
-						<u8 name="kind">1</u8>
-						<f64 name="number">120</f64>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">e808c920-48c0-4320-b925-5a6d3cfa9042</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">d083e97f-6ed9-0d4d-8f82-b40e79d7122b</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="1">
-						<u64 name="nameHash">1653916590517707752</u64>
-						<u8 name="kind">7</u8>
-						<string name="id">d675703d-69d7-4fc7-8e99-aebee4267072</string>
-					</array>
-				</array>
-			</object>
-		</object>
-		<object>
-			<string name="owner">8092f5e4-bca1-49a8-b6a1-b152ea706b03</string>
-			<string name="type">script</string>
-			<object name="data">
-				<array name="dataVersions" count="1">
-					<u64 name="type">12464980982266880842</u64>
-					<u32 name="version">1</u32>
-				</array>
-				<array name="behaviors" count="1">
-					<string name="script">5dea890e-edc4-8449-b773-c7a3207e4cc8</string>
-					<bool name="enabled">true</bool>
-					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="0" />
-				</array>
-			</object>
-		</object>
 	</array>
 	<array name="systemSettings" count="5">
+		<object>
+			<string name="system">script</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">12464980982266880842</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object name="settings">
+				<string name="script">39ea4fcf-3344-6549-8b96-10042f9f647b</string>
+				<bool name="enabled">true</bool>
+				<array name="overrides" count="0"/>
+			</object>
+		</object>
 		<object>
 			<string name="system">navigation</string>
 			<array name="dataVersions" count="1">
@@ -727,22 +735,6 @@
 				<bool name="debugDraw">false</bool>
 				<bool name="debugDrawPaths">false</bool>
 				<bool name="debugDrawBakeStages">false</bool>
-			</object>
-		</object>
-		<object>
-			<string name="system">script</string>
-			<array name="dataVersions" count="1">
-				<u64 name="type">12464980982266880842</u64>
-				<u32 name="version">1</u32>
-			</array>
-			<object name="settings">
-				<string name="script">39ea4fcf-3344-6549-8b96-10042f9f647b</string>
-				<bool name="enabled">true</bool>
-				<array name="overrides" count="1">
-					<u64 name="nameHash">13555333221183339639</u64>
-					<u8 name="kind">1</u8>
-					<f64 name="number">90</f64>
-				</array>
 			</object>
 		</object>
 		<object>
@@ -851,5 +843,5 @@
 		</object>
 	</array>
 	<u8 name="prefabMode">4</u8>
-	<array name="prefabInstances" count="0" />
+	<array name="prefabInstances" count="0"/>
 </root>
