@@ -18,13 +18,13 @@ static class BehaviorPropertyTests
 	private const String cMover = """
 		class Mover
 		{
-			float speed = 2;
-			int lives = 3;
-			bool armed = true;
-			string label = "m";
-			Color tint = Color(1, 0, 0, 1);
-			Float3 offset = Float3(1, 2, 3);
-			Entity target;
+			[2.0, "How fast"] float speed;
+			[3] int lives;
+			[true] bool armed;
+			["m"] string label;
+			[(1, 0, 0, 1)] Color tint;
+			[(1, 2, 3)] Float3 offset;
+			[null, "Who to follow"] Entity target;
 			Entity self;
 			Scene@ scene;
 			float seen = -1;
@@ -39,9 +39,13 @@ static class BehaviorPropertyTests
 		let play = scope ScriptPlayScene();
 		let mover = play.Class("Mover", cMover);
 
-		// The harvest saw every authored kind, not the injected self and scene, and no
-		// lifecycle handler as a property.
-		Test.Assert(mover.Properties.Count == 9, scope $"harvested {mover.Properties.Count}");
+		// The harvest saw every annotated field and nothing else: not the injected self and
+		// scene, not the plain state fields, no lifecycle handler.
+		Test.Assert(mover.Properties.Count == 7, scope $"harvested {mover.Properties.Count}");
+		Test.Assert((mover.FindProperty("seen") == null) && (mover.FindProperty("targetName") == null), "plain fields are not properties");
+		Test.Assert(mover.FindProperty("speed").Description == "How fast");
+		Test.Assert(mover.FindProperty("target").Description == "Who to follow");
+		Test.Assert(mover.FindProperty("tint").Default.Color.G == 0);
 		Test.Assert((mover.FindProperty("self") == null) && (mover.FindProperty("scene") == null));
 		Test.Assert(mover.FindProperty("speed").Type == .Float && mover.FindProperty("speed").Default.Number == 2);
 		Test.Assert(mover.FindProperty("lives").Type == .Int);

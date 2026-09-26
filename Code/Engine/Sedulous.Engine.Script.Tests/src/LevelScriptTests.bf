@@ -18,7 +18,7 @@ static class LevelScriptTests
 		class Level
 		{
 			Scene@ scene;
-			float gravity = 9;
+			[9.0, "Gravity"] float gravity;
 			int starts = 0;
 			int updates = 0;
 			int fixedUpdates = 0;

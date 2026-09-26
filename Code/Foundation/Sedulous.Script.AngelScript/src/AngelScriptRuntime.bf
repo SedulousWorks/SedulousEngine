@@ -63,6 +63,9 @@ class AngelScriptRuntime : ScriptRuntime
 	private HashSet<String> mHandleNames = new .() ~ DeleteContainerAndItems!(_);
 	/// The properties on Scene taken, likewise.
 	private HashSet<String> mSceneProperties = new .() ~ DeleteContainerAndItems!(_);
+	/// The builder each module was compiled with, by module name: it holds the module's
+	/// `[metadata]`, which DescribeClass reads. Freed with the module, and before the engine.
+	private Dictionary<String, AS.Builder*> mBuilders = new .() ~ DeleteDictionaryAndKeys!(_);
 	/// Surface types by their AngelScript name, for declarations.
 	private Dictionary<String, ScriptTypeInfo> mByName = new .() ~ DeleteDictionaryAndKeys!(_);
 
@@ -251,6 +254,8 @@ class AngelScriptRuntime : ScriptRuntime
 		ClearAndDeleteItems!(mObjects);
 		for (let ctx in mAllContexts)
 			AS.asc_context_release(ctx);
+		for (let entry in mBuilders)
+			AS.asc_builder_destroy(entry.value);
 		// This thread's AngelScript local data, freed while the thread manager still exists:
 		// the library frees it on its own only for the thread that releases the LAST engine, so
 		// a cook worker whose runtime dies while the main thread's live would leak it on exit.
@@ -1277,15 +1282,34 @@ class AngelScriptRuntime : ScriptRuntime
 
 	// ==================== modules and calls ====================
 
+	/// Builds through the SDK's script builder, which strips `[metadata]` in front of
+	/// declarations from what the compiler sees and keeps it for DescribeClass.
 	public override bool CompileModule(StringView moduleName, Span<ScriptSection> sections)
 	{
-		let module = AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ALWAYS_CREATE);
+		ForgetBuilder(moduleName);
+		let builder = AS.asc_builder_create();
+		if (builder == null)
+			return false;
+		mBuilders[new String(moduleName)] = builder;
+		if (AS.asc_builder_start_module(builder, mEngine, scope String(moduleName).CStr()) < 0)
+			return false;
+		// The builder treats a repeated section name as a file already included and skips it,
+		// so two classes from same-named files would lose the second: a repeat is numbered.
+		let names = scope HashSet<String>();
+		defer { for (let n in names) delete n; }
 		for (let section in sections)
 		{
-			if (AS.asc_module_add_script_section(module, scope String(section.Name).CStr(), section.Source.Ptr, (uint)section.Source.Length) < 0)
+			let name = scope String(section.Name);
+			for (int n = 2; names.Contains(name); n++)
+			{
+				name.Set(section.Name);
+				name.AppendF("#{}", n);
+			}
+			names.Add(new String(name));
+			if (AS.asc_builder_add_section(builder, name.CStr(), section.Source.Ptr, (uint)section.Source.Length) < 0)
 				return false;
 		}
-		return AS.asc_module_build(module) >= 0;
+		return AS.asc_builder_build(builder) >= 0;
 	}
 
 	public override void DiscardModule(StringView moduleName)
@@ -1293,6 +1317,30 @@ class AngelScriptRuntime : ScriptRuntime
 		let module = AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ONLY_IF_EXISTS);
 		if (module != null)
 			AS.asc_module_discard(module);
+		ForgetBuilder(moduleName);
+	}
+
+	private void ForgetBuilder(StringView moduleName)
+	{
+		if (mBuilders.GetAndRemoveAlt(moduleName) case .Ok(let entry))
+		{
+			AS.asc_builder_destroy(entry.value);
+			delete entry.key;
+		}
+	}
+
+	/// The first `[metadata]` entry on a class property, without its brackets; empty when it
+	/// has none or the module was not built here.
+	private void PropertyMetadata(StringView moduleName, int32 typeId, int32 propertyIndex, String outText)
+	{
+		outText.Clear();
+		if (!mBuilders.TryGetValueAlt(moduleName, let builder))
+			return;
+		if (AS.asc_builder_property_metadata_count(builder, typeId, propertyIndex) <= 0)
+			return;
+		let text = AS.asc_builder_property_metadata(builder, typeId, propertyIndex, 0);
+		if (text != null)
+			outText.Append(StringView(text));
 	}
 
 	public override bool Call(StringView moduleName, StringView declaration, Span<ScriptValue> args, ref ScriptValue result)
@@ -1519,12 +1567,17 @@ class AngelScriptRuntime : ScriptRuntime
 		if (type == null)
 			return false;
 
+		let classTypeId = AS.asc_typeinfo_get_type_id(type);
+		let metadata = scope String();
 		let properties = AS.asc_typeinfo_get_property_count(type);
 		for (uint32 i = 0; i < properties; i++)
 		{
+			// An annotated field is reported whatever its access: the annotation, not the
+			// access, is what makes a property.
+			PropertyMetadata(moduleName, classTypeId, (int32)i, metadata);
 			int32 isPrivate = 0, isProtected = 0;
 			AS.asc_typeinfo_get_property_access(type, i, &isPrivate, &isProtected);
-			if ((isPrivate != 0) || (isProtected != 0))
+			if (((isPrivate != 0) || (isProtected != 0)) && metadata.IsEmpty)
 				continue;
 			char8* name = null;
 			int32 typeId = 0;
@@ -1534,6 +1587,7 @@ class AngelScriptRuntime : ScriptRuntime
 			m.Name.Set(StringView(name));
 			m.Kind = KindOfTypeId(typeId);
 			m.TypeName.Set(StringView(AS.asc_engine_get_type_declaration(mEngine, typeId, 0)));
+			m.Metadata.Set(metadata);
 			outMembers.Add(m);
 		}
 		let methods = AS.asc_typeinfo_get_method_count(type);

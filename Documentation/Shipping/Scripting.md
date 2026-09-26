@@ -56,9 +56,27 @@ to its data. `script_api` lists both.
 
 ## Editor properties
 
-Public fields of the authored kinds (float, int, bool, string, Float3, Color, asset
-references) are the class's properties, harvested at cook time and editable per instance.
-Keep field initialisers to plain values: they run during cooking too.
+A property is a field with an annotation, `[default, "description"]` in front of its
+declaration; a field without one is plain state, whatever its access. The editor shows each
+property with its description as the tooltip and saves per instance values over the default.
+
+```
+[4.0, "Units per second"]            float speed;
+[3, "Lives at the start"]            int lives;
+[true]                               bool armed;
+["Hero", "Shown over the head"]      string title;
+[(1, 0, 0, 1)]                       Color tint;
+[(0, 1.5, 0), "Where to aim"]        Float3 aimOffset;
+[null, "What to follow"]             Entity target;
+["asset:AudioClip", "Played on a hit"] Guid hitSound;
+```
+
+- The first token is the default: a number, `true` or `false`, a quoted string, a
+  `(r, g, b[, a])` or `(x, y, z)` list, or `null`. A quoted second token is the description.
+- Types: float, int, bool, string, Color, Float3, Entity, and Guid tagged `"asset:<Type>"`
+  for a reference to an asset of that type. An annotated field of any other type fails the
+  cook, naming the field.
+- The annotation's default is what applies, so leave the field without an initialiser.
 
 ## Working through the MCP tools
 
@@ -71,5 +89,7 @@ Keep field initialisers to plain values: they run during cooking too.
 
 - The class names `Game` and `Level` are reserved for their tiers; do not use them for a
   behavior.
-- `script_validate` compiles; it does not run. A field initialiser with side effects
-  misbehaves at cook time.
+- `script_validate` compiles; it does not run. A global variable's initialiser does run
+  whenever the module builds, cook time included, so keep it to plain values.
+- A plain field is not a property: if the inspector does not show a field, it has no
+  annotation.

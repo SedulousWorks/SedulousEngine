@@ -48,9 +48,10 @@ static class ScriptClassCookTests
 			class Mover
 			{
 				Entity self;
-				float speed = 2.5;
-				int lives = 3;
-				string label = "m";
+				[2.5, "How fast"] float speed;
+				[3] int lives;
+				["m"] string label;
+				int plain = 1;
 				private int state = 0;
 				void onStart() { startCoroutine(ScriptCoroutine(this.run)); }
 				void onUpdate(float dt) {}
@@ -91,7 +92,9 @@ static class ScriptClassCookTests
 		Test.Assert(product.ClassName == "Mover", "the first class, found through the comment");
 		Test.Assert(product.SourceName == "scripts/Mover.as");
 		Test.Assert(product.Source == source);
-		Test.Assert(product.Properties.Count == 3, scope $"{product.Properties.Count} properties: the public authored ones, not self, not the private state");
+		Test.Assert(product.Properties.Count == 3, scope $"{product.Properties.Count} properties: the annotated ones, not self, not a plain field, not the private state");
+		Test.Assert(product.FindProperty("plain") == null);
+		Test.Assert(product.FindProperty("speed").Description == "How fast");
 		Test.Assert((product.FindProperty("speed").Type == .Float) && (product.FindProperty("speed").Default.Number == 2.5));
 		Test.Assert(product.FindProperty("label").Default.Text == "m");
 		Test.Assert(product.HasHandler("onStart") && product.HasHandler("onUpdate") && product.HasHandler("onHit"));
@@ -119,6 +122,15 @@ static class ScriptClassCookTests
 		// A script reaching beyond the surface it is cooked against is refused here.
 		ClearAndDeleteItems(problems);
 		Test.Assert(!cook.Cook("class Reach { void onStart() { PhysicsSceneSystem@ p; } }", "Reach.as", "", record, problems));
+
+		// An annotated field of a type a property cannot be is refused, by name, rather than
+		// silently dropped; so is a Guid without its asset tag.
+		ClearAndDeleteItems(problems);
+		Test.Assert(!cook.Cook("class Odd { [0] array<int> list; }", "Odd.as", "", record, problems));
+		Test.Assert(problems.Back.Contains("Odd.as") && problems.Back.Contains("'list'") && problems.Back.Contains("unsupported"), problems.Back);
+		ClearAndDeleteItems(problems);
+		Test.Assert(!cook.Cook("class Untagged { [null] Guid clip; }", "Untagged.as", "", record, problems));
+		Test.Assert(problems.Back.Contains("'clip'"), problems.Back);
 	}
 
 	[Test]

@@ -192,7 +192,7 @@ static class BehaviorLifecycleTests
 	public static void AReloadRebuildsTheInstanceAndReappliesOverrides()
 	{
 		let play = scope ScriptPlayScene();
-		let v1 = play.Class("Mover", "class Mover { float speed = 1; int version = 1; int starts = 0; void onStart() { starts++; } }");
+		let v1 = play.Class("Mover", "class Mover { [1.0] float speed; int version = 1; int starts = 0; void onStart() { starts++; } }");
 		let e = play.AddBehavior(v1);
 		play.BehaviorOf(e).SetOverride(ScriptPropertyNames.HashOf("speed"), .Float(9));
 		play.Start();
@@ -200,7 +200,7 @@ static class BehaviorLifecycleTests
 		Test.Assert((play.PropFloat(e, "speed") == 9) && (play.PropInt(e, "version") == 1));
 
 		// The product behind the reference swaps: a hot reload.
-		let v2 = play.Class("Mover", "class Mover { float speed = 1; int version = 2; int starts = 0; void onStart() { starts++; } }");
+		let v2 = play.Class("Mover", "class Mover { [1.0] float speed; int version = 2; int starts = 0; void onStart() { starts++; } }");
 		play.BehaviorOf(e).Script.SetDirect(v2);
 		play.Step();
 		Test.Assert(play.PropInt(e, "version") == 2, "the new class");

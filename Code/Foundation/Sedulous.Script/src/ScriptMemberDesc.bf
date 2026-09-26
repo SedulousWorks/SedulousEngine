@@ -11,6 +11,9 @@ class ScriptMemberDesc
 	public ScriptValueKind Kind = .Nil;
 	/// A property: the language's type name, `float`, `Entity`, `AudioClip@`.
 	public String TypeName = new .() ~ delete _;
+	/// A property: its annotation, the text inside `[...]` in front of its declaration, or
+	/// empty when it has none. Only an annotated field is an editor property.
+	public String Metadata = new .() ~ delete _;
 	/// A method: how many parameters. -1 for a property.
 	public int Arity = -1;
 

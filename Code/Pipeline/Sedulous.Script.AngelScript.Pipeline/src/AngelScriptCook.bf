@@ -64,14 +64,15 @@ class AngelScriptCook : IScriptLanguageCook
 				""");
 		case .Behavior:
 			outSource.Append("""
-				// A behaviour: attach it to an entity through a Script component. Public fields of
-				// the authored kinds are its properties; `self` and `scene` are filled in by the
-				// engine; `on` handlers run by their names.
+				// A behaviour: attach it to an entity through a Script component. An annotated
+				// field, `[default, "description"]` in front of it, is a property the editor
+				// shows and sets; `self` and `scene` are filled in by the engine; `on` handlers
+				// run by their names.
 				class NewBehavior
 				{
 					Entity self;
 					Scene@ scene;
-					float speed = 1.0f;
+					[1.0, "Units per second"] float speed;
 
 					void onStart() {}
 					void onUpdate(float dt) {}
@@ -108,12 +109,12 @@ class AngelScriptCook : IScriptLanguageCook
 			}
 		}
 		outRecord.ClassName.Set(name);
-		if (!ScriptHarvest.Harvest(runtime, cModule, name, outRecord))
-		{
-			problems.Add(new String(scope $"{sourceName}: no class '{name}' in the source"));
-			return false;
-		}
-		return true;
+		let harvestProblems = scope List<String>();
+		defer { ClearAndDeleteItems(harvestProblems); }
+		let harvested = ScriptHarvest.Harvest(runtime, cModule, name, outRecord, harvestProblems);
+		for (let p in harvestProblems)
+			problems.Add(new $"{sourceName}: {p}");
+		return harvested;
 	}
 
 	/// The first top level `class Name` in the source, comments aside.
