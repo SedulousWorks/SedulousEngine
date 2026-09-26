@@ -11,7 +11,7 @@ class McpResourceTests
 	private static JsonValue Ask(McpServer server, StringView request)
 	{
 		let line = scope String();
-		if (!server.HandleLine(request, line))
+		if (server.HandleLine(request, line) != .Answered)
 			return null;
 		return JsonValue.Parse(line);
 	}

@@ -14,7 +14,7 @@ class McpServerTests
 	private static JsonValue Ask(McpServer server, StringView request)
 	{
 		let line = scope String();
-		if (!server.HandleLine(request, line))
+		if (server.HandleLine(request, line) != .Answered)
 			return null;
 		return JsonValue.Parse(line);
 	}
@@ -51,13 +51,11 @@ class McpServerTests
 		let line = scope String();
 
 		// No id means a notification, whatever the method is.
-		Test.Assert(!server.HandleLine("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}",
-			line));
-		Test.Assert(!server.HandleLine("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\"}",
-			line));
-		Test.Assert(!server.HandleLine("{\"jsonrpc\":\"2.0\",\"method\":\"something/unknown\"}", line));
+		Test.Assert(server.HandleLine("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}", line) == .Notification);
+		Test.Assert(server.HandleLine("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\"}", line) == .Notification);
+		Test.Assert(server.HandleLine("{\"jsonrpc\":\"2.0\",\"method\":\"something/unknown\"}", line) == .Notification);
 		// A malformed notification is ignored too, which is what JSON-RPC asks for.
-		Test.Assert(!server.HandleLine("{\"jsonrpc\":\"2.0\"}", line));
+		Test.Assert(server.HandleLine("{\"jsonrpc\":\"2.0\"}", line) == .Notification);
 	}
 
 	[Test]
@@ -272,5 +270,78 @@ class McpServerTests
 		let response = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":5}");
 		defer delete response;
 		Test.Assert(ErrorCode(response) == (int64)RpcError.InvalidRequest);
+	}
+
+	// ---- a tool that is not finished ----
+
+	private const String cSlowCall = "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"tools/call\",\"params\":{\"name\":\"slow\"}}";
+
+	/// The call counter a slow tool shares with its test.
+	private class SlowTool
+	{
+		public int Calls = 0;
+		public int AnswerOnCall = 3;
+	}
+
+	/// A tool that answers on its AnswerOnCall'th entry and is not finished before that: the
+	/// shape of a tool waiting on a background job, minus the job.
+	private static void RegisterSlow(McpServer server, SlowTool slow)
+	{
+		server.RegisterTool("slow", "answers after a few re-entries", scope SchemaBuilder().Build(),
+			new (arguments, outResult, outError) =>
+			{
+				slow.Calls++;
+				if (slow.Calls < slow.AnswerOnCall)
+					return .NotFinished;
+				outResult.Set("calls", JsonValue.MakeNumber(slow.Calls));
+				return .Answered;
+			});
+	}
+
+	[Test]
+	public static void AToolThatIsNotFinishedSaysSoUntilTheSameLineLandsItsAnswer()
+	{
+		let server = scope McpServer();
+		let slow = scope SlowTool();
+		RegisterSlow(server, slow);
+
+		let line = scope String();
+		Test.Assert(server.HandleLine(cSlowCall, line) == .NotFinished);
+		Test.Assert(line.IsEmpty, "nothing to write while it waits");
+		Test.Assert(server.HandleLine(cSlowCall, line) == .NotFinished);
+
+		let response = Ask(server, cSlowCall);
+		Test.Assert(response != null);
+		defer delete response;
+		Test.Assert(response.Get("id").AsInt() == 9);
+		let result = response.Get("result");
+		Test.Assert(!result.Get("isError").AsBool());
+		Test.Assert(result.Get("content").At(0).Get("text").AsString().Contains("\"calls\":3"));
+		Test.Assert(slow.Calls == 3);
+	}
+
+	[Test]
+	public static void ServeReentersANotFinishedLineUntilItAnswers()
+	{
+		let server = scope McpServer();
+		let slow = scope SlowTool();
+		slow.AnswerOnCall = 4;
+		RegisterSlow(server, slow);
+
+		let transport = scope InMemoryTransport();
+		transport.Push(cSlowCall);
+		transport.Push("{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"ping\"}");
+		McpServe.Serve(server, transport);
+
+		// The waits wrote nothing, and the ping behind the slow call still got through.
+		Test.Assert(transport.OutputCount == 2);
+		Test.Assert(slow.Calls == 4, "entered once per attempt");
+		let first = JsonValue.Parse(transport.Output(0));
+		defer delete first;
+		Test.Assert(first.Get("id").AsInt() == 9);
+		Test.Assert(first.Get("result").Get("content").At(0).Get("text").AsString().Contains("\"calls\":4"));
+		let second = JsonValue.Parse(transport.Output(1));
+		defer delete second;
+		Test.Assert(second.Get("id").AsInt() == 7);
 	}
 }

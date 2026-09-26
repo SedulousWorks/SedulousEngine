@@ -24,7 +24,7 @@ static class ScriptToolsTests
 		request.Set("method", JsonValue.MakeString("tools/call"));
 		request.Set("params", parameters);
 		let line = scope String();
-		Test.Assert(server.HandleLine(request.ToString(.. scope String()), line));
+		Test.Assert(server.HandleLine(request.ToString(.. scope String()), line) == .Answered);
 		return JsonValue.Parse(line);
 	}
 

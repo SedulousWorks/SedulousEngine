@@ -57,12 +57,13 @@ class McpServer
 		mProviders.Add(provider);
 	}
 
-	/// Handles ONE message, appending the response line to outResponse.
+	/// Handles ONE message and says how it went: Answered with the response line appended to
+	/// outResponse, Notification with nothing to write, or NotFinished, where a tool asked to be
+	/// re-entered and the transport hands the SAME line in again on its next pump.
 	///
-	/// False for a NOTIFICATION, which by definition gets no reply. Malformed input never
-	/// throws: it becomes a protocol error line, because a crash on bad input is a denial of
-	/// service on a process an agent is driving.
-	public bool HandleLine(StringView line, String outResponse)
+	/// Malformed input never throws: it becomes a protocol error line, because a crash on bad
+	/// input is a denial of service on a process an agent is driving.
+	public LineState HandleLine(StringView line, String outResponse)
 	{
 		let parsed = scope JsonParseResult();
 		JsonParser.Parse(line, parsed);
@@ -88,22 +89,25 @@ class McpServer
 				return WriteError(id, .InvalidRequest,
 					"Invalid Request: 'method' must be a string", outResponse);
 			// A malformed notification is ignored, which is what JSON-RPC asks for.
-			return false;
+			return .Notification;
 		}
 
 		// No id means a notification. Every one of them, including initialized and cancelled,
 		// is accepted SILENTLY.
 		if (!hasId)
-			return false;
+			return .Notification;
 
 		let response = Dispatch(method.AsString(), message.Get("params"), id);
+		if (response == null)
+			return .NotFinished;
 		defer delete response;
 		response.ToString(outResponse);
-		return true;
+		return .Answered;
 	}
 
 	// ---- Dispatch ---------------------------------------------------------------------------
 
+	/// The response to send, or null when a tool is not finished.
 	private JsonValue Dispatch(StringView method, JsonValue parameters, JsonValue id)
 	{
 		switch (method)
@@ -179,18 +183,22 @@ class McpServer
 		if (!McpSchema.ValidateArgs(arguments, tool.InputSchema, schemaError))
 			return MakeError(id, .InvalidParams, schemaError);
 
-		// BOTH outcomes are successful JSON-RPC responses. A tool that fails is reported as
-		// error CONTENT, because the failure is the agent's business rather than the
-		// protocol's.
-		let item = JsonValue.MakeObject();
-		item.Set("type", JsonValue.MakeString("text"));
-
-		let result = JsonValue.MakeObject();
+		// Run the tool. One that is not finished is asked again next pump, with the same line
+		// and so the same arguments. BOTH finished outcomes are successful JSON-RPC responses:
+		// a tool that fails is reported as error CONTENT, because the failure is the agent's
+		// business rather than the protocol's.
 		let toolResult = JsonValue.MakeObject();
 		defer delete toolResult;
 		let toolError = scope String();
+		let outcome = tool.Run(arguments, toolResult, toolError);
+		if (outcome == .NotFinished)
+			return null;
 
-		if (tool.Run(arguments, toolResult, toolError))
+		let item = JsonValue.MakeObject();
+		item.Set("type", JsonValue.MakeString("text"));
+		let result = JsonValue.MakeObject();
+
+		if (outcome == .Answered)
 		{
 			item.Set("text", JsonValue.MakeString(toolResult.ToString(.. scope String())));
 			result.Set("isError", JsonValue.MakeBool(false));
@@ -359,12 +367,12 @@ class McpServer
 		return response;
 	}
 
-	private static bool WriteError(JsonValue id, RpcError code, StringView message,
+	private static LineState WriteError(JsonValue id, RpcError code, StringView message,
 		String outResponse)
 	{
 		let response = MakeError(id, code, message);
 		defer delete response;
 		response.ToString(outResponse);
-		return true;
+		return .Answered;
 	}
 }

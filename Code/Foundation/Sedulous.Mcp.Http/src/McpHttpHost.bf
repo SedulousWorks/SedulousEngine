@@ -145,12 +145,18 @@ class McpHttpHost
 					"{\"error\":\"POST one JSON-RPC message per request\"}");
 
 			let line = scope String();
-			if (!mServer.HandleLine(request.BodyText, line))
+			switch (mServer.HandleLine(request.BodyText, line))
 			{
-				// A notification: accepted, with nothing to say.
+			case .Notification:
+				// Accepted, with nothing to say.
 				let accepted = new HttpResponse();
 				accepted.Status = 202;
 				return accepted;
+			case .NotFinished:
+				// The tool asked to be re-entered: NOT YET, so the request waits on its
+				// connection and comes back through here on the next Pump.
+				return null;
+			case .Answered:
 			}
 			return HttpResponse.Json(200, line);
 		}

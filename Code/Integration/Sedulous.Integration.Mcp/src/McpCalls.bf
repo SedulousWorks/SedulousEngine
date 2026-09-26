@@ -28,7 +28,7 @@ static class McpCalls
 		request.Set("method", JsonValue.MakeString("tools/call"));
 		request.Set("params", parameters);
 		let line = scope String();
-		Test.Assert(server.HandleLine(request.ToString(.. scope String()), line), "a call gets a reply");
+		Test.Assert(server.HandleLine(request.ToString(.. scope String()), line) == .Answered, "a call gets a reply");
 		return JsonValue.Parse(line);
 	}
 
@@ -59,7 +59,7 @@ static class McpCalls
 	public static JsonValue Ask(McpServer server, StringView line)
 	{
 		let reply = scope String();
-		Test.Assert(server.HandleLine(line, reply));
+		Test.Assert(server.HandleLine(line, reply) == .Answered);
 		return JsonValue.Parse(reply);
 	}
 

@@ -10,9 +10,10 @@ namespace Sedulous.Mcp;
 /// what reaches the agent and is the only thing it can act on.
 class Tool
 {
-	/// Fills outResult on success, or outError on failure. A failure here is a tool failure,
-	/// not a protocol error, and still travels as a successful response.
-	public typealias Handler = delegate bool(JsonValue arguments, JsonValue outResult,
+	/// Fills outResult and answers, or fills outError and fails. A failure here is a tool
+	/// failure, not a protocol error, and still travels as a successful response. A handler
+	/// that must let its host make progress first answers NotFinished; see ToolOutcome.
+	public typealias Handler = delegate ToolOutcome(JsonValue arguments, JsonValue outResult,
 		String outError);
 
 	public String Name = new .() ~ delete _;
