@@ -159,13 +159,47 @@ static class ProjectRegistryTests
 		// A section the store cannot instantiate makes every later Load abort at it and
 		// drop the sections after: the empty project list incident.
 		EditorSerializables.RegisterAll();
-		for (let type in scope Type[](typeof(EditorFontSettings), typeof(EditorUiSettings), typeof(RecentProjectsSettings), typeof(EditorExportSettings)))
+		for (let type in scope Type[](typeof(EditorFontSettings), typeof(EditorUiSettings), typeof(EditorMcpSettings), typeof(RecentProjectsSettings), typeof(EditorExportSettings)))
 		{
 			let name = type.GetFullName(.. scope .());
 			let made = GlobalSerializableRegistry.Create(TypeIdOf(name));
 			Test.Assert(made != null, name);
 			delete made;
 		}
+	}
+
+	[Test]
+	public static void TheMcpSectionRoundTripsAndAMintedTokenIsAFreshGuid()
+	{
+		EditorSerializables.RegisterAll();
+		// Defaults: off, the documented port, no token yet.
+		{
+			let store = scope Settings();
+			let mcp = store.Section<EditorMcpSettings>();
+			Test.Assert(!mcp.Enabled);
+			Test.Assert(mcp.Port == EditorMcpSettings.DefaultPort);
+			Test.Assert(mcp.Token.IsEmpty);
+		}
+		let store = scope Settings();
+		let mcp = store.Section<EditorMcpSettings>();
+		mcp.Enabled = true;
+		mcp.Port = 7500;
+		EditorMcpSettings.GenerateToken(mcp.Token);
+		Test.Assert(mcp.Token.Length == 36);
+		Test.Assert(EditorMcpSettings.GenerateToken(.. scope .()) != mcp.Token); // every mint is a new secret
+
+		let buffer = scope Sedulous.Core.IO.MemoryStream();
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		Test.Assert(store.Save(buffer, factory) case .Ok);
+		buffer.Seek(0, .Begin);
+		let loaded = scope Settings();
+		Test.Assert(loaded.Load(buffer, factory) case .Ok);
+		let back = loaded.Find<EditorMcpSettings>();
+		Test.Assert(back != null);
+		Test.Assert(back.Enabled);
+		Test.Assert(back.Port == 7500);
+		Test.Assert(back.Token == mcp.Token);
 	}
 
 	[Test]
