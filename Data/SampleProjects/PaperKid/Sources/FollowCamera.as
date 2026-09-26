@@ -9,16 +9,11 @@ class FollowCamera
 	Entity self;
 	Scene@ scene;
 
-	// The entity to follow (the bike).
-	Entity target;
-	// Distance behind the target (m).
-	float distance = 7.0f;
-	// Height above the target (m).
-	float height = 2.2f;
-	// Aim this far above the target (m).
-	float lookHeight = 1.3f;
-	// Position spring rate (higher = snappier).
-	float positionSmoothing = 4.0f;
+	[null, "The entity to follow (the bike)"] Entity target;
+	[7.0, "Distance behind the target (m)"] float distance;
+	[2.2, "Height above the target (m)"] float height;
+	[1.3, "Aim this far above the target (m)"] float lookHeight;
+	[4.0, "Position spring rate (higher = snappier)"] float positionSmoothing;
 
 	void onUpdate(float dt)
 	{

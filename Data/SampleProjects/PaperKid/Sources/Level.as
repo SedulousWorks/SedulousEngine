@@ -12,12 +12,9 @@ class Level
 {
 	Scene@ scene;
 
-	// Time limit (seconds).
-	float timeLimit = 90.0f;
-	// Deliveries needed to clear.
-	int quota = 3;
-	// Grace after the last paper (s).
-	float paperGrace = 3.0f;
+	[90.0, "Time limit (seconds)"] float timeLimit;
+	[3, "Deliveries needed to clear"] int quota;
+	[3.0, "Grace after the last paper (s)"] float paperGrace;
 
 	private float m_timeLeft = 0.0f;
 	private int m_delivered = 0;

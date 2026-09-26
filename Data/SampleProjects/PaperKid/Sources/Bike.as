@@ -18,25 +18,25 @@ class Bike
 	Scene@ scene;
 
 	// ---- tunables ----
-	float maxSpeed = 9.0f;            // top forward speed (m/s)
-	float reverseSpeed = 3.5f;        // top reverse speed (m/s)
-	float acceleration = 14.0f;       // throttle ramp (m/s^2)
-	float braking = 22.0f;            // active brake / reverse ramp (m/s^2)
-	float coastDeceleration = 8.0f;   // roll-down when coasting (m/s^2)
-	float turnSpeedDegrees = 130.0f;  // yaw rate at full speed (deg/s)
-	float minSteerFraction = 0.25f;   // steering authority floor (0..1)
+	[9.0, "Top forward speed (m/s)"] float maxSpeed;
+	[3.5, "Top reverse speed (m/s)"] float reverseSpeed;
+	[14.0, "Throttle ramp (m/s^2)"] float acceleration;
+	[22.0, "Active brake / reverse ramp (m/s^2)"] float braking;
+	[8.0, "Roll-down when coasting (m/s^2)"] float coastDeceleration;
+	[130.0, "Yaw rate at full speed (deg/s)"] float turnSpeedDegrees;
+	[0.25, "Steering authority floor (0..1)"] float minSteerFraction;
 
 	// ---- throwing ----
-	float throwImpulse = 60.0f;       // launch strength; scales with paper mass
-	float throwArc = 0.65f;           // upward bias
-	float autoAim = 0.6f;             // 0 = straight, 1 = locked on
-	float aimRange = 18.0f;           // auto-aim range (m)
-	int startingPapers = 10;          // papers per level
-	int subscriberGroup = 2;          // the subscriber zones' collision group
+	[60.0, "Throw impulse (launch strength; scales with paper mass)"] float throwImpulse;
+	[0.65, "Throw arc (upward bias)"] float throwArc;
+	[0.6, "Auto-aim strength (0 = straight, 1 = locked on)"] float autoAim;
+	[18.0, "Auto-aim range (m)"] float aimRange;
+	[10, "Papers per level"] int startingPapers;
+	[2, "Subscriber collision group"] int subscriberGroup;
 
 	// ---- aim preview: a debug-drawn arc of where the throw will go ----
-	float aimPreviewSpeed = 10.0f;    // visual only (m/s)
-	float aimPreviewTime = 1.5f;      // seconds of arc drawn
+	[10.0, "Aim preview launch speed (visual only, m/s)"] float aimPreviewSpeed;
+	[1.5, "Aim preview duration (s)"] float aimPreviewTime;
 
 	// ---- runtime state (private, so not authored) ----
 	private float m_heading = 0.0f;   // yaw in RADIANS (0 = facing world +Z)

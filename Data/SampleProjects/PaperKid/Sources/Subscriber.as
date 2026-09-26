@@ -9,8 +9,7 @@ class Subscriber
 	Entity self;
 	Scene@ scene;
 
-	// Points this delivery is worth.
-	int value = 10;
+	[10, "Points this delivery is worth"] int value;
 
 	private bool m_delivered = false;
 
