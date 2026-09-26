@@ -119,11 +119,7 @@ static class SceneEditor
 							SceneResolve.ResolveSceneResources(scene, context.Resources);
 					});
 				}
-				for (let open in context.OpenPages)
-				{
-					if (open.InstanceId == prefabId)
-						open.OnAssetExternallyModified();
-				}
+				context.NotifyAssetExternallyModified(prefabId);
 			}
 		}
 		context.Notify(.Success, generated.Regenerated
@@ -141,12 +137,7 @@ static class SceneEditor
 		}
 		if (generated.Regenerated)
 		{
-			let sceneId = generated.Instance.Id;
-			for (let open in context.OpenPages)
-			{
-				if (open.InstanceId == sceneId)
-					open.OnAssetExternallyModified();
-			}
+			context.NotifyAssetExternallyModified(generated.Instance.Id);
 		}
 		context.Notify(.Success, generated.Regenerated
 			? scope $"Scene '{generated.Instance.Name}' regenerated."

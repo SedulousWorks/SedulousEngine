@@ -452,6 +452,24 @@ class EditorContext : IAssetEditSink
 
 	public List<EditorPage> OpenPages => mPages;
 
+	/// The source asset changed OUTSIDE its page (an apply to prefab, a regenerated model
+	/// prefab or scene, an agent's write over MCP): every open page editing it is told
+	/// (EditorPage.OnAssetExternallyModified) and refreshes by its own rule. Returns how many
+	/// pages were told.
+	public int NotifyAssetExternallyModified(Guid assetId)
+	{
+		int told = 0;
+		for (let page in mPages)
+		{
+			if (page.InstanceId == assetId)
+			{
+				page.OnAssetExternallyModified();
+				told++;
+			}
+		}
+		return told;
+	}
+
 	public EditorPage ActivePage => mActivePage;
 
 	public void SetActivePage(EditorPage page)

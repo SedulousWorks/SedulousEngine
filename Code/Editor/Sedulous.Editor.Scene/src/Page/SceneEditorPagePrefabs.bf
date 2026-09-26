@@ -126,11 +126,7 @@ extension SceneEditorPage
 				}
 			});
 		}
-		for (let open in mContext.OpenPages)
-		{
-			if (open.InstanceId == prefabId)
-				open.OnAssetExternallyModified();
-		}
+		mContext.NotifyAssetExternallyModified(prefabId);
 		mContext.Notify(.Success, scope $"Applied to prefab '{asset.Name}' (not undoable - the asset changed).");
 	}
 

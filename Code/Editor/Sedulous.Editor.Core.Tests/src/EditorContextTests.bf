@@ -316,4 +316,40 @@ static class EditorContextTests
 		context.ApplyMcpToolContributions(another);
 		Test.Assert(another.ToolCount == 1);
 	}
+
+	class WatchingPage : EditorPage
+	{
+		public int Told = 0;
+
+		public this(Guid asset)
+		{
+			InstanceId = asset;
+		}
+
+		public override StringView Title => "watching";
+		public override Result<void, ErrorCode> Save() => .Ok;
+		public override void OnAssetExternallyModified() { Told++; }
+	}
+
+	[Test]
+	public static void AnAssetChangedOutsideItsPageTellsEveryOpenPageEditingItAndNoOther()
+	{
+		var rng = Sedulous.Core.Random(11);
+		let edited = Guid.Generate(ref rng);
+		let other = Guid.Generate(ref rng);
+		let context = scope EditorContext();
+		let first = new WatchingPage(edited);
+		let second = new WatchingPage(edited);
+		let elsewhere = new WatchingPage(other);
+		context.AdoptPage(first);
+		context.AdoptPage(second);
+		context.AdoptPage(elsewhere);
+
+		Test.Assert(context.NotifyAssetExternallyModified(edited) == 2);
+		Test.Assert(first.Told == 1);
+		Test.Assert(second.Told == 1);
+		Test.Assert(elsewhere.Told == 0);
+		// An asset no page edits: nothing told, nothing wrong.
+		Test.Assert(context.NotifyAssetExternallyModified(Guid.Generate(ref rng)) == 0);
+	}
 }
