@@ -368,7 +368,7 @@ extension EditorApplication
 		TemplatesRoot(seams.TemplatesRoot);
 		seams.DataRoot.Set(mConfig.DataRoot);
 		mMcpOperations = new EditorProjectOperations(seams);
-		mMcpHost = new EditorMcpHost(mMcpSession, mConfig.LogBuffer, mBuilders, mContext.Importers,
+		mMcpHost = new EditorMcpHost(mContext, mMcpSession, mConfig.LogBuffer, mBuilders, mContext.Importers,
 			paths, mMcpOperations, BuildStamp(.. scope .()));
 		mMcpHost.OnToolFinished = new (tool, isError) =>
 			{

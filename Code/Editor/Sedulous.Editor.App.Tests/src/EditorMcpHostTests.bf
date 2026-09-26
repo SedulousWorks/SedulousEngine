@@ -5,6 +5,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Http;
 using Sedulous.Json;
+using Sedulous.Mcp;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Editor.Core;
@@ -67,7 +68,14 @@ class EditorMcpHostTests
 		let session = scope ProjectSession();
 		session.Project = project;
 		let operations = scope InlineProjectOperations(session, builders, "", "");
-		let host = scope EditorMcpHost(session, logBuffer, builders, importers, scope EngineToolPaths(), operations, "test-stamp");
+		let context = scope EditorContext();
+		// A domain's contribution (registered at boot) reaches the served surface.
+		context.RegisterMcpToolContribution(new (server) =>
+			{
+				server.RegisterTool("contributed_tool", "from a domain", scope SchemaBuilder().Build(), .ReadOnly,
+					new (arguments, outResult, outError) => true);
+			});
+		let host = scope EditorMcpHost(context, session, logBuffer, builders, importers, scope EngineToolPaths(), operations, "test-stamp");
 		let finished = scope List<String>();
 		defer ClearAndDeleteItems(finished);
 		host.OnToolFinished = new (tool, isError) => finished.Add(new $"{tool}:{isError ? "err" : "ok"}");
@@ -125,19 +133,23 @@ class EditorMcpHostTests
 		let projectPayload = Payload(projectInfo);
 		defer delete projectPayload;
 		Test.Assert(projectPayload.Get("name").AsString() == "Hosted");
-		// The surface: the shared engine tools plus host_info; never the stdio host's project_open.
+		// The surface: the shared engine tools, host_info, and the domain's contribution; never
+		// the stdio host's project_open.
 		Test.Assert(tools != null);
 		let listed = tools.Get("result").Get("tools");
-		Test.Assert(listed.Count == EngineTools.cEngineToolCount + 1);
+		Test.Assert(listed.Count == EngineTools.cEngineToolCount + 2);
 		bool hasHostInfo = false;
 		bool hasProjectOpen = false;
+		bool hasContributed = false;
 		for (int i < listed.Count)
 		{
 			let name = listed.At(i).Get("name").AsString();
 			hasHostInfo |= (name == "host_info");
 			hasProjectOpen |= (name == "project_open");
+			hasContributed |= (name == "contributed_tool");
 		}
 		Test.Assert(hasHostInfo);
+		Test.Assert(hasContributed);
 		Test.Assert(!hasProjectOpen);
 		Test.Assert(wrongTokenRefused);
 		// Every finished call was reported, in order.
@@ -164,7 +176,8 @@ class EditorMcpHostTests
 		let session = scope ProjectSession();
 		session.Project = project;
 		let operations = scope InlineProjectOperations(session, builders, "", "");
-		let host = scope EditorMcpHost(session, logBuffer, builders, importers, scope EngineToolPaths(), operations, "test-stamp");
+		let context = scope EditorContext();
+		let host = scope EditorMcpHost(context, session, logBuffer, builders, importers, scope EngineToolPaths(), operations, "test-stamp");
 		EditorMcpHostConfig config = .(); // no token
 		Test.Assert(!host.Start(config));
 		Test.Assert(!host.IsRunning);

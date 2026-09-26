@@ -288,4 +288,32 @@ static class EditorContextTests
 		Test.Assert(context.DrainAssetEdits(db.Database) case .Ok);
 		Test.Assert(!cooked, "an empty drain is a no-op");
 	}
+
+	[Test]
+	public static void McpToolContributionsRegisterAtBootAndApplyToAHostsServerInOrder()
+	{
+		let context = scope EditorContext();
+		Test.Assert(context.McpToolContributionCount == 0);
+		let order = scope List<String>();
+		defer ClearAndDeleteItems(order);
+		context.RegisterMcpToolContribution(new [&order](server) =>
+			{
+				order.Add(new .("scene"));
+				server.RegisterTool("selection_get", "x", scope Sedulous.Mcp.SchemaBuilder().Build(), .ReadOnly,
+					new (arguments, outResult, outError) => true);
+			});
+		context.RegisterMcpToolContribution(new [&order](server) => { order.Add(new .("other")); });
+		Test.Assert(context.McpToolContributionCount == 2);
+
+		let server = scope Sedulous.Mcp.McpServer();
+		context.ApplyMcpToolContributions(server);
+		Test.Assert(server.ToolCount == 1);
+		Test.Assert(order.Count == 2);
+		Test.Assert(order[0] == "scene");
+		Test.Assert(order[1] == "other");
+		// Applying to a second host serves the same contributions again (one per project open).
+		let another = scope Sedulous.Mcp.McpServer();
+		context.ApplyMcpToolContributions(another);
+		Test.Assert(another.ToolCount == 1);
+	}
 }

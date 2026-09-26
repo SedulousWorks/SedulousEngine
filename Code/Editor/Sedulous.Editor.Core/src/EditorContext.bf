@@ -5,6 +5,7 @@ using Sedulous.Core.Logging;
 using Sedulous.Content;
 using Sedulous.Resource;
 using Sedulous.Settings;
+using Sedulous.Mcp;
 using Sedulous.Pipeline.Importer;
 
 namespace Sedulous.Editor.Core;
@@ -48,6 +49,7 @@ class EditorContext : IAssetEditSink
 	private EditorPageRegistry mPageRegistry = new .() ~ delete _;
 	private List<AssetCreator> mCreators = new .() ~ DeleteContainerAndItems!(_);
 	private List<EditorSettingsContribution> mSettingsContributions = new .() ~ DeleteContainerAndItems!(_);
+	private List<delegate void(McpServer server)> mMcpToolContributions = new .() ~ DeleteContainerAndItems!(_);
 	private String mClipboardKind = new .() ~ delete _;
 	private List<uint8> mClipboard = new .() ~ delete _;
 	private List<Guid> mFavorites = new .() ~ delete _;
@@ -195,6 +197,24 @@ class EditorContext : IAssetEditSink
 	}
 
 	public List<EditorSettingsContribution> EditorSettingsContributions => mSettingsContributions;
+
+	/// Domain contributed MCP tools: a domain's RegisterEditor (the scene editor, ...) registers
+	/// what only IT can serve over the live editor (the selection, simulate); the MCP host
+	/// applies every contribution to its server when it starts. Registered at boot, before any
+	/// host exists, like the settings contributions. TAKES OWNERSHIP.
+	public void RegisterMcpToolContribution(delegate void(McpServer server) contribution)
+	{
+		mMcpToolContributions.Add(contribution);
+	}
+
+	/// Applies every contribution, in registration order, to a host's server.
+	public void ApplyMcpToolContributions(McpServer server)
+	{
+		for (let contribution in mMcpToolContributions)
+			contribution(server);
+	}
+
+	public int McpToolContributionCount => mMcpToolContributions.Count;
 
 	// ---- pending asset edits: a viewport tool edits a cooked product live and registers
 	// the closure persisting it back to its SOURCE; the save flow drains these ----
