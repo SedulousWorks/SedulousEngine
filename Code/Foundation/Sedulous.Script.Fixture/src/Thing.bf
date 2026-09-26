@@ -14,6 +14,9 @@ class Thing
 	[Scriptable]
 	public int Count;
 	public int NotExposed;
+	/// Published read only: a script reads it, never assigns it; the owner still writes it.
+	[Scriptable, ReadOnly]
+	public int Serial = 7;
 
 	[Scriptable]
 	[Description("How fast.")]

@@ -95,6 +95,8 @@ static class ScriptSurfaceWalkerTests
 
 		Test.Assert(Field(t, "Count") != null);
 		Test.Assert(Field(t, "NotExposed") == null);
+		let serial = Field(t, "Serial");
+		Test.Assert((serial != null) && !serial.CanWrite && (serial.Get != null) && (serial.Set == null), "[ReadOnly] binds a getter and no setter");
 		let speed = Field(t, "Speed");
 		Test.Assert((speed != null) && speed.IsProperty && speed.CanWrite && (speed.Description == "How fast."));
 		let ready = Field(t, "Ready");

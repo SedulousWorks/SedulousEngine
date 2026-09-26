@@ -648,7 +648,7 @@ static class ScriptSurfaceWalker
 			let typeName = f.FieldType.GetFullName(.. scope .());
 			let code = ctx.Code;
 			code.AppendF("\t\tt.AddField({}, {}, {}).OfKind(.{})", Quote(f.Name, .. scope .()), Quote(typeName, .. scope .()), Bool(f.IsStatic), ScriptValueMap.KindOf(f.FieldType, .. scope .()));
-			let readOnly = f.IsReadOnly || f.IsConst;
+			let readOnly = f.IsReadOnly || f.IsConst || f.HasCustomAttribute<ReadOnlyAttribute>();
 			if (readOnly)
 				code.Append(".ReadOnly()");
 			EmitFieldMetadata(f, code);
@@ -704,6 +704,10 @@ static class ScriptSurfaceWalker
 					break;
 				}
 			}
+
+			// [ReadOnly] on the getter closes a public setter to scripts.
+			if (m.HasCustomAttribute<ReadOnlyAttribute>())
+				canWrite = false;
 
 			let typeName = m.ReturnType.GetFullName(.. scope .());
 			let code = ctx.Code;

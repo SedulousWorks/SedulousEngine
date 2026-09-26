@@ -110,6 +110,29 @@ static class FixtureScriptTests
 		Test.Assert(Near(r.AsFloat, 9));
 	}
 
+	/// A [ReadOnly] member binds a getter only: a script reads it, and an assignment is
+	/// refused by the compiler, since no setter exists.
+	[Test]
+	public static void AReadOnlyFieldReadsAndAnAssignmentFailsToCompile()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = Bound(s);
+		defer delete vm;
+		Test.Assert(vm.Compile("t", "t.as", "int read(Thing@ t) { return t.Serial; }"), "the read compiles");
+		Dump(vm);
+		let thing = scope Thing();
+		var arg = ScriptValue[1](.FromObject(thing));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("t", "int read(Thing@)", arg, ref r));
+		Test.Assert(r.AsInt == 7);
+
+		let other = Bound(s);
+		defer delete other;
+		Test.Assert(!other.Compile("w", "w.as", "void write(Thing@ t) { t.Serial = 3; }"), "no setter: the assignment does not compile");
+		Test.Assert(thing.Serial == 7);
+	}
+
 	[Test]
 	public static void OverloadsResolveByType()
 	{
