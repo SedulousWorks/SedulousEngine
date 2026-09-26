@@ -32,6 +32,9 @@ static class SceneEditor
 
 		context.Pages.Register(new SceneEditorPageFactory(host, uiHost));
 		context.Pages.Register(new PrefabEditorPageFactory(host, uiHost));
+		// The scene editor's MCP tools (selection, simulate), served by the editor's MCP host
+		// over whichever scene page a call addresses.
+		context.RegisterMcpToolContribution(new [=context](server) => { SceneMcpTools.Register(server, context); });
 
 		context.RegisterCreator(new AssetCreator("Scene", "", new (ctx, group) => SceneAssetCreators.CreateSceneInstance(ctx, group), true));
 		context.RegisterCreator(new AssetCreator("Prefab", "", new (ctx, group) => SceneAssetCreators.CreatePrefabInstance(ctx, group)));

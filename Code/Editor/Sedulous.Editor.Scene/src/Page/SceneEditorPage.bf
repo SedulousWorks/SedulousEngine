@@ -35,7 +35,7 @@ namespace Sedulous.Editor.Scene;
 ///
 /// The context, host and UI host are borrowed; the page owns its edit context, tools, gizmo
 /// registry and views, and releases its content view on destruction.
-class SceneEditorPage : UIEditorPage
+class SceneEditorPage : UIEditorPage, ISceneEditorPage
 {
 	/// Must match OnRenderWindow's projection.
 	private const float cFovY = 1.0472f;

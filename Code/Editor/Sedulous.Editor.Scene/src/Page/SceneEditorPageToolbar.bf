@@ -125,7 +125,7 @@ extension SceneEditorPage
 	// ---- simulate ----
 
 	/// Snapshots the scene, starts it and locks the undo stack; Stop restores the snapshot.
-	private void StartSimulation()
+	public void StartSimulation()
 	{
 		if (mIsSimulating || (mScene == null))
 			return;
@@ -146,7 +146,7 @@ extension SceneEditorPage
 		RefreshSimToolbar();
 	}
 
-	private void PauseSimulation(bool paused)
+	public void PauseSimulation(bool paused)
 	{
 		if (!mIsSimulating || (mScene == null))
 			return;
@@ -155,7 +155,7 @@ extension SceneEditorPage
 		RefreshSimToolbar();
 	}
 
-	private void StopSimulation()
+	public void StopSimulation()
 	{
 		if (!mIsSimulating || (mScene == null))
 			return;
