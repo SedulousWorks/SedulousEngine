@@ -171,8 +171,6 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 		return name.StartsWith("System.Collections.List<");
 	}
 
-	/// Whether a type carries its own Serialize, taking just the serializer.
-	[Comptime]
 	/// The key a field is stored under: its name with the first letter lowercased.
 	///
 	/// The stored form is camelCase because that is what the ENGINE'S FORMAT is, and a
@@ -191,6 +189,8 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 			outKey[0] = outKey[0].ToLower;
 	}
 
+	/// Whether a type carries its own Serialize, taking just the serializer.
+	[Comptime]
 	private static bool HasSelfSerialize(Type type)
 	{
 		if (let instance = type as TypeInstance)
