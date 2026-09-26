@@ -1,3 +1,5 @@
+using System;
+
 namespace Sedulous.UI;
 
 /// Keyboard key codes.
@@ -142,4 +144,127 @@ enum KeyCode : uint32
 
 	/// Sizes a key state array; not a key.
 	case Count = 512;
+
+	/// The key's name as a shortcut shows it ("S", "F5", "Page Up", "Keypad +"); empty for
+	/// Unknown and the modifier keys, which a chord never binds as its key. The table sits next
+	/// to the enum, so a new key names itself here.
+	public StringView DisplayName
+	{
+		get
+		{
+			switch (this)
+			{
+			case .A: return "A";
+			case .B: return "B";
+			case .C: return "C";
+			case .D: return "D";
+			case .E: return "E";
+			case .F: return "F";
+			case .G: return "G";
+			case .H: return "H";
+			case .I: return "I";
+			case .J: return "J";
+			case .K: return "K";
+			case .L: return "L";
+			case .M: return "M";
+			case .N: return "N";
+			case .O: return "O";
+			case .P: return "P";
+			case .Q: return "Q";
+			case .R: return "R";
+			case .S: return "S";
+			case .T: return "T";
+			case .U: return "U";
+			case .V: return "V";
+			case .W: return "W";
+			case .X: return "X";
+			case .Y: return "Y";
+			case .Z: return "Z";
+			case .Num1: return "1";
+			case .Num2: return "2";
+			case .Num3: return "3";
+			case .Num4: return "4";
+			case .Num5: return "5";
+			case .Num6: return "6";
+			case .Num7: return "7";
+			case .Num8: return "8";
+			case .Num9: return "9";
+			case .Num0: return "0";
+			case .Return: return "Return";
+			case .Escape: return "Escape";
+			case .Backspace: return "Backspace";
+			case .Tab: return "Tab";
+			case .Space: return "Space";
+			case .Minus: return "-";
+			case .Equals: return "=";
+			case .LeftBracket: return "[";
+			case .RightBracket: return "]";
+			case .Backslash: return "\\";
+			case .Semicolon: return ";";
+			case .Apostrophe: return "'";
+			case .Grave: return "`";
+			case .Comma: return ",";
+			case .Period: return ".";
+			case .Slash: return "/";
+			case .CapsLock: return "Caps Lock";
+			case .F1: return "F1";
+			case .F2: return "F2";
+			case .F3: return "F3";
+			case .F4: return "F4";
+			case .F5: return "F5";
+			case .F6: return "F6";
+			case .F7: return "F7";
+			case .F8: return "F8";
+			case .F9: return "F9";
+			case .F10: return "F10";
+			case .F11: return "F11";
+			case .F12: return "F12";
+			case .PrintScreen: return "Print Screen";
+			case .ScrollLock: return "Scroll Lock";
+			case .Pause: return "Pause";
+			case .Insert: return "Insert";
+			case .Home: return "Home";
+			case .PageUp: return "Page Up";
+			case .Delete: return "Delete";
+			case .End: return "End";
+			case .PageDown: return "Page Down";
+			case .Right: return "Right";
+			case .Left: return "Left";
+			case .Down: return "Down";
+			case .Up: return "Up";
+			case .NumLock: return "Num Lock";
+			case .KeypadDivide: return "Keypad /";
+			case .KeypadMultiply: return "Keypad *";
+			case .KeypadMinus: return "Keypad -";
+			case .KeypadPlus: return "Keypad +";
+			case .KeypadEnter: return "Keypad Enter";
+			case .Keypad1: return "Keypad 1";
+			case .Keypad2: return "Keypad 2";
+			case .Keypad3: return "Keypad 3";
+			case .Keypad4: return "Keypad 4";
+			case .Keypad5: return "Keypad 5";
+			case .Keypad6: return "Keypad 6";
+			case .Keypad7: return "Keypad 7";
+			case .Keypad8: return "Keypad 8";
+			case .Keypad9: return "Keypad 9";
+			case .Keypad0: return "Keypad 0";
+			case .KeypadPeriod: return "Keypad .";
+			case .Application: return "Application";
+			case .KeypadEquals: return "Keypad =";
+			case .F13: return "F13";
+			case .F14: return "F14";
+			case .F15: return "F15";
+			case .F16: return "F16";
+			case .F17: return "F17";
+			case .F18: return "F18";
+			case .F19: return "F19";
+			case .F20: return "F20";
+			case .F21: return "F21";
+			case .F22: return "F22";
+			case .F23: return "F23";
+			case .F24: return "F24";
+			default: return "";
+			}
+		}
+	}
 }

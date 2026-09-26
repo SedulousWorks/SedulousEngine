@@ -135,6 +135,17 @@ class Dialog : ViewGroup
 	/// layer holds the dialog and closing destroys it.
 	public void Show(UIContext context, bool ownsView = true)
 	{
+		// A context whose interceptor refuses never shows it: the dialog closes as cancelled at
+		// once (OnClosed runs, so the flow that asked proceeds as if the user had dismissed it),
+		// and the reference Show would have handed the layer is dropped here instead.
+		if ((context.DialogInterceptor != null) && !context.DialogInterceptor(this))
+		{
+			Close(.Cancel);
+			if (ownsView)
+				ReleaseRef();
+			return;
+		}
+
 		let root = context.ActiveInputRoot;
 		if (root == null)
 			return;

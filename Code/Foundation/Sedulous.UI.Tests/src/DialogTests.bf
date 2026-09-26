@@ -309,4 +309,49 @@ class DialogTests
 		small.Close(.Cancel);
 		context.MutationQueue.Drain();
 	}
+
+	/// A context's interceptor answering false keeps the dialog off the screen and closes it as
+	/// cancelled, so the asking flow proceeds as dismissed; answering true lets it show.
+	[Test]
+	public static void AnInterceptorThatRefusesClosesTheDialogAsCancelled()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let seen = scope String();
+		context.DialogInterceptor = new [&seen](dialog) =>
+			{
+				seen.Set(dialog.Title);
+				return false;
+			};
+		let dialog = new Dialog("Unsaved changes");
+		defer dialog.ReleaseRef();
+		DialogResult closedWith = .None;
+		int closed = 0;
+		dialog.OnClosed.Add(new [&closedWith, &closed](d, result) =>
+			{
+				closed++;
+				closedWith = result;
+			});
+		ShowFor(context, dialog);
+		Test.Assert(seen == "Unsaved changes");
+		Test.Assert(closed == 1);
+		Test.Assert(closedWith == .Cancel);
+		Test.Assert(dialog.Context == null, "never attached: it was not shown");
+		Test.Assert(root.GetPopupLayer().PopupCount == 0);
+
+		// A dialog the layer would have owned is released, not leaked.
+		let owned = new Dialog("Owned");
+		owned.Show(context);
+
+		// An interceptor answering true lets it show.
+		delete context.DialogInterceptor;
+		context.DialogInterceptor = new (d) => true;
+		let shown = new Dialog("Shown");
+		defer shown.ReleaseRef();
+		ShowFor(context, shown);
+		Test.Assert(shown.Context != null);
+		shown.Close(.Cancel);
+		context.MutationQueue.Drain();
+	}
 }

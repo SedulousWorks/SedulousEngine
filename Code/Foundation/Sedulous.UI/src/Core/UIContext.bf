@@ -65,6 +65,12 @@ class UIContext
 		mMutationQueue.Drain();
 	}
 
+	/// Runs at the start of every Dialog.Show; answering false keeps the dialog off the screen,
+	/// and it closes at once as cancelled. An unattended caller (an agent's tool call on the
+	/// editor) installs one for the duration of its call and records what it suppressed; null
+	/// means every dialog shows. OWNED.
+	public delegate bool(Dialog) DialogInterceptor ~ delete _;
+
 	public UIContextPhase CurrentPhase => mPhase;
 
 	public InputManager GetInputManager() => mInputManager;
