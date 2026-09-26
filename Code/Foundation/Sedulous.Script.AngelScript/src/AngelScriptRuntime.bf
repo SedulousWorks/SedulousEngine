@@ -70,8 +70,29 @@ class AngelScriptRuntime : ScriptRuntime
 	public override ScriptCallContext Context => mCallContext;
 	public AngelScriptCallContext CallContext => mCallContext;
 
+	/// Guards the one asPrepareMultithread call.
+	private static System.Threading.Monitor sPrepareLock = new .() ~ delete _;
+	private static bool sPrepared = false;
+
+	/// AngelScript's thread manager, prepared ONCE for the process and never released. Without
+	/// it the manager is created by the first engine and deleted with the last, a transition
+	/// AngelScript does not guard against a second thread: a cook's workers create and release
+	/// engines concurrently while the main thread holds none, and one of them can find the
+	/// manager gone mid execution.
+	private static void PrepareThreads()
+	{
+		using (sPrepareLock.Enter())
+		{
+			if (sPrepared)
+				return;
+			AS.asPrepareMultithread(null);
+			sPrepared = true;
+		}
+	}
+
 	public this()
 	{
+		PrepareThreads();
 		mEngine = AS.asc_engine_create();
 		AS.asc_engine_set_message_callback(mEngine, => OnMessage, Internal.UnsafeCastToPtr(this));
 		AS.asc_engine_set_generic_callback(mEngine, => OnGeneric, Internal.UnsafeCastToPtr(this));
@@ -230,6 +251,10 @@ class AngelScriptRuntime : ScriptRuntime
 		ClearAndDeleteItems!(mObjects);
 		for (let ctx in mAllContexts)
 			AS.asc_context_release(ctx);
+		// This thread's AngelScript local data, freed while the thread manager still exists:
+		// the library frees it on its own only for the thread that releases the LAST engine, so
+		// a cook worker whose runtime dies while the main thread's live would leak it on exit.
+		AS.asThreadCleanup();
 		AS.asc_engine_release(mEngine);
 	}
 

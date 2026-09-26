@@ -23,6 +23,16 @@ static class AS
 
 	// ---- engine ----
 	[CLink] public static extern Engine* asc_engine_create();
+	/// AngelScript's own C API: frees the CALLING thread's local data, which the library keeps
+	/// per thread and otherwise frees only for the thread that releases the last engine. A
+	/// worker that used an engine calls it before exiting. Refused (a negative result) while a
+	/// context is active on the thread.
+	[CLink] public static extern int32 asThreadCleanup();
+	/// AngelScript's own C API: takes a reference on the process wide thread manager, creating it
+	/// on first use. AngelScript requires this before any thread but the first creates an
+	/// engine; a reference that is never released keeps the manager alive for the process, so
+	/// engines created and released on workers never race its creation or deletion. Pass null.
+	[CLink] public static extern int32 asPrepareMultithread(void* externalManager);
 	[CLink] public static extern void asc_engine_release(Engine* engine);
 	[CLink] public static extern void asc_engine_set_message_callback(Engine* engine, MessageFn fn, void* user);
 	[CLink] public static extern void asc_engine_set_generic_callback(Engine* engine, GenericFn fn, void* user);
