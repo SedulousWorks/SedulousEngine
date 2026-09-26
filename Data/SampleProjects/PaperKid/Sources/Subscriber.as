@@ -2,7 +2,8 @@
 //
 // A per-entity behavior on a subscriber's DELIVERY ZONE: a trigger body in the subscriber
 // collision group. When a thrown paper enters it the delivery counts once, and the house's points
-// go out twice: to the scene (the Level tallies the quota) and to the run (the Game keeps score).
+// go out once, as "Delivered" on the scene's event bus. In a game run the scene bus IS the run bus,
+// so the Level (which tallies the quota) and the Game (which keeps score) both hear that one emit.
 class Subscriber
 {
 	Entity self;
@@ -21,6 +22,5 @@ class Subscriber
 		}
 		m_delivered = true;
 		scene.Scripts.Emit("Delivered", value);
-		Run.Emit("Delivered", value);
 	}
 }

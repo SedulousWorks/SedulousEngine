@@ -4,6 +4,10 @@
 // "Delivered"), runs the countdown, and when the bike throws its last paper (Bike emits
 // "OutOfPapers") it gives that paper a grace period to land before failing. Its verdict goes to
 // the run, where the Game puts up the end-of-level screen.
+//
+// In a game run the scene bus IS the run bus: one bus per run. A scene event a behaviour emits is
+// heard by this Level and by the Game alike, so nothing is relayed; re-emitting the same name would
+// deliver it twice. The Level emits only NEW signals, "QuotaMet" and "LevelFailed".
 class Level
 {
 	Scene@ scene;

@@ -30,9 +30,10 @@ Handlers dispatch **by presence**: implement only what you need.
   `onEnable()`, `onDisable()`, `onDestroy()` (behaviors), `onStop()` (levels).
 - The game: `launch()`, `update(float dt)`, `exit()`.
 - `on<Event>(...)`: named events. Physics contacts arrive as events; any script can send one:
-  `scene.Scripts.Send(entity, "Name", payload)` to one entity's behaviors,
-  `scene.Scripts.Emit("Name", payload)` to the whole scene and its Level, `Run.Emit` to the
-  game.
+  `scene.Scripts.Send(entity, "Name", payload)` to one entity's behaviors, and
+  `scene.Scripts.Emit("Name", payload)` or `Run.Emit(...)` to everyone listening. In a game run
+  the scene's event bus IS the run's bus: one bus per run, heard by every behaviour, each Level
+  and the Game. Emit an event once; emitting it through both calls delivers it twice.
 
 ## The engine from a script
 
