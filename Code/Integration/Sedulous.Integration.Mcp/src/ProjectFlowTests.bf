@@ -235,7 +235,10 @@ static class ProjectFlowTests
 		for (let name in scope String[]("Scene", "PhysicsFacade", "AudioFacade", "InputFacade", "GameInstance", "UiScript", "Float3", "FontBakeMode"))
 			Test.Assert(TypeEndingIn(types, name) != null, name);
 		Test.Assert(Named(types, "scriptName", "Entity") != null, "the entity, as a script spells it");
-		Test.Assert(reported.Get("typeCount").AsInt() > 100);
+		// The runtime surface and the pipeline's own types, and never a component: a component
+		// here would validate code the game's runtime cannot compile.
+		Test.Assert(reported.Get("typeCount").AsInt() > 40);
+		Test.Assert(TypeEndingIn(types, "CharacterComponent") == null, "components are not script types");
 		// The domain rides along: a pipeline type exists for tools, the facade for the player.
 		let bakeMode = TypeEndingIn(types, "FontBakeMode");
 		Test.Assert(!bakeMode.Get("inPlayer").AsBool() && (bakeMode.Get("domain").AsString() == "Pipeline"));
