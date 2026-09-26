@@ -13,6 +13,6 @@ static class FixtureFacadeSurface
 	private static void Generate()
 	{
 		ScriptSurfaceWalker.Emit(typeof(Self), scope StringView[]("Sedulous.Script.Fixture"),
-			scope StringView[](ScriptDomains.Runtime, ScriptDomains.Pipeline), .Facades);
+			scope StringView[](ScriptDomains.Runtime, ScriptDomains.Pipeline), .Runtime);
 	}
 }

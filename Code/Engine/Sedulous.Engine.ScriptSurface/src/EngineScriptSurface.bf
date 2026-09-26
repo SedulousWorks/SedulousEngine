@@ -26,6 +26,6 @@ static class EngineScriptSurface
 	private static void Generate()
 	{
 		ScriptSurfaceWalker.Emit(typeof(Self), scope StringView[]("Sedulous.", "System."),
-			scope StringView[](ScriptDomains.Runtime), .Facades);
+			scope StringView[](ScriptDomains.Runtime), .Runtime);
 	}
 }

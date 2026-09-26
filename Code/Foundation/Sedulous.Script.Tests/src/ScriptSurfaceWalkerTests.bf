@@ -253,4 +253,25 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(text.Contains("global functions\n    Lerp("), "the static block");
 		Test.Assert(text.Contains("0 blocked"), "a facade surface blocks nothing");
 	}
+
+	/// The runtime and domains closure is the runtime's plus the domain's own types: a check
+	/// made against it never passes a component the runtime does not bind.
+	[Test]
+	public static void TheRuntimeAndDomainsClosureIsTheRuntimeAndTheDomainTypes()
+	{
+		let s = scope ScriptSurface();
+		FixtureDomainsSurface.Populate(s);
+		Test.Assert(FixtureDomainsSurface.TypeCount == 3, scope $"found {FixtureDomainsSurface.TypeCount}");
+		Test.Assert(s.Find(scope $"{cFixture}.WidgetsFacade") != null, "the facade");
+		Test.Assert(s.Find(scope $"{cFixture}.Cooker") != null, "the Pipeline domain type");
+		Test.Assert(s.Find(scope $"{cFixture}.Thing") == null, "a marked class nothing reaches");
+		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponent") == null, "a component marked for the editor");
+		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponentManager") == null);
+
+		// Everything the runtime closure has, this one has too.
+		let runtime = scope ScriptSurface();
+		FixtureFacadeSurface.Populate(runtime);
+		for (let t in runtime.Types)
+			Test.Assert(s.Find(t.FullName) != null, t.FullName);
+	}
 }

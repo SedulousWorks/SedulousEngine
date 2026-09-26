@@ -15,9 +15,9 @@ static class PipelineScriptSurfaceTests
 		let s = scope ScriptSurface();
 		PipelineScriptSurface.Populate(s);
 		Test.Assert(s.Types.Count == PipelineScriptSurface.TypeCount);
-		// Bump deliberately when a type is marked or unmarked: the runtime's 167, the two
-		// Pipeline domain enums, and three foundation enums only the pipeline links.
-		Test.Assert(PipelineScriptSurface.TypeCount == 170, scope $"the pipeline surface has {PipelineScriptSurface.TypeCount} types");
+		// Bump deliberately when a type is marked or unmarked: the runtime's 46 and the two
+		// Pipeline domain enums.
+		Test.Assert(PipelineScriptSurface.TypeCount == 48, scope $"the pipeline surface has {PipelineScriptSurface.TypeCount} types");
 	}
 
 	[Test]
@@ -30,6 +30,27 @@ static class PipelineScriptSurfaceTests
 		for (let t in runtime.Types)
 			Test.Assert(pipeline.Find(t.FullName) != null, scope $"{t.FullName} is on the runtime surface and not the pipeline's");
 		Test.Assert(pipeline.Types.Count >= runtime.Types.Count);
+	}
+
+	/// Nothing beyond the runtime surface but the Pipeline domain's own types. A component is
+	/// an editor mark, and a script cook or an MCP check that saw one would pass code the
+	/// running game cannot compile: `CharacterComponent(self)` validated and then failed.
+	[Test]
+	public static void OnlyTheToolingIsAddedToTheRuntime()
+	{
+		let pipeline = scope ScriptSurface();
+		PipelineScriptSurface.Populate(pipeline);
+		let runtime = scope ScriptSurface();
+		EngineScriptSurface.Populate(runtime);
+		for (let t in pipeline.Types)
+		{
+			if (runtime.Find(t.FullName) != null)
+				continue;
+			Test.Assert(t.Domain == ScriptDomains.Pipeline, scope $"{t.FullName} is on the pipeline surface, not the runtime's, and is {t.Domain}");
+		}
+		Test.Assert(pipeline.Find("Sedulous.Engine.Physics.CharacterComponent") == null);
+		for (let t in pipeline.Types)
+			Test.Assert(t.Role != .Component, t.FullName);
 	}
 
 	/// A type in a pipeline module is the Pipeline domain, never Editor and never left to

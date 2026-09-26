@@ -192,8 +192,8 @@ static class ScriptSurfaceWalker
 				known.Add(new String(fullName));
 		}
 
-		if (closure == .Facades)
-			RestrictToFacades(candidates, known, managers);
+		if (closure != .Dependencies)
+			RestrictToFacades(candidates, known, managers, closure == .RuntimeAndDomains);
 
 		let violations = scope String();
 		let entitySignatures = scope List<String>();
@@ -258,8 +258,10 @@ static class ScriptSurfaceWalker
 	/// seeds are the scene and service facades, the global static blocks and the Scene; then
 	/// every type a kept type's members name, transitively, a component bringing its
 	/// manager. `known` is cut to the same set, so the closure check speaks of this surface.
+	/// `withTooling` seeds every candidate outside the Runtime domain as well.
 	[Comptime]
-	private static void RestrictToFacades(List<TypeDeclaration> candidates, List<String> known, ManagerTable managers)
+	private static void RestrictToFacades(List<TypeDeclaration> candidates, List<String> known, ManagerTable managers,
+		bool withTooling)
 	{
 		let kept = scope List<String>();
 		let work = scope List<Type>();
@@ -268,9 +270,11 @@ static class ScriptSurfaceWalker
 			let type = decl.ResolvedType;
 			let fullName = decl.GetFullName(.. scope .());
 			let isStaticBlock = decl.GetName(.. scope .()) == cStaticBlockName;
-			let seed = isStaticBlock || (fullName == "Sedulous.Scene.Scene")
+			var seed = isStaticBlock || (fullName == "Sedulous.Scene.Scene")
 				|| ((type != null) && (type.HasCustomAttribute<SceneFacadeAttribute>()
 					|| type.HasCustomAttribute<ServiceFacadeAttribute>() || type.HasCustomAttribute<ScriptServiceAttribute>()));
+			if (!seed && withTooling && (type != null))
+				seed = !IsRuntimeDomain(type);
 			if (!seed)
 				continue;
 			kept.Add(new String(fullName));
@@ -316,6 +320,15 @@ static class ScriptSurfaceWalker
 
 	[Comptime]
 	private static bool IsKnown(StringView name, List<String> names) => ScriptValueMap.IsKnown(name, names);
+
+	/// An unmarked type is Runtime, the same default EmitType applies.
+	[Comptime]
+	private static bool IsRuntimeDomain(Type type)
+	{
+		if (type.GetCustomAttribute<TypeDomainAttribute>() case .Ok(let td))
+			return td.Domain == ScriptDomains.Runtime;
+		return true;
+	}
 
 	[Comptime]
 	private static Type ResolvedCandidate(List<TypeDeclaration> candidates, StringView fullName)

@@ -49,7 +49,7 @@ static class PipelineRegistrationTests
 		defer PipelineRegistration.Teardown();
 
 		Test.Assert(PipelineRegistration.Surface != null);
-		Test.Assert(PipelineRegistration.Surface.Types.Count > 100, "the pipeline surface is populated");
+		Test.Assert(PipelineRegistration.Surface.Types.Count == Sedulous.Pipeline.ScriptSurface.PipelineScriptSurface.TypeCount, "the pipeline surface is populated, whole");
 		Test.Assert(ScriptLanguageCooks.Find("angelscript") != null, "the AngelScript cook is registered behind the surface");
 		Test.Assert(ScriptLanguageCooks.LanguageOf("as", .. scope .()) == "angelscript");
 
