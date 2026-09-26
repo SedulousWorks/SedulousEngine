@@ -151,6 +151,43 @@ static class BehaviorLifecycleTests
 		Test.Assert(v.AsInt == 3, "the sibling kept running");
 	}
 
+	/// A class first used after others started builds the run's next module generation, and
+	/// the behaviours built from the earlier one keep reading their globals: the earlier
+	/// module stays until the run's teardown.
+	[Test]
+	public static void AnEarlierGenerationKeepsItsGlobalsWhenALaterClassLoads()
+	{
+		let play = scope ScriptPlayScene();
+		let reader = play.Class("Reader", """
+			Float3 kOffset = Float3(1, 2, 3);
+			class Reader
+			{
+				float seen = 0;
+				void onUpdate(float dt) { seen = kOffset.Y; }
+			}
+			""");
+		let first = play.AddBehavior(reader, "first");
+		play.Start();
+		play.Step();
+		Test.Assert(play.PropFloat(first, "seen") == 2.0f, "the global read on the first generation");
+		let generation = play.Host.Generation;
+
+		// A class the run has not loaded yet: its first use builds the next generation.
+		let latecomer = play.Class("Latecomer", """
+			class Latecomer
+			{
+				int updates = 0;
+				void onUpdate(float dt) { updates++; }
+			}
+			""");
+		let late = play.AddBehavior(latecomer, "late");
+		play.Step(2);
+		Test.Assert(play.Host.Generation > generation, "the latecomer built a new generation");
+		Test.Assert(play.Prop(late, "updates").AsInt >= 1, "and runs");
+		Test.Assert(!play.BehaviorOf(first).Faulted, "the earlier behaviour still reads its global");
+		Test.Assert(play.PropFloat(first, "seen") == 2.0f);
+	}
+
 	[Test]
 	public static void AReloadRebuildsTheInstanceAndReappliesOverrides()
 	{

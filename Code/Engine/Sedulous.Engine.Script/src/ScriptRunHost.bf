@@ -12,7 +12,8 @@ namespace Sedulous.Engine.Script;
 /// ONE runtime per run: every behaviour class of the run is compiled into one module, a
 /// fresh generation (`behaviors#N`) whenever a class is added or reloaded, each class as
 /// its own section so an error names its file. Instances keep running on the generation
-/// they were built from; the old module is discarded and goes when they do.
+/// they were built from, so a previous module is kept until the run's teardown: discarding
+/// it would free its global variables under the instances still reading them.
 ///
 /// The language is the first class's; a second language in the same run is refused, since
 /// the run has one gameplay context. Plain class, no runtime dependencies, so a headless
@@ -190,7 +191,6 @@ class ScriptRunHost
 		let sections = scope List<ScriptSection>();
 		for (let loaded in mLoaded)
 			sections.Add(.(loaded.SourceName, loaded.Source));
-		let previous = scope String(mModuleName);
 		mGeneration++;
 		mModuleName.Set(scope $"behaviors#{mGeneration}");
 		if (!mRuntime.CompileModule(mModuleName, sections))
@@ -199,8 +199,6 @@ class ScriptRunHost
 			ReportProblems();
 			return false;
 		}
-		if (!previous.IsEmpty)
-			mRuntime.DiscardModule(previous);
 		mModuleCurrent = true;
 		return true;
 	}
