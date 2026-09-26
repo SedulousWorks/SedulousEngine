@@ -4,7 +4,7 @@ recovery/
 BeefSpace_User.toml
 
 # LLM
-.claude/
+.claude/settings.local.json
 
 # Test scratch. Suites create these beside the project they run from.
 scratch_*/
