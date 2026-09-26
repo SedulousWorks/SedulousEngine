@@ -1,4 +1,6 @@
 using System;
+using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 
 namespace Sedulous.Editor.Core;
@@ -35,11 +37,19 @@ class EditorMcpSettings
 		return false;
 	}
 
-	/// A fresh bearer token: a random Guid's canonical text, 36 characters. From the system's
-	/// entropy, so two editors never mint the same one.
+	/// A fresh bearer token: a Guid from OS entropy in its canonical text, 36 characters. A
+	/// secret, so not Guid.Create, which on Linux can only produce 2^32 values. Only when the
+	/// OS refuses entropy does a clock and process seed stand in, with a warning.
 	public static void GenerateToken(String outToken)
 	{
 		outToken.Clear();
-		Guid.Create().ToString(outToken, 'D');
+		Guid secret;
+		if (!Guid.TryGenerateFromSystemEntropy(out secret))
+		{
+			GlobalLog(.Warning, "Editor: the OS gave no entropy for the MCP token; minted from the clock and the process id instead - treat it as guessable");
+			var rng = Random((uint64)DateTime.UtcNow.Ticks ^ ((uint64)System.Diagnostics.Process.CurrentId << 32));
+			secret = Guid.Generate(ref rng);
+		}
+		secret.ToString(outToken, 'D');
 	}
 }
