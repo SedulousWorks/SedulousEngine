@@ -17,9 +17,25 @@ static class AS
 	public struct TypeInfo {}
 	public struct Generic {}
 	public struct ScriptObject {}
+	public struct Builder {}
 
 	public typealias MessageFn = function void(char8* section, int32 row, int32 col, int32 type, char8* message, void* user);
 	public typealias GenericFn = function void(Generic* gen, void* aux, void* user);
+
+	// ---- script builder ----
+	// The SDK's CScriptBuilder: builds a module from sections and pre-processes `[metadata]` in
+	// front of declarations, keeping it for the host. The builder owns that metadata, so it
+	// lives as long as the host asks about the module. Includes are refused.
+	[CLink] public static extern Builder* asc_builder_create();
+	[CLink] public static extern void asc_builder_destroy(Builder* builder);
+	[CLink] public static extern int32 asc_builder_start_module(Builder* builder, Engine* engine, char8* moduleName);
+	[CLink] public static extern int32 asc_builder_add_section(Builder* builder, char8* name, char8* code, uint length);
+	[CLink] public static extern int32 asc_builder_build(Builder* builder);
+	[CLink] public static extern Module* asc_builder_get_module(Builder* builder);
+	/// The metadata entries on a class property: the count, then each entry's text without its
+	/// brackets, valid until the next metadata call on the builder.
+	[CLink] public static extern int32 asc_builder_property_metadata_count(Builder* builder, int32 typeId, int32 propertyIndex);
+	[CLink] public static extern char8* asc_builder_property_metadata(Builder* builder, int32 typeId, int32 propertyIndex, int32 entry);
 
 	// ---- engine ----
 	[CLink] public static extern Engine* asc_engine_create();

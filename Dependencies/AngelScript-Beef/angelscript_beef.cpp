@@ -5,9 +5,11 @@
 #include <angelscript.h>
 #include <new>
 #include <string>
+#include <vector>
 
 #include "add_on/scriptarray/scriptarray.h"
 #include "add_on/scriptstdstring/scriptstdstring.h"
+#include "add_on/scriptbuilder/scriptbuilder.h"
 
 namespace
 {
@@ -452,5 +454,53 @@ void* asc_array_create(asc_engine* engine, const char* decl, unsigned length)
 }
 void asc_array_add_ref(void* arr) { static_cast<CScriptArray*>(arr)->AddRef(); }
 void asc_array_release(void* arr) { static_cast<CScriptArray*>(arr)->Release(); }
+
+/* ---- script builder ---- */
+
+struct asc_builder
+{
+	CScriptBuilder builder;
+	/* The last metadata query's entries, so a returned pointer outlives the call. */
+	std::vector<std::string> metadata;
+};
+
+static int RefuseInclude(const char*, const char*, CScriptBuilder*, void*)
+{
+	return -1;
+}
+
+asc_builder* asc_builder_create(void)
+{
+	asc_builder* b = new (std::nothrow) asc_builder();
+	if (b != nullptr)
+		b->builder.SetIncludeCallback(RefuseInclude, nullptr);
+	return b;
+}
+void asc_builder_destroy(asc_builder* builder) { delete builder; }
+int asc_builder_start_module(asc_builder* builder, asc_engine* engine, const char* moduleName)
+{
+	return builder->builder.StartNewModule(E(engine), moduleName);
+}
+int asc_builder_add_section(asc_builder* builder, const char* name, const char* code, size_t length)
+{
+	return builder->builder.AddSectionFromMemory(name, code, static_cast<unsigned>(length), 0);
+}
+int asc_builder_build(asc_builder* builder) { return builder->builder.BuildModule(); }
+asc_module* asc_builder_get_module(asc_builder* builder)
+{
+	return reinterpret_cast<asc_module*>(builder->builder.GetModule());
+}
+int asc_builder_property_metadata_count(asc_builder* builder, int typeId, int propertyIndex)
+{
+	builder->metadata = builder->builder.GetMetadataForTypeProperty(typeId, propertyIndex);
+	return static_cast<int>(builder->metadata.size());
+}
+const char* asc_builder_property_metadata(asc_builder* builder, int typeId, int propertyIndex, int entry)
+{
+	builder->metadata = builder->builder.GetMetadataForTypeProperty(typeId, propertyIndex);
+	if (entry < 0 || entry >= static_cast<int>(builder->metadata.size()))
+		return nullptr;
+	return builder->metadata[static_cast<size_t>(entry)].c_str();
+}
 
 } // extern "C"

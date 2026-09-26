@@ -30,6 +30,7 @@ typedef struct asc_function asc_function;
 typedef struct asc_typeinfo asc_typeinfo;
 typedef struct asc_generic  asc_generic;
 typedef struct asc_object   asc_object;
+typedef struct asc_builder  asc_builder;
 
 /* A compiler or runtime message: type is asEMsgType. */
 typedef void (*asc_message_fn)(const char* section, int row, int col, int type, const char* message, void* user);
@@ -230,6 +231,23 @@ int           asc_array_get_element_type_id(const void* arr);
 void*         asc_array_create(asc_engine* engine, const char* decl, unsigned length);
 void          asc_array_add_ref(void* arr);
 void          asc_array_release(void* arr);
+
+/* ---- script builder ----
+ * The SDK's CScriptBuilder: builds a module from sections and pre-processes `[metadata]` in front
+ * of declarations, stripping it from what the compiler sees and keeping it for the host to read.
+ * The builder owns the metadata, so it lives as long as the host wants to ask about the module.
+ * Includes are refused: a section is the whole source. */
+asc_builder*  asc_builder_create(void);
+void          asc_builder_destroy(asc_builder* builder);
+int           asc_builder_start_module(asc_builder* builder, asc_engine* engine, const char* moduleName);
+int           asc_builder_add_section(asc_builder* builder, const char* name, const char* code, size_t length);
+int           asc_builder_build(asc_builder* builder);
+asc_module*   asc_builder_get_module(asc_builder* builder);
+/* The metadata entries on a class's property (typeId, the property's index in the type): the
+ * count, then each entry's text without its brackets. An entry's text stays valid until the next
+ * metadata call on this builder. */
+int           asc_builder_property_metadata_count(asc_builder* builder, int typeId, int propertyIndex);
+const char*   asc_builder_property_metadata(asc_builder* builder, int typeId, int propertyIndex, int entry);
 
 #ifdef __cplusplus
 }
