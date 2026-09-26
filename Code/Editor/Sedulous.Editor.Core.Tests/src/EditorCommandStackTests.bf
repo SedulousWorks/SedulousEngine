@@ -189,6 +189,33 @@ static class EditorCommandStackTests
 	}
 
 	[Test]
+	public static void AnEmptyGroupLeavesNoUndoStep()
+	{
+		let stack = scope EditorCommandStack();
+		int32 value = 0;
+		int changes = 0;
+		stack.OnChanged = new [&changes]() => { changes++; };
+
+		stack.BeginGroup("mcp");
+		stack.EndGroup(); // nothing inside
+		Test.Assert(stack.Count == 0);
+		Test.Assert(!stack.CanUndo);
+		Test.Assert(changes == 0, "nobody told: nothing changed");
+
+		// A group whose only command was refused is empty too; the step before it stands alone.
+		Test.Assert(stack.Execute(new AddCommand(&value, 5)));
+		let countBefore = stack.Count;
+		stack.BeginGroup("mcp");
+		Test.Assert(!stack.Execute(new FailCommand()));
+		stack.EndGroup();
+		Test.Assert(stack.Count == countBefore);
+		Test.Assert(stack.UndoIndex == 0);
+		stack.Undo();
+		Test.Assert(value == 0);
+		Test.Assert(!stack.CanUndo);
+	}
+
+	[Test]
 	public static void LockGroupPreventsCoalescing()
 	{
 		let stack = scope EditorCommandStack();

@@ -184,9 +184,17 @@ class EditorCommandStack
 	public void EndGroup()
 	{
 		Runtime.Assert(mInGroup, "EndGroup without BeginGroup");
+		mInGroup = false;
+		// Nothing ran inside: no undo step for the user to hit and see nothing happen. The
+		// begin marker goes (it is the undo top), and nobody is notified - nothing changed.
+		if ((mUndoIndex >= 0) && (mStack[mUndoIndex].TypeId == cBeginGroup))
+		{
+			delete mStack.PopBack();
+			mUndoIndex--;
+			return;
+		}
 		mStack.Add(new EndGroupCommand(mGroupType));
 		mUndoIndex++;
-		mInGroup = false;
 		Notify();
 	}
 
