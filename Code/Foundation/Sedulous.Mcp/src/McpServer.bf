@@ -23,6 +23,7 @@ class McpServer
 	private List<ResourceProvider> mProviders = new .() ~ DeleteContainerAndItems!(_);
 	private String mServerName = new .("engine-mcp") ~ delete _;
 	private String mServerVersion = new .("0.1.0") ~ delete _;
+	private delegate void(StringView toolName, bool isError) mToolObserver ~ delete _;
 
 	public StringView ServerName => mServerName;
 	public StringView ServerVersion => mServerVersion;
@@ -33,6 +34,15 @@ class McpServer
 	{
 		mServerName.Set(name);
 		mServerVersion.Set(version);
+	}
+
+	/// Told (toolName, isError) after every FINISHED tools/call, on the dispatching thread: a
+	/// host refreshes what a write tool changed, or logs the agent's activity. Not finished
+	/// attempts and protocol failures (no tool ran) are not reported. OWNERSHIP transfers.
+	public void SetToolObserver(delegate void(StringView toolName, bool isError) observer)
+	{
+		delete mToolObserver;
+		mToolObserver = observer;
 	}
 
 	/// Registers a tool. OWNERSHIP of the schema and the handler transfers.
@@ -212,6 +222,8 @@ class McpServer
 		let content = JsonValue.MakeArray();
 		content.Add(item);
 		result.Set("content", content);
+		if (mToolObserver != null)
+			mToolObserver(tool.Name, outcome != .Answered);
 		return MakeResult(id, result);
 	}
 

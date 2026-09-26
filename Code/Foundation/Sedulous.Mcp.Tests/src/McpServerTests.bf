@@ -272,6 +272,40 @@ class McpServerTests
 		Test.Assert(ErrorCode(response) == (int64)RpcError.InvalidRequest);
 	}
 
+	// ---- the tool observer ----
+
+	[Test]
+	public static void TheToolObserverHearsEveryFinishedCallByNameAndOutcomeAndNothingElse()
+	{
+		let server = scope McpServer();
+		let schema = scope SchemaBuilder();
+		schema.Str("message", "what to echo", true);
+		server.RegisterTool("echo", "echoes", schema.Build(),
+			new (arguments, outResult, outError) => true);
+		server.RegisterTool("fail", "always fails", scope SchemaBuilder().Build(),
+			new (arguments, outResult, outError) =>
+			{
+				outError.Set("no");
+				return false;
+			});
+		let heard = scope List<String>();
+		defer ClearAndDeleteItems(heard);
+		server.SetToolObserver(new (tool, isError) => heard.Add(new $"{tool}:{isError ? "err" : "ok"}"));
+
+		for (let line in scope String[](
+			"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"echo\",\"arguments\":{\"message\":\"hi\"}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"fail\"}}",
+			// Not a finished tool run: a schema refusal, an unknown tool, a ping.
+			"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"echo\",\"arguments\":{}}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"nope\"}}",
+			"{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"ping\"}"))
+			delete Ask(server, line);
+
+		Test.Assert(heard.Count == 2);
+		Test.Assert(heard[0] == "echo:ok");
+		Test.Assert(heard[1] == "fail:err");
+	}
+
 	// ---- a tool that is not finished ----
 
 	private const String cSlowCall = "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"tools/call\",\"params\":{\"name\":\"slow\"}}";
