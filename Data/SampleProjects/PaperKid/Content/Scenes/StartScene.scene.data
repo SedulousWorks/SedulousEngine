@@ -1,0 +1,177 @@
+<root>
+	<u32 name="magic">3586350318</u32>
+	<u32 name="version">3</u32>
+	<string name="name">Scene</string>
+	<array name="entities" count="1">
+		<string name="id">1bbeb4f2-e82e-49e9-a81c-fdebe00fa2ec</string>
+		<string name="name">Sun</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">-0.4935577</f32>
+			<f32 name="y">0.15065993</f32>
+			<f32 name="z">0.08726525</f32>
+			<f32 name="w">0.85210747</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+	</array>
+	<array name="components" count="1">
+		<object>
+			<string name="owner">1bbeb4f2-e82e-49e9-a81c-fdebe00fa2ec</string>
+			<string name="type">light</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">2265827012839742223</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<u32 name="type">0</u32>
+				<object name="color">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
+				<f32 name="intensity">1</f32>
+				<f32 name="range">10</f32>
+				<f32 name="innerAngle">0.5</f32>
+				<f32 name="outerAngle">0.6</f32>
+				<u32 name="shadowUpdate">0</u32>
+				<bool name="enabled">true</bool>
+				<bool name="castsShadows">true</bool>
+			</object>
+		</object>
+	</array>
+	<array name="systemSettings" count="5">
+		<object>
+			<string name="system">navigation</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">9570892230513296707</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object name="settings">
+				<bool name="debugDraw">false</bool>
+				<bool name="debugDrawPaths">false</bool>
+				<bool name="debugDrawBakeStages">false</bool>
+			</object>
+		</object>
+		<object>
+			<string name="system">script</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">12464980982266880842</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object name="settings">
+				<string name="script">00000000-0000-0000-0000-000000000000</string>
+				<bool name="enabled">true</bool>
+				<array name="overrides" count="0" />
+			</object>
+		</object>
+		<object>
+			<string name="system">environment</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">3322936393964477818</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object name="settings">
+				<string name="skyTexture">00000000-0000-0000-0000-000000000000</string>
+				<object name="ambientColor">
+					<f32 name="r">0.1</f32>
+					<f32 name="g">0.12</f32>
+					<f32 name="b">0.16</f32>
+					<f32 name="a">1</f32>
+				</object>
+				<f32 name="ambientIntensity">0.3</f32>
+				<u32 name="skyMode">2</u32>
+				<f32 name="skyIntensity">1</f32>
+				<f32 name="skyBackgroundIntensity">0.5</f32>
+				<f32 name="skyRotation">0</f32>
+				<object name="skyHorizon">
+					<f32 name="r">0.52</f32>
+					<f32 name="g">0.6</f32>
+					<f32 name="b">0.7</f32>
+					<f32 name="a">1</f32>
+				</object>
+				<object name="skyZenith">
+					<f32 name="r">0</f32>
+					<f32 name="g">0</f32>
+					<f32 name="b">0</f32>
+					<f32 name="a">1</f32>
+				</object>
+				<object name="skyGround">
+					<f32 name="r">0.26</f32>
+					<f32 name="g">0.26</f32>
+					<f32 name="b">0.26</f32>
+					<f32 name="a">1</f32>
+				</object>
+				<f32 name="sunIntensity">1</f32>
+				<f32 name="sunAngularSize">0.5</f32>
+				<f32 name="turbidity">3</f32>
+				<f32 name="iblDiffuseIntensity">1</f32>
+				<f32 name="iblSpecularIntensity">1</f32>
+			</object>
+		</object>
+		<object>
+			<string name="system">postprocess</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">14076923587443904564</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object name="settings">
+				<f32 name="exposureEV">0</f32>
+				<u32 name="tonemapOperator">1</u32>
+				<bool name="bloomEnabled">true</bool>
+				<f32 name="bloomThreshold">1</f32>
+				<f32 name="bloomKnee">0.6</f32>
+				<f32 name="bloomIntensity">0.05</f32>
+				<u32 name="aoMode">0</u32>
+				<f32 name="aoStrength">0.6</f32>
+				<f32 name="aoRadius">0.5</f32>
+				<f32 name="aoIntensity">1</f32>
+				<bool name="ssrEnabled">false</bool>
+				<f32 name="ssrIntensity">1</f32>
+				<u32 name="aaMode">0</u32>
+				<f32 name="taaBlendFactor">0.97</f32>
+				<f32 name="taaVarianceGamma">1.25</f32>
+				<f32 name="fxaaSubpixel">0.75</f32>
+				<bool name="autoExposure">false</bool>
+				<f32 name="autoExposureKey">0.18</f32>
+				<f32 name="autoExposureSpeed">2</f32>
+				<f32 name="autoExposureMinEV">-4</f32>
+				<f32 name="autoExposureMaxEV">4</f32>
+				<string name="gradingLut">00000000-0000-0000-0000-000000000000</string>
+				<f32 name="gradingIntensity">1</f32>
+				<bool name="ssgiEnabled">false</bool>
+				<f32 name="ssgiIntensity">1</f32>
+			</object>
+		</object>
+		<object>
+			<string name="system">physics</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">10939787665465362690</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object name="settings">
+				<object name="gravity">
+					<f32 name="x">0</f32>
+					<f32 name="y">-9.81</f32>
+					<f32 name="z">0</f32>
+				</object>
+				<i32 name="collisionSteps">1</i32>
+				<bool name="debugDraw">false</bool>
+				<array name="groupNames" count="0" />
+				<array name="groupCollides" count="0" />
+			</object>
+		</object>
+	</array>
+	<u8 name="prefabMode">4</u8>
+	<array name="prefabInstances" count="0" />
+</root>

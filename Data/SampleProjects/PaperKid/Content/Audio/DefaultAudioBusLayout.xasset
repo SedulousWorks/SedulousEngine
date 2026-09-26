@@ -1,0 +1,179 @@
+<root>
+	<string name="guid">8ad51f02-6a78-cc41-b289-c31336e54567</string>
+	<string name="typeName">Sedulous.Audio.Pipeline.AudioBusLayoutAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">5415638712812921685</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<object name="master">
+				<f32 name="volume">1</f32>
+				<bool name="muted">false</bool>
+				<f32 name="lowpassHz">0</f32>
+				<f32 name="highpassHz">0</f32>
+				<f32 name="delaySeconds">0</f32>
+				<f32 name="delayDecay">0.3</f32>
+				<f32 name="reverbWet">0</f32>
+				<f32 name="reverbRoomSize">0.6</f32>
+				<f32 name="reverbDamping">0.4</f32>
+			</object>
+			<object name="effects">
+				<f32 name="volume">1</f32>
+				<bool name="muted">false</bool>
+				<f32 name="lowpassHz">0</f32>
+				<f32 name="highpassHz">0</f32>
+				<f32 name="delaySeconds">0</f32>
+				<f32 name="delayDecay">0.3</f32>
+				<f32 name="reverbWet">0</f32>
+				<f32 name="reverbRoomSize">0.6</f32>
+				<f32 name="reverbDamping">0.4</f32>
+			</object>
+			<object name="music">
+				<f32 name="volume">1</f32>
+				<bool name="muted">false</bool>
+				<f32 name="lowpassHz">0</f32>
+				<f32 name="highpassHz">0</f32>
+				<f32 name="delaySeconds">0</f32>
+				<f32 name="delayDecay">0.3</f32>
+				<f32 name="reverbWet">0</f32>
+				<f32 name="reverbRoomSize">0.6</f32>
+				<f32 name="reverbDamping">0.4</f32>
+			</object>
+			<object name="uI">
+				<f32 name="volume">1</f32>
+				<bool name="muted">false</bool>
+				<f32 name="lowpassHz">0</f32>
+				<f32 name="highpassHz">0</f32>
+				<f32 name="delaySeconds">0</f32>
+				<f32 name="delayDecay">0.3</f32>
+				<f32 name="reverbWet">0</f32>
+				<f32 name="reverbRoomSize">0.6</f32>
+				<f32 name="reverbDamping">0.4</f32>
+			</object>
+			<array name="custom" count="8">
+				<object>
+					<string name="name"/>
+					<string name="parent"/>
+					<object name="bus">
+						<f32 name="volume">1</f32>
+						<bool name="muted">false</bool>
+						<f32 name="lowpassHz">0</f32>
+						<f32 name="highpassHz">0</f32>
+						<f32 name="delaySeconds">0</f32>
+						<f32 name="delayDecay">0.3</f32>
+						<f32 name="reverbWet">0</f32>
+						<f32 name="reverbRoomSize">0.6</f32>
+						<f32 name="reverbDamping">0.4</f32>
+					</object>
+				</object>
+				<object>
+					<string name="name"/>
+					<string name="parent"/>
+					<object name="bus">
+						<f32 name="volume">1</f32>
+						<bool name="muted">false</bool>
+						<f32 name="lowpassHz">0</f32>
+						<f32 name="highpassHz">0</f32>
+						<f32 name="delaySeconds">0</f32>
+						<f32 name="delayDecay">0.3</f32>
+						<f32 name="reverbWet">0</f32>
+						<f32 name="reverbRoomSize">0.6</f32>
+						<f32 name="reverbDamping">0.4</f32>
+					</object>
+				</object>
+				<object>
+					<string name="name"/>
+					<string name="parent"/>
+					<object name="bus">
+						<f32 name="volume">1</f32>
+						<bool name="muted">false</bool>
+						<f32 name="lowpassHz">0</f32>
+						<f32 name="highpassHz">0</f32>
+						<f32 name="delaySeconds">0</f32>
+						<f32 name="delayDecay">0.3</f32>
+						<f32 name="reverbWet">0</f32>
+						<f32 name="reverbRoomSize">0.6</f32>
+						<f32 name="reverbDamping">0.4</f32>
+					</object>
+				</object>
+				<object>
+					<string name="name"/>
+					<string name="parent"/>
+					<object name="bus">
+						<f32 name="volume">1</f32>
+						<bool name="muted">false</bool>
+						<f32 name="lowpassHz">0</f32>
+						<f32 name="highpassHz">0</f32>
+						<f32 name="delaySeconds">0</f32>
+						<f32 name="delayDecay">0.3</f32>
+						<f32 name="reverbWet">0</f32>
+						<f32 name="reverbRoomSize">0.6</f32>
+						<f32 name="reverbDamping">0.4</f32>
+					</object>
+				</object>
+				<object>
+					<string name="name"/>
+					<string name="parent"/>
+					<object name="bus">
+						<f32 name="volume">1</f32>
+						<bool name="muted">false</bool>
+						<f32 name="lowpassHz">0</f32>
+						<f32 name="highpassHz">0</f32>
+						<f32 name="delaySeconds">0</f32>
+						<f32 name="delayDecay">0.3</f32>
+						<f32 name="reverbWet">0</f32>
+						<f32 name="reverbRoomSize">0.6</f32>
+						<f32 name="reverbDamping">0.4</f32>
+					</object>
+				</object>
+				<object>
+					<string name="name"/>
+					<string name="parent"/>
+					<object name="bus">
+						<f32 name="volume">1</f32>
+						<bool name="muted">false</bool>
+						<f32 name="lowpassHz">0</f32>
+						<f32 name="highpassHz">0</f32>
+						<f32 name="delaySeconds">0</f32>
+						<f32 name="delayDecay">0.3</f32>
+						<f32 name="reverbWet">0</f32>
+						<f32 name="reverbRoomSize">0.6</f32>
+						<f32 name="reverbDamping">0.4</f32>
+					</object>
+				</object>
+				<object>
+					<string name="name"/>
+					<string name="parent"/>
+					<object name="bus">
+						<f32 name="volume">1</f32>
+						<bool name="muted">false</bool>
+						<f32 name="lowpassHz">0</f32>
+						<f32 name="highpassHz">0</f32>
+						<f32 name="delaySeconds">0</f32>
+						<f32 name="delayDecay">0.3</f32>
+						<f32 name="reverbWet">0</f32>
+						<f32 name="reverbRoomSize">0.6</f32>
+						<f32 name="reverbDamping">0.4</f32>
+					</object>
+				</object>
+				<object>
+					<string name="name"/>
+					<string name="parent"/>
+					<object name="bus">
+						<f32 name="volume">1</f32>
+						<bool name="muted">false</bool>
+						<f32 name="lowpassHz">0</f32>
+						<f32 name="highpassHz">0</f32>
+						<f32 name="delaySeconds">0</f32>
+						<f32 name="delayDecay">0.3</f32>
+						<f32 name="reverbWet">0</f32>
+						<f32 name="reverbRoomSize">0.6</f32>
+						<f32 name="reverbDamping">0.4</f32>
+					</object>
+				</object>
+			</array>
+		</object>
+	</object>
+</root>

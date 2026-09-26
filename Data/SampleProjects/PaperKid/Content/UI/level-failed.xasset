@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">a8ae2a62-37bb-d14e-828e-60ce7fe177a1</string>
+	<string name="typeName">Sedulous.UI.Pipeline.UIDocumentAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">5440813216362558612</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">level-failed.sml</string>
+		</object>
+	</object>
+</root>

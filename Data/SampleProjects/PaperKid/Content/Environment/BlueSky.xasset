@@ -1,0 +1,27 @@
+<root>
+	<string name="guid">b8e82fca-7590-1848-b150-b6ae64345152</string>
+	<string name="typeName">Sedulous.Texture.Pipeline.TextureAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">11880789479782282721</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">BlueSky.hdr</string>
+			<i32 name="colorSpace">1</i32>
+			<u32 name="embeddedWidth">0</u32>
+			<u32 name="embeddedHeight">0</u32>
+			<u8 name="shape">0</u8>
+			<u8 name="minFilter">1</u8>
+			<u8 name="magFilter">1</u8>
+			<u8 name="wrapU">1</u8>
+			<u8 name="wrapV">1</u8>
+			<u8 name="wrapW">1</u8>
+			<bool name="generateMipmaps">false</bool>
+			<f32 name="anisotropy">1</f32>
+			<u8 name="usage">3</u8>
+			<u8 name="compression">0</u8>
+			<string name="sourceHint"/>
+		</object>
+	</object>
+</root>

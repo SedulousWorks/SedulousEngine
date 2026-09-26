@@ -1,0 +1,32 @@
+<root>
+	<string name="guid">7915ce7e-e6a3-cd4e-92b1-1540d1d47a16</string>
+	<string name="typeName">Sedulous.Fonts.Pipeline.FontAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">3940269696319071816</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">Roboto-Regular.ttf</string>
+			<string name="family">Roboto</string>
+			<i32 name="mode">0</i32>
+			<array name="sizes" count="10">
+				<f32>10</f32>
+				<f32>11</f32>
+				<f32>12</f32>
+				<f32>13</f32>
+				<f32>14</f32>
+				<f32>16</f32>
+				<f32>18</f32>
+				<f32>20</f32>
+				<f32>24</f32>
+				<f32>32</f32>
+			</array>
+			<f32 name="distanceFieldSize">48</f32>
+			<i32 name="firstCodepoint">32</i32>
+			<i32 name="lastCodepoint">255</i32>
+			<u32 name="atlasWidth">1024</u32>
+			<u32 name="atlasHeight">1024</u32>
+		</object>
+	</object>
+</root>
