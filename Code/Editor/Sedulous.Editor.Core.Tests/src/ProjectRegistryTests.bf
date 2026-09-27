@@ -158,14 +158,22 @@ static class ProjectRegistryTests
 	{
 		// A section the store cannot instantiate makes every later Load abort at it and
 		// drop the sections after: the empty project list incident.
-		EditorSerializables.RegisterAll();
-		for (let type in scope Type[](typeof(EditorFontSettings), typeof(EditorUiSettings), typeof(EditorMcpSettings), typeof(RecentProjectsSettings), typeof(EditorExportSettings), typeof(EditorShortcutSettings), typeof(ShortcutOverrideEntry)))
+		// Every type the editor's registration puts in a table, asked of the table, not a list
+		// kept by hand here: a hand list is what let the shortcut section land uncovered.
+		let registry = scope SerializableRegistry();
+		EditorSerializables.RegisterAll(registry);
+		let ids = scope List<uint64>();
+		registry.CopyIds(ids);
+		for (let id in ids)
 		{
-			let name = type.GetFullName(.. scope .());
-			let made = GlobalSerializableRegistry.Create(TypeIdOf(name));
-			Test.Assert(made != null, name);
+			let made = registry.Create(id);
+			Test.Assert(made != null, scope $"type id {id}");
 			delete made;
 		}
+		// Export, font, ui, mcp, shortcuts (and its entry), recent projects (and its entry), at least.
+		Test.Assert(ids.Count >= 8);
+		for (let type in scope Type[](typeof(EditorShortcutSettings), typeof(ShortcutOverrideEntry), typeof(RecentProjectsSettings)))
+			Test.Assert(registry.IsRegistered(TypeIdOf(type.GetFullName(.. scope .()))));
 	}
 
 	[Test]

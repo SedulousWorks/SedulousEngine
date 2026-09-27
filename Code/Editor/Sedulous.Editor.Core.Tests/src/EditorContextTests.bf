@@ -93,6 +93,40 @@ static class EditorContextTests
 		Test.Assert((context.OpenPages.Count == 0) && (context.ActivePage == null));
 	}
 
+	/// RevealPage makes a page active and then asks the application to raise its panel; headless
+	/// (no hook) it is SetActivePage; null clears the active page and raises nothing.
+	[Test]
+	public static void RevealPageActivatesThenRaisesAndNullRaisesNothing()
+	{
+		let db = scope Db("scratch_editor_ctx_reveal");
+		let a = db.Database.RootGroup.CreateInstance("a", FullName(typeof(BaseAsset), .. scope .()));
+		let b = db.Database.RootGroup.CreateInstance("b", FullName(typeof(BaseAsset), .. scope .()));
+		let context = scope EditorContext();
+		context.Pages.Register(new TestPageFactory(typeof(BaseAsset), "base"));
+		let one = context.OpenPage(a);
+		let two = context.OpenPage(b);
+		Test.Assert((one != null) && (two != null) && (context.ActivePage == two));
+
+		// Headless: no hook, RevealPage is SetActivePage.
+		context.RevealPage(one);
+		Test.Assert(context.ActivePage == one);
+		// With the application's hook: the page is active first, then raised; a repeat raises again.
+		let shown = scope List<EditorPage>();
+		context.OnRevealPage = new [&](page) =>
+			{
+				Test.Assert(context.ActivePage == page);
+				shown.Add(page);
+			};
+		context.RevealPage(two);
+		context.RevealPage(two);
+		Test.Assert((shown.Count == 2) && (shown[0] == two));
+		context.RevealPage(null);
+		Test.Assert(context.ActivePage == null);
+		Test.Assert(shown.Count == 2, "nothing to raise");
+		context.ClosePage(one);
+		context.ClosePage(two);
+	}
+
 	[Test]
 	public static void NotifyProjectSettingsChangedFiresTheSubscribedHook()
 	{

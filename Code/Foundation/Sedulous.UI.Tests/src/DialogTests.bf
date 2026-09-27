@@ -130,6 +130,7 @@ class DialogTests
 		let focused = context.GetFocusManager().FocusedView;
 		Test.Assert(focused != null);
 		Test.Assert(dialog.IsFocusWithin());
+		Test.Assert(focused != dialog, "a button, not the dialog: the walk reaches the visual layout");
 		Test.Assert(!focused.IsFocusVisible(), "no ring: nobody reached for the keyboard");
 
 		dialog.Close(.Cancel);

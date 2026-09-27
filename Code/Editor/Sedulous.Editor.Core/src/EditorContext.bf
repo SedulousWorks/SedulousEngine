@@ -485,11 +485,12 @@ class EditorContext : IAssetEditSink
 	public delegate void(EditorPage page) OnRevealPage ~ delete _;
 
 	/// Makes `page` the active page AND brings its panel to front. SetActivePage alone does not
-	/// raise a background dock tab, and a hidden page's viewport never renders.
+	/// raise a background dock tab, and a hidden page's viewport never renders. Null clears the
+	/// active page and raises nothing.
 	public void RevealPage(EditorPage page)
 	{
 		SetActivePage(page);
-		if (OnRevealPage != null)
+		if ((page != null) && (OnRevealPage != null))
 			OnRevealPage(page);
 	}
 

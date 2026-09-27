@@ -63,6 +63,21 @@ static class CommandPaletteTests
 		// A label containing it, not at the start, case folded.
 		palette.SetFilter("LAYOUT");
 		Test.Assert(Labels(palette, .. scope .()) == "Reset Layout");
+		// The two case folded matches at their edges: a folded START ranks a label first
+		// ("SAVE" is Save and Save As..., both starting, then Duplicate by its id); punctuation
+		// matches exactly ("as..." is Save As... alone); a mixed case id matches folded
+		// ("SAVESELECTION" is Duplicate alone); a filter longer than every label starts none
+		// and contains none.
+		palette.SetFilter("SAVE");
+		Test.Assert(Labels(palette, .. scope .()) == "Save|Save As...|Duplicate");
+		palette.SetFilter("as...");
+		Test.Assert(Labels(palette, .. scope .()) == "Save As...");
+		palette.SetFilter("as,,,");
+		Test.Assert(palette.Rows.IsEmpty);
+		palette.SetFilter("SAVESELECTION");
+		Test.Assert(Labels(palette, .. scope .()) == "Duplicate");
+		palette.SetFilter("Save the active page under a new name, and then some more");
+		Test.Assert(palette.Rows.IsEmpty);
 		// A description match alone.
 		palette.SetFilter("last edit");
 		Test.Assert(Labels(palette, .. scope .()) == "Undo");
