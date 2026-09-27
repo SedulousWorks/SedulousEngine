@@ -31,8 +31,8 @@ class StandardFactoriesTests
 		// COUNT TRIPWIRE: the standard headless set, which has no texture factory because it
 		// has no device. A new standard factory bumps this DELIBERATELY, and a lost
 		// registration fails loudly here rather than as a silent null bind in a shipped game.
-		const int cStandardHeadlessFactoryCount = 24; // + ScriptClassFactory
-		Test.Assert(resources.FactoryCount == cStandardHeadlessFactoryCount);
+		const int cStandardHeadlessFactoryCount = 25; // + ScriptClassFactory, + VegetationMaskFactory
+		Test.Assert(resources.FactoryCount == cStandardHeadlessFactoryCount, scope $"{resources.FactoryCount} factories");
 
 		// The incident pin: the cooked default interface font must be constructible in every
 		// runtime host, a shipped player having no development tree to fall back on.
