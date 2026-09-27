@@ -168,6 +168,17 @@ extension EditorApplication
 			actions.Register(d);
 		}
 		{
+			let d = new EditorActionDeclaration("view.commandPalette", "Command Palette...", "Every action by name: type to filter, Enter runs it", "View/Command Palette...", 200);
+			d.Shortcut = .(.P, .Ctrl | .Shift);
+			d.ReadOnly = true; // the palette changes nothing itself
+			d.Execute = new (page) =>
+				{
+					let palette = new CommandPaletteDialog(mContext.Actions);
+					palette.Show(mUiHost.Context);
+				};
+			actions.Register(d);
+		}
+		{
 			let d = new EditorActionDeclaration("help.about", "About", "The editor's version", "Help/About", 100);
 			d.ReadOnly = true;
 			d.Execute = new (page) =>
