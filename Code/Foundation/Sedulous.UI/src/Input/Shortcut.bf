@@ -39,8 +39,10 @@ class Shortcut : RefCounted
 	}
 
 	/// Collapses the sided modifiers into their combined flags and DROPS the lock keys, so
-	/// that a shortcut still fires with caps lock or num lock on.
-	private static KeyModifiers Normalize(KeyModifiers modifiers)
+	/// that a shortcut still fires with caps lock or num lock on. Public: the chord a key event
+	/// carries and the chord a declaration spells (Ctrl, not LeftCtrl) compare equal only
+	/// through this, so a capture control normalises what it records.
+	public static KeyModifiers Normalize(KeyModifiers modifiers)
 	{
 		var result = modifiers;
 

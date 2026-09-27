@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Settings;
 using Sedulous.UI;
@@ -10,8 +11,8 @@ namespace Sedulous.Editor.App;
 /// <user-data>/editor.settings.xml; distinct from ProjectSettingsDialog, which edits the
 /// project manifest. Fields: the export templates root (blank means $SEDULOUS_TEMPLATES_DIR,
 /// else <user-data>/templates, shown as the placeholder), the editor font paths (blank is
-/// the built-in chain), the UI scale, agent access (the MCP host), and every
-/// domain-contributed category. Save writes
+/// the built-in chain), the UI scale, agent access (the MCP host), every action's shortcut, and
+/// every domain-contributed category. Save writes
 /// the sections back and persists them; font changes apply on the next start. Cancel
 /// discards.
 class EditorPreferencesDialog : Dialog
@@ -34,15 +35,17 @@ class EditorPreferencesDialog : Dialog
 	private CheckBox mMcpEnabled = null;
 	private EditText mMcpPortEdit = null;
 	private EditText mMcpTokenEdit = null;
+	/// Staged; applied and persisted on Save.
+	private ShortcutEdits mShortcutEdits = new .() ~ delete _;
 
 	public this(EditorContext context, Settings store) : base("Preferences")
 	{
 		mContext = context;
 		mSettings = store;
-		MinWidth.Value = 480.0f;
+		MinWidth.Value = 560.0f;
 		MinHeight.Value = 220.0f;
-		MaxWidth.Value = 640.0f;
-		MaxHeight.Value = 300.0f;
+		MaxWidth.Value = 760.0f;
+		MaxHeight.Value = 560.0f;
 
 		let column = new FlexLayout();
 		column.Direction = .Vertical;
@@ -122,6 +125,20 @@ class EditorPreferencesDialog : Dialog
 			column.AddView(note);
 		}
 
+		// Shortcuts: every action with its effective chord; a click on the chord captures the next
+		// key, Reset forgets the override. Staged in mShortcutEdits, applied on Save.
+		{
+			let header = new Label("Shortcuts");
+			header.FontSize.Value = 13.0f;
+			column.AddView(header);
+			let note = new Label("Click a chord and press the new keys (Esc cancels, Del clears). A chord another action holds is refused on Save, naming it.");
+			note.FontSize.Value = 11.0f;
+			note.TextColor.Value = Color(0.55f, 0.55f, 0.55f, 1.0f);
+			column.AddView(note);
+			for (let action in context.Actions.Actions)
+				AddShortcutRow(column, context.Actions, action);
+		}
+
 		// The domain-contributed categories: the app hardcodes nothing, each domain's fields
 		// render generically here and write through their own closures.
 		for (let contribution in context.EditorSettingsContributions)
@@ -185,6 +202,55 @@ class EditorPreferencesDialog : Dialog
 		return row;
 	}
 
+	/// One action: its label, its menu path, the chord (a capture button) and Reset.
+	private void AddShortcutRow(FlexLayout column, EditorActionRegistry actions, EditorActionDeclaration action)
+	{
+		let row = new FlexLayout();
+		row.Direction = .Horizontal;
+		row.Spacing = 8;
+		let text = new Label(action.Label);
+		text.FontSize.Value = 12.0f;
+		var labelStyle = LayoutStyle();
+		labelStyle.Width = SizeSpec.Fixed(Unit.Dp(170));
+		labelStyle.AlignSelf = .Center;
+		row.AddView(text, labelStyle);
+		let menuPath = new Label(action.MenuPath);
+		menuPath.FontSize.Value = 11.0f;
+		menuPath.TextColor.Value = Color(0.55f, 0.55f, 0.55f, 1.0f);
+		var grow = LayoutStyle();
+		grow.FlexGrow = 1.0f;
+		grow.AlignSelf = .Center;
+		row.AddView(menuPath, grow);
+		let capture = new ShortcutCaptureButton(actions.Shortcut(action.Id));
+		capture.FontSize.Value = 11.0f;
+		var captureStyle = LayoutStyle();
+		captureStyle.Width = SizeSpec.Fixed(Unit.Dp(150));
+		captureStyle.AlignSelf = .Center;
+		row.AddView(capture, captureStyle);
+		let reset = new Button("Reset");
+		reset.FontSize.Value = 11.0f;
+		reset.IsEnabled = actions.HasOverride(action.Id);
+		var resetStyle = LayoutStyle();
+		resetStyle.Width = SizeSpec.Fixed(Unit.Dp(60));
+		resetStyle.AlignSelf = .Center;
+		row.AddView(reset, resetStyle);
+		// The declaration is the registry's and outlives this modal dialog.
+		capture.OnChordChosen = new [=this, =action, =reset](chord) =>
+			{
+				mShortcutEdits.Set(action.Id, chord);
+				reset.IsEnabled = true;
+			};
+		reset.OnClick.Add(new [=this, =action, =capture](b) =>
+			{
+				mShortcutEdits.Reset(action.Id);
+				capture.SetChord(action.Shortcut); // the default, shown at once
+				b.IsEnabled = false;
+			});
+		var match = LayoutStyle();
+		match.Width = SizeSpec.Match();
+		column.AddView(row, match);
+	}
+
 	private EditText AddTextRow(FlexLayout column, StringView label, StringView value)
 	{
 		let row = AddRow(column, label);
@@ -214,6 +280,15 @@ class EditorPreferencesDialog : Dialog
 		mSettings.MarkChanged<EditorMcpSettings>();
 		if (OnMcpSettingsApplied != null)
 			OnMcpSettingsApplied(); // live: the host follows the new enabled, port and token
+		if (!mShortcutEdits.IsEmpty)
+		{
+			let collisions = scope List<String>();
+			defer { ClearAndDeleteItems!(collisions); }
+			mShortcutEdits.Apply(mContext.Actions, mSettings.Section<EditorShortcutSettings>(), collisions);
+			mSettings.MarkChanged<EditorShortcutSettings>();
+			for (let collision in collisions)
+				mContext.Notify(.Warning, scope $"Shortcut kept: {collision}");
+		}
 		if (EditorSettingsStore.SaveToUserData(mSettings) case .Ok)
 			mContext.SetStatus("Preferences saved.");
 		else

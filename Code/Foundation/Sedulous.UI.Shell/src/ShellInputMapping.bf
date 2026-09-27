@@ -118,6 +118,17 @@ static class ShellInputMapping
 		case .Period: return .Period;
 		case .Slash: return .Slash;
 
+		// The modifier keys as KEYS: a chord capture (Preferences > Shortcuts) must see a
+		// modifier go down and keep waiting, not take an unknown key for the chord.
+		case .LeftCtrl: return .LeftCtrl;
+		case .LeftShift: return .LeftShift;
+		case .LeftAlt: return .LeftAlt;
+		case .LeftGui: return .LeftGui;
+		case .RightCtrl: return .RightCtrl;
+		case .RightShift: return .RightShift;
+		case .RightAlt: return .RightAlt;
+		case .RightGui: return .RightGui;
+
 		default: return .Unknown;
 		}
 	}

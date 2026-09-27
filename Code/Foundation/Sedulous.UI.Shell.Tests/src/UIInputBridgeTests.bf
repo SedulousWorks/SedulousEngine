@@ -260,6 +260,29 @@ class UIInputBridgeTests
 		Test.Assert(probe.Last == .Grave);
 	}
 
+	/// The modifier keys map as keys: a chord capture sees Ctrl go down and keeps waiting.
+	[Test]
+	public static void TheModifierKeysMapAsKeys()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let probe = new KeyProbe();
+		root.AddView(probe);
+		context.GetFocusManager().SetFocus(probe);
+
+		let bridge = scope UIInputBridge(context);
+
+		bridge.Dispatch(KeyDown(.LeftCtrl));
+		Test.Assert(probe.Last == .LeftCtrl);
+		bridge.Dispatch(KeyDown(.RightShift));
+		Test.Assert(probe.Last == .RightShift);
+		bridge.Dispatch(KeyDown(.LeftAlt));
+		Test.Assert(probe.Last == .LeftAlt);
+		bridge.Dispatch(KeyDown(.RightGui));
+		Test.Assert(probe.Last == .RightGui);
+	}
+
 	// ---- Clipboard ----------------------------------------------------------------------------
 
 	[Test]
