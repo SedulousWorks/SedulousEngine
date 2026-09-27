@@ -377,6 +377,73 @@ class DockingTests
 		Test.Assert(activated == a, "and again, which a tab click could not do");
 	}
 
+	/// The owner's ActiveMark on a panel makes its group the active one (the ring): a press into
+	/// another panel moves the DOCK's active panel but not the mark, and only the owner moves
+	/// the mark. A click on a group's already selected tab activates it too.
+	[Test]
+	public static void TheActiveMarkIsTheOwnersAndTheDockTracksItsOwnActivePanel()
+	{
+		let bed = scope DockBed();
+
+		// Two page groups side by side and a tool panel below: every group has a selected tab.
+		let left = bed.Manager.AddPanel("Scene A", new Label("A"));
+		bed.Manager.DockPanel(left, .Center);
+		let right = bed.Manager.AddPanel("Scene B", new Label("B"));
+		bed.Manager.DockPanelRelativeTo(right, .Right, left.Parent);
+		let assets = bed.Manager.AddPanel("Assets", new Label("assets"));
+		bed.Manager.DockPanel(assets, .Bottom);
+		bed.SettleLayout();
+		let leftGroup = left.Parent as DockTabGroup;
+		let rightGroup = right.Parent as DockTabGroup;
+		let toolGroup = assets.Parent as DockTabGroup;
+		Test.Assert((leftGroup != null) && (rightGroup != null) && (toolGroup != null));
+		Test.Assert(!leftGroup.IsActiveGroup, "nothing marked yet");
+		Test.Assert(!rightGroup.IsActiveGroup);
+
+		// The owner marks the page a command goes to.
+		right.ActiveMark = true;
+		Test.Assert(rightGroup.IsActiveGroup);
+		Test.Assert(!leftGroup.IsActiveGroup);
+		// A press into the tool panel activates it for the DOCK but moves no mark.
+		DockablePanel activated = null;
+		bed.Manager.OnPanelActivated.Add(new [&activated](panel) => { activated = panel; });
+		PressInside(bed, assets);
+		Test.Assert(activated == assets);
+		Test.Assert(bed.Manager.ActivePanel == assets);
+		Test.Assert(rightGroup.IsActiveGroup);
+		Test.Assert(!toolGroup.IsActiveGroup);
+		// The dock's active panel follows a tab selection too, and a closed one never stays it.
+		let extra = bed.Manager.AddPanel("Scene D", new Label("D"));
+		extra.AddRef(); // AddPanel consumes a reference; the registry keeps its own
+		rightGroup.AddPanel(extra);
+		rightGroup.SetSelectedIndex(1);
+		Test.Assert(bed.Manager.ActivePanel == extra);
+		bed.Manager.ClosePanel(extra);
+		Test.Assert(bed.Manager.ActivePanel == right, "the group re-selected its remaining tab");
+		// A click on the tab that is ALREADY selected activates it: no selection changes, the
+		// activation still moves.
+		activated = null;
+		leftGroup.ActivateSelected();
+		Test.Assert(bed.Manager.ActivePanel == left);
+		rightGroup.ActivateSelected();
+		Test.Assert(activated == right);
+		Test.Assert(bed.Manager.ActivePanel == right);
+		// The owner moves the mark: the ring follows.
+		right.ActiveMark = false;
+		left.ActiveMark = true;
+		Test.Assert(leftGroup.IsActiveGroup);
+		Test.Assert(!rightGroup.IsActiveGroup);
+		// The mark is the panel's: the group is active only while the marked panel is selected.
+		let second = bed.Manager.AddPanel("Scene C", new Label("C"));
+		second.AddRef();
+		leftGroup.AddPanel(second);
+		leftGroup.SetSelectedIndex(1);
+		Test.Assert(!leftGroup.IsActiveGroup);
+		leftGroup.SetSelectedIndex(0);
+		Test.Assert(leftGroup.IsActiveGroup);
+		bed.Context.MutationQueue.Drain();
+	}
+
 	/// Seven tenths down, which is inside the CONTENT rather than on the tab strip.
 	private static void PressInside(DockBed bed, DockablePanel panel)
 	{

@@ -96,8 +96,23 @@ class DockTabGroup : ViewGroup, IDragSource
 		// The manager is told too, because being its group's selected tab is not the same as
 		// being the application's active panel when two groups sit side by side.
 		if (let manager = FindManager())
-			manager.OnPanelActivated(panel);
+			manager.NotifyPanelActivated(panel);
 	}
+
+	/// Activates the selected panel without changing the selection (a click on the tab that is
+	/// already selected): the dock's OnPanelActivated fires for it.
+	public void ActivateSelected()
+	{
+		let panel = SelectedPanel;
+		if (panel == null)
+			return;
+		if (let manager = FindManager())
+			manager.NotifyPanelActivated(panel);
+	}
+
+	/// Whether this group's selected panel carries the owner's ActiveMark (the one commands go
+	/// to): the group then draws the ring around its content.
+	public bool IsActiveGroup => (SelectedPanel != null) && SelectedPanel.ActiveMark;
 
 	/// The dock manager above this group, if there is one. A group can be used on its own.
 	private DockManager FindManager()

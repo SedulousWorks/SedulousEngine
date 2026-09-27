@@ -14,7 +14,22 @@ extension DockTabGroup
 	{
 		DrawGrounds(ctx);
 		DrawSelectedPanel(ctx);
+		DrawActiveRing(ctx);
 		DrawTabStrip(ctx);
+	}
+
+	/// The marked panel's ring: a one pixel accent border around the group's content, so the
+	/// page a command goes to is visible at a glance when groups sit side by side.
+	private void DrawActiveRing(UIDrawContext ctx)
+	{
+		let contentHeight = Height - mTabHeight;
+		if (!IsActiveGroup || (contentHeight <= 2.0f))
+			return;
+		let accent = ResolveStyleColor(.AccentColor, Color.Rgb(80, 150, 240));
+		ctx.VG.FillRect(.(0, mTabHeight, Width, 1.0f), accent);
+		ctx.VG.FillRect(.(0, mTabHeight + contentHeight - 1.0f, Width, 1.0f), accent);
+		ctx.VG.FillRect(.(0, mTabHeight, 1.0f, contentHeight), accent);
+		ctx.VG.FillRect(.(Width - 1.0f, mTabHeight, 1.0f, contentHeight), accent);
 	}
 
 	private void DrawGrounds(UIDrawContext ctx)
@@ -146,8 +161,9 @@ extension DockTabGroup
 			FillTab(ctx, ResolvePartDrawable("tab", .Background, .Checked), rect, cornerRadius,
 				Color.Rgb(42, 44, 54));
 
-			// The same two pixel accent a regular tab view draws, so a dock tab reads as active
-			// the way an ordinary tab does.
+			// The same two pixel accent a regular tab view draws: every group's selected tab
+			// reads as selected. Which PAGE a command goes to is the ring around the marked
+			// group's content, not this strip.
 			ctx.VG.FillRect(.(rect.X, rect.Y + rect.Height - 2.0f, rect.Width, 2.0f),
 				ResolveStyleColor(.AccentColor, Color.Rgb(80, 150, 240)));
 			return;

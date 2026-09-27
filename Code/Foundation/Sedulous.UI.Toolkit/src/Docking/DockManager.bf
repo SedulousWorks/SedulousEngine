@@ -27,6 +27,22 @@ class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 	/// a dock.
 	public Event<delegate void(DockablePanel)> OnPanelActivated ~ _.Dispose();
 
+	/// BORROWED, cleared when it closes. The panel activated last (a click into it, a tab
+	/// selection): the dock's own notion of where the user is, for whoever needs it. NOT the
+	/// accent ring, which follows the owner's ActiveMark on a panel, since a click into a tool
+	/// panel must not move the ring off the page commands go to.
+	private DockablePanel mActivePanel = null;
+
+	public DockablePanel ActivePanel => mActivePanel;
+
+	/// Records the activation and fires OnPanelActivated: the two sites that activate a panel,
+	/// a press into it and a tab selection, both come through here.
+	public void NotifyPanelActivated(DockablePanel panel)
+	{
+		mActivePanel = panel;
+		OnPanelActivated(panel);
+	}
+
 	/// BORROWED: the tree owns its nodes.
 	private View mRootNode = null;
 	/// OWNED. The registry that outlives any particular position in the tree.
@@ -256,6 +272,8 @@ class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 	/// is destroyed as before.
 	public void ClosePanel(DockablePanel panel)
 	{
+		if (mActivePanel === panel)
+			mActivePanel = null; // the group's re-selection names the next one, if any
 		UndockPanel(panel);
 		if (!panel.PersistenceId.IsEmpty)
 			return;

@@ -300,6 +300,10 @@ class EditorApplication : IApplication
 					}
 				}
 			});
+		// The active page's panel carries the dock's ActiveMark (the ring): the page a command
+		// goes to, visible when two pages sit side by side. A tool panel never takes it: the
+		// mark follows the context's active page, not the dock's clicked panel.
+		mContext.OnPagesChanged = new () => { RefreshActivePageMark(); };
 		// And the other way: a page revealed through the context (an agent's viewport_screenshot)
 		// brings its tab to front, since a background tab's viewport never renders.
 		mContext.OnRevealPage = new (page) =>
@@ -441,6 +445,22 @@ class EditorApplication : IApplication
 		mCookService.RequestCookFor(roots, false);
 	}
 
+	/// Puts the dock's ActiveMark on the active page's panel and takes it off every other.
+	private void RefreshActivePageMark()
+	{
+		let active = mContext.ActivePage;
+		for (let entry in mPagePanels)
+		{
+			let mark = entry.Page === active;
+			if ((entry.Panel != null) && (entry.Panel.ActiveMark != mark))
+			{
+				entry.Panel.ActiveMark = mark;
+				if (entry.Panel.Parent != null)
+					entry.Panel.Parent.InvalidateVisual(); // the group draws the ring
+			}
+		}
+	}
+
 	/// Opens or focuses the Game tab: play-in-editor, the page's own toolbar running Play and
 	/// Stop, created through the scene plugin's factory seam. `newInstance` opens an
 	/// additional tab driving its own game instance.
@@ -483,6 +503,7 @@ class EditorApplication : IApplication
 				mUiHost.Context.MutationQueue.QueueAction(new [=uiPage, =this]() => { ClosePage(uiPage); });
 			});
 		mPagePanels.Add(.(uiPage, panel));
+		RefreshActivePageMark(); // the panel exists now; the page may already be the active one
 	}
 
 	/// Opens or focuses a page for the instance and docks its content as a centre tab.
@@ -537,6 +558,7 @@ class EditorApplication : IApplication
 				return false;
 			};
 		mPagePanels.Add(.(uiPage, panel));
+		RefreshActivePageMark(); // the panel exists now; the page may already be the active one
 		CookMissingForPage(instance); // uncooked dependencies cook without a manual step
 		return uiPage;
 	}

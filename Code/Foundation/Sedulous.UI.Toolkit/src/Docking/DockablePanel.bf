@@ -25,6 +25,11 @@ class DockablePanel : ViewGroup, IDragSource
 	public float HeaderHeight = 24.0f;
 	/// BORROWED: the manager owns itself.
 	public IDockHost DockHost = null;
+	/// Set by the OWNER on the one panel its commands go to (the editor's active page): the tab
+	/// group draws a ring around its content for this panel only. A dock level notion (the
+	/// panel clicked last) would be wrong here: a click into a tool panel must not move the ring
+	/// off the page.
+	public bool ActiveMark = false;
 
 	public Event<delegate void(DockablePanel)> OnCloseRequested ~ _.Dispose();
 
@@ -150,7 +155,7 @@ class DockablePanel : ViewGroup, IDragSource
 	public override void OnMouseDownCapture(MouseEventArgs e)
 	{
 		if (let manager = FindManager())
-			manager.OnPanelActivated(this);
+			manager.NotifyPanelActivated(this);
 	}
 
 	private DockManager FindManager()

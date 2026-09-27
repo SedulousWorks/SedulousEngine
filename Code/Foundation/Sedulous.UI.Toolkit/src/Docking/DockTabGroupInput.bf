@@ -33,7 +33,13 @@ extension DockTabGroup
 			if (!mTabRects[i].Contains(.(e.X, e.Y)))
 				continue;
 
-			SetSelectedIndex(i);
+			// Already this group's selected tab: the click still means "this one". With two
+			// groups side by side, each holding one page, it is the click that moves the
+			// activation across, and it changes no selection.
+			if (i == mSelectedIndex)
+				ActivateSelected();
+			else
+				SetSelectedIndex(i);
 			// Remembered so a drag that follows knows which tab it started on; the drag itself
 			// only begins once the movement threshold is passed.
 			mDragTabIndex = i;
