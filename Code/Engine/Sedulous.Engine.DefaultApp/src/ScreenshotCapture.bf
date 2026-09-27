@@ -33,7 +33,7 @@ class ScreenshotCapture
 	private uint32 mWidth = 0;
 	private uint32 mHeight = 0;
 	private uint32 mBytesPerRow = 0;
-	private bool mBgra = false;
+	private TextureFormat mFormat = .RGBA8Unorm;
 
 	/// A capture left recorded at destruction was never completed; the owning application
 	/// releases the buffer through Release(device) in its shutdown, since there is no device
@@ -55,29 +55,34 @@ class ScreenshotCapture
 	public bool Recorded => mRecorded;
 	public StringView Path => mPath;
 
-	/// Whether a surface format can be written as an 8 bit PNG.
+	/// Whether a surface format can be written as an 8 bit PNG: the 8 bit RGBA and BGRA
+	/// surfaces straight through, and RGBA16Float, the viewports' display encoded LDR target
+	/// whose values the tonemap already put in [0, 1], quantised to bytes.
 	public static bool CanCapture(TextureFormat format)
 	{
 		switch (format)
 		{
-		case .RGBA8Unorm, .RGBA8UnormSrgb, .BGRA8Unorm, .BGRA8UnormSrgb:
+		case .RGBA8Unorm, .RGBA8UnormSrgb, .BGRA8Unorm, .BGRA8UnormSrgb, .RGBA16Float:
 			return true;
 		default:
 			return false;
 		}
 	}
 
+	public static uint32 BytesPerPixel(TextureFormat format) => (format == .RGBA16Float) ? 8 : 4;
+
 	public static bool IsBgra(TextureFormat format)
 	{
 		return (format == .BGRA8Unorm) || (format == .BGRA8UnormSrgb);
 	}
 
-	/// Records the copy into `encoder` while `backbuffer` sits in the RenderTarget state,
-	/// which is the state the host hands the frame over in and expects back. Disarms; false
+	/// Records the copy into `encoder` while `backbuffer` sits in `state`, and leaves it there:
+	/// RenderTarget for a presented backbuffer (the state the host hands the frame over in and
+	/// expects back), ShaderRead for an editor viewport's finished colour target. Disarms; false
 	/// when nothing was armed, the format cannot be captured, or the readback buffer could not
 	/// be made, each logged, so a silent no-op never passes for a screenshot.
 	public bool Record(IDevice device, ICommandEncoder encoder, ITexture backbuffer,
-		TextureFormat format, uint32 width, uint32 height)
+		TextureFormat format, uint32 width, uint32 height, ResourceState state = .RenderTarget)
 	{
 		if (!mArmed)
 			return false;
@@ -90,11 +95,11 @@ class ScreenshotCapture
 		}
 		if (!CanCapture(format))
 		{
-			GlobalLog(.Error, scope $"Screenshot: backbuffer format {format} is not an 8 bit RGBA/BGRA surface");
+			GlobalLog(.Error, scope $"Screenshot: backbuffer format {format} is not an 8 bit RGBA/BGRA or an RGBA16Float surface");
 			return false;
 		}
 
-		let bytesPerRow = (width * 4 + (cRowAlignment - 1)) & ~(cRowAlignment - 1);
+		let bytesPerRow = (width * BytesPerPixel(format) + (cRowAlignment - 1)) & ~(cRowAlignment - 1);
 		let needed = (uint64)bytesPerRow * height;
 		if ((mReadback == null) || (mReadbackSize < needed))
 		{
@@ -114,34 +119,46 @@ class ScreenshotCapture
 			mReadbackSize = needed;
 		}
 
-		encoder.TransitionTexture(backbuffer, .RenderTarget, .CopySrc);
+		encoder.TransitionTexture(backbuffer, state, .CopySrc);
 		var region = BufferTextureCopyRegion();
 		region.BytesPerRow = bytesPerRow;
 		region.RowsPerImage = height;
 		region.TextureExtent = .(width, height, 1);
 		encoder.CopyTextureToBuffer(backbuffer, mReadback, region);
-		encoder.TransitionTexture(backbuffer, .CopySrc, .RenderTarget);
+		encoder.TransitionTexture(backbuffer, .CopySrc, state);
 
 		mWidth = width;
 		mHeight = height;
 		mBytesPerRow = bytesPerRow;
-		mBgra = IsBgra(format);
+		mFormat = format;
 		mRecorded = true;
 		return true;
 	}
 
-	/// Copies the aligned rows the GPU wrote into a tight RGBA8 image, swizzling BGRA.
+	/// Copies the aligned rows the GPU wrote into a tight RGBA8 image: BGRA swizzled, a 16 bit
+	/// float texel clamped to [0, 1] and quantised (its values are display encoded already;
+	/// encoding again would double-gamma the image).
 	public static void UnpackRows(uint8* mapped, uint32 bytesPerRow, uint32 width, uint32 height,
-		bool bgra, Span<uint8> outRgba)
+		TextureFormat format, Span<uint8> outRgba)
 	{
+		let bgra = IsBgra(format);
+		let half = format == .RGBA16Float;
+		let bytesPerPixel = BytesPerPixel(format);
 		for (uint32 y = 0; y < height; y++)
 		{
 			let src = mapped + (int)y * (int)bytesPerRow;
 			let dst = outRgba.Ptr + (int)y * (int)width * 4;
 			for (uint32 x = 0; x < width; x++)
 			{
-				let s = src + (int)x * 4;
+				let s = src + (int)x * (int)bytesPerPixel;
 				let d = dst + (int)x * 4;
+				if (half)
+				{
+					let texel = (uint16*)s;
+					for (int c < 4)
+						d[c] = PixelFormats.HalfToUnorm8(texel[c]);
+					continue;
+				}
 				d[0] = bgra ? s[2] : s[0];
 				d[1] = s[1];
 				d[2] = bgra ? s[0] : s[2];
@@ -169,7 +186,7 @@ class ScreenshotCapture
 
 		let rgba = scope List<uint8>();
 		rgba.Resize((int)mWidth * (int)mHeight * 4);
-		UnpackRows(mapped, mBytesPerRow, mWidth, mHeight, mBgra, .(rgba.Ptr, rgba.Count));
+		UnpackRows(mapped, mBytesPerRow, mWidth, mHeight, mFormat, .(rgba.Ptr, rgba.Count));
 		mReadback.Unmap();
 
 		outImage.ReplaceData(mWidth, mHeight, .RGBA8, .(rgba.Ptr, rgba.Count));

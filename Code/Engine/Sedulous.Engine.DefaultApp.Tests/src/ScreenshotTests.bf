@@ -77,13 +77,13 @@ class ScreenshotTests
 					mapped[y * pitch + x * 4 + c] = px[y][x][c];
 
 		uint8[w * h * 4] rgba = .();
-		ScreenshotCapture.UnpackRows(&mapped[0], pitch, w, h, false, .(&rgba[0], rgba.Count));
+		ScreenshotCapture.UnpackRows(&mapped[0], pitch, w, h, .RGBA8Unorm, .(&rgba[0], rgba.Count));
 		Test.Assert(rgba[0] == 1);
 		Test.Assert(rgba[3] == 4);
 		Test.Assert(rgba[(1 * w + 2) * 4 + 0] == 21); // last pixel, straight through
 		Test.Assert(rgba[(1 * w + 2) * 4 + 2] == 23);
 
-		ScreenshotCapture.UnpackRows(&mapped[0], pitch, w, h, true, .(&rgba[0], rgba.Count));
+		ScreenshotCapture.UnpackRows(&mapped[0], pitch, w, h, .BGRA8Unorm, .(&rgba[0], rgba.Count));
 		Test.Assert(rgba[0] == 3); // B to R
 		Test.Assert(rgba[1] == 2);
 		Test.Assert(rgba[2] == 1); // R to B
@@ -93,15 +93,35 @@ class ScreenshotTests
 
 		Test.Assert(ScreenshotCapture.CanCapture(.BGRA8UnormSrgb));
 		Test.Assert(ScreenshotCapture.CanCapture(.RGBA8Unorm));
-		Test.Assert(!ScreenshotCapture.CanCapture(.RGBA16Float));
+		Test.Assert(ScreenshotCapture.CanCapture(.RGBA16Float), "the viewports' target");
+		Test.Assert(!ScreenshotCapture.CanCapture(.RGBA32Float));
+
+		// A 16 bit float row: display encoded values quantise straight to bytes, clamped; the
+		// pitch holds 8 byte texels.
+		uint16[2][4] halves = .(.(0x3C00, 0x3800, 0x0000, 0x3C00), .(0x4400, 0xBC00, 0x3555, 0x3C00));
+		uint8[pitch] halfRow = .();
+		for (int i < halfRow.Count)
+			halfRow[i] = 0xEE;
+		Internal.MemCpy(&halfRow[0], &halves, sizeof(uint16[2][4]));
+		uint8[8] fromHalf = .();
+		ScreenshotCapture.UnpackRows(&halfRow[0], pitch, 2, 1, .RGBA16Float, .(&fromHalf[0], fromHalf.Count));
+		Test.Assert(fromHalf[0] == 255);
+		Test.Assert(fromHalf[1] == 128, "0.5 * 255 + 0.5 rounds to 128");
+		Test.Assert(fromHalf[2] == 0);
+		Test.Assert(fromHalf[3] == 255);
+		Test.Assert(fromHalf[4] == 255, "clamped high");
+		Test.Assert(fromHalf[5] == 0, "clamped low");
+		Test.Assert(fromHalf[6] == 85, "1/3");
+		Test.Assert(fromHalf[7] == 255);
 		Test.Assert(ScreenshotCapture.IsBgra(.BGRA8Unorm));
 		Test.Assert(!ScreenshotCapture.IsBgra(.RGBA8UnormSrgb));
 	}
 
 	/// Clears a `format` texture to a colour, captures it the way the application captures
-	/// the backbuffer, writes the PNG and loads it back: the pixel at (5, 5) and the size
-	/// must match.
-	private static void CaptureProbe(IDevice device, TextureFormat format, StringView name)
+	/// the backbuffer (RenderTarget state) or the editor captures a viewport (the target already
+	/// handed to the UI in ShaderRead), writes the PNG and loads it back: the pixel at (5, 5)
+	/// and the size must match.
+	private static void CaptureProbe(IDevice device, TextureFormat format, StringView name, ResourceState state = .RenderTarget)
 	{
 		const uint32 w = 64;
 		const uint32 h = 48;
@@ -109,7 +129,7 @@ class ScreenshotTests
 		textureDesc.Format = format;
 		textureDesc.Width = w;
 		textureDesc.Height = h;
-		textureDesc.Usage = .RenderTarget | .CopySrc;
+		textureDesc.Usage = .RenderTarget | .CopySrc | .Sampled;
 		textureDesc.Label = "screenshot.probe";
 		Test.Assert(device.CreateTexture(textureDesc) case .Ok(var texture), scope $"{name}: the probe texture");
 		var viewDesc = TextureViewDesc();
@@ -134,16 +154,18 @@ class ScreenshotTests
 		let pass = encoder.BeginRenderPass(passDesc);
 		Test.Assert(pass != null, scope $"{name}: the clear pass");
 		pass.End();
+		if (state != .RenderTarget)
+			encoder.TransitionTexture(texture, .RenderTarget, state);
 
 		let path = scope $"screenshot_probe_{name}.png";
 		if (File.Exists(path))
 			File.Delete(path).IgnoreError();
 
 		let capture = scope ScreenshotCapture();
-		Test.Assert(!capture.Record(device, encoder, texture, format, w, h)); // not armed: nothing
+		Test.Assert(!capture.Record(device, encoder, texture, format, w, h, state)); // not armed: nothing
 		capture.Request(path);
 		Test.Assert(capture.Armed);
-		Test.Assert(capture.Record(device, encoder, texture, format, w, h), scope $"{name}: recorded");
+		Test.Assert(capture.Record(device, encoder, texture, format, w, h, state), scope $"{name}: recorded");
 		Test.Assert(!capture.Armed);
 		Test.Assert(capture.Recorded);
 
@@ -201,6 +223,8 @@ class ScreenshotTests
 
 		CaptureProbe(device, .RGBA8Unorm, scope $"{name}-rgba");
 		CaptureProbe(device, .BGRA8Unorm, scope $"{name}-bgra");
+		CaptureProbe(device, .RGBA8Unorm, scope $"{name}-rgba-shaderread", .ShaderRead); // a viewport's finished target
+		CaptureProbe(device, .RGBA16Float, scope $"{name}-rgba16f", .ShaderRead); // the viewports' real format
 		device.Destroy();
 	}
 
