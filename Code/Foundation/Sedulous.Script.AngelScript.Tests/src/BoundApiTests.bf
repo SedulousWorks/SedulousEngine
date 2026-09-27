@@ -64,6 +64,9 @@ static class BoundApiTests
 		Test.Assert(HasSignature(thing, "int64 Thing.Count"), "a field");
 		Test.Assert(HasSignature(thing, "float Thing.Speed"));
 		Test.Assert(HasSignature(thing, "bool Thing.Ready (read only)"));
+		Test.Assert(thing.Find("Ready").ReadOnly && !thing.Find("Speed").ReadOnly, "the flag beside the signature");
+		Test.Assert(HasSignature(thing, "int64 Thing.Serial (read only)") && thing.Find("Serial").ReadOnly, "[ReadOnly] binds no setter");
+		Test.Assert(thing.Find("Owner").ReadOnly, "nor on a property with a public setter");
 		Test.Assert(thing.Find("Speed").Kind == .Property);
 		// A Ref<T> crosses as its Guid.
 		Test.Assert(HasSignature(thing, "Guid Thing.Buddy"));

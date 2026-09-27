@@ -119,6 +119,7 @@ static class ScriptTools
 					member.Set("signature", JsonValue.MakeString(m.Signature));
 					member.Set("isStatic", JsonValue.MakeBool(m.IsStatic));
 					member.Set("kind", JsonValue.MakeString(KindName(m.Kind)));
+					member.Set("readOnly", JsonValue.MakeBool(m.ReadOnly));
 					members.Add(member);
 				}
 				entry.Set("members", members);

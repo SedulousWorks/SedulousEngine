@@ -88,9 +88,20 @@ static class ScriptToolsTests
 			Test.Assert(!m.Get("signature").AsString().IsEmpty);
 			let kind = m.Get("kind").AsString();
 			Test.Assert((kind == "method") || (kind == "property") || (kind == "constant"));
+			Test.Assert(m.Get("readOnly") != null, "every member says whether it is read only");
 			sawSignature = true;
 		}
 		Test.Assert(sawSignature);
+		// A [ReadOnly] field reads and refuses assignment; a plain field does not.
+		JsonValue MemberNamed(StringView name)
+		{
+			for (int i < thing.Get("members").Count)
+				if (thing.Get("members").At(i).Get("name").AsString() == name)
+					return thing.Get("members").At(i);
+			return null;
+		}
+		Test.Assert(MemberNamed("Serial").Get("readOnly").AsBool());
+		Test.Assert(!MemberNamed("Count").Get("readOnly").AsBool());
 
 		// The availability domain rides along: a runtime type is in the player, a pipeline
 		// type exists for tools only.

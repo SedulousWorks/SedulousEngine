@@ -24,6 +24,9 @@ class ScriptApiMember
 	public String Signature = new .() ~ delete _;
 	public bool IsStatic = false;
 	public ScriptApiMemberKind Kind = .Method;
+	/// A property a script reads and never assigns (no setter was bound: a [ReadOnly] field,
+	/// a readonly one, a getter-only property). The signature says so too.
+	public bool ReadOnly = false;
 }
 
 /// One script visible type, or namespace, the backend ACTUALLY bound, with its members

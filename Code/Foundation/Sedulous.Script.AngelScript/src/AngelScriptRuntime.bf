@@ -194,6 +194,7 @@ class AngelScriptRuntime : ScriptRuntime
 				member.Signature.Set(m.Signature);
 				member.IsStatic = m.IsStatic;
 				member.Kind = m.Kind;
+				member.ReadOnly = m.ReadOnly;
 				copy.Members.Add(member);
 			}
 			outTypes.Add(copy);
@@ -216,13 +217,14 @@ class AngelScriptRuntime : ScriptRuntime
 		return t;
 	}
 
-	private void Record(ScriptApiType type, StringView name, StringView signature, bool isStatic, ScriptApiMemberKind kind)
+	private void Record(ScriptApiType type, StringView name, StringView signature, bool isStatic, ScriptApiMemberKind kind, bool readOnly = false)
 	{
 		let m = new ScriptApiMember();
 		m.Name.Set(name);
 		m.Signature.Set(signature);
 		m.IsStatic = isStatic;
 		m.Kind = kind;
+		m.ReadOnly = readOnly;
 		type.Members.Add(m);
 	}
 
@@ -526,7 +528,7 @@ class AngelScriptRuntime : ScriptRuntime
 			// instance, a bare name in the global namespace.
 			let api = (t.Kind == .Global) ? GlobalApi : ApiType(AsName(t), t.FullName, false);
 			let spelled = (t.Kind == .Global) ? scope:: $"{f.ScriptName}" : (isGlobal ? scope:: $"{AsName(t)}::{f.ScriptName}" : scope:: $"{ReachedAs(t)}.{f.ScriptName}");
-			Record(api, f.ScriptName, scope $"{typeDecl} {spelled}{(f.Set != null) ? "" : " (read only)"}", isGlobal, .Property);
+			Record(api, f.ScriptName, scope $"{typeDecl} {spelled}{(f.Set != null) ? "" : " (read only)"}", isGlobal, .Property, f.Set == null);
 		}
 
 		if (f.Set != null)

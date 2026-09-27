@@ -72,7 +72,8 @@ with `importer` set to choose. `asset_list` and `asset_info` inspect either data
 it), then `scene_write`. Prefabs mirror it with the single root rule.
 
 **Scripts**: `script_api` first, the LIVE bound API per backend; never trust memorised
-signatures. `script_create` seeds a starter asset (the behavior, level or game tier), then
+signatures. A member with `readOnly: true` (a network identity's `Authority`, for one) reads
+and refuses assignment. `script_create` seeds a starter asset (the behavior, level or game tier), then
 edit the returned source FILE, loop on `script_validate`, and `asset_cook` to make the
 class attachable.
 
