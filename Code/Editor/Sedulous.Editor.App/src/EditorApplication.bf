@@ -360,6 +360,11 @@ class EditorApplication : IApplication
 		if (mConfig.RegisterEditors != null)
 			mConfig.RegisterEditors(this, mEmbeddedHost, mUiHost);
 
+		// The user's shortcut overrides, once every domain has declared its actions (an
+		// override names an id; a domain not loaded keeps its entry for a later run).
+		if (let shortcuts = mEditorSettings.Find<EditorShortcutSettings>())
+			shortcuts.ApplyTo(mContext.Actions);
+
 		// Menus after registration: File > New builds from the creator registry.
 		BuildMenus();
 
