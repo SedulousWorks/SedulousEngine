@@ -403,4 +403,26 @@ class EditTextTests
 		password.OnKeyDown(cut);
 		Test.Assert(cut.Handled);
 	}
+
+	/// Escape is not the box's key: it bubbles (the dialog around the box closes on it), while
+	/// an editing key is handled.
+	[Test]
+	public static void EscapeBubblesWhileAnEditingKeyIsHandled()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let edit = AddEdit(context, root);
+		edit.SetText("abc");
+
+		let escape = scope KeyEventArgs();
+		escape.Set(.Escape, .None, false);
+		edit.OnKeyDown(escape);
+		Test.Assert(!escape.Handled);
+		let left = scope KeyEventArgs();
+		left.Set(.Left, .None, false);
+		edit.OnKeyDown(left);
+		Test.Assert(left.Handled);
+		Test.Assert(edit.Text == "abc");
+	}
 }

@@ -354,6 +354,10 @@ class EditText : View, ITextEditHost
 			return;
 		}
 
+		// Not the box's key: it bubbles to the dialog that closes on it.
+		if (e.Key == .Escape)
+			return;
+
 		mBehavior.HandleKeyDown(e.Key, e.Modifiers);
 		ResetBlink();
 		e.Handled = true;

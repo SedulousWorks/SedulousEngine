@@ -130,7 +130,22 @@ class InputManager
 			}
 		}
 
-		if (hitView != null)
+		// A click outside the topmost focus scope popup (a modal dialog's backdrop) must not take
+		// the keyboard away from it: Escape and the dialog's buttons keep working. Focus stays
+		// where it was, or returns to the popup's first focusable when nothing inside holds it.
+		View focusScope = null;
+		if (let root = mContext.ActiveInputRoot)
+		{
+			if (let popupLayer = root.PeekPopupLayer)
+				focusScope = popupLayer.TopmostFocusScopePopup;
+		}
+		if ((focusScope != null) && !IsWithin(hitView, focusScope))
+		{
+			let focus = mContext.GetFocusManager();
+			if (!IsWithin(focus.FocusedView, focusScope) && !focus.FocusFirstIn(focusScope))
+				focus.SetFocus(focusScope); // as Dialog.Show does: the popup itself, so Escape works
+		}
+		else if (hitView != null)
 			FocusNearestFocusable(hitView);
 		else
 			mContext.GetFocusManager().ClearFocus();
@@ -164,6 +179,16 @@ class InputManager
 		mMouseArgs.Set(local.X, local.Y, button, mClickCount, totalTime, mCurrentModifiers);
 		DispatchMouseDown(hitView, mMouseArgs);
 		return hitView != mContext.ActiveInputRoot;
+	}
+
+	private static bool IsWithin(View view, View ancestor)
+	{
+		for (var v = view; v != null; v = v.Parent)
+		{
+			if (v === ancestor)
+				return true;
+		}
+		return false;
 	}
 
 	public bool ProcessMouseUp(MouseButton button, float physicalX, float physicalY)

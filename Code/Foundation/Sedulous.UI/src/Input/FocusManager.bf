@@ -351,10 +351,14 @@ class FocusManager
 		if (view.IsFocusable && view.IsTabStop)
 			output.Add(view);
 
+		// The VISUAL children, as drawing and hit testing walk them: a dialog holds its content in
+		// an internal layout that is not a ViewGroup child, and its buttons were unreachable (Tab
+		// did nothing inside a dialog; FocusFirstIn found nothing, so Show fell back to focusing
+		// the dialog itself).
 		if (let group = view as ViewGroup)
 		{
-			for (int i < group.ChildCount)
-				CollectFocusable(group.GetChildAt(i), output);
+			for (int i < group.VisualChildCount)
+				CollectFocusable(group.GetVisualChild(i), output);
 		}
 	}
 

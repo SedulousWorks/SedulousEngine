@@ -155,6 +155,40 @@ class DialogTests
 		context.MutationQueue.Drain();
 	}
 
+	/// A click on the backdrop outside a modal keeps the keyboard inside it, so Escape still
+	/// closes; and the focus walk reaches the dialog's buttons, which live in its internal
+	/// layout, a visual child only.
+	[Test]
+	public static void ABackdropClickKeepsTheKeyboardInsideTheModal()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let dialog = new Dialog("Test");
+		defer dialog.ReleaseRef();
+		dialog.AddButton("OK", .OK);
+		bool closed = false;
+		dialog.OnClosed.Add(new [&](d, result) => { closed = true; });
+		ShowFor(context, dialog);
+		Test.Assert(dialog.IsFocusWithin());
+		// Show found the button: the dialog itself holds focus only when nothing inside can.
+		Test.Assert(context.GetFocusManager().FocusedView != dialog);
+
+		// The backdrop: nothing focusable under it; focus used to clear here, and Escape then
+		// went nowhere.
+		context.GetInputManager().ProcessMouseDown(.Left, 2, 2, 0);
+		Test.Assert(dialog.IsFocusWithin());
+		// Even when nothing inside held it, a backdrop click brings the keyboard back in.
+		context.GetFocusManager().ClearFocus();
+		context.GetInputManager().ProcessMouseDown(.Left, 2, 2, 0);
+		Test.Assert(dialog.IsFocusWithin());
+		Test.Assert(context.GetFocusManager().FocusedView != dialog);
+
+		Test.Assert(context.GetInputManager().ProcessKeyDown(.Escape, .None, false));
+		Test.Assert(closed);
+		context.MutationQueue.Drain();
+	}
+
 	// ---- Closing ------------------------------------------------------------------------------
 
 	[Test]
