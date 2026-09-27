@@ -116,13 +116,20 @@ static class ComponentJson
 		return unreadable;
 	}
 
-	/// Whether a field is a nested structure or a list: read here, not written by
-	/// component_set.
-	public static bool IsNested(Type type)
+	/// What a field that component_set does not write is, for its refusal: "list", "structure"
+	/// or "object"; null when component_set writes it.
+	public static StringView NestedKind(Type type)
 	{
 		if (ReferenceShape.Is(type) || (type == typeof(EntityRef)) || type.IsEnum || (Shape(type) != null))
-			return false;
-		return type.IsObject || type.IsStruct;
+			return null;
+		if (let generic = type as SpecializedGenericType)
+		{
+			if (generic.UnspecializedType == typeof(System.Collections.List<>))
+				return "list";
+		}
+		if (type.IsStruct)
+			return "structure";
+		return type.IsObject ? "object" : null;
 	}
 
 	/// The JSON shape a leaf field takes, for a refusal that teaches; null when it is no leaf.
@@ -131,6 +138,7 @@ static class ComponentJson
 		switch (type)
 		{
 		case typeof(bool): return "a boolean";
+		case typeof(String): return "a string";
 		case typeof(Guid): return "a guid string";
 		case typeof(Float2): return "[x, y]";
 		case typeof(Float3): return "[x, y, z]";
@@ -144,7 +152,8 @@ static class ComponentJson
 	}
 
 	/// A JSON value as the Variant a leaf field of `type` takes; an empty Variant when the JSON
-	/// has the wrong shape (the refusal names the shape).
+	/// has the wrong shape (the refusal names the shape). A String is not written by Variant:
+	/// component_set sets it in place.
 	public static Variant LeafVariant(Type type, JsonValue value)
 	{
 		if (value == null)

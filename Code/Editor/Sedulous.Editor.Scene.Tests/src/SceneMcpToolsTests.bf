@@ -5,6 +5,9 @@ using Sedulous.Mcp;
 using Sedulous.Scene;
 using Sedulous.Editor.Core;
 using Sedulous.Engine.Render;
+using Sedulous.Engine.Audio;
+using Sedulous.Engine.Spline;
+using Sedulous.Net.Replication;
 using Sedulous.Materials;
 using Sedulous.Resource;
 using System.Collections;
@@ -117,6 +120,7 @@ class SceneMcpToolsTests
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
 		Test.Assert(server.ToolCount == SceneMcpTools.cSceneLiveToolCount);
+		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 6, "a tripwire: bump deliberately when a live tool comes or goes");
 		let onA = scope $"{{\"page\":\"{sceneA}\"}}";
 
 		// Default addressing: the active page, a scene page, then a page that is not one.
@@ -399,7 +403,7 @@ class SceneMcpToolsTests
 		Refused("light", "Type", "\"Laser\"", "field 'Type' takes one of: Directional, Point, Spot");
 		Refused("light", "Brightness", "1", "component 'light' has no field 'Brightness'");
 		Refused("physics.RigidBody", "Mass", "1", "entity 'Lamp' has no reflected component");
-		Refused("mesh", "Materials", "[]", "field 'Materials' of 'mesh' is a list or object");
+		Refused("mesh", "Materials", "[]", "field 'Materials' of 'mesh' is a list - not writable through component_set yet");
 		Refused("mesh", "MaterialCache", "[]", "component 'mesh' has no field 'MaterialCache'");
 		Refused("mesh", "Mesh", "\"not-a-guid\"", "field 'Mesh' is a reference");
 		Test.Assert(commands.UndoIndex == stackBefore);
@@ -409,5 +413,99 @@ class SceneMcpToolsTests
 		Refused("light", "Intensity", "9", "page 'Bistro' is simulating");
 		page.StopSimulation();
 		Test.Assert(Math.Abs(lights.Get(lamp).Intensity - 1.0f) < 1e-6f);
+	}
+
+	/// component_set over every value shape: a string set in place and undone, a vector, a
+	/// quaternion, an entity reference and its clearing, a reference cleared to null, an enum by
+	/// number; and a [ReadOnly] field refused.
+	[Test]
+	public static void ComponentSetWritesEveryValueShapeAndRefusesAReadOnlyField()
+	{
+		let context = scope EditorContext();
+		let sceneId = Guid.Create();
+		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage("Bistro", sceneId));
+		let edit = page.EditContext;
+		let scene = edit.Scene;
+		let sources = scene.AddSystem<AudioSourceComponentManager>();
+		let transforms = scene.AddSystem<NetworkedTransformComponentManager>();
+		let networks = scene.AddSystem<NetworkComponentManager>();
+		let followers = scene.AddSystem<PathFollowComponentManager>();
+		let lights = scene.AddSystem<LightComponentManager>();
+		let meshes = scene.AddSystem<MeshComponentManager>();
+		let thingId = edit.CreateEntity("Thing");
+		let trackId = edit.CreateEntity("Track");
+		let thing = edit.Resolve(thingId);
+		sources.Add(thing).BusName.Set("Music");
+		transforms.Add(thing);
+		networks.Add(thing).Authority = .Server;
+		followers.Add(thing);
+		lights.Add(thing);
+		meshes.Add(thing).Mesh.SetId(Guid.Create());
+		edit.Commands.Clear();
+
+		let server = scope McpServer();
+		SceneMcpTools.Register(server, context);
+		let pageGuid = GuidText(sceneId, .. scope .());
+		let thingGuid = GuidText(thingId, .. scope .());
+		Answer Set(StringView component, StringView property, StringView valueJson)
+		{
+			return Call(server, "component_set", scope $"{{\"page\":\"{pageGuid}\",\"entity\":\"{thingGuid}\",\"component\":\"{component}\",\"property\":\"{property}\",\"value\":{valueJson}}}");
+		}
+		void SetOk(StringView component, StringView property, StringView valueJson)
+		{
+			let got = Set(component, property, valueJson);
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+		}
+		let commands = edit.Commands;
+
+		// A string, in place: the component keeps its own string object; undo restores the text.
+		let busName = sources.Get(thing).BusName;
+		{
+			let got = Set("AudioSourceComponent", "BusName", "\"Ambience\"");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(got.Payload.Get("value").AsString() == "Ambience");
+		}
+		Test.Assert((sources.Get(thing).BusName == busName) && (busName == "Ambience"), "the same string object, new text");
+		commands.Undo();
+		Test.Assert(sources.Get(thing).BusName == "Music");
+		{
+			let wrong = Set("AudioSourceComponent", "BusName", "7");
+			defer delete wrong;
+			Test.Assert(!wrong.Ok);
+			Test.Assert(wrong.Error.StartsWith("field 'BusName' of 'AudioSourceComponent' takes a string"), wrong.Error);
+		}
+
+		// A vector and a quaternion, as entity_inspect shows them.
+		SetOk("NetworkedTransform", "Position", "[1,2,3]");
+		Test.Assert(transforms.Get(thing).Position == Float3(1, 2, 3));
+		SetOk("NetworkedTransform", "Rotation", "[0,0.7071068,0,0.7071068]");
+		Test.Assert(Math.Abs(transforms.Get(thing).Rotation.Y - 0.7071068f) < 1e-6f);
+
+		// An entity reference by guid, then cleared with null.
+		SetOk("PathFollowComponent", "Spline", scope $"\"{trackId}\"");
+		Test.Assert(followers.Get(thing).Spline.Id == trackId);
+		SetOk("PathFollowComponent", "Spline", "null");
+		Test.Assert(followers.Get(thing).Spline.IsNil);
+
+		// A resource reference cleared with null.
+		SetOk("mesh", "Mesh", "null");
+		Test.Assert(meshes.Get(thing).Mesh.Id == Guid());
+
+		// An enum by number.
+		SetOk("light", "Type", "1");
+		Test.Assert(lights.Get(thing).Type == .Point);
+
+		// Read only: replication owns the identity; refused, nothing changes.
+		let before = commands.UndoIndex;
+		{
+			let got = Set("NetworkComponent", "Authority", "\"Client\"");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.StartsWith("field 'Authority' of 'NetworkComponent' is read-only"), got.Error);
+		}
+		Test.Assert(networks.Get(thing).Authority == .Server);
+		Test.Assert(commands.UndoIndex == before);
 	}
 }

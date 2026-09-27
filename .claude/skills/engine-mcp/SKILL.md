@@ -53,7 +53,9 @@ port is 7405; the token is minted on first enable and written to `<user-data>/mc
   primary selection by default. `component_set` is the write half: ONE field of one
   component through the editor's undo path, one step per call labelled `mcp`, the page dirty
   after (nothing saves until the page's Save or `file.save`); `value` takes the shape
-  `entity_inspect` shows. Refused while the page simulates, on a read-only field, on a list or
+  `entity_inspect` shows: numbers, booleans, strings, guids, vectors, colours, quaternions, an
+  enum case by name or number, an asset guid (or null) for a reference, an entity guid (or
+  null) for an entity reference. Refused while the page simulates, on a read-only field, on a list or
   structure, on a wrong shape: nothing changes then. Read, write, read again. A `scene_write`
   or `prefab_write` over an asset the user has open reaches its page at once: a clean page
   reloads in place, a page with unsaved edits keeps them and warns the user. Never write over

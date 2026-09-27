@@ -144,6 +144,10 @@ class SceneEditContext
 		=> mCommands.Execute(new SetReferenceCommand(this, entity, componentType, property,
 			value, resources));
 
+	/// Sets a component's String field in place; refused when the field holds no string.
+	public void SetComponentString(Guid entity, Type componentType, StringView property, StringView text)
+		=> mCommands.Execute(new SetComponentStringCommand(this, entity, componentType, property, text));
+
 	/// Points a component's EntityRef field at another entity.
 	public void SetComponentEntityRef(Guid entity, Type componentType, StringView property,
 		Guid target)

@@ -25,8 +25,10 @@ dedicated tool or ask the user) and the scene page's live tools
 view of one entity: hierarchy, transform, every component's fields with asset references as
 guids and enums by name, the primary selection by default. `component_set` writes one of those
 fields through the page's undo path, one labelled step per call, the page dirty after and
-nothing saved; it refuses while simulating, on a read-only field, on a list or structure, and
-on a wrong shape. A `scene_write` or `prefab_write` over an asset the user has open reaches
+nothing saved. `value` takes the shape `entity_inspect` shows: numbers, booleans, strings,
+guids, vectors, colours, quaternions, an enum case by name or number, an asset guid (or null)
+for a reference, an entity guid (or null) for an entity reference. It refuses while
+simulating, on a read-only field, on a list or structure, and on a wrong shape. A `scene_write` or `prefab_write` over an asset the user has open reaches
 its page at once: a clean page reloads in place, a page with unsaved edits keeps them and
 warns the user. Ask before `page_reload` with `force`, which discards them.
 

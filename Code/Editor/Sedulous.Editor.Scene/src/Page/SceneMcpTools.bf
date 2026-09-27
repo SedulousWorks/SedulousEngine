@@ -137,7 +137,7 @@ static class SceneMcpTools
 		setSchema.Str("component", "the component, as entity_inspect names it: its `type` (\"light\", \"physics.RigidBody\") or its `typeName`", true);
 		setSchema.Str("property", "the field's name, as entity_inspect shows it", true);
 		server.RegisterTool("component_set",
-			"Set ONE reflected field of an entity's component on a scene page, through the editor's undo path: one undo step per call, labelled mcp, the page marked dirty, nothing saved (file.save or the page's Save does that). `value` takes the shape entity_inspect shows: numbers, booleans, [x,y,z] vectors, [r,g,b,a] colours, [x,y,z,w] quaternions, an enum case's name, an asset guid (or null) for a reference, an entity guid (or null) for an entity reference. REFUSED while the page simulates, on a read-only field, on a nested structure or a list (not writable here yet), and on a value of the wrong shape: nothing changes then. Returns the field as entity_inspect reads it after the write.",
+			"Set ONE reflected field of an entity's component on a scene page, through the editor's undo path: one undo step per call, labelled mcp, the page marked dirty, nothing saved (file.save or the page's Save does that). `value` takes the shape entity_inspect shows: numbers, booleans, strings, guids, [x,y] and [x,y,z] vectors, [r,g,b,a] colours, [x,y,z,w] quaternions, an enum case's name or number, an asset guid (or null) for a reference, an entity guid (or null) for an entity reference. REFUSED while the page simulates, on a read-only field, on a nested structure or a list (not writable here yet), and on a value of the wrong shape: nothing changes then. Returns the field as entity_inspect reads it after the write.",
 			setSchema.Build(), .Adjusts,
 			new (arguments, outResult, outError) =>
 			{
@@ -219,13 +219,35 @@ static class SceneMcpTools
 					edit.SetComponentEntityRef(id, type, property, target);
 					commands.EndGroup();
 				}
+				else if (fieldType == typeof(String))
+				{
+					if ((value == null) || !value.IsString)
+					{
+						outError.AppendF("field '{}' of '{}' takes a string - `value` has the wrong shape (entity_inspect shows the current value)", property, component);
+						return false;
+					}
+					let address = (uint8*)manager.GetComponentAddress(handle) + field.MemberOffset;
+					if (*(String*)address == null)
+					{
+						outError.AppendF("field '{}' of '{}' holds no string to set (its component never allocated one)", property, component);
+						return false;
+					}
+					commands.BeginGroup("mcp");
+					edit.SetComponentString(id, type, property, value.AsString());
+					commands.EndGroup();
+				}
 				else
 				{
 					let shape = ComponentJson.Shape(fieldType);
 					if (shape == null)
 					{
-						outError.AppendF("field '{}' of '{}' is a {} - not writable through component_set yet", property, component,
-							ComponentJson.IsNested(fieldType) ? (fieldType.IsObject ? "list or object" : "structure") : fieldType.GetFullName(.. scope .()));
+						let kind = ComponentJson.NestedKind(fieldType);
+						if (kind == "list")
+							outError.AppendF("field '{}' of '{}' is a list - not writable through component_set yet (scene_write edits the source)", property, component);
+						else if (kind != null)
+							outError.AppendF("field '{}' of '{}' is a {} - not writable through component_set yet (scene_write edits the source)", property, component, kind);
+						else
+							outError.AppendF("field '{}' of '{}' is a {} - not writable through component_set yet", property, component, fieldType.GetFullName(.. scope .()));
 						return false;
 					}
 					let leaf = ComponentJson.LeafVariant(fieldType, value);
