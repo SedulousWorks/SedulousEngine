@@ -21,7 +21,13 @@ menu, over the active page, executed unattended; a dialog an action would open i
 cancelled and named under `suppressedDialogs`, so the action most likely did nothing: use a
 dedicated tool or ask the user) and the scene page's live tools
 (`selection_get`, `selection_set`, `simulate_start`, `simulate_stop`, `entity_inspect`,
-`component_set`, each addressed by the page's asset guid). `entity_inspect` is the inspector's
+`component_set`, `viewport_camera_get`, `viewport_camera_set`, `viewport_screenshot`, each
+addressed by the page's asset guid). `viewport_camera_get` and `viewport_camera_set` read and
+move the viewport's editor camera in degrees (a position, a yaw and pitch, or a `lookAt` point;
+editor state only, no undo step). `viewport_screenshot` writes what the viewport renders to a
+PNG and returns its path and size: the scene with the grid, the markers and the selection's
+gizmo, not the panels drawn over the viewport. It brings the page to front first, since a
+hidden viewport never renders. Move the camera, shoot, read the file. `entity_inspect` is the inspector's
 view of one entity: hierarchy, transform, every component's fields with asset references as
 guids and enums by name, the primary selection by default. `component_set` writes one of those
 fields through the page's undo path, one labelled step per call, the page dirty after and

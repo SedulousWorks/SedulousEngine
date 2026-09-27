@@ -56,7 +56,15 @@ port is 7405; the token is minted on first enable and written to `<user-data>/mc
   `entity_inspect` shows: numbers, booleans, strings, guids, vectors, colours, quaternions, an
   enum case by name or number, an asset guid (or null) for a reference, an entity guid (or
   null) for an entity reference. Refused while the page simulates, on a read-only field, on a list or
-  structure, on a wrong shape: nothing changes then. Read, write, read again. A `scene_write`
+  structure, on a wrong shape: nothing changes then. Read, write, read again.
+  `viewport_camera_get` / `viewport_camera_set` read and move the viewport's editor camera
+  (position, yaw and pitch in degrees, or a `lookAt` point; editor state only, no undo step),
+  and `viewport_screenshot` writes what the viewport renders to a PNG (default under
+  `<user-data>/screenshots`) and returns the path and size. It brings the page to front (a
+  hidden viewport never renders) and waits for the frame, so give it a few seconds. The image
+  has the grid, the markers and the selection's gizmo (`selection_set` an empty list first for
+  a clean shot), not the panels over the viewport. To look at something: `viewport_camera_set`
+  with `lookAt`, then `viewport_screenshot`, then read the file. A `scene_write`
   or `prefab_write` over an asset the user has open reaches its page at once: a clean page
   reloads in place, a page with unsaved edits keeps them and warns the user. Never write over
   it again hoping to win; ask, or `page_reload` with `force` only when the user said to

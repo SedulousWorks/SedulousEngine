@@ -23,6 +23,8 @@ using Sedulous.UI.Viewport;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Camera;
+using Sedulous.Engine.DefaultApp;
+using Sedulous.Image;
 using Sedulous.Editor.ViewportTools;
 using Sedulous.Editor.PropertyAnimation;
 
@@ -150,6 +152,10 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private const uint32 cPreviewHeight = 180;
 	private InputRouter mRouter = null ~ delete _;
 	private EditorCamera mCamera = new .() ~ delete _;
+	/// The viewport capture (viewport_screenshot): armed by RequestViewportCapture, recorded in
+	/// OnRenderWindow off the finished colour target, completed in the next OnUpdate.
+	private ScreenshotCapture mScreenshot = new .() ~ delete _;
+	private ViewportCapture mCapture = new .() ~ delete _;
 	/// Borrowed; tracks dock and float moves.
 	private RenderWindow mHostWindow = null;
 	private bool mRenderedOnce = false;
@@ -339,6 +345,20 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public GizmoController Gizmos => (mSelectTool != null) ? mSelectTool.Gizmos : null;
 	public bool MarkersShown => mView.ShowMarkers;
 	public bool CameraOwnsInput => mCameraOwnsInput;
+	public EditorCamera ViewportCamera => (mViewport != null) ? mCamera : null;
+	public ViewportCapture LastViewportCapture => mCapture;
+
+	public Result<void, ErrorCode> RequestViewportCapture(StringView path)
+	{
+		if (mViewport == null)
+			return .Err(.NotSupported);
+		mCapture.State = .Pending;
+		mCapture.Path.Set(path);
+		mCapture.Width = 0;
+		mCapture.Height = 0;
+		mScreenshot.Request(path);
+		return .Ok;
+	}
 
 	public void SetMarkersShown(bool shown)
 	{
@@ -393,6 +413,21 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		// A viewport capture recorded last frame: the GPU has to finish the copy. A one off, so
+		// wait for everything, then map and write.
+		if (mScreenshot.Recorded)
+		{
+			let device = (host.Graphics != null) ? host.Graphics.Raw : null;
+			if (device != null)
+			{
+				device.WaitIdle();
+				let written = scope Image();
+				let saved = mScreenshot.Complete(device, written);
+				mCapture.State = (saved case .Ok) ? .Written : .Failed;
+				mCapture.Width = written.Width;
+				mCapture.Height = written.Height;
+			}
+		}
 		EnsureViewportBound();
 		if (mHostWindow == null)
 			return;
@@ -482,6 +517,14 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		mRender.RenderScene(mScene, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, .(0, 0, w, h),
 			&cameraOverride, targetState, &mPostOverride, Internal.UnsafeCastToPtr(mViewport), mDebugView);
 		mViewport.ColorState = .ShaderRead;
+
+		// The requested capture: the finished colour target, in ShaderRead where the graph left
+		// it for the UI, copied inside this frame; OnUpdate completes it next frame.
+		if (mScreenshot.Armed && (frame.Encoder != null) && (host.Graphics != null) && (host.Graphics.Raw != null))
+		{
+			if (!mScreenshot.Record(host.Graphics.Raw, frame.Encoder, mViewport.ColorTexture, mViewport.ColorFormat, w, h, .ShaderRead))
+				mCapture.State = .Failed; // logged by the capture
+		}
 
 		RenderCameraPreview(); // a second RenderScene through the previewed camera
 	}
@@ -592,6 +635,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		mCamera.ReleaseCapture((mViewport != null) ? mViewport.Mouse : null); // never close captured
 		if (mRender != null)
 			mRender.CancelPicks(Internal.UnsafeCastToPtr(mViewport)); // the key dies with the viewport
+		if ((mHost != null) && (mHost.Graphics != null) && (mHost.Graphics.Raw != null))
+			mScreenshot.Release(mHost.Graphics.Raw); // the readback buffer, while the device lives
 		mViewport.Shutdown();
 		if (mPreviewViewport != null)
 			mPreviewViewport.Shutdown();

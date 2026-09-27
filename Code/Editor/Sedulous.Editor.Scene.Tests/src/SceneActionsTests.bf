@@ -55,6 +55,10 @@ class SceneActionsTests
 		public bool IsPaused => Paused;
 		public GizmoController Gizmos => GizmosSeen;
 		public bool CameraOwnsInput => Flying;
+		public Sedulous.Editor.Camera.EditorCamera ViewportCamera => null;
+		public Result<void, ErrorCode> RequestViewportCapture(StringView path) => .Err(.NotSupported);
+		private ViewportCapture mCapture = new .() ~ delete _;
+		public ViewportCapture LastViewportCapture => mCapture;
 		public bool MarkersShown => Markers;
 		public void SetMarkersShown(bool shown) { Markers = shown; }
 		public void CreatePrefabFromEntity(Guid entity) { PrefabFrom = entity; }

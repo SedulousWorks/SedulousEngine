@@ -10,6 +10,10 @@ namespace Sedulous.Editor.Camera;
 /// wheel zooms toward the pivot. W belongs to the gizmo shortcuts when not flying.
 class EditorCamera
 {
+	/// How far the look tilts, radians: short of straight up or down, so the up vector stays
+	/// defined. The mouse look and a scripted pose both keep to it.
+	public const float cPitchLimit = 1.55f;
+
 	public Float3 Position = .(6.0f, 5.0f, 10.0f);
 	/// 0 looks down -Z; the defaults aim at the origin.
 	public float Yaw = 0.54f;
@@ -87,14 +91,14 @@ class EditorCamera
 				let focus = Position + Forward * FocusDistance;
 				Yaw -= mouse.DeltaX * LookSensitivity;
 				Pitch -= mouse.DeltaY * LookSensitivity;
-				Pitch = Math.Clamp(Pitch, -1.55f, 1.55f);
+				Pitch = Math.Clamp(Pitch, -cPitchLimit, cPitchLimit);
 				Position = focus - Forward * FocusDistance;
 			}
 			else if (MouseCaptured || mouse.IsButtonDown(.Right))
 			{
 				Yaw -= mouse.DeltaX * LookSensitivity;
 				Pitch -= mouse.DeltaY * LookSensitivity;
-				Pitch = Math.Clamp(Pitch, -1.55f, 1.55f);
+				Pitch = Math.Clamp(Pitch, -cPitchLimit, cPitchLimit);
 			}
 			if (mouse.IsButtonDown(.Middle))
 			{

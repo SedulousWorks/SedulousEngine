@@ -47,6 +47,30 @@ class SceneMcpToolsTests
 		public bool IsPaused => false;
 		public GizmoController Gizmos => null;
 		public bool CameraOwnsInput => false;
+		// A viewport is pretended when HasViewport: the camera is real, the capture advances
+		// when the test says the frame rendered (CompleteCapture, FailCapture).
+		public bool HasViewport = false;
+		public Sedulous.Editor.Camera.EditorCamera Camera = new .() ~ delete _;
+		public ViewportCapture Capture = new .() ~ delete _;
+		public int CaptureRequests = 0;
+		public Sedulous.Editor.Camera.EditorCamera ViewportCamera => HasViewport ? Camera : null;
+		public Result<void, ErrorCode> RequestViewportCapture(StringView path)
+		{
+			if (!HasViewport)
+				return .Err(.NotSupported);
+			Capture.State = .Pending;
+			Capture.Path.Set(path);
+			CaptureRequests++;
+			return .Ok;
+		}
+		public ViewportCapture LastViewportCapture => Capture;
+		public void CompleteCapture(uint32 width, uint32 height)
+		{
+			Capture.State = .Written;
+			Capture.Width = width;
+			Capture.Height = height;
+		}
+		public void FailCapture() { Capture.State = .Failed; }
 		public bool MarkersShown => true;
 		public void SetMarkersShown(bool shown) {}
 		public void CreatePrefabFromEntity(Guid entity) {}
@@ -120,7 +144,7 @@ class SceneMcpToolsTests
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
 		Test.Assert(server.ToolCount == SceneMcpTools.cSceneLiveToolCount);
-		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 6, "a tripwire: bump deliberately when a live tool comes or goes");
+		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 9, "a tripwire: bump deliberately when a live tool comes or goes");
 		let onA = scope $"{{\"page\":\"{sceneA}\"}}";
 
 		// Default addressing: the active page, a scene page, then a page that is not one.
@@ -507,5 +531,142 @@ class SceneMcpToolsTests
 		}
 		Test.Assert(networks.Get(thing).Authority == .Server);
 		Test.Assert(commands.UndoIndex == before);
+	}
+
+	/// One pump of a tool that may ask to be re-entered: the line state, and the answer when
+	/// there is one (OWNED, null while not finished).
+	private static LineState Pump(McpServer server, StringView tool, StringView argumentsJson, out Answer outAnswer)
+	{
+		outAnswer = null;
+		let line = scope String();
+		line.AppendF("{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{{\"name\":\"{}\",\"arguments\":{}}}}}", tool, argumentsJson);
+		let reply = scope String();
+		let state = server.HandleLine(line, reply);
+		if (state != .Answered)
+			return state;
+		let response = JsonValue.Parse(reply);
+		defer delete response;
+		let result = response.Get("result");
+		let answer = new Answer();
+		answer.Ok = !result.Get("isError").AsBool();
+		let text = result.Get("content").At(0).Get("text").AsString();
+		if (answer.Ok)
+			answer.Payload = JsonValue.Parse(text);
+		else
+			answer.Error.Set(text);
+		outAnswer = answer;
+		return state;
+	}
+
+	private static bool Near(double a, double b) => Math.Abs(a - b) < 1e-4;
+
+	/// The viewport camera reads and moves in degrees (position, yaw, pitch, lookAt wins), and
+	/// viewport_screenshot waits for the page's capture frame by frame.
+	[Test]
+	public static void TheViewportCameraAndScreenshotTools()
+	{
+		let context = scope EditorContext();
+		let sceneId = Guid.Create();
+		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage("Bistro", sceneId));
+		let headless = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage("Menu", Guid.Create()));
+		page.HasViewport = true;
+		let server = scope McpServer();
+		SceneMcpTools.Register(server, context);
+		let pageGuid = GuidText(sceneId, .. scope .());
+
+		// No viewport: every viewport tool refuses by name.
+		context.SetActivePage(headless);
+		{
+			let got = Call(server, "viewport_camera_get", "{}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.StartsWith("page 'Menu' has no viewport"), got.Error);
+			let set = Call(server, "viewport_camera_set", "{\"yawDegrees\":90}");
+			defer delete set;
+			Test.Assert(!set.Ok);
+			Answer shot;
+			Test.Assert(Pump(server, "viewport_screenshot", "{}", out shot) == .Answered);
+			defer delete shot;
+			Test.Assert(!shot.Ok);
+			Test.Assert(shot.Error.StartsWith("page 'Menu' has no viewport"), shot.Error);
+		}
+
+		// The pose reads in degrees from the camera's radians.
+		page.Camera.Position = .(1.0f, 2.0f, 3.0f);
+		page.Camera.Yaw = 0.0f;
+		page.Camera.Pitch = 0.0f;
+		{
+			let got = Call(server, "viewport_camera_get", scope $"{{\"page\":\"{pageGuid}\"}}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(Near(got.Payload.Get("position").At(2).AsNumber(), 3.0));
+			Test.Assert(Near(got.Payload.Get("yawDegrees").AsNumber(), 0.0));
+			Test.Assert(Near(got.Payload.Get("forward").At(2).AsNumber(), -1.0), "yaw 0 looks down -Z");
+		}
+
+		// Set: position, then yaw and pitch in degrees; the pitch clamps short of the pole, at
+		// the mouse look's own limit.
+		{
+			let got = Call(server, "viewport_camera_set", scope $"{{\"page\":\"{pageGuid}\",\"position\":[10,5,0],\"yawDegrees\":90,\"pitchDegrees\":-30}}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(Near(page.Camera.Position.X, 10.0));
+			Test.Assert(Near(page.Camera.Yaw, Math.PI_f / 2));
+			Test.Assert(Near(page.Camera.Pitch, -30.0 * Math.PI_d / 180.0));
+			Test.Assert(Near(got.Payload.Get("yawDegrees").AsNumber(), 90.0));
+			let clamped = Call(server, "viewport_camera_set", scope $"{{\"page\":\"{pageGuid}\",\"pitchDegrees\":-120}}");
+			defer delete clamped;
+			Test.Assert(clamped.Ok, clamped.Error);
+			Test.Assert(Near(page.Camera.Pitch, -Sedulous.Editor.Camera.EditorCamera.cPitchLimit));
+		}
+		// lookAt aims from the position and wins over yaw and pitch given beside it.
+		{
+			let got = Call(server, "viewport_camera_set", scope $"{{\"page\":\"{pageGuid}\",\"position\":[0,0,10],\"yawDegrees\":45,\"lookAt\":[0,0,0]}}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(Near(page.Camera.Yaw, 0.0));
+			Test.Assert(Near(page.Camera.Pitch, 0.0));
+			Test.Assert(Near(page.Camera.FocusDistance, 10.0));
+			Test.Assert(Near(got.Payload.Get("focusDistance").AsNumber(), 10.0));
+		}
+		// Wrong shapes change nothing.
+		{
+			let got = Call(server, "viewport_camera_set", scope $"{{\"page\":\"{pageGuid}\",\"position\":[1,2],\"yawDegrees\":10}}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.StartsWith("`position` takes [x, y, z]"), got.Error);
+			Test.Assert(Near(page.Camera.Yaw, 0.0));
+		}
+
+		// The screenshot: the first pump brings the page to front and asks for the capture,
+		// then the call is re-entered each pump until the page reports the frame written.
+		context.SetActivePage(headless);
+		let shotArgs = scope $"{{\"page\":\"{pageGuid}\",\"path\":\"/tmp/bistro.png\"}}";
+		Answer answer;
+		Test.Assert(Pump(server, "viewport_screenshot", shotArgs, out answer) == .NotFinished);
+		Test.Assert(context.ActivePage == page);
+		Test.Assert(page.CaptureRequests == 1);
+		Test.Assert(page.Capture.State == .Pending);
+		Test.Assert(page.Capture.Path == "/tmp/bistro.png");
+		Test.Assert(Pump(server, "viewport_screenshot", shotArgs, out answer) == .NotFinished, "not yet rendered");
+		Test.Assert(page.CaptureRequests == 1, "the same request, not a new one");
+		page.CompleteCapture(1280, 720);
+		Test.Assert(Pump(server, "viewport_screenshot", shotArgs, out answer) == .Answered);
+		{
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			Test.Assert(answer.Payload.Get("path").AsString() == "/tmp/bistro.png");
+			Test.Assert(answer.Payload.Get("width").AsNumber() == 1280);
+			Test.Assert(answer.Payload.Get("height").AsNumber() == 720);
+		}
+		// A failed capture is an error naming the log; a new call starts a new request.
+		let againArgs = scope $"{{\"page\":\"{pageGuid}\",\"path\":\"/tmp/again.png\"}}";
+		Test.Assert(Pump(server, "viewport_screenshot", againArgs, out answer) == .NotFinished);
+		Test.Assert(page.CaptureRequests == 2);
+		page.FailCapture();
+		Test.Assert(Pump(server, "viewport_screenshot", againArgs, out answer) == .Answered);
+		defer delete answer;
+		Test.Assert(!answer.Ok);
+		Test.Assert(answer.Error.StartsWith("the capture of page 'Bistro' failed"), answer.Error);
 	}
 }

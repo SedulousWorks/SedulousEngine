@@ -7,6 +7,8 @@ using Sedulous.Scene;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Camera;
+using Sedulous.Core.IO;
 
 namespace Sedulous.Editor.Scene;
 
@@ -21,7 +23,7 @@ namespace Sedulous.Editor.Scene;
 static class SceneMcpTools
 {
 	/// How many tools Register registers; a tripwire like the page tools'.
-	public const int cSceneLiveToolCount = 6;
+	public const int cSceneLiveToolCount = 9;
 
 	private const String cPageArgument = "the scene or prefab page's asset guid (default: the active page)";
 
@@ -77,6 +79,7 @@ static class SceneMcpTools
 			});
 
 		RegisterInspectAndSet(server, context);
+		RegisterViewportTools(server, context);
 
 		let startSchema = scope SchemaBuilder();
 		startSchema.Str("page", cPageArgument);
@@ -274,6 +277,210 @@ static class SceneMcpTools
 				outResult.Set("undoSteps", JsonValue.MakeNumber(1));
 				return true;
 			});
+	}
+
+	/// One viewport_screenshot in flight: the tool is re-entered every pump with the same
+	/// arguments until the page reports the capture written, or it gives up.
+	private class PendingCapture
+	{
+		/// BORROWED; null while nothing is in flight.
+		public EditorPage Page = null;
+		public int Pumps = 0;
+		/// Per host, so two captures of one page never share a default name.
+		public int Serial = 0;
+	}
+
+	/// Frames: ten seconds at 60 Hz, then the tool gives up.
+	private const int cCapturePumpLimit = 600;
+
+	private static void RegisterViewportTools(McpServer server, EditorContext context)
+	{
+		let getSchema = scope SchemaBuilder();
+		getSchema.Str("page", cPageArgument);
+		server.RegisterTool("viewport_camera_get",
+			"The pose a scene page's viewport looks from: the editor camera's position, yaw and pitch in degrees (yaw 0 looks down -Z, positive pitch looks up), its forward vector and its orbit focus distance. Defaults to the active page.",
+			getSchema.Build(), .ReadOnly,
+			new (arguments, outResult, outError) =>
+			{
+				let page = ResolveScenePage(context, arguments, outError);
+				if (page == null)
+					return false;
+				let camera = (page as ISceneEditorPage).ViewportCamera;
+				if (camera == null)
+				{
+					outError.AppendF("page '{}' has no viewport", page.Title);
+					return false;
+				}
+				WriteCamera(page, camera, outResult);
+				return true;
+			});
+
+		let setSchema = scope SchemaBuilder();
+		setSchema.Str("page", cPageArgument);
+		setSchema.Arr("position", "number", "the camera position [x, y, z]");
+		setSchema.Number("yawDegrees", "rotation about the up axis; 0 looks down -Z");
+		setSchema.Number("pitchDegrees", "tilt; positive looks up, clamped short of straight up or down");
+		setSchema.Arr("lookAt", "number", "the point [x, y, z] to aim at from the position");
+		server.RegisterTool("viewport_camera_set",
+			"Move a scene page's viewport camera - to look at something from somewhere specific before a viewport_screenshot, or to show the user a spot. Sets what is given: `position` ([x, y, z]), then `yawDegrees` and `pitchDegrees`, then `lookAt` ([x, y, z]: aims from the position at that point, horizon level, and moves the orbit focus there; it wins over yaw and pitch). Nothing given changes nothing. Returns the pose as viewport_camera_get does. Editor state only: no scene edit, no undo step.",
+			setSchema.Build(), .Adjusts,
+			new (arguments, outResult, outError) =>
+			{
+				let page = ResolveScenePage(context, arguments, outError);
+				if (page == null)
+					return false;
+				let camera = (page as ISceneEditorPage).ViewportCamera;
+				if (camera == null)
+				{
+					outError.AppendF("page '{}' has no viewport", page.Title);
+					return false;
+				}
+				// Shape everything first: a refusal changes nothing.
+				Float3 position = .Zero;
+				Float3 lookAt = .Zero;
+				let hasPosition = arguments.Has("position");
+				let hasLookAt = arguments.Has("lookAt");
+				if (hasPosition && !ReadFloat3(arguments.Get("position"), out position))
+				{
+					outError.Append("`position` takes [x, y, z]");
+					return false;
+				}
+				if (hasLookAt && !ReadFloat3(arguments.Get("lookAt"), out lookAt))
+				{
+					outError.Append("`lookAt` takes [x, y, z]");
+					return false;
+				}
+				let yaw = arguments.Get("yawDegrees");
+				let pitch = arguments.Get("pitchDegrees");
+				if (((yaw != null) && !yaw.IsNumber) || ((pitch != null) && !pitch.IsNumber))
+				{
+					outError.Append("`yawDegrees` and `pitchDegrees` take a number");
+					return false;
+				}
+				if (hasPosition)
+					camera.Position = position;
+				if (yaw != null)
+					camera.Yaw = DegreesToRadians((float)yaw.AsNumber());
+				if (pitch != null)
+				{
+					// Short of the poles, as the mouse look is, so the up vector stays defined.
+					camera.Pitch = System.Math.Clamp(DegreesToRadians((float)pitch.AsNumber()), -EditorCamera.cPitchLimit, EditorCamera.cPitchLimit);
+				}
+				if (hasLookAt)
+					camera.LookAt(lookAt);
+				WriteCamera(page, camera, outResult);
+				return true;
+			});
+
+		let shotSchema = scope SchemaBuilder();
+		shotSchema.Str("page", cPageArgument);
+		shotSchema.Str("path", "the PNG to write (default: a new file under <user-data>/screenshots)");
+		let pending = new PendingCapture();
+		server.RegisterTool("viewport_screenshot",
+			"What a scene page's viewport renders, as a PNG file at the viewport's size: the scene from the editor camera (viewport_camera_set moves it) with what the viewport draws into its image - the grid, the entity markers, the selection's gizmo, the frame rate readout. Panels drawn over the viewport are not in it. Brings the page to front (a hidden viewport never renders), waits for the next frame and the GPU, then returns {page, path, width, height}; read the file. `path` is where to write (an existing directory; default: <user-data>/screenshots/<page>-<pid>-<n>.png). Gives up after ten seconds without a rendered frame.",
+			shotSchema.Build(), .Creates,
+			new (arguments, outResult, outError) =>
+			{
+				let page = ResolveScenePage(context, arguments, outError);
+				if (page == null)
+				{
+					pending.Page = null;
+					return .Failed;
+				}
+				let scene = page as ISceneEditorPage;
+				if (pending.Page == page)
+				{
+					// Re-entered: the same call, one pump later.
+					let capture = scene.LastViewportCapture;
+					pending.Pumps++;
+					if (capture.State == .Written)
+					{
+						outResult.Set("page", PageJson(page));
+						outResult.Set("path", JsonValue.MakeString(capture.Path));
+						outResult.Set("width", JsonValue.MakeNumber(capture.Width));
+						outResult.Set("height", JsonValue.MakeNumber(capture.Height));
+						pending.Page = null;
+						return .Answered;
+					}
+					if (capture.State == .Failed)
+					{
+						pending.Page = null;
+						outError.AppendF("the capture of page '{}' failed (log_read, category Screenshot, says why)", page.Title);
+						return .Failed;
+					}
+					if (pending.Pumps > cCapturePumpLimit)
+					{
+						pending.Page = null;
+						outError.AppendF("page '{}' rendered no frame in ten seconds - is its viewport visible (an editor window minimised or hidden)?", page.Title);
+						return .Failed;
+					}
+					return .NotFinished;
+				}
+				if (scene.ViewportCamera == null)
+				{
+					outError.AppendF("page '{}' has no viewport", page.Title);
+					return .Failed;
+				}
+				let path = scope String();
+				let pathArg = arguments.Get("path");
+				if ((pathArg != null) && pathArg.IsString)
+					path.Set(pathArg.AsString());
+				if (path.IsEmpty)
+				{
+					let directory = scope String();
+					PathJoin(GetUserDataDirectory(.. scope .()), "screenshots", directory);
+					if (!CreateDirectory(directory))
+					{
+						outError.AppendF("could not create '{}'", directory);
+						return .Failed;
+					}
+					pending.Serial++;
+					PathJoin(directory, scope $"{FileStemOf(page.Title, .. scope .())}-{System.Diagnostics.Process.CurrentId}-{pending.Serial}.png", path);
+				}
+				context.SetActivePage(page); // to front: a hidden viewport never renders
+				if (scene.RequestViewportCapture(path) case .Err)
+				{
+					outError.AppendF("page '{}' has no viewport", page.Title);
+					return .Failed;
+				}
+				pending.Page = page;
+				pending.Pumps = 0;
+				return .NotFinished;
+			}, pending);
+	}
+
+	private static void WriteCamera(EditorPage page, EditorCamera camera, JsonValue outResult)
+	{
+		outResult.Set("page", PageJson(page));
+		outResult.Set("position", ComponentJson.ValueJson(typeof(Float3), &camera.Position));
+		outResult.Set("yawDegrees", JsonValue.MakeNumber(RadiansToDegrees(camera.Yaw)));
+		outResult.Set("pitchDegrees", JsonValue.MakeNumber(RadiansToDegrees(camera.Pitch)));
+		var forward = camera.Forward;
+		outResult.Set("forward", ComponentJson.ValueJson(typeof(Float3), &forward));
+		outResult.Set("focusDistance", JsonValue.MakeNumber(camera.FocusDistance));
+	}
+
+	private static bool ReadFloat3(JsonValue value, out Float3 outValue)
+	{
+		outValue = .Zero;
+		if ((value == null) || !value.IsArray || (value.Count != 3))
+			return false;
+		for (int i < 3)
+		{
+			if (!value.At(i).IsNumber)
+				return false;
+		}
+		outValue = .((float)value.At(0).AsNumber(), (float)value.At(1).AsNumber(), (float)value.At(2).AsNumber());
+		return true;
+	}
+
+	/// A page title as a file stem: letters, digits, '-' and '_' kept, the rest '_'.
+	private static void FileStemOf(StringView title, String outStem)
+	{
+		for (let c in title.RawChars)
+			outStem.Append((c.IsLetterOrDigit || (c == '-') || (c == '_')) && (c < (char8)0x80) ? c : '_');
+		if (outStem.IsEmpty)
+			outStem.Append("page");
 	}
 
 	/// The entity a call addresses: `entity` when given, else the page's primary selection;

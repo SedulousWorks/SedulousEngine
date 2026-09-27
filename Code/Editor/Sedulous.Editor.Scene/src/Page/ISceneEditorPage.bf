@@ -1,4 +1,6 @@
 using System;
+using Sedulous.Core;
+using Sedulous.Editor.Camera;
 
 namespace Sedulous.Editor.Scene;
 
@@ -13,6 +15,31 @@ namespace Sedulous.Editor.Scene;
 /// overlay and the prefab flows are page concerns (they lock the command stack, drive the
 /// toolbar, open the page's dialogs), so their control is part of this surface, not of the edit
 /// context; the scene editor's actions bind through it.
+/// Where a capture of the viewport stands.
+enum ViewportCaptureState
+{
+	/// Nothing requested.
+	Idle,
+	/// Requested; not yet rendered and written.
+	Pending,
+	/// The PNG is at Path, Width by Height.
+	Written,
+	/// The copy or the write failed; log_read, category Screenshot, says why.
+	Failed
+}
+
+/// A capture of the viewport's rendered colour target to a PNG: requested through the page,
+/// recorded on the next frame the viewport renders, written once the GPU has finished. A
+/// hidden viewport (an inactive dock tab) never renders, so a request over one stays Pending
+/// until the page comes to front.
+class ViewportCapture
+{
+	public ViewportCaptureState State = .Idle;
+	public String Path = new .() ~ delete _;
+	public uint32 Width = 0;
+	public uint32 Height = 0;
+}
+
 interface ISceneEditorPage
 {
 	/// This page's scene mutation mediator: its live scene, its command stack, its entity
@@ -38,6 +65,16 @@ interface ISceneEditorPage
 	/// ones.
 	bool MarkersShown { get; }
 	void SetMarkersShown(bool shown);
+
+	/// The viewport's free-fly camera: the pose the scene is looked at from, which an agent
+	/// moves to look from somewhere specific; null on a page without a viewport.
+	EditorCamera ViewportCamera { get; }
+
+	/// Asks for the viewport's next rendered frame as a PNG at `path` (its directory must
+	/// exist), replacing a pending request. NotSupported on a page without a viewport.
+	Result<void, ErrorCode> RequestViewportCapture(StringView path);
+	/// The latest request's state, as it advances frame by frame. BORROWED.
+	ViewportCapture LastViewportCapture { get; }
 
 	/// The prefab flows the page owns (they open the page's dialogs and write assets): a prefab
 	/// asset from an entity subtree; an instance spawned under `parent` (nil is the scene root)
