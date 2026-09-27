@@ -66,7 +66,7 @@ static class EditorPageTools
 						return false;
 					}
 				}
-				seams.Context.SetActivePage(page);
+				seams.Context.RevealPage(page); // to front: a background tab's viewport never renders
 				CopyIdentity(seams.Context, page, outResult);
 				return true;
 			});

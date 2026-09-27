@@ -447,8 +447,7 @@ class EditorApplication : IApplication
 			{
 				if (entry.Page === mGamePage)
 				{
-					mShell.Docks.ActivatePanel(entry.Panel);
-					mContext.SetActivePage(mGamePage);
+					mContext.RevealPage(mGamePage);
 					return;
 				}
 			}

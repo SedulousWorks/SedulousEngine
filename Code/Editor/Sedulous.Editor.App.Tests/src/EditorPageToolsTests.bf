@@ -142,12 +142,15 @@ class EditorPageToolsTests
 		}
 		delete Call(server, "page_open", twoGuid);
 		Test.Assert(context.ActivePage.InstanceId == two.Id);
+		EditorPage revealed = null;
+		context.OnRevealPage = new [&](shown) => { revealed = shown; };
 		{
 			let again = Call(server, "page_open", oneGuid);
 			defer delete again;
 			Test.Assert(again.Ok);
 			Test.Assert(factory.Created == 2); // focused, not recreated
 			Test.Assert(context.ActivePage.InstanceId == one.Id);
+			Test.Assert(revealed === context.ActivePage); // and its tab raised: a background tab stays hidden otherwise
 		}
 		{
 			let listed = Call(server, "page_list", "{}");
