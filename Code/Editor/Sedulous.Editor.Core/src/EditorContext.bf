@@ -480,6 +480,19 @@ class EditorContext : IAssetEditSink
 
 	public EditorPage ActivePage => mActivePage;
 
+	/// Raises a page's panel so the user (and its viewport) can see it: the app wires this to
+	/// its dock, since the context owns no panels. OWNED; null in a headless context.
+	public delegate void(EditorPage page) OnRevealPage ~ delete _;
+
+	/// Makes `page` the active page AND brings its panel to front. SetActivePage alone does not
+	/// raise a background dock tab, and a hidden page's viewport never renders.
+	public void RevealPage(EditorPage page)
+	{
+		SetActivePage(page);
+		if (OnRevealPage != null)
+			OnRevealPage(page);
+	}
+
 	public void SetActivePage(EditorPage page)
 	{
 		if (mActivePage == page)

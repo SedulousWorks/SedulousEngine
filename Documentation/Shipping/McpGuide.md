@@ -25,8 +25,8 @@ dedicated tool or ask the user) and the scene page's live tools
 addressed by the page's asset guid). `viewport_camera_get` and `viewport_camera_set` read and
 move the viewport's editor camera in degrees (a position, a yaw and pitch, or a `lookAt` point;
 editor state only, no undo step). `viewport_screenshot` writes what the viewport renders to a
-PNG and returns its path and size: the scene with the grid, the markers and the selection's
-gizmo, not the panels drawn over the viewport. It brings the page to front first, since a
+PNG and returns its path and size: the scene with the grid, the markers, the selection's
+gizmo and the tool's hint text, not the panels docked over the viewport. It brings the page to front first, since a
 hidden viewport never renders. Move the camera, shoot, read the file. `entity_inspect` is the inspector's
 view of one entity: hierarchy, transform, every component's fields with asset references as
 guids and enums by name, the primary selection by default. `component_set` writes one of those

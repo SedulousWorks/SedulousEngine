@@ -153,9 +153,13 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private InputRouter mRouter = null ~ delete _;
 	private EditorCamera mCamera = new .() ~ delete _;
 	/// The viewport capture (viewport_screenshot): armed by RequestViewportCapture, recorded in
-	/// OnRenderWindow off the finished colour target, completed in the next OnUpdate.
+	/// OnAfterSceneRender off the composed colour target, completed in the next OnUpdate.
 	private ScreenshotCapture mScreenshot = new .() ~ delete _;
 	private ViewportCapture mCapture = new .() ~ delete _;
+	/// The viewport rendered this frame, and at what size: what OnAfterSceneRender captures.
+	private bool mRenderedThisFrame = false;
+	private uint32 mCaptureWidth = 0;
+	private uint32 mCaptureHeight = 0;
 	/// Borrowed; tracks dock and float moves.
 	private RenderWindow mHostWindow = null;
 	private bool mRenderedOnce = false;
@@ -518,15 +522,26 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			&cameraOverride, targetState, &mPostOverride, Internal.UnsafeCastToPtr(mViewport), mDebugView);
 		mViewport.ColorState = .ShaderRead;
 
-		// The requested capture: the finished colour target, in ShaderRead where the graph left
-		// it for the UI, copied inside this frame; OnUpdate completes it next frame.
-		if (mScreenshot.Armed && (frame.Encoder != null) && (host.Graphics != null) && (host.Graphics.Raw != null))
-		{
-			if (!mScreenshot.Record(host.Graphics.Raw, frame.Encoder, mViewport.ColorTexture, mViewport.ColorFormat, w, h, .ShaderRead))
-				mCapture.State = .Failed; // logged by the capture
-		}
+		mCaptureWidth = w;
+		mCaptureHeight = h;
+		mRenderedThisFrame = true;
 
 		RenderCameraPreview(); // a second RenderScene through the previewed camera
+	}
+
+	/// The requested capture, recorded AFTER the scene renderer composed this frame: RenderScene
+	/// only adds the view and EndRendering, which runs before this, writes the image. A copy
+	/// recorded earlier would read the previous frame's image, or an empty target on the first
+	/// frame a tab is shown. The target sits in ShaderRead, where the graph left it for the UI;
+	/// OnUpdate completes the capture next frame.
+	public override void OnAfterSceneRender(IApplicationHost host, ref FrameContext frame)
+	{
+		let rendered = mRenderedThisFrame;
+		mRenderedThisFrame = false;
+		if (!rendered || !mScreenshot.Armed || (frame.Encoder == null) || (host.Graphics == null) || (host.Graphics.Raw == null))
+			return;
+		if (!mScreenshot.Record(host.Graphics.Raw, frame.Encoder, mViewport.ColorTexture, mViewport.ColorFormat, mCaptureWidth, mCaptureHeight, .ShaderRead))
+			mCapture.State = .Failed; // logged by the capture
 	}
 
 	/// A change on disk replaces the scene, unless there are unsaved edits here.

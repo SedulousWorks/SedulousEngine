@@ -62,8 +62,8 @@ port is 7405; the token is minted on first enable and written to `<user-data>/mc
   and `viewport_screenshot` writes what the viewport renders to a PNG (default under
   `<user-data>/screenshots`) and returns the path and size. It brings the page to front (a
   hidden viewport never renders) and waits for the frame, so give it a few seconds. The image
-  has the grid, the markers and the selection's gizmo (`selection_set` an empty list first for
-  a clean shot), not the panels over the viewport. To look at something: `viewport_camera_set`
+  has the grid, the markers, the selection's gizmo and the tool's hint text (`selection_set` an
+  empty list first for a cleaner shot), not the panels docked over the viewport. To look at something: `viewport_camera_set`
   with `lookAt`, then `viewport_screenshot`, then read the file. A `scene_write`
   or `prefab_write` over an asset the user has open reaches its page at once: a clean page
   reloads in place, a page with unsaved edits keeps them and warns the user. Never write over

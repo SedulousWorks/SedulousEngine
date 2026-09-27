@@ -377,7 +377,7 @@ static class SceneMcpTools
 		shotSchema.Str("path", "the PNG to write (default: a new file under <user-data>/screenshots)");
 		let pending = new PendingCapture();
 		server.RegisterTool("viewport_screenshot",
-			"What a scene page's viewport renders, as a PNG file at the viewport's size: the scene from the editor camera (viewport_camera_set moves it) with what the viewport draws into its image - the grid, the entity markers, the selection's gizmo, the frame rate readout. Panels drawn over the viewport are not in it. Brings the page to front (a hidden viewport never renders), waits for the next frame and the GPU, then returns {page, path, width, height}; read the file. `path` is where to write (an existing directory; default: <user-data>/screenshots/<page>-<pid>-<n>.png). Gives up after ten seconds without a rendered frame.",
+			"What a scene page's viewport renders, as a PNG file at the viewport's size: the scene from the editor camera (viewport_camera_set moves it) with what the viewport draws into its image - the grid, the entity markers, the selection's gizmo, the active tool's hint text, the frame rate readout. Panels docked over the viewport are not in it. Brings the page to front (a hidden viewport never renders), waits for the next frame and the GPU, then returns {page, path, width, height}; read the file. `path` is where to write (an existing directory; default: <user-data>/screenshots/<page>-<pid>-<n>.png). Gives up after ten seconds without a rendered frame.",
 			shotSchema.Build(), .Creates,
 			new (arguments, outResult, outError) =>
 			{
@@ -437,7 +437,7 @@ static class SceneMcpTools
 					pending.Serial++;
 					PathJoin(directory, scope $"{FileStemOf(page.Title, .. scope .())}-{System.Diagnostics.Process.CurrentId}-{pending.Serial}.png", path);
 				}
-				context.SetActivePage(page); // to front: a hidden viewport never renders
+				context.RevealPage(page); // to front: a background tab's viewport never renders
 				if (scene.RequestViewportCapture(path) case .Err)
 				{
 					outError.AppendF("page '{}' has no viewport", page.Title);

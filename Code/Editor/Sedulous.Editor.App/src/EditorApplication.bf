@@ -300,6 +300,19 @@ class EditorApplication : IApplication
 					}
 				}
 			});
+		// And the other way: a page revealed through the context (an agent's viewport_screenshot)
+		// brings its tab to front, since a background tab's viewport never renders.
+		mContext.OnRevealPage = new (page) =>
+			{
+				for (let entry in mPagePanels)
+				{
+					if (entry.Page === page)
+					{
+						mShell.Docks.ActivatePanel(entry.Panel);
+						return;
+					}
+				}
+			};
 		mShell.Root.AddRef();
 		mUiHost.AttachWindow(mainRw, mShell.Root);
 
