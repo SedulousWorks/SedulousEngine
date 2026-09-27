@@ -347,44 +347,6 @@ class ThumbnailStage
 		mState = .Idle;
 	}
 
-	/// IEEE half to float: the render target is RGBA16Float, matching every viewport view so
-	/// no pass rebuilds pipelines per format.
-	private static float HalfToFloat(uint16 h)
-	{
-		let sign = (uint32)(h >> 15) & 1;
-		let exponent = (uint32)(h >> 10) & 0x1F;
-		let mantissa = (uint32)h & 0x3FF;
-		uint32 bits;
-		if (exponent == 0)
-		{
-			if (mantissa == 0)
-			{
-				bits = sign << 31; // signed zero
-			}
-			else
-			{
-				// A subnormal half: normalise into a float exponent.
-				uint32 e = 127 - 15 + 1;
-				var m = mantissa;
-				while ((m & 0x400) == 0)
-				{
-					m <<= 1;
-					e--;
-				}
-				bits = (sign << 31) | (e << 23) | ((m & 0x3FF) << 13);
-			}
-		}
-		else if (exponent == 0x1F)
-		{
-			bits = (sign << 31) | 0x7F800000 | (mantissa << 13); // inf / nan
-		}
-		else
-		{
-			bits = (sign << 31) | ((exponent - 15 + 127) << 23) | (mantissa << 13);
-		}
-		return *(float*)&bits;
-	}
-
 	/// An exact integer box downscale (cSupersample squared samples per output texel) over
 	/// RGBA16Float rows. The tonemap pass already applied the sRGB OETF, so the values
 	/// quantise to bytes directly; encoding again would double-gamma the image.
@@ -403,10 +365,10 @@ class ThumbnailStage
 					for (uint32 sx = 0; sx < cSupersample; sx++)
 					{
 						let texel = (uint16*)(row + sx * 8);
-						sum[0] += HalfToFloat(texel[0]);
-						sum[1] += HalfToFloat(texel[1]);
-						sum[2] += HalfToFloat(texel[2]);
-						sum[3] += HalfToFloat(texel[3]);
+						sum[0] += PixelFormats.HalfToFloat(texel[0]);
+						sum[1] += PixelFormats.HalfToFloat(texel[1]);
+						sum[2] += PixelFormats.HalfToFloat(texel[2]);
+						sum[3] += PixelFormats.HalfToFloat(texel[3]);
 					}
 				}
 				let texel = dst + ((int)y * (int)cTileSize + (int)x) * 4;

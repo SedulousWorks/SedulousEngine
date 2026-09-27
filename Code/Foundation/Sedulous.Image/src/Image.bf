@@ -114,6 +114,11 @@ class Image : ImageData
 			return .(mPixels[offset + 2], mPixels[offset + 1], mPixels[offset], 255);
 		case .BGRA8:
 			return .(mPixels[offset + 2], mPixels[offset + 1], mPixels[offset], mPixels[offset + 3]);
+		case .RGBA16F:
+			// Clamped and quantised: ConvertFormat(.RGBA8) over a 16F image is the CPU read of
+			// a display referred float target.
+			let h = (uint16*)&mPixels[offset];
+			return .(PixelFormats.HalfToUnorm8(h[0]), PixelFormats.HalfToUnorm8(h[1]), PixelFormats.HalfToUnorm8(h[2]), PixelFormats.HalfToUnorm8(h[3]));
 		default:
 			return Color32.Black;
 		}

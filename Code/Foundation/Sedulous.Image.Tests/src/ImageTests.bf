@@ -357,4 +357,51 @@ class ImageTests
 				Test.Assert(image.GetPixel(x, y) == Color32(1, 2, 3, 4), scope $"pixel {x},{y}");
 		}
 	}
+
+	/// The binary16 decoder, exact on normals, subnormals, zeros, infinities and the extremes;
+	/// and its byte quantisation, clamped and never re-encoded.
+	[Test]
+	public static void HalfToFloatDecodesEveryClassOfValue()
+	{
+		Test.Assert(PixelFormats.HalfToFloat(0x3C00) == 1.0f);
+		Test.Assert(PixelFormats.HalfToFloat(0x3800) == 0.5f);
+		Test.Assert(PixelFormats.HalfToFloat(0xC000) == -2.0f);
+		Test.Assert(Math.Abs(PixelFormats.HalfToFloat(0x3555) - 0.333251953125f) < 1e-9f, "the nearest half to 1/3");
+		Test.Assert(PixelFormats.HalfToFloat(0x7BFF) == 65504.0f, "the largest finite half");
+		Test.Assert(PixelFormats.HalfToFloat(0x0400) == 6.103515625e-05f, "the smallest normal");
+		Test.Assert(PixelFormats.HalfToFloat(0x0001) == 5.9604644775390625e-08f, "the smallest subnormal");
+		Test.Assert(PixelFormats.HalfToFloat(0x0000) == 0.0f);
+		var negativeZero = PixelFormats.HalfToFloat(0x8000);
+		Test.Assert(*(uint32*)&negativeZero == 0x80000000, "negative zero keeps its sign");
+		Test.Assert(PixelFormats.HalfToFloat(0x7C00) > 3.0e38f, "+inf");
+		Test.Assert(PixelFormats.HalfToFloat(0xFC00) < -3.0e38f, "-inf");
+		Test.Assert(PixelFormats.HalfToFloat(0x7E00).IsNaN);
+
+		Test.Assert(PixelFormats.HalfToUnorm8(0x3C00) == 255);
+		Test.Assert(PixelFormats.HalfToUnorm8(0x3800) == 128, "0.5 * 255 + 0.5 rounds up");
+		Test.Assert(PixelFormats.HalfToUnorm8(0x3555) == 85, "1/3");
+		Test.Assert(PixelFormats.HalfToUnorm8(0x4400) == 255, "4.0 clamps high");
+		Test.Assert(PixelFormats.HalfToUnorm8(0xBC00) == 0, "-1.0 clamps low");
+		Test.Assert(PixelFormats.HalfToUnorm8(0x0000) == 0);
+	}
+
+	/// An RGBA16F image reads its pixels quantised, so ConvertFormat(.RGBA8) is the CPU read of
+	/// a display referred float target.
+	[Test]
+	public static void ARgba16FImageReadsItsPixelsQuantised()
+	{
+		uint16[2][4] texels = .(.(0x3C00, 0x3800, 0x0000, 0x3C00), .(0x4400, 0xBC00, 0x3555, 0x3C00));
+		let half = scope Image(2, 1, .RGBA16F, .((uint8*)&texels, sizeof(uint16[2][4])));
+		Test.Assert(half.GetPixel(0, 0).R == 255);
+		Test.Assert(half.GetPixel(0, 0).G == 128);
+		Test.Assert(half.GetPixel(1, 0).R == 255);
+		Test.Assert(half.GetPixel(1, 0).G == 0);
+		Test.Assert(half.GetPixel(1, 0).B == 85);
+		let bytes = half.ConvertFormat(.RGBA8);
+		defer delete bytes;
+		Test.Assert(bytes.Format == .RGBA8);
+		Test.Assert(bytes.PixelData.Length == 8);
+		Test.Assert(bytes.GetPixel(1, 0).B == 85);
+		Test.Assert(bytes.GetPixel(1, 0).A == 255);
+	}
 }
