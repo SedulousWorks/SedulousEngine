@@ -131,6 +131,15 @@ static class FixtureScriptTests
 		defer delete other;
 		Test.Assert(!other.Compile("w", "w.as", "void write(Thing@ t) { t.Serial = 3; }"), "no setter: the assignment does not compile");
 		Test.Assert(thing.Serial == 7);
+
+		// The same for a property whose setter is public to the engine: scripts read it only.
+		Test.Assert(vm.Compile("p", "p.as", "int owner(Thing@ t) { return t.Owner; }"));
+		Test.Assert(vm.Call("p", "int owner(Thing@)", arg, ref r));
+		Test.Assert(r.AsInt == 3);
+		let third = Bound(s);
+		defer delete third;
+		Test.Assert(!third.Compile("w", "w.as", "void write(Thing@ t) { t.Owner = 4; }"), "the public setter is not the script's");
+		Test.Assert(thing.Owner == 3);
 	}
 
 	[Test]

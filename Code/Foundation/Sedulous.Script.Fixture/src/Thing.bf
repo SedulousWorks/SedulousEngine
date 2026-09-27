@@ -17,6 +17,9 @@ class Thing
 	/// Published read only: a script reads it, never assigns it; the owner still writes it.
 	[Scriptable, ReadOnly]
 	public int Serial = 7;
+	/// A property with a PUBLIC setter the engine uses, closed to scripts by [ReadOnly].
+	[Scriptable, ReadOnly]
+	public int Owner { get; set; } = 3;
 
 	[Scriptable]
 	[Description("How fast.")]
