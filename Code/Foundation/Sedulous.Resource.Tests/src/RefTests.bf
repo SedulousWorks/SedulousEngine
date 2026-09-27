@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
@@ -221,5 +222,27 @@ class RefTests
 		let address = (uint8*)Internal.UnsafeCastToPtr(component) + field.MemberOffset;
 		Test.Assert(ReferenceShape.Is(field.FieldType));
 		Test.Assert(ReferenceShape.Id(field.FieldType, address) case .Ok(second));
+	}
+
+	/// A reference as a LIST element: walked through IReflectedList and read through
+	/// ReferenceShape, the element type and address standing in for a field's.
+	[Test]
+	public static void AReferenceInAListIsReadByIdentity()
+	{
+		let first = Guid.Create();
+		let second = Guid.Create();
+		let materials = scope List<Ref<TestProduct>>();
+		materials.Add(Ref<TestProduct>(first));
+		materials.Add(Ref<TestProduct>(Guid()));
+		materials.Add(Ref<TestProduct>(second));
+
+		let list = (Object)materials as IReflectedList;
+		Test.Assert(list != null);
+		Test.Assert(ReferenceShape.Is(list.ElementType));
+		Test.Assert(ReferenceShape.Id(list.ElementType, list.ElementAddress(0)) case .Ok(first));
+		Test.Assert(ReferenceShape.Id(list.ElementType, list.ElementAddress(1)) case .Ok(Guid()), "an unset element reads nil");
+		Test.Assert(ReferenceShape.Id(list.ElementType, list.ElementAddress(2)) case .Ok(second));
+		Test.Assert(ReferenceShape.Assign(list.ElementType, list.ElementAddress(1), first, null) case .Ok);
+		Test.Assert(materials[1].Id == first, "written in place");
 	}
 }
