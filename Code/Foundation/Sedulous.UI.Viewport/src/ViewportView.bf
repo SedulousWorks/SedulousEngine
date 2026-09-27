@@ -440,8 +440,10 @@ class ViewportView : View
 		colorDesc.Width = width;
 		colorDesc.Height = height;
 		colorDesc.Format = mColorFormat;
-		// Both: the 3D pass writes it and the UI pass samples it.
-		colorDesc.Usage = .RenderTarget | .Sampled;
+		// The 3D pass writes it, the UI pass samples it, and a capture (the editor's
+		// viewport_screenshot) copies the finished image out: without CopySrc that copy is
+		// outside the Vulkan spec and a validation error on WebGPU.
+		colorDesc.Usage = .RenderTarget | .Sampled | .CopySrc;
 		if (mDevice.CreateTexture(colorDesc) case .Ok(let colorTexture))
 			mColorTexture = colorTexture;
 		else
