@@ -53,7 +53,7 @@ names read at run time).
 | Component edits | `SetComponentPropertyCommand.bf`, `SetResourceRefCommand.bf`, `SetEntityRefCommand.bf` (Edit/) | a field by name through `RawFieldAccess`, re-resolved on every Execute and Undo |
 | Settings edits | `Edit/SetSceneSettingCommand.bf:44,73,98` | the same over a scene settings block |
 | Remove, non-serializable | `Edit/RemoveComponentCommand.bf:43` | walks `GetFields` to snapshot a component that has no serializer |
-| Inspector list slots | `Inspector/SlotTarget.bf:69,85,102` | writes a list element's field by name; the element accessor itself is comptime generated. Presumably why the vegetation layers ask for reflection (not stated in `0f499939`; unverified) |
+| Inspector list slots | `Inspector/SlotTarget.bf:69,85,102` | writes a list element's field by name; the element accessor itself is comptime generated. Why the vegetation layers are `[Reflect]`: they are list elements the inspector edits |
 | Animatable properties | `Editor/Sedulous.Editor.PropertyAnimation/src/AnimatableProperties.bf:40` | walks a component's `GetFields` for the property animation picker |
 | `entity_inspect` | `Page/ComponentJson.bf`, `Page/SceneMcpTools.bf` (Editor.Scene) | walks a component's shown fields (public, not `[Hidden]`) and writes them as JSON; enums by name through `Enum.EnumToString` |
 | `component_set` | the same files, and `Edit/SetReferenceCommand.bf` | a field by name, `[ReadOnly]` refused, the write through the edit commands above |
@@ -62,6 +62,29 @@ names read at run time).
 `IReflectedList` (`Foundation/Sedulous.Core/src/Reflection/IReflectedList.bf`) serves
 `entity_inspect`'s list walk but is interface dispatch, given to `List<T>` by extension, not
 reflection.
+
+### The comptime inspector writes through it
+
+The inspector's rows are generated at comptime (`Inspector/InspectorRows.bf`), and that code
+READS a field through a typed accessor it emits (`(p) => ((T*)p).X`), with no reflection. But
+it WRITES by the field's NAME: every row hands a quoted field name to its target
+(`InspectorSection.bf:57-199,288`, `target.SetProperty(key, ...)`, `SetPropertyRaw`,
+`SetEntityRef`), and the targets turn the name into a run time `GetField`:
+
+- `ComponentTarget` → `SceneEditContext.SetComponentProperty` and its siblings →
+  `SetComponentPropertyCommand` → `RawFieldAccess.FindField`.
+- `SettingsTarget` → `SetSceneSettingProperty` → `SetSceneSettingCommand`. This is why the
+  scene settings blocks are `[Reflect(.Type | .NonStaticFields)]`.
+- `SlotTarget` → the element's field by name inside the parent's `Mutate`. This is why the
+  vegetation layers are `[Reflect]`.
+
+The other writes, `target.Mutate` (lists, strings, computed bools), go through the generated
+serializers (`CopyComponent` / `PasteComponent`), not reflection. So a comptime system depends
+on run time reflection for every field it lets the user change: removing the reflection on a
+component, a settings block or a list element type breaks its inspector's writes, not its reads.
+
+No generator EMITS a reflection call. The dependency is the name each generated row hands to
+the run time targets.
 
 ### In the MCP tools
 
@@ -114,9 +137,11 @@ reach the binary.
   A comptime-emitted table per component of (path, offset, leaf type, getter, setter) would
   replace `FieldInfo`, with the resolver looking the path up in it. This is the only per frame
   use, so it matters most in the player.
-- **Editor field access and commands.** The inspector already emits its rows at comptime; the
-  commands could take a comptime-emitted accessor (an offset and a typed get and set) instead
-  of a name and `FieldInfo`. The name is persisted in undo records only as a lookup key.
+- **Editor field access and commands.** The inspector already emits a typed reader per row;
+  emitting the matching typed WRITER and handing it (not the name) to the target would let the
+  commands apply and undo through it, as `Mutate` already does through the serializers. The
+  commands keep the name only to merge consecutive edits of one field, which a key still
+  gives. This one change covers the component rows, the settings blocks and the list slots.
 - **`entity_inspect` and `component_set`.** A comptime-emitted JSON writer and reader per
   component (as `[Serializable]` emits `Serialize`), registered on the manager; resource
   references and enums are known at compile time there, so `ReferenceShape` and the reflection
