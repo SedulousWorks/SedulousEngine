@@ -37,7 +37,7 @@ extension MaterialEditorPage
 			}, "Preview");
 		mGrid.AddProperty(shape);
 
-		let meshRow = new ResourceRefEditor("Mesh", PreviewMeshName(), "Preview");
+		let meshRow = new ResourceRefEditor("Mesh", PreviewMeshName(), "Preview", .());
 		meshRow.OnPick = new [=this, =meshRow]() =>
 			{
 				let ctx = Ctx;
@@ -140,7 +140,7 @@ extension MaterialEditorPage
 
 	private void AddTextureRow(String slot)
 	{
-		let editor = new ResourceRefEditor(slot, AssetNameFor(MaterialSourceEdit.TextureFor(mAsset.Source, slot)), "Textures");
+		let editor = new ResourceRefEditor(slot, AssetNameFor(MaterialSourceEdit.TextureFor(mAsset.Source, slot)), "Textures", .());
 		editor.SetDisplayName(PropertyNames.Prettify(slot, .. scope .()));
 		editor.OnPick = new [=this, =slot]() =>
 			{

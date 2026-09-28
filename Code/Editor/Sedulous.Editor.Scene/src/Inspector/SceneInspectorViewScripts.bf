@@ -89,7 +89,7 @@ extension SceneInspectorView
 		let behavior = component.Behaviors[index];
 
 		let assetName = behavior.Script.Id.IsNil ? "(none)" : AssetNameFor(behavior.Script.Id, .. scope .());
-		let picker = new ResourceRefEditor("Script", assetName, category);
+		let picker = new ResourceRefEditor("Script", assetName, category, .());
 		picker.OnPick = new [=this, =id, =index]() =>
 		{
 			if ((Context == null) || (mEditor.Project == null))
@@ -270,7 +270,7 @@ extension SceneInspectorView
 	private void BuildScriptEntityPropertyRow(StringView category, ScriptPropertyDesc property,
 		ScriptPropertyAccess access)
 	{
-		let editor = new ResourceRefEditor(property.Name, EntityNameFor(access.Effective().Id, .. scope .()), category);
+		let editor = new ResourceRefEditor(property.Name, EntityNameFor(access.Effective().Id, .. scope .()), category, .());
 		if (!property.Description.IsEmpty)
 			editor.SetTooltip(property.Description);
 		editor.OnPick = new [=this, =access]() =>
@@ -305,7 +305,7 @@ extension SceneInspectorView
 	{
 		let assetType = new String(property.AssetType);
 		Keep(assetType);
-		let editor = new ResourceRefEditor(property.Name, AssetNameFor(access.Effective().Id, .. scope .()), category);
+		let editor = new ResourceRefEditor(property.Name, AssetNameFor(access.Effective().Id, .. scope .()), category, .());
 		if (!property.Description.IsEmpty)
 			editor.SetTooltip(property.Description);
 		editor.OnPick = new [=this, =access, =assetType]() =>

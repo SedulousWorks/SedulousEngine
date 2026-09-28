@@ -287,6 +287,26 @@ class EditorContext : IAssetEditSink
 			OnStatus(text);
 	}
 
+	/// An asset's display name for a reference row: its name, "(none)" for nil, and
+	/// "(missing)" for an id the open project does not have (a dangling reference).
+	public void AssetNameFor(Guid id, String outName)
+	{
+		if (id.IsNil)
+		{
+			outName.Set("(none)");
+			return;
+		}
+		if (Project != null)
+		{
+			if (let instance = Project.SourceDb.GetInstance(id))
+			{
+				outName.Set(instance.Name);
+				return;
+			}
+		}
+		outName.Set("(missing)");
+	}
+
 	/// An error or a warning ALWAYS reaches the log too: a toast is transient, and a failure
 	/// a user reports from memory must be reconstructable from the log.
 	public void Notify(NoticeKind kind, StringView message)

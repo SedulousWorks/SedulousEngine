@@ -113,8 +113,12 @@ class AssetPickerSlot : FlexLayout, IDropTarget
 	/// The body text size; list-slot rows run compact chrome.
 	public void SetFontSize(float size) => mBody.FontSize.Value = size;
 
+	/// The accepted type that means any asset: a row whose field is genuinely untyped.
+	public const String cAnyAsset = "*";
+
 	/// The asset type names this slot accepts, the picker's filter list. Non-empty makes
-	/// the slot a drop target for asset-browser drags.
+	/// the slot a drop target for asset-browser drags; cAnyAsset accepts every asset type.
+	/// Empty is not a drop target at all, which is what an entity reference row wants.
 	public void SetAcceptedTypes(Span<StringView> types)
 	{
 		ClearAndDeleteItems(mAcceptedTypes);
@@ -214,7 +218,7 @@ class AssetPickerSlot : FlexLayout, IDropTarget
 	{
 		for (let accepted in mAcceptedTypes)
 		{
-			if (AssetTypeNames.Matches(typeName, accepted))
+			if ((accepted == cAnyAsset) || AssetTypeNames.Matches(typeName, accepted))
 				return true;
 		}
 		return false;

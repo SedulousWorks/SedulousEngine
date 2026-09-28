@@ -216,60 +216,13 @@ class InspectorSection
 		for (let t in assetTypes)
 			types.Add(Own(t));
 
-		let editor = new ResourceRefEditor(field, owner.AssetNameFor(Read(read, Guid()), .. scope .()), mCategory);
-		editor.OnPick = new [=owner, =target, =key, =types]() =>
-		{
-			if ((owner.Context == null) || (owner.Editor.Project == null))
-				return;
-			let names = scope List<StringView>();
-			for (let t in types)
-				names.Add(t);
-			let dialog = new AssetPickerDialog(owner.Editor, names);
-			dialog.OnPicked = new [=owner, =target, =key](picked) => { SetRef<T>(owner, target, key, picked); };
-			dialog.Show(owner.Context);
-		};
-		if (!types.IsEmpty)
-			editor.SetPreviewIcon(EditorIcons.ForAssetType(types[0]));
-		editor.OnClear = new [=owner, =target, =key]() =>
-		{
-			if ((owner.Context == null) || (owner.Editor.Project == null))
-				return;
-			SetRef<T>(owner, target, key, .());
-		};
-		editor.OnEdit = new [=owner, =read, =target]() =>
-		{
-			let id = Read(read, target, Guid());
-			if (!id.IsNil && (owner.Editor.OpenAsset != null))
-				owner.Editor.OpenAsset(id);
-		};
-		editor.OnReveal = new [=owner, =read, =target]() =>
-		{
-			let id = Read(read, target, Guid());
-			if (!id.IsNil && (owner.Editor.RevealAsset != null))
-				owner.Editor.RevealAsset(id);
-		};
 		let accepted = scope List<StringView>();
 		for (let t in types)
 			accepted.Add(t);
-		editor.SetAcceptedTypes(accepted);
-		editor.OnAssignDropped = new [=owner, =target, =key](picked) =>
-		{
-			if ((owner.Context == null) || (owner.Editor.Project == null))
-				return;
-			SetRef<T>(owner, target, key, picked);
-		};
-		editor.OnRejectedDrop = new [=owner, =types](assetName, typeName) =>
-		{
-			let wanted = types.IsEmpty ? StringView("?") : StringView(types[0]);
-			owner.Editor.Notify(.Warning, scope $"{assetName} is a {typeName} - this field takes {wanted}");
-		};
-		Add(editor, new [=owner, =editor, =read, =target]() =>
-		{
-			let id = Read(read, target, Guid());
-			editor.SetValueText(owner.AssetNameFor(id, .. scope .()));
-			editor.SetPreviewThumbnail((!id.IsNil && (owner.Editor.Thumbnails != null))
-				? owner.Editor.Thumbnails.Get(id) : null);
-		});
+		let editor = new ResourceRefEditor(field, owner.AssetNameFor(Read(read, Guid()), .. scope .()), mCategory, accepted);
+		editor.BindAsset(owner.Editor, new [=read, =target]() => Read(read, target, Guid()),
+			new [=owner, =target, =key](picked) => { SetRef<T>(owner, target, key, picked); });
+		Add(editor, new [=editor]() => { editor.Refresh(); });
 	}
 
 	/// An EntityRef field: the target entity's name and a picker over the scene tree.
@@ -279,7 +232,7 @@ class InspectorSection
 		Keep(read);
 		let target = mTarget;
 		let owner = mOwner;
-		let editor = new ResourceRefEditor(field, EntityNameFor(target, Read(read, Guid()), .. scope .()), mCategory);
+		let editor = new ResourceRefEditor(field, EntityNameFor(target, Read(read, Guid()), .. scope .()), mCategory, .());
 		editor.OnPick = new [=owner, =target, =key, =read]() =>
 		{
 			if (owner.Context == null)

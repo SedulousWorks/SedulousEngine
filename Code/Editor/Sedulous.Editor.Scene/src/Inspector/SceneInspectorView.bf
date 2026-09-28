@@ -161,23 +161,7 @@ class SceneInspectorView : ViewGroup
 	public void Keep(Object owned) => mOwned.Add(owned);
 
 	/// The asset's name, "(none)" for nil and "(missing)" for an id the project lacks.
-	public void AssetNameFor(Guid target, String outName)
-	{
-		if (target.IsNil)
-		{
-			outName.Set("(none)");
-			return;
-		}
-		if (mEditor.Project != null)
-		{
-			if (let instance = mEditor.Project.SourceDb.GetInstance(target))
-			{
-				outName.Set(instance.Name);
-				return;
-			}
-		}
-		outName.Set("(missing)");
-	}
+	public void AssetNameFor(Guid target, String outName) => mEditor.AssetNameFor(target, outName);
 
 	// ---- rebuilding ----
 
