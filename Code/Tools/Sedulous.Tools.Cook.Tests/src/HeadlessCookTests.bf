@@ -6,7 +6,7 @@ using Sedulous.Core.IO;
 using Sedulous.Content;
 using Sedulous.VFS;
 using Sedulous.Engine.Project;
-using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Cook;
 using Sedulous.Pipeline.Importer;
@@ -46,7 +46,7 @@ static class HeadlessCookTests
 			{
 				Entity self;
 				Scene@ scene;
-				float speed = 2.0f;
+				[2.0, "Metres per second"] float speed;
 				void onUpdate(float dt) { }
 			}
 			""").IgnoreError();

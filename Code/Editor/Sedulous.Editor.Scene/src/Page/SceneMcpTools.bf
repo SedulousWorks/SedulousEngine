@@ -247,7 +247,7 @@ static class SceneMcpTools
 						let kind = ComponentJson.NestedKind(fieldType);
 						if (kind == "list")
 							outError.AppendF("field '{}' of '{}' is a list - not writable through component_set yet (scene_write edits the source)", property, component);
-						else if (kind != null)
+						else if (!kind.IsEmpty)
 							outError.AppendF("field '{}' of '{}' is a {} - not writable through component_set yet (scene_write edits the source)", property, component, kind);
 						else
 							outError.AppendF("field '{}' of '{}' is a {} - not writable through component_set yet", property, component, fieldType.GetFullName(.. scope .()));

@@ -16,7 +16,7 @@ class CommandPaletteDialog : Dialog
 	// One row: label | menu path | chord, the label greyed when the action is disabled now.
 	private class Row : FlexLayout
 	{
-		public Label Name;
+		public Label Title;
 		public Label Where;
 		public Label Chord;
 
@@ -24,12 +24,12 @@ class CommandPaletteDialog : Dialog
 		{
 			Direction = .Horizontal;
 			Spacing = 12;
-			Name = new Label();
-			Name.FontSize.Value = 13.0f;
+			Title = new Label();
+			Title.FontSize.Value = 13.0f;
 			var grow = LayoutStyle();
 			grow.FlexGrow = 1.0f;
 			grow.AlignSelf = .Center;
-			AddView(Name, grow);
+			AddView(Title, grow);
 			Where = new Label();
 			Where.FontSize.Value = 11.0f;
 			Where.TextColor.Value = Color(0.55f, 0.55f, 0.55f, 1.0f);
@@ -63,8 +63,8 @@ class CommandPaletteDialog : Dialog
 				return;
 			let action = mOwner.mRows[position];
 			let enabled = mOwner.mActions.IsEnabled(action.Id);
-			row.Name.SetText(action.Label);
-			row.Name.TextColor.Value = enabled ? null : Color(0.5f, 0.5f, 0.5f, 1.0f);
+			row.Title.SetText(action.Label);
+			row.Title.TextColor.Value = enabled ? null : Color(0.5f, 0.5f, 0.5f, 1.0f);
 			row.Where.SetText(action.MenuPath);
 			row.Chord.SetText(mOwner.mActions.Shortcut(action.Id).ToString(.. scope .()));
 		}

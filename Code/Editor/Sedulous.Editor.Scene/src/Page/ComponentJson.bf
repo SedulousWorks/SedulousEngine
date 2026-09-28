@@ -117,11 +117,11 @@ static class ComponentJson
 	}
 
 	/// What a field that component_set does not write is, for its refusal: "list", "structure"
-	/// or "object"; null when component_set writes it.
+	/// or "object"; empty when component_set writes it or it is none of those.
 	public static StringView NestedKind(Type type)
 	{
 		if (ReferenceShape.Is(type) || (type == typeof(EntityRef)) || type.IsEnum || (Shape(type) != null))
-			return null;
+			return "";
 		if (let generic = type as SpecializedGenericType)
 		{
 			if (generic.UnspecializedType == typeof(System.Collections.List<>))
@@ -129,7 +129,7 @@ static class ComponentJson
 		}
 		if (type.IsStruct)
 			return "structure";
-		return type.IsObject ? "object" : null;
+		return type.IsObject ? "object" : "";
 	}
 
 	/// The JSON shape a leaf field takes, for a refusal that teaches; null when it is no leaf.
