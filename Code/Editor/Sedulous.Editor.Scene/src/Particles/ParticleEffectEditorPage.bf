@@ -127,7 +127,13 @@ class ParticleEffectEditorPage : UIEditorPage
 
 		let leftSplit = new SplitView();
 		leftSplit.SplitRatio = 0.22f;
-		leftSplit.SetPanes(mTree, centerColumn);
+		let treeColumn = new FlexLayout();
+		treeColumn.Direction = .Vertical;
+		treeColumn.Spacing = 4.0f;
+		treeColumn.Padding = .(6, 4);
+		treeColumn.AddView(new ListHeader("Systems", "Add system", new [=this]() => { AddSystem(); }), ListHeader.RowStyle());
+		treeColumn.AddView(mTree, growMatch);
+		leftSplit.SetPanes(treeColumn, centerColumn);
 		let rightSplit = new SplitView();
 		rightSplit.SplitRatio = 0.72f;
 		rightSplit.SetPanes(leftSplit, inspectorColumn);

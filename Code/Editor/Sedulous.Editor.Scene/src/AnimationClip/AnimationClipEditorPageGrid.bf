@@ -2,12 +2,20 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.UI.Toolkit;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 
-/// The grid half: the stats, the loop flag and the event table.
+/// The grid half: the stats, the loop flag and the event list.
 extension AnimationClipEditorPage
 {
+	/// Event `index`'s section.
+	public static void EventSection(int index, String outCategory)
+	{
+		outCategory.Clear();
+		outCategory.AppendF("Event {}", index + 1);
+	}
+
 	private void RebuildGrid()
 	{
 		mGrid.Clear();
@@ -24,11 +32,27 @@ extension AnimationClipEditorPage
 				CommitEdit("clip-loop");
 			}, "Clip"));
 
+		// The events are a section list: the header's add icon places one at the playhead, and
+		// each event is a section of its own with its remove icon.
 		let eventCount = ClipSourceEdit.EventCount(source);
+		let events = new ContainerListEditor("Events", "Events");
+		events.ElementsAsSections = true;
+		for (int e < eventCount)
+			events.SlotNames.Add(new String(source.EventName[e]));
+		events.OnAdd = new [=this]() =>
+		{
+			QueueStructural("add-event", new [=this]() => { ClipSourceEdit.AddEvent(mAsset.Source, mTime, "event"); });
+		};
+		mGrid.AddProperty(events);
 		for (int e < eventCount)
 		{
-			let cat = scope $"Event {e}";
+			let cat = EventSection(e, .. scope .());
 			let index = e;
+			mGrid.SetCategoryHeaderActions(cat, ContainerListEditor.ElementActions(index, eventCount, null,
+				new [=this](i) =>
+				{
+					QueueStructural("del-event", new [=this, =i]() => { ClipSourceEdit.RemoveEvent(mAsset.Source, i); });
+				}));
 			mGrid.AddProperty(new FloatEditor("Time (s)", source.EventTime[e], 0.0, Math.Max(source.Duration, 0.0f), 0.01, 3, new [=this, =index](v) =>
 				{
 					let s = mAsset.Source;
@@ -47,15 +71,6 @@ extension AnimationClipEditorPage
 						CommitEdit("event-name");
 					}
 				}, cat));
-			mGrid.AddProperty(new ButtonEditor("Remove Event", new [=this, =index]() =>
-				{
-					QueueStructural("del-event", new [=this, =index]() => { ClipSourceEdit.RemoveEvent(mAsset.Source, index); });
-				}, cat));
 		}
-		mGrid.AddProperty(new ButtonEditor("+ Add Event", new [=this]() =>
-			{
-				// At the playhead.
-				QueueStructural("add-event", new [=this]() => { ClipSourceEdit.AddEvent(mAsset.Source, mTime, "event"); });
-			}, "Events"));
 	}
 }

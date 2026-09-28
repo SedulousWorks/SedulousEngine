@@ -167,6 +167,18 @@ class InputMapEditorPage : UIEditorPage
 		return button;
 	}
 
+	/// An add or remove verb, as the icon every editor list uses. `onClick` is consumed.
+	private IconButton MakeIcon(FlexLayout row, SVGDrawable icon, StringView tooltip, delegate void() onClick)
+	{
+		let button = new IconButton(icon);
+		button.TooltipText.Set(tooltip);
+		button.OnClick.Add(new [=onClick](btn) => { onClick(); } ~ delete onClick);
+		var style = LayoutStyle();
+		style.AlignSelf = .Center;
+		row.AddView(button, style);
+		return button;
+	}
+
 	private FlexLayout MakeRow(float indent, float height = 24.0f)
 	{
 		let row = new FlexLayout();
@@ -252,6 +264,20 @@ class InputMapEditorPage : UIEditorPage
 	private void Rebuild()
 	{
 		mRows.RemoveAllViews();
+
+		// The list's header: its title and the add icon.
+		let top = MakeRow(0.0f, 24.0f);
+		AddLabel(top, scope $"Action sets ({mMap.Sets.Count})", 1.0f);
+		MakeIcon(top, EditorIcons.Add, "Add set", new [=this]() =>
+			{
+				Mutate(new (m) =>
+					{
+						let set = new ActionSet();
+						set.Name.Set("NewSet");
+						m.Sets.Add(set);
+					});
+			});
+
 		for (int s < mMap.Sets.Count)
 		{
 			let set = mMap.Sets[s];
@@ -268,7 +294,7 @@ class InputMapEditorPage : UIEditorPage
 			AddLabel(header, scope $"prio {set.Priority}", 0.0f, 52.0f);
 			MakeButton(header, "+", 22.0f, new [=this, =s]() => { Mutate(new [=s](m) => { if (let target = InputMapEdit.SetAt(m, s)) target.Priority += 1; }); });
 			MakeButton(header, "-", 22.0f, new [=this, =s]() => { Mutate(new [=s](m) => { if (let target = InputMapEdit.SetAt(m, s)) target.Priority -= 1; }); });
-			MakeButton(header, "+ Action", 70.0f, new [=this, =s]() =>
+			MakeIcon(header, EditorIcons.Add, "Add action", new [=this, =s]() =>
 				{
 					Mutate(new [=s](m) =>
 						{
@@ -280,7 +306,7 @@ class InputMapEditorPage : UIEditorPage
 							}
 						});
 				});
-			MakeButton(header, "x", 22.0f, new [=this, =s]() =>
+			MakeIcon(header, EditorIcons.Remove, "Remove set", new [=this, =s]() =>
 				{
 					Mutate(new [=s](m) =>
 						{
@@ -309,11 +335,11 @@ class InputMapEditorPage : UIEditorPage
 					{
 						MutateAction(s, a, new (x) => { x.Interaction.Kind = (InteractionKind)(((uint8)x.Interaction.Kind + 1) % 4); });
 					});
-				MakeButton(row, "+ Binding", 74.0f, new [=this, =s, =a]() =>
+				MakeIcon(row, EditorIcons.Add, "Add binding", new [=this, =s, =a]() =>
 					{
 						MutateAction(s, a, new (x) => { x.Bindings.Add(InputMapEdit.FreshBinding(x.Kind)); });
 					});
-				MakeButton(row, "x", 22.0f, new [=this, =s, =a]() =>
+				MakeIcon(row, EditorIcons.Remove, "Remove action", new [=this, =s, =a]() =>
 					{
 						Mutate(new [=s, =a](m) =>
 							{
@@ -343,7 +369,7 @@ class InputMapEditorPage : UIEditorPage
 					AddLabel(bindingRow, isListening ? "<press an input...>" : BindingNames.DescribeBinding(binding, .. scope .()), 1.0f);
 					let listenLabel = (isListening && (mListenDirection == -1)) ? "Cancel" : "Listen";
 					MakeButton(bindingRow, listenLabel, 54.0f, new [=this, =s, =a, =b]() => { BeginListen(s, a, b); });
-					MakeButton(bindingRow, "x", 22.0f, new [=this, =s, =a, =b]() =>
+					MakeIcon(bindingRow, EditorIcons.Remove, "Remove binding", new [=this, =s, =a, =b]() =>
 						{
 							Mutate(new [=s, =a, =b](m) =>
 								{
@@ -367,16 +393,6 @@ class InputMapEditorPage : UIEditorPage
 				}
 			}
 		}
-		let footer = MakeRow(0.0f, 26.0f);
-		MakeButton(footer, "+ Add Set", 90.0f, new [=this]() =>
-			{
-				Mutate(new (m) =>
-					{
-						let set = new ActionSet();
-						set.Name.Set("NewSet");
-						m.Sets.Add(set);
-					});
-			});
 		RefreshStatus();
 		mContent.Invalidate();
 	}

@@ -54,20 +54,40 @@ extension SceneInspectorView
 		return hash;
 	}
 
+	/// The behaviors are a section list: the component's section holds the list's header (the
+	/// count and the add icon, which also takes a dropped script class), and each behavior is a
+	/// section of its own below it, its move and remove icons in that section's header.
 	private void BuildScriptBehaviors(Guid id, StringView category)
 	{
 		let component = LiveScript(id);
 		if (component == null)
 			return;
 
-		for (int i < component.Behaviors.Count)
-			BuildScriptBehaviorRows(id, category, i);
-
-		let add = new ButtonEditor("+ Add Behavior", new [=this, =id]() =>
+		let list = new ContainerListEditor("Behaviors", category);
+		list.ElementsAsSections = true;
+		for (let behavior in component.Behaviors)
+			list.SlotNames.Add(AssetNameFor(behavior.Script.Id, .. new .()));
+		list.OnAdd = new [=this, =id]() =>
 		{
 			MutateScriptComponent(id, scope (c) => { c.Behaviors.Add(new ScriptBehavior()); });
-		}, category);
-		mGrid.AddProperty(add);
+			RequestRebuild();
+		};
+		list.SetAcceptedTypes(scope StringView[]("ScriptClassAsset"));
+		list.OnAppendDropped = new [=this, =id](picked) =>
+		{
+			MutateScriptComponent(id, scope [=picked](c) =>
+			{
+				let behavior = new ScriptBehavior();
+				behavior.Script = Ref<ScriptClass>(picked);
+				c.Behaviors.Add(behavior);
+			});
+			RequestRebuild();
+		};
+		list.OnRejectedDrop = new [=this](assetName, typeName) =>
+		{
+			mEditor.Notify(.Warning, scope $"{assetName} is a {typeName} - this list takes ScriptClassAsset");
+		};
+		AddEditor(list, new () => {});
 
 		// A hidden row whose refresher asks for a rebuild when the behaviors' shape changes.
 		let signature = ScriptBehaviorsSignature(component);
@@ -79,9 +99,19 @@ extension SceneInspectorView
 			if ((c != null) && (ScriptBehaviorsSignature(c) != signature))
 				mForceRebuild = true;
 		});
+
+		for (int i < component.Behaviors.Count)
+			BuildScriptBehaviorRows(id, i, component.Behaviors.Count);
 	}
 
-	private void BuildScriptBehaviorRows(Guid id, StringView category, int index)
+	/// A behavior's section: "Behavior N - <class>", with its move and remove icons.
+	public static void ScriptBehaviorSection(int index, StringView scriptName, String outCategory)
+	{
+		outCategory.Clear();
+		outCategory.AppendF("Behavior {} - {}", index + 1, scriptName);
+	}
+
+	private void BuildScriptBehaviorRows(Guid id, int index, int count)
 	{
 		let component = LiveScript(id);
 		if ((component == null) || (index >= component.Behaviors.Count))
@@ -89,6 +119,31 @@ extension SceneInspectorView
 		let behavior = component.Behaviors[index];
 
 		let assetName = AssetNameFor(behavior.Script.Id, .. scope .());
+		let category = ScriptBehaviorSection(index, assetName, .. scope .());
+		mGrid.SetCategoryHeaderActions(category, ContainerListEditor.ElementActions(index, count,
+			new [=this, =id](i, up) =>
+			{
+				MutateScriptComponent(id, scope [=i, =up](c) =>
+				{
+					let other = up ? i - 1 : i + 1;
+					if ((i < c.Behaviors.Count) && (other >= 0) && (other < c.Behaviors.Count))
+						Swap!(c.Behaviors[i], c.Behaviors[other]);
+				});
+				RequestRebuild();
+			},
+			new [=this, =id](i) =>
+			{
+				MutateScriptComponent(id, scope [=i](c) =>
+				{
+					if (i < c.Behaviors.Count)
+					{
+						delete c.Behaviors[i];
+						c.Behaviors.RemoveAt(i);
+					}
+				});
+				RequestRebuild();
+			}));
+
 		let picker = new ResourceRefEditor("Script", assetName, category, scope StringView[]("ScriptClassAsset"));
 		picker.BindAsset(mEditor, new [=this, =id, =index]() =>
 			{
@@ -115,7 +170,12 @@ extension SceneInspectorView
 					c.Behaviors[index].Enabled = value;
 			});
 		}, category);
-		mGrid.AddProperty(enabled);
+		AddEditor(enabled, new [=this, =id, =index, =enabled]() =>
+		{
+			let c = LiveScript(id);
+			if ((c != null) && (index < c.Behaviors.Count))
+				enabled.SetValue(c.Behaviors[index].Enabled);
+		});
 
 		let interval = new FloatEditor("Update Interval", behavior.UpdateInterval, 0.0, 3600.0, 0.05, 3,
 			new [=this, =id, =index](value) =>
@@ -127,31 +187,12 @@ extension SceneInspectorView
 				});
 			}, category);
 		interval.SetTooltip("Seconds between onUpdate calls (0 = every frame)");
-		mGrid.AddProperty(interval);
-
-		let up = new ButtonEditor("Move Up", new [=this, =id, =index]() =>
+		AddEditor(interval, new [=this, =id, =index, =interval]() =>
 		{
-			MutateScriptComponent(id, scope [=index](c) =>
-			{
-				if ((index > 0) && (index < c.Behaviors.Count))
-					Swap!(c.Behaviors[index], c.Behaviors[index - 1]);
-			});
-		}, category);
-		up.SetButtonEnabled(index > 0);
-		mGrid.AddProperty(up);
-
-		let remove = new ButtonEditor("Remove Behavior", new [=this, =id, =index]() =>
-		{
-			MutateScriptComponent(id, scope [=index](c) =>
-			{
-				if (index < c.Behaviors.Count)
-				{
-					delete c.Behaviors[index];
-					c.Behaviors.RemoveAt(index);
-				}
-			});
-		}, category);
-		mGrid.AddProperty(remove);
+			let c = LiveScript(id);
+			if ((c != null) && (index < c.Behaviors.Count))
+				interval.SetValue(c.Behaviors[index].UpdateInterval);
+		});
 
 		let scriptClass = BehaviorClass(behavior);
 		if (scriptClass == null)

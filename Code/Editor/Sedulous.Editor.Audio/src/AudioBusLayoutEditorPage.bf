@@ -69,15 +69,12 @@ class AudioBusLayoutEditorPage : UIEditorPage
 				else
 					RebuildInspector();
 			});
-		let addBus = new Button("+ Add Bus");
-		addBus.OnClick.Add(new [=this](btn) =>
+		mTree.InternalTreeView.OnItemRightClick.Add(new [=this](nodeId, x, y) =>
 			{
-				QueueStructural("add-bus", new [=this]() =>
-					{
-						if (AudioBusLayoutEdit.AddBus(mAsset) < 0)
-							GlobalLog(.Warning, "Editor: bus layout: all {} custom slots in use", AudioBusLayoutAsset.cCustomBusSlotCount);
-					});
+				let at = mTree.InternalTreeView.InternalListView.LocalToScreen(.(x, y));
+				ShowNodeContextMenu(nodeId, at.X, at.Y);
 			});
+		let header = new ListHeader("Buses", "Add bus", new [=this]() => { AddBus(); });
 		let leftColumn = new FlexLayout();
 		leftColumn.Direction = .Vertical;
 		leftColumn.Spacing = 4.0f;
@@ -85,11 +82,8 @@ class AudioBusLayoutEditorPage : UIEditorPage
 		var growMatch = LayoutStyle();
 		growMatch.FlexGrow = 1.0f;
 		growMatch.Width = SizeSpec.Match();
+		leftColumn.AddView(header, ListHeader.RowStyle());
 		leftColumn.AddView(mTree, growMatch);
-		var buttonStyle = LayoutStyle();
-		buttonStyle.Width = SizeSpec.Match();
-		buttonStyle.Height = SizeSpec.Fixed(Unit.Dp(26.0f));
-		leftColumn.AddView(addBus, buttonStyle);
 
 		mGrid = new PropertyGrid();
 		mInspectorTitle = new Label();
@@ -157,6 +151,42 @@ class AudioBusLayoutEditorPage : UIEditorPage
 			GlobalLog(.Information, "Editor: saved bus layout '{}'", mTitle);
 		}
 		return saved;
+	}
+
+	private void AddBus()
+	{
+		QueueStructural("add-bus", new [=this]() =>
+			{
+				if (AudioBusLayoutEdit.AddBus(mAsset) < 0)
+					GlobalLog(.Warning, "Editor: bus layout: all {} custom slots in use", AudioBusLayoutAsset.cCustomBusSlotCount);
+			});
+	}
+
+	private void RemoveBus(int32 slotIndex)
+	{
+		QueueStructural("bus-remove", new [=this, =slotIndex]() =>
+			{
+				AudioBusLayoutEdit.RemoveBus(mAsset, slotIndex);
+				mSelectedNode = 0;
+			});
+	}
+
+	/// A bus's context menu: add a bus, and remove a custom one. The fixed buses stay.
+	private void ShowNodeContextMenu(int32 nodeId, float screenX, float screenY)
+	{
+		let ctx = Ctx;
+		if ((ctx == null) || (mAsset == null) || !mSnapshot.InRange(nodeId))
+			return;
+		let node = mSnapshot.Nodes[nodeId];
+		let menu = new ContextMenu();
+		defer menu.ReleaseRef();
+		menu.AddItem("Add Bus", new [=this]() => { AddBus(); });
+		if (!node.Fixed)
+		{
+			let slotIndex = node.SlotIndex;
+			menu.AddItem("Remove Bus", new [=this, =slotIndex]() => { RemoveBus(slotIndex); });
+		}
+		menu.Show(ctx, screenX, screenY);
 	}
 
 	/// The node table from the asset, every node expanded.
@@ -244,14 +274,10 @@ class AudioBusLayoutEditorPage : UIEditorPage
 				let parent = new String(owned[v]);
 				QueueStructural("bus-parent", new [=this, =slotIndex, =parent]() => { mAsset.Custom[slotIndex].Parent.Set(parent); } ~ delete parent);
 			} ~ DeleteContainerAndItems!(owned), "Bus"));
-		mGrid.AddProperty(new ButtonEditor("Remove Bus", new [=this, =slotIndex]() =>
-			{
-				QueueStructural("bus-remove", new [=this, =slotIndex]() =>
-					{
-						AudioBusLayoutEdit.RemoveBus(mAsset, slotIndex);
-						mSelectedNode = 0;
-					});
-			}, "Bus"));
+		let remove = new IconButton(EditorIcons.Remove, 18.0f);
+		remove.TooltipText.Set("Remove bus");
+		remove.OnClick.Add(new [=this, =slotIndex](b) => { RemoveBus(slotIndex); });
+		mGrid.SetCategoryHeaderActions("Bus", remove);
 	}
 
 	/// The rows every bus has: mix, filter, delay and reverb, edited in place.

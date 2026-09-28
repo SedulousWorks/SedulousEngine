@@ -22,6 +22,26 @@ namespace Sedulous.Editor.Scene.Tests;
 /// conditions, editing through them, and the Scene tab's settings rows.
 class InspectorViewTests
 {
+	/// A rebuild asked for by a refresher lands on the next refresh.
+	private static void Settle(SceneInspectorView inspector)
+	{
+		inspector.Refresh();
+		inspector.Refresh();
+	}
+
+	/// The row `name` in section `category`.
+	private static PropertyEditor FindIn(SceneInspectorView inspector, StringView category, StringView name)
+	{
+		let grid = inspector.Grid;
+		for (int i < grid.PropertyCount)
+		{
+			let editor = grid.PropertyAt(i);
+			if ((editor.Name == name) && (editor.Category == category))
+				return editor;
+		}
+		return null;
+	}
+
 	private static PropertyEditor Find(SceneInspectorView inspector, StringView name)
 	{
 		let grid = inspector.Grid;
@@ -164,6 +184,76 @@ class InspectorViewTests
 		Test.Assert(meshes.Get(edit.Resolve(a)).Materials[0].Id == materialId);
 	}
 
+	/// A script component's behaviours are a section list: the add icon and a dropped script
+	/// class append, a section's move icon reorders, each one undo step, and after a move a
+	/// section's rows edit the behaviour now in that place.
+	[Test]
+	public static void BehaviorsAreSectionsWhoseRowsFollowAMove()
+	{
+		SceneInspectors.RegisterBuiltin();
+		let scene = scope Scene();
+		let scripts = scene.AddSystem<ScriptComponentManager>();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let editor = scope EditorContext();
+		let inspector = new SceneInspectorView(editor, edit);
+		defer inspector.ReleaseRef();
+
+		let walker = edit.CreateEntity("Walker");
+		let script = scripts.Add(edit.Resolve(walker));
+		let first = new ScriptBehavior();
+		first.UpdateInterval = 1.0f;
+		script.Behaviors.Add(first);
+		let second = new ScriptBehavior();
+		second.UpdateInterval = 2.0f;
+		script.Behaviors.Add(second);
+		edit.EntitySelection.Set(walker);
+		Settle(inspector);
+		ScriptComponent* Live() => scripts.Get(edit.Resolve(walker));
+
+		var list = Find(inspector, "Behaviors") as ContainerListEditor;
+		Test.Assert((list != null) && list.ElementsAsSections && (list.SlotNames.Count == 2));
+
+		// The add icon: one behaviour, one undo step.
+		let before = commands.Count;
+		list.OnAdd();
+		Test.Assert((Live().Behaviors.Count == 3) && (commands.Count == before + 1));
+		commands.Undo();
+		Test.Assert(Live().Behaviors.Count == 2);
+		Settle(inspector);
+
+		// A script class dropped on the list appends a behaviour running it.
+		list = Find(inspector, "Behaviors") as ContainerListEditor;
+		let classId = Guid(0x5555, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5);
+		let dropped = new AssetDragData(classId, "ScriptClassAsset", "mover");
+		defer dropped.ReleaseRef();
+		// (An undo leaves its entry for redo, so from here one step is: one undo reverts it.)
+		Test.Assert(list.EditorView.AsDropTarget().OnDrop(dropped, 0, 0) == .Link);
+		Test.Assert((Live().Behaviors.Count == 3) && (Live().Behaviors[2].Script.Id == classId));
+		commands.Undo();
+		Test.Assert(Live().Behaviors.Count == 2);
+		Settle(inspector);
+
+		// The first section's move down swaps the two, one undo step.
+		let section = SceneInspectorView.ScriptBehaviorSection(0, "(none)", .. scope .());
+		let actions = inspector.Grid.GetCategoryHeaderActions(section) as ViewGroup;
+		Test.Assert(actions != null, "the section carries its element icons");
+		Test.Assert(actions.ChildCount == 3);
+		(actions.GetChildAt(1) as IconButton).FireClick();
+		Test.Assert((Live().Behaviors[0].UpdateInterval == 2.0f) && (Live().Behaviors[1].UpdateInterval == 1.0f));
+		commands.Undo();
+		Test.Assert(Live().Behaviors[0].UpdateInterval == 1.0f);
+		commands.Redo();
+		Test.Assert(Live().Behaviors[0].UpdateInterval == 2.0f);
+
+		// After the rebuild, the first section's rows are the behaviour now first.
+		Settle(inspector);
+		let interval = FindIn(inspector, section, "Update Interval") as FloatEditor;
+		Test.Assert((interval != null) && (interval.Value == 2.0));
+		interval.Setter(5.0);
+		Test.Assert((Live().Behaviors[0].UpdateInterval == 5.0f) && (Live().Behaviors[1].UpdateInterval == 1.0f));
+	}
+
 	/// An entity ref row's refresher runs on every later Refresh, long after the section that
 	/// built it went out of scope; it must read the name through the target, not the section.
 	[Test]
@@ -223,9 +313,12 @@ class InspectorViewTests
 		// The script section's own rows, once.
 		Test.Assert(Find(inspector, "Enabled") != null);
 		Test.Assert(Find(inspector, "Update Interval") != null);
-		// No generated rows for the hidden fields.
-		for (let name in StringView[?]("Behaviors", "Overrides", "Hash", "MaterialCache", "PostTonemap"))
+		// No generated rows for the hidden fields; the behaviours' one row is the section
+		// list's header.
+		for (let name in StringView[?]("Overrides", "Hash", "MaterialCache", "PostTonemap"))
 			Test.Assert(Find(inspector, name) == null, scope $"a generated '{name}' row");
+		let behaviors = Find(inspector, "Behaviors") as ContainerListEditor;
+		Test.Assert((behaviors != null) && behaviors.ElementsAsSections);
 	}
 
 	[Test]

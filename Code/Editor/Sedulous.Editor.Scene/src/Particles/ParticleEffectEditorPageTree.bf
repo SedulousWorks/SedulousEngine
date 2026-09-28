@@ -47,6 +47,11 @@ extension ParticleEffectEditorPage
 		RebuildInspector();
 	}
 
+	private void DeleteSystem(int32 sysIndex)
+	{
+		QueueStructural("del-system", new [=this, =sysIndex]() => { mAsset.Effect.RemoveSystem(sysIndex); }, .Root);
+	}
+
 	private void ShowNodeContextMenu(int32 nodeId, float screenX, float screenY)
 	{
 		if (!mSnapshot.InRange(nodeId) || (mAsset == null))
@@ -69,10 +74,7 @@ extension ParticleEffectEditorPage
 			menu.AddSeparator();
 			if (mAsset.Effect.SystemCount > 1)
 			{
-				menu.AddItem("Delete System", new [=this, =sysIndex]() =>
-					{
-						QueueStructural("del-system", new [=this, =sysIndex]() => { mAsset.Effect.RemoveSystem(sysIndex); }, .Root);
-					});
+				menu.AddItem("Delete System", new [=this, =sysIndex]() => { DeleteSystem(sysIndex); });
 			}
 		case .InitializersFolder:
 			AddInitializerMenu(menu, node.SystemIndex);

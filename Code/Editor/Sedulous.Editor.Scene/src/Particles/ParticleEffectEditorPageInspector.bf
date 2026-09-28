@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.UI.Toolkit;
 using Sedulous.Particles;
+using Sedulous.UI;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
@@ -52,7 +53,8 @@ extension ParticleEffectEditorPage
 
 	private void BuildEffectInspector()
 	{
-		InPlaceRows.Button(mGrid, "Add System", "Effect", new [=this]() => { AddSystem(); });
+		// Adding a system is the tree header's add icon and the effect's context menu.
+		mGrid.AddProperty(new StringEditor("Systems", scope $"{mAsset.Effect.SystemCount}", null, "Effect"));
 	}
 
 	private void BuildSystemInspector(ParticleSystem sys)
@@ -67,6 +69,13 @@ extension ParticleEffectEditorPage
 
 		{
 			let cat = "General";
+			if (mAsset.Effect.SystemCount > 1)
+			{
+				let remove = new IconButton(EditorIcons.Remove, 18.0f);
+				remove.TooltipText.Set("Delete system");
+				remove.OnClick.Add(new [=this, =sysIndex](b) => { DeleteSystem(sysIndex); });
+				g.SetCategoryHeaderActions(cat, remove);
+			}
 			g.AddProperty(new StringEditor("Name", sys.Name, new [=this, =sys](v) =>
 				{
 					sys.Name.Set(v);

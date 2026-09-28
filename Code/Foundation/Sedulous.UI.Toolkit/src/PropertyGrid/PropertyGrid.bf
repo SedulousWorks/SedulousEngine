@@ -104,6 +104,17 @@ class PropertyGrid : ViewGroup
 		Invalidate();
 	}
 
+	/// The widgets set for a category's header, or null. BORROWED.
+	public View GetCategoryHeaderActions(StringView category)
+	{
+		for (int i < mActionCategories.Count)
+		{
+			if (StringView(mActionCategories[i]) == category)
+				return mActionViews[i];
+		}
+		return null;
+	}
+
 	/// Builds a category's expander CLOSED, which costs it no layout and no draw until it is
 	/// opened. For bulk sections nobody reads: a generic asset form's per element groups ran to
 	/// well over a thousand rows, all measured on every damaged frame.

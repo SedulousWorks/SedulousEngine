@@ -7,8 +7,8 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Terrain;
 
-/// The right pane: reference buttons that open the asset picker, the paint layer list with
-/// its per layer maps, the blend grid and the stats. Rebuilt whole on every structural edit.
+/// The right pane: the reference slots, the paint layer list with its per layer maps and
+/// tiling, the blend grid and the stats. Rebuilt whole on every structural edit.
 extension TerrainEditorPage
 {
 	/// Safe from inside a UI event: defers the rebuild through the mutation queue.
@@ -53,24 +53,50 @@ extension TerrainEditorPage
 		AddReference("Base height", "TextureAsset", "baseHeight", new [=this]() => mAsset.BaseHeightId,
 			new [=this](g) => { mAsset.BaseHeightId = g; });
 
-		AddLabel(scope $"Paint layers ({mAsset.PaletteAlbedoIds.Count})", 13.0f);
+		// The paint layers are a section list: the header's add icon, and each layer a section
+		// with its maps, its tiling and its remove icon. A layer's index is its weight channel,
+		// so the order is not the user's to change.
+		let layers = new PropertyGrid();
+		let layerList = new ContainerListEditor("Paint layers", "Paint layers");
+		layerList.ElementsAsSections = true;
+		for (let albedo in mAsset.PaletteAlbedoIds)
+			layerList.SlotNames.Add(mContext.AssetNameFor(albedo, .. new .()));
+		layerList.OnAdd = new [=this]() => { AddLayer(); };
+		layers.AddProperty(layerList);
 		for (int i < mAsset.PaletteAlbedoIds.Count)
 		{
 			let idx = i;
-			AddReference(scope $"Layer {i} albedo", "TextureAsset", "palette",
+			let section = LayerSection(i, .. scope .());
+			layers.SetCategoryHeaderActions(section, ContainerListEditor.ElementActions(i, mAsset.PaletteAlbedoIds.Count, null,
+				new [=this](index) => { RemoveLayer(index); }));
+			layers.AddProperty(MakeReference("Albedo", "TextureAsset", "palette", section,
 				new [=this, =idx]() => (idx < mAsset.PaletteAlbedoIds.Count) ? mAsset.PaletteAlbedoIds[idx] : Guid(),
 				new [=this, =idx](g) =>
 				{
 					if (idx < mAsset.PaletteAlbedoIds.Count)
 						mAsset.PaletteAlbedoIds[idx] = g;
-				});
-			AddMapButton(i, "normal", .Normal, "paletteNormal");
-			AddMapButton(i, "ORM", .Orm, "paletteOrm");
-			AddMapButton(i, "height", .Height, "paletteHeight");
-			AddMapButton(i, "mask", .Mask, "paletteMask");
-			AddButton("  Remove layer", new [=this, =idx]() => { RemoveLayer(idx); });
+				}));
+			layers.AddProperty(MakeMapReference(i, "Normal", .Normal, "paletteNormal", section));
+			layers.AddProperty(MakeMapReference(i, "ORM", .Orm, "paletteOrm", section));
+			layers.AddProperty(MakeMapReference(i, "Height", .Height, "paletteHeight", section));
+			layers.AddProperty(MakeMapReference(i, "Mask", .Mask, "paletteMask", section));
+			if (i < mAsset.PaletteTileScales.Count)
+			{
+				let mergeKey = new $"tile{i}";
+				layers.AddProperty(new FloatEditor("Tile", mAsset.PaletteTileScales[i], 0.1, 8192.0, 1.0, 2,
+					new [=this, =idx, =mergeKey](v) =>
+					{
+						if (idx < mAsset.PaletteTileScales.Count)
+						{
+							mAsset.PaletteTileScales[idx] = (float)v;
+							CommitEdit(mergeKey);
+						}
+					} ~ delete mergeKey, section));
+			}
 		}
-		AddButton("+ Add paint layer", new [=this]() => { AddLayer(); });
+		var layersStyle = LayoutStyle();
+		layersStyle.Width = SizeSpec.Match();
+		mFields.AddView(layers, layersStyle);
 
 		let grid = new PropertyGrid();
 		grid.AddProperty(new BoolEditor("Cast Shadows", mAsset.CastShadows, new [=this](v) =>
@@ -88,20 +114,6 @@ extension TerrainEditorPage
 				mAsset.BaseTileScale = (float)v;
 				CommitEdit("baseTile");
 			}, "Base"));
-		for (int i < mAsset.PaletteTileScales.Count)
-		{
-			let idx = i;
-			let mergeKey = new $"tile{i}";
-			grid.AddProperty(new FloatEditor(scope $"Layer {i} tile", mAsset.PaletteTileScales[i], 0.1, 8192.0, 1.0, 2,
-				new [=this, =idx, =mergeKey](v) =>
-				{
-					if (idx < mAsset.PaletteTileScales.Count)
-					{
-						mAsset.PaletteTileScales[idx] = (float)v;
-						CommitEdit(mergeKey);
-					}
-				} ~ delete mergeKey, "Paint layers"));
-		}
 		var gridStyle = LayoutStyle();
 		gridStyle.Width = SizeSpec.Match();
 		mFields.AddView(grid, gridStyle);
@@ -140,14 +152,21 @@ extension TerrainEditorPage
 		mFields.AddView(button, style);
 	}
 
-	/// A labelled asset slot for `assetTypeName`: picks, takes a dropped asset of the type,
-	/// clears; the chosen id lands through `apply`, commits under `mergeKey`, re-points the
-	/// preview and rebuilds the pane. CONSUMES `current` and `apply`.
-	private void AddReference(StringView label, StringView assetTypeName, StringView mergeKey,
-		delegate Guid() current, delegate void(Guid id) apply)
+	/// Paint layer `index`'s section.
+	public static void LayerSection(int index, String outCategory)
+	{
+		outCategory.Clear();
+		outCategory.AppendF("Layer {}", index + 1);
+	}
+
+	/// An asset row for `assetTypeName`: picks, takes a dropped asset of the type, clears; the
+	/// chosen id lands through `apply`, commits under `mergeKey`, re-points the preview and
+	/// rebuilds the pane. CONSUMES `current` and `apply`; the caller owns the row.
+	private ResourceRefEditor MakeReference(StringView label, StringView assetTypeName, StringView mergeKey,
+		StringView category, delegate Guid() current, delegate void(Guid id) apply)
 	{
 		let key = new String(mergeKey);
-		let row = new ResourceRefEditor(label, "(none)", "", scope StringView[](assetTypeName));
+		let row = new ResourceRefEditor(label, "(none)", category, scope StringView[](assetTypeName));
 		row.BindAsset(mContext, current, new [=this, =apply, =key](picked) =>
 			{
 				apply(picked);
@@ -155,6 +174,14 @@ extension TerrainEditorPage
 				PointComponentAtTerrain(mTerrainProxy.Get);
 				RebuildFieldsDeferred();
 			} ~ { delete apply; delete key; });
+		return row;
+	}
+
+	/// A labelled asset slot on the pane itself. CONSUMES `current` and `apply`.
+	private void AddReference(StringView label, StringView assetTypeName, StringView mergeKey,
+		delegate Guid() current, delegate void(Guid id) apply)
+	{
+		let row = MakeReference(label, assetTypeName, mergeKey, "", current, apply);
 		mReferenceRows.Add(row);
 
 		let line = new FlexLayout();
@@ -174,11 +201,12 @@ extension TerrainEditorPage
 		mFields.AddView(line, style);
 	}
 
-	private void AddMapButton(int index, StringView mapLabel, PaletteMap map, StringView mergeKey)
+	private ResourceRefEditor MakeMapReference(int index, StringView mapLabel, PaletteMap map, StringView mergeKey,
+		StringView category)
 	{
 		let idx = index;
 		let kind = map;
-		AddReference(scope $"Layer {index} {mapLabel}", "TextureAsset", mergeKey,
+		return MakeReference(mapLabel, "TextureAsset", mergeKey, category,
 			new [=this, =idx, =kind]() => TerrainAssetEdit.MapId(mAsset, kind, idx),
 			new [=this, =idx, =kind](g) => { SetPaletteMap(kind, idx, g); });
 	}

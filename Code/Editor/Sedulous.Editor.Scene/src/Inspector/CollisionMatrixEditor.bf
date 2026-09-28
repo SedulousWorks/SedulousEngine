@@ -4,12 +4,13 @@ using Sedulous.Core;
 using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Physics;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 
 /// The physics collision matrix as a property row: a name column, one narrow column per
-/// group with its name rotated into the header, a check box per pair, remove on the last
-/// group and an add button while there is room.
+/// group with its name rotated into the header, a check box per pair, the remove icon on the
+/// last group and the add icon in the header's corner, the same icons every editor list uses.
 class CollisionMatrixEditor : PropertyEditor
 {
 	/// The display names, indexed by group, and the parallel collide masks.
@@ -80,7 +81,23 @@ class CollisionMatrixEditor : PropertyEditor
 			let header = new FlexLayout();
 			header.Direction = .Horizontal;
 			header.Spacing = 2.0f;
-			header.AddView(new Label(""), FixedCell(cNameColW));
+			// The corner: the add icon, top right of the name column, enabled while there is room.
+			{
+				let corner = new FlexLayout();
+				corner.Direction = .Horizontal;
+				corner.JustifyContent = .End;
+				corner.AlignItems = .Start;
+				let add = new IconButton(EditorIcons.Add);
+				add.TooltipText.Set("Add group");
+				add.IsEnabled = count < PhysicsWorldSettings.CollisionGroupCount;
+				add.OnClick.Add(new [=this](b) =>
+				{
+					if (OnAddGroup != null)
+						OnAddGroup();
+				});
+				corner.AddView(add);
+				header.AddView(corner, FixedCell(cNameColW));
+			}
 			for (int j < count)
 			{
 				let slot = CenteredSlot();
@@ -137,8 +154,7 @@ class CollisionMatrixEditor : PropertyEditor
 
 			if ((i + 1 == count) && (count > 1))
 			{
-				let del = new Button("x");
-				del.FontSize.Value = 12.0f;
+				let del = new IconButton(EditorIcons.Remove);
 				del.TooltipText.Set("Remove this group (the last one)");
 				del.OnClick.Add(new [=this, =i](b) =>
 				{
@@ -152,21 +168,6 @@ class CollisionMatrixEditor : PropertyEditor
 			lp.Width = SizeSpec.Match();
 			lp.Height = SizeSpec.Fixed(Unit.Dp(cRowH));
 			column.AddView(row, lp);
-		}
-
-		if (count < PhysicsWorldSettings.CollisionGroupCount)
-		{
-			let add = new Button("+ Add Group");
-			add.FontSize.Value = 12.0f;
-			add.OnClick.Add(new [=this](b) =>
-			{
-				if (OnAddGroup != null)
-					OnAddGroup();
-			});
-			var lp = LayoutStyle();
-			lp.Width = SizeSpec.Match();
-			lp.Height = SizeSpec.Fixed(Unit.Dp(cRowH));
-			column.AddView(add, lp);
 		}
 	}
 

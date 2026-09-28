@@ -21,7 +21,14 @@ extension AnimationGraphEditorPage
 		if (mAsset == null)
 			return;
 
-		AddLeftHeader("Layers");
+		AddLeftHeader("Layers", "Add layer", new [=this]() =>
+			{
+				QueueStructural("add-layer", new [=this]() =>
+					{
+						mDoc.AddLayer(scope $"Layer {mDoc.Layers.Count}");
+						mSelectedLayer = (int32)mDoc.Layers.Count - 1;
+					}, .(.Layer, 0, 0));
+			});
 		for (int32 l < (int32)mDoc.Layers.Count)
 		{
 			let layerIndex = l;
@@ -40,44 +47,34 @@ extension AnimationGraphEditorPage
 								RebuildCanvas();
 							});
 					}
-				}, layerIndex == mSelectedLayer);
+				}, layerIndex == mSelectedLayer,
+				(mDoc.Layers.Count > 1) ? new [=this, =layerIndex]() => { DeleteLayer(layerIndex); } : null);
 		}
-		AddLeftRow("+ Add Layer", new [=this]() =>
-			{
-				QueueStructural("add-layer", new [=this]() =>
-					{
-						mDoc.AddLayer(scope $"Layer {mDoc.Layers.Count}");
-						mSelectedLayer = (int32)mDoc.Layers.Count - 1;
-					}, .(.Layer, 0, 0));
-			}, false);
 
-		AddLeftHeader("Parameters");
+		AddLeftHeader("Parameters", "Add parameter", new [=this]() =>
+			{
+				QueueStructural("add-param", new [=this]() => { mDoc.AddParam(scope $"Param{mDoc.Params.Count}", 0); }, .(.Parameter, 0, GraphSel.Last));
+			});
 		for (int32 p < (int32)mDoc.Params.Count)
 		{
 			let paramIndex = p;
 			AddLeftRow(mDoc.Params[p].Name, new [=this, =paramIndex]() => { Select(.(.Parameter, 0, paramIndex)); },
-				(mSelected.Kind == .Parameter) && (mSelected.Index == paramIndex));
+				(mSelected.Kind == .Parameter) && (mSelected.Index == paramIndex),
+				new [=this, =paramIndex]() => { DeleteParam(paramIndex); });
 		}
-		AddLeftRow("+ Add Parameter", new [=this]() =>
-			{
-				QueueStructural("add-param", new [=this]() => { mDoc.AddParam(scope $"Param{mDoc.Params.Count}", 0); }, .(.Parameter, 0, GraphSel.Last));
-			}, false);
 	}
 
-	private void AddLeftHeader(StringView text)
+	/// A list's header: its title, and its add icon on the right. `onAdd` is consumed.
+	private void AddLeftHeader(StringView text, StringView addTooltip, delegate void() onAdd)
 	{
-		let label = new Label(text);
-		label.FontSize.Value = 12.0f;
-		var style = LayoutStyle();
-		style.Width = SizeSpec.Match();
-		style.Height = SizeSpec.Fixed(Unit.Dp(22.0f));
-		mLeftRows.AddView(label, style);
+		mLeftRows.AddView(new ListHeader(text, addTooltip, onAdd), ListHeader.RowStyle());
 	}
 
-	/// `onClick` is consumed.
-	private void AddLeftRow(StringView text, delegate void() onClick, bool emphasized)
+	/// A list row: a click selects it, and a right click offers Delete when `onDelete` is set.
+	/// Both callbacks are consumed.
+	private void AddLeftRow(StringView text, delegate void() onClick, bool emphasized, delegate void() onDelete = null)
 	{
-		let button = new Button(text);
+		let button = new LeftRow(text, onDelete);
 		if (emphasized)
 			button.AddClass("accent");
 		button.OnClick.Add(new [=onClick](btn) => { onClick(); } ~ delete onClick);
@@ -85,6 +82,55 @@ extension AnimationGraphEditorPage
 		style.Width = SizeSpec.Match();
 		style.Height = SizeSpec.Fixed(Unit.Dp(24.0f));
 		mLeftRows.AddView(button, style);
+	}
+
+	/// A left panel row whose right click opens its context menu.
+	private class LeftRow : Button
+	{
+		private delegate void() mOnDelete ~ delete _;
+
+		public this(StringView text, delegate void() onDelete) : base(text) { mOnDelete = onDelete; }
+
+		public override void OnMouseDown(MouseEventArgs e)
+		{
+			if ((e.Button != .Right) || (mOnDelete == null) || (Context == null))
+			{
+				base.OnMouseDown(e);
+				return;
+			}
+			let menu = new ContextMenu();
+			defer menu.ReleaseRef();
+			menu.AddItem("Delete", new [=this]() => { mOnDelete(); });
+			let at = LocalToScreen(.(e.X, e.Y));
+			menu.Show(Context, at.X, at.Y);
+			e.Handled = true;
+		}
+	}
+
+	/// The remove icon for a section's header. `action` is consumed.
+	private static View RemoveIcon(StringView tooltip, delegate void() action)
+	{
+		let remove = new IconButton(EditorIcons.Remove, 18.0f);
+		remove.TooltipText.Set(tooltip);
+		remove.OnClick.Add(new [=action](b) => { action(); } ~ delete action);
+		return remove;
+	}
+
+	private void DeleteLayer(int32 layerIndex)
+	{
+		QueueStructural("del-layer", new [=this, =layerIndex]() =>
+			{
+				if (mDoc.RemoveLayer(layerIndex) && (layerIndex < mAsset.LayerLayouts.Count))
+				{
+					delete mAsset.LayerLayouts[layerIndex];
+					mAsset.LayerLayouts.RemoveAt(layerIndex);
+				}
+			}, .(.Layer, 0, 0));
+	}
+
+	private void DeleteParam(int32 paramIndex)
+	{
+		QueueStructural("del-param", new [=this, =paramIndex]() => { mDoc.RemoveParam(paramIndex); }, .None);
 	}
 
 	private void RebuildInspector()
@@ -144,19 +190,7 @@ extension AnimationGraphEditorPage
 				}, cat);
 		}
 		if (mDoc.Layers.Count > 1)
-		{
-			InPlaceRows.Button(g, "Delete Layer", cat, new [=this, =layerIndex]() =>
-				{
-					QueueStructural("del-layer", new [=this, =layerIndex]() =>
-						{
-							if (mDoc.RemoveLayer(layerIndex) && (layerIndex < mAsset.LayerLayouts.Count))
-							{
-								delete mAsset.LayerLayouts[layerIndex];
-								mAsset.LayerLayouts.RemoveAt(layerIndex);
-							}
-						}, .(.Layer, 0, 0));
-				});
-		}
+			g.SetCategoryHeaderActions(cat, RemoveIcon("Delete layer", new [=this, =layerIndex]() => { DeleteLayer(layerIndex); }));
 	}
 
 	private void BuildParameterInspector(int32 paramIndex)
@@ -195,10 +229,7 @@ extension AnimationGraphEditorPage
 				InPlaceRows.Button(g, "Fire Trigger", liveCat, new [=this, =pi]() => { if (mPlayer != null) mPlayer.SetTrigger(pi); });
 		}
 
-		InPlaceRows.Button(g, "Delete Parameter", cat, new [=this, =paramIndex]() =>
-			{
-				QueueStructural("del-param", new [=this, =paramIndex]() => { mDoc.RemoveParam(paramIndex); }, .None);
-			});
+		g.SetCategoryHeaderActions(cat, RemoveIcon("Delete parameter", new [=this, =paramIndex]() => { DeleteParam(paramIndex); }));
 	}
 
 	/// A parameter chooser: "(none)" then every parameter, the setter given the index or -1.
@@ -273,11 +304,35 @@ extension AnimationGraphEditorPage
 			ParamPickRow("Parameter Y", state.ParamIndexY, new [=this, =state](v) => { state.ParamIndexY = v; CommitEdit("blend-param-y"); }, kindCat);
 		}
 
+		// The entries are a section list: the header's add icon, and each entry a section with
+		// its remove icon.
 		state.NormalizeEntries();
+		let entries = new ContainerListEditor("Entries", kindCat);
+		entries.ElementsAsSections = true;
+		for (let clipId in state.EntryClips)
+			entries.SlotNames.Add(mContext.AssetNameFor(clipId, .. new .()));
+		entries.OnAdd = new [=this, =li, =si]() =>
+		{
+			QueueStructural("add-entry", new [=this, =li, =si]() =>
+				{
+					if (let s = mDoc.State(li, si))
+						s.AddEntry();
+				}, .(.State, li, si));
+		};
+		g.AddProperty(entries);
 		for (int e < state.EntryClips.Count)
 		{
-			let entryCat = scope $"Entry {e}";
+			let entryCat = scope $"Entry {e + 1}";
 			let entryIdx = e;
+			g.SetCategoryHeaderActions(entryCat, ContainerListEditor.ElementActions(e, state.EntryClips.Count, null,
+				new [=this, =li, =si](i) =>
+				{
+					QueueStructural("del-entry", new [=this, =li, =si, =i]() =>
+						{
+							if (let s = mDoc.State(li, si))
+								s.RemoveEntry(i);
+						}, .(.State, li, si));
+				}));
 			if (state.NodeKind == 1)
 				InPlaceRows.Float(g, "Threshold", &state.EntryThresholds[e], entryCat, mCommit);
 			else
@@ -299,23 +354,7 @@ extension AnimationGraphEditorPage
 					}
 				});
 			g.AddProperty(entryClip);
-			InPlaceRows.Button(g, "Remove Entry", entryCat, new [=this, =li, =si, =entryIdx]() =>
-				{
-					QueueStructural("del-entry", new [=this, =li, =si, =entryIdx]() =>
-						{
-							if (let s = mDoc.State(li, si))
-								s.RemoveEntry(entryIdx);
-						}, .(.State, li, si));
-				});
 		}
-		InPlaceRows.Button(g, "+ Add Entry", kindCat, new [=this, =li, =si]() =>
-			{
-				QueueStructural("add-entry", new [=this, =li, =si]() =>
-					{
-						if (let s = mDoc.State(li, si))
-							s.AddEntry();
-					}, .(.State, li, si));
-			});
 	}
 
 	private void BuildTransitionInspector(int32 layerIndex, int32 transitionIndex)
@@ -336,11 +375,38 @@ extension AnimationGraphEditorPage
 		InPlaceRows.Float(g, "Exit Time", &transition.ExitTime, cat, mCommit, 0.0, 1.0, 0.01);
 		InPlaceRows.Int(g, "Priority", &transition.Priority, cat, mCommit, -100, 100);
 
+		// The conditions are a section list, all of them required, so their order means
+		// nothing: the header's add icon, and each condition a section with its remove icon.
+		let conditions = new ContainerListEditor("Conditions", cat);
+		conditions.ElementsAsSections = true;
+		for (let condition in transition.Conditions)
+			conditions.SlotNames.Add(new String(mDoc.HasParam(condition.ParamIndex) ? StringView(mDoc.Params[condition.ParamIndex].Name) : "(none)"));
+		conditions.OnAdd = new [=this, =li, =ti]() =>
+		{
+			QueueStructural("add-cond", new [=this, =li, =ti]() =>
+				{
+					if (let t = mDoc.Transition(li, ti))
+						t.Conditions.Add(new GraphCondition());
+				}, .(.Transition, li, ti));
+		};
+		g.AddProperty(conditions);
 		for (int c < transition.Conditions.Count)
 		{
 			let condition = transition.Conditions[c];
-			let condCat = scope $"Condition {c}";
-			let condIdx = c;
+			let condCat = scope $"Condition {c + 1}";
+			g.SetCategoryHeaderActions(condCat, ContainerListEditor.ElementActions(c, transition.Conditions.Count, null,
+				new [=this, =li, =ti](i) =>
+				{
+					QueueStructural("del-cond", new [=this, =li, =ti, =i]() =>
+						{
+							let t = mDoc.Transition(li, ti);
+							if ((t != null) && (i < t.Conditions.Count))
+							{
+								delete t.Conditions[i];
+								t.Conditions.RemoveAt(i);
+							}
+						}, .(.Transition, li, ti));
+				}));
 			ParamPickRow("Parameter", condition.ParamIndex, new [=this, =condition](v) => { condition.ParamIndex = v; CommitEdit("cond-param"); }, condCat);
 			InPlaceRows.Enum(g, "Compare", condition.Op, cCompareOps, new [=this, =condition](v) =>
 				{
@@ -348,26 +414,6 @@ extension AnimationGraphEditorPage
 					CommitEdit("cond-op");
 				}, condCat);
 			InPlaceRows.Float(g, "Threshold", &condition.Threshold, condCat, mCommit);
-			InPlaceRows.Button(g, "Remove Condition", condCat, new [=this, =li, =ti, =condIdx]() =>
-				{
-					QueueStructural("del-cond", new [=this, =li, =ti, =condIdx]() =>
-						{
-							let t = mDoc.Transition(li, ti);
-							if ((t != null) && (condIdx < t.Conditions.Count))
-							{
-								delete t.Conditions[condIdx];
-								t.Conditions.RemoveAt(condIdx);
-							}
-						}, .(.Transition, li, ti));
-				});
 		}
-		InPlaceRows.Button(g, "+ Add Condition", cat, new [=this, =li, =ti]() =>
-			{
-				QueueStructural("add-cond", new [=this, =li, =ti]() =>
-					{
-						if (let t = mDoc.Transition(li, ti))
-							t.Conditions.Add(new GraphCondition());
-					}, .(.Transition, li, ti));
-			});
 	}
 }

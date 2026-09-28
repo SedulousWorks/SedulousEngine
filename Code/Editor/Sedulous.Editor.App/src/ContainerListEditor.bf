@@ -71,7 +71,8 @@ class ContainerListEditor : PropertyEditor
 
 	/// The move up, move down and remove icons for a SECTION element's header: element `index`
 	/// of `count`. Hand the view to PropertyGrid.SetCategoryHeaderActions for the element's
-	/// section. The callbacks are CONSUMED.
+	/// section. A null `onMove` is a list whose order means nothing (timed events): remove
+	/// alone. The callbacks are CONSUMED.
 	public static View ElementActions(int index, int count, delegate void(int index, bool up) onMove,
 		delegate void(int index) onRemove) => new ElementActionsView(index, count, onMove, onRemove);
 
@@ -262,16 +263,19 @@ class ContainerListEditor : PropertyEditor
 			mOnRemove = onRemove;
 			Direction = .Horizontal;
 			Spacing = 2.0f;
-			let up = new IconButton(EditorIcons.MoveUp);
-			up.TooltipText.Set("Move up");
-			up.IsEnabled = index > 0;
-			up.OnClick.Add(new [=this, =index](b) => { mOnMove(index, true); });
-			AddView(up);
-			let down = new IconButton(EditorIcons.MoveDown);
-			down.TooltipText.Set("Move down");
-			down.IsEnabled = index + 1 < count;
-			down.OnClick.Add(new [=this, =index](b) => { mOnMove(index, false); });
-			AddView(down);
+			if (onMove != null)
+			{
+				let up = new IconButton(EditorIcons.MoveUp);
+				up.TooltipText.Set("Move up");
+				up.IsEnabled = index > 0;
+				up.OnClick.Add(new [=this, =index](b) => { mOnMove(index, true); });
+				AddView(up);
+				let down = new IconButton(EditorIcons.MoveDown);
+				down.TooltipText.Set("Move down");
+				down.IsEnabled = index + 1 < count;
+				down.OnClick.Add(new [=this, =index](b) => { mOnMove(index, false); });
+				AddView(down);
+			}
 			let remove = new IconButton(EditorIcons.Remove);
 			remove.TooltipText.Set("Remove");
 			remove.OnClick.Add(new [=this, =index](b) => { mOnRemove(index); });
