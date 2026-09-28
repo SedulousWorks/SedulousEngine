@@ -109,7 +109,12 @@ class ResourceManager
 	/// The stable id for a product type, which is what factories are keyed on.
 	public static uint64 ProductTypeIdOf<T>() where T : class
 	{
-		return TypeIdOf(typeof(T).GetFullName(.. scope String()));
+		return ProductTypeIdOf(typeof(T));
+	}
+
+	public static uint64 ProductTypeIdOf(Type type)
+	{
+		return TypeIdOf(type.GetFullName(.. scope String()));
 	}
 
 	// ---- binding ----

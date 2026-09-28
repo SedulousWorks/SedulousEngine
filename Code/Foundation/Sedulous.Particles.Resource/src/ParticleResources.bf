@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core.Serialization;
 using Sedulous.Particles;
 using Sedulous.Resource;
@@ -11,6 +12,12 @@ namespace Sedulous.Particles.Resource;
 /// meshes and materials, register themselves in their own modules.
 static class ParticleResources
 {
+	/// This library's resource module: its type registration and the factory descriptions
+	/// the engine composition creates from. The factories belong here, with the resources they
+	/// produce, not with an engine subsystem and not with an executable.
+	public static ResourceModule Module = new .("particles", () => RegisterAll(), new .(
+		.ByDefault<ParticleEffectResource, ParticleEffectResource, ParticleEffectFactory>())) ~ delete _;
+
 	/// Registers the cooked effect and every particle module. Into the global registry unless
 	/// another is given.
 	///
