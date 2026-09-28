@@ -38,6 +38,6 @@ struct NetworkComponent : ISerializable
 		SerializeValue(ar, "authority", ref authority);
 		Authority = (NetworkAuthority)authority;
 
-		Sedulous.Core.Serialization.Serialize(ar, ref Prefab);
+		SerializeValue(ar, "prefab", ref Prefab);
 	}
 }
