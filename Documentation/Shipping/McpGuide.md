@@ -47,8 +47,9 @@ warns the user. Ask before `page_reload` with `force`, which discards them.
 2. `host_info`: the pid (kill a hung host by it) and the `buildStamp`. After rebuilding the
    engine, compare stamps: a stale host serves yesterday's engine.
 3. `resources/list`: the curated `docs://` shipping docs (Scripting, Assets, Scenes,
-   KnownIssues) and, once a project is open, every scene and prefab as
-   `project://scene|prefab/<guid>`.
+   KnownIssues), the scene format reference this host generated from its own build
+   (`docs://generated/SceneSchema.json` and `docs://generated/SceneExample.scene.xml`) and,
+   once a project is open, every scene and prefab as `project://scene|prefab/<guid>`.
 
 ## The ground rules
 
@@ -73,9 +74,11 @@ alone is normal, clear it with `asset_cook`.
 say, the first is used and the result lists the others under `alsoClaimableBy`; re-import
 with `importer` set to choose. `asset_list` and `asset_info` inspect either database.
 
-**Scenes**: read with `scene_read` (or the `project://` resource), author the XML, loop on
-`scene_validate` (`xml` or `guid`; `valid` with empty `warnings` means the engine will load
-it), then `scene_write`. Prefabs mirror it with the single root rule.
+**Scenes**: read `docs://generated/SceneSchema.json` once (or `component_schema` for one
+component), copy from `docs://generated/SceneExample.scene.xml`, read the target with
+`scene_read` (or the `project://` resource), author the XML, loop on `scene_validate` (`xml`
+or `guid`; `valid` with empty `warnings` means the engine will load it), then `scene_write`.
+Prefabs mirror it with the single root rule.
 
 **Scripts**: `script_api` first, the LIVE bound API per backend; never trust memorised
 signatures. A member with `readOnly: true` (a network identity's `Authority`, for one) reads
