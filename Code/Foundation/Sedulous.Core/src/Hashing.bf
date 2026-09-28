@@ -10,7 +10,7 @@ namespace Sedulous.Core;
 /// format change.
 static
 {
-	public const uint64 FnvOffsetBasis = 1469598103934665603UL;
+	public const uint64 FnvOffsetBasis = 14695981039346656037UL;
 	public const uint64 FnvPrime = 1099511628211UL;
 
 	/// FNV-1a over raw bytes.

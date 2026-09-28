@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Core.Serialization;
 
 namespace Sedulous.Core.Tests;
 
@@ -18,6 +19,20 @@ class HashingTests
 
 		uint8[3] abc = .((uint8)'a', (uint8)'b', (uint8)'c');
 		Test.Assert(HashBytes(&abc[0], 3) == HashBytes(&abc[0], 3));
+	}
+
+	/// The published FNV-1a 64 test vectors: these values are written into saved files (script
+	/// override keys), so the constants are pinned to the standard, not merely to themselves.
+	/// The offset basis once lost a digit and every hash was consistently wrong.
+	[Test]
+	public static void TheHashIsStandardFnv1a64()
+	{
+		Test.Assert(FnvOffsetBasis == 0xCBF29CE484222325UL);
+		Test.Assert(HashText("") == 0xCBF29CE484222325UL);
+		Test.Assert(HashText("a") == 0xAF63DC4C8601EC8CUL);
+		Test.Assert(HashText("foobar") == 0x85944171F73967E8UL);
+		// And the type id hash is the same function.
+		Test.Assert(TypeIdOf("foobar") == HashText("foobar"));
 	}
 
 	/// The text path and the byte path are the same function over the same bytes, so a

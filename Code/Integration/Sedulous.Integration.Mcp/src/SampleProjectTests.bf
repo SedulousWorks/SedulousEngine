@@ -7,6 +7,8 @@ using Sedulous.Mcp;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Engine.Composition;
+using Sedulous.Engine.Script;
+using Sedulous.Script.Resource;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
@@ -98,5 +100,54 @@ static class SampleProjectTests
 		// rather than cook. And nothing failed.
 		Test.Assert(cooked.Get("cooked").AsInt() >= 21, scope $"cooked {cooked.Get("cooked").AsInt()}");
 		Test.Assert(cooked.Get("failed").AsInt() == 0, scope $"{cooked.Get("failed").AsInt()} failed");
+
+		// Every script override a scene stores names a property its cooked class declares: the
+		// key is the property name's hash, so a hash change that forgets to rehash the sources
+		// leaves overrides that silently apply to nothing.
+		{
+			let project = EditorProject.Open(dir);
+			Test.Assert(project != null);
+			defer delete project;
+			let overrides = CheckOverrides(project, project.SourceDb.RootGroup);
+			Test.Assert(overrides >= 1, scope $"{overrides} overrides checked");
+		}
+	}
+
+	/// The number of script overrides checked under `group`, each against its behaviour's cooked
+	/// class.
+	private static int CheckOverrides(EditorProject project, Group group)
+	{
+		int count = 0;
+		for (let instance in group.Instances)
+		{
+			if ((instance.TypeName != McpDocumentNames.cSceneDocument) && (instance.TypeName != McpDocumentNames.cPrefabDocument))
+				continue;
+			let scene = scope Scene(instance.Name);
+			EngineSceneComposition.AddAllSceneManagers(scene);
+			if (!(SceneStorage.LoadScene(instance, scene) case .Ok))
+				continue;
+			let scripts = scene.GetSystem<ScriptComponentManager>();
+			for (let component in scripts.Dense)
+			{
+				for (let behavior in component.Behaviors)
+				{
+					let stored = project.CookedDb.ReadObject(behavior.Script.Id);
+					defer delete stored;
+					let source = stored as ScriptClassSource;
+					Test.Assert(source != null, scope $"{instance.Name}: the behaviour's script is cooked");
+					for (let o in behavior.Overrides)
+					{
+						bool declared = false;
+						for (let property in source.Properties)
+							declared |= property.Hash == o.Hash;
+						Test.Assert(declared, scope $"{instance.Name}: override {o.Hash} names no property of {source.ClassName}");
+						count++;
+					}
+				}
+			}
+		}
+		for (let child in group.Groups)
+			count += CheckOverrides(project, child);
+		return count;
 	}
 }

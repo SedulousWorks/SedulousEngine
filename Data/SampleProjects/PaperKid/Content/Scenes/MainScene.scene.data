@@ -234,7 +234,7 @@
 					<bool name="enabled">true</bool>
 					<f32 name="updateInterval">0</f32>
 					<array name="overrides" count="1">
-						<u64 name="nameHash">8677635130031352134</u64>
+						<u64 name="nameHash">1653916590517707752</u64>
 						<u8 name="kind">7</u8>
 						<string name="id">d675703d-69d7-4fc7-8e99-aebee4267072</string>
 					</array>

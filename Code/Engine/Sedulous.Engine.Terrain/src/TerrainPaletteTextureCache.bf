@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Render;
 using Sedulous.RHI;
 using Sedulous.Terrain.Resource;
@@ -117,12 +118,12 @@ class TerrainPaletteTextureCache
 	/// and a rebuild follows any edit at all.
 	private static uint64 HashScales(Span<float> scales)
 	{
-		var hash = 1469598103934665603UL;
+		var hash = FnvOffsetBasis;
 		for (int i < scales.Length)
 		{
 			var value = scales[i];
 			let bits = *(uint32*)&value;
-			hash = (hash ^ bits) &* 1099511628211UL;
+			hash = (hash ^ bits) &* FnvPrime;
 		}
 		return hash;
 	}
