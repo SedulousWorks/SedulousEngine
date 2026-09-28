@@ -27,7 +27,7 @@ corlib = "*"
 "Sedulous.Materials.Pipeline" = "*"
 "Sedulous.Audio.Pipeline" = "*"
 "Sedulous.Script.Pipeline" = "*"
-"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Project" = "*"
 "Sedulous.Editor.Mcp" = "*"
 
 # A Web export's WGSL cook needs naga and tint beside the executable.

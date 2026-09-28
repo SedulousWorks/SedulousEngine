@@ -4,7 +4,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.VFS;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The templates available to an export: every bundle under the templates root, plus the
 /// host implicit template synthesized from the player beside the running tool. An

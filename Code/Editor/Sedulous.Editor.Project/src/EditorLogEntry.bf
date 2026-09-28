@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Logging;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// One captured log line: full fidelity text, the category the message prefixed itself
 /// with, and a monotonic sequence a consumer polls from.

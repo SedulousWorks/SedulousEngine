@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Serialization;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// A prebuilt per platform export bundle: a player binary, its runtime sidecars and a
 /// template.xml. Templates live in a machine local templates root, not committed, importable

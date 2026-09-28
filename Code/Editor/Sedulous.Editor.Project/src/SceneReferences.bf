@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// What a scene or prefab references directly.
 class SceneReferences

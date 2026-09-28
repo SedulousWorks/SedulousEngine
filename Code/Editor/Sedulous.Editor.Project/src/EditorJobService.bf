@@ -3,14 +3,14 @@ using System.Collections;
 using System.Threading;
 using Sedulous.Core;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
-/// The editor's background job runner with progress and step reporting: submit a unit of
-/// work, it runs on a worker so the UI stays live, reports through its JobContext, and its
-/// completion fires on the MAIN thread from Update. Build lane jobs run ONE AT A TIME, a
-/// submit while busy queues: the editor's build lock, so a cook, an export and an import
-/// never race the databases. The app pumps Update each frame and reads Progress for the
-/// status bar.
+/// The background job runner with progress and step reporting for the editor domain's hosts:
+/// submit a unit of work, it runs on a worker so the host's main loop stays live, reports
+/// through its JobContext, and its completion fires on the MAIN thread from Update. Build lane
+/// jobs run ONE AT A TIME, a submit while busy queues: the build lock, so a cook, an export and
+/// an import never race the databases. The host pumps Update each frame and reads Progress for
+/// whatever it shows (the editor application's status bar, a tool's log line).
 ///
 /// The light lane is short CPU only side work, editor preview bakes, on its OWN worker,
 /// concurrent with the build lane and deliberately outside IsBusy: that flag gates cook

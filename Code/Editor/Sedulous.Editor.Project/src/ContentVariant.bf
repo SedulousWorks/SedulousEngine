@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// One content pak of a dist: the desktop's single pak, or a web build's BC and ASTC
 /// siblings, each packed from its own cooked database.

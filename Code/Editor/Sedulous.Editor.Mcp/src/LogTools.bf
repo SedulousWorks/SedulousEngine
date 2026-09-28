@@ -5,7 +5,7 @@ using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 using Sedulous.Json;
 using Sedulous.Mcp;
-using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Mcp;
 

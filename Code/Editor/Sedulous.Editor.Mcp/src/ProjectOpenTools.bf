@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.Json;
 using Sedulous.Mcp;
-using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Mcp;
 

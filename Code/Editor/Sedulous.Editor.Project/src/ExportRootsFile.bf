@@ -4,7 +4,7 @@ using Sedulous.Core;
 using Sedulous.Content;
 using Sedulous.VFS;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// export_roots.xml on the project root, and the group walks the roots seed from.
 static class ExportRootsFile

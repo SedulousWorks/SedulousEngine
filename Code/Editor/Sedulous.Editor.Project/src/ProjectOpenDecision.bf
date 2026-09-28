@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Engine.Project;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The manager controller's answer for a directory: the gate, the probed manifest, valid
 /// unless NotAProject, and the prompt copy for the two prompt gates.

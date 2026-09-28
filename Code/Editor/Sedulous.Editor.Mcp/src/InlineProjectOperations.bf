@@ -8,7 +8,7 @@ using Sedulous.Engine.SceneSurface;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Cook;
 using Sedulous.Pipeline.Importer;
-using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Mcp;
 

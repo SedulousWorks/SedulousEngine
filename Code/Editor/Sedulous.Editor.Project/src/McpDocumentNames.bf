@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Scene.Resource;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The content database type names of the two scene documents, as an instance carries them.
 static class McpDocumentNames

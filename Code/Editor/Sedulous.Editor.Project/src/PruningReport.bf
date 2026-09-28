@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// What the closure pruning kept and dropped, with the roots and their reasons.
 class PruningReport

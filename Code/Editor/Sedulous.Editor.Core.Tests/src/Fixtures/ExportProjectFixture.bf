@@ -14,6 +14,7 @@ using Sedulous.Engine.Render;
 using Sedulous.Pipeline.Core;
 using Sedulous.VFS;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Core.Tests;
 

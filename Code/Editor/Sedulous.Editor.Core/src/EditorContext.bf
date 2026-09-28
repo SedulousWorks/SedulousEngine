@@ -7,6 +7,7 @@ using Sedulous.Resource;
 using Sedulous.Settings;
 using Sedulous.Mcp;
 using Sedulous.Pipeline.Importer;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Core;
 

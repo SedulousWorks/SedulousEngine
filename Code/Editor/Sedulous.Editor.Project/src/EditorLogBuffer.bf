@@ -3,9 +3,10 @@ using System.Collections;
 using System.Threading;
 using Sedulous.Core.Logging;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
-/// The editor's and the tools' log capture: ONE thread safe bounded logger, added to the
+/// The log capture every editor domain host uses (the editor application's console panel,
+/// the MCP hosts' log_read, the cook and export tools): ONE thread safe bounded logger, added to the
 /// global CompositeLogger first thing in main, so every line the engine logs across the run
 /// is retained and nothing has to swap the logger.
 ///

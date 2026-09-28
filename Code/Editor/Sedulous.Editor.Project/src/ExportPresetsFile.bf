@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.VFS;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// export_presets.xml on the project root, and the built in default when a project has none.
 static class ExportPresetsFile

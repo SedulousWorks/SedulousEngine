@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Serialization;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// A project's export presets: the root of <project>/export_presets.xml.
 [Serializable(3)]

@@ -10,7 +10,7 @@ using Sedulous.Shaders;
 using Sedulous.VFS;
 using Sedulous.VFS.Pak;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The export driver's helpers: the cooked tree packed with the reachable filter, a scene
 /// staged as a binary product, the shader pack cooked into the dist's Data, and the small

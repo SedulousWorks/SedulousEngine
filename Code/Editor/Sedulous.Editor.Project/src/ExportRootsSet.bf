@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Serialization;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The project's explicit "Always Export" set, <project>/export_roots.xml, a committed
 /// sidecar: instances flagged by guid, rename and move proof, and group subtrees by mount

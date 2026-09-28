@@ -5,6 +5,7 @@ using Sedulous.Content;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;

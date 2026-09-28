@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Threading;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// Handed to a job's worker; thread safe progress reporting back to the UI. One monitor
 /// guards the whole snapshot, fraction, step and log; cancellation is a flag.

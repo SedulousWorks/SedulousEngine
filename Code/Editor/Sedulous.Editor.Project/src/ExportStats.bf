@@ -1,4 +1,4 @@
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The cook, stage and pack totals of one export.
 class ExportStats

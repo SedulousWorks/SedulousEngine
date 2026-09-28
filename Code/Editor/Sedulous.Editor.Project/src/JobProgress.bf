@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The UI's snapshot of the running job; Active false when idle. Main thread only.
 class JobProgress

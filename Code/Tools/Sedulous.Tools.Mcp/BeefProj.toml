@@ -18,7 +18,7 @@ corlib = "*"
 "Sedulous.Pipeline.Importer" = "*"
 "Sedulous.Pipeline.Registration" = "*"
 "Sedulous.Engine.SceneSurface" = "*"
-"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Project" = "*"
 "Sedulous.Editor.Mcp" = "*"
 
 # The WGSL shader cook a Web export runs needs naga and tint BESIDE the executable, where

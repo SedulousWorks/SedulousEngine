@@ -1,4 +1,4 @@
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// A cheap per instance cook state for the Assets panel, no recipe recompute; exact
 /// dirtiness is the driver's business at cook time.

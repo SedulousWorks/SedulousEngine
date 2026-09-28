@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.VFS;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The presets dialog's headless half: the set loaded or defaulted, edited with unique
 /// names, saved.

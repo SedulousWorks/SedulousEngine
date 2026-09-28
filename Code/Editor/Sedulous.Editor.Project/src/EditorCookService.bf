@@ -9,7 +9,7 @@ using Sedulous.VFS;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Cook;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The in editor face of the cook driver. Owns the project's sources and .cache mounts and a
 /// CookDriver over the project databases, and runs cooks on a BACKGROUND thread, one at a

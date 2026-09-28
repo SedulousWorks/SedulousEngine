@@ -8,7 +8,7 @@ using Sedulous.VFS;
 using Sedulous.Xml.Serialization;
 using Sedulous.Engine.Project;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// An opened project: the manifest, and the source and cooked content databases mounted
 /// over its fixed layout.

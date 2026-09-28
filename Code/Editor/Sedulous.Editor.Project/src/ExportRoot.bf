@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// One seed entry point of the reachable closure.
 class ExportRoot

@@ -1,4 +1,4 @@
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// What Open must do for a directory, decided from the manifest probe and the version
 /// relation.

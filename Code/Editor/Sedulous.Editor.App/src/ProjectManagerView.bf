@@ -6,6 +6,7 @@ using Sedulous.Shell;
 using Sedulous.UI;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.App;
 

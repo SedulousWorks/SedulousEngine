@@ -6,7 +6,7 @@ using Sedulous.Settings;
 using Sedulous.VFS;
 using Sedulous.Engine.Project;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The headless core of the project manager over the RecentProjects section: touch, remove,
 /// the manifest probe, the engine version relation, and the manifest backup the upgrade

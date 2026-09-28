@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// Where the Beef build puts things, for the tools that ship them. A workspace builds into
 /// Code/build/<Config>_<Platform>/<Project>/, every executable in its own directory with the

@@ -14,7 +14,7 @@ corlib = "*"
 "Sedulous.Engine.SceneSurface" = "*"
 "Sedulous.Pipeline.Core" = "*"
 "Sedulous.Pipeline.Registration" = "*"
-"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Project" = "*"
 
 # The WGSL shader cook a Web export runs needs naga and tint BESIDE the executable, where
 # ShaderPackCooker looks for them, exactly as Tools.ShaderPack ships them.

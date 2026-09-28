@@ -11,7 +11,7 @@ using Sedulous.Pipeline.Cook;
 using Sedulous.VFS;
 using Sedulous.VFS.Pak;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The export: a project into a shippable dist. Cook everything, or the reachable closure
 /// of the entry points when the preset prunes; stage the scenes as binary products; pack

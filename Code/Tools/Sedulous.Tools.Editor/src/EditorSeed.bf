@@ -11,6 +11,7 @@ using Sedulous.Fonts.Pipeline;
 using Sedulous.Texture.Pipeline;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Tools.Editor;
 

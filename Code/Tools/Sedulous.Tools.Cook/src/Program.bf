@@ -8,7 +8,7 @@ using Sedulous.VFS;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Cook;
 using Sedulous.Pipeline.Registration;
-using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Tools.Cook;
 

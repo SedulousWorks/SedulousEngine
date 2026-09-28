@@ -8,6 +8,7 @@ using Sedulous.Image;
 using Sedulous.Image.IO;
 using Sedulous.UI;
 using Sedulous.VFS;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Core;
 

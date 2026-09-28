@@ -2,6 +2,7 @@ using System;
 using Sedulous.Runtime.Client;
 using Sedulous.UI.Runtime;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.App;
 

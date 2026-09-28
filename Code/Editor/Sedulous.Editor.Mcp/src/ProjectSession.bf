@@ -1,5 +1,5 @@
 using System;
-using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Mcp;
 

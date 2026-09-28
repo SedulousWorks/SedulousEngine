@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Serialization;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// One export target: which template, the player and its runtime sidecars, plus the game
 /// specific extras and the output naming. References a template by id or platform, never

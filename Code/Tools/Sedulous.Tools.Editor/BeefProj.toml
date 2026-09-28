@@ -8,6 +8,7 @@ StartupObject = "Sedulous.Tools.Editor.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Editor.Project" = "*"
 "Sedulous.VFS" = "*"
 "Sedulous.Content" = "*"
 "Sedulous.Geometry" = "*"

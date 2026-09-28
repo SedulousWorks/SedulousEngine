@@ -5,7 +5,7 @@ using Sedulous.Core.IO;
 using Sedulous.VFS;
 using Sedulous.Engine.Project;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The template operations: the manifest file, the host synthesis, creating a bundle from a
 /// build, importing and removing one, and where the templates root is.

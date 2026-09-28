@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// Why an instance seeds the reachable closure.
 enum ExportRootReason

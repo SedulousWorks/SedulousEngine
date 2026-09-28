@@ -9,6 +9,7 @@ using Sedulous.VFS;
 using Sedulous.Xml.Serialization;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Core.Tests;
 

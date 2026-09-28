@@ -6,6 +6,7 @@ using Sedulous.Core.IO;
 using Sedulous.Content;
 using Sedulous.VFS;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Core.Tests;
 

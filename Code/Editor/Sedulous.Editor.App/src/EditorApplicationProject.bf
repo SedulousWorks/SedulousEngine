@@ -11,6 +11,7 @@ using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
 using Sedulous.Editor.Preview;
 

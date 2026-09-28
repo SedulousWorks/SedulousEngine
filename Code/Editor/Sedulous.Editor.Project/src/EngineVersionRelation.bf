@@ -1,4 +1,4 @@
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// How a project's stamped engine version relates to THIS engine. Drives the manager's
 /// open time prompt: Same and Unstamped open silently, ProjectOlder offers a backup then

@@ -12,6 +12,7 @@ using Sedulous.Shell.SDL3;
 using Sedulous.Engine.Project;
 using Sedulous.Pipeline.Registration;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Navigation;
 

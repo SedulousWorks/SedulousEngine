@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Serialization;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The per user project registry, a section of the user level settings store, deliberately
 /// OUTSIDE any engine install or project directory: every editor version on the machine

@@ -5,6 +5,7 @@ using Sedulous.Content;
 using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.App;
 

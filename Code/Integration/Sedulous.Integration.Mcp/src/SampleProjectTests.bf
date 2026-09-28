@@ -11,7 +11,7 @@ using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
 using Sedulous.VFS;
-using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
 using static Sedulous.Integration.Mcp.McpCalls;
 

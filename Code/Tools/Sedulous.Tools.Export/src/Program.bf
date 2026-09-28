@@ -9,7 +9,7 @@ using Sedulous.Engine.Project;
 using Sedulous.Engine.SceneSurface;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Registration;
-using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Tools.Export;
 

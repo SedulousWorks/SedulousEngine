@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Serialization;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// One known project. Path is the project DIRECTORY as the user opened it, the identity
 /// key, compared verbatim; the name and engine version are the last seen manifest snapshot.

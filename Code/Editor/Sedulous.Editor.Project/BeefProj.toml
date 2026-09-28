@@ -1,0 +1,21 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Project"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Project.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.VFS.Pak" = "*"
+"Sedulous.Xml.Serialization" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Settings" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Cook" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Shaders.System" = "*"
+"Sedulous.Scene.Resource" = "*"

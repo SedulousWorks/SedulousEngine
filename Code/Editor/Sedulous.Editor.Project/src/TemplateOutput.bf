@@ -1,4 +1,4 @@
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// Where CreateTemplate writes the bundle.
 enum TemplateOutput

@@ -6,6 +6,7 @@ using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Scene.Tests;
 

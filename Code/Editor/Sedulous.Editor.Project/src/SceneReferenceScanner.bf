@@ -1,6 +1,6 @@
 using Sedulous.Content;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// Fills a scene's or prefab's direct references. Registered by whoever links the scene
 /// machinery the editor core does not: the scene editor plugin, or the tool's own scan.

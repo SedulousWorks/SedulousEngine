@@ -3,7 +3,7 @@ using Sedulous.Core;
 using Sedulous.Settings;
 using Sedulous.Engine.Project;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// The project manager's headless decision layer between the manager UI and the registry
 /// and manifest primitives: the UI renders what this decides, nothing here touches a view,

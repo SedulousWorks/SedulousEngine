@@ -6,6 +6,7 @@ using Sedulous.Core.IO;
 using Sedulous.Animation.Resource;
 using Sedulous.Animation.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Scene.Tests;
 

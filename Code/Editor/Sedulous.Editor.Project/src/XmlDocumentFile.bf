@@ -5,7 +5,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.VFS;
 using Sedulous.Xml.Serialization;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// One versioned [Serializable] root as an XML file on a mount: the manifest's shape, for
 /// the export presets, the templates and the export roots. A file written under another

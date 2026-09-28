@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.Editor.Core;
+namespace Sedulous.Editor.Project;
 
 /// What one export produced.
 class ExportResult
