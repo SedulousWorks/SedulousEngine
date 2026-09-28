@@ -123,11 +123,11 @@ static class ScriptHarvest
 			if (IsQuoted(firstToken))
 			{
 				let tag = Unquote(firstToken, .. scope .());
-				const String cPrefix = "asset:";
-				if ((tag.Length > cPrefix.Length) && tag.StartsWith(cPrefix))
+				let prefix = ScriptPropertyNames.cAssetTypePrefix;
+				if ((tag.Length > prefix.Length) && tag.StartsWith(prefix))
 				{
 					outKind = .Asset;
-					outAssetType.Set(tag.Substring(cPrefix.Length));
+					outAssetType.Set(tag.Substring(prefix.Length));
 					return true;
 				}
 			}

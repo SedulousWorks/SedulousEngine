@@ -9,28 +9,62 @@ static class ScriptPropertyNames
 {
 	public static uint64 HashOf(StringView name) => HashText(name);
 
+	/// One authored type name and the kind it means.
+	public struct TypeEntry
+	{
+		public String Name;
+		public ScriptPropertyType Kind;
+
+		public this(String name, ScriptPropertyType kind)
+		{
+			Name = name;
+			Kind = kind;
+		}
+	}
+
+	/// The asset kind is authored as "asset:<TypeName>": this prefix, then the product type name.
+	public const String cAssetTypePrefix = "asset:";
+
+	/// Every authored kind, in declaration order (None has no spelling). The one table both
+	/// directions read: Parse, and anything that lists the kinds (the scene format reference).
+	public static readonly TypeEntry[?] TypeNames = .(
+		.("float", .Float), .("int", .Int), .("bool", .Bool), .("string", .String),
+		.("color", .Color), .("vec3", .Vec3), .("entity", .Entity), .("asset", .Asset));
+
+	/// The authored spelling of `kind` ("float", "asset" for the prefixed form); empty for None.
+	public static StringView TypeName(ScriptPropertyType kind)
+	{
+		for (let entry in TypeNames)
+		{
+			if (entry.Kind == kind)
+				return entry.Name;
+		}
+		return "";
+	}
+
 	/// The parsed "float" / "asset:AudioClip" type text a script declares a property with,
 	/// to its kind and, for an asset, the product type name. False for anything else.
 	public static bool Parse(StringView text, out ScriptPropertyType outKind, String outAssetType)
 	{
 		outAssetType.Clear();
 		outKind = .None;
-		switch (text)
+		for (let entry in TypeNames)
 		{
-		case "float": outKind = .Float; return true;
-		case "int": outKind = .Int; return true;
-		case "bool": outKind = .Bool; return true;
-		case "string": outKind = .String; return true;
-		case "color": outKind = .Color; return true;
-		case "vec3": outKind = .Vec3; return true;
-		case "entity": outKind = .Entity; return true;
-		}
-		const String cAssetPrefix = "asset:";
-		if (text.StartsWith(cAssetPrefix) && (text.Length > cAssetPrefix.Length))
-		{
-			outKind = .Asset;
-			outAssetType.Append(text.Substring(cAssetPrefix.Length));
-			return true;
+			if (entry.Kind == .Asset)
+			{
+				if (text.StartsWith(cAssetTypePrefix) && (text.Length > cAssetTypePrefix.Length))
+				{
+					outKind = .Asset;
+					outAssetType.Append(text.Substring(cAssetTypePrefix.Length));
+					return true;
+				}
+				continue;
+			}
+			if (text == entry.Name)
+			{
+				outKind = entry.Kind;
+				return true;
+			}
 		}
 		return false;
 	}

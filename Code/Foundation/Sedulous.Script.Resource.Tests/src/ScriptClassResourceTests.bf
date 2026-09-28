@@ -115,6 +115,14 @@ static class ScriptClassResourceTests
 		Test.Assert(ScriptPropertyNames.Parse("asset:AudioClip", let a, assetType) && (a == .Asset) && (assetType == "AudioClip"));
 		Test.Assert(!ScriptPropertyNames.Parse("asset:", let none, assetType));
 		Test.Assert(!ScriptPropertyNames.Parse("double", let d, assetType) && (d == .None));
+		// The table reads both ways: every spelling parses back to its kind.
+		for (let entry in ScriptPropertyNames.TypeNames)
+		{
+			Test.Assert(ScriptPropertyNames.TypeName(entry.Kind) == entry.Name);
+			let text = (entry.Kind == .Asset) ? scope:: $"{ScriptPropertyNames.cAssetTypePrefix}Texture" : entry.Name;
+			Test.Assert(ScriptPropertyNames.Parse(text, let kind, assetType) && (kind == entry.Kind));
+		}
+		Test.Assert(ScriptPropertyNames.TypeName(.None).IsEmpty);
 		Test.Assert(ScriptPropertyNames.HashOf("speed") == ScriptPropertyNames.HashOf("speed"));
 		Test.Assert(ScriptPropertyNames.HashOf("speed") != ScriptPropertyNames.HashOf("Speed"));
 	}
