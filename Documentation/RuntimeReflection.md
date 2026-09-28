@@ -91,6 +91,7 @@ the run time targets.
 | Use | Where | What it does |
 |---|---|---|
 | `type_list`, `type_info` | `Foundation/Sedulous.Mcp.Reflection/src/ReflectionTools.bf:131,145` | report a type's fields and methods from Beef's type table, for whatever the build reflects |
+| Scene format reference | `Editor/Sedulous.Editor.Mcp/src/SceneReference.bf` | joins each recorded wire key to the component's or settings block's field (`GetFields`, the key being the name with its first letter lowercased), reads the field's `[DisplayName]`, `[Description]`, `[Category]`, `[Range]` and `[VisibleWhen]`, an enum field's cases through `Enum.GetEnumerator`, a `List<T>`'s element type and a `Ref<T>`'s target (`SpecializedGenericType.GetGenericArg`, through `ReferenceShape.Target`). Once per host at startup |
 
 ## Comptime only (no run time cost)
 
@@ -148,6 +149,9 @@ reach the binary.
   on `Ref<T>` would go with it.
 - **Animatable properties.** A comptime-emitted list per component, which property animation's
   table above would also serve.
+- **Scene format reference.** The per field annotations are known at compile time; a
+  comptime-emitted description per component and settings block (key, field type, the
+  attributes) would serve it, the recording of the wire itself staying at run time.
 - **MCP type tools.** By nature a view of the run time type table. Either they stay
   reflection-based (and report only what the build reflects) or they read a comptime-emitted
   catalogue of the authored surface, as `script_api` does for scripts.
