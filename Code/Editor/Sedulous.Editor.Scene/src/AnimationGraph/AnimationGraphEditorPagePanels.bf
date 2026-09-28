@@ -220,38 +220,6 @@ extension AnimationGraphEditorPage
 			RebuildInspector();
 	}
 
-	private void AssetLabel(Guid id, String outLabel)
-	{
-		if (id.IsNil)
-		{
-			outLabel.Append("(none)");
-			return;
-		}
-		if (mContext.Project != null)
-		{
-			if (let inst = mContext.Project.SourceDb.GetInstance(id))
-			{
-				outLabel.Append(inst.Name);
-				return;
-			}
-		}
-		outLabel.Append("(missing)");
-	}
-
-	/// Opens the clip picker; `onPicked` is consumed.
-	private void PickClip(delegate void(Guid) onPicked)
-	{
-		let ctx = Ctx;
-		if ((ctx == null) || (mContext.Project == null))
-		{
-			delete onPicked;
-			return;
-		}
-		let dialog = new AssetPickerDialog(mContext, scope StringView[]("AnimationClipAsset"));
-		dialog.OnPicked = onPicked;
-		dialog.Show(ctx);
-	}
-
 	private void BuildStateInspector(int32 layerIndex, int32 stateIndex)
 	{
 		let state = mDoc.State(layerIndex, stateIndex);
@@ -278,20 +246,22 @@ extension AnimationGraphEditorPage
 		let kindCat = AnimationGraphEdit.NodeKindLabel(state.NodeKind);
 		if (state.NodeKind == 0)
 		{
-			let label = scope String("Clip: ");
-			AssetLabel(state.ClipRef, label);
-			InPlaceRows.Button(g, label, kindCat, new [=this, =li, =si]() =>
+			let clip = new ResourceRefEditor("Clip", "(none)", kindCat, scope StringView[]("AnimationClipAsset"));
+			clip.BindAsset(mContext, new [=this, =li, =si]() =>
 				{
-					PickClip(new [=this, =li, =si](picked) =>
-						{
-							if (let s = mDoc.State(li, si))
-							{
-								s.ClipRef = picked;
-								CommitEdit("state-clip");
-								Select(.(.State, li, si));
-							}
-						});
+					let s = mDoc.State(li, si);
+					return (s != null) ? s.ClipRef : Guid();
+				},
+				new [=this, =li, =si](picked) =>
+				{
+					if (let s = mDoc.State(li, si))
+					{
+						s.ClipRef = picked;
+						CommitEdit("state-clip");
+						Select(.(.State, li, si));
+					}
 				});
+			g.AddProperty(clip);
 			return;
 		}
 
@@ -312,21 +282,23 @@ extension AnimationGraphEditorPage
 				InPlaceRows.Float(g, "Threshold", &state.EntryThresholds[e], entryCat, mCommit);
 			else
 				InPlaceRows.Float2(g, "Position", &state.EntryPositions[e], entryCat, mCommit, -1000.0f, 1000.0f, 0.05f);
-			let clipLabel = scope String("Clip: ");
-			AssetLabel(state.EntryClips[e], clipLabel);
-			InPlaceRows.Button(g, clipLabel, entryCat, new [=this, =li, =si, =entryIdx]() =>
+			let entryClip = new ResourceRefEditor("Clip", "(none)", entryCat, scope StringView[]("AnimationClipAsset"));
+			entryClip.BindAsset(mContext, new [=this, =li, =si, =entryIdx]() =>
 				{
-					PickClip(new [=this, =li, =si, =entryIdx](picked) =>
-						{
-							let s = mDoc.State(li, si);
-							if ((s != null) && (entryIdx < s.EntryClips.Count))
-							{
-								s.EntryClips[entryIdx] = picked;
-								CommitEdit("entry-clip");
-								Select(.(.State, li, si));
-							}
-						});
+					let s = mDoc.State(li, si);
+					return ((s != null) && (entryIdx < s.EntryClips.Count)) ? s.EntryClips[entryIdx] : Guid();
+				},
+				new [=this, =li, =si, =entryIdx](picked) =>
+				{
+					let s = mDoc.State(li, si);
+					if ((s != null) && (entryIdx < s.EntryClips.Count))
+					{
+						s.EntryClips[entryIdx] = picked;
+						CommitEdit("entry-clip");
+						Select(.(.State, li, si));
+					}
 				});
+			g.AddProperty(entryClip);
 			InPlaceRows.Button(g, "Remove Entry", entryCat, new [=this, =li, =si, =entryIdx]() =>
 				{
 					QueueStructural("del-entry", new [=this, =li, =si, =entryIdx]() =>

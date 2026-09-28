@@ -37,23 +37,19 @@ extension MaterialEditorPage
 			}, "Preview");
 		mGrid.AddProperty(shape);
 
-		let meshRow = new ResourceRefEditor("Mesh", PreviewMeshName(), "Preview", .());
-		meshRow.OnPick = new [=this, =meshRow]() =>
+		let meshRow = new ResourceRefEditor("Mesh", PreviewMeshName(), "Preview", scope StringView[]("StaticMeshAsset", "SkinnedMeshAsset"));
+		meshRow.EmptyText.Set(PreviewMeshName());
+		meshRow.BindAsset(mContext, new [=this]() => mPreviewMeshGuid, new [=this](picked) =>
 			{
-				let ctx = Ctx;
-				if ((ctx == null) || (mContext.Project == null))
-					return;
-				let dialog = new AssetPickerDialog(mContext, scope StringView[]("StaticMeshAsset", "SkinnedMeshAsset"));
-				dialog.OnPicked = new [=this, =meshRow](picked) =>
-					{
-						mPreviewMeshGuid = picked; // nil (Clear) = back to the primitive
-						ApplyPreviewMesh();
-						SavePreviewPref();
-						meshRow.SetValueText(PreviewMeshName());
-					};
-				dialog.Show(ctx);
-			};
-		mGrid.AddProperty(meshRow);
+				mPreviewMeshGuid = picked; // nil (Clear) = back to the primitive
+				ApplyPreviewMesh();
+				SavePreviewPref();
+			});
+		AddEditor(meshRow, new [=this, =meshRow]() =>
+			{
+				meshRow.EmptyText.Set(PreviewMeshName());
+				meshRow.Refresh();
+			});
 
 		AddPipelineEnumRow("Blend", cBlendItems, new (s) => (int32)s.BlendMode, new (s, v) => s.BlendMode = (BlendMode)v);
 		AddPipelineEnumRow("Depth", cDepthItems, new (s) => (int32)s.DepthMode, new (s, v) => s.DepthMode = (DepthMode)v);
@@ -140,25 +136,12 @@ extension MaterialEditorPage
 
 	private void AddTextureRow(String slot)
 	{
-		let editor = new ResourceRefEditor(slot, AssetNameFor(MaterialSourceEdit.TextureFor(mAsset.Source, slot)), "Textures", .());
+		let editor = new ResourceRefEditor(slot, AssetNameFor(MaterialSourceEdit.TextureFor(mAsset.Source, slot)), "Textures",
+			scope StringView[]("TextureAsset"));
 		editor.SetDisplayName(PropertyNames.Prettify(slot, .. scope .()));
-		editor.OnPick = new [=this, =slot]() =>
-			{
-				let ctx = Ctx;
-				if ((ctx == null) || (mContext.Project == null))
-					return;
-				let dialog = new AssetPickerDialog(mContext, scope StringView[]("TextureAsset"));
-				dialog.OnPicked = new [=this, =slot](picked) =>
-					{
-						ApplyEdit(slot, new [=slot, =picked](s) => MaterialSourceEdit.SetTexture(s, slot, picked));
-					};
-				dialog.Show(ctx);
-			};
-		AddEditor(editor, new [=this, =editor, =slot]() =>
-			{
-				if (mAsset != null)
-					editor.SetValueText(AssetNameFor(MaterialSourceEdit.TextureFor(mAsset.Source, slot)));
-			});
+		editor.BindAsset(mContext, new [=this, =slot]() => (mAsset != null) ? MaterialSourceEdit.TextureFor(mAsset.Source, slot) : Guid(),
+			new [=this, =slot](picked) => { ApplyEdit(slot, new [=slot, =picked](s) => MaterialSourceEdit.SetTexture(s, slot, picked)); });
+		AddEditor(editor, new [=editor]() => { editor.Refresh(); });
 	}
 
 	private float ReadFloat(StringView name) => (mAsset != null) ? MaterialSourceEdit.ReadFloat(mAsset.Source, name) : 0.0f;

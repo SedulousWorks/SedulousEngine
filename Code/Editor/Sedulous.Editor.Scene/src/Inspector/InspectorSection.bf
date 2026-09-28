@@ -306,7 +306,19 @@ class InspectorSection
 			});
 			owner.RequestRebuild();
 		};
-		list.OnPickSlot = new [=owner, =target, =read, =types](i) =>
+		// One write for a slot, whether the asset came from the picker or a drop.
+		delegate void(int i, Guid picked) assignSlot = new [=owner, =target, =read](i, picked) =>
+		{
+			target.Mutate(scope [=read, =i, =picked](p) =>
+			{
+				let l = read(p);
+				if (i < l.Count)
+					l[i] = Ref<T>(picked);
+			});
+			owner.RequestRebuild();
+		};
+		Keep(assignSlot);
+		list.OnPickSlot = new [=owner, =types, =assignSlot](i) =>
 		{
 			if ((owner.Context == null) || (owner.Editor.Project == null))
 				return;
@@ -314,17 +326,23 @@ class InspectorSection
 			for (let t in types)
 				typeNames.Add(t);
 			let dialog = new AssetPickerDialog(owner.Editor, typeNames);
-			dialog.OnPicked = new [=owner, =target, =read, =i](picked) =>
-			{
-				target.Mutate(scope [=read, =i, =picked](p) =>
-				{
-					let l = read(p);
-					if (i < l.Count)
-						l[i] = Ref<T>(picked);
-				});
-				owner.RequestRebuild();
-			};
+			dialog.OnPicked = new [=assignSlot, =i](picked) => { assignSlot(i, picked); };
 			dialog.Show(owner.Context);
+		};
+		let accepted = scope List<StringView>();
+		for (let t in types)
+			accepted.Add(t);
+		list.SetAcceptedTypes(accepted);
+		list.OnAssignSlot = new [=assignSlot](i, picked) => { assignSlot(i, picked); };
+		list.OnAppendDropped = new [=owner, =target, =read](picked) =>
+		{
+			target.Mutate(scope [=read, =picked](p) => { read(p).Add(Ref<T>(picked)); });
+			owner.RequestRebuild();
+		};
+		list.OnRejectedDrop = new [=owner, =types](assetName, typeName) =>
+		{
+			let wanted = types.IsEmpty ? StringView("?") : StringView(types[0]);
+			owner.Editor.Notify(.Warning, scope $"{assetName} is a {typeName} - this list takes {wanted}");
 		};
 		Add(list, new [=owner, =list, =computeNames]() =>
 		{

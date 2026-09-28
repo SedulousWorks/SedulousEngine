@@ -39,8 +39,9 @@ class AnimationClipEditorPage : UIEditorPage
 	private PreviewViewport mPreview = null;
 
 	/// Borrowed: the content owns them.
-	private Button mSkeletonButton = null;
-	private Button mMeshButton = null;
+	/// Borrowed: the transport bar owns them.
+	private CompactAssetSlot mSkeletonSlot = null;
+	private CompactAssetSlot mMeshSlot = null;
 	private Button mPlayButton = null;
 	/// Normalised [0..1] scrub.
 	private Slider mTimeSlider = null;
@@ -100,12 +101,26 @@ class AnimationClipEditorPage : UIEditorPage
 		transport.Direction = .Horizontal;
 		transport.Spacing = 6.0f;
 		transport.Padding = .(6, 4);
-		mSkeletonButton = new Button("Skeleton: (none)");
-		mSkeletonButton.OnClick.Add(new [=this](btn) => { PickPreviewSkeleton(); });
-		transport.AddView(mSkeletonButton);
-		mMeshButton = new Button("Mesh: (none)");
-		mMeshButton.OnClick.Add(new [=this](btn) => { PickPreviewMesh(); });
-		transport.AddView(mMeshButton);
+		var slotWidth = LayoutStyle();
+		slotWidth.Width = SizeSpec.Fixed(Unit.Dp(220.0f));
+		mSkeletonSlot = new CompactAssetSlot("Skeleton", scope StringView[]("SkeletonAsset"));
+		mSkeletonSlot.Editor.BindAsset(mContext, new [=this]() => mSkeletonGuid, new [=this](picked) =>
+			{
+				mSkeletonGuid = picked;
+				BindSkeleton();
+				SavePreviewPref();
+			});
+		mSkeletonSlot.Build();
+		transport.AddView(mSkeletonSlot, slotWidth);
+		mMeshSlot = new CompactAssetSlot("Mesh", scope StringView[]("SkinnedMeshAsset"));
+		mMeshSlot.Editor.BindAsset(mContext, new [=this]() => mPreviewMeshId, new [=this](picked) =>
+			{
+				mPreviewMeshId = picked;
+				ApplyPreviewMesh();
+				SavePreviewPref();
+			});
+		mMeshSlot.Build();
+		transport.AddView(mMeshSlot, slotWidth);
 		mPlayButton = new Button("Pause");
 		mPlayButton.OnClick.Add(new [=this](btn) =>
 			{

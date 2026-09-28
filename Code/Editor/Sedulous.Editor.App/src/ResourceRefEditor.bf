@@ -29,6 +29,12 @@ class ResourceRefEditor : PropertyEditor
 	private AssetPickerSlot mSlot = null;
 	/// Set by BindAsset: the context names assets and supplies the thumbnails.
 	private EditorContext mContext = null;
+	/// A bound row's value state comes from its id, not its text.
+	private bool mBoundHasValue = false;
+
+	/// What a bound row shows for the nil id: "(none)", or what nil means for the field (the
+	/// material page's preview mesh shows its primitive shape).
+	public String EmptyText = new .("(none)") ~ delete _;
 
 	public this(StringView name, StringView valueText, StringView category, Span<StringView> acceptedTypes)
 		: base(name, category)
@@ -50,7 +56,9 @@ class ResourceRefEditor : PropertyEditor
 	/// - a drop of an accepted type is assigned, the same write; a refused one is reported;
 	/// - clear assigns the nil id;
 	/// - edit and reveal open and show the asset `current` names.
-	/// `current` and `assign` are CONSUMED. The row shows `current` from then on (Refresh).
+	/// `current` and `assign` are CONSUMED. The row shows `current` from then on (Refresh), and
+	/// refreshes after every assignment, so `assign` must not destroy this row synchronously: a
+	/// write that rebuilds its grid defers the rebuild, as every grid here does.
 	public void BindAsset(EditorContext context, delegate Guid() current, delegate void(Guid id) assign)
 	{
 		mContext = context;
@@ -107,7 +115,13 @@ class ResourceRefEditor : PropertyEditor
 		if ((mContext == null) || (mCurrent == null))
 			return;
 		let id = mCurrent();
-		SetValueText(mContext.AssetNameFor(id, .. scope .()));
+		mBoundHasValue = !id.IsNil;
+		if (id.IsNil)
+			SetValueText(EmptyText);
+		else
+			SetValueText(mContext.AssetNameFor(id, .. scope .()));
+		if (mSlot != null)
+			mSlot.SetValue(mValueText, HasValue);
 		SetPreviewThumbnail((!id.IsNil && (mContext.Thumbnails != null)) ? mContext.Thumbnails.Get(id) : null);
 	}
 
@@ -170,6 +184,7 @@ class ResourceRefEditor : PropertyEditor
 		Refresh();
 	}
 
-	/// A "(missing)" reference still has a value: it can be cleared.
-	private bool HasValue => mValueText != "(none)";
+	/// A bound row has a value when its id is set (a "(missing)" one can still be cleared); an
+	/// unbound row reads its text.
+	private bool HasValue => (mCurrent != null) ? mBoundHasValue : (mValueText != "(none)");
 }

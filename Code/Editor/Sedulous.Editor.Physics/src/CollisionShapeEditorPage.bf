@@ -32,7 +32,8 @@ class CollisionShapeEditorPage : UIEditorPage
 	/// Borrowed: the content owns them.
 	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
 	private PageToolbar mToolbar = null;
-	private Label mMeshLabel = null;
+	/// OWNED; its view sits in the source mesh row.
+	private ResourceRefEditor mMeshRow ~ delete _;
 	private Button mCookButton = null;
 	private FloatEditor mToleranceRow = null;
 	private Label mStatus = null;
@@ -63,14 +64,19 @@ class CollisionShapeEditorPage : UIEditorPage
 
 		{
 			let row = AddLabeledRow(column, "Source mesh");
-			mMeshLabel = new Label("");
+			mMeshRow = new ResourceRefEditor("Source mesh", "(none)", "", scope StringView[]("StaticMeshAsset", "SkinnedMeshAsset"));
+			mMeshRow.BindAsset(mContext, new [=this]() => (mAsset != null) ? mAsset.SourceMesh : Guid(), new [=this](picked) =>
+				{
+					if (mAsset == null)
+						return;
+					mAsset.SourceMesh = picked;
+					MarkDirty();
+					RefreshStatus();
+				});
 			var grow = LayoutStyle();
 			grow.FlexGrow = 1.0f;
 			grow.AlignSelf = .Center;
-			row.AddView(mMeshLabel, grow);
-			let pick = new Button("Pick...");
-			pick.OnClick.Add(new [=this](btn) => { PickMesh(); });
-			row.AddView(pick);
+			row.AddView(mMeshRow.EditorView, grow);
 		}
 		{
 			let row = AddLabeledRow(column, "Cook");
@@ -186,20 +192,6 @@ class CollisionShapeEditorPage : UIEditorPage
 		return row;
 	}
 
-	private void PickMesh()
-	{
-		if ((mAsset == null) || (mContent.Context == null) || (mContext.Project == null))
-			return;
-		let dialog = new AssetPickerDialog(mContext, scope StringView[]("StaticMeshAsset", "SkinnedMeshAsset"));
-		dialog.OnPicked = new [=this](picked) =>
-			{
-				mAsset.SourceMesh = picked;
-				MarkDirty();
-				RefreshStatus();
-			};
-		dialog.Show(mContent.Context);
-	}
-
 	/// Reloads the asset from the source database.
 	public override void DiscardChanges()
 	{
@@ -237,7 +229,7 @@ class CollisionShapeEditorPage : UIEditorPage
 		if (mAsset == null)
 			return;
 		let name = MeshName(mAsset.SourceMesh, .. scope .());
-		mMeshLabel.SetText(name);
+		mMeshRow.Refresh();
 		if (mAsset.SourceMesh.IsNil)
 			mStatus.SetText("No source mesh - pick one, then Cook now.");
 		else

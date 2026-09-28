@@ -28,11 +28,12 @@ extension TerrainEditorPage
 		if ((mFields == null) || (mAsset == null))
 			return;
 		mFields.RemoveAllViews();
+		ClearAndDeleteItems(mReferenceRows);
 
 		AddLabel("References", 13.0f);
-		AddReferenceButton(scope $"Heightfield: {AssetName(mAsset.HeightfieldId, .. scope .())}", "HeightfieldAsset", "heightfield",
+		AddReference("Heightfield", "HeightfieldAsset", "heightfield", new [=this]() => mAsset.HeightfieldId,
 			new [=this](g) => { mAsset.HeightfieldId = g; });
-		AddReferenceButton(scope $"Weights: {AssetName(mAsset.WeightsId, .. scope .())}", "SplatmapAsset", "weights",
+		AddReference("Weights", "SplatmapAsset", "weights", new [=this]() => mAsset.WeightsId,
 			new [=this](g) => { mAsset.WeightsId = g; });
 		if (mAsset.WeightsId.IsNil)
 		{
@@ -43,20 +44,21 @@ extension TerrainEditorPage
 		}
 
 		AddLabel("Base layer", 13.0f);
-		AddReferenceButton(scope $"Base albedo: {AssetName(mAsset.BaseAlbedoId, .. scope .())}", "TextureAsset", "baseAlbedo",
+		AddReference("Base albedo", "TextureAsset", "baseAlbedo", new [=this]() => mAsset.BaseAlbedoId,
 			new [=this](g) => { mAsset.BaseAlbedoId = g; });
-		AddReferenceButton(scope $"Base normal: {AssetName(mAsset.BaseNormalId, .. scope .())}", "TextureAsset", "baseNormal",
+		AddReference("Base normal", "TextureAsset", "baseNormal", new [=this]() => mAsset.BaseNormalId,
 			new [=this](g) => { mAsset.BaseNormalId = g; });
-		AddReferenceButton(scope $"Base ORM: {AssetName(mAsset.BaseOrmId, .. scope .())}", "TextureAsset", "baseOrm",
+		AddReference("Base ORM", "TextureAsset", "baseOrm", new [=this]() => mAsset.BaseOrmId,
 			new [=this](g) => { mAsset.BaseOrmId = g; });
-		AddReferenceButton(scope $"Base height: {AssetName(mAsset.BaseHeightId, .. scope .())}", "TextureAsset", "baseHeight",
+		AddReference("Base height", "TextureAsset", "baseHeight", new [=this]() => mAsset.BaseHeightId,
 			new [=this](g) => { mAsset.BaseHeightId = g; });
 
 		AddLabel(scope $"Paint layers ({mAsset.PaletteAlbedoIds.Count})", 13.0f);
 		for (int i < mAsset.PaletteAlbedoIds.Count)
 		{
 			let idx = i;
-			AddReferenceButton(scope $"Layer {i} albedo: {AssetName(mAsset.PaletteAlbedoIds[i], .. scope .())}", "TextureAsset", "palette",
+			AddReference(scope $"Layer {i} albedo", "TextureAsset", "palette",
+				new [=this, =idx]() => (idx < mAsset.PaletteAlbedoIds.Count) ? mAsset.PaletteAlbedoIds[idx] : Guid(),
 				new [=this, =idx](g) =>
 				{
 					if (idx < mAsset.PaletteAlbedoIds.Count)
@@ -138,43 +140,46 @@ extension TerrainEditorPage
 		mFields.AddView(button, style);
 	}
 
-	/// A button opening the picker for `assetTypeName`; CONSUMES `apply`, which lands the
-	/// pick on the asset before the edit commits under `mergeKey`.
-	private void AddReferenceButton(StringView text, StringView assetTypeName, StringView mergeKey, delegate void(Guid id) apply)
+	/// A labelled asset slot for `assetTypeName`: picks, takes a dropped asset of the type,
+	/// clears; the chosen id lands through `apply`, commits under `mergeKey`, re-points the
+	/// preview and rebuilds the pane. CONSUMES `current` and `apply`.
+	private void AddReference(StringView label, StringView assetTypeName, StringView mergeKey,
+		delegate Guid() current, delegate void(Guid id) apply)
 	{
-		let typeName = new String(assetTypeName);
 		let key = new String(mergeKey);
-		AddButton(text, new [=this, =typeName, =key, =apply]() =>
+		let row = new ResourceRefEditor(label, "(none)", "", scope StringView[](assetTypeName));
+		row.BindAsset(mContext, current, new [=this, =apply, =key](picked) =>
 			{
-				PickReference(typeName, key, apply);
-			} ~ { delete typeName; delete key; delete apply; });
+				apply(picked);
+				CommitEdit(key);
+				PointComponentAtTerrain(mTerrainProxy.Get);
+				RebuildFieldsDeferred();
+			} ~ { delete apply; delete key; });
+		mReferenceRows.Add(row);
+
+		let line = new FlexLayout();
+		line.Direction = .Horizontal;
+		line.Spacing = 6.0f;
+		let text = new Label(label);
+		text.FontSize.Value = 12.0f;
+		var fixedWidth = LayoutStyle();
+		fixedWidth.Width = SizeSpec.Fixed(Unit.Dp(110));
+		fixedWidth.AlignSelf = .Center;
+		line.AddView(text, fixedWidth);
+		var grow = LayoutStyle();
+		grow.FlexGrow = 1.0f;
+		line.AddView(row.EditorView, grow);
+		var style = LayoutStyle();
+		style.Width = SizeSpec.Match();
+		mFields.AddView(line, style);
 	}
 
 	private void AddMapButton(int index, StringView mapLabel, PaletteMap map, StringView mergeKey)
 	{
 		let idx = index;
 		let kind = map;
-		let id = TerrainAssetEdit.MapId(mAsset, map, index);
-		AddReferenceButton(scope $"Layer {index} {mapLabel}: {AssetName(id, .. scope .())}", "TextureAsset", mergeKey,
+		AddReference(scope $"Layer {index} {mapLabel}", "TextureAsset", mergeKey,
+			new [=this, =idx, =kind]() => TerrainAssetEdit.MapId(mAsset, kind, idx),
 			new [=this, =idx, =kind](g) => { SetPaletteMap(kind, idx, g); });
-	}
-
-	/// Opens the asset picker; a pick applies, commits, re-points the preview and rebuilds
-	/// the pane. `apply` is BORROWED from the button that owns it.
-	private void PickReference(StringView assetTypeName, StringView mergeKey, delegate void(Guid id) apply)
-	{
-		let ctx = (mContent != null) ? mContent.Context : null;
-		if (ctx == null)
-			return;
-		let key = new String(mergeKey);
-		let dialog = new AssetPickerDialog(mContext, scope StringView[](assetTypeName));
-		dialog.OnPicked = new [=this, =apply, =key](picked) =>
-			{
-				apply(picked);
-				CommitEdit(key);
-				PointComponentAtTerrain(mTerrainProxy.Get);
-				RebuildFieldsDeferred();
-			} ~ delete key;
-		dialog.Show(ctx);
 	}
 }

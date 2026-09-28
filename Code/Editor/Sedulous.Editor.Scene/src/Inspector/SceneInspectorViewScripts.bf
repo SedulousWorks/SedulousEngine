@@ -88,14 +88,14 @@ extension SceneInspectorView
 			return;
 		let behavior = component.Behaviors[index];
 
-		let assetName = behavior.Script.Id.IsNil ? "(none)" : AssetNameFor(behavior.Script.Id, .. scope .());
-		let picker = new ResourceRefEditor("Script", assetName, category, .());
-		picker.OnPick = new [=this, =id, =index]() =>
-		{
-			if ((Context == null) || (mEditor.Project == null))
-				return;
-			let dialog = new AssetPickerDialog(mEditor, scope StringView[]("ScriptClassAsset"));
-			dialog.OnPicked = new [=this, =id, =index](picked) =>
+		let assetName = AssetNameFor(behavior.Script.Id, .. scope .());
+		let picker = new ResourceRefEditor("Script", assetName, category, scope StringView[]("ScriptClassAsset"));
+		picker.BindAsset(mEditor, new [=this, =id, =index]() =>
+			{
+				let c = LiveScript(id);
+				return ((c != null) && (index < c.Behaviors.Count)) ? c.Behaviors[index].Script.Id : Guid();
+			},
+			new [=this, =id, =index](picked) =>
 			{
 				MutateScriptComponent(id, scope [=index, =picked](c) =>
 				{
@@ -104,17 +104,8 @@ extension SceneInspectorView
 					c.Behaviors[index].Script = Ref<ScriptClass>(picked);
 					ClearAndDeleteItems(c.Behaviors[index].Overrides); // the metadata changed
 				});
-			};
-			dialog.Show(Context);
-		};
-		AddEditor(picker, new [=this, =id, =index, =picker]() =>
-		{
-			let c = LiveScript(id);
-			if ((c == null) || (index >= c.Behaviors.Count))
-				return;
-			let target = c.Behaviors[index].Script.Id;
-			picker.SetValueText(target.IsNil ? "(none)" : AssetNameFor(target, .. scope .()));
-		});
+			});
+		AddEditor(picker, new [=picker]() => { picker.Refresh(); });
 
 		let enabled = new BoolEditor("Enabled", behavior.Enabled, new [=this, =id, =index](value) =>
 		{
@@ -303,25 +294,15 @@ extension SceneInspectorView
 	private void BuildScriptAssetPropertyRow(StringView category, ScriptPropertyDesc property,
 		ScriptPropertyAccess access)
 	{
-		let assetType = new String(property.AssetType);
-		Keep(assetType);
-		let editor = new ResourceRefEditor(property.Name, AssetNameFor(access.Effective().Id, .. scope .()), category, .());
+		let typeName = scope String(property.AssetType);
+		typeName.Append("Asset");
+		let editor = new ResourceRefEditor(property.Name, AssetNameFor(access.Effective().Id, .. scope .()), category,
+			scope StringView[](typeName));
 		if (!property.Description.IsEmpty)
 			editor.SetTooltip(property.Description);
-		editor.OnPick = new [=this, =access, =assetType]() =>
-		{
-			if ((Context == null) || (mEditor.Project == null))
-				return;
-			let typeName = scope String(assetType);
-			typeName.Append("Asset");
-			let dialog = new AssetPickerDialog(mEditor, scope StringView[](typeName));
-			dialog.OnPicked = new [=access](picked) => { access.SetOverride(ScriptPropertyValue.Asset(picked)); };
-			dialog.Show(Context);
-		};
-		AddEditor(editor, new [=this, =access, =editor]() =>
-		{
-			editor.SetValueText(AssetNameFor(access.Effective().Id, .. scope .()));
-		});
+		editor.BindAsset(mEditor, new [=access]() => access.Effective().Id,
+			new [=access](picked) => { access.SetOverride(ScriptPropertyValue.Asset(picked)); });
+		AddEditor(editor, new [=editor]() => { editor.Refresh(); });
 	}
 
 	/// The level script's properties as override rows on the settings block.

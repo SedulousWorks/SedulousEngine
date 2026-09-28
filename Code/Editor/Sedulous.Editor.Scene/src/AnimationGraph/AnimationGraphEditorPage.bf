@@ -54,8 +54,9 @@ class AnimationGraphEditorPage : UIEditorPage
 	private InPlaceRows.Commit mCommit = new => CommitEdit ~ delete _;
 
 	private PreviewViewport mPreview = null;
-	private Button mSkeletonButton = null;
-	private Button mMeshButton = null;
+	/// Borrowed: the transport bar owns them.
+	private CompactAssetSlot mSkeletonSlot = null;
+	private CompactAssetSlot mMeshSlot = null;
 	private Button mSkeletonToggle = null;
 	private Button mMeshToggle = null;
 	private Button mPlayButton = null;

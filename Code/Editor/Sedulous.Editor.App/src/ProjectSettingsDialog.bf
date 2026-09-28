@@ -18,12 +18,12 @@ namespace Sedulous.Editor.App;
 class ProjectSettingsDialog : Dialog
 {
 	/// One guid-backed asset reference row: the label showing the path, Pick and Clear.
+	/// One asset setting: the id the dialog applies on Save, and the slot row showing it.
 	private class AssetRow
 	{
 		public Guid Id = .Empty;
-		public Label Label = null;
-		public String TypeName = new .() ~ delete _;
-		public String EmptyText = new .() ~ delete _;
+		/// OWNED; its view sits in the dialog's row.
+		public ResourceRefEditor Editor ~ delete _;
 	}
 
 	/// Borrowed.
@@ -61,24 +61,8 @@ class ProjectSettingsDialog : Dialog
 		// since the module is built outside the editor and there is nothing to pick from.
 		mNativeModuleEdit = AddTextRow(column, "Native module", (settings != null) ? settings.NativeModule : "");
 
-		// The default scene: a read-only path plus Pick; the picker owns clearing too.
-		{
-			let row = AddRow(column, "Default scene");
-			mScene.TypeName.Set("SceneDocument");
-			mScene.EmptyText.Set("(none)");
-			mScene.Label = AddAssetLabel(row, mScene);
-			let pick = new Button("Pick...");
-			pick.OnClick.Add(new (b) => { PickAsset(mScene); });
-			row.AddView(pick);
-			if (settings != null)
-			{
-				mScene.Id = settings.DefaultSceneId;
-				// The live instance's path over the stored mirror, which can lie.
-				if (!ShowPath(mScene) && !settings.DefaultScene.IsEmpty)
-					mScene.Label.SetText(settings.DefaultScene);
-			}
-		}
-
+		AddPickRow(column, "Default scene", mScene, "SceneDocument", "(none)",
+			(settings != null) ? settings.DefaultSceneId : .Empty);
 		AddPickRow(column, "Startup script", mScript, "ScriptClassAsset", "(none)",
 			(settings != null) ? settings.StartupScriptId : .Empty);
 		AddPickRow(column, "Default input map", mInputMap, "InputMapAsset", "(none)",
@@ -156,65 +140,24 @@ class ProjectSettingsDialog : Dialog
 		return edit;
 	}
 
-	private Label AddAssetLabel(FlexLayout row, AssetRow asset)
-	{
-		let label = new Label(asset.EmptyText);
-		var grow = LayoutStyle();
-		grow.FlexGrow = 1.0f;
-		grow.AlignSelf = .Center;
-		row.AddView(label, grow);
-		return label;
-	}
-
-	/// A guid-picked reference row: the path label, Pick and Clear, seeded from the manifest.
+	/// An asset setting's row: a slot that picks, takes a dropped asset of its type and clears,
+	/// seeded from the manifest. Edit and reveal are left off: this is a modal dialog.
 	private void AddPickRow(FlexLayout column, StringView label, AssetRow asset, StringView typeName,
 		StringView emptyText, Guid current)
 	{
 		let row = AddRow(column, label);
-		asset.TypeName.Set(typeName);
-		asset.EmptyText.Set(emptyText);
-		asset.Label = AddAssetLabel(row, asset);
-		let pick = new Button("Pick...");
-		pick.OnClick.Add(new [=asset, =this](b) => { PickAsset(asset); });
-		row.AddView(pick);
-		let clear = new Button("Clear");
-		clear.OnClick.Add(new [=asset](b) =>
-			{
-				asset.Id = .Empty;
-				asset.Label.SetText(asset.EmptyText);
-			});
-		row.AddView(clear);
 		asset.Id = current;
-		ShowPath(asset);
-	}
-
-	/// Shows the live instance's path for the row's id; false, with the empty text shown,
-	/// when it resolves to nothing.
-	private bool ShowPath(AssetRow asset)
-	{
-		let project = mContext.Project;
-		let instance = (asset.Id.IsSet && (project != null)) ? project.SourceDb.GetInstance(asset.Id) : null;
-		if (instance != null)
-		{
-			asset.Label.SetText(instance.GetPath(.. scope .()));
-			return true;
-		}
-		asset.Label.SetText(asset.EmptyText);
-		return false;
-	}
-
-	/// The picker stacks above this dialog on the popup layer.
-	private void PickAsset(AssetRow asset)
-	{
-		if (Context == null)
-			return;
-		let picker = new AssetPickerDialog(mContext, scope StringView[](asset.TypeName));
-		picker.OnPicked = new [=asset, =this](id) =>
-			{
-				asset.Id = id;
-				ShowPath(asset);
-			};
-		picker.Show(Context);
+		asset.Editor = new ResourceRefEditor(label, emptyText, "", scope StringView[](typeName));
+		asset.Editor.EmptyText.Set(emptyText);
+		asset.Editor.BindAsset(mContext, new [=asset]() => asset.Id, new [=asset](id) => { asset.Id = id; });
+		delete asset.Editor.OnEdit;
+		asset.Editor.OnEdit = null;
+		delete asset.Editor.OnReveal;
+		asset.Editor.OnReveal = null;
+		var grow = LayoutStyle();
+		grow.FlexGrow = 1.0f;
+		grow.AlignSelf = .Center;
+		row.AddView(asset.Editor.EditorView, grow);
 	}
 
 	private void Apply()

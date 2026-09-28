@@ -90,24 +90,12 @@ extension AnimationClipEditorPage
 		}
 	}
 
-	private void PickLabel(StringView prefix, Guid id, String outLabel)
-	{
-		outLabel.Set(prefix);
-		if ((mContext.Project != null) && !id.IsNil)
-		{
-			let inst = mContext.Project.SourceDb.GetInstance(id);
-			outLabel.Append((inst != null) ? inst.Name : "(missing)");
-		}
-		else
-			outLabel.Append("(none)");
-	}
-
 	private void RefreshPickLabels()
 	{
-		if (mSkeletonButton != null)
-			mSkeletonButton.SetText(PickLabel("Skeleton: ", mSkeletonGuid, .. scope .()));
-		if (mMeshButton != null)
-			mMeshButton.SetText(PickLabel("Mesh: ", mPreviewMeshId, .. scope .()));
+		if (mSkeletonSlot != null)
+			mSkeletonSlot.Editor.Refresh();
+		if (mMeshSlot != null)
+			mMeshSlot.Editor.Refresh();
 	}
 
 	private void LoadPreviewPref()
@@ -123,38 +111,6 @@ extension AnimationClipEditorPage
 	{
 		if (ClipPreviewPrefs.Save(mContext.ProjectEditorSettings, InstanceId, mSkeletonGuid, mPreviewMeshId))
 			mContext.RequestProjectEditorSettingsSave();
-	}
-
-	private void PickPreviewSkeleton()
-	{
-		let ctx = Ctx;
-		if ((ctx == null) || (mContext.Project == null))
-			return;
-		let dialog = new AssetPickerDialog(mContext, scope StringView[]("SkeletonAsset"));
-		dialog.OnPicked = new [=this](picked) =>
-			{
-				mSkeletonGuid = picked;
-				BindSkeleton();
-				RefreshPickLabels();
-				SavePreviewPref();
-			};
-		dialog.Show(ctx);
-	}
-
-	private void PickPreviewMesh()
-	{
-		let ctx = Ctx;
-		if ((ctx == null) || (mContext.Project == null))
-			return;
-		let dialog = new AssetPickerDialog(mContext, scope StringView[]("SkinnedMeshAsset"));
-		dialog.OnPicked = new [=this](picked) =>
-			{
-				mPreviewMeshId = picked;
-				ApplyPreviewMesh();
-				RefreshPickLabels();
-				SavePreviewPref();
-			};
-		dialog.Show(ctx);
 	}
 
 	/// Advances the playhead, samples the clip on the skeleton, skins the mesh when there

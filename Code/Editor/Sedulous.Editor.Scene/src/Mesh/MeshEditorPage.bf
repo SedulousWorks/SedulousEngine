@@ -38,6 +38,8 @@ class MeshEditorPage : UIEditorPage
 	/// The picked override, retained; null is the default.
 	private Proxy<Material> mPreviewMaterial = default;
 	/// Its source guid, for the label.
+	/// OWNED; its view sits in the stats column's material row.
+	private ResourceRefEditor mPreviewMaterialRow ~ delete _;
 	private Guid mPreviewMaterialId = .();
 	/// The LOD row's choice, -1 auto, pushed to ForceLod.
 	private int32 mPreviewForceLod = -1;
@@ -235,28 +237,20 @@ class MeshEditorPage : UIEditorPage
 		}
 	}
 
-	private void PickPreviewMaterial()
+	/// The preview's material, nil for the default; persisted as a preview preference.
+	private void SetPreviewMaterial(Guid picked)
 	{
-		let ctx = (mContent != null) ? mContent.Context : null;
-		if ((ctx == null) || (mContext.Project == null))
-			return;
-		let dialog = new AssetPickerDialog(mContext, scope StringView[]("MaterialAsset"));
-		dialog.OnPicked = new [=this](picked) =>
-			{
-				mPreviewMaterialId = picked;
-				mPreviewMaterial.Forget();
-				if ((mContext.Resources != null) && !picked.IsNil)
-				{
-					mPreviewMaterial = mContext.Resources.Bind<Material>(picked);
-					mPreviewMaterial.Retain();
-				}
-				else
-					mPreviewMaterial = default;
-				ApplyPreviewMaterial();
-				RefreshStats();
-				SavePreviewPref();
-			};
-		dialog.Show(ctx);
+		mPreviewMaterialId = picked;
+		mPreviewMaterial.Forget();
+		if ((mContext.Resources != null) && !picked.IsNil)
+		{
+			mPreviewMaterial = mContext.Resources.Bind<Material>(picked);
+			mPreviewMaterial.Retain();
+		}
+		else
+			mPreviewMaterial = default;
+		ApplyPreviewMaterial();
+		SavePreviewPref();
 	}
 
 	private void RefreshStats()
@@ -270,37 +264,26 @@ class MeshEditorPage : UIEditorPage
 			row.Direction = .Horizontal;
 			row.Spacing = 4.0f;
 
-			let matLabel = scope String("Material: ");
-			if (!mPreviewMaterialId.IsNil && (mContext.Project != null))
-			{
-				if (let inst = mContext.Project.SourceDb.GetInstance(mPreviewMaterialId))
-					matLabel.Append(inst.Name);
-				else
-					matLabel.Append("(missing)");
-			}
-			else
-				matLabel.Append("Default");
-			let materialButton = new Button(matLabel);
-			materialButton.FontSize.Value = 12.0f;
-			materialButton.OnClick.Add(new [=this](btn) => { PickPreviewMaterial(); });
+			let label = new Label("Material");
+			label.FontSize.Value = 12.0f;
+			var labelStyle = LayoutStyle();
+			labelStyle.Width = SizeSpec.Fixed(Unit.Dp(64.0f));
+			labelStyle.AlignSelf = .Center;
+			row.AddView(label, labelStyle);
+			// Rebuilt with the stats column; the previous row goes here, never inside its own
+			// write (the write defers the rebuild).
+			delete mPreviewMaterialRow;
+			mPreviewMaterialRow = new ResourceRefEditor("Material", "Default", "", scope StringView[]("MaterialAsset"));
+			mPreviewMaterialRow.EmptyText.Set("Default");
+			mPreviewMaterialRow.BindAsset(mContext, new [=this]() => mPreviewMaterialId, new [=this](picked) =>
+				{
+					SetPreviewMaterial(picked);
+					if (let ctx = (mContent != null) ? mContent.Context : null)
+						ctx.MutationQueue.QueueAction(new [=this]() => { RefreshStats(); });
+				});
 			var grow = LayoutStyle();
 			grow.FlexGrow = 1.0f;
-			row.AddView(materialButton, grow);
-
-			let reset = new Button("Default");
-			reset.FontSize.Value = 12.0f;
-			reset.OnClick.Add(new [=this](btn) =>
-				{
-					mPreviewMaterialId = .();
-					mPreviewMaterial.Forget();
-					mPreviewMaterial = default;
-					ApplyPreviewMaterial();
-					RefreshStats();
-					SavePreviewPref();
-				});
-			var fixedWidth = LayoutStyle();
-			fixedWidth.Width = SizeSpec.Fixed(Unit.Dp(64.0f));
-			row.AddView(reset, fixedWidth);
+			row.AddView(mPreviewMaterialRow.EditorView, grow);
 
 			AddRow(row);
 		}

@@ -44,6 +44,8 @@ class TerrainEditorPage : UIEditorPage
 
 	/// Borrowed: the content owns them.
 	private FlexLayout mFields = null;
+	/// OWNED: the reference slot rows of the fields pane, rebuilt with it.
+	private List<ResourceRefEditor> mReferenceRows = new .() ~ DeleteContainerAndItems!(_);
 	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
 	private List<uint8> mUndoBaseline = new .() ~ delete _;
 

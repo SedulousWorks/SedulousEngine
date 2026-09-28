@@ -2,6 +2,9 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Scene;
+using Sedulous.Resource;
+using Sedulous.Materials;
+using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
@@ -95,6 +98,70 @@ class InspectorViewTests
 		Test.Assert(list.SlotNames[0] == "Body"); // named, never a placeholder
 		Test.Assert(list.SlotNames[1] == "None"); // a nil ref
 		Test.Assert(list.SlotNames[2] == "(missing)"); // a guid no entity answers to
+	}
+
+	/// A generated asset row and asset list take a dropped asset of their type: the row assigns
+	/// it, the list's slot assigns it, the list itself appends it, each as ONE undo step; a
+	/// wrong type changes nothing.
+	[Test]
+	public static void GeneratedAssetRowsTakeDropsAsOneUndoStep()
+	{
+		SceneInspectors.RegisterBuiltin();
+		let scene = scope Scene();
+		let meshes = scene.AddSystem<MeshComponentManager>();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let editor = scope EditorContext();
+		let inspector = new SceneInspectorView(editor, edit);
+		defer inspector.ReleaseRef();
+
+		let a = edit.CreateEntity("Crate");
+		meshes.Add(edit.Resolve(a)).Materials.Add(Ref<Material>(Guid()));
+		edit.EntitySelection.Set(a);
+		inspector.Refresh();
+
+		let meshId = Guid(0x3333, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3);
+		let materialId = Guid(0x4444, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4);
+
+		// The mesh row: a drop of its own type is the assignment.
+		let row = Find(inspector, "Mesh") as ResourceRefEditor;
+		Test.Assert((row != null) && !row.AcceptedTypes.IsEmpty);
+		let slot = row.EditorView as AssetPickerSlot;
+		let mesh = new AssetDragData(meshId, row.AcceptedTypes[0], "crate");
+		defer mesh.ReleaseRef();
+		var before = commands.Count;
+		Test.Assert(slot.OnDrop(mesh, 0, 0) == .Link);
+		Test.Assert(meshes.Get(edit.Resolve(a)).Mesh.Id == meshId);
+		Test.Assert(commands.Count == before + 1);
+
+		// The materials list: the wrong type is refused on the slot.
+		inspector.Refresh();
+		var list = Find(inspector, "Materials") as ContainerListEditor;
+		Test.Assert((list != null) && !list.AcceptedTypes.IsEmpty);
+		let listView = list.EditorView as ViewGroup;
+		let firstSlot = (listView.GetChildAt(1) as ViewGroup).GetChildAt(0) as AssetPickerSlot;
+		before = commands.Count;
+		Test.Assert(firstSlot.OnDrop(mesh, 0, 0) == .None);
+		Test.Assert(commands.Count == before);
+
+		// A material on the slot assigns it.
+		let material = new AssetDragData(materialId, list.AcceptedTypes[0], "red");
+		defer material.ReleaseRef();
+		Test.Assert(firstSlot.OnDrop(material, 0, 0) == .Link);
+		Test.Assert(meshes.Get(edit.Resolve(a)).Materials[0].Id == materialId);
+		Test.Assert(commands.Count == before + 1);
+
+		// A material on the list appends it.
+		inspector.Refresh();
+		list = Find(inspector, "Materials") as ContainerListEditor;
+		Test.Assert(list.EditorView.AsDropTarget().OnDrop(material, 0, 0) == .Link);
+		Test.Assert(meshes.Get(edit.Resolve(a)).Materials.Count == 2);
+		Test.Assert(commands.Count == before + 2);
+
+		// Undo takes back the append alone.
+		commands.Undo();
+		Test.Assert(meshes.Get(edit.Resolve(a)).Materials.Count == 1);
+		Test.Assert(meshes.Get(edit.Resolve(a)).Materials[0].Id == materialId);
 	}
 
 	/// An entity ref row's refresher runs on every later Refresh, long after the section that

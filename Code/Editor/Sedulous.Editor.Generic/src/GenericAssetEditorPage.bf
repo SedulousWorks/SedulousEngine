@@ -121,8 +121,20 @@ class GenericAssetEditorPage : UIEditorPage
 			}
 			if (field.Kind == .Guid)
 			{
-				// The canonical string row, parse-validated, plus an untyped Pick button.
-				mGrid.AddProperty(new StringEditor(field.Label, field.GuidValue.ToString(.. scope .(), 'D'), new [=index, =this](v) =>
+				// The asset slot (untyped: the form does not know what the guid names, so any
+				// asset picks and drops), plus the canonical string row for a guid that names no
+				// asset, parse-validated.
+				let slot = new ResourceRefEditor(field.Label, "(none)", cat, scope StringView[](AssetPickerSlot.cAnyAsset));
+				slot.BindAsset(mContext, new [=index, =this]() => (index < mFields.Count) ? mFields[index].GuidValue : Guid(),
+					new [=index, =this](picked) =>
+					{
+						let patch = scope AssetFormField();
+						mFields[index].CopyTo(patch);
+						patch.GuidValue = picked;
+						ApplyFieldEdit(index, patch);
+					});
+				mGrid.AddProperty(slot);
+				mGrid.AddProperty(new StringEditor(scope $"{field.Label} id", field.GuidValue.ToString(.. scope .(), 'D'), new [=index, =this](v) =>
 					{
 						if (!(Guid.Parse(v) case .Ok(let parsed)))
 							return; // invalid: the old value stays
@@ -130,21 +142,6 @@ class GenericAssetEditorPage : UIEditorPage
 						mFields[index].CopyTo(patch);
 						patch.GuidValue = parsed;
 						ApplyFieldEdit(index, patch);
-					}, cat));
-				mGrid.AddProperty(new ButtonEditor(scope $"Pick {field.Label}", new [=index, =this]() =>
-					{
-						let ctx = Ctx;
-						if ((ctx == null) || (mContext.Project == null))
-							return;
-						let dialog = new AssetPickerDialog(mContext, .()); // an empty filter is every type
-						dialog.OnPicked = new [=index, =this](picked) =>
-							{
-								let patch = scope AssetFormField();
-								mFields[index].CopyTo(patch);
-								patch.GuidValue = picked;
-								ApplyFieldEdit(index, patch);
-							};
-						dialog.Show(ctx);
 					}, cat));
 				continue;
 			}

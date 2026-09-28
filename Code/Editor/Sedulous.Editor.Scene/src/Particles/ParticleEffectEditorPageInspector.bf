@@ -108,47 +108,53 @@ extension ParticleEffectEditorPage
 		if (textured)
 		{
 			let cat = "Texture";
-			InPlaceRows.Button(g, sys.TextureRef.IsNil ? "(none)" : "(set - click to change)", cat, new [=this, =sysIndex]() =>
+			let texture = new ResourceRefEditor("Texture", "(none)", cat, scope StringView[]("TextureAsset"));
+			texture.BindAsset(mContext, new [=this, =sysIndex]() =>
 				{
-					PickSystemRef(sysIndex, scope StringView[]("TextureAsset"), new [=this, =sysIndex](picked) =>
-						{
-							if (let s = mAsset.Effect.GetSystem(sysIndex))
-							{
-								s.TextureRef = picked;
-								CommitEdit("texture");
-								RebuildPreviewResources();
-								RebuildInspector();
-							}
-						});
+					let s = mAsset.Effect.GetSystem(sysIndex);
+					return (s != null) ? s.TextureRef : Guid();
+				},
+				new [=this, =sysIndex](picked) =>
+				{
+					if (let s = mAsset.Effect.GetSystem(sysIndex))
+					{
+						s.TextureRef = picked;
+						CommitEdit("texture");
+						RebuildPreviewResources();
+						QueueInspectorRebuild();
+					}
 				});
+			g.AddProperty(texture);
 		}
 
 		if (meshMode)
 		{
 			let cat = "Mesh";
-			InPlaceRows.Button(g, sys.MeshRef.IsNil ? "(none)" : "(set - click to change)", cat, new [=this, =sysIndex]() =>
+			let mesh = new ResourceRefEditor("Mesh", "(none)", cat, scope StringView[]("StaticMeshAsset", "SkinnedMeshAsset"));
+			mesh.BindAsset(mContext, new [=this, =sysIndex]() =>
 				{
-					PickSystemRef(sysIndex, scope StringView[]("StaticMeshAsset", "SkinnedMeshAsset"), new [=this, =sysIndex](picked) =>
-						{
-							if (let s = mAsset.Effect.GetSystem(sysIndex))
-							{
-								s.MeshRef = picked;
-								CommitEdit("mesh");
-								RebuildPreviewResources(); // re-resolve the new mesh
-								RebuildInspector();
-							}
-						});
+					let s = mAsset.Effect.GetSystem(sysIndex);
+					return (s != null) ? s.MeshRef : Guid();
+				},
+				new [=this, =sysIndex](picked) =>
+				{
+					if (let s = mAsset.Effect.GetSystem(sysIndex))
+					{
+						s.MeshRef = picked;
+						CommitEdit("mesh");
+						RebuildPreviewResources(); // re-resolve the new mesh
+						QueueInspectorRebuild();
+					}
 				});
+			g.AddProperty(mesh);
 			InPlaceRows.Float(g, "Mesh Scale", &sys.MeshScale, cat, mCommit, 0.001, 1000.0, 0.01);
 
 			let slots = new ContainerListEditor("Materials", cat);
 			for (int mi < sys.MaterialRefs.Count)
 			{
-				let name = new String("Material ")..AppendF("{}", mi);
+				let name = mContext.AssetNameFor(sys.MaterialRefs[mi], .. new String());
 				if (mi == 0)
 					name.Append(" (whole mesh)");
-				if (sys.MaterialRefs[mi].IsNil)
-					name.Append(" (none)");
 				slots.SlotNames.Add(name);
 			}
 			slots.OnAdd = new [=this, =sysIndex]() =>
@@ -188,17 +194,23 @@ extension ParticleEffectEditorPage
 				};
 			slots.OnPickSlot = new [=this, =sysIndex](slot) =>
 				{
-					PickSystemRef(sysIndex, scope StringView[]("MaterialAsset"), new [=this, =sysIndex, =slot](picked) =>
-						{
-							let s = mAsset.Effect.GetSystem(sysIndex);
-							if ((s != null) && (slot >= 0) && (slot < s.MaterialRefs.Count))
-							{
-								s.MaterialRefs[slot] = picked;
-								CommitEdit("material");
-								RebuildPreviewResources(); // re-resolve the new material
-								RebuildInspector();
-							}
-						});
+					PickSystemRef(sysIndex, scope StringView[]("MaterialAsset"), new [=this, =sysIndex, =slot](picked) => { AssignMaterial(sysIndex, slot, picked); });
+				};
+			slots.SetAcceptedTypes(scope StringView[]("MaterialAsset"));
+			slots.OnAssignSlot = new [=this, =sysIndex](slot, picked) => { AssignMaterial(sysIndex, slot, picked); };
+			slots.OnAppendDropped = new [=this, =sysIndex](picked) =>
+				{
+					if (let s = mAsset.Effect.GetSystem(sysIndex))
+					{
+						s.MaterialRefs.Add(picked);
+						CommitEdit("material-add");
+						RebuildPreviewResources();
+						QueueInspectorRebuild();
+					}
+				};
+			slots.OnRejectedDrop = new [=this](assetName, typeName) =>
+				{
+					mContext.Notify(.Warning, scope $"{assetName} is a {typeName} - this list takes MaterialAsset");
 				};
 			g.AddProperty(slots);
 		}
@@ -237,6 +249,19 @@ extension ParticleEffectEditorPage
 	}
 
 	/// Opens the asset picker for one of a system's refs; `onPicked` is consumed.
+	/// One write for a material slot, whether the material came from the picker or a drop.
+	private void AssignMaterial(int32 sysIndex, int slot, Guid picked)
+	{
+		let s = mAsset.Effect.GetSystem(sysIndex);
+		if ((s != null) && (slot >= 0) && (slot < s.MaterialRefs.Count))
+		{
+			s.MaterialRefs[slot] = picked;
+			CommitEdit("material");
+			RebuildPreviewResources(); // re-resolve the new material
+			QueueInspectorRebuild();
+		}
+	}
+
 	private void PickSystemRef(int32 sysIndex, Span<StringView> typeNames, delegate void(Guid) onPicked)
 	{
 		let ctx = Ctx;

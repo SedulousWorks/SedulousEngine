@@ -40,7 +40,8 @@ class SoundCueEditorPage : UIEditorPage
 	/// Borrowed: the content owns them.
 	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
 	private PageToolbar mToolbar = null;
-	private Label[SoundCueAsset.cSlotCount] mSlotLabels = .();
+	/// OWNED; their views sit in the slot rows.
+	private ResourceRefEditor[SoundCueAsset.cSlotCount] mSlotRows = .() ~ { for (let row in _) delete row; };
 	private NumericField[SoundCueAsset.cSlotCount] mWeightFields = .();
 	private List<NumericField> mJitterFields = new .() ~ delete _;
 	private Button mModeButton = null;
@@ -73,24 +74,20 @@ class SoundCueEditorPage : UIEditorPage
 			let row = new FlexLayout();
 			row.Direction = .Horizontal;
 			row.Spacing = 6.0f;
-			mSlotLabels[i] = new Label("(empty)");
-			mSlotLabels[i].FontSize.Value = 13.0f;
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			grow.AlignSelf = .Center;
-			row.AddView(mSlotLabels[i], grow);
 			let slot = i;
-			let pick = new Button("Pick...");
-			pick.OnClick.Add(new [=this, =slot](btn) => { PickClip(slot); });
-			row.AddView(pick);
-			let clear = new Button("Clear");
-			clear.OnClick.Add(new [=this, =slot](btn) =>
+			let clipRow = new ResourceRefEditor(scope $"Clip {slot + 1}", "(empty)", "", scope StringView[]("AudioClipAsset"));
+			clipRow.EmptyText.Set("(empty)");
+			clipRow.BindAsset(mContext, new [=this, =slot]() => mAsset.Slots[slot].ClipId, new [=this, =slot](id) =>
 				{
-					mAsset.Slots[slot].ClipId = .();
+					mAsset.Slots[slot].ClipId = id;
 					RefreshSlot(slot);
 					CommitEdit("");
 				});
-			row.AddView(clear);
+			mSlotRows[i] = clipRow;
+			var grow = LayoutStyle();
+			grow.FlexGrow = 1.0f;
+			grow.AlignSelf = .Center;
+			row.AddView(clipRow.EditorView, grow);
 			let weightLabel = new Label("weight");
 			weightLabel.FontSize.Value = 12.0f;
 			var center = LayoutStyle();
@@ -266,31 +263,10 @@ class SoundCueEditorPage : UIEditorPage
 		mJitterFields.Add(field);
 	}
 
-	private void PickClip(int slot)
-	{
-		let ctx = (mContent != null) ? mContent.Context : null;
-		if (ctx == null)
-			return;
-		let picker = new AssetPickerDialog(mContext, scope StringView[]("AudioClipAsset"));
-		picker.OnPicked = new [=this, =slot](id) =>
-			{
-				mAsset.Slots[slot].ClipId = id;
-				RefreshSlot(slot);
-				CommitEdit("");
-			};
-		picker.Show(ctx);
-	}
-
 	private void RefreshSlot(int slot)
 	{
-		let id = mAsset.Slots[slot].ClipId;
-		if (id.IsNil || (mContext.Project == null))
-			mSlotLabels[slot].SetText("(empty)");
-		else
-		{
-			let clip = mContext.Project.SourceDb.GetInstance(id);
-			mSlotLabels[slot].SetText((clip != null) ? clip.GetPath(.. scope .()) : "(missing)");
-		}
+		if (mSlotRows[slot] != null)
+			mSlotRows[slot].Refresh();
 		RefreshEmptyHint();
 	}
 

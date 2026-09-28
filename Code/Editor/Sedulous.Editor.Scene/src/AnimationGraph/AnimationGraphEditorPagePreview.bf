@@ -66,12 +66,27 @@ extension AnimationGraphEditorPage
 		transport.Spacing = 6.0f;
 		transport.Padding = .(6, 4);
 
-		mSkeletonButton = new Button("Skeleton: (none)");
-		mSkeletonButton.OnClick.Add(new [=this](btn) => { PickPreviewSkeleton(); });
-		transport.AddView(mSkeletonButton);
-		mMeshButton = new Button("Mesh: (none)");
-		mMeshButton.OnClick.Add(new [=this](btn) => { PickPreviewMesh(); });
-		transport.AddView(mMeshButton);
+		var slotWidth = LayoutStyle();
+		slotWidth.Width = SizeSpec.Fixed(Unit.Dp(220.0f));
+		mSkeletonSlot = new CompactAssetSlot("Skeleton", scope StringView[]("SkeletonAsset"));
+		mSkeletonSlot.Editor.BindAsset(mContext, new [=this]() => mSkeletonGuid, new [=this](picked) =>
+			{
+				mSkeletonGuid = picked;
+				BindSkeleton();
+				RebuildPreviewGraph();
+				SavePreviewPref();
+			});
+		mSkeletonSlot.Build();
+		transport.AddView(mSkeletonSlot, slotWidth);
+		mMeshSlot = new CompactAssetSlot("Mesh", scope StringView[]("SkinnedMeshAsset"));
+		mMeshSlot.Editor.BindAsset(mContext, new [=this]() => mPreviewMeshId, new [=this](picked) =>
+			{
+				mPreviewMeshId = picked;
+				ApplyPreviewMesh();
+				SavePreviewPref();
+			});
+		mMeshSlot.Build();
+		transport.AddView(mMeshSlot, slotWidth);
 		mPlayButton = new Button("Pause");
 		mPlayButton.OnClick.Add(new [=this](btn) =>
 			{
@@ -109,12 +124,10 @@ extension AnimationGraphEditorPage
 
 	private void RefreshPickLabels()
 	{
-		let skeleton = scope String("Skeleton: ");
-		AssetLabel(mSkeletonGuid, skeleton);
-		mSkeletonButton.SetText(skeleton);
-		let mesh = scope String("Mesh: ");
-		AssetLabel(mPreviewMeshId, mesh);
-		mMeshButton.SetText(mesh);
+		if (mSkeletonSlot != null)
+			mSkeletonSlot.Editor.Refresh();
+		if (mMeshSlot != null)
+			mMeshSlot.Editor.Refresh();
 	}
 
 	private void BindSkeleton()
@@ -163,39 +176,6 @@ extension AnimationGraphEditorPage
 	{
 		if (GraphPreviewPrefs.Save(mContext.ProjectEditorSettings, InstanceId, mSkeletonGuid, mPreviewMeshId))
 			mContext.RequestProjectEditorSettingsSave();
-	}
-
-	private void PickPreviewSkeleton()
-	{
-		let ctx = Ctx;
-		if ((ctx == null) || (mContext.Project == null))
-			return;
-		let dialog = new AssetPickerDialog(mContext, scope StringView[]("SkeletonAsset"));
-		dialog.OnPicked = new [=this](picked) =>
-			{
-				mSkeletonGuid = picked;
-				BindSkeleton();
-				RefreshPickLabels();
-				RebuildPreviewGraph();
-				SavePreviewPref();
-			};
-		dialog.Show(ctx);
-	}
-
-	private void PickPreviewMesh()
-	{
-		let ctx = Ctx;
-		if ((ctx == null) || (mContext.Project == null))
-			return;
-		let dialog = new AssetPickerDialog(mContext, scope StringView[]("SkinnedMeshAsset"));
-		dialog.OnPicked = new [=this](picked) =>
-			{
-				mPreviewMeshId = picked;
-				ApplyPreviewMesh();
-				RefreshPickLabels();
-				SavePreviewPref();
-			};
-		dialog.Show(ctx);
 	}
 
 	/// Builds the runtime graph from the stored source and a player for it on the picked
