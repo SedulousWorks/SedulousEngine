@@ -114,7 +114,6 @@ class EditorApplication : IApplication
 	private bool mAutoRebuilt = false;
 	private float mResourceReportTimer = 0.0f;
 	private List<DroppedFile> mDroppedFiles = new .() ~ DeleteContainerAndItems!(_);
-	private List<IResourceFactory> mResourceFactories = new .() ~ DeleteContainerAndItems!(_);
 	private ResourceManager mResources = null ~ delete _;
 
 	// TEARDOWN ORDER: the UIHost owns the UIContext and input manager, so it is declared
@@ -168,16 +167,6 @@ class EditorApplication : IApplication
 	/// Valid after OnStartup; the Game page drives its play bracket through it.
 	public DefaultApplication EmbeddedApplication => mEmbeddedApp;
 
-	/// The exe registers runtime resource factories here; the app owns them and the
-	/// ResourceManager over the project's cooked database. Takes ownership.
-	public void AddResourceFactory(IResourceFactory factory)
-	{
-		if (factory == null)
-			return;
-		if (mResources != null)
-			mResources.AddFactory(factory);
-		mResourceFactories.Add(factory);
-	}
 
 	/// The renderer interface the app drives its per-frame scene bracket through; null means
 	/// no scene rendering. Borrowed.

@@ -5,6 +5,7 @@ using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
+using Sedulous.Engine.Composition;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.Particles;
 using Sedulous.Engine.Render;
@@ -66,7 +67,8 @@ class ParticleFXApp : DefaultApplication
 	private NativeFileSystem mCookedMount = null ~ delete _;
 	private ContentDatabase mCookedDatabase = null ~ delete _;
 	private ResourceManager mCookedResources = null ~ delete _;
-	private ParticleEffectFactory mCookedFactory = null ~ delete _;
+	/// The engine composition's headless factory set, the cooked effect's among them.
+	private ResourceFactorySet mCookedFactories = new .() ~ delete _;
 	private SerializerFactory mCookedSerializers = null ~ delete _;
 	private bool mHaveCooked = false;
 
@@ -421,8 +423,8 @@ class ParticleFXApp : DefaultApplication
 			return;
 
 		mCookedResources = new ResourceManager(mCookedDatabase, null);
-		mCookedFactory = new ParticleEffectFactory();
-		mCookedResources.AddFactory(mCookedFactory);
+		EngineComposition.CreateFactories(mCookedFactories, scope NoResourceServices());
+		mCookedFactories.Register(mCookedResources);
 
 		let bound = mCookedResources.Bind<ParticleEffectResource>(instance.Id);
 		let resource = bound.Get;

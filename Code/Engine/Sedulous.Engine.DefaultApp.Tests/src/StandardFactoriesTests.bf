@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Engine.Composition;
 using Sedulous.Fonts.Resource;
 using Sedulous.Heightfield;
 using Sedulous.Resource;
@@ -8,17 +9,18 @@ using Sedulous.Texture.Resource;
 
 namespace Sedulous.Engine.DefaultApp.Tests;
 
-/// The standard factory set's COVERAGE TRIPWIRE.
+/// The runtime's factory set is the engine composition's: attaching a manager registers every
+/// factory the composition describes and this host's services allow.
 ///
-/// The incident this pins: a factory existed and was tested on its own, but NO host ever
+/// The incident the pins guard: a factory existed and was tested on its own, but NO host ever
 /// registered it, so binding that product failed silently in every runtime. It was masked in
-/// the editor by a development tree fallback and visible only in an export, which has no
-/// source tree. A count plus the specific pins make the next missing registration fail HERE,
-/// and loudly.
+/// the editor by a development tree fallback and visible only in an export, which has no source
+/// tree. The count is the composition's now, so a factory a domain declares can no longer be
+/// left behind; the pins keep the incident's class of failure loud.
 class StandardFactoriesTests
 {
 	[Test]
-	public static void TheStandardFactorySetIsComplete()
+	public static void AttachingAManagerRegistersTheCompositionsHeadlessSetWithThePins()
 	{
 		// No database: nothing here resolves an asset, and the set of factories is what is
 		// being measured.
@@ -28,11 +30,18 @@ class StandardFactoriesTests
 		let app = scope DefaultApplication();
 		app.AttachResourceManager(resources, host);
 
-		// COUNT TRIPWIRE: the standard headless set, which has no texture factory because it
-		// has no device. A new standard factory bumps this DELIBERATELY, and a lost
-		// registration fails loudly here rather than as a silent null bind in a shipped game.
-		const int cStandardHeadlessFactoryCount = 25; // + ScriptClassFactory, + VegetationMaskFactory
-		Test.Assert(resources.FactoryCount == cStandardHeadlessFactoryCount, scope $"{resources.FactoryCount} factories");
+		// The runtime's set IS the composition's headless set: what a host with no device and
+		// no shader system can create. A factory a domain declares is in both by construction.
+		let headless = scope ResourceFactorySet();
+		EngineComposition.CreateFactories(headless, scope NoResourceServices());
+		let descriptions = scope System.Collections.List<ResourceFactoryDesc*>();
+		EngineComposition.FactoryDescriptions(descriptions);
+		Test.Assert(resources.FactoryCount == headless.Count, scope $"{resources.FactoryCount} factories");
+		Test.Assert(resources.FactoryCount == descriptions.Count - 2);
+		for (let factory in headless.Factories)
+			Test.Assert(resources.HasFactory(factory.ProductTypeId));
+		// And the app reports the two it skipped, each by the service it wanted.
+		Test.Assert(app.Factories.Skipped.Length == 2);
 
 		// The incident pin: the cooked default interface font must be constructible in every
 		// runtime host, a shipped player having no development tree to fall back on.

@@ -127,10 +127,9 @@ extension EditorApplication
 			};
 
 		// The per-project resources over the cooked database, late-attached to the embedded
-		// runtime; the global job system serves async resource decode, null meaning sync.
+		// runtime, whose factory set is the editor's; the global job system serves async
+		// resource decode, null meaning sync.
 		mResources = new ResourceManager(mProject.CookedDb, HasGlobalJobSystem() ? GlobalJobs() : null);
-		for (let factory in mResourceFactories)
-			mResources.AddFactory(factory);
 		mContext.Resources = mResources;
 		mEmbeddedApp.AttachResourceManager(mResources, mEmbeddedHost);
 

@@ -7,6 +7,7 @@ using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
+using Sedulous.Engine.Composition;
 using Sedulous.Geometry;
 using Sedulous.Image;
 using Sedulous.Materials;
@@ -37,18 +38,16 @@ class ContentStack
 	private ContentDatabase mDatabase = null ~ delete _;
 	private ResourceManager mResources = null ~ delete _;
 
-	private StaticMeshFactory mMeshFactory = new .() ~ delete _;
-	private SkinnedMeshFactory mSkinnedMeshFactory = new .() ~ delete _;
-	private MaterialFactory mMaterialFactory = new .() ~ delete _;
-	private SkeletonFactory mSkeletonFactory = new .() ~ delete _;
-	private AnimationClipFactory mClipFactory = new .() ~ delete _;
-	private ModelFactory mModelFactory = new .() ~ delete _;
-	private TextureFactory mTextureFactory = null ~ delete _;
+	/// Every factory the engine composition describes that this host allows: the texture
+	/// factory needs the device, so a headless run goes without it and the materials fall back
+	/// to their untextured colours.
+	private ResourceFactorySet mFactories = new .() ~ delete _;
 
 	public bool IsOpen => mDatabase != null;
 	public ContentDatabase Database => mDatabase;
 	public ResourceManager Resources => mResources;
-	public bool HasTextures => mTextureFactory != null;
+	/// Whether textures can load: the manager has the factory, which needs a device.
+	public bool HasTextures => (mResources != null) && mResources.HasFactory(ResourceManager.ProductTypeIdOf<Texture>());
 
 	public bool Open(StringView outputDirectory, IDevice device)
 	{
@@ -66,20 +65,10 @@ class ContentStack
 		mDatabase = new ContentDatabase(mMount, mSerializers, "rasset");
 		mResources = new ResourceManager(mDatabase, null);
 
-		mResources.AddFactory(mMeshFactory);
-		mResources.AddFactory(mSkinnedMeshFactory);
-		mResources.AddFactory(mModelFactory);
-		mResources.AddFactory(mMaterialFactory);
-		mResources.AddFactory(mSkeletonFactory);
-		mResources.AddFactory(mClipFactory);
-
-		// Without a device there are no GPU textures, so the materials simply keep their
-		// untextured colours rather than the sample refusing to run.
-		if (device != null)
-		{
-			mTextureFactory = new TextureFactory(device);
-			mResources.AddFactory(mTextureFactory);
-		}
+		let services = scope ResourceServiceTable();
+		services.Add(typeof(IDevice), device);
+		EngineComposition.CreateFactories(mFactories, services);
+		mFactories.Register(mResources);
 
 		return true;
 	}
@@ -110,7 +99,7 @@ class ContentStack
 	public Texture CookTexture(StringView instanceName, StringView sourceDirectory,
 		StringView fileName)
 	{
-		if ((mDatabase == null) || (mTextureFactory == null))
+		if ((mDatabase == null) || !HasTextures)
 			return null;
 
 		let asset = scope TextureAsset();
