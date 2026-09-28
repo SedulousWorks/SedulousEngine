@@ -19,6 +19,7 @@ namespace Sedulous.Terrain.Resource;
 class TerrainFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<TerrainResource>();
+	public Type CookedType => typeof(TerrainSource);
 
 	/// The bind of each sub resource goes through the manager, which is the main thread's.
 	public bool SupportsAsync => false;

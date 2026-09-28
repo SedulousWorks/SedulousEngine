@@ -8,6 +8,7 @@ namespace Sedulous.Physics.Resource;
 class PhysicalMaterialFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<PhysicalMaterial>();
+	public Type CookedType => typeof(PhysicalMaterialSource);
 
 	public bool SupportsAsync => true;
 

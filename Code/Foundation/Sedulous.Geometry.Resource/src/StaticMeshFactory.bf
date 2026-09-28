@@ -17,6 +17,7 @@ namespace Sedulous.Geometry;
 class StaticMeshFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<StaticMesh>();
+	public Type CookedType => typeof(StaticMeshSource);
 
 	public bool SupportsAsync => true;
 

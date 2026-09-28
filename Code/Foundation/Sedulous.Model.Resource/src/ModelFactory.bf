@@ -17,6 +17,7 @@ namespace Sedulous.Model.Resource;
 class ModelFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<ModelResource>();
+	public Type CookedType => typeof(ModelManifestSource);
 
 	public Object Create(ResourceManager manager, Instance instance)
 	{

@@ -1,0 +1,18 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Integration.Composition"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Integration.Composition.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Engine.DefaultApp" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Registration" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Shell" = "*"

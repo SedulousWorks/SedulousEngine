@@ -11,6 +11,7 @@ namespace Sedulous.Navigation.Resource;
 class NavigationZoneFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<NavigationZoneResource>();
+	public Type CookedType => typeof(NavigationZoneSource);
 
 	public Object Create(ResourceManager manager, Instance instance)
 	{

@@ -13,6 +13,7 @@ class TestProductFactory : IResourceFactory
 	public bool Refuse;
 
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<TestProduct>();
+	public Type CookedType => typeof(TestSource);
 
 	public Object Create(ResourceManager manager, Instance instance)
 	{

@@ -200,6 +200,9 @@ class RefTests
 		Test.Assert(!ReferenceShape.Is(typeof(Guid)));
 		Test.Assert(!ReferenceShape.Is(typeof(TestComponent)));
 		Test.Assert(ReferenceShape.Id(type, &reference) case .Ok(first));
+		// What the guid names: the runtime type, as the manager keys its factories.
+		Test.Assert(ReferenceShape.Target(type) == typeof(TestProduct));
+		Test.Assert(ReferenceShape.Target(typeof(Guid)) == null);
 
 		// With a manager: the identity lands and the binding follows it.
 		Test.Assert(ReferenceShape.Assign(type, &reference, second, fixture.Manager) case .Ok);

@@ -9,6 +9,7 @@ namespace Sedulous.Script.Resource;
 class ScriptClassFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<ScriptClass>();
+	public Type CookedType => typeof(ScriptClassSource);
 
 	public bool SupportsAsync => true;
 

@@ -12,6 +12,7 @@ namespace Sedulous.Vegetation.Resource;
 class VegetationMaskFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<VegetationMask>();
+	public Type CookedType => typeof(VegetationMaskSource);
 
 	public bool SupportsAsync => true;
 

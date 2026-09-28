@@ -9,6 +9,7 @@ namespace Sedulous.UI.Resource;
 class UIThemeFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<UITheme>();
+	public Type CookedType => typeof(UIThemeResource);
 
 	public bool SupportsAsync => true;
 

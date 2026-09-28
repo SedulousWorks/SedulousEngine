@@ -14,6 +14,7 @@ namespace Sedulous.Heightfield.Resource;
 class HeightfieldFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<Heightfield>();
+	public Type CookedType => typeof(HeightfieldSource);
 
 	public bool SupportsAsync => true;
 

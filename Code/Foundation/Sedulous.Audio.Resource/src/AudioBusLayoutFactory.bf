@@ -10,6 +10,7 @@ namespace Sedulous.Audio.Resource;
 class AudioBusLayoutFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<AudioBusLayoutResource>();
+	public Type CookedType => typeof(AudioBusLayoutSource);
 
 	public bool SupportsAsync => true;
 

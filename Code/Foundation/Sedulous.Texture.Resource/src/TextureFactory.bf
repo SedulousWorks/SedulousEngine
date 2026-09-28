@@ -24,6 +24,7 @@ class TextureFactory : IResourceFactory
 	}
 
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<Texture>();
+	public Type CookedType => typeof(TextureResource);
 
 	/// Reading the record and the pixel stream is a pure function of the instance's bytes,
 	/// so it moves to a worker. Creating the texture and uploading does NOT: the RHI is the

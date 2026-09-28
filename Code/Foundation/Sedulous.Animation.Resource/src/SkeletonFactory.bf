@@ -11,6 +11,7 @@ namespace Sedulous.Animation.Resource;
 class SkeletonFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<Skeleton>();
+	public Type CookedType => typeof(SkeletonSource);
 
 	public bool SupportsAsync => true;
 

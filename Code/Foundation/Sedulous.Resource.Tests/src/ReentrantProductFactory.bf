@@ -7,6 +7,7 @@ namespace Sedulous.Resource.Tests;
 class ReentrantProductFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<ReentrantProduct>();
+	public Type CookedType => typeof(TestSource);
 
 	public bool SupportsAsync => false;
 

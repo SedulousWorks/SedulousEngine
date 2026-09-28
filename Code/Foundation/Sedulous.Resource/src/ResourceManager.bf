@@ -377,6 +377,9 @@ class ResourceManager
 
 	public int FactoryCount => mFactories.Count;
 
+	/// Every registered factory, in no particular order: a tripwire, a schema join.
+	public Dictionary<uint64, IResourceFactory>.ValueEnumerator Factories => mFactories.Values;
+
 	/// The identities the cache holds a handle for but no product.
 	///
 	/// What editor tooling cooks from: a bind that failed because nothing has built that

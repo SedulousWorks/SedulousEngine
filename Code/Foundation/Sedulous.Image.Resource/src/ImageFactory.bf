@@ -12,6 +12,7 @@ namespace Sedulous.Image.Resource;
 class ImageFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<ImageResource>();
+	public Type CookedType => typeof(ImageResource);
 
 	public bool SupportsAsync => true;
 

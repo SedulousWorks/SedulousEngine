@@ -12,6 +12,7 @@ namespace Sedulous.Audio.Resource;
 class SoundCueFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<SoundCue>();
+	public Type CookedType => typeof(SoundCueSource);
 
 	public Object Create(ResourceManager manager, Instance instance)
 	{

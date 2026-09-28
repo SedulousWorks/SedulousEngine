@@ -38,6 +38,7 @@ class AsyncProductFactory : IResourceFactory
 	public bool SupportsAsyncStage = true;
 
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<TestProduct>();
+	public Type CookedType => typeof(TestSource);
 
 	public bool SupportsAsync => SupportsAsyncStage;
 

@@ -12,6 +12,7 @@ namespace Sedulous.Input.Resource;
 class InputMapFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<InputMapResource>();
+	public Type CookedType => typeof(InputMapResource);
 
 	public bool SupportsAsync => true;
 

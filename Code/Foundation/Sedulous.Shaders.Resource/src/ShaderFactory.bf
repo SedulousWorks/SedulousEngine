@@ -23,6 +23,7 @@ class ShaderFactory : IResourceFactory
 	}
 
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<ShaderResource>();
+	public Type CookedType => typeof(ShaderSource);
 
 	/// NOT async: registering sources and invalidating mutate the shared shader system, and
 	/// the variants themselves compile lazily on the thread that asks for them anyway, so

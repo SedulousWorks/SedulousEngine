@@ -14,6 +14,7 @@ namespace Sedulous.Audio.Resource;
 class AudioClipFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<AudioClip>();
+	public Type CookedType => typeof(AudioClipSource);
 
 	public bool SupportsAsync => true;
 

@@ -11,6 +11,7 @@ namespace Sedulous.Geometry;
 class SkinnedMeshFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<SkinnedMesh>();
+	public Type CookedType => typeof(SkinnedMeshSource);
 
 	public bool SupportsAsync => true;
 

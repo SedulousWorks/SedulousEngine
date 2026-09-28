@@ -24,6 +24,7 @@ class CompositeFactory : IResourceFactory
 	}
 
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<CompositeProduct>();
+	public Type CookedType => typeof(CompositeProduct);
 
 	public Object Create(ResourceManager manager, Instance instance)
 	{

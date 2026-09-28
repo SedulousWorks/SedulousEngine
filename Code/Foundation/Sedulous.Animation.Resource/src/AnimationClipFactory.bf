@@ -9,6 +9,7 @@ namespace Sedulous.Animation.Resource;
 class AnimationClipFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<AnimationClip>();
+	public Type CookedType => typeof(AnimationClipSource);
 
 	public bool SupportsAsync => true;
 

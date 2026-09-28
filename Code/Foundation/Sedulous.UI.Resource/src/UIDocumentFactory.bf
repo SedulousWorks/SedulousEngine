@@ -9,6 +9,7 @@ namespace Sedulous.UI.Resource;
 class UIDocumentFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<UIDocument>();
+	public Type CookedType => typeof(UIDocumentResource);
 
 	/// The whole build is a string copy out of the stored record: nothing global is touched
 	/// and no device is needed, so it runs entirely on a worker.

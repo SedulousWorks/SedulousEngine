@@ -12,6 +12,7 @@ namespace Sedulous.Animation.Resource;
 class AnimationGraphFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<AnimationGraph>();
+	public Type CookedType => typeof(AnimationGraphSource);
 
 	public Object Create(ResourceManager manager, Instance instance)
 	{

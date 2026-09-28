@@ -9,6 +9,13 @@ interface IResourceFactory
 	/// The type this builds, as the stable id the manager keys factories on.
 	uint64 ProductTypeId { get; }
 
+	/// The SERIALISED cooked form this factory reads out of the instance, the type the cook
+	/// stamped: StaticMeshSource for a StaticMesh, TextureResource for a Texture. The one link
+	/// from a runtime type back to the builder that made it, which the scene format reference
+	/// joins to the builder's product to name the asset type. A factory that reads the
+	/// product type itself returns that.
+	Type CookedType { get; }
+
 	/// Builds the product. THE HANDLE TAKES OWNERSHIP of what comes back; null is a
 	/// failure.
 	///

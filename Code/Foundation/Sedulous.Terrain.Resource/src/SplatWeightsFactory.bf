@@ -12,6 +12,7 @@ namespace Sedulous.Terrain.Resource;
 class SplatWeightsFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<SplatWeights>();
+	public Type CookedType => typeof(SplatWeightsSource);
 
 	public bool SupportsAsync => true;
 

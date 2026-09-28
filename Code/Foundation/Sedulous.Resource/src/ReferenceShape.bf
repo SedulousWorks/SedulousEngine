@@ -16,6 +16,16 @@ static class ReferenceShape
 		return (generic != null) && (generic.UnspecializedType == typeof(Ref<>));
 	}
 
+	/// The type the reference points at: T for a Ref<T>, the runtime type the resource manager
+	/// keys its factories with. What a schema or a picker needs to say WHAT kind of thing the
+	/// guid names, without naming the reference template. Null for a type that is no reference.
+	public static Type Target(Type type)
+	{
+		if (!Is(type))
+			return null;
+		return ((SpecializedGenericType)type).GetGenericArg(0);
+	}
+
 	/// The identity inside the reference at `value`.
 	public static Result<Guid> Id(Type type, void* value)
 	{

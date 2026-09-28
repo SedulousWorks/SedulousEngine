@@ -12,6 +12,7 @@ namespace Sedulous.Physics.Resource;
 class CollisionShapeFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<CollisionShape>();
+	public Type CookedType => typeof(CollisionShapeSource);
 
 	public bool SupportsAsync => true;
 

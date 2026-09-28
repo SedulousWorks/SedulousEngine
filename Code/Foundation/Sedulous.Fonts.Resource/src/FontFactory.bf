@@ -19,6 +19,7 @@ namespace Sedulous.Fonts.Resource;
 class FontFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<Font>();
+	public Type CookedType => typeof(FontResource);
 
 	/// The whole build is a pure function of the stored bytes: glyph tables and CPU atlas
 	/// images, with no upload and nothing global touched. So it runs entirely on a worker

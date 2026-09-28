@@ -12,6 +12,7 @@ namespace Sedulous.Particles.Resource;
 class ParticleEffectFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<ParticleEffectResource>();
+	public Type CookedType => typeof(ParticleEffectResource);
 
 	public Object Create(ResourceManager manager, Instance instance)
 	{

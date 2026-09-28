@@ -13,6 +13,7 @@ namespace Sedulous.PropertyAnimation.Resource;
 class PropertyAnimationClipFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<PropertyAnimationClip>();
+	public Type CookedType => typeof(PropertyAnimationClipSource);
 
 	public bool SupportsAsync => true;
 

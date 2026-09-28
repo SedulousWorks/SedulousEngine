@@ -23,6 +23,7 @@ namespace Sedulous.Materials.Resource;
 class MaterialFactory : IResourceFactory
 {
 	public uint64 ProductTypeId => ResourceManager.ProductTypeIdOf<Material>();
+	public Type CookedType => typeof(MaterialSource);
 
 	/// NOT async: the build binds other resources through the manager, and the manager is
 	/// the main thread's.
