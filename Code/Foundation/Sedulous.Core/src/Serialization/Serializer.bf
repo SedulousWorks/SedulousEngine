@@ -61,7 +61,7 @@ abstract class Serializer : ISerializer
 		return 0;
 	}
 
-	public void PushVersionScope(Span<SerializedDataVersion> chain)
+	public virtual void PushVersionScope(Span<SerializedDataVersion> chain)
 	{
 		mScopeStarts.Add(mVersions.Count);
 		for (let entry in chain)
