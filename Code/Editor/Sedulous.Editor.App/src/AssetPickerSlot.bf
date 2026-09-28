@@ -4,6 +4,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.UI;
+using Sedulous.UI.Toolkit;
 
 namespace Sedulous.Editor.App;
 
@@ -115,10 +116,12 @@ class AssetPickerSlot : FlexLayout, IDropTarget
 
 	/// The accepted type that means any asset: a row whose field is genuinely untyped.
 	public const String cAnyAsset = "*";
+	/// The accepted type of an entity reference: the slot takes a hierarchy row, and no asset.
+	public const String cEntity = "@entity";
 
 	/// The asset type names this slot accepts, the picker's filter list. Non-empty makes
-	/// the slot a drop target for asset-browser drags; cAnyAsset accepts every asset type.
-	/// Empty is not a drop target at all, which is what an entity reference row wants.
+	/// the slot a drop target for asset-browser drags; cAnyAsset accepts every asset type,
+	/// cEntity a hierarchy row. Empty is not a drop target at all.
 	public void SetAcceptedTypes(Span<StringView> types)
 	{
 		ClearAndDeleteItems(mAcceptedTypes);
@@ -126,23 +129,66 @@ class AssetPickerSlot : FlexLayout, IDropTarget
 			mAcceptedTypes.Add(new String(type));
 	}
 
-	// ---- IDropTarget (asset-browser drags) ----
-	// Any asset drag is accepted at hover level so OnDrop can warn on a type mismatch (the
-	// manager never calls OnDrop for a None effect); the hover cue distinguishes a match
-	// (accent ring) from a mismatch (error ring).
+	/// What a drag carries for a slot: an asset (its id, type and name), or a tree row that
+	/// names an entity (type cEntity). False for anything else.
+	public static bool DescribeDrag(DragData data, out Guid id, String outTypeName, String outName)
+	{
+		id = .();
+		if (let asset = data as AssetDragData)
+		{
+			id = asset.Id;
+			outTypeName.Set(asset.AssetTypeName);
+			outName.Set(asset.DisplayName);
+			return true;
+		}
+		if (let row = data as TreeDragData)
+		{
+			if ((row.ItemKind != "entity") || row.ItemId.IsNil)
+				return false;
+			id = row.ItemId;
+			outTypeName.Set(cEntity);
+			outName.Set(row.ItemName);
+			return true;
+		}
+		return false;
+	}
+
+	/// Whether `typeName`, a dragged asset's type or cEntity, is one of `accepted`.
+	public static bool Accepts(Span<String> accepted, StringView typeName)
+	{
+		let isEntity = typeName == cEntity;
+		for (let a in accepted)
+		{
+			if (a == cEntity)
+			{
+				if (isEntity)
+					return true;
+			}
+			else if (!isEntity && ((a == cAnyAsset) || AssetTypeNames.Matches(typeName, a)))
+				return true;
+		}
+		return false;
+	}
+
+	// ---- IDropTarget (asset-browser and hierarchy drags) ----
+	// Any asset or entity drag is accepted at hover level so OnDrop can warn on a type
+	// mismatch (the manager never calls OnDrop for a None effect); the hover cue distinguishes
+	// a match (accent ring) from a mismatch (error ring).
 
 	public override IDropTarget AsDropTarget() => mAcceptedTypes.Count > 0 ? this : null;
 
 	public DragDropEffects CanAcceptDrop(DragData data, float localX, float localY)
 	{
-		return ((data as AssetDragData) != null) ? .Link : .None;
+		Guid id;
+		return DescribeDrag(data, out id, scope .(), scope .()) ? .Link : .None;
 	}
 
 	public void OnDragEnter(DragData data, float localX, float localY)
 	{
-		let asset = data as AssetDragData;
-		mDropHover = asset != null;
-		mDropMatches = (asset != null) && TypeAccepted(asset.AssetTypeName);
+		Guid id;
+		let typeName = scope String();
+		mDropHover = DescribeDrag(data, out id, typeName, scope .());
+		mDropMatches = mDropHover && TypeAccepted(typeName);
 		Invalidate();
 	}
 
@@ -158,18 +204,20 @@ class AssetPickerSlot : FlexLayout, IDropTarget
 	{
 		mDropHover = false;
 		Invalidate();
-		let asset = data as AssetDragData;
-		if (asset == null)
+		Guid id;
+		let typeName = scope String();
+		let name = scope String();
+		if (!DescribeDrag(data, out id, typeName, name))
 			return .None;
-		if (!TypeAccepted(asset.AssetTypeName))
+		if (!TypeAccepted(typeName))
 		{
-			GlobalLog(.Warning, "Assets: '{}' is a {}, this slot does not accept it", asset.DisplayName, asset.AssetTypeName);
+			GlobalLog(.Warning, "Assets: '{}' is a {}, this slot does not accept it", name, typeName);
 			if (OnRejectedDrop != null)
-				OnRejectedDrop(asset.DisplayName, asset.AssetTypeName);
+				OnRejectedDrop(name, typeName);
 			return .None;
 		}
 		if (OnAssignDropped != null)
-			OnAssignDropped(asset.Id);
+			OnAssignDropped(id);
 		return .Link;
 	}
 
@@ -214,15 +262,7 @@ class AssetPickerSlot : FlexLayout, IDropTarget
 		return icon;
 	}
 
-	private bool TypeAccepted(StringView typeName)
-	{
-		for (let accepted in mAcceptedTypes)
-		{
-			if ((accepted == cAnyAsset) || AssetTypeNames.Matches(typeName, accepted))
-				return true;
-		}
-		return false;
-	}
+	private bool TypeAccepted(StringView typeName) => Accepts(mAcceptedTypes, typeName);
 
 	/// The thumbnail wins; the type icon is the fallback layer.
 	private void ApplyPreview()

@@ -1,3 +1,4 @@
+using System;
 using Sedulous.UI;
 
 namespace Sedulous.UI.Toolkit;
@@ -9,6 +10,12 @@ namespace Sedulous.UI.Toolkit;
 class TreeDragData : DragData
 {
 	public int32 SourcePosition = 0;
+	/// What the row IS, for a drop outside the tree, set by the tree's owner through
+	/// DraggableTreeView.OnDecorateDragData: a hierarchy row names its entity ("entity" and
+	/// the entity's id and name). Empty for a tree that names nothing.
+	public String ItemKind = new .() ~ delete _;
+	public Guid ItemId;
+	public String ItemName = new .() ~ delete _;
 
 	public this(int32 sourcePosition) : base("tree/reorder")
 	{

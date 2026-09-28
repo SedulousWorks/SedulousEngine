@@ -58,6 +58,8 @@ class SceneHierarchyView : ViewGroup
 		mTree.ItemHeight = 22.0f;
 		mAdapter.SetTree(mTree.InternalTreeView);
 		mTree.SetAdapter(mAdapter);
+		// A dragged row names its entity, so an inspector's entity slot can take it.
+		mTree.OnDecorateDragData = new [=this](data) => { DecorateDrag(data); };
 		column.AddView(mTree, grow);
 
 		AddView(column);
@@ -103,6 +105,22 @@ class SceneHierarchyView : ViewGroup
 			mRevision = mEdit.Scene.Revision;
 			RebuildSnapshot();
 		}
+	}
+
+	/// Names the entity a drag of flat row `data.SourcePosition` carries.
+	public void DecorateDrag(TreeDragData data)
+	{
+		let flat = mTree.InternalTreeView.FlatAdapter;
+		if ((flat == null) || (data.SourcePosition < 0) || (data.SourcePosition >= flat.ItemCount))
+			return;
+		let id = GuidOfNode(flat.GetNodeId(data.SourcePosition));
+		if (id.IsNil)
+			return;
+		data.ItemKind.Set("entity");
+		data.ItemId = id;
+		let h = mEdit.Scene.FindEntity(id);
+		if (h.IsAssigned)
+			data.ItemName.Set(mEdit.Scene.GetEntityName(h));
 	}
 
 	/// Scrolls to an entity's row and opens its name for editing.

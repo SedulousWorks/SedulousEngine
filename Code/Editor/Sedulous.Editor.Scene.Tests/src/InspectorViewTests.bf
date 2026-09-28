@@ -254,6 +254,69 @@ class InspectorViewTests
 		Test.Assert((Live().Behaviors[0].UpdateInterval == 5.0f) && (Live().Behaviors[1].UpdateInterval == 1.0f));
 	}
 
+	/// A hierarchy row dragged onto an entity slot assigns it, as one undo step; an asset, or a
+	/// tree row naming nothing, is refused; an entity list takes one on a slot and appends one.
+	[Test]
+	public static void AHierarchyRowDropsOnAnEntitySlot()
+	{
+		SceneInspectors.RegisterBuiltin();
+		let scene = scope Scene();
+		let followers = scene.AddSystem<PathFollowComponentManager>();
+		let anims = scene.AddSystem<SkeletalAnimationComponentManager>();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let editor = scope EditorContext();
+		let inspector = new SceneInspectorView(editor, edit);
+		defer inspector.ReleaseRef();
+		let hierarchy = new SceneHierarchyView(edit);
+		defer hierarchy.ReleaseRef();
+
+		let cart = edit.CreateEntity("Cart");
+		let track = edit.CreateEntity("Track");
+		followers.Add(scene.FindEntity(cart));
+		hierarchy.Refresh();
+
+		// The hierarchy names the dragged row's entity: Track is the second root.
+		let drag = new TreeDragData(1);
+		defer drag.ReleaseRef();
+		hierarchy.DecorateDrag(drag);
+		Test.Assert((drag.ItemKind == "entity") && (drag.ItemId == track) && (drag.ItemName == "Track"));
+
+		edit.EntitySelection.Set(cart);
+		inspector.Refresh();
+		let row = Find(inspector, "Spline") as ResourceRefEditor;
+		let slot = row.EditorView as AssetPickerSlot;
+
+		// An asset is refused, and so is a row that names nothing.
+		let asset = new AssetDragData(Guid(0x6666, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6), "MaterialAsset", "red");
+		defer asset.ReleaseRef();
+		Test.Assert(slot.OnDrop(asset, 0, 0) == .None);
+		let bare = new TreeDragData(0);
+		defer bare.ReleaseRef();
+		Test.Assert(slot.CanAcceptDrop(bare, 0, 0) == .None);
+		Test.Assert(followers.Get(scene.FindEntity(cart)).Spline.IsNil);
+
+		// The hierarchy row assigns, and one undo takes it back.
+		Test.Assert(slot.OnDrop(drag, 0, 0) == .Link);
+		Test.Assert(followers.Get(scene.FindEntity(cart)).Spline.Id == track);
+		commands.Undo();
+		Test.Assert(followers.Get(scene.FindEntity(cart)).Spline.IsNil);
+
+		// An entity list: a drop on its slot assigns, a drop on the list appends.
+		let rig = anims.Add(scene.FindEntity(cart));
+		rig.MeshEntities.Add(EntityRef());
+		inspector.Refresh();
+		inspector.Refresh();
+		var list = Find(inspector, "MeshEntities") as ContainerListEditor;
+		let first = ((list.EditorView as ViewGroup).GetChildAt(1) as ViewGroup).GetChildAt(0) as AssetPickerSlot;
+		Test.Assert(first.OnDrop(drag, 0, 0) == .Link);
+		Test.Assert(anims.Get(scene.FindEntity(cart)).MeshEntities[0].Id == track);
+		inspector.Refresh();
+		list = Find(inspector, "MeshEntities") as ContainerListEditor;
+		Test.Assert(list.EditorView.AsDropTarget().OnDrop(drag, 0, 0) == .Link);
+		Test.Assert(anims.Get(scene.FindEntity(cart)).MeshEntities.Count == 2);
+	}
+
 	/// An entity ref row's refresher runs on every later Refresh, long after the section that
 	/// built it went out of scope; it must read the name through the target, not the section.
 	[Test]

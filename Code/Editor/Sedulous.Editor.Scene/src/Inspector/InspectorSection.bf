@@ -225,26 +225,27 @@ class InspectorSection
 		Add(editor, new [=editor]() => { editor.Refresh(); });
 	}
 
-	/// An EntityRef field: the target entity's name and a picker over the scene tree.
+	/// An EntityRef field: the target entity's name, the scene tree picker, a hierarchy row
+	/// dropped on it, and clear, all through the target's undoable entity ref command.
 	public void EntityRefRow(StringView field, delegate Guid(void* p) read)
 	{
 		let key = Own(field);
 		Keep(read);
 		let target = mTarget;
 		let owner = mOwner;
-		let editor = new ResourceRefEditor(field, EntityNameFor(target, Read(read, Guid()), .. scope .()), mCategory, .());
-		editor.OnPick = new [=owner, =target, =key, =read]() =>
-		{
-			if (owner.Context == null)
-				return;
-			let dialog = new EntityPickerDialog(target.Edit.Scene, Read(read, target, Guid()));
-			dialog.OnPicked = new [=target, =key](picked) => { target.SetEntityRef(key, picked); };
-			dialog.Show(owner.Context);
-		};
-		Add(editor, new [=editor, =read, =target]() =>
-		{
-			editor.SetValueText(EntityNameFor(target, Read(read, target, Guid()), .. scope .()));
-		});
+		let editor = new ResourceRefEditor(field, "(none)", mCategory, scope StringView[](AssetPickerSlot.cEntity));
+		editor.BindEntity(new [=read, =target]() => Read(read, target, Guid()),
+			new [=target, =key](picked) => { target.SetEntityRef(key, picked); },
+			new [=target](id, outName) => { EntityNameFor(target, id, outName); },
+			new [=owner, =target, =key, =read]() =>
+			{
+				if (owner.Context == null)
+					return;
+				let dialog = new EntityPickerDialog(target.Edit.Scene, Read(read, target, Guid()));
+				dialog.OnPicked = new [=target, =key](picked) => { target.SetEntityRef(key, picked); };
+				dialog.Show(owner.Context);
+			});
+		Add(editor, new [=editor]() => { editor.Refresh(); });
 	}
 
 	// ---- list rows ----
@@ -400,7 +401,19 @@ class InspectorSection
 			});
 			owner.RequestRebuild();
 		};
-		list.OnPickSlot = new [=owner, =target, =read](i) =>
+		// One write for a slot, whether the entity came from the picker or a hierarchy drag.
+		delegate void(int i, Guid picked) assignSlot = new [=owner, =target, =read](i, picked) =>
+		{
+			target.Mutate(scope [=read, =i, =picked](p) =>
+			{
+				let l = read(p);
+				if (i < l.Count)
+					l[i] = EntityRef(picked);
+			});
+			owner.RequestRebuild();
+		};
+		Keep(assignSlot);
+		list.OnPickSlot = new [=owner, =target, =read, =assignSlot](i) =>
 		{
 			if (owner.Context == null)
 				return;
@@ -412,17 +425,15 @@ class InspectorSection
 					current = l[i].Id;
 			}
 			let dialog = new EntityPickerDialog(target.Edit.Scene, current);
-			dialog.OnPicked = new [=owner, =target, =read, =i](picked) =>
-			{
-				target.Mutate(scope [=read, =i, =picked](p) =>
-				{
-					let l = read(p);
-					if (i < l.Count)
-						l[i] = EntityRef(picked);
-				});
-				owner.RequestRebuild();
-			};
+			dialog.OnPicked = new [=assignSlot, =i](picked) => { assignSlot(i, picked); };
 			dialog.Show(owner.Context);
+		};
+		list.SetAcceptedTypes(scope StringView[](AssetPickerSlot.cEntity));
+		list.OnAssignSlot = new [=assignSlot](i, picked) => { assignSlot(i, picked); };
+		list.OnAppendDropped = new [=owner, =target, =read](picked) =>
+		{
+			target.Mutate(scope [=read, =picked](p) => { read(p).Add(EntityRef(picked)); });
+			owner.RequestRebuild();
 		};
 		Add(list, new [=owner, =list, =computeNames]() =>
 		{

@@ -298,36 +298,35 @@ extension SceneInspectorView
 		outName.Set(h.IsAssigned ? mEdit.Scene.GetEntityName(h) : "(missing)");
 	}
 
-	/// An entity valued script property: picked from a menu of every entity.
+	/// An entity valued script property: the scene tree picker, a hierarchy row dropped on it,
+	/// and clear, which removes the override.
 	private void BuildScriptEntityPropertyRow(StringView category, ScriptPropertyDesc property,
 		ScriptPropertyAccess access)
 	{
-		let editor = new ResourceRefEditor(property.Name, EntityNameFor(access.Effective().Id, .. scope .()), category, .());
+		let editor = new ResourceRefEditor(property.Name, "(none)", category, scope StringView[](AssetPickerSlot.cEntity));
 		if (!property.Description.IsEmpty)
 			editor.SetTooltip(property.Description);
-		editor.OnPick = new [=this, =access]() =>
-		{
-			if (Context == null)
-				return;
-			let menu = new ContextMenu();
-			defer menu.ReleaseRef();
-			menu.AddItem("(none)", new [=access]() => { access.RemoveOverride(); });
-			menu.AddSeparator();
-			mEdit.Scene.ForEachEntity(scope [&](handle) =>
+		editor.BindEntity(new [=access]() => access.Effective().Id,
+			new [=access](picked) => { SetEntityOverride(access, picked); },
+			new [=this](id, outName) => { EntityNameFor(id, outName); },
+			new [=this, =access]() =>
 			{
-				let target = mEdit.Scene.GetEntityId(handle);
-				menu.AddItem(mEdit.Scene.GetEntityName(handle), new [=access, =target]() =>
-				{
-					access.SetOverride(ScriptPropertyValue.Entity(target));
-				});
+				if (Context == null)
+					return;
+				let dialog = new EntityPickerDialog(mEdit.Scene, access.Effective().Id);
+				dialog.OnPicked = new [=access](picked) => { SetEntityOverride(access, picked); };
+				dialog.Show(Context);
 			});
-			let pos = mAddButton.LocalToScreen(.(0.0f, 0.0f));
-			menu.Show(Context, pos.X, pos.Y);
-		};
-		AddEditor(editor, new [=this, =access, =editor]() =>
-		{
-			editor.SetValueText(EntityNameFor(access.Effective().Id, .. scope .()));
-		});
+		AddEditor(editor, new [=editor]() => { editor.Refresh(); });
+	}
+
+	/// An entity override, or none for the nil id.
+	private static void SetEntityOverride(ScriptPropertyAccess access, Guid picked)
+	{
+		if (picked.IsNil)
+			access.RemoveOverride();
+		else
+			access.SetOverride(ScriptPropertyValue.Entity(picked));
 	}
 
 	/// An asset valued script property: picked from the browser, narrowed to the declared

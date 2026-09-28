@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.UI;
+using Sedulous.UI.Toolkit;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App.Tests;
@@ -168,5 +169,55 @@ static class ContainerListEditorTests
 		// A row that is no asset (an entity reference) takes no asset drop.
 		let entityRow = scope ResourceRefEditor("Target", "(none)", "Joint", .());
 		Test.Assert((entityRow.EditorView as AssetPickerSlot).AsDropTarget() == null);
+	}
+
+	[Test]
+	public static void AnEntitySlotTakesAHierarchyRowAndNoAsset()
+	{
+		Guid current = .();
+		let row = scope ResourceRefEditor("Target", "(none)", "Follow", scope StringView[](AssetPickerSlot.cEntity));
+		row.BindEntity(new [&]() => current, new [&](id) => { current = id; },
+			new (id, outName) => { outName.Set("Cart"); }, new () => {});
+		let slot = row.EditorView as AssetPickerSlot;
+		Test.Assert(slot.AsDropTarget() != null, "an entity row is a drop target");
+
+		// A hierarchy row that names its entity is assigned.
+		let entity = new TreeDragData(0);
+		defer entity.ReleaseRef();
+		entity.ItemKind.Set("entity");
+		entity.ItemId = cMaterial;
+		entity.ItemName.Set("Cart");
+		Test.Assert(slot.OnDrop(entity, 0, 0) == .Link);
+		Test.Assert((current == cMaterial) && (row.ValueText == "Cart"));
+
+		// An asset is refused, and so is a tree row that names nothing.
+		let material = Drag(cTexture, "MaterialAsset");
+		defer material.ReleaseRef();
+		Test.Assert(slot.OnDrop(material, 0, 0) == .None);
+		let bare = new TreeDragData(0);
+		defer bare.ReleaseRef();
+		Test.Assert(slot.CanAcceptDrop(bare, 0, 0) == .None);
+		Test.Assert(current == cMaterial);
+
+		// Clear is the same write, with the nil id.
+		slot.ClearButton.FireClick();
+		Test.Assert(current.IsNil && (row.ValueText == "(none)"));
+
+		// An asset slot, even the any asset one, refuses an entity.
+		let any = scope ResourceRefEditor("Thing", "(none)", "Cat", scope StringView[](AssetPickerSlot.cAnyAsset));
+		Test.Assert((any.EditorView as AssetPickerSlot).OnDrop(entity, 0, 0) == .None);
+
+		// An entity list takes one on a slot and appends one.
+		let list = scope ContainerListEditor("Targets", "Follow");
+		list.SlotNames.Add(new .("(none)"));
+		list.SetAcceptedTypes(scope StringView[](AssetPickerSlot.cEntity));
+		Guid assigned = .();
+		Guid appended = .();
+		list.OnAssignSlot = new [&](i, id) => { assigned = id; };
+		list.OnAppendDropped = new [&](id) => { appended = id; };
+		Test.Assert(SlotAt(list.EditorView, 0).OnDrop(entity, 0, 0) == .Link);
+		Test.Assert(list.EditorView.AsDropTarget().OnDrop(entity, 0, 0) == .Link);
+		Test.Assert((assigned == cMaterial) && (appended == cMaterial));
+		Test.Assert(list.EditorView.AsDropTarget().OnDrop(material, 0, 0) == .None);
 	}
 }

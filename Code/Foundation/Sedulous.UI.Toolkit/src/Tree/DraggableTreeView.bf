@@ -41,6 +41,10 @@ class DraggableTreeView : ViewGroup, IDragSource, IDropTarget
 	/// Fired after the adapter's DropInto ran.
 	public Event<delegate void(DraggableTreeView, int32, int32)> OnItemDroppedInto ~ _.Dispose();
 
+	/// Names what a dragged row is, so a target outside the tree can take it (an entity slot
+	/// takes a hierarchy row). Owned.
+	public delegate void(TreeDragData data) OnDecorateDragData ~ delete _;
+
 	/// OWNED, and a VISUAL child rather than a logical one.
 	private TreeView mTreeView = new .() ~ _.ReleaseRef();
 	/// BORROWED: the consumer owns the adapter.
@@ -140,13 +144,17 @@ class DraggableTreeView : ViewGroup, IDragSource, IDropTarget
 		if (selected < 0)
 			return null;
 
-		return new TreeDragData(selected);
+		let data = new TreeDragData(selected);
+		if (OnDecorateDragData != null)
+			OnDecorateDragData(data);
+		return data;
 	}
 
 	public View CreateDragVisual(DragData data)
 	{
 		let label = new Label();
-		label.SetText("Moving item");
+		let treeDrag = data as TreeDragData;
+		label.SetText(((treeDrag != null) && !treeDrag.ItemName.IsEmpty) ? treeDrag.ItemName : "Moving item");
 		return label;
 	}
 

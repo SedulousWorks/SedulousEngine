@@ -169,16 +169,9 @@ class ContainerListEditor : PropertyEditor
 		menu.ReleaseRef();
 	}
 
-	/// Whether a dropped asset of `typeName` is one this list takes.
-	private bool Accepts(StringView typeName)
-	{
-		for (let accepted in mAcceptedTypes)
-		{
-			if ((accepted == AssetPickerSlot.cAnyAsset) || AssetTypeNames.Matches(typeName, accepted))
-				return true;
-		}
-		return false;
-	}
+	/// Whether a dropped asset of `typeName` (or an entity, AssetPickerSlot.cEntity) is one this
+	/// list takes.
+	private bool Accepts(StringView typeName) => AssetPickerSlot.Accepts(mAcceptedTypes, typeName);
 
 	private static LayoutStyle RowStyle()
 	{
@@ -201,14 +194,18 @@ class ContainerListEditor : PropertyEditor
 		public override IDropTarget AsDropTarget() =>
 			((mOwner.OnAppendDropped != null) && !mOwner.mAcceptedTypes.IsEmpty) ? this : null;
 
-		public DragDropEffects CanAcceptDrop(DragData data, float localX, float localY) =>
-			((data as AssetDragData) != null) ? .Link : .None;
+		public DragDropEffects CanAcceptDrop(DragData data, float localX, float localY)
+		{
+			Guid id;
+			return AssetPickerSlot.DescribeDrag(data, out id, scope .(), scope .()) ? .Link : .None;
+		}
 
 		public void OnDragEnter(DragData data, float localX, float localY)
 		{
-			let asset = data as AssetDragData;
-			mHover = asset != null;
-			mMatches = (asset != null) && mOwner.Accepts(asset.AssetTypeName);
+			Guid id;
+			let typeName = scope String();
+			mHover = AssetPickerSlot.DescribeDrag(data, out id, typeName, scope .());
+			mMatches = mHover && mOwner.Accepts(typeName);
 			Invalidate();
 		}
 
@@ -224,17 +221,19 @@ class ContainerListEditor : PropertyEditor
 		{
 			mHover = false;
 			Invalidate();
-			let asset = data as AssetDragData;
-			if (asset == null)
+			Guid id;
+			let typeName = scope String();
+			let name = scope String();
+			if (!AssetPickerSlot.DescribeDrag(data, out id, typeName, name))
 				return .None;
-			if (!mOwner.Accepts(asset.AssetTypeName))
+			if (!mOwner.Accepts(typeName))
 			{
-				GlobalLog(.Warning, "Assets: '{}' is a {}, this list does not accept it", asset.DisplayName, asset.AssetTypeName);
+				GlobalLog(.Warning, "Assets: '{}' is a {}, this list does not accept it", name, typeName);
 				if (mOwner.OnRejectedDrop != null)
-					mOwner.OnRejectedDrop(asset.DisplayName, asset.AssetTypeName);
+					mOwner.OnRejectedDrop(name, typeName);
 				return .None;
 			}
-			mOwner.OnAppendDropped(asset.Id);
+			mOwner.OnAppendDropped(id);
 			return .Link;
 		}
 

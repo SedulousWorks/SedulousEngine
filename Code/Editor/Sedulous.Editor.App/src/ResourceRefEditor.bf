@@ -11,8 +11,9 @@ namespace Sedulous.Editor.App;
 ///
 /// The accepted asset types are a CONSTRUCTOR argument, so a row that names an asset cannot be
 /// built without being a drop target for that asset: AssetPickerSlot.cAnyAsset for a genuinely
-/// untyped field, and no types at all only for a row that is not an asset (an entity reference).
-/// BindAsset wires every verb to one assignment, so a pick and a drop are the same write.
+/// untyped field, AssetPickerSlot.cEntity for an entity reference (a hierarchy row drops on it).
+/// BindAsset and BindEntity wire every verb to one assignment, so a pick and a drop are the same
+/// write.
 class ResourceRefEditor : PropertyEditor
 {
 	public delegate void() OnPick ~ delete _;
@@ -42,7 +43,7 @@ class ResourceRefEditor : PropertyEditor
 		mValueText.Set(valueText);
 		for (let t in acceptedTypes)
 			mAcceptedTypes.Add(new String(t));
-		if (!acceptedTypes.IsEmpty && (acceptedTypes[0] != AssetPickerSlot.cAnyAsset))
+		if (!acceptedTypes.IsEmpty && (acceptedTypes[0] != AssetPickerSlot.cAnyAsset) && (acceptedTypes[0] != AssetPickerSlot.cEntity))
 			mPreviewIcon = EditorIcons.ForAssetType(acceptedTypes[0]);
 	}
 
@@ -109,20 +110,57 @@ class ResourceRefEditor : PropertyEditor
 		Refresh();
 	}
 
-	/// Re-reads the bound asset: its name, and its thumbnail when the context has one.
+	/// Wires an ENTITY reference the same way: `pick` opens the scene's entity picker (the
+	/// caller's, which assigns through AssignValue), a hierarchy row dropped on the slot is
+	/// assigned, clear assigns the nil id, and `nameFor` names the entity. Build the row with
+	/// AssetPickerSlot.cEntity as its accepted type. All four are CONSUMED; the same contract
+	/// on `assign` as BindAsset.
+	public void BindEntity(delegate Guid() current, delegate void(Guid id) assign,
+		delegate void(Guid id, String outName) nameFor, delegate void() pick)
+	{
+		mContext = null;
+		delete OnPick;
+		delete OnAssignDropped;
+		delete OnClear;
+		delete OnEdit;
+		delete OnReveal;
+		delete OnRejectedDrop;
+		delete mCurrent;
+		delete mAssign;
+		delete mNameFor;
+		OnEdit = null;
+		OnReveal = null;
+		OnRejectedDrop = null;
+		mCurrent = current;
+		mAssign = assign;
+		mNameFor = nameFor;
+		OnPick = pick;
+		OnAssignDropped = new [=this](id) => { Assign(id); };
+		OnClear = new [=this]() => { Assign(.()); };
+		Refresh();
+	}
+
+	/// Assigns through the bound write, as a pick would: for a caller's own picker.
+	public void AssignValue(Guid id) => Assign(id);
+
+	/// Re-reads the bound reference: its name, and an asset's thumbnail when the context has
+	/// one.
 	public void Refresh()
 	{
-		if ((mContext == null) || (mCurrent == null))
+		if ((mCurrent == null) || ((mContext == null) && (mNameFor == null)))
 			return;
 		let id = mCurrent();
 		mBoundHasValue = !id.IsNil;
 		if (id.IsNil)
 			SetValueText(EmptyText);
+		else if (mNameFor != null)
+			SetValueText(mNameFor(id, .. scope .()));
 		else
 			SetValueText(mContext.AssetNameFor(id, .. scope .()));
 		if (mSlot != null)
 			mSlot.SetValue(mValueText, HasValue);
-		SetPreviewThumbnail((!id.IsNil && (mContext.Thumbnails != null)) ? mContext.Thumbnails.Get(id) : null);
+		if (mContext != null)
+			SetPreviewThumbnail((!id.IsNil && (mContext.Thumbnails != null)) ? mContext.Thumbnails.Get(id) : null);
 	}
 
 	public void SetValueText(StringView text)
@@ -175,6 +213,8 @@ class ResourceRefEditor : PropertyEditor
 
 	private delegate Guid() mCurrent ~ delete _;
 	private delegate void(Guid id) mAssign ~ delete _;
+	/// Set by BindEntity: names what the id refers to.
+	private delegate void(Guid id, String outName) mNameFor ~ delete _;
 
 	private void Assign(Guid id)
 	{
