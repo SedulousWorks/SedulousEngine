@@ -4,7 +4,7 @@ using System.Diagnostics;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.VFS;
-using Sedulous.Engine.SceneSurface;
+using Sedulous.Engine.Composition;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Cook;
 using Sedulous.Pipeline.Importer;

@@ -7,7 +7,7 @@ using Sedulous.Mcp;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Engine.Render;
-using Sedulous.Engine.SceneSurface;
+using Sedulous.Engine.Composition;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Registration;
 using Sedulous.Texture.Pipeline;

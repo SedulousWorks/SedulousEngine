@@ -9,10 +9,12 @@ namespace Sedulous.Script.Resource;
 static class ScriptResources
 {
 	/// This library's resource module: its type registration and the factory descriptions
-	/// the engine composition creates from. The factories belong here, with the resources they
+	/// the engine composition creates from, built on first use so no static
+	/// initialisation order matters. The factories belong here, with the resources they
 	/// produce, not with an engine subsystem and not with an executable.
-	public static ResourceModule Module = new .("script", () => RegisterAll(), new .(
-		.ByDefault<ScriptClass, ScriptClassSource, ScriptClassFactory>())) ~ delete _;
+	public static ResourceModule Module => sModule ?? (sModule = new .("script", () => RegisterAll(), new .(
+		.ByDefault<ScriptClass, ScriptClassSource, ScriptClassFactory>())));
+	private static ResourceModule sModule ~ delete _;
 
 	/// The manager does not take ownership, so the caller keeps the factory alive for as
 	/// long as it keeps the manager.

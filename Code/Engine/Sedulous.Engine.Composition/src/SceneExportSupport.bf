@@ -6,7 +6,7 @@ using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 
-namespace Sedulous.Engine.SceneSurface;
+namespace Sedulous.Engine.Composition;
 
 /// What an export needs from the full scene composition, for every host that exports: the
 /// scene streams transcoded to the binary wire, and a scene's direct references. Both load

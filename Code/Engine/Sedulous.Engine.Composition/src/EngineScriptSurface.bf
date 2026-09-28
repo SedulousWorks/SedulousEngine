@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.Script;
 
-namespace Sedulous.Engine.ScriptSurface;
+namespace Sedulous.Engine.Composition;
 
 /// The RUNTIME script surface: the composition root whose closure is the facades and what
 /// they reach, over every engine subsystem, and nothing above the engine.

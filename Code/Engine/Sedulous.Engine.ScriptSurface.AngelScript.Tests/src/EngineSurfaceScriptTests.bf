@@ -5,9 +5,9 @@ using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.Script;
 using Sedulous.Script.AngelScript;
-using Sedulous.Engine.ScriptSurface;
+using Sedulous.Engine.Composition;
 
-namespace Sedulous.Engine.ScriptSurface.AngelScript.Tests;
+namespace Sedulous.Engine.Composition.AngelScript.Tests;
 
 /// The whole runtime surface in AngelScript: it binds, and a script drives a real scene.
 static class EngineSurfaceScriptTests

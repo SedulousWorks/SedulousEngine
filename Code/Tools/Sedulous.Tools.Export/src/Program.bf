@@ -6,7 +6,7 @@ using Sedulous.Core.Logging;
 using Sedulous.Content;
 using Sedulous.VFS;
 using Sedulous.Engine.Project;
-using Sedulous.Engine.SceneSurface;
+using Sedulous.Engine.Composition;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Registration;
 using Sedulous.Editor.Project;

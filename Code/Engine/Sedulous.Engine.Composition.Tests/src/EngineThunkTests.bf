@@ -2,9 +2,9 @@ using System;
 using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.Script;
-using Sedulous.Engine.ScriptSurface;
+using Sedulous.Engine.Composition;
 
-namespace Sedulous.Engine.ScriptSurface.Tests;
+namespace Sedulous.Engine.Composition.Tests;
 
 /// The emitted thunks against the real engine types: a scene driven entirely through the
 /// surface, the way a script would.

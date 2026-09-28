@@ -3,7 +3,7 @@ using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
-using Sedulous.Engine.SceneSurface;
+using Sedulous.Engine.Composition;
 
 namespace Sedulous.Editor.Mcp;
 

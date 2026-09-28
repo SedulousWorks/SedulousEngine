@@ -12,8 +12,10 @@ namespace Sedulous.PropertyAnimation.Resource;
 static class PropertyAnimationResources
 {
 	/// This library's resource module: its type registration and the factory descriptions
-	/// the engine composition creates from. The factories belong here, with the resources they
+	/// the engine composition creates from, built on first use so no static
+	/// initialisation order matters. The factories belong here, with the resources they
 	/// produce, not with an engine subsystem and not with an executable.
-	public static ResourceModule Module = new .("property-animation", () => RegisterAll(), new .(
-		.ByDefault<PropertyAnimationClip, PropertyAnimationClipSource, PropertyAnimationClipFactory>())) ~ delete _;
+	public static ResourceModule Module => sModule ?? (sModule = new .("property-animation", () => RegisterAll(), new .(
+		.ByDefault<PropertyAnimationClip, PropertyAnimationClipSource, PropertyAnimationClipFactory>())));
+	private static ResourceModule sModule ~ delete _;
 }

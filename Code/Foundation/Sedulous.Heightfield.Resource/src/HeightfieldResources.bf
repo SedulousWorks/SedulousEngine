@@ -12,10 +12,12 @@ namespace Sedulous.Heightfield.Resource;
 static class HeightfieldResources
 {
 	/// This library's resource module: its type registration and the factory descriptions
-	/// the engine composition creates from. The factories belong here, with the resources they
+	/// the engine composition creates from, built on first use so no static
+	/// initialisation order matters. The factories belong here, with the resources they
 	/// produce, not with an engine subsystem and not with an executable.
-	public static ResourceModule Module = new .("heightfield", () => RegisterAll(), new .(
-		.ByDefault<Heightfield, HeightfieldSource, HeightfieldFactory>())) ~ delete _;
+	public static ResourceModule Module => sModule ?? (sModule = new .("heightfield", () => RegisterAll(), new .(
+		.ByDefault<Heightfield, HeightfieldSource, HeightfieldFactory>())));
+	private static ResourceModule sModule ~ delete _;
 
 	/// The manager does not take ownership, so the caller keeps the factory alive for as
 	/// long as it keeps the manager.

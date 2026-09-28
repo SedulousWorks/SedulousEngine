@@ -7,7 +7,7 @@ using Sedulous.Script;
 using Sedulous.Script.AngelScript;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Script;
-using Sedulous.Engine.ScriptSurface;
+using Sedulous.Engine.Composition;
 
 namespace Sedulous.Engine.Script.Tests;
 

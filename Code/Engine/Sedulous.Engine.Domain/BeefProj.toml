@@ -1,0 +1,12 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.Domain"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Engine.Domain.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Resource" = "*"

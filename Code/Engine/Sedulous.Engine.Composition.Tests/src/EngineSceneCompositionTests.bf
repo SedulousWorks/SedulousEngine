@@ -9,9 +9,9 @@ using Sedulous.Engine.Script;
 using Sedulous.Engine.Spline;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.UI;
-using Sedulous.Engine.SceneSurface;
+using Sedulous.Engine.Composition;
 
-namespace Sedulous.Engine.SceneSurface.Tests;
+namespace Sedulous.Engine.Composition.Tests;
 
 /// The scene surface composition root: one per domain module list whose install entries ARE
 /// the domains' own Add<Domain>SceneManagers functions, so a manager added to a domain cannot
@@ -24,7 +24,7 @@ static class EngineSceneCompositionTests
 	{
 		let composition = EngineSceneComposition.Build();
 		defer delete composition;
-		Test.Assert(composition.ModuleCount == 12, scope $"{composition.ModuleCount} modules");
+		Test.Assert(composition.ModuleCount == 13, scope $"{composition.ModuleCount} modules");
 
 		let scratch = scope Scene("surface");
 		EngineSceneComposition.AddAllSceneManagers(scratch);

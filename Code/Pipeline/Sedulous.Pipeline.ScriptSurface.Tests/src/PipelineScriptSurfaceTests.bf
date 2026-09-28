@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Script;
-using Sedulous.Engine.ScriptSurface;
+using Sedulous.Engine.Composition;
 
 namespace Sedulous.Pipeline.ScriptSurface.Tests;
 

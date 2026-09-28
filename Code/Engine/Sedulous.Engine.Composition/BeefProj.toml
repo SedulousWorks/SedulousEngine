@@ -1,16 +1,20 @@
 FileVersion = 1
 
 [Project]
-Name = "Sedulous.Engine.ScriptSurface"
+Name = "Sedulous.Engine.Composition"
 TargetType = "BeefLib"
-StartupObject = "Sedulous.Engine.ScriptSurface.Program"
+StartupObject = "Sedulous.Engine.Composition.Program"
 
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
 "Sedulous.Scene" = "*"
 "Sedulous.Scene.Resource" = "*"
 "Sedulous.Script" = "*"
+"Sedulous.Net.Replication" = "*"
+"Sedulous.Engine.Domain" = "*"
 "Sedulous.Engine.Animation" = "*"
 "Sedulous.Engine.Audio" = "*"
 "Sedulous.Engine.GameInstance" = "*"
@@ -27,3 +31,4 @@ corlib = "*"
 "Sedulous.Engine.Terrain" = "*"
 "Sedulous.Engine.UI" = "*"
 "Sedulous.Engine.UI.Script" = "*"
+"Sedulous.Engine.Vegetation" = "*"

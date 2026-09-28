@@ -17,7 +17,7 @@ corlib = "*"
 "Sedulous.Pipeline.Core" = "*"
 "Sedulous.Pipeline.Importer" = "*"
 "Sedulous.Pipeline.Registration" = "*"
-"Sedulous.Engine.SceneSurface" = "*"
+"Sedulous.Engine.Composition" = "*"
 "Sedulous.Editor.Project" = "*"
 "Sedulous.Editor.Mcp" = "*"
 

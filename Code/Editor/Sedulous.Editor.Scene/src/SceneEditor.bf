@@ -8,7 +8,7 @@ using Sedulous.Resource;
 using Sedulous.Runtime.Client;
 using Sedulous.UI.Runtime;
 using Sedulous.Engine.Scene;
-using Sedulous.Engine.SceneSurface;
+using Sedulous.Engine.Composition;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.ModelImporter;
 using Sedulous.Editor.Core;

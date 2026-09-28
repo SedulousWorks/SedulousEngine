@@ -11,7 +11,7 @@ using Sedulous.Script.Resource;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Scene;
 using Sedulous.Engine.Script;
-using Sedulous.Engine.ScriptSurface;
+using Sedulous.Engine.Composition;
 using Sedulous.Engine.Integration;
 
 namespace Sedulous.Engine.Integration.Tests;

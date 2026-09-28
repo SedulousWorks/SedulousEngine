@@ -4,9 +4,9 @@ using System.IO;
 using Sedulous.Core;
 using Sedulous.Script;
 using Sedulous.Script.Null;
-using Sedulous.Engine.ScriptSurface;
+using Sedulous.Engine.Composition;
 
-namespace Sedulous.Engine.ScriptSurface.Tests;
+namespace Sedulous.Engine.Composition.Tests;
 
 /// The runtime surface as a whole: the tripwire count, a few types that must be on it, and
 /// the listing written out for reading.

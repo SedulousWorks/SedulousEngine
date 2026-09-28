@@ -7,7 +7,7 @@ using Sedulous.Mcp;
 using Sedulous.Net.Replication;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
-using Sedulous.Engine.SceneSurface;
+using Sedulous.Engine.Composition;
 using Sedulous.Editor.Mcp;
 using static Sedulous.Integration.Mcp.McpCalls;
 

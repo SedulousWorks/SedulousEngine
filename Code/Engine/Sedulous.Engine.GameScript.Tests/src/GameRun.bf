@@ -13,7 +13,7 @@ using Sedulous.Script.Resource;
 using Sedulous.VFS;
 using Sedulous.Engine.GameInstance;
 using Sedulous.Engine.Script;
-using Sedulous.Engine.ScriptSurface;
+using Sedulous.Engine.Composition;
 
 namespace Sedulous.Engine.GameScript.Tests;
 
