@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 
 namespace Sedulous.UI;
@@ -15,6 +16,9 @@ class DrawableView : View
 
 	public Property<float?> DesiredWidth = new .() ~ delete _;
 	public Property<float?> DesiredHeight = new .() ~ delete _;
+	/// Draws at the desired (else intrinsic) aspect, as large as fits and centred, rather than
+	/// stretched to the view's box: an icon in a squeezed row shrinks, it does not squash.
+	public bool KeepAspect = false;
 
 	public this()
 	{
@@ -57,8 +61,23 @@ class DrawableView : View
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
-		if (mDrawable != null)
-			mDrawable.Draw(ctx, .(0, 0, Width, Height), GetControlState());
+		if (mDrawable == null)
+			return;
+		var rect = Rectangle(0, 0, Width, Height);
+		if (KeepAspect)
+		{
+			let intrinsic = mDrawable.IntrinsicSize;
+			let aw = DesiredWidth.Value.HasValue ? DesiredWidth.Value.Value : ((intrinsic != null) ? intrinsic.Value.X : 0.0f);
+			let ah = DesiredHeight.Value.HasValue ? DesiredHeight.Value.Value : ((intrinsic != null) ? intrinsic.Value.Y : 0.0f);
+			if ((aw > 0.0f) && (ah > 0.0f) && (Width > 0.0f) && (Height > 0.0f))
+			{
+				let scale = Math.Min(Width / aw, Height / ah);
+				let w = aw * scale;
+				let h = ah * scale;
+				rect = .((Width - w) * 0.5f, (Height - h) * 0.5f, w, h);
+			}
+		}
+		mDrawable.Draw(ctx, rect, GetControlState());
 	}
 
 	protected override void OnMeasure(BoxConstraints constraints)

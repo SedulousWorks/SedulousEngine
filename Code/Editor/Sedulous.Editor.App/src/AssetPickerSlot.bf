@@ -87,7 +87,9 @@ class AssetPickerSlot : FlexLayout, IDropTarget
 	public void SetValue(StringView name, bool hasValue)
 	{
 		mHasValue = hasValue;
-		mBody.SetText((hasValue && (name.Length > 0)) ? name : "(none)");
+		// The name as given, a bound row's empty text included ("Default", a preview's
+		// primitive): "(none)" only stands in for no text at all.
+		mBody.SetText((name.Length > 0) ? name : "(none)");
 		SyncAffordances(hasValue);
 	}
 
@@ -247,6 +249,7 @@ class AssetPickerSlot : FlexLayout, IDropTarget
 	private ContentButton MakeActionButton(Drawable icon, StringView tooltip, out DrawableView outDrawable)
 	{
 		let content = new DrawableView(icon, 14.0f, 14.0f);
+		content.KeepAspect = true; // a short row shrinks the glyph, never squashes it
 		outDrawable = content;
 		let button = new ContentButton(content);
 		button.TooltipText.Set(tooltip);

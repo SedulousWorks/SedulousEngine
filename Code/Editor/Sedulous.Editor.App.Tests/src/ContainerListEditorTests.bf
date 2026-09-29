@@ -166,6 +166,12 @@ static class ContainerListEditorTests
 		Test.Assert(row.ValueText == "(missing)");
 		Test.Assert(slot.ClearButton.IsEnabled);
 
+		// A bound row's empty text is what the slot shows for nil, not a fixed "(none)".
+		let preview = scope ResourceRefEditor("Material", "(none)", "Mesh", scope StringView[]("MaterialAsset"));
+		preview.EmptyText.Set("Default");
+		preview.BindAsset(context, new () => Guid(), new (id) => {});
+		Test.Assert((preview.EditorView as AssetPickerSlot).BodyButton.Text.Value == "Default");
+
 		// A row that is no asset (an entity reference) takes no asset drop.
 		let entityRow = scope ResourceRefEditor("Target", "(none)", "Joint", .());
 		Test.Assert((entityRow.EditorView as AssetPickerSlot).AsDropTarget() == null);

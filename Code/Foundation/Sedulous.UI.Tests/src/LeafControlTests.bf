@@ -2,6 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.Image;
 using Sedulous.UI;
+using Sedulous.VG;
 
 namespace Sedulous.UI.Tests;
 
@@ -21,9 +22,12 @@ class LeafControlTests
 
 		public override Float2? IntrinsicSize => mIntrinsic;
 
+		public Rectangle LastBounds;
+
 		public override void Draw(UIDrawContext ctx, Rectangle bounds)
 		{
 			Draws++;
+			LastBounds = bounds;
 		}
 	}
 
@@ -214,5 +218,30 @@ class LeafControlTests
 		second.AddRef();
 		view.SetDrawable(second);
 		Test.Assert(second.RefCount == 1, "held exactly once, by the view");
+	}
+
+	/// KeepAspect draws at the desired shape, as large as fits and centred: a 14 by 14 icon in
+	/// a 40 by 10 box is 10 by 10 in the middle, not 40 by 10. Without it the drawable fills.
+	[Test]
+	public static void KeepAspectFitsAndCentresRatherThanStretching()
+	{
+		let vg = scope VGContext();
+		let draw = scope UIDrawContext(vg, 1.0f, null);
+
+		let icon = new ProbeDrawable();
+		icon.AddRef();
+		defer icon.ReleaseRef();
+		let view = new DrawableView(icon, 14.0f, 14.0f);
+		defer view.ReleaseRef();
+		view.Measure(BoxConstraints.Tight(40, 10));
+		view.Layout(0, 0, 40, 10);
+
+		view.OnDraw(draw);
+		Test.Assert((icon.LastBounds.Width == 40.0f) && (icon.LastBounds.Height == 10.0f), "fills by default");
+
+		view.KeepAspect = true;
+		view.OnDraw(draw);
+		Test.Assert((icon.LastBounds.Width == 10.0f) && (icon.LastBounds.Height == 10.0f));
+		Test.Assert((icon.LastBounds.X == 15.0f) && (icon.LastBounds.Y == 0.0f), "centred");
 	}
 }

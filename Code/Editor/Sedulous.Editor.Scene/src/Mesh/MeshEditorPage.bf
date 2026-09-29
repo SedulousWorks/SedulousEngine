@@ -287,7 +287,11 @@ class MeshEditorPage : UIEditorPage
 			mPreviewMaterialRow.EditorView.AddRef();
 			row.AddView(mPreviewMaterialRow.EditorView, grow);
 
-			AddRow(row);
+			// Its natural height, as in an inspector; the fixed stat row height squeezed the
+			// slot's buttons.
+			var rowStyle = LayoutStyle();
+			rowStyle.Width = SizeSpec.Match();
+			mStatsColumn.AddView(row, rowStyle);
 		}
 
 		let mesh = mMeshProxy.Get;
