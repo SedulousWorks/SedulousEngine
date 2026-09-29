@@ -488,6 +488,7 @@ class EditorApplication : IApplication
 			panel.SetPersistenceId(scope $"game-page-{++mGamePageCounter}");
 		else
 			panel.SetPersistenceId("game-page");
+		panel.DestroyOnClose = true; // the page's views die with it, as for any page
 		panel.OnCloseRequested.Add(new [=uiPage, =this](p) =>
 			{
 				mUiHost.Context.MutationQueue.QueueAction(new [=uiPage, =this]() => { ClosePage(uiPage); });
@@ -532,6 +533,9 @@ class EditorApplication : IApplication
 		// A guid-keyed persistence id: the saved dock layout re-places this page's panel when
 		// the page reopens on the next launch.
 		panel.SetPersistenceId(uiPage.InstanceId.ToString(.. scope .(), 'D'));
+		// The page's views die with the page: its close destroys the panel, or a later layout
+		// restore would find the stale one by this id and float it holding freed content.
+		panel.DestroyOnClose = true;
 		// The DockManager's own close handling destroys the panel through its deferred queue;
 		// the page tears down too, deferred through the mutation queue.
 		panel.OnCloseRequested.Add(new [=uiPage, =this](p) =>

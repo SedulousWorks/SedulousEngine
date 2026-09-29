@@ -275,7 +275,7 @@ class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 		if (mActivePanel === panel)
 			mActivePanel = null; // the group's re-selection names the next one, if any
 		UndockPanel(panel);
-		if (!panel.PersistenceId.IsEmpty)
+		if (!panel.PersistenceId.IsEmpty && !panel.DestroyOnClose)
 			return;
 
 		// Queued FIRST, which keeps the panel alive across the deferred boundary, and only then

@@ -60,6 +60,13 @@ class DockablePanel : ViewGroup, IDragSource
 		SetContent(content);
 	}
 
+	/// A panel with a persistence id normally survives its close, undocked but registered, so
+	/// a saved layout (or the app) docks the same panel again: the app's fixed panels. A panel
+	/// whose content dies with the close (an editor page) sets this: its close destroys it like
+	/// any other, and a later layout restore cannot find it, and float it, holding the dead
+	/// content.
+	public bool DestroyOnClose = false;
+
 	/// The stable name a saved layout refers to this panel by.
 	public StringView PersistenceId => mPersistenceId;
 

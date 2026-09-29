@@ -378,4 +378,39 @@ class DockPersistenceTests
 		Test.Assert(group != null);
 		Test.Assert(group.SelectedIndex == 1);
 	}
+
+	/// The editor's close project, reopen, restore: a page panel carries an id so the layout
+	/// re-places it, but its content dies with the page. Closed with DestroyOnClose it is gone,
+	/// so the reopened page's new panel under the same id is the only one the layout places,
+	/// and nothing is left over to float holding dead content.
+	[Test]
+	public static void AClosedPagePanelIsGoneAndIsNotFloatedByTheNextRestore()
+	{
+		let bed = scope DockBed();
+		let assets = bed.Panel("Assets", "assets");
+		bed.Manager.DockPanel(assets, .Center);
+		let page = bed.Panel("Texture", "page-guid");
+		page.DestroyOnClose = true;
+		bed.Manager.DockPanelRelativeTo(page, .Center, assets.Parent);
+		let layout = bed.Manager.ExportLayout();
+		defer delete layout;
+
+		// Close: the page panel is destroyed; the app's own panel would have stayed.
+		bed.Manager.ClosePanel(page);
+		Test.Assert(bed.Manager.FindPanelById("page-guid") == null);
+		Test.Assert(bed.Manager.PanelCount == 1);
+
+		// Reopen: the page's new panel under the same id, then the saved layout.
+		let reopened = bed.Panel("Texture", "page-guid");
+		reopened.DestroyOnClose = true;
+		bed.Manager.ApplyLayout(layout);
+		Test.Assert(bed.Manager.PanelCount == 2);
+		for (int i < bed.Manager.PanelCount)
+			Test.Assert((bed.Manager.GetPanelAt(i).Parent as DockableWindow) == null, "nothing floated");
+		Test.Assert(reopened.Parent is DockTabGroup, "the new panel took the saved place");
+
+		// An app panel with an id still survives its close, for the layout to dock again.
+		bed.Manager.ClosePanel(assets);
+		Test.Assert(bed.Manager.FindPanelById("assets") == assets);
+	}
 }
