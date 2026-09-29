@@ -10,7 +10,7 @@ namespace Sedulous.UI;
 /// Gone rather than hiding it, so it stops costing layout as well as pixels.
 ///
 /// A themed border-width and border-color outline the whole section, band and body, drawn
-/// over the children; the body is inset by the padding plus that border, the band is not.
+/// over the children and rounded at the theme's corner-radius; the body is inset by the padding plus that border, the band is not.
 class Expander : ViewGroup
 {
 	/// The band's MINIMUM height. Oversized actions grow it past this.
@@ -190,8 +190,14 @@ class Expander : ViewGroup
 		if (borderWidth <= 0.0f)
 			return;
 		let color = ResolveStyleColor(.BorderColor, Color(80.0f / 255.0f, 80.0f / 255.0f, 90.0f / 255.0f, 1.0f));
-		// Stroked inside the bounds, so a neighbour never draws over it.
+		// Stroked inside the bounds, so a neighbour never draws over it, and rounded at the
+		// theme's corner radius like the band it encloses (square in a flat theme).
 		let half = borderWidth * 0.5f;
-		ctx.VG.StrokeRect(.(half, half, Width - borderWidth, Height - borderWidth), color, borderWidth);
+		let outline = Rectangle(half, half, Width - borderWidth, Height - borderWidth);
+		let radius = ResolveStyleFloat(.CornerRadius, 0.0f);
+		if (radius > 0.0f)
+			ctx.VG.StrokeRoundedRect(outline, Max(0.0f, radius - half), color, borderWidth);
+		else
+			ctx.VG.StrokeRect(outline, color, borderWidth);
 	}
 }
