@@ -99,6 +99,10 @@ class ExpanderHeader : ViewGroup
 		var bandState = GetControlState();
 		if (!mOwner.IsEffectivelyEnabled())
 			bandState |= .Disabled;
+		// Expanded reads as Checked, as for the chevron: a theme can shape the band that tops
+		// an open section (its bottom corners meeting the body) apart from a closed one.
+		if (mOwner.IsExpanded)
+			bandState |= .Checked;
 
 		if (let header = mOwner.ResolvePartDrawable("header", .Background, bandState))
 			header.Draw(ctx, band, bandState);

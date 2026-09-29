@@ -38,13 +38,16 @@ class SceneHierarchyView : ViewGroup
 	{
 		mEdit = edit;
 
+		// Inset like the other page trees (the particle page's), so a selected row's highlight
+		// stops short of the panel's edges.
 		let column = new FlexLayout();
 		column.Direction = .Vertical;
+		column.Spacing = 4.0f;
+		column.Padding = .(6, 4);
 
 		let header = new FlexLayout();
 		header.Direction = .Horizontal;
 		header.Spacing = 4.0f;
-		header.Padding = .(4, 3);
 		let addButton = new Button("+");
 		addButton.OnClick.Add(new [=edit](b) => { edit.CreateEntity("Entity"); });
 		header.AddView(addButton);

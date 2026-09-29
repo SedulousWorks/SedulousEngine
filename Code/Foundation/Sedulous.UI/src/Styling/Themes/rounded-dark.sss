@@ -135,6 +135,10 @@ Separator { border-color: $border; }
 Expander { font-size: 14; }  /* header text (property-grid category headers) */
 Expander::header { background: rounded-rect($surface-bright, radius=6); }
 Expander::header:hover { background: rounded-rect(lighten($surface-bright, 10%), radius=6); }
+/* Open, the band tops the section, whose border closes the box below it: only its top
+ * corners round (radius order: top-left top-right bottom-right bottom-left). */
+Expander::header:checked { background: rounded-rect($surface-bright, radius=6 6 0 0); }
+Expander::header:hover:checked { background: rounded-rect(lighten($surface-bright, 10%), radius=6 6 0 0); }
 Expander::chevron { text-color: lighten($text-dim, 15%); }
 
 /* === TabView - rounded tabs === */
