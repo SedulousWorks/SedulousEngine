@@ -27,6 +27,7 @@ class Settings
 	private Dictionary<uint64, SettingsSection> mSections = new .() ~ DeleteDictionaryAndValues!(_);
 	private List<UnknownSection> mUnknown = new .() ~ DeleteContainerAndItems!(_);
 
+
 	/// Fires with a section's type name when something announces a change to it.
 	public Event<delegate void(StringView)> OnChanged ~ _.Dispose();
 
@@ -186,6 +187,13 @@ class Settings
 			archive.Text(typeName);
 			if (!archive.IsOk)
 				return archive.Status;
+			// A section type that moved loads as its current type and saves under its name.
+			let renamed = scope String();
+			if (SerializableRenames.TryCurrentName(typeName, renamed))
+			{
+				GlobalLog(.Information, "Settings: section '{}' loads as '{}'", typeName, renamed);
+				typeName.Set(renamed);
+			}
 
 			let id = TypeIdOf(typeName);
 			let object = registry.Create(id);

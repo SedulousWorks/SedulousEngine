@@ -82,8 +82,10 @@ static
 				let legacy = (i == 0) && (minReadVersion != 0)
 					&& (chain[i].Version >= minReadVersion)
 					&& (chain[i].Version < declared[i].Version);
-				matches = (chain[i].TypeId == declared[i].TypeId)
-					&& ((chain[i].Version == declared[i].Version) || legacy);
+				// A former identity is the same type saved before it moved (SerializableRenames).
+				let sameType = (chain[i].TypeId == declared[i].TypeId)
+					|| SerializableRenames.IsFormerId(chain[i].TypeId, declared[i].TypeId);
+				matches = sameType && ((chain[i].Version == declared[i].Version) || legacy);
 			}
 			if (!matches)
 				ar.FailPayload(.NotSupported);
