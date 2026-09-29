@@ -47,6 +47,7 @@ class TerrainEditorPage : UIEditorPage
 	/// OWNED: the reference slot rows of the fields pane, rebuilt with it.
 	private List<ResourceRefEditor> mReferenceRows = new .() ~ DeleteContainerAndItems!(_);
 	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
+	private PageToolbar mToolbar = null;
 	private List<uint8> mUndoBaseline = new .() ~ delete _;
 
 	public this(EditorContext context, IApplicationHost host, UIHost uiHost, Instance instance)
@@ -84,7 +85,8 @@ class TerrainEditorPage : UIEditorPage
 		let split = new SplitView();
 		split.SplitRatio = 0.62f;
 		split.SetPanes(mPreview.View, scroll);
-		mContent = split;
+		mToolbar = new PageToolbar(this, mContext.Actions);
+		mContent = PageToolbar.Frame(mToolbar, split);
 
 		Snapshot(mUndoBaseline);
 		BindTerrain();
@@ -124,6 +126,8 @@ class TerrainEditorPage : UIEditorPage
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		if (mToolbar != null)
+			mToolbar.Refresh();
 		if (mPreview != null)
 			mPreview.Update(dt);
 		let product = mTerrainProxy.Get;

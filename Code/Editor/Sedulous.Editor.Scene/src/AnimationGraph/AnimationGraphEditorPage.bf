@@ -23,7 +23,7 @@ namespace Sedulous.Editor.Scene;
 /// state machine on a node canvas over a preview that plays the graph on a picked skeleton,
 /// and an inspector for the selection on the right. The page edits a nested GraphDocument
 /// and stores it over the flat source around every snapshot, so undo carries the wire form.
-class AnimationGraphEditorPage : UIEditorPage
+class AnimationGraphEditorPage : UIEditorPage, IPlaybackPage
 {
 	/// Borrowed.
 	private EditorContext mContext;
@@ -57,9 +57,7 @@ class AnimationGraphEditorPage : UIEditorPage
 	/// Borrowed: the transport bar owns them.
 	private CompactAssetSlot mSkeletonSlot = null;
 	private CompactAssetSlot mMeshSlot = null;
-	private Button mSkeletonToggle = null;
-	private Button mMeshToggle = null;
-	private Button mPlayButton = null;
+	private PageToolbar mToolbar = null;
 	/// The current state and transition readout.
 	private Label mPreviewStatus = null;
 
@@ -150,7 +148,22 @@ class AnimationGraphEditorPage : UIEditorPage
 		let rightSplit = new SplitView();
 		rightSplit.SplitRatio = 0.74f;
 		rightSplit.SetPanes(leftSplit, inspectorColumn);
-		mContent = rightSplit;
+
+		// The page toolbar: playback, then the preview's bones and mesh toggles.
+		mToolbar = new PageToolbar(this, mContext.Actions);
+		mToolbar.AddPlayback();
+		mToolbar.AddSeparator();
+		let bones = mToolbar.AddToggle("Bones");
+		bones.IsChecked = mShowSkeleton;
+		bones.OnCheckedChanged.Add(new [=this](t, on) => { mShowSkeleton = on; });
+		let mesh = mToolbar.AddToggle("Mesh");
+		mesh.IsChecked = mShowMesh;
+		mesh.OnCheckedChanged.Add(new [=this](t, on) => { mShowMesh = on; });
+		let page = new FlexLayout();
+		page.Direction = .Vertical;
+		page.AddView(mToolbar, match);
+		page.AddView(rightSplit, growMatch);
+		mContent = page;
 
 		RebuildLeftPanel();
 		RebuildCanvas();
@@ -175,6 +188,25 @@ class AnimationGraphEditorPage : UIEditorPage
 	public int32 SelectedLayer => mSelectedLayer;
 	public GraphSel Selected => mSelected;
 
+	// ---- IPlaybackPage: the preview player; a rebuild is the rewind ----
+
+	public bool CanPlay => mPlayer != null;
+	public bool IsPlaying => mPreviewPlaying;
+	public void Play() => mPreviewPlaying = true;
+	public void Pause() => mPreviewPlaying = false;
+
+	public void Stop()
+	{
+		mPreviewPlaying = false;
+		RebuildPreviewGraph();
+	}
+
+	public void Restart()
+	{
+		RebuildPreviewGraph();
+		mPreviewPlaying = true;
+	}
+
 	/// The context every menu and dialog opens against; null until the content is attached.
 	private UIContext Ctx => (mCanvas != null) ? mCanvas.Context : null;
 
@@ -182,6 +214,8 @@ class AnimationGraphEditorPage : UIEditorPage
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		if (mToolbar != null)
+			mToolbar.Refresh();
 		UpdatePreview(dt);
 		if (mPreview != null)
 			mPreview.Update(dt);

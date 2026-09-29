@@ -98,19 +98,6 @@ extension ParticleEffectEditorPage
 		transport.Spacing = 6.0f;
 		transport.Padding = .(6, 4);
 
-		let play = new Button("Play");
-		play.OnClick.Add(new [=this](btn) => { Play(); });
-		let stop = new Button("Stop");
-		stop.OnClick.Add(new [=this](btn) => { Stop(); });
-		let restart = new Button("Restart");
-		restart.OnClick.Add(new [=this](btn) => { Restart(); });
-		let pause = new Button("Pause");
-		pause.OnClick.Add(new [=this](btn) => { SetPaused(!mPaused); });
-		transport.AddView(play);
-		transport.AddView(stop);
-		transport.AddView(restart);
-		transport.AddView(pause);
-
 		let speedLabel = new Label("Speed");
 		speedLabel.FontSize.Value = 12.0f;
 		speedLabel.VAlign.Value = .Middle;
@@ -134,9 +121,15 @@ extension ParticleEffectEditorPage
 		return transport;
 	}
 
+	// ---- IPlaybackPage: play, pause and stop drive the preview's instance ----
+
+	public bool CanPlay => (PreviewComponent() != null) && (PreviewComponent().Instance != null);
+	public bool IsPlaying => !mPaused && !mStopped;
+
 	public void Play()
 	{
 		mPaused = false;
+		mStopped = false;
 		if (mAsset != null)
 		{
 			for (int32 i < mAsset.Effect.SystemCount)
@@ -149,14 +142,22 @@ extension ParticleEffectEditorPage
 		}
 	}
 
+	/// Clears the particles and stops emitting: the rewind.
 	public void Stop()
 	{
+		SetPaused(false);
+		mStopped = true;
 		if (let c = PreviewComponent())
 		{
 			if (c.Instance != null)
+			{
+				c.Instance.Reset();
 				c.Instance.Stop();
+			}
 		}
 	}
+
+	public void Pause() => SetPaused(true);
 
 	public void Restart()
 	{

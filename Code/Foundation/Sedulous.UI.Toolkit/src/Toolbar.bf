@@ -25,6 +25,21 @@ class Toolbar : FlexLayout
 		AddView(item, style);
 	}
 
+	/// Adds any view with its own layout: a slider's width, a label centred on the bar.
+	/// CONSUMES the caller's reference.
+	public void AddItem(View item, LayoutStyle style) => AddView(item, style);
+
+	/// Adds a label centred on the bar, returned BORROWED: a status line, a caption.
+	public Label AddLabel(StringView text)
+	{
+		let label = new Label(text);
+		label.FontSize.Value = 12.0f;
+		LayoutStyle style = .();
+		style.AlignSelf = .Center;
+		AddView(label, style);
+		return label;
+	}
+
 	/// Adds a text button, returned BORROWED for further wiring.
 	public ToolbarButton AddButton(StringView text)
 	{

@@ -87,32 +87,6 @@ extension AnimationGraphEditorPage
 			});
 		mMeshSlot.Build();
 		transport.AddView(mMeshSlot, slotWidth);
-		mPlayButton = new Button("Pause");
-		mPlayButton.OnClick.Add(new [=this](btn) =>
-			{
-				mPreviewPlaying = !mPreviewPlaying;
-				mPlayButton.SetText(mPreviewPlaying ? "Pause" : "Play");
-			});
-		transport.AddView(mPlayButton);
-		let restart = new Button("Restart");
-		restart.OnClick.Add(new [=this](btn) => { RebuildPreviewGraph(); });
-		transport.AddView(restart);
-
-		mSkeletonToggle = new Button("Bones: on");
-		mSkeletonToggle.OnClick.Add(new [=this](btn) =>
-			{
-				mShowSkeleton = !mShowSkeleton;
-				mSkeletonToggle.SetText(mShowSkeleton ? "Bones: on" : "Bones: off");
-			});
-		transport.AddView(mSkeletonToggle);
-		mMeshToggle = new Button("Mesh: on");
-		mMeshToggle.OnClick.Add(new [=this](btn) =>
-			{
-				mShowMesh = !mShowMesh;
-				mMeshToggle.SetText(mShowMesh ? "Mesh: on" : "Mesh: off");
-			});
-		transport.AddView(mMeshToggle);
-
 		mPreviewStatus = new Label();
 		mPreviewStatus.FontSize.Value = 12.0f;
 		mPreviewStatus.VAlign.Value = .Middle;

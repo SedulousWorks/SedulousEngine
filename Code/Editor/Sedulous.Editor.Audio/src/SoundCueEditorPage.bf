@@ -16,7 +16,7 @@ namespace Sedulous.Editor.Audio;
 /// The sound cue page: a row per slot (the clip, its weight), the pick mode and the pitch
 /// and volume jitter, and an audition that resolves a variant the way the runtime does.
 /// Every edit is a whole asset snapshot command; Discard reverts to the saved bytes.
-class SoundCueEditorPage : UIEditorPage
+class SoundCueEditorPage : UIEditorPage, IPlaybackPage
 {
 	/// Borrowed.
 	private EditorContext mContext;
@@ -45,7 +45,6 @@ class SoundCueEditorPage : UIEditorPage
 	private NumericField[SoundCueAsset.cSlotCount] mWeightFields = .();
 	private List<NumericField> mJitterFields = new .() ~ delete _;
 	private Button mModeButton = null;
-	private Button mPauseButton = null;
 	private Label mStatus = null;
 	/// The persistent draft hint for an empty cue.
 	private Label mEmptyHint = null;
@@ -65,6 +64,8 @@ class SoundCueEditorPage : UIEditorPage
 		column.Direction = .Vertical;
 		column.Spacing = 6.0f;
 		mToolbar = new PageToolbar(this, mContext.Actions);
+		mToolbar.AddPlayback();
+		mStatus = mToolbar.AddLabel("");
 		var match = LayoutStyle();
 		match.Width = SizeSpec.Match();
 		column.AddView(mToolbar, match);
@@ -121,26 +122,6 @@ class SoundCueEditorPage : UIEditorPage
 			AddJitterField(row, "pitch max", &mAsset.PitchMax);
 			AddJitterField(row, "vol min", &mAsset.VolumeMin);
 			AddJitterField(row, "vol max", &mAsset.VolumeMax);
-			column.AddView(row, match);
-		}
-		{
-			let row = new FlexLayout();
-			row.Direction = .Horizontal;
-			row.Spacing = 6.0f;
-			let play = new Button("Audition");
-			play.OnClick.Add(new [=this](btn) => { Audition(); });
-			row.AddView(play);
-			mPauseButton = new Button("Pause");
-			mPauseButton.OnClick.Add(new [=this](btn) => { TogglePause(); });
-			row.AddView(mPauseButton);
-			let stop = new Button("Stop");
-			stop.OnClick.Add(new [=this](btn) => { StopAudition(); });
-			row.AddView(stop);
-			mStatus = new Label("");
-			mStatus.FontSize.Value = 12.0f;
-			var center = LayoutStyle();
-			center.AlignSelf = .Center;
-			row.AddView(mStatus, center);
 			column.AddView(row, match);
 		}
 		mEmptyHint = new Label("");
@@ -318,8 +299,6 @@ class SoundCueEditorPage : UIEditorPage
 			engine.Stop(mVoice);
 		mVoice = .();
 		mPaused = false;
-		if (mPauseButton != null)
-			mPauseButton.SetText("Pause");
 	}
 
 	private void TogglePause()
@@ -329,9 +308,41 @@ class SoundCueEditorPage : UIEditorPage
 			return;
 		mPaused = !mPaused;
 		engine.SetPaused(mVoice, mPaused);
-		if (mPauseButton != null)
-			mPauseButton.SetText(mPaused ? "Resume" : "Pause");
 	}
+
+	// ---- IPlaybackPage: an audition resolves a variant as the runtime would ----
+
+	public bool CanPlay
+	{
+		get
+		{
+			for (let slot in mAsset.Slots)
+			{
+				if (!slot.ClipId.IsNil)
+					return true;
+			}
+			return false;
+		}
+	}
+
+	public bool IsPlaying => mVoice.IsValid && !mPaused;
+
+	public void Play()
+	{
+		if (!mVoice.IsValid)
+			Audition();
+		else if (mPaused)
+			TogglePause();
+	}
+
+	public void Pause()
+	{
+		if (mVoice.IsValid && !mPaused)
+			TogglePause();
+	}
+
+	public void Stop() => StopAudition();
+	public void Restart() => Audition();
 
 	/// The slot's clip, loaded once and cached for the page's life.
 	private AudioClip LoadSlotClip(int slot)

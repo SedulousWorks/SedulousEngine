@@ -20,10 +20,10 @@ using Sedulous.Editor.Preview;
 namespace Sedulous.Editor.Scene;
 
 /// The particle effect page: the effect's tree on the left (systems, emitters, module
-/// folders), a simulating preview with a transport in the middle, and an inspector for the
+/// folders), a simulating preview in the middle (the page toolbar plays it), and an inspector for the
 /// selected row on the right. Every edit is a whole effect snapshot command; a structural
 /// one (a module added, removed or moved) re-attaches the preview and rebuilds the tree.
-class ParticleEffectEditorPage : UIEditorPage
+class ParticleEffectEditorPage : UIEditorPage, IPlaybackPage
 {
 	/// Borrowed.
 	private EditorContext mContext;
@@ -58,6 +58,9 @@ class ParticleEffectEditorPage : UIEditorPage
 
 	private float mSimSpeed = 1.0f;
 	private bool mPaused = false;
+	/// Stopped by the toolbar: nothing emits until Play or Restart.
+	private bool mStopped = false;
+	private PageToolbar mToolbar = null;
 	/// The last committed effect blob, the undo anchor.
 	private List<uint8> mUndoBaseline = new .() ~ delete _;
 	/// What the in place rows report through; borrowed by every row.
@@ -137,7 +140,14 @@ class ParticleEffectEditorPage : UIEditorPage
 		let rightSplit = new SplitView();
 		rightSplit.SplitRatio = 0.72f;
 		rightSplit.SetPanes(leftSplit, inspectorColumn);
-		mContent = rightSplit;
+
+		mToolbar = new PageToolbar(this, mContext.Actions);
+		mToolbar.AddPlayback();
+		let page = new FlexLayout();
+		page.Direction = .Vertical;
+		page.AddView(mToolbar, match);
+		page.AddView(rightSplit, growMatch);
+		mContent = page;
 
 		RebuildTree();
 		SelectNode(.Root);
@@ -167,6 +177,8 @@ class ParticleEffectEditorPage : UIEditorPage
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		if (mToolbar != null)
+			mToolbar.Refresh();
 		if ((mStatsLabel != null) && (mAsset != null))
 		{
 			int32 total = 0;

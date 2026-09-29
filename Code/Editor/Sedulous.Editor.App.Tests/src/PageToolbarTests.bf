@@ -9,7 +9,8 @@ namespace Sedulous.Editor.App.Tests;
 /// The page toolbar built from the action registry over ITS page: the standard set labelled
 /// from the declarations, a click executing over the toolbar's page even when another page is
 /// active, Refresh answering about this page, a domain action added by id as a button or a
-/// toggle, and an unknown id refused.
+/// toggle, an unknown id refused, the standard set a page asks for, and the playback
+/// transport over an IPlaybackPage.
 static class PageToolbarTests
 {
 	interface IRunnable
@@ -116,5 +117,79 @@ static class PageToolbarTests
 		Test.Assert(mine.Saves == 1);
 		Test.Assert(other.Saves == 0);
 		Test.Assert(other.IsDirty, "untouched");
+	}
+
+	private class PlayPage : EditorPage, IPlaybackPage
+	{
+		public bool Loaded = true;
+		public bool Playing = false;
+		public int Position = 0;
+		public override StringView Title => "play";
+		public override Result<void, ErrorCode> Save() => .Ok;
+		public bool CanPlay => Loaded;
+		public bool IsPlaying => Playing;
+		public void Play() => Playing = true;
+		public void Pause() => Playing = false;
+		public void Stop() { Playing = false; Position = 0; }
+		public void Restart() { Position = 0; Playing = true; }
+	}
+
+	[Test]
+	public static void APageAsksForItsStandardSet()
+	{
+		let context = scope EditorContext();
+		DeclareStandardSet(context.Actions);
+		let page = (RunPage)context.AdoptPage(new RunPage());
+		let text = new PageToolbar(page, context.Actions, .Save);
+		defer text.ReleaseRef();
+		Test.Assert((text.BoundCount == 1) && (text.ButtonFor("file.save") != null));
+		Test.Assert(text.ButtonFor("page.discardChanges") == null, "a text page's text is no command stack");
+		let none = new PageToolbar(page, context.Actions, .None);
+		defer none.ReleaseRef();
+		Test.Assert((none.BoundCount == 0) && (none.ChildCount == 0));
+	}
+
+	[Test]
+	public static void ThePlaybackTransportDrivesItsPage()
+	{
+		let context = scope EditorContext();
+		PlaybackActions.Register(context.Actions);
+		let page = (PlayPage)context.AdoptPage(new PlayPage());
+		let toolbar = new PageToolbar(page, context.Actions, .None);
+		defer toolbar.ReleaseRef();
+		toolbar.AddPlayback();
+		Test.Assert(toolbar.BoundCount == 3);
+		Test.Assert(toolbar.ChildCount == 3, "no leading separator on an empty bar");
+		let play = toolbar.ButtonFor("playback.play") as ToolbarToggle;
+		Test.Assert(play != null, "Play is a toggle");
+
+		// Play, then pause, through the one toggle; the check follows the page.
+		toolbar.Refresh();
+		Test.Assert(play.IsEnabled && !play.IsChecked);
+		play.IsChecked = true;
+		Test.Assert(page.Playing);
+		toolbar.Refresh();
+		Test.Assert(play.IsChecked);
+		play.IsChecked = false;
+		Test.Assert(!page.Playing);
+
+		// Stop rewinds; Restart plays from the start.
+		page.Playing = true;
+		page.Position = 7;
+		toolbar.ButtonFor("playback.stop").OnClick(toolbar.ButtonFor("playback.stop"));
+		Test.Assert(!page.Playing && (page.Position == 0));
+		page.Position = 3;
+		toolbar.ButtonFor("playback.restart").OnClick(toolbar.ButtonFor("playback.restart"));
+		Test.Assert(page.Playing && (page.Position == 0));
+
+		// Nothing loaded: nothing enabled.
+		page.Loaded = false;
+		toolbar.Refresh();
+		Test.Assert(!play.IsEnabled && !toolbar.ButtonFor("playback.stop").IsEnabled);
+
+		// A page that plays nothing has every playback action disabled.
+		let plain = (RunPage)context.AdoptPage(new RunPage());
+		Test.Assert(!context.Actions.IsEnabled("playback.play", plain));
+		Test.Assert(!context.Actions.IsEnabled("playback.restart", plain));
 	}
 }

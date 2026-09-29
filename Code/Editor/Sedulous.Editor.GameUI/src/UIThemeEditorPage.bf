@@ -43,6 +43,7 @@ class UIThemeEditorPage : UIEditorPage
 
 	/// Borrowed: the content owns them.
 	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
+	private PageToolbar mToolbar = null;
 	private CodeEditView mEditor = null;
 	private CodeEditView mPreviewEditor = null;
 	private Button mPickButton = null;
@@ -124,7 +125,8 @@ class UIThemeEditorPage : UIEditorPage
 		render.FlexGrow = 2.0f; // the render gets the lion's share of the right column
 		right.AddView(mPreview.View, render);
 		row.AddView(right, growMatch);
-		mContent = row;
+		mToolbar = new PageToolbar(this, mContext.Actions, .Save);
+		mContent = PageToolbar.Frame(mToolbar, row);
 		RebuildPreview();
 	}
 
@@ -163,6 +165,8 @@ class UIThemeEditorPage : UIEditorPage
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		if (mToolbar != null)
+			mToolbar.Refresh();
 		mPreview.EnsureBound();
 		if (mPreviewDelay > 0.0f)
 		{

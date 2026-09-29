@@ -9,6 +9,7 @@ using Sedulous.Fonts.DistanceField.Baker;
 using Sedulous.Fonts.Pipeline;
 using Sedulous.UI;
 using Sedulous.UI.Toolkit;
+using Sedulous.Runtime.Client;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 
@@ -40,6 +41,7 @@ class FontEditorPage : UIEditorPage
 
 	/// Borrowed: the content owns them.
 	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
+	private PageToolbar mToolbar = null;
 	private ImageView mImage = null;
 	private Label mInfo = null;
 	private PropertyGrid mGrid = null;
@@ -99,7 +101,8 @@ class FontEditorPage : UIEditorPage
 		let split = new SplitView();
 		split.SplitRatio = 0.6f;
 		split.SetPanes(previewColumn, gridColumn);
-		mContent = split;
+		mToolbar = new PageToolbar(this, mContext.Actions);
+		mContent = PageToolbar.Frame(mToolbar, split);
 		RebakePreview();
 	}
 
@@ -114,6 +117,12 @@ class FontEditorPage : UIEditorPage
 
 	public override StringView Title => mTitle;
 	public override View ContentView => mContent;
+
+	public override void OnUpdate(IApplicationHost host, float dt)
+	{
+		if (mToolbar != null)
+			mToolbar.Refresh();
+	}
 	public FontAsset Asset => mAsset;
 	public bool HasPreview => mPreview != null;
 

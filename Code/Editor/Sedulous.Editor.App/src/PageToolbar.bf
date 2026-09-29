@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Editor.Core;
 
@@ -14,6 +15,18 @@ namespace Sedulous.Editor.App;
 /// Refresh each frame (cheap).
 class PageToolbar : Toolbar
 {
+	/// Which of the standard actions lead the bar.
+	public enum Standard
+	{
+		/// Save, undo, redo and discard: a page whose edits are commands.
+		Edit,
+		/// Save alone: a text page, whose editor keeps its own undo and whose unsaved text is
+		/// not a command stack to discard.
+		Save,
+		/// None: a page with nothing to save, only its own actions (an audition).
+		None
+	}
+
 	private struct Bound
 	{
 		/// BORROWED: the registry owns the declaration.
@@ -29,17 +42,40 @@ class PageToolbar : Toolbar
 	private EditorActionRegistry mActions;
 	private List<Bound> mBound = new .() ~ delete _;
 
-	public this(EditorPage page, EditorActionRegistry actions)
+	public this(EditorPage page, EditorActionRegistry actions, Standard standard = .Edit)
 	{
 		mPage = page;
 		mActions = actions;
-		AddAction("file.save");
-		AddSeparator();
-		AddAction("edit.undo");
-		AddAction("edit.redo");
-		AddSeparator();
-		AddAction("page.discardChanges");
+		if (standard != .None)
+			AddAction("file.save");
+		if (standard == .Edit)
+		{
+			AddSeparator();
+			AddAction("edit.undo");
+			AddAction("edit.redo");
+		}
+		if (standard == .Edit)
+		{
+			AddSeparator();
+			AddAction("page.discardChanges");
+		}
 		Refresh();
+	}
+
+	/// The page's content under its toolbar: the column a page hands out as its ContentView.
+	/// CONSUMES both references.
+	public static View Frame(PageToolbar toolbar, View content)
+	{
+		let column = new FlexLayout();
+		column.Direction = .Vertical;
+		var bar = LayoutStyle();
+		bar.Width = SizeSpec.Match();
+		column.AddView(toolbar, bar);
+		var grow = LayoutStyle();
+		grow.FlexGrow = 1.0f;
+		grow.Width = SizeSpec.Match();
+		column.AddView(content, grow);
+		return column;
 	}
 
 	/// A button for the action `id`, over this page: a Command as a button, a Toggle or Window
@@ -86,6 +122,17 @@ class PageToolbar : Toolbar
 			if (bound.Toggle != null)
 				bound.Toggle.IsChecked = EditorActionRegistry.IsChecked(bound.Action, mPage);
 		}
+	}
+
+	/// The playback transport, for a page that is an IPlaybackPage: Play (checked while
+	/// playing), Stop and Restart, after a separator when the bar has buttons already.
+	public void AddPlayback()
+	{
+		if (ChildCount > 0)
+			AddSeparator();
+		AddAction("playback.play");
+		AddAction("playback.stop");
+		AddAction("playback.restart");
 	}
 
 	public int BoundCount => mBound.Count;

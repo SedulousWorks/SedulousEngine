@@ -7,6 +7,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Content;
 using Sedulous.UI;
 using Sedulous.UI.Toolkit;
+using Sedulous.Runtime.Client;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 
@@ -26,6 +27,7 @@ class GenericAssetEditorPage : UIEditorPage
 	private ISerializable mObject = null ~ delete _;
 	private List<AssetFormField> mFields = new .() ~ DeleteContainerAndItems!(_);
 	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
+	private PageToolbar mToolbar = null;
 	// Borrowed: the content owns them.
 	private Label mInfo = null;
 	private PropertyGrid mGrid = null;
@@ -63,11 +65,18 @@ class GenericAssetEditorPage : UIEditorPage
 		grow.FlexGrow = 1.0f;
 		grow.Width = SizeSpec.Match();
 		column.AddView(mGrid, grow);
-		mContent = column;
+		mToolbar = new PageToolbar(this, mContext.Actions);
+		mContent = PageToolbar.Frame(mToolbar, column);
 	}
 
 	public override StringView Title => mTitle;
 	public override View ContentView => mContent;
+
+	public override void OnUpdate(IApplicationHost host, float dt)
+	{
+		if (mToolbar != null)
+			mToolbar.Refresh();
+	}
 
 	public override Result<void, ErrorCode> Save()
 	{

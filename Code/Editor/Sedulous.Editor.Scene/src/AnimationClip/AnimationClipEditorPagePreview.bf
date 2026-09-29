@@ -133,10 +133,7 @@ extension AnimationClipEditorPage
 			{
 				mTime = clip.IsLooping ? (mTime % clip.Duration) : clip.Duration;
 				if (!clip.IsLooping)
-				{
 					mPlaying = false;
-					mPlayButton.SetText("Play");
-				}
 			}
 			mScrubbing = true;
 			mTimeSlider.Value.Value = mTime / clip.Duration;

@@ -80,6 +80,7 @@ extension EditorApplication
 			d.Execute = new (page) => { page.DiscardChanges(); };
 			actions.Register(d);
 		}
+		PlaybackActions.Register(actions);
 		{
 			// Per-user, not per-document: the conventional Edit home.
 			let d = new EditorActionDeclaration("edit.preferences", "Preferences...", "Open the per-user editor preferences", "Edit/Preferences...", 200);

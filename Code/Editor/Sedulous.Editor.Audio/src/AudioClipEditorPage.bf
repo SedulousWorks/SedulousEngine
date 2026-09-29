@@ -13,10 +13,10 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Audio;
 
-/// The audio clip page: the waveform with a playhead, play, pause and stop on the runtime
-/// audio engine, and an audition volume. Audition only; the import options edit through
-/// the inspector, so there is nothing to save.
-class AudioClipEditorPage : UIEditorPage
+/// The audio clip page: the waveform with a playhead, the page toolbar's playback on the
+/// runtime audio engine, and an audition volume. Audition only; the import options edit
+/// through the inspector, so there is nothing to save.
+class AudioClipEditorPage : UIEditorPage, IPlaybackPage
 {
 	/// Borrowed.
 	private EditorContext mContext;
@@ -34,9 +34,7 @@ class AudioClipEditorPage : UIEditorPage
 	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
 	private Label mInfo = null;
 	private Label mStatus = null;
-	private Button mPlayButton = null;
-	private Button mPauseButton = null;
-	private Button mStopButton = null;
+	private PageToolbar mToolbar = null;
 	private Slider mVolumeSlider = null;
 	private WaveformView mWaveform = null;
 
@@ -51,6 +49,21 @@ class AudioClipEditorPage : UIEditorPage
 		let column = new FlexLayout();
 		column.Direction = .Vertical;
 		column.Spacing = 8.0f;
+		mToolbar = new PageToolbar(this, mContext.Actions, .None);
+		mToolbar.AddPlayback();
+		mToolbar.AddSeparator();
+		mToolbar.AddLabel("Vol");
+		mVolumeSlider = new Slider(0.0f, 1.0f, 1.0f);
+		mVolumeSlider.Step.Value = 0.05f;
+		mVolumeSlider.OnValueChanged.Add(new [=this](slider, v) => { SetAuditionVolume(v); });
+		var sliderStyle = LayoutStyle();
+		sliderStyle.Width = SizeSpec.Fixed(Unit.Dp(90));
+		sliderStyle.AlignSelf = .Center;
+		mToolbar.AddItem(mVolumeSlider, sliderStyle);
+		mStatus = mToolbar.AddLabel("");
+		var bar = LayoutStyle();
+		bar.Width = SizeSpec.Match();
+		column.AddView(mToolbar, bar);
 		mInfo = new Label("");
 		mInfo.FontSize.Value = 13.0f;
 		var match = LayoutStyle();
@@ -62,32 +75,6 @@ class AudioClipEditorPage : UIEditorPage
 		strip.Height = SizeSpec.Fixed(Unit.Dp(160));
 		column.AddView(mWaveform, strip);
 
-		let controls = new FlexLayout();
-		controls.Direction = .Horizontal;
-		controls.Spacing = 8.0f;
-		mPlayButton = new Button("Play");
-		mPlayButton.OnClick.Add(new [=this](btn) => { Audition(); });
-		controls.AddView(mPlayButton);
-		mPauseButton = new Button("Pause");
-		mPauseButton.OnClick.Add(new [=this](btn) => { TogglePause(); });
-		controls.AddView(mPauseButton);
-		mStopButton = new Button("Stop");
-		mStopButton.OnClick.Add(new [=this](btn) => { StopAudition(); });
-		controls.AddView(mStopButton);
-		let volLabel = new Label("Vol");
-		volLabel.FontSize.Value = 12.0f;
-		controls.AddView(volLabel);
-		mVolumeSlider = new Slider(0.0f, 1.0f, 1.0f);
-		mVolumeSlider.Step.Value = 0.05f;
-		mVolumeSlider.OnValueChanged.Add(new [=this](slider, v) => { SetAuditionVolume(v); });
-		var sliderStyle = LayoutStyle();
-		sliderStyle.Width = SizeSpec.Fixed(Unit.Dp(90));
-		sliderStyle.AlignSelf = .Center;
-		controls.AddView(mVolumeSlider, sliderStyle);
-		mStatus = new Label("");
-		mStatus.FontSize.Value = 12.0f;
-		controls.AddView(mStatus);
-		column.AddView(controls, match);
 		mContent = column;
 		RefreshInfo();
 	}
@@ -104,6 +91,8 @@ class AudioClipEditorPage : UIEditorPage
 	/// Tracks the voice: the playhead follows, and a finished voice stops the transport.
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		if (mToolbar != null)
+			mToolbar.Refresh();
 		let engine = Engine;
 		if (!mVoice.IsValid || (engine == null))
 			return;
@@ -141,8 +130,6 @@ class AudioClipEditorPage : UIEditorPage
 		if (mClip == null)
 		{
 			mInfo.SetText("Source file missing or undecodable.");
-			mPlayButton.IsEnabled = false;
-			mStopButton.IsEnabled = false;
 			return;
 		}
 		mInfo.SetText(scope $"{mClip.Channels} ch  |  {mClip.SampleRate} Hz  |  {mClip.DurationSeconds:F2} s{mLoop ? "  |  loops" : ""}");
@@ -164,7 +151,6 @@ class AudioClipEditorPage : UIEditorPage
 		if (mVoice.IsValid)
 			engine.SetVoiceVolume(mVoice, mAuditionVolume); // the audition slider applies
 		mPaused = false;
-		mPauseButton.SetText("Pause");
 		mStatus.SetText(mVoice.IsValid ? "Playing..." : "No voice (engine headless?)");
 	}
 
@@ -175,7 +161,6 @@ class AudioClipEditorPage : UIEditorPage
 			return;
 		mPaused = !mPaused;
 		engine.SetPaused(mVoice, mPaused);
-		mPauseButton.SetText(mPaused ? "Resume" : "Pause");
 		mStatus.SetText(mPaused ? "Paused" : "Playing...");
 	}
 
@@ -194,8 +179,29 @@ class AudioClipEditorPage : UIEditorPage
 			engine.Stop(mVoice);
 		mVoice = .();
 		mPaused = false;
-		mPauseButton.SetText("Pause");
 		mWaveform.SetPlayheadFraction(-1.0f);
 		mStatus.SetText("");
 	}
+
+	// ---- IPlaybackPage ----
+
+	public bool CanPlay => mClip != null;
+	public bool IsPlaying => mVoice.IsValid && !mPaused;
+
+	public void Play()
+	{
+		if (!mVoice.IsValid)
+			Audition();
+		else if (mPaused)
+			TogglePause();
+	}
+
+	public void Pause()
+	{
+		if (mVoice.IsValid && !mPaused)
+			TogglePause();
+	}
+
+	public void Stop() => StopAudition();
+	public void Restart() => Audition();
 }

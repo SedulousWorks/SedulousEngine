@@ -55,7 +55,8 @@ class MaterialEditorPage : UIEditorPage
 
 	/// Borrowed: the content owns it.
 	private PropertyGrid mGrid = null;
-	private SplitView mContent = null ~ { if (_ != null) _.ReleaseRef(); };
+	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
+	private PageToolbar mToolbar = null;
 	private List<delegate void()> mRefreshers = new .() ~ DeleteContainerAndItems!(_);
 	private List<Object> mOwned = new .() ~ DeleteContainerAndItems!(_);
 
@@ -101,9 +102,11 @@ class MaterialEditorPage : UIEditorPage
 		grow.FlexGrow = 1.0f;
 		gridColumn.AddView(mGrid, grow);
 
-		mContent = new SplitView();
-		mContent.SplitRatio = 0.62f;
-		mContent.SetPanes(mPreview.View, gridColumn);
+		let split = new SplitView();
+		split.SplitRatio = 0.62f;
+		split.SetPanes(mPreview.View, gridColumn);
+		mToolbar = new PageToolbar(this, mContext.Actions);
+		mContent = PageToolbar.Frame(mToolbar, split);
 
 		RebuildPreviewMaterial();
 	}
@@ -129,6 +132,8 @@ class MaterialEditorPage : UIEditorPage
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		if (mToolbar != null)
+			mToolbar.Refresh();
 		if (mPreview != null)
 			mPreview.Update(dt);
 

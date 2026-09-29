@@ -19,11 +19,11 @@ using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.Scene;
 
-/// The animation clip page: a transport (skeleton and mesh pickers, play, a scrub slider)
-/// over a preview that samples the cooked clip on the chosen skeleton, drawn as a wireframe
+/// The animation clip page: the page toolbar with playback, a preview bar (skeleton and mesh
+/// pickers, a scrub slider) over a preview that samples the cooked clip on the chosen skeleton, drawn as a wireframe
 /// and, when a skinned mesh is picked, skinned onto it; a grid with the stats, the loop
 /// flag and the event table. Edits snapshot the whole asset per undo step.
-class AnimationClipEditorPage : UIEditorPage
+class AnimationClipEditorPage : UIEditorPage, IPlaybackPage
 {
 	/// Borrowed.
 	private EditorContext mContext;
@@ -42,7 +42,7 @@ class AnimationClipEditorPage : UIEditorPage
 	/// Borrowed: the transport bar owns them.
 	private CompactAssetSlot mSkeletonSlot = null;
 	private CompactAssetSlot mMeshSlot = null;
-	private Button mPlayButton = null;
+	private PageToolbar mToolbar = null;
 	/// Normalised [0..1] scrub.
 	private Slider mTimeSlider = null;
 	private Label mTimeLabel = null;
@@ -121,13 +121,6 @@ class AnimationClipEditorPage : UIEditorPage
 			});
 		mMeshSlot.Build();
 		transport.AddView(mMeshSlot, slotWidth);
-		mPlayButton = new Button("Pause");
-		mPlayButton.OnClick.Add(new [=this](btn) =>
-			{
-				mPlaying = !mPlaying;
-				mPlayButton.SetText(mPlaying ? "Pause" : "Play");
-			});
-		transport.AddView(mPlayButton);
 
 		mTimeSlider = new Slider(0.0f, 1.0f);
 		mTimeSlider.OnValueChanged.Add(new [=this](slider, v) =>
@@ -139,7 +132,6 @@ class AnimationClipEditorPage : UIEditorPage
 				{
 					mTime = v * clip.Duration;
 					mPlaying = false;
-					mPlayButton.SetText("Play");
 				}
 			});
 		var grow = LayoutStyle();
@@ -169,7 +161,14 @@ class AnimationClipEditorPage : UIEditorPage
 		let split = new SplitView();
 		split.SplitRatio = 0.66f;
 		split.SetPanes(previewColumn, mGrid);
-		mContent = split;
+
+		mToolbar = new PageToolbar(this, mContext.Actions);
+		mToolbar.AddPlayback();
+		let page = new FlexLayout();
+		page.Direction = .Vertical;
+		page.AddView(mToolbar, match);
+		page.AddView(split, growMatch);
+		mContent = page;
 
 		LoadPreviewPref();
 	}
@@ -192,11 +191,52 @@ class AnimationClipEditorPage : UIEditorPage
 	public float Time => mTime;
 	public bool IsPlaying => mPlaying;
 
+	// ---- IPlaybackPage ----
+
+	public bool CanPlay => mClip.Get != null;
+
+	/// Resumes; a clip that ran to its end starts over.
+	public void Play()
+	{
+		let clip = mClip.Get;
+		if ((clip != null) && (mTime >= clip.Duration))
+			mTime = 0.0f;
+		mPlaying = true;
+	}
+
+	public void Pause() => mPlaying = false;
+
+	public void Stop()
+	{
+		mPlaying = false;
+		mTime = 0.0f;
+		SyncTimeSlider();
+	}
+
+	public void Restart()
+	{
+		mTime = 0.0f;
+		mPlaying = true;
+	}
+
+	/// The scrub slider shows mTime, without its change reading as a scrub.
+	private void SyncTimeSlider()
+	{
+		let clip = mClip.Get;
+		if ((mTimeSlider == null) || (clip == null) || (clip.Duration <= 0.0f))
+			return;
+		mScrubbing = true;
+		mTimeSlider.Value.Value = mTime / clip.Duration;
+		mScrubbing = false;
+	}
+
 	/// The context every dialog opens against; null until the content is attached.
 	private UIContext Ctx => (mGrid != null) ? mGrid.Context : null;
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		if (mToolbar != null)
+			mToolbar.Refresh();
 		UpdatePreview(dt);
 		if (mPreview != null)
 			mPreview.Update(dt);

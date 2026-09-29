@@ -31,6 +31,7 @@ class UIDocumentEditorPage : UIEditorPage
 
 	/// Borrowed: the content owns them.
 	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
+	private PageToolbar mToolbar = null;
 	private CodeEditView mEditor = null;
 	private Label mStatus = null;
 
@@ -84,7 +85,8 @@ class UIDocumentEditorPage : UIEditorPage
 		fill.FlexGrow = 1.0f;
 		right.AddView(mPreview.View, fill);
 		row.AddView(right, growMatch);
-		mContent = row;
+		mToolbar = new PageToolbar(this, mContext.Actions, .Save);
+		mContent = PageToolbar.Frame(mToolbar, row);
 		RebuildPreview();
 	}
 
@@ -121,6 +123,8 @@ class UIDocumentEditorPage : UIEditorPage
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		if (mToolbar != null)
+			mToolbar.Refresh();
 		mPreview.EnsureBound();
 		if (mPreviewDelay > 0.0f)
 		{

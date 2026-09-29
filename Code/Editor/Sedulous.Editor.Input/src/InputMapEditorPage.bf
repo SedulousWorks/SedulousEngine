@@ -24,6 +24,7 @@ class InputMapEditorPage : UIEditorPage
 
 	/// Borrowed: the content owns them.
 	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
+	private PageToolbar mToolbar = null;
 	private ScrollView mScroll = null;
 	private FlexLayout mRows = null;
 	private Label mStatus = null;
@@ -64,7 +65,8 @@ class InputMapEditorPage : UIEditorPage
 		growMatch.Width = SizeSpec.Match();
 		growMatch.FlexGrow = 1.0f;
 		column.AddView(mScroll, growMatch);
-		mContent = column;
+		mToolbar = new PageToolbar(this, mContext.Actions);
+		mContent = PageToolbar.Frame(mToolbar, column);
 		Rebuild();
 	}
 
@@ -95,6 +97,8 @@ class InputMapEditorPage : UIEditorPage
 	/// While listening, the first input the shell reports lands in the slot being rebound.
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		if (mToolbar != null)
+			mToolbar.Refresh();
 		if (!mListening)
 			return;
 		let shellInput = (host.Shell != null) ? host.Shell.Input : null;

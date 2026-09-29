@@ -33,6 +33,7 @@ class ScriptEditorPage : UIEditorPage
 
 	/// Borrowed: the content owns them.
 	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
+	private PageToolbar mToolbar = null;
 	private CodeEditView mEditor = null;
 	private Label mStatus = null;
 	private EditText mErrorView = null;
@@ -132,7 +133,8 @@ class ScriptEditorPage : UIEditorPage
 		browserStyle.Width = SizeSpec.Fixed(Unit.Dp(300));
 		browserStyle.Height = SizeSpec.Match();
 		row.AddView(mApiBrowser.Root, browserStyle);
-		mContent = row;
+		mToolbar = new PageToolbar(this, mContext.Actions, .Save);
+		mContent = PageToolbar.Frame(mToolbar, row);
 		RefreshCompileStatus(); // the page opens with live state
 	}
 
@@ -158,6 +160,8 @@ class ScriptEditorPage : UIEditorPage
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		if (mToolbar != null)
+			mToolbar.Refresh();
 		mApiBrowser.Update(); // a filter edit only marks it dirty
 		if (mValidateDelay > 0.0f)
 		{
