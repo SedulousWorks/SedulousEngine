@@ -61,6 +61,9 @@ class SceneActionsTests
 		public ViewportCapture LastViewportCapture => mCapture;
 		public bool MarkersShown => Markers;
 		public void SetMarkersShown(bool shown) { Markers = shown; }
+		public bool Animation = false;
+		public bool AnimationPanelShown => Animation;
+		public void SetAnimationPanelShown(bool shown) { Animation = shown; }
 		public void CreatePrefabFromEntity(Guid entity) { PrefabFrom = entity; }
 		public void PickAndSpawnPrefab(Guid parent)
 		{
@@ -121,6 +124,13 @@ class SceneActionsTests
 		Test.Assert(actions.Execute(SceneActionIds.Markers, page) case .Ok);
 		Test.Assert(!page.Markers);
 		Test.Assert(!actions.IsChecked(SceneActionIds.Markers, page));
+
+		// The animation panel: a toggle over the page's bottom panel, off to start.
+		Test.Assert(!actions.IsChecked(SceneActionIds.AnimationPanel, page));
+		Test.Assert(actions.Execute(SceneActionIds.AnimationPanel, page) case .Ok);
+		Test.Assert(page.Animation && actions.IsChecked(SceneActionIds.AnimationPanel, page));
+		Test.Assert(actions.Execute(SceneActionIds.AnimationPanel, page) case .Ok);
+		Test.Assert(!page.Animation);
 
 		// Gizmo: disabled without a gizmo (a headless page); with one, the mode toggles are
 		// exclusive and the space toggle flips.

@@ -73,6 +73,8 @@ class SceneMcpToolsTests
 		public void FailCapture() { Capture.State = .Failed; }
 		public bool MarkersShown => true;
 		public void SetMarkersShown(bool shown) {}
+		public bool AnimationPanelShown => false;
+		public void SetAnimationPanelShown(bool shown) {}
 		public void CreatePrefabFromEntity(Guid entity) {}
 		public void PickAndSpawnPrefab(Guid parent) {}
 		public void ApplyInstanceToPrefab(Guid root) {}

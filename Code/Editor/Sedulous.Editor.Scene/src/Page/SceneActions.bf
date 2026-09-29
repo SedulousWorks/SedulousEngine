@@ -18,6 +18,7 @@ static class SceneActionIds
 	public const String GizmoScale = "scene.gizmo.scale";
 	public const String GizmoWorldSpace = "scene.gizmo.worldSpace";
 	public const String Markers = "scene.view.markers";
+	public const String AnimationPanel = "scene.view.animationPanel";
 	public const String EntityCreate = "scene.entity.create";
 	public const String EntityCreateChild = "scene.entity.createChild";
 	public const String EntityDuplicate = "scene.entity.duplicate";
@@ -158,6 +159,22 @@ static class SceneActions
 				{
 					let scene = page as ISceneEditorPage;
 					scene.SetMarkersShown(!scene.MarkersShown);
+				};
+			actions.Register(d);
+		}
+		{
+			let d = new EditorActionDeclaration(SceneActionIds.AnimationPanel, "Animation", "Show the property animation panel under the viewport", "Scene/Animation Panel", 301);
+			d.Kind = .Toggle;
+			d.Enabled = new (page) => (page as ISceneEditorPage) != null;
+			d.Checked = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					return (scene != null) && scene.AnimationPanelShown;
+				};
+			d.Execute = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					scene.SetAnimationPanelShown(!scene.AnimationPanelShown);
 				};
 			actions.Register(d);
 		}

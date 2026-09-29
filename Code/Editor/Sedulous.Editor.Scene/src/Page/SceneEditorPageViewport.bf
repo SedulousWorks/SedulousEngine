@@ -199,7 +199,8 @@ extension SceneEditorPage
 		mToolFloat.OnClose.Add(new [=this]() => { mViewportTools.ActivateDefault(); });
 	}
 
-	/// Places a tool's panel: over the viewport, in the floating panel, or in the dock's tab.
+	/// Places a tool's panel: over the viewport, in the floating panel, or as its domain's tab
+	/// in the bottom dock.
 	/// The view is BORROWED; the containers take their own reference.
 	private void MountToolPanel(View view, ToolPanelPlacement placement)
 	{
@@ -233,14 +234,23 @@ extension SceneEditorPage
 			}
 			mToolFloat.Visibility = (view != null) ? .Visible : .Gone;
 		default:
-			if (mToolPanelSlot == null)
+			// A docked panel is a tab of its own, named for the tool's domain (its category,
+			// "Terrain"), else the tool; it goes when the panel does.
+			if (mBottomDock == null)
 				return;
-			mToolPanelSlot.RemoveAllViews();
+			if (!mDockedToolTab.IsEmpty)
+			{
+				mBottomDock.RemoveTab(mDockedToolTab);
+				mDockedToolTab.Clear();
+			}
 			if (view != null)
 			{
-				view.AddRef();
-				mToolPanelSlot.AddView(view);
-				mBottomDock.ActivateTab("tool"); // reveal the brush settings
+				let tool = mViewportTools.ActiveTool;
+				let label = (tool == null) ? StringView("Tool") : (tool.Category.IsEmpty ? tool.DisplayName : tool.Category);
+				mDockedToolTab.Set("tool:");
+				mDockedToolTab.Append(label);
+				mBottomDock.AddTab(mDockedToolTab, label, view); // the dock takes its own reference
+				mBottomDock.ActivateTab(mDockedToolTab);
 			}
 		}
 	}

@@ -101,6 +101,16 @@ extension SceneEditorPage
 			}
 		}
 
+		// The bottom panels that open from the bar.
+		mToolbar.AddSeparator();
+		mAnimationToggle = mToolbar.AddToggle("Animation");
+		mAnimationToggle.OnCheckedChanged.Add(new [=this, =actions](t, value) =>
+			{
+				if (actions.IsChecked(SceneActionIds.AnimationPanel, this) != value)
+					actions.Execute(SceneActionIds.AnimationPanel, this).IgnoreError();
+				SyncToolbar();
+			});
+
 		let spacer = new Panel();
 		var grow = LayoutStyle();
 		grow.FlexGrow = 1.0f;
@@ -281,6 +291,8 @@ extension SceneEditorPage
 		mScaleToggle.IsChecked = actions.IsChecked(SceneActionIds.GizmoScale, this);
 		let world = actions.IsChecked(SceneActionIds.GizmoWorldSpace, this);
 		mSpaceToggle.IsChecked = world;
+		if (mAnimationToggle != null)
+			mAnimationToggle.IsChecked = actions.IsChecked(SceneActionIds.AnimationPanel, this);
 		let spaceText = world ? "World" : "Local";
 		if (mSpaceToggle.Text != spaceText)
 			mSpaceToggle.SetText(spaceText);

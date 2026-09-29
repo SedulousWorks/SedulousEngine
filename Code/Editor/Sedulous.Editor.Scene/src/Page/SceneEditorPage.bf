@@ -68,6 +68,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	private ToolbarButton mPlayButton = null;
 	private ToolbarToggle mPauseToggle = null;
+	/// The bottom dock's Animation tab, from the bar.
+	private ToolbarToggle mAnimationToggle = null;
 	private ToolbarButton mStopButton = null;
 	private Label mSimLabel = null;
 	private SceneSnapshot mSimSnapshot = null ~ delete _;
@@ -132,7 +134,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	/// The dock BORROWS a tab's content and takes a reference of its own, unlike AddView,
 	/// so these two keep the page's reference and give it back in the destructor.
 	private PropertyAnimationPanel mPropAnimPanel = null ~ { if (_ != null) _.ReleaseRef(); };
-	private FlexLayout mToolPanelSlot = null ~ { if (_ != null) _.ReleaseRef(); };
+	/// The bottom dock tab a docked tool panel has, named for the tool's domain; empty when
+	/// no tool panel is docked.
+	private String mDockedToolTab = new .() ~ delete _;
 	private Panel mToolOverlay = null;
 	private AbsoluteLayout mToolFloatLayer = null;
 	private FloatingPanel mToolFloat = null;
@@ -260,12 +264,11 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		}
 
 		mPropAnimPanel = new PropertyAnimationPanel(context, mScene, Commands, mEditContext.EntitySelection);
+		// The bottom dock opens from elsewhere (the toolbar's Animation toggle, a tool that
+		// docks its panel under its domain's name), and with nothing open it takes no space.
 		mBottomDock = new BottomDock();
-		mBottomDock.AddTab("animation", "Animation", mPropAnimPanel);
-
-		mToolPanelSlot = new FlexLayout();
-		mToolPanelSlot.Direction = .Vertical;
-		mBottomDock.AddTab("tool", "Brush", mToolPanelSlot);
+		mBottomDock.HideWhenCollapsed = true;
+		mBottomDock.AddTab(cAnimationTab, "Animation", mPropAnimPanel);
 		{
 			var panelCtx = ViewportToolHostContext();
 			panelCtx.Scene = mScene;
@@ -309,7 +312,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 				return false; // not ours
 			if ((mContent == null) || !mContent.IsEffectivelyVisible())
 				return false;
-			mBottomDock.ActivateTab("animation"); // expand the bar
+			mBottomDock.ActivateTab(cAnimationTab); // open the panel
 			let selection = mEditContext.EntitySelection;
 			mPropAnimPanel.RequestEditClip(inst.Id, selection.IsEmpty ? Guid() : selection.Primary);
 			return true;
@@ -363,6 +366,27 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		mCapture.Height = 0;
 		mScreenshot.Request(path);
 		return .Ok;
+	}
+
+	private const String cAnimationTab = "animation";
+
+	public bool AnimationPanelShown => mBottomDock.IsExpanded && (mBottomDock.ActiveTabId == cAnimationTab);
+
+	/// Shows the animation panel, or hides it: to the docked tool's tab when there is one,
+	/// else the dock goes altogether.
+	public void SetAnimationPanelShown(bool shown)
+	{
+		if (shown)
+		{
+			mBottomDock.ActivateTab(cAnimationTab);
+			return;
+		}
+		if (!AnimationPanelShown)
+			return;
+		if (!mDockedToolTab.IsEmpty)
+			mBottomDock.ActivateTab(mDockedToolTab);
+		else
+			mBottomDock.SetExpanded(false);
 	}
 
 	public void SetMarkersShown(bool shown)

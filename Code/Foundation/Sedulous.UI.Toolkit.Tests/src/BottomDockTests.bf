@@ -116,4 +116,42 @@ class BottomDockTests
 		Test.Assert(a.Visibility == .Gone);
 		Test.Assert(b.Visibility == .Visible);
 	}
+
+	/// Opened from elsewhere, the dock is GONE while nothing is open, bar and all, so the pane
+	/// holding it takes no height; a tab added for a docked tool panel comes and goes with it.
+	[Test]
+	public static void HiddenWhenCollapsedAndTabsComeAndGo()
+	{
+		let dock = new BottomDock();
+		defer dock.ReleaseRef();
+		dock.HideWhenCollapsed = true;
+		let animation = new Panel();
+		defer animation.ReleaseRef();
+		dock.AddTab("animation", "Animation", animation);
+
+		// Collapsed: nothing to measure.
+		dock.Measure(BoxConstraints(400, 400, 0, 300));
+		Test.Assert(dock.MeasuredSize.Y == 0.0f, "no bar while nothing is open");
+
+		// A docked tool's tab opens it, and removing the open tab closes it again.
+		let terrain = new Panel();
+		defer terrain.ReleaseRef();
+		dock.AddTab("tool:Terrain", "Terrain", terrain);
+		dock.ActivateTab("tool:Terrain");
+		Test.Assert(dock.IsExpanded && (terrain.Visibility == .Visible));
+		dock.Measure(BoxConstraints(400, 400, 0, 300));
+		Test.Assert(dock.MeasuredSize.Y > 0.0f);
+		dock.RemoveTab("tool:Terrain");
+		Test.Assert(!dock.IsExpanded && !dock.HasTab("tool:Terrain") && (dock.TabCount == 1));
+		dock.Measure(BoxConstraints(400, 400, 0, 300));
+		Test.Assert(dock.MeasuredSize.Y == 0.0f);
+
+		// The remaining tab's button still toggles it, by id after the removal.
+		dock.AddTab("tool:Terrain", "Terrain", terrain);
+		dock.RemoveTab("animation");
+		dock.ClickTab("tool:Terrain");
+		Test.Assert(dock.IsExpanded && (dock.ActiveTabId == "tool:Terrain"));
+		dock.ClickTab("tool:Terrain");
+		Test.Assert(!dock.IsExpanded);
+	}
 }

@@ -66,6 +66,11 @@ interface ISceneEditorPage
 	bool MarkersShown { get; }
 	void SetMarkersShown(bool shown);
 
+	/// The property animation panel under the viewport. Hidden, with no other tab open, the
+	/// bottom dock takes no space at all.
+	bool AnimationPanelShown { get; }
+	void SetAnimationPanelShown(bool shown);
+
 	/// The viewport's free-fly camera: the pose the scene is looked at from, which an agent
 	/// moves to look from somewhere specific; null on a page without a viewport.
 	EditorCamera ViewportCamera { get; }

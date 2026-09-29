@@ -5,8 +5,9 @@ using Sedulous.UI;
 
 namespace Sedulous.UI.Toolkit;
 
-/// The collapsible strip along the bottom of an editor: a tab bar that is ALWAYS visible, with
-/// a content region above it that appears only while a tab is expanded.
+/// The collapsible strip along the bottom of an editor: a tab bar, visible unless
+/// HideWhenCollapsed and nothing is open, with a content region above it that appears only
+/// while a tab is expanded. Tabs come and go at run time (AddTab, RemoveTab).
 ///
 /// Clicking the active tab collapses back to just the bar; clicking another switches to it and
 /// expands. The same gesture both selects and toggles, which is what makes a one tab dock feel
@@ -39,6 +40,20 @@ class BottomDock : FlexLayout
 	/// Fired when the expanded state changes. The host wires this to its split view.
 	public Event<delegate void(bool)> OnExpandedChanged ~ _.Dispose();
 
+	/// Collapsed means GONE, the tab bar included, rather than down to the bar: a host that
+	/// opens tabs from elsewhere (a toolbar toggle, a tool that docks a panel) gives the whole
+	/// height back while nothing is open. A collapsed dock then measures nothing, so a split
+	/// pane holding it takes no space.
+	public bool HideWhenCollapsed
+	{
+		get => mHideWhenCollapsed;
+		set
+		{
+			mHideWhenCollapsed = value;
+			SyncBar();
+		}
+	}
+
 	/// BORROWED: the child list owns both.
 	private FlexLayout mContentHost = null;
 	private FlexLayout mTabBar = null;
@@ -46,6 +61,7 @@ class BottomDock : FlexLayout
 	private List<Tab> mTabs = new .() ~ ReleaseTabs!(_);
 	private int32 mActiveIndex = -1;
 	private bool mExpanded = false;
+	private bool mHideWhenCollapsed = false;
 
 	public this()
 	{
@@ -66,6 +82,8 @@ class BottomDock : FlexLayout
 
 	public int TabCount => mTabs.Count;
 
+	public bool HasTab(StringView id) => IndexOf(id) >= 0;
+
 	public StringView ActiveTabId =>
 		((mActiveIndex >= 0) && (mActiveIndex < mTabs.Count))
 			? StringView(mTabs[mActiveIndex].Id) : default;
@@ -77,8 +95,9 @@ class BottomDock : FlexLayout
 		let button = new Button(label);
 		button.FontSize.Value = 11.0f;
 
-		let index = (int32)mTabs.Count;
-		button.OnClick.Add(new (sender) => { OnTabClicked(index); });
+		// By id, not index: a removed tab shifts the ones after it.
+		let tabId = new String(id);
+		button.OnClick.Add(new [=this, =tabId](sender) => { OnTabClicked(IndexOf(tabId)); } ~ delete tabId);
 
 		LayoutStyle buttonStyle = .();
 		buttonStyle.Width = SizeSpec.Fixed(Unit.Dp(96.0f));
@@ -105,6 +124,33 @@ class BottomDock : FlexLayout
 		mTabs.Add(tab);
 	}
 
+	/// Takes a tab away, its button and the dock's reference to its content. Removing the
+	/// active tab collapses the dock. Unknown ids are a no op.
+	public void RemoveTab(StringView id)
+	{
+		let index = IndexOf(id);
+		if (index < 0)
+			return;
+		let tab = mTabs[index];
+		let wasActive = index == mActiveIndex;
+		mTabs.RemoveAt(index);
+		mTabBar.RemoveView(tab.Button);
+		if (tab.Content != null)
+			mContentHost.RemoveView(tab.Content);
+		delete tab.Id;
+		delete tab.Label;
+		if (wasActive)
+		{
+			mActiveIndex = -1;
+			SetExpanded(false);
+		}
+		else if (mActiveIndex > index)
+		{
+			mActiveIndex--;
+		}
+		Invalidate();
+	}
+
 	/// Drives a tab's toggle by id, exactly as clicking its button would. Unknown ids are a
 	/// no op.
 	public void ClickTab(StringView id)
@@ -127,9 +173,11 @@ class BottomDock : FlexLayout
 
 	/// Collapses to just the bar, or expands the active tab, falling back to the first when
 	/// nothing is active yet.
-	public void SetExpanded(bool expanded)
+	public void SetExpanded(bool expandedAsked)
 	{
-		if (expanded && (mActiveIndex < 0) && !mTabs.IsEmpty)
+		// Nothing to expand into.
+		var expanded = expandedAsked && !mTabs.IsEmpty;
+		if (expanded && (mActiveIndex < 0))
 			mActiveIndex = 0;
 
 		if (mExpanded == expanded)
@@ -144,6 +192,7 @@ class BottomDock : FlexLayout
 		if (mContentHost != null)
 			mContentHost.Visibility = expanded ? .Visible : .Gone;
 
+		SyncBar();
 		SyncContent();
 		Invalidate();
 		OnExpandedChanged(mExpanded);
@@ -201,6 +250,14 @@ class BottomDock : FlexLayout
 
 		mActiveIndex = index;
 		SetExpanded(true);
+	}
+
+	/// The bar shows unless collapsed means gone.
+	private void SyncBar()
+	{
+		if (mTabBar != null)
+			mTabBar.Visibility = (mHideWhenCollapsed && !mExpanded) ? .Gone : .Visible;
+		Invalidate();
 	}
 
 	/// Only the active tab's content is visible, and only while expanded.
