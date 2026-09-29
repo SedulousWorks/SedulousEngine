@@ -8,6 +8,9 @@ namespace Sedulous.UI;
 /// The band is a real child view rather than something drawn here, which is what lets header
 /// actions be ordinary children with their own hit testing. Collapsing sets the content to
 /// Gone rather than hiding it, so it stops costing layout as well as pixels.
+///
+/// A themed border-width and border-color outline the whole section, band and body, drawn
+/// over the children; the body is inset by the padding plus that border, the band is not.
 class Expander : ViewGroup
 {
 	/// The band's MINIMUM height. Oversized actions grow it past this.
@@ -140,10 +143,11 @@ class Expander : ViewGroup
 		var contentHeight = 0.0f;
 		if ((mContent != null) && (mContent.Visibility != .Gone))
 		{
-			let inner = constraints.Deflate(Padding).Loosen();
+			let inset = BodyInset;
+			let inner = constraints.Deflate(inset).Loosen();
 			let margin = mContent.Layout.Margin.Value;
 			mContent.Measure(inner.Deflate(margin));
-			contentHeight = ContentSpacing.Value + mContent.MeasuredSize.Y + margin.TotalVertical;
+			contentHeight = ContentSpacing.Value + mContent.MeasuredSize.Y + margin.TotalVertical + inset.Bottom;
 		}
 
 		MeasuredSize = .(constraints.ConstrainWidth(constraints.BoundedMaxWidth(200.0f)),
@@ -160,10 +164,34 @@ class Expander : ViewGroup
 		if ((mContent == null) || (mContent.Visibility == .Gone))
 			return;
 
+		let inset = BodyInset;
 		let margin = mContent.Layout.Margin.Value;
 		let contentTop = bandHeight + ContentSpacing.Value;
-		mContent.Layout(margin.Left, contentTop + margin.Top,
-			Max(0.0f, width - margin.TotalHorizontal),
-			Max(0.0f, height - contentTop - margin.TotalVertical));
+		mContent.Layout(inset.Left + margin.Left, contentTop + margin.Top,
+			Max(0.0f, width - inset.Left - inset.Right - margin.TotalHorizontal),
+			Max(0.0f, height - contentTop - inset.Bottom - margin.TotalVertical));
+	}
+
+	/// The body's inset: the padding plus the border on the sides and the bottom. The top is
+	/// the band's.
+	private Thickness BodyInset
+	{
+		get
+		{
+			let chrome = ResolveBoxMetrics().Chrome;
+			return .(chrome.Left, 0.0f, chrome.Right, chrome.Bottom);
+		}
+	}
+
+	public override void OnDraw(UIDrawContext ctx)
+	{
+		DrawChildren(ctx);
+		let borderWidth = ResolveStyleFloat(.BorderWidth, 0.0f);
+		if (borderWidth <= 0.0f)
+			return;
+		let color = ResolveStyleColor(.BorderColor, Color(80.0f / 255.0f, 80.0f / 255.0f, 90.0f / 255.0f, 1.0f));
+		// Stroked inside the bounds, so a neighbour never draws over it.
+		let half = borderWidth * 0.5f;
+		ctx.VG.StrokeRect(.(half, half, Width - borderWidth, Height - borderWidth), color, borderWidth);
 	}
 }

@@ -228,4 +228,38 @@ class ExpanderTests
 		expander.SetContent(null);
 		Test.Assert(expander.Content == null);
 	}
+
+	/// A themed border and padding inset the BODY, sides and bottom, and leave the band full
+	/// width: the section reads as one outlined box.
+	[Test]
+	public static void ABorderedExpanderInsetsItsBodyAndNotItsBand()
+	{
+		StyleSheetLoader.InitializeGlobals();
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let expander = new Expander("Section");
+		let content = new TestView(100, 50);
+		expander.SetContent(content);
+		root.AddView(expander);
+		SSSParser.ApplyInlineStyle(expander, "border-width: 1; padding: 0 6 6 6;");
+
+		expander.Measure(BoxConstraints.Loose(400, 400));
+		let band = expander.HeaderBandHeight;
+		let spacing = expander.ContentSpacing.Value;
+		Test.Assert(expander.MeasuredSize.Y == band + spacing + 50 + 7, "the body's bottom inset is counted");
+		expander.Layout(0, 0, 400, expander.MeasuredSize.Y);
+		Test.Assert(content.Bounds.X == 7, "padding plus border on the left");
+		Test.Assert(content.Bounds.Width == 400 - 14);
+		Test.Assert(content.Bounds.Y == band + spacing);
+
+		// Unstyled, the body is flush as before.
+		let plain = new Expander("Plain");
+		let body = new TestView(100, 50);
+		plain.SetContent(body);
+		root.AddView(plain);
+		plain.Measure(BoxConstraints.Loose(400, 400));
+		plain.Layout(0, 0, 400, plain.MeasuredSize.Y);
+		Test.Assert((body.Bounds.X == 0) && (body.Bounds.Width == 400));
+	}
 }

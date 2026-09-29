@@ -120,6 +120,13 @@ PropertyGrid {
     background: color($surface);
     border-color: $border;
 }
+/* Each category a bordered section, band and body, so the sections read apart; the body
+ * sits inside the border (padding: top right bottom left). */
+PropertyGrid Expander {
+    border-color: $border;
+    border-width: 1;
+    padding: 0 6 6 6;
+}
 
 /* === ToastCard === (background-color: raw color for ResolveStyleColor - see toolkit-dark.sss) */
 ToastCard {
