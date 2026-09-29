@@ -213,6 +213,9 @@ class InspectorViewTests
 
 		var list = Find(inspector, "Behaviors") as ContainerListEditor;
 		Test.Assert((list != null) && list.ElementsAsSections && (list.SlotNames.Count == 2));
+		// Each behaviour's section sits inside the component's.
+		let firstSection = SceneInspectorView.ScriptBehaviorSection(0, "(none)", .. scope .());
+		Test.Assert(inspector.Grid.CategoryParent(firstSection) == list.Category);
 
 		// The add icon: one behaviour, one undo step.
 		let before = commands.Count;

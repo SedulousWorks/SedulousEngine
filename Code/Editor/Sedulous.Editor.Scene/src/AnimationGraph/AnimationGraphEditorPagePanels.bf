@@ -323,6 +323,7 @@ extension AnimationGraphEditorPage
 		for (int e < state.EntryClips.Count)
 		{
 			let entryCat = scope $"Entry {e + 1}";
+			g.SetCategoryParent(entryCat, kindCat);
 			let entryIdx = e;
 			g.SetCategoryHeaderActions(entryCat, ContainerListEditor.ElementActions(e, state.EntryClips.Count, null,
 				new [=this, =li, =si](i) =>
@@ -394,6 +395,7 @@ extension AnimationGraphEditorPage
 		{
 			let condition = transition.Conditions[c];
 			let condCat = scope $"Condition {c + 1}";
+			g.SetCategoryParent(condCat, cat);
 			g.SetCategoryHeaderActions(condCat, ContainerListEditor.ElementActions(c, transition.Conditions.Count, null,
 				new [=this, =li, =ti](i) =>
 				{

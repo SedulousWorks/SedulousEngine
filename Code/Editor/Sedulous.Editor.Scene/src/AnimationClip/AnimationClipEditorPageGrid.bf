@@ -47,6 +47,7 @@ extension AnimationClipEditorPage
 		for (int e < eventCount)
 		{
 			let cat = EventSection(e, .. scope .());
+			mGrid.SetCategoryParent(cat, "Events");
 			let index = e;
 			mGrid.SetCategoryHeaderActions(cat, ContainerListEditor.ElementActions(index, eventCount, null,
 				new [=this](i) =>

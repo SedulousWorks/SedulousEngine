@@ -56,7 +56,7 @@ extension SceneInspectorView
 
 	/// The behaviors are a section list: the component's section holds the list's header (the
 	/// count and the add icon, which also takes a dropped script class), and each behavior is a
-	/// section of its own below it, its move and remove icons in that section's header.
+	/// section of its own nested inside it, its move and remove icons in that section's header.
 	private void BuildScriptBehaviors(Guid id, StringView category)
 	{
 		let component = LiveScript(id);
@@ -101,7 +101,7 @@ extension SceneInspectorView
 		});
 
 		for (int i < component.Behaviors.Count)
-			BuildScriptBehaviorRows(id, i, component.Behaviors.Count);
+			BuildScriptBehaviorRows(id, category, i, component.Behaviors.Count);
 	}
 
 	/// A behavior's section: "Behavior N - <class>", with its move and remove icons.
@@ -111,7 +111,7 @@ extension SceneInspectorView
 		outCategory.AppendF("Behavior {} - {}", index + 1, scriptName);
 	}
 
-	private void BuildScriptBehaviorRows(Guid id, int index, int count)
+	private void BuildScriptBehaviorRows(Guid id, StringView componentCategory, int index, int count)
 	{
 		let component = LiveScript(id);
 		if ((component == null) || (index >= component.Behaviors.Count))
@@ -120,6 +120,7 @@ extension SceneInspectorView
 
 		let assetName = AssetNameFor(behavior.Script.Id, .. scope .());
 		let category = ScriptBehaviorSection(index, assetName, .. scope .());
+		mGrid.SetCategoryParent(category, componentCategory); // inside the component's section
 		mGrid.SetCategoryHeaderActions(category, ContainerListEditor.ElementActions(index, count,
 			new [=this, =id](i, up) =>
 			{

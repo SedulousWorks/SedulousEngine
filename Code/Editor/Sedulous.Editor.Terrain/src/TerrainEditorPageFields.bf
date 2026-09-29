@@ -67,6 +67,7 @@ extension TerrainEditorPage
 		{
 			let idx = i;
 			let section = LayerSection(i, .. scope .());
+			layers.SetCategoryParent(section, "Paint layers");
 			layers.SetCategoryHeaderActions(section, ContainerListEditor.ElementActions(i, mAsset.PaletteAlbedoIds.Count, null,
 				new [=this](index) => { RemoveLayer(index); }));
 			layers.AddProperty(MakeReference("Albedo", "TextureAsset", "palette", section,

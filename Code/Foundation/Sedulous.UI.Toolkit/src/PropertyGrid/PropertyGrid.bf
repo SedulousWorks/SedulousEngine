@@ -33,6 +33,11 @@ class PropertyGrid : ViewGroup
 	private List<String> mActionCategories = new .() ~ DeleteContainerAndItems!(_);
 	private List<View> mActionViews = new .() ~ ReleaseViews!(_);
 
+	/// Parallel: a category and the category whose body it sits in, a section of its own
+	/// inside its parent (a script component's behaviours inside the component).
+	private List<String> mNestedCategories = new .() ~ DeleteContainerAndItems!(_);
+	private List<String> mNestedParents = new .() ~ DeleteContainerAndItems!(_);
+
 	/// Categories whose expanders build closed the FIRST time they are seen.
 	private List<String> mCollapsedCategories = new .() ~ DeleteContainerAndItems!(_);
 
@@ -115,6 +120,38 @@ class PropertyGrid : ViewGroup
 		return null;
 	}
 
+	/// Places `category`'s section inside `parent`'s body, after the parent's own rows, rather
+	/// than beside it. A parent that never appears, or a nesting that would loop, leaves the
+	/// section at the top level.
+	public void SetCategoryParent(StringView category, StringView parent)
+	{
+		for (int i < mNestedCategories.Count)
+		{
+			if (StringView(mNestedCategories[i]) == category)
+			{
+				mNestedParents[i].Set(parent);
+				mNeedsRebuild = true;
+				Invalidate();
+				return;
+			}
+		}
+		mNestedCategories.Add(new String(category));
+		mNestedParents.Add(new String(parent));
+		mNeedsRebuild = true;
+		Invalidate();
+	}
+
+	/// The parent `category` nests in, or empty.
+	public StringView CategoryParent(StringView category)
+	{
+		for (int i < mNestedCategories.Count)
+		{
+			if (StringView(mNestedCategories[i]) == category)
+				return mNestedParents[i];
+		}
+		return default;
+	}
+
 	/// Builds a category's expander CLOSED, which costs it no layout and no draw until it is
 	/// opened. For bulk sections nobody reads: a generic asset form's per element groups ran to
 	/// well over a thousand rows, all measured on every damaged frame.
@@ -172,6 +209,8 @@ class PropertyGrid : ViewGroup
 		mActionViews.Clear();
 
 		ClearAndDeleteItems!(mCollapsedCategories);
+		ClearAndDeleteItems!(mNestedCategories);
+		ClearAndDeleteItems!(mNestedParents);
 		mNeedsRebuild = true;
 		Invalidate();
 	}
@@ -221,11 +260,7 @@ class PropertyGrid : ViewGroup
 		// change, must not slam shut a group the user opened, nor reopen one they closed. What
 		// is remembered beats the default collapsed list, which applies only to a category
 		// being seen for the first time.
-		for (int i < mContent.ChildCount)
-		{
-			if (let expander = mContent.GetChildAt(i) as Expander)
-				RememberExpansion(expander.HeaderText, expander.IsExpanded);
-		}
+		RememberExpansions(mContent);
 
 		while (mContent.ChildCount > 0)
 			mContent.RemoveView(mContent.GetChildAt(0));
@@ -274,11 +309,82 @@ class PropertyGrid : ViewGroup
 		for (let editor in uncategorized)
 			AddEditorRowTo(mContent, editor);
 
+		// Every section is built first, then placed: inside its parent's body when it names a
+		// parent that is here, after the parent's own rows, else at the top level.
+		let expanders = scope List<Expander>();
+		let bodies = scope List<FlexLayout>();
 		for (int c < categoryOrder.Count)
-			AddCategory(categoryOrder[c], categoryLists[c]);
+		{
+			FlexLayout body;
+			expanders.Add(BuildCategory(categoryOrder[c], categoryLists[c], out body));
+			bodies.Add(body);
+		}
+		LayoutStyle expanderStyle = .();
+		expanderStyle.Width = SizeSpec.Match();
+		for (int c < categoryOrder.Count)
+		{
+			let parent = NestingParent(categoryOrder, c);
+			if (parent >= 0)
+				bodies[parent].AddView(expanders[c], expanderStyle);
+			else
+				mContent.AddView(expanders[c], expanderStyle);
+		}
 	}
 
-	private void AddCategory(String category, List<PropertyEditor> editors)
+	/// The index of the section category `c` nests in, or minus one for the top level: no
+	/// parent, a parent that is not here, or a chain that loops back.
+	private int NestingParent(List<String> categoryOrder, int c)
+	{
+		let parentName = CategoryParent(categoryOrder[c]);
+		if (parentName.IsEmpty)
+			return -1;
+		let parent = IndexOfCategory(categoryOrder, parentName);
+		if ((parent < 0) || (parent == c))
+			return -1;
+		// Walk up from the parent: meeting c again is a loop, and the section stays on top.
+		var at = parent;
+		for (int guard < categoryOrder.Count)
+		{
+			let up = CategoryParent(categoryOrder[at]);
+			if (up.IsEmpty)
+				return parent;
+			let next = IndexOfCategory(categoryOrder, up);
+			if (next < 0)
+				return parent;
+			if (next == c)
+				return -1;
+			at = next;
+		}
+		return -1;
+	}
+
+	private static int IndexOfCategory(List<String> categoryOrder, StringView name)
+	{
+		for (int i < categoryOrder.Count)
+		{
+			if (StringView(categoryOrder[i]) == name)
+				return i;
+		}
+		return -1;
+	}
+
+	/// What every expander, nested ones included, has open, before the tree is torn down.
+	private void RememberExpansions(ViewGroup container)
+	{
+		for (int i < container.ChildCount)
+		{
+			if (let expander = container.GetChildAt(i) as Expander)
+			{
+				RememberExpansion(expander.HeaderText, expander.IsExpanded);
+				if (let body = expander.Content as ViewGroup)
+					RememberExpansions(body);
+			}
+		}
+	}
+
+	/// One section: its header (and header actions), its rows, its remembered or default
+	/// open state. `outBody` is the body, where nested sections go after the rows.
+	private Expander BuildCategory(String category, List<PropertyEditor> editors, out FlexLayout outBody)
 	{
 		let expander = new Expander();
 		expander.SetHeaderText(category);
@@ -299,6 +405,7 @@ class PropertyGrid : ViewGroup
 		let categoryContent = new FlexLayout();
 		categoryContent.Direction = .Vertical;
 		categoryContent.Spacing = RowSpacing;
+		outBody = categoryContent;
 
 		for (let editor in editors)
 			AddEditorRowTo(categoryContent, editor);
@@ -330,9 +437,7 @@ class PropertyGrid : ViewGroup
 			}
 		}
 
-		LayoutStyle expanderStyle = .();
-		expanderStyle.Width = SizeSpec.Match();
-		mContent.AddView(expander, expanderStyle);
+		return expander;
 	}
 
 	private void AddEditorRowTo(FlexLayout container, PropertyEditor editor)

@@ -142,4 +142,64 @@ class PropertyGridTests
 
 		Test.Assert(editor.EditorView == firstView, "the same control, not a fresh one");
 	}
+
+	/// The expander headed `header`, anywhere in the tree, or null.
+	private static Expander FindSection(View view, StringView header)
+	{
+		if (let expander = view as Expander)
+		{
+			if (expander.HeaderText == header)
+				return expander;
+		}
+		if (let group = view as ViewGroup)
+		{
+			for (int i < group.ChildCount)
+			{
+				if (let found = FindSection(group.GetChildAt(i), header))
+					return found;
+			}
+		}
+		return null;
+	}
+
+	/// The section a section sits in, through its body, or null at the top level.
+	private static Expander SectionAround(Expander section) =>
+		(section.Parent != null) ? (section.Parent.Parent as Expander) : null;
+
+	/// A category can sit inside another's body (a component's behaviours inside the
+	/// component); a parent that is not there, or a loop, leaves it at the top level, and a
+	/// nested section keeps whether it was open across a rebuild.
+	[Test]
+	public static void ACategoryNestsInsideItsParentsBody()
+	{
+		let grid = new PropertyGrid();
+		defer grid.ReleaseRef();
+		grid.AddProperty(new FloatEditor("a", 1.0, 0.0, 10.0, 1.0, 2, null, "Script"));
+		grid.AddProperty(new FloatEditor("b", 1.0, 0.0, 10.0, 1.0, 2, null, "Behavior 1"));
+		grid.AddProperty(new FloatEditor("c", 1.0, 0.0, 10.0, 1.0, 2, null, "Orphan"));
+		grid.AddProperty(new FloatEditor("e", 1.0, 0.0, 10.0, 1.0, 2, null, "E"));
+		grid.AddProperty(new FloatEditor("f", 1.0, 0.0, 10.0, 1.0, 2, null, "F"));
+		grid.SetCategoryParent("Behavior 1", "Script");
+		grid.SetCategoryParent("Orphan", "Missing");
+		grid.SetCategoryParent("E", "F");
+		grid.SetCategoryParent("F", "E");
+		grid.Measure(BoxConstraints.Tight(400, 600));
+
+		let script = FindSection(grid, "Script");
+		let behavior = FindSection(grid, "Behavior 1");
+		Test.Assert((script != null) && (behavior != null));
+		Test.Assert(SectionAround(behavior) == script, "inside the parent's body");
+		Test.Assert(SectionAround(script) == null);
+		Test.Assert(SectionAround(FindSection(grid, "Orphan")) == null, "a missing parent: top level");
+		Test.Assert(SectionAround(FindSection(grid, "E")) == null, "a loop: top level");
+		Test.Assert(SectionAround(FindSection(grid, "F")) == null);
+
+		// Closed, then rebuilt: it stays closed, where it was.
+		behavior.SetIsExpanded(false);
+		grid.AddProperty(new FloatEditor("g", 1.0, 0.0, 10.0, 1.0, 2, null, "Script"));
+		grid.Measure(BoxConstraints.Tight(400, 600));
+		let rebuilt = FindSection(grid, "Behavior 1");
+		Test.Assert((rebuilt != null) && !rebuilt.IsExpanded);
+		Test.Assert(SectionAround(rebuilt) == FindSection(grid, "Script"));
+	}
 }
