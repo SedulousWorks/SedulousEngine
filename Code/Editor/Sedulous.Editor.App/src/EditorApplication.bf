@@ -319,6 +319,9 @@ class EditorApplication : IApplication
 				ShowToast(kind, message);
 				mContext.SetStatus(message);
 			};
+		// The console's copy says so, like every other copy.
+		if (mShell.Console != null)
+			mShell.Console.OnCopied = new (lines) => { mContext.Notify(.Success, (lines == 1) ? "Copied 1 log line" : scope $"Copied {lines} log lines"); };
 
 		// ---- the embedded runtime ----
 		// A second, persistent runtime context populated by the same DefaultApplication the

@@ -88,15 +88,12 @@ extension AssetsView
 		// mount-relative content path, for pasting into scripts and docs.
 		menu.AddItem("Copy GUID", new [=id, =this]() =>
 			{
-				if (let clipboard = (Context != null) ? Context.Clipboard : null)
-					clipboard.SetText(id.ToString(.. scope .(), 'D')).IgnoreError();
+				mContext.CopyText((Context != null) ? Context.Clipboard : null, id.ToString(.. scope .(), 'D'), "GUID");
 			});
 		menu.AddItem("Copy Path", new [=id, =this]() =>
 			{
-				let clipboard = (Context != null) ? Context.Clipboard : null;
-				let inst = Resolve(id);
-				if ((clipboard != null) && (inst != null))
-					clipboard.SetText(inst.GetPath(.. scope .())).IgnoreError();
+				if (let inst = Resolve(id))
+					mContext.CopyText((Context != null) ? Context.Clipboard : null, inst.GetPath(.. scope .()), "path");
 			});
 		menu.AddItem(mContext.IsFavorite(id) ? "Unpin favorite" : "Pin favorite", new [=id, =this]() =>
 			{

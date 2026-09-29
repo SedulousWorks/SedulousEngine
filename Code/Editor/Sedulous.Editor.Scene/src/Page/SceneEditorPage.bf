@@ -196,6 +196,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mHierarchy = new SceneHierarchyView(mEditContext);
 			// Its context menus are the scene editor's actions over THIS page.
 			mHierarchy.SetActions(context.Actions, this);
+			mHierarchy.SetEditor(context);
 			mInspector = new SceneInspectorView(context, mEditContext);
 
 			mSelectTool = (SelectTransformTool)mViewportTools.Add(new SelectTransformTool(mEditContext)); // the default

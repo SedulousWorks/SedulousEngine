@@ -96,13 +96,14 @@ extension SceneInspectorView
 		actions.Spacing = 2.0f;
 		let copyButton = new IconButton(EditorIcons.Copy, 18.0f);
 		copyButton.TooltipText.Set("Copy component");
-		copyButton.OnClick.Add(new [=edit, =editor, =id, =type](b) =>
+		let copiedName = new $"component '{category}'";
+		copyButton.OnClick.Add(new [=edit, =editor, =id, =type, =copiedName](b) =>
 		{
 			let blob = scope List<uint8>();
 			edit.CopyComponent(id, type, blob);
 			if (!blob.IsEmpty)
-				editor.SetClipboard("component", blob);
-		});
+				editor.CopyToEditorClipboard("component", blob, copiedName);
+		} ~ delete copiedName);
 		actions.AddView(copyButton);
 		let removeButton = new IconButton(EditorIcons.Remove, 18.0f);
 		removeButton.TooltipText.Set("Remove component");

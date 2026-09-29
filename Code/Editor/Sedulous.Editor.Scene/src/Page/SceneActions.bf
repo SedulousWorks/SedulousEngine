@@ -195,9 +195,15 @@ static class SceneActions
 			d.Execute = new [=context](page) =>
 				{
 					let blob = scope List<uint8>();
-					EditablePage(page).EditContext.CopyEntity(PrimaryOf(page), blob);
+					let edit = EditablePage(page).EditContext;
+					let primary = PrimaryOf(page);
+					edit.CopyEntity(primary, blob);
 					if (!blob.IsEmpty)
-						context.SetClipboard("entities", blob);
+					{
+						let handle = edit.Scene.FindEntity(primary);
+						let name = handle.IsAssigned ? edit.Scene.GetEntityName(handle) : "";
+						context.CopyToEditorClipboard("entities", blob, scope $"entity '{name}'");
+					}
 				};
 			actions.Register(d);
 		}

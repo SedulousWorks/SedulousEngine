@@ -417,6 +417,27 @@ class EditorContext : IAssetEditSink
 		mClipboard.AddRange(data);
 	}
 
+	/// SetClipboard for a copy the USER asked for: a toast says what was copied.
+	public void CopyToEditorClipboard(StringView kind, Span<uint8> data, StringView what)
+	{
+		SetClipboard(kind, data);
+		Notify(.Success, scope $"Copied {what}");
+	}
+
+	/// Puts text on the OS clipboard and says so: every copy the user asks for announces
+	/// itself, "Copied <what>", so they know it took. A clipboard that refuses, or none (a
+	/// headless view), is a warning instead. `clipboard` is BORROWED and may be null.
+	public bool CopyText(Sedulous.UI.IClipboard clipboard, StringView text, StringView what)
+	{
+		if ((clipboard == null) || !(clipboard.SetText(text) case .Ok))
+		{
+			Notify(.Warning, scope $"Could not copy {what} to the clipboard");
+			return false;
+		}
+		Notify(.Success, scope $"Copied {what}");
+		return true;
+	}
+
 	public StringView ClipboardKind => mClipboardKind;
 
 	/// The bytes when the slot holds `kind`, else empty.

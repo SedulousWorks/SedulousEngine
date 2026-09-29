@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using Sedulous.Core.Logging;
 using Sedulous.UI;
+using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App.Tests;
 
@@ -175,5 +177,41 @@ static class LogViewTests
 		// A plain arrow moves outright from where the range ended.
 		Press(view.List, .Down, .None);
 		Test.Assert((view.SelectedCount == 1) && (view.SelectedText(.. scope .()) == "[A] line1"));
+	}
+
+	/// A copy the user asks for says so: the console's lines, and every other copy through
+	/// the context, which warns instead when there is no clipboard to reach.
+	[Test]
+	public static void ACopyAnnouncesItself()
+	{
+		let context = scope EditorContext();
+		let notices = scope List<String>();
+		defer { ClearAndDeleteItems!(notices); }
+		context.OnNotice = new [&](kind, message) => { notices.Add(new $"{kind}: {message}"); };
+		let clipboard = scope TestClipboard();
+
+		Test.Assert(context.CopyText(clipboard, "1234", "GUID"));
+		Test.Assert((clipboard.Stored == "1234") && (notices.Back == "Success: Copied GUID"));
+		Test.Assert(!context.CopyText(null, "x", "path"));
+		Test.Assert(notices.Back == "Warning: Could not copy path to the clipboard");
+		context.CopyToEditorClipboard("component", scope uint8[](1, 2), "component 'Mesh'");
+		Test.Assert((context.ClipboardKind == "component") && (notices.Back == "Success: Copied component 'Mesh'"));
+
+		// The console reports how many lines it copied.
+		let ui = scope UIContext();
+		ui.SetClipboard(clipboard);
+		let root = new RootView();
+		defer root.ReleaseRef();
+		root.ViewportSize = .(800, 600);
+		ui.AddRootView(root);
+		let view = new LogView();
+		root.AddView(view);
+		int copied = 0;
+		view.OnCopied = new [&](lines) => { copied = lines; };
+		view.AddEntry(.Information, "A", "one");
+		view.AddEntry(.Information, "A", "two");
+		Press(view.List, .A, .Ctrl);
+		Press(view.List, .C, .Ctrl);
+		Test.Assert(copied == 2);
 	}
 }

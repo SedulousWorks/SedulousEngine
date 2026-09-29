@@ -19,6 +19,8 @@ namespace Sedulous.Editor.Scene;
 class SceneHierarchyView : ViewGroup
 {
 	private SceneEditContext mEdit;
+	/// BORROWED, nullable: the toasts.
+	private EditorContext mEditor = null;
 	/// BORROWED: the context owns the registry, the page owns this view. Null without actions
 	/// (a bare view in a test): the menus then carry only the view's own items.
 	private EditorActionRegistry mActions = null;
@@ -90,8 +92,13 @@ class SceneHierarchyView : ViewGroup
 		let clipboard = (Context != null) ? Context.Clipboard : null;
 		if ((clipboard == null) || id.IsNil)
 			return false;
+		if (mEditor != null)
+			return mEditor.CopyText(clipboard, scope $"{id}", "entity ID"); // with its toast
 		return clipboard.SetText(scope $"{id}") case .Ok;
 	}
+
+	/// The editor whose toasts say what was copied. BORROWED; null for a bare view.
+	public void SetEditor(EditorContext editor) => mEditor = editor;
 
 	public SceneEditContext Edit => mEdit;
 	public DraggableTreeView Tree => mTree;

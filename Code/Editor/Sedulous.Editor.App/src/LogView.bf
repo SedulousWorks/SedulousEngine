@@ -75,6 +75,9 @@ class LogView : ViewGroup
 		}
 	}
 
+	/// Says a copy happened (the app's toast): the number of lines copied. Owned.
+	public delegate void(int lines) OnCopied ~ delete _;
+
 	/// True while the newest entry is kept in view.
 	public bool AutoScroll = true;
 	/// The cap on retained entries; the oldest are trimmed.
@@ -215,7 +218,8 @@ class LogView : ViewGroup
 		let text = SelectedText(.. scope .());
 		if (text.IsEmpty || (Context == null) || (Context.Clipboard == null))
 			return;
-		Context.Clipboard.SetText(text).IgnoreError();
+		if ((Context.Clipboard.SetText(text) case .Ok) && (OnCopied != null))
+			OnCopied(SelectedCount);
 	}
 
 	private void ShowContextMenu(float localX, float localY)
