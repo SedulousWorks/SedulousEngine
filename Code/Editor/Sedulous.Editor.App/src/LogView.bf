@@ -9,7 +9,8 @@ namespace Sedulous.Editor.App;
 /// The Console panel content: a filter and action toolbar (per-bucket check boxes plus
 /// Clear) over a recycled ListView of level-coloured rows, a bounded entry count, and
 /// auto-scroll to the newest entry. Fed once per frame by EditorApplication draining the
-/// EditorLogBuffer.
+/// EditorLogBuffer. Rows select like any list (click, Ctrl click, Shift click, Ctrl+A), and
+/// Ctrl+C or the context menu's Copy puts the selected rows on the clipboard, one per line.
 class LogView : ViewGroup
 {
 	private struct Entry
@@ -42,6 +43,35 @@ class LogView : ViewGroup
 			let entry = mOwner.mEntries[mOwner.mFiltered[position]];
 			label.SetText(entry.Text);
 			label.TextColor.Value = BucketColor(entry.Bucket);
+		}
+	}
+
+	/// The entry list: Ctrl+C copies the selection and Ctrl+A selects every row, with or
+	/// without a selection to start from.
+	private class EntryList : ListView
+	{
+		private LogView mOwner;
+
+		public this(LogView owner) { mOwner = owner; }
+
+		public override void OnKeyDown(KeyEventArgs e)
+		{
+			if (e.Modifiers.HasFlag(.Ctrl) && !e.Modifiers.HasFlag(.Alt))
+			{
+				if (e.Key == .C)
+				{
+					mOwner.CopySelection();
+					e.Handled = true;
+					return;
+				}
+				if (e.Key == .A)
+				{
+					mOwner.SelectAll();
+					e.Handled = true;
+					return;
+				}
+			}
+			base.OnKeyDown(e);
 		}
 	}
 
@@ -85,9 +115,12 @@ class LogView : ViewGroup
 
 		// The entry list, recycled rows.
 		mAdapter = new Adapter(this);
-		mList = new ListView();
+		mList = new EntryList(this);
 		mList.ItemHeight.Value = 20.0f;
+		mList.Selection.Mode = .Multiple;
 		mList.SetAdapter(mAdapter);
+		mList.OnItemRightClicked.Add(new [=this](position, x, y) => { ShowContextMenu(x, y); });
+		mList.OnBackgroundRightClicked.Add(new [=this](x, y) => { ShowContextMenu(x, y); });
 		var grow = LayoutStyle();
 		grow.FlexGrow = 1.0f;
 		column.AddView(mList, grow);
@@ -111,10 +144,14 @@ class LogView : ViewGroup
 		entry.Text.Append(message);
 		mEntries.Add(entry);
 
-		// Trimming shifts the indices into mEntries, so the filter is rebuilt below.
+		// Trimming shifts the indices into mEntries, so the filter is rebuilt below, and the
+		// selection moves up by the visible rows that went (a trimmed selected row is gone).
 		bool trimmed = false;
+		int32 trimmedVisible = 0;
 		while (mEntries.Count > MaxEntries)
 		{
+			if (IsBucketVisible(mEntries[0].Bucket))
+				trimmedVisible++;
 			delete mEntries[0].Text;
 			mEntries.RemoveAt(0);
 			trimmed = true;
@@ -122,6 +159,7 @@ class LogView : ViewGroup
 
 		if (trimmed)
 		{
+			mList.Selection.ShiftIndices(0, -trimmedVisible);
 			RebuildFilter();
 		}
 		else if (IsBucketVisible(mEntries.Back.Bucket))
@@ -138,12 +176,68 @@ class LogView : ViewGroup
 			delete e.Text;
 		mEntries.Clear();
 		mFiltered.Clear();
+		mList.Selection.ClearSelection();
 		mAdapter.NotifyDataSetChanged();
+	}
+
+	/// Selects every visible row.
+	public void SelectAll()
+	{
+		if (!mFiltered.IsEmpty)
+			mList.Selection.SelectRange(0, (int32)mFiltered.Count - 1);
+	}
+
+	public int SelectedCount => mList.Selection.SelectedCount;
+	/// The entry list: the selection, and the keys it takes (the tests drive both).
+	public ListView List => mList;
+
+	/// The selected rows' text, oldest first, one per line.
+	public void SelectedText(String outText)
+	{
+		let positions = scope List<int32>();
+		for (let position in mList.Selection.SelectedPositions)
+		{
+			if (position < mFiltered.Count)
+				positions.Add(position);
+		}
+		positions.Sort();
+		for (let position in positions)
+		{
+			if (!outText.IsEmpty)
+				outText.Append('\n');
+			outText.Append(mEntries[mFiltered[position]].Text);
+		}
+	}
+
+	/// Puts the selected rows on the system clipboard; nothing selected copies nothing.
+	public void CopySelection()
+	{
+		let text = SelectedText(.. scope .());
+		if (text.IsEmpty || (Context == null) || (Context.Clipboard == null))
+			return;
+		Context.Clipboard.SetText(text).IgnoreError();
+	}
+
+	private void ShowContextMenu(float localX, float localY)
+	{
+		if (Context == null)
+			return;
+		let menu = new ContextMenu();
+		defer menu.ReleaseRef();
+		let count = SelectedCount;
+		menu.AddItem((count > 1) ? scope $"Copy {count} Lines" : "Copy", new [=this]() => { CopySelection(); }, count > 0);
+		menu.AddItem("Select All", new [=this]() => { SelectAll(); }, !mFiltered.IsEmpty);
+		menu.AddSeparator();
+		menu.AddItem("Clear", new [=this]() => { Clear(); });
+		let at = mList.LocalToScreen(.(localX, localY));
+		menu.Show(Context, at.X, at.Y);
 	}
 
 	public void SetBucketVisible(LogBucket bucket, bool visible)
 	{
 		mVisible[(int)bucket] = visible;
+		// A filter change re-numbers the rows, so the selection goes.
+		mList.Selection.ClearSelection();
 		if (let check = mFilterBoxes[(int)bucket])
 			check.IsChecked.SetSilent(visible); // the toolbar follows programmatic calls
 		RebuildFilter();
