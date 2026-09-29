@@ -17,7 +17,6 @@ namespace Sedulous.Editor.App;
 /// fields back into EditorProject.Settings and persists the manifest; Cancel discards.
 class ProjectSettingsDialog : Dialog
 {
-	/// One guid-backed asset reference row: the label showing the path, Pick and Clear.
 	/// One asset setting: the id the dialog applies on Save, and the slot row showing it.
 	private class AssetRow
 	{
@@ -157,6 +156,8 @@ class ProjectSettingsDialog : Dialog
 		var grow = LayoutStyle();
 		grow.FlexGrow = 1.0f;
 		grow.AlignSelf = .Center;
+		// The editor keeps its own reference to its view; the layout gets one of its own.
+		asset.Editor.EditorView.AddRef();
 		row.AddView(asset.Editor.EditorView, grow);
 	}
 

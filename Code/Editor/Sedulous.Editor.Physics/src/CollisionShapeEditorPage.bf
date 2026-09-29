@@ -76,6 +76,8 @@ class CollisionShapeEditorPage : UIEditorPage
 			var grow = LayoutStyle();
 			grow.FlexGrow = 1.0f;
 			grow.AlignSelf = .Center;
+			// The editor keeps its own reference to its view; the layout gets one of its own.
+			mMeshRow.EditorView.AddRef();
 			row.AddView(mMeshRow.EditorView, grow);
 		}
 		{

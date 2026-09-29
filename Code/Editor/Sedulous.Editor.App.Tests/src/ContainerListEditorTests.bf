@@ -220,4 +220,21 @@ static class ContainerListEditorTests
 		Test.Assert((assigned == cMaterial) && (appended == cMaterial));
 		Test.Assert(list.EditorView.AsDropTarget().OnDrop(material, 0, 0) == .None);
 	}
+
+	/// A ResourceRefEditor's view placed in a plain layout, outside a grid, holds a reference
+	/// of its own: the layout and the editor each release theirs, and tearing both down is
+	/// balanced (it double released before, and the settings dialog asserted on close).
+	[Test]
+	public static void AnAssetRowOutsideAGridTearsDownBalanced()
+	{
+		let context = scope EditorContext();
+		Guid current = .();
+		let slot = new CompactAssetSlot("Mesh", scope StringView[]("StaticMeshAsset"));
+		slot.Editor.BindAsset(context, new [&]() => current, new [&](id) => { current = id; });
+		slot.Build();
+		slot.ReleaseRef();
+
+		let dialog = new ProjectSettingsDialog(context);
+		dialog.ReleaseRef();
+	}
 }

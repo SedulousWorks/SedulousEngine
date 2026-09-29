@@ -283,6 +283,8 @@ class MeshEditorPage : UIEditorPage
 				});
 			var grow = LayoutStyle();
 			grow.FlexGrow = 1.0f;
+			// The editor keeps its own reference to its view; the layout gets one of its own.
+			mPreviewMaterialRow.EditorView.AddRef();
 			row.AddView(mPreviewMaterialRow.EditorView, grow);
 
 			AddRow(row);

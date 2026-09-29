@@ -88,6 +88,8 @@ class SoundCueEditorPage : UIEditorPage, IPlaybackPage
 			var grow = LayoutStyle();
 			grow.FlexGrow = 1.0f;
 			grow.AlignSelf = .Center;
+			// The editor keeps its own reference to its view; the layout gets one of its own.
+			clipRow.EditorView.AddRef();
 			row.AddView(clipRow.EditorView, grow);
 			let weightLabel = new Label("weight");
 			weightLabel.FontSize.Value = 12.0f;
