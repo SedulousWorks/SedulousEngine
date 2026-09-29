@@ -91,7 +91,7 @@ CheckBox::box {
 CheckBox::box:checked {
     background: rounded-rect($primary-accent, radius=0, border=lighten($border, 35%), border-width=1);
 }
-CheckBox { spacing: 6; }
+CheckBox { spacing: 6; font-size: 12; }  /* compact chrome, as buttons: without it the View 16 default wins */
 
 /* === RadioButton (square in the flat theme) === */
 RadioButton::box {
