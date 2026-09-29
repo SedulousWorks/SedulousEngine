@@ -6,8 +6,8 @@ using Sedulous.UI;
 
 namespace Sedulous.Editor.App;
 
-/// The Console panel content: a filter and action toolbar (per-bucket check boxes plus
-/// Clear) over a recycled ListView of level-coloured rows, a bounded entry count, and
+/// The Console panel content: a filter and action toolbar (per-bucket check boxes, a search
+/// box matching anywhere in a line, case-insensitively, plus Clear) over a recycled ListView of level-coloured rows, a bounded entry count, and
 /// auto-scroll to the newest entry. Fed once per frame by EditorApplication draining the
 /// EditorLogBuffer. Rows select like any list (click, Ctrl click, Shift click, Ctrl+A), and
 /// Ctrl+C or the context menu's Copy puts the selected rows on the clipboard, one per line.
@@ -87,6 +87,10 @@ class LogView : ViewGroup
 	/// Indices into mEntries passing the filter.
 	private List<int> mFiltered = new .() ~ delete _;
 	private bool[LogBucket.Count] mVisible = .(true, true, true, true);
+	/// What a line must contain to show; empty shows every line.
+	private String mSearch = new .() ~ delete _;
+	/// Borrowed; the toolbar owns it.
+	private EditText mSearchEdit;
 	private Adapter mAdapter ~ delete _;
 	private ListView mList;
 	/// Borrowed; the toolbar owns them.
@@ -111,6 +115,12 @@ class LogView : ViewGroup
 			mFilterBoxes[i] = check;
 			toolbar.AddView(check);
 		}
+		mSearchEdit = new EditText();
+		mSearchEdit.SetPlaceholder("Search...");
+		mSearchEdit.OnTextChanged.Add(new [=this](edit) => { SetSearch(edit.Text); });
+		var grow = LayoutStyle();
+		grow.FlexGrow = 1.0f;
+		toolbar.AddView(mSearchEdit, grow);
 		let clear = new Button("Clear");
 		clear.OnClick.Add(new (b) => { Clear(); });
 		toolbar.AddView(clear);
@@ -124,9 +134,9 @@ class LogView : ViewGroup
 		mList.SetAdapter(mAdapter);
 		mList.OnItemRightClicked.Add(new [=this](position, x, y) => { ShowContextMenu(x, y); });
 		mList.OnBackgroundRightClicked.Add(new [=this](x, y) => { ShowContextMenu(x, y); });
-		var grow = LayoutStyle();
-		grow.FlexGrow = 1.0f;
-		column.AddView(mList, grow);
+		var fill = LayoutStyle();
+		fill.FlexGrow = 1.0f;
+		column.AddView(mList, fill);
 
 		AddView(column);
 	}
@@ -153,7 +163,7 @@ class LogView : ViewGroup
 		int32 trimmedVisible = 0;
 		while (mEntries.Count > MaxEntries)
 		{
-			if (IsBucketVisible(mEntries[0].Bucket))
+			if (Shows(mEntries[0]))
 				trimmedVisible++;
 			delete mEntries[0].Text;
 			mEntries.RemoveAt(0);
@@ -165,7 +175,7 @@ class LogView : ViewGroup
 			mList.Selection.ShiftIndices(0, -trimmedVisible);
 			RebuildFilter();
 		}
-		else if (IsBucketVisible(mEntries.Back.Bucket))
+		else if (Shows(mEntries.Back))
 		{
 			mFiltered.Add(mEntries.Count - 1);
 			mAdapter.NotifyDataSetChanged();
@@ -249,6 +259,25 @@ class LogView : ViewGroup
 	}
 
 	public bool IsBucketVisible(LogBucket bucket) => mVisible[(int)bucket];
+
+	/// Shows only the lines containing `text`, ignoring case; empty shows them all. The search
+	/// box calls it as the user types.
+	public void SetSearch(StringView text)
+	{
+		if (mSearch == text)
+			return;
+		mSearch.Set(text);
+		// The rows re-number, so the selection goes.
+		mList.Selection.ClearSelection();
+		RebuildFilter();
+		ScrollToNewest();
+	}
+
+	public StringView Search => mSearch;
+
+	/// Whether a line passes the level filters and the search.
+	private bool Shows(Entry entry) =>
+		IsBucketVisible(entry.Bucket) && (mSearch.IsEmpty || entry.Text.Contains(mSearch, true));
 	public int EntryCount => mEntries.Count;
 	public int VisibleEntryCount => mFiltered.Count;
 	public StringView VisibleEntryText(int visibleIndex) => mEntries[mFiltered[visibleIndex]].Text;
@@ -284,7 +313,7 @@ class LogView : ViewGroup
 		mFiltered.Clear();
 		for (int i < mEntries.Count)
 		{
-			if (IsBucketVisible(mEntries[i].Bucket))
+			if (Shows(mEntries[i]))
 				mFiltered.Add(i);
 		}
 		mAdapter.NotifyDataSetChanged();

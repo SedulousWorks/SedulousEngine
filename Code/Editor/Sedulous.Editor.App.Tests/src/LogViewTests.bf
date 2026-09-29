@@ -214,4 +214,37 @@ static class LogViewTests
 		Press(view.List, .C, .Ctrl);
 		Test.Assert(copied == 2);
 	}
+
+	/// The search shows the lines containing it, ignoring case, together with the level
+	/// filters, and applies to lines that arrive while it is set.
+	[Test]
+	public static void TheSearchNarrowsToMatchingLines()
+	{
+		let view = new LogView();
+		defer view.ReleaseRef();
+		view.AddEntry(.Information, "Editor", "opened scene 'Main'");
+		view.AddEntry(.Warning, "Resource", "bind failed for 6c26");
+		view.AddEntry(.Error, "Editor", "Cook FAILED");
+
+		view.SetSearch("failed");
+		Test.Assert(view.VisibleEntryCount == 2, "either case");
+		Test.Assert(view.VisibleEntryText(0) == "[Resource] bind failed for 6c26");
+
+		// Together with the level filters.
+		view.SetBucketVisible(.Warning, false);
+		Test.Assert((view.VisibleEntryCount == 1) && (view.VisibleEntryText(0) == "[Editor] Cook FAILED"));
+		view.SetBucketVisible(.Warning, true);
+
+		// A new line shows only when it matches; the category is part of the line.
+		view.AddEntry(.Information, "Editor", "saved");
+		Test.Assert(view.VisibleEntryCount == 2);
+		view.AddEntry(.Information, "Editor", "retry failed");
+		Test.Assert(view.VisibleEntryCount == 3);
+		view.SetSearch("resource]");
+		Test.Assert(view.VisibleEntryCount == 1);
+
+		// Empty shows everything again.
+		view.SetSearch("");
+		Test.Assert(view.VisibleEntryCount == 5);
+	}
 }
