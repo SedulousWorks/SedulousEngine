@@ -270,7 +270,7 @@ class GridView : ViewGroup, IListAdapterObserver
 		if (e.Modifiers.HasFlag(.Ctrl))
 			Selection.Toggle(position);
 		else if (e.Modifiers.HasFlag(.Shift))
-			Selection.SelectRange(Selection.FirstSelected(), position);
+			Selection.ExtendTo(position);
 		else
 			Selection.Select(position);
 
@@ -282,7 +282,9 @@ class GridView : ViewGroup, IListAdapterObserver
 		if ((mAdapter == null) || (mColumnsCount <= 0))
 			return;
 
-		let selected = Selection.FirstSelected();
+		// From the caret, the last pick; FirstSelected is a set's arbitrary member.
+		let caret = Selection.Caret;
+		let selected = ((caret >= 0) && Selection.IsSelected(caret)) ? caret : Selection.FirstSelected();
 		let count = mAdapter.ItemCount;
 
 		// The cell gets FIRST refusal, so a consumer can bind F2 or Delete without the grid

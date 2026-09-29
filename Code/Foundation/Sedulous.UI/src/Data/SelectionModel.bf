@@ -15,6 +15,12 @@ class SelectionModel
 
 	private HashSet<int32> mSelected = new .() ~ delete _;
 
+	/// Where a Shift range starts: the last plain or Ctrl pick. Minus one when there is none.
+	public int32 Anchor { get; private set; } = -1;
+	/// The row keyboard navigation moves from: the last pick or range end. Minus one when
+	/// there is none.
+	public int32 Caret { get; private set; } = -1;
+
 	public int SelectedCount => mSelected.Count;
 	public bool IsSelected(int32 index) => mSelected.Contains(index);
 
@@ -27,6 +33,8 @@ class SelectionModel
 	{
 		if (Mode == .None)
 			return;
+		Anchor = index;
+		Caret = index;
 		// Already exactly this, so nothing changed and nobody needs telling.
 		if ((mSelected.Count == 1) && mSelected.Contains(index))
 			return;
@@ -59,6 +67,10 @@ class SelectionModel
 
 		for (let index in stale)
 			mSelected.Remove(index);
+		if (Anchor >= count)
+			Anchor = -1;
+		if (Caret >= count)
+			Caret = -1;
 		OnSelectionChanged();
 	}
 
@@ -82,6 +94,8 @@ class SelectionModel
 	{
 		if (Mode == .None)
 			return;
+		Anchor = index;
+		Caret = index;
 
 		if (IsSelected(index))
 		{
@@ -115,8 +129,26 @@ class SelectionModel
 		OnSelectionChanged();
 	}
 
+	/// Extends from the anchor to `index`, which is what Shift click and Shift arrow mean: the
+	/// range always runs from where it started, so repeated extension grows or shrinks it.
+	/// Without an anchor it is a plain pick.
+	public void ExtendTo(int32 index)
+	{
+		if (Mode == .None)
+			return;
+		if ((Anchor < 0) || (Mode == .Single))
+		{
+			Select(index);
+			return;
+		}
+		SelectRange(Anchor, index);
+		Caret = index;
+	}
+
 	public void ClearSelection()
 	{
+		Anchor = -1;
+		Caret = -1;
 		if (mSelected.IsEmpty)
 			return;
 		mSelected.Clear();
@@ -155,5 +187,9 @@ class SelectionModel
 			if (shifted >= 0)
 				mSelected.Add(shifted);
 		}
+		if (Anchor >= startPos)
+			Anchor = Math.Max(Anchor + delta, -1);
+		if (Caret >= startPos)
+			Caret = Math.Max(Caret + delta, -1);
 	}
 }

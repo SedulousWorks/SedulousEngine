@@ -146,4 +146,34 @@ static class LogViewTests
 		Press(view.List, .C, .Ctrl);
 		Test.Assert(clipboard.Stored == "kept");
 	}
+
+	/// Shift and the arrows extend ONE range from where it started, as far as the user goes:
+	/// three presses down select four rows, one back up leaves three.
+	[Test]
+	public static void ShiftArrowsGrowAndShrinkOneRange()
+	{
+		let view = new LogView();
+		defer view.ReleaseRef();
+		for (int i < 6)
+			view.AddEntry(.Information, "A", scope $"line{i}");
+
+		view.List.Selection.Select(1);
+		Press(view.List, .Down, .Shift);
+		Press(view.List, .Down, .Shift);
+		Press(view.List, .Down, .Shift);
+		Test.Assert(view.SelectedCount == 4);
+		Test.Assert(view.SelectedText(.. scope .()) == "[A] line1\n[A] line2\n[A] line3\n[A] line4");
+		Press(view.List, .Up, .Shift);
+		Test.Assert(view.SelectedText(.. scope .()) == "[A] line1\n[A] line2\n[A] line3");
+
+		// Past the anchor the range flips to the other side of it.
+		Press(view.List, .Up, .Shift);
+		Press(view.List, .Up, .Shift);
+		Press(view.List, .Up, .Shift);
+		Test.Assert(view.SelectedText(.. scope .()) == "[A] line0\n[A] line1");
+
+		// A plain arrow moves outright from where the range ended.
+		Press(view.List, .Down, .None);
+		Test.Assert((view.SelectedCount == 1) && (view.SelectedText(.. scope .()) == "[A] line1"));
+	}
 }

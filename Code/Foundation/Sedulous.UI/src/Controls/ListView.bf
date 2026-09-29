@@ -319,7 +319,7 @@ class ListView : ViewGroup, IListAdapterObserver
 		if (e.Modifiers.HasFlag(.Ctrl))
 			Selection.Toggle(position);
 		else if (e.Modifiers.HasFlag(.Shift))
-			Selection.SelectRange(Selection.FirstSelected(), position);
+			Selection.ExtendTo(position);
 		else
 			Selection.Select(position);
 
@@ -374,7 +374,10 @@ class ListView : ViewGroup, IListAdapterObserver
 		if (mAdapter == null)
 			return;
 
-		let selected = Selection.FirstSelected();
+		// Navigation moves from the caret, the last pick or range end; FirstSelected is a set's
+		// arbitrary member once several rows are selected.
+		let caret = Selection.Caret;
+		let selected = ((caret >= 0) && Selection.IsSelected(caret)) ? caret : Selection.FirstSelected();
 		let count = mAdapter.ItemCount;
 
 		// The row gets FIRST refusal, so a consumer can bind F2 or Delete without the list
@@ -406,11 +409,12 @@ class ListView : ViewGroup, IListAdapterObserver
 		}
 	}
 
-	/// Shift EXTENDS from where the selection was; without it the selection moves outright.
+	/// Shift EXTENDS from the anchor, so repeated presses grow or shrink one range; without it
+	/// the selection moves outright.
 	private void MoveSelection(int32 from, int32 to, KeyEventArgs e)
 	{
 		if (e.Modifiers.HasFlag(.Shift))
-			Selection.SelectRange(from, to);
+			Selection.ExtendTo(to);
 		else
 			Selection.Select(to);
 
