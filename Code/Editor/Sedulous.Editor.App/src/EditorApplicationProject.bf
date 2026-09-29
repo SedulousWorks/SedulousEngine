@@ -221,10 +221,7 @@ extension EditorApplication
 				{
 					if (mPagePanels[i].Page.InstanceId == id)
 					{
-						let panel = mPagePanels[i].Panel;
-						let page = mPagePanels[i].Page;
-						mShell.Docks.ClosePanel(panel);
-						ClosePage(page);
+						ClosePanelAndPage(mPagePanels[i]);
 						return;
 					}
 				}
@@ -390,10 +387,7 @@ extension EditorApplication
 				{
 					if (entry.Page == page)
 					{
-						let closing = entry; // the tab close pair: panel, then page
-						if ((mShell.Docks != null) && (closing.Panel != null))
-							mShell.Docks.ClosePanel(closing.Panel);
-						ClosePage(closing.Page);
+						ClosePanelAndPage(entry);
 						return;
 					}
 				}
@@ -447,12 +441,7 @@ extension EditorApplication
 		// Every page closes: the tab-close pair, panel then page, applied to all. ClosePage
 		// erases the entry, so the drain runs from the front.
 		while (!mPagePanels.IsEmpty)
-		{
-			let entry = mPagePanels[0];
-			if ((mShell.Docks != null) && (entry.Panel != null))
-				mShell.Docks.ClosePanel(entry.Panel);
-			ClosePage(entry.Page);
-		}
+			ClosePanelAndPage(mPagePanels[0]);
 		mGamePage = null;
 		mShell.SetAssetsContent(null);
 		if (mAssetsView != null)

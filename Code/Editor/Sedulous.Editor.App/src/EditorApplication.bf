@@ -622,6 +622,24 @@ class EditorApplication : IApplication
 	}
 
 	/// Tears down a page whose panel is closing or closed; the DockManager owns the panel.
+	/// Closes a page and its panel together, synchronously: the code paths (Close Project, an
+	/// open asset deleted, page_close), where the tab close runs the same pair deferred.
+	///
+	/// The page's views borrow what the page owns (its scene, its edit context, its images),
+	/// so they must die while the page lives. The panel's deletion is deferred, so the panel
+	/// lets go of the content FIRST; the page then holds the last reference and frees its
+	/// views in its own teardown, in the order it was written for.
+	private void ClosePanelAndPage(PagePanel entry)
+	{
+		if (entry.Panel != null)
+		{
+			entry.Panel.SetContent(null);
+			if (mShell.Docks != null)
+				mShell.Docks.ClosePanel(entry.Panel);
+		}
+		ClosePage(entry.Page);
+	}
+
 	public void ClosePage(UIEditorPage page)
 	{
 		if (page === mGamePage)
