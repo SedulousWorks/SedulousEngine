@@ -74,7 +74,7 @@ class HttpServer
 		Stop();
 		mConfig = config;
 
-		mListener = new .(config.Port);
+		mListener = new .(config.Port, config.LoopbackOnly);
 		if (!mListener.IsOpen)
 		{
 			delete mListener;
@@ -103,6 +103,8 @@ class HttpServer
 
 	public bool IsRunning => mListener != null;
 	public uint16 BoundPort => (mListener != null) ? mListener.BoundPort : 0;
+	/// The bound address, packed as NetAddress.PackIPv4 packs it; nought is every interface.
+	public uint32 BoundIp => (mListener != null) ? mListener.BoundIp : 0;
 
 	/// The request handler, for one-shot responses and for the event stream marker. Ownership
 	/// transfers; setting a second one deletes the first.

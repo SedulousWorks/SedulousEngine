@@ -44,6 +44,7 @@ class HttpServerTests
 		Test.Assert(server.Start(.()));
 		let port = server.BoundPort;
 		Test.Assert(port != 0);
+		Test.Assert(server.BoundIp == NetAddress.PackIPv4(.(127, 0, 0, 1)), "a local tool's server: loopback by default");
 
 		server.SetHandler(new (request) =>
 			{

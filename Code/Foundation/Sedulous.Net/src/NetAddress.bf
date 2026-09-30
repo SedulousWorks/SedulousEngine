@@ -119,6 +119,20 @@ static class NetAddress
 		return MakeEndpoint(ip, port);
 	}
 
+	/// The IPv4 address `socket` is bound to, packed as PackIPv4 packs it; nought (any) when
+	/// it is bound to every interface, not bound, or the query fails.
+	public static uint32 BoundIp(Socket socket)
+	{
+		if (!socket.IsOpen)
+			return 0;
+
+		Socket.SockAddr_in address = default;
+		int32 length = sizeof(Socket.SockAddr_in);
+		if (getsockname(socket.NativeSocket, (Socket.SockAddr*)&address, &length) != 0)
+			return 0;
+		return PackIPv4(address.sin_addr);
+	}
+
 	/// The port `socket` is bound to, or nought when it is not bound or the query fails.
 	public static uint16 BoundPort(Socket socket)
 	{

@@ -327,4 +327,55 @@ class SocketTests
 		}
 		Test.Assert(delivered);
 	}
+
+	/// A connected pair: the listener's accepted side, and the client. Both OWNED by the caller.
+	private static void Connect(TcpListener listener, out TcpSocket outServer, out TcpSocket outClient)
+	{
+		outClient = TcpSocket.Connect("127.0.0.1", listener.BoundPort);
+		outServer = null;
+		for (int i = 0; i < cPollAttempts; i++)
+		{
+			if (outServer == null)
+				outServer = listener.Accept();
+			if ((outServer != null) && (outClient.ConnectStatus == 1))
+				break;
+			Thread.Sleep(1);
+		}
+	}
+
+	[Test]
+	public static void ALoopbackListenerBindsOnlyTheLocalAddress()
+	{
+		let local = scope TcpListener(0, true);
+		Test.Assert(local.IsOpen);
+		Test.Assert(local.BoundIp == NetAddress.PackIPv4(.(127, 0, 0, 1)));
+		Connect(local, let server, let client);
+		defer { delete server; delete client; }
+		Test.Assert(server != null, "a local client still connects");
+
+		let everywhere = scope TcpListener(0);
+		Test.Assert(everywhere.IsOpen);
+		Test.Assert(everywhere.BoundIp == 0, "the default is every interface");
+	}
+
+	/// A server that closes its side first leaves the connection in TIME_WAIT on its port for
+	/// about a minute; a restarted server must still be able to listen there at once.
+	[Test]
+	public static void ARestartedListenerRebindsItsPortAtOnce()
+	{
+		uint16 port = 0;
+		{
+			let first = scope TcpListener(0, true);
+			Test.Assert(first.IsOpen);
+			port = first.BoundPort;
+			Connect(first, let server, let client);
+			Test.Assert(server != null);
+			delete server; // the server closes first: its side of the port is in TIME_WAIT
+			Thread.Sleep(20);
+			delete client;
+		}
+		let again = scope TcpListener(port, true);
+		Test.Assert(again.IsOpen, "the port rebinds while its old connection is in TIME_WAIT");
+		Test.Assert(again.BoundPort == port);
+	}
 }

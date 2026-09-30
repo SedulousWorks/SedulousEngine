@@ -5,6 +5,9 @@ struct HttpServerConfig
 {
 	/// Nought lets the operating system choose; read BoundPort after Start.
 	public uint16 Port = 0;
+	/// Bind 127.0.0.1 alone, so nothing off this machine can connect. On by default: every
+	/// server here is a local tool's (the editor's MCP host).
+	public bool LoopbackOnly = true;
 	public int MaxBodyBytes = 16 * 1024 * 1024;
 	/// Accepted but unanswered connections beyond this are refused, so a peer opening sockets
 	/// and never speaking cannot exhaust the server.
