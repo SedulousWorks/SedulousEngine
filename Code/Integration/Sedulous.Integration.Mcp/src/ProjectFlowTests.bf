@@ -524,4 +524,29 @@ static class ProjectFlowTests
 		Test.Assert(cleared.Get("settings").Get("defaultInputMap").IsNull);
 		Test.Assert(cleared.Get("settings").Get("defaultScene").Get("guid").AsString() == sceneId);
 	}
+
+	/// Every enum an input map stores as a number is one type_info names the cases of: an agent
+	/// editing bindings through asset_data_write reads the codes against these.
+	[Test]
+	public static void TypeInfoNamesEveryInputCode()
+	{
+		let server = scope McpServer();
+		ReflectionTools.Register(server);
+		(StringView type, StringView ns, StringView someCase)[?] expected = .(
+			("KeyCode", "Sedulous.Shell", "Space"),
+			("MouseButton", "Sedulous.Shell", "Left"),
+			("GamepadButton", "Sedulous.Shell", "South"),
+			("GamepadAxis", "Sedulous.Shell", "LeftX"),
+			("StickCode", "Sedulous.Input", "Right"),
+			("MouseAxisCode", "Sedulous.Input", "Wheel"),
+			("BindingSource", "Sedulous.Input", "Composite2D"));
+		for (let entry in expected)
+		{
+			let info = CallOk(server, "type_info", With(With(Obj(), "type", entry.type), "namespace", entry.ns));
+			defer delete info;
+			let cases = info.Get("enum");
+			Test.Assert(cases != null, scope $"{entry.ns}.{entry.type} lists no cases");
+			Test.Assert(Named(cases, "name", entry.someCase) != null, scope $"{entry.type} has no case '{entry.someCase}'");
+		}
+	}
 }
