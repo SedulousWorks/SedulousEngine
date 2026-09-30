@@ -32,7 +32,24 @@ class ScriptRunHost
 	private List<(Type type, Object service)> mServices = new .() ~ delete _;
 	private String mLanguage = new .() ~ delete _;
 	/// BORROWED: the resource manager owns the products.
-	private List<ScriptClass> mLoaded = new .() ~ delete _;
+	/// The classes compiled into the current module, as COPIES of their names and sources: a
+	/// ScriptClass is a product the resource manager replaces (and frees) on every hot reload,
+	/// and this host outlives a play, so it must not hold one.
+	private List<LoadedClass> mLoaded = new .() ~ DeleteContainerAndItems!(_);
+
+	private class LoadedClass
+	{
+		public String ClassName = new .() ~ delete _;
+		public String SourceName = new .() ~ delete _;
+		public String Source = new .() ~ delete _;
+
+		public void Set(ScriptClass scriptClass)
+		{
+			ClassName.Set(scriptClass.ClassName);
+			SourceName.Set(scriptClass.SourceName);
+			Source.Set(scriptClass.Source);
+		}
+	}
 	private bool mModuleCurrent = false;
 	private int mGeneration = 0;
 	private String mModuleName = new .() ~ delete _;
@@ -164,25 +181,25 @@ class ScriptRunHost
 			return false;
 
 		bool present = false;
-		for (int i = 0; i < mLoaded.Count; i++)
+		for (let loaded in mLoaded)
 		{
-			if (mLoaded[i] === scriptClass)
+			if (loaded.ClassName != scriptClass.ClassName)
+				continue;
+			// A reloaded product carries its class under the same name: a changed source
+			// recompiles, the same one does not.
+			if ((loaded.Source != scriptClass.Source) || (loaded.SourceName != scriptClass.SourceName))
 			{
-				present = true;
-				break;
-			}
-			// A reloaded product replaces its predecessor of the same name.
-			if (mLoaded[i].ClassName == scriptClass.ClassName)
-			{
-				mLoaded[i] = scriptClass;
+				loaded.Set(scriptClass);
 				mModuleCurrent = false;
-				present = true;
-				break;
 			}
+			present = true;
+			break;
 		}
 		if (!present)
 		{
-			mLoaded.Add(scriptClass);
+			let loaded = new LoadedClass();
+			loaded.Set(scriptClass);
+			mLoaded.Add(loaded);
 			mModuleCurrent = false;
 		}
 		if (mModuleCurrent)
@@ -230,7 +247,7 @@ class ScriptRunHost
 		DeleteAndNullify!(mDebugger);
 		DeleteAndNullify!(mRuntime);
 		mLanguage.Clear();
-		mLoaded.Clear();
+		ClearAndDeleteItems!(mLoaded);
 		mModuleCurrent = false;
 		mModuleName.Clear();
 		mWarnedLanguage = false;

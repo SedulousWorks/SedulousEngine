@@ -100,6 +100,13 @@ class ScriptPlayScene
 		return product;
 	}
 
+	/// Frees a product as a hot reload does when it swaps in the rebuilt one.
+	public void Free(ScriptClass scriptClass)
+	{
+		mClasses.Remove(scriptClass);
+		delete scriptClass;
+	}
+
 	/// An entity with one behaviour of the class.
 	public EntityHandle AddBehavior(ScriptClass scriptClass, StringView entityName = "e", Scene into = null)
 	{

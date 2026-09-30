@@ -223,4 +223,28 @@ static class BehaviorLifecycleTests
 		Test.Assert((updates >= 9) && (updates <= 10), scope $"got {updates}");
 		Test.Assert(Math.Abs(play.PropFloat(e, "total") - 1.0f) < 0.02f, "the accumulated time adds up to the whole second");
 	}
+
+	/// The run host outlives the class products it compiled: a hot reload frees a product,
+	/// and the next class loaded through the same host must not read it (an editor's game
+	/// instance keeps its host across plays, and a cook between two plays frees the classes
+	/// of the first). A reload's new source is what compiles.
+	[Test]
+	public static void ARunHostOutlivesTheClassProductsItCompiled()
+	{
+		let play = scope ScriptPlayScene();
+		let first = play.Class("Walker", "class Walker { Entity self; Scene@ scene; int steps = 1; }", "Walker.as");
+		Test.Assert(play.Host.EnsureClassLoaded(first));
+		play.Free(first);
+
+		let other = play.Class("Runner", "class Runner { Entity self; Scene@ scene; }", "Runner.as");
+		Test.Assert(play.Host.EnsureClassLoaded(other), "a new class loads past a freed product");
+
+		let rebuilt = play.Class("Walker", "class Walker { Entity self; Scene@ scene; int steps = 2; }", "Walker.as");
+		let walker = play.Host.Instantiate(rebuilt);
+		Test.Assert(walker != null);
+		var steps = ScriptValue.Nil;
+		Test.Assert(play.Host.Runtime.GetProperty(walker, "steps", ref steps));
+		Test.Assert(steps.AsInt == 2, "the rebuilt source compiled");
+		play.Host.Runtime.Release(walker);
+	}
 }
