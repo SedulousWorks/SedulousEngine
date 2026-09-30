@@ -314,6 +314,25 @@ class XmlSerializer : Serializer
 
 	public override void DescribeFailure(String outText) => outText.Append(mFailure);
 
+	/// Whether the current scope still has an element under `name`, searched forward from the
+	/// cursor as a keyed read searches, and NOT consumed. Writing, every key is there.
+	public override bool HasKey(StringView name)
+	{
+		if (IsWriting)
+			return true;
+		if (mReadStack.IsEmpty)
+			return false;
+		for (var node = mReadStack.Back.Cursor; node != null; node = node.NextSibling)
+		{
+			if (let element = node as XmlElement)
+			{
+				if (element.GetAttribute("name") == name)
+					return true;
+			}
+		}
+		return false;
+	}
+
 	/// Fails the read, and the FIRST failure also says where: what was wanted (by key when
 	/// one was asked for), the scopes it was wanted in, and what stood there instead.
 	private void FailRead(ErrorCode code, StringView what)

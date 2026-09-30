@@ -558,7 +558,7 @@ class EditorApplication : IApplication
 		return uiPage;
 	}
 
-	/// Binds the project's default UI theme and font onto the embedded app's game UI.
+	/// Binds the project's default UI theme and fonts (the default and its others) onto the embedded app's game UI.
 	/// Idempotent: at project open, after every finished cook (a fresh checkout's first cook
 	/// creates the products the open-time bind missed), and on settings save.
 	public void ApplyProjectUiDefaults()
@@ -579,6 +579,13 @@ class EditorApplication : IApplication
 			if (font != null)
 				mEmbeddedApp.UI.SetDefaultFont(font);
 		}
+		let extras = scope List<Font>();
+		for (let id in mProject.Settings.UiFontIds)
+		{
+			if (let font = mResources.Bind<Font>(id).Get)
+				extras.Add(font);
+		}
+		mEmbeddedApp.UI.SetExtraFonts(extras);
 	}
 
 	/// A context notice as a toast: errors stick until closed, the rest self-expire.

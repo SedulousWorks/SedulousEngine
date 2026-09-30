@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.VFS;
@@ -57,6 +58,43 @@ class ProjectManifestTests
 		Test.Assert(read.StartupScript == "Scripts/Game");
 		Test.Assert(read.NativeModule == "demo_native");
 		Test.Assert(read.RenderMsaaSamples == 4);
+	}
+
+	/// The other UI fonts round trip, and a manifest saved before they existed (no
+	/// uiFontIds key) still loads, with none: every project saved until now is one.
+	[Test]
+	public static void TheUiFontsRoundTripAndAnOlderManifestStillLoads()
+	{
+		FreshScratch();
+		let fs = scope NativeFileSystem(kScratch);
+
+		let written = scope ProjectSettings();
+		written.Name.Set("Fonts");
+		let title = Guid.Create();
+		let mono = Guid.Create();
+		written.UiFontIds.Add(title);
+		written.UiFontIds.Add(mono);
+		Test.Assert(ProjectManifest.Save(fs, written) case .Ok);
+		{
+			let read = scope ProjectSettings();
+			Test.Assert(ProjectManifest.Load(fs, read) case .Ok);
+			Test.Assert((read.UiFontIds.Count == 2) && (read.UiFontIds[0] == title) && (read.UiFontIds[1] == mono));
+		}
+
+		// The same manifest as an older engine wrote it: no uiFontIds element at all.
+		let path = scope $"{kScratch}/{ProjectLayout.ManifestFile}";
+		let text = scope String();
+		Test.Assert(File.ReadAllText(path, text) case .Ok);
+		let start = text.IndexOf("<array name=\"uiFontIds\"");
+		Test.Assert(start >= 0, text);
+		let end = text.IndexOf("</array>", start) + "</array>".Length;
+		text.Remove(start, end - start);
+		Test.Assert(File.WriteAllText(path, text) case .Ok);
+		{
+			let read = scope ProjectSettings();
+			Test.Assert(ProjectManifest.Load(fs, read) case .Ok, "an older manifest loads");
+			Test.Assert((read.Name == "Fonts") && read.UiFontIds.IsEmpty);
+		}
 	}
 
 	/// Every save re-stamps the engine that wrote it, so a launcher can route on it.

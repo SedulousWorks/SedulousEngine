@@ -63,6 +63,10 @@ class UISubsystem : Subsystem, ISceneObserver
 	private TrueTypeFontService mFonts ~ delete _;
 	/// The cooked font service, once a default font product is bound.
 	private ResourceFontService mResourceFonts ~ delete _;
+	/// BORROWED: the bound default font and the project's other UI fonts, which the resource
+	/// manager's cache keeps alive.
+	private Font mDefaultFont = null;
+	private List<Font> mExtraFonts = new .() ~ delete _;
 
 	private List<UISceneUI> mSceneUIs = new .() ~ DeleteContainerAndItems!(_);
 	private List<UITextureCanvasRoot> mTextureCanvasRoots = new .() ~ DeleteContainerAndItems!(_);
@@ -387,22 +391,46 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// alive.
 	public void SetDefaultFont(Font font)
 	{
-		if ((font == null) || (font.EntryCount == 0))
+		mDefaultFont = ((font != null) && (font.EntryCount > 0)) ? font : null;
+		RebuildFontService();
+	}
+
+	/// The project's other UI fonts, each its own family beside the default, which a label
+	/// picks by `font-family`. BORROWED like the default. They need a default font bound:
+	/// the on demand fallback serves only its built in face.
+	public void SetExtraFonts(Span<Font> fonts)
+	{
+		mExtraFonts.Clear();
+		for (let font in fonts)
+		{
+			if ((font != null) && (font.EntryCount > 0))
+				mExtraFonts.Add(font);
+		}
+		RebuildFontService();
+	}
+
+	private void RebuildFontService()
+	{
+		delete mResourceFonts;
+		mResourceFonts = null;
+		if (mDefaultFont == null)
 		{
 			// Back to the on demand service, which is the development path.
-			delete mResourceFonts;
-			mResourceFonts = null;
+			if (!mExtraFonts.IsEmpty)
+				GlobalLog(.Warning, "UISubsystem: {} extra UI font(s) wait for a default font to be bound", mExtraFonts.Count);
 			mContext.SetFontService(mFonts);
 			return;
 		}
 
-		delete mResourceFonts;
 		mResourceFonts = new ResourceFontService();
-		mResourceFonts.AddFont(font);
+		mResourceFonts.AddFont(mDefaultFont);
+		mResourceFonts.SetDefaultFamily(mDefaultFont.Family);
+		for (let font in mExtraFonts)
+			mResourceFonts.AddFont(font);
 		mContext.SetFontService(mResourceFonts);
 
-		GlobalLog(.Information, "UISubsystem: default font bound, '{}' with {} baked size(s)",
-			font.Family, font.EntryCount);
+		GlobalLog(.Information, "UISubsystem: default font bound, '{}' with {} baked size(s), and {} more famil{}",
+			mDefaultFont.Family, mDefaultFont.EntryCount, mExtraFonts.Count, (mExtraFonts.Count == 1) ? "y" : "ies");
 	}
 
 	/// The project's default theme, parsed with the game palette and set as the context's

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 
@@ -49,4 +50,10 @@ class ProjectSettings
 	/// The scene pass sample count: one is off. Clamped to what the device can do at
 	/// runtime, so a project asking for more than the hardware has still runs.
 	public uint32 RenderMsaaSamples = 1;
+
+	/// Cooked fonts the game UI loads BESIDE the default one, each its own family, which a
+	/// label picks by `font-family` (a title face beside the body text). [Appended], so a
+	/// manifest saved before it reads as none.
+	[Appended]
+	public List<Guid> UiFontIds = new .() ~ delete _;
 }

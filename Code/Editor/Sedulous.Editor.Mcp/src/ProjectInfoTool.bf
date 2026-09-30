@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Content;
 using Sedulous.Json;
@@ -42,7 +43,7 @@ static class ProjectInfoTool
 	public static void Register(McpServer server, ProjectSession session)
 	{
 		server.RegisterTool("project_info",
-			"Details about the currently open project: name, directory, sources root, and its settings - the default scene, startup script, default input map, bus layout, UI theme, loading screen and UI font (each {guid, path}, or null when unset), the native module and the MSAA samples. project_settings_set changes them.",
+			"Details about the currently open project: name, directory, sources root, and its settings - the default scene, startup script, default input map, bus layout, UI theme, loading screen and UI font (each {guid, path}, or null when unset), the other UI fonts (`uiFonts`, a list of {guid, path}), the native module and the MSAA samples. project_settings_set changes them.",
 			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Info(session, outResult, outError));
 
@@ -55,6 +56,7 @@ static class ProjectInfoTool
 		setSchema.Str("defaultUiTheme", "a UIThemeAsset's guid; \"\" is the built-in");
 		setSchema.Str("loadingScreen", "a UIDocumentAsset's guid; \"\" is the built-in");
 		setSchema.Str("defaultUiFont", "a FontAsset's guid; \"\" is the built-in");
+		setSchema.Arr("uiFonts", "string", "FontAsset guids the game UI loads beside the default, each its own family a label picks with font-family (a title face); the whole list, [] for none. They need defaultUiFont set");
 		setSchema.Str("nativeModule", "a project-relative path to the built native game module; \"\" clears");
 		setSchema.Integer("msaa", "scene-pass samples: 1 (off), 2 or 4");
 		server.RegisterTool("project_settings_set",
@@ -91,6 +93,16 @@ static class ProjectInfoTool
 			entry.Set("path", (instance != null) ? JsonValue.MakeString(instance.GetPath(.. scope .())) : JsonValue.MakeNull());
 			json.Set(setting.Key, entry);
 		}
+		let fonts = JsonValue.MakeArray();
+		for (let id in settings.UiFontIds)
+		{
+			let instance = project.SourceDb.GetInstance(id);
+			let entry = JsonValue.MakeObject();
+			entry.Set("guid", McpTools.GuidToJson(id));
+			entry.Set("path", (instance != null) ? JsonValue.MakeString(instance.GetPath(.. scope .())) : JsonValue.MakeNull());
+			fonts.Add(entry);
+		}
+		json.Set("uiFonts", fonts);
 		json.Set("nativeModule", JsonValue.MakeString(settings.NativeModule));
 		json.Set("msaa", JsonValue.MakeNumber(settings.RenderMsaaSamples));
 		outResult.Set("settings", json);
@@ -136,6 +148,34 @@ static class ProjectInfoTool
 			}
 			chosen[i] = id;
 		}
+		let fontIds = scope List<Guid>();
+		let fontsArg = arguments.Get("uiFonts");
+		if (fontsArg != null)
+		{
+			if (!fontsArg.IsArray)
+			{
+				outError.Append("`uiFonts` takes an array of FontAsset guids");
+				return false;
+			}
+			for (int i < fontsArg.Count)
+			{
+				if (!McpTools.ParseGuid(fontsArg.At(i).AsString(), outError, let id))
+					return false;
+				let instance = project.SourceDb.GetInstance(id);
+				if (instance == null)
+				{
+					outError.AppendF("`uiFonts`[{}]: no asset with guid {} in the project", i, id);
+					return false;
+				}
+				if (!IsType(instance, "FontAsset"))
+				{
+					outError.AppendF("`uiFonts`[{}] takes a FontAsset; '{}' is of type {}", i, instance.Name, instance.TypeName);
+					return false;
+				}
+				if (!fontIds.Contains(id))
+					fontIds.Add(id);
+			}
+		}
 		let msaaArg = arguments.Get("msaa");
 		if (msaaArg != null)
 		{
@@ -163,6 +203,11 @@ static class ProjectInfoTool
 			settings.NativeModule.Set(module.AsString());
 		if (msaaArg != null)
 			settings.RenderMsaaSamples = (uint32)msaaArg.AsInt();
+		if (fontsArg != null)
+		{
+			settings.UiFontIds.Clear();
+			settings.UiFontIds.AddRange(fontIds);
+		}
 		if (project.SaveSettings() case .Err)
 		{
 			outError.Append("the settings changed but the manifest did not save (log_read says why)");

@@ -99,43 +99,40 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 				if (field.GetCustomAttribute<NotSerializedAttribute>() case .Ok)
 					continue;
 
-				body.AppendF("\tar.Key(\"{}\");\n", WireKey(field.Name, .. scope String()));
+				// The statement that moves the value, by what the field's type is.
+				let move = scope String();
 
 				// A field that IS serializable goes through the interface, checked before the
 				// self Serialize below: [Serializable] emits an EXPLICIT implementation, which
 				// a direct call cannot reach, so naming the method would emit code that does
 				// not compile. The overload takes the handle and dispatches.
 				if (field.FieldType.ImplementsInterface(typeof(ISerializable)))
-				{
-					body.AppendF("\tSedulous.Core.Serialization.Serialize(ar, {});\n", field.Name);
-					continue;
-				}
-
+					move.AppendF("Sedulous.Core.Serialization.Serialize(ar, {});", field.Name);
 				// A type that knows how to describe ITSELF does, without implementing the
 				// interface. That is the escape hatch for anything the dispatcher cannot know
 				// about: a resource reference stores only its identity, and Core cannot be told
 				// what a resource is.
-				if (HasSelfSerialize(field.FieldType))
-				{
-					body.AppendF("\t{}.Serialize(ar);\n", field.Name);
-					continue;
-				}
-
+				else if (HasSelfSerialize(field.FieldType))
+					move.AppendF("{}.Serialize(ar);", field.Name);
 				// A list is count prefixed and walks its elements through the dispatcher.
 				// It has to be spelled out here because a List is a reference type, and
 				// the reference overload below takes the object itself.
-				if (IsList(field.FieldType))
-				{
-					body.AppendF("\tSedulous.Core.Serialization.SerializeList(ar, {});\n", field.Name);
-					continue;
-				}
-
+				else if (IsList(field.FieldType))
+					move.AppendF("Sedulous.Core.Serialization.SerializeList(ar, {});", field.Name);
 				// A value type goes through the dispatcher, which covers enums too; a
 				// reference type IS the handle its overload takes.
-				if (field.FieldType.IsValueType)
-					body.AppendF("\tSedulous.Core.Serialization.SerializeValue(ar, ref {});\n", field.Name);
+				else if (field.FieldType.IsValueType)
+					move.AppendF("Sedulous.Core.Serialization.SerializeValue(ar, ref {});", field.Name);
 				else
-					body.AppendF("\tSedulous.Core.Serialization.Serialize(ar, {});\n", field.Name);
+					move.AppendF("Sedulous.Core.Serialization.Serialize(ar, {});", field.Name);
+
+				let key = WireKey(field.Name, .. scope String());
+				// Appended: a keyed payload from before the field has no key for it, and the
+				// field keeps its default rather than failing the read.
+				if (field.GetCustomAttribute<AppendedAttribute>() case .Ok)
+					body.AppendF("\tif ((ar.Mode != .Read) || ar.HasKey(\"{}\"))\n\t{{\n\t\tar.Key(\"{}\");\n\t\t{}\n\t}}\n", key, key, move);
+				else
+					body.AppendF("\tar.Key(\"{}\");\n\t{}\n", key, move);
 			}
 		}
 

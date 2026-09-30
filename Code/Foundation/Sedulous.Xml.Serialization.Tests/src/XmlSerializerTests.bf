@@ -8,6 +8,18 @@ using Sedulous.Xml.Serialization;
 
 namespace Sedulous.Xml.Serialization.Tests;
 
+/// A settings shape that grew: Extras was appended after files were saved without it.
+[Serializable(1)]
+class GrownSettings
+{
+	public int32 Size = 0;
+	public String Name = new .() ~ delete _;
+	[Appended]
+	public System.Collections.List<Guid> Extras = new .() ~ delete _;
+	[Appended]
+	public float Scale = 1.0f;
+}
+
 class XmlSerializerTests
 {
 	/// Writes with one serializer, reads back with another over the same text. This is the
@@ -320,6 +332,60 @@ class XmlSerializerTests
 		Serialize(reader, ref dropped);
 		let place = reader.DescribeFailure(.. scope String());
 		Test.Assert(place == "no f32 'drag' at outer/inner (next there: <i32 name=\"kept\">)", place);
+	}
+
+	/// An [Appended] field: a payload saved before it (no key) reads with the field at its
+	/// default, and one saved after it reads the value; the rest of the object either way.
+	[Test]
+	public static void AnAppendedFieldReadsItsDefaultFromAnOlderPayload()
+	{
+		let saved = scope GrownSettings();
+		saved.Size = 7;
+		saved.Name.Set("level");
+		let extra = Guid.Create();
+		saved.Extras.Add(extra);
+		saved.Scale = 2.5f;
+		let text = scope String();
+		{
+			let writer = scope XmlSerializer();
+			((ISerializable)saved).Serialize(writer);
+			writer.GetOutput(text);
+		}
+
+		// Saved after: every value comes back.
+		{
+			let document = scope XmlDocument();
+			Test.Assert(document.Parse(text) == .Ok);
+			let loaded = scope GrownSettings();
+			let reader = scope XmlSerializer(document);
+			((ISerializable)loaded).Serialize(reader);
+			Test.Assert(reader.IsOk);
+			Test.Assert((loaded.Size == 7) && (loaded.Name == "level"));
+			Test.Assert((loaded.Extras.Count == 1) && (loaded.Extras[0] == extra));
+			Test.Assert(loaded.Scale == 2.5f);
+		}
+
+		// Saved before: the appended keys were never written.
+		{
+			let older = scope String(text);
+			let start = older.IndexOf("<array name=\"extras\"");
+			Test.Assert(start >= 0, text);
+			let endTag = "</array>";
+			let end = older.IndexOf(endTag, start);
+			older.Remove(start, end + endTag.Length - start);
+			let scaleStart = older.IndexOf("<f32 name=\"scale\">");
+			let scaleEnd = older.IndexOf("</f32>", scaleStart) + "</f32>".Length;
+			older.Remove(scaleStart, scaleEnd - scaleStart);
+
+			let document = scope XmlDocument();
+			Test.Assert(document.Parse(older) == .Ok, older);
+			let loaded = scope GrownSettings();
+			let reader = scope XmlSerializer(document);
+			((ISerializable)loaded).Serialize(reader);
+			Test.Assert(reader.IsOk, reader.DescribeFailure(.. scope .()));
+			Test.Assert((loaded.Size == 7) && (loaded.Name == "level"), "the rest still reads");
+			Test.Assert(loaded.Extras.IsEmpty && (loaded.Scale == 1.0f), "the appended ones keep their defaults");
+		}
 	}
 
 	/// The reason lookup searches FORWARD from the cursor rather than from the first

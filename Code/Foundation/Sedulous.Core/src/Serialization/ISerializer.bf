@@ -26,6 +26,10 @@ interface ISerializer
 
 	/// Names the next value within the current object. Unkeyed formats ignore it.
 	void Key(StringView name);
+	/// Reading: whether the current object has a value under `name` still to be read, so an
+	/// [Appended] field can tell a payload from before it. A positional format cannot tell,
+	/// and says yes, reading on as it always does.
+	bool HasKey(StringView name) => true;
 
 	void BeginObject();
 	void EndObject();

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Audio;
 using Sedulous.Audio.Resource;
 using Sedulous.Content;
@@ -414,6 +415,16 @@ class PlayerApplication : DefaultApplication
 
 		UI.SetDefaultFont(font);
 		GlobalLog(.Information, "Player: default UI font bound");
+
+		let extras = scope List<Font>();
+		for (let id in mSettings.UiFontIds)
+		{
+			if (let extra = Resources.Bind<Font>(id).Get)
+				extras.Add(extra);
+			else
+				GlobalLog(.Warning, "Player: UI font {} did not resolve", id);
+		}
+		UI.SetExtraFonts(extras);
 	}
 
 	/// The project's theme. Unset or unresolved leaves the built in one.

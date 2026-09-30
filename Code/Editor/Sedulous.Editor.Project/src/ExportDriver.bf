@@ -77,6 +77,8 @@ static class ExportDriver
 		Add(settings.DefaultBusLayoutId, .ManifestDefault);
 		Add(settings.DefaultUiThemeId, .ManifestDefault);
 		Add(settings.DefaultUiFontId, .ManifestDefault);
+		for (let id in settings.UiFontIds)
+			Add(id, .ManifestDefault);
 		for (let id in project.ExportRoots.Instances)
 			Add(id, .Flag);
 		for (let groupPath in project.ExportRoots.Groups)
@@ -328,6 +330,7 @@ static class ExportDriver
 			dist.DefaultBusLayoutId = project.Settings.DefaultBusLayoutId;
 			dist.DefaultUiThemeId = project.Settings.DefaultUiThemeId;
 			dist.DefaultUiFontId = project.Settings.DefaultUiFontId;
+			dist.UiFontIds.AddRange(project.Settings.UiFontIds);
 			if (ProjectManifest.Save(outMount, dist, ProjectLayout.DistManifestFile) case .Err)
 			{
 				GlobalLog(.Error, "Export: failed to write the dist manifest");

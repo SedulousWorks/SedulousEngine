@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Content;
@@ -12,8 +13,8 @@ namespace Sedulous.Editor.App;
 /// A modal editor for the project manifest, the fields a user meaningfully changes from
 /// inside the editor: the name, the native module path, the default scene, startup script,
 /// input map, bus layout, UI theme, loading screen and UI font (each picked by guid through
-/// the AssetPickerDialog, the path kept as the human-readable mirror), and the scene-pass
-/// MSAA. The engine version is shown read-only; every save re-stamps it. Save writes the
+/// the AssetPickerDialog, the path kept as the human-readable mirror), the other UI fonts (a
+/// list), and the scene-pass MSAA. The engine version is shown read-only; every save re-stamps it. Save writes the
 /// fields back into EditorProject.Settings and persists the manifest; Cancel discards.
 class ProjectSettingsDialog : Dialog
 {
@@ -39,6 +40,12 @@ class ProjectSettingsDialog : Dialog
 	private AssetRow mUiTheme = new .() ~ delete _;
 	private AssetRow mLoadingDoc = new .() ~ delete _;
 	private AssetRow mUiFont = new .() ~ delete _;
+	/// The other UI fonts as edited; applied on Save. Nil entries are slots not yet picked.
+	private List<Guid> mUiFonts = new .() ~ delete _;
+	/// Borrowed: the row's cell the list sits in, rebuilt on every change.
+	private FlexLayout mUiFontsHost = null;
+	/// OWNED: the list row's editor; its view sits in mUiFontsHost.
+	private ContainerListEditor mUiFontsList ~ delete _;
 
 	public this(EditorContext context) : base("Project Settings")
 	{
@@ -74,6 +81,7 @@ class ProjectSettingsDialog : Dialog
 			(settings != null) ? settings.LoadingDocumentId : .Empty);
 		AddPickRow(column, "Default UI font", mUiFont, "FontAsset", "(built-in)",
 			(settings != null) ? settings.DefaultUiFontId : .Empty);
+		AddUiFontsRow(column, settings);
 
 		// The scene-pass MSAA: Off, 2x, 4x map to 1, 2, 4 samples. The player and play-in-editor
 		// apply it; the render subsystem capability-clamps at runtime.
@@ -161,6 +169,82 @@ class ProjectSettingsDialog : Dialog
 		row.AddView(asset.Editor.EditorView, grow);
 	}
 
+	/// The other UI fonts: a list of font slots, each its own family beside the default that a
+	/// label picks with font-family.
+	private void AddUiFontsRow(FlexLayout column, ProjectSettings settings)
+	{
+		let row = AddRow(column, "Other UI fonts");
+		if (settings != null)
+			mUiFonts.AddRange(settings.UiFontIds);
+		mUiFontsHost = new FlexLayout();
+		mUiFontsHost.Direction = .Vertical;
+		var grow = LayoutStyle();
+		grow.FlexGrow = 1.0f;
+		row.AddView(mUiFontsHost, grow);
+		RebuildUiFonts();
+	}
+
+	/// After the gesture that changed the list: its editor is running the callback, so it is
+	/// replaced once the dispatch is over.
+	private void UiFontsChanged()
+	{
+		if (Context != null)
+			Context.MutationQueue.QueueAction(new [=this]() => { RebuildUiFonts(); });
+	}
+
+	private void RebuildUiFonts()
+	{
+		if (mUiFontsList != null)
+		{
+			mUiFontsHost.RemoveView(mUiFontsList.EditorView);
+			DeleteAndNullify!(mUiFontsList);
+		}
+		let list = new ContainerListEditor("Other UI fonts", "Project");
+		for (let id in mUiFonts)
+		{
+			let name = new String();
+			if (id.IsSet)
+				mContext.AssetNameFor(id, name);
+			else
+				name.Set("(pick a font)");
+			list.SlotNames.Add(name);
+		}
+		list.SetAcceptedTypes(scope StringView[]("FontAsset"));
+		list.OnAdd = new [=this]() => { mUiFonts.Add(.Empty); UiFontsChanged(); };
+		list.OnRemoveSlot = new [=this](i) => { mUiFonts.RemoveAt(i); UiFontsChanged(); };
+		list.OnMoveSlot = new [=this](i, up) =>
+			{
+				let other = up ? i - 1 : i + 1;
+				if ((other < 0) || (other >= mUiFonts.Count))
+					return;
+				Swap!(mUiFonts[i], mUiFonts[other]);
+				UiFontsChanged();
+			};
+		list.OnAssignSlot = new [=this](i, id) => { mUiFonts[i] = id; UiFontsChanged(); };
+		list.OnAppendDropped = new [=this](id) => { mUiFonts.Add(id); UiFontsChanged(); };
+		list.OnPickSlot = new [=this](i) =>
+			{
+				if (Context == null)
+					return;
+				let dialog = new AssetPickerDialog(mContext, scope StringView[]("FontAsset"));
+				dialog.OnPicked = new [=this, =i](picked) =>
+					{
+						if (i < mUiFonts.Count)
+						{
+							mUiFonts[i] = picked;
+							UiFontsChanged();
+						}
+					};
+				dialog.Show(Context);
+			};
+		mUiFontsList = list;
+		// The editor keeps its own reference to its view; the layout gets one of its own.
+		list.EditorView.AddRef();
+		var match = LayoutStyle();
+		match.Width = SizeSpec.Match();
+		mUiFontsHost.AddView(list.EditorView, match);
+	}
+
 	private void Apply()
 	{
 		let project = mContext.Project;
@@ -183,6 +267,12 @@ class ProjectSettingsDialog : Dialog
 		settings.DefaultUiThemeId = mUiTheme.Id;
 		settings.LoadingDocumentId = mLoadingDoc.Id;
 		settings.DefaultUiFontId = mUiFont.Id;
+		settings.UiFontIds.Clear();
+		for (let id in mUiFonts)
+		{
+			if (id.IsSet && !settings.UiFontIds.Contains(id))
+				settings.UiFontIds.Add(id);
+		}
 		settings.RenderMsaaSamples = MsaaLevels.SamplesForIndex((mMsaaCombo != null) ? mMsaaCombo.SelectedIndex : 0);
 		settings.DefaultScene.Clear();
 		if (let scene = mScene.Id.IsSet ? project.SourceDb.GetInstance(mScene.Id) : null)

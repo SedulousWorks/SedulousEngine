@@ -45,6 +45,8 @@ static class AssetUsesTool
 		outRefs.Add(("defaultUiTheme", settings.DefaultUiThemeId));
 		outRefs.Add(("defaultUiFont", settings.DefaultUiFontId));
 		outRefs.Add(("loadingDocument", settings.LoadingDocumentId));
+		for (let id in settings.UiFontIds)
+			outRefs.Add(("uiFonts", id));
 	}
 
 	public static void Register(McpServer server, ProjectSession session, BuilderRegistry builders)

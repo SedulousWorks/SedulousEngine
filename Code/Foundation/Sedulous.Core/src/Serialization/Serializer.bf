@@ -94,6 +94,9 @@ abstract class Serializer : ISerializer
 	/// knows the key it looked for and the scopes it was in); nothing otherwise.
 	public virtual void DescribeFailure(String outText) {}
 
+	/// See ISerializer.HasKey: a positional backend cannot tell, and says yes.
+	public virtual bool HasKey(StringView name) => true;
+
 	public virtual void Key(StringView name) {}
 	public virtual void BeginObject() {}
 	public virtual void EndObject() {}
