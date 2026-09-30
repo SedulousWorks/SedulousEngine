@@ -56,7 +56,7 @@ struct UiGroup
 	[Scriptable]
 	public UiView ChildAt(int32 index) => UiFinders.ChildAt(Resolve(), index);
 	[Scriptable]
-	public UiView FindByName(StringView name) => UiFinders.FindByName(Resolve(), name);
+	public UiView Find(StringView name) => UiFinders.FindByName(Resolve(), name);
 	[Scriptable]
 	public UiLabel FindLabel(StringView name) => UiFinders.FindLabel(Resolve(), name);
 	[Scriptable]
@@ -106,7 +106,7 @@ struct UiScreen
 	[Scriptable]
 	public UiView ChildAt(int32 index) => UiFinders.ChildAt(Resolve(), index);
 	[Scriptable]
-	public UiView FindByName(StringView name) => UiFinders.FindByName(Resolve(), name);
+	public UiView Find(StringView name) => UiFinders.FindByName(Resolve(), name);
 	[Scriptable]
 	public UiLabel FindLabel(StringView name) => UiFinders.FindLabel(Resolve(), name);
 	[Scriptable]

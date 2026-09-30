@@ -121,6 +121,7 @@ static class UiHandleTests
 		let top = bed.Ui.Top;
 		Test.Assert(top.IsValid && (top.Name == "screen") && (top.ChildCount == 5));
 		Test.Assert(top.FindGroup("panel").IsValid && top.FindButton("retry").IsValid);
+		Test.Assert(top.Find("health").IsValid && panel.Find("deep").IsValid && !panel.Find("retry").IsValid, "an untyped find, scoped as the typed ones");
 		Test.Assert(bed.Ui.Root.IsValid && bed.Ui.Root.FindScreen("screen").IsValid);
 	}
 
