@@ -102,8 +102,9 @@ class GameInstance
 	/// clean stop; a start clears it.
 	private String mScriptFault = new .() ~ delete _;
 	/// Seconds of frames TickScript has run since ResetRunClock: the host's delta, NOT scaled
-	/// by the context's, the run's or the scene's time scale, so a menu that stops gameplay
-	/// time (Run.TimeScale = 0) does not stop it. A scripted playtest times its input by it.
+	/// by the context's, the run's or the scene's time scale, so it keeps going while the game
+	/// pauses its scene with Run.TimeScale = 0 (a menu over a paused scene still takes clicks).
+	/// A scripted playtest times its input by it.
 	private double mRunTime = 0;
 	private SceneLoader mSceneLoader = null ~ delete _;
 	private ExitRequest mExitRequest = null ~ delete _;

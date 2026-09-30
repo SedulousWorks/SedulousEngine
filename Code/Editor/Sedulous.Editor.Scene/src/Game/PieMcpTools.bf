@@ -70,7 +70,7 @@ static class PieMcpTools
 		let stateSchema = scope SchemaBuilder();
 		stateSchema.Str("pie", cPieArgument);
 		server.RegisterTool("pie_state",
-			"One PIE instance's state: whether it is running (or starting, waiting on the cook), the scene it is in, `runTime`, the seconds of frames since it started (unscaled: a menu that stops gameplay time does not stop it), the frames rendered since, and its startup script's state (`none`, `running`, or `faulted` with the reason).",
+			"One PIE instance's state: whether it is running (or starting, waiting on the cook), the scene it is in, `runTime`, the seconds of frames since it started (unscaled: it keeps going while the game pauses its scene at time scale 0, as behind a menu), the frames rendered since, and its startup script's state (`none`, `running`, or `faulted` with the reason).",
 			stateSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{

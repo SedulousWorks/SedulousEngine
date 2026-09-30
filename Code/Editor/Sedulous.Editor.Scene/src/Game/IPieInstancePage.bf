@@ -37,9 +37,9 @@ interface IPieInstancePage
 	/// The scene the run is in, empty when it has none (a script that owns boot, between
 	/// levels).
 	StringView SceneName { get; }
-	/// Seconds of frames since the run started, unscaled: a menu that stops gameplay time does
-	/// not stop it; it stands still while the debugger holds the run. Scripted input is timed
-	/// by it.
+	/// Seconds of frames since the run started, unscaled: it keeps going while the game has
+	/// its scene paused at time scale 0 (behind a menu, which still works); it stands still
+	/// while the debugger holds the run. Scripted input is timed by it.
 	double RunTime { get; }
 	/// Frames rendered since the run started.
 	uint64 FrameCount { get; }

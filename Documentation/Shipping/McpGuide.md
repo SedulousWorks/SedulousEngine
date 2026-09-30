@@ -45,7 +45,8 @@ instance, addressed by its `pie` id (`game-page`, the primary; `game-page-1`, ..
 instance), default the primary. `pie_start` cooks, opens and runs the primary (or with
 `newInstance` another tab, a host and a client say) and answers once the first frame has
 rendered; `pie_state` reports whether it runs, its scene, `runTime` (seconds of frames since
-the start, unscaled, so a menu that stops gameplay time does not stop it), the frames rendered
+the start, unscaled, so it keeps going while the game pauses its scene at time scale 0, as
+behind a menu), the frames rendered
 and the startup script (`running`, or `faulted` with the reason);
 `pie_list` shows every instance, the ones the user started too; `pie_stop` stops one (or
 `all`), its tab staying open and the others running. `pie_screenshot` writes what an
