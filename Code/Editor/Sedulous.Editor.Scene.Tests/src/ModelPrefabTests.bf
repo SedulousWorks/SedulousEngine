@@ -154,6 +154,33 @@ class ModelPrefabTests
 		Test.Assert(again.Instance.Id == prefabId);
 	}
 
+	/// The animator starts on the model's idle, found among the manifest's sibling clips by
+	/// name, not on whichever clip sorts first (a kit's "Death" or "Bite_Front").
+	[Test]
+	public static void TheAnimatorStartsOnTheModelsIdle()
+	{
+		let fx = scope Fixture("scratch_model_resting_clip_db");
+		let group = fx.Database.RootGroup.CreateGroup("Hero");
+		let manifest = group.CreateInstance("Hero", typeof(ModelManifestAsset).GetFullName(.. scope .()));
+		let asset = scope ModelManifestAsset();
+		let clipType = "Sedulous.Animation.Pipeline.AnimationClipAsset";
+		Guid Clip(uint8 tag, StringView name)
+		{
+			let id = G(tag, 1);
+			group.CreateInstanceWithId(id, name, clipType);
+			asset.Manifest.AnimationGuid.Add(id);
+			return id;
+		}
+		Clip(0x81, "Death");
+		Clip(0x82, "Idle_Gun");
+		Clip(0x83, "Idle");
+		Test.Assert(ModelPrefab.RestingClip(manifest, asset.Manifest) == 2, "the exact name");
+		asset.Manifest.AnimationGuid.RemoveAt(2);
+		Test.Assert(ModelPrefab.RestingClip(manifest, asset.Manifest) == 1, "else one containing it");
+		asset.Manifest.AnimationGuid.RemoveAt(1);
+		Test.Assert(ModelPrefab.RestingClip(manifest, asset.Manifest) == 0, "else the first");
+	}
+
 	/// A manifest that records slots binds only what each mesh draws; one that records none
 	/// keeps the whole table, which is what its submeshes index.
 	[Test]

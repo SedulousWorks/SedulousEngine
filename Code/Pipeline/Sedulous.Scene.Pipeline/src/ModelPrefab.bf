@@ -90,7 +90,7 @@ static class ModelPrefab
 		{
 			let ac = anims.Add(root);
 			ac.Skeleton.SetId(manifest.SkeletonGuid);
-			ac.Clip.SetId(manifest.AnimationGuid[0]);
+			ac.Clip.SetId(manifest.AnimationGuid[RestingClip(manifestInstance, manifest)]);
 			for (let e in skinnedEntities)
 				ac.MeshEntities.Add(EntityRef(scene.GetEntityId(e)));
 		}
@@ -112,6 +112,27 @@ static class ModelPrefab
 
 		outRoot = root;
 		return true;
+	}
+
+	/// The clip the animator starts on: the model's idle when it has one (a clip named Idle,
+	/// or else one whose name contains it), else its first. The clips are the manifest's
+	/// siblings; their names are the importer's, from the source's animation names.
+	public static int RestingClip(Instance manifestInstance, ModelManifestSource manifest)
+	{
+		int containing = -1;
+		for (int i < manifest.AnimationGuid.Count)
+		{
+			for (let sibling in manifestInstance.OwningGroup.Instances)
+			{
+				if (sibling.Id != manifest.AnimationGuid[i])
+					continue;
+				if (sibling.Name.Equals("Idle", true))
+					return i;
+				if ((containing < 0) && sibling.Name.IndexOf("idle", true) >= 0)
+					containing = i;
+			}
+		}
+		return (containing >= 0) ? containing : 0;
 	}
 
 	/// What a finished model import generates, by its options (null is the defaults): the
