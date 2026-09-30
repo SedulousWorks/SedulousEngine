@@ -374,10 +374,16 @@ class PieMcpToolsTests
 		Test.Assert(Pump(server, 2, "pie_start", args, out second) == .NotFinished);
 		Test.Assert(opened.Count == 2, "the second start opened a tab of its own");
 		for (let tab in opened)
-		{
 			tab.CookDone("Level1");
-			tab.Frame(0.016);
-		}
+
+		// Only the front tab renders: the one behind waits its turn, then comes to front.
+		context.SetActivePage(opened[1]);
+		Test.Assert(Pump(server, 1, "pie_start", args, out first) == .NotFinished);
+		Test.Assert(context.ActivePage == opened[1], "the front tab's first frame is still to come");
+		opened[1].Frame(0.016);
+		Test.Assert(Pump(server, 1, "pie_start", args, out first) == .NotFinished);
+		Test.Assert(context.ActivePage == opened[0], "its turn: to front");
+		opened[0].Frame(0.016);
 		Test.Assert(Pump(server, 2, "pie_start", args, out second) == .Answered);
 		defer delete second;
 		Test.Assert(Pump(server, 1, "pie_start", args, out first) == .Answered);

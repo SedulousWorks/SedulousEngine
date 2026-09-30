@@ -142,6 +142,14 @@ static class PieMcpTools
 				outError.AppendF("PIE instance '{}' did not start (log_read says why)", pie.PieId);
 				return .Failed;
 			}
+			// A tab behind another never renders its first frame: to front, unless the front
+			// is another start's tab still waiting for its own (they take turns, not fight).
+			if (pie.IsRunning && (context.ActivePage != page))
+			{
+				let front = context.ActivePage as IPieInstancePage;
+				if ((front == null) || !front.IsRunning || (front.FrameCount > 0))
+					context.RevealPage(page);
+			}
 			if (wait.Pumps > cStartPumpLimit)
 			{
 				outError.AppendF("PIE instance '{}' rendered no frame in five minutes - a cook still running, or its tab hidden (an editor window minimised)?", pie.PieId);
