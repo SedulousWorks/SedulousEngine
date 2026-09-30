@@ -11,6 +11,7 @@ using Sedulous.Graphics.Gpu;
 using Sedulous.Runtime.SDL3;
 using Sedulous.Shell;
 using Sedulous.Shell.SDL3;
+using Sedulous.VFS;
 
 namespace Sedulous.Engine.Player.Desktop;
 
@@ -48,10 +49,26 @@ class Program
 		let options = scope PlayerOptions();
 		ReadCommandLine(args, options);
 
+		// The window the game asked for, read before the window exists: the dist's player.xml,
+		// or a dev tree's Project.xml. Neither, and the defaults stand.
+		let manifest = scope ProjectSettings();
+		{
+			let root = scope NativeFileSystem(options.ProjectDir);
+			if ((ProjectManifest.Load(root, manifest, ProjectLayout.DistManifestFile) case .Err)
+				&& (ProjectManifest.Load(root, manifest, ProjectLayout.ManifestFile) case .Err))
+				GlobalLog(.Warning, "Player: no manifest in '{}', the default window", options.ProjectDir);
+		}
 		WindowSettings windowSettings = .();
-		windowSettings.Title = "Player";
-		windowSettings.Width = 1280;
-		windowSettings.Height = 720;
+		windowSettings.Title = manifest.Name.IsEmpty ? "Player" : StringView(manifest.Name);
+		windowSettings.Width = Math.Max(manifest.WindowWidth, 1);
+		windowSettings.Height = Math.Max(manifest.WindowHeight, 1);
+		windowSettings.Resizable = manifest.WindowResizable;
+		switch (manifest.WindowMode)
+		{
+		case .Windowed: windowSettings.Fullscreen = .None;
+		case .Fullscreen: windowSettings.Fullscreen = .Exclusive;
+		case .Borderless: windowSettings.Fullscreen = .Desktop;
+		}
 
 		let shell = scope SDL3Shell(windowSettings);
 		if (shell.MainWindow == null)

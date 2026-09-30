@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using SDL3;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Shell;
 
 namespace Sedulous.Shell.SDL3;
@@ -30,6 +31,7 @@ class SDL3WindowManager : IWindowManager
 
 		if (settings.Positioned)
 			SDL3.SDL_SetWindowPosition(handle, settings.X, settings.Y);
+		ApplyFullscreen(handle, settings);
 
 		let window = new SDL3Window(handle);
 		mOwned.Add(window);
@@ -125,6 +127,30 @@ class SDL3WindowManager : IWindowManager
 				return true;
 		}
 		return false;
+	}
+
+	/// Exclusive takes the display mode closest to the window's size; desktop fullscreen is
+	/// SDL's fullscreen with no mode, the display left as it is. Loud and windowed when the
+	/// display refuses.
+	private static void ApplyFullscreen(SDL_Window* handle, WindowSettings settings)
+	{
+		if (settings.Fullscreen == .None)
+			return;
+		if (settings.Fullscreen == .Exclusive)
+		{
+			SDL_DisplayMode mode = default;
+			if (SDL3.SDL_GetClosestFullscreenDisplayMode(SDL3.SDL_GetPrimaryDisplay(), (int32)settings.Width,
+				(int32)settings.Height, 0.0f, true, &mode))
+				SDL3.SDL_SetWindowFullscreenMode(handle, &mode);
+			else
+				GlobalLog(.Warning, "Shell: no fullscreen mode near {}x{}; the desktop's is used", settings.Width, settings.Height);
+		}
+		else
+		{
+			SDL3.SDL_SetWindowFullscreenMode(handle, null);
+		}
+		if (!SDL3.SDL_SetWindowFullscreen(handle, true))
+			GlobalLog(.Warning, "Shell: fullscreen refused; the window stays windowed");
 	}
 
 	private static SDL_WindowFlags WindowFlags(WindowSettings settings)

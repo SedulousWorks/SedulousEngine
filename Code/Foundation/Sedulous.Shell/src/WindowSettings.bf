@@ -17,11 +17,13 @@ struct WindowSettings
 
 	public bool Resizable = true;
 	public bool Borderless;
+	/// Windowed, exclusive or desktop fullscreen. A backend without fullscreen ignores it.
+	public WindowFullscreen Fullscreen;
 
 	public this()
 	{
 		Title = "Shell"; Width = 1280; Height = 720;
 		Positioned = false; X = 0; Y = 0;
-		Resizable = true; Borderless = false;
+		Resizable = true; Borderless = false; Fullscreen = .None;
 	}
 }
