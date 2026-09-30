@@ -44,6 +44,22 @@ static class ScriptCreators
 			} ~ { delete languageId; delete suffixCopy; delete stem; }));
 	}
 
+	/// A behaviour's class name from its asset's name: the letters, digits and underscores, a
+	/// leading digit prefixed with an underscore; `fallback` when nothing is left. So a script
+	/// asset and the class it holds share a name ("Player Controller" holds PlayerController).
+	public static void ClassNameFor(StringView assetName, StringView fallback, String outClass)
+	{
+		for (let c in assetName)
+		{
+			if (c.IsLetterOrDigit || (c == '_'))
+				outClass.Append(c);
+		}
+		if (outClass.IsEmpty)
+			outClass.Set(fallback);
+		else if (outClass[0].IsDigit)
+			outClass.Insert(0, '_');
+	}
+
 	/// A new class from the language cook's starter for `tier`: the source file under the
 	/// sources folder, and the asset pointing at it. Refused without a sources folder.
 	public static Instance CreateScript(AssetCreationContext context, StringView languageId, StringView fileSuffix, ScriptTier tier, StringView baseName)
@@ -59,7 +75,7 @@ static class ScriptCreators
 		fileName.Append('.');
 		fileName.Append(fileSuffix);
 		let starter = scope String();
-		cook.NewAssetTemplate(tier, starter);
+		cook.NewAssetTemplate(tier, ClassNameFor(name, baseName, .. scope .()), starter);
 		let path = PathJoin(context.SourcesRoot, fileName, .. scope .());
 		if (!(WriteFile(path, .((uint8*)starter.Ptr, starter.Length)) case .Ok))
 			return null;

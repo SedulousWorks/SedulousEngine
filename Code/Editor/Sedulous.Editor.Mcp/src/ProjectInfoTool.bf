@@ -131,7 +131,7 @@ static class ProjectInfoTool
 			}
 			if (!IsType(instance, assets[i].Type))
 			{
-				outError.AppendF("`{}` takes a {}; '{}' is a {}", assets[i].Key, assets[i].Type, instance.Name, instance.TypeName);
+				outError.AppendF("`{}` takes an asset of type {}; '{}' is of type {}", assets[i].Key, assets[i].Type, instance.Name, instance.TypeName);
 				return false;
 			}
 			chosen[i] = id;

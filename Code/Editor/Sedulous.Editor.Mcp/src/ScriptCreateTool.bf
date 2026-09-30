@@ -71,34 +71,21 @@ static class ScriptCreateTool
 		}
 		let tier = ParseTier(McpTools.ArgString(arguments, "tier", .. scope .()));
 
-		let group = McpTools.ResolveGroupPath(session.Project.SourceDb.RootGroup,
-			McpTools.ArgString(arguments, "group", .. scope .()));
-		let name = group.UniqueInstanceName(requestedName, .. scope .());
-		let fileName = scope $"{name}.{suffix}";
-
-		let starter = scope String();
-		cook.NewAssetTemplate(tier, starter);
-		let path = PathJoin(session.Project.SourcesRoot(.. scope .()), fileName, .. scope .());
-		if (WriteFile(path, .((uint8*)starter.Ptr, starter.Length)) case .Err)
-		{
-			outError.AppendF("could not write the source file '{}'", path);
-			return false;
-		}
-
-		let instance = group.CreateInstance(name, typeof(ScriptClassAsset).GetFullName(.. scope .()));
+		// The same creation File > New and asset_create run: the starter written to Sources/,
+		// a behaviour's class named after the asset, the asset pointing at the file.
+		let root = session.Project.SourceDb.RootGroup;
+		let group = McpTools.ResolveGroupPath(root, McpTools.ArgString(arguments, "group", .. scope .()));
+		let sourcesRoot = session.Project.SourcesRoot(.. scope .());
+		let instance = ScriptCreators.CreateScript(.(group, root, sourcesRoot, requestedName), language, suffix, tier,
+			(tier == .Level) ? "NewLevel" : ((tier == .Game) ? "NewGame" : "NewBehavior"));
 		if (instance == null)
 		{
-			outError.AppendF("could not create the asset '{}'", name);
+			outError.AppendF("could not create '{}': the source file under '{}' or the asset did not write (log_read says which)", requestedName, sourcesRoot);
 			return false;
 		}
-		let asset = scope ScriptClassAsset();
-		asset.FileName.Set(fileName);
-		asset.Language.Set(language);
-		if (instance.WriteObject(asset) case .Err)
-		{
-			outError.AppendF("could not write the asset envelope for '{}'", name);
-			return false;
-		}
+		let name = instance.Name;
+		let fileName = scope $"{name}.{suffix}";
+		let path = PathJoin(sourcesRoot, fileName, .. scope .());
 
 		outResult.Set("guid", McpTools.GuidToJson(instance.Id));
 		outResult.Set("name", JsonValue.MakeString(name));

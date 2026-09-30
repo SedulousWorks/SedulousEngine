@@ -28,7 +28,7 @@ class AngelScriptCook : IScriptLanguageCook
 
 	public int32 CookVersion => 1;
 
-	public void NewAssetTemplate(ScriptTier tier, String outSource)
+	public void NewAssetTemplate(ScriptTier tier, StringView className, String outSource)
 	{
 		switch (tier)
 		{
@@ -68,7 +68,7 @@ class AngelScriptCook : IScriptLanguageCook
 				// field, `[default, "description"]` in front of it, is a property the editor
 				// shows and sets; `self` and `scene` are filled in by the engine; `on` handlers
 				// run by their names.
-				class NewBehavior
+				class {CLASSNAME}
 				{
 					Entity self;
 					Scene@ scene;
@@ -79,6 +79,7 @@ class AngelScriptCook : IScriptLanguageCook
 				}
 
 				""");
+			outSource.Replace("{CLASSNAME}", className.IsEmpty ? "NewBehavior" : className);
 		}
 	}
 

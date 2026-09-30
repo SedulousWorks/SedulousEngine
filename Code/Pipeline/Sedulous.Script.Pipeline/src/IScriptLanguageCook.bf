@@ -12,8 +12,10 @@ interface IScriptLanguageCook
 	/// Folded into the builder's version: bump when the cook's output changes.
 	int32 CookVersion => 1;
 
-	/// The source a new asset of this language and tier starts with.
-	void NewAssetTemplate(ScriptTier tier, String outSource);
+	/// The source a new asset of this language and tier starts with. A behaviour's class is
+	/// `className` (a valid identifier: ScriptCreators.ClassNameFor makes one); the level and
+	/// game tiers keep their reserved class names and ignore it.
+	void NewAssetTemplate(ScriptTier tier, StringView className, String outSource);
 
 	/// Compiles `source`, harvests `className` (or the first class when empty) into the record,
 	/// reporting anything wrong into `problems`. False when the source does not compile or

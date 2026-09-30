@@ -152,7 +152,7 @@ static class ScriptClassCookTests
 		let importer = scope ScriptFileImporter();
 		Test.Assert(importer.Accepts("as") && !importer.Accepts("lua"));
 		let template = scope String();
-		ScriptLanguageCooks.Find("angelscript").NewAssetTemplate(.Behavior, template);
+		ScriptLanguageCooks.Find("angelscript").NewAssetTemplate(.Behavior, "", template);
 		Test.Assert(template.Contains("class NewBehavior") && template.Contains("onUpdate"));
 	}
 
@@ -168,7 +168,7 @@ static class ScriptClassCookTests
 			(.Behavior, "class NewBehavior"), (.Level, "class Level"), (.Game, "class Game")))
 		{
 			let source = scope String();
-			cook.NewAssetTemplate(tier, source);
+			cook.NewAssetTemplate(tier, "", source);
 			Test.Assert(source.Contains(className), scope $"{tier}");
 		}
 	}

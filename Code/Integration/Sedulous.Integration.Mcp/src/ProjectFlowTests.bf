@@ -497,7 +497,7 @@ static class ProjectFlowTests
 		// A scene where an input map goes is refused, and the scene given beside it with it.
 		let refused = scope String();
 		CallErr(server, "project_settings_set", With(With(Obj(), "defaultInputMap", sceneId), "defaultScene", sceneId), refused);
-		Test.Assert(refused.StartsWith("`defaultInputMap` takes a InputMapAsset; 'Level1' is a"), refused);
+		Test.Assert(refused.StartsWith("`defaultInputMap` takes an asset of type InputMapAsset; 'Level1' is of type"), refused);
 		Test.Assert(changed == 0);
 		{
 			let info = CallOk(server, "project_info", Obj());

@@ -52,7 +52,7 @@ static class FullFlowTests
 
 		// A real source: the backend's own behavior starter, on disk.
 		let starter = scope String();
-		ScriptLanguageCooks.Find("angelscript").NewAssetTemplate(.Behavior, starter);
+		ScriptLanguageCooks.Find("angelscript").NewAssetTemplate(.Behavior, "", starter);
 		let sourcePath = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "mcp_full_starter.as", .. scope .());
 		defer DeleteFile(sourcePath);
 		File.WriteAllText(sourcePath, starter).IgnoreError();

@@ -32,7 +32,7 @@ static class ScriptToolsTests
 			(.Behavior, "NewBehavior", "onUpdate"), (.Level, "Level", "onStart"), (.Game, "Game", "")))
 		{
 			let starter = scope String();
-			cook.NewAssetTemplate(tier, starter);
+			cook.NewAssetTemplate(tier, "", starter);
 			let ok = CallOk(server, "script_validate", With(With(With(Obj(), "source", starter), "language", "angelscript"), "name", "Starter.as"));
 			defer delete ok;
 			Test.Assert(ok.Get("valid").AsBool(), scope $"{tier}: {ok.Get("errors").ToString(.. scope .())}");
@@ -102,7 +102,7 @@ static class ScriptToolsTests
 		let validated = CallOk(server, "script_validate", With(With(Obj(), "source", source), "language", "angelscript"));
 		defer delete validated;
 		Test.Assert(validated.Get("valid").AsBool());
-		Test.Assert(validated.Get("className").AsString() == "NewBehavior");
+		Test.Assert(validated.Get("className").AsString() == "Mover", "the class is named after its asset");
 
 		// The asset is in the source database, in its group.
 		let info = CallOk(server, "asset_info", With(Obj(), "guid", created.Get("guid").AsString()));
@@ -115,6 +115,13 @@ static class ScriptToolsTests
 		defer delete second;
 		Test.Assert(second.Get("name").AsString() != "Mover");
 		Test.Assert(second.Get("guid").AsString() != created.Get("guid").AsString());
+
+		// A name that is not an identifier becomes one: the class still reads as the asset.
+		let spaced = CallOk(server, "script_create", With(With(Obj(), "name", "3d Player-Controller"), "language", "angelscript"));
+		defer delete spaced;
+		let spacedSource = scope String();
+		Test.Assert(File.ReadAllText(scope String(spaced.Get("sourceFile").AsString()), spacedSource) case .Ok);
+		Test.Assert(spacedSource.Contains("class _3dPlayerController"), spacedSource);
 
 		// The game tier seeds the reserved class.
 		let game = CallOk(server, "script_create", With(With(With(Obj(), "name", "Main"), "language", "angelscript"), "tier", "game"));
