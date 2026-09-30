@@ -43,7 +43,7 @@ static class FullFlowTests
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
 		let operations = scope InlineProjectOperations(session, builders, "", "");
-		EngineTools.Register(server, session, builders, importers, logBuffer, scope EngineToolPaths(), operations);
+		EngineTools.Register(server, session, builders, importers, scope AssetCreatorRegistry(), logBuffer, scope EngineToolPaths(), operations);
 		ProjectOpenTools.Register(server, session, owner);
 
 		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Full"));
@@ -104,7 +104,7 @@ static class FullFlowTests
 
 		let server = scope McpServer();
 		let operations = scope InlineProjectOperations(session, builders, "", "");
-		EngineTools.Register(server, session, builders, importers, logBuffer, scope EngineToolPaths(), operations);
+		EngineTools.Register(server, session, builders, importers, scope AssetCreatorRegistry(), logBuffer, scope EngineToolPaths(), operations);
 		Test.Assert(server.ToolCount == EngineTools.cEngineToolCount, scope $"{server.ToolCount} tools");
 
 		let listed = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
@@ -220,6 +220,12 @@ static class FullFlowTests
 			PathJoin(request.OutRoot, request.Preset.Name, outResult.OutputDir);
 			outResult.FilesStaged = 1;
 			return .Finished;
+		}
+
+		public OperationStep Create(CreateRequest request, CreateOutcome outOutcome, String outError)
+		{
+			outError.Append("not used here");
+			return .Failed;
 		}
 	}
 

@@ -15,16 +15,16 @@ static class MaterialCreators
 {
 	public static void Register(AssetCreatorRegistry registry)
 	{
-		registry.Register(new AssetCreator("PBR Material", "Materials", typeof(MaterialAsset), new (context) => CreateMaterial(context, false)));
-		registry.Register(new AssetCreator("Unlit Material", "Materials", typeof(MaterialAsset), new (context) => CreateMaterial(context, true)));
+		registry.Register(new AssetCreator("PBR Material", "Materials", typeof(MaterialAsset), new (context) => CreateMaterial(context, false)).Under("Materials"));
+		registry.Register(new AssetCreator("Unlit Material", "Materials", typeof(MaterialAsset), new (context) => CreateMaterial(context, true)).Under("Materials"));
 	}
 
 	private static Instance CreateMaterial(AssetCreationContext context, bool unlit)
 	{
-		let target = context.TargetOr("Materials");
+		let target = context.Target;
 		if (target == null)
 			return null;
-		let name = target.UniqueInstanceName("Material", .. scope .());
+		let name = target.UniqueInstanceName(context.NameOr("Material"), .. scope .());
 		let instance = target.CreateInstance(name, typeof(MaterialAsset).GetFullName(.. scope .()));
 		if (instance == null)
 			return null;

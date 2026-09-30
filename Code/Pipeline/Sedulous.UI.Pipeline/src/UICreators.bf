@@ -26,7 +26,7 @@ static class UICreators
 		let target = context.Target;
 		if ((target == null) || context.SourcesRoot.IsEmpty)
 			return null;
-		let name = target.UniqueInstanceName(baseName, .. scope .());
+		let name = target.UniqueInstanceName(context.NameOr(baseName), .. scope .());
 		let fileName = scope $"{name}{suffix}";
 		let path = PathJoin(context.SourcesRoot, fileName, .. scope .());
 		if (WriteFile(path, Span<uint8>((uint8*)starter.Ptr, starter.Length)) case .Err)

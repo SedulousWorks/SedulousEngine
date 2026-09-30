@@ -223,4 +223,55 @@ class EditorProjectOperationsTests
 		Test.Assert(bench.Cook.Revision == 1); // the export's cook went through the cook service
 		Test.Assert(!bench.Jobs.IsBusy);
 	}
+
+	/// A tiny data asset for the creation test; its content is beside the point.
+	[Sedulous.Core.Serialization.Serializable]
+	class ProbeAsset
+	{
+		public int32 Value = 7;
+	}
+
+	/// A creation never writes while a cook or an export holds the databases: it answers not
+	/// finished and runs once they are free, then hands the new asset to the host's effects
+	/// (OnCreated, the editor's default scene and cook request). A taken name is refused.
+	[Test]
+	public static void ACreationWaitsForTheDatabasesThenRunsTheHostsEffects()
+	{
+		let bench = scope Bench("mcp_ops_create");
+		let seams = bench.Seams();
+		Instance created = null;
+		AssetCreator seen = null;
+		seams.OnCreated = new [&](creator, instance) => { seen = creator; created = instance; };
+		let ops = scope EditorProjectOperations(seams);
+		let probe = scope AssetCreator("Probe", "", typeof(ProbeAsset), new (context) =>
+			AssetCreator.CreateWritten(context.Target, context.NameOr("Probe"), typeof(ProbeAsset), scope ProbeAsset()));
+
+		// Held: a cook reads the databases.
+		bool locked = true;
+		delete bench.Cook.ExternalMutationLock;
+		bench.Cook.ExternalMutationLock = new [&locked]() => locked;
+		defer
+		{
+			delete bench.Cook.ExternalMutationLock;
+			bench.Cook.ExternalMutationLock = new () => false;
+		}
+
+		CreateRequest request = .();
+		request.Creator = probe;
+		request.GroupPath = "Made";
+		request.Name = "First";
+		let outcome = scope CreateOutcome();
+		let error = scope String();
+		Test.Assert(ops.Create(request, outcome, error) == .NotYet);
+		Test.Assert(created == null, "nothing written while held");
+
+		locked = false;
+		Test.Assert(ops.Create(request, outcome, error) == .Finished, error);
+		Test.Assert((created != null) && (seen === probe), "the host's effects ran with the new asset");
+		Test.Assert((outcome.Name == "First") && (outcome.Path == "Made/First"));
+
+		error.Clear();
+		Test.Assert(ops.Create(request, outcome, error) == .Failed);
+		Test.Assert(error.Contains("already exists"), error);
+	}
 }

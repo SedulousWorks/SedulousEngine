@@ -206,11 +206,10 @@ class AnimationGraphPageTests
 		let project = EditorProject.Open(dir);
 		Test.Assert(project != null);
 		defer delete project;
-		let creation = AssetCreationContext(null, project.SourceDb.RootGroup, "");
 
-		Test.Assert(Creator().Run(.(null, null, "")) == null);
+		Test.Assert(Creator().Create(null, null, "") == null);
 
-		let instance = Creator().Run(creation);
+		let instance = Creator().Create(null, project.SourceDb.RootGroup, "");
 		Test.Assert(instance != null);
 		Test.Assert(instance.GetPath(.. scope .()) == "Animation/AnimationGraph");
 		Test.Assert(AssetTypeNames.Matches(instance.TypeName, "AnimationGraphAsset"));

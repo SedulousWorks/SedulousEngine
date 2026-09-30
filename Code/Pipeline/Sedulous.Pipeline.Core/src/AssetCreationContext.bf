@@ -15,16 +15,29 @@ struct AssetCreationContext
 	/// Absolute; empty when the host has no sources folder, which a file-backed creator
 	/// refuses.
 	public StringView SourcesRoot;
+	/// The name asked for; empty lets the creator use its own ("Material", "InputMap"). A
+	/// creator makes it unique in the group, so the caller that wants it EXACT (asset_create)
+	/// refuses a taken name first.
+	public StringView Name;
+	/// The creator's folder under the root when nothing was picked (AssetCreator.DefaultGroup);
+	/// empty is the root itself.
+	public StringView DefaultGroup;
 
-	public this(Group picked, Group root, StringView sourcesRoot)
+	public this(Group picked, Group root, StringView sourcesRoot, StringView name = default, StringView defaultGroup = default)
 	{
 		Picked = picked;
 		Root = root;
 		SourcesRoot = sourcesRoot;
+		Name = name;
+		DefaultGroup = defaultGroup;
 	}
 
-	/// The picked group, else the root.
-	public Group Target => (Picked != null) ? Picked : Root;
+	/// The name asked for, else the creator's `fallback`.
+	public StringView NameOr(StringView fallback) => Name.IsEmpty ? fallback : Name;
+
+	/// The picked group, else the default group under the root (made when missing), else the
+	/// root.
+	public Group Target => DefaultGroup.IsEmpty ? ((Picked != null) ? Picked : Root) : TargetOr(DefaultGroup);
 
 	/// The picked group, else `name` under the root, made when missing: a material lands in
 	/// Materials/ unless the user chose where.

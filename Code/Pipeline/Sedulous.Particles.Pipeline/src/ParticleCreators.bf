@@ -17,11 +17,11 @@ static class ParticleCreators
 			{
 				let asset = scope ParticleEffectAsset();
 				SeedDefaultEffect(asset.Effect);
-				let instance = AssetCreator.CreateWritten(context.TargetOr("ParticleEffects"), "ParticleEffect", typeof(ParticleEffectAsset), asset);
+				let instance = AssetCreator.CreateWritten(context.Target, context.NameOr("ParticleEffect"), typeof(ParticleEffectAsset), asset);
 				if (instance != null)
 					GlobalLog(.Information, "Pipeline: created particle effect '{}'", instance.GetPath(.. scope .()));
 				return instance;
-			}));
+			}).Under("ParticleEffects"));
 	}
 
 	/// A new effect: one continuous system rising under gravity, visible the moment it plays.

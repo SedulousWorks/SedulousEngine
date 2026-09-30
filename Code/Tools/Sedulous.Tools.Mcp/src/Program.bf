@@ -50,6 +50,10 @@ class Program
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllBuilders(builders);
 		PipelineRegistration.RegisterAllImporters(importers);
+		// File > New's creators, the same set the editor offers (after the types: the script
+		// creators enumerate the registered cooks).
+		let creators = scope AssetCreatorRegistry();
+		PipelineRegistration.RegisterAllCreators(creators);
 
 		let server = scope McpServer();
 		server.SetServerInfo("engine-mcp", "0.1.0");
@@ -78,7 +82,7 @@ class Program
 		// beside this executable and cooks shaders from the data root.
 		let operations = scope InlineProjectOperations(session, builders,
 			BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), .. scope .()), dataRoot);
-		EngineTools.Register(server, session, builders, importers, logBuffer, paths, operations);
+		EngineTools.Register(server, session, builders, importers, creators, logBuffer, paths, operations);
 		// This host's additions: an agent opens, or scaffolds, the project it wants.
 		ProjectOpenTools.Register(server, session, owner);
 

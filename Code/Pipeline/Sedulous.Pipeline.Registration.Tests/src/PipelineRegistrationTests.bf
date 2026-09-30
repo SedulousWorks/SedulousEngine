@@ -114,18 +114,18 @@ static class PipelineRegistrationTests
 
 		for (let creator in creators)
 		{
-			let instance = creator.Run(.(null, db.RootGroup, sources));
+			let instance = creator.Create(null, db.RootGroup, sources);
 			Test.Assert(instance != null, scope $"'{creator.Label}' created nothing");
 			Test.Assert(instance.TypeName == creator.TypeName, scope $"'{creator.Label}' made a {instance.TypeName}");
 		}
 
 		// A picked group wins over a creator's default folder.
 		let picked = db.RootGroup.CreateGroup("Picked");
-		let material = creators.FindByLabel("PBR Material").Run(.(picked, db.RootGroup, sources));
+		let material = creators.FindByLabel("PBR Material").Create(picked, db.RootGroup, sources);
 		Test.Assert((material != null) && (material.OwningGroup == picked));
 
 		// A file backed creator refuses without a sources folder rather than write nowhere.
-		Test.Assert(creators.FindByLabel("UI Document").Run(.(null, db.RootGroup, "")) == null);
+		Test.Assert(creators.FindByLabel("UI Document").Create(null, db.RootGroup, "") == null);
 
 		// A type with several creators has no single one; a type with one does.
 		Test.Assert(creators.FindByType(typeof(Sedulous.Materials.Pipeline.MaterialAsset).GetFullName(.. scope .())) == null);

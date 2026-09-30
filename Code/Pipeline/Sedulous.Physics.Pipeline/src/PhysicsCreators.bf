@@ -12,8 +12,8 @@ static class PhysicsCreators
 	public static void Register(AssetCreatorRegistry registry)
 	{
 		registry.Register(new AssetCreator("Physical Material", "Physics", typeof(PhysicalMaterialAsset), new (context) =>
-			AssetCreator.CreateWritten(context.Target, "PhysicalMaterial", typeof(PhysicalMaterialAsset), scope PhysicalMaterialAsset())));
+			AssetCreator.CreateWritten(context.Target, context.NameOr("PhysicalMaterial"), typeof(PhysicalMaterialAsset), scope PhysicalMaterialAsset())));
 		registry.Register(new AssetCreator("Collision Shape", "Physics", typeof(CollisionShapeAsset), new (context) =>
-			AssetCreator.CreateWritten(context.Target, "CollisionShape", typeof(CollisionShapeAsset), scope CollisionShapeAsset())));
+			AssetCreator.CreateWritten(context.Target, context.NameOr("CollisionShape"), typeof(CollisionShapeAsset), scope CollisionShapeAsset())));
 	}
 }

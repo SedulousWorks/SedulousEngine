@@ -73,6 +73,13 @@ alone is normal, clear it with `asset_cook`.
 (incremental; `force` for a full one). When several importers claim an extension, `.png`
 say, the first is used and the result lists the others under `alsoClaimableBy`; re-import
 with `importer` set to choose. `asset_list` and `asset_info` inspect either database.
+Assets that are authored rather than imported (input maps, materials, scenes, prefabs,
+particle effects, animation graphs, physics, audio and UI assets, primitive meshes, script
+classes) come from `asset_create`: `asset_creators` lists every creator with the `type` it
+makes and the `defaultGroup` it lands in; pass `creator` by label (or `type` when one
+creator makes it), optionally `name` and `group`. A name already taken in the target group
+is refused rather than renamed. The editor host holds the call while a cook is running and
+requests the cook itself afterwards; the headless host does not, so `asset_cook` next.
 
 **Scenes**: read `docs://generated/SceneSchema.json` once (or `component_schema` for one
 component), copy from `docs://generated/SceneExample.scene.xml`, read the target with

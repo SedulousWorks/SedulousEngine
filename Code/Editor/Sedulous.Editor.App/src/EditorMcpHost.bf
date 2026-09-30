@@ -56,7 +56,7 @@ class EditorMcpHost
 		mSession = session;
 		// Distinct from the stdio host's "engine-mcp": an agent talking to both tells them apart.
 		mServer.SetServerInfo("engine-editor-mcp", "0.1.0");
-		EngineTools.Register(mServer, mSession, builders, importers, logBuffer, paths, operations);
+		EngineTools.Register(mServer, mSession, builders, importers, context.Creators, logBuffer, paths, operations);
 		context.ApplyMcpToolContributions(mServer); // the domains' live tools
 		// An agent's write over a source asset is a change made outside its page, like an apply
 		// to prefab: the open pages editing it are told and refresh by their own rule (a clean

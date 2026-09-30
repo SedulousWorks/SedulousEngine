@@ -12,7 +12,7 @@ static class PropertyAnimationCreators
 	public static void Register(AssetCreatorRegistry registry)
 	{
 		registry.Register(new AssetCreator("Property Animation Clip", "Animation", typeof(PropertyAnimationClipAsset), new (context) =>
-			CreateClip(context.Target, "")));
+			CreateClip(context.Target, context.Name)));
 	}
 
 	/// An empty clip in `target`, named `requestedName` made unique ("Clip" when empty): the

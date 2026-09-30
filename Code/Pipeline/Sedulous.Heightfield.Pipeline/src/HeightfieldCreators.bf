@@ -11,6 +11,6 @@ static class HeightfieldCreators
 	public static void Register(AssetCreatorRegistry registry)
 	{
 		registry.Register(new AssetCreator("Heightfield", "Terrain", typeof(HeightfieldAsset), new (context) =>
-			AssetCreator.CreateWritten(context.Target, "Heightfield", typeof(HeightfieldAsset), scope HeightfieldAsset())));
+			AssetCreator.CreateWritten(context.Target, context.NameOr("Heightfield"), typeof(HeightfieldAsset), scope HeightfieldAsset())));
 	}
 }

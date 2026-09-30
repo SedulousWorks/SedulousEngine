@@ -100,6 +100,16 @@ class InlineProjectOperations : IProjectOperations
 		return .Finished;
 	}
 
+	/// Creates at once; nothing follows it here: the agent cooks next.
+	public OperationStep Create(CreateRequest request, CreateOutcome outOutcome, String outError)
+	{
+		let instance = AssetCreation.Run(mSession.Project, request, outError);
+		if (instance == null)
+			return .Failed;
+		outOutcome.SetFrom(instance);
+		return .Finished;
+	}
+
 	public OperationStep Export(ExportRequest request, ExportResult outResult, String outError)
 	{
 		return RunExport(mSession, mBuilders, mPlayerDir, mDataRoot, request, outResult, outError);

@@ -31,10 +31,10 @@ class MaterialCreatorTests
 		let root = project.SourceDb.RootGroup;
 
 		// No database: nothing.
-		Test.Assert(pbrCreator.Run(.(null, null, "")) == null);
+		Test.Assert(pbrCreator.Create(null, null, "") == null);
 
 		// PBR: the lit property set on the "forward" shader; lands in Materials/ (unique names).
-		let pbr = pbrCreator.Run(.(null, root, ""));
+		let pbr = pbrCreator.Create(null, root, "");
 		Test.Assert(pbr != null);
 		Test.Assert(pbr.GetPath(.. scope .()) == "Materials/Material");
 		Test.Assert(AssetTypeNames.Matches(pbr.TypeName, "MaterialAsset"));
@@ -53,7 +53,7 @@ class MaterialCreatorTests
 		}
 
 		// Unlit: BaseColor + AlbedoMap only, on the "unlit" shader.
-		let unlit = unlitCreator.Run(.(null, root, ""));
+		let unlit = unlitCreator.Create(null, root, "");
 		Test.Assert(unlit != null);
 		Test.Assert(unlit.GetPath(.. scope .()) == "Materials/Material.2");
 		{
@@ -69,7 +69,7 @@ class MaterialCreatorTests
 
 		// A browser group wins over the default folder.
 		let props = project.SourceDb.RootGroup.CreateGroup("Props");
-		let inProps = pbrCreator.Run(.(props, root, ""));
+		let inProps = pbrCreator.Create(props, root, "");
 		Test.Assert(inProps != null);
 		Test.Assert(inProps.GetPath(.. scope .()) == "Props/Material");
 	}

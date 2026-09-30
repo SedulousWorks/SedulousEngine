@@ -14,7 +14,7 @@ static class InputCreators
 			{
 				let asset = scope InputMapAsset();
 				asset.SeedDefaultContent();
-				return AssetCreator.CreateWritten(context.Target, "InputMap", typeof(InputMapAsset), asset);
+				return AssetCreator.CreateWritten(context.Target, context.NameOr("InputMap"), typeof(InputMapAsset), asset);
 			}));
 	}
 }

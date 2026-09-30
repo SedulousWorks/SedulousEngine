@@ -16,11 +16,11 @@ static class AnimationCreators
 			{
 				let asset = scope AnimationGraphAsset();
 				SeedDefaultGraph(asset);
-				let instance = AssetCreator.CreateWritten(context.TargetOr("Animation"), "AnimationGraph", typeof(AnimationGraphAsset), asset);
+				let instance = AssetCreator.CreateWritten(context.Target, context.NameOr("AnimationGraph"), typeof(AnimationGraphAsset), asset);
 				if (instance != null)
 					GlobalLog(.Information, "Pipeline: created animation graph '{}'", instance.GetPath(.. scope .()));
 				return instance;
-			}));
+			}).Under("Animation"));
 	}
 
 	/// A new graph: one Base layer whose default state is an unassigned Idle clip, a Speed

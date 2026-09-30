@@ -221,7 +221,7 @@ static class SceneReferenceTests
 		let session = scope ProjectSession(); // the stdio host's shape: no project open
 		let server = scope McpServer();
 		let operations = scope InlineProjectOperations(session, builders, "", "");
-		EngineTools.Register(server, session, builders, importers, logBuffer, scope EngineToolPaths(), operations);
+		EngineTools.Register(server, session, builders, importers, scope AssetCreatorRegistry(), logBuffer, scope EngineToolPaths(), operations);
 
 		let listed = Ask(server, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"resources/list\"}");
 		defer delete listed;

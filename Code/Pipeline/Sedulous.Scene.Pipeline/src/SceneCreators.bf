@@ -16,15 +16,15 @@ static class SceneCreators
 {
 	public static void Register(AssetCreatorRegistry registry)
 	{
-		registry.Register(new AssetCreator("Scene", "", typeof(SceneDocument), new (context) => CreateScene(context.TargetOr("Scenes")), true));
-		registry.Register(new AssetCreator("Prefab", "", typeof(PrefabDocument), new (context) => CreatePrefab(context.TargetOr("Prefabs"))));
+		registry.Register(new AssetCreator("Scene", "", typeof(SceneDocument), new (context) => CreateScene(context.Target, context.NameOr("Scene")), true).Under("Scenes"));
+		registry.Register(new AssetCreator("Prefab", "", typeof(PrefabDocument), new (context) => CreatePrefab(context.Target, context.NameOr("Prefab"))).Under("Prefabs"));
 	}
 
-	public static Instance CreatePrefab(Group target)
+	public static Instance CreatePrefab(Group target, StringView baseName = "Prefab")
 	{
 		if (target == null)
 			return null;
-		let name = target.UniqueInstanceName("Prefab", .. scope .());
+		let name = target.UniqueInstanceName(baseName, .. scope .());
 		let instance = target.CreateInstance(name, typeof(PrefabDocument).GetFullName(.. scope .()));
 		if (instance == null)
 			return null;
@@ -40,11 +40,11 @@ static class SceneCreators
 		return instance;
 	}
 
-	public static Instance CreateScene(Group target)
+	public static Instance CreateScene(Group target, StringView baseName = "Scene")
 	{
 		if (target == null)
 			return null;
-		let name = target.UniqueInstanceName("Scene", .. scope .());
+		let name = target.UniqueInstanceName(baseName, .. scope .());
 		let instance = target.CreateInstance(name, typeof(SceneDocument).GetFullName(.. scope .()));
 		if (instance == null)
 			return null;

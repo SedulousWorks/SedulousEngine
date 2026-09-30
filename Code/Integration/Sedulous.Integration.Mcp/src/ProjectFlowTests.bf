@@ -276,4 +276,72 @@ static class ProjectFlowTests
 		}
 		return null;
 	}
+
+	/// An agent makes the assets File > New makes: listed, created by label or by type, in a
+	/// group or the creator's own folder, a taken name and an unknown or ambiguous creator
+	/// refused, and what it made cooks.
+	[Test]
+	public static void AnAgentCreatesAssetsThatCook()
+	{
+		let dir = Scratch("mcp_create_project", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let builders = scope BuilderRegistry();
+		let importers = scope ImporterRegistry();
+		let creators = scope AssetCreatorRegistry();
+		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllImporters(importers);
+		PipelineRegistration.RegisterAllCreators(creators);
+
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		AssetTools.Register(server, session);
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		AssetWriteTools.Register(server, session, importers, operations);
+		AssetCreateTools.Register(server, session, creators, operations);
+		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Create"));
+		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
+
+		let listed = CallOk(server, "asset_creators", Obj());
+		defer delete listed;
+		Test.Assert(listed.Get("count").AsInt() == creators.Count);
+		let inputMap = Named(listed.Get("creators"), "label", "Input Map");
+		Test.Assert((inputMap != null) && inputMap.Get("type").AsString().EndsWith("InputMapAsset"));
+		Test.Assert(Named(listed.Get("creators"), "label", "PBR Material").Get("defaultGroup").AsString() == "Materials");
+
+		// By label, named, in a group made on the way.
+		let controls = CallOk(server, "asset_create", With(With(With(Obj(), "creator", "Input Map"), "name", "Controls"), "group", "Input"));
+		defer delete controls;
+		Test.Assert((controls.Get("name").AsString() == "Controls") && (controls.Get("path").AsString() == "Input/Controls"));
+
+		// By type, where one creator makes it; the creator's own name.
+		let cue = CallOk(server, "asset_create", With(Obj(), "type", typeof(Sedulous.Audio.Pipeline.SoundCueAsset).GetFullName(.. scope .())));
+		defer delete cue;
+		Test.Assert(cue.Get("path").AsString() == "SoundCue");
+
+		// A label in any case; no group lands in the creator's folder.
+		let material = CallOk(server, "asset_create", With(Obj(), "creator", "pbr material"));
+		defer delete material;
+		Test.Assert(material.Get("path").AsString() == "Materials/Material");
+
+		// Refused: a taken name, an unknown creator, a type two creators make.
+		let taken = scope String();
+		CallErr(server, "asset_create", With(With(With(Obj(), "creator", "Input Map"), "name", "Controls"), "group", "Input"), taken);
+		Test.Assert(taken.Contains("already exists"), taken);
+		let unknown = scope String();
+		CallErr(server, "asset_create", With(Obj(), "creator", "Nope"), unknown);
+		Test.Assert(unknown.Contains("no creator"), unknown);
+		let ambiguous = scope String();
+		CallErr(server, "asset_create", With(Obj(), "type", typeof(Sedulous.Materials.Pipeline.MaterialAsset).GetFullName(.. scope .())), ambiguous);
+		Test.Assert(ambiguous.Contains("no single creator"), ambiguous);
+
+		// What was made cooks.
+		let cooked = CallOk(server, "asset_cook", Obj());
+		defer delete cooked;
+		Test.Assert(cooked.Get("failed").AsInt() == 0, scope $"failed {cooked.Get("failed").AsInt()}");
+		Test.Assert(cooked.Get("cooked").AsInt() == 3, scope $"cooked {cooked.Get("cooked").AsInt()}");
+	}
 }

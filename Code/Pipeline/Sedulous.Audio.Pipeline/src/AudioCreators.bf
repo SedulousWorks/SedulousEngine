@@ -11,8 +11,8 @@ static class AudioCreators
 	public static void Register(AssetCreatorRegistry registry)
 	{
 		registry.Register(new AssetCreator("Audio Bus Layout", "Audio", typeof(AudioBusLayoutAsset), new (context) =>
-			AssetCreator.CreateWritten(context.Target, "BusLayout", typeof(AudioBusLayoutAsset), scope AudioBusLayoutAsset())));
+			AssetCreator.CreateWritten(context.Target, context.NameOr("BusLayout"), typeof(AudioBusLayoutAsset), scope AudioBusLayoutAsset())));
 		registry.Register(new AssetCreator("Sound Cue", "Audio", typeof(SoundCueAsset), new (context) =>
-			AssetCreator.CreateWritten(context.Target, "SoundCue", typeof(SoundCueAsset), scope SoundCueAsset())));
+			AssetCreator.CreateWritten(context.Target, context.NameOr("SoundCue"), typeof(SoundCueAsset), scope SoundCueAsset())));
 	}
 }

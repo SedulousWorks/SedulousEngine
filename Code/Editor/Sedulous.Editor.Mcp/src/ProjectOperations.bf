@@ -1,4 +1,6 @@
 using System;
+using Sedulous.Content;
+using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Editor.Project;
 
@@ -71,6 +73,33 @@ class ImportOutcome
 	}
 }
 
+/// asset_create's resolved request: the creator the tool found, the group path (created when
+/// missing; empty is the creator's own folder) and the exact name (empty is the creator's own,
+/// made unique). Borrowed, valid for the call.
+struct CreateRequest
+{
+	public AssetCreator Creator = null;
+	public StringView GroupPath = default;
+	public StringView Name = default;
+}
+
+/// What asset_create reports: the new asset's identity and where it landed.
+class CreateOutcome
+{
+	public Guid Id;
+	public String Name = new .() ~ delete _;
+	public String Type = new .() ~ delete _;
+	public String Path = new .() ~ delete _;
+
+	public void SetFrom(Instance instance)
+	{
+		Id = instance.Id;
+		Name.Set(instance.Name);
+		Type.Set(instance.TypeName);
+		instance.GetPath(Path..Clear());
+	}
+}
+
 /// project_export's resolved request: the preset the tool resolved by name, the output root,
 /// and whether to re-cook everything first. Borrowed, valid for the call.
 struct ExportRequest
@@ -99,6 +128,10 @@ interface IProjectOperations
 	OperationStep Cook(bool force, ref CookOutcome outOutcome, String outError);
 	/// One OS file into the open project's source database (does not cook).
 	OperationStep Import(ImportRequest request, ImportOutcome outOutcome, String outError);
+	/// One new asset from a creator (AssetCreation.Run), and whatever the host does after a
+	/// creation: the editor's cook request and default scene; nothing on the stdio host, whose
+	/// agent cooks next.
+	OperationStep Create(CreateRequest request, CreateOutcome outOutcome, String outError);
 	/// A shippable dist of the open project through the one export entry point.
 	OperationStep Export(ExportRequest request, ExportResult outResult, String outError);
 }

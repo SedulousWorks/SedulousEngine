@@ -54,7 +54,7 @@ static class ScriptCreators
 		let cook = ScriptLanguageCooks.Find(languageId);
 		if (cook == null)
 			return null;
-		let name = target.UniqueInstanceName(baseName, .. scope .());
+		let name = target.UniqueInstanceName(context.NameOr(baseName), .. scope .());
 		let fileName = scope String(name);
 		fileName.Append('.');
 		fileName.Append(fileSuffix);

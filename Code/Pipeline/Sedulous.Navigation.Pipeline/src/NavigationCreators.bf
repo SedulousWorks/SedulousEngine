@@ -16,7 +16,7 @@ static class NavigationCreators
 				let target = context.Target;
 				if (target == null)
 					return null;
-				let instance = target.CreateInstance(target.UniqueInstanceName("NavZone", .. scope .()), typeof(NavigationZoneAsset).GetFullName(.. scope .()));
+				let instance = target.CreateInstance(target.UniqueInstanceName(context.NameOr("NavZone"), .. scope .()), typeof(NavigationZoneAsset).GetFullName(.. scope .()));
 				if (instance == null)
 					return null;
 				if (NavigationZoneStorage.Write(instance, scope NavigationZoneAsset()) case .Err)

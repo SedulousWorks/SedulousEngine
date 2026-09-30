@@ -362,6 +362,7 @@ extension EditorApplication
 		seams.Cook = mCookService;
 		seams.Jobs = mJobService;
 		seams.Builders = mBuilders;
+		seams.OnCreated = new (creator, instance) => { AfterCreate(creator, instance); };
 		BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), seams.PlayerDir);
 		TemplatesRoot(seams.TemplatesRoot);
 		seams.DataRoot.Set(mConfig.DataRoot);
@@ -685,6 +686,25 @@ extension EditorApplication
 		return false;
 	}
 
+	/// What follows every creation, File > New's and asset_create's alike: a first scene
+	/// becomes the project's default, the browser shows the new row, and a type a builder cooks
+	/// is cooked so it is pickable at once.
+	private void AfterCreate(AssetCreator creator, Instance instance)
+	{
+		if (creator.SetsDefaultScene && (mProject != null) && !mProject.Settings.DefaultSceneId.IsSet && mProject.Settings.DefaultScene.IsEmpty)
+		{
+			mProject.Settings.DefaultSceneId = instance.Id;
+			instance.GetPath(mProject.Settings.DefaultScene..Clear());
+			mProject.SaveSettings().IgnoreError();
+		}
+		// The new row surfaces immediately, since the File-menu path bypasses the assets
+		// view's own rebuild, and cooks so builder-backed assets become pickable.
+		if (mAssetsView != null)
+			mAssetsView.Rebuild();
+		if (mBuilders.FindByTypeName(instance.TypeName) != null)
+			mCookService.RequestCook(false);
+	}
+
 	/// File > New <creator>: creates the source instance, remembers it as the project's
 	/// default document if none is set yet, opens it.
 	private void CreateAndOpen(AssetCreator creator, Group group = null)
@@ -701,24 +721,13 @@ extension EditorApplication
 			mContext.Notify(.Error, "Create failed: no project is open.");
 			return;
 		}
-		let instance = creator.Run(.(group, mProject.SourceDb.RootGroup, mProject.SourcesRoot(.. scope .())));
+		let instance = creator.Create(group, mProject.SourceDb.RootGroup, mProject.SourcesRoot(.. scope .()));
 		if (instance == null)
 		{
 			mContext.Notify(.Error, scope $"Create failed: the {creator.Label} could not be written.");
 			return;
 		}
-		if (creator.SetsDefaultScene && (mProject != null) && !mProject.Settings.DefaultSceneId.IsSet && mProject.Settings.DefaultScene.IsEmpty)
-		{
-			mProject.Settings.DefaultSceneId = instance.Id;
-			instance.GetPath(mProject.Settings.DefaultScene..Clear());
-			mProject.SaveSettings().IgnoreError();
-		}
-		// The new row surfaces immediately, since the File-menu path bypasses the assets
-		// view's own rebuild, and cooks so builder-backed assets become pickable.
-		if (mAssetsView != null)
-			mAssetsView.Rebuild();
-		if (mBuilders.FindByTypeName(instance.TypeName) != null)
-			mCookService.RequestCook(false);
+		AfterCreate(creator, instance);
 		OpenInstancePage(instance);
 	}
 

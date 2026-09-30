@@ -17,7 +17,7 @@ static class VegetationCreators
 				asset.Width = 1024;
 				asset.Height = 1024;
 				asset.PlaneCount = 1;
-				return AssetCreator.CreateWritten(context.Target, "VegetationMask", typeof(VegetationMaskAsset), asset);
+				return AssetCreator.CreateWritten(context.Target, context.NameOr("VegetationMask"), typeof(VegetationMaskAsset), asset);
 			}));
 	}
 }

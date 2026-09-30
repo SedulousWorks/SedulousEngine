@@ -29,6 +29,9 @@ class EditorProjectOperationsSeams
 	public String TemplatesRoot = new .() ~ delete _;
 	/// The engine data root; the shader cook reads <DataRoot>/Shaders.
 	public String DataRoot = new .() ~ delete _;
+	/// After a creation: the editor's effects (a first scene as the default, the browser, the
+	/// cook), the ones File > New has. Owned.
+	public delegate void(AssetCreator creator, Instance instance) OnCreated ~ delete _;
 	/// A step still running past this answers with an error.
 	public double TimeoutSeconds = 600.0;
 }
@@ -100,6 +103,8 @@ class EditorProjectOperations : IProjectOperations
 
 	private ImportPhase mImportPhase = .Idle;
 	private int64 mImportStarted = 0;
+	/// When a creation first waited on the cook gate; zero when none is waiting.
+	private int64 mCreateStarted = 0;
 	private ImportShared mImport = null;
 	private ImportOutcome mImportOutcome = new .() ~ delete _;
 
@@ -373,6 +378,32 @@ class EditorProjectOperations : IProjectOperations
 				shared.JobOk = (result case .Ok);
 				shared.JobDone = true;
 			} ~ shared.ReleaseRef());
+	}
+
+	/// On the main thread, never while a cook or an export reads the databases (it waits, as a
+	/// placement does); then the host's effects through OnCreated.
+	public OperationStep Create(CreateRequest request, CreateOutcome outOutcome, String outError)
+	{
+		if (mSeams.Cook.MutationLocked)
+		{
+			if (mCreateStarted == 0)
+				mCreateStarted = Stopwatch.GetTimestamp();
+			if (TimedOut(mCreateStarted))
+			{
+				mCreateStarted = 0;
+				outError.AppendF("create of a {}: the databases stayed locked by a cook or export for {} s", request.Creator.Label, (int64)mSeams.TimeoutSeconds);
+				return .Failed;
+			}
+			return .NotYet;
+		}
+		mCreateStarted = 0;
+		let instance = AssetCreation.Run(mSeams.Project, request, outError);
+		if (instance == null)
+			return .Failed;
+		if (mSeams.OnCreated != null)
+			mSeams.OnCreated(request.Creator, instance);
+		outOutcome.SetFrom(instance);
+		return .Finished;
 	}
 
 	public OperationStep Export(ExportRequest request, ExportResult outResult, String outError)

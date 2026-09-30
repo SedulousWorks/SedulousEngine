@@ -170,11 +170,10 @@ class ParticleEffectPageTests
 		let project = EditorProject.Open(dir);
 		Test.Assert(project != null);
 		defer delete project;
-		let creation = AssetCreationContext(null, project.SourceDb.RootGroup, "");
 
-		Test.Assert(Creator().Run(.(null, null, "")) == null);
+		Test.Assert(Creator().Create(null, null, "") == null);
 
-		let first = Creator().Run(creation);
+		let first = Creator().Create(null, project.SourceDb.RootGroup, "");
 		Test.Assert(first != null);
 		Test.Assert(first.GetPath(.. scope .()) == "ParticleEffects/ParticleEffect");
 		Test.Assert(AssetTypeNames.Matches(first.TypeName, "ParticleEffectAsset"));
@@ -185,7 +184,7 @@ class ParticleEffectPageTests
 		Test.Assert(asset.Effect.SystemCount == 1);
 		Test.Assert(asset.Effect.GetSystem(0).InitializerCount == 4);
 
-		let second = Creator().Run(creation);
+		let second = Creator().Create(null, project.SourceDb.RootGroup, "");
 		Test.Assert((second != null) && (second.GetPath(.. scope .()) == "ParticleEffects/ParticleEffect.2"));
 	}
 }

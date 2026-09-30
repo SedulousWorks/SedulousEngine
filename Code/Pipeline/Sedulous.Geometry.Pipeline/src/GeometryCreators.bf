@@ -12,12 +12,12 @@ static class GeometryCreators
 {
 	public static void Register(AssetCreatorRegistry registry)
 	{
-		registry.Register(new AssetCreator("Cube", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.TargetOr("Meshes"), "Cube", Primitives.Cube())));
-		registry.Register(new AssetCreator("Sphere", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.TargetOr("Meshes"), "Sphere", Primitives.Sphere())));
-		registry.Register(new AssetCreator("Plane", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.TargetOr("Meshes"), "Plane", Primitives.Plane())));
-		registry.Register(new AssetCreator("Cylinder", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.TargetOr("Meshes"), "Cylinder", Primitives.Cylinder())));
-		registry.Register(new AssetCreator("Cone", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.TargetOr("Meshes"), "Cone", Primitives.Cone())));
-		registry.Register(new AssetCreator("Torus", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.TargetOr("Meshes"), "Torus", Primitives.Torus())));
+		registry.Register(new AssetCreator("Cube", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.Target, context.NameOr("Cube"), Primitives.Cube())).Under("Meshes"));
+		registry.Register(new AssetCreator("Sphere", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.Target, context.NameOr("Sphere"), Primitives.Sphere())).Under("Meshes"));
+		registry.Register(new AssetCreator("Plane", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.Target, context.NameOr("Plane"), Primitives.Plane())).Under("Meshes"));
+		registry.Register(new AssetCreator("Cylinder", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.Target, context.NameOr("Cylinder"), Primitives.Cylinder())).Under("Meshes"));
+		registry.Register(new AssetCreator("Cone", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.Target, context.NameOr("Cone"), Primitives.Cone())).Under("Meshes"));
+		registry.Register(new AssetCreator("Torus", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.Target, context.NameOr("Torus"), Primitives.Torus())).Under("Meshes"));
 	}
 
 	/// A static mesh asset authored from an in memory mesh, uniquely named in `target`: the
