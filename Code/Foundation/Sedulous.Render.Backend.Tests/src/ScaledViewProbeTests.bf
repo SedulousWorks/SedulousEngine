@@ -106,8 +106,7 @@ class ScaledViewProbeTests
 		settings.ViewportY = 0;
 		settings.ViewportWidth = cRectSize;
 		settings.ViewportHeight = cRectSize;
-		settings.SceneWidth = cScene;
-		settings.SceneHeight = cScene;
+		settings.Scene = .(cScene, cScene);
 
 		for (uint32 i < 2)
 		{

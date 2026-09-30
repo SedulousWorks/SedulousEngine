@@ -34,6 +34,43 @@ class RenderViewTests
 
 	/// Opaque work sorts FRONT TO BACK, so the nearest draws first and rejects what is behind
 	/// it.
+	/// A scene size of its own runs the chain at it and remembers the output rectangle; the
+	/// same size as the viewport is no scaling at all.
+	[Test]
+	public static void ASceneSizeSplitsTheSceneFromTheOutput()
+	{
+		let view = scope RenderView();
+		var settings = ViewSettings();
+		settings.ViewportX = 160;
+		settings.ViewportWidth = 960;
+		settings.ViewportHeight = 540;
+		settings.Scene = .(1280, 720);
+		view.Bind(null, .(), settings, null, .RGBA8Unorm, 1280, 540);
+		Test.Assert(view.IsScaled);
+		Test.Assert((view.Width == 1280) && (view.Height == 720), "the chain runs at the scene size");
+		Test.Assert((view.ViewportX == 0) && (view.ViewportWidth == 1280) && (view.ViewportHeight == 720));
+		Test.Assert((view.OutputWidth == 1280) && (view.OutputHeight == 540));
+		Test.Assert((view.OutputViewportX == 160) && (view.OutputViewportWidth == 960) && (view.OutputViewportHeight == 540));
+
+		settings.Scene = .(960, 540);
+		view.Bind(null, .(), settings, null, .RGBA8Unorm, 1280, 540);
+		Test.Assert(!view.IsScaled, "the viewport's own size is not a scale");
+		Test.Assert((view.Width == 1280) && (view.ViewportX == 160));
+	}
+
+	/// A fit's scene size: Letterbox shows the whole image, Crop the centred slice that fills.
+	[Test]
+	public static void AFitGivesTheSceneSizeAndItsShownSlice()
+	{
+		let letterbox = SceneSize.FromFit(ContentFit(.(0, 0, 1920, 1080), .(1280, 960), .Letterbox));
+		Test.Assert((letterbox.Width == 1280) && (letterbox.Height == 960));
+		Test.Assert((letterbox.SourceX == 0.0f) && (letterbox.SourceWidth == 1.0f) && (letterbox.SourceHeight == 1.0f));
+		// 4:3 cropped to fill 16:9: the full width, the middle three quarters of the height.
+		let crop = SceneSize.FromFit(ContentFit(.(0, 0, 1920, 1080), .(1280, 960), .Crop));
+		Test.Assert((crop.SourceX == 0.0f) && (crop.SourceWidth == 1.0f));
+		Test.Assert((Math.Abs(crop.SourceHeight - 0.75f) < 1e-4f) && (Math.Abs(crop.SourceY - 0.125f) < 1e-4f));
+	}
+
 	[Test]
 	public static void OpaqueDrawsSortNearestFirst()
 	{

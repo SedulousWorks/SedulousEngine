@@ -1832,16 +1832,17 @@ class RenderFrame
 			DeclareScaledPresent(view, viewIndex, colorHandle, targetHandle, clearTarget);
 	}
 
-	/// A scaled view's finished image, scaled (filtered) into its rectangle of the real
-	/// target: the tone map's fullscreen pass as a plain copy. The first view to the target
-	/// clears it, black, which is the bars a letterbox leaves.
+	/// A scaled view's finished image (its shown part, for a crop) scaled, filtered, into its
+	/// rectangle of the real target: the tone map's fullscreen pass as a plain copy. The first
+	/// view to the target clears it, black, which is the bars a letterbox leaves.
 	private void DeclareScaledPresent(RenderView view, uint32 viewIndex, RGHandle sceneImage,
 		RGHandle target, bool clearTarget)
 	{
 		mTonemap.DeclareTonemap(mGraph, sceneImage, sceneImage, sceneImage, target, clearTarget,
 			ClearColor.Black, view.TargetFormat, view.OutputViewportX, view.OutputViewportY,
 			view.OutputViewportWidth, view.OutputViewportHeight, mFrameIndex, viewIndex,
-			1.0f, 0.0f, .(1.0f, 1.0f), .(0.0f, 0.0f), 0.0f, false, false, false, .(), .(), true);
+			1.0f, 0.0f, .(view.Settings.Scene.SourceWidth, view.Settings.Scene.SourceHeight),
+			.(view.Settings.Scene.SourceX, view.Settings.Scene.SourceY), 0.0f, false, false, false, .(), .(), true);
 	}
 
 	/// The editor's debug view: overwrites this view's sub rectangle with the chosen resource.

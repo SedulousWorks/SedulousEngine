@@ -834,7 +834,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		uint32 width, uint32 height, ViewportRect viewport = .(),
 		CameraOverride* cameraOverride = null, TargetState targetState = .(),
 		ViewPostOverride* postOverride = null, void* viewportKey = null,
-		ViewDebugView debugView = null, uint32 sceneWidth = 0, uint32 sceneHeight = 0)
+		ViewDebugView debugView = null, SceneSize sceneSize = .())
 	{
 		if ((mFrame == null) || (target == null))
 			return;
@@ -908,10 +908,10 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			// the viewport, else the whole target.
 			var aspectWidth = (float)width;
 			var aspectHeight = (float)height;
-			if ((sceneWidth > 0) && (sceneHeight > 0))
+			if (sceneSize.IsSet)
 			{
-				aspectWidth = sceneWidth;
-				aspectHeight = sceneHeight;
+				aspectWidth = sceneSize.Width;
+				aspectHeight = sceneSize.Height;
 			}
 			else if (!viewport.IsFullTarget && (viewport.Height > 0))
 			{
@@ -928,8 +928,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		settings.ViewportY = viewport.Y;
 		settings.ViewportWidth = viewport.Width;
 		settings.ViewportHeight = viewport.Height;
-		settings.SceneWidth = sceneWidth;
-		settings.SceneHeight = sceneHeight;
+		settings.Scene = sceneSize;
 		// The picker matches requests to views by this key.
 		settings.ViewportKey = viewportKey;
 		settings.TargetTexture = targetState.Texture;
