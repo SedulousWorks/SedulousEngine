@@ -12,10 +12,13 @@ PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/lib/x64/*.dll\")", "Copy
 LibPaths = ["$(ProjectDir)/dist/lib/x64/wgpu_native.dll.lib"]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/lib/x64/*.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/lib/x64/*.pdb\")"]
 
+# By -l, not by path: the library has no SONAME, so a path link records the path itself as the
+# NEEDED entry, and a player moved to another machine looks for this checkout. Linked by name,
+# the loader finds it beside the executable through the $ORIGIN runpath.
 [Configs.Debug.Linux64]
-LibPaths = ["$(ProjectDir)/dist/lib/linux-x64/libwgpu_native.so"]
+OtherLinkFlags = "-L$(ProjectDir)/dist/lib/linux-x64 -lwgpu_native"
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/lib/linux-x64/*.so\")"]
 
 [Configs.Release.Linux64]
-LibPaths = ["$(ProjectDir)/dist/lib/linux-x64/libwgpu_native.so"]
+OtherLinkFlags = "-L$(ProjectDir)/dist/lib/linux-x64 -lwgpu_native"
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/lib/linux-x64/*.so\")"]

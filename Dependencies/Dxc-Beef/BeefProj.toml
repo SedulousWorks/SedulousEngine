@@ -13,10 +13,10 @@ PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/bin/x64/*.dll\")"]
 LibPaths = ["$(ProjectDir)/dist/lib/x64/dxcompiler.lib", "$(ProjectDir)/dist/lib/x64/dxil.lib"]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/bin/x64/*.dll\")"]
 
+# Not linked off Windows: DxcLibrary dlopens it, so a player that never compiles a shader
+# does not need it (nor its glibc 2.38 floor) to start. The copy stays, for what does.
 [Configs.Debug.Linux64]
-LibPaths = ["$(ProjectDir)/dist/lib/linux-x64/libdxcompiler.so"]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/lib/linux-x64/*.so\")"]
 
 [Configs.Release.Linux64]
-LibPaths = ["$(ProjectDir)/dist/lib/linux-x64/libdxcompiler.so"]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/lib/linux-x64/*.so\")"]
