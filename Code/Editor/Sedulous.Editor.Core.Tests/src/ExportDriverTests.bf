@@ -37,6 +37,11 @@ static class ExportDriverTests
 		let distDir = PathJoin(fx.OutRoot, "dist", .. scope .());
 		let scriptId = Guid.Parse("abcd1234-0000-0000-0000-5678ef900000").Get();
 		fx.Project.Settings.StartupScriptId = scriptId;
+		let loadingId = Guid.Create();
+		let titleFontId = Guid.Create();
+		fx.Project.Settings.LoadingDocumentId = loadingId;
+		fx.Project.Settings.RenderMsaaSamples = 4;
+		fx.Project.Settings.UiFontIds.Add(titleFontId);
 		Test.Assert(fx.Project.SaveSettings() case .Ok);
 
 		// The scene pre-transcoded to the binary wire, as the editor's stager does.
@@ -65,6 +70,10 @@ static class ExportDriverTests
 		let manifest = scope ProjectSettings();
 		Test.Assert(ProjectManifest.Load(distRoot, manifest, ProjectLayout.DistManifestFile) case .Ok);
 		Test.Assert((manifest.DefaultScene == "Scenes/Main") && (manifest.DefaultSceneId == fx.SceneId) && (manifest.StartupScriptId == scriptId));
+		// And everything else the player reads: the loading screen, the MSAA, the other fonts.
+		Test.Assert(manifest.LoadingDocumentId == loadingId, "the loading screen");
+		Test.Assert(manifest.RenderMsaaSamples == 4, "the MSAA");
+		Test.Assert((manifest.UiFontIds.Count == 1) && (manifest.UiFontIds[0] == titleFontId), "the other UI fonts");
 
 		// The pak, read as the player reads it: the scene by guid and by path, its stream
 		// binary, its mesh resolving through the factory to the 2.0 cube.

@@ -79,6 +79,7 @@ static class ExportDriver
 		Add(settings.DefaultUiFontId, .ManifestDefault);
 		for (let id in settings.UiFontIds)
 			Add(id, .ManifestDefault);
+		Add(settings.LoadingDocumentId, .ManifestDefault);
 		for (let id in project.ExportRoots.Instances)
 			Add(id, .Flag);
 		for (let groupPath in project.ExportRoots.Groups)
@@ -331,6 +332,9 @@ static class ExportDriver
 			dist.DefaultUiThemeId = project.Settings.DefaultUiThemeId;
 			dist.DefaultUiFontId = project.Settings.DefaultUiFontId;
 			dist.UiFontIds.AddRange(project.Settings.UiFontIds);
+			// What the player reads besides the defaults: the loading screen and the MSAA.
+			dist.LoadingDocumentId = project.Settings.LoadingDocumentId;
+			dist.RenderMsaaSamples = project.Settings.RenderMsaaSamples;
 			if (ProjectManifest.Save(outMount, dist, ProjectLayout.DistManifestFile) case .Err)
 			{
 				GlobalLog(.Error, "Export: failed to write the dist manifest");
