@@ -103,9 +103,10 @@ class ResourceModule
 /// second call with richer services fills what the first skipped and creates nothing twice.
 class ResourceFactorySet
 {
-	private List<IResourceFactory> mFactories = new .() ~ { Clear(); delete _; };
-	/// Pointers into the modules' own description arrays, which outlive the set.
+	/// Pointers into the modules' own description arrays, which outlive the set. Declared
+	/// FIRST: fields are destroyed in reverse order, and mFactories' Clear touches this list.
 	private List<ResourceFactoryDesc*> mSkipped = new .() ~ delete _;
+	private List<IResourceFactory> mFactories = new .() ~ { Clear(); delete _; };
 
 	public int Count => mFactories.Count;
 	public List<IResourceFactory> Factories => mFactories;
