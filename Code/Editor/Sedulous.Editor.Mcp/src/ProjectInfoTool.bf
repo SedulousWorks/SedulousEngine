@@ -285,8 +285,8 @@ static class ProjectInfoTool
 	}
 
 	/// The wire names of FitMode and WindowMode, in their declaration order.
-	private static StringView[4] cFitNames = .("stretch", "letterbox", "crop", "integerScale");
-	private static StringView[3] cWindowModeNames = .("windowed", "fullscreen", "borderless");
+	public static StringView[4] cFitNames = .("stretch", "letterbox", "crop", "integerScale");
+	public static StringView[3] cWindowModeNames = .("windowed", "fullscreen", "borderless");
 
 	private static int IndexOfName(Span<StringView> names, StringView name)
 	{

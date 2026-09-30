@@ -14,7 +14,8 @@ namespace Sedulous.Editor.Mcp;
 ///
 /// Reflection (type_list, type_info), script_api, project_info, the asset tools (list, info,
 /// import, cook, uses, creators, create, data read and write), project_health, the log tools (log_read, log_write, known_issues), the
-/// scene and prefab tools, script_validate and script_create, project_export, the docs://
+/// scene and prefab tools, script_validate and script_create, export_presets and
+/// export_preset_set, project_export, the docs://
 /// and project:// resources, and the generated scene format reference (docs://generated/*
 /// and component_schema). A host adds what only it can serve on top: the stdio host
 /// project_create and project_open, the editor its live tools, and each its own host_info.
@@ -23,7 +24,7 @@ static class EngineTools
 	/// How many tools Register registers. A new engine tool bumps this DELIBERATELY, and a
 	/// lost registration fails its test loudly. host_info and the stdio host's project_create
 	/// and project_open are not in it: each host registers its own.
-	public const int cEngineToolCount = 27;
+	public const int cEngineToolCount = 29;
 
 	/// The pipeline's types, builders and script surface must already be registered: the
 	/// script tools read that surface, the asset tools the two registries. The operations are
@@ -48,6 +49,7 @@ static class EngineTools
 		ProjectResources.Register(server, session);
 		ScriptValidateTool.Register(server);
 		ScriptCreateTool.Register(server, session);
+		ExportPresetTools.Register(server, session);
 		ProjectExportTool.Register(server, session, operations);
 
 		// The scene format reference, generated from this host's own registrations and served
