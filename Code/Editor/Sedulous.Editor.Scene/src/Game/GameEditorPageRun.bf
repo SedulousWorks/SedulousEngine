@@ -44,7 +44,10 @@ extension GameEditorPage
 
 		if (instance != null)
 		{
-			let startScene = SceneGroup.CreateScene(instance.Name);
+			// Through the INSTANCE when there is one: its CreateScene points the scene's
+			// behaviours at the run's script host, where Input and Run live. The bare group
+			// leaves them on the subsystem's default host, and a behaviour reading Input faults.
+			let startScene = (mGameInstance != null) ? mGameInstance.CreateScene(instance.Name) : mFallbackScenes.CreateScene(instance.Name);
 			if ((startScene == null) || !(SceneStorage.LoadScene(instance, startScene) case .Ok))
 			{
 				mContext.Notify(.Error, "Game: default scene failed to load.");
