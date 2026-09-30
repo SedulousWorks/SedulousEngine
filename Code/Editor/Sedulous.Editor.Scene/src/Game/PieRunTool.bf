@@ -42,10 +42,17 @@ static class PieRunTool
 		public String Label = new .() ~ delete _;
 	}
 
+	/// One pie_run in flight, the call's state: deleted when the call answers or its caller
+	/// leaves, and then the tab's input goes back to the user.
 	private class Run
 	{
-		/// BORROWED; the run is dropped when the page is no longer open.
+		/// BORROWED, as are the context and the list; the page is checked against the open
+		/// pages before every use.
 		public EditorPage Page;
+		public EditorContext Context;
+		public Runs Owner;
+		/// The timeline drives the tab's input until the run ends.
+		public bool Scripted = false;
 		public double Start;
 		public uint64 StartFrames;
 		public double Duration;
@@ -60,6 +67,8 @@ static class PieRunTool
 		public int NextShot = 0;
 		public bool ShotInFlight = false;
 		public double ShotAt = 0;
+		/// Where the shot in flight writes: a pie_screenshot of the same tab can replace it.
+		public String ShotPath = new .() ~ delete _;
 		public String ShotDirectory = new .() ~ delete _;
 		public int Serial;
 		public JsonValue Samples = JsonValue.MakeArray() ~ delete _;
@@ -67,11 +76,19 @@ static class PieRunTool
 		public JsonValue UntilHit ~ delete _;
 		public int InputCount;
 		public Stopwatch Clock = new .() ~ delete _;
+
+		public ~this()
+		{
+			Owner?.Active.Remove(this);
+			if (Scripted && Context.OpenPages.Contains(Page))
+				(Page as IPieInstancePage).EndScriptedInput();
+		}
 	}
 
+	/// The runs in flight, one per instance. BORROWED: each run is its call's.
 	private class Runs
 	{
-		public List<Run> Active = new .() ~ DeleteContainerAndItems!(_);
+		public List<Run> Active = new .() ~ delete _;
 		public int Serial = 0;
 	}
 
@@ -100,20 +117,21 @@ static class PieRunTool
 			Playtest one running PIE instance (pie_start first): play a device-level input timeline into it for `duration` run seconds and answer what happened. The timeline replaces that tab's real input for the run (the user's mouse and keys do not reach it; other instances keep theirs) and goes through the project's input map as a player's would: keys by KeyCode name ("D", "Space", "LeftShift"), mouse buttons ("Left"), gamepad buttons ("South", "DPadUp") and axes ("LeftX", -1 to 1). Held keys are let go when the run ends. `probes` read entity fields (the paths are `worldPosition`, `position`, `rotation`, `scale`, `active`, or `<component>.<property>` as entity_inspect names them, then `.x`/`.y`/`.z` or a key or index to go inside) and game script properties, sampled `every` N seconds or at `sampleAt` times, one row per sample {t, frame, values} with a final row at the end; an entity missing at a sample reads null. `screenshots` writes the tab at those run times. `until` ends the run when its value crosses ("player worldPosition.y < -10", "script score >= 3"). Returns {pie, endedBy: duration | until | stopped | timeout, gameTime, frames, samples, screenshots, until, state}. Runs are real frames: a time lands within a frame of where it was asked, so compare with tolerances. Start from pie_start for a reproducible run. One run per instance at a time.
 			""",
 			schema.Build(), .Creates,
-			new (arguments, outResult, outError) => Handle(context, runs, arguments, outResult, outError),
+			new (call, arguments, outResult, outError) => Handle(context, runs, call, arguments, outResult, outError),
 			runs);
 	}
 
-	private static ToolOutcome Handle(EditorContext context, Runs runs, JsonValue arguments, JsonValue outResult, String outError)
+	private static ToolOutcome Handle(EditorContext context, Runs runs, ToolCall call, JsonValue arguments, JsonValue outResult, String outError)
 	{
-		// A run whose tab closed is over; its page pointer is never used again.
-		for (int i = runs.Active.Count - 1; i >= 0; i--)
+		if (let run = call.State as Run)
 		{
-			if (!context.OpenPages.Contains(runs.Active[i].Page))
+			// Re-entered: this run, one pump later.
+			if (!context.OpenPages.Contains(run.Page))
 			{
-				delete runs.Active[i];
-				runs.Active.RemoveAt(i);
+				outError.Append("the Game tab closed during the run");
+				return .Failed;
 			}
+			return Step(context, run, outResult, outError);
 		}
 		let page = PieMcpTools.ResolvePie(context, arguments, outError);
 		if (page == null)
@@ -121,12 +139,15 @@ static class PieRunTool
 		for (let run in runs.Active)
 		{
 			if (run.Page == page)
-				return Step(context, runs, run, outResult, outError);
+			{
+				outError.AppendF("PIE instance '{}' is already in a pie_run; one run per instance at a time", (page as IPieInstancePage).PieId);
+				return .Failed;
+			}
 		}
-		return Begin(context, runs, page, arguments, outError);
+		return Begin(context, runs, call, page, arguments, outError);
 	}
 
-	private static ToolOutcome Begin(EditorContext context, Runs runs, EditorPage page, JsonValue arguments, String outError)
+	private static ToolOutcome Begin(EditorContext context, Runs runs, ToolCall call, EditorPage page, JsonValue arguments, String outError)
 	{
 		let pie = page as IPieInstancePage;
 		if (!pie.IsRunning)
@@ -251,22 +272,32 @@ static class PieRunTool
 		run.Clock.Start();
 		pie.BeginScriptedInput(source);
 		source = null; // the page owns it now
+		run.Context = context;
+		run.Scripted = true;
+		run.Owner = runs;
 		runs.Active.Add(run);
+		call.State = run;
 		run = null;
 		return .NotFinished;
 	}
 
-	private static ToolOutcome Step(EditorContext context, Runs runs, Run run, JsonValue outResult, String outError)
+	private static ToolOutcome Step(EditorContext context, Run run, JsonValue outResult, String outError)
 	{
 		let pie = run.Page as IPieInstancePage;
 		let t = pie.RunTime - run.Start;
 		if (!pie.IsRunning)
-			return Finish(runs, run, "stopped", t, outResult);
+			return Finish(run, "stopped", t, outResult);
 
 		if (run.ShotInFlight)
 		{
 			let capture = pie.LastViewportCapture;
-			if ((capture.State == .Written) || (capture.State == .Failed))
+			if (capture.Path != run.ShotPath)
+			{
+				// Another call's capture replaced the shot: once that one is done, ask again.
+				if (capture.State != .Pending)
+					pie.RequestViewportCapture(run.ShotPath);
+			}
+			else if ((capture.State == .Written) || (capture.State == .Failed))
 			{
 				let shot = JsonValue.MakeObject();
 				shot.Set("at", JsonValue.MakeNumber(run.ShotAt));
@@ -304,7 +335,7 @@ static class PieRunTool
 				hit.Set("value", value);
 				hit.Set("t", JsonValue.MakeNumber(t));
 				run.UntilHit = hit;
-				return Finish(runs, run, "until", t, outResult);
+				return Finish(run, "until", t, outResult);
 			}
 			delete value;
 		}
@@ -316,23 +347,25 @@ static class PieRunTool
 			PathJoin(run.ShotDirectory, scope $"{pie.PieId}-{System.Diagnostics.Process.CurrentId}-run{run.Serial}-{run.ShotAt:F2}.png", path);
 			context.RevealPage(run.Page); // a hidden tab never renders
 			pie.RequestViewportCapture(path);
+			run.ShotPath.Set(path);
 			run.ShotInFlight = true;
 		}
 
 		if ((t >= run.Duration) && !run.ShotInFlight && (run.NextShot >= run.ShotTimes.Count))
-			return Finish(runs, run, "duration", t, outResult);
+			return Finish(run, "duration", t, outResult);
 		// The game clock stood still: the debugger holds the run, or the editor is not ticking.
 		if (run.Clock.Elapsed.TotalSeconds > (run.Duration * 4) + 30)
-			return Finish(runs, run, "timeout", t, outResult);
+			return Finish(run, "timeout", t, outResult);
 		return .NotFinished;
 	}
 
-	private static ToolOutcome Finish(Runs runs, Run run, StringView endedBy, double t, JsonValue outResult)
+	private static ToolOutcome Finish(Run run, StringView endedBy, double t, JsonValue outResult)
 	{
 		let pie = run.Page as IPieInstancePage;
 		if (pie.IsRunning && !run.Probes.IsEmpty && (run.LastSampleTime < t))
 			TakeSample(pie, run, t);
 		pie.EndScriptedInput();
+		run.Scripted = false;
 		outResult.Set("pie", JsonValue.MakeString(pie.PieId));
 		outResult.Set("endedBy", JsonValue.MakeString(endedBy));
 		outResult.Set("runTime", JsonValue.MakeNumber(t));
@@ -347,9 +380,7 @@ static class PieRunTool
 		let state = JsonValue.MakeObject();
 		PieMcpTools.WriteState(pie, state);
 		outResult.Set("state", state);
-		runs.Active.Remove(run);
-		delete run;
-		return .Answered;
+		return .Answered; // the run goes with the call
 	}
 
 	private static void TakeSample(IPieInstancePage pie, Run run, double t)

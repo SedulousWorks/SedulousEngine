@@ -135,13 +135,17 @@ class PieMcpToolsTests
 		public String Error = new .() ~ delete _;
 	}
 
-	private static LineState Pump(McpServer server, StringView tool, StringView argumentsJson, out Answer outAnswer)
+	private static LineState Pump(McpServer server, StringView tool, StringView argumentsJson, out Answer outAnswer) =>
+		Pump(server, 0, tool, argumentsJson, out outAnswer);
+
+	/// One entry of the call the transport knows as `callId` (nought: known by its line).
+	private static LineState Pump(McpServer server, uint64 callId, StringView tool, StringView argumentsJson, out Answer outAnswer)
 	{
 		outAnswer = null;
 		let line = scope String();
 		line.AppendF("{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{{\"name\":\"{}\",\"arguments\":{}}}}}", tool, argumentsJson);
 		let reply = scope String();
-		let state = server.HandleLine(line, reply);
+		let state = server.HandleLine(line, reply, callId);
 		if (state != .Answered)
 			return state;
 		let response = JsonValue.Parse(reply);
@@ -350,6 +354,66 @@ class PieMcpToolsTests
 		Test.Assert(clientAnswer.Payload.Get("pie").AsString() == "game-page-1");
 	}
 
+	/// Two agents make the same call at once: each call keeps its own wait, where its arguments
+	/// alone would have made the second the first's re-entry.
+	[Test]
+	public static void IdenticalCallsInFlightEachKeepTheirOwnWait()
+	{
+		let context = scope EditorContext();
+		let opened = scope List<HeadlessPiePage>();
+		bool projectOpen = true;
+		RegisterPlayActions(context, opened, &projectOpen);
+		let server = scope McpServer();
+		PieMcpTools.Register(server, context);
+
+		// Two new instances asked for with the same arguments: two tabs, one each.
+		Answer first = null;
+		Answer second = null;
+		let args = "{\"newInstance\":true}";
+		Test.Assert(Pump(server, 1, "pie_start", args, out first) == .NotFinished);
+		Test.Assert(Pump(server, 2, "pie_start", args, out second) == .NotFinished);
+		Test.Assert(opened.Count == 2, "the second start opened a tab of its own");
+		for (let tab in opened)
+		{
+			tab.CookDone("Level1");
+			tab.Frame(0.016);
+		}
+		Test.Assert(Pump(server, 2, "pie_start", args, out second) == .Answered);
+		defer delete second;
+		Test.Assert(Pump(server, 1, "pie_start", args, out first) == .Answered);
+		defer delete first;
+		Test.Assert(first.Payload.Get("pie").AsString() == "game-page-0");
+		Test.Assert(second.Payload.Get("pie").AsString() == "game-page-1");
+
+		// Two screenshots of one tab: the tab holds one request, so a call whose request was
+		// replaced asks again once the replacing one is done, and each gets its own file.
+		let tab = opened[0];
+		Answer a = null;
+		Answer b = null;
+		let argsA = "{\"pie\":\"game-page-0\",\"path\":\"/tmp/a.png\"}";
+		let argsB = "{\"pie\":\"game-page-0\",\"path\":\"/tmp/b.png\"}";
+		Test.Assert(Pump(server, 3, "pie_screenshot", argsA, out a) == .NotFinished);
+		Test.Assert(Pump(server, 4, "pie_screenshot", argsB, out b) == .NotFinished);
+		Test.Assert(tab.Capture.Path == "/tmp/b.png", "b replaced a");
+		Test.Assert(Pump(server, 3, "pie_screenshot", argsA, out a) == .NotFinished);
+		Test.Assert(tab.CaptureRequests == 2, "a waits while b's is pending");
+		tab.Capture.State = .Written;
+		Test.Assert(Pump(server, 3, "pie_screenshot", argsA, out a) == .NotFinished, "b's file is not a's");
+		Test.Assert((tab.Capture.Path == "/tmp/a.png") && (tab.Capture.State == .Pending), "a asked again");
+		Test.Assert(Pump(server, 4, "pie_screenshot", argsB, out b) == .NotFinished, "a's request is not b's");
+		tab.Capture.State = .Written;
+		Test.Assert(Pump(server, 3, "pie_screenshot", argsA, out a) == .Answered);
+		defer delete a;
+		Test.Assert(a.Payload.Get("path").AsString() == "/tmp/a.png");
+		Test.Assert(Pump(server, 4, "pie_screenshot", argsB, out b) == .NotFinished);
+		Test.Assert(tab.Capture.Path == "/tmp/b.png", "b asked again");
+		tab.Capture.State = .Written;
+		Test.Assert(Pump(server, 4, "pie_screenshot", argsB, out b) == .Answered);
+		defer delete b;
+		Test.Assert(b.Payload.Get("path").AsString() == "/tmp/b.png");
+		Test.Assert(server.CallsInFlight == 0);
+	}
+
 	[Test]
 	public static void TheScreenshotWaitsForTheInstancesFrame()
 	{
@@ -549,6 +613,40 @@ class PieMcpToolsTests
 		Test.Assert(answer.Payload.Get("endedBy").AsString() == "stopped");
 		Test.Assert(answer.Payload.Get("samples").Count == 1);
 		Test.Assert(!answer.Payload.Get("state").Get("running").AsBool());
+	}
+
+	/// A second run on a busy instance is refused, not taken for the first's re-entry; a run
+	/// whose caller went away ends, and the tab's input goes back to the user.
+	[Test]
+	public static void ASecondRunIsRefusedAndAnAbandonedRunHandsInputBack()
+	{
+		let context = scope EditorContext();
+		let host = RunningPie(context, "game-page");
+		let server = scope McpServer();
+		PieMcpTools.Register(server, context);
+		let args = "{\"duration\":5,\"input\":[{\"at\":0,\"key\":\"D\"}]}";
+		Answer answer = null;
+		Test.Assert(Pump(server, 1, "pie_run", args, out answer) == .NotFinished);
+		PlayFrame(host, 0.1);
+		Test.Assert(Pump(server, 2, "pie_run", args, out answer) == .Answered);
+		{
+			defer delete answer;
+			Test.Assert(!answer.Ok);
+			Test.Assert(answer.Error.StartsWith("PIE instance 'game-page' is already in a pie_run"), answer.Error);
+		}
+		Test.Assert(Pump(server, 1, "pie_run", args, out answer) == .NotFinished, "the first run goes on");
+		Test.Assert(host.IsScripted && !host.ScriptEnding);
+
+		server.AbandonCall(1);
+		Test.Assert(server.CallsInFlight == 0);
+		Test.Assert(host.ScriptEnding, "the abandoned run let the tab's input go");
+		PlayFrame(host, 0.1);
+		Test.Assert(!host.IsScripted);
+
+		// The instance is free for the next run.
+		Test.Assert(Pump(server, 3, "pie_run", args, out answer) == .NotFinished);
+		Test.Assert(host.ScriptsBegun == 2);
+		server.AbandonCall(3);
 	}
 
 	[Test]

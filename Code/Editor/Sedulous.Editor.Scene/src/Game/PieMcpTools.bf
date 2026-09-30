@@ -28,45 +28,40 @@ static class PieMcpTools
 	/// Frames: ten seconds at 60 Hz, then pie_screenshot gives up.
 	private const int cCapturePumpLimit = 600;
 
-	/// One pie_start or pie_screenshot in flight: the tool is re-entered every pump with the
-	/// same arguments until the instance answers, or it gives up.
-	private class Pending
+	/// One pie_start in flight, the call's state: the tab it started and the pumps it has
+	/// waited. Two identical starts (two agents each opening a new instance) each keep their own.
+	private class StartWait
 	{
-		/// BORROWED; null while nothing is in flight.
-		public EditorPage Page = null;
+		/// BORROWED; checked against the open pages before every use.
+		public EditorPage Page;
 		public int Pumps = 0;
-		/// Per host, so two captures of one instance never share a default name.
-		public int Serial = 0;
 	}
 
-	/// The pie_start calls in flight: a primary start and a new instance's are kept apart, so
-	/// one of each can run at once. Two new-instance starts at once cannot be: the host re-enters
-	/// a call with nothing but its arguments, and theirs are the same, so they queue.
-	private class StartWaits
+	/// One pie_screenshot in flight, the call's state.
+	private class CaptureWait
 	{
-		public Pending Primary = new .() ~ delete _;
-		public Pending NewInstance = new .() ~ delete _;
+		/// BORROWED; checked against the open pages before every use.
+		public EditorPage Page;
+		public int Pumps = 0;
+		/// Where this call's capture writes; a tab holds one request at a time, so a call whose
+		/// request another replaced asks again once that one is done.
+		public String Path = new .() ~ delete _;
 	}
 
-	/// The pie_screenshot calls in flight, one per instance: the HTTP host re-enters every
-	/// unfinished call each pump, so captures of two instances interleave.
-	private class CaptureWaits
+	/// Per host, so two captures of one instance never share a default name.
+	private class CaptureSerial
 	{
-		/// BORROWED pages, each with the pumps its capture has waited.
-		public Dictionary<EditorPage, int> Pumps = new .() ~ delete _;
-		public int Serial = 0;
+		public int Value = 0;
 	}
 
 	public static void Register(McpServer server, EditorContext context)
 	{
 		let startSchema = scope SchemaBuilder();
 		startSchema.Boolean("newInstance", "open another Game tab with an instance of its own (Play New Instance) instead of the primary");
-		let starting = new StartWaits();
 		server.RegisterTool("pie_start",
 			"Start playing the project in the editor (PIE): the primary Game tab, or with `newInstance` another tab running an instance of its own - a host and a client, say. Cooks first, as Play does, loads the default scene and the startup script, and answers once the instance's first frame has rendered, with its state as pie_state gives it; `pie` is the id every other PIE tool takes. A primary already running is answered as it is, with `alreadyRunning`. A run that fails to start (a default scene that does not load) is an error; log_read says why.",
 			startSchema.Build(), .Creates,
-			new (arguments, outResult, outError) => Start(context, starting, arguments, outResult, outError),
-			starting);
+			new (call, arguments, outResult, outError) => Start(context, call, arguments, outResult, outError));
 
 		let stopSchema = scope SchemaBuilder();
 		stopSchema.Str("pie", cPieArgument);
@@ -113,54 +108,49 @@ static class PieMcpTools
 		let shotSchema = scope SchemaBuilder();
 		shotSchema.Str("pie", cPieArgument);
 		shotSchema.Str("path", "the PNG to write (default: a new file under <user-data>/screenshots)");
-		let capturing = new CaptureWaits();
+		let serial = new CaptureSerial();
 		server.RegisterTool("pie_screenshot",
 			"What one running PIE instance's Game tab renders, as a PNG at the viewport's size: the game through its own camera, with its UI and overlays. Brings the tab to front (a hidden viewport never renders), waits for the next frame and the GPU, then returns {pie, path, width, height}; read the file. `path` is where to write (an existing directory; default: <user-data>/screenshots/<pie>-<pid>-<n>.png). Refused for a stopped instance; gives up after ten seconds without a rendered frame.",
 			shotSchema.Build(), .Creates,
-			new (arguments, outResult, outError) => Screenshot(context, capturing, arguments, outResult, outError),
-			capturing);
+			new (call, arguments, outResult, outError) => Screenshot(context, serial, call, arguments, outResult, outError),
+			serial);
 
 		PieRunTool.Register(server, context);
 	}
 
-	private static ToolOutcome Start(EditorContext context, StartWaits waits, JsonValue arguments, JsonValue outResult, String outError)
+	private static ToolOutcome Start(EditorContext context, ToolCall call, JsonValue arguments, JsonValue outResult, String outError)
 	{
-		let newInstance = (arguments != null) && (arguments.Get("newInstance") != null) && arguments.Get("newInstance").AsBool();
-		let pending = newInstance ? waits.NewInstance : waits.Primary;
-		if (pending.Page != null)
+		if (let wait = call.State as StartWait)
 		{
-			// Re-entered: the same call, one pump later.
-			let page = pending.Page;
-			pending.Pumps++;
+			// Re-entered: this call, one pump later.
+			let page = wait.Page;
+			wait.Pumps++;
 			if (!context.OpenPages.Contains(page))
 			{
-				pending.Page = null;
 				outError.Append("the Game tab closed while starting");
 				return .Failed;
 			}
 			let pie = page as IPieInstancePage;
 			if (pie.IsRunning && (pie.FrameCount > 0))
 			{
-				pending.Page = null;
 				WriteState(pie, outResult);
 				outResult.Set("alreadyRunning", JsonValue.MakeBool(false));
 				return .Answered;
 			}
 			if (!pie.IsRunning && !pie.IsStarting)
 			{
-				pending.Page = null;
 				outError.AppendF("PIE instance '{}' did not start (log_read says why)", pie.PieId);
 				return .Failed;
 			}
-			if (pending.Pumps > cStartPumpLimit)
+			if (wait.Pumps > cStartPumpLimit)
 			{
-				pending.Page = null;
 				outError.AppendF("PIE instance '{}' rendered no frame in five minutes - a cook still running, or its tab hidden (an editor window minimised)?", pie.PieId);
 				return .Failed;
 			}
 			return .NotFinished;
 		}
 
+		let newInstance = (arguments != null) && (arguments.Get("newInstance") != null) && arguments.Get("newInstance").AsBool();
 		if (!newInstance)
 		{
 			if (let primary = FindPie(context, cPrimaryId))
@@ -171,6 +161,14 @@ static class PieMcpTools
 					WriteState(pie, outResult);
 					outResult.Set("alreadyRunning", JsonValue.MakeBool(true));
 					return .Answered;
+				}
+				if (pie.IsStarting)
+				{
+					// Another call started it: this one waits for the same first frame.
+					let wait = new StartWait();
+					wait.Page = primary;
+					call.State = wait;
+					return .NotFinished;
 				}
 			}
 		}
@@ -212,8 +210,9 @@ static class PieMcpTools
 			return .Failed;
 		}
 		(target as IPieInstancePage).Play();
-		pending.Page = target;
-		pending.Pumps = 0;
+		let wait = new StartWait();
+		wait.Page = target;
+		call.State = wait;
 		return .NotFinished;
 	}
 
@@ -250,52 +249,52 @@ static class PieMcpTools
 		return .Answered;
 	}
 
-	private static ToolOutcome Screenshot(EditorContext context, CaptureWaits waits, JsonValue arguments, JsonValue outResult, String outError)
+	private static ToolOutcome Screenshot(EditorContext context, CaptureSerial serial, ToolCall call, JsonValue arguments, JsonValue outResult, String outError)
 	{
-		// A wait whose tab closed is over; its page pointer is never used again.
-		for (let wait in waits.Pumps)
+		if (let wait = call.State as CaptureWait)
 		{
-			if (!context.OpenPages.Contains(wait.key))
-				@wait.Remove();
-		}
-		let page = ResolvePie(context, arguments, outError);
-		if (page == null)
-			return .Failed;
-		let pie = page as IPieInstancePage;
-		if (waits.Pumps.TryGetValue(page, let pumps))
-		{
-			// Re-entered: the same call, one pump later.
-			let capture = pie.LastViewportCapture;
-			waits.Pumps[page] = pumps + 1;
-			if (capture.State == .Written)
+			// Re-entered: this call, one pump later.
+			wait.Pumps++;
+			if (!context.OpenPages.Contains(wait.Page))
 			{
-				waits.Pumps.Remove(page);
+				outError.Append("the Game tab closed before a frame was captured");
+				return .Failed;
+			}
+			let pie = wait.Page as IPieInstancePage;
+			let capture = pie.LastViewportCapture;
+			let ours = capture.Path == wait.Path;
+			if (ours && (capture.State == .Written))
+			{
 				outResult.Set("pie", JsonValue.MakeString(pie.PieId));
 				outResult.Set("path", JsonValue.MakeString(capture.Path));
 				outResult.Set("width", JsonValue.MakeNumber(capture.Width));
 				outResult.Set("height", JsonValue.MakeNumber(capture.Height));
 				return .Answered;
 			}
-			if (capture.State == .Failed)
+			if (ours && (capture.State == .Failed))
 			{
-				waits.Pumps.Remove(page);
 				outError.AppendF("the capture of PIE instance '{}' failed (log_read, category Screenshot, says why)", pie.PieId);
 				return .Failed;
 			}
 			if (!pie.IsRunning)
 			{
-				waits.Pumps.Remove(page);
 				outError.AppendF("PIE instance '{}' stopped before a frame was captured", pie.PieId);
 				return .Failed;
 			}
-			if (pumps + 1 > cCapturePumpLimit)
+			if (wait.Pumps > cCapturePumpLimit)
 			{
-				waits.Pumps.Remove(page);
 				outError.AppendF("PIE instance '{}' rendered no frame in ten seconds - is its tab visible (an editor window minimised or hidden)?", pie.PieId);
 				return .Failed;
 			}
+			// Another call's request replaced this one: once that one is done, ask again.
+			if (!ours && (capture.State != .Pending))
+				pie.RequestViewportCapture(wait.Path);
 			return .NotFinished;
 		}
+		let page = ResolvePie(context, arguments, outError);
+		if (page == null)
+			return .Failed;
+		let pie = page as IPieInstancePage;
 		if (!pie.IsRunning)
 		{
 			outError.AppendF("PIE instance '{}' is not running (pie_start runs it)", pie.PieId);
@@ -314,12 +313,15 @@ static class PieMcpTools
 				outError.AppendF("could not create '{}'", directory);
 				return .Failed;
 			}
-			waits.Serial++;
-			PathJoin(directory, scope $"{pie.PieId}-{System.Diagnostics.Process.CurrentId}-{waits.Serial}.png", path);
+			serial.Value++;
+			PathJoin(directory, scope $"{pie.PieId}-{System.Diagnostics.Process.CurrentId}-{serial.Value}.png", path);
 		}
 		context.RevealPage(page); // to front: a background tab's viewport never renders
 		pie.RequestViewportCapture(path);
-		waits.Pumps[page] = 0;
+		let wait = new CaptureWait();
+		wait.Page = page;
+		wait.Path.Set(path);
+		call.State = wait;
 		return .NotFinished;
 	}
 
