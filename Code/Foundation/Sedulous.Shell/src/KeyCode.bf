@@ -1,9 +1,12 @@
+using System;
 namespace Sedulous.Shell;
 
 /// A physical key, independent of layout and of any modifier.
 ///
 /// Values are positional and Count sizes a backend's key array, so a code inserted in the
 /// middle renumbers everything after it.
+/// Its cases are reflected so tools name them (an asset stores the numbers).
+[Reflect(.StaticFields)]
 enum KeyCode : uint32
 {
 	case Unknown = 0;

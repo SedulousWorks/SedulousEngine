@@ -1,5 +1,8 @@
+using System;
 namespace Sedulous.Shell;
 
+/// Its cases are reflected so tools name them (an asset stores the numbers).
+[Reflect(.StaticFields)]
 enum MouseButton : uint32
 {
 	case Left;

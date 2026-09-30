@@ -1,7 +1,10 @@
+using System;
 namespace Sedulous.Shell;
 
 /// A gamepad button by POSITION, not by label: South is the bottom face button whatever
 /// the pad prints on it, so a binding does not change meaning across controllers.
+/// Its cases are reflected so tools name them (an asset stores the numbers).
+[Reflect(.StaticFields)]
 enum GamepadButton : uint32
 {
 	case South;
