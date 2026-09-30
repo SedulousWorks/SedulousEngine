@@ -157,13 +157,32 @@ static class ExportTemplates
 	/// A file copied between directories; the caller's names.
 	public static bool CopyFile(StringView srcDir, StringView srcName, StringView dstDir, StringView dstName)
 	{
+		let src = PathJoin(srcDir, srcName, .. scope .());
 		let bytes = scope List<uint8>();
-		if (ReadFile(PathJoin(srcDir, srcName, .. scope .()), bytes) case .Err)
+		if (ReadFile(src, bytes) case .Err)
 			return false;
 		let dst = PathJoin(dstDir, dstName, .. scope .());
 		CreateDirectory(PathParent(dst, .. scope .()));
-		return WriteFile(dst, bytes) case .Ok;
+		if (WriteFile(dst, bytes) case .Err)
+			return false;
+#if !BF_PLATFORM_WINDOWS
+		// The bytes alone make a file nothing can run: a player copied into a template, and
+		// from there into a dist, would not start. What was executable stays so.
+		if (access(src.CStr(), cExecutable) == 0)
+			chmod(dst.CStr(), 493); // 0755
+#endif
+		return true;
 	}
+
+#if !BF_PLATFORM_WINDOWS
+	private const int32 cExecutable = 1; // X_OK
+
+	[CLink]
+	private static extern int32 access(char8* path, int32 mode);
+
+	[CLink]
+	private static extern int32 chmod(char8* path, uint32 mode);
+#endif
 
 	/// A directory tree copied, files overwritten.
 	public static bool CopyTree(StringView src, StringView dst)

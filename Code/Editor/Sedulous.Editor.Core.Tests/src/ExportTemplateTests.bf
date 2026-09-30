@@ -262,6 +262,9 @@ static class ExportTemplateTests
 		CreateDirectory(buildDir);
 		let playerName = BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .());
 		SaveText(buildDir, playerName, "#!player\n");
+#if !BF_PLATFORM_WINDOWS
+		chmod(PathJoin(buildDir, playerName, .. scope .()).CStr(), 493); // 0755, as a build leaves it
+#endif
 		SaveText(buildDir, "libfoo.so", "foo\n");
 		SaveText(buildDir, "libBeefRT.a", "not a sidecar\n");
 		let createdId = scope String();
@@ -272,6 +275,10 @@ static class ExportTemplateTests
 		Test.Assert(createdDir == PathJoin(root, createdId, .. scope .()));
 		Test.Assert(FileExists(PathJoin(createdDir, "template.xml", .. scope .())) && FileExists(PathJoin(createdDir, playerName, .. scope .())) && FileExists(PathJoin(createdDir, "libfoo.so", .. scope .())));
 		Test.Assert(!FileExists(PathJoin(createdDir, "libBeefRT.a", .. scope .())), "the static archive is not a sidecar");
+#if !BF_PLATFORM_WINDOWS
+		Test.Assert(access(PathJoin(createdDir, playerName, .. scope .()).CStr(), 1) == 0, "the player is still executable in the template");
+		Test.Assert(access(PathJoin(createdDir, "libfoo.so", .. scope .()).CStr(), 1) != 0, "and nothing became executable that was not");
+#endif
 		let manifest = scope ExportTemplate();
 		Test.Assert(ExportTemplates.LoadManifest(scope NativeFileSystem(createdDir), manifest) case .Ok);
 		Test.Assert((manifest.Config == "Release") && (manifest.Compiler == "Beef") && (manifest.Platform == BuildLayout.HostPlatformName));
@@ -453,4 +460,12 @@ static class ExportTemplateTests
 		Test.Assert(loaded.HasInstance(a) && loaded.HasGroup("levels/hub") && (loaded.Instances.Count == 1));
 		Test.Assert(ExportRootsFile.Load(fs, scope ExportRootsSet(), "missing.xml") case .Err(.NotFound));
 	}
+
+#if !BF_PLATFORM_WINDOWS
+	[CLink]
+	private static extern int32 access(char8* path, int32 mode);
+
+	[CLink]
+	private static extern int32 chmod(char8* path, uint32 mode);
+#endif
 }
