@@ -17,14 +17,25 @@ class RenderView
 
 	private ITextureView mTarget = null;
 	private TextureFormat mTargetFormat = .BGRA8Unorm;
-	/// The FULL target, which the colour import and the transient depth are sized to.
+	/// The size the scene chain runs at, which the transients are sized to: the FULL target,
+	/// or with a scene size of its own (IsScaled), that size.
 	private uint32 mWidth = 0;
 	private uint32 mHeight = 0;
 
+	/// Where in that the view draws: the viewport, or all of a scaled view's scene size.
 	private int32 mViewportX = 0;
 	private int32 mViewportY = 0;
 	private uint32 mViewportWidth = 0;
 	private uint32 mViewportHeight = 0;
+
+	/// The real target and the view's rectangle in it: the same as the above, unless scaled.
+	private uint32 mOutputWidth = 0;
+	private uint32 mOutputHeight = 0;
+	private int32 mOutputViewportX = 0;
+	private int32 mOutputViewportY = 0;
+	private uint32 mOutputViewportWidth = 0;
+	private uint32 mOutputViewportHeight = 0;
+	private bool mScaled = false;
 
 	/// Opaque debug draw lists, kept as raw pointers so this stays free of the debug module.
 	private void* mDebugScene = null;
@@ -55,6 +66,24 @@ class RenderView
 		mViewportY = hasViewport ? settings.ViewportY : 0;
 		mViewportWidth = hasViewport ? settings.ViewportWidth : width;
 		mViewportHeight = (settings.ViewportHeight > 0) ? settings.ViewportHeight : height;
+		mOutputWidth = width;
+		mOutputHeight = height;
+		mOutputViewportX = mViewportX;
+		mOutputViewportY = mViewportY;
+		mOutputViewportWidth = mViewportWidth;
+		mOutputViewportHeight = mViewportHeight;
+		// A scene size of its own: the chain runs at it, the whole of it the view's.
+		mScaled = (settings.SceneWidth > 0) && (settings.SceneHeight > 0)
+			&& ((settings.SceneWidth != mViewportWidth) || (settings.SceneHeight != mViewportHeight));
+		if (mScaled)
+		{
+			mWidth = settings.SceneWidth;
+			mHeight = settings.SceneHeight;
+			mViewportX = 0;
+			mViewportY = 0;
+			mViewportWidth = settings.SceneWidth;
+			mViewportHeight = settings.SceneHeight;
+		}
 
 		mDrawList.Clear();
 	}
@@ -129,6 +158,14 @@ class RenderView
 	public int32 ViewportY => mViewportY;
 	public uint32 ViewportWidth => mViewportWidth;
 	public uint32 ViewportHeight => mViewportHeight;
+	/// The scene draws at its own size and is scaled into the output rectangle at the end.
+	public bool IsScaled => mScaled;
+	public uint32 OutputWidth => mOutputWidth;
+	public uint32 OutputHeight => mOutputHeight;
+	public int32 OutputViewportX => mOutputViewportX;
+	public int32 OutputViewportY => mOutputViewportY;
+	public uint32 OutputViewportWidth => mOutputViewportWidth;
+	public uint32 OutputViewportHeight => mOutputViewportHeight;
 
 	public Span<DrawItem> DrawList => .(mDrawList.Ptr, mDrawList.Count);
 

@@ -394,9 +394,9 @@ static class RenderExtract
 	/// Reads the scene's primary camera. False when there is none.
 	///
 	/// The view is the INVERSE of the entity's world matrix, and the projection comes from the
-	/// component's own fields.
+	/// component's own fields, with `aspect`, when given, for the shape the view draws into.
 	public static bool ExtractPrimaryCamera(Scene scene, ref ViewCamera outCamera,
-		Color* outClear = null)
+		Color* outClear = null, float aspect = 0.0f)
 	{
 		let cameras = scene.GetSystem<CameraComponentManager>();
 		if (cameras == null)
@@ -416,8 +416,10 @@ static class RenderExtract
 				found = true;
 				let world = scene.GetWorldMatrix(entity);
 				camera.View = Inverse(world);
+				// The shape of what the view draws into, when the caller knows it; the authored
+				// aspect only stands in when it does not.
 				camera.Projection = Float4x4.PerspectiveFovRH(component.FovYRadians,
-					component.Aspect, component.NearZ, component.FarZ);
+					(aspect > 0.0f) ? aspect : component.Aspect, component.NearZ, component.FarZ);
 				camera.Position = TransformPoint(Float3(0, 0, 0), world);
 				camera.FarZ = component.FarZ;
 				clear = component.ClearColor;

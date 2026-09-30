@@ -13,6 +13,11 @@ struct ViewSettings
 	public int32 ViewportY = 0;
 	public uint32 ViewportWidth = 0;
 	public uint32 ViewportHeight = 0;
+	/// The size the scene draws at, when it is not the viewport's: the whole scene chain runs
+	/// at this size, and one last pass scales the finished image into the viewport. Nought
+	/// draws at the viewport's own size.
+	public uint32 SceneWidth = 0;
+	public uint32 SceneHeight = 0;
 
 	/// The imported colour target's state handling. The texture is what the graph barriers,
 	/// and null means the host manages it, in which case the graph touches no barrier at all.

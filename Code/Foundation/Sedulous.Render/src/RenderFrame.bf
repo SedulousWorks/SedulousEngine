@@ -1438,11 +1438,20 @@ class RenderFrame
 				settings.TargetFinalState, settings.TargetCurrentState);
 			mImported.Add(.()
 				{
-					Target = target, Handle = colorHandle, Width = view.Width,
-					Height = view.Height, Format = view.TargetFormat
+					Target = target, Handle = colorHandle, Width = view.OutputWidth,
+					Height = view.OutputHeight, Format = view.TargetFormat
 				});
 		}
-		let clearColor = !found;
+		// A view drawn at a scene size of its own renders the whole chain into a scene sized
+		// image of the target's format, every pass unchanged at that size, and a last pass
+		// scales the finished image into the view's rectangle of the real target
+		// (DeclareScaledPresent), which is where the target's clear then happens.
+		let targetHandle = colorHandle;
+		let clearTarget = !found;
+		let scaled = view.IsScaled && (mTonemap != null);
+		if (scaled)
+			colorHandle = mGraph.CreateTransient("view.scene", .(view.TargetFormat, view.Width, view.Height));
+		let clearColor = scaled || clearTarget;
 
 		// The cluster build is declared before the forward, so the graph orders the binning
 		// write ahead of the shading's read. The view index isolates the per view buffers.
@@ -1819,6 +1828,20 @@ class RenderFrame
 			frameGlobalResourceEnd);
 		DeclareSceneOverlays(view, colorHandle, unjitteredViewProj);
 		DeclareViewDebugDraw(view, viewIndex, colorHandle, overlayDepth, unjitteredViewProj);
+		if (scaled)
+			DeclareScaledPresent(view, viewIndex, colorHandle, targetHandle, clearTarget);
+	}
+
+	/// A scaled view's finished image, scaled (filtered) into its rectangle of the real
+	/// target: the tone map's fullscreen pass as a plain copy. The first view to the target
+	/// clears it, black, which is the bars a letterbox leaves.
+	private void DeclareScaledPresent(RenderView view, uint32 viewIndex, RGHandle sceneImage,
+		RGHandle target, bool clearTarget)
+	{
+		mTonemap.DeclareTonemap(mGraph, sceneImage, sceneImage, sceneImage, target, clearTarget,
+			ClearColor.Black, view.TargetFormat, view.OutputViewportX, view.OutputViewportY,
+			view.OutputViewportWidth, view.OutputViewportHeight, mFrameIndex, viewIndex,
+			1.0f, 0.0f, .(1.0f, 1.0f), .(0.0f, 0.0f), 0.0f, false, false, false, .(), .(), true);
 	}
 
 	/// The editor's debug view: overwrites this view's sub rectangle with the chosen resource.

@@ -89,6 +89,9 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float2 local = uv;
     if (pc.FlipSceneY > 0.5) { local.y = 1.0 - local.y; }
     float2 st = pc.UvOffset + local * pc.UvScale;
+    // Operator 2: the PRESENT copy of a view drawn at its own scene size, its finished image
+    // (already what this target stores) scaled into the view's rectangle. No grading, no curve.
+    if (pc.Operator > 1.5) { return Hdr.SampleLevel(BloomSamp, st, 0); }
     // Debug: show the GTAO buffer (or a debug channel it wrote) straight to screen, no tonemap.
     if (pc.DebugShowAo > 0.5) { return float4(Ao.SampleLevel(BloomSamp, st, 0).rrr, 1.0); }
     float3 c = max(Hdr.SampleLevel(BloomSamp, st, 0).rgb, 0.0);

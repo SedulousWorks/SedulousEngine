@@ -834,7 +834,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		uint32 width, uint32 height, ViewportRect viewport = .(),
 		CameraOverride* cameraOverride = null, TargetState targetState = .(),
 		ViewPostOverride* postOverride = null, void* viewportKey = null,
-		ViewDebugView debugView = null)
+		ViewDebugView debugView = null, uint32 sceneWidth = 0, uint32 sceneHeight = 0)
 	{
 		if ((mFrame == null) || (target == null))
 			return;
@@ -904,7 +904,22 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		else
 		{
 			// The clear comes from the camera.
-			RenderExtract.ExtractPrimaryCamera(scene, ref camera, &clearColor);
+			// The projection takes the shape of what the scene draws at: its own size, else
+			// the viewport, else the whole target.
+			var aspectWidth = (float)width;
+			var aspectHeight = (float)height;
+			if ((sceneWidth > 0) && (sceneHeight > 0))
+			{
+				aspectWidth = sceneWidth;
+				aspectHeight = sceneHeight;
+			}
+			else if (!viewport.IsFullTarget && (viewport.Height > 0))
+			{
+				aspectWidth = viewport.Width;
+				aspectHeight = viewport.Height;
+			}
+			RenderExtract.ExtractPrimaryCamera(scene, ref camera, &clearColor,
+				(aspectHeight > 0.0f) ? (aspectWidth / aspectHeight) : 0.0f);
 		}
 
 		var settings = ViewSettings();
@@ -913,6 +928,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		settings.ViewportY = viewport.Y;
 		settings.ViewportWidth = viewport.Width;
 		settings.ViewportHeight = viewport.Height;
+		settings.SceneWidth = sceneWidth;
+		settings.SceneHeight = sceneHeight;
 		// The picker matches requests to views by this key.
 		settings.ViewportKey = viewportKey;
 		settings.TargetTexture = targetState.Texture;

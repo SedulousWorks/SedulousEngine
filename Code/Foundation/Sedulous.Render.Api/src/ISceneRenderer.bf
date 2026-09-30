@@ -38,10 +38,16 @@ interface ISceneRenderer
 	/// editor viewport can draw a grid that appears ONLY in it and not in a second view of
 	/// the same scene. Null keeps the per scene buffer, drawn in every view, which is what a
 	/// gameplay view wants.
+	///
+	/// A `sceneWidth` x `sceneHeight` other than the viewport's draws the scene at THAT size
+	/// and scales the finished image into the viewport, clearing the target around it black:
+	/// a game with a fixed render resolution fitted into a window of another shape. The
+	/// projection takes that size's aspect. Nought draws at the viewport's own size.
 	void RenderScene(Scene scene, ITextureView target, TextureFormat targetFormat, uint32 width,
 		uint32 height, ViewportRect viewport = .(), CameraOverride* cameraOverride = null,
 		TargetState targetState = .(), ViewPostOverride* postOverride = null,
-		void* viewportKey = null, ViewDebugView debugView = null);
+		void* viewportKey = null, ViewDebugView debugView = null, uint32 sceneWidth = 0,
+		uint32 sceneHeight = 0);
 
 	/// Composes every collected view into the frame's encoder.
 	void EndRendering();

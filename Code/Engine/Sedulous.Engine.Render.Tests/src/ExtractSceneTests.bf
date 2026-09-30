@@ -88,6 +88,13 @@ class ExtractSceneTests
 		Test.Assert(Near(view.View.M[3][2], -5.0f));
 		// A real perspective projection.
 		Test.Assert(!Near(view.Projection.M[2][3], 0.0f));
+		// The projection takes the shape the view draws into when given one, the authored
+		// aspect otherwise: x scale = y scale / aspect.
+		let authored = view.Projection.M[1][1] / view.Projection.M[0][0];
+		var wide = ViewCamera();
+		Test.Assert(RenderExtract.ExtractPrimaryCamera(scene, ref wide, null, 3.0f));
+		Test.Assert(Near(wide.Projection.M[1][1] / wide.Projection.M[0][0], 3.0f), "the view's aspect");
+		Test.Assert(!Near(authored, 3.0f), "not the authored one");
 
 		let snapshot = scope ExtractedScene();
 		RenderExtract.ExtractSceneInto(scene, snapshot);

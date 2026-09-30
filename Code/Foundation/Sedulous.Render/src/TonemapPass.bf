@@ -15,7 +15,8 @@ class TonemapPass
 	private const TextureFormat cHdrFormat = .RGBA16Float;
 	private const int cMaxFramesInFlight = 8;
 	private const int cMaxViews = 8;
-	private const int cMaxSlots = cMaxViews * cMaxFramesInFlight;
+	/// Two uses per view a frame: the scene's tone map, and a scaled view's present copy.
+	private const int cMaxSlots = cMaxViews * cMaxFramesInFlight * 2;
 
 	/// One frame can hold views with DIFFERENT target formats, an offscreen thumbnail beside
 	/// the window say, so the pipelines are cached per format. Destroying one on a format
@@ -115,13 +116,16 @@ class TonemapPass
 		uint32 viewIndex, float exposure = 1.0f, float bloomIntensity = 0.0f,
 		Float2 uvScale = .(1, 1), Float2 uvOffset = .(0, 0), float aoStrength = 0.0f,
 		bool debugShowAo = false, bool agx = true, bool sceneYFlipped = false,
-		TonemapAutoExposure autoExposure = .(), TonemapGrading grading = .())
+		TonemapAutoExposure autoExposure = .(), TonemapGrading grading = .(), bool copyOnly = false)
 	{
 		let pipeline = EnsurePipeline(ldrFormat);
 		if (pipeline == null)
 			return;
 
-		let slot = (int)(viewIndex % cMaxViews) * (int)mFramesInFlight
+		// The present copy has slots of its own: the tone map's group for this view is still
+		// referenced by commands recorded earlier in the frame.
+		let use = copyOnly ? 1 : 0;
+		let slot = ((use * cMaxViews) + (int)(viewIndex % cMaxViews)) * (int)mFramesInFlight
 			+ (int)(frameIndex % mFramesInFlight);
 
 		// The scene input is mirrored on a backend that flips clip space, unless the temporal
@@ -136,7 +140,7 @@ class TonemapPass
 		float[cPushFloats] push = .(
 			exposure, bloomIntensity, uvScale.X, uvScale.Y,
 			uvOffset.X, uvOffset.Y, aoStrength, debugShowAo ? 1.0f : 0.0f,
-			agx ? 1.0f : 0.0f, flipSceneY ? 1.0f : 0.0f,
+			copyOnly ? 2.0f : (agx ? 1.0f : 0.0f), flipSceneY ? 1.0f : 0.0f,
 			autoOn ? 1.0f : 0.0f, autoExposure.Key, autoExposure.MinExposure,
 			autoExposure.MaxExposure,
 			gradeOn ? grading.Intensity : 0.0f, gradeOn ? grading.LutSize : 0.0f,
