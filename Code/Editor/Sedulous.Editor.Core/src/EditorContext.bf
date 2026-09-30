@@ -110,9 +110,6 @@ class EditorContext : IAssetEditSink
 	/// `game-page-1`, ...). Registered by the scene editor plugin; unset, the Game menu item
 	/// notifies.
 	public delegate EditorPage(bool newInstance, StringView pieId) GamePageFactory ~ delete _;
-	/// Stops the Game tab's live run, if any; the embedded app's RequestExit lands here,
-	/// deferred to after the page update loop. Set by the Game page.
-	public delegate void() StopGameRun ~ delete _;
 	/// The export seam: transcodes a scene or prefab instance's TEXT stream to the binary
 	/// wire for staging. Registered by the scene editor plugin; false for a non scene
 	/// instance or on failure, and the exporter then stages the source verbatim. MAIN

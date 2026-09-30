@@ -72,6 +72,8 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	private bool mRunning = false;
 	/// Play latched, waiting for the cook to go idle.
 	private bool mPendingPlay = false;
+	/// The game asked to exit (Run.RequestExit); the run stops on the next OnUpdate.
+	private bool mExitRequested = false;
 	/// Frames rendered since the run started, and the run time a stopped run ended at.
 	private uint64 mFrameCount = 0;
 	private double mStoppedRunTime = 0;
@@ -101,8 +103,15 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mViewport = new ViewportView();
 		mViewport.ClearColor = .(0.05f, 0.05f, 0.06f, 1.0f);
 
-		delete context.StopGameRun;
-		context.StopGameRun = new [=this]() => { Stop(); };
+		// THIS instance's exit request stops THIS tab's run, whichever tab it is: the script
+		// asking fires inside the embedded app's update, which runs before the pages, so the
+		// stop is deferred to this page's next OnUpdate, no script call on the stack.
+		if (mGameInstance != null)
+			mGameInstance.SetExitRequest(new [=this](code) =>
+				{
+					GlobalLog(.Information, "Editor: Game: '{}' requested exit({})", mPieId, code);
+					mExitRequested = true;
+				});
 
 		mToolbar = new Toolbar();
 		mPlayButton = mToolbar.AddButton("Play");
@@ -196,6 +205,11 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	{
 		// A capture recorded last frame: the GPU has to finish the copy.
 		mCapture.Complete((host.Graphics != null) ? host.Graphics.Raw : null);
+		if (mExitRequested)
+		{
+			mExitRequested = false;
+			Stop();
+		}
 		if (mPendingPlay && !mContext.IsCookBusy)
 		{
 			mPendingPlay = false;
@@ -272,11 +286,11 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			mInput.ClearSourceProviderIf(mViewportSource);
 		if (mGameInstance != null)
 			mGameInstance.SetInputSource((mInput != null) ? mInput.ShellSource : null);
+		if (mGameInstance != null)
+			mGameInstance.SetExitRequest(null); // it points at this page, which is going
 		if ((mApp != null) && (mGameInstance != null))
 			mApp.ReleaseInstance(mGameInstance);
 		mGameInstance = null;
-		delete mContext.StopGameRun;
-		mContext.StopGameRun = null;
 		if (mHost.Graphics != null)
 			mCapture.Release(mHost.Graphics.Raw); // the readback buffer, while the device lives
 		mViewport.Shutdown();

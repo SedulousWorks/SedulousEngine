@@ -63,7 +63,6 @@ class EditorApplication : IApplication
 	private Context mRuntimeContext = new .() ~ delete _;
 	/// The host borrows it for as long as it is installed.
 	private delegate void(int) mEmbeddedExitHandler = null ~ delete _;
-	private bool mStopGameRequested = false;
 
 	// The log drain state.
 	private List<EditorLogEntry> mPendingLog = new .() ~ DeleteContainerAndItems!(_);
@@ -332,10 +331,9 @@ class EditorApplication : IApplication
 		delete mEmbeddedExitHandler;
 		mEmbeddedExitHandler = new (code) =>
 			{
-				// Exit from embedded game code stops the play session, deferred past the
-				// page-update loop since the request usually fires from inside the script.
-				GlobalLog(.Information, "Editor: embedded app requested exit({})", code);
-				mStopGameRequested = true;
+				// A Game tab routes its own instance's exit to its own run; what reaches here
+				// is an instance no tab is playing, which has no run to stop.
+				GlobalLog(.Information, "Editor: embedded app requested exit({}) with no Game tab playing it", code);
 			};
 		mEmbeddedHost.SetExitHandler(mEmbeddedExitHandler);
 		mEmbeddedApp = new DefaultApplication();
@@ -797,14 +795,6 @@ class EditorApplication : IApplication
 		// The page hooks after the UI laid out, so viewport rects are current for input gating.
 		for (let entry in mPagePanels)
 			entry.Page.OnUpdate(host, dt);
-
-		// The deferred embedded exit: safe here, no script dispatch on the stack.
-		if (mStopGameRequested)
-		{
-			mStopGameRequested = false;
-			if (mContext.StopGameRun != null)
-				mContext.StopGameRun();
-		}
 	}
 
 	/// The headless-debug hooks: ENV_TEST_OPEN=<guid> opens that instance's page ~2s in and
