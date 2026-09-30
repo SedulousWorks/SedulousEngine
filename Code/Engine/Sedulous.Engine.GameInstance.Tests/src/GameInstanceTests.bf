@@ -102,6 +102,92 @@ class GameInstanceTests
 	}
 
 	[Test]
+	public static void AScriptedTimelineDrivesOnlyItsOwnInstancesActions()
+	{
+		// A playtest's timeline through the project's map, as a player's keys would go: the
+		// scripted instance's action follows the timeline, the other instance never sees it.
+		let a = scope GameInstance();
+		let b = scope GameInstance();
+		let scripted = scope ScriptedInputSource();
+		let idle = scope OneKeySource();
+		idle.Key = .H;
+		let mapA = MakeFireMap(.H);
+		defer delete mapA;
+		let mapB = MakeFireMap(.H);
+		defer delete mapB;
+		a.SetInputSource(scripted);
+		a.SetInputMap(mapA);
+		b.SetInputSource(idle);
+		b.SetInputMap(mapB);
+
+		// Names are the enums' own, any case.
+		KeyCode key;
+		Test.Assert(ScriptedInputSource.ParseKey("h", out key) && (key == .H));
+		Test.Assert(ScriptedInputSource.ParseKey("Space", out key) && (key == .Space));
+		Test.Assert(ScriptedInputSource.ParseKey("leftshift", out key) && (key == .LeftShift));
+		Test.Assert(!ScriptedInputSource.ParseKey("Hyper", out key));
+		GamepadAxis axis;
+		Test.Assert(ScriptedInputSource.ParsePadAxis("LeftX", out axis) && (axis == .LeftX));
+
+		var down = ScriptedInput();
+		down.Kind = .Key;
+		down.Key = .H;
+		down.Down = true;
+		down.At = 0.1;
+		var up = down;
+		up.Down = false;
+		up.At = 0.3;
+		Test.Assert(scripted.Add(up)); // out of order on purpose: the timeline sorts
+		Test.Assert(scripted.Add(down));
+		var badPad = ScriptedInput();
+		badPad.Kind = .PadAxis;
+		badPad.Gamepad = ScriptedInputSource.cMaxGamepads;
+		Test.Assert(!scripted.Add(badPad));
+
+		let fireA = a.InputRuntime.Resolve("fire");
+		let fireB = b.InputRuntime.Resolve("fire");
+		scripted.Advance(0.05);
+		a.DriveInput(0.016f, 1.0f);
+		b.DriveInput(0.016f, 1.0f);
+		Test.Assert(!a.InputRuntime.IsDown(fireA), "not yet");
+		scripted.Advance(0.12);
+		a.DriveInput(0.016f, 1.0f);
+		b.DriveInput(0.016f, 1.0f);
+		Test.Assert(a.InputRuntime.IsDown(fireA));
+		Test.Assert(a.InputRuntime.WasPressed(fireA));
+		Test.Assert(scripted.Events.Length == 1 && (scripted.Events[0].Kind == .KeyDown));
+		Test.Assert(!b.InputRuntime.IsDown(fireB), "the other instance never sees the timeline");
+		scripted.Advance(0.2);
+		a.DriveInput(0.016f, 1.0f);
+		Test.Assert(a.InputRuntime.IsDown(fireA) && !a.InputRuntime.WasPressed(fireA), "held, no new edge");
+		scripted.Advance(0.31);
+		a.DriveInput(0.016f, 1.0f);
+		Test.Assert(!a.InputRuntime.IsDown(fireA));
+		Test.Assert(scripted.Finished);
+
+		// A press and its release inside one frame still reads as a press.
+		let quick = scope ScriptedInputSource();
+		var tap = down;
+		tap.At = 0.01;
+		var untap = up;
+		untap.At = 0.02;
+		quick.Add(tap);
+		quick.Add(untap);
+		quick.Advance(0.025); // both inside one frame
+		Test.Assert(quick.Keyboard.IsKeyPressed(.H) && quick.Keyboard.IsKeyReleased(.H) && !quick.Keyboard.IsKeyDown(.H));
+		Test.Assert(quick.Events.Length == 2);
+
+		// A run that ends holding a key lets go of it.
+		let held = scope ScriptedInputSource();
+		held.Add(down);
+		held.Advance(1.0);
+		Test.Assert(held.Keyboard.IsKeyDown(.H));
+		held.ReleaseAll();
+		Test.Assert(!held.Keyboard.IsKeyDown(.H) && held.Keyboard.IsKeyReleased(.H));
+		Test.Assert(held.Events.Length == 1 && (held.Events[0].Kind == .KeyUp));
+	}
+
+	[Test]
 	public static void TheRunBusDefersDeliversInOrderAndStaysPerInstance()
 	{
 		let instance = scope GameInstance();

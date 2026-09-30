@@ -72,9 +72,9 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	private bool mRunning = false;
 	/// Play latched, waiting for the cook to go idle.
 	private bool mPendingPlay = false;
-	/// Frames rendered since the run started, and the game time a stopped run ended at.
+	/// Frames rendered since the run started, and the run time a stopped run ended at.
 	private uint64 mFrameCount = 0;
-	private double mStoppedGameTime = 0;
+	private double mStoppedRunTime = 0;
 	/// The PIE capture (pie_screenshot): armed by RequestViewportCapture, recorded in
 	/// OnAfterSceneRender after the overlays, completed in the next OnUpdate.
 	private ViewportCaptureRecorder mCapture = new .() ~ delete _;
@@ -159,7 +159,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	public bool IsStarting => mPendingPlay;
 	public StringView SceneName => (mScene != null) ? mScene.Name : "";
 	public uint64 FrameCount => mFrameCount;
-	public double GameTime => (mRunning && (mGameInstance != null)) ? mGameInstance.RunTime : mStoppedGameTime;
+	public double RunTime => (mRunning && (mGameInstance != null)) ? mGameInstance.RunTime : mStoppedRunTime;
 
 	public PieScriptState ScriptState
 	{
@@ -202,6 +202,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			StartRunNow();
 		}
 		FollowInstanceScene();
+		AdvanceScriptedInput();
 		EnsureViewportBound();
 		mViewport.SyncInputRegion();
 		if (mRouter != null)
@@ -265,6 +266,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 
 	public override void OnClose()
 	{
+		DropScriptedInput(); // before the sources it replaced are torn down
 		Stop();
 		if (mInput != null)
 			mInput.ClearSourceProviderIf(mViewportSource);
@@ -303,7 +305,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			if (mViewport.Surface != null)
 				mRouter.AddSurface(mViewport.Surface);
 			if (mInput != null)
-				mInput.SetSourceProvider(mViewportSource, mRunning ? Internal.UnsafeCastToPtr(mScene) : null);
+				mInput.SetSourceProvider(ActiveSource, mRunning ? Internal.UnsafeCastToPtr(mScene) : null);
 		}
 		else
 		{

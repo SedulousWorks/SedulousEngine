@@ -116,12 +116,15 @@ static class SceneMcpTools
 	{
 		let inspectSchema = scope SchemaBuilder();
 		inspectSchema.Str("page", cPageArgument);
-		inspectSchema.Str("entity", "the entity's guid (default: the page's primary selection)");
+		inspectSchema.Str("pie", "instead of a page: a running PIE instance's id (pie_list), reading the scene that game is in");
+		inspectSchema.Str("entity", "the entity's guid (default: the page's primary selection); with `pie`, a guid, a name or a slash path, required");
 		server.RegisterTool("entity_inspect",
-			"An entity of a scene page as the editor's inspector sees it: guid, name, active, parent, children, the local transform, and every component the scene holds for it with its reflected fields (asset references as guids, enums by name, nested structures and lists expanded). Defaults to the page's primary selection.",
+			"An entity of a scene page as the editor's inspector sees it: guid, name, active, parent, children, the local transform, and every component the scene holds for it with its reflected fields (asset references as guids, enums by name, nested structures and lists expanded). Defaults to the page's primary selection. With `pie`, the entity as the running game has it now, in that instance's current scene.",
 			inspectSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
+				if (arguments.Has("pie"))
+					return InspectPie(context, arguments, outResult, outError);
 				let page = ResolveScenePage(context, arguments, outError);
 				if (page == null)
 					return false;
@@ -130,7 +133,7 @@ static class SceneMcpTools
 				if (!ResolveEntity(page, edit, arguments, outError, out id))
 					return false;
 				outResult.Set("page", PageJson(page));
-				outResult.Set("entity", EntityJson(edit, id));
+				outResult.Set("entity", EntityJson(edit.Scene, edit.Resolve(id)));
 				return true;
 			});
 
@@ -485,6 +488,38 @@ static class SceneMcpTools
 
 	/// The entity a call addresses: `entity` when given, else the page's primary selection;
 	/// false with the reason when there is neither, or no such entity in the page.
+	/// entity_inspect over a running PIE instance: `entity` by guid, name or path in the
+	/// scene that game is in now.
+	private static bool InspectPie(EditorContext context, JsonValue arguments, JsonValue outResult, String outError)
+	{
+		let page = PieMcpTools.ResolvePie(context, arguments, outError);
+		if (page == null)
+			return false;
+		let pie = page as IPieInstancePage;
+		let scene = pie.RunningScene;
+		if (!pie.IsRunning || (scene == null))
+		{
+			outError.AppendF("PIE instance '{}' is not running a scene (pie_state says where it is)", pie.PieId);
+			return false;
+		}
+		let entityArg = arguments.Get("entity");
+		if ((entityArg == null) || !entityArg.IsString)
+		{
+			outError.Append("pass `entity` (a guid, a name or a slash path): a running game has no selection");
+			return false;
+		}
+		let handle = PieRunTool.FindEntity(scene, entityArg.AsString());
+		if (!scene.IsValid(handle))
+		{
+			outError.AppendF("no entity '{}' in PIE instance '{}''s scene '{}'", entityArg.AsString(), pie.PieId, scene.Name);
+			return false;
+		}
+		outResult.Set("pie", JsonValue.MakeString(pie.PieId));
+		outResult.Set("scene", JsonValue.MakeString(scene.Name));
+		outResult.Set("entity", EntityJson(scene, handle));
+		return true;
+	}
+
 	private static bool ResolveEntity(EditorPage page, SceneEditContext edit, JsonValue arguments, String outError, out Guid outId)
 	{
 		outId = .();
@@ -517,7 +552,7 @@ static class SceneMcpTools
 
 	/// The manager holding `component` for the entity: by serialization id ("light") or by the
 	/// component type's name ("LightComponent").
-	private static ComponentManagerBase FindComponentManager(Sedulous.Scene.Scene scene, EntityHandle entity, StringView component)
+	public static ComponentManagerBase FindComponentManager(Sedulous.Scene.Scene scene, EntityHandle entity, StringView component)
 	{
 		ComponentManagerBase found = null;
 		scene.ForEachManager(scope [&found, &entity, &component](manager) =>
@@ -533,12 +568,10 @@ static class SceneMcpTools
 
 	/// The entity as the agent sees it: identity, hierarchy, transform, and every component the
 	/// scene holds for it with its reflected fields.
-	private static JsonValue EntityJson(SceneEditContext edit, Guid id)
+	public static JsonValue EntityJson(Sedulous.Scene.Scene scene, EntityHandle handle)
 	{
-		let scene = edit.Scene;
-		let handle = edit.Resolve(id);
 		let json = JsonValue.MakeObject();
-		json.Set("guid", ComponentJson.GuidJson(id));
+		json.Set("guid", ComponentJson.GuidJson(scene.GetEntityId(handle)));
 		json.Set("name", JsonValue.MakeString(scene.GetEntityName(handle)));
 		json.Set("active", JsonValue.MakeBool(scene.IsActive(handle)));
 		let parent = scene.GetParent(handle);

@@ -44,13 +44,35 @@ scene, the startup script, the input map). PIE is not one game: every Game tab r
 instance, addressed by its `pie` id (`game-page`, the primary; `game-page-1`, ... for each new
 instance), default the primary. `pie_start` cooks, opens and runs the primary (or with
 `newInstance` another tab, a host and a client say) and answers once the first frame has
-rendered; `pie_state` reports whether it runs, its scene, the game time since start, the
-frames rendered and the startup script (`running`, or `faulted` with the reason);
+rendered; `pie_state` reports whether it runs, its scene, `runTime` (seconds of frames since
+the start, unscaled, so a menu that stops gameplay time does not stop it), the frames rendered
+and the startup script (`running`, or `faulted` with the reason);
 `pie_list` shows every instance, the ones the user started too; `pie_stop` stops one (or
 `all`), its tab staying open and the others running. `pie_screenshot` writes what an
 instance's tab renders, the game through its own camera with its UI, as `viewport_screenshot`
-does for a scene page. Game time is the gameplay clock, frames are real frames: a timing
-varies by a frame between runs.
+does for a scene page.
+
+`pie_run` is the playtest: it plays a device-level input timeline into one running instance
+for `duration` seconds of run time and answers what happened. The timeline takes keys by their
+KeyCode names (`{"at": 0, "key": "D"}`, `{"at": 0.4, "key": "Space", "down": false}`), mouse
+moves, buttons and the wheel (`{"at": 0, "mouseMove": [650, 253]}`, `{"at": 0.2, "mouseButton":
+"Left"}`, in the pixels a `pie_screenshot` shows) and gamepads (`{"at": 0, "gamepad": 0, "axis":
+"LeftX", "value": 1}`), and goes through the project's input map as a player's would. While it
+runs, that tab ignores the real mouse and keys, the other instances keep theirs, and whatever
+it holds is let go at the end. `probes` read entities (by guid, name or slash path) at field
+paths (`worldPosition`, `position`, `rotation`, `scale`, `active`, or `<component>.<property>`
+as `entity_inspect` names them, then `.x`/`.y`/`.z` or a key or an index) and game script
+fields, private ones too (`{"script": "m_score"}`; an enum reads as its number), sampled `every` N seconds (0.5 by default) or at
+`sampleAt` times; each row is `{t, frame, values}`, the last one at the end, and an entity
+gone by then reads null. `screenshots` writes the tab at those run times. `until` ends the
+run early, on a death or a win: `{"entity": "Player", "field": "worldPosition.y", "op": "<",
+"value": -10}`. `endedBy` says why it stopped: `duration`, `until`, `stopped` or `timeout`. A menu
+is played the same way: `pie_screenshot`, find the button, click it with a timeline. The tools
+check probes and names against the running game before the run starts, so a typo fails at
+once. Runs are real frames at real frame rates: a time lands within a frame of where it was
+asked, so compare with tolerances, and start from `pie_start` for a run you mean to repeat. One
+`pie_run` per instance at a time; instances run side by side. `entity_inspect` with `pie` (and
+an `entity` by guid, name or path) reads a running game's entity outside a run.
 
 ## First moves in a session
 

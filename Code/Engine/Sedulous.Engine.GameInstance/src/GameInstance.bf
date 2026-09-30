@@ -101,7 +101,9 @@ class GameInstance
 	/// runtime's problems, or that it did not instantiate. Empty while it runs or after a
 	/// clean stop; a start clears it.
 	private String mScriptFault = new .() ~ delete _;
-	/// Gameplay seconds TickScript has moved this run's clock by; ResetRunClock zeroes it.
+	/// Seconds of frames TickScript has run since ResetRunClock: the host's delta, NOT scaled
+	/// by the context's, the run's or the scene's time scale, so a menu that stops gameplay
+	/// time (Run.TimeScale = 0) does not stop it. A scripted playtest times its input by it.
 	private double mRunTime = 0;
 	private SceneLoader mSceneLoader = null ~ delete _;
 	private ExitRequest mExitRequest = null ~ delete _;
@@ -513,10 +515,19 @@ class GameInstance
 
 	/// Whether a game script is running: instantiated and not faulted.
 	public bool ScriptRunning => mGame != null;
+	/// Reads a property of the running game script (a score, a lives count) into `value`;
+	/// false with no script running or no such property.
+	public bool GetScriptProperty(StringView name, ref ScriptValue value)
+	{
+		if ((mGame == null) || (mRunHost.Runtime == null))
+			return false;
+		return mRunHost.Runtime.GetProperty(mGame, name, ref value);
+	}
+
 	/// Why the game script stopped on its own; empty when it did not (see mScriptFault).
 	public StringView ScriptFault => mScriptFault;
-	/// Gameplay seconds since ResetRunClock: the scaled time the script and its coroutines
-	/// moved by, standing still while the debugger holds the run.
+	/// Seconds of frames since ResetRunClock, unscaled (see mRunTime); standing still while
+	/// the debugger holds the run.
 	public double RunTime => mRunTime;
 	public void ResetRunClock() { mRunTime = 0; }
 
@@ -580,7 +591,7 @@ class GameInstance
 		let sceneScale = (mScene != null) ? mScene.TimeScale : 1.0f;
 		let time = FrameTime(hostDeltaTime, contextTimeScale, mSceneManager.TimeScale, sceneScale);
 		let dt = time.SceneDelta;
-		mRunTime += dt;
+		mRunTime += hostDeltaTime;
 		if (mGame != null)
 		{
 			var args = ScriptValue[1](.FromFloat(dt));

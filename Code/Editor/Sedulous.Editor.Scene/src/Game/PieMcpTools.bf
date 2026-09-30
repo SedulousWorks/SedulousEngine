@@ -16,7 +16,7 @@ namespace Sedulous.Editor.Scene;
 static class PieMcpTools
 {
 	/// How many tools Register registers; a tripwire like the scene tools'.
-	public const int cPieToolCount = 5;
+	public const int cPieToolCount = 6;
 
 	/// The primary Game tab's id.
 	public const String cPrimaryId = "game-page";
@@ -36,6 +36,15 @@ static class PieMcpTools
 		public EditorPage Page = null;
 		public int Pumps = 0;
 		/// Per host, so two captures of one instance never share a default name.
+		public int Serial = 0;
+	}
+
+	/// The pie_screenshot calls in flight, one per instance: the HTTP host re-enters every
+	/// unfinished call each pump, so captures of two instances interleave.
+	private class CaptureWaits
+	{
+		/// BORROWED pages, each with the pumps its capture has waited.
+		public Dictionary<EditorPage, int> Pumps = new .() ~ delete _;
 		public int Serial = 0;
 	}
 
@@ -61,7 +70,7 @@ static class PieMcpTools
 		let stateSchema = scope SchemaBuilder();
 		stateSchema.Str("pie", cPieArgument);
 		server.RegisterTool("pie_state",
-			"One PIE instance's state: whether it is running (or starting, waiting on the cook), the scene it is in, the game time since it started (the gameplay clock the game script moves by), the frames rendered since, and its startup script's state (`none`, `running`, or `faulted` with the reason).",
+			"One PIE instance's state: whether it is running (or starting, waiting on the cook), the scene it is in, `runTime`, the seconds of frames since it started (unscaled: a menu that stops gameplay time does not stop it), the frames rendered since, and its startup script's state (`none`, `running`, or `faulted` with the reason).",
 			stateSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
@@ -95,12 +104,14 @@ static class PieMcpTools
 		let shotSchema = scope SchemaBuilder();
 		shotSchema.Str("pie", cPieArgument);
 		shotSchema.Str("path", "the PNG to write (default: a new file under <user-data>/screenshots)");
-		let capturing = new Pending();
+		let capturing = new CaptureWaits();
 		server.RegisterTool("pie_screenshot",
 			"What one running PIE instance's Game tab renders, as a PNG at the viewport's size: the game through its own camera, with its UI and overlays. Brings the tab to front (a hidden viewport never renders), waits for the next frame and the GPU, then returns {pie, path, width, height}; read the file. `path` is where to write (an existing directory; default: <user-data>/screenshots/<pie>-<pid>-<n>.png). Refused for a stopped instance; gives up after ten seconds without a rendered frame.",
 			shotSchema.Build(), .Creates,
 			new (arguments, outResult, outError) => Screenshot(context, capturing, arguments, outResult, outError),
 			capturing);
+
+		PieRunTool.Register(server, context);
 	}
 
 	private static ToolOutcome Start(EditorContext context, Pending pending, JsonValue arguments, JsonValue outResult, String outError)
@@ -229,23 +240,26 @@ static class PieMcpTools
 		return .Answered;
 	}
 
-	private static ToolOutcome Screenshot(EditorContext context, Pending pending, JsonValue arguments, JsonValue outResult, String outError)
+	private static ToolOutcome Screenshot(EditorContext context, CaptureWaits waits, JsonValue arguments, JsonValue outResult, String outError)
 	{
+		// A wait whose tab closed is over; its page pointer is never used again.
+		for (let wait in waits.Pumps)
+		{
+			if (!context.OpenPages.Contains(wait.key))
+				@wait.Remove();
+		}
 		let page = ResolvePie(context, arguments, outError);
 		if (page == null)
-		{
-			pending.Page = null;
 			return .Failed;
-		}
 		let pie = page as IPieInstancePage;
-		if (pending.Page == page)
+		if (waits.Pumps.TryGetValue(page, let pumps))
 		{
 			// Re-entered: the same call, one pump later.
 			let capture = pie.LastViewportCapture;
-			pending.Pumps++;
+			waits.Pumps[page] = pumps + 1;
 			if (capture.State == .Written)
 			{
-				pending.Page = null;
+				waits.Pumps.Remove(page);
 				outResult.Set("pie", JsonValue.MakeString(pie.PieId));
 				outResult.Set("path", JsonValue.MakeString(capture.Path));
 				outResult.Set("width", JsonValue.MakeNumber(capture.Width));
@@ -254,19 +268,19 @@ static class PieMcpTools
 			}
 			if (capture.State == .Failed)
 			{
-				pending.Page = null;
+				waits.Pumps.Remove(page);
 				outError.AppendF("the capture of PIE instance '{}' failed (log_read, category Screenshot, says why)", pie.PieId);
 				return .Failed;
 			}
 			if (!pie.IsRunning)
 			{
-				pending.Page = null;
+				waits.Pumps.Remove(page);
 				outError.AppendF("PIE instance '{}' stopped before a frame was captured", pie.PieId);
 				return .Failed;
 			}
-			if (pending.Pumps > cCapturePumpLimit)
+			if (pumps + 1 > cCapturePumpLimit)
 			{
-				pending.Page = null;
+				waits.Pumps.Remove(page);
 				outError.AppendF("PIE instance '{}' rendered no frame in ten seconds - is its tab visible (an editor window minimised or hidden)?", pie.PieId);
 				return .Failed;
 			}
@@ -290,13 +304,12 @@ static class PieMcpTools
 				outError.AppendF("could not create '{}'", directory);
 				return .Failed;
 			}
-			pending.Serial++;
-			PathJoin(directory, scope $"{pie.PieId}-{System.Diagnostics.Process.CurrentId}-{pending.Serial}.png", path);
+			waits.Serial++;
+			PathJoin(directory, scope $"{pie.PieId}-{System.Diagnostics.Process.CurrentId}-{waits.Serial}.png", path);
 		}
 		context.RevealPage(page); // to front: a background tab's viewport never renders
 		pie.RequestViewportCapture(path);
-		pending.Page = page;
-		pending.Pumps = 0;
+		waits.Pumps[page] = 0;
 		return .NotFinished;
 	}
 
@@ -329,13 +342,13 @@ static class PieMcpTools
 		return null;
 	}
 
-	private static void WriteState(IPieInstancePage pie, JsonValue outResult)
+	public static void WriteState(IPieInstancePage pie, JsonValue outResult)
 	{
 		outResult.Set("pie", JsonValue.MakeString(pie.PieId));
 		outResult.Set("running", JsonValue.MakeBool(pie.IsRunning));
 		outResult.Set("starting", JsonValue.MakeBool(pie.IsStarting));
 		outResult.Set("scene", JsonValue.MakeString(pie.SceneName));
-		outResult.Set("gameTime", JsonValue.MakeNumber(pie.GameTime));
+		outResult.Set("runTime", JsonValue.MakeNumber(pie.RunTime));
 		outResult.Set("frames", JsonValue.MakeNumber((double)pie.FrameCount));
 		let script = JsonValue.MakeObject();
 		switch (pie.ScriptState)

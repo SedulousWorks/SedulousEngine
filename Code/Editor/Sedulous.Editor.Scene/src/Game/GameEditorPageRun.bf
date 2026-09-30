@@ -34,10 +34,10 @@ extension GameEditorPage
 			GlobalLog(.Information, "Editor: Game: no default scene - the game script owns boot.");
 
 		mFrameCount = 0;
-		mStoppedGameTime = 0;
+		mStoppedRunTime = 0;
 		if (mGameInstance != null)
 		{
-			mGameInstance.ResetRunClock(); // game time counts from this start
+			mGameInstance.ResetRunClock(); // run time counts from this start
 			EnableDebugging();
 			StartGameScriptFromProject();
 		}
@@ -90,6 +90,7 @@ extension GameEditorPage
 		mPendingPlay = false; // a Stop while waiting for the cook cancels the deferred start
 		if (!mRunning && (mScene == null))
 			return;
+		DropScriptedInput(); // a stopped run scripts nothing
 		if (mInput != null)
 		{
 			mInput.SetMap(scope InputMap()); // an empty map: the run's actions die with it
@@ -106,7 +107,7 @@ extension GameEditorPage
 		mContext.OnBreakpointsChanged = null;
 		ClearAndDeleteItems(mAppliedBreakpoints);
 		if (mRunning && (mGameInstance != null))
-			mStoppedGameTime = mGameInstance.RunTime;
+			mStoppedRunTime = mGameInstance.RunTime;
 		if (mGameInstance != null)
 			mGameInstance.StopScript();
 		{
@@ -147,7 +148,7 @@ extension GameEditorPage
 		}
 
 		if (mInput != null)
-			mInput.SetSourceProvider(mViewportSource, (mScene != null) ? Internal.UnsafeCastToPtr(mScene) : null);
+			mInput.SetSourceProvider(ActiveSource, (mScene != null) ? Internal.UnsafeCastToPtr(mScene) : null);
 		if (mScene != null)
 		{
 			EnsureCamera(mScene);
@@ -185,9 +186,9 @@ extension GameEditorPage
 			return;
 		mViewportSource.Viewport = mViewport;
 		mViewportSource.ShellInput = mShellInput;
-		mInput.SetSourceProvider(mViewportSource, (mScene != null) ? Internal.UnsafeCastToPtr(mScene) : null);
+		mInput.SetSourceProvider(ActiveSource, (mScene != null) ? Internal.UnsafeCastToPtr(mScene) : null);
 		if (mGameInstance != null)
-			mGameInstance.SetInputSource(mViewportSource);
+			mGameInstance.SetInputSource(ActiveSource);
 		let mapId = mContext.Project.Settings.DefaultInputMapId;
 		if (mapId.IsNil || (mContext.Resources == null))
 			return;
