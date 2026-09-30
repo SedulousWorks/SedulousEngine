@@ -142,6 +142,15 @@ parent and transform, a fresh `rootLive` guid, and empty `members`, `destroyed`,
 `scene_validate` counts them as `prefabInstances`, apart from `entityCount`, and warns about
 one whose prefab is not in the project.
 
+To build ON AN OPEN PAGE instead, live and undoable (the editor host): `entity_create`,
+`entity_update` (name, parent, active, transform), `entity_delete`, `component_add`,
+`component_remove`, `prefab_spawn`, `behavior_add` and `behavior_set` (a script behaviour's
+properties by name, typed by its cooked class), with `component_set` for a component's fields.
+Each call is one undo step, the page dirty after and nothing saved; an entity is named by guid,
+name or slash path; each answers the entity as `entity_inspect` shows it, a Script component's
+`behaviors` included. The user watches the level take shape and can undo any step; `file.save`
+(action_execute) keeps it. XML suits a whole level written at once, these tools an edit.
+
 **Scripts**: `script_api` first, the LIVE bound API per backend; never trust memorised
 signatures. A member with `readOnly: true` (a network identity's `Authority`, for one) reads
 and refuses assignment. `script_create` seeds a starter asset (the behavior, level or game tier), then

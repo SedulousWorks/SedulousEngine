@@ -9,6 +9,8 @@ using Sedulous.Mcp;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Camera;
 using Sedulous.Core.IO;
+using Sedulous.Script.Resource;
+using Sedulous.Engine.Script;
 
 namespace Sedulous.Editor.Scene;
 
@@ -23,12 +25,13 @@ namespace Sedulous.Editor.Scene;
 static class SceneMcpTools
 {
 	/// How many tools Register registers; a tripwire like the page tools'.
-	public const int cSceneLiveToolCount = 9;
+	public const int cSceneLiveToolCount = 9 + SceneMcpEditTools.cEditToolCount;
 
 	private const String cPageArgument = "the scene or prefab page's asset guid (default: the active page)";
 
 	public static void Register(McpServer server, EditorContext context)
-	{
+	{		SceneMcpEditTools.Register(server, context);
+
 		let getSchema = scope SchemaBuilder();
 		getSchema.Str("page", cPageArgument);
 		server.RegisterTool("selection_get",
@@ -117,7 +120,7 @@ static class SceneMcpTools
 		let inspectSchema = scope SchemaBuilder();
 		inspectSchema.Str("page", cPageArgument);
 		inspectSchema.Str("pie", "instead of a page: a running PIE instance's id (pie_list), reading the scene that game is in");
-		inspectSchema.Str("entity", "the entity's guid (default: the page's primary selection); with `pie`, a guid, a name or a slash path, required");
+		inspectSchema.Str("entity", "the entity: a guid, a name or a slash path (default: the page's primary selection; with `pie`, required)");
 		server.RegisterTool("entity_inspect",
 			"An entity of a scene page as the editor's inspector sees it: guid, name, active, parent, children, the local transform, and every component the scene holds for it with its reflected fields (asset references as guids, enums by name, nested structures and lists expanded). Defaults to the page's primary selection. With `pie`, the entity as the running game has it now, in that instance's current scene.",
 			inspectSchema.Build(), .ReadOnly,
@@ -133,13 +136,13 @@ static class SceneMcpTools
 				if (!ResolveEntity(page, edit, arguments, outError, out id))
 					return false;
 				outResult.Set("page", PageJson(page));
-				outResult.Set("entity", EntityJson(edit.Scene, edit.Resolve(id)));
+				outResult.Set("entity", EntityJson(edit.Scene, edit.Resolve(id), context.Resources));
 				return true;
 			});
 
 		let setSchema = scope SchemaBuilder();
 		setSchema.Str("page", cPageArgument);
-		setSchema.Str("entity", "the entity's guid (default: the page's primary selection)");
+		setSchema.Str("entity", "the entity: a guid, a name or a slash path (default: the page's primary selection)");
 		setSchema.Str("component", "the component, as entity_inspect names it: its `type` (\"light\", \"physics.RigidBody\") or its `typeName`", true);
 		setSchema.Str("property", "the field's name, as entity_inspect shows it", true);
 		server.RegisterTool("component_set",
@@ -463,7 +466,7 @@ static class SceneMcpTools
 		outResult.Set("focusDistance", JsonValue.MakeNumber(camera.FocusDistance));
 	}
 
-	private static bool ReadFloat3(JsonValue value, out Float3 outValue)
+	public static bool ReadFloat3(JsonValue value, out Float3 outValue)
 	{
 		outValue = .Zero;
 		if ((value == null) || !value.IsArray || (value.Count != 3))
@@ -516,7 +519,7 @@ static class SceneMcpTools
 		}
 		outResult.Set("pie", JsonValue.MakeString(pie.PieId));
 		outResult.Set("scene", JsonValue.MakeString(scene.Name));
-		outResult.Set("entity", EntityJson(scene, handle));
+		outResult.Set("entity", EntityJson(scene, handle, context.Resources));
 		return true;
 	}
 
@@ -526,11 +529,17 @@ static class SceneMcpTools
 		let entityArg = arguments.Get("entity");
 		if ((entityArg != null) && entityArg.IsString)
 		{
+			// A guid, or a name or slash path in the page's scene.
 			let text = entityArg.AsString();
 			if (!(Guid.Parse(text) case .Ok(out outId)))
 			{
-				outError.AppendF("invalid entity guid '{}'", text);
-				return false;
+				let named = PieRunTool.FindEntity(edit.Scene, text);
+				if (!edit.Scene.IsValid(named))
+				{
+					outError.AppendF("no entity '{}' in page '{}' (a guid, a name or a slash path; scene_read shows the scene's entities)", text, page.Title);
+					return false;
+				}
+				outId = edit.Scene.GetEntityId(named);
 			}
 		}
 		else
@@ -568,7 +577,7 @@ static class SceneMcpTools
 
 	/// The entity as the agent sees it: identity, hierarchy, transform, and every component the
 	/// scene holds for it with its reflected fields.
-	public static JsonValue EntityJson(Sedulous.Scene.Scene scene, EntityHandle handle)
+	public static JsonValue EntityJson(Sedulous.Scene.Scene scene, EntityHandle handle, ResourceManager resources = null)
 	{
 		let json = JsonValue.MakeObject();
 		json.Set("guid", ComponentJson.GuidJson(scene.GetEntityId(handle)));
@@ -604,15 +613,65 @@ static class SceneMcpTools
 				{
 					component.Set("properties", JsonValue.MakeNull()); // unreflected
 				}
+				// The behaviours are a hidden list the reflected fields leave out: what each one
+				// runs and what its properties are set to, named from its cooked class.
+				if (type == typeof(ScriptComponent))
+					component.Set("behaviors", BehaviorsJson((ScriptComponent*)address, scene, resources));
 				components.Add(component);
 			});
 		json.Set("components", components);
 		return json;
 	}
 
+	/// A Script component's behaviours: each one's script (its guid, and its class when the
+	/// class is cooked), whether it runs, and its property overrides by name (by hash, #n, when
+	/// the class is not at hand to name them).
+	private static JsonValue BehaviorsJson(ScriptComponent* component, Sedulous.Scene.Scene scene, ResourceManager resources)
+	{
+		let list = JsonValue.MakeArray();
+		if ((component == null) || (component.Behaviors == null))
+			return list;
+		for (let behavior in component.Behaviors)
+		{
+			let json = JsonValue.MakeObject();
+			let id = behavior.Script.Id;
+			json.Set("script", ComponentJson.GuidJson(id));
+			let scriptClass = (behavior.Script.Get != null) ? behavior.Script.Get
+				: (((resources != null) && id.IsSet) ? resources.Bind<ScriptClass>(id).Get : null);
+			json.Set("class", (scriptClass != null) ? JsonValue.MakeString(scriptClass.ClassName) : JsonValue.MakeNull());
+			json.Set("enabled", JsonValue.MakeBool(behavior.Enabled));
+			let properties = JsonValue.MakeObject();
+			for (let o in behavior.Overrides)
+			{
+				let desc = (scriptClass != null) ? scriptClass.FindProperty(o.Hash) : null;
+				let name = (desc != null) ? scope String(desc.Name) : scope $"#{o.Hash}";
+				properties.Set(name, PropertyValueJson(o.Value, scene));
+			}
+			json.Set("properties", properties);
+			list.Add(json);
+		}
+		return list;
+	}
+
+	private static JsonValue PropertyValueJson(ScriptPropertyValue value, Sedulous.Scene.Scene scene)
+	{
+		var value;
+		switch (value.Kind)
+		{
+		case .Float: return JsonValue.MakeNumber(value.Number);
+		case .Int: return JsonValue.MakeNumber(value.Number);
+		case .Bool: return JsonValue.MakeBool(value.Boolean);
+		case .String: return JsonValue.MakeString((value.Text != null) ? StringView(value.Text) : "");
+		case .Vec3: return ComponentJson.ValueJson(typeof(Float3), &value.Vector);
+		case .Color: return ComponentJson.ValueJson(typeof(Color), &value.Color);
+		case .Entity, .Asset: return value.Id.IsSet ? ComponentJson.GuidJson(value.Id) : JsonValue.MakeNull();
+		case .None: return JsonValue.MakeNull();
+		}
+	}
+
 	/// The scene page a call addresses: `page` (a guid) when given, else the active page; null
 	/// with the reason in outError when it is not a scene page.
-	private static EditorPage ResolveScenePage(EditorContext context, JsonValue arguments, String outError)
+	public static EditorPage ResolveScenePage(EditorContext context, JsonValue arguments, String outError)
 	{
 		EditorPage page = null;
 		let pageArg = arguments.Get("page");
@@ -656,7 +715,7 @@ static class SceneMcpTools
 		return page;
 	}
 
-	private static JsonValue PageJson(EditorPage page)
+	public static JsonValue PageJson(EditorPage page)
 	{
 		let identity = JsonValue.MakeObject();
 		identity.Set("guid", JsonValue.MakeString(page.InstanceId.ToString(.. scope .())));

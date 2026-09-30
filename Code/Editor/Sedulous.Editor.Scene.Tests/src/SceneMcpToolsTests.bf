@@ -146,7 +146,7 @@ class SceneMcpToolsTests
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
 		Test.Assert(server.ToolCount == SceneMcpTools.cSceneLiveToolCount);
-		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 9, "a tripwire: bump deliberately when a live tool comes or goes");
+		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 17, "a tripwire: bump deliberately when a live tool comes or goes");
 		let onA = scope $"{{\"page\":\"{sceneA}\"}}";
 
 		// Default addressing: the active page, a scene page, then a page that is not one.
