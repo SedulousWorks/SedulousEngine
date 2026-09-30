@@ -39,6 +39,19 @@ class EditorPreferencesDialog : Dialog
 	/// Staged; applied and persisted on Save.
 	private ShortcutEdits mShortcutEdits = new .() ~ delete _;
 
+	/// One staged preview resolution; its views are borrowed from the rows container.
+	private class PreviewRow
+	{
+		public FlexLayout Row;
+		public EditText Name;
+		public NumericField Width;
+		public NumericField Height;
+		public bool Removed = false;
+	}
+	private List<PreviewRow> mPreviewRows = new .() ~ DeleteContainerAndItems!(_);
+	/// Borrowed: the column the preview rows sit in.
+	private FlexLayout mPreviewColumn = null;
+
 	public this(EditorContext context, Settings store) : base("Preferences")
 	{
 		mContext = context;
@@ -126,6 +139,30 @@ class EditorPreferencesDialog : Dialog
 			column.AddView(note);
 		}
 
+		// The Game tab's preview resolutions (GamePreviewSettings): sizes to test at on this
+		// machine, after the project's own and its export presets'. Staged, applied on Save.
+		{
+			let header = new Label("Game preview resolutions");
+			header.FontSize.Value = 13.0f;
+			column.AddView(header);
+			mPreviewColumn = new FlexLayout();
+			mPreviewColumn.Direction = .Vertical;
+			mPreviewColumn.Spacing = 4;
+			var match = LayoutStyle();
+			match.Width = SizeSpec.Match();
+			column.AddView(mPreviewColumn, match);
+			if (let previews = GamePreviewSettings.From(store))
+			{
+				for (let preset in previews.Presets)
+					AddPreviewRow(preset.Name, preset.Width, preset.Height);
+			}
+			let add = new Button("Add resolution");
+			add.OnClick.Add(new [=this](b) => { AddPreviewRow("Custom", 1920, 1080); });
+			var left = LayoutStyle();
+			left.AlignSelf = .Start;
+			column.AddView(add, left);
+		}
+
 		// Shortcuts: every action with its effective chord; a click on the chord captures the next
 		// key, Reset forgets the override. Staged in mShortcutEdits, applied on Save.
 		{
@@ -175,6 +212,53 @@ class EditorPreferencesDialog : Dialog
 		let save = AddButton("Save", .None);
 		save.OnClick.Add(new (b) => { Apply(); });
 		AddButton("Cancel", .Cancel);
+	}
+
+	private void AddPreviewRow(StringView name, uint32 width, uint32 height)
+	{
+		let entry = new PreviewRow();
+		entry.Row = new FlexLayout();
+		entry.Row.Direction = .Horizontal;
+		entry.Row.Spacing = 6;
+		entry.Name = new EditText();
+		entry.Name.SetText(name);
+		var grow = LayoutStyle();
+		grow.FlexGrow = 1.0f;
+		grow.AlignSelf = .Center;
+		entry.Row.AddView(entry.Name, grow);
+		entry.Width = SizeField(entry.Row, width);
+		entry.Row.AddView(new Label("x"), Centred());
+		entry.Height = SizeField(entry.Row, height);
+		let remove = new Button("Remove");
+		// Hidden and skipped on Save rather than torn out from under its own click.
+		remove.OnClick.Add(new [=entry](b) => { entry.Removed = true; entry.Row.Visibility = .Gone; });
+		entry.Row.AddView(remove, Centred());
+		var match = LayoutStyle();
+		match.Width = SizeSpec.Match();
+		mPreviewColumn.AddView(entry.Row, match);
+		mPreviewRows.Add(entry);
+	}
+
+	private static NumericField SizeField(FlexLayout row, uint32 value)
+	{
+		let field = new NumericField();
+		field.SetDecimalPlaces(0);
+		field.SetMin(1);
+		field.SetMax(16384);
+		field.SetStep(1);
+		field.SetValue(value);
+		var style = LayoutStyle();
+		style.Width = SizeSpec.Fixed(Unit.Dp(80));
+		style.AlignSelf = .Center;
+		row.AddView(field, style);
+		return field;
+	}
+
+	private static LayoutStyle Centred()
+	{
+		var style = LayoutStyle();
+		style.AlignSelf = .Center;
+		return style;
 	}
 
 	private void UpdateScaleLabel(float value)
@@ -281,6 +365,17 @@ class EditorPreferencesDialog : Dialog
 		mSettings.MarkChanged<EditorMcpSettings>();
 		if (OnMcpSettingsApplied != null)
 			OnMcpSettingsApplied(); // live: the host follows the new enabled, port and token
+		if (let previews = GamePreviewSettings.From(mSettings))
+		{
+			ClearAndDeleteItems!(previews.Presets);
+			for (let entry in mPreviewRows)
+			{
+				if (entry.Removed || entry.Name.Text.IsEmpty)
+					continue;
+				previews.Presets.Add(new .(entry.Name.Text, (uint32)entry.Width.Value, (uint32)entry.Height.Value));
+			}
+			mSettings.MarkChanged<GamePreviewSettings>();
+		}
 		if (!mShortcutEdits.IsEmpty)
 		{
 			let collisions = scope List<String>();

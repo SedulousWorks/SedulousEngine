@@ -24,7 +24,7 @@ namespace Sedulous.Editor.Scene;
 
 /// The Game tab: plays the project's default scene through its OWN game instance, with the
 /// startup script, the default input map and bus layout, a play/pause/stop/restart toolbar,
-/// a fixed resolution cycle, and the script debugger beside the viewport (hidden until the
+/// the resolution it draws at (the project's by default), and the script debugger beside the viewport (hidden until the
 /// Debugger toggle, or a breakpoint, shows it).
 ///
 /// The context, host, UI host and embedded application are borrowed. The game instance is
@@ -57,8 +57,6 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	/// Shows the script debugger beside the viewport. Off by default: it takes room the game
 	/// wants, and is opened when needed (and by a breakpoint that pauses the run).
 	private ToolbarToggle mDebuggerToggle;
-	private ToolbarButton mResolutionButton;
-	private uint32 mResolutionMode = 0;
 	private DebuggerPanel mDebuggerPanel = new .() ~ delete _;
 	private GameDebugListener mDebugListener = new .() ~ delete _;
 	/// The simulation was frozen for a breakpoint.
@@ -130,8 +128,6 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mStopButton.OnClick.Add(new [=this](b) => { Stop(); });
 		mRestartButton = mToolbar.AddButton("Restart");
 		mRestartButton.OnClick.Add(new [=this](b) => { Stop(); Play(); });
-		mResolutionButton = mToolbar.AddButton("Res: Auto");
-		mResolutionButton.OnClick.Add(new [=this](b) => { CycleResolution(); });
 		mDebuggerToggle = mToolbar.AddToggle("Debugger");
 		mDebuggerToggle.OnCheckedChanged.Add(new [=this](t, shown) =>
 		{
@@ -139,6 +135,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		});
 		mStatusLabel = new Label("");
 		mStatusLabel.FontSize.Value = 13.0f;
+		CreateResolutionCombo();
 		mToolbar.AddItem(mStatusLabel);
 
 		let column = new FlexLayout();
@@ -228,6 +225,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		FollowInstanceScene();
 		AdvanceScriptedInput();
 		EnsureViewportBound();
+		TickResolution(dt);
 		mViewport.SyncInputRegion();
 		// A running game owns the keys its focused viewport receives: the editor's arrow key
 		// focus moves and single key bindings stay out of it.
@@ -341,25 +339,6 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mHostWindow = window;
 	}
 
-	private void CycleResolution()
-	{
-		mResolutionMode = (mResolutionMode + 1) % 3;
-		switch (mResolutionMode)
-		{
-		case 0:
-			mViewport.SetFixedResolution(0, 0);
-			mViewport.FitMode = .Stretch;
-			mResolutionButton.SetText("Res: Auto");
-		case 1:
-			mViewport.SetFixedResolution(1280, 800);
-			mViewport.FitMode = .Letterbox;
-			mResolutionButton.SetText("Res: 1280x800");
-		default:
-			mViewport.SetFixedResolution(1920, 1080);
-			mViewport.FitMode = .Letterbox;
-			mResolutionButton.SetText("Res: 1920x1080");
-		}
-	}
 
 	private void RefreshToolbar()
 	{

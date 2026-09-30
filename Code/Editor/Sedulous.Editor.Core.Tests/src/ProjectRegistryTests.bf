@@ -252,4 +252,31 @@ static class ProjectRegistryTests
 		Test.Assert((ui != null) && (Math.Abs(ui.UiScale - 1.2f) < 1e-5f));
 		Test.Assert(loaded.Find<EditorFontSettings>().FontPath == "/fonts/ui.ttf");
 	}
+
+	/// The Game tab's preview resolutions: the common sizes seed once, a user's removal stays
+	/// removed, and the list round trips through the store.
+	[Test]
+	public static void ThePreviewResolutionsSeedOnceAndRoundTrip()
+	{
+		EditorSerializables.RegisterAll();
+		Test.Assert(GamePreviewSettings.From(null) == null, "no store, nothing");
+		let store = scope Settings();
+		let previews = GamePreviewSettings.From(store);
+		Test.Assert(previews.Seeded && (previews.Presets.Count == 6));
+		Test.Assert((previews.Presets[3].Name == "Steam Deck") && (previews.Presets[3].Width == 1280) && (previews.Presets[3].Height == 800));
+
+		ClearAndDeleteItems!(previews.Presets);
+		previews.Presets.Add(new .("Handheld", 960, 544));
+		Test.Assert(GamePreviewSettings.From(store).Presets.Count == 1, "not seeded again");
+
+		let buffer = scope Sedulous.Core.IO.MemoryStream();
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		Test.Assert(store.Save(buffer, factory) case .Ok);
+		buffer.Seek(0, .Begin);
+		let loaded = scope Settings();
+		Test.Assert(loaded.Load(buffer, factory) case .Ok);
+		let back = GamePreviewSettings.From(loaded);
+		Test.Assert((back.Presets.Count == 1) && (back.Presets[0].Name == "Handheld") && (back.Presets[0].Width == 960) && (back.Presets[0].Height == 544));
+	}
 }
