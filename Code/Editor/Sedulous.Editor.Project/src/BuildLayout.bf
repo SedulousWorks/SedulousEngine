@@ -112,7 +112,8 @@ static class BuildLayout
 			{
 				if (isDirectory)
 					return;
-				if (name.EndsWith(".so") || name.EndsWith(".dll") || name.EndsWith(".dylib"))
+				// A versioned ".so.0" too: a bundle that carries its own SDL carries it by soname.
+				if (name.EndsWith(".so") || name.Contains(".so.") || name.EndsWith(".dll") || name.EndsWith(".dylib"))
 					outNames.Add(new String(name));
 			});
 		outNames.Sort(scope (a, b) => a <=> b);

@@ -145,6 +145,7 @@ static class ExportTemplateTests
 		// The host: the shared libraries beside the player are its sidecars; nothing else is.
 		SaveText(dir, "libjoltc.so", "so\n");
 		SaveText(dir, "libdxcompiler.so", "so\n");
+		SaveText(dir, "libSDL3.so.0", "so\n");
 		SaveText(dir, "libBeefRT.a", "a\n");
 		SaveText(dir, "build.dat", "x\n");
 		let host = scope ExportTemplate();
@@ -153,7 +154,8 @@ static class ExportTemplateTests
 		Test.Assert(host.Id == scope $"host-{BuildLayout.HostPlatformName}-{BuildLayout.BuildConfigName}");
 		Test.Assert(host.PlayerBinary == BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()));
 		Test.Assert(host.Directory == dir);
-		Test.Assert((host.Sidecars.Count == 2) && (host.Sidecars[0] == "libdxcompiler.so") && (host.Sidecars[1] == "libjoltc.so"), scope $"{host.Sidecars.Count} sidecars");
+		// A library carried by its soname counts too.
+		Test.Assert((host.Sidecars.Count == 3) && (host.Sidecars[0] == "libSDL3.so.0") && (host.Sidecars[1] == "libdxcompiler.so") && (host.Sidecars[2] == "libjoltc.so"), scope $"{host.Sidecars.Count} sidecars");
 	}
 
 	[Test]
