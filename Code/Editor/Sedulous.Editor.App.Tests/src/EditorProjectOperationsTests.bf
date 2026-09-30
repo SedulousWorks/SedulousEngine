@@ -166,7 +166,7 @@ class EditorProjectOperationsTests
 		// per finished import, over its primary, and never for a failed one.
 		int afterImports = 0;
 		Guid lastImported = .Empty;
-		seams.OnImported = new [&afterImports, &lastImported](primary) =>
+		seams.OnImported = new [&afterImports, &lastImported](primary, options) =>
 			{
 				afterImports++;
 				lastImported = primary.Id;

@@ -35,7 +35,7 @@ class EditorProjectOperationsSeams
 	/// After an import: the editor's effects, the ones an import from the Assets browser has
 	/// (the import listeners, a model's prefab among them; the cook of what it made; the
 	/// browser). Owned.
-	public delegate void(Instance primary) OnImported ~ delete _;
+	public delegate void(Instance primary, ImportOptions options) OnImported ~ delete _;
 	/// A step still running past this answers with an error.
 	public double TimeoutSeconds = 600.0;
 }
@@ -295,7 +295,7 @@ class EditorProjectOperations : IProjectOperations
 			let group = McpTools.ResolveGroupPath(project.SourceDb.RootGroup, request.GroupPath);
 			let context = scope ImportContext(project.SourcesRoot(.. scope .()));
 			let placeStarted = Stopwatch.GetTimestamp();
-			let imported = request.Importer.Import(request.Source, context, group, null, mImport.Prepared, mImport.Writes);
+			let imported = request.Importer.Import(request.Source, context, group, request.Options, mImport.Prepared, mImport.Writes);
 			mImportOutcome.MainMs = (Stopwatch.GetTimestamp() - placeStarted) / 1000;
 			if (imported case .Err(let error))
 				return FailImport(outError, scope $"import of '{request.Source}' failed ({error}) - see log_read, category Import");
@@ -306,7 +306,7 @@ class EditorProjectOperations : IProjectOperations
 			mImportOutcome.DeferredWrites = mImport.Writes.Count;
 			mImportOutcome.PrepareMs = mImport.PrepareMs;
 			if (mImport.Writes.IsEmpty)
-				return FinishImport(outOutcome);
+				return FinishImport(outOutcome, request.Options);
 			// Phase 3, the bulk stream writes, on the worker.
 			mImportPhase = .Flushing;
 			SubmitImportFlush(request.Source);
@@ -321,10 +321,10 @@ class EditorProjectOperations : IProjectOperations
 		}
 		if (!mImport.JobOk)
 			return FailImport(outError, scope $"import of '{request.Source}': a deferred write failed (see log_read, category Import)");
-		return FinishImport(outOutcome);
+		return FinishImport(outOutcome, request.Options);
 	}
 
-	private OperationStep FinishImport(ImportOutcome outOutcome)
+	private OperationStep FinishImport(ImportOutcome outOutcome, ImportOptions options)
 	{
 		mImportOutcome.FlushMs = mImport.FlushMs;
 		mImportOutcome.CopyTo(outOutcome);
@@ -333,7 +333,7 @@ class EditorProjectOperations : IProjectOperations
 		if (mSeams.OnImported != null)
 		{
 			if (let primary = mSeams.Project.SourceDb.GetInstance(outOutcome.Id))
-				mSeams.OnImported(primary);
+				mSeams.OnImported(primary, options);
 		}
 		return .Finished;
 	}

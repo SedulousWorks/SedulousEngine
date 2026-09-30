@@ -77,7 +77,7 @@ class InlineProjectOperations : IProjectOperations
 		let deferred = scope List<DeferredImportWrite>();
 		defer ClearAndDeleteItems(deferred);
 		started = Stopwatch.GetTimestamp();
-		let imported = importer.Import(request.Source, importContext, group, null, prepared, deferred);
+		let imported = importer.Import(request.Source, importContext, group, request.Options, prepared, deferred);
 		outOutcome.MainMs = (Stopwatch.GetTimestamp() - started) / 1000;
 		if (imported case .Err(let error))
 		{

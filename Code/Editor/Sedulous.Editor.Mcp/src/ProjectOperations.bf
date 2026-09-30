@@ -34,6 +34,9 @@ struct ImportRequest
 	public StringView Source = default;
 	public StringView GroupPath = default;
 	public IFileImporter Importer = null;
+	/// The importer's options, its defaults with the call's toggles applied; null when the
+	/// importer has none. BORROWED.
+	public ImportOptions Options = null;
 }
 
 /// What asset_import reports: the created asset's identity and where the time went (the

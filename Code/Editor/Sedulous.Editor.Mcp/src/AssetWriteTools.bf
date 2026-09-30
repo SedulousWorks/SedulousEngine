@@ -40,6 +40,10 @@ static class AssetWriteTools
 		importSchema.Str("source", "absolute path to the file to import", true);
 		importSchema.Str("group", "source-DB group path to place it in (slash-joined; default root)");
 		importSchema.Str("importer", "which importer to use when several claim the extension, by label (the result of an unhinted import lists them)");
+		let optionsProperty = JsonValue.MakeObject();
+		optionsProperty.Set("type", JsonValue.MakeString("object"));
+		optionsProperty.Set("description", JsonValue.MakeString("the importer's options, as the import dialog's checkboxes: {\"<toggle>\": true|false}, the toggle named by its label, case and spaces ignored (a model's: Textures, Materials, Animations, Generate prefab, Generate scene, Generate collision, Generate LODs, Convex collision); unnamed toggles keep their defaults, and the result lists every toggle's value"));
+		importSchema.Property("options", optionsProperty);
 		server.RegisterTool("asset_import",
 			"""
 			Import an OS file into the open project: copy it under Sources/ and create the typed asset in the source database, routed by extension. When several importers claim the extension the first is used and the result names the alternatives; pass `importer` to choose. Does not cook - call asset_cook next.
@@ -93,10 +97,52 @@ static class AssetWriteTools
 			}
 		}
 
+		// The options: the importer's defaults, then the call's toggles by label.
+		let options = importer.CreateOptions();
+		defer { if (options != null) delete options; }
+		let toggles = scope List<ImportToggle>();
+		if (options != null)
+			options.GetToggles(toggles);
+		if (let asked = arguments.Get("options"))
+		{
+			if (!asked.IsObject)
+			{
+				outError.Append("`options` takes an object of toggles: {\"Generate collision\": true}");
+				return .Failed;
+			}
+			for (int i < asked.Count)
+			{
+				let key = asked.KeyAt(i);
+				let value = asked.Get(key);
+				ImportToggle? found = null;
+				for (let toggle in toggles)
+				{
+					if (SameToggleName(toggle.Label, key))
+						found = toggle;
+				}
+				if (found == null)
+				{
+					outError.AppendF("the {} importer has no option '{}'; its options are: ", importer.Label, key);
+					if (toggles.IsEmpty)
+						outError.Append("none");
+					for (int t < toggles.Count)
+						outError.AppendF("{}{}", (t > 0) ? ", " : "", toggles[t].Label);
+					return .Failed;
+				}
+				if (!value.IsBool)
+				{
+					outError.AppendF("option '{}' takes true or false", key);
+					return .Failed;
+				}
+				*found.Value.Value = value.AsBool();
+			}
+		}
+
 		ImportRequest request = .();
 		request.Source = source;
 		request.GroupPath = McpTools.ArgString(arguments, "group", .. scope .());
 		request.Importer = importer;
+		request.Options = options;
 		let done = scope ImportOutcome();
 		switch (context.Operations.Import(request, done, outError))
 		{
@@ -113,6 +159,13 @@ static class AssetWriteTools
 		outResult.Set("mainMs", JsonValue.MakeNumber((double)done.MainMs));
 		outResult.Set("flushMs", JsonValue.MakeNumber((double)done.FlushMs));
 		outResult.Set("importer", JsonValue.MakeString(importer.Label));
+		if (!toggles.IsEmpty)
+		{
+			let applied = JsonValue.MakeObject();
+			for (let toggle in toggles)
+				applied.Set(toggle.Label, JsonValue.MakeBool(*toggle.Value));
+			outResult.Set("options", applied);
+		}
 		if (claimants.Count > 1)
 		{
 			let alternatives = JsonValue.MakeArray();
@@ -122,6 +175,21 @@ static class AssetWriteTools
 			outResult.Set("alsoClaimableBy", alternatives);
 		}
 		return true;
+	}
+
+	/// A toggle's label against a caller's key: case and spaces ignored, so "Generate collision",
+	/// "generate collision" and "generateCollision" all name it.
+	private static bool SameToggleName(StringView label, StringView key)
+	{
+		let a = scope String();
+		let b = scope String();
+		for (let c in label)
+			if (c != ' ')
+				a.Append(c.ToLower);
+		for (let c in key)
+			if (c != ' ')
+				b.Append(c.ToLower);
+		return a == b;
 	}
 
 	private static void AppendLabels(List<IFileImporter> importers, IFileImporter except, String outText)
