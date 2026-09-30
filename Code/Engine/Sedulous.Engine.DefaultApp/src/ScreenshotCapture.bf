@@ -56,8 +56,8 @@ class ScreenshotCapture
 	public StringView Path => mPath;
 
 	/// Whether a surface format can be written as an 8 bit PNG: the 8 bit RGBA and BGRA
-	/// surfaces straight through, and RGBA16Float, the viewports' display encoded LDR target
-	/// whose values the tonemap already put in [0, 1], quantised to bytes.
+	/// surfaces straight through, and RGBA16Float, the viewports' LINEAR target (the tonemap
+	/// and the UI both write linear there), encoded to sRGB bytes.
 	public static bool CanCapture(TextureFormat format)
 	{
 		switch (format)
@@ -136,8 +136,8 @@ class ScreenshotCapture
 	}
 
 	/// Copies the aligned rows the GPU wrote into a tight RGBA8 image: BGRA swizzled, a 16 bit
-	/// float texel clamped to [0, 1] and quantised (its values are display encoded already;
-	/// encoding again would double-gamma the image).
+	/// float texel clamped to [0, 1] and sRGB encoded, as the editor encodes it for the screen
+	/// (the float target holds linear values; alpha is coverage and stays linear).
 	public static void UnpackRows(uint8* mapped, uint32 bytesPerRow, uint32 width, uint32 height,
 		TextureFormat format, Span<uint8> outRgba)
 	{
@@ -155,8 +155,13 @@ class ScreenshotCapture
 				if (half)
 				{
 					let texel = (uint16*)s;
-					for (int c < 4)
-						d[c] = PixelFormats.HalfToUnorm8(texel[c]);
+					for (int c < 3)
+					{
+						let linear = Math.Clamp(PixelFormats.HalfToFloat(texel[c]), 0.0f, 1.0f);
+						float encoded = LinearToSrgb(linear) * 255.0f + 0.5f;
+						d[c] = (uint8)encoded;
+					}
+					d[3] = PixelFormats.HalfToUnorm8(texel[3]);
 					continue;
 				}
 				d[0] = bgra ? s[2] : s[0];

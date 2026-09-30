@@ -23,8 +23,9 @@ class TonemapPass
 	private const int cMaxPipelineFormats = 4;
 
 	/// The push constants: exposure, bloom, the coordinate transform, occlusion, the two
-	/// mode flags, the auto exposure window and the grading.
-	private const int cPushFloats = 16;
+	/// mode flags, the auto exposure window, the grading, and whether the target stores the
+	/// display encoding as written (padded to 16 bytes).
+	private const int cPushFloats = 20;
 
 	private IDevice mDevice;
 	private ShaderSystem mShaders;
@@ -138,7 +139,8 @@ class TonemapPass
 			agx ? 1.0f : 0.0f, flipSceneY ? 1.0f : 0.0f,
 			autoOn ? 1.0f : 0.0f, autoExposure.Key, autoExposure.MinExposure,
 			autoExposure.MaxExposure,
-			gradeOn ? grading.Intensity : 0.0f, gradeOn ? grading.LutSize : 0.0f);
+			gradeOn ? grading.Intensity : 0.0f, gradeOn ? grading.LutSize : 0.0f,
+			EncodesOnWrite(ldrFormat) ? 0.0f : 1.0f, 0.0f, 0.0f, 0.0f);
 
 		let load = clearColor ? LoadOp.Clear : LoadOp.Load;
 		let autoView = autoOn ? autoExposure.View : null;
@@ -187,6 +189,12 @@ class TonemapPass
 					});
 			});
 	}
+
+	/// Whether the target turns what the shader writes into display values by itself: an sRGB
+	/// format encodes on write, and a float target is linear and encoded wherever it is shown.
+	/// Only a plain UNORM target takes the display encoding as written.
+	private static bool EncodesOnWrite(TextureFormat format) =>
+		TextureFormats.IsSrgb(format) || (format == .RGBA16Float) || (format == .RGBA32Float) || (format == .RG11B10Float);
 
 	/// The pipeline for a target format, built once and rebuilt only when the shader reloads.
 	///

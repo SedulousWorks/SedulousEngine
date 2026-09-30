@@ -12,7 +12,8 @@ SamplerState      BloomSamp : register(s0, space0);
 // transients - so split-screen views resolve their own region instead of the whole target.
 // AoStrength lerps the AO factor in (0 = GTAO off).
 struct TonemapPush { float Exposure; float BloomIntensity; float2 UvScale; float2 UvOffset; float AoStrength; float DebugShowAo; float Operator; float FlipSceneY;
-                     float AutoExposure; float AutoKey; float AutoMin; float AutoMax; float GradeIntensity; float LutSize; };
+                     float AutoExposure; float AutoKey; float AutoMin; float AutoMax; float GradeIntensity; float LutSize;
+                     float EncodeOutput; float3 Pad; };
 PUSH_CONSTANT(TonemapPush, pc, space1);
 
 // Linear -> sRGB display encode (the OETF the CM1a "clamp" operator needs before writing the
@@ -22,6 +23,21 @@ float3 linearToSrgb(float3 c) {
     float3 lo = c * 12.92;
     float3 hi = 1.055 * pow(c, 1.0 / 2.4) - 0.055;
     return lerp(hi, lo, step(c, 0.0031308));
+}
+
+// sRGB display -> linear (the EOTF), the exact inverse of linearToSrgb.
+float3 srgbToLinear(float3 c) {
+    c = saturate(c);
+    float3 lo = c / 12.92;
+    float3 hi = pow((c + 0.055) / 1.055, 2.4);
+    return lerp(hi, lo, step(c, 0.04045));
+}
+
+// The operators and the grade work on DISPLAY-encoded values. A plain UNORM target stores
+// them as they are; an sRGB target encodes on write and a float target is linear, so for
+// those the value goes back to linear here and is stored ONCE encoded, not twice.
+float4 toTarget(float3 display) {
+    return float4((pc.EncodeOutput > 0.5) ? display : srgbToLinear(display), 1.0);
 }
 
 // 6th-order polynomial fit of the AgX log->display sigmoid.
@@ -88,7 +104,7 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     c *= exposure;   // linear exposure multiplier (scene EV x adaptation)
 
     // CM1a: a trivial clamp operator (saturate) + the sRGB display OETF. AgX (below) is the default.
-    if (pc.Operator < 0.5) { return float4(applyGrade(linearToSrgb(c)), 1.0); }
+    if (pc.Operator < 0.5) { return toTarget(applyGrade(linearToSrgb(c))); }
 
     const float3x3 agxInset = float3x3(
         0.842479062253094, 0.0423282422610123, 0.0423756549057051,
@@ -107,5 +123,5 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     v = agxContrast(v);                    // sigmoid (output is display-encoded)
     v = agxLook(v);                        // punchy look (contrast + saturation)
     v = mul(agxOutset, v);
-    return float4(applyGrade(saturate(v)), 1.0); // straight to the UNORM display target
+    return toTarget(applyGrade(saturate(v)));
 }

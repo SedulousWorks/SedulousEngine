@@ -96,8 +96,8 @@ class ScreenshotTests
 		Test.Assert(ScreenshotCapture.CanCapture(.RGBA16Float), "the viewports' target");
 		Test.Assert(!ScreenshotCapture.CanCapture(.RGBA32Float));
 
-		// A 16 bit float row: display encoded values quantise straight to bytes, clamped; the
-		// pitch holds 8 byte texels.
+		// A 16 bit float row: linear values, clamped and sRGB encoded to bytes (alpha stays
+		// linear); the pitch holds 8 byte texels.
 		uint16[2][4] halves = .(.(0x3C00, 0x3800, 0x0000, 0x3C00), .(0x4400, 0xBC00, 0x3555, 0x3C00));
 		uint8[pitch] halfRow = .();
 		for (int i < halfRow.Count)
@@ -106,12 +106,12 @@ class ScreenshotTests
 		uint8[8] fromHalf = .();
 		ScreenshotCapture.UnpackRows(&halfRow[0], pitch, 2, 1, .RGBA16Float, .(&fromHalf[0], fromHalf.Count));
 		Test.Assert(fromHalf[0] == 255);
-		Test.Assert(fromHalf[1] == 128, "0.5 * 255 + 0.5 rounds to 128");
+		Test.Assert(fromHalf[1] == 188, "linear 0.5 is sRGB 0.735");
 		Test.Assert(fromHalf[2] == 0);
 		Test.Assert(fromHalf[3] == 255);
 		Test.Assert(fromHalf[4] == 255, "clamped high");
 		Test.Assert(fromHalf[5] == 0, "clamped low");
-		Test.Assert(fromHalf[6] == 85, "1/3");
+		Test.Assert(fromHalf[6] == 156, "linear 1/3 is sRGB 0.612");
 		Test.Assert(fromHalf[7] == 255);
 		Test.Assert(ScreenshotCapture.IsBgra(.BGRA8Unorm));
 		Test.Assert(!ScreenshotCapture.IsBgra(.RGBA8UnormSrgb));
@@ -188,10 +188,12 @@ class ScreenshotTests
 		Test.Assert(loaded.Height == h);
 		Test.Assert(loaded.Format == .RGBA8);
 		let p = loaded.PixelData.Ptr + (5 * w + 5) * 4;
-		// 0.2 / 0.6 / 1.0 in unorm: these probes are linear formats, so the bytes are the
-		// plain unorm values, not sRGB encoded ones.
-		Test.Assert((p[0] >= 49) && (p[0] <= 53), scope $"{name}: red {p[0]}");
-		Test.Assert((p[1] >= 151) && (p[1] <= 155), scope $"{name}: green {p[1]}");
+		// 0.2 / 0.6 / 1.0: a UNORM probe stores the plain values; the float target holds linear
+		// values, which the capture sRGB encodes (0.2 is 124, 0.6 is 203).
+		let wantRed = (format == .RGBA16Float) ? 124 : 51;
+		let wantGreen = (format == .RGBA16Float) ? 203 : 153;
+		Test.Assert(Math.Abs((int)p[0] - wantRed) <= 2, scope $"{name}: red {p[0]}");
+		Test.Assert(Math.Abs((int)p[1] - wantGreen) <= 2, scope $"{name}: green {p[1]}");
 		Test.Assert(p[2] == 255, scope $"{name}: blue {p[2]}");
 		Test.Assert(p[3] == 255, scope $"{name}: alpha {p[3]}");
 
