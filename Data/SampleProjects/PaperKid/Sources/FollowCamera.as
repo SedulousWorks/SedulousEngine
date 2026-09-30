@@ -59,8 +59,11 @@ class FollowCamera
 		{
 			return;
 		}
+		// FromYawPitchRoll is XNA's q = qY * qX: with forward -Z, the pitch turns forward to
+		// (0, sin(pitch), -cos(pitch)) before the yaw, so a POSITIVE pitch looks UP and the
+		// pitch takes dir.Y's own sign (a target below the camera, a negative pitch).
 		float yaw = Atan2(-dir.X, -dir.Z);
-		float pitch = -Asin(dir.Y / len);
+		float pitch = Asin(dir.Y / len);
 		self.SetLocalRotation(FromYawPitchRoll(yaw, pitch, 0.0f));
 	}
 
