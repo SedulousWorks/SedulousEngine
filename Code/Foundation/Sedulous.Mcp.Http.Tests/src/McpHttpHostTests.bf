@@ -327,4 +327,108 @@ class McpHttpHostTests
 		Test.Assert(answered == 1);
 		Test.Assert(!host.HasPendingRequest);
 	}
+
+	/// What a call-aware tool keeps for its call; counts the ones deleted.
+	class Ticket
+	{
+		public static int Deleted = 0;
+		public int Number;
+		public ~this() { Deleted++; }
+	}
+
+	/// Two callers send the IDENTICAL call over their own connections while a tool is not
+	/// finished: each is answered with its own call's state, the request number being the
+	/// call's identity. A caller that hangs up while waiting has its call abandoned, its
+	/// state deleted.
+	[Test]
+	public static void IdenticalCallsInFlightAreKeptApartAndAHangUpAbandonsItsCall()
+	{
+		let server = scope McpServer();
+		int issued = 0;
+		bool release = false;
+		server.RegisterTool("ticket", "answers its own ticket once released", scope SchemaBuilder().Build(), .ReadOnly,
+			new [&issued, &release](call, arguments, outResult, outError) =>
+			{
+				if (!call.IsReentry)
+				{
+					let ticket = new Ticket();
+					ticket.Number = ++issued;
+					call.State = ticket;
+				}
+				if (!release)
+					return .NotFinished;
+				outResult.Set("ticket", JsonValue.MakeNumber(((Ticket)call.State).Number));
+				return .Answered;
+			});
+		Ticket.Deleted = 0;
+
+		let host = scope McpHttpHost(server);
+		McpHttpConfig config = .();
+		config.Token = cToken;
+		Test.Assert(host.Start(config));
+		let port = host.BoundPort;
+		let callBody = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"ticket\",\"arguments\":{}}}";
+
+		bool doneA = false, doneB = false;
+		let bodyA = scope String();
+		let bodyB = scope String();
+		let clientA = scope Thread(new [&doneA, &port, &bodyA, &callBody]() =>
+			{
+				Fetch(port, Post(cToken, callBody), bodyA);
+				doneA = true;
+			});
+		let clientB = scope Thread(new [&doneB, &port, &bodyB, &callBody]() =>
+			{
+				Fetch(port, Post(cToken, callBody), bodyB);
+				doneB = true;
+			});
+		clientA.Start(false);
+		clientB.Start(false);
+
+		// Both in flight at once, each with its own ticket, before either may answer.
+		for (int i = 0; (i < cPumpLimit) && (server.CallsInFlight < 2); i++)
+		{
+			host.Pump();
+			Thread.Sleep(1);
+		}
+		Test.Assert(server.CallsInFlight == 2, "two calls in flight");
+		Test.Assert(issued == 2, "two tickets, not one call re-entered twice");
+		release = true;
+		for (int i = 0; (i < cPumpLimit) && !(doneA && doneB); i++)
+		{
+			host.Pump();
+			Thread.Sleep(1);
+		}
+		clientA.Join();
+		clientB.Join();
+		Test.Assert(bodyA.Contains("\\\"ticket\\\":") && bodyB.Contains("\\\"ticket\\\":"));
+		Test.Assert(bodyA.Contains("\\\"ticket\\\":1") != bodyB.Contains("\\\"ticket\\\":1"), "one answered 1, the other 2");
+		Test.Assert(server.CallsInFlight == 0);
+		Test.Assert(Ticket.Deleted == 2);
+
+		// A caller that hangs up while it waits: its call is abandoned and its state goes.
+		release = false;
+		let raw = TcpSocket.Connect("127.0.0.1", port);
+		let request = scope $"POST /mcp HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer {cToken}\r\nContent-Type: application/json\r\nContent-Length: {callBody.Length}\r\n\r\n{callBody}";
+		for (int i = 0; (i < cPumpLimit) && (raw.ConnectStatus != 1); i++)
+		{
+			host.Pump();
+			Thread.Sleep(1);
+		}
+		Test.Assert(raw.Send(.((uint8*)request.Ptr, request.Length)) == request.Length);
+		for (int i = 0; (i < cPumpLimit) && (server.CallsInFlight < 1); i++)
+		{
+			host.Pump();
+			Thread.Sleep(1);
+		}
+		Test.Assert(server.CallsInFlight == 1, "the raw call waits");
+		delete raw; // hang up
+		for (int i = 0; (i < cPumpLimit) && (server.CallsInFlight > 0); i++)
+		{
+			host.Pump();
+			Thread.Sleep(1);
+		}
+		Test.Assert(server.CallsInFlight == 0, "the hang-up abandoned it");
+		Test.Assert(Ticket.Deleted == 3, "and deleted its state");
+	}
 }

@@ -19,6 +19,58 @@ class McpServer
 	public const String ProtocolVersion = "2025-06-18";
 
 	private List<Tool> mTools = new .() ~ DeleteContainerAndItems!(_);
+
+	/// A call in flight, known by the transport's id, or by its line when it gave none.
+	private class CallEntry
+	{
+		public ToolCall Call ~ delete _;
+		/// The line, when the call has no id. OWNED.
+		public String Line ~ delete _;
+	}
+
+	/// The calls that answered NotFinished and have not answered since. OWNED.
+	private List<CallEntry> mCalls = new .() ~ DeleteContainerAndItems!(_);
+	/// The identity of the message HandleLine is handling: its id, or its line when nought.
+	private uint64 mCallId = 0;
+	private StringView mCallLine;
+
+	/// The index of the call in flight under the current identity, a new one started when there
+	/// is none.
+	private int FindOrStartCall()
+	{
+		for (int i < mCalls.Count)
+		{
+			let entry = mCalls[i];
+			if ((mCallId != 0) ? (entry.Call.Id == mCallId) : ((entry.Line != null) && (entry.Line == mCallLine)))
+				return i;
+		}
+		let entry = new CallEntry();
+		entry.Call = new ToolCall();
+		entry.Call.Id = mCallId;
+		if (mCallId == 0)
+			entry.Line = new String(mCallLine);
+		mCalls.Add(entry);
+		return mCalls.Count - 1;
+	}
+
+	private int FindCallIndex(ToolCall call)
+	{
+		for (int i < mCalls.Count)
+		{
+			if (mCalls[i].Call === call)
+				return i;
+		}
+		return -1;
+	}
+
+	/// The call is over: it and its state are deleted.
+	private void EndCall(int index)
+	{
+		if (index < 0)
+			return;
+		delete mCalls[index];
+		mCalls.RemoveAt(index);
+	}
 	private List<Resource> mResources = new .() ~ DeleteContainerAndItems!(_);
 	private List<ResourceProvider> mProviders = new .() ~ DeleteContainerAndItems!(_);
 	private String mServerName = new .("engine-mcp") ~ delete _;
@@ -55,6 +107,33 @@ class McpServer
 		mTools.Add(new Tool(name, description, inputSchema, annotations, handler, context));
 	}
 
+	/// Registers a tool whose handler sees its call (ToolCall): one that answers NotFinished
+	/// and keeps what it started in the call's State. OWNERSHIP as RegisterTool.
+	public void RegisterTool(StringView name, StringView description, JsonValue inputSchema,
+		ToolAnnotations annotations, Tool.CallHandler handler, Object context = null)
+	{
+		mTools.Add(new Tool(name, description, inputSchema, annotations, handler, context));
+	}
+
+	/// The caller of an unfinished call went away (its connection closed): the call ends, its
+	/// state deleted, as if it had answered. Nothing when the id names no call in flight.
+	public void AbandonCall(uint64 callId)
+	{
+		if (callId == 0)
+			return;
+		for (int i < mCalls.Count)
+		{
+			if (mCalls[i].Call.Id == callId)
+			{
+				EndCall(i);
+				return;
+			}
+		}
+	}
+
+	/// How many calls are in flight: answered NotFinished and not yet answered or abandoned.
+	public int CallsInFlight => mCalls.Count;
+
 	/// Registers a static resource. OWNERSHIP of the reader and the context transfers.
 	public void RegisterResource(StringView uri, StringView name, StringView mimeType,
 		StringView description, Resource.Reader reader, Object context = null)
@@ -74,8 +153,15 @@ class McpServer
 	///
 	/// Malformed input never throws: it becomes a protocol error line, because a crash on bad
 	/// input is a denial of service on a process an agent is driving.
-	public LineState HandleLine(StringView line, String outResponse)
+	///
+	/// `callId` is the transport's identity for the message, the same every time it hands an
+	/// unfinished call back in (the HTTP host numbers each pending request). Nought when it
+	/// has none: the call is then known by its line, so a transport re-entering one line at a
+	/// time needs nothing more.
+	public LineState HandleLine(StringView line, String outResponse, uint64 callId = 0)
 	{
+		mCallId = callId;
+		mCallLine = line;
 		let parsed = scope JsonParseResult();
 		JsonParser.Parse(line, parsed);
 
@@ -207,9 +293,18 @@ class McpServer
 		let toolResult = JsonValue.MakeObject();
 		defer delete toolResult;
 		let toolError = scope String();
-		let outcome = tool.Run(arguments, toolResult, toolError);
+		// The call this is: the one already in flight under this identity, or a new one.
+		let callIndex = FindOrStartCall();
+		let call = mCalls[callIndex].Call;
+		let outcome = (tool.CallRun != null)
+			? tool.CallRun(call, arguments, toolResult, toolError)
+			: tool.Run(arguments, toolResult, toolError);
 		if (outcome == .NotFinished)
+		{
+			call.IsReentry = true;
 			return null;
+		}
+		EndCall(FindCallIndex(call)); // answered: its state goes
 
 		let item = JsonValue.MakeObject();
 		item.Set("type", JsonValue.MakeString("text"));

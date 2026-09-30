@@ -15,6 +15,10 @@ class Tool
 	/// that must let its host make progress first answers NotFinished; see ToolOutcome.
 	public typealias Handler = delegate ToolOutcome(JsonValue arguments, JsonValue outResult,
 		String outError);
+	/// A handler that sees its call: what a tool answering NotFinished uses, keeping what it
+	/// started in the call's State.
+	public typealias CallHandler = delegate ToolOutcome(ToolCall call, JsonValue arguments,
+		JsonValue outResult, String outError);
 
 	public String Name = new .() ~ delete _;
 	public String Description = new .() ~ delete _;
@@ -23,6 +27,8 @@ class Tool
 	/// What the tool does to the world, emitted in tools/list.
 	public ToolAnnotations Annotations;
 	public Handler Run ~ delete _;
+	/// Set instead of Run for a tool that sees its call.
+	public CallHandler CallRun ~ delete _;
 	/// State the handler closes over, OWNED here so it dies with the tool. A Beef closure has
 	/// no destructor of its own, so anything the handler allocates has to hang off something
 	/// that does.
@@ -36,6 +42,17 @@ class Tool
 		InputSchema = inputSchema;
 		Annotations = annotations;
 		Run = run;
+		Context = context;
+	}
+
+	public this(StringView name, StringView description, JsonValue inputSchema,
+		ToolAnnotations annotations, CallHandler run, Object context = null)
+	{
+		Name.Set(name);
+		Description.Set(description);
+		InputSchema = inputSchema;
+		Annotations = annotations;
+		CallRun = run;
 		Context = context;
 	}
 }

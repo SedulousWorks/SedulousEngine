@@ -386,6 +386,79 @@ class McpServerTests
 		Test.Assert(slow.Calls == 3);
 	}
 
+	/// What a call-aware tool keeps between entries; counts the ones deleted.
+	class Ticket
+	{
+		public static int Deleted = 0;
+		public int Number;
+		public int Entries = 0;
+		public ~this() { Deleted++; }
+	}
+
+	/// Each call gets a ticket on its first entry and answers it on the third: two identical
+	/// calls in flight at once each come back to their own.
+	private static void RegisterTicketed(McpServer server, int* issued)
+	{
+		server.RegisterTool("ticket", "answers its own ticket on the third entry", scope SchemaBuilder().Build(), .ReadOnly,
+			new (call, arguments, outResult, outError) =>
+			{
+				if (!call.IsReentry)
+				{
+					let ticket = new Ticket();
+					ticket.Number = ++*issued;
+					call.State = ticket;
+				}
+				let ticket = (Ticket)call.State;
+				if (++ticket.Entries < 3)
+					return .NotFinished;
+				outResult.Set("ticket", JsonValue.MakeNumber(ticket.Number));
+				return .Answered;
+			});
+	}
+
+	private const String cTicketCall = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"ticket\",\"arguments\":{}}}";
+
+	[Test]
+	public static void TwoIdenticalCallsInFlightEachKeepTheirOwnState()
+	{
+		let server = scope McpServer();
+		int issued = 0;
+		RegisterTicketed(server, &issued);
+		Ticket.Deleted = 0;
+
+		// Two callers send the very same line; the transport knows them apart (ids 101, 102).
+		let reply = scope String();
+		Test.Assert(server.HandleLine(cTicketCall, reply, 101) == .NotFinished);
+		Test.Assert(server.HandleLine(cTicketCall, reply, 102) == .NotFinished);
+		Test.Assert(issued == 2, "two calls, two tickets");
+		Test.Assert(server.CallsInFlight == 2);
+		// Interleaved re-entries: each call comes back to its own ticket.
+		Test.Assert(server.HandleLine(cTicketCall, reply, 102) == .NotFinished);
+		Test.Assert(server.HandleLine(cTicketCall, reply, 101) == .NotFinished);
+		Test.Assert(server.HandleLine(cTicketCall, reply, 102) == .Answered);
+		Test.Assert(reply.Contains("\\\"ticket\\\":2"), reply);
+		reply.Clear();
+		Test.Assert(server.HandleLine(cTicketCall, reply, 101) == .Answered);
+		Test.Assert(reply.Contains("\\\"ticket\\\":1"), reply);
+		Test.Assert(server.CallsInFlight == 0);
+		Test.Assert(Ticket.Deleted == 2, "an answered call's state goes with it");
+
+		// Without an id a call is known by its line, as a one-at-a-time transport re-enters it.
+		reply.Clear();
+		Test.Assert(server.HandleLine(cTicketCall, reply) == .NotFinished);
+		Test.Assert(server.HandleLine(cTicketCall, reply) == .NotFinished);
+		Test.Assert(server.HandleLine(cTicketCall, reply) == .Answered);
+		Test.Assert(issued == 3, "one call across its three entries");
+
+		// A caller that goes away: its call ends and its state is deleted, as if answered.
+		Test.Assert(server.HandleLine(cTicketCall, reply, 200) == .NotFinished);
+		Test.Assert(server.CallsInFlight == 1);
+		server.AbandonCall(200);
+		Test.Assert(server.CallsInFlight == 0);
+		Test.Assert(Ticket.Deleted == 4);
+		server.AbandonCall(200); // twice is nothing
+	}
+
 	[Test]
 	public static void ServeReentersANotFinishedLineUntilItAnswers()
 	{

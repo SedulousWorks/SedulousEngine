@@ -12,6 +12,9 @@ class HttpRequest
 	public String Target = new .() ~ delete _;
 	public List<HttpHeader> Headers = new .() ~ DeleteContainerAndItems!(_);
 	public List<uint8> Body = new .() ~ delete _;
+	/// The server's number for this request, unique for the server's life and never nought;
+	/// the same every time an unfinished request is handed back to the handler.
+	public uint64 Sequence = 0;
 
 	public this() {}
 

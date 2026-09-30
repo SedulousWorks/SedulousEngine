@@ -71,6 +71,8 @@ class McpHttpHost
 			return false;
 
 		mHttp.SetHandler(new (request) => Handle(request));
+		// A call waiting on a tool whose caller left ends there: the tool's state for it goes.
+		mHttp.SetAbandonHandler(new (request) => { mServer.AbandonCall(request.Sequence); });
 		mHttp.SetStreamHandler(new (request, stream) =>
 			{
 				// Confirmed immediately: a client treats the first bytes as proof the stream
@@ -149,7 +151,9 @@ class McpHttpHost
 					"{\"error\":\"POST one JSON-RPC message per request\"}");
 
 			let line = scope String();
-			switch (mServer.HandleLine(request.BodyText, line))
+			// The request's number is the call's identity: the same each time an unfinished call
+			// comes back, and different for two identical calls in flight at once.
+			switch (mServer.HandleLine(request.BodyText, line, request.Sequence))
 			{
 			case .Notification:
 				// Accepted, with nothing to say.

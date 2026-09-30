@@ -48,6 +48,7 @@ class HttpServer
 	/// to the peer. THE SERVER OWNS a returned response.
 	public typealias RequestHandler = delegate HttpResponse(HttpRequest request);
 	public typealias StreamHandler = delegate void(HttpRequest request, SseStream stream);
+	public typealias AbandonHandler = delegate void(HttpRequest request);
 
 	private HttpServerConfig mConfig = .();
 	private TcpListener mListener ~ delete _;
@@ -56,6 +57,10 @@ class HttpServer
 	private List<SseStream> mStreams = new .() ~ ReleaseStreams(_);
 	private RequestHandler mHandler ~ delete _;
 	private StreamHandler mStreamHandler ~ delete _;
+	/// Told of a request that was answered not yet and will never be answered: its peer left,
+	/// or the server stopped. Owned.
+	private AbandonHandler mAbandonHandler ~ delete _;
+	private uint64 mNextSequence = 0;
 
 	public ~this()
 	{
@@ -86,6 +91,8 @@ class HttpServer
 
 	public void Stop()
 	{
+		for (let connection in mConnections)
+			NotifyAbandoned(connection);
 		ClearAndDeleteItems!(mConnections);
 
 		// Closed AND released: the consumer's reference stays valid and its writes turn into
@@ -112,6 +119,20 @@ class HttpServer
 	{
 		delete mHandler;
 		mHandler = handler;
+	}
+
+	/// Called for a pending request (one the handler answered not yet) that will not be
+	/// handed back: its peer left while it waited, or the server stopped. Ownership transfers.
+	public void SetAbandonHandler(AbandonHandler handler)
+	{
+		delete mAbandonHandler;
+		mAbandonHandler = handler;
+	}
+
+	private void NotifyAbandoned(Connection connection)
+	{
+		if (connection.Pending && (connection.Request != null) && (mAbandonHandler != null))
+			mAbandonHandler(connection.Request);
 	}
 
 	/// Called when a handler answered with the event stream marker. The consumer takes its own
@@ -188,6 +209,7 @@ class HttpServer
 				// handler is asked again.
 				if (connection.Socket.Receive(buffer) < 0)
 				{
+					NotifyAbandoned(connection);
 					done = true; // the peer left while waiting, so there is nobody to answer
 				}
 				else if (Dispatch(connection))
@@ -264,9 +286,10 @@ class HttpServer
 
 	/// Moves the parser's complete request onto the connection, where it stays while the
 	/// handler answers not yet.
-	private static void TakeRequest(Connection connection)
+	private void TakeRequest(Connection connection)
 	{
 		let request = new HttpRequest();
+		request.Sequence = ++mNextSequence;
 		request.Method.Set(connection.Parser.Method);
 		request.Target.Set(connection.Parser.Target);
 		for (let header in connection.Parser.Headers)
