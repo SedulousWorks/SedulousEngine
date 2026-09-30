@@ -203,13 +203,22 @@ class ScriptRunHost
 		return true;
 	}
 
-	/// Logs and clears what the runtime collected.
-	public void ReportProblems()
+	/// Logs and clears what the runtime collected, appending each line to `outText` too when
+	/// given ("; " between them).
+	public void ReportProblems(String outText = null)
 	{
 		if (mRuntime == null)
 			return;
 		for (let p in mRuntime.Problems)
+		{
 			GlobalLog(.Error, scope $"Script: {p}");
+			if (outText != null)
+			{
+				if (!outText.IsEmpty)
+					outText.Append("; ");
+				outText.Append(p);
+			}
+		}
 		ClearAndDeleteItems!(mRuntime.Problems);
 	}
 

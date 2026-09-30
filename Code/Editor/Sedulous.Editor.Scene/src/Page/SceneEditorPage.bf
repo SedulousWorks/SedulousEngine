@@ -158,8 +158,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private EditorCamera mCamera = new .() ~ delete _;
 	/// The viewport capture (viewport_screenshot): armed by RequestViewportCapture, recorded in
 	/// OnAfterSceneRender off the composed colour target, completed in the next OnUpdate.
-	private ScreenshotCapture mScreenshot = new .() ~ delete _;
-	private ViewportCapture mCapture = new .() ~ delete _;
+	private ViewportCaptureRecorder mCapture = new .() ~ delete _;
 	/// The viewport rendered this frame, and at what size: what OnAfterSceneRender captures.
 	private bool mRenderedThisFrame = false;
 	private uint32 mCaptureWidth = 0;
@@ -354,17 +353,13 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public bool MarkersShown => mView.ShowMarkers;
 	public bool CameraOwnsInput => mCameraOwnsInput;
 	public EditorCamera ViewportCamera => (mViewport != null) ? mCamera : null;
-	public ViewportCapture LastViewportCapture => mCapture;
+	public ViewportCapture LastViewportCapture => mCapture.State;
 
 	public Result<void, ErrorCode> RequestViewportCapture(StringView path)
 	{
 		if (mViewport == null)
 			return .Err(.NotSupported);
-		mCapture.State = .Pending;
-		mCapture.Path.Set(path);
-		mCapture.Width = 0;
-		mCapture.Height = 0;
-		mScreenshot.Request(path);
+		mCapture.Request(path);
 		return .Ok;
 	}
 
@@ -442,21 +437,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
-		// A viewport capture recorded last frame: the GPU has to finish the copy. A one off, so
-		// wait for everything, then map and write.
-		if (mScreenshot.Recorded)
-		{
-			let device = (host.Graphics != null) ? host.Graphics.Raw : null;
-			if (device != null)
-			{
-				device.WaitIdle();
-				let written = scope Image();
-				let saved = mScreenshot.Complete(device, written);
-				mCapture.State = (saved case .Ok) ? .Written : .Failed;
-				mCapture.Width = written.Width;
-				mCapture.Height = written.Height;
-			}
-		}
+		// A viewport capture recorded last frame: the GPU has to finish the copy.
+		mCapture.Complete((host.Graphics != null) ? host.Graphics.Raw : null);
 		EnsureViewportBound();
 		if (mHostWindow == null)
 			return;
@@ -563,10 +545,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	{
 		let rendered = mRenderedThisFrame;
 		mRenderedThisFrame = false;
-		if (!rendered || !mScreenshot.Armed || (frame.Encoder == null) || (host.Graphics == null) || (host.Graphics.Raw == null))
+		if (!rendered || !mCapture.Armed || (host.Graphics == null))
 			return;
-		if (!mScreenshot.Record(host.Graphics.Raw, frame.Encoder, mViewport.ColorTexture, mViewport.ColorFormat, mCaptureWidth, mCaptureHeight, .ShaderRead))
-			mCapture.State = .Failed; // logged by the capture
+		mCapture.Record(host.Graphics.Raw, frame.Encoder, mViewport.ColorTexture, mViewport.ColorFormat, mCaptureWidth, mCaptureHeight, .ShaderRead);
 	}
 
 	/// A change on disk replaces the scene, unless there are unsaved edits here.
@@ -676,7 +657,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		if (mRender != null)
 			mRender.CancelPicks(Internal.UnsafeCastToPtr(mViewport)); // the key dies with the viewport
 		if ((mHost != null) && (mHost.Graphics != null) && (mHost.Graphics.Raw != null))
-			mScreenshot.Release(mHost.Graphics.Raw); // the readback buffer, while the device lives
+			mCapture.Release(mHost.Graphics.Raw); // the readback buffer, while the device lives
 		mViewport.Shutdown();
 		if (mPreviewViewport != null)
 			mPreviewViewport.Shutdown();

@@ -475,9 +475,13 @@ class EditorApplication : IApplication
 			mContext.Notify(.Info, "No game page registered in this build.");
 			return;
 		}
-		let page = mContext.GamePageFactory(newInstance);
+		// A unique id per tab, so a docking restore cannot collide; the page answers to it too.
+		let pieId = newInstance ? scope:: $"game-page-{mGamePageCounter + 1}" : "game-page";
+		let page = mContext.GamePageFactory(newInstance, pieId);
 		if (page == null)
 			return;
+		if (newInstance)
+			mGamePageCounter++;
 		// Every page in this app is a UIEditorPage, the Game page too.
 		let uiPage = mContext.AdoptPage(page) as UIEditorPage;
 		if (uiPage == null)
@@ -486,11 +490,7 @@ class EditorApplication : IApplication
 			mGamePage = uiPage; // only the primary tab is the focus target
 
 		let panel = mShell.AddPagePanel(uiPage.Title, RetainedView(uiPage.ContentView));
-		// A unique persistence id per tab, so a docking restore cannot collide.
-		if (newInstance)
-			panel.SetPersistenceId(scope $"game-page-{++mGamePageCounter}");
-		else
-			panel.SetPersistenceId("game-page");
+		panel.SetPersistenceId(pieId);
 		panel.DestroyOnClose = true; // the page's views die with it, as for any page
 		panel.OnCloseRequested.Add(new [=uiPage, =this](p) =>
 			{

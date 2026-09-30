@@ -38,15 +38,17 @@ static class SceneEditor
 		// hierarchy's menus are served from these; the MCP action bridge reads them.
 		SceneActions.Register(context);
 		context.RegisterMcpToolContribution(new [=context](server) => { SceneMcpTools.Register(server, context); });
+		// Play in editor for agents: start, stop, state and capture, per Game tab.
+		context.RegisterMcpToolContribution(new [=context](server) => { PieMcpTools.Register(server, context); });
 
 
 		delete context.GamePageFactory;
-		context.GamePageFactory = new [=context, =host, =uiHost, =embeddedApp](newInstance) =>
+		context.GamePageFactory = new [=context, =host, =uiHost, =embeddedApp](newInstance, pieId) =>
 		{
 			if (embeddedApp == null)
 				return null;
 			let instance = newInstance ? embeddedApp.CreateInstance() : embeddedApp.Instance;
-			return new GameEditorPage(context, host, uiHost, embeddedApp, instance);
+			return new GameEditorPage(context, host, uiHost, embeddedApp, instance, pieId);
 		};
 
 		// Export: a scene or prefab source transcoded to the binary wire, and the references a

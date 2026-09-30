@@ -205,6 +205,16 @@ static class GameScriptTests
 		Test.Assert(!run.Instance.ScriptRunning, "the fault stopped the script");
 		run.Step(2); // and the run keeps ticking without it
 		Test.Assert(run.Game == null);
+		// The fault is remembered with where it happened, and the run's clock kept moving.
+		Test.Assert(run.Instance.ScriptFault.StartsWith("faulted in update"), scope String(run.Instance.ScriptFault));
+		Test.Assert(Math.Abs(run.Instance.RunTime - 4.0 / 60.0) < 1e-5);
+		run.Instance.ResetRunClock();
+		Test.Assert(run.Instance.RunTime == 0);
+		// A new start clears it.
+		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.ScriptFault.IsEmpty);
+		run.Instance.StopScript();
+		Test.Assert(run.Instance.ScriptFault.IsEmpty, "a clean stop is not a fault");
 	}
 
 	[Test]

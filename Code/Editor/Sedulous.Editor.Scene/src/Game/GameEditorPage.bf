@@ -28,8 +28,10 @@ namespace Sedulous.Editor.Scene;
 ///
 /// The context, host, UI host and embedded application are borrowed. The game instance is
 /// borrowed from the application and released back to it on close.
-class GameEditorPage : UIEditorPage
+class GameEditorPage : UIEditorPage, IPieInstancePage
 {
+	/// The tab's PIE id (IPieInstancePage.PieId).
+	private String mPieId = new .() ~ delete _;
 	private EditorContext mContext;
 	private IApplicationHost mHost;
 	private UIHost mUiHost;
@@ -70,10 +72,21 @@ class GameEditorPage : UIEditorPage
 	private bool mRunning = false;
 	/// Play latched, waiting for the cook to go idle.
 	private bool mPendingPlay = false;
+	/// Frames rendered since the run started, and the game time a stopped run ended at.
+	private uint64 mFrameCount = 0;
+	private double mStoppedGameTime = 0;
+	/// The PIE capture (pie_screenshot): armed by RequestViewportCapture, recorded in
+	/// OnAfterSceneRender after the overlays, completed in the next OnUpdate.
+	private ViewportCaptureRecorder mCapture = new .() ~ delete _;
+	/// The scene rendered into the viewport this frame, and at what size.
+	private bool mRenderedThisFrame = false;
+	private uint32 mCaptureWidth = 0;
+	private uint32 mCaptureHeight = 0;
 
 	public this(EditorContext context, IApplicationHost host, UIHost uiHost, DefaultApplication embeddedApp,
-		GameInstance instance)
+		GameInstance instance, StringView pieId)
 	{
+		mPieId.Set(pieId);
 		mContext = context;
 		mHost = host;
 		mUiHost = uiHost;
@@ -142,6 +155,29 @@ class GameEditorPage : UIEditorPage
 	public bool IsRunning => mRunning;
 	public Sedulous.Scene.Scene RunningScene => mScene;
 
+	public StringView PieId => mPieId;
+	public bool IsStarting => mPendingPlay;
+	public StringView SceneName => (mScene != null) ? mScene.Name : "";
+	public uint64 FrameCount => mFrameCount;
+	public double GameTime => (mRunning && (mGameInstance != null)) ? mGameInstance.RunTime : mStoppedGameTime;
+
+	public PieScriptState ScriptState
+	{
+		get
+		{
+			if (mGameInstance == null)
+				return .None;
+			if (mGameInstance.ScriptRunning)
+				return .Running;
+			return mGameInstance.ScriptFault.IsEmpty ? .None : .Faulted;
+		}
+	}
+
+	public StringView ScriptFault => (mGameInstance != null) ? mGameInstance.ScriptFault : "";
+
+	public void RequestViewportCapture(StringView path) => mCapture.Request(path);
+	public ViewportCapture LastViewportCapture => mCapture.State;
+
 	/// The instance's scenes, or the page's own placeholder group without an instance.
 	public SceneManager SceneGroup => (mGameInstance != null) ? mGameInstance.Scenes : mFallbackScenes;
 
@@ -158,6 +194,8 @@ class GameEditorPage : UIEditorPage
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
+		// A capture recorded last frame: the GPU has to finish the copy.
+		mCapture.Complete((host.Graphics != null) ? host.Graphics.Raw : null);
 		if (mPendingPlay && !mContext.IsCookBusy)
 		{
 			mPendingPlay = false;
@@ -199,10 +237,17 @@ class GameEditorPage : UIEditorPage
 		mRender.RenderScene(mScene, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, .(0, 0, w, h),
 			null, targetState);
 		mViewport.ColorState = .ShaderRead;
+		if (mRunning)
+			mFrameCount++;
+		mRenderedThisFrame = true;
+		mCaptureWidth = w;
+		mCaptureHeight = h;
 	}
 
 	public override void OnAfterSceneRender(IApplicationHost host, ref FrameContext frame)
 	{
+		let rendered = mRenderedThisFrame;
+		mRenderedThisFrame = false;
 		if (!mRunning || (mScene == null) || !mViewport.IsReady || !frame.Valid || (mRender == null))
 			return;
 		let w = mViewport.RenderWidth;
@@ -213,6 +258,9 @@ class GameEditorPage : UIEditorPage
 		mRender.RenderOverlays(frame.Encoder, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, frame.FrameIndex);
 		frame.Encoder.TransitionTexture(mViewport.ColorTexture, .RenderTarget, .ShaderRead);
 		mViewport.ColorState = .ShaderRead;
+		// The capture, once the frame is whole: the scene, then the game's overlays over it.
+		if (rendered && mCapture.Armed && (host.Graphics != null))
+			mCapture.Record(host.Graphics.Raw, frame.Encoder, mViewport.ColorTexture, mViewport.ColorFormat, mCaptureWidth, mCaptureHeight, .ShaderRead);
 	}
 
 	public override void OnClose()
@@ -227,6 +275,8 @@ class GameEditorPage : UIEditorPage
 		mGameInstance = null;
 		delete mContext.StopGameRun;
 		mContext.StopGameRun = null;
+		if (mHost.Graphics != null)
+			mCapture.Release(mHost.Graphics.Raw); // the readback buffer, while the device lives
 		mViewport.Shutdown();
 	}
 

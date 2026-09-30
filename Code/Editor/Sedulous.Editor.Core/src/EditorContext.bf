@@ -105,9 +105,11 @@ class EditorContext : IAssetEditSink
 	/// Fired on every breakpoint toggle: the gutter repaints, a live run re-applies.
 	public delegate void() OnBreakpointsChanged ~ delete _;
 	/// The play in editor seam: makes the Game page. `newInstance` false reuses the app's
-	/// primary game instance; true spins up an additional one. Registered by the scene editor
-	/// plugin; unset, the Game menu item notifies.
-	public delegate EditorPage(bool newInstance) GamePageFactory ~ delete _;
+	/// primary game instance; true spins up an additional one. `pieId` names the tab, the same
+	/// id its dock panel persists under and the PIE tools address it by (`game-page`, then
+	/// `game-page-1`, ...). Registered by the scene editor plugin; unset, the Game menu item
+	/// notifies.
+	public delegate EditorPage(bool newInstance, StringView pieId) GamePageFactory ~ delete _;
 	/// Stops the Game tab's live run, if any; the embedded app's RequestExit lands here,
 	/// deferred to after the page update loop. Set by the Game page.
 	public delegate void() StopGameRun ~ delete _;

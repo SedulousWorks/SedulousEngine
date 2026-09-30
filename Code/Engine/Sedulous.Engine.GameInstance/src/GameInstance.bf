@@ -97,6 +97,12 @@ class GameInstance
 	private ScriptObject mGame = null;
 	/// BORROWED: the resource manager owns the product.
 	private ScriptClass mGameClass = null;
+	/// Why the last game script stopped on its own: the handler it faulted in and the
+	/// runtime's problems, or that it did not instantiate. Empty while it runs or after a
+	/// clean stop; a start clears it.
+	private String mScriptFault = new .() ~ delete _;
+	/// Gameplay seconds TickScript has moved this run's clock by; ResetRunClock zeroes it.
+	private double mRunTime = 0;
 	private SceneLoader mSceneLoader = null ~ delete _;
 	private ExitRequest mExitRequest = null ~ delete _;
 	private Dictionary<String, uint32> mGameSubscriptions = new .() ~ DeleteDictionaryAndKeys!(_);
@@ -507,6 +513,12 @@ class GameInstance
 
 	/// Whether a game script is running: instantiated and not faulted.
 	public bool ScriptRunning => mGame != null;
+	/// Why the game script stopped on its own; empty when it did not (see mScriptFault).
+	public StringView ScriptFault => mScriptFault;
+	/// Gameplay seconds since ResetRunClock: the scaled time the script and its coroutines
+	/// moved by, standing still while the debugger holds the run.
+	public double RunTime => mRunTime;
+	public void ResetRunClock() { mRunTime = 0; }
 
 	/// A step debugger over this run: its behaviours and its game script. The configurator
 	/// applies the breakpoints and takes the pointer; TAKES OWNERSHIP of the delegate.
@@ -521,12 +533,14 @@ class GameInstance
 	public bool StartScript(ScriptClass scriptClass)
 	{
 		StopScript();
+		mScriptFault.Clear();
 		if (scriptClass == null)
 			return false;
 		let game = mRunHost.Instantiate(scriptClass);
 		if (game == null)
 		{
 			GlobalLog(.Error, scope $"Run: the game script '{scriptClass.ClassName}' did not instantiate");
+			mScriptFault.AppendF("the game script '{}' did not instantiate (log_read, category Script, has why)", scriptClass.ClassName);
 			return false;
 		}
 		mGame = game;
@@ -566,6 +580,7 @@ class GameInstance
 		let sceneScale = (mScene != null) ? mScene.TimeScale : 1.0f;
 		let time = FrameTime(hostDeltaTime, contextTimeScale, mSceneManager.TimeScale, sceneScale);
 		let dt = time.SceneDelta;
+		mRunTime += dt;
 		if (mGame != null)
 		{
 			var args = ScriptValue[1](.FromFloat(dt));
@@ -598,7 +613,11 @@ class GameInstance
 		if (mRunHost.IsDebugPaused)
 			return; // suspended at a breakpoint, not a fault; the debugger completes it
 		GlobalLog(.Error, scope $"Run: the game script faulted in {handler}; stopped");
-		mRunHost.ReportProblems();
+		mScriptFault.Set(scope $"faulted in {handler}");
+		let problems = scope String();
+		mRunHost.ReportProblems(problems);
+		if (!problems.IsEmpty)
+			mScriptFault.AppendF(": {}", problems);
 		let faulted = mGame;
 		mGame = null;
 		runtime.CancelCoroutinesFor(faulted);

@@ -33,8 +33,11 @@ extension GameEditorPage
 		if (instance == null)
 			GlobalLog(.Information, "Editor: Game: no default scene - the game script owns boot.");
 
+		mFrameCount = 0;
+		mStoppedGameTime = 0;
 		if (mGameInstance != null)
 		{
+			mGameInstance.ResetRunClock(); // game time counts from this start
 			EnableDebugging();
 			StartGameScriptFromProject();
 		}
@@ -102,6 +105,8 @@ extension GameEditorPage
 		delete mContext.OnBreakpointsChanged; // the live sync dies with the run
 		mContext.OnBreakpointsChanged = null;
 		ClearAndDeleteItems(mAppliedBreakpoints);
+		if (mRunning && (mGameInstance != null))
+			mStoppedGameTime = mGameInstance.RunTime;
 		if (mGameInstance != null)
 			mGameInstance.StopScript();
 		{
