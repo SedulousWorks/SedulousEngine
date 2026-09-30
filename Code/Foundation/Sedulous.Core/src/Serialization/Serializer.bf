@@ -90,6 +90,10 @@ abstract class Serializer : ISerializer
 		}
 	}
 
+	/// Where the first failure happened, in words, for a backend that can say (a text one
+	/// knows the key it looked for and the scopes it was in); nothing otherwise.
+	public virtual void DescribeFailure(String outText) {}
+
 	public virtual void Key(StringView name) {}
 	public virtual void BeginObject() {}
 	public virtual void EndObject() {}

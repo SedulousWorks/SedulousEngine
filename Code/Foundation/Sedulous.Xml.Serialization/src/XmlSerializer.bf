@@ -40,6 +40,10 @@ class XmlSerializer : Serializer
 	/// reuses the buffer after, and it cannot dangle if a caller keys with a string that
 	/// goes out of scope before the value is written.
 	private String mPendingKey = new .() ~ delete _;
+	/// The last Locate looked for a key (mPendingKey), not the next element in order.
+	private bool mLastLocateKeyed = false;
+	/// Where the first read failure happened, in words; empty until one does.
+	private String mFailure = new .() ~ delete _;
 	private bool mHasPendingKey;
 
 	/// Write mode: builds a fresh document rooted at a single element.
@@ -96,7 +100,7 @@ class XmlSerializer : Serializer
 		let element = Locate();
 		if (element == null)
 		{
-			Fail(.NotFound);
+			FailRead(.NotFound, "no object");
 			return;
 		}
 		PushRead(element);
@@ -139,7 +143,7 @@ class XmlSerializer : Serializer
 		if (element == null)
 		{
 			count = 0;
-			Fail(.NotFound);
+			FailRead(.NotFound, "no array");
 			return;
 		}
 
@@ -148,7 +152,7 @@ class XmlSerializer : Serializer
 		else
 		{
 			count = 0;
-			Fail(.Internal);
+			FailRead(.Internal, "no count on the array");
 		}
 		PushRead(element);
 	}
@@ -167,12 +171,12 @@ class XmlSerializer : Serializer
 		let element = Locate();
 		if (element == null)
 		{
-			Fail(.NotFound);
+			FailRead(.NotFound, scope $"no {ScalarTag(kind)}");
 			return;
 		}
 
 		if (!ReadScalar(value, kind, element.GetTextContent(.. scope String())))
-			Fail(.Internal);
+			FailRead(.Internal, scope $"not a {ScalarTag(kind)}: <{element.TagName}>");
 	}
 
 	public override void Text(String value)
@@ -186,7 +190,7 @@ class XmlSerializer : Serializer
 		let element = Locate();
 		if (element == null)
 		{
-			Fail(.NotFound);
+			FailRead(.NotFound, "no string");
 			return;
 		}
 
@@ -207,7 +211,7 @@ class XmlSerializer : Serializer
 		let element = Locate();
 		if (element == null)
 		{
-			Fail(.NotFound);
+			FailRead(.NotFound, "no blob");
 			return;
 		}
 
@@ -308,6 +312,49 @@ class XmlSerializer : Serializer
 
 	// ---- read helpers ----
 
+	public override void DescribeFailure(String outText) => outText.Append(mFailure);
+
+	/// Fails the read, and the FIRST failure also says where: what was wanted (by key when
+	/// one was asked for), the scopes it was wanted in, and what stood there instead.
+	private void FailRead(ErrorCode code, StringView what)
+	{
+		if (IsOk)
+		{
+			mFailure.Set(what);
+			if (mLastLocateKeyed)
+				mFailure.AppendF(" '{}'", mPendingKey);
+			mFailure.Append(" at ");
+			bool any = false;
+			for (int i = 1; i < mReadStack.Count; i++)
+			{
+				let element = mReadStack[i].Element;
+				if (element == null)
+					continue;
+				let name = element.GetAttribute("name");
+				mFailure.AppendF("{}{}", any ? "/" : "", name.IsEmpty ? scope $"<{element.TagName}>" : name);
+				any = true;
+			}
+			if (!any)
+				mFailure.Append("the top");
+			if (!mReadStack.IsEmpty)
+			{
+				var node = mReadStack.Back.Cursor;
+				while ((node != null) && (node.NodeType != .Element))
+					node = node.NextSibling;
+				if (let next = node as XmlElement)
+				{
+					let nextName = next.GetAttribute("name");
+					mFailure.AppendF(" (next there: <{}{}>)", next.TagName, nextName.IsEmpty ? "" : scope $" name=\"{nextName}\"");
+				}
+				else
+				{
+					mFailure.Append(" (nothing left there)");
+				}
+			}
+		}
+		Fail(code);
+	}
+
 	private void PushRead(XmlElement element)
 	{
 		mReadStack.Add(ReadScope()
@@ -334,6 +381,7 @@ class XmlSerializer : Serializer
 			return null;
 		}
 
+		mLastLocateKeyed = mHasPendingKey;
 		if (mHasPendingKey)
 		{
 			mHasPendingKey = false;

@@ -431,6 +431,7 @@ static class ProjectFlowTests
 			refused.Clear();
 			CallErr(server, "asset_data_write", With(With(Obj(), "guid", guid), "xml", misspelled), refused);
 			Test.Assert(refused.Contains("the payload did not read"), refused);
+			Test.Assert(refused.Contains("no u8 'source' at payload/"), "and says which key, where");
 			let retyped = scope String(edited);
 			retyped.Replace("Sedulous.Input.Pipeline.InputMapAsset", "Sedulous.Audio.Pipeline.SoundCueAsset");
 			refused.Clear();

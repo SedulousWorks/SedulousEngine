@@ -284,6 +284,42 @@ class XmlSerializerTests
 		Serialize(reader, ref readBack);
 		Test.Assert(!reader.IsOk);
 		Test.Assert(reader.Status case .Err(.NotFound));
+		// And says where: what was wanted, by key, and what stood there instead.
+		let place = reader.DescribeFailure(.. scope String());
+		Test.Assert(place == "no i32 'absent' at the top (next there: <i32 name=\"present\">)", place);
+	}
+
+	/// Inside nested scopes the failure names the path to it, the first failure winning.
+	[Test]
+	public static void AFailureDeepInsideNamesItsPath()
+	{
+		var value = (int32)1;
+		let document = scope XmlDocument();
+		{
+			let writer = scope XmlSerializer();
+			writer.Key("outer");
+			writer.BeginObject();
+			writer.Key("inner");
+			writer.BeginObject();
+			writer.Key("kept");
+			Serialize(writer, ref value);
+			writer.EndObject();
+			writer.EndObject();
+			Reparse(writer, document);
+		}
+
+		let reader = scope XmlSerializer(document);
+		reader.Key("outer");
+		reader.BeginObject();
+		reader.Key("inner");
+		reader.BeginObject();
+		var dropped = 0.0f;
+		reader.Key("drag");
+		Serialize(reader, ref dropped);
+		reader.Key("later");
+		Serialize(reader, ref dropped);
+		let place = reader.DescribeFailure(.. scope String());
+		Test.Assert(place == "no f32 'drag' at outer/inner (next there: <i32 name=\"kept\">)", place);
 	}
 
 	/// The reason lookup searches FORWARD from the cursor rather than from the first

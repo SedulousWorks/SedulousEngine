@@ -119,6 +119,9 @@ class Instance
 		if (!archive.IsOk)
 		{
 			outError.Append("the payload did not read: a missing or misspelled key, a value of the wrong kind, or dataVersions other than this build's");
+			let place = archive.DescribeFailure(.. scope String());
+			if (!place.IsEmpty)
+				outError.AppendF(" - {}", place);
 			delete object;
 			return null;
 		}
