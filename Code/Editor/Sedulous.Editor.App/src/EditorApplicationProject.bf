@@ -240,8 +240,6 @@ extension EditorApplication
 					ShowToast(.Error, scope $"Cook: {failed} failed, {cooked} cooked (see Console).");
 				else if (cooked > 0)
 					ShowToast(.Success, scope $"Cook finished: {cooked} asset(s).");
-				// A finished cook may have created products the open-time bind missed.
-				ApplyProjectUiDefaults();
 				// Hot reload: rebuilt products swap in behind the proxy handles, live scenes
 				// seeing the new resources with no reopen.
 				if (mResources != null)
@@ -249,6 +247,10 @@ extension EditorApplication
 					for (let product in mCookService.LastCookedProducts)
 						mResources.Reload(product);
 				}
+				// A finished cook may have created products the open-time bind missed. AFTER
+				// the reload: the game UI borrows the font product itself, so binding first left
+				// it on the product a rebuilt font's reload then freed.
+				ApplyProjectUiDefaults();
 			};
 		mAssetsView.AddRef();
 		mShell.SetAssetsContent(mAssetsView);
