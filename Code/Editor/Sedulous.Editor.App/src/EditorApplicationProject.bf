@@ -365,6 +365,11 @@ extension EditorApplication
 		seams.Jobs = mJobService;
 		seams.Builders = mBuilders;
 		seams.OnCreated = new (creator, instance) => { AfterCreate(creator, instance); };
+		seams.OnImported = new (primary) =>
+			{
+				if (mAssetsView != null)
+					mAssetsView.AfterImport(primary, null);
+			};
 		BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), seams.PlayerDir);
 		TemplatesRoot(seams.TemplatesRoot);
 		seams.DataRoot.Set(mConfig.DataRoot);

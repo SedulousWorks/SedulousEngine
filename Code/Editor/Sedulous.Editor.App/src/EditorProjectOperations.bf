@@ -32,6 +32,10 @@ class EditorProjectOperationsSeams
 	/// After a creation: the editor's effects (a first scene as the default, the browser, the
 	/// cook), the ones File > New has. Owned.
 	public delegate void(AssetCreator creator, Instance instance) OnCreated ~ delete _;
+	/// After an import: the editor's effects, the ones an import from the Assets browser has
+	/// (the import listeners, a model's prefab among them; the cook of what it made; the
+	/// browser). Owned.
+	public delegate void(Instance primary) OnImported ~ delete _;
 	/// A step still running past this answers with an error.
 	public double TimeoutSeconds = 600.0;
 }
@@ -325,6 +329,12 @@ class EditorProjectOperations : IProjectOperations
 		mImportOutcome.FlushMs = mImport.FlushMs;
 		mImportOutcome.CopyTo(outOutcome);
 		ResetImport();
+		// Every write has landed: the import is whole, so what follows an import runs now.
+		if (mSeams.OnImported != null)
+		{
+			if (let primary = mSeams.Project.SourceDb.GetInstance(outOutcome.Id))
+				mSeams.OnImported(primary);
+		}
 		return .Finished;
 	}
 

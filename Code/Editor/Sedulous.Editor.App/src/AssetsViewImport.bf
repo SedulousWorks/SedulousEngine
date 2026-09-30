@@ -456,6 +456,14 @@ extension AssetsView
 	private void FinishImport(Instance primary, IFileImporter importer, ImportOptions options)
 	{
 		mContext.Notify(.Success, scope $"Imported '{primary.Name}' ({importer.Label}).");
+		AfterImport(primary, options);
+	}
+
+	/// What follows any finished import, from here or from an agent's asset_import: the
+	/// listeners (a model's prefab), the cook of what it made, the browser. `options` null
+	/// is the importer's defaults.
+	public void AfterImport(Instance primary, ImportOptions options)
+	{
 		mContext.NotifyImported(primary, options);
 		// The imported assets cook explicitly, scoped to the primary's group; the plan skips
 		// anything clean. The Sources watcher triggers auto-cook off the provenance copy, but

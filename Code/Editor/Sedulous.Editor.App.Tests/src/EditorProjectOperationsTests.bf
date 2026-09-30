@@ -161,7 +161,17 @@ class EditorProjectOperationsTests
 	public static void AnImportRunsTheTwoPhasePathAndLandsItsStream()
 	{
 		let bench = scope Bench("mcp_ops_import");
-		let ops = scope EditorProjectOperations(bench.Seams());
+		let seams = bench.Seams();
+		// The host's after-import effects (a model's prefab, the cook, the browser) run once
+		// per finished import, over its primary, and never for a failed one.
+		int afterImports = 0;
+		Guid lastImported = .Empty;
+		seams.OnImported = new [&afterImports, &lastImported](primary) =>
+			{
+				afterImports++;
+				lastImported = primary.Id;
+			};
+		let ops = scope EditorProjectOperations(seams);
 		let importer = scope TwoPhaseImporter(true);
 		ImportRequest request = .();
 		request.Source = "anything.two";
@@ -183,6 +193,8 @@ class EditorProjectOperationsTests
 		Test.Assert(bulk != null);
 		defer delete bulk;
 		Test.Assert(bulk.Size() == 2);
+		Test.Assert(afterImports == 1);
+		Test.Assert(lastImported == outcome.Id, "after the writes landed, over the primary");
 
 		// An inline importer (no worker prepare) places at once and still flushes on the job.
 		let inlineImporter = scope TwoPhaseImporter(false);
@@ -196,6 +208,7 @@ class EditorProjectOperationsTests
 		request.Importer = failing;
 		Test.Assert(Drive(bench, scope [&]() => ops.Import(request, outcome, error), out waited) == .Failed);
 		Test.Assert(error.StartsWith("import of 'anything.two' failed"), error);
+		Test.Assert(afterImports == 2, "a failed import has no after");
 		error.Clear();
 		request.Importer = inlineImporter;
 		Test.Assert(Drive(bench, scope [&]() => ops.Import(request, outcome, error), out waited) == .Finished, error);
