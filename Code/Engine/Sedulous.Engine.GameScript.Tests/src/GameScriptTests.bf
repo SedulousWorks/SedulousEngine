@@ -18,11 +18,12 @@ static class GameScriptTests
 			int launches = 0;
 			int updates = 0;
 			float elapsed = 0;
+			float real = 0;
 			int exits = 0;
 			int score = 0;
 			string last;
 			void launch() { launches++; }
-			void update(float dt) { updates++; elapsed += dt; }
+			void update(float dt) { updates++; elapsed += dt; real += Run.RealDeltaTime; }
 			void exit() { exits++; }
 			void onScore(int points) { score += points; }
 			void onSaid(const string &in what) { last = what; }
@@ -49,6 +50,7 @@ static class GameScriptTests
 		run.Step(2);
 		Test.Assert(run.PropInt("updates") == 5, "ticked while paused");
 		Test.Assert(Math.Abs(run.PropFloat("elapsed") - 3.0f / 60.0f) < 1e-4f, "with no time passing");
+		Test.Assert(Math.Abs(run.PropFloat("real") - 5.0f / 60.0f) < 1e-4f, "but real time passes, for a pause menu to time by");
 		run.Instance.InstanceTimeScale = 1.0f;
 
 		// A second start replaces the first, exit() included: the new one has seen nothing.

@@ -106,6 +106,8 @@ class GameInstance
 	/// pauses its scene with Run.TimeScale = 0 (a menu over a paused scene still takes clicks).
 	/// A scripted playtest times its input by it.
 	private double mRunTime = 0;
+	/// The host's delta of the last TickScript, before any time scale.
+	private float mRealDelta = 0;
 	private SceneLoader mSceneLoader = null ~ delete _;
 	private ExitRequest mExitRequest = null ~ delete _;
 	private Dictionary<String, uint32> mGameSubscriptions = new .() ~ DeleteDictionaryAndKeys!(_);
@@ -532,6 +534,15 @@ class GameInstance
 	public double RunTime => mRunTime;
 	public void ResetRunClock() { mRunTime = 0; }
 
+	/// This frame's seconds before any time scale: what a pause menu, a level clear banner
+	/// or a fade times itself by, since `update(dt)` and coroutine waits stand still at
+	/// TimeScale 0.
+	[Scriptable, ScriptName("RealDeltaTime")]
+	public float RealDeltaTime => mRealDelta;
+	/// Seconds of frames since the run started, unscaled: RunTime to a script.
+	[Scriptable, ScriptName("RealTime")]
+	public float RealTime => (float)mRunTime;
+
 	/// A step debugger over this run: its behaviours and its game script. The configurator
 	/// applies the breakpoints and takes the pointer; TAKES OWNERSHIP of the delegate.
 	public void RequestDebugger(delegate void(IScriptDebugger debugger) configurator) => mRunHost.RequestDebugger(configurator);
@@ -593,6 +604,7 @@ class GameInstance
 		let time = FrameTime(hostDeltaTime, contextTimeScale, mSceneManager.TimeScale, sceneScale);
 		let dt = time.SceneDelta;
 		mRunTime += hostDeltaTime;
+		mRealDelta = hostDeltaTime;
 		if (mGame != null)
 		{
 			var args = ScriptValue[1](.FromFloat(dt));
