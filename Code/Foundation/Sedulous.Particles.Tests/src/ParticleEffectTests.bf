@@ -101,6 +101,34 @@ class ParticleEffectTests
 		Test.Assert(Length(system.Streams.Positions[0]) < 1.0f);
 	}
 
+	/// A world space system with nothing to place its particles bears them at the emitter,
+	/// not at the origin or where a dead particle last was.
+	[Test]
+	public static void WithNoPositionInitializerParticlesAreBornAtTheEmitter()
+	{
+		let effect = scope ParticleEffect("unplaced");
+		let system = effect.AddSystem(16);
+		system.AddInitializer<LifetimeInitializer>().Lifetime = .(5.0f, 5.0f);
+		system.Emitter.Mode = .Burst;
+		system.Emitter.BurstCount = 4;
+
+		let instance = scope ParticleEffectInstance(effect);
+		instance.Position = .(100, 2, -7);
+		instance.Update(0.016f);
+		Test.Assert(system.AliveCount == 4);
+		for (int32 i < 4)
+			Test.Assert(Length(system.Streams.Positions[i] - Float3(100, 2, -7)) < 0.01f, "at the emitter");
+
+		// Reset clears the particles but not their slots: the next burst is born where the
+		// emitter is NOW, not where the old ones were.
+		instance.Reset();
+		instance.Position = .(-50, 0, 3);
+		instance.Update(0.016f);
+		Test.Assert(system.AliveCount == 4);
+		for (int32 i < 4)
+			Test.Assert(Length(system.Streams.Positions[i] - Float3(-50, 0, 3)) < 0.01f, "not a dead particle's spot");
+	}
+
 	[Test]
 	public static void StopDrainsAndPlayResumes()
 	{

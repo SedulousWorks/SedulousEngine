@@ -392,6 +392,7 @@ class ParticleSystem
 		context.EmitterPosition = local ? Float3.Zero : Position;
 		context.EmitterVelocity = EmitterVelocity;
 		context.Rng = &mRandom;
+		let positions = mStreams.Positions;
 
 		for (int32 n = 0; n < count; n++)
 		{
@@ -402,6 +403,12 @@ class ParticleSystem
 
 			let index = mStreams.AliveCount;
 			mStreams.AliveCount++;
+
+			// Born at the emitter unless an initializer places it: a system with no Position
+			// initializer would otherwise keep the slot's leftover, the origin or a dead
+			// particle's last spot.
+			if (positions != null)
+				positions[index] = context.EmitterPosition;
 
 			for (let module in mInitializers)
 				module.Initialize(mStreams, index, ref context);

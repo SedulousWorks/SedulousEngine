@@ -206,10 +206,13 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 			component.AttachedResource = resource;
 	}
 
-	/// The scene drives the simulation: advance every instance before extraction runs.
+	/// The scene drives the simulation: advance every instance before extraction runs, in
+	/// PostTransform, once the transforms are final. Earlier, an effect spawned this frame
+	/// (a prefab placed by a behaviour's update) would read its not yet composed world
+	/// position, the origin, and a one-shot burst would go off there.
 	public override void OnUpdate(ScenePhase phase, float deltaTime)
 	{
-		if ((phase != .PostUpdate) || (mScene == null))
+		if ((phase != .PostTransform) || (mScene == null))
 			return;
 
 		using (ProfileScope("Particles.Simulate"))

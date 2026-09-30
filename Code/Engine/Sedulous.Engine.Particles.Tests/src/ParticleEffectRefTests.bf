@@ -150,6 +150,36 @@ class ParticleEffectRefTests
 		Test.Assert(component.Instance.Effect.GetSystem(0).AliveCount == alive);
 	}
 
+	/// An effect on an entity made and placed this frame, the way a spawned prefab is, fires
+	/// its one-shot burst where the entity IS: the simulation runs once the transforms are
+	/// final, not before, when a new entity's world position still reads the origin.
+	[Test]
+	public static void ASpawnedOneShotBurstsWhereItsEntityIs()
+	{
+		ParticleResources.RegisterAll();
+
+		let scene = scope Scene();
+		let manager = scene.AddSystem<ParticleEffectComponentManager>();
+
+		let resource = scope ParticleEffectResource();
+		let system = resource.Effect.AddSystem(32);
+		system.AddInitializer<LifetimeInitializer>().Lifetime = .(5.0f, 5.0f);
+		system.Emitter.Mode = .Burst;
+		system.Emitter.BurstCount = 6;
+
+		scene.Update(0.016f); // a scene already running
+		let entity = scene.CreateEntity("Burst");
+		scene.SetLocalPosition(entity, .(12, 3, -40));
+		let component = manager.Add(entity);
+		component.EffectAsset.SetDirect(resource);
+		scene.Update(0.016f);
+
+		let live = component.Instance.Effect.GetSystem(0);
+		Test.Assert(live.AliveCount == 6, "the one burst, on the first step");
+		for (int32 i < 6)
+			Test.Assert(Length(live.Streams.Positions[i] - Float3(12, 3, -40)) < 0.1f, scope $"particle {i} at the entity, not the origin");
+	}
+
 	/// The manager's playback controls. Stop lets what is alive run out; SetPaused freezes it
 	/// where it stands.
 	[Test]
