@@ -13,7 +13,7 @@ SamplerState      BloomSamp : register(s0, space0);
 // AoStrength lerps the AO factor in (0 = GTAO off).
 struct TonemapPush { float Exposure; float BloomIntensity; float2 UvScale; float2 UvOffset; float AoStrength; float DebugShowAo; float Operator; float FlipSceneY;
                      float AutoExposure; float AutoKey; float AutoMin; float AutoMax; float GradeIntensity; float LutSize;
-                     float EncodeOutput; float3 Pad; };
+                     float EncodeOutput; float Pad0; float Pad1; float Pad2; }; // scalar pads: a float3 here breaks WGSL uniform alignment
 PUSH_CONSTANT(TonemapPush, pc, space1);
 
 // Linear -> sRGB display encode (the OETF the CM1a "clamp" operator needs before writing the
