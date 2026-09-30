@@ -658,7 +658,48 @@ class SceneReference
 			}
 			json.Set("settingsRecord", record);
 		}
+		json.Set("prefabInstanceRecord", PrefabInstanceRecord());
 		return json;
+	}
+
+	/// The keys of one prefabInstances element, in the order the reader takes them
+	/// (PrefabRecordSerializer); the example scene has no instance to derive them from, so they
+	/// are spelled out here and a test holds them to the serializer's output.
+	public static readonly String[?] cPrefabInstanceKeys = .("prefab", "parent", "position", "rotation", "scale",
+		"rootLive", "owner", "nestedSrcRoot", "nextSibling", "placement", "members", "destroyed",
+		"transformOverrides", "componentOps");
+
+	/// One prefabInstances element: the minimal form an author writes is the prefab, where
+	/// its root goes, and empty maps; a save fills the maps in.
+	private static JsonValue PrefabInstanceRecord()
+	{
+		let record = JsonValue.MakeArray();
+		void Field(StringView key, StringView kind, StringView value)
+		{
+			let field = JsonValue.MakeObject();
+			field.Set("key", Text(key));
+			field.Set("kind", Text(kind));
+			field.Set("value", Text(value));
+			record.Add(field);
+		}
+		Field("prefab", "guid", "the prefab asset's guid (asset_list: type PrefabDocument; an imported model's is the `Prefab` beside its manifest)");
+		Field("parent", "guid", "the entity the instance root sits under; nil for a scene root");
+		Field("position", "object", "the instance root's local position {x, y, z}");
+		Field("rotation", "object", "the instance root's local rotation {x, y, z, w}");
+		Field("scale", "object", "the instance root's local scale {x, y, z}");
+		Field("rootLive", "guid", "the instance root's entity id as last saved; any fresh guid when authoring");
+		Field("owner", "guid", "nil; a nested instance's owning instance root");
+		Field("nestedSrcRoot", "guid", "nil; a nested instance's root in its owner's prefab");
+		Field("nextSibling", "guid", "nil, or the entity the root sits before among its siblings");
+		Field("placement", "u8", "1: the transform above places the root");
+		Field("members", "array", "the prefab's entity ids paired with the instance's ({src, live} per member); EMPTY when authoring: the load mints fresh ids, and a save records them");
+		Field("destroyed", "array", "members deleted out of the instance; empty when authoring");
+		Field("transformOverrides", "array", "member transforms changed from the prefab; empty when authoring");
+		Field("componentOps", "array", "member components added, removed or changed from the prefab; empty when authoring");
+		let wrapped = JsonValue.MakeObject();
+		wrapped.Set("mode", Text("prefabMode must be 4 (referenced) for prefabInstances to be read; each element is a run of these keys, in this order, laid inline in the array"));
+		wrapped.Set("fields", record);
+		return wrapped;
 	}
 
 	private static JsonValue ComponentsSection(Scene world, Example example, Joiner joiner)

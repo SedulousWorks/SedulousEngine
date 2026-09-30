@@ -35,7 +35,7 @@ static class SceneTools
 		validateSchema.Str("guid", "a scene/prefab asset guid whose stored stream to validate");
 		server.RegisterTool("scene_validate",
 			"""
-			Validate scene/prefab XML without writing anything - use this as the validation loop when authoring scenes. Pass `xml` (raw text) OR `guid` (validate the stored stream). Returns {valid, error?, warnings[], sceneName, entityCount, rootCount}. Component payloads are parsed through every engine manager, so a warning names a genuinely unknown component type.
+			Validate scene/prefab XML without writing anything - use this as the validation loop when authoring scenes. Pass `xml` (raw text) OR `guid` (validate the stored stream). Returns {valid, error?, warnings[], sceneName, entityCount, rootCount, prefabInstances}: entityCount is the scene's own entities; a prefab instance's spawn from its prefab at load, and one whose prefab is not in the project is a warning. Component payloads are parsed through every engine manager, so a warning names a genuinely unknown component type.
 			""",
 			validateSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Validate(session, arguments, outResult, outError));
@@ -159,11 +159,27 @@ static class SceneTools
 		}
 		let report = scope SceneParseReport();
 		SceneValidation.Parse(xml, report);
+		CheckPrefabs(session, report);
 		let json = report.ToJson();
 		defer delete json;
 		for (let key in json.Keys)
 			outResult.Set(key, json.Get(key).Clone());
 		return true;
+	}
+
+	/// A prefab instance whose prefab is not a prefab of the open project is skipped at load,
+	/// its entities never appearing: a warning, as an unknown component type is.
+	private static void CheckPrefabs(ProjectSession session, SceneParseReport report)
+	{
+		if (!session.IsOpen)
+			return;
+		for (int i < report.PrefabIds.Count)
+		{
+			let id = report.PrefabIds[i];
+			let instance = session.Project.SourceDb.GetInstance(id);
+			if ((instance == null) || !McpTools.IsPrefabDocument(instance))
+				report.Warnings.Add(new $"prefab instance {i}: {id} is not a prefab in this project (asset_list: type PrefabDocument) - it would be skipped at load");
+		}
 	}
 
 	private static bool Write(Document document, JsonValue arguments, JsonValue outResult, String outError)
@@ -182,6 +198,7 @@ static class SceneTools
 		}
 		let report = scope SceneParseReport();
 		SceneValidation.Parse(xml, report);
+		CheckPrefabs(session, report);
 		if (!report.Valid)
 		{
 			let refusal = report.ToJson();

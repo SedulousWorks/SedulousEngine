@@ -15,9 +15,13 @@ class SceneParseReport
 	public List<String> Warnings = new .() ~ DeleteContainerAndItems!(_);
 	public int EntityCount = 0;
 	public int RootCount = 0;
+	/// The prefab each prefab instance names, one per instance in stream order. Its entities
+	/// are not in EntityCount: they spawn from the prefab at load.
+	public List<Guid> PrefabIds = new .() ~ delete _;
 	public String SceneName = new .() ~ delete _;
 
-	/// {valid, error?, warnings[], sceneName?, entityCount?, rootCount?, componentValidation}.
+	/// {valid, error?, warnings[], sceneName?, entityCount?, rootCount?, prefabInstances?,
+	/// componentValidation}.
 	public JsonValue ToJson()
 	{
 		let json = JsonValue.MakeObject();
@@ -33,6 +37,7 @@ class SceneParseReport
 			json.Set("sceneName", JsonValue.MakeString(SceneName));
 			json.Set("entityCount", JsonValue.MakeNumber((double)EntityCount));
 			json.Set("rootCount", JsonValue.MakeNumber((double)RootCount));
+			json.Set("prefabInstances", JsonValue.MakeNumber((double)PrefabIds.Count));
 		}
 		// The honesty marker: component payloads validate through the FULL engine manager
 		// set, so the warnings list every genuinely unknown component type.

@@ -148,6 +148,70 @@ static class SceneFlowTests
 		Test.Assert(fetched.Get("result").Get("contents").At(0).Get("text").AsString() == seedXml);
 	}
 
+	/// Prefab instances are counted, apart from the scene's own entities, and one whose prefab
+	/// is not a prefab of the project is a warning from validate and from write.
+	[Test]
+	public static void ValidationCountsPrefabInstancesAndWarnsOnAMissingPrefab()
+	{
+		let dir = Scratch("mcp_scene_prefabs", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		SceneTools.Register(server, session);
+		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Prefabs"));
+		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
+
+		// A one-entity prefab, written the agent's way.
+		let prefabId = scope String();
+		{
+			let block = scope Scene("block");
+			EngineSceneComposition.AddAllSceneManagers(block);
+			block.CreateEntity("block");
+			let staging = session.Project.SourceDb.RootGroup.CreateInstance("staging", McpTools.cSceneDocument);
+			Test.Assert(SceneStorage.SaveScene(block, staging) case .Ok);
+			let read = CallOk(server, "scene_read", With(Obj(), "guid", staging.Id.ToString(.. scope .())));
+			defer delete read;
+			let written = CallOk(server, "prefab_write", With(With(Obj(), "xml", read.Get("xml").AsString()), "name", "Block"));
+			defer delete written;
+			prefabId.Set(written.Get("guid").AsString());
+		}
+
+		// A level with one entity of its own and two instances: the prefab, and a guid that
+		// names nothing.
+		let missing = Guid.Create();
+		let levelXml = scope String();
+		{
+			let level = scope Scene("level");
+			EngineSceneComposition.AddAllSceneManagers(level);
+			level.CreateEntity("sun");
+			let good = new PendingPrefabInstance();
+			good.PrefabId = Guid.Parse(prefabId);
+			level.AddPendingPrefabInstance(good);
+			let bad = new PendingPrefabInstance();
+			bad.PrefabId = missing;
+			level.AddPendingPrefabInstance(bad);
+			let instance = session.Project.SourceDb.RootGroup.CreateInstance("level", McpTools.cSceneDocument);
+			Test.Assert(SceneStorage.SaveScene(level, instance) case .Ok);
+			let read = CallOk(server, "scene_read", With(Obj(), "guid", instance.Id.ToString(.. scope .())));
+			defer delete read;
+			levelXml.Set(read.Get("xml").AsString());
+		}
+		let report = CallOk(server, "scene_validate", With(Obj(), "xml", levelXml));
+		defer delete report;
+		Test.Assert(report.Get("valid").AsBool());
+		Test.Assert(report.Get("entityCount").AsInt() == 1, "the scene's own entities only");
+		Test.Assert(report.Get("prefabInstances").AsInt() == 2);
+		let warnings = report.Get("warnings");
+		Test.Assert(warnings.Count == 1, scope $"{warnings.Count} warnings");
+		Test.Assert(warnings.At(0).AsString().StartsWith(scope $"prefab instance 1: {missing} is not a prefab in this project"), scope String(warnings.At(0).AsString()));
+
+		let written = CallOk(server, "scene_write", With(With(Obj(), "xml", levelXml), "name", "authored"));
+		defer delete written;
+		Test.Assert(written.Get("warnings").Count == 1, "the write reports it too");
+	}
+
 	[Test]
 	public static void HostInfoReportsPidStampVersionsAndLiveState()
 	{

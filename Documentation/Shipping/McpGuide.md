@@ -122,7 +122,13 @@ requests the cook itself afterwards; the headless host does not, so `asset_cook`
 component), copy from `docs://generated/SceneExample.scene.xml`, read the target with
 `scene_read` (or the `project://` resource), author the XML, loop on `scene_validate` (`xml`
 or `guid`; `valid` with empty `warnings` means the engine will load it), then `scene_write`.
-Prefabs mirror it with the single root rule.
+Prefabs mirror it with the single root rule. To PLACE a prefab (an imported model's is the
+`Prefab` asset beside its manifest), add an element to the scene's `prefabInstances`, in the
+format's `prefabInstanceRecord` (the schema's `format` section): the prefab's guid, the root's
+parent and transform, a fresh `rootLive` guid, and empty `members`, `destroyed`,
+`transformOverrides` and `componentOps`; the load spawns it and a save fills those in.
+`scene_validate` counts them as `prefabInstances`, apart from `entityCount`, and warns about
+one whose prefab is not in the project.
 
 **Scripts**: `script_api` first, the LIVE bound API per backend; never trust memorised
 signatures. A member with `readOnly: true` (a network identity's `Authority`, for one) reads

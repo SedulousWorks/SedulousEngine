@@ -13,6 +13,7 @@ using Sedulous.Pipeline.Registration;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Script.Resource;
+using Sedulous.Xml.Serialization;
 using static Sedulous.Integration.Mcp.McpCalls;
 
 namespace Sedulous.Integration.Mcp;
@@ -257,5 +258,51 @@ static class SceneReferenceTests
 		Test.Assert(light.Get("fields").Count > 0);
 		let refused = CallErr(server, "component_schema", With(Obj(), "type", "no_such_component"), .. scope .());
 		Test.Assert(refused.Contains("light"));
+	}
+
+	/// The documented prefab instance record is the serializer's: a scene holding one instance
+	/// writes exactly the documented keys, in the documented order, and the format section
+	/// lists them.
+	[Test]
+	public static void ThePrefabInstanceRecordIsTheKeysTheSerializerWrites()
+	{
+		let scene = scope Scene("probe");
+		let pending = new PendingPrefabInstance();
+		pending.PrefabId = Guid.Create();
+		scene.AddPendingPrefabInstance(pending); // parked: re-emitted verbatim on save
+		let xml = scope XmlSerializer();
+		SceneSerializer.SerializeScene(xml, scene, .Referenced, true, .Text);
+		Test.Assert(xml.IsOk);
+		let text = xml.GetOutput(.. scope .());
+
+		// The record's own keys: the lines two tabs inside prefabInstances.
+		let start = text.IndexOf("name=\"prefabInstances\"");
+		Test.Assert(start >= 0);
+		let keys = scope List<String>();
+		defer { ClearAndDeleteItems!(keys); }
+		for (let line in StringView(text, start).Split('\n'))
+		{
+			if (line.StartsWith("\t</array>"))
+				break;
+			if (!line.StartsWith("\t\t<") || line.StartsWith("\t\t\t") || line.StartsWith("\t\t</"))
+				continue;
+			let at = line.IndexOf("name=\"");
+			if (at < 0)
+				continue;
+			let rest = StringView(line, at + 6);
+			keys.Add(new String(rest, 0, rest.IndexOf('"')));
+		}
+		Test.Assert(keys.Count == SceneReference.cPrefabInstanceKeys.Count, scope $"{keys.Count} keys written");
+		for (int i < keys.Count)
+			Test.Assert(keys[i] == SceneReference.cPrefabInstanceKeys[i], scope $"key {i}: '{keys[i]}' written, '{SceneReference.cPrefabInstanceKeys[i]}' documented");
+
+		let reference = Generate();
+		defer delete reference;
+		let schema = JsonValue.Parse(reference.SchemaJson);
+		defer delete schema;
+		let fields = schema.Get("format").Get("prefabInstanceRecord").Get("fields");
+		Test.Assert(fields.Count == SceneReference.cPrefabInstanceKeys.Count);
+		for (int i < fields.Count)
+			Test.Assert(fields.At(i).Get("key").AsString() == SceneReference.cPrefabInstanceKeys[i]);
 	}
 }

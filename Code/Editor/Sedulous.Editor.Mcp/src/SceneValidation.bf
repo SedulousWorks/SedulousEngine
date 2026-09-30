@@ -40,6 +40,8 @@ static class SceneValidation
 		outReport.Valid = true;
 		outReport.SceneName.Set(scratch.Name);
 		outReport.EntityCount = (int)scratch.EntityCount;
+		// The instances park unresolved: the parse has no database to spawn them from.
+		scratch.ForEachPendingPrefabInstance(scope [&](pending) => { outReport.PrefabIds.Add(pending.PrefabId); });
 		var root = scratch.FirstRoot;
 		while (root.IsAssigned)
 		{
