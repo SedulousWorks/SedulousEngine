@@ -84,6 +84,9 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	private ViewportCaptureRecorder mCapture = new .() ~ delete _;
 	/// The scene rendered into the viewport this frame, and at what size.
 	private bool mRenderedThisFrame = false;
+	/// Where in the target the capture starts: the fitted image's corner, past the bars.
+	private uint32 mCaptureX = 0;
+	private uint32 mCaptureY = 0;
 	private uint32 mCaptureWidth = 0;
 	private uint32 mCaptureHeight = 0;
 
@@ -260,14 +263,33 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			mApp.UI.RenderCanvasTextures(frame.Encoder, (int32)frame.FrameIndex);
 
 		let targetState = TargetState(mViewport.ColorTexture, mViewport.ColorState, .ShaderRead);
-		mRender.RenderScene(mScene, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, .(0, 0, w, h),
-			null, targetState);
+		mCaptureX = 0;
+		mCaptureY = 0;
+		mCaptureWidth = w;
+		mCaptureHeight = h;
+		if (HasRenderResolution)
+		{
+			// At the render resolution, fitted into the panel as the player fits its window;
+			// the capture is the game's image, without the bars.
+			let fit = RenderFitIn(w, h);
+			let dst = fit.DstRect();
+			let viewport = ViewportRect((int32)dst.X, (int32)dst.Y, (uint32)Math.Max(dst.Width, 1.0f), (uint32)Math.Max(dst.Height, 1.0f));
+			mRender.RenderScene(mScene, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, viewport,
+				null, targetState, null, null, null, SceneSize.FromFit(fit));
+			mCaptureX = (uint32)Math.Max(viewport.X, 0);
+			mCaptureY = (uint32)Math.Max(viewport.Y, 0);
+			mCaptureWidth = (uint32)Math.Min(viewport.Width, w - mCaptureX);
+			mCaptureHeight = (uint32)Math.Min(viewport.Height, h - mCaptureY);
+		}
+		else
+		{
+			mRender.RenderScene(mScene, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, .(0, 0, w, h),
+				null, targetState);
+		}
 		mViewport.ColorState = .ShaderRead;
 		if (mRunning)
 			mFrameCount++;
 		mRenderedThisFrame = true;
-		mCaptureWidth = w;
-		mCaptureHeight = h;
 	}
 
 	public override void OnAfterSceneRender(IApplicationHost host, ref FrameContext frame)
@@ -281,12 +303,17 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		if ((w == 0) || (h == 0))
 			return;
 		frame.Encoder.TransitionTexture(mViewport.ColorTexture, mViewport.ColorState, .RenderTarget);
+		// The UI is shared between the Game tabs; each lays its screen tier out at its own
+		// render resolution as it draws.
+		if ((mApp != null) && (mApp.UI != null))
+			mApp.UI.SetScreenDesign(mRenderWidth, mRenderHeight, mRenderFit);
 		mRender.RenderOverlays(frame.Encoder, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, frame.FrameIndex);
 		frame.Encoder.TransitionTexture(mViewport.ColorTexture, .RenderTarget, .ShaderRead);
 		mViewport.ColorState = .ShaderRead;
 		// The capture, once the frame is whole: the scene, then the game's overlays over it.
 		if (rendered && mCapture.Armed && (host.Graphics != null))
-			mCapture.Record(host.Graphics.Raw, frame.Encoder, mViewport.ColorTexture, mViewport.ColorFormat, mCaptureWidth, mCaptureHeight, .ShaderRead);
+			mCapture.Record(host.Graphics.Raw, frame.Encoder, mViewport.ColorTexture, mViewport.ColorFormat, mCaptureWidth, mCaptureHeight, .ShaderRead,
+				mCaptureX, mCaptureY, mRenderWidth, mRenderHeight);
 	}
 
 	public override void OnClose()

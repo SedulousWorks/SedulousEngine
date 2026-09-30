@@ -110,7 +110,7 @@ static class PieMcpTools
 		shotSchema.Str("path", "the PNG to write (default: a new file under <user-data>/screenshots)");
 		let serial = new CaptureSerial();
 		server.RegisterTool("pie_screenshot",
-			"What one running PIE instance's Game tab renders, as a PNG at the viewport's size: the game through its own camera, with its UI and overlays. Brings the tab to front (a hidden viewport never renders), waits for the next frame and the GPU, then returns {pie, path, width, height}; read the file. `path` is where to write (an existing directory; default: <user-data>/screenshots/<pie>-<pid>-<n>.png). Refused for a stopped instance; gives up after ten seconds without a rendered frame.",
+			"What one running PIE instance's Game tab renders, as a PNG: the game through its own camera, with its UI and overlays, at the resolution the tab draws it at (the project's render resolution by default, the tab's size for Fit to panel), without the letterbox bars - the pixels pie_run's mouse positions are in. Brings the tab to front (a hidden viewport never renders), waits for the next frame and the GPU, then returns {pie, path, width, height}; read the file. `path` is where to write (an existing directory; default: <user-data>/screenshots/<pie>-<pid>-<n>.png). Refused for a stopped instance; gives up after ten seconds without a rendered frame.",
 			shotSchema.Build(), .Creates,
 			new (call, arguments, outResult, outError) => Screenshot(context, serial, call, arguments, outResult, outError),
 			serial);

@@ -21,6 +21,20 @@ class ScreenshotTests
 		return ScreenshotOptions.FromArguments(args);
 	}
 
+	/// The resample a capture is written at the render size with: a black to white ramp
+	/// keeps its ends and blends between them.
+	[Test]
+	public static void AResampleKeepsTheEndsAndBlendsBetween()
+	{
+		uint8[8] source = .(0, 0, 0, 255, 255, 255, 255, 255); // 2 x 1: black, white
+		let wide = scope System.Collections.List<uint8>();
+		ScreenshotCapture.Resample(.(&source[0], 8), 2, 1, 4, 1, wide);
+		Test.Assert(wide.Count == 16);
+		Test.Assert((wide[0] == 0) && (wide[12] == 255), "the ends stay");
+		Test.Assert((wide[4] > 0) && (wide[4] < wide[8]) && (wide[8] < 255), "a ramp between");
+		Test.Assert(wide[3] == 255, "alpha too");
+	}
+
 	[Test]
 	public static void FlagsParseDefaultToFrame30AndIgnoreWhatIsNotTheirs()
 	{

@@ -48,6 +48,11 @@ extension GameEditorPage
 	private float mResolutionRefresh = 0.0f;
 	/// Set while the items are replaced, so the rebuild's own selection is not a user's.
 	private bool mResolutionRebuilding = false;
+	/// What the game draws at, fitted into the panel by mRenderFit; nought draws at the
+	/// panel's size.
+	private uint32 mRenderWidth = 0;
+	private uint32 mRenderHeight = 0;
+	private FitMode mRenderFit = .Letterbox;
 
 	private void CreateResolutionCombo()
 	{
@@ -175,18 +180,29 @@ extension GameEditorPage
 		outChoices.Add(panel);
 	}
 
-	/// The chosen size, fitted by the project's render fit; the panel's size stretches, there
-	/// being nothing to fit.
+	/// The chosen size, fitted into the panel by the project's render fit, as the player fits
+	/// it into its window: the scene draws at it into the fitted rectangle of a panel sized
+	/// target, the screen UI lays out at it and draws crisp, and the pointer maps into it.
 	private void ApplyResolution()
 	{
 		let index = mResolutionCombo.SelectedIndex;
 		if ((index < 0) || (index >= mResolutionChoices.Count))
 			return;
 		let choice = mResolutionChoices[index];
-		mViewport.SetFixedResolution(choice.Width, choice.Height);
 		let settings = ProjectSettings();
-		mViewport.FitMode = (choice.Width > 0) ? ((settings != null) ? settings.RenderFit : .Letterbox) : .Stretch;
+		mRenderWidth = choice.Width;
+		mRenderHeight = choice.Height;
+		mRenderFit = (settings != null) ? settings.RenderFit : .Letterbox;
+		mViewport.SetFixedResolution(0, 0);
+		mViewport.FitMode = .Stretch;
+		mViewport.SetContentResolution(mRenderWidth, mRenderHeight, mRenderFit);
 	}
+
+	/// The render resolution fitted into a panel sized target.
+	private ContentFit RenderFitIn(uint32 width, uint32 height) =>
+		ContentFit(.(0, 0, width, height), .(mRenderWidth, mRenderHeight), mRenderFit);
+
+	private bool HasRenderResolution => (mRenderWidth > 0) && (mRenderHeight > 0);
 
 	private Sedulous.Engine.Project.ProjectSettings ProjectSettings()
 	{

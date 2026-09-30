@@ -51,7 +51,9 @@ and the startup script (`running`, or `faulted` with the reason);
 `pie_list` shows every instance, the ones the user started too; `pie_stop` stops one (or
 `all`), its tab staying open and the others running. `pie_screenshot` writes what an
 instance's tab renders, the game through its own camera with its UI, as `viewport_screenshot`
-does for a scene page.
+does for a scene page: at the resolution the tab draws the game at (the project's render
+resolution by default, fitted into the tab like the player's window), without the bars, so
+its pixels are the ones `pie_run`'s mouse positions are in.
 
 `pie_run` is the playtest: it plays a device-level input timeline into one running instance
 for `duration` seconds of run time and answers what happened. The timeline takes keys by their

@@ -34,11 +34,13 @@ class ViewportCaptureRecorder
 	/// Records the copy of `target` (in `targetState`, where it is left) when a request is
 	/// armed; a failure to record is the request's failure, logged by the capture.
 	public void Record(IDevice device, ICommandEncoder encoder, ITexture target, TextureFormat format,
-		uint32 width, uint32 height, ResourceState targetState)
+		uint32 width, uint32 height, ResourceState targetState, uint32 originX = 0, uint32 originY = 0,
+		uint32 outputWidth = 0, uint32 outputHeight = 0)
 	{
 		if (!mScreenshot.Armed || (device == null) || (encoder == null))
 			return;
-		if (!mScreenshot.Record(device, encoder, target, format, width, height, targetState))
+		if (!mScreenshot.Record(device, encoder, target, format, width, height, targetState, originX, originY,
+			outputWidth, outputHeight))
 			mState.State = .Failed;
 	}
 

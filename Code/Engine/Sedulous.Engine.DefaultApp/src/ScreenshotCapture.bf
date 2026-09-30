@@ -32,6 +32,9 @@ class ScreenshotCapture
 	private uint64 mReadbackSize = 0;
 	private uint32 mWidth = 0;
 	private uint32 mHeight = 0;
+	/// The size the PNG is written at, when not the captured one; nought is the captured.
+	private uint32 mOutputWidth = 0;
+	private uint32 mOutputHeight = 0;
 	private uint32 mBytesPerRow = 0;
 	private TextureFormat mFormat = .RGBA8Unorm;
 
@@ -81,8 +84,12 @@ class ScreenshotCapture
 	/// expects back), ShaderRead for an editor viewport's finished colour target. Disarms; false
 	/// when nothing was armed, the format cannot be captured, or the readback buffer could not
 	/// be made, each logged, so a silent no-op never passes for a screenshot.
+	/// `originX` / `originY` capture a sub rectangle of that size from there: a letterboxed
+	/// game's image without its bars. `outputWidth` x `outputHeight` writes the PNG resampled
+	/// to that size (the game's render resolution, whatever size it was shown at).
 	public bool Record(IDevice device, ICommandEncoder encoder, ITexture backbuffer,
-		TextureFormat format, uint32 width, uint32 height, ResourceState state = .RenderTarget)
+		TextureFormat format, uint32 width, uint32 height, ResourceState state = .RenderTarget,
+		uint32 originX = 0, uint32 originY = 0, uint32 outputWidth = 0, uint32 outputHeight = 0)
 	{
 		if (!mArmed)
 			return false;
@@ -123,12 +130,15 @@ class ScreenshotCapture
 		var region = BufferTextureCopyRegion();
 		region.BytesPerRow = bytesPerRow;
 		region.RowsPerImage = height;
+		region.TextureOrigin = .(originX, originY, 0);
 		region.TextureExtent = .(width, height, 1);
 		encoder.CopyTextureToBuffer(backbuffer, mReadback, region);
 		encoder.TransitionTexture(backbuffer, .CopySrc, state);
 
 		mWidth = width;
 		mHeight = height;
+		mOutputWidth = outputWidth;
+		mOutputHeight = outputHeight;
 		mBytesPerRow = bytesPerRow;
 		mFormat = format;
 		mRecorded = true;
@@ -194,13 +204,57 @@ class ScreenshotCapture
 		UnpackRows(mapped, mBytesPerRow, mWidth, mHeight, mFormat, .(rgba.Ptr, rgba.Count));
 		mReadback.Unmap();
 
-		outImage.ReplaceData(mWidth, mHeight, .RGBA8, .(rgba.Ptr, rgba.Count));
+		var width = mWidth;
+		var height = mHeight;
+		if ((mOutputWidth > 0) && (mOutputHeight > 0) && ((mOutputWidth != mWidth) || (mOutputHeight != mHeight)))
+		{
+			let resampled = scope List<uint8>();
+			Resample(.(rgba.Ptr, rgba.Count), mWidth, mHeight, mOutputWidth, mOutputHeight, resampled);
+			rgba.Clear();
+			rgba.AddRange(resampled);
+			width = mOutputWidth;
+			height = mOutputHeight;
+		}
+		outImage.ReplaceData(width, height, .RGBA8, .(rgba.Ptr, rgba.Count));
 		let saved = ImageIO.SaveImage(outImage, mPath, .PNG);
 		if (saved case .Err)
 			GlobalLog(.Error, scope $"Screenshot: could not write '{mPath}'");
 		else
-			GlobalLog(.Information, scope $"Screenshot: wrote '{mPath}' ({mWidth}x{mHeight})");
+			GlobalLog(.Information, scope $"Screenshot: wrote '{mPath}' ({width}x{height})");
 		return saved;
+	}
+
+	/// Bilinear, texel centres to texel centres, RGBA8 to RGBA8.
+	public static void Resample(Span<uint8> source, uint32 sourceWidth, uint32 sourceHeight,
+		uint32 width, uint32 height, List<uint8> outPixels)
+	{
+		outPixels.Resize((int)width * (int)height * 4);
+		let sx = (float)sourceWidth / (float)width;
+		let sy = (float)sourceHeight / (float)height;
+		for (uint32 y < height)
+		{
+			let fy = Math.Clamp(((float)y + 0.5f) * sy - 0.5f, 0.0f, (float)(sourceHeight - 1));
+			let y0 = (uint32)fy;
+			let y1 = Math.Min(y0 + 1, sourceHeight - 1);
+			let ty = fy - (float)y0;
+			for (uint32 x < width)
+			{
+				let fx = Math.Clamp(((float)x + 0.5f) * sx - 0.5f, 0.0f, (float)(sourceWidth - 1));
+				let x0 = (uint32)fx;
+				let x1 = Math.Min(x0 + 1, sourceWidth - 1);
+				let tx = fx - (float)x0;
+				for (int c < 4)
+				{
+					let a = (float)source[((int)y0 * (int)sourceWidth + (int)x0) * 4 + c];
+					let b = (float)source[((int)y0 * (int)sourceWidth + (int)x1) * 4 + c];
+					let d = (float)source[((int)y1 * (int)sourceWidth + (int)x0) * 4 + c];
+					let e = (float)source[((int)y1 * (int)sourceWidth + (int)x1) * 4 + c];
+					let top = a + (b - a) * tx;
+					let bottom = d + (e - d) * tx;
+					outPixels[((int)y * (int)width + (int)x) * 4 + c] = (uint8)Math.Clamp(top + (bottom - top) * ty + 0.5f, 0.0f, 255.0f);
+				}
+			}
+		}
 	}
 
 	/// Drops the readback buffer, for device teardown.

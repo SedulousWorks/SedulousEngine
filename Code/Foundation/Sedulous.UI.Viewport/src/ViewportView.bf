@@ -85,6 +85,20 @@ class ViewportView : View
 	}
 	private bool mCapturesKeys = false;
 
+	/// The resolution the content draws at INSIDE the texture, fitted by `fit`, when it draws
+	/// its own fitted image (a game at its render resolution, letterboxed in a panel sized
+	/// texture): the input surface then maps the pointer into that resolution. Nought is the
+	/// texture's own.
+	public void SetContentResolution(uint32 width, uint32 height, FitMode fit)
+	{
+		mContentWidth = width;
+		mContentHeight = height;
+		mContentFit = fit;
+	}
+	private uint32 mContentWidth = 0;
+	private uint32 mContentHeight = 0;
+	private FitMode mContentFit = .Letterbox;
+
 	public this()
 	{
 		IsFocusable = true;
@@ -310,8 +324,18 @@ class ViewportView : View
 
 		let topLeft = LocalToScreen(.(0, 0));
 		mSurface.SetRegion(.(topLeft.X * dpi, topLeft.Y * dpi, Width * dpi, Height * dpi));
-		mSurface.SetContentSize(.(mTextureWidth, mTextureHeight));
-		mSurface.SetFitMode(mFitMode);
+		if ((mContentWidth > 0) && (mContentHeight > 0))
+		{
+			// The content draws at a resolution of its own inside the texture: the pointer maps
+			// into THAT, through the content's own fit.
+			mSurface.SetContentSize(.(mContentWidth, mContentHeight));
+			mSurface.SetFitMode(mContentFit);
+		}
+		else
+		{
+			mSurface.SetContentSize(.(mTextureWidth, mTextureHeight));
+			mSurface.SetFitMode(mFitMode);
+		}
 		// The window's pixel size, which the touch transform converts normalised fingers
 		// through.
 		mSurface.SetWindowSize(.(root.Width * dpi, root.Height * dpi));
