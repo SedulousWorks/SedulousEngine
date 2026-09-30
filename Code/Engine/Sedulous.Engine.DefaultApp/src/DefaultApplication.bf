@@ -100,6 +100,10 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// OWNED: `Ui` to a script, over the screen tier; a document instantiates through the
 	/// resource manager and the UI subsystem.
 	private UiScript mUiScript = new .() ~ delete _;
+	/// `Input` where no run installs its own: scene scripts outside a run (the editor's
+	/// Simulate) read every action released and at rest rather than faulting on a missing
+	/// service. A run's own InputFacade replaces it.
+	private InputFacade mIdleInput = new .(null) ~ delete _;
 	/// OWNED: `Audio` to a script, over the subsystem and the app's resources.
 	private AudioFacade mAudioFacade = null ~ delete _;
 
@@ -271,6 +275,7 @@ class DefaultApplication : IApplication, ISceneObserver
 				// app's resources, the screen tier. Input is per instance, installed below.
 				runtime.SetService(mAudioFacade);
 				runtime.SetService(mUiScript);
+				runtime.SetService(mIdleInput);
 			};
 		// The scene facades' drawer.
 		DebugFacade.Renderer = mRender;
