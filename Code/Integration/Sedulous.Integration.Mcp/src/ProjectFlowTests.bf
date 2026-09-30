@@ -459,4 +459,69 @@ static class ProjectFlowTests
 		Test.Assert(jump.Bindings[0].Code == (uint32)Sedulous.Shell.KeyCode.Space);
 		Test.Assert(jump.Bindings[0].Source == .Key);
 	}
+
+	/// project_settings_set: the settings the Project Settings dialog edits, typed like its
+	/// pickers, checked in full first, saved to the manifest, and read back by project_info.
+	[Test]
+	public static void AnAgentSetsTheProjectsSettings()
+	{
+		let dir = Scratch("mcp_settings", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let builders = scope BuilderRegistry();
+		let creators = scope AssetCreatorRegistry();
+		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllCreators(creators);
+
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		ProjectInfoTool.Register(server, session);
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		AssetCreateTools.Register(server, session, creators, operations);
+		int changed = 0;
+		session.OnSettingsChanged = new [&changed]() => { changed++; };
+		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Settings"));
+		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
+
+		let map = CallOk(server, "asset_create", With(With(Obj(), "creator", "Input Map"), "name", "Controls"));
+		defer delete map;
+		let scene = CallOk(server, "asset_create", With(With(Obj(), "creator", "Scene"), "name", "Level1"));
+		defer delete scene;
+		let mapId = scope String(map.Get("guid").AsString());
+		let sceneId = scope String(scene.Get("guid").AsString());
+
+		// A scene where an input map goes is refused, and the scene given beside it with it.
+		let refused = scope String();
+		CallErr(server, "project_settings_set", With(With(Obj(), "defaultInputMap", sceneId), "defaultScene", sceneId), refused);
+		Test.Assert(refused.StartsWith("`defaultInputMap` takes a InputMapAsset; 'Level1' is a"), refused);
+		Test.Assert(changed == 0);
+		{
+			let info = CallOk(server, "project_info", Obj());
+			defer delete info;
+			Test.Assert(info.Get("settings").Get("defaultScene").IsNull, "nothing changed");
+		}
+
+		let set = CallOk(server, "project_settings_set", With(With(With(Obj(), "defaultInputMap", mapId), "defaultScene", sceneId), "msaa", 4));
+		defer delete set;
+		Test.Assert(changed == 1);
+		Test.Assert(set.Get("settings").Get("defaultInputMap").Get("path").AsString() == "Controls");
+		Test.Assert(set.Get("settings").Get("defaultScene").Get("path").AsString() == "Scenes/Level1");
+		Test.Assert(set.Get("settings").Get("msaa").AsInt() == 4);
+		Test.Assert(session.Project.Settings.DefaultScene == "Scenes/Level1", "the path mirror follows");
+
+		// Saved: a reopen reads it from the manifest; then "" clears one and leaves the rest.
+		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
+		{
+			let info = CallOk(server, "project_info", Obj());
+			defer delete info;
+			Test.Assert(info.Get("settings").Get("defaultInputMap").Get("guid").AsString() == mapId);
+		}
+		let cleared = CallOk(server, "project_settings_set", With(Obj(), "defaultInputMap", ""));
+		defer delete cleared;
+		Test.Assert(cleared.Get("settings").Get("defaultInputMap").IsNull);
+		Test.Assert(cleared.Get("settings").Get("defaultScene").Get("guid").AsString() == sceneId);
+	}
 }

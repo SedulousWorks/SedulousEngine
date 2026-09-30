@@ -18,5 +18,9 @@ class ProjectSession
 	/// no pages and leaves it unset. Owned.
 	public delegate void(Guid assetId) OnAssetWritten ~ delete _;
 
+	/// project_settings_set saved new settings: the editor host re-applies what depends on
+	/// them, as its Project Settings dialog's Save does; the stdio host leaves it unset. Owned.
+	public delegate void() OnSettingsChanged ~ delete _;
+
 	public bool IsOpen => Project != null;
 }

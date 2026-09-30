@@ -63,6 +63,8 @@ class EditorMcpHost
 		// page reloads, a dirty one warns and keeps its edits).
 		delete mSession.OnAssetWritten;
 		mSession.OnAssetWritten = new (assetId) => { context.NotifyAssetExternallyModified(assetId); };
+		delete mSession.OnSettingsChanged;
+		mSession.OnSettingsChanged = new () => { context.NotifyProjectSettingsChanged(); };
 		McpHostInfo.Register(mServer, buildStamp,
 			new (outState) =>
 			{
@@ -83,6 +85,7 @@ class EditorMcpHost
 		Stop();
 		// The session outlives this host; what it announces to must not.
 		DeleteAndNullify!(mSession.OnAssetWritten);
+		DeleteAndNullify!(mSession.OnSettingsChanged);
 	}
 
 	public bool IsRunning => mHttp.IsRunning;
