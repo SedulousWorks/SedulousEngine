@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Animation.Pipeline;
 
 /// One layer in the edit model: its states, its transitions and an optional bone mask.
 class GraphLayer

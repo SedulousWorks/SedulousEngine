@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Animation.Pipeline;
 
 /// One transition condition in the edit model.
 class GraphCondition

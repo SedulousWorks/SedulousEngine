@@ -14,6 +14,5 @@ static class AnimationGraphEditor
 		AnimationPipeline.RegisterAll();
 		SceneEditorSerializables.RegisterAll();
 		context.Pages.Register(new AnimationGraphPageFactory(host, uiHost));
-		context.RegisterCreator(new AssetCreator("Animation Graph", "Animation", new (ctx, group) => AnimationGraphAssetCreators.CreateAnimationGraphInstance(ctx, group)));
 	}
 }

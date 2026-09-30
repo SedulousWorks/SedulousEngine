@@ -7,10 +7,12 @@ using Sedulous.Scene.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.Pipeline.Core;
+using Sedulous.Scene.Pipeline;
 
 namespace Sedulous.Editor.Scene.Tests;
 
-/// The scene and prefab creators over a real project.
+/// The scene and prefab creators (Scene.Pipeline) over a real project.
 class SceneAssetCreatorTests
 {
 	private static void Scratch(StringView name, String outPath)
@@ -32,11 +34,11 @@ class SceneAssetCreatorTests
 		let ctx = scope EditorContext();
 		ctx.SetProject(project);
 
-		// No project: nothing.
-		let empty = scope EditorContext();
-		Test.Assert(SceneAssetCreators.CreateSceneInstance(empty) == null);
+		// No group: nothing.
+		Test.Assert(SceneCreators.CreateScene(null) == null);
+		let creation = AssetCreationContext(null, project.SourceDb.RootGroup, "");
 
-		let first = SceneAssetCreators.CreateSceneInstance(ctx);
+		let first = SceneCreators.CreateScene(creation.TargetOr("Scenes"));
 		Test.Assert(first != null);
 		Test.Assert(first.Name == "Scene");
 		Test.Assert(first.GetPath(.. scope .()) == "Scenes/Scene");
@@ -50,13 +52,13 @@ class SceneAssetCreatorTests
 		Test.Assert((sceneDoc != null) && (sceneDoc.Name == "Scene"));
 
 		// A second create picks a unique name in the same group.
-		let second = SceneAssetCreators.CreateSceneInstance(ctx);
+		let second = SceneCreators.CreateScene(creation.TargetOr("Scenes"));
 		Test.Assert(second != null);
 		Test.Assert(second.Name == "Scene.2");
 		Test.Assert(second.Id != first.Id);
 
 		// A prefab lands under Prefabs/ with one root entity in its payload.
-		let prefab = SceneAssetCreators.CreatePrefabInstance(ctx);
+		let prefab = SceneCreators.CreatePrefab(creation.TargetOr("Prefabs"));
 		Test.Assert(prefab != null);
 		Test.Assert(prefab.GetPath(.. scope .()) == "Prefabs/Prefab");
 		let payload = prefab.ReadData("scene");
@@ -80,7 +82,7 @@ class SceneAssetCreatorTests
 		let ctx = scope EditorContext();
 		ctx.SetProject(project);
 
-		let instance = SceneAssetCreators.CreateSceneInstance(ctx);
+		let instance = SceneCreators.CreateScene(AssetCreationContext(null, project.SourceDb.RootGroup, "").TargetOr("Scenes"));
 		Test.Assert(instance != null);
 
 		let loaded = scope Scene();

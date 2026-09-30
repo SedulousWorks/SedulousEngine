@@ -9,28 +9,14 @@ using Sedulous.Particles.Resource;
 namespace Sedulous.Editor.Scene;
 
 /// The particle page's edits on a ParticleEffect, kept off the page so they run headless:
-/// the default seed, the module catalogue the tree's menus add from, and the binary
-/// snapshot the undo step carries.
+/// the module catalogue the tree's menus add from, and the binary snapshot the undo step
+/// carries. The default seed is the creator's (ParticleCreators.SeedDefaultEffect).
 static class ParticleEffectEdit
 {
 	/// The initializer catalogue, in menu order; AddInitializer takes the index.
 	public static readonly StringView[7] InitializerNames = .("Position", "Velocity", "Lifetime", "Color", "Size", "Rotation", "Mesh Orientation");
 	/// The behavior catalogue, in menu order; AddBehavior takes the index.
 	public static readonly StringView[13] BehaviorNames = .("Gravity", "Drag", "Wind", "Turbulence", "Vortex", "Attractor", "Radial Force", "Collision", "Color/Life", "Alpha/Life", "Size/Life", "Rotation/Life", "Speed/Life");
-
-	/// One system, a fountain: lifetime, an upward velocity, size, colour and gravity, at
-	/// 120 particles a second.
-	public static void SeedDefault(ParticleEffect effect)
-	{
-		let sys = effect.AddSystem(2000);
-		sys.AddInitializer<LifetimeInitializer>().Lifetime = .(1.5f, 2.5f);
-		sys.AddInitializer<VelocityInitializer>().BaseVelocity = .(0.0f, 5.0f, 0.0f);
-		sys.AddInitializer<SizeInitializer>();
-		sys.AddInitializer<ColorInitializer>();
-		sys.AddBehavior<GravityBehavior>();
-		sys.Emitter.Mode = .Continuous;
-		sys.Emitter.SpawnRate = 120.0f;
-	}
 
 	/// The module's type name without its namespace, what the tree and the inspector show.
 	public static void ModuleLabel(Object module, String outLabel)

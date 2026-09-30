@@ -83,8 +83,8 @@ static class EditorRegistration
 		AngelScriptEditorUI.Register();
 		ScriptEditor.Register(context, app.EmbeddedApplication.ScriptSurface);
 
-		EditorSeed.RegisterPrimitiveMeshCreators(context);
-		EditorCreators.RegisterAll(context);
+		// File > New: every pipeline domain's creators, the scripts' among them.
+		PipelineRegistration.RegisterAllCreators(context.Creators);
 
 		// The cook service routes through the same builder and importer sets the cook CLI
 		// has.

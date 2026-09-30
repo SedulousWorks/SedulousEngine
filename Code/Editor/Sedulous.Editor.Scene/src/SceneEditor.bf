@@ -39,8 +39,6 @@ static class SceneEditor
 		SceneActions.Register(context);
 		context.RegisterMcpToolContribution(new [=context](server) => { SceneMcpTools.Register(server, context); });
 
-		context.RegisterCreator(new AssetCreator("Scene", "", new (ctx, group) => SceneAssetCreators.CreateSceneInstance(ctx, group), true));
-		context.RegisterCreator(new AssetCreator("Prefab", "", new (ctx, group) => SceneAssetCreators.CreatePrefabInstance(ctx, group)));
 
 		delete context.GamePageFactory;
 		context.GamePageFactory = new [=context, =host, =uiHost, =embeddedApp](newInstance) =>

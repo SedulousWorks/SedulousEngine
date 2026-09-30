@@ -1,10 +1,14 @@
 using System;
 using System.Collections;
+using System.IO;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Script.Pipeline;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
+using Sedulous.Content;
+using Sedulous.VFS;
+using Sedulous.Core.IO;
 
 namespace Sedulous.Pipeline.Registration.Tests;
 
@@ -77,5 +81,54 @@ static class PipelineRegistrationTests
 				let name = product.GetFullName(.. scope .());
 				Test.Assert(GlobalSerializableRegistry.IsRegistered(TypeIdOf(name)), scope $"{builder.AssetType}: product {name} is not a registered serializable");
 			});
+	}
+
+	/// Every creator the engine ships registers, three per script language on top of the
+	/// fixed set, and each makes an instance of its own type in a plain source database, with
+	/// no editor: the headless host's creation and the editor's are the same code.
+	[Test]
+	public static void EveryCreatorRegistersAndCreatesItsTypeWithNoEditor()
+	{
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let creators = scope AssetCreatorRegistry();
+		PipelineRegistration.RegisterAllCreators(creators);
+		let languages = scope List<String>();
+		defer { ClearAndDeleteItems!(languages); }
+		ScriptLanguageCooks.CollectLanguages(languages);
+		Test.Assert(creators.Count == PipelineRegistration.cCreatorCount + ScriptCreators.CountFor(languages.Count),
+			scope $"{creators.Count} creators");
+
+		let root = PathJoin(Directory.GetCurrentDirectory(.. scope .()), "scratch_registration_creators", .. scope .());
+		RemoveDirectoryRecursive(root);
+		defer RemoveDirectoryRecursive(root);
+		let content = PathJoin(root, "Content", .. scope .());
+		let sources = PathJoin(root, "Sources", .. scope .());
+		CreateDirectory(root);
+		CreateDirectory(content);
+		CreateDirectory(sources);
+		let contentFs = scope NativeFileSystem(content);
+		SerializerFactory factory = new (stream, mode) => new BinarySerializerContext(stream, mode);
+		defer delete factory;
+		let db = scope ContentDatabase(contentFs, factory, "xasset");
+
+		for (let creator in creators)
+		{
+			let instance = creator.Run(.(null, db.RootGroup, sources));
+			Test.Assert(instance != null, scope $"'{creator.Label}' created nothing");
+			Test.Assert(instance.TypeName == creator.TypeName, scope $"'{creator.Label}' made a {instance.TypeName}");
+		}
+
+		// A picked group wins over a creator's default folder.
+		let picked = db.RootGroup.CreateGroup("Picked");
+		let material = creators.FindByLabel("PBR Material").Run(.(picked, db.RootGroup, sources));
+		Test.Assert((material != null) && (material.OwningGroup == picked));
+
+		// A file backed creator refuses without a sources folder rather than write nowhere.
+		Test.Assert(creators.FindByLabel("UI Document").Run(.(null, db.RootGroup, "")) == null);
+
+		// A type with several creators has no single one; a type with one does.
+		Test.Assert(creators.FindByType(typeof(Sedulous.Materials.Pipeline.MaterialAsset).GetFullName(.. scope .())) == null);
+		Test.Assert(creators.FindByType(typeof(Sedulous.Input.Pipeline.InputMapAsset).GetFullName(.. scope .())) != null);
 	}
 }

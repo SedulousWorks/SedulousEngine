@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Content;
 using Sedulous.UI;
 using Sedulous.UI.Toolkit;
+using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 

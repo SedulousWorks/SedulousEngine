@@ -5,6 +5,7 @@ using Sedulous.Core.Logging;
 using Sedulous.Content;
 using Sedulous.UI;
 using Sedulous.UI.Toolkit;
+using Sedulous.PropertyAnimation.Pipeline;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 
@@ -242,7 +243,7 @@ extension PropertyAnimationPanel
 				let dialog = new AssetCreateDialog(mEditorCtx, "Create Animation Clip", "clip name");
 				dialog.OnCreate = new (group, name) =>
 					{
-						let inst = PropertyAnimationEditor.CreateClipNamed(mEditorCtx, group, name);
+						let inst = PropertyAnimationCreators.CreateClip(group, name);
 						if (inst == null)
 						{
 							GlobalLog(.Warning, "PropertyAnimation: Create clip '{}' failed", name);

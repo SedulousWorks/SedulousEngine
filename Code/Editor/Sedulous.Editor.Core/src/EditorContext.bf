@@ -6,6 +6,7 @@ using Sedulous.Content;
 using Sedulous.Resource;
 using Sedulous.Settings;
 using Sedulous.Mcp;
+using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Editor.Project;
 
@@ -48,7 +49,7 @@ class EditorContext : IAssetEditSink
 	// ---- owned state ----
 	private ImporterRegistry mImporters = new .() ~ delete _;
 	private EditorPageRegistry mPageRegistry = new .() ~ delete _;
-	private List<AssetCreator> mCreators = new .() ~ DeleteContainerAndItems!(_);
+	private AssetCreatorRegistry mCreators = new .() ~ delete _;
 	private List<EditorSettingsContribution> mSettingsContributions = new .() ~ DeleteContainerAndItems!(_);
 	private List<delegate void(McpServer server)> mMcpToolContributions = new .() ~ DeleteContainerAndItems!(_);
 	private String mClipboardKind = new .() ~ delete _;
@@ -359,18 +360,9 @@ class EditorContext : IAssetEditSink
 
 	public EditorPageRegistry Pages => mPageRegistry;
 
-	/// TAKES OWNERSHIP. A creator with no Run is dropped.
-	public void RegisterCreator(AssetCreator creator)
-	{
-		if ((creator == null) || (creator.Run == null))
-		{
-			delete creator;
-			return;
-		}
-		mCreators.Add(creator);
-	}
-
-	public List<AssetCreator> Creators => mCreators;
+	/// File > New's creators, every pipeline domain's (PipelineRegistration.RegisterAllCreators
+	/// fills it); the host runs one and does what follows a creation.
+	public AssetCreatorRegistry Creators => mCreators;
 
 	// ---- favorites: pinned instances the browser and the pickers surface first ----
 

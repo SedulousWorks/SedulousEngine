@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Animation.Pipeline;
 
 /// One state in the edit model with its node: a clip, or a blend tree whose entries are
 /// kept as parallel lists so a 1D and a 2D tree share the shape.

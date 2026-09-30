@@ -7,6 +7,7 @@ using Sedulous.Particles;
 using Sedulous.Particles.Pipeline;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.Pipeline.Core;
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -14,11 +15,24 @@ namespace Sedulous.Editor.Scene.Tests;
 /// the undo snapshot and the creator.
 class ParticleEffectPageTests
 {
+	/// The domain's "Particle Effect" creator, as File > New runs it. Leaks nothing: the registry is
+	/// static to the test class.
+	private static AssetCreatorRegistry sCreators = null ~ delete _;
+	private static AssetCreator Creator()
+	{
+		if (sCreators == null)
+		{
+			sCreators = new .();
+			ParticleCreators.Register(sCreators);
+		}
+		return sCreators.FindByLabel("Particle Effect");
+	}
+
 	[Test]
 	public static void TheDefaultSeedIsAOneSystemFountainWithTheCoreModules()
 	{
 		let fx = scope ParticleEffect();
-		ParticleEffectEdit.SeedDefault(fx);
+		ParticleCreators.SeedDefaultEffect(fx);
 		Test.Assert(fx.SystemCount == 1);
 		let sys = fx.GetSystem(0);
 		Test.Assert(sys != null);
@@ -82,7 +96,7 @@ class ParticleEffectPageTests
 	public static void TheTreeSnapshotListsSystemsEmittersAndModuleFolders()
 	{
 		let fx = scope ParticleEffect();
-		ParticleEffectEdit.SeedDefault(fx);
+		ParticleCreators.SeedDefaultEffect(fx);
 		fx.GetSystem(0).Name.Set("Sparks");
 		fx.AddSystem(16); // unnamed: labelled by index
 
@@ -119,7 +133,7 @@ class ParticleEffectPageTests
 	{
 		ParticleModules.RegisterModules();
 		let fx = scope ParticleEffect();
-		ParticleEffectEdit.SeedDefault(fx);
+		ParticleCreators.SeedDefaultEffect(fx);
 		let before = scope List<uint8>();
 		ParticleEffectEdit.Snapshot(fx, before);
 		Test.Assert(before.Count > 0);
@@ -156,13 +170,11 @@ class ParticleEffectPageTests
 		let project = EditorProject.Open(dir);
 		Test.Assert(project != null);
 		defer delete project;
-		let ctx = scope EditorContext();
-		ctx.SetProject(project);
+		let creation = AssetCreationContext(null, project.SourceDb.RootGroup, "");
 
-		let empty = scope EditorContext();
-		Test.Assert(ParticleAssetCreators.CreateParticleEffectInstance(empty, null) == null);
+		Test.Assert(Creator().Run(.(null, null, "")) == null);
 
-		let first = ParticleAssetCreators.CreateParticleEffectInstance(ctx, null);
+		let first = Creator().Run(creation);
 		Test.Assert(first != null);
 		Test.Assert(first.GetPath(.. scope .()) == "ParticleEffects/ParticleEffect");
 		Test.Assert(AssetTypeNames.Matches(first.TypeName, "ParticleEffectAsset"));
@@ -173,7 +185,7 @@ class ParticleEffectPageTests
 		Test.Assert(asset.Effect.SystemCount == 1);
 		Test.Assert(asset.Effect.GetSystem(0).InitializerCount == 4);
 
-		let second = ParticleAssetCreators.CreateParticleEffectInstance(ctx, null);
+		let second = Creator().Run(creation);
 		Test.Assert((second != null) && (second.GetPath(.. scope .()) == "ParticleEffects/ParticleEffect.2"));
 	}
 }

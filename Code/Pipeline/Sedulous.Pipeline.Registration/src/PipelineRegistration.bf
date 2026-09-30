@@ -42,6 +42,7 @@ using Sedulous.Pipeline.ScriptSurface;
 using Sedulous.PropertyAnimation.Pipeline;
 using Sedulous.Script.AngelScript.Pipeline;
 using Sedulous.Script.Pipeline;
+using Sedulous.Scene.Pipeline;
 using Sedulous.Shaders.Pipeline;
 using Sedulous.Terrain.Pipeline;
 using Sedulous.Vegetation.Pipeline;
@@ -67,6 +68,9 @@ static class PipelineRegistration
 {
 	public const int cBuilderCount = 27;
 	public const int cImporterCount = 10;
+	/// The creators every build has; the scripts add three per language with a cook on top
+	/// (ScriptCreators.CountFor).
+	public const int cCreatorCount = 25;
 
 	/// The pipeline surface the script cooks compile against, made by the type registration
 	/// and released by Teardown.
@@ -177,6 +181,29 @@ static class PipelineRegistration
 		registry.Register(new AudioBusLayoutAssetBuilder());
 		registry.Register(new SoundCueAssetBuilder());
 		registry.Register(new ScriptClassAssetBuilder());
+	}
+
+	/// Fills `registry` with every New Asset creator the engine ships, each pipeline domain its
+	/// own. After RegisterPipelineTypes: the script creators enumerate the registered cooks.
+	/// Registration order is the menus' order: the uncategorised items first, then each
+	/// category's in turn.
+	public static void RegisterAllCreators(AssetCreatorRegistry registry)
+	{
+		SceneCreators.Register(registry);
+		ParticleCreators.Register(registry);
+		InputCreators.Register(registry);
+		NavigationCreators.Register(registry);
+		MaterialCreators.Register(registry);
+		AnimationCreators.Register(registry);
+		PropertyAnimationCreators.Register(registry);
+		GeometryCreators.Register(registry);
+		PhysicsCreators.Register(registry);
+		AudioCreators.Register(registry);
+		UICreators.Register(registry);
+		HeightfieldCreators.Register(registry);
+		TerrainCreators.Register(registry);
+		VegetationCreators.Register(registry);
+		ScriptCreators.Register(registry);
 	}
 
 	/// Fills `registry` with every OS file importer the engine ships, the drag and drop

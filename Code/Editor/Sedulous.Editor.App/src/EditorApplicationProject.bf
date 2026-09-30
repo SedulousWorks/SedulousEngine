@@ -10,6 +10,7 @@ using Sedulous.Settings;
 using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Engine.Project;
+using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
@@ -695,10 +696,15 @@ extension EditorApplication
 			mContext.Notify(.Info, "Create queued until the current cook finishes.");
 			return;
 		}
-		let instance = creator.Run(mContext, group);
+		if (mProject == null)
+		{
+			mContext.Notify(.Error, "Create failed: no project is open.");
+			return;
+		}
+		let instance = creator.Run(.(group, mProject.SourceDb.RootGroup, mProject.SourcesRoot(.. scope .())));
 		if (instance == null)
 		{
-			mContext.Notify(.Error, "Create failed (no project open?).");
+			mContext.Notify(.Error, scope $"Create failed: the {creator.Label} could not be written.");
 			return;
 		}
 		if (creator.SetsDefaultScene && (mProject != null) && !mProject.Settings.DefaultSceneId.IsSet && mProject.Settings.DefaultScene.IsEmpty)

@@ -1,0 +1,40 @@
+using System;
+using Sedulous.Core;
+using Sedulous.Content;
+using Sedulous.Geometry;
+using Sedulous.Pipeline.Core;
+
+namespace Sedulous.Geometry.Pipeline;
+
+/// The geometry domain's New Asset creators: one per primitive shape, a static mesh under
+/// Meshes/ unless a group was picked.
+static class GeometryCreators
+{
+	public static void Register(AssetCreatorRegistry registry)
+	{
+		registry.Register(new AssetCreator("Cube", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.TargetOr("Meshes"), "Cube", Primitives.Cube())));
+		registry.Register(new AssetCreator("Sphere", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.TargetOr("Meshes"), "Sphere", Primitives.Sphere())));
+		registry.Register(new AssetCreator("Plane", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.TargetOr("Meshes"), "Plane", Primitives.Plane())));
+		registry.Register(new AssetCreator("Cylinder", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.TargetOr("Meshes"), "Cylinder", Primitives.Cylinder())));
+		registry.Register(new AssetCreator("Cone", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.TargetOr("Meshes"), "Cone", Primitives.Cone())));
+		registry.Register(new AssetCreator("Torus", "Primitives", typeof(StaticMeshAsset), new (context) => CreatePrimitive(context.TargetOr("Meshes"), "Torus", Primitives.Torus())));
+	}
+
+	/// A static mesh asset authored from an in memory mesh, uniquely named in `target`: the
+	/// creators' body, and the new-project seed's. TAKES the mesh.
+	public static Instance CreatePrimitive(Group target, StringView baseName, StaticMesh mesh)
+	{
+		defer delete mesh;
+		if ((target == null) || (mesh == null))
+			return null;
+		let name = target.UniqueInstanceName(baseName, .. scope .());
+		let instance = target.CreateInstance(name, typeof(StaticMeshAsset).GetFullName(.. scope .()));
+		if (instance == null)
+			return null;
+		let asset = scope StaticMeshAsset();
+		MeshImporter.Import(mesh, asset);
+		if (MeshAssetStorage.WriteStatic(instance, asset) case .Err)
+			return null;
+		return instance;
+	}
+}

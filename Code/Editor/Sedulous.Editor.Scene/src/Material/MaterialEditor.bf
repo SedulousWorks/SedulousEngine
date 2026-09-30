@@ -14,7 +14,5 @@ static class MaterialEditor
 		MaterialsPipeline.RegisterAll();
 		SceneEditorSerializables.RegisterAll();
 		context.Pages.Register(new MaterialEditorPageFactory(host, uiHost));
-		context.RegisterCreator(new AssetCreator("PBR Material", "Materials", new (ctx, group) => MaterialAssetCreators.CreateMaterialInstance(ctx, group, false)));
-		context.RegisterCreator(new AssetCreator("Unlit Material", "Materials", new (ctx, group) => MaterialAssetCreators.CreateMaterialInstance(ctx, group, true)));
 	}
 }

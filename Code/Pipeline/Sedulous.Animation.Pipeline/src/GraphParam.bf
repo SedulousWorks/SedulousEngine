@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Animation.Pipeline;
 
 /// One graph parameter in the edit model: its name, type and authored default.
 class GraphParam

@@ -5,10 +5,11 @@ using Sedulous.Core.IO;
 using Sedulous.Materials.Pipeline;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.Pipeline.Core;
 
 namespace Sedulous.Editor.Scene.Tests;
 
-/// The material creators over a real project.
+/// The material creators (Materials.Pipeline) over a real project, run as File > New runs them.
 class MaterialCreatorTests
 {
 	[Test]
@@ -22,15 +23,18 @@ class MaterialCreatorTests
 		let project = EditorProject.Open(dir);
 		Test.Assert(project != null);
 		defer delete project;
-		let ctx = scope EditorContext();
-		ctx.SetProject(project);
+		let creators = scope AssetCreatorRegistry();
+		MaterialCreators.Register(creators);
+		let pbrCreator = creators.FindByLabel("PBR Material");
+		let unlitCreator = creators.FindByLabel("Unlit Material");
+		Test.Assert((pbrCreator != null) && (unlitCreator != null));
+		let root = project.SourceDb.RootGroup;
 
-		// No project: nothing.
-		let empty = scope EditorContext();
-		Test.Assert(MaterialAssetCreators.CreateMaterialInstance(empty, null, false) == null);
+		// No database: nothing.
+		Test.Assert(pbrCreator.Run(.(null, null, "")) == null);
 
 		// PBR: the lit property set on the "forward" shader; lands in Materials/ (unique names).
-		let pbr = MaterialAssetCreators.CreateMaterialInstance(ctx, null, false);
+		let pbr = pbrCreator.Run(.(null, root, ""));
 		Test.Assert(pbr != null);
 		Test.Assert(pbr.GetPath(.. scope .()) == "Materials/Material");
 		Test.Assert(AssetTypeNames.Matches(pbr.TypeName, "MaterialAsset"));
@@ -49,7 +53,7 @@ class MaterialCreatorTests
 		}
 
 		// Unlit: BaseColor + AlbedoMap only, on the "unlit" shader.
-		let unlit = MaterialAssetCreators.CreateMaterialInstance(ctx, null, true);
+		let unlit = unlitCreator.Run(.(null, root, ""));
 		Test.Assert(unlit != null);
 		Test.Assert(unlit.GetPath(.. scope .()) == "Materials/Material.2");
 		{
@@ -65,7 +69,7 @@ class MaterialCreatorTests
 
 		// A browser group wins over the default folder.
 		let props = project.SourceDb.RootGroup.CreateGroup("Props");
-		let inProps = MaterialAssetCreators.CreateMaterialInstance(ctx, props, false);
+		let inProps = pbrCreator.Run(.(props, root, ""));
 		Test.Assert(inProps != null);
 		Test.Assert(inProps.GetPath(.. scope .()) == "Props/Material");
 	}

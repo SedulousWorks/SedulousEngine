@@ -7,6 +7,7 @@ using Sedulous.Animation.Resource;
 using Sedulous.Animation.Pipeline;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.Pipeline.Core;
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -14,11 +15,24 @@ namespace Sedulous.Editor.Scene.Tests;
 /// its structural edits, the layout sync, the undo snapshot and the creator.
 class AnimationGraphPageTests
 {
+	/// The domain's "Animation Graph" creator, as File > New runs it. Leaks nothing: the registry is
+	/// static to the test class.
+	private static AssetCreatorRegistry sCreators = null ~ delete _;
+	private static AssetCreator Creator()
+	{
+		if (sCreators == null)
+		{
+			sCreators = new .();
+			AnimationCreators.Register(sCreators);
+		}
+		return sCreators.FindByLabel("Animation Graph");
+	}
+
 	[Test]
 	public static void TheDefaultSeedIsOneLayerWithAnIdleDefaultAndASpeedParam()
 	{
 		let asset = scope AnimationGraphAsset();
-		AnimationGraphEdit.SeedDefault(asset);
+		AnimationCreators.SeedDefaultGraph(asset);
 		let s = asset.Source;
 		Test.Assert((s.ParamName.Count == 1) && (s.ParamName[0] == "Speed") && (s.ParamType[0] == 0));
 		Test.Assert((s.LayerName.Count == 1) && (s.LayerName[0] == "Base"));
@@ -34,7 +48,7 @@ class AnimationGraphPageTests
 	{
 		AnimationPipeline.RegisterAll();
 		let a = scope AnimationGraphAsset();
-		AnimationGraphEdit.SeedDefault(a);
+		AnimationCreators.SeedDefaultGraph(a);
 		let doc = scope GraphDocument();
 		doc.Load(a.Source);
 		Test.Assert((doc.Params.Count == 1) && (doc.Layers.Count == 1) && (doc.Layers[0].States.Count == 1));
@@ -192,13 +206,11 @@ class AnimationGraphPageTests
 		let project = EditorProject.Open(dir);
 		Test.Assert(project != null);
 		defer delete project;
-		let ctx = scope EditorContext();
-		ctx.SetProject(project);
+		let creation = AssetCreationContext(null, project.SourceDb.RootGroup, "");
 
-		let empty = scope EditorContext();
-		Test.Assert(AnimationGraphAssetCreators.CreateAnimationGraphInstance(empty, null) == null);
+		Test.Assert(Creator().Run(.(null, null, "")) == null);
 
-		let instance = AnimationGraphAssetCreators.CreateAnimationGraphInstance(ctx, null);
+		let instance = Creator().Run(creation);
 		Test.Assert(instance != null);
 		Test.Assert(instance.GetPath(.. scope .()) == "Animation/AnimationGraph");
 		Test.Assert(AssetTypeNames.Matches(instance.TypeName, "AnimationGraphAsset"));

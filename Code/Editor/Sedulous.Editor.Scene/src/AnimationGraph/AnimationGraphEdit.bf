@@ -7,28 +7,11 @@ using Sedulous.Animation.Pipeline;
 
 namespace Sedulous.Editor.Scene;
 
-/// The graph page's headless edits: the default seed, the canvas layout kept in step with
-/// the model, and the whole asset's binary snapshot the undo step carries.
+/// The graph page's headless edits: the canvas layout kept in step with the model, and the
+/// whole asset's binary snapshot the undo step carries. The default seed is the creator's
+/// (AnimationCreators.SeedDefaultGraph).
 static class AnimationGraphEdit
 {
-	/// One "Base" layer with an "Idle" clip state as its default, and a float "Speed"
-	/// parameter, laid out on the canvas.
-	public static void SeedDefault(AnimationGraphAsset asset)
-	{
-		let doc = scope GraphDocument();
-		doc.AddParam("Speed", 0);
-		let layer = doc.AddLayer("Base");
-		layer.AddState("Idle", 0); // a clip, unassigned: pick in the inspector
-		layer.DefaultState = 0;
-		doc.Store(asset.Source);
-
-		ClearAndDeleteItems!(asset.LayerLayouts);
-		let layout = new AnimationGraphLayerLayout();
-		layout.StatePositions.Add(.(280.0f, 120.0f));
-		layout.AnyStatePosition = .(60.0f, 40.0f);
-		asset.LayerLayouts.Add(layout);
-	}
-
 	/// Pads or trims the asset's per layer layouts to the model: one per layer, one position
 	/// per state, a new state placed on a loose grid so it never lands on another.
 	public static void SyncLayouts(AnimationGraphAsset asset, GraphDocument doc)

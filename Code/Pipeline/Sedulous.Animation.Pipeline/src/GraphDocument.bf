@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Animation.Resource;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Animation.Pipeline;
 
 /// The animation graph as nested objects, what the page edits. The authored record is
 /// AnimationGraphSource, flat parallel arrays with index runs, which is the right wire and

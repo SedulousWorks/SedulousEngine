@@ -15,6 +15,5 @@ static class ParticleEditor
 		ParticleModules.RegisterModules();
 		ParticlesPipeline.RegisterAll();
 		context.Pages.Register(new ParticleEffectPageFactory(host, uiHost));
-		context.RegisterCreator(new AssetCreator("Particle Effect", "", new (ctx, group) => ParticleAssetCreators.CreateParticleEffectInstance(ctx, group)));
 	}
 }

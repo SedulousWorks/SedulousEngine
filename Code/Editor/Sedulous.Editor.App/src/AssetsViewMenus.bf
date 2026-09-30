@@ -5,6 +5,7 @@ using Sedulous.Core.Logging;
 using Sedulous.Content;
 using Sedulous.VFS;
 using Sedulous.UI;
+using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;

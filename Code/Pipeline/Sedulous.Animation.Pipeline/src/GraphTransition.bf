@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Animation.Pipeline;
 
 /// One transition in the edit model; a source of -1 is Any State.
 class GraphTransition
