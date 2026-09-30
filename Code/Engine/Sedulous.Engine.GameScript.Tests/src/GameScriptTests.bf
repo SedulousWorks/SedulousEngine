@@ -280,4 +280,64 @@ static class GameScriptTests
 		Test.Assert(run.PropInt("updates") == 2);
 		Test.Assert(run.PropInt("score") == 4, "the event queued through the pause was delivered after it");
 	}
+
+	/// The math values' operators, as the engine's Beef operators compute them: vector
+	/// arithmetic, scalars on either side, negation, component-wise products, equality, the
+	/// compound assignments, and a quaternion product composing in the engine's order.
+	[Test]
+	public static void ScriptsDoVectorArithmeticWithOperators()
+	{
+		let run = scope GameRun("scratch_game_operators");
+		let game = run.Class("Game", """
+			class Game
+			{
+				Float3 sum; Float3 diff; Float3 scaled; Float3 scaledLeft; Float3 halved; Float3 negated;
+				Float3 product; Float3 quotient; Float3 accumulated; Float2 flat; Float4 wide;
+				bool same; bool different; Quaternion turned; Color tint;
+				void launch()
+				{
+					Float3 a = Float3(1, 2, 3);
+					Float3 b = Float3(4, 5, 6);
+					sum = a + b;
+					diff = b - a;
+					scaled = a * 2.0f;
+					scaledLeft = 3.0f * a;
+					halved = b / 2.0f;
+					negated = -a;
+					product = a * b;
+					quotient = b / a;
+					accumulated = a;
+					accumulated += b;
+					accumulated *= 2.0f;
+					accumulated -= Float3(1, 1, 1);
+					flat = Float2(1, 2) + Float2(3, 4) * 2.0f;
+					wide = -(Float4(1, 2, 3, 4) * 2.0f);
+					same = (a + b) == Float3(5, 7, 9);
+					different = a != b;
+					turned = Quaternion::FromAxisAngle(Float3::UnitY, 0.5f) * Quaternion::FromAxisAngle(Float3::UnitX, 0.25f);
+					tint = Color(0.25f, 0.5f, 0.25f, 1.0f) * 2.0f;
+				}
+			}
+			""");
+		Test.Assert(run.Instance.StartScript(game));
+		Float3 F3(StringView name) => run.Prop(name).AsFloat3;
+		Test.Assert(F3("sum") == Float3(5, 7, 9));
+		Test.Assert(F3("diff") == Float3(3, 3, 3));
+		Test.Assert(F3("scaled") == Float3(2, 4, 6));
+		Test.Assert(F3("scaledLeft") == Float3(3, 6, 9));
+		Test.Assert(F3("halved") == Float3(2, 2.5f, 3));
+		Test.Assert(F3("negated") == Float3(-1, -2, -3));
+		Test.Assert(F3("product") == Float3(4, 10, 18));
+		Test.Assert(F3("quotient") == Float3(4, 2.5f, 2));
+		Test.Assert(F3("accumulated") == Float3(9, 13, 17));
+		Test.Assert(run.Prop("flat").AsFloat2 == Float2(7, 10));
+		Test.Assert(run.Prop("wide").AsFloat4 == Float4(-2, -4, -6, -8));
+		Test.Assert(run.PropBool("same"));
+		Test.Assert(run.PropBool("different"));
+		let expected = Quaternion.FromAxisAngle(.(0, 1, 0), 0.5f) * Quaternion.FromAxisAngle(.(1, 0, 0), 0.25f);
+		let turned = run.Prop("turned").AsQuaternion;
+		Test.Assert(Math.Abs(turned.X - expected.X) + Math.Abs(turned.Y - expected.Y) + Math.Abs(turned.Z - expected.Z) + Math.Abs(turned.W - expected.W) < 1e-5, "the engine's composition order");
+		let tint = run.Prop("tint").AsColor;
+		Test.Assert(Math.Abs(tint.R - 0.5f) + Math.Abs(tint.G - 1.0f) + Math.Abs(tint.A - 2.0f) < 1e-5);
+	}
 }

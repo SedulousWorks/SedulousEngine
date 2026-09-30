@@ -29,6 +29,8 @@ class AngelScriptBinding
 		case Wait;
 		/// `yield()`: a wait of nought, resumed on the next advance.
 		case Yield;
+		/// An operator on an inline math value: OperatorType and Operator.
+		case Operator;
 	}
 
 	public Role Kind;
@@ -37,4 +39,7 @@ class AngelScriptBinding
 	public ScriptFieldInfo Field;
 	/// For a Call registered per arity: how many parameters this declaration takes.
 	public int Arity;
+	/// For an Operator: the value type and which operator.
+	public AngelScriptOperatorType OperatorType;
+	public AngelScriptOperator Operator;
 }

@@ -165,6 +165,7 @@ class AngelScriptRuntime : ScriptRuntime
 		AS.asc_engine_register_object_type(mEngine, "Float4", sizeof(Float4), pod | AS.asOBJ_APP_CLASS_ALLFLOATS);
 		AS.asc_engine_register_object_type(mEngine, "Quaternion", sizeof(Quaternion), pod | AS.asOBJ_APP_CLASS_ALLFLOATS);
 		AS.asc_engine_register_object_type(mEngine, "Color", sizeof(Color), pod | AS.asOBJ_APP_CLASS_ALLFLOATS);
+		DeclareOperators();
 	}
 
 	/// BORROWED: the debugger in force, which self registers and detaches.
@@ -285,6 +286,7 @@ class AngelScriptRuntime : ScriptRuntime
 		Record(GlobalApi, "wait", "void wait(float seconds)", true, .Method);
 		Record(GlobalApi, "yield", "void yield()", true, .Method);
 		Record(GlobalApi, "ScriptCallback", "funcdef void ScriptCallback()", true, .Constant);
+		RecordOperators(surface);
 
 		// Declare every type before any member, since a member's declaration names types.
 		for (let t in surface.Types)
@@ -841,6 +843,9 @@ class AngelScriptRuntime : ScriptRuntime
 			return;
 		case .Yield:
 			WaitCurrent(0);
+			return;
+		case .Operator:
+			DispatchOperator(gen, b);
 			return;
 		case .Resolve:
 			// `scene.Physics`: the scene's instance of the system.
