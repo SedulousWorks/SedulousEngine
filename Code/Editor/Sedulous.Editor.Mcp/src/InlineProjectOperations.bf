@@ -3,6 +3,7 @@ using System.Collections;
 using System.Diagnostics;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Content;
 using Sedulous.VFS;
 using Sedulous.Engine.Composition;
 using Sedulous.Pipeline.Core;
@@ -25,6 +26,11 @@ class InlineProjectOperations : IProjectOperations
 	private BuilderRegistry mBuilders;
 	private String mPlayerDir = new .() ~ delete _;
 	private String mDataRoot = new .() ~ delete _;
+
+	/// After an import has landed: what the host's pipeline makes of it, a model's prefab
+	/// among them (ModelPrefab.GenerateForImport), as the editor's import does. Owned; unset,
+	/// an import creates only what its importer makes.
+	public delegate void(Instance primary, ImportOptions options) OnImported ~ delete _;
 
 	/// playerDir is where the player beside the host lives, the export's host template;
 	/// dataRoot the engine data root whose Shaders the export cooks.
@@ -97,6 +103,8 @@ class InlineProjectOperations : IProjectOperations
 		outOutcome.FlushMs = (Stopwatch.GetTimestamp() - started) / 1000;
 		outOutcome.DeferredWrites = deferred.Count;
 		outOutcome.SetIdentity(imported.Get());
+		if (OnImported != null)
+			OnImported(imported.Get(), request.Options);
 		return .Finished;
 	}
 

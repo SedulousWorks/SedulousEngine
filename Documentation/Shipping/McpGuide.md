@@ -116,8 +116,8 @@ with `importer` set to choose. `options` sets the importer's toggles, the import
 checkboxes by label (`{"Generate collision": true}` gives an imported model's prefab
 colliders and a static body; a model also takes Textures, Materials, Animations, Generate
 prefab, Generate scene, Generate LODs, Convex collision); the result lists every toggle's
-value. In the editor an imported model gets its prefab, the `Prefab` asset beside its
-manifest. `asset_list` and `asset_info` inspect either database.
+value. An imported model gets its prefab, the `Prefab` asset beside its manifest, in both
+hosts (and a scene with `Generate scene`). `asset_list` and `asset_info` inspect either database.
 Assets that are authored rather than imported (input maps, materials, scenes, prefabs,
 particle effects, animation graphs, physics, audio and UI assets, primitive meshes, script
 classes) come from `asset_create`: `asset_creators` lists every creator with the `type` it

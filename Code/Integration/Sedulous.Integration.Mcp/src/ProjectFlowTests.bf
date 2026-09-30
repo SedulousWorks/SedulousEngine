@@ -9,6 +9,7 @@ using Sedulous.Mcp.Script;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
+using Sedulous.VFS;
 using Sedulous.Editor.Mcp;
 using static Sedulous.Integration.Mcp.McpCalls;
 
@@ -548,5 +549,61 @@ static class ProjectFlowTests
 			Test.Assert(cases != null, scope $"{entry.ns}.{entry.type} lists no cases");
 			Test.Assert(Named(cases, "name", entry.someCase) != null, scope $"{entry.type} has no case '{entry.someCase}'");
 		}
+	}
+
+	/// A model imported through the headless host gets its prefab, as in the editor: the host
+	/// runs PipelineRegistration.AfterImport after every import. With the prefab option off it
+	/// gets none, and the scene option adds a scene.
+	[Test]
+	public static void AHeadlessModelImportGeneratesItsPrefab()
+	{
+		let dir = Scratch("mcp_model_prefab", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		let dataRoot = scope String();
+		FindDataRoot(dataRoot);
+		Test.Assert(!dataRoot.IsEmpty);
+		let duck = PathJoin(dataRoot, "Assets/models/Duck/glTF/Duck.gltf", .. scope .());
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let builders = scope BuilderRegistry();
+		let importers = scope ImporterRegistry();
+		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllImporters(importers);
+
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		AssetTools.Register(server, session);
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		operations.OnImported = new (primary, options) => { PipelineRegistration.AfterImport(primary, options); };
+		AssetWriteTools.Register(server, session, importers, operations);
+		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Models"));
+		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
+
+		int CountOfType(StringView suffix)
+		{
+			let listed = CallOk(server, "asset_list", Obj());
+			defer delete listed;
+			int count = 0;
+			let assets = listed.Get("assets");
+			for (int i < assets.Count)
+				if (assets.At(i).Get("type").AsString().EndsWith(suffix))
+					count++;
+			return count;
+		}
+
+		delete CallOk(server, "asset_import", With(With(Obj(), "source", duck), "group", "Plain"));
+		Test.Assert(CountOfType(".PrefabDocument") == 1, "the default: a prefab");
+		Test.Assert(CountOfType(".SceneDocument") == 0);
+
+		let noPrefab = With(With(Obj(), "source", duck), "group", "Bare");
+		let options = JsonValue.MakeObject();
+		options.Set("Generate prefab", JsonValue.MakeBool(false));
+		options.Set("Generate scene", JsonValue.MakeBool(true));
+		noPrefab.Set("options", options);
+		delete CallOk(server, "asset_import", noPrefab);
+		Test.Assert(CountOfType(".PrefabDocument") == 1, "no second prefab");
+		Test.Assert(CountOfType(".SceneDocument") == 1, "the scene it asked for");
 	}
 }

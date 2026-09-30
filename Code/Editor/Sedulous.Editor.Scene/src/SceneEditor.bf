@@ -11,6 +11,7 @@ using Sedulous.Engine.Scene;
 using Sedulous.Engine.Composition;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.ModelImporter;
+using Sedulous.Scene.Pipeline;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene;
@@ -75,28 +76,23 @@ static class SceneEditor
 			return SceneExportSupport.ScanSceneReferences(instance, db, outResources, outPrefabs);
 		};
 
+		// A model's prefab and scene, the pipeline's generation every host runs, then what only
+		// the editor does with them.
 		context.AddImportListener(new [=context, =host](instance, options) =>
 		{
-			if (!AssetTypeNames.Matches(instance.TypeName, "ModelManifestAsset"))
+			if (!ModelPrefab.GenerateForImport(instance, options, let prefab, let scene))
 				return;
-			var wantPrefab = true;
-			var wantScene = false;
-			if (let modelOptions = options as ModelImportOptions)
-			{
-				wantPrefab = modelOptions.GeneratePrefab;
-				wantScene = modelOptions.GenerateScene;
-			}
-			if (wantPrefab)
-				GeneratePrefabAfterImport(context, host, instance);
-			if (wantScene)
-				GenerateSceneAfterImport(context, instance);
+			let modelOptions = options as ModelImportOptions;
+			if ((modelOptions == null) || modelOptions.GeneratePrefab)
+				AfterPrefabGenerated(context, host, prefab);
+			if ((modelOptions != null) && modelOptions.GenerateScene)
+				AfterSceneGenerated(context, scene);
 		});
 	}
 
 	/// The model's prefab, and every placed instance of it rebuilt when it already existed.
-	private static void GeneratePrefabAfterImport(EditorContext context, IApplicationHost host, Instance instance)
+	private static void AfterPrefabGenerated(EditorContext context, IApplicationHost host, ModelPrefabResult generated)
 	{
-		let generated = ModelPrefab.GenerateModelPrefab(instance);
 		if (generated.Instance == null)
 		{
 			context.Notify(.Error, "Model prefab generation failed.");
@@ -130,9 +126,8 @@ static class SceneEditor
 			: scope $"Prefab '{generated.Instance.Name}' generated.");
 	}
 
-	private static void GenerateSceneAfterImport(EditorContext context, Instance instance)
+	private static void AfterSceneGenerated(EditorContext context, ModelPrefabResult generated)
 	{
-		let generated = ModelPrefab.GenerateModelScene(instance);
 		if (generated.Instance == null)
 		{
 			context.Notify(.Error, "Model scene generation failed.");

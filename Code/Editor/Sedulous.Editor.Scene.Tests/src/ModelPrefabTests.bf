@@ -8,6 +8,7 @@ using Sedulous.VFS;
 using Sedulous.Content;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
+using Sedulous.Scene.Pipeline;
 using Sedulous.ModelImporter;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Animation;

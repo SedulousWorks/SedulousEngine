@@ -183,6 +183,15 @@ static class PipelineRegistration
 		registry.Register(new ScriptClassAssetBuilder());
 	}
 
+	/// What the pipeline makes once an import has landed, beyond what the importer itself
+	/// made: a model's prefab (and its scene, when asked). A host without the editor's import
+	/// listeners (the stdio MCP host) runs this after every import so a model gets the same
+	/// assets there as in the editor, whose scene module runs the same generation.
+	public static void AfterImport(Sedulous.Content.Instance primary, ImportOptions options)
+	{
+		ModelPrefab.GenerateForImport(primary, options, let prefab, let scene);
+	}
+
 	/// Fills `registry` with every New Asset creator the engine ships, each pipeline domain its
 	/// own. After RegisterPipelineTypes: the script creators enumerate the registered cooks.
 	/// Registration order is the menus' order: the uncategorised items first, then each

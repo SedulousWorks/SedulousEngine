@@ -82,6 +82,8 @@ class Program
 		// beside this executable and cooks shaders from the data root.
 		let operations = scope InlineProjectOperations(session, builders,
 			BuildLayout.PlayerDirectoryBeside(GetExecutableDirectory(.. scope .()), .. scope .()), dataRoot);
+		// What the pipeline makes after an import (a model's prefab), as the editor's import has.
+		operations.OnImported = new (primary, options) => { PipelineRegistration.AfterImport(primary, options); };
 		EngineTools.Register(server, session, builders, importers, creators, logBuffer, paths, operations);
 		// This host's additions: an agent opens, or scaffolds, the project it wants.
 		ProjectOpenTools.Register(server, session, owner);

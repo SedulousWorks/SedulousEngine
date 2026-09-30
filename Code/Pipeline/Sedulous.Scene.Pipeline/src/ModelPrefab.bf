@@ -10,11 +10,12 @@ using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Model.Resource;
 using Sedulous.ModelImporter;
+using Sedulous.Pipeline.Importer;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Physics;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Scene.Pipeline;
 
 /// A model manifest as a prefab or a scene: its node tree under one root, a mesh component
 /// per meshed node with the manifest's materials, a cooked collider where the import made
@@ -110,6 +111,33 @@ static class ModelPrefab
 		}
 
 		outRoot = root;
+		return true;
+	}
+
+	/// What a finished model import generates, by its options (null is the defaults): the
+	/// prefab unless GeneratePrefab is off, the scene when GenerateScene is on. Every host runs
+	/// it once an import has landed, so a model imported anywhere gets the same assets; the
+	/// editor adds its own effects (refreshing placed instances) around it. False, generating
+	/// nothing, when `primary` is not a model manifest. A result's Instance is null when that
+	/// one was not asked for, or failed (logged).
+	public static bool GenerateForImport(Instance primary, ImportOptions options,
+		out ModelPrefabResult outPrefab, out ModelPrefabResult outScene)
+	{
+		outPrefab = .();
+		outScene = .();
+		if ((primary == null) || (primary.TypeName != typeof(ModelManifestAsset).GetFullName(.. scope .())))
+			return false;
+		var wantPrefab = true;
+		var wantScene = false;
+		if (let modelOptions = options as ModelImportOptions)
+		{
+			wantPrefab = modelOptions.GeneratePrefab;
+			wantScene = modelOptions.GenerateScene;
+		}
+		if (wantPrefab)
+			outPrefab = GenerateModelPrefab(primary);
+		if (wantScene)
+			outScene = GenerateModelScene(primary);
 		return true;
 	}
 

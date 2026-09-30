@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
+using Sedulous.Scene.Pipeline;
 using Sedulous.Materials;
 using Sedulous.Engine.Render;
 using Sedulous.ModelImporter;

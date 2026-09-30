@@ -1,6 +1,6 @@
 using Sedulous.Content;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Scene.Pipeline;
 
 /// What generating a prefab or scene from a model manifest produced.
 struct ModelPrefabResult
