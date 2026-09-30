@@ -320,6 +320,36 @@ class PieMcpToolsTests
 		Test.Assert(answer.Error.StartsWith("PIE instance 'game-page' did not start"), answer.Error);
 	}
 
+	/// A primary start and a new instance's run at once, re-entered in turn, and each answers
+	/// with its own tab.
+	[Test]
+	public static void APrimaryStartAndANewInstancesInterleave()
+	{
+		let context = scope EditorContext();
+		let opened = scope List<HeadlessPiePage>();
+		bool projectOpen = true;
+		RegisterPlayActions(context, opened, &projectOpen);
+		let server = scope McpServer();
+		PieMcpTools.Register(server, context);
+
+		Answer primaryAnswer = null;
+		Answer clientAnswer = null;
+		Test.Assert(Pump(server, "pie_start", "{}", out primaryAnswer) == .NotFinished);
+		Test.Assert(Pump(server, "pie_start", "{\"newInstance\":true}", out clientAnswer) == .NotFinished);
+		Test.Assert(opened.Count == 2, "both tabs opened, neither start mistaken for the other's re-entry");
+		for (let tab in opened)
+		{
+			tab.CookDone("Level1");
+			tab.Frame(0.016);
+		}
+		Test.Assert(Pump(server, "pie_start", "{\"newInstance\":true}", out clientAnswer) == .Answered);
+		defer delete clientAnswer;
+		Test.Assert(Pump(server, "pie_start", "{}", out primaryAnswer) == .Answered);
+		defer delete primaryAnswer;
+		Test.Assert(primaryAnswer.Payload.Get("pie").AsString() == "game-page");
+		Test.Assert(clientAnswer.Payload.Get("pie").AsString() == "game-page-1");
+	}
+
 	[Test]
 	public static void TheScreenshotWaitsForTheInstancesFrame()
 	{

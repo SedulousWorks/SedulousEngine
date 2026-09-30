@@ -39,6 +39,15 @@ static class PieMcpTools
 		public int Serial = 0;
 	}
 
+	/// The pie_start calls in flight: a primary start and a new instance's are kept apart, so
+	/// one of each can run at once. Two new-instance starts at once cannot be: the host re-enters
+	/// a call with nothing but its arguments, and theirs are the same, so they queue.
+	private class StartWaits
+	{
+		public Pending Primary = new .() ~ delete _;
+		public Pending NewInstance = new .() ~ delete _;
+	}
+
 	/// The pie_screenshot calls in flight, one per instance: the HTTP host re-enters every
 	/// unfinished call each pump, so captures of two instances interleave.
 	private class CaptureWaits
@@ -52,7 +61,7 @@ static class PieMcpTools
 	{
 		let startSchema = scope SchemaBuilder();
 		startSchema.Boolean("newInstance", "open another Game tab with an instance of its own (Play New Instance) instead of the primary");
-		let starting = new Pending();
+		let starting = new StartWaits();
 		server.RegisterTool("pie_start",
 			"Start playing the project in the editor (PIE): the primary Game tab, or with `newInstance` another tab running an instance of its own - a host and a client, say. Cooks first, as Play does, loads the default scene and the startup script, and answers once the instance's first frame has rendered, with its state as pie_state gives it; `pie` is the id every other PIE tool takes. A primary already running is answered as it is, with `alreadyRunning`. A run that fails to start (a default scene that does not load) is an error; log_read says why.",
 			startSchema.Build(), .Creates,
@@ -114,8 +123,10 @@ static class PieMcpTools
 		PieRunTool.Register(server, context);
 	}
 
-	private static ToolOutcome Start(EditorContext context, Pending pending, JsonValue arguments, JsonValue outResult, String outError)
+	private static ToolOutcome Start(EditorContext context, StartWaits waits, JsonValue arguments, JsonValue outResult, String outError)
 	{
+		let newInstance = (arguments != null) && (arguments.Get("newInstance") != null) && arguments.Get("newInstance").AsBool();
+		let pending = newInstance ? waits.NewInstance : waits.Primary;
 		if (pending.Page != null)
 		{
 			// Re-entered: the same call, one pump later.
@@ -150,7 +161,6 @@ static class PieMcpTools
 			return .NotFinished;
 		}
 
-		let newInstance = (arguments != null) && (arguments.Get("newInstance") != null) && arguments.Get("newInstance").AsBool();
 		if (!newInstance)
 		{
 			if (let primary = FindPie(context, cPrimaryId))
