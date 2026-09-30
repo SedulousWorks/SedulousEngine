@@ -219,6 +219,9 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		AdvanceScriptedInput();
 		EnsureViewportBound();
 		mViewport.SyncInputRegion();
+		// A running game owns the keys its focused viewport receives: the editor's arrow key
+		// focus moves and single key bindings stay out of it.
+		mViewport.CapturesKeys = mRunning;
 		if (mRouter != null)
 		{
 			// Hover gates the mouse, a click the keyboard focus.

@@ -67,10 +67,47 @@ class ViewportView : View
 	/// OWNED: the gated, content-space view of the platform's devices.
 	private InputSurface mSurface = null ~ delete _;
 
+	/// The content reads the keyboard itself (a game running in the viewport) rather than
+	/// through the host's bindings. The input surface already keeps the content from keys the
+	/// host has; this is the other direction: while the surface has the keyboard, a key with
+	/// no Ctrl, Alt or Gui held, Tab and the arrows included, is the content's and goes no
+	/// further in the host, so the host's focus traversal and single key bindings never act
+	/// on a key the game is also handling. A chord still reaches the host's shortcuts. Off
+	/// for content that relies on the host's single key bindings (a scene editor's W/E/R).
+	public bool CapturesKeys
+	{
+		get => mCapturesKeys;
+		set
+		{
+			mCapturesKeys = value;
+			WantsTabKey = value;
+		}
+	}
+	private bool mCapturesKeys = false;
+
 	public this()
 	{
 		IsFocusable = true;
 	}
+
+	public override void OnKeyDown(KeyEventArgs e)
+	{
+		if (ContentHasKeys && !IsChord(e.Modifiers))
+			e.Handled = true;
+	}
+
+	public override void OnKeyUp(KeyEventArgs e)
+	{
+		if (ContentHasKeys && !IsChord(e.Modifiers))
+			e.Handled = true;
+	}
+
+	/// The content is reading the keyboard right now: it asked to, and the router gave its
+	/// surface the keyboard focus.
+	private bool ContentHasKeys => mCapturesKeys && (mSurface != null) && mSurface.Focused;
+
+	private static bool IsChord(Sedulous.UI.KeyModifiers modifiers) =>
+		(modifiers & (.LeftCtrl | .RightCtrl | .LeftAlt | .RightAlt | .LeftGui | .RightGui)) != 0;
 
 	public ~this()
 	{

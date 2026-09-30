@@ -57,6 +57,57 @@ class ViewportViewTests
 		}
 	}
 
+	// ---- Keys ---------------------------------------------------------------------------------
+
+	/// A viewport whose content reads the keyboard keeps the keys its surface has: the arrows
+	/// and Tab do not move the host's focus on. Without the surface's keyboard focus, or
+	/// without asking, the same keys traverse as they always did, so a host's single key
+	/// bindings still work for content that relies on them.
+	[Test]
+	public static void ACapturingViewportKeepsItsKeysFromTheHostsFocus()
+	{
+		let harness = scope Harness();
+		let shell = scope NullInputManager();
+		let context = scope UIContext();
+		let root = new RootView();
+		defer root.ReleaseRef();
+		root.ViewportSize = .(400, 400);
+		context.AddRootView(root);
+
+		let view = new ViewportView();
+		view.Initialize(harness.Device, harness.Renderer, shell, 0);
+		let other = new Button("Other");
+		view.IsTabStop = true;
+		other.IsTabStop = true;
+		root.AddView(view);
+		root.AddView(other);
+		context.BeginFrame(0.016f);
+		context.UpdateRootView(root);
+		let focus = context.GetFocusManager();
+		let keys = context.GetInputManager();
+
+		// The content asked, and its surface has the keyboard: the keys are the content's,
+		// consumed here rather than traversing or reaching a single key binding.
+		view.CapturesKeys = true;
+		view.Surface.ApplyGate(false, true, false, .Zero, .Zero);
+		focus.SetFocus(view);
+		Test.Assert(keys.ProcessKeyDown(.Down, .None, false), "an arrow is consumed");
+		Test.Assert(keys.ProcessKeyDown(.Tab, .None, false));
+		Test.Assert(focus.FocusedView == view, "the game's keys stay the game's");
+
+		// The surface without the keyboard: the content is not reading keys, the host is.
+		view.Surface.ApplyGate(false, false, false, .Zero, .Zero);
+		keys.ProcessKeyDown(.Tab, .None, false);
+		Test.Assert(focus.FocusedView == other, "an unread key traverses");
+
+		// Not asking: traverses too, whatever the surface has.
+		focus.SetFocus(view);
+		view.CapturesKeys = false;
+		view.Surface.ApplyGate(false, true, false, .Zero, .Zero);
+		keys.ProcessKeyDown(.Tab, .None, false);
+		Test.Assert(focus.FocusedView == other, "not capturing, Tab moves focus as before");
+	}
+
 	// ---- Targets ------------------------------------------------------------------------------
 
 	/// Layout is what creates the targets, and the colour one is registered with the renderer
