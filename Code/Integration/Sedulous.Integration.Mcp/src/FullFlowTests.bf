@@ -189,7 +189,7 @@ static class FullFlowTests
 		public int ExportEntries = 0;
 		public bool RefuseCook = false;
 
-		public OperationStep Cook(bool force, ref CookOutcome outOutcome, String outError)
+		public OperationStep Cook(ToolCall call, bool force, ref CookOutcome outOutcome, String outError)
 		{
 			CookEntries++;
 			if (RefuseCook)
@@ -209,7 +209,7 @@ static class FullFlowTests
 		public bool SawCollision = false;
 		public bool SawPrefab = false;
 
-		public OperationStep Import(ImportRequest request, ImportOutcome outOutcome, String outError)
+		public OperationStep Import(ToolCall call, ImportRequest request, ImportOutcome outOutcome, String outError)
 		{
 			ImportEntries++;
 			if (let model = request.Options as ModelImportOptions)
@@ -224,7 +224,7 @@ static class FullFlowTests
 			return .Finished;
 		}
 
-		public OperationStep Export(ExportRequest request, ExportResult outResult, String outError)
+		public OperationStep Export(ToolCall call, ExportRequest request, ExportResult outResult, String outError)
 		{
 			ExportEntries++;
 			if (ExportEntries < AnswerOnEntry)
@@ -234,7 +234,7 @@ static class FullFlowTests
 			return .Finished;
 		}
 
-		public OperationStep Create(CreateRequest request, CreateOutcome outOutcome, String outError)
+		public OperationStep Create(ToolCall call, CreateRequest request, CreateOutcome outOutcome, String outError)
 		{
 			outError.Append("not used here");
 			return .Failed;
@@ -422,7 +422,7 @@ static class FullFlowTests
 		request.Importer = importer;
 		let outcome = scope ImportOutcome();
 		let error = scope String();
-		Test.Assert(operations.Import(request, outcome, error) == .Finished, error);
+		Test.Assert(operations.Import(scope ToolCall(), request, outcome, error) == .Finished, error);
 		Test.Assert(importer.Prepares == 1);
 		Test.Assert(importer.SawPrepared, "placement received the worker's payload");
 		Test.Assert(outcome.DeferredWrites == 1);

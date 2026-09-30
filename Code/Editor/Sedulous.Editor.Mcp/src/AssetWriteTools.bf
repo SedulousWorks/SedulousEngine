@@ -49,7 +49,7 @@ static class AssetWriteTools
 			Import an OS file into the open project: copy it under Sources/ and create the typed asset in the source database, routed by extension. When several importers claim the extension the first is used and the result names the alternatives; pass `importer` to choose. Does not cook - call asset_cook next.
 			""",
 			importSchema.Build(), .Creates,
-			new (arguments, outResult, outError) => Import(context, arguments, outResult, outError),
+			new (call, arguments, outResult, outError) => Import(context, call, arguments, outResult, outError),
 			context);
 
 		let cookSchema = scope SchemaBuilder();
@@ -57,10 +57,10 @@ static class AssetWriteTools
 		server.RegisterTool("asset_cook",
 			"Run the incremental cook over the open project: plan the dirty set and build it into the cooked database. Returns the cook stats (planned/cooked/failed/orphans).",
 			cookSchema.Build(), .Rebuilds,
-			new (arguments, outResult, outError) => Cook(context, arguments, outResult, outError));
+			new (call, arguments, outResult, outError) => Cook(context, call, arguments, outResult, outError));
 	}
 
-	private static ToolOutcome Import(Context context, JsonValue arguments, JsonValue outResult, String outError)
+	private static ToolOutcome Import(Context context, ToolCall call, JsonValue arguments, JsonValue outResult, String outError)
 	{
 		let session = context.Session;
 		if (!session.IsOpen)
@@ -144,7 +144,7 @@ static class AssetWriteTools
 		request.Importer = importer;
 		request.Options = options;
 		let done = scope ImportOutcome();
-		switch (context.Operations.Import(request, done, outError))
+		switch (context.Operations.Import(call, request, done, outError))
 		{
 		case .Failed: return .Failed;
 		case .NotYet: return .NotFinished; // the host's import is still running
@@ -206,7 +206,7 @@ static class AssetWriteTools
 		}
 	}
 
-	private static ToolOutcome Cook(Context context, JsonValue arguments, JsonValue outResult, String outError)
+	private static ToolOutcome Cook(Context context, ToolCall call, JsonValue arguments, JsonValue outResult, String outError)
 	{
 		if (!context.Session.IsOpen)
 		{
@@ -214,7 +214,7 @@ static class AssetWriteTools
 			return .Failed;
 		}
 		CookOutcome done = .();
-		switch (context.Operations.Cook(McpTools.ArgBool(arguments, "force"), ref done, outError))
+		switch (context.Operations.Cook(call, McpTools.ArgBool(arguments, "force"), ref done, outError))
 		{
 		case .Failed: return .Failed;
 		case .NotYet: return .NotFinished; // the host's cook is still running

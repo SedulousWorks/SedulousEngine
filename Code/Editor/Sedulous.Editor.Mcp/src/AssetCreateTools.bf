@@ -44,7 +44,7 @@ static class AssetCreateTools
 			Create a new asset the way the editor's File > New does: a fresh instance seeded with its defaults (an input map with the default sets, a PBR material from the preset, a scene with a sun, a script class from its tier's starter). Name the creator by `creator` label or by `type`. Returns {guid, name, type, path}; read the asset with asset_info, edit it with the scene tools or its page, and call asset_cook before a runtime needs it (the editor host requests the cook itself).
 			""",
 			schema.Build(), .Creates,
-			new (arguments, outResult, outError) => Create(context, arguments, outResult, outError));
+			new (call, arguments, outResult, outError) => Create(context, call, arguments, outResult, outError));
 	}
 
 	private static ToolOutcome List(Context context, JsonValue arguments, JsonValue outResult, String outError)
@@ -64,7 +64,7 @@ static class AssetCreateTools
 		return true;
 	}
 
-	private static ToolOutcome Create(Context context, JsonValue arguments, JsonValue outResult, String outError)
+	private static ToolOutcome Create(Context context, ToolCall call, JsonValue arguments, JsonValue outResult, String outError)
 	{
 		if (!context.Session.IsOpen)
 		{
@@ -103,7 +103,7 @@ static class AssetCreateTools
 		request.GroupPath = McpTools.ArgString(arguments, "group", .. scope .());
 		request.Name = McpTools.ArgString(arguments, "name", .. scope .());
 		let done = scope CreateOutcome();
-		switch (context.Operations.Create(request, done, outError))
+		switch (context.Operations.Create(call, request, done, outError))
 		{
 		case .Failed: return .Failed;
 		case .NotYet: return .NotFinished; // the host holds creation while a cook reads the databases

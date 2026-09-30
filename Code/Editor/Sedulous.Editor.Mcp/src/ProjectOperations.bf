@@ -3,6 +3,7 @@ using Sedulous.Content;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Editor.Project;
+using Sedulous.Mcp;
 
 namespace Sedulous.Editor.Mcp;
 
@@ -121,20 +122,21 @@ struct ExportRequest
 /// so the editor never blocks on an agent's call.
 ///
 /// Every operation is IDEMPOTENT ACROSS RE-ENTRIES: a tool that is not finished is called
-/// again with the same arguments on the host's next pump, so the first call with a request
-/// starts the work and later calls with the same request poll it. An implementation keeps
-/// that state itself, and one operation of each kind is in flight at a time (the tool is one
-/// call).
+/// again with the same arguments on the host's next pump, so the first entry of a call starts
+/// the work and later entries poll it. An implementation keeps that progress in the call's
+/// State (it is the operation's, not the tool's), so two calls in flight at once, identical
+/// or not, are two operations; the state's destructor cleans up after a call whose caller
+/// left.
 interface IProjectOperations
 {
 	/// The incremental cook over the open project (force rebuilds all).
-	OperationStep Cook(bool force, ref CookOutcome outOutcome, String outError);
+	OperationStep Cook(ToolCall call, bool force, ref CookOutcome outOutcome, String outError);
 	/// One OS file into the open project's source database (does not cook).
-	OperationStep Import(ImportRequest request, ImportOutcome outOutcome, String outError);
+	OperationStep Import(ToolCall call, ImportRequest request, ImportOutcome outOutcome, String outError);
 	/// One new asset from a creator (AssetCreation.Run), and whatever the host does after a
 	/// creation: the editor's cook request and default scene; nothing on the stdio host, whose
 	/// agent cooks next.
-	OperationStep Create(CreateRequest request, CreateOutcome outOutcome, String outError);
+	OperationStep Create(ToolCall call, CreateRequest request, CreateOutcome outOutcome, String outError);
 	/// A shippable dist of the open project through the one export entry point.
-	OperationStep Export(ExportRequest request, ExportResult outResult, String outError);
+	OperationStep Export(ToolCall call, ExportRequest request, ExportResult outResult, String outError);
 }

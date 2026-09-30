@@ -10,6 +10,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
 using Sedulous.Editor.App;
+using Sedulous.Mcp;
 
 namespace Sedulous.Editor.App.Tests;
 
@@ -55,7 +56,9 @@ class EditorProjectOperationsTests
 			SawPrepared = (prepared != null);
 			if (mFailPlacement)
 				return .Err(.InvalidArgument);
-			let instance = group.CreateInstance("Imported", "Tests.Blob");
+			// Named after the file, so the same file again is a reimport, as a real importer's.
+			let dot = sourcePath.IndexOf('.');
+			let instance = group.CreateInstance((dot > 0) ? sourcePath.Substring(0, dot) : sourcePath, "Tests.Blob");
 			if (deferredWrites != null)
 			{
 				let write = new DeferredImportWrite();
@@ -122,14 +125,15 @@ class EditorProjectOperationsTests
 		}
 	}
 
-	/// Re-enters the step after each pump until it answers, as the host's pump does; waited
+	/// One call, re-entered after each pump until it answers, as the host's pump does; waited
 	/// counts the not finished answers, the frames the caller waited.
-	private static OperationStep Drive(Bench bench, delegate OperationStep() step, out int waited)
+	private static OperationStep Drive(Bench bench, delegate OperationStep(ToolCall call) step, out int waited)
 	{
 		waited = 0;
+		let call = scope ToolCall();
 		for (int i < 5000)
 		{
-			let result = step();
+			let result = step(call);
 			if (result != .NotYet)
 				return result;
 			waited++;
@@ -146,13 +150,13 @@ class EditorProjectOperationsTests
 		CookOutcome outcome = .();
 		let error = scope String();
 		int waited;
-		Test.Assert(Drive(bench, scope [&]() => ops.Cook(false, ref outcome, error), out waited) == .Finished, error);
+		Test.Assert(Drive(bench, scope [&](call) => ops.Cook(call, false, ref outcome, error), out waited) == .Finished, error);
 		Test.Assert(waited >= 1); // the first entry only requested; the worker answered later
 		Test.Assert(outcome.Planned == 0);
 		Test.Assert(bench.Cook.Revision == 1);
 
 		// The state resets: a second cook starts a new wait rather than answering from the old.
-		Test.Assert(Drive(bench, scope [&]() => ops.Cook(true, ref outcome, error), out waited) == .Finished, error);
+		Test.Assert(Drive(bench, scope [&](call) => ops.Cook(call, true, ref outcome, error), out waited) == .Finished, error);
 		Test.Assert(waited >= 1);
 		Test.Assert(bench.Cook.Revision == 2);
 	}
@@ -180,12 +184,12 @@ class EditorProjectOperationsTests
 		let outcome = scope ImportOutcome();
 		let error = scope String();
 		int waited;
-		Test.Assert(Drive(bench, scope [&]() => ops.Import(request, outcome, error), out waited) == .Finished, error);
+		Test.Assert(Drive(bench, scope [&](call) => ops.Import(call, request, outcome, error), out waited) == .Finished, error);
 		Test.Assert(waited >= 2); // the prepare job, then the flush job, each landed through a pump
 		Test.Assert(importer.Prepares == 1);
 		Test.Assert(importer.Imports == 1);
 		Test.Assert(importer.SawPrepared);
-		Test.Assert(outcome.Name == "Imported");
+		Test.Assert(outcome.Name == "anything");
 		// The bulk write reached the instance's stream.
 		let instance = bench.Project.SourceDb.GetInstance(outcome.Id);
 		Test.Assert(instance != null);
@@ -199,19 +203,75 @@ class EditorProjectOperationsTests
 		// An inline importer (no worker prepare) places at once and still flushes on the job.
 		let inlineImporter = scope TwoPhaseImporter(false);
 		request.Importer = inlineImporter;
-		Test.Assert(Drive(bench, scope [&]() => ops.Import(request, outcome, error), out waited) == .Finished, error);
+		Test.Assert(Drive(bench, scope [&](call) => ops.Import(call, request, outcome, error), out waited) == .Finished, error);
 		Test.Assert(inlineImporter.Prepares == 0);
 		Test.Assert(!inlineImporter.SawPrepared);
 
 		// A placement failure is the tool's error, and the state is clean for the next call.
 		let failing = scope TwoPhaseImporter(false, true);
 		request.Importer = failing;
-		Test.Assert(Drive(bench, scope [&]() => ops.Import(request, outcome, error), out waited) == .Failed);
+		Test.Assert(Drive(bench, scope [&](call) => ops.Import(call, request, outcome, error), out waited) == .Failed);
 		Test.Assert(error.StartsWith("import of 'anything.two' failed"), error);
 		Test.Assert(afterImports == 2, "a failed import has no after");
 		error.Clear();
 		request.Importer = inlineImporter;
-		Test.Assert(Drive(bench, scope [&]() => ops.Import(request, outcome, error), out waited) == .Finished, error);
+		Test.Assert(Drive(bench, scope [&](call) => ops.Import(call, request, outcome, error), out waited) == .Finished, error);
+	}
+
+	/// Two agents' imports at once: each call keeps its own progress, so they interleave through
+	/// their phases and each lands its own asset. An import whose caller left
+	/// mid-read ends with its call, the running job keeping what it shares.
+	[Test]
+	public static void TwoImportsInFlightEachLandTheirOwnAsset()
+	{
+		let bench = scope Bench("mcp_ops_import_two");
+		let ops = scope EditorProjectOperations(bench.Seams());
+		let importer = scope TwoPhaseImporter(true);
+		ImportRequest request = .();
+		request.Source = "anything.two";
+		request.Importer = importer;
+		ImportRequest other = request;
+		other.Source = "other.two";
+
+		let first = scope ToolCall();
+		let second = scope ToolCall();
+		let firstOutcome = scope ImportOutcome();
+		let secondOutcome = scope ImportOutcome();
+		let error = scope String();
+		OperationStep firstStep = .NotYet;
+		OperationStep secondStep = .NotYet;
+		for (int i < 5000)
+		{
+			if (firstStep == .NotYet)
+				firstStep = ops.Import(first, request, firstOutcome, error);
+			if (secondStep == .NotYet)
+				secondStep = ops.Import(second, other, secondOutcome, error);
+			if ((firstStep != .NotYet) && (secondStep != .NotYet))
+				break;
+			bench.Pump();
+		}
+		Test.Assert((firstStep == .Finished) && (secondStep == .Finished), error);
+		Test.Assert(importer.Prepares == 2, "each call read the file");
+		Test.Assert(importer.Imports == 2);
+		Test.Assert(firstOutcome.Id != secondOutcome.Id, "two assets, not one answered twice");
+		Test.Assert(bench.Project.SourceDb.GetInstance(firstOutcome.Id) != null);
+		Test.Assert(bench.Project.SourceDb.GetInstance(secondOutcome.Id) != null);
+
+		// Abandoned mid-read: the call goes, the job runs out on its own reference.
+		{
+			let left = new ToolCall();
+			Test.Assert(ops.Import(left, request, firstOutcome, error) == .NotYet);
+			delete left;
+		}
+		for (int i < 5000)
+		{
+			if (!bench.Jobs.IsBusy)
+				break;
+			bench.Pump();
+		}
+		bench.Pump();
+		Test.Assert(!bench.Jobs.IsBusy);
+		Test.Assert(importer.Imports == 2, "the abandoned import placed nothing");
 	}
 
 	[Test]
@@ -230,7 +290,7 @@ class EditorProjectOperationsTests
 		let error = scope String();
 		int waited;
 		// No template is installed here, so the job fails: after the cook landed and the job ran.
-		Test.Assert(Drive(bench, scope [&]() => ops.Export(request, result, error), out waited) == .Failed);
+		Test.Assert(Drive(bench, scope [&](call) => ops.Export(call, request, result, error), out waited) == .Failed);
 		Test.Assert(error.StartsWith("export of preset '"), error);
 		Test.Assert(waited >= 2);
 		Test.Assert(bench.Cook.Revision == 1); // the export's cook went through the cook service
@@ -275,16 +335,17 @@ class EditorProjectOperationsTests
 		request.Name = "First";
 		let outcome = scope CreateOutcome();
 		let error = scope String();
-		Test.Assert(ops.Create(request, outcome, error) == .NotYet);
+		let call = scope ToolCall();
+		Test.Assert(ops.Create(call, request, outcome, error) == .NotYet);
 		Test.Assert(created == null, "nothing written while held");
 
 		locked = false;
-		Test.Assert(ops.Create(request, outcome, error) == .Finished, error);
+		Test.Assert(ops.Create(call, request, outcome, error) == .Finished, error);
 		Test.Assert((created != null) && (seen === probe), "the host's effects ran with the new asset");
 		Test.Assert((outcome.Name == "First") && (outcome.Path == "Made/First"));
 
 		error.Clear();
-		Test.Assert(ops.Create(request, outcome, error) == .Failed);
+		Test.Assert(ops.Create(scope ToolCall(), request, outcome, error) == .Failed);
 		Test.Assert(error.Contains("already exists"), error);
 	}
 }

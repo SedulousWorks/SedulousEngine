@@ -10,6 +10,7 @@ using Sedulous.Pipeline.Importer;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
+using Sedulous.Mcp;
 
 namespace Sedulous.Editor.App;
 
@@ -46,16 +47,16 @@ class EditorProjectOperationsSeams
 /// held while a cook reads the databases); the export cooks through the cook service and then
 /// runs the one export entry point on the job service: the same paths the menus take, so the
 /// editor stays live while an agent's call waits. Every step is re-entered from the host's
-/// pump: the first call starts the work, later calls poll it, and a step that outlives the
-/// timeout answers with an error instead of waiting forever.
+/// pump: the first entry starts the work, later entries poll it, and a step that outlives the
+/// timeout answers with an error instead of waiting forever. Each call's progress is its own,
+/// kept in the call's State, so two agents' imports (or cooks, or exports) run side by side.
 class EditorProjectOperations : IProjectOperations
 {
 	/// A cook requested and awaited: finished once the service's revision has moved past the
 	/// one seen at the request and the service is idle again (a request that arrived mid cook
 	/// is remembered by the service and lands one cook later).
-	private struct CookWait
+	private class CookWait
 	{
-		public bool Active = false;
 		public uint64 SinceRevision = 0;
 		public int64 StartedMicros = 0;
 	}
@@ -77,10 +78,19 @@ class EditorProjectOperations : IProjectOperations
 
 	private enum ImportPhase
 	{
-		Idle,
 		Preparing,
 		Placing,
 		Flushing
+	}
+
+	/// One import call's progress. The shared state is released with it: a job still running
+	/// when the call ends (its caller left) keeps its own reference.
+	private class ImportState
+	{
+		public ImportPhase Phase = .Placing;
+		public int64 Started = Stopwatch.GetTimestamp();
+		public ImportShared Shared = new .() ~ _.ReleaseRef();
+		public ImportOutcome Outcome = new .() ~ delete _;
 	}
 
 	private class ExportShared : RefCounted
@@ -97,25 +107,26 @@ class EditorProjectOperations : IProjectOperations
 
 	private enum ExportPhase
 	{
-		Idle,
 		Cooking,
 		Running
 	}
 
+	/// One export call's progress; its shared state released as an import's is.
+	private class ExportState
+	{
+		public ExportPhase Phase = .Cooking;
+		public int64 Started = Stopwatch.GetTimestamp();
+		public CookWait Cook = new .() ~ delete _;
+		public ExportShared Shared = new .() ~ _.ReleaseRef();
+	}
+
+	/// A creation waiting on the cook gate: when it first waited.
+	private class CreateWait
+	{
+		public int64 Started = Stopwatch.GetTimestamp();
+	}
+
 	private EditorProjectOperationsSeams mSeams ~ delete _;
-	private CookWait mCook = .();
-
-	private ImportPhase mImportPhase = .Idle;
-	private int64 mImportStarted = 0;
-	/// When a creation first waited on the cook gate; zero when none is waiting.
-	private int64 mCreateStarted = 0;
-	private ImportShared mImport = null;
-	private ImportOutcome mImportOutcome = new .() ~ delete _;
-
-	private ExportPhase mExportPhase = .Idle;
-	private int64 mExportStarted = 0;
-	private CookWait mExportCook = .();
-	private ExportShared mExport = null;
 
 	/// OWNERSHIP of the seams transfers.
 	public this(EditorProjectOperationsSeams seams)
@@ -123,54 +134,46 @@ class EditorProjectOperations : IProjectOperations
 		mSeams = seams;
 	}
 
-	public ~this()
-	{
-		if (mImport != null)
-			mImport.ReleaseRef();
-		if (mExport != null)
-			mExport.ReleaseRef();
-	}
-
 	private bool TimedOut(int64 startedMicros)
 	{
 		return (double)(Stopwatch.GetTimestamp() - startedMicros) / 1000000.0 > mSeams.TimeoutSeconds;
 	}
 
-	private void BeginCook(ref CookWait wait, bool force)
+	private void BeginCook(CookWait wait, bool force)
 	{
-		wait.Active = true;
 		wait.SinceRevision = mSeams.Cook.Revision;
 		wait.StartedMicros = Stopwatch.GetTimestamp();
 		mSeams.Cook.RequestCook(force); // remembered by the service if one is in flight
 	}
 
 	/// Finished, still cooking (NotYet), or Failed once the wait outlives the timeout.
-	private OperationStep PollCook(ref CookWait wait, String outError)
+	private OperationStep PollCook(CookWait wait, String outError)
 	{
 		if ((mSeams.Cook.Revision > wait.SinceRevision) && mSeams.Cook.IsIdle)
-		{
-			wait.Active = false;
 			return .Finished;
-		}
 		if (TimedOut(wait.StartedMicros))
 		{
-			wait.Active = false;
 			outError.AppendF("the cook did not finish within {} s - read log_read (category Cook) for where it stands", (int64)mSeams.TimeoutSeconds);
 			return .Failed;
 		}
 		return .NotYet;
 	}
 
-	public OperationStep Cook(bool force, ref CookOutcome outOutcome, String outError)
+	public OperationStep Cook(ToolCall call, bool force, ref CookOutcome outOutcome, String outError)
 	{
 		if (!mSeams.Cook.IsReady)
 		{
 			outError.Set("the editor has no cook service for the open project");
 			return .Failed;
 		}
-		if (!mCook.Active)
-			BeginCook(ref mCook, force);
-		let step = PollCook(ref mCook, outError);
+		var wait = call.State as CookWait;
+		if (wait == null)
+		{
+			wait = new CookWait();
+			call.State = wait;
+			BeginCook(wait, force);
+		}
+		let step = PollCook(wait, outError);
 		if (step != .Finished)
 			return step;
 		let summary = mSeams.Cook.LastCookSummary;
@@ -183,28 +186,14 @@ class EditorProjectOperations : IProjectOperations
 		return .Finished;
 	}
 
-	private void ResetImport()
+	private static OperationStep FailImport(String outError, StringView message)
 	{
-		mImportPhase = .Idle;
-		if (mImport != null)
-		{
-			mImport.ReleaseRef();
-			mImport = null;
-		}
-		delete mImportOutcome;
-		mImportOutcome = new .();
-	}
-
-	private OperationStep FailImport(String outError, StringView message)
-	{
-		ResetImport();
 		outError.Set(message);
 		return .Failed;
 	}
 
-	private void SubmitImportFlush(StringView source)
+	private void SubmitImportFlush(ImportShared shared, StringView source)
 	{
-		let shared = mImport;
 		shared.JobDone = false;
 		shared.AddRef();
 		shared.AddRef();
@@ -236,17 +225,18 @@ class EditorProjectOperations : IProjectOperations
 			} ~ shared.ReleaseRef());
 	}
 
-	public OperationStep Import(ImportRequest request, ImportOutcome outOutcome, String outError)
+	public OperationStep Import(ToolCall call, ImportRequest request, ImportOutcome outOutcome, String outError)
 	{
-		if (mImportPhase == .Idle)
+		var import = call.State as ImportState;
+		if (import == null)
 		{
-			mImportStarted = Stopwatch.GetTimestamp();
-			mImport = new ImportShared();
+			import = new ImportState();
+			call.State = import;
 			if (request.Importer.WantsWorkerPrepare)
 			{
 				// Phase 1, the load, on the worker: the bulk of a mesh or texture import.
-				mImportPhase = .Preparing;
-				let shared = mImport;
+				import.Phase = .Preparing;
+				let shared = import.Shared;
 				shared.AddRef();
 				shared.AddRef();
 				let importer = request.Importer;
@@ -267,27 +257,26 @@ class EditorProjectOperations : IProjectOperations
 					} ~ shared.ReleaseRef());
 				return .NotYet;
 			}
-			mImportPhase = .Placing;
 		}
-		if (mImportPhase == .Preparing)
+		if (import.Phase == .Preparing)
 		{
-			if (!mImport.JobDone)
+			if (!import.Shared.JobDone)
 			{
-				if (TimedOut(mImportStarted))
+				if (TimedOut(import.Started))
 					return FailImport(outError, scope $"import of '{request.Source}': reading the file did not finish within {(int64)mSeams.TimeoutSeconds} s");
 				return .NotYet;
 			}
-			if (!mImport.JobOk)
+			if (!import.Shared.JobOk)
 				return FailImport(outError, scope $"import of '{request.Source}' failed: the file could not be read (see log_read, category Import)");
-			mImportPhase = .Placing;
+			import.Phase = .Placing;
 		}
-		if (mImportPhase == .Placing)
+		if (import.Phase == .Placing)
 		{
 			// Phase 2, the cheap main thread fan out, but never while a cook (or an export job)
 			// reads the databases: the worker holds instance references snapshotted at plan time.
 			if (mSeams.Cook.MutationLocked)
 			{
-				if (TimedOut(mImportStarted))
+				if (TimedOut(import.Started))
 					return FailImport(outError, scope $"import of '{request.Source}': the databases stayed locked by a cook or export for {(int64)mSeams.TimeoutSeconds} s");
 				return .NotYet;
 			}
@@ -295,40 +284,39 @@ class EditorProjectOperations : IProjectOperations
 			let group = McpTools.ResolveGroupPath(project.SourceDb.RootGroup, request.GroupPath);
 			let context = scope ImportContext(project.SourcesRoot(.. scope .()));
 			let placeStarted = Stopwatch.GetTimestamp();
-			let imported = request.Importer.Import(request.Source, context, group, request.Options, mImport.Prepared, mImport.Writes);
-			mImportOutcome.MainMs = (Stopwatch.GetTimestamp() - placeStarted) / 1000;
+			let imported = request.Importer.Import(request.Source, context, group, request.Options, import.Shared.Prepared, import.Shared.Writes);
+			import.Outcome.MainMs = (Stopwatch.GetTimestamp() - placeStarted) / 1000;
 			if (imported case .Err(let error))
 				return FailImport(outError, scope $"import of '{request.Source}' failed ({error}) - see log_read, category Import");
 			let instance = imported.Get();
 			if (instance == null)
 				return FailImport(outError, scope $"import of '{request.Source}' failed - see log_read, category Import");
-			mImportOutcome.SetIdentity(instance);
-			mImportOutcome.DeferredWrites = mImport.Writes.Count;
-			mImportOutcome.PrepareMs = mImport.PrepareMs;
-			if (mImport.Writes.IsEmpty)
-				return FinishImport(outOutcome, request.Options);
+			import.Outcome.SetIdentity(instance);
+			import.Outcome.DeferredWrites = import.Shared.Writes.Count;
+			import.Outcome.PrepareMs = import.Shared.PrepareMs;
+			if (import.Shared.Writes.IsEmpty)
+				return FinishImport(import, outOutcome, request.Options);
 			// Phase 3, the bulk stream writes, on the worker.
-			mImportPhase = .Flushing;
-			SubmitImportFlush(request.Source);
+			import.Phase = .Flushing;
+			SubmitImportFlush(import.Shared, request.Source);
 			return .NotYet;
 		}
 		// Flushing.
-		if (!mImport.JobDone)
+		if (!import.Shared.JobDone)
 		{
-			if (TimedOut(mImportStarted))
+			if (TimedOut(import.Started))
 				return FailImport(outError, scope $"import of '{request.Source}': writing its data did not finish within {(int64)mSeams.TimeoutSeconds} s");
 			return .NotYet;
 		}
-		if (!mImport.JobOk)
+		if (!import.Shared.JobOk)
 			return FailImport(outError, scope $"import of '{request.Source}': a deferred write failed (see log_read, category Import)");
-		return FinishImport(outOutcome, request.Options);
+		return FinishImport(import, outOutcome, request.Options);
 	}
 
-	private OperationStep FinishImport(ImportOutcome outOutcome, ImportOptions options)
+	private OperationStep FinishImport(ImportState import, ImportOutcome outOutcome, ImportOptions options)
 	{
-		mImportOutcome.FlushMs = mImport.FlushMs;
-		mImportOutcome.CopyTo(outOutcome);
-		ResetImport();
+		import.Outcome.FlushMs = import.Shared.FlushMs;
+		import.Outcome.CopyTo(outOutcome);
 		// Every write has landed: the import is whole, so what follows an import runs now.
 		if (mSeams.OnImported != null)
 		{
@@ -338,27 +326,14 @@ class EditorProjectOperations : IProjectOperations
 		return .Finished;
 	}
 
-	private void ResetExport()
+	private static OperationStep FailExport(String outError, StringView message)
 	{
-		mExportPhase = .Idle;
-		mExportCook = .();
-		if (mExport != null)
-		{
-			mExport.ReleaseRef();
-			mExport = null;
-		}
-	}
-
-	private OperationStep FailExport(String outError, StringView message)
-	{
-		ResetExport();
 		outError.Set(message);
 		return .Failed;
 	}
 
-	private void SubmitExportJob()
+	private void SubmitExportJob(ExportShared shared)
 	{
-		let shared = mExport;
 		shared.JobDone = false;
 		shared.AddRef();
 		shared.AddRef();
@@ -392,21 +367,19 @@ class EditorProjectOperations : IProjectOperations
 
 	/// On the main thread, never while a cook or an export reads the databases (it waits, as a
 	/// placement does); then the host's effects through OnCreated.
-	public OperationStep Create(CreateRequest request, CreateOutcome outOutcome, String outError)
+	public OperationStep Create(ToolCall call, CreateRequest request, CreateOutcome outOutcome, String outError)
 	{
 		if (mSeams.Cook.MutationLocked)
 		{
-			if (mCreateStarted == 0)
-				mCreateStarted = Stopwatch.GetTimestamp();
-			if (TimedOut(mCreateStarted))
+			if (call.State == null)
+				call.State = new CreateWait();
+			if (TimedOut((call.State as CreateWait).Started))
 			{
-				mCreateStarted = 0;
 				outError.AppendF("create of a {}: the databases stayed locked by a cook or export for {} s", request.Creator.Label, (int64)mSeams.TimeoutSeconds);
 				return .Failed;
 			}
 			return .NotYet;
 		}
-		mCreateStarted = 0;
 		let instance = AssetCreation.Run(mSeams.Project, request, outError);
 		if (instance == null)
 			return .Failed;
@@ -416,31 +389,28 @@ class EditorProjectOperations : IProjectOperations
 		return .Finished;
 	}
 
-	public OperationStep Export(ExportRequest request, ExportResult outResult, String outError)
+	public OperationStep Export(ToolCall call, ExportRequest request, ExportResult outResult, String outError)
 	{
-		if (mExportPhase == .Idle)
+		var export = call.State as ExportState;
+		if (export == null)
 		{
 			if (!mSeams.Cook.IsReady)
 			{
 				outError.Set("the editor has no cook service for the open project");
 				return .Failed;
 			}
-			mExportStarted = Stopwatch.GetTimestamp();
-			mExport = new ExportShared();
-			request.Preset.CopyTo(mExport.Preset);
-			mExport.OutRoot.Set(request.OutRoot);
+			export = new ExportState();
+			call.State = export;
+			request.Preset.CopyTo(export.Shared.Preset);
+			export.Shared.OutRoot.Set(request.OutRoot);
 			// Cook first, through the cook service: what the Export menu does before its job.
-			mExportPhase = .Cooking;
-			BeginCook(ref mExportCook, request.Rebuild);
+			BeginCook(export.Cook, request.Rebuild);
 		}
-		if (mExportPhase == .Cooking)
+		if (export.Phase == .Cooking)
 		{
-			let polled = PollCook(ref mExportCook, outError);
+			let polled = PollCook(export.Cook, outError);
 			if (polled == .Failed)
-			{
-				ResetExport();
 				return .Failed;
-			}
 			if (polled == .NotYet)
 				return .NotYet;
 			// The main thread pre-pass: scene streams over the full composition, and the
@@ -449,31 +419,30 @@ class EditorProjectOperations : IProjectOperations
 			let project = mSeams.Project;
 			let context = mSeams.Context;
 			if ((context != null) && (context.SceneStreamStager != null))
-				ExportDriver.CollectSceneStreams(project.SourceDb.RootGroup, context.SceneStreamStager, mExport.SceneStreams);
-			if (mExport.Preset.PruneToReachable && (context != null) && (context.SceneRefScanner != null))
+				ExportDriver.CollectSceneStreams(project.SourceDb.RootGroup, context.SceneStreamStager, export.Shared.SceneStreams);
+			if (export.Shared.Preset.PruneToReachable && (context != null) && (context.SceneRefScanner != null))
 			{
 				SceneReferenceScanner adapter = scope (instance, db, refs) => { context.SceneRefScanner(instance, db, refs.Resources, refs.Prefabs); };
 				let seeds = scope List<ExportRoot>();
 				defer ClearAndDeleteItems(seeds);
 				ExportDriver.CollectExportRoots(project, seeds);
-				ExportDriver.ExpandReachableRoots(project, seeds, adapter, mExport.ReachableRoots);
-				mExport.ReachableValid = true;
+				ExportDriver.ExpandReachableRoots(project, seeds, adapter, export.Shared.ReachableRoots);
+				export.Shared.ReachableValid = true;
 			}
-			mExportPhase = .Running;
-			SubmitExportJob();
+			export.Phase = .Running;
+			SubmitExportJob(export.Shared);
 			return .NotYet;
 		}
 		// Running.
-		if (!mExport.JobDone)
+		if (!export.Shared.JobDone)
 		{
-			if (TimedOut(mExportStarted))
+			if (TimedOut(export.Started))
 				return FailExport(outError, scope $"export of preset '{request.Preset.Name}' did not finish within {(int64)mSeams.TimeoutSeconds} s");
 			return .NotYet;
 		}
-		if (!mExport.JobOk)
+		if (!export.Shared.JobOk)
 			return FailExport(outError, scope $"export of preset '{request.Preset.Name}' failed - read log_read (category Export/Cook) for the failing step");
-		mExport.Result.CopyTo(outResult);
-		ResetExport();
+		export.Shared.Result.CopyTo(outResult);
 		return .Finished;
 	}
 }

@@ -37,11 +37,11 @@ static class ProjectExportTool
 			Export the open project into a shippable dist: cook everything, stage the scenes, pack the content, cook the shader pack, and stage the preset's player template - the same single entry point the editor's Export menu and the export CLI use, so the result is identical. Long-running (a full cook may run). Presets come from the project's export_presets.xml (default: the first; no file = a synthesized host-platform preset). Returns the output directory and the cook/stage/pack counts; run project_health first to catch breakage before a long export.
 			""",
 			schema.Build(), .Rebuilds,
-			new (arguments, outResult, outError) => Export(context, arguments, outResult, outError),
+			new (call, arguments, outResult, outError) => Export(context, call, arguments, outResult, outError),
 			context);
 	}
 
-	private static ToolOutcome Export(Context context, JsonValue arguments, JsonValue outResult, String outError)
+	private static ToolOutcome Export(Context context, ToolCall call, JsonValue arguments, JsonValue outResult, String outError)
 	{
 		let session = context.Session;
 		if (!session.IsOpen)
@@ -78,7 +78,7 @@ static class ProjectExportTool
 		request.OutRoot = outRoot;
 		request.Rebuild = McpTools.ArgBool(arguments, "rebuild");
 		let result = scope ExportResult();
-		switch (context.Operations.Export(request, result, outError))
+		switch (context.Operations.Export(call, request, result, outError))
 		{
 		case .Failed: return .Failed;
 		case .NotYet: return .NotFinished; // the host's export is still running

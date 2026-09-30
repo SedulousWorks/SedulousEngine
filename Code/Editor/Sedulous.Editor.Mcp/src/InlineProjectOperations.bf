@@ -10,6 +10,7 @@ using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Cook;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Editor.Project;
+using Sedulous.Mcp;
 
 namespace Sedulous.Editor.Mcp;
 
@@ -42,7 +43,7 @@ class InlineProjectOperations : IProjectOperations
 		mDataRoot.Set(dataRoot);
 	}
 
-	public OperationStep Cook(bool force, ref CookOutcome outOutcome, String outError)
+	public OperationStep Cook(ToolCall call, bool force, ref CookOutcome outOutcome, String outError)
 	{
 		let project = mSession.Project;
 		// Second mounts on Sources/ and .cache/: the cook driver hashes source files and
@@ -67,7 +68,7 @@ class InlineProjectOperations : IProjectOperations
 		return .Finished;
 	}
 
-	public OperationStep Import(ImportRequest request, ImportOutcome outOutcome, String outError)
+	public OperationStep Import(ToolCall call, ImportRequest request, ImportOutcome outOutcome, String outError)
 	{
 		let project = mSession.Project;
 		let group = McpTools.ResolveGroupPath(project.SourceDb.RootGroup, request.GroupPath);
@@ -109,7 +110,7 @@ class InlineProjectOperations : IProjectOperations
 	}
 
 	/// Creates at once; nothing follows it here: the agent cooks next.
-	public OperationStep Create(CreateRequest request, CreateOutcome outOutcome, String outError)
+	public OperationStep Create(ToolCall call, CreateRequest request, CreateOutcome outOutcome, String outError)
 	{
 		let instance = AssetCreation.Run(mSession.Project, request, outError);
 		if (instance == null)
@@ -118,7 +119,7 @@ class InlineProjectOperations : IProjectOperations
 		return .Finished;
 	}
 
-	public OperationStep Export(ExportRequest request, ExportResult outResult, String outError)
+	public OperationStep Export(ToolCall call, ExportRequest request, ExportResult outResult, String outError)
 	{
 		return RunExport(mSession, mBuilders, mPlayerDir, mDataRoot, request, outResult, outError);
 	}
