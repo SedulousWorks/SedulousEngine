@@ -56,8 +56,8 @@ class UISubsystem : Subsystem, ISceneObserver
 	private ScreenStack mScreenStack = new .() ~ delete _;
 	/// The game's render resolution and how it fits its target, when it has one: the screen
 	/// tier lays out at that size and draws fitted where the game's image is.
-	private Float2 mScreenDesign = .Zero;
-	private FitMode mScreenDesignFit = .Letterbox;
+	private Float2 mScreenResolution = .Zero;
+	private FitMode mScreenFitMode = .Letterbox;
 	/// The target the screen tier last drew into, which the pointer maps against.
 	private Float2 mScreenTargetSize = .Zero;
 	/// The scene LESS screen tier, ABOVE everything.
@@ -149,20 +149,20 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// and draws, at the target's own resolution, into the rectangle `fit` puts that size
 	/// in, so its text stays crisp at any window size. The pointer then arrives in render
 	/// space, as the game's does. Nought on either axis goes back to the target's own size.
-	public void SetScreenDesign(uint32 width, uint32 height, FitMode fit)
+	public void SetScreenResolution(uint32 width, uint32 height, FitMode fit)
 	{
-		mScreenDesign = ((width > 0) && (height > 0)) ? Float2(width, height) : .Zero;
-		mScreenDesignFit = fit;
-		if (!HasScreenDesign && (mScreenRoot != null))
+		mScreenResolution = ((width > 0) && (height > 0)) ? Float2(width, height) : .Zero;
+		mScreenFitMode = fit;
+		if (!HasScreenResolution && (mScreenRoot != null))
 			mScreenRoot.DpiScale = 1.0f;
 	}
 
-	public bool HasScreenDesign => (mScreenDesign.X > 0.0f) && (mScreenDesign.Y > 0.0f);
+	public bool HasScreenResolution => (mScreenResolution.X > 0.0f) && (mScreenResolution.Y > 0.0f);
 
-	/// The design size fitted into the last target drawn.
-	private ContentFit ScreenFit() => ContentFit(.(0, 0, mScreenTargetSize.X, mScreenTargetSize.Y), mScreenDesign, mScreenDesignFit);
+	/// The screen resolution fitted into the last target drawn.
+	private ContentFit ScreenFit() => ContentFit(.(0, 0, mScreenTargetSize.X, mScreenTargetSize.Y), mScreenResolution, mScreenFitMode);
 
-	/// Target pixels per design unit, down the height: the one scale a layout can take.
+	/// Target pixels per layout unit, down the height: the one scale a layout can take.
 	private static float ScreenDpi(ContentFit fit)
 	{
 		let scale = fit.Scale().Y;
@@ -170,10 +170,10 @@ class UISubsystem : Subsystem, ISceneObserver
 	}
 
 	/// A render space point in the screen tier's layout units: offset by the part of the
-	/// design a crop leaves out, and nothing else.
+	/// resolution a crop leaves out, and nothing else.
 	private Float2 ScreenLayoutPoint(Float2 point)
 	{
-		if (!HasScreenDesign)
+		if (!HasScreenResolution)
 			return point;
 		let source = ScreenFit().SrcRect();
 		return .(point.X - source.X, point.Y - source.Y);
@@ -183,7 +183,7 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// scale).
 	private Float2 ScreenPointerPoint(Float2 point)
 	{
-		if (!HasScreenDesign)
+		if (!HasScreenResolution)
 			return point;
 		let layout = ScreenLayoutPoint(point);
 		let dpi = ScreenDpi(ScreenFit());

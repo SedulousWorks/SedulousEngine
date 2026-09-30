@@ -160,9 +160,9 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 			return;
 
 		mScreenTargetSize = .((float)view.Width, (float)view.Height);
-		if (HasScreenDesign)
+		if (HasScreenResolution)
 		{
-			// Laid out at the design size, drawn crisp at the target's resolution into the
+			// Laid out at the screen resolution, drawn crisp at the target's resolution into the
 			// rectangle the game's image was fitted to.
 			let fit = ScreenFit();
 			let dst = fit.DstRect();

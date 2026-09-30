@@ -612,7 +612,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		mRenderHeight = fixedSize ? height : 0;
 		mRenderFit = fit;
 		if (mUI != null)
-			mUI.SetScreenDesign(mRenderWidth, mRenderHeight, fit);
+			mUI.SetScreenResolution(mRenderWidth, mRenderHeight, fit);
 		if (mInput == null)
 			return;
 		IInputSourceProvider source = mInput.ShellSource;

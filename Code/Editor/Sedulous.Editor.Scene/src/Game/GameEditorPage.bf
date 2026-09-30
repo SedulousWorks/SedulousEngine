@@ -306,7 +306,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		// The UI is shared between the Game tabs; each lays its screen tier out at its own
 		// render resolution as it draws.
 		if ((mApp != null) && (mApp.UI != null))
-			mApp.UI.SetScreenDesign(mRenderWidth, mRenderHeight, mRenderFit);
+			mApp.UI.SetScreenResolution(mRenderWidth, mRenderHeight, mRenderFit);
 		mRender.RenderOverlays(frame.Encoder, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, frame.FrameIndex);
 		frame.Encoder.TransitionTexture(mViewport.ColorTexture, .RenderTarget, .ShaderRead);
 		mViewport.ColorState = .ShaderRead;
