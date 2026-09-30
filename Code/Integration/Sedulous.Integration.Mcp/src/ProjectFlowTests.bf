@@ -525,6 +525,22 @@ static class ProjectFlowTests
 		defer delete cleared;
 		Test.Assert(cleared.Get("settings").Get("defaultInputMap").IsNull);
 		Test.Assert(cleared.Get("settings").Get("defaultScene").Get("guid").AsString() == sceneId);
+
+		// The display: the render resolution and fit, the window; a bad name or size is
+		// refused whole.
+		{
+			let display = CallOk(server, "project_settings_set", With(With(With(With(With(Obj(), "renderWidth", 640), "renderHeight", 360), "renderFit", "integerScale"), "windowMode", "borderless"), "windowWidth", 1920));
+			defer delete display;
+			let render = display.Get("settings").Get("render");
+			Test.Assert((render.Get("width").AsInt() == 640) && (render.Get("height").AsInt() == 360) && (render.Get("fit").AsString() == "integerScale"));
+			let window = display.Get("settings").Get("window");
+			Test.Assert((window.Get("mode").AsString() == "borderless") && (window.Get("width").AsInt() == 1920) && (window.Get("height").AsInt() == 720));
+			Test.Assert((session.Project.Settings.RenderFit == .IntegerScale) && (session.Project.Settings.WindowMode == .Borderless));
+			let refused = scope String();
+			CallErr(server, "project_settings_set", With(With(Obj(), "windowWidth", 0), "renderWidth", 100), refused);
+			Test.Assert(refused.Contains("`windowWidth` takes 1 to 16384"), refused);
+			Test.Assert(session.Project.Settings.RenderWidth == 640, "nothing changed");
+		}
 	}
 
 	/// Every enum an input map stores as a number is one type_info names the cases of: an agent

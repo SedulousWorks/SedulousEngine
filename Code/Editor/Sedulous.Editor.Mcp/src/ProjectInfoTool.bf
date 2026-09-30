@@ -43,7 +43,7 @@ static class ProjectInfoTool
 	public static void Register(McpServer server, ProjectSession session)
 	{
 		server.RegisterTool("project_info",
-			"Details about the currently open project: name, directory, sources root, and its settings - the default scene, startup script, default input map, bus layout, UI theme, loading screen and UI font (each {guid, path}, or null when unset), the other UI fonts (`uiFonts`, a list of {guid, path}), the native module and the MSAA samples. project_settings_set changes them.",
+			"Details about the currently open project: name, directory, sources root, and its settings - the default scene, startup script, default input map, bus layout, UI theme, loading screen and UI font (each {guid, path}, or null when unset), the other UI fonts (`uiFonts`, a list of {guid, path}), the display (`render`: {width, height, fit}, the resolution the game draws at, 0 for its output's size; `window`: {width, height, mode, resizable}, the player's window), the native module and the MSAA samples. project_settings_set changes them.",
 			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Info(session, outResult, outError));
 
@@ -59,6 +59,13 @@ static class ProjectInfoTool
 		setSchema.Arr("uiFonts", "string", "FontAsset guids the game UI loads beside the default, each its own family a label picks with font-family (a title face); the whole list, [] for none. They need defaultUiFont set");
 		setSchema.Str("nativeModule", "a project-relative path to the built native game module; \"\" clears");
 		setSchema.Integer("msaa", "scene-pass samples: 1 (off), 2 or 4");
+		setSchema.Integer("renderWidth", "the width the game draws at, fitted into whatever shows it; 0 (with renderHeight 0) draws at the output's own size");
+		setSchema.Integer("renderHeight", "the height the game draws at; 0 for the output's own size");
+		setSchema.Enum("renderFit", scope StringView[]("stretch", "letterbox", "crop", "integerScale"), "how a fixed render resolution fits an output of another shape");
+		setSchema.Integer("windowWidth", "the player window's width");
+		setSchema.Integer("windowHeight", "the player window's height");
+		setSchema.Enum("windowMode", scope StringView[]("windowed", "fullscreen", "borderless"), "how the player's window takes the screen (borderless takes the display's size)");
+		setSchema.Boolean("windowResizable", "whether the player's window may be resized");
 		server.RegisterTool("project_settings_set",
 			"Change the open project's settings, what the editor's Project Settings dialog edits: only what is given changes. Every asset setting must name an asset of its type (the refusal says which), \"\" clears it. Checked in full before anything changes, then saved to the manifest; the editor re-applies what depends on them (the game UI's font and theme). Returns the settings as project_info does.",
 			setSchema.Build(), .Adjusts,
@@ -103,6 +110,17 @@ static class ProjectInfoTool
 			fonts.Add(entry);
 		}
 		json.Set("uiFonts", fonts);
+		let render = JsonValue.MakeObject();
+		render.Set("width", JsonValue.MakeNumber(settings.RenderWidth));
+		render.Set("height", JsonValue.MakeNumber(settings.RenderHeight));
+		render.Set("fit", JsonValue.MakeString(cFitNames[(int)settings.RenderFit]));
+		json.Set("render", render);
+		let window = JsonValue.MakeObject();
+		window.Set("width", JsonValue.MakeNumber(settings.WindowWidth));
+		window.Set("height", JsonValue.MakeNumber(settings.WindowHeight));
+		window.Set("mode", JsonValue.MakeString(cWindowModeNames[(int)settings.WindowMode]));
+		window.Set("resizable", JsonValue.MakeBool(settings.WindowResizable));
+		json.Set("window", window);
 		json.Set("nativeModule", JsonValue.MakeString(settings.NativeModule));
 		json.Set("msaa", JsonValue.MakeNumber(settings.RenderMsaaSamples));
 		outResult.Set("settings", json);
@@ -176,6 +194,40 @@ static class ProjectInfoTool
 					fontIds.Add(id);
 			}
 		}
+		// The display: sizes within reason, the enums by name.
+		for (let key in StringView[4]("renderWidth", "renderHeight", "windowWidth", "windowHeight"))
+		{
+			if (let arg = arguments.Get(key))
+			{
+				let value = arg.AsInt(-1);
+				let least = key.StartsWith("render") ? 0 : 1;
+				if ((value < least) || (value > 16384))
+				{
+					outError.AppendF("`{}` takes {} to 16384", key, least);
+					return false;
+				}
+			}
+		}
+		int fitIndex = -1;
+		if (let arg = arguments.Get("renderFit"))
+		{
+			fitIndex = IndexOfName(cFitNames, arg.AsString());
+			if (fitIndex < 0)
+			{
+				outError.Append("`renderFit` takes stretch, letterbox, crop or integerScale");
+				return false;
+			}
+		}
+		int modeIndex = -1;
+		if (let arg = arguments.Get("windowMode"))
+		{
+			modeIndex = IndexOfName(cWindowModeNames, arg.AsString());
+			if (modeIndex < 0)
+			{
+				outError.Append("`windowMode` takes windowed, fullscreen or borderless");
+				return false;
+			}
+		}
 		let msaaArg = arguments.Get("msaa");
 		if (msaaArg != null)
 		{
@@ -203,6 +255,20 @@ static class ProjectInfoTool
 			settings.NativeModule.Set(module.AsString());
 		if (msaaArg != null)
 			settings.RenderMsaaSamples = (uint32)msaaArg.AsInt();
+		if (let arg = arguments.Get("renderWidth"))
+			settings.RenderWidth = (uint32)arg.AsInt();
+		if (let arg = arguments.Get("renderHeight"))
+			settings.RenderHeight = (uint32)arg.AsInt();
+		if (fitIndex >= 0)
+			settings.RenderFit = (FitMode)fitIndex;
+		if (let arg = arguments.Get("windowWidth"))
+			settings.WindowWidth = (uint32)arg.AsInt();
+		if (let arg = arguments.Get("windowHeight"))
+			settings.WindowHeight = (uint32)arg.AsInt();
+		if (modeIndex >= 0)
+			settings.WindowMode = (WindowMode)modeIndex;
+		if (let arg = arguments.Get("windowResizable"))
+			settings.WindowResizable = arg.AsBool();
 		if (fontsArg != null)
 		{
 			settings.UiFontIds.Clear();
@@ -216,6 +282,20 @@ static class ProjectInfoTool
 		if (session.OnSettingsChanged != null)
 			session.OnSettingsChanged();
 		return Info(session, outResult, outError);
+	}
+
+	/// The wire names of FitMode and WindowMode, in their declaration order.
+	private static StringView[4] cFitNames = .("stretch", "letterbox", "crop", "integerScale");
+	private static StringView[3] cWindowModeNames = .("windowed", "fullscreen", "borderless");
+
+	private static int IndexOfName(Span<StringView> names, StringView name)
+	{
+		for (int i < names.Length)
+		{
+			if (names[i] == name)
+				return i;
+		}
+		return -1;
 	}
 
 	private static void MirrorPath(ContentDatabase db, Guid id, String outPath)

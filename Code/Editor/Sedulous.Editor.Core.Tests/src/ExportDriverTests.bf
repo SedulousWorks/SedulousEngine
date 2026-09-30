@@ -42,6 +42,12 @@ static class ExportDriverTests
 		fx.Project.Settings.LoadingDocumentId = loadingId;
 		fx.Project.Settings.RenderMsaaSamples = 4;
 		fx.Project.Settings.UiFontIds.Add(titleFontId);
+		fx.Project.Settings.RenderWidth = 640;
+		fx.Project.Settings.RenderHeight = 360;
+		fx.Project.Settings.RenderFit = .IntegerScale;
+		fx.Project.Settings.WindowWidth = 1920;
+		fx.Project.Settings.WindowHeight = 1080;
+		fx.Project.Settings.WindowMode = .Borderless;
 		Test.Assert(fx.Project.SaveSettings() case .Ok);
 
 		// The scene pre-transcoded to the binary wire, as the editor's stager does.
@@ -74,6 +80,8 @@ static class ExportDriverTests
 		Test.Assert(manifest.LoadingDocumentId == loadingId, "the loading screen");
 		Test.Assert(manifest.RenderMsaaSamples == 4, "the MSAA");
 		Test.Assert((manifest.UiFontIds.Count == 1) && (manifest.UiFontIds[0] == titleFontId), "the other UI fonts");
+		Test.Assert((manifest.RenderWidth == 640) && (manifest.RenderHeight == 360) && (manifest.RenderFit == .IntegerScale), "the render resolution");
+		Test.Assert((manifest.WindowWidth == 1920) && (manifest.WindowHeight == 1080) && (manifest.WindowMode == .Borderless), "the window");
 
 		// The pak, read as the player reads it: the scene by guid and by path, its stream
 		// binary, its mesh resolving through the factory to the 2.0 cube.
@@ -468,6 +476,39 @@ static class ExportDriverTests
 		defer delete product;
 		let record = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(product)) as Sedulous.Script.Resource.ScriptClassSource;
 		Test.Assert((record != null) && (record.ClassName == "Game") && (record.Language == "angelscript"));
+	}
+
+	/// A preset's own render resolution replaces the project's in its dist, and leaves the
+	/// window it does not override as the project had it.
+	[Test]
+	public static void APresetsDisplayOverridesTheProjectsInItsDist()
+	{
+		let dir = "scratch_export_display";
+		RemoveDirectoryRecursive(dir);
+		Test.Assert(CreateDirectory(dir));
+		defer RemoveDirectoryRecursive(dir);
+		{
+			let project = scope ProjectSettings();
+			project.RenderWidth = 1280;
+			project.RenderHeight = 720;
+			project.WindowWidth = 1600;
+			project.WindowHeight = 900;
+			Test.Assert(ProjectManifest.Save(scope NativeFileSystem(dir), project, ProjectLayout.DistManifestFile) case .Ok);
+		}
+
+		let preset = scope ExportPreset();
+		Test.Assert(ExportDriver.ApplyPresetDisplay(dir, preset) case .Ok, "overriding nothing changes nothing");
+		preset.OverridesRender = true;
+		preset.RenderWidth = 1280;
+		preset.RenderHeight = 800;
+		preset.RenderFit = .Crop;
+		preset.WindowMode = .Fullscreen; // not overridden, so not applied
+		Test.Assert(ExportDriver.ApplyPresetDisplay(dir, preset) case .Ok);
+
+		let dist = scope ProjectSettings();
+		Test.Assert(ProjectManifest.Load(scope NativeFileSystem(dir), dist, ProjectLayout.DistManifestFile) case .Ok);
+		Test.Assert((dist.RenderWidth == 1280) && (dist.RenderHeight == 800) && (dist.RenderFit == .Crop), "the preset's render resolution");
+		Test.Assert((dist.WindowWidth == 1600) && (dist.WindowHeight == 900) && (dist.WindowMode == .Windowed), "the project's window");
 	}
 
 	[Test]

@@ -14,7 +14,8 @@ namespace Sedulous.Editor.App;
 /// inside the editor: the name, the native module path, the default scene, startup script,
 /// input map, bus layout, UI theme, loading screen and UI font (each picked by guid through
 /// the AssetPickerDialog, the path kept as the human-readable mirror), the other UI fonts (a
-/// list), and the scene-pass MSAA. The engine version is shown read-only; every save re-stamps it. Save writes the
+/// list), the display (the render resolution and fit, the player's window), and the scene-pass
+/// MSAA. The engine version is shown read-only; every save re-stamps it. Save writes the
 /// fields back into EditorProject.Settings and persists the manifest; Cancel discards.
 class ProjectSettingsDialog : Dialog
 {
@@ -33,6 +34,14 @@ class ProjectSettingsDialog : Dialog
 	/// A project-relative path; empty is none.
 	private EditText mNativeModuleEdit = null;
 	private ComboBox mMsaaCombo = null;
+	// The display. Borrowed: the content owns them.
+	private NumericField mRenderWidth = null;
+	private NumericField mRenderHeight = null;
+	private ComboBox mRenderFit = null;
+	private NumericField mWindowWidth = null;
+	private NumericField mWindowHeight = null;
+	private ComboBox mWindowMode = null;
+	private CheckBox mWindowResizable = null;
 	private AssetRow mScene = new .() ~ delete _;
 	private AssetRow mScript = new .() ~ delete _;
 	private AssetRow mInputMap = new .() ~ delete _;
@@ -96,6 +105,8 @@ class ProjectSettingsDialog : Dialog
 			grow.FlexGrow = 1.0f;
 			row.AddView(mMsaaCombo, grow);
 		}
+
+		AddDisplayRows(column, settings);
 
 		// The engine stamp, informational; re-stamped by every save.
 		{
@@ -167,6 +178,69 @@ class ProjectSettingsDialog : Dialog
 		// The editor keeps its own reference to its view; the layout gets one of its own.
 		asset.Editor.EditorView.AddRef();
 		row.AddView(asset.Editor.EditorView, grow);
+	}
+
+	/// The render resolution (0 x 0 draws at the output's size) and how it fits, then the
+	/// player's window. An export preset may override either per platform.
+	private void AddDisplayRows(FlexLayout column, ProjectSettings settings)
+	{
+		{
+			let row = AddRow(column, "Render size");
+			mRenderWidth = SizeField(row, (settings != null) ? settings.RenderWidth : 0, 0);
+			row.AddView(new Label("x"), Centred());
+			mRenderHeight = SizeField(row, (settings != null) ? settings.RenderHeight : 0, 0);
+			row.AddView(new Label("0 x 0: the output's size"), Centred());
+		}
+		{
+			let row = AddRow(column, "Render fit");
+			mRenderFit = new ComboBox();
+			for (let name in StringView[4]("Stretch", "Letterbox", "Crop", "Integer scale"))
+				mRenderFit.AddItem(name);
+			mRenderFit.SetSelectedIndex((settings != null) ? (int32)settings.RenderFit : (int32)FitMode.Letterbox);
+			var grow = LayoutStyle();
+			grow.FlexGrow = 1.0f;
+			row.AddView(mRenderFit, grow);
+		}
+		{
+			let row = AddRow(column, "Window size");
+			mWindowWidth = SizeField(row, (settings != null) ? settings.WindowWidth : 1280, 1);
+			row.AddView(new Label("x"), Centred());
+			mWindowHeight = SizeField(row, (settings != null) ? settings.WindowHeight : 720, 1);
+		}
+		{
+			let row = AddRow(column, "Window mode");
+			mWindowMode = new ComboBox();
+			for (let name in StringView[3]("Windowed", "Fullscreen", "Borderless"))
+				mWindowMode.AddItem(name);
+			mWindowMode.SetSelectedIndex((settings != null) ? (int32)settings.WindowMode : 0);
+			var grow = LayoutStyle();
+			grow.FlexGrow = 1.0f;
+			row.AddView(mWindowMode, grow);
+			mWindowResizable = new CheckBox("Resizable", (settings != null) ? settings.WindowResizable : true);
+			row.AddView(mWindowResizable, Centred());
+		}
+	}
+
+	private static NumericField SizeField(FlexLayout row, uint32 value, double least)
+	{
+		let field = new NumericField();
+		field.SetDecimalPlaces(0);
+		field.SetMin(least);
+		field.SetMax(16384);
+		field.SetStep(1);
+		field.SetValue(value);
+		var style = LayoutStyle();
+		style.Width = SizeSpec.Fixed(Unit.Dp(80));
+		style.AlignSelf = .Center;
+		row.AddView(field, style);
+		return field;
+	}
+
+	private static LayoutStyle Centred()
+	{
+		var style = LayoutStyle();
+		style.AlignSelf = .Center;
+		return style;
 	}
 
 	/// The other UI fonts: a list of font slots, each its own family beside the default that a
@@ -274,6 +348,13 @@ class ProjectSettingsDialog : Dialog
 				settings.UiFontIds.Add(id);
 		}
 		settings.RenderMsaaSamples = MsaaLevels.SamplesForIndex((mMsaaCombo != null) ? mMsaaCombo.SelectedIndex : 0);
+		settings.RenderWidth = (uint32)mRenderWidth.Value;
+		settings.RenderHeight = (uint32)mRenderHeight.Value;
+		settings.RenderFit = (FitMode)Math.Max(0, mRenderFit.SelectedIndex);
+		settings.WindowWidth = (uint32)mWindowWidth.Value;
+		settings.WindowHeight = (uint32)mWindowHeight.Value;
+		settings.WindowMode = (WindowMode)Math.Max(0, mWindowMode.SelectedIndex);
+		settings.WindowResizable = mWindowResizable.IsChecked.Value;
 		settings.DefaultScene.Clear();
 		if (let scene = mScene.Id.IsSet ? project.SourceDb.GetInstance(mScene.Id) : null)
 			scene.GetPath(settings.DefaultScene);

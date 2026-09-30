@@ -56,4 +56,30 @@ class ProjectSettings
 	/// manifest saved before it reads as none.
 	[Appended]
 	public List<Guid> UiFontIds = new .() ~ delete _;
+
+	/// The resolution the game DRAWS at, fitted into whatever shows it (the player's window,
+	/// the editor's Game tab) by RenderFit. Nought on either axis draws at the output's own
+	/// size, which is what a game that adapts to any size wants.
+	[Appended]
+	public uint32 RenderWidth = 0;
+	[Appended]
+	public uint32 RenderHeight = 0;
+	/// How a fixed render resolution maps onto an output of another shape.
+	[Appended]
+	public FitMode RenderFit = .Letterbox;
+
+	/// The player's window: its size (ignored by Borderless, which takes the display's), how
+	/// it takes the screen, and whether the user may resize it. An export preset overrides
+	/// these per platform.
+	[Appended]
+	public uint32 WindowWidth = 1280;
+	[Appended]
+	public uint32 WindowHeight = 720;
+	[Appended]
+	public WindowMode WindowMode = .Windowed;
+	[Appended]
+	public bool WindowResizable = true;
+
+	/// Whether the game draws at a fixed resolution rather than at its output's size.
+	public bool HasRenderResolution => (RenderWidth > 0) && (RenderHeight > 0);
 }

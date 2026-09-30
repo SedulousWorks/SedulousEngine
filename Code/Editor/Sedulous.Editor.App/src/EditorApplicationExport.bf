@@ -9,6 +9,7 @@ using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.Engine.Project;
 
 namespace Sedulous.Editor.App;
 
@@ -191,6 +192,80 @@ extension EditorApplication
 
 	/// A labelled form row, fixed-width label plus the field growing to fill; answers the row
 	/// so a caller can append trailing controls. Consumes the field reference.
+	/// A preset's own display, over the project's for this platform: the render resolution and
+	/// fit, and the window. Each group applies only when its box is ticked. The views are
+	/// borrowed from the dialog's content.
+	private class PresetDisplayFields
+	{
+		public CheckBox OwnRender;
+		public NumericField RenderWidth;
+		public NumericField RenderHeight;
+		public ComboBox RenderFit;
+		public CheckBox OwnWindow;
+		public NumericField WindowWidth;
+		public NumericField WindowHeight;
+		public ComboBox WindowMode;
+		public CheckBox WindowResizable;
+
+		public void Build(EditorApplication app, FlexLayout column, ExportPreset initial)
+		{
+			OwnRender = new CheckBox("Own render size (instead of the project's)", initial.OverridesRender);
+			column.AddView(OwnRender);
+			{
+				let row = app.AddFormRow(column, "Render size", null);
+				RenderWidth = SizeField(row, initial.RenderWidth, 0);
+				RenderHeight = SizeField(row, initial.RenderHeight, 0);
+				RenderFit = new ComboBox();
+				for (let name in StringView[4]("Stretch", "Letterbox", "Crop", "Integer scale"))
+					RenderFit.AddItem(name);
+				RenderFit.SetSelectedIndex((int32)initial.RenderFit);
+				row.AddView(RenderFit);
+			}
+			OwnWindow = new CheckBox("Own window (instead of the project's)", initial.OverridesWindow);
+			column.AddView(OwnWindow);
+			{
+				let row = app.AddFormRow(column, "Window", null);
+				WindowWidth = SizeField(row, initial.WindowWidth, 1);
+				WindowHeight = SizeField(row, initial.WindowHeight, 1);
+				WindowMode = new ComboBox();
+				for (let name in StringView[3]("Windowed", "Fullscreen", "Borderless"))
+					WindowMode.AddItem(name);
+				WindowMode.SetSelectedIndex((int32)initial.WindowMode);
+				row.AddView(WindowMode);
+				WindowResizable = new CheckBox("Resizable", initial.WindowResizable);
+				row.AddView(WindowResizable);
+			}
+		}
+
+		public void ApplyTo(ExportPreset preset)
+		{
+			preset.OverridesRender = OwnRender.IsChecked.Value;
+			preset.RenderWidth = (uint32)RenderWidth.Value;
+			preset.RenderHeight = (uint32)RenderHeight.Value;
+			preset.RenderFit = (FitMode)Math.Max(0, RenderFit.SelectedIndex);
+			preset.OverridesWindow = OwnWindow.IsChecked.Value;
+			preset.WindowWidth = (uint32)WindowWidth.Value;
+			preset.WindowHeight = (uint32)WindowHeight.Value;
+			preset.WindowMode = (WindowMode)Math.Max(0, WindowMode.SelectedIndex);
+			preset.WindowResizable = WindowResizable.IsChecked.Value;
+		}
+
+		private static NumericField SizeField(FlexLayout row, uint32 value, double least)
+		{
+			let field = new NumericField();
+			field.SetDecimalPlaces(0);
+			field.SetMin(least);
+			field.SetMax(16384);
+			field.SetStep(1);
+			field.SetValue(value);
+			var style = LayoutStyle();
+			style.Width = SizeSpec.Fixed(Unit.Dp(80));
+			style.AlignSelf = .Center;
+			row.AddView(field, style);
+			return field;
+		}
+	}
+
 	private FlexLayout AddFormRow(FlexLayout column, StringView label, View field)
 	{
 		let row = new FlexLayout();
@@ -587,9 +662,12 @@ extension EditorApplication
 		column.AddView(symbolsCheck);
 		let pruneCheck = new CheckBox("Prune to reachable content only", initial.PruneToReachable);
 		column.AddView(pruneCheck);
+		let display = new PresetDisplayFields();
+		display.Build(this, column, initial);
 		dialog.SetContent(column);
-		dialog.OnClosed.Add(new [=comboIds, =comboPlatforms, =comboConfigs](d, result) =>
+		dialog.OnClosed.Add(new [=comboIds, =comboPlatforms, =comboConfigs, =display](d, result) =>
 			{
+				delete display;
 				DeleteContainerAndItems!(comboIds);
 				DeleteContainerAndItems!(comboPlatforms);
 				DeleteContainerAndItems!(comboConfigs);
@@ -597,7 +675,7 @@ extension EditorApplication
 
 		let save = dialog.AddButton("Save", .None);
 		save.OnClick.Add(new [=dialog, =editIndex, =nameEdit, =templateCombo, =platformEdit, =configEdit, =playerEdit, =subdirEdit,
-			=filesEdit, =symbolsCheck, =pruneCheck, =comboIds, =comboPlatforms, =comboConfigs, =this](b) =>
+			=filesEdit, =symbolsCheck, =pruneCheck, =comboIds, =comboPlatforms, =comboConfigs, =display, =this](b) =>
 			{
 				let result = scope ExportPreset();
 				result.Name.Set(nameEdit.Text);
@@ -617,6 +695,7 @@ extension EditorApplication
 				result.OutputSubdir.Set(subdirEdit.Text);
 				result.StageSymbols = symbolsCheck.IsChecked.Value;
 				result.PruneToReachable = pruneCheck.IsChecked.Value;
+				display.ApplyTo(result);
 				SplitSemicolons(filesEdit.Text, result.AdditionalFiles);
 
 				if (editIndex < 0)

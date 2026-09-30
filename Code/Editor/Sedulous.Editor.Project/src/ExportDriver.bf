@@ -335,6 +335,15 @@ static class ExportDriver
 			// What the player reads besides the defaults: the loading screen and the MSAA.
 			dist.LoadingDocumentId = project.Settings.LoadingDocumentId;
 			dist.RenderMsaaSamples = project.Settings.RenderMsaaSamples;
+			// The display: the render resolution and the window. A preset overriding either
+			// rewrites them after (ApplyPresetDisplay).
+			dist.RenderWidth = project.Settings.RenderWidth;
+			dist.RenderHeight = project.Settings.RenderHeight;
+			dist.RenderFit = project.Settings.RenderFit;
+			dist.WindowWidth = project.Settings.WindowWidth;
+			dist.WindowHeight = project.Settings.WindowHeight;
+			dist.WindowMode = project.Settings.WindowMode;
+			dist.WindowResizable = project.Settings.WindowResizable;
 			if (ProjectManifest.Save(outMount, dist, ProjectLayout.DistManifestFile) case .Err)
 			{
 				GlobalLog(.Error, "Export: failed to write the dist manifest");
@@ -409,6 +418,41 @@ static class ExportDriver
 	/// and packed, whole or pruned to the closure when the preset asks and a scanner or a
 	/// precomputed root set is at hand, the shader pack cooked from `dataRoot`, the player,
 	/// the sidecars, the symbols when opted in, and the extra files staged.
+	/// A preset's own render resolution or window, over what the project's dist manifest
+	/// says: the platform's values ship in its player.xml. Nothing to do when it overrides
+	/// neither.
+	public static Result<void, ErrorCode> ApplyPresetDisplay(StringView outDir, ExportPreset preset)
+	{
+		if (!preset.OverridesRender && !preset.OverridesWindow)
+			return .Ok;
+		let mount = scope NativeFileSystem(outDir);
+		let dist = scope ProjectSettings();
+		if (ProjectManifest.Load(mount, dist, ProjectLayout.DistManifestFile) case .Err(let error))
+		{
+			GlobalLog(.Error, "Export: the dist manifest did not read back for the preset's display");
+			return .Err(error);
+		}
+		if (preset.OverridesRender)
+		{
+			dist.RenderWidth = preset.RenderWidth;
+			dist.RenderHeight = preset.RenderHeight;
+			dist.RenderFit = preset.RenderFit;
+		}
+		if (preset.OverridesWindow)
+		{
+			dist.WindowWidth = preset.WindowWidth;
+			dist.WindowHeight = preset.WindowHeight;
+			dist.WindowMode = preset.WindowMode;
+			dist.WindowResizable = preset.WindowResizable;
+		}
+		if (ProjectManifest.Save(mount, dist, ProjectLayout.DistManifestFile) case .Err(let error))
+		{
+			GlobalLog(.Error, "Export: failed to write the preset's display into the dist manifest");
+			return .Err(error);
+		}
+		return .Ok;
+	}
+
 	public static Result<void, ErrorCode> ExportOne(EditorProject project, ExportPreset preset, TemplateRegistry templates,
 		BuilderRegistry builders, StringView outRoot, StringView dataRoot, bool rebuild, ExportResult outResult = null,
 		ExportProgress onProgress = null, bool cook = true, Dictionary<Guid, List<uint8>> sceneStreams = null,
@@ -490,6 +534,8 @@ static class ExportDriver
 				contentStatus = ExportContent(project, result.OutputDir, result.Content, onProgress, sceneStreams, null, null, null, variants);
 		}
 		if (contentStatus case .Err)
+			return .Err(.Internal);
+		if (ApplyPresetDisplay(result.OutputDir, preset) case .Err)
 			return .Err(.Internal);
 
 		if (onProgress != null)

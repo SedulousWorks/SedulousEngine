@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Core.Serialization;
+using Sedulous.Engine.Project;
 
 namespace Sedulous.Editor.Project;
 
@@ -32,6 +34,30 @@ class ExportPreset
 	/// hatch for a team not managing reachability.
 	public bool PruneToReachable = false;
 
+	/// This platform draws at its own resolution rather than the project's (a handheld's
+	/// native panel, say): the dist carries these instead.
+	[Appended]
+	public bool OverridesRender = false;
+	[Appended]
+	public uint32 RenderWidth = 0;
+	[Appended]
+	public uint32 RenderHeight = 0;
+	[Appended]
+	public FitMode RenderFit = .Letterbox;
+
+	/// This platform's window differs from the project's (fullscreen on a console-like
+	/// device, say): the dist carries these instead.
+	[Appended]
+	public bool OverridesWindow = false;
+	[Appended]
+	public uint32 WindowWidth = 1280;
+	[Appended]
+	public uint32 WindowHeight = 720;
+	[Appended]
+	public WindowMode WindowMode = .Windowed;
+	[Appended]
+	public bool WindowResizable = true;
+
 	public void CopyTo(ExportPreset other)
 	{
 		other.Name.Set(Name);
@@ -45,6 +71,15 @@ class ExportPreset
 		other.Config.Set(Config);
 		other.StageSymbols = StageSymbols;
 		other.PruneToReachable = PruneToReachable;
+		other.OverridesRender = OverridesRender;
+		other.RenderWidth = RenderWidth;
+		other.RenderHeight = RenderHeight;
+		other.RenderFit = RenderFit;
+		other.OverridesWindow = OverridesWindow;
+		other.WindowWidth = WindowWidth;
+		other.WindowHeight = WindowHeight;
+		other.WindowMode = WindowMode;
+		other.WindowResizable = WindowResizable;
 	}
 
 	/// The config for resolution: empty reads as Release.
