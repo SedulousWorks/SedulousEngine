@@ -24,7 +24,8 @@ namespace Sedulous.Editor.Scene;
 
 /// The Game tab: plays the project's default scene through its OWN game instance, with the
 /// startup script, the default input map and bus layout, a play/pause/stop/restart toolbar,
-/// a fixed resolution cycle, and the script debugger beside the viewport.
+/// a fixed resolution cycle, and the script debugger beside the viewport (hidden until the
+/// Debugger toggle, or a breakpoint, shows it).
 ///
 /// The context, host, UI host and embedded application are borrowed. The game instance is
 /// borrowed from the application and released back to it on close.
@@ -53,6 +54,9 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	private ToolbarButton mStopButton;
 	private ToolbarToggle mPauseToggle;
 	private ToolbarButton mRestartButton;
+	/// Shows the script debugger beside the viewport. Off by default: it takes room the game
+	/// wants, and is opened when needed (and by a breakpoint that pauses the run).
+	private ToolbarToggle mDebuggerToggle;
 	private ToolbarButton mResolutionButton;
 	private uint32 mResolutionMode = 0;
 	private DebuggerPanel mDebuggerPanel = new .() ~ delete _;
@@ -128,6 +132,11 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mRestartButton.OnClick.Add(new [=this](b) => { Stop(); Play(); });
 		mResolutionButton = mToolbar.AddButton("Res: Auto");
 		mResolutionButton.OnClick.Add(new [=this](b) => { CycleResolution(); });
+		mDebuggerToggle = mToolbar.AddToggle("Debugger");
+		mDebuggerToggle.OnCheckedChanged.Add(new [=this](t, shown) =>
+		{
+			mDebuggerPanel.RootView.Visibility = shown ? .Visible : .Gone;
+		});
 		mStatusLabel = new Label("");
 		mStatusLabel.FontSize.Value = 13.0f;
 		mToolbar.AddItem(mStatusLabel);
@@ -148,6 +157,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		debugStyle.Width = SizeSpec.Fixed(Unit.Dp(300));
 		debugStyle.Height = SizeSpec.Match();
 		stage.AddView(mDebuggerPanel.RootView, debugStyle);
+		mDebuggerPanel.RootView.Visibility = .Gone; // until the Debugger toggle shows it
 		var stageStyle = LayoutStyle();
 		stageStyle.Width = SizeSpec.Match();
 		stageStyle.FlexGrow = 1.0f;

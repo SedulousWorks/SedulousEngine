@@ -68,6 +68,9 @@ extension GameEditorPage
 					mScene.SetSimulationEnabled(false);
 					mSimPausedByDebugger = true;
 				}
+				// A paused run shows why: the panel opens if it was hidden.
+				if (!mDebuggerToggle.IsChecked)
+					mDebuggerToggle.IsChecked = true;
 				mDebuggerPanel.Refresh();
 				if (let debugger = mDebuggerPanel.Debugger)
 				{
