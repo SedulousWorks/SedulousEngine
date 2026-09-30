@@ -648,6 +648,24 @@ static class SceneMcpTools
 				properties.Set(name, PropertyValueJson(o.Value, scene));
 			}
 			json.Set("properties", properties);
+			// Running (a PIE game, a Simulate): the instance's current values of the class's
+			// properties, where `properties` holds what is authored.
+			if ((behavior.Instance != null) && (scriptClass != null))
+			{
+				let system = scene.GetSystem<ScriptSceneSystem>();
+				let runtime = ((system != null) && (system.Host != null)) ? system.Host.Runtime : null;
+				if (runtime != null)
+				{
+					let live = JsonValue.MakeObject();
+					for (let desc in scriptClass.Properties)
+					{
+						var value = Sedulous.Script.ScriptValue.Nil;
+						if (runtime.GetProperty(behavior.Instance, desc.Name, ref value))
+							live.Set(desc.Name, PieRunTool.ScriptJson(value, scene));
+					}
+					json.Set("live", live);
+				}
+			}
 			list.Add(json);
 		}
 		return list;

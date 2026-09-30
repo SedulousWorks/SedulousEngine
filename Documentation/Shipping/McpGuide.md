@@ -62,7 +62,8 @@ moves, buttons and the wheel (`{"at": 0, "mouseMove": [650, 253]}`, `{"at": 0.2,
 runs, that tab ignores the real mouse and keys, the other instances keep theirs, and whatever
 it holds is let go at the end. `probes` read entities (by guid, name or slash path) at field
 paths (`worldPosition`, `position`, `rotation`, `scale`, `active`, or `<component>.<property>`
-as `entity_inspect` names them, then `.x`/`.y`/`.z` or a key or an index) and game script
+as `entity_inspect` names them, or `<BehaviorClass>.<field>` for a behaviour running on the
+entity, private fields too, then `.x`/`.y`/`.z` or a key or an index) and game script
 fields, private ones too (`{"script": "m_score"}`; an enum reads as its number), sampled `every` N seconds (0.5 by default) or at
 `sampleAt` times; each row is `{t, frame, values}`, the last one at the end, and an entity
 gone by then reads null. `screenshots` writes the tab at those run times. `until` ends the
@@ -73,7 +74,8 @@ check probes and names against the running game before the run starts, so a typo
 once. Runs are real frames at real frame rates: a time lands within a frame of where it was
 asked, so compare with tolerances, and start from `pie_start` for a run you mean to repeat. One
 `pie_run` per instance at a time; instances run side by side. `entity_inspect` with `pie` (and
-an `entity` by guid, name or path) reads a running game's entity outside a run.
+an `entity` by guid, name or path) reads a running game's entity outside a run, each running
+behaviour's properties under `live` beside what is authored.
 
 ## First moves in a session
 

@@ -9,6 +9,7 @@ using Sedulous.Mcp;
 using Sedulous.Scene;
 using Sedulous.Input;
 using Sedulous.Script;
+using Sedulous.Engine.Script;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene;
@@ -690,6 +691,13 @@ static class PieRunTool
 		case "active":
 			root = JsonValue.MakeBool(scene.IsActive(handle));
 		default:
+			// A running behaviour's field: `<ClassName>.<field>`, private fields too.
+			if ((segments.Count > 1) && BehaviorField(scene, handle, segments[0], segments[1], let live))
+			{
+				root = live;
+				rest = 2;
+				break;
+			}
 			let component = scope String();
 			for (int k = 1; k < segments.Count; k++)
 			{
@@ -713,7 +721,7 @@ static class PieRunTool
 		}
 		if (root == null)
 		{
-			outError.AppendF("entity '{}' has no field '{}' (worldPosition, position, rotation, scale, active, or <component>.<property> as entity_inspect names them)", entityText, path);
+			outError.AppendF("entity '{}' has no field '{}' (worldPosition, position, rotation, scale, active, <component>.<property> as entity_inspect names them, or <BehaviorClass>.<field> of a behaviour running on it)", entityText, path);
 			return null;
 		}
 		var node = root;
@@ -756,8 +764,34 @@ static class PieRunTool
 		return value;
 	}
 
+	/// The field of a running behaviour of `className` on the entity, OWNED in outValue; false
+	/// when the entity has no such behaviour running, or its class no such field.
+	public static bool BehaviorField(Sedulous.Scene.Scene scene, EntityHandle handle, StringView className, StringView field, out JsonValue outValue)
+	{
+		outValue = null;
+		let scripts = scene.GetSystem<ScriptComponentManager>();
+		let system = scene.GetSystem<ScriptSceneSystem>();
+		let runtime = ((system != null) && (system.Host != null)) ? system.Host.Runtime : null;
+		if ((scripts == null) || (runtime == null) || !scripts.HasComponent(handle))
+			return false;
+		let component = (ScriptComponent*)scripts.GetComponentAddress(handle);
+		if ((component == null) || (component.Behaviors == null))
+			return false;
+		for (let behavior in component.Behaviors)
+		{
+			if ((behavior.Instance == null) || (behavior.Instance.ClassName != className))
+				continue;
+			var value = ScriptValue.Nil;
+			if (!runtime.GetProperty(behavior.Instance, field, ref value))
+				return false;
+			outValue = ScriptJson(value, scene);
+			return true;
+		}
+		return false;
+	}
+
 	/// A game script value as JSON, OWNED.
-	private static JsonValue ScriptJson(ScriptValue value, Sedulous.Scene.Scene scene)
+	public static JsonValue ScriptJson(ScriptValue value, Sedulous.Scene.Scene scene)
 	{
 		switch (value.Kind)
 		{
