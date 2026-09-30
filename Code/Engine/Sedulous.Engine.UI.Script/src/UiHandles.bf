@@ -57,6 +57,34 @@ static class UiHandles
 
 	public static T Resolve<T>(uint32 id) where T : View => Resolve(id) as T;
 
+	/// A view's opacity at once, clamped to 0..1; a running fade on it stops. Nothing for null.
+	public static void SetOpacity(View view, float value)
+	{
+		if (view == null)
+			return;
+		view.Context?.Animations.CancelForView(view);
+		view.Opacity = Math.Clamp(value, 0.0f, 1.0f);
+	}
+
+	/// Fades a view from its opacity now to `opacity` over `seconds` of UI time, which runs on
+	/// the frame clock and so goes on while the game is paused (time scale 0). Replaces the
+	/// view's running animations; a view in no tree yet, or zero seconds, takes the value at
+	/// once.
+	public static void FadeTo(View view, float opacity, float seconds)
+	{
+		if (view == null)
+			return;
+		let to = Math.Clamp(opacity, 0.0f, 1.0f);
+		let context = view.Context;
+		if ((context == null) || (seconds <= 0.0f))
+		{
+			SetOpacity(view, to);
+			return;
+		}
+		context.Animations.CancelForView(view);
+		context.Animations.Add(ViewAnimator.FadeTo(view, view.Opacity, to, seconds, Easing.EaseInOut));
+	}
+
 	/// Parks a delegate with the view it is bound to, to die with the view.
 	public static void Own(View view, ScriptDelegate d)
 	{

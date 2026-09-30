@@ -40,6 +40,12 @@ struct UiView
 		if (let v = Resolve())
 			v.IsEnabled = value;
 	}
+	[Scriptable]
+	public float Opacity => Resolve()?.Opacity ?? 0.0f;
+	[Scriptable]
+	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
+	[Scriptable]
+	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
 }
 
 /// A text label: `label.Text` reads, `label.SetText(...)` writes.
@@ -65,6 +71,12 @@ struct UiLabel
 	public void SetVisible(bool value) { if (let v = Resolve()) v.Visibility = value ? .Visible : .Hidden; }
 	[Scriptable]
 	public void SetEnabled(bool value) { if (let v = Resolve()) v.IsEnabled = value; }
+	[Scriptable]
+	public float Opacity => Resolve()?.Opacity ?? 0.0f;
+	[Scriptable]
+	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
+	[Scriptable]
+	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
 	[Scriptable]
 	public StringView Text => Resolve()?.Text.Value ?? "";
 	[Scriptable]
@@ -98,6 +110,12 @@ struct UiButton
 	public void SetVisible(bool value) { if (let v = Resolve()) v.Visibility = value ? .Visible : .Hidden; }
 	[Scriptable]
 	public void SetEnabled(bool value) { if (let v = Resolve()) v.IsEnabled = value; }
+	[Scriptable]
+	public float Opacity => Resolve()?.Opacity ?? 0.0f;
+	[Scriptable]
+	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
+	[Scriptable]
+	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
 	[Scriptable]
 	public StringView Text => Resolve()?.Text.Value ?? "";
 	[Scriptable]
@@ -149,6 +167,12 @@ struct UiProgressBar
 	[Scriptable]
 	public void SetEnabled(bool value) { if (let v = Resolve()) v.IsEnabled = value; }
 	[Scriptable]
+	public float Opacity => Resolve()?.Opacity ?? 0.0f;
+	[Scriptable]
+	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
+	[Scriptable]
+	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
+	[Scriptable]
 	public float Value => Resolve()?.Value.Value ?? 0.0f;
 	[Scriptable]
 	public void SetValue(float value) { if (let v = Resolve()) v.Value.Value = value; }
@@ -177,6 +201,12 @@ struct UiTextBox
 	public void SetVisible(bool value) { if (let v = Resolve()) v.Visibility = value ? .Visible : .Hidden; }
 	[Scriptable]
 	public void SetEnabled(bool value) { if (let v = Resolve()) v.IsEnabled = value; }
+	[Scriptable]
+	public float Opacity => Resolve()?.Opacity ?? 0.0f;
+	[Scriptable]
+	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
+	[Scriptable]
+	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
 	[Scriptable]
 	public StringView Text => Resolve()?.Text ?? "";
 	[Scriptable]

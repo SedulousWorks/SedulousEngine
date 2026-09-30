@@ -41,6 +41,49 @@ static class UiHandleTests
 		Test.Assert(UiHandles.Count == 0, scope $"{UiHandles.Count} entries kept alive");
 	}
 
+	/// Opacity at once, or faded on the UI's frame clock (which runs while the game is paused);
+	/// a set stops a running fade; a null handle takes nothing.
+	[Test]
+	public static void AViewFadesOnTheFrameClockAndASetStopsTheFade()
+	{
+		let bed = scope UiScriptBed();
+		bed.Stack.Push(UiScriptBed.Screen());
+		for (int i < 30)
+			bed.Context.BeginFrame(0.1f); // any push transition done
+
+		let label = bed.Ui.FindLabel("title");
+		Test.Assert(label.Opacity == 1.0f);
+		label.SetOpacity(0.25f);
+		Test.Assert(label.Opacity == 0.25f);
+		label.SetOpacity(3.0f);
+		Test.Assert(label.Opacity == 1.0f, "clamped");
+
+		label.FadeTo(0.0f, 1.0f);
+		Test.Assert(label.Opacity == 1.0f, "from where it was");
+		bed.Context.BeginFrame(0.5f);
+		Test.Assert((label.Opacity > 0.0f) && (label.Opacity < 1.0f), scope $"half way: {label.Opacity}");
+		bed.Context.BeginFrame(0.6f);
+		Test.Assert(label.Opacity == 0.0f);
+
+		label.FadeTo(1.0f, 1.0f);
+		bed.Context.BeginFrame(0.2f);
+		label.SetOpacity(0.5f);
+		bed.Context.BeginFrame(1.0f);
+		Test.Assert(label.Opacity == 0.5f, "the set stopped the fade");
+
+		// Zero seconds is a set; a group and a screen fade too.
+		label.FadeTo(0.1f, 0.0f);
+		Test.Assert(label.Opacity == 0.1f);
+		let panel = bed.Ui.FindGroup("panel");
+		panel.FadeTo(0.0f, 0.2f);
+		bed.Context.BeginFrame(0.3f);
+		Test.Assert(panel.Opacity == 0.0f);
+		let missing = bed.Ui.FindLabel("nope");
+		missing.SetOpacity(0.5f);
+		missing.FadeTo(0.5f, 1.0f);
+		Test.Assert(missing.Opacity == 0.0f);
+	}
+
 	[Test]
 	public static void TypedFindersAreLoudNullOnAMissOrAMismatch()
 	{
