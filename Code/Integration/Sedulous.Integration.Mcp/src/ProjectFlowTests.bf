@@ -344,4 +344,119 @@ static class ProjectFlowTests
 		Test.Assert(cooked.Get("failed").AsInt() == 0, scope $"failed {cooked.Get("failed").AsInt()}");
 		Test.Assert(cooked.Get("cooked").AsInt() == 3, scope $"cooked {cooked.Get("cooked").AsInt()}");
 	}
+
+	/// asset_data_read hands out an asset's envelope; asset_data_write takes an edited one
+	/// back only when it loads, as the engine's own reader reads it: an input map gets a Jump
+	/// binding, and a foreign guid, a misspelled key and a changed type are each refused with
+	/// the stored file untouched.
+	[Test]
+	public static void AnAgentEditsADataAssetThroughItsEnvelope()
+	{
+		let dir = Scratch("mcp_asset_data", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let builders = scope BuilderRegistry();
+		let creators = scope AssetCreatorRegistry();
+		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllCreators(creators);
+
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner);
+		let operations = scope InlineProjectOperations(session, builders, "", "");
+		AssetCreateTools.Register(server, session, creators, operations);
+		AssetDataTools.Register(server, session);
+		int announced = 0;
+		session.OnAssetWritten = new [&announced](id) => { announced++; };
+		delete CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Data"));
+		delete CallOk(server, "project_open", With(Obj(), "directory", dir));
+
+		let made = CallOk(server, "asset_create", With(With(Obj(), "creator", "Input Map"), "name", "Controls"));
+		defer delete made;
+		let guid = scope String(made.Get("guid").AsString());
+		let read = CallOk(server, "asset_data_read", With(Obj(), "guid", guid));
+		defer delete read;
+		let original = scope String(read.Get("xml").AsString());
+		Test.Assert(original.Contains("<string name=\"typeName\">Sedulous.Input.Pipeline.InputMapAsset</string>"));
+		let jumpAt = original.IndexOf("<string name=\"name\">Jump</string>");
+		Test.Assert(jumpAt > 0);
+		let emptyBindings = "<array name=\"bindings\" count=\"0\"/>";
+		let bindingsAt = original.IndexOf(emptyBindings, jumpAt);
+		Test.Assert(bindingsAt > jumpAt);
+
+		// Jump on Space: the key binding as the input map page writes one.
+		let edited = scope String(original);
+		edited.Remove(bindingsAt, StringView(emptyBindings).Length);
+		edited.Insert(bindingsAt, scope $"""
+			<array name="bindings" count="1">
+			<u8 name="source">0</u8>
+			<u32 name="code">{(uint32)Sedulous.Shell.KeyCode.Space}</u32>
+			<u32 name="modifiers">0</u32>
+			<i32 name="device">-1</i32>
+			<f32 name="deadZone">0.15</f32>
+			<f32 name="scale">1</f32>
+			<bool name="invert">false</bool>
+			<bool name="normalize">true</bool>
+			<u32 name="negX">0</u32>
+			<u32 name="posX">0</u32>
+			<u32 name="negY">0</u32>
+			<u32 name="posY">0</u32>
+			<f32 name="regionX">0</f32>
+			<f32 name="regionY">0</f32>
+			<f32 name="regionW">1</f32>
+			<f32 name="regionH">1</f32>
+			<f32 name="stickRadius">0.15</f32>
+			</array>
+			""");
+		let stored = session.Project.SourceDb.GetInstance(Guid.Parse(guid));
+		let before = scope String();
+		{
+			let envelope = stored.OpenEnvelope();
+			defer delete envelope;
+			McpTools.ReadAllText(envelope, before);
+		}
+
+		// Refusals: each leaves the stored envelope exactly as it was, and announces nothing.
+		{
+			let otherGuid = scope String(edited);
+			otherGuid.Replace(guid, "00000000-0000-0000-0000-000000000001");
+			let refused = scope String();
+			CallErr(server, "asset_data_write", With(With(Obj(), "guid", guid), "xml", otherGuid), refused);
+			Test.Assert(refused.Contains("is not this asset's"), refused);
+			let misspelled = scope String(edited);
+			misspelled.Replace("<u8 name=\"source\">", "<u8 name=\"sauce\">");
+			refused.Clear();
+			CallErr(server, "asset_data_write", With(With(Obj(), "guid", guid), "xml", misspelled), refused);
+			Test.Assert(refused.Contains("the payload did not read"), refused);
+			let retyped = scope String(edited);
+			retyped.Replace("Sedulous.Input.Pipeline.InputMapAsset", "Sedulous.Audio.Pipeline.SoundCueAsset");
+			refused.Clear();
+			CallErr(server, "asset_data_write", With(With(Obj(), "guid", guid), "xml", retyped), refused);
+			Test.Assert(refused.Contains("typeName"), refused);
+			let after = scope String();
+			let envelope = stored.OpenEnvelope();
+			defer delete envelope;
+			McpTools.ReadAllText(envelope, after);
+			Test.Assert(after == before, "a refusal writes nothing");
+			Test.Assert(announced == 0);
+		}
+
+		let written = CallOk(server, "asset_data_write", With(With(Obj(), "guid", guid), "xml", edited));
+		defer delete written;
+		Test.Assert(written.Get("written").AsBool());
+		Test.Assert(announced == 1);
+		let object = stored.ReadObject();
+		defer delete object;
+		let map = object as Sedulous.Input.Pipeline.InputMapAsset;
+		Test.Assert(map != null);
+		Sedulous.Input.InputAction jump = null;
+		for (let action in map.Map.Sets[0].Actions)
+			if (action.Name == "Jump")
+				jump = action;
+		Test.Assert((jump != null) && (jump.Bindings.Count == 1));
+		Test.Assert(jump.Bindings[0].Code == (uint32)Sedulous.Shell.KeyCode.Space);
+		Test.Assert(jump.Bindings[0].Source == .Key);
+	}
 }

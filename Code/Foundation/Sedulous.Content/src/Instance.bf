@@ -62,19 +62,50 @@ class Instance
 		if (stream == null)
 			return null;
 		defer delete stream;
+		return ReadEnvelope(stream, false, scope .());
+	}
 
+	/// Reads an envelope an AUTHOR supplied (an agent's edit of the stored text) the way
+	/// ReadObject reads the stored one, so what it accepts is exactly what a load accepts: its
+	/// header must name THIS instance, its guid and its type, and its payload must read
+	/// under this build's version. THE CALLER OWNS what comes back; null with the reason in
+	/// outError.
+	public ISerializable ReadObjectFrom(IStream stream, String outError) => ReadEnvelope(stream, true, outError);
+
+	private ISerializable ReadEnvelope(IStream stream, bool checkIdentity, String outError)
+	{
 		let context = mDatabase.CreateSerializer(stream, .Read);
 		if (context == null)
+		{
+			outError.Append("the text did not open as an envelope");
 			return null;
+		}
 		defer delete context;
 
 		let archive = context.Serializer;
-		if (!ReadHeader(archive, var id, scope String()))
+		let storedType = scope String();
+		if (!ReadHeader(archive, var id, storedType))
+		{
+			outError.Append("no envelope header (guid, typeName)");
 			return null;
+		}
+		if (checkIdentity && (id != mId))
+		{
+			outError.AppendF("the envelope's guid {} is not this asset's ({})", id, mId);
+			return null;
+		}
+		if (checkIdentity && (storedType != mTypeName))
+		{
+			outError.AppendF("the envelope's typeName '{}' is not this asset's ('{}')", storedType, mTypeName);
+			return null;
+		}
 
 		let object = mDatabase.Serializables.Create(TypeIdOf(mTypeName));
 		if (object == null)
+		{
+			outError.AppendF("the type '{}' is not registered in this build", mTypeName);
 			return null;
+		}
 
 		// Read under the STORED version scope, so a migration branch inside Serialize sees
 		// the version the envelope was written with rather than this build's.
@@ -87,6 +118,7 @@ class Instance
 
 		if (!archive.IsOk)
 		{
+			outError.Append("the payload did not read: a missing or misspelled key, a value of the wrong kind, or dataVersions other than this build's");
 			delete object;
 			return null;
 		}

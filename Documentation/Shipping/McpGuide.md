@@ -120,7 +120,11 @@ particle effects, animation graphs, physics, audio and UI assets, primitive mesh
 classes) come from `asset_create`: `asset_creators` lists every creator with the `type` it
 makes and the `defaultGroup` it lands in; pass `creator` by label (or `type` when one
 creator makes it), optionally `name` and `group`. A name already taken in the target group
-is refused rather than renamed. The editor host holds the call while a cook is running and
+is refused rather than renamed. A data asset's content (an input map's actions and bindings,
+a material, a physics material, a sound cue) is edited through its envelope:
+`asset_data_read` gives the XML, and `asset_data_write` takes the edited whole back, loading it
+exactly as the engine would and refusing it, unchanged, when it does not load. Enum fields are
+numbers there; `type_info` on the field's type names the cases. The editor host holds the call while a cook is running and
 requests the cook itself afterwards; the headless host does not, so `asset_cook` next.
 
 **Scenes**: read `docs://generated/SceneSchema.json` once (or `component_schema` for one
