@@ -190,6 +190,38 @@ class ScreenStackTests
 		Test.Assert(focus.FocusedView == a.FocusTarget, "a's button comes back");
 	}
 
+	/// Focus cleared by a click on empty space comes back where the top screen starts it:
+	/// its default-focus, not its first focusable, and lit as keyboard focus.
+	[Test]
+	public static void FocusDefaultLandsOnTheTopScreensDefault()
+	{
+		let bed = scope GamekitBed();
+		let focus = bed.Context.GetFocusManager();
+		Test.Assert(!bed.Stack.FocusDefault(), "no screen, nothing to land on");
+
+		let menu = MakeScreen();
+		defer menu.ReleaseRef();
+		menu.AddButton("first");
+		let first = menu.FocusTarget;
+		menu.AddButton("second");
+		let second = menu.FocusTarget;
+		menu.SetDefaultFocus("second");
+		menu.AddRef();
+		bed.Stack.Push(menu);
+		Test.Assert(focus.FocusedView == second, "a push starts at the default");
+
+		focus.ClearFocus();
+		Test.Assert(bed.Stack.FocusDefault());
+		Test.Assert(focus.FocusedView == second);
+		Test.Assert(focus.Source == .Keyboard, "keyboard landed, so it draws its ring");
+
+		// No default named: the first focusable.
+		menu.SetDefaultFocus("");
+		focus.ClearFocus();
+		Test.Assert(bed.Stack.FocusDefault());
+		Test.Assert(focus.FocusedView == first);
+	}
+
 	[Test]
 	public static void BackPopsTheTopUnlessItIsTheLastScreen()
 	{

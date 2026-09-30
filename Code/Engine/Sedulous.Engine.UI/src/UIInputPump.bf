@@ -238,7 +238,13 @@ extension UISubsystem
 		{
 			switch (event.Kind)
 			{
-			case .KeyDown, .KeyUp, .TextInput:
+			case .KeyDown:
+				// An arrow with nothing focused lands on the menu first, as the pad does,
+				// rather than going nowhere; that press does not also move on.
+				if (IsArrow(event.Key) && (mContext.GetFocusManager().FocusedView == null) && LandFocus())
+					continue;
+				mBridge.Dispatch(event);
+			case .KeyUp, .TextInput:
 				mBridge.Dispatch(event);
 			default:
 			}
@@ -256,6 +262,20 @@ extension UISubsystem
 	/// The pad is deliberately NOT a consumption class: gameplay pad actions keep working,
 	/// and a menu wanting exclusivity pushes an input set, which is the mechanism that
 	/// already exists for it.
+	private static bool IsArrow(Sedulous.Shell.KeyCode key) =>
+		(key == .Up) || (key == .Down) || (key == .Left) || (key == .Right);
+
+	/// Nothing is focused and a navigation input came: the top screen's default focus, or
+	/// failing a screen the first focusable anywhere. False when there is nothing to focus.
+	private bool LandFocus()
+	{
+		if (mScreenStack.FocusDefault(.Keyboard))
+			return true;
+		let focus = mContext.GetFocusManager();
+		focus.FocusNext();
+		return focus.FocusedView != null;
+	}
+
 	private void PumpGamepad(IInputSourceProvider devices, InputManager inputManager)
 	{
 		let pad = devices.GetGamepad(0);
@@ -304,7 +324,7 @@ extension UISubsystem
 
 			// Nothing focused yet, so land somewhere first.
 			if (focus.FocusedView == null)
-				focus.FocusNext();
+				LandFocus();
 			else
 				focus.MoveFocus(directions[i]);
 		}

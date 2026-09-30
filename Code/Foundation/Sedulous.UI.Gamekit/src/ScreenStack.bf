@@ -56,6 +56,28 @@ class ScreenStack
 
 	public UIScreen Top => mEntries.IsEmpty ? null : mEntries[mEntries.Count - 1].Screen;
 
+	/// Puts focus where the top screen starts it: its default-focus, or failing that its
+	/// first focusable. What a push does, and what a menu's navigation input does when
+	/// nothing is focused (a click on empty space clears focus, and an arrow must still find
+	/// the menu). False with no screen, or nothing on it to focus.
+	public bool FocusDefault(FocusSource source = .Keyboard)
+	{
+		let screen = Top;
+		let focus = Focus;
+		if ((screen == null) || (focus == null))
+			return false;
+
+		View target = null;
+		if (!screen.DefaultFocus.IsEmpty)
+			target = screen.FindByName(screen.DefaultFocus);
+		if ((target == null) && focus.FocusFirstIn(screen))
+			target = focus.FocusedView;
+		if (target == null)
+			return false;
+		focus.SetFocus(target, source);
+		return true;
+	}
+
 	public int Count => mEntries.Count;
 
 	// ---- Stack operations ---------------------------------------------------------------------
@@ -102,17 +124,7 @@ class ScreenStack
 				screen.OnEnter();
 				screen.OnShown();
 
-				if (let focus = Focus)
-				{
-					View target = null;
-					if (!screen.DefaultFocus.IsEmpty)
-						target = screen.FindByName(screen.DefaultFocus);
-
-					if (target != null)
-						focus.SetFocus(target, .Programmatic);
-					else
-						focus.FocusFirstIn(screen);
-				}
+				FocusDefault(.Programmatic);
 
 				PlayTransition(screen, screen.InTransition, true, null);
 			});
