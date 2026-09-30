@@ -87,7 +87,7 @@ extension UISubsystem
 
 			if (mScreenRoot != null)
 			{
-				let hit = mScreenRoot.HitTest(point);
+				let hit = mScreenRoot.HitTest(ScreenLayoutPoint(point));
 				if ((hit != null) && (hit !== mScreenRoot))
 					target = mScreenRoot;
 			}
@@ -162,7 +162,8 @@ extension UISubsystem
 				continue;
 
 			var camera = ViewCamera();
-			if (!RenderExtract.ExtractPrimaryCamera(sceneUI.Scene, ref camera))
+			// The projection the scene was drawn with: the shape of its view.
+			if (!RenderExtract.ExtractPrimaryCamera(sceneUI.Scene, ref camera, null, viewSize.X / viewSize.Y))
 				continue;
 
 			let rayPoint = centreAim ? Float2(viewSize.X * 0.5f, viewSize.Y * 0.5f) : point;
@@ -202,8 +203,15 @@ extension UISubsystem
 		if (mouse == null)
 			return;
 
-		let x = panelPointer ? panelPointerPx.X : mouse.X;
-		let y = panelPointer ? panelPointerPx.Y : mouse.Y;
+		var x = panelPointer ? panelPointerPx.X : mouse.X;
+		var y = panelPointer ? panelPointerPx.Y : mouse.Y;
+		// The screen tier drawn fitted takes its pointer in its own pixels.
+		if (!panelPointer && (mContext.ActiveInputRoot === mScreenRoot))
+		{
+			let screen = ScreenPointerPoint(.(x, y));
+			x = screen.X;
+			y = screen.Y;
+		}
 		inputManager.ProcessMouseMove(x, y);
 
 		let shellButtons = scope Sedulous.Shell.MouseButton[3](.Left, .Right, .Middle);
@@ -357,7 +365,7 @@ extension UISubsystem
 
 			if (mScreenRoot != null)
 			{
-				let hit = mScreenRoot.HitTest(point);
+				let hit = mScreenRoot.HitTest(ScreenLayoutPoint(point));
 				pointer = (hit != null) && (hit !== mScreenRoot);
 			}
 

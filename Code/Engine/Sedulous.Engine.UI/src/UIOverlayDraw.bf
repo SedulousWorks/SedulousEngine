@@ -159,6 +159,19 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 		if ((mScreenRoot == null) || (view.Width == 0) || (view.Height == 0))
 			return;
 
+		mScreenTargetSize = .((float)view.Width, (float)view.Height);
+		if (HasScreenDesign)
+		{
+			// Laid out at the design size, drawn crisp at the target's resolution into the
+			// rectangle the game's image was fitted to.
+			let fit = ScreenFit();
+			let dst = fit.DstRect();
+			mScreenRoot.DpiScale = ScreenDpi(fit);
+			DrawRootInPass(mScreenRoot, encoder, view.TargetFormat, (int32)dst.X, (int32)dst.Y,
+				(uint32)Math.Max(dst.Width, 1.0f), (uint32)Math.Max(dst.Height, 1.0f),
+				(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat));
+			return;
+		}
 		DrawRootInPass(mScreenRoot, encoder, view.TargetFormat, 0, 0, view.Width, view.Height,
 			(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat));
 	}

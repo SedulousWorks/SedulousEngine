@@ -54,6 +54,12 @@ class UISubsystem : Subsystem, ISceneObserver
 
 	private RootView mScreenRoot = null;
 	private ScreenStack mScreenStack = new .() ~ delete _;
+	/// The game's render resolution and how it fits its target, when it has one: the screen
+	/// tier lays out at that size and draws fitted where the game's image is.
+	private Float2 mScreenDesign = .Zero;
+	private FitMode mScreenDesignFit = .Letterbox;
+	/// The target the screen tier last drew into, which the pointer maps against.
+	private Float2 mScreenTargetSize = .Zero;
 	/// The scene LESS screen tier, ABOVE everything.
 	private ViewGroup mOverlayLayer = null;
 	/// BORROWED. Installing a sheet CONSUMES the reference, so the context owns it from that
@@ -138,6 +144,51 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// Push, pop and replace of screens over that root. Owned by the tier so its lifetime
 	/// matches the root's.
 	public ScreenStack Screens => mScreenStack;
+
+	/// The screen tier at the game's render resolution: it lays out at `width` x `height`
+	/// and draws, at the target's own resolution, into the rectangle `fit` puts that size
+	/// in, so its text stays crisp at any window size. The pointer then arrives in render
+	/// space, as the game's does. Nought on either axis goes back to the target's own size.
+	public void SetScreenDesign(uint32 width, uint32 height, FitMode fit)
+	{
+		mScreenDesign = ((width > 0) && (height > 0)) ? Float2(width, height) : .Zero;
+		mScreenDesignFit = fit;
+		if (!HasScreenDesign && (mScreenRoot != null))
+			mScreenRoot.DpiScale = 1.0f;
+	}
+
+	public bool HasScreenDesign => (mScreenDesign.X > 0.0f) && (mScreenDesign.Y > 0.0f);
+
+	/// The design size fitted into the last target drawn.
+	private ContentFit ScreenFit() => ContentFit(.(0, 0, mScreenTargetSize.X, mScreenTargetSize.Y), mScreenDesign, mScreenDesignFit);
+
+	/// Target pixels per design unit, down the height: the one scale a layout can take.
+	private static float ScreenDpi(ContentFit fit)
+	{
+		let scale = fit.Scale().Y;
+		return (scale > 0.0f) ? (1.0f / scale) : 1.0f;
+	}
+
+	/// A render space point in the screen tier's layout units: offset by the part of the
+	/// design a crop leaves out, and nothing else.
+	private Float2 ScreenLayoutPoint(Float2 point)
+	{
+		if (!HasScreenDesign)
+			return point;
+		let source = ScreenFit().SrcRect();
+		return .(point.X - source.X, point.Y - source.Y);
+	}
+
+	/// The same point in the pixels the screen tier's input takes (layout units times its
+	/// scale).
+	private Float2 ScreenPointerPoint(Float2 point)
+	{
+		if (!HasScreenDesign)
+			return point;
+		let layout = ScreenLayoutPoint(point);
+		let dpi = ScreenDpi(ScreenFit());
+		return .(layout.X * dpi, layout.Y * dpi);
+	}
 
 	/// The scene tier's root for a scene: its canvases above a shared billboard layer. Null
 	/// for a scene this has never seen.

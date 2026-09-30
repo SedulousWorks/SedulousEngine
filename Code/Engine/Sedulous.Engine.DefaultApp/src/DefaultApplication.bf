@@ -39,6 +39,9 @@ using Sedulous.Runtime.Client;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Shell;
+using Sedulous.RHI;
+using Sedulous.Render;
+using Sedulous.Input;
 
 namespace Sedulous.Engine.DefaultApp;
 
@@ -104,6 +107,13 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// Simulate) read every action released and at rest rather than faulting on a missing
 	/// service. A run's own InputFacade replaces it.
 	private InputFacade mIdleInput = new .(null) ~ delete _;
+	/// The resolution the game draws at, fitted into the window by mRenderFit; nought draws at
+	/// the window's size. With it, the pointer the game and its screen UI read is in render
+	/// pixels (mFittedInput).
+	private uint32 mRenderWidth = 0;
+	private uint32 mRenderHeight = 0;
+	private FitMode mRenderFit = .Letterbox;
+	private FittedInputSource mFittedInput = null ~ delete _;
 	/// OWNED: `Audio` to a script, over the subsystem and the app's resources.
 	private AudioFacade mAudioFacade = null ~ delete _;
 
@@ -592,6 +602,37 @@ class DefaultApplication : IApplication, ISceneObserver
 		}
 	}
 
+	/// The game draws at `width` x `height`, fitted into the window by `fit` (the bars black),
+	/// and its screen UI lays out at that size and draws crisp at the window's; its pointer
+	/// reads in render pixels. Nought on either axis draws at the window's own size.
+	public void SetRenderResolution(uint32 width, uint32 height, FitMode fit)
+	{
+		let fixedSize = (width > 0) && (height > 0);
+		mRenderWidth = fixedSize ? width : 0;
+		mRenderHeight = fixedSize ? height : 0;
+		mRenderFit = fit;
+		if (mUI != null)
+			mUI.SetScreenDesign(mRenderWidth, mRenderHeight, fit);
+		if (mInput == null)
+			return;
+		IInputSourceProvider source = mInput.ShellSource;
+		if (fixedSize)
+		{
+			if (mFittedInput == null)
+				mFittedInput = new FittedInputSource(mInput.ShellSource);
+			mFittedInput.Fit = ContentFit(.(0, 0, 1, 1), .(width, height), fit);
+			mInput.SetSourceProvider(mFittedInput);
+			source = mFittedInput;
+		}
+		else if (mFittedInput != null)
+		{
+			mInput.ClearSourceProviderIf(mFittedInput);
+		}
+		ForEachInstance(scope [&] (instance) => { instance.SetInputSource(source); });
+	}
+
+	public bool HasRenderResolution => (mRenderWidth > 0) && (mRenderHeight > 0);
+
 	/// The scenes, the overlays, then the screenshot. A subclass that draws something of its
 	/// own over the scenes overrides this and calls RenderFrame, its own drawing, then
 	/// FinishFrame, in that order, so a screenshot has the whole frame in it.
@@ -599,6 +640,26 @@ class DefaultApplication : IApplication, ISceneObserver
 	{
 		RenderFrame(host, ref frame);
 		FinishFrame(host, ref frame);
+	}
+
+	/// One scene into the backbuffer: at the window's size, or at the render resolution
+	/// fitted into it, the pointer's fit following the window as it resizes.
+	private void RenderInstanceScene(RenderSubsystem render, Scene scene, ITextureView target,
+		uint32 width, uint32 height, TextureFormat colorFormat)
+	{
+		if (!HasRenderResolution)
+		{
+			render.RenderScene(scene, target, colorFormat, width, height);
+			return;
+		}
+		let fit = ContentFit(.(0, 0, width, height), .(mRenderWidth, mRenderHeight), mRenderFit);
+		if (mFittedInput != null)
+			mFittedInput.Fit = fit;
+		let dst = fit.DstRect();
+		let viewport = ViewportRect((int32)dst.X, (int32)dst.Y, (uint32)Math.Max(dst.Width, 1.0f),
+			(uint32)Math.Max(dst.Height, 1.0f));
+		render.RenderScene(scene, target, colorFormat, width, height, viewport, null, .(), null,
+			null, null, SceneSize.FromFit(fit));
 	}
 
 	/// Every non headless instance's scenes and the window space overlays, into the
@@ -633,8 +694,8 @@ class DefaultApplication : IApplication, ISceneObserver
 					return;
 
 				for (let scene in instance.Scenes.ActiveScenes)
-					render.RenderScene(scene, frame.BackbufferView, colorFormat, frame.Width,
-						frame.Height);
+					RenderInstanceScene(render, scene, frame.BackbufferView, frame.Width, frame.Height,
+						colorFormat);
 			});
 
 		// The scene tier's overlays draw inside the compose.

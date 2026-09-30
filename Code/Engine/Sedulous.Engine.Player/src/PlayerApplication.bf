@@ -305,6 +305,8 @@ class PlayerApplication : DefaultApplication
 		BindUserAudioSettings();
 		BindUIFont();
 		BindUITheme();
+		// The resolution the game draws at, fitted into whatever window it got.
+		SetRenderResolution(mSettings.RenderWidth, mSettings.RenderHeight, mSettings.RenderFit);
 	}
 
 	/// The project's default map, onto the PRIMARY instance's own runtime. Unset or
