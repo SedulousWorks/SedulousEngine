@@ -56,3 +56,17 @@ corlib = "*"
 "Sedulous.Editor.Generic" = "*"
 "Sedulous.Editor.Script" = "*"
 "Sedulous.Editor.Script.AngelScript" = "*"
+
+# The WGSL shader cook a Web export from the editor's Export menu runs needs naga and tint
+# BESIDE the executable, where ShaderPackCooker looks for them, as Tools.Export ships them.
+[Configs.Debug.Linux64]
+PostBuildCmds = ["CopyToTarget(\"$(WorkspaceDir)/../Bin/Naga/bin/linux-x86_64/naga\")", "CopyToTarget(\"$(WorkspaceDir)/../Bin/Tint/bin/linux-x86_64/tint\")", "ExecuteRaw(\"chmod +x $(TargetDir)/naga $(TargetDir)/tint\")"]
+
+[Configs.Debug.Win64]
+PostBuildCmds = ["CopyToTarget(\"$(WorkspaceDir)/../Bin/Naga/bin/win-x64/naga.exe\")", "CopyToTarget(\"$(WorkspaceDir)/../Bin/Tint/bin/win-x64/tint.exe\")"]
+
+[Configs.Release.Linux64]
+PostBuildCmds = ["CopyToTarget(\"$(WorkspaceDir)/../Bin/Naga/bin/linux-x86_64/naga\")", "CopyToTarget(\"$(WorkspaceDir)/../Bin/Tint/bin/linux-x86_64/tint\")", "ExecuteRaw(\"chmod +x $(TargetDir)/naga $(TargetDir)/tint\")"]
+
+[Configs.Release.Win64]
+PostBuildCmds = ["CopyToTarget(\"$(WorkspaceDir)/../Bin/Naga/bin/win-x64/naga.exe\")", "CopyToTarget(\"$(WorkspaceDir)/../Bin/Tint/bin/win-x64/tint.exe\")"]
