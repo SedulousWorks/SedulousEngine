@@ -58,6 +58,56 @@ class PhysicsCharacterTests
 		Test.Assert(Near(play.Scene.GetWorldPosition(hero).Y, 0.9f, 0.03f));
 	}
 
+	/// A launch sets the vertical speed in the air, where a jump waits for the ground: a
+	/// falling character launched mid-air goes back up, then lands as usual.
+	[Test]
+	public static void ALaunchWorksInTheAirWhereAJumpWaitsForTheGround()
+	{
+		let play = scope PhysicsPlayScene();
+		play.AddFloor();
+		let hero = AddHero(play);
+		play.Start();
+		play.Step(30);
+		let character = play.Characters.Get(hero);
+
+		// Up, then past the apex: falling.
+		character.JumpSpeed = 5.0f;
+		float previous = 0.0f;
+		float y = 0.0f;
+		for (int i < 60)
+		{
+			play.Step();
+			play.Settle();
+			previous = y;
+			y = play.Scene.GetWorldPosition(hero).Y;
+			if ((i > 5) && (y < previous))
+				break;
+		}
+		Test.Assert(character.Ground == .InAir);
+		Test.Assert(y < previous, "falling");
+
+		// A jump in the air is only held for the ground: the fall goes on.
+		character.JumpSpeed = 5.0f;
+		play.Step(3);
+		play.Settle();
+		let afterJump = play.Scene.GetWorldPosition(hero).Y;
+		Test.Assert(afterJump < y, "a jump does not lift a falling character");
+		character.JumpSpeed = 0.0f;
+
+		// A launch does, from where it is.
+		character.Launch(6.0f);
+		play.Step(6);
+		play.Settle();
+		Test.Assert(play.Scene.GetWorldPosition(hero).Y > afterJump + 0.2f, "the launch lifts it mid-air");
+		Test.Assert(!character.LaunchPending, "consumed by the step");
+
+		// And it comes down to stand again.
+		play.Step(180);
+		play.Settle();
+		Test.Assert(character.Ground == .OnGround);
+		Test.Assert(Near(play.Scene.GetWorldPosition(hero).Y, 0.9f, 0.03f));
+	}
+
 	/// A teleport is exact and drops momentum, so what was walking does not drift on after
 	/// arriving.
 	[Test]

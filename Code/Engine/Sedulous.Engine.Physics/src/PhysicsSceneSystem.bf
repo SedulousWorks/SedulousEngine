@@ -347,6 +347,7 @@ class PhysicsSceneSystem : SceneSystem
 					mWorld.SetCharacterVelocity(component.Character, .(0, 0, 0));
 					component.MoveVelocity = .(0, 0, 0);
 					component.JumpSpeed = 0.0f;
+					component.LaunchPending = false;
 					component.PrevPosition = component.TeleportTo;
 					component.CurrPosition = component.TeleportTo;
 					component.Ground = .InAir;
@@ -357,7 +358,14 @@ class PhysicsSceneSystem : SceneSystem
 				let current = mWorld.CharacterVelocity(component.Character);
 				var velocity = Float3(component.MoveVelocity.X, 0.0f, component.MoveVelocity.Z);
 
-				if (component.Ground == .OnGround)
+				if (component.LaunchPending)
+				{
+					// A launch sets the vertical speed wherever the character is.
+					velocity.Y = component.LaunchSpeed;
+					component.LaunchPending = false;
+					component.JumpSpeed = 0.0f;
+				}
+				else if (component.Ground == .OnGround)
 				{
 					if (component.JumpSpeed > 0.0f)
 					{
@@ -705,6 +713,7 @@ class PhysicsSceneSystem : SceneSystem
 		component.CurrPosition = position;
 		component.MoveVelocity = .(0, 0, 0);
 		component.JumpSpeed = 0.0f;
+		component.LaunchPending = false;
 		component.TeleportPending = false;
 	}
 

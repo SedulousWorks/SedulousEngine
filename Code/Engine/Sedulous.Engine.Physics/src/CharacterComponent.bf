@@ -47,6 +47,11 @@ struct CharacterComponent : ISerializable
 	/// Consumed at the next grounded step.
 	[Hidden]
 	public float JumpSpeed = 0.0f;
+	/// Consumed at the next step, grounded or not: the vertical speed it sets.
+	[Hidden]
+	public float LaunchSpeed = 0.0f;
+	[Hidden]
+	public bool LaunchPending = false;
 	[Hidden]
 	public Float3 TeleportTo = .(0.0f, 0.0f, 0.0f);
 	/// Consumed as a snap at the next step, then cleared.
@@ -79,6 +84,16 @@ struct CharacterComponent : ISerializable
 	public void Jump(float speed) mut
 	{
 		JumpSpeed = speed;
+	}
+
+	/// Sets the vertical speed at the next step, on the ground OR in the air, replacing what
+	/// gravity had built up: a bounce off an enemy, a spring pad, a double jump. Negative
+	/// slams down. A pending Jump is dropped.
+	[Scriptable]
+	public void Launch(float speed) mut
+	{
+		LaunchSpeed = speed;
+		LaunchPending = true;
 	}
 
 	/// Requests a hard snap, which is what a respawn is.

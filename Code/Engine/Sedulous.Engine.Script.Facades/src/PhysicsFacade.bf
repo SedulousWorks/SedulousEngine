@@ -65,6 +65,14 @@ class PhysicsFacade : SceneFacade
 			character.Jump(speed);
 	}
 
+	/// Sets the character's vertical speed at the next step, grounded or in the air.
+	[Scriptable]
+	public void LaunchCharacter(EntityHandle entity, float speed)
+	{
+		if (let character = CharacterOf(entity))
+			character.Launch(speed);
+	}
+
 	/// Snaps the character to a world position at the next step, dropping its momentum:
 	/// what a respawn is. Setting the entity's transform does not move a live character.
 	[Scriptable]
