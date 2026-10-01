@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Engine.Input;
 using Sedulous.Engine.Render;
 using Sedulous.Input;
@@ -50,6 +51,7 @@ extension UISubsystem
 		PumpKeyboard(devices);
 		PumpGamepad(devices, inputManager);
 		PublishConsumption(mouse, panelPointer, inputManager);
+		TraceUi(mouse);
 	}
 
 	/// Whether this frame's input may reach a scene's root.
@@ -337,16 +339,63 @@ extension UISubsystem
 				focus.MoveFocus(directions[i]);
 		}
 
+		// Confirm and back act on the RELEASE. On the press, a button that resumes play would
+		// unfreeze the game while the pad still held the button, and gameplay would read
+		// that same press as its own (the confirm button is a jump). And the release counts
+		// only on the view the press went down on: a jump held into a pause menu must not
+		// let go on its default button and click it.
 		if (pad.IsButtonPressed(.South))
+			mConfirmPressedOn = ((focus != null) && (focus.FocusedView != null)) ? focus.FocusedId : .Invalid;
+		if (pad.IsButtonReleased(.South))
 		{
-			inputManager.ProcessKeyDown(.Return, .None, false, mContext.TotalTime);
-			inputManager.ProcessKeyUp(.Return, .None, mContext.TotalTime);
+			let pressedOn = mConfirmPressedOn;
+			mConfirmPressedOn = .Invalid;
+			if (pressedOn.IsValid && (focus != null) && (focus.FocusedId == pressedOn))
+			{
+				inputManager.ProcessKeyDown(.Return, .None, false, mContext.TotalTime);
+				inputManager.ProcessKeyUp(.Return, .None, mContext.TotalTime);
+			}
 		}
 		if (pad.IsButtonPressed(.East))
+			mBackPressed = true;
+		if (pad.IsButtonReleased(.East) && mBackPressed)
 		{
+			mBackPressed = false;
 			inputManager.ProcessKeyDown(.Escape, .None, false, mContext.TotalTime);
 			inputManager.ProcessKeyUp(.Escape, .None, mContext.TotalTime);
 		}
+	}
+
+	/// SEDULOUS_INPUT_TRACE set: twice a second, what the UI holds - the focused view and how
+	/// focus got there, the hovered one, and where the pointer is in layout space - beside
+	/// the input path's own trace.
+	private void TraceUi(IMouse mouse)
+	{
+		if (mTraceUi == 0)
+		{
+			let value = scope String();
+			mTraceUi = ((Environment.GetEnvironmentVariable("SEDULOUS_INPUT_TRACE", value) case .Ok) && !value.IsEmpty) ? 1 : -1;
+		}
+		if ((mTraceUi < 0) || ((++mTraceFrame % 30) != 0))
+			return;
+		let line = scope String("UiTrace:");
+		let focus = mContext.GetFocusManager();
+		let focused = (focus != null) ? focus.FocusedView : null;
+		if (focused != null)
+			line.AppendF(" focused '{}' {} by {}", focused.Name, focused.GetType().GetName(.. scope .()), focus.Source);
+		else
+			line.Append(" focused none");
+		let hovered = mContext.GetViewById(mContext.GetInputManager().HoveredId);
+		if (hovered != null)
+			line.AppendF(" | hovered '{}' {}", hovered.Name, hovered.GetType().GetName(.. scope .()));
+		else
+			line.Append(" | hovered none");
+		if (mouse != null)
+		{
+			let point = ScreenLayoutPoint(.(mouse.X, mouse.Y));
+			line.AppendF(" | pointer ({:0},{:0}) layout ({:0},{:0})", mouse.X, mouse.Y, point.X, point.Y);
+		}
+		GlobalLog(.Information, line);
 	}
 
 	/// What the UI took, published to the action layer so a click on a menu never also fires

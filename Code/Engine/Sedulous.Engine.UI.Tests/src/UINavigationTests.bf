@@ -62,15 +62,40 @@ class UINavigationTests
 		devices.Pad.SetDown(.DPadDown, false);
 		fixture.Frame();
 
-		// South is Submit: the focused button activates through the Return path.
+		// South is Submit: the focused button activates through the Return path, on the
+		// RELEASE, so a button that resumes play does not leave its press for gameplay.
 		bool clicked = false;
 		let bottom = (canvas.Root as ViewGroup).FindByName<Button>("bottom");
 		Test.Assert(bottom != null);
 		bottom.OnClick.Add(new [&clicked](sender) => { clicked = true; });
 		devices.Pad.SetPressed(.South);
+		devices.Pad.SetDown(.South);
 		fixture.Frame();
-		Test.Assert(clicked);
+		Test.Assert(!clicked, "the press alone does not activate");
 		devices.Pad.SetPressed(.South, false);
+		devices.Pad.SetDown(.South, false);
+		devices.Pad.SetReleased(.South);
+		fixture.Frame();
+		Test.Assert(clicked, "the release does");
+		devices.Pad.SetReleased(.South, false);
+
+		// A press that went down on another view does not click where it lets go: a jump
+		// held into a menu must not activate the button focus lands on.
+		bool topClicked = false;
+		let top = (canvas.Root as ViewGroup).FindByName<Button>("top");
+		top.OnClick.Add(new [&topClicked](sender) => { topClicked = true; });
+		clicked = false;
+		devices.Pad.SetPressed(.South);
+		fixture.Frame(); // down on "bottom"
+		devices.Pad.SetPressed(.South, false);
+		devices.Pad.SetDown(.DPadUp);
+		fixture.Frame(); // focus moves to "top" while held
+		devices.Pad.SetDown(.DPadUp, false);
+		Test.Assert(focus.FocusedView.Name == "top");
+		devices.Pad.SetReleased(.South);
+		fixture.Frame();
+		devices.Pad.SetReleased(.South, false);
+		Test.Assert(!topClicked && !clicked, "let go on another view, nothing activates");
 
 		// An OCCUPIED screen tier is modal: routing flips to the screen root.
 		let modal = UITestFixture.MakeDocument("<Panel><Label text=\"Loading\"/></Panel>");

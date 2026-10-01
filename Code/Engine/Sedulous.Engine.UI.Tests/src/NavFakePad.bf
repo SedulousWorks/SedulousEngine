@@ -4,11 +4,12 @@ using Sedulous.Shell;
 namespace Sedulous.Engine.UI.Tests;
 
 /// A pad whose buttons a case sets directly. Held and pressed are separate, since the
-/// navigation pump reads the first for repeat and the second for activation.
+/// navigation pump reads the first for repeat, and the press and release edges for activation.
 class NavFakePad : IGamepad
 {
 	private bool[32] mDown = .();
 	private bool[32] mPressed = .();
+	private bool[32] mReleased = .();
 	private float[6] mAxes = .();
 
 	public int32 Index => 0;
@@ -17,12 +18,15 @@ class NavFakePad : IGamepad
 
 	public bool IsButtonDown(GamepadButton button) => mDown[(uint32)button & 31];
 	public bool IsButtonPressed(GamepadButton button) => mPressed[(uint32)button & 31];
-	public bool IsButtonReleased(GamepadButton button) => false;
+	public bool IsButtonReleased(GamepadButton button) => mReleased[(uint32)button & 31];
 	public float Axis(GamepadAxis axis) => mAxes[(uint32)axis % 6];
 
 	public void SetDown(GamepadButton button, bool value = true) => mDown[(uint32)button & 31] = value;
 	public void SetPressed(GamepadButton button, bool value = true) =>
 		mPressed[(uint32)button & 31] = value;
+
+	public void SetReleased(GamepadButton button, bool value = true) =>
+		mReleased[(uint32)button & 31] = value;
 
 	public void SetRumble(float lowFrequency, float highFrequency, uint32 durationMs) {}
 }

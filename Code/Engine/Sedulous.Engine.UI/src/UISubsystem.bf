@@ -99,6 +99,14 @@ class UISubsystem : Subsystem, ISceneObserver
 	private float[4] mNavRepeat = .(0.0f, 0.0f, 0.0f, 0.0f);
 	private bool[4] mNavHeld = .(false, false, false, false);
 	private float mNavDeltaTime = 0.0f;
+	/// The view a pad's confirm (south) went down on, so its release activates that view and
+	/// nothing else; invalid with none. The back button (east) only needs to have gone down
+	/// while the UI was pumping.
+	private ViewId mConfirmPressedOn = .Invalid;
+	private bool mBackPressed = false;
+	/// SEDULOUS_INPUT_TRACE: nought unread, 1 tracing, -1 not; and the frame counter it samples on.
+	private int mTraceUi = 0;
+	private int mTraceFrame = 0;
 
 	/// The data mount is BORROWED: the application resolves the data root, owns the mount and
 	/// outlives this.
