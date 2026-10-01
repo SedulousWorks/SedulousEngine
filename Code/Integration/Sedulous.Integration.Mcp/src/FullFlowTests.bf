@@ -126,6 +126,7 @@ static class FullFlowTests
 		Test.Assert(Has("scene_write"));
 		Test.Assert(Has("project_export"));
 		Test.Assert(Has("export_presets") && Has("export_preset_set"));
+		Test.Assert(Has("asset_delete"));
 		Test.Assert(Has("known_issues"));
 		// ... and what a HOST adds itself: never part of the shared surface.
 		Test.Assert(!Has("project_open"));
@@ -236,6 +237,12 @@ static class FullFlowTests
 		}
 
 		public OperationStep Create(ToolCall call, CreateRequest request, CreateOutcome outOutcome, String outError)
+		{
+			outError.Append("not used here");
+			return .Failed;
+		}
+
+		public OperationStep Delete(ToolCall call, Guid id, String outError)
 		{
 			outError.Append("not used here");
 			return .Failed;

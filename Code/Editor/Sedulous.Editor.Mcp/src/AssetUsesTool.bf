@@ -119,6 +119,25 @@ static class AssetUsesTool
 		return true;
 	}
 
+	/// What uses `id`, as asset_uses reports it: each direct user's "group/name" and each
+	/// manifest field naming it. What asset_delete refuses over.
+	public static void DirectUsers(ProjectSession session, BuilderRegistry builders, Guid id,
+		List<String> outUsers, List<String> outSettings)
+	{
+		let db = session.Project.SourceDb;
+		let sourcesMount = scope NativeFileSystem(session.Project.SourcesRoot(.. scope .()));
+		let uses = scope List<Use>();
+		defer { ClearAndDeleteItems(uses); }
+		Collect(db.RootGroup, scope String(), id, db, builders, sourcesMount, uses);
+		for (let use in uses)
+			outUsers.Add(use.Group.IsEmpty ? new String(use.User.Name) : new $"{use.Group}/{use.User.Name}");
+		let refs = scope List<(StringView name, Guid id)>();
+		SettingsReferences(session.Project.Settings, refs);
+		for (let reference in refs)
+			if (reference.id == id)
+				outSettings.Add(new String(reference.name));
+	}
+
 	/// Every source instance under `group`, depth first, with an edge to `target`.
 	private static void Collect(Group group, String path, Guid target, ContentDatabase db,
 		BuilderRegistry builders, IFileSystem sourcesMount, List<Use> outUses)

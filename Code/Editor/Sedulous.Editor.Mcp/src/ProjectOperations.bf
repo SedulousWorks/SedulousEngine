@@ -133,6 +133,9 @@ interface IProjectOperations
 	OperationStep Cook(ToolCall call, bool force, ref CookOutcome outOutcome, String outError);
 	/// One OS file into the open project's source database (does not cook).
 	OperationStep Import(ToolCall call, ImportRequest request, ImportOutcome outOutcome, String outError);
+	/// One source asset removed (asset_delete): its envelope and data files, never the
+	/// original file an import copied under Sources/. The host closes what has it open.
+	OperationStep Delete(ToolCall call, Guid id, String outError);
 	/// One new asset from a creator (AssetCreation.Run), and whatever the host does after a
 	/// creation: the editor's cook request and default scene; nothing on the stdio host, whose
 	/// agent cooks next.

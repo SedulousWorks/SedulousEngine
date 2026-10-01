@@ -46,7 +46,7 @@ static class ExportPresetTools
 		schema.Boolean("windowResizable", "whether this platform's window may be resized");
 		server.RegisterTool("export_preset_set",
 			"Create, change or remove one export preset of the open project, by name: only what is given changes, and a new preset starts as the host's platform, Release. Checked in full before anything changes, then saved to export_presets.xml (a project with none starts from its synthesized host preset, which stays). A templateId need not exist on this machine - presets travel with the project and templates do not - so the result's `template` says whether it resolves here. Returns the presets as export_presets does.",
-			schema.Build(), .Adjusts,
+			schema.Build(), .Overwrites,
 			new (arguments, outResult, outError) => Set(session, arguments, outResult, outError));
 	}
 

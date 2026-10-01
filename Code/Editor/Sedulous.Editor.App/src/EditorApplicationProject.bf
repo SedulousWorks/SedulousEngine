@@ -365,6 +365,7 @@ extension EditorApplication
 		seams.Jobs = mJobService;
 		seams.Builders = mBuilders;
 		seams.OnCreated = new (creator, instance) => { AfterCreate(creator, instance); };
+		seams.OnDelete = new (id) => (mAssetsView != null) && mAssetsView.DeleteForAgent(id);
 		seams.OnImported = new (primary, options) =>
 			{
 				if (mAssetsView != null)

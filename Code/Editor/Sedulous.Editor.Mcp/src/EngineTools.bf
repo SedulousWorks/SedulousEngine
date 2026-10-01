@@ -13,7 +13,7 @@ namespace Sedulous.Editor.Mcp;
 /// editor host compose through it and cannot drift.
 ///
 /// Reflection (type_list, type_info), script_api, project_info, the asset tools (list, info,
-/// import, cook, uses, creators, create, data read and write), project_health, the log tools (log_read, log_write, known_issues), the
+/// import, cook, uses, creators, create, delete, data read and write), project_health, the log tools (log_read, log_write, known_issues), the
 /// scene and prefab tools, script_validate and script_create, export_presets and
 /// export_preset_set, project_export, the docs://
 /// and project:// resources, and the generated scene format reference (docs://generated/*
@@ -24,7 +24,7 @@ static class EngineTools
 	/// How many tools Register registers. A new engine tool bumps this DELIBERATELY, and a
 	/// lost registration fails its test loudly. host_info and the stdio host's project_create
 	/// and project_open are not in it: each host registers its own.
-	public const int cEngineToolCount = 29;
+	public const int cEngineToolCount = 30;
 
 	/// The pipeline's types, builders and script surface must already be registered: the
 	/// script tools read that surface, the asset tools the two registries. The operations are
@@ -39,6 +39,7 @@ static class EngineTools
 		AssetTools.Register(server, session);
 		AssetWriteTools.Register(server, session, importers, operations);
 		AssetCreateTools.Register(server, session, creators, operations);
+		AssetDeleteTool.Register(server, session, builders, operations);
 		AssetDataTools.Register(server, session);
 		AssetUsesTool.Register(server, session, builders);
 		ProjectHealthTool.Register(server, session, builders);

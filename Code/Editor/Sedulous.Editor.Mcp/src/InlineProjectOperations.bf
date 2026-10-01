@@ -109,6 +109,17 @@ class InlineProjectOperations : IProjectOperations
 		return .Finished;
 	}
 
+	/// Deletes at once: no pages here, and the next cook sweeps the orphaned product.
+	public OperationStep Delete(ToolCall call, Guid id, String outError)
+	{
+		if (mSession.Project.SourceDb.DeleteInstance(id) case .Err)
+		{
+			outError.AppendF("could not delete asset {}", id);
+			return .Failed;
+		}
+		return .Finished;
+	}
+
 	/// Creates at once; nothing follows it here: the agent cooks next.
 	public OperationStep Create(ToolCall call, CreateRequest request, CreateOutcome outOutcome, String outError)
 	{

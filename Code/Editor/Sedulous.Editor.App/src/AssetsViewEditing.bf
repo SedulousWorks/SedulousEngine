@@ -235,29 +235,46 @@ extension AssetsView
 		}
 		if (mContext.Project == null)
 			return;
-		let db = mContext.Project.SourceDb;
 		int deleted = 0;
 		for (let id in ids)
 		{
-			let instance = db.GetInstance(id);
-			if (instance == null)
-				continue;
-			let path = instance.GetPath(.. scope .());
-			if (OnCloseInstancePage != null)
-				OnCloseInstancePage(id);
-			if (db.DeleteInstance(id) case .Ok)
-			{
+			if (DeleteOne(id))
 				deleted++;
-				GlobalLog(.Information, "Assets: deleted '{}'", path);
-			}
-			else
-			{
-				GlobalLog(.Warning, "Assets: delete FAILED for '{}'", path);
-			}
 		}
 		mContext.SetStatus(scope $"Deleted {deleted} asset(s).");
 		ClearDefaultSceneIfGone();
 		Rebuild(); // the next cook's plan sweeps the orphaned products
+	}
+
+	/// An agent's delete (asset_delete), the browser's own: the page closed, the asset
+	/// deleted and logged, the default scene and the browser kept honest. The CALLER has
+	/// waited out any cook. False when there was no such asset or the delete failed.
+	public bool DeleteForAgent(Guid id)
+	{
+		if ((mContext.Project == null) || !DeleteOne(id))
+			return false;
+		ClearDefaultSceneIfGone();
+		Rebuild();
+		return true;
+	}
+
+	/// One asset: its page closed first, then the instance deleted and logged.
+	private bool DeleteOne(Guid id)
+	{
+		let db = mContext.Project.SourceDb;
+		let instance = db.GetInstance(id);
+		if (instance == null)
+			return false;
+		let path = instance.GetPath(.. scope .());
+		if (OnCloseInstancePage != null)
+			OnCloseInstancePage(id);
+		if (db.DeleteInstance(id) case .Err)
+		{
+			GlobalLog(.Warning, "Assets: delete FAILED for '{}'", path);
+			return false;
+		}
+		GlobalLog(.Information, "Assets: deleted '{}'", path);
+		return true;
 	}
 
 	/// F2 is inline rename, Delete a confirmed delete; dispatched by the list and grid

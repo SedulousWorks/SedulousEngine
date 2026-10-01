@@ -37,6 +37,9 @@ class EditorProjectOperationsSeams
 	/// (the import listeners, a model's prefab among them; the cook of what it made; the
 	/// browser). Owned.
 	public delegate void(Instance primary, ImportOptions options) OnImported ~ delete _;
+	/// An agent's delete, the browser's own (its page closed, the default scene and the
+	/// browser kept honest). Unset falls back to the database's delete. Owned.
+	public delegate bool(Guid id) OnDelete ~ delete _;
 	/// A step still running past this answers with an error.
 	public double TimeoutSeconds = 600.0;
 }
@@ -386,6 +389,30 @@ class EditorProjectOperations : IProjectOperations
 		if (mSeams.OnCreated != null)
 			mSeams.OnCreated(request.Creator, instance);
 		outOutcome.SetFrom(instance);
+		return .Finished;
+	}
+
+	/// On the main thread, never while a cook or an export reads the databases (it waits, as
+	/// a creation does); then the browser's own delete through OnDelete.
+	public OperationStep Delete(ToolCall call, Guid id, String outError)
+	{
+		if (mSeams.Cook.MutationLocked)
+		{
+			if (call.State == null)
+				call.State = new CreateWait();
+			if (TimedOut((call.State as CreateWait).Started))
+			{
+				outError.AppendF("delete of asset {}: the databases stayed locked by a cook or export for {} s", id, (int64)mSeams.TimeoutSeconds);
+				return .Failed;
+			}
+			return .NotYet;
+		}
+		let deleted = (mSeams.OnDelete != null) ? mSeams.OnDelete(id) : (mSeams.Project.SourceDb.DeleteInstance(id) case .Ok);
+		if (!deleted)
+		{
+			outError.AppendF("could not delete asset {} (log_read says why)", id);
+			return .Failed;
+		}
 		return .Finished;
 	}
 

@@ -29,6 +29,8 @@ struct ToolAnnotations
 	public static Self Creates => .(false, false, false, false);
 	/// Replaces existing data (a scene's source); the same call again lands the same state.
 	public static Self Overwrites => .(false, true, true, false);
+	/// Removes what exists (an asset); calling again finds nothing more to remove.
+	public static Self Deletes => .(false, true, true, false);
 	/// Regenerates derived output (a cook, a dist, the open project); nothing authored is lost.
 	public static Self Rebuilds => .(false, false, true, false);
 	/// Changes the editor's SESSION (a page opened, a selection) and no authored data.

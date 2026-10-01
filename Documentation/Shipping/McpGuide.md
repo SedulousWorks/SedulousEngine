@@ -195,6 +195,10 @@ project and templates do not; the preset's `template` comes back null until one 
   would be SKIPPED on load. Treat a warning as breakage to fix, not noise.
 - `asset_uses` reports DIRECT users only; re-run on a user to walk the chain. An empty
   result plus empty `projectSettingsUses` is the "safe to touch" signal.
+- `asset_delete` refuses while anything uses the asset (the same scan as `asset_uses`, and
+  the refusal names the users); change those first, or pass `force` and fix the dangling
+  references after. It removes the asset, not the original file an import copied under
+  `Sources/`: delete that file yourself if it should go too.
 - `log_read` is incremental: always pass the previous `lastSequence`; a non zero `dropped`
   means the ring overflowed and old lines are gone.
 - `asset_cook` and `project_export` are long running calls (a full cook may run inside
