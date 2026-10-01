@@ -22,6 +22,8 @@ class PointerFakeDevices : IInputSourceProvider
 
 	public void MoveTo(float x, float y)
 	{
+		FakeMouse.DeltaX = x - FakeMouse.X;
+		FakeMouse.DeltaY = y - FakeMouse.Y;
 		FakeMouse.X = x;
 		FakeMouse.Y = y;
 	}

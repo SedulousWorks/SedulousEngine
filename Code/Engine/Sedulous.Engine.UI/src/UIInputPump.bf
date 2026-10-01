@@ -208,10 +208,9 @@ extension UISubsystem
 
 		// A pointer only counts once it is used: moved, clicked or scrolled. A cursor that
 		// sits still, hidden on a handheld say, hovers nothing while keys or a pad drive.
-		let raw = Float2(mouse.X, mouse.Y);
-		let moved = mPointerSeen && ((Math.Abs(raw.X - mLastPointer.X) > 0.5f) || (Math.Abs(raw.Y - mLastPointer.Y) > 0.5f));
-		mPointerSeen = true;
-		mLastPointer = raw;
+		// Moved by its MOTION, not its position: the platform's first report of where the
+		// cursor rests, and a warp, change the position with no motion at all.
+		let moved = (mouse.DeltaX != 0.0f) || (mouse.DeltaY != 0.0f);
 		let used = moved || (mouse.ScrollY != 0.0f) || (mouse.ScrollX != 0.0f)
 			|| mouse.IsButtonDown(.Left) || mouse.IsButtonDown(.Right) || mouse.IsButtonDown(.Middle);
 		if (used)

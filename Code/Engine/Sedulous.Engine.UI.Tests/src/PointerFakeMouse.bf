@@ -13,8 +13,10 @@ class PointerFakeMouse : IMouse
 	public float Y { get; set; } = 0.0f;
 	public float GlobalX => X;
 	public float GlobalY => Y;
-	public float DeltaX => 0.0f;
-	public float DeltaY => 0.0f;
+	/// Set by a move, as a real mouse's motion is: a pointer that only had its position set
+	/// has not moved.
+	public float DeltaX { get; set; } = 0.0f;
+	public float DeltaY { get; set; } = 0.0f;
 	public float ScrollX => 0.0f;
 	public float ScrollY => 0.0f;
 

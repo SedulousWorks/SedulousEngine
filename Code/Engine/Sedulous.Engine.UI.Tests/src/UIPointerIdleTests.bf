@@ -47,7 +47,8 @@ class UIPointerIdleTests
 		defer delete document;
 		canvas.Document.SetDirect(document);
 
-		// The cursor rests over the bottom button from the very first frame.
+		// The cursor rests over the bottom button from the very first frame: a position with
+		// no motion, as the platform first reports one.
 		devices.FakeMouse.X = 100.0f;
 		devices.FakeMouse.Y = 58.0f;
 		fixture.Frame();
@@ -70,7 +71,9 @@ class UIPointerIdleTests
 
 		// The pointer moves: it is in use, and hovers.
 		devices.FakeMouse.Y = 60.0f;
+		devices.FakeMouse.DeltaY = 2.0f;
 		fixture.Frame();
+		devices.FakeMouse.DeltaY = 0.0f;
 		Test.Assert(input.HoveredId == bottom.Id, "a moved pointer hovers");
 
 		// The pad takes over: the hover goes, and stays gone while the pointer rests.
