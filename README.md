@@ -49,7 +49,7 @@ a vector graphics layer with SVG, distance field and coverage fonts, and an edit
 
 **Agent tooling.** An MCP host (`Sedulous.Tools.Mcp`) exposes the engine's reflection, the
 script API, and project operations (import, cook, scene validation, health checks) so an AI
-agent can work on a project. The bundled skill under `.claude/` is the in checkout recipe.
+agent can work on a project. [AGENTS.md](AGENTS.md) is how an agent works on the engine itself.
 
 ## Building
 
@@ -98,8 +98,7 @@ menus with volume settings, music and effects, and gamepad support throughout.
 |:---:|:---:|:---:|
 | ![Title](Documentation/Images/SkyHopper-Title.png) | ![Playing](Documentation/Images/SkyHopper-Play.png) | ![Settings](Documentation/Images/SkyHopper-Settings.png) |
 
-**PaperKid** is an arcade paper-route game: ride around a town block delivering papers against
-the clock, with a scripted game and level tier.
+**PaperKid**, an arcade paper-route game, is a work in progress.
 
 ## Repository layout
 

@@ -13,7 +13,7 @@ connected agent: read `docs://McpGuide.md` via `resources/read` right after conn
 
 ## Build and wire
 
-- Build: `cd Code && ~/Dev/BeefFork/IDE/dist/BeefBuild -workspace=. -config=Debug
+- Build: `cd Code && BeefBuild -workspace=. -config=Debug
   -platform=Linux64 -project=Sedulous.Tools.Mcp` (binary:
   `Code/build/Debug_Linux64/Sedulous.Tools.Mcp/Sedulous.Tools.Mcp`).
 - Wire: `claude mcp add engine -- <repo>/Code/build/Debug_Linux64/Sedulous.Tools.Mcp/Sedulous.Tools.Mcp`
