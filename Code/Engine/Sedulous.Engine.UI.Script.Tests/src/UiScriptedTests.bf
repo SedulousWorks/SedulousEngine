@@ -35,6 +35,7 @@ static class UiScriptedTests
 			class Menu
 			{
 				int retries = 0;
+				float volume = -1.0f;
 				string seen;
 				bool bound = false;
 				void open()
@@ -49,7 +50,9 @@ static class UiScriptedTests
 					bound = retry.IsValid;
 					Ui.FindProgressBar("health").SetValue(0.25f);
 					Ui.FindTextBox("name").SetText("Grace");
+					Ui.FindSlider("volume").OnChanged(ScriptCallback(this.onVolume));
 				}
+				void onVolume() { volume = Ui.FindSlider("volume").Value; }
 				void onRetry() { retries++; Ui.FindLabel("title").SetText("Retried " + retries); }
 				int count() { return Ui.Count; }
 				bool topIsMenu() { return Ui.Top.IsValid && Ui.Top.Name == "menu"; }
@@ -88,6 +91,12 @@ static class UiScriptedTests
 		vm.GetProperty(menu, "retries", ref v);
 		Test.Assert(v.AsInt == 1, "ran at the drain");
 		Test.Assert(bed.Ui.FindLabel("title").Text == "Retried 1", "and reached the UI again from inside the callback");
+
+		// A slider moved, by a drag or a pad: its handler runs at the drain and reads the value.
+		bed.Ui.FindSlider("volume").Resolve().Value.Value = 0.8f;
+		bed.Context.BeginFrame(0.016f);
+		vm.GetProperty(menu, "volume", ref v);
+		Test.Assert(Math.Abs(v.AsFloat - 0.8f) < 0.0001f, scope $"the handler read the new value ({v.AsFloat})");
 
 		// The pop drops the screen; the delegate parked with the button dies with it, and the
 		// runtime outliving it is fine.

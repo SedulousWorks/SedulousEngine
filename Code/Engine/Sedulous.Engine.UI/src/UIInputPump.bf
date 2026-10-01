@@ -283,9 +283,9 @@ extension UISubsystem
 		mBridge.SyncTextInput();
 	}
 
-	/// The directions move focus through the framework's own geometric search, the south
-	/// button submits and the east one cancels, both as the synthesised keys the existing
-	/// activation path already understands.
+	/// The directions arrive as the arrow keys, so the focused control sees them first and an
+	/// unhandled one moves focus through the framework's own geometric search; the south
+	/// button submits and the east one cancels, also as the keys the activation path knows.
 	///
 	/// The pad is deliberately NOT a consumption class: gameplay pad actions keep working,
 	/// and a menu wanting exclusivity pushes an input set, which is the mechanism that
@@ -319,7 +319,9 @@ extension UISubsystem
 			pad.IsButtonDown(.DPadLeft) || (stickX < -cNavThreshold),
 			pad.IsButtonDown(.DPadRight) || (stickX > cNavThreshold));
 
-		let directions = scope FocusDirection[4](.Up, .Down, .Left, .Right);
+		// As the arrow keys, through the same dispatch: the focused control sees the direction
+		// first (a slider steps), and only an unhandled one moves focus.
+		let arrows = scope Sedulous.UI.KeyCode[4](.Up, .Down, .Left, .Right);
 		let focus = mContext.GetFocusManager();
 
 		// A connected pad is how the player navigates, so focus shows; any pad input takes
@@ -358,9 +360,14 @@ extension UISubsystem
 
 			// Nothing focused yet, so land somewhere first.
 			if (focus.FocusedView == null)
+			{
 				LandFocus();
+			}
 			else
-				focus.MoveFocus(directions[i]);
+			{
+				inputManager.ProcessKeyDown(arrows[i], .None, false, mContext.TotalTime);
+				inputManager.ProcessKeyUp(arrows[i], .None, mContext.TotalTime);
+			}
 		}
 
 		// Confirm and back act on the RELEASE. On the press, a button that resumes play would

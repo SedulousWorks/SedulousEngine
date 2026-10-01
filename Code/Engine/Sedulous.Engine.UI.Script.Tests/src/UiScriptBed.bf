@@ -37,7 +37,7 @@ class UiScriptBed
 		delete Context;
 	}
 
-	/// A screen holding a named label, button, bar and text box, plus a nested group with
+	/// A screen holding a named label, button, bar, slider and text box, plus a nested group with
 	/// a second label of the SAME name deeper down.
 	public static UIScreen Screen(StringView name = "screen")
 	{
@@ -54,6 +54,9 @@ class UiScriptBed
 		bar.Name.Set("health");
 		bar.Value.Value = 0.5f;
 		screen.AddView(bar);
+		let volume = new Slider(0.0f, 1.0f, 0.5f);
+		volume.Name.Set("volume");
+		screen.AddView(volume);
 		let edit = new EditText();
 		edit.Name.Set("name");
 		edit.SetText("Ada");

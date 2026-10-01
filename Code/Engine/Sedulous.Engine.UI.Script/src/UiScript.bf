@@ -48,6 +48,8 @@ class UiScript
 	[Scriptable]
 	public UiProgressBar FindProgressBar(StringView name) => UiFinders.FindProgressBar(RootGroup, name);
 	[Scriptable]
+	public UiSlider FindSlider(StringView name) => UiFinders.FindSlider(RootGroup, name);
+	[Scriptable]
 	public UiTextBox FindTextBox(StringView name) => UiFinders.FindTextBox(RootGroup, name);
 	[Scriptable]
 	public UiGroup FindGroup(StringView name) => UiFinders.FindGroup(RootGroup, name);

@@ -96,6 +96,14 @@ static class UiHandleTests
 		Test.Assert(!bed.Ui.FindTextBox("health").IsValid);
 		Test.Assert(bed.Ui.FindProgressBar("health").IsValid && (bed.Ui.FindProgressBar("health").Value == 0.5f));
 		Test.Assert(bed.Ui.FindTextBox("name").IsValid && (bed.Ui.FindTextBox("name").Text == "Ada"));
+		let volume = bed.Ui.FindSlider("volume");
+		Test.Assert(volume.IsValid && (volume.Value == 0.5f) && (volume.Min == 0.0f) && (volume.Max == 1.0f));
+		volume.SetValue(2.0f);
+		Test.Assert(volume.Value == 1.0f, "clamped to the range");
+		volume.SetRange(0.0f, 10.0f);
+		volume.SetValue(7.0f);
+		Test.Assert(volume.Value == 7.0f);
+		Test.Assert(!bed.Ui.FindSlider("health").IsValid, "a progress bar is no slider");
 		Test.Assert(bed.Ui.FindGroup("panel").IsValid);
 		Test.Assert(!bed.Ui.FindGroup("title").IsValid, "a label is no group");
 		// An untyped find answers any view.
@@ -119,7 +127,7 @@ static class UiHandleTests
 		Test.Assert((panel.ChildCount == 2) && (panel.ChildAt(1).Name == "deep") && !panel.ChildAt(2).IsValid);
 
 		let top = bed.Ui.Top;
-		Test.Assert(top.IsValid && (top.Name == "screen") && (top.ChildCount == 5));
+		Test.Assert(top.IsValid && (top.Name == "screen") && (top.ChildCount == 6));
 		Test.Assert(top.FindGroup("panel").IsValid && top.FindButton("retry").IsValid);
 		Test.Assert(top.Find("health").IsValid && panel.Find("deep").IsValid && !panel.Find("retry").IsValid, "an untyped find, scoped as the typed ones");
 		Test.Assert(bed.Ui.Root.IsValid && bed.Ui.Root.FindScreen("screen").IsValid);

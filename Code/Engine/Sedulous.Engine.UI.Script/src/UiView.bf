@@ -178,6 +178,82 @@ struct UiProgressBar
 	public void SetValue(float value) { if (let v = Resolve()) v.Value.Value = value; }
 }
 
+/// A slider: `slider.Value` within `Min`..`Max`, and `OnChanged` for a drag, a click, an arrow
+/// or a pad's left and right. A volume control, say.
+[Scriptable, ScriptName("Slider")]
+struct UiSlider
+{
+	public uint32 Id = 0;
+
+	public this() {}
+	public this(Slider slider) { Id = UiHandles.IdOf(slider); }
+
+	public Slider Resolve() => UiHandles.Resolve<Slider>(Id);
+
+	[Scriptable]
+	public bool IsValid => Resolve() != null;
+	[Scriptable]
+	public StringView Name => Resolve()?.Name ?? "";
+	[Scriptable]
+	public bool Visible => Resolve()?.Visibility == .Visible;
+	[Scriptable]
+	public bool Enabled => Resolve()?.IsEnabled ?? false;
+	[Scriptable]
+	public void SetVisible(bool value) { if (let v = Resolve()) v.Visibility = value ? .Visible : .Hidden; }
+	[Scriptable]
+	public void SetEnabled(bool value) { if (let v = Resolve()) v.IsEnabled = value; }
+	[Scriptable]
+	public float Opacity => Resolve()?.Opacity ?? 0.0f;
+	[Scriptable]
+	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
+	[Scriptable]
+	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
+	[Scriptable]
+	public float Value => Resolve()?.Value.Value ?? 0.0f;
+	/// Clamped and snapped to the range. Like any change it runs the OnChanged handler, so a
+	/// handler that writes the value back must not write a different one each time.
+	[Scriptable]
+	public void SetValue(float value) { if (let v = Resolve()) v.Value.Value = value; }
+	[Scriptable]
+	public float Min => Resolve()?.Min.Value ?? 0.0f;
+	[Scriptable]
+	public float Max => Resolve()?.Max.Value ?? 0.0f;
+	[Scriptable]
+	public void SetRange(float min, float max)
+	{
+		if (let v = Resolve())
+		{
+			v.Min.Value = min;
+			v.Max.Value = max;
+		}
+	}
+	/// The amount an arrow or a pad press moves it; 0 is a twentieth of the range.
+	[Scriptable]
+	public void SetStep(float step) { if (let v = Resolve()) v.Step.Value = step; }
+
+	/// TAKES the delegate: parked with the slider, deleted with it. Null is a no-op. The
+	/// handler reads `Value` itself.
+	[Scriptable]
+	public void OnChanged(ScriptDelegate handler)
+	{
+		let slider = Resolve();
+		if ((slider == null) || (handler == null))
+		{
+			delete handler;
+			return;
+		}
+		UiHandles.Own(slider, handler);
+		slider.OnValueChanged.Add(new (changed, value) =>
+			{
+				let context = (changed != null) ? changed.Context : null;
+				if (context != null)
+					context.MutationQueue.QueueAction(new () => { handler.Invoke(); });
+				else
+					handler.Invoke(); // nothing is dispatching: a headless slider
+			});
+	}
+}
+
 /// A text input: `box.Text` reads, `box.SetText(...)` writes the edited text.
 [Scriptable, ScriptName("TextBox")]
 struct UiTextBox

@@ -86,14 +86,27 @@ class Slider : View
 		let range = Max.Value - Min.Value;
 		let smallStep = (Step.Value > 0) ? Step.Value : range * 0.05f;
 
-		switch (e.Key)
+		// Only the arrows along the slider's own axis: the other two are left unhandled, so
+		// in a menu of sliders and buttons up and down still move between them, keyboard and
+		// pad alike, instead of a horizontal slider swallowing them.
+		let horizontal = Orientation.Value == .Horizontal;
+		let increase = horizontal ? KeyCode.Right : KeyCode.Up;
+		let decrease = horizontal ? KeyCode.Left : KeyCode.Down;
+		if (e.Key == increase)
 		{
-		case .Right, .Up:
 			Value.Value = Value.Value + smallStep;
 			e.Handled = true;
-		case .Left, .Down:
+			return;
+		}
+		if (e.Key == decrease)
+		{
 			Value.Value = Value.Value - smallStep;
 			e.Handled = true;
+			return;
+		}
+
+		switch (e.Key)
+		{
 		case .Home:
 			Value.Value = Min.Value;
 			e.Handled = true;
@@ -227,7 +240,7 @@ class Slider : View
 	{
 		IsFocusable = true;
 		IsTabStop = true;
-		// The arrows drive the value, so focus must not hand them to the focus manager.
+		// The arrows along its axis drive the value; the other two are left for focus.
 		WantsArrowKeys = true;
 		Cursor = .Hand;
 

@@ -14,6 +14,7 @@ static class UiFinders
 	public static UiLabel FindLabel(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<Label>(name) : null);
 	public static UiButton FindButton(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<Button>(name) : null);
 	public static UiProgressBar FindProgressBar(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<ProgressBar>(name) : null);
+	public static UiSlider FindSlider(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<Slider>(name) : null);
 	public static UiTextBox FindTextBox(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<EditText>(name) : null);
 	public static UiGroup FindGroup(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<ViewGroup>(name) : null);
 	public static UiScreen FindScreen(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<UIScreen>(name) : null);
@@ -64,6 +65,8 @@ struct UiGroup
 	[Scriptable]
 	public UiProgressBar FindProgressBar(StringView name) => UiFinders.FindProgressBar(Resolve(), name);
 	[Scriptable]
+	public UiSlider FindSlider(StringView name) => UiFinders.FindSlider(Resolve(), name);
+	[Scriptable]
 	public UiTextBox FindTextBox(StringView name) => UiFinders.FindTextBox(Resolve(), name);
 	[Scriptable]
 	public UiGroup FindGroup(StringView name) => UiFinders.FindGroup(Resolve(), name);
@@ -113,6 +116,8 @@ struct UiScreen
 	public UiButton FindButton(StringView name) => UiFinders.FindButton(Resolve(), name);
 	[Scriptable]
 	public UiProgressBar FindProgressBar(StringView name) => UiFinders.FindProgressBar(Resolve(), name);
+	[Scriptable]
+	public UiSlider FindSlider(StringView name) => UiFinders.FindSlider(Resolve(), name);
 	[Scriptable]
 	public UiTextBox FindTextBox(StringView name) => UiFinders.FindTextBox(Resolve(), name);
 	[Scriptable]

@@ -110,6 +110,35 @@ class RangeControlTests
 		Test.Assert(slider.Value.Value == 100);
 	}
 
+	/// Only the arrows along its axis: a horizontal slider leaves up and down unhandled, so a
+	/// menu of sliders still navigates; a vertical one is the other way round.
+	[Test]
+	public static void ASliderTakesOnlyTheArrowsAlongItsAxis()
+	{
+		let slider = new Slider(0, 100, 50);
+		defer slider.ReleaseRef();
+		slider.Step.Value = 5;
+
+		let down = scope KeyEventArgs();
+		down.Set(.Down, .None, false);
+		slider.OnKeyDown(down);
+		Test.Assert(!down.Handled && (slider.Value.Value == 50), "horizontal: down is for focus");
+		let up = scope KeyEventArgs();
+		up.Set(.Up, .None, false);
+		slider.OnKeyDown(up);
+		Test.Assert(!up.Handled && (slider.Value.Value == 50), "and so is up");
+
+		slider.Orientation.Value = .Vertical;
+		let up2 = scope KeyEventArgs();
+		up2.Set(.Up, .None, false);
+		slider.OnKeyDown(up2);
+		Test.Assert(up2.Handled && (slider.Value.Value == 55), "vertical: up steps");
+		let right = scope KeyEventArgs();
+		right.Set(.Right, .None, false);
+		slider.OnKeyDown(right);
+		Test.Assert(!right.Handled && (slider.Value.Value == 55), "and right is for focus");
+	}
+
 	/// With no step the arrows move a twentieth of the range, so the nudge is sensible whatever
 	/// the scale rather than a fixed amount that is huge on one slider and invisible on another.
 	[Test]
