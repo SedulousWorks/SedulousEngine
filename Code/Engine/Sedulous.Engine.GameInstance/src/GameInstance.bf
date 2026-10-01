@@ -709,7 +709,37 @@ class GameInstance
 
 		mInputRuntime.SetTimeScale(contextTimeScale);
 		mInputRuntime.Update(mInputSource, deltaTime);
+		TraceInput();
 	}
+
+	/// SEDULOUS_INPUT_TRACE set: twice a second, what the input path saw (each pad's left
+	/// stick and south button as the device reports them) and what the actions made of it.
+	/// For a device where input misbehaves and no debugger reaches, a handheld say.
+	private void TraceInput()
+	{
+		if (sTraceInput == 0)
+		{
+			let value = scope String();
+			sTraceInput = ((Environment.GetEnvironmentVariable("SEDULOUS_INPUT_TRACE", value) case .Ok) && !value.IsEmpty) ? 1 : -1;
+		}
+		if ((sTraceInput < 0) || ((mInputRuntime.Frame % 30) != 0))
+			return;
+		let line = scope String();
+		line.AppendF("InputTrace: frame {} source {} pads {}", mInputRuntime.Frame, mInputSource.GetType().GetName(.. scope .()), mInputSource.GamepadCount);
+		for (int32 i < mInputSource.GamepadCount)
+		{
+			if (let pad = mInputSource.GetGamepad(i))
+				line.AppendF(" [{} '{}' connected {} left ({:0.00},{:0.00}) south {}]", pad.Index, pad.Name, pad.Connected,
+					pad.Axis(.LeftX), pad.Axis(.LeftY), pad.IsButtonDown(.South));
+		}
+		let actions = scope String();
+		mInputRuntime.AppendStateSummary(actions);
+		line.AppendF(" | {}", actions);
+		GlobalLog(.Information, line);
+	}
+
+	/// Nought unread, 1 tracing, -1 not.
+	private static int sTraceInput = 0;
 
 	// ==================== Networking ====================
 

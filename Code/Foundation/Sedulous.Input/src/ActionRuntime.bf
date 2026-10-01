@@ -229,6 +229,22 @@ class ActionRuntime
 		mLatchHeldOnce = false;
 	}
 
+	/// Every action's name, value and held state on one line, "Move=(0.00,1.00) Jump=down":
+	/// what a trace of the input path prints.
+	public void AppendStateSummary(String outText)
+	{
+		int flat = 0;
+		for (let set in mMap.Sets)
+		{
+			for (let action in set.Actions)
+			{
+				let state = mStates[flat++];
+				outText.AppendF("{}{}=({:0.00},{:0.00}){}", outText.IsEmpty ? "" : " ", action.Name,
+					state.Smoothed.X, state.Smoothed.Y, state.Pressed ? " down" : "");
+			}
+		}
+	}
+
 	/// The frame counter an edge is exact against. Starts at zero, so the first Update is
 	/// frame one and a state that never fired cannot look like it fired on frame zero.
 	public uint64 Frame => mFrame;
