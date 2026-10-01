@@ -60,8 +60,9 @@ Requirements:
   carries the compiler fixes we have contributed that are still in review, none of which the
   engine depends on.
 - Linux x64 or Windows x64. Prebuilt native libraries for both are in the tree under
-  `Dependencies/*/dist`; each dependency has a `build-native.sh` / `build-native.ps1` to
-  rebuild them.
+  `Dependencies/*/dist`, except SDL3 on Linux, which links the system's: install SDL 3.4
+  (`libsdl3-dev` or your distribution's equivalent). The dependencies built from source carry a
+  `build-native.sh` / `build-native.ps1` to rebuild them.
 - A Vulkan 1.3 or D3D12 capable GPU to run anything that draws.
 - For web builds, [emsdk](https://emscripten.org/) on the path.
 
@@ -86,6 +87,8 @@ Code/build/Debug_Linux64/Sedulous.Tools.Editor/Sedulous.Tools.Editor            
 Code/build/Debug_Linux64/Sedulous.Tools.Editor/Sedulous.Tools.Editor <projectDir>  # open a project
 ```
 
+Add `--mcp` to serve the project to an agent over MCP while you work in the editor.
+
 ## Sample projects
 
 Game projects under `Data/SampleProjects/`, opened from the editor's project manager.
@@ -109,10 +112,10 @@ Code/
   Engine/         The subsystems over Foundation, the default application, the player
   Pipeline/       Importers and cooks per asset type, the export
   Editor/         Editor core and one module per domain
-  Tools/          Editor, Cook, Export, ShaderPack and Mcp executables
+  Tools/          Editor, Cook, Export, ShaderPack and Mcp executables; the Steam Deck build
   Samples/        Engine samples and the 30 RHI samples
   Integration/    Cross collection flow tests
-Data/             Engine data: shaders, fonts, themes, environments
+Data/             Engine data (shaders, fonts, themes, environments) and the sample projects
 Dependencies/     Beef bindings for the native libraries, with prebuilt binaries
 Bin/              Naga and Tint, the WGSL tools the shader cook drives
 Documentation/    Shipping documentation, served to agents through the MCP host
@@ -127,7 +130,8 @@ each, from a triangle to ray tracing and render bundles, and run on every backen
 Linux and Windows are the development platforms, on Vulkan and D3D12. WebGPU runs on the
 desktop through wgpu-native and in the browser through a wasm build; `Samples.WebTriangle`
 and `Samples.WebScene` are the browser samples, and the export tool produces a web player.
-macOS has no backend yet.
+A Steam Deck player builds in a container (`Code/Tools/SteamDeck/`), and the export packages a
+game for it. macOS has no backend yet.
 
 ## Dependencies
 
