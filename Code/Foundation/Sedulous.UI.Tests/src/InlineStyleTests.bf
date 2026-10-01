@@ -177,8 +177,8 @@ class InlineStyleTests
 		Test.Assert(value.AsString.Value == "Roboto");
 
 		view.SetStyle(.FontFamily, "JungleAdventurer");
-		view.SetStyle(.FontFamily, "AttackOfMonster");
-		Test.Assert(view.GetInlineStyle(.FontFamily).AsString.Value == "AttackOfMonster");
+		view.SetStyle(.FontFamily, "LilitaOne");
+		Test.Assert(view.GetInlineStyle(.FontFamily).AsString.Value == "LilitaOne");
 	}
 
 	// ---- Pseudo element level ---------------------------------------------------------------

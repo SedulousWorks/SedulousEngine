@@ -9,8 +9,8 @@ namespace Samples.UISandbox;
 static class SandboxContent
 {
 	public const String cFontFile = "Assets/fonts/roboto/Roboto-Regular.ttf";
-	public const String cMonsterFontFile =
-		"Assets/fonts/attack-of-monster/Attack Of Monster.ttf";
+	public const String cTitleFontFile =
+		"Assets/fonts/lilita-one/LilitaOne-Regular.ttf";
 	public const String cJungleFontFile =
 		"Assets/fonts/jungle-adventurer/JungleAdventurer.ttf";
 	public const String cUiAssetDir = "Assets/ui";

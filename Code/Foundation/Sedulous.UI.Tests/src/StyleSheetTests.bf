@@ -91,9 +91,9 @@ class StyleSheetTests
 		defer rule.ReleaseRef();
 		rule.Set(.FontFamily, "Roboto");
 		rule.Set(.FontFamily, "JungleAdventurer");
-		rule.Set(.FontFamily, "AttackOfMonster");
+		rule.Set(.FontFamily, "LilitaOne");
 
-		Test.Assert(rule.GetValue(.FontFamily).Value.AsString.Value == "AttackOfMonster");
+		Test.Assert(rule.GetValue(.FontFamily).Value.AsString.Value == "LilitaOne");
 		Test.Assert(rule.PropertyCount == 1);
 	}
 

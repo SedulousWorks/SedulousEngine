@@ -320,15 +320,15 @@ class UISandboxApp : IApplication
 
 		// The decorative families the pause menu demonstrates. A missing family falls back to
 		// Roboto, so the demo still renders when a checkout does not carry them.
-		let monster = scope String();
+		let titleFont = scope String();
 		let jungle = scope String();
-		let hasMonster = SandboxContent.FindFile(SandboxContent.cMonsterFontFile, monster);
+		let hasTitleFont = SandboxContent.FindFile(SandboxContent.cTitleFontFile, titleFont);
 		let hasJungle = SandboxContent.FindFile(SandboxContent.cJungleFontFile, jungle);
 
 		for (let size in float[](14.0f, 18.0f, 24.0f, 32.0f))
 		{
-			if (hasMonster)
-				LoadFontSize("AttackOfMonster", monster, size);
+			if (hasTitleFont)
+				LoadFontSize("LilitaOne", titleFont, size);
 
 			if (hasJungle)
 				LoadFontSize("JungleAdventurer", jungle, size);

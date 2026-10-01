@@ -493,11 +493,11 @@ class SSSParserTests
 	[Test]
 	public static void AFontFamilyTakesAQuotedStringOrABareIdentifier()
 	{
-		let quoted = scope Fixture(LoadSSS("View { font-family: \"Attack Of Monster\"; }"));
+		let quoted = scope Fixture(LoadSSS("View { font-family: \"Lilita One\"; }"));
 		// Held in a NAMED local: AsString borrows into the value.
 		let quotedValue = quoted.AddView().ResolveStyle(.FontFamily);
 		Test.Assert(quotedValue.AsString != null);
-		Test.Assert(quotedValue.AsString.Value == "Attack Of Monster");
+		Test.Assert(quotedValue.AsString.Value == "Lilita One");
 
 		let bare = scope Fixture(LoadSSS("View { font-family: JungleAdventurer; }"));
 		let bareValue = bare.AddView().ResolveStyle(.FontFamily);

@@ -76,7 +76,7 @@ static class PauseMenuTab
 		title.SetStyle(.TextColor, Color.Rgb(255, 220, 100));
 		title.SetStyle(.FontSize, 32.0f);
 		// This family wins over the local sheet's, which is the point of setting both.
-		title.SetStyle(.FontFamily, "AttackOfMonster");
+		title.SetStyle(.FontFamily, "LilitaOne");
 	}
 
 	/// Scopes a theme change to this subtree alone: the rest of the sandbox keeps the global
