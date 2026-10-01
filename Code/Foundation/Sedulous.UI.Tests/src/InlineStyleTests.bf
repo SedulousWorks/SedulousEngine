@@ -176,7 +176,7 @@ class InlineStyleTests
 		Test.Assert(value.AsString != null);
 		Test.Assert(value.AsString.Value == "Roboto");
 
-		view.SetStyle(.FontFamily, "JungleAdventurer");
+		view.SetStyle(.FontFamily, "Chewy");
 		view.SetStyle(.FontFamily, "LilitaOne");
 		Test.Assert(view.GetInlineStyle(.FontFamily).AsString.Value == "LilitaOne");
 	}

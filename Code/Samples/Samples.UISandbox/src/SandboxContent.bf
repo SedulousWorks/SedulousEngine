@@ -11,8 +11,8 @@ static class SandboxContent
 	public const String cFontFile = "Assets/fonts/roboto/Roboto-Regular.ttf";
 	public const String cTitleFontFile =
 		"Assets/fonts/lilita-one/LilitaOne-Regular.ttf";
-	public const String cJungleFontFile =
-		"Assets/fonts/jungle-adventurer/JungleAdventurer.ttf";
+	public const String cPlayfulFontFile =
+		"Assets/fonts/chewy/Chewy-Regular.ttf";
 	public const String cUiAssetDir = "Assets/ui";
 
 	public static bool FindFile(StringView relative, String outPath) =>

@@ -85,7 +85,7 @@ static class PauseMenuTab
 	{
 		let sheet = new StyleSheet();
 
-		sheet.ForAll().Set(.FontFamily, "JungleAdventurer");
+		sheet.ForAll().Set(.FontFamily, "Chewy");
 		sheet.ForType(typeof(Label))
 			.Set(.FontSize, 14.0f)
 			.Set(.TextColor, Color.Rgb(210, 215, 225));

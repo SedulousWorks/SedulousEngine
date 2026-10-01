@@ -389,11 +389,11 @@ class LocalStyleSheetTests
 		pauseRoot.AddView(inner);
 		inner.AddView(view);
 
-		SetupLocalSheet(pauseRoot).ForAll().Set(.FontFamily, "JungleAdventurer");
+		SetupLocalSheet(pauseRoot).ForAll().Set(.FontFamily, "Chewy");
 
-		Test.Assert(pauseRoot.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
-		Test.Assert(inner.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
-		Test.Assert(view.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
+		Test.Assert(pauseRoot.ResolveStyle(.FontFamily).AsString.Value == "Chewy");
+		Test.Assert(inner.ResolveStyle(.FontFamily).AsString.Value == "Chewy");
+		Test.Assert(view.ResolveStyle(.FontFamily).AsString.Value == "Chewy");
 	}
 
 	/// A TYPE scoped rule reaches nothing when no view in the chain is that type, even though
@@ -412,7 +412,7 @@ class LocalStyleSheetTests
 
 		// A type that appears nowhere in this chain, the point being that the type simply does
 		// not occur above the view.
-		SetupLocalSheet(outer).ForType(typeof(FrameLayout)).Set(.FontFamily, "JungleAdventurer");
+		SetupLocalSheet(outer).ForType(typeof(FrameLayout)).Set(.FontFamily, "Chewy");
 
 		Test.Assert(inner.ResolveStyle(.FontFamily).IsNone);
 	}
@@ -429,8 +429,8 @@ class LocalStyleSheetTests
 		root.AddView(outer);
 		outer.AddView(inner);
 
-		SetupLocalSheet(outer).ForType(typeof(TestGroup)).Set(.FontFamily, "JungleAdventurer");
+		SetupLocalSheet(outer).ForType(typeof(TestGroup)).Set(.FontFamily, "Chewy");
 
-		Test.Assert(inner.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
+		Test.Assert(inner.ResolveStyle(.FontFamily).AsString.Value == "Chewy");
 	}
 }

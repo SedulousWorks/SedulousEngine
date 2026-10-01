@@ -328,11 +328,11 @@ class ThemeAndFontTests
 
 		let view = new TestView(50, 30);
 		root.AddView(view);
-		view.SetStyle(.FontFamily, "JungleAdventurer");
+		view.SetStyle(.FontFamily, "Chewy");
 
 		let resolved = view.ResolveStyle(.FontFamily);
 		Test.Assert(resolved.AsString != null);
-		Test.Assert(resolved.AsString.Value == "JungleAdventurer");
+		Test.Assert(resolved.AsString.Value == "Chewy");
 	}
 
 	/// The draw path re-asserts the context's CURRENT font service into the VG every frame.

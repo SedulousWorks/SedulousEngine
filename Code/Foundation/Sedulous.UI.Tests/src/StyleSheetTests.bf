@@ -90,7 +90,7 @@ class StyleSheetTests
 		let rule = new StyleRule();
 		defer rule.ReleaseRef();
 		rule.Set(.FontFamily, "Roboto");
-		rule.Set(.FontFamily, "JungleAdventurer");
+		rule.Set(.FontFamily, "Chewy");
 		rule.Set(.FontFamily, "LilitaOne");
 
 		Test.Assert(rule.GetValue(.FontFamily).Value.AsString.Value == "LilitaOne");
@@ -118,8 +118,8 @@ class StyleSheetTests
 			let rule = new StyleRule();
 			defer rule.ReleaseRef();
 			rule.Set(.FontFamily, "Roboto");
-			rule.Set(.FontFamily, "JungleAdventurer");
-			Test.Assert(rule.GetValue(.FontFamily).Value.AsString.Value == "JungleAdventurer");
+			rule.Set(.FontFamily, "Chewy");
+			Test.Assert(rule.GetValue(.FontFamily).Value.AsString.Value == "Chewy");
 		}
 	}
 
@@ -571,15 +571,15 @@ class StyleSheetTests
 	{
 		MakeTree(let context, let root);
 		defer { root.ReleaseRef(); delete context; }
-		SetupSheet(context).ForAll().Set(.FontFamily, "JungleAdventurer");
+		SetupSheet(context).ForAll().Set(.FontFamily, "Chewy");
 
 		let group = new TestGroup();
 		let view = new TestView(50, 30);
 		root.AddView(group);
 		group.AddView(view);
 
-		Test.Assert(view.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
-		Test.Assert(group.ResolveStyle(.FontFamily).AsString.Value == "JungleAdventurer");
+		Test.Assert(view.ResolveStyle(.FontFamily).AsString.Value == "Chewy");
+		Test.Assert(group.ResolveStyle(.FontFamily).AsString.Value == "Chewy");
 	}
 
 	[Test]

@@ -499,10 +499,10 @@ class SSSParserTests
 		Test.Assert(quotedValue.AsString != null);
 		Test.Assert(quotedValue.AsString.Value == "Lilita One");
 
-		let bare = scope Fixture(LoadSSS("View { font-family: JungleAdventurer; }"));
+		let bare = scope Fixture(LoadSSS("View { font-family: Chewy; }"));
 		let bareValue = bare.AddView().ResolveStyle(.FontFamily);
 		Test.Assert(bareValue.AsString != null);
-		Test.Assert(bareValue.AsString.Value == "JungleAdventurer");
+		Test.Assert(bareValue.AsString.Value == "Chewy");
 	}
 
 	// ---- Inline styles through the parser ---------------------------------------------------
