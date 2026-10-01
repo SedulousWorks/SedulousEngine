@@ -221,8 +221,15 @@ class PhysicsWorld
 		switch (desc.Kind)
 		{
 		case .Box:
+			// The backend asserts the half extent is at least the convex radius, so a thin box
+			// (an imported model's placeholder body box is 0.01) gets a smaller radius, as a
+			// query box does; one with no extent is no shape at all.
+			let minExtent = Min(desc.HalfExtents.X, Min(desc.HalfExtents.Y, desc.HalfExtents.Z));
+			if (!(minExtent > 0.0f))
+				return null;
 			var halfExtents = ToJolt(desc.HalfExtents);
-			shape = (JPH_Shape*)JPH_BoxShape_Create(&halfExtents, JPH_DEFAULT_CONVEX_RADIUS);
+			shape = (JPH_Shape*)JPH_BoxShape_Create(&halfExtents,
+				Min(JPH_DEFAULT_CONVEX_RADIUS, minExtent * 0.5f));
 		case .Sphere:
 			shape = (JPH_Shape*)JPH_SphereShape_Create(desc.Radius);
 		case .Capsule:

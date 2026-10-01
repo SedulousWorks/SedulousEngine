@@ -10,6 +10,53 @@ namespace Sedulous.Physics.Tests;
 /// continuous collision and mass.
 class PhysicsWorldTests
 {
+	/// A box thinner than the backend's default convex radius (0.05) builds with a smaller
+	/// one instead of tripping the backend's assert: an imported model's prefab gives its body a
+	/// 0.01 placeholder box beside the real collider, so a level of such models stopped a debug
+	/// build at play.
+	[Test]
+	public static void ABoxThinnerThanTheConvexRadiusBuildsAloneAndInACompound()
+	{
+		let world = scope PhysicsWorld();
+
+		var sliver = ShapeDesc();
+		sliver.Kind = .Box;
+		sliver.HalfExtents = .(0.01f, 0.01f, 0.01f);
+		let thin = scope BodyDesc();
+		thin.Motion = .Static;
+		thin.Layer = .Static;
+		thin.Shapes.Add(sliver);
+		Test.Assert(world.CreateBody(thin).IsValid);
+
+		// The prefab's shape: the placeholder at the origin and the real collider (a half
+		// metre box) beside it, compounded. A ray finds the real one.
+		let model = scope BodyDesc();
+		model.Motion = .Static;
+		model.Layer = .Static;
+		model.UserData = 7;
+		model.Position = .(5.0f, 0.0f, 0.0f);
+		model.Shapes.Add(sliver);
+		var solid = ShapeDesc();
+		solid.Kind = .Box;
+		solid.HalfExtents = .(0.5f, 0.5f, 0.5f);
+		solid.LocalPosition = .(0.0f, 0.5f, 0.0f);
+		model.Shapes.Add(solid);
+		Test.Assert(world.CreateBody(model).IsValid);
+		Test.Assert(world.RayCast(.(5.0f, 10.0f, 0.0f), .(0.0f, -1.0f, 0.0f), 100.0f, let hit));
+		Test.Assert(hit.UserData == 7);
+		Test.Assert(Near(hit.Position.Y, 1.0f, 0.02f), "the real box's top face");
+
+		// A box with no extent is no shape: the body is refused, not built degenerate.
+		var flatBox = ShapeDesc();
+		flatBox.Kind = .Box;
+		flatBox.HalfExtents = .(0.5f, 0.0f, 0.5f);
+		let flat = scope BodyDesc();
+		flat.Motion = .Static;
+		flat.Layer = .Static;
+		flat.Shapes.Add(flatBox);
+		Test.Assert(!world.CreateBody(flat).IsValid);
+	}
+
 	[Test]
 	public static void ABoxFallsAndRestsOnTheFloor()
 	{
