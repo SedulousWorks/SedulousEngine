@@ -103,6 +103,15 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// nothing else; invalid with none. The back button (east) only needs to have gone down
 	/// while the UI was pumping.
 	private ViewId mConfirmPressedOn = .Invalid;
+	/// The pointer is in use: it moved, clicked or scrolled since a key or a pad last drove
+	/// the UI. Only a live pointer hovers. Off until the pointer first moves, so a cursor
+	/// resting where the window opened lights nothing up.
+	private bool mPointerLive = false;
+	private bool mPointerSeen = false;
+	private Float2 mLastPointer = .(0.0f, 0.0f);
+	/// A key or a pad has driven the UI, or a pad is connected: focus then shows its ring
+	/// however it arrived, since that is what the player navigates by.
+	private bool mNavigating = false;
 	private bool mBackPressed = false;
 	/// SEDULOUS_INPUT_TRACE: nought unread, 1 tracing, -1 not; and the frame counter it samples on.
 	private int mTraceUi = 0;

@@ -406,6 +406,23 @@ class InputManager
 		return false;
 	}
 
+	/// Nothing is under the pointer any more: what was hovered is told it lost it. For a
+	/// pointer that is not in use, a hidden cursor parked over a button while a pad drives the
+	/// menu, which must not light that button up.
+	public void ClearHover()
+	{
+		if (!mHoveredId.IsValid)
+			return;
+		if (let oldHovered = mContext.GetViewById(mHoveredId))
+		{
+			oldHovered.OnMouseLeave();
+			oldHovered.InvalidateVisual();
+		}
+		mHoveredId = ViewId.Invalid;
+		mContext.Tooltips.OnHoverChanged(null);
+		mCurrentCursor = .Default;
+	}
+
 	/// Recomputes what the pointer is over, telling the views that gained and lost it.
 	///
 	/// The invalidation is VISUAL: a hover tint changes no geometry, and relayouting the tree on

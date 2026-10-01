@@ -50,6 +50,7 @@ extension UISubsystem
 		PumpMouse(mouse, inputManager, panelPointer, panelPointerPx);
 		PumpKeyboard(devices);
 		PumpGamepad(devices, inputManager);
+		ShowNavigationFocus();
 		PublishConsumption(mouse, panelPointer, inputManager);
 		TraceUi(mouse);
 	}
@@ -205,6 +206,22 @@ extension UISubsystem
 		if (mouse == null)
 			return;
 
+		// A pointer only counts once it is used: moved, clicked or scrolled. A cursor that
+		// sits still, hidden on a handheld say, hovers nothing while keys or a pad drive.
+		let raw = Float2(mouse.X, mouse.Y);
+		let moved = mPointerSeen && ((Math.Abs(raw.X - mLastPointer.X) > 0.5f) || (Math.Abs(raw.Y - mLastPointer.Y) > 0.5f));
+		mPointerSeen = true;
+		mLastPointer = raw;
+		let used = moved || (mouse.ScrollY != 0.0f) || (mouse.ScrollX != 0.0f)
+			|| mouse.IsButtonDown(.Left) || mouse.IsButtonDown(.Right) || mouse.IsButtonDown(.Middle);
+		if (used)
+			mPointerLive = true;
+		if (!mPointerLive)
+		{
+			inputManager.ClearHover();
+			return;
+		}
+
 		var x = panelPointer ? panelPointerPx.X : mouse.X;
 		var y = panelPointer ? panelPointerPx.Y : mouse.Y;
 		// The screen tier drawn fitted takes its pointer in its own pixels.
@@ -249,6 +266,8 @@ extension UISubsystem
 			switch (event.Kind)
 			{
 			case .KeyDown:
+				mPointerLive = false;
+				mNavigating = true;
 				// An arrow with nothing focused lands on the menu first, as the pad does,
 				// rather than going nowhere; that press does not also move on.
 				if (IsArrow(event.Key) && (mContext.GetFocusManager().FocusedView == null) && LandFocus())
@@ -303,6 +322,12 @@ extension UISubsystem
 
 		let directions = scope FocusDirection[4](.Up, .Down, .Left, .Right);
 		let focus = mContext.GetFocusManager();
+
+		// A connected pad is how the player navigates, so focus shows; any pad input takes
+		// over from the pointer.
+		mNavigating = true;
+		if (wants[0] || wants[1] || wants[2] || wants[3] || pad.IsButtonPressed(.South) || pad.IsButtonPressed(.East))
+			mPointerLive = false;
 
 		for (int i < 4)
 		{
@@ -396,6 +421,18 @@ extension UISubsystem
 			line.AppendF(" | pointer ({:0},{:0}) layout ({:0},{:0})", mouse.X, mouse.Y, point.X, point.Y);
 		}
 		GlobalLog(.Information, line);
+	}
+
+	/// While keys or a pad drive and the pointer is idle, focus a screen set by itself (its
+	/// default button) shows its ring: the player has to see where the confirm button goes
+	/// before the first direction press. A pointer in use keeps the quiet look.
+	private void ShowNavigationFocus()
+	{
+		if (!mNavigating || mPointerLive)
+			return;
+		let focus = mContext.GetFocusManager();
+		if ((focus != null) && (focus.FocusedView != null) && (focus.Source == .Programmatic))
+			focus.SetFocus(focus.FocusedView, .Keyboard);
 	}
 
 	/// What the UI took, published to the action layer so a click on a menu never also fires
