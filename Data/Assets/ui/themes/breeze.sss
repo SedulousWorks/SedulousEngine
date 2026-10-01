@@ -135,7 +135,11 @@ Slider::fill {
 	background: rounded-rect($primary, radius=2);
 }
 Slider::thumb {
-	background: rounded-rect($surface, radius=8, border=#787b80, border-width=1);
+	/* Focused (keys or a pad have it): the accent border Breeze's other controls use. */
+	background: state-list(
+		normal=rounded-rect($surface, radius=8, border=#787b80, border-width=1),
+		focused=rounded-rect($surface, radius=8, border=$primary-accent, border-width=2)
+	);
 	width: 16;
 }
 

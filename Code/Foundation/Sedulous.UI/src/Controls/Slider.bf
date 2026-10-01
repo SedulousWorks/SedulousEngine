@@ -154,15 +154,15 @@ class Slider : View
 			let trackLeft = thumbHalf;
 			let trackWidth = (Width - thumbHalf) - trackLeft;
 
-			DrawPart(ctx, trackDrawable, .(trackLeft, trackY, trackWidth, trackThickness), trackColor);
+			DrawPart(ctx, trackDrawable, .(trackLeft, trackY, trackWidth, trackThickness), trackColor, state);
 
 			let fillWidth = trackWidth * progress;
 			if (fillWidth > 0)
-				DrawPart(ctx, fillDrawable, .(trackLeft, trackY, fillWidth, trackThickness), fillColor);
+				DrawPart(ctx, fillDrawable, .(trackLeft, trackY, fillWidth, trackThickness), fillColor, state);
 
 			let thumbX = trackLeft + trackWidth * progress;
 			if (thumbDrawable != null)
-				thumbDrawable.Draw(ctx, .(thumbX - thumbHalf, Height * 0.5f - thumbHalf, thumbSize, thumbSize));
+				thumbDrawable.Draw(ctx, .(thumbX - thumbHalf, Height * 0.5f - thumbHalf, thumbSize, thumbSize), state);
 			else
 				ctx.VG.FillCircle(.(thumbX, Height * 0.5f), thumbHalf, thumbColor);
 		}
@@ -172,27 +172,29 @@ class Slider : View
 			let trackTop = thumbHalf;
 			let trackHeight = (Height - thumbHalf) - trackTop;
 
-			DrawPart(ctx, trackDrawable, .(trackX, trackTop, trackThickness, trackHeight), trackColor);
+			DrawPart(ctx, trackDrawable, .(trackX, trackTop, trackThickness, trackHeight), trackColor, state);
 
 			// Vertical runs bottom to top: the fill grows UP from the low end, which is where a
 			// vertical slider's minimum sits.
 			let fillHeight = trackHeight * progress;
 			if (fillHeight > 0)
 				DrawPart(ctx, fillDrawable,
-					.(trackX, (trackTop + trackHeight) - fillHeight, trackThickness, fillHeight), fillColor);
+					.(trackX, (trackTop + trackHeight) - fillHeight, trackThickness, fillHeight), fillColor, state);
 
 			let thumbY = (trackTop + trackHeight) - trackHeight * progress;
 			if (thumbDrawable != null)
-				thumbDrawable.Draw(ctx, .(Width * 0.5f - thumbHalf, thumbY - thumbHalf, thumbSize, thumbSize));
+				thumbDrawable.Draw(ctx, .(Width * 0.5f - thumbHalf, thumbY - thumbHalf, thumbSize, thumbSize), state);
 			else
 				ctx.VG.FillCircle(.(Width * 0.5f, thumbY), thumbHalf, thumbColor);
 		}
 	}
 
-	private static void DrawPart(UIDrawContext ctx, Drawable drawable, Rectangle rect, Color fallback)
+	/// With the control's state, so a state-list part (a thumb that lights up when focused)
+	/// draws the entry for it; without, a state list only ever draws its normal entry.
+	private static void DrawPart(UIDrawContext ctx, Drawable drawable, Rectangle rect, Color fallback, ControlState state)
 	{
 		if (drawable != null)
-			drawable.Draw(ctx, rect);
+			drawable.Draw(ctx, rect, state);
 		else
 			ctx.VG.FillRect(rect, fallback);
 	}

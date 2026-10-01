@@ -105,7 +105,12 @@ RadioButton::box:checked {
 /* === Slider === */
 Slider::track { background: color(mix($surface, $border, 80%)); height: 4; }
 Slider::fill { background: color($primary-accent); }
-Slider::thumb { background: color($primary-accent); width: 16; }
+/* Focused (keys or a pad have it): the accent knob gains a ring in the text colour, the
+ * accent itself being the knob. */
+Slider::thumb {
+    background: state-list(normal=color($primary-accent), focused=rounded-rect($primary-accent, radius=0, border=$text, border-width=3));
+    width: 16;
+}
 
 /* === ProgressBar === */
 ProgressBar::track { background: color(mix($surface, $border, 80%)); }

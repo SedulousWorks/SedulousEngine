@@ -101,7 +101,11 @@ RadioButton::box:checked {
 /* === Slider - rounded track and thumb === */
 Slider::track { background: rounded-rect(lighten($surface, 12%), radius=2); height: 4; }
 Slider::fill { background: rounded-rect($primary-accent, radius=2); }
-Slider::thumb { background: rounded-rect($text, radius=8); width: 16; }
+/* Focused (keys or a pad have it): the knob gains an accent ring. */
+Slider::thumb {
+    background: state-list(normal=rounded-rect($text, radius=8), focused=rounded-rect($text, radius=8, border=$primary-accent, border-width=3));
+    width: 16;
+}
 
 /* === ProgressBar - rounded === */
 ProgressBar::track { background: rounded-rect(lighten($surface, 12%), radius=4); }
