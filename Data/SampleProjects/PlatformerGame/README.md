@@ -5,6 +5,8 @@ agent gets making a game with them, where every missing or wrong tool was fixed 
 as part of the work. It has also shipped to a Steam Deck through the container build
 (`Code/Tools/SteamDeck/`).
 
+![Sky Hopper, Level 1](../../../Documentation/Images/SkyHopper-Play.png)
+
 ## The game
 
 Three levels of floating grass islands (Grassy Hills, Crab Crossing, Sky Climb): hop between
