@@ -1,5 +1,8 @@
 # Sedulous Engine
 
+[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/WSvxW8mWH5)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A game engine written in [Beef](https://www.beeflang.org/): a layered runtime with Vulkan,
 Direct3D 12 and WebGPU backends, a scene editor, an asset pipeline, AngelScript gameplay
 scripting, and a CSS styled UI framework. It runs on Linux, Windows and, through
@@ -118,6 +121,15 @@ Beef bindings, vendored under `Dependencies/`: Bulkan (Vulkan), Win32-Beef (D3D1
 DXGI), wgpu-Beef, SDL3, Dxc-Beef, joltc-Beef, recastnavigation-Beef,
 miniaudio (with stb_vorbis for Ogg), AngelScript-Beef, cgltf and ufbx, meshoptimizer,
 msdfgen, stb_image and stb_truetype, astcenc, bc7enc and bcdec, cimgui.
+
+## Community
+
+Join the [Discord](https://discord.gg/WSvxW8mWH5) for discussion and support.
+
+## Inspiration
+
+Sedulous draws inspiration from [ezEngine](https://github.com/ezEngine/ezEngine),
+[LumixEngine](https://github.com/nem0/LumixEngine) and [Traktor](https://github.com/apistol78/traktor).
 
 ## License
 
