@@ -137,6 +137,35 @@ class SceneLoadTests
 	}
 
 	[Test]
+	public static void ALevelLoadReplacesTheSceneItLandsOver()
+	{
+		let fixture = scope SceneContentFixture("scratch_gi_load_replace");
+		let level = AuthorLevel(fixture, "level");
+
+		let resources = scope ResourceManager(fixture.Database);
+		let instance = scope GameInstance();
+		instance.SetSceneActivationPolicy(new (scene) => { scene.Start(); scene.SetSimulationEnabled(true); });
+
+		instance.TrackLoad(instance.LoadSceneAsync(level, resources, null));
+		instance.PumpLoads();
+		let first = instance.GetScene();
+		Test.Assert(first != null);
+		Test.Assert(instance.Scenes.SceneCount == 1);
+
+		// The same level again, as a restart loads it: the new copy is the run's scene and
+		// the scene manager's current, and the old one is gone rather than ticking unseen.
+		let handle = instance.LoadSceneAsync(level, resources, null);
+		let second = handle.Scene;
+		instance.TrackLoad(handle);
+		Test.Assert(instance.Scenes.SceneCount == 2, "both exist while the new one loads");
+		instance.PumpLoads();
+		Test.Assert(instance.GetScene() === second);
+		Test.Assert(instance.Scenes.CurrentScene === second);
+		Test.Assert(instance.Scenes.IsActive(second));
+		Test.Assert(instance.Scenes.SceneCount == 1, scope $"{instance.Scenes.SceneCount} scenes after the load");
+	}
+
+	[Test]
 	public static void AFailedLoadReadsTerminalByTicket()
 	{
 		let fixture = scope SceneContentFixture("scratch_gi_load_failed");

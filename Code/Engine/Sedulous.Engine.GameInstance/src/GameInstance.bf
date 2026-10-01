@@ -393,9 +393,17 @@ class GameInstance
 			}
 
 			// The instance's own bookkeeping first, then the app's policy.
+			let previous = mScene;
 			SetScene(activated);
+			mSceneManager.CurrentScene = activated;
 			if (mActivationPolicy != null)
 				mActivationPolicy(activated);
+
+			// A level load REPLACES the level it lands over. Left alone, the old one kept
+			// ticking unseen beside the new: its player still read the input, its falls still
+			// reached the run bus, and every restart stacked one more.
+			if ((previous != null) && (previous !== activated))
+				DestroyScene(previous);
 
 			// Retired: the ticket now reads terminal safe through the fallback.
 			mLoads.RemoveAt(i);
@@ -459,7 +467,7 @@ class GameInstance
 
 	/// Starts a level load by id: the ticket a script polls, or nought when the load could
 	/// not start, a wrong id or no loader. The scene activates through the app's policy once
-	/// its resources land, on the pump.
+	/// its resources land, on the pump, and replaces the current one then.
 	[Scriptable]
 	public int32 LoadSceneAsync(Guid sceneId)
 	{
@@ -471,7 +479,8 @@ class GameInstance
 		return TrackLoad(handle);
 	}
 
-	/// Loads a level and activates it now, the app's policy applied. False when it could not.
+	/// Loads a level and activates it now, the app's policy applied, in place of the current
+	/// one, which is destroyed. False when it could not, and the current one stays.
 	[Scriptable]
 	public bool LoadScene(Guid sceneId)
 	{
