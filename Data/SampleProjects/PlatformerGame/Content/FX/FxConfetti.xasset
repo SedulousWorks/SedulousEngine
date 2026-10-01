@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">292a3bbc-dd5c-9847-b793-2147a3a3bdd8</string>
+	<string name="typeName">Sedulous.Scene.Resource.PrefabDocument</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6298966941287295178</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="name">FxConfetti</string>
+		</object>
+	</object>
+</root>

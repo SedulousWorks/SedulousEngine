@@ -1,0 +1,16 @@
+<root>
+	<string name="guid">2d573729-d28d-9742-b635-32cb52568227</string>
+	<string name="typeName">Sedulous.Physics.Pipeline.CollisionShapeAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">1712831375865383245</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<string name="sourceMesh">c4a6c27b-3ec4-3147-b791-34dbaac60a0f</string>
+			<u8 name="cook">1</u8>
+			<f32 name="hullTolerance">0.001</f32>
+		</object>
+	</object>
+</root>

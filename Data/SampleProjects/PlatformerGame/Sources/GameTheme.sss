@@ -1,0 +1,48 @@
+/* Sky Hopper's theme: the WHOLE game UI sheet. A project theme replaces the engine's built-in
+ * one rather than layering over it, so anything not styled here falls back to each control's
+ * own drawing colours. Warm, rounded, readable over a bright 3D scene; focus is as loud as
+ * hover, since menus are driven by keys and pads. */
+
+Label { text-color: #F4F1E8; }
+
+.label { text-color: #F4F1E8; }
+.label-dim { text-color: #B9C3D6; }
+
+ButtonBase {
+	background: state-list(
+		normal=rounded-rect(#2B3A55, radius=12, border=#51698F, border-width=2),
+		hover=rounded-rect(#34496B, radius=12, border=#FFE278, border-width=2),
+		pressed=rounded-rect(#FFB938, radius=12, border=#FFE278, border-width=2),
+		focused=rounded-rect(#34496B, radius=12, border=#FFE278, border-width=3),
+		disabled=rounded-rect(#252B36, radius=12, border=#3A4150, border-width=2)
+	);
+	text-color: #F4F1E8;
+	font-size: 20;
+	padding: 6 16;
+	corner-radius: 12;
+}
+
+.primary {
+	background: state-list(
+		normal=rounded-rect(#F29A2E, radius=12, border=#FFD27A, border-width=2),
+		hover=rounded-rect(#FFAE45, radius=12, border=#FFF1B8, border-width=2),
+		pressed=rounded-rect(#D9801A, radius=12, border=#FFF1B8, border-width=2),
+		focused=rounded-rect(#FFAE45, radius=12, border=#FFFFFF, border-width=3),
+		disabled=rounded-rect(#6B5335, radius=12, border=#8A7050, border-width=2)
+	);
+	text-color: #2A1A05;
+}
+
+/* Sliders (the settings screen's volumes): a chunky track in the button colours, an orange
+ * fill, and a thumb that turns yellow when a key or pad has it, as a button's border does. */
+Slider::track { background: rounded-rect(#2B3A55, radius=4, border=#51698F, border-width=1); height: 8; }
+Slider::fill { background: rounded-rect(#F29A2E, radius=4); }
+Slider::thumb {
+	background: state-list(
+		normal=rounded-rect(#F4F1E8, radius=11, border=#51698F, border-width=2),
+		hover=rounded-rect(#FFFFFF, radius=11, border=#FFE278, border-width=2),
+		focused=rounded-rect(#FFE278, radius=11, border=#FFFFFF, border-width=3),
+		disabled=rounded-rect(#6B7385, radius=11, border=#3A4150, border-width=2)
+	);
+	width: 22;
+}

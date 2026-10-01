@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">e93dd0c2-fe3e-7f43-a636-f9eae8fe7b7b</string>
+	<string name="typeName">Sedulous.Scene.Resource.PrefabDocument</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6298966941287295178</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="name">FxCoinSparkle</string>
+		</object>
+	</object>
+</root>

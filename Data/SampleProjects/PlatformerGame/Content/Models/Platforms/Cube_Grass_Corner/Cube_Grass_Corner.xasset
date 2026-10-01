@@ -1,0 +1,99 @@
+<root>
+	<string name="guid">360bfa23-dda9-0f4e-9c43-22d95e615b26</string>
+	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">7383561851963481740</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">Cube_Grass_Corner.gltf</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">2980668452812246725</u64>
+				<u32 name="version">2</u32>
+			</array>
+			<object>
+				<array name="meshGuid" count="1">
+					<string>e93b1473-890a-d34e-a358-6cd407424f96</string>
+				</array>
+				<array name="meshSkinned" count="1">
+					<bool>false</bool>
+				</array>
+				<array name="meshMaterial" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="collisionGuid" count="1">
+					<string>be0e7458-772d-3846-87c1-ca282d787a24</string>
+				</array>
+				<array name="meshMaterialSlot" count="4">
+					<i32>0</i32>
+					<i32>1</i32>
+					<i32>2</i32>
+					<i32>3</i32>
+				</array>
+				<array name="meshSlotStart" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="meshSlotCount" count="1">
+					<i32>4</i32>
+				</array>
+				<array name="materialGuid" count="4">
+					<string>23fa6744-a23e-d04b-a216-433fbe92deef</string>
+					<string>95bd4dc4-82b9-1e42-bc04-d55183af76b3</string>
+					<string>fce22858-1952-ef41-a988-8c386d33b750</string>
+					<string>0a148bfa-a83c-e047-9c56-e0e330dd16a0</string>
+				</array>
+				<array name="materialAlbedo" count="4">
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+				</array>
+				<array name="nodeName" count="1">
+					<string>Cube_Grass_Corner</string>
+				</array>
+				<array name="nodeParent" count="1">
+					<i32>-1</i32>
+				</array>
+				<array name="nodeTranslation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+					</object>
+				</array>
+				<array name="nodeRotation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+				</array>
+				<array name="nodeScale" count="1">
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+					</object>
+				</array>
+				<array name="nodeMesh" count="1">
+					<i32>0</i32>
+				</array>
+				<string name="skeletonGuid">00000000-0000-0000-0000-000000000000</string>
+				<array name="animationGuid" count="0"/>
+				<object name="boundsMin">
+					<f32 name="x">-1.1167196</f32>
+					<f32 name="y">-0.99999994</f32>
+					<f32 name="z">-1.0000008</f32>
+				</object>
+				<object name="boundsMax">
+					<f32 name="x">1.0000007</f32>
+					<f32 name="y">0.9959563</f32>
+					<f32 name="z">1.1167189</f32>
+				</object>
+			</object>
+			<array name="entries" count="0"/>
+		</object>
+	</object>
+</root>

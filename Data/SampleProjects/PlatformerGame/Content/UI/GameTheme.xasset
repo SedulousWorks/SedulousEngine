@@ -1,0 +1,14 @@
+<root>
+	<string name="guid">79f5a4e0-aa3f-c44b-b188-7daade376ab1</string>
+	<string name="typeName">Sedulous.UI.Pipeline.UIThemeAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">17177434621092279214</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">GameTheme.sss</string>
+			<string name="previewMarkup"/>
+		</object>
+	</object>
+</root>

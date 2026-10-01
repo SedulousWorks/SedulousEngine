@@ -1,0 +1,2415 @@
+<root>
+	<u32 name="magic">3586350318</u32>
+	<u32 name="version">3</u32>
+	<string name="name">Level1</string>
+	<array name="entities" count="16">
+		<string name="id">1bbeb4f2-e82e-49e9-a81c-fdebe00fa2ec</string>
+		<string name="name">Sun</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">-0.4935577</f32>
+			<f32 name="y">0.15065993</f32>
+			<f32 name="z">0.08726525</f32>
+			<f32 name="w">0.85210747</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">848dffcb-0530-4832-afe9-5758204bec3a</string>
+		<string name="name">Player</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">2.0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">6eec409e-f081-4a23-86a5-69ab25d9d64c</string>
+		<string name="name">Camera</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">7</f32>
+			<f32 name="z">11</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">c110b705-cd07-4e02-bfad-3d6b569d3999</string>
+		<string name="name">Coin</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">2.3</f32>
+			<f32 name="z">-2</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">7ed182fe-88a7-42fa-9fb0-1b77975f8c70</string>
+		<string name="name">Coin2</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">2.3</f32>
+			<f32 name="z">-7</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">b5444276-fac4-4eb9-a282-07b5b47492d0</string>
+		<string name="name">Coin3</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">3.3</f32>
+			<f32 name="z">-11</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">16331517-f784-473c-9e2a-483999b45495</string>
+		<string name="name">Spikes</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">2</f32>
+			<f32 name="z">-17</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">da09ae2d-b3c8-49af-becc-db95f795750b</string>
+		<string name="name">Coin4</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-4</f32>
+			<f32 name="y">3.3</f32>
+			<f32 name="z">-17</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">b43f856f-f008-471d-8d75-f9b076f32911</string>
+		<string name="name">Coin5</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">4</f32>
+			<f32 name="y">3.3</f32>
+			<f32 name="z">-17</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">bda58c32-0791-4298-941a-befe18a3ccbe</string>
+		<string name="name">Crab</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">2</f32>
+			<f32 name="z">-19</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">d7346736-4785-47ab-927e-a703f622575c</string>
+		<string name="name">Coin6</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">3</f32>
+			<f32 name="y">4.3</f32>
+			<f32 name="z">-24</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">55631ad2-9e49-428e-86e1-96b7f8e243e3</string>
+		<string name="name">Coin7</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">5.3</f32>
+			<f32 name="z">-28</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">4f6b72eb-c7f9-4a69-a5f2-f0d12e1b8047</string>
+		<string name="name">Coin8</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-3</f32>
+			<f32 name="y">6.3</f32>
+			<f32 name="z">-32</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">83e9bfa2-f105-4eac-9db5-c96ed599bf9a</string>
+		<string name="name">Skull</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">5</f32>
+			<f32 name="z">-38</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">1e5bd5d9-61a2-4b82-aaeb-995a54add52f</string>
+		<string name="name">Coin9</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">2</f32>
+			<f32 name="y">6.3</f32>
+			<f32 name="z">-36</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">97d91529-141a-4d8b-bd35-5c0109f80e34</string>
+		<string name="name">Goal</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">5</f32>
+			<f32 name="z">-41</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+	</array>
+	<array name="components" count="18">
+		<object>
+			<string name="owner">1bbeb4f2-e82e-49e9-a81c-fdebe00fa2ec</string>
+			<string name="type">light</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">2265827012839742223</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<u32 name="type">0</u32>
+				<object name="color">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
+				<f32 name="intensity">1</f32>
+				<f32 name="range">10</f32>
+				<f32 name="innerAngle">0.5</f32>
+				<f32 name="outerAngle">0.6</f32>
+				<u32 name="shadowUpdate">0</u32>
+				<bool name="enabled">true</bool>
+				<bool name="castsShadows">true</bool>
+			</object>
+		</object>
+		<object>
+			<string name="owner">848dffcb-0530-4832-afe9-5758204bec3a</string>
+			<string name="type">physics.Character</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">6650702445704062027</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<f32 name="radius">0.4</f32>
+				<f32 name="halfHeight">0.55</f32>
+				<f32 name="maxSlopeDegrees">50</f32>
+				<f32 name="mass">70</f32>
+				<f32 name="maxStrength">500</f32>
+				<f32 name="stepUp">0.4</f32>
+				<f32 name="stepDown">0.5</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">848dffcb-0530-4832-afe9-5758204bec3a</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">2d7db958-419a-5742-b33b-219febf36182</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="1">
+						<u64 name="nameHash">4986689724605945464</u64>
+						<u8 name="kind">1</u8>
+						<f64 name="number">10.0</f64>
+					</array>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">6eec409e-f081-4a23-86a5-69ab25d9d64c</string>
+			<string name="type">camera</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">8056904078410733902</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<f32 name="fovYRadians">1.0471976</f32>
+				<f32 name="aspect">1.7777778</f32>
+				<f32 name="nearZ">0.1</f32>
+				<f32 name="farZ">1000</f32>
+				<object name="clearColor">
+					<f32 name="r">0.392</f32>
+					<f32 name="g">0.584</f32>
+					<f32 name="b">0.929</f32>
+					<f32 name="a">1</f32>
+				</object>
+				<bool name="primary">true</bool>
+			</object>
+		</object>
+		<object>
+			<string name="owner">6eec409e-f081-4a23-86a5-69ab25d9d64c</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">a238cc1f-b212-b440-ba4a-513a05349214</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="1">
+						<u64 name="nameHash">1653916590517707752</u64>
+						<u8 name="kind">7</u8>
+						<string name="id">848dffcb-0530-4832-afe9-5758204bec3a</string>
+					</array>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">c110b705-cd07-4e02-bfad-3d6b569d3999</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">e4bb099c-66f4-7b40-9a1a-bb6bafb057d2</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">7ed182fe-88a7-42fa-9fb0-1b77975f8c70</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">e4bb099c-66f4-7b40-9a1a-bb6bafb057d2</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">b5444276-fac4-4eb9-a282-07b5b47492d0</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">e4bb099c-66f4-7b40-9a1a-bb6bafb057d2</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">16331517-f784-473c-9e2a-483999b45495</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">9b4d526f-d5b9-3b40-8e8d-ccb9196988fc</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="1">
+						<u64 name="nameHash">11714910769601064179</u64>
+						<u8 name="kind">1</u8>
+						<f64 name="number">1.1</f64>
+					</array>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">da09ae2d-b3c8-49af-becc-db95f795750b</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">e4bb099c-66f4-7b40-9a1a-bb6bafb057d2</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">b43f856f-f008-471d-8d75-f9b076f32911</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">e4bb099c-66f4-7b40-9a1a-bb6bafb057d2</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">bda58c32-0791-4298-941a-befe18a3ccbe</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">27bdc246-2a2b-be46-8d4e-95a9c1bd059b</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="2">
+						<u64 name="nameHash">14169377546989105204</u64>
+						<u8 name="kind">1</u8>
+						<f64 name="number">2.5</f64>
+						<u64 name="nameHash">2142831777187639446</u64>
+						<u8 name="kind">4</u8>
+						<string name="text">3e9fd790-015a-8442-bc68-d0fe836a7762</string>
+					</array>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">d7346736-4785-47ab-927e-a703f622575c</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">e4bb099c-66f4-7b40-9a1a-bb6bafb057d2</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">55631ad2-9e49-428e-86e1-96b7f8e243e3</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">e4bb099c-66f4-7b40-9a1a-bb6bafb057d2</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">4f6b72eb-c7f9-4a69-a5f2-f0d12e1b8047</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">e4bb099c-66f4-7b40-9a1a-bb6bafb057d2</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">83e9bfa2-f105-4eac-9db5-c96ed599bf9a</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">27bdc246-2a2b-be46-8d4e-95a9c1bd059b</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="2">
+						<u64 name="nameHash">14169377546989105204</u64>
+						<u8 name="kind">1</u8>
+						<f64 name="number">1.5</f64>
+						<u64 name="nameHash">2142831777187639446</u64>
+						<u8 name="kind">4</u8>
+						<string name="text">ffdb18ab-ec72-a743-ba4a-66d96096e8de</string>
+					</array>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">1e5bd5d9-61a2-4b82-aaeb-995a54add52f</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">e4bb099c-66f4-7b40-9a1a-bb6bafb057d2</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">97d91529-141a-4d8b-bd35-5c0109f80e34</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">c648f5bb-9c34-2242-9cb7-1e0c531e834b</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+	</array>
+	<array name="systemSettings" count="2">
+		<object>
+			<string name="system">physics</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">10939787665465362690</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object name="settings">
+				<object name="gravity">
+					<f32 name="x">0</f32>
+					<f32 name="y">-20</f32>
+					<f32 name="z">0</f32>
+				</object>
+				<i32 name="collisionSteps">1</i32>
+				<bool name="debugDraw">false</bool>
+				<array name="groupNames" count="0"/>
+				<array name="groupCollides" count="0"/>
+			</object>
+		</object>
+		<object>
+			<string name="system">postprocess</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">14076923587443904564</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object name="settings">
+				<f32 name="exposureEV">0</f32>
+				<u32 name="tonemapOperator">1</u32>
+				<bool name="bloomEnabled">true</bool>
+				<f32 name="bloomThreshold">1</f32>
+				<f32 name="bloomKnee">0.6</f32>
+				<f32 name="bloomIntensity">0.05</f32>
+				<u32 name="aoMode">0</u32>
+				<f32 name="aoStrength">0.6</f32>
+				<f32 name="aoRadius">0.5</f32>
+				<f32 name="aoIntensity">1</f32>
+				<bool name="ssrEnabled">false</bool>
+				<f32 name="ssrIntensity">1</f32>
+				<u32 name="aaMode">0</u32>
+				<f32 name="taaBlendFactor">0.97</f32>
+				<f32 name="taaVarianceGamma">1.25</f32>
+				<f32 name="fxaaSubpixel">0.75</f32>
+				<bool name="autoExposure">true</bool>
+				<f32 name="autoExposureKey">0.18</f32>
+				<f32 name="autoExposureSpeed">2</f32>
+				<f32 name="autoExposureMinEV">-4</f32>
+				<f32 name="autoExposureMaxEV">4</f32>
+				<string name="gradingLut">00000000-0000-0000-0000-000000000000</string>
+				<f32 name="gradingIntensity">1</f32>
+				<bool name="ssgiEnabled">false</bool>
+				<f32 name="ssgiIntensity">1</f32>
+			</object>
+		</object>
+	</array>
+	<u8 name="prefabMode">4</u8>
+	<array name="prefabInstances" count="63">
+		<string name="prefab">a88c74e1-aca3-b34f-bc86-abc26ce392e3</string>
+		<string name="parent">848dffcb-0530-4832-afe9-5758204bec3a</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">-0.9500000000000001</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.5</f32>
+			<f32 name="y">0.5</f32>
+			<f32 name="z">0.5</f32>
+		</object>
+		<string name="rootLive">aab3f18c-ee65-4d2c-83c1-43d5910a6fe9</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6331a9e9-a646-de4f-9689-783acf11015d</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-2</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">2</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">1.0</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">bd2606ed-838d-4ef3-a7ba-217859cee21d</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-2</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">-0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">8f9297d4-390f-430c-a851-7e88b4bd128e</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6331a9e9-a646-de4f-9689-783acf11015d</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-2</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">-2</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">-0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">bd45ce82-bbbb-4915-adf3-c8d8aa172e78</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">2</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">1.0</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">a6eefdf0-e0a6-4dc7-9835-f5312bacec1b</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">d1e2e57b-3080-4244-a78d-50d0ea39d534</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">13e0ace5-4289-463e-bc7a-45dc5a9f3983</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">-2</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">1.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">6.123233995736766e-17</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">ccfe7905-a55c-46ab-a53e-914c1c862edb</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6331a9e9-a646-de4f-9689-783acf11015d</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">2</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">2</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">2eb8976d-886d-4c1f-b221-08befd601388</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">2</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">0634f2f4-a447-4c6c-b97e-36575ac095b3</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6331a9e9-a646-de4f-9689-783acf11015d</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">2</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">-2</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">1.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">6.123233995736766e-17</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">c0800a91-9870-4224-bf61-9ab2fb0de486</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">4cfd4858-cb41-5741-8aac-c7f315f3c813</string>
+		<string name="parent">c110b705-cd07-4e02-bfad-3d6b569d3999</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.45</f32>
+			<f32 name="y">0.45</f32>
+			<f32 name="z">0.45</f32>
+		</object>
+		<string name="rootLive">413479d5-299b-42de-ac24-875fb7325e8a</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">40e5f03e-5684-1f44-b051-72b326ba8cec</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">-7</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">35c9b93e-fdd0-4beb-b038-e1694249524b</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">4cfd4858-cb41-5741-8aac-c7f315f3c813</string>
+		<string name="parent">7ed182fe-88a7-42fa-9fb0-1b77975f8c70</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.45</f32>
+			<f32 name="y">0.45</f32>
+			<f32 name="z">0.45</f32>
+		</object>
+		<string name="rootLive">331af499-9243-45ca-a02b-f3e14754e14c</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">40e5f03e-5684-1f44-b051-72b326ba8cec</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-11</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">12251b03-aa23-4970-a180-571948c34f06</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">4cfd4858-cb41-5741-8aac-c7f315f3c813</string>
+		<string name="parent">b5444276-fac4-4eb9-a282-07b5b47492d0</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.45</f32>
+			<f32 name="y">0.45</f32>
+			<f32 name="z">0.45</f32>
+		</object>
+		<string name="rootLive">248da02e-56b1-445c-83ad-215664d82ee5</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6331a9e9-a646-de4f-9689-783acf11015d</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-4</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-15</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">1.0</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">86d9f346-fc8f-464f-8ecf-f68d30b594e1</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-4</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-17</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">-0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">e0cf6600-37b9-424e-bcef-0417f573c3c2</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6331a9e9-a646-de4f-9689-783acf11015d</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-4</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-19</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">-0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">e40e266c-abcd-4b8b-ac73-ea0865e7602f</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-2</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-15</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">1.0</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">9c52257c-1406-4d7f-b100-83d63b937871</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">d1e2e57b-3080-4244-a78d-50d0ea39d534</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-2</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-17</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">cf3e6b7a-6cf9-49bc-84b4-a7085e1f523c</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-2</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-19</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">1.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">6.123233995736766e-17</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">57a181cc-ffc2-442f-84ba-03fde73ebf96</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-15</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">1.0</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">d364aa65-1378-4f9a-a331-eb91ac675d0c</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">d1e2e57b-3080-4244-a78d-50d0ea39d534</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-17</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">feb0c0af-58af-4031-8875-74928612ea8d</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-19</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">1.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">6.123233995736766e-17</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">9afff797-1e93-4fd9-95bd-5ba4bad8ed48</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">2</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-15</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">1.0</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">4f9765ad-7d4d-4bcc-881c-f7ca43889ee8</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">d1e2e57b-3080-4244-a78d-50d0ea39d534</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">2</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-17</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">8b3122fd-ed36-41b6-9d69-f9d9925bccbb</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">2</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-19</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">1.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">6.123233995736766e-17</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">06880ace-65fe-4bd9-9ecb-ef1427ed5af6</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6331a9e9-a646-de4f-9689-783acf11015d</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">4</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-15</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">2e1fd526-e61e-4afc-b0c6-f892204fa32f</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">4</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-17</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">84aa5b4b-121a-4d73-bcd1-f81cb345c8cc</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6331a9e9-a646-de4f-9689-783acf11015d</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">4</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-19</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">1.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">6.123233995736766e-17</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">47bf5989-a431-46d7-a60a-23debe1da8e3</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6460afe5-5460-0345-9e9e-717fd96a1dad</string>
+		<string name="parent">16331517-f784-473c-9e2a-483999b45495</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.45</f32>
+			<f32 name="y">0.45</f32>
+			<f32 name="z">0.45</f32>
+		</object>
+		<string name="rootLive">96b2c3d4-1df7-48e4-89d7-0a3f579624f3</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">4cfd4858-cb41-5741-8aac-c7f315f3c813</string>
+		<string name="parent">da09ae2d-b3c8-49af-becc-db95f795750b</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.45</f32>
+			<f32 name="y">0.45</f32>
+			<f32 name="z">0.45</f32>
+		</object>
+		<string name="rootLive">8154f96f-2281-4f59-a337-ca49df489f05</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">4cfd4858-cb41-5741-8aac-c7f315f3c813</string>
+		<string name="parent">b43f856f-f008-471d-8d75-f9b076f32911</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.45</f32>
+			<f32 name="y">0.45</f32>
+			<f32 name="z">0.45</f32>
+		</object>
+		<string name="rootLive">4de6048b-1266-4299-96fe-b2d7e447f905</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">9ccf975e-b99f-7943-a7a4-adb5a7de0950</string>
+		<string name="parent">bda58c32-0791-4298-941a-befe18a3ccbe</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.7</f32>
+			<f32 name="y">0.7</f32>
+			<f32 name="z">0.7</f32>
+		</object>
+		<string name="rootLive">f9228ce3-d485-4eae-8f0f-ea10fc0c9965</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">40e5f03e-5684-1f44-b051-72b326ba8cec</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">3</f32>
+			<f32 name="y">2</f32>
+			<f32 name="z">-24</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">00367909-ae16-4928-9964-7b1cac356ee0</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">4cfd4858-cb41-5741-8aac-c7f315f3c813</string>
+		<string name="parent">d7346736-4785-47ab-927e-a703f622575c</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.45</f32>
+			<f32 name="y">0.45</f32>
+			<f32 name="z">0.45</f32>
+		</object>
+		<string name="rootLive">45e86d93-e281-42e9-b3eb-eeef8d254dc7</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">40e5f03e-5684-1f44-b051-72b326ba8cec</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">3</f32>
+			<f32 name="z">-28</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">b67e7ed7-91a7-46fc-85c9-d14de83681b0</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">4cfd4858-cb41-5741-8aac-c7f315f3c813</string>
+		<string name="parent">55631ad2-9e49-428e-86e1-96b7f8e243e3</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.45</f32>
+			<f32 name="y">0.45</f32>
+			<f32 name="z">0.45</f32>
+		</object>
+		<string name="rootLive">c0d93334-ef58-4db2-a17c-66d9a2f5d538</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">40e5f03e-5684-1f44-b051-72b326ba8cec</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-3</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-32</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">2c508122-3ca8-4a47-a52e-42f000970ac5</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">4cfd4858-cb41-5741-8aac-c7f315f3c813</string>
+		<string name="parent">4f6b72eb-c7f9-4a69-a5f2-f0d12e1b8047</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.45</f32>
+			<f32 name="y">0.45</f32>
+			<f32 name="z">0.45</f32>
+		</object>
+		<string name="rootLive">0cac356a-f741-4010-970e-3883732dbb34</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6331a9e9-a646-de4f-9689-783acf11015d</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-2</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-36</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">1.0</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">35b32b84-887f-4855-9791-ba3c82e88ef4</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-2</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-38</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">-0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">4ad3640b-a869-464d-94f4-d5d9b859cfaa</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-2</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-40</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">-0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">68423070-f5be-4753-baaa-b2116b14b494</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6331a9e9-a646-de4f-9689-783acf11015d</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-2</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-42</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">-0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">a0f2ca0c-7308-4ced-bab0-79da80ad19bf</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-36</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">1.0</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">6b0fb6c3-8e14-40db-905d-3ff82520b424</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">d1e2e57b-3080-4244-a78d-50d0ea39d534</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-38</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">8bb9b3bf-8d0e-489c-a2e5-656fd51fc76d</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">d1e2e57b-3080-4244-a78d-50d0ea39d534</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-40</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">41c1e439-4af5-4be0-bc6d-2762eb98a7f0</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-42</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">1.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">6.123233995736766e-17</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">16c906bb-240f-481b-a24f-e0cee3e454be</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6331a9e9-a646-de4f-9689-783acf11015d</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">2</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-36</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">e89e6dde-4ffc-462d-9b21-0690619f732a</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">2</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-38</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">a021fa13-09bd-48dc-a4d0-b7298ddcde51</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">7d471d15-a818-2d44-b0cc-6a6d5b62caa3</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">2</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-40</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">0.7071067811865475</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">0.7071067811865476</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">698734e2-26bf-4131-8a36-34f1dc7ff136</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">6331a9e9-a646-de4f-9689-783acf11015d</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">2</f32>
+			<f32 name="y">4</f32>
+			<f32 name="z">-42</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.0</f32>
+			<f32 name="y">1.0</f32>
+			<f32 name="z">0.0</f32>
+			<f32 name="w">6.123233995736766e-17</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">b2b2cdef-68ed-4083-bbd2-1040de5b0231</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">9a7fed49-61fa-f345-9519-57d201403a0f</string>
+		<string name="parent">83e9bfa2-f105-4eac-9db5-c96ed599bf9a</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.7</f32>
+			<f32 name="y">0.7</f32>
+			<f32 name="z">0.7</f32>
+		</object>
+		<string name="rootLive">67ed97f4-862c-47d6-a115-681908642d63</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">4cfd4858-cb41-5741-8aac-c7f315f3c813</string>
+		<string name="parent">1e5bd5d9-61a2-4b82-aaeb-995a54add52f</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.45</f32>
+			<f32 name="y">0.45</f32>
+			<f32 name="z">0.45</f32>
+		</object>
+		<string name="rootLive">8f7243a0-3458-44af-b15f-66d52326a6e9</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">a4e366c3-0eb8-f94c-b821-152e771e66cb</string>
+		<string name="parent">97d91529-141a-4d8b-bd35-5c0109f80e34</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">ca537dc1-7c54-4023-a85c-174c713109b4</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">88e9e0f4-09ef-6f40-882e-3de4ab5c5eca</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-2.6</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-2.4</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.45</f32>
+			<f32 name="y">0.45</f32>
+			<f32 name="z">0.45</f32>
+		</object>
+		<string name="rootLive">c31a6124-8823-47a7-a47e-f3f8e16de3dc</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">88e9e0f4-09ef-6f40-882e-3de4ab5c5eca</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">4.2</f32>
+			<f32 name="y">2</f32>
+			<f32 name="z">-19.2</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.4</f32>
+			<f32 name="y">0.4</f32>
+			<f32 name="z">0.4</f32>
+		</object>
+		<string name="rootLive">c9cd45e4-7e69-4780-a5fc-5513299a8405</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">88e9e0f4-09ef-6f40-882e-3de4ab5c5eca</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-2.6</f32>
+			<f32 name="y">5</f32>
+			<f32 name="z">-41.4</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.45</f32>
+			<f32 name="y">0.45</f32>
+			<f32 name="z">0.45</f32>
+		</object>
+		<string name="rootLive">2d91a88c-95d6-4e6e-b3b5-0109e86b4b05</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">65405315-51b3-9e45-8868-512a1bef525f</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">2.4</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">-2.4</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.5</f32>
+			<f32 name="y">0.5</f32>
+			<f32 name="z">0.5</f32>
+		</object>
+		<string name="rootLive">53357690-891c-491e-9031-89c6e0576dd1</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">65405315-51b3-9e45-8868-512a1bef525f</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-4.3</f32>
+			<f32 name="y">2</f32>
+			<f32 name="z">-19.3</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.5</f32>
+			<f32 name="y">0.5</f32>
+			<f32 name="z">0.5</f32>
+		</object>
+		<string name="rootLive">dcb01efc-bcf3-4853-9cab-34aa799d3926</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">3c513aa6-40b4-b143-8f3f-b04007871928</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-12</f32>
+			<f32 name="y">14</f32>
+			<f32 name="z">-20</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">2</f32>
+			<f32 name="y">2</f32>
+			<f32 name="z">2</f32>
+		</object>
+		<string name="rootLive">9b8e12a9-6f83-44d8-89fd-443cbd9c201d</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">3c513aa6-40b4-b143-8f3f-b04007871928</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">10</f32>
+			<f32 name="y">16</f32>
+			<f32 name="z">-34</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">2</f32>
+			<f32 name="y">2</f32>
+			<f32 name="z">2</f32>
+		</object>
+		<string name="rootLive">e6cf3a70-158e-4481-9aa9-9a3795b81ba1</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+		<string name="prefab">3c513aa6-40b4-b143-8f3f-b04007871928</string>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">-6</f32>
+			<f32 name="y">18</f32>
+			<f32 name="z">-48</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">2</f32>
+			<f32 name="y">2</f32>
+			<f32 name="z">2</f32>
+		</object>
+		<string name="rootLive">b4ce8a39-67a5-4bf9-bcba-f459dd7eb2bf</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+	</array>
+</root>

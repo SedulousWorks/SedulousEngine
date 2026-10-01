@@ -1,0 +1,216 @@
+<root>
+	<string name="guid">c37be696-d9e4-a14c-b1a6-abd0eea05268</string>
+	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">7383561851963481740</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">Skull.gltf</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">2980668452812246725</u64>
+				<u32 name="version">2</u32>
+			</array>
+			<object>
+				<array name="meshGuid" count="1">
+					<string>8fb1864b-934f-744a-ae6b-07e9b4d2db46</string>
+				</array>
+				<array name="meshSkinned" count="1">
+					<bool>true</bool>
+				</array>
+				<array name="meshMaterial" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="collisionGuid" count="0"/>
+				<array name="meshMaterialSlot" count="2">
+					<i32>0</i32>
+					<i32>1</i32>
+				</array>
+				<array name="meshSlotStart" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="meshSlotCount" count="1">
+					<i32>2</i32>
+				</array>
+				<array name="materialGuid" count="2">
+					<string>db8985a1-2a3d-164d-905a-4d5e1ae3b75b</string>
+					<string>c445003f-be76-ca47-ada8-bdd87714bacf</string>
+				</array>
+				<array name="materialAlbedo" count="2">
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+				</array>
+				<array name="nodeName" count="7">
+					<string>Mouth</string>
+					<string>Body</string>
+					<string>Head3</string>
+					<string>Head2</string>
+					<string>Head</string>
+					<string>Skull</string>
+					<string>MonsterArmature</string>
+				</array>
+				<array name="nodeParent" count="7">
+					<i32>1</i32>
+					<i32>6</i32>
+					<i32>3</i32>
+					<i32>4</i32>
+					<i32>6</i32>
+					<i32>6</i32>
+					<i32>-1</i32>
+				</array>
+				<array name="nodeTranslation" count="7">
+					<object>
+						<f32 name="x">-7.803066e-18</f32>
+						<f32 name="y">0.14725882</f32>
+						<f32 name="z">0.5008285</f32>
+					</object>
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+					</object>
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0.39007497</f32>
+						<f32 name="z">0</f32>
+					</object>
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0.51658565</f32>
+						<f32 name="z">0</f32>
+					</object>
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0.48319352</f32>
+						<f32 name="z">0</f32>
+					</object>
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+					</object>
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+					</object>
+				</array>
+				<array name="nodeRotation" count="7">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">3.5471484e-10</f32>
+						<f32 name="z">-0.0026400527</f32>
+						<f32 name="w">0.9999966</f32>
+					</object>
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+				</array>
+				<array name="nodeScale" count="7">
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+					</object>
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+					</object>
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">0.9999999</f32>
+						<f32 name="z">0.9999999</f32>
+					</object>
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">0.99999994</f32>
+						<f32 name="z">0.99999994</f32>
+					</object>
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">0.99999994</f32>
+						<f32 name="z">0.99999994</f32>
+					</object>
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+					</object>
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+					</object>
+				</array>
+				<array name="nodeMesh" count="7">
+					<i32>-1</i32>
+					<i32>-1</i32>
+					<i32>-1</i32>
+					<i32>-1</i32>
+					<i32>-1</i32>
+					<i32>0</i32>
+					<i32>-1</i32>
+				</array>
+				<string name="skeletonGuid">1e95ff78-deb0-c749-bc55-9690b66c1ac6</string>
+				<array name="animationGuid" count="10">
+					<string>f8b7f3ba-8bbd-5e4a-955f-bda5b0ada080</string>
+					<string>8def4d6c-1b90-6b49-8ff6-ae22228ecd67</string>
+					<string>7bcc3f03-2465-7943-9d73-a6825d91d20a</string>
+					<string>c0290a8f-94f8-2148-8cef-e23241c62c80</string>
+					<string>358696e3-0ab1-8543-8945-5c245b674461</string>
+					<string>844f35f2-db4f-7947-b6a2-c14ca3e037a6</string>
+					<string>75c73680-1b05-4040-b5e3-088164eda460</string>
+					<string>43feb31a-ab6b-7c42-81e3-0335adec727f</string>
+					<string>ffdb18ab-ec72-a743-ba4a-66d96096e8de</string>
+					<string>02accaec-9917-8242-920f-1f46a6fb0618</string>
+				</array>
+				<object name="boundsMin">
+					<f32 name="x">-0.702803</f32>
+					<f32 name="y">-0.067301705</f32>
+					<f32 name="z">-0.7052342</f32>
+				</object>
+				<object name="boundsMax">
+					<f32 name="x">0.702803</f32>
+					<f32 name="y">1.4257553</f32>
+					<f32 name="z">0.7165994</f32>
+				</object>
+			</object>
+			<array name="entries" count="0"/>
+		</object>
+	</object>
+</root>

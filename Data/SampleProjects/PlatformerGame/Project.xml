@@ -1,0 +1,31 @@
+<root>
+	<array name="dataVersions" count="1">
+		<u64 name="type">15697994609334965484</u64>
+		<u32 name="version">9</u32>
+	</array>
+	<object>
+		<string name="name">Platformer</string>
+		<string name="engineVersion">0.1.0</string>
+		<string name="defaultSceneId">d54b3804-21ff-724a-a076-4e971ef6b238</string>
+		<string name="defaultScene">Scenes/Level1</string>
+		<string name="startupScript">Scripts/PlatformerGame</string>
+		<string name="nativeModule"/>
+		<string name="defaultInputMapId">ddc8a18e-d7bf-2849-a2b7-540ed7ddc674</string>
+		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
+		<string name="defaultUiThemeId">79f5a4e0-aa3f-c44b-b188-7daade376ab1</string>
+		<string name="startupScriptId">cdc1ed58-4cc2-184f-9021-aca36cc0f5f8</string>
+		<string name="defaultUiFontId">8be6cf88-845d-6847-b584-8df8343df0f4</string>
+		<string name="loadingDocumentId">00000000-0000-0000-0000-000000000000</string>
+		<u32 name="renderMsaaSamples">4</u32>
+		<array name="uiFontIds" count="1">
+			<string>038822bb-8eab-b648-a0cd-d78421a6353d</string>
+		</array>
+		<u32 name="renderWidth">1280</u32>
+		<u32 name="renderHeight">720</u32>
+		<u8 name="renderFit">1</u8>
+		<u32 name="windowWidth">1280</u32>
+		<u32 name="windowHeight">720</u32>
+		<u8 name="windowMode">0</u8>
+		<bool name="windowResizable">true</bool>
+	</object>
+</root>
