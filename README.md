@@ -86,6 +86,21 @@ Code/build/Debug_Linux64/Sedulous.Tools.Editor/Sedulous.Tools.Editor            
 Code/build/Debug_Linux64/Sedulous.Tools.Editor/Sedulous.Tools.Editor <projectDir>  # open a project
 ```
 
+## Sample projects
+
+Game projects under `Data/SampleProjects/`, opened from the editor's project manager.
+
+**Sky Hopper** (`PlatformerGame`) is a small 3D platformer built entirely through the engine's
+MCP tools by an AI agent, and shipped to a Steam Deck: three levels, coins, enemies and hazards,
+menus with volume settings, music and effects, and gamepad support throughout.
+
+| Title | Level 1 | Settings |
+|:---:|:---:|:---:|
+| ![Title](Documentation/Images/SkyHopper-Title.png) | ![Playing](Documentation/Images/SkyHopper-Play.png) | ![Settings](Documentation/Images/SkyHopper-Settings.png) |
+
+**PaperKid** is an arcade paper-route game: ride around a town block delivering papers against
+the clock, with a scripted game and level tier.
+
 ## Repository layout
 
 ```
