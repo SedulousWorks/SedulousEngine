@@ -229,6 +229,14 @@ class LeafControlTests
 		view.SetSource("icon");
 		UITest.LayoutPass(context, root);
 		Test.Assert(view.Image === provider.Icon);
+
+		// A cleared source drops its image, so setting the same one again resolves again.
+		view.SetSource("");
+		UITest.LayoutPass(context, root);
+		Test.Assert(view.Image == null);
+		view.SetSource("icon");
+		UITest.LayoutPass(context, root);
+		Test.Assert(view.Image === provider.Icon);
 	}
 
 	/// Without a provider, the view keeps the image SetImage gave.

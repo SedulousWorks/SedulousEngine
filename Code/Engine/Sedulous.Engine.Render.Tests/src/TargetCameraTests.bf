@@ -149,4 +149,24 @@ class TargetCameraTests
 		Test.Assert(read.Target.Id == texture);
 		Test.Assert(read.TargetInterval == 2);
 	}
+
+	/// A script points a camera at a render texture by id, as SetMesh points a mesh; a nil id
+	/// gives the camera back to the screen, a texture assigned at run time included.
+	[Test]
+	public static void SetTargetPointsACameraAtATextureAndANilIdClearsIt()
+	{
+		let targets = scope Targets();
+		let scene = scope Scene("camera_set_target");
+		let cameras = scene.AddSystem<CameraComponentManager>();
+		let entity = scene.CreateEntity("monitor");
+		cameras.Add(entity);
+		let texture = Guid(0x77, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		Test.Assert(cameras.SetTarget(entity, texture));
+		Test.Assert((cameras.Get(entity).Target.Id == texture) && cameras.Get(entity).HasTarget);
+
+		cameras.Get(entity).Target.SetDirect(targets.Make(32, 32));
+		Test.Assert(cameras.SetTarget(entity, .Empty));
+		Test.Assert(!cameras.Get(entity).HasTarget, "the screen's camera again");
+		Test.Assert(!cameras.SetTarget(scene.CreateEntity("no camera"), texture));
+	}
 }

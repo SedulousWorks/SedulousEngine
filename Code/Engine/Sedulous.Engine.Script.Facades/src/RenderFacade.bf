@@ -12,11 +12,17 @@ namespace Sedulous.Engine.Script.Facades;
 class RenderFacade : SceneFacade
 {
 	private MeshComponentManager Meshes => Scene.GetSystem<MeshComponentManager>();
+	private CameraComponentManager Cameras => Scene.GetSystem<CameraComponentManager>();
 
 	[Scriptable]
 	public bool SetMesh(EntityHandle entity, Guid mesh) => Meshes?.SetMesh(entity, mesh) ?? false;
 	[Scriptable]
 	public bool SetMaterial(EntityHandle entity, Guid material, int slot = 0) => Meshes?.SetMaterial(entity, material, slot) ?? false;
+	/// Points the entity's camera at a render texture asset, which it then draws into instead
+	/// of the screen; a nil id gives the camera back to the screen. False for an entity
+	/// without a camera.
+	[Scriptable]
+	public bool SetCameraTarget(EntityHandle entity, Guid texture) => Cameras?.SetTarget(entity, texture) ?? false;
 }
 
 /// `scene.Debug`: lines, shapes and text drawn over the scene for a frame. The drawer is

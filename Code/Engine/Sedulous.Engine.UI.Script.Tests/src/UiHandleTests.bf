@@ -74,6 +74,27 @@ static class UiHandleTests
 		bed.Stack.Pop();
 	}
 
+	/// An image handle: its source is the texture asset id it shows, SetSource swaps it, and a
+	/// nil id clears it.
+	[Test]
+	public static void AnImageHandleNamesTheTextureItShows()
+	{
+		let bed = scope UiScriptBed();
+		bed.Stack.Push(UiScriptBed.Screen());
+		let image = bed.Ui.FindImage("minimap");
+		Test.Assert(image.IsValid && (image.Name == "minimap"));
+		Test.Assert(image.Source.IsNil);
+		let texture = Guid(0x11, 0x22, 0, 0, 0, 0, 0, 0, 0, 0, 0x33);
+		image.SetSource(texture);
+		Test.Assert(image.Source == texture);
+		Test.Assert(image.Resolve().Source.Value == texture.ToString(.. scope .()));
+		image.SetSource(.Empty);
+		Test.Assert(image.Source.IsNil && image.Resolve().Source.Value.IsEmpty);
+		// The wrong control type is a null but valid handle, as every finder's is.
+		Test.Assert(!bed.Ui.FindImage("title").IsValid);
+		bed.Stack.Pop();
+	}
+
 	/// Opacity at once, or faded on the UI's frame clock (which runs while the game is paused);
 	/// a set stops a running fade; a null handle takes nothing.
 	[Test]
@@ -160,7 +181,7 @@ static class UiHandleTests
 		Test.Assert((panel.ChildCount == 2) && (panel.ChildAt(1).Name == "deep") && !panel.ChildAt(2).IsValid);
 
 		let top = bed.Ui.Top;
-		Test.Assert(top.IsValid && (top.Name == "screen") && (top.ChildCount == 6));
+		Test.Assert(top.IsValid && (top.Name == "screen") && (top.ChildCount == 7));
 		Test.Assert(top.FindGroup("panel").IsValid && top.FindButton("retry").IsValid);
 		Test.Assert(top.Find("health").IsValid && panel.Find("deep").IsValid && !panel.Find("retry").IsValid, "an untyped find, scoped as the typed ones");
 		Test.Assert(bed.Ui.Root.IsValid && bed.Ui.Root.FindScreen("screen").IsValid);

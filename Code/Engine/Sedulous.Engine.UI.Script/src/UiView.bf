@@ -105,6 +105,71 @@ struct UiLabel
 	public void SetText(StringView value) { if (let v = Resolve()) v.SetText(value); }
 }
 
+/// An image: `image.Source` is the texture asset it shows (a render texture a camera draws
+/// into included); `image.SetSource(id)` swaps it, and a nil id clears it.
+[Scriptable, ScriptName("Image")]
+struct UiImage
+{
+	public uint32 Id = 0;
+
+	public this() {}
+	public this(ImageView image) { Id = UiHandles.IdOf(image); }
+
+	public ImageView Resolve() => UiHandles.Resolve<ImageView>(Id);
+
+	[Scriptable]
+	public bool IsValid => Resolve() != null;
+	[Scriptable]
+	public StringView Name => Resolve()?.Name ?? "";
+	[Scriptable]
+	public bool Visible => Resolve()?.Visibility == .Visible;
+	[Scriptable]
+	public bool Enabled => Resolve()?.IsEnabled ?? false;
+	[Scriptable]
+	public void SetVisible(bool value) { if (let v = Resolve()) v.Visibility = value ? .Visible : .Hidden; }
+	[Scriptable]
+	public void SetEnabled(bool value) { if (let v = Resolve()) v.IsEnabled = value; }
+	[Scriptable]
+	public float Opacity => Resolve()?.Opacity ?? 0.0f;
+	[Scriptable]
+	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
+	[Scriptable]
+	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
+	/// The offset in pixels from where layout put the view, applied as it draws and hit tests,
+	/// so moving it costs no relayout (a marker on a minimap).
+	[Scriptable]
+	public Float2 Translation => UiHandles.Translation(Resolve());
+	[Scriptable]
+	public void SetTranslation(float x, float y) { UiHandles.SetTranslation(Resolve(), x, y); }
+	/// Degrees, clockwise on screen, about the view's centre.
+	[Scriptable]
+	public float Rotation => UiHandles.Rotation(Resolve());
+	[Scriptable]
+	public void SetRotation(float degrees) { UiHandles.SetRotation(Resolve(), degrees); }
+	[Scriptable]
+	public Guid Source
+	{
+		get
+		{
+			let view = Resolve();
+			if (view == null)
+				return .Empty;
+			var text = StringView(view.Source.Value);
+			if ((text.Length == 38) && (text[0] == '{') && (text[37] == '}'))
+				text = text.Substring(1, 36);
+			if (Guid.Parse(text) case .Ok(let id))
+				return id;
+			return .Empty;
+		}
+	}
+	[Scriptable]
+	public void SetSource(Guid value)
+	{
+		if (let v = Resolve())
+			v.SetSource(value.IsNil ? "" : value.ToString(.. scope .()));
+	}
+}
+
 /// A button: `button.Text` its caption, `button.OnClick(fn)` a script function as its
 /// click handler, alive as long as the button. The handler NEVER runs inline in click
 /// dispatch: it goes through the context's mutation queue and runs at the next drain, a

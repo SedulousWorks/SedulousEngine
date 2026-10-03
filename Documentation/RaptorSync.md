@@ -100,7 +100,7 @@ Raptor's (the last group).
     provider.
 33. ~~48c2f248~~ (done) Engine.UI: an image in game UI shows a texture asset, render textures included.
 34. ~~8c4a3c4b~~ (done) Engine.UI.Script: views move and turn from script (translation, rotation).
-35. 16de4509 Script: an Image handle and `SetCameraTarget` from a script.
+35. ~~16de4509~~ (done) Script: an Image handle and `SetCameraTarget` from a script.
 
 ## Group 6: PaperKid rebuilt over MCP
 

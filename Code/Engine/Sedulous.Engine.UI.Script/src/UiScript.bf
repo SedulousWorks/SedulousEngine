@@ -52,6 +52,8 @@ class UiScript
 	[Scriptable]
 	public UiTextBox FindTextBox(StringView name) => UiFinders.FindTextBox(RootGroup, name);
 	[Scriptable]
+	public UiImage FindImage(StringView name) => UiFinders.FindImage(RootGroup, name);
+	[Scriptable]
 	public UiGroup FindGroup(StringView name) => UiFinders.FindGroup(RootGroup, name);
 
 	/// Instantiates the document and pushes it as a screen: the document's own root when

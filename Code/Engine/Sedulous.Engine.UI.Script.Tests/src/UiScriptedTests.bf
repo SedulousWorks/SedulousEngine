@@ -59,6 +59,13 @@ static class UiScriptedTests
 				bool missing() { return !Ui.FindLabel("nope").IsValid && Ui.FindLabel("nope").Text == ""; }
 				void close() { Ui.Pop(); }
 				bool moved = false;
+				bool shown = false;
+				void showMap()
+				{
+					Image map = Ui.FindImage("minimap");
+					map.SetSource(Guid::FromString("00000000-0000-0000-0000-000000000042"));
+					shown = map.IsValid && !map.Source.IsNil;
+				}
 				void move()
 				{
 					Label marker = Ui.FindLabel("title");
@@ -113,6 +120,12 @@ static class UiScriptedTests
 		let marker = bed.Ui.FindLabel("title").Resolve();
 		Test.Assert(Math.Abs(marker.Transform.Translation.Y - 32.0f) < 0.0001f);
 		Test.Assert(Math.Abs(marker.Transform.Rotation - DegreesToRadians(180.0f)) < 0.0001f);
+
+		// An image's source from script: the texture asset it shows.
+		Test.Assert(vm.Invoke(menu, "showMap", default, ref r));
+		vm.GetProperty(menu, "shown", ref v);
+		Test.Assert(v.AsBool, "found the image and read its source back");
+		Test.Assert(bed.Ui.FindImage("minimap").Resolve().Source.Value == "00000000-0000-0000-0000-000000000042");
 
 		// The pop drops the screen; the delegate parked with the button dies with it, and the
 		// runtime outliving it is fine.

@@ -122,6 +122,11 @@ slot fix: a BeefBuild from upstream `master` without it fails the same five. Ups
 RenderTextureAsset). The key and the field name need to agree, or the reference a way to map
 them.
 
+### Scripts cannot compare two guids
+The script surface gives `Guid` `Nil`, `IsNil` and `FromString`, but no equality: AngelScript
+refuses `a == b` ("No matching operator that takes the types 'Guid' and 'Guid'"), so a script
+cannot check that an image's `Source` or an entity's asset is the one it expects.
+
 ## Documentation and content
 
 - Port Raptor's documentation (`Documentation/Systems`, `Guides`, `GETTING-STARTED.md`) doc by

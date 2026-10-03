@@ -67,7 +67,17 @@ class ImageView : View
 	private void ResolveSource()
 	{
 		let source = Source.Value;
-		if (source.IsEmpty || (mResolvedSource == source))
+		if (source.IsEmpty)
+		{
+			if (!mResolvedSource.IsEmpty) // the source was cleared: so is its image
+			{
+				mResolvedSource.Clear();
+				mImage = null;
+				Invalidate();
+			}
+			return;
+		}
+		if (mResolvedSource == source)
 			return;
 		let provider = (Context != null) ? Context.ResourceProvider : null;
 		let image = (provider != null) ? provider.LoadImage(source) : null;
