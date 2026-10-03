@@ -37,7 +37,7 @@ Raptor's (the last group).
 12. c0dc7379: the dist manifest copies the project settings through their own serialization,
     not field by field (`ExportDriver`).
 13. 9af5a57e: `export_preset_set` checks `platform` and `config` against the installed templates
-    rather than fixed lists. (Raptor's reflected-fields refactor is optional; not planned.)
+    rather than fixed lists.
 14. 0c6a0393: the HTTP tests Sedulous lacks (sequence numbers across re-dispatch, a departed
     peer's request abandoned, a pending one abandoned at `Stop`).
 15. From Raptor's notes for us: DefaultApplication clears the factory set at shutdown while the
@@ -46,47 +46,56 @@ Raptor's (the last group).
     override test walks the Level script's overrides too; check the audio clip and cue pages
     keep a paused audition (Raptor's pages dropped it).
 
+16. bc87304e, eadecdd5, 1896bfed, b6a08629, f3fc2d35: the project settings and the export
+    presets describe their fields through reflection, and the Project Settings dialog,
+    `project_info`/`project_settings_set` and `export_presets`/`export_preset_set` all build
+    from it (one shared reflected-fields module), instead of three hand-kept field lists
+    (`ProjectSettingsDialog`, `ProjectInfoTool`, `ExportPresetTools`) that drift as fields are
+    added, the bug class item 12 fixes for the manifest. The tool keys become the reflected
+    field names (`defaultSceneId`, `renderMsaaSamples`), as Raptor's: the McpGuide and every
+    test calling the tools change with them. The largest take-back; after 11 to 15.
+
 ## Group 3: navigation over static geometry
 
-16. 79bef80d Navigation: a bake can be bounded to a region (`NavigationBakeParams.Bounds`).
-17. 904aa179 Editor.Navigation: a zone bakes within its box. Before 20: once wide static
+17. 79bef80d Navigation: a bake can be bounded to a region (`NavigationBakeParams.Bounds`).
+18. 904aa179 Editor.Navigation: a zone bakes within its box. Before 21: once wide static
     ground feeds the bake, the bound keeps the grid small.
-18. 7307ed3b Scene: `IStaticGeometrySource`, systems that own static level geometry say so.
-19. 9e9a21d5 Physics: `AppendBodyTriangles`, bodies give their world triangles touching a box.
-20. 0bbc1e88 Engine.Physics: static, solid bodies are the scene's static geometry (one
+19. 7307ed3b Scene: `IStaticGeometrySource`, systems that own static level geometry say so.
+20. 9e9a21d5 Physics: `AppendBodyTriangles`, bodies give their world triangles touching a box.
+21. 0bbc1e88 Engine.Physics: static, solid bodies are the scene's static geometry (one
     `DescribeBody` shared with body creation; works in edit mode with no world).
-21. 7948ddd8 Engine.Terrain: a terrain's surface is static geometry (the triangulation moves out
+22. 7948ddd8 Engine.Terrain: a terrain's surface is static geometry (the triangulation moves out
     of `NavigationBake`).
-22. 81236cd8 Editor.Navigation: bake the scene's static geometry, not every mesh (cars and
+23. 81236cd8 Editor.Navigation: bake the scene's static geometry, not every mesh (cars and
     walkers no longer bake into the navmesh).
-23. c08cec05 + e3eb6dc1 Editor.Scene: `navigation_bake`, the inspector's Bake Navigation as a
+24. c08cec05 + e3eb6dc1 Editor.Scene: `navigation_bake`, the inspector's Bake Navigation as a
     live scene MCP tool (`SceneMcpTools`; the scene tool tripwire 17 to 18; the McpGuide).
 
 ## Group 4: orthographic cameras and render textures
 
-24. eb546ef1 RenderGraph: an imported target takes its final state right after its last pass.
-25. cfe503d5 Render: an orthographic view clusters its lights and skips the perspective-only
+25. eb546ef1 RenderGraph: an imported target takes its final state right after its last pass.
+26. cfe503d5 Render: an orthographic view clusters its lights and skips the perspective-only
     passes (AO, SSR, SSGI, TAA); `Float4x4.IsOrthographic`.
-26. 06265006 Engine.Render: a camera can be orthographic (`CameraProjection`, `OrthoHeight`;
+27. 06265006 Engine.Render: a camera can be orthographic (`CameraProjection`, `OrthoHeight`;
     the extract, the camera preview and gizmo build through one function). 17e80a08 needs only
     the new enums to keep their reflection data.
-27. 19314649 Texture.Resource: a render texture is a texture a camera can draw into.
-28. 7b2a6642 Texture.Pipeline: the render texture asset, its cook and File > New.
-29. aa13434d Resource, Editor.Mcp: a texture reference names both asset types it takes.
-30. 4e9f1a6d Engine.Render: a camera can render into a texture (`Target`, `TargetInterval`;
+28. 19314649 Texture.Resource: a render texture is a texture a camera can draw into.
+29. 7b2a6642 Texture.Pipeline: the render texture asset, its cook and File > New.
+30. aa13434d Resource, Editor.Mcp: a texture reference names both asset types it takes.
+31. 4e9f1a6d Engine.Render: a camera can render into a texture (`Target`, `TargetInterval`;
     scene overlays off for a target view).
 
 ## Group 5: images in game UI and script handles
 
-31. 556f3847 UI: an ImageView names what it shows (`source=`), resolved by the context's
+32. 556f3847 UI: an ImageView names what it shows (`source=`), resolved by the context's
     provider.
-32. 48c2f248 Engine.UI: an image in game UI shows a texture asset, render textures included.
-33. 8c4a3c4b Engine.UI.Script: views move and turn from script (translation, rotation).
-34. 16de4509 Script: an Image handle and `SetCameraTarget` from a script.
+33. 48c2f248 Engine.UI: an image in game UI shows a texture asset, render textures included.
+34. 8c4a3c4b Engine.UI.Script: views move and turn from script (translation, rotation).
+35. 16de4509 Script: an Image handle and `SetCameraTarget` from a script.
 
 ## Group 6: PaperKid rebuilt over MCP
 
-35. 92bfed84 (+ bdd54b09): Raptor's rebuilt PaperKid, recreated through the MCP tools: five
+36. 92bfed84 (+ bdd54b09): Raptor's rebuilt PaperKid, recreated through the MCP tools: five
     blocks on a ring road, the bike's auto-aimed throws, cars and walkers on navmeshes, the
     orthographic minimap camera drawing into a render texture the HUD shows, seven screens.
     Files cannot be copied (different envelopes, type hashes and script dialect); Raptor's
