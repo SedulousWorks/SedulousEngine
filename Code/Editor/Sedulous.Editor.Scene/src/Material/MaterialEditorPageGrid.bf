@@ -136,8 +136,9 @@ extension MaterialEditorPage
 
 	private void AddTextureRow(String slot)
 	{
+		// A render texture samples like any texture (a monitor's screen, a mirror).
 		let editor = new ResourceRefEditor(slot, AssetNameFor(MaterialSourceEdit.TextureFor(mAsset.Source, slot)), "Textures",
-			scope StringView[]("TextureAsset"));
+			scope StringView[]("TextureAsset", "RenderTextureAsset"));
 		editor.SetDisplayName(PropertyNames.Prettify(slot, .. scope .()));
 		editor.BindAsset(mContext, new [=this, =slot]() => (mAsset != null) ? MaterialSourceEdit.TextureFor(mAsset.Source, slot) : Guid(),
 			new [=this, =slot](picked) => { ApplyEdit(slot, new [=slot, =picked](s) => MaterialSourceEdit.SetTexture(s, slot, picked)); });

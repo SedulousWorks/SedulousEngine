@@ -66,11 +66,11 @@ namespace Sedulous.Pipeline.Registration;
 /// matching constant DELIBERATELY, and a lost registration then fails the test loudly.
 static class PipelineRegistration
 {
-	public const int cBuilderCount = 27;
+	public const int cBuilderCount = 28;
 	public const int cImporterCount = 10;
 	/// The creators every build has; the scripts add three per language with a cook on top
 	/// (ScriptCreators.CountFor).
-	public const int cCreatorCount = 25;
+	public const int cCreatorCount = 26;
 
 	/// The pipeline surface the script cooks compile against, made by the type registration
 	/// and released by Teardown.
@@ -155,6 +155,7 @@ static class PipelineRegistration
 	public static void RegisterAllBuilders(BuilderRegistry registry)
 	{
 		registry.Register(new TextureAssetBuilder());
+		registry.Register(new RenderTextureAssetBuilder());
 		registry.Register(new FontAssetBuilder());
 		registry.Register(new ImageAssetBuilder());
 		registry.Register(new HeightfieldAssetBuilder());
@@ -212,6 +213,7 @@ static class PipelineRegistration
 		HeightfieldCreators.Register(registry);
 		TerrainCreators.Register(registry);
 		VegetationCreators.Register(registry);
+		TextureCreators.Register(registry);
 		ScriptCreators.Register(registry);
 	}
 

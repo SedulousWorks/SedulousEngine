@@ -343,7 +343,8 @@ static class InspectorRows<T>
 		case "NavigationZoneResource": outList.Append("\"NavigationZoneAsset\"");
 		case "AnimationGraph": outList.Append("\"AnimationGraphAsset\"");
 		case "PropertyAnimationClipResource": outList.Append("\"PropertyAnimationClipAsset\"");
-		case "Texture": outList.Append("\"TextureAsset\"");
+		// A render texture is a texture too: a sprite, a decal or a camera's target takes one.
+		case "Texture": outList.Append("\"TextureAsset\", \"RenderTextureAsset\"");
 		case "ParticleEffectResource": outList.Append("\"ParticleEffectAsset\"");
 		case "CollisionShape": outList.Append("\"CollisionShapeAsset\"");
 		case "PhysicalMaterial": outList.Append("\"PhysicalMaterialAsset\"");
