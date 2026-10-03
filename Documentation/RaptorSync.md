@@ -42,11 +42,15 @@ Raptor's (the last group).
     null), so the check stays the platforms the engine targets, not this machine's templates.
 14. ~~0c6a0393~~ (done): the HTTP tests Sedulous lacks (sequence numbers across re-dispatch, a departed
     peer's request abandoned, a pending one abandoned at `Stop`).
-15. From Raptor's notes for us: DefaultApplication clears the factory set at shutdown while the
-    device lives; `EngineCompositionTests` "each domain id once" and "each factory matches its
-    description"; `SceneReference`'s typeIds text interpolates the hash basis; the PaperKid
-    override test walks the Level script's overrides too; check the audio clip and cue pages
-    keep a paused audition (Raptor's pages dropped it).
+15. From Raptor's notes for us, each its own commit:
+    - ~~a~~ (done) DefaultApplication clears the factory set at shutdown while the device lives
+      (and releases its own manager's products first; a borrowed manager forgets the factories).
+    - b `EngineCompositionTests`: "each domain id once" and "each factory matches its
+      description".
+    - c A regression test for 5aa79822's teardown order.
+    - d `SceneReference`'s typeIds text interpolates the hash basis.
+    - e Check the audio clip and cue pages keep a paused audition (Raptor's pages dropped it).
+    - The PaperKid override test walks the Level script's overrides too: with group 6.
 
 16. bc87304e, eadecdd5, 1896bfed, b6a08629, f3fc2d35: the project settings and the export
     presets describe their fields through reflection, and the Project Settings dialog,

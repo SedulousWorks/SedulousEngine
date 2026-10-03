@@ -12,9 +12,9 @@ namespace Sedulous.Engine.DefaultApp;
 /// composed from the engine composition root rather than listed here.
 extension DefaultApplication
 {
-	/// The factories this application owns, freed with it. They are handed to a manager which
-	/// only BORROWS them, so their lifetime is this application's rather than any manager's, and
-	/// a manager attached later gets the same set.
+	/// The factories this application owns, destroyed at shutdown while the device they hold
+	/// is alive. They are handed to a manager which only BORROWS them, so their lifetime is this
+	/// application's rather than any manager's, and a manager attached later gets the same set.
 	private ResourceFactorySet mFactories = new .() ~ delete _;
 
 	/// The product TYPES: a factory constructs a cooked product by the type name stored with

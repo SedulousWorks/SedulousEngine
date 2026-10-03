@@ -733,6 +733,14 @@ class DefaultApplication : IApplication, ISceneObserver
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null))
 			mScreenshot.Release(graphics.Raw);
+
+		// The products release while the device is alive, then the factories (the texture
+		// factory holds the device). A borrowed manager outlives this application, so it
+		// forgets them first.
+		DeleteAndNullify!(mOwnedResources);
+		if (mBorrowedResources != null)
+			mFactories.Unregister(mBorrowedResources);
+		mFactories.Clear();
 	}
 
 	// ==================== networking ====================

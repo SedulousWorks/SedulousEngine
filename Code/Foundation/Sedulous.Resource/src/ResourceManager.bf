@@ -106,6 +106,15 @@ class ResourceManager
 			mFactories[factory.ProductTypeId] = factory;
 	}
 
+	/// Forgets `factory` if it is the one registered for its product type: its owner is about
+	/// to destroy it while this manager lives on.
+	public void RemoveFactory(IResourceFactory factory)
+	{
+		if ((factory != null) && mFactories.TryGetValue(factory.ProductTypeId, let registered)
+			&& (registered == factory))
+			mFactories.Remove(factory.ProductTypeId);
+	}
+
 	/// The stable id for a product type, which is what factories are keyed on.
 	public static uint64 ProductTypeIdOf<T>() where T : class
 	{

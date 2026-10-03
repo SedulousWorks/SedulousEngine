@@ -146,6 +146,13 @@ class ResourceFactorySet
 			manager.AddFactory(factory);
 	}
 
+	/// Takes every created factory back out of `manager`, for a manager that outlives the set.
+	public void Unregister(ResourceManager manager)
+	{
+		for (let factory in mFactories)
+			manager.RemoveFactory(factory);
+	}
+
 	public bool Has(Type product) => Has(ResourceManager.ProductTypeIdOf(product));
 
 	public bool Has(uint64 productTypeId)

@@ -57,4 +57,23 @@ class StandardFactoriesTests
 		// factory.
 		Test.Assert(!resources.HasFactory(ResourceManager.ProductTypeIdOf<Texture>()));
 	}
+
+	/// Shutdown destroys the factories while the device is alive (the texture factory holds
+	/// it), not with the application. A borrowed manager outlives the application, so it is
+	/// left holding none of them rather than pointers to destroyed ones.
+	[Test]
+	public static void ShutdownDestroysTheFactoriesAndABorrowedManagerForgetsThem()
+	{
+		let resources = scope ResourceManager(null);
+		let host = scope StubHost();
+		let app = scope DefaultApplication();
+		app.AttachResourceManager(resources, host);
+		Test.Assert(resources.FactoryCount > 0);
+		Test.Assert(app.Factories.Count == resources.FactoryCount);
+
+		app.OnShutdown(host);
+		Test.Assert(app.Factories.Count == 0);
+		Test.Assert(resources.FactoryCount == 0);
+		Test.Assert(!resources.HasFactory(ResourceManager.ProductTypeIdOf<Font>()));
+	}
 }
