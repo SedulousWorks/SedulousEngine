@@ -77,6 +77,36 @@ static class ExportTemplateTests
 		Test.Assert(loaded.Find("nope") == null);
 	}
 
+	/// A preset describes its fields through reflection, each labelled, the sizes with their
+	/// range: the MCP preset tools set them through it.
+	[Test]
+	public static void APresetDescribesItsFieldsThroughReflection()
+	{
+		let fields = scope List<System.Reflection.FieldInfo>();
+		SettingFields.Of(typeof(ExportPreset), fields);
+		let keys = scope String();
+		for (let field in fields)
+		{
+			if (!keys.IsEmpty)
+				keys.Append(",");
+			SettingFields.Key(field, keys);
+			Test.Assert(!SettingFields.Setting(field).Value.Label.IsEmpty);
+			if (field.Name == "AdditionalFiles")
+				Test.Assert(SettingFields.KindOf(field, let kind) && (kind == .TextList));
+			if (field.Name == "RenderWidth")
+			{
+				SettingFields.CountRange(field, let least, let most);
+				Test.Assert((least == 0) && (most == 16384));
+			}
+			if (field.Name == "WindowHeight")
+			{
+				SettingFields.CountRange(field, let least, let most);
+				Test.Assert((least == 1) && (most == 16384));
+			}
+		}
+		Test.Assert(keys == "name,platform,templateId,playerName,outputSubdir,additionalFiles,config,stageSymbols,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable", keys);
+	}
+
 	[Test]
 	public static void AnotherDataVersionIsRefusedNotDefaulted()
 	{
