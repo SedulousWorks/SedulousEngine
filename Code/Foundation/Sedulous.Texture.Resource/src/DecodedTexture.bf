@@ -10,8 +10,11 @@ namespace Sedulous.Texture.Resource;
 /// split.
 class DecodedTexture
 {
-	/// The cooked record. OWNED.
+	/// The cooked record. OWNED; null for a render texture.
 	public TextureResource Record ~ delete _;
+	/// The render texture record, when that is what was stored: no pixels, the camera that
+	/// targets it draws them. OWNED.
+	public RenderTextureResource RenderTarget ~ delete _;
 	/// The cooked "data" stream.
 	public List<uint8> Pixels = new .() ~ delete _;
 }

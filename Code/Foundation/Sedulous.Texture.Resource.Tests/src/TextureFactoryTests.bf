@@ -197,4 +197,54 @@ class TextureFactoryTests
 			Test.Assert(texture.Get.GpuTexture != null);
 		}
 	}
+
+	/// A cooked RenderTextureResource is a texture a camera can draw into: an ordinary Texture
+	/// product (a sprite, a material or a UI image takes it as is), a render target that is
+	/// also sampled and copyable. A record with no size is refused, never a zero extent GPU
+	/// texture.
+	[Test]
+	public static void ACookedRenderTextureIsATextureACameraCanDrawInto()
+	{
+		let fixture = scope TextureFixture("scratch_render_texture_factory");
+		let target = fixture.Database.RootGroup.CreateInstance("target", "Sedulous.Texture.Resource.RenderTextureResource");
+		{
+			let record = scope RenderTextureResource();
+			record.Width = 320;
+			record.Height = 180;
+			record.Format = .RGBA16Float;
+			Test.Assert(target.WriteObject(record) case .Ok);
+		}
+		let bad = fixture.Database.RootGroup.CreateInstance("bad", "Sedulous.Texture.Resource.RenderTextureResource");
+		{
+			let record = scope RenderTextureResource();
+			record.Width = 0;
+			Test.Assert(bad.WriteObject(record) case .Ok);
+		}
+
+		let manager = scope ResourceManager(fixture.Database);
+		manager.AddFactory(fixture.Textures);
+		let texture = manager.Bind<Texture>(target.Id);
+		Test.Assert(texture.State == .Ready);
+		let product = texture.Get;
+		Test.Assert(product != null);
+		Test.Assert((product.Width == 320) && (product.Height == 180));
+		Test.Assert(product.Format == .RGBA16Float);
+		Test.Assert(product.GpuTexture != null);
+		let usage = product.GpuTexture.Desc.Usage;
+		Test.Assert(usage.HasFlag(.RenderTarget));
+		Test.Assert(usage.HasFlag(.Sampled));
+		Test.Assert(usage.HasFlag(.CopySrc));
+		Test.Assert(product.View != null);
+		Test.Assert(product.Sampler != null);
+
+		Test.Assert(manager.Bind<Texture>(bad.Id).Get == null);
+
+		let limits = scope RenderTextureResource();
+		Test.Assert(limits.IsValid, "the defaults: 256 x 256, low dynamic range");
+		limits.Width = RenderTextureResource.cMaxSize + 1;
+		Test.Assert(!limits.IsValid);
+		limits.Width = 64;
+		limits.Format = .Depth32Float; // a camera renders colour
+		Test.Assert(!limits.IsValid);
+	}
 }

@@ -38,7 +38,7 @@ class TextureFactory : IResourceFactory
 			return null;
 		defer delete decoded;
 
-		return BuildTexture(decoded.Record, decoded.Pixels);
+		return Build(decoded);
 	}
 
 	public Object DecodeStage(Instance instance) => Decode(instance);
@@ -53,7 +53,16 @@ class TextureFactory : IResourceFactory
 		}
 		defer delete intermediate;
 
-		return BuildTexture(intermediate.Record, intermediate.Pixels);
+		return Build(intermediate);
+	}
+
+	/// The one Texture factory (the manager keys factories by product type) dispatches on
+	/// the record it read.
+	private Object Build(DecodedTexture decoded)
+	{
+		if (decoded.RenderTarget != null)
+			return BuildRenderTexture(decoded.RenderTarget);
+		return BuildTexture(decoded.Record, decoded.Pixels);
 	}
 
 	/// The worker half: the record and the heavy bytes, and nothing that touches a device.
@@ -62,6 +71,14 @@ class TextureFactory : IResourceFactory
 		let stored = instance.ReadObject();
 		if (stored == null)
 			return null;
+
+		if (let target = stored as RenderTextureResource)
+		{
+			// No pixels: the camera that targets it draws them.
+			let decoded = new DecodedTexture();
+			decoded.RenderTarget = target;
+			return decoded;
+		}
 
 		let record = stored as TextureResource;
 		if (record == null)
@@ -144,6 +161,62 @@ class TextureFactory : IResourceFactory
 		let product = new Texture();
 		product.Adopt(mDevice, texture, view, sampler, record.Width, record.Height, record.Format,
 			isCube);
+		return product;
+	}
+
+	/// A texture a camera renders into and anything samples: a render target and sampled,
+	/// plus CopySrc so a capture can read it out. It starts cleared to transparent black
+	/// through an upload, which also leaves it in the shader read state, so a texture sampled
+	/// before its camera has drawn (an inactive camera, the first frame) is defined. MAIN
+	/// THREAD ONLY.
+	private Object BuildRenderTexture(RenderTextureResource record)
+	{
+		if (!record.IsValid)
+			return null;
+		var desc = TextureDesc.RenderTarget(record.Format, record.Width, record.Height, 1, "RenderTexture");
+		desc.Usage |= .CopySrc | .CopyDst;
+		if (!(mDevice.CreateTexture(desc) case .Ok(let texture)))
+			return null;
+		var viewDesc = TextureViewDesc();
+		viewDesc.Format = record.Format;
+		viewDesc.Dimension = .Texture2D;
+		if (!(mDevice.CreateTextureView(texture, viewDesc) case .Ok(let view)))
+		{
+			var doomed = texture;
+			mDevice.DestroyTexture(ref doomed);
+			return null;
+		}
+
+		let bytesPerPixel = TextureFormats.BytesPerPixel(record.Format);
+		let clear = scope List<uint8>();
+		clear.Resize((int)record.Width * (int)record.Height * (int)bytesPerPixel);
+		Internal.MemSet(clear.Ptr, 0, clear.Count);
+		if (let queue = mDevice.GetQueue(.Graphics, 0))
+		{
+			if (queue.CreateTransferBatch() case .Ok(var batch))
+			{
+				var layout = TextureDataLayout();
+				layout.BytesPerRow = record.Width * bytesPerPixel;
+				layout.RowsPerImage = record.Height;
+				batch.WriteTexture(texture, .(clear.Ptr, clear.Count), layout,
+					.(record.Width, record.Height, 1), 0, 0);
+				batch.Submit().IgnoreError();
+				queue.DestroyTransferBatch(ref batch);
+			}
+		}
+
+		var samplerDesc = SamplerDesc();
+		samplerDesc.MinFilter = .Linear;
+		samplerDesc.MagFilter = .Linear;
+		samplerDesc.AddressU = .ClampToEdge;
+		samplerDesc.AddressV = .ClampToEdge;
+		samplerDesc.AddressW = .ClampToEdge;
+		ISampler sampler = null;
+		if (mDevice.CreateSampler(samplerDesc) case .Ok(let created))
+			sampler = created;
+
+		let product = new Texture();
+		product.Adopt(mDevice, texture, view, sampler, record.Width, record.Height, record.Format, false);
 		return product;
 	}
 
