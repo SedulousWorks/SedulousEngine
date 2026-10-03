@@ -109,6 +109,12 @@ bits of the left operand times the prime, cut to 40 bits. Nothing in the engine 
 comptime `TypeId` runs `TypeIdOf` in the interpreter and is tested against it). Reduce to a
 repro and report it upstream.
 
+### The SIMD math tests crash with Beef at e8bc44c8
+Five `Sedulous.Core.Tests.SimdMathTests` segfault (Vector2/3/4 and Matrix4 against the packed
+types; the first fault is in `Eq(Vector4, Float4)` at `SimdMathTests.bf:25`). Not the interface
+slot fix: a BeefBuild from upstream `master` without it fails the same five. Upstream's
+`80bfb99c SIMD fixes` is the suspect. A Beef bug for a fix branch, with a reproducing test.
+
 ## Documentation and content
 
 - Port Raptor's documentation (`Documentation/Systems`, `Guides`, `GETTING-STARTED.md`) doc by
