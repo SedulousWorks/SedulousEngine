@@ -231,4 +231,35 @@ class NavigationBakeTests
 		Test.Assert(BakeGround(plain, 10.0f) case .Ok);
 		Test.Assert(BytesEqual(plain, blob), "capturing changed nothing");
 	}
+
+	/// A level's ground plane reaches far past the region baked (a physics plane 2000 units
+	/// across): with bounds, the grid is the region's, not the plane's, and the navmesh loads
+	/// and paths. The whole plane made a grid of over a hundred tiles a side.
+	[Test]
+	public static void BoundsClipTheGridToTheRegionAndGeometryPastItDoesNotWidenIt()
+	{
+		let verts = scope List<Float3>();
+		let indices = scope List<uint32>();
+		AddGround(verts, indices, -1000.0f, 1000.0f, -1000.0f, 1000.0f);
+		var parameters = NavigationBakeParams();
+		parameters.Bounds = .(.(-20.0f, -5.0f, -20.0f), .(20.0f, 5.0f, 20.0f));
+
+		let blob = scope List<uint8>();
+		Test.Assert(NavigationMeshBuilder.BuildTiled(verts, indices, parameters, blob) case .Ok);
+		Test.Assert(NavigationBlob.ReadGrid(blob, let grid));
+		// 40 units over tiles of 19.2: three a side, not a hundred and five.
+		Test.Assert((grid.CountX == 3) && (grid.CountY == 3), scope $"{grid.CountX} x {grid.CountY}");
+		let mesh = scope NavigationMesh();
+		Test.Assert(mesh.Load(blob) case .Ok);
+		let query = scope NavigationMeshQuery(mesh);
+		let path = scope NavigationPath();
+		Test.Assert(query.FindPath(.(-15, 0, -15), .(15, 0, 15), path) case .Ok);
+		Test.Assert(path.Complete);
+
+		// Geometry entirely outside the region is nothing to bake.
+		parameters.Bounds = .(.(5000.0f, -5.0f, 5000.0f), .(5040.0f, 5.0f, 5040.0f));
+		let none = scope List<uint8>();
+		Test.Assert(NavigationMeshBuilder.BuildTiled(verts, indices, parameters, none) case .Err);
+		Test.Assert(none.IsEmpty);
+	}
 }

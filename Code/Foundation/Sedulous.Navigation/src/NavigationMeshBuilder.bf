@@ -29,7 +29,8 @@ static class NavigationMeshBuilder
 	/// identical whether the tiles baked in parallel or one after another.
 	private const int cMaxBakeSamples = 240000;
 
-	/// The grid the tiles sit on, derived from the geometry's own bounds.
+	/// The grid the tiles sit on, derived from the geometry's own bounds, clipped to the bake's
+	/// Bounds when it has them.
 	private struct TileGrid
 	{
 		public float[3] BMin;
@@ -57,6 +58,19 @@ static class NavigationMeshBuilder
 			{
 				outGrid.BMin[c] = Min(outGrid.BMin[c], vertices[i][c]);
 				outGrid.BMax[c] = Max(outGrid.BMax[c], vertices[i][c]);
+			}
+		}
+
+		// Clipped to the region baked: geometry reaching past it does not widen the grid, and
+		// geometry wholly outside it is nothing to bake.
+		if (parameters.Bounds.IsValid())
+		{
+			for (int c < 3)
+			{
+				outGrid.BMin[c] = Max(outGrid.BMin[c], parameters.Bounds.Min[c]);
+				outGrid.BMax[c] = Min(outGrid.BMax[c], parameters.Bounds.Max[c]);
+				if (outGrid.BMin[c] > outGrid.BMax[c])
+					return false;
 			}
 		}
 

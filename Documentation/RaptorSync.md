@@ -66,7 +66,7 @@ Raptor's (the last group).
 
 ## Group 3: navigation over static geometry
 
-17. 79bef80d Navigation: a bake can be bounded to a region (`NavigationBakeParams.Bounds`).
+17. ~~79bef80d~~ (done) Navigation: a bake can be bounded to a region (`NavigationBakeParams.Bounds`).
 18. 904aa179 Editor.Navigation: a zone bakes within its box. Before 21: once wide static
     ground feeds the bake, the bound keeps the grid small.
 19. 7307ed3b Scene: `IStaticGeometrySource`, systems that own static level geometry say so.

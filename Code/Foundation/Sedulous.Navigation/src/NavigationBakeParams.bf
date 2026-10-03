@@ -1,3 +1,5 @@
+using Sedulous.Core;
+
 namespace Sedulous.Navigation;
 
 /// The agent profile a navmesh is baked FOR.
@@ -30,6 +32,11 @@ struct NavigationBakeParams
 	/// Whether the tiles bake across workers. They are independent and the assembly stays row
 	/// major, so THE OUTPUT IS THE SAME EITHER WAY: this trades latency, never bytes.
 	public bool ParallelBake = true;
+
+	/// The region to bake, in the input's space; the default (an empty box) is the input's own
+	/// extent. Geometry reaching past it (a ground plane as wide as a level) is clipped to it
+	/// rather than widening the grid: an editor zone passes its box.
+	public AABB Bounds = AABB.Empty();
 
 	public this() {}
 }
