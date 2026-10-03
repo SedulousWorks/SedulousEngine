@@ -102,13 +102,6 @@ Game-tier scripts are not reloaded while a Game tab runs.
 data-version change cannot leave it unreadable. Sky Hopper (`Data/SampleProjects/PlatformerGame`)
 has no such guard.
 
-### Beef folds a constant `&*` of uint64 constants wrongly
-`(FnvOffsetBasis ^ (uint64)'a') &* FnvPrime`, all constants, evaluates to 0xe08601ec8c; the
-same steps on a variable give 0xaf63dc4c8601ec8c (FNV-1a of "a"). The folded value is the low 32
-bits of the left operand times the prime, cut to 40 bits. Nothing in the engine folds one (the
-comptime `TypeId` runs `TypeIdOf` in the interpreter and is tested against it). Reduce to a
-repro and report it upstream.
-
 ### Sprite and decal textures have no `ref` in the scene schema
 `SpriteComponent.TextureAsset` and `DecalComponent.TextureAsset` are written under the key
 `texture`, so the scene format reference matches no reflected field to that key and gives it no
