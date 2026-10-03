@@ -1,8 +1,10 @@
 using System;
 using System.IO;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Json;
+using Sedulous.Engine.Project;
 using Sedulous.Mcp;
 using Sedulous.Mcp.Reflection;
 using Sedulous.Mcp.Script;
@@ -497,21 +499,31 @@ static class ProjectFlowTests
 
 		// A scene where an input map goes is refused, and the scene given beside it with it.
 		let refused = scope String();
-		CallErr(server, "project_settings_set", With(With(Obj(), "defaultInputMap", sceneId), "defaultScene", sceneId), refused);
-		Test.Assert(refused.StartsWith("`defaultInputMap` takes an asset of type InputMapAsset; 'Level1' is of type"), refused);
+		CallErr(server, "project_settings_set", With(With(Obj(), "defaultInputMapId", sceneId), "defaultSceneId", sceneId), refused);
+		Test.Assert(refused.StartsWith("`defaultInputMapId` takes an asset of type InputMapAsset; 'Level1' is of type"), refused);
 		Test.Assert(changed == 0);
 		{
 			let info = CallOk(server, "project_info", Obj());
 			defer delete info;
-			Test.Assert(info.Get("settings").Get("defaultScene").IsNull, "nothing changed");
+			Test.Assert(info.Get("settings").Get("defaultSceneId").IsNull, "nothing changed");
+		}
+		// A name that is no setting is refused with the list, not ignored.
+		{
+			let unknown = scope String();
+			CallErr(server, "project_settings_set", With(With(Obj(), "defaultScene", sceneId), "defaultSceneId", sceneId), unknown);
+			Test.Assert(unknown.StartsWith("no setting 'defaultScene'; the settings are: name, defaultSceneId, nativeModule,"), unknown);
+			let msaa = scope String();
+			CallErr(server, "project_settings_set", With(Obj(), "renderMsaaSamples", 3), msaa);
+			Test.Assert(msaa == "`renderMsaaSamples` takes 1, 2, 4", msaa);
+			Test.Assert(changed == 0);
 		}
 
-		let set = CallOk(server, "project_settings_set", With(With(With(Obj(), "defaultInputMap", mapId), "defaultScene", sceneId), "msaa", 4));
+		let set = CallOk(server, "project_settings_set", With(With(With(Obj(), "defaultInputMapId", mapId), "defaultSceneId", sceneId), "renderMsaaSamples", 4));
 		defer delete set;
 		Test.Assert(changed == 1);
-		Test.Assert(set.Get("settings").Get("defaultInputMap").Get("path").AsString() == "Controls");
-		Test.Assert(set.Get("settings").Get("defaultScene").Get("path").AsString() == "Scenes/Level1");
-		Test.Assert(set.Get("settings").Get("msaa").AsInt() == 4);
+		Test.Assert(set.Get("settings").Get("defaultInputMapId").Get("path").AsString() == "Controls");
+		Test.Assert(set.Get("settings").Get("defaultSceneId").Get("path").AsString() == "Scenes/Level1");
+		Test.Assert(set.Get("settings").Get("renderMsaaSamples").AsInt() == 4);
 		Test.Assert(session.Project.Settings.DefaultScene == "Scenes/Level1", "the path mirror follows");
 
 		// Saved: a reopen reads it from the manifest; then "" clears one and leaves the rest.
@@ -519,26 +531,43 @@ static class ProjectFlowTests
 		{
 			let info = CallOk(server, "project_info", Obj());
 			defer delete info;
-			Test.Assert(info.Get("settings").Get("defaultInputMap").Get("guid").AsString() == mapId);
+			Test.Assert(info.Get("settings").Get("defaultInputMapId").Get("guid").AsString() == mapId);
 		}
-		let cleared = CallOk(server, "project_settings_set", With(Obj(), "defaultInputMap", ""));
+		let cleared = CallOk(server, "project_settings_set", With(Obj(), "defaultInputMapId", ""));
 		defer delete cleared;
-		Test.Assert(cleared.Get("settings").Get("defaultInputMap").IsNull);
-		Test.Assert(cleared.Get("settings").Get("defaultScene").Get("guid").AsString() == sceneId);
+		Test.Assert(cleared.Get("settings").Get("defaultInputMapId").IsNull);
+		Test.Assert(cleared.Get("settings").Get("defaultSceneId").Get("guid").AsString() == sceneId);
 
-		// The display: the render resolution and fit, the window; a bad name or size is
-		// refused whole.
+		// The display: the render resolution and fit, the window, choices by their cases'
+		// names; a bad name or size is refused whole.
 		{
-			let display = CallOk(server, "project_settings_set", With(With(With(With(With(Obj(), "renderWidth", 640), "renderHeight", 360), "renderFit", "integerScale"), "windowMode", "borderless"), "windowWidth", 1920));
+			let display = CallOk(server, "project_settings_set", With(With(With(With(With(Obj(), "renderWidth", 640), "renderHeight", 360), "renderFit", "IntegerScale"), "windowMode", "Borderless"), "windowWidth", 1920));
 			defer delete display;
-			let render = display.Get("settings").Get("render");
-			Test.Assert((render.Get("width").AsInt() == 640) && (render.Get("height").AsInt() == 360) && (render.Get("fit").AsString() == "integerScale"));
-			let window = display.Get("settings").Get("window");
-			Test.Assert((window.Get("mode").AsString() == "borderless") && (window.Get("width").AsInt() == 1920) && (window.Get("height").AsInt() == 720));
+			let settings = display.Get("settings");
+			Test.Assert((settings.Get("renderWidth").AsInt() == 640) && (settings.Get("renderHeight").AsInt() == 360) && (settings.Get("renderFit").AsString() == "IntegerScale"));
+			Test.Assert((settings.Get("windowMode").AsString() == "Borderless") && (settings.Get("windowWidth").AsInt() == 1920) && (settings.Get("windowHeight").AsInt() == 720));
 			Test.Assert((session.Project.Settings.RenderFit == .IntegerScale) && (session.Project.Settings.WindowMode == .Borderless));
 			let refused = scope String();
 			CallErr(server, "project_settings_set", With(With(Obj(), "windowWidth", 0), "renderWidth", 100), refused);
 			Test.Assert(refused.Contains("`windowWidth` takes 1 to 16384"), refused);
+			// A choice outside its cases is refused by the schema, which lists them.
+			{
+				let response = CallResponse(server, "project_settings_set", With(With(Obj(), "windowMode", "borderless"), "renderWidth", 100));
+				defer delete response;
+				Test.Assert(response.Get("error") != null);
+			}
+			// The check itself refuses one too, naming the cases, for a caller with no schema.
+			{
+				let fields = scope List<System.Reflection.FieldInfo>();
+				SettingFields.Of(typeof(ProjectSettings), fields);
+				let changes = scope List<ReflectedFields.Change>();
+				defer ClearAndDeleteItems(changes);
+				let arguments = With(Obj(), "windowMode", "borderless");
+				defer delete arguments;
+				let error = scope String();
+				Test.Assert(!ReflectedFields.Check(arguments, fields, session.Project.SourceDb, changes, error));
+				Test.Assert(error == "`windowMode` takes Windowed, Fullscreen, Borderless", error);
+			}
 			Test.Assert(session.Project.Settings.RenderWidth == 640, "nothing changed");
 		}
 	}

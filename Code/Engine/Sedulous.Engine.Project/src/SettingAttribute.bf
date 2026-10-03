@@ -151,6 +151,27 @@ static class SettingFields
 		}
 	}
 
+	/// Every asset `record`'s settings name, with the setting's key: an asset setting's guid
+	/// (nil when unset) and each of an asset list's.
+	public static void ForEachAsset(Object record, delegate void(StringView key, Guid id) visit)
+	{
+		let fields = scope List<FieldInfo>();
+		Of(record.GetType(), fields);
+		let key = scope String();
+		for (let field in fields)
+		{
+			KindOf(field, let kind);
+			Key(field, key..Clear());
+			if (kind == .Asset)
+				visit(key, *(Guid*)Address(record, field));
+			else if (kind == .AssetList)
+			{
+				for (let id in *(List<Guid>*)Address(record, field))
+					visit(key, id);
+			}
+		}
+	}
+
 	/// A choice field's case names, comma separated: what a refusal lists.
 	public static void ChoiceNames(Type type, String outNames)
 	{

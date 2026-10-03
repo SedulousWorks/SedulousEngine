@@ -112,13 +112,17 @@ behaviour's properties under `live` beside what is authored.
 ## Workflows
 
 **Project**: `project_create` then `project_open` then `project_info`, which also reports the
-settings play reads (default scene, startup script, default input map, bus layout, UI theme,
-loading screen, UI font, and `uiFonts`, the other fonts the game UI loads beside the default,
-each a family a label picks with `font-family="<family>"`, a title face say; `render`, the
-resolution the game draws at and how it fits its output, 0 x 0 for the output's own size;
-`window`, the player's window size and mode). `project_settings_set`
-changes them: each asset setting must name an asset of its type, `""` clears it, `uiFonts` takes
-the whole list, and nothing changes when any of it is refused. `project_health` is
+settings play reads, keyed by their names: the asset settings (`defaultSceneId`,
+`startupScriptId`, `defaultInputMapId`, `defaultBusLayoutId`, `defaultUiThemeId`,
+`loadingDocumentId`, `defaultUiFontId`, each {guid, path} or null), `uiFontIds`, the other fonts
+the game UI loads beside the default, each a family a label picks with
+`font-family="<family>"`, a title face say; the display: `renderWidth`/`renderHeight`, the
+resolution the game draws at, 0 for its output's size, `renderFit`, and the player's
+`windowWidth`, `windowHeight`, `windowMode` and `windowResizable`; and `renderMsaaSamples`.
+`project_settings_set` changes them by the names `project_info` reports (a name that is no
+setting is refused with the list): each asset setting must name an asset of its type, `""`
+clears it, `uiFontIds` takes the whole list, a choice takes one of its values by name
+(`Borderless`, `IntegerScale`), and nothing changes when any of it is refused. `project_health` is
 the one call soundness sweep (dangling refs, broken sources, cook state); a dirty count
 alone is normal, clear it with `asset_cook`.
 

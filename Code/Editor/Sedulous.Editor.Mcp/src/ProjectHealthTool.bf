@@ -8,6 +8,7 @@ using Sedulous.VFS;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Cook;
 using Sedulous.Audio.Pipeline;
+using Sedulous.Engine.Project;
 
 namespace Sedulous.Editor.Mcp;
 
@@ -78,11 +79,11 @@ static class ProjectHealthTool
 
 		// Settings edges: manifest fields pointing at instances that no longer exist.
 		let settingsDangling = JsonValue.MakeArray();
-		let refs = scope List<(StringView name, Guid id)>();
-		AssetUsesTool.SettingsReferences(project.Settings, refs);
-		for (let reference in refs)
-			if (reference.id.IsSet && (db.GetInstance(reference.id) == null))
-				settingsDangling.Add(JsonValue.MakeString(reference.name));
+		SettingFields.ForEachAsset(project.Settings, scope [&](key, id) =>
+			{
+				if (id.IsSet && (db.GetInstance(id) == null))
+					settingsDangling.Add(JsonValue.MakeString(key));
+			});
 
 		// Cook state: the plan only, no build, plus the persisted records' failure flags.
 		let cacheMount = scope NativeFileSystem(project.CacheRoot(.. scope .()));

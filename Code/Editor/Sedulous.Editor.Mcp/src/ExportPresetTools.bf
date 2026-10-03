@@ -16,6 +16,9 @@ namespace Sedulous.Editor.Mcp;
 static class ExportPresetTools
 {
 	private static StringView[3] cConfigs = .("Debug", "Release", "Test");
+	/// The wire names of FitMode and WindowMode, in their declaration order.
+	private static StringView[4] cFitNames = .("stretch", "letterbox", "crop", "integerScale");
+	private static StringView[3] cWindowModeNames = .("windowed", "fullscreen", "borderless");
 
 	public static void Register(McpServer server, ProjectSession session)
 	{
@@ -106,7 +109,7 @@ static class ExportPresetTools
 				let render = JsonValue.MakeObject();
 				render.Set("width", JsonValue.MakeNumber(preset.RenderWidth));
 				render.Set("height", JsonValue.MakeNumber(preset.RenderHeight));
-				render.Set("fit", JsonValue.MakeString(ProjectInfoTool.cFitNames[(int)preset.RenderFit]));
+				render.Set("fit", JsonValue.MakeString(cFitNames[(int)preset.RenderFit]));
 				json.Set("render", render);
 			}
 			else
@@ -118,7 +121,7 @@ static class ExportPresetTools
 				let window = JsonValue.MakeObject();
 				window.Set("width", JsonValue.MakeNumber(preset.WindowWidth));
 				window.Set("height", JsonValue.MakeNumber(preset.WindowHeight));
-				window.Set("mode", JsonValue.MakeString(ProjectInfoTool.cWindowModeNames[(int)preset.WindowMode]));
+				window.Set("mode", JsonValue.MakeString(cWindowModeNames[(int)preset.WindowMode]));
 				window.Set("resizable", JsonValue.MakeBool(preset.WindowResizable));
 				json.Set("window", window);
 			}
@@ -227,7 +230,7 @@ static class ExportPresetTools
 		int fitIndex = -1;
 		if (let arg = arguments.Get("renderFit"))
 		{
-			fitIndex = IndexOfName(ProjectInfoTool.cFitNames, arg.AsString());
+			fitIndex = IndexOfName(cFitNames, arg.AsString());
 			if (fitIndex < 0)
 			{
 				outError.Append("`renderFit` takes stretch, letterbox, crop or integerScale");
@@ -237,7 +240,7 @@ static class ExportPresetTools
 		int modeIndex = -1;
 		if (let arg = arguments.Get("windowMode"))
 		{
-			modeIndex = IndexOfName(ProjectInfoTool.cWindowModeNames, arg.AsString());
+			modeIndex = IndexOfName(cWindowModeNames, arg.AsString());
 			if (modeIndex < 0)
 			{
 				outError.Append("`windowMode` takes windowed, fullscreen or borderless");

@@ -68,7 +68,7 @@ static class AssetDeleteToolTests
 		// The default scene: refused, its user named, and still there.
 		let refusal = scope String();
 		CallErr(server, "asset_delete", With(Obj(), "guid", main.ToString(.. scope .())), refusal);
-		Test.Assert(refusal.Contains("defaultScene"), refusal);
+		Test.Assert(refusal.Contains("defaultSceneId"), refusal);
 		Test.Assert(refusal.Contains("Nothing was deleted"));
 		Test.Assert(db.GetInstance(main) != null);
 

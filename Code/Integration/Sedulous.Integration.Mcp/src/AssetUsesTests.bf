@@ -94,7 +94,7 @@ static class AssetUsesTests
 		defer delete sceneUses;
 		Test.Assert(sceneUses.Get("useCount").AsInt() == 0);
 		Test.Assert((sceneUses.Get("projectSettingsUses").Count == 1)
-			&& (sceneUses.Get("projectSettingsUses").At(0).AsString() == "defaultScene"));
+			&& (sceneUses.Get("projectSettingsUses").At(0).AsString() == "defaultSceneId"));
 
 		// Nothing uses the material: empty, honestly.
 		let matUses = CallOk(server, "asset_uses", With(Obj(), "guid", matGuid));
@@ -199,7 +199,7 @@ static class AssetUsesTests
 		}
 		Test.Assert(sawReferences && sawSceneResource);
 		Test.Assert((broken.Get("projectSettingsDangling").Count == 1)
-			&& (broken.Get("projectSettingsDangling").At(0).AsString() == "defaultScene"));
+			&& (broken.Get("projectSettingsDangling").At(0).AsString() == "defaultSceneId"));
 
 		// Healing flips it back.
 		session.Project.Settings.DefaultSceneId = .Empty;

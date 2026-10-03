@@ -35,20 +35,6 @@ static class AssetUsesTool
 		public List<String> Edges = new .() ~ DeleteContainerAndItems!(_);
 	}
 
-	/// The manifest's guid fields, named as the tool reports them.
-	public static void SettingsReferences(ProjectSettings settings, List<(StringView name, Guid id)> outRefs)
-	{
-		outRefs.Add(("defaultScene", settings.DefaultSceneId));
-		outRefs.Add(("startupScript", settings.StartupScriptId));
-		outRefs.Add(("defaultInputMap", settings.DefaultInputMapId));
-		outRefs.Add(("defaultBusLayout", settings.DefaultBusLayoutId));
-		outRefs.Add(("defaultUiTheme", settings.DefaultUiThemeId));
-		outRefs.Add(("defaultUiFont", settings.DefaultUiFontId));
-		outRefs.Add(("loadingDocument", settings.LoadingDocumentId));
-		for (let id in settings.UiFontIds)
-			outRefs.Add(("uiFonts", id));
-	}
-
 	public static void Register(McpServer server, ProjectSession session, BuilderRegistry builders)
 	{
 		let context = new Context();
@@ -104,11 +90,11 @@ static class AssetUsesTool
 
 		// The manifest's own references: a scene can be in use by the project itself.
 		let settingsUses = JsonValue.MakeArray();
-		let refs = scope List<(StringView name, Guid id)>();
-		SettingsReferences(session.Project.Settings, refs);
-		for (let reference in refs)
-			if (reference.id == id)
-				settingsUses.Add(JsonValue.MakeString(reference.name));
+		SettingFields.ForEachAsset(session.Project.Settings, scope [&](key, settingId) =>
+			{
+				if (settingId == id)
+					settingsUses.Add(JsonValue.MakeString(key));
+			});
 
 		outResult.Set("guid", McpTools.GuidToJson(target.Id));
 		outResult.Set("name", JsonValue.MakeString(target.Name));
@@ -131,11 +117,11 @@ static class AssetUsesTool
 		Collect(db.RootGroup, scope String(), id, db, builders, sourcesMount, uses);
 		for (let use in uses)
 			outUsers.Add(use.Group.IsEmpty ? new String(use.User.Name) : new $"{use.Group}/{use.User.Name}");
-		let refs = scope List<(StringView name, Guid id)>();
-		SettingsReferences(session.Project.Settings, refs);
-		for (let reference in refs)
-			if (reference.id == id)
-				outSettings.Add(new String(reference.name));
+		SettingFields.ForEachAsset(session.Project.Settings, scope [&](key, settingId) =>
+			{
+				if (settingId == id)
+					outSettings.Add(new String(key));
+			});
 	}
 
 	/// Every source instance under `group`, depth first, with an edge to `target`.
