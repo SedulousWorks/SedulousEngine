@@ -121,6 +121,48 @@ static class GameScriptTests
 		Test.Assert(run.PropInt("score") == 3, scope $"the Game heard the behaviour, score {run.PropInt("score")}");
 	}
 
+	/// A scene destroyed while it runs (a level load replacing the level it is in: a retry) is
+	/// stopped first, so its script system unhooks its handlers from the run's bus, which
+	/// outlives the scene. Destroyed unstopped, the bus kept handlers the system had freed and
+	/// the next event drained into them.
+	[Test]
+	public static void ADestroyedRunningSceneLeavesNoHandlersOnTheRunBus()
+	{
+		let run = scope GameRun("scratch_game_scene_unhook");
+		let game = run.Class("Game", cGame);
+		let listener = run.Class("Listener", """
+			class Listener
+			{
+				Entity self;
+				Scene@ scene;
+				void onPing(int value) { scene.Scripts.Emit("Score", value); }
+			}
+			""");
+		Test.Assert(run.Instance.StartScript(game));
+
+		let level = run.Instance.CreateScene("level");
+		let components = level.GetSystem<ScriptComponentManager>();
+		let e = level.CreateEntity("e");
+		let behavior = new ScriptBehavior();
+		behavior.Script.SetDirect(listener);
+		components.Add(e).Behaviors.Add(behavior);
+		level.Start();
+		level.SetSimulationEnabled(true);
+		run.Step(2);
+
+		// Subscribed: a ping reaches the listener, which answers with a score the Game counts.
+		let before = run.PropInt("score");
+		run.Instance.Emit("Ping", 5);
+		run.Step(3);
+		Test.Assert(run.PropInt("score") == before + 5, scope $"the listener heard the ping (score {run.PropInt("score")})");
+
+		// Gone while running, then the run carries on: the event must reach no freed handler.
+		run.Instance.DestroyScene(level);
+		run.Instance.Emit("Ping", 1);
+		run.Step(2);
+		Test.Assert(run.Instance.GetScene() == null);
+	}
+
 	[Test]
 	public static void TheOrchestratorLoadsTheFirstLevelThroughRun()
 	{

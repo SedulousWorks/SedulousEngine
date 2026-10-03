@@ -150,4 +150,48 @@ class SceneManagerTests
 		Test.Assert(!manager.IsActive(foreign));
 		Test.Assert(manager.ActiveScenes.Length == 2);
 	}
+
+	/// Counts stops into a count that outlives the scene (the system goes with it).
+	private class StopWitness : SceneSystem
+	{
+		public int* Stops = null;
+		public override void OnSceneStopped() { (*Stops)++; }
+	}
+
+	/// A scene system unhooks itself from what outlives the scene in its stop hook (a script
+	/// system's handlers on a run's event bus). A running scene destroyed without a stop (a run
+	/// loading the scene it is already in) left those handlers pointing at freed memory.
+	[Test]
+	public static void ARunningSceneIsStoppedBeforeItIsDestroyed()
+	{
+		let manager = scope SceneManager();
+		int stops = 0;
+		let running = manager.CreateScene("running");
+		running.AddSystem<StopWitness>().Stops = &stops;
+		running.Start();
+		manager.DestroyScene(running);
+		Test.Assert(stops == 1, "stopped on the way out");
+
+		// A scene that never started is not stopped (its systems never began).
+		let idle = manager.CreateScene("idle");
+		idle.AddSystem<StopWitness>().Stops = &stops;
+		manager.DestroyScene(idle);
+		Test.Assert(stops == 1);
+
+		// A scene already stopped is not stopped twice.
+		let stopped = manager.CreateScene("stopped");
+		stopped.AddSystem<StopWitness>().Stops = &stops;
+		stopped.Start();
+		stopped.Stop();
+		Test.Assert(stops == 2);
+		manager.DestroyScene(stopped);
+		Test.Assert(stops == 2);
+
+		// The group's teardown stops what still runs, too.
+		let last = manager.CreateScene("last");
+		last.AddSystem<StopWitness>().Stops = &stops;
+		last.Start();
+		manager.Clear();
+		Test.Assert(stops == 3, "a clear stops the running scenes it destroys");
+	}
 }
