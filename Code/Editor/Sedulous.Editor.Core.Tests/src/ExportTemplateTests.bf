@@ -251,6 +251,45 @@ static class ExportTemplateTests
 		Test.Assert(registry.FindById("sedulous-win64-import") == null);
 	}
 
+	/// Installing an id replaces its bundle whole: a sidecar the new build no longer has does
+	/// not linger to ship with every export. An import replaces it too, except a bundle
+	/// re-imported from where it is installed, which is its own source.
+	[Test]
+	public static void ReinstallingATemplateReplacesItsBundleWhole()
+	{
+		let basePath = Scratch("scratch_reinstalltmpl", .. scope .());
+		let root = Scratch("scratch_reinstalltmpl_root", .. scope .());
+		let copy = Scratch("scratch_reinstalltmpl_copy", .. scope .());
+		defer { RemoveDirectoryRecursive(basePath); RemoveDirectoryRecursive(root); RemoveDirectoryRecursive(copy); }
+		let buildDir = PathJoin(PathJoin(basePath, scope $"Release_{BuildLayout.HostPlatformName}", .. scope .()), BuildLayout.cPlayerBaseName, .. scope .());
+		CreateDirectory(buildDir);
+		let playerName = BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .());
+		SaveText(buildDir, playerName, "#!player\n");
+		SaveText(buildDir, "libkept.so", "kept\n");
+		SaveText(buildDir, "libstale.so", "stale\n");
+
+		let id = scope String();
+		let dir = scope String();
+		Test.Assert(ExportTemplates.Create(buildDir, root, .Install, id, dir) case .Ok);
+		Test.Assert(FileExists(PathJoin(dir, "libstale.so", .. scope .())));
+
+		// The next build drops a library: the reinstall drops it too.
+		File.Delete(PathJoin(buildDir, "libstale.so", .. scope .())).IgnoreError();
+		Test.Assert(ExportTemplates.Create(buildDir, root, .Install, id, dir) case .Ok);
+		Test.Assert(!FileExists(PathJoin(dir, "libstale.so", .. scope .())), "the stale sidecar is gone");
+		Test.Assert(FileExists(PathJoin(dir, "libkept.so", .. scope .())));
+
+		// An import over an installed bundle replaces it the same way.
+		SaveText(dir, "leftover.txt", "x\n");
+		Test.Assert(ExportTemplates.Create(buildDir, copy, .ExportFolder) case .Ok);
+		Test.Assert(ExportTemplates.Import(copy, root) case .Ok);
+		Test.Assert(!FileExists(PathJoin(dir, "leftover.txt", .. scope .())), "the import replaced the bundle");
+
+		// Re-importing a bundle from where it is installed keeps it: it is its own source.
+		Test.Assert(ExportTemplates.Import(dir, root) case .Ok);
+		Test.Assert(FileExists(PathJoin(dir, playerName, .. scope .())) && FileExists(PathJoin(dir, "template.xml", .. scope .())));
+	}
+
 	[Test]
 	public static void CreatePackagesABuildDirectoryAndTheRegistryThenResolvesIt()
 	{

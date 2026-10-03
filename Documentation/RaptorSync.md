@@ -18,7 +18,7 @@ Raptor's (the last group).
 3. ~~Take-back (fd631023)~~ (done): `TextureFormats.IsFloat` (R16F, R32F, RG16F, RG32F too), used by the
    tonemap's `EncodesOnWrite`; FXAA told its input is linear on an sRGB or float target, the
    shader taking `sqrt(luma)` so its thresholds still apply.
-4. Take-back (b2a3e376): installing a template replaces its bundle whole, in `Create(.Install)`
+4. ~~Take-back (b2a3e376)~~ (done): installing a template replaces its bundle whole, in `Create(.Install)`
    and `Import` (a sidecar the new build dropped no longer lingers and ships).
 5. 93d511dd UI: an unknown gravity name in markup is a warning.
 6. ffad9393 Render: the mesh rings hold every shadow caster, and a dropped draw warns.

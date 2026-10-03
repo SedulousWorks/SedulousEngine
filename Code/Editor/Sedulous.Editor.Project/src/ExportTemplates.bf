@@ -106,9 +106,17 @@ static class ExportTemplates
 
 		let bundleDir = scope String();
 		if (mode == .Install)
+		{
 			PathJoin(destRoot, template.Id, bundleDir);
+			// Installing an id REPLACES its bundle: a sidecar the new build no longer has must
+			// not linger and ship with every export made from it.
+			if (DirectoryExists(bundleDir))
+				RemoveDirectoryRecursive(bundleDir);
+		}
 		else
+		{
 			bundleDir.Set(destRoot);
+		}
 		if (!CreateDirectory(bundleDir))
 			return .Err(.NotSupported);
 		if (!CopyFile(playerDir, template.PlayerBinary, bundleDir, template.PlayerBinary))
@@ -136,11 +144,26 @@ static class ExportTemplates
 			return .Err(.NotFound);
 		CreateDirectory(templatesRoot);
 		let dst = PathJoin(templatesRoot, manifest.Id, .. scope .());
+		// As an install does, the bundle is replaced whole; unless it IS the source, a bundle
+		// re-imported from where it is installed.
+		if (DirectoryExists(dst) && !SameDirectory(srcDir, dst))
+			RemoveDirectoryRecursive(dst);
 		if (!CopyTree(srcDir, dst))
 			return .Err(.Internal);
 		if (outId != null)
 			outId.Set(manifest.Id);
 		return .Ok;
+	}
+
+	private static bool SameDirectory(StringView a, StringView b)
+	{
+		let fullA = System.IO.Path.GetFullPath(a, .. scope .());
+		let fullB = System.IO.Path.GetFullPath(b, .. scope .());
+		while (fullA.EndsWith("/") || fullA.EndsWith("\\"))
+			fullA.RemoveFromEnd(1);
+		while (fullB.EndsWith("/") || fullB.EndsWith("\\"))
+			fullB.RemoveFromEnd(1);
+		return fullA == fullB;
 	}
 
 	/// Deletes an installed bundle; NotFound when there is none.
