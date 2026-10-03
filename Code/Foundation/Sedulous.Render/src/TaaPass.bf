@@ -30,13 +30,6 @@ class TaaPass
 		public bool Valid;
 	}
 
-	private struct Entry
-	{
-		public IBindGroup BindGroup;
-		public ITextureView Current;
-		public uint64 Generation;
-	}
-
 	private IDevice mDevice;
 	private ShaderSystem mShaders;
 
@@ -49,9 +42,9 @@ class TaaPass
 	private ISampler mLinearSampler = null;
 
 	private ViewHistory[MaxViews] mViews = .();
-	/// Keyed by the history view being READ: it is stable for a given size, so this rebuilds
-	/// only on a resize.
-	private Dictionary<int, Entry> mBindGroups = new .() ~ delete _;
+	/// One bind group per history view being READ, rebuilt when ANY of the frame's transient
+	/// inputs (the jittered colour, motion, depth) is a different view or texture.
+	private BindGroupCache<3> mBindGroups = new .() ~ delete _;
 
 	public this(IDevice device, ShaderSystem shaders)
 	{
@@ -182,9 +175,11 @@ class TaaPass
 
 				builder.SetExecute(new (encoder) =>
 					{
-						let bindGroup = EnsureBindGroup(graph.GetTextureView(current),
-							previousView, graph.GetTextureView(motion), graph.GetTextureView(depth),
-							graph.GetTextureGeneration(current));
+						var inputs = BindGroupInputs<3>();
+						inputs.Set(0, graph.GetTextureView(current), graph.GetTextureGeneration(current));
+						inputs.Set(1, graph.GetTextureView(motion), graph.GetTextureGeneration(motion));
+						inputs.Set(2, graph.GetTextureView(depth), graph.GetTextureGeneration(depth));
+						let bindGroup = EnsureBindGroup(previousView, inputs);
 						if (bindGroup == null)
 							return;
 
@@ -308,28 +303,21 @@ class TaaPass
 		return pipeline;
 	}
 
-	private IBindGroup EnsureBindGroup(ITextureView current, ITextureView historyPrevious,
-		ITextureView motion, ITextureView depth, uint64 generation)
+	private IBindGroup EnsureBindGroup(ITextureView historyPrevious, BindGroupInputs<3> inputs)
 	{
-		if ((current == null) || (historyPrevious == null) || (motion == null) || (depth == null))
+		if ((historyPrevious == null) || !inputs.Complete)
 			return null;
 
-		let key = (int)(void*)Internal.UnsafeCastToPtr(historyPrevious);
-		if (mBindGroups.TryGetValue(key, var existing))
-		{
-			if ((existing.Generation == generation) && (existing.Current == current)
-				&& (existing.BindGroup != null))
-				return existing.BindGroup;
-
-			if (existing.BindGroup != null)
-				mDevice.DestroyBindGroup(ref existing.BindGroup);
-		}
+		if (let cached = mBindGroups.Find(historyPrevious, inputs, var stale))
+			return cached;
+		if (stale != null)
+			mDevice.DestroyBindGroup(ref stale);
 
 		var entries = BindGroupEntry[6](
-			BindGroupEntry.TextureEntry(current),
+			BindGroupEntry.TextureEntry(inputs.Views[0]),
 			BindGroupEntry.TextureEntry(historyPrevious),
-			BindGroupEntry.TextureEntry(motion),
-			BindGroupEntry.TextureEntry(depth),
+			BindGroupEntry.TextureEntry(inputs.Views[1]),
+			BindGroupEntry.TextureEntry(inputs.Views[2]),
 			BindGroupEntry.SamplerEntry(mPointSampler),
 			BindGroupEntry.SamplerEntry(mLinearSampler));
 
@@ -340,7 +328,7 @@ class TaaPass
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
 
-		mBindGroups[key] = .() { BindGroup = bindGroup, Current = current, Generation = generation };
+		mBindGroups.Store(historyPrevious, inputs, bindGroup);
 		return bindGroup;
 	}
 
@@ -349,12 +337,7 @@ class TaaPass
 		if (mDevice == null)
 			return;
 
-		for (var entry in ref mBindGroups.Values)
-		{
-			if (entry.BindGroup != null)
-				mDevice.DestroyBindGroup(ref entry.BindGroup);
-		}
-		mBindGroups.Clear();
+		mBindGroups.Release(scope (bindGroup) => { var group = bindGroup; mDevice.DestroyBindGroup(ref group); });
 
 		for (int i < MaxViews)
 			DestroyHistory(ref mViews[i]);
