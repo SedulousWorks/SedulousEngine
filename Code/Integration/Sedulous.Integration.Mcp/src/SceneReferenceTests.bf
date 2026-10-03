@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Core.Serialization;
 using Sedulous.Editor.Mcp;
 using Sedulous.Editor.Project;
 using Sedulous.Engine.Composition;
@@ -151,6 +152,23 @@ static class SceneReferenceTests
 		Test.Assert((record.At(1).Get("key").AsString() == "kind") && (record.At(1).Get("kind").AsString() == "u8"));
 		// The example's behaviour carries one override per kind, hashed from "<kind>Value".
 		Test.Assert(reference.ExampleXml.Contains(ScriptPropertyNames.HashOf("floatValue").ToString(.. scope .())));
+	}
+
+	/// The type id text names the constants the type id function uses: an empty name hashes to
+	/// the basis, and one byte is one xor and one multiply by the prime.
+	[Test]
+	public static void TheTypeIdTextNamesTheHashTheTypeIdsUse()
+	{
+		let reference = Generate();
+		defer delete reference;
+		let text = reference.Schema.Get("format").Get("typeIds").AsString();
+		Test.Assert(TypeIdOf("") == FnvOffsetBasis);
+		// At run time: Beef folds a constant `&*` of two uint64 constants wrongly (see the backlog).
+		var oneByte = FnvOffsetBasis;
+		oneByte ^= (uint64)'a';
+		oneByte = oneByte &* FnvPrime;
+		Test.Assert(TypeIdOf("a") == oneByte);
+		Test.Assert(text.Contains(scope $"offset basis {FnvOffsetBasis}, prime {FnvPrime}"), scope String(text));
 	}
 
 	[Test]

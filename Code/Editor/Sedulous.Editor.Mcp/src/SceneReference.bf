@@ -601,7 +601,7 @@ class SceneReference
 		prefabMode.Set("referenced", JsonValue.MakeNumber(SceneStreamFormat.cPrefabWireReferenced));
 		prefabMode.Set("expanded", JsonValue.MakeNumber(SceneStreamFormat.cPrefabWireExpanded));
 		json.Set("prefabModeValues", prefabMode);
-		json.Set("typeIds", Text("a dataVersions type id is FNV-1a 64 over the UTF-8 bytes of the component's wire name or the settings block's system id: offset basis 14695981039346656037, prime 1099511628211"));
+		json.Set("typeIds", Text(scope $"a dataVersions type id is FNV-1a 64 over the UTF-8 bytes of the component's wire name or the settings block's system id: offset basis {FnvOffsetBasis}, prime {FnvPrime}"));
 		json.Set("arrays", Text("an array carries its element count, then its elements: an object per element for a type that describes itself, one unkeyed value per scalar, string or guid element; a run of keyed fields per element where the writer lays elements inline (the run repeats from its first key)"));
 		json.Set("structs", Text("a math value (Float2/3/4, Quaternion, Color) is an object of its named components; a component's fields follow its dataVersions directly inside the record's data object, and a settings block's inside its settings object"));
 
