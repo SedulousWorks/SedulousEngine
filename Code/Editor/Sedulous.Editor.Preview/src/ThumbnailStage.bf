@@ -348,9 +348,10 @@ class ThumbnailStage
 	}
 
 	/// An exact integer box downscale (cSupersample squared samples per output texel) over
-	/// RGBA16Float rows. The tonemap pass already applied the sRGB OETF, so the values
-	/// quantise to bytes directly; encoding again would double-gamma the image.
-	private static void Downscale(uint8* src, uint32 srcRowBytes, Image tile)
+	/// RGBA16Float rows. A float target holds LINEAR values (the tonemap encodes for display
+	/// once, wherever the target is shown), so the average is taken in linear light and the
+	/// result sRGB encoded to bytes; alpha is coverage and stays linear.
+	public static void Downscale(uint8* src, uint32 srcRowBytes, Image tile)
 	{
 		let dst = tile.PixelData.Ptr;
 		const float cInvSamples = 1.0f / (cSupersample * cSupersample);
@@ -373,7 +374,10 @@ class ThumbnailStage
 				}
 				let texel = dst + ((int)y * (int)cTileSize + (int)x) * 4;
 				for (int c < 4)
-					texel[c] = (uint8)(Math.Clamp(sum[c] * cInvSamples, 0.0f, 1.0f) * 255.0f + 0.5f);
+				{
+					let value = Math.Clamp(sum[c] * cInvSamples, 0.0f, 1.0f);
+					texel[c] = (uint8)(((c == 3) ? value : LinearToSrgb(value)) * 255.0f + 0.5f);
+				}
 			}
 		}
 	}

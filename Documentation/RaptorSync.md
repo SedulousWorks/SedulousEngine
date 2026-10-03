@@ -13,7 +13,7 @@ Raptor's (the last group).
 1. ~~61ddc952~~ (done) Physics: Jolt's bring-up takes a lock. `JoltRuntime.Acquire` increments a counter
    and calls `JPH_Init` outside any lock, so a second cook on a worker goes on while the first
    is still initialising. Static Monitor around a plain counter; the eight-thread cooking test.
-2. Take-back (fd631023): thumbnails average in linear light, then encode RGB (`ThumbnailStage
+2. ~~Take-back (fd631023)~~ (done): thumbnails average in linear light, then encode RGB (`ThumbnailStage
    .Downscale` still writes linear values as bytes since the encode-once change: too dark).
 3. Take-back (fd631023): `TextureFormats.IsFloat` (R16F, R32F, RG16F, RG32F too), used by the
    tonemap's `EncodesOnWrite`; FXAA told its input is linear on an sRGB or float target, the
