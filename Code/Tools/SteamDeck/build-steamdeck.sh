@@ -77,28 +77,19 @@ USER_ARGS=()
 	-v "$STATE/out":/out:Z \
 	"$IMAGE" bash /work/Code/Tools/SteamDeck/in-container-build.sh
 
-# The template, written by the host's export tool so it is the format this engine reads. Its
-# id is the Steam Deck's own, so it sits beside a desktop Linux template instead of replacing it.
+# The template, written by the host's export tool so it is the format this engine reads, under
+# the Steam Deck's own identity, so it sits beside a desktop Linux template instead of
+# replacing it.
 BUNDLE="$STATE/out/Release_Linux64/Sedulous.Engine.Player.Desktop"
 TEMPLATE="$STATE/template"
 [ -x "$EXPORT_TOOL" ] || { echo "!! no export tool at $EXPORT_TOOL; build Sedulous.Tools.Export" >&2; exit 1; }
+VERSION="$(sed -n 's/.*const String String = "\([0-9][0-9.]*\)".*/\1/p' "$ROOT/Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf" | head -1)"
+[ -n "$VERSION" ] || { echo "!! could not read the engine version" >&2; exit 1; }
 rm -rf "$TEMPLATE"
-"$EXPORT_TOOL" --template create "$BUNDLE" --out "$TEMPLATE"
-python3 - "$TEMPLATE/template.xml" <<'EOF'
-import re, sys
-path = sys.argv[1]
-text = open(path).read()
-def field(name, value):
-	global text
-	text, n = re.subn(r'<string name="%s"(?:/>|>[^<]*</string>)' % name,
-		'<string name="%s">%s</string>' % (name, value), text, count=1)
-	assert n == 1, name
-version = re.search(r'<string name="engineVersion">([^<]*)</string>', text).group(1)
-field("id", "sedulous-steamdeck-release-" + version)
-field("name", "Steam Deck " + version)
-field("notes", "Linux64 Release built for glibc 2.35 (Ubuntu 22.04), carrying its own SDL3.")
-open(path, "w").write(text)
-EOF
+"$EXPORT_TOOL" --template create "$BUNDLE" --out "$TEMPLATE" \
+	--id "sedulous-steamdeck-release-$VERSION" \
+	--name "Steam Deck $VERSION" \
+	--notes "Linux64 Release built for glibc 2.35 (Ubuntu 22.04), carrying its own SDL3."
 "$EXPORT_TOOL" --template import "$TEMPLATE"
 echo
 echo "== done =="

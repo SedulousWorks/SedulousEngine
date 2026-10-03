@@ -7,6 +7,16 @@ using Sedulous.Engine.Project;
 
 namespace Sedulous.Editor.Project;
 
+/// What a created template is called, when not its canonical id and name: a second bundle for
+/// one platform (the Steam Deck build beside the desktop Linux one) sits beside the first rather
+/// than replacing it. Empty fields keep the canonical ones.
+struct TemplateIdentity
+{
+	public StringView Id;
+	public StringView Name;
+	public StringView Notes;
+}
+
 /// The template operations: the manifest file, the host synthesis, creating a bundle from a
 /// build, importing and removing one, and where the templates root is.
 static class ExportTemplates
@@ -70,9 +80,10 @@ static class ExportTemplates
 
 	/// Packages a build's player directory into a template bundle: the manifest synthesized
 	/// from it, the config and platform read off the build directory, a web dist recognised
-	/// by its page. Install puts it under <destRoot>/<id>, ExportFolder into <destRoot>.
+	/// by its page. Install puts it under <destRoot>/<id>, ExportFolder into <destRoot>. The
+	/// identity, when given, replaces the canonical id, name and notes.
 	public static Result<void, ErrorCode> Create(StringView playerDir, StringView destRoot, TemplateOutput mode,
-		String outId = null, String outDir = null)
+		String outId = null, String outDir = null, TemplateIdentity identity = .())
 	{
 		let template = scope ExportTemplate();
 		SynthesizeHost(playerDir, template);
@@ -101,6 +112,12 @@ static class ExportTemplates
 
 		template.Id.Set(scope $"{BuildLayout.cTemplateIdPrefix}-{scope String(template.Platform)..ToLower()}-{scope String(template.Config)..ToLower()}-{template.EngineVersion}");
 		template.Name.Set(scope $"{template.Platform} {template.Config} {template.EngineVersion}");
+		if (!identity.Id.IsEmpty)
+			template.Id.Set(identity.Id);
+		if (!identity.Name.IsEmpty)
+			template.Name.Set(identity.Name);
+		if (!identity.Notes.IsEmpty)
+			template.Notes.Set(identity.Notes);
 		if (!FileExists(PathJoin(playerDir, template.PlayerBinary, .. scope .())))
 			return .Err(.NotFound);
 

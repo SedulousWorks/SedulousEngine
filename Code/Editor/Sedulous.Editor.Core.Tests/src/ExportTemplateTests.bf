@@ -251,6 +251,37 @@ static class ExportTemplateTests
 		Test.Assert(registry.FindById("sedulous-win64-import") == null);
 	}
 
+	/// A created template may take an identity of its own: a second bundle for one platform
+	/// (the Steam Deck build) sits beside the canonical one instead of replacing it.
+	[Test]
+	public static void ACreatedTemplateMayTakeAnIdNameAndNotesOfItsOwn()
+	{
+		let basePath = Scratch("scratch_identitytmpl", .. scope .());
+		let root = Scratch("scratch_identitytmpl_root", .. scope .());
+		defer { RemoveDirectoryRecursive(basePath); RemoveDirectoryRecursive(root); }
+		let buildDir = PathJoin(PathJoin(basePath, scope $"Release_{BuildLayout.HostPlatformName}", .. scope .()), BuildLayout.cPlayerBaseName, .. scope .());
+		CreateDirectory(buildDir);
+		SaveText(buildDir, BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()), "#!player\n");
+
+		let canonicalId = scope String();
+		Test.Assert(ExportTemplates.Create(buildDir, root, .Install, canonicalId) case .Ok);
+		var identity = TemplateIdentity();
+		identity.Id = "sedulous-steamdeck-release-test";
+		identity.Name = "Steam Deck test";
+		identity.Notes = "built for an older glibc";
+		let deckId = scope String();
+		let deckDir = scope String();
+		Test.Assert(ExportTemplates.Create(buildDir, root, .Install, deckId, deckDir, identity) case .Ok);
+
+		Test.Assert(deckId == "sedulous-steamdeck-release-test");
+		Test.Assert(DirectoryExists(PathJoin(root, canonicalId, .. scope .())), "the canonical bundle stays");
+		Test.Assert(deckDir == PathJoin(root, deckId, .. scope .()));
+		let manifest = scope ExportTemplate();
+		Test.Assert(ExportTemplates.LoadManifest(scope NativeFileSystem(deckDir), manifest) case .Ok);
+		Test.Assert((manifest.Id == deckId) && (manifest.Name == "Steam Deck test") && (manifest.Notes == "built for an older glibc"));
+		Test.Assert(manifest.Platform == BuildLayout.HostPlatformName, "the platform is still read off the build");
+	}
+
 	/// Installing an id replaces its bundle whole: a sidecar the new build no longer has does
 	/// not linger to ship with every export. An import replaces it too, except a bundle
 	/// re-imported from where it is installed, which is its own source.

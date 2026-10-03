@@ -31,7 +31,7 @@ Raptor's (the last group).
 
 ## Group 2: take-backs from Raptor's review of our ports
 
-11. 52839fba: a created template takes an id, name and notes (`--id`, `--name`, `--notes` on
+11. ~~52839fba~~ (done): a created template takes an id, name and notes (`--id`, `--name`, `--notes` on
     `Sedulous.Tools.Export --template create`); the Steam Deck script passes them instead of
     rewriting template.xml with a regex.
 12. c0dc7379: the dist manifest copies the project settings through their own serialization,

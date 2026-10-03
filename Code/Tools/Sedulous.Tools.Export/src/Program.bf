@@ -21,6 +21,7 @@ namespace Sedulous.Tools.Export;
 ///   Sedulous.Tools.Export --template list
 ///   Sedulous.Tools.Export --template import <templateDir>
 ///   Sedulous.Tools.Export --template create <playerDir> [--install | --out <folder>]
+///                                           [--id <id>] [--name <name>] [--notes <text>]
 ///
 /// The host template is the player built beside this tool, build/<Config>_<Platform>/
 /// Sedulous.Engine.Player.Desktop; the templates root is $SEDULOUS_TEMPLATES_DIR, else
@@ -170,6 +171,7 @@ class Program
 			  Sedulous.Tools.Export --template list
 			  Sedulous.Tools.Export --template import <templateDir>
 			  Sedulous.Tools.Export --template create <playerDir> [--install | --out <folder>]
+			                                           [--id <id>] [--name <name>] [--notes <text>]
 			""");
 		return 1;
 	}
@@ -216,6 +218,9 @@ class Program
 		let playerDir = args[2];
 		bool install = true;
 		let outFolder = scope String();
+		// A second bundle for one platform (the Steam Deck build) takes an identity of its own,
+		// so it sits beside the first instead of replacing it.
+		var identity = TemplateIdentity();
 		for (int i = 3; i < args.Count; i++)
 		{
 			if (args[i] == "--install")
@@ -225,6 +230,12 @@ class Program
 				install = false;
 				outFolder.Set(args[++i]);
 			}
+			else if ((args[i] == "--id") && (i + 1 < args.Count))
+				identity.Id = args[++i];
+			else if ((args[i] == "--name") && (i + 1 < args.Count))
+				identity.Name = args[++i];
+			else if ((args[i] == "--notes") && (i + 1 < args.Count))
+				identity.Notes = args[++i];
 			else
 			{
 				Console.Error.WriteLine("unknown option: {}", args[i]);
@@ -234,7 +245,7 @@ class Program
 		let destRoot = install ? TemplatesRoot(.. scope :: .()) : StringView(outFolder);
 		let createdId = scope String();
 		let createdDir = scope String();
-		if (ExportTemplates.Create(playerDir, destRoot, install ? .Install : .ExportFolder, createdId, createdDir) case .Err)
+		if (ExportTemplates.Create(playerDir, destRoot, install ? .Install : .ExportFolder, createdId, createdDir, identity) case .Err)
 		{
 			Console.Error.WriteLine("Sedulous.Tools.Export: failed to create a template from '{}' (no player binary there?)", playerDir);
 			return 1;
