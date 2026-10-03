@@ -2,6 +2,7 @@ using System;
 using Sedulous.Profiler;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Geometry;
 using Sedulous.Materials;
 using Sedulous.Materials.PipelineCache;
@@ -279,6 +280,11 @@ class MeshRenderer : Renderer
 	private uint32 mCaptureFacePasses = 0;
 	/// The pick passes re-emitting the draws this frame.
 	private uint32 mPickPasses = 0;
+	/// The shadow passes' caster draws this frame, every view's together.
+	private uint32 mShadowCasterDraws = 0;
+	/// How many dropped-batch warnings have been given; they stop at cMaxRingWarnings.
+	private static uint32 sRingWarnings = 0;
+	private const uint32 cMaxRingWarnings = 8;
 
 	private ISampler mEnvSampler = null;
 	private IBuffer mDummyShBuffer = null;
@@ -492,6 +498,35 @@ class MeshRenderer : Renderer
 		mCaptureFacePasses = passes;
 	}
 
+	public override void SetShadowCasterDraws(uint32 draws)
+	{
+		mShadowCasterDraws = draws;
+	}
+
+	/// The per frame slots the object, instance and offset rings need. Each camera pass (the
+	/// depth prepass, the forward, a probe face, a pick) re-emits at most the views' draws;
+	/// each shadow pass (a cascade, a local tile) at most its scene's casters, which the camera
+	/// does not cull. Sized for the larger of the two in every pass, so neither can starve the
+	/// other.
+	public static uint32 InstanceSlotsPerFrame(uint32 maxDraws, uint32 casterDraws,
+		uint32 shadowPasses, uint32 extraCameraPasses)
+	{
+		let largest = Math.Max(casterDraws, maxDraws);
+		return largest * (2 + shadowPasses + extraCameraPasses);
+	}
+
+	/// A batch the instance ring could not take is dropped; say so, a few times, rather than
+	/// leave a mesh silently missing from a pass.
+	private void WarnInstanceRingFull(StringView pass, uint32 wanted)
+	{
+		if (sRingWarnings >= cMaxRingWarnings)
+			return;
+		sRingWarnings++;
+		GlobalLog(.Warning, "MeshRenderer: the instance ring is full: a {} batch of {} instances was dropped ({} slots already used this frame).{}",
+			pass, wanted, mInstanceRing.FrameAllocatedSlots,
+			(sRingWarnings == cMaxRingWarnings) ? " Further such warnings suppressed." : "");
+	}
+
 	/// This frame's probes. A null view falls back to the stand ins and a count of nought,
 	/// which keeps the shading on the global environment's reflection.
 	public override void SetProbes(ITextureView cubeArray, IBuffer probeBuffer, uint32 count)
@@ -536,12 +571,13 @@ class MeshRenderer : Renderer
 		if (maxDraws == 0)
 			return;
 
-		// The capacity is the draws times the passes that RE-EMIT them: the depth prepass and
-		// the forward, then one per cascade, one per local shadow tile, and one per probe
-		// capture face. Under counting overflows the rings at high draw counts, and an
-		// allocation that fails is a draw that silently disappears.
-		let drawCap = maxDraws * (2 + (uint32)ShadowCascades.Count + mLocalShadowPassCount
-			+ mCaptureFacePasses + mPickPasses);
+		// The capacity covers every pass that RE-EMITS draws: the depth prepass and the forward,
+		// one per cascade, one per local shadow tile, one per probe capture face and pick. Under
+		// counting overflows the rings, and an allocation that fails is a draw that disappears:
+		// sizing the shadow passes by the VIEW'S draws let a scene's off camera casters starve the
+		// camera's own, so meshes vanished with their shadows still drawn.
+		let drawCap = InstanceSlotsPerFrame(maxDraws, mShadowCasterDraws,
+			(uint32)ShadowCascades.Count + mLocalShadowPassCount, mCaptureFacePasses + mPickPasses);
 		// A pick pass takes shadow view slots too: one for itself and one per instanced set
 		// it ids.
 		let shadowViewCap = cMaxShadowPasses + mPickPasses * (1 + cMaxPickMultiMeshSets)
@@ -1595,7 +1631,10 @@ class MeshRenderer : Renderer
 			let instances = mInstanceRing.AllocateRange(count);
 			let offsets = mOffsetsRing.AllocateRange(count);
 			if (!instances.Ok || !offsets.Ok)
+			{
+				WarnInstanceRingFull("forward", count);
 				return;
+			}
 
 			let instanceData = (MeshInstanceData*)instances.Ptr;
 			let offsetData = (MeshDataOffsets*)offsets.Ptr;
@@ -1845,7 +1884,10 @@ class MeshRenderer : Renderer
 		let instances = mInstanceRing.AllocateRange(count);
 		let offsets = mOffsetsRing.AllocateRange(count);
 		if (!instances.Ok || !offsets.Ok)
+		{
+			WarnInstanceRingFull("depth/shadow", count);
 			return;
+		}
 
 		let instanceData = (MeshInstanceData*)instances.Ptr;
 		let offsetData = (MeshDataOffsets*)offsets.Ptr;

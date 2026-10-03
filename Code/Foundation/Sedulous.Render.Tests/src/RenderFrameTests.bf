@@ -485,4 +485,55 @@ class RenderFrameTests
 		Test.Assert(frame.AnimatedShadowCasterCount(scene) == 1,
 			scope $"one animated caster, not {frame.AnimatedShadowCasterCount(scene)}");
 	}
+
+	/// The shadow passes draw the scene's caster list, which the camera does not cull, so the
+	/// rings must be sized for the casters and not only the view's draws. Each view draws its own
+	/// cascades from its scene's casters: two views of one scene with three casters is six.
+	[Test]
+	public static void TheRenderersAreToldEveryViewsShadowCasters()
+	{
+		let fixture = scope RenderFrameFixture(128, 128);
+		if (!fixture.Ready)
+			return;
+
+		let capture = scope CapturingRenderer();
+		let registry = scope RendererRegistry();
+		registry.Register(capture);
+		let shadows = scope ShadowSystem(fixture.Device, 2);
+		Test.Assert(shadows.Initialize() case .Ok);
+		let frame = scope RenderFrame(fixture.Device, registry, 2, null, null, shadows);
+
+		let scene = scope ExtractedScene();
+		for (int i < 3)
+		{
+			let junk = scene.Add<JunkRenderData>();
+			junk.Category = RenderCategories.Opaque;
+			junk.RendererId = capture.RendererId;
+			junk.WorldCenter = .((float)i * 4.0f, 0.0f, 0.0f);
+			junk.WorldRadius = 1.0f;
+		}
+		var shadow = DirectionalShadow();
+		shadow.Direction = Normalized(Float3(0.3f, -1.0f, 0.2f));
+		shadow.Valid = true;
+		scene.SetDirectionalShadow(shadow);
+
+		let camera = RenderFrameFixture.LookingAtTheOrigin();
+		frame.Begin(fixture.Encoder, 0);
+		frame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 128, 128);
+		frame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 128, 128);
+		frame.End();
+
+		Test.Assert(frame.ShadowCasterCount(scene) == 3);
+		Test.Assert(capture.ShadowCasterDraws == 6, scope $"told {capture.ShadowCasterDraws}");
+	}
+
+	/// The rings hold the larger of the views' draws and the casters, in every pass.
+	[Test]
+	public static void TheInstanceRingsHoldTheLargerOfDrawsAndCasters()
+	{
+		// 150 draws in view, 330 casters, 4 cascades and 2 local tiles, a probe face and a pick.
+		Test.Assert(MeshRenderer.InstanceSlotsPerFrame(150, 330, 6, 2) == 330 * (2 + 6 + 2));
+		Test.Assert(MeshRenderer.InstanceSlotsPerFrame(400, 10, 4, 0) == 400 * (2 + 4));
+		Test.Assert(MeshRenderer.InstanceSlotsPerFrame(0, 0, 4, 0) == 0);
+	}
 }

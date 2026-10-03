@@ -1048,6 +1048,16 @@ class RenderFrame
 		let pickPasses = (mPick != null) ? mPick.PendingTotal() : 0;
 		for (let renderer in mRegistry.Unique)
 			renderer.SetPickPasses(pickPasses);
+		// Each view draws its own cascades from its scene's caster list, so the shadow passes'
+		// draws are every view's scene's casters together.
+		uint32 casterDraws = 0;
+		for (int i < mViews.ActiveCount)
+		{
+			if (mViewSceneIndex[i] >= 0)
+				casterDraws += (uint32)mSceneShadowPool[mViewSceneIndex[i]].Casters.Count;
+		}
+		for (let renderer in mRegistry.Unique)
+			renderer.SetShadowCasterDraws(casterDraws);
 
 		if ((mProbeSystem != null) && (mProbeSystem.ActiveCount > 0))
 		{

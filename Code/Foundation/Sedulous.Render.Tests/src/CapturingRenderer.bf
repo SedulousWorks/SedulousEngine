@@ -22,6 +22,10 @@ class CapturingRenderer : Renderer
 	public Float4x4 DepthViewProj = .Identity();
 	public bool DepthFilledInstanceCache = false;
 	public uint8 ColorSampleCount = 0;
+	/// What the frame said the shadow passes draw this frame, for the rings' sizing.
+	public uint32 ShadowCasterDraws = 0;
+
+	public override void SetShadowCasterDraws(uint32 draws) { ShadowCasterDraws = draws; }
 
 	public override Span<uint16> SupportedCategories => .(&sCategories[0], 1);
 

@@ -66,6 +66,12 @@ abstract class Renderer
 	/// ring sizing, like the capture faces. Called before PrepareFrame.
 	public virtual void SetPickPasses(uint32 passes) {}
 
+	/// The shadow passes' draws this frame: for each view, its scene's caster count (every
+	/// cascade and local tile of that view draws from it). Casters do not depend on the camera,
+	/// so they can far outnumber the view's own draws, and per object rings must hold them too.
+	/// Called before PrepareFrame.
+	public virtual void SetShadowCasterDraws(uint32 draws) {}
+
 	/// This frame's probes: the prefiltered cube array, the metadata, and how many are active.
 	public virtual void SetProbes(ITextureView cubeArray, IBuffer probeBuffer, uint32 count) {}
 
