@@ -418,8 +418,7 @@ static class RenderExtract
 				camera.View = Inverse(world);
 				// The shape of what the view draws into, when the caller knows it; the authored
 				// aspect only stands in when it does not.
-				camera.Projection = Float4x4.PerspectiveFovRH(component.FovYRadians,
-					(aspect > 0.0f) ? aspect : component.Aspect, component.NearZ, component.FarZ);
+				camera.Projection = component.MakeProjection((aspect > 0.0f) ? aspect : component.Aspect);
 				camera.Position = TransformPoint(Float3(0, 0, 0), world);
 				camera.FarZ = component.FarZ;
 				clear = component.ClearColor;

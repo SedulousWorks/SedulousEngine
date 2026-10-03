@@ -14,8 +14,7 @@ static class CameraPreview
 	{
 		var view = ViewCamera();
 		view.View = Inverse(world);
-		view.Projection = Float4x4.PerspectiveFovRH(camera.FovYRadians, camera.Aspect,
-			camera.NearZ, camera.FarZ);
+		view.Projection = camera.MakeProjection(camera.Aspect);
 		view.Position = TransformPoint(Float3(0, 0, 0), world);
 		view.FarZ = camera.FarZ;
 

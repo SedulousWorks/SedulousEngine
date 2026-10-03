@@ -9,15 +9,19 @@ namespace Sedulous.Engine.Render;
 ///
 /// These fields are the PROJECTION only: the view transform is the inverse of the entity's
 /// world matrix, so moving the entity moves the camera and nothing here has to say so.
-[SerializableComponent("camera")]
+[SerializableComponent("camera", 2, 1)]
 [DisplayName("Camera")]
 [Category("Rendering")]
 [Scriptable]
 struct CameraComponent : ISerializable
 {
+	/// The mode first: the inspector shows only the fields of the chosen projection.
+	[Scriptable]
+	public CameraProjection Projection = .Perspective;
 	/// Sixty degrees.
 	[Scriptable]
 	[DisplayName("Field Of View")]
+	[VisibleWhen("Projection=0")]
 	[Description("Vertical field of view (radians)")]
 	[Range(0.1f, 3.04f, 0.01f)]
 	public float FovYRadians = 1.04719755f;
@@ -33,8 +37,26 @@ struct CameraComponent : ISerializable
 	/// Marks the camera the renderer uses.
 	[Scriptable]
 	public bool Primary = true;
+	/// Orthographic: the world space height the view spans; the width follows the aspect.
+	[Scriptable]
+	[Description("Orthographic: the world-space height the view spans")]
+	[VisibleWhen("Projection=1")]
+	public float OrthoHeight = 10.0f;
 
 	public this() {}
+
+	/// The projection matrix at `aspect` (width over height). The one place a camera's fields
+	/// become a matrix: the renderer's camera pick, the editor's camera preview and the camera
+	/// gizmo all build through it, so the preview frames what the game draws.
+	public Float4x4 MakeProjection(float aspect)
+	{
+		if (Projection == .Orthographic)
+		{
+			let height = Math.Max(OrthoHeight, 1.0e-4f);
+			return Float4x4.OrthographicRH(height * aspect, height, NearZ, FarZ);
+		}
+		return Float4x4.PerspectiveFovRH(FovYRadians, aspect, NearZ, FarZ);
+	}
 
 	public void Serialize(ISerializer ar) mut
 	{
@@ -45,5 +67,12 @@ struct CameraComponent : ISerializable
 		ar.Key("clearColor");
 		Sedulous.Core.Serialization.Serialize(ar, ref ClearColor);
 		SerializeValue(ar, "primary", ref Primary);
+		// Version 1 had no projection: a perspective camera, read as one. Version 2 appends the
+		// mode and the orthographic height; the scene re-saves as version 2.
+		if ((ar.Mode == .Read) && (ar.Version == 1))
+			return;
+		ar.Key("projection");
+		SerializeEnum(ar, ref Projection);
+		SerializeValue(ar, "orthoHeight", ref OrthoHeight);
 	}
 }

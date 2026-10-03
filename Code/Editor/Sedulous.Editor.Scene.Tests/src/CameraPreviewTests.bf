@@ -74,4 +74,17 @@ class CameraPreviewTests
 		r = CameraPreview.Resolve(camEntity, true, meshEntity, false);
 		Test.Assert(r.Visible && (r.Target == camEntity) && r.Unpin);
 	}
+
+	/// An orthographic camera previews orthographic, as the game draws it.
+	[Test]
+	public static void AnOrthographicCameraPreviewsOrthographicLikeTheGameDrawsIt()
+	{
+		var cam = CameraComponent();
+		cam.Aspect = 2.0f;
+		cam.Projection = .Orthographic;
+		cam.OrthoHeight = 12.0f;
+		let ov = CameraPreview.BuildOverride(cam, Float4x4.Identity());
+		Test.Assert(MatNear(ov.Camera.Projection, cam.MakeProjection(2.0f)));
+		Test.Assert(MatNear(ov.Camera.Projection, Float4x4.OrthographicRH(24.0f, 12.0f, cam.NearZ, cam.FarZ)));
+	}
 }

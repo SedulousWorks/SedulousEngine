@@ -81,6 +81,19 @@ class InspectorHelperTests
 		Test.Assert(c.Matches(1)); // Analytic
 		Test.Assert(!c.Matches(3)); // HDR equirect
 
+		// The camera: the field of view shows for a perspective camera, the height for an
+		// orthographic one.
+		let camera = typeof(CameraComponent);
+		Test.Assert(camera.GetField("FovYRadians") case .Ok(let fov));
+		Test.Assert(fov.GetCustomAttribute<VisibleWhenAttribute>() case .Ok(let fovVis));
+		Test.Assert(PropertyCondition.Parse(fovVis.Condition, c));
+		Test.Assert(c.Prop == "Projection");
+		Test.Assert(c.Matches(0) && !c.Matches(1));
+		Test.Assert(camera.GetField("OrthoHeight") case .Ok(let height));
+		Test.Assert(height.GetCustomAttribute<VisibleWhenAttribute>() case .Ok(let heightVis));
+		Test.Assert(PropertyCondition.Parse(heightVis.Condition, c));
+		Test.Assert(c.Matches(1) && !c.Matches(0));
+
 		Test.Assert(env.GetField("SkyZenith") case .Ok(let zenith));
 		Test.Assert(zenith.GetCustomAttribute<DisplayNameAttribute>() case .Ok(let label));
 		Test.Assert(label.Name == "Sky Zenith / Color");
