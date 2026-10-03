@@ -48,6 +48,19 @@ static class NavigationBake
 		return outIndices.Count / 3;
 	}
 
+	/// What a bake's result means, for whoever started it (the inspector's notice, the
+	/// navigation_bake tool's answer): what was written, or what to change when nothing walkable
+	/// came out of it.
+	public static void DescribeBake(BakeResult result, String outText)
+	{
+		if (result.Baked)
+			outText.Append("Navigation baked. Save and cook to apply.");
+		else if (result.TriangleCount == 0)
+			outText.Append("No static geometry inside the zone box. Check the zone's Extents cover your floor, that the floor has a static, non-trigger Rigid Body (or is terrain), and that the zone is placed over it. Render meshes are not read.");
+		else
+			outText.AppendF("Collected {} triangle(s) but Recast produced no walkable surface. Try a larger Cell Size or a smaller Agent Radius/Height, and check the surface is within Agent Max Slope.", result.TriangleCount);
+	}
+
 	private static NavigationBakeParams ParamsFor(NavMeshZoneComponent* zone, bool parallelBake)
 	{
 		var parameters = NavigationBakeParams();

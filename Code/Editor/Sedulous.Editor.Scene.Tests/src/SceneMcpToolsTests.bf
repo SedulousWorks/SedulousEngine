@@ -146,7 +146,7 @@ class SceneMcpToolsTests
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
 		Test.Assert(server.ToolCount == SceneMcpTools.cSceneLiveToolCount);
-		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 17, "a tripwire: bump deliberately when a live tool comes or goes");
+		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 18, "a tripwire: bump deliberately when a live tool comes or goes");
 		let onA = scope $"{{\"page\":\"{sceneA}\"}}";
 
 		// Default addressing: the active page, a scene page, then a page that is not one.
@@ -230,6 +230,101 @@ class SceneMcpToolsTests
 			defer delete sim;
 			Test.Assert(!sim.Ok);
 		}
+	}
+
+	/// navigation_bake: the inspector's Bake Navigation for an agent. It bakes a page's zone
+	/// into its asset and says why not: no project, no asset assigned, an entity that is no
+	/// zone, a page that simulates.
+	[Test]
+	public static void NavigationBakeBakesAPagesZoneIntoItsAssetAndSaysWhyNot()
+	{
+		Sedulous.Navigation.Pipeline.NavigationPipeline.RegisterAll();
+		let dir = "scratch_navigation_bake_project";
+		Sedulous.Core.IO.RemoveDirectoryRecursive(dir);
+		defer Sedulous.Core.IO.RemoveDirectoryRecursive(dir);
+		Test.Assert(Sedulous.Editor.Project.EditorProject.Create(dir, "P") case .Ok);
+		let project = Sedulous.Editor.Project.EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+
+		let context = scope EditorContext();
+		let server = scope McpServer();
+		SceneMcpTools.Register(server, context);
+		var rng = Random(77);
+		let page = new HeadlessScenePage("Block", Guid.Generate(ref rng));
+		context.AdoptPage(page);
+		context.SetActivePage(page);
+		let edit = page.EditContext;
+		let scene = edit.Scene;
+		Sedulous.Engine.Navigation.NavigationScene.AddNavigationSceneManagers(scene);
+		scene.AddSystem<Sedulous.Engine.Physics.RigidBodyComponentManager>();
+
+		// A static ground slab and a zone over it.
+		let groundId = edit.CreateEntity("Ground");
+		let ground = edit.Resolve(groundId);
+		scene.SetLocalPosition(ground, .(0, -0.5f, 0));
+		let body = scene.GetSystem<Sedulous.Engine.Physics.RigidBodyComponentManager>().Add(ground);
+		body.Motion = .Static;
+		body.HalfExtents = .(10, 0.5f, 10);
+		let zoneId = edit.CreateEntity("Zone");
+		let zone = scene.GetSystem<Sedulous.Engine.Navigation.NavMeshZoneComponentManager>().Add(edit.Resolve(zoneId));
+		zone.Extents = .(15, 10, 15);
+
+		// No project: refused.
+		{
+			let bake = Call(server, "navigation_bake", "{}");
+			defer delete bake;
+			Test.Assert(!bake.Ok);
+		}
+		context.SetProject(project);
+		defer context.SetProject(null);
+
+		// A zone with no asset: refused, saying what to do.
+		{
+			let bake = Call(server, "navigation_bake", "{}");
+			defer delete bake;
+			Test.Assert(!bake.Ok);
+			Test.Assert(bake.Error.Contains("Navigation Zone asset"), bake.Error);
+		}
+		// An entity that is not a zone: refused.
+		{
+			let bake = Call(server, "navigation_bake", "{\"entity\":\"Ground\"}");
+			defer delete bake;
+			Test.Assert(!bake.Ok);
+			Test.Assert(bake.Error.Contains("has no navigation zone component"), bake.Error);
+		}
+
+		// With the asset: baked, the scene's only zone found without naming it.
+		let asset = project.SourceDb.RootGroup.CreateInstance("BlockZone", "Sedulous.Navigation.Pipeline.NavigationZoneAsset");
+		Test.Assert(asset != null);
+		zone.Zone.SetId(asset.Id);
+		{
+			let bake = Call(server, "navigation_bake", "{}");
+			defer delete bake;
+			Test.Assert(bake.Ok, bake.Error);
+			Test.Assert(bake.Payload.Get("baked").AsBool(), scope String(bake.Payload.Get("message").AsString()));
+			Test.Assert(bake.Payload.Get("triangles").AsInt() == 12); // the slab's box
+			Test.Assert(bake.Payload.Get("asset").AsString() == asset.Id.ToString(.. scope .()));
+			Test.Assert(bake.Payload.Get("entity").AsString() == zoneId.ToString(.. scope .()));
+		}
+		{
+			let object = asset.ReadObject();
+			defer delete object;
+			let stored = object as Sedulous.Navigation.Pipeline.NavigationZoneAsset;
+			Test.Assert(stored != null);
+			Test.Assert(Sedulous.Navigation.Pipeline.NavigationZoneStorage.EnsureNavMeshLoaded(asset, stored) case .Ok);
+			Test.Assert(!stored.NavMeshBlob.IsEmpty);
+		}
+
+		// Not while the page simulates.
+		page.StartSimulation();
+		{
+			let bake = Call(server, "navigation_bake", "{\"entity\":\"Zone\"}");
+			defer delete bake;
+			Test.Assert(!bake.Ok);
+			Test.Assert(bake.Error.Contains("is simulating"), bake.Error);
+		}
+		page.StopSimulation();
 	}
 
 	private static String GuidText(Guid id, String outText)

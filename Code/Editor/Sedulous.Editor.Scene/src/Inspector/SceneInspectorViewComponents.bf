@@ -134,17 +134,6 @@ extension SceneInspectorView
 		}
 		let result = NavigationBake.BakeNavigationZone(edit.Scene, entity, target,
 			NavigationEditorPreferences.ParallelBakeEnabled(editor));
-		if (result.Baked)
-		{
-			editor.Notify(.Success, "Navigation baked. Save and cook to apply.");
-		}
-		else if (result.TriangleCount == 0)
-		{
-			editor.Notify(.Warning, "No static geometry inside the zone box. Check the zone's Extents cover your floor, that the floor has a static, non-trigger Rigid Body (or is terrain), and that the zone is placed over it. Render meshes are not read.");
-		}
-		else
-		{
-			editor.Notify(.Warning, scope $"Collected {result.TriangleCount} triangle(s) but Recast produced no walkable surface. Try a larger Cell Size or a smaller Agent Radius/Height, and check the surface is within Agent Max Slope.");
-		}
+		editor.Notify(result.Baked ? .Success : .Warning, NavigationBake.DescribeBake(result, .. scope .()));
 	}
 }

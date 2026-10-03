@@ -11,12 +11,14 @@ using Sedulous.Editor.Camera;
 using Sedulous.Core.IO;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Script;
+using Sedulous.Engine.Navigation;
+using Sedulous.Editor.Navigation;
 
 namespace Sedulous.Editor.Scene;
 
 /// The scene editor's live MCP tools, served by the editor's MCP host through the scene
 /// editor's tool contribution: selection_get and selection_set, simulate_start and
-/// simulate_stop, entity_inspect over an entity's reflected components and component_set
+/// simulate_stop, navigation_bake, entity_inspect over an entity's reflected components and component_set
 /// writing one of them through the page's undo path (one locked, labelled step per call),
 /// over whichever scene or prefab page a call addresses. `page` is the scene
 /// asset's guid as page_list reports it, defaulting to the active page when that is a scene
@@ -25,7 +27,7 @@ namespace Sedulous.Editor.Scene;
 static class SceneMcpTools
 {
 	/// How many tools Register registers; a tripwire like the page tools'.
-	public const int cSceneLiveToolCount = 9 + SceneMcpEditTools.cEditToolCount;
+	public const int cSceneLiveToolCount = 10 + SceneMcpEditTools.cEditToolCount;
 
 	private const String cPageArgument = "the scene or prefab page's asset guid (default: the active page)";
 
@@ -83,6 +85,7 @@ static class SceneMcpTools
 
 		RegisterInspectAndSet(server, context);
 		RegisterViewportTools(server, context);
+		RegisterNavigationBake(server, context);
 
 		let startSchema = scope SchemaBuilder();
 		startSchema.Str("page", cPageArgument);
@@ -111,6 +114,84 @@ static class SceneMcpTools
 					return false;
 				(page as ISceneEditorPage).StopSimulation();
 				WriteSimulation(page, outResult);
+				return true;
+			});
+	}
+
+	/// navigation_bake: the inspector's Bake Navigation button for an agent, which could author
+	/// a zone but not bake it.
+	private static void RegisterNavigationBake(McpServer server, EditorContext context)
+	{
+		let schema = scope SchemaBuilder();
+		schema.Str("page", cPageArgument);
+		schema.Str("entity", "the zone's entity: a guid, a name or a slash path (default: the scene's only navigation zone)");
+		server.RegisterTool("navigation_bake",
+			"Bake a scene page's navigation zone, as the inspector's Bake Navigation button does: collect the static geometry inside the zone's box (static, non-trigger rigid bodies and terrain; render meshes are not read) and write the navmesh into the zone's Navigation Zone asset (the zone component's `Zone`; assign one first, with component_set). `entity` names the zone's entity; without it, the scene's only zone. The scene is not changed; cook (asset_cook) for the game to see the new navmesh. Refused while the page simulates. Returns {page, entity, asset, baked, triangles, message}: baked false with the reason when nothing walkable came out.",
+			schema.Build(), .Adjusts,
+			new (arguments, outResult, outError) =>
+			{
+				let page = ResolveScenePage(context, arguments, outError);
+				if (page == null)
+					return false;
+				let scenePage = page as ISceneEditorPage;
+				if (scenePage.IsSimulating)
+				{
+					outError.AppendF("page '{}' is simulating: stop it (simulate_stop) before baking", page.Title);
+					return false;
+				}
+				if (context.Project == null)
+				{
+					outError.Append("no project is open");
+					return false;
+				}
+				let edit = scenePage.EditContext;
+				let scene = edit.Scene;
+				let zones = scene.GetSystem<NavMeshZoneComponentManager>();
+				EntityHandle zoneEntity = .Invalid;
+				if (arguments.Has("entity"))
+				{
+					if (!ResolveEntity(page, edit, arguments, outError, let id))
+						return false;
+					zoneEntity = edit.Resolve(id);
+					if ((zones == null) || (zones.Get(zoneEntity) == null))
+					{
+						outError.AppendF("'{}' has no navigation zone component", arguments.Get("entity").AsString());
+						return false;
+					}
+				}
+				else
+				{
+					int count = 0;
+					if (zones != null)
+					{
+						for (let owner in zones.Owners)
+						{
+							zoneEntity = owner;
+							count++;
+						}
+					}
+					if (count != 1)
+					{
+						outError.AppendF("page '{}' has {} navigation zones: name one with `entity`", page.Title, count);
+						return false;
+					}
+				}
+				let zone = zones.Get(zoneEntity);
+				let target = zone.Zone.Id.IsNil ? null : context.Project.SourceDb.GetInstance(zone.Zone.Id);
+				if (target == null)
+				{
+					outError.Append("the zone has no Navigation Zone asset: create one (asset_create) and set it as the zone component's `Zone` (component_set) before baking");
+					return false;
+				}
+				scene.UpdateTransforms();
+				let result = NavigationBake.BakeNavigationZone(scene, zoneEntity, target,
+					NavigationEditorPreferences.ParallelBakeEnabled(context));
+				outResult.Set("page", PageJson(page));
+				outResult.Set("entity", JsonValue.MakeString(scene.GetEntityId(zoneEntity).ToString(.. scope .())));
+				outResult.Set("asset", JsonValue.MakeString(zone.Zone.Id.ToString(.. scope .())));
+				outResult.Set("baked", JsonValue.MakeBool(result.Baked));
+				outResult.Set("triangles", JsonValue.MakeNumber(result.TriangleCount));
+				outResult.Set("message", JsonValue.MakeString(NavigationBake.DescribeBake(result, .. scope .())));
 				return true;
 			});
 	}

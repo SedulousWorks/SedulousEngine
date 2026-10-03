@@ -21,8 +21,8 @@ menu, over the active page, executed unattended; a dialog an action would open i
 cancelled and named under `suppressedDialogs`, so the action most likely did nothing: use a
 dedicated tool or ask the user) and the scene page's live tools
 (`selection_get`, `selection_set`, `simulate_start`, `simulate_stop`, `entity_inspect`,
-`component_set`, `viewport_camera_get`, `viewport_camera_set`, `viewport_screenshot`, each
-addressed by the page's asset guid). `viewport_camera_get` and `viewport_camera_set` read and
+`component_set`, `viewport_camera_get`, `viewport_camera_set`, `viewport_screenshot`,
+`navigation_bake`, each addressed by the page's asset guid). `viewport_camera_get` and `viewport_camera_set` read and
 move the viewport's editor camera in degrees (a position, a yaw and pitch, or a `lookAt` point;
 editor state only, no undo step). `viewport_screenshot` writes what the viewport renders to a
 PNG and returns its path and size: the scene with the grid, the markers, the selection's
@@ -34,7 +34,12 @@ fields through the page's undo path, one labelled step per call, the page dirty 
 nothing saved. `value` takes the shape `entity_inspect` shows: numbers, booleans, strings,
 guids, vectors, colours, quaternions, an enum case by name or number, an asset guid (or null)
 for a reference, an entity guid (or null) for an entity reference. It refuses while
-simulating, on a read-only field, on a list or structure, and on a wrong shape. A `scene_write` or `prefab_write` over an asset the user has open reaches
+simulating, on a read-only field, on a list or structure, and on a wrong shape.
+`navigation_bake` bakes a zone, as the inspector's Bake Navigation button does: the static
+geometry inside the zone's box (static, non-trigger rigid bodies and terrain; render meshes are
+not read, so a floor or an obstacle agents should respect needs a static body, and what moves
+never bakes) into the zone's Navigation Zone asset, which must be assigned first. The scene
+itself is unchanged; cook for the game to see the navmesh. A `scene_write` or `prefab_write` over an asset the user has open reaches
 its page at once: a clean page reloads in place, a page with unsaved edits keeps them and
 warns the user. Ask before `page_reload` with `force`, which discards them.
 
