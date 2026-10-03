@@ -16,7 +16,7 @@ namespace Sedulous.Engine.Terrain;
 /// It owns the GPU side: the height, splat and palette caches, and the chunk model built per
 /// heightfield.
 class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent>,
-	IRenderDataProvider
+	IRenderDataProvider, IStaticGeometrySource
 {
 	/// DESCENDING coverage thresholds over the chunk levels. The first is one, which is the
 	/// level nought fallback.
@@ -47,6 +47,78 @@ class TerrainComponentManager : ResourceBindingComponentManager<TerrainComponent
 	public override void OnSceneCreate(Scene scene)
 	{
 		mScene = scene;
+	}
+
+	public override IStaticGeometrySource AsStaticGeometrySource => this;
+
+	/// A terrain is level ground: its surface, holes left open, is static geometry, sampled no
+	/// finer than `detail` (Recast re-voxelises to its own cells anyway), so navigation walks it
+	/// whether or not a heightfield collider covers it too: the same surface twice rasterises
+	/// the same.
+	public void CollectStaticGeometry(Scene scene, AABB bounds, float detail, List<Float3> outTriangles)
+	{
+		for (let entity in Owners)
+		{
+			let terrain = Get(entity).Terrain.Get;
+			let field = (terrain != null) ? terrain.Heightfield.Get : null;
+			if ((field == null) || (field.Size < 2) || !scene.IsEffectivelyActive(entity))
+				continue;
+			let terrainWorld = scene.GetWorldMatrix(entity);
+			let footprint = field.WorldSize;
+			let localBox = AABB(.(-footprint.X * 0.5f, field.MinY, -footprint.Y * 0.5f),
+				.(footprint.X * 0.5f, field.MaxY, footprint.Y * 0.5f));
+			if (!TransformAABB(localBox, terrainWorld).Intersects(bounds))
+				continue;
+
+			// The box in terrain local space bounds the grid range to triangulate.
+			let boundsLocal = TransformAABB(bounds, Inverse(terrainWorld));
+			let last = field.Size - 1;
+			let g0 = field.WorldToGrid(boundsLocal.Min.X, boundsLocal.Min.Z);
+			let g1 = field.WorldToGrid(boundsLocal.Max.X, boundsLocal.Max.Z);
+			let x0 = Math.Clamp((int32)Math.Floor(g0.X), 0, last);
+			let z0 = Math.Clamp((int32)Math.Floor(g0.Y), 0, last);
+			let x1 = Math.Clamp((int32)Math.Ceiling(g1.X), 0, last);
+			let z1 = Math.Clamp((int32)Math.Ceiling(g1.Y), 0, last);
+			if ((x1 <= x0) || (z1 <= z0))
+				continue;
+
+			// The sample coordinates along each axis: stride steps, the last row and column
+			// always included so the surface reaches the edge of the range.
+			let spacing = footprint.X / (float)last;
+			let stride = Math.Max(1, (int32)(detail / Math.Max(spacing, 0.0001f)));
+			let xs = scope List<int32>();
+			let zs = scope List<int32>();
+			for (int32 gx = x0; gx < x1; gx += stride)
+				xs.Add(gx);
+			xs.Add(x1);
+			for (int32 gz = z0; gz < z1; gz += stride)
+				zs.Add(gz);
+			zs.Add(z1);
+
+			for (int row = 0; row + 1 < zs.Count; row++)
+			{
+				for (int col = 0; col + 1 < xs.Count; col++)
+				{
+					// A hole anywhere in this block, the stride square with its interior, is no
+					// surface: its two triangles are left out, so the navmesh opens there.
+					if (field.BlockHasHole(xs[col], zs[row], xs[col + 1], zs[row + 1]))
+						continue;
+					let v00 = SurfacePoint(field, terrainWorld, xs[col], zs[row]);
+					let v10 = SurfacePoint(field, terrainWorld, xs[col + 1], zs[row]);
+					let v01 = SurfacePoint(field, terrainWorld, xs[col], zs[row + 1]);
+					let v11 = SurfacePoint(field, terrainWorld, xs[col + 1], zs[row + 1]);
+					// Counter clockwise seen from above: the faces point up.
+					outTriangles.AddRange(scope Float3[](v00, v01, v11, v00, v11, v10));
+				}
+			}
+		}
+	}
+
+	/// A grid sample's world position.
+	private static Float3 SurfacePoint(Heightfield field, Float4x4 terrainWorld, int32 gx, int32 gz)
+	{
+		let xz = field.GridToWorld((float)gx, (float)gz);
+		return TransformPoint(Float3(xz.X, field.GetHeightAtGrid(gx, gz), xz.Y), terrainWorld);
 	}
 
 	/// Terrain draws in an editor as well as in a player, so this is NOT simulation gated.

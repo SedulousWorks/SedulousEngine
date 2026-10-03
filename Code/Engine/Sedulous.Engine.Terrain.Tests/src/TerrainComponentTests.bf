@@ -359,4 +359,50 @@ class TerrainComponentTests
 			.(&data.Thresholds[0], (int)data.ThresholdCount), 0.0f, draws);
 		Test.Assert(!draws.IsEmpty);
 	}
+
+	/// Navigation bakes from the scene's static geometry sources; a terrain's is its surface:
+	/// faces up, sampled no finer than the detail asked for, holes left open, nothing when the
+	/// entity is inactive or the box misses it.
+	[Test]
+	public static void TheSurfaceIsStaticGeometryHolesOpenFacesUp()
+	{
+		let scene = scope Scene("terrain_geometry");
+		let manager = scene.AddSystem<TerrainComponentManager>();
+		let field = scope Heightfield(17, .(16.0f, 16.0f), 0.0f, 10.0f);
+		let terrain = scope TerrainResource();
+		terrain.Heightfield.SetDirect(field);
+		let entity = scene.CreateEntity("terrain");
+		manager.Add(entity).Terrain.SetDirect(terrain);
+		scene.UpdateTransforms();
+
+		let source = manager.AsStaticGeometrySource;
+		Test.Assert(source != null);
+		let all = AABB(.(-20, -20, -20), .(20, 20, 20));
+		let triangles = scope System.Collections.List<Float3>();
+		source.CollectStaticGeometry(scene, all, 0.3f, triangles); // finer than the unit samples
+		Test.Assert(triangles.Count == 16 * 16 * 2 * 3, scope $"{triangles.Count}");
+		for (int i = 0; i < triangles.Count; i += 3)
+		{
+			let a = triangles[i + 1] - triangles[i];
+			let b = triangles[i + 2] - triangles[i];
+			Test.Assert(a.Z * b.X - a.X * b.Z > 0.0f); // the y of the cross: up
+		}
+
+		triangles.Clear();
+		source.CollectStaticGeometry(scene, all, 2.0f, triangles); // coarser: every two samples
+		Test.Assert(triangles.Count == 8 * 8 * 2 * 3, scope $"{triangles.Count}");
+
+		field.SetHole(8, 8, true);
+		triangles.Clear();
+		source.CollectStaticGeometry(scene, all, 0.3f, triangles);
+		Test.Assert(triangles.Count < 16 * 16 * 2 * 3);
+		Test.Assert(triangles.Count >= (16 * 16 - 4) * 2 * 3, "only the blocks round the hole");
+
+		triangles.Clear();
+		source.CollectStaticGeometry(scene, .(.(30, -5, 30), .(40, 5, 40)), 0.3f, triangles);
+		Test.Assert(triangles.IsEmpty);
+		scene.SetActive(entity, false);
+		source.CollectStaticGeometry(scene, all, 0.3f, triangles);
+		Test.Assert(triangles.IsEmpty);
+	}
 }

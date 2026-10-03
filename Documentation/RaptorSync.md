@@ -73,7 +73,7 @@ Raptor's (the last group).
 20. ~~9e9a21d5~~ (done) Physics: `AppendBodyTriangles`, bodies give their world triangles touching a box.
 21. ~~0bbc1e88~~ (done) Engine.Physics: static, solid bodies are the scene's static geometry (one
     `DescribeBody` shared with body creation; works in edit mode with no world).
-22. 7948ddd8 Engine.Terrain: a terrain's surface is static geometry (the triangulation moves out
+22. ~~7948ddd8~~ (done) Engine.Terrain: a terrain's surface is static geometry (the triangulation moves out
     of `NavigationBake`).
 23. 81236cd8 Editor.Navigation: bake the scene's static geometry, not every mesh (cars and
     walkers no longer bake into the navmesh).
