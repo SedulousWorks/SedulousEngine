@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Geometry;
 using Sedulous.Materials;
@@ -391,6 +392,34 @@ static class RenderExtract
 			});
 	}
 
+	/// The scene's target cameras due on frame `frameNumber`: effectively active, with a live
+	/// target texture, and on their TargetInterval. Manager order, so a fixed set of target
+	/// cameras keeps its view order (and so its per view history) from frame to frame.
+	public static void CollectTargetCameras(Scene scene, uint64 frameNumber, List<TargetCameraView> outViews)
+	{
+		outViews.Clear();
+		let cameras = scene.GetSystem<CameraComponentManager>();
+		if (cameras == null)
+			return;
+		cameras.ForEach(scope [&] (component, entity) =>
+			{
+				let target = component.Target.Get;
+				if ((target == null) || (target.GpuTexture == null) || !scene.IsEffectivelyActive(entity))
+					return;
+				if ((frameNumber % Math.Max(component.TargetInterval, 1)) != 0)
+					return; // the texture keeps the image it last drew
+				let world = scene.GetWorldMatrix(entity);
+				var view = TargetCameraView();
+				view.Target = target;
+				view.Camera.Camera.View = Inverse(world);
+				view.Camera.Camera.Projection = component.MakeProjection((float)target.Width / (float)Math.Max(target.Height, 1));
+				view.Camera.Camera.Position = TransformPoint(Float3(0, 0, 0), world);
+				view.Camera.Camera.FarZ = component.FarZ;
+				view.Camera.ClearColor = component.ClearColor;
+				outViews.Add(view);
+			});
+	}
+
 	/// Reads the scene's primary camera. False when there is none.
 	///
 	/// The view is the INVERSE of the entity's world matrix, and the projection comes from the
@@ -410,7 +439,8 @@ static class RenderExtract
 			{
 				// An INACTIVE primary is skipped, so the choice falls through to the next one
 				// rather than the scene losing its camera.
-				if (found || !component.Primary || !scene.IsEffectivelyActive(entity))
+				// So is one with a target, which draws into its texture.
+				if (found || !component.Primary || component.HasTarget || !scene.IsEffectivelyActive(entity))
 					return;
 
 				found = true;

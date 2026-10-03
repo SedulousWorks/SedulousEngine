@@ -7,6 +7,10 @@ struct ViewSettings
 {
 	public ClearColor Clear = .CornflowerBlue;
 
+	/// This view draws the scene tier overlays (HUD canvases, billboards). A camera rendering
+	/// into a texture (a minimap) shows the world without the HUD it is shown in.
+	public bool SceneOverlays = true;
+
 	/// The viewport sub rectangle within the target, in pixels. A width of zero means the
 	/// whole target.
 	public int32 ViewportX = 0;

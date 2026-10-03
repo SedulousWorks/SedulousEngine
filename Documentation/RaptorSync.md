@@ -91,7 +91,7 @@ Raptor's (the last group).
 28. ~~19314649~~ (done) Texture.Resource: a render texture is a texture a camera can draw into.
 29. ~~7b2a6642~~ (done) Texture.Pipeline: the render texture asset, its cook and File > New.
 30. ~~aa13434d~~ (done) Resource, Editor.Mcp: a texture reference names both asset types it takes.
-31. 4e9f1a6d Engine.Render: a camera can render into a texture (`Target`, `TargetInterval`;
+31. ~~4e9f1a6d~~ (done) Engine.Render: a camera can render into a texture (`Target`, `TargetInterval`;
     scene overlays off for a target view).
 
 ## Group 5: images in game UI and script handles

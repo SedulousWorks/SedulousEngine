@@ -1929,7 +1929,7 @@ class RenderFrame
 	private void DeclareSceneOverlays(RenderView view, RGHandle colorHandle,
 		Float4x4 unjitteredViewProj)
 	{
-		if ((mSceneOverlays == null) || mSceneOverlays.IsEmpty)
+		if ((mSceneOverlays == null) || mSceneOverlays.IsEmpty || !view.Settings.SceneOverlays)
 			return;
 
 		// A stencil attachment for the overlays' fills: a transient cleared to nought, in a

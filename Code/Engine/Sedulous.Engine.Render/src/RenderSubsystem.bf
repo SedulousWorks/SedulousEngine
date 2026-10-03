@@ -132,6 +132,16 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	private DebugDraw mDebugGlobal = new .() ~ delete _;
 	private DebugDraw mDebugScreen = new .() ~ delete _;
 	private Dictionary<Scene, DebugDraw> mDebugScenes = new .() ~ DeleteDictionaryAndValues!(_);
+
+	/// Counts BeginRendering: a target camera's interval runs on it.
+	private uint64 mFrameNumber = 0;
+	/// The scenes whose target cameras rendered this frame. BORROWED.
+	private List<Scene> mTargetScenes = new .() ~ delete _;
+	/// Inside RenderTargetCameras: its views render no targets of their own and draw no
+	/// scene debug lines or scene tier overlays.
+	private bool mRenderingTargets = false;
+	/// RenderTargetCameras' list, kept between frames.
+	private List<TargetCameraView> mTargetViews = new .() ~ delete _;
 	private Dictionary<void*, DebugDraw> mDebugViews = new .() ~ DeleteDictionaryAndValues!(_);
 
 	// ---- the screen overlay attachment ----
@@ -772,6 +782,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			mDevice.WaitIdle();
 
 		mSceneCount = 0;
+		mTargetScenes.Clear();
+		mFrameNumber++;
 		// Per frame tags, which is what lets two views of one scene share its snapshot.
 		mSnapshotOwners.Clear();
 		for (int i < mScenes.Count)
@@ -893,6 +905,10 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			}
 		}
 
+		// After extraction, so the snapshot this frame's views share exists, and before this
+		// view, so what samples a target this frame sees this frame's image.
+		RenderTargetCameras(scene);
+
 		var camera = ViewCamera();
 		// The cornflower fallback, for a scene with no primary camera.
 		var clearColor = Color(0.392f, 0.584f, 0.929f, 1.0f);
@@ -924,6 +940,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 
 		var settings = ViewSettings();
 		settings.Clear = .(clearColor.R, clearColor.G, clearColor.B, clearColor.A);
+		settings.SceneOverlays = !mRenderingTargets;
 		settings.ViewportX = viewport.X;
 		settings.ViewportY = viewport.Y;
 		settings.ViewportWidth = viewport.Width;
@@ -1016,8 +1033,10 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			// own list, the editor's grid and selection gizmos, which never appears in another
 			// view of the same scene. Either may be null when nothing was drawn this frame,
 			// and the debug pass checks.
+			// A target camera's view (a minimap, a monitor) is the game's picture, not a debug
+			// view: the scene's debug lines stay out of it.
 			void* sceneDebug = null;
-			if (mDebugScenes.GetValue(scene) case .Ok(let debug))
+			if (!mRenderingTargets && (mDebugScenes.GetValue(scene) case .Ok(let debug)))
 				sceneDebug = Internal.UnsafeCastToPtr(debug);
 
 			void* viewDebug = null;
@@ -1029,6 +1048,36 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 
 			mFrame.AddView(snapshot, camera, settings, target, targetFormat, width, height,
 				sceneDebug, Internal.UnsafeCastToPtr(scene), viewDebug);
+		}
+	}
+
+	/// Renders `scene`'s target cameras (a camera with a render texture target) into their
+	/// textures, once per scene per frame, before the view that asked: the first view of a
+	/// scene in a frame calls it after extraction. Hosts change nothing: the player, the Game
+	/// tab and the scene page all get target cameras.
+	private void RenderTargetCameras(Scene scene)
+	{
+		if (mRenderingTargets)
+			return; // a target's own view: its scene is already being handled
+		if (mTargetScenes.Contains(scene))
+			return;
+		mTargetScenes.Add(scene);
+		RenderExtract.CollectTargetCameras(scene, mFrameNumber, mTargetViews);
+		if (mTargetViews.IsEmpty)
+			return;
+		mRenderingTargets = true; // the views below render no targets of their own
+		defer { mRenderingTargets = false; }
+		for (var view in ref mTargetViews)
+		{
+			// The factory leaves a render texture shader readable, and so does every render
+			// into it, so each render starts and ends there.
+			let state = TargetState(view.Target.GpuTexture, .ShaderRead, .ShaderRead);
+			// No TAA, bloom, AO or SSR: a small second view stays cheap and out of the per view
+			// history (exposure and the tonemap stay, so it still displays).
+			var post = ViewPostOverride();
+			post.DisablePost = true;
+			RenderScene(scene, view.Target.View, view.Target.Format, view.Target.Width,
+				view.Target.Height, .(), &view.Camera, state, &post);
 		}
 	}
 

@@ -135,4 +135,47 @@ class CameraProjectionTests
 		SerializeValue(reader, "trailing", ref trailing);
 		Test.Assert(trailing == 77);
 	}
+
+	/// A version 2 record (the lens fields, the projection and the height) reads its fields
+	/// and stops before the target, which it did not have.
+	[Test]
+	public static void AVersionTwoRecordReadsItsProjectionAndNoTarget()
+	{
+		let stream = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(stream, .Write);
+			var camera = CameraComponent();
+			camera.Projection = .Orthographic;
+			camera.OrthoHeight = 7.0f;
+			writer.PushVersionScope(scope SerializedDataVersion[](.(TypeIdOf("camera"), 2)));
+			// Written as the version 2 shape: everything up to the height.
+			var fov = camera.FovYRadians;
+			SerializeValue(writer, "fovYRadians", ref fov);
+			SerializeValue(writer, "aspect", ref camera.Aspect);
+			SerializeValue(writer, "nearZ", ref camera.NearZ);
+			SerializeValue(writer, "farZ", ref camera.FarZ);
+			writer.Key("clearColor");
+			Sedulous.Core.Serialization.Serialize(writer, ref camera.ClearColor);
+			SerializeValue(writer, "primary", ref camera.Primary);
+			writer.Key("projection");
+			SerializeEnum(writer, ref camera.Projection);
+			SerializeValue(writer, "orthoHeight", ref camera.OrthoHeight);
+			writer.PopVersionScope();
+			var trailing = 77u;
+			SerializeValue(writer, "trailing", ref trailing);
+			Test.Assert(writer.IsOk);
+		}
+		stream.Seek(0, .Begin);
+		let reader = scope BinarySerializer(stream, .Read);
+		reader.PushVersionScope(scope SerializedDataVersion[](.(TypeIdOf("camera"), 2)));
+		var read = CameraComponent();
+		read.Serialize(reader);
+		reader.PopVersionScope();
+		Test.Assert(reader.IsOk);
+		Test.Assert((read.Projection == .Orthographic) && Near(read.OrthoHeight, 7.0f));
+		Test.Assert(!read.HasTarget && (read.TargetInterval == 1));
+		uint32 trailing = 0;
+		SerializeValue(reader, "trailing", ref trailing);
+		Test.Assert(trailing == 77);
+	}
 }
