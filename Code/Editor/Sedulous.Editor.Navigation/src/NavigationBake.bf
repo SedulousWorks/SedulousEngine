@@ -168,6 +168,9 @@ static class NavigationBake
 		parameters.AgentMaxClimb = zone.AgentMaxClimb;
 		parameters.AgentMaxSlopeDegrees = zone.AgentMaxSlopeDegrees;
 		parameters.ParallelBake = parallelBake; // the domain-contributed editor setting
+		// The bake covers the zone's box (zone local, where the geometry is), so a ground as
+		// wide as the level does not widen the grid past the zone.
+		parameters.Bounds = .(-zone.Extents, zone.Extents);
 		return parameters;
 	}
 

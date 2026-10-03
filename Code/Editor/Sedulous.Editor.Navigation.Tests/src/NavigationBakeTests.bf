@@ -112,6 +112,52 @@ static class NavigationBakeTests
 		Test.Assert(result.Baked, "without the rigid frame the unit-size plane erodes away");
 	}
 
+	/// A level's ground is often far wider than a zone (a 2000 unit plane). Its triangles reach
+	/// past the zone, and the bake sized the navmesh grid from them: a grid of over a hundred
+	/// tiles a side, whose navmesh did not load at runtime. The zone's box bounds the bake.
+	[Test]
+	public static void AGroundWiderThanTheZoneBakesToTheZonesBox()
+	{
+		NavigationPipeline.RegisterAll();
+		let dir = BakeFixtures.ScratchDir("scratch_navbake_plane_db", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+
+		let mount = scope NativeFileSystem(dir);
+		SerializerFactory serializers = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+		let db = scope ContentDatabase(mount, serializers, "rasset");
+		let assetInstance = db.RootGroup.CreateInstance("zone", BakeFixtures.cZoneAssetType);
+		Test.Assert(assetInstance != null);
+
+		let scene = scope Scene("bake_plane");
+		NavigationScene.AddNavigationSceneManagers(scene);
+		let meshes = scene.AddSystem<MeshComponentManager>();
+		let ground = BakeFixtures.UnitGroundMesh();
+		defer delete ground;
+		let groundEntity = scene.CreateEntity("ground");
+		meshes.Add(groundEntity).Mesh.SetDirect(ground);
+		var t = scene.GetLocalTransform(groundEntity);
+		t.Scale = .(2000, 1, 2000);
+		scene.SetLocalTransform(groundEntity, t);
+		let zoneEntity = scene.CreateEntity("zone");
+		scene.GetSystem<NavMeshZoneComponentManager>().Add(zoneEntity).Extents = .(20, 6, 20);
+		scene.UpdateTransforms();
+
+		let result = NavigationBake.BakeNavigationZone(scene, zoneEntity, assetInstance);
+		Test.Assert(result.Baked);
+		let blob = scope List<uint8>();
+		{
+			let object = assetInstance.ReadObject();
+			defer delete object;
+			let asset = object as NavigationZoneAsset;
+			Test.Assert(NavigationZoneStorage.EnsureNavMeshLoaded(assetInstance, asset) case .Ok);
+			blob.AddRange(asset.NavMeshBlob);
+		}
+		Test.Assert(NavigationBlob.ReadGrid(blob, let grid));
+		// The zone's 40 units, not the ground's 2000.
+		Test.Assert((grid.CountX == 3) && (grid.CountY == 3), scope $"{grid.CountX} x {grid.CountY}");
+		Test.Assert(BakeFixtures.PathAcross(blob, .(-15, 0, -15), .(15, 0, 15)));
+	}
+
 	[Test]
 	public static void TerrainContributesWalkableSurfaceToTheBake()
 	{
