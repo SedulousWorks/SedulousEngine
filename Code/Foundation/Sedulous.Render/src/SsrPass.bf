@@ -40,15 +40,6 @@ class SsrPass
 		public uint64 Generation;
 	}
 
-	private struct ResolveEntry
-	{
-		public IBindGroup BindGroup;
-		public ITextureView Reflection;
-		public ITextureView Velocity;
-		public ITextureView Hdr;
-		public uint64 Generation;
-	}
-
 	private struct Retired
 	{
 		public IBindGroup BindGroup;
@@ -73,7 +64,9 @@ class SsrPass
 
 	private ViewHistory[cMaxViews] mViews = .();
 	private Dictionary<int, Entry> mBindGroups = new .() ~ delete _;
-	private Dictionary<int, ResolveEntry> mResolveBindGroups = new .() ~ delete _;
+	/// The resolve's groups, one per history view being read, rebuilt when ANY of its inputs
+	/// (the reflection, velocity, HDR) is a different view or texture.
+	private BindGroupCache<3> mResolveBindGroups = new .() ~ delete _;
 	private List<Retired> mRetired = new .() ~ delete _;
 	private uint32 mLastFrame = 0xFFFFFFFF;
 
@@ -296,10 +289,11 @@ class SsrPass
 
 				builder.SetExecute(new (encoder) =>
 					{
-						let bindGroup = EnsureResolveBindGroup(graph.GetTextureView(reflection),
-							previousView, graph.GetTextureView(velocity), graph.GetTextureView(hdr),
-							graph.GetTextureGeneration(reflection)
-							^ (graph.GetTextureGeneration(hdr) &* 1099511628211UL));
+						var inputs = BindGroupInputs<3>();
+						inputs.Set(0, graph.GetTextureView(reflection), graph.GetTextureGeneration(reflection));
+						inputs.Set(1, graph.GetTextureView(velocity), graph.GetTextureGeneration(velocity));
+						inputs.Set(2, graph.GetTextureView(hdr), graph.GetTextureGeneration(hdr));
+						let bindGroup = EnsureResolveBindGroup(previousView, inputs);
 						if (bindGroup == null)
 							return;
 
@@ -527,29 +521,22 @@ class SsrPass
 		return bindGroup;
 	}
 
-	private IBindGroup EnsureResolveBindGroup(ITextureView reflection, ITextureView historyPrevious,
-		ITextureView velocity, ITextureView hdr, uint64 generation)
+	private IBindGroup EnsureResolveBindGroup(ITextureView historyPrevious, BindGroupInputs<3> inputs)
 	{
-		if ((reflection == null) || (historyPrevious == null) || (velocity == null) || (hdr == null))
+		if ((historyPrevious == null) || !inputs.Complete)
 			return null;
 
-		let key = (int)(void*)Internal.UnsafeCastToPtr(historyPrevious);
-		if (mResolveBindGroups.TryGetValue(key, var existing))
-		{
-			if ((existing.Generation == generation) && (existing.Reflection == reflection)
-				&& (existing.Velocity == velocity) && (existing.Hdr == hdr)
-				&& (existing.BindGroup != null))
-				return existing.BindGroup;
-
-			if (existing.BindGroup != null)
-				mRetired.Add(.() { BindGroup = existing.BindGroup, FramesLeft = cRetireFrames });
-		}
+		if (let cached = mResolveBindGroups.Find(historyPrevious, inputs, var stale))
+			return cached;
+		// A frame in flight may still bind the stale group, so it is retired, not destroyed.
+		if (stale != null)
+			mRetired.Add(.() { BindGroup = stale, FramesLeft = cRetireFrames });
 
 		var entries = BindGroupEntry[6](
-			BindGroupEntry.TextureEntry(reflection),
+			BindGroupEntry.TextureEntry(inputs.Views[0]),
 			BindGroupEntry.TextureEntry(historyPrevious),
-			BindGroupEntry.TextureEntry(velocity),
-			BindGroupEntry.TextureEntry(hdr),
+			BindGroupEntry.TextureEntry(inputs.Views[1]),
+			BindGroupEntry.TextureEntry(inputs.Views[2]),
 			BindGroupEntry.SamplerEntry(mSampler),
 			BindGroupEntry.SamplerEntry(mLinearSampler));
 
@@ -560,11 +547,7 @@ class SsrPass
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
 
-		mResolveBindGroups[key] = .()
-			{
-				BindGroup = bindGroup, Reflection = reflection, Velocity = velocity, Hdr = hdr,
-				Generation = generation
-			};
+		mResolveBindGroups.Store(historyPrevious, inputs, bindGroup);
 		return bindGroup;
 	}
 
@@ -580,12 +563,7 @@ class SsrPass
 		}
 		mBindGroups.Clear();
 
-		for (var entry in ref mResolveBindGroups.Values)
-		{
-			if (entry.BindGroup != null)
-				mDevice.DestroyBindGroup(ref entry.BindGroup);
-		}
-		mResolveBindGroups.Clear();
+		mResolveBindGroups.Release(scope (bindGroup) => { var group = bindGroup; mDevice.DestroyBindGroup(ref group); });
 
 		for (var retired in ref mRetired)
 		{

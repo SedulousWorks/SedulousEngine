@@ -23,7 +23,7 @@ Raptor's (the last group).
 5. ~~93d511dd~~ (done) UI: an unknown gravity name in markup is a warning.
 6. ~~ffad9393~~ (done) Render: the mesh rings hold every shadow caster, and a dropped draw warns.
 7. ~~3adbf8c4~~ (done) Render: a `BindGroupCache` that checks every view and its generation; TAA uses it.
-8. 0b60c738 Render: the MSAA resolve and the SSR and SSGI resolves use it (velocity was left out
+8. ~~0b60c738~~ (done) Render: the MSAA resolve and the SSR and SSGI resolves use it (velocity was left out
    of their keys).
 9. a8723a4f Scene: a running scene is stopped before it is destroyed.
 10. ca6856f3 + 9ee94a34 Engine.Navigation: an agent that cannot join the navmesh, and a zone

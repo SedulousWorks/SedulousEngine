@@ -17,13 +17,6 @@ namespace Sedulous.Render;
 /// One instance serves every view, since the pipeline does not depend on the view.
 class MsaaResolvePass
 {
-	/// A cached group, and the input generation it was built for.
-	private struct Entry
-	{
-		public IBindGroup BindGroup;
-		public uint64 Generation;
-	}
-
 	private IDevice mDevice;
 	private ShaderSystem mShaders;
 
@@ -33,9 +26,10 @@ class MsaaResolvePass
 	private TextureFormat mPipelineDepthFormat = .Undefined;
 	private uint64 mPipelineShaderVersion = 0;
 
-	/// Keyed by the depth view's address, with the generation held beside it: a transient is
-	/// reallocated between frames, and the generation is what says so.
-	private Dictionary<int, Entry> mBindGroups = new .() ~ delete _;
+	/// Keyed by the depth view, rebuilt when ANY of the four inputs is a different view or
+	/// texture: a transient is reallocated between frames, and checking depth alone kept
+	/// another frame's normal, velocity or material bound.
+	private BindGroupCache<4> mBindGroups = new .() ~ delete _;
 
 	public this(IDevice device, ShaderSystem shaders)
 	{
@@ -138,9 +132,12 @@ class MsaaResolvePass
 
 				builder.SetExecute(new (encoder) =>
 					{
-						let bindGroup = EnsureBindGroup(graph.GetTextureView(msaaNormal),
-							graph.GetTextureView(msaaVelocity), graph.GetTextureView(msaaMaterial),
-							graph.GetTextureView(msaaDepth), graph.GetTextureGeneration(msaaDepth));
+						var inputs = BindGroupInputs<4>();
+						inputs.Set(0, graph.GetTextureView(msaaNormal), graph.GetTextureGeneration(msaaNormal));
+						inputs.Set(1, graph.GetTextureView(msaaVelocity), graph.GetTextureGeneration(msaaVelocity));
+						inputs.Set(2, graph.GetTextureView(msaaMaterial), graph.GetTextureGeneration(msaaMaterial));
+						inputs.Set(3, graph.GetTextureView(msaaDepth), graph.GetTextureGeneration(msaaDepth));
+						let bindGroup = EnsureBindGroup(inputs);
 						if (bindGroup == null)
 							return;
 
@@ -195,26 +192,21 @@ class MsaaResolvePass
 		return pipeline;
 	}
 
-	private IBindGroup EnsureBindGroup(ITextureView normal, ITextureView velocity,
-		ITextureView material, ITextureView depth, uint64 generation)
+	private IBindGroup EnsureBindGroup(BindGroupInputs<4> inputs)
 	{
-		if ((normal == null) || (velocity == null) || (material == null) || (depth == null))
+		if (!inputs.Complete)
 			return null;
 
-		let key = (int)(void*)Internal.UnsafeCastToPtr(depth);
-		if (mBindGroups.TryGetValue(key, var existing))
-		{
-			if ((existing.Generation == generation) && (existing.BindGroup != null))
-				return existing.BindGroup;
-
-			if (existing.BindGroup != null)
-				mDevice.DestroyBindGroup(ref existing.BindGroup);
-		}
+		let depth = inputs.Views[3];
+		if (let cached = mBindGroups.Find(depth, inputs, var stale))
+			return cached;
+		if (stale != null)
+			mDevice.DestroyBindGroup(ref stale);
 
 		var entries = BindGroupEntry[4](
-			BindGroupEntry.TextureEntry(normal),
-			BindGroupEntry.TextureEntry(velocity),
-			BindGroupEntry.TextureEntry(material),
+			BindGroupEntry.TextureEntry(inputs.Views[0]),
+			BindGroupEntry.TextureEntry(inputs.Views[1]),
+			BindGroupEntry.TextureEntry(inputs.Views[2]),
 			BindGroupEntry.TextureEntry(depth));
 
 		var desc = BindGroupDesc();
@@ -224,7 +216,7 @@ class MsaaResolvePass
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
 
-		mBindGroups[key] = .() { BindGroup = bindGroup, Generation = generation };
+		mBindGroups.Store(depth, inputs, bindGroup);
 		return bindGroup;
 	}
 
@@ -233,12 +225,7 @@ class MsaaResolvePass
 		if (mDevice == null)
 			return;
 
-		for (var entry in ref mBindGroups.Values)
-		{
-			if (entry.BindGroup != null)
-				mDevice.DestroyBindGroup(ref entry.BindGroup);
-		}
-		mBindGroups.Clear();
+		mBindGroups.Release(scope (bindGroup) => { var group = bindGroup; mDevice.DestroyBindGroup(ref group); });
 
 		if (mPipeline != null)
 			mDevice.DestroyRenderPipeline(ref mPipeline);
