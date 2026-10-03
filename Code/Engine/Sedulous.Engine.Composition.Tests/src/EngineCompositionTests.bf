@@ -24,6 +24,19 @@ static class EngineCompositionTests
 				withScene++;
 		}
 		Test.Assert(withScene == 13);
+		// Each domain id once; input is listed though it has no scene content.
+		bool sawInput = false;
+		for (int i < modules.Count)
+		{
+			for (int j = i + 1; j < modules.Count; j++)
+				Test.Assert(modules[i].Id != modules[j].Id, scope $"{modules[i].Id} twice");
+			if (modules[i].Id == "input")
+			{
+				sawInput = true;
+				Test.Assert(!modules[i].HasScene);
+			}
+		}
+		Test.Assert(sawInput);
 
 		// Twenty resource modules, each id once.
 		let resources = scope List<ResourceModule>();
@@ -67,6 +80,22 @@ static class EngineCompositionTests
 			shaders |= (name == "Sedulous.Shaders.ShaderSystem");
 		}
 		Test.Assert(device && shaders);
+		// Every created factory agrees with its description: the product it is keyed on and the
+		// cooked form it reads.
+		let descriptions = scope List<ResourceFactoryDesc*>();
+		EngineComposition.FactoryDescriptions(descriptions);
+		for (let factory in set.Factories)
+		{
+			ResourceFactoryDesc* described = null;
+			for (let desc in descriptions)
+			{
+				if (ResourceManager.ProductTypeIdOf(desc.Product) == factory.ProductTypeId)
+					described = desc;
+			}
+			let name = factory.CookedType.GetFullName(.. scope .());
+			Test.Assert(described != null, scope $"the factory reading {name} has no description");
+			Test.Assert(described.Cooked == factory.CookedType, scope $"{name} is not its description's cooked form");
+		}
 		// A second call adds nothing.
 		EngineComposition.CreateFactories(set, none);
 		Test.Assert((set.Count == 25) && (set.Skipped.Length == 2));

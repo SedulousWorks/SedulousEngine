@@ -45,8 +45,8 @@ Raptor's (the last group).
 15. From Raptor's notes for us, each its own commit:
     - ~~a~~ (done) DefaultApplication clears the factory set at shutdown while the device lives
       (and releases its own manager's products first; a borrowed manager forgets the factories).
-    - b `EngineCompositionTests`: "each domain id once" and "each factory matches its
-      description".
+    - ~~b~~ (done) `EngineCompositionTests`: "each domain id once" and "each factory matches
+      its description".
     - c A regression test for 5aa79822's teardown order.
     - d `SceneReference`'s typeIds text interpolates the hash basis.
     - e Check the audio clip and cue pages keep a paused audition (Raptor's pages dropped it).
