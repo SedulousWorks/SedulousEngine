@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Reflection;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Json;
@@ -12,43 +13,28 @@ namespace Sedulous.Editor.Mcp;
 
 /// export_presets and export_preset_set: the project's export targets (export_presets.xml),
 /// what the editor's Export Presets dialog edits, and the templates this machine can export
-/// them with. project_export runs one.
+/// them with. project_export runs one. A preset's fields are ExportPreset's reflection (its
+/// [Setting] fields), through ReflectedFields; the tools' own rules are the preset's name (its
+/// identity), removal, and a platform the engine targets and a config it builds.
 static class ExportPresetTools
 {
+	private static StringView[3] cPlatforms = .("Linux64", "Win64", "Web");
 	private static StringView[3] cConfigs = .("Debug", "Release", "Test");
-	/// The wire names of FitMode and WindowMode, in their declaration order.
-	private static StringView[4] cFitNames = .("stretch", "letterbox", "crop", "integerScale");
-	private static StringView[3] cWindowModeNames = .("windowed", "fullscreen", "borderless");
 
 	public static void Register(McpServer server, ProjectSession session)
 	{
 		server.RegisterTool("export_presets",
-			"The open project's export presets and the export templates this machine has. Each preset: name, platform, templateId (\"\" resolves by platform and config), config, playerName, outputSubdir, additionalFiles, stageSymbols, pruneToReachable, its display overrides (`render` and `window`, each null unless the preset overrides the project's), and `template`: the id it resolves to here, or null when this machine has no template for it. A project without export_presets.xml has one synthesized preset for the host (`synthesized`: true). Each template: id, name, platform, config, engineVersion, host (the player beside this tool, not an installed bundle). export_preset_set changes them; project_export runs one.",
+			"The open project's export presets and the export templates this machine has. Each preset: its fields as export_preset_set takes them (name, platform, templateId - \"\" resolves by platform and config - playerName, outputSubdir, additionalFiles, config - \"\" is Release - stageSymbols, pruneToReachable, and the display overrides: overridesRender with renderWidth/renderHeight/renderFit, overridesWindow with windowWidth/windowHeight/windowMode/windowResizable), and `template`: the id it resolves to here, or null when this machine has no template for it. A project without export_presets.xml has one synthesized preset for the host (`synthesized`: true). Each template: id, name, platform, config, engineVersion, notes, host (the player beside this tool, not an installed bundle). export_preset_set changes them; project_export runs one.",
 			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => List(session, outResult, outError));
 
+		let fields = scope List<FieldInfo>();
+		SettingFields.Of(typeof(ExportPreset), fields);
 		let schema = scope SchemaBuilder();
-		schema.Str("name", "the preset to create or change, by name (required)");
-		schema.Boolean("remove", "delete the preset instead; nothing else may be given");
-		schema.Str("platform", "the build platform: Linux64, Win64 or Web");
-		schema.Str("templateId", "the template to export with, an id export_presets lists; \"\" resolves by platform and config");
-		schema.Enum("config", scope StringView[]("Debug", "Release", "Test"), "the build config the template must be; default Release");
-		schema.Str("playerName", "the shipped executable's name; \"\" keeps the template's");
-		schema.Str("outputSubdir", "the directory under the export root; \"\" is the preset's name");
-		schema.Arr("additionalFiles", "string", "project-relative files shipped beside the player, the whole list; [] for none");
-		schema.Boolean("stageSymbols", "ship the template's symbol files too");
-		schema.Boolean("pruneToReachable", "ship only what the entry points reach, not every asset");
-		schema.Boolean("overridesRender", "draw at this preset's resolution rather than the project's");
-		schema.Integer("renderWidth", "the width this platform draws at; 0 with renderHeight 0 for the output's own size");
-		schema.Integer("renderHeight", "the height this platform draws at");
-		schema.Enum("renderFit", scope StringView[]("stretch", "letterbox", "crop", "integerScale"), "how the render resolution fits a screen of another shape");
-		schema.Boolean("overridesWindow", "open this preset's window rather than the project's");
-		schema.Integer("windowWidth", "this platform's window width");
-		schema.Integer("windowHeight", "this platform's window height");
-		schema.Enum("windowMode", scope StringView[]("windowed", "fullscreen", "borderless"), "how this platform's window takes the screen");
-		schema.Boolean("windowResizable", "whether this platform's window may be resized");
+		ReflectedFields.AddToSchema(schema, fields);
+		schema.Boolean("remove", "delete the preset instead; nothing but `name` may be given");
 		server.RegisterTool("export_preset_set",
-			"Create, change or remove one export preset of the open project, by name: only what is given changes, and a new preset starts as the host's platform, Release. Checked in full before anything changes, then saved to export_presets.xml (a project with none starts from its synthesized host preset, which stays). A templateId need not exist on this machine - presets travel with the project and templates do not - so the result's `template` says whether it resolves here. Returns the presets as export_presets does.",
+			"Create, change or remove one export preset of the open project, by `name` (required): only what is given changes, a field name that is no preset field is refused with the list, and a new preset starts as the host's platform, Release. `platform` takes Linux64, Win64 or Web and `config` Debug, Release, Test or \"\" (Release); a choice takes one of its values by name (renderFit, windowMode). Checked in full before anything changes, then saved to export_presets.xml (a project with none starts from its synthesized host preset, which stays). A templateId need not exist on this machine - presets travel with the project and templates do not - so the result's `template` says whether it resolves here. Returns the presets as export_presets does.",
 			schema.Build(), .Overwrites,
 			new (arguments, outResult, outError) => Set(session, arguments, outResult, outError));
 	}
@@ -89,46 +75,11 @@ static class ExportPresetTools
 	private static void Describe(ExportPresetSet presets, bool fromFile, TemplateRegistry templates, JsonValue outResult)
 	{
 		let list = JsonValue.MakeArray();
+		let fields = scope List<FieldInfo>();
+		SettingFields.Of(typeof(ExportPreset), fields);
 		for (let preset in presets.Presets)
 		{
-			let json = JsonValue.MakeObject();
-			json.Set("name", JsonValue.MakeString(preset.Name));
-			json.Set("platform", JsonValue.MakeString(preset.Platform));
-			json.Set("templateId", JsonValue.MakeString(preset.TemplateId));
-			json.Set("config", JsonValue.MakeString(preset.EffectiveConfig));
-			json.Set("playerName", JsonValue.MakeString(preset.PlayerName));
-			json.Set("outputSubdir", JsonValue.MakeString(preset.OutputSubdir));
-			let files = JsonValue.MakeArray();
-			for (let file in preset.AdditionalFiles)
-				files.Add(JsonValue.MakeString(file));
-			json.Set("additionalFiles", files);
-			json.Set("stageSymbols", JsonValue.MakeBool(preset.StageSymbols));
-			json.Set("pruneToReachable", JsonValue.MakeBool(preset.PruneToReachable));
-			if (preset.OverridesRender)
-			{
-				let render = JsonValue.MakeObject();
-				render.Set("width", JsonValue.MakeNumber(preset.RenderWidth));
-				render.Set("height", JsonValue.MakeNumber(preset.RenderHeight));
-				render.Set("fit", JsonValue.MakeString(cFitNames[(int)preset.RenderFit]));
-				json.Set("render", render);
-			}
-			else
-			{
-				json.Set("render", JsonValue.MakeNull());
-			}
-			if (preset.OverridesWindow)
-			{
-				let window = JsonValue.MakeObject();
-				window.Set("width", JsonValue.MakeNumber(preset.WindowWidth));
-				window.Set("height", JsonValue.MakeNumber(preset.WindowHeight));
-				window.Set("mode", JsonValue.MakeString(cWindowModeNames[(int)preset.WindowMode]));
-				window.Set("resizable", JsonValue.MakeBool(preset.WindowResizable));
-				json.Set("window", window);
-			}
-			else
-			{
-				json.Set("window", JsonValue.MakeNull());
-			}
+			let json = ReflectedFields.ToJson(preset, fields, null);
 			let resolved = templates.Resolve(preset);
 			json.Set("template", (resolved != null) ? JsonValue.MakeString(resolved.Id) : JsonValue.MakeNull());
 			list.Add(json);
@@ -146,6 +97,7 @@ static class ExportPresetTools
 			json.Set("platform", JsonValue.MakeString(template.Platform));
 			json.Set("config", JsonValue.MakeString(template.EffectiveConfig));
 			json.Set("engineVersion", JsonValue.MakeString(template.EngineVersion));
+			json.Set("notes", JsonValue.MakeString(template.Notes));
 			json.Set("host", JsonValue.MakeBool(template.IsHost));
 			templateList.Add(json);
 		}
@@ -164,6 +116,14 @@ static class ExportPresetTools
 		if (name.IsEmpty)
 		{
 			outError.Append("`name` names the preset to create, change or remove");
+			return false;
+		}
+		let fields = scope List<FieldInfo>();
+		SettingFields.Of(typeof(ExportPreset), fields);
+		let unknown = scope String();
+		if (ReflectedFields.UnknownArgument(arguments, fields, scope StringView[]("remove"), unknown))
+		{
+			outError.AppendF("no preset field '{}'; the fields are: {}, remove", unknown, ReflectedFields.Keys(fields, .. scope .()));
 			return false;
 		}
 		let presets = scope ExportPresetSet();
@@ -191,10 +151,15 @@ static class ExportPresetTools
 		}
 
 		// Everything is checked before anything changes: a refusal leaves the file as it was.
+		let changes = scope List<ReflectedFields.Change>();
+		defer ClearAndDeleteItems(changes);
+		if (!ReflectedFields.Check(arguments, fields, null, changes, outError))
+			return false;
+		// The platform the engine targets and a config it builds. A template need not exist
+		// here: presets travel with the project and templates do not.
 		if (let arg = arguments.Get("platform"))
 		{
-			let platform = arg.AsString();
-			if ((platform != "Linux64") && (platform != "Win64") && (platform != "Web"))
+			if (!Contains(cPlatforms, arg.AsString()))
 			{
 				outError.Append("`platform` takes Linux64, Win64 or Web");
 				return false;
@@ -202,48 +167,9 @@ static class ExportPresetTools
 		}
 		if (let arg = arguments.Get("config"))
 		{
-			if (IndexOfName(cConfigs, arg.AsString()) < 0)
+			if (!arg.AsString().IsEmpty && !Contains(cConfigs, arg.AsString()))
 			{
-				outError.Append("`config` takes Debug, Release or Test");
-				return false;
-			}
-		}
-		let filesArg = arguments.Get("additionalFiles");
-		if ((filesArg != null) && !filesArg.IsArray)
-		{
-			outError.Append("`additionalFiles` takes an array of project-relative paths");
-			return false;
-		}
-		for (let key in StringView[4]("renderWidth", "renderHeight", "windowWidth", "windowHeight"))
-		{
-			if (let arg = arguments.Get(key))
-			{
-				let value = arg.AsInt(-1);
-				let least = key.StartsWith("render") ? 0 : 1;
-				if ((value < least) || (value > 16384))
-				{
-					outError.AppendF("`{}` takes {} to 16384", key, least);
-					return false;
-				}
-			}
-		}
-		int fitIndex = -1;
-		if (let arg = arguments.Get("renderFit"))
-		{
-			fitIndex = IndexOfName(cFitNames, arg.AsString());
-			if (fitIndex < 0)
-			{
-				outError.Append("`renderFit` takes stretch, letterbox, crop or integerScale");
-				return false;
-			}
-		}
-		int modeIndex = -1;
-		if (let arg = arguments.Get("windowMode"))
-		{
-			modeIndex = IndexOfName(cWindowModeNames, arg.AsString());
-			if (modeIndex < 0)
-			{
-				outError.Append("`windowMode` takes windowed, fullscreen or borderless");
+				outError.Append("`config` takes Debug, Release, Test or \"\" (Release)");
 				return false;
 			}
 		}
@@ -256,44 +182,7 @@ static class ExportPresetTools
 			preset.Platform.Set(BuildLayout.HostPlatformName);
 			presets.Presets.Add(preset);
 		}
-		if (let arg = arguments.Get("platform"))
-			preset.Platform.Set(arg.AsString());
-		if (let arg = arguments.Get("templateId"))
-			preset.TemplateId.Set(arg.AsString());
-		if (let arg = arguments.Get("config"))
-			preset.Config.Set(arg.AsString());
-		if (let arg = arguments.Get("playerName"))
-			preset.PlayerName.Set(arg.AsString());
-		if (let arg = arguments.Get("outputSubdir"))
-			preset.OutputSubdir.Set(arg.AsString());
-		if (filesArg != null)
-		{
-			ClearAndDeleteItems(preset.AdditionalFiles);
-			for (int i < filesArg.Count)
-				preset.AdditionalFiles.Add(new String(filesArg.At(i).AsString()));
-		}
-		if (let arg = arguments.Get("stageSymbols"))
-			preset.StageSymbols = arg.AsBool();
-		if (let arg = arguments.Get("pruneToReachable"))
-			preset.PruneToReachable = arg.AsBool();
-		if (let arg = arguments.Get("overridesRender"))
-			preset.OverridesRender = arg.AsBool();
-		if (let arg = arguments.Get("renderWidth"))
-			preset.RenderWidth = (uint32)arg.AsInt();
-		if (let arg = arguments.Get("renderHeight"))
-			preset.RenderHeight = (uint32)arg.AsInt();
-		if (fitIndex >= 0)
-			preset.RenderFit = (FitMode)fitIndex;
-		if (let arg = arguments.Get("overridesWindow"))
-			preset.OverridesWindow = arg.AsBool();
-		if (let arg = arguments.Get("windowWidth"))
-			preset.WindowWidth = (uint32)arg.AsInt();
-		if (let arg = arguments.Get("windowHeight"))
-			preset.WindowHeight = (uint32)arg.AsInt();
-		if (modeIndex >= 0)
-			preset.WindowMode = (WindowMode)modeIndex;
-		if (let arg = arguments.Get("windowResizable"))
-			preset.WindowResizable = arg.AsBool();
+		ReflectedFields.Apply(preset, changes);
 		return Save(project, presets, outResult, outError);
 	}
 
@@ -311,13 +200,13 @@ static class ExportPresetTools
 		return true;
 	}
 
-	private static int IndexOfName(Span<StringView> names, StringView name)
+	private static bool Contains(Span<StringView> names, StringView name)
 	{
-		for (int i < names.Length)
+		for (let entry in names)
 		{
-			if (names[i] == name)
-				return i;
+			if (entry == name)
+				return true;
 		}
-		return -1;
+		return false;
 	}
 }

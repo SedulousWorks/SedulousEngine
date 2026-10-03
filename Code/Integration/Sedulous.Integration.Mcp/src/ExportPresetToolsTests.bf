@@ -57,6 +57,10 @@ static class ExportPresetToolsTests
 		Test.Assert(refusal.Contains("Linux64"));
 		CallErr(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "renderWidth", 99999), refusal..Clear());
 		Test.Assert(refusal.Contains("16384"));
+		CallErr(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "renderSize", 99), refusal..Clear());
+		Test.Assert(refusal.StartsWith("no preset field 'renderSize'; the fields are: name, platform,"), refusal);
+		CallErr(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "config", "Shipping"), refusal..Clear());
+		Test.Assert(refusal.Contains("Debug, Release, Test"), refusal);
 		CallErr(server, "export_preset_set", With(Obj(), "platform", "Linux64"), refusal..Clear());
 		Test.Assert(refusal.Contains("name"));
 		CallErr(server, "export_preset_set", WithBool(With(Obj(), "name", "Deck"), "remove", true), refusal..Clear());
@@ -68,8 +72,8 @@ static class ExportPresetToolsTests
 		{
 			var args = With(With(With(Obj(), "name", "Deck"), "platform", "Linux64"), "templateId", "sedulous-nosuch-release-0.0.0");
 			args = WithBool(args, "overridesRender", true);
-			args = With(With(With(args, "renderWidth", 1280), "renderHeight", 800), "renderFit", "letterbox");
-			args = With(WithBool(args, "overridesWindow", true), "windowMode", "fullscreen");
+			args = With(With(With(args, "renderWidth", 1280), "renderHeight", 800), "renderFit", "Letterbox");
+			args = With(WithBool(args, "overridesWindow", true), "windowMode", "Fullscreen");
 			let set = CallOk(server, "export_preset_set", args);
 			defer delete set;
 			Test.Assert(!set.Get("synthesized").AsBool());
@@ -79,9 +83,9 @@ static class ExportPresetToolsTests
 			Test.Assert(deck != null);
 			Test.Assert(deck.Get("templateId").AsString() == "sedulous-nosuch-release-0.0.0");
 			Test.Assert(deck.Get("template").IsNull, "a template this machine lacks does not resolve");
-			Test.Assert(deck.Get("config").AsString() == "Release");
-			Test.Assert((deck.Get("render").Get("width").AsInt() == 1280) && (deck.Get("render").Get("height").AsInt() == 800));
-			Test.Assert(deck.Get("window").Get("mode").AsString() == "fullscreen");
+			Test.Assert(deck.Get("config").AsString() == "", "unset: Release");
+			Test.Assert(deck.Get("overridesRender").AsBool() && (deck.Get("renderWidth").AsInt() == 1280) && (deck.Get("renderHeight").AsInt() == 800));
+			Test.Assert((deck.Get("renderFit").AsString() == "Letterbox") && (deck.Get("windowMode").AsString() == "Fullscreen"));
 			Test.Assert(FileExists(PathJoin(dir, ExportPresetsFile.cFileName, .. scope .())));
 		}
 
@@ -94,7 +98,7 @@ static class ExportPresetToolsTests
 			defer delete listed;
 			let deck = Named(listed.Get("presets"), "name", "Deck");
 			Test.Assert(deck.Get("outputSubdir").AsString() == "SteamDeck");
-			Test.Assert(deck.Get("render").Get("width").AsInt() == 1280, "an unmentioned field keeps its value");
+			Test.Assert(deck.Get("renderWidth").AsInt() == 1280, "an unmentioned field keeps its value");
 		}
 
 		CallErr(server, "export_preset_set", WithBool(With(With(Obj(), "name", "Deck"), "platform", "Win64"), "remove", true), refusal..Clear());

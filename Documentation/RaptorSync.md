@@ -53,14 +53,16 @@ Raptor's (the last group).
       clip page stopped it the next frame, the cue page forgot a voice the engine held paused).
     - The PaperKid override test walks the Level script's overrides too: with group 6.
 
-16. bc87304e, eadecdd5, 1896bfed, b6a08629, f3fc2d35: the project settings and the export
+16. ~~bc87304e, eadecdd5, 1896bfed, b6a08629, f3fc2d35~~ (done): the project settings and the export
     presets describe their fields through reflection, and the Project Settings dialog,
     `project_info`/`project_settings_set` and `export_presets`/`export_preset_set` all build
     from it (one shared reflected-fields module), instead of three hand-kept field lists
     (`ProjectSettingsDialog`, `ProjectInfoTool`, `ExportPresetTools`) that drift as fields are
     added, the bug class item 12 fixes for the manifest. The tool keys become the reflected
     field names (`defaultSceneId`, `renderMsaaSamples`), as Raptor's: the McpGuide and every
-    test calling the tools change with them. The largest take-back; after 11 to 15.
+    test calling the tools change with them. The largest take-back; after 11 to 15. Done in
+    five commits; asset_uses and project_health, a fourth hand list, read the reflection too,
+    and the preset tools keep this engine's platform and config rule (item 13).
 
 ## Group 3: navigation over static geometry
 

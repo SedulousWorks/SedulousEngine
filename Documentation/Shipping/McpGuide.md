@@ -183,11 +183,14 @@ when the project has no `export_presets.xml`). The dist lands under `<project>/D
 `out` says otherwise: the player, its runtime libraries, `Content.pak`, `player.xml` and
 `Data/Shaders/shaders.dpak`.
 
-`export_presets` lists the project's presets and the templates this machine can export
-them with; `export_preset_set` creates, changes or removes one by `name` (only what is given
-changes). A preset for another device names that device's template by `templateId`, and can
-override the project's render resolution and window for it (`overridesRender`,
-`overridesWindow`). A template the machine lacks is kept, since presets travel with the
+`export_presets` lists the project's presets, each its fields by the names
+`export_preset_set` takes, and the templates this machine can export them with;
+`export_preset_set` creates, changes or removes one by `name` (only what is given changes; a
+name that is no preset field is refused with the list). A preset for another device names
+that device's template by `templateId`, and can override the project's render resolution and
+window for it (`overridesRender` with `renderWidth`, `renderHeight` and `renderFit`;
+`overridesWindow` with `windowWidth`, `windowHeight`, `windowMode` and `windowResizable`, a
+choice by its value's name, `Fullscreen`). A template the machine lacks is kept, since presets travel with the
 project and templates do not; the preset's `template` comes back null until one is installed.
 
 ## Per tool gotchas

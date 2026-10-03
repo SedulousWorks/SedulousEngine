@@ -182,7 +182,7 @@ static class ReflectedFields
 			outError.AppendF("`{}`: '{}' is not a valid guid", place, text);
 			return false;
 		}
-		let instance = db.GetInstance(id);
+		let instance = (db != null) ? db.GetInstance(id) : null;
 		if (instance == null)
 		{
 			outError.AppendF("`{}`: no asset with guid {} in the project", place, text);
