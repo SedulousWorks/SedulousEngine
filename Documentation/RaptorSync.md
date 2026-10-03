@@ -96,7 +96,7 @@ Raptor's (the last group).
 
 ## Group 5: images in game UI and script handles
 
-32. 556f3847 UI: an ImageView names what it shows (`source=`), resolved by the context's
+32. ~~556f3847~~ (done) UI: an ImageView names what it shows (`source=`), resolved by the context's
     provider.
 33. 48c2f248 Engine.UI: an image in game UI shows a texture asset, render textures included.
 34. 8c4a3c4b Engine.UI.Script: views move and turn from script (translation, rotation).

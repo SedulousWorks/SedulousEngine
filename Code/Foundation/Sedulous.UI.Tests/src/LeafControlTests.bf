@@ -170,6 +170,83 @@ class LeafControlTests
 		Test.Assert(view.MeasuredSize.Y == 4);
 	}
 
+	/// Answers one name with one image, after `LoadingFor` asks (an asset still loading).
+	private class LateProvider : IResourceProvider
+	{
+		public OwnedImageData Minimap ~ delete _;
+		public OwnedImageData Icon ~ delete _;
+		public int Asks = 0;
+		public int LoadingFor = 0;
+
+		public this()
+		{
+			let pixels = scope uint8[256 * 128 * 4];
+			Minimap = new .(256, 128, .RGBA8, pixels);
+			Icon = new .(32, 32, .RGBA8, Span<uint8>(pixels.Ptr, 32 * 32 * 4));
+		}
+
+		public bool LoadText(StringView path, String outText) => false;
+
+		public ImageData LoadImage(StringView path)
+		{
+			Asks++;
+			if (Asks <= LoadingFor)
+				return null;
+			if (path == "minimap")
+				return Minimap;
+			return (path == "icon") ? Icon : null;
+		}
+	}
+
+	/// An ImageView's Source resolves through the context's provider: nothing until the
+	/// provider answers, then once, the image's size its natural size, and a new source
+	/// resolves anew.
+	[Test]
+	public static void AnImageViewResolvesItsSourceThroughTheContextsProvider()
+	{
+		let context = new UIContext();
+		let root = new RootView();
+		UITest.Init(context, root, 400, 300);
+		defer { root.ReleaseRef(); delete context; }
+		let provider = scope LateProvider();
+		provider.LoadingFor = 1; // the first ask finds it still loading
+		context.SetResourceProvider(provider);
+		let view = new ImageView();
+		view.SetSource("minimap");
+		root.AddView(view);
+
+		UITest.LayoutPass(context, root);
+		Test.Assert(view.Image == null, "not loaded yet: nothing shown, asked again later");
+		UITest.LayoutPass(context, root);
+		Test.Assert(view.Image === provider.Minimap);
+		let asksOnceResolved = provider.Asks;
+		UITest.LayoutPass(context, root);
+		Test.Assert(provider.Asks == asksOnceResolved, "resolved once, not every frame");
+
+		view.Measure(BoxConstraints.Expand());
+		Test.Assert((view.MeasuredSize.X == 256) && (view.MeasuredSize.Y == 128));
+
+		view.SetSource("icon");
+		UITest.LayoutPass(context, root);
+		Test.Assert(view.Image === provider.Icon);
+	}
+
+	/// Without a provider, the view keeps the image SetImage gave.
+	[Test]
+	public static void AnImageViewWithoutAProviderKeepsTheImageSetImageGave()
+	{
+		let context = new UIContext();
+		let root = new RootView();
+		UITest.Init(context, root, 400, 300);
+		defer { root.ReleaseRef(); delete context; }
+		uint8[16 * 16 * 4] pixels = .();
+		let given = scope OwnedImageData(16, 16, .RGBA8, Span<uint8>(&pixels[0], pixels.Count));
+		let view = new ImageView(given);
+		root.AddView(view);
+		UITest.LayoutPass(context, root);
+		Test.Assert(view.Image === given);
+	}
+
 	// ---- DrawableView -------------------------------------------------------------------------
 
 	/// The requested size wins over the drawable's intrinsic one, which wins over zero.

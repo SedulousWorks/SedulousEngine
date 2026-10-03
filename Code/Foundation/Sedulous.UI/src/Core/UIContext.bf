@@ -34,6 +34,8 @@ class UIContext
 	/// BORROWED, and nullable. The core stays platform agnostic; the application or the shell
 	/// bridge supplies these.
 	private IClipboard mClipboard = null;
+	/// BORROWED; null when the application set none.
+	private IResourceProvider mResourceProvider = null;
 	private IFontService mFontService = null;
 
 	/// OWNED.
@@ -298,6 +300,12 @@ class UIContext
 
 	public IClipboard Clipboard => mClipboard;
 	public void SetClipboard(IClipboard clipboard) => mClipboard = clipboard;
+
+	/// What resolves an image a view names by a string (an ImageView's Source), set by the
+	/// application. BORROWED, nullable. The UI never interprets the string: the engine's
+	/// provider answers asset ids, a sample's answers file paths.
+	public IResourceProvider ResourceProvider => mResourceProvider;
+	public void SetResourceProvider(IResourceProvider provider) => mResourceProvider = provider;
 
 	public IFontService FontService => mFontService;
 	public void SetFontService(IFontService fontService) => mFontService = fontService;

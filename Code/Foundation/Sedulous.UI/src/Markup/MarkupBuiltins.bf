@@ -174,6 +174,13 @@ extension MarkupRegistry
 	private static void RegisterTextControls()
 	{
 		RegisterView("Label", new () => new Label());
+		// What the image shows, resolved by the context's resource provider (an asset id in the
+		// engine): <ImageView source="{guid}"/>.
+		RegisterProperty("ImageView", "source", new (v, val) =>
+			{
+				if (let c = v as ImageView)
+					c.SetSource(val);
+			});
 		RegisterProperty("Label", "text", new (v, val) =>
 			{
 				if (let c = v as Label)

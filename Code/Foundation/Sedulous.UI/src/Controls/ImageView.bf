@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 using Sedulous.Image;
 
@@ -14,13 +15,35 @@ class ImageView : View
 {
 	public Property<ScaleType> ScaleType = new .(.FitCenter) ~ delete _;
 	public Property<Color> Tint = new .(Color.White) ~ delete _;
+	/// What to show, named by a string the context's resource provider resolves (the engine
+	/// takes an asset id: a texture, or a render texture a camera draws into). Resolved when
+	/// the view is measured or drawn in a context that has a provider; until the provider
+	/// answers (an asset still loading), the view shows nothing and asks again. Empty: the
+	/// image SetImage gave. Set it through SetSource.
+	public Property<String> Source = new .(new String()) ~ delete _;
 
 	private ImageData mImage;
+	/// The Source mImage answers.
+	private String mResolvedSource = new .() ~ delete _;
 
 	public this()
 	{
 		ScaleType.SetOwner(this, .Visual);
 		Tint.SetOwner(this, .Visual);
+	}
+
+	public ~this()
+	{
+		delete Source.Value;
+	}
+
+	/// Names what to show (see Source); the view lays out again.
+	public void SetSource(StringView source)
+	{
+		if (Source.Value == source)
+			return;
+		Source.Value.Set(source);
+		Invalidate();
 	}
 
 	public this(ImageData img) : this()
@@ -40,8 +63,28 @@ class ImageView : View
 		Invalidate();
 	}
 
+	/// Asks the context's provider for the image Source names, once per name.
+	private void ResolveSource()
+	{
+		let source = Source.Value;
+		if (source.IsEmpty || (mResolvedSource == source))
+			return;
+		let provider = (Context != null) ? Context.ResourceProvider : null;
+		let image = (provider != null) ? provider.LoadImage(source) : null;
+		if (image == null)
+		{
+			mImage = null;
+			InvalidateVisual(); // not there yet (a loading asset): ask again next frame
+			return;
+		}
+		mImage = image;
+		mResolvedSource.Set(source);
+		Invalidate(); // the image's size is the view's natural size: lay out again
+	}
+
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
+		ResolveSource();
 		if (mImage != null)
 			MeasuredSize = .(constraints.ConstrainWidth((float)mImage.Width),
 				constraints.ConstrainHeight((float)mImage.Height));
@@ -51,6 +94,7 @@ class ImageView : View
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
+		ResolveSource();
 		if (mImage == null)
 			return;
 

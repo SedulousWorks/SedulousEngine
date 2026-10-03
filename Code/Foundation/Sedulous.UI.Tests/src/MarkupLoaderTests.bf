@@ -98,6 +98,19 @@ class MarkupLoaderTests
 		Test.Assert((flex as FlexLayout).ChildCount == 0);
 	}
 
+	/// An ImageView's `source` attribute names what it shows.
+	[Test]
+	public static void AnImageViewsSourceAttributeNamesWhatItShows()
+	{
+		EnsureInit();
+		let view = MarkupLoader.LoadFromString("<ImageView source=\"{0a1b}\"/>");
+		Test.Assert(view != null);
+		defer view.ReleaseRef();
+		let image = view as ImageView;
+		Test.Assert(image != null);
+		Test.Assert(image.Source.Value == "{0a1b}");
+	}
+
 	// ---- Failure ------------------------------------------------------------------------------
 
 	[Test]
