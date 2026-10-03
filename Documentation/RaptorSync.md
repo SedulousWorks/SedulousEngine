@@ -26,7 +26,7 @@ Raptor's (the last group).
 8. ~~0b60c738~~ (done) Render: the MSAA resolve and the SSR and SSGI resolves use it (velocity was left out
    of their keys).
 9. ~~a8723a4f~~ (done) Scene: a running scene is stopped before it is destroyed.
-10. ca6856f3 + 9ee94a34 Engine.Navigation: an agent that cannot join the navmesh, and a zone
+10. ~~ca6856f3 + 9ee94a34~~ (done) Engine.Navigation: an agent that cannot join the navmesh, and a zone
     with no usable navmesh, say so.
 
 ## Group 2: take-backs from Raptor's review of our ports

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 using Sedulous.Navigation;
 using Sedulous.Profiler;
@@ -220,6 +221,9 @@ class NavigationSceneSystem : SceneSystem
 				if ((product == null) || !product.IsValid)
 				{
 					zone.RuntimeIndex = -1;
+					// Said, not silent: every agent in it would only report standing in no zone.
+					GlobalLog(.Warning, "Navigation: navigation zone '{}' has no usable navmesh (no asset, not baked, or it did not load); agents in it will not move",
+						mScene.GetEntityName(entity));
 					return;
 				}
 
@@ -252,7 +256,12 @@ class NavigationSceneSystem : SceneSystem
 				agent.ZoneIndex = FindZoneContaining(worldPosition);
 				agent.AgentId = -1;
 				if (agent.ZoneIndex < 0)
+				{
+					// Said, not silent: an agent that never moves is otherwise a mystery.
+					GlobalLog(.Warning, "Navigation: agent '{}' at ({}, {}, {}) is in no navigation zone; it will not move",
+						mScene.GetEntityName(entity), worldPosition.X, worldPosition.Y, worldPosition.Z);
 					return;
+				}
 
 				let zone = mZones[agent.ZoneIndex];
 				let local = TransformPoint(worldPosition, zone.InverseWorld);
@@ -264,6 +273,18 @@ class NavigationSceneSystem : SceneSystem
 				parameters.MaxAcceleration = agent.MaxAcceleration;
 
 				agent.AgentId = zone.Crowd.AddAgent(local, parameters);
+				if (agent.AgentId < 0)
+				{
+					GlobalLog(.Warning, "Navigation: agent '{}' at ({}, {}, {}): the zone's crowd is full; it will not move",
+						mScene.GetEntityName(entity), worldPosition.X, worldPosition.Y, worldPosition.Z);
+				}
+				else if (zone.Crowd.AgentState(agent.AgentId).State == .Invalid)
+				{
+					// The crowd still adds an agent it could not place, in a state that never moves,
+					// so the slot alone says nothing.
+					GlobalLog(.Warning, "Navigation: agent '{}' at ({}, {}, {}) found no navmesh where it stands; it will not move (is it on baked ground, and was the zone baked?)",
+						mScene.GetEntityName(entity), worldPosition.X, worldPosition.Y, worldPosition.Z);
+				}
 				// The live change compare starts in step.
 				agent.AppliedSpeed = agent.MaxSpeed;
 				agent.AppliedAcceleration = agent.MaxAcceleration;

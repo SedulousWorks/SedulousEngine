@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Engine.Navigation;
 using Sedulous.Navigation;
 using Sedulous.Scene;
@@ -210,5 +211,74 @@ class NavigationSceneTests
 
 		scene.SetSimulationEnabled(false);
 		scene.Stop();
+	}
+
+	/// Records the warnings that reach it.
+	private class WarningLog : BaseLogger
+	{
+		public List<String> Lines = new .() ~ DeleteContainerAndItems!(_);
+		public this() : base(.Warning, "Test") {}
+		protected override void LogMessage(LogLevel level, StringView message) { Lines.Add(new String(message)); }
+
+		public bool Has(StringView text)
+		{
+			for (let line in Lines)
+			{
+				if (line.Contains(text))
+					return true;
+			}
+			return false;
+		}
+	}
+
+	/// An agent that cannot join the navmesh, and a zone with no usable navmesh, say so: an
+	/// agent that never moves is otherwise a mystery.
+	[Test]
+	public static void AnAgentOrAZoneThatCannotNavigateSaysSo()
+	{
+		let fixture = scope NavigationSceneFixture("scratch_navscene_warn_db");
+		let zoneId = fixture.CookGroundZone("zone");
+
+		let log = new WarningLog();
+		InitGlobalLogger(log, true);
+		defer ShutdownGlobalLogger();
+
+		let scene = scope Scene("nav");
+		NavigationScene.AddNavigationSceneManagers(scene);
+		let zones = scene.GetSystem<NavMeshZoneComponentManager>();
+		let agents = scene.GetSystem<NavAgentComponentManager>();
+
+		// A baked zone over a 20 m ground, its box reaching 15 m.
+		let baked = scene.CreateEntity("baked");
+		let zone = zones.Add(baked);
+		zone.Extents = .(15, 10, 15);
+		zone.Zone.SetId(zoneId);
+		zone.Zone.Bind(fixture.Manager);
+
+		// A zone with no asset, far away.
+		let empty = scene.CreateEntity("empty");
+		scene.SetLocalPosition(empty, .(100, 0, 0));
+		zones.Add(empty).Extents = .(5, 5, 5);
+
+		// On the ground (fine), inside the box off the ground, in the empty zone, and nowhere.
+		let fine = scene.CreateEntity("fine");
+		agents.Add(fine);
+		let offMesh = scene.CreateEntity("offMesh");
+		scene.SetLocalPosition(offMesh, .(13, 0, 13));
+		agents.Add(offMesh);
+		let inEmpty = scene.CreateEntity("inEmpty");
+		scene.SetLocalPosition(inEmpty, .(100, 0, 0));
+		agents.Add(inEmpty);
+		let lost = scene.CreateEntity("lost");
+		scene.SetLocalPosition(lost, .(-300, 0, 0));
+		agents.Add(lost);
+
+		scene.UpdateTransforms();
+		scene.Start();
+
+		Test.Assert(log.Has("navigation zone 'empty' has no usable navmesh"), "the empty zone says so");
+		Test.Assert(log.Has("agent 'offMesh'") && log.Has("found no navmesh where it stands"), "the agent off the ground says so");
+		Test.Assert(log.Has("agent 'inEmpty'") && log.Has("agent 'lost'"), "the agents in no usable zone say so");
+		Test.Assert(!log.Has("'fine'") && !log.Has("'baked'"), "what works says nothing");
 	}
 }
