@@ -180,4 +180,41 @@ class SceneSystemTests
 		scene.SetEventBus(null);
 		Test.Assert(scene.Events == null);
 	}
+
+	/// A system that owns level geometry: one floor quad at height nought, when the box
+	/// reaches it.
+	private class FloorSource : SceneSystem, IStaticGeometrySource
+	{
+		public override IStaticGeometrySource AsStaticGeometrySource => this;
+
+		public void CollectStaticGeometry(Scene scene, AABB bounds, float detail, List<Float3> outTriangles)
+		{
+			if ((bounds.Min.Y > 0.0f) || (bounds.Max.Y < 0.0f))
+				return;
+			outTriangles.AddRange(scope Float3[](.(-1, 0, -1), .(-1, 0, 1), .(1, 0, 1), .(-1, 0, -1), .(1, 0, 1), .(1, 0, -1)));
+		}
+	}
+
+	/// Navigation bakes from every system that answers AsStaticGeometrySource; the rest answer
+	/// null.
+	[Test]
+	public static void ASystemWithStaticGeometryAnswersTheQueryAndOthersAnswerNull()
+	{
+		let scene = scope Scene("geometry");
+		scene.AddSystem<HealthManager>();
+		scene.AddSystem<FloorSource>();
+		let triangles = scope List<Float3>();
+		int sources = 0;
+		let around = AABB(.(-5, -1, -5), .(5, 1, 5));
+		for (let system in scene.Systems)
+		{
+			if (let source = system.AsStaticGeometrySource)
+			{
+				sources++;
+				source.CollectStaticGeometry(scene, around, 0.3f, triangles);
+			}
+		}
+		Test.Assert(sources == 1);
+		Test.Assert(triangles.Count == 6);
+	}
 }

@@ -19,6 +19,9 @@ abstract class SceneSystem
 	/// A plain system returns null.
 	public virtual ComponentManagerBase AsComponentManager => null;
 
+	/// The same query for a system that owns static level geometry; null for the rest.
+	public virtual IStaticGeometrySource AsStaticGeometrySource => null;
+
 	/// The scene this system was added to. BORROWED: the scene outlives its systems. Set
 	/// by the scene before OnSceneCreate, so a system need not keep its own.
 	public Scene Scene { get; private set; } = null;
