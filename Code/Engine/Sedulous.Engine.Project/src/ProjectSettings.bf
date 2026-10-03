@@ -15,71 +15,96 @@ namespace Sedulous.Engine.Project;
 /// move; the string beside it is the readable mirror, and the fallback for a manifest
 /// written before its guid existed.
 ///
+/// A field marked [Setting] is one the Project Settings dialog and the MCP tools offer.
+///
 /// FIELD ORDER IS THE WIRE: the generator walks the declaration, so inserting a field in the
 /// middle changes what existing manifests mean. Append, and bump the version when the shape
 /// has to change.
 [Serializable(9)]
 class ProjectSettings
 {
+	[Setting("Name")]
 	public String Name = new .() ~ delete _;
 	/// The engine that last saved this project. Re-stamped on every save. Named for the WIRE
 	/// KEY, which the generator derives from the field name.
 	public String EngineVersion = new .() ~ delete _;
 
+	[Setting("Default scene", "SceneDocument", "(none)")]
 	public Guid DefaultSceneId;
 	/// The default scene's source database path.
 	public String DefaultScene = new .() ~ delete _;
 	/// The startup script's source database path. Superseded by StartupScriptId.
 	public String StartupScript = new .() ~ delete _;
-	/// RESERVED: an optional native game module.
+	/// A project-relative path to the built native game module; empty is scripts only.
+	[Setting("Native module")]
 	public String NativeModule = new .() ~ delete _;
 
 	/// The input map bound at startup. Nil for none.
+	[Setting("Default input map", "InputMapAsset", "(none)")]
 	public Guid DefaultInputMapId;
 	/// The mixer layout applied at startup. Nil for the built in one.
+	[Setting("Default bus layout", "AudioBusLayoutAsset", "(built-in)")]
 	public Guid DefaultBusLayoutId;
 	/// The cooked theme the game UI defaults to. Nil for the built in one.
+	[Setting("Default UI theme", "UIThemeAsset", "(built-in)")]
 	public Guid DefaultUiThemeId;
 	/// The cooked script class the player launches. Nil for none.
+	[Setting("Startup script", "ScriptClassAsset", "(none)")]
 	public Guid StartupScriptId;
 	/// The cooked font the game UI defaults to. Nil for the development fallback.
+	[Setting("Default UI font", "FontAsset", "(built-in)")]
 	public Guid DefaultUiFontId;
 	/// The cooked document shown while the default scene loads. Nil for the built in splash.
+	[Setting("Loading screen", "UIDocumentAsset", "(built-in)")]
 	public Guid LoadingDocumentId;
 
 	/// The scene pass sample count: one is off. Clamped to what the device can do at
 	/// runtime, so a project asking for more than the hardware has still runs.
+	[Setting("MSAA")]
 	public uint32 RenderMsaaSamples = 1;
 
 	/// Cooked fonts the game UI loads BESIDE the default one, each its own family, which a
 	/// label picks by `font-family` (a title face beside the body text). [Appended], so a
 	/// manifest saved before it reads as none.
-	[Appended]
+	[Appended, Setting("Other UI fonts", "FontAsset", "(none)")]
 	public List<Guid> UiFontIds = new .() ~ delete _;
 
 	/// The resolution the game DRAWS at, fitted into whatever shows it (the player's window,
 	/// the editor's Game tab) by RenderFit. Nought on either axis draws at the output's own
 	/// size, which is what a game that adapts to any size wants.
-	[Appended]
+	[Appended, Setting("Render width"), Range(0, 16384, 1)]
 	public uint32 RenderWidth = 0;
-	[Appended]
+	[Appended, Setting("Render height"), Range(0, 16384, 1)]
 	public uint32 RenderHeight = 0;
 	/// How a fixed render resolution maps onto an output of another shape.
-	[Appended]
+	[Appended, Setting("Render fit")]
 	public FitMode RenderFit = .Letterbox;
 
 	/// The player's window: its size (ignored by Borderless, which takes the display's), how
 	/// it takes the screen, and whether the user may resize it. An export preset overrides
 	/// these per platform.
-	[Appended]
+	[Appended, Setting("Window width"), Range(1, 16384, 1)]
 	public uint32 WindowWidth = 1280;
-	[Appended]
+	[Appended, Setting("Window height"), Range(1, 16384, 1)]
 	public uint32 WindowHeight = 720;
-	[Appended]
+	[Appended, Setting("Window mode")]
 	public WindowMode WindowMode = .Windowed;
-	[Appended]
+	[Appended, Setting("Window resizable")]
 	public bool WindowResizable = true;
 
 	/// Whether the game draws at a fixed resolution rather than at its output's size.
 	public bool HasRenderResolution => (RenderWidth > 0) && (RenderHeight > 0);
+
+	/// Rewrites the readable path mirrors from their guids (the default scene's, the startup
+	/// script's), after a settings editor changed the guids. `pathOf` appends an asset's path,
+	/// or nothing for a guid that names none.
+	public void RefreshPathMirrors(delegate void(Guid id, String outPath) pathOf)
+	{
+		DefaultScene.Clear();
+		if (DefaultSceneId.IsSet)
+			pathOf(DefaultSceneId, DefaultScene);
+		StartupScript.Clear();
+		if (StartupScriptId.IsSet)
+			pathOf(StartupScriptId, StartupScript);
+	}
 }

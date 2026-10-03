@@ -1,6 +1,10 @@
+using System;
+
 namespace Sedulous.Engine.Project;
 
-/// How the player's window takes the screen.
+/// How the player's window takes the screen. Its cases are reflected: a settings editor offers
+/// them by name.
+[Reflect(.StaticFields)]
 enum WindowMode : uint8
 {
 	/// A normal window of the configured size.

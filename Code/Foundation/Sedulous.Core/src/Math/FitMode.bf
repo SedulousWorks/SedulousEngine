@@ -1,6 +1,10 @@
+using System;
+
 namespace Sedulous.Core;
 
-/// How content is scaled to fit its region.
+/// How content is scaled to fit its region. Its cases are reflected: a settings editor offers
+/// them by name.
+[Reflect(.StaticFields)]
 enum FitMode
 {
 	/// Fill the region, ignoring aspect. May distort.
