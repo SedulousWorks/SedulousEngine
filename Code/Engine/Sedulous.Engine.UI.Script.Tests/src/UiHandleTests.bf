@@ -41,6 +41,39 @@ static class UiHandleTests
 		Test.Assert(UiHandles.Count == 0, scope $"{UiHandles.Count} entries kept alive");
 	}
 
+	/// A minimap marker moves and turns without a relayout: the handle writes the view's post
+	/// layout transform (translation in pixels, rotation in degrees stored as radians); a null
+	/// handle takes nothing.
+	[Test]
+	public static void AViewIsTranslatedAndRotatedThroughItsTransform()
+	{
+		let bed = scope UiScriptBed();
+		bed.Stack.Push(UiScriptBed.Screen());
+		let handle = bed.Ui.FindLabel("title");
+		Test.Assert(handle.IsValid);
+		Test.Assert((handle.Translation.X == 0.0f) && (handle.Rotation == 0.0f));
+
+		handle.SetTranslation(40.0f, -12.5f);
+		handle.SetRotation(90.0f);
+		let view = handle.Resolve();
+		Test.Assert((view.Transform.Translation.X == 40.0f) && (view.Transform.Translation.Y == -12.5f));
+		Test.Assert(Math.Abs(view.Transform.Rotation - DegreesToRadians(90.0f)) < 0.0001f);
+		Test.Assert(handle.Translation.Y == -12.5f);
+		Test.Assert(Math.Abs(handle.Rotation - 90.0f) < 0.001f);
+
+		// Every handle type has it: the bare view the generic finder returns moves the same way.
+		let bare = bed.Ui.Find("title");
+		Test.Assert(bare.IsValid);
+		bare.SetTranslation(1.0f, 2.0f);
+		Test.Assert(view.Transform.Translation.X == 1.0f);
+
+		let missing = bed.Ui.FindLabel("nope");
+		missing.SetTranslation(5.0f, 5.0f);
+		missing.SetRotation(45.0f);
+		Test.Assert((missing.Translation.X == 0.0f) && (missing.Rotation == 0.0f));
+		bed.Stack.Pop();
+	}
+
 	/// Opacity at once, or faded on the UI's frame clock (which runs while the game is paused);
 	/// a set stops a running fade; a null handle takes nothing.
 	[Test]

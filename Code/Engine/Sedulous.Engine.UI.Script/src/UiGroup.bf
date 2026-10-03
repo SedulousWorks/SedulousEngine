@@ -52,6 +52,17 @@ struct UiGroup
 	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
 	[Scriptable]
 	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
+	/// The offset in pixels from where layout put the view, applied as it draws and hit tests,
+	/// so moving it costs no relayout (a marker on a minimap).
+	[Scriptable]
+	public Float2 Translation => UiHandles.Translation(Resolve());
+	[Scriptable]
+	public void SetTranslation(float x, float y) { UiHandles.SetTranslation(Resolve(), x, y); }
+	/// Degrees, clockwise on screen, about the view's centre.
+	[Scriptable]
+	public float Rotation => UiHandles.Rotation(Resolve());
+	[Scriptable]
+	public void SetRotation(float degrees) { UiHandles.SetRotation(Resolve(), degrees); }
 	[Scriptable]
 	public int32 ChildCount => UiFinders.ChildCount(Resolve());
 	[Scriptable]
@@ -104,6 +115,17 @@ struct UiScreen
 	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
 	[Scriptable]
 	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
+	/// The offset in pixels from where layout put the view, applied as it draws and hit tests,
+	/// so moving it costs no relayout (a marker on a minimap).
+	[Scriptable]
+	public Float2 Translation => UiHandles.Translation(Resolve());
+	[Scriptable]
+	public void SetTranslation(float x, float y) { UiHandles.SetTranslation(Resolve(), x, y); }
+	/// Degrees, clockwise on screen, about the view's centre.
+	[Scriptable]
+	public float Rotation => UiHandles.Rotation(Resolve());
+	[Scriptable]
+	public void SetRotation(float degrees) { UiHandles.SetRotation(Resolve(), degrees); }
 	[Scriptable]
 	public int32 ChildCount => UiFinders.ChildCount(Resolve());
 	[Scriptable]

@@ -58,6 +58,14 @@ static class UiScriptedTests
 				bool topIsMenu() { return Ui.Top.IsValid && Ui.Top.Name == "menu"; }
 				bool missing() { return !Ui.FindLabel("nope").IsValid && Ui.FindLabel("nope").Text == ""; }
 				void close() { Ui.Pop(); }
+				bool moved = false;
+				void move()
+				{
+					Label marker = Ui.FindLabel("title");
+					marker.SetTranslation(64.0f, 32.0f);
+					marker.SetRotation(180.0f);
+					moved = (marker.Translation.X == 64.0f) && (marker.Rotation > 179.0f);
+				}
 			}
 			""");
 		for (let p in vm.Problems)
@@ -97,6 +105,14 @@ static class UiScriptedTests
 		bed.Context.BeginFrame(0.016f);
 		vm.GetProperty(menu, "volume", ref v);
 		Test.Assert(Math.Abs(v.AsFloat - 0.8f) < 0.0001f, scope $"the handler read the new value ({v.AsFloat})");
+
+		// A view moves and turns from script (a minimap marker), and reads it back.
+		Test.Assert(vm.Invoke(menu, "move", default, ref r));
+		vm.GetProperty(menu, "moved", ref v);
+		Test.Assert(v.AsBool, "read the transform back");
+		let marker = bed.Ui.FindLabel("title").Resolve();
+		Test.Assert(Math.Abs(marker.Transform.Translation.Y - 32.0f) < 0.0001f);
+		Test.Assert(Math.Abs(marker.Transform.Rotation - DegreesToRadians(180.0f)) < 0.0001f);
 
 		// The pop drops the screen; the delegate parked with the button dies with it, and the
 		// runtime outliving it is fine.

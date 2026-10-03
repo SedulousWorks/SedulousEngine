@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Script;
 using Sedulous.UI;
 
@@ -70,6 +71,24 @@ static class UiHandles
 	/// the frame clock and so goes on while the game is paused (time scale 0). Replaces the
 	/// view's running animations; a view in no tree yet, or zero seconds, takes the value at
 	/// once.
+	/// The view's post layout offset, in pixels.
+	public static Float2 Translation(View view) => (view != null) ? view.Transform.Translation : .Zero;
+
+	public static void SetTranslation(View view, float x, float y)
+	{
+		if (view != null)
+			view.Transform.Translation = .(x, y);
+	}
+
+	/// The view's rotation in degrees (the transform holds radians).
+	public static float Rotation(View view) => (view != null) ? RadiansToDegrees(view.Transform.Rotation) : 0.0f;
+
+	public static void SetRotation(View view, float degrees)
+	{
+		if (view != null)
+			view.Transform.Rotation = DegreesToRadians(degrees);
+	}
+
 	public static void FadeTo(View view, float opacity, float seconds)
 	{
 		if (view == null)
