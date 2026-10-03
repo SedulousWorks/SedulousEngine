@@ -20,7 +20,7 @@ Raptor's (the last group).
    shader taking `sqrt(luma)` so its thresholds still apply.
 4. ~~Take-back (b2a3e376)~~ (done): installing a template replaces its bundle whole, in `Create(.Install)`
    and `Import` (a sidecar the new build dropped no longer lingers and ships).
-5. 93d511dd UI: an unknown gravity name in markup is a warning.
+5. ~~93d511dd~~ (done) UI: an unknown gravity name in markup is a warning.
 6. ffad9393 Render: the mesh rings hold every shadow caster, and a dropped draw warns.
 7. 3adbf8c4 Render: a `BindGroupCache` that checks every view and its generation; TAA uses it.
 8. 0b60c738 Render: the MSAA resolve and the SSR and SSGI resolves use it (velocity was left out

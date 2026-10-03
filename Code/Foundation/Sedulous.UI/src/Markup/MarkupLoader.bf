@@ -120,7 +120,19 @@ static class MarkupLoader
 				continue;
 
 			if (MarkupRegistry.ApplyLayoutAttribute(ref layout, name, value))
+			{
+				// A gravity name that matches none is dropped like an unknown attribute, so it is
+				// told the same way (the names are PascalCase: Top|Right, not top|right).
+				if ((name == "gravity") && (warnings != null))
+				{
+					let unknown = scope List<String>();
+					defer { ClearAndDeleteItems(unknown); }
+					MarkupRegistry.ParseGravity(value, unknown);
+					for (let gravity in unknown)
+						warnings.Add(new $"unknown gravity '{gravity}' on <{tagName}> (the names are PascalCase: Left, Right, Top, Bottom, Center, Fill, TopRight, ...)");
+				}
 				continue;
+			}
 
 			if (MarkupRegistry.SetProperty(tagName, view, name, value))
 				continue;

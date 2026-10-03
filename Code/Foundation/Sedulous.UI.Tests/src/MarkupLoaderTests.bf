@@ -144,6 +144,27 @@ class MarkupLoaderTests
 		Test.Assert(child.Layout.FlexGrow.Value == 0, "and nothing was written");
 	}
 
+	/// Gravity names are PascalCase and matched exactly: `top|Right` places only Right, which
+	/// used to pass in silence (a HUD panel left in the wrong corner). The unknown name is told;
+	/// the known ones still apply.
+	[Test]
+	public static void AnUnknownGravityNameIsReportedAndTheKnownOnesApply()
+	{
+		let warnings = scope List<String>();
+		defer { ClearAndDeleteItems!(warnings); }
+
+		let root = Load("<FrameLayout><Panel gravity=\"top|Right\"/></FrameLayout>", warnings);
+		defer root.ReleaseRef();
+		Test.Assert(warnings.Count == 1, scope $"{warnings.Count} warnings");
+		Test.Assert(warnings[0].StartsWith("unknown gravity 'top' on <Panel>"), warnings[0]);
+		Test.Assert((root as ViewGroup).GetChildAt(0).Layout.Gravity == .Right);
+
+		ClearAndDeleteItems!(warnings);
+		let fine = Load("<FrameLayout><Panel gravity=\"Top|Right\"/></FrameLayout>", warnings);
+		defer fine.ReleaseRef();
+		Test.Assert(warnings.IsEmpty, "the PascalCase names warn about nothing");
+	}
+
 	// ---- The common vocabulary ----------------------------------------------------------------
 
 	[Test]

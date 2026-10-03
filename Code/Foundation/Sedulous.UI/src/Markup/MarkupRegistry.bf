@@ -315,8 +315,10 @@ static class MarkupRegistry
 	}
 
 	/// Gravity is a SET, so the values are combined with a bar: `Bottom|Right`. The compound
-	/// names are shorthands for the same thing.
-	public static Gravity ParseGravity(StringView value)
+	/// names are shorthands for the same thing. The names are PascalCase and matched exactly; one
+	/// that matches none adds nothing, and is listed in `outUnknown` when given (the loader turns
+	/// them into warnings: `top|right` is a typo that otherwise leaves a view where it was).
+	public static Gravity ParseGravity(StringView value, List<String> outUnknown = null)
 	{
 		var result = Gravity.None;
 
@@ -342,6 +344,8 @@ static class MarkupRegistry
 			case "BottomLeft": result |= .BottomLeft;
 			case "BottomRight": result |= .BottomRight;
 			default:
+				if ((outUnknown != null) && !name.IsEmpty)
+					outUnknown.Add(new String(name));
 			}
 		}
 
