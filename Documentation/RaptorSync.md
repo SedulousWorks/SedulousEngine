@@ -40,7 +40,7 @@ Raptor's (the last group).
     `platform` or `config` no installed template has. Here a preset may name a template this
     machine lacks (presets travel with the project, templates do not; the result's `template` is
     null), so the check stays the platforms the engine targets, not this machine's templates.
-14. 0c6a0393: the HTTP tests Sedulous lacks (sequence numbers across re-dispatch, a departed
+14. ~~0c6a0393~~ (done): the HTTP tests Sedulous lacks (sequence numbers across re-dispatch, a departed
     peer's request abandoned, a pending one abandoned at `Stop`).
 15. From Raptor's notes for us: DefaultApplication clears the factory set at shutdown while the
     device lives; `EngineCompositionTests` "each domain id once" and "each factory matches its

@@ -372,9 +372,14 @@ class HttpServerTests
 
 		var calls = 0;
 		var answerOnCall = 3;
-		server.SetHandler(new [&calls, &answerOnCall] (request) =>
+		// The request's number on each dispatch, and the numbers the server abandoned.
+		let sequences = scope List<uint64>();
+		let abandoned = scope List<uint64>();
+		server.SetAbandonHandler(new [&abandoned] (request) => { abandoned.Add(request.Sequence); });
+		server.SetHandler(new [&calls, &answerOnCall, &sequences] (request) =>
 			{
 				calls++;
+				sequences.Add(request.Sequence);
 				if (calls < answerOnCall)
 					return null; // not yet
 				return HttpResponse.Json(200, scope $"{{\"calls\":{calls},\"target\":\"{request.Target}\"}}");
@@ -414,6 +419,9 @@ class HttpServerTests
 		Test.Assert(sawPending);
 		Test.Assert(answered == 1, "a request counts once, when it is finally answered");
 		Test.Assert(server.PendingRequestCount == 0);
+		// It kept its number across its re-dispatches, and answered, it was not abandoned.
+		Test.Assert((sequences.Count == 3) && (sequences[0] != 0) && (sequences[1] == sequences[0]) && (sequences[2] == sequences[0]));
+		Test.Assert(abandoned.IsEmpty);
 
 		// A peer that sends a request and leaves while the handler keeps saying not yet is
 		// dropped: the pending count returns to nought without the handler ever answering.
@@ -437,5 +445,34 @@ class HttpServerTests
 		}
 		Test.Assert(dropped);
 		Test.Assert(calls >= 1);
+		// The handler is told the departed request will never be answered, by its own number,
+		// a new one.
+		Test.Assert(abandoned.Count == 1, scope $"{abandoned.Count} abandoned");
+		Test.Assert((abandoned[0] == sequences[sequences.Count - 1]) && (abandoned[0] > sequences[0]));
+
+		// A request still waiting when the server stops is abandoned too.
+		var stoppedDone = false;
+		let waiting = scope Thread(new [&stoppedDone, &port]() =>
+			{
+				let get = scope HttpRequest("GET", "/stop");
+				// The stop closes the connection unanswered: the error, the caller's to free.
+				switch (HttpClient.Fetch("127.0.0.1", port, get))
+				{
+				case .Ok(let got): delete got;
+				case .Err(let reason): delete reason;
+				}
+				stoppedDone = true;
+			});
+		waiting.Start(false);
+		for (int i = 0; (i < cPumpLimit) && (server.PendingRequestCount == 0); i++)
+		{
+			server.Pump();
+			Thread.Sleep(1);
+		}
+		Test.Assert(server.PendingRequestCount == 1);
+		server.Stop();
+		waiting.Join();
+		Test.Assert(stoppedDone);
+		Test.Assert(abandoned.Count == 2, "the request a stop drops is abandoned");
 	}
 }
