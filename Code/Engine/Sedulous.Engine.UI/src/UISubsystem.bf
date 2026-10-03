@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Resource;
+using Sedulous.Image;
 using Sedulous.VFS;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
@@ -50,6 +52,9 @@ class UISubsystem : Subsystem, ISceneObserver
 	private IFileSystem mDataFileSystem = null;
 
 	private UIContext mContext = new .() ~ delete _;
+	/// The context's resource provider: an ImageView's source (and a sheet's image()) as a
+	/// texture asset id. Declared before the render state, which goes first.
+	private UITextureImages mImages = new .() ~ delete _;
 	private UIInputBridge mBridge ~ delete _;
 
 	private RootView mScreenRoot = null;
@@ -121,6 +126,7 @@ class UISubsystem : Subsystem, ISceneObserver
 	{
 		mBridge = new UIInputBridge(mContext);
 		mDataFileSystem = dataFileSystem;
+		mContext.SetResourceProvider(mImages);
 	}
 
 	/// The window whose platform text input follows GAME UI focus.
@@ -499,6 +505,20 @@ class UISubsystem : Subsystem, ISceneObserver
 			mDefaultFont.Family, mDefaultFont.EntryCount, mExtraFonts.Count, (mExtraFonts.Count == 1) ? "y" : "ies");
 	}
 
+	/// Where the game UI's images come from: an ImageView's `source` (and a stylesheet's
+	/// image()) is a texture asset id, bound through `resources`; a render texture a camera
+	/// draws into is a texture like any other. The application points it at its resource
+	/// manager; null (between projects) resolves nothing. BORROWED.
+	public void SetResourceManager(ResourceManager resources) => mImages.Reset(resources);
+
+	/// Whether the game UI has its shaders and so can draw.
+	public bool CanRender => (mRenderState != null) && (mRenderState.VertexShader != null)
+		&& (mRenderState.FragmentShader != null);
+
+	/// How many UI renderers (one per target configuration) draw `image` from a texture: an
+	/// image source, once drawn, is registered on every renderer that has drawn since.
+	public int RenderersShowing(ImageData image) => (mRenderState != null) ? mRenderState.RenderersShowing(image) : 0;
+
 	/// The project's default theme, parsed with the game palette and set as the context's
 	/// stylesheet. Null, empty or unparseable falls back to the built in one, and a per
 	/// canvas override still layers on top.
@@ -510,6 +530,7 @@ class UISubsystem : Subsystem, ISceneObserver
 		{
 			let loader = scope StyleSheetLoader();
 			loader.SetPalette(GameTheme.Palette());
+			loader.ResourceProvider = mImages; // image(): texture ids
 			sheet = loader.Load(theme.StyleSheet);
 
 			if (sheet == null)

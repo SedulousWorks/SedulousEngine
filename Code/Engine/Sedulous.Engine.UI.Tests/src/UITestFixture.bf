@@ -5,6 +5,7 @@ using Sedulous.Engine.UI;
 using Sedulous.Runtime;
 using Sedulous.Scene;
 using Sedulous.UI.Resource;
+using Sedulous.VFS;
 
 namespace Sedulous.Engine.UI.Tests;
 
@@ -18,6 +19,9 @@ class UITestFixture
 	public Context Context = new .() ~ delete _;
 	public SceneManager Scenes = new .() ~ delete _;
 	public SceneSubsystem SceneSystems;
+	/// The data root, when a case asked for the UI's shaders. Declared before the subsystem
+	/// that borrows it, so it goes after.
+	public NativeFileSystem DataMount ~ delete _;
 	/// OWNED: RegisterSubsystem borrows, so the fixture frees it.
 	public UISubsystem UI ~ delete _;
 
@@ -28,7 +32,7 @@ class UITestFixture
 
 	private SceneModule mUIModule;
 
-	public this(bool withInput = false)
+	public this(bool withInput = false, bool withShaders = false)
 	{
 		SceneSystems = Context.AddSubsystem<SceneSubsystem>();
 		SceneSystems.RegisterManager(Scenes);
@@ -44,9 +48,16 @@ class UITestFixture
 			Context.RegisterSubsystem(Input);
 		}
 
-		// No data mount: the fixture drives the subsystem's logic, not its shaders or its
-		// built in font, and both degrade rather than fail without one.
-		UI = new UISubsystem(null);
+		// No data mount unless asked: the fixture drives the subsystem's logic, not its
+		// shaders or its built in font, and both degrade rather than fail without one.
+		if (withShaders)
+		{
+			let dataRoot = scope String();
+			FindDataRoot(dataRoot);
+			if (!dataRoot.IsEmpty)
+				DataMount = new NativeFileSystem(dataRoot);
+		}
+		UI = new UISubsystem(DataMount);
 		Context.RegisterSubsystem<UISubsystem>(UI);
 		Context.Startup();
 	}

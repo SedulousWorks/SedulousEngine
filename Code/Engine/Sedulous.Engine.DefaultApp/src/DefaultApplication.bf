@@ -191,7 +191,12 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	/// Hands over a manager this application does NOT own, which is what an editor embedding
 	/// it does.
-	public void SetResourceManager(ResourceManager borrowed) => mBorrowedResources = borrowed;
+	public void SetResourceManager(ResourceManager borrowed)
+	{
+		mBorrowedResources = borrowed;
+		if (mUI != null)
+			mUI.SetResourceManager(Resources); // the game UI's images bind through it
+	}
 
 	public void SetContentDatabase(ContentDatabase database) => mContentDatabase = database;
 	/// The database scene ids resolve in for script driven loads; the content database when
@@ -205,6 +210,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		mBorrowedResources = borrowed;
 		if (borrowed != null)
 			RegisterStandardFactories(borrowed, host);
+		if (mUI != null)
+			mUI.SetResourceManager(Resources); // the game UI's images bind through it
 	}
 
 	public void SetPrimaryScene(Scene scene) => mInstance.SetScene(scene);
@@ -466,6 +473,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		}
 
 		let resources = Resources;
+		if (mUI != null)
+			mUI.SetResourceManager(resources); // the game UI's images bind through it
 		// A headless or content free application attaches one later, or never.
 		if (resources == null)
 			return;
@@ -737,6 +746,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		// The products release while the device is alive, then the factories (the texture
 		// factory holds the device). A borrowed manager outlives this application, so it
 		// forgets them first.
+		if (mUI != null)
+			mUI.SetResourceManager(null);
 		DeleteAndNullify!(mOwnedResources);
 		if (mBorrowedResources != null)
 			mFactories.Unregister(mBorrowedResources);

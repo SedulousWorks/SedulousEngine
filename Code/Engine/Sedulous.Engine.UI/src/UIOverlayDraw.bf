@@ -219,6 +219,8 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 			sampleCount);
 		if (renderer == null)
 			return;
+		// The texture images the tree names (resolved as it drew) registered on this renderer.
+		mImages.SyncOn(renderer, mFrameSerial);
 
 		let slice = renderer.Prepare(batch, frameIndex, width, height);
 		renderer.Render(encoder, viewportX, viewportY, width, height, frameIndex, slice);

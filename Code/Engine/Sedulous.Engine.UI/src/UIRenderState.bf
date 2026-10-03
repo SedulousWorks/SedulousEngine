@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Image;
 using Sedulous.RHI;
 using Sedulous.Scene;
 using Sedulous.Shaders;
@@ -114,6 +115,18 @@ class UIRenderState
 		}
 
 		return found.Renderer;
+	}
+
+	/// How many of the renderers draw `image` from an external texture.
+	public int RenderersShowing(ImageData image)
+	{
+		int count = 0;
+		for (let entry in mRenderers)
+		{
+			if (entry.Renderer.IsExternalTextureRegistered(image))
+				count++;
+		}
+		return count;
 	}
 
 	/// The offscreen target for one render texture canvas, made on demand and rebuilt on a
