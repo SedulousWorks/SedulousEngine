@@ -137,5 +137,5 @@ cannot check that an image's `Source` or an entity's asset is the one it expects
 
 ## Housekeeping
 
-- The Raptor sync marker is still 122035b2: Raptor 9ac175be (thin physics boxes) was ported on
-  its own, so the next full sync starts from the marker and skips it.
+- The Raptor sync marker is 0b60c738: items 1 to 35 of [RaptorSync.md](RaptorSync.md) are
+  ported, the PaperKid rebuild over MCP (item 36) is left.
