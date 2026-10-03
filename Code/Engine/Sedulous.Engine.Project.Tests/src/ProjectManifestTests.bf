@@ -30,6 +30,40 @@ class ProjectManifestTests
 		RemoveDirectoryRecursive(kScratch);
 	}
 
+	/// A copy goes through the settings' own serialization, so it carries every field, the
+	/// ones added after it was written too: the two manifests are the same document.
+	[Test]
+	public static void ACopyCarriesEverySetting()
+	{
+		FreshScratch();
+
+		let from = scope ProjectSettings();
+		from.Name.Set("Demo");
+		from.DefaultSceneId = .(0x11223344, 0x5566, 0x7788, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00);
+		from.DefaultScene.Set("Scenes/Main");
+		from.LoadingDocumentId = .(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+		from.RenderMsaaSamples = 4;
+		from.UiFontIds.Add(.(9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9));
+		from.RenderWidth = 1280;
+		from.RenderHeight = 800;
+		from.RenderFit = .Crop;
+		from.WindowMode = .Fullscreen;
+		from.WindowResizable = false;
+
+		let to = scope ProjectSettings();
+		Test.Assert(ProjectManifest.Copy(from, to) case .Ok);
+		Test.Assert((to.LoadingDocumentId == from.LoadingDocumentId) && (to.RenderMsaaSamples == 4));
+		Test.Assert((to.UiFontIds.Count == 1) && (to.RenderFit == .Crop) && (to.WindowMode == .Fullscreen) && !to.WindowResizable);
+
+		// Field by field, whatever fields there are: both saved, the documents the same.
+		let fs = scope NativeFileSystem(kScratch);
+		Test.Assert(ProjectManifest.Save(fs, from, "from.xml") case .Ok);
+		Test.Assert(ProjectManifest.Save(fs, to, "to.xml") case .Ok);
+		let fromText = File.ReadAllText(scope $"{kScratch}/from.xml", .. scope .());
+		let toText = File.ReadAllText(scope $"{kScratch}/to.xml", .. scope .());
+		Test.Assert(!fromText.IsEmpty && (fromText == toText), "the copy is the same document");
+	}
+
 	[Test]
 	public static void AManifestRoundTripsThroughTheDefaultFileName()
 	{

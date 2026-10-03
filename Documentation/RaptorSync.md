@@ -34,7 +34,7 @@ Raptor's (the last group).
 11. ~~52839fba~~ (done): a created template takes an id, name and notes (`--id`, `--name`, `--notes` on
     `Sedulous.Tools.Export --template create`); the Steam Deck script passes them instead of
     rewriting template.xml with a regex.
-12. c0dc7379: the dist manifest copies the project settings through their own serialization,
+12. ~~c0dc7379~~ (done): the dist manifest copies the project settings through their own serialization,
     not field by field (`ExportDriver`).
 13. 9af5a57e: `export_preset_set` checks `platform` and `config` against the installed templates
     rather than fixed lists.

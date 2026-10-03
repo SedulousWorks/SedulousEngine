@@ -321,29 +321,15 @@ static class ExportDriver
 			onProgress("Writing manifest...", 0.9f);
 		{
 			let outMount = scope NativeFileSystem(outDir);
+			// Every setting, through the settings' own serialization: a hand-kept copy missed the
+			// loading screen and the MSAA once already. A preset overriding the display rewrites
+			// it after (ApplyPresetDisplay).
 			let dist = scope ProjectSettings();
-			dist.Name.Set(project.Settings.Name);
-			dist.DefaultSceneId = project.Settings.DefaultSceneId;
-			dist.DefaultScene.Set(project.Settings.DefaultScene);
-			dist.StartupScriptId = project.Settings.StartupScriptId;
-			dist.StartupScript.Set(project.Settings.StartupScript);
-			dist.DefaultInputMapId = project.Settings.DefaultInputMapId;
-			dist.DefaultBusLayoutId = project.Settings.DefaultBusLayoutId;
-			dist.DefaultUiThemeId = project.Settings.DefaultUiThemeId;
-			dist.DefaultUiFontId = project.Settings.DefaultUiFontId;
-			dist.UiFontIds.AddRange(project.Settings.UiFontIds);
-			// What the player reads besides the defaults: the loading screen and the MSAA.
-			dist.LoadingDocumentId = project.Settings.LoadingDocumentId;
-			dist.RenderMsaaSamples = project.Settings.RenderMsaaSamples;
-			// The display: the render resolution and the window. A preset overriding either
-			// rewrites them after (ApplyPresetDisplay).
-			dist.RenderWidth = project.Settings.RenderWidth;
-			dist.RenderHeight = project.Settings.RenderHeight;
-			dist.RenderFit = project.Settings.RenderFit;
-			dist.WindowWidth = project.Settings.WindowWidth;
-			dist.WindowHeight = project.Settings.WindowHeight;
-			dist.WindowMode = project.Settings.WindowMode;
-			dist.WindowResizable = project.Settings.WindowResizable;
+			if (ProjectManifest.Copy(project.Settings, dist) case .Err)
+			{
+				GlobalLog(.Error, "Export: failed to copy the project settings into the dist manifest");
+				return .Err(.Internal);
+			}
 			if (ProjectManifest.Save(outMount, dist, ProjectLayout.DistManifestFile) case .Err)
 			{
 				GlobalLog(.Error, "Export: failed to write the dist manifest");

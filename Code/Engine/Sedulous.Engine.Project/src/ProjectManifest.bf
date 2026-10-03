@@ -65,4 +65,37 @@ static class ProjectManifest
 		context.Flush(buffer);
 		return writable.Save(fileName, buffer.Bytes);
 	}
+
+	/// Copies `from` into `to` through the settings' own serialization: every field, so one
+	/// added later cannot be missed the way a hand-kept field list missed the loading screen
+	/// and the MSAA in the dist manifest.
+	public static Result<void, ErrorCode> Copy(ProjectSettings from, ProjectSettings to)
+	{
+		let buffer = scope MemoryStream();
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		{
+			let writer = factory(buffer, .Write);
+			if ((writer == null) || (writer.Serializer == null))
+			{
+				delete writer;
+				return .Err(.Internal);
+			}
+			defer delete writer;
+			((ISerializable)from).Serialize(writer.Serializer);
+			if (writer.Serializer.Status case .Err(let error))
+				return .Err(error);
+			writer.Flush(buffer);
+		}
+		buffer.Seek(0, .Begin);
+		let reader = factory(buffer, .Read);
+		if ((reader == null) || (reader.Serializer == null))
+		{
+			delete reader;
+			return .Err(.Internal);
+		}
+		defer delete reader;
+		((ISerializable)to).Serialize(reader.Serializer);
+		return reader.Serializer.Status;
+	}
 }
