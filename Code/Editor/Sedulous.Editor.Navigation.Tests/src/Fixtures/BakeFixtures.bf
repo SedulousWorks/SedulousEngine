@@ -11,25 +11,29 @@ using Sedulous.Terrain.Resource;
 using Sedulous.Engine.Terrain;
 using Sedulous.Engine.Navigation;
 using Sedulous.Navigation;
+using Sedulous.Physics;
+using Sedulous.Engine.Physics;
 
 namespace Sedulous.Editor.Navigation.Tests;
 
-/// The ground meshes, in-memory terrains and bake helpers the cases share.
+/// The static bodies, in-memory terrains and bake helpers the cases share.
 static class BakeFixtures
 {
 	public const String cZoneAssetType = "Sedulous.Navigation.Pipeline.NavigationZoneAsset";
 
-	private static StaticMesh Quad(float half)
+	/// A wall-like render mesh across a zone (x nought, z from -15 to 15, three high), both
+	/// faces: it blocks nothing, since render meshes are not level geometry. OWNED by the caller.
+	public static StaticMesh WallMesh()
 	{
 		let mesh = new StaticMesh();
-		for (let p in scope Float3[](.(-half, 0, -half), .(half, 0, -half), .(half, 0, half), .(-half, 0, half)))
+		for (let p in scope Float3[](.(0, 0, -15), .(0, 3, -15), .(0, 3, 15), .(0, 0, 15)))
 		{
 			var v = StaticMeshVertex();
 			v.Position = p;
-			v.Normal = .(0, 1, 0);
+			v.Normal = .(1, 0, 0);
 			mesh.Vertices.Add(v);
 		}
-		let tris = scope uint32[](0, 3, 2, 0, 2, 1); // +Y winding
+		let tris = scope uint32[](0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2);
 		mesh.Indices.Resize((uint32)tris.Count); // Add writes into a sized buffer
 		for (let i in tris)
 			mesh.Indices.Add(i);
@@ -37,11 +41,18 @@ static class BakeFixtures
 		return mesh;
 	}
 
-	/// A 20x20 ground quad at the origin.
-	public static StaticMesh GroundMesh() => Quad(10.0f);
-	/// A unit ground quad, meant to be scaled up by its entity: the case where the zone shares
-	/// that scaled entity and the bake frame must strip the scale.
-	public static StaticMesh UnitGroundMesh() => Quad(0.5f);
+	/// A box rigid body: what the bake reads when it is static and solid.
+	public static EntityHandle AddBody(Scene scene, StringView name, Float3 position, Float3 half,
+		MotionKind motion, bool trigger = false)
+	{
+		let entity = scene.CreateEntity(name);
+		scene.SetLocalPosition(entity, position);
+		let body = scene.GetSystem<RigidBodyComponentManager>().Add(entity);
+		body.Motion = motion;
+		body.HalfExtents = half;
+		body.IsTrigger = trigger;
+		return entity;
+	}
 
 	/// An in-memory terrain over a 65x65 heightfield, the smallest legal grid: heights come
 	/// from the delegate in world Y, quantised onto [minY, maxY].

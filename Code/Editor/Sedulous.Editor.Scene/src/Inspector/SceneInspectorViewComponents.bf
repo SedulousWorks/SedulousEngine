@@ -140,7 +140,7 @@ extension SceneInspectorView
 		}
 		else if (result.TriangleCount == 0)
 		{
-			editor.Notify(.Warning, "No mesh geometry inside the zone box. Check the zone's Extents cover your floor, that the floor entity has a Mesh component, and that the zone is placed over it (only static Mesh geometry is collected).");
+			editor.Notify(.Warning, "No static geometry inside the zone box. Check the zone's Extents cover your floor, that the floor has a static, non-trigger Rigid Body (or is terrain), and that the zone is placed over it. Render meshes are not read.");
 		}
 		else
 		{

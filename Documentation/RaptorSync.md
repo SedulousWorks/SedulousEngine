@@ -75,7 +75,7 @@ Raptor's (the last group).
     `DescribeBody` shared with body creation; works in edit mode with no world).
 22. ~~7948ddd8~~ (done) Engine.Terrain: a terrain's surface is static geometry (the triangulation moves out
     of `NavigationBake`).
-23. 81236cd8 Editor.Navigation: bake the scene's static geometry, not every mesh (cars and
+23. ~~81236cd8~~ (done) Editor.Navigation: bake the scene's static geometry, not every mesh (cars and
     walkers no longer bake into the navmesh).
 24. c08cec05 + e3eb6dc1 Editor.Scene: `navigation_bake`, the inspector's Bake Navigation as a
     live scene MCP tool (`SceneMcpTools`; the scene tool tripwire 17 to 18; the McpGuide).

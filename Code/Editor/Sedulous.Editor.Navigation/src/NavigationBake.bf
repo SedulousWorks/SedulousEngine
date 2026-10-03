@@ -4,41 +4,25 @@ using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Content;
 using Sedulous.Scene;
-using Sedulous.Geometry;
-using Sedulous.Heightfield;
-using Sedulous.Terrain.Resource;
-using Sedulous.Engine.Render;
-using Sedulous.Engine.Terrain;
 using Sedulous.Engine.Navigation;
 using Sedulous.Navigation;
 using Sedulous.Navigation.Pipeline;
 
 namespace Sedulous.Editor.Navigation;
 
-/// The "Bake Navigation" flow: every static mesh whose world bounds intersect a zone's box
-/// contributes its triangles, transformed into zone-local space so the baked navmesh rides the
-/// zone entity's transform to any placement without a rebake; the Recast bake runs; the result
-/// lands in the zone's NavigationZoneAsset sidecar. Editor-only; the player never links this.
+/// The "Bake Navigation" flow: the scene's static geometry touching a zone's box (what its
+/// systems answer through AsStaticGeometrySource, never render meshes) is transformed into
+/// zone-local space so the baked navmesh rides the zone entity's transform to any placement
+/// without a rebake; the Recast bake runs; the result lands in the zone's NavigationZoneAsset
+/// sidecar. Editor-only; the player never links this.
 static class NavigationBake
 {
-	/// The world-space bounds of local bounds under a transform, all eight corners.
-	private static AABB WorldBounds(AABB local, Float4x4 world)
-	{
-		var result = AABB.Empty();
-		for (int i < 8)
-		{
-			let corner = Float3(((i & 1) != 0) ? local.Max.X : local.Min.X,
-				((i & 2) != 0) ? local.Max.Y : local.Min.Y,
-				((i & 4) != 0) ? local.Max.Z : local.Min.Z);
-			result.Expand(TransformPoint(corner, world));
-		}
-		return result;
-	}
-
-	/// Collects the triangle soup, in the zone entity's local space, for a bake: every mesh
-	/// component whose world bounds intersect the zone box contributes its triangles, and every
-	/// terrain's heightfield surface inside the box triangulates in, sampled no finer than the
-	/// cell size since Recast re-voxelises to its own cells. Answers the triangle count.
+	/// Collects the triangles, in the zone entity's local space, for a bake: every scene
+	/// system's static geometry touching the zone box (physics: static, non-trigger bodies on
+	/// active entities; terrain: its surface, sampled no finer than the cell size, since Recast
+	/// re-voxelises to its own cells). What moves (agents, dynamic and kinematic bodies,
+	/// characters) and bare render meshes are not level geometry: a car or a walker standing in
+	/// the zone would bake a hole under itself. Answers the triangle count.
 	public static int CollectNavigationGeometry(Scene scene, EntityHandle zoneEntity, Float3 zoneExtents, float cellSize,
 		List<Float3> outVertices, List<uint32> outIndices)
 	{
@@ -47,113 +31,19 @@ static class NavigationBake
 		// Rigid, no scale: the navmesh is baked in world units, so a zone entity's scale must not
 		// warp the geometry Recast sees; a zone sharing a scaled entity with its ground would
 		// otherwise un-scale that ground to unit size and erode the navmesh to nothing.
-		let zoneWorld = RigidPart(scene.GetWorldMatrix(zoneEntity));
-		let zoneInv = Inverse(zoneWorld);
+		let zoneInv = Inverse(RigidPart(scene.GetWorldMatrix(zoneEntity)));
 		let zoneBox = AABB.FromCenterExtents(scene.GetWorldPosition(zoneEntity), zoneExtents);
 
-		if (let meshes = scene.GetSystem<MeshComponentManager>())
+		let world = scope List<Float3>();
+		for (let system in scene.Systems)
 		{
-			meshes.ForEach(scope [&](c, entity) =>
-				{
-					let mesh = c.Mesh.Get;
-					if ((mesh == null) || (mesh.VertexCount == 0) || (mesh.IndexCount == 0))
-						return;
-					let meshWorld = scene.GetWorldMatrix(entity);
-					if (!WorldBounds(mesh.Bounds, meshWorld).Intersects(zoneBox))
-						return;
-					let firstVertex = (uint32)outVertices.Count;
-					for (let v in mesh.Vertices)
-					{
-						let world = TransformPoint(v.Position, meshWorld);
-						outVertices.Add(TransformPoint(world, zoneInv)); // zone-local
-					}
-					for (uint32 i < mesh.IndexCount)
-						outIndices.Add(firstVertex + mesh.Indices.Get(i));
-				});
+			if (let source = system.AsStaticGeometrySource)
+				source.CollectStaticGeometry(scene, zoneBox, cellSize, world);
 		}
-
-		// Terrain: the shared heightfield surface, the same grid physics collides against,
-		// triangulates inside the zone box so agents can walk on terrain.
-		if (let terrains = scene.GetSystem<TerrainComponentManager>())
+		for (let point in world)
 		{
-			terrains.ForEach(scope [&](c, entity) =>
-				{
-					let terrain = c.Terrain.Get;
-					let field = (terrain != null) ? terrain.Heightfield.Get : null;
-					if ((field == null) || (field.Size < 2))
-						return;
-					let terrainWorld = scene.GetWorldMatrix(entity);
-					let footprint = field.WorldSize;
-					let localBox = AABB(.(-footprint.X * 0.5f, field.MinY, -footprint.Y * 0.5f),
-						.(footprint.X * 0.5f, field.MaxY, footprint.Y * 0.5f));
-					if (!WorldBounds(localBox, terrainWorld).Intersects(zoneBox))
-						return;
-
-					// The zone box in terrain-local space bounds the grid range to triangulate.
-					let zoneLocal = WorldBounds(zoneBox, Inverse(terrainWorld));
-					let last = field.Size - 1;
-					let g0 = field.WorldToGrid(zoneLocal.Min.X, zoneLocal.Min.Z);
-					let g1 = field.WorldToGrid(zoneLocal.Max.X, zoneLocal.Max.Z);
-					let x0 = Math.Clamp((int32)Math.Floor(g0.X), 0, last);
-					let z0 = Math.Clamp((int32)Math.Floor(g0.Y), 0, last);
-					let x1 = Math.Clamp((int32)Math.Ceiling(g1.X), 0, last);
-					let z1 = Math.Clamp((int32)Math.Ceiling(g1.Y), 0, last);
-					if ((x1 <= x0) || (z1 <= z0))
-						return;
-
-					let spacing = footprint.X / (float)last;
-					let stride = Math.Max(1, (int32)(cellSize / Math.Max(spacing, 0.0001f)));
-
-					// The sample coordinates along each axis: stride steps, the last row and
-					// column always included so the surface reaches the zone edge.
-					let xs = scope List<int32>();
-					let zs = scope List<int32>();
-					for (int32 gx = x0; gx < x1; gx += stride)
-						xs.Add(gx);
-					xs.Add(x1);
-					for (int32 gz = z0; gz < z1; gz += stride)
-						zs.Add(gz);
-					zs.Add(z1);
-
-					let firstVertex = (uint32)outVertices.Count;
-					for (let gz in zs)
-					{
-						for (let gx in xs)
-						{
-							let xz = field.GridToWorld((float)gx, (float)gz);
-							let local = Float3(xz.X, field.GetHeightAtGrid(gx, gz), xz.Y);
-							let world = TransformPoint(local, terrainWorld);
-							outVertices.Add(TransformPoint(world, zoneInv));
-						}
-					}
-					let columns = (uint32)xs.Count;
-					for (uint32 row = 0; row + 1 < (uint32)zs.Count; row++)
-					{
-						for (uint32 col = 0; col + 1 < columns; col++)
-						{
-							// A hole anywhere in this BLOCK, which is the stride square with
-							// its interior, is no walkable surface: the block's two triangles
-							// are left out, so the navmesh opens there and agents route round.
-							if (field.BlockHasHole(xs[(int)col], zs[(int)row],
-								xs[(int)col + 1], zs[(int)row + 1]))
-							{
-								continue;
-							}
-
-							let v00 = firstVertex + row * columns + col;
-							let v10 = v00 + 1;
-							let v01 = v00 + columns;
-							let v11 = v01 + 1;
-							// +Y face normals; Recast's walkable filter keys on them.
-							outIndices.Add(v00);
-							outIndices.Add(v01);
-							outIndices.Add(v11);
-							outIndices.Add(v00);
-							outIndices.Add(v11);
-							outIndices.Add(v10);
-						}
-					}
-				});
+			outIndices.Add((uint32)outVertices.Count);
+			outVertices.Add(TransformPoint(point, zoneInv)); // zone local
 		}
 		return outIndices.Count / 3;
 	}
