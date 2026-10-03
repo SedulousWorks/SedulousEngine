@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Reflection;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Content;
@@ -10,51 +11,59 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-/// A modal editor for the project manifest, the fields a user meaningfully changes from
-/// inside the editor: the name, the native module path, the default scene, startup script,
-/// input map, bus layout, UI theme, loading screen and UI font (each picked by guid through
-/// the AssetPickerDialog, the path kept as the human-readable mirror), the other UI fonts (a
-/// list), the display (the render resolution and fit, the player's window), and the scene-pass
-/// MSAA. The engine version is shown read-only; every save re-stamps it. Save writes the
-/// fields back into EditorProject.Settings and persists the manifest; Cancel discards.
+/// A modal editor for the project manifest: a row per field ProjectSettings marks [Setting], in
+/// its declaration order and built from its reflection, so a setting added there is edited
+/// here. A text is an edit box, an asset a slot picking by guid through the AssetPickerDialog
+/// (filtered to the type the setting names; the path kept as the readable mirror), an asset
+/// list a list of slots, a count a number within its range, a choice its enum's cases, a flag a
+/// box. MSAA is the one with a rule of its own: the render subsystem's levels. The engine
+/// version is shown read-only; every save re-stamps it. Save writes the rows back into
+/// EditorProject.Settings and persists the manifest; Cancel discards.
 class ProjectSettingsDialog : Dialog
 {
-	/// One asset setting: the id the dialog applies on Save, and the slot row showing it.
+	/// An asset setting: the id the dialog applies on Save, and the slot row showing it.
 	private class AssetRow
 	{
+		public FieldInfo Field;
 		public Guid Id = .Empty;
 		/// OWNED; its view sits in the dialog's row.
 		public ResourceRefEditor Editor ~ delete _;
 	}
 
+	/// An asset list setting: the ids as edited (nil entries are slots not yet picked), and
+	/// the list editor, rebuilt on every change.
+	private class AssetListRow
+	{
+		public FieldInfo Field;
+		public String Label = new .() ~ delete _;
+		public String AssetType = new .() ~ delete _;
+		public List<Guid> Ids = new .() ~ delete _;
+		/// Borrowed: the row's cell the list sits in.
+		public FlexLayout Host;
+		/// OWNED: its view sits in Host.
+		public ContainerListEditor List ~ delete _;
+	}
+
+	/// A text, count, choice or flag setting and the view editing it (borrowed: the content
+	/// owns it).
+	private class ValueRow
+	{
+		public FieldInfo Field;
+		public SettingKind Kind;
+		public EditText Text;
+		public NumericField Number;
+		public ComboBox Choice;
+		/// A choice's case values, in the combo's order.
+		public List<int64> ChoiceValues = new .() ~ delete _;
+		public CheckBox Flag;
+	}
+
 	/// Borrowed.
 	private EditorContext mContext;
-	// Borrowed: the content owns them.
-	private EditText mNameEdit = null;
-	/// A project-relative path; empty is none.
-	private EditText mNativeModuleEdit = null;
 	private ComboBox mMsaaCombo = null;
-	// The display. Borrowed: the content owns them.
-	private NumericField mRenderWidth = null;
-	private NumericField mRenderHeight = null;
-	private ComboBox mRenderFit = null;
-	private NumericField mWindowWidth = null;
-	private NumericField mWindowHeight = null;
-	private ComboBox mWindowMode = null;
-	private CheckBox mWindowResizable = null;
-	private AssetRow mScene = new .() ~ delete _;
-	private AssetRow mScript = new .() ~ delete _;
-	private AssetRow mInputMap = new .() ~ delete _;
-	private AssetRow mBusLayout = new .() ~ delete _;
-	private AssetRow mUiTheme = new .() ~ delete _;
-	private AssetRow mLoadingDoc = new .() ~ delete _;
-	private AssetRow mUiFont = new .() ~ delete _;
-	/// The other UI fonts as edited; applied on Save. Nil entries are slots not yet picked.
-	private List<Guid> mUiFonts = new .() ~ delete _;
-	/// Borrowed: the row's cell the list sits in, rebuilt on every change.
-	private FlexLayout mUiFontsHost = null;
-	/// OWNED: the list row's editor; its view sits in mUiFontsHost.
-	private ContainerListEditor mUiFontsList ~ delete _;
+	private List<AssetRow> mAssets = new .() ~ DeleteContainerAndItems!(_);
+	private List<AssetListRow> mAssetLists = new .() ~ DeleteContainerAndItems!(_);
+	private List<ValueRow> mValues = new .() ~ DeleteContainerAndItems!(_);
 
 	public this(EditorContext context) : base("Project Settings")
 	{
@@ -65,48 +74,43 @@ class ProjectSettingsDialog : Dialog
 		MaxHeight.Value = 560.0f; // taller so the rows fit; the ScrollView handles overflow
 
 		let project = context.Project;
-		let settings = (project != null) ? project.Settings : null;
+		let settings = (project != null) ? project.Settings : scope:: ProjectSettings();
 
 		let column = new FlexLayout();
 		column.Direction = .Vertical;
 		column.Spacing = 8;
 
-		mNameEdit = AddTextRow(column, "Name", (settings != null) ? settings.Name : "");
-		// The native game module: a project-relative path to the built module; free text,
-		// since the module is built outside the editor and there is nothing to pick from.
-		mNativeModuleEdit = AddTextRow(column, "Native module", (settings != null) ? settings.NativeModule : "");
-
-		AddPickRow(column, "Default scene", mScene, "SceneDocument", "(none)",
-			(settings != null) ? settings.DefaultSceneId : .Empty);
-		AddPickRow(column, "Startup script", mScript, "ScriptClassAsset", "(none)",
-			(settings != null) ? settings.StartupScriptId : .Empty);
-		AddPickRow(column, "Default input map", mInputMap, "InputMapAsset", "(none)",
-			(settings != null) ? settings.DefaultInputMapId : .Empty);
-		AddPickRow(column, "Default bus layout", mBusLayout, "AudioBusLayoutAsset", "(built-in)",
-			(settings != null) ? settings.DefaultBusLayoutId : .Empty);
-		AddPickRow(column, "Default UI theme", mUiTheme, "UIThemeAsset", "(built-in)",
-			(settings != null) ? settings.DefaultUiThemeId : .Empty);
-		AddPickRow(column, "Loading screen", mLoadingDoc, "UIDocumentAsset", "(built-in)",
-			(settings != null) ? settings.LoadingDocumentId : .Empty);
-		AddPickRow(column, "Default UI font", mUiFont, "FontAsset", "(built-in)",
-			(settings != null) ? settings.DefaultUiFontId : .Empty);
-		AddUiFontsRow(column, settings);
-
-		// The scene-pass MSAA: Off, 2x, 4x map to 1, 2, 4 samples. The player and play-in-editor
-		// apply it; the render subsystem capability-clamps at runtime.
+		let fields = scope List<FieldInfo>();
+		SettingFields.Of(typeof(ProjectSettings), fields);
+		for (let field in fields)
 		{
-			let row = AddRow(column, "MSAA");
-			mMsaaCombo = new ComboBox();
-			for (let level in MsaaLevels.All)
-				mMsaaCombo.AddItem(level.Label);
-			let samples = (settings != null) ? settings.RenderMsaaSamples : 1;
-			mMsaaCombo.SetSelectedIndex(MsaaLevels.IndexForSamples(samples));
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			row.AddView(mMsaaCombo, grow);
+			let setting = SettingFields.Setting(field).Value;
+			SettingFields.KindOf(field, let kind);
+			switch (kind)
+			{
+			case .Asset:
+				let asset = new AssetRow();
+				asset.Field = field;
+				mAssets.Add(asset);
+				AddPickRow(column, setting.Label, asset, setting.AssetType, setting.EmptyText,
+					*(Guid*)SettingFields.Address(settings, field));
+			case .AssetList:
+				let list = new AssetListRow();
+				list.Field = field;
+				list.Label.Set(setting.Label);
+				list.AssetType.Set(setting.AssetType);
+				list.Ids.AddRange(*(List<Guid>*)SettingFields.Address(settings, field));
+				mAssetLists.Add(list);
+				AddAssetListRow(column, list);
+			case .TextList:
+				// No settings field is one yet; the MCP tools set it whole.
+			default:
+				if (field.Name == "RenderMsaaSamples")
+					AddMsaaRow(column, setting.Label, settings.RenderMsaaSamples);
+				else
+					AddValueRow(column, setting.Label, field, kind, settings);
+			}
 		}
-
-		AddDisplayRows(column, settings);
 
 		// The engine stamp, informational; re-stamped by every save.
 		{
@@ -128,6 +132,71 @@ class ProjectSettingsDialog : Dialog
 		let save = AddButton("Save", .None);
 		save.OnClick.Add(new (b) => { Apply(); });
 		AddButton("Cancel", .Cancel);
+	}
+
+	/// The scene-pass MSAA: Off, 2x, 4x map to 1, 2, 4 samples. The player and play-in-editor
+	/// apply it; the render subsystem capability-clamps at runtime.
+	private void AddMsaaRow(FlexLayout column, StringView label, uint32 samples)
+	{
+		let row = AddRow(column, label);
+		mMsaaCombo = new ComboBox();
+		for (let level in MsaaLevels.All)
+			mMsaaCombo.AddItem(level.Label);
+		mMsaaCombo.SetSelectedIndex(MsaaLevels.IndexForSamples(samples));
+		var grow = LayoutStyle();
+		grow.FlexGrow = 1.0f;
+		row.AddView(mMsaaCombo, grow);
+	}
+
+	/// A text, count, choice or flag setting's row, seeded from the manifest.
+	private void AddValueRow(FlexLayout column, StringView label, FieldInfo field, SettingKind kind, ProjectSettings settings)
+	{
+		let value = new ValueRow();
+		value.Field = field;
+		value.Kind = kind;
+		mValues.Add(value);
+		let address = SettingFields.Address(settings, field);
+		switch (kind)
+		{
+		case .Text:
+			value.Text = AddTextRow(column, label, *(String*)address);
+		case .Count:
+			let row = AddRow(column, label);
+			SettingFields.CountRange(field, let least, let most);
+			value.Number = new NumericField();
+			value.Number.SetDecimalPlaces(0);
+			value.Number.SetMin(least);
+			value.Number.SetMax(most);
+			value.Number.SetStep(1);
+			value.Number.SetValue(*(uint32*)address);
+			var style = LayoutStyle();
+			style.Width = SizeSpec.Fixed(Unit.Dp(80));
+			style.AlignSelf = .Center;
+			row.AddView(value.Number, style);
+		case .Choice:
+			let row = AddRow(column, label);
+			value.Choice = new ComboBox();
+			let current = SettingFields.ReadChoice(settings, field);
+			int32 selected = 0;
+			for (var (name, data) in Enum.GetEnumerator(field.FieldType))
+			{
+				if (data == current)
+					selected = (int32)value.ChoiceValues.Count;
+				value.ChoiceValues.Add(data);
+				value.Choice.AddItem(name);
+			}
+			value.Choice.SetSelectedIndex(selected);
+			var grow = LayoutStyle();
+			grow.FlexGrow = 1.0f;
+			row.AddView(value.Choice, grow);
+		case .Flag:
+			let row = AddRow(column, label);
+			value.Flag = new CheckBox("", *(bool*)address);
+			var centre = LayoutStyle();
+			centre.AlignSelf = .Center;
+			row.AddView(value.Flag, centre);
+		default:
+		}
 	}
 
 	/// A labelled horizontal row, fixed-width label; callers append the field views.
@@ -180,143 +249,77 @@ class ProjectSettingsDialog : Dialog
 		row.AddView(asset.Editor.EditorView, grow);
 	}
 
-	/// The render resolution (0 x 0 draws at the output's size) and how it fits, then the
-	/// player's window. An export preset may override either per platform.
-	private void AddDisplayRows(FlexLayout column, ProjectSettings settings)
+	/// An asset list setting's row: a list of slots of the setting's type.
+	private void AddAssetListRow(FlexLayout column, AssetListRow list)
 	{
-		{
-			let row = AddRow(column, "Render size");
-			mRenderWidth = SizeField(row, (settings != null) ? settings.RenderWidth : 0, 0);
-			row.AddView(new Label("x"), Centred());
-			mRenderHeight = SizeField(row, (settings != null) ? settings.RenderHeight : 0, 0);
-			row.AddView(new Label("0 x 0: the output's size"), Centred());
-		}
-		{
-			let row = AddRow(column, "Render fit");
-			mRenderFit = new ComboBox();
-			for (let name in StringView[4]("Stretch", "Letterbox", "Crop", "Integer scale"))
-				mRenderFit.AddItem(name);
-			mRenderFit.SetSelectedIndex((settings != null) ? (int32)settings.RenderFit : (int32)FitMode.Letterbox);
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			row.AddView(mRenderFit, grow);
-		}
-		{
-			let row = AddRow(column, "Window size");
-			mWindowWidth = SizeField(row, (settings != null) ? settings.WindowWidth : 1280, 1);
-			row.AddView(new Label("x"), Centred());
-			mWindowHeight = SizeField(row, (settings != null) ? settings.WindowHeight : 720, 1);
-		}
-		{
-			let row = AddRow(column, "Window mode");
-			mWindowMode = new ComboBox();
-			for (let name in StringView[3]("Windowed", "Fullscreen", "Borderless"))
-				mWindowMode.AddItem(name);
-			mWindowMode.SetSelectedIndex((settings != null) ? (int32)settings.WindowMode : 0);
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			row.AddView(mWindowMode, grow);
-			mWindowResizable = new CheckBox("Resizable", (settings != null) ? settings.WindowResizable : true);
-			row.AddView(mWindowResizable, Centred());
-		}
-	}
-
-	private static NumericField SizeField(FlexLayout row, uint32 value, double least)
-	{
-		let field = new NumericField();
-		field.SetDecimalPlaces(0);
-		field.SetMin(least);
-		field.SetMax(16384);
-		field.SetStep(1);
-		field.SetValue(value);
-		var style = LayoutStyle();
-		style.Width = SizeSpec.Fixed(Unit.Dp(80));
-		style.AlignSelf = .Center;
-		row.AddView(field, style);
-		return field;
-	}
-
-	private static LayoutStyle Centred()
-	{
-		var style = LayoutStyle();
-		style.AlignSelf = .Center;
-		return style;
-	}
-
-	/// The other UI fonts: a list of font slots, each its own family beside the default that a
-	/// label picks with font-family.
-	private void AddUiFontsRow(FlexLayout column, ProjectSettings settings)
-	{
-		let row = AddRow(column, "Other UI fonts");
-		if (settings != null)
-			mUiFonts.AddRange(settings.UiFontIds);
-		mUiFontsHost = new FlexLayout();
-		mUiFontsHost.Direction = .Vertical;
+		let row = AddRow(column, list.Label);
+		list.Host = new FlexLayout();
+		list.Host.Direction = .Vertical;
 		var grow = LayoutStyle();
 		grow.FlexGrow = 1.0f;
-		row.AddView(mUiFontsHost, grow);
-		RebuildUiFonts();
+		row.AddView(list.Host, grow);
+		RebuildAssetList(list);
 	}
 
 	/// After the gesture that changed the list: its editor is running the callback, so it is
 	/// replaced once the dispatch is over.
-	private void UiFontsChanged()
+	private void AssetListChanged(AssetListRow list)
 	{
 		if (Context != null)
-			Context.MutationQueue.QueueAction(new [=this]() => { RebuildUiFonts(); });
+			Context.MutationQueue.QueueAction(new [=this, =list]() => { RebuildAssetList(list); });
 	}
 
-	private void RebuildUiFonts()
+	private void RebuildAssetList(AssetListRow row)
 	{
-		if (mUiFontsList != null)
+		if (row.List != null)
 		{
-			mUiFontsHost.RemoveView(mUiFontsList.EditorView);
-			DeleteAndNullify!(mUiFontsList);
+			row.Host.RemoveView(row.List.EditorView);
+			DeleteAndNullify!(row.List);
 		}
-		let list = new ContainerListEditor("Other UI fonts", "Project");
-		for (let id in mUiFonts)
+		let list = new ContainerListEditor(row.Label, "Project");
+		for (let id in row.Ids)
 		{
 			let name = new String();
 			if (id.IsSet)
 				mContext.AssetNameFor(id, name);
 			else
-				name.Set("(pick a font)");
+				name.Set("(pick one)");
 			list.SlotNames.Add(name);
 		}
-		list.SetAcceptedTypes(scope StringView[]("FontAsset"));
-		list.OnAdd = new [=this]() => { mUiFonts.Add(.Empty); UiFontsChanged(); };
-		list.OnRemoveSlot = new [=this](i) => { mUiFonts.RemoveAt(i); UiFontsChanged(); };
-		list.OnMoveSlot = new [=this](i, up) =>
+		list.SetAcceptedTypes(scope StringView[](row.AssetType));
+		list.OnAdd = new [=this, =row]() => { row.Ids.Add(.Empty); AssetListChanged(row); };
+		list.OnRemoveSlot = new [=this, =row](i) => { row.Ids.RemoveAt(i); AssetListChanged(row); };
+		list.OnMoveSlot = new [=this, =row](i, up) =>
 			{
 				let other = up ? i - 1 : i + 1;
-				if ((other < 0) || (other >= mUiFonts.Count))
+				if ((other < 0) || (other >= row.Ids.Count))
 					return;
-				Swap!(mUiFonts[i], mUiFonts[other]);
-				UiFontsChanged();
+				Swap!(row.Ids[i], row.Ids[other]);
+				AssetListChanged(row);
 			};
-		list.OnAssignSlot = new [=this](i, id) => { mUiFonts[i] = id; UiFontsChanged(); };
-		list.OnAppendDropped = new [=this](id) => { mUiFonts.Add(id); UiFontsChanged(); };
-		list.OnPickSlot = new [=this](i) =>
+		list.OnAssignSlot = new [=this, =row](i, id) => { row.Ids[i] = id; AssetListChanged(row); };
+		list.OnAppendDropped = new [=this, =row](id) => { row.Ids.Add(id); AssetListChanged(row); };
+		list.OnPickSlot = new [=this, =row](i) =>
 			{
 				if (Context == null)
 					return;
-				let dialog = new AssetPickerDialog(mContext, scope StringView[]("FontAsset"));
-				dialog.OnPicked = new [=this, =i](picked) =>
+				let dialog = new AssetPickerDialog(mContext, scope StringView[](row.AssetType));
+				dialog.OnPicked = new [=this, =row, =i](picked) =>
 					{
-						if (i < mUiFonts.Count)
+						if (i < row.Ids.Count)
 						{
-							mUiFonts[i] = picked;
-							UiFontsChanged();
+							row.Ids[i] = picked;
+							AssetListChanged(row);
 						}
 					};
 				dialog.Show(Context);
 			};
-		mUiFontsList = list;
+		row.List = list;
 		// The editor keeps its own reference to its view; the layout gets one of its own.
 		list.EditorView.AddRef();
 		var match = LayoutStyle();
 		match.Width = SizeSpec.Match();
-		mUiFontsHost.AddView(list.EditorView, match);
+		row.Host.AddView(list.EditorView, match);
 	}
 
 	private void Apply()
@@ -328,36 +331,45 @@ class ProjectSettingsDialog : Dialog
 			return;
 		}
 		let settings = project.Settings;
-		settings.Name.Set(mNameEdit.Text);
-		settings.NativeModule.Set(mNativeModuleEdit.Text);
-		settings.StartupScriptId = mScript.Id;
-		// The source-database path mirror, for display and the older manifest fallback.
-		settings.StartupScript.Clear();
-		if (let script = mScript.Id.IsSet ? project.SourceDb.GetInstance(mScript.Id) : null)
-			script.GetPath(settings.StartupScript);
-		settings.DefaultSceneId = mScene.Id;
-		settings.DefaultInputMapId = mInputMap.Id;
-		settings.DefaultBusLayoutId = mBusLayout.Id;
-		settings.DefaultUiThemeId = mUiTheme.Id;
-		settings.LoadingDocumentId = mLoadingDoc.Id;
-		settings.DefaultUiFontId = mUiFont.Id;
-		settings.UiFontIds.Clear();
-		for (let id in mUiFonts)
+		for (let asset in mAssets)
+			*(Guid*)SettingFields.Address(settings, asset.Field) = asset.Id;
+		for (let list in mAssetLists)
 		{
-			if (id.IsSet && !settings.UiFontIds.Contains(id))
-				settings.UiFontIds.Add(id);
+			let ids = (List<Guid>*)SettingFields.Address(settings, list.Field);
+			(*ids).Clear();
+			for (let id in list.Ids)
+			{
+				// An unpicked slot is dropped, and an asset listed twice is listed once.
+				if (id.IsSet && !(*ids).Contains(id))
+					(*ids).Add(id);
+			}
 		}
-		settings.RenderMsaaSamples = MsaaLevels.SamplesForIndex((mMsaaCombo != null) ? mMsaaCombo.SelectedIndex : 0);
-		settings.RenderWidth = (uint32)mRenderWidth.Value;
-		settings.RenderHeight = (uint32)mRenderHeight.Value;
-		settings.RenderFit = (FitMode)Math.Max(0, mRenderFit.SelectedIndex);
-		settings.WindowWidth = (uint32)mWindowWidth.Value;
-		settings.WindowHeight = (uint32)mWindowHeight.Value;
-		settings.WindowMode = (WindowMode)Math.Max(0, mWindowMode.SelectedIndex);
-		settings.WindowResizable = mWindowResizable.IsChecked.Value;
-		settings.DefaultScene.Clear();
-		if (let scene = mScene.Id.IsSet ? project.SourceDb.GetInstance(mScene.Id) : null)
-			scene.GetPath(settings.DefaultScene);
+		for (let value in mValues)
+		{
+			let address = SettingFields.Address(settings, value.Field);
+			switch (value.Kind)
+			{
+			case .Text:
+				(*(String*)address).Set(value.Text.Text);
+			case .Count:
+				*(uint32*)address = (uint32)value.Number.Value;
+			case .Choice:
+				let index = value.Choice.SelectedIndex;
+				if ((index >= 0) && (index < value.ChoiceValues.Count))
+					SettingFields.WriteChoice(settings, value.Field, value.ChoiceValues[index]);
+			case .Flag:
+				*(bool*)address = value.Flag.IsChecked.Value;
+			default:
+			}
+		}
+		if (mMsaaCombo != null)
+			settings.RenderMsaaSamples = MsaaLevels.SamplesForIndex(mMsaaCombo.SelectedIndex);
+		// The source-database path mirrors, for display and the older manifest fallback.
+		settings.RefreshPathMirrors(scope (id, outPath) =>
+			{
+				if (let instance = project.SourceDb.GetInstance(id))
+					instance.GetPath(outPath);
+			});
 		if (project.SaveSettings() case .Ok)
 		{
 			mContext.SetStatus("Project settings saved.");
