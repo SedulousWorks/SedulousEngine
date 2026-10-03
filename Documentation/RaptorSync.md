@@ -49,7 +49,8 @@ Raptor's (the last group).
       its description".
     - ~~c~~ (done) A regression test for 5aa79822's teardown order.
     - ~~d~~ (done) `SceneReference`'s typeIds text interpolates the hash basis.
-    - e Check the audio clip and cue pages keep a paused audition (Raptor's pages dropped it).
+    - ~~e~~ (done) The audio clip and cue pages keep a paused audition (they did not either: the
+      clip page stopped it the next frame, the cue page forgot a voice the engine held paused).
     - The PaperKid override test walks the Level script's overrides too: with group 6.
 
 16. bc87304e, eadecdd5, 1896bfed, b6a08629, f3fc2d35: the project settings and the export

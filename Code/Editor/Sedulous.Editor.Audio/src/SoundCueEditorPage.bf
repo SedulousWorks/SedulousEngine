@@ -151,12 +151,15 @@ class SoundCueEditorPage : UIEditorPage, IPlaybackPage
 		let engine = Engine;
 		if ((engine == null) || !mVoice.IsValid)
 			return;
-		VoiceStatus status = ?;
-		if (engine.GetVoiceStatus(mVoice, out status) && status.Playing)
-			mStatus.SetText(scope $"{mPickText}  |  {status.CursorSeconds:F1} s");
-		else
+		switch (AuditionVoice.Track(engine, mVoice, let status))
 		{
+		case .Playing:
+			mStatus.SetText(scope $"{mPickText}  |  {status.CursorSeconds:F1} s");
+		case .Paused:
+			mStatus.SetText(scope $"{mPickText}  |  paused at {status.CursorSeconds:F1} s");
+		case .Gone:
 			mVoice = .();
+			mPaused = false;
 			mStatus.SetText(mPickText);
 		}
 	}

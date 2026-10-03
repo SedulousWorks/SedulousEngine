@@ -96,13 +96,14 @@ class AudioClipEditorPage : UIEditorPage, IPlaybackPage
 		let engine = Engine;
 		if (!mVoice.IsValid || (engine == null))
 			return;
-		if (!engine.IsPlaying(mVoice))
+		let state = AuditionVoice.Track(engine, mVoice, let status);
+		if (state == .Gone)
 		{
 			StopAudition();
 			return;
 		}
-		VoiceStatus status = ?;
-		if (!engine.GetVoiceStatus(mVoice, out status))
+		// Paused: the playhead and the status hold where they are.
+		if (state == .Paused)
 			return;
 		let duration = (mClip != null) ? mClip.DurationSeconds : 0.0f;
 		if (duration <= 0.0f)

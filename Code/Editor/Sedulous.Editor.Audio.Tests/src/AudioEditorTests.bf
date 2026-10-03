@@ -167,4 +167,64 @@ class AudioEditorTests
 		let junk = scope uint8[16];
 		Test.Assert(generator.Generate(junk, tile) case .Err);
 	}
+
+	/// A short tone whose payload is a real wav, decoded as a cooked clip would be. OWNED by the
+	/// caller.
+	private static AudioClip MakeToneClip(float seconds)
+	{
+		let samples = scope List<int16>();
+		let frames = (int)(seconds * 8000.0f);
+		for (int frame < frames)
+			samples.Add((int16)(16000.0f * Math.Sin(2.0f * Math.PI_f * 440.0f * (float)frame / 8000.0f)));
+		let clip = new AudioClip();
+		if (!AudioCodec.EncodeWav(samples, 1, 8000, clip.EncodedData))
+		{
+			delete clip;
+			return null;
+		}
+		if (!AudioCodec.Probe(clip.EncodedBytes, let metadata))
+		{
+			delete clip;
+			return null;
+		}
+		clip.Channels = metadata.Channels;
+		clip.SampleRate = metadata.SampleRate;
+		clip.FrameCount = metadata.FrameCount;
+		clip.DurationSeconds = metadata.DurationSeconds;
+		return clip;
+	}
+
+	/// The audio pages' per-frame check keeps a paused audition, which the engine keeps too, so
+	/// Play resumes it; only a finished or stopped voice ends it.
+	[Test]
+	public static void APausedAuditionIsStillTheAudition()
+	{
+		let settings = scope AudioEngineSettings();
+		settings.Headless = true;
+		let engine = scope AudioEngine(settings);
+		let clip = MakeToneClip(0.25f);
+		Test.Assert(clip != null);
+		defer delete clip;
+
+		var parameters = AudioPlayParams();
+		parameters.AllowDedupe = false;
+		let voice = engine.Play(clip, parameters);
+		Test.Assert(AuditionVoice.Track(engine, voice, var status) == .Playing);
+
+		engine.SetPaused(voice, true);
+		for (int i < 5)
+			engine.Update(0.1f);
+		Test.Assert(AuditionVoice.Track(engine, voice, out status) == .Paused);
+		// What the pages asked before: false while paused, which ended the audition.
+		Test.Assert(!engine.IsPlaying(voice));
+
+		engine.SetPaused(voice, false);
+		Test.Assert(AuditionVoice.Track(engine, voice, out status) == .Playing);
+		engine.Stop(voice);
+		for (int i < 5)
+			engine.Update(0.1f);
+		Test.Assert(AuditionVoice.Track(engine, voice, out status) == .Gone);
+		Test.Assert(AuditionVoice.Track(null, voice, out status) == .Gone);
+		Test.Assert(AuditionVoice.Track(engine, .(), out status) == .Gone);
+	}
 }
