@@ -47,7 +47,7 @@ Raptor's (the last group).
       (and releases its own manager's products first; a borrowed manager forgets the factories).
     - ~~b~~ (done) `EngineCompositionTests`: "each domain id once" and "each factory matches
       its description".
-    - c A regression test for 5aa79822's teardown order.
+    - ~~c~~ (done) A regression test for 5aa79822's teardown order.
     - d `SceneReference`'s typeIds text interpolates the hash basis.
     - e Check the audio clip and cue pages keep a paused audition (Raptor's pages dropped it).
     - The PaperKid override test walks the Level script's overrides too: with group 6.

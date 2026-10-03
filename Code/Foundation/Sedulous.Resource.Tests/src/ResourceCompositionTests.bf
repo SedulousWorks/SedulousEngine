@@ -128,5 +128,28 @@ class ResourceCompositionTests
 		Test.Assert(manager.FactoryCount == 2);
 		Test.Assert(manager.HasFactory(ResourceManager.ProductTypeIdOf<PlainProduct>()));
 		Test.Assert(manager.HasFactory(ResourceManager.ProductTypeIdOf<GatedProduct>()));
+
+		// A manager that outlives the set is handed them back out; one registered for the same
+		// product by someone else is not this set's to take.
+		let other = scope PlainFactory();
+		set.Unregister(manager);
+		Test.Assert(manager.FactoryCount == 0);
+		manager.AddFactory(other);
+		set.Unregister(manager);
+		Test.Assert(manager.HasFactory(ResourceManager.ProductTypeIdOf<PlainProduct>()));
+	}
+
+	/// A set destroyed holding both factories and skipped descriptions: its factories' teardown
+	/// clears the skipped list, so that list must still exist. Fields go in reverse declaration
+	/// order, and with the list declared second it was deleted first: the editor trapped on exit
+	/// after any play-in-editor run. Under ASan this is a use after free if the order regresses.
+	[Test]
+	public static void ASetDestroyedHoldingFactoriesAndSkipsTearsDownInOrder()
+	{
+		ResourceModule[1] modules = .(sFakeModule);
+		let set = new ResourceFactorySet();
+		set.Create(modules, scope NoResourceServices());
+		Test.Assert((set.Count == 1) && (set.Skipped.Length == 1));
+		delete set;
 	}
 }
