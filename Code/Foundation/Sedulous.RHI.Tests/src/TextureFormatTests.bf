@@ -73,6 +73,16 @@ class TextureFormatTests
 	}
 
 	[Test]
+	public static void FloatIsTheFloatingPointColourFormats()
+	{
+		for (let f in TextureFormat[7](.R16Float, .R32Float, .RG16Float, .RG11B10Float, .RG32Float, .RGBA16Float, .RGBA32Float))
+			Test.Assert(TextureFormats.IsFloat(f), scope $"{f}");
+		Test.Assert(!TextureFormats.IsFloat(.RGBA8Unorm));
+		Test.Assert(!TextureFormats.IsFloat(.RGBA8UnormSrgb));
+		Test.Assert(!TextureFormats.IsFloat(.R16Uint), "an integer format is no float one");
+	}
+
+	[Test]
 	public static void BytesPerPixelCoversTheListedFormats()
 	{
 		Test.Assert(TextureFormats.BytesPerPixel(.R8Unorm) == 1);

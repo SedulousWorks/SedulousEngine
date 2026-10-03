@@ -15,7 +15,7 @@ Raptor's (the last group).
    is still initialising. Static Monitor around a plain counter; the eight-thread cooking test.
 2. ~~Take-back (fd631023)~~ (done): thumbnails average in linear light, then encode RGB (`ThumbnailStage
    .Downscale` still writes linear values as bytes since the encode-once change: too dark).
-3. Take-back (fd631023): `TextureFormats.IsFloat` (R16F, R32F, RG16F, RG32F too), used by the
+3. ~~Take-back (fd631023)~~ (done): `TextureFormats.IsFloat` (R16F, R32F, RG16F, RG32F too), used by the
    tonemap's `EncodesOnWrite`; FXAA told its input is linear on an sRGB or float target, the
    shader taking `sqrt(luma)` so its thresholds still apply.
 4. Take-back (b2a3e376): installing a template replaces its bundle whole, in `Create(.Install)`

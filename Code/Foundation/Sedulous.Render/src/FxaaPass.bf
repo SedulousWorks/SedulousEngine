@@ -100,10 +100,13 @@ class FxaaPass
 		let slot = (int)(viewIndex % cMaxViews) * (int)mFramesInFlight
 			+ (int)(frameIndex % mFramesInFlight);
 
-		// The last two are the edge thresholds: the relative one, and the absolute floor
-		// below which a difference is noise rather than an edge.
+		// The edge thresholds: the relative one, and the absolute floor below which a difference
+		// is noise rather than an edge. Then whether the source is linear: it is the tonemap's
+		// intermediate in the target's format, and an sRGB target decodes to linear on sampling
+		// while a float one holds linear values, so the luma is told which it reads.
+		let linearInput = TextureFormats.IsSrgb(ldrFormat) || TextureFormats.IsFloat(ldrFormat);
 		float[cPushFloats] push = .(texelSize.X, texelSize.Y, uvScale.X, uvScale.Y, uvOffset.X,
-			uvOffset.Y, subpixelQuality, 0.166f, 0.0312f, 0.0f);
+			uvOffset.Y, subpixelQuality, 0.166f, 0.0312f, linearInput ? 1.0f : 0.0f);
 
 		let load = clearColor ? LoadOp.Clear : LoadOp.Load;
 

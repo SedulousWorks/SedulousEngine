@@ -198,7 +198,7 @@ class TonemapPass
 	/// format encodes on write, and a float target is linear and encoded wherever it is shown.
 	/// Only a plain UNORM target takes the display encoding as written.
 	private static bool EncodesOnWrite(TextureFormat format) =>
-		TextureFormats.IsSrgb(format) || (format == .RGBA16Float) || (format == .RGBA32Float) || (format == .RG11B10Float);
+		TextureFormats.IsSrgb(format) || TextureFormats.IsFloat(format);
 
 	/// The pipeline for a target format, built once and rebuilt only when the shader reloads.
 	///

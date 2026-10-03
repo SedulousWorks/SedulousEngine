@@ -11,11 +11,17 @@ struct FxaaPush {
     float  SubpixelQuality;   // 0.75 default
     float  EdgeThreshold;     // 0.166 default
     float  EdgeThresholdMin;  // 0.0312 default (skip dark/flat)
-    float  _pad;
+    float  LinearInput;       // 1 = the source holds linear values (an sRGB or float target)
 };
 PUSH_CONSTANT(FxaaPush, pc, space1);
 
-float Luma(float3 c) { return dot(c, float3(0.299, 0.587, 0.114)); }
+// The edge thresholds are tuned for display-encoded luma. The tonemap writes linear to an sRGB
+// or float target (it encodes for display once, where the target is shown), so a linear
+// source's luma goes through sqrt, the cheap perceptual approximation, before they see it.
+float Luma(float3 c) {
+    float l = dot(c, float3(0.299, 0.587, 0.114));
+    return (pc.LinearInput > 0.5) ? sqrt(max(l, 0.0)) : l;
+}
 float3 Fetch(float2 uv) { return SceneColor.SampleLevel(LinearSamp, uv, 0).rgb; }
 
 float4 main(float4 pos : SV_Position, float2 rawUv : TEXCOORD0) : SV_Target {

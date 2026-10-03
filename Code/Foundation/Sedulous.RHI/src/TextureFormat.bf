@@ -145,6 +145,19 @@ static class TextureFormats
 		}
 	}
 
+	/// The floating point colour formats: they store linear values as written, and whatever
+	/// shows them encodes for display.
+	public static bool IsFloat(TextureFormat f)
+	{
+		switch (f)
+		{
+		case .R16Float, .R32Float, .RG16Float, .RG11B10Float, .RG32Float, .RGBA16Float, .RGBA32Float:
+			return true;
+		default:
+			return false;
+		}
+	}
+
 	/// Bytes per texel of an uncompressed format; zero for a block compressed one, where a
 	/// texel has no independent size and BlockBytes is the question to ask.
 	///
