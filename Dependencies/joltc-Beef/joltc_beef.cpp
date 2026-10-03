@@ -7,6 +7,8 @@
 #include <Jolt/Geometry/AABox.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Collision/Shape/Shape.h>
+#include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
+#include <Jolt/Physics/Collision/TransformedShape.h>
 
 #include <cstdlib>
 #include <cstring>
@@ -156,6 +158,74 @@ jcb_blob* jcb_shape_triangles(const JPH_Shape* shape)
         const size_t added = static_cast<size_t>(count) * 3 * sizeof(JPH::Float3);
         blob->bytes.resize(offset + added);
         std::memcpy(blob->bytes.data() + offset, buffer, added);
+    }
+
+    if (blob->bytes.empty())
+    {
+        delete blob;
+        return nullptr;
+    }
+    return blob;
+}
+
+jcb_blob* jcb_shape_world_triangles(const JPH_Shape* shape, const JPH_Vec3* position,
+                                    const JPH_Quat* rotation, const JPH_Vec3* boxMin,
+                                    const JPH_Vec3* boxMax)
+{
+    if (shape == nullptr || position == nullptr || rotation == nullptr || boxMin == nullptr ||
+        boxMax == nullptr)
+    {
+        return nullptr;
+    }
+
+    const JPH::Shape* jolt = reinterpret_cast<const JPH::Shape*>(shape);
+    const JPH::Vec3 lo(boxMin->x, boxMin->y, boxMin->z);
+    const JPH::Vec3 hi(boxMax->x, boxMax->y, boxMax->z);
+    const JPH::AABox box(lo, hi);
+    const JPH::Quat turn(rotation->x, rotation->y, rotation->z, rotation->w);
+
+    // A compound only yields triangles through its leaves, so the shape goes through
+    // CollectTransformedShapes first (a leaf collects itself). The body's origin is its centre
+    // of mass, as body creation places it.
+    const JPH::TransformedShape whole(
+        JPH::RVec3(position->x, position->y, position->z) + turn * jolt->GetCenterOfMass(), turn,
+        jolt, JPH::BodyID());
+    JPH::AllHitCollisionCollector<JPH::TransformedShapeCollector> leaves;
+    whole.CollectTransformedShapes(box, leaves);
+
+    jcb_blob* blob = new jcb_blob();
+    JPH::Float3 buffer[3 * JPH::Shape::cGetTrianglesMinTrianglesRequested];
+    for (const JPH::TransformedShape& leaf : leaves.mHits)
+    {
+        JPH::Shape::GetTrianglesContext context;
+        leaf.GetTrianglesStart(context, box, JPH::RVec3::sZero());
+        for (;;)
+        {
+            const int count =
+                leaf.GetTrianglesNext(context, JPH::Shape::cGetTrianglesMinTrianglesRequested, buffer);
+            if (count <= 0)
+            {
+                break;
+            }
+            // The box only culls inside meshes and heightfields; a convex shape or a plane
+            // gives all of itself, so each triangle is tested here.
+            for (int t = 0; t < count; ++t)
+            {
+                const JPH::Float3* corner = &buffer[3 * t];
+                JPH::AABox extent;
+                for (int v = 0; v < 3; ++v)
+                {
+                    extent.Encapsulate(JPH::Vec3(corner[v]));
+                }
+                if (!extent.Overlaps(box))
+                {
+                    continue;
+                }
+                const size_t offset = blob->bytes.size();
+                blob->bytes.resize(offset + 3 * sizeof(JPH::Float3));
+                std::memcpy(blob->bytes.data() + offset, corner, 3 * sizeof(JPH::Float3));
+            }
+        }
     }
 
     if (blob->bytes.empty())

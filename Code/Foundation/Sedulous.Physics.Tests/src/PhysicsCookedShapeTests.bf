@@ -196,4 +196,112 @@ class PhysicsCookedShapeTests
 
 		Test.Assert(cooked == 8 * 25, scope $"{cooked} of {8 * 25} cooked");
 	}
+
+	/// The y of the cross of a triangle's two edges: positive when it faces up.
+	private static float NormalY(List<Float3> triangles, int i)
+	{
+		let a = triangles[i + 1] - triangles[i];
+		let b = triangles[i + 2] - triangles[i];
+		return a.Z * b.X - a.X * b.Z;
+	}
+
+	/// The navigation bake reads level geometry from the bodies themselves: the triangles come
+	/// out in world space, facing out, a compound's leaves each placed, only what touches the
+	/// box asked for, and a body whose shape cannot build counted rather than dropped silently.
+	/// No world.
+	[Test]
+	public static void BodiesGiveTheirWorldTrianglesTouchingABoxCompoundsAndPlanesIncluded()
+	{
+		let everywhere = AABB(.(-50, -50, -50), .(50, 50, 50));
+
+		// A two unit cube raised one: twelve triangles between y nought and two, its top up.
+		let cubeBody = scope BodyDesc();
+		cubeBody.Motion = .Static;
+		cubeBody.Layer = .Static;
+		cubeBody.Position = .(3, 1, 0);
+		var cube = ShapeDesc();
+		cube.HalfExtents = .(1, 1, 1);
+		cubeBody.Shapes.Add(cube);
+		let triangles = scope List<Float3>();
+		Test.Assert(PhysicsWorld.AppendBodyTriangles(scope BodyDesc[](cubeBody), everywhere, triangles) == 0);
+		Test.Assert(triangles.Count == 36, scope $"{triangles.Count}");
+		int upward = 0;
+		for (int i = 0; i < triangles.Count; i += 3)
+		{
+			for (int v < 3)
+			{
+				let p = triangles[i + v];
+				Test.Assert((p.X >= 1.999f) && (p.X <= 4.001f) && (p.Y >= -0.001f) && (p.Y <= 2.001f));
+			}
+			if ((triangles[i].Y > 1.99f) && (triangles[i + 1].Y > 1.99f) && (triangles[i + 2].Y > 1.99f))
+			{
+				Test.Assert(NormalY(triangles, i) > 0.0f);
+				upward++;
+			}
+		}
+		Test.Assert(upward == 2);
+
+		// Two boxes as one compound body, each placed: both leaves give their triangles, the
+		// left one's spanning x from nought to two.
+		let pair = scope BodyDesc();
+		pair.Motion = .Static;
+		pair.Position = .(3, 1, 0);
+		var left = cube;
+		left.LocalPosition = .(-2, 0, 0);
+		var right = cube;
+		right.LocalPosition = .(2, 0, 0);
+		pair.Shapes.Add(left);
+		pair.Shapes.Add(right);
+		triangles.Clear();
+		Test.Assert(PhysicsWorld.AppendBodyTriangles(scope BodyDesc[](pair), everywhere, triangles) == 0);
+		Test.Assert(triangles.Count == 72);
+		float leastX = float.MaxValue;
+		for (let p in triangles)
+			leastX = Math.Min(leastX, p.X);
+		Test.Assert(Math.Abs(leastX) < 0.001f, scope $"{leastX}");
+
+		// A ground plane as wide as a level allows: its triangles touch the box asked for and
+		// face up.
+		let ground = scope BodyDesc();
+		ground.Motion = .Static;
+		var plane = ShapeDesc();
+		plane.Kind = .Plane;
+		plane.PlaneHalfExtent = 1000.0f;
+		ground.Shapes.Add(plane);
+		triangles.Clear();
+		Test.Assert(PhysicsWorld.AppendBodyTriangles(scope BodyDesc[](ground), AABB(.(-5, -1, -5), .(5, 1, 5)), triangles) == 0);
+		Test.Assert(!triangles.IsEmpty);
+		for (int i = 0; i < triangles.Count; i += 3)
+			Test.Assert(NormalY(triangles, i) > 0.0f);
+		for (let p in triangles)
+			Test.Assert(Math.Abs(p.Y) < 0.001f);
+
+		// A cooked hull whose centre of mass is off its origin (a cube from nought to two): Jolt
+		// gives its triangles about that centre, and they come back where the hull is.
+		let hullBlob = scope List<uint8>();
+		Test.Assert(ShapeCooking.CookConvexHull(scope Float3[](.(0, 0, 0), .(2, 0, 0), .(0, 2, 0), .(0, 0, 2), .(2, 2, 0), .(2, 0, 2), .(0, 2, 2), .(2, 2, 2)), hullBlob));
+		let hull = scope BodyDesc();
+		hull.Motion = .Static;
+		var hullShape = ShapeDesc();
+		hullShape.Kind = .Cooked;
+		hullShape.Cooked = hullBlob;
+		hull.Shapes.Add(hullShape);
+		triangles.Clear();
+		Test.Assert(PhysicsWorld.AppendBodyTriangles(scope BodyDesc[](hull), everywhere, triangles) == 0);
+		Test.Assert(!triangles.IsEmpty);
+		var hullExtent = AABB.Empty();
+		for (let p in triangles)
+			hullExtent.Expand(p);
+		Test.Assert((Math.Abs(hullExtent.Min.X) < 0.05f) && (Math.Abs(hullExtent.Max.Y - 2.0f) < 0.05f), scope $"{hullExtent.Min} {hullExtent.Max}");
+
+		// Nothing of a body outside the box; a shape that does not build is counted.
+		let broken = scope BodyDesc();
+		broken.Position = .(3, 1, 0);
+		var flat = cube;
+		flat.HalfExtents = .(0, 1, 1);
+		broken.Shapes.Add(flat);
+		triangles.Clear();
+		Test.Assert(PhysicsWorld.AppendBodyTriangles(scope BodyDesc[](cubeBody, broken), AABB(.(-5, -1, 25), .(5, 1, 35)), triangles) == 1);
+		Test.Assert(triangles.IsEmpty);
+	}
 }

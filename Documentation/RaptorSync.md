@@ -70,7 +70,7 @@ Raptor's (the last group).
 18. ~~904aa179~~ (done) Editor.Navigation: a zone bakes within its box. Before 21: once wide static
     ground feeds the bake, the bound keeps the grid small.
 19. ~~7307ed3b~~ (done) Scene: `IStaticGeometrySource`, systems that own static level geometry say so.
-20. 9e9a21d5 Physics: `AppendBodyTriangles`, bodies give their world triangles touching a box.
+20. ~~9e9a21d5~~ (done) Physics: `AppendBodyTriangles`, bodies give their world triangles touching a box.
 21. 0bbc1e88 Engine.Physics: static, solid bodies are the scene's static geometry (one
     `DescribeBody` shared with body creation; works in edit mode with no world).
 22. 7948ddd8 Engine.Terrain: a terrain's surface is static geometry (the triangulation moves out

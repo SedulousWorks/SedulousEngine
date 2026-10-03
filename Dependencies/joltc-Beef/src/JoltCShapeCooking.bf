@@ -48,4 +48,10 @@ static
 	/// A shape's triangles as float triples: three vertices, nine floats, per triangle. Null
 	/// when the shape has no triangles to give.
 	[CLink] public static extern jcb_blob* jcb_shape_triangles(JPH_Shape* shape);
+
+	/// The world space triangles of a shape placed as a body places it (`position` the body's
+	/// origin) that touch the box, as float triples; a compound gives its leaves'. A triangle
+	/// reaching past the box comes whole. Null when none touches it.
+	[CLink] public static extern jcb_blob* jcb_shape_world_triangles(JPH_Shape* shape, JPH_Vec3* position,
+		JPH_Quat* rotation, JPH_Vec3* boxMin, JPH_Vec3* boxMax);
 }

@@ -51,6 +51,15 @@ JPH_CAPI JPH_Shape* jcb_shape_restore(const void* data, size_t size);
    when the shape has no triangles to give. */
 JPH_CAPI jcb_blob* jcb_shape_triangles(const JPH_Shape* shape);
 
+/* The world-space triangles of a shape placed as a body places it (`position` is the body's
+   origin, `rotation` its rotation) that touch the box [boxMin, boxMax], as float triples:
+   nine floats per triangle, counter-clockwise seen from outside. A compound gives its leaves'
+   triangles. A triangle reaching past the box comes whole; one wholly outside it is left out.
+   NULL when no triangle touches the box. */
+JPH_CAPI jcb_blob* jcb_shape_world_triangles(const JPH_Shape* shape, const JPH_Vec3* position,
+                                             const JPH_Quat* rotation, const JPH_Vec3* boxMin,
+                                             const JPH_Vec3* boxMax);
+
 #ifdef __cplusplus
 }
 #endif

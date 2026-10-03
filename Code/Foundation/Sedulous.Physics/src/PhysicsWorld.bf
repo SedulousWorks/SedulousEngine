@@ -215,7 +215,7 @@ class PhysicsWorld
 	/// does not exist rather than one that exists and collides with nothing.
 	///
 	/// THE CALLER OWNS what comes back.
-	private JPH_Shape* BuildOne(ShapeDesc desc, float density)
+	private static JPH_Shape* BuildOne(ShapeDesc desc, float density)
 	{
 		JPH_Shape* shape = null;
 		switch (desc.Kind)
@@ -270,7 +270,7 @@ class PhysicsWorld
 	/// scaling by the spacing between samples. The count is passed through UNPADDED: the
 	/// backend rounds it up to its own block size and fills the padding with no collision
 	/// values, and hand padding it would move the footprint.
-	private JPH_Shape* BuildHeightfield(ShapeDesc desc)
+	private static JPH_Shape* BuildHeightfield(ShapeDesc desc)
 	{
 		let n = desc.HeightSampleCount;
 		if ((n < 2) || (desc.HeightSamples.Length < (int)n * (int)n))
@@ -307,7 +307,7 @@ class PhysicsWorld
 	/// upright.
 	///
 	/// THE CALLER OWNS what comes back.
-	private JPH_Shape* BuildShape(BodyDesc desc)
+	private static JPH_Shape* BuildShape(BodyDesc desc)
 	{
 		if (desc.Shapes.IsEmpty)
 			return null;
