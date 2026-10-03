@@ -24,6 +24,8 @@ class RenderGraph
 	private List<int32> mFreeResourceSlots = new .() ~ delete _;
 	private List<RenderGraphPass> mPasses = new .() ~ delete _;
 	private List<int32> mExecutionOrder = new .() ~ delete _;
+	/// Per resource: the execution position it takes its final state after, or -1.
+	private List<int32> mFinalAfter = new .() ~ delete _;
 	private bool mIsCompiled = false;
 
 	private BarrierSolver mBarrierSolver = new .() ~ delete _;
@@ -221,10 +223,28 @@ class RenderGraph
 			mPassCpu.Clear();
 		}
 
-		var profiledPassCount = (int32)0;
-		for (let passIndex in mExecutionOrder)
+		// Where each imported texture with a final state is used for the last time, as a
+		// position in the execution order: it takes its final state right after that pass.
+		mFinalAfter.Clear();
+		mFinalAfter.Resize(mResources.Count);
+		for (int i < mFinalAfter.Count)
+			mFinalAfter[i] = -1;
+		for (int position < mExecutionOrder.Count)
 		{
-			let pass = mPasses[passIndex];
+			let pass = mPasses[mExecutionOrder[position]];
+			if (pass.IsCulled)
+				continue;
+			for (let access in pass.Accesses)
+			{
+				if (access.Handle.IsValid && (access.Handle.Index < (uint32)mFinalAfter.Count))
+					mFinalAfter[(int)access.Handle.Index] = (int32)position;
+			}
+		}
+
+		var profiledPassCount = (int32)0;
+		for (int position < mExecutionOrder.Count)
+		{
+			let pass = mPasses[mExecutionOrder[position]];
 			if (pass.IsCulled)
 				continue;
 			if ((pass.Condition != null) && !pass.Condition())
@@ -245,6 +265,15 @@ class RenderGraph
 			}
 
 			mBarrierSolver.EmitReadableAfterWriteBarriers(pass, ResourceSpan(), encoder);
+			for (let access in pass.Accesses)
+			{
+				if (access.Handle.IsValid && (access.Handle.Index < (uint32)mFinalAfter.Count)
+					&& (mFinalAfter[(int)access.Handle.Index] == (int32)position))
+				{
+					mBarrierSolver.EmitFinalTransition((int32)access.Handle.Index, ResourceSpan(), encoder);
+					mFinalAfter[(int)access.Handle.Index] = -1; // once, however many accesses
+				}
+			}
 			if (profiling)
 			{
 				mGpuProfiler.EndPass(encoder, profiledPassCount);

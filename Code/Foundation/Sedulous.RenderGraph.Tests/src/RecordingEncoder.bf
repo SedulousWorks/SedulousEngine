@@ -14,6 +14,12 @@ class RecordingEncoder : ICommandEncoder
 	public List<BufferBarrier> BufferBarriers = new .() ~ delete _;
 	/// How many separate groups were flushed, which is how many pipeline stalls there are.
 	public int GroupCount = 0;
+	/// When set, render passes begin on this encoder, so a whole graph can execute through.
+	/// BORROWED.
+	public ICommandEncoder Inner = null;
+	/// When set, a render target moved to shader read is logged here as
+	/// "target->shader-read", beside whatever the passes log. BORROWED.
+	public List<String> Log = null;
 
 	public void Clear()
 	{
@@ -26,14 +32,18 @@ class RecordingEncoder : ICommandEncoder
 	{
 		GroupCount++;
 		for (let barrier in group.TextureBarriers)
+		{
 			TextureBarriers.Add(barrier);
+			if ((Log != null) && (barrier.OldState == .RenderTarget) && (barrier.NewState == .ShaderRead))
+				Log.Add(new .("target->shader-read"));
+		}
 		for (let barrier in group.BufferBarriers)
 			BufferBarriers.Add(barrier);
 	}
 
 	// ---- everything else is a stub: none of it is what these tests are about ----
 
-	public IRenderPassEncoder BeginRenderPass(RenderPassDesc desc) => null;
+	public IRenderPassEncoder BeginRenderPass(RenderPassDesc desc) => (Inner != null) ? Inner.BeginRenderPass(desc) : null;
 	public IComputePassEncoder BeginComputePass(StringView label) => null;
 	public IRenderBundleEncoder CreateRenderBundleEncoder(RenderBundleDesc desc) => null;
 

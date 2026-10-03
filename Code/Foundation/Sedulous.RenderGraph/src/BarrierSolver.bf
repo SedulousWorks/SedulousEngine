@@ -185,31 +185,40 @@ class BarrierSolver
 	}
 
 	/// Moves whatever asked for a final state into it, which is how an imported resource is
-	/// handed back to its owner in the state that owner expects.
+	/// handed back to its owner in the state that owner expects. Run at the end of the graph
+	/// for whatever EmitFinalTransition has not already moved (a no-op for those).
 	public void EmitFinalTransitions(Span<RenderGraphResource> resources, ICommandEncoder encoder)
 	{
 		mTextureBarriers.Clear();
 		mBufferBarriers.Clear();
-
 		for (int32 i = 0; i < (int32)resources.Length; i++)
-		{
-			let resource = resources[i];
-			if ((resource == null) || (resource.FinalState == null))
-				continue;
-
-			let finalState = resource.FinalState.Value;
-			if (resource.Texture == null)
-				continue;
-
-			if (!mTextureStates.TryGetValue(KeyOf(resource.Texture), let tracker))
-				continue;
-
-			EmitTextureBarriers(tracker, resource.Texture, .All, finalState, false);
-			tracker.SetAll(finalState);
-			mResourceStates[i] = finalState;
-		}
-
+			QueueFinalTransition(i, resources[i]);
 		FlushBarriers(encoder);
+	}
+
+	/// Moves one imported resource into its final state now, right after its last pass: a
+	/// later view of the same frame may sample it without declaring it (a render texture a
+	/// camera drew, shown by a sprite or a UI image in the next view).
+	public void EmitFinalTransition(int32 index, Span<RenderGraphResource> resources, ICommandEncoder encoder)
+	{
+		if ((index < 0) || (index >= (int32)resources.Length))
+			return;
+		mTextureBarriers.Clear();
+		mBufferBarriers.Clear();
+		QueueFinalTransition(index, resources[index]);
+		FlushBarriers(encoder);
+	}
+
+	private void QueueFinalTransition(int32 index, RenderGraphResource resource)
+	{
+		if ((resource == null) || (resource.FinalState == null) || (resource.Texture == null))
+			return;
+		if (!mTextureStates.TryGetValue(KeyOf(resource.Texture), let tracker))
+			return;
+		let finalState = resource.FinalState.Value;
+		EmitTextureBarriers(tracker, resource.Texture, .All, finalState, false);
+		tracker.SetAll(finalState);
+		mResourceStates[index] = finalState;
 	}
 
 	/// Writes what was tracked back onto the resources, so the next frame resumes rather than

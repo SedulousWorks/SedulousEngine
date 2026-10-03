@@ -351,4 +351,50 @@ class RGExecutionTests
 		harness.Device.DestroyTextureView(ref hitView);
 		harness.Device.DestroyTexture(ref hitTexture);
 	}
+
+	/// A camera's render texture: written by one view, then sampled later in the same frame by
+	/// a pass that does not declare it (a sprite, a UI image). It must be shader readable by
+	/// then, not only at the end of the graph, where its final state used to be applied.
+	[Test]
+	public static void AnImportedTargetTakesItsFinalStateRightAfterItsLastPass()
+	{
+		let harness = scope Harness();
+		var desc = TextureDesc.RenderTarget(.RGBA8Unorm, 32, 32);
+		desc.Label = "RGExecutionTests.Minimap";
+		var target = harness.Device.CreateTexture(desc).Value;
+		defer harness.Device.DestroyTexture(ref target);
+		var targetView = harness.Device.CreateTextureView(target, .() { Label = "RGExecutionTests.Minimap" }).Value;
+		defer harness.Device.DestroyTextureView(ref targetView);
+
+		let log = scope List<String>();
+		defer ClearAndDeleteItems(log);
+		let encoder = scope RecordingEncoder();
+		encoder.Inner = harness.Encoder;
+		encoder.Log = log;
+
+		let graph = scope RenderGraph(harness.Device);
+		graph.SetOutputSize(64, 64);
+		graph.BeginFrame(0);
+		let minimap = graph.ImportTarget("Minimap", target, targetView, ResourceState.ShaderRead, ResourceState.ShaderRead);
+		let backbuffer = graph.ImportTarget("Backbuffer", harness.Backbuffer, harness.BackbufferView, ResourceState.Present);
+		graph.AddRenderPass("DrawMinimap", scope (builder) =>
+			{
+				builder.SetColorTarget(0, minimap, .Clear, .Store);
+				builder.NeverCull();
+				builder.SetExecute(new [=log] (pass) => { log.Add(new .("draw minimap")); });
+			});
+		graph.AddRenderPass("DrawWorld", scope (builder) =>
+			{
+				builder.SetColorTarget(0, backbuffer, .Clear, .Store);
+				builder.NeverCull();
+				builder.SetExecute(new [=log] (pass) => { log.Add(new .("draw world")); });
+			});
+		Test.Assert(graph.Execute(encoder) case .Ok);
+		graph.EndFrame();
+
+		Test.Assert(log.Count == 3, scope $"{log.Count} entries");
+		Test.Assert(log[0] == "draw minimap");
+		Test.Assert(log[1] == "target->shader-read", "before the next view samples it");
+		Test.Assert(log[2] == "draw world");
+	}
 }

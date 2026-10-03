@@ -82,7 +82,7 @@ Raptor's (the last group).
 
 ## Group 4: orthographic cameras and render textures
 
-25. eb546ef1 RenderGraph: an imported target takes its final state right after its last pass.
+25. ~~eb546ef1~~ (done) RenderGraph: an imported target takes its final state right after its last pass.
 26. cfe503d5 Render: an orthographic view clusters its lights and skips the perspective-only
     passes (AO, SSR, SSGI, TAA); `Float4x4.IsOrthographic`.
 27. 06265006 Engine.Render: a camera can be orthographic (`CameraProjection`, `OrthoHeight`;
