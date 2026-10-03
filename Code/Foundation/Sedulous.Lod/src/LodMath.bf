@@ -30,7 +30,7 @@ static class LodMath
 		let proj11 = projection.M[1][1];
 
 		float coverage;
-		if (projection.M[3][3] != 0.0f)
+		if (projection.IsOrthographic)
 		{
 			// Orthographic: screen size does not change with distance.
 			coverage = worldRadius * proj11;

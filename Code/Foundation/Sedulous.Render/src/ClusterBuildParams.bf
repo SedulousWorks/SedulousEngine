@@ -22,8 +22,10 @@ struct ClusterBuildParams
 
 	public uint32 LightCount = 0;
 	public uint32 LightOffset = 0;
+	/// Non zero for an orthographic view: the kernel unprojects tile corners without the depth
+	/// scale, since an orthographic tile keeps its width.
+	public uint32 Orthographic = 0;
 	public float Pad0 = 0.0f;
-	public float Pad1 = 0.0f;
 
 	public Float4x4 ViewMatrix = .Identity();
 	public Float4x4 InverseProjection = .Identity();

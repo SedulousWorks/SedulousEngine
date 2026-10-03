@@ -7,7 +7,7 @@ static const uint MAX_PER_CLUSTER = 64;
 cbuffer ClusterBuildParams : register(b0) {
     uint  GridX; uint GridY; uint SliceCount; uint TileSize;
     float Near;  float Far;  float LogScale;  float LogBias;
-    uint  LightCount; uint LightOffset; float2 _pad;
+    uint  LightCount; uint LightOffset; uint Orthographic; float _pad;
     float4x4 ViewMatrix;
     float4x4 InvProjection;
 };
@@ -27,9 +27,11 @@ float2 ScreenToNDC(float2 s) {
     float h = (float)(GridY * TileSize);
     return float2(s.x / w * 2.0 - 1.0, s.y / h * 2.0 - 1.0);
 }
-// Unproject an NDC xy at positive view depth to view space (symmetric perspective; camera -Z).
+// Unproject an NDC xy at positive view depth to view space (symmetric projection; camera -Z).
+// A perspective tile widens with depth; an orthographic one keeps its width.
 float3 UnprojectToView(float2 ndc, float vd) {
-    return float3(ndc.x * vd * InvProjection[0][0], ndc.y * vd * InvProjection[1][1], -vd);
+    float scale = (Orthographic != 0) ? 1.0 : vd;
+    return float3(ndc.x * scale * InvProjection[0][0], ndc.y * scale * InvProjection[1][1], -vd);
 }
 bool SphereVsAABB(float3 c, float r, float3 mn, float3 mx) {
     float3 q = clamp(c, mn, mx);

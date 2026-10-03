@@ -68,6 +68,18 @@ static class ScenePost
 		return config;
 	}
 
+	/// The screen space passes rebuild view space positions from depth with perspective math
+	/// (AO, SSR, SSGI) or linearise depth as perspective (TAA's rejection), so an orthographic
+	/// view runs without them. What reads only the colour stays. Like ApplyOverride, the motion
+	/// requirement is the caller's to settle after.
+	public static void LimitForOrthographic(ref ViewPostConfig config)
+	{
+		config.AoMode = (uint32)AoMode.Off;
+		config.SsrEnabled = false;
+		config.SsgiEnabled = false;
+		config.TaaEnabled = false;
+	}
+
 	/// Applies an editor viewport's EPHEMERAL show flags, which strip effects for editing
 	/// clarity and are never written back to the scene.
 	///

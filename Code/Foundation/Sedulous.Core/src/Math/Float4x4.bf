@@ -56,6 +56,10 @@ struct Float4x4
 		}
 	}
 
+	/// Whether this is an orthographic projection: one keeps w at one (its last column is
+	/// 0, 0, 0, 1), where a perspective one moves view depth into w and leaves M[3][3] nought.
+	public bool IsOrthographic => M[3][3] != 0.0f;
+
 	[Scriptable]
 	public static Float4x4 Identity() => .(
 		1.0f, 0.0f, 0.0f, 0.0f,

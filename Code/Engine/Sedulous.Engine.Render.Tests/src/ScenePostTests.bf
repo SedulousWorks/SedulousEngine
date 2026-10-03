@@ -209,4 +209,21 @@ class ScenePostTests
 		Test.Assert(config.SsrEnabled);
 		Test.Assert(config.TaaEnabled);
 	}
+
+	/// An orthographic view drops the passes that assume a perspective depth; what reads only
+	/// the colour stays.
+	[Test]
+	public static void AnOrthographicViewDropsThePassesThatAssumeAPerspectiveDepth()
+	{
+		var config = Base();
+		config.FxaaEnabled = true;
+		ScenePost.LimitForOrthographic(ref config);
+		Test.Assert(config.AoMode == 0);
+		Test.Assert(!config.SsrEnabled);
+		Test.Assert(!config.SsgiEnabled);
+		Test.Assert(!config.TaaEnabled);
+		Test.Assert(config.BloomEnabled);
+		Test.Assert(config.FxaaEnabled);
+		Test.Assert(config.AutoExposure);
+	}
 }

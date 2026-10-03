@@ -213,4 +213,11 @@ class Float4x4Tests
 		// A singular matrix returns Identity rather than dividing by zero.
 		Test.Assert(NearlyEqual(Inverse(Float4x4.Scale(Float3.Zero)), Float4x4.Identity()));
 	}
+
+	[Test]
+	public static void IsOrthographicTellsAnOrthographicProjectionFromAPerspectiveOne()
+	{
+		Test.Assert(Float4x4.OrthographicRH(40.0f, 22.5f, 0.1f, 100.0f).IsOrthographic);
+		Test.Assert(!Float4x4.PerspectiveFovRH(1.0f, 16.0f / 9.0f, 0.1f, 100.0f).IsOrthographic);
+	}
 }

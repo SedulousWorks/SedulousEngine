@@ -222,6 +222,7 @@ class ClusterSystem
 		parameters.LogBias = logBias;
 		parameters.LightCount = lightCount;
 		parameters.LightOffset = lightOffset;
+		parameters.Orthographic = view.Camera.Projection.IsOrthographic ? 1 : 0;
 		parameters.ViewMatrix = view.Camera.View;
 		parameters.InverseProjection = Inverse(view.Camera.Projection);
 		*(ClusterBuildParams*)paramsRange.Ptr = parameters;
