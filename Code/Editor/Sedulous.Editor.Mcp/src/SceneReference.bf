@@ -283,28 +283,45 @@ class SceneReference
 				return null;
 			let json = JsonValue.MakeObject();
 			json.Set("resource", Text(target.GetName(.. scope .())));
-			Type cooked = null;
+			// A factory that reads several cooked forms (a texture's, a render texture's) gives
+			// several asset types: `asset` is the first, and `assets` lists them all when there
+			// is more than one.
+			let cookedForms = scope List<Type>();
 			for (let desc in mDescriptions)
 			{
 				if (desc.Product == target)
 				{
-					cooked = desc.Cooked;
+					desc.ForEachCooked(scope (cooked) => cookedForms.Add(cooked));
 					break;
 				}
 			}
-			Type asset = null;
-			if ((cooked != null) && (mBuilders != null))
+			let assets = scope List<Type>();
+			for (let cooked in cookedForms)
 			{
+				if ((cooked == null) || (mBuilders == null))
+					continue;
+				Type asset = null;
 				mBuilders.ForEach(scope [&](builder) =>
 					{
 						if ((asset == null) && (builder.ProductType == cooked))
 							asset = builder.AssetType;
 					});
+				if (asset != null)
+					assets.Add(asset);
 			}
-			if (asset != null)
-				json.Set("asset", Text(asset.GetName(.. scope .())));
-			else
+			if (assets.IsEmpty)
+			{
 				resolved = false;
+				return json;
+			}
+			json.Set("asset", Text(assets[0].GetName(.. scope .())));
+			if (assets.Count > 1)
+			{
+				let list = JsonValue.MakeArray();
+				for (let asset in assets)
+					list.Add(Text(asset.GetName(.. scope .())));
+				json.Set("assets", list);
+			}
 			return json;
 		}
 	}

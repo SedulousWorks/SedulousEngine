@@ -52,6 +52,10 @@ struct ResourceFactoryDesc
 	public Type Product;
 	/// The serialised cooked form it reads (IResourceFactory.CookedType).
 	public Type Cooked;
+	/// The further cooked forms the factory reads beside Cooked (a render texture's record
+	/// beside a texture's): each is another asset type the product is made from. Empty for
+	/// most. BORROWED: a static array of the declaring module.
+	public Span<Type> AlsoCooked = default;
 	/// The service it needs, or null.
 	public Type Service;
 	/// Makes the factory; null when the service it needs is absent. OWNERSHIP goes to the caller.
@@ -63,6 +67,14 @@ struct ResourceFactoryDesc
 		Cooked = cooked;
 		Service = service;
 		Create = create;
+	}
+
+	/// Cooked, then every AlsoCooked form.
+	public void ForEachCooked(delegate void(Type cooked) visit)
+	{
+		visit(Cooked);
+		for (let type in AlsoCooked)
+			visit(type);
 	}
 
 	/// A description for a factory constructed with nothing.

@@ -19,11 +19,21 @@ static class TextureResources
 	/// initialisation order matters. The factories belong here, with the resources they
 	/// produce, not with an engine subsystem and not with an executable.
 	public static ResourceModule Module => sModule ?? (sModule = new .("texture", () => RegisterAll(), new .(
-		.(typeof(Texture), typeof(TextureResource), typeof(IDevice), (services) =>
+		TextureDescription())));
+
+	/// What the texture factory reads beside a TextureResource: a render texture's record.
+	private static Type[1] sAlsoCooked = .(typeof(RenderTextureResource));
+
+	private static ResourceFactoryDesc TextureDescription()
+	{
+		var desc = ResourceFactoryDesc(typeof(Texture), typeof(TextureResource), typeof(IDevice), (services) =>
 			{
 				let device = services.Service(typeof(IDevice)) as IDevice;
 				return (device != null) ? new TextureFactory(device) : null;
-			}))));
+			});
+		desc.AlsoCooked = sAlsoCooked;
+		return desc;
+	}
 	private static ResourceModule sModule ~ delete _;
 
 	/// The manager does not take ownership, so the caller keeps the factory alive for as

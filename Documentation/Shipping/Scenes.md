@@ -26,7 +26,9 @@ registrations, so it can never describe a different build:
   every component (`components`, by wire name) and settings block (`settings`, by system id)
   with its fields in wire order, and the script override encoding (`scriptOverrides`). A key
   with no reflected field of its own is listed under `unreflected`; a reference field's `ref`
-  says what its guid names (`entity`, or a resource and the asset type to author).
+  says what its guid names (`entity`, or a resource and the asset type to author; when more
+  than one asset type makes that resource, a texture's or a render texture's, `assets` lists
+  them all and `asset` is the first).
 - `component_schema`: one entry of that schema by wire name, type name or system id, for
   when you need one component and not the whole file.
 

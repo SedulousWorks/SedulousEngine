@@ -115,6 +115,13 @@ types; the first fault is in `Eq(Vector4, Float4)` at `SimdMathTests.bf:25`). No
 slot fix: a BeefBuild from upstream `master` without it fails the same five. Upstream's
 `80bfb99c SIMD fixes` is the suspect. A Beef bug for a fix branch, with a reproducing test.
 
+### Sprite and decal textures have no `ref` in the scene schema
+`SpriteComponent.TextureAsset` and `DecalComponent.TextureAsset` are written under the key
+`texture`, so the scene format reference matches no reflected field to that key and gives it no
+`ref`: `component_schema` does not say the guid names a Texture (TextureAsset or
+RenderTextureAsset). The key and the field name need to agree, or the reference a way to map
+them.
+
 ## Documentation and content
 
 - Port Raptor's documentation (`Documentation/Systems`, `Guides`, `GETTING-STARTED.md`) doc by

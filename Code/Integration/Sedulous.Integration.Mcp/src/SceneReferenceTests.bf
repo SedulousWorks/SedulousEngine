@@ -82,6 +82,19 @@ static class SceneReferenceTests
 		Test.Assert(meshField.Get("ref").Get("asset").AsString() == "StaticMeshAsset");
 		Test.Assert(!HasString(mesh.Get("unreflected"), "mesh"));
 
+		// postprocess.gradingLut: Ref<Texture>, whose factory reads a texture's record and a
+		// render texture's, so both asset types are named; `asset` stays the first.
+		let post = SceneReference.FindEntry(reference.Schema, "postprocess");
+		Test.Assert(post != null);
+		let textureRef = Field(post.Get("fields"), "gradingLut").Get("ref");
+		Test.Assert(textureRef != null);
+		Test.Assert(textureRef.Get("asset").AsString() == "TextureAsset");
+		let assets = textureRef.Get("assets");
+		Test.Assert((assets != null) && (assets.Count == 2));
+		Test.Assert(HasString(assets, "TextureAsset") && HasString(assets, "RenderTextureAsset"));
+		// A reference with one asset type names no list.
+		Test.Assert(meshField.Get("ref").Get("assets") == null);
+
 		// Entity references are ref: entity: a single one a guid field, a list of them an array
 		// annotated through its element type (the animation mesh targets).
 		bool sawEntityRef = false;
