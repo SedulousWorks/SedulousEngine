@@ -59,6 +59,11 @@ on the fork's `working` branch that is not merged upstream yet. Waiting on the u
 Both sit at fa11f9ab, behind `master`, which is the default branch again. Bring them along with
 `master`, or retire them.
 
+## The Raptor sync
+
+The sync from Raptor 122035b2 to 0b60c738, and the PaperKid rebuild after it, are mapped and
+ordered in [RaptorSync.md](RaptorSync.md).
+
 ## Engine findings
 
 ### Script references are invisible to `asset_uses` and `asset_delete`
