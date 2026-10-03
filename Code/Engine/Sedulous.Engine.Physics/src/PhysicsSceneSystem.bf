@@ -488,89 +488,14 @@ class PhysicsSceneSystem : SceneSystem
 	/// where the entity is NOW and with no velocity.
 	private void CreateBodyForEntity(RigidBodyComponent* component, EntityHandle entity)
 	{
-		if (!Decompose(mScene.GetWorldMatrix(entity), let position, let rotation,
-			let scale))
-			return;
-
-		let desc = scope BodyDesc();
-		desc.Motion = component.Motion;
-		desc.Layer = component.Layer;
-		desc.Friction = component.Friction;
-		desc.Restitution = component.Restitution;
-		desc.LinearDamping = component.LinearDamping;
-		desc.AngularDamping = component.AngularDamping;
-		desc.IsTrigger = component.IsTrigger;
-		desc.ContinuousCollision = component.ContinuousCollision;
-		desc.MassOverride = component.Mass;
-		desc.Group = component.CollisionGroup;
-		// The reverse map, so a contact can name the entity again.
-		desc.UserData = PhysicsEntityPacking.PackEntity(entity);
-		desc.Position = position;
-		desc.Rotation = rotation;
-
 		// The sample buffers live until the body is created, which is where the backend
 		// copies them.
 		ClearAndDeleteItems!(mHeightBuffers);
-
-		var own = ShapeDesc();
-		own.Kind = component.Shape;
-		own.HalfExtents = component.HalfExtents;
-		own.Radius = component.Radius;
-		own.HalfHeight = component.HalfHeight;
-		own.PlaneHalfExtent = component.PlaneHalfExtent;
-
-		if (component.Shape == .Cooked)
-		{
-			let cooked = component.CollisionShape.Get;
-			if (cooked == null)
-			{
-				GlobalLog(.Warning,
-					"Physics: '{}' has a cooked shape but no collision shape resource, so the body was skipped",
-					mScene.GetEntityName(entity));
-				return;
-			}
-			own.Cooked = cooked.Blob;
-			// Cooked geometry is authored at unit scale, so the entity's scale applies here.
-			own.Scale = scale;
-		}
-		else if (component.Shape == .Heightfield)
-		{
-			if (!FillHeightfield(ref own, component.Heightfield))
-			{
-				GlobalLog(.Warning,
-					"Physics: '{}' has a heightfield shape but no heightfield resource, so the body was skipped",
-					mScene.GetEntityName(entity));
-				return;
-			}
-		}
-
-		// A shape that can only be static, the backend's MustBeStatic: a plane, a heightfield,
-		// a cooked triangle mesh. Under a moving body the world makes it static rather than
-		// tripping the backend's mass assert, by the backend's own rule; named HERE, where the
-		// entity is known, so the author can find the component.
-		let staticOnly = (component.Shape == .Plane) || (component.Shape == .Heightfield)
-			|| ((component.Shape == .Cooked) && (component.CollisionShape.Get != null)
-				&& !component.CollisionShape.Get.Convex);
-		if ((component.Motion != .Static) && staticOnly)
-		{
-			GlobalLog(.Error,
-				"Physics: '{}': a {} body cannot use a {} shape, which is static only, having no mass and no mesh against mesh collision; simulated as static",
-				mScene.GetEntityName(entity),
-				(component.Motion == .Kinematic) ? "kinematic" : "dynamic",
-				(component.Shape == .Plane) ? "plane"
-					: (component.Shape == .Heightfield) ? "heightfield" : "triangle mesh");
-		}
-
-		desc.Shapes.Add(own);
-		AddDescendantColliders(desc, entity);
-
-		// A referenced SURFACE wins over the inline fields.
-		if (let material = component.Material.Get)
-		{
-			desc.Friction = material.Friction;
-			desc.Restitution = material.Restitution;
-			desc.Density = material.Density;
-		}
+		let desc = scope BodyDesc();
+		if (!PhysicsBodies.Describe(mScene, component, entity, desc, mHeightBuffers))
+			return;
+		let position = desc.Position;
+		let rotation = desc.Rotation;
 
 		component.Body = mWorld.CreateBody(desc);
 		component.PrevPosition = position;
@@ -593,80 +518,6 @@ class PhysicsSceneSystem : SceneSystem
 			mWorld.AddImpulse(component.Body, component.PendingImpulse);
 			component.PendingImpulse = .(0, 0, 0);
 		}
-	}
-
-	/// The hierarchy's extra shapes fold into the body's compound at their offset relative to
-	/// the body's entity, captured NOW.
-	private void AddDescendantColliders(BodyDesc desc, EntityHandle entity)
-	{
-		let colliders = mScene.GetSystem<ColliderComponentManager>();
-		if (colliders == null)
-			return;
-
-		let bodyInverse = Inverse(mScene.GetWorldMatrix(entity));
-		colliders.ForEach(scope [&] (extra, child) =>
-			{
-				if (!IsDescendantOf(child, entity))
-					return;
-
-				if (!Decompose(mScene.GetWorldMatrix(child) * bodyInverse,
-					let localPosition, let localRotation, let localScale))
-					return;
-
-				var shape = ShapeDesc();
-				shape.Kind = extra.Shape;
-				shape.HalfExtents = extra.HalfExtents;
-				shape.Radius = extra.Radius;
-				shape.HalfHeight = extra.HalfHeight;
-				shape.PlaneHalfExtent = extra.PlaneHalfExtent;
-
-				if (extra.Shape == .Cooked)
-				{
-					let cooked = extra.CollisionShape.Get;
-					if (cooked == null)
-						return;
-					shape.Cooked = cooked.Blob;
-					shape.Scale = localScale;
-				}
-				else if (extra.Shape == .Heightfield)
-				{
-					if (!FillHeightfield(ref shape, extra.Heightfield))
-						return;
-				}
-
-				shape.LocalPosition = localPosition;
-				shape.LocalRotation = localRotation;
-				desc.Shapes.Add(shape);
-			});
-	}
-
-	/// Converts a heightfield's stored samples into the world heights the backend wants, into
-	/// a buffer that outlives the description.
-	private bool FillHeightfield(ref ShapeDesc shape, Ref<Heightfield> reference)
-	{
-		let heightfield = reference.Get;
-		if ((heightfield == null) || heightfield.IsEmpty)
-			return false;
-
-		let buffer = new List<float>();
-		mHeightBuffers.Add(buffer);
-
-		let samples = heightfield.Samples;
-		// A CUT sample has no surface: the no collision height takes every triangle that
-		// touches it out of the body, which is the same rule the renderer's indices follow.
-		let holes = heightfield.Holes;
-		buffer.Resize(samples.Length);
-		for (int i < samples.Length)
-		{
-			buffer[i] = ((i < holes.Length) && (holes[i] != 0))
-				? ShapeDesc.NoCollisionHeight
-				: heightfield.SampleToWorldY((float)samples[i]);
-		}
-
-		shape.HeightSamples = .(buffer.Ptr, buffer.Count);
-		shape.HeightSampleCount = (uint32)heightfield.Size;
-		shape.HeightWorldSize = heightfield.WorldSize;
-		return true;
 	}
 
 	private void BuildCharacters()
@@ -981,17 +832,5 @@ class PhysicsSceneSystem : SceneSystem
 					listener.OnContact(contact);
 			}
 		}
-	}
-
-	private bool IsDescendantOf(EntityHandle child, EntityHandle ancestor)
-	{
-		var current = child;
-		while (current.IsAssigned)
-		{
-			if (current == ancestor)
-				return true;
-			current = mScene.GetParent(current);
-		}
-		return false;
 	}
 }

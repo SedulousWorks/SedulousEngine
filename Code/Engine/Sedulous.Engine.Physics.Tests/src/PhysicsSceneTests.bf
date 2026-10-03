@@ -208,4 +208,56 @@ class PhysicsSceneTests
 			}
 		}
 	}
+
+	/// The navigation bake reads level geometry from the scene's static geometry sources.
+	/// Physics' is its static, solid bodies (a compound with its child colliders), read in edit
+	/// mode with no world: what moves (dynamic, kinematic), what lets things through (a
+	/// trigger) and what has no body (an inactive entity) give nothing.
+	[Test]
+	public static void StaticGeometryIsTheStaticSolidBodiesCompoundsIncluded()
+	{
+		let play = scope PhysicsPlayScene();
+		play.AddFloor(); // its top at y nought
+		let scene = play.Scene;
+		let solid = play.AddBox(0.5f, .Static);
+		scene.SetLocalPosition(solid, .(10.0f, 0.5f, 0.0f));
+		let arm = scene.CreateEntity("arm");
+		scene.SetParent(arm, solid);
+		scene.SetLocalPosition(arm, .(2.0f, 0.0f, 0.0f));
+		play.Colliders.Add(arm).HalfExtents = .(0.5f, 0.5f, 0.5f);
+		scene.SetLocalPosition(play.AddBox(0.5f, .Dynamic), .(-10.0f, 0.5f, 0.0f));
+		scene.SetLocalPosition(play.AddBox(0.5f, .Kinematic), .(-20.0f, 0.5f, 0.0f));
+		let trigger = play.AddBox(0.5f, .Static);
+		scene.SetLocalPosition(trigger, .(20.0f, 0.5f, 0.0f));
+		play.Bodies.Get(trigger).IsTrigger = true;
+		let off = play.AddBox(0.5f, .Static);
+		scene.SetLocalPosition(off, .(30.0f, 0.5f, 0.0f));
+		scene.SetActive(off, false);
+		scene.UpdateTransforms(); // edit mode: no start, no world
+
+		let source = play.Bodies.AsStaticGeometrySource;
+		Test.Assert(source != null);
+		Test.Assert(play.Colliders.AsStaticGeometrySource == null);
+		let triangles = scope List<Float3>();
+		let region = AABB(.(-40, -5, -40), .(40, 5, 40));
+		source.CollectStaticGeometry(scene, region, 0.3f, triangles);
+		Test.Assert(!triangles.IsEmpty, "no static geometry");
+		Test.Assert((triangles.Count % 3) == 0);
+		int floor = 0;
+		int raised = 0;
+		for (int i = 0; i < triangles.Count; i += 3)
+		{
+			let centre = (triangles[i] + triangles[i + 1] + triangles[i + 2]) * (1.0f / 3.0f);
+			if (centre.Y < 0.01f)
+			{
+				floor++; // the floor's faces, and the bottoms of the boxes standing on it
+				continue;
+			}
+			raised++;
+			// Only the compound: its body at ten and its arm at twelve.
+			Test.Assert((centre.X > 9.4f) && (centre.X < 12.6f), scope $"{centre}");
+		}
+		Test.Assert(floor > 0, scope $"{floor} floor, {raised} raised");
+		Test.Assert(raised == 20, scope $"{raised}"); // two boxes' tops and sides
+	}
 }
