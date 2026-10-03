@@ -52,8 +52,10 @@ the project's sheet over `GameTheme` would make overrides easy but changes what 
 resolve to.
 
 ### The Beef requirement wording
-The README and `AGENTS.md` say upstream Beef is sufficient; the engine actually needs a patch
-on the fork's `working` branch that is not merged upstream yet. Waiting on the upstream merge.
+The README and `AGENTS.md` say upstream Beef is sufficient. The engine needs the fork's
+`working` branch again: `fix/interface-slots-past-incomplete-base` (a type's interfaces were
+slotted over `IHashable` when a base further up was mid rebuild; `PhysicsWorld` static geometry
+depends on it) is pushed and awaiting its upstream PR. Reword once it merges, or say so now.
 
 ### `vnext` and `polish`
 Both sit at fa11f9ab, behind `master`, which is the default branch again. Bring them along with
