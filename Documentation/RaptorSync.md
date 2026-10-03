@@ -10,7 +10,7 @@ Raptor's (the last group).
 
 ## Group 1: fixes, small and independent
 
-1. 61ddc952 Physics: Jolt's bring-up takes a lock. `JoltRuntime.Acquire` increments a counter
+1. ~~61ddc952~~ (done) Physics: Jolt's bring-up takes a lock. `JoltRuntime.Acquire` increments a counter
    and calls `JPH_Init` outside any lock, so a second cook on a worker goes on while the first
    is still initialising. Static Monitor around a plain counter; the eight-thread cooking test.
 2. Take-back (fd631023): thumbnails average in linear light, then encode RGB (`ThumbnailStage

@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
 using Sedulous.Physics;
 using static Sedulous.Physics.Tests.PhysicsFixture;
@@ -159,5 +160,40 @@ class PhysicsCookedShapeTests
 
 		Test.Assert(world.RayCast(.(-300.0f, 2.0f, 40.0f), .(0.0f, -1.0f, 0.0f), 5.0f, let hit));
 		Test.Assert(Near(hit.Normal.Y, 1.0f, 0.01f));
+	}
+
+	/// The backend's process wide bring up is shared by every world and every cook. The cook
+	/// driver cooks collision shapes on parallel job workers with no world alive: each cook
+	/// acquires the backend, and none may use it before the first has finished bringing it up.
+	[Test]
+	public static void TriangleMeshesCookInParallelWithNoWorldKeepingTheBackendUp()
+	{
+		Float3[4] positions = .(.(-2, 0, -2), .(-2, 0, 2), .(2, 0, 2), .(2, 0, -2));
+		uint32[6] indices = .(0, 1, 3, 1, 2, 3);
+		int cooked = 0;
+		bool go = false;
+
+		let threads = scope List<Thread>();
+		defer { for (let thread in threads) delete thread; }
+		for (int t < 8)
+		{
+			let thread = new Thread(new [&]() =>
+				{
+					while (!Volatile.Read(ref go)) {} // all at once: the bring up is where they collide
+					for (int i < 25)
+					{
+						let blob = scope List<uint8>();
+						if (ShapeCooking.CookTriangleMesh(positions, indices, .(), blob) && !blob.IsEmpty)
+							Interlocked.Increment(ref cooked);
+					}
+				});
+			thread.Start(false);
+			threads.Add(thread);
+		}
+		Volatile.Write(ref go, true);
+		for (let thread in threads)
+			thread.Join();
+
+		Test.Assert(cooked == 8 * 25, scope $"{cooked} of {8 * 25} cooked");
 	}
 }

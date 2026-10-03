@@ -14,18 +14,28 @@ namespace Sedulous.Physics;
 /// is not simply the world's constructor.
 static class JoltRuntime
 {
+	/// Under a lock, not a bare counter: parallel cooks (the cook driver builds on job workers,
+	/// with no world alive) each acquire, and a second caller must not use the backend before
+	/// the first has finished bringing it up, nor a release tear it down under one acquiring.
+	private static Monitor sLock = new .() ~ delete _;
 	private static int sUsers = 0;
 
 	/// Brings the backend up if nothing else has. Paired with Release.
 	public static void Acquire()
 	{
-		if (Interlocked.Increment(ref sUsers) == 1)
-			JPH_Init();
+		using (sLock.Enter())
+		{
+			if (sUsers++ == 0)
+				JPH_Init();
+		}
 	}
 
 	public static void Release()
 	{
-		if (Interlocked.Decrement(ref sUsers) == 0)
-			JPH_Shutdown();
+		using (sLock.Enter())
+		{
+			if (--sUsers == 0)
+				JPH_Shutdown();
+		}
 	}
 }
