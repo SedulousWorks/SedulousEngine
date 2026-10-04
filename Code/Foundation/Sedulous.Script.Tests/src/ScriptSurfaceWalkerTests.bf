@@ -186,6 +186,8 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(component.ComponentTypeId == "fixture_widget");
 		Test.Assert(component.ManagerTypeName == scope $"{cFixture}.WidgetComponentManager", "found through ComponentManager<T>");
 		Test.Assert((Field(component, "Size") != null) && (Field(component, "RuntimeOnly") == null));
+		let settled = Field(component, "Settled");
+		Test.Assert((settled != null) && !settled.CanWrite, "an explicit [Scriptable] is on though [Hidden], read only by [ReadOnly]");
 
 		let manager = s.Find(scope $"{cFixture}.WidgetComponentManager");
 		Test.Assert((manager != null) && (manager.Role == .ComponentManager));

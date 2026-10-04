@@ -60,15 +60,21 @@ struct NavAgentComponent : ISerializable
 	/// A halt the tick has not applied yet.
 	[Hidden]
 	public bool StopRequested = false;
+	/// Whether the agent has arrived, or has nowhere to go: the tick's to set, a script's to
+	/// read.
 	[Scriptable]
 	[Hidden]
+	[ReadOnly]
 	public bool Finished = true;
 	[Scriptable]
 	[Hidden]
+	[ReadOnly]
 	public float RemainingDistance = 0.0f;
 	/// The crowd's steering output in WORLD space, which is what a reporting agent is read
-	/// for.
+	/// for: a script faces its entity along it.
+	[Scriptable]
 	[Hidden]
+	[ReadOnly]
 	public Float3 DesiredVelocity = .(0, 0, 0);
 
 	/// The steering profile last pushed into the crowd. The tick re-applies on ANY change, so

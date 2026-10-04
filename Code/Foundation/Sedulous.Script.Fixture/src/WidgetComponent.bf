@@ -15,6 +15,11 @@ struct WidgetComponent : ISerializable, IComponentResources
 	[Scriptable]
 	public Ref<Thing> Skin = .(Guid());
 	public int RuntimeOnly = 0;
+	/// Runtime state a script reads and an inspector does not show: [Hidden] is presentation.
+	[Scriptable]
+	[Hidden]
+	[ReadOnly]
+	public bool Settled = false;
 
 	public this() {}
 

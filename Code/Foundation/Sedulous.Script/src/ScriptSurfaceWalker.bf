@@ -640,9 +640,13 @@ static class ScriptSurfaceWalker
 		{
 			if (f.IsEnumCase || !f.IsPublic)
 				continue;
-			if (f.HasCustomAttribute<HiddenAttribute>())
+			// [Hidden] is a presentation rule: it keeps an all-public type's field off, while a
+			// field marked [Scriptable] itself is on (runtime state a script reads and an
+			// inspector does not show).
+			let marked = f.HasCustomAttribute<ScriptableAttribute>();
+			if (f.HasCustomAttribute<HiddenAttribute>() && !marked)
 				continue;
-			if (!allPublic && !f.HasCustomAttribute<ScriptableAttribute>())
+			if (!allPublic && !marked)
 				continue;
 
 			let typeName = f.FieldType.GetFullName(.. scope .());

@@ -63,6 +63,15 @@ static class EngineSurfaceScriptTests
 			if (m.Signature == "PhysicsFacade@ Scene.Physics")
 				physics = true;
 		Test.Assert(physics, "the scene's system property");
+		// Runtime state a component keeps from the inspector ([Hidden]) and gives a script to
+		// read: the navigation agent's arrival and its steering.
+		let agentApi = scope String();
+		for (let t in api)
+			if (t.ScriptName == "NavAgentComponent")
+				for (let m in t.Members)
+					agentApi.AppendF("{}\n", m.Signature);
+		Test.Assert(agentApi.Contains("bool NavAgentComponent.Finished (read only)"), agentApi);
+		Test.Assert(agentApi.Contains("Float3 NavAgentComponent.DesiredVelocity (read only)"), agentApi);
 	}
 
 	[Test]
