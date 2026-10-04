@@ -18,7 +18,7 @@ namespace Sedulous.Editor.Scene;
 /// InspectorRegistry; a type not registered there shows a notice.
 ///
 /// The editor context and the edit context are borrowed; the page owns both.
-class SceneInspectorView : ViewGroup
+class SceneInspectorView : ViewGroup, IInspectorOwner
 {
 	private const int32 cEntityTab = 0;
 	private const int32 cSceneTab = 1;
@@ -95,6 +95,7 @@ class SceneInspectorView : ViewGroup
 	public EditorContext Editor => mEditor;
 	public SceneEditContext Edit => mEdit;
 	public PropertyGrid Grid => mGrid;
+	public UIContext DialogContext => Context;
 
 	/// Switches to the Entity tab on a new pick, keeps the Paste button in step with the
 	/// clipboard, and either rebuilds the grid or refreshes its rows.

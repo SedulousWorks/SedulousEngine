@@ -18,7 +18,7 @@ namespace Sedulous.Editor.Scene;
 /// grid's contents; the generated code never frees anything.
 class InspectorSection
 {
-	private SceneInspectorView mOwner;
+	private IInspectorOwner mOwner;
 	/// The target the rows being added read and write: mValuesTarget, or its SceneOnlyTarget
 	/// within a [SceneOnly] field's rows.
 	private InspectorTarget mTarget;
@@ -28,7 +28,7 @@ class InspectorSection
 	private String mPendingLabel = new .() ~ delete _;
 	private String mPendingTooltip = new .() ~ delete _;
 
-	public this(SceneInspectorView owner, InspectorTarget target, StringView category)
+	public this(IInspectorOwner owner, InspectorTarget target, StringView category)
 	{
 		mOwner = owner;
 		mTarget = target;
@@ -44,14 +44,18 @@ class InspectorSection
 
 	/// Whether the rows that follow are a [SceneOnly] field's, built against the scene's own
 	/// block, or a value field's, built against the values in effect. The generated rows call
-	/// it per field for a type that has [SceneOnly] fields.
-	public void FieldScope(bool sceneOnly)
+	/// it per field for a type that has [SceneOnly] fields, and build the field's rows only when
+	/// it answers true: a target with no scene block (a profile's values) has no such rows.
+	public bool FieldScope(bool sceneOnly)
 	{
 		if (sceneOnly)
 		{
-			mTarget = mValuesTarget.SceneOnlyTarget;
+			let sceneTarget = mValuesTarget.SceneOnlyTarget;
+			if (sceneTarget == null)
+				return false;
+			mTarget = sceneTarget;
 			mInSceneOnly = true;
-			return;
+			return true;
 		}
 		mTarget = mValuesTarget;
 		if (mInSceneOnly)
@@ -60,6 +64,7 @@ class InspectorSection
 			if (OnValuesBegin != null)
 				OnValuesBegin();
 		}
+		return true;
 	}
 	public StringView Category => mCategory;
 	public int RowCount => mOwner.Grid.PropertyCount;
@@ -267,11 +272,11 @@ class InspectorSection
 			new [=target](id, outName) => { EntityNameFor(target, id, outName); },
 			new [=owner, =target, =key, =read]() =>
 			{
-				if (owner.Context == null)
+				if (owner.DialogContext == null)
 					return;
 				let dialog = new EntityPickerDialog(target.Edit.Scene, Read(read, target, Guid()));
 				dialog.OnPicked = new [=target, =key](picked) => { target.SetEntityRef(key, picked); };
-				dialog.Show(owner.Context);
+				dialog.Show(owner.DialogContext);
 			});
 		Add(editor, new [=editor]() => { editor.Refresh(); });
 	}
@@ -348,14 +353,14 @@ class InspectorSection
 		Keep(assignSlot);
 		list.OnPickSlot = new [=owner, =types, =assignSlot](i) =>
 		{
-			if ((owner.Context == null) || (owner.Editor.Project == null))
+			if ((owner.DialogContext == null) || (owner.Editor.Project == null))
 				return;
 			let typeNames = scope List<StringView>();
 			for (let t in types)
 				typeNames.Add(t);
 			let dialog = new AssetPickerDialog(owner.Editor, typeNames);
 			dialog.OnPicked = new [=assignSlot, =i](picked) => { assignSlot(i, picked); };
-			dialog.Show(owner.Context);
+			dialog.Show(owner.DialogContext);
 		};
 		let accepted = scope List<StringView>();
 		for (let t in types)
@@ -442,7 +447,7 @@ class InspectorSection
 		Keep(assignSlot);
 		list.OnPickSlot = new [=owner, =target, =read, =assignSlot](i) =>
 		{
-			if (owner.Context == null)
+			if (owner.DialogContext == null)
 				return;
 			var current = Guid();
 			if (let p = target.Address)
@@ -453,7 +458,7 @@ class InspectorSection
 			}
 			let dialog = new EntityPickerDialog(target.Edit.Scene, current);
 			dialog.OnPicked = new [=assignSlot, =i](picked) => { assignSlot(i, picked); };
-			dialog.Show(owner.Context);
+			dialog.Show(owner.DialogContext);
 		};
 		list.SetAcceptedTypes(scope StringView[](AssetPickerSlot.cEntity));
 		list.OnAssignSlot = new [=assignSlot](i, picked) => { assignSlot(i, picked); };
@@ -669,7 +674,7 @@ class InspectorSection
 			outTypes.Add(Own(t));
 	}
 
-	private static void SetRef<T>(SceneInspectorView owner, InspectorTarget target, String key,
+	private static void SetRef<T>(IInspectorOwner owner, InspectorTarget target, String key,
 		Guid id) where T : class
 	{
 		let resources = owner.Editor.Resources;
@@ -677,6 +682,8 @@ class InspectorSection
 			target.Edit.SetComponentResourceRef<T>(component.Id, component.Type, key, id, resources);
 		else if (let settings = target as SettingsTarget)
 			target.Edit.SetSceneSettingResourceRef<T>(settings.Type, key, id, resources);
+		else
+			target.SetReference(key, id);
 	}
 
 	/// STATIC, taking the target: the section is scoped to the build and gone by the time a

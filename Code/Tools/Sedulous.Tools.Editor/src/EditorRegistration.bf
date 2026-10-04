@@ -49,6 +49,7 @@ static class EditorRegistration
 
 		SceneEditor.Register(context, host, uiHost, app.EmbeddedApplication);
 		MaterialEditor.Register(context, host, uiHost);
+		SettingsProfileEditor.Register(context, host, uiHost);
 		MeshEditor.Register(context, host, uiHost);
 		ParticleEditor.Register(context, host, uiHost);
 		AnimationGraphEditor.Register(context, host, uiHost);

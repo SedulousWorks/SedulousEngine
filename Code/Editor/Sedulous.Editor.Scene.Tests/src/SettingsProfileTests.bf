@@ -10,6 +10,8 @@ using Sedulous.Pipeline.Core;
 using Sedulous.Render;
 using Sedulous.Render.Pipeline;
 using Sedulous.Scene;
+using Sedulous.UI;
+using Sedulous.UI.Toolkit;
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -17,7 +19,8 @@ namespace Sedulous.Editor.Scene.Tests;
 /// lands in the profile (the block's own fields stay the scene's) and undoes; Copy Into Scene
 /// and a source switch are one undo step each; Make Profile writes a profile asset from the
 /// block's values and switches to it; a profile-mode edit is queued for the save flow and
-/// written to the asset.
+/// written to the asset; the shared rows read where their target points and write through it;
+/// the profile page's preview takes the profile's values.
 class SettingsProfileTests
 {
 	private static bool Near(float a, float b) => Math.Abs(a - b) < 1e-5f;
@@ -175,5 +178,160 @@ class SettingsProfileTests
 			Test.Assert(Near(asset.Values.Turbidity, 8.0f));
 			Test.Assert(Near(asset.Values.AmbientIntensity, 0.3f));
 		}
+	}
+
+	/// Rows built into a bare grid: what the profile page does, without its preview.
+	private class TestOwner : IInspectorOwner
+	{
+		public EditorContext Context = new .() ~ delete _;
+		public PropertyGrid RowGrid = new .() ~ _.ReleaseRef();
+		public List<delegate void()> Refreshers = new .() ~ DeleteContainerAndItems!(_);
+		public List<Object> Owned = new .() ~ DeleteContainerAndItems!(_);
+
+		public EditorContext Editor => Context;
+		public PropertyGrid Grid => RowGrid;
+		public UIContext DialogContext => null;
+		public void AddEditor(PropertyEditor editor, delegate void() refresher)
+		{
+			RowGrid.AddProperty(editor);
+			Refreshers.Add(refresher);
+		}
+		public void AddRefresher(delegate void() refresher) => Refreshers.Add(refresher);
+		public void Keep(Object owned) => Owned.Add(owned);
+		public void AssetNameFor(Guid target, String outName) => outName.Set("(none)");
+		public void RequestRebuild() {}
+	}
+
+	/// Values with no scene block, as a profile asset's: the reads follow `Shown`, the writes
+	/// are recorded by field.
+	private class TestValuesTarget : InspectorTarget
+	{
+		public EnvironmentSettings* Shown;
+		public List<String> Written = new .() ~ DeleteContainerAndItems!(_);
+
+		public this() : base(null) {}
+		public override Type TargetType => typeof(EnvironmentSettings);
+		public override void* Address => Shown;
+		public override InspectorTarget SceneOnlyTarget => null;
+		public override void SetProperty(StringView field, Variant value)
+		{
+			var value;
+			value.Dispose();
+			Written.Add(new .(field));
+		}
+		public override void SetPropertyRaw(StringView field, int64 raw) => Written.Add(new .(field));
+		public override void SetEntityRef(StringView field, Guid target) {}
+		public override void Mutate(delegate void(void* instance) mutate, StringView mergeKey) {}
+	}
+
+	[Test]
+	public static void TheSharedRowsReadWhereTheirTargetPointsAndWriteThroughIt()
+	{
+		let owner = scope TestOwner();
+		let target = scope TestValuesTarget();
+		var first = EnvironmentSettings();
+		var second = EnvironmentSettings();
+		first.Turbidity = 3.0f;
+		second.Turbidity = 9.0f;
+		target.Shown = &first;
+
+		SceneInspectors.RegisterBuiltin();
+		let entry = InspectorRegistry.Find(typeof(EnvironmentSettings));
+		Test.Assert(entry != null);
+		let section = scope InspectorSection(owner, target, "Environment");
+		entry.Build(section);
+
+		// No row for the block's own fields: a profile has no source.
+		RangeEditor turbidity = null;
+		for (int i < owner.RowGrid.PropertyCount)
+		{
+			let row = owner.RowGrid.PropertyAt(i);
+			Test.Assert((row.Name != "Source") && (row.Name != "Profile"));
+			if (row.Name == "Turbidity")
+				turbidity = row as RangeEditor;
+		}
+		Test.Assert(turbidity != null);
+		Test.Assert(Near(turbidity.Value, 3.0f));
+		target.Shown = &second; // the values moved: the next refresh follows
+		for (let refresh in owner.Refreshers)
+			refresh();
+		Test.Assert(Near(turbidity.Value, 9.0f));
+		turbidity.Setter(4.0f);
+		Test.Assert((target.Written.Count == 1) && (target.Written[0] == "Turbidity"));
+	}
+
+	[Test]
+	public static void TheProfilePagesPreviewTakesTheProfilesValues()
+	{
+		let scene = scope Sedulous.Scene.Scene("profile.preview");
+		let env = scene.AddSystem<EnvironmentSystem>();
+		let post = scene.AddSystem<PostProcessSystem>();
+		let kept = Guid.Create();
+		env.Environment.Profile.SetId(kept);
+
+		let environment = scope EnvironmentProfileAsset();
+		environment.Values.Turbidity = 7.0f;
+		environment.Values.ShadowDistance = 45.0f;
+		Test.Assert(SettingsProfiles.ApplyToScene(environment, scene, null));
+		Test.Assert(Near(env.Environment.Turbidity, 7.0f));
+		Test.Assert(Near(env.Environment.ShadowDistance, 45.0f));
+		Test.Assert(env.Environment.Source == .Scene, "the block's own fields kept");
+		Test.Assert(env.Environment.Profile.Id == kept);
+
+		let look = scope PostProcessProfileAsset();
+		look.Values.ExposureEV = 1.25f;
+		Test.Assert(SettingsProfiles.ApplyToScene(look, scene, null));
+		Test.Assert(Near(post.Post.ExposureEV, 1.25f));
+
+		let empty = scope Sedulous.Scene.Scene("empty");
+		Test.Assert(!SettingsProfiles.ApplyToScene(look, empty, null), "no block to take them");
+	}
+
+	/// The scene inspector's Scene tab for a block in profile mode: the block's own fields first,
+	/// then the profile verbs, then the values in effect, which follow the source.
+	[Test]
+	public static void TheSceneTabShowsTheBlocksOwnFieldsThenTheVerbsThenTheValuesInEffect()
+	{
+		SceneInspectors.RegisterBuiltin();
+		let s = scope ProfiledScene();
+		let editor = scope EditorContext();
+		let inspector = new SceneInspectorView(editor, s.Edit);
+		defer inspector.ReleaseRef();
+		inspector.[Friend]mTabView.SetSelectedIndex(1); // the Scene tab
+		inspector.Refresh();
+
+		let grid = inspector.Grid;
+		int IndexOf(StringView name)
+		{
+			for (int i < grid.PropertyCount)
+			{
+				if (grid.PropertyAt(i).Name == name)
+					return i;
+			}
+			return -1;
+		}
+		let source = IndexOf("Source");
+		let profile = IndexOf("Profile");
+		let open = IndexOf("Open Profile");
+		let make = IndexOf("Make Profile");
+		let copy = IndexOf("Copy Into Scene");
+		let ambient = IndexOf("AmbientIntensity");
+		Test.Assert((source >= 0) && (source < profile) && (profile < open) && (open < make)
+			&& (make < copy) && (copy < ambient));
+
+		// The values shown are the profile's; the verbs say so.
+		let intensity = grid.PropertyAt(ambient) as RangeEditor;
+		Test.Assert((intensity != null) && Near(intensity.Value, 0.9f));
+		let openButton = grid.PropertyAt(open) as ButtonEditor;
+		Test.Assert(openButton.ButtonEnabled && openButton.DisplayName.StartsWith("Values: profile"));
+		Test.Assert(!(grid.PropertyAt(make) as ButtonEditor).ButtonEnabled);
+		Test.Assert((grid.PropertyAt(copy) as ButtonEditor).ButtonEnabled);
+
+		// The source back to the scene's: the same rows show the scene's own values.
+		s.Edit.SetSceneSettingPropertyRaw(typeof(EnvironmentSettings), "Source", (int64)SettingsSource.Scene);
+		inspector.Refresh();
+		Test.Assert(Near((grid.PropertyAt(IndexOf("AmbientIntensity")) as RangeEditor).Value, 0.25f));
+		Test.Assert((grid.PropertyAt(IndexOf("Open Profile")) as ButtonEditor).DisplayName == "Values: this scene's");
+		Test.Assert((grid.PropertyAt(IndexOf("Make Profile")) as ButtonEditor).ButtonEnabled);
 	}
 }

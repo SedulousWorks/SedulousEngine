@@ -17,6 +17,8 @@ abstract class SettingsProfileAsset : Asset, ISerializable
 	/// Takes a settings block's values, in ValuesType's layout. The block's own source and
 	/// profile reference are not a profile's.
 	public abstract void SetValues(void* values);
+	/// Gives a settings block these values, a preview scene's; its source and profile kept.
+	public abstract void CopyValuesInto(void* block);
 }
 
 /// An authored Environment Profile: the value fields of a scene's environment block, which a
@@ -38,6 +40,16 @@ class EnvironmentProfileAsset : SettingsProfileAsset
 		Values = *(EnvironmentSettings*)values;
 		Values.Source = .Scene;
 		Values.Profile = .(Guid());
+	}
+
+	public override void CopyValuesInto(void* block)
+	{
+		let to = (EnvironmentSettings*)block;
+		let source = to.Source;
+		let profile = to.Profile;
+		*to = Values;
+		to.Source = source;
+		to.Profile = profile;
 	}
 
 	public override void Serialize(ISerializer ar)
@@ -65,6 +77,16 @@ class PostProcessProfileAsset : SettingsProfileAsset
 		Values = *(PostProcessSettings*)values;
 		Values.Source = .Scene;
 		Values.Profile = .(Guid());
+	}
+
+	public override void CopyValuesInto(void* block)
+	{
+		let to = (PostProcessSettings*)block;
+		let source = to.Source;
+		let profile = to.Profile;
+		*to = Values;
+		to.Source = source;
+		to.Profile = profile;
 	}
 
 	public override void Serialize(ISerializer ar)

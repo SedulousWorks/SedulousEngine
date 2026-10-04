@@ -83,7 +83,7 @@ static class InspectorRows<T>
 				continue;
 
 			if (scoped)
-				code.AppendF("s.FieldScope({});\n", (field.GetCustomAttribute<SceneOnlyAttribute>() case .Ok) ? "true" : "false");
+				code.AppendF("if (s.FieldScope({}))\n", (field.GetCustomAttribute<SceneOnlyAttribute>() case .Ok) ? "true" : "false");
 			code.Append("{\n\tlet first = s.RowCount;\n");
 			// The label and tooltip apply to the row added next.
 			let label = scope String();

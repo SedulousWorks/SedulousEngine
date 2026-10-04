@@ -40,6 +40,11 @@ abstract class InspectorTarget
 	public void Mutate(delegate void(void* instance) mutate) => Mutate(mutate, default);
 
 	/// The target a [SceneOnly] field's rows read: a settings block's own values while the rest
-	/// show a profile's. Itself everywhere else.
+	/// show a profile's. Itself for a component; null where there is no scene block (a profile
+	/// asset's values), which leaves those rows out.
 	public virtual InspectorTarget SceneOnlyTarget => this;
+
+	/// Points a Ref<T> field at another asset, for a target the typed component and settings
+	/// paths do not cover. Nothing by default.
+	public virtual void SetReference(StringView field, Guid id) {}
 }

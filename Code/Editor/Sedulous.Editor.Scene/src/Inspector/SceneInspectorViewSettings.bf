@@ -66,7 +66,7 @@ extension SceneInspectorView
 					editor.OpenAsset(id);
 			}, category);
 		open.SetTooltip("The values below are this profile's: an edit changes every scene using it (written to the profile on save).");
-		AddEditor(open, new [=editor, =usesProfile, =open]() =>
+		AddStatefulEditor(open, new [=editor, =usesProfile, =open]() =>
 			{
 				let id = usesProfile();
 				open.SetButtonEnabled(id != Guid.Empty);
@@ -87,14 +87,22 @@ extension SceneInspectorView
 					editor.Notify(.Success, scope $"Made profile '{made.Name}'; this scene uses it.");
 			}, category);
 		make.SetTooltip("Saves these values as a new profile asset, and this scene uses it.");
-		AddEditor(make, new [=usesProfile, =make]() => { make.SetButtonEnabled(usesProfile() == Guid.Empty); });
+		AddStatefulEditor(make, new [=usesProfile, =make]() => { make.SetButtonEnabled(usesProfile() == Guid.Empty); });
 
 		let copy = new ButtonEditor("Copy Into Scene", new [=edit, =type]() =>
 			{
 				edit.MutateSceneSettings(type, scope (s) => { s.CopySettingsProfileIntoScene(); });
 			}, category);
 		copy.SetTooltip("Copies the profile's values into this scene, which then uses its own (the profile is unchanged).");
-		AddEditor(copy, new [=usesProfile, =copy]() => { copy.SetButtonEnabled(usesProfile() != Guid.Empty); });
+		AddStatefulEditor(copy, new [=usesProfile, =copy]() => { copy.SetButtonEnabled(usesProfile() != Guid.Empty); });
+	}
+
+	/// AddEditor for a row whose state its refresher sets: run once now, so the row is right
+	/// from the frame it is built rather than the one after. CONSUMES the refresher.
+	private void AddStatefulEditor(PropertyEditor editor, delegate void() refresher)
+	{
+		refresher();
+		AddEditor(editor, refresher);
 	}
 
 	/// The collision group matrix: names down the side, a symmetric grid of collide flags,
