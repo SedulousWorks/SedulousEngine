@@ -70,6 +70,36 @@ class FileSystemTests
 		Test.Assert(WriteFile("no_such_directory_at_all/x.bin", .(&payload[0], 1)) case .Err);
 	}
 
+	/// A whole-file write lands entire, a shorter file over a longer one included, and leaves
+	/// no temporary behind; one that cannot happen fails and touches nothing.
+	[Test]
+	public static void WriteFileAtomicReplacesAFileWholeAndLeavesNoTemporaryBehind()
+	{
+		let scratch = "scratch_filesystem_atomic";
+		RemoveDirectoryRecursive(scratch);
+		Test.Assert(CreateDirectory(scratch));
+		let path = PathJoin(scratch, "save.bin", .. scope String());
+		let temporary = scope String(path)..Append(".tmp");
+
+		// A new file, then a shorter one over it: the second write is the whole file, not a
+		// prefix over the first's tail.
+		uint8[5] first = .(1, 2, 3, 4, 5);
+		uint8[2] second = .(9, 8);
+		Test.Assert(WriteFileAtomic(path, .(&first[0], 5)) case .Ok);
+		Test.Assert(WriteFileAtomic(path, .(&second[0], 2)) case .Ok);
+		let readBack = scope List<uint8>();
+		Test.Assert(ReadFile(path, readBack) case .Ok);
+		Test.Assert((readBack.Count == 2) && (readBack[0] == 9) && (readBack[1] == 8));
+		Test.Assert(!FileExists(temporary));
+
+		// A write that cannot happen (its directory does not exist) fails and leaves nothing.
+		let nowhere = PathJoin(scratch, "no_such_dir/save.bin", .. scope String());
+		Test.Assert(WriteFileAtomic(nowhere, .(&first[0], 5)) case .Err);
+		Test.Assert(!FileExists(scope String(nowhere)..Append(".tmp")));
+
+		Test.Assert(RemoveDirectoryRecursive(scratch));
+	}
+
 	[Test]
 	public static void DirectoryCreateExistsRemove()
 	{

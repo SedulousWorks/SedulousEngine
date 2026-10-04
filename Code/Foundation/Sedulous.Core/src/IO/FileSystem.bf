@@ -48,6 +48,44 @@ static
 		return .Ok;
 	}
 
+	/// Writes a buffer to a file so that a reader (or the next run, after a crash) sees the old
+	/// contents or the new ones, never a torn mix: the bytes go to `<path>.tmp` beside the
+	/// target, which is then moved over it (a rename on one volume replaces the target
+	/// atomically). A failed write leaves the target as it was.
+	public static Result<void, ErrorCode> WriteFileAtomic(StringView path, Span<uint8> data)
+	{
+		let temporary = scope String(path)..Append(".tmp");
+		if (WriteFile(temporary, data) case .Err(let error))
+		{
+			DeleteFile(temporary);
+			return .Err(error);
+		}
+		if (!MoveReplacing(temporary, path))
+		{
+			DeleteFile(temporary);
+			return .Err(.Internal);
+		}
+		return .Ok;
+	}
+
+	/// A move that replaces an existing target. `File.Move` is POSIX `rename`, which does, on
+	/// Linux; on Windows it is `MoveFileW`, which refuses an existing target.
+	private static bool MoveReplacing(StringView from, StringView to)
+	{
+#if BF_PLATFORM_WINDOWS
+		return MoveFileExW(from.ToScopedNativeWChar!(), to.ToScopedNativeWChar!(), cMoveFileReplaceExisting) != 0;
+#else
+		return System.IO.File.Move(from, to) case .Ok;
+#endif
+	}
+
+#if BF_PLATFORM_WINDOWS
+	private const uint32 cMoveFileReplaceExisting = 0x1;
+
+	[CLink, CallingConvention(.Stdcall)]
+	private static extern int32 MoveFileExW(char16* existingName, char16* newName, uint32 flags);
+#endif
+
 	public static bool FileExists(StringView path) => System.IO.File.Exists(path);
 
 	/// Calls onEntry for each immediate child of a directory, with the entry's NAME rather

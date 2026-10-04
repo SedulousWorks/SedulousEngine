@@ -24,7 +24,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
    the end of `Update` through that frame's devices; `Input.Rumble(low, high, seconds)`,
    `Input.Rumble(gamepad, ...)` and `Input.StopRumble()` on the facade; `GameInstance.StopScript`
    stops its source's pads (before its no-game early return). Scripting.md.
-3. 92822eca Core: `WriteFileAtomic`, a temp file moved over the target. Beef's `File.Move` does
+3. ~~92822eca~~ (done) Core: `WriteFileAtomic`, a temp file moved over the target. Beef's `File.Move` does
    not replace an existing file on Windows (`MoveFileW`), so Windows takes `MoveFileExW` with
    `MOVEFILE_REPLACE_EXISTING`.
 4. bd1cce79 Settings: `SaveValues`, a serializable section of typed values by key.
