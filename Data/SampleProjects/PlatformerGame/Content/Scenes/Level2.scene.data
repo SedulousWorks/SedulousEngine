@@ -420,7 +420,7 @@
 					<f32 name="b">1</f32>
 					<f32 name="a">1</f32>
 				</object>
-				<f32 name="intensity">1</f32>
+				<f32 name="intensity">4</f32>
 				<f32 name="range">10</f32>
 				<f32 name="innerAngle">0.5</f32>
 				<f32 name="outerAngle">0.6</f32>
@@ -809,7 +809,7 @@
 			</object>
 		</object>
 	</array>
-	<array name="systemSettings" count="2">
+	<array name="systemSettings" count="3"><object><string name="system">environment</string><array name="dataVersions" count="1"><u64 name="type">3322936393964477818</u64><u32 name="version">3</u32></array><object name="settings"><string name="skyTexture">00000000-0000-0000-0000-000000000000</string><object name="ambientColor"><f32 name="r">0.349</f32><f32 name="g">0.381</f32><f32 name="b">0.437</f32><f32 name="a">1</f32></object><f32 name="ambientIntensity">0.3</f32><u32 name="skyMode">0</u32><f32 name="skyIntensity">1</f32><f32 name="skyBackgroundIntensity">0.5</f32><f32 name="skyRotation">0</f32><object name="skyHorizon"><f32 name="r">0.748</f32><f32 name="g">0.798</f32><f32 name="b">0.854</f32><f32 name="a">1</f32></object><object name="skyZenith"><f32 name="r">0.485</f32><f32 name="g">0.634</f32><f32 name="b">0.786</f32><f32 name="a">1</f32></object><object name="skyGround"><f32 name="r">0.547</f32><f32 name="g">0.547</f32><f32 name="b">0.547</f32><f32 name="a">1</f32></object><f32 name="sunIntensity">1</f32><f32 name="sunAngularSize">0.5</f32><f32 name="turbidity">3</f32><f32 name="iblDiffuseIntensity">1</f32><f32 name="iblSpecularIntensity">1</f32><f32 name="shadowDistance">300</f32><f32 name="shadowCascadeSplit">0.5</f32><f32 name="shadowFadeDistance">40</f32><u32 name="source">1</u32><string name="profile">e4808d26-d64f-c54f-9d3b-c2514053e13a</string></object></object>
 		<object>
 			<string name="system">physics</string>
 			<array name="dataVersions" count="1">
