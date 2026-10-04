@@ -879,12 +879,12 @@
 				<f32 name="aoIntensity">1</f32>
 				<bool name="ssrEnabled">false</bool>
 				<f32 name="ssrIntensity">1</f32>
-				<u32 name="aaMode">0</u32>
+				<u32 name="aaMode">1</u32>
 				<f32 name="taaBlendFactor">0.97</f32>
 				<f32 name="taaVarianceGamma">1.25</f32>
 				<f32 name="fxaaSubpixel">0.75</f32>
-				<bool name="autoExposure">true</bool>
-				<f32 name="autoExposureKey">0.18</f32>
+				<bool name="autoExposure">false</bool>
+				<f32 name="autoExposureKey">0.38</f32>
 				<f32 name="autoExposureSpeed">2</f32>
 				<f32 name="autoExposureMinEV">-4</f32>
 				<f32 name="autoExposureMaxEV">4</f32>
