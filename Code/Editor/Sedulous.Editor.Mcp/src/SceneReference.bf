@@ -117,7 +117,7 @@ class SceneReference
 		input.Str("type", "component wire name / type name, or settings system id", true);
 		server.RegisterTool("component_schema",
 			"""
-			One component's or settings block's schema entry from the generated scene format reference (docs://generated/SceneSchema.json): its fields in wire order with kinds, defaults, enum names, ranges and reference targets, plus its dataVersions. Pass `type`: a component's wire name (a record's `type`, e.g. "light") or type name, or a settings block's system id.
+			One component's or settings block's schema entry from the generated scene format reference (docs://generated/SceneSchema.json): its fields in wire order with kinds, defaults, enum names, ranges and reference targets, plus its dataVersions. Pass `type`: a component's wire name (a record's `type`, e.g. "light") or type name, or a settings block's system id or type name. A name a component and a settings block share answers the component: the level script's block, whose system id is `script` like the Script component's, is `SceneScriptSettings`.
 			""",
 			input.Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
