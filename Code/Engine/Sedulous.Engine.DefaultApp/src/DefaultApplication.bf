@@ -449,6 +449,9 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		// Destroy whatever scenes are left, with the aware subsystems notified.
 		instance.Scenes.Clear();
+		// Its sound ends with it.
+		if (mAudio != null)
+			mAudio.EndRun(instance);
 
 		mExtraInstances.RemoveAt(at);
 		// Its facade after its run host is gone, found while the instance is still a key.

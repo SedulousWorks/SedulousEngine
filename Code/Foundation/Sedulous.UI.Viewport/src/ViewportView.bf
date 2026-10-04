@@ -289,6 +289,9 @@ class ViewportView : View
 
 	public override bool WantsTextInput() => mHostedTextInputWanted;
 
+	/// Whether the host UI's keyboard focus is on this viewport: the view the user is playing in.
+	public bool HostKeyboardFocusHere => (Context != null) && (Context.GetFocusManager().FocusedView == this);
+
 	/// Whether the host UI's keyboard focus is on something OTHER than this viewport.
 	///
 	/// Fed into the router's external capture so the hosted content stops receiving keys an

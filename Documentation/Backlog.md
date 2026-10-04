@@ -5,28 +5,6 @@ what is known; remove an item in the commit that resolves it.
 
 ## Decisions pending
 
-### Music keeps playing after play in editor stops
-Stopping a Game tab tears down the run's scenes, script and input but not its audio: music
-plays on the audio engine's single music slot, not in a scene, so it outlives the run.
-
-- The script `Audio` service is ONE object for every run (the embedded runtime's
-  `DefaultApplication.mAudioFacade`, installed into every script runtime), unlike `Input`, which
-  each `GameInstance` makes and installs on its own run host.
-- Music is one slot (`AudioEngine.mMusicVoice`): two PIE runs already fight over it, the second
-  run's `PlayMusic` replacing the first's.
-- Stopping the music in `GameEditorPageRun.Stop()` was tried and reverted: it would cut another
-  run's music.
-
-Options:
-1. A per-run `Audio` service, as `Input` is: it records the voices it started and stops them
-   at teardown. Music stays the engine's one slot. (Recommended.)
-2. Option 1, and the service plays music as its own looping voice on the Music bus, so each run
-   has independent music.
-3. The shared service remembers which run started the current music and stops only its own.
-
-Related, unchecked: whether a paused run's music keeps playing. An owned service could pause it
-with the run.
-
 ### Input action sets for UI and gameplay
 `ActionRuntime` already has named sets with priorities, `EnableSet` / `DisableSet`, and a modal
 `PushExclusiveSet` / `PopExclusiveSet` stack that latches held input across the boundary. None

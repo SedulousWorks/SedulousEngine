@@ -397,12 +397,15 @@ class ViewportViewTests
 		root.AddView(other);
 
 		Test.Assert(!view.HostKeyboardFocusElsewhere, "nothing focused is not elsewhere");
+		Test.Assert(!view.HostKeyboardFocusHere, "nor here");
 
 		context.GetFocusManager().SetFocus(view);
 		Test.Assert(!view.HostKeyboardFocusElsewhere, "the viewport itself is not elsewhere");
+		Test.Assert(view.HostKeyboardFocusHere, "it is here: the view the user is playing in");
 
 		context.GetFocusManager().SetFocus(other);
 		Test.Assert(view.HostKeyboardFocusElsewhere);
+		Test.Assert(!view.HostKeyboardFocusHere);
 
 		context.GetFocusManager().ClearFocus();
 		Test.Assert(!view.HostKeyboardFocusElsewhere, "and back to nothing");

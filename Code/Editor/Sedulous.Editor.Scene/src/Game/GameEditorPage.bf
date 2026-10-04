@@ -241,6 +241,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		}
 		mViewport.SetHostedTextInputWanted((mApp != null) && (mApp.UI != null) && mApp.UI.UiContext.WantsTextInput());
 		DrainDebuggerState();
+		SyncRunAudio();
 	}
 
 	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)

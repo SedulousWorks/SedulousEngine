@@ -70,7 +70,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
     hear-all, the listener gated by them; a facade per run installed on its run host, with the
     stop-music, mute and named-bus verbs Raptor's facade has).
 24. ~~4b830b03 (script half)~~ (done) Script: a script controls a playing voice, the music's included.
-25. ae387d16 Editor, DefaultApp: Stop, Pause and focus act on the game's run (the Game audio
+25. ~~ae387d16~~ (done) Editor, DefaultApp: Stop, Pause and focus act on the game's run (the Game audio
     preference, Hear every Game tab).
 
 ## Group 5: render profiles (a game's look set once and shared by its scenes)

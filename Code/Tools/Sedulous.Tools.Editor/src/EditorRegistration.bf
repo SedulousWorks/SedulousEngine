@@ -56,6 +56,7 @@ static class EditorRegistration
 		SkeletonEditor.Register(context, host, uiHost);
 		InputEditor.Register(context);
 		NavigationEditorPreferences.Register(context);
+		GameAudioEditorSettings.Register(context);
 		PropertyAnimationEditor.Register(context, host);
 		GameUIEditor.Register(context, host, uiHost);
 		AudioEditor.Register(context, host);

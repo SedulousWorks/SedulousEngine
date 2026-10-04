@@ -84,6 +84,9 @@ extension GameEditorPage
 		mSceneTitle.Set((mScene != null) ? mScene.Name : "(no scene)");
 		BindInput();
 		BindBusLayout();
+		// The tab Play was pressed in is the run that is heard.
+		if ((Audio != null) && (mGameInstance != null))
+			Audio.SetFocusedRun(mGameInstance);
 		GlobalLog(.Information, "Editor: Game: running scene '{}'", mSceneTitle);
 		RefreshToolbar();
 	}
@@ -113,6 +116,10 @@ extension GameEditorPage
 			mStoppedRunTime = mGameInstance.RunTime;
 		if (mGameInstance != null)
 			mGameInstance.StopScript();
+		// The run's sound ends with it: its music, one shots and whatever is still fading.
+		// Another tab's run and the editor's own sounds play on.
+		if ((Audio != null) && (mGameInstance != null))
+			Audio.EndRun(mGameInstance);
 		{
 			let active = scope List<Sedulous.Scene.Scene>();
 			active.AddRange(SceneGroup.ActiveScenes);
@@ -206,6 +213,29 @@ extension GameEditorPage
 		{
 			mContext.Notify(.Warning, "Game: default input map is not cooked yet.");
 		}
+	}
+
+	/// The run's sound, BORROWED: its stop, pause and focus. Null with no audio.
+	private AudioSubsystem Audio => mHost?.Context?.GetSubsystem<AudioSubsystem>();
+
+	/// The run's sound follows the tab: the host's pause, the focus, the hear-all preference.
+	private void SyncRunAudio()
+	{
+		let audio = Audio;
+		if ((audio == null) || (mGameInstance == null))
+			return;
+		let hearAll = GameAudioEditorSettings.HearAllGameInstances(mContext);
+		if (audio.HearAllRuns != hearAll)
+			audio.SetHearAllRuns(hearAll);
+		if (!mRunning)
+			return;
+		// The toolbar's pause and a debugger break freeze the run's sound with the game (a
+		// game's own pause menu is time scale nought, the game's business: its music plays on).
+		let paused = mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.IsChecked);
+		audio.SetRunPaused(mGameInstance, paused);
+		// Clicking into this tab's viewport makes its run the one heard.
+		if (mViewport.HostKeyboardFocusHere && (audio.FocusedRun !== mGameInstance))
+			audio.SetFocusedRun(mGameInstance);
 	}
 
 	private void BindBusLayout()
