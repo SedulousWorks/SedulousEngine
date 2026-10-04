@@ -25,11 +25,9 @@ class Program
 			return 1;
 		}
 
-		GraphicsDeviceDesc deviceDesc = .();
 		// Vulkan unless the command line says otherwise, which is what lets one built binary
 		// be pointed at whichever backend a machine has.
-		deviceDesc.Backend = BackendSelection.FromArguments(args);
-		deviceDesc.EnableValidation = true;
+		let deviceDesc = GraphicsDeviceDesc.FromArguments(args);
 
 		if (!(GpuGraphics.CreateDevice(deviceDesc) case .Ok(let graphics)))
 		{

@@ -1,3 +1,4 @@
+using System;
 using Sedulous.RHI;
 
 namespace Sedulous.Graphics;
@@ -23,4 +24,16 @@ struct GraphicsDeviceDesc
 	public DeviceFeatures RequiredFeatures = .();
 
 	public this() {}
+
+	/// The device a desktop executable's command line asks for: the backend
+	/// (BackendSelection) and the validation layer (ValidationSelection) over the config's
+	/// default. The one call every entry makes, so a flag one executable honours, every
+	/// executable honours.
+	public static GraphicsDeviceDesc FromArguments(String[] args)
+	{
+		GraphicsDeviceDesc desc = .();
+		desc.Backend = BackendSelection.FromArguments(args);
+		desc.EnableValidation = ValidationSelection.FromArguments(args, desc.EnableValidation);
+		return desc;
+	}
 }

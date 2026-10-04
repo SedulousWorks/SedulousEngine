@@ -37,11 +37,9 @@ class Program
 			return 1;
 		}
 
-		GraphicsDeviceDesc deviceDesc = .();
 		// From the command line, so ONE built binary runs against whichever backend a machine
 		// has, and --webgpu is the browser comparison.
-		deviceDesc.Backend = BackendSelection.FromArguments(args);
-		deviceDesc.EnableValidation = true;
+		let deviceDesc = GraphicsDeviceDesc.FromArguments(args);
 
 		if (!(GpuGraphics.CreateDevice(deviceDesc) case .Ok(let graphics)))
 		{

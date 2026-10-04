@@ -8,9 +8,9 @@ namespace Sedulous.Graphics;
 /// `--no-gpu-validation` forces them OFF; neither leaves the caller's default standing. The
 /// last flag given wins, and a longer argument that merely starts with one is not a match.
 ///
-/// Every executable that builds a GraphicsDeviceDesc should run its arguments through this
-/// rather than assign EnableValidation itself, so one binary can be measured and debugged
-/// without a rebuild.
+/// Every executable builds its GraphicsDeviceDesc through GraphicsDeviceDesc.FromArguments,
+/// which runs its arguments through this, rather than assign EnableValidation itself, so one
+/// binary can be measured and debugged without a rebuild.
 static class ValidationSelection
 {
 	public static bool FromArguments(String[] args, bool fallback)

@@ -24,11 +24,9 @@ class Program
 			return 1;
 		}
 
-		GraphicsDeviceDesc deviceDesc = .();
 		// The backend comes from the command line, so ONE built binary runs against whichever
 		// one a machine has.
-		deviceDesc.Backend = BackendSelection.FromArguments(args);
-		deviceDesc.EnableValidation = true;
+		let deviceDesc = GraphicsDeviceDesc.FromArguments(args);
 
 		if (!(GpuGraphics.CreateDevice(deviceDesc) case .Ok(let graphics)))
 		{

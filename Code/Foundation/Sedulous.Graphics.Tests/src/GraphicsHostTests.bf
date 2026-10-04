@@ -205,6 +205,23 @@ class GraphicsHostTests
 		Test.Assert(!ValidationSelection.FromArguments(prefix, false));
 	}
 
+	/// The one call every entry makes (the editor, the player, the samples): the player
+	/// ignored --no-gpu-validation while the editor honoured it, so their frame times did not
+	/// compare.
+	[Test]
+	public static void AnExecutablesDeviceTakesBothItsBackendAndItsValidationFlags()
+	{
+		String[] player = scope .("Sedulous.Engine.Player", "--webgpu", "--no-gpu-validation");
+		let desc = GraphicsDeviceDesc.FromArguments(player);
+		Test.Assert(desc.Backend == .WebGPU);
+		Test.Assert(!desc.EnableValidation);
+
+		String[] plain = scope .("Sedulous.Engine.Player");
+		let defaults = GraphicsDeviceDesc.FromArguments(plain);
+		Test.Assert(defaults.Backend == .Vulkan);
+		Test.Assert(defaults.EnableValidation == GraphicsDeviceDesc().EnableValidation); // the config's
+	}
+
 	/// The backend scan alongside it: it owns no argument but its own, and anything
 	/// unrecognised leaves the fallback standing.
 	[Test]

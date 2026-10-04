@@ -16,7 +16,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 
 1. ~~17cd7c08~~ (done) Image.DDS.Tests: the bit writer takes no bit past a u32's 32 (`DdsTests.bf`
    `BitWriter.Put`).
-2. 9f4b0370 Graphics: every executable takes its device from its command line the same way: one
+2. ~~9f4b0370~~ (done) Graphics: every executable takes its device from its command line the same way: one
    call giving the backend and the validation flags, used by the editor, the desktop player
    (which ignores `--no-gpu-validation` today) and the desktop samples, which stop forcing
    validation on (MultiWindow keeps it; the web programs take no command line).

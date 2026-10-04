@@ -77,12 +77,12 @@ class Program
 			return 1;
 		}
 
-		GraphicsDeviceDesc deviceDesc = .();
-		// From the command line, so ONE binary runs against whichever backend a machine has.
+		// From the command line, so ONE binary runs against whichever backend a machine has, and
+		// --no-gpu-validation measures a debug player as the editor's flag measures the editor.
 		// --webgpu is what lets the desktop player drive the same backend the browser does,
 		// with the runtime shader compiler and hot reload the web build lacks: a web render
 		// bug becomes reproducible without the wasm export loop.
-		deviceDesc.Backend = BackendSelection.FromArguments(args);
+		let deviceDesc = GraphicsDeviceDesc.FromArguments(args);
 
 		if (!(GpuGraphics.CreateDevice(deviceDesc) case .Ok(let graphics)))
 		{

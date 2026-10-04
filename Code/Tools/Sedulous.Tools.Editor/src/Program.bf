@@ -100,11 +100,9 @@ class Program
 			return 1;
 		}
 
-		GraphicsDeviceDesc deviceDesc = .();
-		deviceDesc.Backend = BackendSelection.FromArguments(args);
 		// Validation follows the build config unless the command line says otherwise: an
 		// optimized editor is for measuring, not for carrying the layer's cost.
-		deviceDesc.EnableValidation = ValidationSelection.FromArguments(args, deviceDesc.EnableValidation);
+		let deviceDesc = GraphicsDeviceDesc.FromArguments(args);
 		if (!(GpuGraphics.CreateDevice(deviceDesc) case .Ok(let graphics)))
 		{
 			Console.Error.WriteLine("Sedulous.Tools.Editor: the graphics device could not be created");
