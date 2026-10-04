@@ -248,4 +248,16 @@ static class NavigationBakeTests
 		// Each plateau itself remains walkable.
 		Test.Assert(BakeFixtures.PathAcross(blob, .(-10, 1, 0), .(-3, 1, 6)));
 	}
+
+	/// A bake writes the zone's asset itself and leaves the scene clean: what it says asks for a
+	/// cook, not a save the page has nothing for.
+	[Test]
+	public static void ABakesMessageAsksForACookNotASave()
+	{
+		var result = BakeResult();
+		result.Baked = true;
+		result.TriangleCount = 12;
+		let text = NavigationBake.DescribeBake(result, .. scope .());
+		Test.Assert(text.Contains("Cook") && !text.Contains("Save"), text);
+	}
 }

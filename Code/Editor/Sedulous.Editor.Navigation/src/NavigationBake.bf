@@ -54,7 +54,7 @@ static class NavigationBake
 	public static void DescribeBake(BakeResult result, String outText)
 	{
 		if (result.Baked)
-			outText.Append("Navigation baked. Save and cook to apply.");
+			outText.Append("Navigation baked into the zone's asset; the scene is unchanged. Cook to apply.");
 		else if (result.TriangleCount == 0)
 			outText.Append("No static geometry inside the zone box. Check the zone's Extents cover your floor, that the floor has a static, non-trigger Rigid Body (or is terrain), and that the zone is placed over it. Render meshes are not read.");
 		else
