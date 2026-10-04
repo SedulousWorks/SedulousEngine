@@ -52,7 +52,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 
 16. ~~a8901c7c~~ (done) Render: a light's shadow biases and strength reach the shadow it casts (defaults
     equal to today's constants).
-17. 352edbf7 Engine.Render: shadow controls on the light (`ShadowStrength`, `ShadowNormalBias`,
+17. ~~352edbf7~~ (done) Engine.Render: shadow controls on the light (`ShadowStrength`, `ShadowNormalBias`,
     `ShadowDepthBiasScale`; the light record's next version, reading the current one).
 18. (enabler) Scene: a settings block can read an older version (`SettingsMinReadDataVersion`,
     through every place a block is read).

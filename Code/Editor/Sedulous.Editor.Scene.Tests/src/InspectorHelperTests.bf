@@ -73,6 +73,16 @@ class InspectorHelperTests
 		Test.Assert(intensity.GetCustomAttribute<RangeAttribute>() case .Ok(let range));
 		Test.Assert(range.Max == 50.0f);
 
+		// The shadow controls have their ranges and show only while the light casts shadows.
+		for (let name in String[3]("ShadowStrength", "ShadowNormalBias", "ShadowDepthBiasScale"))
+		{
+			Test.Assert(light.GetField(name) case .Ok(let control));
+			Test.Assert(control.GetCustomAttribute<RangeAttribute>() case .Ok);
+			Test.Assert(control.GetCustomAttribute<VisibleWhenAttribute>() case .Ok(let shadowVis));
+			Test.Assert(PropertyCondition.Parse(shadowVis.Condition, c));
+			Test.Assert(c.Prop == "CastsShadows");
+		}
+
 		let env = typeof(EnvironmentSettings);
 		Test.Assert(env.GetField("Turbidity") case .Ok(let turbidity));
 		Test.Assert(turbidity.GetCustomAttribute<RangeAttribute>() case .Ok);

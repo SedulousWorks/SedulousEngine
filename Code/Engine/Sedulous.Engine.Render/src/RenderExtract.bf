@@ -509,6 +509,7 @@ static class RenderExtract
 				light.Type = (float)(uint32)component.Type;
 				light.InnerCos = Math.Cos(component.InnerAngle);
 				light.OuterCos = Math.Cos(component.OuterAngle);
+				light.ShadowStrength = component.ShadowStrength;
 
 				if (!haveShadow && component.CastsShadows && (component.Type == .Directional))
 				{
@@ -518,6 +519,10 @@ static class RenderExtract
 					var directional = DirectionalShadow();
 					directional.Direction = light.DirectionWS;
 					directional.Valid = true;
+					// The light's own shadow controls ride with it to the cascades.
+					directional.NormalBias = component.ShadowNormalBias;
+					directional.DepthBias = ShadowBiasDefaults.DepthBias * component.ShadowDepthBiasScale;
+					directional.Strength = component.ShadowStrength;
 					outScene.SetDirectionalShadow(directional);
 				}
 
@@ -542,6 +547,8 @@ static class RenderExtract
 					caster.Range = component.Range;
 					caster.OuterAngle = component.OuterAngle;
 					caster.IsStatic = isStatic;
+					caster.NormalBias = component.ShadowNormalBias;
+					caster.DepthBias = ShadowBiasDefaults.LocalDepthBias * component.ShadowDepthBiasScale;
 					outScene.AddLocalShadowCaster(caster);
 
 					if (isStatic)
