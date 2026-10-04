@@ -10,7 +10,7 @@ namespace Sedulous.Model;
 /// serialized.
 ///
 /// Colour factors are AUTHORED sRGB, as every colour is (the material property they become
-/// decodes them for the GPU). A loader whose format stores them linear (glTF) encodes them.
+/// decodes them for the GPU). A loader whose format stores them linear (glTF, FBX) encodes them.
 class ModelMaterial
 {
 	public String Name = new .() ~ delete _;

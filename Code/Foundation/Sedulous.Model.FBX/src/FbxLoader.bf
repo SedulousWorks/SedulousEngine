@@ -19,6 +19,15 @@ namespace Sedulous.Model.FBX;
 /// index.
 class FbxLoader : IModelLoader
 {
+	/// FBX (and OBJ) colours are the DCC's scene linear values (Blender writes its linear base
+	/// colour; a model exported as both FBX and glTF carries the same numbers in each). The
+	/// engine's authored colours are sRGB, so they are encoded as they are read, like glTF's.
+	private static Float4 SrgbColor(double r, double g, double b, double a)
+	{
+		let c = ToSrgb(Color((float)r, (float)g, (float)b, (float)a));
+		return .(c.R, c.G, c.B, c.A);
+	}
+
 	private ufbx_scene* mScene = null;
 	private String mBasePath = new .() ~ delete _;
 
@@ -199,7 +208,7 @@ class FbxLoader : IModelLoader
 		if (source.pbr.base_color.has_value)
 		{
 			let c = source.pbr.base_color.value_vec4;
-			material.BaseColorFactor = .((float)c.x, (float)c.y, (float)c.z, (float)c.w);
+			material.BaseColorFactor = SrgbColor(c.x, c.y, c.z, c.w);
 		}
 		if (source.pbr.base_color.texture != null)
 		{
@@ -236,11 +245,12 @@ class FbxLoader : IModelLoader
 		if (source.pbr.emission_color.has_value)
 		{
 			let e = source.pbr.emission_color.value_vec3;
-			// FBX keeps the emissive colour and its strength apart; the model has one
-			// factor, so they are multiplied together here.
-			let factor = source.pbr.emission_factor.has_value
+			// FBX keeps the emissive colour and its strength apart, as the material does: the
+			// colour as sRGB, the factor as its intensity (it may pass one).
+			let emissive = SrgbColor(e.x, e.y, e.z, 1.0);
+			material.EmissiveFactor = .(emissive.X, emissive.Y, emissive.Z);
+			material.EmissiveIntensity = source.pbr.emission_factor.has_value
 				? (float)source.pbr.emission_factor.value_real : 1.0f;
-			material.EmissiveFactor = .((float)e.x * factor, (float)e.y * factor, (float)e.z * factor);
 		}
 		if (source.pbr.emission_color.texture != null)
 			material.EmissiveTextureIndex = TextureIndex(source.pbr.emission_color.texture, model);
@@ -252,9 +262,9 @@ class FbxLoader : IModelLoader
 		if (source.fbx.diffuse_color.has_value)
 		{
 			let c = source.fbx.diffuse_color.value_vec4;
-			let factor = source.fbx.diffuse_factor.has_value
-				? (float)source.fbx.diffuse_factor.value_real : 1.0f;
-			material.BaseColorFactor = .((float)c.x * factor, (float)c.y * factor, (float)c.z * factor, 1.0f);
+			// The colour alone: DiffuseFactor is ignored, as glTF has none. Blender writes its
+			// legacy 0.8 there, which made an FBX a fifth darker than the same model's glTF.
+			material.BaseColorFactor = SrgbColor(c.x, c.y, c.z, 1.0);
 		}
 		if (source.fbx.diffuse_color.texture != null)
 		{
@@ -271,9 +281,11 @@ class FbxLoader : IModelLoader
 		if (source.fbx.emission_color.has_value)
 		{
 			let e = source.fbx.emission_color.value_vec3;
-			let factor = source.fbx.emission_factor.has_value
+			// The colour as sRGB, the factor as its intensity (it may pass one).
+			let emissive = SrgbColor(e.x, e.y, e.z, 1.0);
+			material.EmissiveFactor = .(emissive.X, emissive.Y, emissive.Z);
+			material.EmissiveIntensity = source.fbx.emission_factor.has_value
 				? (float)source.fbx.emission_factor.value_real : 1.0f;
-			material.EmissiveFactor = .((float)e.x * factor, (float)e.y * factor, (float)e.z * factor);
 		}
 		if (source.fbx.emission_color.texture != null)
 			material.EmissiveTextureIndex = TextureIndex(source.fbx.emission_color.texture, model);

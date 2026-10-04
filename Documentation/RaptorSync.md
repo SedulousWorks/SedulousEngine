@@ -43,7 +43,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
     probes.
 12. ~~40d28176~~ (done) Model.GLTF: colour factors read as authored sRGB; emissive strength kept as an
     intensity.
-13. eaaa699c + 5b1d2c44 Model.FBX: material colours read as authored sRGB, the emission factor an
+13. ~~eaaa699c + 5b1d2c44~~ (done) Model.FBX: material colours read as authored sRGB, the emission factor an
     intensity; a legacy material's colour ignores its diffuse factor.
 14. 1ed763b7 UI.Viewport, Editor: viewport backdrops are sRGB like every UI colour.
 15. b4d0f7a9 Docs: the colour rule in the MCP guide and in `entity_set`'s description.
