@@ -23,7 +23,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 3. ~~a6fc8996~~ (done) Editor.Scene: a Game tab's screenshot is what the tab drew, with its scale (the
    capture's resample goes; `pie_screenshot` and `pie_run`'s shots report `renderWidth`,
    `renderHeight` and `scale` when the tab draws scaled; McpGuide).
-4. b1dd4e68 Sky Hopper: the exported player is named for its game ("Sedulous SkyHopper").
+4. ~~b1dd4e68~~ (done) Sky Hopper: the exported player is named for its game ("Sedulous SkyHopper").
 5. Backlog, from Raptor's findings, each checked here: TAA still looks jittery (6896586f), auto
    exposure settles visibly at the start of a scene (71dec790), `var()` inside a drawable's
    arguments draws white silently, and every new particle system has the same seed (a5f112f8).
