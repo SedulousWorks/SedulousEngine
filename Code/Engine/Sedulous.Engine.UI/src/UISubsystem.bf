@@ -57,16 +57,13 @@ class UISubsystem : Subsystem, ISceneObserver
 	private UITextureImages mImages = new .() ~ delete _;
 	private UIInputBridge mBridge ~ delete _;
 
-	private RootView mScreenRoot = null;
-	private ScreenStack mScreenStack = new .() ~ delete _;
-	/// The game's render resolution and how it fits its target, when it has one: the screen
-	/// tier lays out at that size and draws fitted where the game's image is.
-	private Float2 mScreenResolution = .Zero;
-	private FitMode mScreenFitMode = .Letterbox;
-	/// The target the screen tier last drew into, which the pointer maps against.
-	private Float2 mScreenTargetSize = .Zero;
-	/// The scene LESS screen tier, ABOVE everything.
-	private ViewGroup mOverlayLayer = null;
+	/// The shared screen tier, its root attached at init; it holds the global overlay layer.
+	private UIScreenTier mScreen = new .() ~ delete _;
+	/// A tier per run, with run screens on. Their roots are released on the way out.
+	private List<UIScreenTier> mRunTiers = new .() ~ DeleteContainerAndItems!(_);
+	private bool mRunScreens = false;
+	/// The run whose tier the next screen overlay draw shows; null for the shared tier alone.
+	private Object mRenderRun = null;
 	/// BORROWED. Installing a sheet CONSUMES the reference, so the context owns it from that
 	/// moment and this is only a back pointer for comparison.
 	private StyleSheet mTheme = null;
@@ -160,55 +157,149 @@ class UISubsystem : Subsystem, ISceneObserver
 
 	/// The scene LESS screen tier's root: global overlays only, scene UI living in the per
 	/// scene roots.
-	public RootView ScreenRoot => mScreenRoot;
+	public RootView ScreenRoot => mScreen.Root;
 
 	/// Push, pop and replace of screens over that root. Owned by the tier so its lifetime
 	/// matches the root's.
-	public ScreenStack Screens => mScreenStack;
+	public ScreenStack Screens => mScreen.Stack;
 
 	/// The screen tier at the game's render resolution: it lays out at `width` x `height`
 	/// and draws, at the target's own resolution, into the rectangle `fit` puts that size
 	/// in, so its text stays crisp at any window size. The pointer then arrives in render
 	/// space, as the game's does. Nought on either axis goes back to the target's own size.
-	public void SetScreenResolution(uint32 width, uint32 height, FitMode fit)
+	public void SetScreenResolution(uint32 width, uint32 height, FitMode fit) => mScreen.ApplyResolution(width, height, fit);
+
+	public bool HasScreenResolution => mScreen.HasResolution;
+
+	// ==================== a screen tier per run ====================
+	// The player runs one game, so its runs share the one screen tier. The editor runs a game
+	// per Game tab inside one application: with run screens on, each run (a run key, as
+	// Scene.Run and a script's run carry) gets its own screen root and stack, a tab draws its own
+	// run's (SetRenderRun) at its own resolution, and input goes to the run of the scene the
+	// input subsystem is bound to. The global overlay layer stays on the shared tier, drawn
+	// above every run's.
+
+	/// On: each run its own screen tier (the editor sets it once, as it sets the input's
+	/// unbound scene policy). Off, the default: every run uses the shared tier.
+	public bool RunScreens
 	{
-		mScreenResolution = ((width > 0) && (height > 0)) ? Float2(width, height) : .Zero;
-		mScreenFitMode = fit;
-		if (!HasScreenResolution && (mScreenRoot != null))
-			mScreenRoot.DpiScale = 1.0f;
+		get => mRunScreens;
+		set => mRunScreens = value;
 	}
 
-	public bool HasScreenResolution => (mScreenResolution.X > 0.0f) && (mScreenResolution.Y > 0.0f);
+	/// `run`'s screen stack, made on first use; the shared tier's with run screens off or no run.
+	public ScreenStack ScreensFor(Object run) => TierFor(run).Stack;
 
-	/// The screen resolution fitted into the last target drawn.
-	private ContentFit ScreenFit() => ContentFit(.(0, 0, mScreenTargetSize.X, mScreenTargetSize.Y), mScreenResolution, mScreenFitMode);
+	/// `run`'s screen root, made on first use (the shared tier's as ScreensFor).
+	public RootView ScreenRootFor(Object run) => TierFor(run).Root;
 
-	/// Target pixels per layout unit, down the height: the one scale a layout can take.
-	private static float ScreenDpi(ContentFit fit)
+	/// The screen resolution of `run`'s tier, made on first use so a tab can size it before a
+	/// push; the shared tier's with run screens off or no run.
+	public void SetScreenResolution(Object run, uint32 width, uint32 height, FitMode fit)
+		=> TierFor(run).ApplyResolution(width, height, fit);
+
+	/// The run whose screen tier the next screen overlay draw shows (null: the shared tier
+	/// alone), set by a host around its overlay draw for that run's view.
+	public void SetRenderRun(Object run) => mRenderRun = run;
+
+	/// The run ended: its screen tier and every screen on it go.
+	public void EndRunScreens(Object run)
 	{
-		let scale = fit.Scale().Y;
-		return (scale > 0.0f) ? (1.0f / scale) : 1.0f;
+		for (int i < mRunTiers.Count)
+		{
+			if (mRunTiers[i].Run !== run)
+				continue;
+			DropTier(mRunTiers[i]);
+			mRunTiers.RemoveAt(i);
+			break;
+		}
+		if (mRenderRun === run)
+			mRenderRun = null;
 	}
 
-	/// A render space point in the screen tier's layout units: offset by the part of the
-	/// resolution a crop leaves out, and nothing else.
-	private Float2 ScreenLayoutPoint(Float2 point)
+	/// The runs with a screen tier of their own (introspection, tests).
+	public int RunScreenCount => mRunTiers.Count;
+
+	/// `run`'s tier, made on first use; the shared one with run screens off or no run.
+	private UIScreenTier TierFor(Object run)
 	{
-		if (!HasScreenResolution)
-			return point;
-		let source = ScreenFit().SrcRect();
-		return .(point.X - source.X, point.Y - source.Y);
+		if (!mRunScreens || (run == null))
+			return mScreen;
+		if (let found = FindRunTier(run))
+			return found;
+		let tier = new UIScreenTier();
+		tier.Run = run;
+		tier.Root = new RootView();
+		mContext.AddRootView(tier.Root);
+		tier.Stack.Attach(tier.Root);
+		mRunTiers.Add(tier);
+		return tier;
 	}
 
-	/// The same point in the pixels the screen tier's input takes (layout units times its
-	/// scale).
-	private Float2 ScreenPointerPoint(Float2 point)
+	/// `run`'s own tier, or null when none was made.
+	private UIScreenTier FindRunTier(Object run)
 	{
-		if (!HasScreenResolution)
-			return point;
-		let layout = ScreenLayoutPoint(point);
-		let dpi = ScreenDpi(ScreenFit());
-		return .(layout.X * dpi, layout.Y * dpi);
+		if (run == null)
+			return null;
+		for (let tier in mRunTiers)
+		{
+			if (tier.Run === run)
+				return tier;
+		}
+		return null;
+	}
+
+	/// The tier this frame's input reaches: the run of the scene the input is bound to, when
+	/// run screens are on and that run has a tier; the shared tier otherwise.
+	private UIScreenTier InputTier()
+	{
+		let bound = (mRunScreens && (mInput != null)) ? mInput.BoundSceneKey : null;
+		if (bound == null)
+			return mScreen;
+		for (let ui in mSceneUIs)
+		{
+			if ((void*)Internal.UnsafeCastToPtr(ui.Scene) != bound)
+				continue;
+			if (let tier = FindRunTier(ui.Scene.Run))
+				return tier;
+			break;
+		}
+		return mScreen;
+	}
+
+	/// The tier whose root is `root`, or null.
+	private UIScreenTier TierOfRoot(RootView root)
+	{
+		if (root == null)
+			return null;
+		if (root === mScreen.Root)
+			return mScreen;
+		for (let tier in mRunTiers)
+		{
+			if (tier.Root === root)
+				return tier;
+		}
+		return null;
+	}
+
+	/// Takes a run tier's screens off and its root out of the context, then deletes it. Mid
+	/// dispatch the stack's pops would be queued behind a stack already gone, so the whole drop
+	/// waits for the context's mutation queue instead.
+	private void DropTier(UIScreenTier tier)
+	{
+		if (mContext.CurrentPhase != .Idle)
+		{
+			mContext.MutationQueue.QueueAction(new [=tier, =this]() => { DropTier(tier); });
+			return;
+		}
+		tier.Stack.Clear();
+		if (tier.Root != null)
+		{
+			mContext.RemoveRootView(tier.Root);
+			tier.Root.ReleaseRef();
+			tier.Root = null;
+		}
+		delete tier;
 	}
 
 	/// The scene tier's root for a scene: its canvases above a shared billboard layer. Null
@@ -227,12 +318,12 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// Instantiates a document and attaches it topmost. Null when the markup fails.
 	public View PushScreenOverlay(UIDocument document)
 	{
-		if (document.Markup.IsEmpty || (mOverlayLayer == null))
+		if (document.Markup.IsEmpty || (mScreen.Overlay == null))
 			return null;
 
 		let view = MarkupLoader.LoadFromString(document.Markup, mContext);
 		if (view != null)
-			mOverlayLayer.AddView(view);
+			mScreen.Overlay.AddView(view);
 
 		return view;
 	}
@@ -241,7 +332,7 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// an event handler can attach later through the mutation queue. Null when it fails.
 	public View InstantiateScreenOverlay(UIDocument document)
 	{
-		if (document.Markup.IsEmpty || (mOverlayLayer == null))
+		if (document.Markup.IsEmpty || (mScreen.Overlay == null))
 			return null;
 
 		return MarkupLoader.LoadFromString(document.Markup, mContext);
@@ -250,17 +341,17 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// Attaches an already built view topmost, which is the code built overlay path.
 	public void PushScreenOverlay(View view)
 	{
-		if ((view != null) && (mOverlayLayer != null))
-			mOverlayLayer.AddView(view);
+		if ((view != null) && (mScreen.Overlay != null))
+			mScreen.Overlay.AddView(view);
 	}
 
 	public void RemoveScreenOverlay(View view)
 	{
-		if ((view != null) && (mOverlayLayer != null))
-			mOverlayLayer.RemoveView(view);
+		if ((view != null) && (mScreen.Overlay != null))
+			mScreen.Overlay.RemoveView(view);
 	}
 
-	public int ScreenOverlayCount => (mOverlayLayer != null) ? mOverlayLayer.ChildCount : 0;
+	public int ScreenOverlayCount => (mScreen.Overlay != null) ? mScreen.Overlay.ChildCount : 0;
 
 	/// Whether the global overlay layer should intercept input: it holds at least one HIT
 	/// TESTABLE child.
@@ -272,12 +363,12 @@ class UISubsystem : Subsystem, ISceneObserver
 	{
 		get
 		{
-			if (mOverlayLayer == null)
+			if (mScreen.Overlay == null)
 				return false;
 
-			for (int i < mOverlayLayer.ChildCount)
+			for (int i < mScreen.Overlay.ChildCount)
 			{
-				let child = mOverlayLayer.GetChildAt(i);
+				let child = mScreen.Overlay.GetChildAt(i);
 				if ((child != null) && child.IsHitTestVisible && (child.Visibility == .Visible))
 					return true;
 			}
@@ -319,14 +410,14 @@ class UISubsystem : Subsystem, ISceneObserver
 		// each scene's canvases and billboards living in that scene's own root, and it hit
 		// tests only while it HOLDS overlays: an empty full screen layer must never swallow
 		// the clicks meant for the canvases below it.
-		mScreenRoot = new RootView();
-		mContext.AddRootView(mScreenRoot);
-		mScreenStack.Attach(mScreenRoot);
+		mScreen.Root = new RootView();
+		mContext.AddRootView(mScreen.Root);
+		mScreen.Stack.Attach(mScreen.Root);
 
 		let overlay = new FrameLayout();
 		overlay.IsHitTestVisible = false;
-		mOverlayLayer = overlay;
-		mScreenRoot.AddView(mOverlayLayer);
+		mScreen.Overlay = overlay;
+		mScreen.Root.AddView(mScreen.Overlay);
 	}
 
 	protected override void OnReady()
@@ -388,12 +479,15 @@ class UISubsystem : Subsystem, ISceneObserver
 		}
 		ClearAndDeleteItems!(mTextureCanvasRoots);
 
-		mOverlayLayer = null;
-		if (mScreenRoot != null)
+		for (let tier in mRunTiers)
+			DropTier(tier);
+		mRunTiers.Clear();
+		mScreen.Overlay = null;
+		if (mScreen.Root != null)
 		{
-			mContext.RemoveRootView(mScreenRoot);
-			mScreenRoot.ReleaseRef();
-			mScreenRoot = null;
+			mContext.RemoveRootView(mScreen.Root);
+			mScreen.Root.ReleaseRef();
+			mScreen.Root = null;
 		}
 
 		delete mRenderState;

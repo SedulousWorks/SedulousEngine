@@ -31,8 +31,8 @@ extension UISubsystem
 		// with hit testing off must not turn the full window layer into a click shield over
 		// every scene's heads up display.
 		let overlayActive = OverlayLayerWantsInput;
-		if (mOverlayLayer != null)
-			mOverlayLayer.IsHitTestVisible = overlayActive;
+		if (mScreen.Overlay != null)
+			mScreen.Overlay.IsHitTestVisible = overlayActive;
 
 		if (mInput == null)
 			return;
@@ -72,7 +72,8 @@ extension UISubsystem
 
 	/// The context dispatches through ONE active root, so one is picked per frame.
 	///
-	/// An OCCUPIED screen tier is modal and always wins; failing that the eligible root under
+	/// The screen tier is this frame's input tier: the bound run's (its Game tab) or the shared
+	/// one. An OCCUPIED global overlay layer is modal and always wins; failing that the eligible root under
 	/// the pointer; failing that the nearest interactive world panel the camera ray crosses;
 	/// and failing all of those the first eligible scene root that HAS canvas content, so a
 	/// gamepad still reaches a pause menu no pointer ever hovered.
@@ -80,19 +81,20 @@ extension UISubsystem
 		ref Float2 panelPointerPx)
 	{
 		RootView target = null;
+		let tier = InputTier();
 
 		if (overlayActive)
-			target = mScreenRoot;
+			target = mScreen.Root; // the global overlays live on the shared tier
 
 		if ((target == null) && (mouse != null))
 		{
 			let point = Float2(mouse.X, mouse.Y);
 
-			if (mScreenRoot != null)
+			if (tier.Root != null)
 			{
-				let hit = mScreenRoot.HitTest(ScreenLayoutPoint(point));
-				if ((hit != null) && (hit !== mScreenRoot))
-					target = mScreenRoot;
+				let hit = tier.Root.HitTest(tier.LayoutPoint(point));
+				if ((hit != null) && (hit !== tier.Root))
+					target = tier.Root;
 			}
 
 			for (let ui in mSceneUIs)
@@ -133,7 +135,7 @@ extension UISubsystem
 		}
 
 		if (target == null)
-			target = mScreenRoot;
+			target = tier.Root;
 
 		if (target != null)
 			mContext.SetActiveInputRoot(target);
@@ -223,10 +225,11 @@ extension UISubsystem
 
 		var x = panelPointer ? panelPointerPx.X : mouse.X;
 		var y = panelPointer ? panelPointerPx.Y : mouse.Y;
-		// The screen tier drawn fitted takes its pointer in its own pixels.
-		if (!panelPointer && (mContext.ActiveInputRoot === mScreenRoot))
+		// A screen tier drawn fitted takes its pointer in its own pixels.
+		let activeTier = TierOfRoot(mContext.ActiveInputRoot);
+		if (!panelPointer && (activeTier != null))
 		{
-			let screen = ScreenPointerPoint(.(x, y));
+			let screen = activeTier.PointerPoint(.(x, y));
 			x = screen.X;
 			y = screen.Y;
 		}
@@ -297,7 +300,7 @@ extension UISubsystem
 	/// failing a screen the first focusable anywhere. False when there is nothing to focus.
 	private bool LandFocus()
 	{
-		if (mScreenStack.FocusDefault(.Keyboard))
+		if (InputTier().Stack.FocusDefault(.Keyboard))
 			return true;
 		let focus = mContext.GetFocusManager();
 		focus.FocusNext();
@@ -307,7 +310,7 @@ extension UISubsystem
 	private void PumpGamepad(IInputSourceProvider devices, InputManager inputManager)
 	{
 		let pad = devices.GetGamepad(0);
-		if ((pad == null) || !pad.Connected || (mScreenRoot == null))
+		if ((pad == null) || !pad.Connected || (InputTier().Root == null))
 			return;
 
 		let stickX = pad.Axis(.LeftX);
@@ -423,7 +426,7 @@ extension UISubsystem
 			line.Append(" | hovered none");
 		if (mouse != null)
 		{
-			let point = ScreenLayoutPoint(.(mouse.X, mouse.Y));
+			let point = InputTier().LayoutPoint(.(mouse.X, mouse.Y));
 			line.AppendF(" | pointer ({:0},{:0}) layout ({:0},{:0})", mouse.X, mouse.Y, point.X, point.Y);
 		}
 		GlobalLog(.Information, line);
@@ -455,10 +458,17 @@ extension UISubsystem
 		{
 			let point = Float2(mouse.X, mouse.Y);
 
-			if (mScreenRoot != null)
+			let tier = InputTier();
+			if (tier.Root != null)
 			{
-				let hit = mScreenRoot.HitTest(ScreenLayoutPoint(point));
-				pointer = (hit != null) && (hit !== mScreenRoot);
+				let hit = tier.Root.HitTest(tier.LayoutPoint(point));
+				pointer = (hit != null) && (hit !== tier.Root);
+			}
+			// The global overlays sit on the shared tier, above a run's own.
+			if (!pointer && OverlayLayerWantsInput && (tier !== mScreen))
+			{
+				let hit = mScreen.Root.HitTest(mScreen.LayoutPoint(point));
+				pointer = (hit != null) && (hit !== mScreen.Root);
 			}
 
 			for (let ui in mSceneUIs)

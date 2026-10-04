@@ -3,6 +3,7 @@ using Sedulous.Core;
 using Sedulous.Engine.UI;
 using Sedulous.Scene;
 using Sedulous.UI;
+using Sedulous.UI.Gamekit;
 
 namespace Sedulous.Engine.UI.Tests;
 
@@ -142,5 +143,89 @@ class UIScreenTierTests
 		let menu = fixture.UI.PushScreenOverlay(menuDoc);
 		Test.Assert(menu != null);
 		Test.Assert(fixture.UI.OverlayLayerWantsInput);
+	}
+
+	/// A menu screen of two buttons named for its run, as a game's title screen. The caller's
+	/// reference is the one Push consumes.
+	private static UIScreen MenuFor(UITestFixture fixture, StringView prefix)
+	{
+		let document = UITestFixture.MakeDocument(scope $"""
+			<Flex direction="vertical" spacing="4">
+			<Button id="{prefix}-top" text="Top" width="200" height="36"/>
+			<Button id="{prefix}-bottom" text="Bottom" width="200" height="36"/>
+			</Flex>
+			""");
+		defer delete document;
+		let screen = new UIScreen();
+		screen.AddView(fixture.UI.InstantiateScreenOverlay(document));
+		return screen;
+	}
+
+	/// Two Game tabs in one editor run two games: with run screens on, each run's menus sit on
+	/// its own screen tier, and navigation reaches the menu of the run whose scene the input is
+	/// bound to, not the other's. Off (the player), every run shares the one tier.
+	[Test]
+	public static void WithRunScreensOnEachRunHasItsOwnScreensAndInputReachesTheBoundRuns()
+	{
+		let fixture = scope UITestFixture(true);
+		let runA = scope Object();
+		let runB = scope Object();
+
+		Test.Assert(fixture.UI.ScreensFor(runA) === fixture.UI.Screens, "off: the shared tier");
+		Test.Assert(fixture.UI.RunScreenCount == 0);
+
+		fixture.UI.RunScreens = true;
+		let stackA = fixture.UI.ScreensFor(runA);
+		let stackB = fixture.UI.ScreensFor(runB);
+		Test.Assert((stackA !== stackB) && (stackA !== fixture.UI.Screens));
+		Test.Assert(fixture.UI.ScreensFor(runA) === stackA, "the same run, the same tier");
+		Test.Assert(fixture.UI.ScreensFor(null) === fixture.UI.Screens);
+		Test.Assert(fixture.UI.RunScreenCount == 2);
+		Test.Assert(fixture.UI.ScreenRootFor(runA) !== fixture.UI.ScreenRootFor(runB));
+
+		let sceneA = fixture.Scenes.CreateScene("a");
+		let sceneB = fixture.Scenes.CreateScene("b");
+		sceneA.SetRun(runA);
+		sceneB.SetRun(runB);
+		stackA.Push(MenuFor(fixture, "a"));
+		stackB.Push(MenuFor(fixture, "b"));
+		fixture.Frame();
+		for (let root in RootView[2](fixture.UI.ScreenRootFor(runA), fixture.UI.ScreenRootFor(runB)))
+		{
+			root.ViewportSize = .(800.0f, 600.0f);
+			fixture.UI.UiContext.UpdateRootView(root);
+		}
+		Test.Assert(fixture.UI.ScreenRootFor(runA).FindByName("a-top") != null);
+		Test.Assert(fixture.UI.ScreenRootFor(runA).FindByName("b-top") == null);
+
+		// Input bound to run B's scene (its Game tab has the keyboard): Down lands on B's menu.
+		let devices = scope NavFakeDevices();
+		fixture.Input.SetSourceProvider(devices, Internal.UnsafeCastToPtr(sceneB));
+		let focus = fixture.UI.UiContext.GetFocusManager();
+		focus.ClearFocus(); // a push focuses its screen; start from nothing focused
+		devices.Pad.SetDown(.DPadDown);
+		fixture.Frame();
+		Test.Assert((focus.FocusedView != null) && (focus.FocusedView.Name == "b-top"));
+		devices.Pad.SetDown(.DPadDown, false);
+		fixture.Frame();
+
+		// Bound to run A's: navigation moves to A's menu.
+		focus.ClearFocus();
+		fixture.Input.SetSourceProvider(devices, Internal.UnsafeCastToPtr(sceneA));
+		devices.Pad.SetDown(.DPadDown);
+		fixture.Frame();
+		Test.Assert((focus.FocusedView != null) && (focus.FocusedView.Name == "a-top"));
+		devices.Pad.SetDown(.DPadDown, false);
+
+		// A run's end takes its tier and its screens; the other run's stay.
+		focus.ClearFocus();
+		fixture.UI.EndRunScreens(runA);
+		Test.Assert(fixture.UI.RunScreenCount == 1);
+		Test.Assert(fixture.UI.ScreensFor(runB) === stackB);
+		Test.Assert(stackB.Count == 1);
+
+		fixture.Input.SetSourceProvider(null);
+		fixture.Scenes.DestroyScene(sceneA);
+		fixture.Scenes.DestroyScene(sceneB);
 	}
 }

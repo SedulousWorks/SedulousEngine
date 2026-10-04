@@ -151,28 +151,36 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 	}
 
 	/// The SCREEN tier, from the host's overlay call per window target, after the scene has
-	/// composed.
+	/// composed: the render run's own screens (its Game tab), then the shared tier's global
+	/// overlays above them.
 	public void Render(IRenderPassEncoder encoder, ScreenOverlayView view)
 	{
 		if ((mRenderState == null) || (mRenderState.Device == null))
 			return;
-		if ((mScreenRoot == null) || (view.Width == 0) || (view.Height == 0))
+		if ((mScreen.Root == null) || (view.Width == 0) || (view.Height == 0))
 			return;
 
-		mScreenTargetSize = .((float)view.Width, (float)view.Height);
-		if (HasScreenResolution)
+		if (let runTier = mRunScreens ? FindRunTier(mRenderRun) : null)
+			DrawTier(runTier, encoder, view);
+		DrawTier(mScreen, encoder, view);
+	}
+
+	private void DrawTier(UIScreenTier tier, IRenderPassEncoder encoder, ScreenOverlayView view)
+	{
+		tier.TargetSize = .((float)view.Width, (float)view.Height);
+		if (tier.HasResolution)
 		{
 			// Laid out at the screen resolution, drawn crisp at the target's resolution into the
 			// rectangle the game's image was fitted to.
-			let fit = ScreenFit();
+			let fit = tier.Fit;
 			let dst = fit.DstRect();
-			mScreenRoot.DpiScale = ScreenDpi(fit);
-			DrawRootInPass(mScreenRoot, encoder, view.TargetFormat, (int32)dst.X, (int32)dst.Y,
+			tier.Root.DpiScale = UIScreenTier.Dpi(fit);
+			DrawRootInPass(tier.Root, encoder, view.TargetFormat, (int32)dst.X, (int32)dst.Y,
 				(uint32)Math.Max(dst.Width, 1.0f), (uint32)Math.Max(dst.Height, 1.0f),
 				(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat));
 			return;
 		}
-		DrawRootInPass(mScreenRoot, encoder, view.TargetFormat, 0, 0, view.Width, view.Height,
+		DrawRootInPass(tier.Root, encoder, view.TargetFormat, 0, 0, view.Width, view.Height,
 			(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat));
 	}
 
