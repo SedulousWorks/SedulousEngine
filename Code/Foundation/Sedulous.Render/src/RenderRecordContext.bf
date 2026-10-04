@@ -75,9 +75,6 @@ struct RenderRecordContext
 	/// forward pass reuses it rather than building it a second time.
 	public bool FillInstanceCache = false;
 
-	/// How wide, in world units, the last cascade dissolves its shadows over.
-	public float ShadowFarFade = 40.0f;
-
 	/// The editor's semantic debug mode: the forward pass outputs that term instead of the
 	/// lit result.
 	public uint8 DebugSemantic = 0;

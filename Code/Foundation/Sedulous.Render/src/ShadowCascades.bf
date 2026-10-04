@@ -24,6 +24,8 @@ struct ShadowCascades
 	public float NormalBias = ShadowBiasDefaults.NormalBias; // texels
 	public float DepthBias = ShadowBiasDefaults.DepthBias;
 	public float Strength = 1.0f;
+	/// The scene's fade width at the reach (SceneShadowSettings.FadeDistance).
+	public float FarFade = 40.0f;
 
 	public bool Valid = false;
 

@@ -26,7 +26,6 @@ class ForwardPass
 
 	/// Per frame: whether any temporal effect reads the velocity this frame.
 	private bool mMotionNeeded = true;
-	private float mShadowFarFade = 40.0f;
 	/// The WIND sway's clock: this frame's seconds and last frame's.
 	private float mTimeSeconds = 0.0f;
 	private float mPrevTimeSeconds = 0.0f;
@@ -56,7 +55,6 @@ class ForwardPass
 	/// Whether any temporal effect consumes the motion vectors this frame. When it does not,
 	/// the resolve skips the per instance previous world lookup and the velocity is nought.
 	public void SetMotionNeeded(bool needed) => mMotionNeeded = needed;
-	public void SetShadowFarFade(float value) => mShadowFarFade = value;
 
 	/// The frame's clock, this frame's seconds and last frame's, which is the WIND sway's
 	/// phase. Set once per frame.
@@ -295,7 +293,6 @@ class ForwardPass
 		context.ProbeCount = probeCount;
 		context.Ibl = ibl;
 		context.NeedsMotion = view.Settings.Post.NeedsMotion;
-		context.ShadowFarFade = mShadowFarFade;
 		// The WIND clock is the view's SCENE clock, which is scaled and pausable; the frame's
 		// own stands in only for a snapshot no scene stamped.
 		context.TimeSeconds = mTimeSeconds;

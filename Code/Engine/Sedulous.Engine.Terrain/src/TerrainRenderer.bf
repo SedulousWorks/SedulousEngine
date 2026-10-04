@@ -421,7 +421,7 @@ class TerrainRenderer : Renderer
 				uniforms.ShadowMeta = .((float)cCascadeCount, (float)context.CascadeLayerBase,
 					context.Cascades.NormalBias, context.Cascades.DepthBias);
 				uniforms.ShadowLight.X = context.Cascades.Strength;
-				uniforms.ShadowParams.X = context.ShadowFarFade;
+				uniforms.ShadowParams.X = context.Cascades.FarFade;
 			}
 
 			let hasWeights = (data.WeightView != null) && (data.IndexView != null)

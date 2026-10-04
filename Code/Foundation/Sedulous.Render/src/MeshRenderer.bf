@@ -1343,7 +1343,7 @@ class MeshRenderer : Renderer
 			// the receiver's compare bias. Defaults: ShadowBiasDefaults.
 			viewData.ShadowNormalBias = context.Cascades.NormalBias;
 			viewData.ShadowDepthBias = context.Cascades.DepthBias;
-			viewData.ShadowParams.X = context.ShadowFarFade;
+			viewData.ShadowParams.X = context.Cascades.FarFade; // the scene's fade width at the reach
 		}
 
 		// The vertical sign for a shadow lookup. The shadow map rasterises the same way the

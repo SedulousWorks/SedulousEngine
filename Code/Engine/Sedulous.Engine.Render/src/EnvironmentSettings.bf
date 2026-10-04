@@ -88,5 +88,20 @@ struct EnvironmentSettings
 	[Description("Sky reflection strength on surfaces (probes keep their own intensity)")]
 	public float IblSpecularIntensity = 1.0f;
 
+	/// The sun's shadow reach: how far from the camera its cascades cover (clamped to the
+	/// camera's far plane, but independent of it: a street scale scene keeps its near shadows
+	/// sharp with a short reach while the camera sees far), how the cascade splits blend
+	/// (nought even, one more of the map near the camera) and the width it fades out over at
+	/// the reach.
+	[Range(5.0f, 1000.0f, 1.0f)]
+	[Description("How far from the camera the sun's shadows reach. Shorter keeps near shadows sharp (a roof's shadow on a wall); longer covers more ground")]
+	public float ShadowDistance = 300.0f;
+	[Range(0.0f, 1.0f, 0.01f)]
+	[Description("How the shadow map is shared out over the reach: 0 = evenly, 1 = most of it near the camera")]
+	public float ShadowCascadeSplit = 0.5f;
+	[Range(0.0f, 200.0f, 1.0f)]
+	[Description("The width shadows fade out over at the reach")]
+	public float ShadowFadeDistance = 40.0f;
+
 	public this() {}
 }

@@ -117,4 +117,64 @@ class SceneSettingsRoundTripTests
 		Test.Assert(Near(reloaded.Environment.IblDiffuseIntensity, 0.35f));
 		Test.Assert(Near(reloaded.Environment.IblSpecularIntensity, 0.8f));
 	}
+
+	/// The sun's shadow reach rides the scene (environment version 2), and a version 1 block,
+	/// as the stored scenes hold it, reads the reach's defaults and its own fields.
+	[Test]
+	public static void TheShadowReachRoundTripsAndAVersionOneBlockReadsItsDefaults()
+	{
+		let written = scope EnvironmentSystem();
+		written.Environment.ShadowDistance = 70.0f;
+		written.Environment.ShadowCascadeSplit = 0.8f;
+		written.Environment.ShadowFadeDistance = 12.0f;
+		written.Environment.IblSpecularIntensity = 0.6f;
+		let typeId = TypeIdOf("environment");
+
+		let current = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(current, .Write);
+			BeginVersionedPayload(writer, typeId, written.SettingsDataVersion);
+			written.SerializeSettings(writer);
+			EndVersionedPayload(writer);
+			Test.Assert(writer.IsOk);
+		}
+		current.Seek(0, .Begin);
+		let read = scope EnvironmentSystem();
+		{
+			let reader = scope BinarySerializer(current, .Read);
+			BeginVersionedPayload(reader, typeId, read.SettingsDataVersion, read.SettingsMinReadDataVersion);
+			read.SerializeSettings(reader);
+			EndVersionedPayload(reader);
+			Test.Assert(reader.IsOk);
+		}
+		Test.Assert(Near(read.Environment.ShadowDistance, 70.0f));
+		Test.Assert(Near(read.Environment.ShadowCascadeSplit, 0.8f));
+		Test.Assert(Near(read.Environment.ShadowFadeDistance, 12.0f));
+
+		// A version 1 block: the chain stamped 1 and no reach (the version 2 layout appends three
+		// floats, so a version 1 payload is the version 2 one without its last twelve bytes).
+		let stamped = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(stamped, .Write);
+			BeginVersionedPayload(writer, typeId, 1);
+			written.SerializeSettings(writer);
+			EndVersionedPayload(writer);
+			Test.Assert(writer.IsOk);
+		}
+		let bytes = stamped.Bytes;
+		let versionOne = scope MemoryStream();
+		versionOne.Write(Span<uint8>(bytes.Ptr, bytes.Length - 3 * sizeof(float)));
+		versionOne.Seek(0, .Begin);
+		let legacy = scope EnvironmentSystem();
+		legacy.Environment.ShadowDistance = 1.0f; // overwritten only if the reader reads the field
+		{
+			let reader = scope BinarySerializer(versionOne, .Read);
+			BeginVersionedPayload(reader, typeId, legacy.SettingsDataVersion, legacy.SettingsMinReadDataVersion);
+			legacy.SerializeSettings(reader);
+			EndVersionedPayload(reader);
+			Test.Assert(reader.IsOk);
+		}
+		Test.Assert(Near(legacy.Environment.ShadowDistance, 1.0f), "not read: version 1 has none");
+		Test.Assert(Near(legacy.Environment.IblSpecularIntensity, 0.6f), "the version 1 fields read");
+	}
 }

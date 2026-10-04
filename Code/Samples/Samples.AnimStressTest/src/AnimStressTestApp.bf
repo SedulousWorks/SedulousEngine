@@ -438,13 +438,13 @@ class AnimStressTestApp : DefaultApplication
 			igSeparator();
 			igTextUnformatted("Directional shadows", null);
 
-			var shadowDistance = render.ShadowDistance;
-			if (igSliderFloat("Distance", &shadowDistance, 50.0f, 1000.0f, "%.0f", 0))
-				render.ShadowDistance = shadowDistance;
+			// The scene's own reach (its environment settings).
+			let environment = mScene.GetSystem<EnvironmentSystem>().Environment;
+			igSliderFloat("Distance", &environment.ShadowDistance, 50.0f, 1000.0f, "%.0f", 0);
 
-			var shadowFade = render.ShadowFarFade;
+			var shadowFade = environment.ShadowFadeDistance;
 			if (igSliderFloat("Far fade", &shadowFade, 2.0f, 150.0f, "%.0f", 0))
-				render.ShadowFarFade = shadowFade;
+				environment.ShadowFadeDistance = shadowFade;
 
 			igTextDisabled(scope $"shadows fade out over the last {shadowFade:0} units");
 		}

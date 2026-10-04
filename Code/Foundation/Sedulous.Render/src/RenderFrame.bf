@@ -71,8 +71,6 @@ class RenderFrame
 	/// View frustum culling of the camera draw lists, off by default.
 	private bool mViewCulling = true;
 
-	private float mShadowDistance = 300.0f;
-	private float mShadowFarFade = 40.0f;
 
 	private AoMode mAoMode = .Off;
 	private int32 mAoDebug = 0;
@@ -262,16 +260,6 @@ class RenderFrame
 	public void SetViewCulling(bool on) => mViewCulling = on;
 	public bool ViewCulling => mViewCulling;
 
-	/// The directional shadows' reach in world units, clamped to the camera's own far plane,
-	/// and the width of the fade at its edge. A larger reach covers more ground but spreads
-	/// the cascade texel density; the fade dissolves the boundary so it does not pop along a
-	/// diagonal when the camera tilts.
-	public void SetShadowParams(float distance, float farFade)
-	{
-		mShadowDistance = distance;
-		mShadowFarFade = farFade;
-	}
-
 	/// Last frame's cull totals summed over the active views. Read BEFORE beginning, which
 	/// rewinds the pool.
 	public void CullStats(out uint32 culled, out uint32 total)
@@ -340,7 +328,6 @@ class RenderFrame
 		// lookup, which at scale is a whole scene's worth of work per frame.
 		mPass.SetMotionNeeded(mTaaEnabled
 			|| ((mSsr != null) && mSsrEnabled && mSsrParams.Temporal));
-		mPass.SetShadowFarFade(mShadowFarFade);
 		mPass.SetTime(mTimeSeconds, mPrevTimeSeconds);
 
 		mGraph.BeginFrame((int32)frameIndex);
@@ -1183,9 +1170,12 @@ class RenderFrame
 
 			let view = mViews.At(i);
 			let lightDirection = context.Scene.DirectionalShadowData.Direction;
-			let distance = Min(view.Camera.FarZ, mShadowDistance);
+			// The scene's reach (its environment settings), clamped to the camera's far plane.
+			let reach = context.Scene.ShadowSettings;
+			let distance = Min(view.Camera.FarZ, Max(reach.Distance, 1.0f));
 			var cascades = ShadowMath.ComputeCascades(view.Camera, lightDirection, distance,
-				shadowResolution);
+				shadowResolution, Math.Clamp(reach.CascadeSplit, 0.0f, 1.0f));
+			cascades.FarFade = reach.FadeDistance;
 			// The caster light's own biases and strength ride with its cascades.
 			let caster = context.Scene.DirectionalShadowData;
 			cascades.NormalBias = caster.NormalBias;

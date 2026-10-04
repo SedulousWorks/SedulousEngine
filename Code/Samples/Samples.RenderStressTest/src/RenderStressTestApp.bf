@@ -630,12 +630,12 @@ class RenderStressTestApp : DefaultApplication
 		if (igCheckbox("Bloom", &bloom))
 			render.BloomEnabled = bloom;
 
-		var shadowDistance = render.ShadowDistance;
-		if (igSliderFloat("Shadow dist", &shadowDistance, 50.0f, 1000.0f, "%.0f", 0))
-			render.ShadowDistance = shadowDistance;
+		// The scene's own reach (its environment settings).
+		let environment = mScene.GetSystem<EnvironmentSystem>().Environment;
+		igSliderFloat("Shadow dist", &environment.ShadowDistance, 50.0f, 1000.0f, "%.0f", 0);
 
-		var shadowFade = render.ShadowFarFade;
+		var shadowFade = environment.ShadowFadeDistance;
 		if (igSliderFloat("Shadow fade", &shadowFade, 2.0f, 150.0f, "%.0f", 0))
-			render.ShadowFarFade = shadowFade;
+			environment.ShadowFadeDistance = shadowFade;
 	}
 }

@@ -31,6 +31,7 @@ class ExtractedScene
 	private bool mHasTime = false;
 	private SkySnapshot mSky = .();
 	private DirectionalShadow mShadow = .();
+	private SceneShadowSettings mShadowSettings = .();
 
 	/// Allocates a render data type from the arena and registers it in the snapshot.
 	///
@@ -121,6 +122,11 @@ class ExtractedScene
 	public void SetDirectionalShadow(DirectionalShadow shadow) => mShadow = shadow;
 	public DirectionalShadow DirectionalShadowData => mShadow;
 
+	/// The scene's cascade reach (its environment settings), so two scenes in one frame keep
+	/// their own.
+	public void SetShadowSettings(SceneShadowSettings settings) => mShadowSettings = settings;
+	public SceneShadowSettings ShadowSettings => mShadowSettings;
+
 	public Span<RenderData> Items => .(mItems.Ptr, mItems.Count);
 	public Span<GpuLight> Lights => .(mLights.Ptr, mLights.Count);
 	public Span<LocalShadowCaster> LocalShadowCasters => .(mLocalCasters.Ptr, mLocalCasters.Count);
@@ -148,5 +154,6 @@ class ExtractedScene
 		mHasTime = false;
 		mSky = .();
 		mShadow = .();
+		mShadowSettings = .();
 	}
 }

@@ -43,6 +43,9 @@ class EnvironmentSystem : SceneSystem
 	public override Type SettingsType => typeof(EnvironmentSettings);
 	public override void* SettingsInstance => &mEnvironment;
 	public override StringView SettingsId => "environment";
+	/// Version 2 adds the shadow reach; a version 1 block reads its defaults.
+	public override uint32 SettingsDataVersion => 2;
+	public override uint32 SettingsMinReadDataVersion => 1;
 
 	public override void ResolveResources(ResourceManager manager)
 	{
@@ -76,5 +79,11 @@ class EnvironmentSystem : SceneSystem
 		SerializeValue(ar, "turbidity", ref mEnvironment.Turbidity);
 		SerializeValue(ar, "iblDiffuseIntensity", ref mEnvironment.IblDiffuseIntensity);
 		SerializeValue(ar, "iblSpecularIntensity", ref mEnvironment.IblSpecularIntensity);
+		// Version 1 had no shadow reach: the defaults, which are what it rendered with.
+		if ((ar.Mode == .Read) && (ar.Version == 1))
+			return;
+		SerializeValue(ar, "shadowDistance", ref mEnvironment.ShadowDistance);
+		SerializeValue(ar, "shadowCascadeSplit", ref mEnvironment.ShadowCascadeSplit);
+		SerializeValue(ar, "shadowFadeDistance", ref mEnvironment.ShadowFadeDistance);
 	}
 }

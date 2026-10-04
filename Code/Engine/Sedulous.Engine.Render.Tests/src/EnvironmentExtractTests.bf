@@ -103,4 +103,34 @@ class EnvironmentExtractTests
 		RenderExtract.ExtractEnvironmentInto(bare, none);
 		Test.Assert(!none.HasTime);
 	}
+
+	/// The scene's shadow reach rides the snapshot, so two scenes in one frame keep their own;
+	/// and a shorter reach gives the near cascade smaller texels, which is what sharpens a roof's
+	/// shadow on a wall.
+	[Test]
+	public static void TheScenesShadowReachRidesTheSnapshot()
+	{
+		let scene = scope Scene("reach");
+		let system = scene.AddSystem<EnvironmentSystem>();
+		system.Environment.ShadowDistance = 60.0f;
+		system.Environment.ShadowCascadeSplit = 0.7f;
+		system.Environment.ShadowFadeDistance = 8.0f;
+		let snapshot = scope ExtractedScene();
+		RenderExtract.ExtractEnvironmentInto(scene, snapshot);
+		Test.Assert(snapshot.ShadowSettings.Distance == 60.0f);
+		Test.Assert(snapshot.ShadowSettings.CascadeSplit == 0.7f);
+		Test.Assert(snapshot.ShadowSettings.FadeDistance == 8.0f);
+
+		var camera = ViewCamera();
+		camera.View = Float4x4.LookAtRH(.(0, 2, 0), .(0, 2, -10), .(0, 1, 0));
+		camera.Projection = Float4x4.PerspectiveFovRH(1.0472f, 16.0f / 9.0f, 0.1f, 400.0f);
+		camera.FarZ = 400.0f;
+		let sun = Normalized(Float3(-0.17f, -0.87f, -0.47f));
+		let wide = ShadowMath.ComputeCascades(camera, sun, 300.0f, 1024);
+		let near = ShadowMath.ComputeCascades(camera, sun, 60.0f, 1024);
+		Test.Assert(near.TexelWorldSize[0] < wide.TexelWorldSize[0] * 0.5f);
+		// ...and a split nearer one gives the camera's surroundings more of the map.
+		let logarithmic = ShadowMath.ComputeCascades(camera, sun, 60.0f, 1024, 1.0f);
+		Test.Assert(logarithmic.TexelWorldSize[0] < near.TexelWorldSize[0]);
+	}
 }

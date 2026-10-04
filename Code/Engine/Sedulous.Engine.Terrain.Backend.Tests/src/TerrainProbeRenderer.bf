@@ -43,7 +43,6 @@ static class TerrainProbeRenderer
 
 		let frame = scope RenderFrame(device, registry, 2, null, null,
 			config.Shadows ? shadows : null);
-		frame.SetShadowParams(800.0f, 20.0f);
 
 		let terrain = config.Terrain;
 		let chunks = scope List<TerrainChunk>();
@@ -74,6 +73,7 @@ static class TerrainProbeRenderer
 
 		let scene = scope ExtractedScene();
 		scene.SetAmbient(.(1.0f, 1.0f, 1.0f));
+		scene.SetShadowSettings(.(800.0f, 0.5f, 20.0f));
 
 		if (config.ToLight != null)
 		{

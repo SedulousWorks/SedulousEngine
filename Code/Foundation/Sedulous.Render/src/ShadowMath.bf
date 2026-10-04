@@ -29,15 +29,16 @@ static class ShadowMath
 	/// steps rather than creeping; and the whole cascade snaps to WHOLE TEXELS in light clip
 	/// space, so its texels advance in integer steps as the camera moves rather than sliding
 	/// under the geometry and crawling along every edge.
+	///
+	/// `lambda` blends the splits: nought is uniform and one logarithmic, more of the map near
+	/// the camera; halfway is the practical split.
 	public static ShadowCascades ComputeCascades(ViewCamera camera, Float3 lightDir,
-		float shadowDistance, uint32 resolution)
+		float shadowDistance, uint32 resolution, float lambda = 0.5f)
 	{
 		var cascades = ShadowCascades();
 		cascades.Valid = true;
 
 		const int cCount = ShadowCascades.Count;
-		/// Nought is uniform and one is logarithmic; halfway is the practical split.
-		const float cLambda = 0.5f;
 
 		let nearZ = 0.1f;
 		let farZ = Max(nearZ + 1.0f, shadowDistance);
@@ -52,7 +53,7 @@ static class ShadowMath
 			let fraction = (float)i / (float)cCount;
 			let logarithmic = nearZ * Pow(farZ / nearZ, fraction);
 			let uniform = nearZ + (farZ - nearZ) * fraction;
-			splits[i] = cLambda * logarithmic + (1.0f - cLambda) * uniform;
+			splits[i] = lambda * logarithmic + (1.0f - lambda) * uniform;
 		}
 
 		let inverseViewProj = Inverse(camera.ViewProjection);

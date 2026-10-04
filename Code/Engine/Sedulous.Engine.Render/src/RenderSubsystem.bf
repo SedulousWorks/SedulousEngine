@@ -125,8 +125,6 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	private float mTaaBlend = 0.97f;
 	private float mTaaGamma = 1.25f;
 	private float mTaaMotionScale = 32.0f;
-	private float mShadowDistance = 300.0f;
-	private float mShadowFarFade = 40.0f;
 
 	// ---- debug draw destinations ----
 	private DebugDraw mDebugGlobal = new .() ~ delete _;
@@ -417,21 +415,6 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	{
 		get => mTaaMotionScale;
 		set => mTaaMotionScale = value;
-	}
-
-	/// The directional shadow reach, in world units, clamped to the camera's far plane.
-	public float ShadowDistance
-	{
-		get => mShadowDistance;
-		set => mShadowDistance = value;
-	}
-
-	/// The WIDTH of the soft edge shadows dissolve across at that reach, which is what stops
-	/// the coverage boundary popping as a tilted camera turns.
-	public float ShadowFarFade
-	{
-		get => mShadowFarFade;
-		set => mShadowFarFade = value;
 	}
 
 	// ---- debug draw -------------------------------------------------------------------------
@@ -801,7 +784,6 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		mFrame.SetTime(mTimeSeconds);
 		mFrame.SetBloom(mBloomEnabled ? mBloomIntensity : 0.0f, mBloomThreshold, mBloomKnee);
 		mFrame.SetTaa(mTaaEnabled, mTaaBlend, mTaaGamma, mTaaMotionScale);
-		mFrame.SetShadowParams(mShadowDistance, mShadowFarFade);
 
 		// A debug harness: the environment can force the occlusion debug channel to screen, so
 		// the reconstruction can be compared across backends without a rebuild.

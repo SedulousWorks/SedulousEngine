@@ -595,6 +595,8 @@ static class RenderExtract
 		sky.Turbidity = settings.Turbidity;
 		sky.IblDiffuseIntensity = settings.IblDiffuseIntensity;
 		sky.IblSpecularIntensity = settings.IblSpecularIntensity;
+		// The sun's shadow reach rides the snapshot to the view's cascades.
+		outScene.SetShadowSettings(.(settings.ShadowDistance, settings.ShadowCascadeSplit, settings.ShadowFadeDistance));
 
 		// The resolved product, for the textured modes. The uid is what the lighting watches:
 		// it rebuilds its environment products when the texture swaps, whether that was a pick
