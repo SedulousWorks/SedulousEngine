@@ -69,7 +69,7 @@ or a Windows build fails to link.
 
 ## The Raptor sync
 
-The sync from Raptor 122035b2 to 0b60c738, and the PaperKid rebuild after it, are mapped and
+The sync from Raptor 0b60c738 to 8be4094d, and the PaperKid rebuild after it, are mapped and
 ordered in [RaptorSync.md](RaptorSync.md).
 
 ## Engine findings
@@ -113,6 +113,37 @@ them.
 The script surface gives `Guid` `Nil`, `IsNil` and `FromString`, but no equality: AngelScript
 refuses `a == b` ("No matching operator that takes the types 'Guid' and 'Guid'"), so a script
 cannot check that an image's `Source` or an entity's asset is the one it expects.
+
+### TAA still looks jittery
+Raptor's finding (2026-10-03), the same here: with the stale history fixed, the resolve itself
+leaves visible jitter on edges. The suspects: the Halton sequence's length and its scale, taken
+from the target's size rather than the viewport's (`RenderFrame.bf`, `TaaJitter.HaltonJitter(
+mJitterIndex, view.Width, view.Height)`), the variance clip's gamma (1.25) and blend factor
+(0.97) in `taa.ps.hlsl`, the depth disocclusion reject, and whether the history wants
+Catmull-Rom sampling or a sharpening pass. Measure frame to frame edge change on a static scene
+before and after each change.
+
+### Auto exposure settles visibly at the start of a scene
+Raptor's finding (2026-10-03), the same here: a scene loads with the exposure where the last one
+left it and adapts toward its target over a second or two, a dim and brighten every time a level
+starts. `ExposurePass` keeps a history per view (`cMaxViews` slots indexed by view order) that is
+valid from its first frame on, and nothing resets it on a scene load. A new scene, or a view's
+first frame, should start at its target and adapt from there.
+
+### `var()` inside a drawable's arguments draws white, silently
+Raptor's finding (2026-10-03), the same here: `background: rounded-rect(var(--paper), radius=6,
+border=var(--ink))` in a theme draws a plain white rect with no border, and nothing is logged.
+A factory argument goes through `SSSParser.ParseColorArg` and `ParseColorValue`, which take hex,
+a `$palette` name, a named colour, `rgb`/`rgba` and the colour functions; an `Ident` `var` falls
+through to `Color.White` without consuming its tokens. `var()` resolves only as a whole property
+value (`ParseVarReference`). Resolve it in factory arguments, and warn on an argument that does
+not parse.
+
+### Every new particle system has the same random seed
+Raptor's finding (2026-10-03), the same here: `ParticleSystem.cDefaultSeed` is one constant, the
+default of `ParticleEffect.AddSystem`, which both the particle page's Add System and the effect
+creator call. Two systems in an effect spawn their particles in the same places, and only the
+last drawn shows. A system added by the page or a creator should get a fresh seed.
 
 ## Documentation and content
 
