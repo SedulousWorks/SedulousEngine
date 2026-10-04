@@ -13,10 +13,11 @@
 //
 // The feel: the bike leans into its turns (harder the faster it goes) and wobbles while it
 // recovers from a crash, which kicks up road dust; a throw and a crash each have their sound,
-// pitched a little at random so repeats do not sound the same. A cleared block bursts confetti
-// over the rider. Near a subscriber, the throw is shown before it is made: a trail of glowing dots
-// along the path a paper would take, drifting forward, and a ring spinning on the porch the throw
-// is pulled toward (the AimDot and TargetRing prefabs, spawned once and moved each frame).
+// pitched a little at random so repeats do not sound the same, and each kicks the pad (a crash a
+// heavy jolt, a throw a flick). A cleared block bursts confetti over the rider. Near a subscriber,
+// the throw is shown before it is made: a trail of glowing dots along the path a paper would take,
+// drifting forward, and a ring spinning on the porch the throw is pulled toward (the AimDot and
+// TargetRing prefabs, spawned once and moved each frame).
 
 Guid kPaper = Guid::FromString("a08aecb1-23c6-c14d-8705-8c18170504b5");
 Guid kAimDot = Guid::FromString("40b43d5c-0d3e-f04b-b71c-39bb82d20063");
@@ -104,6 +105,7 @@ class Bike
 		// Bounce back against the way the bike was going: off whatever it ran into.
 		m_speed = (m_speed >= 0.0f) ? -knockback : knockback;
 		Audio.PlayOneShot(kCrashSound, AudioBus::Effects, 1.0f, Random.Range(0.9f, 1.1f));
+		Input.Rumble(0.9f, 0.5f, 0.35f); // the jolt of a crash
 		// Road dust off the wheels (the bike's centre is 0.9 above them).
 		scene.Prefabs.Spawn(kFxDust, self.GetLocalTransform().Position + Float3(0.0f, -0.8f, 0.0f));
 		scene.Scripts.Emit("BikeCrashed", 1);
@@ -152,6 +154,7 @@ class Bike
 			if (Input.WasPressed("Throw") && throwPaper())
 			{
 				Audio.PlayOneShot(kThrowSound, AudioBus::Effects, 0.8f, Random.Range(0.9f, 1.15f));
+				Input.Rumble(0.0f, 0.25f, 0.05f); // the flick of a throw
 				scene.Scripts.Emit("PaperThrown", 1);
 			}
 		}

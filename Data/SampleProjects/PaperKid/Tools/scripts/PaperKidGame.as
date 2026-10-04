@@ -18,7 +18,8 @@
 //
 // The sound: the title's music on the menus, a track per block, a fanfare when a block is cleared
 // and a jingle when one is failed, and the fanfare and a voice over the final screen before the
-// ending's music. Buttons click, and a delivery's points rise from under the score and fade.
+// ending's music. Buttons click, and a delivery's points rise from under the score and fade. The
+// pad cheers a cleared block and slumps on a failed one (the bike and porches rumble their own).
 
 Guid kTitleDoc = Guid::FromString("{{Title}}");
 Guid kHudDoc = Guid::FromString("{{Hud}}");
@@ -157,6 +158,7 @@ class Game
 		m_phase = Phase::Celebrating;
 		m_celebrated = 0.0f;
 		m_secondsLeft = secondsLeft;
+		Input.Rumble(0.3f, 0.6f, 0.45f); // the cheer of a cleared block
 		Audio.StopMusic(1.2f);
 		Audio.PlayOneShot(kClearedFanfare, AudioBus::Music);
 		Label banner = Ui.FindLabel("hud-banner");
@@ -220,6 +222,7 @@ class Game
 		}
 		m_phase = Phase::Ended;
 		Run.TimeScale = 0.0f;
+		Input.Rumble(0.6f, 0.2f, 0.4f); // the slump of a failed block
 		Audio.StopMusic(0.3f);
 		Audio.PlayOneShot(kFailedJingle, AudioBus::Music);
 		m_lives -= 1;

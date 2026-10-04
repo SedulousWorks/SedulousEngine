@@ -60,7 +60,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
 
 ## Group 3: the games (through the MCP tools)
 
-16. 16684936, ddc3f5a1 Sky Hopper and PaperKid: the pad rumbles with the game (PaperKid's
+16. ~~16684936, ddc3f5a1~~ (done) Sky Hopper and PaperKid: the pad rumbles with the game (PaperKid's
     `Tools/scripts` copies too).
 17. ~~8967bae2, b321c2ac, 3493c59c~~ (done) Sky Hopper and PaperKid: a Web export preset (`index`, through
     `export_preset_set`); both ignore `/Cooked-*/`.
