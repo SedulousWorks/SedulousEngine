@@ -87,6 +87,12 @@ class AudioEngine
 		public bool Muted = false;
 		public mab_sound_group* Group = null;
 		public List<BusEffectNode> Effects = new .() ~ delete _;
+		/// Runs' and scenes' child groups under this bus, made lazily, the way the fixed buses
+		/// have a child per run and per scene: a voice on this bus routes scene child, run child,
+		/// this bus, so the run's and the scene's stop, pause, mute and gains reach it through
+		/// the graph.
+		public Dictionary<uint64, mab_sound_group*> RunChildren = new .() ~ delete _;
+		public Dictionary<uint64, mab_sound_group*> SceneChildren = new .() ~ delete _;
 	}
 
 	/// A value eased from `From` to `To` over `Duration` seconds; inactive is settled.
@@ -145,6 +151,8 @@ class AudioEngine
 		public VoiceRamp PitchRamp = .();
 		public AudioBus Bus = .Effects;
 		public uint64 SceneGroup = 0;
+		/// The run this voice belongs to: its own, or its scene group's.
+		public uint64 RunGroup = 0;
 		/// BORROWED: the caller keeps the clip alive.
 		public AudioClip Clip = null;
 
@@ -174,6 +182,8 @@ class AudioEngine
 	/// One scene's child groups, made lazily under each bus it actually uses.
 	private class SceneGroupData
 	{
+		/// The run whose groups this scene nests under; nought is the buses.
+		public uint64 RunGroup = 0;
 		public mab_sound_group*[AudioBus.Count] Groups;
 		public bool Paused = false;
 
@@ -186,6 +196,56 @@ class AudioEngine
 		/// VOICE's own knob rather than the zone's.
 		public ReverbNode SendReverb = null;
 	}
+
+	/// One running game's groups: a child under each bus the run uses (lazy), the run's own
+	/// bus gains, its music slot, and its whole run pause, mute and volume. The scene groups of
+	/// the run parent under these instead of the buses.
+	private class RunGroupData
+	{
+		/// The run's own gain for one of a layout's custom buses, kept by name across a
+		/// rebuild.
+		public class NamedGain
+		{
+			public String Name = new .() ~ delete _;
+			public float Gain = 1.0f;
+			public bool Muted = false;
+		}
+
+		public mab_sound_group*[AudioBus.Count] Groups;
+		public float[AudioBus.Count] BusGain = .(1.0f, 1.0f, 1.0f, 1.0f);
+		public bool[AudioBus.Count] BusMuted;
+		public float Volume = 1.0f;
+		public bool Paused = false;
+		public bool Muted = false;
+		/// Ramps toward nought (muted) or one over cRunMuteFadeSeconds.
+		public float MuteFactor = 1.0f;
+		public VoiceHandle MusicVoice = .();
+		public List<NamedGain> NamedGains = new .() ~ DeleteContainerAndItems!(_);
+
+		public NamedGain FindNamed(StringView name)
+		{
+			for (let entry in NamedGains)
+			{
+				if (entry.Name == name)
+					return entry;
+			}
+			return null;
+		}
+
+		public NamedGain EnsureNamed(StringView name)
+		{
+			if (let found = FindNamed(name))
+				return found;
+			let entry = new NamedGain();
+			entry.Name.Set(name);
+			NamedGains.Add(entry);
+			return entry;
+		}
+	}
+
+	/// How long muting or unmuting a run takes, so moving the audible Game tab cross fades
+	/// rather than clicks.
+	private const float cRunMuteFadeSeconds = 0.1f;
 
 	private AudioEngineSettings mSettings;
 	private bool mHeadless = false;
@@ -211,6 +271,8 @@ class AudioEngine
 
 	private Dictionary<uint64, SceneGroupData> mSceneGroups = new .() ~ delete _;
 	private uint64 mNextSceneGroupId = 1;
+	private Dictionary<uint64, RunGroupData> mRunGroups = new .() ~ delete _;
+	private uint64 mNextRunGroupId = 1;
 
 	/// Keyed by the clip's address. The engine holds no reference of its own; the entry's own
 	/// keep alive does.
@@ -288,6 +350,21 @@ class AudioEngine
 			delta = 0.25f;
 
 		mTimeSeconds += delta;
+
+		// The runs' mute ramps: a muted run fades out, and an unmuted one back in, over a short
+		// window instead of clicking, so moving the audible Game tab cross fades.
+		let rampStep = delta / cRunMuteFadeSeconds;
+		for (let entry in mRunGroups)
+		{
+			let run = entry.value;
+			let target = run.Muted ? 0.0f : 1.0f;
+			if (run.MuteFactor != target)
+			{
+				run.MuteFactor = (run.MuteFactor < target) ? Math.Min(run.MuteFactor + rampStep, target)
+					: Math.Max(run.MuteFactor - rampStep, target);
+				ApplyRunGains(entry.key, run);
+			}
+		}
 
 		if (mHeadless && (delta > 0.0f))
 			PumpHeadless(delta);
@@ -421,16 +498,21 @@ class AudioEngine
 			return .();
 		let slot = mVoices[slotIndex];
 
+		// A scene group's voice belongs to the scene's run; a scene less voice to its own.
+		var runGroup = parameters.RunGroup;
+		if (parameters.SceneGroup != 0)
+			runGroup = mSceneGroups.TryGetValue(parameters.SceneGroup, let sceneData) ? sceneData.RunGroup : 0;
+
 		// A known custom bus overrides the fixed one. An unknown name warns once and falls
 		// back: a typo in content must never silence a game.
-		var group = GroupFor(parameters.SceneGroup, parameters.Bus);
+		var group = GroupFor(parameters.SceneGroup, runGroup, parameters.Bus);
 		var customBusIndex = -1;
 		if (!parameters.BusName.IsEmpty)
 		{
 			customBusIndex = FindCustomBus(parameters.BusName);
 			if ((customBusIndex >= 0) && (mCustomBuses[customBusIndex].Group != null))
 			{
-				group = mCustomBuses[customBusIndex].Group;
+				group = CustomGroupFor(parameters.SceneGroup, runGroup, (int32)customBusIndex);
 			}
 			else
 			{
@@ -465,6 +547,7 @@ class AudioEngine
 		if (customBusIndex >= 0)
 			slot.CustomBusName.Set(parameters.BusName);
 		slot.SceneGroup = parameters.SceneGroup;
+		slot.RunGroup = runGroup;
 		slot.Clip = clip;
 		slot.Looping = parameters.Loop || clip.Loop;
 
@@ -472,15 +555,9 @@ class AudioEngine
 		SpliceReverbSend(slot, parameters, group);
 		ApplyVoiceParams(slot, parameters, clip);
 
-		// A custom bus voice bypasses the scene's child groups, so a paused scene must freeze
-		// it explicitly; a fixed bus voice inherits its halted group node instead.
-		var sceneFrozen = false;
-		if ((customBusIndex >= 0) && (parameters.SceneGroup != 0))
-		{
-			if (mSceneGroups.TryGetValue(parameters.SceneGroup, let sceneData))
-				sceneFrozen = sceneData.Paused;
-		}
-		if (!parameters.StartPaused && !sceneFrozen)
+		// A paused scene's or run's group is halted, so a voice started under it stays frozen
+		// until it resumes, on a custom bus as on a fixed one.
+		if (!parameters.StartPaused)
 			mab_sound_start(slot.Sound);
 
 		let handle = VoiceHandle((uint32)slotIndex, slot.Generation);
@@ -955,6 +1032,7 @@ class AudioEngine
 		slot.State = .Free;
 		slot.Clip = null;
 		slot.SceneGroup = 0;
+		slot.RunGroup = 0;
 		slot.CustomBusName.Clear();
 		slot.Generation++;
 	}
@@ -1139,6 +1217,12 @@ class AudioEngine
 				groupIds.Add(entry.key);
 			for (let id in groupIds)
 				DestroySceneGroupData(id);
+
+			let runIds = scope List<uint64>();
+			for (let entry in mRunGroups)
+				runIds.Add(entry.key);
+			for (let id in runIds)
+				DestroyRunGroupData(id);
 
 			for (let bus in mCustomBuses)
 				DestroyCustomBus(bus);
@@ -1335,7 +1419,7 @@ class AudioEngine
 			if ((slot.State == .Free) || (slot.CustomBusName != bus.Name))
 				continue;
 
-			let fallback = GroupFor(slot.SceneGroup, slot.Bus);
+			let fallback = GroupFor(slot.SceneGroup, slot.RunGroup, slot.Bus);
 			if (fallback != null)
 				mab_node_attach_output_bus(VoiceOutputNode(slot), 0,
 					mab_sound_group_get_node(fallback), 0);
@@ -1346,6 +1430,13 @@ class AudioEngine
 	private void DestroyCustomBus(CustomBusData bus)
 	{
 		DetachVoicesFromCustomBus(bus);
+		// The scenes' children first, which may hang under the runs', then the runs'.
+		for (let child in bus.SceneChildren.Values)
+			mab_sound_group_destroy(child);
+		bus.SceneChildren.Clear();
+		for (let child in bus.RunChildren.Values)
+			mab_sound_group_destroy(child);
+		bus.RunChildren.Clear();
 		ClearEffectChain(bus.Effects);
 		if (bus.Group != null)
 			mab_sound_group_destroy(bus.Group);
@@ -1487,15 +1578,22 @@ class AudioEngine
 			BuildEffectChain(groupNode, bus.Effects, CustomBusParentNode(bus),
 				named.Settings.Effects);
 		}
+
+		// A re-parented bus changes each run's gain down its chain: they are applied again.
+		for (let entry in mRunGroups)
+			ApplyRunGains(entry.key, entry.value);
 	}
 
 	// ==================== scene groups ====================
 
-	/// The group a voice on this bus, in this scene, belongs to. The scene's child group is
-	/// created LAZILY, so a scene that never plays on a bus never pays for one.
-	private mab_sound_group* GroupFor(uint64 sceneGroup, AudioBus bus)
+	private static int BusIndex(AudioBus bus) => ((int)bus < AudioBus.Count) ? (int)bus : (int)AudioBus.Effects;
+
+	/// The group a voice on this bus, in this scene or run, belongs to: the scene's child (under
+	/// its run's child, or the bus outside a run), else the run's child, else the bus. The child
+	/// groups are created LAZILY, so a scene or run that never plays on a bus never pays for one.
+	private mab_sound_group* GroupFor(uint64 sceneGroup, uint64 runGroup, AudioBus bus)
 	{
-		let busIndex = ((int)bus < AudioBus.Count) ? (int)bus : (int)AudioBus.Effects;
+		let busIndex = BusIndex(bus);
 
 		if (sceneGroup != 0)
 		{
@@ -1503,8 +1601,9 @@ class AudioEngine
 			{
 				if (groups.Groups[busIndex] == null)
 				{
-					groups.Groups[busIndex] = mab_sound_group_create(mEngine, 0,
-						mab_sound_group_get_node(mBusGroups[busIndex]));
+					let parent = RunParentFor(groups.RunGroup, busIndex);
+					if (parent != null)
+						groups.Groups[busIndex] = mab_sound_group_create(mEngine, 0, mab_sound_group_get_node(parent));
 					// A group born into a paused scene starts halted, or it would play.
 					if ((groups.Groups[busIndex] != null) && groups.Paused)
 						mab_sound_group_stop(groups.Groups[busIndex]);
@@ -1513,7 +1612,183 @@ class AudioEngine
 					return groups.Groups[busIndex];
 			}
 		}
+		return RunParentFor(runGroup, busIndex);
+	}
+
+	// ==================== run groups ====================
+
+	/// A run's effective gain on one of its bus groups: the run's gain for that bus times its
+	/// Master gain (once, not twice, on the Master group itself), its volume and its mute ramp.
+	private static float RunGroupGain(RunGroupData run, int busIndex)
+	{
+		let master = (int)AudioBus.Master;
+		let masterGain = run.BusMuted[master] ? 0.0f : run.BusGain[master];
+		if (busIndex == master)
+			return masterGain * run.Volume * run.MuteFactor;
+		let busGain = run.BusMuted[busIndex] ? 0.0f : run.BusGain[busIndex];
+		return busGain * masterGain * run.Volume * run.MuteFactor;
+	}
+
+	/// The run wide part of every gain the run carries: its Master gain, volume and mute ramp.
+	private static float RunVoiceGain(RunGroupData run)
+	{
+		let master = (int)AudioBus.Master;
+		return (run.BusMuted[master] ? 0.0f : run.BusGain[master]) * run.Volume * run.MuteFactor;
+	}
+
+	private RunGroupData FindRun(uint64 runGroup)
+	{
+		if (runGroup == 0)
+			return null;
+		return mRunGroups.TryGetValue(runGroup, let run) ? run : null;
+	}
+
+	/// The run's child group under a bus, made lazily, or the bus itself outside a run.
+	private mab_sound_group* RunParentFor(uint64 runGroup, int busIndex)
+	{
+		if (let run = FindRun(runGroup))
+		{
+			if ((run.Groups[busIndex] == null) && (mBusGroups[busIndex] != null))
+			{
+				run.Groups[busIndex] = mab_sound_group_create(mEngine, 0, mab_sound_group_get_node(mBusGroups[busIndex]));
+				if (run.Groups[busIndex] != null)
+				{
+					mab_sound_group_set_volume(run.Groups[busIndex], RunGroupGain(run, busIndex));
+					// A group born into a paused run starts halted, or it would play.
+					if (run.Paused)
+						mab_sound_group_stop(run.Groups[busIndex]);
+				}
+			}
+			if (run.Groups[busIndex] != null)
+				return run.Groups[busIndex];
+		}
 		return mBusGroups[busIndex];
+	}
+
+	/// A run's gain on its child under custom bus `index`: its own gains down the bus's chain
+	/// (each custom ancestor's by name, then the fixed bus the chain roots in) under its Master
+	/// gain, volume and mute ramp, which is what its children under the fixed buses carry.
+	private float RunCustomGain(RunGroupData run, int32 index)
+	{
+		var gain = 1.0f;
+		var root = AudioBus.Master;
+		var cursor = index;
+		var steps = 0;
+		while ((cursor >= 0) && (cursor < mCustomBuses.Count) && (steps++ <= mCustomBuses.Count))
+		{
+			let bus = mCustomBuses[cursor];
+			if (let named = run.FindNamed(bus.Name))
+				gain *= named.Muted ? 0.0f : named.Gain;
+			root = bus.FixedParent;
+			cursor = bus.ParentCustom;
+		}
+		if (root != .Master)
+			gain *= run.BusMuted[(int)root] ? 0.0f : run.BusGain[(int)root];
+		return gain * RunVoiceGain(run);
+	}
+
+	private void ApplyRunGains(uint64 runGroup, RunGroupData run)
+	{
+		for (int bus < AudioBus.Count)
+		{
+			if (run.Groups[bus] != null)
+				mab_sound_group_set_volume(run.Groups[bus], RunGroupGain(run, bus));
+		}
+		for (int i < mCustomBuses.Count)
+		{
+			if (mCustomBuses[i].RunChildren.TryGetValue(runGroup, let child))
+				mab_sound_group_set_volume(child, RunCustomGain(run, (int32)i));
+		}
+	}
+
+	/// The run's child under custom bus `index`, made lazily; the bus itself outside a run.
+	private mab_sound_group* CustomRunChild(uint64 runGroup, int32 index)
+	{
+		let bus = mCustomBuses[index];
+		let run = FindRun(runGroup);
+		if ((run == null) || (bus.Group == null))
+			return bus.Group;
+		if (bus.RunChildren.TryGetValue(runGroup, let found))
+			return found;
+		let child = mab_sound_group_create(mEngine, 0, mab_sound_group_get_node(bus.Group));
+		if (child == null)
+			return bus.Group;
+		mab_sound_group_set_volume(child, RunCustomGain(run, index));
+		if (run.Paused)
+			mab_sound_group_stop(child);
+		bus.RunChildren[runGroup] = child;
+		return child;
+	}
+
+	/// The group a voice on custom bus `index` attaches to: its scene's child (under its run's
+	/// child, or the bus outside a run), else its run's child, else the bus itself.
+	private mab_sound_group* CustomGroupFor(uint64 sceneGroup, uint64 runGroup, int32 index)
+	{
+		let bus = mCustomBuses[index];
+		if (bus.Group == null)
+			return null;
+		let runParent = CustomRunChild(runGroup, index);
+		SceneGroupData sceneData = null;
+		if ((sceneGroup == 0) || !mSceneGroups.TryGetValue(sceneGroup, out sceneData))
+			return runParent;
+		if (bus.SceneChildren.TryGetValue(sceneGroup, let found))
+			return found;
+		let child = mab_sound_group_create(mEngine, 0, mab_sound_group_get_node(runParent));
+		if (child == null)
+			return runParent;
+		if (sceneData.Paused)
+			mab_sound_group_stop(child);
+		bus.SceneChildren[sceneGroup] = child;
+		return child;
+	}
+
+	/// Pauses or resumes a group with the declick a scene group's pause uses.
+	private void SetGroupPaused(mab_sound_group* group, bool paused)
+	{
+		if (paused)
+		{
+			mab_sound_group_stop_with_fade_ms(group, FadeMilliseconds);
+		}
+		else
+		{
+			mab_sound_group_reset_stop_time_and_fade(group);
+			mab_sound_group_set_fade_in_ms(group, 0.0f, 1.0f, FadeMilliseconds);
+			mab_sound_group_start(group);
+		}
+	}
+
+	private void DestroyRunGroupData(uint64 runGroup)
+	{
+		if (!mRunGroups.TryGetValue(runGroup, let run))
+			return;
+
+		// Its scenes' groups first: they are children of the run's.
+		let scenes = scope List<uint64>();
+		for (let entry in mSceneGroups)
+		{
+			if (entry.value.RunGroup == runGroup)
+				scenes.Add(entry.key);
+		}
+		for (let id in scenes)
+			DestroySceneGroupData(id);
+
+		for (var slot in mVoices)
+		{
+			if ((slot.State != .Free) && (slot.RunGroup == runGroup))
+				ReleaseSlot(slot);
+		}
+		for (let bus in mCustomBuses)
+		{
+			if (bus.RunChildren.GetAndRemove(runGroup) case .Ok(let child))
+				mab_sound_group_destroy(child.value);
+		}
+		for (int bus < AudioBus.Count)
+		{
+			if (run.Groups[bus] != null)
+				mab_sound_group_destroy(run.Groups[bus]);
+		}
+		delete run;
+		mRunGroups.Remove(runGroup);
 	}
 
 	private void DestroySceneGroupData(uint64 sceneGroup)
@@ -1525,6 +1800,11 @@ class AudioEngine
 		{
 			if ((slot.State != .Free) && (slot.SceneGroup == sceneGroup))
 				ReleaseSlot(slot);
+		}
+		for (let bus in mCustomBuses)
+		{
+			if (bus.SceneChildren.GetAndRemove(sceneGroup) case .Ok(let child))
+				mab_sound_group_destroy(child.value);
 		}
 
 		DestroyReverbNode(data.Reverb);
@@ -1799,20 +2079,22 @@ class AudioEngine
 	/// Starts a track on the Music bus, cross fading the one already going.
 	///
 	/// Music carries NO scene group, so it survives a scene swap; and it runs through the
-	/// same graph as everything else rather than around it.
+	/// same graph as everything else rather than around it. Each run has its own music slot
+	/// (run nought is the one outside every run), so two runs never cross fade each other's.
 	public VoiceHandle PlayMusic(AudioClip clip, float crossFadeSeconds = 1.0f,
-		float volume = 1.0f)
+		float volume = 1.0f, uint64 runGroup = 0)
 	{
 		let fadeMs = (uint64)(Max(crossFadeSeconds, 0.0f) * 1000.0f + 0.5f);
+		let run = FindRun(runGroup);
 
 		// The incumbent fades out over the SAME window the newcomer fades in.
-		let current = Resolve(mMusicVoice);
+		let current = Resolve((run != null) ? run.MusicVoice : mMusicVoice);
 		if ((current != null) && (current.State != .Stopping))
 		{
 			mab_sound_stop_with_fade_ms(current.Sound, fadeMs);
 			current.State = .Stopping;
 		}
-		mMusicVoice = .();
+		SetMusicVoice(run, .());
 
 		var parameters = AudioPlayParams();
 		parameters.Bus = .Music;
@@ -1820,40 +2102,217 @@ class AudioEngine
 		parameters.Volume = volume;
 		// Replaying the same track RESTARTS it rather than merging into what is playing.
 		parameters.AllowDedupe = false;
+		parameters.RunGroup = (run != null) ? runGroup : 0;
 
 		let handle = Play(clip, parameters);
 		let slot = Resolve(handle);
 		if ((slot != null) && (fadeMs > 0))
 			mab_sound_set_fade_in_ms(slot.Sound, 0.0f, 1.0f, fadeMs);
 
-		mMusicVoice = handle;
+		SetMusicVoice(run, handle);
 		return handle;
 	}
 
-	public void StopMusic(float fadeSeconds = 1.0f)
+	public void StopMusic(float fadeSeconds = 1.0f, uint64 runGroup = 0)
 	{
-		let slot = Resolve(mMusicVoice);
+		let run = FindRun(runGroup);
+		let slot = Resolve((run != null) ? run.MusicVoice : mMusicVoice);
 		if ((slot != null) && (slot.State != .Stopping))
 		{
 			mab_sound_stop_with_fade_ms(slot.Sound,
 				(uint64)(Max(fadeSeconds, 0.0f) * 1000.0f + 0.5f));
 			slot.State = .Stopping;
 		}
-		mMusicVoice = .();
+		SetMusicVoice(run, .());
 	}
 
-	public VoiceHandle MusicVoice => mMusicVoice;
+	/// The music voice of a run, or of the slot outside every run.
+	public VoiceHandle MusicVoice(uint64 runGroup = 0)
+	{
+		let run = FindRun(runGroup);
+		return (run != null) ? run.MusicVoice : mMusicVoice;
+	}
+
+	private void SetMusicVoice(RunGroupData run, VoiceHandle handle)
+	{
+		if (run != null)
+			run.MusicVoice = handle;
+		else
+			mMusicVoice = handle;
+	}
 
 	// ==================== scenes ====================
 
-	public uint64 CreateSceneGroup()
+	/// A scene's groups; a scene of a run nests under the run's groups.
+	public uint64 CreateSceneGroup(uint64 runGroup = 0)
 	{
 		if (!mInitialized)
 			return 0;
 
 		let id = mNextSceneGroupId++;
-		mSceneGroups[id] = new SceneGroupData();
+		let data = new SceneGroupData();
+		data.RunGroup = (FindRun(runGroup) != null) ? runGroup : 0;
+		mSceneGroups[id] = data;
 		return id;
+	}
+
+	// ==================== runs ====================
+	//
+	// Everything one running game plays (a GameInstance: the player's, each play in editor
+	// Game tab's), one level above its scenes' groups. A run has its own child group under
+	// each bus, carrying the run's own bus gains (a game's volume sliders never touch the
+	// editor's or another run's buses), its music slot, and stop, pause, mute and volume for
+	// the whole run.
+
+	public uint64 CreateRunGroup()
+	{
+		if (!mInitialized)
+			return 0;
+		let id = mNextRunGroupId++;
+		mRunGroups[id] = new RunGroupData();
+		return id;
+	}
+
+	/// Stops and frees every voice of the run and its scene groups at once, then drops it.
+	public void DestroyRunGroup(uint64 runGroup)
+	{
+		if (runGroup != 0)
+			DestroyRunGroupData(runGroup);
+	}
+
+	/// Fade stops every voice of the run, its scenes' and its music included.
+	public void StopRunGroup(uint64 runGroup, float fadeSeconds = 0.1f)
+	{
+		let run = FindRun(runGroup);
+		if (run == null)
+			return;
+		let fadeMs = (uint64)(Max(fadeSeconds, 0.0f) * 1000.0f + 0.5f);
+		for (var slot in mVoices)
+		{
+			if ((slot.State == .Free) || (slot.RunGroup != runGroup))
+				continue;
+			if (slot.State == .Paused)
+			{
+				ReleaseSlot(slot); // silent already
+			}
+			else if (slot.State != .Stopping)
+			{
+				mab_sound_stop_with_fade_ms(slot.Sound, fadeMs);
+				slot.State = .Stopping;
+			}
+		}
+		run.MusicVoice = .();
+		// A paused run's group nodes are halted, so its voices' fades would never land: the
+		// groups resume (silently, since the voices are fading) so the reap can finish.
+		if (run.Paused)
+			SetRunGroupPaused(runGroup, false);
+	}
+
+	/// Halts the run in place (its voices freeze with their cursors); resuming fades it back.
+	public void SetRunGroupPaused(uint64 runGroup, bool paused)
+	{
+		let run = FindRun(runGroup);
+		if ((run == null) || (run.Paused == paused))
+			return;
+		run.Paused = paused;
+		// Halting the run's group node freezes every voice beneath it in place, its scenes'
+		// included, with the same declick as a scene group's pause.
+		for (int bus < AudioBus.Count)
+		{
+			if (run.Groups[bus] != null)
+				SetGroupPaused(run.Groups[bus], paused);
+		}
+		// Its children under the custom buses halt the same way.
+		for (let bus in mCustomBuses)
+		{
+			if (bus.RunChildren.TryGetValue(runGroup, let child))
+				SetGroupPaused(child, paused);
+		}
+	}
+
+	public bool IsRunGroupPaused(uint64 runGroup) => (FindRun(runGroup) != null) && FindRun(runGroup).Paused;
+
+	/// Silences the run while its voices keep advancing (an unfocused Game tab); muting and
+	/// unmuting ramp over a short cross fade, advanced by Update.
+	public void SetRunGroupMuted(uint64 runGroup, bool muted)
+	{
+		if (let run = FindRun(runGroup))
+			run.Muted = muted;
+	}
+
+	public bool IsRunGroupMuted(uint64 runGroup) => (FindRun(runGroup) != null) && FindRun(runGroup).Muted;
+
+	public void SetRunGroupVolume(uint64 runGroup, float volume)
+	{
+		if (let run = FindRun(runGroup))
+		{
+			run.Volume = Max(volume, 0.0f);
+			ApplyRunGains(runGroup, run);
+		}
+	}
+
+	/// The run's own gain for a bus; its Master gain scales every bus of the run.
+	public void SetRunBusVolume(uint64 runGroup, AudioBus bus, float volume)
+	{
+		let run = FindRun(runGroup);
+		if ((run == null) || ((int)bus >= AudioBus.Count))
+			return;
+		run.BusGain[(int)bus] = Max(volume, 0.0f);
+		ApplyRunGains(runGroup, run);
+	}
+
+	/// One when the run is unknown.
+	public float RunBusVolume(uint64 runGroup, AudioBus bus)
+	{
+		let run = FindRun(runGroup);
+		return ((run == null) || ((int)bus >= AudioBus.Count)) ? 1.0f : run.BusGain[(int)bus];
+	}
+
+	public void SetRunBusMuted(uint64 runGroup, AudioBus bus, bool muted)
+	{
+		let run = FindRun(runGroup);
+		if ((run == null) || ((int)bus >= AudioBus.Count))
+			return;
+		run.BusMuted[(int)bus] = muted;
+		ApplyRunGains(runGroup, run);
+	}
+
+	public bool RunBusMuted(uint64 runGroup, AudioBus bus)
+	{
+		let run = FindRun(runGroup);
+		return (run != null) && ((int)bus < AudioBus.Count) && run.BusMuted[(int)bus];
+	}
+
+	/// The run's own gain for a layout's custom bus, by name: kept across a layout rebuild,
+	/// and folded into the run's gains for the bus's descendants.
+	public void SetRunNamedBusVolume(uint64 runGroup, StringView name, float volume)
+	{
+		if (let run = FindRun(runGroup))
+		{
+			run.EnsureNamed(name).Gain = Max(volume, 0.0f);
+			ApplyRunGains(runGroup, run);
+		}
+	}
+
+	public float RunNamedBusVolume(uint64 runGroup, StringView name)
+	{
+		let named = FindRun(runGroup)?.FindNamed(name);
+		return (named != null) ? named.Gain : 1.0f;
+	}
+
+	public void SetRunNamedBusMuted(uint64 runGroup, StringView name, bool muted)
+	{
+		if (let run = FindRun(runGroup))
+		{
+			run.EnsureNamed(name).Muted = muted;
+			ApplyRunGains(runGroup, run);
+		}
+	}
+
+	public bool RunNamedBusMuted(uint64 runGroup, StringView name)
+	{
+		let named = FindRun(runGroup)?.FindNamed(name);
+		return (named != null) && named.Muted;
 	}
 
 	/// Stops and frees every voice in the group at once, then drops the group.
@@ -1890,25 +2349,12 @@ class AudioEngine
 			}
 		}
 
-		// A custom bus voice routes OUTSIDE the scene's child groups, since the named tree is
-		// engine wide, so it freezes and resumes one at a time. Its state stays Playing, which
-		// mirrors what the group does; a voice the caller paused itself is left alone.
-		for (var slot in mVoices)
+		// Its children under the custom buses halt the same way: a voice on a named bus routes
+		// through the scene's child of that bus.
+		for (let bus in mCustomBuses)
 		{
-			if ((slot.SceneGroup != sceneGroup) || slot.CustomBusName.IsEmpty
-				|| (slot.State != .Playing))
-				continue;
-
-			if (paused)
-			{
-				mab_sound_stop_with_fade_ms(slot.Sound, FadeMilliseconds);
-			}
-			else
-			{
-				mab_sound_reset_stop_time_and_fade(slot.Sound);
-				mab_sound_set_fade_in_ms(slot.Sound, 0.0f, 1.0f, FadeMilliseconds);
-				mab_sound_start(slot.Sound);
-			}
+			if (bus.SceneChildren.TryGetValue(sceneGroup, let child))
+				SetGroupPaused(child, paused);
 		}
 	}
 
@@ -1949,7 +2395,7 @@ class AudioEngine
 			}
 
 			// The splice is on the scene's own child group: group, reverb, then the bus.
-			let group = GroupFor(sceneGroup, .Effects);
+			let group = GroupFor(sceneGroup, 0, .Effects);
 			if ((group == null) || (group == mBusGroups[(int)AudioBus.Effects]))
 				return;
 

@@ -157,7 +157,7 @@ class AudioEngineSceneTests
 
 		let first = engine.PlayMusic(trackA, 0.2f);
 		Test.Assert(first.IsValid);
-		Test.Assert(engine.MusicVoice == first);
+		Test.Assert(engine.MusicVoice() == first);
 		Test.Assert(engine.GetVoiceStatus(first, var status));
 		Test.Assert(status.Bus == .Music);
 		Test.Assert(status.Playing);
@@ -165,7 +165,7 @@ class AudioEngineSceneTests
 		let second = engine.PlayMusic(trackB, 0.2f);
 		Test.Assert(second.IsValid);
 		Test.Assert(!(second == first));
-		Test.Assert(engine.MusicVoice == second);
+		Test.Assert(engine.MusicVoice() == second);
 		Test.Assert(engine.GetVoiceStatus(first, out status));
 		Test.Assert(status.Stopping);
 		Test.Assert(engine.GetVoiceStatus(second, out status));
@@ -180,7 +180,7 @@ class AudioEngineSceneTests
 		Test.Assert(status.Playing);
 
 		engine.StopMusic(0.1f);
-		Test.Assert(!engine.MusicVoice.IsValid);
+		Test.Assert(!engine.MusicVoice().IsValid);
 		for (int i < 30)
 			engine.Update(1.0f / 60.0f);
 		Test.Assert(engine.ActiveVoiceCount == 0);

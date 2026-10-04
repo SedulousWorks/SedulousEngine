@@ -63,7 +63,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 
 20. ~~4b830b03 (engine half)~~ (done) Audio: a playing voice's volume and pitch ease over a duration, and a
     stop can fade.
-21. 8799a9ce + b7afa416 Audio: run groups, one level above the scene groups, custom buses
+21. ~~8799a9ce + b7afa416~~ (done) Audio: run groups, one level above the scene groups, custom buses
     included (one music slot per run, a run's own bus gains, pause and mute).
 22. 448232bc Scene, GameInstance: a scene knows its run.
 23. a5131c2d Engine.Audio: a game's sound belongs to its run (the subsystem's runs, focus and
