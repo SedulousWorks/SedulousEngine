@@ -114,6 +114,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// Simulate) read every action released and at rest rather than faulting on a missing
 	/// service. A run's own InputFacade replaces it.
 	private InputFacade mIdleInput = new .(null) ~ delete _;
+	/// `Save` for the same scripts: every fallback read, nothing written. A run's own replaces it.
+	private SaveFacade mIdleSave = new .(null) ~ delete _;
 	/// The resolution the game draws at, fitted into the window by mRenderFit; nought draws at
 	/// the window's size. With it, the pointer the game and its screen UI read is in render
 	/// pixels (mFittedInput).
@@ -300,6 +302,7 @@ class DefaultApplication : IApplication, ISceneObserver
 				runtime.SetService(mAudioFacade);
 				runtime.SetService(mUiScript);
 				runtime.SetService(mIdleInput);
+				runtime.SetService(mIdleSave);
 			};
 		// The scene facades' drawer.
 		DebugFacade.Renderer = mRender;

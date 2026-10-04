@@ -93,6 +93,9 @@ class GameInstance
 	private ScriptRunHost mRunHost = new .() ~ delete _;
 	/// OWNED: `Input` to this run's scripts, over this run's action runtime alone.
 	private InputFacade mInputFacade = null ~ delete _;
+	/// OWNED: this run's save, and `Save` to its scripts over it.
+	private RunSave mSave = new .() ~ delete _;
+	private SaveFacade mSaveFacade = null ~ delete _;
 	/// The orchestrator: an instance of the game script's class. Null when no script runs.
 	private ScriptObject mGame = null;
 	/// BORROWED: the resource manager owns the product.
@@ -125,6 +128,8 @@ class GameInstance
 		mInputFacade = new InputFacade(mInputRuntime);
 		mRunHost.SetService(this);
 		mRunHost.SetService(mInputFacade);
+		mSaveFacade = new SaveFacade(mSave);
+		mRunHost.SetService(mSaveFacade);
 	}
 
 	public ~this()
@@ -597,6 +602,8 @@ class GameInstance
 		// Any rumble the game started ends with it: no pad is left buzzing after its run.
 		if (mInputSource != null)
 			ActionRuntime.StopAllRumble(mInputSource);
+		// What the game saved and did not write yet is kept: the run writes it as it ends.
+		mSave.Flush();
 		if (mGame == null)
 			return;
 		InvokeGame("exit", default);
@@ -698,6 +705,17 @@ class GameInstance
 		ClearAndDeleteItems!(mGameCallbacks);
 		ClearAndDeleteItems!(mGameHandlerNames);
 	}
+
+	// ==================== Save ====================
+
+	/// Names this run's save file and reads it (the player's user data directory, a Game tab's
+	/// project Editor/ folder). The run's scripts reach it through the `Save` service, and the
+	/// run writes it when its script stops if anything changed. Empty: values kept for the run
+	/// only.
+	public void SetSaveFile(StringView path) => mSave.Open(path);
+
+	/// This run's save.
+	public RunSave Saves => mSave;
 
 	// ==================== Input ====================
 

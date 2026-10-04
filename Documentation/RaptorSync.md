@@ -28,7 +28,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
    not replace an existing file on Windows (`MoveFileW`), so Windows takes `MoveFileExW` with
    `MOVEFILE_REPLACE_EXISTING`.
 4. ~~bd1cce79~~ (done) Settings: `SaveValues`, a serializable section of typed values by key.
-5. 362e8f61 GameInstance: `RunSave` (open, flush only when changed, atomically, as XML) and the
+5. ~~362e8f61~~ (done) GameInstance: `RunSave` (open, flush only when changed, atomically, as XML) and the
    `Save` service facade (in GameInstance, which Script.Facades cannot name); an idle `Save` for
    scripts outside a run; `StopScript` flushes. Scripting.md gets "Saving"; the surface type
    count tripwires move by one.

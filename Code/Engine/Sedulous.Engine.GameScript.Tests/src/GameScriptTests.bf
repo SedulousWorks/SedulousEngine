@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Messaging;
 using Sedulous.Scene;
 using Sedulous.Script;
@@ -443,5 +444,110 @@ static class GameScriptTests
 		runA.Instance.StopScript();
 		Test.Assert(sourceA.Gamepad.RumbleLow == 0.0f);
 		Test.Assert(sourceB.Gamepad.RumbleCalls == 0);
+	}
+
+	/// Each run counts itself and keeps a best time; the second sees the first's values. The
+	/// first never flushes: the run writes what changed as it stops.
+	[Test]
+	public static void AGameKeepsItsValuesBetweenRunsThroughSave()
+	{
+		const String cCounter = """
+			class Game
+			{
+				void launch()
+				{
+					int runs = Save.GetInt("runs", 0);
+					Save.SetInt("runs", runs + 1);
+					if (Save.GetFloat("best", 999.0f) > 41.5f) { Save.SetFloat("best", 41.5f); }
+					Save.SetBool("seen", Save.Has("runs"));
+					Save.SetString("name", "Hopper");
+					Save.SetInt("scratch", 1);
+					Save.Remove("scratch");
+				}
+				void update(float dt) {}
+			}
+			""";
+		let scratch = "scratch_game_save";
+		RemoveDirectoryRecursive(scratch);
+		defer RemoveDirectoryRecursive(scratch);
+		let path = PathJoin(scratch, "game.xml", .. scope String());
+
+		for (int32 runIndex = 1; runIndex <= 2; runIndex++)
+		{
+			let run = scope GameRun(scope $"scratch_game_save_run{runIndex}");
+			run.Instance.SetSaveFile(path);
+			Test.Assert(run.Instance.StartScript(run.Class("Game", cCounter)));
+			Test.Assert(run.Instance.Saves.Values.GetInt("runs", 0) == runIndex);
+			run.Instance.StopScript();
+		}
+
+		let reread = scope RunSave();
+		reread.Open(path);
+		Test.Assert(reread.Values.GetInt("runs", 0) == 2);
+		Test.Assert(reread.Values.GetFloat("best", 0.0f) == 41.5f);
+		Test.Assert(reread.Values.GetBool("seen", false));
+		Test.Assert(reread.Values.GetText("name", "") == "Hopper");
+		Test.Assert(!reread.Values.Has("scratch"));
+	}
+
+	/// Flush writes while the run goes on, Clear forgets everything, and a run with no file
+	/// keeps its values for the run alone.
+	[Test]
+	public static void SaveFlushesOnRequestAndClearsAndARunWithNoFileWritesNowhere()
+	{
+		let scratch = "scratch_game_save_flush";
+		RemoveDirectoryRecursive(scratch);
+		defer RemoveDirectoryRecursive(scratch);
+		let path = PathJoin(scratch, "game.xml", .. scope String());
+
+		{
+			let run = scope GameRun("scratch_game_save_flush_a");
+			run.Instance.SetSaveFile(path);
+			Test.Assert(run.Instance.StartScript(run.Class("Game", """
+				class Game
+				{
+					bool flushed = false;
+					void launch() { Save.SetInt("coins", 37); flushed = Save.Flush(); }
+					void update(float dt) {}
+				}
+				""")));
+			Test.Assert(run.PropBool("flushed"));
+			// Written at the flush, while the run is still going.
+			let reread = scope RunSave();
+			reread.Open(path);
+			Test.Assert(reread.Values.GetInt("coins", 0) == 37);
+			run.Instance.StopScript();
+		}
+		{
+			let run = scope GameRun("scratch_game_save_flush_b");
+			run.Instance.SetSaveFile(path);
+			Test.Assert(run.Instance.StartScript(run.Class("Game", """
+				class Game
+				{
+					void launch() { Save.Clear(); }
+					void update(float dt) {}
+				}
+				""")));
+			run.Instance.StopScript();
+			let reread = scope RunSave();
+			reread.Open(path);
+			Test.Assert(reread.Values.Count == 0);
+		}
+		{
+			// No file named: the game's values last the run, its reads see them, nothing is
+			// written.
+			let run = scope GameRun("scratch_game_save_flush_c");
+			Test.Assert(run.Instance.StartScript(run.Class("Game", """
+				class Game
+				{
+					int coins = 0;
+					void launch() { Save.SetInt("coins", 5); coins = Save.GetInt("coins", 0); }
+					void update(float dt) {}
+				}
+				""")));
+			Test.Assert(run.PropInt("coins") == 5);
+			Test.Assert(!run.Instance.Saves.Flush());
+			run.Instance.StopScript();
+		}
 	}
 }

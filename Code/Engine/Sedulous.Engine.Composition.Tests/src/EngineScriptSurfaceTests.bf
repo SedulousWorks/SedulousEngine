@@ -40,7 +40,7 @@ static class EngineScriptSurfaceTests
 		Test.Assert(s.Types.Count == EngineScriptSurface.TypeCount);
 		// Bump deliberately when a type is marked or unmarked; a surprise here is a lost or
 		// stray dependency of the root.
-		Test.Assert(EngineScriptSurface.TypeCount == 94, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		Test.Assert(EngineScriptSurface.TypeCount == 95, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]
@@ -80,6 +80,8 @@ static class EngineScriptSurfaceTests
 		let input = s.Find("Sedulous.Engine.Script.Facades.InputFacade");
 		Test.Assert((input != null) && (input.Role == .Service) && (input.DisplayName == "Input"));
 		Test.Assert(s.Find("Sedulous.Engine.GameInstance.GameInstance").Role == .Service, "Run");
+		let save = s.Find("Sedulous.Engine.GameInstance.SaveFacade");
+		Test.Assert((save != null) && (save.Role == .Service) && (save.DisplayName == "Save"));
 		Test.Assert(s.Find("Sedulous.Engine.UI.Script.UiScript").Role == .Service, "Ui");
 
 		// What the facades reach: the values they pass.

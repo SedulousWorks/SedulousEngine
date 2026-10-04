@@ -43,7 +43,7 @@ Handlers dispatch **by presence**: implement only what you need.
 Engine verbs live on facades, in script shape: `scene.Physics.RayCast(...)`,
 `scene.Audio.Play(...)`, `scene.Render`, `scene.Animation`, `scene.Particles`,
 `scene.Splines`, `scene.Prefabs.Spawn(...)`, `scene.Debug`; the services `Audio`, `Input`,
-`Ui`, `Run`, `Random`; and the globals `Print`, `PrintWarning`, `PrintError` with the math
+`Save`, `Ui`, `Run`, `Random`; and the globals `Print`, `PrintWarning`, `PrintError` with the math
 free functions. `script_api` lists exactly what each one binds.
 
 `Input.Rumble(low, high, seconds)` runs the gamepad's two motors, `low` the heavy one and
@@ -63,6 +63,24 @@ zone's bake settings. A network identity is one, read only.
 
 The facades are the stable verbs and the first place to look; a component is the direct route
 to its data. `script_api` lists both.
+
+## Saving
+
+The `Save` service keeps values between runs: a best time, a high score, an unlocked level, the
+game's own options. Values are typed (int, float, bool, string) and keyed by any string you
+choose:
+
+```
+Save.SetInt("best.level2", 4210);
+int best = Save.GetInt("best.level2", 0);   // the fallback when there is none yet
+```
+
+- `Has`, `Remove` and `Clear` do what they say. A value read as another kind than it was
+  written answers the fallback, except that an int reads as a float.
+- The run writes what changed when it ends. Call `Save.Flush()` at the moment that matters (a
+  level clear, leaving a settings screen) so a crash or a forced quit loses nothing.
+- The audio bus volumes a settings screen sets are saved by the player on its own; a game
+  does not need to save them.
 
 ## Editor properties
 
