@@ -75,6 +75,9 @@ class DefaultApplication : IApplication, ISceneObserver
 	private delegate void(delegate void(NetworkManager)) mEndpointSource = null ~ delete _;
 
 	/// The primary running game, which every application level operation targets.
+	/// Each instance's own Audio facade, its run's (installed on its run host). OWNED, and
+	/// declared before the instances so it is freed after them.
+	private Dictionary<GameInstance, AudioFacade> mRunAudio = new .() ~ DeleteDictionaryAndValues!(_);
 	private GameInstance mInstance = new .() ~ delete _;
 	private List<GameInstance> mExtraInstances = new .() ~ DeleteContainerAndItems!(_);
 
@@ -321,6 +324,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		host.Context.RegisterSubsystem<AudioSubsystem>(mAudio);
 		// Resources is read per call, since the manager may be handed over after this.
 		mAudioFacade = new AudioFacade(mAudio, new () => Resources);
+		// The primary's scripting was wired before the subsystem existed.
+		InstallRunAudio(mInstance);
 
 		mInput = new InputSubsystem((host.Shell != null) ? host.Shell.Input : null);
 		host.Context.RegisterSubsystem<InputSubsystem>(mInput);
@@ -397,6 +402,19 @@ class DefaultApplication : IApplication, ISceneObserver
 			});
 		instance.SetExitRequest(new (code) => host.RequestExit(code));
 		instance.SetSceneActivationPolicy(new (scene) => ApplyLoadedSceneActivation(scene));
+		InstallRunAudio(instance);
+	}
+
+	/// The instance's own Audio facade, carrying the instance as its run: what its scripts play
+	/// goes into its run, and its bus volumes are the run's. It overrides the shared facade the
+	/// subsystem installs, as the instance's Input does.
+	private void InstallRunAudio(GameInstance instance)
+	{
+		if ((mAudio == null) || mRunAudio.ContainsKey(instance))
+			return;
+		let facade = new AudioFacade(mAudio, new () => Resources, instance);
+		mRunAudio[instance] = facade;
+		instance.RunHost.SetService(facade);
 	}
 
 	/// What a scene gets the moment a script driven load lands: started and simulating.
@@ -433,7 +451,12 @@ class DefaultApplication : IApplication, ISceneObserver
 		instance.Scenes.Clear();
 
 		mExtraInstances.RemoveAt(at);
+		// Its facade after its run host is gone, found while the instance is still a key.
+		AudioFacade runAudio = null;
+		if (mRunAudio.GetAndRemove(instance) case .Ok(let entry))
+			runAudio = entry.value;
 		delete instance;
+		delete runAudio;
 	}
 
 	/// The primary first, then every extra.

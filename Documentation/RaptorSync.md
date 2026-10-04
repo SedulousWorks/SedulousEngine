@@ -66,7 +66,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 21. ~~8799a9ce + b7afa416~~ (done) Audio: run groups, one level above the scene groups, custom buses
     included (one music slot per run, a run's own bus gains, pause and mute).
 22. ~~448232bc~~ (done) Scene, GameInstance: a scene knows its run.
-23. a5131c2d Engine.Audio: a game's sound belongs to its run (the subsystem's runs, focus and
+23. ~~a5131c2d~~ (done) Engine.Audio: a game's sound belongs to its run (the subsystem's runs, focus and
     hear-all, the listener gated by them; a facade per run installed on its run host, with the
     stop-music, mute and named-bus verbs Raptor's facade has).
 24. 4b830b03 (script half) Script: a script controls a playing voice, the music's included.

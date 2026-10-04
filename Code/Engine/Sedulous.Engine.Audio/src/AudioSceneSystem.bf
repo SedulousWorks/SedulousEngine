@@ -25,6 +25,9 @@ class AudioSceneSystem : SceneSystem
 	private AudioEngine mEngine = null;
 
 	private uint64 mSceneGroup = 0;
+	/// How the scene finds its run's group when it starts: the subsystem's registry. Without
+	/// it the scene plays outside every run. BORROWED.
+	private delegate uint64(Object run) mRunGroupFor = null;
 	private bool mStarted = false;
 	private bool mWasSimulating = true;
 
@@ -42,6 +45,10 @@ class AudioSceneSystem : SceneSystem
 	{
 		mScene = scene;
 	}
+
+	/// The subsystem wires its run registry in with its engine, so a scene of a run nests
+	/// under the run's groups.
+	public void SetRunGroupResolver(delegate uint64(Object run) resolver) => mRunGroupFor = resolver;
 
 	/// The subsystem wires its engine in right after the system is added. A test injects a
 	/// headless one the same way.
@@ -64,7 +71,9 @@ class AudioSceneSystem : SceneSystem
 		if (mEngine == null)
 			return;
 
-		mSceneGroup = mEngine.CreateSceneGroup();
+		// A scene of a run nests under the run's groups: the run's stop, pause and mute reach it.
+		let run = ((mRunGroupFor != null) && (mScene.Run != null)) ? mRunGroupFor(mScene.Run) : 0;
+		mSceneGroup = mEngine.CreateSceneGroup(run);
 
 		let sources = mScene.GetSystem<AudioSourceComponentManager>();
 		if (sources == null)
