@@ -27,6 +27,7 @@ using Sedulous.Engine.Terrain;
 using Sedulous.Engine.Vegetation;
 using Sedulous.Engine.UI;
 using Sedulous.Engine.UI.Script;
+using Sedulous.UI;
 using Sedulous.UI.Resource;
 using Sedulous.Graphics;
 using Sedulous.Image;
@@ -78,6 +79,9 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// Each instance's own Audio facade, its run's (installed on its run host). OWNED, and
 	/// declared before the instances so it is freed after them.
 	private Dictionary<GameInstance, AudioFacade> mRunAudio = new .() ~ DeleteDictionaryAndValues!(_);
+	/// Each instance's own Ui service, its run's screens (installed on its run host). OWNED, and
+	/// declared before the instances so it is freed after them.
+	private Dictionary<GameInstance, UiScript> mRunUi = new .() ~ DeleteDictionaryAndValues!(_);
 	private GameInstance mInstance = new .() ~ delete _;
 	private List<GameInstance> mExtraInstances = new .() ~ DeleteContainerAndItems!(_);
 
@@ -326,6 +330,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		mAudioFacade = new AudioFacade(mAudio, new () => Resources);
 		// The primary's scripting was wired before the subsystem existed.
 		InstallRunAudio(mInstance);
+		InstallRunUi(mInstance);
 
 		mInput = new InputSubsystem((host.Shell != null) ? host.Shell.Input : null);
 		host.Context.RegisterSubsystem<InputSubsystem>(mInput);
@@ -337,13 +342,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		host.Context.RegisterSubsystem<UISubsystem>(mUI);
 		// The screen tier to scripts: Ui.Push(document) instantiates the cooked document
 		// through the resource manager, on the subsystem's context.
-		mUiScript.Attach(mUI.Screens, new (documentId) =>
-			{
-				if ((Resources == null) || (mUI == null))
-					return null;
-				let document = Resources.Bind<UIDocument>(documentId).Get;
-				return (document != null) ? mUI.InstantiateScreenOverlay(document) : null;
-			});
+		mUiScript.Attach(mUI.Screens, new (documentId) => InstantiateDocument(documentId));
 
 		// Each instance owns its OWN endpoint and goes online at runtime through the facade,
 		// so there is no application owned socket. The primary carries the prefab spawn
@@ -403,6 +402,32 @@ class DefaultApplication : IApplication, ISceneObserver
 		instance.SetExitRequest(new (code) => host.RequestExit(code));
 		instance.SetSceneActivationPolicy(new (scene) => ApplyLoadedSceneActivation(scene));
 		InstallRunAudio(instance);
+		InstallRunUi(instance);
+	}
+
+	/// A cooked UI document, instantiated through the resource manager on the UI subsystem's
+	/// context, or null: what Ui.Push makes a screen of.
+	private View InstantiateDocument(Guid documentId)
+	{
+		if ((Resources == null) || (mUI == null))
+			return null;
+		let document = Resources.Bind<UIDocument>(documentId).Get;
+		return (document != null) ? mUI.InstantiateScreenOverlay(document) : null;
+	}
+
+	/// The instance's own Ui service: its run's screens, as the UI subsystem keeps them (each
+	/// run its own with run screens on, the editor's Game tabs; the shared ones otherwise). The
+	/// stack is asked at each call, since the subsystem and the run screens setting may come
+	/// after this. It overrides the shared service, as the instance's Audio does.
+	private void InstallRunUi(GameInstance instance)
+	{
+		if (mRunUi.ContainsKey(instance))
+			return;
+		let ui = new UiScript();
+		ui.Attach(new () => (mUI != null) ? mUI.ScreensFor(instance) : null,
+			new (documentId) => InstantiateDocument(documentId));
+		mRunUi[instance] = ui;
+		instance.RunHost.SetService(ui);
 	}
 
 	/// The instance's own Audio facade, carrying the instance as its run: what its scripts play
@@ -449,17 +474,23 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		// Destroy whatever scenes are left, with the aware subsystems notified.
 		instance.Scenes.Clear();
-		// Its sound ends with it.
+		// Its sound and its screens end with it.
 		if (mAudio != null)
 			mAudio.EndRun(instance);
+		if (mUI != null)
+			mUI.EndRunScreens(instance);
 
 		mExtraInstances.RemoveAt(at);
-		// Its facade after its run host is gone, found while the instance is still a key.
+		// Its services after its run host is gone, found while the instance is still a key.
 		AudioFacade runAudio = null;
 		if (mRunAudio.GetAndRemove(instance) case .Ok(let entry))
 			runAudio = entry.value;
+		UiScript runUi = null;
+		if (mRunUi.GetAndRemove(instance) case .Ok(let uiEntry))
+			runUi = uiEntry.value;
 		delete instance;
 		delete runAudio;
+		delete runUi;
 	}
 
 	/// The primary first, then every extra.

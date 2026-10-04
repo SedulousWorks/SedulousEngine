@@ -17,27 +17,69 @@ class UiScript
 	/// the delegate; the view comes back with one reference, the caller's.
 	public typealias Instantiator = delegate View(Guid document);
 
-	/// BORROWED: the tier's stack, over the screen root.
-	private ScreenStack mStack = null;
+	/// The screen stack's resolver: where this service's screens live, asked at each call. A run's
+	/// service answers its run's stack (the editor's Game tabs each have their own screen tier),
+	/// so the answer can change after it is attached. OWNED.
+	public typealias StackResolver = delegate ScreenStack();
+
+	/// BORROWED: the tier's stack, over the screen root, when attached to a fixed one.
+	private ScreenStack mFixedStack = null;
+	private StackResolver mResolve = null ~ delete _;
 	private Instantiator mInstantiate = null ~ delete _;
 
+	/// A fixed stack. TAKES OWNERSHIP of `instantiate`.
 	public void Attach(ScreenStack stack, Instantiator instantiate)
 	{
-		mStack = stack;
+		mFixedStack = stack;
+		DeleteAndNullify!(mResolve);
 		delete mInstantiate;
 		mInstantiate = instantiate;
 	}
 
-	private ViewGroup RootGroup => (mStack != null) ? mStack.Root : null;
+	/// A stack resolved at each call. TAKES OWNERSHIP of both delegates.
+	public void Attach(StackResolver resolve, Instantiator instantiate)
+	{
+		mFixedStack = null;
+		delete mResolve;
+		mResolve = resolve;
+		delete mInstantiate;
+		mInstantiate = instantiate;
+	}
+
+	/// The stack the calling script's screens live on, or null when unwired.
+	private ScreenStack Stack => (mResolve != null) ? mResolve() : mFixedStack;
+
+	private ViewGroup RootGroup
+	{
+		get
+		{
+			let stack = Stack;
+			return (stack != null) ? stack.Root : null;
+		}
+	}
 
 	/// The screen tier's root, as a group handle.
 	[Scriptable]
 	public UiGroup Root => .(RootGroup);
 	/// The top screen on the stack, null when empty.
 	[Scriptable]
-	public UiScreen Top => .((mStack != null) ? mStack.Top : null);
+	public UiScreen Top
+	{
+		get
+		{
+			let stack = Stack;
+			return .((stack != null) ? stack.Top : null);
+		}
+	}
 	[Scriptable]
-	public int32 Count => (mStack != null) ? (int32)mStack.Count : 0;
+	public int32 Count
+	{
+		get
+		{
+			let stack = Stack;
+			return (stack != null) ? (int32)stack.Count : 0;
+		}
+	}
 
 	[Scriptable]
 	public UiView Find(StringView name) => UiFinders.FindByName(RootGroup, name);
@@ -61,8 +103,9 @@ class UiScript
 	[Scriptable]
 	public UiScreen Push(Guid document)
 	{
+		let stack = Stack;
 		let screen = MakeScreen(document);
-		if ((screen == null) || (mStack == null))
+		if ((screen == null) || (stack == null))
 		{
 			if (screen != null)
 				screen.ReleaseRef();
@@ -70,42 +113,47 @@ class UiScript
 		}
 		// The stack consumes the reference; the handle takes its own through the table.
 		let handle = UiScreen(screen);
-		mStack.Push(screen);
+		stack.Push(screen);
 		return handle;
 	}
 
 	[Scriptable]
 	public void Pop()
 	{
-		if (mStack != null)
-			mStack.Pop();
+		if (let stack = Stack)
+			stack.Pop();
 	}
 
 	[Scriptable]
 	public UiScreen Replace(Guid document)
 	{
+		let stack = Stack;
 		let screen = MakeScreen(document);
-		if ((screen == null) || (mStack == null))
+		if ((screen == null) || (stack == null))
 		{
 			if (screen != null)
 				screen.ReleaseRef();
 			return .();
 		}
 		let handle = UiScreen(screen);
-		mStack.Replace(screen);
+		stack.Replace(screen);
 		return handle;
 	}
 
 	[Scriptable]
 	public void Clear()
 	{
-		if (mStack != null)
-			mStack.Clear();
+		if (let stack = Stack)
+			stack.Clear();
 	}
 
 	/// Pops the top unless it is the last screen; whether it popped.
 	[Scriptable]
-	public bool Back() => (mStack != null) && mStack.HandleBack();
+	public bool Back()
+	{
+		let stack = Stack;
+		return (stack != null) && stack.HandleBack();
+	}
 
 	private UIScreen MakeScreen(Guid document)
 	{
