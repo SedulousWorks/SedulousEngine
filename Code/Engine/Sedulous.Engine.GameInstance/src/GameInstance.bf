@@ -130,7 +130,9 @@ class GameInstance
 	public ~this()
 	{
 		// The game script, then the scenes, whose behaviours live on the host, then the
-		// host itself with the fields.
+		// host itself with the fields. The input source is borrowed and may be gone by now, so
+		// the script's stop asks no pad of it to stop rumbling.
+		mInputSource = null;
 		StopScript();
 		ClearScenes();
 		mRunHost.Teardown();
@@ -592,6 +594,9 @@ class GameInstance
 	public void StopScript()
 	{
 		ClearGameSubscriptions();
+		// Any rumble the game started ends with it: no pad is left buzzing after its run.
+		if (mInputSource != null)
+			ActionRuntime.StopAllRumble(mInputSource);
 		if (mGame == null)
 			return;
 		InvokeGame("exit", default);

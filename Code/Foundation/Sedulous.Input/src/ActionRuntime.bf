@@ -74,6 +74,19 @@ class ActionRuntime
 	/// Set by an exclusive push or pop, consumed by the next Update.
 	private bool mLatchHeldOnce = false;
 
+	/// A rumble asked for, waiting for the next Update's devices.
+	private struct RumbleRequest
+	{
+		public int32 Gamepad;
+		public float Low;
+		public float High;
+		public uint32 DurationMs;
+	}
+
+	private List<RumbleRequest> mRumble = new .() ~ delete _;
+	/// StopRumble: every pad, at the next Update.
+	private bool mStopRumble = false;
+
 	/// Installs a COPY of the map and rebuilds every piece of state. Every set starts
 	/// enabled.
 	///
@@ -227,6 +240,70 @@ class ActionRuntime
 		}
 
 		mLatchHeldOnce = false;
+		ApplyRumble(devices);
+	}
+
+	// ---- rumble ----
+	// A request waits for the next Update and reaches the pad through that frame's devices: a
+	// runtime holds no device between frames, and each run's runtime reaches only its own
+	// source (an editor Game tab's pad, the player's window).
+
+	/// Runs pad `gamepad`'s two motors for `seconds`: `low` the heavy, low frequency one and
+	/// `high` the light, high frequency one, each 0 to 1. Zeros stop it. A later request for the
+	/// same pad replaces this one.
+	public void Rumble(int32 gamepad, float low, float high, float seconds)
+	{
+		if (gamepad < 0)
+			return;
+
+		let request = RumbleRequest()
+		{
+			Gamepad = gamepad,
+			Low = Math.Clamp(low, 0.0f, 1.0f),
+			High = Math.Clamp(high, 0.0f, 1.0f),
+			DurationMs = (uint32)(Math.Max(seconds, 0.0f) * 1000.0f + 0.5f)
+		};
+		for (var pending in ref mRumble)
+		{
+			if (pending.Gamepad == gamepad)
+			{
+				pending = request;
+				return;
+			}
+		}
+		mRumble.Add(request);
+	}
+
+	/// Stops every pad's rumble at the next Update, and drops any request still waiting.
+	public void StopRumble()
+	{
+		mRumble.Clear();
+		mStopRumble = true;
+	}
+
+	/// Stops every pad of `devices` rumbling (a run's end: no pad is left buzzing after it).
+	public static void StopAllRumble(IInputSourceProvider devices)
+	{
+		for (int32 i = 0; i < devices.GamepadCount; i++)
+		{
+			if (let pad = devices.GetGamepad(i))
+				pad.SetRumble(0.0f, 0.0f, 0);
+		}
+	}
+
+	private void ApplyRumble(IInputSourceProvider devices)
+	{
+		if (mStopRumble)
+		{
+			StopAllRumble(devices);
+			mStopRumble = false;
+		}
+		for (let request in mRumble)
+		{
+			if (let pad = devices.GetGamepad(request.Gamepad))
+				pad.SetRumble(request.Low, request.High, request.DurationMs);
+		}
+		mRumble.Clear();
 	}
 
 	/// Every action's name, value and held state on one line, "Move=(0.00,1.00) Jump=down":

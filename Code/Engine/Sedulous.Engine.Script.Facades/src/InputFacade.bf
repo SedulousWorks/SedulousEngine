@@ -32,4 +32,16 @@ class InputFacade
 	/// A two dimensional action's value, a stick or a d-pad.
 	[Scriptable]
 	public Float2 Value2D(StringView action) => (mRuntime != null) ? mRuntime.Value2D(mRuntime.Resolve(action)) : .Zero;
+
+	/// Runs gamepad 0's motors for `seconds`: `low` the heavy, low frequency motor and `high` the
+	/// light, high frequency one, each 0 to 1 (a crash 0.8, 0.4, 0.25; a footstep 0, 0.2, 0.05).
+	/// It reaches the calling run's own pad (an editor Game tab's, the player's).
+	[Scriptable]
+	public void Rumble(float low, float high, float seconds) => Rumble(0, low, high, seconds);
+	/// The same, for pad `gamepad` (0 first).
+	[Scriptable]
+	public void Rumble(int32 gamepad, float low, float high, float seconds) => mRuntime?.Rumble(gamepad, low, high, seconds);
+	/// Stops every pad's rumble (a run's end stops it too).
+	[Scriptable]
+	public void StopRumble() => mRuntime?.StopRumble();
 }

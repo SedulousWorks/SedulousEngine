@@ -23,5 +23,17 @@ class FakeGamepad : IGamepad
 	public void SetPressed(GamepadButton button, bool value = true) => mPressed[(uint32)button & 31] = value;
 	public void SetAxis(GamepadAxis axis, float value) => mAxes[(uint32)axis % 6] = value;
 
-	public void SetRumble(float lowFrequency, float highFrequency, uint32 durationMs) {}
+	/// The last rumble asked of the pad, and how many times one was.
+	public float RumbleLow = 0.0f;
+	public float RumbleHigh = 0.0f;
+	public uint32 RumbleMs = 0;
+	public int RumbleCalls = 0;
+
+	public void SetRumble(float lowFrequency, float highFrequency, uint32 durationMs)
+	{
+		RumbleLow = lowFrequency;
+		RumbleHigh = highFrequency;
+		RumbleMs = durationMs;
+		RumbleCalls++;
+	}
 }

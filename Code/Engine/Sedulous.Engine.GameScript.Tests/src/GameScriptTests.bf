@@ -389,4 +389,59 @@ static class GameScriptTests
 		let tint = run.Prop("tint").AsColor;
 		Test.Assert(Math.Abs(tint.R - 0.5f) + Math.Abs(tint.G - 1.0f) + Math.Abs(tint.A - 2.0f) < 1e-5);
 	}
+
+	/// A script rumbles its own run's pad and stops it; the run's end stops it too, and another
+	/// run's pad hears none of it.
+	[Test]
+	public static void AScriptRumblesItsOwnRunsPadAndTheRunsEndStopsIt()
+	{
+		const String cRumbler = """
+			class Game
+			{
+				int step = 0;
+				void launch() {}
+				void update(float dt)
+				{
+					step++;
+					if (step == 1) { Input.Rumble(0.6f, 0.3f, 0.2f); }
+					if (step == 2) { Input.Rumble(0, 1.0f, 0.0f, 0.5f); }
+					if (step == 3) { Input.StopRumble(); }
+					if (step == 4) { Input.Rumble(0.5f, 0.5f, 1.0f); }
+				}
+			}
+			""";
+		let runA = scope GameRun("scratch_game_rumble_a");
+		let runB = scope GameRun("scratch_game_rumble_b");
+		let sourceA = scope OnePadSource();
+		let sourceB = scope OnePadSource();
+		runA.Instance.SetInputSource(sourceA);
+		runB.Instance.SetInputSource(sourceB);
+		Test.Assert(runA.Instance.StartScript(runA.Class("Game", cRumbler)));
+
+		// Asked in the update, applied by the next input drive through the run's own source.
+		runA.Step();
+		runA.Instance.DriveInput(1.0f / 60.0f, 1.0f);
+		runB.Instance.DriveInput(1.0f / 60.0f, 1.0f);
+		Test.Assert(Math.Abs(sourceA.Gamepad.RumbleLow - 0.6f) < 1e-4f);
+		Test.Assert(Math.Abs(sourceA.Gamepad.RumbleHigh - 0.3f) < 1e-4f);
+		Test.Assert(sourceA.Gamepad.RumbleMs == 200);
+		Test.Assert(sourceB.Gamepad.RumbleCalls == 0, "another run's pad is not touched");
+
+		// By pad index, then stopped.
+		runA.Step();
+		runA.Instance.DriveInput(1.0f / 60.0f, 1.0f);
+		Test.Assert(Math.Abs(sourceA.Gamepad.RumbleLow - 1.0f) < 1e-4f);
+		runA.Step();
+		runA.Instance.DriveInput(1.0f / 60.0f, 1.0f);
+		Test.Assert(sourceA.Gamepad.RumbleLow == 0.0f);
+		Test.Assert(sourceA.Gamepad.RumbleMs == 0);
+
+		// Rumbling at the run's end: stopping the script stops the pad at once.
+		runA.Step();
+		runA.Instance.DriveInput(1.0f / 60.0f, 1.0f);
+		Test.Assert(sourceA.Gamepad.RumbleLow == 0.5f);
+		runA.Instance.StopScript();
+		Test.Assert(sourceA.Gamepad.RumbleLow == 0.0f);
+		Test.Assert(sourceB.Gamepad.RumbleCalls == 0);
+	}
 }

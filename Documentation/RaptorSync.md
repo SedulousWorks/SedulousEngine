@@ -20,7 +20,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
 
 1. ~~6db2b4a3~~ (done) ModelImporter: the manifest's name is reserved before a sub-asset claims
    it, so Gem_Blue.gltf's material "Gem_Blue" takes a suffix instead of the manifest's instance.
-2. eef9d560 Input: `ActionRuntime.Rumble(pad, low, high, seconds)` and `StopRumble()`, applied at
+2. ~~eef9d560~~ (done) Input: `ActionRuntime.Rumble(pad, low, high, seconds)` and `StopRumble()`, applied at
    the end of `Update` through that frame's devices; `Input.Rumble(low, high, seconds)`,
    `Input.Rumble(gamepad, ...)` and `Input.StopRumble()` on the facade; `GameInstance.StopScript`
    stops its source's pads (before its no-game early return). Scripting.md.

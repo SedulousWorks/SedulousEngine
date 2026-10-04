@@ -46,6 +46,12 @@ Engine verbs live on facades, in script shape: `scene.Physics.RayCast(...)`,
 `Ui`, `Run`, `Random`; and the globals `Print`, `PrintWarning`, `PrintError` with the math
 free functions. `script_api` lists exactly what each one binds.
 
+`Input.Rumble(low, high, seconds)` runs the gamepad's two motors, `low` the heavy one and
+`high` the light one, each 0 to 1 (a crash 0.8, 0.4, 0.25; a footstep 0, 0.2, 0.05);
+`Input.Rumble(gamepad, low, high, seconds)` picks the pad, and `Input.StopRumble()` stops them
+all. It reaches only the calling run's pad (a Game tab's, the player's), and the run's end
+stops it.
+
 Components are script types too, as data with a few verbs: a script takes one from an
 entity, `CharacterComponent character = CharacterComponent(self);`, then reads and sets its
 fields and calls its verbs (`character.Move(vx, vz)`, `character.Jump(speed)`). The handle is
