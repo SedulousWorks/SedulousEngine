@@ -41,7 +41,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 10. ~~c89cd6fb~~ (done) Engine.Particles: particle colours decoded to linear where they are drawn.
 11. ~~ad81b72b~~ (done) Render: debug colours decoded like every authored colour (`color.hlsli`); the colour
     probes.
-12. 40d28176 Model.GLTF: colour factors read as authored sRGB; emissive strength kept as an
+12. ~~40d28176~~ (done) Model.GLTF: colour factors read as authored sRGB; emissive strength kept as an
     intensity.
 13. eaaa699c + 5b1d2c44 Model.FBX: material colours read as authored sRGB, the emission factor an
     intensity; a legacy material's colour ignores its diffuse factor.

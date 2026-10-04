@@ -17,6 +17,14 @@ namespace Sedulous.Model.GLTF;
 /// accessors point into it and the conversion below reads through them.
 class GltfLoader : IModelLoader
 {
+	/// glTF stores its colour factors linear (the glTF specification); the engine's authored
+	/// colours are sRGB, so a factor is encoded as it is read and the material keeps its look.
+	private static Float4 SrgbFactor(float r, float g, float b, float a)
+	{
+		let c = ToSrgb(Color(r, g, b, a));
+		return .(c.R, c.G, c.B, c.A);
+	}
+
 	private cgltf_data* mData = null;
 	private String mBasePath = new .() ~ delete _;
 
@@ -145,7 +153,7 @@ class GltfLoader : IModelLoader
 			{
 				let pbr = &source.pbr_metallic_roughness;
 
-				material.BaseColorFactor = .(pbr.base_color_factor[0], pbr.base_color_factor[1],
+				material.BaseColorFactor = SrgbFactor(pbr.base_color_factor[0], pbr.base_color_factor[1],
 					pbr.base_color_factor[2], pbr.base_color_factor[3]);
 
 				if (pbr.base_color_texture.texture != null)
@@ -167,7 +175,7 @@ class GltfLoader : IModelLoader
 				// a step of its own. Only reached when the material carries no metallic
 				// roughness block, which is the one the standard prefers.
 				let sg = &source.pbr_specular_glossiness;
-				material.BaseColorFactor = .(sg.diffuse_factor[0], sg.diffuse_factor[1],
+				material.BaseColorFactor = SrgbFactor(sg.diffuse_factor[0], sg.diffuse_factor[1],
 					sg.diffuse_factor[2], sg.diffuse_factor[3]);
 				if (sg.diffuse_texture.texture != null)
 					material.BaseColorTextureIndex =
@@ -189,8 +197,11 @@ class GltfLoader : IModelLoader
 				material.OcclusionStrength = source.occlusion_texture.scale;
 			}
 
-			material.EmissiveFactor = .(source.emissive_factor[0], source.emissive_factor[1],
-				source.emissive_factor[2]);
+			let emissive = SrgbFactor(source.emissive_factor[0], source.emissive_factor[1],
+				source.emissive_factor[2], 1.0f);
+			material.EmissiveFactor = .(emissive.X, emissive.Y, emissive.Z);
+			if (source.has_emissive_strength != 0)
+				material.EmissiveIntensity = source.emissive_strength.emissive_strength;
 
 			if (source.emissive_texture.texture != null)
 				material.EmissiveTextureIndex = (int32)cgltf_texture_index(mData, source.emissive_texture.texture);

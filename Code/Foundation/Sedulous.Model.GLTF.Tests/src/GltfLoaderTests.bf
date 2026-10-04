@@ -262,7 +262,7 @@ class GltfLoaderTests
 			let cutout = model.Materials[0];
 
 			Test.Assert(cutout.Name == "cutout");
-			Test.Assert(Near(cutout.BaseColorFactor.X, 0.5f));
+			Test.Assert(Near(cutout.BaseColorFactor.X, LinearToSrgb(0.5f)), "glTF's linear factor, encoded");
 			Test.Assert(Near(cutout.BaseColorFactor.W, 1.0f));
 			Test.Assert(Near(cutout.MetallicFactor, 0.75f));
 			Test.Assert(Near(cutout.RoughnessFactor, 0.4f));
@@ -271,7 +271,7 @@ class GltfLoaderTests
 			Test.Assert(Near(cutout.NormalScale, 0.5f));
 			Test.Assert(cutout.OcclusionTextureIndex == 1);
 			Test.Assert(Near(cutout.OcclusionStrength, 0.25f), "occlusion strength is the view's scale");
-			Test.Assert(Near(cutout.EmissiveFactor.X, 1.0f) && Near(cutout.EmissiveFactor.Y, 0.5f));
+			Test.Assert(Near(cutout.EmissiveFactor.X, 1.0f) && Near(cutout.EmissiveFactor.Y, LinearToSrgb(0.5f)));
 			Test.Assert(cutout.AlphaMode == .Mask);
 			Test.Assert(Near(cutout.AlphaCutoff, 0.25f));
 			Test.Assert(cutout.DoubleSided);
@@ -376,5 +376,39 @@ class GltfLoaderTests
 
 		Test.Assert(second.Bones.Length == first.Bones.Length);
 		Test.Assert(Near(FindBone(second, "viaMatrix").Translation.X, 10.0f));
+	}
+
+	/// glTF's colour factors are linear by its specification; read, they are the engine's
+	/// authored sRGB colours: a baseColorFactor of 0.2140 is sRGB 0.5, and the emissive strength
+	/// extension is the emissive intensity.
+	[Test]
+	public static void ColourFactorsAreReadAsAuthoredSrgbColours()
+	{
+		let path = "scratch_gltf_colour_factors.gltf";
+		File.WriteAllText(path, """
+			{
+			  "asset": {"version": "2.0"},
+			  "extensionsUsed": ["KHR_materials_emissive_strength"],
+			  "materials": [{
+			    "name": "grey",
+			    "pbrMetallicRoughness": {"baseColorFactor": [0.2140, 0.2140, 1.0, 0.5]},
+			    "emissiveFactor": [1.0, 0.2140, 0.0],
+			    "extensions": {"KHR_materials_emissive_strength": {"emissiveStrength": 4.0}}
+			  }]
+			}
+			""").IgnoreError();
+		defer { File.Delete(path).IgnoreError(); }
+
+		let model = scope ModelData();
+		let loader = scope GltfLoader();
+		Test.Assert(loader.Load(path, model) == .Ok);
+		Test.Assert(model.Materials.Length == 1);
+		let material = model.Materials[0];
+		Test.Assert(Math.Abs(material.BaseColorFactor.X - 0.5f) < 0.002f);
+		Test.Assert(Near(material.BaseColorFactor.Z, 1.0f));
+		Test.Assert(Near(material.BaseColorFactor.W, 0.5f), "alpha is coverage, as stored");
+		Test.Assert(Near(material.EmissiveFactor.X, 1.0f));
+		Test.Assert(Math.Abs(material.EmissiveFactor.Y - 0.5f) < 0.002f);
+		Test.Assert(Near(material.EmissiveIntensity, 4.0f));
 	}
 }

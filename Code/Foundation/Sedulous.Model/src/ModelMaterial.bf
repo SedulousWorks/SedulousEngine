@@ -8,6 +8,9 @@ namespace Sedulous.Model;
 /// Texture references are INDICES into the model's texture list, not pointers, because
 /// that is how the source formats express them and it survives the model being moved or
 /// serialized.
+///
+/// Colour factors are AUTHORED sRGB, as every colour is (the material property they become
+/// decodes them for the GPU). A loader whose format stores them linear (glTF) encodes them.
 class ModelMaterial
 {
 	public String Name = new .() ~ delete _;
@@ -31,7 +34,11 @@ class ModelMaterial
 	public float OcclusionStrength = 1.0f;
 	public int32 OcclusionTextureIndex = -1;
 
+	/// sRGB, like BaseColorFactor.
 	public Float3 EmissiveFactor = .Zero;
+	/// A linear multiplier above the colour (glTF's KHR_materials_emissive_strength, FBX's
+	/// emission factor): the intensity a ColorHdr carries in w.
+	public float EmissiveIntensity = 1.0f;
 	public int32 EmissiveTextureIndex = -1;
 
 	public AlphaMode AlphaMode = .Opaque;

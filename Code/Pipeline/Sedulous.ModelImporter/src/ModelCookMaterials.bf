@@ -39,8 +39,9 @@ static class ModelCookMaterials
 				material.BaseColorFactor, material.MetallicFactor, material.RoughnessFactor);
 			defer delete built;
 
+			// A ColorHdr: the sRGB colour, the intensity in w.
 			built.SetDefaultColor("EmissiveColor", .(material.EmissiveFactor.X,
-				material.EmissiveFactor.Y, material.EmissiveFactor.Z, 1.0f));
+				material.EmissiveFactor.Y, material.EmissiveFactor.Z, material.EmissiveIntensity));
 			built.SetDefaultFloat("OcclusionStrength", material.OcclusionStrength);
 			built.SetDefaultFloat("NormalScale", material.NormalScale);
 			built.SetDefaultFloat("AlphaCutoff", material.AlphaCutoff);
