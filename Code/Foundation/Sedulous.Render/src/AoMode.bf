@@ -1,8 +1,12 @@
+using System;
 using Sedulous.Core;
 
 namespace Sedulous.Render;
 
 /// Which ambient occlusion estimator a view uses.
+///
+/// Its cases are reflected: the MCP scene schema names them for an agent.
+[Reflect(.StaticFields)]
 [Scriptable(.AllPublic)]
 enum AoMode : uint32
 {

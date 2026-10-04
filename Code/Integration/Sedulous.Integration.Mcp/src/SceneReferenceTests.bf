@@ -87,6 +87,31 @@ static class SceneReferenceTests
 		Test.Assert(assets.IsEmpty);
 	}
 
+	/// Every enum field names its cases, a settings block's as well as a component's: an agent
+	/// writes the number, and the names are how it knows which.
+	[Test]
+	public static void EveryEnumFieldNamesItsCases()
+	{
+		let reference = Generate();
+		defer delete reference;
+		let empty = scope String();
+		for (let section in StringView[]("components", "settings"))
+		{
+			let entries = reference.Schema.Get(section);
+			for (int e < entries.Count)
+			{
+				let fields = entries.At(e).Get("fields");
+				for (int f = 0; (fields != null) && (f < fields.Count); f++)
+				{
+					let cases = fields.At(f).Get("enum");
+					if ((cases != null) && (cases.Count == 0))
+						empty.AppendF(" {}.{}", section, fields.At(f).Get("key").AsString());
+				}
+			}
+		}
+		Test.Assert(empty.IsEmpty, scope $"enum fields with no cases:{empty}");
+	}
+
 	[Test]
 	public static void EntityRefsAreRefEntityAndEveryResourceRefJoinsToItsAssetType()
 	{

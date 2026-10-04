@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 
 namespace Sedulous.Engine.Render;
@@ -5,6 +6,9 @@ namespace Sedulous.Engine.Render;
 /// Where a scene settings block's values come from: the scene's own, stored with the scene, or
 /// a shared profile asset the block references. The values live in one place, chosen by this,
 /// so nothing is copied between them.
+///
+/// Its cases are reflected: the MCP scene schema names them for an agent.
+[Reflect(.StaticFields)]
 [Scriptable(.AllPublic)]
 enum SettingsSource : uint32
 {

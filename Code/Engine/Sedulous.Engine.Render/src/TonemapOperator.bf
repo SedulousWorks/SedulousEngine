@@ -1,8 +1,12 @@
+using System;
 using Sedulous.Core;
 
 namespace Sedulous.Engine.Render;
 
 /// Which curve maps the scene's linear light onto the display.
+///
+/// Its cases are reflected: the MCP scene schema names them for an agent.
+[Reflect(.StaticFields)]
 [Scriptable(.AllPublic)]
 enum TonemapOperator : uint32
 {

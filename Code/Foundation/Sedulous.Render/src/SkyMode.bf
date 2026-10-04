@@ -1,9 +1,13 @@
+using System;
 using Sedulous.Core;
 
 namespace Sedulous.Render;
 
 /// How the scene's environment radiance, which is both the sky and the source of the image
 /// based lighting, is produced.
+///
+/// Its cases are reflected: the MCP scene schema names them for an agent.
+[Reflect(.StaticFields)]
 [Scriptable(.AllPublic)]
 enum SkyMode : uint32
 {
