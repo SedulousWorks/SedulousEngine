@@ -42,7 +42,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
 9. ~~9497a67e~~ (done) UI: a vector image asset (`.svg`, importer, builder, resource, factory); a theme's
    `@icon name "{guid}"` is embedded at cook (theme resource version 2) and drawn by the game's
    UI and the canvas and world panel themes. Builder/description/set counts move; Assets.md.
-10. ba347f37 Editor: the theme page's preview draws icons and images.
+10. ~~ba347f37~~ (done) Editor: the theme page's preview draws icons and images.
 
 ## Group 2: the web player and its export
 

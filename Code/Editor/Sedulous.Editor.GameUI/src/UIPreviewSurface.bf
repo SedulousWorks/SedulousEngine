@@ -40,6 +40,8 @@ class UIPreviewSurface
 	/// The viewport as a view, for layout.
 	public View View => mViewport;
 	public bool HasSubsystem => mUi != null;
+	/// The game UI's resource provider (texture images for image()), null without a subsystem.
+	public IResourceProvider ImageProvider => (mUi != null) ? mUi.UiContext.ResourceProvider : null;
 	public RootView PreviewRoot => mPreviewRoot;
 
 	/// Binds the viewport to the window it lives in, once it has one.

@@ -1,6 +1,13 @@
 using System;
 using System.Collections;
+using Sedulous.Content;
 using Sedulous.Core;
+using Sedulous.Core.IO;
+using Sedulous.Core.Serialization;
+using Sedulous.Resource;
+using Sedulous.UI;
+using Sedulous.UI.Resource;
+using Sedulous.VFS;
 using Sedulous.UI.Toolkit;
 using Sedulous.UI.Pipeline;
 using Sedulous.Editor.Core;
@@ -50,5 +57,59 @@ class GameUIEditorTests
 		let text = scope String("stale");
 		LinkedSource.Read(context, "UI/missing.sml", text);
 		Test.Assert(text.IsEmpty);
+	}
+
+	/// The theme page previews a stylesheet before it is cooked: its @icon names a vector image
+	/// the preview reads through the resource manager, so svg(name) draws there as it will in
+	/// the game.
+	[Test]
+	public static void TheThemePreviewReadsAnIconsVectorImageThroughTheResources()
+	{
+		UIResources.RegisterAll();
+		let dir = "scratch_theme_preview_db";
+		RemoveDirectoryRecursive(dir);
+		CreateDirectory(dir);
+		defer RemoveDirectoryRecursive(dir);
+		{
+			let mount = scope NativeFileSystem(dir);
+			SerializerFactory serializers = new (stream, mode) => new BinarySerializerContext(stream, mode);
+			defer delete serializers;
+			let db = scope ContentDatabase(mount, serializers, "rasset");
+			let instance = db.RootGroup.CreateInstance("heart", "Sedulous.UI.Resource.UIVectorImageResource");
+			let source = scope UIVectorImageResource();
+			source.Svg.Set("<svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"#E53935\"/></svg>");
+			Test.Assert(instance.WriteObject(source) case .Ok);
+
+			let factory = scope UIVectorImageFactory();
+			let manager = scope ResourceManager(db);
+			manager.AddFactory(factory);
+			let resources = scope ThemePreviewResources(manager, null);
+
+			let reference = scope String()..Append('{');
+			instance.Id.ToString(reference);
+			reference.Append('}');
+			let svg = scope String();
+			Test.Assert(resources.LoadText(reference, svg));
+			Test.Assert(svg == source.Svg);
+			Test.Assert(!resources.LoadText("{6dd1ae0e-fbe8-4c9b-8c9e-d10b727f4d84}", svg), "no such asset");
+			Test.Assert(!resources.LoadText("icons/heart.svg", svg), "not an id");
+			Test.Assert(resources.LoadImage("{6dd1ae0e-fbe8-4c9b-8c9e-d10b727f4d84}") == null, "no image source");
+
+			// Through the loader, the icon becomes a drawable the preview's views resolve.
+			let loader = scope StyleSheetLoader();
+			loader.ResourceProvider = resources;
+			let sheet = loader.Load(scope $"@icon heart \"{reference}\";\n.heart {{ background: svg(heart); }}\n");
+			Test.Assert(sheet != null);
+			let context = scope UIContext();
+			let root = new RootView();
+			context.AddRootView(root);
+			root.SetLocalStyleSheet(sheet); // consumes the reference
+			let panel = new Panel();
+			panel.AddClass("heart");
+			root.AddView(panel);
+			Test.Assert(panel.ResolveStyleDrawable(.Background) is SVGDrawable);
+			context.RemoveRootView(root);
+			root.ReleaseRef();
+		}
 	}
 }

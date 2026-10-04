@@ -191,6 +191,10 @@ class UIThemeEditorPage : UIEditorPage
 		}
 		let loader = scope StyleSheetLoader();
 		loader.SetPalette(ThemePalette.Dark());
+		// It reads what the game's would: vector images for @icon, the game UI's textures for
+		// image() and @image.
+		let resources = scope ThemePreviewResources(mContext.Resources, mPreview.ImageProvider);
+		loader.ResourceProvider = resources;
 		let sheet = loader.Load(mStylesheet);
 		if (!mPreview.Rebuild(mPreviewMarkup, sheet))
 		{
