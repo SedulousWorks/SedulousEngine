@@ -45,7 +45,7 @@ struct UiView
 	[Scriptable]
 	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
 	[Scriptable]
-	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
+	public void FadeTo(float opacity, float seconds, Ease ease = .InOut) { UiHandles.FadeTo(Resolve(), opacity, seconds, ease); }
 	/// The offset in pixels from where layout put the view, applied as it draws and hit tests,
 	/// so moving it costs no relayout (a marker on a minimap).
 	[Scriptable]
@@ -57,6 +57,23 @@ struct UiView
 	public float Rotation => UiHandles.Rotation(Resolve());
 	[Scriptable]
 	public void SetRotation(float degrees) { UiHandles.SetRotation(Resolve(), degrees); }
+	/// Moves the offset to (x, y) over `seconds` (zero sets it); a move of its own, so it runs
+	/// beside a fade.
+	[Scriptable]
+	public void MoveTo(float x, float y, float seconds, Ease ease = .InOut) { UiHandles.MoveTo(Resolve(), x, y, seconds, ease); }
+	/// A uniform scale about the view's centre, as drawn (layout is unchanged).
+	[Scriptable]
+	public float Scale => UiHandles.Scale(Resolve());
+	[Scriptable]
+	public void SetScale(float value) { UiHandles.SetScale(Resolve(), value); }
+	[Scriptable]
+	public void ScaleTo(float scale, float seconds, Ease ease = .InOut) { UiHandles.ScaleTo(Resolve(), scale, seconds, ease); }
+	[Scriptable]
+	public void RotateTo(float degrees, float seconds, Ease ease = .InOut) { UiHandles.RotateTo(Resolve(), degrees, seconds, ease); }
+	/// From the normal size out to `peak` times it and back over `seconds`: a counter that
+	/// changed.
+	[Scriptable]
+	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
 }
 
 /// A text label: `label.Text` reads, `label.SetText(...)` writes.
@@ -87,7 +104,7 @@ struct UiLabel
 	[Scriptable]
 	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
 	[Scriptable]
-	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
+	public void FadeTo(float opacity, float seconds, Ease ease = .InOut) { UiHandles.FadeTo(Resolve(), opacity, seconds, ease); }
 	/// The offset in pixels from where layout put the view, applied as it draws and hit tests,
 	/// so moving it costs no relayout (a marker on a minimap).
 	[Scriptable]
@@ -99,6 +116,23 @@ struct UiLabel
 	public float Rotation => UiHandles.Rotation(Resolve());
 	[Scriptable]
 	public void SetRotation(float degrees) { UiHandles.SetRotation(Resolve(), degrees); }
+	/// Moves the offset to (x, y) over `seconds` (zero sets it); a move of its own, so it runs
+	/// beside a fade.
+	[Scriptable]
+	public void MoveTo(float x, float y, float seconds, Ease ease = .InOut) { UiHandles.MoveTo(Resolve(), x, y, seconds, ease); }
+	/// A uniform scale about the view's centre, as drawn (layout is unchanged).
+	[Scriptable]
+	public float Scale => UiHandles.Scale(Resolve());
+	[Scriptable]
+	public void SetScale(float value) { UiHandles.SetScale(Resolve(), value); }
+	[Scriptable]
+	public void ScaleTo(float scale, float seconds, Ease ease = .InOut) { UiHandles.ScaleTo(Resolve(), scale, seconds, ease); }
+	[Scriptable]
+	public void RotateTo(float degrees, float seconds, Ease ease = .InOut) { UiHandles.RotateTo(Resolve(), degrees, seconds, ease); }
+	/// From the normal size out to `peak` times it and back over `seconds`: a counter that
+	/// changed.
+	[Scriptable]
+	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
 	[Scriptable]
 	public StringView Text => Resolve()?.Text.Value ?? "";
 	[Scriptable]
@@ -134,7 +168,7 @@ struct UiImage
 	[Scriptable]
 	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
 	[Scriptable]
-	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
+	public void FadeTo(float opacity, float seconds, Ease ease = .InOut) { UiHandles.FadeTo(Resolve(), opacity, seconds, ease); }
 	/// The offset in pixels from where layout put the view, applied as it draws and hit tests,
 	/// so moving it costs no relayout (a marker on a minimap).
 	[Scriptable]
@@ -146,6 +180,23 @@ struct UiImage
 	public float Rotation => UiHandles.Rotation(Resolve());
 	[Scriptable]
 	public void SetRotation(float degrees) { UiHandles.SetRotation(Resolve(), degrees); }
+	/// Moves the offset to (x, y) over `seconds` (zero sets it); a move of its own, so it runs
+	/// beside a fade.
+	[Scriptable]
+	public void MoveTo(float x, float y, float seconds, Ease ease = .InOut) { UiHandles.MoveTo(Resolve(), x, y, seconds, ease); }
+	/// A uniform scale about the view's centre, as drawn (layout is unchanged).
+	[Scriptable]
+	public float Scale => UiHandles.Scale(Resolve());
+	[Scriptable]
+	public void SetScale(float value) { UiHandles.SetScale(Resolve(), value); }
+	[Scriptable]
+	public void ScaleTo(float scale, float seconds, Ease ease = .InOut) { UiHandles.ScaleTo(Resolve(), scale, seconds, ease); }
+	[Scriptable]
+	public void RotateTo(float degrees, float seconds, Ease ease = .InOut) { UiHandles.RotateTo(Resolve(), degrees, seconds, ease); }
+	/// From the normal size out to `peak` times it and back over `seconds`: a counter that
+	/// changed.
+	[Scriptable]
+	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
 	[Scriptable]
 	public Guid Source
 	{
@@ -202,7 +253,7 @@ struct UiButton
 	[Scriptable]
 	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
 	[Scriptable]
-	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
+	public void FadeTo(float opacity, float seconds, Ease ease = .InOut) { UiHandles.FadeTo(Resolve(), opacity, seconds, ease); }
 	/// The offset in pixels from where layout put the view, applied as it draws and hit tests,
 	/// so moving it costs no relayout (a marker on a minimap).
 	[Scriptable]
@@ -214,6 +265,23 @@ struct UiButton
 	public float Rotation => UiHandles.Rotation(Resolve());
 	[Scriptable]
 	public void SetRotation(float degrees) { UiHandles.SetRotation(Resolve(), degrees); }
+	/// Moves the offset to (x, y) over `seconds` (zero sets it); a move of its own, so it runs
+	/// beside a fade.
+	[Scriptable]
+	public void MoveTo(float x, float y, float seconds, Ease ease = .InOut) { UiHandles.MoveTo(Resolve(), x, y, seconds, ease); }
+	/// A uniform scale about the view's centre, as drawn (layout is unchanged).
+	[Scriptable]
+	public float Scale => UiHandles.Scale(Resolve());
+	[Scriptable]
+	public void SetScale(float value) { UiHandles.SetScale(Resolve(), value); }
+	[Scriptable]
+	public void ScaleTo(float scale, float seconds, Ease ease = .InOut) { UiHandles.ScaleTo(Resolve(), scale, seconds, ease); }
+	[Scriptable]
+	public void RotateTo(float degrees, float seconds, Ease ease = .InOut) { UiHandles.RotateTo(Resolve(), degrees, seconds, ease); }
+	/// From the normal size out to `peak` times it and back over `seconds`: a counter that
+	/// changed.
+	[Scriptable]
+	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
 	[Scriptable]
 	public StringView Text => Resolve()?.Text.Value ?? "";
 	[Scriptable]
@@ -269,7 +337,7 @@ struct UiProgressBar
 	[Scriptable]
 	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
 	[Scriptable]
-	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
+	public void FadeTo(float opacity, float seconds, Ease ease = .InOut) { UiHandles.FadeTo(Resolve(), opacity, seconds, ease); }
 	/// The offset in pixels from where layout put the view, applied as it draws and hit tests,
 	/// so moving it costs no relayout (a marker on a minimap).
 	[Scriptable]
@@ -281,6 +349,23 @@ struct UiProgressBar
 	public float Rotation => UiHandles.Rotation(Resolve());
 	[Scriptable]
 	public void SetRotation(float degrees) { UiHandles.SetRotation(Resolve(), degrees); }
+	/// Moves the offset to (x, y) over `seconds` (zero sets it); a move of its own, so it runs
+	/// beside a fade.
+	[Scriptable]
+	public void MoveTo(float x, float y, float seconds, Ease ease = .InOut) { UiHandles.MoveTo(Resolve(), x, y, seconds, ease); }
+	/// A uniform scale about the view's centre, as drawn (layout is unchanged).
+	[Scriptable]
+	public float Scale => UiHandles.Scale(Resolve());
+	[Scriptable]
+	public void SetScale(float value) { UiHandles.SetScale(Resolve(), value); }
+	[Scriptable]
+	public void ScaleTo(float scale, float seconds, Ease ease = .InOut) { UiHandles.ScaleTo(Resolve(), scale, seconds, ease); }
+	[Scriptable]
+	public void RotateTo(float degrees, float seconds, Ease ease = .InOut) { UiHandles.RotateTo(Resolve(), degrees, seconds, ease); }
+	/// From the normal size out to `peak` times it and back over `seconds`: a counter that
+	/// changed.
+	[Scriptable]
+	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
 	[Scriptable]
 	public float Value => Resolve()?.Value.Value ?? 0.0f;
 	[Scriptable]
@@ -316,7 +401,7 @@ struct UiSlider
 	[Scriptable]
 	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
 	[Scriptable]
-	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
+	public void FadeTo(float opacity, float seconds, Ease ease = .InOut) { UiHandles.FadeTo(Resolve(), opacity, seconds, ease); }
 	/// The offset in pixels from where layout put the view, applied as it draws and hit tests,
 	/// so moving it costs no relayout (a marker on a minimap).
 	[Scriptable]
@@ -328,6 +413,23 @@ struct UiSlider
 	public float Rotation => UiHandles.Rotation(Resolve());
 	[Scriptable]
 	public void SetRotation(float degrees) { UiHandles.SetRotation(Resolve(), degrees); }
+	/// Moves the offset to (x, y) over `seconds` (zero sets it); a move of its own, so it runs
+	/// beside a fade.
+	[Scriptable]
+	public void MoveTo(float x, float y, float seconds, Ease ease = .InOut) { UiHandles.MoveTo(Resolve(), x, y, seconds, ease); }
+	/// A uniform scale about the view's centre, as drawn (layout is unchanged).
+	[Scriptable]
+	public float Scale => UiHandles.Scale(Resolve());
+	[Scriptable]
+	public void SetScale(float value) { UiHandles.SetScale(Resolve(), value); }
+	[Scriptable]
+	public void ScaleTo(float scale, float seconds, Ease ease = .InOut) { UiHandles.ScaleTo(Resolve(), scale, seconds, ease); }
+	[Scriptable]
+	public void RotateTo(float degrees, float seconds, Ease ease = .InOut) { UiHandles.RotateTo(Resolve(), degrees, seconds, ease); }
+	/// From the normal size out to `peak` times it and back over `seconds`: a counter that
+	/// changed.
+	[Scriptable]
+	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
 	[Scriptable]
 	public float Value => Resolve()?.Value.Value ?? 0.0f;
 	/// Clamped and snapped to the range. Like any change it runs the OnChanged handler, so a
@@ -402,7 +504,7 @@ struct UiTextBox
 	[Scriptable]
 	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
 	[Scriptable]
-	public void FadeTo(float opacity, float seconds) { UiHandles.FadeTo(Resolve(), opacity, seconds); }
+	public void FadeTo(float opacity, float seconds, Ease ease = .InOut) { UiHandles.FadeTo(Resolve(), opacity, seconds, ease); }
 	/// The offset in pixels from where layout put the view, applied as it draws and hit tests,
 	/// so moving it costs no relayout (a marker on a minimap).
 	[Scriptable]
@@ -414,6 +516,23 @@ struct UiTextBox
 	public float Rotation => UiHandles.Rotation(Resolve());
 	[Scriptable]
 	public void SetRotation(float degrees) { UiHandles.SetRotation(Resolve(), degrees); }
+	/// Moves the offset to (x, y) over `seconds` (zero sets it); a move of its own, so it runs
+	/// beside a fade.
+	[Scriptable]
+	public void MoveTo(float x, float y, float seconds, Ease ease = .InOut) { UiHandles.MoveTo(Resolve(), x, y, seconds, ease); }
+	/// A uniform scale about the view's centre, as drawn (layout is unchanged).
+	[Scriptable]
+	public float Scale => UiHandles.Scale(Resolve());
+	[Scriptable]
+	public void SetScale(float value) { UiHandles.SetScale(Resolve(), value); }
+	[Scriptable]
+	public void ScaleTo(float scale, float seconds, Ease ease = .InOut) { UiHandles.ScaleTo(Resolve(), scale, seconds, ease); }
+	[Scriptable]
+	public void RotateTo(float degrees, float seconds, Ease ease = .InOut) { UiHandles.RotateTo(Resolve(), degrees, seconds, ease); }
+	/// From the normal size out to `peak` times it and back over `seconds`: a counter that
+	/// changed.
+	[Scriptable]
+	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
 	[Scriptable]
 	public StringView Text => Resolve()?.Text ?? "";
 	[Scriptable]

@@ -138,6 +138,70 @@ static class UiHandleTests
 		Test.Assert(missing.Opacity == 0.0f);
 	}
 
+	private static bool Near(float a, float b) => Math.Abs(a - b) <= 0.0001f;
+
+	/// A score popping up: it rises, fades and swells at once, each tween on its own property,
+	/// and a new tween of one property replaces only that one.
+	[Test]
+	public static void ViewsMoveScaleTurnAndPulseOnTheFrameClockEachOnItsOwn()
+	{
+		let bed = scope UiScriptBed();
+		bed.Stack.Push(UiScriptBed.Screen());
+		for (int i < 30)
+			bed.Context.BeginFrame(0.1f); // any push transition done
+
+		let label = bed.Ui.FindLabel("title");
+		Test.Assert(label.IsValid);
+		Test.Assert(Near(label.Scale, 1.0f));
+
+		label.MoveTo(0.0f, -40.0f, 1.0f, .Linear);
+		label.FadeTo(0.0f, 1.0f, .Linear);
+		label.ScaleTo(2.0f, 1.0f, .Linear);
+		bed.Context.BeginFrame(0.5f);
+		Test.Assert(Near(label.Translation.Y, -20.0f));
+		Test.Assert(Near(label.Opacity, 0.5f));
+		Test.Assert(Near(label.Scale, 1.5f));
+
+		// A new move replaces the running move, from where the view is; the fade and swell go on.
+		label.MoveTo(100.0f, -20.0f, 0.5f, .Linear);
+		bed.Context.BeginFrame(0.5f);
+		Test.Assert(Near(label.Translation.X, 100.0f));
+		Test.Assert(Near(label.Opacity, 0.0f));
+		Test.Assert(Near(label.Scale, 2.0f));
+
+		// A set stops only its own property's tween.
+		label.RotateTo(90.0f, 1.0f);
+		label.ScaleTo(1.0f, 1.0f);
+		bed.Context.BeginFrame(0.25f);
+		label.SetScale(3.0f);
+		bed.Context.BeginFrame(1.0f);
+		Test.Assert(Near(label.Scale, 3.0f));
+		Test.Assert(Near(label.Rotation, 90.0f));
+
+		// A pulse swells out and settles at the normal size, whatever it started from.
+		label.Pulse(1.5f, 0.4f);
+		bed.Context.BeginFrame(0.2f);
+		Test.Assert(Near(label.Scale, 1.5f));
+		bed.Context.BeginFrame(0.1f);
+		Test.Assert((label.Scale > 1.0f) && (label.Scale < 1.5f));
+		bed.Context.BeginFrame(0.2f);
+		Test.Assert(Near(label.Scale, 1.0f));
+
+		// Zero seconds is a set; a view in no tree has no clock, so a tween is a set; a null
+		// handle takes nothing.
+		label.MoveTo(7.0f, 8.0f, 0.0f);
+		Test.Assert(Near(label.Translation.X, 7.0f));
+		let loose = new Label();
+		defer loose.ReleaseRef();
+		let unrooted = UiLabel(loose);
+		unrooted.ScaleTo(2.0f, 1.0f, .OutBack);
+		Test.Assert(Near(unrooted.Scale, 2.0f));
+		let missing = bed.Ui.FindLabel("nope");
+		missing.MoveTo(1.0f, 1.0f, 1.0f);
+		missing.Pulse(2.0f, 1.0f);
+		Test.Assert(Near(missing.Scale, 1.0f));
+	}
+
 	[Test]
 	public static void TypedFindersAreLoudNullOnAMissOrAMismatch()
 	{

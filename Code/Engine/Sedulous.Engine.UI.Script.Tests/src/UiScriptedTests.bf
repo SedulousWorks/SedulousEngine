@@ -73,6 +73,19 @@ static class UiScriptedTests
 					marker.SetRotation(180.0f);
 					moved = (marker.Translation.X == 64.0f) && (marker.Rotation > 179.0f);
 				}
+				bool tweened = false;
+				void tween()
+				{
+					// Zero seconds lands at once, so the ends read back; the eased and the plain
+					// calls both bind, and a pulse starts without a frame to run it.
+					Image marker = Ui.FindImage("minimap");
+					marker.MoveTo(10.0f, 20.0f, 0.0f, Ease::OutBack);
+					marker.ScaleTo(2.0f, 0.0f);
+					marker.RotateTo(30.0f, 0.0f, Ease::Linear);
+					marker.FadeTo(0.5f, 0.0f, Ease::Out);
+					marker.Pulse(1.2f, 0.3f);
+					tweened = (marker.Translation.Y == 20.0f) && (marker.Scale == 2.0f) && (marker.Opacity == 0.5f);
+				}
 			}
 			""");
 		for (let p in vm.Problems)
@@ -120,6 +133,16 @@ static class UiScriptedTests
 		let marker = bed.Ui.FindLabel("title").Resolve();
 		Test.Assert(Math.Abs(marker.Transform.Translation.Y - 32.0f) < 0.0001f);
 		Test.Assert(Math.Abs(marker.Transform.Rotation - DegreesToRadians(180.0f)) < 0.0001f);
+
+		// Tweens from script, with or without an Ease.
+		Test.Assert(vm.Invoke(menu, "tween", default, ref r));
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		vm.GetProperty(menu, "tweened", ref v);
+		Test.Assert(v.AsBool, "the tweens' ends read back");
+		let tweened = bed.Ui.FindImage("minimap").Resolve();
+		Test.Assert(Math.Abs(tweened.Transform.Translation.X - 10.0f) < 0.0001f);
+		Test.Assert(Math.Abs(tweened.Transform.Rotation - DegreesToRadians(30.0f)) < 0.0001f);
 
 		// An image's source from script: the texture asset it shows.
 		Test.Assert(vm.Invoke(menu, "showMap", default, ref r));

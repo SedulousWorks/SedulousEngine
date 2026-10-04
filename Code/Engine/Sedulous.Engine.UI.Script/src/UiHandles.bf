@@ -63,14 +63,10 @@ static class UiHandles
 	{
 		if (view == null)
 			return;
-		view.Context?.Animations.CancelForView(view);
+		StopTween(view, .Opacity);
 		view.Opacity = Math.Clamp(value, 0.0f, 1.0f);
 	}
 
-	/// Fades a view from its opacity now to `opacity` over `seconds` of UI time, which runs on
-	/// the frame clock and so goes on while the game is paused (time scale 0). Replaces the
-	/// view's running animations; a view in no tree yet, or zero seconds, takes the value at
-	/// once.
 	/// The view's post layout offset, in pixels.
 	public static Float2 Translation(View view) => (view != null) ? view.Transform.Translation : .Zero;
 
@@ -89,19 +85,113 @@ static class UiHandles
 			view.Transform.Rotation = DegreesToRadians(degrees);
 	}
 
-	public static void FadeTo(View view, float opacity, float seconds)
+	// ---- tweens ----
+	// On the UI frame clock, which goes on while the game is paused (time scale 0). Each
+	// property runs its own: a new tween of one property replaces the running one of that
+	// property and leaves the others, so a label can rise and fade at once. Zero seconds, or a
+	// view in no tree yet, is a set.
+
+	/// Fades a view from its opacity now to `opacity` over `seconds`.
+	public static void FadeTo(View view, float opacity, float seconds, Ease ease)
 	{
 		if (view == null)
 			return;
 		let to = Math.Clamp(opacity, 0.0f, 1.0f);
-		let context = view.Context;
-		if ((context == null) || (seconds <= 0.0f))
-		{
+		if ((seconds <= 0.0f) || !StartTween(view, ViewAnimator.FadeTo(view, view.Opacity, to, seconds, EasingOf(ease))))
 			SetOpacity(view, to);
+	}
+
+	/// Moves a view's offset from where it is now to (x, y).
+	public static void MoveTo(View view, float x, float y, float seconds, Ease ease)
+	{
+		if (view == null)
 			return;
+		let target = Float2(x, y);
+		if ((seconds <= 0.0f) || !StartTween(view, ViewAnimator.TranslateTo(view, view.Transform.Translation, target, seconds, EasingOf(ease))))
+		{
+			StopTween(view, .Translation);
+			view.Transform.Translation = target;
 		}
-		context.Animations.CancelForView(view);
-		context.Animations.Add(ViewAnimator.FadeTo(view, view.Opacity, to, seconds, Easing.EaseInOut));
+	}
+
+	/// A uniform scale about the view's centre, as drawn (layout is unchanged).
+	public static float Scale(View view) => (view != null) ? view.Transform.Scale.X : 1.0f;
+
+	public static void SetScale(View view, float value)
+	{
+		if (view == null)
+			return;
+		StopTween(view, .Scale);
+		view.Transform.Scale = .(value, value);
+	}
+
+	public static void ScaleTo(View view, float target, float seconds, Ease ease)
+	{
+		if (view == null)
+			return;
+		if ((seconds <= 0.0f) || !StartTween(view, ViewAnimator.ScaleTo(view, view.Transform.Scale.X, target, seconds, EasingOf(ease))))
+			SetScale(view, target);
+	}
+
+	/// To `degrees`, clockwise on screen.
+	public static void RotateTo(View view, float degrees, float seconds, Ease ease)
+	{
+		if (view == null)
+			return;
+		let to = DegreesToRadians(degrees);
+		if ((seconds <= 0.0f) || !StartTween(view, ViewAnimator.RotateTo(view, view.Transform.Rotation, to, seconds, EasingOf(ease))))
+		{
+			StopTween(view, .Rotation);
+			view.Transform.Rotation = to;
+		}
+	}
+
+	/// From its normal size out to `peak` and back, half the time each way: the return is the
+	/// same tween played backward, so it always settles at the normal size, even when a pulse
+	/// starts over one still running.
+	public static void Pulse(View view, float peak, float seconds)
+	{
+		if ((view == null) || (view.Context == null) || (seconds <= 0.0f))
+			return;
+		let swell = ViewAnimator.ScaleTo(view, 1.0f, peak, seconds * 0.5f, Easing.EaseOut);
+		swell.AutoReverse = true;
+		swell.RepeatCount = 1;
+		StartTween(view, swell);
+	}
+
+	private static EasingFunction EasingOf(Ease ease)
+	{
+		switch (ease)
+		{
+		case .Linear: return Easing.Linear;
+		case .In: return Easing.EaseIn;
+		case .Out: return Easing.EaseOut;
+		case .OutBack: return Easing.BackOut;
+		case .OutBounce: return Easing.BounceOut;
+		case .OutElastic: return Easing.ElasticOut;
+		case .InOut: return Easing.EaseInOut;
+		}
+	}
+
+	/// Runs `animation` in place of the view's running one on the same property. A view in no
+	/// tree yet has no clock to run it on: the animation is dropped and the caller sets the end
+	/// value instead.
+	private static bool StartTween(View view, Animation animation)
+	{
+		let context = view.Context;
+		if (context == null)
+		{
+			delete animation;
+			return false;
+		}
+		context.Animations.CancelForView(view, animation.Channel);
+		context.Animations.Add(animation);
+		return true;
+	}
+
+	private static void StopTween(View view, AnimationChannel channel)
+	{
+		view.Context?.Animations.CancelForView(view, channel);
 	}
 
 	/// Parks a delegate with the view it is bound to, to die with the view.
