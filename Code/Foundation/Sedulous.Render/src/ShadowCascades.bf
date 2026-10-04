@@ -19,6 +19,11 @@ struct ShadowCascades
 	/// World units per shadow texel, which the normal offset bias is measured in: a fixed
 	/// bias is either useless in the near cascade or peters out in the far one.
 	public float[Count] TexelWorldSize = .(0.0f, 0.0f, 0.0f, 0.0f);
+	/// The caster light's own values (DirectionalShadow), carried to every renderer that
+	/// samples the cascades.
+	public float NormalBias = ShadowBiasDefaults.NormalBias; // texels
+	public float DepthBias = ShadowBiasDefaults.DepthBias;
+	public float Strength = 1.0f;
 
 	public bool Valid = false;
 

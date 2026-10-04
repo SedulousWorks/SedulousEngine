@@ -28,8 +28,9 @@ struct GpuLight
 
 	/// Minus one casts no shadow; anything else selects an entry in the shadow data.
 	public float ShadowIndex = -1.0f;
-	/// Reserved, and part of the layout: the shader reads four whole vectors.
-	public float Pad = 0.0f;
+	/// How dark the light's shadow gets: one is full, nought none (the shader lerps toward
+	/// lit).
+	public float ShadowStrength = 1.0f;
 
 	public this() {}
 

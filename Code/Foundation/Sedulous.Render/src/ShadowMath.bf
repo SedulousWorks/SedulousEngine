@@ -145,7 +145,20 @@ static class ShadowMath
 		let scale = (float)tileResolution / (float)atlasResolution;
 		shadow.AtlasScaleBias = .(scale, scale, (float)(tileIndex % columns) * scale,
 			(float)(tileIndex / columns) * scale);
+		// One tile texel at distance one from the light spans 2 tan(fov / 2) / tileResolution
+		// world units.
+		shadow.NormalBiasPerDistance = (tileResolution > 0) ? (2.0f * Math.Tan(fov * 0.5f) / (float)tileResolution) : 0.0f;
 		return shadow;
+	}
+
+	/// The caster light's own biases on a built entry: the texel to world scale MakeLocalShadow
+	/// put in NormalBiasPerDistance, times the light's texels.
+	public static GpuLocalShadow WithLightBiases(GpuLocalShadow shadow, LocalShadowCaster caster)
+	{
+		var result = shadow;
+		result.NormalBiasPerDistance *= caster.NormalBias;
+		result.DepthBias = caster.DepthBias;
+		return result;
 	}
 
 	/// A spot light's entry: one perspective view looking down its cone.
@@ -158,7 +171,7 @@ static class ShadowMath
 		let fov = Min(caster.OuterAngle * 2.0f + 0.05f, 3.0f);
 
 		let view = Float4x4.LookAtRH(caster.PositionWS, caster.PositionWS + direction, up);
-		return MakeLocalShadow(view, caster.Range, fov, tileIndex, atlasResolution, tileResolution);
+		return WithLightBiases(MakeLocalShadow(view, caster.Range, fov, tileIndex, atlasResolution, tileResolution), caster);
 	}
 
 	/// One cube face of a point light's shadow.
@@ -180,8 +193,8 @@ static class ShadowMath
 		let up = (index == 2) ? Float3(0, 0, -1) : ((index == 3) ? Float3(0, 0, 1) : Float3(0, 1, 0));
 		let view = Float4x4.LookAtRH(caster.PositionWS, caster.PositionWS + direction, up);
 
-		return MakeLocalShadow(view, caster.Range, 1.745f, tileIndex, atlasResolution,
-			tileResolution);
+		return WithLightBiases(MakeLocalShadow(view, caster.Range, 1.745f, tileIndex, atlasResolution,
+			tileResolution), caster);
 	}
 
 	private static uint32 Columns(uint32 atlasResolution, uint32 tileResolution)

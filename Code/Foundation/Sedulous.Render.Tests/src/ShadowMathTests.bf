@@ -260,4 +260,36 @@ class ShadowMathTests
 		Test.Assert(clip.W > 0.0f);
 		Test.Assert(Abs(clip.X / clip.W) < 0.99f, "pulled in off the edge");
 	}
+
+	/// A local light's own biases reach its atlas entries: the depth bias as it is, and the
+	/// normal offset as world units per unit of distance, its texels times a tile texel's size at
+	/// distance one.
+	[Test]
+	public static void ALocalLightsBiasesReachItsShadowEntries()
+	{
+		var caster = LocalShadowCaster();
+		caster.Type = 2;
+		caster.PositionWS = .(0, 5, 0);
+		caster.DirectionWS = .(0, -1, 0);
+		caster.Range = 20.0f;
+		caster.OuterAngle = 0.5f;
+		caster.NormalBias = 0.5f;
+		caster.DepthBias = 0.004f;
+
+		let spot = ShadowMath.BuildSpotShadow(caster, 0, 2048, 512);
+		let fov = Min(caster.OuterAngle * 2.0f + 0.05f, 3.0f);
+		Test.Assert(Abs(spot.NormalBiasPerDistance - 0.5f * 2.0f * Math.Tan(fov * 0.5f) / 512.0f) < 1e-6f);
+		Test.Assert(spot.DepthBias == 0.004f);
+
+		caster.Type = 1;
+		let face = ShadowMath.BuildPointShadowFace(caster, 0, 1, 2048, 512);
+		Test.Assert(Abs(face.NormalBiasPerDistance - 0.5f * 2.0f * Math.Tan(1.745f * 0.5f) / 512.0f) < 1e-6f);
+		Test.Assert(face.DepthBias == 0.004f);
+
+		// The defaults are today's values.
+		let defaults = LocalShadowCaster();
+		Test.Assert(defaults.NormalBias == ShadowBiasDefaults.NormalBias);
+		Test.Assert(defaults.DepthBias == ShadowBiasDefaults.LocalDepthBias);
+		Test.Assert(GpuLight().ShadowStrength == 1.0f, "a light shadows fully unless told otherwise");
+	}
 }

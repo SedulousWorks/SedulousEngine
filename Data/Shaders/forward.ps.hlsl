@@ -29,7 +29,8 @@ struct GpuLight {                            // matches render::GpuLight (64 byt
     float3 positionWS; float range;
     float3 color;      float intensity;
     float3 directionWS;float type;           // 0=Directional, 1=Point, 2=Spot
-    float innerCos; float outerCos; float shadowIndex; float pad1;   // shadowIndex >= 0 -> casts shadow
+    float innerCos; float outerCos; float shadowIndex;   // shadowIndex >= 0 -> casts shadow
+    float shadowStrength;                              // 1 = full shadow, 0 = none
 };
 StructuredBuffer<GpuLight> Lights : register(t0, space0);
 // CSM cascade depth ARRAY (t1, one layer per cascade) + a comparison sampler (s0) for hardware PCF.
@@ -136,18 +137,25 @@ Texture2DArray ShadowAtlas : register(t2, space0);   // layer 0 = realtime, laye
 struct GpuLocalShadow {
     row_major float4x4 viewProj;
     float4 atlasScaleBias;       // xy = uv scale, zw = uv offset
-    float  depthBias; float atlasSelect; float2 _localPad;   // atlasSelect = atlas array layer
+    float  depthBias; float atlasSelect;   // atlasSelect = atlas array layer
+    float  normalBiasPerDistance; float _localPad;   // the light's normal offset, world units per unit distance
 };
 StructuredBuffer<GpuLocalShadow> LocalShadows : register(t3, space0);
 
 static const float kAtlasTexel = 1.0 / 2048.0;   // 1 / atlas resolution
 
 // Sample one local-shadow entry: project into its light clip, map the clip uv into the entry's atlas
-// tile (on its array layer), 3x3 PCF. 1 = lit, 0 = shadowed. Acne is on the caster-side depth bias.
-float SampleLocalShadow(int idx, float3 worldPos) {
+// tile (on its array layer), 3x3 PCF. 1 = lit, 0 = shadowed. The receiver is pushed along its normal
+// by the light's normal offset (its tile texels at this distance), fading as it faces the light, as
+// SampleCascade does.
+float SampleLocalShadow(int idx, float3 worldPos, float3 N, float3 lightPos) {
     GpuLocalShadow s = LocalShadows[idx];
     if (s.atlasScaleBias.x <= 0.0) { return 1.0; }   // degenerate entry (no atlas tile) -> unshadowed
-    float4 lc = mul(float4(worldPos, 1.0), s.viewProj);
+    float3 toLight = lightPos - worldPos;
+    float dist = length(toLight);
+    float NdotL = saturate(dot(N, toLight / max(dist, 1e-4)));
+    float3 biasedPos = worldPos + N * (s.normalBiasPerDistance * dist * (1.0 - NdotL));
+    float4 lc = mul(float4(biasedPos, 1.0), s.viewProj);
     if (lc.w <= 0.0) { return 1.0; }
     float3 ndc = lc.xyz / lc.w;
     float2 uv  = float2(ndc.x * 0.5 + 0.5, ndc.y * ShadowParams.y * 0.5 + 0.5);   // backend-driven uv.y sign
@@ -174,11 +182,16 @@ int CubeFace(float3 dir) {
 
 // Shadow attenuation for a shadowed light (caller checks shadowIndex >= 0): directional -> CSM,
 // point -> the cube face of the atlas, spot -> the single atlas tile.
+// The light's shadow strength lerps the result toward lit (0 = no darkening, 1 = full).
 float ShadowFactor(GpuLight L, float3 worldPos, float3 N, float viewDepth) {
-    if (L.type < 0.5) { return SampleCSM(worldPos, N, saturate(dot(N, -L.directionWS)), viewDepth); }   // directional
-    int base = (int)LocalShadowBase + (int)L.shadowIndex;
-    if (L.type < 1.5) { return SampleLocalShadow(base + CubeFace(worldPos - L.positionWS), worldPos); } // point (6 faces)
-    return SampleLocalShadow(base, worldPos);                                                            // spot (1 tile)
+    float shadow;
+    if (L.type < 0.5) { shadow = SampleCSM(worldPos, N, saturate(dot(N, -L.directionWS)), viewDepth); }   // directional
+    else {
+        int base = (int)LocalShadowBase + (int)L.shadowIndex;
+        int entry = (L.type < 1.5) ? base + CubeFace(worldPos - L.positionWS) : base;   // point: 6 faces; spot: 1 tile
+        shadow = SampleLocalShadow(entry, worldPos, N, L.positionWS);
+    }
+    return lerp(1.0, shadow, saturate(L.shadowStrength));
 }
 
 // Clustered light culling (set 3): per-cluster (offset,count) + the flat light-index list. When

@@ -25,10 +25,6 @@ class TerrainRenderer : Renderer
 	private const uint32 cMaxTerrains = 8;
 	/// Matches ShadowCascades.Count.
 	private const uint32 cCascadeCount = 4;
-	/// In texels, which the shader scales by the cascade's world texel size: a fixed bias is
-	/// either useless near or gone far.
-	private const float cShadowNormalBias = 0.02f;
-	private const float cShadowDepthBias = 0.0009f;
 	/// Eight matrices and six vectors, padded up to the dynamic uniform alignment.
 	private const uint64 cViewSlotSize = 768;
 	/// Six pairs, padded the same way.
@@ -58,6 +54,9 @@ class TerrainRenderer : Renderer
 		public Float4 SplatParams;
 		/// x whether a coverage mask array is bound; the rest spare.
 		public Float4 SplatParams2;
+		/// x the caster light's shadow strength (one is full); the rest spare. Last, so the
+		/// vertex shader's shorter declaration of this block still lines up.
+		public Float4 ShadowLight;
 	}
 
 	/// Mirrors the shader's per chunk constants. Shared by the colour and the depth passes.
@@ -417,8 +416,11 @@ class TerrainRenderer : Renderer
 				uniforms.CascadeTexelSize = .(context.Cascades.TexelWorldSize[0],
 					context.Cascades.TexelWorldSize[1], context.Cascades.TexelWorldSize[2],
 					context.Cascades.TexelWorldSize[3]);
+				// The caster light's own biases (in texels, which the shader scales by the
+				// cascade's world texel size) and strength.
 				uniforms.ShadowMeta = .((float)cCascadeCount, (float)context.CascadeLayerBase,
-					cShadowNormalBias, cShadowDepthBias);
+					context.Cascades.NormalBias, context.Cascades.DepthBias);
+				uniforms.ShadowLight.X = context.Cascades.Strength;
 				uniforms.ShadowParams.X = context.ShadowFarFade;
 			}
 

@@ -17,10 +17,13 @@ struct GpuLocalShadow
 	/// Maps that clip space into the light's TILE of the shared atlas: scale then offset.
 	public Float4 AtlasScaleBias = .(1, 1, 0, 0);
 
-	public float DepthBias = 0.0015f;
+	/// The depth compare bias in NDC units, which the shader applies toward the light.
+	public float DepthBias = ShadowBiasDefaults.LocalDepthBias;
 	/// Which atlas layer: the realtime one or the cached static one.
 	public float AtlasSelect = 0.0f;
-	public float Pad1 = 0.0f;
+	/// The light's normal offset as world units per unit of distance from the light: its texels
+	/// times the tile's texel size at distance one (the shader multiplies by the distance).
+	public float NormalBiasPerDistance = 0.0f;
 	public float Pad2 = 0.0f;
 
 	public this() {}

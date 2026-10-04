@@ -22,5 +22,10 @@ struct LocalShadowCaster
 	/// A static caster renders into the cached atlas layer rather than the realtime one.
 	public bool IsStatic = false;
 
+	/// The light's own biases: the normal offset in texels of its atlas tile, and the depth
+	/// compare bias.
+	public float NormalBias = ShadowBiasDefaults.NormalBias;
+	public float DepthBias = ShadowBiasDefaults.LocalDepthBias;
+
 	public this() {}
 }

@@ -1184,8 +1184,13 @@ class RenderFrame
 			let view = mViews.At(i);
 			let lightDirection = context.Scene.DirectionalShadowData.Direction;
 			let distance = Min(view.Camera.FarZ, mShadowDistance);
-			let cascades = ShadowMath.ComputeCascades(view.Camera, lightDirection, distance,
+			var cascades = ShadowMath.ComputeCascades(view.Camera, lightDirection, distance,
 				shadowResolution);
+			// The caster light's own biases and strength ride with its cascades.
+			let caster = context.Scene.DirectionalShadowData;
+			cascades.NormalBias = caster.NormalBias;
+			cascades.DepthBias = caster.DepthBias;
+			cascades.Strength = caster.Strength;
 			let layerBase = (uint32)i * cascadeCount;
 
 			for (uint32 c = 0; c < cascadeCount; c++)

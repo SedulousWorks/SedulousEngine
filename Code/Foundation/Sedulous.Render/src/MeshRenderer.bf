@@ -1338,12 +1338,11 @@ class MeshRenderer : Renderer
 			viewData.ShadowCascadeCount = (float)ShadowCascades.Count;
 			viewData.CascadeLayerBase = (float)context.CascadeLayerBase;
 
-			// The normal offset is in TEXELS, scaled by the cascade's world texel size in the
-			// shader. It stays TINY: at larger values it shifts the receiver enough to eat the
-			// light facing side of a contact shadow, and worse the coarser the cascade. The
-			// acne is carried by the hardware depth bias, not by this.
-			viewData.ShadowNormalBias = 0.02f;
-			viewData.ShadowDepthBias = 0.0009f;
+			// The caster light's own biases (its LightComponent, through DirectionalShadow): the
+			// normal offset in TEXELS, scaled by the cascade's world texel size in the shader, and
+			// the receiver's compare bias. Defaults: ShadowBiasDefaults.
+			viewData.ShadowNormalBias = context.Cascades.NormalBias;
+			viewData.ShadowDepthBias = context.Cascades.DepthBias;
 			viewData.ShadowParams.X = context.ShadowFarFade;
 		}
 

@@ -26,6 +26,7 @@ cbuffer TerrainView : register(b0, space0) {
     float4   ShadowParams; // x = far-fade width, y = uv.y sign, z = heightBlendContrast, w = height maps bound
     float4   SplatParams; // x = palette count, y = weights bound, z = base tile, w = base bound
     float4   SplatParams2; // x = mask maps bound, yzw spare
+    float4   ShadowLight;  // x = the caster light's shadow strength (1 = full), yzw spare
 };
 
 struct PSIn {
@@ -349,7 +350,7 @@ PSOutput main(PSIn i) {
     // CSM: attenuate only the DIRECT (sun) term; ambient is indirect (AO-modulated). The shadow bias
     // uses the stable geometric normal n (perturbed N would add acne from high-frequency detail).
     float viewDepth = -mul(float4(i.worldPos, 1.0), View).z;
-    float shadow = SampleCSM(i.worldPos, n, ndlN, viewDepth);
+    float shadow = lerp(1.0, SampleCSM(i.worldPos, n, ndlN, viewDepth), saturate(ShadowLight.x));
 
     const float3 ambient = float3(0.28, 0.30, 0.34);
     float3 lit = base * (ambient * ao + ndlN * shadow);
