@@ -173,7 +173,7 @@ class GameInstance
 	/// context's scale, times THIS, times the scene's own. One by default, so a single
 	/// instance collapses to the model without it. It is the scene GROUP's scale, so nought
 	/// pauses the run's scenes, behaviours, physics and timers, while the Game orchestrator,
-	/// which runs on the run's own clock, keeps going and can resume.
+	/// whose update(dt) does not take this scale, keeps going and can resume.
 	[Scriptable, ScriptName("TimeScale")]
 	public float InstanceTimeScale
 	{
@@ -549,9 +549,8 @@ class GameInstance
 	public double RunTime => mRunTime;
 	public void ResetRunClock() { mRunTime = 0; }
 
-	/// This frame's seconds before any time scale: what a pause menu, a level clear banner
-	/// or a fade times itself by, since `update(dt)` and coroutine waits stand still at
-	/// TimeScale 0.
+	/// This frame's seconds before any time scale, the context's included. `update(dt)`
+	/// already ignores Run.TimeScale; coroutine waits stand still at TimeScale 0.
 	[Scriptable, ScriptName("RealDeltaTime")]
 	public float RealDeltaTime => mRealDelta;
 	/// Seconds of frames since the run started, unscaled: RunTime to a script.
@@ -605,9 +604,14 @@ class GameInstance
 		mGameClass = null;
 	}
 
-	/// Ticks the game script with gameplay time, the host's delta through the context's,
-	/// the run's and the current scene's scales, and moves the run's clock: once per frame,
-	/// before the run bus drains. A faulting update stops THIS run's script, not the run.
+	/// Ticks the game script and moves the run's clock: once per frame, before the run bus
+	/// drains. A faulting update stops THIS run's script, not the run.
+	///
+	/// The orchestrator's `update(dt)` is the host's delta through the context's and the
+	/// current scene's scales, NOT the run's (Run.TimeScale): the Game sets that scale to pause
+	/// or slow its scenes, and the timers it keeps over them (a celebration, a countdown on a
+	/// frozen screen) go on in real time. The run's coroutines, behaviours' among them, advance
+	/// by gameplay time, the run's scale included, so a pause still holds them.
 	public void TickScript(float hostDeltaTime, float contextTimeScale)
 	{
 		// Debug paused: the debugger holds a suspended call. A new update each frame would
@@ -616,16 +620,16 @@ class GameInstance
 		if (mRunHost.IsDebugPaused)
 			return;
 		let sceneScale = (mScene != null) ? mScene.TimeScale : 1.0f;
-		let time = FrameTime(hostDeltaTime, contextTimeScale, mSceneManager.TimeScale, sceneScale);
-		let dt = time.SceneDelta;
+		let orchestrator = FrameTime(hostDeltaTime, contextTimeScale, 1.0f, sceneScale).SceneDelta;
+		let gameplay = FrameTime(hostDeltaTime, contextTimeScale, mSceneManager.TimeScale, sceneScale).SceneDelta;
 		mRunTime += hostDeltaTime;
 		mRealDelta = hostDeltaTime;
 		if (mGame != null)
 		{
-			var args = ScriptValue[1](.FromFloat(dt));
+			var args = ScriptValue[1](.FromFloat(orchestrator));
 			InvokeGame("update", .(&args[0], 1));
 		}
-		mRunHost.Advance(dt);
+		mRunHost.Advance(gameplay);
 	}
 
 	/// A run bus event into the orchestrator's `on<Event>(payload)`. At drain time, no

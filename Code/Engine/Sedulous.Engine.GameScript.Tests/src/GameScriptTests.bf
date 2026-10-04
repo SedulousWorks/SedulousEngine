@@ -8,8 +8,9 @@ using Sedulous.Engine.Script;
 
 namespace Sedulous.Engine.GameScript.Tests;
 
-/// The Game tier: an orchestrator class launched on a run, ticked with gameplay time,
-/// hearing the run bus, driving level loads through `Run`, and stopped with its exit.
+/// The Game tier: an orchestrator class launched on a run, ticked by time the run's scale does not
+/// touch (that scale is its scenes'), hearing the run bus, driving level loads through `Run`, and
+/// stopped with its exit.
 static class GameScriptTests
 {
 	private const String cGame = """
@@ -44,13 +45,17 @@ static class GameScriptTests
 		Test.Assert(run.PropInt("updates") == 3);
 		Test.Assert(Math.Abs(run.PropFloat("elapsed") - 3.0f / 60.0f) < 1e-4f);
 
-		// The run's time scale scales what the orchestrator sees, and it still runs at nought,
-		// which is what lets it unpause.
+		// The run's time scale pauses or slows the run's scenes, not the orchestrator that sets
+		// it: at nought and in slow motion its dt is still real time, which is what lets it
+		// unpause and time a celebration or a countdown over a frozen screen.
 		run.Instance.InstanceTimeScale = 0.0f;
 		run.Step(2);
 		Test.Assert(run.PropInt("updates") == 5, "ticked while paused");
-		Test.Assert(Math.Abs(run.PropFloat("elapsed") - 3.0f / 60.0f) < 1e-4f, "with no time passing");
-		Test.Assert(Math.Abs(run.PropFloat("real") - 5.0f / 60.0f) < 1e-4f, "but real time passes, for a pause menu to time by");
+		Test.Assert(Math.Abs(run.PropFloat("elapsed") - 5.0f / 60.0f) < 1e-4f, "its time passing");
+		Test.Assert(Math.Abs(run.PropFloat("real") - 5.0f / 60.0f) < 1e-4f);
+		run.Instance.InstanceTimeScale = 0.12f;
+		run.Step(1);
+		Test.Assert(Math.Abs(run.PropFloat("elapsed") - 6.0f / 60.0f) < 1e-4f, "and in slow motion");
 		run.Instance.InstanceTimeScale = 1.0f;
 
 		// A second start replaces the first, exit() included: the new one has seen nothing.
