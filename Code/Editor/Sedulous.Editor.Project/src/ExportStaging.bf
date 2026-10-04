@@ -128,12 +128,16 @@ static class ExportStaging
 			outName.Set("export");
 	}
 
-	/// The preset's player name or the template's binary, with .exe on a Windows target.
+	/// The preset's player name or the template's binary, with .exe on a Windows target and
+	/// .html on the web.
 	public static void PlayerOutputName(StringView platform, StringView playerName, StringView templateBinary, String outName)
 	{
 		outName.Set(playerName.IsEmpty ? templateBinary : playerName);
 		if (platform.StartsWith("Win") && !outName.EndsWith(".exe"))
 			outName.Append(".exe");
+		// The web player is its page: renamed, it stays a page, or the browser downloads it.
+		if (templateBinary.EndsWith(".html") && !outName.EndsWith(".html"))
+			outName.Append(".html");
 	}
 
 	/// The DXC runtime is omitted from a dist: it renders from the cooked shader pack.

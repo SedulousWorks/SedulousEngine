@@ -331,6 +331,10 @@ static class ExportDriverTests
 		Test.Assert(ExportStaging.PlayerOutputName("Win64", "", "Sedulous.Engine.Player.Desktop.exe", .. scope .()) == "Sedulous.Engine.Player.Desktop.exe");
 		Test.Assert(ExportStaging.PlayerOutputName("Win64", "MyGame", "Player.exe", .. scope .()) == "MyGame.exe", "a Windows target gets .exe");
 		Test.Assert(ExportStaging.PlayerOutputName("Linux64", "MyGame", "Player", .. scope .()) == "MyGame");
+		// The web player is its page: a renamed one keeps .html, or the browser downloads it.
+		Test.Assert(ExportStaging.PlayerOutputName("Web", "SkyHopper", "Sedulous.Engine.Player.Web.html", .. scope .()) == "SkyHopper.html");
+		Test.Assert(ExportStaging.PlayerOutputName("Web", "SkyHopper.html", "Sedulous.Engine.Player.Web.html", .. scope .()) == "SkyHopper.html");
+		Test.Assert(ExportStaging.PlayerOutputName("Web", "", "Sedulous.Engine.Player.Web.html", .. scope .()) == "Sedulous.Engine.Player.Web.html");
 		Test.Assert(ExportStaging.SanitizeName("My Game: v2!", .. scope .()) == "My-Game--v2-");
 		Test.Assert(ExportStaging.SanitizeName("", .. scope .()) == "export");
 		Test.Assert(ExportStaging.IsDxcRuntimeLib("libdxcompiler.so") && ExportStaging.IsDxcRuntimeLib("dxil.dll") && !ExportStaging.IsDxcRuntimeLib("SDL3.dll"));
