@@ -82,7 +82,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 28. ~~babadd96~~ (done) Editor: a scene's settings in profile mode edit the profile (Make Profile, Copy
     Into Scene).
 29. ~~5515b8ab~~ (done) Editor: a profile asset's page, with a preview scene.
-30. f3df9db4 McpGuide: a game's look through render profiles.
+30. ~~f3df9db4~~ (done) McpGuide: a game's look through render profiles.
 
 ## Group 6: PaperKid rebuilt over MCP
 

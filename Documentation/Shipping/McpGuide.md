@@ -176,6 +176,18 @@ name or slash path; each answers the entity as `entity_inspect` shows it, a Scri
 `behaviors` included. The user watches the level take shape and can undo any step; `file.save`
 (action_execute) keeps it. XML suits a whole level written at once, these tools an edit.
 
+**A game's look (render profiles)**: a scene's `environment` and `postprocess` settings take
+their values from the scene itself or from a shared profile, by their `source`: 0 (Scene) uses
+the values stored in the scene, 1 (Profile) uses the `Environment Profile` or `Post Process
+Profile` asset its `profile` names, and the scene's own values then do nothing. To give several
+scenes one look, make the profile with `asset_create` (the creators of those names, under
+`Profiles/`), set its values with `asset_data_read` / `asset_data_write` (its fields are the
+block's, without `source` and `profile`), `asset_cook` it, and set each scene's block to `source`
+1 and `profile` the profile's guid. A change to the look is then one profile edit and a cook. To
+change one scene's look, edit the profile when every scene should follow, or set that scene back
+to `source` 0 with its own values. In the editor, a profile opens on its own page with a preview,
+and a scene's settings in profile mode show and edit the profile's values.
+
 **Colours**: every colour is written as it is meant to look, in sRGB, the value a colour picker
 and a hex code show (0.5 is `#808080`): component colours, the environment's ambient and sky, a
 material's `Color` properties, particle colours, debug draw. The renderer decodes them; never
