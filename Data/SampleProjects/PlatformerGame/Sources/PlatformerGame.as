@@ -201,6 +201,13 @@ class Game
 			{
 				Ui.Pop(); // the fade layer, on top since the fade began
 				enter(m_afterFade);
+				if (m_afterFade == Phase::Intro)
+				{
+					// The level's card drops in from above and settles with a bounce.
+					View card = Ui.Find("intro-card");
+					card.MoveTo(0.0f, 0.0f, 0.55f, Ease::OutBack);
+					card.FadeTo(1.0f, 0.25f);
+				}
 			}
 			break;
 		case Phase::Intro:
@@ -605,6 +612,9 @@ class Game
 			Screen intro = Ui.Push(kIntroDoc);
 			intro.FindLabel("intro-number").SetText("Level " + (m_level + 1));
 			intro.FindLabel("intro-name").SetText(levelName(m_level));
+			View card = intro.Find("intro-card"); // above, waiting for the fade to clear
+			card.SetTranslation(0.0f, -260.0f);
+			card.SetOpacity(0.0f);
 			m_afterFade = Phase::Intro;
 		}
 		Screen s = Ui.Push(kFadeDoc);

@@ -2,7 +2,7 @@
 
   <Flex direction="vertical" justify="center" align="center" padding="32">
 
-    <Panel padding="28" class="cloud">
+    <Panel id="intro-card" padding="28" class="cloud">
       <Flex direction="vertical" align="center" spacing="6">
         <Label id="intro-number" text="Level 1" font-size="22" class="note"/>
         <Label id="intro-name" font-family="Lilita One" text="Grassy Hills" font-size="46" class="headline"/>
