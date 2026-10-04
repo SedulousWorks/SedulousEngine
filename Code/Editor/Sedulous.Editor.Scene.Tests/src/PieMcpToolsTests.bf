@@ -458,6 +458,26 @@ class PieMcpToolsTests
 			Test.Assert(answer.Payload.Get("pie").AsString() == "game-page-1");
 			Test.Assert(answer.Payload.Get("path").AsString() == "/tmp/client.png");
 			Test.Assert(answer.Payload.Get("width").AsNumber() == 1280);
+			Test.Assert(answer.Payload.Get("scale") == null, "drawn at its own resolution: nothing to add");
+		}
+
+		// A tab smaller than the game's resolution drew it scaled: the PNG is what was drawn,
+		// and the answer says the resolution and the scale (an agent's mouse positions divide
+		// by it).
+		Test.Assert(Pump(server, "pie_screenshot", args, out answer) == .NotFinished);
+		client.Capture.State = .Written;
+		client.Capture.Width = 960;
+		client.Capture.Height = 540;
+		client.Capture.RenderWidth = 1920;
+		client.Capture.RenderHeight = 1080;
+		Test.Assert(Pump(server, "pie_screenshot", args, out answer) == .Answered);
+		{
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			Test.Assert(answer.Payload.Get("width").AsNumber() == 960);
+			Test.Assert(answer.Payload.Get("renderWidth").AsNumber() == 1920);
+			Test.Assert(answer.Payload.Get("renderHeight").AsNumber() == 1080);
+			Test.Assert(answer.Payload.Get("scale").AsNumber() == 0.5);
 		}
 
 		// An instance stopped mid-capture ends the wait with an error.

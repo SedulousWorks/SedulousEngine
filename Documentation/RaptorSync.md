@@ -20,7 +20,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
    call giving the backend and the validation flags, used by the editor, the desktop player
    (which ignores `--no-gpu-validation` today) and the desktop samples, which stop forcing
    validation on (MultiWindow keeps it; the web programs take no command line).
-3. a6fc8996 Editor.Scene: a Game tab's screenshot is what the tab drew, with its scale (the
+3. ~~a6fc8996~~ (done) Editor.Scene: a Game tab's screenshot is what the tab drew, with its scale (the
    capture's resample goes; `pie_screenshot` and `pie_run`'s shots report `renderWidth`,
    `renderHeight` and `scale` when the tab draws scaled; McpGuide).
 4. b1dd4e68 Sky Hopper: the exported player is named for its game ("Sedulous SkyHopper").

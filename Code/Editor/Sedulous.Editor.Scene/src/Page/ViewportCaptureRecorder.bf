@@ -28,19 +28,25 @@ class ViewportCaptureRecorder
 		mState.Path.Set(path);
 		mState.Width = 0;
 		mState.Height = 0;
+		mState.RenderWidth = 0;
+		mState.RenderHeight = 0;
 		mScreenshot.Request(path);
 	}
 
 	/// Records the copy of `target` (in `targetState`, where it is left) when a request is
-	/// armed; a failure to record is the request's failure, logged by the capture.
+	/// armed; a failure to record is the request's failure, logged by the capture. The PNG is
+	/// what was drawn, never resampled; `renderWidth` x `renderHeight` names the resolution the
+	/// content plays at when the view drew it scaled (reported beside the written size).
 	public void Record(IDevice device, ICommandEncoder encoder, ITexture target, TextureFormat format,
 		uint32 width, uint32 height, ResourceState targetState, uint32 originX = 0, uint32 originY = 0,
-		uint32 outputWidth = 0, uint32 outputHeight = 0)
+		uint32 renderWidth = 0, uint32 renderHeight = 0)
 	{
 		if (!mScreenshot.Armed || (device == null) || (encoder == null))
 			return;
-		if (!mScreenshot.Record(device, encoder, target, format, width, height, targetState, originX, originY,
-			outputWidth, outputHeight))
+		let scaled = (renderWidth > 0) && (renderHeight > 0) && ((renderWidth != width) || (renderHeight != height));
+		mState.RenderWidth = scaled ? renderWidth : 0;
+		mState.RenderHeight = scaled ? renderHeight : 0;
+		if (!mScreenshot.Record(device, encoder, target, format, width, height, targetState, originX, originY))
 			mState.State = .Failed;
 	}
 

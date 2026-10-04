@@ -97,7 +97,7 @@ static class PieRunTool
 		let schema = scope SchemaBuilder();
 		schema.Str("pie", "the PIE instance's id, as pie_list reports it (default: the primary, `game-page`)");
 		schema.Number("duration", "run seconds to run, up to 600", true);
-		schema.Arr("input", "object", "the timeline: entries {at, key, down} | {at, mouseButton, down} | {at, mouseMove: [x, y]} | {at, wheel: [x, y]} | {at, gamepad, button, down} | {at, gamepad, axis, value}; `at` is run seconds since the run starts, `down` defaults to true, `gamepad` to 0");
+		schema.Arr("input", "object", "the timeline: entries {at, key, down} | {at, mouseButton, down} | {at, mouseMove: [x, y]} | {at, wheel: [x, y]} | {at, gamepad, button, down} | {at, gamepad, axis, value}; `at` is run seconds since the run starts, `down` defaults to true, `gamepad` to 0; mouseMove is in the game's render resolution pixels (a scaled screenshot's divided by its scale)");
 		schema.Arr("probes", "object", "what to read: {entity, fields} (entity by guid, name or slash path; fields default [\"worldPosition\"]) or {script: \"<game script property>\"}");
 		schema.Number("every", "sample the probes every N run seconds (default 0.5)");
 		schema.Arr("sampleAt", "number", "or sample at these run times instead");
@@ -304,8 +304,7 @@ static class PieRunTool
 				if (capture.State == .Written)
 				{
 					shot.Set("path", JsonValue.MakeString(capture.Path));
-					shot.Set("width", JsonValue.MakeNumber(capture.Width));
-					shot.Set("height", JsonValue.MakeNumber(capture.Height));
+					PieMcpTools.WriteCaptureSize(shot, capture);
 				}
 				else
 				{

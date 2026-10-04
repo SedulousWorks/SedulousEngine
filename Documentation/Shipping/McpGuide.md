@@ -56,15 +56,18 @@ and the startup script (`running`, or `faulted` with the reason);
 `pie_list` shows every instance, the ones the user started too; `pie_stop` stops one (or
 `all`), its tab staying open and the others running. `pie_screenshot` writes what an
 instance's tab renders, the game through its own camera with its UI, as `viewport_screenshot`
-does for a scene page: at the resolution the tab draws the game at (the project's render
-resolution by default, fitted into the tab like the player's window), without the bars, so
-its pixels are the ones `pie_run`'s mouse positions are in.
+does for a scene page: the pixels the tab drew, without the bars. A tab smaller than the game's
+render resolution draws the game scaled down; the answer then adds `renderWidth`, `renderHeight`
+and `scale`, the PNG is that scaled image (soft text in it is the scale, not the font), and
+`pie_run`'s mouse positions, which are in render resolution pixels, are its pixels divided by
+`scale`.
 
 `pie_run` is the playtest: it plays a device-level input timeline into one running instance
 for `duration` seconds of run time and answers what happened. The timeline takes keys by their
 KeyCode names (`{"at": 0, "key": "D"}`, `{"at": 0.4, "key": "Space", "down": false}`), mouse
 moves, buttons and the wheel (`{"at": 0, "mouseMove": [650, 253]}`, `{"at": 0.2, "mouseButton":
-"Left"}`, in the pixels a `pie_screenshot` shows) and gamepads (`{"at": 0, "gamepad": 0, "axis":
+"Left"}`, in the game's render resolution pixels: a `pie_screenshot`'s, divided by its `scale`
+when it reports one) and gamepads (`{"at": 0, "gamepad": 0, "axis":
 "LeftX", "value": 1}`), and goes through the project's input map as a player's would. While it
 runs, that tab ignores the real mouse and keys, the other instances keep theirs, and whatever
 it holds is let go at the end. `probes` read entities (by guid, name or slash path) at field

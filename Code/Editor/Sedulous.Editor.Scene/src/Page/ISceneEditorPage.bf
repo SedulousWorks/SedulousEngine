@@ -36,8 +36,13 @@ class ViewportCapture
 {
 	public ViewportCaptureState State = .Idle;
 	public String Path = new .() ~ delete _;
+	/// The written PNG: the pixels the viewport drew.
 	public uint32 Width = 0;
 	public uint32 Height = 0;
+	/// The game's render resolution, when the view drew it scaled (a Game tab smaller than the
+	/// resolution it plays at); nought when the written size is the render size.
+	public uint32 RenderWidth = 0;
+	public uint32 RenderHeight = 0;
 }
 
 interface ISceneEditorPage
