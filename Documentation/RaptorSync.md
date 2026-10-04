@@ -61,7 +61,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 
 ## Group 4: run audio and script voice control
 
-20. 4b830b03 (engine half) Audio: a playing voice's volume and pitch ease over a duration, and a
+20. ~~4b830b03 (engine half)~~ (done) Audio: a playing voice's volume and pitch ease over a duration, and a
     stop can fade.
 21. 8799a9ce + b7afa416 Audio: run groups, one level above the scene groups, custom buses
     included (one music slot per run, a run's own bus gains, pause and mute).

@@ -89,6 +89,41 @@ class AudioEngine
 		public List<BusEffectNode> Effects = new .() ~ delete _;
 	}
 
+	/// A value eased from `From` to `To` over `Duration` seconds; inactive is settled.
+	private struct VoiceRamp
+	{
+		public float From = 0.0f;
+		public float To = 0.0f;
+		public float Elapsed = 0.0f;
+		public float Duration = 0.0f;
+		public bool Active = false;
+
+		public this() {}
+
+		public void Start(float current, float target, float seconds) mut
+		{
+			From = current;
+			To = target;
+			Elapsed = 0.0f;
+			Duration = seconds;
+			Active = true;
+		}
+
+		/// Advances by `dt` and answers the value now, eased in and out so a speed up has no
+		/// corner.
+		public float Advance(float dt) mut
+		{
+			Elapsed += dt;
+			if (Elapsed >= Duration)
+			{
+				Active = false;
+				return To;
+			}
+			let t = Elapsed / Duration;
+			return From + (To - From) * (t * t * (3.0f - 2.0f * t));
+		}
+	}
+
 	/// One pool slot.
 	private class VoiceSlot
 	{
@@ -105,6 +140,9 @@ class AudioEngine
 		public Float3 Position = .(0, 0, 0);
 		public float Volume = 1.0f;
 		public float Pitch = 1.0f;
+		/// SetVoiceVolume and SetVoicePitch over a duration.
+		public VoiceRamp VolumeRamp = .();
+		public VoiceRamp PitchRamp = .();
 		public AudioBus Bus = .Effects;
 		public uint64 SceneGroup = 0;
 		/// BORROWED: the caller keeps the clip alive.
@@ -268,6 +306,22 @@ class AudioEngine
 
 			UpdateVoiceLowpass(slot);
 
+			// The eased volume and pitch: held while the voice is paused, so a pause keeps its
+			// place.
+			if ((slot.State == .Playing) || (slot.State == .Stopping))
+			{
+				if (slot.VolumeRamp.Active)
+				{
+					slot.Volume = slot.VolumeRamp.Advance(delta);
+					mab_sound_set_volume(slot.Sound, slot.Volume * ((slot.Clip != null) ? slot.Clip.Gain : 1.0f));
+				}
+				if (slot.PitchRamp.Active)
+				{
+					slot.Pitch = slot.PitchRamp.Advance(delta);
+					mab_sound_set_pitch(slot.Sound, slot.Pitch);
+				}
+			}
+
 			// A voice that has finished, or whose fade to stop has landed, releases here on
 			// the caller's own thread rather than from under the mixer.
 			if (slot.State == .Stopping)
@@ -404,6 +458,8 @@ class AudioEngine
 		slot.Position = parameters.Position;
 		slot.Volume = parameters.Volume;
 		slot.Pitch = parameters.Pitch;
+		slot.VolumeRamp = .();
+		slot.PitchRamp = .();
 		slot.Bus = parameters.Bus;
 		slot.CustomBusName.Clear();
 		if (customBusIndex >= 0)
@@ -560,7 +616,10 @@ class AudioEngine
 	}
 
 	/// Fades out over the stop window and then reaps. Safe on a stale handle.
-	public void Stop(VoiceHandle handle)
+	public void Stop(VoiceHandle handle) => Stop(handle, 0.0f);
+
+	/// The same, fading out over `fadeSeconds`, at least the click free stop window.
+	public void Stop(VoiceHandle handle, float fadeSeconds)
 	{
 		let slot = Resolve(handle);
 		if (slot == null)
@@ -575,7 +634,8 @@ class AudioEngine
 
 		if (slot.State != .Stopping)
 		{
-			mab_sound_stop_with_fade_ms(slot.Sound, FadeMilliseconds);
+			let fade = Math.Max((uint64)(Math.Max(fadeSeconds, 0.0f) * 1000.0f + 0.5f), FadeMilliseconds);
+			mab_sound_stop_with_fade_ms(slot.Sound, fade);
 			slot.State = .Stopping;
 		}
 	}
@@ -652,22 +712,40 @@ class AudioEngine
 		return true;
 	}
 
-	public void SetVoiceVolume(VoiceHandle handle, float volume)
+	/// The volume at once, or eased there over `seconds` (Update advances it; a later set
+	/// retargets from where it is).
+	public void SetVoiceVolume(VoiceHandle handle, float volume, float seconds = 0.0f)
 	{
 		let slot = Resolve(handle);
 		if (slot == null)
 			return;
-		slot.Volume = volume;
-		mab_sound_set_volume(slot.Sound, volume * ((slot.Clip != null) ? slot.Clip.Gain : 1.0f));
+		let target = Math.Max(volume, 0.0f);
+		if (seconds > 0.0f)
+		{
+			slot.VolumeRamp.Start(slot.Volume, target, seconds);
+			return;
+		}
+		slot.VolumeRamp = .();
+		slot.Volume = target;
+		mab_sound_set_volume(slot.Sound, target * ((slot.Clip != null) ? slot.Clip.Gain : 1.0f));
 	}
 
-	public void SetVoicePitch(VoiceHandle handle, float pitch)
+	/// The pitch, the playback rate (1.2 plays twenty percent faster and higher), at once or
+	/// eased there over `seconds`.
+	public void SetVoicePitch(VoiceHandle handle, float pitch, float seconds = 0.0f)
 	{
 		let slot = Resolve(handle);
 		if (slot == null)
 			return;
-		slot.Pitch = pitch;
-		mab_sound_set_pitch(slot.Sound, pitch);
+		let target = Math.Max(pitch, 0.01f); // a rate of nought would stall the voice for good
+		if (seconds > 0.0f)
+		{
+			slot.PitchRamp.Start(slot.Pitch, target, seconds);
+			return;
+		}
+		slot.PitchRamp = .();
+		slot.Pitch = target;
+		mab_sound_set_pitch(slot.Sound, target);
 	}
 
 	public void SetVoicePan(VoiceHandle handle, float pan)

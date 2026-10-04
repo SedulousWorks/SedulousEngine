@@ -125,6 +125,66 @@ class AudioEngineTests
 		Test.Assert(engine.IsPlaying(voice));
 	}
 
+	/// Pitch and volume ease over a duration and hold while the voice is paused, and a timed
+	/// stop fades out over its time: what a game needs to speed its music up as a clock runs
+	/// down.
+	[Test]
+	public static void PitchAndVolumeEaseHoldWhilePausedAndATimedStopFadesOverItsTime()
+	{
+		let engine = scope AudioEngine(HeadlessSettings!());
+		let clip = MakeToneClip(0.5f);
+		defer delete clip;
+		var parameters = AudioPlayParams();
+		parameters.Loop = true;
+		let voice = engine.Play(clip, parameters);
+		Test.Assert(voice.IsValid);
+		bool Near(float a, float b) => Math.Abs(a - b) < 1e-4f;
+
+		// Eased: unchanged at once, half way at half time (the ease is symmetric), there at the
+		// end.
+		engine.SetVoicePitch(voice, 2.0f, 1.0f);
+		engine.SetVoiceVolume(voice, 0.2f, 1.0f);
+		Test.Assert(engine.GetVoiceStatus(voice, var status));
+		Test.Assert(Near(status.Pitch, 1.0f));
+		engine.Update(0.25f); // Update takes at most a quarter second a step: its hitch clamp
+		engine.Update(0.25f);
+		Test.Assert(engine.GetVoiceStatus(voice, out status));
+		Test.Assert(Near(status.Pitch, 1.5f));
+		Test.Assert(Near(status.Volume, 0.6f));
+
+		// Paused, the ease holds its place; resumed, it finishes.
+		engine.SetPaused(voice, true);
+		engine.Update(0.25f);
+		Test.Assert(engine.GetVoiceStatus(voice, out status));
+		Test.Assert(Near(status.Pitch, 1.5f));
+		engine.SetPaused(voice, false);
+		engine.Update(0.25f);
+		engine.Update(0.25f);
+		engine.Update(0.1f);
+		Test.Assert(engine.GetVoiceStatus(voice, out status));
+		Test.Assert(Near(status.Pitch, 2.0f));
+		Test.Assert(Near(status.Volume, 0.2f));
+
+		// A plain set lands at once and ends any ease; a rate of nought is held off (it would
+		// stall the voice).
+		engine.SetVoicePitch(voice, 0.5f, 1.0f);
+		engine.SetVoicePitch(voice, 0.0f);
+		Test.Assert(engine.GetVoiceStatus(voice, out status));
+		Test.Assert(Near(status.Pitch, 0.01f));
+		engine.Update(0.25f);
+		Test.Assert(engine.GetVoiceStatus(voice, out status));
+		Test.Assert(Near(status.Pitch, 0.01f));
+
+		// A timed stop: fading (no longer playing) for its time, then reaped.
+		engine.Stop(voice, 0.5f);
+		Test.Assert(!engine.IsPlaying(voice));
+		engine.Update(0.2f);
+		Test.Assert(engine.IsValidHandle(voice));
+		for (int i < 6)
+			engine.Update(0.1f);
+		Test.Assert(!engine.IsValidHandle(voice));
+	}
+
 	/// The setters land on the slot AND on the backend, and un-looping a voice lets it run
 	/// out: a live change has to reach the mixer, not just the bookkeeping.
 	[Test]
