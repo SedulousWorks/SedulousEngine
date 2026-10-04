@@ -250,6 +250,10 @@ class ModelFileImporter : IFileImporter
 		// Names claimed THIS run, which is the scope a numeric suffix disambiguates within.
 		let claimed = scope List<String>();
 		defer { ClearAndDeleteItems!(claimed); }
+		// The manifest is named for the file and written last: its name is reserved first, so a
+		// sub-asset named like the model (a material "Gem_Blue" in Gem_Blue.gltf) takes a suffix
+		// rather than the manifest's instance.
+		claimed.Add(new String(stem));
 
 		let textureGuids = scope List<Guid>();
 		if (opt.ImportTextures)
@@ -290,7 +294,20 @@ class ModelFileImporter : IFileImporter
 		}
 		ModelImportNodes.Import(model, manifest);
 
-		let instance = modelGroup.CreateInstance(stem, cManifestType);
+		// A previous import's manifest is reused (its guid survives a re-import); a different type
+		// squatting the name (an import from before the name was reserved) keeps its instance,
+		// and the manifest takes the next free name.
+		var instance = modelGroup.GetInstance(stem);
+		if (instance == null)
+		{
+			instance = modelGroup.CreateInstance(stem, cManifestType);
+		}
+		else if (instance.TypeName != cManifestType)
+		{
+			let name = scope String();
+			modelGroup.UniqueInstanceName(stem, name);
+			instance = modelGroup.CreateInstance(name, cManifestType);
+		}
 		if (instance == null)
 			return .Err(.Unknown);
 		if (instance.WriteObject(manifestAsset) case .Err(let writeError))

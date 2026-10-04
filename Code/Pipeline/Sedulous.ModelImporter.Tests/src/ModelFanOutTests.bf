@@ -138,4 +138,43 @@ class ModelFanOutTests
 			Test.Assert(id == instance.Id); // the same identity, not a fresh one
 		}
 	}
+
+	/// A model whose material is named like the model itself (the platformer kit's Gem_Blue.gltf
+	/// has a material "Gem_Blue"): the material takes a suffix, and the manifest keeps the file's
+	/// name and its own instance, rather than being written into the material's.
+	[Test]
+	public static void AMaterialNamedLikeTheModelLeavesTheManifestItsOwnInstance()
+	{
+		let fixture = scope ImportFixture("scratch_gltf_samename");
+		let dropped = scope String();
+		fixture.WriteDroppedFile("Gem.gltf", """
+			{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],
+			"nodes":[{"name":"Gem","mesh":0}],
+			"meshes":[{"name":"Gem","primitives":[{"attributes":{"POSITION":0},"material":0}]}],
+			"materials":[{"name":"Gem","pbrMetallicRoughness":{"baseColorFactor":[0.1,0.5,0.7,1]}}],
+			"buffers":[{"byteLength":36,"uri":"data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAA"}],
+			"bufferViews":[{"buffer":0,"byteLength":36}],
+			"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[0,0,0],"max":[1,1,0]}]}
+			""", dropped);
+
+		let importer = scope ModelFileImporter();
+		let imported = importer.Import(dropped, fixture.Context, fixture.RootGroup, null, null,
+			null);
+		Test.Assert(imported case .Ok);
+		let instance = imported.Value;
+		Test.Assert(instance.Name == "Gem");
+		Test.Assert(instance.TypeName == "Sedulous.ModelImporter.ModelManifestAsset");
+
+		let manifest = ImportFixture.ReadManifest(instance);
+		Test.Assert(manifest != null);
+		defer delete manifest;
+		Test.Assert(manifest.Manifest.MaterialGuid.Count == 1);
+
+		// The material is its own instance, a MaterialAsset under a suffixed name.
+		let material = fixture.Db.GetInstance(manifest.Manifest.MaterialGuid[0]);
+		Test.Assert(material != null);
+		Test.Assert(material !== instance);
+		Test.Assert(material.Name == "Gem.2");
+		Test.Assert(material.TypeName == "Sedulous.Materials.Pipeline.MaterialAsset");
+	}
 }
