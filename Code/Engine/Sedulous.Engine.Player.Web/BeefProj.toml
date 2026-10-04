@@ -37,9 +37,9 @@ corlib = "*"
 # emdawnwebgpu supplies webgpu.h at compile time and the navigator.gpu binding at link time,
 # and it has to be on BOTH. serve.py is staged beside the page, a server for the export
 # (wasm's MIME type, no caching, HTTPS for another device). -lidbfs.js and player.js mount
-# the browser's storage over the user data directory, so a save outlives the page
-# (WebPage). TargetName carries the .html because emcc decides what to emit from the
-# extension and silently drops --shell-file without one.
+# the browser's storage over the user data directory, so a save outlives the page, and let
+# the player tell the page what it is doing (WebPage). TargetName carries the .html because
+# emcc decides what to emit from the extension and silently drops --shell-file without one.
 [Configs.Debug.wasm32]
 TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"

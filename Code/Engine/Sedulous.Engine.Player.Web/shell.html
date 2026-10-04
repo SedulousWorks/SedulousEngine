@@ -1,52 +1,188 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Sedulous Player</title>
-<style>
-  html, body { margin: 0; height: 100%; background: #14151a; color: #d8dae0;
-               font: 14px/1.5 system-ui, sans-serif; }
-  #canvas { display: block; width: 100vw; height: 100vh; outline: none; }
-  #status { position: fixed; left: 12px; bottom: 12px; opacity: 0.7; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Loading</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0a0a0c; }
+    /* The canvas fills the window; its backing pixel size is synced to the displayed size below
+       so WebGPU renders at native resolution and the web shell reconfigures the swap chain to
+       match. */
+    #canvas { display: block; width: 100vw; height: 100vh; outline: none; }
+    /* What the page shows until the game draws: its name, what is downloading and how much has
+       come, or why it cannot start. */
+    #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+               background: #0a0a0c; color: #e8ecf3; font: 16px/1.4 system-ui, sans-serif;
+               transition: opacity 0.4s ease; }
+    #loading.done { opacity: 0; pointer-events: none; }
+    #loading .card { width: min(420px, calc(100vw - 32px)); text-align: center; }
+    #loading h1 { margin: 0 0 18px; font-size: 1.9rem; font-weight: 700; letter-spacing: 0.01em; }
+    #loading .bar { position: relative; height: 6px; border-radius: 3px; background: #23262e; overflow: hidden; }
+    #loading .bar span { position: absolute; top: 0; bottom: 0; width: 35%; border-radius: 3px; background: #4da3ee;
+                         animation: slide 1.2s ease-in-out infinite; }
+    #loading.failed .bar { display: none; }
+    #loading p { margin: 12px 0 0; color: #9aa3b2; font-size: 0.95rem; min-height: 1.4em; }
+    #loading.failed p { color: #e8ecf3; }
+    #loading.ended .bar { display: none; }
+    #loading button { display: none; margin-top: 20px; padding: 10px 26px; border: 0; border-radius: 999px;
+                      background: #4da3ee; color: #0a0a0c; font: 700 1rem system-ui, sans-serif; cursor: pointer; }
+    #loading.ended button, #loading.retry button { display: inline-block; }
+    @keyframes slide { from { left: -35%; } to { left: 100%; } }
+  </style>
 </head>
 <body>
-<!-- tabindex makes the canvas focusable, which is what lets it receive key events at all. -->
-<canvas id="canvas" tabindex="0"></canvas>
-<div id="status">starting…</div>
-<script>
-  // The WebGPU backend's mid frame wait tripwire prints a C stack, and Chrome truncates
-  // Error.stack at ten frames by default: exactly deep enough to reach WaitIdle and stop
-  // BEFORE the frame that names the waiter the message is asking you to find.
-  Error.stackTraceLimit = 64;
+  <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+  <div id="loading"><div class="card">
+    <h1 id="loading-name">Loading</h1>
+    <div class="bar"><span></span></div>
+    <p id="loading-status">Starting</p>
+    <button id="loading-again" type="button" onclick="location.reload()">Play again</button>
+  </div></div>
+  <script type="text/javascript">
+    // The WebGPU backend's mid frame wait tripwire prints a stack, and Chrome truncates
+    // Error.stack at ten frames by default: exactly deep enough to reach WaitIdle and stop
+    // BEFORE the frame that names the waiter the message is asking you to find.
+    Error.stackTraceLimit = 64;
 
-  var statusEl = document.getElementById('status');
-  var canvas = document.getElementById('canvas');
+    // ---- the loading card ----
+    var loading = {
+      root: document.getElementById('loading'),
+      status: document.getElementById('loading-status'),
+      received: 0,
+      pending: 0,
+      stage: 'Starting',
+      show: function () {
+        if (this.root.classList.contains('failed')) return;
+        var mb = this.received / (1024 * 1024);
+        this.status.textContent = this.stage + (mb >= 0.1 ? '  (' + mb.toFixed(1) + ' MB)' : '');
+      },
+      // A problem the player can do something about: plain words, and a Try again button when
+      // reloading may help (it does not, for a browser without WebGPU).
+      fail: function (text, canRetry) {
+        if (this.root.classList.contains('failed')) return; // the first reason is the real one
+        this.root.classList.remove('done');
+        this.root.classList.add('failed');
+        this.status.textContent = text;
+        if (canRetry) {
+          var again = document.getElementById('loading-again');
+          again.textContent = 'Try again';
+          this.root.classList.add('retry');
+        }
+      },
+      // The player calls this once the game is running (its first update; player.js).
+      done: function () { this.root.classList.add('done'); },
+      // ...and this when the game has quit: the card comes back, with a way to play again. A game
+      // that stopped before it ever ran did not quit: it could not start, and a reason already
+      // shown (WebGPU not available) stays.
+      ended: function (started) {
+        this.root.classList.remove('done');
+        if (this.root.classList.contains('failed')) return;
+        if (!started) {
+          this.fail('Sorry, the game could not start. It needs WebGPU, which may not be working in ' +
+                    'this browser on this computer. ' + browserHelp, true);
+          return;
+        }
+        this.root.classList.add('ended');
+        this.status.textContent = 'Thanks for playing';
+        document.getElementById('loading-again').focus();
+      }
+    };
 
-  // The canvas BACKING size is what the swap chain renders at, and CSS only sets its
-  // displayed size. Without this the canvas stays at its default 300x150 backing store and
-  // everything is drawn into a fraction of the page. Capped at 2 so a high ratio display
-  // does not quadruple the pixel cost for no visible gain.
-  function resize() {
-    var ratio = Math.min(window.devicePixelRatio || 1, 2);
-    // Never zero: a collapsed canvas would configure a zero size swap chain.
-    canvas.width = Math.max(1, Math.floor(canvas.clientWidth * ratio));
-    canvas.height = Math.max(1, Math.floor(canvas.clientHeight * ratio));
-  }
-  window.addEventListener('resize', resize);
-  resize();
-  canvas.focus();
+    // The game's name, from the manifest the player reads too, for the card and the tab.
+    fetch('player.xml').then(function (r) { return r.ok ? r.text() : ''; }).then(function (text) {
+      var match = /<string name="name">([^<]*)<\/string>/.exec(text);
+      if (match && match[1]) {
+        document.title = match[1];
+        document.getElementById('loading-name').textContent = match[1];
+      }
+    }).catch(function () {});
 
-  if (!navigator.gpu) {
-    statusEl.textContent = 'WebGPU is not available in this browser.';
-  }
+    // WebGPU first: without it there is no point downloading a game. A browser can have the API
+    // and still give no adapter (WebGPU turned off, or the GPU blocklisted). The words are for a
+    // player, not a developer.
+    var browserHelp = window.isSecureContext
+        ? 'Try the latest Chrome or Edge on a computer, with hardware acceleration turned on in its settings.'
+        : 'Open this page with an https:// address, in the latest Chrome or Edge on a computer.';
+    if (!navigator.gpu) {
+      loading.fail('Sorry, this game cannot run in this browser. It needs WebGPU, which this browser ' +
+                   'does not have. ' + browserHelp);
+    } else {
+      navigator.gpu.requestAdapter().then(function (adapter) {
+        if (!adapter) {
+          loading.fail('Sorry, this game cannot run here. It needs WebGPU, and your browser cannot use ' +
+                       'it on this computer right now. ' + browserHelp);
+        }
+      }).catch(function () {
+        loading.fail('Sorry, this game cannot run here. It needs WebGPU, and your browser cannot use ' +
+                     'it on this computer right now. ' + browserHelp);
+      });
+    }
 
-  var Module = {
-    canvas: canvas,
-    print: function (text) { console.log(text); statusEl.textContent = text; },
-    printErr: function (text) { console.error(text); statusEl.textContent = text; },
-  };
-</script>
-{{{ SCRIPT }}}
+    // Every download the game makes (its engine's wasm, its content, which the player fetches
+    // one file after another) goes through fetch: count the bytes as they arrive, so the card
+    // says what is coming and how much has.
+    var pageFetch = window.fetch.bind(window);
+    window.fetch = function (input, init) {
+      var url = (typeof input === 'string') ? input : (input && input.url) || '';
+      if (/\.wasm(\?|$)/.test(url)) { loading.stage = 'Downloading the engine'; }
+      else if (/\.d?pak(\?|$)/.test(url)) { loading.stage = 'Downloading the game'; }
+      loading.show();
+      loading.pending += 1;
+      // With nothing left coming, the game is starting (setting up its first scene).
+      function finished() {
+        loading.pending -= 1;
+        if (loading.pending === 0) { loading.stage = 'Starting the game'; loading.show(); }
+      }
+      return pageFetch(input, init).then(function (response) {
+        if (!response.ok || !response.body || typeof ReadableStream === 'undefined') { finished(); return response; }
+        var reader = response.body.getReader();
+        var counted = new ReadableStream({
+          pull: function (controller) {
+            return reader.read().then(function (part) {
+              if (part.done) { controller.close(); finished(); return; }
+              loading.received += part.value.byteLength;
+              loading.show();
+              controller.enqueue(part.value);
+            });
+          },
+          cancel: function (reason) { finished(); return reader.cancel(reason); }
+        });
+        return new Response(counted, { status: response.status, statusText: response.statusText,
+                                       headers: response.headers });
+      }, function (error) { finished(); throw error; });
+    };
+
+    var Module = {
+      canvas: (function () {
+        var c = document.getElementById('canvas');
+        // The canvas BACKING size is what the swap chain renders at, and CSS only sets its
+        // displayed size. Without this the canvas stays at its default 300x150 backing store
+        // and everything is drawn into a fraction of the page. Capped at 2 so a high ratio
+        // display does not quadruple the pixel cost for no visible gain, and never zero: a
+        // collapsed canvas would configure a zero size swap chain.
+        function resize() {
+          var dpr = Math.min(window.devicePixelRatio || 1, 2);
+          var w = Math.max(1, Math.floor(c.clientWidth * dpr));
+          var h = Math.max(1, Math.floor(c.clientHeight * dpr));
+          if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+        }
+        window.addEventListener('resize', resize);
+        resize();
+        // The canvas is focusable (tabindex), which is what lets it receive key events at all:
+        // take focus so the game's input reaches it at once.
+        window.addEventListener('load', function () { c.focus(); });
+        return c;
+      })(),
+      onRuntimeInitialized: function () { loading.stage = 'Starting the game'; loading.show(); },
+      onAbort: function (what) {
+        console.error('the game stopped while loading: ' + what);
+        loading.fail('Sorry, something went wrong while loading the game.', true);
+      },
+      print: function (t) { console.log(t); },
+      printErr: function (t) { console.error(t); }
+    };
+  </script>
+  {{{ SCRIPT }}}
 </body>
 </html>

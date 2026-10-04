@@ -5,8 +5,8 @@ using Sedulous.Core.Logging;
 
 namespace Sedulous.Engine.Player.Web;
 
-/// The browser storage behind the user data directory: the calls into player.js, linked with
-/// --js-library.
+/// What the player tells the page, and the browser storage behind the user data directory:
+/// the calls into player.js, linked with --js-library.
 static class WebPage
 {
 	[CLink, CallingConvention(.Cdecl)]
@@ -17,6 +17,10 @@ static class WebPage
 	private static extern int32 sedulous_user_data_persistent();
 	[CLink, CallingConvention(.Cdecl)]
 	private static extern void sedulous_persist_user_data();
+	[CLink, CallingConvention(.Cdecl)]
+	private static extern void sedulous_page_game_running();
+	[CLink, CallingConvention(.Cdecl)]
+	private static extern void sedulous_page_game_ended(int32 started);
 	[CLink, CallingConvention(.Cdecl)]
 	private static extern void emscripten_sleep(uint32 milliseconds);
 
@@ -37,4 +41,9 @@ static class WebPage
 			(sedulous_user_data_persistent() != 0) ? "kept in the browser's storage" : "in memory for this page");
 	}
 
+	/// The game is running: the page's loading card can go.
+	public static void GameRunning() => sedulous_page_game_running();
+
+	/// The game has stopped; `started` says whether it ever ran (a quit) or could not start.
+	public static void GameEnded(bool started) => sedulous_page_game_ended(started ? 1 : 0);
 }

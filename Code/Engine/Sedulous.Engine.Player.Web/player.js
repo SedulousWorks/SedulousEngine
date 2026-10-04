@@ -37,5 +37,16 @@ addToLibrary({
         if (error) console.warn('user data was not saved to the browser storage: ' + error);
       });
     }
+  },
+
+  // The page's loading card (shell.html) stays up until the game runs; a page without one has
+  // nothing to update.
+  sedulous_page_game_running: function () {
+    if (typeof loading !== 'undefined' && loading.done) loading.done();
+  },
+  // `started`: whether the game ever ran (a quit), or stopped before its first update (it could
+  // not start).
+  sedulous_page_game_ended: function (started) {
+    if (typeof loading !== 'undefined' && loading.ended) loading.ended(started != 0);
   }
 });

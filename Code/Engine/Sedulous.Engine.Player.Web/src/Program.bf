@@ -56,6 +56,8 @@ class Program
 		{
 			Console.Error.WriteLine(
 				"Player: no WebGPU device. A recent Chrome or Edge is needed.");
+			// No app ran, so no shutdown tells the page: it could not start.
+			WebPage.GameEnded(false);
 			return 1;
 		}
 
@@ -64,7 +66,7 @@ class Program
 		// simply here.
 		options.ProjectDir.Set(".");
 
-		let app = new PlayerApplication(options);
+		let app = new WebPlayerApplication(options);
 		return WebRunner.RunApplication(app, shell, graphics);
 	}
 

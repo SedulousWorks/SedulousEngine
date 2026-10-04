@@ -51,7 +51,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
 12. ~~56d568a5~~ (done) Export: a renamed web player stays a page (`index` stages as `index.html`).
 13. ~~7e6fbeee~~ (done) Player: `serve.py` beside a web export, serving it over HTTPS to another device;
     staged into the web template.
-14. e28d714c, 7d0945b3, c72427ef, 137a3dfc, 26236a7e Player: the web page shows what is loading
+14. ~~e28d714c, 7d0945b3, c72427ef, 137a3dfc, 26236a7e~~ (done) Player: the web page shows what is loading
     until the game runs, says when a game quits and offers to play again, and says in plain
     words when WebGPU is not there. One commit, ending at 26236a7e's text.
 15. 8b9d4bbe, ae59b405 (their Sedulous counterparts) Documentation: how the web template is built
