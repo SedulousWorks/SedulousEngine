@@ -1,6 +1,11 @@
 // Enemy - a patroller: it walks back and forth along X between two points, facing the way it
-// walks. Touching it hurts the player, unless the player comes down on it from above, which
+// walks. Touching it hurts the player, unless the player comes down on it from the air, which
 // defeats it ("EnemyDefeated") and bounces the player off it. On the enemy's entity, whose first child is its model.
+//
+// Touching is a box, not a sphere: within `radius` across the ground and with the player's centre
+// no higher than `touchHeight` above the enemy's origin (and not below it). Only a player in the
+// air and on the way down stomps; one on the ground, walking or standing into the enemy, is hurt,
+// however the enemy's origin sits against the ground the player walks on.
 // FX/FxStompStars: the burst where an enemy was stomped.
 Guid kStompStars = Guid::FromString("4690f883-70cf-d244-ac13-e9a94aefc730");
 
@@ -14,8 +19,9 @@ class Enemy
 
 	[3.0, "Patrol half-width along X (m)"] float patrolDistance;
 	[2.0, "Walk speed (m/s)"] float speed;
-	[1.1, "Touch reach from the enemy's origin to the player's centre (m)"] float radius;
-	[0.5, "The player's centre this far above the enemy's counts as a stomp (m)"] float stompHeight;
+	[1.1, "Touch reach across the ground, enemy to player (m)"] float radius;
+	[1.8, "Touching while the player's centre is at most this far above the enemy's origin (m)"] float touchHeight;
+	[1.0, "Falling at least this fast counts as coming down on the enemy (m/s)"] float stompSpeed;
 	["", "The model's walk clip (an AnimationClip guid); empty keeps its idle"] string walkClip;
 
 	private Entity m_player;
@@ -61,14 +67,18 @@ class Enemy
 			return;
 		}
 		Float3 at = m_player.GetWorldPosition();
-		bool falling = at.Y < m_lastPlayerY;
+		float fallSpeed = (dt > 0.0f) ? (m_lastPlayerY - at.Y) / dt : 0.0f;
 		m_lastPlayerY = at.Y;
 		Float3 here = self.GetWorldPosition();
-		if (Distance(at, here) >= radius + stompHeight)
+		float dx = at.X - here.X;
+		float dz = at.Z - here.Z;
+		float above = at.Y - here.Y;
+		if ((dx * dx + dz * dz >= radius * radius) || (above > touchHeight) || (above < 0.0f))
 		{
 			return;
 		}
-		if (falling && (at.Y > here.Y + stompHeight))
+		bool airborne = !CharacterComponent(m_player).Grounded;
+		if (airborne && (fallSpeed >= stompSpeed))
 		{
 			scene.Scripts.Emit("EnemyDefeated", 1);
 			m_player.Send("Bounce");
@@ -76,7 +86,7 @@ class Enemy
 			Audio.PlayOneShot(kSquashSound);
 			self.Destroy();
 		}
-		else if (Distance(at, here) < radius)
+		else
 		{
 			m_player.Send("Hurt");
 		}
