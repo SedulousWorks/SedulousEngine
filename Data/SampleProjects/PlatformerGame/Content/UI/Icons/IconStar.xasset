@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">b2616554-cea4-8341-b46a-d9c4941c8f51</string>
+	<string name="typeName">Sedulous.UI.Pipeline.UIVectorImageAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">14421961383201199961</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">IconStar.svg</string>
+		</object>
+	</object>
+</root>

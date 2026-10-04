@@ -64,7 +64,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
     `Tools/scripts` copies too).
 17. ~~8967bae2, b321c2ac, 3493c59c~~ (done) Sky Hopper and PaperKid: a Web export preset (`index`, through
     `export_preset_set`); both ignore `/Cooked-*/`.
-18. eaf32784 Sky Hopper: the kit's bee, pickups, hazards and level pieces imported, and six SVG
+18. ~~eaf32784~~ (done) Sky Hopper: the kit's bee, pickups, hazards and level pieces imported, and six SVG
     HUD icons; CREDITS.md.
 19. a688882a Sky Hopper: lives, a score and stars, kept between runs (Mover, Pickup, Enemy's
     hover, the Game script, GameOver, the HUD's icons, the gems and hearts in Levels 1-3).

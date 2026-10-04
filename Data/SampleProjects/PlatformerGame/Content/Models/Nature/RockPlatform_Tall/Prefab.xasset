@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">b793775b-925a-9747-b740-cd849276cb35</string>
+	<string name="typeName">Sedulous.Scene.Resource.PrefabDocument</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6298966941287295178</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="name">RockPlatform_Tall</string>
+		</object>
+	</object>
+</root>

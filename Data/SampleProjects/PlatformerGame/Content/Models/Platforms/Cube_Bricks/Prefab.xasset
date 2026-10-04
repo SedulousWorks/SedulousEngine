@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">cdc625ed-394d-4843-98cd-c5a47b3779b8</string>
+	<string name="typeName">Sedulous.Scene.Resource.PrefabDocument</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6298966941287295178</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="name">Cube_Bricks</string>
+		</object>
+	</object>
+</root>

@@ -1,0 +1,88 @@
+<root>
+	<string name="guid">7a5ff216-db30-4140-adee-9054077c663a</string>
+	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">7383561851963481740</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">Hazard_Saw.gltf</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">2980668452812246725</u64>
+				<u32 name="version">2</u32>
+			</array>
+			<object>
+				<array name="meshGuid" count="1">
+					<string>c4bac8b5-a1ba-f14c-af6a-9ef59ef681ee</string>
+				</array>
+				<array name="meshSkinned" count="1">
+					<bool>false</bool>
+				</array>
+				<array name="meshMaterial" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="collisionGuid" count="0"/>
+				<array name="meshMaterialSlot" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="meshSlotStart" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="meshSlotCount" count="1">
+					<i32>1</i32>
+				</array>
+				<array name="materialGuid" count="1">
+					<string>85cb9dfe-9aa5-4e4b-b305-fe36ab0b6142</string>
+				</array>
+				<array name="materialAlbedo" count="1">
+					<string>00000000-0000-0000-0000-000000000000</string>
+				</array>
+				<array name="nodeName" count="1">
+					<string>Hazard_Saw</string>
+				</array>
+				<array name="nodeParent" count="1">
+					<i32>-1</i32>
+				</array>
+				<array name="nodeTranslation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+					</object>
+				</array>
+				<array name="nodeRotation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+				</array>
+				<array name="nodeScale" count="1">
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+					</object>
+				</array>
+				<array name="nodeMesh" count="1">
+					<i32>0</i32>
+				</array>
+				<string name="skeletonGuid">00000000-0000-0000-0000-000000000000</string>
+				<array name="animationGuid" count="0"/>
+				<object name="boundsMin">
+					<f32 name="x">-1.5000832</f32>
+					<f32 name="y">-1.429886</f32>
+					<f32 name="z">-0.09888231</f32>
+				</object>
+				<object name="boundsMax">
+					<f32 name="x">1.5000832</f32>
+					<f32 name="y">1.429886</f32>
+					<f32 name="z">0.09887055</f32>
+				</object>
+			</object>
+			<array name="entries" count="0"/>
+		</object>
+	</object>
+</root>
