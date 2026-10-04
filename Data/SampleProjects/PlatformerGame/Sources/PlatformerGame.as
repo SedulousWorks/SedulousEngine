@@ -33,6 +33,8 @@ Guid kGameOverDoc = Guid::FromString("be8a7e3b-28e6-e24e-845e-c39727ca0e09"); //
 Guid kLevel1 = Guid::FromString("d54b3804-21ff-724a-a076-4e971ef6b238");     // Scenes/Level1
 Guid kLevel2 = Guid::FromString("d56e307e-8751-4241-a1ff-565b483b2cf1");     // Scenes/Level2
 Guid kLevel3 = Guid::FromString("e8094435-4425-034d-b972-6bca7668b14d");     // Scenes/Level3
+Guid kLevel4 = Guid::FromString("e4fe9908-429b-3c4f-9257-95cddc58d7d6");     // Scenes/Level4
+Guid kLevel5 = Guid::FromString("ea16b013-ac16-8a4f-9281-f8ebcb5d94f1");     // Scenes/Level5
 
 // Music: CodeManu's Platformer Game Music Pack (CC-BY 3.0) and Juhani Junkala's Chiptune
 // Adventures (CC0); see CREDITS.md.
@@ -47,7 +49,7 @@ Guid kVictoryJingle = Guid::FromString("a8c66ad5-4705-ae4e-af1e-ca70bb89e446"); 
 Guid kChime = Guid::FromString("cd3e0197-ff26-a740-8ad2-a7774508f0f8");
 const float kMusicVolume = 0.55f;
 
-const int kLevelCount = 3;
+const int kLevelCount = 5;
 const int kStartLives = 3;
 const int kMaxLives = 9;
 const int kCoinsPerLife = 50;
@@ -64,39 +66,37 @@ const float kClearHoldSeconds = 4.0f;
 
 Guid levelScene(int index)
 {
-	if (index == 1)
+	switch (index)
 	{
-		return kLevel2;
-	}
-	if (index == 2)
-	{
-		return kLevel3;
+	case 1: return kLevel2;
+	case 2: return kLevel3;
+	case 3: return kLevel4;
+	case 4: return kLevel5;
 	}
 	return kLevel1;
 }
 
+/// The later levels reuse the first ones' tracks.
 Guid levelMusic(int index)
 {
-	if (index == 1)
+	switch (index)
 	{
-		return kLevel2Music;
-	}
-	if (index == 2)
-	{
-		return kLevel3Music;
+	case 1: return kLevel2Music;
+	case 2: return kLevel3Music;
+	case 3: return kLevel1Music;
+	case 4: return kLevel2Music;
 	}
 	return kLevel1Music;
 }
 
 string levelName(int index)
 {
-	if (index == 1)
+	switch (index)
 	{
-		return "Crab Crossing";
-	}
-	if (index == 2)
-	{
-		return "Sky Climb";
+	case 1: return "Crab Crossing";
+	case 2: return "Sky Climb";
+	case 3: return "Bee Meadow";
+	case 4: return "Cloud Fortress";
 	}
 	return "Grassy Hills";
 }
@@ -104,13 +104,12 @@ string levelName(int index)
 /// A clear in this many seconds or fewer earns the time star, and every second under it scores.
 float levelPar(int index)
 {
-	if (index == 1)
+	switch (index)
 	{
-		return 50.0f;
-	}
-	if (index == 2)
-	{
-		return 60.0f;
+	case 1: return 50.0f;
+	case 2: return 60.0f;
+	case 3: return 70.0f;
+	case 4: return 85.0f;
 	}
 	return 40.0f;
 }

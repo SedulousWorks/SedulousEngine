@@ -9,3 +9,6 @@
 
 # The editor's per project workspace state: open pages, dock layout, favorites.
 /Editor/
+
+# Python bytecode the tools leave behind.
+__pycache__/

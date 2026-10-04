@@ -68,6 +68,6 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
     HUD icons; CREDITS.md.
 19. ~~a688882a~~ (done) Sky Hopper: lives, a score and stars, kept between runs (Mover, Pickup, Enemy's
     hover, the Game script, GameOver, the HUD's icons, the gems and hearts in Levels 1-3).
-20. 8ac36257 Sky Hopper: Bee Meadow and Cloud Fortress, built by `Tools/` (mcp.py, skygen.py,
+20. ~~8ac36257~~ (done) Sky Hopper: Bee Meadow and Cloud Fortress, built by `Tools/` (mcp.py, skygen.py,
     levels.py, ported as PaperKid's were).
 21. b97873c9 Sky Hopper: the level's card drops in once the fade clears.

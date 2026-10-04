@@ -9,8 +9,9 @@ as part of the work. It has also shipped to a Steam Deck through the container b
 
 ## The game
 
-Three levels of floating grass islands (Grassy Hills, Crab Crossing, Sky Climb): hop between
-platforms, collect coins, stomp crabs and skulls from above, dodge spikes, and reach the flag.
+Five levels of floating islands (Grassy Hills, Crab Crossing, Sky Climb, Bee Meadow, Cloud
+Fortress): hop between platforms, collect coins, stomp crabs, skulls and bees from above, cross
+bridges, dodge spikes, swinging saws and spiky balls, and reach the flag.
 A title screen with settings (master, music and effect volumes), an intro banner per level, a
 pause menu, a HUD of icons (lives, coins, the gem, the clock and the score, with gains floating
 up from it), the clear card, a game over card and a victory screen with the run's totals.
@@ -34,6 +35,8 @@ to jump and confirm, Start (Options) to pause.
 - `Sources/`: the raw sources: the AngelScript scripts, the UI markup and theme, the fonts, the
   audio, and the kit's glTF models.
 - `Content/`: the asset envelopes (`*.xasset`) and their sidecars.
+- `Tools/`: the authoring scripts that drive the editor's MCP tools (levels 4 and 5 among them);
+  not game content.
 - `export_presets.xml`: the Linux desktop, Steam Deck and Web export targets.
 - `CREDITS.md` and `Licenses/`: the third-party assets and their licences. The music by CodeManu
   is CC-BY 3.0 and must stay credited; everything else is CC0, OFL or Apache 2.0.
