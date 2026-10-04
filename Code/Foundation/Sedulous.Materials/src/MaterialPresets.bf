@@ -31,8 +31,9 @@ static class MaterialPresets
 			// variant.
 			..Float("WindStrength", 0.0f)
 			..Float("WindSpeed", 0.0f)
-			// Black means none: the emissive map multiplies through this.
-			..Color("EmissiveColor", .(0, 0, 0, 1))
+			// Black means none: the emissive map multiplies through this, times the intensity
+			// in w (a glow above white).
+			..ColorHdr("EmissiveColor", .(0, 0, 0, 1))
 			..Float("OcclusionStrength", 1.0f)
 			..Float("NormalScale", 1.0f)
 			..Float("AlphaCutoff", 0.5f)
@@ -63,5 +64,19 @@ static class MaterialPresets
 			..Texture("AlbedoMap")
 			..Sampler("MainSampler")
 			.Build();
+	}
+
+	/// The builtin template a builtin shader's materials are made from (CreatePbr for
+	/// "forward", CreateUnlit for "unlit"), or null for a custom shader: what a stored
+	/// material's property table is checked against.
+	///
+	/// THE CALLER OWNS what comes back.
+	public static Material BuiltinTemplate(StringView shaderName)
+	{
+		if (shaderName == "forward")
+			return CreatePbr("__template", .(1, 1, 1, 1), 0.0f, 0.5f, shaderName);
+		if (shaderName == "unlit")
+			return CreateUnlit("__template", .(1, 1, 1, 1), shaderName);
+		return null;
 	}
 }

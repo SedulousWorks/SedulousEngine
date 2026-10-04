@@ -431,7 +431,8 @@ class MaterialSystem : IMaterialInstanceSink
 		if (mapped == null)
 			return true;
 
-		Internal.MemCpy(mapped, data.Ptr, data.Length);
+		// The authored colours decoded on the way (sRGB to linear).
+		MaterialUniforms.EncodeForGpu(instance.Material, data, (uint8*)mapped);
 		buffer.Unmap();
 		return true;
 	}

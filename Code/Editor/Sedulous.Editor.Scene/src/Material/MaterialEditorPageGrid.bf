@@ -60,12 +60,14 @@ extension MaterialEditorPage
 			let type = (i < src.PropertyTypes.Count) ? (MaterialPropertyType)src.PropertyTypes[i] : MaterialPropertyType.Float;
 			// A copy: the grid outlives rebuilds of the source's arrays.
 			let name = Own(new String(src.PropertyNames[i]));
-			switch (type)
+			switch (MaterialPropertyRow.For(type))
 			{
-			case .Float: AddFloatRow(name);
-			case .Float4: AddColorRow(name);
-			case .Texture2D, .TextureCube: AddTextureRow(name);
-			default:
+			case .Number: AddFloatRow(name);
+			case .Numbers4: AddFloat4Row(name);
+			case .Color: AddColorRow(name, false);
+			case .ColorWithIntensity: AddColorRow(name, true);
+			case .Texture: AddTextureRow(name);
+			case .None:
 			}
 		}
 	}
@@ -123,15 +125,40 @@ extension MaterialEditorPage
 		AddEditor(editor, new [=this, =editor, =name]() => editor.SetValue(ReadFloat(name)));
 	}
 
-	private void AddColorRow(String name)
+	/// Plain numbers: only a declared colour property gets a colour picker.
+	private void AddFloat4Row(String name)
 	{
-		let editor = new ColorEditor(name, ReadColor(name), new [=this, =name](c) =>
+		let editor = new Float4Editor(name, ReadFloat4(name), -100000.0f, 100000.0f, 0.01f, new [=this, =name](v) =>
 			{
-				let v = Float4(c.R, c.G, c.B, c.A);
 				ApplyEdit(name, new [=name, =v](s) => MaterialSourceEdit.WriteFloat4(s, name, v));
 			}, "Properties");
 		editor.SetDisplayName(PropertyNames.Prettify(name, .. scope .()));
-		AddEditor(editor, new [=this, =editor, =name]() => editor.SetValue(ReadColor(name)));
+		AddEditor(editor, new [=this, =editor, =name]() => editor.SetValue(ReadFloat4(name)));
+	}
+
+	/// The colour as entered (sRGB, what the picker shows). A ColorHdr keeps its intensity in
+	/// w, edited on its own row, so the picker's alpha is not it.
+	private void AddColorRow(String name, bool hdr)
+	{
+		let editor = new ColorEditor(name, ReadColor(name, hdr), new [=this, =name, =hdr](c) =>
+			{
+				let v = Float4(c.R, c.G, c.B, hdr ? ReadFloat4(name).W : c.A);
+				ApplyEdit(name, new [=name, =v](s) => MaterialSourceEdit.WriteFloat4(s, name, v));
+			}, "Properties");
+		editor.SetDisplayName(PropertyNames.Prettify(name, .. scope .()));
+		AddEditor(editor, new [=this, =editor, =name, =hdr]() => editor.SetValue(ReadColor(name, hdr)));
+		if (!hdr)
+			return;
+
+		let intensityName = Own(new String(name)..Append("Intensity"));
+		let intensity = new FloatEditor(intensityName, ReadFloat4(name).W, 0.0, 1e6, 0.05, 3, new [=this, =name](i) =>
+			{
+				var v = ReadFloat4(name);
+				v.W = (float)i;
+				ApplyEdit(name, new [=name, =v](s) => MaterialSourceEdit.WriteFloat4(s, name, v));
+			}, "Properties");
+		intensity.SetDisplayName(PropertyNames.Prettify(intensityName, .. scope .()));
+		AddEditor(intensity, new [=this, =intensity, =name]() => intensity.SetValue(ReadFloat4(name).W));
 	}
 
 	private void AddTextureRow(String slot)
@@ -147,9 +174,11 @@ extension MaterialEditorPage
 
 	private float ReadFloat(StringView name) => (mAsset != null) ? MaterialSourceEdit.ReadFloat(mAsset.Source, name) : 0.0f;
 
-	private Color ReadColor(StringView name)
+	private Float4 ReadFloat4(StringView name) => (mAsset != null) ? MaterialSourceEdit.ReadFloat4(mAsset.Source, name) : Float4(1, 1, 1, 1);
+
+	private Color ReadColor(StringView name, bool hdr)
 	{
-		let v = (mAsset != null) ? MaterialSourceEdit.ReadFloat4(mAsset.Source, name) : Float4(1, 1, 1, 1);
-		return .(v.X, v.Y, v.Z, v.W);
+		let v = ReadFloat4(name);
+		return .(v.X, v.Y, v.Z, hdr ? 1.0f : v.W);
 	}
 }

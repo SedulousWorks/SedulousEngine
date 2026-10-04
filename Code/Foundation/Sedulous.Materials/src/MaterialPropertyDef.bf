@@ -24,6 +24,8 @@ struct MaterialPropertyDef
 	/// Everything that carries uniform data, which is everything that is not a bound
 	/// object.
 	public bool IsUniform => !IsTexture && !IsSampler;
+	/// An authored colour, decoded on its way to the GPU (MaterialUniforms.EncodeForGpu).
+	public bool IsColor => (Type == .Color) || (Type == .ColorHdr);
 
 	/// The PACKED size of a uniform kind, and zero for a texture or a sampler, which carry
 	/// no uniform data at all.
@@ -34,7 +36,7 @@ struct MaterialPropertyDef
 		case .Float, .Int: return 4;
 		case .Float2, .Int2: return 8;
 		case .Float3, .Int3: return 12;
-		case .Float4, .Int4: return 16;
+		case .Float4, .Int4, .Color, .ColorHdr: return 16;
 		case .Matrix4x4: return 64;
 		case .Texture2D, .TextureCube, .Sampler: return 0;
 		}

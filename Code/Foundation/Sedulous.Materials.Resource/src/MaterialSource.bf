@@ -17,7 +17,7 @@ namespace Sedulous.Materials.Resource;
 /// thousand copies of a decision that belongs in one place. The texture slots that ARE
 /// bound are stored, by resource id.
 /// Version three.
-[Serializable(3)]
+[Serializable(3, true)] // afterRead: the stored colours typed on read
 class MaterialSource
 {
 	[DisplayName("Name")]
@@ -96,5 +96,32 @@ class MaterialSource
 
 		outSource.UniformDefaults.Clear();
 		outSource.UniformDefaults.AddRange(material.DefaultUniformData);
+	}
+
+	/// Once read (the [Serializable] hook): stored colours typed as the template declares them.
+	public void AfterRead()
+	{
+		AdoptTemplateColorTypes();
+	}
+
+	/// A material stored before materials had colour properties declared its colours as
+	/// Float4. A Float4 that the builtin template of this material's shader declares as a
+	/// colour takes the template's colour type, so its value is treated as the sRGB colour it
+	/// was entered as (and the editor shows a colour picker for it). Only the type changes,
+	/// never an offset or a size. Idempotent; a custom shader's properties are left as they are.
+	public void AdoptTemplateColorTypes()
+	{
+		let template = MaterialPresets.BuiltinTemplate(ShaderName);
+		if (template == null)
+			return;
+		defer delete template;
+		let count = Math.Min(PropertyNames.Count, PropertyTypes.Count);
+		for (int i < count)
+		{
+			if (PropertyTypes[i] != (uint8)MaterialPropertyType.Float4)
+				continue;
+			if (template.FindProperty(PropertyNames[i], let def) && def.IsColor)
+				PropertyTypes[i] = (uint8)def.Type;
+		}
 	}
 }

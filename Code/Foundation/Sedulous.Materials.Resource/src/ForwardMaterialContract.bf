@@ -11,7 +11,8 @@ namespace Sedulous.Materials.Resource;
 /// A stale source is REFUSED rather than upgraded in memory. Upgrading would need this
 /// layer to know the offsets the shader expects, which is exactly the coupling the data
 /// driven model exists to avoid; and a source that silently gains properties on load is a
-/// source that never gets re-cooked.
+/// source that never gets re-cooked. (A stored colour's TYPE is brought in line on read,
+/// MaterialSource.AdoptTemplateColorTypes: no property, offset or size changes.)
 static class ForwardMaterialContract
 {
 	public const String ShaderName = "forward";

@@ -21,10 +21,17 @@ namespace Sedulous.Core.Serialization;
 ///
 /// The opt-out is to implement ISerializable yourself and not apply this: for a type whose
 /// stored shape is not its field list, a hand-written body still wins.
+///
+/// `afterRead` has the body call the type's parameterless `AfterRead()` once its fields are
+/// read: the one place a record brings data stored under an older rule in line with the
+/// current one (a material's colours typed as its template declares them), on every path that
+/// reads it. Asked for explicitly, since a type's own methods cannot be read while it is being
+/// built.
 [AttributeUsage(.Class, .NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
 struct SerializableAttribute : Attribute, IComptimeTypeApply
 {
 	private uint32 mDataVersion;
+	private bool mAfterRead;
 
 	/// dataVersion is the version this type's data is written with. Zero, the default,
 	/// means unversioned and writes no envelope at all, so nothing can be checked when it
@@ -34,9 +41,10 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 	/// supported per type: a payload stamped with a different version is REFUSED rather
 	/// than migrated or guessed at. Bump this when the wire changes, and re-save what was
 	/// written under the old one.
-	public this(uint32 dataVersion = 0)
+	public this(uint32 dataVersion = 0, bool afterRead = false)
 	{
 		mDataVersion = dataVersion;
+		mAfterRead = afterRead;
 	}
 
 	[Comptime]
@@ -139,6 +147,8 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 		body.Append("\tar.EndObject();\n");
 		if (mDataVersion > 0)
 			body.Append("\tSedulous.Core.Serialization.EndVersionedPayload(ar);\n");
+		if (mAfterRead)
+			body.Append("\tif (ar.Mode == .Read)\n\t\tAfterRead();\n");
 		body.Append("}");
 
 		Compiler.EmitTypeBody(type, body);

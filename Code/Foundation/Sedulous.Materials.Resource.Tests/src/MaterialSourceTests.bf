@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
@@ -156,4 +157,43 @@ class MaterialSourceTests
 		Test.Assert(MaterialSource.DataVersion == 3);
 	}
 
+
+	/// A material stored before colour properties existed declared its colours as Float4: read
+	/// back, they take the colour types its builtin shader's template declares, and nothing
+	/// else changes.
+	[Test]
+	public static void AStoredFloat4ColourReadsAsTheTemplatesColourType()
+	{
+		let pbr = MaterialPresets.CreatePbr("old");
+		defer delete pbr;
+		let source = scope MaterialSource();
+		MaterialSource.FromMaterial(pbr, .(), source);
+		int baseColor = -1, emissive = -1, metallic = -1;
+		for (int i < source.PropertyNames.Count)
+		{
+			if (source.PropertyNames[i] == "BaseColor") baseColor = i;
+			if (source.PropertyNames[i] == "EmissiveColor") emissive = i;
+			if (source.PropertyNames[i] == "Metallic") metallic = i;
+			let type = (MaterialPropertyType)source.PropertyTypes[i];
+			if ((type == .Color) || (type == .ColorHdr))
+				source.PropertyTypes[i] = (uint8)MaterialPropertyType.Float4; // as it was stored
+		}
+		let offsets = scope List<uint32>()..AddRange(source.PropertyOffsets);
+
+		let loaded = scope MaterialSource();
+		RoundTrip(source, loaded);
+		Test.Assert(loaded.PropertyTypes[baseColor] == (uint8)MaterialPropertyType.Color);
+		Test.Assert(loaded.PropertyTypes[emissive] == (uint8)MaterialPropertyType.ColorHdr);
+		Test.Assert(loaded.PropertyTypes[metallic] == (uint8)MaterialPropertyType.Float);
+		Test.Assert(loaded.PropertyOffsets.Count == offsets.Count);
+		for (int i < offsets.Count)
+			Test.Assert(loaded.PropertyOffsets[i] == offsets[i], "no offset moves");
+
+		// Idempotent; and a custom shader's Float4 is left as it is.
+		loaded.AdoptTemplateColorTypes();
+		Test.Assert(loaded.PropertyTypes[baseColor] == (uint8)MaterialPropertyType.Color);
+		source.ShaderName.Set("my_custom_shader");
+		source.AdoptTemplateColorTypes();
+		Test.Assert(source.PropertyTypes[baseColor] == (uint8)MaterialPropertyType.Float4);
+	}
 }

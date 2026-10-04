@@ -124,10 +124,25 @@ class MaterialBuilder
 		return this;
 	}
 
-	/// A colour IS a four component vector. The name exists so a call site says which it
-	/// means, and so the default is white rather than transparent black.
+	/// An authored colour (sRGB rgba); the GPU sees it linear. White by default rather than
+	/// transparent black.
 	public MaterialBuilder Color(StringView name, Float4 value = .(1, 1, 1, 1))
-		=> Float4(name, value);
+	{
+		AddUniform(name, .Color, 16, true);
+		mMaterial.AllocateDefaultUniformData();
+		mMaterial.SetDefaultFloat4(name, value);
+		return this;
+	}
+
+	/// An authored colour with an intensity: sRGB rgb, a linear intensity in w, for a glow
+	/// above white.
+	public MaterialBuilder ColorHdr(StringView name, Float4 colorAndIntensity)
+	{
+		AddUniform(name, .ColorHdr, 16, true);
+		mMaterial.AllocateDefaultUniformData();
+		mMaterial.SetDefaultFloat4(name, colorAndIntensity);
+		return this;
+	}
 
 	// ---- resource properties ----
 

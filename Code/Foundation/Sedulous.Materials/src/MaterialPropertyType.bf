@@ -21,4 +21,10 @@ enum MaterialPropertyType : uint8
 	case Texture2D;
 	case TextureCube;
 	case Sampler;
+	/// A colour as authored: sRGB, as a picker and a hex code show it (rgba, 16 bytes). The
+	/// GPU receives it decoded to linear (alpha as is), so a shader reads a linear float4.
+	case Color;
+	/// A colour that may be brighter than white: an sRGB colour in rgb and a linear intensity
+	/// in a (16 bytes). The GPU receives linear rgb times the intensity, and a of one.
+	case ColorHdr;
 }

@@ -53,6 +53,32 @@ class GeneratedSerializeTests
 		Test.Assert(target.Name == "generated");
 	}
 
+	/// A type's AfterRead runs once a read has filled its fields, and never on a write: the
+	/// hook a record brings data stored under an older rule in line with.
+	[Test]
+	public static void AfterReadRunsOnceTheFieldsAreRead()
+	{
+		let stream = scope MemoryStream();
+		let source = scope AfterReadSample();
+		source.Value = 7;
+		{
+			let writer = scope BinarySerializer(stream, .Write);
+			Serialize(writer, (ISerializable)source);
+			Test.Assert(writer.IsOk);
+		}
+		Test.Assert(source.ReadCount == 0, "not on a write");
+
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		let target = scope AfterReadSample();
+		{
+			let reader = scope BinarySerializer(stream, .Read);
+			Serialize(reader, (ISerializable)target);
+			Test.Assert(reader.IsOk);
+		}
+		Test.Assert(target.ReadCount == 1);
+		Test.Assert(target.ValueSeen == 7, "after the fields");
+	}
+
 	/// Applying the attribute is what makes the type serializable: nothing in the type
 	/// says so, and the interface is added by the same pass that emits the body.
 	[Test]

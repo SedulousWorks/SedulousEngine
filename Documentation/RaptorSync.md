@@ -34,7 +34,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 7. ~~d8c84631 + 55f58ece~~ (done) Engine.Render: extraction decodes every authored colour (mesh, instanced
    tints, sprite, decal, cameras' clears, lights, ambient, sky); the default environment colours
    written in sRGB so a default scene keeps its look.
-8. aa36f9c2 Materials: `Color` and `ColorHdr` property types, decoded at upload
+8. ~~aa36f9c2~~ (done) Materials: `Color` and `ColorHdr` property types, decoded at upload
    (`EncodeUniformsForGpu`); a stored Float4 adopts its builtin template's colour type; the
    material page's rows.
 9. d0d33155 (Sedulous's part) Sky Hopper: its 35 materials re-expressed in sRGB, look kept.

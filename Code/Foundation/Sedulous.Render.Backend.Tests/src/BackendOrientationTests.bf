@@ -103,7 +103,8 @@ class BackendOrientationTests
 
 		let cubeMaterial = MaterialPresets.CreatePbr("probe.cube", .(1, 1, 1, 1), 0.0f, 0.6f);
 		defer delete cubeMaterial;
-		let planeMaterial = MaterialPresets.CreatePbr("probe.plane", .(0.18f, 0.18f, 0.18f, 1),
+		// 18% grey (linear 0.18), written as the sRGB colour it is entered as.
+		let planeMaterial = MaterialPresets.CreatePbr("probe.plane", .(0.461f, 0.461f, 0.461f, 1),
 			0.0f, 0.8f);
 		defer delete planeMaterial;
 
