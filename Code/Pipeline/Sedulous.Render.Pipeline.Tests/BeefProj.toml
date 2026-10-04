@@ -1,0 +1,17 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Render.Pipeline.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Render.Pipeline.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Render" = "*"
+"Sedulous.Render.Pipeline" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.VFS" = "*"

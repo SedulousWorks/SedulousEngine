@@ -17,47 +17,37 @@ class PostProcessSystem : SceneSystem
 	public override Type SettingsType => typeof(PostProcessSettings);
 	public override void* SettingsInstance => &mPost;
 	public override StringView SettingsId => "postprocess";
+	/// Version 2 adds the source and its profile; a version 1 block reads the source Scene.
+	public override uint32 SettingsDataVersion => 2;
+	public override uint32 SettingsMinReadDataVersion => 1;
+
+	/// The values in effect, as the environment's: the profile's while the source is Profile
+	/// and it is loaded, the scene's own otherwise.
+	public PostProcessSettings* Effective
+	{
+		get
+		{
+			if (mPost.Source == .Profile)
+			{
+				if (let profile = mPost.Profile.Get)
+					return &profile.Values;
+			}
+			return &mPost;
+		}
+	}
 
 	public override void ResolveResources(ResourceManager manager)
 	{
 		mPost.GradingLut.Bind(manager);
+		mPost.Profile.Bind(manager);
 	}
 
 	public override void SerializeSettings(ISerializer ar)
 	{
-		SerializeValue(ar, "exposureEV", ref mPost.ExposureEV);
-		SerializeEnum(ar, "tonemapOperator", ref mPost.TonemapOperator);
-		SerializeValue(ar, "bloomEnabled", ref mPost.BloomEnabled);
-		SerializeValue(ar, "bloomThreshold", ref mPost.BloomThreshold);
-		SerializeValue(ar, "bloomKnee", ref mPost.BloomKnee);
-		SerializeValue(ar, "bloomIntensity", ref mPost.BloomIntensity);
-		SerializeEnum(ar, "aoMode", ref mPost.AoMode);
-		SerializeValue(ar, "aoStrength", ref mPost.AoStrength);
-		SerializeValue(ar, "aoRadius", ref mPost.AoRadius);
-		SerializeValue(ar, "aoIntensity", ref mPost.AoIntensity);
-		SerializeValue(ar, "ssrEnabled", ref mPost.SsrEnabled);
-		SerializeValue(ar, "ssrIntensity", ref mPost.SsrIntensity);
-		SerializeEnum(ar, "aaMode", ref mPost.AaMode);
-		SerializeValue(ar, "taaBlendFactor", ref mPost.TaaBlendFactor);
-		SerializeValue(ar, "taaVarianceGamma", ref mPost.TaaVarianceGamma);
-		SerializeValue(ar, "fxaaSubpixel", ref mPost.FxaaSubpixel);
-		SerializeValue(ar, "autoExposure", ref mPost.AutoExposure);
-		SerializeValue(ar, "autoExposureKey", ref mPost.AutoExposureKey);
-		SerializeValue(ar, "autoExposureSpeed", ref mPost.AutoExposureSpeed);
-		SerializeValue(ar, "autoExposureMinEV", ref mPost.AutoExposureMinEV);
-		SerializeValue(ar, "autoExposureMaxEV", ref mPost.AutoExposureMaxEV);
-		SerializeValue(ar, "gradingLut", ref mPost.GradingLut.Id);
-		SerializeValue(ar, "gradingIntensity", ref mPost.GradingIntensity);
-		SerializeValue(ar, "ssgiEnabled", ref mPost.SsgiEnabled);
-		SerializeValue(ar, "ssgiIntensity", ref mPost.SsgiIntensity);
-	}
-
-	/// Round trips an enum through its underlying width, which is what the dispatcher takes.
-	private static void SerializeEnum<E>(ISerializer ar, StringView key, ref E value)
-		where E : enum
-	{
-		var raw = (uint32)value;
-		SerializeValue(ar, key, ref raw);
-		value = (E)raw;
+		RenderSettingsValues.SerializePost(ar, ref mPost);
+		if ((ar.Mode == .Read) && (ar.Version < 2))
+			return;
+		RenderSettingsValues.SerializeEnum(ar, "source", ref mPost.Source);
+		SerializeValue(ar, "profile", ref mPost.Profile.Id);
 	}
 }

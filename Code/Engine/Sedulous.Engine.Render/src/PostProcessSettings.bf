@@ -19,6 +19,16 @@ namespace Sedulous.Engine.Render;
 [Scriptable(.AllPublic)]
 struct PostProcessSettings
 {
+	/// Where the values come from: the scene's own below, or Profile's while the source is
+	/// Profile. The scene's alone: a profile carries no source.
+	[SceneOnly]
+	[Description("Where the values come from: this scene's own, or a shared Post Process Profile asset")]
+	public SettingsSource Source = .Scene;
+	[SceneOnly]
+	[VisibleWhen("Source=1")]
+	[Description("The shared Post Process Profile whose values this scene uses")]
+	public Ref<PostProcessProfile> Profile = .(Guid());
+
 	/// Photographic STOPS: the tonemap applies two to this power, so nought is neutral, plus
 	/// one is a stop brighter and minus one a stop darker.
 	[Range(-8.0f, 8.0f, 0.05f)]

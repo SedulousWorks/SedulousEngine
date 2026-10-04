@@ -17,6 +17,16 @@ namespace Sedulous.Engine.Render;
 [Scriptable(.AllPublic)]
 struct EnvironmentSettings
 {
+	/// Where the values come from: the scene's own below, or Profile's while the source is
+	/// Profile. The scene's alone: a profile carries no source.
+	[SceneOnly]
+	[Description("Where the values come from: this scene's own, or a shared Environment Profile asset")]
+	public SettingsSource Source = .Scene;
+	[SceneOnly]
+	[VisibleWhen("Source=1")]
+	[Description("The shared Environment Profile whose values this scene uses")]
+	public Ref<EnvironmentProfile> Profile = .(Guid());
+
 	/// A flat ambient FILL added on top of the image based ambient in every sky mode, so an
 	/// intensity of nought is pure IBL. Where IBL is unavailable this is the only ambient. sRGB,
 	/// like every colour (the default is the look it had when colours were read raw).

@@ -17,6 +17,7 @@ using Sedulous.Model.Resource;
 using Sedulous.Navigation.Resource;
 using Sedulous.Particles.Resource;
 using Sedulous.Physics.Resource;
+using Sedulous.Engine.Render;
 using Sedulous.PropertyAnimation.Resource;
 using Sedulous.Scene.Resource;
 using Sedulous.Script.Resource;
@@ -36,6 +37,7 @@ using Sedulous.ModelImporter;
 using Sedulous.Navigation.Pipeline;
 using Sedulous.Particles.Pipeline;
 using Sedulous.Physics.Pipeline;
+using Sedulous.Render.Pipeline;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.ScriptSurface;
@@ -66,11 +68,11 @@ namespace Sedulous.Pipeline.Registration;
 /// matching constant DELIBERATELY, and a lost registration then fails the test loudly.
 static class PipelineRegistration
 {
-	public const int cBuilderCount = 28;
+	public const int cBuilderCount = 30;
 	public const int cImporterCount = 10;
 	/// The creators every build has; the scripts add three per language with a cook on top
 	/// (ScriptCreators.CountFor).
-	public const int cCreatorCount = 26;
+	public const int cCreatorCount = 28;
 
 	/// The pipeline surface the script cooks compile against, made by the type registration
 	/// and released by Teardown.
@@ -103,6 +105,7 @@ static class PipelineRegistration
 		ParticleResources.RegisterAll();
 		PhysicsResources.RegisterAll();
 		PropertyAnimationResources.RegisterAll();
+		RenderProfileResources.RegisterAll();
 		SceneResources.RegisterAll();
 		ScriptResources.RegisterAll();
 		ShaderResources.RegisterAll();
@@ -125,6 +128,7 @@ static class PipelineRegistration
 		ParticlesPipeline.RegisterAll();
 		PhysicsPipeline.RegisterAll();
 		PropertyAnimationPipeline.RegisterAll();
+		RenderPipeline.RegisterAll();
 		ScriptPipeline.RegisterAll();
 		ShadersPipeline.RegisterAll();
 		TerrainPipeline.RegisterAll();
@@ -175,6 +179,8 @@ static class PipelineRegistration
 		registry.Register(new ModelManifestAssetBuilder());
 		registry.Register(new CollisionShapeAssetBuilder());
 		registry.Register(new PhysicalMaterialAssetBuilder());
+		registry.Register(new EnvironmentProfileAssetBuilder());
+		registry.Register(new PostProcessProfileAssetBuilder());
 		registry.Register(new NavigationZoneAssetBuilder());
 		registry.Register(new UIDocumentAssetBuilder());
 		registry.Register(new UIThemeAssetBuilder());
@@ -208,6 +214,7 @@ static class PipelineRegistration
 		PropertyAnimationCreators.Register(registry);
 		GeometryCreators.Register(registry);
 		PhysicsCreators.Register(registry);
+		RenderCreators.Register(registry);
 		AudioCreators.Register(registry);
 		UICreators.Register(registry);
 		HeightfieldCreators.Register(registry);

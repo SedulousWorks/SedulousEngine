@@ -43,47 +43,40 @@ class EnvironmentSystem : SceneSystem
 	public override Type SettingsType => typeof(EnvironmentSettings);
 	public override void* SettingsInstance => &mEnvironment;
 	public override StringView SettingsId => "environment";
-	/// Version 2 adds the shadow reach; a version 1 block reads its defaults.
-	public override uint32 SettingsDataVersion => 2;
+	/// Version 2 adds the shadow reach, version 3 the source and its profile; an older block
+	/// reads the defaults for what it lacks, the source Scene among them.
+	public override uint32 SettingsDataVersion => 3;
 	public override uint32 SettingsMinReadDataVersion => 1;
+
+	/// The values in effect: the profile's while the source is Profile and it is loaded, the
+	/// scene's own otherwise. What the renderer reads; Environment is always the scene's own
+	/// block, its source and its stored values.
+	public EnvironmentSettings* Effective
+	{
+		get
+		{
+			if (mEnvironment.Source == .Profile)
+			{
+				if (let profile = mEnvironment.Profile.Get)
+					return &profile.Values;
+			}
+			return &mEnvironment;
+		}
+	}
 
 	public override void ResolveResources(ResourceManager manager)
 	{
 		mEnvironment.SkyTexture.Bind(manager);
+		mEnvironment.Profile.Bind(manager);
 	}
 
 	public override void SerializeSettings(ISerializer ar)
 	{
-		SerializeValue(ar, "skyTexture", ref mEnvironment.SkyTexture.Id);
-		ar.Key("ambientColor");
-		Sedulous.Core.Serialization.Serialize(ar, ref mEnvironment.AmbientColor);
-		SerializeValue(ar, "ambientIntensity", ref mEnvironment.AmbientIntensity);
-
-		var mode = (uint32)mEnvironment.SkyMode;
-		SerializeValue(ar, "skyMode", ref mode);
-		mEnvironment.SkyMode = (SkyMode)mode;
-
-		SerializeValue(ar, "skyIntensity", ref mEnvironment.SkyIntensity);
-		SerializeValue(ar, "skyBackgroundIntensity", ref mEnvironment.SkyBackgroundIntensity);
-		SerializeValue(ar, "skyRotation", ref mEnvironment.SkyRotation);
-
-		ar.Key("skyHorizon");
-		Sedulous.Core.Serialization.Serialize(ar, ref mEnvironment.SkyHorizon);
-		ar.Key("skyZenith");
-		Sedulous.Core.Serialization.Serialize(ar, ref mEnvironment.SkyZenith);
-		ar.Key("skyGround");
-		Sedulous.Core.Serialization.Serialize(ar, ref mEnvironment.SkyGround);
-
-		SerializeValue(ar, "sunIntensity", ref mEnvironment.SunIntensity);
-		SerializeValue(ar, "sunAngularSize", ref mEnvironment.SunAngularSize);
-		SerializeValue(ar, "turbidity", ref mEnvironment.Turbidity);
-		SerializeValue(ar, "iblDiffuseIntensity", ref mEnvironment.IblDiffuseIntensity);
-		SerializeValue(ar, "iblSpecularIntensity", ref mEnvironment.IblSpecularIntensity);
-		// Version 1 had no shadow reach: the defaults, which are what it rendered with.
-		if ((ar.Mode == .Read) && (ar.Version == 1))
+		let write = ar.Mode == .Write;
+		RenderSettingsValues.SerializeEnvironment(ar, ref mEnvironment, write || (ar.Version >= 2));
+		if (!write && (ar.Version < 3))
 			return;
-		SerializeValue(ar, "shadowDistance", ref mEnvironment.ShadowDistance);
-		SerializeValue(ar, "shadowCascadeSplit", ref mEnvironment.ShadowCascadeSplit);
-		SerializeValue(ar, "shadowFadeDistance", ref mEnvironment.ShadowFadeDistance);
+		RenderSettingsValues.SerializeEnum(ar, "source", ref mEnvironment.Source);
+		SerializeValue(ar, "profile", ref mEnvironment.Profile.Id);
 	}
 }

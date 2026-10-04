@@ -21,6 +21,7 @@ static class RenderDomain
 			MaterialResources.Module,
 			TextureResources.Module,
 			ImageResources.Module,
-			ShaderResources.Module)));
+			ShaderResources.Module,
+			RenderProfileResources.Module)));
 	private static DomainModule sModule ~ delete _;
 }

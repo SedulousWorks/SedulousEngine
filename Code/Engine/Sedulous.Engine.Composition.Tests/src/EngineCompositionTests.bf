@@ -38,21 +38,21 @@ static class EngineCompositionTests
 		}
 		Test.Assert(sawInput);
 
-		// Twenty resource modules, each id once.
+		// Twenty one resource modules (the render profiles the last), each id once.
 		let resources = scope List<ResourceModule>();
 		EngineComposition.ResourceModules(resources);
-		Test.Assert(resources.Count == 20, scope $"{resources.Count} resource modules");
+		Test.Assert(resources.Count == 21, scope $"{resources.Count} resource modules");
 		for (int i < resources.Count)
 		{
 			for (int j = i + 1; j < resources.Count; j++)
 				Test.Assert(resources[i].Id != resources[j].Id, scope $"{resources[i].Id} twice");
 		}
 
-		// Twenty seven factory descriptions, each naming its product and cooked form; after
+		// Twenty nine factory descriptions, each naming its product and cooked form; after
 		// the resource facet runs, every cooked form is a registered serializable.
 		let descriptions = scope List<ResourceFactoryDesc*>();
 		EngineComposition.FactoryDescriptions(descriptions);
-		Test.Assert(descriptions.Count == 27, scope $"{descriptions.Count} descriptions");
+		Test.Assert(descriptions.Count == 29, scope $"{descriptions.Count} descriptions");
 		EngineComposition.RegisterResourceTypes();
 		for (let desc in descriptions)
 		{
@@ -68,7 +68,7 @@ static class EngineCompositionTests
 		let set = scope ResourceFactorySet();
 		let none = scope NoResourceServices();
 		EngineComposition.CreateFactories(set, none);
-		Test.Assert(set.Count == 25, scope $"{set.Count} factories");
+		Test.Assert(set.Count == 27, scope $"{set.Count} factories");
 		// The two skipped name what they wanted: the graphics device and the shader system.
 		Test.Assert(set.Skipped.Length == 2);
 		bool device = false;
@@ -98,6 +98,6 @@ static class EngineCompositionTests
 		}
 		// A second call adds nothing.
 		EngineComposition.CreateFactories(set, none);
-		Test.Assert((set.Count == 25) && (set.Skipped.Length == 2));
+		Test.Assert((set.Count == 27) && (set.Skipped.Length == 2));
 	}
 }

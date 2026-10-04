@@ -963,7 +963,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		}
 		else if (let post = scene.GetSystem<PostProcessSystem>())
 		{
-			settings.Post = ScenePost.Resolve(*post.Post);
+			settings.Post = ScenePost.Resolve(*post.Effective); // the scene's, or its profile's
 		}
 
 		// An editor viewport's show flags: ephemeral per view overrides that strip effects for

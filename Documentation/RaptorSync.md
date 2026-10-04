@@ -75,7 +75,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 
 ## Group 5: render profiles (a game's look set once and shared by its scenes)
 
-26. 0b5b3aa8 + 7aaa4d36 Engine.Render, Render.Pipeline: the environment and post-process
+26. ~~0b5b3aa8 + 7aaa4d36~~ (done) Engine.Render, Render.Pipeline: the environment and post-process
     profiles, a block's `Source`, its effective values; the profile assets, their cook and
     File > New (together: the composition test wants a builder for every cooked form).
 27. 62f6aa73 Editor.Mcp: what makes a product, shared (`SourceAssetTypesFor`).

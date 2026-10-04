@@ -118,7 +118,7 @@ class SceneSettingsRoundTripTests
 		Test.Assert(Near(reloaded.Environment.IblSpecularIntensity, 0.8f));
 	}
 
-	/// The sun's shadow reach rides the scene (environment version 2), and a version 1 block,
+	/// The sun's shadow reach rides the scene (environment version 2 on), and a version 1 block,
 	/// as the stored scenes hold it, reads the reach's defaults and its own fields.
 	[Test]
 	public static void TheShadowReachRoundTripsAndAVersionOneBlockReadsItsDefaults()
@@ -151,19 +151,16 @@ class SceneSettingsRoundTripTests
 		Test.Assert(Near(read.Environment.ShadowCascadeSplit, 0.8f));
 		Test.Assert(Near(read.Environment.ShadowFadeDistance, 12.0f));
 
-		// A version 1 block: the chain stamped 1 and no reach (the version 2 layout appends three
-		// floats, so a version 1 payload is the version 2 one without its last twelve bytes).
-		let stamped = scope MemoryStream();
+		// A version 1 block, as the stored scenes held it: the chain stamped 1 and the value
+		// fields without the reach.
+		let versionOne = scope MemoryStream();
 		{
-			let writer = scope BinarySerializer(stamped, .Write);
+			let writer = scope BinarySerializer(versionOne, .Write);
 			BeginVersionedPayload(writer, typeId, 1);
-			written.SerializeSettings(writer);
+			RenderSettingsValues.SerializeEnvironment(writer, ref *written.Environment, false);
 			EndVersionedPayload(writer);
 			Test.Assert(writer.IsOk);
 		}
-		let bytes = stamped.Bytes;
-		let versionOne = scope MemoryStream();
-		versionOne.Write(Span<uint8>(bytes.Ptr, bytes.Length - 3 * sizeof(float)));
 		versionOne.Seek(0, .Begin);
 		let legacy = scope EnvironmentSystem();
 		legacy.Environment.ShadowDistance = 1.0f; // overwritten only if the reader reads the field
