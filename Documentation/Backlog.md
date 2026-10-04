@@ -47,8 +47,8 @@ or a Windows build fails to link.
 
 ## The Raptor sync
 
-The sync from Raptor 0b60c738 to 8be4094d, and the PaperKid rebuild after it, are mapped and
-ordered in [RaptorSync.md](RaptorSync.md).
+The sync from Raptor 0b60c738 to 8be4094d, and the PaperKid rebuild after it, are done; their
+map is [RaptorSync.md](RaptorSync.md).
 
 ## Engine findings
 
@@ -132,5 +132,5 @@ last drawn shows. A system added by the page or a creator should get a fresh see
 
 ## Housekeeping
 
-- The Raptor sync marker is 0b60c738: items 1 to 35 of [RaptorSync.md](RaptorSync.md) are
-  ported, the PaperKid rebuild over MCP (item 36) is left.
+- The Raptor sync marker is 8be4094d: every item of [RaptorSync.md](RaptorSync.md) is ported,
+  the PaperKid rebuild included.
