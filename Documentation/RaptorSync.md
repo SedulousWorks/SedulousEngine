@@ -54,7 +54,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
 14. ~~e28d714c, 7d0945b3, c72427ef, 137a3dfc, 26236a7e~~ (done) Player: the web page shows what is loading
     until the game runs, says when a game quits and offers to play again, and says in plain
     words when WebGPU is not there. One commit, ending at 26236a7e's text.
-15. 8b9d4bbe, ae59b405 (their Sedulous counterparts) Documentation: how the web template is built
+15. ~~8b9d4bbe, ae59b405~~ (done, their Sedulous counterparts) Documentation: how the web template is built
     and installed, serving a web export to another device, and web saves
     (`Documentation/Shipping/Web.md`). Building the template is a machine step, not a commit.
 
