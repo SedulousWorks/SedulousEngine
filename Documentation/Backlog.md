@@ -132,7 +132,9 @@ last drawn shows. A system added by the page or a creator should get a fresh see
 
 ## Housekeeping
 
-- The Raptor sync marker is 26236a7e (master): every item of [RaptorSync.md](RaptorSync.md) is
+- The Raptor sync marker is 2a42abf0 (master): every item of [RaptorSync.md](RaptorSync.md) is
   ported (rumble, a game's save, UI tweens and SVG icons, the web page and export, Sky Hopper's
-  stakes and two more levels). Not ported: a49bf057 (the credits name Raptor's engine; Sedulous
-  names itself) and e841c88a (Raptor's own backlog note).
+  stakes and two more levels), then PaperKid's Blender models (4fb5d7ef..405447c7) and the font
+  atlas sized to its glyphs (2a42abf0). Not ported: a49bf057 (the credits name Raptor's engine;
+  Sedulous names itself), e841c88a and 38f25975 (Raptor's own backlog notes; Sedulous's pie_run
+  reads a behaviour's Float3 field by its path, so the second does not apply, by reading).
