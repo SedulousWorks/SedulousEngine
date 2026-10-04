@@ -99,6 +99,26 @@ class AudioFacade
 	[Scriptable]
 	public void StopMusic(float fadeSeconds = 1.0f) => mAudio?.StopMusic(fadeSeconds, RunGroup);
 
+	// ---- a playing voice: what a game changes while it plays (its music's speed) ----
+
+	/// The run's music voice, invalid when none is playing.
+	[Scriptable]
+	public VoiceHandle MusicVoice() => (Engine != null) ? Engine.MusicVoice(RunGroup) : .();
+	[Scriptable]
+	public bool IsVoicePlaying(VoiceHandle voice) => (Engine != null) && Engine.IsPlaying(voice);
+	/// Stops a voice, fading out over `fadeSeconds` (at least the click free window).
+	[Scriptable]
+	public void StopVoice(VoiceHandle voice, float fadeSeconds = 0.0f) => Engine?.Stop(voice, fadeSeconds);
+	[Scriptable]
+	public void SetVoicePaused(VoiceHandle voice, bool paused) => Engine?.SetPaused(voice, paused);
+	/// The volume at once, or eased there over `seconds`.
+	[Scriptable]
+	public void SetVoiceVolume(VoiceHandle voice, float volume, float seconds = 0.0f) => Engine?.SetVoiceVolume(voice, volume, seconds);
+	/// The pitch, the playback rate (tempo and pitch together: 1.2 plays twenty percent faster
+	/// and higher), at once or eased there over `seconds`.
+	[Scriptable]
+	public void SetVoicePitch(VoiceHandle voice, float pitch, float seconds = 0.0f) => Engine?.SetVoicePitch(voice, pitch, seconds);
+
 	/// A fixed bus's volume: the run's own in a run, the engine's outside one.
 	[Scriptable]
 	public void SetBusVolume(AudioBus bus, float volume)

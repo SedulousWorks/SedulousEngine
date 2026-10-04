@@ -69,7 +69,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 23. ~~a5131c2d~~ (done) Engine.Audio: a game's sound belongs to its run (the subsystem's runs, focus and
     hear-all, the listener gated by them; a facade per run installed on its run host, with the
     stop-music, mute and named-bus verbs Raptor's facade has).
-24. 4b830b03 (script half) Script: a script controls a playing voice, the music's included.
+24. ~~4b830b03 (script half)~~ (done) Script: a script controls a playing voice, the music's included.
 25. ae387d16 Editor, DefaultApp: Stop, Pause and focus act on the game's run (the Game audio
     preference, Hear every Game tab).
 

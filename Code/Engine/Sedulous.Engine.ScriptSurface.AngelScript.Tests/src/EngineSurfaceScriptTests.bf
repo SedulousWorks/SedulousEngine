@@ -268,4 +268,81 @@ static class EngineSurfaceScriptTests
 			void renumber(const Entity &in e) { NetworkComponent network = NetworkComponent(e); network.Id = NetworkId(7); }
 			"""), "Id has no setter either");
 	}
+
+	/// A script controls a playing voice through the Audio facade: it keeps the run's music
+	/// voice in a variable, eases its pitch and volume, and stops it with a fade. What a game
+	/// does to speed its music up as a clock runs down.
+	[Test]
+	public static void AScriptControlsAPlayingVoiceThroughTheAudioFacade()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("game", "game.as", """
+			VoiceHandle music;
+			bool hurry()
+			{
+				music = Audio.MusicVoice();
+				Audio.SetVoicePitch(music, 1.5f, 0.5f);
+				Audio.SetVoiceVolume(music, 0.25f);
+				return Audio.IsVoicePlaying(music);
+			}
+			void finish()
+			{
+				Audio.StopVoice(music, 0.2f);
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let settings = new Sedulous.Audio.AudioEngineSettings();
+		settings.Headless = true;
+		settings.DedupeWindowSeconds = 0.0f;
+		let audio = new Sedulous.Engine.Audio.AudioSubsystem(settings);
+		let context = new Sedulous.Runtime.Context();
+		context.RegisterSubsystem<Sedulous.Engine.Audio.AudioSubsystem>(audio);
+		context.Startup();
+		// The context drives a registered subsystem but does not own it: it goes first.
+		defer { delete context; delete audio; }
+		let engine = audio.Engine;
+
+		let run = scope Object();
+		let facade = scope Sedulous.Engine.Script.Facades.AudioFacade(audio, new () => (Sedulous.Resource.ResourceManager)null, run);
+		vm.SetService(facade);
+
+		let samples = scope List<int16>();
+		for (int frame < 16000)
+			samples.Add((int16)(0.5f * Math.Sin(2.0f * 3.14159265f * 440.0f * (float)frame / 8000.0f) * 32000.0f));
+		let clip = new Sedulous.Audio.AudioClip();
+		defer delete clip;
+		Test.Assert(Sedulous.Audio.AudioCodec.EncodeWav(samples, 1, 8000, clip.EncodedData));
+		Test.Assert(Sedulous.Audio.AudioCodec.Probe(clip.EncodedBytes, let metadata));
+		clip.Channels = metadata.Channels;
+		clip.SampleRate = metadata.SampleRate;
+		clip.FrameCount = metadata.FrameCount;
+		clip.DurationSeconds = metadata.DurationSeconds;
+		let music = audio.PlayMusic(clip, 0.0f, 1.0f, audio.RunGroupFor(run));
+		Test.Assert(music.IsValid);
+
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("game", "bool hurry()", default, ref r), "ran");
+		Test.Assert(r.AsBool, "the run's music is playing");
+		Test.Assert(engine.GetVoiceStatus(music, var status));
+		Test.Assert(status.Pitch == 1.0f, "eased, so not there at once");
+		Test.Assert(Math.Abs(status.Volume - 0.25f) < 1e-5f, "set at once");
+		audio.Update(0.25f);
+		audio.Update(0.25f);
+		Test.Assert(engine.GetVoiceStatus(music, out status));
+		Test.Assert(Math.Abs(status.Pitch - 1.5f) < 1e-4f);
+
+		Test.Assert(vm.Call("game", "void finish()", default, ref r), "ran");
+		Test.Assert(!engine.IsPlaying(music), "fading out");
+		for (int i < 4)
+			audio.Update(0.1f);
+		Test.Assert(!engine.IsValidHandle(music));
+		context.Shutdown();
+	}
 }
