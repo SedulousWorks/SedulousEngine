@@ -78,7 +78,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 26. ~~0b5b3aa8 + 7aaa4d36~~ (done) Engine.Render, Render.Pipeline: the environment and post-process
     profiles, a block's `Source`, its effective values; the profile assets, their cook and
     File > New (together: the composition test wants a builder for every cooked form).
-27. 62f6aa73 Editor.Mcp: what makes a product, shared (`SourceAssetTypesFor`).
+27. ~~62f6aa73~~ (done) Editor.Mcp: what makes a product, shared (`SourceAssetTypesFor`).
 28. babadd96 Editor: a scene's settings in profile mode edit the profile (Make Profile, Copy
     Into Scene).
 29. 5515b8ab Editor: a profile asset's page, with a preview scene.

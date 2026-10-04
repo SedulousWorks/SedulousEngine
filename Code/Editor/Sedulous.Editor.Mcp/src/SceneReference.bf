@@ -286,29 +286,9 @@ class SceneReference
 			// A factory that reads several cooked forms (a texture's, a render texture's) gives
 			// several asset types: `asset` is the first, and `assets` lists them all when there
 			// is more than one.
-			let cookedForms = scope List<Type>();
-			for (let desc in mDescriptions)
-			{
-				if (desc.Product == target)
-				{
-					desc.ForEachCooked(scope (cooked) => cookedForms.Add(cooked));
-					break;
-				}
-			}
 			let assets = scope List<Type>();
-			for (let cooked in cookedForms)
-			{
-				if ((cooked == null) || (mBuilders == null))
-					continue;
-				Type asset = null;
-				mBuilders.ForEach(scope [&](builder) =>
-					{
-						if ((asset == null) && (builder.ProductType == cooked))
-							asset = builder.AssetType;
-					});
-				if (asset != null)
-					assets.Add(asset);
-			}
+			if (mBuilders != null)
+				SourceAssetTypesFor(mBuilders, target, assets, mDescriptions);
 			if (assets.IsEmpty)
 			{
 				resolved = false;
@@ -323,6 +303,44 @@ class SceneReference
 				json.Set("assets", list);
 			}
 			return json;
+		}
+	}
+
+	/// The source asset types a resource reference to `product` takes: the runtime type's
+	/// factory description in the engine composition gives its cooked forms, and the builder
+	/// producing each gives its asset type (a texture's and a render texture's for a Texture).
+	/// Declarations only, nothing constructed. Nothing is added when nothing in this
+	/// composition makes the product. Shared by the schema and the editor's pickers.
+	public static void SourceAssetTypesFor(BuilderRegistry builders, Type product, List<Type> outAssets,
+		List<ResourceFactoryDesc*> descriptions = null)
+	{
+		var described = descriptions;
+		if (described == null)
+		{
+			described = scope:: List<ResourceFactoryDesc*>();
+			EngineComposition.FactoryDescriptions(described);
+		}
+		let cookedForms = scope List<Type>();
+		for (let desc in described)
+		{
+			if (desc.Product == product)
+			{
+				desc.ForEachCooked(scope (cooked) => cookedForms.Add(cooked));
+				break;
+			}
+		}
+		for (let cooked in cookedForms)
+		{
+			if (cooked == null)
+				continue;
+			Type asset = null;
+			builders.ForEach(scope [&](builder) =>
+				{
+					if ((asset == null) && (builder.ProductType == cooked))
+						asset = builder.AssetType;
+				});
+			if (asset != null)
+				outAssets.Add(asset);
 		}
 	}
 

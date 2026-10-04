@@ -88,6 +88,10 @@ class EditorContext : IAssetEditSink
 	/// Whether a cook is running, wired by the app; a page that must not start against a
 	/// half written cooked database polls it and defers. Unwired is never busy.
 	public delegate bool() CookBusy ~ delete _;
+	/// The source asset types a resource reference to `product` takes, a picker's filter:
+	/// wired by the app from its builders and the engine composition. Unwired (headless hosts,
+	/// tests), a reference row keeps the list it was generated with.
+	public delegate void(Type product, List<Type> outAssets) SourceAssetTypesOf ~ delete _;
 	/// Transient status bar text.
 	public delegate void(StringView text) OnStatus ~ delete _;
 	/// A transient user facing notification, a toast. Unwired falls back to the status bar,

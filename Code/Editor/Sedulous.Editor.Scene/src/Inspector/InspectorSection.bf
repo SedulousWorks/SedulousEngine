@@ -213,8 +213,7 @@ class InspectorSection
 		let owner = mOwner;
 		let types = new List<String>();
 		Keep(types);
-		for (let t in assetTypes)
-			types.Add(Own(t));
+		PickerTypes(typeof(T), assetTypes, types);
 
 		let accepted = scope List<StringView>();
 		for (let t in types)
@@ -260,8 +259,7 @@ class InspectorSection
 		let owner = mOwner;
 		let types = new List<String>();
 		Keep(types);
-		for (let t in assetTypes)
-			types.Add(Own(t));
+		PickerTypes(typeof(T), assetTypes, types);
 
 		let names = scope List<String>();
 		defer { ClearAndDeleteItems(names); }
@@ -621,6 +619,25 @@ class InspectorSection
 				return i;
 		}
 		return 0;
+	}
+
+	/// The asset types a reference to `product` picks from: what makes the product, as the
+	/// host's builders say (the join the MCP schema uses), else the generated row's own list
+	/// when the host has not wired the join. Each name is owned by the section.
+	private void PickerTypes(Type product, Span<StringView> fallback, List<String> outTypes)
+	{
+		let editor = mOwner.Editor;
+		if ((editor != null) && (editor.SourceAssetTypesOf != null))
+		{
+			let made = scope List<Type>();
+			editor.SourceAssetTypesOf(product, made);
+			for (let asset in made)
+				outTypes.Add(Own(asset.GetName(.. scope .())));
+			if (!outTypes.IsEmpty)
+				return;
+		}
+		for (let t in fallback)
+			outTypes.Add(Own(t));
 	}
 
 	private static void SetRef<T>(SceneInspectorView owner, InspectorTarget target, String key,

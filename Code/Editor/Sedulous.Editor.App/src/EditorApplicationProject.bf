@@ -162,6 +162,8 @@ extension EditorApplication
 		// still waiting to re-issue.
 		delete mContext.CookBusy;
 		mContext.CookBusy = new () => mCookService.IsReady && !mCookService.IsIdle;
+		delete mContext.SourceAssetTypesOf;
+		mContext.SourceAssetTypesOf = new (product, outAssets) => SceneReference.SourceAssetTypesFor(mBuilders, product, outAssets);
 		StartMcpHost(); // the agent surface over this project, if enabled
 		// Background jobs read the source database structure and pack cooked files from their
 		// worker: database mutations and new cooks hold off while one runs.

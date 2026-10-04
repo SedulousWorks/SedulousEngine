@@ -66,6 +66,27 @@ static class SceneReferenceTests
 		Test.Assert(HasString(spline.Get("unreflected"), "points"));
 	}
 
+	/// The join the schema makes, shared with the editor's pickers: a product's asset types,
+	/// none for a type nothing makes.
+	[Test]
+	public static void SourceAssetTypesForJoinsAProductToWhatMakesIt()
+	{
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let builders = scope BuilderRegistry();
+		PipelineRegistration.RegisterAllBuilders(builders);
+
+		let assets = scope List<Type>();
+		SceneReference.SourceAssetTypesFor(builders, typeof(Sedulous.Engine.Render.EnvironmentProfile), assets);
+		Test.Assert((assets.Count == 1) && (assets[0].GetName(.. scope .()) == "EnvironmentProfileAsset"));
+		assets.Clear();
+		SceneReference.SourceAssetTypesFor(builders, typeof(Sedulous.Texture.Resource.Texture), assets);
+		Test.Assert(assets.Count == 2, "a texture's and a render texture's");
+		assets.Clear();
+		SceneReference.SourceAssetTypesFor(builders, typeof(String), assets);
+		Test.Assert(assets.IsEmpty);
+	}
+
 	[Test]
 	public static void EntityRefsAreRefEntityAndEveryResourceRefJoinsToItsAssetType()
 	{
@@ -94,6 +115,12 @@ static class SceneReferenceTests
 		Test.Assert(HasString(assets, "TextureAsset") && HasString(assets, "RenderTextureAsset"));
 		// A reference with one asset type names no list.
 		Test.Assert(meshField.Get("ref").Get("assets") == null);
+
+		// The block's profile joins through the render profiles' module and builder.
+		let profileRef = Field(post.Get("fields"), "profile").Get("ref");
+		Test.Assert(profileRef != null);
+		Test.Assert(profileRef.Get("resource").AsString() == "PostProcessProfile");
+		Test.Assert(profileRef.Get("asset").AsString() == "PostProcessProfileAsset");
 
 		// Entity references are ref: entity: a single one a guid field, a list of them an array
 		// annotated through its element type (the animation mesh targets).

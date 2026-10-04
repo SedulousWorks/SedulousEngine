@@ -328,8 +328,9 @@ static class InspectorRows<T>
 			|| (t == typeof(int32)) || (t == typeof(uint32)) || (t == typeof(int64)) || (t == typeof(uint64))
 			|| (t == typeof(int)) || (t == typeof(uint));
 
-	/// The asset types a Ref<X> row picks from, by the resource's name; an unknown resource
-	/// takes its name plus "Asset".
+	/// The asset types a Ref<X> row picks from when the host has not wired the builders' join
+	/// (EditorContext.SourceAssetTypesOf, which the editor does): by the resource's name, an
+	/// unknown resource taking its name plus "Asset".
 	[Comptime]
 	private static void AssetTypesFor(Type resource, String outList)
 	{

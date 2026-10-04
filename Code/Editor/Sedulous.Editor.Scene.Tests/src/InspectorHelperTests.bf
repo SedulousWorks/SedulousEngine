@@ -154,4 +154,23 @@ class InspectorHelperTests
 		commands.Undo();
 		Test.Assert(env.Environment.SkyMode == .Procedural);
 	}
+
+	/// A settings block's profile reference, the environment's: set by identity through the
+	/// reference command, undone and redone.
+	[Test]
+	public static void TheEnvironmentsProfileReferenceSetsAndUndoes()
+	{
+		let scene = scope Sedulous.Scene.Scene("s");
+		let env = scene.AddSystem<EnvironmentSystem>();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let profile = Guid.Create();
+
+		edit.SetSceneSettingResourceRef<EnvironmentProfile>(typeof(EnvironmentSettings), "Profile", profile, null);
+		Test.Assert(env.Environment.Profile.Id == profile);
+		commands.Undo();
+		Test.Assert(env.Environment.Profile.Id == Guid.Empty);
+		commands.Redo();
+		Test.Assert(env.Environment.Profile.Id == profile);
+	}
 }
