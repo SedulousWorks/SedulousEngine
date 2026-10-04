@@ -120,6 +120,9 @@ extension GameEditorPage
 		// Another tab's run and the editor's own sounds play on.
 		if ((Audio != null) && (mGameInstance != null))
 			Audio.EndRun(mGameInstance);
+		// Its screens go with it; another tab's run keeps its own.
+		if ((mApp != null) && (mApp.UI != null) && (mGameInstance != null))
+			mApp.UI.EndRunScreens(mGameInstance);
 		{
 			let active = scope List<Sedulous.Scene.Scene>();
 			active.AddRange(SceneGroup.ActiveScenes);

@@ -343,6 +343,10 @@ class EditorApplication : IApplication
 		// render WYSIWYG but are not interactive; the Game tab binds its scene on Play.
 		if (mEmbeddedApp.Input != null)
 			mEmbeddedApp.Input.UnboundScenePolicy = .ScreenTierOnly;
+		// Each Game tab runs its own game inside this one application: each run gets its own
+		// screen tier (menus, HUD, pause), so tabs never draw or drive each other's screens.
+		if (mEmbeddedApp.UI != null)
+			mEmbeddedApp.UI.RunScreens = true;
 		mRuntimeContext.Startup();
 		mEmbeddedApp.OnStartup(mEmbeddedHost);
 

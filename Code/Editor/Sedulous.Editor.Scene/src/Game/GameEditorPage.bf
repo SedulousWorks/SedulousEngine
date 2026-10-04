@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Input;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
@@ -239,6 +240,17 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			mRouter.SetExternalCapture(false, mViewport.HostKeyboardFocusElsewhere);
 			mRouter.Update();
 		}
+		// The game UI's input (one pump for every Game tab) goes to the tab a playtest is
+		// scripting, or failing that to the tab the keyboard is in; with neither, it stays with
+		// the tab that took it last, so a lone tab keeps it from Play on. A focused tab leaves
+		// another tab's playtest its input. Each run's screens are its own (run screens), so the
+		// claim decides only whose menus the keys and clicks reach.
+		if (mRunning && (mInput != null))
+		{
+			let anotherPlaytest = (mInput.ActiveSource is ScriptedInputSource) && (mInput.ActiveSource !== mScripted);
+			if (IsScripted || (mViewport.HostKeyboardFocusHere && !anotherPlaytest))
+				mInput.SetSourceProvider(ActiveSource, (mScene != null) ? Internal.UnsafeCastToPtr(mScene) : null);
+		}
 		mViewport.SetHostedTextInputWanted((mApp != null) && (mApp.UI != null) && mApp.UI.UiContext.WantsTextInput());
 		DrainDebuggerState();
 		SyncRunAudio();
@@ -304,11 +316,16 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		if ((w == 0) || (h == 0))
 			return;
 		frame.Encoder.TransitionTexture(mViewport.ColorTexture, mViewport.ColorState, .RenderTarget);
-		// The UI is shared between the Game tabs; each lays its screen tier out at its own
-		// render resolution as it draws.
+		// The UI is shared between the Game tabs; each draws its own run's screen tier, laid out
+		// at its own render resolution (the shared tier's global overlays draw above it).
 		if ((mApp != null) && (mApp.UI != null))
-			mApp.UI.SetScreenResolution(mRenderWidth, mRenderHeight, mRenderFit);
+		{
+			mApp.UI.SetScreenResolution(mGameInstance, mRenderWidth, mRenderHeight, mRenderFit);
+			mApp.UI.SetRenderRun(mGameInstance);
+		}
 		mRender.RenderOverlays(frame.Encoder, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, frame.FrameIndex);
+		if ((mApp != null) && (mApp.UI != null))
+			mApp.UI.SetRenderRun(null);
 		frame.Encoder.TransitionTexture(mViewport.ColorTexture, .RenderTarget, .ShaderRead);
 		mViewport.ColorState = .ShaderRead;
 		// The capture, once the frame is whole: the scene, then the game's overlays over it.
