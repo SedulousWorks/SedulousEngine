@@ -176,6 +176,13 @@ name or slash path; each answers the entity as `entity_inspect` shows it, a Scri
 `behaviors` included. The user watches the level take shape and can undo any step; `file.save`
 (action_execute) keeps it. XML suits a whole level written at once, these tools an edit.
 
+**Colours**: every colour is written as it is meant to look, in sRGB, the value a colour picker
+and a hex code show (0.5 is `#808080`): component colours, the environment's ambient and sky, a
+material's `Color` properties, particle colours, debug draw. The renderer decodes them; never
+pre-convert. Brightness above white is an intensity, not a component above 1: a light's
+`intensity`, or the w of a material's `ColorHdr` (its emissive). In a material's
+`uniformDefaults` a colour is four floats (rgba, or rgb and the intensity).
+
 **Scripts**: `script_api` first, the LIVE bound API per backend; never trust memorised
 signatures. A member with `readOnly: true` (a network identity's `Authority`, for one) reads
 and refuses assignment. `script_create` seeds a starter asset (the behavior, level or game tier), then
