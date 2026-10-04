@@ -132,7 +132,7 @@ last drawn shows. A system added by the page or a creator should get a fresh see
 
 ## Housekeeping
 
-- The Raptor sync marker is 76e6bdb6 (master): every item of [RaptorSync.md](RaptorSync.md) is
-  ported, the PaperKid rebuild included, and the commits after it (the per-run screen tiers,
-  Sky Hopper's paced respawn). Raptor's loading-screen note (76e6bdb6) does not apply here: the
-  player shows the loading document as its boot splash, where there is only one run.
+- The Raptor sync marker is 26236a7e (master): every item of [RaptorSync.md](RaptorSync.md) is
+  ported (rumble, a game's save, UI tweens and SVG icons, the web page and export, Sky Hopper's
+  stakes and two more levels). Not ported: a49bf057 (the credits name Raptor's engine; Sedulous
+  names itself) and e841c88a (Raptor's own backlog note).

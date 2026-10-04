@@ -1,4 +1,4 @@
-# Raptor sync of 2026-10-04
+# Raptor sync of 2026-10-04 (second)
 
 Raptor (`/home/robert/Dev/CPP/GameEngine`, local `master`) from the last synced commit 76e6bdb6
 to 26236a7e: 32 commits. Engine features (script rumble, a game's save, UI tweens with an
