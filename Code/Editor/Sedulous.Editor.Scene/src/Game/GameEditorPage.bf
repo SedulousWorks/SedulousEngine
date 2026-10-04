@@ -106,7 +106,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mShellInput = (host.Shell != null) ? host.Shell.Input : null;
 
 		mViewport = new ViewportView();
-		mViewport.ClearColor = .(0.05f, 0.05f, 0.06f, 1.0f);
+		mViewport.ClearColor = .(0.248f, 0.248f, 0.272f, 1.0f); // sRGB, like every UI colour
 
 		// THIS instance's exit request stops THIS tab's run, whichever tab it is: the script
 		// asking fires inside the embedded app's update, which runs before the pages, so the

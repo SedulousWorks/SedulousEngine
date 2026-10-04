@@ -34,7 +34,7 @@ class UIPreviewSurface
 		mUi = (host != null) ? host.Context.GetSubsystem<UISubsystem>() : null;
 		mViewport = new ViewportView();
 		mViewport.AddRef();
-		mViewport.ClearColor = .(0.08f, 0.09f, 0.11f, 1.0f);
+		mViewport.ClearColor = .(0.313f, 0.332f, 0.366f, 1.0f); // sRGB, like every UI colour
 	}
 
 	/// The viewport as a view, for layout.

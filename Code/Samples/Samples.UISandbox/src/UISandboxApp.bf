@@ -206,7 +206,7 @@ class UISandboxApp : IApplication
 				let mvp = model * view4 * projection;
 
 				mCube.Render(encoder, view.ColorTargetView, view.DepthTargetView, width, height,
-					view.ClearColor, mvp, frameIndex);
+					view.LinearClearColor, mvp, frameIndex);
 			};
 
 		// The host's own router is private, so the surface gets one of ours.

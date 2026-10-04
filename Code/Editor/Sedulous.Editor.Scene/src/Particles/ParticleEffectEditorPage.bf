@@ -74,7 +74,7 @@ class ParticleEffectEditorPage : UIEditorPage, IPlaybackPage
 		mTitle.Set(instance.Name);
 
 		mPreview = new PreviewViewport(host, uiHost, "particle.preview");
-		mPreview.SetClearColor(.(0.06f, 0.06f, 0.08f, 1.0f)); // a darker field shows particles
+		mPreview.SetClearColor(.(0.272f, 0.272f, 0.313f, 1.0f)); // a darker field shows particles (sRGB)
 		mPreview.Camera.Position = .(0.0f, 2.0f, 6.0f);
 		mPreview.Camera.LookAt(.(0.0f, 1.0f, 0.0f));
 

@@ -433,4 +433,18 @@ class ViewportViewTests
 			IsFocusable = true;
 		}
 	}
+
+	/// The clear colour is a UI colour (sRGB), cleared with its linear value.
+	[Test]
+	public static void TheClearColourIsSrgbAndClearedWithItsLinearValue()
+	{
+		let view = new ViewportView();
+		defer view.ReleaseRef();
+		view.ClearColor = .(0.5f, 0.25f, 1.0f, 0.75f);
+		let linear = view.LinearClearColor;
+		Test.Assert(Math.Abs(linear.R - SrgbToLinear(0.5f)) < 1e-6f);
+		Test.Assert(Math.Abs(linear.G - SrgbToLinear(0.25f)) < 1e-6f);
+		Test.Assert(Math.Abs(linear.B - 1.0f) < 1e-6f);
+		Test.Assert(linear.A == 0.75f, "alpha is coverage, not decoded");
+	}
 }

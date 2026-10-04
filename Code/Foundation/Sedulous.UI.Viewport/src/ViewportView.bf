@@ -34,8 +34,13 @@ class ViewportView : View
 	/// out at the same resolution can follow.
 	public delegate void(uint32 width, uint32 height) OnRenderTargetResized ~ delete _;
 
-	/// The 3D pass's background, read by the render callback.
-	public ClearColor ClearColor = .(0.098f, 0.098f, 0.118f, 1.0f);
+	/// The 3D pass's background, read by the render callback. sRGB, like every UI colour: the
+	/// view's own clear decodes it, and a render host decodes it for its render view.
+	public ClearColor ClearColor = .(0.347f, 0.347f, 0.377f, 1.0f);
+
+	/// ClearColor decoded to linear: the value a render target is cleared with.
+	public ClearColor LinearClearColor => .(SrgbToLinear(ClearColor.R), SrgbToLinear(ClearColor.G),
+		SrgbToLinear(ClearColor.B), ClearColor.A);
 
 	/// BORROWED: the device and the window's renderer both outlive the view.
 	private IDevice mDevice = null;
@@ -368,7 +373,7 @@ class ViewportView : View
 		color.View = mColorView;
 		color.LoadOp = .Clear;
 		color.StoreOp = .Store;
-		color.ClearValue = ClearColor;
+		color.ClearValue = LinearClearColor;
 		pass.ColorAttachments.Add(color);
 
 		if (let renderPass = encoder.BeginRenderPass(pass))

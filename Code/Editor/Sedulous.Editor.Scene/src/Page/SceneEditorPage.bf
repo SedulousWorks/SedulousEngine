@@ -189,7 +189,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		}
 
 		mViewport = new ViewportView();
-		mViewport.ClearColor = .(0.10f, 0.11f, 0.13f, 1.0f);
+		mViewport.ClearColor = .(0.349f, 0.366f, 0.396f, 1.0f); // sRGB, like every UI colour
 
 		if (mScene != null)
 		{
@@ -479,7 +479,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			let dd = mRender.DebugView(Internal.UnsafeCastToPtr(mViewport));
 			if (mView.ShowGrid)
 			{
-				dd.DrawGrid(.Zero, 20.0f, 20, .(0.35f, 0.35f, 0.38f, 1.0f));
+				dd.DrawGrid(.Zero, 20.0f, 20, .(0.63f, 0.63f, 0.65f, 1.0f)); // kept clear of the backdrop
 				dd.DrawLine(.Zero, .(1, 0, 0), .(0.9f, 0.2f, 0.2f, 1.0f));
 				dd.DrawLine(.Zero, .(0, 1, 0), .(0.2f, 0.9f, 0.2f, 1.0f));
 				dd.DrawLine(.Zero, .(0, 0, 1), .(0.2f, 0.4f, 0.95f, 1.0f));
@@ -523,7 +523,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		var cameraOverride = CameraOverride();
 		cameraOverride.Camera = camera;
 		// The viewport's colour is a UI colour (sRGB); the render view takes linear.
-		cameraOverride.ClearColor = ToLinear(Color(mViewport.ClearColor.R, mViewport.ClearColor.G, mViewport.ClearColor.B, mViewport.ClearColor.A));
+		let clear = mViewport.LinearClearColor;
+		cameraOverride.ClearColor = .(clear.R, clear.G, clear.B, clear.A);
 
 		let targetState = TargetState(mViewport.ColorTexture, mViewport.ColorState, .ShaderRead);
 		mRender.RenderScene(mScene, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, .(0, 0, w, h),

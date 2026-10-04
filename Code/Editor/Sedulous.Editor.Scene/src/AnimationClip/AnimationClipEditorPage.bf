@@ -76,7 +76,7 @@ class AnimationClipEditorPage : UIEditorPage, IPlaybackPage
 		mTitle.Set(instance.Name);
 
 		mPreview = new PreviewViewport(host, uiHost, "animclip.preview");
-		mPreview.SetClearColor(.(0.05f, 0.05f, 0.07f, 1.0f));
+		mPreview.SetClearColor(.(0.248f, 0.248f, 0.293f, 1.0f)); // sRGB, like every UI colour
 		mPreview.Camera.Position = .(0.0f, 1.4f, 3.2f);
 		mPreview.Camera.LookAt(.(0.0f, 0.9f, 0.0f));
 
