@@ -54,7 +54,7 @@ confirm, Start (Options) to pause.
 - `Tools/`: the authoring scripts that drove the editor's MCP tools to build the game (the first
   run's setup, the kit, the block generator, the scripts with their asset ids, a closed-loop
   playtest). Not game content; `Tools/README.md` says what each does.
-- `export_presets.xml`: the export targets (Linux desktop, Steam Deck).
+- `export_presets.xml`: the export targets (Linux desktop, Steam Deck, Web).
 - `CREDITS.md` and `Licenses/`: the music (Juhani Junkala, CC0), the fanfare (celestialghost8,
   CC0), the sound effects (Kenney, CC0) and the fonts (OFL, and Apache 2.0). The art is a
   primitive blockout made in the project.

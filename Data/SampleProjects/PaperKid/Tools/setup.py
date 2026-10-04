@@ -169,11 +169,14 @@ mcp("project_settings_set", {
                   have[("Roboto-Bold", "FontAsset")]],
     "renderWidth": 1280, "renderHeight": 720})
 
-# The export targets: the Linux desktop, and the Steam Deck (its container-built template; a
-# 1280x800 frame, fullscreen). Both ship the credits.
+# The export targets: the Linux desktop, the Steam Deck (its container-built template; a
+# 1280x800 frame, fullscreen) and the Web (the page is index.html, so the export serves at its
+# root). Each ships the credits.
 mcp("export_preset_set", {"name": "Linux64 Desktop", "platform": "Linux64", "playerName": "Sedulous PaperKid",
                           "outputSubdir": "Linux64", "additionalFiles": ["CREDITS.md"]})
 mcp("export_preset_set", {"name": "Steam Deck", "platform": "Linux64", "templateId": "sedulous-steamdeck-release-0.1.0",
                           "playerName": "Sedulous PaperKid", "outputSubdir": "SteamDeck",
                           "additionalFiles": ["CREDITS.md"], "overridesRender": True, "renderWidth": 1280,
                           "renderHeight": 800, "overridesWindow": True, "windowMode": "Fullscreen", "windowResizable": False})
+mcp("export_preset_set", {"name": "Web", "platform": "Web", "templateId": "sedulous-web-release-0.1.0",
+                          "playerName": "index", "outputSubdir": "Web", "additionalFiles": ["CREDITS.md"]})

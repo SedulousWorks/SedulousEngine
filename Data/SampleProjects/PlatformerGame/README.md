@@ -26,7 +26,7 @@ to jump and confirm, Start (Options) to pause.
 - `Sources/`: the raw sources: the AngelScript scripts, the UI markup and theme, the fonts, the
   audio, and the kit's glTF models.
 - `Content/`: the asset envelopes (`*.xasset`) and their sidecars.
-- `export_presets.xml`: the Linux desktop and Steam Deck export targets.
+- `export_presets.xml`: the Linux desktop, Steam Deck and Web export targets.
 - `CREDITS.md` and `Licenses/`: the third-party assets and their licences. The music by CodeManu
   is CC-BY 3.0 and must stay credited; everything else is CC0, OFL or Apache 2.0.
 - `Cooked/`, `.cache/`, `Editor/`, `Dist/`: generated, and gitignored; the tools rebuild them.

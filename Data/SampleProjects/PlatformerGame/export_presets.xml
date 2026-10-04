@@ -4,7 +4,7 @@
 		<u32 name="version">3</u32>
 	</array>
 	<object>
-		<array name="presets" count="2">
+		<array name="presets" count="3">
 			<array name="dataVersions" count="1">
 				<u64 name="type">864580422535781968</u64>
 				<u32 name="version">1</u32>
@@ -56,6 +56,32 @@
 				<u32 name="windowHeight">800</u32>
 				<u8 name="windowMode">1</u8>
 				<bool name="windowResizable">false</bool>
+			</object>
+			<array name="dataVersions" count="1">
+				<u64 name="type">864580422535781968</u64>
+				<u32 name="version">1</u32>
+			</array>
+			<object>
+				<string name="name">Web</string>
+				<string name="platform">Web</string>
+				<string name="templateId">sedulous-web-release-0.1.0</string>
+				<string name="playerName">index</string>
+				<string name="outputSubdir">Web</string>
+				<array name="additionalFiles" count="1">
+					<string>CREDITS.md</string>
+				</array>
+				<string name="config"/>
+				<bool name="stageSymbols">false</bool>
+				<bool name="pruneToReachable">false</bool>
+				<bool name="overridesRender">false</bool>
+				<u32 name="renderWidth">0</u32>
+				<u32 name="renderHeight">0</u32>
+				<u8 name="renderFit">1</u8>
+				<bool name="overridesWindow">false</bool>
+				<u32 name="windowWidth">1280</u32>
+				<u32 name="windowHeight">720</u32>
+				<u8 name="windowMode">0</u8>
+				<bool name="windowResizable">true</bool>
 			</object>
 		</array>
 	</object>
