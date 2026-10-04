@@ -208,7 +208,8 @@ class DistanceFieldBakerTests
 	}
 
 	/// An atlas too small for a single cell has nowhere to pack, and must say so rather than
-	/// returning an empty atlas that every later lookup misses on.
+	/// returning an empty atlas that every later lookup misses on. It is a packing failure: the
+	/// font has glyphs, the atlas has no room for them.
 	[Test]
 	public static void AnAtlasWithNoRoomIsRefused()
 	{
@@ -222,7 +223,7 @@ class DistanceFieldBakerTests
 
 		let baker = scope DistanceFieldFontAtlasBaker();
 		Test.Assert(baker.Bake(font, options) case .Err(let error));
-		Test.Assert(error == .NoGlyphsFound);
+		Test.Assert(error == .AtlasPackingFailed);
 	}
 
 	/// The range is in SHAPE units, not pixels. It is the pixel spread divided by the scale
@@ -380,5 +381,91 @@ class DistanceFieldBakerTests
 					scope $"cells ({a.X},{a.Y},{a.Width}x{a.Height}) and ({b.X},{b.Y},{b.Width}x{b.Height}) crowd each other");
 			}
 		}
+	}
+
+	/// The asset's atlas size is a maximum. A Latin set at 48 px fills a fraction of 1024 x
+	/// 1024, and every texel of the atlas ships in the cooked font, so the baker crops to what
+	/// it packs.
+	[Test]
+	public static void TheAtlasIsSizedToItsGlyphsEveryGlyphInsideItAndNoneOverlapping()
+	{
+		let font = TestFont.Load();
+		Test.Assert(font != null);
+		defer delete font;
+
+		var options = BakeOptions();
+		options.FirstCodepoint = 32;
+		options.LastCodepoint = 255;
+		let baker = scope DistanceFieldFontAtlasBaker();
+		Test.Assert(baker.Bake(font, options) case .Ok(let atlas));
+		defer delete atlas;
+
+		let w = atlas.Width;
+		let h = atlas.Height;
+		Test.Assert((w <= options.AtlasWidth) && (h <= options.AtlasHeight));
+		Test.Assert((uint64)w * h * 2 <= (uint64)options.AtlasWidth * options.AtlasHeight, scope $"{w} x {h}");
+		Test.Assert((w % 4 == 0) && (h % 4 == 0), "block compressible later");
+		Test.Assert(atlas.PixelData.Length == (int)w * (int)h * 4);
+
+		// Every printable ASCII glyph with an outline is in the atlas (none dropped), and no
+		// two glyphs share a texel.
+		let drawn = scope List<AtlasRegion>();
+		for (int32 cp = options.FirstCodepoint; cp <= options.LastCodepoint; cp++)
+		{
+			let has = atlas.TryGetRegion(cp, let r);
+			if ((cp >= 33) && (cp <= 126))
+				Test.Assert(has, scope $"codepoint {cp}");
+			if (!has || r.IsEmpty)
+				continue;
+			Test.Assert(((uint32)r.X + r.Width <= w) && ((uint32)r.Y + r.Height <= h));
+			drawn.Add(r);
+		}
+		Test.Assert(drawn.Count > 90);
+		int overlaps = 0;
+		for (int i < drawn.Count)
+		{
+			for (int j = i + 1; j < drawn.Count; j++)
+			{
+				let a = drawn[i];
+				let b = drawn[j];
+				if ((a.X < b.X + b.Width) && (b.X < a.X + a.Width) && (a.Y < b.Y + b.Height) && (b.Y < a.Y + a.Height))
+					overlaps++;
+			}
+		}
+		Test.Assert(overlaps == 0);
+
+		// The white texel solid colour draws sample is white, in its own cell clear of every
+		// glyph.
+		let uv = atlas.WhitePixelUV;
+		let wx = (uint32)(uv.X * (float)w);
+		let wy = (uint32)(uv.Y * (float)h);
+		Test.Assert((wx < w) && (wy < h));
+		let at = ((int)wy * (int)w + (int)wx) * 4;
+		let pixels = atlas.PixelData;
+		Test.Assert((pixels[at] == 255) && (pixels[at + 1] == 255) && (pixels[at + 2] == 255) && (pixels[at + 3] == 255));
+		for (let r in drawn)
+			Test.Assert(!((wx >= r.X) && (wx < (uint32)r.X + r.Width) && (wy >= r.Y) && (wy < (uint32)r.Y + r.Height)));
+	}
+
+	/// Dropping a glyph draws that character as nothing, with no word why; the cook must say so.
+	[Test]
+	public static void GlyphsThatCannotFitTheMaximumFailTheBakeInsteadOfVanishing()
+	{
+		let font = TestFont.Load();
+		Test.Assert(font != null);
+		defer delete font;
+		let baker = scope DistanceFieldFontAtlasBaker();
+
+		var tooSmall = BakeOptions();
+		tooSmall.FirstCodepoint = 32;
+		tooSmall.LastCodepoint = 126;
+		tooSmall.AtlasWidth = 128; // room for a handful of 48 px cells
+		tooSmall.AtlasHeight = 128;
+		Test.Assert(baker.Bake(font, tooSmall) case .Err(.AtlasPackingFailed));
+
+		var tooNarrow = tooSmall;
+		tooNarrow.AtlasWidth = 16; // narrower than one cell
+		tooNarrow.AtlasHeight = 4096;
+		Test.Assert(baker.Bake(font, tooNarrow) case .Err(.AtlasPackingFailed));
 	}
 }

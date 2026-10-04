@@ -21,6 +21,9 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 	/// enough that neighbouring strokes do not overwrite each other's field.
 	private const double cDefaultPixelRange = 4.0;
 
+	/// The solid block for solid colour draws, packed as a cell like any glyph.
+	private const uint32 cWhiteBlockSize = 2;
+
 	private static StringView[3] sExtensions = .(".ttf", ".otf", ".ttc");
 
 	public override Span<StringView> SupportedExtensions => .(&sExtensions[0], 3);
@@ -55,16 +58,39 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 		if (stbtt_InitFont(&info, rawData, stbtt_GetFontOffsetForIndex(rawData, 0)) == 0)
 			return .Err(.InvalidFormat);
 
-		let atlasWidth = options.AtlasWidth;
-		let atlasHeight = options.AtlasHeight;
 		let scale = stbtt_ScaleForPixelHeight(&info, options.PixelHeight);
 
 		let atlas = new DistanceFieldFontAtlas();
 		atlas.SetPixelRange((float)cDefaultPixelRange);
 
 		let work = scope List<GlyphWork>();
-		PackGlyphs(&info, scale, options, atlas, work);
+		MeasureGlyphs(&info, scale, options, atlas, work);
 
+		// Pack the glyph cells and, last, the white block, at the width that needs the least
+		// atlas; the asset's atlas size is the most it may take. A glyph that cannot fit fails
+		// the bake: dropping it would draw that character as nothing, with no word why.
+		let cells = scope List<(uint32 Width, uint32 Height)>();
+		for (let item in work)
+			cells.Add(((uint32)item.CellWidth, (uint32)item.CellHeight));
+		cells.Add((cWhiteBlockSize, cWhiteBlockSize));
+		if (!AtlasSizing.ChooseWidth(cells, options.AtlasWidth, options.AtlasHeight, let packWidth))
+		{
+			delete atlas;
+			return .Err(.AtlasPackingFailed);
+		}
+		let positions = scope List<(uint32 X, uint32 Y)>();
+		AtlasSizing.PackAll(cells, packWidth, options.AtlasHeight, positions, let atlasWidth, let atlasHeight);
+		for (int i < work.Count)
+		{
+			var item = ref work[i];
+			item.PackX = positions[i].X;
+			item.PackY = positions[i].Y;
+			item.Region.X = (uint16)positions[i].X;
+			item.Region.Y = (uint16)positions[i].Y;
+		}
+		let whiteAt = positions.Back;
+
+		// Zeroed: fully outside every glyph.
 		let pixels = new List<uint8>();
 		pixels.Resize((int)atlasWidth * (int)atlasHeight * 4);
 		if (!pixels.IsEmpty)
@@ -92,16 +118,16 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 			return .Err(.NoGlyphsFound);
 		}
 
-		WriteWhiteBlock(atlasWidth, atlasHeight, pixels, atlas);
+		WriteWhiteBlock(whiteAt.X, whiteAt.Y, atlasWidth, atlasHeight, pixels, atlas);
 		atlas.SetPixels(atlasWidth, atlasHeight, pixels);
 		return .Ok(atlas);
 	}
 
-	/// Sequential: measures every glyph and decides where its cell goes.
-	private void PackGlyphs(stbtt_fontinfo* info, float scale, FontLoadOptions options,
+	/// Sequential: measures every glyph and the cell it needs. Where each cell goes is decided
+	/// after, once every cell is known.
+	private void MeasureGlyphs(stbtt_fontinfo* info, float scale, FontLoadOptions options,
 		DistanceFieldFontAtlas atlas, List<GlyphWork> outWork)
 	{
-		var packer = RowPacker(options.AtlasWidth, options.AtlasHeight);
 		let padding = (int32)options.Padding;
 
 		for (int32 codepoint = options.FirstCodepoint; codepoint <= options.LastCodepoint; codepoint++)
@@ -134,9 +160,6 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 			let cellWidth = glyphWidth + padding * 2 + 2;
 			let cellHeight = glyphHeight + padding * 2 + 2;
 
-			if (!packer.TryPack((uint32)cellWidth, (uint32)cellHeight, let packX, let packY))
-				continue; // the atlas is full; the rest simply do not get baked
-
 			int32 advanceWidth = 0, leftSideBearing = 0;
 			stbtt_GetGlyphHMetrics(info, glyphIndex, &advanceWidth, &leftSideBearing);
 
@@ -146,8 +169,6 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 			item.Codepoint = codepoint;
 			item.CellWidth = cellWidth;
 			item.CellHeight = cellHeight;
-			item.PackX = packX;
-			item.PackY = packY;
 			// Map the glyph's bounding box corner onto the cell's inner corner. msdfgen
 			// projects as scale * (coord + translate), so the translate is in font units and
 			// is applied BEFORE the scale, hence the division.
@@ -155,7 +176,8 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 			item.TranslateY = (double)(padding + 1) / scaleAsDouble - (double)boxY0;
 			// The offsets are the cell's top left relative to the cursor on the baseline, in
 			// the Y-down space the draw path works in.
-			item.Region = .((uint16)packX, (uint16)packY, (uint16)cellWidth, (uint16)cellHeight,
+			// Placed (X, Y) once every cell has been measured.
+			item.Region = .(0, 0, (uint16)cellWidth, (uint16)cellHeight,
 				(float)(pixelX0 - padding - 1), (float)(pixelY0 - padding - 1),
 				(float)advanceWidth * scale);
 			outWork.Add(item);
@@ -282,22 +304,17 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 		return (uint8)scaled;
 	}
 
-	/// A two by two solid block in the bottom right corner, for solid fills.
+	/// A two by two solid block in the cell packed for it, for solid fills.
 	///
 	/// The vector renderer draws untextured geometry by sampling this rather than binding a
 	/// second texture, so it has to survive into every atlas. Two by two, sampled at the
 	/// centre, so bilinear filtering cannot pull in a neighbouring texel.
-	private void WriteWhiteBlock(uint32 atlasWidth, uint32 atlasHeight, List<uint8> pixels,
-		DistanceFieldFontAtlas atlas)
+	private void WriteWhiteBlock(uint32 blockX, uint32 blockY, uint32 atlasWidth, uint32 atlasHeight,
+		List<uint8> pixels, DistanceFieldFontAtlas atlas)
 	{
-		if ((atlasWidth < 2) || (atlasHeight < 2))
-			return;
-
-		let blockX = atlasWidth - 2;
-		let blockY = atlasHeight - 2;
-		for (uint32 dy < 2)
+		for (uint32 dy < cWhiteBlockSize)
 		{
-			for (uint32 dx < 2)
+			for (uint32 dx < cWhiteBlockSize)
 			{
 				let index = ((int)(blockY + dy) * (int)atlasWidth + (int)(blockX + dx)) * 4;
 				pixels[index + 0] = 255;

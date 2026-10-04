@@ -26,9 +26,10 @@ class FontAssetBuilder : IAssetBuilder
 
 	/// Four, after a run of record changes: the oversample fields, which a baked screen quad
 	/// has to divide back out; the distance field range's key; and full names for the glyph
-	/// bounds. A product schema change bumps this in the SAME commit, because the bump IS the
-	/// migration: it forces every stale cooked font to re-cook.
-	public int32 Version => 4;
+	/// bounds. Five: a distance field atlas is sized to its glyphs, so every cooked font
+	/// re-bakes at its new size. A product schema change bumps this in the SAME commit, because
+	/// the bump IS the migration: it forces every stale cooked font to re-cook.
+	public int32 Version => 5;
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{

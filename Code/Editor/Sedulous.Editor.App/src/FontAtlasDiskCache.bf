@@ -17,7 +17,7 @@ namespace Sedulous.Editor.App;
 class FontAtlasDiskCache : IFontAtlasCache
 {
 	/// Bump on any layout change: old cache files then miss and rebake.
-	private const uint32 cCacheFormatVersion = 1;
+	private const uint32 cCacheFormatVersion = 2;
 	private const uint32 cCacheMagic = 0x43414644; // 'DFAC'
 
 	[Ordered, Packed]
