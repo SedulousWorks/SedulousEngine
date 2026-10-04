@@ -6,6 +6,12 @@
 //
 // The camera looks down -Z from behind, so the "Move" axis maps straight to the ground plane:
 // W (+Y) walks toward -Z, D (+X) toward +X.
+//
+// A fall or a hit is paced so the player can find themselves again: a poof where they went, a
+// moment out of sight while the camera glides back to the safe ground (the player already moved
+// there, facing the way they stood on it), a poof as they reappear, then a moment of blinking
+// in which nothing can hurt. Safe ground is a spot stood still on with ground all round it: near
+// an edge the nearest spot that has it is kept instead, so a respawn never starts half off a ledge.
 
 // The Character model's clips (Models/Character/Character).
 Guid kIdleClip = Guid::FromString("9d570e4d-2821-d043-abc6-bd79566a5dc3");
@@ -38,6 +44,9 @@ class PlayerController
 	[-15.0, "Below this height the player falls out and respawns"] float killHeight;
 	[0.4, "Standing still this long on ground makes it the respawn point (s)"] float safeGroundTime;
 	[8.0, "Bounce speed off a stomped enemy (m/s)"] float bounceSpeed;
+	[0.8, "Out of sight after a fall or a hit, while the camera glides back (s)"] float respawnDelay;
+	[1.2, "Blinking after reappearing, when nothing can hurt (s)"] float graceTime;
+	[0.7, "Safe ground reaches at least this far round the spot on every side (m)"] float safeMargin;
 
 	// ---- runtime ----
 	private float m_velX = 0.0f;
@@ -58,6 +67,12 @@ class PlayerController
 	private float m_airTime = 0.0f;
 	/// The level is won: no more input, the player stands and enjoys it.
 	private bool m_celebrating = false;
+	/// Seconds left out of sight before reappearing (below 0: not respawning).
+	private float m_respawning = -1.0f;
+	/// The current still moment has been looked at for safe ground (once per stand).
+	private bool m_safeChecked = false;
+	/// The facing the player had on the safe ground, which a respawn gives back.
+	private float m_spawnYaw = 0.0f;
 	private Entity m_camera;
 
 	void onStart()
@@ -79,6 +94,27 @@ class PlayerController
 			m_invulnerable -= dt;
 		}
 		CharacterComponent character(self);
+		if (m_respawning >= 0.0f)
+		{
+			// Out of sight at the safe ground, standing still while the camera arrives.
+			character.Move(0.0f, 0.0f);
+			m_respawning -= dt;
+			if (m_respawning < 0.0f)
+			{
+				showModel(true);
+				scene.Prefabs.Spawn(kPoof, self.GetWorldPosition());
+			}
+			return;
+		}
+		if (m_invulnerable > 0.0f)
+		{
+			// The grace after reappearing: a blink, ten times a second.
+			showModel(int(m_invulnerable * 10.0f) % 2 == 0);
+		}
+		else
+		{
+			showModel(true);
+		}
 		bool grounded = character.Grounded;
 		m_sinceGrounded = grounded ? 0.0f : m_sinceGrounded + dt;
 		// A hard landing kicks up dust; a hop off a step does not.
@@ -93,9 +129,19 @@ class PlayerController
 		// ground that is not safe; standing still inside a hazard's reach hurts at once.
 		bool still = (m_velX * m_velX + m_velZ * m_velZ) < 0.25f;
 		m_groundedFor = (grounded && still) ? m_groundedFor + dt : 0.0f;
-		if ((m_groundedFor > safeGroundTime) && (m_invulnerable <= 0.0f))
+		if (m_groundedFor <= 0.0f)
 		{
-			m_spawn = self.GetWorldPosition() + Float3(0.0f, 0.1f, 0.0f);
+			m_safeChecked = false;
+		}
+		if ((m_groundedFor > safeGroundTime) && (m_invulnerable <= 0.0f) && !m_safeChecked)
+		{
+			m_safeChecked = true;
+			Float3 spot = self.GetWorldPosition();
+			if (findSafeSpot(self.GetWorldPosition(), spot))
+			{
+				m_spawn = spot + Float3(0.0f, 0.1f, 0.0f);
+				m_spawnYaw = m_yaw;
+			}
 		}
 		m_sinceJumpPressed = Input.WasPressed("Jump") ? 0.0f : m_sinceJumpPressed + dt;
 
@@ -174,18 +220,71 @@ class PlayerController
 		m_celebrating = true;
 	}
 
-	// A fall: back to the last safe ground with no momentum.
+	// A fall or a hit: a poof where the player went, then back to the last safe ground with no
+	// momentum, out of sight until the camera is there (onUpdate brings them back).
 	void respawn()
 	{
+		if (m_respawning >= 0.0f)
+		{
+			return; // already on the way back
+		}
 		m_deaths += 1;
 		m_velX = 0.0f;
 		m_velZ = 0.0f;
 		scene.Prefabs.Spawn(kPoof, self.GetWorldPosition());
 		CharacterComponent character(self);
 		character.SetPosition(m_spawn);
-		scene.Prefabs.Spawn(kPoof, m_spawn);
-		m_invulnerable = 0.5f;
+		m_yaw = m_spawnYaw;
+		self.SetLocalRotation(Quaternion::FromAxisAngle(Float3::UnitY, m_yaw));
+		showModel(false);
+		playAnim(0);
+		m_respawning = respawnDelay;
+		m_invulnerable = respawnDelay + graceTime;
 		scene.Scripts.Emit("PlayerDied", m_deaths);
+	}
+
+	private void showModel(bool shown)
+	{
+		if (m_model.IsValid() && m_model.IsActive() != shown)
+		{
+			m_model.SetActive(shown);
+		}
+	}
+
+	// The spot nearest `at` (searched on a 0.4 m grid out to 0.8 m) where the ground reaches
+	// safeMargin past it on all four sides, level with the player's feet: false when there is none.
+	private bool findSafeSpot(Float3 at, Float3 &out spot)
+	{
+		array<float> steps = {0.0f, -0.4f, 0.4f, -0.8f, 0.8f};
+		float feet = at.Y - kFeet;
+		float best = 1000.0f;
+		bool found = false;
+		for (uint i = 0; i < steps.length(); i++)
+		{
+			for (uint j = 0; j < steps.length(); j++)
+			{
+				float x = at.X + steps[i];
+				float z = at.Z + steps[j];
+				float distance = steps[i] * steps[i] + steps[j] * steps[j];
+				if (distance < best && groundAt(x, z, feet) && groundAt(x + safeMargin, z, feet)
+					&& groundAt(x - safeMargin, z, feet) && groundAt(x, z + safeMargin, feet)
+					&& groundAt(x, z - safeMargin, feet))
+				{
+					best = distance;
+					spot = Float3(x, at.Y, z);
+					found = true;
+				}
+			}
+		}
+		return found;
+	}
+
+	// Flat ground under (x, z) level with the player's feet. The islands' tops are flat and their
+	// edges rounded, so a probe on the bevel (a little lower) counts as the edge, not as ground.
+	private bool groundAt(float x, float z, float feet)
+	{
+		PhysicsHit hit = scene.Physics.RayCast(Float3(x, feet + 0.6f, z), Float3(0.0f, -1.0f, 0.0f), 1.2f);
+		return hit.Hit && Abs(hit.Position.Y - feet) < 0.08f;
 	}
 
 	private void dust()
