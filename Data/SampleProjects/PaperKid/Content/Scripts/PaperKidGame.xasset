@@ -1,5 +1,5 @@
 <root>
-	<string name="guid">1b3d9ba9-e199-b247-868f-c45247fb1914</string>
+	<string name="guid">ba2bb78e-5e43-c64d-85bd-8101fe5d230c</string>
 	<string name="typeName">Sedulous.Script.Pipeline.ScriptClassAsset</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">6162296549784860781</u64>

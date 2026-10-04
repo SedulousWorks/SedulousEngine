@@ -1,0 +1,15 @@
+<root>
+	<string name="guid">cb482b3c-60c4-cc45-a9db-9a35dcba15c2</string>
+	<string name="typeName">Sedulous.Script.Pipeline.ScriptClassAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6162296549784860781</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">Vehicle.as</string>
+			<string name="language">angelscript</string>
+			<string name="className"/>
+		</object>
+	</object>
+</root>

@@ -129,7 +129,6 @@ last drawn shows. A system added by the page or a creator should get a fresh see
   doc, every type, path and behaviour checked against this engine; export, templates and the
   Steam Deck first.
 - Write a `CONTRIBUTING.md`; v0's describes the old engine.
-- Finish PaperKid (`Data/SampleProjects/PaperKid`).
 
 ## Housekeeping
 

@@ -1,0 +1,74 @@
+<root>
+	<string name="guid">e83ae83f-764c-2340-ab35-54cdcb74bda8</string>
+	<string name="typeName">Sedulous.Materials.Pipeline.MaterialAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6954260022368370024</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<array name="dataVersions" count="1">
+				<u64 name="type">14214410887517557523</u64>
+				<u32 name="version">3</u32>
+			</array>
+			<object>
+				<string name="name">AimGuide</string>
+				<string name="shaderId">00000000-0000-0000-0000-000000000000</string>
+				<string name="shaderName">unlit</string>
+				<u32 name="shaderFlags">0</u32>
+				<u8 name="blendMode">0</u8>
+				<u8 name="depthMode">1</u8>
+				<u8 name="cullMode">1</u8>
+				<u8 name="vertexLayout">4</u8>
+				<array name="propertyNames" count="3">
+					<string>BaseColor</string>
+					<string>AlbedoMap</string>
+					<string>MainSampler</string>
+				</array>
+				<array name="propertyTypes" count="3">
+					<u8>12</u8>
+					<u8>9</u8>
+					<u8>11</u8>
+				</array>
+				<array name="propertyBindings" count="3">
+					<u32>0</u32>
+					<u32>1</u32>
+					<u32>2</u32>
+				</array>
+				<array name="propertyOffsets" count="3">
+					<u32>0</u32>
+					<u32>0</u32>
+					<u32>0</u32>
+				</array>
+				<array name="propertySizes" count="3">
+					<u32>16</u32>
+					<u32>0</u32>
+					<u32>0</u32>
+				</array>
+				<array name="uniformDefaults" count="16">
+					<u8>205</u8>
+					<u8>204</u8>
+					<u8>172</u8>
+					<u8>63</u8>
+					<u8>205</u8>
+					<u8>204</u8>
+					<u8>172</u8>
+					<u8>63</u8>
+					<u8>205</u8>
+					<u8>204</u8>
+					<u8>172</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+				</array>
+				<array name="textureSlots" count="0"/>
+				<array name="textureIds" count="0"/>
+				<u8 name="samplerU">0</u8>
+				<u8 name="samplerV">0</u8>
+			</object>
+		</object>
+	</object>
+</root>

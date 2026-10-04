@@ -1,0 +1,51 @@
+<root>
+	<string name="guid">c4594ad2-9704-c841-9653-3da0c7f0a639</string>
+	<string name="typeName">Sedulous.Render.Pipeline.EnvironmentProfileAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">17792114773175768869</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<string name="skyTexture">00000000-0000-0000-0000-000000000000</string>
+			<object name="ambientColor">
+				<f32 name="r">0.349</f32>
+				<f32 name="g">0.381</f32>
+				<f32 name="b">0.437</f32>
+				<f32 name="a">1</f32>
+			</object>
+			<f32 name="ambientIntensity">0.08</f32>
+			<u32 name="skyMode">0</u32>
+			<f32 name="skyIntensity">1</f32>
+			<f32 name="skyBackgroundIntensity">1</f32>
+			<f32 name="skyRotation">0</f32>
+			<object name="skyHorizon">
+				<f32 name="r">0.626</f32>
+				<f32 name="g">0.767</f32>
+				<f32 name="b">0.978</f32>
+				<f32 name="a">1</f32>
+			</object>
+			<object name="skyZenith">
+				<f32 name="r">0.313</f32>
+				<f32 name="g">0.537</f32>
+				<f32 name="b">0.931</f32>
+				<f32 name="a">1</f32>
+			</object>
+			<object name="skyGround">
+				<f32 name="r">0.547</f32>
+				<f32 name="g">0.547</f32>
+				<f32 name="b">0.547</f32>
+				<f32 name="a">1</f32>
+			</object>
+			<f32 name="sunIntensity">1</f32>
+			<f32 name="sunAngularSize">0.5</f32>
+			<f32 name="turbidity">3</f32>
+			<f32 name="iblDiffuseIntensity">0.35</f32>
+			<f32 name="iblSpecularIntensity">1</f32>
+			<f32 name="shadowDistance">60</f32>
+			<f32 name="shadowCascadeSplit">0.7</f32>
+			<f32 name="shadowFadeDistance">10</f32>
+		</object>
+	</object>
+</root>

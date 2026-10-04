@@ -1,56 +1,118 @@
-// Bike - the player's ride.
+// Bike - the player's ride, on the Bike entity (a Character component: a kinematic capsule).
 //
-// A per-entity behavior on the bike entity, which carries a Character component (a kinematic
-// character controller: arcade feel, no ragdoll). Each frame it reads the "Move" axis (WASD in
-// the default input map): Y is throttle and brake, X is steer. It keeps a heading (yaw) and a
-// scalar speed, turns the heading, then drives the character with a horizontal velocity along
-// that heading. The follow camera trails this entity's transform.
+// "Move": Y is throttle and brake, X steers. The bike keeps a heading and a signed speed, turns
+// the heading (harder the faster it goes, and reversed while backing up), drives the character
+// along it, and points the entity the same way.
 //
-// The SAME yaw that turns local forward (+Z) into the world velocity also sets the entity's
-// rotation, so the model always points where it moves.
+// "Throw" launches a paper along the aim: the bike's forward, biased toward the nearest delivery
+// zone in front (the soft auto-aim), with an upward arc. The Level owns the paper count: each
+// throw is "PaperThrown", and the Level answers with "PapersLeft".
+//
+// A crash ("Crashed", sent by an Obstacle) knocks the bike back against the way it was going and
+// leaves the steering and throttle weak for a moment; the Level takes the time penalty.
+//
+// The feel: the bike leans into its turns (harder the faster it goes) and wobbles while it
+// recovers from a crash, which kicks up road dust; a throw and a crash each have their sound,
+// pitched a little at random so repeats do not sound the same. A cleared block bursts confetti
+// over the rider. Near a subscriber, the throw is shown before it is made: a trail of glowing dots
+// along the path a paper would take, drifting forward, and a ring spinning on the porch the throw
+// is pulled toward (the AimDot and TargetRing prefabs, spawned once and moved each frame).
 
-// The paper prefab thrown on the Throw action. Keep in sync with Prefabs/Paper.
-Guid kPaperPrefab = Guid::FromString("322880fe-e4b5-1844-a540-e0bc869183dd");
+Guid kPaper = Guid::FromString("a08aecb1-23c6-c14d-8705-8c18170504b5");
+Guid kAimDot = Guid::FromString("40b43d5c-0d3e-f04b-b71c-39bb82d20063");
+Guid kTargetRing = Guid::FromString("a0d47e87-2ec8-d341-87b8-9e2d416c5684");
+Guid kFxDust = Guid::FromString("f60d1ddf-66a7-6848-8474-30f75869ab41");
+Guid kFxConfetti = Guid::FromString("94a59a6c-f4d9-0841-b9c1-0d3102825c6a");
+
+const int kAimDots = 14;
+const float kAimStep = 0.09f; // flight seconds between dots
+Guid kThrowSound = Guid::FromString("0886b159-7ded-3045-b521-9a6572e961b4");
+Guid kCrashSound = Guid::FromString("02cdef9a-69c1-5b4b-9e87-898a47b1b959");
 
 class Bike
 {
 	Entity self;
 	Scene@ scene;
 
-	// ---- tunables ----
-	[9.0, "Top forward speed (m/s)"] float maxSpeed;
+	[11.0, "Top forward speed (m/s)"] float maxSpeed;
 	[3.5, "Top reverse speed (m/s)"] float reverseSpeed;
-	[14.0, "Throttle ramp (m/s^2)"] float acceleration;
-	[22.0, "Active brake / reverse ramp (m/s^2)"] float braking;
-	[8.0, "Roll-down when coasting (m/s^2)"] float coastDeceleration;
-	[130.0, "Yaw rate at full speed (deg/s)"] float turnSpeedDegrees;
-	[0.25, "Steering authority floor (0..1)"] float minSteerFraction;
+	[10.0, "Throttle ramp (m/s^2)"] float acceleration;
+	[22.0, "Brake ramp (m/s^2)"] float braking;
+	[5.0, "Roll-down when coasting (m/s^2)"] float coastDeceleration;
+	[120.0, "Turn rate at full speed (deg/s)"] float turnSpeedDegrees;
+	[0.3, "Steering authority at a crawl (0..1)"] float minSteerFraction;
 
-	// ---- throwing ----
-	[60.0, "Throw impulse (launch strength; scales with paper mass)"] float throwImpulse;
-	[0.65, "Throw arc (upward bias)"] float throwArc;
-	[0.6, "Auto-aim strength (0 = straight, 1 = locked on)"] float autoAim;
-	[18.0, "Auto-aim range (m)"] float aimRange;
-	[10, "Papers per level"] int startingPapers;
-	[2, "Subscriber collision group"] int subscriberGroup;
+	[9.0, "Throw speed (m/s)"] float throwSpeed;
+	[0.55, "Throw arc (upward share)"] float throwArc;
+	[0.85, "Auto-aim strength (0 = straight ahead, 1 = lands on the zone)"] float autoAim;
+	[16.0, "Auto-aim reach (m)"] float aimRange;
+	[2, "The delivery zones' collision group"] int zoneGroup;
 
-	// ---- aim preview: a debug-drawn arc of where the throw will go ----
-	[10.0, "Aim preview launch speed (visual only, m/s)"] float aimPreviewSpeed;
-	[1.5, "Aim preview duration (s)"] float aimPreviewTime;
+	[1.5, "After a crash, how long the controls stay weak (s)"] float crashTime;
+	[0.25, "The controls' strength while recovering (0..1)"] float crashControl;
+	[4.0, "The speed a crash knocks the bike back at (m/s)"] float knockback;
+	[14.0, "Lean into a turn at full speed (deg)"] float maxLean;
 
-	// ---- runtime state (private, so not authored) ----
-	private float m_heading = 0.0f;   // yaw in RADIANS (0 = facing world +Z)
-	private float m_speed = 0.0f;     // signed forward speed (negative = reversing)
-	private int m_papers = 0;         // papers remaining
-	private float m_aimX = 0.0f;      // horizontal aim direction (unit XZ)
+	private float m_heading = 0.0f; // radians; 0 faces +Z
+	private float m_speed = 0.0f;
+	private int m_papers = -1;      // -1: the Level has not said yet
+	private float m_aimX = 0.0f;
 	private float m_aimZ = 1.0f;
-	private bool m_hasTarget = false; // the auto-aim locked a subscriber zone this frame
-	private Float3 m_targetPos = Float3(0.0f, 0.0f, 0.0f);
+	private bool m_hasTarget = false;
+	private Float3 m_target = Float3(0.0f, 0.0f, 0.0f);
+	private float m_recovering = 0.0f; // seconds of weak controls left after a crash
+	private float m_lean = 0.0f;       // degrees, eased toward the steering
+	private array<Entity> m_dots;
+	private Entity m_ring;
+	private float m_clock = 0.0f;      // drives the dots' drift and the ring's spin
 
 	void onStart()
 	{
-		m_papers = startingPapers;
-		updatePapersHud();
+		// Start facing the way the scene placed the bike.
+		Float3 forward = RotateVector(self.GetLocalTransform().Rotation, Float3(0.0f, 0.0f, 1.0f));
+		m_heading = Atan2(forward.X, forward.Z);
+		// The throw's guides, hidden until there is a throw to show.
+		Float3 at = self.GetLocalTransform().Position;
+		for (int i = 0; i < kAimDots; i++)
+		{
+			Entity dot = scene.Prefabs.Spawn(kAimDot, at);
+			if (dot.IsValid())
+			{
+				dot.SetActive(false);
+				m_dots.insertLast(dot);
+			}
+		}
+		m_ring = scene.Prefabs.Spawn(kTargetRing, at);
+		if (m_ring.IsValid())
+		{
+			m_ring.SetActive(false);
+		}
+	}
+
+	void onPapersLeft(int papers)
+	{
+		m_papers = papers;
+	}
+
+	void onCrashed()
+	{
+		if (m_recovering > 0.0f)
+		{
+			return; // still down from the last one
+		}
+		m_recovering = crashTime;
+		// Bounce back against the way the bike was going: off whatever it ran into.
+		m_speed = (m_speed >= 0.0f) ? -knockback : knockback;
+		Audio.PlayOneShot(kCrashSound, AudioBus::Effects, 1.0f, Random.Range(0.9f, 1.1f));
+		// Road dust off the wheels (the bike's centre is 0.9 above them).
+		scene.Prefabs.Spawn(kFxDust, self.GetLocalTransform().Position + Float3(0.0f, -0.8f, 0.0f));
+		scene.Scripts.Emit("BikeCrashed", 1);
+	}
+
+	// The block is cleared: confetti bursts over the rider, and hangs in the slow motion after.
+	void onQuotaMet(int secondsLeft)
+	{
+		scene.Prefabs.Spawn(kFxConfetti, self.GetLocalTransform().Position + Float3(0.0f, 1.6f, 0.0f));
 	}
 
 	void onUpdate(float dt)
@@ -59,199 +121,230 @@ class Bike
 		{
 			return;
 		}
-
 		Float2 move = Input.Value2D("Move");
-		float throttle = move.Y; // W = +1 (forward), S = -1 (back)
-		float steer = move.X;    // D = +1 (right),   A = -1 (left)
+		if (m_recovering > 0.0f)
+		{
+			m_recovering -= dt;
+			move = Float2(move.X * crashControl, move.Y * crashControl);
+		}
+		updateSpeed(move.Y, dt);
+		updateHeading(move.X, dt);
+		Float3 forward = facing();
+		CharacterComponent(self).Move(forward.X * m_speed, forward.Z * m_speed);
+		// Lean into the turn (a positive roll tips the top toward screen right from behind, the
+		// way a right turn leans), eased so it settles rather than snaps; wobble while recovering.
+		float authority = Abs(m_speed) / maxSpeed;
+		if (authority > 1.0f) { authority = 1.0f; }
+		float lean = move.X * maxLean * authority;
+		m_lean += (lean - m_lean) * clamp01(8.0f * dt);
+		float wobble = (m_recovering > 0.0f) ? Sin(m_recovering * 24.0f) * 9.0f * (m_recovering / crashTime) : 0.0f;
+		self.SetLocalRotation(FromYawPitchRoll(m_heading, 0.0f, DegreesToRadians(m_lean + wobble)));
 
-		updateSpeed(throttle, dt);
-		updateHeading(steer, dt);
-		applyMotion();
-
-		// Preview the throw every frame the bike has papers; debug draw is immediate mode, so it
-		// has to be re-issued from onUpdate.
-		if (m_papers > 0)
+		m_clock += dt;
+		if (m_papers == 0)
+		{
+			hideGuides();
+		}
+		else
 		{
 			computeAim();
-			drawAimPreview();
-		}
-
-		// A paper is only consumed when the throw actually spawned one, so a failed prefab
-		// resolve cannot burn papers toward the out-of-papers fail condition.
-		if (m_papers > 0 && Input.WasPressed("Throw") && throwPaper())
-		{
-			m_papers -= 1;
-			updatePapersHud();
-			// On the LAST paper, tell the Level: it grace-waits for this one to land, then fails
-			// if the quota is still unmet.
-			if (m_papers == 0)
+			placeGuides();
+			if (Input.WasPressed("Throw") && throwPaper())
 			{
-				scene.Scripts.Emit("OutOfPapers", 0);
+				Audio.PlayOneShot(kThrowSound, AudioBus::Effects, 0.8f, Random.Range(0.9f, 1.15f));
+				scene.Scripts.Emit("PaperThrown", 1);
 			}
 		}
 	}
 
-	// Mirror the remaining paper count into the HUD (a no-op when the HUD is not shown).
-	private void updatePapersHud()
+	private float clamp01(float v)
 	{
-		Ui.FindLabel("hud-papers").SetText("Papers " + m_papers);
+		if (v < 0.0f) { return 0.0f; }
+		if (v > 1.0f) { return 1.0f; }
+		return v;
 	}
 
-	// Ramp the signed speed toward the throttle intent, clamped to the forward/reverse caps.
-	private void updateSpeed(float throttle, float d)
+	private Float3 facing()
+	{
+		return Float3(Sin(m_heading), 0.0f, Cos(m_heading));
+	}
+
+	private void updateSpeed(float throttle, float dt)
 	{
 		if (throttle > 0.0f)
 		{
-			// Accelerating forward (brake harder first if we were reversing).
-			float rate = (m_speed < 0.0f) ? braking : acceleration;
-			m_speed += throttle * rate * d;
+			m_speed += throttle * ((m_speed < 0.0f) ? braking : acceleration) * dt;
 		}
 		else if (throttle < 0.0f)
 		{
-			// Braking, then reversing.
-			float rate = (m_speed > 0.0f) ? braking : acceleration;
-			m_speed += throttle * rate * d;
+			m_speed += throttle * ((m_speed > 0.0f) ? braking : acceleration) * dt;
 		}
 		else if (m_speed > 0.0f)
 		{
-			m_speed -= coastDeceleration * d;
+			m_speed -= coastDeceleration * dt;
 			if (m_speed < 0.0f) { m_speed = 0.0f; }
 		}
 		else if (m_speed < 0.0f)
 		{
-			m_speed += coastDeceleration * d;
+			m_speed += coastDeceleration * dt;
 			if (m_speed > 0.0f) { m_speed = 0.0f; }
 		}
-
 		if (m_speed > maxSpeed) { m_speed = maxSpeed; }
 		if (m_speed < -reverseSpeed) { m_speed = -reverseSpeed; }
 	}
 
-	// Turn the heading. Steering authority scales with speed (a parked bike barely turns) and
-	// inverts while reversing, so backing up steers the way a vehicle actually does.
-	private void updateHeading(float steer, float d)
+	// A positive yaw turns +Z toward +X, which is screen left from behind: right steer lowers it.
+	private void updateHeading(float steer, float dt)
 	{
 		if (steer == 0.0f || m_speed == 0.0f)
 		{
 			return;
 		}
-
-		float speedFraction = Abs(m_speed) / maxSpeed;
-		if (speedFraction > 1.0f) { speedFraction = 1.0f; }
-		if (speedFraction < minSteerFraction) { speedFraction = minSteerFraction; }
-
+		float authority = Abs(m_speed) / maxSpeed;
+		if (authority > 1.0f) { authority = 1.0f; }
+		if (authority < minSteerFraction) { authority = minSteerFraction; }
 		float direction = (m_speed >= 0.0f) ? 1.0f : -1.0f;
-		float turnRate = DegreesToRadians(turnSpeedDegrees);
-		// A positive yaw about +Y turns local forward (+Z) toward +X, which is screen LEFT from
-		// the trailing camera, so a positive steer (D = right) DECREASES the heading.
-		m_heading -= steer * direction * turnRate * speedFraction * d;
+		m_heading -= steer * direction * DegreesToRadians(turnSpeedDegrees) * authority * dt;
 	}
 
-	// Drive the character along the heading and point the entity the same way.
-	private void applyMotion()
-	{
-		Quaternion facing = Quaternion::FromAxisAngle(Float3(0.0f, 1.0f, 0.0f), m_heading);
-		Float3 forward = RotateVector(facing, Float3(0.0f, 0.0f, 1.0f));
-
-		scene.Physics.MoveCharacter(self, forward.X * m_speed, forward.Z * m_speed);
-		self.SetLocalRotation(facing);
-	}
-
-	// The throw's HORIZONTAL aim: the bike's heading, biased by a soft auto-aim toward the
-	// nearest subscriber zone in front. Fills m_aimX/m_aimZ (unit XZ) and the locked target.
+	// The throw's horizontal aim: forward, pulled toward the nearest zone in front.
 	private void computeAim()
 	{
 		Float3 pos = self.GetWorldPosition();
-		float fx = Sin(m_heading); // forward XZ, matching applyMotion: (sin h, 0, cos h)
-		float fz = Cos(m_heading);
-
-		float aimX = fx;
-		float aimZ = fz;
+		Float3 f = facing();
+		float aimX = f.X;
+		float aimZ = f.Z;
 		m_hasTarget = false;
-
 		array<Entity> zones;
-		scene.Physics.OverlapSphere(pos, aimRange, zones, uint(1 << subscriberGroup));
-		float bestDist = aimRange * aimRange + 1.0f;
+		scene.Physics.OverlapSphere(pos, aimRange, zones, uint(1) << uint(zoneGroup));
+		float best = aimRange * aimRange + 1.0f;
 		for (uint i = 0; i < zones.length(); i++)
 		{
-			Float3 zp = zones[i].GetWorldPosition();
-			float dx = zp.X - pos.X;
-			float dz = zp.Z - pos.Z;
+			Float3 z = zones[i].GetWorldPosition();
+			float dx = z.X - pos.X;
+			float dz = z.Z - pos.Z;
 			float dist2 = dx * dx + dz * dz;
-			if (dist2 < 0.0001f) { continue; }
-			float len = Sqrt(dist2);
-			float ndx = dx / len;
-			float ndz = dz / len;
-			if (ndx * fx + ndz * fz > 0.1f && dist2 < bestDist) // in front, and nearer
+			if (dist2 < 0.0001f)
 			{
-				bestDist = dist2;
-				aimX = fx + (ndx - fx) * autoAim; // lerp forward toward the zone
-				aimZ = fz + (ndz - fz) * autoAim;
+				continue;
+			}
+			float len = Sqrt(dist2);
+			if ((dx / len) * f.X + (dz / len) * f.Z > 0.1f && dist2 < best)
+			{
+				best = dist2;
+				aimX = f.X + (dx / len - f.X) * autoAim;
+				aimZ = f.Z + (dz / len - f.Z) * autoAim;
 				m_hasTarget = true;
-				m_targetPos = zp;
+				m_target = z;
 			}
 		}
 		float l = Sqrt(aimX * aimX + aimZ * aimZ);
-		if (l > 0.0001f) { aimX /= l; aimZ /= l; }
-		m_aimX = aimX;
-		m_aimZ = aimZ;
+		m_aimX = aimX / l;
+		m_aimZ = aimZ / l;
 	}
 
-	// Debug-draw the throw's projected path: the ballistic arc under the scene's gravity, plus a
-	// marker on the locked target. The launch SPEED is a visual tunable; the real throw is an
-	// impulse whose speed depends on the paper's mass, so tune aimPreviewSpeed to match.
-	private void drawAimPreview()
+	private Float3 launchPoint()
 	{
 		Float3 pos = self.GetWorldPosition();
-		float fx = Sin(m_heading);
-		float fz = Cos(m_heading);
-		Float3 origin = Float3(pos.X + fx, pos.Y + 1.2f, pos.Z + fz); // the throw's spawn point
+		Float3 f = facing();
+		// Above the rider's head, so the paper never meets the bike's own capsule on the way out.
+		return Float3(pos.X + f.X * 0.6f, pos.Y + 1.6f, pos.Z + f.Z * 0.6f);
+	}
 
+	// The paper's launch velocity: along the aim at the throw speed, plus the bike's own speed.
+	// With a zone locked, the ground part leans (by autoAim) toward the velocity that lands the
+	// paper on the zone in its flight time - the soft auto-aim corrects the range as well as the
+	// direction, so a throw at a marked porch from a moving bike usually lands.
+	private Float3 launchVelocity()
+	{
 		float mag = Sqrt(1.0f + throwArc * throwArc);
-		float vx = m_aimX / mag * aimPreviewSpeed;
-		float vy = throwArc / mag * aimPreviewSpeed;
-		float vz = m_aimZ / mag * aimPreviewSpeed;
-		float g = scene.Physics.Gravity.Y;
-
-		Color amber = Color(1.0f, 0.85f, 0.1f);
-		int steps = 24;
-		float step = aimPreviewTime / float(steps);
-		Float3 prev = origin;
-		for (int i = 1; i <= steps; i++)
-		{
-			float t = step * float(i);
-			Float3 p = Float3(origin.X + vx * t, origin.Y + vy * t + 0.5f * g * t * t,
-				origin.Z + vz * t);
-			scene.Debug.Line(prev, p, amber);
-			prev = p;
-			if (p.Y < 0.0f) { break; } // stop at the ground plane
-		}
+		Float3 carry = facing() * m_speed;
+		float vx = m_aimX / mag * throwSpeed + carry.X;
+		float vy = throwArc / mag * throwSpeed;
+		float vz = m_aimZ / mag * throwSpeed + carry.Z;
 		if (m_hasTarget)
 		{
-			scene.Debug.WireSphere(m_targetPos, 0.6f, Color(0.2f, 1.0f, 0.3f));
+			Float3 from = launchPoint();
+			float g = -scene.Physics.Gravity.Y;
+			float drop = from.Y - (m_target.Y + 0.4f);
+			float flight = (vy + Sqrt(vy * vy + 2.0f * g * drop)) / g;
+			if (flight > 0.05f)
+			{
+				vx += ((m_target.X - from.X) / flight - vx) * autoAim;
+				vz += ((m_target.Z - from.Z) / flight - vz) * autoAim;
+			}
+		}
+		return Float3(vx, vy, vz);
+	}
+
+	// The throw's path, under the scene's gravity: a dot every kAimStep seconds of flight, the
+	// row drifting forward one step each half second and shrinking toward its end, stopped where
+	// the path meets the ground. The ring sits on the zone the throw is pulled toward. Both show
+	// only while a subscriber is in reach, so the road stays clear between houses.
+	private void placeGuides()
+	{
+		if (!m_hasTarget)
+		{
+			hideGuides();
+			return;
+		}
+		Float3 p = launchPoint();
+		Float3 v = launchVelocity();
+		float g = scene.Physics.Gravity.Y;
+		float drift = (m_clock * 2.0f) - float(int(m_clock * 2.0f));
+		bool landed = false;
+		for (uint i = 0; i < m_dots.length(); i++)
+		{
+			float t = kAimStep * (float(i) + drift + 0.5f);
+			float y = p.Y + v.Y * t + 0.5f * g * t * t;
+			if (landed || y < 0.0f)
+			{
+				landed = true;
+				m_dots[i].SetActive(false);
+				continue;
+			}
+			m_dots[i].SetActive(true);
+			m_dots[i].SetLocalPosition(Float3(p.X + v.X * t, y, p.Z + v.Z * t));
+			float size = 1.0f - 0.45f * (float(i) / float(m_dots.length()));
+			m_dots[i].SetLocalScale(Float3(size, size, size));
+		}
+		if (!m_ring.IsValid())
+		{
+			return;
+		}
+		m_ring.SetActive(true);
+		m_ring.SetLocalPosition(Float3(m_target.X, 0.02f, m_target.Z));
+		m_ring.SetLocalRotation(FromYawPitchRoll(DegreesToRadians(m_clock * 70.0f), 0.0f, 0.0f));
+		float pulse = 1.0f + 0.08f * Sin(m_clock * 6.0f);
+		m_ring.SetLocalScale(Float3(pulse, 1.0f, pulse));
+	}
+
+	private void hideGuides()
+	{
+		for (uint i = 0; i < m_dots.length(); i++)
+		{
+			m_dots[i].SetActive(false);
+		}
+		if (m_ring.IsValid())
+		{
+			m_ring.SetActive(false);
 		}
 	}
 
-	// Spawn and launch a paper along the freshly computed aim. Returns whether one spawned.
 	private bool throwPaper()
 	{
-		computeAim();
-		Float3 pos = self.GetWorldPosition();
-		float fx = Sin(m_heading);
-		float fz = Cos(m_heading);
-
-		// In front of and above the bike, so the paper clears it.
-		Float3 origin = Float3(pos.X + fx, pos.Y + 1.2f, pos.Z + fz);
-		Entity paper = scene.Prefabs.Spawn(kPaperPrefab, origin);
+		Entity paper = scene.Prefabs.Spawn(kPaper, launchPoint());
 		if (!paper.IsValid())
 		{
 			return false;
 		}
-		// (m_aimX, throwArc, m_aimZ) with a unit horizontal: normalise so throwImpulse is the
-		// magnitude.
-		float mag = Sqrt(1.0f + throwArc * throwArc);
-		scene.Physics.ApplyImpulse(paper, Float3(m_aimX / mag * throwImpulse,
-			throwArc / mag * throwImpulse, m_aimZ / mag * throwImpulse));
+		// An impulse is mass times the change in speed; the paper's mass is its rigid body's.
+		float mass = RigidBodyComponent(paper).Mass;
+		if (mass <= 0.0f)
+		{
+			mass = 1.0f;
+		}
+		scene.Physics.ApplyImpulse(paper, launchVelocity() * mass);
 		return true;
 	}
 }

@@ -1,5 +1,5 @@
 <root>
-	<string name="guid">4fbdd2c7-62ae-b344-9891-b4c6c2c9246b</string>
+	<string name="guid">da157742-3391-0749-96f7-39e6c96abe4a</string>
 	<string name="typeName">Sedulous.Geometry.Pipeline.StaticMeshAsset</string>
 	<array name="dataVersions" count="1">
 		<u64 name="type">2942578683049515522</u64>

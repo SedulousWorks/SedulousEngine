@@ -1,0 +1,21 @@
+{
+ "HouseRed": "a24a018d-6a7f-7043-89fc-4924310ce93f",
+ "HouseBlue": "2188749c-6f47-6b40-a7f9-7eab747a19b6",
+ "HouseCream": "ca325895-9223-3c49-823a-ca0766166753",
+ "Road": "325d2006-8ebc-2542-b1db-02d26c04482d",
+ "Kerb": "0fb313e5-d19f-584e-8791-95ab176bf1a8",
+ "Car": "c3dc5f2f-39c5-314c-b275-9785c40f35e5",
+ "CarOuter": "cb4b22a9-3f49-024d-bf99-7ef4f9302cb8",
+ "Pedestrian": "93e91e73-ca33-014a-92cc-e73aa8b702c8",
+ "Bin": "fba185e6-bc9a-6a4c-9eaa-63482a7da2f9",
+ "Hydrant": "7446ca8b-1523-3545-a042-c497e3ea9aa4",
+ "TrafficCone": "747ff495-3b03-3343-9721-23ac8c1cd697",
+ "Newspaper": "a08aecb1-23c6-c14d-8705-8c18170504b5",
+ "DeliveryZone": "21e8ac63-d2f9-7746-82a0-ab7ca4fe7d54",
+ "AimDot": "40b43d5c-0d3e-f04b-b71c-39bb82d20063",
+ "TargetRing": "a0d47e87-2ec8-d341-87b8-9e2d416c5684",
+ "FxConfetti": "94a59a6c-f4d9-0841-b9c1-0d3102825c6a",
+ "FxSparkle": "f9f2812e-7302-1e41-b95c-15d8e38e49a2",
+ "FxDust": "f60d1ddf-66a7-6848-8474-30f75869ab41",
+ "FxPuff": "8fdf193a-2ba9-c44d-ab1d-b75071f66278"
+}

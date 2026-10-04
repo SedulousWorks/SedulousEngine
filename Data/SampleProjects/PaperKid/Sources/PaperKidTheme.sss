@@ -1,0 +1,97 @@
+/* PaperKid's theme: the morning edition. Every screen is printed on the paper the kid delivers:
+ * cream newsprint cards with an inked border and an offset print shadow, ink text, headlines in
+ * the paper band's red, and the porch markers' yellow for whatever a key or pad has focused (as
+ * loud as hover: the menus are driven by keys and pads). A project theme replaces the engine's
+ * built-in sheet, so everything the game shows is styled here; the screens carry classes, not
+ * colours. */
+
+/* The palette (written out where used: var() does not reach inside a drawable's arguments):
+ * paper #F4ECD8, paper shade #E4D6B8, ink #2A251F, soft ink #6A5F52, headline red #C8372D
+ * (pressed #9C2820), marker yellow #FFD23F. */
+
+Label { text-color: #2A251F; }
+
+/* ---- the page behind a screen, and the cards on it ---- */
+
+.dim { background: rgba(34, 26, 16, 0.45); }
+.dim-heavy { background: rgba(34, 26, 16, 0.65); }
+
+.card {
+	background: rounded-rect(#F4ECD8, radius=6, border=#2A251F, border-width=3);
+	box-shadow: 6 8 0 rgba(42, 37, 31, 0.45);
+}
+/* A failed block's card is edged in headline red; a cleared block's headline is highlighted. */
+.card-bad {
+	background: rounded-rect(#F4ECD8, radius=6, border=#C8372D, border-width=4);
+	box-shadow: 6 8 0 rgba(42, 37, 31, 0.45);
+}
+/* A highlighter stroke behind a headline (the Block cleared screen's good news). */
+.highlight { background: rounded-rect(#FFD23F, radius=3); }
+/* The rule under a headline, as on a front page. */
+.rule { background: rounded-rect(#2A251F, radius=1); }
+
+.masthead { text-color: #C8372D; }
+.headline { text-color: #2A251F; }
+.headline-bad { text-color: #C8372D; }
+.body { text-color: #2A251F; }
+.note { text-color: #6A5F52; }
+
+/* A strip of paper for the hint under the title's buttons. */
+.strip {
+	background: rounded-rect(#F4ECD8, radius=4, border=#2A251F, border-width=2);
+}
+
+/* ---- buttons: paper with an inked edge; the main one in headline red ---- */
+
+ButtonBase {
+	background: state-list(
+		normal=rounded-rect(#F4ECD8, radius=6, border=#2A251F, border-width=2),
+		hover=rounded-rect(#FFF7E4, radius=6, border=#C8372D, border-width=3),
+		pressed=rounded-rect(#E4D6B8, radius=6, border=#2A251F, border-width=3),
+		focused=rounded-rect(#FFD23F, radius=6, border=#2A251F, border-width=3),
+		disabled=rounded-rect(#E4D6B8, radius=6, border=#6A5F52, border-width=2)
+	);
+	box-shadow: 4 5 0 rgba(42, 37, 31, 0.4);
+	text-color: #2A251F;
+	font-size: 29;
+	padding: 6 16;
+	corner-radius: 6;
+}
+
+.primary {
+	background: state-list(
+		normal=rounded-rect(#C8372D, radius=6, border=#2A251F, border-width=2),
+		hover=rounded-rect(#DE4A3F, radius=6, border=#2A251F, border-width=3),
+		pressed=rounded-rect(#9C2820, radius=6, border=#2A251F, border-width=3),
+		focused=rounded-rect(#C8372D, radius=6, border=#FFD23F, border-width=4),
+		disabled=rounded-rect(#8A6A62, radius=6, border=#6A5F52, border-width=2)
+	);
+	text-color: #F4ECD8;
+}
+
+/* ---- the settings' volume sliders: an inked groove, a red fill, a paper thumb ---- */
+
+Slider::track { background: rounded-rect(#E4D6B8, radius=4, border=#2A251F, border-width=2); height: 10; }
+Slider::fill { background: rounded-rect(#C8372D, radius=4); }
+Slider::thumb {
+	background: state-list(
+		normal=rounded-rect(#F4ECD8, radius=12, border=#2A251F, border-width=2),
+		hover=rounded-rect(#FFF7E4, radius=12, border=#C8372D, border-width=3),
+		focused=rounded-rect(#FFD23F, radius=12, border=#2A251F, border-width=3),
+		disabled=rounded-rect(#E4D6B8, radius=12, border=#6A5F52, border-width=2)
+	);
+	width: 24;
+}
+
+/* ---- the HUD: a folded strip of paper over the street ---- */
+
+.hud {
+	background: rounded-rect(#F4ECD8, radius=6, border=#2A251F, border-width=3);
+	box-shadow: 4 6 0 rgba(42, 37, 31, 0.4);
+}
+.hud-caption { text-color: #6A5F52; }
+.hud-value { text-color: #2A251F; }
+.hud-alert { text-color: #C8372D; }
+/* Over the street itself (the points rising from the score, a cleared block's banner): the
+ * marker yellow, which reads over road, grass and sky alike. */
+.over-scene { text-color: #FFD23F; }

@@ -1,0 +1,16 @@
+<root>
+	<string name="guid">2b9844e7-cce7-a44d-a971-9925146f1086</string>
+	<string name="typeName">Sedulous.Texture.Pipeline.RenderTextureAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">374426628232609809</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<u32 name="width">256</u32>
+			<u32 name="height">256</u32>
+			<i32 name="format">0</i32>
+		</object>
+	</object>
+</root>

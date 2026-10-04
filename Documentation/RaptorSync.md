@@ -86,7 +86,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 
 ## Group 6: PaperKid rebuilt over MCP
 
-31. 92bfed84 (+ bdd54b09) and every PaperKid commit since, to 8be4094d: Raptor's rebuilt
+31. ~~92bfed84 (+ bdd54b09)~~ (done) and every PaperKid commit since, to 8be4094d: Raptor's rebuilt
     PaperKid, recreated through the MCP tools: five blocks on a ring road, the bike's auto-aimed
     throws with their guides, cars and walkers on navmeshes, the orthographic minimap camera
     drawing into a render texture the HUD shows, the screens and their newsprint theme, the

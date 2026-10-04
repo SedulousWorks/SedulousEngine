@@ -1,0 +1,38 @@
+<root>
+	<string name="guid">b2abf6c7-8f25-f741-b34b-bb38bf742d4d</string>
+	<string name="typeName">Sedulous.Render.Pipeline.PostProcessProfileAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">14889143079450396171</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<f32 name="exposureEV">1</f32>
+			<u32 name="tonemapOperator">1</u32>
+			<bool name="bloomEnabled">true</bool>
+			<f32 name="bloomThreshold">1</f32>
+			<f32 name="bloomKnee">0.6</f32>
+			<f32 name="bloomIntensity">0.05</f32>
+			<u32 name="aoMode">2</u32>
+			<f32 name="aoStrength">1</f32>
+			<f32 name="aoRadius">1</f32>
+			<f32 name="aoIntensity">1</f32>
+			<bool name="ssrEnabled">false</bool>
+			<f32 name="ssrIntensity">1</f32>
+			<u32 name="aaMode">1</u32>
+			<f32 name="taaBlendFactor">0.97</f32>
+			<f32 name="taaVarianceGamma">1.25</f32>
+			<f32 name="fxaaSubpixel">0.75</f32>
+			<bool name="autoExposure">false</bool>
+			<f32 name="autoExposureKey">0.25</f32>
+			<f32 name="autoExposureSpeed">2</f32>
+			<f32 name="autoExposureMinEV">-4</f32>
+			<f32 name="autoExposureMaxEV">4</f32>
+			<string name="gradingLut">00000000-0000-0000-0000-000000000000</string>
+			<f32 name="gradingIntensity">1</f32>
+			<bool name="ssgiEnabled">false</bool>
+			<f32 name="ssgiIntensity">1</f32>
+		</object>
+	</object>
+</root>

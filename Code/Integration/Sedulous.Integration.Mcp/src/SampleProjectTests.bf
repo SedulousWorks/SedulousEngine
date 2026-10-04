@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Content;
@@ -75,9 +76,12 @@ static class SampleProjectTests
 			defer delete project;
 			let read = ReadAllInstances(project.SourceDb.RootGroup);
 			// Every instance, counted: a floor catches a group silently skipped. PaperKid has
-			// 24: 2 scenes, 1 prefab, 5 scripts, 6 meshes, 6 UI documents, a font, an input
-			// map, a bus layout and a texture. Raise the floor when the sample grows.
-			Test.Assert(read >= 24, scope $"read {read} instances");
+			// 88: 6 scenes (five blocks and the title), 19 kit prefabs, 11 scripts, 18 audio
+			// clips, 4 fonts, 5 meshes, 5 navigation zones, 7 UI documents and their theme, 4
+			// particle effects and their sprite, 2 animation clips, a material, the two render
+			// profiles, the input map and the minimap's render texture. Raise the floor when the
+			// sample grows.
+			Test.Assert(read >= 88, scope $"read {read} instances");
 		}
 
 		// And it COOKS, through the same tools an agent uses.
@@ -96,25 +100,28 @@ static class SampleProjectTests
 		force.Set("force", JsonValue.MakeBool(true));
 		let cooked = CallOk(server, "asset_cook", force);
 		defer delete cooked;
-		// Every buildable asset cooked: 21, all but the two scenes and the prefab, which stage
-		// rather than cook. And nothing failed.
-		Test.Assert(cooked.Get("cooked").AsInt() >= 21, scope $"cooked {cooked.Get("cooked").AsInt()}");
+		// Every buildable asset cooked: 63, all but the scenes and the prefabs, which stage rather
+		// than cook. And nothing failed.
+		Test.Assert(cooked.Get("cooked").AsInt() >= 63, scope $"cooked {cooked.Get("cooked").AsInt()}");
 		Test.Assert(cooked.Get("failed").AsInt() == 0, scope $"{cooked.Get("failed").AsInt()} failed");
 
-		// Every script override a scene stores names a property its cooked class declares: the
-		// key is the property name's hash, so a hash change that forgets to rehash the sources
-		// leaves overrides that silently apply to nothing.
+		// Every script override a scene or prefab stores, a behaviour's or the Level's, names a
+		// property its cooked class declares: the key is the property name's hash, so a hash
+		// change that forgets to rehash the sources leaves overrides that silently apply to
+		// nothing.
 		{
 			let project = EditorProject.Open(dir);
 			Test.Assert(project != null);
 			defer delete project;
 			let overrides = CheckOverrides(project, project.SourceDb.RootGroup);
-			Test.Assert(overrides >= 1, scope $"{overrides} overrides checked");
+			// 62: the five blocks' Level settings (35), their camera's and minimap's behaviours
+			// (15) and the kit's (12).
+			Test.Assert(overrides >= 62, scope $"{overrides} overrides checked");
 		}
 	}
 
-	/// The number of script overrides checked under `group`, each against its behaviour's cooked
-	/// class.
+	/// The number of script overrides checked under `group`: a behaviour's against its cooked
+	/// class, and a scene's Level script's against its own.
 	private static int CheckOverrides(EditorProject project, Group group)
 	{
 		int count = 0;
@@ -130,24 +137,38 @@ static class SampleProjectTests
 			for (let component in scripts.Dense)
 			{
 				for (let behavior in component.Behaviors)
-				{
-					let stored = project.CookedDb.ReadObject(behavior.Script.Id);
-					defer delete stored;
-					let source = stored as ScriptClassSource;
-					Test.Assert(source != null, scope $"{instance.Name}: the behaviour's script is cooked");
-					for (let o in behavior.Overrides)
-					{
-						bool declared = false;
-						for (let property in source.Properties)
-							declared |= property.Hash == o.Hash;
-						Test.Assert(declared, scope $"{instance.Name}: override {o.Hash} names no property of {source.ClassName}");
-						count++;
-					}
-				}
+					count += CheckDeclared(project, instance.Name, behavior.Script.Id, behavior.Overrides);
+			}
+			for (let system in scene.Systems)
+			{
+				if (system.SettingsType != typeof(SceneScriptSettings))
+					continue;
+				let level = (SceneScriptSettings)Internal.UnsafeCastToObject(system.SettingsInstance);
+				if (level.Script.Id != Guid.Empty)
+					count += CheckDeclared(project, instance.Name, level.Script.Id, level.Overrides);
 			}
 		}
 		for (let child in group.Groups)
 			count += CheckOverrides(project, child);
 		return count;
+	}
+
+	/// Each override names a property the script's cooked class declares; answers how many.
+	private static int CheckDeclared(EditorProject project, StringView owner, Guid script, List<ScriptPropertyOverride> overrides)
+	{
+		let stored = project.CookedDb.ReadObject(script);
+		defer delete stored;
+		let source = stored as ScriptClassSource;
+		Test.Assert(source != null, scope $"{owner}: the script is cooked");
+		if (source == null)
+			return 0;
+		for (let o in overrides)
+		{
+			bool declared = false;
+			for (let property in source.Properties)
+				declared |= property.Hash == o.Hash;
+			Test.Assert(declared, scope $"{owner}: override {o.Hash} names no property of {source.ClassName}");
+		}
+		return overrides.Count;
 	}
 }

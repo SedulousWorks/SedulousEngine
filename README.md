@@ -101,7 +101,14 @@ menus with volume settings, music and effects, and gamepad support throughout.
 |:---:|:---:|:---:|
 | ![Title](Documentation/Images/SkyHopper-Title.png) | ![Playing](Documentation/Images/SkyHopper-Play.png) | ![Settings](Documentation/Images/SkyHopper-Settings.png) |
 
-**PaperKid**, an arcade paper-route game, is a work in progress.
+**PaperKid** is an arcade paper-route game, also built entirely through the MCP tools: five
+town blocks on a difficulty ramp, papers thrown with a soft auto-aim, traffic and pedestrians on
+the navmesh, lives, a live minimap drawn by a top-down camera into a render texture, particle
+effects, a newsprint UI theme, and music that speeds up when the clock runs low.
+
+| Title | Riding a block | Block cleared |
+|:---:|:---:|:---:|
+| ![Title](Documentation/Images/PaperKid-Title.png) | ![Playing](Documentation/Images/PaperKid-Play.png) | ![Cleared](Documentation/Images/PaperKid-Cleared.png) |
 
 ## Repository layout
 

@@ -1,0 +1,88 @@
+<root>
+	<string name="guid">5cf73e79-76d8-a949-b7e1-3232f491a875</string>
+	<string name="typeName">Sedulous.PropertyAnimation.Pipeline.PropertyAnimationClipAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">30049274428650299</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<object name="source">
+				<f32 name="duration">1.2</f32>
+				<array name="trackComponent" count="1">
+					<string>Transform</string>
+				</array>
+				<array name="trackPath" count="1">
+					<string>Position</string>
+				</array>
+				<array name="trackKind" count="1">
+					<u8>1</u8>
+				</array>
+				<array name="channelKeyStart" count="3">
+					<u32>0</u32>
+					<u32>2</u32>
+					<u32>5</u32>
+				</array>
+				<array name="channelKeyCount" count="3">
+					<u32>2</u32>
+					<u32>3</u32>
+					<u32>2</u32>
+				</array>
+				<array name="keyTime" count="7">
+					<f32>0</f32>
+					<f32>1.2</f32>
+					<f32>0</f32>
+					<f32>0.6</f32>
+					<f32>1.2</f32>
+					<f32>0</f32>
+					<f32>1.2</f32>
+				</array>
+				<array name="keyValue" count="7">
+					<f32>0</f32>
+					<f32>0</f32>
+					<f32>6.6</f32>
+					<f32>7.1</f32>
+					<f32>6.6</f32>
+					<f32>-1.2</f32>
+					<f32>-1.2</f32>
+				</array>
+				<array name="keyTangentIn" count="7">
+					<f32>0</f32>
+					<f32>0</f32>
+					<f32>0</f32>
+					<f32>0</f32>
+					<f32>0</f32>
+					<f32>0</f32>
+					<f32>0</f32>
+				</array>
+				<array name="keyTangentOut" count="7">
+					<f32>0</f32>
+					<f32>0</f32>
+					<f32>0</f32>
+					<f32>0</f32>
+					<f32>0</f32>
+					<f32>0</f32>
+					<f32>0</f32>
+				</array>
+				<array name="keyInterp" count="7">
+					<u8>2</u8>
+					<u8>2</u8>
+					<u8>2</u8>
+					<u8>2</u8>
+					<u8>2</u8>
+					<u8>2</u8>
+					<u8>2</u8>
+				</array>
+				<array name="trackQuatStart" count="1">
+					<u32>0</u32>
+				</array>
+				<array name="trackQuatCount" count="1">
+					<u32>0</u32>
+				</array>
+				<array name="quatTime" count="0"/>
+				<array name="quatValue" count="0"/>
+			</object>
+		</object>
+	</object>
+</root>

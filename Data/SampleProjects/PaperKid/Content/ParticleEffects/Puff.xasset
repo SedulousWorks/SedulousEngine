@@ -1,0 +1,206 @@
+<root>
+	<string name="guid">edc24cf9-ae89-6046-b179-523d21dc8fbf</string>
+	<string name="typeName">Sedulous.Particles.Pipeline.ParticleEffectAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">11225811489939361997</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<string name="name">Puff</string>
+			<array name="systems" count="1">
+				<object>
+					<i32 name="maxParticles">7</i32>
+					<u64 name="seed">5947015761208083350</u64>
+					<string name="name">Puff</string>
+					<u8 name="desiredMode">0</u8>
+					<u8 name="simSpace">0</u8>
+					<u8 name="blend">0</u8>
+					<u8 name="render">0</u8>
+					<string name="textureRef">00000000-0000-0000-0000-000000000000</string>
+					<string name="meshRef">00000000-0000-0000-0000-000000000000</string>
+					<f32 name="meshScale">1</f32>
+					<array name="materialRefs" count="0"/>
+					<bool name="sort">false</bool>
+					<bool name="soft">true</bool>
+					<f32 name="softDistance">0.6</f32>
+					<bool name="enabled">false</bool>
+					<i32 name="maxPoints">16</i32>
+					<f32 name="recordInterval">0.033</f32>
+					<f32 name="lifetime">1</f32>
+					<f32 name="widthStart">0.15</f32>
+					<f32 name="widthEnd">0</f32>
+					<f32 name="minVertexDistance">0.05</f32>
+					<bool name="useParticleColor">true</bool>
+					<object name="trailColor">
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+						<f32 name="w">1</f32>
+					</object>
+					<bool name="enabled">false</bool>
+					<i32 name="columns">1</i32>
+					<i32 name="rows">1</i32>
+					<f32 name="fps">0</f32>
+					<bool name="overLifetime">true</bool>
+					<i32 name="startFrame">0</i32>
+					<f32 name="prewarm">0</f32>
+					<f32 name="lodStart">0</f32>
+					<f32 name="lodCull">0</f32>
+					<f32 name="lodMinRate">0.1</f32>
+					<object name="emitter">
+						<u8 name="mode">1</u8>
+						<f32 name="spawnRate">0</f32>
+						<i32 name="burstCount">7</i32>
+						<f32 name="burstInterval">0</f32>
+						<i32 name="burstCycles">1</i32>
+						<bool name="isEmitting">true</bool>
+						<f32 name="duration">0</f32>
+						<bool name="looping">false</bool>
+					</object>
+					<array name="initializers" count="5">
+						<object>
+							<string name="type">Sedulous.Particles.PositionInitializer</string>
+							<object>
+								<u8 name="type">1</u8>
+								<f32 name="radius">0.15</f32>
+								<object name="extents">
+									<f32 name="x">0</f32>
+									<f32 name="y">0</f32>
+									<f32 name="z">0</f32>
+								</object>
+								<f32 name="angle">0.7853982</f32>
+								<f32 name="arc">1</f32>
+								<bool name="emitFromShell">false</bool>
+								<bool name="localSpace">false</bool>
+							</object>
+						</object>
+						<object>
+							<string name="type">Sedulous.Particles.LifetimeInitializer</string>
+							<object>
+								<f32 name="min">0.35</f32>
+								<f32 name="max">0.55</f32>
+							</object>
+						</object>
+						<object>
+							<string name="type">Sedulous.Particles.VelocityInitializer</string>
+							<object>
+								<object name="baseVelocity">
+									<f32 name="x">0</f32>
+									<f32 name="y">0.8</f32>
+									<f32 name="z">0</f32>
+								</object>
+								<object name="randomness">
+									<f32 name="x">1.2</f32>
+									<f32 name="y">0.3</f32>
+									<f32 name="z">1.2</f32>
+								</object>
+								<f32 name="shapeDirectionSpeed">0</f32>
+								<f32 name="velocityInheritance">0</f32>
+								<u8 name="type">0</u8>
+								<f32 name="radius">0</f32>
+								<object name="extents">
+									<f32 name="x">0</f32>
+									<f32 name="y">0</f32>
+									<f32 name="z">0</f32>
+								</object>
+								<f32 name="angle">0.7853982</f32>
+								<f32 name="arc">1</f32>
+								<bool name="emitFromShell">false</bool>
+							</object>
+						</object>
+						<object>
+							<string name="type">Sedulous.Particles.SizeInitializer</string>
+							<object>
+								<object name="min">
+									<f32 name="x">0.22</f32>
+									<f32 name="y">0.22</f32>
+								</object>
+								<object name="max">
+									<f32 name="x">0.32</f32>
+									<f32 name="y">0.32</f32>
+								</object>
+							</object>
+						</object>
+						<object>
+							<string name="type">Sedulous.Particles.ColorInitializer</string>
+							<object>
+								<object name="min">
+									<f32 name="x">0.85</f32>
+									<f32 name="y">0.82</f32>
+									<f32 name="z">0.76</f32>
+									<f32 name="w">0.7</f32>
+								</object>
+								<object name="max">
+									<f32 name="x">0.85</f32>
+									<f32 name="y">0.82</f32>
+									<f32 name="z">0.76</f32>
+									<f32 name="w">0.7</f32>
+								</object>
+							</object>
+						</object>
+					</array>
+					<array name="behaviors" count="3">
+						<object>
+							<string name="type">Sedulous.Particles.DragBehavior</string>
+							<object>
+								<f32 name="drag">4</f32>
+							</object>
+						</object>
+						<object>
+							<string name="type">Sedulous.Particles.SizeOverLifetimeBehavior</string>
+							<object>
+								<i32 name="keyCount">2</i32>
+								<f32 name="time">0</f32>
+								<object name="value">
+									<f32 name="x">0.7</f32>
+									<f32 name="y">0.7</f32>
+								</object>
+								<object name="tangentIn">
+									<f32 name="x">0</f32>
+									<f32 name="y">0</f32>
+								</object>
+								<object name="tangentOut">
+									<f32 name="x">0</f32>
+									<f32 name="y">0</f32>
+								</object>
+								<f32 name="time">1</f32>
+								<object name="value">
+									<f32 name="x">1.8</f32>
+									<f32 name="y">1.8</f32>
+								</object>
+								<object name="tangentIn">
+									<f32 name="x">0</f32>
+									<f32 name="y">0</f32>
+								</object>
+								<object name="tangentOut">
+									<f32 name="x">0</f32>
+									<f32 name="y">0</f32>
+								</object>
+							</object>
+						</object>
+						<object>
+							<string name="type">Sedulous.Particles.AlphaOverLifetimeBehavior</string>
+							<object>
+								<i32 name="keyCount">2</i32>
+								<f32 name="time">0</f32>
+								<f32 name="value">1</f32>
+								<f32 name="tangentIn">0</f32>
+								<f32 name="tangentOut">0</f32>
+								<f32 name="time">1</f32>
+								<f32 name="value">0</f32>
+								<f32 name="tangentIn">0</f32>
+								<f32 name="tangentOut">0</f32>
+							</object>
+						</object>
+					</array>
+				</object>
+			</array>
+			<array name="links" count="0"/>
+			<array name="texturePaths" count="1">
+				<string>Textures/SoftDot</string>
+			</array>
+		</object>
+	</object>
+</root>

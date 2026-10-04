@@ -1,0 +1,14 @@
+<root>
+	<string name="guid">5064edcd-9984-2b44-b239-3a443cf0013c</string>
+	<string name="typeName">Sedulous.UI.Pipeline.UIThemeAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">17177434621092279214</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">PaperKidTheme.sss</string>
+			<string name="previewMarkup"/>
+		</object>
+	</object>
+</root>

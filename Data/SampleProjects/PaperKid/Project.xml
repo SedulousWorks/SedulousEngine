@@ -6,16 +6,28 @@
 	<object>
 		<string name="name">PaperKid</string>
 		<string name="engineVersion">0.1.0</string>
-		<string name="defaultSceneId">94282a2f-1531-8c41-b77a-223979612502</string>
-		<string name="defaultScene">Scenes/StartScene</string>
+		<string name="defaultSceneId">abf41c6a-3a62-4a4f-830f-47fb88f610ff</string>
+		<string name="defaultScene">Scenes/Start</string>
 		<string name="startupScript">Scripts/PaperKidGame</string>
 		<string name="nativeModule"/>
-		<string name="defaultInputMapId">3623c32d-c9c2-5a4e-85df-b1ac9e6d76e3</string>
-		<string name="defaultBusLayoutId">8ad51f02-6a78-cc41-b289-c31336e54567</string>
-		<string name="defaultUiThemeId">00000000-0000-0000-0000-000000000000</string>
-		<string name="startupScriptId">1b3d9ba9-e199-b247-868f-c45247fb1914</string>
-		<string name="defaultUiFontId">7915ce7e-e6a3-cd4e-92b1-1540d1d47a16</string>
+		<string name="defaultInputMapId">edd0a22c-5ef7-0646-9fca-43f85d40012f</string>
+		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
+		<string name="defaultUiThemeId">5064edcd-9984-2b44-b239-3a443cf0013c</string>
+		<string name="startupScriptId">ba2bb78e-5e43-c64d-85bd-8101fe5d230c</string>
+		<string name="defaultUiFontId">23da25e1-47fe-2044-a727-d7fbcde40a8f</string>
 		<string name="loadingDocumentId">00000000-0000-0000-0000-000000000000</string>
 		<u32 name="renderMsaaSamples">1</u32>
+		<array name="uiFontIds" count="3">
+			<string>14c23b32-0f13-4a47-9761-c4010f0cd3ae</string>
+			<string>b3fe26f3-94b4-2244-a51e-940699c2bcc8</string>
+			<string>51fdd46e-1617-d440-bf9e-2e1f9a8ca6cb</string>
+		</array>
+		<u32 name="renderWidth">1280</u32>
+		<u32 name="renderHeight">720</u32>
+		<u8 name="renderFit">1</u8>
+		<u32 name="windowWidth">1280</u32>
+		<u32 name="windowHeight">720</u32>
+		<u8 name="windowMode">0</u8>
+		<bool name="windowResizable">true</bool>
 	</object>
 </root>

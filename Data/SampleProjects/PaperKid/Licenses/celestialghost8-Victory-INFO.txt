@@ -1,0 +1,9 @@
+2A03 Victory fanfare ("Victory")
+Author: celestialghost8
+Source: https://opengameart.org/content/victory
+License: CC0 1.0 Universal (public domain dedication)
+         https://creativecommons.org/publicdomain/zero/1.0/
+
+Used in PaperKid as Sources/ClearedFanfare.ogg: trimmed of its trailing silence with a 0.3 s
+fade, raised 9.5 dB, and converted from WAV to OGG. Credit is not required by CC0; it is given
+with thanks.
