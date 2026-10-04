@@ -12,7 +12,8 @@ namespace Sedulous.Render;
 /// renders, which is what keeps two scenes side by side from bleeding into each other.
 ///
 /// Every three dimensional method takes an overlay flag: false is depth tested, true is drawn
-/// over everything. Immediate mode, so it is cleared once per frame.
+/// over everything. Immediate mode, so it is cleared once per frame. Colours are 0..1 sRGB, as
+/// entered everywhere; the debug shaders decode them.
 class DebugDraw
 {
 	private List<DebugVertex> mLines = new .() ~ delete _;

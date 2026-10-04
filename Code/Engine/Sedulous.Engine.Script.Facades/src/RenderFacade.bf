@@ -26,7 +26,8 @@ class RenderFacade : SceneFacade
 }
 
 /// `scene.Debug`: lines, shapes and text drawn over the scene for a frame. The drawer is
-/// the render subsystem's, per scene; with no renderer every call is a no-op.
+/// the render subsystem's, per scene; with no renderer every call is a no-op. Colours are sRGB,
+/// as entered everywhere.
 [Scriptable, SceneFacade("Debug")]
 class DebugFacade : SceneFacade
 {
