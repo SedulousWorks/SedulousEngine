@@ -14,7 +14,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 
 ## Group 1: fixes, small and independent
 
-1. 17cd7c08 Image.DDS.Tests: the bit writer takes no bit past a u32's 32 (`DdsTests.bf`
+1. ~~17cd7c08~~ (done) Image.DDS.Tests: the bit writer takes no bit past a u32's 32 (`DdsTests.bf`
    `BitWriter.Put`).
 2. 9f4b0370 Graphics: every executable takes its device from its command line the same way: one
    call giving the backend and the validation flags, used by the editor, the desktop player

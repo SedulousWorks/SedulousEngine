@@ -94,11 +94,13 @@ class DdsTests
 	{
 		uint8[16] bytes = .();
 		var at = 0;
+		// `value` holds at most 32 bits; a wider field (the 60 index bits) writes noughts past them
+		// (a uint32 shifted by 32 or more is undefined).
 		void Put(uint32 value, int bits)
 		{
 			for (int i < bits)
 			{
-				if (((value >> i) & 1) != 0)
+				if ((i < 32) && (((value >> i) & 1) != 0))
 					bytes[at / 8] |= (uint8)(1 << (at % 8));
 				at++;
 			}
