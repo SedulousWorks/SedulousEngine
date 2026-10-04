@@ -132,5 +132,7 @@ last drawn shows. A system added by the page or a creator should get a fresh see
 
 ## Housekeeping
 
-- The Raptor sync marker is 967c2876 (master): every item of [RaptorSync.md](RaptorSync.md) is
-  ported, the PaperKid rebuild included, and the physics and Sky Hopper commits after it.
+- The Raptor sync marker is 76e6bdb6 (master): every item of [RaptorSync.md](RaptorSync.md) is
+  ported, the PaperKid rebuild included, and the commits after it (the per-run screen tiers,
+  Sky Hopper's paced respawn). Raptor's loading-screen note (76e6bdb6) does not apply here: the
+  player shows the loading document as its boot splash, where there is only one run.
