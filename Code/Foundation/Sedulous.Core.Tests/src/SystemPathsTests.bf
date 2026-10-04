@@ -40,4 +40,23 @@ class SystemPathsTests
 		Test.Assert(mine.EndsWith("SomeTool"));
 	}
 
+	private static int sPersisted = 0;
+
+	/// The user data persister is the web player's to set: with none, persisting does nothing;
+	/// with one, each call reaches it.
+	[Test]
+	public static void PersistingUserDataReachesThePersisterWhenThereIsOne()
+	{
+		Test.Assert(UserDataPersister == null);
+		PersistUserData(); // nothing to reach, and no fault
+
+		sPersisted = 0;
+		UserDataPersister = => Persisted;
+		defer { UserDataPersister = null; }
+		PersistUserData();
+		PersistUserData();
+		Test.Assert(sPersisted == 2);
+	}
+
+	private static void Persisted() => sPersisted++;
 }

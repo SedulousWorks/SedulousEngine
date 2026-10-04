@@ -46,7 +46,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
 
 ## Group 2: the web player and its export
 
-11. d7237f84 Player: the user data directory is an IndexedDB mount on the web, so a save and the
+11. ~~d7237f84~~ (done) Player: the user data directory is an IndexedDB mount on the web, so a save and the
     user settings outlive the page (`PersistUserData` after each write; `-lidbfs.js`).
 12. ~~56d568a5~~ (done) Export: a renamed web player stays a page (`index` stages as `index.html`).
 13. 7e6fbeee Player: `serve.py` beside a web export, serving it over HTTPS to another device;

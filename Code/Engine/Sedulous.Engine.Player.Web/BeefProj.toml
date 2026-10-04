@@ -35,14 +35,16 @@ corlib = "*"
 # beside it, so it fetches at startup instead. See WebDist.
 #
 # emdawnwebgpu supplies webgpu.h at compile time and the navigator.gpu binding at link time,
-# and it has to be on BOTH. TargetName carries the .html because emcc decides what to emit
-# from the extension and silently drops --shell-file without one.
+# and it has to be on BOTH. -lidbfs.js and player.js mount the browser's storage over the
+# user data directory, so a save outlives the page (WebPage). TargetName carries the .html
+# because emcc decides what to emit from the extension and silently drops --shell-file
+# without one.
 [Configs.Debug.wasm32]
 TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"
-OtherLinkFlags = "$(LinkFlags) -O3 -lwebsocket.js --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
+OtherLinkFlags = "$(LinkFlags) -O3 -lwebsocket.js --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 -lidbfs.js --js-library $(ProjectDir)/player.js --shell-file $(ProjectDir)/shell.html"
 
 [Configs.Release.wasm32]
 TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"
-OtherLinkFlags = "$(LinkFlags) -O3 -lwebsocket.js --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
+OtherLinkFlags = "$(LinkFlags) -O3 -lwebsocket.js --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 -lidbfs.js --js-library $(ProjectDir)/player.js --shell-file $(ProjectDir)/shell.html"

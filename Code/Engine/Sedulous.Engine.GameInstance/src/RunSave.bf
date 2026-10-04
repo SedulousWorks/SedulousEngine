@@ -83,6 +83,8 @@ class RunSave
 			return false;
 		}
 		mChanged = false;
+		// A browser keeps it only once pushed to the page's storage.
+		PersistUserData();
 		return true;
 	}
 }

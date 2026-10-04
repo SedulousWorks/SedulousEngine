@@ -26,6 +26,20 @@ static
 		return Environment.GetEnvironmentVariable(name, outValue);
 	}
 
+	/// What makes the user data directory's writes outlive the page, set by the web player
+	/// (which mounts the browser's storage over the directory); null everywhere else.
+	public static function void() UserDataPersister = null;
+
+	/// What is written under the user data directory is durable at once on a desktop. In a
+	/// browser it is in memory until pushed to the page's storage: call this after writing a
+	/// file there that must outlive the page, a save or a settings file. It returns at once and
+	/// the push finishes in the background. Nothing happens where no persister is set.
+	public static void PersistUserData()
+	{
+		if (UserDataPersister != null)
+			UserDataPersister();
+	}
+
 	/// Where this application's per-user files belong, with its own folder already joined
 	/// on.
 	///

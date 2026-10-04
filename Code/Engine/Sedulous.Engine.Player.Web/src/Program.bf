@@ -35,6 +35,8 @@ class Program
 		InitGlobalLogger(new ConsoleLogger(.Information, "Player"), true);
 		GlobalLog(.Information, "Player {}", EngineVersion.String);
 
+		// Before the player reads the user's settings or a game its save.
+		WebPage.MountUserData();
 		StageDist();
 
 		let shell = new WebShell();

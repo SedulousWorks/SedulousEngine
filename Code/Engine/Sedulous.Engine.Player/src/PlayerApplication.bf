@@ -561,7 +561,8 @@ class PlayerApplication : DefaultApplication
 
 		let fileName = scope String();
 		UserSettingsFileName(fileName);
-		userFs.Save(fileName, buffer.Bytes).IgnoreError();
+		if (userFs.Save(fileName, buffer.Bytes) case .Ok)
+			PersistUserData();
 	}
 
 	private void UserSettingsFileName(String outName)
