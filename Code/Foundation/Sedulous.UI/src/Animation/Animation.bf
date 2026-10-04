@@ -3,6 +3,20 @@ using Sedulous.Core;
 
 namespace Sedulous.UI;
 
+/// Which of its target's properties an animation drives. A new animation of one property can
+/// then cancel the old one of the same property (AnimationManager.CancelForView with a channel)
+/// and leave the target's other animations running: a label can rise and fade at once, and a
+/// fade started mid-rise does not stop the rise.
+enum AnimationChannel : uint8
+{
+	/// Anything else; only a whole view cancel stops it.
+	Other,
+	Opacity,
+	Translation,
+	Scale,
+	Rotation
+}
+
 /// The base of every property animation: a clock, a delay, an easing, and a repeat policy.
 ///
 /// A subclass supplies only Apply, which is handed the eased progress. Everything about WHEN
@@ -25,6 +39,7 @@ abstract class Animation
 	private int32 mCurrentRepeat = 0;
 	/// BORROWED: what this animates, for AnimationManager.CancelForView.
 	private View mTarget = null;
+	private AnimationChannel mChannel = .Other;
 
 	public this(float duration, EasingFunction easing = null)
 	{
@@ -36,6 +51,13 @@ abstract class Animation
 	{
 		get => mTarget;
 		set => mTarget = value;
+	}
+
+	/// The target's property this animation drives (ViewAnimator sets it).
+	public AnimationChannel Channel
+	{
+		get => mChannel;
+		set => mChannel = value;
 	}
 
 	/// One cycle's length in seconds.

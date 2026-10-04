@@ -64,15 +64,25 @@ class AnimationManager
 	/// running animation cannot write to it afterwards.
 	public void CancelForView(View view)
 	{
-		CancelIn(mAnimations, view);
-		CancelIn(mPending, view);
+		CancelIn(mAnimations, view, null);
+		CancelIn(mPending, view, null);
 	}
 
-	private static void CancelIn(List<Animation> animations, View view)
+	/// Cancels the animations driving one property of a view, leaving the view's other
+	/// animations running.
+	public void CancelForView(View view, AnimationChannel channel)
+	{
+		CancelIn(mAnimations, view, channel);
+		CancelIn(mPending, view, channel);
+	}
+
+	private static void CancelIn(List<Animation> animations, View view, AnimationChannel? channel)
 	{
 		for (int i = animations.Count - 1; i >= 0; i--)
 		{
 			if (animations[i].Target != view)
+				continue;
+			if ((channel != null) && (animations[i].Channel != channel.Value))
 				continue;
 
 			let cancelled = animations[i];

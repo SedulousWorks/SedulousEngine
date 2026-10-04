@@ -17,6 +17,7 @@ static class ViewAnimator
 		let animation = new FloatAnimation(from, to, duration,
 			new (value) => { view.Opacity = value; }, easing);
 		animation.Target = view;
+		animation.Channel = .Opacity;
 		return animation;
 	}
 
@@ -39,6 +40,7 @@ static class ViewAnimator
 				view.Transform = transform;
 			}, easing);
 		animation.Target = view;
+		animation.Channel = .Translation;
 		return animation;
 	}
 
@@ -53,6 +55,23 @@ static class ViewAnimator
 				view.Transform = transform;
 			}, easing);
 		animation.Target = view;
+		animation.Channel = .Translation;
+		return animation;
+	}
+
+	/// Translates on both axes at once.
+	public static Animation TranslateTo(View view, Float2 from, Float2 to, float duration,
+		EasingFunction easing = null)
+	{
+		let animation = new Float2Animation(from, to, duration,
+			new (value) =>
+			{
+				var transform = view.Transform;
+				transform.Translation = value;
+				view.Transform = transform;
+			}, easing);
+		animation.Target = view;
+		animation.Channel = .Translation;
 		return animation;
 	}
 
@@ -68,6 +87,7 @@ static class ViewAnimator
 				view.Transform = transform;
 			}, easing);
 		animation.Target = view;
+		animation.Channel = .Scale;
 		return animation;
 	}
 
@@ -83,6 +103,7 @@ static class ViewAnimator
 				view.Transform = transform;
 			}, easing);
 		animation.Target = view;
+		animation.Channel = .Rotation;
 		return animation;
 	}
 }

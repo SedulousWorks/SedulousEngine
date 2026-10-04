@@ -34,7 +34,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
    count tripwires move by one.
 6. ~~30fd32e0~~ (done) Project: `<name>.save.xml` (`project.save.xml` unnamed); the player keeps it in the
    user data directory, a Game tab in `<project>/Editor/`.
-7. d83b1837 UI: an animation names the channel it drives (`AnimationChannel`),
+7. ~~d83b1837~~ (done) UI: an animation names the channel it drives (`AnimationChannel`),
    `AnimationManager.CancelForView(view, channel)`, `ViewAnimator.TranslateTo`.
 8. 24d7a969 UI script: `Ease`, and every handle's `MoveTo`, `Scale`/`SetScale`, `ScaleTo`,
    `RotateTo`, `Pulse` and an eased `FadeTo` (default arguments where Raptor overloads); a set

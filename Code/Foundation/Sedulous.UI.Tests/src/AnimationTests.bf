@@ -342,6 +342,37 @@ class AnimationTests
 		Test.Assert(context.Animations.ActiveCount == 1, "the other view's is untouched");
 	}
 
+	/// A label rising, fading and swelling at once: cancelling the fade leaves the rise and the
+	/// swell running.
+	[Test]
+	public static void CancellingOneChannelOfAViewLeavesTheOthers()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let view = new TestView(50.0f, 30.0f);
+		root.AddView(view);
+
+		context.Animations.Add(ViewAnimator.FadeTo(view, 1.0f, 0.0f, 1.0f));
+		context.Animations.Add(ViewAnimator.TranslateTo(view, .(0.0f, 0.0f), .(10.0f, -40.0f), 1.0f));
+		context.Animations.Add(ViewAnimator.ScaleTo(view, 1.0f, 2.0f, 1.0f));
+		Test.Assert(context.Animations.ActiveCount == 3);
+
+		context.Animations.CancelForView(view, .Opacity);
+		Test.Assert(context.Animations.ActiveCount == 2);
+		context.Animations.CancelForView(view, .Rotation); // none running
+		Test.Assert(context.Animations.ActiveCount == 2);
+
+		context.Animations.Update(0.5f);
+		Test.Assert(Near(view.Transform.Translation.X, 5.0f));
+		Test.Assert(Near(view.Transform.Translation.Y, -20.0f));
+		Test.Assert(Near(view.Transform.Scale.X, 1.5f));
+		context.Animations.Update(0.5f);
+		Test.Assert(Near(view.Transform.Translation.Y, -40.0f));
+		Test.Assert(Near(view.Transform.Scale.Y, 2.0f));
+		Test.Assert(context.Animations.ActiveCount == 0);
+	}
+
 	/// Removing a view CANCELS what was animating it. An animation holds a raw pointer to its
 	/// target, so one left running over a removed view writes to freed memory.
 	[Test]
