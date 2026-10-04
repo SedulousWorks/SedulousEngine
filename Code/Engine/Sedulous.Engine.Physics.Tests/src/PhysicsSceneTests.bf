@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Engine.Physics;
 using Sedulous.Physics;
+using Sedulous.Physics.Resource;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 
@@ -119,6 +120,51 @@ class PhysicsSceneTests
 		Test.Assert(play.Physics.World.RayCast(.(2.0f, 5.0f, 0.0f), .(0.0f, -1.0f, 0.0f), 10.0f,
 			let hit));
 		Test.Assert(Near(hit.Position.Y, 1.0f, 0.05f));
+	}
+
+	/// A scaled body's child colliders keep their world place and size: the physics body carries
+	/// no scale, so a child measured against the body's whole matrix came out unscaled (Sky
+	/// Hopper's spikes, a prefab scaled 0.45 whose model carries cooked collision, stood 3.4 m
+	/// tall in the physics world and 1.5 m on screen).
+	[Test]
+	public static void AScaledBodysChildCollidersKeepTheirWorldPlaceAndSize()
+	{
+		// A unit cube hull, cooked once: the shape a model import's collision carries.
+		let corners = scope List<Float3>();
+		let ends = float[2](-0.5f, 0.5f);
+		for (let x in ends)
+			for (let y in ends)
+				for (let z in ends)
+					corners.Add(.(x, y, z));
+		let hull = scope CollisionShape();
+		Test.Assert(ShapeCooking.CookConvexHull(corners, hull.Blob));
+		hull.Convex = true;
+
+		// A static body scaled 0.5, with a child 4 m out along x carrying the cube scaled 2: in
+		// the world the child sits 2 m out and is 1 m across, its top at 0.5.
+		let play = scope PhysicsPlayScene();
+		let body = play.AddBox(0.0f, .Static);
+		play.Bodies.Get(body).HalfExtents = .(0.01f, 0.01f, 0.01f);
+		var bodyTransform = play.Scene.GetLocalTransform(body);
+		bodyTransform.Scale = .(0.5f, 0.5f, 0.5f);
+		play.Scene.SetLocalTransform(body, bodyTransform);
+
+		let piece = play.Scene.CreateEntity("piece");
+		play.Scene.SetParent(piece, body);
+		var pieceTransform = Transform();
+		pieceTransform.Position = .(4.0f, 0.0f, 0.0f);
+		pieceTransform.Scale = .(2.0f, 2.0f, 2.0f);
+		play.Scene.SetLocalTransform(piece, pieceTransform);
+		let collider = play.Colliders.Add(piece);
+		collider.Shape = .Cooked;
+		collider.CollisionShape.SetDirect(hull);
+
+		play.Start();
+
+		Test.Assert(play.Physics.World.RayCast(.(2.0f, 5.0f, 0.0f), .(0.0f, -1.0f, 0.0f), 10.0f, let hit));
+		Test.Assert(Near(hit.Position.Y, 0.5f, 0.05f), "its top: 1 m across");
+		// Nothing where the unscaled offset (4 m) or an unscaled 2 m cube would have reached.
+		Test.Assert(!play.Physics.World.RayCast(.(3.6f, 5.0f, 0.0f), .(0.0f, -1.0f, 0.0f), 10.0f, ?));
 	}
 
 	/// A trigger raises an ENTER whose sides resolve back to the entities that own them.

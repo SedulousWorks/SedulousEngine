@@ -105,22 +105,30 @@ static class PhysicsBodies
 
 	/// The hierarchy's extra shapes fold into the body's compound at their offset relative to
 	/// the body's entity, captured NOW.
+	///
+	/// The physics body has no scale, only its position and rotation, so a child's place is
+	/// measured in world units from the body and a cooked child keeps its WORLD scale: measured
+	/// against a scaled body (a prefab scaled down) both would come out unscaled, the shape full
+	/// size and off its place.
 	private static void AddDescendantColliders(Scene scene, BodyDesc desc, EntityHandle entity,
 		List<List<float>> heightBuffers)
 	{
 		let colliders = scene.GetSystem<ColliderComponentManager>();
 		if (colliders == null)
 			return;
+		if (!Decompose(scene.GetWorldMatrix(entity), let bodyPosition, let bodyRotation, ?))
+			return;
 
-		let bodyInverse = Inverse(scene.GetWorldMatrix(entity));
+		let bodyInverse = Inverse(bodyRotation);
 		colliders.ForEach(scope [&] (extra, child) =>
 			{
 				if (!IsDescendantOf(scene, child, entity))
 					return;
 
-				if (!Decompose(scene.GetWorldMatrix(child) * bodyInverse,
-					let localPosition, let localRotation, let localScale))
+				if (!Decompose(scene.GetWorldMatrix(child), let worldPosition, let worldRotation, let worldScale))
 					return;
+				let localPosition = RotateVector(bodyInverse, worldPosition - bodyPosition);
+				let localRotation = bodyInverse * worldRotation;
 
 				var shape = ShapeDesc();
 				shape.Kind = extra.Shape;
@@ -135,7 +143,7 @@ static class PhysicsBodies
 					if (cooked == null)
 						return;
 					shape.Cooked = cooked.Blob;
-					shape.Scale = localScale;
+					shape.Scale = worldScale;
 				}
 				else if (extra.Shape == .Heightfield)
 				{
