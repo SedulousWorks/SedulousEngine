@@ -194,4 +194,19 @@ class SceneManagerTests
 		manager.Clear();
 		Test.Assert(stops == 3, "a clear stops the running scenes it destroys");
 	}
+
+	/// Every scene a manager creates carries the run key its owner set, before assembly, so a
+	/// system sees its run at create; with none set, a scene is outside every run.
+	[Test]
+	public static void CreatedScenesCarryTheRunKey()
+	{
+		let manager = scope SceneManager();
+		let loose = manager.CreateScene("Loose");
+		Test.Assert(loose.Run == null, "outside every run");
+
+		let run = scope Object();
+		manager.SetSceneRun(run);
+		let owned = manager.CreateScene("Owned");
+		Test.Assert(owned.Run === run);
+	}
 }

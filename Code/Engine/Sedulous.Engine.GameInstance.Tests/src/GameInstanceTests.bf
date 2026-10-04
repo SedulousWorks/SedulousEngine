@@ -290,4 +290,20 @@ class GameInstanceTests
 		Test.Assert(instance.Scenes.SceneCount == 0);
 		Test.Assert(instance.Scenes.TimeScale == 1.0f);
 	}
+
+	/// An instance IS its scenes' run: the scenes it creates and the ones it adopts carry it
+	/// as their run key, which is what run scoped systems (audio) group them by.
+	[Test]
+	public static void AnInstanceIsItsScenesRun()
+	{
+		let instance = scope GameInstance();
+		let created = instance.CreateScene("Created");
+		Test.Assert(created.Run === instance);
+
+		let adopted = scope Scene("Adopted");
+		Test.Assert(adopted.Run == null);
+		instance.SetScene(adopted);
+		Test.Assert(adopted.Run === instance);
+		instance.SetScene(created); // not left holding the scoped scene
+	}
 }

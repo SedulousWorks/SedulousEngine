@@ -25,6 +25,8 @@ class SceneManager
 
 	/// BORROWED, and injected into every scene this manager creates.
 	private EventBus mSceneEventBus = null;
+	/// BORROWED: the run key every created scene carries.
+	private Object mSceneRun = null;
 
 	/// The group term of the chain.
 	private float mTimeScale = 1.0f;
@@ -48,6 +50,9 @@ class SceneManager
 	/// are one object. Applied BEFORE assembly, so a system binding at creation sees it.
 	/// Null leaves scenes with no bus.
 	public void SetSceneEventBus(EventBus bus) => mSceneEventBus = bus;
+
+	/// The run key every scene created here carries (Scene.SetRun), set by the owning run.
+	public void SetSceneRun(Object run) => mSceneRun = run;
 
 	/// The GROUP term of host by context by GROUP by scene.
 	///
@@ -90,6 +95,7 @@ class SceneManager
 		// Before assembly, so a system binding at OnSceneCreate sees the same bus its emits
 		// land on.
 		scene.SetEventBus(mSceneEventBus);
+		scene.SetRun(mSceneRun);
 
 		if (mInstaller != null)
 			mInstaller(scene);

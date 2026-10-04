@@ -48,6 +48,8 @@ class Scene
 	/// injects before assembly, so a system binding in OnSceneCreate sees the very bus its
 	/// emits land on. Null on a scene with no scope, which never emits.
 	private EventBus mEventBus = null;
+	/// BORROWED: the owning run's key; null is outside every run.
+	private Object mRun = null;
 
 	private List<SceneSystem> mSystems = new .() ~ DeleteContainerAndItems!(_);
 	private Dictionary<uint64, SceneSystem> mSystemsByType = new .() ~ delete _;
@@ -762,6 +764,12 @@ class Scene
 	/// Borrows a scope's bus. The owning scope drains it, not the scene. Set before the
 	/// scene ticks; null clears it.
 	public void SetEventBus(EventBus bus) => mEventBus = bus;
+
+	/// The run that owns this scene: an opaque key (a GameInstance sets itself) that run
+	/// scoped systems group the scene by. Its audio nests under the run's, so the run's stop,
+	/// pause and mute reach it. Null is outside every run (an editor page's scene, a test's).
+	public Object Run => mRun;
+	public void SetRun(Object run) => mRun = run;
 
 	// ---- play and edit state ----
 

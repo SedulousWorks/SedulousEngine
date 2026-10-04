@@ -119,6 +119,9 @@ class GameInstance
 		// Every scene this run creates BORROWS the run bus. Setting it on the GROUP means the
 		// injection happens as a scene is created, before its systems bind, rather than after.
 		mSceneManager.SetSceneEventBus(mRunEvents);
+		// This instance IS the run: its scenes carry it as their run key, so run scoped
+		// systems (audio) group them by it.
+		mSceneManager.SetSceneRun(this);
 		mInputFacade = new InputFacade(mInputRuntime);
 		mRunHost.SetService(this);
 		mRunHost.SetService(mInputFacade);
@@ -140,9 +143,12 @@ class GameInstance
 		// Replication follows the current scene across loads.
 		mNetwork.SetReplicatedScene(scene);
 
-		// An ADOPTED scene shares this run's bus too.
+		// An ADOPTED scene shares this run's bus and its run key too.
 		if (scene != null)
+		{
 			scene.SetEventBus(mRunEvents);
+			scene.SetRun(this);
+		}
 	}
 
 	public Scene GetScene() => mScene;
