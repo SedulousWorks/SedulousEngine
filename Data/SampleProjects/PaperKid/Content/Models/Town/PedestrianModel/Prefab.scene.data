@@ -1,0 +1,400 @@
+<root>
+	<u32 name="magic">3586350318</u32>
+	<u32 name="version">3</u32>
+	<string name="name">PedestrianModel</string>
+	<array name="entities" count="17">
+		<string name="id">1bbeb4f2-e82e-49e9-a81c-fdebe00fa2ec</string>
+		<string name="name">PedestrianModel</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">2f14cbae-f5a7-433e-abb9-496e6cbe6f7f</string>
+		<string name="name">PedestrianRig</string>
+		<u8 name="active">1</u8>
+		<string name="parent">1bbeb4f2-e82e-49e9-a81c-fdebe00fa2ec</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">80582b4f-d031-47e0-97eb-1c96aa2fa345</string>
+		<string name="name">root</string>
+		<u8 name="active">1</u8>
+		<string name="parent">2f14cbae-f5a7-433e-abb9-496e6cbe6f7f</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">086e306d-1092-45d6-805e-d9bdf51b72e1</string>
+		<string name="name">hips</string>
+		<u8 name="active">1</u8>
+		<string name="parent">80582b4f-d031-47e0-97eb-1c96aa2fa345</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0.81</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">e1252a95-5d98-4a00-9df2-d550331a79a1</string>
+		<string name="name">spine</string>
+		<u8 name="active">1</u8>
+		<string name="parent">086e306d-1092-45d6-805e-d9bdf51b72e1</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0.13</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">b1e1a434-be56-468d-aadd-8c949f1b63f5</string>
+		<string name="name">head</string>
+		<u8 name="active">1</u8>
+		<string name="parent">e1252a95-5d98-4a00-9df2-d550331a79a1</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0.45999998</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">58ce0bbf-a76b-435a-8a5a-9c9be28a991b</string>
+		<string name="name">upperarm_L</string>
+		<u8 name="active">1</u8>
+		<string name="parent">e1252a95-5d98-4a00-9df2-d550331a79a1</string>
+		<object name="position">
+			<f32 name="x">0.22</f32>
+			<f32 name="y">0.39000005</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">-0.99128956</f32>
+			<f32 name="y">-0.08767553</f32>
+			<f32 name="z">-0.08767641</f32>
+			<f32 name="w">0.04439521</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1.0000046</f32>
+			<f32 name="y">1.0000002</f32>
+			<f32 name="z">1.0000007</f32>
+		</object>
+		<string name="id">38bfe349-e560-4e3d-a6ad-0ba46587fa97</string>
+		<string name="name">forearm_L</string>
+		<u8 name="active">1</u8>
+		<string name="parent">58ce0bbf-a76b-435a-8a5a-9c9be28a991b</string>
+		<object name="position">
+			<f32 name="x">-2.0256266e-08</f32>
+			<f32 name="y">0.27531803</f32>
+			<f32 name="z">2.0489097e-08</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">-0.14348504</f32>
+			<f32 name="y">-0.05271345</f32>
+			<f32 name="z">0.031084912</f32>
+			<f32 name="w">0.98775864</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.99999994</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">0.99999994</f32>
+		</object>
+		<string name="id">3d6d624c-301a-4eb3-93fb-a272473499e4</string>
+		<string name="name">upperarm_R</string>
+		<u8 name="active">1</u8>
+		<string name="parent">e1252a95-5d98-4a00-9df2-d550331a79a1</string>
+		<object name="position">
+			<f32 name="x">-0.22</f32>
+			<f32 name="y">0.39000005</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">-0.99128956</f32>
+			<f32 name="y">0.08767553</f32>
+			<f32 name="z">0.08767641</f32>
+			<f32 name="w">0.04439521</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1.0000046</f32>
+			<f32 name="y">1.0000002</f32>
+			<f32 name="z">1.0000007</f32>
+		</object>
+		<string name="id">9db36787-0338-4db6-a097-2fe90f9093af</string>
+		<string name="name">forearm_R</string>
+		<u8 name="active">1</u8>
+		<string name="parent">3d6d624c-301a-4eb3-93fb-a272473499e4</string>
+		<object name="position">
+			<f32 name="x">2.0256266e-08</f32>
+			<f32 name="y">0.27531803</f32>
+			<f32 name="z">2.0489097e-08</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">-0.14348504</f32>
+			<f32 name="y">0.05271345</f32>
+			<f32 name="z">-0.031084912</f32>
+			<f32 name="w">0.98775864</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">0.99999994</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">0.99999994</f32>
+		</object>
+		<string name="id">5550097d-5c4d-479a-804f-271963a23cb5</string>
+		<string name="name">thigh_L</string>
+		<u8 name="active">1</u8>
+		<string name="parent">086e306d-1092-45d6-805e-d9bdf51b72e1</string>
+		<object name="position">
+			<f32 name="x">0.11</f32>
+			<f32 name="y">0.050000012</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.9996298</f32>
+			<f32 name="y">0.0065718</f32>
+			<f32 name="z">0.0065715364</f32>
+			<f32 name="w">0.02557153</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1.0000001</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1.0000018</f32>
+		</object>
+		<string name="id">e808c920-48c0-4320-b925-5a6d3cfa9042</string>
+		<string name="name">shin_L</string>
+		<u8 name="active">1</u8>
+		<string name="parent">5550097d-5c4d-479a-804f-271963a23cb5</string>
+		<object name="position">
+			<f32 name="x">1.8044375e-09</f32>
+			<f32 name="y">0.3905446</f32>
+			<f32 name="z">-5.355105e-09</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.05120625</f32>
+			<f32 name="y">3.0686596e-08</f32>
+			<f32 name="z">0.00065649836</f32>
+			<f32 name="w">0.9986879</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">0.99999994</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">d675703d-69d7-4fc7-8e99-aebee4267072</string>
+		<string name="name">foot_L</string>
+		<u8 name="active">1</u8>
+		<string name="parent">e808c920-48c0-4320-b925-5a6d3cfa9042</string>
+		<object name="position">
+			<f32 name="x">-9.256858e-11</f32>
+			<f32 name="y">0.39054453</f32>
+			<f32 name="z">-6.958917e-10</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">-0.64075214</f32>
+			<f32 name="y">-0.008770733</f32>
+			<f32 name="z">0.0010179727</f32>
+			<f32 name="w">0.76769704</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">f0d676b7-affa-4bcc-a8a4-ea9512f6fcea</string>
+		<string name="name">thigh_R</string>
+		<u8 name="active">1</u8>
+		<string name="parent">086e306d-1092-45d6-805e-d9bdf51b72e1</string>
+		<object name="position">
+			<f32 name="x">-0.11</f32>
+			<f32 name="y">0.050000012</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.9996298</f32>
+			<f32 name="y">-0.0065718</f32>
+			<f32 name="z">-0.0065715364</f32>
+			<f32 name="w">0.02557153</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1.0000001</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1.0000018</f32>
+		</object>
+		<string name="id">dba4ca85-0e95-4972-bf0d-eedfe94845c9</string>
+		<string name="name">shin_R</string>
+		<u8 name="active">1</u8>
+		<string name="parent">f0d676b7-affa-4bcc-a8a4-ea9512f6fcea</string>
+		<object name="position">
+			<f32 name="x">-1.8044375e-09</f32>
+			<f32 name="y">0.3905446</f32>
+			<f32 name="z">-5.355105e-09</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0.05120625</f32>
+			<f32 name="y">-3.0686596e-08</f32>
+			<f32 name="z">-0.00065649836</f32>
+			<f32 name="w">0.9986879</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">0.99999994</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">8092f5e4-bca1-49a8-b6a1-b152ea706b03</string>
+		<string name="name">foot_R</string>
+		<u8 name="active">1</u8>
+		<string name="parent">dba4ca85-0e95-4972-bf0d-eedfe94845c9</string>
+		<object name="position">
+			<f32 name="x">9.256858e-11</f32>
+			<f32 name="y">0.39054453</f32>
+			<f32 name="z">-6.958917e-10</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">-0.64075214</f32>
+			<f32 name="y">0.008770733</f32>
+			<f32 name="z">-0.0010179727</f32>
+			<f32 name="w">0.76769704</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">d43b6847-39cb-46b3-9671-65654ed79693</string>
+		<string name="name">PedestrianModel</string>
+		<u8 name="active">1</u8>
+		<string name="parent">2f14cbae-f5a7-433e-abb9-496e6cbe6f7f</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+	</array>
+	<array name="components" count="2">
+		<object>
+			<string name="owner">d43b6847-39cb-46b3-9671-65654ed79693</string>
+			<string name="type">mesh</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">4838001395392124604</u64>
+					<u32 name="version">4</u32>
+				</array>
+				<string name="mesh">b4738923-84d8-7045-bc17-5c9caa545936</string>
+				<array name="materials" count="8">
+					<string>01f8abdd-975b-6b40-b16a-49eef3ba6b42</string>
+					<string>3ea6065d-2e74-9b4b-8224-5c894d4ee0b5</string>
+					<string>27d45c6f-f26c-5641-a1aa-1f6246964b48</string>
+					<string>8b059dfc-4e18-5d4e-8239-690fa70bbc6d</string>
+					<string>6d890916-85a2-1448-917e-efbd9c406f83</string>
+					<string>b1c7ff42-419e-bb4f-b583-80be4d038d12</string>
+					<string>f1ea0ecf-0259-a241-ae89-4d4019368078</string>
+					<string>b47e0a03-1c06-0d42-a242-2045583797ef</string>
+				</array>
+				<object name="color">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
+				<bool name="visible">true</bool>
+				<f32 name="lodBias">0</f32>
+				<i32 name="forceLod">-1</i32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">1bbeb4f2-e82e-49e9-a81c-fdebe00fa2ec</string>
+			<string name="type">skeletal_animation</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">3765024947835893819</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<string name="skeleton">9963bc4c-f1e1-2f43-9f25-4a14f766dba1</string>
+				<string name="clip">dc829861-918f-7a44-8cf2-7765a517ea85</string>
+				<f32 name="speed">1</f32>
+				<f32 name="startTime">0</f32>
+				<bool name="autoPlay">true</bool>
+				<array name="meshEntities" count="1">
+					<string>d43b6847-39cb-46b3-9671-65654ed79693</string>
+				</array>
+			</object>
+		</object>
+	</array>
+	<array name="systemSettings" count="0"/>
+	<u8 name="prefabMode">4</u8>
+	<array name="prefabInstances" count="0"/>
+</root>

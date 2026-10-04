@@ -28,6 +28,14 @@ Guid kFxConfetti = Guid::FromString("{{Prefab:FxConfetti}}");
 const int kAimDots = 14;
 const float kAimStep = 0.09f; // flight seconds between dots
 Guid kThrowSound = Guid::FromString("{{Throw}}");
+// The kid's clips (Models/KidBike, from Tools/blender/kid_bike.py). Ride turns the wheels twice and
+// the pedals once a second, 4.4 m of road, so it plays at the bike's speed over that; each throw is
+// the same second with that arm's throw in its first half, so Ride picks up where it ends. He throws
+// with the hand on the side the paper goes.
+Guid kRideClip = Guid::FromString("{{Clip:Ride}}");
+Guid kThrowLeftClip = Guid::FromString("{{Clip:ThrowLeft}}");
+Guid kThrowRightClip = Guid::FromString("{{Clip:ThrowRight}}");
+const float kRideMetres = 4.4f;
 Guid kCrashSound = Guid::FromString("{{Crash}}");
 
 class Bike
@@ -66,9 +74,17 @@ class Bike
 	private array<Entity> m_dots;
 	private Entity m_ring;
 	private float m_clock = 0.0f;      // drives the dots' drift and the ring's spin
+	private Entity m_kid;              // the kid on his bike: the model whose clips play
+	private float m_throwing = 0.0f;   // seconds of the Throw clip left to play
 
 	void onStart()
 	{
+		m_kid = self.FindChildByName("KidBike");
+		if (m_kid.IsValid())
+		{
+			scene.Animation.SetClip(m_kid, kRideClip);
+			scene.Animation.Play(m_kid);
+		}
 		// Start facing the way the scene placed the bike.
 		Float3 forward = RotateVector(self.GetLocalTransform().Rotation, Float3(0.0f, 0.0f, 1.0f));
 		m_heading = Atan2(forward.X, forward.Z);
@@ -153,11 +169,58 @@ class Bike
 			placeGuides();
 			if (Input.WasPressed("Throw") && throwPaper())
 			{
+				startThrowClip();
 				Audio.PlayOneShot(kThrowSound, AudioBus::Effects, 0.8f, Random.Range(0.9f, 1.15f));
 				Input.Rumble(0.0f, 0.25f, 0.05f); // the flick of a throw
 				scene.Scripts.Emit("PaperThrown", 1);
 			}
 		}
+		animateKid(dt);
+	}
+
+	// The kid pedals as fast as the bike goes (and stops pedalling when it stops); a throw plays
+	// at least at walking pace, so it is seen even from a standstill.
+	private void animateKid(float dt)
+	{
+		if (!m_kid.IsValid())
+		{
+			return;
+		}
+		float pace = Abs(m_speed) / kRideMetres;
+		if (m_throwing > 0.0f)
+		{
+			if (pace < 1.0f) { pace = 1.0f; }
+			m_throwing -= dt * pace;
+			if (m_throwing <= 0.0f)
+			{
+				scene.Animation.SetClip(m_kid, kRideClip);
+				scene.Animation.Play(m_kid);
+			}
+		}
+		SkeletalAnimationComponent(m_kid).Speed = pace;
+	}
+
+	private void startThrowClip()
+	{
+		if (!m_kid.IsValid())
+		{
+			return;
+		}
+		// Which side of the bike the paper goes: the porch it is aimed at, else the aim. The bike's
+		// +X is the kid's left (it turns by m_heading about +Y, which takes +X to (cos, 0, -sin)).
+		// Straight ahead, he throws right-handed.
+		float toX = m_aimX;
+		float toZ = m_aimZ;
+		if (m_hasTarget)
+		{
+			Float3 at = self.GetWorldPosition();
+			toX = m_target.X - at.X;
+			toZ = m_target.Z - at.Z;
+		}
+		float across = toX * Cos(m_heading) - toZ * Sin(m_heading);
+		scene.Animation.SetClip(m_kid, (across > 0.05f) ? kThrowLeftClip : kThrowRightClip);
+		scene.Animation.Play(m_kid);
+		m_throwing = 1.0f;
 	}
 
 	private float clamp01(float v)

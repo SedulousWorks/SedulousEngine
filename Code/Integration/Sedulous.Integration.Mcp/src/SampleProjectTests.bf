@@ -76,12 +76,13 @@ static class SampleProjectTests
 			defer delete project;
 			let read = ReadAllInstances(project.SourceDb.RootGroup);
 			// Every instance, counted: a floor catches a group silently skipped. PaperKid has
-			// 88: 6 scenes (five blocks and the title), 19 kit prefabs, 11 scripts, 18 audio
+			// 234: 6 scenes (five blocks and the title), 19 kit prefabs, 13 scripts, 18 audio
 			// clips, 4 fonts, 5 meshes, 5 navigation zones, 7 UI documents and their theme, 4
 			// particle effects and their sprite, 2 animation clips, a material, the two render
-			// profiles, the input map and the minimap's render texture. Raise the floor when the
-			// sample grows.
-			Test.Assert(read >= 88, scope $"read {read} instances");
+			// profiles, the input map, the minimap's render texture, and the 13 Blender models
+			// with their prefabs, meshes, materials, skeletons and clips (146). Raise the floor
+			// when the sample grows.
+			Test.Assert(read >= 234, scope $"read {read} instances");
 		}
 
 		// And it COOKS, through the same tools an agent uses.
@@ -100,9 +101,9 @@ static class SampleProjectTests
 		force.Set("force", JsonValue.MakeBool(true));
 		let cooked = CallOk(server, "asset_cook", force);
 		defer delete cooked;
-		// Every buildable asset cooked: 63, all but the scenes and the prefabs, which stage rather
-		// than cook. And nothing failed.
-		Test.Assert(cooked.Get("cooked").AsInt() >= 63, scope $"cooked {cooked.Get("cooked").AsInt()}");
+		// Every buildable asset cooked: 196, all but the scenes and the prefabs (the kit's and the
+		// models'), which stage rather than cook. And nothing failed.
+		Test.Assert(cooked.Get("cooked").AsInt() >= 196, scope $"cooked {cooked.Get("cooked").AsInt()}");
 		Test.Assert(cooked.Get("failed").AsInt() == 0, scope $"{cooked.Get("failed").AsInt()} failed");
 
 		// Every script override a scene or prefab stores, a behaviour's or the Level's, names a
@@ -114,9 +115,10 @@ static class SampleProjectTests
 			Test.Assert(project != null);
 			defer delete project;
 			let overrides = CheckOverrides(project, project.SourceDb.RootGroup);
-			// 62: the five blocks' Level settings (35), their camera's and minimap's behaviours
-			// (15) and the kit's (12).
-			Test.Assert(overrides >= 62, scope $"{overrides} overrides checked");
+			// 107: the five blocks' Level settings (35), their camera's and minimap's behaviours
+			// (15), the kit's (13, the pedestrian's walk clip among them) and the title street's
+			// strollers and pets (44).
+			Test.Assert(overrides >= 107, scope $"{overrides} overrides checked");
 		}
 	}
 

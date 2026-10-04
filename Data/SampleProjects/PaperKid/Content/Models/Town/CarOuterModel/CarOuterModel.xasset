@@ -1,0 +1,106 @@
+<root>
+	<string name="guid">42793c92-0bec-be43-a738-fa80a7d9d315</string>
+	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">7383561851963481740</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">CarOuterModel.glb</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">2980668452812246725</u64>
+				<u32 name="version">2</u32>
+			</array>
+			<object>
+				<array name="meshGuid" count="1">
+					<string>8183f25d-bd32-4b45-b640-40d6fe6f2a1c</string>
+				</array>
+				<array name="meshSkinned" count="1">
+					<bool>false</bool>
+				</array>
+				<array name="meshMaterial" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="collisionGuid" count="0"/>
+				<array name="meshMaterialSlot" count="7">
+					<i32>0</i32>
+					<i32>1</i32>
+					<i32>2</i32>
+					<i32>3</i32>
+					<i32>4</i32>
+					<i32>5</i32>
+					<i32>6</i32>
+				</array>
+				<array name="meshSlotStart" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="meshSlotCount" count="1">
+					<i32>7</i32>
+				</array>
+				<array name="materialGuid" count="7">
+					<string>665b9c53-621b-1242-82a1-b3f46d666028</string>
+					<string>42dbeeb8-dc63-5b49-a630-73098c05da10</string>
+					<string>404e67dd-6a0f-694c-9399-1aff33ff2811</string>
+					<string>746dc431-65de-594e-97ee-67bebd55e9e2</string>
+					<string>571e751d-4ef6-ce4f-98ee-2b4962c6f5e1</string>
+					<string>fd3a360e-b3c9-474b-8bcd-abbf5ec7e09c</string>
+					<string>cfbb8bcb-d63f-4b44-967a-346637c6f0e3</string>
+				</array>
+				<array name="materialAlbedo" count="7">
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+				</array>
+				<array name="nodeName" count="1">
+					<string>CarOuterModel</string>
+				</array>
+				<array name="nodeParent" count="1">
+					<i32>-1</i32>
+				</array>
+				<array name="nodeTranslation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+					</object>
+				</array>
+				<array name="nodeRotation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+				</array>
+				<array name="nodeScale" count="1">
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+					</object>
+				</array>
+				<array name="nodeMesh" count="1">
+					<i32>0</i32>
+				</array>
+				<string name="skeletonGuid">00000000-0000-0000-0000-000000000000</string>
+				<array name="animationGuid" count="0"/>
+				<object name="boundsMin">
+					<f32 name="x">-1.05</f32>
+					<f32 name="y">0</f32>
+					<f32 name="z">-2.2099998</f32>
+				</object>
+				<object name="boundsMax">
+					<f32 name="x">1.05</f32>
+					<f32 name="y">1.73</f32>
+					<f32 name="z">2.2099998</f32>
+				</object>
+			</object>
+			<array name="entries" count="0"/>
+		</object>
+	</object>
+</root>

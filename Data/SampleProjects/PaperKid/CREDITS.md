@@ -2,6 +2,12 @@
 
 Made with the Sedulous engine. Third-party assets, with thanks:
 
+## Made for this game
+
+- The kid on his bike (model, rig and animations), the houses, the cars and the street furniture,
+  the pedestrians and the dog and cat are built for PaperKid from Blender scripts
+  (`Tools/blender/`), under the project's own licence.
+
 ## Music
 
 - **"Title Screen"**, **"Level 1"**, **"Level 2"**, **"Level 3"** and **"Ending"** by **Juhani

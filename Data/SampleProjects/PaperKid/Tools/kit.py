@@ -11,6 +11,22 @@ ids, prefabs = {}, {}
 for a in assets():
     (prefabs if a["type"] == "PrefabDocument" else ids)[a["name"]] = a["guid"]
 CUBE, PLANE, CYL, SPHERE, CONE = (ids[n] for n in ("Cube", "Plane", "Cylinder", "Sphere", "Cone"))
+# The modelled pieces (blender/town.py, imported as Models/Town/<Name>Model): each kit prefab keeps
+# its colliders and behaviours and shows its model instead of primitives.
+ASSETS = assets()
+MODELS = {a["group"].split("/")[-1][:-len("Model")]: a["guid"] for a in ASSETS
+          if a["type"] == "PrefabDocument" and a.get("group", "").startswith("Models/Town/")}
+
+
+def clip(model, name):
+    """A model's animation clip by name (several models have a Walk)."""
+    return next(a["guid"] for a in ASSETS if a["type"] == "AnimationClipAsset"
+                and a.get("group", "") == "Models/Town/%sModel" % model and a["name"] == name)
+
+
+def model(doc, root, name):
+    """The piece's model, standing where its root stands."""
+    doc.instance(MODELS[name], parent=root)
 ROLL_Z = (0.0, 0.0, 0.7071068, 0.7071068)  # a cylinder on its side, axle along X
 
 
@@ -38,12 +54,7 @@ def static_box(doc, root, center, half):
 def house(name, wall, roof):
     d = Doc(name)
     r = d.entity(name)
-    part(d, r, "Body", CUBE, (0, 2, 0), (6, 4, 6), wall)
-    part(d, r, "Roof", CUBE, (0, 4.25, 0), (6.6, 0.5, 6.6), roof)
-    part(d, r, "Door", CUBE, (0, 1.1, 3.03), (1.2, 2.2, 0.1), (0.36, 0.22, 0.14))
-    for x in (-1.9, 1.9):
-        part(d, r, "Window", CUBE, (x, 2.5, 3.03), (1.2, 1.0, 0.1), (0.62, 0.78, 0.9))
-    part(d, r, "Porch", CUBE, (0, 0.1, 3.8), (3.0, 0.2, 1.6), (0.75, 0.73, 0.7))
+    model(d, r, name)  # its colours are the model's (town.py), one model per house
     static_box(d, r, (0, 2, 0), (3, 2, 3))
     return d
 
@@ -75,11 +86,7 @@ def car(name="Car", direction=1, body=(0.2, 0.45, 0.8), cabin=(0.15, 0.3, 0.55))
     r = d.entity(name)
     d.add(r, "navigation.Agent", radius=1.0, height=1.6, maxSpeed=12.0, maxAcceleration=10.0)
     d.script(r, (ids["Vehicle"], {"direction": direction}), obstacle(d, r, 2.0))
-    part(d, r, "Body", CUBE, (0, 0.7, 0), (1.9, 0.8, 4.2), body)
-    part(d, r, "Cabin", CUBE, (0, 1.45, -0.3), (1.7, 0.7, 2.2), cabin)
-    for x in (-0.95, 0.95):
-        for z in (-1.3, 1.3):
-            part(d, r, "Wheel", CYL, (x, 0.35, z), (0.7, 0.3, 0.7), (0.08, 0.08, 0.09), ROLL_Z)
+    model(d, r, name)
     return d
 
 
@@ -87,9 +94,8 @@ def pedestrian():
     d = Doc("Pedestrian")
     r = d.entity("Pedestrian")
     d.add(r, "navigation.Agent", radius=0.4, height=1.6, maxSpeed=3.0, maxAcceleration=6.0)
-    d.script(r, (ids["Pedestrian"], {}), obstacle(d, r, 0.8))
-    part(d, r, "Body", CYL, (0, 0.6, 0), (0.5, 1.2, 0.5), (0.55, 0.3, 0.6))
-    part(d, r, "Head", SPHERE, (0, 1.42, 0), (0.42, 0.42, 0.42), (0.93, 0.76, 0.6))
+    d.script(r, (ids["Pedestrian"], {"walkClip": ("asset", clip("Pedestrian", "Walk"))}), obstacle(d, r, 0.8))
+    model(d, r, "Pedestrian")  # rigged, with its Walk clip (blender/pedestrian.py)
     return d
 
 
@@ -97,8 +103,7 @@ def bin_():
     d = Doc("Bin")
     r = d.entity("Bin")
     d.script(r, obstacle(d, r, 0.85))
-    part(d, r, "Can", CYL, (0, 0.5, 0), (0.6, 1.0, 0.6), (0.16, 0.36, 0.2))
-    part(d, r, "Lid", CYL, (0, 1.03, 0), (0.66, 0.06, 0.66), (0.12, 0.26, 0.15))
+    model(d, r, "Bin")
     static_box(d, r, (0, 0.5, 0), (0.3, 0.5, 0.3))
     return d
 
@@ -107,9 +112,7 @@ def hydrant():
     d = Doc("Hydrant")
     r = d.entity("Hydrant")
     d.script(r, obstacle(d, r, 0.85))
-    part(d, r, "Post", CYL, (0, 0.35, 0), (0.34, 0.7, 0.34), (0.85, 0.12, 0.1))
-    part(d, r, "Cap", SPHERE, (0, 0.72, 0), (0.36, 0.3, 0.36), (0.85, 0.12, 0.1))
-    part(d, r, "Nozzle", CYL, (0, 0.45, 0), (0.18, 0.5, 0.18), (0.75, 0.1, 0.08), ROLL_Z)
+    model(d, r, "Hydrant")
     static_box(d, r, (0, 0.4, 0), (0.2, 0.4, 0.2))
     return d
 
@@ -118,8 +121,7 @@ def traffic_cone():
     d = Doc("TrafficCone")
     r = d.entity("TrafficCone")
     d.script(r, obstacle(d, r, 0.85))
-    part(d, r, "Cone", CONE, (0, 0.4, 0), (0.5, 0.8, 0.5), (0.98, 0.45, 0.08))
-    part(d, r, "Base", CUBE, (0, 0.03, 0), (0.62, 0.06, 0.62), (0.15, 0.15, 0.15))
+    model(d, r, "TrafficCone")
     static_box(d, r, (0, 0.4, 0), (0.22, 0.4, 0.22))
     return d
 
@@ -129,8 +131,7 @@ def paper():
     r = d.entity("Newspaper")
     d.add(r, "physics.RigidBody", motion=2, layer=1, shape=0, halfExtents={"x": 0.18, "y": 0.06, "z": 0.12},
           mass=0.4, collisionGroup=1, continuousCollision=True, friction=0.8)
-    part(d, r, "Roll", CUBE, (0, 0, 0), (0.36, 0.12, 0.24), (0.95, 0.94, 0.9))
-    part(d, r, "Band", CUBE, (0, 0, 0), (0.06, 0.13, 0.25), (0.85, 0.2, 0.2))
+    model(d, r, "Newspaper")
     d.script(r, (ids["Paper"], {}))
     return d
 

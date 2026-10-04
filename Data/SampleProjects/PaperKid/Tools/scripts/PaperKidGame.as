@@ -89,8 +89,8 @@ class Game
 		m_blockMusic.insertLast(Guid::FromString("{{MusicBlockA}}"));
 		m_blockMusic.insertLast(Guid::FromString("{{MusicBlockB}}"));
 		m_blockMusic.insertLast(Guid::FromString("{{MusicBlockC}}"));
-		// The default scene is the title's backdrop, frozen behind the menu.
-		Run.TimeScale = 0.0f;
+		// The default scene is the title's backdrop: the street goes about its day behind the menu.
+		Run.TimeScale = 1.0f;
 		showTitle();
 	}
 
@@ -317,7 +317,7 @@ class Game
 	{
 		click();
 		Run.LoadScene(kStart);
-		Run.TimeScale = 0.0f;
+		Run.TimeScale = 1.0f; // the title's street moves (an ended block stopped the clock)
 		showTitle();
 	}
 

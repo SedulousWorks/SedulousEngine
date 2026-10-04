@@ -12,14 +12,29 @@ SOURCES = os.path.join(os.path.dirname(HERE), "Sources")
 check = "--check" in sys.argv
 draft = "--draft" in sys.argv
 names = [a for a in sys.argv[1:] if a not in ("--check", "--draft")]
-# By name; a prefab sharing a script's name is written {{Prefab:Name}}.
-ids = {}
+# By name; a prefab sharing a script's name is written {{Prefab:Name}}, and an animation clip
+# {{Clip:Name}} (the kid's Ride and Throw clips beside the throw's sound).
+PREFIX = {"PrefabDocument": "Prefab:", "AnimationClipAsset": "Clip:"}
+ids, ambiguous = {}, set()
 for a in assets():
-    ids[("Prefab:" if a["type"] == "PrefabDocument" else "") + a["name"]] = a["guid"]
+    key = PREFIX.get(a["type"], "") + a["name"]
+    if key in ids:
+        ambiguous.add(key)  # several assets answer to it: a script must not name it (several models'
+                            # Walk clips); pass such an asset as a behaviour property instead
+    ids[key] = a["guid"]
+
+
+def resolve(match):
+    key = match.group(1)
+    if key in ambiguous:
+        raise SystemExit("{{%s}} names more than one asset; make it a behaviour property" % key)
+    return ids.get(key, NIL) if (check or draft) else ids[key]
+
+
 ok = True
 for name in names:
     text = open(os.path.join(HERE, "scripts", name + ".as")).read()
-    text = re.sub(r"\{\{([^}]+)\}\}", lambda m: ids.get(m.group(1), NIL) if (check or draft) else ids[m.group(1)], text)
+    text = re.sub(r"\{\{([^}]+)\}\}", resolve, text)
     if not check:
         open(os.path.join(SOURCES, name + ".as"), "w").write(text)
     v = mcp("script_validate", {"source": text, "language": "angelscript", "name": name + ".as"})

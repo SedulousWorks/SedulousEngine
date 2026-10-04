@@ -89,8 +89,8 @@ class Game
 		m_blockMusic.insertLast(Guid::FromString("859ea749-874f-414e-8bba-2ae82b7bfbfd"));
 		m_blockMusic.insertLast(Guid::FromString("9d7a0b20-f4b0-5c44-ac6d-ffe78caf041e"));
 		m_blockMusic.insertLast(Guid::FromString("4bf0e18f-ab1c-9e4e-a3b8-2361247c2309"));
-		// The default scene is the title's backdrop, frozen behind the menu.
-		Run.TimeScale = 0.0f;
+		// The default scene is the title's backdrop: the street goes about its day behind the menu.
+		Run.TimeScale = 1.0f;
 		showTitle();
 	}
 
@@ -317,7 +317,7 @@ class Game
 	{
 		click();
 		Run.LoadScene(kStart);
-		Run.TimeScale = 0.0f;
+		Run.TimeScale = 1.0f; // the title's street moves (an ended block stopped the clock)
 		showTitle();
 	}
 

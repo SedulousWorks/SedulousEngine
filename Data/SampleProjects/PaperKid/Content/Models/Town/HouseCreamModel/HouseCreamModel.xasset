@@ -1,0 +1,112 @@
+<root>
+	<string name="guid">42b02653-bf36-774a-94fa-8087f0678614</string>
+	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">7383561851963481740</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">HouseCreamModel.glb</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">2980668452812246725</u64>
+				<u32 name="version">2</u32>
+			</array>
+			<object>
+				<array name="meshGuid" count="1">
+					<string>8bc15988-155d-3249-9659-259f788a3348</string>
+				</array>
+				<array name="meshSkinned" count="1">
+					<bool>false</bool>
+				</array>
+				<array name="meshMaterial" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="collisionGuid" count="0"/>
+				<array name="meshMaterialSlot" count="9">
+					<i32>0</i32>
+					<i32>1</i32>
+					<i32>2</i32>
+					<i32>3</i32>
+					<i32>4</i32>
+					<i32>5</i32>
+					<i32>6</i32>
+					<i32>7</i32>
+					<i32>8</i32>
+				</array>
+				<array name="meshSlotStart" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="meshSlotCount" count="1">
+					<i32>9</i32>
+				</array>
+				<array name="materialGuid" count="9">
+					<string>57d744c1-7a0e-dc41-b672-d414b207b0be</string>
+					<string>a3f34973-1261-2a4b-bd56-9cdf29757c91</string>
+					<string>3c7ac3f1-b143-f845-a608-a546ac2f7664</string>
+					<string>550ebacc-39d8-2f4d-9c4c-0d1f490ba733</string>
+					<string>4f17b603-bde5-9e48-a9a7-0ac9633df0b4</string>
+					<string>8d1b21b8-a475-0b45-991e-8d0cc327c87e</string>
+					<string>d96eabf6-e8e1-4b42-b33b-a4c3aabc88c6</string>
+					<string>02233277-2585-e942-ad46-4e7f89c199b1</string>
+					<string>d63e8b48-7476-da44-97c2-acd43cdb0594</string>
+				</array>
+				<array name="materialAlbedo" count="9">
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+				</array>
+				<array name="nodeName" count="1">
+					<string>HouseCreamModel</string>
+				</array>
+				<array name="nodeParent" count="1">
+					<i32>-1</i32>
+				</array>
+				<array name="nodeTranslation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+					</object>
+				</array>
+				<array name="nodeRotation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+				</array>
+				<array name="nodeScale" count="1">
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+					</object>
+				</array>
+				<array name="nodeMesh" count="1">
+					<i32>0</i32>
+				</array>
+				<string name="skeletonGuid">00000000-0000-0000-0000-000000000000</string>
+				<array name="animationGuid" count="0"/>
+				<object name="boundsMin">
+					<f32 name="x">-3.3</f32>
+					<f32 name="y">0</f32>
+					<f32 name="z">-3.3</f32>
+				</object>
+				<object name="boundsMax">
+					<f32 name="x">3.3</f32>
+					<f32 name="y">6.61</f32>
+					<f32 name="z">4.9550004</f32>
+				</object>
+			</object>
+			<array name="entries" count="0"/>
+		</object>
+	</object>
+</root>

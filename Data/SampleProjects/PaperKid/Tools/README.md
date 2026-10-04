@@ -10,11 +10,12 @@ Raptor's PaperKid tools, ported to this engine's asset envelopes, schema keys an
   component record starts from the engine's own defaults; `assets()` lists the project's assets
   by short type name.
 - `setup.py <raw-dir>`: a fresh project's first run, what the rest builds on: the fonts and the
-  audio imported from `<raw-dir>` (the files `CREDITS.md` lists), the primitive meshes, the input
-  map, the minimap's render texture, the screens and their theme (from `<raw-dir>` too; once
-  imported, `Sources/` holds them, the HUD's minimap id filled in), the script assets, a
-  navigation zone per block, the scenes the blocks are written into, the manifest's settings and
-  the export presets. A rerun finds everything by name and changes nothing.
+  audio imported from `<raw-dir>` (the files `CREDITS.md` lists), the Blender scripts' models
+  (`KidBike.glb` into `Models/KidBike`, the town's `<Name>Model.glb` into `Models/Town`), the
+  primitive meshes, the input map, the minimap's render texture, the screens and their theme
+  (from `<raw-dir>` too; once imported, `Sources/` holds them, the HUD's minimap id filled in),
+  the script assets, a navigation zone per block, the scenes the blocks are written into, the
+  manifest's settings and the export presets. A rerun finds everything by name and changes nothing.
 - `kit.py`: the blockout kit's prefabs (houses, road, kerb, cars, pedestrian, junk, newspaper,
   delivery zone, the throw's guides, the effects' prefabs); writes `kit.json` (prefab name ->
   guid).
@@ -34,12 +35,34 @@ Raptor's PaperKid tools, ported to this engine's asset envelopes, schema keys an
 - `scripts/*.as` + `render.py`: the game's scripts with `{{AssetName}}` placeholders (a prefab
   sharing a script's name is `{{Prefab:Name}}`); `render.py <Name>...` fills in the asset ids,
   writes `Sources/<Name>.as` and compile-checks it. `--check` compiles without writing; `--draft`
-  writes with a nil id for an asset not made yet.
+  writes with a nil id for an asset not made yet. An animation clip is `{{Clip:Name}}`. A name
+  several assets answer to (each model's Walk clip) is refused: such an asset is a behaviour
+  property, set where the prefab or scene is built.
+- `blender/kit3d.py`: the modelling kit the Blender scripts share (bevelled boxes, tubes, spheres
+  and tori with palette materials, parts rigid on bones, a two-bone IK solve, static export, a
+  preview studio).
+- `blender/town.py`: the houses, the cars and the street furniture (bin, hydrant, cone, newspaper),
+  each written as `<Name>Model.glb` and imported as `Models/Town/<Name>Model`; `kit.py` keeps each
+  prefab's colliders and behaviours and shows its model in place of the blockout's primitives.
+- `blender/pedestrian.py`: the pedestrian, rigged with a Walk clip (two 0.65 m steps a second),
+  imported as `Models/Town/PedestrianModel`; `Pedestrian.as` turns the figure toward where it walks
+  and plays Walk at its pace.
+- `blender/animals.py`: the dog and the cat, from one four-legged builder and their proportions,
+  each with Walk, Idle, Sit, LieDown and its own clip (Sniff, Groom), every clip starting and ending
+  in the same standing pose; imported as `Models/Town/DogModel` and `Models/Town/CatModel`. On the
+  title backdrop `Pet.as` walks each about its lawn and picks what it does at each spot, and
+  `Stroller.as` sends the cars and the walkers across (`block.py`'s `start()`).
+- `blender/kid_bike.py`: the kid on his bike, modelled, rigged and animated in Blender (the
+  Ride and Throw clips) and written as `KidBike.glb`; run it with Blender in the background
+  (`blender --background --factory-startup --python blender/kid_bike.py -- <out dir> [preview]`),
+  import the .glb as `Models/KidBike`, and `block.py` places its prefab on the Bike entity.
+  `Bike.as` plays Ride at the bike's speed and Throw on a throw.
 - `drive.py`: a closed-loop playtest of Block1 over `pie_run` (laps the ring, throws at each zone
   once); start PIE and New game first.
 - `look.py`: measures the 3D image of the title and the start of Block1 (brightness, crushed and
   clipped pixels), for tuning the shared look by numbers.
 
-A fresh build, in order: `setup.py <raw-dir>`, `render.py --draft` over every script (so the
+A fresh build, in order: the Blender scripts, writing their `.glb` files into `<raw-dir>`, then
+`setup.py <raw-dir>`, `render.py --draft` over every script (so the
 kit's prefabs find their properties), `fx.py`, `anim.py`, `kit.py`, `render.py` over every script
 again (now with the prefabs' ids), `block.py`, then bake each block's navigation.

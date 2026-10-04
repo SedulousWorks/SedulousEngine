@@ -22,7 +22,8 @@ higher quota, busier and faster traffic and less time for the distance. Three li
 block replays from the score you had when it started. A delivery scores 100 and a clear adds 5
 for every second left. The HUD shows the time, deliveries, papers, score and lives, and a
 minimap: a top-down render texture of the block with the subscribers (dimmed once delivered) and
-the bike, turned to its heading. A title screen with settings (master, music and effect
+the bike, turned to its heading. A title screen over a street going about its day (cars and
+people crossing, a dog and a cat pottering on the lawn) with settings (master, music and effect
 volumes), a pause menu, block cleared and failed screens, and a Game over or route complete
 summary.
 
@@ -56,8 +57,9 @@ confirm, Start (Options) to pause.
   playtest). Not game content; `Tools/README.md` says what each does.
 - `export_presets.xml`: the export targets (Linux desktop, Steam Deck, Web).
 - `CREDITS.md` and `Licenses/`: the music (Juhani Junkala, CC0), the fanfare (celestialghost8,
-  CC0), the sound effects (Kenney, CC0) and the fonts (OFL, and Apache 2.0). The art is a
-  primitive blockout made in the project.
+  CC0), the sound effects (Kenney, CC0) and the fonts (OFL, and Apache 2.0). The kid on his
+  bike, the houses, cars, street furniture, people and animals are modelled, rigged and animated
+  in the project by Blender scripts (`Tools/blender/`); the road, kerbs and lawns are primitives.
 - `Cooked/`, `.cache/`, `Editor/`, `Dist/`: generated, and gitignored; the tools rebuild them.
 
 Open the project from the editor's project manager.

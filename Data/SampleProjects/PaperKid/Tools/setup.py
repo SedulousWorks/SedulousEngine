@@ -142,13 +142,21 @@ for file_name in ("Title.sml", "Hud.sml", "Pause.sml", "Settings.sml", "Cleared.
 # The scripts' assets (render.py writes their sources): the Game, each block's Level, and the
 # behaviours.
 SCRIPTS = {"PaperKidGame": "game", "Level": "level"}
-for behaviour in ("Bike", "FollowCamera", "Fx", "MapMarkers", "Obstacle", "Paper", "Pedestrian", "Subscriber",
-                  "Vehicle"):
+for behaviour in ("Bike", "FollowCamera", "Fx", "MapMarkers", "Obstacle", "Paper", "Pedestrian", "Pet", "Stroller",
+                  "Subscriber", "Vehicle"):
     SCRIPTS[behaviour] = "behavior"
 for name, tier in SCRIPTS.items():
     if (name, "ScriptClassAsset") not in existing():
         r = mcp("script_create", {"name": name, "language": "angelscript", "tier": tier, "group": "Scripts"})
         print("created", name, r.get("guid"))
+
+# The Blender models (Tools/blender/*.py write them into <raw-dir>): the kid on his bike, and the
+# town's houses, cars, street furniture, people and animals. Each lands in its own group,
+# Models/KidBike/KidBike or Models/Town/<Name>Model, with its prefab beside its manifest.
+imported("KidBike.glb", "ModelManifestAsset", "Models/KidBike")
+for model in ("HouseRed", "HouseBlue", "HouseCream", "Car", "CarOuter", "Bin", "Hydrant", "TrafficCone", "Newspaper",
+              "Pedestrian", "Dog", "Cat"):
+    imported(model + "Model.glb", "ModelManifestAsset", "Models/Town")
 
 for block in range(1, 6):
     created("Block%dNav" % block, "NavigationZoneAsset", "Navigation Zone", "Navigation")
