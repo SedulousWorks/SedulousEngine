@@ -6,6 +6,10 @@
 // no higher than `touchHeight` above the enemy's origin (and not below it). Only a player in the
 // air and on the way down stomps; one on the ground, walking or standing into the enemy, is hurt,
 // however the enemy's origin sits against the ground the player walks on.
+//
+// A flier (the bee) is the same enemy in the air: it hovers, bobbing `hoverHeight` up and down,
+// and may patrol across the path (along Z) rather than along it. It is stomped and hurts the same
+// way, measured from where it flies.
 // FX/FxStompStars: the burst where an enemy was stomped.
 Guid kStompStars = Guid::FromString("4690f883-70cf-d244-ac13-e9a94aefc730");
 
@@ -23,12 +27,16 @@ class Enemy
 	[1.8, "Touching while the player's centre is at most this far above the enemy's origin (m)"] float touchHeight;
 	[1.0, "Falling at least this fast counts as coming down on the enemy (m/s)"] float stompSpeed;
 	["", "The model's walk clip (an AnimationClip guid); empty keeps its idle"] string walkClip;
+	[0.0, "Hover: bob this far up and down as it patrols (m); 0 walks"] float hoverHeight;
+	[2.0, "Hover bob rate (rad/s)"] float hoverSpeed;
+	[false, "Patrol along Z (across the path) rather than X"] bool patrolAlongZ;
 
 	private Entity m_player;
 	private Float3 m_home = Float3(0.0f, 0.0f, 0.0f);
 	private float m_offset = 0.0f;
 	private float m_direction = 1.0f;
 	private float m_lastPlayerY = 0.0f;
+	private float m_time = 0.0f;
 
 	void onStart()
 	{
@@ -59,8 +67,18 @@ class Enemy
 			m_offset = -patrolDistance;
 			m_direction = 1.0f;
 		}
-		self.SetLocalPosition(Float3(m_home.X + m_offset, m_home.Y, m_home.Z));
-		self.SetLocalRotation(Quaternion::FromAxisAngle(Float3::UnitY, (m_direction > 0.0f) ? 1.5708f : -1.5708f));
+		m_time += dt;
+		float bob = Sin(m_time * hoverSpeed) * hoverHeight;
+		if (patrolAlongZ)
+		{
+			self.SetLocalPosition(Float3(m_home.X, m_home.Y + bob, m_home.Z + m_offset));
+			self.SetLocalRotation(Quaternion::FromAxisAngle(Float3::UnitY, (m_direction > 0.0f) ? 0.0f : 3.14159f));
+		}
+		else
+		{
+			self.SetLocalPosition(Float3(m_home.X + m_offset, m_home.Y + bob, m_home.Z));
+			self.SetLocalRotation(Quaternion::FromAxisAngle(Float3::UnitY, (m_direction > 0.0f) ? 1.5708f : -1.5708f));
+		}
 
 		if (!m_player.IsValid())
 		{

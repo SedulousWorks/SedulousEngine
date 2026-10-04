@@ -66,7 +66,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
     `export_preset_set`); both ignore `/Cooked-*/`.
 18. ~~eaf32784~~ (done) Sky Hopper: the kit's bee, pickups, hazards and level pieces imported, and six SVG
     HUD icons; CREDITS.md.
-19. a688882a Sky Hopper: lives, a score and stars, kept between runs (Mover, Pickup, Enemy's
+19. ~~a688882a~~ (done) Sky Hopper: lives, a score and stars, kept between runs (Mover, Pickup, Enemy's
     hover, the Game script, GameOver, the HUD's icons, the gems and hearts in Levels 1-3).
 20. 8ac36257 Sky Hopper: Bee Meadow and Cloud Fortress, built by `Tools/` (mcp.py, skygen.py,
     levels.py, ported as PaperKid's were).

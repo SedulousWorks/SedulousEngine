@@ -12,8 +12,16 @@ as part of the work. It has also shipped to a Steam Deck through the container b
 Three levels of floating grass islands (Grassy Hills, Crab Crossing, Sky Climb): hop between
 platforms, collect coins, stomp crabs and skulls from above, dodge spikes, and reach the flag.
 A title screen with settings (master, music and effect volumes), an intro banner per level, a
-pause menu, a level clear banner and a victory screen with totals. Falling respawns you on the
-last safe ground.
+pause menu, a HUD of icons (lives, coins, the gem, the clock and the score, with gains floating
+up from it), the clear card, a game over card and a victory screen with the run's totals.
+Falling respawns you on the last safe ground.
+
+A run has three lives: a fall or a hit costs one, a heart found in a level gives one back, and
+so does every 50th coin; the last one lost is the game over, and trying again starts from the
+first level. Coins, stomps and each level's hidden gem score points, and a clear adds a bonus
+for every second under the level's par time and for a level without a fall. Each clear earns up
+to three stars (all the coins, no falls, under par), counted up on the clear card; the best
+score, stars and time of every level, and the best run, are saved and shown on the title.
 
 Controls: WASD to move, Space to jump, Escape to pause; the arrows and Enter drive the menus. A
 gamepad works throughout: the left stick to move (and the stick or d-pad in menus), A (cross)
