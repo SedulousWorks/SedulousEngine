@@ -127,7 +127,8 @@ static class BuildLayout
 			{
 				if (isDirectory || (name == pageName))
 					return;
-				if (name.EndsWith(".js") || name.EndsWith(".wasm") || name.EndsWith(".data"))
+				// serve.py: the server the build stages beside the page, which an export ships.
+				if (name.EndsWith(".js") || name.EndsWith(".wasm") || name.EndsWith(".data") || (name == "serve.py"))
 					outNames.Add(new String(name));
 			});
 		outNames.Sort(scope (a, b) => a <=> b);

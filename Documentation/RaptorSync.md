@@ -49,7 +49,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
 11. ~~d7237f84~~ (done) Player: the user data directory is an IndexedDB mount on the web, so a save and the
     user settings outlive the page (`PersistUserData` after each write; `-lidbfs.js`).
 12. ~~56d568a5~~ (done) Export: a renamed web player stays a page (`index` stages as `index.html`).
-13. 7e6fbeee Player: `serve.py` beside a web export, serving it over HTTPS to another device;
+13. ~~7e6fbeee~~ (done) Player: `serve.py` beside a web export, serving it over HTTPS to another device;
     staged into the web template.
 14. e28d714c, 7d0945b3, c72427ef, 137a3dfc, 26236a7e Player: the web page shows what is loading
     until the game runs, says when a game quits and offers to play again, and says in plain
