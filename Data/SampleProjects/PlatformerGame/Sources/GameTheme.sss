@@ -1,48 +1,92 @@
-/* Sky Hopper's theme: the WHOLE game UI sheet. A project theme replaces the engine's built-in
- * one rather than layering over it, so anything not styled here falls back to each control's
- * own drawing colours. Warm, rounded, readable over a bright 3D scene; focus is as loud as
- * hover, since menus are driven by keys and pads. */
+/* Sky Hopper's theme: cloud islands. Every screen floats in the game's blue sky on white cloud
+ * cards with a sky-blue edge and a soft drop shadow; headlines are the deep blue of the zenith, the
+ * main button and whatever a key or pad has focused are coin gold (focus as loud as hover: the
+ * menus are driven by keys and pads), a cleared level is grass green and danger is coral. A
+ * project theme replaces the engine's built-in sheet, so the screens carry classes, not colours.
+ *
+ * The palette (written out where used: var() does not reach inside a drawable's arguments):
+ * cloud #FFFFFF, mist #EAF4FF, sky #4DA3EE, deep sky #1F5FAF, ink #233249, soft ink #5A6B85,
+ * coin gold #FFC93C (deep gold #D99A00), grass #4CAF50 (deep grass #2E7D32), coral #FF7A59. */
 
-Label { text-color: #F4F1E8; }
+Label { text-color: #233249; }
 
-.label { text-color: #F4F1E8; }
-.label-dim { text-color: #B9C3D6; }
+/* ---- the sky behind a screen, and the clouds on it ---- */
+
+.veil { background: rgba(31, 95, 175, 0.25); }
+.veil-heavy { background: rgba(31, 95, 175, 0.45); }
+
+.cloud {
+	background: rounded-rect(#FFFFFF, radius=24, border=#4DA3EE, border-width=3);
+	box-shadow: 0 6 16 rgba(31, 95, 175, 0.35);
+}
+.cloud-clear {
+	background: rounded-rect(#FFFFFF, radius=24, border=#4CAF50, border-width=4);
+	box-shadow: 0 6 16 rgba(46, 125, 50, 0.35);
+}
+.cloud-gold {
+	background: rounded-rect(#FFFFFF, radius=24, border=#FFC93C, border-width=4);
+	box-shadow: 0 6 16 rgba(217, 154, 0, 0.4);
+}
+
+.headline { text-color: #1F5FAF; }
+.headline-clear { text-color: #2E7D32; }
+.headline-gold { text-color: #D99A00; }
+.body { text-color: #233249; }
+.note { text-color: #5A6B85; }
+/* The game's name over the sky: coin gold, which reads on blue. */
+.title { text-color: #FFC93C; }
+.over-sky { text-color: #FFFFFF; }
+
+/* ---- buttons: cloud pills with a sky edge; the main one coin gold ---- */
 
 ButtonBase {
 	background: state-list(
-		normal=rounded-rect(#2B3A55, radius=12, border=#51698F, border-width=2),
-		hover=rounded-rect(#34496B, radius=12, border=#FFE278, border-width=2),
-		pressed=rounded-rect(#FFB938, radius=12, border=#FFE278, border-width=2),
-		focused=rounded-rect(#34496B, radius=12, border=#FFE278, border-width=3),
-		disabled=rounded-rect(#252B36, radius=12, border=#3A4150, border-width=2)
+		normal=rounded-rect(#FFFFFF, radius=22, border=#4DA3EE, border-width=2),
+		hover=rounded-rect(#EAF4FF, radius=22, border=#1F5FAF, border-width=3),
+		pressed=rounded-rect(#D6E9FF, radius=22, border=#1F5FAF, border-width=3),
+		focused=rounded-rect(#FFE58A, radius=22, border=#1F5FAF, border-width=3),
+		disabled=rounded-rect(#EEF2F7, radius=22, border=#B5C2D3, border-width=2)
 	);
-	text-color: #F4F1E8;
+	box-shadow: 0 3 8 rgba(31, 95, 175, 0.3);
+	text-color: #1F5FAF;
 	font-size: 20;
-	padding: 6 16;
-	corner-radius: 12;
+	padding: 6 18;
+	corner-radius: 22;
 }
 
 .primary {
 	background: state-list(
-		normal=rounded-rect(#F29A2E, radius=12, border=#FFD27A, border-width=2),
-		hover=rounded-rect(#FFAE45, radius=12, border=#FFF1B8, border-width=2),
-		pressed=rounded-rect(#D9801A, radius=12, border=#FFF1B8, border-width=2),
-		focused=rounded-rect(#FFAE45, radius=12, border=#FFFFFF, border-width=3),
-		disabled=rounded-rect(#6B5335, radius=12, border=#8A7050, border-width=2)
+		normal=rounded-rect(#FFC93C, radius=22, border=#D99A00, border-width=2),
+		hover=rounded-rect(#FFD766, radius=22, border=#D99A00, border-width=3),
+		pressed=rounded-rect(#F2B416, radius=22, border=#B57F00, border-width=3),
+		focused=rounded-rect(#FFC93C, radius=22, border=#1F5FAF, border-width=4),
+		disabled=rounded-rect(#E9D9A8, radius=22, border=#C9B276, border-width=2)
 	);
-	text-color: #2A1A05;
+	box-shadow: 0 3 8 rgba(181, 127, 0, 0.45);
+	text-color: #233249;
 }
 
-/* Sliders (the settings screen's volumes): a chunky track in the button colours, an orange
- * fill, and a thumb that turns yellow when a key or pad has it, as a button's border does. */
-Slider::track { background: rounded-rect(#2B3A55, radius=4, border=#51698F, border-width=1); height: 8; }
-Slider::fill { background: rounded-rect(#F29A2E, radius=4); }
+/* ---- the settings' volume sliders: a misty groove, a sky fill, a cloud thumb ---- */
+
+Slider::track { background: rounded-rect(#EAF4FF, radius=5, border=#4DA3EE, border-width=2); height: 10; }
+Slider::fill { background: rounded-rect(#4DA3EE, radius=5); }
 Slider::thumb {
 	background: state-list(
-		normal=rounded-rect(#F4F1E8, radius=11, border=#51698F, border-width=2),
-		hover=rounded-rect(#FFFFFF, radius=11, border=#FFE278, border-width=2),
-		focused=rounded-rect(#FFE278, radius=11, border=#FFFFFF, border-width=3),
-		disabled=rounded-rect(#6B7385, radius=11, border=#3A4150, border-width=2)
+		normal=rounded-rect(#FFFFFF, radius=12, border=#1F5FAF, border-width=2),
+		hover=rounded-rect(#EAF4FF, radius=12, border=#1F5FAF, border-width=3),
+		focused=rounded-rect(#FFC93C, radius=12, border=#1F5FAF, border-width=3),
+		disabled=rounded-rect(#EEF2F7, radius=12, border=#B5C2D3, border-width=2)
 	);
-	width: 22;
+	width: 24;
 }
+
+/* ---- the HUD: a cloud pill at the top of the sky ---- */
+
+.hud {
+	background: rounded-rect(#FFFFFF, radius=20, border=#4DA3EE, border-width=3);
+	box-shadow: 0 4 10 rgba(31, 95, 175, 0.3);
+}
+.hud-coins { text-color: #D99A00; }
+.hud-value { text-color: #233249; }
+.hud-dim { text-color: #5A6B85; }
+.hud-level { text-color: #1F5FAF; }

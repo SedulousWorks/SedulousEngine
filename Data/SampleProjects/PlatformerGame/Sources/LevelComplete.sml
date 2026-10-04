@@ -1,14 +1,13 @@
 <Flex direction="vertical" justify="center" align="center" padding="32">
 
-  <ColorView style="background: rgba(0, 0, 0, 0.55);"/>
+  <ColorView class="veil-heavy"/>
 
-  <Panel padding="36"
-         style="background: rounded-rect(rgb(28, 38, 30), radius=12, border-width=2, border=rgb(90, 150, 100));">
+  <Panel padding="36" class="cloud-clear">
 
     <Flex direction="vertical" align="center">
 
-      <Label id="title" text="Level Complete!" font-size="34" class="label"/>
-      <Label id="summary" text="" class="label-dim" font-size="16"/>
+      <Label id="title" text="Level Complete!" font-size="34" class="headline-clear"/>
+      <Label id="summary" text="" class="note" font-size="16"/>
 
       <Spacer spacer-height="28"/>
 
