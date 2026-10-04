@@ -380,7 +380,7 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 			instance.PositionSize = .(position.X, position.Y, position.Z, size.X);
 			instance.SizeRotMode = .(size.Y, (rotations != null) ? rotations[i] : 0.0f, mode,
 				softDistance);
-			instance.Color = (colors != null) ? colors[i] : Float4(1.0f, 1.0f, 1.0f, 1.0f);
+			instance.Color = (colors != null) ? ParticleBillboardInstance.ColorToLinear(colors[i]) : Float4(1.0f, 1.0f, 1.0f, 1.0f);
 
 			let lifeRatio = ((ages != null) && (lifetimes != null) && (lifetimes[i] > 0.0f))
 				? (ages[i] / lifetimes[i]) : 0.0f;
@@ -585,7 +585,7 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 				: transform.ToMatrix();
 
 			let worldPosition = localSpace ? TransformPoint(position, mEmitterWorld) : position;
-			let color = (colors != null) ? colors[i] : Float4(1.0f, 1.0f, 1.0f, 1.0f);
+			let color = (colors != null) ? ParticleBillboardInstance.ColorToLinear(colors[i]) : Float4(1.0f, 1.0f, 1.0f, 1.0f);
 			tints[i] = .(color.X, color.Y, color.Z, color.W);
 
 			boundsMin = .(Math.Min(boundsMin.X, worldPosition.X),
@@ -618,7 +618,7 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 				? TransformPoint(positions[(int32)i], mEmitterWorld) : positions[(int32)i];
 			light.Range = component.LightRange;
 
-			let color = (colors != null) ? colors[(int32)i] : Float4(1.0f, 1.0f, 1.0f, 1.0f);
+			let color = (colors != null) ? ParticleBillboardInstance.ColorToLinear(colors[(int32)i]) : Float4(1.0f, 1.0f, 1.0f, 1.0f);
 			light.Color = .(color.X, color.Y, color.Z);
 			// Faded by the particle's own alpha, so a light dies with the particle.
 			light.Intensity = component.LightIntensity * color.W;
@@ -698,8 +698,10 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 
 				let a0 = Math.Clamp(1.0f - (now - p0.RecordTime) * inverseLife, 0.0f, 1.0f);
 				let a1 = Math.Clamp(1.0f - (now - p1.RecordTime) * inverseLife, 0.0f, 1.0f);
-				let c0 = Float4(p0.Color.X, p0.Color.Y, p0.Color.Z, p0.Color.W * a0);
-				let c1 = Float4(p1.Color.X, p1.Color.Y, p1.Color.Z, p1.Color.W * a1);
+				let linear0 = ParticleBillboardInstance.ColorToLinear(p0.Color);
+				let linear1 = ParticleBillboardInstance.ColorToLinear(p1.Color);
+				let c0 = Float4(linear0.X, linear0.Y, linear0.Z, linear0.W * a0);
+				let c1 = Float4(linear1.X, linear1.Y, linear1.Z, linear1.W * a1);
 
 				let l0 = pos0 + side * w0;
 				let r0 = pos0 - side * w0;

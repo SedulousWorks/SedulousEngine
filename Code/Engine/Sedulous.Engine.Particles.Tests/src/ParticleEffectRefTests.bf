@@ -5,6 +5,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Engine.Particles;
 using Sedulous.Particles;
 using Sedulous.Particles.Resource;
+using Sedulous.Render;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 
@@ -232,5 +233,47 @@ class ParticleEffectRefTests
 		manager.Stop(entity);
 		scene.Update(0.3f);
 		Test.Assert(component.Instance.Effect.GetSystem(0).AliveCount == atStop);
+	}
+
+	/// An effect's colours are authored sRGB like every colour: simulated as entered, and
+	/// decoded where they leave the simulation for the renderer.
+	[Test]
+	public static void TheSimulatedColourReachesBillboardsAndLightsDecodedToLinear()
+	{
+		ParticleResources.RegisterAll();
+
+		let scene = scope Scene();
+		let manager = scene.AddSystem<ParticleEffectComponentManager>();
+
+		let resource = scope ParticleEffectResource();
+		let system = resource.Effect.AddSystem(8);
+		system.AddInitializer<LifetimeInitializer>().Lifetime = .(5.0f, 5.0f);
+		system.AddInitializer<ColorInitializer>().Color = .Constant(.(0.5f, 0.25f, 1.0f, 1.0f));
+		system.RenderMode = .Light; // a light per particle, and its glow
+		system.Emitter.Mode = .Burst;
+		system.Emitter.BurstCount = 2;
+
+		let component = manager.Add(scene.CreateEntity("Glow"));
+		component.EffectAsset.SetDirect(resource);
+		scene.Update(0.016f);
+		Test.Assert(component.Instance != null);
+
+		let snapshot = scope ExtractedScene();
+		manager.ExtractRenderData(snapshot);
+		Test.Assert(snapshot.Lights.Length == 2);
+		Test.Assert(Math.Abs(snapshot.Lights[0].Color.X - SrgbToLinear(0.5f)) < 1e-5f);
+		Test.Assert(Math.Abs(snapshot.Lights[0].Color.Y - SrgbToLinear(0.25f)) < 1e-5f);
+		Test.Assert(Math.Abs(snapshot.Lights[0].Color.Z - 1.0f) < 1e-5f);
+
+		Test.Assert(snapshot.Size == 1, "the billboard batch");
+		let batch = (ParticleBillboardRenderData)snapshot.Items[0];
+		Test.Assert(batch.Count == 2);
+		Test.Assert(Math.Abs(batch.Instances[0].Color.X - SrgbToLinear(0.5f)) < 1e-5f);
+		Test.Assert(batch.Instances[0].Color.W == 1.0f, "alpha is not decoded");
+
+		// The helper the four upload points share.
+		let linear = ParticleBillboardInstance.ColorToLinear(.(0.5f, 0.0f, 1.0f, 0.25f));
+		Test.Assert(Math.Abs(linear.X - SrgbToLinear(0.5f)) < 1e-5f);
+		Test.Assert(linear.W == 0.25f);
 	}
 }

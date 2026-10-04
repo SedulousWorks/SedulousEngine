@@ -38,7 +38,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
    (`EncodeUniformsForGpu`); a stored Float4 adopts its builtin template's colour type; the
    material page's rows.
 9. ~~d0d33155~~ (done, Sedulous's part) Sky Hopper: its 35 materials re-expressed in sRGB, look kept.
-10. c89cd6fb Engine.Particles: particle colours decoded to linear where they are drawn.
+10. ~~c89cd6fb~~ (done) Engine.Particles: particle colours decoded to linear where they are drawn.
 11. ad81b72b Render: debug colours decoded like every authored colour (`color.hlsli`); the colour
     probes.
 12. 40d28176 Model.GLTF: colour factors read as authored sRGB; emissive strength kept as an

@@ -7,7 +7,7 @@ namespace Sedulous.Particles;
 ///
 /// LINEAR between its keys rather than cubic, unlike the scalar curve: a cubic through
 /// colours overshoots, and an overshoot in a colour channel is a colour that was never
-/// authored.
+/// authored. Its values are authored sRGB, decoded to linear only when the particle is drawn.
 [Scriptable]
 struct ParticleCurveColor
 {
