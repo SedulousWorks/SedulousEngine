@@ -68,6 +68,32 @@ class EnvironmentSystem : SceneSystem
 	{
 		mEnvironment.SkyTexture.Bind(manager);
 		mEnvironment.Profile.Bind(manager);
+		// A profile edit's new reference: the loaded profile's values bind as a load's do.
+		if (let profile = mEnvironment.Profile.Get)
+			profile.Values.SkyTexture.Bind(manager);
+	}
+
+	public override Type SettingsProfileType => typeof(EnvironmentProfile);
+	public override void* EffectiveSettingsInstance => Effective;
+
+	public override Guid SettingsProfile
+		=> ((mEnvironment.Source == .Profile) && (mEnvironment.Profile.Get != null)) ? mEnvironment.Profile.Id : .();
+
+	/// Bound by the next ResolveResources.
+	public override void UseSettingsProfile(Guid profile)
+	{
+		mEnvironment.Source = (profile == Guid.Empty) ? .Scene : .Profile;
+		mEnvironment.Profile.SetId(profile);
+		mEnvironment.Profile.ClearBinding();
+	}
+
+	public override void CopySettingsProfileIntoScene()
+	{
+		let values = *Effective; // a copy: Effective may be this block
+		let profile = mEnvironment.Profile;
+		mEnvironment = values;
+		mEnvironment.Source = .Scene;
+		mEnvironment.Profile = profile; // kept, so the profile is a pick away
 	}
 
 	public override void SerializeSettings(ISerializer ar)

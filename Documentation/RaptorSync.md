@@ -79,7 +79,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
     profiles, a block's `Source`, its effective values; the profile assets, their cook and
     File > New (together: the composition test wants a builder for every cooked form).
 27. ~~62f6aa73~~ (done) Editor.Mcp: what makes a product, shared (`SourceAssetTypesFor`).
-28. babadd96 Editor: a scene's settings in profile mode edit the profile (Make Profile, Copy
+28. ~~babadd96~~ (done) Editor: a scene's settings in profile mode edit the profile (Make Profile, Copy
     Into Scene).
 29. 5515b8ab Editor: a profile asset's page, with a preview scene.
 30. f3df9db4 McpGuide: a game's look through render profiles.

@@ -19,6 +19,10 @@ class SetSceneSettingCommand : EditorCommand
 	private int64 mOldRaw = 0;
 	private bool mRaw = false;
 	private bool mHasOld = false;
+	/// Where the edit lands (SettingsEditProfile), fixed when it first applies so an undo
+	/// returns it to the same place.
+	private Guid mProfile = .();
+	private bool mRouted = false;
 
 	/// CONSUMES `value`.
 	public this(SceneEditContext ctx, Type settingsType, StringView property, Variant value)
@@ -54,6 +58,7 @@ class SetSceneSettingCommand : EditorCommand
 				mHasOld = true;
 			}
 			RawFieldAccess.WriteRawInt(address, field.FieldType.Size, mNewRaw);
+			mCtx.NoteSettingsProfileEdited(mSettingsType, mProfile);
 			return true;
 		}
 
@@ -64,7 +69,9 @@ class SetSceneSettingCommand : EditorCommand
 			mOld = old;
 			mHasOld = true;
 		}
-		return RawFieldAccess.Write(field, settings, mSettingsType, mNew) case .Ok;
+		let written = RawFieldAccess.Write(field, settings, mSettingsType, mNew) case .Ok;
+		mCtx.NoteSettingsProfileEdited(mSettingsType, mProfile);
+		return written;
 	}
 
 	public override void Undo()
@@ -78,6 +85,7 @@ class SetSceneSettingCommand : EditorCommand
 				field.FieldType.Size, mOldRaw);
 		else
 			RawFieldAccess.Write(field, settings, mSettingsType, mOld).IgnoreError();
+		mCtx.NoteSettingsProfileEdited(mSettingsType, mProfile);
 	}
 
 	public override StringView TypeId => "set_scene_setting";
@@ -86,7 +94,7 @@ class SetSceneSettingCommand : EditorCommand
 	{
 		let prev = (SetSceneSettingCommand)previous;
 		if ((prev.mSettingsType != mSettingsType) || (prev.mRaw != mRaw)
-			|| (prev.mProperty != mProperty))
+			|| (prev.mProfile != mProfile) || (prev.mProperty != mProperty))
 			return false;
 		prev.mNew.Dispose();
 		prev.mNew = mNew;
@@ -99,10 +107,12 @@ class SetSceneSettingCommand : EditorCommand
 	{
 		settings = null;
 		field = ?;
-		let system = mCtx.FindSystemBySettingsType(mSettingsType);
-		if (system == null)
-			return false;
-		settings = system.SettingsInstance;
+		if (!mRouted)
+		{
+			mProfile = mCtx.SettingsEditProfile(mSettingsType, mProperty);
+			mRouted = true;
+		}
+		settings = mCtx.SettingsEditTarget(mSettingsType, mProfile);
 		if (settings == null)
 			return false;
 		if (!(RawFieldAccess.FindField(mSettingsType, mProperty) case .Ok(let found)))

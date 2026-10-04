@@ -199,6 +199,74 @@ class SceneEditContext
 		return null;
 	}
 
+	// ---- a settings block whose source is a profile ----
+	// Its values in effect are the profile's, so an edit of a value field lands there, where
+	// every scene sharing the profile sees it, and the page persists it to the profile's asset.
+	// The block's own fields ([SceneOnly]: the source, the profile reference) stay the scene's.
+
+	/// The page's persistence of a profile edit: an asset edit for the save flow. OWNED.
+	public delegate void(Type settingsType, Guid profile) OnSettingsProfileEdited ~ delete _;
+
+	/// The profile an edit of `property` lands in: nil when it lands in the scene's block.
+	public Guid SettingsEditProfile(Type settingsType, StringView property)
+	{
+		let system = FindSystemBySettingsType(settingsType);
+		if ((system == null) || (system.SettingsProfileType == null))
+			return .();
+		if (!(RawFieldAccess.FindField(settingsType, property) case .Ok(let field)))
+			return .();
+		if (field.GetCustomAttribute<SceneOnlyAttribute>() case .Ok)
+			return .();
+		return system.SettingsProfile;
+	}
+
+	/// The values an edit for `profile` (from SettingsEditProfile) writes: the scene's block for
+	/// nil, the profile's values while the block still uses it, else null. An undo after the
+	/// source moved on reaches the profile again once that move is undone first.
+	public void* SettingsEditTarget(Type settingsType, Guid profile)
+	{
+		let system = FindSystemBySettingsType(settingsType);
+		if (system == null)
+			return null;
+		if (profile == Guid.Empty)
+			return system.SettingsInstance;
+		return (system.SettingsProfile == profile) ? system.EffectiveSettingsInstance : null;
+	}
+
+	/// The values a row shows and edits now: the scene's block for a [SceneOnly] field, the
+	/// values in effect for the rest.
+	public void* SettingsValues(Type settingsType, bool sceneOnly)
+	{
+		let system = FindSystemBySettingsType(settingsType);
+		if (system == null)
+			return null;
+		return sceneOnly ? system.SettingsInstance : system.EffectiveSettingsInstance;
+	}
+
+	/// What the settings commands call after they write a profile's values; nil does nothing.
+	public void NoteSettingsProfileEdited(Type settingsType, Guid profile)
+	{
+		if ((profile != Guid.Empty) && (OnSettingsProfileEdited != null))
+			OnSettingsProfileEdited(settingsType, profile);
+	}
+
+	/// One undoable mutation of a settings block, whatever it touches (its source, a copy of a
+	/// profile's values into it): the live block mutated, captured, restored, then applied
+	/// through the block command, which keeps the block before. False when there is none.
+	public bool MutateSceneSettings(Type settingsType, delegate void(SceneSystem system) mutate)
+	{
+		let system = FindSystemBySettingsType(settingsType);
+		if (system == null)
+			return false;
+		let before = scope List<uint8>();
+		SceneSettingsBlock.Capture(system, before);
+		mutate(system);
+		let after = new List<uint8>();
+		SceneSettingsBlock.Capture(system, after);
+		SceneSettingsBlock.Apply(system, before);
+		return ApplySceneSettingsBlock(settingsType, after);
+	}
+
 	// ---- hierarchy queries ----
 
 	/// Whether `possibleAncestor` is `entity` itself or somewhere above it.

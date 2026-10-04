@@ -12,6 +12,8 @@ namespace Sedulous.Editor.Scene;
 /// the [DisplayName] and [Description] presentation, and a [VisibleWhen] condition resolved
 /// to the dependent field. Nothing is looked up by name at run time.
 ///
+/// A [SceneOnly] field's rows read the target's SceneOnlyTarget (InspectorSection.FieldScope).
+///
 /// A field is skipped when it is [Hidden], a pointer, an object other than a String or a
 /// List, or a struct the inspector has no editor for. A Ref<X> becomes an asset row whose
 /// accepted asset types follow from X; a List becomes a slot list.
@@ -56,6 +58,14 @@ static class InspectorRows<T>
 		let code = scope String();
 		// A struct is read through its address; a class through the object at it.
 		let access = type.IsObject ? "((T)Internal.UnsafeCastToObject(p))" : "((T*)p)";
+		// A type with [SceneOnly] fields scopes each field's rows: those fields read the scene's
+		// own block while the rest read the values in effect (a settings block's profile).
+		bool scoped = false;
+		for (let field in type.GetFields())
+		{
+			if (field.IsInstanceField && field.IsPublic && (field.GetCustomAttribute<SceneOnlyAttribute>() case .Ok))
+				scoped = true;
+		}
 
 		for (let field in type.GetFields())
 		{
@@ -72,6 +82,8 @@ static class InspectorRows<T>
 			if (!EmitRow(field, ft, quoted, member, row))
 				continue;
 
+			if (scoped)
+				code.AppendF("s.FieldScope({});\n", (field.GetCustomAttribute<SceneOnlyAttribute>() case .Ok) ? "true" : "false");
 			code.Append("{\n\tlet first = s.RowCount;\n");
 			// The label and tooltip apply to the row added next.
 			let label = scope String();

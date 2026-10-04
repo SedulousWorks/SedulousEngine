@@ -16,6 +16,9 @@ class SetSceneSettingRefCommand<T> : EditorCommand where T : class
 	private Guid mOld = .();
 	private bool mHasOld = false;
 	private ResourceManager mResources;
+	/// Where the edit lands (SettingsEditProfile), fixed when it first applies.
+	private Guid mProfile = .();
+	private bool mRouted = false;
 
 	public this(SceneEditContext ctx, Type settingsType, StringView property, Guid value,
 		ResourceManager resources)
@@ -39,6 +42,7 @@ class SetSceneSettingRefCommand<T> : EditorCommand where T : class
 		}
 		reference.SetId(mNew);
 		reference.Rebind(mResources);
+		mCtx.NoteSettingsProfileEdited(mSettingsType, mProfile);
 		return true;
 	}
 
@@ -49,16 +53,19 @@ class SetSceneSettingRefCommand<T> : EditorCommand where T : class
 			return;
 		reference.SetId(mOld);
 		reference.Rebind(mResources);
+		mCtx.NoteSettingsProfileEdited(mSettingsType, mProfile);
 	}
 
 	public override StringView TypeId => "set_scene_setting_ref";
 
 	private Ref<T>* ResolveRef()
 	{
-		let system = mCtx.FindSystemBySettingsType(mSettingsType);
-		if (system == null)
-			return null;
-		let settings = system.SettingsInstance;
+		if (!mRouted)
+		{
+			mProfile = mCtx.SettingsEditProfile(mSettingsType, mProperty);
+			mRouted = true;
+		}
+		let settings = mCtx.SettingsEditTarget(mSettingsType, mProfile);
 		if (settings == null)
 			return null;
 		if (!(RawFieldAccess.FindField(mSettingsType, mProperty) case .Ok(let field)))

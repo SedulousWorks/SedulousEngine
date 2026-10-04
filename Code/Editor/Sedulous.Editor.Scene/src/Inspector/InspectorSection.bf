@@ -19,7 +19,11 @@ namespace Sedulous.Editor.Scene;
 class InspectorSection
 {
 	private SceneInspectorView mOwner;
+	/// The target the rows being added read and write: mValuesTarget, or its SceneOnlyTarget
+	/// within a [SceneOnly] field's rows.
 	private InspectorTarget mTarget;
+	private InspectorTarget mValuesTarget;
+	private bool mInSceneOnly = false;
 	private String mCategory = new .() ~ delete _;
 	private String mPendingLabel = new .() ~ delete _;
 	private String mPendingTooltip = new .() ~ delete _;
@@ -28,10 +32,35 @@ class InspectorSection
 	{
 		mOwner = owner;
 		mTarget = target;
+		mValuesTarget = target;
 		mCategory.Set(category);
 	}
 
-	public InspectorTarget Target => mTarget;
+	public InspectorTarget Target => mValuesTarget;
+
+	/// Called where the first value row follows a type's [SceneOnly] rows: a settings block
+	/// that takes a profile's values puts its profile verbs there. BORROWED.
+	public delegate void() OnValuesBegin;
+
+	/// Whether the rows that follow are a [SceneOnly] field's, built against the scene's own
+	/// block, or a value field's, built against the values in effect. The generated rows call
+	/// it per field for a type that has [SceneOnly] fields.
+	public void FieldScope(bool sceneOnly)
+	{
+		if (sceneOnly)
+		{
+			mTarget = mValuesTarget.SceneOnlyTarget;
+			mInSceneOnly = true;
+			return;
+		}
+		mTarget = mValuesTarget;
+		if (mInSceneOnly)
+		{
+			mInSceneOnly = false;
+			if (OnValuesBegin != null)
+				OnValuesBegin();
+		}
+	}
 	public StringView Category => mCategory;
 	public int RowCount => mOwner.Grid.PropertyCount;
 

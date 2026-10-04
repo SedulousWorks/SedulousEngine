@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Scene;
+using Sedulous.UI.Toolkit;
+using Sedulous.Editor.Core;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Script;
 
@@ -30,6 +32,10 @@ extension SceneInspectorView
 
 			let section = scope InspectorSection(this, new SettingsTarget(mEdit, type), category);
 			Keep(section.Target);
+			// A block whose values can come from a profile: its verbs between the block's own
+			// fields (the source, the profile) and its values.
+			if (system.SettingsProfileType != null)
+				section.OnValuesBegin = scope:: [&]() => BuildSettingsProfileRows(type, category);
 			entry.Build(section);
 
 			if (type == typeof(PhysicsSceneSettings))
@@ -37,6 +43,58 @@ extension SceneInspectorView
 			if (type == typeof(SceneScriptSettings))
 				BuildSceneScriptPropertyRows(type, category); // the Level's property rows
 		}
+	}
+
+	/// Open Profile, Make Profile and Copy Into Scene for a block whose values can come from a
+	/// profile. The first row names whose values the rows below are.
+	private void BuildSettingsProfileRows(Type type, StringView category)
+	{
+		let edit = mEdit;
+		let editor = mEditor;
+		delegate Guid() usesProfile = new [=edit, =type]() =>
+		{
+			let system = edit.FindSystemBySettingsType(type);
+			return (system != null) ? system.SettingsProfile : .();
+		};
+		Keep(usesProfile);
+
+		// The profile in use, named: its values are the rows below, shared by every scene using it.
+		let open = new ButtonEditor("Open Profile", new [=editor, =usesProfile]() =>
+			{
+				let id = usesProfile();
+				if ((id != Guid.Empty) && (editor.OpenAsset != null))
+					editor.OpenAsset(id);
+			}, category);
+		open.SetTooltip("The values below are this profile's: an edit changes every scene using it (written to the profile on save).");
+		AddEditor(open, new [=editor, =usesProfile, =open]() =>
+			{
+				let id = usesProfile();
+				open.SetButtonEnabled(id != Guid.Empty);
+				let label = scope String();
+				if (id == Guid.Empty)
+					label.Set("Values: this scene's");
+				else
+					label.AppendF("Values: profile '{}'", editor.AssetNameFor(id, .. scope .()));
+				open.SetDisplayName(label);
+			});
+
+		let profileName = new $"{edit.Scene.Name} {category}";
+		Keep(profileName);
+		let make = new ButtonEditor("Make Profile", new [=editor, =edit, =type, =profileName]() =>
+			{
+				let made = SettingsProfiles.Make(editor, edit, type, profileName);
+				if (made != null)
+					editor.Notify(.Success, scope $"Made profile '{made.Name}'; this scene uses it.");
+			}, category);
+		make.SetTooltip("Saves these values as a new profile asset, and this scene uses it.");
+		AddEditor(make, new [=usesProfile, =make]() => { make.SetButtonEnabled(usesProfile() == Guid.Empty); });
+
+		let copy = new ButtonEditor("Copy Into Scene", new [=edit, =type]() =>
+			{
+				edit.MutateSceneSettings(type, scope (s) => { s.CopySettingsProfileIntoScene(); });
+			}, category);
+		copy.SetTooltip("Copies the profile's values into this scene, which then uses its own (the profile is unchanged).");
+		AddEditor(copy, new [=usesProfile, =copy]() => { copy.SetButtonEnabled(usesProfile() != Guid.Empty); });
 	}
 
 	/// The collision group matrix: names down the side, a symmetric grid of collide flags,

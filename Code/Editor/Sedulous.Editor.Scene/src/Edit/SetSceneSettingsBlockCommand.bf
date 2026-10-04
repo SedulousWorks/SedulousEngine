@@ -30,14 +30,19 @@ class SetSceneSettingsBlockCommand : EditorCommand
 			return false;
 		if (mOld.IsEmpty)
 			SceneSettingsBlock.Capture(system, mOld);
-		return SceneSettingsBlock.Apply(system, mNew);
+		let applied = SceneSettingsBlock.Apply(system, mNew);
+		mCtx.ResolveRestoredResources(); // the block's references (a profile) bind
+		return applied;
 	}
 
 	public override void Undo()
 	{
 		let system = mCtx.FindSystemBySettingsType(mSettingsType);
 		if (system != null)
+		{
 			SceneSettingsBlock.Apply(system, mOld);
+			mCtx.ResolveRestoredResources();
+		}
 	}
 
 	public override StringView TypeId => "set_scene_settings_block";

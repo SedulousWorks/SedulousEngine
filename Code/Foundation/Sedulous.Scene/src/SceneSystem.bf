@@ -74,6 +74,21 @@ abstract class SceneSystem
 
 	public virtual void SerializeSettings(ISerializer ar) {}
 
+	/// A settings block that can take its values from a shared asset (a render profile) says
+	/// so, and answers which values are in effect and which asset gives them, so a tool edits
+	/// what is in effect without naming the block's type.
+	///
+	/// SettingsProfileType is the profile's product type, null when the block has none;
+	/// EffectiveSettingsInstance the values in effect, in SettingsType's layout; SettingsProfile
+	/// the profile in use, nil for the block's own values. UseSettingsProfile takes the values
+	/// from that profile (nil for the block's own) and CopySettingsProfileIntoScene makes the
+	/// values in effect the block's own, in use.
+	public virtual Type SettingsProfileType => null;
+	public virtual void* EffectiveSettingsInstance => SettingsInstance;
+	public virtual Guid SettingsProfile => .();
+	public virtual void UseSettingsProfile(Guid profile) {}
+	public virtual void CopySettingsProfileIntoScene() {}
+
 	/// Binds every resource reference this system holds, settings blocks included: the
 	/// post load resolve pass. A component manager overrides it for its pools, and a plain
 	/// system with resource bearing settings overrides it too.

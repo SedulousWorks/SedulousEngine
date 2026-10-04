@@ -40,6 +40,32 @@ class PostProcessSystem : SceneSystem
 	{
 		mPost.GradingLut.Bind(manager);
 		mPost.Profile.Bind(manager);
+		// A profile edit's new reference: the loaded profile's values bind as a load's do.
+		if (let profile = mPost.Profile.Get)
+			profile.Values.GradingLut.Bind(manager);
+	}
+
+	public override Type SettingsProfileType => typeof(PostProcessProfile);
+	public override void* EffectiveSettingsInstance => Effective;
+
+	public override Guid SettingsProfile
+		=> ((mPost.Source == .Profile) && (mPost.Profile.Get != null)) ? mPost.Profile.Id : .();
+
+	/// Bound by the next ResolveResources.
+	public override void UseSettingsProfile(Guid profile)
+	{
+		mPost.Source = (profile == Guid.Empty) ? .Scene : .Profile;
+		mPost.Profile.SetId(profile);
+		mPost.Profile.ClearBinding();
+	}
+
+	public override void CopySettingsProfileIntoScene()
+	{
+		let values = *Effective; // a copy: Effective may be this block
+		let profile = mPost.Profile;
+		mPost = values;
+		mPost.Source = .Scene;
+		mPost.Profile = profile; // kept, so the profile is a pick away
 	}
 
 	public override void SerializeSettings(ISerializer ar)

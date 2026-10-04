@@ -196,6 +196,14 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mEditContext = new SceneEditContext(mScene, Commands);
 			mEditContext.SetResources(context.Resources);
 			mEditContext.SetPrefabResolver(GameEditorPage.ProjectPrefabResolver(context));
+			// A settings edit that lands in a profile (the block's source is a profile) is
+			// written to the profile's asset by the save flow, like any live asset edit.
+			let profileEdit = mEditContext;
+			mEditContext.OnSettingsProfileEdited = new [=context, =profileEdit](type, profile) =>
+				{
+					if (let system = profileEdit.FindSystemBySettingsType(type))
+						SettingsProfiles.QueueEdit(context, system, profile);
+				};
 			mHierarchy = new SceneHierarchyView(mEditContext);
 			// Its context menus are the scene editor's actions over THIS page.
 			mHierarchy.SetActions(context.Actions, this);

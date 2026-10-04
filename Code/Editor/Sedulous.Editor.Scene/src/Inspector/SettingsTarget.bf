@@ -5,23 +5,35 @@ using Sedulous.Core;
 namespace Sedulous.Editor.Scene;
 
 /// A scene system's settings block, named by its type.
+///
+/// The values a row shows are the ones in effect: a profile's while the block's source is a
+/// profile, the scene's own otherwise. A [SceneOnly] field's rows read the scene's own block
+/// through SceneOnlyTarget. An edit is routed by the edit context, field by field.
 class SettingsTarget : InspectorTarget
 {
 	public readonly Type Type;
+	public readonly bool SceneOnly;
+	private SettingsTarget mSceneOnlyTarget ~ delete _;
 
-	public this(SceneEditContext edit, Type settingsType) : base(edit)
+	public this(SceneEditContext edit, Type settingsType, bool sceneOnly = false) : base(edit)
 	{
 		Type = settingsType;
+		SceneOnly = sceneOnly;
 	}
 
 	public override Type TargetType => Type;
 
-	public override void* Address
+	public override void* Address => mEdit.SettingsValues(Type, SceneOnly);
+
+	public override InspectorTarget SceneOnlyTarget
 	{
 		get
 		{
-			let system = mEdit.FindSystemBySettingsType(Type);
-			return (system != null) ? system.SettingsInstance : null;
+			if (SceneOnly)
+				return this;
+			if (mSceneOnlyTarget == null)
+				mSceneOnlyTarget = new SettingsTarget(mEdit, Type, true);
+			return mSceneOnlyTarget;
 		}
 	}
 
@@ -34,6 +46,8 @@ class SettingsTarget : InspectorTarget
 	/// A settings block holds no entity references.
 	public override void SetEntityRef(StringView field, Guid target) {}
 
+	/// Mutates the scene's own block: the blocks that take a profile's values have no field
+	/// edited this way.
 	public override void Mutate(delegate void(void* instance) mutate, StringView mergeKey)
 	{
 		let system = mEdit.FindSystemBySettingsType(Type);

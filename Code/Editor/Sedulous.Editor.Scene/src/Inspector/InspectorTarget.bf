@@ -38,4 +38,8 @@ abstract class InspectorTarget
 
 	/// The common case: its own undo step, merging with nothing.
 	public void Mutate(delegate void(void* instance) mutate) => Mutate(mutate, default);
+
+	/// The target a [SceneOnly] field's rows read: a settings block's own values while the rest
+	/// show a profile's. Itself everywhere else.
+	public virtual InspectorTarget SceneOnlyTarget => this;
 }
