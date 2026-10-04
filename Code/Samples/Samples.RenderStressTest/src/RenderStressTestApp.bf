@@ -94,7 +94,7 @@ class RenderStressTestApp : DefaultApplication
 		// a benchmark, not a beauty shot.
 		if (let environment = mScene.GetSystem<EnvironmentSystem>())
 		{
-			environment.Environment.AmbientColor = .(0.10f, 0.12f, 0.16f, 1.0f);
+			environment.Environment.AmbientColor = .(0.349f, 0.381f, 0.437f, 1.0f);
 			environment.Environment.AmbientIntensity = 0.30f;
 		}
 

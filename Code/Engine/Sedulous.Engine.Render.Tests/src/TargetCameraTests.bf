@@ -105,7 +105,7 @@ class TargetCameraTests
 				Test.Assert(Near(views[0].Camera.Camera.Projection.M[r][c], expected.M[r][c]));
 		}
 		Test.Assert(Near(views[0].Camera.Camera.Position.Y, 40.0f));
-		Test.Assert(Near(views[0].Camera.ClearColor.G, 0.5f));
+		Test.Assert(Near(views[0].Camera.ClearColor.G, SrgbToLinear(0.5f))); // authored sRGB, decoded
 
 		RenderExtract.CollectTargetCameras(scene, 4, views); // the monitor draws every third frame only
 		Test.Assert((views.Count == 1) && (views[0].Target === mapTexture));

@@ -112,8 +112,8 @@ class ExtractSceneTests
 			// Tagged with a packed entity handle.
 			Test.Assert(data.EntityId != 0);
 			sumX += data.World.M[3][0];
-			// The per instance tint carries through.
-			if (Near(data.Color.B, 0.8f))
+			// The per instance tint carries through, decoded to linear.
+			if (Near(data.Color.B, SrgbToLinear(0.8f)))
 				sawBlue = true;
 		}
 		Test.Assert(Near(sumX, 1.0f));

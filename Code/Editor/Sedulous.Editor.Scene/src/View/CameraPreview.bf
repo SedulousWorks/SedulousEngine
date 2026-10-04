@@ -20,7 +20,7 @@ static class CameraPreview
 
 		var result = CameraOverride();
 		result.Camera = view;
-		result.ClearColor = camera.ClearColor;
+		result.ClearColor = ToLinear(camera.ClearColor); // authored sRGB to the render view
 		return result;
 	}
 

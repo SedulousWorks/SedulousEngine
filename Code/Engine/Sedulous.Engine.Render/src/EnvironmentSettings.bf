@@ -18,8 +18,9 @@ namespace Sedulous.Engine.Render;
 struct EnvironmentSettings
 {
 	/// A flat ambient FILL added on top of the image based ambient in every sky mode, so an
-	/// intensity of nought is pure IBL. Where IBL is unavailable this is the only ambient.
-	public Color AmbientColor = .(0.10f, 0.12f, 0.16f, 1.0f);
+	/// intensity of nought is pure IBL. Where IBL is unavailable this is the only ambient. sRGB,
+	/// like every colour (the default is the look it had when colours were read raw).
+	public Color AmbientColor = .(0.349f, 0.381f, 0.437f, 1.0f);
 	[Range(0.0f, 2.0f, 0.01f)]
 	[Description("Flat ambient fill added on top of the image-based ambient (0 = pure IBL)")]
 	public float AmbientIntensity = 0.3f;
@@ -50,16 +51,16 @@ struct EnvironmentSettings
 	public Ref<Texture> SkyTexture = .(Guid());
 
 	/// The procedural sky: a soft, hazy, low saturation daytime blue rather than a vivid one,
-	/// which means a dimmer horizon, a desaturated zenith and a near neutral ground.
+	/// which means a dimmer horizon, a desaturated zenith and a near neutral ground. sRGB.
 	[VisibleWhen("SkyMode=0")]
-	public Color SkyHorizon = .(0.52f, 0.60f, 0.70f, 1.0f);
+	public Color SkyHorizon = .(0.748f, 0.798f, 0.854f, 1.0f);
 	/// Also the colour the flat mode uses.
 	[VisibleWhen("SkyMode=0,2")]
 	[DisplayName("Sky Zenith / Color")]
 	[Description("Zenith color (procedural sky); the flat color in Color mode")]
-	public Color SkyZenith = .(0.20f, 0.36f, 0.58f, 1.0f);
+	public Color SkyZenith = .(0.485f, 0.634f, 0.786f, 1.0f);
 	[VisibleWhen("SkyMode=0")]
-	public Color SkyGround = .(0.26f, 0.26f, 0.26f, 1.0f);
+	public Color SkyGround = .(0.547f, 0.547f, 0.547f, 1.0f);
 	[Range(0.0f, 10.0f, 0.05f)]
 	[VisibleWhen("SkyMode=0,1,2")]
 	public float SunIntensity = 1.0f;

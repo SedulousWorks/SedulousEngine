@@ -243,7 +243,7 @@ class ThumbnailStage
 
 		var cameraOverride = CameraOverride();
 		cameraOverride.Camera = camera;
-		cameraOverride.ClearColor = .(0.10f, 0.11f, 0.13f, 1.0f);
+		cameraOverride.ClearColor = .(0.10f, 0.11f, 0.13f, 1.0f); // linear (a render view)
 
 		// Scene documents look like themselves: their own primary camera and clear colour
 		// when one exists (RenderScene extracts both when no override is passed).

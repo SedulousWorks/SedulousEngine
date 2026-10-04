@@ -36,8 +36,9 @@ class CameraPreviewTests
 		Test.Assert(Abs(ov.Camera.Position.Y - 5.0f) < 1e-4f);
 		Test.Assert(Abs(ov.Camera.Position.Z - 3.0f) < 1e-4f);
 		Test.Assert(ov.Camera.FarZ == 250.0f);
-		Test.Assert(ov.ClearColor.R == 0.1f);
-		Test.Assert(ov.ClearColor.B == 0.3f);
+		// The clear colour (authored sRGB) decoded to linear, as the runtime extraction does.
+		Test.Assert(Abs(ov.ClearColor.R - SrgbToLinear(0.1f)) < 1e-5f);
+		Test.Assert(Abs(ov.ClearColor.B - SrgbToLinear(0.3f)) < 1e-5f);
 		Test.Assert(ov.ClearColor.A == 1.0f);
 	}
 

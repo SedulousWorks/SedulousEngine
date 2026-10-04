@@ -910,8 +910,9 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		RenderTargetCameras(scene);
 
 		var camera = ViewCamera();
-		// The cornflower fallback, for a scene with no primary camera.
-		var clearColor = Color(0.392f, 0.584f, 0.929f, 1.0f);
+		// The default backdrop, for a scene with no primary camera: linear, as the cameras'
+		// authored colours are decoded.
+		var clearColor = CameraOverride().ClearColor;
 		if (cameraOverride != null)
 		{
 			camera = cameraOverride.Camera;

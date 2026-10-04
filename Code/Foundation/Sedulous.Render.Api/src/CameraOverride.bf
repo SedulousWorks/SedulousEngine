@@ -9,8 +9,9 @@ namespace Sedulous.Render;
 struct CameraOverride
 {
 	public ViewCamera Camera = .();
-	/// The view's backdrop.
-	public Color ClearColor = .(0.392f, 0.584f, 0.929f, 1.0f);
+	/// The view's backdrop, LINEAR like all render data (an authored colour is decoded with
+	/// ToLinear before it lands here); cornflower blue's sRGB, decoded.
+	public Color ClearColor = .(0.127f, 0.300f, 0.846f, 1.0f);
 
 	public this() {}
 }

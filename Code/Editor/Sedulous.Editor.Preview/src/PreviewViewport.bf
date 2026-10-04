@@ -139,7 +139,8 @@ class PreviewViewport
 
 		var cameraOverride = CameraOverride();
 		cameraOverride.Camera = camera;
-		cameraOverride.ClearColor = .(vp.ClearColor.R, vp.ClearColor.G, vp.ClearColor.B, vp.ClearColor.A);
+		// The viewport's colour is a UI colour (sRGB); the render view takes linear.
+		cameraOverride.ClearColor = ToLinear(Color(vp.ClearColor.R, vp.ClearColor.G, vp.ClearColor.B, vp.ClearColor.A));
 
 		let targetState = TargetState(vp.ColorTexture, vp.ColorState, .ShaderRead);
 		mRender.RenderScene(mScene, vp.ColorTargetView, vp.ColorFormat, w, h, .(0, 0, w, h),

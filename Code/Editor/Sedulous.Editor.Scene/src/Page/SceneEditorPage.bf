@@ -522,7 +522,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 		var cameraOverride = CameraOverride();
 		cameraOverride.Camera = camera;
-		cameraOverride.ClearColor = .(mViewport.ClearColor.R, mViewport.ClearColor.G, mViewport.ClearColor.B, mViewport.ClearColor.A);
+		// The viewport's colour is a UI colour (sRGB); the render view takes linear.
+		cameraOverride.ClearColor = ToLinear(Color(mViewport.ClearColor.R, mViewport.ClearColor.G, mViewport.ClearColor.B, mViewport.ClearColor.A));
 
 		let targetState = TargetState(mViewport.ColorTexture, mViewport.ColorState, .ShaderRead);
 		mRender.RenderScene(mScene, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, .(0, 0, w, h),

@@ -21,6 +21,7 @@ class InstancedMeshComponentManager : ResourceBindingComponentManager<InstancedM
 		component.Tints = new List<Color>();
 		component.PoseIndices = new List<uint32>();
 		component.WorldTransforms = new List<Float4x4>();
+		component.LinearTints = new List<Color>();
 
 		// ONE identity instance, so a component just added in an editor draws its mesh at the
 		// entity's transform straight away. An authored set replaces it.
@@ -35,5 +36,6 @@ class InstancedMeshComponentManager : ResourceBindingComponentManager<InstancedM
 		DeleteAndNullify!(component.Tints);
 		DeleteAndNullify!(component.PoseIndices);
 		DeleteAndNullify!(component.WorldTransforms);
+		DeleteAndNullify!(component.LinearTints);
 	}
 }

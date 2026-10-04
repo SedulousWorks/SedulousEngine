@@ -17,6 +17,13 @@ namespace Sedulous.Engine.Render;
 /// knows about neither. Everything here runs AFTER the scene's transforms are current.
 static class RenderExtract
 {
+	/// An authored (sRGB) colour's RGB, decoded to linear.
+	private static Float3 Linear3(Color c)
+	{
+		let l = ToLinear(c);
+		return .(l.R, l.G, l.B);
+	}
+
 	/// Below this many meshes the parallel path costs more than it saves. The win is at
 	/// thousands of renderables, so the threshold is set conservatively.
 	public const uint32 ParallelExtractThreshold = 256;
@@ -81,7 +88,7 @@ static class RenderExtract
 			: AABB(.(0, 0, 0), .(0, 0, 0));
 		data.WorldCenter = TransformPoint(localBounds.Center(), data.World);
 		data.WorldRadius = WorldBoundsRadius(localBounds, data.World);
-		data.Color = component.Color;
+		data.Color = ToLinear(component.Color); // authored sRGB to linear render data
 		data.Mesh = component.Mesh.Get;
 		data.Material = primary;
 		data.EntityId = PackEntity(entity);
@@ -229,6 +236,9 @@ static class RenderExtract
 					component.WorldTransforms.Clear();
 					for (int i < component.Instances.Count)
 						component.WorldTransforms.Add(component.Instances[i] * entityWorld);
+					component.LinearTints.Clear();
+					for (let tint in component.Tints)
+						component.LinearTints.Add(ToLinear(tint));
 
 					component.ComposedEntityWorld = entityWorld;
 					component.ComposedFromVersion = component.Version;
@@ -261,9 +271,9 @@ static class RenderExtract
 				data.Key = PackEntity(entity);
 				// BORROWED for the frame, which the snapshot being immutable is what makes safe.
 				data.Transforms = component.WorldTransforms.Ptr;
-				let tintsMatch = !component.Tints.IsEmpty
-					&& (component.Tints.Count == component.Instances.Count);
-				data.Tints = tintsMatch ? component.Tints.Ptr : null;
+				let tintsMatch = !component.LinearTints.IsEmpty
+					&& (component.LinearTints.Count == component.Instances.Count);
+				data.Tints = tintsMatch ? component.LinearTints.Ptr : null;
 				data.InstanceCount = component.Count;
 				data.Version = component.ComposedVersion;
 				data.Mesh = component.Mesh.Get;
@@ -271,7 +281,7 @@ static class RenderExtract
 				data.SubmeshMaterials = component.SubmeshMaterials.IsEmpty
 					? null : component.SubmeshMaterials.Ptr;
 				data.SubmeshMaterialCount = (uint32)component.SubmeshMaterials.Count;
-				data.Color = component.Color;
+				data.Color = ToLinear(component.Color);
 				// The merged bounds are what let the whole set cull and depth sort as one.
 				data.WorldCenter = component.CachedCenter;
 				data.WorldRadius = component.CachedRadius;
@@ -344,7 +354,7 @@ static class RenderExtract
 				data.WorldRadius = 0.5f * Length(component.Size);
 				data.Size = component.Size;
 				data.UvRect = component.UvRect;
-				data.Tint = component.Tint;
+				data.Tint = ToLinear(component.Tint);
 				data.Orientation = (uint32)component.Orientation;
 				data.Additive = component.Additive;
 				data.PostTonemap = component.PostTonemap;
@@ -384,7 +394,7 @@ static class RenderExtract
 				// vector order, so the entity's rotation aims the projection axis while the
 				// size sets the box extents.
 				instance.World = Float4x4.Scale(component.Size) * scene.GetWorldMatrix(entity);
-				instance.Color = component.Color;
+				instance.Color = ToLinear(component.Color);
 				instance.FadeStart = component.FadeStart;
 				instance.FadeEnd = component.FadeEnd;
 				instance.Texture = view;
@@ -415,7 +425,7 @@ static class RenderExtract
 				view.Camera.Camera.Projection = component.MakeProjection((float)target.Width / (float)Math.Max(target.Height, 1));
 				view.Camera.Camera.Position = TransformPoint(Float3(0, 0, 0), world);
 				view.Camera.Camera.FarZ = component.FarZ;
-				view.Camera.ClearColor = component.ClearColor;
+				view.Camera.ClearColor = ToLinear(component.ClearColor);
 				outViews.Add(view);
 			});
 	}
@@ -451,7 +461,7 @@ static class RenderExtract
 				camera.Projection = component.MakeProjection((aspect > 0.0f) ? aspect : component.Aspect);
 				camera.Position = TransformPoint(Float3(0, 0, 0), world);
 				camera.FarZ = component.FarZ;
-				clear = component.ClearColor;
+				clear = ToLinear(component.ClearColor);
 			});
 
 		if (found)
@@ -493,7 +503,8 @@ static class RenderExtract
 				light.DirectionWS = Normalized(Float3(-world.M[2][0], -world.M[2][1],
 					-world.M[2][2]));
 				light.Range = component.Range;
-				light.Color = .(component.Color.R, component.Color.G, component.Color.B);
+				let lightColor = ToLinear(component.Color);
+				light.Color = .(lightColor.R, lightColor.G, lightColor.B);
 				light.Intensity = component.Intensity;
 				light.Type = (float)(uint32)component.Type;
 				light.InnerCos = Math.Cos(component.InnerAngle);
@@ -558,19 +569,20 @@ static class RenderExtract
 		outScene.SetTime(system.TimeSeconds, system.PrevTimeSeconds);
 
 		let settings = system.Environment;
-		// The flat fill is premultiplied here, so the snapshot carries one colour rather than
-		// a colour and a scale that every reader has to remember to combine.
-		outScene.SetAmbient(Float3(settings.AmbientColor.R, settings.AmbientColor.G,
-			settings.AmbientColor.B) * settings.AmbientIntensity);
+		// The environment's colours are authored sRGB, like every colour; the sky and ambient
+		// snapshots carry them decoded. The flat fill is premultiplied here, so the snapshot
+		// carries one colour rather than a colour and a scale that every reader has to remember
+		// to combine.
+		outScene.SetAmbient(Linear3(settings.AmbientColor) * settings.AmbientIntensity);
 
 		var sky = SkySnapshot();
 		sky.Mode = settings.SkyMode;
 		sky.Intensity = settings.SkyIntensity;
 		sky.BackgroundIntensity = settings.SkyBackgroundIntensity;
 		sky.Rotation = settings.SkyRotation;
-		sky.Horizon = .(settings.SkyHorizon.R, settings.SkyHorizon.G, settings.SkyHorizon.B);
-		sky.Zenith = .(settings.SkyZenith.R, settings.SkyZenith.G, settings.SkyZenith.B);
-		sky.Ground = .(settings.SkyGround.R, settings.SkyGround.G, settings.SkyGround.B);
+		sky.Horizon = Linear3(settings.SkyHorizon);
+		sky.Zenith = Linear3(settings.SkyZenith);
+		sky.Ground = Linear3(settings.SkyGround);
 		sky.SunIntensity = settings.SunIntensity;
 		sky.SunAngularSize = settings.SunAngularSize;
 		sky.Turbidity = settings.Turbidity;

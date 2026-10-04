@@ -81,6 +81,10 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	/// on, so moving the entity re uploads like any other mutation. Runtime only.
 	[Hidden]
 	public List<Float4x4> WorldTransforms = null;
+	/// Tints decoded to linear for the renderer (authored colours are sRGB), rebuilt with
+	/// WorldTransforms since the renderer reads tints at the same upload. Runtime only.
+	[Hidden]
+	public List<Color> LinearTints = null;
 	public Float4x4 ComposedEntityWorld = Float4x4.Identity();
 	/// The authored version the cache was built from. Zero means never.
 	[Hidden]
