@@ -1,12 +1,12 @@
 /* Sky Hopper's theme: cloud islands. Every screen floats in the game's blue sky on white cloud
  * cards with a sky-blue edge and a soft drop shadow; headlines are the deep blue of the zenith, the
  * main button and whatever a key or pad has focused are coin gold (focus as loud as hover: the
- * menus are driven by keys and pads), a cleared level is grass green and danger is coral. A
+ * menus are driven by keys and pads), and the final win is edged in gold. A
  * project theme replaces the engine's built-in sheet, so the screens carry classes, not colours.
  *
  * The palette (written out where used: var() does not reach inside a drawable's arguments):
  * cloud #FFFFFF, mist #EAF4FF, sky #4DA3EE, deep sky #1F5FAF, ink #233249, soft ink #5A6B85,
- * coin gold #FFC93C (deep gold #D99A00), grass #4CAF50 (deep grass #2E7D32), coral #FF7A59. */
+ * coin gold #FFC93C (deep gold #D99A00). */
 
 Label { text-color: #233249; }
 
@@ -19,17 +19,12 @@ Label { text-color: #233249; }
 	background: rounded-rect(#FFFFFF, radius=24, border=#4DA3EE, border-width=3);
 	box-shadow: 0 6 16 rgba(31, 95, 175, 0.35);
 }
-.cloud-clear {
-	background: rounded-rect(#FFFFFF, radius=24, border=#4CAF50, border-width=4);
-	box-shadow: 0 6 16 rgba(46, 125, 50, 0.35);
-}
 .cloud-gold {
 	background: rounded-rect(#FFFFFF, radius=24, border=#FFC93C, border-width=4);
 	box-shadow: 0 6 16 rgba(217, 154, 0, 0.4);
 }
 
 .headline { text-color: #1F5FAF; }
-.headline-clear { text-color: #2E7D32; }
 .headline-gold { text-color: #D99A00; }
 .body { text-color: #233249; }
 .note { text-color: #5A6B85; }

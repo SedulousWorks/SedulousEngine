@@ -2,11 +2,11 @@
 
   <ColorView class="veil-heavy"/>
 
-  <Panel padding="36" class="cloud-clear">
+  <Panel padding="36" class="cloud">
 
     <Flex direction="vertical" align="center">
 
-      <Label id="title" text="Level Complete!" font-size="34" class="headline-clear"/>
+      <Label id="title" text="Level Complete!" font-size="34" class="headline"/>
       <Label id="summary" text="" class="note" font-size="16"/>
 
       <Spacer spacer-height="28"/>
