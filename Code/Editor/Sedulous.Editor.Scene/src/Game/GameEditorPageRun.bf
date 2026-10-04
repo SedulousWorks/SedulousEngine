@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
 using Sedulous.Content;
 using Sedulous.Scene;
@@ -11,6 +12,7 @@ using Sedulous.Audio.Resource;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Audio;
+using Sedulous.Engine.Project;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene;
@@ -38,6 +40,10 @@ extension GameEditorPage
 		if (mGameInstance != null)
 		{
 			mGameInstance.ResetRunClock(); // run time counts from this start
+			// A Game tab keeps its own save in the project's ignored Editor/ folder, so testing
+			// never touches a player's save.
+			let saveName = ProjectLayout.SaveFileName(project.Settings.Name, .. scope String());
+			mGameInstance.SetSaveFile(PathJoin(project.EditorStateRoot(.. scope String()), saveName, .. scope String()));
 			EnableDebugging();
 			StartGameScriptFromProject();
 		}

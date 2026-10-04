@@ -227,6 +227,14 @@ class PlayerApplication : DefaultApplication
 
 		ApplyProjectBindings(host);
 
+		// The game's save lives beside the user's settings, read before the game launches.
+		{
+			let savePath = scope String();
+			GetUserDataDirectory(savePath);
+			let saveName = ProjectLayout.SaveFileName(mSettings.Name, .. scope String());
+			Instance.SetSaveFile(PathJoin(savePath, saveName, .. scope String()));
+		}
+
 		// The game script launches FIRST: its launch() may load the first level itself, and
 		// a startup scene, when the manifest names one, loads behind it.
 		LoadAndStartGameScript();

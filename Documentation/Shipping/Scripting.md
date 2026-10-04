@@ -79,6 +79,9 @@ int best = Save.GetInt("best.level2", 0);   // the fallback when there is none y
   written answers the fallback, except that an int reads as a float.
 - The run writes what changed when it ends. Call `Save.Flush()` at the moment that matters (a
   level clear, leaving a settings screen) so a crash or a forced quit loses nothing.
+- The player keeps the file, `<project>.save.xml`, in the user's data directory; a Game tab
+  keeps its own in the project's ignored `Editor/` folder, so testing never touches a
+  player's save.
 - The audio bus volumes a settings screen sets are saved by the player on its own; a game
   does not need to save them.
 

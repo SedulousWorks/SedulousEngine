@@ -27,4 +27,15 @@ static class ProjectLayout
 	/// What the export stages. The player detects a distribution by the pak.
 	public const String DistContentPak = "Content.pak";
 	public const String DistManifestFile = "player.xml";
+
+	// ---- a game's save ---------------------------------------------------------------------
+
+	/// A game's save file, `<project>.save.xml`: the player keeps it in the user data directory
+	/// and a Game tab in the project's Editor/ folder, the same name in both, so a save copied
+	/// between them is found.
+	public static void SaveFileName(StringView projectName, String outName)
+	{
+		outName.Set(projectName.IsEmpty ? "project" : projectName);
+		outName.Append(".save.xml");
+	}
 }

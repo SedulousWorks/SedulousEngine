@@ -32,7 +32,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
    `Save` service facade (in GameInstance, which Script.Facades cannot name); an idle `Save` for
    scripts outside a run; `StopScript` flushes. Scripting.md gets "Saving"; the surface type
    count tripwires move by one.
-6. 30fd32e0 Project: `<name>.save.xml` (`project.save.xml` unnamed); the player keeps it in the
+6. ~~30fd32e0~~ (done) Project: `<name>.save.xml` (`project.save.xml` unnamed); the player keeps it in the
    user data directory, a Game tab in `<project>/Editor/`.
 7. d83b1837 UI: an animation names the channel it drives (`AnimationChannel`),
    `AnimationManager.CancelForView(view, channel)`, `ViewAnimator.TranslateTo`.
