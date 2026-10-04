@@ -143,7 +143,7 @@ static class SceneResolve
 
 	private static void ReadSettingsPayload(ISerializer ar, SceneSystem system, uint64 typeId)
 	{
-		BeginVersionedPayload(ar, typeId, system.SettingsDataVersion);
+		BeginVersionedPayload(ar, typeId, system.SettingsDataVersion, system.SettingsMinReadDataVersion);
 		ar.Key("settings");
 		ar.BeginObject();
 		system.SerializeSettings(ar);

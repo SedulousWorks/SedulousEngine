@@ -758,7 +758,7 @@ class SceneReference
 				continue;
 			// Exactly the framing the scene save writes for a text settings record.
 			let recorder = scope SchemaRecorder();
-			BeginVersionedPayload(recorder, TypeIdOf(system.SettingsId), system.SettingsDataVersion);
+			BeginVersionedPayload(recorder, TypeIdOf(system.SettingsId), system.SettingsDataVersion, system.SettingsMinReadDataVersion);
 			recorder.Key("settings");
 			recorder.BeginObject();
 			system.SerializeSettings(recorder);

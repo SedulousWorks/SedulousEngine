@@ -54,7 +54,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
     equal to today's constants).
 17. ~~352edbf7~~ (done) Engine.Render: shadow controls on the light (`ShadowStrength`, `ShadowNormalBias`,
     `ShadowDepthBiasScale`; the light record's next version, reading the current one).
-18. (enabler) Scene: a settings block can read an older version (`SettingsMinReadDataVersion`,
+18. ~~(enabler)~~ (done) Scene: a settings block can read an older version (`SettingsMinReadDataVersion`,
     through every place a block is read).
 19. 6bbe994f Engine.Render: a scene sets its sun's shadow reach (environment `ShadowDistance`,
     `ShadowCascadeSplit`, `ShadowFadeDistance`; the render frame's and subsystem's globals go).

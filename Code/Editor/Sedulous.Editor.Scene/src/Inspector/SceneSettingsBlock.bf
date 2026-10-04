@@ -35,7 +35,7 @@ static class SceneSettingsBlock
 	private static void Serialize(SceneSystem system, ISerializer ar)
 	{
 		let id = scope String(system.SettingsId);
-		BeginVersionedPayload(ar, TypeIdOf(id), system.SettingsDataVersion);
+		BeginVersionedPayload(ar, TypeIdOf(id), system.SettingsDataVersion, system.SettingsMinReadDataVersion);
 		system.SerializeSettings(ar);
 		EndVersionedPayload(ar);
 	}

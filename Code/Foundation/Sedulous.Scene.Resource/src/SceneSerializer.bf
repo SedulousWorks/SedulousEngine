@@ -495,7 +495,7 @@ static class SceneSerializer
 		{
 			ar.BeginObject();
 			Sedulous.Core.Serialization.Serialize(ar, "system", id);
-			BeginVersionedPayload(ar, TypeIdOf(id), system.SettingsDataVersion);
+			BeginVersionedPayload(ar, TypeIdOf(id), system.SettingsDataVersion, system.SettingsMinReadDataVersion);
 			ar.Key("settings");
 			ar.BeginObject();
 			system.SerializeSettings(ar);
@@ -512,7 +512,7 @@ static class SceneSerializer
 		let buffer = scope MemoryStream();
 		{
 			let sub = scope BinarySerializer(buffer, .Write);
-			BeginVersionedPayload(sub, TypeIdOf(id), system.SettingsDataVersion);
+			BeginVersionedPayload(sub, TypeIdOf(id), system.SettingsDataVersion, system.SettingsMinReadDataVersion);
 			sub.Key("settings");
 			sub.BeginObject();
 			system.SerializeSettings(sub);
@@ -547,7 +547,7 @@ static class SceneSerializer
 		{
 			if (target != null)
 			{
-				BeginVersionedPayload(ar, TypeIdOf(id), target.SettingsDataVersion);
+				BeginVersionedPayload(ar, TypeIdOf(id), target.SettingsDataVersion, target.SettingsMinReadDataVersion);
 				ar.Key("settings");
 				ar.BeginObject();
 				target.SerializeSettings(ar);
@@ -591,7 +591,18 @@ static class SceneSerializer
 		buffer.Write(blob);
 		buffer.Seek(0, .Begin);
 		let sub = scope BinarySerializer(buffer, .Read);
-		BeginVersionedPayload(sub, TypeIdOf(id), target.SettingsDataVersion);
+		BeginVersionedPayload(sub, TypeIdOf(id), target.SettingsDataVersion, target.SettingsMinReadDataVersion);
+		if (!sub.IsPayloadOk)
+		{
+			// A version this build cannot read is REFUSED, as the text path refuses it: reading
+			// on would decode the old layout as the new and hand back a plausible guess.
+			GlobalLog(.Error,
+				"SceneSerializer: settings of system '{}' were stored at a version this build cannot read",
+				id);
+			ar.FailPayload(.NotSupported);
+			EndVersionedPayload(sub);
+			return;
+		}
 		sub.Key("settings");
 		sub.BeginObject();
 		target.SerializeSettings(sub);

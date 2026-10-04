@@ -63,9 +63,14 @@ abstract class SceneSystem
 	public virtual StringView SettingsId => default;
 
 	/// The settings block's own data version. Bumping it REFUSES what was written under the
-	/// old one rather than migrating it, so a bump means re-saving the scenes that carry it.
+	/// old one rather than migrating it, unless SettingsMinReadDataVersion says otherwise.
 	/// There is no reflected data version to read it off, so a system states it.
 	public virtual uint32 SettingsDataVersion => 1;
+
+	/// The oldest stored version the block's legacy reader still accepts, nought meaning the
+	/// current one alone: set it alongside a bump when SerializeSettings branches on
+	/// `ar.Version` for the layout before, as a component's MinReadDataVersion does.
+	public virtual uint32 SettingsMinReadDataVersion => 0;
 
 	public virtual void SerializeSettings(ISerializer ar) {}
 
