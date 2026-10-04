@@ -1,120 +1,105 @@
-# Raptor sync of 2026-10-03
+# Raptor sync of 2026-10-03 (second)
 
-Raptor (`/home/robert/Dev/CPP/GameEngine`, local `master`) from the last synced commit 122035b2
-to 0b60c738: 189 commits, 22 documentation only. Most of the rest are Raptor porting Sedulous
-work (its plan: `Documentation/Plans/week-2026-09-26.md`, groups 0 and A to E) and are skipped
-here. What follows is what applies to Sedulous, mapped by five read-only reviews, in port order.
-Each item is one commit with its tests; strike an item in the commit that lands it, and move
-the sync marker to 0b60c738 when the list is done. Then PaperKid is rebuilt over MCP to mirror
-Raptor's (the last group).
+Raptor (`/home/robert/Dev/CPP/GameEngine`, local `master`) from the last synced commit 0b60c738
+to 8be4094d: 65 commits. A third are PaperKid and Sky Hopper content, specs and weekly notes;
+the rest are four engine features (the colour pipeline, shadow controls, run audio, render
+profiles) and a few fixes. Mapped by five read-only reviews, in port order. Each item is one
+commit with its tests; strike an item in the commit that lands it, and move the sync marker to
+8be4094d when the list is done. Then PaperKid is rebuilt over MCP to mirror Raptor's (the last
+group, carried over from the previous sync).
+
+Sedulous counts data versions from 1 where Raptor counts from 0: a version Raptor bumps to N is
+bumped here to the next one after Sedulous's own, never to Raptor's number. Raptor's specs are
+not ported (Sedulous keeps none); what they decided is in the items.
 
 ## Group 1: fixes, small and independent
 
-1. ~~61ddc952~~ (done) Physics: Jolt's bring-up takes a lock. `JoltRuntime.Acquire` increments a counter
-   and calls `JPH_Init` outside any lock, so a second cook on a worker goes on while the first
-   is still initialising. Static Monitor around a plain counter; the eight-thread cooking test.
-2. ~~Take-back (fd631023)~~ (done): thumbnails average in linear light, then encode RGB (`ThumbnailStage
-   .Downscale` still writes linear values as bytes since the encode-once change: too dark).
-3. ~~Take-back (fd631023)~~ (done): `TextureFormats.IsFloat` (R16F, R32F, RG16F, RG32F too), used by the
-   tonemap's `EncodesOnWrite`; FXAA told its input is linear on an sRGB or float target, the
-   shader taking `sqrt(luma)` so its thresholds still apply.
-4. ~~Take-back (b2a3e376)~~ (done): installing a template replaces its bundle whole, in `Create(.Install)`
-   and `Import` (a sidecar the new build dropped no longer lingers and ships).
-5. ~~93d511dd~~ (done) UI: an unknown gravity name in markup is a warning.
-6. ~~ffad9393~~ (done) Render: the mesh rings hold every shadow caster, and a dropped draw warns.
-7. ~~3adbf8c4~~ (done) Render: a `BindGroupCache` that checks every view and its generation; TAA uses it.
-8. ~~0b60c738~~ (done) Render: the MSAA resolve and the SSR and SSGI resolves use it (velocity was left out
-   of their keys).
-9. ~~a8723a4f~~ (done) Scene: a running scene is stopped before it is destroyed.
-10. ~~ca6856f3 + 9ee94a34~~ (done) Engine.Navigation: an agent that cannot join the navmesh, and a zone
-    with no usable navmesh, say so.
+1. 17cd7c08 Image.DDS.Tests: the bit writer takes no bit past a u32's 32 (`DdsTests.bf`
+   `BitWriter.Put`).
+2. 9f4b0370 Graphics: every executable takes its device from its command line the same way: one
+   call giving the backend and the validation flags, used by the editor, the desktop player
+   (which ignores `--no-gpu-validation` today) and the desktop samples, which stop forcing
+   validation on (MultiWindow keeps it; the web programs take no command line).
+3. a6fc8996 Editor.Scene: a Game tab's screenshot is what the tab drew, with its scale (the
+   capture's resample goes; `pie_screenshot` and `pie_run`'s shots report `renderWidth`,
+   `renderHeight` and `scale` when the tab draws scaled; McpGuide).
+4. b1dd4e68 Sky Hopper: the exported player is named for its game ("Sedulous SkyHopper").
+5. Backlog, from Raptor's findings, each checked here: TAA still looks jittery (6896586f), auto
+   exposure settles visibly at the start of a scene (71dec790), `var()` inside a drawable's
+   arguments draws white silently, and every new particle system has the same seed (a5f112f8).
 
-## Group 2: take-backs from Raptor's review of our ports
+## Group 2: the colour pipeline (an authored colour is sRGB, decoded where it reaches the GPU)
 
-11. ~~52839fba~~ (done): a created template takes an id, name and notes (`--id`, `--name`, `--notes` on
-    `Sedulous.Tools.Export --template create`); the Steam Deck script passes them instead of
-    rewriting template.xml with a regex.
-12. ~~c0dc7379~~ (done): the dist manifest copies the project settings through their own serialization,
-    not field by field (`ExportDriver`).
-13. ~~9af5a57e~~ (not ported, a deliberate difference): Raptor's `export_preset_set` refuses a
-    `platform` or `config` no installed template has. Here a preset may name a template this
-    machine lacks (presets travel with the project, templates do not; the result's `template` is
-    null), so the check stays the platforms the engine targets, not this machine's templates.
-14. ~~0c6a0393~~ (done): the HTTP tests Sedulous lacks (sequence numbers across re-dispatch, a departed
-    peer's request abandoned, a pending one abandoned at `Stop`).
-15. From Raptor's notes for us, each its own commit:
-    - ~~a~~ (done) DefaultApplication clears the factory set at shutdown while the device lives
-      (and releases its own manager's products first; a borrowed manager forgets the factories).
-    - ~~b~~ (done) `EngineCompositionTests`: "each domain id once" and "each factory matches
-      its description".
-    - ~~c~~ (done) A regression test for 5aa79822's teardown order.
-    - ~~d~~ (done) `SceneReference`'s typeIds text interpolates the hash basis.
-    - ~~e~~ (done) The audio clip and cue pages keep a paused audition (they did not either: the
-      clip page stopped it the next frame, the cue page forgot a voice the engine held paused).
-    - The PaperKid override test walks the Level script's overrides too: with group 6.
+6. 412af1d4 Core: `ToLinear(Color)` and `ToSrgb(Color)`; `Color` documented as authored sRGB.
+7. d8c84631 + 55f58ece Engine.Render: extraction decodes every authored colour (mesh, instanced
+   tints, sprite, decal, cameras' clears, lights, ambient, sky); the default environment colours
+   written in sRGB so a default scene keeps its look.
+8. aa36f9c2 Materials: `Color` and `ColorHdr` property types, decoded at upload
+   (`EncodeUniformsForGpu`); a stored Float4 adopts its builtin template's colour type; the
+   material page's rows.
+9. d0d33155 (Sedulous's part) Sky Hopper: its 35 materials re-expressed in sRGB, look kept.
+10. c89cd6fb Engine.Particles: particle colours decoded to linear where they are drawn.
+11. ad81b72b Render: debug colours decoded like every authored colour (`color.hlsli`); the colour
+    probes.
+12. 40d28176 Model.GLTF: colour factors read as authored sRGB; emissive strength kept as an
+    intensity.
+13. eaaa699c + 5b1d2c44 Model.FBX: material colours read as authored sRGB, the emission factor an
+    intensity; a legacy material's colour ignores its diffuse factor.
+14. 1ed763b7 UI.Viewport, Editor: viewport backdrops are sRGB like every UI colour.
+15. b4d0f7a9 Docs: the colour rule in the MCP guide and in `entity_set`'s description.
 
-16. ~~bc87304e, eadecdd5, 1896bfed, b6a08629, f3fc2d35~~ (done): the project settings and the export
-    presets describe their fields through reflection, and the Project Settings dialog,
-    `project_info`/`project_settings_set` and `export_presets`/`export_preset_set` all build
-    from it (one shared reflected-fields module), instead of three hand-kept field lists
-    (`ProjectSettingsDialog`, `ProjectInfoTool`, `ExportPresetTools`) that drift as fields are
-    added, the bug class item 12 fixes for the manifest. The tool keys become the reflected
-    field names (`defaultSceneId`, `renderMsaaSamples`), as Raptor's: the McpGuide and every
-    test calling the tools change with them. The largest take-back; after 11 to 15. Done in
-    five commits; asset_uses and project_health, a fourth hand list, read the reflection too,
-    and the preset tools keep this engine's platform and config rule (item 13).
+## Group 3: shadow controls
 
-## Group 3: navigation over static geometry
+16. a8901c7c Render: a light's shadow biases and strength reach the shadow it casts (defaults
+    equal to today's constants).
+17. 352edbf7 Engine.Render: shadow controls on the light (`ShadowStrength`, `ShadowNormalBias`,
+    `ShadowDepthBiasScale`; the light record's next version, reading the current one).
+18. (enabler) Scene: a settings block can read an older version (`SettingsMinReadDataVersion`,
+    through every place a block is read).
+19. 6bbe994f Engine.Render: a scene sets its sun's shadow reach (environment `ShadowDistance`,
+    `ShadowCascadeSplit`, `ShadowFadeDistance`; the render frame's and subsystem's globals go).
 
-17. ~~79bef80d~~ (done) Navigation: a bake can be bounded to a region (`NavigationBakeParams.Bounds`).
-18. ~~904aa179~~ (done) Editor.Navigation: a zone bakes within its box. Before 21: once wide static
-    ground feeds the bake, the bound keeps the grid small.
-19. ~~7307ed3b~~ (done) Scene: `IStaticGeometrySource`, systems that own static level geometry say so.
-20. ~~9e9a21d5~~ (done) Physics: `AppendBodyTriangles`, bodies give their world triangles touching a box.
-21. ~~0bbc1e88~~ (done) Engine.Physics: static, solid bodies are the scene's static geometry (one
-    `DescribeBody` shared with body creation; works in edit mode with no world).
-22. ~~7948ddd8~~ (done) Engine.Terrain: a terrain's surface is static geometry (the triangulation moves out
-    of `NavigationBake`).
-23. ~~81236cd8~~ (done) Editor.Navigation: bake the scene's static geometry, not every mesh (cars and
-    walkers no longer bake into the navmesh).
-24. ~~c08cec05 + e3eb6dc1~~ (done) Editor.Scene: `navigation_bake`, the inspector's Bake Navigation as a
-    live scene MCP tool (`SceneMcpTools`; the scene tool tripwire 17 to 18; the McpGuide).
+## Group 4: run audio and script voice control
 
-## Group 4: orthographic cameras and render textures
+20. 4b830b03 (engine half) Audio: a playing voice's volume and pitch ease over a duration, and a
+    stop can fade.
+21. 8799a9ce + b7afa416 Audio: run groups, one level above the scene groups, custom buses
+    included (one music slot per run, a run's own bus gains, pause and mute).
+22. 448232bc Scene, GameInstance: a scene knows its run.
+23. a5131c2d Engine.Audio: a game's sound belongs to its run (the subsystem's runs, focus and
+    hear-all, the listener gated by them; a facade per run installed on its run host, with the
+    stop-music, mute and named-bus verbs Raptor's facade has).
+24. 4b830b03 (script half) Script: a script controls a playing voice, the music's included.
+25. ae387d16 Editor, DefaultApp: Stop, Pause and focus act on the game's run (the Game audio
+    preference, Hear every Game tab).
 
-25. ~~eb546ef1~~ (done) RenderGraph: an imported target takes its final state right after its last pass.
-26. ~~cfe503d5~~ (done) Render: an orthographic view clusters its lights and skips the perspective-only
-    passes (AO, SSR, SSGI, TAA); `Float4x4.IsOrthographic`.
-27. ~~06265006~~ (done) Engine.Render: a camera can be orthographic (`CameraProjection`, `OrthoHeight`;
-    the extract, the camera preview and gizmo build through one function). 17e80a08 needs only
-    the new enums to keep their reflection data.
-28. ~~19314649~~ (done) Texture.Resource: a render texture is a texture a camera can draw into.
-29. ~~7b2a6642~~ (done) Texture.Pipeline: the render texture asset, its cook and File > New.
-30. ~~aa13434d~~ (done) Resource, Editor.Mcp: a texture reference names both asset types it takes.
-31. ~~4e9f1a6d~~ (done) Engine.Render: a camera can render into a texture (`Target`, `TargetInterval`;
-    scene overlays off for a target view).
+## Group 5: render profiles (a game's look set once and shared by its scenes)
 
-## Group 5: images in game UI and script handles
-
-32. ~~556f3847~~ (done) UI: an ImageView names what it shows (`source=`), resolved by the context's
-    provider.
-33. ~~48c2f248~~ (done) Engine.UI: an image in game UI shows a texture asset, render textures included.
-34. ~~8c4a3c4b~~ (done) Engine.UI.Script: views move and turn from script (translation, rotation).
-35. ~~16de4509~~ (done) Script: an Image handle and `SetCameraTarget` from a script.
+26. 0b5b3aa8 + 7aaa4d36 Engine.Render, Render.Pipeline: the environment and post-process
+    profiles, a block's `Source`, its effective values; the profile assets, their cook and
+    File > New (together: the composition test wants a builder for every cooked form).
+27. 62f6aa73 Editor.Mcp: what makes a product, shared (`SourceAssetTypesFor`).
+28. babadd96 Editor: a scene's settings in profile mode edit the profile (Make Profile, Copy
+    Into Scene).
+29. 5515b8ab Editor: a profile asset's page, with a preview scene.
+30. f3df9db4 McpGuide: a game's look through render profiles.
 
 ## Group 6: PaperKid rebuilt over MCP
 
-36. 92bfed84 (+ bdd54b09): Raptor's rebuilt PaperKid, recreated through the MCP tools: five
-    blocks on a ring road, the bike's auto-aimed throws, cars and walkers on navmeshes, the
-    orthographic minimap camera drawing into a render texture the HUD shows, seven screens.
-    Files cannot be copied (different envelopes, type hashes and script dialect); Raptor's
-    `Data/SampleProjects/PaperKid/Tools/` generators (kit.py, block.py) are the recipe. It
-    replaces the work-in-progress PaperKid here.
+31. 92bfed84 (+ bdd54b09) and every PaperKid commit since, to 8be4094d: Raptor's rebuilt
+    PaperKid, recreated through the MCP tools: five blocks on a ring road, the bike's auto-aimed
+    throws with their guides, cars and walkers on navmeshes, the orthographic minimap camera
+    drawing into a render texture the HUD shows, the screens and their newsprint theme, the
+    music, sounds and particle effects, one look shared through render profiles, a Steam Deck
+    preset. Files cannot be copied (different envelopes, type hashes and script dialect);
+    Raptor's `Data/SampleProjects/PaperKid/Tools/` generators are the recipe. It replaces the
+    work-in-progress PaperKid here. The PaperKid sample test walks the Level script's overrides
+    too.
 
 ## Already here or not applicable (no action)
 
-Raptor catching up to Sedulous: 6e0c600f, 43d7a699, c107f0eb, fcbe189a, e4f00a90, e26f2edc,
-6c4aa616, 6cba91b5, ea7f905e, d644fad5, 14af245c, 22ddc394, 687bfcc5, f82cfd56, c3965c74,
-6eaaadbc, a006c168, and every commit of Raptor's groups 0 and A to E. Not applicable to Beef:
-cfdbbda4 (Beef formats a float as its own shortest form), 17e80a08 (Beef reflects enum names),
-903188e7 and e6bc58f8 (C++ module hygiene). Already ported: 9ac175be (6df4e688).
+Already here: eb89f063 merges the TAA and resolve bind group fixes ported last sync
+(3adbf8c4, 0b60c738). Specs and weekly notes: f6902223, f3bbdcb4, b39b2829, aa3d8fbb,
+f494960e, 31505b35, 91a7174e, a5f112f8, 8be4094d (their findings are item 5). Sky Hopper's
+look in Raptor (0ab313df, 67852d42) is its own tuning. The PaperKid sample test's counts
+(efbb26d3, 3688492e) come with group 6.
