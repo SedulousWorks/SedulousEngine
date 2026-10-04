@@ -85,4 +85,24 @@ class ColorTests
 		Test.Assert(NearlyEqual(c, Color.Black));
 		Test.Assert(c.A == 1.0f);
 	}
+
+	/// An authored colour is sRGB and decodes to linear for the renderer: sRGB mid grey is
+	/// linear 0.2140, white and black are fixed points, alpha is coverage and stays.
+	[Test]
+	public static void AnAuthoredColourDecodesToLinearForTheRenderer()
+	{
+		let grey = ToLinear(Color(0.5f, 0.5f, 0.5f, 0.5f));
+		Test.Assert(Math.Abs(grey.R - 0.2140f) < 0.0005f);
+		Test.Assert(Math.Abs(grey.G - 0.2140f) < 0.0005f);
+		Test.Assert(grey.A == 0.5f, "alpha is coverage, not decoded");
+		Test.Assert(NearlyEqual(ToLinear(Color.White), Color.White, 1.0e-5f));
+		Test.Assert(NearlyEqual(ToLinear(Color.Black), Color.Black));
+
+		// ToSrgb inverts it, so a linear value (a glTF factor) can become an authored one.
+		let linear = Color(0.05f, 0.3f, 0.9f, 1.0f);
+		Test.Assert(NearlyEqual(ToLinear(ToSrgb(linear)), linear, 1.0e-5f));
+
+		// Over-bright stays over-bright (monotonic past 1).
+		Test.Assert(ToLinear(Color(2.0f, 0.0f, 0.0f, 1.0f)).R > 1.0f);
+	}
 }

@@ -77,6 +77,16 @@ static
 	public static float LinearToSrgb(float c) =>
 		(c <= 0.0031308f) ? (c * 12.92f) : (1.055f * Pow(c, 1.0f / 2.4f) - 0.055f);
 
+	/// An authored (sRGB) Color to linear, for render data; alpha is coverage and stays as it
+	/// is. Components above 1 decode along the same curve, so an over-bright value stays
+	/// over-bright.
+	[Scriptable]
+	public static Color ToLinear(Color c) => .(SrgbToLinear(c.R), SrgbToLinear(c.G), SrgbToLinear(c.B), c.A);
+
+	/// Linear to sRGB, the inverse: for colour values that arrive linear (a glTF factor).
+	[Scriptable]
+	public static Color ToSrgb(Color c) => .(LinearToSrgb(c.R), LinearToSrgb(c.G), LinearToSrgb(c.B), c.A);
+
 	/// An sRGB-authored Color32 to a linear float Color: RGB through the EOTF, alpha
 	/// left linear. For uploading UI and SVG colours to a linear pipeline.
 	[Scriptable]

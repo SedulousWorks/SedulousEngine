@@ -30,7 +30,7 @@ not ported (Sedulous keeps none); what they decided is in the items.
 
 ## Group 2: the colour pipeline (an authored colour is sRGB, decoded where it reaches the GPU)
 
-6. 412af1d4 Core: `ToLinear(Color)` and `ToSrgb(Color)`; `Color` documented as authored sRGB.
+6. ~~412af1d4~~ (done) Core: `ToLinear(Color)` and `ToSrgb(Color)`; `Color` documented as authored sRGB.
 7. d8c84631 + 55f58ece Engine.Render: extraction decodes every authored colour (mesh, instanced
    tints, sprite, decal, cameras' clears, lights, ambient, sky); the default environment colours
    written in sRGB so a default scene keeps its look.

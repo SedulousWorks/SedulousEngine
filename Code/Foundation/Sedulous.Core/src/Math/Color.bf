@@ -2,7 +2,11 @@ using System;
 
 namespace Sedulous.Core;
 
-/// Linear float RGBA: the runtime colour currency, where blending and shading happen.
+/// Float RGBA (components typically 0..1). An AUTHORED colour (a component's colour, a
+/// material's colour property, a UI colour) is sRGB: the value a colour picker and a hex code
+/// show, the same encoding as an sRGB image. The renderer decodes it to linear (ToLinear) where
+/// it hands the colour to the GPU, as the hardware decodes an sRGB texture on sample; render
+/// data and shading carry linear values.
 ///
 /// The packed byte counterpart is Color32; conversions between them live there.
 [CRepr]
