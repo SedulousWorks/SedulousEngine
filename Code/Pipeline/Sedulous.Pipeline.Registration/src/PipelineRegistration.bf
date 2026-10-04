@@ -68,7 +68,7 @@ namespace Sedulous.Pipeline.Registration;
 /// matching constant DELIBERATELY, and a lost registration then fails the test loudly.
 static class PipelineRegistration
 {
-	public const int cBuilderCount = 30;
+	public const int cBuilderCount = 31;
 	public const int cImporterCount = 10;
 	/// The creators every build has; the scripts add three per language with a cook on top
 	/// (ScriptCreators.CountFor).
@@ -184,6 +184,7 @@ static class PipelineRegistration
 		registry.Register(new NavigationZoneAssetBuilder());
 		registry.Register(new UIDocumentAssetBuilder());
 		registry.Register(new UIThemeAssetBuilder());
+		registry.Register(new UIVectorImageAssetBuilder());
 		registry.Register(new AudioClipAssetBuilder());
 		registry.Register(new AudioBusLayoutAssetBuilder());
 		registry.Register(new SoundCueAssetBuilder());

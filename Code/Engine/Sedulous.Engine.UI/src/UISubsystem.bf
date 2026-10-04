@@ -613,6 +613,17 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// image source, once drawn, is registered on every renderer that has drawn since.
 	public int RenderersShowing(ImageData image) => (mRenderState != null) ? mRenderState.RenderersShowing(image) : 0;
 
+	/// A cooked theme's stylesheet, parsed with the game palette, its own icons (@icon) and the
+	/// texture images (image()); null when it does not parse. The caller owns the reference.
+	public StyleSheet ParseTheme(UITheme theme)
+	{
+		let resources = scope ThemeSheetResources(theme, mImages);
+		let loader = scope StyleSheetLoader();
+		loader.SetPalette(GameTheme.Palette());
+		loader.ResourceProvider = resources;
+		return loader.Load(theme.StyleSheet);
+	}
+
 	/// The project's default theme, parsed with the game palette and set as the context's
 	/// stylesheet. Null, empty or unparseable falls back to the built in one, and a per
 	/// canvas override still layers on top.
@@ -622,10 +633,7 @@ class UISubsystem : Subsystem, ISceneObserver
 
 		if ((theme != null) && !theme.StyleSheet.IsEmpty)
 		{
-			let loader = scope StyleSheetLoader();
-			loader.SetPalette(GameTheme.Palette());
-			loader.ResourceProvider = mImages; // image(): texture ids
-			sheet = loader.Load(theme.StyleSheet);
+			sheet = ParseTheme(theme);
 
 			if (sheet == null)
 			{
@@ -716,4 +724,29 @@ class UISubsystem : Subsystem, ISceneObserver
 		mRenderState.CanvasStencilFormat = VGRenderer.PickStencilCapableFormat(device, 1);
 	}
 
+}
+
+/// What a game theme's stylesheet reads as it parses: the icons its cook embedded for @icon,
+/// and the subsystem's texture images for image().
+class ThemeSheetResources : IResourceProvider
+{
+	/// BORROWED, both, for the parse.
+	private UITheme mTheme;
+	private IResourceProvider mImages;
+
+	public this(UITheme theme, IResourceProvider images)
+	{
+		mTheme = theme;
+		mImages = images;
+	}
+
+	public bool LoadText(StringView path, String outText)
+	{
+		if (!mTheme.FindIcon(path, let svg))
+			return false;
+		outText.Set(svg);
+		return true;
+	}
+
+	public ImageData LoadImage(StringView path) => mImages.LoadImage(path);
 }

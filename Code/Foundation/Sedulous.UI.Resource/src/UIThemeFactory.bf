@@ -33,6 +33,11 @@ class UIThemeFactory : IResourceFactory
 
 		let theme = new UITheme();
 		theme.StyleSheet.Set(record.StyleSheet);
+		for (int i < Math.Min(record.IconIds.Count, record.IconSvgs.Count))
+		{
+			theme.IconIds.Add(new .(record.IconIds[i]));
+			theme.IconSvgs.Add(new .(record.IconSvgs[i]));
+		}
 		return theme;
 	}
 }

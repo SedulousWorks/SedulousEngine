@@ -163,4 +163,90 @@ class UICookTests
 			Test.Assert(scope UIDocumentAssetBuilder().Build(asset, fixture.Context) case .Err);
 		}
 	}
+
+	// ---- vector images: an SVG asset, and a theme that draws it as an icon ----
+
+	private const String cVectorImageType = "Sedulous.UI.Resource.UIVectorImageResource";
+	private const String cHeartSvg = """
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 21 L3 12 A5 5 0 0 1 12 5 A5 5 0 0 1 21 12 Z" fill="#E53935"/></svg>
+		""";
+
+	[Test]
+	public static void AVectorImageCooksWhenItIsAnSvgTheEngineReadsAndFailsWhenNot()
+	{
+		let fixture = scope UIPipelineFixture("svg");
+		fixture.StageSource("heart.svg", cHeartSvg);
+		fixture.StageSource("broken.svg", "<html>not a vector image</html>");
+
+		let builder = scope UIVectorImageAssetBuilder();
+		let heart = fixture.CreateOutput("heart", cVectorImageType);
+		{
+			let asset = scope UIVectorImageAsset();
+			asset.FileName.Set("heart.svg");
+			fixture.Context.Output = heart;
+			Test.Assert(builder.Build(asset, fixture.Context) case .Ok);
+		}
+		{
+			let asset = scope UIVectorImageAsset();
+			asset.FileName.Set("broken.svg");
+			fixture.Context.Output = fixture.CreateOutput("broken", cVectorImageType);
+			Test.Assert(builder.Build(asset, fixture.Context) case .Err);
+		}
+
+		let images = scope UIVectorImageFactory();
+		let manager = scope ResourceManager(fixture.Cooked);
+		manager.AddFactory(images);
+		let image = manager.Bind<UIVectorImage>(heart.Id);
+		Test.Assert(image.Get != null);
+		Test.Assert(image.Get.Svg == cHeartSvg);
+
+		// The importer takes an .svg as a vector image.
+		Test.Assert(scope UIFileImporter().Accepts("svg"));
+	}
+
+	[Test]
+	public static void AThemesIconEmbedsTheVectorImageItNamesAndAnUnknownOneFails()
+	{
+		let fixture = scope UIPipelineFixture("icon");
+		fixture.StageSource("heart.svg", cHeartSvg);
+
+		// The vector image, cooked first (the theme's Reads edge orders it so in a real cook).
+		let heart = fixture.CreateOutput("heart", cVectorImageType);
+		{
+			let asset = scope UIVectorImageAsset();
+			asset.FileName.Set("heart.svg");
+			fixture.Context.Output = heart;
+			Test.Assert(scope UIVectorImageAssetBuilder().Build(asset, fixture.Context) case .Ok);
+		}
+		let reference = scope String()..Append('{');
+		heart.Id.ToString(reference);
+		reference.Append('}');
+		fixture.StageSource("theme.sss", scope $"@icon heart \"{reference}\";\n.lives-icon {{ background: svg(heart, tint=#E53935); }}\n");
+
+		let asset = scope UIThemeAsset();
+		asset.FileName.Set("theme.sss");
+		let builder = scope UIThemeAssetBuilder();
+
+		// The scan names the image as content the theme reads, so a changed SVG recooks the theme.
+		let dependencies = scope AssetDependencies();
+		builder.ScanDependencies(asset, fixture.Context, dependencies);
+		Test.Assert((dependencies.Reads.Count == 1) && (dependencies.Reads[0] == heart.Id));
+
+		let themeInstance = fixture.CreateOutput("theme", cThemeType);
+		fixture.Context.Output = themeInstance;
+		Test.Assert(builder.Build(asset, fixture.Context) case .Ok);
+		let themes = scope UIThemeFactory();
+		let manager = scope ResourceManager(fixture.Cooked);
+		manager.AddFactory(themes);
+		let theme = manager.Bind<UITheme>(themeInstance.Id);
+		Test.Assert(theme.Get != null);
+		Test.Assert(theme.Get.IconIds.Count == 1);
+		Test.Assert(theme.Get.FindIcon(reference, let svg));
+		Test.Assert(svg == cHeartSvg);
+
+		// An @icon naming no vector image fails the cook rather than drawing nothing.
+		fixture.StageSource("theme.sss", "@icon star \"{6dd1ae0e-fbe8-4c9b-8c9e-d10b727f4d84}\";\n.star { background: svg(star); }\n");
+		fixture.Context.Output = fixture.CreateOutput("theme2", cThemeType);
+		Test.Assert(builder.Build(asset, fixture.Context) case .Err);
+	}
 }

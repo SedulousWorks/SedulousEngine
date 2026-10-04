@@ -39,7 +39,7 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
 8. ~~24d7a969~~ (done) UI script: `Ease`, and every handle's `MoveTo`, `Scale`/`SetScale`, `ScaleTo`,
    `RotateTo`, `Pulse` and an eased `FadeTo` (default arguments where Raptor overloads); a set
    stops only its own channel.
-9. 9497a67e UI: a vector image asset (`.svg`, importer, builder, resource, factory); a theme's
+9. ~~9497a67e~~ (done) UI: a vector image asset (`.svg`, importer, builder, resource, factory); a theme's
    `@icon name "{guid}"` is embedded at cook (theme resource version 2) and drawn by the game's
    UI and the canvas and world panel themes. Builder/description/set counts move; Assets.md.
 10. ba347f37 Editor: the theme page's preview draws icons and images.

@@ -16,7 +16,8 @@ static class UIResources
 	/// produce, not with an engine subsystem and not with an executable.
 	public static ResourceModule Module => sModule ?? (sModule = new .("ui", () => RegisterAll(), new .(
 		.ByDefault<UIDocument, UIDocumentResource, UIDocumentFactory>(),
-		.ByDefault<UITheme, UIThemeResource, UIThemeFactory>())));
+		.ByDefault<UITheme, UIThemeResource, UIThemeFactory>(),
+		.ByDefault<UIVectorImage, UIVectorImageResource, UIVectorImageFactory>())));
 	private static ResourceModule sModule ~ delete _;
 
 	/// The manager does not take ownership, so the caller keeps the factories alive for as

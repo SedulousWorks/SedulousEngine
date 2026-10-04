@@ -244,9 +244,7 @@ extension UISubsystem
 		StyleSheet sheet = null;
 		if ((theme != null) && !theme.StyleSheet.IsEmpty)
 		{
-			let loader = scope StyleSheetLoader();
-			loader.SetPalette(GameTheme.Palette());
-			sheet = loader.Load(theme.StyleSheet);
+			sheet = ParseTheme(theme);
 		}
 
 		// Installing CONSUMES the reference and releases whatever the view held, so the
@@ -368,9 +366,7 @@ extension UISubsystem
 		StyleSheet sheet = null;
 		if ((theme != null) && !theme.StyleSheet.IsEmpty)
 		{
-			let loader = scope StyleSheetLoader();
-			loader.SetPalette(GameTheme.Palette());
-			sheet = loader.Load(theme.StyleSheet);
+			sheet = ParseTheme(theme);
 		}
 
 		component.ThemeSheet = sheet;
