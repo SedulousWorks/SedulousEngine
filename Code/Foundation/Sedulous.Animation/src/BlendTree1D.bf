@@ -147,4 +147,34 @@ class BlendTree1D : IAnimationStateNode
 		if (clip != null)
 			AnimationSampler.SampleClip(clip, skeleton, normalizedTime * clip.Duration, outPoses);
 	}
+
+	/// The two entries around the parameter, by the same weights the pose blends them with.
+	public RootMotionDelta RootMotion(float from, float to, bool looping)
+	{
+		if (Entries.IsEmpty)
+			return .();
+		if ((Entries.Count == 1) || (Parameter <= Entries[0].Threshold))
+			return Sedulous.Animation.RootMotion.ClipRootMotionNormalized(Entries[0].Clip, from, to, looping);
+		if (Parameter >= Entries[Entries.Count - 1].Threshold)
+			return Sedulous.Animation.RootMotion.ClipRootMotionNormalized(Entries[Entries.Count - 1].Clip, from, to, looping);
+		var lowIndex = 0;
+		var highIndex = 1;
+		for (int i = 0; (i + 1) < Entries.Count; i++)
+		{
+			if ((Parameter >= Entries[i].Threshold) && (Parameter <= Entries[i + 1].Threshold))
+			{
+				lowIndex = i;
+				highIndex = i + 1;
+				break;
+			}
+		}
+		let a = Entries[lowIndex].Clip;
+		let b = Entries[highIndex].Clip;
+		if ((a == null) || (b == null))
+			return Sedulous.Animation.RootMotion.ClipRootMotionNormalized((a != null) ? a : b, from, to, looping);
+		let range = Entries[highIndex].Threshold - Entries[lowIndex].Threshold;
+		let blend = (range > 0.0f) ? ((Parameter - Entries[lowIndex].Threshold) / range) : 0.0f;
+		return Sedulous.Animation.RootMotion.Blend(Sedulous.Animation.RootMotion.ClipRootMotionNormalized(a, from, to, looping),
+			Sedulous.Animation.RootMotion.ClipRootMotionNormalized(b, from, to, looping), blend);
+	}
 }

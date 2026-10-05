@@ -23,6 +23,9 @@ class ClipStateNode : IAnimationStateNode
 
 	public float Duration => (mClip != null) ? mClip.Duration : 0.0f;
 
+	public RootMotionDelta RootMotion(float from, float to, bool looping)
+		=> Sedulous.Animation.RootMotion.ClipRootMotionNormalized(mClip, from, to, looping);
+
 	public void FireEvents(float prevNorm, float currentNorm, bool looping,
 		AnimationEventHandler handler)
 	{

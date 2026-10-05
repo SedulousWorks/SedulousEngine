@@ -34,6 +34,8 @@ class AnimationGraphPlayer
 
 	private List<BoneTransform> mFinalPoses = new .() ~ delete _;
 	private PoseModifierStack mModifiers = new .() ~ delete _;
+	/// The base layer's, since the last ConsumeRootMotion.
+	private RootMotionDelta mRootMotion = .();
 	private List<Float4x4> mSkinningMatrices = new .() ~ delete _;
 	private List<Float4x4> mPrevSkinningMatrices = new .() ~ delete _;
 	private bool mMatricesDirty = true;
@@ -168,7 +170,8 @@ class AnimationGraphPlayer
 		SyncBlendTreeParameters();
 
 		for (int i = 0; (i < mGraph.Layers.Count) && (i < mLayerRuntimes.Count); i++)
-			UpdateLayer(mGraph.Layers[i], mLayerRuntimes[i], deltaTime);
+			// Only the base layer moves the character: an override or additive layer moves bones.
+			UpdateLayer(mGraph.Layers[i], mLayerRuntimes[i], deltaTime, i == 0);
 
 		// AFTER the layers, so every state machine saw the trigger before it is cleared.
 		for (let parameter in mParameters)
@@ -239,7 +242,7 @@ class AnimationGraphPlayer
 	private bool Valid(int32 index) => (index >= 0) && (index < mParameters.Count);
 
 	private void UpdateLayer(AnimationLayer layer, AnimationGraphLayerRuntime runtime,
-		float deltaTime)
+		float deltaTime, bool isBase)
 	{
 		if ((runtime.CurrentStateIndex < 0) || (runtime.CurrentStateIndex >= layer.States.Count))
 			return;
@@ -255,13 +258,18 @@ class AnimationGraphPlayer
 
 		if (runtime.IsTransitioning)
 		{
+			let into = StepRootMotion(currentState, runtime.CurrentTime, deltaTime, isBase);
+			var outOf = RootMotionDelta();
 			AdvanceStateTime(currentState, ref runtime.CurrentTime, deltaTime);
 
 			// The state being faded OUT keeps playing, so a walk does not freeze mid stride
 			// while the run fades in over it.
 			let previousState = layer.GetState(runtime.PreviousStateIndex);
 			if (previousState != null)
+			{
+				outOf = StepRootMotion(previousState, runtime.PreviousTime, deltaTime, isBase);
 				AdvanceStateTime(previousState, ref runtime.PreviousTime, deltaTime);
+			}
 
 			currentState = layer.GetState(runtime.CurrentStateIndex);
 			if ((mEventHandler != null) && (currentState != null) && (currentState.Node != null))
@@ -269,6 +277,12 @@ class AnimationGraphPlayer
 					mEventHandler);
 
 			runtime.TransitionElapsed += deltaTime;
+			if (isBase)
+			{
+				// The fade blends the motion as it blends the poses.
+				let fade = Math.Clamp(runtime.TransitionElapsed / runtime.TransitionDuration, 0.0f, 1.0f);
+				mRootMotion = RootMotion.Compose(mRootMotion, RootMotion.Blend(outOf, into, fade));
+			}
 			if (runtime.TransitionElapsed >= runtime.TransitionDuration)
 			{
 				runtime.IsTransitioning = false;
@@ -277,6 +291,8 @@ class AnimationGraphPlayer
 		}
 		else
 		{
+			if (isBase)
+				mRootMotion = RootMotion.Compose(mRootMotion, StepRootMotion(currentState, runtime.CurrentTime, deltaTime, true));
 			AdvanceStateTime(currentState, ref runtime.CurrentTime, deltaTime);
 			if ((mEventHandler != null) && (currentState.Node != null))
 				currentState.Node.FireEvents(prevNorm, runtime.CurrentTime, currentState.Loop,
@@ -284,6 +300,28 @@ class AnimationGraphPlayer
 		}
 
 		SampleLayerPoses(layer, runtime);
+	}
+
+	/// The root motion a state carries over the step AdvanceStateTime is about to take (zero off
+	/// the base layer): from its time to the unwrapped time the step reaches.
+	private static RootMotionDelta StepRootMotion(AnimationGraphState state, float normalizedTime, float deltaTime, bool isBase)
+	{
+		if (!isBase || (state.Node == null) || (state.Duration <= 0.0f))
+			return .();
+		var to = normalizedTime + (deltaTime * state.Speed) / state.Duration;
+		if (!state.Loop)
+			to = Math.Clamp(to, 0.0f, 1.0f);
+		return state.Node.RootMotion(normalizedTime, to, state.Loop);
+	}
+
+	/// The root motion the base layer carried since the last call (root-motion.md P1): its
+	/// state's, or during a crossfade both states' blended by the fade, composed over every
+	/// Update between. Reading it resets it.
+	public RootMotionDelta ConsumeRootMotion()
+	{
+		let delta = mRootMotion;
+		mRootMotion = .();
+		return delta;
 	}
 
 	/// Advances a state's NORMALISED clock. A state with no duration does not move at all,

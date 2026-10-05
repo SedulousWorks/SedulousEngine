@@ -153,4 +153,31 @@ class BlendTree2D : IAnimationStateNode
 		if (clip != null)
 			AnimationSampler.SampleClip(clip, skeleton, normalizedTime * clip.Duration, outPoses);
 	}
+
+	/// Every entry by its inverse distance weight, as the pose; on an entry, that one alone.
+	public RootMotionDelta RootMotion(float from, float to, bool looping)
+	{
+		let parameter = Float2(ParameterX, ParameterY);
+		var total = 0.0f;
+		var sum = RootMotionDelta();
+		for (let entry in Entries)
+		{
+			if (entry.Clip == null)
+				continue;
+			let distance = Length(parameter - entry.Position);
+			if (distance < 0.0001f)
+				return Sedulous.Animation.RootMotion.ClipRootMotionNormalized(entry.Clip, from, to, looping);
+			let w = 1.0f / distance;
+			let d = Sedulous.Animation.RootMotion.ClipRootMotionNormalized(entry.Clip, from, to, looping);
+			sum.Translation = sum.Translation + d.Translation * w;
+			sum.Yaw += d.Yaw * w;
+			total += w;
+		}
+		if (total > 0.0f)
+		{
+			sum.Translation = sum.Translation * (1.0f / total);
+			sum.Yaw /= total;
+		}
+		return sum;
+	}
 }

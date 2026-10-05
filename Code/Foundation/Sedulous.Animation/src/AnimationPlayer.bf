@@ -28,6 +28,8 @@ class AnimationPlayer
 	/// modifier never compounds on its own last result.
 	private List<BoneTransform> mFinalPoses = new .() ~ delete _;
 	private PoseModifierStack mModifiers = new .() ~ delete _;
+	/// Since the last ConsumeRootMotion.
+	private RootMotionDelta mRootMotion = .();
 	private List<Float4x4> mSkinningMatrices = new .() ~ delete _;
 	/// Last frame's, which is what a motion vector is the difference of.
 	private List<Float4x4> mPrevSkinningMatrices = new .() ~ delete _;
@@ -135,7 +137,11 @@ class AnimationPlayer
 			mPrevSkinningMatrices[i] = mSkinningMatrices[i];
 
 		let prevTime = mPrevTime;
+		let startTime = mCurrentTime;
 		mCurrentTime += deltaTime * Speed;
+		// Root motion over the step, from the unwrapped times: a wrap is split at the end.
+		mRootMotion = RootMotion.Compose(mRootMotion,
+			RootMotion.ClipRootMotion(mCurrentClip, startTime, mCurrentTime, mCurrentClip.IsLooping));
 
 		// The events fire BEFORE the wrap, so a crossing of the end is still visible as one.
 		if ((mEventHandler != null) && !mCurrentClip.Events.IsEmpty)
@@ -189,6 +195,15 @@ class AnimationPlayer
 		else
 			mSkeleton.ComputeSkinningMatrices(mLocalPoses, mSkinningMatrices);
 		mMatricesDirty = false;
+	}
+
+	/// The root motion the clip carried since the last call (root-motion.md P1), composed over
+	/// every Update between: zero when the clip extracts none. Reading it resets it.
+	public RootMotionDelta ConsumeRootMotion()
+	{
+		let delta = mRootMotion;
+		mRootMotion = .();
+		return delta;
 	}
 
 	/// The modifiers run between the sample and the palette (inverse kinematics), BORROWED.

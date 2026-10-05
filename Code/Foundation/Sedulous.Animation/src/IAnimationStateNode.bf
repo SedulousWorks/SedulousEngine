@@ -18,4 +18,8 @@ interface IAnimationStateNode
 	/// Fires whatever the span crossed, both times NORMALISED.
 	void FireEvents(float prevNormalizedTime, float currentNormalizedTime, bool looping,
 		AnimationEventHandler handler);
+
+	/// The root motion the node carries from `from` to `to`, normalized and UNWRAPPED (past one is
+	/// a later loop), blended as the node blends its poses (root-motion.md P1). None by default.
+	RootMotionDelta RootMotion(float from, float to, bool looping) => .();
 }
