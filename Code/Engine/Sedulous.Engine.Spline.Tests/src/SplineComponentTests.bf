@@ -138,6 +138,9 @@ class SplineComponentTests
 		let nearest = manager.ClosestPoint(entity, .(3, 9, 0));
 		Test.Assert(nearest.Valid);
 		Test.Assert(Near(nearest.Position.X, 3.0f, 0.05f) && Near(nearest.Position.Y, 5.0f, 0.05f));
+		// How far down the line the closest point is, and the distance a sample was asked at.
+		Test.Assert(Near(nearest.Distance, 3.0f, 0.06f), scope $"{nearest.Distance}");
+		Test.Assert(Near(mid.Distance, 5.0f, 0.005f), scope $"{mid.Distance}");
 
 		// No spline on the entity gives the INVALID hit, zeroed, rather than an error.
 		let bare = scene.CreateEntity("bare");

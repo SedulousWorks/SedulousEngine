@@ -110,6 +110,7 @@ class SplineComponentManager : SerializableComponentManager<SplineComponent>
 		var hit = SplineHit();
 		hit.Valid = true;
 		hit.T = t;
+		hit.Distance = curve.TToDistance(t);
 		hit.Position = TransformPoint(curve.Evaluate(t), toWorld);
 		hit.Tangent = Normalized(TransformDirection(curve.Tangent(t), toWorld));
 		return hit;

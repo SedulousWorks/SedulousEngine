@@ -11,8 +11,11 @@ namespace Sedulous.Engine.Spline;
 struct SplineHit
 {
 	public bool Valid = false;
-	/// The curve parameter the sample answers for.
+	/// The curve parameter the sample answers for: the segment index plus the way along it.
 	public float T = 0.0f;
+	/// How far along the curve that is, in the curve's own metres as Length measures them:
+	/// how far down a course a closest point is, which T does not say.
+	public float Distance = 0.0f;
 	public Float3 Position = .Zero;
 	/// Unit length.
 	public Float3 Tangent = .Zero;
