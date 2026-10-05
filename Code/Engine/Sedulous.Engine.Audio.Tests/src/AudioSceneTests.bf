@@ -134,6 +134,43 @@ class AudioSceneTests
 		Test.Assert(!play.Audio.IsPlaying(bare));
 	}
 
+	/// A sound that follows the game while it plays (Snowline's wind, rising with the rider's
+	/// speed): a source's volume and pitch were read only when it started.
+	[Test]
+	public static void APlayingSourcesVolumeAndPitchChangeLiveAndKeepForItsNextPlay()
+	{
+		let play = scope AudioPlayScene();
+		let clip = play.AddClip(1.0f);
+		let entity = play.AddSource(clip, .(0, 0, 0), false);
+		play.Start();
+
+		let component = play.Sources.Get(entity);
+		Test.Assert(component != null);
+		let voice = play.Audio.Play(entity);
+		Test.Assert(voice.IsValid);
+
+		play.Audio.SetVolume(entity, 0.25f, 0.0f);
+		play.Audio.SetPitch(entity, 1.5f, 0.0f);
+		play.Frame();
+		Test.Assert(play.Engine.GetVoiceStatus(voice, let status));
+		Test.Assert(Near(status.Volume, 0.25f));
+		Test.Assert(Near(status.Pitch, 1.5f));
+		// Kept for the next play.
+		Test.Assert(Near(component.Volume, 0.25f));
+		Test.Assert(Near(component.Pitch, 1.5f));
+
+		// Stopped, it changes only the component; the next play starts there.
+		play.Audio.Stop(entity);
+		play.Audio.SetVolume(entity, 0.6f, 0.0f);
+		let again = play.Audio.Play(entity);
+		Test.Assert(again.IsValid);
+		Test.Assert(play.Engine.GetVoiceStatus(again, let restarted));
+		Test.Assert(Near(restarted.Volume, 0.6f));
+
+		// An entity without a source is inert.
+		play.Audio.SetVolume(play.Scene.CreateEntity("bare"), 0.5f, 0.0f);
+	}
+
 	[Test]
 	public static void TheFirstActiveListenerDrivesTheScenesPose()
 	{

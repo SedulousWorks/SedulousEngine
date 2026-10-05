@@ -150,6 +150,32 @@ class AudioSceneSystem : SceneSystem
 		mEngine.SetPaused(component.Voice, paused);
 	}
 
+	/// The source's volume, kept on the component (a later play starts there) and eased onto
+	/// its playing voice over `seconds`: a wind rising with speed. The component's volume is
+	/// otherwise read only when the source starts.
+	public void SetVolume(EntityHandle entity, float volume, float seconds)
+	{
+		let component = Component(entity);
+		if (component == null)
+			return;
+
+		component.Volume = volume;
+		if ((mEngine != null) && mEngine.IsValidHandle(component.Voice))
+			mEngine.SetVoiceVolume(component.Voice, volume, seconds);
+	}
+
+	/// The source's pitch, kept and eased the same way: an engine's note rising with its revs.
+	public void SetPitch(EntityHandle entity, float pitch, float seconds)
+	{
+		let component = Component(entity);
+		if (component == null)
+			return;
+
+		component.Pitch = pitch;
+		if ((mEngine != null) && mEngine.IsValidHandle(component.Voice))
+			mEngine.SetVoicePitch(component.Voice, pitch, seconds);
+	}
+
 	public bool IsPlaying(EntityHandle entity)
 	{
 		let component = Component(entity);
