@@ -284,7 +284,7 @@ class McpServer
 
 		let schemaError = scope String();
 		if (!McpSchema.ValidateArgs(arguments, tool.InputSchema, schemaError))
-			return MakeError(id, .InvalidParams, schemaError);
+			return MakeError(id, .InvalidParams, scope $"{tool.Name}: {schemaError}");
 
 		// Run the tool. One that is not finished is asked again next pump, with the same line
 		// and so the same arguments. BOTH finished outcomes are successful JSON-RPC responses:

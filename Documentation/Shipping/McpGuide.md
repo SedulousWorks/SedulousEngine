@@ -119,6 +119,10 @@ behaviour's properties under `live` beside what is authored.
   full report; a refusal is the tool working, never something to bypass.
 - **Read before destructive changes.** `asset_uses` before deleting anything;
   `project_health` after: dangling references surface later, not at delete time.
+- **Arguments are checked by name.** An argument a tool does not declare is refused as a
+  protocol error, -32602, naming the tool, the argument and the ones it takes
+  (`pie_run: no argument 'timeline' (it takes: ...)`): a misspelt argument never silently
+  does nothing. `tools/list` gives each tool's schema.
 - **Check `known_issues` before re-diagnosing** an odd symptom; if it matches a recorded
   issue, report the match and use its workaround.
 

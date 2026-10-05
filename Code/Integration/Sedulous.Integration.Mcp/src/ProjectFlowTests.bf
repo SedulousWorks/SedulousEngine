@@ -507,11 +507,12 @@ static class ProjectFlowTests
 			defer delete info;
 			Test.Assert(info.Get("settings").Get("defaultSceneId").IsNull, "nothing changed");
 		}
-		// A name that is no setting is refused with the list, not ignored.
+		// A name that is no setting is refused with the list, not ignored: the server's refusal of
+		// an argument the schema does not declare.
 		{
 			let unknown = scope String();
-			CallErr(server, "project_settings_set", With(With(Obj(), "defaultScene", sceneId), "defaultSceneId", sceneId), unknown);
-			Test.Assert(unknown.StartsWith("no setting 'defaultScene'; the settings are: name, defaultSceneId, nativeModule,"), unknown);
+			CallRefusedArgument(server, "project_settings_set", With(With(Obj(), "defaultScene", sceneId), "defaultSceneId", sceneId), unknown);
+			Test.Assert(unknown.StartsWith("project_settings_set: no argument 'defaultScene' (it takes: name, defaultSceneId, nativeModule,"), unknown);
 			let msaa = scope String();
 			CallErr(server, "project_settings_set", With(Obj(), "renderMsaaSamples", 3), msaa);
 			Test.Assert(msaa == "`renderMsaaSamples` takes 1, 2, 4", msaa);

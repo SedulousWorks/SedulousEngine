@@ -120,12 +120,8 @@ static class ExportPresetTools
 		}
 		let fields = scope List<FieldInfo>();
 		SettingFields.Of(typeof(ExportPreset), fields);
-		let unknown = scope String();
-		if (ReflectedFields.UnknownArgument(arguments, fields, scope StringView[]("remove"), unknown))
-		{
-			outError.AppendF("no preset field '{}'; the fields are: {}, remove", unknown, ReflectedFields.Keys(fields, .. scope .()));
-			return false;
-		}
+		// A field that is no preset field never gets here: the server refuses an argument the
+		// schema does not declare, naming the ones it does.
 		let presets = scope ExportPresetSet();
 		LoadPresets(project, presets);
 		let existing = presets.Find(name);

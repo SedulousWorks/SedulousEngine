@@ -57,8 +57,8 @@ static class ExportPresetToolsTests
 		Test.Assert(refusal.Contains("Linux64"));
 		CallErr(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "renderWidth", 99999), refusal..Clear());
 		Test.Assert(refusal.Contains("16384"));
-		CallErr(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "renderSize", 99), refusal..Clear());
-		Test.Assert(refusal.StartsWith("no preset field 'renderSize'; the fields are: name, platform,"), refusal);
+		CallRefusedArgument(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "renderSize", 99), refusal..Clear());
+		Test.Assert(refusal.StartsWith("export_preset_set: no argument 'renderSize' (it takes: name, platform,"), refusal);
 		CallErr(server, "export_preset_set", With(With(Obj(), "name", "Deck"), "config", "Shipping"), refusal..Clear());
 		Test.Assert(refusal.Contains("Debug, Release, Test"), refusal);
 		CallErr(server, "export_preset_set", With(Obj(), "platform", "Linux64"), refusal..Clear());

@@ -32,7 +32,10 @@ static class McpSchema
 	/// True when valid. Otherwise outError NAMES THE OFFENDING FIELD, because that message
 	/// travels to an agent as an invalid-params response and is the only thing it can act on.
 	///
-	/// Undeclared fields are ignored: this subset does not enforce additionalProperties.
+	/// An undeclared field is REFUSED, naming the ones the schema declares: a misspelt argument
+	/// silently ignored is a call that does something other than what was asked (pie_run given
+	/// `timeline` for `input` ran with no input at all). A schema with additionalProperties true
+	/// takes any field.
 	public static bool ValidateArgs(JsonValue arguments, JsonValue schema, String outError)
 	{
 		outError.Clear();
@@ -59,17 +62,36 @@ static class McpSchema
 			}
 		}
 
-		let properties = (schema != null) ? schema.Get("properties") : null;
-		if (properties == null)
+		if (schema == null)
 			return true;
+		let properties = schema.Get("properties");
+		let open = (schema.Get("additionalProperties") != null) && schema.Get("additionalProperties").IsBool
+			&& schema.Get("additionalProperties").AsBool();
 
 		for (int i = 0; i < arguments.Count; i++)
 		{
 			let key = arguments.KeyAt(i);
-			let property = properties.Get(key);
-			// Undeclared: not this schema's business.
+			let property = (properties != null) ? properties.Get(key) : null;
 			if (property == null)
-				continue;
+			{
+				if (open)
+					continue;
+				outError.AppendF("no argument '{}' (it takes", key);
+				if ((properties == null) || (properties.Count == 0))
+					outError.Append(" none)");
+				else
+				{
+					outError.Append(": ");
+					for (int j < properties.Count)
+					{
+						if (j > 0)
+							outError.Append(", ");
+						outError.Append(properties.KeyAt(j));
+					}
+					outError.Append(")");
+				}
+				return false;
+			}
 
 			let value = arguments.Get(key);
 			let type = (property.Get("type") != null) ? property.Get("type").AsString() : "";

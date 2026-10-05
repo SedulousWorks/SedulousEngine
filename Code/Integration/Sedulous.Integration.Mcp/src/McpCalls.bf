@@ -55,6 +55,18 @@ static class McpCalls
 		outText.Set(result.Get("content").At(0).Get("text").AsString());
 	}
 
+	/// A call the server refuses before the tool runs, an argument the schema does not declare:
+	/// a protocol error, -32602, whose message names the argument and the ones the tool takes.
+	public static void CallRefusedArgument(McpServer server, StringView tool, JsonValue arguments, String outMessage)
+	{
+		let response = CallResponse(server, tool, arguments);
+		defer delete response;
+		let error = response.Get("error");
+		Test.Assert(error != null, scope $"{tool}: ran where an undeclared argument was due a refusal");
+		Test.Assert(error.Get("code").AsInt() == -32602);
+		outMessage.Set(error.Get("message").AsString());
+	}
+
 	/// A raw JSON-RPC line; the parsed response, OWNED by the caller.
 	public static JsonValue Ask(McpServer server, StringView line)
 	{

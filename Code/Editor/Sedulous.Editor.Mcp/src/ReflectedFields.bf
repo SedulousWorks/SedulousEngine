@@ -34,41 +34,6 @@ static class ReflectedFields
 		public uint32 Number;
 	}
 
-	/// The fields' keys, comma separated: what a refusal of an unknown one lists.
-	public static void Keys(Span<FieldInfo> fields, String outKeys)
-	{
-		for (let field in fields)
-		{
-			if (!outKeys.IsEmpty)
-				outKeys.Append(", ");
-			SettingFields.Key(field, outKeys);
-		}
-	}
-
-	/// The first argument that names no field and is not one of `extra` (the tool's own), in
-	/// `outKey`: a misspelled field is refused, not ignored. False when every one is known.
-	public static bool UnknownArgument(JsonValue arguments, Span<FieldInfo> fields, Span<StringView> extra, String outKey)
-	{
-		let key = scope String();
-		for (let argument in arguments.Keys)
-		{
-			bool known = false;
-			for (let field in fields)
-			{
-				SettingFields.Key(field, key..Clear());
-				known |= (key == argument);
-			}
-			for (let name in extra)
-				known |= (name == argument);
-			if (!known)
-			{
-				outKey.Set(argument);
-				return true;
-			}
-		}
-		return false;
-	}
-
 	/// An asset a field names, as {guid, path}; the path is null when the guid names nothing
 	/// (or there is no database to look in).
 	private static JsonValue AssetJson(ContentDatabase db, Guid id)

@@ -63,13 +63,8 @@ static class ProjectInfoTool
 		let fields = scope List<FieldInfo>();
 		SettingFields.Of(typeof(ProjectSettings), fields);
 
-		// Unknown names first: a misspelled setting is refused, not ignored.
-		let unknown = scope String();
-		if (ReflectedFields.UnknownArgument(arguments, fields, .(), unknown))
-		{
-			outError.AppendF("no setting '{}'; the settings are: {}", unknown, ReflectedFields.Keys(fields, .. scope .()));
-			return false;
-		}
+		// A misspelled setting never gets here: the server refuses an argument the schema does
+		// not declare, naming the ones it does.
 
 		// Everything is checked before anything changes: a refusal leaves the settings as they
 		// were. MSAA takes a level of the render subsystem's table besides.

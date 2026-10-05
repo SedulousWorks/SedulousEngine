@@ -205,6 +205,46 @@ class McpServerTests
 		Test.Assert(response.Get("error").Get("message").AsString().Contains("path"));
 	}
 
+	/// A misspelt argument was ignored, so the call did something other than what was asked
+	/// (pie_run given `timeline` for `input` ran with no input). It is a protocol error naming
+	/// the tool, the argument and the ones the tool takes; a tool that takes nothing says so; a
+	/// schema with additionalProperties takes any field.
+	[Test]
+	public static void AnUndeclaredArgumentIsAProtocolErrorNamingWhatTheToolTakes()
+	{
+		let server = scope McpServer();
+		let schema = scope SchemaBuilder();
+		schema.Number("duration", "how long");
+		schema.Str("input", "the timeline");
+		server.RegisterTool("play", "plays", schema.Build(), .ReadOnly,
+			new (arguments, outResult, outError) => true);
+		server.RegisterTool("ping", "pings", scope SchemaBuilder().Build(), .ReadOnly,
+			new (arguments, outResult, outError) => true);
+		let open = scope SchemaBuilder();
+		open.Str("name", "a name");
+		open.AnyFields();
+		server.RegisterTool("bag", "takes anything", open.Build(), .ReadOnly,
+			new (arguments, outResult, outError) => true);
+
+		let misspelt = Ask(server,
+			"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"play\",\"arguments\":{\"duration\":2,\"timeline\":\"x\"}}}");
+		defer delete misspelt;
+		Test.Assert(ErrorCode(misspelt) == (int64)RpcError.InvalidParams);
+		let message = misspelt.Get("error").Get("message").AsString();
+		Test.Assert(message == "play: no argument 'timeline' (it takes: duration, input)", scope String(message));
+
+		let none = Ask(server,
+			"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"ping\",\"arguments\":{\"loud\":true}}}");
+		defer delete none;
+		Test.Assert(ErrorCode(none) == (int64)RpcError.InvalidParams);
+		Test.Assert(none.Get("error").Get("message").AsString() == "ping: no argument 'loud' (it takes none)");
+
+		let anything = Ask(server,
+			"{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"bag\",\"arguments\":{\"name\":\"a\",\"colour\":\"red\"}}}");
+		defer delete anything;
+		Test.Assert(anything.Get("error") == null, "additionalProperties takes any field");
+	}
+
 	[Test]
 	public static void AWrongFieldTypeIsAProtocolErrorNamingTheField()
 	{
@@ -237,22 +277,6 @@ class McpServerTests
 		defer delete response;
 
 		Test.Assert(ErrorCode(response) == (int64)RpcError.InvalidParams);
-	}
-
-	[Test]
-	public static void AnUndeclaredFieldIsIgnored()
-	{
-		let server = scope McpServer();
-		let schema = scope SchemaBuilder();
-		schema.Str("path", "where", true);
-		server.RegisterTool("find", "finds", schema.Build(), .ReadOnly,
-			new (arguments, outResult, outError) => true);
-
-		// This subset does not enforce additionalProperties, so an extra field passes.
-		let response = Ask(server,
-			"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"find\",\"arguments\":{\"path\":\"/x\",\"extra\":1}}}");
-		defer delete response;
-		Test.Assert(response.Get("error") == null);
 	}
 
 	[Test]

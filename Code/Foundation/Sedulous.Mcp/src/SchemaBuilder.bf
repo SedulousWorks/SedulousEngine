@@ -15,6 +15,7 @@ class SchemaBuilder
 {
 	private JsonValue mProperties = JsonValue.MakeObject() ~ delete _;
 	private JsonValue mRequired = JsonValue.MakeArray() ~ delete _;
+	private bool mOpen = false;
 
 	public SchemaBuilder Str(StringView name, StringView description = "",
 		bool required = false) => Scalar(name, "string", description, required);
@@ -63,6 +64,24 @@ class SchemaBuilder
 		return Add(name, property, required);
 	}
 
+	/// A field of any type: a value whose shape depends on another argument (component_set's
+	/// `value`, shaped by the field it sets).
+	public SchemaBuilder Any(StringView name, StringView description = "", bool required = false)
+	{
+		let property = JsonValue.MakeObject();
+		if (!description.IsEmpty)
+			property.Set("description", JsonValue.MakeString(description));
+		return Add(name, property, required);
+	}
+
+	/// Takes fields beyond those declared (additionalProperties): a tool whose arguments are open
+	/// ended. Every other schema refuses a field it does not declare.
+	public SchemaBuilder AnyFields()
+	{
+		mOpen = true;
+		return this;
+	}
+
 	/// The escape hatch: a fully formed property schema, for a nested object or array.
 	/// OWNERSHIP TRANSFERS.
 	public SchemaBuilder Property(StringView name, JsonValue propertySchema,
@@ -76,6 +95,8 @@ class SchemaBuilder
 		schema.Set("type", JsonValue.MakeString("object"));
 		schema.Set("properties", mProperties.Clone());
 		schema.Set("required", mRequired.Clone());
+		if (mOpen)
+			schema.Set("additionalProperties", JsonValue.MakeBool(true));
 		return schema;
 	}
 
