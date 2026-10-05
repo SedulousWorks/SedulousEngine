@@ -353,4 +353,100 @@ class IkComponentTests
 		Test.Assert(Math.Abs(FootWorldY(3) - -0.1f) < 1e-3f);
 		Test.Assert(Math.Abs(FootWorldY(0) - 0.8f) < 1e-3f);
 	}
+
+	/// The asset pack shape: the Foot is a child of the Root (Blender's IK target), the Shin has no
+	/// child. A component naming Thigh, Shin, Foot puts the foot on its target and bends the leg
+	/// to it.
+	[Test]
+	public static void AChainWhoseEndIsADetachedIkTargetBoneMovesItAndMeetsIt()
+	{
+		let skeleton = scope Skeleton(5);
+		StringView[5] names = .("Root", "Hips", "Thigh", "Shin", "Foot");
+		int32[5] parents = .(-1, 0, 1, 2, 0);
+		Float3[5] offsets = .(.(0, 0, 0), .(0, 1, 0), .(0.15f, 0, 0), .(0, -0.45f, 0.02f), .(0.15f, 0.1f, 0));
+		for (int32 i < 5)
+		{
+			let bone = skeleton.Bones[i];
+			bone.Index = i;
+			bone.Name.Set(names[i]);
+			bone.ParentIndex = parents[i];
+			bone.LocalBindPose.Position = offsets[i];
+		}
+		skeleton.BuildNameMap();
+		skeleton.FindRootBones();
+		skeleton.BuildChildIndices();
+		skeleton.ComputeInverseBindPoses();
+
+		let level = scope Scene("detached");
+		level.AddSystem<MeshComponentManager>();
+		AnimationScene.AddAnimationSceneManagers(level);
+		let hero = level.CreateEntity("Hero");
+		level.GetSystem<SkeletalAnimationComponentManager>().Add(hero).Skeleton.SetDirect(skeleton);
+		let step = level.CreateEntity("Step");
+		let at = Float3(0.25f, 0.3f, 0.2f);
+		level.SetLocalTransform(step, .(at, .Identity, .(1, 1, 1)));
+		let legIk = level.CreateEntity("LegIk");
+		level.SetParent(legIk, hero);
+		let legs = level.GetSystem<TwoBoneIkComponentManager>();
+		let leg = legs.Add(legIk);
+		leg.StartBone.Set("Thigh");
+		leg.MidBone.Set("Shin");
+		leg.EndBone.Set("Foot");
+		leg.Target = EntityRef(level.GetEntityId(step));
+		leg.FadeSeconds = 0.0f;
+
+		level.Update(1.0f / 60.0f);
+		level.Update(1.0f / 60.0f);
+		Test.Assert(legs.Get(legIk).Runtime.Status == .Solving);
+		let player = level.GetSystem<SkeletalAnimationComponentManager>().Get(hero).Player;
+		player.GetSkinningMatrices();
+		let cache = scope ModelPoseCache();
+		cache.Build(skeleton, player.GetFinalPoses());
+		Test.Assert(Length(InverseKinematics.Position(cache.At(4)) - at) < 1.0e-3f);
+		// The shin's tip, where it met the foot in the bind pose (0.45 below the shin), meets it again.
+		let tip = TransformPoint(.(0, -0.45f, -0.02f), cache.At(3));
+		Test.Assert(Length(tip - at) < 1.0e-3f);
+		Test.Assert(IkScene.Reached(level, legIk));
+	}
+
+	/// Player (the gameplay root) holds the IK; its child holds the animator (an imported model's
+	/// prefab the game does not edit). Nothing at or above: the one animator below.
+	[Test]
+	public static void OnAGameplayRootItDrivesTheOneAnimatorBelowIt()
+	{
+		let log = new IkLog();
+		InitGlobalLogger(log, true);
+		defer ShutdownGlobalLogger();
+
+		let s = scope Stage();
+		let player = s.Level.CreateEntity("Player");
+		let decoy = s.Level.CreateEntity("Hat"); // a child without an animator
+		s.Level.SetParent(decoy, player);
+		s.Level.SetParent(s.Rider, player);
+		let target = s.Target("Step", .(6, 4, 0));
+		let legs = s.Level.GetSystem<TwoBoneIkComponentManager>();
+		let leg = legs.Add(player);
+		leg.StartBone.Set("Thigh");
+		leg.MidBone.Set("Shin");
+		leg.EndBone.Set("Foot");
+		leg.Target = EntityRef(s.Level.GetEntityId(target));
+		leg.FadeSeconds = 0.0f;
+		s.Tick();
+		s.Tick();
+		Test.Assert(legs.Get(player).Runtime.Status == .Solving);
+		Test.Assert(legs.Get(player).Runtime.Animator == s.Rider);
+		Test.Assert(Length(s.BoneWorld(3) - Float3(6, 4, 0)) < 1.0e-3f);
+		Test.Assert(log.Lines == 0);
+
+		// A second animated child (a pet, a held prop): which one is meant is no longer clear, and
+		// child order must not decide it. The component turns off with one log line.
+		let pet = s.Level.CreateEntity("Pet");
+		s.Level.SetParent(pet, player);
+		s.Level.GetSystem<SkeletalAnimationComponentManager>().Add(pet).Skeleton.SetDirect(s.Skeleton);
+		for (int frame < 5)
+			s.Tick();
+		Test.Assert(legs.Get(player).Runtime.Status == .NoAnimator);
+		Test.Assert(log.Lines == 1);
+		Test.Assert(s.Player.Modifiers.IsEmpty);
+	}
 }

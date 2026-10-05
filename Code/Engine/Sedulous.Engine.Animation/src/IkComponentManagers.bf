@@ -24,6 +24,15 @@ struct IkAnimatorLink
 	public this() {}
 }
 
+/// How an IK component's animator was found.
+enum IkLookup : uint8
+{
+	None,
+	Found,
+	/// Nothing at or above, several below.
+	Ambiguous,
+}
+
 /// The values every IK component carries that its manager's shared step reads.
 struct IkCommon
 {
@@ -82,18 +91,48 @@ static class IkScene
 		return animator;
 	}
 
-	/// The nearest animator at or above `from`.
-	public static bool FindAnimator(Scene scene, EntityHandle from, out IkAnimatorLink outLink)
+	/// The animator an IK component on `from` drives: the nearest at or above it (a component
+	/// under the model, or on it), else the ONE below it (a component on a gameplay root whose
+	/// model is a child, the importer's prefab). Several below is ambiguous: reordering children
+	/// must never retarget the IK silently.
+	public static IkLookup FindAnimator(Scene scene, EntityHandle from, out IkAnimatorLink outLink)
 	{
 		outLink = .();
 		var e = from;
 		for (int depth = 0; scene.IsValid(e) && (depth < 1024); depth++)
 		{
 			if (AnimatorOn(scene, e, out outLink))
-				return true;
+				return .Found;
 			e = scene.GetParent(e);
 		}
-		return false;
+
+		// Every entity below `from`, depth first; the first match is kept, a second is ambiguous.
+		var found = false;
+		e = scene.IsValid(from) ? scene.GetFirstChild(from) : .Invalid;
+		for (int visited = 0; scene.IsValid(e) && (visited < 65536); visited++)
+		{
+			if (AnimatorOn(scene, e, let link))
+			{
+				if (found)
+				{
+					outLink = .();
+					return .Ambiguous;
+				}
+				found = true;
+				outLink = link;
+			}
+			if (scene.IsValid(scene.GetFirstChild(e)))
+			{
+				e = scene.GetFirstChild(e);
+				continue;
+			}
+			while (scene.IsValid(e) && (e != from) && !scene.IsValid(scene.GetNextSibling(e)))
+				e = scene.GetParent(e);
+			if (!scene.IsValid(e) || (e == from))
+				break;
+			e = scene.GetNextSibling(e);
+		}
+		return found ? .Found : .None;
 	}
 
 	/// Takes a component's modifier off its animator's player, if both are still there: looked
@@ -311,9 +350,15 @@ abstract class IkComponentManagerBase<T> : SerializableComponentManager<T>
 			runtime.Weight = 0.0f;
 			return;
 		}
-		if (!IkScene.FindAnimator(mScene, owner, let link))
+		let lookup = IkScene.FindAnimator(mScene, owner, let link);
+		if (lookup == .Ambiguous)
 		{
-			Disable(runtime, owner, .NoAnimator, "no animation graph or skeletal animation at or above it");
+			Disable(runtime, owner, .NoAnimator, "nothing animated at or above it and several below: put it on or under one model");
+			return;
+		}
+		if (lookup != .Found)
+		{
+			Disable(runtime, owner, .NoAnimator, "no animation graph or skeletal animation at, above or below it");
 			return;
 		}
 		if (link.Entity != runtime.Animator)
@@ -409,9 +454,15 @@ class TwoBoneIkComponentManager : IkComponentManagerBase<TwoBoneIkComponent>
 				return .UnknownBone;
 			}
 		}
-		if (!InverseKinematics.IsBelow(skeleton, bones[1], bones[0]) || !InverseKinematics.IsBelow(skeleton, bones[2], bones[1]))
+		// The end may be detached (an IK target bone off the root): not below the mid, and then
+		// neither carried by the start nor above it.
+		let endBelowMid = InverseKinematics.IsBelow(skeleton, bones[2], bones[1]);
+		if (!InverseKinematics.IsBelow(skeleton, bones[1], bones[0])
+			|| (!endBelowMid && ((bones[2] == bones[0]) || (bones[2] == bones[1])
+			|| InverseKinematics.IsBelow(skeleton, bones[2], bones[0]) || InverseKinematics.IsBelow(skeleton, bones[0], bones[2]))))
 		{
-			outFailed.AppendF("'{}', '{}', '{}' are not a chain (each below the one before)", c.StartBone, c.MidBone, c.EndBone);
+			outFailed.AppendF("'{}', '{}', '{}' are not a chain (the mid below the start, the end below the mid or apart from the chain)",
+				c.StartBone, c.MidBone, c.EndBone);
 			return .NotAChain;
 		}
 		let m = c.Runtime.Modifier;
@@ -578,9 +629,15 @@ class FootIkComponentManager : IkComponentManagerBase<FootIkComponent>
 					return .UnknownBone;
 				}
 			}
-			if (!InverseKinematics.IsBelow(skeleton, bones[1], bones[0]) || !InverseKinematics.IsBelow(skeleton, bones[2], bones[1]))
+			// The foot may be detached (an IK target bone off the root): not below the shin, and
+			// then not carried by the thigh either.
+			let footBelowShin = InverseKinematics.IsBelow(skeleton, bones[2], bones[1]);
+			if (!InverseKinematics.IsBelow(skeleton, bones[1], bones[0])
+				|| (!footBelowShin && InverseKinematics.IsBelow(skeleton, bones[2], bones[0]))
+				|| InverseKinematics.IsBelow(skeleton, bones[0], bones[2]))
 			{
-				outFailed.AppendF("'{}', '{}', '{}' are not a chain (each below the one before)", leg.StartBone, leg.MidBone, leg.EndBone);
+				outFailed.AppendF("'{}', '{}', '{}' are not a leg (the shin below the thigh, the foot below the shin or apart from the leg)",
+					leg.StartBone, leg.MidBone, leg.EndBone);
 				return .NotAChain;
 			}
 			m.FootLegs.Add(.(.(bones[0], bones[1], bones[2]), leg.HingeAxis));
