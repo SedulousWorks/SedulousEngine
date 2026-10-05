@@ -73,6 +73,19 @@ sealed class WebGpuTransferBatch : ITransferBatch
 		TextureWrite write = .();
 		write.Destination = destination.Handle;
 		write.Layout = layout;
+		// The RHI's extent is the level's size in texels; WebGPU copies a block compressed
+		// texture in whole blocks only, so a level smaller than a block (a 2x2 or 1x1 mip of a
+		// 4x4 block format) is written as one block, which the data already holds. Vulkan takes
+		// the texel size as it is; a browser refuses it and leaves the mip chain's tail unwritten.
+		var extent;
+		let format = destination.Desc.Format;
+		if (TextureFormats.IsCompressed(format))
+		{
+			let blockWidth = TextureFormats.BlockWidth(format);
+			let blockHeight = TextureFormats.BlockHeight(format);
+			extent.Width = (extent.Width + blockWidth - 1) / blockWidth * blockWidth;
+			extent.Height = (extent.Height + blockHeight - 1) / blockHeight * blockHeight;
+		}
 		write.Extent = extent;
 		write.MipLevel = mipLevel;
 		write.ArrayLayer = arrayLayer;

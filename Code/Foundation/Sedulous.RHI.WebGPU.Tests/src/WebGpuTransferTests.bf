@@ -166,4 +166,59 @@ class WebGpuTransferTests
 		device.DestroyBuffer(ref source);
 		device.Destroy();
 	}
+
+	/// Snowline's first web run: a block compressed texture's mip tail (its 2x2 and 1x1
+	/// levels) was written at its size in texels, which WebGPU refuses ("copySize.width (2) is
+	/// not a multiple of compressed texture format block width (4)"); every level must go up
+	/// in whole blocks.
+	[Test]
+	public static void ACompressedTexturesWholeMipChainUploadsTheTailInWholeBlocks()
+	{
+		let backend = scope WebGpuBackend();
+		let device = WebGpuTestDevice.TryCreate(backend);
+		if (device == null)
+			return;
+		defer backend.Destroy();
+
+		let errorsBefore = WebGpuDiagnostics.UncapturedErrorCount;
+		let transferQueue = device.GetQueue(.Transfer, 0);
+		var batch = transferQueue.CreateTransferBatch().GetValueOrDefault();
+		Test.Assert(batch != null);
+
+		let format = TextureFormat.BC1RGBAUnorm;
+		var desc = TextureDesc();
+		desc.Format = format;
+		desc.Width = 16;
+		desc.Height = 16;
+		desc.MipLevelCount = 5; // 16, 8, 4, 2, 1
+		desc.Usage = .CopyDst | .Sampled;
+		var texture = device.CreateTexture(desc).GetValueOrDefault();
+		Test.Assert(texture != null);
+
+		// Each level as the texture resource lays it out: texel extent, block row pitch and
+		// count.
+		uint8[16 * 16] blocks = .();
+		for (int i < blocks.Count)
+			blocks[i] = (uint8)i;
+		for (uint32 level < desc.MipLevelCount)
+		{
+			let w = Math.Max(desc.Width >> level, 1);
+			let h = Math.Max(desc.Height >> level, 1);
+			TextureDataLayout layout = .();
+			layout.BytesPerRow = TextureFormats.CompressedRowPitch(format, w);
+			layout.RowsPerImage = (h + TextureFormats.BlockHeight(format) - 1) / TextureFormats.BlockHeight(format);
+			let bytes = (int)TextureFormats.CompressedLevelBytes(format, w, h);
+			batch.WriteTexture(texture, .(&blocks[0], bytes), layout, .(w, h, 1), level, 0);
+		}
+		Test.Assert(batch.Submit() case .Ok);
+		device.WaitIdle(); // the error callbacks arrive through the event pump
+
+		Test.Assert(WebGpuDiagnostics.UncapturedErrorCount == errorsBefore,
+			scope $"{WebGpuDiagnostics.UncapturedErrorCount - errorsBefore} WebGPU errors");
+		Test.Assert(!device.IsLost());
+
+		transferQueue.DestroyTransferBatch(ref batch);
+		device.DestroyTexture(ref texture);
+		device.Destroy();
+	}
 }

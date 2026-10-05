@@ -226,6 +226,7 @@ sealed class WebGpuAdapter : IAdapter
 		deviceDesc.uncapturedErrorCallbackInfo.callback =
 			(device, errorType, message, userdata1, userdata2) =>
 			{
+				WebGpuDiagnostics.RecordUncapturedError();
 				Console.Error.WriteLine("[webgpu] uncaptured error (type {}): {}", errorType,
 					StringView((char8*)message.data, (int)message.length));
 			};
