@@ -32,6 +32,7 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 {
 	private uint32 mDataVersion;
 	private bool mAfterRead;
+	private uint32 mMinReadVersion;
 
 	/// dataVersion is the version this type's data is written with. Zero, the default,
 	/// means unversioned and writes no envelope at all, so nothing can be checked when it
@@ -41,10 +42,15 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 	/// supported per type: a payload stamped with a different version is REFUSED rather
 	/// than migrated or guessed at. Bump this when the wire changes, and re-save what was
 	/// written under the old one.
-	public this(uint32 dataVersion = 0, bool afterRead = false)
+	///
+	/// `minReadVersion` is the exception: the oldest version a LEGACY READER still decodes,
+	/// for a layout that only grew at its end. The fields added since are [Appended(version)],
+	/// so data stored before them reads with those fields at their defaults.
+	public this(uint32 dataVersion = 0, bool afterRead = false, uint32 minReadVersion = 0)
 	{
 		mDataVersion = dataVersion;
 		mAfterRead = afterRead;
+		mMinReadVersion = minReadVersion;
 	}
 
 	[Comptime]
@@ -69,7 +75,7 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 		// A version envelope costs bytes in every payload, so declaring a version is how
 		// you opt into one. An unversioned type writes exactly its fields.
 		if (mDataVersion > 0)
-			body.Append("\tSedulous.Core.Serialization.BeginVersionedPayload(ar, TypeId, DataVersion);\n");
+			body.AppendF("\tSedulous.Core.Serialization.BeginVersionedPayload(ar, TypeId, DataVersion, {});\n", mMinReadVersion);
 
 		body.Append("\tar.BeginObject();\n");
 
@@ -137,7 +143,11 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 				let key = WireKey(field.Name, .. scope String());
 				// Appended: a keyed payload from before the field has no key for it, and the
 				// field keeps its default rather than failing the read.
-				if (field.GetCustomAttribute<AppendedAttribute>() case .Ok)
+				// Appended at a version: read only from data stored at it or later, which a
+				// positional payload can be told as well as a keyed one.
+				if ((field.GetCustomAttribute<AppendedAttribute>() case .Ok(let appended)) && (appended.Since > 0))
+					body.AppendF("\tif ((ar.Mode != .Read) || (ar.Version >= {}))\n\t{{\n\t\tar.Key(\"{}\");\n\t\t{}\n\t}}\n", appended.Since, key, move);
+				else if (field.GetCustomAttribute<AppendedAttribute>() case .Ok)
 					body.AppendF("\tif ((ar.Mode != .Read) || ar.HasKey(\"{}\"))\n\t{{\n\t\tar.Key(\"{}\");\n\t\t{}\n\t}}\n", key, key, move);
 				else
 					body.AppendF("\tar.Key(\"{}\");\n\t{}\n", key, move);

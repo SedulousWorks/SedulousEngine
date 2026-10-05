@@ -10,7 +10,18 @@ namespace Sedulous.Core.Serialization;
 /// so there it is read like any other; binary data that predates a field still needs a
 /// version bump. For a type stored as text, a manifest or a settings file, this is how its
 /// shape grows without refusing every file saved under the old one.
+///
+/// With a version, `[Appended(3)]` on a type whose legacy reader still accepts older data
+/// ([Serializable]'s minReadVersion), the field is read only from data STORED at that version
+/// or later, which a binary payload can be told too: the stored version says what it holds.
 [AttributeUsage(.Field, .NotInherited | .ReflectAttribute | .DisallowAllowMultiple)]
 struct AppendedAttribute : Attribute
 {
+	/// The data version that added the field; nought tells by the key alone (text only).
+	public uint32 Since;
+
+	public this(uint32 since = 0)
+	{
+		Since = since;
+	}
 }

@@ -298,4 +298,61 @@ class VersionedPayloadTests
 		Read(strict, 0, let strictOk, ?);
 		Test.Assert(!strictOk, "no floor means the current version alone");
 	}
+
+	/// A version 1 payload, written by hand: the chain, then the one field it had.
+	private static void WriteGrownV1(MemoryStream stream, uint32 version, int32 value)
+	{
+		let writer = scope BinaryWriter(stream);
+		Test.Assert(writer.Write((uint32)1));
+		Test.Assert(writer.Write(GrownVersionedSample.TypeId));
+		Test.Assert(writer.Write(version));
+		Test.Assert(writer.Write(value));
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+	}
+
+	/// A legacy reader ([Serializable]'s minReadVersion) takes data stored before a field was
+	/// [Appended(version)], positional binary included: the field keeps its default and the
+	/// read stays in step. Data older than the legacy reader still refuses.
+	[Test]
+	public static void ALegacyReaderReadsAPayloadFromBeforeAnAppendedField()
+	{
+		{
+			let stream = scope MemoryStream();
+			WriteGrownV1(stream, 1, 41);
+			let target = scope GrownVersionedSample();
+			let reader = scope BinarySerializer(stream, .Read);
+			Serialize(reader, (ISerializable)target);
+			Test.Assert(reader.IsOk);
+			Test.Assert(target.Value == 41);
+			Test.Assert(target.Added == -2, "not read past the payload's end");
+		}
+
+		// The current version round trips the appended field.
+		{
+			let stream = scope MemoryStream();
+			{
+				let writer = scope BinarySerializer(stream, .Write);
+				let sample = scope GrownVersionedSample();
+				sample.Value = 5;
+				sample.Added = 6;
+				Serialize(writer, (ISerializable)sample);
+			}
+			Test.Assert(stream.Seek(0, .Begin) == 0);
+			let target = scope GrownVersionedSample();
+			let reader = scope BinarySerializer(stream, .Read);
+			Serialize(reader, (ISerializable)target);
+			Test.Assert(reader.IsOk);
+			Test.Assert((target.Value == 5) && (target.Added == 6));
+		}
+
+		// Below the legacy reader: refused.
+		{
+			let stream = scope MemoryStream();
+			WriteGrownV1(stream, 0, 41);
+			let target = scope GrownVersionedSample();
+			let reader = scope BinarySerializer(stream, .Read);
+			Serialize(reader, (ISerializable)target);
+			Test.Assert(!reader.IsOk);
+		}
+	}
 }
