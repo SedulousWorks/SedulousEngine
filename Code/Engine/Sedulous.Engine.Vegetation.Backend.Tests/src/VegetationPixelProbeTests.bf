@@ -3,6 +3,7 @@ using Sedulous.Core;
 using Sedulous.Geometry;
 using Sedulous.Heightfield;
 using Sedulous.Materials;
+using Sedulous.Resource;
 using Sedulous.Materials.PipelineCache;
 using Sedulous.Render;
 using Sedulous.RHI;
@@ -137,7 +138,9 @@ class VegetationPixelProbeTests
 		let layer = new ProceduralVegetationLayer();
 		layer.Name.Set("Grass");
 		layer.Mesh.SetDirect(tuft);
-		layer.Material.SetDirect(green);
+		var greenRef = Ref<Material>(Guid());
+		greenRef.SetDirect(green);
+		layer.Materials.Add(greenRef);
 		layer.Placement = .Splat;
 		layer.SplatLayer = 0;
 		layer.Density = 0.5f;

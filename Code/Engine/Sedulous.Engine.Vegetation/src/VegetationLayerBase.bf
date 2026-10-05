@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Geometry;
@@ -21,9 +22,11 @@ class VegetationLayerBase : ISerializable
 	/// The instanced mesh: a grass card, a tuft, a rock.
 	[Description("The instanced mesh: a grass card, a tuft, a rock.")]
 	public Ref<StaticMesh> Mesh = .(Guid());
-	/// An optional override; none uses the mesh's own.
-	[Description("Optional override; none uses the mesh's own.")]
-	public Ref<Material> Material = .(Guid());
+	/// One material per mesh slot, as a mesh component's: a pine's bark, needles and snow each
+	/// their own. None draws the default material: a layer has no "the mesh's own" to fall
+	/// back to.
+	[Description("One material per mesh slot, as on a mesh component; none draws the default material.")]
+	public List<Ref<Material>> Materials = new .() ~ delete _;
 	[DisplayName("Scale Range")]
 	public Float2 ScaleRange = .(0.8f, 1.2f);
 	[DisplayName("Max Slope")]
@@ -66,7 +69,12 @@ class VegetationLayerBase : ISerializable
 	public void ResolveResources(ResourceManager manager)
 	{
 		Mesh.Bind(manager);
-		Material.Bind(manager);
+		for (int i < Materials.Count)
+		{
+			var reference = Materials[i];
+			reference.Bind(manager);
+			Materials[i] = reference;
+		}
 	}
 
 	/// The shared prefix of both layer kinds' payloads, so the two stay in step.
@@ -74,7 +82,12 @@ class VegetationLayerBase : ISerializable
 	{
 		Sedulous.Core.Serialization.Serialize(ar, "name", Name);
 		SerializeValue(ar, "mesh", ref Mesh.Id);
-		SerializeValue(ar, "material", ref Material.Id);
+		// Version 2 carried one optional material. Tested as EXACTLY 2, not as below 3: a
+		// payload with no version scope reads as nought and is the current layout.
+		if ((ar.Mode == .Read) && (ar.Version == 2))
+			ReadSingleMaterial(ar, Materials);
+		else
+			SerializeMaterials(ar);
 		ar.Key("scaleRange");
 		Sedulous.Core.Serialization.Serialize(ar, ref ScaleRange);
 		SerializeValue(ar, "maxSlopeDegrees", ref MaxSlopeDegrees);
@@ -89,4 +102,42 @@ class VegetationLayerBase : ISerializable
 	}
 
 	public virtual void Serialize(ISerializer ar) => SerializeBase(ar);
+
+	/// The material list, one id per slot.
+	private void SerializeMaterials(ISerializer ar)
+	{
+		ar.Key("materials");
+		uint32 count = (uint32)Materials.Count;
+		ar.BeginArray(ref count);
+		if (ar.Mode == .Read)
+		{
+			Materials.Clear();
+			Materials.Reserve((int)count);
+			for (uint32 i < count)
+			{
+				var reference = Ref<Material>(Guid());
+				SerializeValue(ar, ref reference.Id);
+				Materials.Add(reference);
+			}
+		}
+		else
+		{
+			for (int i < Materials.Count)
+			{
+				var id = Materials[i].Id;
+				SerializeValue(ar, ref id);
+			}
+		}
+		ar.EndArray();
+	}
+
+	/// The single "material" of versions 1 and 2, as the list's one entry; nil, as no entry.
+	public static void ReadSingleMaterial(ISerializer ar, List<Ref<Material>> outMaterials)
+	{
+		var id = Guid();
+		SerializeValue(ar, "material", ref id);
+		outMaterials.Clear();
+		if (id != Guid())
+			outMaterials.Add(.(id));
+	}
 }

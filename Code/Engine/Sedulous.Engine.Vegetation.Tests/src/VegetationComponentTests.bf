@@ -5,6 +5,8 @@ using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.Geometry;
 using Sedulous.Heightfield;
+using Sedulous.Materials;
+using Sedulous.Resource;
 using Sedulous.Render;
 using Sedulous.Scene;
 using Sedulous.Terrain;
@@ -762,7 +764,7 @@ class VegetationComponentTests
 	}
 
 	/// A hand written VERSION ONE payload, the single list layout, splits into the two lists
-	/// and re-saves as version two.
+	/// and re-saves as the current version.
 	///
 	/// The bytes are laid out here rather than captured from an old build, so the test
 	/// describes the layout it claims to read: a chain of one entry at version 1, then the
@@ -814,7 +816,7 @@ class VegetationComponentTests
 		Test.Assert(component.PropLayers[0].Name == "Rocks");
 		Test.Assert(component.PropLayers[0].Instances.Count == 1);
 
-		// And what goes back out is version TWO, in the new shape.
+		// And what goes back out is the current version, in the new shape.
 		let resaved = scope MemoryStream();
 		{
 			let writer = scope BinarySerializer(resaved, .Write);
@@ -836,6 +838,143 @@ class VegetationComponentTests
 		Test.Assert(round.ProceduralLayers.Count == 1);
 		Test.Assert(round.PropLayers.Count == 1);
 		Test.Assert(round.PropLayers[0].Instances.Count == 1);
+	}
+
+	/// A layer's materials, one per mesh slot, reach the snapshot as a mesh component's do: one
+	/// is the whole mesh's, more than one routes the submeshes, and none draws the default.
+	[Test]
+	public static void ALayersMaterialsRouteItsSubmeshesOnlyWhenThereIsMoreThanOne()
+	{
+		let f = scope Fixture();
+		f.Manager.SetBuildBudget(100);
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+		let bark = MaterialPresets.CreatePbr("bark", .(0.4f, 0.25f, 0.1f, 1.0f), 0.0f, 0.9f);
+		defer delete bark;
+		let needles = MaterialPresets.CreatePbr("needles", .(0.1f, 0.4f, 0.15f, 1.0f), 0.0f, 0.8f);
+		defer delete needles;
+
+		// None: the default material, no routing.
+		f.Extract(snapshot, null, sets);
+		Test.Assert(!sets.IsEmpty);
+		Test.Assert(sets[0].Material == null);
+		Test.Assert((sets[0].SubmeshMaterials == null) && (sets[0].SubmeshMaterialCount == 0));
+
+		// One: the whole mesh's material, still no routing, so the batching stays intact.
+		var barkRef = Ref<Material>(Guid());
+		barkRef.SetDirect(bark);
+		f.Layer.Materials.Add(barkRef);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets[0].Material === bark);
+		Test.Assert((sets[0].SubmeshMaterials == null) && (sets[0].SubmeshMaterialCount == 0));
+
+		// Two: slot by slot.
+		var needlesRef = Ref<Material>(Guid());
+		needlesRef.SetDirect(needles);
+		f.Layer.Materials.Add(needlesRef);
+		f.Extract(snapshot, null, sets);
+		Test.Assert(sets[0].Material === bark, "the first slot is the item's own");
+		Test.Assert(sets[0].SubmeshMaterialCount == 2);
+		Test.Assert((sets[0].SubmeshMaterials[0] === bark) && (sets[0].SubmeshMaterials[1] === needles));
+	}
+
+	/// A hand written VERSION TWO payload: each layer carried one optional material, which
+	/// becomes the list's one entry (nil, none), with the fields after it still in line.
+	[Test]
+	public static void AVersionTwoPayloadsSingleMaterialBecomesTheListsOneEntry()
+	{
+		let materialId = Guid(0x11111111, 0x2222, 0x3333, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB);
+		let blob = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(blob, .Write);
+			SerializedDataVersion[1] chain = .(.(TypeIdOf("terrainVegetation"), 2));
+			BeginVersionedPayload(writer, .(&chain[0], 1));
+
+			Guid maskId = default;
+			SerializeValue(writer, "mask", ref maskId);
+
+			var procedural = (uint32)1;
+			writer.Key("proceduralLayers");
+			writer.BeginArray(ref procedural);
+			WriteLayerBaseV2(writer, "Pines", materialId);
+			var placement = VegetationPlacement.Splat;
+			writer.Key("placement");
+			SerializeEnum(writer, ref placement);
+			var splatLayer = (uint32)2;
+			SerializeValue(writer, "splatLayer", ref splatLayer);
+			var splatThreshold = 0.4f;
+			SerializeValue(writer, "splatThreshold", ref splatThreshold);
+			var maskPlane = (uint32)0;
+			SerializeValue(writer, "maskPlane", ref maskPlane);
+			var density = 0.025f;
+			SerializeValue(writer, "density", ref density);
+			writer.EndArray();
+
+			var props = (uint32)1;
+			writer.Key("propLayers");
+			writer.BeginArray(ref props);
+			WriteLayerBaseV2(writer, "Rocks", Guid());
+			let instances = scope List<Float4x4>()..Add(.Identity());
+			writer.Key("instances");
+			SerializeList(writer, instances);
+			writer.EndArray();
+
+			var visible = true;
+			SerializeValue(writer, "visible", ref visible);
+			EndVersionedPayload(writer);
+			Test.Assert(writer.IsOk);
+		}
+
+		let scene = scope Scene();
+		VegetationScene.AddVegetationSceneManagers(scene);
+		let manager = scene.GetSystem<TerrainVegetationComponentManager>();
+		let entity = scene.CreateEntity("terrain");
+		manager.Add(entity);
+		Test.Assert(blob.Seek(0, .Begin) == 0);
+		let reader = scope BinarySerializer(blob, .Read);
+		manager.ReadComponent(reader, entity);
+		Test.Assert(reader.IsOk, "the version two payload was accepted");
+
+		let component = manager.Get(entity);
+		let pines = component.ProceduralLayers[0];
+		Test.Assert((pines.Materials.Count == 1) && (pines.Materials[0].Id == materialId));
+		Test.Assert(pines.Name == "Pines");
+		Test.Assert((pines.Placement == .Splat) && (pines.SplatLayer == 2) && Near(pines.Density, 0.025f, 1e-6f),
+			"the fields after the material still line up");
+		let rocks = component.PropLayers[0];
+		Test.Assert(rocks.Materials.IsEmpty, "a nil material is no entry");
+		Test.Assert(rocks.Instances.Count == 1);
+	}
+
+	/// A layer base in version 2's field order: one optional material.
+	private static void WriteLayerBaseV2(ISerializer ar, StringView name, Guid material)
+	{
+		var material;
+		let owned = scope String(name);
+		Sedulous.Core.Serialization.Serialize(ar, "name", owned);
+		Guid mesh = default;
+		SerializeValue(ar, "mesh", ref mesh);
+		SerializeValue(ar, "material", ref material);
+		var scaleRange = Float2(0.8f, 1.2f);
+		ar.Key("scaleRange");
+		Sedulous.Core.Serialization.Serialize(ar, ref scaleRange);
+		var maxSlope = 35.0f;
+		SerializeValue(ar, "maxSlopeDegrees", ref maxSlope);
+		var heightRange = Float2(-1.0e6f, 1.0e6f);
+		ar.Key("heightRange");
+		Sedulous.Core.Serialization.Serialize(ar, ref heightRange);
+		var alignToNormal = false;
+		SerializeValue(ar, "alignToNormal", ref alignToNormal);
+		var fadeStart = 40.0f;
+		SerializeValue(ar, "fadeStart", ref fadeStart);
+		var fadeEnd = 80.0f;
+		SerializeValue(ar, "fadeEnd", ref fadeEnd);
+		var castShadows = false;
+		SerializeValue(ar, "castShadows", ref castShadows);
+		var maxPerChunk = (uint32)4096;
+		SerializeValue(ar, "maxInstancesPerChunk", ref maxPerChunk);
+		var visible = true;
+		SerializeValue(ar, "visible", ref visible);
 	}
 
 	/// One version 1 layer in version 1's field order.

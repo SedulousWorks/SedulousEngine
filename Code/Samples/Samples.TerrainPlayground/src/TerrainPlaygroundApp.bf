@@ -9,6 +9,7 @@ using Sedulous.Geometry;
 using Sedulous.Graphics;
 using Sedulous.Heightfield;
 using Sedulous.Materials;
+using Sedulous.Resource;
 using Sedulous.Runtime.Client;
 using Sedulous.Scene;
 using Sedulous.Terrain.Resource;
@@ -161,7 +162,9 @@ class TerrainPlaygroundApp : DefaultApplication
 			let layer = new ProceduralVegetationLayer();
 			layer.Name.Set("Grass");
 			layer.Mesh.SetDirect(mGrassMesh);
-			layer.Material.SetDirect(mGrassMaterial);
+			var grass = Ref<Material>(Guid());
+			grass.SetDirect(mGrassMaterial);
+			layer.Materials.Add(grass);
 			layer.Placement = .Splat;
 			layer.SplatLayer = 0;
 			layer.Density = mGrassDensity;

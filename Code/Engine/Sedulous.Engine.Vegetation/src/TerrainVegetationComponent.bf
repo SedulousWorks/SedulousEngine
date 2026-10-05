@@ -29,7 +29,7 @@ static class VegetationLayerV1
 	{
 		Sedulous.Core.Serialization.Serialize(ar, "name", outBase.Name);
 		SerializeValue(ar, "mesh", ref outBase.Mesh.Id);
-		SerializeValue(ar, "material", ref outBase.Material.Id);
+		VegetationLayerBase.ReadSingleMaterial(ar, outBase.Materials);
 		SerializeValue(ar, "placement", ref outPlacement);
 		SerializeValue(ar, "splatLayer", ref outSplatLayer);
 		SerializeValue(ar, "splatThreshold", ref outSplatThreshold);
@@ -55,7 +55,8 @@ static class VegetationLayerV1
 	{
 		to.Name.Set(from.Name);
 		to.Mesh = from.Mesh;
-		to.Material = from.Material;
+		to.Materials.Clear();
+		to.Materials.AddRange(from.Materials);
 		to.ScaleRange = from.ScaleRange;
 		to.MaxSlopeDegrees = from.MaxSlopeDegrees;
 		to.HeightRange = from.HeightRange;
@@ -75,7 +76,7 @@ static class VegetationLayerV1
 /// layer is placed by hand, and one list carrying both meant a procedural layer dragged an
 /// empty instance array while a prop layer carried a density and a splat threshold that
 /// meant nothing, with nothing saying which entries a brush owned.
-[SerializableComponent("terrainVegetation", 2, 1)]
+[SerializableComponent("terrainVegetation", 3, 1)]
 [DisplayName("Terrain Vegetation")]
 [Category("Terrain")]
 struct TerrainVegetationComponent : ISerializable, IComponentResources
@@ -108,7 +109,8 @@ struct TerrainVegetationComponent : ISerializable, IComponentResources
 	{
 		// The legacy reader: version 1's single list, split by the placement it carried. The
 		// component's declared floor is what lets the payload in at all, and the scene
-		// re-saves as version 2.
+		// re-saves as the current version. Version 2's single material per layer is read by
+		// the layers themselves.
 		if ((ar.Mode == .Read) && (ar.Version == 1))
 		{
 			ReadVersionOne(ar);

@@ -78,6 +78,9 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		public bool WarnedClamp = false;
 		/// And the unresolved mesh warning, likewise once per layer.
 		public bool WarnedNoMesh = false;
+		/// The layer's materials, one per mesh slot, refreshed from its refs at each
+		/// extraction: what the snapshot's submesh routing points at.
+		public List<Material> Materials = new .() ~ delete _;
 	}
 
 	/// BORROWED: the scene outlives its systems.
@@ -479,7 +482,13 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		let hasOrigin = snapshot.HasViewOrigin;
 		let origin = snapshot.ViewOrigin;
 		let entityScale = MaxAxisScale(entityWorld);
-		let material = authored.Material.Get;
+		cache.Materials.Clear();
+		for (let reference in authored.Materials)
+			cache.Materials.Add(reference.Get);
+		let material = cache.Materials.IsEmpty ? null : cache.Materials[0];
+		// Submesh routing ONLY when the mesh is given more than one material, a mesh
+		// component's rule: a single entry is the whole mesh path, which keeps the batching.
+		let multiMaterial = cache.Materials.Count > 1;
 		for (int i < cache.Sets.Count)
 		{
 			let set = cache.Sets[i];
@@ -548,6 +557,8 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 			rd.Version = set.Version; // the scatter, so a re-upload only on a change
 			rd.Mesh = mesh;
 			rd.Material = material;
+			rd.SubmeshMaterials = multiMaterial ? cache.Materials.Ptr : null;
+			rd.SubmeshMaterialCount = multiMaterial ? (uint32)cache.Materials.Count : 0;
 			rd.WorldCenter = set.WorldCenter;
 			rd.WorldRadius = set.WorldRadius;
 			rd.EntityId = RenderExtract.PackEntity(owner);
