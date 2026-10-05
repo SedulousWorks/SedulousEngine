@@ -39,6 +39,26 @@ class AnimationFacade : SceneFacade
 	[Scriptable]
 	public void SetTrigger(EntityHandle entity, StringView name) => Graphs?.SetTrigger(entity, name);
 
+	// ---- root motion (Script mode) ----
+
+	/// The entity's animator's travel over its last tick, in the world: a script steering by the
+	/// clip's own speed (an animator in Script mode moves nothing itself). One frame late, the
+	/// animators ticking after scripts. Zero for an entity with no animator.
+	[Scriptable]
+	public Float3 RootMotionTranslation(EntityHandle entity) => RootMotionOf(entity).WorldTranslation;
+	/// And its turn about up, radians.
+	[Scriptable]
+	public float RootMotionYaw(EntityHandle entity) => RootMotionOf(entity).Yaw;
+
+	private RootMotionRuntime RootMotionOf(EntityHandle entity)
+	{
+		if (let graph = Graphs?.Get(entity))
+			return graph.RootMotionState;
+		if (let clip = Skeletal?.Get(entity))
+			return clip.RootMotionState;
+		return .();
+	}
+
 	// ---- inverse kinematics: the Two Bone IK and Aim IK components on the entity ----
 
 	/// The world point the entity's IK components reach for while they name no target entity.

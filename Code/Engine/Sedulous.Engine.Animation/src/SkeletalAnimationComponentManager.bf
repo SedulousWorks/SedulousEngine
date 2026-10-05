@@ -27,6 +27,13 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 
 	public override bool IsSimulationOnly => true;
 
+	/// The base's destructor sweeps the components through OnComponentDestroyed; mid teardown the
+	/// scene's other systems may be gone, so a driven character is not released then.
+	public ~this()
+	{
+		mScene = null;
+	}
+
 	protected override void OnComponentCreated(SkeletalAnimationComponent* component,
 		EntityHandle entity)
 	{
@@ -36,6 +43,9 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 	protected override void OnComponentDestroyed(SkeletalAnimationComponent* component,
 		EntityHandle entity)
 	{
+		// A character this animator was walking stops with it.
+		if (mScene != null)
+			RootMotionApply.Release(mScene, ref component.RootMotionState);
 		DeleteAndNullify!(component.Player);
 		DeleteAndNullify!(component.MeshEntities);
 		component.PlayerSkeleton = null;
@@ -138,11 +148,17 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 	{
 		// Frozen: time does not advance.
 		if (!mScene.IsEffectivelyActive(owner))
+		{
+			RootMotionApply.Release(mScene, ref component.RootMotionState);
 			return;
+		}
 
 		let skeleton = component.Skeleton.Get;
 		if (skeleton == null)
+		{
+			RootMotionApply.Release(mScene, ref component.RootMotionState);
 			return;
+		}
 
 		// (Re)build the player when the skeleton OBJECT changed: the first tick, an editor
 		// pick, or a hot reload swapping the product behind the reference.
@@ -172,6 +188,8 @@ class SkeletalAnimationComponentManager : ResourceBindingComponentManager<Skelet
 
 		component.Player.Speed = component.Speed;
 		component.Player.Update(deltaTime);
+		RootMotionApply.Apply(mScene, owner, component.MeshEntities, component.RootMotionTarget, component.RootMotion,
+			ref component.RootMotionState, component.Player.ConsumeRootMotion(), deltaTime);
 
 		AnimationFeed.FeedAll(mScene, meshes, owner, component.MeshEntities,
 			component.Player.GetSkinningMatrices(), component.Player.GetPrevSkinningMatrices());

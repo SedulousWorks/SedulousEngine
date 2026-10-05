@@ -51,7 +51,7 @@ static class EngineSurfaceScriptTests
 		File.WriteAllText(apiPath, text).IgnoreError();
 		// One bound type per surface type: the facades, the components, the values they pass,
 		// the globals.
-		Test.Assert(api.Count == 100, scope $"{api.Count} bound types");
+		Test.Assert(api.Count == 101, scope $"{api.Count} bound types");
 		// Spot checks of the spelling at the engine's scale.
 		var scene = (ScriptApiType)null;
 		for (let t in api)

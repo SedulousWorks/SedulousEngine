@@ -16,7 +16,7 @@ namespace Sedulous.Engine.Animation;
 /// The richer counterpart to [SkeletalAnimationComponent], which plays one clip. Transitions
 /// are driven through the player's parameters. The feed contract is the same: the named
 /// entities receive the matrices, and an empty list feeds the owner.
-[SerializableComponent("animation_graph")]
+[SerializableComponent("animation_graph", 2, 1)]
 [DisplayName("Animation Graph")]
 [Category("Animation")]
 [Scriptable]
@@ -42,6 +42,16 @@ struct AnimationGraphComponent : ISerializable, IComponentResources
 	[Scriptable]
 	public bool Active = true;
 
+	/// What the animator does with its clips' root motion (root-motion.md P2): Ignore by default.
+	[Scriptable, DisplayName("Root Motion")]
+	public RootMotionMode RootMotion = .Ignore;
+	/// What Entity mode moves: a gameplay root holding the model; empty is this entity.
+	[Scriptable, DisplayName("Root Motion Target")]
+	public EntityRef RootMotionTarget = .();
+	/// The last tick's root motion, runtime only.
+	[Hidden]
+	public RootMotionRuntime RootMotionState = .();
+
 	public this() {}
 
 	public void ResolveResources(ResourceManager manager) mut
@@ -56,5 +66,13 @@ struct AnimationGraphComponent : ISerializable, IComponentResources
 		SerializeValue(ar, "graph", ref Graph.Id);
 		SerializeValue(ar, "active", ref Active);
 		AnimationFeed.SerializeTargets(ar, MeshEntities);
+		// Data version 2: root motion; a version 1 record reads as Ignore.
+		if ((ar.Mode == .Write) || (ar.Version >= 2))
+		{
+			var mode = (uint8)RootMotion;
+			SerializeValue(ar, "rootMotion", ref mode);
+			RootMotion = (RootMotionMode)mode;
+			SerializeValue(ar, "rootMotionTarget", ref RootMotionTarget.Id);
+		}
 	}
 }

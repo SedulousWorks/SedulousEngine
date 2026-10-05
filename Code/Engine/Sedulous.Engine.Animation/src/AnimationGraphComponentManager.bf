@@ -36,9 +36,19 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 		component.MeshEntities = new List<EntityRef>();
 	}
 
+	/// The base's destructor sweeps the components through OnComponentDestroyed; mid teardown the
+	/// scene's other systems may be gone, so a driven character is not released then.
+	public ~this()
+	{
+		mScene = null;
+	}
+
 	protected override void OnComponentDestroyed(AnimationGraphComponent* component,
 		EntityHandle entity)
 	{
+		// A character this animator was walking stops with it.
+		if (mScene != null)
+			RootMotionApply.Release(mScene, ref component.RootMotionState);
 		DeleteAndNullify!(component.Player);
 		DeleteAndNullify!(component.MeshEntities);
 		component.PlayerSkeleton = null;
@@ -98,12 +108,18 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 	{
 		// Frozen.
 		if (!mScene.IsEffectivelyActive(owner))
+		{
+			RootMotionApply.Release(mScene, ref component.RootMotionState);
 			return;
+		}
 
 		let skeleton = component.Skeleton.Get;
 		let graph = component.Graph.Get;
 		if ((skeleton == null) || (graph == null))
+		{
+			RootMotionApply.Release(mScene, ref component.RootMotionState);
 			return;
+		}
 
 		// (Re)build when EITHER object changed: the first tick, a pick, a reload.
 		if ((component.Player == null) || (component.PlayerSkeleton !== skeleton)
@@ -116,9 +132,14 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 		}
 
 		if (!component.Active)
+		{
+			RootMotionApply.Release(mScene, ref component.RootMotionState);
 			return;
+		}
 
 		component.Player.Update(deltaTime);
+		RootMotionApply.Apply(mScene, owner, component.MeshEntities, component.RootMotionTarget, component.RootMotion,
+			ref component.RootMotionState, component.Player.ConsumeRootMotion(), deltaTime);
 
 		AnimationFeed.FeedAll(mScene, meshes, owner, component.MeshEntities,
 			component.Player.GetSkinningMatrices(), component.Player.GetPrevSkinningMatrices());

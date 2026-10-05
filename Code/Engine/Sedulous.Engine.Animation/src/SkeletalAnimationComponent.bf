@@ -23,7 +23,7 @@ namespace Sedulous.Engine.Animation;
 ///
 /// The player and the lists are OWNED BY THE MANAGER, because a component is a struct in a
 /// packed pool and cannot own heap data.
-[SerializableComponent("skeletal_animation")]
+[SerializableComponent("skeletal_animation", 2, 1)]
 [DisplayName("Skeletal Animation")]
 [Category("Animation")]
 [Scriptable]
@@ -55,6 +55,16 @@ struct SkeletalAnimationComponent : ISerializable, IComponentResources
 	[Scriptable]
 	public bool AutoPlay = true;
 
+	/// What the animator does with its clips' root motion (root-motion.md P2): Ignore by default.
+	[Scriptable, DisplayName("Root Motion")]
+	public RootMotionMode RootMotion = .Ignore;
+	/// What Entity mode moves: a gameplay root holding the model; empty is this entity.
+	[Scriptable, DisplayName("Root Motion Target")]
+	public EntityRef RootMotionTarget = .();
+	/// The last tick's root motion, runtime only.
+	[Hidden]
+	public RootMotionRuntime RootMotionState = .();
+
 	public this() {}
 
 	public void ResolveResources(ResourceManager manager) mut
@@ -73,5 +83,13 @@ struct SkeletalAnimationComponent : ISerializable, IComponentResources
 		SerializeValue(ar, "startTime", ref StartTime);
 		SerializeValue(ar, "autoPlay", ref AutoPlay);
 		AnimationFeed.SerializeTargets(ar, MeshEntities);
+		// Data version 2: root motion; a version 1 record reads as Ignore.
+		if ((ar.Mode == .Write) || (ar.Version >= 2))
+		{
+			var mode = (uint8)RootMotion;
+			SerializeValue(ar, "rootMotion", ref mode);
+			RootMotion = (RootMotionMode)mode;
+			SerializeValue(ar, "rootMotionTarget", ref RootMotionTarget.Id);
+		}
 	}
 }
