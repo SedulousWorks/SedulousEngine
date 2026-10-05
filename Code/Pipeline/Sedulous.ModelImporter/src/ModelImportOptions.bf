@@ -25,6 +25,9 @@ class ModelImportOptions : ImportOptions
 	public bool CollisionConvex = false;
 	/// Level of detail chains for big static meshes. An AUTHORED chain always wins.
 	public bool GenerateLods = true;
+	/// New clips move the character by their root's travel and turn, and play in place
+	/// (root-motion.md); a re-import keeps what each clip says.
+	public bool RootMotion = false;
 
 	public override void GetToggles(List<ImportToggle> outToggles)
 	{
@@ -49,6 +52,9 @@ class ModelImportOptions : ImportOptions
 		outToggles.Add(.("Convex collision",
 			"Simplified convex hulls (dynamic-capable) instead of exact triangle meshes",
 			&CollisionConvex));
+		outToggles.Add(.("Root motion",
+			"New clips move the character by their root's travel and turn, and play in place (each clip's page can change it; a re-import keeps what the clip says)",
+			&RootMotion));
 	}
 
 	public override void Serialize(ISerializer ar)
@@ -61,5 +67,8 @@ class ModelImportOptions : ImportOptions
 		SerializeValue(ar, "collisionConvex", ref CollisionConvex);
 		SerializeValue(ar, "scene", ref GenerateScene);
 		SerializeValue(ar, "generateLods", ref GenerateLods);
+		// Appended: options saved before it read as off.
+		if ((ar.Mode != .Read) || ar.HasKey("rootMotion"))
+			SerializeValue(ar, "rootMotion", ref RootMotion);
 	}
 }

@@ -106,7 +106,7 @@ static class ModelCook
 			let qualified = scope $"{namePrefix}.{clipName}";
 
 			let clipAsset = scope AnimationClipAsset();
-			AnimConvert.ClipFromModel(animations[a], boneToJoint, qualified, clipAsset.Source);
+			AnimConvert.ClipFromModel(animations[a], boneToJoint, qualified, clipAsset.Source, manifest.SkeletonParentNode);
 
 			let clipInstance = root.CreateInstance(qualified,
 				"Sedulous.Animation.Resource.AnimationClipSource");

@@ -55,7 +55,35 @@ static class ModelImportSkeleton
 
 			let asset = scope AnimationClipAsset();
 			AnimConvert.ClipFromModel(animations[a], boneToJoint,
-				(instance != null) ? instance.Name : "anim", asset.Source);
+				(instance != null) ? instance.Name : "anim", asset.Source, manifest.SkeletonParentNode);
+
+			// For the root motion cook: the skeleton, and the armature's rest (its own channels
+			// are the clip's model tracks).
+			asset.Skeleton = manifest.SkeletonGuid;
+			let parent = manifest.SkeletonParentNode;
+			if ((parent >= 0) && (parent < model.Bones.Length) && (model.Bones[parent] != null))
+			{
+				let armature = model.Bones[parent];
+				asset.RestPosition = armature.Translation;
+				asset.RestRotation = armature.Rotation;
+				asset.RestScale = armature.Scale;
+			}
+			// A re-import keeps what was authored on the clip, its root motion; a clip new to the
+			// import takes the import's option.
+			let previous = (instance != null) ? instance.ReadObject() : null;
+			defer { if (previous != null) delete previous; }
+			if (let before = previous as AnimationClipAsset)
+			{
+				asset.Source.RootBone.Set(before.Source.RootBone);
+				asset.Source.RootHorizontal = before.Source.RootHorizontal;
+				asset.Source.RootVertical = before.Source.RootVertical;
+				asset.Source.RootYaw = before.Source.RootYaw;
+			}
+			else if (let modelOptions = options as ModelImportOptions)
+			{
+				asset.Source.RootHorizontal = modelOptions.RootMotion;
+				asset.Source.RootYaw = modelOptions.RootMotion;
+			}
 
 			if ((instance != null) && (instance.WriteObject(asset) case .Ok))
 				manifest.AnimationGuid.Add(instance.Id);

@@ -26,10 +26,11 @@ class ModelImportOptionTests
 		Test.Assert(!options.GenerateScene);
 		Test.Assert(!options.GenerateCollision);
 		Test.Assert(!options.CollisionConvex);
+		Test.Assert(!options.RootMotion);
 
 		let toggles = scope List<ImportToggle>();
 		options.GetToggles(toggles);
-		Test.Assert(toggles.Count == 8);
+		Test.Assert(toggles.Count == 9); // + Root motion
 	}
 
 	/// Geometry ALWAYS imports; the three toggles gate everything else, and nothing of those

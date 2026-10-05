@@ -4,6 +4,31 @@ using Sedulous.Core;
 
 namespace Sedulous.Animation;
 
+/// The travel a clip carries for root motion (root-motion.md), baked at cook: the root's
+/// position and its turn about +Y at each time, in the space the motion is applied in (model
+/// space for a skeleton root or the armature's own channels). Empty when the clip extracts none.
+class RootMotionCurve
+{
+	public List<float> Times = new .() ~ delete _;
+	public List<Float3> Positions = new .() ~ delete _;
+	/// Radians about +Y.
+	public List<float> Yaws = new .() ~ delete _;
+	/// Which parts were extracted, and stripped from the pose.
+	public bool Horizontal = false;
+	public bool Vertical = false;
+	public bool Yaw = false;
+
+	public bool IsEmpty => Times.IsEmpty;
+
+	public void Clear()
+	{
+		Times.Clear();
+		Positions.Clear();
+		Yaws.Clear();
+		Horizontal = Vertical = Yaw = false;
+	}
+}
+
 /// Every track and event of one animation.
 class AnimationClip
 {
@@ -19,6 +44,8 @@ class AnimationClip
 	public List<QuatTrack> RotationTracks = new .() ~ DeleteContainerAndItems!(_);
 	public List<Vec3Track> ScaleTracks = new .() ~ DeleteContainerAndItems!(_);
 	public List<AnimationEvent> Events = new .() ~ DeleteContainerAndItems!(_);
+	/// What root motion took from the clip at cook; empty when it took nothing.
+	public RootMotionCurve RootMotion = new .() ~ delete _;
 
 	public this() {}
 
@@ -146,6 +173,7 @@ class AnimationClip
 		ClearAndDeleteItems!(RotationTracks);
 		ClearAndDeleteItems!(ScaleTracks);
 		ClearAndDeleteItems!(Events);
+		RootMotion.Clear();
 		Duration = 0.0f;
 		IsLooping = false;
 		mName.Clear();

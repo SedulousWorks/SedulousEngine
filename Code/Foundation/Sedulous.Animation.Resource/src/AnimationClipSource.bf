@@ -11,6 +11,12 @@ namespace Sedulous.Animation.Resource;
 /// Every value is a Float4, whatever the track drives: a position or a scale uses three of
 /// it and a rotation all four. One pool rather than two keeps the indexing single, and the
 /// wasted float is cheaper than a second set of parallel arrays to keep in step.
+///
+/// A track whose bone is minus one is a MODEL track: the armature node's own channels, kept by the
+/// importer for root motion; the pose never plays it. Appended last (root-motion.md P0): the root
+/// motion settings authored on the clip and the curve the cook baked, each its own key, so a text
+/// clip from before them reads with root motion off. Cooked clips are positional and re-cook: the
+/// clip builder's version moved.
 [Serializable]
 class AnimationClipSource
 {
@@ -32,6 +38,56 @@ class AnimationClipSource
 	// The events.
 	public List<float> EventTime = new .() ~ delete _;
 	public List<String> EventName = new .() ~ DeleteContainerAndItems!(_);
+
+	// Root motion: the root (a bone name; empty is the armature's own channels when the clip has
+	// them, else the skeleton's first root) and which parts of its travel, every part OFF.
+	[Appended]
+	public String RootBone = new .() ~ delete _;
+	/// The ground plane translation.
+	[Appended]
+	public bool RootHorizontal = false;
+	/// Height: a climb; off for a walk, which keeps its bob.
+	[Appended]
+	public bool RootVertical = false;
+	/// The turn about up, never pitch or roll.
+	[Appended]
+	public bool RootYaw = false;
+	/// Baked at cook; empty unless root motion is on.
+	[Appended]
+	public List<float> RootTimes = new .() ~ delete _;
+	[Appended]
+	public List<Float3> RootPositions = new .() ~ delete _;
+	[Appended]
+	public List<float> RootYaws = new .() ~ delete _;
+
+	public bool RootMotionAny => RootHorizontal || RootVertical || RootYaw;
+
+	/// Every field of `other`: a cook's working copy, which the builder bakes and strips while the
+	/// authored asset stays as it was.
+	public void CopyFrom(AnimationClipSource other)
+	{
+		Name.Set(other.Name);
+		Duration = other.Duration;
+		IsLooping = other.IsLooping;
+		TrackBone.Set(other.TrackBone);
+		TrackKindValue.Set(other.TrackKindValue);
+		TrackInterp.Set(other.TrackInterp);
+		TrackStart.Set(other.TrackStart);
+		TrackCount.Set(other.TrackCount);
+		KeyTime.Set(other.KeyTime);
+		KeyValue.Set(other.KeyValue);
+		EventTime.Set(other.EventTime);
+		ClearAndDeleteItems!(EventName);
+		for (let name in other.EventName)
+			EventName.Add(new String(name));
+		RootBone.Set(other.RootBone);
+		RootHorizontal = other.RootHorizontal;
+		RootVertical = other.RootVertical;
+		RootYaw = other.RootYaw;
+		RootTimes.Set(other.RootTimes);
+		RootPositions.Set(other.RootPositions);
+		RootYaws.Set(other.RootYaws);
+	}
 
 	public static void FromClip(AnimationClip clip, AnimationClipSource outSource)
 	{
@@ -61,6 +117,14 @@ class AnimationClipSource
 			outSource.EventTime.Add(event.Time);
 			outSource.EventName.Add(new String(event.Name));
 		}
+
+		let curve = clip.RootMotion;
+		outSource.RootHorizontal = curve.Horizontal;
+		outSource.RootVertical = curve.Vertical;
+		outSource.RootYaw = curve.Yaw;
+		outSource.RootTimes.Set(curve.Times);
+		outSource.RootPositions.Set(curve.Positions);
+		outSource.RootYaws.Set(curve.Yaws);
 	}
 
 	/// Rebuilds a clip IN PLACE, answering false when the record is malformed and leaving
@@ -95,6 +159,9 @@ class AnimationClipSource
 
 		for (int i = 0; i < trackTotal; i++)
 		{
+			// A model track: root motion's, baked into the curve, never the pose's.
+			if (TrackBone[i] < 0)
+				continue;
 			uint8 kindValue = (i < TrackKindValue.Count) ? TrackKindValue[i] : 0;
 			let kind = (TrackKind)kindValue;
 			// One is Linear, which is the sane default for a record that lost its modes.
@@ -130,6 +197,17 @@ class AnimationClipSource
 
 		for (int i = 0; i < EventTime.Count; i++)
 			clip.AddEvent(EventTime[i], (i < EventName.Count) ? EventName[i] : "");
+
+		let roots = Math.Min(RootTimes.Count, Math.Min(RootPositions.Count, RootYaws.Count));
+		for (int i < roots)
+		{
+			clip.RootMotion.Times.Add(RootTimes[i]);
+			clip.RootMotion.Positions.Add(RootPositions[i]);
+			clip.RootMotion.Yaws.Add(RootYaws[i]);
+		}
+		clip.RootMotion.Horizontal = (roots > 0) && RootHorizontal;
+		clip.RootMotion.Vertical = (roots > 0) && RootVertical;
+		clip.RootMotion.Yaw = (roots > 0) && RootYaw;
 
 		return true;
 	}
