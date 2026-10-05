@@ -57,6 +57,13 @@ struct CharacterComponent : ISerializable
 	/// Consumed as a snap at the next step, then cleared.
 	[Hidden]
 	public bool TeleportPending = false;
+	/// Driven (Drive): the script owns the whole velocity, gravity included, until the next
+	/// Move. What a board or a sled needs: momentum along a slope, which the standard recipe (a
+	/// grounded character moves only by its input) cannot keep.
+	[Hidden]
+	public bool Driving = false;
+	[Hidden]
+	public Float3 DriveVelocity = .(0.0f, 0.0f, 0.0f);
 
 	// ---- runtime ----
 
@@ -70,6 +77,18 @@ struct CharacterComponent : ISerializable
 	public Float3 PrevPosition = .(0, 0, 0);
 	[Hidden]
 	public Float3 CurrPosition = .(0, 0, 0);
+	/// How fast it moved over the last step (m/s): the motion the sweep allowed, not the
+	/// velocity asked for, since a wall or a slope bends it and a script integrating momentum
+	/// needs what happened.
+	[Scriptable]
+	[Hidden]
+	[ReadOnly]
+	public Float3 Velocity = .(0, 0, 0);
+	/// The ground under it after the last step; straight up in the air.
+	[Scriptable]
+	[Hidden]
+	[ReadOnly]
+	public Float3 GroundNormal = .(0, 1, 0);
 
 	public this() {}
 
@@ -78,7 +97,21 @@ struct CharacterComponent : ISerializable
 	public void Move(float velocityX, float velocityZ) mut
 	{
 		MoveVelocity = .(velocityX, 0.0f, velocityZ);
+		Driving = false;
 	}
+
+	/// The whole velocity for the coming steps, gravity included, replacing the standard recipe
+	/// (Move, Jump, Launch) until the next Move. Read Velocity and GroundNormal to integrate it:
+	/// gravity along a slope is gravity less its part along the ground normal.
+	[Scriptable]
+	public void Drive(float x, float y, float z) mut
+	{
+		DriveVelocity = .(x, y, z);
+		Driving = true;
+	}
+
+	[Scriptable]
+	public void Drive(Float3 velocity) mut => Drive(velocity.X, velocity.Y, velocity.Z);
 
 	[Scriptable]
 	public void Jump(float speed) mut

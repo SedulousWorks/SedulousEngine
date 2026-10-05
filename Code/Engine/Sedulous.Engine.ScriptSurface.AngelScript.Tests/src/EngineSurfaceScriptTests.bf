@@ -233,6 +233,58 @@ static class EngineSurfaceScriptTests
 		Test.Assert(!characters.Has(bystander), "reading never adds a character");
 	}
 
+	/// A board's surface: the motion and the ground under the character read, never written
+	/// (the tick measures them; here they are seeded), and the whole velocity driven, by
+	/// components or by a Float3.
+	[Test]
+	public static void AScriptReadsACharactersMotionAndGroundAndDrivesItsVelocity()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("board", "board.as", """
+			void ride(const Entity &in rider)
+			{
+				CharacterComponent c = CharacterComponent(rider);
+				Float3 v = c.Velocity;
+				Float3 n = c.GroundNormal;
+				c.Drive(v.X + n.X, v.Y + n.Y, v.Z + n.Z);
+			}
+			void push(const Entity &in rider)
+			{
+				CharacterComponent(rider).Drive(Float3(-5.0f, 0.0f, 1.0f));
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene("board");
+		defer Sedulous.Script.SceneFacades.Release(scene);
+		scene.AddSystem<Sedulous.Engine.Physics.PhysicsSceneSystem>();
+		let characters = scene.AddSystem<Sedulous.Engine.Physics.CharacterComponentManager>();
+		let rider = scene.CreateEntity("rider");
+		let character = characters.Add(rider);
+		character.Velocity = .(1.0f, 2.0f, 3.0f);
+		character.GroundNormal = .(0.0f, 0.0f, 1.0f);
+
+		var args = ScriptValue[1](.FromEntity(rider, scene));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("board", "void ride(const Entity &in)", args, ref r), "ran");
+		Test.Assert(character.Driving);
+		Test.Assert((character.DriveVelocity.X == 1.0f) && (character.DriveVelocity.Y == 2.0f) && (character.DriveVelocity.Z == 4.0f));
+		Test.Assert(vm.Call("board", "void push(const Entity &in)", args, ref r), "ran");
+		Test.Assert((character.DriveVelocity.X == -5.0f) && (character.DriveVelocity.Z == 1.0f));
+
+		let writer = scope AngelScriptRuntime();
+		writer.Bind(s);
+		Test.Assert(!writer.Compile("w", "w.as", """
+			void cheat(const Entity &in e) { CharacterComponent(e).Velocity = Float3(9.0f, 0.0f, 0.0f); }
+			"""), "measured, not written: the assignment does not compile");
+	}
+
 	/// A network identity through its component: a script gates on Authority (the owning
 	/// side drives) and reads Id; replication owns both, so an assignment never compiles.
 	[Test]

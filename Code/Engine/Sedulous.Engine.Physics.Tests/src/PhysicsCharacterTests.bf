@@ -225,4 +225,77 @@ class PhysicsCharacterTests
 		// And yet nothing fired, which is the gap.
 		Test.Assert(!entered);
 	}
+
+	private static float Dot3(Float3 a, Float3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
+
+	/// The standard recipe stands still on a slope (a grounded character moves only by its
+	/// input); a board drives the whole velocity, integrating gravity along the ground's normal.
+	[Test]
+	public static void ADrivenCharacterKeepsMomentumDownASlope()
+	{
+		let play = scope PhysicsPlayScene();
+		let tilt = 15.0f * Math.PI_f / 180.0f;
+		let slope = play.Scene.CreateEntity("slope");
+		var tilted = Transform();
+		tilted.Rotation = Quaternion.FromAxisAngle(.(0.0f, 0.0f, 1.0f), tilt); // rises to +x
+		play.Scene.SetLocalTransform(slope, tilted);
+		let body = play.Bodies.Add(slope);
+		body.Motion = .Static;
+		body.Layer = .Static;
+		body.HalfExtents = .(40.0f, 0.5f, 5.0f);
+		let rider = play.Scene.CreateEntity("rider");
+		play.Scene.SetLocalPosition(rider, .(15.0f, 15.0f * Math.Tan(tilt) + 1.6f, 0.0f));
+		play.Characters.Add(rider);
+		play.Start();
+		play.Step(60); // falls onto the slope and settles
+
+		let character = play.Characters.Get(rider);
+		Test.Assert(character.Ground == .OnGround);
+		Test.Assert(Near(character.GroundNormal.X, -Math.Sin(tilt), 0.02f), scope $"{character.GroundNormal}");
+		Test.Assert(Near(character.GroundNormal.Y, Math.Cos(tilt), 0.02f));
+		let standing = character.CurrPosition.X;
+		play.Step(30);
+		Test.Assert(Near(character.CurrPosition.X, standing, 0.01f), "the standard recipe holds");
+		Test.Assert(Near(character.Velocity.X, 0.0f, 0.05f));
+
+		// Driven: each step, gravity less its part along the normal, added to the velocity it
+		// has, which is kept along the ground.
+		let gravity = Float3(0.0f, -9.81f, 0.0f);
+		let dt = 1.0f / 60.0f;
+		for (int i < 60)
+		{
+			let n = character.GroundNormal;
+			var v = character.Velocity;
+			if (character.Grounded)
+			{
+				let along = gravity - n * Dot3(gravity, n);
+				v = v - n * Dot3(v, n) + along * dt;
+			}
+			else
+			{
+				v = v + gravity * dt;
+			}
+			character.Drive(v);
+			play.Step();
+		}
+		// One second down a 15 degree slope, frictionless: about g sin 15 = 2.5 m/s, downhill (-x).
+		Test.Assert(character.Grounded);
+		Test.Assert((character.Velocity.X < -2.0f) && (character.Velocity.X > -3.0f), scope $"{character.Velocity}");
+		Test.Assert(character.CurrPosition.X < standing - 1.0f);
+
+		// A move hands control back to the standard recipe, which stops it.
+		character.Move(0.0f, 0.0f);
+		Test.Assert(!character.Driving);
+		play.Step(2);
+		let stopped = character.CurrPosition.X;
+		play.Step(30);
+		Test.Assert(Near(character.CurrPosition.X, stopped, 0.01f));
+
+		// A teleport drops a driven character's momentum as well.
+		character.Drive(Float3(-5.0f, 0.0f, 0.0f));
+		character.SetPosition(.(15.0f, 15.0f * Math.Tan(tilt) + 1.6f, 0.0f));
+		play.Step(1);
+		Test.Assert(character.DriveVelocity.X == 0.0f);
+		Test.Assert(character.Velocity.X == 0.0f);
+	}
 }

@@ -346,6 +346,9 @@ class PhysicsSceneSystem : SceneSystem
 					mWorld.SetCharacterPosition(component.Character, component.TeleportTo);
 					mWorld.SetCharacterVelocity(component.Character, .(0, 0, 0));
 					component.MoveVelocity = .(0, 0, 0);
+					component.DriveVelocity = .(0, 0, 0);
+					component.Velocity = .(0, 0, 0);
+					component.GroundNormal = .(0, 1, 0);
 					component.JumpSpeed = 0.0f;
 					component.LaunchPending = false;
 					component.PrevPosition = component.TeleportTo;
@@ -358,7 +361,14 @@ class PhysicsSceneSystem : SceneSystem
 				let current = mWorld.CharacterVelocity(component.Character);
 				var velocity = Float3(component.MoveVelocity.X, 0.0f, component.MoveVelocity.Z);
 
-				if (component.LaunchPending)
+				if (component.Driving)
+				{
+					// The script's velocity as it is: it integrates gravity itself.
+					velocity = component.DriveVelocity;
+					component.LaunchPending = false;
+					component.JumpSpeed = 0.0f;
+				}
+				else if (component.LaunchPending)
 				{
 					// A launch sets the vertical speed wherever the character is.
 					velocity.Y = component.LaunchSpeed;
@@ -386,6 +396,8 @@ class PhysicsSceneSystem : SceneSystem
 				component.Ground = mWorld.GetCharacterGround(component.Character);
 				component.PrevPosition = component.CurrPosition;
 				component.CurrPosition = mWorld.CharacterPosition(component.Character);
+				component.GroundNormal = mWorld.CharacterGroundNormal(component.Character);
+				component.Velocity = (component.CurrPosition - component.PrevPosition) * (1.0f / fixedDeltaTime);
 			});
 	}
 
