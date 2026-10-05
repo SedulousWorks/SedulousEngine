@@ -6,6 +6,8 @@ using Sedulous.Scene;
 using Sedulous.Script;
 using Sedulous.Engine.GameInstance;
 using Sedulous.Engine.Script;
+using Sedulous.Engine.Script.Facades;
+using Sedulous.Script.AngelScript;
 
 namespace Sedulous.Engine.GameScript.Tests;
 
@@ -549,5 +551,34 @@ static class GameScriptTests
 			Test.Assert(!run.Instance.Saves.Flush());
 			run.Instance.StopScript();
 		}
+	}
+
+	/// A run's behaviours get its services with no game script at all: the run's own Input
+	/// (its action runtime, with the project's map), its Save and Run, never the idle ones
+	/// the application's configurator installs for scripts outside a run.
+	[Test]
+	public static void ARunsBehavioursGetItsServicesWithoutAGameScript()
+	{
+		let run = scope GameRun("scratch_game_services");
+		let surface = run.Surface;
+		let idleInput = scope InputFacade(null);
+		let idleSave = scope SaveFacade(null);
+		// What the application does: bind the surface and install the idle services first.
+		delete run.Instance.RunHost.Configure;
+		run.Instance.RunHost.Configure = new [=](runtime) =>
+			{
+				runtime.Bind(surface);
+				ClearAndDeleteItems!(runtime.Problems);
+				runtime.SetService(idleInput);
+				runtime.SetService(idleSave);
+			};
+
+		Test.Assert(!run.Instance.ScriptRunning);
+		let runtime = run.Instance.RunHost.EnsureRuntime(AngelScriptBackend.cLanguage);
+		Test.Assert(runtime != null);
+		let context = runtime.Context;
+		Test.Assert(context.FindService(typeof(InputFacade)) === run.Instance.[Friend]mInputFacade, "the run's Input");
+		Test.Assert(context.FindService(typeof(SaveFacade)) === run.Instance.[Friend]mSaveFacade, "the run's Save");
+		Test.Assert(context.FindService(typeof(GameInstance)) === run.Instance, "and Run");
 	}
 }
