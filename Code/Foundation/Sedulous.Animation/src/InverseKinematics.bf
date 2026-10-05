@@ -210,8 +210,8 @@ static class InverseKinematics
 	}
 
 	/// Bends a two bone chain so its end reaches `settings.Target`: exactly when the target is in
-	/// reach, else stopped at TwoBoneMaxReach of full reach (or the chain's shortest fold) and
-	/// pointed at it. Bone lengths are the pose's own (a rotation keeps them; the bind pose's
+	/// reach, else stopped at TwoBoneMaxReach of full reach (or the span the pose already has, if
+	/// the animation holds it straighter; or the chain's shortest fold) and pointed at it. Bone lengths are the pose's own (a rotation keeps them; the bind pose's
 	/// would miss when an animation moved a bone). The mid joint stays in the bend plane, so it
 	/// never rolls or flips between frames. Writes the start and mid local rotations, and the
 	/// end's with MatchRotation.
@@ -247,7 +247,10 @@ static class InverseKinematics
 		let side = BendSide(skeleton, model, chain, settings, along, upper);
 		let hinge = Normalized(Cross(along, side));
 		let shortest = Math.Max(Math.Abs(upper - lower), 1.0e-4f * reach);
-		let span = Math.Clamp(Length(target - a), shortest, TwoBoneMaxReach * reach);
+		// Short of locking straight, unless the animation already holds the chain straighter: IK
+		// never pulls a nearly straight standing leg up off the ground it already reaches.
+		let longest = Math.Max(TwoBoneMaxReach * reach, Math.Min(Length(c - a), reach));
+		let span = Math.Clamp(Length(target - a), shortest, longest);
 		let cosWanted = Math.Clamp((upper * upper + lower * lower - span * span) / (2.0f * upper * lower), -1.0f, 1.0f);
 		// The interior angle measured about the hinge (a turn about it opens the joint), so a
 		// straight chain or one bent the other way still lands on the bend side.

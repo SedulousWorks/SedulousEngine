@@ -412,6 +412,29 @@ class InverseKinematicsTests
 		}
 	}
 
+	/// A standing leg is nearly straight: the clamp short of locking must not pull it up off the
+	/// ground it already reaches, toward a target where it stands or one beyond it.
+	[Test]
+	public static void AChainTheAnimationHoldsStraighterThanTheClampKeepsItsOwnSpan()
+	{
+		let skeleton = scope Skeleton(BoneCount);
+		BuildBody(skeleton);
+		let hip = Float3(1, 10, 0);
+		let pose = scope List<BoneTransform>();
+		BindPose(skeleton, pose);
+		pose[Shin].Rotation = Quaternion.FromAxisAngle(.(1, 0, 0), -0.05f); // 0.9998 of full reach
+		let cache = scope ModelPoseCache();
+		cache.Build(skeleton, pose);
+		let span = Length(At(cache, Foot) - hip);
+		Test.Assert(span > InverseKinematics.TwoBoneMaxReach * Reach);
+		var settings = TwoBoneIkSettings();
+		settings.Target = At(cache, Foot);
+		Test.Assert(InverseKinematics.SolveTwoBone(skeleton, pose, cache, Leg, settings).Reached);
+		settings.Target = hip + Normalized(At(cache, Foot) - hip) * 20.0f;
+		InverseKinematics.SolveTwoBone(skeleton, pose, cache, Leg, settings);
+		Test.Assert(Near(Length(At(cache, Foot) - hip), span, 1e-5f));
+	}
+
 	/// Sedulous has no counting allocator; the solvers hold no growable storage of their own
 	/// (fixed arrays only), so what could allocate per frame is the cache, and its storage must
 	/// neither move nor grow once sized.
