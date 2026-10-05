@@ -38,4 +38,16 @@ class AnimationFacade : SceneFacade
 	public void SetBool(EntityHandle entity, StringView name, bool value) => Graphs?.SetBool(entity, name, value);
 	[Scriptable]
 	public void SetTrigger(EntityHandle entity, StringView name) => Graphs?.SetTrigger(entity, name);
+
+	// ---- inverse kinematics: the Two Bone IK and Aim IK components on the entity ----
+
+	/// The world point the entity's IK components reach for while they name no target entity.
+	[Scriptable]
+	public void SetIkTarget(EntityHandle entity, Float3 worldPosition) => IkScene.SetTarget(Scene, entity, worldPosition);
+	/// Whether every IK component on the entity reached its target on the last solve.
+	[Scriptable]
+	public bool IkReached(EntityHandle entity) => IkScene.Reached(Scene, entity);
+	/// The largest miss on the last solve: metres for a two bone chain, radians for an aim.
+	[Scriptable]
+	public float IkError(EntityHandle entity) => IkScene.Error(Scene, entity);
 }

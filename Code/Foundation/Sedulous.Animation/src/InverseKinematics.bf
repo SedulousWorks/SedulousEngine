@@ -155,7 +155,7 @@ static class InverseKinematics
 		=> (bone >= 0) && (bone < skeleton.BoneCount) && (bone < localPoses.Length);
 
 	/// True when `ancestor` is above `bone` (not the bone itself).
-	private static bool IsBelow(Skeleton skeleton, int32 bone, int32 ancestor)
+	public static bool IsBelow(Skeleton skeleton, int32 bone, int32 ancestor)
 	{
 		var b = skeleton.GetBone(bone);
 		for (int32 steps = 0; (b != null) && (b.ParentIndex >= 0) && (steps <= skeleton.BoneCount); steps++)
