@@ -182,6 +182,13 @@ static class InspectorRows<T>
 				quoted, member, names, values);
 			return true;
 		}
+		if ((ft == typeof(String)) && (field.GetCustomAttribute<Sedulous.Engine.Animation.BoneNameAttribute>() case .Ok))
+		{
+			// A bone of the animator's skeleton, picked rather than typed.
+			row.AppendF("s.BoneNameRow({}, new (p) => StringView({}), new (p, v) => {{ {}.Set(v); }});\n",
+				quoted, member, member);
+			return true;
+		}
 		if (ft == typeof(String))
 		{
 			row.AppendF("s.TextRow({}, new (p) => StringView({}), new (p, v) => {{ {}.Set(v); }});\n",

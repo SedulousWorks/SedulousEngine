@@ -3,6 +3,8 @@ using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.Render;
 using Sedulous.Engine.Render;
+using Sedulous.Engine.Animation;
+using Sedulous.Animation;
 using Sedulous.Engine.Physics;
 using Sedulous.Engine.Navigation;
 
@@ -16,7 +18,11 @@ class ComponentGizmoTests
 	{
 		let registry = scope GizmoRendererRegistry();
 		BuiltinGizmoRenderers.Register(registry);
-		Test.Assert(registry.Count == 11);
+		// The three inverse kinematics gizmos joined the eleven.
+		Test.Assert(registry.Count == 14);
+		Test.Assert(registry.Find(typeof(TwoBoneIkComponent)) != null);
+		Test.Assert(registry.Find(typeof(AimIkComponent)) != null);
+		Test.Assert(registry.Find(typeof(FootIkComponent)) != null);
 
 		Test.Assert(registry.Find(typeof(LightComponent)) != null);
 		Test.Assert(registry.Find(typeof(RigidBodyComponent)) != null);
@@ -269,5 +275,70 @@ class ComponentGizmoTests
 		Test.Assert(!dd.HasAnyDraws); // none of these show unselected
 		registry.DrawEntity(e, true, ctx);
 		Test.Assert(dd.LineVertices.Length > 0);
+	}
+
+	/// An IK component is seen before it runs: its chain where the bind pose stands (through the
+	/// animator's model entity), its target, and an orange mark when a bone name is not in the
+	/// skeleton.
+	[Test]
+	public static void ATwoBoneIkChainDrawsInItsBindPoseWithItsTarget()
+	{
+		let skeleton = scope Skeleton(3);
+		StringView[3] names = .("Thigh", "Shin", "Foot");
+		float[3] ys = .(1.0f, -0.5f, -0.5f);
+		for (int32 i < 3)
+		{
+			let bone = skeleton.Bones[i];
+			bone.Index = i;
+			bone.Name.Set(names[i]);
+			bone.ParentIndex = i - 1;
+			bone.LocalBindPose.Position = .(0, ys[i], 0);
+		}
+		skeleton.BuildNameMap();
+		skeleton.FindRootBones();
+		skeleton.BuildChildIndices();
+		skeleton.ComputeInverseBindPoses();
+
+		let scene = scope Scene();
+		scene.AddSystem<MeshComponentManager>();
+		AnimationScene.AddAnimationSceneManagers(scene);
+		let rider = scene.CreateEntity("Rider");
+		scene.SetLocalPosition(rider, .(10, 0, 0));
+		scene.GetSystem<SkeletalAnimationComponentManager>().Add(rider).Skeleton.SetDirect(skeleton);
+		let leg = scene.CreateEntity("LegIk");
+		scene.SetParent(leg, rider);
+		let c = scene.GetSystem<TwoBoneIkComponentManager>().Add(leg);
+		c.StartBone.Set("Thigh");
+		c.MidBone.Set("Shin");
+		c.EndBone.Set("Foot");
+		scene.UpdateTransforms();
+
+		let registry = scope GizmoRendererRegistry();
+		BuiltinGizmoRenderers.Register(registry);
+		let dd = scope DebugDraw();
+		let ctx = scope GizmoContext();
+		ctx.Scene = scene;
+		ctx.Debug = dd;
+		registry.DrawEntity(leg, true, ctx);
+		// The chain's joints at x = 10, y 1, 0.5 and 0 (the bind pose through the rider).
+		var sawThigh = false;
+		var sawFoot = false;
+		for (let v in dd.OverlayLineVertices)
+		{
+			sawThigh = sawThigh || ((Math.Abs(v.Position.X - 10.0f) < 1e-4f) && (Math.Abs(v.Position.Y - 1.0f) < 1e-4f));
+			sawFoot = sawFoot || ((Math.Abs(v.Position.X - 10.0f) < 1e-4f) && (Math.Abs(v.Position.Y) < 1e-4f));
+		}
+		Test.Assert(sawThigh);
+		Test.Assert(sawFoot);
+
+		// A bone the skeleton lacks: the chain breaks and the entity is marked orange (R > G).
+		c.MidBone.Set("Knee");
+		let missing = scope DebugDraw();
+		ctx.Debug = missing;
+		registry.DrawEntity(leg, true, ctx);
+		var orange = false;
+		for (let v in missing.OverlayLineVertices)
+			orange = orange || ((v.Color & 0xFF) > ((v.Color >> 8) & 0xFF) + 40);
+		Test.Assert(orange);
 	}
 }

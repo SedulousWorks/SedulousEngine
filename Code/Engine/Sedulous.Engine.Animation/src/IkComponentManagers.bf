@@ -33,6 +33,16 @@ enum IkLookup : uint8
 	Ambiguous,
 }
 
+/// The animator an IK component names, as authoring sees it: component data, no player.
+struct IkAuthoringAnimator
+{
+	/// BORROWED; null until the skeleton resource has loaded.
+	public Skeleton Skeleton = null;
+	public EntityHandle ModelEntity = .Invalid;
+
+	public this() {}
+}
+
 /// The values every IK component carries that its manager's shared step reads.
 struct IkCommon
 {
@@ -97,11 +107,71 @@ static class IkScene
 	/// must never retarget the IK silently.
 	public static IkLookup FindAnimator(Scene scene, EntityHandle from, out IkAnimatorLink outLink)
 	{
-		outLink = .();
+		IkAnimatorLink link = .();
+		// Recorded only on a match: AnimatorOn clears its answer on a miss, and the walk below
+		// visits misses after the match it keeps.
+		let lookup = FindFrom(scene, from, scope [&] (e) =>
+			{
+				if (!AnimatorOn(scene, e, let on))
+					return false;
+				link = on;
+				return true;
+			});
+		outLink = (lookup == .Found) ? link : .();
+		return lookup;
+	}
+
+	/// What authoring needs of an IK component's animator, from the component data alone (an
+	/// edit scene has no players): its skeleton once the resource has loaded (null before), and
+	/// the entity whose world is the skeleton's model space. The same rule as FindAnimator.
+	public static IkLookup FindAuthoringAnimator(Scene scene, EntityHandle from, out IkAuthoringAnimator outAnimator)
+	{
+		IkAuthoringAnimator found = .();
+		let graphs = scene.GetSystem<AnimationGraphComponentManager>();
+		let clips = scene.GetSystem<SkeletalAnimationComponentManager>();
+		let lookup = FindFrom(scene, from, scope [&] (e) =>
+			{
+				if (let graph = graphs?.Get(e))
+				{
+					found.Skeleton = graph.Skeleton.Get;
+					found.ModelEntity = ModelEntity(scene, graph.MeshEntities, e);
+					return true;
+				}
+				if (let clip = clips?.Get(e))
+				{
+					found.Skeleton = clip.Skeleton.Get;
+					found.ModelEntity = ModelEntity(scene, clip.MeshEntities, e);
+					return true;
+				}
+				return false;
+			});
+		outAnimator = (lookup == .Found) ? found : .();
+		return lookup;
+	}
+
+	/// A bone's bind pose position in the world, through the model entity: where the editor's
+	/// gizmos draw a chain before any animation. False for a name not in the skeleton.
+	public static bool BindBoneWorld(Scene scene, IkAuthoringAnimator animator, StringView bone, out Float3 outWorld)
+	{
+		outWorld = .(0, 0, 0);
+		if (animator.Skeleton == null)
+			return false;
+		let index = animator.Skeleton.FindBone(bone);
+		let b = (index >= 0) ? animator.Skeleton.GetBone(index) : null;
+		if (b == null)
+			return false;
+		outWorld = TransformPoint(InverseKinematics.Position(Inverse(b.InverseBindPose)), scene.ComposeWorldMatrix(animator.ModelEntity));
+		return true;
+	}
+
+	/// The animator walk both lookups share: `isAnimator` answers for one entity, recording what
+	/// it found. The nearest at or above `from`, else the ONE below it, depth first.
+	private static IkLookup FindFrom(Scene scene, EntityHandle from, delegate bool(EntityHandle) isAnimator)
+	{
 		var e = from;
 		for (int depth = 0; scene.IsValid(e) && (depth < 1024); depth++)
 		{
-			if (AnimatorOn(scene, e, out outLink))
+			if (isAnimator(e))
 				return .Found;
 			e = scene.GetParent(e);
 		}
@@ -111,15 +181,12 @@ static class IkScene
 		e = scene.IsValid(from) ? scene.GetFirstChild(from) : .Invalid;
 		for (int visited = 0; scene.IsValid(e) && (visited < 65536); visited++)
 		{
-			if (AnimatorOn(scene, e, let link))
+			if (isAnimator(e))
 			{
+				// The second match overwrote the first's record; it is not answered anyway.
 				if (found)
-				{
-					outLink = .();
 					return .Ambiguous;
-				}
 				found = true;
-				outLink = link;
 			}
 			if (scene.IsValid(scene.GetFirstChild(e)))
 			{

@@ -16,5 +16,8 @@ static class BuiltinGizmoRenderers
 		registry.Register(new CharacterColliderGizmoRenderer());
 		registry.Register(new JointGizmoRenderer());
 		registry.Register(new SplineGizmoRenderer());
+		registry.Register(new TwoBoneIkGizmoRenderer());
+		registry.Register(new AimIkGizmoRenderer());
+		registry.Register(new FootIkGizmoRenderer());
 	}
 }

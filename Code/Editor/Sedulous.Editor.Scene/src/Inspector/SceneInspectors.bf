@@ -38,6 +38,9 @@ static class SceneInspectors
 		InspectorRegistry.Register<AnimationGraphComponent>();
 		InspectorRegistry.Register<InstancedSkinningComponent>();
 		InspectorRegistry.Register<PropertyAnimatorComponent>();
+		InspectorRegistry.Register<TwoBoneIkComponent>();
+		InspectorRegistry.Register<AimIkComponent>();
+		InspectorRegistry.Register<FootIkComponent>();
 		// Audio.
 		InspectorRegistry.Register<AudioSourceComponent>();
 		InspectorRegistry.Register<AudioListenerComponent>();

@@ -10,6 +10,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Animation;
+using Sedulous.Animation;
 using Sedulous.Engine.Spline;
 using Sedulous.Engine.Vegetation;
 using Sedulous.Engine.Script;
@@ -605,6 +606,67 @@ class InspectorViewTests
 		Test.Assert(component.ProceduralLayers[1].Materials.Count == 0, "the other slot's list is untouched");
 		commands.Undo();
 		Test.Assert(component.ProceduralLayers[0].Materials.Count == 0, "and it undoes");
+	}
+
+	/// A [BoneName] field lists the bones of the animator above the entity, so a chain is picked,
+	/// not typed; a name the skeleton lacks stays listed and says so; with no animator above, the
+	/// field is plain text.
+	[Test]
+	public static void ABoneNameFieldPicksFromTheAnimatorsSkeleton()
+	{
+		SceneInspectors.RegisterBuiltin();
+		let skeleton = scope Skeleton(3);
+		StringView[3] names = .("Thigh", "Shin", "Foot");
+		for (int32 i < 3)
+		{
+			let bone = skeleton.Bones[i];
+			bone.Index = i;
+			bone.Name.Set(names[i]);
+			bone.ParentIndex = i - 1;
+		}
+		skeleton.BuildNameMap();
+
+		let scene = scope Scene();
+		scene.AddSystem<MeshComponentManager>();
+		AnimationScene.AddAnimationSceneManagers(scene);
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let editor = scope EditorContext();
+		let inspector = new SceneInspectorView(editor, edit);
+		defer inspector.ReleaseRef();
+
+		let rider = edit.CreateEntity("Rider");
+		let leg = edit.CreateEntity("LegIk");
+		scene.SetParent(edit.Resolve(leg), edit.Resolve(rider));
+		scene.GetSystem<SkeletalAnimationComponentManager>().Add(edit.Resolve(rider)).Skeleton.SetDirect(skeleton);
+		let legs = scene.GetSystem<TwoBoneIkComponentManager>();
+		legs.Add(edit.Resolve(leg)).MidBone.Set("Knee");
+
+		edit.EntitySelection.Set(leg);
+		inspector.Refresh();
+		let start = Find(inspector, "StartBone") as EnumEditor;
+		Test.Assert(start != null, "a picker, not a text field");
+		Test.Assert(start.Items.Length == 4); // (none), Thigh, Shin, Foot
+		Test.Assert(start.Items[0] == "(none)");
+		Test.Assert(start.Items[2] == "Shin");
+		Test.Assert(start.Value == 0);
+		start.Setter(1);
+		Test.Assert(legs.Get(edit.Resolve(leg)).StartBone == "Thigh");
+		commands.Undo();
+		Test.Assert(legs.Get(edit.Resolve(leg)).StartBone.IsEmpty);
+
+		let mid = Find(inspector, "MidBone") as EnumEditor;
+		Test.Assert(mid != null);
+		Test.Assert(mid.Items.Length == 5);
+		Test.Assert(mid.Items[4] == "Knee (not in the skeleton)");
+		Test.Assert(mid.Value == 4);
+
+		// With no animator above or below, the field is plain text.
+		let stray = edit.CreateEntity("Stray");
+		legs.Add(edit.Resolve(stray));
+		edit.EntitySelection.Set(stray);
+		inspector.Refresh();
+		Test.Assert((Find(inspector, "StartBone") as StringEditor) != null);
 	}
 
 	private static bool Near(float a, float b) => Math.Abs(a - b) <= 0.001f;

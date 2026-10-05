@@ -38,6 +38,9 @@ class SlotTarget : InspectorTarget
 
 	public override Type TargetType => mElementType;
 
+	/// A slot is its owning component's entity's.
+	public override Guid EntityId => mParent.EntityId;
+
 	public override void* Address
 	{
 		get

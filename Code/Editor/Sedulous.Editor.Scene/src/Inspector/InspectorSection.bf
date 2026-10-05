@@ -176,6 +176,76 @@ class InspectorSection
 		});
 	}
 
+	/// A bone name ([BoneName]): a list of the bones of the IK component's animator, so a chain
+	/// is picked, not typed. A name the skeleton does not have stays listed and says so (the
+	/// component turns itself off for it at run time). The plain text field while there is no
+	/// animator or its skeleton has not loaded.
+	public void BoneNameRow(StringView field, delegate StringView(void* p) read,
+		delegate void(void* p, StringView v) write)
+	{
+		let edit = mTarget.Edit;
+		let entity = (edit != null) ? edit.Resolve(mTarget.EntityId) : EntityHandle.Invalid;
+		Sedulous.Engine.Animation.IkAuthoringAnimator animator = .();
+		if ((edit == null) || (Sedulous.Engine.Animation.IkScene.FindAuthoringAnimator(edit.Scene, entity, out animator) != .Found)
+			|| (animator.Skeleton == null))
+		{
+			TextRow(field, read, write);
+			return;
+		}
+		Own(field);
+		Keep(read);
+		Keep(write);
+		let target = mTarget;
+
+		// Item 0 is "(none)"; then the bones in skeleton order; then the current name if missing.
+		let current = Read(read, StringView());
+		let names = new List<String>() { new String() };
+		Keep(names);
+		for (int32 i < animator.Skeleton.BoneCount)
+			names.Add(new String(animator.Skeleton.GetBone(i).Name));
+		if (!current.IsEmpty && (animator.Skeleton.FindBone(current) < 0))
+			names.Add(new String(current));
+		for (let name in names)
+			Keep(name);
+		let labels = scope List<String>();
+		defer { ClearAndDeleteItems!(labels); }
+		labels.Add(new String("(none)"));
+		for (int i = 1; i < names.Count; i++)
+		{
+			let label = new String(names[i]);
+			if ((i == names.Count - 1) && !current.IsEmpty && (animator.Skeleton.FindBone(current) < 0))
+				label.Append(" (not in the skeleton)");
+			labels.Add(label);
+		}
+		let items = scope List<StringView>();
+		for (let label in labels)
+			items.Add(label);
+
+		let editor = new EnumEditor(field, IndexOfName(names, current), items,
+			new [=target, =write, =names](index) =>
+			{
+				if ((index < 0) || (index >= names.Count))
+					return;
+				let text = scope String(names[index]);
+				target.Mutate(scope [=write, =text](p) => { write(p, text); });
+			}, mCategory);
+		Add(editor, new [=editor, =read, =target, =names]() =>
+		{
+			if (let p = target.Address)
+				editor.SetValue(IndexOfName(names, read(p)));
+		});
+	}
+
+	private static int32 IndexOfName(List<String> names, StringView name)
+	{
+		for (int i < names.Count)
+		{
+			if (names[i] == name)
+				return (int32)i;
+		}
+		return 0;
+	}
+
 	/// A String field, edited in place through Mutate: the string object stays the
 	/// component's own.
 	public void TextRow(StringView field, delegate StringView(void* p) read,

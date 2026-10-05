@@ -22,6 +22,8 @@ class ComponentTarget : InspectorTarget
 
 	public override Type TargetType => Type;
 
+	public override Guid EntityId => Id;
+
 	public override void* Address
 	{
 		get

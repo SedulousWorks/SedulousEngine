@@ -31,6 +31,8 @@ class EnumEditor : PropertyEditor
 	}
 
 	public int32 Value => mValue;
+	/// The item names, in order.
+	public Span<String> Items => mItems;
 
 	public void SetValue(int32 value)
 	{

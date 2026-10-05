@@ -47,4 +47,8 @@ abstract class InspectorTarget
 	/// Points a Ref<T> field at another asset, for a target the typed component and settings
 	/// paths do not cover. Nothing by default.
 	public virtual void SetReference(StringView field, Guid id) {}
+
+	/// The entity whose data this is, for a row that reads around it (a bone name lists its
+	/// animator's bones). Nil where the target is no entity's.
+	public virtual Guid EntityId => .();
 }
