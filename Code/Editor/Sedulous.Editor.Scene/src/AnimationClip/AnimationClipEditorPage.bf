@@ -65,6 +65,9 @@ class AnimationClipEditorPage : UIEditorPage, IPlaybackPage
 	/// Seconds into the clip.
 	private float mTime = 0.0f;
 	private bool mPlaying = true;
+	/// The preview plays a clip's stripped pose in place; on, it travels by the clip's root
+	/// motion instead. Page state, not the clip's.
+	private bool mShowTravel = false;
 	/// The slider writes mTime; playback writes the slider.
 	private bool mScrubbing = false;
 

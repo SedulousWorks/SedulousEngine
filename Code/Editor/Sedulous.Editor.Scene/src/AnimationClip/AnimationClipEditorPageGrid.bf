@@ -32,6 +32,29 @@ extension AnimationClipEditorPage
 				CommitEdit("clip-loop");
 			}, "Clip"));
 
+		// Root motion (root-motion.md): what the cook extracts; the preview shows its path.
+		mGrid.AddProperty(new StringEditor("Root bone", source.RootBone, new [=this](v) =>
+			{
+				mAsset.Source.RootBone.Set(v);
+				CommitEdit("clip-rootbone");
+			}, "Root Motion"));
+		mGrid.AddProperty(new BoolEditor("Horizontal", source.RootHorizontal, new [=this](v) =>
+			{
+				mAsset.Source.RootHorizontal = v;
+				CommitEdit("clip-rootmotion");
+			}, "Root Motion"));
+		mGrid.AddProperty(new BoolEditor("Vertical", source.RootVertical, new [=this](v) =>
+			{
+				mAsset.Source.RootVertical = v;
+				CommitEdit("clip-rootmotion");
+			}, "Root Motion"));
+		mGrid.AddProperty(new BoolEditor("Yaw", source.RootYaw, new [=this](v) =>
+			{
+				mAsset.Source.RootYaw = v;
+				CommitEdit("clip-rootmotion");
+			}, "Root Motion"));
+		mGrid.AddProperty(new BoolEditor("Show travel", mShowTravel, new [=this](v) => { mShowTravel = v; }, "Root Motion"));
+
 		// The events are a section list: the header's add icon places one at the playhead, and
 		// each event is a section of its own with its remove icon.
 		let eventCount = ClipSourceEdit.EventCount(source);

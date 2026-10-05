@@ -13,12 +13,19 @@ static class SkeletonWireframe
 	/// `worldScratch` is the caller's reusable world pose buffer; it holds every bone's
 	/// world matrix afterwards, so a caller can emphasise one joint.
 	public static void Draw(DebugDraw draw, Skeleton skeleton, Span<BoneTransform> localPoses, List<Float4x4> worldScratch)
+		=> Draw(draw, skeleton, localPoses, worldScratch, .Identity());
+
+	/// `placement` places the whole rig: a preview travelling by its root motion.
+	public static void Draw(DebugDraw draw, Skeleton skeleton, Span<BoneTransform> localPoses, List<Float4x4> worldScratch,
+		Float4x4 placement)
 	{
 		let boneCount = skeleton.BoneCount;
 		if ((boneCount == 0) || (localPoses.Length < boneCount))
 			return;
 		worldScratch.Count = boneCount;
 		skeleton.ComputeWorldPoses(localPoses, .(worldScratch.Ptr, boneCount));
+		for (int b < boneCount)
+			worldScratch[b] = worldScratch[b] * placement;
 		let boneColor = Color(0.35f, 0.85f, 1.0f, 1.0f);
 		for (int32 b < boneCount)
 		{

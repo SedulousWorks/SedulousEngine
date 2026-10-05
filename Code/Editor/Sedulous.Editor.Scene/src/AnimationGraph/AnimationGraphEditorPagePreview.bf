@@ -185,6 +185,17 @@ extension AnimationGraphEditorPage
 		}
 		if (mPreviewPlaying)
 			mPlayer.Update(dt);
+		// Root motion: read every frame, so it never piles up, and applied while Travel is on.
+		let moved = mPlayer.ConsumeRootMotion();
+		if (mShowTravel)
+		{
+			mTravelPosition = mTravelPosition + RotateVector(Quaternion.FromAxisAngle(.(0, 1, 0), mTravelYaw), moved.Translation);
+			mTravelYaw += moved.Yaw;
+			if (Length(Float3(mTravelPosition.X, 0, mTravelPosition.Z)) > 6.0f)
+				mTravelPosition = .(0, 0, 0); // back to the middle of the grid
+		}
+		let travelTurn = Quaternion.FromAxisAngle(.(0, 1, 0), mTravelYaw);
+		let travel = Transform(mTravelPosition, travelTurn, .(1, 1, 1)).ToMatrix();
 
 		let layerIndex = Math.Min(mSelectedLayer, (int32)mPreviewGraph.Layers.Count - 1);
 		let current = mPlayer.GetCurrentStateIndex(layerIndex);
@@ -204,6 +215,8 @@ extension AnimationGraphEditorPage
 			return;
 		let scene = mPreview.Scene;
 		let mc = PreviewComponent();
+		if (scene != null)
+			scene.SetLocalTransform(mMeshEntity, .(mTravelPosition, travelTurn, .(1, 1, 1)));
 		if ((scene != null) && (mc != null))
 		{
 			let meshVisible = mShowMesh && (mc.Mesh.Get != null);
@@ -219,6 +232,6 @@ extension AnimationGraphEditorPage
 		let draw = mPreview.SceneDebugDraw;
 		draw.DrawGrid(.(0.0f, 0.0f, 0.0f), 4.0f, 8, .(0.25f, 0.25f, 0.28f, 1.0f));
 		if (mShowSkeleton)
-			SkeletonWireframe.Draw(draw, mPlayerSkeleton, mPlayer.GetLocalPoses(), mWorldScratch);
+			SkeletonWireframe.Draw(draw, mPlayerSkeleton, mPlayer.GetLocalPoses(), mWorldScratch, travel);
 	}
 }

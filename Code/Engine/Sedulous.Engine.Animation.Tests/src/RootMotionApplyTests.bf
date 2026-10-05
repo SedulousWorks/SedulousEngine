@@ -135,6 +135,58 @@ class RootMotionApplyTests
 		Test.Assert(script.Animator.RootMotionState.Yaw == 0.0f);
 	}
 
+	/// PaperKid's pet: the Pet entity (a scene root) is turned by its script every frame; its model
+	/// under it plays a Walk whose root travels 0.55 m over 1.0417 s, at speed 1.45, in Entity
+	/// mode aimed at the Pet. It must walk the way the Pet faces, at about 0.8 m/s.
+	[Test]
+	public static void APetTurnedByItsScriptEachFrameWalksTheWayItFaces()
+	{
+		let skeleton = scope Skeleton(1);
+		skeleton.Bones[0].Index = 0;
+		skeleton.Bones[0].ParentIndex = -1;
+		skeleton.FindRootBones();
+		skeleton.BuildChildIndices();
+		let duration = 1.0416666f;
+		let walk = scope AnimationClip("Walk", duration, true);
+		walk.RootMotion.Horizontal = true;
+		for (int i <= 50)
+		{
+			let t = duration * (float)i / 50.0f;
+			walk.RootMotion.Times.Add(t);
+			walk.RootMotion.Positions.Add(.(0, 0, 0.55f * t / duration));
+			walk.RootMotion.Yaws.Add(0.0f);
+		}
+		walk.GetOrCreatePositionTrack(0).AddKeyframe(0.0f, .(0, 0, 0));
+		walk.GetOrCreatePositionTrack(0).AddKeyframe(duration, .(0, 0, 0));
+
+		let level = scope Scene("pet");
+		level.AddSystem<MeshComponentManager>();
+		AnimationScene.AddAnimationSceneManagers(level);
+		let pet = level.CreateEntity("Dog");
+		let model = level.CreateEntity("DogModel");
+		level.SetParent(model, pet);
+		let a = level.GetSystem<SkeletalAnimationComponentManager>().Add(model);
+		a.Skeleton.SetDirect(skeleton);
+		a.Clip.SetDirect(walk);
+		a.Speed = 1.45f;
+		a.RootMotion = .Entity;
+		a.RootMotionTarget = EntityRef(level.GetEntityId(pet));
+		level.UpdateTransforms();
+		let yaw = -88.0f * DegToRad;
+		let start = level.GetWorldPosition(pet);
+		for (int frame < 120)
+		{
+			// The script turns it, every frame.
+			var t = level.GetLocalTransform(pet);
+			t.Rotation = Quaternion.FromAxisAngle(.(0, 1, 0), yaw);
+			level.SetLocalTransform(pet, t);
+			level.Update(1.0f / 60.0f);
+		}
+		let moved = level.GetWorldPosition(pet) - start;
+		Test.Assert(Near(Length(moved), 0.55f / duration * 1.45f * 2.0f, 0.02f), scope $"moved {Length(moved)}");
+		Test.Assert(moved.X < -1.5f, "facing -88 degrees: toward -X");
+	}
+
 	/// The scene's character capability, as physics provides it, recording what it was told.
 	private class Characters : SceneSystem, ISceneCharacterMotion
 	{

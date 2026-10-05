@@ -74,6 +74,11 @@ class AnimationGraphEditorPage : UIEditorPage, IPlaybackPage
 	private EntityHandle mMeshEntity = .Invalid;
 	private bool mShowSkeleton = true;
 	private bool mShowMesh = true;
+	/// Travel: the preview walks by the graph's root motion, back to the middle past a few
+	/// metres; off, it plays in place.
+	private bool mShowTravel = false;
+	private Float3 mTravelPosition = .(0, 0, 0);
+	private float mTravelYaw = 0.0f;
 	private bool mPreviewPlaying = true;
 	/// The canvas node wearing the active state ring.
 	private int32 mLastHighlightedNode = -1;
@@ -159,6 +164,14 @@ class AnimationGraphEditorPage : UIEditorPage, IPlaybackPage
 		let mesh = mToolbar.AddToggle("Mesh");
 		mesh.IsChecked = mShowMesh;
 		mesh.OnCheckedChanged.Add(new [=this](t, on) => { mShowMesh = on; });
+		let travel = mToolbar.AddToggle("Travel");
+		travel.IsChecked = mShowTravel;
+		travel.OnCheckedChanged.Add(new [=this](t, on) =>
+			{
+				mShowTravel = on;
+				mTravelPosition = .(0, 0, 0);
+				mTravelYaw = 0.0f;
+			});
 		let page = new FlexLayout();
 		page.Direction = .Vertical;
 		page.AddView(mToolbar, match);

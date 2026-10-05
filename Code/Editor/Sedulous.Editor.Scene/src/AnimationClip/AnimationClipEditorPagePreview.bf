@@ -149,6 +149,19 @@ extension AnimationClipEditorPage
 		mPoseScratch.Count = boneCount;
 		AnimationSampler.SampleClip(clip, skeleton, mTime, mPoseScratch);
 
+		// Root motion: the cooked pose plays in place; with Show travel the rig goes where the
+		// clip's extracted travel takes it from its start (one loop's worth).
+		var travel = Float4x4.Identity();
+		var turn = Quaternion.Identity;
+		var moved = RootMotionDelta();
+		if (mShowTravel && !clip.RootMotion.IsEmpty)
+		{
+			moved = RootMotion.ClipRootMotion(clip, 0.0f, mTime, false);
+			turn = Quaternion.FromAxisAngle(.(0, 1, 0), moved.Yaw);
+			travel = Transform(moved.Translation, turn, .(1, 1, 1)).ToMatrix();
+		}
+		scene.SetLocalTransform(mMeshEntity, .(moved.Translation, turn, .(1, 1, 1)));
+
 		let mc = PreviewComponent();
 		if ((mc != null) && (mc.Mesh.Get != null))
 		{
@@ -175,7 +188,22 @@ extension AnimationClipEditorPage
 
 		let draw = mPreview.SceneDebugDraw;
 		draw.DrawGrid(.(0.0f, 0.0f, 0.0f), 4.0f, 8, .(0.25f, 0.25f, 0.28f, 1.0f));
-		SkeletonWireframe.Draw(draw, skeleton, mPoseScratch, mWorldScratch);
+		SkeletonWireframe.Draw(draw, skeleton, mPoseScratch, mWorldScratch, travel);
+
+		// The extracted path on the ground (height too when the clip extracts it), and where
+		// the clip is along it now.
+		let curve = clip.RootMotion;
+		if (!curve.IsEmpty)
+		{
+			let path = Color(1.0f, 0.75f, 0.2f, 1.0f);
+			let start = curve.Positions[0];
+			Float3 OnGround(Float3 p) => .(curve.Horizontal ? (p.X - start.X) : 0.0f, curve.Vertical ? (p.Y - start.Y) : 0.0f,
+				curve.Horizontal ? (p.Z - start.Z) : 0.0f);
+			for (int i = 0; i + 1 < curve.Positions.Count; i++)
+				draw.DrawLine(OnGround(curve.Positions[i]), OnGround(curve.Positions[i + 1]), path, true);
+			let now = RootMotion.ClipRootMotion(clip, 0.0f, mTime, false);
+			draw.DrawWireSphere(now.Translation, 0.04f, path, 10, true);
+		}
 	}
 
 	/// To hundredths, so the label does not flicker through float noise.
