@@ -732,6 +732,65 @@ class SceneMcpToolsTests
 		Test.Assert(!commands.CanUndo);
 	}
 
+	/// A list of reflected objects (foot IK's legs, which Sky Hopper's hero needs): each element
+	/// an object of the fields it sets, the rest at defaults, the list replaced whole in one undo
+	/// step; entity_inspect reads the elements back by their fields.
+	[Test]
+	public static void ComponentSetWritesAListOfObjectsWhole()
+	{
+		let context = scope EditorContext();
+		let sceneId = Guid.Create();
+		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage("Bistro", sceneId));
+		let edit = page.EditContext;
+		let feet = edit.Scene.AddSystem<FootIkComponentManager>();
+		let riderId = edit.CreateEntity("Rider");
+		feet.Add(edit.Resolve(riderId));
+		edit.Commands.Clear();
+
+		let server = scope McpServer();
+		SceneMcpTools.Register(server, context);
+		let pageGuid = GuidText(sceneId, .. scope .());
+		let riderGuid = GuidText(riderId, .. scope .());
+		Answer Set(StringView valueJson)
+		{
+			return Call(server, "component_set", scope $"{{\"page\":\"{pageGuid}\",\"entity\":\"{riderGuid}\",\"component\":\"foot_ik\",\"property\":\"Legs\",\"value\":{valueJson}}}");
+		}
+		let legs = feet.Get(edit.Resolve(riderId)).Legs;
+		let stackBefore = edit.Commands.UndoIndex;
+		{
+			let got = Set("[{\"StartBone\":\"UpperLeg.L\",\"MidBone\":\"LowerLeg.L\",\"EndBone\":\"Foot.L\"},{\"StartBone\":\"UpperLeg.R\",\"MidBone\":\"LowerLeg.R\",\"EndBone\":\"Foot.R\",\"HingeAxis\":[1,0,0]}]");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			let now = feet.Get(edit.Resolve(riderId)).Legs;
+			Test.Assert(now.Count == 2);
+			Test.Assert(now[0].MidBone == "LowerLeg.L");
+			Test.Assert(now[0].HingeAxis.X == 0.0f, "not named: its default");
+			Test.Assert(now[1].EndBone == "Foot.R");
+			Test.Assert(now[1].HingeAxis.X == 1.0f);
+			// Read back by their fields, as entity_inspect shows them.
+			let value = got.Payload.Get("value");
+			Test.Assert(value.Count == 2);
+			Test.Assert(value.At(1).Get("EndBone").AsString() == "Foot.R");
+		}
+		// A field the element lacks, or a shape a field cannot take, is refused and writes nothing.
+		void Refused(StringView valueJson, StringView expected)
+		{
+			let got = Set(valueJson);
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.StartsWith(expected), got.Error);
+		}
+		Refused("[{\"Thigh\":\"UpperLeg.L\"}]", "element 0 of 'Legs' has no field 'Thigh' (its fields: StartBone");
+		Refused("[{\"HingeAxis\":\"up\"}]", "element 0 of 'Legs': 'HingeAxis' takes [x, y, z]");
+		Refused("[\"UpperLeg.L\"]", "element 0 of 'Legs' is not an object");
+		Test.Assert(feet.Get(edit.Resolve(riderId)).Legs.Count == 2);
+		// The write was one step: one Undo takes it back to where the stack stood before it.
+		edit.Commands.Undo();
+		Test.Assert(feet.Get(edit.Resolve(riderId)).Legs.IsEmpty);
+		Test.Assert(edit.Commands.UndoIndex == stackBefore);
+		Test.Assert(legs != null);
+	}
+
 	/// One pump of a tool that may ask to be re-entered: the line state, and the answer when
 	/// there is one (OWNED, null while not finished).
 	private static LineState Pump(McpServer server, StringView tool, StringView argumentsJson, out Answer outAnswer)

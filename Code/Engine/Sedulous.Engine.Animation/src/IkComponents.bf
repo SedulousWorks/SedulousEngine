@@ -240,7 +240,8 @@ struct TwoBoneIkComponent : ISerializable
 }
 
 /// One bone of an aim and its share of the swing still to go.
-[Scriptable]
+/// Its default constructor is reflected: an agent's component_set makes the elements.
+[Scriptable, Reflect(.DefaultConstructor)]
 class AimIkBone : ISerializable
 {
 	[Scriptable, BoneName]
@@ -319,7 +320,8 @@ struct AimIkComponent : ISerializable
 }
 
 /// One leg of a FootIkComponent: its chain by bone names (the end bone is the foot).
-[Scriptable]
+/// Its default constructor is reflected: an agent's component_set makes the elements.
+[Scriptable, Reflect(.DefaultConstructor)]
 class FootIkLegBones : ISerializable
 {
 	[Scriptable, BoneName, DisplayName("Start Bone"), Description("The thigh.")]

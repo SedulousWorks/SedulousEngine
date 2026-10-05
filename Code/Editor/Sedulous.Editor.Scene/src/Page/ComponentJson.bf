@@ -17,6 +17,7 @@ namespace Sedulous.Editor.Scene;
 /// - an enum by its case's name;
 /// - an entity reference as its guid;
 /// - a list as an array of its elements, through IReflectedList;
+/// - a reflected object (a list's element) by its fields;
 /// - a nested structure with reflected fields, recursed into;
 /// - anything else named as unreadable, so the agent knows something is there.
 ///
@@ -104,6 +105,9 @@ static class ComponentJson
 					items.Add(ValueJson(list.ElementType, list.ElementAddress(i)));
 				return items;
 			}
+			// A reflected object (a list's element: an IK leg, a vegetation layer) by its fields.
+			if ((obj.GetType() != typeof(String)) && HasShownFields(obj.GetType()))
+				return FieldsJson(obj.GetType(), Internal.UnsafeCastToPtr(obj));
 		}
 		else if (type.IsStruct && !type.IsPrimitive && HasShownFields(type))
 		{
@@ -149,6 +153,11 @@ static class ComponentJson
 	public static bool IsWritableElement(Type element)
 		=> ReferenceShape.Is(element) || (element == typeof(EntityRef)) || element.IsEnum
 		|| ((Shape(element) != null) && (element != typeof(String)));
+
+	/// Whether component_set replaces a list of this element whole from objects naming their
+	/// fields: a reflected class, made by reflection (component_set refuses one that cannot be).
+	public static bool IsObjectElement(Type element)
+		=> element.IsObject && !element.IsAbstract && (element != typeof(String)) && HasShownFields(element);
 
 	/// The JSON shape a leaf field takes, for a refusal that teaches; null when it is no leaf.
 	public static String Shape(Type type)

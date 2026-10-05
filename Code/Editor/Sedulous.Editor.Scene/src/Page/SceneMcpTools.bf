@@ -227,7 +227,7 @@ static class SceneMcpTools
 		setSchema.Str("component", "the component, as entity_inspect names it: its `type` (\"light\", \"physics.RigidBody\") or its `typeName`", true);
 		setSchema.Str("property", "the field's name, as entity_inspect shows it", true);
 		server.RegisterTool("component_set",
-			"Set ONE reflected field of an entity's component on a scene page, through the editor's undo path: one undo step per call, labelled mcp, the page marked dirty, nothing saved (file.save or the page's Save does that). `value` takes the shape entity_inspect shows: numbers, booleans, strings, guids, [x,y] and [x,y,z] vectors, [r,g,b,a] colours (sRGB, as a colour picker shows them), [x,y,z,w] quaternions, an enum case's name or number, an asset guid (or null) for a reference, an entity guid (or null) for an entity reference, and for a list an array of those (the whole list, resized to it: one undo step). REFUSED while the page simulates, on a read-only field, on a nested structure or a list of strings or structures (scene_write edits those), and on a value of the wrong shape, any element of a list included: nothing changes then. Returns the field as entity_inspect reads it after the write.",
+			"Set ONE reflected field of an entity's component on a scene page, through the editor's undo path: one undo step per call, labelled mcp, the page marked dirty, nothing saved (file.save or the page's Save does that). `value` takes the shape entity_inspect shows: numbers, booleans, strings, guids, [x,y] and [x,y,z] vectors, [r,g,b,a] colours (sRGB, as a colour picker shows them), [x,y,z,w] quaternions, an enum case's name or number, an asset guid (or null) for a reference, an entity guid (or null) for an entity reference, and for a list an array of those (the whole list, resized to it: one undo step); a list of objects (an IK leg, a vegetation layer) takes an array of objects naming the fields they set, the rest at defaults, the list replaced whole. REFUSED while the page simulates, on a read-only field, on a nested structure, a list of strings, or a list or object inside an element (scene_write edits those), and on a value of the wrong shape, any element of a list included: nothing changes then. Returns the field as entity_inspect reads it after the write.",
 			setSchema.Build(), .Adjusts,
 			new (arguments, outResult, outError) =>
 			{
@@ -329,6 +329,11 @@ static class SceneMcpTools
 				else if ((ComponentJson.ListElement(fieldType) != null) && ComponentJson.IsWritableElement(ComponentJson.ListElement(fieldType)))
 				{
 					if (!SetList(context, edit, id, manager, handle, field, component, value, outError))
+						return false;
+				}
+				else if ((ComponentJson.ListElement(fieldType) != null) && ComponentJson.IsObjectElement(ComponentJson.ListElement(fieldType)))
+				{
+					if (!SetObjectList(context, edit, id, manager, handle, field, component, value, outError))
 						return false;
 				}
 				else
@@ -465,6 +470,175 @@ static class SceneMcpTools
 			outError.AppendF("field '{}' of '{}' did not take the list (the component does not save it)", field.Name, component);
 			return false;
 		}
+		return true;
+	}
+
+	/// One field of an object element, shaped before anything changes.
+	private struct ObjectFieldWrite
+	{
+		public FieldInfo Field = default;
+		/// Nought a leaf, one an enum, two an entity reference, three an asset reference, four a string.
+		public int Kind = 0;
+		public Variant Leaf = .();
+		public int64 Raw = 0;
+		public Guid Id = .();
+		/// BORROWED from the JSON value, which outlives the write.
+		public StringView Text = default;
+
+		public this() {}
+	}
+
+	/// Writes a whole list of reflected objects (an IK leg, a vegetation layer) from a JSON array
+	/// of objects, each naming the fields it sets; the rest stay at the element's defaults, the
+	/// list being replaced whole. A field is a leaf, a string, an enum (by name or number), an
+	/// entity reference or an asset reference (a guid or null); a list or object inside an element
+	/// is refused (scene_write edits the source). Everything is shaped first, then one mutation.
+	private static bool SetObjectList(EditorContext context, SceneEditContext edit, Guid id, ComponentManagerBase manager,
+		EntityHandle handle, FieldInfo field, StringView component, JsonValue value, String outError)
+	{
+		let element = ComponentJson.ListElement(field.FieldType);
+		if ((value == null) || !value.IsArray)
+		{
+			outError.AppendF("field '{}' of '{}' is a list of {} - `value` is an array of objects, each naming the fields it sets",
+				field.Name, component, element.GetName(.. scope .()));
+			return false;
+		}
+		let listAddress = (uint8*)manager.GetComponentAddress(handle) + field.MemberOffset;
+		if ((*(Object*)listAddress as IReflectedList) == null)
+		{
+			outError.AppendF("field '{}' of '{}' holds no list to set (its component never allocated one)", field.Name, component);
+			return false;
+		}
+		// The elements are made by reflection, so a type that cannot be is refused before anything
+		// changes.
+		if (element.CreateObject() case .Ok(let probe))
+			delete probe;
+		else
+		{
+			outError.AppendF("field '{}' of '{}' is a list of {}, which cannot be made here (scene_write edits the source)",
+				field.Name, component, element.GetName(.. scope .()));
+			return false;
+		}
+
+		let elements = scope List<List<ObjectFieldWrite>>();
+		defer
+		{
+			for (let fields in elements)
+			{
+				for (var w in ref fields)
+					w.Leaf.Dispose();
+				delete fields;
+			}
+		}
+		for (int i < value.Count)
+		{
+			let item = value.At(i);
+			if (!item.IsObject)
+			{
+				outError.AppendF("element {} of '{}' is not an object of its fields", i, field.Name);
+				return false;
+			}
+			let fields = new List<ObjectFieldWrite>();
+			elements.Add(fields);
+			for (let key in item.Keys)
+			{
+				FieldInfo f = default;
+				if (!(element.GetField(key) case .Ok(out f)) || !ComponentJson.IsShown(f))
+				{
+					let known = scope String();
+					for (let shown in element.GetFields())
+					{
+						if (!ComponentJson.IsShown(shown))
+							continue;
+						if (!known.IsEmpty)
+							known.Append(", ");
+						known.Append(shown.Name);
+					}
+					outError.AppendF("element {} of '{}' has no field '{}' (its fields: {})", i, field.Name, key, known);
+					return false;
+				}
+				let json = item.Get(key);
+				let type = f.FieldType;
+				var w = ObjectFieldWrite();
+				w.Field = f;
+				var shaped = true;
+				if (ReferenceShape.Is(type) || (type == typeof(EntityRef)))
+				{
+					w.Kind = (type == typeof(EntityRef)) ? 2 : 3;
+					shaped = json.IsNull || (json.IsString && (Guid.Parse(json.AsString()) case .Ok(out w.Id)));
+					if (!shaped)
+						outError.AppendF("element {} of '{}': '{}' takes a guid or null", i, field.Name, key);
+				}
+				else if (type.IsEnum)
+				{
+					w.Kind = 1;
+					shaped = ComponentJson.EnumValueOf(type, json, out w.Raw);
+					if (!shaped)
+						outError.AppendF("element {} of '{}': '{}' takes one of {}", i, field.Name, key, ComponentJson.EnumNames(type, .. scope .()));
+				}
+				else if (type == typeof(String))
+				{
+					w.Kind = 4;
+					shaped = json.IsString;
+					if (shaped)
+						w.Text = json.AsString();
+					else
+						outError.AppendF("element {} of '{}': '{}' takes a string", i, field.Name, key);
+				}
+				else
+				{
+					let shape = ComponentJson.Shape(type);
+					w.Leaf = (shape != null) ? ComponentJson.LeafVariant(type, json) : .();
+					shaped = w.Leaf.HasValue;
+					if (!shaped && (shape != null))
+						outError.AppendF("element {} of '{}': '{}' takes {}", i, field.Name, key, shape);
+					else if (!shaped)
+						outError.AppendF("element {} of '{}': '{}' is not writable here (scene_write edits the source)", i, field.Name, key);
+				}
+				if (!shaped)
+					return false;
+				fields.Add(w);
+			}
+		}
+
+		let resources = context.Resources;
+		let fieldOffset = field.MemberOffset;
+		let target = scope ComponentTarget(edit, id, manager.ComponentType);
+		edit.Commands.BeginGroup("mcp");
+		target.Mutate(scope [&](instance) =>
+			{
+				let list = *(Object*)((uint8*)instance + fieldOffset) as IReflectedList;
+				if (list == null)
+					return;
+				// Replaced whole: every element starts from its defaults. The list OWNS its
+				// objects, each a pointer in its storage.
+				for (int i < list.Count)
+					delete *(Object*)list.ElementAddress(i);
+				list.Count = 0;
+				for (let fields in elements)
+				{
+					if (!(element.CreateObject() case .Ok(let created)))
+						continue;
+					let slot = list.Count;
+					list.Count = slot + 1;
+					*(Object*)list.ElementAddress(slot) = created;
+					let address = (uint8*)Internal.UnsafeCastToPtr(created);
+					for (let w in fields)
+					{
+						let at = address + w.Field.MemberOffset;
+						let type = w.Field.FieldType;
+						switch (w.Kind)
+						{
+						case 1: RawFieldAccess.WriteRawInt(at, type.Size, w.Raw);
+						case 2: *(EntityRef*)at = EntityRef(w.Id);
+						case 3: ReferenceShape.Assign(type, at, w.Id, resources).IgnoreError();
+						case 4: (*(String*)at)?.Set(w.Text);
+						default: w.Leaf.CopyValueData(at);
+						}
+					}
+				}
+			}, "");
+		edit.Commands.EndGroup();
 		return true;
 	}
 
