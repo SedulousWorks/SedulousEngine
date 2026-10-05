@@ -590,6 +590,21 @@ class InspectorViewTests
 		// The second slot kept its own value throughout: the slot is part of the merge key,
 		// so one slot's drag never absorbs another's edit.
 		Test.Assert(Near(component.ProceduralLayers[1].Density, 0.5f));
+
+		// A list inside a slot (a layer's material per mesh slot) is a list editor of its own,
+		// and what it adds lands on that slot's list alone.
+		inspector.Refresh();
+		let materials = Find(inspector, "Materials") as ContainerListEditor;
+		Test.Assert(materials != null, "a slot's list has an editor of its own");
+		Test.Assert(materials.Category.Contains("Grass"), scope $"in its slot: {materials.Category}");
+		Test.Assert(!materials.AcceptedTypes.IsEmpty);
+		let material = new AssetDragData(Guid(0x5555, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5), materials.AcceptedTypes[0], "bark");
+		defer material.ReleaseRef();
+		Test.Assert(materials.EditorView.AsDropTarget().OnDrop(material, 0, 0) == .Link);
+		Test.Assert(component.ProceduralLayers[0].Materials.Count == 1);
+		Test.Assert(component.ProceduralLayers[1].Materials.Count == 0, "the other slot's list is untouched");
+		commands.Undo();
+		Test.Assert(component.ProceduralLayers[0].Materials.Count == 0, "and it undoes");
 	}
 
 	private static bool Near(float a, float b) => Math.Abs(a - b) <= 0.001f;
