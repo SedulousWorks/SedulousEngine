@@ -52,6 +52,14 @@ struct TwoBoneIkSettings
 	public Float3 HingeAxis = .(0, 0, 0);
 	/// Nought leaves the pose as it was, byte for byte.
 	public float Weight = 1.0f;
+	/// A DETACHED end (an end bone not below the mid: asset pack rigs export feet and hands as IK
+	/// target bones off the root, the shin or forearm with no child) is moved to the target itself
+	/// (blended by the weight, turned with MatchRotation), and the chain bends all the way to meet
+	/// it with its tip: the point of the mid bone that met the end, by default where the pose this
+	/// solve receives has them (keeping any gap the baked rig left), or `Tip` (in the mid bone's
+	/// space) with UseTip. With no end bone (minus one) and UseTip, the tip is the end.
+	public bool UseTip = false;
+	public Float3 Tip = .(0, 0, 0);
 
 	public this() {}
 }
@@ -273,7 +281,8 @@ static class InverseKinematics
 		let bindStart = Inverse(skeleton.GetBone(chain.Start).InverseBindPose);
 		let bindA = Position(bindStart);
 		let bindB = Position(Inverse(skeleton.GetBone(chain.Mid).InverseBindPose));
-		let bindC = Position(Inverse(skeleton.GetBone(chain.End).InverseBindPose));
+		let bindC = settings.UseTip ? TransformPoint(settings.Tip, Inverse(skeleton.GetBone(chain.Mid).InverseBindPose))
+			: Position(Inverse(skeleton.GetBone(chain.End).InverseBindPose));
 		let bindAlong = Normalized(bindC - bindA);
 		let bindBend = Perpendicular(bindB - bindA, bindAlong);
 		if ((Length(bindAlong) > 0.5f) && (Length(bindBend) > straight))
@@ -302,16 +311,27 @@ static class InverseKinematics
 		ModelPoseCache model, TwoBoneIkChain chain, TwoBoneIkSettings settings)
 	{
 		var result = IkResult();
+		let hasEnd = InPose(skeleton, localPoses, chain.End);
+		let detached = hasEnd && !IsBelow(skeleton, chain.End, chain.Mid);
+		// The end is the tip itself.
+		let tip = !hasEnd;
+		// A detached end the chain carries, or one above it, has no meeting point.
 		if (!InPose(skeleton, localPoses, chain.Start) || !InPose(skeleton, localPoses, chain.Mid)
-			|| !InPose(skeleton, localPoses, chain.End) || !IsBelow(skeleton, chain.Mid, chain.Start)
-			|| !IsBelow(skeleton, chain.End, chain.Mid))
+			|| !IsBelow(skeleton, chain.Mid, chain.Start) || (!hasEnd && !settings.UseTip)
+			|| (detached && ((chain.End == chain.Start) || (chain.End == chain.Mid)
+			|| IsBelow(skeleton, chain.End, chain.Start) || IsBelow(skeleton, chain.Start, chain.End))))
 			return result;
 		EnsureModel(skeleton, localPoses, model);
 		result.Valid = true;
+		if (detached)
+			return SolveDetached(skeleton, localPoses, model, chain, settings);
+
+		// Where the chain ends: the end bone, or the tip carried by the mid bone.
+		Float3 EndNow() => tip ? TransformPoint(settings.Tip, model.At(chain.Mid)) : Position(model.At(chain.End));
 
 		let a = Position(model.At(chain.Start));
 		let b = Position(model.At(chain.Mid));
-		let c = Position(model.At(chain.End));
+		let c = EndNow();
 		let target = settings.Target;
 		let upper = Length(b - a);
 		let lower = Length(c - b);
@@ -322,7 +342,8 @@ static class InverseKinematics
 			result.Reached = result.Error <= ReachTolerance * reach;
 			return result;
 		}
-		BoneTransform[3] before = .(localPoses[chain.Start], localPoses[chain.Mid], localPoses[chain.End]);
+		int32[3] bones = .(chain.Start, chain.Mid, tip ? chain.Mid : chain.End);
+		BoneTransform[3] before = .(localPoses[bones[0]], localPoses[bones[1]], localPoses[bones[2]]);
 
 		// 1. Open or close the mid joint, in the chain's bend plane, to the distance it must span.
 		var along = c - a;
@@ -343,7 +364,7 @@ static class InverseKinematics
 
 		// 2. Swing the whole chain from the start: its end direction onto the target's, and its
 		//    bend side onto the pole's (or carried along with the swing, without one).
-		let bent = Position(model.At(chain.End));
+		let bent = EndNow();
 		let alongNow = Normalized(bent - a);
 		let sideNow = Normalized(Perpendicular(b - a, alongNow));
 		let toTarget = (Length(target - a) > Epsilon * reach) ? Normalized(target - a) : alongNow;
@@ -360,7 +381,7 @@ static class InverseKinematics
 		TurnInModel(skeleton, localPoses, model, chain.Start, twist * swing);
 		model.RebuildFrom(skeleton, localPoses, chain.Start);
 
-		if (settings.MatchRotation)
+		if (settings.MatchRotation && !tip)
 		{
 			let parent = ParentModelRotation(skeleton, model, chain.End);
 			localPoses[chain.End].Rotation = Normalized(Inverse(parent) * settings.TargetRotation);
@@ -369,14 +390,52 @@ static class InverseKinematics
 
 		if (settings.Weight < 1.0f)
 		{
-			int32[3] bones = .(chain.Start, chain.Mid, chain.End);
-			for (int i < 3)
+			for (int i < (tip ? 2 : 3))
 				localPoses[bones[i]].Rotation = Slerp(before[i].Rotation, localPoses[bones[i]].Rotation, settings.Weight);
 			model.RebuildFrom(skeleton, localPoses, chain.Start);
 		}
 
-		result.Error = Length(Position(model.At(chain.End)) - target);
+		result.Error = Length(EndNow() - target);
 		result.Reached = result.Error <= ReachTolerance * reach;
+		return result;
+	}
+
+	/// A detached end: moved itself, then met by the chain's tip (see TwoBoneIkSettings).
+	private static IkResult SolveDetached(Skeleton skeleton, Span<BoneTransform> localPoses, ModelPoseCache model,
+		TwoBoneIkChain chain, TwoBoneIkSettings settings)
+	{
+		var result = IkResult();
+		result.Valid = true;
+		let end = Position(model.At(chain.End));
+		let reach = Length(Position(model.At(chain.Mid)) - Position(model.At(chain.Start)))
+			+ Length(end - Position(model.At(chain.Mid)));
+		let weight = Math.Clamp(settings.Weight, 0.0f, 1.0f);
+		if (weight <= 0.0f)
+		{
+			result.Error = Length(end - settings.Target);
+			result.Reached = result.Error <= ReachTolerance * reach;
+			return result;
+		}
+		let tip = settings.UseTip ? settings.Tip : TransformPoint(end, Inverse(model.At(chain.Mid)));
+		let turn = RotationOf(model.At(chain.End));
+		let b = skeleton.GetBone(chain.End);
+		let parent = (b.ParentIndex >= 0) ? model.At(b.ParentIndex) : b.RootCorrection;
+		let goal = end + (settings.Target - end) * weight;
+		let goalTurn = settings.MatchRotation ? Slerp(turn, settings.TargetRotation, weight) : turn;
+		localPoses[chain.End].Position = TransformPoint(goal, Inverse(parent));
+		localPoses[chain.End].Rotation = Normalized(Inverse(RotationOf(parent)) * goalTurn);
+		model.RebuildFrom(skeleton, localPoses, chain.End);
+
+		var meet = settings;
+		meet.UseTip = true;
+		meet.Tip = tip;
+		meet.Target = Position(model.At(chain.End));
+		meet.MatchRotation = false;
+		meet.Weight = 1.0f;
+		let met = SolveTwoBone(skeleton, localPoses, model, .(chain.Start, chain.Mid, -1), meet);
+		// Reached when the end is on the target and the chain met it.
+		result.Error = Math.Max(Length(Position(model.At(chain.End)) - settings.Target), met.Error);
+		result.Reached = result.Error <= ReachTolerance * Math.Max(reach, Epsilon);
 		return result;
 	}
 
@@ -494,11 +553,20 @@ static class InverseKinematics
 		if (legs.IsEmpty || (legs.Length > MaxFootIkLegs) || (grounds.Length != legs.Length)
 			|| (LengthSquared(settings.Up) < 1.0e-12f))
 			return result;
-		for (let leg in legs)
+		// A foot below its shin is the chain's end; a foot elsewhere (an IK target bone off the
+		// root, as asset pack rigs export it) is DETACHED: it is moved itself and the leg bent to
+		// meet it with the point of the shin that met it in the animated pose.
+		bool[MaxFootIkLegs] detached = default;
+		for (int i < legs.Length)
 		{
-			if (!InPose(skeleton, localPoses, leg.Chain.Start) || !InPose(skeleton, localPoses, leg.Chain.Mid)
-				|| !InPose(skeleton, localPoses, leg.Chain.End) || !IsBelow(skeleton, leg.Chain.Mid, leg.Chain.Start)
-				|| !IsBelow(skeleton, leg.Chain.End, leg.Chain.Mid))
+			let chain = legs[i].Chain;
+			if (!InPose(skeleton, localPoses, chain.Start) || !InPose(skeleton, localPoses, chain.Mid)
+				|| !InPose(skeleton, localPoses, chain.End) || !IsBelow(skeleton, chain.Mid, chain.Start)
+				|| (chain.End == chain.Mid) || (chain.End == chain.Start) || IsBelow(skeleton, chain.Start, chain.End))
+				return result;
+			detached[i] = !IsBelow(skeleton, chain.End, chain.Mid);
+			// A foot the thigh carries but the shin does not: no meeting point.
+			if (detached[i] && IsBelow(skeleton, chain.End, chain.Start))
 				return result;
 		}
 		let movesPelvis = InPose(skeleton, localPoses, pelvis);
@@ -509,12 +577,15 @@ static class InverseKinematics
 		// The goals, from the animated pose.
 		Float3[MaxFootIkLegs] feet = default;
 		Quaternion[MaxFootIkLegs] footTurn = default;
+		Float3[MaxFootIkLegs] tips = default;
 		float[MaxFootIkLegs] offsetGoal = default;
 		float[MaxFootIkLegs] plantGoal = default;
 		for (int i < legs.Length)
 		{
 			feet[i] = Position(model.At(legs[i].Chain.End));
 			footTurn[i] = RotationOf(model.At(legs[i].Chain.End));
+			if (detached[i])
+				tips[i] = TransformPoint(feet[i], Inverse(model.At(legs[i].Chain.Mid)));
 			// No ground: the animation keeps the foot.
 			if (!grounds[i].Hit)
 				continue;
@@ -580,6 +651,13 @@ static class InverseKinematics
 			if ((slope > 1.0e-5f) && (LengthSquared(axis) > 1.0e-12f))
 				tilt = Quaternion.FromAxisAngle(Normalized(axis), Math.Min(slope, Math.Max(settings.MaxTilt, 0.0f)));
 			leg.TargetRotation = tilt * footTurn[i];
+			if (detached[i])
+			{
+				// The foot moves itself and the leg meets it with the tip it had in the animated
+				// pose (taken before the pelvis moved the shin).
+				leg.UseTip = true;
+				leg.Tip = tips[i];
+			}
 			result.FootError[i] = SolveTwoBone(skeleton, localPoses, model, legs[i].Chain, leg).Error;
 		}
 		return result;

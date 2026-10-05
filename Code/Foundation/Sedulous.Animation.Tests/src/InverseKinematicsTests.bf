@@ -435,6 +435,32 @@ class InverseKinematicsTests
 		Test.Assert(Near(Length(At(cache, Foot) - hip), span, 1e-5f));
 	}
 
+	/// The body's leg without its foot: the chain ends at a point 3 below the shin, carried by it.
+	[Test]
+	public static void ATipInTheMidBonesSpaceEndsAChainWhoseShinHasNoChild()
+	{
+		let skeleton = scope Skeleton(BoneCount);
+		BuildBody(skeleton);
+		let hip = Float3(1, 10, 0);
+		var settings = TwoBoneIkSettings();
+		settings.UseTip = true;
+		settings.Tip = .(0, -3, 0);
+		let pose = scope List<BoneTransform>();
+		let cache = scope ModelPoseCache();
+		Float3[3] points = .(.(1, 5, 2), .(3, 6, -1), .(1, 4, 0));
+		for (let at in points)
+		{
+			BentLeg(skeleton, pose);
+			cache.Build(skeleton, pose);
+			settings.Target = at;
+			let result = InverseKinematics.SolveTwoBone(skeleton, pose, cache, .(Thigh, Shin, -1), settings);
+			Test.Assert(result.Valid);
+			Test.Assert(result.Reached);
+			Test.Assert(Length(TransformPoint(settings.Tip, cache.At(Shin)) - at) < 1.0e-4f * Reach);
+			Test.Assert(Near(Length(At(cache, Shin) - hip), 4.0f, 1e-5f));
+		}
+	}
+
 	/// Sedulous has no counting allocator; the solvers hold no growable storage of their own
 	/// (fixed arrays only), so what could allocate per frame is the cache, and its storage must
 	/// neither move nor grow once sized.
