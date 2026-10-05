@@ -40,10 +40,7 @@ static class AssetWriteTools
 		importSchema.Str("source", "absolute path to the file to import", true);
 		importSchema.Str("group", "source-DB group path to place it in (slash-joined; default root)");
 		importSchema.Str("importer", "which importer to use when several claim the extension, by label (the result of an unhinted import lists them)");
-		let optionsProperty = JsonValue.MakeObject();
-		optionsProperty.Set("type", JsonValue.MakeString("object"));
-		optionsProperty.Set("description", JsonValue.MakeString("the importer's options, as the import dialog's checkboxes: {\"<toggle>\": true|false}, the toggle named by its label, case and spaces ignored (a model's: Textures, Materials, Animations, Generate prefab, Generate scene, Generate collision, Generate LODs, Convex collision); unnamed toggles keep their defaults, and the result lists every toggle's value"));
-		importSchema.Property("options", optionsProperty);
+		importSchema.Map("options", "the importer's options, as the import dialog's checkboxes: {\"<toggle>\": true|false}, the toggle named by its label, case and spaces ignored (a model's: Textures, Materials, Animations, Generate prefab, Generate scene, Generate collision, Generate LODs, Convex collision); unnamed toggles keep their defaults, and the result lists every toggle's value");
 		server.RegisterTool("asset_import",
 			"""
 			Import an OS file into the open project: copy it under Sources/ and create the typed asset in the source database, routed by extension. When several importers claim the extension the first is used and the result names the alternatives; pass `importer` to choose. Does not cook - call asset_cook next.

@@ -245,6 +245,53 @@ class McpServerTests
 		Test.Assert(anything.Get("error") == null, "additionalProperties takes any field");
 	}
 
+	/// The same check at every depth: a probe given `field` for `fields` read worldPosition. A
+	/// nested object and each element of an object array are held to their fields, named by
+	/// path; an array's elements are held to its item type; a Map takes any key.
+	[Test]
+	public static void ANestedUndeclaredFieldIsRefusedByItsPath()
+	{
+		let server = scope McpServer();
+		let probe = scope SchemaBuilder();
+		probe.Str("entity", "which", true);
+		probe.Arr("fields", "string", "what");
+		let until = scope SchemaBuilder();
+		until.Str("op", "how", true);
+		until.Any("value", "what");
+		let schema = scope SchemaBuilder();
+		schema.ObjectArr("probes", probe, "reads");
+		schema.Obj("until", until, "stops");
+		schema.Arr("at", "number", "times");
+		schema.Map("options", "toggles");
+		server.RegisterTool("run", "runs", schema.Build(), .ReadOnly,
+			new (arguments, outResult, outError) => true);
+
+		void Expect(StringView arguments, StringView error)
+		{
+			let response = Ask(server, scope $"{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{{\"name\":\"run\",\"arguments\":{arguments}}}}}");
+			defer delete response;
+			if (error.IsEmpty)
+			{
+				Test.Assert(response.Get("error") == null, scope String(arguments));
+				return;
+			}
+			Test.Assert(ErrorCode(response) == (int64)RpcError.InvalidParams, scope String(arguments));
+			let message = response.Get("error").Get("message").AsString();
+			Test.Assert(message == error, scope String(message));
+		}
+
+		Expect("{\"probes\":[{\"entity\":\"a\"},{\"entity\":\"b\",\"field\":\"x\"}]}",
+			"run: no field 'probes[1].field' (it takes: entity, fields)");
+		Expect("{\"probes\":[{\"fields\":[\"x\"]}]}", "run: missing required field 'probes[0].entity'");
+		Expect("{\"probes\":[{\"entity\":\"a\",\"fields\":[\"x\",3]}]}",
+			"run: field 'probes[0].fields[1]' must be of type string");
+		Expect("{\"probes\":[\"a\"]}", "run: field 'probes[0]' must be of type object");
+		Expect("{\"until\":{\"op\":\"<\",\"valu\":1}}", "run: no field 'until.valu' (it takes: op, value)");
+		Expect("{\"until\":{\"op\":1}}", "run: field 'until.op' must be of type string");
+		Expect("{\"at\":[1,\"x\"]}", "run: field 'at[1]' must be of type number");
+		Expect("{\"probes\":[{\"entity\":\"a\",\"fields\":[\"x\"]}],\"until\":{\"op\":\"==\",\"value\":true},\"at\":[1],\"options\":{\"Anything\":true}}", "");
+	}
+
 	[Test]
 	public static void AWrongFieldTypeIsAProtocolErrorNamingTheField()
 	{

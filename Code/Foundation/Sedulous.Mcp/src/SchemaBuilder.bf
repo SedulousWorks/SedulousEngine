@@ -64,6 +64,40 @@ class SchemaBuilder
 		return Add(name, property, required);
 	}
 
+	/// A nested object with its own fields, held to them as the arguments are to theirs.
+	public SchemaBuilder Obj(StringView name, SchemaBuilder fields, StringView description = "",
+		bool required = false)
+	{
+		let property = fields.Build();
+		if (!description.IsEmpty)
+			property.Set("description", JsonValue.MakeString(description));
+		return Add(name, property, required);
+	}
+
+	/// An array whose elements are objects of one shape, each held to `fields`.
+	public SchemaBuilder ObjectArr(StringView name, SchemaBuilder fields, StringView description = "",
+		bool required = false)
+	{
+		let property = JsonValue.MakeObject();
+		property.Set("type", JsonValue.MakeString("array"));
+		if (!description.IsEmpty)
+			property.Set("description", JsonValue.MakeString(description));
+		property.Set("items", fields.Build());
+		return Add(name, property, required);
+	}
+
+	/// An object keyed by names the tool resolves itself (an importer's toggles, a behaviour's
+	/// properties): any key is taken here, and the tool refuses one it does not know.
+	public SchemaBuilder Map(StringView name, StringView description = "", bool required = false)
+	{
+		let property = JsonValue.MakeObject();
+		property.Set("type", JsonValue.MakeString("object"));
+		if (!description.IsEmpty)
+			property.Set("description", JsonValue.MakeString(description));
+		property.Set("additionalProperties", JsonValue.MakeBool(true));
+		return Add(name, property, required);
+	}
+
 	/// A field of any type: a value whose shape depends on another argument (component_set's
 	/// `value`, shaped by the field it sets).
 	public SchemaBuilder Any(StringView name, StringView description = "", bool required = false)

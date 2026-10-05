@@ -150,15 +150,22 @@ class PieMcpToolsTests
 			return state;
 		let response = JsonValue.Parse(reply);
 		defer delete response;
-		let result = response.Get("result");
 		let answer = new Answer();
+		outAnswer = answer;
+		// A schema refusal is a protocol error rather than a result.
+		if (let error = response.Get("error"))
+		{
+			answer.Ok = false;
+			answer.Error.Set(error.Get("message").AsString());
+			return state;
+		}
+		let result = response.Get("result");
 		answer.Ok = !result.Get("isError").AsBool();
 		let text = result.Get("content").At(0).Get("text").AsString();
 		if (answer.Ok)
 			answer.Payload = JsonValue.Parse(text);
 		else
 			answer.Error.Set(text);
-		outAnswer = answer;
 		return state;
 	}
 
@@ -544,6 +551,16 @@ class PieMcpToolsTests
 			let noEntity = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"entity\":\"Ghost\"}]}");
 			defer delete noEntity;
 			Test.Assert(noEntity.Error.StartsWith("no entity 'Ghost' in PIE instance 'game-page''s scene 'Level1'"), noEntity.Error);
+			// The nested shapes are checked by name: `field` for `fields` read worldPosition.
+			let probeField = Call(server, "pie_run", "{\"duration\":1,\"probes\":[{\"entity\":\"Player\",\"field\":\"position.x\"}]}");
+			defer delete probeField;
+			Test.Assert(probeField.Error == "pie_run: no field 'probes[0].field' (it takes: entity, fields, script)", probeField.Error);
+			let inputTypo = Call(server, "pie_run", "{\"duration\":1,\"input\":[{\"at\":0,\"key\":\"D\",\"donw\":false}]}");
+			defer delete inputTypo;
+			Test.Assert(inputTypo.Error.StartsWith("pie_run: no field 'input[0].donw' (it takes: at, "), inputTypo.Error);
+			let untilTypo = Call(server, "pie_run", "{\"duration\":1,\"until\":{\"script\":\"score\",\"op\":\">\",\"valeu\":1}}");
+			defer delete untilTypo;
+			Test.Assert(untilTypo.Error == "pie_run: no field 'until.valeu' (it takes: entity, field, script, op, value)", untilTypo.Error);
 			let noDuration = Call(server, "pie_run", "{\"duration\":0}");
 			defer delete noDuration;
 			Test.Assert(noDuration.Error.StartsWith("`duration` takes run seconds"), noDuration.Error);

@@ -122,7 +122,10 @@ behaviour's properties under `live` beside what is authored.
 - **Arguments are checked by name.** An argument a tool does not declare is refused as a
   protocol error, -32602, naming the tool, the argument and the ones it takes
   (`pie_run: no argument 'timeline' (it takes: ...)`): a misspelt argument never silently
-  does nothing. `tools/list` gives each tool's schema.
+  does nothing. The same holds at every depth, the field named by its path
+  (`pie_run: no field 'probes[0].field' (it takes: entity, fields, script)`); only a map of
+  names the tool resolves itself (asset_import's `options`, a behaviour's `properties`) takes
+  any key, and the tool refuses one it does not know. `tools/list` gives each tool's schema.
 - **Check `known_issues` before re-diagnosing** an odd symptom; if it matches a recorded
   issue, report the match and use its workaround.
 

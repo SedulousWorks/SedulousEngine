@@ -29,13 +29,16 @@ static class McpSchema
 
 	/// Checks arguments against an object schema.
 	///
-	/// True when valid. Otherwise outError NAMES THE OFFENDING FIELD, because that message
-	/// travels to an agent as an invalid-params response and is the only thing it can act on.
+	/// True when valid. Otherwise outError NAMES THE OFFENDING FIELD, by its path at any depth
+	/// (`until.op`, `probes[0].field`), because that message travels to an agent as an
+	/// invalid-params response and is the only thing it can act on.
 	///
 	/// An undeclared field is REFUSED, naming the ones the schema declares: a misspelt argument
 	/// silently ignored is a call that does something other than what was asked (pie_run given
-	/// `timeline` for `input` ran with no input at all). A schema with additionalProperties true
-	/// takes any field.
+	/// `timeline` for `input` ran with no input at all; a probe given `field` for `fields` read
+	/// worldPosition). The check reaches into a nested object that declares its `properties` and
+	/// into each element of an array whose `items` does. A schema with additionalProperties true
+	/// takes any field, and a nested object declaring no properties is a free map.
 	public static bool ValidateArgs(JsonValue arguments, JsonValue schema, String outError)
 	{
 		outError.Clear();
@@ -45,38 +48,49 @@ static class McpSchema
 			outError.Set("arguments must be a JSON object");
 			return false;
 		}
+		if (schema == null)
+			return true;
+		return ValidateObject(arguments, schema, "", outError);
+	}
 
-		if (schema != null)
+	/// An object against its schema; `path` is where it sits, empty at the top level.
+	private static bool ValidateObject(JsonValue value, JsonValue schema, StringView path, String outError)
+	{
+		if (let required = schema.Get("required"))
 		{
-			if (let required = schema.Get("required"))
+			for (int i = 0; i < required.Count; i++)
 			{
-				for (int i = 0; i < required.Count; i++)
+				let key = required.At(i).AsString();
+				if (!value.Has(key))
 				{
-					let key = required.At(i).AsString();
-					if (!arguments.Has(key))
-					{
-						outError.AppendF("missing required field '{}'", key);
-						return false;
-					}
+					outError.Append("missing required field '");
+					AppendPath(outError, path, key);
+					outError.Append("'");
+					return false;
 				}
 			}
 		}
 
-		if (schema == null)
-			return true;
 		let properties = schema.Get("properties");
-		let open = (schema.Get("additionalProperties") != null) && schema.Get("additionalProperties").IsBool
-			&& schema.Get("additionalProperties").AsBool();
+		let openArg = schema.Get("additionalProperties");
+		let open = (openArg != null) && openArg.IsBool && openArg.AsBool();
 
-		for (int i = 0; i < arguments.Count; i++)
+		for (int i = 0; i < value.Count; i++)
 		{
-			let key = arguments.KeyAt(i);
+			let key = value.KeyAt(i);
 			let property = (properties != null) ? properties.Get(key) : null;
 			if (property == null)
 			{
 				if (open)
 					continue;
-				outError.AppendF("no argument '{}' (it takes", key);
+				if (path.IsEmpty)
+					outError.AppendF("no argument '{}' (it takes", key);
+				else
+				{
+					outError.Append("no field '");
+					AppendPath(outError, path, key);
+					outError.Append("' (it takes");
+				}
 				if ((properties == null) || (properties.Count == 0))
 					outError.Append(" none)");
 				else
@@ -93,19 +107,29 @@ static class McpSchema
 				return false;
 			}
 
-			let value = arguments.Get(key);
-			let type = (property.Get("type") != null) ? property.Get("type").AsString() : "";
-			if (!MatchesType(value, type))
-			{
-				outError.AppendF("field '{}' must be of type {}", key, type);
+			let fieldPath = scope String();
+			AppendPath(fieldPath, path, key);
+			if (!ValidateValue(value.Get(key), property, fieldPath, outError))
 				return false;
-			}
+		}
 
-			if (let choices = property.Get("enum"))
+		return true;
+	}
+
+	/// One value against its property schema: its type, its enum, and what it holds.
+	private static bool ValidateValue(JsonValue value, JsonValue property, StringView path, String outError)
+	{
+		let type = (property.Get("type") != null) ? property.Get("type").AsString() : "";
+		if (!MatchesType(value, type))
+		{
+			outError.AppendF("field '{}' must be of type {}", path, type);
+			return false;
+		}
+
+		if (let choices = property.Get("enum"))
+		{
+			if (choices.IsArray)
 			{
-				if (!choices.IsArray)
-					continue;
-
 				var allowed = false;
 				for (int j = 0; j < choices.Count; j++)
 				{
@@ -117,12 +141,42 @@ static class McpSchema
 				}
 				if (!allowed)
 				{
-					outError.AppendF("field '{}' is not one of the allowed values", key);
+					outError.AppendF("field '{}' is not one of the allowed values", path);
 					return false;
 				}
 			}
 		}
 
+		// A nested object declaring its fields is held to them; one declaring none is a map.
+		if (value.IsObject && (property.Get("properties") != null))
+			return ValidateObject(value, property, path, outError);
+
+		if (value.IsArray)
+		{
+			if (let items = property.Get("items"))
+			{
+				if (items.IsObject)
+				{
+					for (int i < value.Count)
+					{
+						let itemPath = scope String()..AppendF("{}[{}]", path, i);
+						if (!ValidateValue(value.At(i), items, itemPath, outError))
+							return false;
+					}
+				}
+			}
+		}
+
 		return true;
+	}
+
+	private static void AppendPath(String outPath, StringView path, StringView key)
+	{
+		if (!path.IsEmpty)
+		{
+			outPath.Append(path);
+			outPath.Append('.');
+		}
+		outPath.Append(key);
 	}
 }

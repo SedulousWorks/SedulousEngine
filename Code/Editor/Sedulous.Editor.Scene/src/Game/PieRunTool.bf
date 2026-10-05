@@ -97,8 +97,23 @@ static class PieRunTool
 		let schema = scope SchemaBuilder();
 		schema.Str("pie", "the PIE instance's id, as pie_list reports it (default: the primary, `game-page`)");
 		schema.Number("duration", "run seconds to run, up to 600", true);
-		schema.Arr("input", "object", "the timeline: entries {at, key, down} | {at, mouseButton, down} | {at, mouseMove: [x, y]} | {at, wheel: [x, y]} | {at, gamepad, button, down} | {at, gamepad, axis, value}; `at` is run seconds since the run starts, `down` defaults to true, `gamepad` to 0; mouseMove is in the game's render resolution pixels (a scaled screenshot's divided by its scale)");
-		schema.Arr("probes", "object", "what to read: {entity, fields} (entity by guid, name or slash path; fields default [\"worldPosition\"]) or {script: \"<game script property>\"}");
+		let inputEntry = scope SchemaBuilder();
+		inputEntry.Number("at", "run seconds since the run starts", true);
+		inputEntry.Str("key", "a KeyCode name");
+		inputEntry.Str("mouseButton", "Left, Middle, Right, X1 or X2");
+		inputEntry.Arr("mouseMove", "number", "[x, y], render resolution pixels");
+		inputEntry.Arr("wheel", "number", "[x, y]");
+		inputEntry.Integer("gamepad", "which pad (default 0)");
+		inputEntry.Str("button", "a gamepad button");
+		inputEntry.Str("axis", "a gamepad axis");
+		inputEntry.Number("value", "the axis value, -1 to 1");
+		inputEntry.Boolean("down", "pressed (default true) or released");
+		schema.ObjectArr("input", inputEntry, "the timeline: entries {at, key, down} | {at, mouseButton, down} | {at, mouseMove: [x, y]} | {at, wheel: [x, y]} | {at, gamepad, button, down} | {at, gamepad, axis, value}; `at` is run seconds since the run starts, `down` defaults to true, `gamepad` to 0; mouseMove is in the game's render resolution pixels (a scaled screenshot's divided by its scale)");
+		let probe = scope SchemaBuilder();
+		probe.Str("entity", "the entity, by guid, name or slash path");
+		probe.Arr("fields", "string", "its field paths (default [\"worldPosition\"])");
+		probe.Str("script", "or a game script property");
+		schema.ObjectArr("probes", probe, "what to read: {entity, fields} (entity by guid, name or slash path; fields default [\"worldPosition\"]) or {script: \"<game script property>\"}");
 		schema.Number("every", "sample the probes every N run seconds (default 0.5)");
 		schema.Arr("sampleAt", "number", "or sample at these run times instead");
 		schema.Arr("screenshots", "number", "run times at which to write a PNG of the tab");
@@ -108,9 +123,8 @@ static class PieRunTool
 		untilSchema.Str("field", "its field path, as in probes (default worldPosition; worldPosition.y for the height)");
 		untilSchema.Str("script", "or a game script property");
 		untilSchema.Str("op", "<, <=, >, >=, == or !=");
-		let untilProperty = untilSchema.Build();
-		untilProperty.Set("description", JsonValue.MakeString("end the run early when one value crosses: {entity, field, op, value} or {script, op, value}; `value` is a number, or with == and != a boolean or a string"));
-		schema.Property("until", untilProperty);
+		untilSchema.Any("value", "the value to cross: a number, or with == and != a boolean or a string");
+		schema.Obj("until", untilSchema, "end the run early when one value crosses: {entity, field, op, value} or {script, op, value}; `value` is a number, or with == and != a boolean or a string");
 		let runs = new Runs();
 		server.RegisterTool("pie_run",
 			"""

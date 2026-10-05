@@ -127,10 +127,7 @@ static class SceneMcpEditTools
 
 	private static void PropertiesArg(SchemaBuilder schema)
 	{
-		let property = JsonValue.MakeObject();
-		property.Set("type", JsonValue.MakeString("object"));
-		property.Set("description", JsonValue.MakeString("the behaviour's properties by name: a number for a float or int, true/false, a string, [x, y, z] for a vector, [r, g, b, a] for a colour, an entity (guid, name or path) or null for an entity reference, an asset guid or null for an asset reference"));
-		schema.Property("properties", property);
+		schema.Map("properties", "the behaviour's properties by name: a number for a float or int, true/false, a string, [x, y, z] for a vector, [r, g, b, a] for a colour, an entity (guid, name or path) or null for an entity reference, an asset guid or null for an asset reference");
 	}
 
 	// ---- the tools ----
