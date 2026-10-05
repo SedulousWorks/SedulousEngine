@@ -182,6 +182,17 @@ static class PrefabDeltas
 				scene.SetLocalTransform(entity, delta.OverrideTransforms[i]);
 		}
 
+		// An override's EntityRefs that name one of the prefab's own members (source ids, as a
+		// generator writes them) must name THIS instance's copy, as a spawned component's do;
+		// others (live ids, the editor's) are not in the map and stay. Left as source ids they
+		// resolved to whatever else held that id.
+		let liveBySource = scope Dictionary<Guid, Guid>();
+		if (state != null)
+		{
+			for (int i = 0; (i < state.SourceIds.Count) && (i < state.LiveIds.Count); i++)
+				liveBySource[state.SourceIds[i]] = state.LiveIds[i];
+		}
+
 		for (let op in delta.ComponentOps)
 		{
 			let entity = LiveOf(op.SourceEntity);
@@ -204,6 +215,7 @@ static class PrefabDeltas
 				continue;
 			}
 			SceneStreamFormat.ComponentFromBlob(manager, entity, op.Blob);
+			PrefabEntityRefs.Remap(manager, entity, liveBySource);
 		}
 	}
 

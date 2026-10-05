@@ -90,4 +90,49 @@ class PrefabEntityRefTests
 		PrefabEntityRefs.Remap(manager, entity, map);
 		PrefabEntityRefs.Remap(manager, EntityHandle.Invalid, map);
 	}
+
+	/// A tool that writes scenes (PaperKid's generator) overrides an instance's component with the
+	/// prefab's own data, its EntityRefs in the prefab's id space. Applied, they must name THIS
+	/// instance's members, as a spawned component's do: left as source ids they resolved to
+	/// whatever else held that id (a road's asphalt, which then gave a pet's root motion its
+	/// frame). A reference outside the prefab is left alone.
+	[Test]
+	public static void AnOverrideNamingAPrefabMemberBySourceIdPointsAtTheInstancesCopy()
+	{
+		let scene = scope Scene();
+		let manager = scene.AddSystem<HealthManager>();
+		let member = scene.CreateEntity("member");
+		let other = scene.CreateEntity("other");
+
+		let memberSource = Id(1);
+		let otherSource = Id(2);
+		let state = scope PrefabInstanceState();
+		state.SourceIds.Add(memberSource);
+		state.LiveIds.Add(scene.GetEntityId(member));
+		state.SourceIds.Add(otherSource);
+		state.LiveIds.Add(scene.GetEntityId(other));
+
+		// The override's data: a Health naming the prefab's `other` by its source id.
+		let scratch = scene.CreateEntity("scratch");
+		manager.Add(scratch).Target = .(otherSource);
+		let delta = scope PendingPrefabInstance();
+		let op = new PendingPrefabComponentOp();
+		op.SourceEntity = memberSource;
+		op.TypeId.Set(manager.SerializationTypeId);
+		op.Op = .Add;
+		SceneStreamFormat.ComponentToBlob(manager, scratch, op.Blob);
+		delta.ComponentOps.Add(op);
+
+		PrefabDeltas.Apply(scene, state, delta);
+		Test.Assert(manager.Get(member) != null);
+		Test.Assert(manager.Get(member).Target.Id == scene.GetEntityId(other), "the instance's copy, not the source id");
+
+		// An editor written override names a live entity outside the prefab: untouched.
+		let outsider = Id(99);
+		manager.Get(scratch).Target = .(outsider);
+		op.Blob.Clear();
+		SceneStreamFormat.ComponentToBlob(manager, scratch, op.Blob);
+		PrefabDeltas.Apply(scene, state, delta);
+		Test.Assert(manager.Get(member).Target.Id == outsider);
+	}
 }
