@@ -17,5 +17,6 @@ static class AnimationScene
 		// Inverse kinematics: pose modifiers on the players above.
 		scene.AddSystem<TwoBoneIkComponentManager>();
 		scene.AddSystem<AimIkComponentManager>();
+		scene.AddSystem<FootIkComponentManager>();
 	}
 }

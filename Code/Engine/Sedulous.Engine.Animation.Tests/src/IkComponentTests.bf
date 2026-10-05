@@ -258,4 +258,99 @@ class IkComponentTests
 		s.Tick(); // and the player runs on with nothing dangling
 		Test.Assert(!IkScene.Reached(s.Level, head));
 	}
+
+	/// Flat ground at `Height` everywhere, answered as the scene's solid surface ray query (the
+	/// seam physics fills in a running game); counts the rays it is asked.
+	private class FlatGround : SceneSystem, ISceneRayQuery
+	{
+		public float Height = 0.0f;
+		public int Casts = 0;
+
+		public override ISceneRayQuery AsRayQuery => this;
+
+		public bool CastRay(Float3 origin, Float3 direction, float maxDistance, uint32 groupMask, out SceneRayHit outHit)
+		{
+			outHit = .();
+			Casts++;
+			if (direction.Y >= -1.0e-6f)
+				return false;
+			let t = (origin.Y - Height) / -direction.Y;
+			if ((t < 0.0f) || (t > maxDistance))
+				return false;
+			outHit.Distance = t;
+			outHit.Position = origin + direction * t;
+			outHit.Normal = .(0, 1, 0);
+			return true;
+		}
+	}
+
+	[Test]
+	public static void FeetStandOnTheGroundTheScenesRayQueryFindsProbedOnceAFrame()
+	{
+		// A biped's hips and legs (origin at its feet, ankles 0.1 up) under an animator on Walker.
+		let skeleton = scope Skeleton(7);
+		StringView[7] names = .("Hips", "ThighL", "ShinL", "FootL", "ThighR", "ShinR", "FootR");
+		int32[7] parents = .(-1, 0, 1, 2, 0, 4, 5);
+		Float3[7] offsets = .(.(0, 1, 0), .(0.15f, 0, 0), .(0, -0.45f, 0.02f), .(0, -0.45f, -0.02f),
+			.(-0.15f, 0, 0), .(0, -0.45f, 0.02f), .(0, -0.45f, -0.02f));
+		for (int32 i < 7)
+		{
+			let bone = skeleton.Bones[i];
+			bone.Index = i;
+			bone.Name.Set(names[i]);
+			bone.ParentIndex = parents[i];
+			bone.LocalBindPose.Position = offsets[i];
+		}
+		skeleton.BuildNameMap();
+		skeleton.FindRootBones();
+		skeleton.BuildChildIndices();
+		skeleton.ComputeInverseBindPoses();
+
+		let level = scope Scene("feet");
+		level.AddSystem<MeshComponentManager>();
+		AnimationScene.AddAnimationSceneManagers(level);
+		let ground = level.AddSystem<FlatGround>();
+
+		let walker = level.CreateEntity("Walker");
+		level.SetLocalTransform(walker, .(.(2, 0, 1), Quaternion.FromAxisAngle(.(0, 1, 0), 0.6f), .(1, 1, 1)));
+		let animator = level.GetSystem<SkeletalAnimationComponentManager>().Add(walker);
+		animator.Skeleton.SetDirect(skeleton);
+		let feet = level.CreateEntity("FeetIk");
+		level.SetParent(feet, walker);
+		let foot = level.GetSystem<FootIkComponentManager>().Add(feet);
+		foot.Legs.Add(new FootIkLegBones("ThighL", "ShinL", "FootL"));
+		foot.Legs.Add(new FootIkLegBones("ThighR", "ShinR", "FootR"));
+		foot.PelvisBone.Set("Hips");
+		foot.FadeSeconds = 0.0f;
+
+		AnimationPlayer player = null;
+		float FootWorldY(int32 bone)
+		{
+			player.GetSkinningMatrices();
+			let cache = scope ModelPoseCache();
+			cache.Build(skeleton, player.GetFinalPoses());
+			return TransformPoint(InverseKinematics.Position(cache.At(bone)), level.GetWorldMatrix(walker)).Y;
+		}
+
+		ground.Height = 0.25f; // a raised floor: both feet rise onto it, the pelvis stays
+		level.Update(1.0f / 60.0f);
+		player = level.GetSystem<SkeletalAnimationComponentManager>().Get(walker).Player;
+		Test.Assert(player != null);
+		level.Update(1.0f / 60.0f);
+		let castsBefore = ground.Casts;
+		Test.Assert(Math.Abs(FootWorldY(3) - 0.35f) < 1e-4f);
+		Test.Assert(Math.Abs(FootWorldY(6) - 0.35f) < 1e-4f);
+		// Each read above evaluated the player again: the hits were reused, no ray cast twice.
+		Test.Assert(ground.Casts == castsBefore);
+		level.Update(1.0f / 60.0f);
+		player.GetSkinningMatrices();
+		Test.Assert(ground.Casts == castsBefore + 2, "one per foot per frame");
+
+		// A floor below the animation's: the pelvis drops to it (clamped at PelvisDropMax 0.3).
+		ground.Height = -0.2f;
+		for (int frame < 120)
+			level.Update(1.0f / 60.0f);
+		Test.Assert(Math.Abs(FootWorldY(3) - -0.1f) < 1e-3f);
+		Test.Assert(Math.Abs(FootWorldY(0) - 0.8f) < 1e-3f);
+	}
 }

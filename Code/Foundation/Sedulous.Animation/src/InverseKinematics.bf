@@ -78,6 +78,87 @@ struct AimIkSettings
 	public this() {}
 }
 
+/// One leg of a foot solve: its two bone chain (the end bone is the foot) and the hinge for a
+/// straight chain with a straight bind pose.
+struct FootIkLeg
+{
+	public TwoBoneIkChain Chain = .();
+	public Float3 HingeAxis = .(0, 0, 0);
+
+	public this() {}
+
+	public this(TwoBoneIkChain chain, Float3 hingeAxis)
+	{
+		Chain = chain;
+		HingeAxis = hingeAxis;
+	}
+}
+
+/// What is under a foot, found by the caller (a physics probe, in the engine): model space.
+struct FootGround
+{
+	public bool Hit = false;
+	public Float3 Point = .(0, 0, 0);
+	public Float3 Normal = .(0, 1, 0);
+
+	public this() {}
+
+	public this(Float3 point, Float3 normal)
+	{
+		Hit = true;
+		Point = point;
+		Normal = normal;
+	}
+}
+
+struct FootIkSettings
+{
+	/// Model space.
+	public Float3 Up = .(0, 1, 0);
+	/// The height along up of the ground the animation was made on: nought when the model's
+	/// origin is at its feet (every imported sample rig); a rig whose origin is elsewhere says
+	/// where.
+	public float GroundHeight = 0.0f;
+	/// The most the pelvis lowers to let the lower foot reach.
+	public float PelvisDropMax = 0.3f;
+	/// A foot turns to its ground's slope up to this.
+	public float MaxTilt = 30.0f * DegToRad;
+	/// A foot animated higher than this is swinging: it fades out by twice it.
+	public float LiftHeight = 0.15f;
+	/// Easing per second while a foot or the pelvis rises.
+	public float RaiseRate = 20.0f;
+	/// And while it lowers: slower, a foot settles onto the ground.
+	public float LowerRate = 8.0f;
+	public float Weight = 1.0f;
+
+	public this() {}
+}
+
+/// The eased corrections a foot solve carries from one frame to the next (the caller keeps one
+/// per character). The first solve takes its goals at once.
+struct FootIkState
+{
+	public bool Primed = false;
+	public float Pelvis = 0.0f;
+	/// How far each foot rises (or falls) to its ground.
+	public float[InverseKinematics.MaxFootIkLegs] Offset = default;
+	/// How planted each foot is: nought swinging or with no ground, one down.
+	public float[InverseKinematics.MaxFootIkLegs] Plant = default;
+
+	public this() {}
+}
+
+struct FootIkResult
+{
+	public bool Valid = false;
+	/// Along up, nought or below.
+	public float PelvisOffset = 0.0f;
+	/// Each foot's miss after its solve.
+	public float[InverseKinematics.MaxFootIkLegs] FootError = default;
+
+	public this() {}
+}
+
 /// Inverse kinematics solvers (inverse-kinematics.md P1): pure functions over a skeleton, a LOCAL
 /// pose and its model space matrices (ModelPoseCache), with no physics and no scene. A solve
 /// writes local rotations and keeps the cache current by rebuilding from the highest bone it
@@ -96,6 +177,8 @@ static class InverseKinematics
 	public const float ReachTolerance = 1.0e-3f;
 	/// The fraction of full reach a two bone chain stops at, short of locking straight.
 	public const float TwoBoneMaxReach = 0.995f;
+	/// The most legs one foot solve plants (a biped 2, a quadruped 4).
+	public const int MaxFootIkLegs = 4;
 
 	public static Float3 Position(Float4x4 m) => .(m.M[3][0], m.M[3][1], m.M[3][2]);
 
@@ -386,6 +469,119 @@ static class InverseKinematics
 
 		result.Error = Missed();
 		result.Reached = result.Error <= ReachTolerance;
+		return result;
+	}
+
+	/// Where each foot stands in the animated pose (model space): the points a caller probes the
+	/// ground under, before the solve changes anything. Fills `outFeet` up to the legs' count.
+	public static void FootIkAnimatedFeet(ModelPoseCache model, Span<FootIkLeg> legs, Span<Float3> outFeet)
+	{
+		for (int i = 0; (i < legs.Length) && (i < outFeet.Length); i++)
+			outFeet[i] = Position(model.At(legs[i].Chain.End));
+	}
+
+	/// Feet that stand on the ground under them (inverse-kinematics.md P3): each planted foot
+	/// rises or falls by the ground's height under it (measured from the animation's ground,
+	/// GroundHeight along up) and turns to the slope within MaxTilt; the pelvis lowers by the
+	/// deepest correction, clamped, so the lower foot can reach; a foot the animation lifts above
+	/// LiftHeight is swinging and is left to the animation. In order: the pelvis, its rebuild,
+	/// then each leg. The corrections ease by `deltaSeconds` through `state`.
+	public static FootIkResult SolveFootIk(Skeleton skeleton, Span<BoneTransform> localPoses, ModelPoseCache model,
+		int32 pelvis, Span<FootIkLeg> legs, Span<FootGround> grounds, FootIkSettings settings, ref FootIkState state,
+		float deltaSeconds)
+	{
+		var result = FootIkResult();
+		if (legs.IsEmpty || (legs.Length > MaxFootIkLegs) || (grounds.Length != legs.Length)
+			|| (LengthSquared(settings.Up) < 1.0e-12f))
+			return result;
+		for (let leg in legs)
+		{
+			if (!InPose(skeleton, localPoses, leg.Chain.Start) || !InPose(skeleton, localPoses, leg.Chain.Mid)
+				|| !InPose(skeleton, localPoses, leg.Chain.End) || !IsBelow(skeleton, leg.Chain.Mid, leg.Chain.Start)
+				|| !IsBelow(skeleton, leg.Chain.End, leg.Chain.Mid))
+				return result;
+		}
+		let movesPelvis = InPose(skeleton, localPoses, pelvis);
+		EnsureModel(skeleton, localPoses, model);
+		result.Valid = true;
+		let up = Normalized(settings.Up);
+
+		// The goals, from the animated pose.
+		Float3[MaxFootIkLegs] feet = default;
+		Quaternion[MaxFootIkLegs] footTurn = default;
+		float[MaxFootIkLegs] offsetGoal = default;
+		float[MaxFootIkLegs] plantGoal = default;
+		for (int i < legs.Length)
+		{
+			feet[i] = Position(model.At(legs[i].Chain.End));
+			footTurn[i] = RotationOf(model.At(legs[i].Chain.End));
+			// No ground: the animation keeps the foot.
+			if (!grounds[i].Hit)
+				continue;
+			let lift = Dot(feet[i], up) - settings.GroundHeight;
+			let band = Math.Max(settings.LiftHeight, 1.0e-4f);
+			plantGoal[i] = Math.Clamp(1.0f - (lift - settings.LiftHeight) / band, 0.0f, 1.0f);
+			offsetGoal[i] = Dot(grounds[i].Point, up) - settings.GroundHeight;
+		}
+
+		// Ease toward them: the first solve takes them at once; a zero step, a paused scene still
+		// evaluating, holds them.
+		let primed = state.Primed;
+		void Ease(ref float value, float goal)
+		{
+			if (!primed)
+			{
+				value = goal;
+				return;
+			}
+			let rate = (goal > value) ? settings.RaiseRate : settings.LowerRate;
+			value += (goal - value) * (1.0f - Exp(-Math.Max(rate, 0.0f) * Math.Max(deltaSeconds, 0.0f)));
+		}
+		var deepest = 0.0f;
+		for (int i < legs.Length)
+		{
+			Ease(ref state.Offset[i], offsetGoal[i]);
+			Ease(ref state.Plant[i], plantGoal[i]);
+			deepest = Math.Min(deepest, state.Offset[i] * state.Plant[i]);
+		}
+		Ease(ref state.Pelvis, Math.Max(deepest, -Math.Max(settings.PelvisDropMax, 0.0f)));
+		state.Primed = true;
+		result.PelvisOffset = state.Pelvis;
+
+		let weight = Math.Clamp(settings.Weight, 0.0f, 1.0f);
+		if (weight <= 0.0f)
+			return result;
+		if (movesPelvis && (state.Pelvis != 0.0f))
+		{
+			// The pelvis lowers along model up, turned into its parent's space.
+			let b = skeleton.GetBone(pelvis);
+			let parent = (b.ParentIndex >= 0) ? model.At(b.ParentIndex) : b.RootCorrection;
+			localPoses[pelvis].Position += TransformDirection(up * (state.Pelvis * weight), Inverse(parent));
+			model.RebuildFrom(skeleton, localPoses, pelvis);
+		}
+		for (int i < legs.Length)
+		{
+			let legWeight = weight * state.Plant[i];
+			if (legWeight <= 0.0f)
+			{
+				// Swinging: the animation's (only the pelvis carried it).
+				result.FootError[i] = 0.0f;
+				continue;
+			}
+			var leg = TwoBoneIkSettings();
+			leg.Target = feet[i] + up * state.Offset[i];
+			leg.HingeAxis = legs[i].HingeAxis;
+			leg.Weight = legWeight;
+			leg.MatchRotation = true;
+			var tilt = Quaternion.Identity;
+			let normal = (LengthSquared(grounds[i].Normal) > 1.0e-12f) ? Normalized(grounds[i].Normal) : up;
+			let slope = Acos(Math.Clamp(Dot(up, normal), -1.0f, 1.0f));
+			let axis = Cross(up, normal);
+			if ((slope > 1.0e-5f) && (LengthSquared(axis) > 1.0e-12f))
+				tilt = Quaternion.FromAxisAngle(Normalized(axis), Math.Min(slope, Math.Max(settings.MaxTilt, 0.0f)));
+			leg.TargetRotation = tilt * footTurn[i];
+			result.FootError[i] = SolveTwoBone(skeleton, localPoses, model, legs[i].Chain, leg).Error;
+		}
 		return result;
 	}
 }

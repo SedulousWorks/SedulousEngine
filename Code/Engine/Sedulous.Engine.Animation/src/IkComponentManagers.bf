@@ -141,9 +141,28 @@ static class IkScene
 		let reached = Color(0.2f, 0.9f, 0.3f, 1.0f);
 		let missed = Color(1.0f, 0.55f, 0.1f, 1.0f);
 		for (int i = 0; i + 1 < m.DrawnCount; i++)
-			draw.DrawLine(m.ChainWorld[i], m.ChainWorld[i + 1], chain, true);
+		{
+			if ((m.DrawnStride == 0) || (((i + 1) % m.DrawnStride) != 0))
+				draw.DrawLine(m.ChainWorld[i], m.ChainWorld[i + 1], chain, true);
+		}
 		for (int i < m.DrawnCount)
 			draw.DrawWireSphere(m.ChainWorld[i], 0.02f, chain, 8, true);
+		if (m.Kind == .Foot)
+		{
+			// Each leg's ground: green where a planted foot found it, orange where none was found.
+			for (int i = 0; (i < m.FootLegs.Count) && (i < InverseKinematics.MaxFootIkLegs); i++)
+			{
+				let foot = m.ChainWorld[i * 3 + 2];
+				if (m.FootHitWorld[i])
+				{
+					draw.DrawLine(foot, m.FootGroundWorld[i], reached, true);
+					draw.DrawWireSphere(m.FootGroundWorld[i], 0.04f, reached, 10, true);
+				}
+				else
+					draw.DrawWireSphere(foot, 0.04f, missed, 10, true);
+			}
+			return;
+		}
 		draw.DrawWireSphere(runtime.TargetWorld, 0.05f, m.Result.Reached ? reached : missed, 12, true);
 		if (runtime.HasPoleWorld && (m.DrawnCount > 1))
 			draw.DrawLine(m.ChainWorld[1], runtime.PoleWorld, Color(0.8f, 0.4f, 1.0f, 1.0f), true);
@@ -162,6 +181,11 @@ static class IkScene
 		if (let aim = scene.GetSystem<AimIkComponentManager>())
 		{
 			if (let c = aim.Get(entity))
+				visit(c.Runtime);
+		}
+		if (let feet = scene.GetSystem<FootIkComponentManager>())
+		{
+			if (let c = feet.Get(entity))
 				visit(c.Runtime);
 		}
 	}
@@ -204,7 +228,7 @@ static class IkScene
 
 /// The work every IK manager shares: the animator, the chain, the fade, the stack. A derived
 /// manager supplies its components' common values, Resolve (bone names to indices; a failure
-/// names what failed) and Fill (the frame's targets in model space).
+/// names what failed) and Fill (the frame's targets in model space, and its seconds).
 ///
 /// Before the animation graph (-1) and single clip (0) managers, whose players run the solve.
 abstract class IkComponentManagerBase<T> : SerializableComponentManager<T>
@@ -231,7 +255,7 @@ abstract class IkComponentManagerBase<T> : SerializableComponentManager<T>
 
 	protected abstract IkCommon Common(T* component);
 	protected abstract IkStatus Resolve(T* component, Skeleton skeleton, String outFailed);
-	protected abstract bool Fill(T* component, EntityHandle owner, Float4x4 worldToModel);
+	protected abstract bool Fill(T* component, EntityHandle owner, Float4x4 worldToModel, float deltaTime);
 
 	protected void Detach(IkRuntime runtime)
 	{
@@ -331,8 +355,10 @@ abstract class IkComponentManagerBase<T> : SerializableComponentManager<T>
 
 		// Composed fresh: the cached world matrices update only after PostUpdate.
 		let modelToWorld = mScene.ComposeWorldMatrix(link.ModelEntity);
+		let worldToModel = Inverse(modelToWorld);
 		runtime.Modifier.ModelToWorld = modelToWorld;
-		if (!Fill(component, owner, Inverse(modelToWorld)))
+		runtime.Modifier.WorldToModel = worldToModel;
+		if (!Fill(component, owner, worldToModel, deltaTime))
 		{
 			// The target entity is gone: nothing to reach this frame.
 			Detach(runtime);
@@ -394,7 +420,7 @@ class TwoBoneIkComponentManager : IkComponentManagerBase<TwoBoneIkComponent>
 		return .Solving;
 	}
 
-	protected override bool Fill(TwoBoneIkComponent* c, EntityHandle owner, Float4x4 worldToModel)
+	protected override bool Fill(TwoBoneIkComponent* c, EntityHandle owner, Float4x4 worldToModel, float deltaTime)
 	{
 		let runtime = c.Runtime;
 		if (!IkScene.TargetWorld(mScene, c.Target, runtime, owner, let targetWorld))
@@ -473,7 +499,7 @@ class AimIkComponentManager : IkComponentManagerBase<AimIkComponent>
 		return .Solving;
 	}
 
-	protected override bool Fill(AimIkComponent* c, EntityHandle owner, Float4x4 worldToModel)
+	protected override bool Fill(AimIkComponent* c, EntityHandle owner, Float4x4 worldToModel, float deltaTime)
 	{
 		let runtime = c.Runtime;
 		if (!IkScene.TargetWorld(mScene, c.Target, runtime, owner, let targetWorld))
@@ -503,6 +529,102 @@ class AimIkComponentManager : IkComponentManagerBase<AimIkComponent>
 				m.AimUpIsPoint = true;
 				m.AimUpPoint = TransformPoint(runtime.PoleWorld, worldToModel);
 			}
+		}
+		return true;
+	}
+}
+
+class FootIkComponentManager : IkComponentManagerBase<FootIkComponent>
+{
+	protected override void OnComponentCreated(FootIkComponent* component, EntityHandle entity)
+	{
+		component.Legs = new List<FootIkLegBones>();
+		component.PelvisBone = new String();
+		component.Runtime = new IkRuntime();
+	}
+
+	protected override void OnComponentDestroyed(FootIkComponent* component, EntityHandle entity)
+	{
+		Detach(component.Runtime);
+		DeleteAndNullify!(component.Runtime);
+		DeleteAndNullify!(component.PelvisBone);
+		DeleteContainerAndItems!(component.Legs);
+		component.Legs = null;
+	}
+
+	protected override IkCommon Common(FootIkComponent* c)
+		=> .() { Runtime = c.Runtime, Active = c.Active, Weight = c.Weight, FadeSeconds = c.FadeSeconds, Order = c.Order, DebugDraw = c.DebugDraw };
+
+	protected override IkStatus Resolve(FootIkComponent* c, Skeleton skeleton, String outFailed)
+	{
+		if (c.Legs.IsEmpty || (c.Legs.Count > InverseKinematics.MaxFootIkLegs))
+		{
+			outFailed.AppendF("foot IK takes 1 to {} legs, it lists {}", InverseKinematics.MaxFootIkLegs, c.Legs.Count);
+			return .NotAChain;
+		}
+		let m = c.Runtime.Modifier;
+		m.Kind = .Foot;
+		m.FootLegs.Clear();
+		for (let leg in c.Legs)
+		{
+			String[3] names = .(leg.StartBone, leg.MidBone, leg.EndBone);
+			int32[3] bones = .(-1, -1, -1);
+			for (int i < 3)
+			{
+				bones[i] = skeleton.FindBone(names[i]);
+				if (bones[i] < 0)
+				{
+					outFailed.AppendF("no bone named '{}' in its animator's skeleton", names[i]);
+					return .UnknownBone;
+				}
+			}
+			if (!InverseKinematics.IsBelow(skeleton, bones[1], bones[0]) || !InverseKinematics.IsBelow(skeleton, bones[2], bones[1]))
+			{
+				outFailed.AppendF("'{}', '{}', '{}' are not a chain (each below the one before)", leg.StartBone, leg.MidBone, leg.EndBone);
+				return .NotAChain;
+			}
+			m.FootLegs.Add(.(.(bones[0], bones[1], bones[2]), leg.HingeAxis));
+		}
+		m.FootPelvis = -1;
+		if (!c.PelvisBone.IsEmpty)
+		{
+			m.FootPelvis = skeleton.FindBone(c.PelvisBone);
+			if (m.FootPelvis < 0)
+			{
+				outFailed.AppendF("no bone named '{}' in its animator's skeleton", c.PelvisBone);
+				return .UnknownBone;
+			}
+		}
+		// A new chain starts from its goals.
+		m.FootState = .();
+		return .Solving;
+	}
+
+	protected override bool Fill(FootIkComponent* c, EntityHandle owner, Float4x4 worldToModel, float deltaTime)
+	{
+		let m = c.Runtime.Modifier;
+		for (int i = 0; (i < m.FootLegs.Count) && (i < c.Legs.Count); i++)
+			m.FootLegs[i].HingeAxis = c.Legs[i].HingeAxis;
+		var s = ref m.Foot;
+		s.PelvisDropMax = c.PelvisDropMax;
+		s.MaxTilt = c.MaxTilt * DegToRad;
+		s.LiftHeight = c.LiftHeight;
+		s.GroundHeight = c.GroundHeight;
+		s.RaiseRate = c.RaiseRate;
+		s.LowerRate = c.LowerRate;
+		s.Weight = c.Runtime.Weight;
+		m.FootRayUp = Math.Max(c.RayUp, 0.0f);
+		m.FootRayDown = Math.Max(c.RayDown, 0.0f);
+		m.FootGroupMask = c.GroupMask;
+		m.FootStep = deltaTime;
+		m.FootNewFrame = true;
+		// The first system that answers rays; none, and every foot has no ground.
+		m.Rays = null;
+		for (let system in mScene.Systems)
+		{
+			m.Rays = system.AsRayQuery;
+			if (m.Rays != null)
+				break;
 		}
 		return true;
 	}

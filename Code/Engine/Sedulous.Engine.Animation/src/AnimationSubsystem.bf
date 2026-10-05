@@ -47,7 +47,9 @@ class AnimationSubsystem : Subsystem, ISceneObserver
 		{
 			let twoBone = scene.GetSystem<TwoBoneIkComponentManager>();
 			let aim = scene.GetSystem<AimIkComponentManager>();
-			if (((twoBone == null) || (twoBone.Count == 0)) && ((aim == null) || (aim.Count == 0)))
+			let feet = scene.GetSystem<FootIkComponentManager>();
+			if (((twoBone == null) || (twoBone.Count == 0)) && ((aim == null) || (aim.Count == 0))
+				&& ((feet == null) || (feet.Count == 0)))
 				continue;
 
 			using (ProfileScope("Animation.IkDebugDraw"))
@@ -55,6 +57,7 @@ class AnimationSubsystem : Subsystem, ISceneObserver
 				let draw = render.DebugScene(scene);
 				twoBone?.DrawDebug(draw);
 				aim?.DrawDebug(draw);
+				feet?.DrawDebug(draw);
 			}
 		}
 	}
