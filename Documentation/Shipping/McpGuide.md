@@ -33,8 +33,10 @@ guids and enums by name, the primary selection by default. `component_set` write
 fields through the page's undo path, one labelled step per call, the page dirty after and
 nothing saved. `value` takes the shape `entity_inspect` shows: numbers, booleans, strings,
 guids, vectors, colours, quaternions, an enum case by name or number, an asset guid (or null)
-for a reference, an entity guid (or null) for an entity reference. It refuses while
-simulating, on a read-only field, on a list or structure, and on a wrong shape.
+for a reference, an entity guid (or null) for an entity reference, and for a list an array of
+those: the whole list, resized to the array, in one undo step (a mesh's `Materials` as
+`[guid, null, guid]`). It refuses while simulating, on a read-only field, on a structure or a
+list of strings or structures, and on a wrong shape, any element's included.
 `navigation_bake` bakes a zone, as the inspector's Bake Navigation button does: the static
 geometry inside the zone's box (static, non-trigger rigid bodies and terrain; render meshes are
 not read, so a floor or an obstacle agents should respect needs a static body, and what moves

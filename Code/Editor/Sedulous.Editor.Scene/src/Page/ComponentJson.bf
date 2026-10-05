@@ -8,7 +8,7 @@ using Sedulous.Scene;
 namespace Sedulous.Editor.Scene;
 
 /// A reflected component's fields as JSON, and a JSON value as the Variant a field takes: what
-/// entity_inspect reads and component_set writes. Everything goes through the component's RUN
+/// entity_inspect reads and component_set writes (a list whole, from an array). Everything goes through the component's RUN
 /// TIME field reflection ([Component] and [SerializableComponent] ask for it), from an address
 /// inside the pool plus a type, never a per component ladder:
 ///
@@ -131,6 +131,24 @@ static class ComponentJson
 			return "structure";
 		return type.IsObject ? "object" : "";
 	}
+
+	/// The element type of a List<T> field; null for anything else.
+	public static Type ListElement(Type type)
+	{
+		if (let generic = type as SpecializedGenericType)
+		{
+			if (generic.UnspecializedType == typeof(System.Collections.List<>))
+				return generic.GetGenericArg(0);
+		}
+		return null;
+	}
+
+	/// What component_set writes a list of, element by element: references, entity references,
+	/// enums and the plain leaves. Not strings or structures, whose elements a list grows as
+	/// nulls or nested fields (scene_write edits those).
+	public static bool IsWritableElement(Type element)
+		=> ReferenceShape.Is(element) || (element == typeof(EntityRef)) || element.IsEnum
+		|| ((Shape(element) != null) && (element != typeof(String)));
 
 	/// The JSON shape a leaf field takes, for a refusal that teaches; null when it is no leaf.
 	public static String Shape(Type type)

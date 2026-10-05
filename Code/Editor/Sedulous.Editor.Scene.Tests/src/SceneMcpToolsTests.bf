@@ -11,6 +11,7 @@ using Sedulous.Net.Replication;
 using Sedulous.Materials;
 using Sedulous.Resource;
 using System.Collections;
+using Sedulous.Engine.Animation;
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -524,7 +525,8 @@ class SceneMcpToolsTests
 		Refused("light", "Type", "\"Laser\"", "field 'Type' takes one of: Directional, Point, Spot");
 		Refused("light", "Brightness", "1", "component 'light' has no field 'Brightness'");
 		Refused("physics.RigidBody", "Mass", "1", "entity 'Lamp' has no reflected component");
-		Refused("mesh", "Materials", "[]", "field 'Materials' of 'mesh' is a list - not writable through component_set yet");
+		Refused("mesh", "Materials", "[\"not-a-guid\"]", "field 'Materials' of 'mesh' is a list of asset guids or nulls - element 0 has the wrong shape");
+		Refused("mesh", "Materials", "7", "field 'Materials' of 'mesh' is a list - `value` is an array");
 		Refused("mesh", "MaterialCache", "[]", "component 'mesh' has no field 'MaterialCache'");
 		Refused("mesh", "Mesh", "\"not-a-guid\"", "field 'Mesh' is a reference");
 		Test.Assert(commands.UndoIndex == stackBefore);
@@ -628,6 +630,106 @@ class SceneMcpToolsTests
 		}
 		Test.Assert(networks.Get(thing).Authority == .Server);
 		Test.Assert(commands.UndoIndex == before);
+	}
+
+	/// component_set writes a whole list from an array, one undo step per call: references
+	/// (a null among them), shrunk, entity references and colours; an element of the wrong
+	/// shape refuses the whole call, and a list of a type it has no spelling for is refused.
+	[Test]
+	public static void ComponentSetWritesAListAsOneUndoStep()
+	{
+		let context = scope EditorContext();
+		let sceneId = Guid.Create();
+		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage("Bistro", sceneId));
+		let edit = page.EditContext;
+		let scene = edit.Scene;
+		let meshes = scene.AddSystem<MeshComponentManager>();
+		let animations = scene.AddSystem<SkeletalAnimationComponentManager>();
+		let instanced = scene.AddSystem<InstancedMeshComponentManager>();
+		let riderId = edit.CreateEntity("Rider");
+		let boardId = edit.CreateEntity("Board");
+		let rider = edit.Resolve(riderId);
+		meshes.Add(rider);
+		animations.Add(rider);
+		instanced.Add(rider);
+		edit.Commands.Clear();
+
+		let server = scope McpServer();
+		SceneMcpTools.Register(server, context);
+		let pageGuid = GuidText(sceneId, .. scope .());
+		let riderGuid = GuidText(riderId, .. scope .());
+		Answer Set(StringView component, StringView property, StringView valueJson)
+		{
+			return Call(server, "component_set", scope $"{{\"page\":\"{pageGuid}\",\"entity\":\"{riderGuid}\",\"component\":\"{component}\",\"property\":\"{property}\",\"value\":{valueJson}}}");
+		}
+		let commands = edit.Commands;
+
+		// Three slots, the middle one cleared; read back as entity_inspect shows the list.
+		let red = Guid.Create();
+		let blue = Guid.Create();
+		{
+			let got = Set("mesh", "Materials", scope $"[\"{red}\", null, \"{blue}\"]");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			let materials = meshes.Get(rider).Materials;
+			Test.Assert(materials.Count == 3);
+			Test.Assert((materials[0].Id == red) && (materials[1].Id == Guid()) && (materials[2].Id == blue));
+			Test.Assert(got.Payload.Get("value").Count == 3);
+			Test.Assert(got.Payload.Get("value").At(1).IsNull);
+		}
+		// Shrunk to one.
+		{
+			let got = Set("mesh", "Materials", scope $"[\"{blue}\"]");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert((meshes.Get(rider).Materials.Count == 1) && (meshes.Get(rider).Materials[0].Id == blue));
+		}
+		// Entity references, and colours.
+		{
+			let got = Set("SkeletalAnimationComponent", "MeshEntities", scope $"[\"{boardId}\", null]");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			let targets = animations.Get(rider).MeshEntities;
+			Test.Assert((targets.Count == 2) && (targets[0].Id == boardId) && targets[1].IsNil);
+		}
+		{
+			let got = Set("InstancedMeshComponent", "Tints", "[[1,0,0,1],[0,0,1,0.5]]");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			let tints = instanced.Get(rider).Tints;
+			Test.Assert((tints.Count == 2) && (tints[0] == Color(1, 0, 0, 1)) && (tints[1] == Color(0, 0, 1, 0.5f)));
+		}
+
+		// Refused whole: a bad element after good ones changes nothing; a list of matrices has
+		// no spelling here.
+		let before = commands.UndoIndex;
+		{
+			let got = Set("SkeletalAnimationComponent", "MeshEntities", scope $"[\"{boardId}\", 7]");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.StartsWith("field 'MeshEntities' of 'SkeletalAnimationComponent' is a list of entity guids or nulls - element 1 has the wrong shape"), got.Error);
+		}
+		{
+			let got = Set("InstancedMeshComponent", "Instances", "[]");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.StartsWith("field 'Instances' of 'InstancedMeshComponent' is a list of Float4x4"), got.Error);
+		}
+		Test.Assert(commands.UndoIndex == before);
+		Test.Assert(animations.Get(rider).MeshEntities.Count == 2);
+
+		// Four writes, four undo steps, each taking back exactly its own list.
+		commands.Undo();
+		Test.Assert(instanced.Get(rider).Tints.Count == 0);
+		Test.Assert(animations.Get(rider).MeshEntities.Count == 2, "the previous step still stands");
+		commands.Undo();
+		Test.Assert(animations.Get(rider).MeshEntities.Count == 0);
+		commands.Undo();
+		Test.Assert(meshes.Get(rider).Materials.Count == 3);
+		Test.Assert(meshes.Get(rider).Materials[0].Id == red);
+		commands.Undo();
+		Test.Assert(meshes.Get(rider).Materials.Count == 0);
+		Test.Assert(!commands.CanUndo);
 	}
 
 	/// One pump of a tool that may ask to be re-entered: the line state, and the answer when

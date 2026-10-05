@@ -227,7 +227,7 @@ static class SceneMcpTools
 		setSchema.Str("component", "the component, as entity_inspect names it: its `type` (\"light\", \"physics.RigidBody\") or its `typeName`", true);
 		setSchema.Str("property", "the field's name, as entity_inspect shows it", true);
 		server.RegisterTool("component_set",
-			"Set ONE reflected field of an entity's component on a scene page, through the editor's undo path: one undo step per call, labelled mcp, the page marked dirty, nothing saved (file.save or the page's Save does that). `value` takes the shape entity_inspect shows: numbers, booleans, strings, guids, [x,y] and [x,y,z] vectors, [r,g,b,a] colours (sRGB, as a colour picker shows them), [x,y,z,w] quaternions, an enum case's name or number, an asset guid (or null) for a reference, an entity guid (or null) for an entity reference. REFUSED while the page simulates, on a read-only field, on a nested structure or a list (not writable here yet), and on a value of the wrong shape: nothing changes then. Returns the field as entity_inspect reads it after the write.",
+			"Set ONE reflected field of an entity's component on a scene page, through the editor's undo path: one undo step per call, labelled mcp, the page marked dirty, nothing saved (file.save or the page's Save does that). `value` takes the shape entity_inspect shows: numbers, booleans, strings, guids, [x,y] and [x,y,z] vectors, [r,g,b,a] colours (sRGB, as a colour picker shows them), [x,y,z,w] quaternions, an enum case's name or number, an asset guid (or null) for a reference, an entity guid (or null) for an entity reference, and for a list an array of those (the whole list, resized to it: one undo step). REFUSED while the page simulates, on a read-only field, on a nested structure or a list of strings or structures (scene_write edits those), and on a value of the wrong shape, any element of a list included: nothing changes then. Returns the field as entity_inspect reads it after the write.",
 			setSchema.Build(), .Adjusts,
 			new (arguments, outResult, outError) =>
 			{
@@ -326,6 +326,11 @@ static class SceneMcpTools
 					edit.SetComponentString(id, type, property, value.AsString());
 					commands.EndGroup();
 				}
+				else if ((ComponentJson.ListElement(fieldType) != null) && ComponentJson.IsWritableElement(ComponentJson.ListElement(fieldType)))
+				{
+					if (!SetList(context, edit, id, manager, handle, field, component, value, outError))
+						return false;
+				}
 				else
 				{
 					let shape = ComponentJson.Shape(fieldType);
@@ -333,7 +338,7 @@ static class SceneMcpTools
 					{
 						let kind = ComponentJson.NestedKind(fieldType);
 						if (kind == "list")
-							outError.AppendF("field '{}' of '{}' is a list - not writable through component_set yet (scene_write edits the source)", property, component);
+							outError.AppendF("field '{}' of '{}' is a list of {} - component_set writes lists of references, entity references, enums and numbers or vectors (scene_write edits the source)", property, component, ComponentJson.ListElement(fieldType).GetName(.. scope .()));
 						else if (!kind.IsEmpty)
 							outError.AppendF("field '{}' of '{}' is a {} - not writable through component_set yet (scene_write edits the source)", property, component, kind);
 						else
@@ -364,6 +369,103 @@ static class SceneMcpTools
 				outResult.Set("undoSteps", JsonValue.MakeNumber(1));
 				return true;
 			});
+	}
+
+	/// One element of a list component_set writes, shaped before anything changes.
+	private struct ListItem
+	{
+		public Guid Id = .();
+		public int64 Raw = 0;
+		public Variant Leaf = .();
+
+		public this() {}
+	}
+
+	/// Writes a whole list field from a JSON array: every element shaped first, so a refusal
+	/// touches nothing, then the list resized and written in ONE component mutation, one undo
+	/// step. Inside the caller's mcp group.
+	private static bool SetList(EditorContext context, SceneEditContext edit, Guid id, ComponentManagerBase manager,
+		EntityHandle handle, FieldInfo field, StringView component, JsonValue value, String outError)
+	{
+		let element = ComponentJson.ListElement(field.FieldType);
+		let shape = scope String();
+		if (ReferenceShape.Is(element))
+			shape.Append("asset guids or nulls");
+		else if (element == typeof(EntityRef))
+			shape.Append("entity guids or nulls");
+		else if (element.IsEnum)
+			shape.AppendF("case names ({})", ComponentJson.EnumNames(element, .. scope .()));
+		else
+			shape.AppendF("{} values", ComponentJson.Shape(element));
+		if ((value == null) || !value.IsArray)
+		{
+			outError.AppendF("field '{}' of '{}' is a list - `value` is an array of {}", field.Name, component, shape);
+			return false;
+		}
+		let listAddress = (uint8*)manager.GetComponentAddress(handle) + field.MemberOffset;
+		if (*(Object*)listAddress == null)
+		{
+			outError.AppendF("field '{}' of '{}' holds no list to set (its component never allocated one)", field.Name, component);
+			return false;
+		}
+
+		let items = scope List<ListItem>();
+		defer { for (var item in ref items) item.Leaf.Dispose(); }
+		for (int i < value.Count)
+		{
+			let json = value.At(i);
+			var item = ListItem();
+			var shaped = true;
+			if (ReferenceShape.Is(element) || (element == typeof(EntityRef)))
+				shaped = json.IsNull || (json.IsString && (Guid.Parse(json.AsString()) case .Ok(out item.Id)));
+			else if (element.IsEnum)
+				shaped = ComponentJson.EnumValueOf(element, json, out item.Raw);
+			else
+			{
+				item.Leaf = ComponentJson.LeafVariant(element, json);
+				shaped = item.Leaf.HasValue;
+			}
+			if (!shaped)
+			{
+				outError.AppendF("field '{}' of '{}' is a list of {} - element {} has the wrong shape; nothing changed", field.Name, component, shape, i);
+				return false;
+			}
+			items.Add(item);
+		}
+
+		let resources = context.Resources;
+		let fieldOffset = field.MemberOffset;
+		let target = scope ComponentTarget(edit, id, manager.ComponentType);
+		edit.Commands.BeginGroup("mcp");
+		target.Mutate(scope [&](instance) =>
+			{
+				let list = *(Object*)((uint8*)instance + fieldOffset) as IReflectedList;
+				if (list == null)
+					return;
+				list.Count = items.Count;
+				for (int i < items.Count)
+				{
+					let address = list.ElementAddress(i);
+					if (ReferenceShape.Is(element))
+						ReferenceShape.Assign(element, address, items[i].Id, resources).IgnoreError();
+					else if (element == typeof(EntityRef))
+						*(EntityRef*)address = EntityRef(items[i].Id);
+					else if (element.IsEnum)
+						RawFieldAccess.WriteRawInt(address, element.Size, items[i].Raw);
+					else
+						items[i].Leaf.CopyValueData(address);
+				}
+			}, "");
+		edit.Commands.EndGroup();
+		// The write lands through the component's serialized form; a list it does not save comes
+		// back as it was.
+		let written = *(Object*)((uint8*)manager.GetComponentAddress(handle) + fieldOffset) as IReflectedList;
+		if ((written == null) || (written.Count != items.Count))
+		{
+			outError.AppendF("field '{}' of '{}' did not take the list (the component does not save it)", field.Name, component);
+			return false;
+		}
+		return true;
 	}
 
 	/// One viewport_screenshot in flight: the tool is re-entered every pump with the same
