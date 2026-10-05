@@ -14,6 +14,10 @@ Raptor's Sky Hopper tools, ported to this engine's asset envelopes, schema keys 
   enemies, bees, saws, spiky balls, hearts, gems and the flag. The sun, player, camera and scene
   settings come from Level3, so every level looks and plays alike. `levels.py Level4` writes one;
   a rewrite keeps the level's asset. The measures a route has to respect are in its docstring.
+- `ik.py`: the hero's inverse kinematics in every level: foot IK (the rig's detached feet met by
+  the shins, the pelvis Body) and an aim of the head (Neck, Head) on the Player, which drive the
+  Character model's animator below it. PlayerController turns the feet off in the air; Coin.as
+  points the head at the nearest coin within reach.
 
 Levels 1 to 3 were built earlier through the editor's tools, one entity at a time; their hearts
 and gems were placed afterwards through `scene_read` and `scene_write`.
