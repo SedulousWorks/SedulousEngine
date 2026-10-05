@@ -39,6 +39,20 @@ class GameInstanceTests
 		return map;
 	}
 
+	/// The run clock counts frames whether or not a game script runs: a project with only
+	/// scene behaviours is still a run, and a playtest times its input by this clock.
+	[Test]
+	public static void TheRunClockCountsFramesWithoutAGameScript()
+	{
+		let instance = scope GameInstance();
+		Test.Assert(!instance.ScriptRunning);
+		for (int i < 5)
+			instance.TickScript(1.0f / 60.0f, 1.0f);
+		Test.Assert(Math.Abs(instance.RunTime - 5.0 / 60.0) < 1e-6, scope $"{instance.RunTime}");
+		instance.ResetRunClock();
+		Test.Assert(instance.RunTime == 0);
+	}
+
 	[Test]
 	public static void AFreshInstanceIsIdleAndOwnsAUsableGroup()
 	{
