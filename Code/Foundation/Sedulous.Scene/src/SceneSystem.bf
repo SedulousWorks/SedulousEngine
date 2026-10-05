@@ -22,6 +22,9 @@ abstract class SceneSystem
 	/// The same query for a system that owns static level geometry; null for the rest.
 	public virtual IStaticGeometrySource AsStaticGeometrySource => null;
 
+	/// And for a system that answers rays against solid surfaces; null for the rest.
+	public virtual ISceneRayQuery AsRayQuery => null;
+
 	/// The scene this system was added to. BORROWED: the scene outlives its systems. Set
 	/// by the scene before OnSceneCreate, so a system need not keep its own.
 	public Scene Scene { get; private set; } = null;

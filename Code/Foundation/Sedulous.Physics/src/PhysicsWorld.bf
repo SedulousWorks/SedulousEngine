@@ -548,6 +548,12 @@ class PhysicsWorld
 	///
 	/// The mask rides in the user word rather than in an object, because the backend's filter
 	/// procedures are process wide and only the user word is per filter.
+	/// A body filter's user word: pass solid bodies only, a trigger (a sensor) not being a surface.
+	private const int cSolidBodiesOnly = 1;
+
+	private static bool SolidBodyShouldCollideLocked(void* user, JPH_Body* body)
+		=> ((int)user != cSolidBodiesOnly) || !JPH_Body_IsSensor(body);
+
 	private static bool GroupMaskShouldCollide(void* user, JPH_ObjectLayer layer)
 	{
 		let mask = (uint32)(int)user;
@@ -568,6 +574,7 @@ class PhysicsWorld
 	private static bool sCallbacksInstalled = false;
 	private static Monitor sCallbackLock = new .() ~ delete _;
 	private static JPH_ObjectLayerFilter_Procs sLayerProcs = .();
+	private static JPH_BodyFilter_Procs sBodyProcs = .();
 	private static JPH_ContactListener_Procs sContactProcs = .();
 
 	private static void InstallCallbacks()
@@ -580,6 +587,10 @@ class PhysicsWorld
 
 			sLayerProcs.ShouldCollide = => GroupMaskShouldCollide;
 			JPH_ObjectLayerFilter_SetProcs(&sLayerProcs);
+
+			sBodyProcs.ShouldCollide = null;
+			sBodyProcs.ShouldCollideLocked = => SolidBodyShouldCollideLocked;
+			JPH_BodyFilter_SetProcs(&sBodyProcs);
 
 			sContactProcs.OnContactValidate = null;
 			sContactProcs.OnContactAdded = => OnContactAdded;
@@ -630,9 +641,10 @@ class PhysicsWorld
 		return true;
 	}
 
-	/// The closest body along the ray. The mask's bit g considers bodies in group g.
+	/// The closest body along the ray. The mask's bit g considers bodies in group g. Triggers
+	/// are hit unless `skipTriggers`: a probe for ground wants solid surfaces only.
 	public bool RayCast(Float3 from, Float3 direction, float maxDistance, out RayHit outHit,
-		uint32 groupMask = 0xFFFFFFFF)
+		uint32 groupMask = 0xFFFFFFFF, bool skipTriggers = false)
 	{
 		outHit = .();
 
@@ -644,9 +656,11 @@ class PhysicsWorld
 
 		let filter = JPH_ObjectLayerFilter_Create((void*)(int)groupMask);
 		defer JPH_ObjectLayerFilter_Destroy(filter);
+		let solid = skipTriggers ? JPH_BodyFilter_Create((void*)(int)cSolidBodiesOnly) : null;
+		defer { if (solid != null) JPH_BodyFilter_Destroy(solid); }
 
 		if (!JPH_NarrowPhaseQuery_CastRay(JPH_PhysicsSystem_GetNarrowPhaseQuery(mSystem), &origin,
-			&ray, &hit, null, filter, null))
+			&ray, &hit, null, filter, solid))
 			return false;
 
 		outHit.Body = BodyId(hit.bodyID);

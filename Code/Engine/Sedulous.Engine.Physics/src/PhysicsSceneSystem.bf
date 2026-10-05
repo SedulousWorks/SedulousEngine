@@ -18,7 +18,7 @@ namespace Sedulous.Engine.Physics;
 /// steps on the FIXED clock, and hands the render frame interpolated poses.
 ///
 /// SIMULATION ONLY: an editor's edit mode runs nothing.
-class PhysicsSceneSystem : SceneSystem
+class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 {
 	/// BORROWED: the scene outlives its systems.
 	private Scene mScene = null;
@@ -96,6 +96,23 @@ class PhysicsSceneSystem : SceneSystem
 		if (mWorld.RayCast(from, direction, maxDistance, let hit, groupMask))
 			FillHit(ref result, hit, maxDistance);
 		return result;
+	}
+
+	/// Rays against the world's solid bodies for systems that do not depend on physics (foot
+	/// IK finds the ground under a foot): triggers are skipped, a checkpoint is not a floor.
+	public override ISceneRayQuery AsRayQuery => this;
+
+	public bool CastRay(Float3 origin, Float3 direction, float maxDistance, uint32 groupMask, out SceneRayHit outHit)
+	{
+		outHit = .();
+		if (mWorld == null)
+			return false;
+		if (!mWorld.RayCast(origin, direction, maxDistance, let hit, groupMask, true))
+			return false;
+		outHit.Distance = hit.Fraction * maxDistance;
+		outHit.Position = hit.Position;
+		outHit.Normal = hit.Normal;
+		return true;
 	}
 
 	/// A swept SPHERE from `from` along `direction`, answering the closest hit. Like RayCast

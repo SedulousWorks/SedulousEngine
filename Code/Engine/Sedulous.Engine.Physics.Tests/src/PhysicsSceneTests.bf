@@ -306,4 +306,36 @@ class PhysicsSceneTests
 		Test.Assert(floor > 0, scope $"{floor} floor, {raised} raised");
 		Test.Assert(raised == 20, scope $"{raised}"); // two boxes' tops and sides
 	}
+
+	/// What foot IK asks (inverse-kinematics.md P3): the ground under a foot. A checkpoint
+	/// trigger standing on the floor is not a floor.
+	[Test]
+	public static void TheSceneRayQueryFindsSolidGroundAndPassesThroughATrigger()
+	{
+		let play = scope PhysicsPlayScene();
+		play.AddFloor(); // top at y = 0
+		let checkpoint = play.AddBox(0.5f, .Static);
+		let sensor = play.Bodies.Get(checkpoint);
+		sensor.IsTrigger = true;
+		sensor.HalfExtents = .(1.0f, 0.5f, 1.0f); // y 0 to 1, right under the probe
+		let crate = play.AddBox(0.5f, .Static);
+		play.Scene.SetLocalPosition(crate, .(4.0f, 0.5f, 0.0f)); // a solid box beside it, top at 1
+		play.Start();
+
+		let rays = play.Physics.AsRayQuery;
+		Test.Assert(rays != null);
+		Test.Assert(rays.CastRay(.(0, 3, 0), .(0, -1, 0), 10.0f, 0xFFFFFFFF, var hit));
+		Test.Assert(Math.Abs(hit.Position.Y) < 1e-3f, "through the trigger, onto the floor");
+		Test.Assert(Math.Abs(hit.Distance - 3.0f) < 1e-3f);
+		Test.Assert(Math.Abs(hit.Normal.Y - 1.0f) < 1e-3f);
+
+		Test.Assert(rays.CastRay(.(4, 3, 0), .(0, -1, 0), 10.0f, 0xFFFFFFFF, out hit));
+		Test.Assert(Math.Abs(hit.Position.Y - 1.0f) < 1e-3f, "a solid box is ground");
+
+		Test.Assert(!rays.CastRay(.(0, 3, 0), .(0, -1, 0), 2.0f, 0xFFFFFFFF, out hit), "out of reach");
+
+		// The script ray still sees triggers: what a game may ask for on purpose.
+		Test.Assert(play.Physics.World.RayCast(.(0, 3, 0), .(0, -1, 0), 10.0f, let raw));
+		Test.Assert(Math.Abs(raw.Position.Y - 1.0f) < 1e-3f);
+	}
 }
