@@ -15,10 +15,11 @@ namespace Sedulous.Model.Resource;
 /// FLAT PARALLEL ARRAYS, so the serializer never nests: the node hierarchy is spread across
 /// six arrays rather than an array of records holding strings.
 ///
-/// Data version 2 records the per mesh material slots. There is ONE supported layout, so a
-/// manifest written before it is refused rather than guessed at: the remedy is a re-import,
-/// which rewrites the manifest beside freshly cooked meshes.
-[Serializable(2)]
+/// Data version 2 records the per mesh material slots: a manifest written before it is refused
+/// rather than guessed at, and the remedy is a re-import, which rewrites the manifest beside
+/// freshly cooked meshes. Version 3 appends the skeleton's parent node; a version 2 manifest
+/// still reads, knowing no parent, and its prefab keeps the file's placement.
+[Serializable(3, false, 2)]
 class ModelManifestSource
 {
 	// Per mesh.
@@ -59,6 +60,13 @@ class ModelManifestSource
 	/// load a single mesh.
 	public Float3 BoundsMin = .(0, 0, 0);
 	public Float3 BoundsMax = .(0, 0, 0);
+
+	/// The node the skeleton hangs from (the skin's root joint's parent: Blender's armature
+	/// object), minus one for the scene root, minus two unknown (no skin, or data before version
+	/// 3). A skin draws in this node's space, so the prefab puts each skinned mesh here at
+	/// identity (glTF ignores a skinned mesh node's own transform; inverse-kinematics.md P0a).
+	[Appended(3)]
+	public int32 SkeletonParentNode = -2;
 
 	/// Appends one mesh's material slots, keeping the three arrays in step. Called once per
 	/// mesh, in the same order the mesh ids are added.

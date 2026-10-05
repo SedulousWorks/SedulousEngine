@@ -24,6 +24,26 @@ static class AnimConvert
 			outMap[joints[j]] = (int32)j;
 	}
 
+	/// The model node the skeleton hangs from: the parent of the skin's first root joint (a
+	/// joint whose parent is not in the skin), minus one when that root has no parent, minus two
+	/// for a skin with no joints. A skin with several roots under different nodes takes the
+	/// first root's: the skeleton has one model space.
+	public static int32 SkeletonParentNode(Model model, ModelSkin skin, Dictionary<int32, int32> boneToJoint)
+	{
+		let bones = model.Bones;
+		for (let joint in skin.Joints)
+		{
+			if ((joint < 0) || (joint >= bones.Length) || (bones[joint] == null))
+				continue;
+			let parent = bones[joint].ParentIndex;
+			if ((parent < 0) || (parent >= bones.Length))
+				return -1;
+			if (!boneToJoint.ContainsKey(parent))
+				return parent;
+		}
+		return -2;
+	}
+
 	/// A skeleton from a skin: one bone per joint, in joint order, with each local bind pose
 	/// taken from the model's bone, the inverse bind from the skin, and the parent remapped
 	/// into joint space.

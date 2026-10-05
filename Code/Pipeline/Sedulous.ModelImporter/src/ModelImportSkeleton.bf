@@ -26,6 +26,7 @@ static class ModelImportSkeleton
 		let skin = model.Skins[0];
 		let boneToJoint = scope Dictionary<int32, int32>();
 		AnimConvert.BuildBoneToJoint(skin, boneToJoint);
+		manifest.SkeletonParentNode = AnimConvert.SkeletonParentNode(model, skin, boneToJoint);
 
 		let skeletonName = scope String();
 		ImportedNames.ForSkeleton(skin, skeletonName);

@@ -82,6 +82,7 @@ static class ModelCook
 	{
 		let skin = model.Skins[0];
 		AnimConvert.BuildBoneToJoint(skin, boneToJoint);
+		manifest.SkeletonParentNode = AnimConvert.SkeletonParentNode(model, skin, boneToJoint);
 
 		let skeletonAsset = scope SkeletonAsset();
 		AnimConvert.SkeletonFromModel(model, skin, boneToJoint, skeletonAsset.Source);

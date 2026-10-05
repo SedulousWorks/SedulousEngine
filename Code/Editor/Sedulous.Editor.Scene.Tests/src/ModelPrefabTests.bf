@@ -181,6 +181,102 @@ class ModelPrefabTests
 		Test.Assert(ModelPrefab.RestingClip(manifest, asset.Manifest) == 0, "else the first");
 	}
 
+	/// A skin draws in its skeleton's parent's space and glTF ignores a skinned mesh node's own
+	/// transform: the prefab puts the mesh entity under that parent at identity, so its world is
+	/// the skeleton's model space (inverse-kinematics.md P0a). Nodes: Root; Armature (moved and
+	/// turned, the skeleton's parent); Hips (a joint); Skin (the skinned mesh, a sibling of the
+	/// armature carrying an offset the file says to ignore); Rig (a node under the mesh).
+	[Test]
+	public static void ASkinnedMeshSitsAtIdentityUnderTheSkeletonsParentNode()
+	{
+		let fx = scope Fixture("scratch_model_prefab_skeleton_space_db");
+		var generation = 0;
+		// Generates and spawns the model with `skeletonParentNode`; answers the skinned mesh.
+		EntityHandle Spawn(Scene level, int32 skeletonParentNode)
+		{
+			let asset = scope ModelManifestAsset();
+			let m = asset.Manifest;
+			m.MeshGuid.Add(G(0x52, 7));
+			m.MeshSkinned.Add(true);
+			m.MeshMaterial.Add(-1);
+			m.AddMeshMaterialSlots(.());
+			m.SkeletonGuid = G(0x71, 7);
+			m.AnimationGuid.Add(G(0x72, 7));
+			m.SkeletonParentNode = skeletonParentNode;
+			AddNode(asset, "Root", -1, -1, .(0, 0, 0));
+			AddNode(asset, "Armature", 0, -1, .(2, 0, 1));
+			m.NodeRotation[1] = Quaternion.FromAxisAngle(.(0, 1, 0), 1.5707964f);
+			AddNode(asset, "Hips", 1, -1, .(0, 0, 0));
+			AddNode(asset, "Skin", 0, 0, .(5, 5, 5));
+			AddNode(asset, "Rig", 3, -1, .(0, 0, 0));
+
+			let name = scope $"Rider{generation++}";
+			let group = fx.Database.RootGroup.CreateGroup(name);
+			Test.Assert(group != null);
+			let manifest = group.CreateInstance(name, typeof(ModelManifestAsset).GetFullName(.. scope .()));
+			Test.Assert(manifest != null);
+			Test.Assert(manifest.WriteObject(asset) case .Ok);
+			let generated = ModelPrefab.GenerateModelPrefab(manifest);
+			Test.Assert(generated.Instance != null);
+			let payload = generated.Instance.ReadData("scene");
+			Test.Assert(payload != null);
+			defer delete payload;
+			level.AddSystem<MeshComponentManager>();
+			level.AddSystem<SkeletalAnimationComponentManager>();
+			Test.Assert(PrefabSpawn.Spawn(level, payload, generated.Instance.Id).IsAssigned);
+			level.UpdateTransforms();
+			let skin = level.FindEntityByName("Skin");
+			Test.Assert(skin.IsAssigned);
+			return skin;
+		}
+		bool SameMatrix(Float4x4 a, Float4x4 b)
+		{
+			for (int r < 4)
+			{
+				for (int c < 4)
+				{
+					if (Math.Abs(a.M[r][c] - b.M[r][c]) > 1e-5f)
+						return false;
+				}
+			}
+			return true;
+		}
+
+		// Under the armature: the mesh's world is the armature's.
+		{
+			let level = scope Scene("level");
+			let skin = Spawn(level, 1);
+			let armature = level.FindEntityByName("Armature");
+			Test.Assert(level.GetParent(skin) == armature);
+			Test.Assert(level.GetLocalTransform(skin).Position == Float3(0, 0, 0));
+			Test.Assert(SameMatrix(level.GetWorldMatrix(skin), level.GetWorldMatrix(armature)));
+			// The armature itself keeps the file's placement.
+			Test.Assert(level.GetLocalTransform(armature).Position.X == 2.0f);
+		}
+		// A skeleton with no parent: the mesh sits on the prefab root.
+		{
+			let level = scope Scene("level");
+			let skin = Spawn(level, -1);
+			let root = level.GetParent(level.FindEntityByName("Root"));
+			Test.Assert(level.GetParent(skin) == root);
+			Test.Assert(level.GetLocalTransform(skin).Position.Y == 0.0f);
+		}
+		// A manifest from before the parent was recorded keeps the file's placement.
+		{
+			let level = scope Scene("level");
+			let skin = Spawn(level, -2);
+			Test.Assert(level.GetParent(skin) == level.FindEntityByName("Root"));
+			Test.Assert(level.GetLocalTransform(skin).Position.Y == 5.0f);
+		}
+		// A parent under the mesh itself is left alone: no cycle.
+		{
+			let level = scope Scene("level");
+			let skin = Spawn(level, 4);
+			Test.Assert(level.GetParent(skin) == level.FindEntityByName("Root"));
+			Test.Assert(level.GetParent(level.FindEntityByName("Rig")) == skin);
+		}
+	}
+
 	/// A manifest that records slots binds only what each mesh draws; one that records none
 	/// keeps the whole table, which is what its submeshes index.
 	[Test]
