@@ -162,6 +162,25 @@ class SplineCurve
 		return ((float)lo + within) * step;
 	}
 
+	/// The distance along the curve at global t, DistanceToT's inverse, clamped to the curve's
+	/// ends. Needs RebuildArcLength, and answers zero without one. It is how far a closest point
+	/// is down a course, which t, spread over the segments however long each is, does not say.
+	public float TToDistance(float t)
+	{
+		if ((SegmentCount == 0) || (mArcLength.Count < 2) || (mTotalLength <= 0.0f))
+			return 0.0f;
+
+		// The table holds SamplesPerSegment chords per segment: t's sample index, then a lerp
+		// inside the chord, as DistanceToT reads it the other way.
+		let sample = Clamp(t, 0.0f, (float)SegmentCount) * (float)SamplesPerSegment;
+		let last = mArcLength.Count - 1;
+		let lo = (int)sample;
+		if (lo >= last)
+			return mTotalLength;
+		let within = sample - (float)lo;
+		return mArcLength[lo] + (mArcLength[lo + 1] - mArcLength[lo]) * within;
+	}
+
 	/// The position at a distance along the curve, which is what evenly spaced placement
 	/// wants. Needs RebuildArcLength.
 	public Float3 EvaluateAtDistance(float distance) => Evaluate(DistanceToT(distance));

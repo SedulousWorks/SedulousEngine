@@ -302,6 +302,39 @@ class SplineTests
 		Test.Assert(Near(curve.DistanceToT(curve.Length), curve.MaxT, 0.05f));
 	}
 
+	/// A short segment then a long one: t's share of the segments (half at the knot) is far
+	/// from the share of the length, which is what a course needs.
+	[Test]
+	public static void TToDistanceInvertsDistanceToTOnSegmentsOfDifferentLengths()
+	{
+		let curve = scope SplineCurve();
+		curve.Points.Add(.(.(0, 0, 0)));
+		curve.Points.Add(.(.(2, 0, 0)));
+		curve.Points.Add(.(.(20, 0, 0)));
+		curve.UpdateAutoHandles();
+		curve.RebuildArcLength();
+
+		Test.Assert(Near(curve.TToDistance(0.0f), 0.0f));
+		Test.Assert(Near(curve.TToDistance(curve.MaxT), curve.Length));
+		// The middle knot: the first segment's own arc (auto handles bow it past the 2 m chord),
+		// measured here by fine chords, independent of the table.
+		float firstArc = 0.0f;
+		for (int i = 1; i <= 1000; i++)
+			firstArc += Sedulous.Core.Length(curve.Evaluate((float)i / 1000.0f) - curve.Evaluate((float)(i - 1) / 1000.0f));
+		let atKnot = curve.TToDistance(1.0f);
+		Test.Assert(Abs(atKnot - firstArc) <= 0.01f * firstArc, scope $"{atKnot} against {firstArc}");
+		Test.Assert(atKnot < 0.5f * curve.Length, "not t's half of the segments");
+		for (let d in float[](0.5f, 1.9f, 3.0f, 7.5f, 12.0f, 19.5f))
+		{
+			let back = curve.TToDistance(curve.DistanceToT(d));
+			Test.Assert(Abs(back - d) <= 0.001f * d, scope $"{d} came back as {back}");
+		}
+		// Out of range clamps; an empty curve answers nought.
+		Test.Assert(Near(curve.TToDistance(-1.0f), 0.0f));
+		Test.Assert(Near(curve.TToDistance(9.0f), curve.Length));
+		Test.Assert(scope SplineCurve().TToDistance(0.5f) == 0.0f);
+	}
+
 	[Test]
 	public static void ClosestPointFindsTheNearestPositionOnTheCurve()
 	{
