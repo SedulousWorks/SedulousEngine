@@ -33,6 +33,7 @@ class AnimationGraphPlayer
 	private List<AnimationGraphParameter> mParameters = new .() ~ DeleteContainerAndItems!(_);
 
 	private List<BoneTransform> mFinalPoses = new .() ~ delete _;
+	private PoseModifierStack mModifiers = new .() ~ delete _;
 	private List<Float4x4> mSkinningMatrices = new .() ~ delete _;
 	private List<Float4x4> mPrevSkinningMatrices = new .() ~ delete _;
 	private bool mMatricesDirty = true;
@@ -174,8 +175,13 @@ class AnimationGraphPlayer
 			parameter.ConsumeTrigger();
 
 		CombineLayers();
+		// The pose modifiers (inverse kinematics) over the combined pose, before the palette.
+		mModifiers.Apply(mSkeleton, mFinalPoses);
 		mMatricesDirty = true;
 	}
+
+	/// The modifiers run after the layers combine and before the palette, BORROWED.
+	public PoseModifierStack Modifiers => mModifiers;
 
 	public Span<Float4x4> GetSkinningMatrices()
 	{

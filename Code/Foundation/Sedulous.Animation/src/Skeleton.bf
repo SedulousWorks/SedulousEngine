@@ -171,7 +171,14 @@ class Skeleton
 
 	private bool InBounds(int32 index) => (index >= 0) && (index < mBones.Count);
 
-	private void ComputeBoneWorldPose(int32 boneIndex, Span<BoneTransform> localPoses,
+	/// Bones in an order that puts every parent before its children (empty until
+	/// BuildChildIndices); a partial rebuild walks it.
+	public Span<int32> HierarchicalOrder => mHierarchicalOrder;
+
+	/// One bone's model space matrix from its local transform and its parent's matrix, already
+	/// in `outWorldPoses` (a root takes its root correction instead). The step ComputeWorldPoses
+	/// repeats; public so a partial rebuild uses the same formula.
+	public void ComputeBoneWorldPose(int32 boneIndex, Span<BoneTransform> localPoses,
 		Span<Float4x4> outWorldPoses)
 	{
 		if (!InBounds(boneIndex) || (boneIndex >= outWorldPoses.Length))

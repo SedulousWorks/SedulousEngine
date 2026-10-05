@@ -24,6 +24,10 @@ class AnimationPlayer
 	private bool mMatricesDirty = true;
 
 	private List<BoneTransform> mLocalPoses = new .() ~ delete _;
+	/// The sampled pose after the modifiers. The sampled pose itself is never modified, so a
+	/// modifier never compounds on its own last result.
+	private List<BoneTransform> mFinalPoses = new .() ~ delete _;
+	private PoseModifierStack mModifiers = new .() ~ delete _;
 	private List<Float4x4> mSkinningMatrices = new .() ~ delete _;
 	/// Last frame's, which is what a motion vector is the difference of.
 	private List<Float4x4> mPrevSkinningMatrices = new .() ~ delete _;
@@ -40,6 +44,7 @@ class AnimationPlayer
 
 		let boneCount = skeleton.BoneCount;
 		mLocalPoses.Count = boneCount;
+		mFinalPoses.Count = boneCount;
 		mSkinningMatrices.Count = boneCount;
 		mPrevSkinningMatrices.Count = boneCount;
 		for (int i < boneCount)
@@ -161,18 +166,37 @@ class AnimationPlayer
 		mMatricesDirty = true;
 	}
 
-	/// Samples the clip and computes the skinning matrices, and only when something moved.
+	/// Samples the clip when its time moved, runs the pose modifiers over a copy of it, and
+	/// computes the skinning matrices. With modifiers it runs every call: their targets move
+	/// whether or not the clip does. The sampled pose stays as sampled (GetLocalPoses); the
+	/// modified one is GetFinalPoses.
 	public void Evaluate()
 	{
-		if (!mMatricesDirty)
+		let modifying = !mModifiers.IsEmpty;
+		if (!mMatricesDirty && !modifying)
 			return;
 
-		if (mCurrentClip != null)
+		if (mMatricesDirty && (mCurrentClip != null))
 			AnimationSampler.SampleClip(mCurrentClip, mSkeleton, mCurrentTime, mLocalPoses);
 
-		mSkeleton.ComputeSkinningMatrices(mLocalPoses, mSkinningMatrices);
+		if (modifying)
+		{
+			for (int i < mLocalPoses.Count)
+				mFinalPoses[i] = mLocalPoses[i];
+			mModifiers.Apply(mSkeleton, mFinalPoses);
+			mSkeleton.ComputeSkinningMatrices(mFinalPoses, mSkinningMatrices);
+		}
+		else
+			mSkeleton.ComputeSkinningMatrices(mLocalPoses, mSkinningMatrices);
 		mMatricesDirty = false;
 	}
+
+	/// The modifiers run between the sample and the palette (inverse kinematics), BORROWED.
+	public PoseModifierStack Modifiers => mModifiers;
+
+	/// The pose the palette was last built from: the sampled pose changed by the modifiers, or
+	/// the sampled pose itself when there are none.
+	public Span<BoneTransform> GetFinalPoses() => mModifiers.IsEmpty ? mLocalPoses : mFinalPoses;
 
 	/// The matrices to upload, evaluated first if anything moved.
 	public Span<Float4x4> GetSkinningMatrices()
