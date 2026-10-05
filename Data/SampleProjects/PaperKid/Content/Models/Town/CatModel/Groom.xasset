@@ -6293,6 +6293,30 @@
 				</array>
 				<array name="eventTime" count="0"/>
 				<array name="eventName" count="0"/>
+				<string name="rootBone"/>
+				<bool name="rootHorizontal">false</bool>
+				<bool name="rootVertical">false</bool>
+				<bool name="rootYaw">false</bool>
+				<array name="rootTimes" count="0"/>
+				<array name="rootPositions" count="0"/>
+				<array name="rootYaws" count="0"/>
+			</object>
+			<string name="skeleton">dbe316bf-06a6-4346-a374-a39777de6735</string>
+			<object name="restPosition">
+				<f32 name="x">0</f32>
+				<f32 name="y">0</f32>
+				<f32 name="z">0</f32>
+			</object>
+			<object name="restRotation">
+				<f32 name="x">0</f32>
+				<f32 name="y">0</f32>
+				<f32 name="z">0</f32>
+				<f32 name="w">1</f32>
+			</object>
+			<object name="restScale">
+				<f32 name="x">1</f32>
+				<f32 name="y">1</f32>
+				<f32 name="z">1</f32>
 			</object>
 		</object>
 	</object>

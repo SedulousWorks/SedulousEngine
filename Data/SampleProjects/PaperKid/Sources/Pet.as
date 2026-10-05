@@ -5,6 +5,10 @@
 // Its model is its first child, with the clips the slots name (Tools/blender/animals.py). Every
 // clip starts and ends in the same standing pose, so a switch at a clip's end does not snap; the
 // held actions last their clip's length, and standing about loops Idle for a while.
+//
+// It walks by the Walk clip's own travel: the model's animator moves this entity by the clip's
+// root motion (Entity mode, aimed here), so the feet never slide. Pet.as only steers (it turns the
+// way it wants to go) and sets the pace (the clip's speed), slower while still turning.
 class Pet
 {
 	Entity self;
@@ -15,7 +19,7 @@ class Pet
 	[9.0, "Lawn's far edge (m)"] float zMin;
 	[13.0, "Lawn's near edge (m)"] float zMax;
 	[0.8, "Walking speed (m/s)"] float speed;
-	[0.55, "Metres the walk clip covers at speed 1"] float walkMetres;
+	[0.55, "Metres the walk clip covers at speed 1 (its root motion)"] float walkMetres;
 	["asset:AnimationClip", "Walk (loops)"] Guid walkClip;
 	["asset:AnimationClip", "Standing about (loops)"] Guid idleClip;
 	["asset:AnimationClip", "Sitting down and up again"] Guid sitClip;
@@ -70,20 +74,23 @@ class Pet
 		float ease = 4.0f * dt;
 		m_yaw += turn * ((ease < 1.0f) ? ease : 1.0f);
 		self.SetLocalRotation(FromYawPitchRoll(m_yaw, 0.0f, 0.0f));
-		float step = speed * dt;
-		if (step > far)
-		{
-			step = far;
-		}
-		// Slow while still turning a long way round, so it does not orbit the spot.
+		// Slow while still turning a long way round, so it does not orbit the spot; and slow as it
+		// arrives, so the clip's travel stops on the spot rather than past it.
 		float facing = Cos(turn);
 		if (facing < 0.2f)
 		{
 			facing = 0.2f;
 		}
-		step *= facing;
-		self.SetLocalPosition(Float3(p.X + Sin(m_yaw) * step, p.Y, p.Z + Cos(m_yaw) * step));
-		setPace(speed * facing);
+		float arriving = far / 0.3f;
+		if (arriving > 1.0f)
+		{
+			arriving = 1.0f;
+		}
+		if (arriving < 0.3f)
+		{
+			arriving = 0.3f;
+		}
+		setPace(speed * facing * arriving);
 	}
 
 	private void walkSomewhere()

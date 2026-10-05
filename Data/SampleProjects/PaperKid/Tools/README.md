@@ -49,8 +49,11 @@ Raptor's PaperKid tools, ported to this engine's asset envelopes, schema keys an
   and plays Walk at its pace.
 - `blender/animals.py`: the dog and the cat, from one four-legged builder and their proportions,
   each with Walk, Idle, Sit, LieDown and its own clip (Sniff, Groom), every clip starting and ending
-  in the same standing pose; imported as `Models/Town/DogModel` and `Models/Town/CatModel`. On the
-  title backdrop `Pet.as` walks each about its lawn and picks what it does at each spot, and
+  in the same standing pose; imported as `Models/Town/DogModel` and `Models/Town/CatModel`. The Walk
+  carries its root one stride forward a loop, and its clip asset extracts that as root motion
+  (horizontal): the model's animator moves the pet (Entity mode, aimed at the Pet entity by
+  `block.py` through `pkgen.root_motion_entity`). On the
+  title backdrop `Pet.as` steers each about its lawn and picks what it does at each spot, and
   `Stroller.as` sends the cars and the walkers across (`block.py`'s `start()`).
 - `blender/kid_bike.py`: the kid on his bike, modelled, rigged and animated in Blender (the
   Ride and Throw clips) and written as `KidBike.glb`; run it with Blender in the background

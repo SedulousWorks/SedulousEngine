@@ -379,7 +379,7 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">3765024947835893819</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="skeleton">1f80e5a4-9d7c-b848-b3d9-be25e5b678ec</string>
 				<string name="clip">b214dcc0-b73d-fb44-823c-97e0b491206c</string>
@@ -389,6 +389,8 @@
 				<array name="meshEntities" count="1">
 					<string>d43b6847-39cb-46b3-9671-65654ed79693</string>
 				</array>
+				<u8 name="rootMotion">0</u8>
+				<string name="rootMotionTarget">00000000-0000-0000-0000-000000000000</string>
 			</object>
 		</object>
 	</array>

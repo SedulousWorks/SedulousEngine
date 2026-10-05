@@ -42,6 +42,31 @@ def schema(wire):
     return _schemas[wire]
 
 
+def root_motion_entity(prefab, target):
+    """An instance override (componentOps op 0, form 1, the editor's form): the model prefab's clip
+    animator moves `target` (the gameplay root it hangs under) by its clips' root motion
+    (root-motion.md P2: RootMotion Entity, RootMotionTarget), its other fields as the prefab has
+    them, at the animator's current data version."""
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring(mcp("prefab_read", {"guid": prefab})["xml"])
+    version = schema("skeletal_animation")["dataVersions"][0]["version"]
+    for comp in root.find("array[@name='components']"):
+        if comp.find("string[@name='type']").text != "skeletal_animation":
+            continue
+        src = comp.find("string[@name='owner']").text
+        data = comp.find("object[@name='data']")
+        data.find(".//u32[@name='version']").text = str(version)
+        for name in ("rootMotion", "rootMotionTarget"):
+            old = data.find("*[@name='%s']" % name)
+            if old is not None:
+                data.remove(old)
+        ET.SubElement(data, "u8", name="rootMotion").text = "1"  # Entity
+        ET.SubElement(data, "string", name="rootMotionTarget").text = target
+        return ('<object><string name="src">%s</string><string name="type">skeletal_animation</string>'
+                '<u8 name="op">0</u8><u8 name="form">1</u8>%s</object>' % (src, ET.tostring(data, encoding="unicode")))
+    raise SystemExit("prefab %s has no clip animator" % prefab)
+
+
 def num(v):
     if isinstance(v, bool):
         return "true" if v else "false"
@@ -155,15 +180,16 @@ class Doc:
         self.settings.append(settings("SceneScriptSettings", script=guid,
                                       overrides=[override(k, v) for k, v in overrides.items()]))
 
-    def instance(self, prefab, pos=(0, 0, 0), rot=(0, 0, 0, 1), scale=(1, 1, 1), parent=None):
+    def instance(self, prefab, pos=(0, 0, 0), rot=(0, 0, 0, 1), scale=(1, 1, 1), parent=None, ops=()):
+        """A prefab instance; `ops` its component overrides, as the editor writes them."""
         self.instances.append(
             '<string name="prefab">%s</string><string name="parent">%s</string>%s%s%s'
             '<string name="rootLive">%s</string><string name="owner">%s</string>'
             '<string name="nestedSrcRoot">%s</string><string name="nextSibling">%s</string>'
             '<u8 name="placement">1</u8><array name="members" count="0"/><array name="destroyed" count="0"/>'
-            '<array name="transformOverrides" count="0"/><array name="componentOps" count="0"/>' % (
+            '<array name="transformOverrides" count="0"/><array name="componentOps" count="%d">%s</array>' % (
                 prefab, parent or NIL, vec("position", pos), vec("rotation", rot, "xyzw"), vec("scale", scale),
-                self.stable_id("instance"), NIL, NIL, NIL))
+                self.stable_id("instance"), NIL, NIL, NIL, len(ops), "".join(ops)))
 
     def xml(self):
         return ('<root><u32 name="magic">3586350318</u32><u32 name="version">3</u32><string name="name">%s</string>'

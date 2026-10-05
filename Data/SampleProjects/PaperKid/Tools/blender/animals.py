@@ -9,7 +9,9 @@ stand on the ground at their origin, facing the engine's +Z.
 
 Every clip starts and ends in the same standing pose, so Pet.as can switch from one to the next
 without a snap:
-- Walk: one second, a trot (the diagonal legs together); Pet.as plays it at the pace it walks.
+- Walk: one second, a trot (the diagonal legs together), the root travelling one stride forward:
+  the engine extracts that as root motion (horizontal), so the clip itself carries the animal and
+  Pet.as only steers it and sets its pace.
 - Idle: two seconds, looping: the dog wags and looks about, the cat sways its tail.
 - Sit: four seconds: down onto the haunches, a look round, back up.
 - LieDown: five seconds: down on the lawn, the head resting, back up.
@@ -167,8 +169,9 @@ class Keyer:
         self.rig = rig
         self.pb = rig.pose.bones
 
-    def pose(self, frame, turns, drop=0.0, lift_body=0.0):
-        """turns: bone -> [(axis, degrees), ...], applied in order; drop: the root lowered (m)."""
+    def pose(self, frame, turns, drop=0.0, lift_body=0.0, travel=0.0):
+        """turns: bone -> [(axis, degrees), ...], applied in order; drop: the root lowered (m);
+        travel: the root moved forward (m), the walk's root motion."""
         for pb in self.pb:
             pb.rotation_quaternion = (1, 0, 0, 0)
         for name, items in turns.items():
@@ -177,7 +180,9 @@ class Keyer:
                 t = turn_quat(self.rig, name, axis, deg)
                 q = t if q is None else t @ q
             self.pb[name].rotation_quaternion = q
-        self.pb["root"].location = Vector((0, -drop, 0))  # the root bone points up: its -Y is down
+        # The root bone points up: its -Y is down, and its +Z is forward (the engine's +Z, as the
+        # exported file shows).
+        self.pb["root"].location = Vector((0, -drop, travel))
         self.pb["body"].location = Vector((0, 0, lift_body))
         for pb in self.pb:
             pb.keyframe_insert("rotation_quaternion", frame=frame)
@@ -193,8 +198,10 @@ def clip(rig, name, seconds, posefn):
     k = Keyer(rig)
     frames = int(round(seconds * FPS))
     for f in range(frames + 1):
-        turns, drop = posefn(f / FPS)
-        k.pose(f + 1, turns, drop)
+        posed = posefn(f / FPS)
+        turns, drop = posed[0], posed[1]
+        travel = posed[2] if len(posed) > 2 else 0.0
+        k.pose(f + 1, turns, drop, travel=travel)
     return action
 
 
@@ -212,7 +219,7 @@ def walk_pose(t, b):
         add(turns, "lower_" + key, PITCH_AXIS, bend if key[0] == "F" else -bend)
     add(turns, "tail1", YAW_AXIS, 12 * math.sin(2 * p0))
     add(turns, "head", PITCH_AXIS, 3 * math.sin(2 * p0))
-    return turns, 0.012 * (1 - math.cos(2 * p0)) / 2
+    return turns, 0.012 * (1 - math.cos(2 * p0)) / 2, b.s["stride"] * t
 
 
 def idle_pose(t, b, wag):

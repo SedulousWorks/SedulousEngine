@@ -4,7 +4,7 @@ import json, os, sys
 import xml.etree.ElementTree as ET
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from pkgen import Doc, mcp, yaw, pitch, settings, num, assets
+from pkgen import Doc, mcp, yaw, pitch, settings, num, assets, root_motion_entity
 
 ASSETS = assets()
 ids = {a["name"]: a["guid"] for a in ASSETS if a["type"] != "PrefabDocument"}
@@ -292,7 +292,9 @@ def start():
             ("walkClip", "Walk"), ("idleClip", "Idle"), ("sitClip", "Sit"), ("lieClip", "LieDown"), ("ownClip", own))}
         d.script(e, (ids["Pet"], dict(xMin=lawn[0], xMax=lawn[1], zMin=lawn[2], zMax=lawn[3], speed=speed,
                                       walkMetres=metres, **clips)))
-        d.instance(town_model(model), parent=e)
+        # The Walk clip carries the pet (its root motion): the model's animator moves the pet's
+        # entity, which Pet.as only steers.
+        d.instance(town_model(model), parent=e, ops=[root_motion_entity(town_model(model), e)])
 
     pet("Dog", "Dog", (-7.5, -4.0, 12.5, 15.0), 0.8, 0.55, "Sniff")
     pet("Cat", "Cat", (4.0, 7.0, 13.0, 15.0), 0.45, 0.32, "Groom")
