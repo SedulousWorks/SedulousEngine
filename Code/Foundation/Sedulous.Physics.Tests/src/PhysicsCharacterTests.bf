@@ -79,6 +79,55 @@ class PhysicsCharacterTests
 			"still walking the ledge");
 	}
 
+	/// A board or a sled steers by the slope under it: the character reads the ground's normal,
+	/// straight up in the air and for a character that does not exist.
+	[Test]
+	public static void ACharacterReadsTheNormalOfTheSlopeItStandsOnAndUpInTheAir()
+	{
+		let world = scope PhysicsWorld();
+
+		// A slab tilted 20 degrees about Z: it rises toward +x, so its top faces
+		// (-sin 20, cos 20, 0).
+		let tilt = 20.0f * Math.PI_f / 180.0f;
+		let slope = scope BodyDesc();
+		slope.Motion = .Static;
+		slope.Layer = .Static;
+		var slab = ShapeDesc();
+		slab.Kind = .Box;
+		slab.HalfExtents = .(20.0f, 0.5f, 5.0f);
+		slope.Shapes.Add(slab);
+		slope.Rotation = Quaternion.FromAxisAngle(.(0.0f, 0.0f, 1.0f), tilt);
+		Test.Assert(world.CreateBody(slope).IsValid);
+
+		var desc = CharacterDesc();
+		desc.Position = .(0.0f, 2.5f, 0.0f);
+		let character = world.CreateCharacter(desc);
+		Test.Assert(character.IsValid);
+
+		// Falling: in the air, the normal is straight up.
+		world.SetCharacterVelocity(character, .(0.0f, -1.0f, 0.0f));
+		world.Step(Step);
+		world.UpdateCharacter(character, Step);
+		Test.Assert(world.GetCharacterGround(character) == .InAir);
+		Test.Assert(Near(world.CharacterGroundNormal(character).Y, 1.0f, 0.001f));
+
+		// Landed: the slope's own normal (20 degrees is well under the default 50 degree limit).
+		for (int i < 90)
+		{
+			world.SetCharacterVelocity(character, .(0.0f, -3.0f, 0.0f));
+			world.Step(Step);
+			world.UpdateCharacter(character, Step);
+		}
+		Test.Assert(world.GetCharacterGround(character) == .OnGround);
+		let normal = world.CharacterGroundNormal(character);
+		Test.Assert(Near(normal.X, -Math.Sin(tilt), 0.02f), scope $"{normal}");
+		Test.Assert(Near(normal.Y, Math.Cos(tilt), 0.02f));
+		Test.Assert(Near(normal.Z, 0.0f, 0.02f));
+
+		// An unknown character reads up rather than a zero vector.
+		Test.Assert(Near(world.CharacterGroundNormal(CharacterId()).Y, 1.0f, 0.001f));
+	}
+
 	/// Every call on a stale or never valid handle is a no-op, since a handle outliving what
 	/// it named is ordinary rather than a caller's mistake.
 	[Test]

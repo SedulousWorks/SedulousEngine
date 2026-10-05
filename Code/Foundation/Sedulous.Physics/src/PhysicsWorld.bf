@@ -1050,6 +1050,25 @@ class PhysicsWorld
 		JPH_CharacterVirtual_SetPosition(mCharacters[index].Character, &value);
 	}
 
+	/// The normal of the ground the character stands on as of its last update (unit, world
+	/// space): a board or a sled steers by it, gravity along a slope being gravity minus its part
+	/// along the normal. Straight up in the air, when nothing supports the character (Jolt then
+	/// leaves a zero normal) and for an unknown character: never a zero vector.
+	public Float3 CharacterGroundNormal(CharacterId id)
+	{
+		let up = Float3(0.0f, 1.0f, 0.0f);
+		if (!ResolveCharacter(id, let index))
+			return up;
+		let character = (JPH_CharacterBase*)mCharacters[index].Character;
+		if (JPH_CharacterBase_GetGroundState(character) == .JPH_GroundState_InAir)
+			return up;
+		var value = JPH_Vec3();
+		JPH_CharacterBase_GetGroundNormal(character, &value);
+		let normal = FromJolt(value);
+		let lengthSquared = normal.X * normal.X + normal.Y * normal.Y + normal.Z * normal.Z;
+		return (lengthSquared > 1.0e-6f) ? normal / Math.Sqrt(lengthSquared) : up;
+	}
+
 	public CharacterGround GetCharacterGround(CharacterId id)
 	{
 		if (!ResolveCharacter(id, let index))
