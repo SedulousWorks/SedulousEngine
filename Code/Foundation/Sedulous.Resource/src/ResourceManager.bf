@@ -55,6 +55,11 @@ class ResourceManager
 	/// Comfortably more than the frames a renderer can have in flight at once.
 	private const uint32 cGraveFrames = 8;
 
+	/// Whether a bind of a product type no factory builds is logged, as a host wiring error.
+	/// Off for a manager that only collects references (it has no factories by design, and
+	/// every bind landing unresolved is the answer it wants, not a fault to report).
+	public bool ReportsMissingFactories = true;
+
 	/// The constructing thread is the main one: finalizing and pumping happen there.
 	public this(IContentDatabase database, JobSystem jobs = null)
 	{
@@ -538,7 +543,8 @@ class ResourceManager
 		{
 			// A HOST wiring error, not a data error: nothing registered a factory for this
 			// product type.
-			GlobalLog(.Warning, "Resource: no factory registered for product type {}", productTypeId);
+			if (ReportsMissingFactories)
+				GlobalLog(.Warning, "Resource: no factory registered for product type {}", productTypeId);
 			handle.SetState(.Failed);
 			return;
 		}

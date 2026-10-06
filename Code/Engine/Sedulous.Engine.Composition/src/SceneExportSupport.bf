@@ -62,6 +62,8 @@ static class SceneExportSupport
 		if (SceneStorage.LoadScene(instance, scratch) case .Err)
 			return false;
 		let collector = scope ResourceManager(db);
+		// Unresolved is the answer here: each bind would otherwise log a missing factory.
+		collector.ReportsMissingFactories = false;
 		SceneResolve.ResolveSceneResources(scratch, collector);
 		collector.CollectUnresolved(outResources);
 		scratch.ForEachPendingPrefabInstance(scope [&](pending) => { outPrefabs.Add(pending.PrefabId); });

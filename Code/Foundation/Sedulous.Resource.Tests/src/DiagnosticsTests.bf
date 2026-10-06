@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using Sedulous.Content;
 
 namespace Sedulous.Resource.Tests;
@@ -54,6 +55,42 @@ class DiagnosticsTests
 		unresolved.Clear();
 		fixture.Manager.CollectUnresolved(unresolved);
 		Test.Assert(unresolved.IsEmpty);
+	}
+
+	private class MissingFactoryLog : BaseLogger
+	{
+		public int Lines = 0;
+		public this() : base(.Warning, "Test") {}
+		protected override void LogMessage(LogLevel level, StringView message)
+		{
+			if (message.Contains("no factory registered"))
+				Lines++;
+		}
+	}
+
+	/// A bind of a type no factory builds is a host wiring error, logged; a manager that only
+	/// collects references (a scene's reference scan, factory less by design) says nothing,
+	/// the bind landing unresolved all the same. The scan of an imported model's prefab logged
+	/// a line per reference.
+	[Test]
+	public static void AMissingFactoryIsLoggedUnlessTheManagerOnlyCollects()
+	{
+		let log = new MissingFactoryLog();
+		InitGlobalLogger(log, true);
+		defer ShutdownGlobalLogger();
+
+		let fixture = scope ResourceFixture("scratch_resource_missing_factory");
+		let authored = fixture.Author("steel", 8, 8);
+		Test.Assert(fixture.Manager.Bind<TestProduct>(authored).Get == null);
+		Test.Assert(log.Lines == 1, "a host with no factory for it: logged");
+
+		let collector = scope ResourceManager(fixture.Database);
+		collector.ReportsMissingFactories = false;
+		Test.Assert(collector.Bind<TestProduct>(authored).Get == null);
+		let unresolved = scope System.Collections.List<Guid>();
+		collector.CollectUnresolved(unresolved);
+		Test.Assert((unresolved.Count == 1) && (unresolved[0] == authored), "still unresolved");
+		Test.Assert(log.Lines == 1, "a collector: nothing more logged");
 	}
 
 	/// Unreferenced is the column that matters: a product nothing outside the cache holds
