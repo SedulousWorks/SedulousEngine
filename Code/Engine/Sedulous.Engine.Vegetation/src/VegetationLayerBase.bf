@@ -50,6 +50,19 @@ class VegetationLayerBase : ISerializable
 	[Description("What one chunk may hold; placing stops there rather than the density scaling down.")]
 	public uint32 MaxInstancesPerChunk = 4096;
 	public bool Visible = true;
+	// What of an instance is solid (vegetation colliders): an upright trunk this radius round and
+	// this tall from its foot, both scaled with the instance, in this physics collision group.
+	// Radius 0 is scenery only (the default). The view toggles (Visible, the component's) do not
+	// change it.
+	[DisplayName("Collision Radius")]
+	[Description("A solid trunk this radius round (metres, scaled with each instance); 0 is scenery only.")]
+	public float CollisionRadius = 0.0f;
+	[DisplayName("Collision Height")]
+	[Description("The trunk's height from its foot to its top (metres, scaled with each instance).")]
+	public float CollisionHeight = 0.0f;
+	[DisplayName("Collision Group")]
+	[Description("The physics collision group of the trunks (0 to 31): the scene's group matrix decides what they stop, and a query finds them by it.")]
+	public uint8 CollisionGroup = 0;
 
 	public this() {}
 
@@ -99,6 +112,14 @@ class VegetationLayerBase : ISerializable
 		SerializeValue(ar, "castShadows", ref CastShadows);
 		SerializeValue(ar, "maxInstancesPerChunk", ref MaxInstancesPerChunk);
 		SerializeValue(ar, "visible", ref Visible);
+		// Data version 4 added the collision. Version 0 is no version scope (a bare round
+		// trip), which this type never stores, its versions starting at 1: the current layout.
+		if ((ar.Mode == .Write) || (ar.Version == 0) || (ar.Version >= 4))
+		{
+			SerializeValue(ar, "collisionRadius", ref CollisionRadius);
+			SerializeValue(ar, "collisionHeight", ref CollisionHeight);
+			SerializeValue(ar, "collisionGroup", ref CollisionGroup);
+		}
 	}
 
 	public virtual void Serialize(ISerializer ar) => SerializeBase(ar);

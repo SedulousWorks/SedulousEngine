@@ -6,6 +6,7 @@ using Sedulous.Geometry;
 using Sedulous.Heightfield;
 using Sedulous.Materials;
 using Sedulous.Render;
+using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Terrain;
 using Sedulous.Terrain.Resource;
@@ -28,7 +29,7 @@ namespace Sedulous.Engine.Vegetation;
 /// matrix and the layer's scatter hash. A region notice, which the editor brushes send,
 /// regrows only the touched chunks.
 class TerrainVegetationComponentManager : ResourceBindingComponentManager<TerrainVegetationComponent>,
-	IRenderDataProvider
+	IRenderDataProvider, IStaticColliderSource
 {
 	/// The chunks scattered per extraction, per layer: a cold start spreads over frames.
 	public const uint32 cDefaultBuildBudget = 4;
@@ -125,6 +126,12 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 	public const uint32 cPropSlotBit = 0x80000000;
 	public static uint32 ProceduralSlot(uint32 index) => index;
 	public static uint32 PropSlot(uint32 index) => index | cPropSlotBit;
+
+	/// A capsule per instance of every solid layer (CollisionRadius above 0) over the whole
+	/// terrain, built through the same chunk path the drawing uses (the scatter with its rules
+	/// for a procedural layer, the bucketed authored instances for a prop layer), so the trees
+	/// physics has are the trees drawn.
+	public override IStaticColliderSource AsStaticColliderSource => this;
 
 	/// Vegetation draws in an editor as well as in a player, so this is NOT simulation gated.
 	public override bool IsSimulationOnly => false;
@@ -373,19 +380,16 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 		mBuilds++;
 	}
 
-	/// One layer slot's sets: the cache, its invalidation, and the emit of every chunk in
-	/// range with the fade prefix as its count.
-	private void ExtractLayer(ExtractedScene snapshot, EntityHandle owner, Guid ownerId,
-		uint32 slot, VegetationLayerBase authored, ScatterLayer layer, Span<Float4x4> instances,
-		Heightfield hf, SplatWeights splat, VegetationMask mask, Float4x4 entityWorld,
-		ref uint32 budget)
+	/// Brings one layer slot's cache up to date with its sources: another heightfield, mesh or
+	/// rule resets it; a sculpt, a paint or a new instance list dirties its chunks; a moved
+	/// terrain recomposes them. Null when the layer's mesh does not resolve. The drawing and the
+	/// colliders both go through it, then build the dirty chunks they need.
+	private LayerCache PrepareLayer(EntityHandle owner, Guid ownerId, uint32 slot,
+		VegetationLayerBase authored, ScatterLayer layer, Span<Float4x4> instances, Heightfield hf,
+		SplatWeights splat, VegetationMask mask, Float4x4 entityWorld)
 	{
 		let isProp = (slot & cPropSlotBit) != 0;
 		let cache = CacheFor(owner, slot);
-		cache.SeenThisFrame = true; // a hidden layer keeps its sets, so unhiding regrows nothing
-		if (!authored.Visible)
-			return;
-
 		let mesh = authored.Mesh.Get;
 		if (mesh == null)
 		{
@@ -400,7 +404,7 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 					"Vegetation: {} layer {} '{}' has a mesh reference that does not resolve, one deleted, uncooked or stale, so nothing will draw",
 					isProp ? "prop" : "procedural", slot & ~cPropSlotBit, authored.Name);
 			}
-			return;
+			return null;
 		}
 		cache.WarnedNoMesh = false;
 
@@ -478,6 +482,26 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 					Compose(cache, set);
 			}
 		}
+		return cache;
+	}
+
+	/// One layer slot's sets: the cache, its invalidation, and the emit of every chunk in
+	/// range with the fade prefix as its count.
+	private void ExtractLayer(ExtractedScene snapshot, EntityHandle owner, Guid ownerId,
+		uint32 slot, VegetationLayerBase authored, ScatterLayer layer, Span<Float4x4> instances,
+		Heightfield hf, SplatWeights splat, VegetationMask mask, Float4x4 entityWorld,
+		ref uint32 budget)
+	{
+		let isProp = (slot & cPropSlotBit) != 0;
+		// A hidden layer keeps its sets, so unhiding regrows nothing.
+		CacheFor(owner, slot).SeenThisFrame = true;
+		if (!authored.Visible)
+			return;
+		let cache = PrepareLayer(owner, ownerId, slot, authored, layer, instances, hf, splat, mask,
+			entityWorld);
+		if (cache == null)
+			return;
+		let mesh = authored.Mesh.Get;
 
 		let hasOrigin = snapshot.HasViewOrigin;
 		let origin = snapshot.ViewOrigin;
@@ -633,5 +657,102 @@ class TerrainVegetationComponentManager : ResourceBindingComponentManager<Terrai
 				delete pair.value;
 		}
 		mPendingRegions.Clear();
+	}
+
+	/// A resource that is named but not resolved yet: still loading, or never will be (a
+	/// deleted asset, which the drawing warns about on its own).
+	private static bool Pending<T>(Ref<T> reference) where T : class
+		=> (reference.Id != Guid()) && (reference.Get == null);
+
+	private static bool IsSolid(VegetationLayerBase layer) => layer.CollisionRadius > 0.0f;
+
+	/// Not ready while a solid layer's heightfield, splat, mask or mesh is still resolving. An
+	/// inactive terrain has no trunks, as an inactive rigid body has no body; the view toggles
+	/// (the component's and a layer's Visible) do not matter.
+	public bool CollectStaticCapsules(Scene scene, List<StaticCapsule> outCapsules)
+	{
+		if (mScene == null)
+			return true;
+
+		var ready = true;
+		ForEach(scope [&] (component, owner) =>
+			{
+				var any = false;
+				for (let layer in component.ProceduralLayers)
+					any |= IsSolid(layer);
+				for (let layer in component.PropLayers)
+					any |= IsSolid(layer);
+				if (!any || !scene.IsEffectivelyActive(owner))
+					return;
+
+				let tc = FindTerrainFor(owner, let terrainEntity);
+				if (tc == null)
+					return; // no terrain to stand on: nothing grows, nothing is solid
+				let res = tc.Terrain.Get;
+				let hf = (res != null) ? res.Heightfield.Get : null;
+				if ((hf == null) || hf.IsEmpty || Pending(res.Weights) || Pending(component.Mask))
+				{
+					ready = false;
+					return;
+				}
+
+				let splat = res.Weights.Get;
+				let mask = component.Mask.Get;
+				let ownerId = scene.GetEntityId(owner);
+				let entityWorld = scene.GetWorldMatrix(terrainEntity);
+				for (int li < component.ProceduralLayers.Count)
+				{
+					let grown = component.ProceduralLayers[li];
+					if (!CollectLayer(owner, ownerId, ProceduralSlot((uint32)li), grown, grown.ToScatterLayer(),
+						default, hf, splat, mask, entityWorld, outCapsules))
+						ready = false;
+				}
+				for (int li < component.PropLayers.Count)
+				{
+					let placed = component.PropLayers[li];
+					if (!CollectLayer(owner, ownerId, PropSlot((uint32)li), placed, placed.ToScatterLayer(),
+						placed.Instances, hf, splat, mask, entityWorld, outCapsules))
+						ready = false;
+				}
+			});
+		return ready;
+	}
+
+	/// One layer's capsules, every chunk whatever the camera sees: the same build the drawing
+	/// does. False when its mesh is still resolving.
+	private bool CollectLayer(EntityHandle owner, Guid ownerId, uint32 slot, VegetationLayerBase authored,
+		ScatterLayer layer, Span<Float4x4> instances, Heightfield hf, SplatWeights splat,
+		VegetationMask mask, Float4x4 entityWorld, List<StaticCapsule> outCapsules)
+	{
+		if (!IsSolid(authored))
+			return true;
+		if (Pending(authored.Mesh))
+			return false;
+		let cache = PrepareLayer(owner, ownerId, slot, authored, layer, instances, hf, splat, mask,
+			entityWorld);
+		if (cache == null)
+			return true;
+
+		let isProp = (slot & cPropSlotBit) != 0;
+		let meshBounds = authored.Mesh.Get.Bounds;
+		for (int i < cache.Sets.Count)
+		{
+			let set = cache.Sets[i];
+			if (set.Dirty)
+				BuildSet(cache, i, hf, splat, mask, layer, meshBounds, instances, isProp);
+			for (let m in set.World)
+			{
+				// The instance's scale from its matrix (its X axis's length: the scatter's scale is
+				// uniform), its foot its translation.
+				let scale = Length(Float3(m.M[0][0], m.M[0][1], m.M[0][2]));
+				var capsule = StaticCapsule();
+				capsule.Foot = .(m.M[3][0], m.M[3][1], m.M[3][2]);
+				capsule.Radius = authored.CollisionRadius * scale;
+				capsule.Height = authored.CollisionHeight * scale;
+				capsule.Group = authored.CollisionGroup;
+				outCapsules.Add(capsule);
+			}
+		}
+		return true;
 	}
 }

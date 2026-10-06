@@ -946,6 +946,215 @@ class VegetationComponentTests
 		Test.Assert(rocks.Instances.Count == 1);
 	}
 
+	/// A version 3 layer has no collision fields: it reads as scenery, and the reader does not
+	/// run on into the fields after it. Version 4 round-trips them.
+	[Test]
+	public static void AVersionThreeLayerReadsAsSceneryAndVersionFourRoundTripsItsCollision()
+	{
+		let blob = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(blob, .Write);
+			SerializedDataVersion[1] chain = .(.(TypeIdOf("terrainVegetation"), 3));
+			BeginVersionedPayload(writer, .(&chain[0], 1));
+			Guid maskId = default;
+			SerializeValue(writer, "mask", ref maskId);
+			var procedural = (uint32)0;
+			writer.Key("proceduralLayers");
+			writer.BeginArray(ref procedural);
+			writer.EndArray();
+			var props = (uint32)1;
+			writer.Key("propLayers");
+			writer.BeginArray(ref props);
+			WriteLayerBaseV3(writer, "Pines");
+			let instances = scope List<Float4x4>()..Add(.Identity());
+			writer.Key("instances");
+			SerializeList(writer, instances);
+			writer.EndArray();
+			var visible = false;
+			SerializeValue(writer, "visible", ref visible);
+			EndVersionedPayload(writer);
+			Test.Assert(writer.IsOk);
+		}
+
+		let scene = scope Scene();
+		VegetationScene.AddVegetationSceneManagers(scene);
+		let manager = scene.GetSystem<TerrainVegetationComponentManager>();
+		let old = scene.CreateEntity("old");
+		manager.Add(old);
+		Test.Assert(blob.Seek(0, .Begin) == 0);
+		let reader = scope BinarySerializer(blob, .Read);
+		manager.ReadComponent(reader, old);
+		Test.Assert(reader.IsOk, "the version three payload was accepted");
+		let pines = manager.Get(old).PropLayers[0];
+		Test.Assert((pines.CollisionRadius == 0.0f) && (pines.CollisionHeight == 0.0f) && (pines.CollisionGroup == 0));
+		Test.Assert(pines.Instances.Count == 1);
+		Test.Assert(!manager.Get(old).Visible, "the fields after the layers still line up");
+
+		// The current version writes and reads the collision.
+		pines.CollisionRadius = 0.35f;
+		pines.CollisionHeight = 6.0f;
+		pines.CollisionGroup = 5;
+		let current = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(current, .Write);
+			manager.WriteComponent(writer, old);
+			Test.Assert(writer.IsOk);
+		}
+		let fresh = scene.CreateEntity("fresh");
+		manager.Add(fresh);
+		Test.Assert(current.Seek(0, .Begin) == 0);
+		let again = scope BinarySerializer(current, .Read);
+		manager.ReadComponent(again, fresh);
+		Test.Assert(again.IsOk);
+		let read = manager.Get(fresh).PropLayers[0];
+		Test.Assert(Near(read.CollisionRadius, 0.35f, 1e-6f) && Near(read.CollisionHeight, 6.0f, 1e-6f) && (read.CollisionGroup == 5));
+	}
+
+	/// A prop layer's capsules: one per placed instance, its radius and height scaled with the
+	/// instance, in the layer's group, standing on the instance's foot; a moved terrain moves them.
+	[Test]
+	public static void APropLayersCapsulesAreScaledGroupedAndFollowTheTerrain()
+	{
+		let f = scope Fixture(false);
+		f.Layer.CollisionRadius = 0.0f; // the grass is scenery
+		let pines = f.AddPropLayer();
+		pines.CollisionRadius = 0.3f;
+		pines.CollisionHeight = 4.0f;
+		pines.CollisionGroup = 5;
+		pines.Instances.Add(Float4x4.Translation(.(-40.0f, 2.0f, -40.0f)));
+		pines.Instances.Add(Float4x4.Scale(.(2.0f, 2.0f, 2.0f)) * Float4x4.Translation(.(20.0f, 2.0f, 10.0f)));
+
+		let capsules = scope List<StaticCapsule>();
+		Test.Assert(f.Manager.CollectStaticCapsules(f.Scene, capsules));
+		Test.Assert(capsules.Count == 2, "a capsule per placed instance, none for the scenery");
+		var small = 0;
+		var big = 0;
+		for (let c in capsules)
+		{
+			Test.Assert(c.Group == 5);
+			if (Near(c.Radius, 0.3f))
+			{
+				small++;
+				Test.Assert(Near(c.Height, 4.0f) && Near(c.Foot.X, -40.0f) && Near(c.Foot.Y, 2.0f) && Near(c.Foot.Z, -40.0f));
+			}
+			else if (Near(c.Radius, 0.6f))
+			{
+				big++;
+				Test.Assert(Near(c.Height, 8.0f) && Near(c.Foot.X, 20.0f) && Near(c.Foot.Z, 10.0f));
+			}
+		}
+		Test.Assert((small == 1) && (big == 1));
+
+		f.Scene.SetLocalPosition(f.Terrain, .(100.0f, 0.0f, 0.0f));
+		f.Scene.UpdateTransforms();
+		capsules.Clear();
+		Test.Assert(f.Manager.CollectStaticCapsules(f.Scene, capsules));
+		Test.Assert(capsules.Count == 2);
+		for (let c in capsules)
+			Test.Assert(Near(c.Foot.X, Near(c.Radius, 0.3f) ? 60.0f : 120.0f), "the trunks move with the terrain");
+	}
+
+	/// A procedural layer's capsules are the instances the drawing has, whatever is hidden; an
+	/// inactive terrain has none.
+	[Test]
+	public static void AProceduralLayersCapsulesAreItsDrawnInstancesHiddenOrNot()
+	{
+		let f = scope Fixture(false);
+		f.Manager.SetBuildBudget(100);
+		f.Layer.CollisionRadius = 0.2f;
+		f.Layer.CollisionHeight = 3.0f;
+		f.Layer.CollisionGroup = 2;
+
+		let snapshot = scope ExtractedScene();
+		let sets = scope List<MultiMeshRenderData>();
+		f.Extract(snapshot, null, sets);
+		let drawn = TotalInstances(sets);
+		Test.Assert(drawn > 0);
+		let feet = scope List<Float3>();
+		for (let set in sets)
+			for (uint32 i < set.InstanceCount)
+				feet.Add(Float3(set.Transforms[(int)i].M[3][0], set.Transforms[(int)i].M[3][1], set.Transforms[(int)i].M[3][2]));
+
+		let capsules = scope List<StaticCapsule>();
+		Test.Assert(f.Manager.CollectStaticCapsules(f.Scene, capsules));
+		Test.Assert(capsules.Count == drawn, "a trunk per drawn instance");
+		for (let c in capsules)
+		{
+			var found = false;
+			for (let foot in feet)
+				found |= (foot.X == c.Foot.X) && (foot.Y == c.Foot.Y) && (foot.Z == c.Foot.Z);
+			Test.Assert(found, "each trunk stands on a drawn instance");
+			Test.Assert((c.Group == 2) && (c.Radius > 0.0f));
+		}
+
+		// Hidden, the layer or the component: still solid.
+		f.Layer.Visible = false;
+		f.Component.Visible = false;
+		capsules.Clear();
+		Test.Assert(f.Manager.CollectStaticCapsules(f.Scene, capsules));
+		Test.Assert(capsules.Count == drawn, "the view toggles do not change what is solid");
+
+		// Inactive: none.
+		f.Scene.SetActive(f.Terrain, false);
+		capsules.Clear();
+		Test.Assert(f.Manager.CollectStaticCapsules(f.Scene, capsules));
+		Test.Assert(capsules.IsEmpty);
+	}
+
+	/// A solid layer whose mesh is named but not resolved is not ready: nothing to hand physics
+	/// yet. Scenery with the same mesh is no reason to wait.
+	[Test]
+	public static void ASolidLayerWithAMeshStillResolvingIsNotReady()
+	{
+		let f = scope Fixture(false);
+		let pending = f.AddPropLayer();
+		pending.Mesh = .(Guid(0x11111111, 0x2222, 0x3333, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB));
+		pending.Instances.Add(Float4x4.Translation(.(0.0f, 2.0f, 0.0f)));
+
+		let capsules = scope List<StaticCapsule>();
+		Test.Assert(f.Manager.CollectStaticCapsules(f.Scene, capsules), "scenery: nothing to wait for");
+		pending.CollisionRadius = 0.3f;
+		pending.CollisionHeight = 4.0f;
+		Test.Assert(!f.Manager.CollectStaticCapsules(f.Scene, capsules));
+		pending.Mesh.SetDirect(f.Mesh);
+		capsules.Clear();
+		Test.Assert(f.Manager.CollectStaticCapsules(f.Scene, capsules));
+		Test.Assert(capsules.Count == 1);
+	}
+
+	/// A layer base in version 3's field order: the material list, no collision.
+	private static void WriteLayerBaseV3(ISerializer ar, StringView name)
+	{
+		let owned = scope String(name);
+		Sedulous.Core.Serialization.Serialize(ar, "name", owned);
+		Guid mesh = default;
+		SerializeValue(ar, "mesh", ref mesh);
+		var materials = (uint32)0;
+		ar.Key("materials");
+		ar.BeginArray(ref materials);
+		ar.EndArray();
+		var scaleRange = Float2(0.8f, 1.2f);
+		ar.Key("scaleRange");
+		Sedulous.Core.Serialization.Serialize(ar, ref scaleRange);
+		var maxSlope = 35.0f;
+		SerializeValue(ar, "maxSlopeDegrees", ref maxSlope);
+		var heightRange = Float2(-1.0e6f, 1.0e6f);
+		ar.Key("heightRange");
+		Sedulous.Core.Serialization.Serialize(ar, ref heightRange);
+		var alignToNormal = false;
+		SerializeValue(ar, "alignToNormal", ref alignToNormal);
+		var fadeStart = 40.0f;
+		SerializeValue(ar, "fadeStart", ref fadeStart);
+		var fadeEnd = 80.0f;
+		SerializeValue(ar, "fadeEnd", ref fadeEnd);
+		var castShadows = false;
+		SerializeValue(ar, "castShadows", ref castShadows);
+		var maxPerChunk = (uint32)4096;
+		SerializeValue(ar, "maxInstancesPerChunk", ref maxPerChunk);
+		var visible = true;
+		SerializeValue(ar, "visible", ref visible);
+	}
+
 	/// A layer base in version 2's field order: one optional material.
 	private static void WriteLayerBaseV2(ISerializer ar, StringView name, Guid material)
 	{

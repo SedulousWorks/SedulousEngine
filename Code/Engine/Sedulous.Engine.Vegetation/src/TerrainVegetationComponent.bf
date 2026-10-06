@@ -76,7 +76,7 @@ static class VegetationLayerV1
 /// layer is placed by hand, and one list carrying both meant a procedural layer dragged an
 /// empty instance array while a prop layer carried a density and a splat threshold that
 /// meant nothing, with nothing saying which entries a brush owned.
-[SerializableComponent("terrainVegetation", 3, 1)]
+[SerializableComponent("terrainVegetation", 4, 1)]
 [DisplayName("Terrain Vegetation")]
 [Category("Terrain")]
 struct TerrainVegetationComponent : ISerializable, IComponentResources

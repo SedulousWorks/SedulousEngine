@@ -28,6 +28,9 @@ abstract class SceneSystem
 	/// And for one that moves characters; null for the rest.
 	public virtual ISceneCharacterMotion AsCharacterMotion => null;
 
+	/// And for one with static content to make solid (IStaticColliderSource); null for the rest.
+	public virtual IStaticColliderSource AsStaticColliderSource => null;
+
 	/// The scene this system was added to. BORROWED: the scene outlives its systems. Set
 	/// by the scene before OnSceneCreate, so a system need not keep its own.
 	public Scene Scene { get; private set; } = null;
