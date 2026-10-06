@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
@@ -160,6 +161,29 @@ class SaveFacade
 	{
 		if ((mSave != null) && mSave.Values.SetText(key, value))
 			mSave.MarkChanged();
+	}
+
+	/// A list of numbers, saved whole (a recorded run): `Save.SetFloats("ghost", samples)`.
+	[Scriptable]
+	public void SetFloats(StringView key, List<float> values)
+	{
+		if ((mSave != null) && (values != null) && mSave.Values.SetFloats(key, values))
+			mSave.MarkChanged();
+	}
+
+	/// Fills `outValues` with the saved list, answering whether there was one: false, the array
+	/// left empty, when the key is absent or holds another kind.
+	[Scriptable]
+	public bool GetFloats(StringView key, List<float> outValues)
+	{
+		if (outValues == null)
+			return false;
+		if (mSave == null)
+		{
+			outValues.Clear();
+			return false;
+		}
+		return mSave.Values.GetFloats(key, outValues);
 	}
 
 	/// Writes now if anything changed; false if the write failed or the run has no save file.

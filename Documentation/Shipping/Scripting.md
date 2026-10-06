@@ -67,7 +67,7 @@ to its data. `script_api` lists both.
 ## Saving
 
 The `Save` service keeps values between runs: a best time, a high score, an unlocked level, the
-game's own options. Values are typed (int, float, bool, string) and keyed by any string you
+game's own options. Values are typed (int, float, bool, string, a list of floats) and keyed by any string you
 choose:
 
 ```
@@ -77,6 +77,10 @@ int best = Save.GetInt("best.level2", 0);   // the fallback when there is none y
 
 - `Has`, `Remove` and `Clear` do what they say. A value read as another kind than it was
   written answers the fallback, except that an int reads as a float.
+- A list of numbers (a recorded run, a ghost) is saved and read whole:
+  `Save.SetFloats("ghost.Course1", samples)` and `Save.GetFloats("ghost.Course1", samples)`,
+  which fills the array and answers false, leaving it empty, when there is no list under that
+  key. A list does not read as a number through `GetFloat`.
 - The run writes what changed when it ends. Call `Save.Flush()` at the moment that matters (a
   level clear, leaving a settings screen) so a crash or a forced quit loses nothing.
 - The player keeps the file, `<project>.save.xml`, in the user's data directory; a Game tab

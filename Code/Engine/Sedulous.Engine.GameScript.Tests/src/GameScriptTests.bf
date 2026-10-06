@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Messaging;
@@ -490,6 +491,73 @@ static class GameScriptTests
 		Test.Assert(reread.Values.GetBool("seen", false));
 		Test.Assert(reread.Values.GetText("name", "") == "Hopper");
 		Test.Assert(!reread.Values.Has("scratch"));
+	}
+
+	/// A recorded run is a list of numbers: one run saves it, the next reads it back whole, and a
+	/// key that is not a list fills nothing.
+	[Test]
+	public static void AGameSavesAListOfNumbersAndTheNextRunReadsItBack()
+	{
+		let scratch = "scratch_game_save_floats";
+		RemoveDirectoryRecursive(scratch);
+		defer RemoveDirectoryRecursive(scratch);
+		let path = PathJoin(scratch, "game.xml", .. scope String());
+
+		{
+			let run = scope GameRun("scratch_game_save_floats_a");
+			run.Instance.SetSaveFile(path);
+			Test.Assert(run.Instance.StartScript(run.Class("Game", """
+				class Game
+				{
+					void launch()
+					{
+						array<float> ghost = {1.5f, -2.25f, 30.0f};
+						Save.SetFloats("ghost.Course", ghost);
+						Save.SetInt("best", 3);
+					}
+					void update(float dt) {}
+				}
+				""")));
+			run.Instance.StopScript();
+		}
+
+		let reread = scope RunSave();
+		reread.Open(path);
+		let written = scope List<float>();
+		Test.Assert(reread.Values.GetFloats("ghost.Course", written));
+		Test.Assert((written.Count == 3) && (written[1] == -2.25f));
+
+		{
+			let run = scope GameRun("scratch_game_save_floats_b");
+			run.Instance.SetSaveFile(path);
+			Test.Assert(run.Instance.StartScript(run.Class("Game", """
+				class Game
+				{
+					bool had = false;
+					int count = 0;
+					float last = 0.0f;
+					bool notList = true;
+					int notListCount = -1;
+					void launch()
+					{
+						array<float> ghost;
+						had = Save.GetFloats("ghost.Course", ghost);
+						count = ghost.length();
+						last = ghost[2];
+						array<float> other = {9.0f};
+						notList = Save.GetFloats("best", other);
+						notListCount = other.length();
+					}
+					void update(float dt) {}
+				}
+				""")));
+			Test.Assert(run.PropBool("had"));
+			Test.Assert(run.PropInt("count") == 3);
+			Test.Assert(run.PropFloat("last") == 30.0f);
+			Test.Assert(!run.PropBool("notList"));
+			Test.Assert(run.PropInt("notListCount") == 0);
+			run.Instance.StopScript();
+		}
 	}
 
 	/// Flush writes while the run goes on, Clear forgets everything, and a run with no file
