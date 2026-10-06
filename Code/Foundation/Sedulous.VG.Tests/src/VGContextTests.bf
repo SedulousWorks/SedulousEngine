@@ -469,4 +469,60 @@ class VGContextTests
 		Test.Assert(context.Opacity == 1.0f);
 		Test.Assert(context.IsRectVisible(.(1000, 1000, 1, 1)), "the clip went with it");
 	}
+
+	/// A card's thumbnail with rounded corners: the picture is cut to the rounded rect (no
+	/// opaque vertex in a corner's cut-away), each vertex samples the texel of its place in the
+	/// dest rect (worked out before the transform), the fringe clamps to the source, and no
+	/// radius is the plain image quad.
+	[Test]
+	public static void DrawImageRoundedMapsTheTextureOntoARoundedRectCutAtItsCorners()
+	{
+		let context = scope VGContext();
+		let texture = scope OwnedImageData(200, 100, .RGBA8, .(), .Linear);
+		let dest = Rectangle(10.0f, 20.0f, 100.0f, 50.0f);
+		let src = Rectangle(100.0f, 0.0f, 100.0f, 100.0f); // the right half of the texture
+		context.PushState();
+		context.Translate(5.0f, 0.0f);
+		context.DrawImageRounded(texture, dest, src, .(10.0f));
+		context.PopState();
+
+		let batch = context.GetBatch();
+		Test.Assert((batch.Textures.Count == 2) && (batch.Textures[1] == texture));
+		Test.Assert(batch.CommandCount == 1);
+		Test.Assert(batch.GetCommand(0).TextureIndex == 1);
+		Test.Assert(batch.Vertices.Count > 4);
+
+		var sawLeftEdge = false;
+		for (let v in batch.Vertices)
+		{
+			let x = v.Position.X - 5.0f; // back to the dest rect's space
+			let y = v.Position.Y;
+			Test.Assert((v.TexCoord.X >= 0.5f - 1e-4f) && (v.TexCoord.X <= 1.0f + 1e-4f), "inside the source half, the fringe clamped");
+			Test.Assert((v.TexCoord.Y >= -1e-4f) && (v.TexCoord.Y <= 1.0f + 1e-4f));
+			if (v.Coverage < 1.0f)
+				continue;
+			// An opaque vertex lies inside the rounded rect: in the top left corner, within the
+			// radius of the corner's centre.
+			if ((x < 20.0f) && (y < 30.0f))
+			{
+				let dx = x - 20.0f;
+				let dy = y - 30.0f;
+				Test.Assert(dx * dx + dy * dy <= 10.0f * 10.0f + 0.5f);
+			}
+			if ((x < 11.0f) && (y >= 29.0f) && (y <= 61.0f)) // the left edge, inset half a fringe
+			{
+				sawLeftEdge = true;
+				Test.Assert(Near(v.TexCoord.X, 0.5f + (x - 10.0f) / 200.0f, 0.001f));
+				Test.Assert(Near(v.TexCoord.Y, (y - 20.0f) / 50.0f, 0.001f));
+			}
+		}
+		Test.Assert(sawLeftEdge);
+
+		let square = scope VGContext();
+		square.DrawImageRounded(texture, dest, src, .(0.0f));
+		Test.Assert(square.GetBatch().Vertices.Count == 4);
+
+		Test.Assert(CornerRadii(3.0f) == CornerRadii(3.0f));
+		Test.Assert(CornerRadii(3.0f) != CornerRadii(3.0f, 3.0f, 3.0f, 4.0f));
+	}
 }

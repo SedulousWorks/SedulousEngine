@@ -33,4 +33,11 @@ struct CornerRadii
 
 	public bool IsZero => (TopLeft == 0.0f) && (TopRight == 0.0f) && (BottomRight == 0.0f)
 		&& (BottomLeft == 0.0f);
+
+	/// So it can be a UI property, which compares a new value with the old.
+	public static bool operator==(CornerRadii a, CornerRadii b)
+		=> (a.TopLeft == b.TopLeft) && (a.TopRight == b.TopRight) && (a.BottomRight == b.BottomRight)
+			&& (a.BottomLeft == b.BottomLeft);
+
+	public static bool operator!=(CornerRadii a, CornerRadii b) => !(a == b);
 }

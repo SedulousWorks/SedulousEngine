@@ -895,6 +895,26 @@ class VGContext
 		TransformVertices(startVertex);
 	}
 
+	/// DrawImage clipped to a rounded rectangle: `srcRect` of the texture maps onto `destRect`,
+	/// and only the part inside `destRect` rounded by `radii` is drawn, with an anti-aliased
+	/// edge (a picture with rounded corners, such as a card's thumbnail).
+	public void DrawImageRounded(ImageData texture, Rectangle destRect, Rectangle srcRect,
+		CornerRadii radii, Color tint = .White)
+	{
+		if ((texture == null) || (destRect.Width <= 0.0f) || (destRect.Height <= 0.0f))
+			return;
+		if (radii.IsZero)
+		{
+			DrawImage(texture, destRect, srcRect, tint);
+			return;
+		}
+		let builder = scope PathBuilder();
+		ShapeBuilder.BuildRoundedRect(destRect, radii, builder);
+		let path = builder.ToPath();
+		defer delete path;
+		FillConvexPathWithImage(path, texture, destRect, srcRect, tint);
+	}
+
 	/// The same, with the destination snapped to the device pixel grid.
 	///
 	/// A baked bitmap drawn at a fractional origin smears under bilinear sampling and reads
@@ -1246,6 +1266,33 @@ class VGContext
 		mBatch.Vertices.Add(.(Float2(quad.X0, quad.Y1), .(quad.U0, quad.V1), color, 1.0f));
 
 		AddQuadIndices(baseIndex);
+	}
+
+	/// Fills a convex path with `srcRect` of a texture mapped onto `destRect`: the path is
+	/// tessellated as a solid fill, its anti-aliased fringe included, and each vertex then takes
+	/// the UV of its place in `destRect`. The UVs are clamped to `srcRect`, so the fringe, which
+	/// reaches a little past the shape, samples the edge texels rather than the texture beyond.
+	private void FillConvexPathWithImage(Path path, ImageData texture, Rectangle destRect,
+		Rectangle srcRect, Color tint)
+	{
+		SetupForTextureDraw(GetOrAddTexture(texture));
+		let startVertex = mBatch.Vertices.Count;
+		FillTessellator.Tessellate(path, .NonZero, ApplyOpacity(tint), true, mBatch.Vertices,
+			mBatch.Indices, GetScaledTolerance(), GetScaledFringe());
+		let u0 = srcRect.X / (float)texture.Width;
+		let v0 = srcRect.Y / (float)texture.Height;
+		let u1 = (srcRect.X + srcRect.Width) / (float)texture.Width;
+		let v1 = (srcRect.Y + srcRect.Height) / (float)texture.Height;
+		for (int i = startVertex; i < mBatch.Vertices.Count; i++)
+		{
+			var vertex = mBatch.Vertices[i];
+			let tx = (vertex.Position.X - destRect.X) / destRect.Width;
+			let ty = (vertex.Position.Y - destRect.Y) / destRect.Height;
+			vertex.TexCoord = .(Clamp(u0 + (u1 - u0) * tx, Min(u0, u1), Max(u0, u1)),
+				Clamp(v0 + (v1 - v0) * ty, Min(v0, v1), Max(v0, v1)));
+			mBatch.Vertices[i] = vertex;
+		}
+		TransformVertices(startVertex);
 	}
 
 	private void EmitTexturedQuad(Rectangle destRect, Rectangle srcRect, uint32 textureWidth,
