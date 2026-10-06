@@ -560,6 +560,9 @@ class InspectorViewTests
 		rocks.Name.Set("Rocks");
 		rocks.Density = 0.5f;
 		component.ProceduralLayers.Add(rocks);
+		let unnamed = new ProceduralVegetationLayer();
+		unnamed.Name.Clear();
+		component.ProceduralLayers.Add(unnamed);
 
 		edit.EntitySelection.Set(terrain);
 		inspector.Refresh();
@@ -568,6 +571,21 @@ class InspectorViewTests
 		let density = Find(inspector, "Density") as FloatEditor;
 		Test.Assert(density != null, "a slot field has a row of its own");
 		Test.Assert(density.Category.Contains("Grass"), scope $"titled by the name: {density.Category}");
+
+		// Every slot's section, named or not, sits inside the section the list's row is in.
+		let layers = Find(inspector, "ProceduralLayers");
+		Test.Assert(layers != null, "the list's own row");
+		var slotSections = 0;
+		for (int i < inspector.Grid.PropertyCount)
+		{
+			let row = inspector.Grid.PropertyAt(i);
+			if (row.Name != "Density")
+				continue;
+			slotSections++;
+			Test.Assert(inspector.Grid.CategoryParent(row.Category) == layers.Category,
+				scope $"'{row.Category}' inside '{layers.Category}'");
+		}
+		Test.Assert(slotSections == 3, "a section per slot, the unnamed one too");
 
 		// Writing a slot field lands on THAT slot and is one undo step.
 		let before = commands.Count;
