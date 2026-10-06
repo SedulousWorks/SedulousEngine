@@ -74,6 +74,32 @@ static class UiHandleTests
 		bed.Stack.Pop();
 	}
 
+	/// A label's colour from a script: its style's until a script sets its own (a warning
+	/// turning red), and the style's again once cleared.
+	[Test]
+	public static void ALabelsTextColorIsItsStylesUntilAScriptSetsItsOwn()
+	{
+		let bed = scope UiScriptBed();
+		bed.Stack.Push(UiScriptBed.Screen());
+		let label = bed.Ui.FindLabel("title");
+		let red = Color(1.0f, 0.25f, 0.25f, 1.0f);
+		let blue = Color(0.2f, 0.4f, 1.0f, 1.0f);
+		label.Resolve().SetStyle(.TextColor, blue);
+		Test.Assert(label.TextColor == blue, "the style's text-color");
+
+		label.SetTextColor(red);
+		Test.Assert(label.TextColor == red);
+		Test.Assert(label.Resolve().TextColor.Value == red, "the label's own colour");
+		label.ClearTextColor();
+		Test.Assert(label.TextColor == blue, "back to the style's");
+		Test.Assert(label.Resolve().TextColor.Value == null);
+
+		// A handle whose label is gone reads transparent and sets nothing.
+		bed.Stack.Pop();
+		label.SetTextColor(red);
+		Test.Assert(label.TextColor == Color.Transparent);
+	}
+
 	/// An image handle: its source is the texture asset id it shows, SetSource swaps it, and a
 	/// nil id clears it.
 	[Test]
