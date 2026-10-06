@@ -579,4 +579,24 @@ class MarkupLoaderTests
 		defer label.ReleaseRef();
 		Test.Assert((warnings.Count == 1) && warnings[0].Contains("holds no children"));
 	}
+
+	/// A card's picture rounded on its top corners only, flush with the card's rounded body.
+	[Test]
+	public static void AnImageViewsCornerRadiusTakesOneValueOrFour()
+	{
+		let warnings = scope List<String>();
+		defer { ClearAndDeleteItems!(warnings); }
+		let root = Load("""
+			<Flex>
+				<ImageView id="all" corner-radius="8"/>
+				<ImageView id="top" corner-radius="8 8 0 0"/>
+				<ImageView id="none"/>
+			</Flex>
+			""", warnings) as ViewGroup;
+		defer root.ReleaseRef();
+		Test.Assert(warnings.IsEmpty);
+		Test.Assert(root.FindByName<ImageView>("all").CornerRadius.Value == Sedulous.VG.CornerRadii(8.0f));
+		Test.Assert(root.FindByName<ImageView>("top").CornerRadius.Value == Sedulous.VG.CornerRadii(8.0f, 8.0f, 0.0f, 0.0f));
+		Test.Assert(root.FindByName<ImageView>("none").CornerRadius.Value.IsZero);
+	}
 }

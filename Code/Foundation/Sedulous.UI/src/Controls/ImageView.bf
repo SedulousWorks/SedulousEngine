@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.VG;
 using Sedulous.Image;
 
 namespace Sedulous.UI;
@@ -15,6 +16,9 @@ class ImageView : View
 {
 	public Property<ScaleType> ScaleType = new .(.FitCenter) ~ delete _;
 	public Property<Color> Tint = new .(Color.White) ~ delete _;
+	/// Rounds the picture's corners: the drawn picture's own rect, the fitted rect under
+	/// FitCenter, the view under CenterCrop and FillBounds. Zero: square corners.
+	public Property<CornerRadii> CornerRadius = new .(.()) ~ delete _;
 	/// What to show, named by a string the context's resource provider resolves (the engine
 	/// takes an asset id: a texture, or a render texture a camera draws into). Resolved when
 	/// the view is measured or drawn in a context that has a provider; until the provider
@@ -30,6 +34,7 @@ class ImageView : View
 	{
 		ScaleType.SetOwner(this, .Visual);
 		Tint.SetOwner(this, .Visual);
+		CornerRadius.SetOwner(this, .Visual);
 	}
 
 	public ~this()
@@ -116,23 +121,26 @@ class ImageView : View
 		switch (ScaleType.Value)
 		{
 		case .None:
-			ctx.VG.DrawImage(mImage, .(0, 0, iw, ih), srcRect, Tint.Value);
+			Blit(ctx, .(0, 0, iw, ih), srcRect);
 		case .FillBounds:
-			ctx.VG.DrawImage(mImage, dstRect, srcRect, Tint.Value);
+			Blit(ctx, dstRect, srcRect);
 		case .FitCenter:
 			// Scale by the TIGHTER axis, so the whole image lands inside the bounds.
 			let scale = Min(Width / iw, Height / ih);
 			let fitW = iw * scale;
 			let fitH = ih * scale;
-			ctx.VG.DrawImage(mImage, .((Width - fitW) * 0.5f, (Height - fitH) * 0.5f, fitW, fitH),
-				srcRect, Tint.Value);
+			Blit(ctx, .((Width - fitW) * 0.5f, (Height - fitH) * 0.5f, fitW, fitH), srcRect);
 		case .CenterCrop:
 			// Scale by the LOOSER axis and crop the source instead, so the bounds are covered.
 			let scale = Max(Width / iw, Height / ih);
 			let cropW = Width / scale;
 			let cropH = Height / scale;
-			ctx.VG.DrawImage(mImage, dstRect,
-				.((iw - cropW) * 0.5f, (ih - cropH) * 0.5f, cropW, cropH), Tint.Value);
+			Blit(ctx, dstRect, .((iw - cropW) * 0.5f, (ih - cropH) * 0.5f, cropW, cropH));
 		}
+	}
+
+	private void Blit(UIDrawContext ctx, Rectangle dst, Rectangle src)
+	{
+		ctx.VG.DrawImageRounded(mImage, dst, src, CornerRadius.Value, Tint.Value);
 	}
 }

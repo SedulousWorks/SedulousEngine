@@ -1,4 +1,5 @@
 using Sedulous.Core;
+using Sedulous.VG;
 using Sedulous.Image;
 
 namespace Sedulous.UI;
@@ -11,6 +12,8 @@ class ImageDrawable : Drawable
 {
 	public ImageData Image = null;
 	public Color Tint = Color.White;
+	/// Rounds the image's corners within the bounds it is drawn to; zero: square.
+	public CornerRadii Radii = .();
 
 	public this() {}
 
@@ -24,8 +27,8 @@ class ImageDrawable : Drawable
 	{
 		if (Image == null)
 			return;
-		ctx.VG.DrawImage(Image, bounds, .(0.0f, 0.0f, (float)Image.Width, (float)Image.Height),
-			Tint);
+		ctx.VG.DrawImageRounded(Image, bounds, .(0.0f, 0.0f, (float)Image.Width, (float)Image.Height),
+			Radii, Tint);
 	}
 
 	public override Float2? IntrinsicSize

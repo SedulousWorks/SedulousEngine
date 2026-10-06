@@ -249,15 +249,34 @@ static class DrawableFactoryRegistry
 			});
 
 		// image(name, tint=$color)
+		// image(name, tint=$color, radius=6): radius, one value or four, rounds the image's corners.
 		Register("image", (parser, sheet) =>
 			{
 				let name = parser.ConsumeIdent();
-				let tint = ParseTintArg(parser);
+				var tint = Color.White;
+				CornerRadii radii = .();
+				while (parser.MatchComma())
+				{
+					switch (parser.PeekKeywordArg())
+					{
+					case "radius":
+						parser.ConsumeKeywordArg();
+						radii = parser.ParseCornerRadiiValue();
+					case "tint":
+						parser.ConsumeKeywordArg();
+						tint = parser.ParseColorArg();
+					default:
+						// A bare argument is the tint, as before.
+						tint = parser.ParseColorArg();
+					}
+				}
 
 				let image = parser.ResolveImage(name);
 				if (image == null)
 					return null;
-				return new ImageDrawable(image, (tint != null) ? tint.Value : Color.White);
+				let drawable = new ImageDrawable(image, tint);
+				drawable.Radii = radii;
+				return drawable;
 			});
 
 		// nine-slice(name, slices, tint=$color)

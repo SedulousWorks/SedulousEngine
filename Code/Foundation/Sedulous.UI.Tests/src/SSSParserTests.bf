@@ -682,6 +682,28 @@ class SSSParserTests
 			is NineSliceDrawable, "a single slice value applies to every edge");
 	}
 
+	/// image() takes radius= to round its corners, with a tint beside it.
+	[Test]
+	public static void AnImageTakesARadiusBesideItsTint()
+	{
+		EnsureGlobals();
+		let provider = scope MockResourceProvider();
+		provider.AddImage("textures/bg.png");
+
+		let loader = scope StyleSheetLoader();
+		loader.ResourceProvider = provider;
+		let fixture = scope Fixture(loader.Load("""
+			@image bg "textures/bg.png";
+			View { background: image(bg, radius=8 8 0 0, tint=#FF000080); }
+			"""));
+
+		let drawable = fixture.AddView().ResolveStyleDrawable(.Background) as ImageDrawable;
+		Test.Assert(drawable != null);
+		Test.Assert(drawable.Radii == Sedulous.VG.CornerRadii(8.0f, 8.0f, 0.0f, 0.0f));
+		Test.Assert(Math.Abs(drawable.Tint.R - 1.0f) < 0.01f);
+		Test.Assert(Math.Abs(drawable.Tint.A - 128.0f / 255.0f) < 0.01f);
+	}
+
 	[Test]
 	public static void AnImageCanBeTinted()
 	{

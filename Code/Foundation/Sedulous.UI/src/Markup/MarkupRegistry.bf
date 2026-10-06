@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Threading;
 using Sedulous.Core;
+using Sedulous.VG;
 
 namespace Sedulous.UI;
 
@@ -357,6 +358,24 @@ static class MarkupRegistry
 	public static Thickness ParseThickness(StringView value)
 	{
 		float[4] values = .();
+		let count = ParseNumbers(value, ref values);
+		return StyleValueParser.ParseThickness(Span<float>(&values[0], count));
+	}
+
+	/// Corner radii: "8" (all), "8 8 0 0" (top left, top right, bottom right, bottom left, as
+	/// the style's radius=).
+	public static CornerRadii ParseCornerRadii(StringView value)
+	{
+		float[4] values = .();
+		let count = ParseNumbers(value, ref values);
+		if (count >= 4)
+			return .(values[0], values[1], values[2], values[3]);
+		return .((count > 0) ? values[0] : 0.0f);
+	}
+
+	/// Up to four space separated numbers into `values`, answering how many were read.
+	private static int ParseNumbers(StringView value, ref float[4] values)
+	{
 		var count = 0;
 
 		for (let part in value.Split(' '))
@@ -372,8 +391,7 @@ static class MarkupRegistry
 			if (ParseFloatValue(text) case .Ok(let f))
 				values[count++] = f;
 		}
-
-		return StyleValueParser.ParseThickness(Span<float>(&values[0], count));
+		return count;
 	}
 
 	// ---- Internals ----------------------------------------------------------------------------

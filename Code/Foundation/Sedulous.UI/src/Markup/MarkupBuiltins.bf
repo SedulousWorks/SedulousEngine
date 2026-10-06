@@ -181,6 +181,12 @@ extension MarkupRegistry
 				if (let c = v as ImageView)
 					c.SetSource(val);
 			});
+		// Rounds the picture's corners: <ImageView corner-radius="8"/>, or four values.
+		RegisterProperty("ImageView", "corner-radius", new (v, val) =>
+			{
+				if (let c = v as ImageView)
+					c.CornerRadius.Value = MarkupRegistry.ParseCornerRadii(val);
+			});
 		RegisterProperty("Label", "text", new (v, val) =>
 			{
 				if (let c = v as Label)

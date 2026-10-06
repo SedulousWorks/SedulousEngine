@@ -326,4 +326,38 @@ class HitTestAndDrawTests
 		Test.Assert(!context.NeedsRedraw);
 		Test.Assert(context.CurrentPhase == .Idle, "the phase is put back");
 	}
+
+	/// A rounded picture is cut to its rounded rect (more than the plain quad's four vertices,
+	/// all on the image's texture), the ImageView and the image() drawable alike; square corners
+	/// stay the plain quad.
+	[Test]
+	public static void AnImageViewAndAnImageDrawableRoundThePicturesCorners()
+	{
+		let picture = scope Sedulous.Image.OwnedImageData(64, 32, .RGBA8, .(), .Linear);
+		int DrawOnce(delegate void(UIDrawContext) draw)
+		{
+			let vg = scope VGContext();
+			let ctx = scope UIDrawContext(vg, 1.0f);
+			draw(ctx);
+			let batch = vg.GetBatch();
+			Test.Assert((batch.Textures.Count == 2) && (batch.Textures[1] == picture));
+			return batch.Vertices.Count;
+		}
+
+		let view = new ImageView(picture);
+		defer view.ReleaseRef();
+		view.ScaleType.Value = .FillBounds;
+		view.Measure(.Tight(128, 64));
+		view.Layout(0, 0, 128, 64);
+		Test.Assert(DrawOnce(scope (ctx) => view.OnDraw(ctx)) == 4);
+		view.CornerRadius.Value = .(8.0f, 8.0f, 0.0f, 0.0f);
+		Test.Assert(DrawOnce(scope (ctx) => view.OnDraw(ctx)) > 4);
+
+		let image = new ImageDrawable(picture);
+		defer image.ReleaseRef();
+		let bounds = Rectangle(0, 0, 128, 64);
+		Test.Assert(DrawOnce(scope (ctx) => image.Draw(ctx, bounds)) == 4);
+		image.Radii = .(6.0f);
+		Test.Assert(DrawOnce(scope (ctx) => image.Draw(ctx, bounds)) > 4);
+	}
 }
