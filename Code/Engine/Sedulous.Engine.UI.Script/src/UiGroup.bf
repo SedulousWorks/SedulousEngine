@@ -12,7 +12,7 @@ static class UiFinders
 {
 	public static UiView FindByName(ViewGroup group, StringView name) => .((group != null) ? group.FindByName(name) : null);
 	public static UiLabel FindLabel(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<Label>(name) : null);
-	public static UiButton FindButton(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<Button>(name) : null);
+	public static UiButton FindButton(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<ButtonBase>(name) : null);
 	public static UiProgressBar FindProgressBar(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<ProgressBar>(name) : null);
 	public static UiSlider FindSlider(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<Slider>(name) : null);
 	public static UiTextBox FindTextBox(ViewGroup group, StringView name) => .((group != null) ? group.FindByName<EditText>(name) : null);

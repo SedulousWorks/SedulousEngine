@@ -286,6 +286,41 @@ static class UiHandleTests
 		Test.Assert(UiHandles.Count == 0);
 	}
 
+	/// A card is a ContentButton (a picture and labels as its content): the Button handle covers
+	/// it, its click runs the script's handler, and a label inside its content is found from the
+	/// screen.
+	[Test]
+	public static void AContentButtonIsAButtonItsLabelsFoundThroughItsContent()
+	{
+		let bed = scope UiScriptBed();
+		let screen = UiScriptBed.Screen();
+		let content = new FrameLayout();
+		let best = new Label();
+		best.Name.Set("card-best");
+		best.SetText("Gold");
+		content.AddView(best);
+		let card = new ContentButton(content);
+		card.Name.Set("card");
+		screen.AddView(card);
+		bed.Stack.Push(screen);
+
+		let button = bed.Ui.FindButton("card");
+		Test.Assert(button.IsValid);
+		Test.Assert(button.Text.IsEmpty, "no text of its own: its content is its face");
+		button.SetText("ignored");
+		Test.Assert(button.Text.IsEmpty);
+		let counter = new Counter();
+		button.OnClick(counter);
+		button.Resolve().FireClick();
+		bed.Context.BeginFrame(0.016f);
+		Test.Assert(counter.Calls == 1);
+
+		let found = bed.Ui.FindLabel("card-best");
+		Test.Assert(found.IsValid && (found.Text == "Gold"));
+		// A text Button keeps its caption.
+		Test.Assert(bed.Ui.FindButton("retry").Text == "Retry");
+	}
+
 	[Test]
 	public static void TheStackVerbsDriveTheScreenTier()
 	{

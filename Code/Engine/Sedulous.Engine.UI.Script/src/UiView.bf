@@ -221,20 +221,21 @@ struct UiImage
 	}
 }
 
-/// A button: `button.Text` its caption, `button.OnClick(fn)` a script function as its
-/// click handler, alive as long as the button. The handler NEVER runs inline in click
-/// dispatch: it goes through the context's mutation queue and runs at the next drain, a
-/// quiescent point where any structural mutation, a screen push or an entity despawn, is
-/// safe, which is also where the screen stack's own mutations run.
+/// A button, any kind (a text Button, a ContentButton card, a toggle): `button.OnClick(fn)` a
+/// script function as its click handler, alive as long as the button, and `button.Text` the
+/// caption of a text Button (empty for one whose face is its content). The handler NEVER runs
+/// inline in click dispatch: it goes through the context's mutation queue and runs at the next
+/// drain, a quiescent point where any structural mutation, a screen push or an entity despawn,
+/// is safe, which is also where the screen stack's own mutations run.
 [Scriptable, ScriptName("Button")]
 struct UiButton
 {
 	public uint32 Id = 0;
 
 	public this() {}
-	public this(Button button) { Id = UiHandles.IdOf(button); }
+	public this(ButtonBase button) { Id = UiHandles.IdOf(button); }
 
-	public Button Resolve() => UiHandles.Resolve<Button>(Id);
+	public ButtonBase Resolve() => UiHandles.Resolve<ButtonBase>(Id);
 
 	[Scriptable]
 	public bool IsValid => Resolve() != null;
@@ -282,10 +283,12 @@ struct UiButton
 	/// changed.
 	[Scriptable]
 	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
+	/// A text Button's caption; empty for a button whose face is its content.
 	[Scriptable]
-	public StringView Text => Resolve()?.Text.Value ?? "";
+	public StringView Text => (Resolve() as Button)?.Text.Value ?? "";
+	/// Nothing for a button whose face is its content.
 	[Scriptable]
-	public void SetText(StringView value) { if (let v = Resolve()) v.SetText(value); }
+	public void SetText(StringView value) { if (let v = Resolve() as Button) v.SetText(value); }
 
 	/// TAKES the delegate: parked with the button, deleted with it. Null is a no-op.
 	[Scriptable]
