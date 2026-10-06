@@ -13,8 +13,23 @@ namespace Sedulous.Fonts.TrueType;
 /// Loads through the source format pipeline: parse, bake an atlas, expand it to something a
 /// renderer can upload. With a file system set, a locator is a path opened through it;
 /// without one it is a disk path, which is what a sandbox or a tool wants.
+///
+/// A distance field family serves every size from one bake, through scaled views. A coverage
+/// family is baked again at each size asked for (once, rounded to whole pixels, from its kept
+/// source), so a label's font size is the size it draws at.
 class TrueTypeFontService : IFontService
 {
+	/// Where a family came from, to bake it again at another size.
+	private class FamilySource
+	{
+		public String Family = new .() ~ delete _;
+		/// A LoadFont locator; empty for in-memory bytes.
+		public String Locator = new .() ~ delete _;
+		/// A LoadFontFromMemory face, the service's own copy.
+		public List<uint8> Bytes = new .() ~ delete _;
+		public FontLoadOptions Options;
+	}
+
 	/// One family at one baked size, with the texture its atlas expanded to.
 	private class FontEntry
 	{
@@ -31,6 +46,7 @@ class TrueTypeFontService : IFontService
 	private List<FontEntry> mFonts = new .() ~ delete _;
 	private String mDefaultFamily = new String("Default") ~ delete _;
 	private CachedFont mDefaultFont;
+	private List<FamilySource> mSources = new .() ~ DeleteContainerAndItems!(_);
 
 	/// `fileSystem` is optional and BORROWED.
 	public this(IFileSystem fileSystem = null)
@@ -50,6 +66,16 @@ class TrueTypeFontService : IFontService
 	/// default, so a host that loads one never has to name it again.
 	public FontLoadResult LoadFont(StringView familyName, StringView locator,
 		FontLoadOptions options = .ExtendedLatin())
+	{
+		let result = LoadFontUnremembered(familyName, locator, options);
+		if (result == .Success)
+			Remember(familyName, locator, default, options);
+		return result;
+	}
+
+	/// Parses `locator` and bakes it at `options`: LoadFont, and a coverage family's next size.
+	private FontLoadResult LoadFontUnremembered(StringView familyName, StringView locator,
+		FontLoadOptions options)
 	{
 		IFont font = null;
 		if (mFileSystem != null)
@@ -83,10 +109,81 @@ class TrueTypeFontService : IFontService
 	public FontLoadResult LoadFontFromMemory(StringView familyName, Span<uint8> bytes,
 		FontLoadOptions options = .ExtendedLatin())
 	{
+		let result = BakeFromMemory(familyName, bytes, options);
+		if (result == .Success)
+			Remember(familyName, "", bytes, options);
+		return result;
+	}
+
+	private FontLoadResult BakeFromMemory(StringView familyName, Span<uint8> bytes,
+		FontLoadOptions options)
+	{
 		switch (FontParserFactory.ParseFromMemory(bytes, ".ttf", options))
 		{
 		case .Ok(let font): return CacheFont(familyName, font, options);
 		case .Err(let error): return error;
+		}
+	}
+
+	/// The first load names the family's source; a later one, another size of it, does not.
+	private void Remember(StringView familyName, StringView locator, Span<uint8> bytes,
+		FontLoadOptions options)
+	{
+		for (let source in mSources)
+		{
+			if (FamilyEquals(source.Family, familyName))
+				return;
+		}
+		let source = new FamilySource();
+		source.Family.Set(familyName);
+		source.Locator.Set(locator);
+		source.Bytes.AddRange(bytes);
+		source.Options = options;
+		mSources.Add(source);
+	}
+
+	/// A coverage family baked at `pixelHeight`, rounded to whole pixels from 4 to 256, its atlas
+	/// grown until the glyphs fit (to 4096 a side). Null when the family has no kept source or
+	/// the bake fails, and the caller then draws with the closest bake.
+	private CachedFont BakeSize(StringView familyName, float pixelHeight)
+	{
+		FamilySource source = null;
+		for (let candidate in mSources)
+		{
+			if (FamilyEquals(candidate.Family, familyName))
+			{
+				source = candidate;
+				break;
+			}
+		}
+		if ((source == null) || (source.Options.AtlasMode == .DistanceField))
+			return null;
+
+		let rounded = Clamp(Math.Round(pixelHeight), 4.0f, 256.0f);
+		if (FindExact(familyName, rounded) case .Ok(let exact))
+			return exact.Cached;
+
+		var options = source.Options;
+		options.PixelHeight = rounded;
+		// The atlas the family loaded with, grown with the size: glyph area goes with its square.
+		let grow = Math.Max(1.0f, rounded / Math.Max(source.Options.PixelHeight, 1.0f));
+		var side = Math.Max(source.Options.AtlasWidth, source.Options.AtlasHeight);
+		while (((float)side < (float)source.Options.AtlasWidth * grow) && (side < 4096))
+			side *= 2;
+		while (true)
+		{
+			options.AtlasWidth = side;
+			options.AtlasHeight = side;
+			var result = FontLoadResult.Unknown;
+			if (!source.Bytes.IsEmpty)
+				result = BakeFromMemory(familyName, source.Bytes, options);
+			else if (!source.Locator.IsEmpty)
+				result = LoadFontUnremembered(familyName, source.Locator, options);
+			if (result == .Success)
+				return (FindExact(familyName, rounded) case .Ok(let made)) ? made.Cached : null;
+			if ((result != .AtlasPackingFailed) || (side >= 4096))
+				return null;
+			side *= 2;
 		}
 	}
 
@@ -114,6 +211,11 @@ class TrueTypeFontService : IFontService
 				&& (closest.PixelHeight != pixelHeight))
 				return SynthesizeScaled(closest, familyName, pixelHeight);
 
+			// A coverage atlas holds glyphs at its one size: drawn at another, the text came out
+			// at the bake's size whatever was asked (every label in a game without a UI font drew
+			// alike). Bake the size asked for, once, from the family's source.
+			if (let baked = BakeSize(familyName, pixelHeight))
+				return baked;
 			return closest.Cached;
 		}
 		return mDefaultFont;
@@ -131,6 +233,8 @@ class TrueTypeFontService : IFontService
 
 	public override ImageData GetAtlasTexture(StringView familyName, float pixelHeight)
 	{
+		// The size's own bake, if it wants one.
+		GetFont(familyName, pixelHeight);
 		if (FindExact(familyName, pixelHeight) case .Ok(let exact))
 			return exact.Texture;
 		if (FindClosest(familyName, pixelHeight) case .Ok(let closest))
