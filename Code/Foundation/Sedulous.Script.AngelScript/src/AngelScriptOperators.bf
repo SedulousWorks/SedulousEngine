@@ -2,18 +2,22 @@ using System;
 using System.Collections;
 using AngelScript;
 using Sedulous.Core;
+using Sedulous.Scene;
 using Sedulous.Script;
 
 namespace Sedulous.Script.AngelScript;
 
-/// The math value type an operator binding works on.
+/// The value type an operator binding works on.
 enum AngelScriptOperatorType
 {
 	Float2,
 	Float3,
 	Float4,
 	Quaternion,
-	Color
+	Color,
+	Guid,
+	/// A script entity: its handle and its scene.
+	Entity
 }
 
 /// Which operator a binding is: the arithmetic, the equality, and the compound assignments.
@@ -35,11 +39,15 @@ enum AngelScriptOperator
 	AddAssign,
 	SubAssign,
 	MulScalarAssign,
-	DivScalarAssign
+	DivScalarAssign,
+	/// The default constructor of a value with no surface constructor: `Guid()` is nil and
+	/// `Entity()` no entity. Without one a temporary `Guid()` has no object behind it, and a
+	/// method called on it (`Guid() == id`) reads a null pointer.
+	Construct
 }
 
-/// The operators on the inline math values: `a + b`, `v * 2.0f`, `-v`, `q * r`, `a == b`,
-/// `p += v`. Exactly the operators the Beef types define, each computed by the Beef operator
+/// The operators on the inline values: `a + b`, `v * 2.0f`, `-v`, `q * r`, `a == b`,
+/// `p += v`, and equality on a Guid and an entity (`hit.Entity == self`). Exactly the operators the Beef types define, each computed by the Beef operator
 /// itself, so a script's arithmetic is the engine's (a quaternion product composes in the same
 /// order). Declared with the value types, so every surface has them.
 extension AngelScriptRuntime
@@ -82,6 +90,22 @@ extension AngelScriptRuntime
 		Operator(.Color, .Add, "Color opAdd(const Color &in) const", "a + b");
 		Operator(.Color, .MulScalar, "Color opMul(float) const", "c * s");
 		Operator(.Color, .Equals, "bool opEquals(const Color &in) const", "a == b, a != b");
+		Constructor(.Guid);
+		Operator(.Guid, .Equals, "bool opEquals(const Guid &in) const", "a == b, a != b");
+		// The same entity of the same scene: its handle's index and generation, and its scene.
+		Constructor(.Entity);
+		Operator(.Entity, .Equals, "bool opEquals(const Entity &in) const", "a == b, a != b");
+	}
+
+	private void Constructor(AngelScriptOperatorType type)
+	{
+		let b = new AngelScriptBinding();
+		b.Kind = .Operator;
+		b.OperatorType = type;
+		b.Operator = .Construct;
+		mBindings.Add(b);
+		let typeName = TypeNameOf(type);
+		Check(AS.asc_engine_register_object_behaviour(mEngine, scope String(typeName).CStr(), AS.asBEHAVE_CONSTRUCT, "void f()", Internal.UnsafeCastToPtr(b)), scope $"{typeName} void f()");
 	}
 
 	private static StringView TypeNameOf(AngelScriptOperatorType type)
@@ -93,6 +117,8 @@ extension AngelScriptRuntime
 		case .Float4: return "Float4";
 		case .Quaternion: return "Quaternion";
 		case .Color: return "Color";
+		case .Guid: return "Guid";
+		case .Entity: return "Entity";
 		}
 	}
 
@@ -105,6 +131,8 @@ extension AngelScriptRuntime
 		case .Float4: typeof(Float4).GetFullName(outName);
 		case .Quaternion: typeof(Quaternion).GetFullName(outName);
 		case .Color: typeof(Color).GetFullName(outName);
+		case .Guid: typeof(Guid).GetFullName(outName);
+		case .Entity: typeof(EntityHandle).GetFullName(outName);
 		}
 	}
 
@@ -193,6 +221,7 @@ extension AngelScriptRuntime
 			case .SubAssign: *v -= *Arg<Float3>(gen); AS.asc_generic_set_return_address(gen, v);
 			case .MulScalarAssign: *v *= Scalar(gen); AS.asc_generic_set_return_address(gen, v);
 			case .DivScalarAssign: *v /= Scalar(gen); AS.asc_generic_set_return_address(gen, v);
+			default:
 			}
 		case .Float4:
 			let v = (Float4*)self;
@@ -220,6 +249,20 @@ extension AngelScriptRuntime
 			case .MulScalar: ReturnValue(gen, *c * Scalar(gen));
 			case .Equals: ReturnBool(gen, *c == *Arg<Color>(gen));
 			default:
+			}
+		case .Guid:
+			if (b.Operator == .Construct)
+				*(Guid*)self = .();
+			else if (b.Operator == .Equals)
+				ReturnBool(gen, *(Guid*)self == *Arg<Guid>(gen));
+		case .Entity:
+			if (b.Operator == .Construct)
+				*(ScriptEntity*)self = .(.Invalid, null);
+			else if (b.Operator == .Equals)
+			{
+				let a = (ScriptEntity*)self;
+				let other = Arg<ScriptEntity>(gen);
+				ReturnBool(gen, (a.Handle == other.Handle) && (a.Scene === other.Scene));
 			}
 		}
 	}

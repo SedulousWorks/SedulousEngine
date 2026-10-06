@@ -394,6 +394,51 @@ static class GameScriptTests
 		Test.Assert(Math.Abs(tint.R - 0.5f) + Math.Abs(tint.G - 1.0f) + Math.Abs(tint.A - 2.0f) < 1e-5);
 	}
 
+	/// Two Guids compare, and two entities do: the same entity found twice is one, two
+	/// entities are not, and nil is nil however it was made.
+	[Test]
+	public static void ScriptsCompareGuidsAndEntities()
+	{
+		let run = scope GameRun("scratch_game_equality");
+		let levelId = run.AuthorLevel("level", 2);
+		let source = scope String();
+		source.AppendF("""
+			class Game
+			{{
+				bool guidSame = false; bool guidDifferent = false; bool nilSame = false; bool nilMade = false; bool noEntity = false;
+				bool loaded = false; bool entitySame = false; bool entityDifferent = false; bool selfSame = false;
+				Guid kept;
+				void launch()
+				{{
+					Guid a = Guid::FromString("{0}");
+					kept = a;
+					guidSame = a == Guid::FromString("{0}");
+					guidDifferent = a != Guid::Nil;
+					nilSame = Guid() == Guid::Nil;
+					Guid made;
+					nilMade = made.IsNil && (made == Guid());
+					noEntity = Entity() == Entity();
+					loaded = Run.LoadScene(a);
+					Scene@ scene = Run.CurrentScene;
+					Entity first = scene.FindEntityByName("e0");
+					entitySame = first == scene.FindEntityByName("e0");
+					entityDifferent = first != scene.FindEntityByName("e1");
+					selfSame = first == scene.FindEntity(scene.GetEntityId(first));
+				}}
+			}}
+			""", levelId);
+		Test.Assert(run.Instance.StartScript(run.Class("Game", source)), scope String(run.Instance.ScriptFault));
+		Test.Assert(run.PropBool("guidSame") && run.PropBool("guidDifferent") && run.PropBool("nilSame"));
+		Test.Assert(run.PropBool("nilMade"), "a declared Guid and Guid() are both nil");
+		Test.Assert(run.PropBool("noEntity"), "Entity() is no entity, and equal to another");
+		Test.Assert(run.PropBool("loaded"), "the level loaded");
+		Test.Assert(run.PropBool("entitySame"), "the same entity found twice");
+		Test.Assert(run.PropBool("entityDifferent"), "two entities");
+		Test.Assert(run.PropBool("selfSame"), "found by its id");
+		// A plain Guid member reads back by value, as a probe reads it.
+		Test.Assert(run.Prop("kept").AsGuid == levelId);
+	}
+
 	/// A script rumbles its own run's pad and stops it; the run's end stops it too, and another
 	/// run's pad hears none of it.
 	[Test]
