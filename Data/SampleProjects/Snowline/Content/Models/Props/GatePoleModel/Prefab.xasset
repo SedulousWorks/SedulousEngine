@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">ca549413-554d-8e46-871e-a6f4f9ce844c</string>
+	<string name="typeName">Sedulous.Scene.Resource.PrefabDocument</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6298966941287295178</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="name">GatePoleModel</string>
+		</object>
+	</object>
+</root>

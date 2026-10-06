@@ -1,0 +1,37 @@
+<root>
+	<string name="guid">1dd26591-081a-704c-9100-aca119c53141</string>
+	<string name="typeName">Sedulous.Terrain.Pipeline.TerrainAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">11623250667198096165</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<string name="heightfieldId">dda36ce0-0bbd-f341-94c0-d45ae7dbf0dd</string>
+			<string name="weightsId">b27c0629-aa59-5e4e-853a-9657e85a719b</string>
+			<string name="baseAlbedoId">9bf1b63b-edcc-b94e-a291-16699b9bf489</string>
+			<string name="baseNormalId">00000000-0000-0000-0000-000000000000</string>
+			<string name="baseOrmId">00000000-0000-0000-0000-000000000000</string>
+			<string name="baseHeightId">00000000-0000-0000-0000-000000000000</string>
+			<f32 name="baseTileScale">6</f32>
+			<array name="paletteAlbedoIds" count="3">
+				<string>9f838fcc-8f2c-0b4b-990b-6ca06a113e26</string>
+				<string>df791938-d243-0a4f-a204-3cc8dafcca51</string>
+				<string>49f40408-91db-5f4d-ad6e-905542bf23a1</string>
+			</array>
+			<array name="paletteNormalIds" count="0"/>
+			<array name="paletteOrmIds" count="0"/>
+			<array name="paletteHeightIds" count="0"/>
+			<array name="paletteMaskIds" count="0"/>
+			<array name="paletteTileScales" count="3">
+				<f32>6</f32>
+				<f32>4</f32>
+				<f32>6</f32>
+			</array>
+			<i32 name="paletteTextureSize">256</i32>
+			<f32 name="heightBlendContrast">0.25</f32>
+			<bool name="castShadows">true</bool>
+		</object>
+	</object>
+</root>

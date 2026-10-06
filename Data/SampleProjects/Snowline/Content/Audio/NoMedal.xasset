@@ -1,0 +1,22 @@
+<root>
+	<string name="guid">ac6923f0-a216-e64f-b42c-7159db62047f</string>
+	<string name="typeName">Sedulous.Audio.Pipeline.AudioClipAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">11668951013542369821</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">NoMedal.ogg</string>
+			<bool name="stream">false</bool>
+			<bool name="keepCompressed">false</bool>
+			<bool name="forceMono">false</bool>
+			<bool name="loop">false</bool>
+			<u64 name="loopStartFrame">0</u64>
+			<u64 name="loopEndFrame">0</u64>
+			<bool name="trimTrailingSilence">false</bool>
+			<bool name="normalize">false</bool>
+			<f32 name="gain">1</f32>
+		</object>
+	</object>
+</root>

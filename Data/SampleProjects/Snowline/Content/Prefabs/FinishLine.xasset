@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">4f331ff7-0aef-2745-b7a9-9a3a012042d8</string>
+	<string name="typeName">Sedulous.Scene.Resource.PrefabDocument</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6298966941287295178</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="name">FinishLine</string>
+		</object>
+	</object>
+</root>

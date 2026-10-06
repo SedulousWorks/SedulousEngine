@@ -1,0 +1,20 @@
+<root>
+	<string name="guid">dda36ce0-0bbd-f341-94c0-d45ae7dbf0dd</string>
+	<string name="typeName">Sedulous.Heightfield.Pipeline.HeightfieldAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">643058166247676377</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">ForestHeight.png</string>
+			<i32 name="size">513</i32>
+			<object name="worldSize">
+				<f32 name="x">513</f32>
+				<f32 name="y">513</f32>
+			</object>
+			<f32 name="minY">0</f32>
+			<f32 name="maxY">120</f32>
+		</object>
+	</object>
+</root>

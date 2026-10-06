@@ -1,0 +1,15 @@
+<root>
+	<string name="guid">50ee1593-7e6f-a446-9e37-8ac7acfbf45d</string>
+	<string name="typeName">Sedulous.Terrain.Pipeline.SplatmapAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">17959132422987388268</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">RidgeSplat.png</string>
+			<i32 name="width">1024</i32>
+			<i32 name="height">1024</i32>
+		</object>
+	</object>
+</root>

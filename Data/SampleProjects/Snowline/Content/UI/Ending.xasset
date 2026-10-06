@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">f7d32a05-810a-2144-bad1-531d9f88fdbb</string>
+	<string name="typeName">Sedulous.UI.Pipeline.UIDocumentAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">5440813216362558612</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">Ending.sml</string>
+		</object>
+	</object>
+</root>

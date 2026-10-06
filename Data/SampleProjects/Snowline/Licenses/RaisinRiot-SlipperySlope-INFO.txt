@@ -1,0 +1,11 @@
+"Slippery Slope" by RaisinRiot
+https://opengameart.org/content/slippery-slope
+
+Licence: Creative Commons Attribution 3.0 Unported (CC BY 3.0)
+https://creativecommons.org/licenses/by/3.0/ (the legal code: CC-BY-3.0.txt)
+
+The author's terms, as published: "Free to use in any project using the following for credit:
+RaisinRiot - Slippery Slope. Also comment or message me to let me know where used."
+
+In Snowline: converted from the published WAV to Ogg Vorbis (Sources/MusicTitle.ogg);
+otherwise unmodified. It plays on the title and the menus.

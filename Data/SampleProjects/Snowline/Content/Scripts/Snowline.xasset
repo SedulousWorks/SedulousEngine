@@ -1,0 +1,15 @@
+<root>
+	<string name="guid">b150195f-3b97-e341-a4b3-2f7c5fe047bc</string>
+	<string name="typeName">Sedulous.Script.Pipeline.ScriptClassAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6162296549784860781</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">Snowline.as</string>
+			<string name="language">angelscript</string>
+			<string name="className"/>
+		</object>
+	</object>
+</root>

@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">d75dddc2-c625-bb43-af13-c4a46482e880</string>
+	<string name="typeName">Sedulous.Geometry.Pipeline.StaticMeshAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">2942578683049515522</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+		</object>
+	</object>
+</root>
