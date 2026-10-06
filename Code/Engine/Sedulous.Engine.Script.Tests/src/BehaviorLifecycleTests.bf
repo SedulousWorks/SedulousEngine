@@ -188,6 +188,36 @@ static class BehaviorLifecycleTests
 		Test.Assert(play.PropFloat(first, "seen") == 2.0f);
 	}
 
+	/// A world position read inside onUpdate is this frame's: a behaviour that moves a parent
+	/// reads the child's new world position at once, where it read last frame's from the cache.
+	[Test]
+	public static void AWorldPositionReadInOnUpdateIsThisFrames()
+	{
+		let play = scope ScriptPlayScene();
+		let parent = play.Scene.CreateEntity("Parent");
+		let child = play.Scene.CreateEntity("Child");
+		play.Scene.SetParent(child, parent);
+		play.Scene.SetLocalPosition(child, .(5.0f, 0.0f, 0.0f));
+		let mover = play.Class("Mover", """
+			class Mover
+			{
+				Scene@ scene;
+				float seen = 0;
+				void onUpdate(float dt)
+				{
+					Entity p = scene.FindEntityByName("Parent");
+					Entity c = scene.FindEntityByName("Child");
+					p.SetLocalPosition(Float3(20, 0, 0));
+					seen = c.GetWorldPosition().X;
+				}
+			}
+			""");
+		let e = play.AddBehavior(mover, "mover");
+		play.Start();
+		play.Step();
+		Test.Assert(Math.Abs(play.PropFloat(e, "seen") - 25.0f) < 0.01f, scope $"the child's fresh world position, read {play.PropFloat(e, "seen")}");
+	}
+
 	[Test]
 	public static void AReloadRebuildsTheInstanceAndReappliesOverrides()
 	{

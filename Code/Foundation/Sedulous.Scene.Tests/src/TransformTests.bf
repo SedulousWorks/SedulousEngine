@@ -241,4 +241,32 @@ class TransformTests
 				Test.Assert(Math.Abs(actual.M[row][column] - expected.M[row][column]) < 0.001f);
 		}
 	}
+
+	/// Read mid-update (a script after physics moved the entity, before UpdateTransforms), the
+	/// world pose is this frame's: the cached matrix had answered last frame's. The previous
+	/// matrix keeps last frame's, and after UpdateTransforms the cache agrees.
+	[Test]
+	public static void AWorldMatrixReadBeforeUpdateTransformsIsCurrent()
+	{
+		let scene = scope Scene();
+		let parent = scene.CreateEntity();
+		let child = scene.CreateEntity();
+		let other = scene.CreateEntity();
+		scene.SetLocalPosition(parent, .(10, 0, 0));
+		scene.SetLocalPosition(child, .(5, 0, 0));
+		scene.SetLocalPosition(other, .(0, 0, 3));
+		scene.SetParent(child, parent);
+		scene.UpdateTransforms();
+		scene.UpdateTransforms(); // settled: the previous matrices caught up
+
+		scene.SetLocalPosition(parent, .(20, 0, 0));
+		Test.Assert(Near(scene.GetWorldPosition(parent).X, 20.0f), "moved: fresh");
+		Test.Assert(Near(scene.GetWorldPosition(child).X, 25.0f), "under a moved parent: fresh");
+		Test.Assert(Near(scene.GetWorldPosition(other).Z, 3.0f), "untouched: the cache");
+		Test.Assert(Near(scene.GetPrevWorldMatrix(child).M[3][0], 15.0f), "last frame's, kept");
+
+		scene.UpdateTransforms();
+		Test.Assert(Near(scene.GetWorldPosition(child).X, 25.0f), "the cache agrees");
+		Test.Assert(Near(scene.GetPrevWorldMatrix(child).M[3][0], 15.0f));
+	}
 }

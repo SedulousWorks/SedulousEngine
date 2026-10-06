@@ -397,10 +397,20 @@ class Scene
 		MarkDirty(entity);
 	}
 
-	/// The world matrix from the most recent UpdateTransforms. Identity until the first one.
+	/// The world matrix, this frame's even when read mid-update: an entity moved since the last
+	/// UpdateTransforms (or under a moved ancestor, the dirt reaching down to it) is composed
+	/// fresh up its parent chain, and the rest answer from the cache. A script in onUpdate after
+	/// physics wrote this frame's pose read last frame's from the cache. The cache itself and
+	/// the previous matrix move only in UpdateTransforms.
 	[Scriptable]
 	public Float4x4 GetWorldMatrix(EntityHandle entity)
-		=> IsValid(entity) ? mTransforms[(int)entity.Index].WorldMatrix : Float4x4.Identity();
+	{
+		if (!IsValid(entity))
+			return Float4x4.Identity();
+		if (mTransforms[(int)entity.Index].Dirty)
+			return ComposeWorldMatrix(entity);
+		return mTransforms[(int)entity.Index].WorldMatrix;
+	}
 
 	public Float4x4 GetPrevWorldMatrix(EntityHandle entity)
 		=> IsValid(entity) ? mTransforms[(int)entity.Index].PrevWorldMatrix : Float4x4.Identity();
