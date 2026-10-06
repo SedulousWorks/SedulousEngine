@@ -33,6 +33,13 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 	/// the body is created rather than when the shape is described.
 	private List<List<float>> mHeightBuffers = new .() ~ DeleteContainerAndItems!(_);
 
+	/// The static collider sources not ready at the last ask, asked again each step. BORROWED:
+	/// they are the scene's systems.
+	private List<IStaticColliderSource> mPendingCapsuleSources = new .() ~ delete _;
+	/// How long they have been waited for, in seconds, and whether that was said.
+	private float mCapsuleWait = 0.0f;
+	private bool mWarnedCapsules = false;
+
 	public override bool IsSimulationOnly => true;
 
 	public override void OnSceneCreate(Scene scene)
@@ -232,6 +239,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 		mWorld = new PhysicsWorld(settings);
 
 		BuildBodies();
+		BuildStaticCapsules();
 		BuildJoints();
 		BuildCharacters();
 	}
@@ -272,6 +280,10 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 		}
 
 		mEvents.Clear();
+		// The capsule bodies drop with the world.
+		mPendingCapsuleSources.Clear();
+		mCapsuleWait = 0.0f;
+		mWarnedCapsules = false;
 		DeleteAndNullify!(mWorld);
 	}
 
@@ -281,6 +293,9 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 	{
 		if (mWorld == null)
 			return;
+
+		// A source still resolving at the start is solid once it is ready.
+		RetryStaticCapsules(fixedDeltaTime);
 
 		let bodies = mScene.GetSystem<RigidBodyComponentManager>();
 		if (bodies == null)
@@ -509,6 +524,74 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 				component.SimActive = true;
 				CreateBodyForEntity(component, entity);
 			});
+	}
+
+	/// Static content without an entity per piece (a forest's trunks): every system that is an
+	/// IStaticColliderSource gives its capsules, one static body each in its group, owned by no
+	/// entity. A source not ready yet is asked again each step.
+	private void BuildStaticCapsules()
+	{
+		for (let system in mScene.Systems)
+		{
+			if (let source = system.AsStaticColliderSource)
+				CollectCapsules(source);
+		}
+	}
+
+	private void CollectCapsules(IStaticColliderSource source)
+	{
+		let capsules = scope List<StaticCapsule>();
+		if (!source.CollectStaticCapsules(mScene, capsules))
+		{
+			mPendingCapsuleSources.Add(source);
+			return;
+		}
+		for (let capsule in capsules)
+			CreateCapsuleBody(capsule);
+	}
+
+	private void RetryStaticCapsules(float fixedDeltaTime)
+	{
+		if (mPendingCapsuleSources.IsEmpty)
+			return;
+		let pending = scope List<IStaticColliderSource>();
+		pending.AddRange(mPendingCapsuleSources);
+		mPendingCapsuleSources.Clear();
+		for (let source in pending)
+			CollectCapsules(source);
+
+		mCapsuleWait += fixedDeltaTime;
+		if (!mPendingCapsuleSources.IsEmpty && (mCapsuleWait > 5.0f) && !mWarnedCapsules)
+		{
+			mWarnedCapsules = true;
+			GlobalLog(.Warning,
+				"Physics: {} static collider source(s) still not ready after 5 s: their content is not solid until it is",
+				mPendingCapsuleSources.Count);
+		}
+	}
+
+	/// An upright capsule from its foot up its height (the whole capsule; the cylinder between
+	/// the caps is height - 2 radius, at least 0: a short one is a sphere sitting on the foot).
+	/// It carries no entity, so a query that finds it reports none.
+	private void CreateCapsuleBody(StaticCapsule capsule)
+	{
+		if (capsule.Radius <= 0.0f)
+			return;
+		let desc = scope BodyDesc();
+		desc.Motion = .Static;
+		desc.Layer = .Static;
+		desc.Group = capsule.Group;
+		// The invalid handle says "none" outright. Nought would unpack as (0, 0), which no live
+		// entity holds only because a slot's generation is bumped before its first use.
+		desc.UserData = PhysicsEntityPacking.PackEntity(.Invalid);
+		let cylinder = Max(capsule.Height - 2.0f * capsule.Radius, 0.0f);
+		var shape = ShapeDesc();
+		shape.Kind = (cylinder > 0.0f) ? .Capsule : .Sphere;
+		shape.Radius = capsule.Radius;
+		shape.HalfHeight = cylinder * 0.5f;
+		desc.Shapes.Add(shape);
+		desc.Position = capsule.Foot + Float3(0.0f, capsule.Radius + cylinder * 0.5f, 0.0f);
+		mWorld.CreateBody(desc);
 	}
 
 	/// One entity's body, shared by the scene's start and the activation edge.
