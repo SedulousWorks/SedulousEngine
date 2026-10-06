@@ -10,7 +10,9 @@ enum SaveValueKind : uint8
 	Bool,
 	Int,
 	Float,
-	Text
+	Text,
+	/// A list of numbers, set and read whole (a recorded run).
+	Floats
 }
 
 /// A settings section whose fields are not known ahead: a game's saved values (a best time, a
@@ -29,11 +31,12 @@ class SaveValues : ISerializable
 		public int32 IntValue;
 		public float FloatValue;
 		public String TextValue = new .() ~ delete _;
+		public List<float> FloatsValue = new .() ~ delete _;
 	}
 
 	/// Kinds are written by name, so a save file reads in a text editor and a kind added later
 	/// does not renumber the others.
-	private static readonly String[4] sKindNames = .("bool", "int", "float", "text");
+	private static readonly String[5] sKindNames = .("bool", "int", "float", "text", "floats");
 
 	private List<Entry> mEntries = new .() ~ DeleteContainerAndItems!(_);
 
@@ -87,6 +90,17 @@ class SaveValues : ISerializable
 		return changed;
 	}
 
+	public bool SetFloats(StringView key, Span<float> values)
+	{
+		let entry = Slot(key, let inserted);
+		var changed = inserted || (entry.Kind != .Floats) || (entry.FloatsValue.Count != values.Length);
+		for (int i = 0; !changed && (i < values.Length); i++)
+			changed = entry.FloatsValue[i] != values[i];
+		Reset(entry, .Floats);
+		entry.FloatsValue.AddRange(values);
+		return changed;
+	}
+
 	// A value read as another kind than it was written answers the fallback, except that an
 	// int reads as a float: a whole number is still a number.
 
@@ -117,6 +131,19 @@ class SaveValues : ISerializable
 	{
 		let entry = Find(key);
 		return ((entry != null) && (entry.Kind == .Text)) ? entry.TextValue : fallback;
+	}
+
+	/// The list into `outValues` (cleared first), answering whether there was one: false, the list
+	/// left empty, when the key is absent or holds another kind. A list is not a number to
+	/// GetFloat.
+	public bool GetFloats(StringView key, List<float> outValues)
+	{
+		outValues.Clear();
+		let entry = Find(key);
+		if ((entry == null) || (entry.Kind != .Floats))
+			return false;
+		outValues.AddRange(entry.FloatsValue);
+		return true;
 	}
 
 	/// Answers whether there was a value to remove.
@@ -158,11 +185,13 @@ class SaveValues : ISerializable
 			Sedulous.Core.Serialization.Serialize(ar, "kind", kind);
 			if (!writing && !KindFromName(kind, out entry.Kind))
 			{
-				// A kind this build does not know.
+				// A kind this build does not know (a newer build wrote it): that value is
+				// skipped, the rest of the save still reads, and the next write drops it. Exact in
+				// a keyed format (a save file is XML), which reads the next entry by its own key;
+				// a positional payload cannot size a value it does not know.
 				delete entry;
-				ar.FailPayload(.InvalidArgument);
 				ar.EndObject();
-				break;
+				continue;
 			}
 			switch (entry.Kind)
 			{
@@ -170,6 +199,9 @@ class SaveValues : ISerializable
 			case .Int: SerializeValue(ar, "value", ref entry.IntValue);
 			case .Float: SerializeValue(ar, "value", ref entry.FloatValue);
 			case .Text: Sedulous.Core.Serialization.Serialize(ar, "value", entry.TextValue);
+			case .Floats:
+				ar.Key("value");
+				SerializeList(ar, entry.FloatsValue);
 			}
 			ar.EndObject();
 
@@ -213,6 +245,7 @@ class SaveValues : ISerializable
 		entry.IntValue = 0;
 		entry.FloatValue = 0.0f;
 		entry.TextValue.Clear();
+		entry.FloatsValue.Clear();
 	}
 
 	private int LowerBound(StringView key)

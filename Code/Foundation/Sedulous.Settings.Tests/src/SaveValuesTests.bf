@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
@@ -62,6 +63,7 @@ class SaveValuesTests
 			values.SetFloat("best.time", 62.25f);
 			values.SetBool("won", true);
 			values.SetText("last.level", "Level 3");
+			values.SetFloats("ghost", scope float[](1.5f, -2.25f, 0.0f, 1e6f));
 			Test.Assert(store.Save(stream, factory) case .Ok);
 		}
 		Test.Assert(stream.Seek(0, .Begin) == 0);
@@ -69,11 +71,14 @@ class SaveValuesTests
 		Test.Assert(store.Load(stream, factory) case .Ok);
 		let values = store.Find<SaveValues>();
 		Test.Assert(values != null);
-		Test.Assert(values.Count == 4);
+		Test.Assert(values.Count == 5);
 		Test.Assert(values.GetInt("coins", 0) == 37);
 		Test.Assert(values.GetFloat("best.time", 0.0f) == 62.25f);
 		Test.Assert(values.GetBool("won", false));
 		Test.Assert(values.GetText("last.level", "") == "Level 3");
+		let ghost = scope List<float>();
+		Test.Assert(values.GetFloats("ghost", ghost));
+		Test.Assert((ghost.Count == 4) && (ghost[0] == 1.5f) && (ghost[1] == -2.25f) && (ghost[2] == 0.0f) && (ghost[3] == 1e6f));
 	}
 
 	[Test]
@@ -98,5 +103,69 @@ class SaveValuesTests
 		let text = scope String((char8*)stream.Bytes.Ptr, stream.Bytes.Length);
 		Test.Assert(text.Contains(">float<"));
 		Test.Assert(text.Contains("best.time"));
+
+		store.Section<SaveValues>().SetFloats("ghost", scope float[](2.0f));
+		let again = scope MemoryStream();
+		Test.Assert(store.Save(again, factory) case .Ok);
+		Test.Assert(scope String((char8*)again.Bytes.Ptr, again.Bytes.Length).Contains(">floats<"));
+	}
+
+	/// Snowline's ghost is a recorded run, a few thousand numbers: a list is a value of its own
+	/// kind, set and read whole.
+	[Test]
+	public static void AListOfNumbersIsASaveValueOfItsOwnKind()
+	{
+		let values = scope SaveValues();
+		let run = scope float[](0.0f, 1.0f, 2.5f);
+		Test.Assert(values.SetFloats("ghost", run));
+		Test.Assert(!values.SetFloats("ghost", run), "the same list is no change");
+		let other = scope float[](0.0f, 1.0f, 2.75f);
+		Test.Assert(values.SetFloats("ghost", other), "one number differs");
+		Test.Assert(values.SetFloats("ghost", Span<float>(other, 0, 2)), "a shorter list");
+		let read = scope List<float>();
+		Test.Assert(values.GetFloats("ghost", read));
+		Test.Assert((read.Count == 2) && (read[1] == 1.0f));
+
+		// Absent, or another kind: false and an empty list; and the list is not a number to GetFloat.
+		read.Add(9.0f);
+		Test.Assert(!values.GetFloats("missing", read) && read.IsEmpty);
+		values.SetInt("best", 3);
+		Test.Assert(!values.GetFloats("best", read) && read.IsEmpty);
+		Test.Assert(values.GetFloat("ghost", -1.0f) == -1.0f);
+		// An empty list is a value too.
+		Test.Assert(values.SetFloats("empty", Span<float>()));
+		Test.Assert(values.Has("empty") && values.GetFloats("empty", read) && read.IsEmpty);
+	}
+
+	/// A newer build's kind failed the whole section, so its save reset an older build's: the
+	/// entry is skipped and the rest reads (exact in XML, a save file's format).
+	[Test]
+	public static void ASaveValueOfAKindThisBuildDoesNotKnowIsSkippedTheRestRead()
+	{
+		SaveValues.Register();
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		let store = scope Settings();
+		store.Section<SaveValues>().SetInt("a.before", 1);
+		store.Section<SaveValues>().SetText("m.marker", "zzzz");
+		store.Section<SaveValues>().SetInt("z.after", 3);
+		let written = scope MemoryStream();
+		Test.Assert(store.Save(written, factory) case .Ok);
+		let text = scope String((char8*)written.Bytes.Ptr, written.Bytes.Length);
+		// A newer build's kind in place of the text one, with a value this build cannot read as text.
+		Test.Assert(text.Contains(">text<"));
+		text.Replace(">text<", ">sound<");
+
+		let edited = scope MemoryStream();
+		edited.Write(Span<uint8>((uint8*)text.Ptr, text.Length));
+		Test.Assert(edited.Seek(0, .Begin) == 0);
+		let read = scope Settings();
+		Test.Assert(read.Load(edited, factory) case .Ok);
+		let values = read.Find<SaveValues>();
+		Test.Assert(values != null);
+		Test.Assert(values.Count == 2);
+		Test.Assert(values.GetInt("a.before", 0) == 1);
+		Test.Assert(values.GetInt("z.after", 0) == 3);
+		Test.Assert(!values.Has("m.marker"));
 	}
 }
