@@ -71,6 +71,32 @@ class RenderViewTests
 		Test.Assert((Math.Abs(crop.SourceHeight - 0.75f) < 1e-4f) && (Math.Abs(crop.SourceY - 0.125f) < 1e-4f));
 	}
 
+	/// Far faded vegetation drew as flat grey silhouettes: the depth prepass left the camera
+	/// position at the origin, so a set dissolved by its distance from there in depth but from
+	/// the camera in colour. Every camera pass builds its context through ForCamera, which
+	/// carries the camera whole.
+	[Test]
+	public static void ACameraPassContextCarriesTheCamerasPositionMatrixAndSceneClock()
+	{
+		let scene = scope ExtractedScene();
+		var camera = ViewCamera();
+		camera.Position = .(1200.0f, 80.0f, -640.0f);
+		camera.View = Float4x4.LookAtRH(camera.Position, .(1200.0f, 0.0f, -400.0f), .(0, 1, 0));
+		camera.Projection = Projection();
+		let view = scope RenderView();
+		view.Bind(scene, camera, .(), null, .RGBA8Unorm, 64, 64);
+
+		var context = RenderRecordContext.ForCamera(view, 3.0f, 2.5f);
+		Test.Assert(context.View == view);
+		Test.Assert((context.CameraPos.X == 1200.0f) && (context.CameraPos.Y == 80.0f) && (context.CameraPos.Z == -640.0f));
+		Test.Assert((context.ViewMatrix.M[3][0] == camera.View.M[3][0]) && (context.ViewMatrix.M[3][2] == camera.View.M[3][2]));
+		Test.Assert((context.TimeSeconds == 3.0f) && (context.PrevTimeSeconds == 2.5f), "no scene clock: the frame's");
+
+		scene.SetTime(10.0f, 9.5f);
+		context = RenderRecordContext.ForCamera(view, 3.0f, 2.5f);
+		Test.Assert((context.TimeSeconds == 10.0f) && (context.PrevTimeSeconds == 9.5f), "a scene clock wins");
+	}
+
 	[Test]
 	public static void OpaqueDrawsSortNearestFirst()
 	{

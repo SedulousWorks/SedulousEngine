@@ -90,4 +90,29 @@ struct RenderRecordContext
 	public float PrevTimeSeconds = 0.0f;
 
 	public this() {}
+
+	/// The part of a record context every pass drawing from `view`'s camera shares: the view,
+	/// the camera's matrix and position, and the wind clock (the view's scene clock, else the
+	/// frame's). One builder so no camera pass misses a field: the depth prepass left the
+	/// position at the origin, and faded vegetation dissolved by its distance from there in
+	/// depth but from the camera in colour (far trees drew as flat grey silhouettes).
+	public static RenderRecordContext ForCamera(RenderView view, float frameTime, float prevFrameTime)
+	{
+		var context = RenderRecordContext();
+		context.View = view;
+		// Per view level selection reads the matrix and the vegetation fade measures from the
+		// position: every camera pass must agree on both, or its depth and its colour draw
+		// different things.
+		context.ViewMatrix = view.Camera.View;
+		context.CameraPos = view.Camera.Position;
+		// The WIND clock: the view's SCENE clock, scaled and pausable, else the frame's.
+		context.TimeSeconds = frameTime;
+		context.PrevTimeSeconds = prevFrameTime;
+		if ((view.Scene != null) && view.Scene.HasTime)
+		{
+			context.TimeSeconds = view.Scene.TimeSeconds;
+			context.PrevTimeSeconds = view.Scene.PrevTimeSeconds;
+		}
+		return context;
+	}
 }

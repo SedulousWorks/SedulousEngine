@@ -357,20 +357,9 @@ class RenderFrame
 			}
 		}
 
-		var context = RenderRecordContext();
-		// The WIND clock: the view's SCENE clock, else the frame's fallback.
-		context.TimeSeconds = mTimeSeconds;
-		context.PrevTimeSeconds = mPrevTimeSeconds;
-		if ((view.Scene != null) && view.Scene.HasTime)
-		{
-			context.TimeSeconds = view.Scene.TimeSeconds;
-			context.PrevTimeSeconds = view.Scene.PrevTimeSeconds;
-		}
-		context.View = view;
+		var context = RenderRecordContext.ForCamera(view, mTimeSeconds, mPrevTimeSeconds);
 		context.Pass = pass;
 		context.ViewProj = viewProj; // the CROPPED camera projection
-		context.ViewMatrix = view.Camera.View; // the per view level selection, like the prepass
-		context.CameraPos = view.Camera.Position;
 		context.ColorFormat = PickSystem.cIdFormat;
 		context.DepthFormat = mPass.DepthFormat;
 		context.SampleCount = 1;
@@ -429,23 +418,11 @@ class RenderFrame
 	private void RecordDepthPrepass(IRenderPassEncoder encoder, RenderView view,
 		RendererRegistry registry, uint32 viewIndex)
 	{
-		var context = RenderRecordContext();
-		// The WIND clock: the view's SCENE clock, else the frame's fallback.
-		context.TimeSeconds = mTimeSeconds;
-		context.PrevTimeSeconds = mPrevTimeSeconds;
-		if ((view.Scene != null) && view.Scene.HasTime)
-		{
-			context.TimeSeconds = view.Scene.TimeSeconds;
-			context.PrevTimeSeconds = view.Scene.PrevTimeSeconds;
-		}
-		// The share cache is keyed by the view: the prepass fills it and the forward reuses it.
-		context.View = view;
+		// The view keys the share cache (the prepass fills it and the forward reuses it); the
+		// camera's matrix and position are the forward's, or the prepass selects other levels
+		// and fades from another place, and the two surfaces' depths fight.
+		var context = RenderRecordContext.ForCamera(view, mTimeSeconds, mPrevTimeSeconds);
 		context.ViewProj = view.Camera.ViewProjection;
-		// The camera's own view matrix, because the per view LEVEL SELECTION reads it. Without
-		// it the prepass selects from an identity view, which puts the camera at the origin and
-		// so always picks the finest level, while the forward selects by real distance: two
-		// different surfaces whose depths then fight.
-		context.ViewMatrix = view.Camera.View;
 		context.DepthFormat = mPass.DepthFormat;
 		context.DepthPrepass = true;
 		// The prepass runs at the view's sample count, so the early rejection matches the
