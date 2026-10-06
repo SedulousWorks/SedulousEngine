@@ -908,7 +908,9 @@ static class ScriptSurfaceWalker
 		if (!EmitCallBody(ctx, m, false, 1, body, scope String()))
 			return; // the type side already carries the reason
 		let name = ctx.NextThunk(.. scope .());
-		EmitThunk(ctx, name, false, body, false, true);
+		// IsValid answers false for an entity with no scene rather than failing the handler.
+		let isValid = (entityName == "IsValid") && (m.ReturnType == typeof(bool)) && (m.ParamCount == 1);
+		EmitThunk(ctx, name, false, body, false, true, isValid ? ".FromBool(false)" : "");
 		ctx.Code.AppendF(".BindEntity({}, => {})", Quote(entityName, .. scope .()), name);
 	}
 
@@ -1228,14 +1230,15 @@ static class ScriptSurfaceWalker
 
 	/// One static thunk function: the self prologue, the body, the self write back.
 	[Comptime]
-	private static void EmitThunk(TypeCtx ctx, StringView name, bool isStatic, StringView body, bool mutatesSelf, bool entitySelf = false)
+	private static void EmitThunk(TypeCtx ctx, StringView name, bool isStatic, StringView body, bool mutatesSelf, bool entitySelf = false,
+		StringView entityNoScene = "")
 	{
 		let t = ctx.Thunks;
 		t.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n\tframe.Begin();\n", name);
 		bool writeBack = false;
 		if (entitySelf)
 		{
-			EntityPrologue(ctx, t);
+			EntityPrologue(ctx, t, entityNoScene);
 		}
 		else if (!isStatic)
 		{
@@ -1250,11 +1253,17 @@ static class ScriptSurfaceWalker
 	}
 
 	/// The lines that resolve `self` for the entity side of an entity-first method: the
-	/// entity's scene, then the owner in it, the scene itself or its system.
+	/// entity's scene, then the owner in it, the scene itself or its system. An entity with no
+	/// scene (one never assigned: `Entity m_figure;`) fails the call, or, with `noScene`, answers
+	/// that instead: IsValid's question is exactly whether there is a live entity.
 	[Comptime]
-	private static void EntityPrologue(TypeCtx ctx, String outCode)
+	private static void EntityPrologue(TypeCtx ctx, String outCode, StringView noScene = "")
 	{
-		outCode.Append("\tif (frame.Self.Kind != .Entity) { frame.Fail(\"self is not an entity\"); return; }\n\tlet scene = frame.SceneOf(frame.Self);\n\tif (scene == null) { frame.Fail(\"the entity has no scene\"); return; }\n");
+		outCode.Append("\tif (frame.Self.Kind != .Entity) { frame.Fail(\"self is not an entity\"); return; }\n\tlet scene = frame.SceneOf(frame.Self);\n");
+		if (noScene.IsEmpty)
+			outCode.Append("\tif (scene == null) { frame.Fail(\"the entity has no scene\"); return; }\n");
+		else
+			outCode.AppendF("\tif (scene == null) {{ frame.Result = {}; return; }}\n", noScene);
 		if (ctx.FullName == "Sedulous.Scene.Scene")
 			outCode.Append("\tlet self = scene;\n");
 		else if (ctx.Role == .SceneFacade)

@@ -188,6 +188,40 @@ static class BehaviorLifecycleTests
 		Test.Assert(play.PropFloat(first, "seen") == 2.0f);
 	}
 
+	/// An entity never assigned has no scene: IsValid answers false for it, where it failed the
+	/// handler ("the entity has no scene"), so a behaviour checking a lazily found entity each
+	/// frame (Snowline's board, its rider's mesh) was disabled on its first update.
+	[Test]
+	public static void AnUnassignedEntityIsNotValidAndTheHandlerRunsOn()
+	{
+		let play = scope ScriptPlayScene();
+		let probe = play.Class("Probe", """
+			class Probe
+			{
+				Entity self;
+				private Entity m_later;
+				bool unassigned = true;
+				bool made = true;
+				bool real = false;
+				int updates = 0;
+				void onUpdate(float dt)
+				{
+					unassigned = m_later.IsValid();
+					made = Entity().IsValid();
+					real = self.IsValid();
+					updates++;
+				}
+			}
+			""");
+		let e = play.AddBehavior(probe, "probe");
+		play.Start();
+		play.Step(2);
+		Test.Assert(!play.BehaviorOf(e).Faulted, "the handler ran on");
+		Test.Assert(play.PropInt(e, "updates") == 2);
+		Test.Assert(!play.Prop(e, "unassigned").AsBool && !play.Prop(e, "made").AsBool, "no scene: not valid");
+		Test.Assert(play.Prop(e, "real").AsBool, "a live entity still is");
+	}
+
 	/// A world position read inside onUpdate is this frame's: a behaviour that moves a parent
 	/// reads the child's new world position at once, where it read last frame's from the cache.
 	[Test]
