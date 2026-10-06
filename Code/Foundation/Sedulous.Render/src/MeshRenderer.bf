@@ -2299,10 +2299,18 @@ class MeshRenderer : Renderer
 		else
 		{
 			config.ColorTargetCount = 1;
+			config.DepthMode = TransparentPassDepth(config.DepthMode);
 		}
 
 		return config;
 	}
+
+	/// The depth a blended material's pipeline uses in the transparent pass, which reads the
+	/// depth buffer but never writes it (its bundle is depth read only): a writing mode becomes
+	/// ReadOnly. A material authored as data (a blend mode set, the depth left at its ReadWrite
+	/// default) carried a pipeline WebGPU refused inside the pass; Vulkan did not check.
+	public static DepthMode TransparentPassDepth(DepthMode mode)
+		=> ((mode == .ReadWrite) || (mode == .WriteOnly)) ? .ReadOnly : mode;
 
 	// ==================== Layouts, groups and resources ====================
 
