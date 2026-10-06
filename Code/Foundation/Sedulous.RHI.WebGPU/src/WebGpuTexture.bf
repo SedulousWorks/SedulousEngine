@@ -53,6 +53,19 @@ sealed class WebGpuTexture : ITexture
 		wgpu.dimension = WebGpuConversions.ToWgpuTextureDimension(desc.Dimension);
 		wgpu.size.width = desc.Width;
 		wgpu.size.height = desc.Height;
+		// WebGPU takes a block compressed texture only in whole blocks (a 480 by 270 BC1 picture
+		// was refused: "not a multiple of the block width (4) and height (4)"); Vulkan takes the
+		// size in texels. The data already fills its last blocks (the cook repeats the edge
+		// texels), so the texture is made at the size rounded up to whole blocks: sampled, the
+		// picture spreads over at most three more edge rows or columns. Each level's write is
+		// rounded the same way (WebGpuTransferBatch) and fits inside it.
+		if (TextureFormats.IsCompressed(desc.Format))
+		{
+			let blockWidth = TextureFormats.BlockWidth(desc.Format);
+			let blockHeight = TextureFormats.BlockHeight(desc.Format);
+			wgpu.size.width = (wgpu.size.width + blockWidth - 1) / blockWidth * blockWidth;
+			wgpu.size.height = (wgpu.size.height + blockHeight - 1) / blockHeight * blockHeight;
+		}
 		// WebGPU folds array layers into the depth field; a 3D texture has no layers.
 		wgpu.size.depthOrArrayLayers = (desc.Dimension == .Texture3D) ? desc.Depth
 			: desc.ArrayLayerCount;

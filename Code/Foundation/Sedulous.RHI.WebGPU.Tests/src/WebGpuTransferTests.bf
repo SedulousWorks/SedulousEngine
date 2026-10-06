@@ -221,4 +221,56 @@ class WebGpuTransferTests
 		device.DestroyTexture(ref texture);
 		device.Destroy();
 	}
+
+	/// Snowline's course pictures, 480 by 270 in BC1: WebGPU refused to make the texture ("not a
+	/// multiple of the block width (4) and height (4)"). A compressed texture whose size is not
+	/// whole blocks is made, and its whole mip chain uploads, with no error.
+	[Test]
+	public static void ACompressedTextureWhoseSizeIsNotWholeBlocksIsMadeAndUploads()
+	{
+		let backend = scope WebGpuBackend();
+		let device = WebGpuTestDevice.TryCreate(backend);
+		if (device == null)
+			return;
+		defer backend.Destroy();
+
+		let errorsBefore = WebGpuDiagnostics.UncapturedErrorCount;
+		let transferQueue = device.GetQueue(.Transfer, 0);
+		var batch = transferQueue.CreateTransferBatch().GetValueOrDefault();
+		Test.Assert(batch != null);
+
+		let format = TextureFormat.BC1RGBAUnormSrgb;
+		var desc = TextureDesc();
+		desc.Format = format;
+		desc.Width = 18;
+		desc.Height = 10;
+		desc.MipLevelCount = 5; // 18x10, 9x5, 4x2, 2x1, 1x1
+		desc.Usage = .CopyDst | .Sampled;
+		var texture = device.CreateTexture(desc).GetValueOrDefault();
+		Test.Assert(texture != null);
+
+		uint8[20 * 12] blocks = .();
+		for (int i < blocks.Count)
+			blocks[i] = (uint8)i;
+		for (uint32 level < desc.MipLevelCount)
+		{
+			let w = Math.Max(desc.Width >> level, 1);
+			let h = Math.Max(desc.Height >> level, 1);
+			TextureDataLayout layout = .();
+			layout.BytesPerRow = TextureFormats.CompressedRowPitch(format, w);
+			layout.RowsPerImage = (h + TextureFormats.BlockHeight(format) - 1) / TextureFormats.BlockHeight(format);
+			let bytes = (int)TextureFormats.CompressedLevelBytes(format, w, h);
+			batch.WriteTexture(texture, .(&blocks[0], bytes), layout, .(w, h, 1), level, 0);
+		}
+		Test.Assert(batch.Submit() case .Ok);
+		device.WaitIdle();
+
+		Test.Assert(WebGpuDiagnostics.UncapturedErrorCount == errorsBefore,
+			scope $"{WebGpuDiagnostics.UncapturedErrorCount - errorsBefore} WebGPU errors");
+		Test.Assert(!device.IsLost());
+
+		transferQueue.DestroyTransferBatch(ref batch);
+		device.DestroyTexture(ref texture);
+		device.Destroy();
+	}
 }
