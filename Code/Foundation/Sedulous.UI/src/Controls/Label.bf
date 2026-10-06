@@ -20,7 +20,13 @@ class Label : View
 	/// Null defers to the cascade.
 	public Property<float?> FontSize = new .() ~ delete _;
 	public Property<String> FontFamily = new .(new String()) ~ delete _;
+	/// The label's own colour; null defers to the style's text-color.
 	public Property<Color?> TextColor = new .() ~ delete _;
+
+	/// The colour the text draws with (before a disabled label dims it): the label's own, else
+	/// the style's text-color, else the default.
+	public Color ResolvedTextColor => (TextColor.Value != null) ? TextColor.Value.Value
+		: ResolveStyleColor(.TextColor, Color(220 / 255.0f, 225 / 255.0f, 235 / 255.0f, 1.0f));
 
 	/// Keyed on VALUES, never on a font pointer: a freed font's address can come back as a
 	/// different font, and a pointer key would then match the wrong thing.
@@ -224,8 +230,7 @@ class Label : View
 		if (font == null)
 			return;
 
-		var textColor = (TextColor.Value != null) ? TextColor.Value.Value
-			: ResolveStyleColor(.TextColor, Color(220 / 255.0f, 225 / 255.0f, 235 / 255.0f, 1.0f));
+		var textColor = ResolvedTextColor;
 		if (!IsEffectivelyEnabled())
 			textColor = Palette.ComputeDisabled(textColor);
 

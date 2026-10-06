@@ -137,6 +137,15 @@ struct UiLabel
 	public StringView Text => Resolve()?.Text.Value ?? "";
 	[Scriptable]
 	public void SetText(StringView value) { if (let v = Resolve()) v.SetText(value); }
+	/// The colour the text draws with: its own if set, else its style's text-color.
+	[Scriptable]
+	public Color TextColor => Resolve()?.ResolvedTextColor ?? Color.Transparent;
+	/// Its own colour, over the style's (a warning turning red).
+	[Scriptable]
+	public void SetTextColor(Color value) { if (let v = Resolve()) v.TextColor.Value = value; }
+	/// Back to the style's colour.
+	[Scriptable]
+	public void ClearTextColor() { if (let v = Resolve()) v.TextColor.Value = null; }
 }
 
 /// An image: `image.Source` is the texture asset it shows (a render texture a camera draws
