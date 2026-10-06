@@ -253,6 +253,12 @@ static class MarkupLoader
 			// it directly, and the box metrics take the larger of the two.
 			if (let group = view as ViewGroup)
 				group.Padding = MarkupRegistry.ParseThickness(value);
+			else
+			{
+				// A control's padding is a style (its DefaultStylePadding when none is set), so
+				// the attribute sets it inline rather than being dropped.
+				view.SetStyle(.Padding, MarkupRegistry.ParseThickness(value));
+			}
 		case "clips-content":
 			view.ClipsContent = ParseBool(value);
 		default:

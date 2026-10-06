@@ -599,4 +599,26 @@ class MarkupLoaderTests
 		Test.Assert(root.FindByName<ImageView>("top").CornerRadius.Value == Sedulous.VG.CornerRadii(8.0f, 8.0f, 0.0f, 0.0f));
 		Test.Assert(root.FindByName<ImageView>("none").CornerRadius.Value.IsZero);
 	}
+
+	/// Padding on a control (not a ViewGroup) was dropped, so a card kept the button's own 12
+	/// by 8 and its picture sat off centre. The attribute now sets the control's padding style.
+	[Test]
+	public static void PaddingOnAControlSetsItsPaddingTheContentInsetEvenly()
+	{
+		let warnings = scope List<String>();
+		defer { ClearAndDeleteItems!(warnings); }
+		let view = Load("""
+			<ContentButton padding="8">
+				<Spacer spacer-width="304" spacer-height="100"/>
+			</ContentButton>
+			""", warnings);
+		defer view.ReleaseRef();
+		Test.Assert(warnings.IsEmpty);
+		let card = view as ContentButton;
+		Test.Assert((card != null) && (card.Content != null));
+		card.Measure(.Loose(1000, 1000));
+		Test.Assert((Math.Abs(card.MeasuredSize.X - 320.0f) < 0.01f) && (Math.Abs(card.MeasuredSize.Y - 116.0f) < 0.01f));
+		card.Layout(0, 0, 320, 116);
+		Test.Assert((Math.Abs(card.Content.Bounds.X - 8.0f) < 0.01f) && (Math.Abs(card.Content.Bounds.Y - 8.0f) < 0.01f));
+	}
 }
