@@ -33,6 +33,14 @@ class ToggleButton : ButtonBase
 	/// Borrowed; may be null.
 	public View Content => mContent;
 
+	public override View ContentChild => mContent;
+
+	public override bool SetContentChild(View content)
+	{
+		SetContent(content);
+		return true;
+	}
+
 	/// CONSUMES the caller's reference, and releases the one held before.
 	public void SetContent(View content)
 	{

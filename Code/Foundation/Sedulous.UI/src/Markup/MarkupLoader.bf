@@ -62,10 +62,15 @@ static class MarkupLoader
 	private static void BuildChildren(XmlElement element, StringView tagName, View view,
 		UIContext context, List<String> warnings)
 	{
-		// Only a group can hold children; an element nested inside a leaf is dropped.
+		// Only a group can hold children. A view that draws one view as its content (a
+		// ContentButton) takes its one child element as that content; anything else nested
+		// inside a leaf is dropped.
 		let group = view as ViewGroup;
 		if (group == null)
+		{
+			BuildContent(element, tagName, view, context, warnings);
 			return;
+		}
 
 		for (let node in element.Children)
 		{
@@ -84,6 +89,42 @@ static class MarkupLoader
 			{
 				warnings.Add(new $"unknown element <{childElement.TagName}> dropped (inside <{tagName}>)");
 			}
+		}
+	}
+
+	private static void BuildContent(XmlElement element, StringView tagName, View view,
+		UIContext context, List<String> warnings)
+	{
+		var taken = false;
+		for (let node in element.Children)
+		{
+			if (node.NodeType != .Element)
+				continue;
+
+			let childElement = node as XmlElement;
+			if (taken)
+			{
+				if (warnings != null)
+					warnings.Add(new $"<{tagName}> holds one element as its content: <{childElement.TagName}> dropped (wrap several in a Flex)");
+				continue;
+			}
+
+			let child = BuildView(childElement, context, warnings);
+			if (child == null)
+			{
+				if (warnings != null)
+					warnings.Add(new $"unknown element <{childElement.TagName}> dropped (inside <{tagName}>)");
+				continue;
+			}
+			if (view.SetContentChild(child))
+			{
+				taken = true;
+				continue;
+			}
+			// Not taken: the reference is still ours to give back.
+			child.ReleaseRef();
+			if (warnings != null)
+				warnings.Add(new $"<{childElement.TagName}> dropped: <{tagName}> holds no children");
 		}
 	}
 

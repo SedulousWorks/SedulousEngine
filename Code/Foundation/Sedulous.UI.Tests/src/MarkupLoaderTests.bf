@@ -523,4 +523,60 @@ class MarkupLoaderTests
 
 		Test.Assert(view.ResolveStyleFloat(.FontSize, 0) == 27);
 	}
+
+	// ---- A button with any content (a picture card) -------------------------------------------
+
+	/// A ContentButton takes its one child element as its content, and the finders reach into
+	/// it: a card's label is found from its screen.
+	[Test]
+	public static void AContentButtonTakesItsOneChildElementAsItsContentFoundByName()
+	{
+		let warnings = scope List<String>();
+		defer { ClearAndDeleteItems!(warnings); }
+		let root = Load("""
+			<Flex>
+				<ContentButton id="card">
+					<Flex direction="vertical">
+						<ImageView id="card-picture"/>
+						<Label id="card-best" text="Gold"/>
+					</Flex>
+				</ContentButton>
+			</Flex>
+			""", warnings);
+		defer root.ReleaseRef();
+		Test.Assert(warnings.IsEmpty);
+
+		let group = root as ViewGroup;
+		let card = group.FindByName<ContentButton>("card");
+		Test.Assert((card != null) && (card.Content != null));
+		Test.Assert(card.ContentChild == card.Content);
+		let best = group.FindByName<Label>("card-best");
+		Test.Assert((best != null) && (best.Text.Value == "Gold"));
+		Test.Assert(group.FindByName<ImageView>("card-picture") != null);
+
+		// A ContentButton is a button: a click reaches its handler.
+		var clicks = 0;
+		card.OnClick.Add(new [&clicks] (b) => { clicks++; });
+		card.FireClick();
+		Test.Assert(clicks == 1);
+	}
+
+	/// A second content element, or children on a view that takes none, is dropped with a
+	/// warning.
+	[Test]
+	public static void ASecondContentElementOrAChildOfALeafIsDroppedWithAWarning()
+	{
+		let warnings = scope List<String>();
+		defer { ClearAndDeleteItems!(warnings); }
+		let button = Load("<ContentButton><Label text=\"a\"/><Label text=\"b\"/></ContentButton>", warnings);
+		defer button.ReleaseRef();
+		let content = (button as ContentButton).Content as Label;
+		Test.Assert((content != null) && (content.Text.Value == "a"), "the first is the content");
+		Test.Assert((warnings.Count == 1) && warnings[0].Contains("holds one element"));
+
+		ClearAndDeleteItems!(warnings);
+		let label = Load("<Label text=\"x\"><Label text=\"y\"/></Label>", warnings);
+		defer label.ReleaseRef();
+		Test.Assert((warnings.Count == 1) && warnings[0].Contains("holds no children"));
+	}
 }

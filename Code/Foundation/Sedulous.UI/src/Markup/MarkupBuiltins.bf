@@ -231,6 +231,10 @@ extension MarkupRegistry
 			});
 
 		// The icon itself comes from code or a theme part; markup only sizes it.
+		// A button that draws any view as its content (a picture card: an image and labels): its
+		// one child element is that content, through View.SetContentChild.
+		RegisterView("ContentButton", new () => new ContentButton());
+
 		RegisterView("IconButton", new () => new IconButton(null));
 		RegisterProperty("IconButton", "size", new (v, val) =>
 			{

@@ -62,23 +62,34 @@ class ViewGroup : View
 		Max(0.0f, Width - Padding.Left - Padding.Right),
 		Max(0.0f, Height - Padding.Top - Padding.Bottom));
 
-	/// A descendant by name, searched depth first. Null when nothing matches.
+	/// A descendant by name, searched depth first, into a child's content too (a
+	/// ContentButton's labels). Null when nothing matches.
 	public View FindByName(StringView name)
 	{
 		for (int i < ChildCount)
 		{
-			let child = GetChildAt(i);
-			if (!child.Name.IsEmpty && (child.Name == name))
-				return child;
-
-			if (let childGroup = child as ViewGroup)
-			{
-				let found = childGroup.FindByName(name);
-				if (found != null)
-					return found;
-			}
+			let found = FindInSubtree(GetChildAt(i), name);
+			if (found != null)
+				return found;
 		}
 		return null;
+	}
+
+	/// `view` itself if it is named `name`, else the first such view under it: its children,
+	/// then its content.
+	public static View FindInSubtree(View view, StringView name)
+	{
+		if (view == null)
+			return null;
+		if (!view.Name.IsEmpty && (view.Name == name))
+			return view;
+		if (let group = view as ViewGroup)
+		{
+			let found = group.FindByName(name);
+			if (found != null)
+				return found;
+		}
+		return FindInSubtree(view.ContentChild, name);
 	}
 
 	/// The same, cast to a type. Null when the name does not match or the match is not a T.

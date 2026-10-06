@@ -360,6 +360,17 @@ class View : RefCounted, IPropertyOwner
 	public virtual float GetBaseline() => -1.0f;
 	public virtual void OnDraw(UIDrawContext ctx) {}
 
+	// ---- Content -----------------------------------------------------------------------------
+
+	/// A view that draws one other view as its content without holding it as a child (a
+	/// ContentButton, a ToggleButton) answers it here, so a search by name and markup reach it
+	/// without naming the control types. None by default. BORROWED.
+	public virtual View ContentChild => null;
+
+	/// Takes `content` as that content, CONSUMING the caller's reference; false for a view that
+	/// has none to take, which leaves the reference with the caller.
+	public virtual bool SetContentChild(View content) => false;
+
 	// ---- Hit testing -------------------------------------------------------------------------
 
 	/// The view at a point given in THIS view's coordinates, or null when the point misses.
