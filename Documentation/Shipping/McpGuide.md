@@ -131,7 +131,10 @@ behaviour's properties under `live` beside what is authored.
 
 ## Workflows
 
-**Project**: `project_create` then `project_open` then `project_info`, which also reports the
+**Project**: `project_create` makes the project with the editor's starter content, as New
+Project does: Roboto as a distance-field font set as the default UI font (what an exported
+game's text draws with: the engine's built-in font is not in a dist), the default sky, and a
+cube, sphere and plane. Then `project_open` then `project_info`, which also reports the
 settings play reads, keyed by their names: the asset settings (`defaultSceneId`,
 `startupScriptId`, `defaultInputMapId`, `defaultBusLayoutId`, `defaultUiThemeId`,
 `loadingDocumentId`, `defaultUiFontId`, each {guid, path} or null), `uiFontIds`, the other fonts

@@ -58,6 +58,47 @@ static class ProjectFlowTests
 		Test.Assert(again.Contains("could not create"));
 	}
 
+	/// project_create seeds the editor's starter content: Snowline, made over MCP, had no
+	/// default UI font, so its exported game showed no text (the engine's built-in font is not
+	/// in a dist).
+	[Test]
+	public static void ProjectCreateSeedsTheDefaultUiFontTheSkyAndThePrimitives()
+	{
+		let dir = Scratch("mcp_seeded_project", .. scope .());
+		defer RemoveDirectoryRecursive(dir);
+		let dataRoot = scope String();
+		FindDataRoot(dataRoot);
+		Test.Assert(!dataRoot.IsEmpty);
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+
+		let server = scope McpServer();
+		let session = scope ProjectSession();
+		let owner = scope ProjectOwner();
+		ProjectOpenTools.Register(server, session, owner, dataRoot);
+		let created = CallOk(server, "project_create", With(With(Obj(), "directory", dir), "name", "Seeded"));
+		defer delete created;
+		Test.Assert(created.Get("seeded").AsBool());
+
+		let project = Sedulous.Editor.Project.EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+		let font = project.Settings.DefaultUiFontId;
+		Test.Assert(font.IsSet, "a default UI font");
+		let fontInstance = project.SourceDb.GetInstance(font);
+		Test.Assert(fontInstance != null);
+		let object = fontInstance.ReadObject();
+		defer delete object;
+		let asset = object as Sedulous.Fonts.Pipeline.FontAsset;
+		Test.Assert(asset != null);
+		Test.Assert(asset.Family == "Roboto");
+		Test.Assert(asset.Mode == .DistanceField, "one bake draws every size clean");
+		let root = project.SourceDb.RootGroup;
+		Test.Assert((root.GetGroup("Environment") != null) && (root.GetGroup("Environment").GetInstance("BlueSky") != null));
+		Test.Assert((root.GetGroup("Meshes") != null) && (root.GetGroup("Meshes").GetInstance("Cube") != null));
+		Test.Assert(FileExists(PathJoin(dir, "Sources/Roboto-Regular.ttf", .. scope .())));
+	}
+
 	[Test]
 	public static void ProjectInfoBeforeAnyProjectIsOpenIsAToolError()
 	{

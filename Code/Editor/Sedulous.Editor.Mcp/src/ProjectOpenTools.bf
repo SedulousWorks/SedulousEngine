@@ -12,15 +12,20 @@ namespace Sedulous.Editor.Mcp;
 /// registers neither.
 static class ProjectOpenTools
 {
-	public static void Register(McpServer server, ProjectSession session, ProjectOwner owner)
+	/// `dataRoot` lets project_create seed the new project's starter content as the editor's New
+	/// Project does (ProjectSeed: the default UI font, the sky, the primitives); a host that
+	/// passes none creates the bare project.
+	public static void Register(McpServer server, ProjectSession session, ProjectOwner owner, StringView dataRoot = "")
 	{
 		let createSchema = scope SchemaBuilder();
 		createSchema.Str("directory", "path to create the project at", true);
 		createSchema.Str("name", "the project's display name", true);
+		let seedRoot = new String(dataRoot);
 		server.RegisterTool("project_create",
-			"Scaffold a new project (the manifest + the standard directory layout) at a directory. Does not open it - call project_open next.",
+			"Scaffold a new project (the manifest + the standard directory layout) at a directory, seeded with the editor's starter content (Roboto as the default UI font, the default sky, the cube, sphere and plane). Does not open it - call project_open next.",
 			createSchema.Build(), .Creates,
-			new (arguments, outResult, outError) => Create(arguments, outResult, outError));
+			new (arguments, outResult, outError) => Create(seedRoot, arguments, outResult, outError),
+			seedRoot);
 
 		let openSchema = scope SchemaBuilder();
 		openSchema.Str("directory", "the project directory", true);
@@ -30,7 +35,7 @@ static class ProjectOpenTools
 			new (arguments, outResult, outError) => Open(session, owner, arguments, outResult, outError));
 	}
 
-	private static bool Create(JsonValue arguments, JsonValue outResult, String outError)
+	private static bool Create(StringView seedRoot, JsonValue arguments, JsonValue outResult, String outError)
 	{
 		let directory = McpTools.ArgString(arguments, "directory", .. scope .());
 		let name = McpTools.ArgString(arguments, "name", .. scope .());
@@ -39,7 +44,20 @@ static class ProjectOpenTools
 			outError.AppendF("could not create project at '{}' ({})", directory, error);
 			return false;
 		}
+		// The starter content, as the editor's New Project seeds it: without it a project made
+		// here had no default UI font, and its exported game showed no text.
+		var seeded = false;
+		if (!seedRoot.IsEmpty)
+		{
+			if (let project = EditorProject.Open(directory))
+			{
+				defer delete project;
+				ProjectSeed.SeedStarterContent(project, seedRoot);
+				seeded = project.SaveSettings() case .Ok;
+			}
+		}
 		outResult.Set("created", JsonValue.MakeBool(true));
+		outResult.Set("seeded", JsonValue.MakeBool(seeded));
 		outResult.Set("directory", JsonValue.MakeString(directory));
 		return true;
 	}
