@@ -78,7 +78,7 @@ Game-tier scripts are not reloaded while a Game tab runs.
 ### The sample-project test covers PaperKid only
 `Integration/Sedulous.Integration.Mcp/src/SampleProjectTests.bf` reads and cooks PaperKid so a
 data-version change cannot leave it unreadable. Sky Hopper (`Data/SampleProjects/PlatformerGame`)
-has no such guard.
+and Snowline have no such guard.
 
 ### Sprite and decal textures have no `ref` in the scene schema
 `SpriteComponent.TextureAsset` and `DecalComponent.TextureAsset` are written under the key

@@ -67,7 +67,8 @@ the previous engine, on the `v0` branch.
 ## Sample projects
 
 `Data/SampleProjects/` holds game projects: **Sky Hopper** (`PlatformerGame`), built entirely
-through the MCP tools, and **PaperKid**, rebuilt the same way (its authoring scripts in `Tools/`).
+through the MCP tools, **PaperKid**, rebuilt the same way (its authoring scripts in `Tools/`), and
+**Snowline**, Raptor's snowboard demo ported through the same tools (its scripts in `Tools/`).
 Their `Cooked/`, `.cache/`, `Editor/` and `Dist/` are generated and ignored. Integration.Mcp
 checks that PaperKid reads at the current data versions and cooks. Each one's `CREDITS.md` and
 `Licenses/` must stay in step with its assets.

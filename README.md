@@ -112,6 +112,12 @@ scripts.
 |:---:|:---:|:---:|
 | ![Title](Documentation/Images/PaperKid-Title.png) | ![Playing](Documentation/Images/PaperKid-Play.png) | ![Cleared](Documentation/Images/PaperKid-Cleared.png) |
 
+**Snowline** is a snowboard time trial with tricks, ported from Raptor's and built the same way:
+three courses on generated terrain with vegetation, slalom gates, gems and kickers, spins and
+grabs scored into combos, medal ghosts and your own best run alongside, and an avalanche on the
+last course. The rider is driven through an animation graph by parameters, and the board leaves
+decal tracks in the snow.
+
 ## Repository layout
 
 ```
