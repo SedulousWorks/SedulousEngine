@@ -1749,7 +1749,8 @@ class RenderFrame
 			if (post.AutoExposure && (mExposurePass != null))
 			{
 				let adapted = mExposurePass.DeclareExposure(mGraph, sceneColor, viewIndex,
-					mFrameIndex, uvScale, uvOffset, mDeltaSeconds, post.AutoExposureSpeed);
+					mFrameIndex, uvScale, uvOffset, mDeltaSeconds, post.AutoExposureSpeed,
+					(view.Scene != null) ? view.Scene.SceneSerial : 0);
 				autoExposure.Enabled = adapted.View != null;
 				autoExposure.Handle = adapted.Handle;
 				autoExposure.View = adapted.View;

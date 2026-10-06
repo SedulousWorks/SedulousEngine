@@ -98,6 +98,12 @@ class ExtractedScene
 	public Float3 ViewOrigin => mViewOrigin;
 	public bool HasViewOrigin => mHasViewOrigin;
 
+	/// The scene this snapshot was extracted from (Scene.Serial; nought, none stamped: a probe).
+	/// Snapshots are pooled and reused across scenes, so this rather than the snapshot's address
+	/// tells a view's history passes that the scene changed under them.
+	public uint64 SceneSerial { get; private set; }
+	public void SetSceneSerial(uint64 serial) => SceneSerial = serial;
+
 	/// The SCENE's clock, this frame's seconds and last frame's, stamped by the environment
 	/// extraction from a clock that accumulates the scene's OWN delta, so the context, group
 	/// and scene time scales, and a pause, all reach it: a paused world's grass stands still,
@@ -139,6 +145,7 @@ class ExtractedScene
 	/// Drops the lists and REWINDS the arena, which keeps its chunks for the next frame.
 	public void Reset()
 	{
+		SceneSerial = 0;
 		mItems.Clear();
 		mLights.Clear();
 		mLocalCasters.Clear();

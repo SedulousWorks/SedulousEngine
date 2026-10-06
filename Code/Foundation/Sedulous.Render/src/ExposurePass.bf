@@ -28,6 +28,10 @@ class ExposurePass
 		public uint32 Current;
 		public bool Valid;
 		public uint64 Generation;
+		/// The last declared pass took the measured value outright rather than easing.
+		public bool Snapped;
+		/// The scene the history belongs to (ExtractedScene.SceneSerial).
+		public uint64 SceneSerial;
 	}
 
 	private struct Entry
@@ -103,10 +107,17 @@ class ExposurePass
 		return .Ok;
 	}
 
+	/// Whether `viewIndex`'s last declared pass took the measured value outright (its first
+	/// frame, or the first of another scene) instead of easing from the last frame.
+	public bool Snapped(uint32 viewIndex) => mViews[viewIndex % cMaxViews].Snapped;
+
 	/// Measures and adapts for one view. Answers the ADAPTED single pixel, left in ShaderRead
-	/// for the tonemap to read, or an empty result when the pass cannot run.
+	/// for the tonemap to read, or an empty result when the pass cannot run. `sceneSerial` names
+	/// the scene the view shows: when it changes the history is dropped and the new scene's
+	/// exposure snaps, rather than easing from the old scene's over a second or two.
 	public ExposureResult DeclareExposure(RenderGraph graph, RGHandle hdr, uint32 viewIndex,
-		uint32 frameIndex, Float2 uvScale, Float2 uvOffset, float deltaSeconds, float adaptSpeed)
+		uint32 frameIndex, Float2 uvScale, Float2 uvOffset, float deltaSeconds, float adaptSpeed,
+		uint64 sceneSerial = 0)
 	{
 		var result = ExposureResult();
 
@@ -117,6 +128,15 @@ class ExposurePass
 		let view = viewIndex % cMaxViews;
 		if (!EnsureState(ref mViews[view]))
 			return result;
+		// Another scene in this view (a level loaded, or the slot taken by another view's scene):
+		// its exposure starts at its own level, where easing from the old scene's read as a dim
+		// and brighten at every level start.
+		if (mViews[view].SceneSerial != sceneSerial)
+		{
+			mViews[view].Valid = false;
+			mViews[view].SceneSerial = sceneSerial;
+		}
+		mViews[view].Snapped = !mViews[view].Valid;
 
 		let currentSlot = mViews[view].Current;
 		let previousSlot = currentSlot ^ 1;

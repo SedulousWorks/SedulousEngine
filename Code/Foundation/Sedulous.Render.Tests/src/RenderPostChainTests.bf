@@ -210,7 +210,9 @@ class RenderPostChainTests
 
 		let camera = RenderFrameFixture.LookingAtTheOrigin();
 
-		// Four consecutive frames over two views, which cycles the frame slots twice.
+		// Four consecutive frames over two views, which cycles the frame slots twice. The first
+		// frame snaps to the measured value; the rest ease from the last frame.
+		scene.SetSceneSerial(1);
 		for (uint32 f = 0; f < 4; f++)
 		{
 			frame.Begin(fixture.Encoder, f % 2);
@@ -219,7 +221,30 @@ class RenderPostChainTests
 			frame.End();
 
 			Test.Assert(DeclaredCount(frame, "exposure.measure") == 2);
+			Test.Assert(exposure.Snapped(0) == (f == 0), scope $"frame {f}");
 		}
+
+		// Another scene in the same view (a level loaded) snaps again instead of easing from the
+		// last scene's exposure (a dim and brighten at every level start), then eases as before.
+		scene.SetSceneSerial(2);
+		for (uint32 f = 4; f < 6; f++)
+		{
+			frame.Begin(fixture.Encoder, f % 2);
+			frame.AddView(scene, camera, settings, fixture.ColorView, .BGRA8Unorm, 128, 128);
+			frame.End();
+			Test.Assert(exposure.Snapped(0) == (f == 4), scope $"frame {f}");
+		}
+	}
+
+	/// A snapshot is pooled across scenes, so a reset forgets which scene it was extracted from.
+	[Test]
+	public static void ASnapshotResetForgetsItsScene()
+	{
+		let snapshot = scope ExtractedScene();
+		snapshot.SetSceneSerial(7);
+		Test.Assert(snapshot.SceneSerial == 7);
+		snapshot.Reset();
+		Test.Assert(snapshot.SceneSerial == 0);
 	}
 
 	/// A named graph texture appends a blit over the view's own rectangle, and the read is a

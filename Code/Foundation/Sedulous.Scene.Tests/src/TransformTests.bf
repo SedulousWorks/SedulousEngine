@@ -269,4 +269,21 @@ class TransformTests
 		Test.Assert(Near(scene.GetWorldPosition(child).X, 25.0f), "the cache agrees");
 		Test.Assert(Near(scene.GetPrevWorldMatrix(child).M[3][0], 15.0f));
 	}
+
+	/// Each scene instance has its own serial, never reused (an address can be): what tells the
+	/// renderer a view now shows another scene.
+	[Test]
+	public static void EachSceneHasItsOwnSerial()
+	{
+		let a = scope Scene();
+		let b = scope Scene();
+		Test.Assert((a.Serial != 0) && (b.Serial != 0) && (a.Serial != b.Serial));
+		uint64 first;
+		{
+			let c = scope Scene();
+			first = c.Serial;
+		}
+		let d = scope Scene();
+		Test.Assert(d.Serial != first, "a later scene, in the same place, is another serial");
+	}
 }

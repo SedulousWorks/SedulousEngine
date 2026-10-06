@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Messaging;
@@ -23,6 +24,13 @@ namespace Sedulous.Scene;
 class Scene
 {
 	private String mName = new .() ~ delete _;
+
+	private static int64 sNextSerial;
+
+	/// This scene instance, unique for the process and never reused, unlike its address: what
+	/// tells the renderer a view now shows another scene, so a pass that eases from last frame
+	/// (auto exposure) starts over instead of carrying the old scene's state in.
+	public readonly uint64 Serial = (uint64)Interlocked.Increment(ref sNextSerial);
 
 	/// The entity pool, indexed by slot, and the transform pool parallel to it.
 	private List<EntitySlot> mEntities = new .() ~ DeleteContainerAndItems!(_);

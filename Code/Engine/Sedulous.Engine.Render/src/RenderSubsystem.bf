@@ -871,6 +871,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 				RenderExtract.ExtractLightsInto(scene, snapshot);
 				RenderExtract.ExtractReflectionProbesInto(scene, snapshot);
 				RenderExtract.ExtractEnvironmentInto(scene, snapshot);
+				// A new scene restarts the views' history (the auto exposure snaps to it).
+				snapshot.SetSceneSerial(scene.Serial);
 
 				// Downstream systems, particles and world space UI among them, registered for
 				// THIS scene contribute into the same snapshot, which is what keeps the
