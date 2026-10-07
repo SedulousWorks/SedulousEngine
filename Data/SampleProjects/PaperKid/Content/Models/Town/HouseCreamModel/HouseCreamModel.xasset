@@ -10,7 +10,7 @@
 			<string name="fileName">HouseCreamModel.glb</string>
 			<array name="dataVersions" count="1">
 				<u64 name="type">2980668452812246725</u64>
-				<u32 name="version">2</u32>
+				<u32 name="version">3</u32>
 			</array>
 			<object>
 				<array name="meshGuid" count="1">
@@ -105,6 +105,7 @@
 					<f32 name="y">6.61</f32>
 					<f32 name="z">4.9550004</f32>
 				</object>
+				<i32 name="skeletonParentNode">-2</i32>
 			</object>
 			<array name="entries" count="0"/>
 		</object>

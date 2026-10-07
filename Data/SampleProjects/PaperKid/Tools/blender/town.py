@@ -114,7 +114,10 @@ def house(wall, roof_colour, door, ridge_along_x, chimney_x):
         for f in (-3.0, 3.0):
             box("Corner", (0.16, 0.16, 3.85), P(x, f, 0.3 + 3.85 / 2), "Trim")
     box("Eave", (6.2, 6.2, 0.14), P(0, 0, 4.12), "Trim")
-    roof("Roof", 6.0, 6.0, 2.1, 4.15, "Roof", ridge_along_x)
+    # The roof sits a little above the walls' 4.15 m (half its slab): the walls, the eave band and
+    # the gables then end inside the slab. Level with its top surface, their edges shared its depth
+    # and flickered through it as a light line along the eaves and the gable slopes.
+    roof("Roof", 6.0, 6.0, 2.1, 4.15 + 0.08, "Roof", ridge_along_x)
     if ridge_along_x:  # the gables at the sides
         for x in (-3.0, 3.0):
             gable("Gable", P(x, -3.0, 4.15), P(x, 3.0, 4.15), P(x, 0, 6.25), "Wall")
