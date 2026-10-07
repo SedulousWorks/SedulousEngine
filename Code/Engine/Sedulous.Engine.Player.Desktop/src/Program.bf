@@ -92,8 +92,9 @@ class Program
 		defer delete graphics;
 
 		let app = scope PlayerApplication(options);
-		// --screenshot <png> [--screenshot-frame N | --screenshot-after S] [--screenshot-exit]:
-		// a capture with no hand on F11, which is how a run proves what it drew.
+		// --screenshot <png> [--screenshot-frame N | --screenshot-after S] [--screenshot-count N]
+		// [--screenshot-exit]: a capture with no hand on F11, which is how a run proves what it
+		// drew; with a count, that many consecutive frames as <png stem>-<i>.png.
 		app.SetScreenshotOptions(ScreenshotOptions.FromArguments(args));
 		return DesktopRunner.RunApplication(app, shell, graphics);
 	}

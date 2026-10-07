@@ -58,6 +58,36 @@ class ScreenshotTests
 		Test.Assert(!dangling.Requested); // a dangling flag asks for nothing
 	}
 
+	/// Consecutive frames (frame to frame change in an exported build: TAA's jitter in a
+	/// player): one file each, numbered before the extension; one frame keeps the path as given.
+	[Test]
+	public static void ACountTakesThatManyConsecutiveFramesOneNumberedFileEach()
+	{
+		let one = Parse("--screenshot", "dir/shot.png");
+		defer delete one;
+		Test.Assert(one.Count == 1);
+		Test.Assert(one.PathFor(0, .. scope .()) == "dir/shot.png");
+
+		let run = Parse("--screenshot", "dir.v2/shot.png", "--screenshot-count", "8");
+		defer delete run;
+		Test.Assert(run.Count == 8);
+		Test.Assert(run.PathFor(0, .. scope .()) == "dir.v2/shot-0.png");
+		Test.Assert(run.PathFor(7, .. scope .()) == "dir.v2/shot-7.png");
+
+		let noExtension = Parse("--screenshot", "noext", "--screenshot-count", "2");
+		defer delete noExtension;
+		Test.Assert(noExtension.PathFor(1, .. scope .()) == "noext-1");
+
+		// A dot in a directory name is not the extension.
+		let dottedDirectory = Parse("--screenshot", "dir.v2/noext", "--screenshot-count", "2");
+		defer delete dottedDirectory;
+		Test.Assert(dottedDirectory.PathFor(1, .. scope .()) == "dir.v2/noext-1");
+
+		let zero = Parse("--screenshot", "a.png", "--screenshot-count", "0");
+		defer delete zero;
+		Test.Assert(zero.Count == 1); // never "no frames"
+	}
+
 	[Test]
 	public static void RowsUnpackFromTheAlignedPitchAndBgraSwizzlesToRgba()
 	{

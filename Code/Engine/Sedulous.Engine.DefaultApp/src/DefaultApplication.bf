@@ -132,8 +132,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	private ScreenshotOptions mScreenshotOptions = new .() ~ delete _;
 	/// The frames FinishFrame saw, which is what --screenshot-frame counts.
 	private uint64 mRenderedFrames = 0;
-	/// The --screenshot request is one shot.
-	private bool mScreenshotOptionFired = false;
+	/// Of the --screenshot run: --screenshot-count frames, then done.
+	private uint32 mScreenshotsTaken = 0;
 	private bool mScreenshotExitPending = false;
 	private float mExitAfterSeconds = 0.0f;
 	private float mRunSeconds = 0.0f;
@@ -619,12 +619,16 @@ class DefaultApplication : IApplication, ISceneObserver
 	protected void FinishFrame(IApplicationHost host, ref FrameContext frame)
 	{
 		mRenderedFrames++;
-		if (mScreenshotOptions.Requested && !mScreenshotOptionFired
-			&& mScreenshotOptions.Due(mRenderedFrames, mRunSeconds))
+		// The --screenshot run: from the due frame, one file a frame until --screenshot-count
+		// are taken (each recorded here and written by the next frame's update, before this
+		// records the next), and --screenshot-exit only after the last.
+		if (mScreenshotOptions.Requested && (mScreenshotsTaken < mScreenshotOptions.Count)
+			&& ((mScreenshotsTaken > 0) || mScreenshotOptions.Due(mRenderedFrames, mRunSeconds)))
 		{
-			mScreenshotOptionFired = true;
-			mScreenshot.Request(mScreenshotOptions.Path);
-			mScreenshotExitPending = mScreenshotOptions.ExitAfter;
+			mScreenshot.Request(mScreenshotOptions.PathFor(mScreenshotsTaken, .. scope .()));
+			mScreenshotsTaken++;
+			mScreenshotExitPending = mScreenshotOptions.ExitAfter
+				&& (mScreenshotsTaken == mScreenshotOptions.Count);
 		}
 
 		if (!mScreenshot.Armed)
