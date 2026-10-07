@@ -15,9 +15,9 @@ SUN_ROT = (-0.4935577, 0.15065993, 0.08726525, 0.85210747)
 SUN_INTENSITY = 4.5
 
 
-# The look, as the user set it on Start (2026-10-02): GTAO, bloom, a fixed exposure. FXAA until
-# TAA's resolve is less jittery, and auto exposure off: it dimmed and brightened over the first
-# second or two of every scene (user, 2026-10-03; both in the engine backlog). The look lives in
+# The look, as the user set it on Start (2026-10-02): GTAO, bloom. FXAA (kept after TAA's jitter
+# was fixed; TAA is for the next game). Auto exposure on since it starts at a scene's level
+# (2026-10-06; it had dimmed and brightened over every scene's first seconds). The look lives in
 # two shared profiles (PaperKid Environment, PaperKid Post) that every scene's settings name, so
 # it is tuned once. Colours are sRGB, as entered anywhere (the sky's were tuned while colours were
 # read raw, and are written as the values they decode from).
