@@ -24,7 +24,7 @@ SUN_INTENSITY = 4.5
 POST = dict(exposureEV=1.0, tonemapOperator=1, bloomEnabled=True, bloomThreshold=1.0, bloomKnee=0.6,
             bloomIntensity=0.05, aoMode=2, aoStrength=1.0, aoRadius=1.0, aoIntensity=1.0, ssrEnabled=False,
             ssrIntensity=1.0, aaMode=1, taaBlendFactor=0.97, taaVarianceGamma=1.25, fxaaSubpixel=0.75,
-            autoExposure=False, autoExposureKey=0.25, autoExposureSpeed=2.0, autoExposureMinEV=-4.0,
+            autoExposure=True, autoExposureKey=0.25, autoExposureSpeed=2.0, autoExposureMinEV=-4.0,
             autoExposureMaxEV=4.0, gradingIntensity=1.0, ssgiEnabled=False, ssgiIntensity=1.0)
 ENVIRONMENT = dict(ambientColor={"r": 0.349, "g": 0.381, "b": 0.437, "a": 1.0}, ambientIntensity=0.08, skyMode=0,
                    skyIntensity=1.0, skyBackgroundIntensity=1.0, skyRotation=0.0,

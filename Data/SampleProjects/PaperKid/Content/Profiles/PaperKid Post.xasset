@@ -24,7 +24,7 @@
 			<f32 name="taaBlendFactor">0.97</f32>
 			<f32 name="taaVarianceGamma">1.25</f32>
 			<f32 name="fxaaSubpixel">0.75</f32>
-			<bool name="autoExposure">false</bool>
+			<bool name="autoExposure">true</bool>
 			<f32 name="autoExposureKey">0.25</f32>
 			<f32 name="autoExposureSpeed">2</f32>
 			<f32 name="autoExposureMinEV">-4</f32>
