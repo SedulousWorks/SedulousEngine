@@ -1018,17 +1018,18 @@ class TerrainRenderer : Renderer
 		layout.Attributes = .(&attributes[0], 1);
 
 		// Opaque terrain writes the whole gbuffer: the shaded colour, the view space normal,
-		// the motion vector, and the material terms. The forward pass binds all four, so the
-		// pipeline must declare all four.
-		var targets = ColorTargetState[4](.(), .(), .(), .());
+		// the motion vector, the material terms and the diffuse albedo. The forward pass binds all
+		// five, so the pipeline must declare all five.
+		var targets = ColorTargetState[5](.(), .(), .(), .(), .());
 		targets[0].Format = colorFormat;
 		targets[1].Format = RenderFormats.GNormal;
 		targets[2].Format = RenderFormats.GVelocity;
 		targets[3].Format = RenderFormats.GMaterial;
+		targets[4].Format = RenderFormats.GAlbedo;
 
 		var fragment = FragmentState();
 		fragment.Shader = .(ps, "main", .Fragment);
-		fragment.Targets = .(&targets[0], 4);
+		fragment.Targets = .(&targets[0], 5);
 
 		var depthStencil = DepthStencilState();
 		depthStencil.Format = mDepthFormat;

@@ -1349,6 +1349,8 @@ class RenderFrame
 				.(RenderFormats.GVelocity, resolution, resolution));
 			let material = mGraph.CreateTransient("probe.material",
 				.(RenderFormats.GMaterial, resolution, resolution));
+			let albedo = mGraph.CreateTransient("probe.albedo",
+				.(RenderFormats.GAlbedo, resolution, resolution));
 
 			let subresource = RGSubresourceRange(0, 0, layerBase + face, 1);
 			let faceViewProj = camera.ViewProjection;
@@ -1358,7 +1360,7 @@ class RenderFrame
 			// prepass; and only the first colour slot writes, into this cube face.
 			mPass.DeclarePass(view, mRegistry, mGraph, mFrameIndex,
 				ProbeCapture.cViewIndexBase + face, captured, depth, true,
-				ReflectionProbeSystem.cCubeFormat, normal, velocity, material, faceViewProj,
+				ReflectionProbeSystem.cCubeFormat, normal, velocity, material, albedo, faceViewProj,
 				.(0, 0), .(0, 0), .(), shadow, ibl, .Clear, subresource);
 
 			// The sky into the same face, after the forward, loading the captured depth. Its
@@ -1497,6 +1499,9 @@ class RenderFrame
 			MsaaDesc(RenderFormats.GVelocity, view.Width, view.Height));
 		let materialTarget = mGraph.CreateTransient("forward.material",
 			MsaaDesc(RenderFormats.GMaterial, view.Width, view.Height));
+		// The diffuse albedo, which screen space GI tints the bounce it gathers by.
+		let albedoTarget = mGraph.CreateTransient("forward.albedo",
+			MsaaDesc(RenderFormats.GAlbedo, view.Width, view.Height));
 
 		// The depth a SINGLE SAMPLED overlay tests against after the post stack: the scene's own
 		// when multisampling is off, but the resolved one when it is on, a single sampled
@@ -1591,7 +1596,8 @@ class RenderFrame
 				MsaaDesc(mTonemap.HdrFormat, view.Width, view.Height));
 
 			mPass.DeclarePass(view, mRegistry, mGraph, mFrameIndex, viewIndex, hdr, depth, true,
-				mTonemap.HdrFormat, normalTarget, velocityTarget, materialTarget, prevViewProj,
+				mTonemap.HdrFormat, normalTarget, velocityTarget, materialTarget, albedoTarget,
+				prevViewProj,
 				jitter, prevJitter, cluster, shadow, ibl, .Load, .(), probePrefiltered,
 				probeActive, probeRange.Base, probeRange.Count);
 
@@ -1607,6 +1613,7 @@ class RenderFrame
 			var postNormal = normalTarget;
 			var postVelocity = velocityTarget;
 			var postMaterial = materialTarget;
+			var postAlbedo = albedoTarget;
 			debugSemanticSource = hdr;
 
 			if (msaaSamples > 1)
@@ -1627,11 +1634,13 @@ class RenderFrame
 					});
 
 				let resolved = mMsaaResolve.DeclareResolve(mGraph, depth, normalTarget,
-					velocityTarget, materialTarget, mPass.DepthFormat, view.Width, view.Height);
+					velocityTarget, materialTarget, albedoTarget, mPass.DepthFormat, view.Width,
+					view.Height);
 				postDepth = resolved.Depth;
 				postNormal = resolved.Normal;
 				postVelocity = resolved.Velocity;
 				postMaterial = resolved.Material;
+				postAlbedo = resolved.Albedo;
 				overlayDepth = postDepth;
 				debugSemanticSource = postHdr;
 			}
@@ -1648,15 +1657,32 @@ class RenderFrame
 					view.ViewportWidth, view.ViewportHeight, 1);
 			}
 
-			// The bounce, BEFORE the reflections, so a reflection sees it. Additive, and it
+			// The bounce, BEFORE the reflections, so a reflection sees it. Where a ray hits, the
+			// bounce (tinted by the albedo) replaces the ambient the forward lit with, so the
+			// composite is given that ambient: the same SH sky, dimmer and flat fill. It
 			// produces a fresh image the rest of the chain consumes.
 			var sceneHdr = postHdr;
 			if ((mSsgi != null) && post.SsgiEnabled)
 			{
 				var parameters = SsgiParams();
 				parameters.Intensity = post.SsgiIntensity;
+				var sky = SsgiSky();
+				// The forward's own test for shading with the scene's environment.
+				if (ibl.Valid && (ibl.ShBuffer != null) && (ibl.PrefilterView != null)
+					&& (ibl.BrdfView != null))
+				{
+					sky.ShBuffer = ibl.ShBuffer;
+					sky.ShHandle = ibl.ShHandle;
+					sky.Generation = ibl.Generation;
+				}
+				if (view.Scene != null)
+				{
+					sky.Ambient = view.Scene.Ambient;
+					sky.IblDiffuse = view.Scene.Sky.IblDiffuseIntensity;
+				}
+				sky.ViewToWorld = Inverse(view.Camera.View);
 				sceneHdr = mSsgi.DeclareSsgi(mGraph, sceneHdr, postDepth, postNormal, postVelocity,
-					view.Width, view.Height, view.ViewportX, view.ViewportY, view.ViewportWidth,
+					postAlbedo, sky, view.Width, view.Height, view.ViewportX, view.ViewportY, view.ViewportWidth,
 					view.ViewportHeight, Inverse(view.Camera.Projection), view.Camera.Projection,
 					parameters, viewIndex, mNoiseFrame);
 			}
@@ -1794,7 +1820,7 @@ class RenderFrame
 			// No tone map: the forward writes the final target directly.
 			mPass.DeclarePass(view, mRegistry, mGraph, mFrameIndex, viewIndex, colorHandle, depth,
 				clearColor, view.TargetFormat, normalTarget, velocityTarget, materialTarget,
-				prevViewProj, jitter, prevJitter, cluster, shadow, ibl, .Load, .(),
+				albedoTarget, prevViewProj, jitter, prevJitter, cluster, shadow, ibl, .Load, .(),
 				probePrefiltered, probeActive, probeRange.Base, probeRange.Count);
 
 			DeclareSky(colorHandle, velocityTarget, view.TargetFormat);

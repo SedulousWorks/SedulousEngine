@@ -26,10 +26,10 @@ class MsaaResolvePass
 	private TextureFormat mPipelineDepthFormat = .Undefined;
 	private uint64 mPipelineShaderVersion = 0;
 
-	/// Keyed by the depth view, rebuilt when ANY of the four inputs is a different view or
+	/// Keyed by the depth view, rebuilt when ANY of the five inputs is a different view or
 	/// texture: a transient is reallocated between frames, and checking depth alone kept
 	/// another frame's normal, velocity or material bound.
-	private BindGroupCache<4> mBindGroups = new .() ~ delete _;
+	private BindGroupCache<5> mBindGroups = new .() ~ delete _;
 
 	public this(IDevice device, ShaderSystem shaders)
 	{
@@ -44,15 +44,17 @@ class MsaaResolvePass
 
 	public Result<void> Initialize()
 	{
-		// Four MULTISAMPLED textures and no sampler: the shader loads a given sample rather
-		// than filtering, which is the only thing that makes sense across an edge.
-		var entries = BindGroupLayoutEntry[4](
+		// Five MULTISAMPLED textures and no sampler: the shader loads a given sample rather
+		// than filtering, which is the only thing that makes sense across an edge. The normal,
+		// velocity, material and depth, then the diffuse albedo screen space GI reads.
+		var entries = BindGroupLayoutEntry[5](
 			BindGroupLayoutEntry.SampledTexture(0, .Fragment),
 			BindGroupLayoutEntry.SampledTexture(1, .Fragment),
 			BindGroupLayoutEntry.SampledTexture(2, .Fragment),
-			BindGroupLayoutEntry.SampledTexture(3, .Fragment));
+			BindGroupLayoutEntry.SampledTexture(3, .Fragment),
+			BindGroupLayoutEntry.SampledTexture(4, .Fragment));
 
-		for (int i < 4)
+		for (int i < 5)
 		{
 			entries[i].TextureMultisampled = true;
 			// A multisampled binding may not declare a FILTERABLE sample type: every one of
@@ -62,7 +64,7 @@ class MsaaResolvePass
 		}
 
 		var layoutDesc = BindGroupLayoutDesc();
-		layoutDesc.Entries = .(&entries[0], 4);
+		layoutDesc.Entries = .(&entries[0], 5);
 		if (!(mDevice.CreateBindGroupLayout(layoutDesc) case .Ok(let layout)))
 			return .Err;
 		mLayout = layout;
@@ -82,7 +84,7 @@ class MsaaResolvePass
 	/// Declares the resolve into fresh single sampled transients. Invalid handles mean no
 	/// pass was emitted.
 	public MsaaResolveOutputs DeclareResolve(RenderGraph graph, RGHandle msaaDepth,
-		RGHandle msaaNormal, RGHandle msaaVelocity, RGHandle msaaMaterial,
+		RGHandle msaaNormal, RGHandle msaaVelocity, RGHandle msaaMaterial, RGHandle msaaAlbedo,
 		TextureFormat depthFormat, uint32 width, uint32 height)
 	{
 		var outputs = MsaaResolveOutputs();
@@ -110,6 +112,8 @@ class MsaaResolvePass
 			.(RenderFormats.GVelocity, width, height));
 		outputs.Material = graph.CreateTransient("msaa.resolvedMaterial",
 			.(RenderFormats.GMaterial, width, height));
+		outputs.Albedo = graph.CreateTransient("msaa.resolvedAlbedo",
+			.(RenderFormats.GAlbedo, width, height));
 		outputs.Depth = graph.CreateTransient("msaa.resolvedDepth", .(depthFormat, width, height));
 
 		let resolved = outputs;
@@ -118,6 +122,7 @@ class MsaaResolvePass
 				builder.SetColorTarget(0, resolved.Normal, .DontCare, .Store);
 				builder.SetColorTarget(1, resolved.Velocity, .DontCare, .Store);
 				builder.SetColorTarget(2, resolved.Material, .DontCare, .Store);
+				builder.SetColorTarget(3, resolved.Albedo, .DontCare, .Store);
 				// The depth is written wholly through the shader's own depth output, so
 				// there is nothing worth loading.
 				builder.SetDepthTarget(resolved.Depth, .DontCare, .Store);
@@ -126,17 +131,19 @@ class MsaaResolvePass
 				builder.ReadTexture(msaaVelocity);
 				builder.ReadTexture(msaaMaterial);
 				builder.ReadTexture(msaaDepth);
+				builder.ReadTexture(msaaAlbedo);
 
 				builder.SetViewport(0, 0, width, height);
 				builder.NeverCull();
 
 				builder.SetExecute(new (encoder) =>
 					{
-						var inputs = BindGroupInputs<4>();
+						var inputs = BindGroupInputs<5>();
 						inputs.Set(0, graph.GetTextureView(msaaNormal), graph.GetTextureGeneration(msaaNormal));
 						inputs.Set(1, graph.GetTextureView(msaaVelocity), graph.GetTextureGeneration(msaaVelocity));
 						inputs.Set(2, graph.GetTextureView(msaaMaterial), graph.GetTextureGeneration(msaaMaterial));
 						inputs.Set(3, graph.GetTextureView(msaaDepth), graph.GetTextureGeneration(msaaDepth));
+						inputs.Set(4, graph.GetTextureView(msaaAlbedo), graph.GetTextureGeneration(msaaAlbedo));
 						let bindGroup = EnsureBindGroup(inputs);
 						if (bindGroup == null)
 							return;
@@ -157,14 +164,15 @@ class MsaaResolvePass
 		if ((vertex == null) || (fragment == null))
 			return null;
 
-		var targets = ColorTargetState[3](.(), .(), .());
+		var targets = ColorTargetState[4](.(), .(), .(), .());
 		targets[0].Format = RenderFormats.GNormal;
 		targets[1].Format = RenderFormats.GVelocity;
 		targets[2].Format = RenderFormats.GMaterial;
+		targets[3].Format = RenderFormats.GAlbedo;
 
 		var fragmentState = FragmentState();
 		fragmentState.Shader = .(fragment, "main", .Fragment);
-		fragmentState.Targets = .(&targets[0], 3);
+		fragmentState.Targets = .(&targets[0], 4);
 
 		// The depth is written from the shader, and a backend gates that write on the depth
 		// TEST being enabled, so the test is on and always passes: the target's previous
@@ -192,7 +200,7 @@ class MsaaResolvePass
 		return pipeline;
 	}
 
-	private IBindGroup EnsureBindGroup(BindGroupInputs<4> inputs)
+	private IBindGroup EnsureBindGroup(BindGroupInputs<5> inputs)
 	{
 		if (!inputs.Complete)
 			return null;
@@ -203,15 +211,16 @@ class MsaaResolvePass
 		if (stale != null)
 			mDevice.DestroyBindGroup(ref stale);
 
-		var entries = BindGroupEntry[4](
+		var entries = BindGroupEntry[5](
 			BindGroupEntry.TextureEntry(inputs.Views[0]),
 			BindGroupEntry.TextureEntry(inputs.Views[1]),
 			BindGroupEntry.TextureEntry(inputs.Views[2]),
-			BindGroupEntry.TextureEntry(depth));
+			BindGroupEntry.TextureEntry(depth),
+			BindGroupEntry.TextureEntry(inputs.Views[4]));
 
 		var desc = BindGroupDesc();
 		desc.Layout = mLayout;
-		desc.Entries = .(&entries[0], 4);
+		desc.Entries = .(&entries[0], 5);
 
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;

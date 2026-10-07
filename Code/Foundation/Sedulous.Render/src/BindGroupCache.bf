@@ -5,7 +5,8 @@ using Sedulous.RHI;
 namespace Sedulous.Render;
 
 /// What a bind group was built from: each view it binds that can change between frames, with
-/// the view's unique id and its texture's generation.
+/// the view's unique id and its texture's generation, and the one buffer it binds that can (a
+/// scene's sky lighting, with its context's generation; none by default).
 ///
 /// A group is only still right while EVERY view it binds is the same view of the same texture:
 /// the render graph's pool hands transients out per frame, a pooled view can come back over
@@ -18,6 +19,8 @@ struct BindGroupInputs<TCount> where TCount : const int
 	public ITextureView[TCount] Views = default;
 	public uint64[TCount] Ids = default;
 	public uint64[TCount] Generations = default;
+	public IBuffer Buffer = null;
+	public uint64 BufferGeneration = 0;
 
 	public this()
 	{
@@ -28,6 +31,14 @@ struct BindGroupInputs<TCount> where TCount : const int
 		Views[slot] = view;
 		Ids[slot] = (view != null) ? view.UniqueId : 0;
 		Generations[slot] = generation;
+	}
+
+	/// The buffer a group binds that can change between frames. Two views of different scenes
+	/// take turns on one history texture, so a group built with another scene's sky must miss.
+	public void SetBuffer(IBuffer buffer, uint64 generation) mut
+	{
+		Buffer = buffer;
+		BufferGeneration = generation;
 	}
 
 	/// No group can be built while an input is missing.
@@ -46,6 +57,8 @@ struct BindGroupInputs<TCount> where TCount : const int
 
 	public bool Matches(Self other)
 	{
+		if ((Buffer != other.Buffer) || (BufferGeneration != other.BufferGeneration))
+			return false;
 		for (int i < TCount)
 		{
 			if ((Views[i] != other.Views[i]) || (Ids[i] != other.Ids[i])

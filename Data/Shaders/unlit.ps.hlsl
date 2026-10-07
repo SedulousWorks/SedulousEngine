@@ -52,6 +52,7 @@ struct PSOutput {
     float2 normal   : SV_Target1;
     float2 velocity : SV_Target2;
     float2 material : SV_Target3;
+    float4 albedo   : SV_Target4;   // diffuse albedo for SSGI: none (an unlit surface takes no light)
 };
 PSOutput main(PSInput input) {
 #else
@@ -67,6 +68,7 @@ float4 main(PSInput input) : SV_Target0 {
     o.normal   = OctEncode(normalize(mul(float4(normalize(input.normalWS), 0.0), View).xyz));
     o.velocity = (curNDC - prevNDC) * float2(0.5, -0.5);
     o.material = float2(1.0, 0.0);   // fully rough, non-metallic: SSR/IBL-adjacent passes skip it
+    o.albedo   = float4(0.0, 0.0, 0.0, 1.0);
     return o;
 #else
     return c;

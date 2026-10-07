@@ -26,6 +26,13 @@ class BindGroupCacheTests
 		public void UpdateBindless(Span<BindlessUpdateEntry> entries) {}
 	}
 
+	private class StubBuffer : IBuffer
+	{
+		public BufferDesc Desc => .();
+		public void* Map() => null;
+		public void Unmap() {}
+	}
+
 	/// TAA's inputs: jittered colour, motion, depth.
 	private static BindGroupInputs<3> Inputs(ITextureView colour, uint64 colourGeneration,
 		ITextureView motion, uint64 motionGeneration, ITextureView depth, uint64 depthGeneration)
@@ -116,5 +123,39 @@ class BindGroupCacheTests
 		colour.Id = TextureViewIds.Next();
 		Test.Assert(cache.Find(history, Inputs(colour, 1, colour, 1, colour, 1), out stale) == null);
 		Test.Assert(stale == group);
+	}
+
+	/// SSGI's composite also binds a scene's sky lighting buffer: two views of different scenes
+	/// share one history texture when they take turns, so the buffer (and its context's
+	/// generation) is an input like the views, and a group built with another scene's sky is not
+	/// handed back.
+	[Test]
+	public static void TheBoundBufferAndItsGenerationAreInputsToo()
+	{
+		let colour = scope StubView();
+		let history = scope StubView();
+		let skyA = scope StubBuffer();
+		let skyB = scope StubBuffer();
+		let group0 = scope StubGroup();
+		let group1 = scope StubGroup();
+		let cache = scope BindGroupCache<3>();
+
+		var withA = Inputs(colour, 1, colour, 1, colour, 1);
+		withA.SetBuffer(skyA, 7);
+		cache.Store(history, withA, group0);
+		Test.Assert(cache.Find(history, withA, var stale) == group0);
+
+		// Another scene's sky.
+		var withB = withA;
+		withB.SetBuffer(skyB, 8);
+		Test.Assert(cache.Find(history, withB, out stale) == null);
+		Test.Assert(stale == group0);
+
+		// The same buffer, rebuilt: a new context generation.
+		cache.Store(history, withB, group1);
+		var regenerated = withB;
+		regenerated.SetBuffer(skyB, 9);
+		Test.Assert(cache.Find(history, regenerated, out stale) == null);
+		Test.Assert(stale == group1);
 	}
 }

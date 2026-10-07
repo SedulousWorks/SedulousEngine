@@ -3,7 +3,7 @@
 
 // Scene-pass MSAA first-sample (sample 0) resolve.
 //
-// Reads the multisampled depth + G-buffer aux (normal / velocity / material) written by the MSAA
+// Reads the multisampled depth + G-buffer aux (normal / velocity / material / albedo) written by the MSAA
 // forward pass and writes SAMPLE 0 into single-sample 1x targets that the post consumers
 // (GTAO / SSR / TAA / motion reprojection) read unchanged. Depth goes through SV_Depth into a real
 // depth-format target so no consumer's binding or shader declaration changes. Scene COLOR is
@@ -19,12 +19,14 @@ Texture2DMS<float2> gNormalMS   : register(t0, space0); // RG16Float octahedral 
 Texture2DMS<float2> gVelocityMS : register(t1, space0); // RG16Float screen-space motion (UV delta)
 Texture2DMS<float2> gMaterialMS : register(t2, space0); // RG8Unorm  R=roughness G=metallic
 Texture2DMS<float>  gDepthMS    : register(t3, space0); // Depth32Float
+Texture2DMS<float4> gAlbedoMS   : register(t4, space0); // RGBA8Unorm diffuse albedo (SSGI)
 
 struct PSIn { float4 pos : SV_Position; float2 uv : TEXCOORD0; };
 struct PSOut {
     float2 normal   : SV_Target0;
     float2 velocity : SV_Target1;
     float2 material : SV_Target2;
+    float4 albedo   : SV_Target3;
     float  depth    : SV_Depth;
 };
 
@@ -34,6 +36,7 @@ PSOut main(PSIn i) {
     o.normal   = gNormalMS.Load(c, 0);
     o.velocity = gVelocityMS.Load(c, 0);
     o.material = gMaterialMS.Load(c, 0);
+    o.albedo   = gAlbedoMS.Load(c, 0);
     o.depth    = gDepthMS.Load(c, 0);
     return o;
 }

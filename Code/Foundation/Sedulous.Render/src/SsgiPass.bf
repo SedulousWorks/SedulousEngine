@@ -11,9 +11,14 @@ namespace Sedulous.Render;
 ///
 /// A few cosine weighted hemisphere rays per pixel are marched against the depth buffer, and
 /// the lit scene is gathered at each hit as one bounce of radiance. The result is accumulated
-/// against a reprojected history and added to the scene, rather than lerped into it as the
-/// reflections are: the bounce is light the scene does not otherwise carry, whereas a
-/// reflection stands in for the environment's specular.
+/// against a reprojected history and composited into the scene. The forward already lit every
+/// surface with the sky's ambient as if nothing stood in the way; a ray that hits geometry
+/// finds what really is in that direction, so the composite swaps the sky light for the bounce
+/// there: out = hdr + albedo * (bounce - hitShare * skyRadiance) * intensity, skyRadiance being
+/// the pixel's own ambient (the scene's SH sky over its normal, plus the flat fill). The bounce
+/// is tinted by the G-buffer's diffuse albedo, and occluded corners darken instead of lifting.
+/// (A unit albedo, purely additive composite washed colours out and erased contact shadows,
+/// counting the sky twice.)
 ///
 /// FOUR PASSES. The gather source is prefiltered to a quarter of the resolution first, which
 /// is the structural fix for fireflies: every tap the trace takes is already a mean of some
@@ -21,15 +26,14 @@ namespace Sedulous.Render;
 /// The trace then fills a bounce buffer, a depth aware blur has neighbours share their hits,
 /// and the resolve accumulates and composites. At one to four rays the raw estimate cannot
 /// converge on its own, so both the spatial and the temporal step are load bearing.
-///
-/// The albedo is taken as one for now. Modulating the bounce per pixel waits on the forward
-/// integrating the indirect terms with the probe volume.
 class SsgiPass
 {
 	/// Matches the scene's own.
 	private const TextureFormat cHdrFormat = .RGBA16Float;
 	private const int cMaxViews = 8;
 	private const uint32 cRetireFrames = 4;
+	/// The scene's SH9 irradiance: nine float4s.
+	private const uint64 cShBytes = sizeof(Float4) * 9;
 
 	private struct ViewHistory
 	{
@@ -98,8 +102,12 @@ class SsgiPass
 	private Dictionary<int, DownEntry> mDownBindGroups = new .() ~ delete _;
 	private Dictionary<int, BlurEntry> mBlurBindGroups = new .() ~ delete _;
 	/// The resolve's groups, one per history view being read, rebuilt when ANY of its inputs
-	/// (the filtered bounce, velocity, HDR) is a different view or texture.
-	private BindGroupCache<3> mResolveBindGroups = new .() ~ delete _;
+	/// (the filtered bounce, velocity, HDR, albedo, normal, and the SH sky with its context's
+	/// generation) is a different one.
+	private BindGroupCache<5> mResolveBindGroups = new .() ~ delete _;
+	/// Bound in the SH slot when a scene has no SH sky: the composite then never reads it (its
+	/// dimmer is nought), so its contents do not matter.
+	private IBuffer mDummyShBuffer = null;
 	private List<Retired> mRetired = new .() ~ delete _;
 	private uint32 mLastFrame = 0xFFFFFFFF;
 
@@ -204,17 +212,21 @@ class SsgiPass
 		if (!CreateBlurPipeline())
 			return .Err;
 
-		// The resolve: the bounce, its history, the velocity and the scene.
-		var resolveEntries = BindGroupLayoutEntry[6](
+		// The resolve: the bounce, its history, the velocity, the scene, the albedo, the normal
+		// and the scene's SH sky.
+		var resolveEntries = BindGroupLayoutEntry[9](
 			BindGroupLayoutEntry.SampledTexture(0, .Fragment),
 			BindGroupLayoutEntry.SampledTexture(1, .Fragment),
 			BindGroupLayoutEntry.SampledTexture(2, .Fragment),
 			BindGroupLayoutEntry.SampledTexture(3, .Fragment),
+			BindGroupLayoutEntry.SampledTexture(4, .Fragment),
+			BindGroupLayoutEntry.SampledTexture(5, .Fragment),
+			BindGroupLayoutEntry.StorageBuffer(6, .Fragment, true, sizeof(Float4)),
 			BindGroupLayoutEntry.Sampler(0, .Fragment),
 			BindGroupLayoutEntry.Sampler(1, .Fragment));
 
 		var resolveLayoutDesc = BindGroupLayoutDesc();
-		resolveLayoutDesc.Entries = .(&resolveEntries[0], 6);
+		resolveLayoutDesc.Entries = .(&resolveEntries[0], 9);
 		if (!(mDevice.CreateBindGroupLayout(resolveLayoutDesc) case .Ok(let resolveLayout)))
 			return .Err;
 		mResolveLayout = resolveLayout;
@@ -226,6 +238,15 @@ class SsgiPass
 		if (!CreateResolvePipeline())
 			return .Err;
 
+		var shDesc = BufferDesc();
+		shDesc.Size = cShBytes;
+		shDesc.Usage = .Storage;
+		shDesc.Memory = .GpuOnly;
+		shDesc.Label = "ssgi.dummySH";
+		if (!(mDevice.CreateBuffer(shDesc) case .Ok(let shBuffer)))
+			return .Err;
+		mDummyShBuffer = shBuffer;
+
 		mPipelineShaderVersion = ShaderVersion();
 		return .Ok;
 	}
@@ -233,7 +254,7 @@ class SsgiPass
 	/// Bounces the scene into a fresh transient, and answers it. The scene comes back
 	/// unchanged when it cannot run.
 	public RGHandle DeclareSsgi(RenderGraph graph, RGHandle hdr, RGHandle depth, RGHandle normal,
-		RGHandle velocity, uint32 width, uint32 height, int32 viewportX, int32 viewportY,
+		RGHandle velocity, RGHandle albedo, SsgiSky sky, uint32 width, uint32 height, int32 viewportX, int32 viewportY,
 		uint32 viewportWidth, uint32 viewportHeight, Float4x4 invProj, Float4x4 proj,
 		SsgiParams parameters, uint32 viewIndex, uint32 frameIndex)
 	{
@@ -393,7 +414,7 @@ class SsgiPass
 					});
 			});
 
-		// The resolve: reproject, clip against the neighbourhood, accumulate, then ADD.
+		// The resolve: reproject, clip against the neighbourhood, accumulate, then composite.
 		if (!EnsureHistory(ref mViews[viewIndex], width, height))
 			return hdr;
 
@@ -424,6 +445,19 @@ class SsgiPass
 		resolvePush.Debug = parameters.Debug;
 		resolvePush.GhostReject = parameters.GhostReject;
 		resolvePush.Intensity = (parameters.Intensity >= 0.0f) ? parameters.Intensity : 0.0f;
+		// The ambient a hit replaces: the camera's world rotation turns the G-buffer's view space
+		// normal to world space, where the SH sky is. No SH sky is the flat fill alone, as in
+		// the forward.
+		for (int row < 3)
+		{
+			resolvePush.ViewToWorld[row] = .(sky.ViewToWorld[row, 0], sky.ViewToWorld[row, 1],
+				sky.ViewToWorld[row, 2], 0.0f);
+		}
+		let shSky = sky.ShBuffer != null;
+		resolvePush.SkyAmbient = .(sky.Ambient.X, sky.Ambient.Y, sky.Ambient.Z, shSky ? sky.IblDiffuse : 0.0f);
+		let shBuffer = shSky ? sky.ShBuffer : mDummyShBuffer;
+		let shGeneration = shSky ? sky.Generation : 0;
+		let shHandle = shSky ? sky.ShHandle : RGHandle.Invalid;
 
 		let previousView = mViews[viewIndex].Views[previousSlot];
 
@@ -435,14 +469,21 @@ class SsgiPass
 				builder.ReadTexture(historyPrevious);
 				builder.ReadTexture(velocity);
 				builder.ReadTexture(hdr);
+				builder.ReadTexture(albedo);
+				builder.ReadTexture(normal);
+				if (shHandle.IsValid)
+					builder.ReadBuffer(shHandle);
 				builder.NeverCull();
 
 				builder.SetExecute(new (encoder) =>
 					{
-						var inputs = BindGroupInputs<3>();
+						var inputs = BindGroupInputs<5>();
 						inputs.Set(0, graph.GetTextureView(filtered), graph.GetTextureGeneration(filtered));
 						inputs.Set(1, graph.GetTextureView(velocity), graph.GetTextureGeneration(velocity));
 						inputs.Set(2, graph.GetTextureView(hdr), graph.GetTextureGeneration(hdr));
+						inputs.Set(3, graph.GetTextureView(albedo), graph.GetTextureGeneration(albedo));
+						inputs.Set(4, graph.GetTextureView(normal), graph.GetTextureGeneration(normal));
+						inputs.SetBuffer(shBuffer, shGeneration);
 						let bindGroup = EnsureResolveBindGroup(previousView, inputs);
 						if (bindGroup == null)
 							return;
@@ -749,7 +790,7 @@ class SsgiPass
 		return bindGroup;
 	}
 
-	private IBindGroup EnsureResolveBindGroup(ITextureView historyPrevious, BindGroupInputs<3> inputs)
+	private IBindGroup EnsureResolveBindGroup(ITextureView historyPrevious, BindGroupInputs<5> inputs)
 	{
 		if ((historyPrevious == null) || !inputs.Complete)
 			return null;
@@ -760,17 +801,20 @@ class SsgiPass
 		if (stale != null)
 			mRetired.Add(.() { BindGroup = stale, FramesLeft = cRetireFrames });
 
-		var entries = BindGroupEntry[6](
+		var entries = BindGroupEntry[9](
 			BindGroupEntry.TextureEntry(inputs.Views[0]),
 			BindGroupEntry.TextureEntry(historyPrevious),
 			BindGroupEntry.TextureEntry(inputs.Views[1]),
 			BindGroupEntry.TextureEntry(inputs.Views[2]),
+			BindGroupEntry.TextureEntry(inputs.Views[3]),
+			BindGroupEntry.TextureEntry(inputs.Views[4]),
+			BindGroupEntry.BufferEntry(inputs.Buffer, 0, cShBytes),
 			BindGroupEntry.SamplerEntry(mSampler),
 			BindGroupEntry.SamplerEntry(mLinearSampler));
 
 		var desc = BindGroupDesc();
 		desc.Layout = mResolveLayout;
-		desc.Entries = .(&entries[0], 6);
+		desc.Entries = .(&entries[0], 9);
 
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
@@ -813,6 +857,9 @@ class SsgiPass
 				mDevice.DestroyBindGroup(ref retired.BindGroup);
 		}
 		mRetired.Clear();
+
+		if (mDummyShBuffer != null)
+			mDevice.DestroyBuffer(ref mDummyShBuffer);
 
 		for (int i < cMaxViews)
 			DestroyHistory(ref mViews[i]);

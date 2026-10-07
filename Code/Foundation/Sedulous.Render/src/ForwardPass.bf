@@ -88,7 +88,7 @@ class ForwardPass
 	public void DeclarePass(RenderView view, RendererRegistry registry, RenderGraph graph,
 		uint32 frameIndex, uint32 viewIndex, RGHandle color, RGHandle depth, bool clearColor,
 		TextureFormat colorFormat, RGHandle normal, RGHandle velocity, RGHandle material,
-		Float4x4 prevViewProj, Float2 jitter, Float2 prevJitter,
+		RGHandle albedo, Float4x4 prevViewProj, Float2 jitter, Float2 prevJitter,
 		ClusterBinding cluster = .(), ShadowBinding shadow = .(), IblBinding ibl = .(),
 		LoadOp depthLoad = .Load, RGSubresourceRange colorSub = .(),
 		RGHandle probeHandle = .Invalid, bool probeValid = false, uint32 probeBase = 0,
@@ -106,10 +106,12 @@ class ForwardPass
 				// the whole target.
 				builder.SetColorTarget(0, color, colorLoad, .Store, view.Settings.Clear, colorSub);
 				// The auxiliary targets, cleared per view: the view space normal, the motion
-				// vector, and the roughness and metallic the reflections read.
+				// vector, the roughness and metallic the reflections read, and the diffuse
+				// albedo screen space GI tints its gathered bounce by.
 				builder.SetColorTarget(1, normal, .Clear, .Store, .Black);
 				builder.SetColorTarget(2, velocity, .Clear, .Store, .Black);
 				builder.SetColorTarget(3, material, .Clear, .Store, .Black);
+				builder.SetColorTarget(4, albedo, .Clear, .Store, .Black);
 				// Loaded after the prepass, for the early rejection; a capture, having no
 				// prepass, clears instead.
 				builder.SetDepthTarget(depth, depthLoad, .Store);
@@ -336,7 +338,8 @@ class ForwardPass
 			desc.ColorFormats[1] = RenderFormats.GNormal;
 			desc.ColorFormats[2] = RenderFormats.GVelocity;
 			desc.ColorFormats[3] = RenderFormats.GMaterial;
-			desc.ColorFormatCount = 4;
+			desc.ColorFormats[4] = RenderFormats.GAlbedo;
+			desc.ColorFormatCount = 5;
 		}
 		desc.DepthStencilFormat = mDepthFormat;
 		// A bundle's read only flags MUST match the pass that executes it, one backend

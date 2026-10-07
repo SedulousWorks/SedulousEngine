@@ -938,11 +938,12 @@ class DxDevice : IDevice
 
 		// The formats the pipeline allocates at the pass sample count: depth, the HDR colour
 		// target, and the G-buffer aux targets.
-		DXGI_FORMAT[5] passFormats = .(
+		DXGI_FORMAT[6] passFormats = .(
 			.DXGI_FORMAT_D32_FLOAT,          // the default depth format
 			.DXGI_FORMAT_R16G16B16A16_FLOAT, // HDR colour
 			.DXGI_FORMAT_R16G16_FLOAT,       // G-buffer normal and velocity
 			.DXGI_FORMAT_R8G8_UNORM,         // G-buffer material
+			.DXGI_FORMAT_R8G8B8A8_UNORM,     // G-buffer albedo
 			.DXGI_FORMAT_B8G8R8A8_UNORM);    // the default colour format, non HDR path
 
 		for (let fmt in passFormats)

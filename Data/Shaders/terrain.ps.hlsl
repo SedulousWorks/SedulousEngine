@@ -86,6 +86,7 @@ struct PSOutput {
     float2 normal   : SV_Target1; // octahedral view-space normal
     float2 velocity : SV_Target2; // screen-space motion vector (UV delta)
     float2 material : SV_Target3; // R = roughness, G = metallic (for SSR)
+    float4 albedo   : SV_Target4; // rgb = diffuse albedo (SSGI tints its bounce by it)
 };
 
 // CSM cascade depth ARRAY (t1, one layer per cascade) + a comparison sampler (s0) for hardware PCF.
@@ -364,5 +365,6 @@ PSOutput main(PSIn i) {
     o.normal   = OctEncode(normalize(mul(float4(N, 0.0), View).xyz));
     o.velocity = (curNDC - prevNDC) * float2(0.5, -0.5);
     o.material = float2(blendedOrm.g, blendedOrm.b); // roughness, metallic
+    o.albedo   = float4(base * (1.0 - blendedOrm.b), 1.0);
     return o;
 }

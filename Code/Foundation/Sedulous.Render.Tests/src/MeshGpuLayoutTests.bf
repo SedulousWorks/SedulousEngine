@@ -84,6 +84,8 @@ class MeshGpuLayoutTests
 		Test.Assert(sizeof(SsgiDownPush) <= 128);
 		Test.Assert(sizeof(SsgiBlurPush) <= 128);
 		Test.Assert(sizeof(SsgiResolvePush) <= 128);
+		// HLSL starts the resolve's float4 block on a 16 byte boundary; the C side must too.
+		Test.Assert(offsetof(SsgiResolvePush, ViewToWorld) == 64);
 		Test.Assert(sizeof(SsrPush) <= 128);
 		Test.Assert(sizeof(SsrResolvePush) <= 128);
 		Test.Assert(sizeof(DebugBlitPush) <= 128);

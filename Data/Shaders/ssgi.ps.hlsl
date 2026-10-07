@@ -5,7 +5,10 @@
 // cosine-weighted hemisphere rays around the mapped normal against the depth buffer; a hit
 // gathers the lit HDR there as one-bounce radiance. The noise ROTATES per frame (unlike SSR's
 // static dither) so the temporal resolve converges the low ray count; misses contribute
-// nothing - the ambient/IBL already in the HDR stands in for off-screen light.
+// nothing - the ambient/IBL already in the HDR stands in for off-screen light. The alpha is the
+// share of the hemisphere a hit stood in for (each hit weighted by the same falloff as its
+// radiance): the resolve takes that share of the sky's ambient back out, since the bounce
+// replaces it there.
 
 #include "push_constant.hlsli"
 #include "depth.hlsli"
@@ -119,7 +122,7 @@ float3 MarchRay(float3 P, float3 D, float2 luv0start, float iz0, float jit, out 
     float3 hitDelta = hitVS - P;
     float  falloff = saturate(1.0 - dot(hitDelta, hitDelta) / (pc.Radius * pc.Radius));
     if (falloff <= 0.0) { return float3(0.0, 0.0, 0.0); }
-    hitOut = 1.0;
+    hitOut = falloff; // the sky this hit hides, weighted as its radiance is
     // Firefly clamp: one bright hit (sun-lit wall, specular hotspot) must not spike the
     // whole pixel's low-ray-count estimate - the resolve's ghost-reject would then KEEP
     // the spike (a large history delta drops the history). Clamp preserves hue.
@@ -155,7 +158,8 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
                       frameA * float2(0.7548776662, 0.5698402909));
 
     float3 gi = float3(0.0, 0.0, 0.0);
-    float  hits = 0.0;
+    float  hits = 0.0;     // summed hit weights (falloff): the hemisphere share hits stood in for
+    float  hitRays = 0.0;  // rays that hit at all
     int rays = clamp(pc.RayCount, 1, 4);
     [loop] for (int rI = 0; rI < rays; ++rI) {
         // Stratified cosine-hemisphere sample (cosine-distributed directions make the plain
@@ -171,13 +175,23 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
         // Reinhard-weighted average (Godot SSIL / Karis): compress each tap by its own
         // luma BEFORE averaging, invert after - a luma-100 hit then contributes ~0.99,
         // barely more than a luma-1 hit. At 1-4 rays this kills firefly variance harder
-        // than any downstream filter can.
+        // than any downstream filter can. Averaged over the HITS only, then scaled by their
+        // share: misses averaged in as zeros made the inverse undercount the bounce (a pixel
+        // half its rays hit read darker than its hits), which the resolve, taking the hidden
+        // sky back out at its true share, turned into a dark bias.
         float3 r = MarchRay(P, D, luv, iz0, jit, hit);
-        gi += r / (1.0 + dot(r, float3(0.299, 0.587, 0.114)));
+        if (hit > 0.0) {
+            gi += r / (1.0 + dot(r, float3(0.299, 0.587, 0.114)));
+            hitRays += 1.0;
+        }
         hits += hit;
     }
     float inv = 1.0 / float(rays);
-    float3 mean = gi * inv;
-    mean /= max(1.0 - dot(mean, float3(0.299, 0.587, 0.114)), 0.05);
+    float3 mean = float3(0.0, 0.0, 0.0);
+    if (hitRays > 0.0) {
+        mean = gi / hitRays;
+        mean /= max(1.0 - dot(mean, float3(0.299, 0.587, 0.114)), 0.05);
+        mean *= hitRays * inv;
+    }
     return float4(mean, hits * inv);
 }

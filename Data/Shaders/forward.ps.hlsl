@@ -374,6 +374,7 @@ struct PSOutput {
     float2 normal   : SV_Target1;   // octahedral view-space normal
     float2 velocity : SV_Target2;   // screen-space motion vector (UV delta)
     float2 material : SV_Target3;   // R=roughness, G=metallic (for SSR)
+    float4 albedo   : SV_Target4;   // rgb = diffuse albedo (SSGI tints its bounce by it)
 };
 PSOutput main(PSInput input) {
 #else
@@ -523,6 +524,9 @@ float4 main(PSInput input) : SV_Target0 {
     o.normal   = OctEncode(normalize(mul(float4(N, 0.0), View).xyz));   // view-space MAPPED normal (octahedral)
     o.velocity = velocity;
     o.material = float2(roughness, metallic);   // SSR reads these to gate/fade reflections
+    // The diffuse albedo the ambient term used (a metal reflects no diffuse light): SSGI's bounce
+    // is light arriving at the surface, and what leaves it is that times this.
+    o.albedo   = float4(albedo * (1.0 - metallic), 1.0);
     return o;
 #else
     float3 emissive = EmissiveColor.rgb * EmissiveMap.Sample(MainSampler, input.uv).rgb;

@@ -71,6 +71,14 @@ struct SsgiResolvePush
 	public int32 Debug = 0;
 	public float GhostReject = 3.0f;
 	public float Intensity = 1.0f;
+	/// HLSL starts a float4 on a 16 byte boundary, and Float4 here is only 4 byte aligned, so
+	/// the pad keeps these offsets the shader's (a shifted read scrambled the sky term).
+	public float Pad0 = 0.0f;
+	public float Pad1 = 0.0f;
+	/// The rows of the camera's world rotation, taking a view space normal to world space.
+	public Float4[3] ViewToWorld = .(.Zero, .Zero, .Zero);
+	/// rgb is the flat fill, w the SH sky's dimmer (nought when there is no SH sky).
+	public Float4 SkyAmbient = .Zero;
 
 	public this() {}
 }

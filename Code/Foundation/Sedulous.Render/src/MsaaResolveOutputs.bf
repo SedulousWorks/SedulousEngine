@@ -10,6 +10,7 @@ struct MsaaResolveOutputs
 	public RGHandle Normal = .Invalid;
 	public RGHandle Velocity = .Invalid;
 	public RGHandle Material = .Invalid;
+	public RGHandle Albedo = .Invalid;
 
 	public this() {}
 

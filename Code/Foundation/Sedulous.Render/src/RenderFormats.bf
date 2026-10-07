@@ -14,4 +14,8 @@ static class RenderFormats
 	/// gates and fades them, and metallic tints them. Written only by the opaque permutation,
 	/// like the other two.
 	public const TextureFormat GMaterial = .RG8Unorm;
+	/// The diffuse albedo (rgb; a unused), which screen space GI tints the bounce it gathers by,
+	/// since what leaves a surface is the light arriving times its albedo. Written by the same
+	/// permutation. The five targets total 22 bytes a sample, under WebGPU's 32.
+	public const TextureFormat GAlbedo = .RGBA8Unorm;
 }

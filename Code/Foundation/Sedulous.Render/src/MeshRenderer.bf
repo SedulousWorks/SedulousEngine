@@ -2280,15 +2280,17 @@ class MeshRenderer : Renderer
 			config.ShaderFlags |= .Wind;
 
 		// Opaque and masked draws write the whole set of targets: the shaded colour, then the
-		// view space normal, the motion vector, and the roughness and metallic the reflections
-		// read. A blended draw writes colour alone, its pass having only that.
+		// view space normal, the motion vector, the roughness and metallic the reflections read,
+		// and the diffuse albedo screen space GI tints its bounce by. A blended draw writes colour
+		// alone, its pass having only that.
 		let gbuffer = (config.BlendMode == .Opaque) || (config.BlendMode == .Masked);
 		if (gbuffer)
 		{
-			config.ColorTargetCount = 4;
+			config.ColorTargetCount = 5;
 			config.ColorFormats[1] = RenderFormats.GNormal;
 			config.ColorFormats[2] = RenderFormats.GVelocity;
 			config.ColorFormats[3] = RenderFormats.GMaterial;
+			config.ColorFormats[4] = RenderFormats.GAlbedo;
 			config.ShaderFlags |= .GBuffer;
 			// An equal depth fragment from the prepass must PASS, so each opaque pixel is
 			// shaded exactly once.
