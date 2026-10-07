@@ -14,7 +14,7 @@ struct TaaPush {
     float  BlendFactor;    // max history weight on stable pixels (~0.97)
     float  HistoryValid;   // 0 = first frame (no history)
     float  VarianceGamma;  // neighborhood clip box half-width in stddevs (~1.25; larger = softer/steadier)
-    float  MotionScale;    // how fast history is dropped as motion grows (0 = ignore motion)
+    float  MotionScale;    // per pixel of motion a frame: history drops by half at 1/MotionScale px (0 = ignore)
     float  NearPlane;      // camera near - linearize depth for the disocclusion test
     float  FarPlane;       // camera far
 };
@@ -128,8 +128,11 @@ PSOut main(float4 pos : SV_Position, float2 uv : TEXCOORD0) {
 
     // Blend: fixed-high history weight for stability; the variance clip (above) already handles change
     // and disocclusion, so we DON'T reduce blend on luma mismatch (that collapsed to the jittered current
-    // at edges -> wobble). Only real motion drops history a little (less smear on fast movement).
-    float motionMag = saturate(length(motion) * pc.MotionScale);   // UV-delta; drops history as it grows
+    // at edges -> wobble). Only FAST motion drops history (less smear when things fly past), and it is
+    // measured in pixels: as a UV delta times 32, one pixel a frame at 128 px (or a few at 1280) already
+    // cut the weight from 0.97 to 0.85, history then spanned fewer frames than the 8-tap jitter, and a
+    // camera that kept moving (a chase camera) showed the raw jitter and the AO noise.
+    float motionMag = saturate(motionPx * pc.MotionScale);
     float blend     = pc.BlendFactor * (1.0 - 0.5 * motionMag);
 
     float3 result = YCoCgToRGB(lerp(curY, histY, blend));

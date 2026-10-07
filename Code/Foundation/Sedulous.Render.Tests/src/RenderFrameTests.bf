@@ -536,4 +536,54 @@ class RenderFrameTests
 		Test.Assert(MeshRenderer.InstanceSlotsPerFrame(400, 10, 4, 0) == 400 * (2 + 4));
 		Test.Assert(MeshRenderer.InstanceSlotsPerFrame(0, 0, 4, 0) == 0);
 	}
+
+	/// A view's between frame state follows its history key, not its place in the frame's
+	/// list: a render texture drawn on alternate frames before the main view (PaperKid's
+	/// minimap) moved the main view between places 0 and 1 every frame, so it read the other
+	/// view's camera and TAA history.
+	[Test]
+	public static void AViewKeepsItsHistorySlotByItsKeyWhereverItFallsInTheFrame()
+	{
+		let fixture = scope RenderFrameFixture(64, 64);
+		if (!fixture.Ready)
+			return;
+
+		let registry = scope RendererRegistry();
+		let frame = scope RenderFrame(fixture.Device, registry, 2);
+
+		frame.Begin(fixture.Encoder, 0);
+		let main = frame.HistorySlotFor(1001, 0, var fresh); // the main view, alone
+		Test.Assert(fresh);
+		frame.End();
+
+		frame.Begin(fixture.Encoder, 1);
+		let side = frame.HistorySlotFor(2002, 0, out fresh); // a render texture, drawn first
+		Test.Assert(fresh);
+		Test.Assert(side != main);
+		Test.Assert(frame.HistorySlotFor(1001, 1, out fresh) == main); // now second: the same slot
+		Test.Assert(!fresh);
+		frame.End();
+
+		frame.Begin(fixture.Encoder, 0);
+		Test.Assert(frame.HistorySlotFor(1001, 0, out fresh) == main); // first again, still the same
+		Test.Assert(!fresh);
+		frame.End();
+
+		// Every slot taken: a new key takes the one seen longest ago (the side view's), never
+		// one in use this frame, and is told it is fresh.
+		for (uint32 f = 0; f < RenderFrame.cHistorySlots; f++)
+		{
+			frame.Begin(fixture.Encoder, f % 2);
+			frame.HistorySlotFor(1001, 0, out fresh);
+			for (uint64 k = 0; k < RenderFrame.cHistorySlots - 2; k++)
+				frame.HistorySlotFor(5000 + k, (uint32)(k + 1), out fresh);
+			frame.End();
+		}
+		frame.Begin(fixture.Encoder, 0);
+		frame.HistorySlotFor(1001, 0, out fresh);
+		let newcomer = frame.HistorySlotFor(9009, 1, out fresh);
+		Test.Assert(fresh);
+		Test.Assert(newcomer == side);
+		frame.End();
+	}
 }

@@ -111,6 +111,15 @@ class ExposurePass
 	/// frame, or the first of another scene) instead of easing from the last frame.
 	public bool Snapped(uint32 viewIndex) => mViews[viewIndex % cMaxViews].Snapped;
 
+	/// Forgets history slot `slot`'s accumulated state, the frame having handed the slot to
+	/// another view (RenderFrame.HistorySlotFor): its next frame starts fresh rather than
+	/// blending in what the slot's previous view saw.
+	public void InvalidateHistory(uint32 slot)
+	{
+		if (slot < cMaxViews)
+			mViews[slot].Valid = false;
+	}
+
 	/// Measures and adapts for one view. Answers the ADAPTED single pixel, left in ShaderRead
 	/// for the tonemap to read, or an empty result when the pass cannot run. `sceneSerial` names
 	/// the scene the view shows: when it changes the history is dropped and the new scene's

@@ -157,6 +157,15 @@ class SsrPass
 		return .Ok;
 	}
 
+	/// Forgets history slot `slot`'s accumulated state, the frame having handed the slot to
+	/// another view (RenderFrame.HistorySlotFor): its next frame starts fresh rather than
+	/// blending in what the slot's previous view saw.
+	public void InvalidateHistory(uint32 slot)
+	{
+		if (slot < cMaxViews)
+			mViews[slot].Valid = false;
+	}
+
 	/// Reflects the scene into a fresh transient, and answers it. The scene comes back
 	/// unchanged when it cannot run.
 	public RGHandle DeclareSsr(RenderGraph graph, RGHandle hdr, RGHandle depth, RGHandle normal,

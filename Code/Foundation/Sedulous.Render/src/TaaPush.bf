@@ -16,7 +16,9 @@ struct TaaPush
 	/// How wide the neighbourhood clamp is, in standard deviations: what stops a reprojected
 	/// sample from a different surface bleeding in as a ghost.
 	public float VarianceGamma = 1.25f;
-	public float MotionScale = 32.0f;
+	/// How fast the history drops with motion, per pixel of motion a frame: it halves at one
+	/// over this many pixels; nought never drops it.
+	public float MotionScale = 1.0f / 32.0f;
 	public float NearPlane = 0.1f;
 	public float FarPlane = 1000.0f;
 

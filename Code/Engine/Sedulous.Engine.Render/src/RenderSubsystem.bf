@@ -124,7 +124,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	private bool mTaaEnabled = false;
 	private float mTaaBlend = 0.97f;
 	private float mTaaGamma = 1.25f;
-	private float mTaaMotionScale = 32.0f;
+	/// How fast the history drops with motion, per pixel of motion a frame.
+	private float mTaaMotionScale = 1.0f / 32.0f;
 
 	// ---- debug draw destinations ----
 	private DebugDraw mDebugGlobal = new .() ~ delete _;
@@ -933,6 +934,20 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		settings.Scene = sceneSize;
 		// The picker matches requests to views by this key.
 		settings.ViewportKey = viewportKey;
+		// Who this view is from frame to frame, for the state it carries between frames (the
+		// motion vectors' previous camera, the TAA, SSR, SSGI and exposure histories): its
+		// viewport's key (an editor page, the Game tab), or a render texture's own view (target
+		// cameras), with the scene and the viewport's corner (split screen). Not the window's
+		// target: its view changes with the swapchain image.
+		{
+			var hash = FnvOffsetBasis;
+			void Mix(uint64 value) { hash = (hash ^ value) &* FnvPrime; }
+			Mix((uint64)(int)viewportKey);
+			Mix(mRenderingTargets ? (uint64)(int)Internal.UnsafeCastToPtr(target) : 0);
+			Mix(scene.Serial);
+			Mix(((uint64)(uint32)viewport.X << 32) | (uint32)viewport.Y);
+			settings.HistoryKey = (hash != 0) ? hash : 1;
+		}
 		settings.TargetTexture = targetState.Texture;
 		settings.TargetCurrentState = targetState.CurrentState;
 		settings.TargetFinalState = targetState.FinalState;

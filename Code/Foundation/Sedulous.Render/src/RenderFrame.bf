@@ -85,7 +85,8 @@ class RenderFrame
 	private bool mTaaEnabled = false;
 	private float mTaaBlend = 0.97f;
 	private float mTaaGamma = 1.25f;
-	private float mTaaMotionScale = 32.0f;
+	/// Per pixel of motion a frame (taa.ps.hlsl): the history halves at one over this many pixels.
+	private float mTaaMotionScale = 1.0f / 32.0f;
 
 	private float mDeltaSeconds = 1.0f / 60.0f;
 	/// The jitter's phase, advancing once per frame.
@@ -98,10 +99,24 @@ class RenderFrame
 	private uint32 mNoiseFrame = 0;
 	private bool mAnyViewTaa = false;
 
+	/// Indexed by history slot (HistorySlotFor).
 	private List<Float4x4> mPrevViewProj = new .() ~ delete _;
 	private List<Float4x4> mCurViewProj = new .() ~ delete _;
 	private List<Float2> mPrevJitter = new .() ~ delete _;
 	private List<Float2> mCurJitter = new .() ~ delete _;
+
+	/// The passes' per view history arrays hold this many.
+	public const uint32 cHistorySlots = 8;
+
+	private struct HistorySlot
+	{
+		public uint64 Key;
+		/// The noise frame a view last took it in.
+		public uint32 LastFrame;
+		public bool Used;
+	}
+
+	private HistorySlot[cHistorySlots] mHistorySlots = .();
 
 	private List<ResolvedDraw> mPrepassResolved = new .() ~ delete _;
 	private List<ResolvedDraw> mShadowResolved = new .() ~ delete _;
@@ -199,6 +214,54 @@ class RenderFrame
 	public void SetDecal(DecalPass pass) => mDecalPass = pass;
 	public void SetSsr(SsrPass pass) => mSsr = pass;
 	public void SetSsgi(SsgiPass pass) => mSsgi = pass;
+
+	/// The history slot a view keeps its between frame state in (its previous camera and
+	/// jitter, the TAA, SSR, SSGI and exposure histories), from its ViewSettings.HistoryKey;
+	/// nought is the view's place in this frame's list, `viewIndex`. The same key gets the same
+	/// slot every frame, wherever the view falls in the list; a key new to the frame takes a
+	/// free slot or the one seen longest ago, and `fresh` says so (its state is the last
+	/// owner's, to be reset).
+	public uint32 HistorySlotFor(uint64 historyKey, uint32 viewIndex, out bool fresh)
+	{
+		fresh = false;
+		// An unkeyed view is known by its place in the list, as before keys: a key of its own
+		// that no real key (a hash) is expected to meet.
+		let key = (historyKey != 0) ? historyKey : (0xFFFFFFFF00000000UL | viewIndex);
+		for (uint32 slot = 0; slot < cHistorySlots; slot++)
+		{
+			if (mHistorySlots[slot].Used && (mHistorySlots[slot].Key == key))
+			{
+				mHistorySlots[slot].LastFrame = mNoiseFrame;
+				return slot;
+			}
+		}
+
+		// New to the slots: a free one, else the one seen longest ago, never one taken this
+		// frame.
+		var pick = cHistorySlots;
+		var oldestAge = (uint32)0;
+		for (uint32 slot = 0; slot < cHistorySlots; slot++)
+		{
+			if (!mHistorySlots[slot].Used)
+			{
+				pick = slot;
+				break;
+			}
+			let age = (uint32)(mNoiseFrame &- mHistorySlots[slot].LastFrame);
+			if ((age > 0) && (age >= oldestAge))
+			{
+				oldestAge = age;
+				pick = slot;
+			}
+		}
+		// More views this frame than slots: they share, as before keys.
+		if (pick == cHistorySlots)
+			pick = viewIndex % cHistorySlots;
+
+		mHistorySlots[pick] = .() { Key = key, LastFrame = mNoiseFrame, Used = true };
+		fresh = true;
+		return pick;
+	}
 	public void SetMsaaResolve(MsaaResolvePass pass) => mMsaaResolve = pass;
 	public void SetProbes(ReflectionProbeSystem probes) => mProbeSystem = probes;
 
@@ -1395,6 +1458,21 @@ class RenderFrame
 
 		let viewResourceBase = mGraph.Resources.Length;
 		let viewIndex = (uint32)index;
+		// The view's between frame state lives in its history slot, found by its key rather
+		// than its place in the list, which a render texture drawn only on some frames shifts.
+		// A slot new to this view starts clean.
+		let historySlot = HistorySlotFor(view.Settings.HistoryKey, viewIndex, let historyFresh);
+		if (historyFresh)
+		{
+			if (mTaa != null)
+				mTaa.InvalidateHistory(historySlot);
+			if (mSsr != null)
+				mSsr.InvalidateHistory(historySlot);
+			if (mSsgi != null)
+				mSsgi.InvalidateHistory(historySlot);
+			if (mExposurePass != null)
+				mExposurePass.InvalidateHistory(historySlot);
+		}
 
 		// Each distinct target is imported ONCE, so the graph orders and barriers every view
 		// writing it as one resource. The first view to a target clears it; a later one loads,
@@ -1536,15 +1614,16 @@ class RenderFrame
 		// This view's previous matrix and jitter, for the motion vectors; nothing moves on
 		// first sight. This frame's are recorded for the next.
 		let currentViewProj = view.Camera.ViewProjection;
-		let prevViewProj = (index < mPrevViewProj.Count) ? mPrevViewProj[index] : currentViewProj;
-		while (mCurViewProj.Count <= index)
+		let slot = (int)historySlot;
+		let prevViewProj = (!historyFresh && (slot < mPrevViewProj.Count)) ? mPrevViewProj[slot] : currentViewProj;
+		while (mCurViewProj.Count <= slot)
 			mCurViewProj.Add(currentViewProj);
-		mCurViewProj[index] = currentViewProj;
+		mCurViewProj[slot] = currentViewProj;
 
-		let prevJitter = (index < mPrevJitter.Count) ? mPrevJitter[index] : Float2(0.0f, 0.0f);
-		while (mCurJitter.Count <= index)
+		let prevJitter = (!historyFresh && (slot < mPrevJitter.Count)) ? mPrevJitter[slot] : jitter;
+		while (mCurJitter.Count <= slot)
 			mCurJitter.Add(jitter);
-		mCurJitter[index] = jitter;
+		mCurJitter[slot] = jitter;
 
 		// The depth prepass: opaque only, clearing and writing the camera depth so the forward
 		// shades each opaque pixel once. Declared before the forward, which loads it.
@@ -1684,7 +1763,7 @@ class RenderFrame
 				sceneHdr = mSsgi.DeclareSsgi(mGraph, sceneHdr, postDepth, postNormal, postVelocity,
 					postAlbedo, sky, view.Width, view.Height, view.ViewportX, view.ViewportY, view.ViewportWidth,
 					view.ViewportHeight, Inverse(view.Camera.Projection), view.Camera.Projection,
-					parameters, viewIndex, mNoiseFrame);
+					parameters, historySlot, mNoiseFrame);
 			}
 
 			// The reflections, after the decals and before the occlusion and the temporal
@@ -1697,7 +1776,7 @@ class RenderFrame
 				sceneHdr = mSsr.DeclareSsr(mGraph, sceneHdr, postDepth, postNormal, postMaterial,
 					postVelocity, view.Width, view.Height, view.ViewportX, view.ViewportY,
 					view.ViewportWidth, view.ViewportHeight, Inverse(view.Camera.Projection),
-					view.Camera.Projection, parameters, viewIndex, mFrameIndex);
+					view.Camera.Projection, parameters, historySlot, mFrameIndex);
 			}
 
 			// The occlusion, computed from the opaque depth and normal BEFORE the temporal
@@ -1729,7 +1808,7 @@ class RenderFrame
 			if (post.TaaEnabled && (mTaa != null))
 			{
 				let farZ = (view.Camera.FarZ > 0.0f) ? view.Camera.FarZ : 1000.0f;
-				sceneColor = mTaa.DeclareTaa(mGraph, litHdr, postVelocity, postDepth, viewIndex,
+				sceneColor = mTaa.DeclareTaa(mGraph, litHdr, postVelocity, postDepth, historySlot,
 					view.Width, view.Height, post.TaaBlend, post.TaaGamma, mTaaMotionScale, 0.1f,
 					farZ);
 			}
@@ -1774,7 +1853,7 @@ class RenderFrame
 			var autoExposure = TonemapAutoExposure();
 			if (post.AutoExposure && (mExposurePass != null))
 			{
-				let adapted = mExposurePass.DeclareExposure(mGraph, sceneColor, viewIndex,
+				let adapted = mExposurePass.DeclareExposure(mGraph, sceneColor, historySlot,
 					mFrameIndex, uvScale, uvOffset, mDeltaSeconds, post.AutoExposureSpeed,
 					(view.Scene != null) ? view.Scene.SceneSerial : 0);
 				autoExposure.Enabled = adapted.View != null;

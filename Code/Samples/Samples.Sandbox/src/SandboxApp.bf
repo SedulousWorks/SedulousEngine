@@ -1181,7 +1181,7 @@ class SandboxApp : DefaultApplication
 				render.TaaGamma = gamma;
 
 			var motion = render.TaaMotionScale;
-			if (igSliderFloat("TAA motion", &motion, 0.0f, 128.0f, "%.1f", 0))
+			if (igSliderFloat("TAA motion (per px)", &motion, 0.0f, 0.25f, "%.3f", 0))
 				render.TaaMotionScale = motion;
 		}
 		else

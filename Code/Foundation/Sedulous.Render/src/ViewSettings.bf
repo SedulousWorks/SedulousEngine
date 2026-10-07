@@ -41,6 +41,13 @@ struct ViewSettings
 	/// requests bind to it: only the view rendered with a matching key answers them.
 	public void* ViewportKey = null;
 
+	/// Which view this is from frame to frame; nought is by its place in the frame's list. The
+	/// state a view carries between frames (its previous camera for the motion vectors, the
+	/// TAA, SSR, SSGI and exposure histories) follows this key, not the view's position: a
+	/// render texture drawn on alternate frames before the main view shifted the main view's
+	/// position every other frame, so it read the other view's history.
+	public uint64 HistoryKey = 0;
+
 	/// Whether this view may frustum cull its draw list; the frame's global switch still
 	/// gates it. A per view override clears it for an A/B of what the cull saves.
 	public bool FrustumCull = true;
