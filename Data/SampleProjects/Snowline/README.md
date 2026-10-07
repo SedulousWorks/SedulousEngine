@@ -43,6 +43,7 @@ to pause. The arrows and Enter, or the stick and A, drive the menus.
 - `Tools/`: the authoring scripts that build the game through the editor's MCP tools: the
   terrain, the courses, the models, the effects and sounds, the thumbnails. Not game content;
   `Tools/README.md` says what each does.
+- `export_presets.xml`: the export targets (Linux desktop, web, Steam Deck).
 - `CREDITS.md` and `Licenses/`: the music, the sound effects and the font.
 - `Cooked/`, `.cache/`, `Editor/`, `Dist/`: generated, and gitignored; the tools rebuild them.
 
