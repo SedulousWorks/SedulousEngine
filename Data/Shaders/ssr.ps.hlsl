@@ -10,6 +10,10 @@ Texture2D         MaterialTex : register(t3, space0);   // R=roughness, G=metall
 SamplerState      PointSamp   : register(s0, space0);   // depth / reconstruction (exact)
 SamplerState      LinearSamp  : register(s1, space0);   // glossy color cone-gather
 
+// How far a reflection ray reaches in view space before the viewport clamp: far enough that the
+// screen edge always ends it first (metres; a reflection can only show what is on screen anyway).
+static const float kMaxRayLength = 1000.0;
+
 // 12-tap Poisson disk (unit radius) for the roughness cone-gather.
 static const float2 kPoisson12[12] = {
     float2(-0.326, -0.406), float2(-0.840, -0.074), float2(-0.696,  0.457),
@@ -83,9 +87,13 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float3 R = reflect(-V, N);                     // view-space reflection ray
     if (pc.Debug == 4) { return float4(R * 0.5 + 0.5, 1.0); }
 
-    // Endpoint in view space (length scales with distance). If the reflection points toward the camera
-    // (R.z > 0), clamp so the endpoint stays in front of the near plane.
-    float rayLen = max(2.0, -P.z);
+    // Endpoint in view space, far along the ray: the segment is clamped to the viewport below, so the
+    // screen edge (or the hit) ends the march, not an arbitrary length. A length tied to the pixel's
+    // own depth cut reflections short at grazing angles (a floor seen from low above it): the
+    // reflected ray climbs only as steeply as the view ray came down, so a tall object's reflection
+    // stopped about a metre up. If the reflection points toward the camera (R.z > 0), clamp so the
+    // endpoint stays in front of the near plane.
+    float rayLen = kMaxRayLength;
     if (R.z > 1e-4) { rayLen = min(rayLen, max((-0.05 - P.z) / R.z, 0.0)); }
     float3 endVS = P + R * rayLen;
 
@@ -106,6 +114,15 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     luv1 = luv0 + (luv1 - luv0) * tExit;
     iz1  = lerp(iz0, iz1, tExit);                  // 1/w is linear in the segment parameter
 
+    // The march ignores samples within a pixel and a half of where it starts: there the depth buffer
+    // still reads the reflecting surface itself, and with the step-sized band below a grazing ray,
+    // already metres further away, would accept it as a hit (a reflection missing where it should
+    // meet what it reflects).
+    float2 depthDims;
+    DepthTex.GetDimensions(depthDims.x, depthDims.y);
+    float2 segPx = (luv1 - luv0) * pc.VpSize * depthDims;
+    float  jMin = 1.5 / max(length(segPx), 1e-3);
+
     // Static per-pixel dither: deterministic per (pixel, camera), so the temporal accumulation is
     // stable under a still camera while ghost-reject handles moving reflected content. (The frame-
     // rotated variant lived in this slot before it was repurposed for YSign; dither stays static.)
@@ -114,6 +131,7 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float jHit = 0.0, jPrev = 0.0;
     [loop] for (int i = 1; i <= pc.MaxSteps; ++i) {
         float  j = (float(i) - jit) / float(pc.MaxSteps);
+        if (j < jMin) { jPrev = j; continue; }                // still on the starting pixel
         float2 ls = lerp(luv0, luv1, j);
         if (any(ls < 0.0) || any(ls > 1.0)) { break; }         // left the viewport
         float  sd = DepthTex.SampleLevel(PointSamp, LocalToFull(ls), 0).r;
@@ -121,7 +139,12 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
         float  rayLin  = 1.0 / lerp(iz0, iz1, j);              // ray linear depth (= -view.z)
         float  surfLin = -ViewPos(ls, sd).z;                   // stored surface linear depth
         float  dif = rayLin - surfLin;                         // >0 once the ray passes behind the surface
-        if (dif > 0.05 && dif < pc.Thickness) { hit = true; jHit = j; break; }
+        // The acceptance band is at least the depth the ray itself crossed since the last step: a
+        // ray marching across the screen toward a distant surface moves metres in depth per step,
+        // and a fixed band let it step over the surface it should have hit (a far reflection broke
+        // into a sparse dither). The binary refine below finds the crossing inside the step.
+        float  band = max(pc.Thickness, abs(rayLin - 1.0 / lerp(iz0, iz1, jPrev)));
+        if (dif > 0.05 && dif < band) { hit = true; jHit = j; break; }
         jPrev = j;
     }
     if (!hit) { return float4(0.0, 0.0, 0.0, 0.0); }   // miss: no reflection (resolve keeps the HDR)
