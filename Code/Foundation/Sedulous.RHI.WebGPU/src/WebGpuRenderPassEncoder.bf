@@ -14,11 +14,18 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 	private const int cBundleBatch = 16;
 
 	private WGPURenderPassEncoder mEncoder;
+	/// The render area, which scissors are clipped to; zero when not known.
+	private uint32 mWidth = 0;
+	private uint32 mHeight = 0;
 	private PushConstantEmulator mPushConstants = new .() ~ delete _;
 
-	public void Begin(WGPUDevice device, WGPURenderPassEncoder encoder)
+	/// `width` by `height`: the pass's render area (its attachments' size), which scissors are
+	/// clipped to.
+	public void Begin(WGPUDevice device, WGPURenderPassEncoder encoder, uint32 width, uint32 height)
 	{
 		mEncoder = encoder;
+		mWidth = width;
+		mHeight = height;
 		mPushConstants.Begin(device);
 	}
 
@@ -77,9 +84,29 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 		wgpuRenderPassEncoderSetViewport(mEncoder, x, y, width, height, minDepth, maxDepth);
 	}
 
+	/// Clipped to the render area: WebGPU refuses a rect reaching outside it, and the whole
+	/// command encoder with it, so the frame goes black, where Vulkan and D3D12 clip. A rect
+	/// wholly outside becomes an empty one, which draws nothing.
 	public void SetScissor(int32 x, int32 y, uint32 width, uint32 height)
 	{
-		wgpuRenderPassEncoderSetScissorRect(mEncoder, (uint32)x, (uint32)y, width, height);
+		// The render area not known: as asked.
+		if ((mWidth == 0) || (mHeight == 0))
+		{
+			wgpuRenderPassEncoderSetScissorRect(mEncoder, (uint32)x, (uint32)y, width, height);
+			return;
+		}
+
+		let x0 = Math.Max((int64)x, 0);
+		let y0 = Math.Max((int64)y, 0);
+		let x1 = Math.Min((int64)x + width, (int64)mWidth);
+		let y1 = Math.Min((int64)y + height, (int64)mHeight);
+		if ((x1 <= x0) || (y1 <= y0))
+		{
+			wgpuRenderPassEncoderSetScissorRect(mEncoder, 0, 0, 0, 0);
+			return;
+		}
+		wgpuRenderPassEncoderSetScissorRect(mEncoder, (uint32)x0, (uint32)y0, (uint32)(x1 - x0),
+			(uint32)(y1 - y0));
 	}
 
 	public void SetBlendConstant(float r, float g, float b, float a)

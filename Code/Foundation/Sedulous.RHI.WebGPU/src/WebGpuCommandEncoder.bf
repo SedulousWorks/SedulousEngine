@@ -145,7 +145,19 @@ sealed class WebGpuCommandEncoder : ICommandEncoder
 		}
 
 		let pass = wgpuCommandEncoderBeginRenderPass(mEncoder, &wgpu);
-		mRenderPass.Begin(mDevice, pass);
+		// The render area, which scissors are clipped to: the attachments' size at the viewed
+		// mip.
+		uint32 width = 0;
+		uint32 height = 0;
+		let sized = (desc.ColorAttachments.Count > 0) ? desc.ColorAttachments[0].View
+			: (desc.DepthStencilAttachment.HasValue ? desc.DepthStencilAttachment.Value.View : null);
+		if ((sized != null) && (sized.Texture != null))
+		{
+			let mip = sized.Desc.BaseMipLevel;
+			width = Math.Max(sized.Texture.Desc.Width >> mip, 1);
+			height = Math.Max(sized.Texture.Desc.Height >> mip, 1);
+		}
+		mRenderPass.Begin(mDevice, pass, width, height);
 		return mRenderPass;
 	}
 

@@ -12,6 +12,8 @@ interface IRenderPassEncoder : IRenderCommandEncoder
 	void SetViewport(float x, float y, float width, float height,
 		float minDepth = 0.0f, float maxDepth = 1.0f);
 
+	/// Clipped to the pass's render area: a rect reaching past the target (a world space UI
+	/// panel half off screen) draws what is on it.
 	void SetScissor(int32 x, int32 y, uint32 width, uint32 height);
 
 	/// The colour BlendFactor.Constant reads.
