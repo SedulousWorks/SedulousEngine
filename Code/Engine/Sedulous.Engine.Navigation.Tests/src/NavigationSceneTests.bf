@@ -81,6 +81,61 @@ class NavigationSceneTests
 		scene.Stop();
 	}
 
+	/// A zone re-baked while the scene runs (the editor cooks the new navmesh and reloads it
+	/// under a playing scene): the crowd was built over the old navmesh, which the reload parks
+	/// and then frees. The zone rebuilds its crowd over the new one and its agent carries on to
+	/// where it was going. It used to keep stepping the old crowd over the freed navmesh (an
+	/// editor crash in Raptor; ASan reports the use after free here without the rebuild).
+	[Test]
+	public static void AZonesNavmeshReloadedMidRunCarriesItsAgentOnOverTheNewOne()
+	{
+		let fixture = scope NavigationSceneFixture("scratch_navreload_db");
+		let zoneId = fixture.CookGroundZone("zone");
+
+		let scene = scope Scene("nav");
+		NavigationScene.AddNavigationSceneManagers(scene);
+		let zoneEntity = scene.CreateEntity("zone");
+		let zone = scene.GetSystem<NavMeshZoneComponentManager>().Add(zoneEntity);
+		zone.Extents = .(15, 10, 15);
+		zone.Zone.SetId(zoneId);
+		zone.Zone.Bind(fixture.Manager);
+		Test.Assert(zone.Zone.Get != null);
+
+		let agentEntity = scene.CreateEntity("agent");
+		scene.SetLocalPosition(agentEntity, .(-5, 0, 0));
+		let agent = scene.GetSystem<NavAgentComponentManager>().Add(agentEntity);
+		scene.UpdateTransforms();
+		scene.Start();
+		scene.SetSimulationEnabled(true);
+		Test.Assert(agent.AgentId >= 0);
+
+		// Part of the way.
+		agent.Navigate(.(5, 0, 0));
+		Run(scene, 45);
+		let midway = scene.GetWorldPosition(agentEntity).X;
+		Test.Assert(midway > -4.0f, scope $"it set off, at {midway}");
+		Test.Assert(!agent.Finished);
+
+		// Re-baked bigger and reloaded; the old navmesh parked, then freed for good, all before
+		// the scene steps again.
+		let before = zone.Zone.Get;
+		fixture.WriteGroundZone(zoneId, 12.0f);
+		fixture.Manager.Reload(zoneId);
+		Test.Assert(zone.Zone.Get != null);
+		Test.Assert(zone.Zone.Get !== before, "a new product");
+		for (int frame < 16)
+			fixture.Manager.CollectGarbage();
+
+		Run(scene, cCrossingSteps, agent);
+		let end = scene.GetWorldPosition(agentEntity);
+		Test.Assert(agent.Finished, "it arrived");
+		Test.Assert(Math.Abs(end.X - 5.0f) < 1.5f, scope $"where it was going, at {end.X}");
+		Test.Assert(end.X > midway, "from where it had got to");
+
+		scene.SetSimulationEnabled(false);
+		scene.Stop();
+	}
+
 	/// The bake and the runtime both use the scale free frame, so a zone on a SCALED entity
 	/// behaves exactly as an unscaled one: the navmesh's world unit geometry is PLACED, never
 	/// warped.

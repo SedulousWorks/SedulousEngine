@@ -47,14 +47,15 @@ class NavigationSceneFixture
 		RemoveDirectoryRecursive(mRoot);
 	}
 
-	/// A twenty by twenty ground quad, wound so both triangles face up.
-	public static void BakeGround(List<uint8> outBlob)
+	/// A ground quad `half` from its centre each way (twenty by twenty by default), wound so
+	/// both triangles face up.
+	public static void BakeGround(List<uint8> outBlob, float half = 10.0f)
 	{
 		let vertices = scope List<Float3>();
-		vertices.Add(.(-10, 0, -10));
-		vertices.Add(.(10, 0, -10));
-		vertices.Add(.(10, 0, 10));
-		vertices.Add(.(-10, 0, 10));
+		vertices.Add(.(-half, 0, -half));
+		vertices.Add(.(half, 0, -half));
+		vertices.Add(.(half, 0, half));
+		vertices.Add(.(-half, 0, half));
 
 		let indices = scope List<uint32>();
 		indices.Add(0); indices.Add(3); indices.Add(2);
@@ -66,13 +67,18 @@ class NavigationSceneFixture
 	/// Cooks the ground zone and answers its identity.
 	public Guid CookGroundZone(StringView name)
 	{
-		let blob = scope List<uint8>();
-		BakeGround(blob);
-
 		let instance = Database.RootGroup.CreateInstance(name, cZoneTypeName);
+		WriteGroundZone(instance.Id, 10.0f);
+		return instance.Id;
+	}
+
+	/// Bakes the ground at `half` into the zone `id` (a re-bake, when it was cooked before).
+	public void WriteGroundZone(Guid id, float half)
+	{
+		let blob = scope List<uint8>();
+		BakeGround(blob, half);
 		let record = scope NavigationZoneSource();
 		record.NavMeshBlob.AddRange(blob);
-		instance.WriteObject(record).IgnoreError();
-		return instance.Id;
+		Database.GetInstance(id).WriteObject(record).IgnoreError();
 	}
 }

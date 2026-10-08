@@ -1,6 +1,8 @@
 using System;
 using Sedulous.Core;
 using Sedulous.Navigation;
+using Sedulous.Navigation.Resource;
+using Sedulous.Scene;
 
 namespace Sedulous.Engine.Navigation;
 
@@ -11,8 +13,15 @@ namespace Sedulous.Engine.Navigation;
 /// scaled zone entity would otherwise scale the navmesh a second time at runtime.
 class NavigationRuntimeZone
 {
+	/// Null while the zone waits for a usable navmesh after a reload.
 	public NavigationCrowd Crowd ~ delete _;
 	public NavigationMeshQuery Query ~ delete _;
+	/// The navmesh product the crowd and query were built over. Compared by IDENTITY only,
+	/// never read: a reload (a re-bake cooked while the scene runs) parks the old product for
+	/// a few frames and then frees it, so the zone notices the swap before then and rebuilds
+	/// over the new one (NavigationSceneSystem.RebuildReloadedZones).
+	public NavigationZoneResource BuiltFrom = null;
+	public EntityHandle Entity = .Invalid;
 
 	public Float4x4 World = Float4x4.Identity();
 	public Float4x4 InverseWorld = Float4x4.Identity();

@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 using Sedulous.Navigation;
+using Sedulous.Navigation.Resource;
 using Sedulous.Profiler;
 using Sedulous.Scene;
 
@@ -106,6 +107,10 @@ class NavigationSceneSystem : SceneSystem
 
 		using (ProfileScope("Navigation.Update"))
 		{
+			// Nought: a zone whose navmesh was re-baked and reloaded since its crowd was built
+			// gets a crowd over the new one, before anything steps the old.
+			RebuildReloadedZones(agents);
+
 			// One: apply the pending requests. The crowd works in ZONE LOCAL space.
 			agents.ForEach(scope (agent, entity) =>
 				{
@@ -116,7 +121,10 @@ class NavigationSceneSystem : SceneSystem
 			using (ProfileScope("Navigation.Crowd"))
 			{
 				for (let zone in mZones)
-					zone.Crowd.Update(deltaTime);
+				{
+					if (zone.Crowd != null)
+						zone.Crowd.Update(deltaTime);
+				}
 			}
 
 			// Three: read back the world position and velocity, write the transform, and
@@ -134,6 +142,8 @@ class NavigationSceneSystem : SceneSystem
 			return;
 
 		let zone = mZones[agent.ZoneIndex];
+		if (zone.Crowd == null)
+			return;
 
 		// A live steering change, from a script or an inspector, pushes into the crowd. VALUE
 		// COMPARED, so an unchanged agent costs two float compares.
@@ -170,6 +180,8 @@ class NavigationSceneSystem : SceneSystem
 			return;
 
 		let zone = mZones[agent.ZoneIndex];
+		if (zone.Crowd == null)
+			return;
 		let localPosition = zone.Crowd.AgentPosition(agent.AgentId);
 		let localVelocity = zone.Crowd.AgentVelocity(agent.AgentId);
 		let worldPosition = TransformPoint(localPosition, zone.World);
@@ -233,11 +245,8 @@ class NavigationSceneSystem : SceneSystem
 				runtime.InverseWorld = Inverse(runtime.World);
 				runtime.Center = mScene.GetWorldPosition(entity);
 				runtime.Extents = zone.Extents;
-
-				let radius = (product.Mesh.BakedAgentRadius > 0.0f)
-					? product.Mesh.BakedAgentRadius : 0.6f;
-				runtime.Crowd = new NavigationCrowd(product.Mesh, cMaxAgentsPerZone, radius);
-				runtime.Query = new NavigationMeshQuery(product.Mesh);
+				runtime.Entity = entity;
+				BuildCrowd(runtime, product);
 
 				zone.RuntimeIndex = (int32)mZones.Count;
 				mZones.Add(runtime);
@@ -264,15 +273,7 @@ class NavigationSceneSystem : SceneSystem
 				}
 
 				let zone = mZones[agent.ZoneIndex];
-				let local = TransformPoint(worldPosition, zone.InverseWorld);
-
-				var parameters = NavigationAgentParams();
-				parameters.Radius = agent.Radius;
-				parameters.Height = agent.Height;
-				parameters.MaxSpeed = agent.MaxSpeed;
-				parameters.MaxAcceleration = agent.MaxAcceleration;
-
-				agent.AgentId = zone.Crowd.AddAgent(local, parameters);
+				agent.AgentId = AddToCrowd(zone, agent, worldPosition);
 				if (agent.AgentId < 0)
 				{
 					GlobalLog(.Warning, "Navigation: agent '{}' at ({}, {}, {}): the zone's crowd is full; it will not move",
@@ -285,10 +286,71 @@ class NavigationSceneSystem : SceneSystem
 					GlobalLog(.Warning, "Navigation: agent '{}' at ({}, {}, {}) found no navmesh where it stands; it will not move (is it on baked ground, and was the zone baked?)",
 						mScene.GetEntityName(entity), worldPosition.X, worldPosition.Y, worldPosition.Z);
 				}
-				// The live change compare starts in step.
-				agent.AppliedSpeed = agent.MaxSpeed;
-				agent.AppliedAcceleration = agent.MaxAcceleration;
 			});
+	}
+
+	/// The crowd and the query over `product`'s navmesh, which the zone then remembers.
+	private void BuildCrowd(NavigationRuntimeZone zone, NavigationZoneResource product)
+	{
+		zone.BuiltFrom = product;
+		let radius = (product.Mesh.BakedAgentRadius > 0.0f) ? product.Mesh.BakedAgentRadius : 0.6f;
+		zone.Crowd = new NavigationCrowd(product.Mesh, cMaxAgentsPerZone, radius);
+		zone.Query = new NavigationMeshQuery(product.Mesh);
+	}
+
+	/// An agent into a zone's crowd at `worldPosition` with its own steering profile: its
+	/// slot, or minus one.
+	private int32 AddToCrowd(NavigationRuntimeZone zone, NavAgentComponent* agent, Float3 worldPosition)
+	{
+		var parameters = NavigationAgentParams();
+		parameters.Radius = agent.Radius;
+		parameters.Height = agent.Height;
+		parameters.MaxSpeed = agent.MaxSpeed;
+		parameters.MaxAcceleration = agent.MaxAcceleration;
+		// The live change compare starts in step.
+		agent.AppliedSpeed = agent.MaxSpeed;
+		agent.AppliedAcceleration = agent.MaxAcceleration;
+		return zone.Crowd.AddAgent(TransformPoint(worldPosition, zone.InverseWorld), parameters);
+	}
+
+	/// Each zone whose reference now resolves to a different product than its crowd was built
+	/// over: a re-bake reloaded while the scene runs. The crowd and the query borrow the
+	/// navmesh, and the old product is freed a few frames after the swap, so they go now. A
+	/// usable new navmesh gets a new crowd and query, the zone's agents added back where they
+	/// stand and their destinations sent again; an unusable one (a failed reload) leaves the
+	/// zone without a crowd, its agents still, until a usable one lands.
+	private void RebuildReloadedZones(NavAgentComponentManager agents)
+	{
+		let zones = mScene.GetSystem<NavMeshZoneComponentManager>();
+		if (zones == null)
+			return;
+
+		for (int i < mZones.Count)
+		{
+			let runtime = mZones[i];
+			let component = zones.Get(runtime.Entity);
+			let now = (component != null) ? component.Zone.Get : null;
+			if (now === runtime.BuiltFrom)
+				continue;
+
+			// The old crowd and query go before the product they read.
+			DeleteAndNullify!(runtime.Query);
+			DeleteAndNullify!(runtime.Crowd);
+			runtime.BuiltFrom = null;
+			let usable = (now != null) && now.IsValid;
+			if (usable)
+				BuildCrowd(runtime, now);
+
+			let zoneIndex = (int32)i;
+			agents.ForEach(scope [&] (agent, entity) =>
+				{
+					if (agent.ZoneIndex != zoneIndex)
+						return;
+					agent.AgentId = usable ? AddToCrowd(runtime, agent, mScene.GetWorldPosition(entity)) : -1;
+					// On its way again.
+					agent.TargetDirty = agent.HasTarget && !agent.Finished;
+				});
+		}
 	}
 
 	/// The FIRST zone whose world space box contains the point, or minus one.
