@@ -33,4 +33,5 @@ static class ScriptPayloads
 	public static Variant Of(bool value) => Variant.Create(value);
 	public static Variant Of(StringView value) => Variant.Create(new String(value), true);
 	public static Variant Of(EntityHandle value) => Variant.Create(value);
+	public static Variant Of(Float3 value) => Variant.Create(value);
 }

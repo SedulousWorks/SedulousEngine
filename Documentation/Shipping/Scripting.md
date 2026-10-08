@@ -33,7 +33,9 @@ Handlers dispatch **by presence**: implement only what you need.
   `scene.Scripts.Send(entity, "Name", payload)` to one entity's behaviors, and
   `scene.Scripts.Emit("Name", payload)` or `Run.Emit(...)` to everyone listening. In a game run
   the scene's event bus IS the run's bus: one bus per run, heard by every behaviour, each Level
-  and the Game. Emit an event once; emitting it through both calls delivers it twice.
+  and the Game. Emit an event once; emitting it through both calls delivers it twice. A payload
+  is a float, an int, a bool, a string, an entity or a `Float3` (a lock's place, a noise's
+  origin), and the handler takes it by value: `void onPicking(Float3 at)`.
 - Networked entities: gate on `NetworkComponent(self).Authority` (`NetworkAuthority::Server` or
   `Client`): the owning side drives, the rest interpolate. It reads; replication owns the
   identity, so nothing on it is assignable from a script.

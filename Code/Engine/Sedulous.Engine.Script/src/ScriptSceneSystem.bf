@@ -125,6 +125,7 @@ class ScriptSceneSystem : SceneSystem
 	public void Send(EntityHandle target, StringView message, bool payload) => Queue(target, message, .FromBool(payload), true);
 	public void Send(EntityHandle target, StringView message, StringView payload) => Queue(target, message, .FromString(payload), true);
 	public void Send(EntityHandle target, StringView message, EntityHandle payload) => Queue(target, message, .FromEntity(payload, mScene), true);
+	public void Send(EntityHandle target, StringView message, Float3 payload) => Queue(target, message, .FromFloat3(payload), true);
 
 	/// Publishes an event on the scene's bus: every behaviour and the Level declaring
 	/// `on<Event>` hears it when the bus drains.
@@ -134,6 +135,7 @@ class ScriptSceneSystem : SceneSystem
 	public void Emit(StringView eventName, bool payload) => Publish(eventName, Variant.Create(payload));
 	public void Emit(StringView eventName, StringView payload) => Publish(eventName, Variant.Create(new String(payload), true));
 	public void Emit(StringView eventName, EntityHandle payload) => Publish(eventName, Variant.Create(payload));
+	public void Emit(StringView eventName, Float3 payload) => Publish(eventName, Variant.Create(payload));
 
 	private void Publish(StringView eventName, Variant payload)
 	{

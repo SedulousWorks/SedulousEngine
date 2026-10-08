@@ -36,6 +36,9 @@ class ScriptsFacade : SceneFacade
 	public void Send(EntityHandle target, StringView message, StringView payload) => System?.Send(target, message, payload);
 	[Scriptable, ScriptOnEntity]
 	public void Send(EntityHandle target, StringView message, EntityHandle payload) => System?.Send(target, message, payload);
+	/// A position or a direction: a lock's place, a noise's origin.
+	[Scriptable, ScriptOnEntity]
+	public void Send(EntityHandle target, StringView message, Float3 payload) => System?.Send(target, message, payload);
 
 	/// Publishes on the scene's bus: every behaviour and the Level declaring `on<Event>`.
 	[Scriptable]
@@ -50,6 +53,9 @@ class ScriptsFacade : SceneFacade
 	public void Emit(StringView eventName, StringView payload) => System?.Emit(eventName, payload);
 	[Scriptable]
 	public void Emit(StringView eventName, EntityHandle payload) => System?.Emit(eventName, payload);
+	/// A position or a direction: a lock's place, a noise's origin.
+	[Scriptable]
+	public void Emit(StringView eventName, Float3 payload) => System?.Emit(eventName, payload);
 
 	/// A behaviour of the class, by asset id, on the entity: started on the next tick.
 	[Scriptable]

@@ -537,6 +537,8 @@ class GameInstance
 	public void Emit(StringView eventName, StringView payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
 	[Scriptable]
 	public void Emit(StringView eventName, EntityHandle payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
+	[Scriptable]
+	public void Emit(StringView eventName, Float3 payload) => mRunEvents.Publish(StringHash(eventName), ScriptPayloads.Of(payload));
 
 	/// Whether a game script is running: instantiated and not faulted.
 	public bool ScriptRunning => mGame != null;

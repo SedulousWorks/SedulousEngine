@@ -181,6 +181,39 @@ static class BehaviorMessagingTests
 		Test.Assert(play.PropInt(a, "heard") == 6);
 	}
 
+	/// A Float3 emitted on the bus reaches a handler that takes it by value: a lock's place, a
+	/// noise's origin. Emit once took no Float3 at all, and Raptor's binder once handed such a
+	/// value to a handle parameter only, so `onSpotted(Float3 at)` got nothing and faulted
+	/// (Raptor 4a7f2ccd).
+	[Test]
+	public static void AnEventsValueReachesAHandlerTakingItByValue()
+	{
+		let play = scope ScriptPlayScene();
+		let spotter = play.Class("Spotter", """
+			class Spotter
+			{
+				Scene@ scene;
+				bool emit = false;
+				float seenX = 0;
+				float seenZ = 0;
+				void onUpdate(float dt) { if (emit) { emit = false; scene.Scripts.Emit("Spotted", Float3(1.0f, 2.0f, 3.0f)); } }
+				void onSpotted(Float3 at) { seenX = at.X; seenZ = at.Z; }
+			}
+			""");
+		let a = play.AddBehavior(spotter, "a");
+		play.Start();
+		play.Step();
+		play.Runtime.SetProperty(play.BehaviorOf(a).Instance, "emit", .FromBool(true));
+		play.Step();
+
+		Test.Assert(!play.BehaviorOf(a).Faulted, "the handler ran without faulting");
+		var v = ScriptValue.Nil;
+		play.Runtime.GetProperty(play.BehaviorOf(a).Instance, "seenX", ref v);
+		Test.Assert(v.AsNumber == 1.0, "the value's x arrived");
+		play.Runtime.GetProperty(play.BehaviorOf(a).Instance, "seenZ", ref v);
+		Test.Assert(v.AsNumber == 3.0, "the value's z arrived");
+	}
+
 	[Test]
 	public static void CoroutinesRunOnTheTickAndDieWithTheirBehaviour()
 	{
