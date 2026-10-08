@@ -850,6 +850,39 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		}
 
 		let firstSight = (snapshot == null);
+
+		// The view's camera, resolved BEFORE extraction: its position rides on the snapshot for
+		// the producers that thin by distance (vegetation's fade).
+		var camera = ViewCamera();
+		// The default backdrop, for a scene with no primary camera: linear, as the cameras'
+		// authored colours are decoded.
+		var clearColor = CameraOverride().ClearColor;
+		if (cameraOverride != null)
+		{
+			camera = cameraOverride.Camera;
+			clearColor = cameraOverride.ClearColor;
+		}
+		else
+		{
+			// The clear comes from the camera.
+			// The projection takes the shape of what the scene draws at: its own size, else
+			// the viewport, else the whole target.
+			var aspectWidth = (float)width;
+			var aspectHeight = (float)height;
+			if (sceneSize.IsSet)
+			{
+				aspectWidth = sceneSize.Width;
+				aspectHeight = sceneSize.Height;
+			}
+			else if (!viewport.IsFullTarget && (viewport.Height > 0))
+			{
+				aspectWidth = viewport.Width;
+				aspectHeight = viewport.Height;
+			}
+			RenderExtract.ExtractPrimaryCamera(scene, ref camera, &clearColor,
+				(aspectHeight > 0.0f) ? (aspectWidth / aspectHeight) : 0.0f);
+		}
+
 		if (firstSight)
 		{
 			snapshot = AcquireScene();
@@ -861,6 +894,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			{
 				// Parallel where the job system is up, and it resets the snapshot itself.
 				RenderExtract.ExtractSceneInto(scene, snapshot, mRenderContext);
+				// After the reset, before the providers read it.
+				snapshot.SetViewOrigin(camera.Position);
 				// The instanced sets: one item each, so O(1) a frame rather than per instance.
 				RenderExtract.ExtractInstancedMeshesInto(scene, snapshot);
 				// Billboards, into the same snapshot and after the meshes.
@@ -893,36 +928,6 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		// After extraction, so the snapshot this frame's views share exists, and before this
 		// view, so what samples a target this frame sees this frame's image.
 		RenderTargetCameras(scene);
-
-		var camera = ViewCamera();
-		// The default backdrop, for a scene with no primary camera: linear, as the cameras'
-		// authored colours are decoded.
-		var clearColor = CameraOverride().ClearColor;
-		if (cameraOverride != null)
-		{
-			camera = cameraOverride.Camera;
-			clearColor = cameraOverride.ClearColor;
-		}
-		else
-		{
-			// The clear comes from the camera.
-			// The projection takes the shape of what the scene draws at: its own size, else
-			// the viewport, else the whole target.
-			var aspectWidth = (float)width;
-			var aspectHeight = (float)height;
-			if (sceneSize.IsSet)
-			{
-				aspectWidth = sceneSize.Width;
-				aspectHeight = sceneSize.Height;
-			}
-			else if (!viewport.IsFullTarget && (viewport.Height > 0))
-			{
-				aspectWidth = viewport.Width;
-				aspectHeight = viewport.Height;
-			}
-			RenderExtract.ExtractPrimaryCamera(scene, ref camera, &clearColor,
-				(aspectHeight > 0.0f) ? (aspectWidth / aspectHeight) : 0.0f);
-		}
 
 		var settings = ViewSettings();
 		settings.Clear = .(clearColor.R, clearColor.G, clearColor.B, clearColor.A);
