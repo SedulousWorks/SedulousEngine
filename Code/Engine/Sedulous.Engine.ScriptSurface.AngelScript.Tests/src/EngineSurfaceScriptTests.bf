@@ -133,6 +133,38 @@ static class EngineSurfaceScriptTests
 		Test.Assert((a.EntityCount == 1) && (b.EntityCount == 1));
 	}
 
+	/// A ray's hit names the struck body's physical material, readable from a script (a game
+	/// sounds a step by it). With no bodies the ray misses and the material is nil.
+	[Test]
+	public static void AScriptReadsTheMaterialARayHit()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("game", "game.as", """
+			bool underfoot(Scene@ scene)
+			{
+				PhysicsHit hit = scene.Physics.RayCast(Float3(0, 5, 0), Float3(0, -1, 0), 20.0f);
+				return !hit.Hit && (hit.Material == Guid());
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene("ray");
+		defer Sedulous.Script.SceneFacades.Release(scene);
+		scene.AddSystem<Sedulous.Engine.Physics.PhysicsSceneSystem>();
+		var arg = ScriptValue[1](.FromObject(scene));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("game", "bool underfoot(Scene@)", arg, ref r), "ran");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(r.AsBool, "a miss reads a nil material");
+	}
+
 	/// scene.Render.LightAt reads how lit a place is, with and without a group mask: a lamp with
 	/// no range falloff delivers its whole intensity anywhere.
 	[Test]

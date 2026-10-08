@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 using Sedulous.Scene;
 
@@ -24,6 +25,10 @@ struct PhysicsHit
 	public Float3 Normal = .(0, 0, 0);
 	/// The material slot of the struck face on a cooked triangle mesh, 0 otherwise.
 	public int32 Surface = 0;
+	/// The physical material of the struck body, its rigid body's Material: what it is made
+	/// of, for a game deciding how a step on it sounds (the game maps the id to its sounds). Nil
+	/// on a miss, for a body without a material, and for one that is not a rigid body.
+	public Guid Material = Guid();
 
 	public this() {}
 }

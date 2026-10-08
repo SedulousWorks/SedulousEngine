@@ -50,6 +50,29 @@ static class PhysicsSceneQueryTests
 		Test.Assert(miss.Entity == .Invalid);
 	}
 
+	/// A hit names the physical material of the body it struck: what a game sounds a step by.
+	/// A floor of one material and a box with none; a ray down onto each reads what it stands
+	/// on, and a miss reads nil.
+	[Test]
+	public static void AHitNamesTheStruckBodysPhysicalMaterial()
+	{
+		let play = scope PhysicsPlayScene();
+		let floor = play.AddFloor();
+		let wood = Guid(0x77, 0x00d, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		play.Bodies.Get(floor).Material.SetId(wood);
+		play.AddBox(0.5f); // at x = 0, no material
+		play.Start();
+		play.Step(10);
+
+		let onFloor = play.Physics.RayCast(.(3, 5, 0), .(0, -1, 0), 20.0f);
+		Test.Assert(onFloor.Hit, "the ray struck the floor");
+		Test.Assert(onFloor.Material == wood, "the floor's material");
+		let onBox = play.Physics.RayCast(.(0, 5, 0), .(0, -1, 0), 20.0f);
+		Test.Assert(onBox.Hit, "the ray struck the box");
+		Test.Assert(onBox.Material == Guid(), "a body without a material reads nil");
+		Test.Assert(play.Physics.RayCast(.(0, 100, 0), .(0, 1, 0), 1.0f).Material == Guid(), "a miss reads nil");
+	}
+
 	[Test]
 	public static void SphereCastSweepsAVolumeAndHitsEarlierThanARay()
 	{

@@ -171,7 +171,10 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 			}
 		}
 		if (result.Hit)
+		{
 			result.Distance = Sqrt(bestSq);
+			result.Material = MaterialOf(result.Entity);
+		}
 		return result;
 	}
 
@@ -197,7 +200,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 		}
 	}
 
-	private static void FillHit(ref PhysicsHit result, RayHit hit, float maxDistance)
+	private void FillHit(ref PhysicsHit result, RayHit hit, float maxDistance)
 	{
 		result.Hit = true;
 		result.Entity = PhysicsEntityPacking.UnpackEntity(hit.UserData);
@@ -205,6 +208,15 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 		result.Position = hit.Position;
 		result.Normal = hit.Normal;
 		result.Surface = (int32)hit.Surface;
+		result.Material = MaterialOf(result.Entity);
+	}
+
+	/// The physical material an entity's rigid body names, or nil without one.
+	private Guid MaterialOf(EntityHandle entity)
+	{
+		let bodies = (mScene != null) ? mScene.GetSystem<RigidBodyComponentManager>() : null;
+		let component = (bodies != null) ? bodies.Get(entity) : null;
+		return (component != null) ? component.Material.Id : Guid();
 	}
 
 	public void ApplyImpulse(EntityHandle entity, Float3 impulse)
