@@ -4,6 +4,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.UI;
+using Sedulous.Engine.UI.Script;
 using Sedulous.UI.Resource;
 
 namespace Sedulous.Engine.UI;
@@ -45,6 +46,13 @@ struct UIBillboardComponent : ISerializable, IComponentResources
 	public UIDocument BuiltFrom = null;
 
 	public this() {}
+
+	/// The instantiated tree as a script container, the same ViewGroup handle `Ui.Root` gives
+	/// the screen tier, so the same finders reach inside: a meter over a guard's head is
+	/// `UIBillboardComponent(guard).RootGroup.FindProgressBar("meter")`. A null but valid handle
+	/// until the tree is built, or when its root is a single control rather than a group.
+	[Scriptable]
+	public UiGroup RootGroup => .(Root as ViewGroup);
 
 	public void ResolveResources(ResourceManager manager) mut
 	{

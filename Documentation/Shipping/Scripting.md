@@ -59,6 +59,12 @@ An entity's place, turn and size in the world, every ancestor's included, are
 invalid entity); `GetLocalTransform()` is its own. A lantern on a guard aims along
 `RotateVector(lantern.GetWorldRotation(), Float3(0, 0, -1))` whatever the guard's parent is.
 
+A world-space UI component (`UICanvasComponent`, `UIBillboardComponent`,
+`UIWorldPanelComponent`) hands a script its instantiated tree as `RootGroup`, the same
+`ViewGroup` handle `Ui.Root` gives the screen tier, so the same finders reach inside it: a meter
+over a guard's head is `UIBillboardComponent(guard).RootGroup.FindProgressBar("meter")`. Before
+the tree is built the handle is null but valid, and every finder misses quietly.
+
 `scene.Physics.RayCast(...)` answers a `PhysicsHit`: whether it hit, the entity, the distance,
 position and normal, the struck face's `Surface` slot on a cooked mesh, and the `Material` of the
 struck body (its rigid body's physical material, nil without one): what is underfoot, for a
