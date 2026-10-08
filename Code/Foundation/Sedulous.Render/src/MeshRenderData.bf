@@ -20,8 +20,8 @@ class MeshRenderData : RenderData
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);
 	/// The screen door fade, nought (solid) to one (gone). A faded mesh draws in the Masked
 	/// category (out of the depth prepass, whose depth would hide what shows through it) with
-	/// the DITHER variant, and always through the instanced path, its fade riding the instance's
-	/// DataOffsets.W. Shadows ignore it.
+	/// the DITHER variant, its fade riding the instance's DataOffsets.W or, drawn alone, the
+	/// object block. Shadows ignore it.
 	public float Fade = 0.0f;
 
 	public StaticMesh Mesh = null;
@@ -31,6 +31,14 @@ class MeshRenderData : RenderData
 	/// are here each submesh draws with its own; otherwise the one material covers the mesh.
 	public Material* SubmeshMaterials = null;
 	public uint32 SubmeshMaterialCount = 0;
+
+	/// Material properties set for this mesh alone, borrowed from its owner for the frame, and
+	/// their version, which changes whenever they do. A mesh with any draws alone (it never
+	/// batches), with an instance of its own for each slot it overrides; the depth and shadow
+	/// passes use the shared material.
+	public MaterialPropertyOverride* Overrides = null;
+	public uint32 OverrideCount = 0;
+	public uint32 OverrideVersion = 0;
 
 	/// GPU skinning: the per bone matrices, borrowed for the frame from an animation player.
 	/// With these and a skinned mesh the renderer uploads them and draws the skinned

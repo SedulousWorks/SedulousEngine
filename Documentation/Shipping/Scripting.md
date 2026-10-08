@@ -79,6 +79,17 @@ estimate for a light meter or a guard's eye, not a read of the frame (the sky's 
 light is not in it). Ask from a point off any surface, a character's chest say: a ray that
 starts inside a wall is stopped by it.
 
+`scene.Render.SetMaterialFloat(entity, slot, name, value)` and `SetMaterialFloat4(...)` set one
+of a mesh's material properties for it alone: a glow, a tint, a flash, or a value faded over
+time, every other mesh using that material unchanged. The name is the property's as the
+material editor shows it (`Roughness`, `BaseColor`, `EmissiveColor`), the slot the mesh's
+material slot (0 for a single material). A colour goes as authored, sRGB rgba, and an HDR
+colour (`EmissiveColor`) sRGB rgb with its intensity in w. `ClearMaterialProperty(entity, slot,
+name)` puts it back to the material's own value. They are runtime state, not saved with the
+scene; a name the material does not have, or a value wider than the property, changes
+nothing. Such a mesh draws on its own rather than batched with its twins, so set them on the
+few meshes that need them.
+
 Components are script types too, as data with a few verbs: a script takes one from an
 entity, `CharacterComponent character = CharacterComponent(self);`, then reads and sets its
 fields and calls its verbs (`character.Move(vx, vz)`, `character.Jump(speed)`). The handle is

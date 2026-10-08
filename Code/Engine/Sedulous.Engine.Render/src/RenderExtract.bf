@@ -115,6 +115,12 @@ static class RenderExtract
 		let multiMaterial = component.MaterialCache.Count > 1;
 		data.SubmeshMaterials = multiMaterial ? component.MaterialCache.Ptr : null;
 		data.SubmeshMaterialCount = multiMaterial ? (uint32)component.MaterialCache.Count : 0;
+		// Borrowed for the frame, like the material cache.
+		let overrides = component.MaterialOverrides;
+		let overridden = (overrides != null) && !overrides.IsEmpty;
+		data.Overrides = overridden ? overrides.Ptr : null;
+		data.OverrideCount = overridden ? (uint32)overrides.Count : 0;
+		data.OverrideVersion = component.MaterialOverrideVersion;
 	}
 
 	// ---- scene extractors ------------------------------------------------------------------

@@ -184,7 +184,9 @@ class MaterialInstance
 			return;
 
 		let def = mMaterial.GetProperty(index);
-		if (!def.IsUniform || (mUniformData.Count < (int)def.Offset + sizeof(T)))
+		// Never wider than the property: a Float4 written to a float would spill into the next.
+		if (!def.IsUniform || ((uint32)sizeof(T) > def.Size)
+			|| (mUniformData.Count < (int)def.Offset + sizeof(T)))
 			return;
 
 		var local = value;

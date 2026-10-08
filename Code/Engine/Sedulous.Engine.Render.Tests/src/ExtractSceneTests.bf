@@ -297,4 +297,63 @@ class ExtractSceneTests
 		Test.Assert(gone == 1, "an over faded one is clamped to one, masked");
 		Test.Assert(glassy == 1, "a faded transparent one stays transparent");
 	}
+
+	/// A mesh's own material properties reach its draw, with a version that changes with them;
+	/// a mesh without any lends none.
+	[Test]
+	public static void AMeshsOwnMaterialPropertiesReachItsDrawWithTheirVersion()
+	{
+		let scene = scope Scene("overrides");
+		let meshes = scene.AddSystem<MeshComponentManager>();
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let builder = scope MaterialBuilder("lit");
+		let material = builder..Shader("forward").Build();
+		defer delete material;
+
+		let plain = scene.CreateEntity("plain");
+		{
+			let component = meshes.Add(plain);
+			component.Mesh.SetDirect(cube);
+			component.SetMaterial(material);
+		}
+		let glowing = scene.CreateEntity("glowing");
+		let mc = meshes.Add(glowing);
+		mc.Mesh.SetDirect(cube);
+		mc.SetMaterial(material);
+		mc.SetMaterialProperty(0, "EmissiveColor", .(0.3f, 0.4f, 0.5f, 2.0f), sizeof(Float4));
+		mc.SetMaterialProperty(0, "Roughness", .(0.2f, 0, 0, 0), sizeof(float));
+		scene.UpdateTransforms();
+
+		MeshRenderData DrawOf(ExtractedScene snapshot, EntityHandle entity)
+		{
+			for (let item in snapshot.Items)
+			{
+				if ((item != null) && (item.EntityId == RenderExtract.PackEntity(entity)))
+					return (MeshRenderData)item;
+			}
+			return null;
+		}
+
+		let snapshot = scope ExtractedScene();
+		RenderExtract.ExtractSceneInto(scene, snapshot);
+		let a = DrawOf(snapshot, plain);
+		let b = DrawOf(snapshot, glowing);
+		Test.Assert((a != null) && (b != null));
+		Test.Assert((a.OverrideCount == 0) && (a.Overrides == null));
+		Test.Assert(b.OverrideCount == 2);
+		Test.Assert((b.Overrides[0].Name == "EmissiveColor") && (b.Overrides[0].Value.W == 2.0f));
+		Test.Assert(b.Overrides[1].Size == sizeof(float));
+		let version = b.OverrideVersion;
+
+		// A change (here a clear) bumps the version the renderer compares.
+		Test.Assert(mc.ClearMaterialProperty(0, "Roughness"));
+		Test.Assert(!mc.ClearMaterialProperty(0, "Roughness"));
+		let later = scope ExtractedScene();
+		RenderExtract.ExtractSceneInto(scene, later);
+		let c = DrawOf(later, glowing);
+		Test.Assert(c != null);
+		Test.Assert(c.OverrideCount == 1);
+		Test.Assert(c.OverrideVersion != version);
+	}
 }

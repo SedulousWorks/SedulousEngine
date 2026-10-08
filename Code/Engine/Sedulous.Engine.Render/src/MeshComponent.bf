@@ -5,6 +5,7 @@ using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Geometry;
 using Sedulous.Materials;
+using Sedulous.Render;
 using Sedulous.Resource;
 
 namespace Sedulous.Engine.Render;
@@ -53,6 +54,16 @@ struct MeshComponent : ISerializable, IComponentResources
 	[Description("Fades the mesh out with a dither, 0 = solid, 1 = gone (a cutaway). Its shadow stays whole.")]
 	public float Fade = 0.0f;
 
+	/// Material properties set for this mesh alone (runtime, not saved): its material in a slot
+	/// draws with an instance of its own carrying them (a glow, a tint, a flash), the shared
+	/// material untouched. BORROWED from the manager like the material lists; each entry's
+	/// name is the component's, freed when the entry goes.
+	[Hidden]
+	public List<MaterialPropertyOverride> MaterialOverrides = null;
+	/// Changes with every set or clear, so the renderer applies them again.
+	[Hidden]
+	public uint32 MaterialOverrideVersion = 0;
+
 	/// Per bone skinning matrices, supplied per frame by whoever owns the pose. BORROWED and
 	/// valid only for the frame it was set; null draws the bind pose.
 	public Float4x4* BoneMatrices = null;
@@ -94,6 +105,46 @@ struct MeshComponent : ISerializable, IComponentResources
 			reference.SetDirect(material);
 			Materials.Add(reference);
 		}
+	}
+
+	/// Sets (or replaces) a property's value in `slot` for this mesh alone; `size` is 4 for a
+	/// float, 16 for a Float4.
+	public void SetMaterialProperty(uint32 slot, StringView name, Float4 value, uint32 size) mut
+	{
+		MaterialOverrideVersion++;
+		for (var entry in ref MaterialOverrides)
+		{
+			if ((entry.Slot == slot) && (entry.Name == name))
+			{
+				entry.Value = value;
+				entry.Size = size;
+				return;
+			}
+		}
+
+		var entry = MaterialPropertyOverride();
+		entry.Slot = slot;
+		entry.Size = size;
+		entry.Value = value;
+		entry.Name = new String(name);
+		MaterialOverrides.Add(entry);
+	}
+
+	/// Puts a property back to the material's own value; false if it was not set.
+	public bool ClearMaterialProperty(uint32 slot, StringView name) mut
+	{
+		for (int i < MaterialOverrides.Count)
+		{
+			let entry = MaterialOverrides[i];
+			if ((entry.Slot == slot) && (entry.Name == name))
+			{
+				delete entry.Name;
+				MaterialOverrides.RemoveAt(i);
+				MaterialOverrideVersion++;
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/// Attaches every reference to the manager's proxies. The material CACHE is deliberately

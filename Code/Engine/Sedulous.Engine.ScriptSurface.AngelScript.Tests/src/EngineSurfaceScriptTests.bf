@@ -205,6 +205,58 @@ static class EngineSurfaceScriptTests
 		Test.Assert(r.AsBool, "the lamp's light reached the script");
 	}
 
+	/// scene.Render sets and clears a mesh's own material properties: the component keeps
+	/// them, each change bumping its version so the renderer applies them again. Roughness set
+	/// then set again is one entry with the later value; the tint set and cleared leaves none; a
+	/// second clear and a negative slot change nothing.
+	[Test]
+	public static void AScriptSetsAndClearsAMeshsOwnMaterialProperties()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("game", "game.as", """
+			bool tint(Scene@ scene, const Entity &in self)
+			{
+				bool a = scene.Render.SetMaterialFloat(self, 0, "Roughness", 0.5f);
+				bool b = scene.Render.SetMaterialFloat(self, 0, "Roughness", 0.25f);
+				bool c = scene.Render.SetMaterialFloat4(self, 1, "EmissiveColor", Float4(0.3f, 0.4f, 0.5f, 2.0f));
+				scene.Render.SetMaterialFloat4(self, 0, "BaseColor", Float4(1.0f, 0.0f, 0.0f, 1.0f));
+				bool d = scene.Render.ClearMaterialProperty(self, 0, "BaseColor");
+				bool e = scene.Render.ClearMaterialProperty(self, 0, "BaseColor");
+				bool f = scene.Render.SetMaterialFloat(self, -1, "Roughness", 1.0f);
+				return a && b && c && d && !e && !f;
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene("tint");
+		defer Sedulous.Script.SceneFacades.Release(scene);
+		let meshes = scene.AddSystem<Sedulous.Engine.Render.MeshComponentManager>();
+		let entity = scene.CreateEntity("tinted");
+		meshes.Add(entity);
+
+		var args = ScriptValue[2](.FromObject(scene), .FromEntity(entity, scene));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("game", "bool tint(Scene@, const Entity &in)", args, ref r), "ran");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(r.AsBool, "each call answered as it should");
+
+		let mesh = meshes.Get(entity);
+		let overrides = mesh.MaterialOverrides;
+		Test.Assert(overrides.Count == 2);
+		Test.Assert((overrides[0].Name == "Roughness") && (overrides[0].Slot == 0)
+			&& (overrides[0].Size == sizeof(float)) && (overrides[0].Value.X == 0.25f));
+		Test.Assert((overrides[1].Name == "EmissiveColor") && (overrides[1].Slot == 1)
+			&& (overrides[1].Size == sizeof(Float4)) && (overrides[1].Value.W == 2.0f));
+		Test.Assert(mesh.MaterialOverrideVersion == 5, "one bump for each of the five changes");
+	}
+
 	/// A character controller through scene.Physics: the verbs write the intent the physics
 	/// step consumes, and an entity with no character is a no-op rather than a fault.
 	[Test]

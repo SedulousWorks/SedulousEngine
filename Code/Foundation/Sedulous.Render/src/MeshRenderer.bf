@@ -162,6 +162,21 @@ class MeshRenderer : Renderer
 		public uint32 LastFrame;
 	}
 
+	/// A mesh's own instance of the material in one of its slots, for the properties it sets
+	/// for itself alone (MeshRenderData.Overrides).
+	private struct OverrideInstance
+	{
+		public uint64 EntityId;
+		public uint32 Slot;
+		public uint64 MaterialUid;
+		/// The overrides' version last applied; meaningless until Applied.
+		public uint32 Version;
+		public bool Applied;
+		/// mFrameClock when a draw last used it.
+		public uint32 LastFrame;
+		public MaterialInstance Instance;
+	}
+
 	private IDevice mDevice;
 	private ShaderSystem mShaders;
 	private PipelineStateCache mPsoCache;
@@ -196,6 +211,8 @@ class MeshRenderer : Renderer
 	/// Keyed by the material's IDENTITY, never its reference: a reloaded material can land at
 	/// the freed address, and a reference keyed instance would serve the dead one's textures.
 	private Dictionary<uint64, InstanceEntry> mInstances = new .() ~ delete _;
+	/// By (entity, slot), mixed into one key; the entry's own fields tell a collision apart.
+	private Dictionary<uint64, OverrideInstance> mOverrideInstances = new .() ~ delete _;
 
 	private DynamicUniformRing mViewRing ~ delete _;
 	/// The pass's own view block, kept so a FADED instanced set can copy it with its window.
@@ -563,6 +580,7 @@ class MeshRenderer : Renderer
 		mReady = false;
 		mFrameClock++;
 		PruneStaleMaterialInstances();
+		PruneOverrideInstances();
 		// Free the per frame groups retired long enough ago to be idle, and the material
 		// system's own replaced groups with them.
 		TickRetired();
@@ -1405,15 +1423,17 @@ class MeshRenderer : Renderer
 			let headFaded = head.Fade > 0.0f;
 
 			// The run extends while the mesh and material match, and while it stays faded or
-			// solid as a whole: the two draw with different pipelines (DITHER).
+			// solid as a whole: the two draw with different pipelines (DITHER). A mesh with
+			// material overrides draws alone, with instances of its own.
 			var j = i + 1;
-			if (allowInstancing)
+			if (allowInstancing && (head.OverrideCount == 0))
 			{
 				while (j < items.Length)
 				{
 					let next = (MeshRenderData)items[j].Data;
 					if (next.MultiMesh || (next.Mesh != head.Mesh)
-						|| (next.Material != head.Material) || ((next.Fade > 0.0f) != headFaded))
+						|| (next.Material != head.Material) || ((next.Fade > 0.0f) != headFaded)
+						|| (next.OverrideCount > 0))
 						break;
 					j++;
 				}
@@ -1703,7 +1723,9 @@ class MeshRenderer : Renderer
 		ResolvedDraw template, Material fallback, MeshRenderData md, GpuMesh mesh, bool instanced,
 		List<ResolvedDraw> outDraws)
 	{
-		void Emit(Material candidate, uint64 indexOffset, uint32 indexCount)
+		// `slot`: the material slot drawn, whose own instance the mesh uses when it overrides
+		// properties there.
+		void Emit(Material candidate, uint32 slot, uint64 indexOffset, uint32 indexCount)
 		{
 			let use = (candidate != null) ? candidate : fallback;
 			let set2 = mMaterials.GetOrCreateLayout(use);
@@ -1717,7 +1739,7 @@ class MeshRenderer : Renderer
 
 			var draw = template;
 			draw.Pso = pipeline;
-			draw.MaterialSet = mMaterials.PrepareInstance(InstanceFor(use), set2);
+			draw.MaterialSet = mMaterials.PrepareInstance(InstanceFor(md, slot, use), set2);
 			draw.IndexOffset = indexOffset;
 			draw.IndexCount = indexCount;
 			outDraws.Add(draw);
@@ -1734,21 +1756,25 @@ class MeshRenderer : Renderer
 
 			for (let sub in subMeshes)
 			{
-				var candidate = ((sub.MaterialIndex >= 0)
-					&& ((uint32)sub.MaterialIndex < md.SubmeshMaterialCount))
-					? md.SubmeshMaterials[sub.MaterialIndex]
-					: null;
-				// An unresolved or out of range slot falls back to the item's own material.
+				let inRange = (sub.MaterialIndex >= 0)
+					&& ((uint32)sub.MaterialIndex < md.SubmeshMaterialCount);
+				var candidate = inRange ? md.SubmeshMaterials[sub.MaterialIndex] : null;
+				var slot = inRange ? (uint32)sub.MaterialIndex : 0;
+				// An unresolved or out of range slot falls back to the item's own material,
+				// which is slot zero.
 				if (candidate == null)
+				{
 					candidate = md.Material;
+					slot = 0;
+				}
 
-				Emit(candidate, mesh.IndexOffset + (uint64)sub.StartIndex * stride,
+				Emit(candidate, slot, mesh.IndexOffset + (uint64)sub.StartIndex * stride,
 					(uint32)sub.IndexCount);
 			}
 			return;
 		}
 
-		Emit(fallback, mesh.IndexOffset, mesh.IndexCount);
+		Emit(fallback, 0, mesh.IndexOffset, mesh.IndexCount);
 	}
 
 	private void ResolveDepthSingle(RenderRecordContext context, uint32 shadowViewOffset,
@@ -2429,6 +2455,95 @@ class MeshRenderer : Renderer
 		return instance;
 	}
 
+	/// The instance a mesh with material overrides draws `slot` with: one of its own per
+	/// (entity, slot), its overrides applied again over the material's values whenever their
+	/// version changes; the shared instance when none of its overrides is for `slot`.
+	private MaterialInstance InstanceFor(MeshRenderData md, uint32 slot, Material material)
+	{
+		var overridden = false;
+		for (uint32 i = 0; (i < md.OverrideCount) && !overridden; i++)
+			overridden = md.Overrides[i].Slot == slot;
+		if (!overridden)
+			return InstanceFor(material);
+
+		let key = md.EntityId &* 0x9E3779B97F4A7C15UL &+ slot;
+		OverrideInstance* entry = null;
+		if (mOverrideInstances.TryGetRef(key, ?, out entry)
+			&& ((entry.EntityId != md.EntityId) || (entry.Slot != slot)
+				|| (entry.MaterialUid != material.Uid)))
+		{
+			// Another mesh mixed to this key, or the slot's material changed: start over with
+			// the new one.
+			ReleaseInstance(entry.Instance);
+			mOverrideInstances.Remove(key);
+			entry = null;
+		}
+		if (entry == null)
+		{
+			var created = OverrideInstance();
+			created.EntityId = md.EntityId;
+			created.Slot = slot;
+			created.MaterialUid = material.Uid;
+			created.Instance = new MaterialInstance(material);
+			mOverrideInstances[key] = created;
+			mOverrideInstances.TryGetRef(key, ?, out entry);
+		}
+
+		entry.LastFrame = mFrameClock;
+		if (!entry.Applied || (entry.Version != md.OverrideVersion))
+		{
+			// Back to the material's own values, then this slot's overrides over them.
+			let instance = entry.Instance;
+			for (let def in material.Properties)
+			{
+				if (def.IsUniform)
+					instance.ResetProperty(def.Name);
+			}
+			for (uint32 i < md.OverrideCount)
+			{
+				let o = md.Overrides[i];
+				if (o.Slot != slot)
+					continue;
+				if (o.Size == sizeof(float))
+					instance.SetFloat(o.Name, o.Value.X);
+				else
+					instance.SetFloat4(o.Name, o.Value);
+			}
+			entry.Version = md.OverrideVersion;
+			entry.Applied = true;
+		}
+		return entry.Instance;
+	}
+
+	/// Retires an instance's group and uniform buffer, which frames in flight may still bind,
+	/// and frees the instance.
+	private void ReleaseInstance(MaterialInstance instance)
+	{
+		RetireBindGroup(mMaterials.DetachBindGroup(instance));
+		RetireBuffer(mMaterials.DetachUniformBuffer(instance));
+		delete instance;
+	}
+
+	/// Drops the override instances no draw has used for longer than the frames in flight:
+	/// the overrides were cleared, or the entity has gone.
+	private void PruneOverrideInstances()
+	{
+		if (mOverrideInstances.IsEmpty)
+			return;
+
+		let stale = scope List<uint64>();
+		for (let pair in mOverrideInstances)
+		{
+			if ((mFrameClock - pair.value.LastFrame) > mFramesInFlight + 1)
+				stale.Add(pair.key);
+		}
+		for (let key in stale)
+		{
+			ReleaseInstance(mOverrideInstances[key].Instance);
+			mOverrideInstances.Remove(key);
+		}
+	}
+
 	/// Drops the instances of materials nothing has drawn for a long while.
 	///
 	/// A material here is BORROWED and not reference counted, so there is no moment at which
@@ -3001,6 +3116,9 @@ class MeshRenderer : Renderer
 		for (let pair in mInstances)
 			delete pair.value.Instance;
 		mInstances.Clear();
+		for (let pair in mOverrideInstances)
+			delete pair.value.Instance;
+		mOverrideInstances.Clear();
 
 		mMeshes.Clear();
 

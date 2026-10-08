@@ -137,6 +137,35 @@ class MaterialInstanceTests
 		Test.Assert(!tight.IsOverridden(3), "twelve bytes past the end of a four byte slot");
 	}
 
+	/// A value wider than its property is refused even with room in the buffer behind it: a
+	/// Float4 into a float would write over the next property. A narrower one fits, setting
+	/// the first component.
+	[Test]
+	public static void AValueWiderThanItsPropertyIsRefusedANarrowerOneFits()
+	{
+		let builder = scope MaterialBuilder("lit");
+		let material = builder
+			..Shader("forward")
+			..Float("roughness", 0.5f)
+			..Float("metallic", 0.25f)
+			..Float4("tint", .(1, 1, 1, 1))
+			.Build();
+		defer delete material;
+		let instance = scope MaterialInstance(material);
+		float At(StringView name)
+		{
+			let def = material.GetProperty(material.GetPropertyIndex(name));
+			return *(float*)(instance.UniformData.Ptr + def.Offset);
+		}
+
+		instance.SetFloat4("roughness", .(0.9f, 0.9f, 0.9f, 0.9f));
+		Test.Assert(At("roughness") == 0.5f, "the wide write was refused");
+		Test.Assert(At("metallic") == 0.25f, "the next property is untouched");
+
+		instance.SetFloat("tint", 0.5f);
+		Test.Assert(At("tint") == 0.5f, "a float into a Float4 sets its first component");
+	}
+
 	/// Dropping an instance takes its GPU resources with it, and takes it out of the dirty
 	/// list so the next drain does not walk a dead reference.
 	[Test]

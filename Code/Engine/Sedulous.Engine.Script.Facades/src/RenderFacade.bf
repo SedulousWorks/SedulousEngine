@@ -18,6 +18,21 @@ class RenderFacade : SceneFacade
 	public bool SetMesh(EntityHandle entity, Guid mesh) => Meshes?.SetMesh(entity, mesh) ?? false;
 	[Scriptable]
 	public bool SetMaterial(EntityHandle entity, Guid material, int slot = 0) => Meshes?.SetMaterial(entity, material, slot) ?? false;
+	/// Sets one of the entity's material properties for it alone: the material in `slot` draws
+	/// with `value` for the property `name` (as the material editor shows it: Roughness), every
+	/// other mesh using that material unchanged. A name the material does not have, or a value
+	/// wider than the property, changes nothing. Runtime only: not saved with the scene. False
+	/// for an entity without a mesh or a negative slot.
+	[Scriptable]
+	public bool SetMaterialFloat(EntityHandle entity, int slot, StringView name, float value) => Meshes?.SetMaterialProperty(entity, slot, name, .(value, 0, 0, 0), sizeof(float)) ?? false;
+	/// The same for a colour or a vector: a colour as authored, sRGB rgba, and an HDR colour
+	/// (EmissiveColor) sRGB rgb with its intensity in w.
+	[Scriptable]
+	public bool SetMaterialFloat4(EntityHandle entity, int slot, StringView name, Float4 value) => Meshes?.SetMaterialProperty(entity, slot, name, value, sizeof(Float4)) ?? false;
+	/// Puts a property set by SetMaterialFloat or SetMaterialFloat4 back to the material's own
+	/// value; false if it was not set.
+	[Scriptable]
+	public bool ClearMaterialProperty(EntityHandle entity, int slot, StringView name) => Meshes?.ClearMaterialProperty(entity, slot, name) ?? false;
 	/// Points the entity's camera at a render texture asset, which it then draws into instead
 	/// of the screen; a nil id gives the camera back to the screen. False for an entity
 	/// without a camera.
