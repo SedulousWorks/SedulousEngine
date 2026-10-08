@@ -572,18 +572,32 @@ static class RenderExtract
 		return total;
 	}
 
+	/// A spot or point light asking for a shadow while the atlas tiles are shared out.
+	private struct ShadowCandidate
+	{
+		/// Its index among the scene's extracted lights.
+		public int Light = 0;
+		public LocalShadowCaster Caster = .();
+		/// A spot takes one tile, a point six (its cube faces).
+		public uint32 Tiles = 1;
+		/// The view's distance to the light's reach, nought inside it.
+		public float Nearness = 0.0f;
+		/// The view's distance to the light itself, which breaks ties.
+		public float Distance = 0.0f;
+		public bool Chosen = false;
+
+		public this() {}
+	}
+
 	public static void ExtractLightsInto(Scene scene, ExtractedScene outScene)
 	{
 		let lights = scene.GetSystem<LightComponentManager>();
 		if (lights == null)
 			return;
 
+		let found = scope List<GpuLight>();
+		let candidates = scope List<ShadowCandidate>();
 		var haveShadow = false;
-		// Tiles spent per atlas layer, budgeted separately, and the running entry index that
-		// becomes the next caster's shadow index.
-		var realtimeTiles = 0u;
-		var staticTiles = 0u;
-		var flatEntries = 0u;
 
 		lights.ForEach(scope [&] (component, entity) =>
 			{
@@ -607,40 +621,80 @@ static class RenderExtract
 					outScene.SetDirectionalShadow(directional);
 				}
 
-				// A local caster takes its BASE atlas tile as its shadow index and registers
-				// itself; the shadow system builds the matrices at frame time. A spot needs one
-				// tile and a point six, one per cube face, and each atlas layer has its own
-				// budget.
-				let localCaster = component.CastsShadows
-					&& ((component.Type == .Spot) || (component.Type == .Point));
-				let tilesNeeded = (component.Type == .Point) ? 6u : 1u;
-				let isStatic = (component.ShadowUpdate == .Static);
-				let layerTiles = isStatic ? staticTiles : realtimeTiles;
-
-				if (localCaster && (layerTiles + tilesNeeded <= RenderLimits.MaxLocalShadowTiles))
+				if (component.CastsShadows && ((component.Type == .Spot) || (component.Type == .Point)))
 				{
-					light.ShadowIndex = (float)flatEntries;
-
-					var caster = LocalShadowCaster();
-					caster.Type = (uint32)component.Type;
-					caster.PositionWS = light.PositionWS;
-					caster.DirectionWS = light.DirectionWS;
-					caster.Range = component.Range;
-					caster.OuterAngle = component.OuterAngle;
-					caster.IsStatic = isStatic;
-					caster.NormalBias = component.ShadowNormalBias;
-					caster.DepthBias = ShadowBiasDefaults.LocalDepthBias * component.ShadowDepthBiasScale;
-					outScene.AddLocalShadowCaster(caster);
-
-					if (isStatic)
-						staticTiles += tilesNeeded;
-					else
-						realtimeTiles += tilesNeeded;
-					flatEntries += tilesNeeded;
+					var candidate = ShadowCandidate();
+					candidate.Light = found.Count;
+					candidate.Tiles = (component.Type == .Point) ? 6u : 1u;
+					candidate.Caster.Type = (uint32)component.Type;
+					candidate.Caster.PositionWS = light.PositionWS;
+					candidate.Caster.DirectionWS = light.DirectionWS;
+					candidate.Caster.Range = component.Range;
+					candidate.Caster.OuterAngle = component.OuterAngle;
+					candidate.Caster.IsStatic = (component.ShadowUpdate == .Static);
+					candidate.Caster.NormalBias = component.ShadowNormalBias;
+					candidate.Caster.DepthBias = ShadowBiasDefaults.LocalDepthBias * component.ShadowDepthBiasScale;
+					if (outScene.HasViewOrigin)
+					{
+						candidate.Distance = Length(light.PositionWS - outScene.ViewOrigin);
+						candidate.Nearness = Math.Max(0.0f, candidate.Distance - component.Range);
+					}
+					candidates.Add(candidate);
 				}
 
-				outScene.AddLight(light);
+				found.Add(light);
 			});
+
+		// Local (spot and point) shadows share an atlas of MaxLocalShadowTiles a layer, the
+		// realtime and the static layer each their own. More lights may ask than fit, so they
+		// are chosen by how near the view is to each one's reach, nearest first (the order they
+		// came in breaks ties, and is all there is without a view): a light far off gives its
+		// tiles to one beside the camera. A light that does not fit is unshadowed, and a smaller
+		// one later in the ranking may still fit.
+		let ranked = scope List<int>();
+		for (int i < candidates.Count)
+			ranked.Add(i);
+		ranked.Sort(scope (a, b) =>
+			{
+				let x = candidates[a];
+				let y = candidates[b];
+				if (x.Nearness != y.Nearness)
+					return x.Nearness <=> y.Nearness;
+				if (x.Distance != y.Distance)
+					return x.Distance <=> y.Distance;
+				return a <=> b; // a stable ranking: the order they came in
+			});
+		var realtimeTiles = 0u;
+		var staticTiles = 0u;
+		for (let i in ranked)
+		{
+			var candidate = ref candidates[i];
+			let layerTiles = candidate.Caster.IsStatic ? staticTiles : realtimeTiles;
+			if (layerTiles + candidate.Tiles <= RenderLimits.MaxLocalShadowTiles)
+			{
+				candidate.Chosen = true;
+				if (candidate.Caster.IsStatic)
+					staticTiles += candidate.Tiles;
+				else
+					realtimeTiles += candidate.Tiles;
+			}
+		}
+
+		// The chosen register in the order they came in, not the ranking's: tiles follow that
+		// order, so moving the camera reshuffles nothing (the static layer's cached tiles stay
+		// valid) until the chosen set itself changes. Each one's shadow index is its BASE entry
+		// into the local shadow buffer; the shadow system builds the matrices at frame time.
+		var flatEntries = 0u;
+		for (let candidate in candidates)
+		{
+			if (!candidate.Chosen)
+				continue;
+			found[candidate.Light].ShadowIndex = (float)flatEntries;
+			outScene.AddLocalShadowCaster(candidate.Caster);
+			flatEntries += candidate.Tiles;
+		}
+		for (let light in found)
+			outScene.AddLight(light);
 	}
 
 	/// Reads the scene's environment into the snapshot.

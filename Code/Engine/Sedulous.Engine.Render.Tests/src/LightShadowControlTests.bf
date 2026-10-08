@@ -128,4 +128,106 @@ class LightShadowControlTests
 		SerializeValue(reader, "trailing", ref trailing);
 		Test.Assert(trailing == 77, "nothing past the version one fields was consumed");
 	}
+
+	/// Five shadowed point lights in a row, ten metres apart, each in a scene of its own test;
+	/// a point takes six of a layer's sixteen tiles, so two fit a layer.
+	private static Scene FiveTorches(Scene scene)
+	{
+		let lights = scene.AddSystem<LightComponentManager>();
+		for (int i < 5)
+		{
+			let entity = scene.CreateEntity("torch");
+			scene.SetLocalPosition(entity, .(10.0f * (float)i, 0.0f, 0.0f));
+			let light = lights.Add(entity);
+			light.Type = .Point;
+			light.Range = 4.0f;
+			light.CastsShadows = true;
+		}
+		scene.UpdateTransforms();
+		return scene;
+	}
+
+	/// The indices of the lights given a shadow.
+	private static void Shadowed(ExtractedScene snapshot, System.Collections.List<int> outWhich)
+	{
+		for (int i < snapshot.Lights.Length)
+		{
+			if (snapshot.Lights[i].ShadowIndex >= 0.0f)
+				outWhich.Add(i);
+		}
+	}
+
+	/// The local shadow tiles go to the lights nearest the view (Raptor a085aad1). They went
+	/// first come, first served in component order, so a lamp across the map could take them
+	/// while the one beside the camera went without.
+	[Test]
+	public static void WithoutAViewTheFirstLightsThatFitTakeTheTiles()
+	{
+		let scene = FiveTorches(scope Scene("tiles"));
+		let snapshot = scope ExtractedScene();
+		RenderExtract.ExtractLightsInto(scene, snapshot);
+		let which = Shadowed(snapshot, .. scope .());
+		Test.Assert((which.Count == 2) && (which[0] == 0) && (which[1] == 1));
+	}
+
+	[Test]
+	public static void WithAViewTheNearestLightsTakeTheTilesInTheOrderTheyCame()
+	{
+		let scene = FiveTorches(scope Scene("tiles"));
+		let snapshot = scope ExtractedScene();
+		snapshot.SetViewOrigin(.(39.0f, 3.0f, 0.0f)); // inside the last one's reach, near the fourth
+		RenderExtract.ExtractLightsInto(scene, snapshot);
+		let which = Shadowed(snapshot, .. scope .());
+		Test.Assert((which.Count == 2) && (which[0] == 3) && (which[1] == 4), "the two nearest");
+		Test.Assert(snapshot.Lights[3].ShadowIndex == 0.0f, "the earlier light takes the first entries");
+		Test.Assert(snapshot.Lights[4].ShadowIndex == 6.0f);
+		Test.Assert(snapshot.LocalShadowCasters.Length == 2);
+		Test.Assert(Math.Abs(snapshot.LocalShadowCasters[0].PositionWS.X - 30.0f) < 1e-4f);
+		Test.Assert(Math.Abs(snapshot.LocalShadowCasters[1].PositionWS.X - 40.0f) < 1e-4f);
+
+		// Walking past them to the far side changes which is nearer, not where their tiles are.
+		let later = scope ExtractedScene();
+		later.SetViewOrigin(.(50.0f, 3.0f, 0.0f));
+		RenderExtract.ExtractLightsInto(scene, later);
+		Test.Assert(later.Lights[3].ShadowIndex == 0.0f, "the same tiles");
+		Test.Assert(later.Lights[4].ShadowIndex == 6.0f);
+	}
+
+	[Test]
+	public static void ASpotStillFitsWhereAPointNoLongerDoes()
+	{
+		let scene = FiveTorches(scope Scene("tiles"));
+		let entity = scene.CreateEntity("lantern");
+		scene.SetLocalPosition(entity, .(100.0f, 0.0f, 0.0f));
+		let spot = scene.GetSystem<LightComponentManager>().Add(entity);
+		spot.Type = .Spot;
+		spot.CastsShadows = true;
+		scene.UpdateTransforms();
+
+		let snapshot = scope ExtractedScene();
+		snapshot.SetViewOrigin(.(0.0f, 3.0f, 0.0f));
+		RenderExtract.ExtractLightsInto(scene, snapshot);
+		let which = Shadowed(snapshot, .. scope .());
+		Test.Assert((which.Count == 3) && (which[2] == 5), "two points and the far spot");
+		Test.Assert(snapshot.Lights[5].ShadowIndex == 12.0f);
+	}
+
+	[Test]
+	public static void TheStaticLayerHasABudgetOfItsOwn()
+	{
+		let scene = FiveTorches(scope Scene("tiles"));
+		var n = 0;
+		scene.GetSystem<LightComponentManager>().ForEach(scope [&] (light, entity) =>
+			{
+				if (n++ >= 2)
+					light.ShadowUpdate = .Static;
+			});
+
+		let snapshot = scope ExtractedScene();
+		RenderExtract.ExtractLightsInto(scene, snapshot);
+		let which = Shadowed(snapshot, .. scope .());
+		Test.Assert(which.Count == 4, "two realtime, two of the three static");
+		Test.Assert((which[2] == 2) && (which[3] == 3));
+		Test.Assert(snapshot.LocalShadowCasters[2].IsStatic);
+	}
 }
