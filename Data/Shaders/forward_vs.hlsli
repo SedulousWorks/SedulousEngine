@@ -83,6 +83,7 @@ struct VSOutput {
     float3 worldPos  : TEXCOORD4;
     float4 curClip   : TEXCOORD5;   // unjittered current clip pos (motion vectors)
     float4 prevClip  : TEXCOORD6;   // unjittered previous clip pos (motion vectors)
+    nointerpolation float fade : TEXCOORD7;   // screen-door fade, 0 = solid (forward.ps DITHER)
 };
 VSOutput main(VSInput input) {
     VSOutput o;
@@ -145,5 +146,10 @@ VSOutput main(VSInput input) {
     o.worldPos  = worldPos.xyz;
     o.curClip   = o.clip;                                        // (jitter is baked into ViewProj; PS unjitters)
     o.prevClip  = mul(prevWorldPos, PrevViewProj);
+#ifdef INSTANCED
+    o.fade      = asfloat(input.dataOffsets.w);                  // a faded mesh draws instanced
+#else
+    o.fade      = 0.0;
+#endif
     return o;
 }

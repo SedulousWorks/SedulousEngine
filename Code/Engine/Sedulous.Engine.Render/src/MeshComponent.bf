@@ -21,7 +21,8 @@ namespace Sedulous.Engine.Render;
 ///
 /// The lists are BORROWED from the manager, which creates and frees them: a component is a
 /// struct in a packed pool and cannot own heap data.
-[SerializableComponent("mesh", 4)]
+/// Data version 5 adds the fade; a version 4 record reads as solid.
+[SerializableComponent("mesh", 5, 4)]
 [DisplayName("Mesh")]
 [Category("Rendering")]
 [Scriptable]
@@ -43,6 +44,14 @@ struct MeshComponent : ISerializable, IComponentResources
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);
 	[Scriptable]
 	public bool Visible = true;
+	/// How far the mesh is faded out, nought (solid) to one (gone), drawn as a screen door
+	/// dither: a cutaway wall between the camera and the player. Only its camera pixels thin
+	/// out; it still casts its whole shadow, so the room behind a cut away wall stays as dark as
+	/// it was. Hiding it by Visible would pop it and drop its shadow with it.
+	[Scriptable]
+	[Range(0.0f, 1.0f, 0.01f)]
+	[Description("Fades the mesh out with a dither, 0 = solid, 1 = gone (a cutaway). Its shadow stays whole.")]
+	public float Fade = 0.0f;
 
 	/// Per bone skinning matrices, supplied per frame by whoever owns the pose. BORROWED and
 	/// valid only for the frame it was set; null draws the bind pose.
@@ -134,6 +143,8 @@ struct MeshComponent : ISerializable, IComponentResources
 		ar.Key("color");
 		Sedulous.Core.Serialization.Serialize(ar, ref Color);
 		SerializeValue(ar, "visible", ref Visible);
+		if ((ar.Mode == .Write) || (ar.Version >= 5))
+			SerializeValue(ar, "fade", ref Fade);
 		SerializeValue(ar, "lodBias", ref LodBias);
 		SerializeValue(ar, "forceLod", ref ForceLod);
 	}

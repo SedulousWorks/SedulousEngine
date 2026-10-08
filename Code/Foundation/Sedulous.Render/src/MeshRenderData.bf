@@ -18,6 +18,11 @@ class MeshRenderData : RenderData
 	public Float4x4 World = .Identity();
 	/// A per instance tint.
 	public Color Color = .(1.0f, 1.0f, 1.0f, 1.0f);
+	/// The screen door fade, nought (solid) to one (gone). A faded mesh draws in the Masked
+	/// category (out of the depth prepass, whose depth would hide what shows through it) with
+	/// the DITHER variant, and always through the instanced path, its fade riding the instance's
+	/// DataOffsets.W. Shadows ignore it.
+	public float Fade = 0.0f;
 
 	public StaticMesh Mesh = null;
 	public Material Material = null;

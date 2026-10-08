@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026-Present Robert Campbell
 
-// variants: ALPHA_TEST GBUFFER
+// variants: ALPHA_TEST GBUFFER DITHER
 #include "depth.hlsli"
 #define CASCADE_COUNT 4
 cbuffer View : register(b0, space0) {        // shared with the VS (same layout)
@@ -245,6 +245,7 @@ struct PSInput {
     float3 worldPos  : TEXCOORD4;
     float4 curClip   : TEXCOORD5;   // motion vectors (unjittered current/previous clip pos)
     float4 prevClip  : TEXCOORD6;
+    nointerpolation float fade : TEXCOORD7;   // screen-door fade, 0 = solid (read under DITHER)
 };
 
 static const float PI = 3.14159265359;
@@ -379,6 +380,14 @@ struct PSOutput {
 PSOutput main(PSInput input) {
 #else
 float4 main(PSInput input) : SV_Target0 {
+#endif
+#ifdef DITHER
+    // A faded mesh (a cutaway wall): drop the share `fade` of its pixels by a 4x4 ordered pattern,
+    // before any shading. Thresholds run (0.5 .. 15.5) / 16, so 0 keeps every pixel and 1 none;
+    // TAA's jitter blends what is left toward a see-through wall.
+    static const float kBayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
+    uint2 cell = uint2(input.clip.xy) & 3u;
+    if (input.fade > (kBayer[cell.y * 4u + cell.x] + 0.5) / 16.0) { discard; }
 #endif
     // Tangent-space normal mapping. The flat default (0.5, 0.5, 1) decodes to (0,0,1) = the
     // geometric normal, so untextured materials are untouched. tangentWS.w carries the TBN

@@ -48,6 +48,7 @@ class MeshRefTests
 			let component = meshes.Add(entity);
 			component.Mesh.SetId(meshId);
 			component.Color = .(0.5f, 0.25f, 0.125f, 1.0f);
+			component.Fade = 0.75f; // an authored fade persists (data version 5)
 
 			let writer = scope BinarySerializer(blob, .Write);
 			SceneSerializer.SerializeScene(writer, scene);
@@ -72,6 +73,7 @@ class MeshRefTests
 		Test.Assert(component.Mesh.Id == meshId);
 		Test.Assert(component.Mesh.Get == null);
 		Test.Assert(Near(component.Color.R, 0.5f));
+		Test.Assert(Near(component.Fade, 0.75f));
 
 		SceneResolve.ResolveSceneResources(loaded, fixture.Manager);
 		let live = component.Mesh.Get;

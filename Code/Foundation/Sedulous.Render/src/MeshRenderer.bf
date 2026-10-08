@@ -1403,7 +1403,11 @@ class MeshRenderer : Renderer
 			// static one: identical skinned instances collapse into a single draw.
 			let headSkinned = (head.Mesh != null) && head.Mesh.IsSkinned
 				&& (head.BoneMatrices != null);
+			// A faded mesh's fade rides its instance's DataOffsets.W, so it draws instanced too.
+			let headFaded = head.Fade > 0.0f;
 
+			// The run extends while the mesh and material match, and while it stays faded or
+			// solid as a whole: the two draw with different pipelines (DITHER).
 			var j = i + 1;
 			if (allowInstancing)
 			{
@@ -1411,7 +1415,7 @@ class MeshRenderer : Renderer
 				{
 					let next = (MeshRenderData)items[j].Data;
 					if (next.MultiMesh || (next.Mesh != head.Mesh)
-						|| (next.Material != head.Material))
+						|| (next.Material != head.Material) || ((next.Fade > 0.0f) != headFaded))
 						break;
 					j++;
 				}
@@ -1421,8 +1425,9 @@ class MeshRenderer : Renderer
 			if (mMeshes.GetOrUpload(head.Mesh) case .Ok(let gpuMesh))
 			{
 				// A skinned draw always takes the instanced path, even alone: the single path
-				// has nowhere to carry a bone base.
-				if ((runLength >= 2) || headSkinned)
+				// has nowhere to carry a bone base. So does a faded one, whose fade only the
+				// instanced path carries.
+				if ((runLength >= 2) || headSkinned || headFaded)
 					ResolveInstanced(context, viewOffset, clusterBindGroup, items, i, runLength,
 						head, gpuMesh, outDraws);
 				else
@@ -1617,11 +1622,14 @@ class MeshRenderer : Renderer
 
 		// The camera prepass already filled this group's instances and offsets, the same
 		// objects in the same order, and recorded the range: REUSE it rather than filling it
-		// again. A miss, from no prepass or a changed count, falls back to a fresh fill.
+		// again. A miss, from no prepass or a changed count, falls back to a fresh fill. A faded
+		// run is never prepassed, and a solid group of the same mesh and material must not
+		// lend it its range.
 		uint64 offsetsByteOffset;
 		let shareKey = InstShareKey(head.Mesh, head.Material, context.View);
+		let faded = head.Fade > 0.0f;
 
-		if (mInstShareCache.TryGetValue(shareKey, let shared) && (shared.Count == count))
+		if (!faded && mInstShareCache.TryGetValue(shareKey, let shared) && (shared.Count == count))
 		{
 			offsetsByteOffset = shared.OffsetsByteOffset;
 		}
@@ -1652,7 +1660,9 @@ class MeshRenderer : Renderer
 					boneBase = slot.Base;
 					prevBase = slot.PrevBase;
 				}
-				offsetData[k] = .(instances.SlotIndex + k, boneBase, prevBase, 0);
+				// X the instance index, Y and Z the bone bases, W the fade's bits (nought is solid).
+				var fade = md.Fade;
+				offsetData[k] = .(instances.SlotIndex + k, boneBase, prevBase, *(uint32*)&fade);
 			}
 
 			offsetsByteOffset = offsets.ByteOffset;
@@ -2278,6 +2288,9 @@ class MeshRenderer : Renderer
 		// The material's wind lanes sway it.
 		if (MaterialWantsWind(md.Material))
 			config.ShaderFlags |= .Wind;
+		// The screen door fade (a cutaway).
+		if (md.Fade > 0.0f)
+			config.ShaderFlags |= .Dither;
 
 		// Opaque and masked draws write the whole set of targets: the shaded colour, then the
 		// view space normal, the motion vector, the roughness and metallic the reflections read,

@@ -243,4 +243,58 @@ class ExtractSceneTests
 		Test.Assert(snapshot.Size == 1);
 		Test.Assert(snapshot.Items[0].Category == RenderCategories.Transparent);
 	}
+
+	/// A mesh's fade is carried clamped, and a faded opaque mesh draws Masked: out of the depth
+	/// prepass, whose depth would hide what shows through it. A faded transparent one stays
+	/// Transparent.
+	[Test]
+	public static void AMeshsFadeIsClampedAndAFadedOpaqueMeshDrawsMasked()
+	{
+		let scene = scope Scene();
+		let meshes = scene.AddSystem<MeshComponentManager>();
+
+		let mesh = Primitives.Quad();
+		defer delete mesh;
+		let plasterBuilder = scope MaterialBuilder("plaster");
+		let plaster = plasterBuilder..Shader("forward").Build();
+		defer delete plaster;
+		let glassBuilder = scope MaterialBuilder("glass");
+		let glass = glassBuilder..Shader("forward")..Transparent().Build();
+		defer delete glass;
+
+		// Solid, half faded, over faded (clamps to one), and a faded transparent one.
+		float[4] fades = .(0.0f, 0.5f, 3.0f, 0.5f);
+		for (int i < 4)
+		{
+			let component = meshes.Add(scene.CreateEntity());
+			component.Mesh.SetDirect(mesh);
+			component.SetMaterial((i == 3) ? glass : plaster);
+			component.Fade = fades[i];
+		}
+		scene.UpdateTransforms();
+
+		let snapshot = scope ExtractedScene();
+		RenderExtract.ExtractSceneInto(scene, snapshot);
+		Test.Assert(snapshot.Size == 4);
+		int solid = 0;
+		int half = 0;
+		int gone = 0;
+		int glassy = 0;
+		for (let item in snapshot.Items)
+		{
+			let data = (MeshRenderData)item;
+			if (data.Category == RenderCategories.Transparent)
+				glassy += Near(data.Fade, 0.5f) ? 1 : 0;
+			else if (data.Fade == 0.0f)
+				solid += (data.Category == RenderCategories.Opaque) ? 1 : 0;
+			else if (Near(data.Fade, 0.5f))
+				half += (data.Category == RenderCategories.Masked) ? 1 : 0;
+			else if (Near(data.Fade, 1.0f))
+				gone += (data.Category == RenderCategories.Masked) ? 1 : 0;
+		}
+		Test.Assert(solid == 1, "a solid mesh stays opaque, for the prepass");
+		Test.Assert(half == 1, "a half faded one draws masked");
+		Test.Assert(gone == 1, "an over faded one is clamped to one, masked");
+		Test.Assert(glassy == 1, "a faded transparent one stays transparent");
+	}
 }

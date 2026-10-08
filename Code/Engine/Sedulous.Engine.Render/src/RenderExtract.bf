@@ -93,6 +93,11 @@ static class RenderExtract
 		data.Material = primary;
 		data.EntityId = PackEntity(entity);
 		data.Category = CategoryForMaterial(primary);
+		data.Fade = Math.Clamp(component.Fade, 0.0f, 1.0f);
+		// A faded opaque mesh leaves the depth prepass, whose depth would hide what the dither
+		// lets through.
+		if ((data.Fade > 0.0f) && (data.Category == RenderCategories.Opaque))
+			data.Category = RenderCategories.Masked;
 		// The batch key keeps opaque draws contiguous by mesh and material. The renderer id
 		// keeps its default, because the mesh renderer registers first.
 		data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(component.Mesh.Get),

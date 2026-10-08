@@ -23,4 +23,6 @@ enum ShaderFlags : uint32
 	case Wind = 256;
 	/// Terrain: a holed chunk's fragments discard against the bilinear hole mask.
 	case Holes = 512;
+	/// A faded mesh: its fragments discard by a screen door pattern (a cutaway).
+	case Dither = 1024;
 }

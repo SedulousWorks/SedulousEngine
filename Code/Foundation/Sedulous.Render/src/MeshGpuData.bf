@@ -118,6 +118,7 @@ struct MeshDataOffsets
 	public uint32 Y = 0;
 	/// Last frame's bone base, for the motion vectors.
 	public uint32 Z = 0;
+	/// The forward pass's fade, as its float's bits (nought is solid).
 	public uint32 W = 0;
 
 	public this() {}
