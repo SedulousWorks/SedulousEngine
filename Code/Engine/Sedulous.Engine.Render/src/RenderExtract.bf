@@ -482,6 +482,96 @@ static class RenderExtract
 	///
 	/// The FIRST enabled directional light that casts becomes the scene's shadow caster; its
 	/// cascades are fitted to the camera later, when the frame is built.
+	/// A light component at `world` as the renderer lights with it: position, forward, linear
+	/// colour, cone cosines. The shadow fields stay unset; extraction assigns those. LightAt
+	/// builds its lights the same way, so the two cannot drift.
+	public static GpuLight MakeGpuLight(in LightComponent component, Float4x4 world)
+	{
+		var light = GpuLight();
+		light.PositionWS = TransformPoint(Float3(0, 0, 0), world);
+		// Forward is -Z, which is the third basis row negated under the row vector convention.
+		light.DirectionWS = Normalized(Float3(-world.M[2][0], -world.M[2][1], -world.M[2][2]));
+		light.Range = component.Range;
+		let lightColor = ToLinear(component.Color);
+		light.Color = .(lightColor.R, lightColor.G, lightColor.B);
+		light.Intensity = component.Intensity;
+		light.Type = (float)(uint32)component.Type;
+		light.InnerCos = Math.Cos(component.InnerAngle);
+		light.OuterCos = Math.Cos(component.OuterAngle);
+		light.ShadowStrength = component.ShadowStrength;
+		return light;
+	}
+
+	/// How far a ray looks for what stands between a point and a directional light (the sun or
+	/// the moon): past any level, so only what is really overhead shades it.
+	private const float cDirectionalOcclusionReach = 1000.0f;
+	/// A ray toward a local light stops this short of it, so the lamp's own glass or holder,
+	/// when it has a collider, does not count as standing in its way.
+	private const float cLightClearance = 0.05f;
+
+	/// How much light reaches `position` (linear RGB, the units lights are authored in): every
+	/// enabled light with the renderer's own range falloff and spot cone, plus the ambient. A
+	/// light that casts shadows is stopped by what stands between, by its shadow strength (a ray
+	/// through the scene's solid surfaces among the collision groups in `groupMask`, so render
+	/// does not depend on physics); one without shadows shines through walls, as it does on
+	/// screen. The light a surface facing each light would get, before its colour and angle: a
+	/// CPU estimate of the shading for a light meter or a guard's eye, not a read of the frame
+	/// (the sky's image based light is not in it). Ask from a point off any surface: a ray that
+	/// starts inside a wall is stopped by it.
+	public static Float3 LightAt(Scene scene, Float3 position, uint32 groupMask = 0xFFFFFFFF)
+	{
+		var total = Float3(0.0f, 0.0f, 0.0f);
+		if (scene == null)
+			return total;
+		if (let environment = scene.GetSystem<EnvironmentSystem>())
+		{
+			// As ExtractEnvironmentInto reads it.
+			let settings = environment.Effective;
+			total = Linear3(settings.AmbientColor) * settings.AmbientIntensity;
+		}
+		let lights = scene.GetSystem<LightComponentManager>();
+		if (lights == null)
+			return total;
+
+		// The scene's solid surfaces (physics), if any.
+		ISceneRayQuery rays = null;
+		for (let system in scene.Systems)
+		{
+			if (rays == null)
+				rays = system.AsRayQuery;
+		}
+
+		lights.ForEach(scope [&] (component, entity) =>
+			{
+				if (!scene.IsEffectivelyActive(entity) || !component.Enabled)
+					return;
+				let light = MakeGpuLight(*component, scene.GetWorldMatrix(entity));
+				let falloff = light.FalloffAt(position);
+				if (falloff <= 0.0f)
+					return;
+				var lit = 1.0f;
+				// Only a light that casts shadows is stopped by a wall: one that does not
+				// lights through it on screen too, and the answer follows what the player sees.
+				if (component.CastsShadows && (rays != null))
+				{
+					var direction = -light.DirectionWS;
+					var reach = cDirectionalOcclusionReach;
+					if (component.Type != .Directional)
+					{
+						let toLight = light.PositionWS - position;
+						let distance = Length(toLight);
+						direction = toLight / Math.Max(distance, 1e-4f);
+						reach = distance - cLightClearance;
+					}
+					// The shader lerps toward lit by the shadow's strength.
+					if ((reach > 0.0f) && rays.CastRay(position, direction, reach, groupMask, ?))
+						lit = 1.0f - component.ShadowStrength;
+				}
+				total += light.Color * (light.Intensity * falloff * lit);
+			});
+		return total;
+	}
+
 	public static void ExtractLightsInto(Scene scene, ExtractedScene outScene)
 	{
 		let lights = scene.GetSystem<LightComponentManager>();
@@ -500,21 +590,7 @@ static class RenderExtract
 				if (!scene.IsEffectivelyActive(entity) || !component.Enabled)
 					return;
 
-				let world = scene.GetWorldMatrix(entity);
-				var light = GpuLight();
-				light.PositionWS = TransformPoint(Float3(0, 0, 0), world);
-				// Forward is -Z, which is the third basis row negated under the row vector
-				// convention.
-				light.DirectionWS = Normalized(Float3(-world.M[2][0], -world.M[2][1],
-					-world.M[2][2]));
-				light.Range = component.Range;
-				let lightColor = ToLinear(component.Color);
-				light.Color = .(lightColor.R, lightColor.G, lightColor.B);
-				light.Intensity = component.Intensity;
-				light.Type = (float)(uint32)component.Type;
-				light.InnerCos = Math.Cos(component.InnerAngle);
-				light.OuterCos = Math.Cos(component.OuterAngle);
-				light.ShadowStrength = component.ShadowStrength;
+				var light = MakeGpuLight(*component, scene.GetWorldMatrix(entity));
 
 				if (!haveShadow && component.CastsShadows && (component.Type == .Directional))
 				{

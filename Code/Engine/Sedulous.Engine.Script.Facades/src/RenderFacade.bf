@@ -23,6 +23,12 @@ class RenderFacade : SceneFacade
 	/// without a camera.
 	[Scriptable]
 	public bool SetCameraTarget(EntityHandle entity, Guid texture) => Cameras?.SetTarget(entity, texture) ?? false;
+	/// How much light reaches `position`, linear RGB: every enabled light by the renderer's own
+	/// falloff and cone, a shadow casting one stopped by what stands between (a ray among the
+	/// collision groups in `groupMask`), plus the ambient. A CPU estimate of the shading for a
+	/// light meter or a guard's eye, not a read of the frame; ask from a point off any surface.
+	[Scriptable]
+	public Float3 LightAt(Float3 position, uint32 groupMask = 0xFFFFFFFF) => RenderExtract.LightAt(Scene, position, groupMask);
 }
 
 /// `scene.Debug`: lines, shapes and text drawn over the scene for a frame. The drawer is

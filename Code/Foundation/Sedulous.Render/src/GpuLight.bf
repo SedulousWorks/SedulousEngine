@@ -34,6 +34,33 @@ struct GpuLight
 
 	public this() {}
 
+	/// The share of this light's intensity that reaches `point`, before any shadow: the
+	/// forward shader's range falloff and spot cone (forward.ps.hlsl Attenuation and
+	/// SpotAttenuation, kept the same), on the CPU, for a game asking how lit a place is. One
+	/// for a directional light.
+	public float FalloffAt(Float3 point)
+	{
+		if (Type < 0.5f)
+			return 1.0f;
+		let toLight = PositionWS - point;
+		let distance = Length(toLight);
+		var falloff = 1.0f;
+		if (Range > 0.0f)
+		{
+			let d = distance / Range;
+			let d2 = d * d;
+			let window = Math.Clamp(1.0f - d2 * d2, 0.0f, 1.0f);
+			falloff = (window * window) / (distance * distance + 1e-4f);
+		}
+		if (Type > 1.5f)
+		{
+			let l = toLight / Math.Max(distance, 1e-4f);
+			let cosAngle = -Dot(l, DirectionWS);
+			falloff *= Math.Clamp((cosAngle - OuterCos) / (InnerCos - OuterCos + 1e-4f), 0.0f, 1.0f);
+		}
+		return falloff;
+	}
+
 	/// What the shader's declaration says this is.
 	public const int SizeInBytes = 64;
 }

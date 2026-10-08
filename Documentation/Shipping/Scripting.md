@@ -52,6 +52,15 @@ free functions. `script_api` lists exactly what each one binds.
 all. It reaches only the calling run's pad (a Game tab's, the player's), and the run's end
 stops it.
 
+`scene.Render.LightAt(position)` answers how much light reaches a place, linear RGB: every
+enabled light by the renderer's own range falloff and spot cone, plus the environment's
+ambient. A light that casts shadows is stopped by what stands between (a ray through the
+scene's solid surfaces; `LightAt(position, groupMask)` picks the collision groups), by its
+shadow strength; one without shadows shines through walls, as it does on screen. It is a CPU
+estimate for a light meter or a guard's eye, not a read of the frame (the sky's image-based
+light is not in it). Ask from a point off any surface, a character's chest say: a ray that
+starts inside a wall is stopped by it.
+
 Components are script types too, as data with a few verbs: a script takes one from an
 entity, `CharacterComponent character = CharacterComponent(self);`, then reads and sets its
 fields and calls its verbs (`character.Move(vx, vz)`, `character.Jump(speed)`). The handle is

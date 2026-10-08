@@ -133,6 +133,46 @@ static class EngineSurfaceScriptTests
 		Test.Assert((a.EntityCount == 1) && (b.EntityCount == 1));
 	}
 
+	/// scene.Render.LightAt reads how lit a place is, with and without a group mask: a lamp with
+	/// no range falloff delivers its whole intensity anywhere.
+	[Test]
+	public static void AScriptReadsHowLitAPlaceIs()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("game", "game.as", """
+			bool meter(Scene@ scene)
+			{
+				Float3 lit = scene.Render.LightAt(Float3(0.0f, 0.0f, 0.0f));
+				Float3 masked = scene.Render.LightAt(Float3(0.0f, 0.0f, 0.0f), 1);
+				return (lit.X > 3.99f) && (lit.X < 4.01f) && (masked.Y > 3.99f);
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene();
+		let lights = scene.AddSystem<Sedulous.Engine.Render.LightComponentManager>();
+		let lampEntity = scene.CreateEntity("lamp");
+		scene.SetLocalPosition(lampEntity, .(0.0f, 2.0f, 0.0f));
+		let lamp = lights.Add(lampEntity);
+		lamp.Type = .Point;
+		lamp.Intensity = 4.0f;
+		lamp.Range = 0.0f; // no falloff: the full 4 arrives anywhere
+		scene.UpdateTransforms();
+
+		var arg = ScriptValue[1](.FromObject(scene));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("game", "bool meter(Scene@)", arg, ref r), "ran");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(r.AsBool, "the lamp's light reached the script");
+	}
+
 	/// A character controller through scene.Physics: the verbs write the intent the physics
 	/// step consumes, and an entity with no character is a no-op rather than a fault.
 	[Test]

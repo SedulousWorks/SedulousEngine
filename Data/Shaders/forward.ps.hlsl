@@ -271,6 +271,8 @@ float3 FresnelSchlick(float cosTheta, float3 F0) {
     return F0 + (F90 - F0) * f;
 }
 // Range-windowed inverse-square attenuation.
+// The range falloff and the spot cone, mirrored on the CPU by GpuLight.FalloffAt (GpuLight.bf)
+// for a game's "how lit is this place": change them together.
 float Attenuation(float dist, float range) {
     if (range <= 0.0) return 1.0;
     float d  = dist / range;
