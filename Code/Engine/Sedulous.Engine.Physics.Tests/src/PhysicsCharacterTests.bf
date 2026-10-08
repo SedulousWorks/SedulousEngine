@@ -172,15 +172,13 @@ class PhysicsCharacterTests
 		Test.Assert(play.Scene.GetWorldPosition(crate).X > (start + 0.3f));
 	}
 
-	/// A KNOWN GAP, pinned deliberately.
-	///
-	/// A character walking into a sensor raises NO trigger event: the trigger stream comes
-	/// from the world's rigid body contacts, and a character is a swept capsule rather than a
-	/// body in that solver, so its overlaps never reach it. This asserts the CURRENT
-	/// behaviour; when character to sensor contacts arrive it flips, and this becomes the
-	/// test that the event fires.
+	/// A character walking into a trigger raises TriggerEnter, and walking out TriggerExit. A
+	/// character is a swept capsule, not a body in the solver, so the world's contact listener
+	/// never saw it; the world now tests the capsule against triggers after each sweep and
+	/// raises the events itself (Lamplight's checkpoints are triggers the thief walks into).
+	/// This test pinned the gap until then.
 	[Test]
-	public static void ACharacterWalkingIntoATriggerRaisesNothing()
+	public static void ACharacterWalkingIntoATriggerRaisesEnterAndOutOfItExit()
 	{
 		let play = scope PhysicsPlayScene();
 		play.AddFloor();
@@ -202,28 +200,35 @@ class PhysicsCharacterTests
 		listeners.Add(recorder);
 		play.Physics.SetContactListeners(listeners);
 
+		// Straight through where the trigger is (x 2.3 to 3.7) and out past it.
 		let character = play.Characters.Get(hero);
 		character.MoveVelocity = .(3.0f, 0.0f, 0.0f);
 
-		var entered = false;
+		var entered = 0;
+		var exited = 0;
+		var enteredAt = 0.0f;
 		for (int i < 240)
 		{
 			play.Step(1);
 			for (let contact in recorder.Contacts)
 			{
-				if (contact.Kind != .TriggerEnter)
+				if (!(((contact.A == volume) && (contact.B == hero))
+					|| ((contact.A == hero) && (contact.B == volume))))
 					continue;
-
-				if (((contact.A == volume) && (contact.B == hero))
-					|| ((contact.A == hero) && (contact.B == volume)))
-					entered = true;
+				if ((contact.Kind == .TriggerEnter) && (entered++ == 0))
+					enteredAt = character.CurrPosition.X;
+				if (contact.Kind == .TriggerExit)
+					exited++;
 			}
+			recorder.Contacts.Clear();
 		}
 
-		// It really did walk through the volume.
-		Test.Assert(character.CurrPosition.X > 3.0f);
-		// And yet nothing fired, which is the gap.
-		Test.Assert(!entered);
+		// It really did walk through the volume and out.
+		Test.Assert(character.CurrPosition.X > 4.5f, scope $"at {character.CurrPosition.X}");
+		Test.Assert(entered == 1, scope $"once in, got {entered}");
+		Test.Assert(exited == 1, scope $"once out, got {exited}");
+		// In when the capsule (radius 0.35) reaches the box's near side, give or take a step.
+		Test.Assert((enteredAt > 1.6f) && (enteredAt < 2.3f), scope $"entered at {enteredAt}");
 	}
 
 	private static float Dot3(Float3 a, Float3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;

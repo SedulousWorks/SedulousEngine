@@ -46,6 +46,10 @@ class PhysicsWorld
 
 	private List<JointSlot> mJoints = new .() ~ delete _;
 	private List<CharacterSlot> mCharacters = new .() ~ delete _;
+	/// The triggers each character stood inside after its last sweep, per slot: a character is
+	/// a swept capsule, not a body in the solver, so the contact listener never sees it enter
+	/// one; UpdateCharacter compares these and raises TriggerEnter and TriggerExit itself.
+	private List<List<BodyId>> mCharacterSensors = new .() ~ DeleteContainerAndItems!(_);
 
 	/// The contacts buffered during a step. The backend's WORKER THREADS append to this, so
 	/// everything that touches it holds the lock; the fixed step driver drains it after.
@@ -550,9 +554,18 @@ class PhysicsWorld
 	/// procedures are process wide and only the user word is per filter.
 	/// A body filter's user word: pass solid bodies only, a trigger (a sensor) not being a surface.
 	private const int cSolidBodiesOnly = 1;
+	/// Triggers only: what a character stands inside.
+	private const int cSensorsOnly = 2;
 
-	private static bool SolidBodyShouldCollideLocked(void* user, JPH_Body* body)
-		=> ((int)user != cSolidBodiesOnly) || !JPH_Body_IsSensor(body);
+	private static bool BodyKindShouldCollideLocked(void* user, JPH_Body* body)
+	{
+		switch ((int)user)
+		{
+		case cSolidBodiesOnly: return !JPH_Body_IsSensor(body);
+		case cSensorsOnly: return JPH_Body_IsSensor(body);
+		default: return true;
+		}
+	}
 
 	private static bool GroupMaskShouldCollide(void* user, JPH_ObjectLayer layer)
 	{
@@ -589,7 +602,7 @@ class PhysicsWorld
 			JPH_ObjectLayerFilter_SetProcs(&sLayerProcs);
 
 			sBodyProcs.ShouldCollide = null;
-			sBodyProcs.ShouldCollideLocked = => SolidBodyShouldCollideLocked;
+			sBodyProcs.ShouldCollideLocked = => BodyKindShouldCollideLocked;
 			JPH_BodyFilter_SetProcs(&sBodyProcs);
 
 			sContactProcs.OnContactValidate = null;
@@ -972,10 +985,12 @@ class PhysicsWorld
 			if (mCharacters[i].Character == null)
 			{
 				mCharacters[i] = slot;
+				mCharacterSensors[i].Clear();
 				return CharacterId((uint32)i);
 			}
 		}
 		mCharacters.Add(slot);
+		mCharacterSensors.Add(new .());
 		return CharacterId((uint32)(mCharacters.Count - 1));
 	}
 
@@ -986,6 +1001,7 @@ class PhysicsWorld
 
 		JPH_CharacterBase_Destroy((JPH_CharacterBase*)mCharacters[index].Character);
 		mCharacters[index] = .();
+		mCharacterSensors[index].Clear();
 	}
 
 	private bool ResolveCharacter(CharacterId id, out int index)
@@ -1044,6 +1060,62 @@ class PhysicsWorld
 		// with; its own group is nought, since a character is not a designer group member.
 		JPH_CharacterVirtual_ExtendedUpdate(slot.Character, deltaTime, &settings,
 			PhysicsLayers.From(.Dynamic, 0), mSystem, null, null);
+		SenseTriggers(index);
+	}
+
+	/// After a character's sweep: the triggers it now stands inside against those of the last
+	/// sweep, raised as TriggerEnter and TriggerExit into the contact stream the bodies feed (the
+	/// trigger on side A, the character's user word on side B, at the character). A character
+	/// is not a body in the solver, so no contact reports them otherwise; they are drained with
+	/// the next step's contacts.
+	private void SenseTriggers(int index)
+	{
+		let character = mCharacters[index].Character;
+
+		// The triggers the capsule overlaps where the sweep left it, each body once.
+		let inside = scope List<BodyId>();
+		let sensorsOnly = JPH_BodyFilter_Create((void*)(int)cSensorsOnly);
+		defer JPH_BodyFilter_Destroy(sensorsOnly);
+		var transform = JPH_RMat4();
+		JPH_CharacterVirtual_GetCenterOfMassTransform(character, &transform);
+		var settings = JPH_CollideShapeSettings();
+		JPH_CollideShapeSettings_Init(&settings);
+		var scale = JPH_Vec3() { x = 1.0f, y = 1.0f, z = 1.0f };
+		var baseOffset = JPH_Vec3();
+		JPH_NarrowPhaseQuery_CollideShape2(JPH_PhysicsSystem_GetNarrowPhaseQuery(mSystem),
+			JPH_CharacterBase_GetShape((JPH_CharacterBase*)character), &scale, &transform, &settings,
+			&baseOffset, .JPH_CollisionCollectorType_AllHit, => CollectOverlap,
+			Internal.UnsafeCastToPtr(inside), null, null, sensorsOnly, null);
+
+		var position = JPH_Vec3();
+		JPH_CharacterVirtual_GetPosition(character, &position);
+		let at = FromJolt(position);
+		let characterUser = JPH_CharacterVirtual_GetUserData(character);
+		let before = mCharacterSensors[index];
+		for (let sensor in inside)
+		{
+			if (!before.Contains(sensor))
+				RaiseCharacterTrigger(.TriggerEnter, sensor, characterUser, at);
+		}
+		for (let sensor in before)
+		{
+			if (!inside.Contains(sensor))
+				RaiseCharacterTrigger(.TriggerExit, sensor, characterUser, at);
+		}
+		before.Clear();
+		before.AddRange(inside);
+	}
+
+	/// A character's trigger event, as the listener reports a body's.
+	private void RaiseCharacterTrigger(ContactKind kind, BodyId sensor, uint64 characterUser, Float3 at)
+	{
+		var event = ContactEvent();
+		event.Kind = kind;
+		event.BodyA = sensor;
+		event.UserA = JPH_BodyInterface_GetUserData(Bodies, sensor.Value);
+		event.UserB = characterUser;
+		event.Point = at;
+		Buffer(event);
 	}
 
 	public Float3 CharacterPosition(CharacterId id)
