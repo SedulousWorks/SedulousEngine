@@ -54,6 +54,11 @@ free functions. `script_api` lists exactly what each one binds.
 all. It reaches only the calling run's pad (a Game tab's, the player's), and the run's end
 stops it.
 
+An entity's place, turn and size in the world, every ancestor's included, are
+`entity.GetWorldPosition()`, `GetWorldRotation()` and `GetWorldScale()` (identity and one for an
+invalid entity); `GetLocalTransform()` is its own. A lantern on a guard aims along
+`RotateVector(lantern.GetWorldRotation(), Float3(0, 0, -1))` whatever the guard's parent is.
+
 `scene.Physics.RayCast(...)` answers a `PhysicsHit`: whether it hit, the entity, the distance,
 position and normal, the struck face's `Surface` slot on a cooked mesh, and the `Material` of the
 struck body (its rigid body's physical material, nil without one): what is underfoot, for a

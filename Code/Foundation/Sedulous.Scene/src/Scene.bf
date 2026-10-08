@@ -431,6 +431,27 @@ class Scene
 		return .(world.M[3][0], world.M[3][1], world.M[3][2]);
 	}
 
+	/// The rotation in the world: the entity's own turn and every ancestor's, scale aside, as
+	/// GetWorldPosition is its place. Identity for a dead entity or a degenerate (zero scale)
+	/// one. A guard's lantern, a child tipped down, aims where the guard's turn and its own send
+	/// it, whatever the guard's parent is.
+	[Scriptable]
+	public Quaternion GetWorldRotation(EntityHandle entity)
+	{
+		Decompose(GetWorldMatrix(entity), ?, let rotation, ?);
+		return rotation;
+	}
+
+	/// The scale in the world: the entity's own and every ancestor's, per axis (a basis axis's
+	/// length). One for a dead entity or a degenerate (zero scale) one. Under a rotated parent
+	/// with an uneven scale the world shears, and an axis's length is all a scale can say of it.
+	[Scriptable]
+	public Float3 GetWorldScale(EntityHandle entity)
+	{
+		Decompose(GetWorldMatrix(entity), ?, ?, let scale);
+		return scale;
+	}
+
 	/// Whether the world matrix was recomputed in the most recent UpdateTransforms: it
 	/// moved, was reparented, or a dirty ancestor cascaded through it. Read in
 	/// PostTransform.

@@ -252,6 +252,52 @@ static class BehaviorLifecycleTests
 		Test.Assert(Math.Abs(play.PropFloat(e, "seen") - 25.0f) < 0.01f, scope $"the child's fresh world position, read {play.PropFloat(e, "seen")}");
 	}
 
+	/// A child's turn in the world is its parent's after its own, scale aside, and its scale
+	/// theirs times its own: a guard's lantern, a child tipped down, aims where the guard's turn
+	/// and its own send it.
+	[Test]
+	public static void WorldRotationComposesTheAncestorsTurnsAndWorldScaleTheirScales()
+	{
+		let play = scope ScriptPlayScene();
+		let parent = play.Scene.CreateEntity("Parent");
+		let child = play.Scene.CreateEntity("Child");
+		play.Scene.SetParent(child, parent);
+		play.Scene.SetLocalTransform(parent, .(.(0, 0, 0), Quaternion.FromAxisAngle(.(0, 1, 0), 1.2f), .(2, 2, 2)));
+		play.Scene.SetLocalTransform(child, .(.(0, 0, 0), Quaternion.FromAxisAngle(.(1, 0, 0), -0.4f), .(1.5f, 1.5f, 1.5f)));
+		let reader = play.Class("Reader", """
+			class Reader
+			{
+				Scene@ scene;
+				bool turned = false;
+				bool composed = false;
+				bool scaled = false;
+				bool deadIsIdentity = false;
+				void onUpdate(float dt)
+				{
+					Entity p = scene.FindEntityByName("Parent");
+					Entity c = scene.FindEntityByName("Child");
+					Float3 f = Float3(0.0f, 0.0f, -1.0f);
+					Float3 world = RotateVector(c.GetWorldRotation(), f);
+					Float3 own = RotateVector(p.GetLocalTransform().Rotation, RotateVector(c.GetLocalTransform().Rotation, f));
+					Float3 d = world - own;
+					turned = world.Z > -0.99f;
+					composed = Dot(d, d) < 1e-8f;
+					Float3 s = c.GetWorldScale();
+					scaled = (s.X > 2.999f) && (s.X < 3.001f) && (s.Y > 2.999f) && (s.Z < 3.001f);
+					Float3 none = RotateVector(scene.GetWorldRotation(Entity()), f);
+					deadIsIdentity = (none.Z < -0.999f) && (scene.GetWorldScale(Entity()).X == 1.0f);
+				}
+			}
+			""");
+		let e = play.AddBehavior(reader, "reader");
+		play.Start();
+		play.Step();
+		Test.Assert(play.Prop(e, "turned").AsBool, "the child is turned in the world");
+		Test.Assert(play.Prop(e, "composed").AsBool, "its world turn is its parent's after its own");
+		Test.Assert(play.Prop(e, "scaled").AsBool, "its world scale is theirs multiplied");
+		Test.Assert(play.Prop(e, "deadIsIdentity").AsBool, "an invalid entity reads identity and one");
+	}
+
 	[Test]
 	public static void AReloadRebuildsTheInstanceAndReappliesOverrides()
 	{
