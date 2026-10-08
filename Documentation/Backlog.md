@@ -50,6 +50,22 @@ or a Windows build fails to link.
 The sync from Raptor 0b60c738 to 8be4094d, and the PaperKid rebuild after it, are done; their
 map is [RaptorSync.md](RaptorSync.md).
 
+### Audit the ports for missed halves
+
+Porting Raptor a085aad1 found that 95db51e0 (vegetation P0, ported 2026-09-22) had been brought
+across without its writer: ExtractedScene.ViewOrigin was read by the vegetation fade but nothing
+set it, so the fade never ran (fixed in 0f4aa004). A port that copies a reader and not the writer
+in another file is the kind of miss porting exists to prevent, so the past ports want an audit
+(planned for a weekend; about 607 Raptor engine commits since 2026-09-01):
+
+1. A wiring sweep: Sedulous members never called outside tests whose Raptor counterparts are
+   called, and each subsystem's per frame and start up sequences (render, physics, navigation,
+   script, animation, UI, audio, scene, game instance) compared side by side with Raptor's.
+2. A commit level audit of the engine commits ported since the one way port: every hunk has a
+   counterpart here, or a recorded reason it does not.
+
+Each confirmed gap gets a fix and a test. Remove this entry when the audit is done.
+
 ## Engine findings
 
 ### Script references are invisible to `asset_uses` and `asset_delete`
