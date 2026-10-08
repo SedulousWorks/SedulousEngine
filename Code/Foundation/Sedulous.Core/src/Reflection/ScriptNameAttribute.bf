@@ -15,7 +15,9 @@ namespace Sedulous.Core;
 /// renaming is the only way out of it.
 ///
 /// Also the plain override for a derived name that reads badly or collides with a keyword of
-/// the target language. Worth applying sparingly either way: every use is a name that has to
+/// the target language, or that the Beef type cannot spell because a member already holds it:
+/// a property's getter carries it (a component's script facing `Root` beside its runtime
+/// `Root` field). Worth applying sparingly either way: every use is a name that has to
 /// be looked up rather than guessed.
 ///
 /// NOT the name a facade's module is reached through; that is the facade's own business.

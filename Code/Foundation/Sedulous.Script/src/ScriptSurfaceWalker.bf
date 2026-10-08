@@ -713,9 +713,15 @@ static class ScriptSurfaceWalker
 			if (m.HasCustomAttribute<ReadOnlyAttribute>())
 				canWrite = false;
 
+			// [ScriptName] on the getter names it for scripts where the Beef name is taken (a
+			// runtime field of the same name); the accessors still reach the Beef property.
+			var scriptName = StringView(name);
+			if (m.GetCustomAttribute<ScriptNameAttribute>() case .Ok(let sn))
+				scriptName = sn.Name;
+
 			let typeName = m.ReturnType.GetFullName(.. scope .());
 			let code = ctx.Code;
-			code.AppendF("\t\tt.AddField({}, {}, {}, true).OfKind(.{})", Quote(name, .. scope .()), Quote(typeName, .. scope .()), Bool(m.IsStatic), ScriptValueMap.KindOf(m.ReturnType, .. scope .()));
+			code.AppendF("\t\tt.AddField({}, {}, {}, true).OfKind(.{})", Quote(scriptName, .. scope .()), Quote(typeName, .. scope .()), Bool(m.IsStatic), ScriptValueMap.KindOf(m.ReturnType, .. scope .()));
 			if (!canWrite)
 				code.Append(".ReadOnly()");
 			EmitMethodMetadataAsField(m, code);

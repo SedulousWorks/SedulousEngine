@@ -69,11 +69,12 @@ struct UICanvasComponent : ISerializable, IComponentResources
 
 	public this() {}
 
-	/// The instantiated tree as a script container, the same ViewGroup handle `Ui.Root` gives
-	/// the screen tier, so the same finders reach inside: a meter over a guard's head is
-	/// `UIBillboardComponent(guard).RootGroup.FindProgressBar("meter")`. A null but valid handle
-	/// until the tree is built, or when its root is a single control rather than a group.
-	[Scriptable]
+	/// The instantiated tree as a script container, `Root` in a script: the same ViewGroup
+	/// handle `Ui.Root` gives the screen tier, so the same finders reach inside, and a meter
+	/// over a guard's head is `UIBillboardComponent(guard).Root.FindProgressBar("meter")`. A
+	/// null but valid handle until the tree is built, or when its root is a single control
+	/// rather than a group. Named apart in Beef, where Root is the runtime field.
+	[Scriptable, ScriptName("Root")]
 	public UiGroup RootGroup => .(Root as ViewGroup);
 
 	public void ResolveResources(ResourceManager manager) mut
