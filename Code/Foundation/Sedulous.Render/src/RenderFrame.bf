@@ -348,12 +348,15 @@ class RenderFrame
 		return 0;
 	}
 
-	public int AnimatedShadowCasterCount(ExtractedScene scene)
+	/// How many of this scene's casters moved, from the last frame that built its shadow
+	/// context: the skinned ones, and while the scene has cached shadows any that moved,
+	/// appeared or went since the last frame.
+	public int MovingShadowCasterCount(ExtractedScene scene)
 	{
 		for (let context in mSceneShadowPool)
 		{
 			if ((context.Scene == scene) && (scene != null))
-				return context.AnimatedSpheres.Count;
+				return context.MovingCasters;
 		}
 		return 0;
 	}
@@ -668,6 +671,16 @@ class RenderFrame
 	{
 		context.Casters.Clear();
 		context.AnimatedSpheres.Clear();
+		context.MovingCasters = 0;
+		// Moved casters matter only to the cached (static) atlas tiles; without any, nothing is
+		// kept.
+		var cached = false;
+		for (let caster in scene.LocalShadowCasters)
+			cached = cached || caster.IsStatic;
+		context.BoundsFrame ^= 1;
+		let bounds = context.CasterBoundsById[context.BoundsFrame];
+		let lastBounds = context.CasterBoundsById[context.BoundsFrame ^ 1];
+		bounds.Clear();
 
 		for (let data in scene.Items)
 		{
@@ -695,10 +708,46 @@ class RenderFrame
 				// A skinned caster deforms every frame, so its sphere is remembered and only
 				// the static tiles whose light volume it overlaps are re-rendered.
 				if ((mesh.BoneMatrices != null) && (mesh.BoneCount > 0))
+				{
 					context.AnimatedSpheres.Add(.(mesh.WorldCenter, mesh.WorldRadius));
+					context.MovingCasters++;
+					context.Casters.Add(.(SortKeys.MakeSortKey(data.Category, stateBits, 0), data));
+					continue;
+				}
+			}
+
+			if (cached && (data.EntityId != 0))
+			{
+				// Any other caster is still unless its bounds changed since the last frame, or
+				// it is new: then where it is and where it was both redraw, so its old shadow
+				// leaves the cache.
+				let sphere = BoundingSphere(data.WorldCenter, data.WorldRadius);
+				bounds[data.EntityId] = sphere;
+				let had = lastBounds.TryGetValue(data.EntityId, let was);
+				if (!had || (was.Center.X != sphere.Center.X) || (was.Center.Y != sphere.Center.Y)
+					|| (was.Center.Z != sphere.Center.Z) || (was.Radius != sphere.Radius))
+				{
+					context.AnimatedSpheres.Add(sphere);
+					if (had)
+						context.AnimatedSpheres.Add(was);
+					context.MovingCasters++;
+				}
 			}
 
 			context.Casters.Add(.(SortKeys.MakeSortKey(data.Category, stateBits, 0), data));
+		}
+
+		if (cached)
+		{
+			for (let entry in lastBounds)
+			{
+				// Gone: its shadow leaves the cache.
+				if (!bounds.ContainsKey(entry.key))
+				{
+					context.AnimatedSpheres.Add(entry.value);
+					context.MovingCasters++;
+				}
+			}
 		}
 
 		DrawItemSorter.RadixSortDrawItems(context.Casters, mSortScratch);
@@ -716,8 +765,8 @@ class RenderFrame
 	/// A signature over the STATIC casters' quantised transforms and their count. When it
 	/// moves, the cached static layer re-renders for one cycle of frames in flight.
 	///
-	/// The static contract is that the caster GEOMETRY does not move, so only the lights
-	/// themselves feed this.
+	/// Only the lights themselves feed this: a caster that moves, appears or goes redraws the
+	/// tiles it touches on its own (BuildShadowCasterList's moving spheres).
 	private static uint64 StaticCasterSignature(ExtractedScene scene)
 	{
 		if (scene == null)
@@ -787,6 +836,9 @@ class RenderFrame
 				context.Scene = scene;
 				context.Casters.Clear();
 				context.CasterBounds.Clear();
+				// Last frame's moving casters, kept to redraw what they left.
+				context.PrevAnimatedSpheres.Clear();
+				context.PrevAnimatedSpheres.AddRange(context.AnimatedSpheres);
 				context.AnimatedSpheres.Clear();
 				context.StaticTiles.Clear();
 				context.StaticRenderTiles.Clear();
@@ -916,15 +968,9 @@ class RenderFrame
 
 			for (int t < context.StaticTiles.Count)
 			{
-				for (let sphere in context.AnimatedSpheres)
-				{
-					if (Length(sphere.Center - context.StaticTiles[t].CullCenter)
-						<= (context.StaticTiles[t].CullRadius + sphere.Radius))
-					{
-						context.StaticTileDirty[t] = framesInFlight;
-						break;
-					}
-				}
+				if (ShadowMath.MovingCasterTouchesTile(context.StaticTiles[t].CullCenter,
+					context.StaticTiles[t].CullRadius, context.AnimatedSpheres, context.PrevAnimatedSpheres))
+					context.StaticTileDirty[t] = framesInFlight;
 			}
 
 			context.StaticRenderTiles.Clear();

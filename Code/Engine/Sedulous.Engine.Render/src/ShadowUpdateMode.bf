@@ -8,8 +8,8 @@ enum ShadowUpdateMode : uint32
 {
 	/// Re-rendered every frame.
 	case Realtime = 0;
-	/// Rendered ONCE into the cached atlas layer, on the assumption that the casters do not
-	/// move. The cache refreshes only when the LIGHT itself does, which is what makes it
-	/// cheap for a static scene.
+	/// Rendered into the cached atlas layer, and redrawn when the LIGHT moves or changes, and
+	/// where a caster moves, appears or goes (a figure walking, a door swinging) within its
+	/// reach. Cheap for scenes that mostly stand still.
 	case Static = 1;
 }

@@ -24,8 +24,20 @@ class SceneShadowContext
 	/// A compact array so the per cascade cull streams it linearly rather than chasing each
 	/// item's own allocation, which is what the cull cost at scale.
 	public List<Float4> CasterBounds = new .() ~ delete _;
-	/// The skinned casters' world spheres, which is what routes a static tile's refresh.
+	/// The moving casters' world spheres, which is what routes a static tile's refresh: a
+	/// skinned caster, and while the scene has cached shadows any caster that moved, appeared
+	/// or went (where it is and where it was).
 	public List<BoundingSphere> AnimatedSpheres = new .() ~ delete _;
+	/// Last frame's, so a caster that has just left a tile redraws it too: the cache still
+	/// holds its shadow there.
+	public List<BoundingSphere> PrevAnimatedSpheres = new .() ~ delete _;
+	/// How many casters moved this frame, for diagnostics and tests.
+	public int MovingCasters = 0;
+	/// Each caster's bounds by entity, this frame's and last frame's alternating, so a caster
+	/// that moved (a door swinging), appeared or went redraws the cached tiles it touches.
+	/// Kept only while the scene has cached (static) local shadows.
+	public Dictionary<uint64, BoundingSphere>[2] CasterBoundsById = .(new .(), new .()) ~ { delete _[0]; delete _[1]; };
+	public int BoundsFrame = 0;
 
 	/// This scene's tiles in the static layer this frame.
 	public List<LocalShadowTile> StaticTiles = new .() ~ delete _;

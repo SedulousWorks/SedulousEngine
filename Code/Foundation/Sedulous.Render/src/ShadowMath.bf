@@ -118,6 +118,25 @@ static class ShadowMath
 		return cascades;
 	}
 
+	/// Whether a cached (static) atlas tile must be redrawn for a moving caster (a figure, a
+	/// door) touching its light's volume: one there now, or one there last frame, which has
+	/// just left and whose shadow the cache still holds.
+	public static bool MovingCasterTouchesTile(Float3 tileCenter, float tileRadius,
+		Span<BoundingSphere> now, Span<BoundingSphere> before)
+	{
+		for (let sphere in now)
+		{
+			if (Length(sphere.Center - tileCenter) <= (tileRadius + sphere.Radius))
+				return true;
+		}
+		for (let sphere in before)
+		{
+			if (Length(sphere.Center - tileCenter) <= (tileRadius + sphere.Radius))
+				return true;
+		}
+		return false;
+	}
+
 	/// Which part of the atlas a tile occupies.
 	public static AtlasTile AtlasTileRect(uint32 tileIndex, uint32 atlasResolution,
 		uint32 tileResolution)

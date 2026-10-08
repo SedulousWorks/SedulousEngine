@@ -482,8 +482,65 @@ class RenderFrameTests
 
 		// All three are casters, on the base fields alone; exactly the skinned MESH is animated.
 		Test.Assert(frame.ShadowCasterCount(scene) == 3, "every opaque item casts");
-		Test.Assert(frame.AnimatedShadowCasterCount(scene) == 1,
-			scope $"one animated caster, not {frame.AnimatedShadowCasterCount(scene)}");
+		Test.Assert(frame.MovingShadowCasterCount(scene) == 1,
+			scope $"one moving caster, not {frame.MovingShadowCasterCount(scene)}");
+	}
+
+	/// A caster that moves, appears or goes counts as moving while the scene has cached
+	/// shadows, so the cached tiles it touches redraw where it is and where it was: a door
+	/// swinging by a torch drops its shut shadow (Raptor 01aa9281). Only skinned casters
+	/// counted before.
+	[Test]
+	public static void ACasterThatMovesAppearsOrGoesCountsAsMovingForCachedShadows()
+	{
+		let fixture = scope RenderFrameFixture(128, 128);
+		if (!fixture.Ready)
+			return;
+
+		let external = scope InertOpaqueRenderer();
+		let registry = scope RendererRegistry();
+		registry.Register(external);
+		let shadows = scope ShadowSystem(fixture.Device, 2);
+		Test.Assert(shadows.Initialize() case .Ok);
+		let frame = scope RenderFrame(fixture.Device, registry, 2, null, null, shadows);
+
+		// A door and a wall (plain casters, no bones) by a torch whose shadow is cached.
+		let scene = scope ExtractedScene();
+		let door = scene.Add<JunkRenderData>();
+		let wall = scene.Add<JunkRenderData>();
+		var id = (uint64)7;
+		for (let data in RenderData[2](door, wall))
+		{
+			data.Category = RenderCategories.Opaque;
+			data.RendererId = external.RendererId;
+			data.WorldRadius = 1.0f;
+			data.EntityId = id++;
+		}
+		wall.WorldCenter = .(3.0f, 1.5f, 0.0f);
+		var torch = LocalShadowCaster();
+		torch.Type = 1;
+		torch.PositionWS = .(1.0f, 1.5f, 1.0f);
+		torch.Range = 6.0f;
+		torch.IsStatic = true;
+		scene.AddLocalShadowCaster(torch);
+
+		let camera = RenderFrameFixture.LookingAtTheOrigin();
+		int Render()
+		{
+			frame.Begin(fixture.Encoder, 0);
+			frame.AddView(scene, camera, .(), fixture.ColorView, .BGRA8Unorm, 128, 128);
+			frame.End();
+			return frame.MovingShadowCasterCount(scene);
+		}
+
+		Test.Assert(Render() == 2, "both new to the cache");
+		Test.Assert(Render() == 0, "still");
+		door.WorldCenter = .(0.5f, 1.0f, 0.5f); // the door swings
+		Test.Assert(Render() == 1, "the door moved");
+		Test.Assert(Render() == 0, "and stopped");
+		door.CastShadows = false; // gone from the casters
+		Test.Assert(Render() == 1, "the door went");
+		Test.Assert(Render() == 0);
 	}
 
 	/// The shadow passes draw the scene's caster list, which the camera does not cull, so the

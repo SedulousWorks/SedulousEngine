@@ -292,4 +292,22 @@ class ShadowMathTests
 		Test.Assert(defaults.DepthBias == ShadowBiasDefaults.LocalDepthBias);
 		Test.Assert(GpuLight().ShadowStrength == 1.0f, "a light shadows fully unless told otherwise");
 	}
+
+	/// A cached tile redraws while a moving caster is in it, and once after it leaves: last
+	/// frame's sphere still reaches it, so the figure's shadow leaves the cache too (Raptor
+	/// 0d619aa0).
+	[Test]
+	public static void ACachedTileRedrawsWhileAMovingCasterIsInItAndOnceAfterItLeaves()
+	{
+		let torch = Float3(0.0f, 1.5f, 0.0f);
+		BoundingSphere[1] inside = .(.(.(2.0f, 0.9f, 0.0f), 1.0f));
+		BoundingSphere[1] away = .(.(.(20.0f, 0.9f, 0.0f), 1.0f));
+		BoundingSphere[1] grazing = .(.(.(6.5f, 0.9f, 0.0f), 1.0f)); // its sphere reaches the 6 m volume
+		Test.Assert(ShadowMath.MovingCasterTouchesTile(torch, 6.0f, inside, .()));
+		Test.Assert(ShadowMath.MovingCasterTouchesTile(torch, 6.0f, grazing, .()));
+		Test.Assert(!ShadowMath.MovingCasterTouchesTile(torch, 6.0f, away, .()));
+		// Walked out this frame: last frame's sphere still redraws the tile.
+		Test.Assert(ShadowMath.MovingCasterTouchesTile(torch, 6.0f, away, inside));
+		Test.Assert(!ShadowMath.MovingCasterTouchesTile(torch, 6.0f, away, away));
+	}
 }
