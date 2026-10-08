@@ -1399,11 +1399,9 @@ class MeshRenderer : Renderer
 				continue;
 			}
 
-			// A skinned mesh carries its bone base per instance now, so it batches like a
-			// static one: identical skinned instances collapse into a single draw.
-			let headSkinned = (head.Mesh != null) && head.Mesh.IsSkinned
-				&& (head.BoneMatrices != null);
-			// A faded mesh's fade rides its instance's DataOffsets.W, so it draws instanced too.
+			// Skinned and faded meshes batch like any other: identical instances collapse into
+			// one instanced draw, and a lone one draws by the single path, which carries the same
+			// bones and fade per object.
 			let headFaded = head.Fade > 0.0f;
 
 			// The run extends while the mesh and material match, and while it stays faded or
@@ -1424,10 +1422,7 @@ class MeshRenderer : Renderer
 
 			if (mMeshes.GetOrUpload(head.Mesh) case .Ok(let gpuMesh))
 			{
-				// A skinned draw always takes the instanced path, even alone: the single path
-				// has nowhere to carry a bone base. So does a faded one, whose fade only the
-				// instanced path carries.
-				if ((runLength >= 2) || headSkinned || headFaded)
+				if (runLength >= 2)
 					ResolveInstanced(context, viewOffset, clusterBindGroup, items, i, runLength,
 						head, gpuMesh, outDraws);
 				else
@@ -1512,9 +1507,8 @@ class MeshRenderer : Renderer
 				continue;
 			}
 
-			let headSkinned = (head.Mesh != null) && head.Mesh.IsSkinned
-				&& (head.BoneMatrices != null);
-
+			// Skinned casters batch like static ones; a lone one draws by the single path, its
+			// bone base riding the object block there.
 			var j = i + 1;
 			while (j < items.Length)
 			{
@@ -1527,7 +1521,7 @@ class MeshRenderer : Renderer
 
 			if (mMeshes.GetOrUpload(head.Mesh) case .Ok(let gpuMesh))
 			{
-				if ((runLength >= 2) || headSkinned)
+				if (runLength >= 2)
 					ResolveDepthInstanced(context, shadowViewOffset, items, i, runLength, gpuMesh,
 						outDraws, pick);
 				else
@@ -1549,6 +1543,7 @@ class MeshRenderer : Renderer
 		// bones from the shared device pool at the base worked out once this frame. Nothing is
 		// uploaded here.
 		uint32 boneBase = 0;
+		uint32 prevBoneBase = 0;
 		var skinned = (md.BoneMatrices != null) && (md.BoneCount > 0) && (md.Mesh != null)
 			&& md.Mesh.IsSkinned && (mesh.SkinBuffer != null);
 
@@ -1557,6 +1552,8 @@ class MeshRenderer : Renderer
 			if (mBoneStart.TryGetValue((int)(void*)md.BoneMatrices, let slot))
 			{
 				boneBase = slot.Base;
+				// Last frame's pose: the skinned motion vectors.
+				prevBoneBase = slot.PrevBase;
 				config.VertexLayout = .SkinnedMesh;
 				config.ShaderFlags |= .Skinned;
 			}
@@ -1577,7 +1574,8 @@ class MeshRenderer : Renderer
 		objectData.PrevWorld = context.NeedsMotion ? PrevWorldFor(md.EntityId, md.World) : md.World;
 		objectData.Tint = md.Color;
 		objectData.BoneBase = boneBase;
-		objectData.PrevBoneBase = boneBase;
+		objectData.PrevBoneBase = prevBoneBase;
+		objectData.Fade = md.Fade;
 		*(MeshObjectData*)object.Ptr = objectData;
 
 		var template = ResolvedDraw();

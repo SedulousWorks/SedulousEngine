@@ -69,8 +69,8 @@ class VertexLayoutTests
 		Test.Assert(mesh.Ptr == skinned.Ptr, "the same table, not a copy of it");
 	}
 
-	/// The skinning stream sits at locations six and seven, because a skinned draw is
-	/// always instanced and the per instance offsets take five.
+	/// The skinning stream sits at locations six and seven, past the per instance offsets at
+	/// five, where the shaders pin them.
 	[Test]
 	public static void TheSkinningStreamAvoidsTheInstanceLocation()
 	{

@@ -16,7 +16,9 @@ namespace Sedulous.Render.Backend.Tests;
 /// Three cards side by side, solid, faded a half and faded out, with a solid card behind the
 /// faded out one. The solid card is untouched, the half faded one keeps about half its pixels,
 /// and the faded out one draws none and hides none of the card behind it, so it stayed out of
-/// the depth prepass too. The two faded cards share one instanced draw, each with its own fade.
+/// the depth prepass too. The two faded cards share one instanced draw, each with its own fade;
+/// drawn apart (each its own material), each is a lone draw by the single path, which thins
+/// them the same.
 class DitherFadeProbeTests
 {
 	private const uint32 cSize = 128;
@@ -47,9 +49,10 @@ class DitherFadeProbeTests
 	/// The lit pixels in the left, middle and right third of the frame, or null when the frame
 	/// could not be built. The cards stand at three metres: solid on the left, `middleFade` in
 	/// the middle, `rightFade` on the right (none when negative), and a wider solid card six
-	/// metres away behind the right one.
+	/// metres away behind the right one. `apart`: the middle and right cards each have a
+	/// material of their own, so neither batches.
 	private static uint32[3]? RenderCards(BackendProbeFixture fixture, float middleFade,
-		float rightFade)
+		float rightFade, bool apart = false)
 	{
 		let device = fixture.Device;
 		let shaders = fixture.Shaders;
@@ -71,34 +74,40 @@ class DitherFadeProbeTests
 		defer delete card;
 		let material = MaterialPresets.CreatePbr("dither.card", .(0.9f, 0.9f, 0.9f, 1), 0.0f, 0.9f);
 		defer delete material;
+		let middleMaterial = MaterialPresets.CreatePbr("dither.middle", .(0.9f, 0.9f, 0.9f, 1), 0.0f, 0.9f);
+		defer delete middleMaterial;
+		let rightMaterial = MaterialPresets.CreatePbr("dither.right", .(0.9f, 0.9f, 0.9f, 1), 0.0f, 0.9f);
+		defer delete rightMaterial;
 
 		let scene = scope ExtractedScene();
 		scene.SetAmbient(.(1.0f, 1.0f, 1.0f));
 		var nextEntity = (uint64)1;
-		bool Add(Float3 at, float scale, float fade)
+		bool Add(Float3 at, float scale, float fade, Material mat)
 		{
 			let data = scene.Add<MeshRenderData>();
 			if (data == null)
 				return false;
 			data.World = Float4x4.Scale(.(scale, scale, scale)) * Float4x4.Translation(at);
 			data.Mesh = card;
-			data.Material = material;
+			data.Material = mat;
 			data.Fade = fade;
 			data.RendererId = meshRenderer.RendererId;
 			// As extraction routes it: a faded opaque mesh draws Masked, out of the prepass.
 			data.Category = (fade > 0.0f) ? RenderCategories.Masked : RenderCategories.Opaque;
 			data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(card),
-				Internal.UnsafeCastToPtr(material));
+				Internal.UnsafeCastToPtr(mat));
 			data.WorldCenter = at;
 			data.WorldRadius = scale;
 			data.EntityId = nextEntity++;
 			return true;
 		}
-		if (!Add(.(-1.15f, 0.0f, -3.0f), 1.0f, 0.0f) || !Add(.(0.0f, 0.0f, -3.0f), 1.0f, middleFade))
+		if (!Add(.(-1.15f, 0.0f, -3.0f), 1.0f, 0.0f, material) ||
+			!Add(.(0.0f, 0.0f, -3.0f), 1.0f, middleFade, apart ? middleMaterial : material))
 			return null;
-		if ((rightFade >= 0.0f) && !Add(.(1.15f, 0.0f, -3.0f), 1.0f, rightFade))
+		if ((rightFade >= 0.0f) &&
+			!Add(.(1.15f, 0.0f, -3.0f), 1.0f, rightFade, apart ? rightMaterial : material))
 			return null;
-		if (!Add(.(2.3f, 0.0f, -6.0f), 1.6f, 0.0f))
+		if (!Add(.(2.3f, 0.0f, -6.0f), 1.6f, 0.0f, material))
 			return null;
 
 		var camera = ViewCamera();
@@ -212,5 +221,12 @@ class DitherFadeProbeTests
 		Test.Assert(faded.Value[1] * 10 <= solid.Value[1] * 6, report);
 		// Faded out: none of its pixels, and the card behind shows whole (no prepass depth).
 		Test.Assert(faded.Value[2] == solid.Value[2], report);
+		// Each a lone draw (the single path): thinned exactly as in the shared instanced draw.
+		let apart = RenderCards(fixture, 0.5f, 1.0f, true);
+		Test.Assert(apart != null, scope $"{kind}: the apart frame rendered");
+		let apartReport = scope $"{report}, apart {apart.Value[0]} {apart.Value[1]} {apart.Value[2]}";
+		Test.Assert(apart.Value[0] == faded.Value[0], apartReport);
+		Test.Assert(apart.Value[1] == faded.Value[1], apartReport);
+		Test.Assert(apart.Value[2] == faded.Value[2], apartReport);
 	}
 }

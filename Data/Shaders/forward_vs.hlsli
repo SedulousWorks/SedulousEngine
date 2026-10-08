@@ -55,23 +55,27 @@ cbuffer Object : register(b0, space1) {
     float4             Tint;
     uint               BoneBase;      // first bone matrix for this draw (skinning); 0 otherwise
     uint               PrevBoneBase;  // last frame's bone base (skinned motion vectors)
-    uint2              _objPad;
+    uint2              _objPad;       // (the pick pass's ids, in its own layout)
+    float              Fade;          // the screen-door fade, 0 = solid (forward.ps DITHER)
+    uint               _fadePad0;     // scalars: a uint3 here breaks WGSL's 16-byte vec3 alignment
+    uint               _fadePad1;
+    uint               _fadePad2;
 };
 #endif
+// Every input pins its location (SPIR-V; the semantics give DXIL the same): without them DXC numbers
+// them in order, and a non-instanced skinned variant's joints would take dataOffsets' 5.
 struct VSInput {
-    float3 position : TEXCOORD0;
-    float3 normal   : TEXCOORD1;
-    float2 uv       : TEXCOORD2;
-    float4 color    : TEXCOORD3;
-    float4 tangent  : TEXCOORD4;   // xyz = tangent, w = TBN handedness (+-1)
+    [[vk::location(0)]] float3 position : TEXCOORD0;
+    [[vk::location(1)]] float3 normal   : TEXCOORD1;
+    [[vk::location(2)]] float2 uv       : TEXCOORD2;
+    [[vk::location(3)]] float4 color    : TEXCOORD3;
+    [[vk::location(4)]] float4 tangent  : TEXCOORD4;   // xyz = tangent, w = TBN handedness (+-1)
 #ifdef INSTANCED
-    uint4  dataOffsets : TEXCOORD5;   // .x = index into Instances[] (instance-stepped)
+    [[vk::location(5)]] uint4  dataOffsets : TEXCOORD5;   // .x = index into Instances[] (instance-stepped)
 #endif
 #ifdef SKINNED
-    // Locations 6/7: skinned draws are always instanced, so dataOffsets (declared above) takes 5 and
-    // DXC assigns these sequentially to 6/7. The skin stream's attribute layout matches.
-    uint2  jointsPacked : TEXCOORD6;  // 4x u16 bone indices packed into 2x u32
-    float4 weights      : TEXCOORD7;  // bone weights (sum 1)
+    [[vk::location(6)]] uint2  jointsPacked : TEXCOORD6;  // 4x u16 bone indices packed into 2x u32
+    [[vk::location(7)]] float4 weights      : TEXCOORD7;  // bone weights (sum 1)
 #endif
 };
 struct VSOutput {
@@ -147,9 +151,9 @@ VSOutput main(VSInput input) {
     o.curClip   = o.clip;                                        // (jitter is baked into ViewProj; PS unjitters)
     o.prevClip  = mul(prevWorldPos, PrevViewProj);
 #ifdef INSTANCED
-    o.fade      = asfloat(input.dataOffsets.w);                  // a faded mesh draws instanced
+    o.fade      = asfloat(input.dataOffsets.w);                  // the instance's fade
 #else
-    o.fade      = 0.0;
+    o.fade      = Fade;                                          // the object's fade
 #endif
     return o;
 }

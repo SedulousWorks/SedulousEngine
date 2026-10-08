@@ -14,7 +14,7 @@ class MeshGpuLayoutTests
 	[Test]
 	public static void TheObjectBlockIsWhatTheShaderDeclares()
 	{
-		Test.Assert(sizeof(MeshObjectData) == 160);
+		Test.Assert(sizeof(MeshObjectData) == 176);
 	}
 
 	[Test]

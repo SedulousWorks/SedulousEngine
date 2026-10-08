@@ -83,6 +83,13 @@ struct MeshObjectData
 	/// the generation. The forward's layout has them as padding.
 	public uint32 PickIndex = 0;
 	public uint32 PickGeneration = 0;
+	/// The screen door fade, nought being solid: the forward pass's DITHER variant reads it on
+	/// the single path, as the instanced one reads DataOffsets.W.
+	public float Fade = 0.0f;
+	/// Scalars, not a three wide vector: WGSL aligns a vec3 to sixteen bytes, which would move it.
+	public uint32 FadePad0 = 0;
+	public uint32 FadePad1 = 0;
+	public uint32 FadePad2 = 0;
 
 	public this() {}
 }

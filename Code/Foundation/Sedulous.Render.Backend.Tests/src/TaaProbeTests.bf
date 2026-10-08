@@ -18,7 +18,9 @@ namespace Sedulous.Render.Backend.Tests;
 /// through (PaperKid's chase camera: steady titles, jittery levels). And with a second view
 /// drawn before it on alternate frames (PaperKid's minimap, a render texture every other
 /// frame), the main view keeps its own history by its key, not by its place in the frame's
-/// list.
+/// list. And with the camera still and the bars one skinned mesh slid a pixel a frame by its
+/// bone, its motion vectors come from last frame's pose, so it resolves as steadily, drawn alone
+/// (the single path) or batched.
 class TaaProbeTests
 {
 	private const uint32 cSize = 128;
@@ -49,10 +51,42 @@ class TaaProbeTests
 		}
 	}
 
+	/// The bars as ONE skinned mesh, every vertex on bone 0: moving the bone moves them all.
+	///
+	/// THE CALLER OWNS what comes back.
+	private static SkinnedMesh SkinnedBars()
+	{
+		let bars = new SkinnedMesh();
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let barIndices = cube.Indices.Count;
+		// The buffer appends through its own cursor within the count, so the count comes first.
+		bars.Indices.Resize(41 * barIndices);
+		let one = VertexSkinning(); // bone 0, weight one
+		for (int32 b = -20; b <= 20; b++)
+		{
+			let first = (uint32)bars.Vertices.Count;
+			let at = Float3(0.3f * (float)b, 0.0f, -cWallDistance + 0.01f);
+			for (var v in cube.Vertices)
+			{
+				v.Position = Float3(v.Position.X * 0.1f, v.Position.Y * 20.0f, v.Position.Z * 0.02f) + at;
+				bars.Vertices.Add(v);
+				bars.Skinning.Add(one);
+			}
+			for (uint32 k < barIndices)
+				bars.Indices.Add(first + cube.Indices.Get(k));
+		}
+		bars.Bounds = AABB.FromCenterExtents(.(0, 0, -cWallDistance), .(7.0f, 10.0f, 0.1f));
+		bars.SubMeshes.Add(.(0, (int32)bars.Indices.Count, 0, .Triangles));
+		return bars;
+	}
+
 	/// Renders cFrames with the camera stepping `step` along +X a frame (TAA on or off) and
-	/// reads back the last cKept into `kept`.
+	/// reads back the last cKept into `kept`. `skinnedStep`: the camera stays and the bars, one
+	/// skinned mesh, slide that far along -X a frame by their bone; `twin` adds a copy hidden
+	/// behind the wall, so the two batch and draw by the instanced path.
 	private static bool RenderSlide(BackendProbeFixture fixture, float step, bool taaOn, SideView side,
-		List<CapturedImage> kept)
+		List<CapturedImage> kept, float skinnedStep = 0.0f, bool twin = false)
 	{
 		let device = fixture.Device;
 		let shaders = fixture.Shaders;
@@ -105,8 +139,40 @@ class TaaProbeTests
 			data.Category = RenderCategories.Opaque;
 		}
 		AddSlab(.(40.0f, 20.0f, 0.1f), .(0.0f, 0.0f, -cWallDistance - 0.05f), dark);
-		for (int32 b = -20; b <= 20; b++)
+		for (int32 b = -20; (b <= 20) && (skinnedStep == 0.0f); b++)
 			AddSlab(.(0.1f, 20.0f, 0.02f), .(0.3f * (float)b, 0.0f, -cWallDistance + 0.01f), bright);
+
+		// This frame's pose and last frame's (the motion vectors), the same palettes every frame
+		// with their poses moving.
+		var palette = Float4x4[1](.Identity());
+		var previous = Float4x4[1](.Identity());
+		SkinnedMesh bars = null;
+		defer delete bars;
+		if (skinnedStep != 0.0f)
+		{
+			bars = SkinnedBars();
+			void AddBars(Float4x4 world, Float3 center)
+			{
+				let data = scene.Add<MeshRenderData>();
+				data.EntityId = nextEntity++;
+				data.World = world;
+				data.WorldCenter = center;
+				data.WorldRadius = 20.0f;
+				data.Mesh = bars;
+				data.Material = bright;
+				data.Category = RenderCategories.Opaque;
+				// Sorted by their batch, not their depth, so the wall between them does not split
+				// the twins' run.
+				data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(bars),
+					Internal.UnsafeCastToPtr(bright));
+				data.BoneMatrices = &palette[0];
+				data.PreviousBoneMatrices = &previous[0];
+				data.BoneCount = 1;
+			}
+			AddBars(.Identity(), .(0.0f, 0.0f, -cWallDistance));
+			if (twin)
+				AddBars(Float4x4.Translation(.(0.0f, 0.0f, -6.0f)), .(0.0f, 0.0f, -6.0f - cWallDistance));
+		}
 
 		var textureDesc = TextureDesc();
 		textureDesc.Format = .RGBA8Unorm;
@@ -169,6 +235,8 @@ class TaaProbeTests
 
 		for (uint32 i = 0; i < cFrames; i++)
 		{
+			previous[0] = palette[0];
+			palette[0] = Float4x4.Translation(.(-skinnedStep * (float)i, 0.0f, 0.0f));
 			let eye = Float3(step * (float)i, 0.0f, 0.0f);
 			var camera = ViewCamera();
 			camera.Position = eye;
@@ -235,11 +303,12 @@ class TaaProbeTests
 	}
 
 	/// The stray of one run, or -1 when it did not render.
-	private static float Stray(BackendProbeFixture fixture, float step, bool taaOn, SideView side, uint32 shift)
+	private static float Stray(BackendProbeFixture fixture, float step, bool taaOn, SideView side, uint32 shift,
+		float skinnedStep = 0.0f, bool twin = false)
 	{
 		let frames = scope List<CapturedImage>();
 		defer { for (let image in frames) delete image; }
-		if (!RenderSlide(fixture, step, taaOn, side, frames) || (frames.Count != cKept))
+		if (!RenderSlide(fixture, step, taaOn, side, frames, skinnedStep, twin) || (frames.Count != cKept))
 			return -1.0f;
 		for (let image in frames)
 		{
@@ -296,5 +365,30 @@ class TaaProbeTests
 		Test.Assert(byKey < alone + 0.5f, report);
 		// By order it alternates between two places, reading the other view's camera and history.
 		Test.Assert(byOrder > alone * 3.0f, report);
+	}
+
+	[Test]
+	public static void ALoneSkinnedMeshSlidByItsBoneResolvesAsSteadilyAsACameraSlide()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+			SkinnedOn(kind);
+	}
+
+	private static void SkinnedOn(ProbeBackend kind)
+	{
+		let fixture = scope BackendProbeFixture(kind);
+		if (!fixture.Ready)
+			return;
+
+		let still = Stray(fixture, 0.0f, true, .(), 0, 1e-6f);
+		let alone = Stray(fixture, 0.0f, true, .(), 1, PixelStep());
+		let batched = Stray(fixture, 0.0f, true, .(), 1, PixelStep(), true);
+		Test.Assert((still >= 0.0f) && (alone >= 0.0f) && (batched >= 0.0f), scope $"{kind}: rendered");
+		let report = scope $"{kind}: skinned bars' stray, still {still}, sliding a pixel a frame alone {alone}, batched with a twin {batched}";
+		// As steady as the camera slide by either path: the motion vectors carry last frame's
+		// pose. With this frame's pose for last frame's (the single path's old bone base) the
+		// bars' motion read as none and the history smeared.
+		Test.Assert(alone < still * 2.5f, report);
+		Test.Assert(batched < still * 2.5f, report);
 	}
 }

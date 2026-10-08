@@ -25,9 +25,9 @@ static class VertexLayouts
 		.(.Float32x3, 0, 0), .(.Float32x3, 12, 1), .(.Float32x2, 24, 2),
 		.(.Unorm8x4, 32, 3), .(.Float32x4, 36, 4));
 
-	/// Joints packed as two uint32s, then weights. At locations SIX and SEVEN because a
-	/// skinned draw is always instanced, so the per instance data offsets take five, and
-	/// the compiler assigns locations in declaration order.
+	/// Joints packed as two uint32s, then weights. At locations SIX and SEVEN, past the per
+	/// instance data offsets at five: the shaders pin every input's location, so a skinned
+	/// draw lines up whether it is instanced or not.
 	private static VertexAttribute[2] cSkinningStream = .(
 		.(.Uint32x2, 0, 6), .(.Float32x4, 8, 7));
 

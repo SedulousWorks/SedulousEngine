@@ -51,18 +51,20 @@ cbuffer Object : register(b0, space1) {
     uint               PickGeneration;
 };
 #endif
+// Every input pins its location (SPIR-V; the semantics give DXIL the same): without them DXC numbers
+// them in order, and a non-instanced skinned variant's joints would take dataOffsets' 5.
 struct VSInput {
-    float3 position : TEXCOORD0;
-    float3 normal   : TEXCOORD1;
-    float2 uv       : TEXCOORD2;
-    float4 color    : TEXCOORD3;
-    float4 tangent  : TEXCOORD4;
+    [[vk::location(0)]] float3 position : TEXCOORD0;
+    [[vk::location(1)]] float3 normal   : TEXCOORD1;
+    [[vk::location(2)]] float2 uv       : TEXCOORD2;
+    [[vk::location(3)]] float4 color    : TEXCOORD3;
+    [[vk::location(4)]] float4 tangent  : TEXCOORD4;
 #ifdef INSTANCED
-    uint4  dataOffsets : TEXCOORD5;   // .x = instance, .y = bone base, .z = generation, .w = index + 1
+    [[vk::location(5)]] uint4  dataOffsets : TEXCOORD5;   // .x = instance, .y = bone base, .z = generation, .w = index + 1
 #endif
 #ifdef SKINNED
-    uint2  jointsPacked : TEXCOORD6;
-    float4 weights      : TEXCOORD7;
+    [[vk::location(6)]] uint2  jointsPacked : TEXCOORD6;
+    [[vk::location(7)]] float4 weights      : TEXCOORD7;
 #endif
 };
 struct PickVSOut {

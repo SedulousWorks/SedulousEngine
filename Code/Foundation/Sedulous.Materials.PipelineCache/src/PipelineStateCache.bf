@@ -136,7 +136,8 @@ class PipelineStateCache
 		//
 		// Up to three buffers, in the slot order the renderer binds them: the mesh stream
 		// first; the skinning stream when skinned; the instance stepped offsets when
-		// instanced. A skinned draw is always instanced, so it is all three.
+		// instanced: [mesh], [mesh, skin], [mesh, offsets] or [mesh, skin, offsets]. The
+		// shaders pin their input locations, so each combination lines up.
 		VertexBufferLayout[3] buffers = .();
 		buffers[0] = VertexLayouts.BufferLayout(config.VertexLayout);
 		var bufferCount = (config.VertexLayout != .None) ? 1 : 0;
