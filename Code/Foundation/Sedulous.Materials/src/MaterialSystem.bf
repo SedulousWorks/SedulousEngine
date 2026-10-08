@@ -68,8 +68,8 @@ class MaterialSystem : IMaterialInstanceSink
 	public ITextureView WhiteTexture => mWhiteView;
 	/// Flat normal: (0.5, 0.5, 1) decodes to the geometric normal.
 	public ITextureView NormalTexture => mNormalView;
-	/// Black, which is what an unbound EMISSIVE map must be. White would make everything
-	/// in the scene glow.
+	/// Black: no unbound slot binds it (an emissive map's neutral is white); a stand in for a
+	/// texture that should read nought.
 	public ITextureView BlackTexture => mBlackView;
 
 	/// Brings the instance's uniform buffer up to date and hands it back, or null when the
@@ -493,8 +493,10 @@ class MaterialSystem : IMaterialInstanceSink
 	}
 
 	/// What an unbound texture slot binds instead, chosen by INTENT rather than by
-	/// convenience: a normal map must decode to the geometric normal, an emissive map must
-	/// be black or everything glows, and everything else multiplies so white is identity.
+	/// convenience: a normal map must decode to the geometric normal, and everything else
+	/// multiplies its factor so white is identity. An emissive map too (glTF: emission is
+	/// factor times texture, the texture white when absent): a glow authored as a colour
+	/// alone shows, and a material that does not glow has a black EmissiveColor.
 	///
 	/// Matched on a substring that skips the first letter, so "NormalMap" and "normalMap"
 	/// both hit without a case fold.
@@ -502,8 +504,6 @@ class MaterialSystem : IMaterialInstanceSink
 	{
 		if (name.Contains("ormal"))
 			return mNormalView;
-		if (name.Contains("missive"))
-			return mBlackView;
 		return mWhiteView;
 	}
 
