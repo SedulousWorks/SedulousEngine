@@ -1,3 +1,4 @@
+using System.Collections;
 using Sedulous.Geometry;
 using Sedulous.Materials;
 
@@ -14,6 +15,9 @@ struct SkinnedPart
 	public Material Material = null;
 	/// Its index into the model's material list, which a merged submesh has to keep.
 	public int32 MaterialIndex = -1;
+	/// The model's materials its submeshes index, in slot order (a cooked submesh's material
+	/// index is a position in its mesh's slots). Owned by the app's part list.
+	public List<int32> Slots = null;
 
 	public this() {}
 

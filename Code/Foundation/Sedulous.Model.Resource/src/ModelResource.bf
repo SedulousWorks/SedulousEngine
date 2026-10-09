@@ -23,6 +23,12 @@ class ModelResource
 	public List<bool> MeshSkinned = new .() ~ delete _;
 	/// The material index per mesh, minus one for none.
 	public List<int32> MeshMaterial = new .() ~ delete _;
+	/// Every mesh's material slots, concatenated, and the run per mesh, as the manifest has
+	/// them: a cooked submesh's material index is a POSITION in its mesh's run, not an index
+	/// into Materials. Empty for a manifest from before the slots.
+	public List<int32> MeshMaterialSlot = new .() ~ delete _;
+	public List<int32> MeshSlotStart = new .() ~ delete _;
+	public List<int32> MeshSlotCount = new .() ~ delete _;
 
 	public List<Proxy<Material>> Materials = new .() ~ delete _;
 
@@ -36,6 +42,27 @@ class ModelResource
 	/// The mesh at an index, or null when the index names nothing or nothing is bound there.
 	public StaticMesh Mesh(int index) =>
 		((index >= 0) && (index < Meshes.Count)) ? Meshes[index].Get : null;
+
+	/// The indices into Materials that a mesh's submeshes index, in slot order: the material
+	/// list an entity drawing the mesh binds. A mesh with no slots recorded (a manifest from
+	/// before them) indexes every material, in order.
+	public void MeshMaterialIndices(int meshIndex, List<int32> outIndices)
+	{
+		outIndices.Clear();
+		if ((meshIndex >= 0) && (meshIndex < MeshSlotStart.Count) && (meshIndex < MeshSlotCount.Count))
+		{
+			let start = MeshSlotStart[meshIndex];
+			let count = MeshSlotCount[meshIndex];
+			if ((start >= 0) && (count > 0) && (start + count <= MeshMaterialSlot.Count))
+			{
+				for (int32 i < count)
+					outIndices.Add(MeshMaterialSlot[start + i]);
+				return;
+			}
+		}
+		for (int32 i < (int32)Materials.Count)
+			outIndices.Add(i);
+	}
 
 	/// The material a mesh draws with, or null when it has none.
 	public Material MaterialForMesh(int meshIndex)

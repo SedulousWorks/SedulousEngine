@@ -37,6 +37,11 @@ class ModelFactory : IResourceFactory
 		source.FillNodes(model.Nodes);
 		model.MeshSkinned.AddRange(source.MeshSkinned);
 		model.MeshMaterial.AddRange(source.MeshMaterial);
+		// The per mesh slots, which the submeshes index: dropped, a user of the model could
+		// only bind the whole list to every mesh and draw a part in another's material.
+		model.MeshMaterialSlot.AddRange(source.MeshMaterialSlot);
+		model.MeshSlotStart.AddRange(source.MeshSlotStart);
+		model.MeshSlotCount.AddRange(source.MeshSlotCount);
 		model.BoundsMin = source.BoundsMin;
 		model.BoundsMax = source.BoundsMax;
 

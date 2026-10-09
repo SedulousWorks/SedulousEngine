@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Animation;
 using Sedulous.Animation.Resource;
 using Sedulous.Content;
@@ -113,5 +114,48 @@ class ModelCookTests
 		Test.Assert(resource.Animations.Count == 1);
 		Test.Assert(resource.Animations[0].Get != null);
 		Test.Assert(resource.Animations[0].Get.Duration > 0.0f);
+	}
+
+	/// Each mesh keeps its material slots, the materials its submeshes index.
+	///
+	/// A cooked submesh's material index is a position in its mesh's own slots, and the bound
+	/// model dropped them, so a runtime user (the samples) bound the model's whole list to every
+	/// mesh and drew the Quaternius character's face and eyes in the wrong materials. The model
+	/// keeps them now, and MeshMaterialIndices gives the model's material each slot is.
+	[Test]
+	public static void EachMeshKeepsItsMaterialSlotsTheMaterialsItsSubmeshesIndex()
+	{
+		let dataRoot = FindDataRoot(.. scope String());
+		if (dataRoot.IsEmpty)
+			return;
+		let path = PathJoin(dataRoot, "Assets/models/QuaterniusCharacter/glTF/Character.gltf", .. scope .());
+
+		let fixture = scope Fixture("scratch_model_slots");
+		let model = scope Model();
+		Test.Assert(ModelFileLoad.Load(path, model) == .Ok, "the character loaded");
+		let cooked = ModelCook.Cook(model, fixture.Database, "Character");
+		Test.Assert(cooked case .Ok(let manifestId));
+
+		let resource = fixture.Manager.Bind<ModelResource>(manifestId).Get;
+		Test.Assert(resource != null);
+		Test.Assert(resource.MeshSlotStart.Count == resource.Meshes.Count, "a slot run per mesh");
+
+		// Every mesh's submeshes index within its own list, and its list names the model's
+		// materials.
+		var sawSeveral = false;
+		let indices = scope List<int32>();
+		for (int m < resource.Meshes.Count)
+		{
+			let mesh = resource.Mesh(m);
+			Test.Assert(mesh != null);
+			resource.MeshMaterialIndices(m, indices);
+			Test.Assert(!indices.IsEmpty);
+			sawSeveral |= indices.Count > 1;
+			for (let index in indices)
+				Test.Assert((index >= 0) && (index < resource.Materials.Count));
+			for (let sub in mesh.SubMeshes)
+				Test.Assert(sub.MaterialIndex < indices.Count, "a submesh indexes within its mesh's list");
+		}
+		Test.Assert(sawSeveral, "the character's body draws several of its materials");
 	}
 }

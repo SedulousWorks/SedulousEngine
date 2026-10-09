@@ -704,12 +704,8 @@ class SandboxApp : DefaultApplication
 		rootTransform.Scale = .(fit, fit, fit);
 		mScene.SetLocalTransform(root, rootTransform);
 
+		let slots = scope List<int32>();
 		let materials = scope List<Material>();
-		for (var material in ref model.Materials)
-		{
-			if (material.Get != null)
-				materials.Add(material.Get);
-		}
 
 		let entities = scope List<EntityHandle>();
 		let skinned = scope List<EntityHandle>();
@@ -739,8 +735,12 @@ class SandboxApp : DefaultApplication
 			let component = meshes.Add(entities[i]);
 			component.Mesh.SetDirect(mesh);
 			component.Color = .(1.0f, 1.0f, 1.0f, 1.0f);
-			// The unified list: a submesh indexes it by its own material index, and slot zero
-			// covers anything out of range.
+			// The mesh's own material list, its slots: a submesh indexes it by its own material
+			// index, and slot zero covers anything out of range.
+			model.MeshMaterialIndices(node.MeshIndex, slots);
+			materials.Clear();
+			for (let slot in slots)
+				materials.Add(((slot >= 0) && (slot < model.Materials.Count)) ? model.Materials[slot].Get : null);
 			component.SetMaterials(materials);
 			if (model.MeshSkinned[node.MeshIndex])
 				skinned.Add(entities[i]);

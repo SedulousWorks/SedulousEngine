@@ -59,7 +59,7 @@ class AnimatedCrowdApp : DefaultApplication
 	private StaticMesh mFloorMesh = null ~ delete _;
 	private Material mFloorMaterial = null ~ delete _;
 
-	private List<SkinnedPart> mSkinnedParts = new .() ~ delete _;
+	private List<SkinnedPart> mSkinnedParts = new .() ~ { for (let part in _) delete part.Slots; delete _; };
 	private StaticMesh mMergedMesh = null ~ delete _;
 	private List<EntityHandle> mCrowdParts = new .() ~ delete _;
 
@@ -310,7 +310,10 @@ class AnimatedCrowdApp : DefaultApplication
 			else if (!mModel.Materials.IsEmpty)
 				material = mModel.Materials[0];
 
-			mSkinnedParts.Add(.(mesh, material, materialIndex));
+			var part = SkinnedPart(mesh, material, materialIndex);
+			part.Slots = new List<int32>();
+			resource.MeshMaterialIndices(i, part.Slots); // what its submeshes index
+			mSkinnedParts.Add(part);
 		}
 	}
 
@@ -394,6 +397,10 @@ class AnimatedCrowdApp : DefaultApplication
 	{
 		let drawMeshes = scope List<StaticMesh>();
 		let drawMaterials = scope List<Material>();
+		// Per draw mesh, the list its submeshes index.
+		let drawSubmeshMaterials = scope List<List<Material>>();
+		defer { for (let list in drawSubmeshMaterials) delete list; }
+		let modelMaterials = mModel.Resource.Materials;
 
 		if (mMergeMeshes)
 		{
@@ -401,6 +408,11 @@ class AnimatedCrowdApp : DefaultApplication
 				mMergedMesh = SkinnedMeshMerge.Merge(mSkinnedParts);
 			drawMeshes.Add(mMergedMesh);
 			drawMaterials.Add(mSkinnedParts[0].Material);
+			// The merged mesh indexes the model's whole list, every index kept in place.
+			let all = new List<Material>();
+			for (var material in ref modelMaterials)
+				all.Add(material.Get);
+			drawSubmeshMaterials.Add(all);
 		}
 		else
 		{
@@ -408,6 +420,11 @@ class AnimatedCrowdApp : DefaultApplication
 			{
 				drawMeshes.Add(part.Mesh);
 				drawMaterials.Add(part.Material);
+				// The part's own slots.
+				let own = new List<Material>();
+				for (let slot in part.Slots)
+					own.Add(((slot >= 0) && (slot < modelMaterials.Count)) ? modelMaterials[slot].Get : null);
+				drawSubmeshMaterials.Add(own);
 			}
 		}
 
@@ -428,7 +445,7 @@ class AnimatedCrowdApp : DefaultApplication
 				// the component a list this method owns instead would leave it pointing at freed
 				// memory the moment the scope below ran, and leak the pool's own list.
 				component.SubmeshMaterials.Clear();
-				component.SubmeshMaterials.AddRange(mModel.Materials);
+				component.SubmeshMaterials.AddRange(drawSubmeshMaterials[p]);
 
 				// BEFORE SetInstances: the version bump it makes is what uploads the tints.
 				component.Tints.Clear();

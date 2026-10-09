@@ -305,6 +305,8 @@ class AnimStressTestApp : DefaultApplication
 
 		let entities = scope List<EntityHandle>();
 		let skinned = scope List<EntityHandle>();
+		let slots = scope List<int32>();
+		let materials = scope List<Material>();
 
 		for (let node in resource.Nodes)
 		{
@@ -333,7 +335,12 @@ class AnimStressTestApp : DefaultApplication
 			let component = meshes.Add(entities[i]);
 			component.Mesh.SetDirect(mesh);
 			component.Color = .(1.0f, 1.0f, 1.0f, 1.0f);
-			component.SetMaterials(mModel.Materials); // slot zero covers an out of range index
+			// The mesh's own material list, its slots; slot zero covers an out of range index.
+			resource.MeshMaterialIndices(node.MeshIndex, slots);
+			materials.Clear();
+			for (let slot in slots)
+				materials.Add(((slot >= 0) && (slot < resource.Materials.Count)) ? resource.Materials[slot].Get : null);
+			component.SetMaterials(materials);
 			if (resource.MeshSkinned[node.MeshIndex])
 				skinned.Add(entities[i]);
 		}

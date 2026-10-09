@@ -65,6 +65,13 @@ static class SkinnedMeshMerge
 				{
 					var submesh = original;
 					submesh.StartIndex = (int32)written;
+					// The part's submeshes index its own slots; the merged mesh indexes the
+					// model's whole list.
+					let slots = part.Slots;
+					submesh.MaterialIndex = ((original.MaterialIndex >= 0) && (slots != null)
+						&& (original.MaterialIndex < slots.Count))
+						? slots[original.MaterialIndex]
+						: ((part.MaterialIndex >= 0) ? part.MaterialIndex : 0);
 
 					for (int32 k < original.IndexCount)
 					{
