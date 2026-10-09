@@ -206,9 +206,11 @@ class AudioSceneSystem : SceneSystem
 
 		using (ProfileScope("Audio.Sources"))
 		{
-			// A scene's simulation pausing and resuming maps onto its group, which fades both
-			// ways rather than cutting.
-			let simulating = mScene.SimulationEnabled;
+			// The scene's sounds hold while it is paused, its group fading both ways rather than
+			// cutting: its simulation off, or no time passing in it (a game's pause, a time scale
+			// of nought: behaviours and physics stand still, so its rain and its footsteps do
+			// too).
+			let simulating = mScene.SimulationEnabled && (deltaTime > 0.0f);
 			if ((simulating != mWasSimulating) && (mSceneGroup != 0))
 				mEngine.SetSceneGroupPaused(mSceneGroup, !simulating);
 			mWasSimulating = simulating;

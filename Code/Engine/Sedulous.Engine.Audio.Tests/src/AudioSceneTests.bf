@@ -83,6 +83,27 @@ class AudioSceneTests
 		Test.Assert(!play.Engine.IsSceneGroupPaused(play.Audio.SceneGroup));
 	}
 
+	/// No time passing in the scene (a game's pause, a time scale of nought) holds its voices,
+	/// though its simulation stays on; time again resumes them.
+	[Test]
+	public static void NoTimePassingInTheSceneHoldsItsVoicesAndTimeAgainResumesThem()
+	{
+		let play = scope AudioPlayScene();
+		let clip = play.AddClip(1.0f);
+		play.AddSource(clip, .(0, 0, 0));
+		play.Start();
+		play.Frame();
+		Test.Assert(!play.Engine.IsSceneGroupPaused(play.Audio.SceneGroup));
+
+		play.Frame(0.0f);
+		Test.Assert(play.Engine.IsSceneGroupPaused(play.Audio.SceneGroup), "held with no time");
+		play.Frame(0.0f);
+		Test.Assert(play.Engine.IsSceneGroupPaused(play.Audio.SceneGroup), "still held");
+
+		play.Frame();
+		Test.Assert(!play.Engine.IsSceneGroupPaused(play.Audio.SceneGroup), "resumed with time");
+	}
+
 	[Test]
 	public static void AFinishedOneShotReapsAndClearsTheHandle()
 	{
