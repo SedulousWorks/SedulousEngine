@@ -20,7 +20,7 @@ static class ProjectInfoTool
 	public static void Register(McpServer server, ProjectSession session)
 	{
 		server.RegisterTool("project_info",
-			"Details about the currently open project: name, directory, sources root, and `settings`, keyed by the names project_settings_set takes: each asset setting (defaultSceneId, startupScriptId, defaultInputMapId, defaultBusLayoutId, defaultUiThemeId, loadingDocumentId, defaultUiFontId) as {guid, path} or null when unset, uiFontIds (the other UI fonts) a list of {guid, path}, the display (renderWidth/renderHeight, the resolution the game draws at, 0 for its output's size, and renderFit; the player's windowWidth, windowHeight, windowMode and windowResizable), name, nativeModule and renderMsaaSamples.",
+			"Details about the currently open project: name, directory, sources root, and `settings`, keyed by the names project_settings_set takes: each asset setting (defaultSceneId, startupScriptId, defaultInputMapId, defaultBusLayoutId, defaultUiThemeId, loadingDocumentId, defaultUiFontId) as {guid, path} or null when unset, uiFontIds (the other UI fonts) a list of {guid, path}, the display (renderWidth/renderHeight, the resolution the game draws at, 0 for its output's size, and renderFit; the player's windowWidth, windowHeight, windowMode and windowResizable), name, nativeModule and renderMsaaSamples; and `settingCategories`, the dialog's tabs in order, each with its settings' names.",
 			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Info(session, outResult, outError));
 
@@ -29,7 +29,7 @@ static class ProjectInfoTool
 		let schema = scope SchemaBuilder();
 		ReflectedFields.AddToSchema(schema, fields);
 		server.RegisterTool("project_settings_set",
-			"Change the open project's settings, what the editor's Project Settings dialog edits, by the names project_info reports: only what is given changes, and a name that is no setting is refused with the list. Every asset setting must name an asset of its type (the refusal says which), \"\" clears it; a list setting (uiFontIds, the fonts the game UI loads beside the default, each a family a label picks with font-family) takes the whole list, [] for none; a count takes its range (the display's sizes), a choice one of its values by name (renderFit, windowMode), a flag true or false; renderMsaaSamples takes the render levels (1, 2 or 4). Checked in full before anything changes, then saved to the manifest; the editor re-applies what depends on them (the game UI's font and theme). Returns the settings as project_info does.",
+			"Change the open project's settings, what the editor's Project Settings dialog edits, by the names project_info reports: only what is given changes, and a name that is no setting is refused with the list. Every asset setting must name an asset of its type (the refusal says which), \"\" clears it; a list setting (uiFontIds, the fonts the game UI loads beside the default, each a family a label picks with font-family) takes the whole list, [] for none; a count takes its range (the display's sizes), a choice one of its values by name (renderFit, windowMode), a flag true or false; renderMsaaSamples takes the render levels (1, 2 or 4). Checked in full before anything changes, then saved to the manifest; the editor re-applies what depends on them (the game UI's font and theme). Returns the settings and their categories as project_info does.",
 			schema.Build(), .Adjusts,
 			new (arguments, outResult, outError) => Set(session, arguments, outResult, outError));
 	}
@@ -48,7 +48,27 @@ static class ProjectInfoTool
 		let fields = scope List<FieldInfo>();
 		SettingFields.Of(typeof(ProjectSettings), fields);
 		outResult.Set("settings", ReflectedFields.ToJson(project.Settings, fields, project.SourceDb));
+		outResult.Set("settingCategories", CategoriesJson(fields));
 		return true;
+	}
+
+	/// How the settings group, as the Project Settings dialog's tabs show them: each category,
+	/// in the order the settings first name it, with the names of its settings.
+	private static JsonValue CategoriesJson(List<FieldInfo> fields)
+	{
+		let categories = JsonValue.MakeObject();
+		for (let field in fields)
+		{
+			let category = SettingFields.Category(field);
+			var names = categories.Get(category);
+			if (names == null)
+			{
+				names = JsonValue.MakeArray();
+				categories.Set(category, names);
+			}
+			names.Add(JsonValue.MakeString(SettingFields.Key(field, .. scope .())));
+		}
+		return categories;
 	}
 
 	private static bool Set(ProjectSession session, JsonValue arguments, JsonValue outResult, String outError)

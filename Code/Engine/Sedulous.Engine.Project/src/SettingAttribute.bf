@@ -10,6 +10,7 @@ namespace Sedulous.Engine.Project;
 /// rows from these and the MCP tools their arguments, so a field added with one is offered by
 /// both rather than by whichever hand list remembered it. A count's bounds are its `Range`; a
 /// choice's enum reflects its cases (`[Reflect(.StaticFields)]`), the names it is offered by.
+/// The category names the group it shows in (the dialog's tab); none is General.
 [AttributeUsage(.Field, .ReflectAttribute, ReflectUser = .Type | .NonStaticFields)]
 struct SettingAttribute : Attribute
 {
@@ -19,19 +20,31 @@ struct SettingAttribute : Attribute
 	public String AssetType;
 	/// What an unset asset setting means: "(none)", "(built-in)".
 	public String EmptyText;
+	/// The group it shows in ("Display"); null is SettingFields.cDefaultCategory.
+	public String Category;
 
 	public this(String label)
 	{
 		Label = label;
 		AssetType = null;
 		EmptyText = null;
+		Category = null;
 	}
 
-	public this(String label, String assetType, String emptyText)
+	public this(String label, String category)
+	{
+		Label = label;
+		AssetType = null;
+		EmptyText = null;
+		Category = category;
+	}
+
+	public this(String label, String assetType, String emptyText, String category = null)
 	{
 		Label = label;
 		AssetType = assetType;
 		EmptyText = emptyText;
+		Category = category;
 	}
 }
 
@@ -55,6 +68,9 @@ enum SettingKind
 /// The setting fields of a type, read from its reflection.
 static class SettingFields
 {
+	/// The category of a setting that names none.
+	public const String cDefaultCategory = "General";
+
 	/// The fields of `type` that carry a Setting and are of a kind a settings editor handles,
 	/// in declaration order.
 	public static void Of(Type type, List<FieldInfo> outFields)
@@ -72,6 +88,13 @@ static class SettingFields
 		if (field.GetCustomAttribute<SettingAttribute>() case .Ok(let setting))
 			return setting;
 		return null;
+	}
+
+	/// The group a setting shows in: its Category, or General when it names none.
+	public static StringView Category(FieldInfo field)
+	{
+		let setting = Setting(field);
+		return (setting.HasValue && (setting.Value.Category != null)) ? setting.Value.Category : cDefaultCategory;
 	}
 
 	/// What the field holds; false for a type no settings editor handles.

@@ -50,6 +50,23 @@ static class ProjectFlowTests
 		Test.Assert(info.Get("name").AsString() == "Fixture");
 		Test.Assert(!info.Get("directory").AsString().IsEmpty);
 		Test.Assert(!info.Get("sourcesRoot").AsString().IsEmpty);
+
+		// The settings group as the Project Settings dialog's tabs: every setting in one
+		// category, General first.
+		let categories = info.Get("settingCategories");
+		Test.Assert((categories != null) && (categories.Count > 1));
+		Test.Assert(categories.KeyAt(0) == "General");
+		var grouped = 0;
+		var msaaOnDisplay = false;
+		for (int i < categories.Count)
+		{
+			let names = categories.Get(categories.KeyAt(i));
+			grouped += names.Count;
+			for (int n < names.Count)
+				msaaOnDisplay |= (categories.KeyAt(i) == "Display") && (names.At(n).AsString() == "renderMsaaSamples");
+		}
+		Test.Assert(grouped == info.Get("settings").Count);
+		Test.Assert(msaaOnDisplay);
 		Test.Assert(FileExists(PathJoin(dir, "Project.xml", .. scope .())));
 
 		// A second create at the same place is a tool error with real text, not a fault.

@@ -16,8 +16,10 @@ namespace Sedulous.Editor.App;
 /// here. A text is an edit box, an asset a slot picking by guid through the AssetPickerDialog
 /// (filtered to the type the setting names; the path kept as the readable mirror), an asset
 /// list a list of slots, a count a number within its range, a choice its enum's cases, a flag a
-/// box. MSAA is the one with a rule of its own: the render subsystem's levels. The engine
-/// version is shown read-only; every save re-stamps it. Save writes the rows back into
+/// box. MSAA is the one with a rule of its own: the render subsystem's levels. A tab per
+/// category the settings name (their Setting's category, General when none), in the order they
+/// first name them, as Preferences reads. The engine version is shown read-only under General;
+/// every save re-stamps it. Save writes the rows back into
 /// EditorProject.Settings and persists the manifest; Cancel discards.
 class ProjectSettingsDialog : Dialog
 {
@@ -64,21 +66,21 @@ class ProjectSettingsDialog : Dialog
 	private List<AssetRow> mAssets = new .() ~ DeleteContainerAndItems!(_);
 	private List<AssetListRow> mAssetLists = new .() ~ DeleteContainerAndItems!(_);
 	private List<ValueRow> mValues = new .() ~ DeleteContainerAndItems!(_);
+	/// The category tabs; their view is the content.
+	private CategoryTabs mTabs = new .() ~ delete _;
 
 	public this(EditorContext context) : base("Project Settings")
 	{
 		mContext = context;
-		MinWidth.Value = 460.0f;
-		MinHeight.Value = 240.0f;
-		MaxWidth.Value = 560.0f;
-		MaxHeight.Value = 560.0f; // taller so the rows fit; the ScrollView handles overflow
+		// A fixed size, as Preferences: a tab view measures only the page it shows, so a free
+		// height would jump as the tabs change. Each page scrolls inside it.
+		MinWidth.Value = 560.0f;
+		MaxWidth.Value = 680.0f;
+		MinHeight.Value = 420.0f;
+		MaxHeight.Value = 420.0f;
 
 		let project = context.Project;
 		let settings = (project != null) ? project.Settings : scope:: ProjectSettings();
-
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 8;
 
 		let fields = scope List<FieldInfo>();
 		SettingFields.Of(typeof(ProjectSettings), fields);
@@ -86,6 +88,7 @@ class ProjectSettingsDialog : Dialog
 		{
 			let setting = SettingFields.Setting(field).Value;
 			SettingFields.KindOf(field, let kind);
+			let column = mTabs.Column(SettingFields.Category(field));
 			switch (kind)
 			{
 			case .Asset:
@@ -114,20 +117,13 @@ class ProjectSettingsDialog : Dialog
 
 		// The engine stamp, informational; re-stamped by every save.
 		{
-			let row = AddRow(column, "Engine version");
+			let row = AddRow(mTabs.Column(SettingFields.cDefaultCategory), "Engine version");
 			var centre = LayoutStyle();
 			centre.AlignSelf = .Center;
 			row.AddView(new Label(EngineVersion.String), centre);
 		}
 
-		// Scrolled, so a tall column cannot spill over the modal button row.
-		let scroll = new ScrollView();
-		scroll.VScrollBarPolicy.Value = .Auto;
-		scroll.HScrollBarPolicy.Value = .Never;
-		var match = LayoutStyle();
-		match.Width = SizeSpec.Match();
-		scroll.AddView(column, match);
-		SetContent(scroll);
+		SetContent(mTabs.View);
 
 		let save = AddButton("Save", .None);
 		save.OnClick.Add(new (b) => { Apply(); });
@@ -147,6 +143,12 @@ class ProjectSettingsDialog : Dialog
 		grow.FlexGrow = 1.0f;
 		row.AddView(mMsaaCombo, grow);
 	}
+
+	/// The category tabs, in the order the settings first name them. Borrowed.
+	public TabView Tabs => mTabs.View;
+
+	/// The tab for a category, or -1.
+	public int32 TabIndexOf(StringView category) => mTabs.IndexOf(category);
 
 	/// A text, count, choice or flag setting's row, seeded from the manifest.
 	private void AddValueRow(FlexLayout column, StringView label, FieldInfo field, SettingKind kind, ProjectSettings settings)

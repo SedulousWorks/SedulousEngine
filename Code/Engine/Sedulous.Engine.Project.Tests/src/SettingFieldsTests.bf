@@ -10,6 +10,51 @@ namespace Sedulous.Engine.Project.Tests;
 /// with a [Setting] is offered by both, and one without is offered by neither.
 class SettingFieldsTests
 {
+	/// A setting that names no category.
+	private class Probe
+	{
+		[Setting("Unsorted")]
+		public String Unsorted = new .() ~ delete _;
+	}
+
+	/// Each setting names the group it shows in, the Project Settings dialog's tab; one that
+	/// names none (an export preset's) is General.
+	[Test]
+	public static void EachSettingNamesItsCategoryAndNoneIsGeneral()
+	{
+		let fields = scope List<FieldInfo>();
+		SettingFields.Of(typeof(ProjectSettings), fields);
+		let order = scope String();
+		for (let field in fields)
+		{
+			let category = SettingFields.Category(field);
+			if (!order.Contains(category))
+			{
+				if (!order.IsEmpty)
+					order.Append(",");
+				order.Append(category);
+			}
+			if (field.Name == "RenderMsaaSamples")
+				Test.Assert(category == "Display");
+			if (field.Name == "LoadingDocumentId")
+				Test.Assert(category == "Startup");
+			if (field.Name == "UiFontIds")
+				Test.Assert(category == "UI");
+		}
+		Test.Assert(order == "General,Startup,Audio,UI,Display", order);
+
+		Test.Assert(SettingFields.cDefaultCategory == "General");
+		var probed = false;
+		for (let field in typeof(Probe).GetFields())
+		{
+			if (field.Name != "Unsorted")
+				continue;
+			Test.Assert(SettingFields.Category(field) == "General");
+			probed = true;
+		}
+		Test.Assert(probed);
+	}
+
 	[Test]
 	public static void TheProjectSettingsListTheirSettingsInDeclarationOrderEachWithItsKind()
 	{

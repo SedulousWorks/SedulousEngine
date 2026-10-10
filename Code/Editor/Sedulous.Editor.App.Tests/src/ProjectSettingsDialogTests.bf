@@ -183,4 +183,66 @@ static class ProjectSettingsDialogTests
 			Test.Assert(slots.Count == single + 2, "a slot per listed font");
 		}
 	}
+
+	private static bool HasLabel(TabView tabs, int32 tab, StringView text)
+	{
+		if ((tab < 0) || (tab >= tabs.TabCount))
+			return false;
+		let labels = scope List<Label>();
+		Collect(tabs.GetTab(tab).Content, labels);
+		for (let label in labels)
+		{
+			if (label.Text.Value == text)
+				return true;
+		}
+		return false;
+	}
+
+	/// A tab per category the settings name (as Preferences has), in the order they first name
+	/// them; every setting's label is on its category's tab, MSAA on Display's, and the engine
+	/// version on General's.
+	[Test]
+	public static void ATabPerCategoryTheSettingsName()
+	{
+		RemoveDirectoryRecursive("settings_dialog_tabs");
+		defer RemoveDirectoryRecursive("settings_dialog_tabs");
+		Test.Assert(EditorProject.Create("settings_dialog_tabs", "P") case .Ok);
+		let project = EditorProject.Open("settings_dialog_tabs");
+		Test.Assert(project != null);
+		defer delete project;
+		let context = scope EditorContext();
+		context.SetProject(project);
+		defer context.SetProject(null);
+
+		let dialog = new ProjectSettingsDialog(context);
+		defer dialog.ReleaseRef();
+		let tabs = dialog.Tabs;
+		Test.Assert(tabs.SelectedIndex == 0);
+		Test.Assert(dialog.TabIndexOf(SettingFields.cDefaultCategory) == 0);
+
+		// The categories, as the settings name them, in first-named order: one tab each.
+		let fields = scope List<System.Reflection.FieldInfo>();
+		SettingFields.Of(typeof(ProjectSettings), fields);
+		let categories = scope List<StringView>();
+		for (let field in fields)
+		{
+			let category = SettingFields.Category(field);
+			if (!categories.Contains(category))
+				categories.Add(category);
+		}
+		Test.Assert(categories.Count > 1);
+		Test.Assert(tabs.TabCount == categories.Count);
+		for (int i < categories.Count)
+			Test.Assert(dialog.TabIndexOf(categories[i]) == i, scope String(categories[i]));
+
+		// Each setting's label is on its category's tab.
+		for (let field in fields)
+		{
+			let label = SettingFields.Setting(field).Value.Label;
+			Test.Assert(HasLabel(tabs, dialog.TabIndexOf(SettingFields.Category(field)), label), label);
+		}
+		Test.Assert(HasLabel(tabs, 0, "Engine version"));
+		Test.Assert(HasLabel(tabs, dialog.TabIndexOf("Display"), "MSAA"));
+		Test.Assert(!HasLabel(tabs, 0, "MSAA"));
+	}
 }

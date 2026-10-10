@@ -150,6 +150,8 @@ the game UI loads beside the default, each a family a label picks with
 `font-family="<family>"`, a title face say; the display: `renderWidth`/`renderHeight`, the
 resolution the game draws at, 0 for its output's size, `renderFit`, and the player's
 `windowWidth`, `windowHeight`, `windowMode` and `windowResizable`; and `renderMsaaSamples`.
+Beside them, `settingCategories` says how they group: the Project Settings dialog's tabs in
+order (General, Startup, Audio, UI, Display), each with the names of its settings.
 `project_settings_set` changes them by the names `project_info` reports (a name that is no
 setting is refused with the list): each asset setting must name an asset of its type, `""`
 clears it, `uiFontIds` takes the whole list, a choice takes one of its values by name
