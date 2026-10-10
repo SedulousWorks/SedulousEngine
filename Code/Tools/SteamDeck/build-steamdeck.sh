@@ -89,7 +89,8 @@ rm -rf "$TEMPLATE"
 "$EXPORT_TOOL" --template create "$BUNDLE" --out "$TEMPLATE" \
 	--id "sedulous-steamdeck-release-$VERSION" \
 	--name "Steam Deck $VERSION" \
-	--notes "Linux64 Release built for glibc 2.35 (Ubuntu 22.04), carrying its own SDL3."
+	--notes "Linux64 Release built for glibc 2.35 (Ubuntu 22.04), carrying its own SDL3." \
+	--icon handheld
 "$EXPORT_TOOL" --template import "$TEMPLATE"
 echo
 echo "== done =="

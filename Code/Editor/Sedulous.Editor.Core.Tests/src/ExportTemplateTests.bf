@@ -299,6 +299,7 @@ static class ExportTemplateTests
 		identity.Id = "sedulous-steamdeck-release-test";
 		identity.Name = "Steam Deck test";
 		identity.Notes = "built for an older glibc";
+		identity.Icon = "handheld";
 		let deckId = scope String();
 		let deckDir = scope String();
 		Test.Assert(ExportTemplates.Create(buildDir, root, .Install, deckId, deckDir, identity) case .Ok);
@@ -310,6 +311,73 @@ static class ExportTemplateTests
 		Test.Assert(ExportTemplates.LoadManifest(scope NativeFileSystem(deckDir), manifest) case .Ok);
 		Test.Assert((manifest.Id == deckId) && (manifest.Name == "Steam Deck test") && (manifest.Notes == "built for an older glibc"));
 		Test.Assert(manifest.Platform == BuildLayout.HostPlatformName, "the platform is still read off the build");
+	}
+
+	/// A template carries its own icon (icon.svg, named by its manifest), which the editor shows
+	/// it by: its platform's built-in one unless its maker names another (the Deck build's
+	/// `handheld`) or gives an .svg; an unknown name or a missing .svg refuses the template before
+	/// anything is written. The host template, and a manifest from before icons, show the
+	/// platform's built-in icon.
+	[Test]
+	public static void ACreatedTemplateCarriesItsIconThePlatformsUnlessOneIsNamed()
+	{
+		let basePath = Scratch("scratch_icontmpl", .. scope .());
+		let outFolder = Scratch("scratch_icontmpl_bundle", .. scope .());
+		let root = Scratch("scratch_icontmpl_root", .. scope .());
+		defer { RemoveDirectoryRecursive(basePath); RemoveDirectoryRecursive(outFolder); RemoveDirectoryRecursive(root); }
+		let buildDir = PathJoin(PathJoin(basePath, scope $"Release_{BuildLayout.HostPlatformName}", .. scope .()), BuildLayout.cPlayerBaseName, .. scope .());
+		CreateDirectory(buildDir);
+		SaveText(buildDir, BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()), "#!player\n");
+
+		// The icon the bundle's manifest names, as the editor reads it.
+		void BundledIcon(String outSvg)
+		{
+			let manifest = scope ExportTemplate();
+			Test.Assert(ExportTemplates.LoadManifest(scope NativeFileSystem(outFolder), manifest) case .Ok);
+			Test.Assert(manifest.Icon == TemplateIcons.cIconFile);
+			manifest.Directory.Set(outFolder);
+			TemplateIcons.SvgFor(manifest, outSvg);
+		}
+
+		// No icon named: the platform's built-in one, in the bundle and named by the manifest.
+		Test.Assert(ExportTemplates.Create(buildDir, outFolder, .ExportFolder) case .Ok);
+		let platformIcon = TemplateIcons.BuiltInSvg(TemplateIcons.DefaultName(BuildLayout.HostPlatformName));
+		Test.Assert(!platformIcon.IsEmpty);
+		Test.Assert(BundledIcon(.. scope .()) == platformIcon);
+
+		// A built-in one by name: the Deck build's handheld.
+		var identity = TemplateIdentity();
+		identity.Icon = "handheld";
+		Test.Assert(ExportTemplates.Create(buildDir, outFolder, .ExportFolder, null, null, identity) case .Ok);
+		Test.Assert(BundledIcon(.. scope .()) == TemplateIcons.BuiltInSvg("handheld"));
+
+		// An .svg of the maker's own, copied in.
+		let own = "<svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\"/></svg>";
+		SaveText(buildDir, "own.svg", own);
+		identity.Icon = PathJoin(buildDir, "own.svg", .. scope .());
+		Test.Assert(ExportTemplates.Create(buildDir, outFolder, .ExportFolder, null, null, identity) case .Ok);
+		let got = BundledIcon(.. scope .());
+		Test.Assert(got == own, got);
+
+		// An unknown name, or an .svg that is not there, refuses the template, and refuses it
+		// before an installed bundle of that id is replaced.
+		let installedId = scope String();
+		let installedDir = scope String();
+		Test.Assert(ExportTemplates.Create(buildDir, root, .Install, installedId, installedDir) case .Ok);
+		identity.Icon = "toaster";
+		Test.Assert(ExportTemplates.Create(buildDir, root, .Install, null, null, identity) case .Err(.InvalidArgument));
+		identity.Icon = "/nowhere/at/all.svg";
+		Test.Assert(ExportTemplates.Create(buildDir, root, .Install, null, null, identity) case .Err(.NotFound));
+		Test.Assert(FileExists(PathJoin(installedDir, TemplateIcons.cIconFile, .. scope .())), "the installed bundle stays whole");
+
+		// The host template (no bundle icon) and an unreadable icon show the platform's built-in one.
+		let host = scope ExportTemplate();
+		host.Platform.Set("Web");
+		host.IsHost = true;
+		Test.Assert(TemplateIcons.SvgFor(host, .. scope .()) == TemplateIcons.BuiltInSvg("web"));
+		host.Icon.Set("gone.svg");
+		host.Directory.Set(outFolder);
+		Test.Assert(TemplateIcons.SvgFor(host, .. scope .()) == TemplateIcons.BuiltInSvg("web"));
 	}
 
 	/// Installing an id replaces its bundle whole: a sidecar the new build no longer has does

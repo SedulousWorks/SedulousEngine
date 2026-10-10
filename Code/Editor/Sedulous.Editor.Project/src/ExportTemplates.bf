@@ -15,6 +15,9 @@ struct TemplateIdentity
 	public StringView Id;
 	public StringView Name;
 	public StringView Notes;
+	/// A built-in icon's name (TemplateIcons.BuiltInNames: `handheld` for the Steam Deck build)
+	/// or the path of an .svg to carry; empty gives the platform's built-in icon.
+	public StringView Icon;
 }
 
 /// The template operations: the manifest file, the host synthesis, creating a bundle from a
@@ -81,7 +84,8 @@ static class ExportTemplates
 	/// Packages a build's player directory into a template bundle: the manifest synthesized
 	/// from it, the config and platform read off the build directory, a web dist recognised
 	/// by its page. Install puts it under <destRoot>/<id>, ExportFolder into <destRoot>. The
-	/// identity, when given, replaces the canonical id, name and notes.
+	/// identity, when given, replaces the canonical id, name and notes, and names its icon (an
+	/// unknown name is InvalidArgument, a missing .svg NotFound, both before anything is written).
 	public static Result<void, ErrorCode> Create(StringView playerDir, StringView destRoot, TemplateOutput mode,
 		String outId = null, String outDir = null, TemplateIdentity identity = .())
 	{
@@ -121,6 +125,17 @@ static class ExportTemplates
 		if (!FileExists(PathJoin(playerDir, template.PlayerBinary, .. scope .())))
 			return .Err(.NotFound);
 
+		// The icon the template carries: an .svg given by path is copied in; otherwise the
+		// built-in one named, or the platform's. Refused rather than shipping without the icon
+		// its maker asked for.
+		let customIcon = identity.Icon.EndsWith(".svg");
+		let builtInIcon = customIcon ? StringView() :
+			TemplateIcons.BuiltInSvg(identity.Icon.IsEmpty ? TemplateIcons.DefaultName(template.Platform) : identity.Icon);
+		if (customIcon && !FileExists(identity.Icon))
+			return .Err(.NotFound);
+		if (!customIcon && builtInIcon.IsEmpty)
+			return .Err(.InvalidArgument);
+
 		let bundleDir = scope String();
 		if (mode == .Install)
 		{
@@ -141,6 +156,18 @@ static class ExportTemplates
 		for (let sidecar in template.Sidecars)
 			if (!CopyFile(playerDir, sidecar, bundleDir, sidecar))
 				return .Err(.Internal);
+		// Read and written whole: a copy over a longer icon must not keep its tail.
+		let iconBytes = scope List<uint8>();
+		if (customIcon)
+		{
+			if (ReadFile(identity.Icon, iconBytes) case .Err)
+				return .Err(.NotFound);
+		}
+		else
+			iconBytes.AddRange(.((uint8*)builtInIcon.Ptr, builtInIcon.Length));
+		if (WriteFile(PathJoin(bundleDir, TemplateIcons.cIconFile, .. scope .()), iconBytes) case .Err)
+			return .Err(.Internal);
+		template.Icon.Set(TemplateIcons.cIconFile);
 		template.Directory.Set(bundleDir);
 		let bundleFs = scope NativeFileSystem(bundleDir);
 		if (SaveManifest(bundleFs, template) case .Err(let error))

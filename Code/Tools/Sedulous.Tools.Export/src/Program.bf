@@ -22,11 +22,14 @@ namespace Sedulous.Tools.Export;
 ///   Sedulous.Tools.Export --template import <templateDir>
 ///   Sedulous.Tools.Export --template create <playerDir> [--install | --out <folder>]
 ///                                           [--id <id>] [--name <name>] [--notes <text>]
+///                                           [--icon <desktop|windows|linux|handheld|web|phone | file.svg>]
 ///
 /// The host template is the player built beside this tool, build/<Config>_<Platform>/
 /// Sedulous.Engine.Player.Desktop; the templates root is $SEDULOUS_TEMPLATES_DIR, else
 /// <user-data>/templates. The engine data root, whose Shaders the export cooks, is found by
-/// the Data/.dataroot walk from this tool, or --data-root.
+/// the Data/.dataroot walk from this tool, or --data-root. A created template carries an icon:
+/// the one --icon names (a built-in one, `handheld` for the Steam Deck build, or an .svg), else
+/// its platform's.
 class Program
 {
 	public static int Main(String[] args)
@@ -172,6 +175,7 @@ class Program
 			  Sedulous.Tools.Export --template import <templateDir>
 			  Sedulous.Tools.Export --template create <playerDir> [--install | --out <folder>]
 			                                           [--id <id>] [--name <name>] [--notes <text>]
+			                                           [--icon <desktop|windows|linux|handheld|web|phone | file.svg>]
 			""");
 		return 1;
 	}
@@ -236,6 +240,15 @@ class Program
 				identity.Name = args[++i];
 			else if ((args[i] == "--notes") && (i + 1 < args.Count))
 				identity.Notes = args[++i];
+			else if ((args[i] == "--icon") && (i + 1 < args.Count))
+			{
+				identity.Icon = args[++i];
+				if (!identity.Icon.EndsWith(".svg") && TemplateIcons.BuiltInSvg(identity.Icon).IsEmpty)
+				{
+					Console.Error.WriteLine("unknown icon: {} (desktop, windows, linux, handheld, web, phone, or an .svg file)", args[i]);
+					return Usage();
+				}
+			}
 			else
 			{
 				Console.Error.WriteLine("unknown option: {}", args[i]);

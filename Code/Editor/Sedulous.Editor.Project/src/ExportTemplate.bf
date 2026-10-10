@@ -31,6 +31,11 @@ class ExportTemplate
 	public String Compiler = new .() ~ delete _;
 	/// Optional symbol files, staged only when the preset opts in.
 	public List<String> Symbols = new .() ~ DeleteContainerAndItems!(_);
+	/// The template's icon, an SVG file in its bundle (TemplateIcons.cIconFile when Create made
+	/// it), which the editor shows it by. Empty in a manifest from before it: the editor shows its
+	/// platform's built-in icon. [Appended], so an older manifest reads as none.
+	[Appended]
+	public String Icon = new .() ~ delete _;
 
 	/// The absolute directory the bundle lives in; the host's build directory for the
 	/// synthesized one. Set by the registry.
