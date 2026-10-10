@@ -89,7 +89,10 @@ class SimpleTreeAdapter : ITreeAdapter
 
 	public bool HasChildren(int32 nodeId) => (nodeId == 0) || (nodeId == 1);
 
-	public View CreateView(int32 viewType) => new TestView(100.0f, 30.0f);
+	/// How wide its rows ask to be; wider than the tree to make it scroll sideways.
+	public float RowWidth = 100.0f;
+
+	public View CreateView(int32 viewType) => new TestView(RowWidth, 30.0f);
 
 	public void BindView(View view, int32 nodeId, int32 depth, bool isExpanded) {}
 

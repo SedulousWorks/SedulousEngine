@@ -64,6 +64,22 @@ class EditableLabel : EditText
 
 	public bool IsEditing => mIsEditing;
 
+	/// Its text where it draws it (past TextOffsetX), and a little room after: an editable
+	/// label measures to fill, so its width says nothing of how long its text is.
+	public override float NaturalWidth(float height)
+	{
+		const float trailing = 8.0f;
+		var textWidth = 0.0f;
+		if ((Context != null) && (Context.FontService != null))
+		{
+			let family = scope String();
+			ResolveStyleFontFamily(family, FontFamily.Value);
+			if (let font = Context.FontService.GetFont(family, EffectiveFontSize))
+				textWidth = font.Font.MeasureString(Text);
+		}
+		return TextOffsetX.Value + textWidth + trailing;
+	}
+
 	/// Sets the displayed text, and does NOTHING while editing: the field holds what the user
 	/// is typing, and a background update must not yank it away mid rename.
 	///

@@ -64,6 +64,8 @@ class SceneHierarchyView : ViewGroup
 		mAdapter = new HierarchyAdapter(this, mSnapshot);
 		mTree = new DraggableTreeView();
 		mTree.ItemHeight = 22.0f;
+		// A deep hierarchy scrolls sideways rather than asking for a wider panel.
+		mTree.InternalTreeView.InternalListView.ScrollsHorizontally.Value = true;
 		mAdapter.SetTree(mTree.InternalTreeView);
 		mTree.SetAdapter(mAdapter);
 		// A dragged row names its entity, so an inspector's entity slot can take it.

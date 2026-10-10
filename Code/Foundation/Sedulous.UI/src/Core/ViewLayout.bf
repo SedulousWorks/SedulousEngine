@@ -40,6 +40,16 @@ extension View
 	/// Clips children to the border box, by the ClipsContent field OR `overflow: hidden`.
 	public bool EffectiveClipsContent => ClipsContent || mStyledOverflowHidden;
 
+	/// How wide this view's content is when nothing narrows it, at `height`: what a container
+	/// that scrolls sideways to show all of it (a list's rows) lays it out at. Default: its
+	/// measure with an unbounded width. A control that measures to fill (an editable label)
+	/// overrides it with what it draws.
+	public virtual float NaturalWidth(float height)
+	{
+		Measure(.(0.0f, FloatMax, height, height));
+		return MeasuredSize.X;
+	}
+
 	/// MeasuredSize plus this view's margins: what a parent aggregates and places.
 	public Float2 MarginBoxSize
 	{

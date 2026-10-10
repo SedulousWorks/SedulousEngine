@@ -226,7 +226,8 @@ class TreeView : ViewGroup
 		if ((nodeId < 0) || !TreeAdapter.HasChildren(nodeId))
 			return false;
 
-		let arrowLeft = mFlatAdapter.GetDepth(position) * IndentWidth.Value;
+		// The chevron scrolls sideways with its row (ListView.ScrollsHorizontally).
+		let arrowLeft = mFlatAdapter.GetDepth(position) * IndentWidth.Value - mListView.ScrollX;
 		return (localX >= arrowLeft) && (localX < arrowLeft + IndentWidth.Value);
 	}
 
@@ -269,6 +270,8 @@ class TreeView : ViewGroup
 		let lastVisible = Min(firstVisible + (int32)(Height / itemHeight) + 1,
 			mFlatAdapter.ItemCount - 1);
 
+		// A chevron scrolled off the left stays inside the tree.
+		ctx.PushClip(.(0, 0, Width, Height));
 		for (int32 i = firstVisible; i <= lastVisible; i++)
 		{
 			let nodeId = mFlatAdapter.GetNodeId(i);
@@ -278,6 +281,7 @@ class TreeView : ViewGroup
 
 			DrawChevron(ctx, i, nodeId, itemHeight, scrollY);
 		}
+		ctx.PopClip();
 	}
 
 	private void DrawChevron(UIDrawContext ctx, int32 position, int32 nodeId, float itemHeight,
@@ -288,7 +292,8 @@ class TreeView : ViewGroup
 		let halfSize = arrowSize * 0.5f;
 
 		// Centred in its indent column, and on the row.
-		let arrowX = depth * IndentWidth.Value + (IndentWidth.Value - arrowSize) * 0.5f;
+		let arrowX = depth * IndentWidth.Value + (IndentWidth.Value - arrowSize) * 0.5f -
+			mListView.ScrollX;
 		let arrowCY = position * itemHeight - scrollY + itemHeight * 0.5f;
 
 		let isExpanded = mFlatAdapter.IsExpanded(nodeId);

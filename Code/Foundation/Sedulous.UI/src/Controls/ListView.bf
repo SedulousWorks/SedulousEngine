@@ -20,6 +20,10 @@ class ListView : ViewGroup, IListAdapterObserver
 
 	public SelectionModel Selection = new .() ~ delete _;
 	public Property<float> ItemHeight = new .(30.0f) ~ delete _;
+	/// Rows wider than the list scroll sideways instead of being cut at its edge: they lay out
+	/// at the widest visible row's natural width (View.NaturalWidth), and a horizontal bar lies
+	/// over the bottom. Shift+wheel, or a sideways wheel, scrolls it. Off by default.
+	public Property<bool> ScrollsHorizontally = new .(false) ~ delete _;
 
 	/// (position, clickCount, localX, localY)
 	public Event<delegate void(int32, int32, float, float)> OnItemClicked ~ _.Dispose();
@@ -52,6 +56,12 @@ class ListView : ViewGroup, IListAdapterObserver
 	/// OWNED, and a VISUAL child rather than a logical one.
 	private ScrollBar mScrollBar;
 	private bool mScrollBarVisible = false;
+	/// OWNED; a visual child only while ScrollsHorizontally.
+	private ScrollBar mHScrollBar;
+	private bool mHScrollBarVisible = false;
+	private float mScrollX = 0.0f;
+	private float mContentWidth = 0.0f;
+	private float mViewportWidth = 0.0f;
 
 	private bool mDragging = false;
 	private float mDragLastY = 0.0f;
@@ -68,12 +78,21 @@ class ListView : ViewGroup, IListAdapterObserver
 		// The arrows move the selection, so focus must not spend them on moving away.
 		WantsArrowKeys = true;
 		ItemHeight.SetOwner(this);
+		ScrollsHorizontally.SetOwner(this);
 
 		mScrollBar = new ScrollBar(false);
 		mScrollBar.Parent = this;
 		mScrollBar.OnValueChanged.Add(new (bar, val) =>
 			{
 				mScrollY = val;
+				Invalidate();
+			});
+		mHScrollBar = new ScrollBar(true);
+		mHScrollBar.Parent = this;
+		mHScrollBar.Visibility = .Gone;
+		mHScrollBar.OnValueChanged.Add(new (bar, val) =>
+			{
+				mScrollX = val;
 				Invalidate();
 			});
 	}
@@ -89,6 +108,11 @@ class ListView : ViewGroup, IListAdapterObserver
 			mScrollBar.Context.DetachView(mScrollBar);
 		mScrollBar.Parent = null;
 		mScrollBar.ReleaseRef();
+
+		if (mHScrollBar.Context != null)
+			mHScrollBar.Context.DetachView(mHScrollBar);
+		mHScrollBar.Parent = null;
+		mHScrollBar.ReleaseRef();
 	}
 
 	// ---- Adapter ----------------------------------------------------------------------------
@@ -113,6 +137,17 @@ class ListView : ViewGroup, IListAdapterObserver
 	}
 
 	public float ScrollY => mScrollY;
+	/// How far the rows are scrolled sideways (ScrollsHorizontally).
+	public float ScrollX => mScrollX;
+	/// How wide the rows are laid out: the list's own width, or the widest visible row's.
+	public float ContentWidth => mContentWidth;
+	public float MaxScrollX => Max(0.0f, mContentWidth - mViewportWidth);
+
+	public void ScrollByX(float dx)
+	{
+		mScrollX = Clamp(mScrollX + dx, 0.0f, MaxScrollX);
+		Invalidate();
+	}
 	public ViewRecycler Recycler => mRecycler;
 
 	/// The rows that currently exist, by position. Borrowed.
@@ -134,7 +169,9 @@ class ListView : ViewGroup, IListAdapterObserver
 		get
 		{
 			let contentHeight = ContentHeight;
-			let viewportHeight = Height - Padding.TotalVertical;
+			// The last row clears the horizontal bar while it shows.
+			let viewportHeight = Height - Padding.TotalVertical -
+				(mHScrollBarVisible ? mHScrollBar.BarThickness : 0.0f);
 			return Max(0.0f, contentHeight - viewportHeight);
 		}
 	}
@@ -225,12 +262,14 @@ class ListView : ViewGroup, IListAdapterObserver
 
 	// ---- Visual children --------------------------------------------------------------------
 
-	public override int VisualChildCount => mActiveViews.Count + 1;
+	public override int VisualChildCount => mActiveViews.Count + (ScrollsHorizontally.Value ? 2 : 1);
 
 	public override View GetVisualChild(int index)
 	{
 		if (index == mActiveViews.Count)
 			return mScrollBar;
+		if ((index == mActiveViews.Count + 1) && ScrollsHorizontally.Value)
+			return mHScrollBar;
 
 		if ((index < 0) || (index > mActiveViews.Count))
 			return null;
@@ -250,6 +289,16 @@ class ListView : ViewGroup, IListAdapterObserver
 
 	public override void OnMouseWheel(MouseWheelEventArgs e)
 	{
+		// Sideways (as ScrollView): a horizontal wheel, or Shift with the vertical one.
+		let horizontalDelta = (e.DeltaX != 0) ? e.DeltaX
+			: (e.Modifiers.HasFlag(.Shift) ? e.DeltaY : 0.0f);
+		if (ScrollsHorizontally.Value && (MaxScrollX > 0) && (horizontalDelta != 0))
+		{
+			ScrollByX(-horizontalDelta * ItemHeight.Value * WheelRows);
+			e.Handled = true;
+			return;
+		}
+
 		if (MaxScrollY <= 0)
 			return;
 
@@ -435,6 +484,9 @@ class ListView : ViewGroup, IListAdapterObserver
 
 		mScrollBarVisible = MaxScrollY > 0;
 		mScrollBar.Visibility = mScrollBarVisible ? .Visible : .Gone;
+		if (!ScrollsHorizontally.Value)
+			mHScrollBarVisible = false;
+		mHScrollBar.Visibility = mHScrollBarVisible ? .Visible : .Gone;
 	}
 
 	protected override void OnLayout(float left, float top, float width, float height)
@@ -448,10 +500,15 @@ class ListView : ViewGroup, IListAdapterObserver
 
 		mScrollY = Clamp(mScrollY, 0.0f, MaxScrollY);
 
+		mViewportWidth = viewportWidth;
 		if (mAdapter.ItemCount == 0)
 		{
 			mScrollBarVisible = false;
 			mScrollBar.Visibility = .Gone;
+			mHScrollBarVisible = false;
+			mHScrollBar.Visibility = .Gone;
+			mContentWidth = viewportWidth;
+			mScrollX = 0.0f;
 			RecycleOutOfRange(0, -1);
 			return;
 		}
@@ -466,13 +523,39 @@ class ListView : ViewGroup, IListAdapterObserver
 		RecycleOutOfRange(firstVisible, lastVisible);
 
 		for (int32 position = firstVisible; position <= lastVisible; position++)
-			LayoutRow(position, viewportWidth);
+			AcquireRow(position);
+
+		// Sideways: the rows are as wide as the widest visible one wants (never narrower than
+		// the list), scrolled by mScrollX. Only the visible rows are asked, since a virtualised
+		// list knows no others, so the reach follows what is on screen.
+		var rowWidth = viewportWidth;
+		if (ScrollsHorizontally.Value)
+		{
+			for (int32 position = firstVisible; position <= lastVisible; position++)
+				rowWidth = Max(rowWidth, mActiveViews[position].NaturalWidth(GetItemHeightAt(position)));
+		}
+		mContentWidth = rowWidth;
+		mScrollX = Clamp(mScrollX, 0.0f, MaxScrollX);
+		let showHBar = ScrollsHorizontally.Value && (MaxScrollX > 0);
+		if (showHBar != mHScrollBarVisible)
+		{
+			mHScrollBarVisible = showHBar;
+			mHScrollBar.Visibility = showHBar ? .Visible : .Gone;
+			mScrollY = Clamp(mScrollY, 0.0f, MaxScrollY);
+		}
+		if (showHBar && (Context != null) && (mHScrollBar.Context == null))
+			Context.AttachView(mHScrollBar);
+
+		for (int32 position = firstVisible; position <= lastVisible; position++)
+			LayoutRow(position, rowWidth);
 
 		mFirstVisible = firstVisible;
 		mLastVisible = lastVisible;
 
 		if (mScrollBarVisible)
 			LayoutScrollBar(width, viewportHeight);
+		if (mHScrollBarVisible)
+			LayoutHScrollBar(height, viewportWidth);
 	}
 
 	private int32 FindLastVisible(int32 firstVisible, float viewportHeight)
@@ -492,7 +575,7 @@ class ListView : ViewGroup, IListAdapterObserver
 		return last;
 	}
 
-	private void LayoutRow(int32 position, float viewportWidth)
+	private void AcquireRow(int32 position)
 	{
 		if (!mActiveViews.ContainsKey(position))
 		{
@@ -503,7 +586,10 @@ class ListView : ViewGroup, IListAdapterObserver
 
 			mActiveViews[position] = view;
 		}
+	}
 
+	private void LayoutRow(int32 position, float rowWidth)
+	{
 		// Rows already active are NOT rebound here. GetOrCreate binds on acquire, and every
 		// data change path rebinds already: in place for a range, by recycling everything for
 		// a whole reset. Rebinding per layout meant every visible row rebound every frame.
@@ -511,8 +597,8 @@ class ListView : ViewGroup, IListAdapterObserver
 		let itemY = Padding.Top + GetItemOffset(position) - mScrollY;
 		let itemHeight = GetItemHeightAt(position);
 
-		view.Measure(BoxConstraints.Tight(viewportWidth, itemHeight));
-		view.Layout(Padding.Left, itemY, viewportWidth, itemHeight);
+		view.Measure(BoxConstraints.Tight(rowWidth, itemHeight));
+		view.Layout(Padding.Left - mScrollX, itemY, rowWidth, itemHeight);
 	}
 
 	private void LayoutScrollBar(float width, float viewportHeight)
@@ -523,6 +609,16 @@ class ListView : ViewGroup, IListAdapterObserver
 		mScrollBar.Measure(BoxConstraints.Tight(mScrollBar.BarThickness, viewportHeight));
 		mScrollBar.Layout(width - mScrollBar.BarThickness, Padding.Top, mScrollBar.BarThickness,
 			viewportHeight);
+	}
+
+	private void LayoutHScrollBar(float height, float viewportWidth)
+	{
+		let thickness = mHScrollBar.BarThickness;
+		mHScrollBar.MaxValue = MaxScrollX;
+		mHScrollBar.Value = mScrollX;
+		mHScrollBar.ViewportSize = viewportWidth;
+		mHScrollBar.Measure(BoxConstraints.Tight(viewportWidth, thickness));
+		mHScrollBar.Layout(Padding.Left, height - thickness, viewportWidth, thickness);
 	}
 
 	// ---- Draw -------------------------------------------------------------------------------

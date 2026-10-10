@@ -341,4 +341,70 @@ class ListViewTests
 
 		Test.Assert(adapter.Binds[0] == 1, "still once");
 	}
+
+	// ---- Sideways ---------------------------------------------------------------------------
+
+	/// Rows 500 wide: wider than the list, as a deep hierarchy's rows are.
+	private class WideListAdapter : ListAdapterBase
+	{
+		public int32 Count = 0;
+		public float RowWidth = 500.0f;
+
+		public this(int32 count)
+		{
+			Count = count;
+		}
+
+		public override int32 ItemCount => Count;
+		public override View CreateView(int32 viewType) => new TestView(RowWidth, 30.0f);
+
+		/// Rows are recycled: the width is the bound data, as a real row's text is.
+		public override void BindView(View view, int32 position)
+		{
+			((TestView)view).DesiredWidth = RowWidth;
+		}
+	}
+
+	/// Wide rows scroll sideways only when the list is asked to, and Shift+wheel moves them;
+	/// rows that fit drop the offset again.
+	[Test]
+	public static void WideRowsScrollSidewaysOnlyWhenAskedAndShiftWheelMovesThem()
+	{
+		let adapter = scope WideListAdapter(100);
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let list = AddList(context, root, adapter);
+
+		// Off by default: rows are cut at the list's width, and there is no sideways bar.
+		let visibleRows = list.VisualChildCount - 1;
+		Test.Assert(list.MaxScrollX == 0.0f);
+		Test.Assert(list.GetActiveView(0).Width < 200.0f);
+		let maxScrollYWithout = list.MaxScrollY;
+
+		// On: the rows lay out at their natural width, and the bar lies over the bottom.
+		list.ScrollsHorizontally.Value = true;
+		UITest.LayoutPass(context, root);
+		Test.Assert(list.VisualChildCount == visibleRows + 2);
+		Test.Assert(Math.Abs(list.ContentWidth - 500.0f) < 0.01f);
+		Test.Assert(Math.Abs(list.GetActiveView(0).Width - 500.0f) < 0.01f);
+		Test.Assert(list.MaxScrollX > 300.0f);
+		Test.Assert(list.MaxScrollY > maxScrollYWithout, "the last row scrolls clear of the bar");
+
+		// Shift+wheel scrolls sideways (not down); the rows follow.
+		context.GetInputManager().ProcessMouseWheel(50, 50, 0, -1, .Shift);
+		UITest.LayoutPass(context, root);
+		Test.Assert(list.ScrollX > 0.0f);
+		Test.Assert(list.ScrollY == 0.0f);
+		Test.Assert(Math.Abs(list.GetActiveView(0).Bounds.X + list.ScrollX) < 0.01f);
+		list.ScrollByX(100000.0f);
+		Test.Assert(list.ScrollX == list.MaxScrollX);
+
+		// Rows that fit: nothing to scroll, and the offset drops back.
+		adapter.RowWidth = 50.0f;
+		list.NotifyDataChanged();
+		UITest.LayoutPass(context, root);
+		Test.Assert(list.MaxScrollX == 0.0f);
+		Test.Assert(list.ScrollX == 0.0f);
+	}
 }

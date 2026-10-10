@@ -343,4 +343,43 @@ class TreeViewTests
 		Test.Assert(tree.FlatAdapter.ItemCount == 6);
 		Test.Assert(tree.Selection.IsSelected(2));
 	}
+
+	// ---- Sideways ---------------------------------------------------------------------------
+
+	/// A chevron's click zone scrolls sideways with its row.
+	[Test]
+	public static void AChevronsClickZoneScrollsSidewaysWithItsRow()
+	{
+		// Rows wider than the tree, so it scrolls sideways.
+		let adapter = scope SimpleTreeAdapter();
+		adapter.RowWidth = 600.0f;
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let tree = new TreeView();
+		tree.SetAdapter(adapter);
+		tree.InternalListView.ScrollsHorizontally.Value = true;
+		root.AddView(tree);
+		UITest.LayoutPass(context, root);
+		Test.Assert(tree.InternalListView.MaxScrollX > 0.0f);
+
+		// Scrolled 8: root 0's chevron zone is [-8, 12) in the list, so 16 misses it and 2 hits.
+		tree.InternalListView.ScrollByX(8.0f);
+		UITest.LayoutPass(context, root);
+		tree.InternalListView.OnItemClicked(0, 1, 16.0f, 5.0f);
+		Test.Assert(tree.FlatAdapter.ItemCount == 3);
+		tree.InternalListView.OnItemClicked(0, 1, 2.0f, 5.0f);
+		Test.Assert(tree.FlatAdapter.ItemCount == 5, "root 0 expanded");
+	}
+
+	/// An editable label's natural width is its text past the offset, not the box it fills.
+	[Test]
+	public static void AnEditableLabelsNaturalWidthIsItsTextPastTheOffset()
+	{
+		let label = new EditableLabel();
+		defer label.ReleaseRef();
+		label.TextOffsetX.Value = 40.0f;
+		// No font service here: the offset and the trailing room alone.
+		Test.Assert(Math.Abs(label.NaturalWidth(20.0f) - 48.0f) < 0.01f);
+	}
 }
