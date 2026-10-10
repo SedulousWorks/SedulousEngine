@@ -323,6 +323,9 @@ class AssetsView : ViewGroup
 		mGrid.SetAdapter(null);
 	}
 
+	/// The left pane's group tree.
+	public TreeView GroupTree => mTree;
+
 	/// Per frame: the badges refresh after a cook finishes; database shape changes call
 	/// Rebuild.
 	public void Refresh()

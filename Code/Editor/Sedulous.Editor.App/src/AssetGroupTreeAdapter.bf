@@ -29,6 +29,8 @@ class AssetGroupTreeAdapter : GroupTreeAdapter
 		row.BindTarget(.Empty, group);
 		row.SetText(isRoot ? "Content" : group.Name);
 		row.SlowClickToEdit.Value = !isRoot;
-		row.TextOffsetX.Value = (float)(depth + 1) * 18.0f;
+		// The tree's own inset, past its chevron column: a literal drifted from the chevrons
+		// by the difference at every level.
+		row.TextOffsetX.Value = (mTree != null) ? mTree.ContentInset(depth) : 0.0f;
 	}
 }
