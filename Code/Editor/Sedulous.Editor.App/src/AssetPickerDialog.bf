@@ -145,6 +145,7 @@ class AssetPickerDialog : Dialog
 	private GridView mGrid;
 	private ViewModeToggles mViewToggles;
 	private EditText mFilterEdit;
+	private Label mHint;
 	private GroupTreeAdapter mGroups = new .() ~ delete _;
 	private RowAdapter mListAdapter ~ delete _;
 	private GridAdapter mGridAdapter ~ delete _;
@@ -191,6 +192,13 @@ class AssetPickerDialog : Dialog
 			var match = LayoutStyle();
 			match.Width = SizeSpec.Match();
 			column.AddView(header, match);
+			// Why a guid typed in the filter lists nothing, when it names an asset this slot
+			// does not take.
+			mHint = new Label();
+			mHint.FontSize.Value = 12.0f;
+			mHint.TextColor.Value = Color(1.0f, 0.75f, 0.4f, 1.0f);
+			mHint.Visibility = .Gone;
+			column.AddView(mHint, match);
 		}
 
 		let split = new SplitView();
@@ -358,7 +366,7 @@ class AssetPickerDialog : Dialog
 			for (let id in mContext.Favorites)
 			{
 				let instance = mContext.Project.SourceDb.GetInstance(id);
-				if ((instance != null) && TypeMatches(instance) && MatchesFilter(instance.Name, mFilter))
+				if ((instance != null) && TypeMatches(instance) && AssetFilter.Matches(instance, mFilter))
 					mRows.Add(id);
 			}
 			if (mFilter.IsEmpty)
@@ -375,7 +383,40 @@ class AssetPickerDialog : Dialog
 		mGrid.Selection.ClearSelection();
 		mList.NotifyDataChanged();
 		mGridAdapter.NotifyDataSetChanged();
+
+		// A whole guid that names an asset this slot does not take lists nothing: say why,
+		// rather than leave an empty list that reads as "no such asset". A listed one is
+		// selected.
+		let hint = scope String();
+		if (AssetFilter.AsGuid(mFilter, let typed))
+		{
+			let named = Resolve(typed);
+			if ((named != null) && !TypeMatches(named))
+				hint.AppendF("'{}' is a {}, which this slot does not take", named.Name, named.TypeName);
+			for (int32 i < (int32)mRows.Count)
+			{
+				if (mRows[i] == typed)
+				{
+					mList.Selection.Select(i);
+					mGrid.Selection.Select(i);
+					break;
+				}
+			}
+		}
+		mHint.SetText(hint);
+		mHint.Visibility = hint.IsEmpty ? .Gone : .Visible;
 	}
+
+	/// Filters as if `text` were typed into the filter field: names, or a guid or its start.
+	public void SetFilter(StringView text)
+	{
+		mFilterEdit.SetText(text);
+		mFilter.Set(text);
+		RebuildList();
+	}
+
+	/// The line under the filter: why a guid typed there lists nothing, empty when it does.
+	public StringView FilterHint => mHint.Text.Value;
 
 	private void CollectGroup(Group group, bool recurse)
 	{
@@ -400,16 +441,11 @@ class AssetPickerDialog : Dialog
 		{
 			if (!TypeMatches(instance) || mContext.IsFavorite(instance.Id))
 				continue;
-			if (MatchesFilter(instance.Name, mFilter))
+			if (AssetFilter.Matches(instance, mFilter))
 				mRows.Add(instance.Id);
 		}
 		for (let child in group.Groups)
 			CollectFiltered(child);
-	}
-
-	private static bool MatchesFilter(StringView name, StringView filter)
-	{
-		return filter.IsEmpty || (name.IndexOf(filter, true) >= 0);
 	}
 
 	private Instance Resolve(Guid id) => (mContext.Project != null) ? mContext.Project.SourceDb.GetInstance(id) : null;

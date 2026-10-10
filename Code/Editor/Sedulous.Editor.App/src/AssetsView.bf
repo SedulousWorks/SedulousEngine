@@ -463,10 +463,46 @@ class AssetsView : ViewGroup
 		}
 		mList.Selection.ClearSelection();
 		mGrid.Selection.ClearSelection();
+		// A whole guid typed or pasted names one asset: select it, so Enter or a double-click
+		// opens it at once.
+		if (AssetFilter.AsGuid(mFilter, let typed))
+		{
+			for (int32 i < (int32)mRows.Count)
+			{
+				if ((mRows[i].Group == null) && (mRows[i].Id == typed))
+				{
+					mList.Selection.Select(i);
+					mGrid.Selection.Select(i);
+					break;
+				}
+			}
+		}
 		mList.NotifyDataChanged();
 		mGridAdapter.NotifyDataSetChanged();
 		UpdateBreadcrumb();
 	}
+
+	/// Filters as if `text` were typed into the filter field: names, or a guid or its start.
+	public void SetFilter(StringView text)
+	{
+		mFilterEdit.SetText(text);
+		mFilter.Set(text);
+		RebuildList();
+	}
+
+	/// The assets the content area lists now, in order, subgroup rows left out.
+	public void ListedAssets(System.Collections.List<Guid> outIds)
+	{
+		outIds.Clear();
+		for (let row in mRows)
+		{
+			if (row.Group == null)
+				outIds.Add(row.Id);
+		}
+	}
+
+	/// The selected row in whichever view shows, or -1.
+	public int32 SelectedPosition => mGridMode ? mGrid.Selection.FirstSelected() : mList.Selection.FirstSelected();
 
 	private void CollectFiltered(Group group)
 	{
@@ -474,7 +510,7 @@ class AssetsView : ViewGroup
 			return;
 		for (let instance in group.Instances)
 		{
-			if (instance.Name.IndexOf(mFilter, true) >= 0)
+			if (AssetFilter.Matches(instance, mFilter))
 			{
 				var row = Row();
 				row.Id = instance.Id;
