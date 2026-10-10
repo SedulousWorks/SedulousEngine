@@ -223,6 +223,36 @@ class DebugDrawTests
 		Test.Assert(draw.TextChars.Length == 0);
 	}
 
+	/// DrawScreenLine records a line, drawn as a quad its thickness wide at any angle.
+	[Test]
+	public static void AScreenLineIsAQuadItsThicknessWide()
+	{
+		let draw = scope DebugDraw();
+		draw.DrawScreenLine(10.0f, 20.0f, 50.0f, 20.0f, .(1, 0, 0, 1), 4.0f);
+		Test.Assert(draw.Commands2D.Length == 1);
+		let line = draw.Commands2D[0];
+		Test.Assert(line.Kind == .Line);
+		Test.Assert((line.Position.X == 10.0f) && (line.Size.X == 50.0f) && (line.Scale == 4.0f));
+
+		// A horizontal line widens 2 px up and down along its whole length.
+		Float2[4] q = default;
+		DebugDraw.ScreenLineQuad(.(10.0f, 20.0f), .(50.0f, 20.0f), 4.0f, ref q);
+		Test.Assert((Math.Abs(q[0].X - 10.0f) < 1e-4f) && (Math.Abs(q[1].X - 50.0f) < 1e-4f));
+		Test.Assert(Math.Abs(Math.Abs(q[0].Y - q[3].Y) - 4.0f) < 1e-4f);
+		Test.Assert(Math.Abs(Math.Abs(q[1].Y - q[2].Y) - 4.0f) < 1e-4f);
+
+		// A diagonal one widens across itself: each side's offset is perpendicular to the line.
+		DebugDraw.ScreenLineQuad(.(0.0f, 0.0f), .(30.0f, 40.0f), 2.0f, ref q);
+		let sideX = q[0].X - q[3].X;
+		let sideY = q[0].Y - q[3].Y;
+		Test.Assert(Math.Abs(sideX * 30.0f + sideY * 40.0f) < 1e-3f);
+		Test.Assert(Math.Abs(Math.Sqrt(sideX * sideX + sideY * sideY) - 2.0f) < 1e-4f);
+
+		// A zero length line still has a width.
+		DebugDraw.ScreenLineQuad(.(5.0f, 5.0f), .(5.0f, 5.0f), 2.0f, ref q);
+		Test.Assert((Math.Abs(q[0].Y - q[3].Y) + Math.Abs(q[0].X - q[3].X)) > 0.0f);
+	}
+
 	[Test]
 	public static void ClearingDropsTheTextStoreToo()
 	{

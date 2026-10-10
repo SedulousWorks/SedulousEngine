@@ -82,6 +82,28 @@ extension SceneEditorPage
 		input.PointerY = (int32)mouse.Y;
 		input.ViewportWidth = mViewport.RenderWidth;
 		input.ViewportHeight = mViewport.RenderHeight;
+		// The orientation gizmo takes a click on one of its knobs before any tool sees it, and
+		// the rest of that press, so the select tool neither picks nor box-selects under it. A
+		// press reaches here only when the camera does not own the mouse: Alt+drag still orbits.
+		if (input.LeftPressed && mViewport.IsHovered())
+		{
+			let gizmo = ViewGizmo.LayoutFor(mCamera.Right, mCamera.Up, mCamera.Forward, (float)input.ViewportWidth);
+			let hit = ViewGizmo.Hit(gizmo, (float)input.PointerX, (float)input.PointerY);
+			if (hit >= 0)
+			{
+				ViewGizmo.SnapAngles(gizmo.Poles[hit].Axis, mCamera.Yaw, let yaw, let pitch);
+				mCamera.TurnAboutPivot(yaw, pitch);
+				mViewGizmoPressed = true;
+			}
+		}
+		if (mViewGizmoPressed)
+		{
+			let released = input.LeftReleased;
+			input.LeftPressed = false;
+			input.LeftDown = false;
+			input.LeftReleased = false;
+			mViewGizmoPressed = !released;
+		}
 		return mViewportTools.Update(input);
 	}
 
@@ -138,6 +160,33 @@ extension SceneEditorPage
 			mFpsWindowFrames = 0;
 		}
 		dd.DrawScreenTextRight(12.0f, 12.0f, mFpsText, .(0.85f, 0.85f, 0.85f, 1.0f));
+	}
+
+	/// The orientation gizmo: the axis tripod turning with the camera, back to front so a knob
+	/// pointing at the viewer covers the arms and knobs behind it, the knob under the pointer
+	/// lit. The positive axes have an arm from the centre, the negative ones a dimmer knob alone.
+	private void DrawViewGizmo(DebugDraw dd)
+	{
+		if (!mViewport.IsReady || (mViewport.RenderWidth == 0))
+			return;
+		let gizmo = ViewGizmo.LayoutFor(mCamera.Right, mCamera.Up, mCamera.Forward, (float)mViewport.RenderWidth);
+		var hovered = (int32)-1;
+		if (mViewport.IsHovered() && (mViewport.Mouse != null))
+			hovered = ViewGizmo.Hit(gizmo, mViewport.Mouse.X, mViewport.Mouse.Y);
+		const float cGlyph = (float)DebugFont.cCharWidth;
+		const float cGlyphHeight = (float)DebugFont.cCharHeight;
+		let half = 0.5f * ViewGizmo.cKnob;
+		for (int32 i < 6)
+		{
+			let pole = gizmo.Poles[i];
+			let color = ViewGizmo.ColorOf(pole, i == hovered);
+			if (pole.Positive)
+				dd.DrawScreenLine(gizmo.Center.X, gizmo.Center.Y, pole.Screen.X, pole.Screen.Y, color, 2.0f);
+			dd.DrawScreenRect(pole.Screen.X - half, pole.Screen.Y - half, ViewGizmo.cKnob, ViewGizmo.cKnob, color);
+			let label = ViewGizmo.Label(pole);
+			let ink = pole.Positive ? Color(0.08f, 0.08f, 0.08f, 1.0f) : Color(0.9f, 0.9f, 0.9f, 1.0f);
+			dd.DrawScreenText(pole.Screen.X - 0.5f * cGlyph * (float)label.Length, pole.Screen.Y - 0.5f * cGlyphHeight, label, ink);
+		}
 	}
 
 	/// The measurement overlay while zooming, bottom left, at `opacity`: the focus distance and

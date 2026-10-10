@@ -284,6 +284,18 @@ class DebugDrawPass
 					command.Size.Y, uv, packed);
 				continue;
 			}
+			if (command.Kind == .Line)
+			{
+				// Two triangles over the widened segment, sampling inside the solid block.
+				let block = DebugFont.SolidBlockUV;
+				let uv = Float2(0.5f * (block.X + block.Z), 0.5f * (block.Y + block.W));
+				Float2[4] corners = default;
+				DebugDraw.ScreenLineQuad(command.Position, command.Size, command.Scale, ref corners);
+				int32[6] order = .(0, 1, 2, 0, 2, 3);
+				for (let i in order)
+					outVertices.Add(DebugTextVertex(.(corners[i].X, corners[i].Y, 0), uv, packed));
+				continue;
+			}
 
 			let width = (float)DebugFont.cCharWidth * command.Scale;
 			let height = (float)DebugFont.cCharHeight * command.Scale;

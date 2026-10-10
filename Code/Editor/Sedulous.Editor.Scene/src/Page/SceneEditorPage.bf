@@ -96,6 +96,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private String mFpsText = new .() ~ delete _;
 	/// Shown for a moment after each wheel zoom.
 	private ZoomReadout mZoomReadout = new .() ~ delete _;
+	/// A press that began on the orientation gizmo, until its release.
+	private bool mViewGizmoPressed = false;
 	private SceneViewState mView = .();
 	private List<(ToolbarToggle toggle, String id)> mToolToggles = new .() ~ { for (var t in _) delete t.id; delete _; };
 	/// A category's dropdown over the tools registered under it.
@@ -518,6 +520,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			let zoomOpacity = mZoomReadout.Opacity;
 			if (zoomOpacity > 0.0f)
 				DrawZoomReadout(dd, zoomOpacity);
+			DrawViewGizmo(dd);
 			DrawGizmos(dd);
 			if (mPropAnimPanel != null)
 				mPropAnimPanel.DrawOverlay(dd); // the live preview entity marker

@@ -110,6 +110,18 @@ class EditorCamera
 
 	public bool IsGliding => mGliding;
 
+	/// Turns to `newYaw` and `newPitch` about the orbit pivot: what the camera looks at stays
+	/// put and the camera swings round it (the orientation gizmo's snap to an axis). Stops a
+	/// glide.
+	public void TurnAboutPivot(float newYaw, float newPitch)
+	{
+		let pivot = Position + Forward * FocusDistance;
+		Yaw = newYaw;
+		Pitch = Math.Clamp(newPitch, -cPitchLimit, cPitchLimit);
+		Position = pivot - Forward * FocusDistance;
+		mGliding = false;
+	}
+
 	public void ReleaseCapture(IMouse mouse)
 	{
 		if (!MouseCaptured)

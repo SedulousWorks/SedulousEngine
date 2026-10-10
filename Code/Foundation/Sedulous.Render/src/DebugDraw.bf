@@ -487,6 +487,45 @@ class DebugDraw
 			});
 	}
 
+	/// A line in pixels, `thickness` wide, at any angle (the orientation gizmo's axes).
+	public void DrawScreenLine(float x0, float y0, float x1, float y1, Color color, float thickness = 1.5f)
+	{
+		mCommands2D.Add(.()
+			{
+				Kind = .Line, Position = .(x0, y0), Size = .(x1, y1), Color = color,
+				TextStart = 0, TextLength = 0, Scale = thickness
+			});
+	}
+
+	/// The four corners of a 2D line drawn `thickness` pixels wide from `a` to `b`: the segment
+	/// widened half the thickness to each side, in the order a-left, b-left, b-right, a-right
+	/// (two triangles: 0 1 2 and 0 2 3). A zero length line widens along X.
+	public static void ScreenLineQuad(Float2 a, Float2 b, float thickness, ref Float2[4] outCorners)
+	{
+		var dx = b.X - a.X;
+		var dy = b.Y - a.Y;
+		let lengthSq = dx * dx + dy * dy;
+		if (lengthSq <= 1.0e-12f)
+		{
+			dx = 1.0f;
+			dy = 0.0f;
+		}
+		else
+		{
+			let inverse = 1.0f / Math.Sqrt(lengthSq);
+			dx *= inverse;
+			dy *= inverse;
+		}
+		let half = 0.5f * thickness;
+		// The perpendicular, half a thickness long.
+		let sideX = -dy * half;
+		let sideY = dx * half;
+		outCorners[0] = .(a.X + sideX, a.Y + sideY);
+		outCorners[1] = .(b.X + sideX, b.Y + sideY);
+		outCorners[2] = .(b.X - sideX, b.Y - sideY);
+		outCorners[3] = .(a.X - sideX, a.Y - sideY);
+	}
+
 	private void AppendChars(StringView text)
 	{
 		for (int i < text.Length)

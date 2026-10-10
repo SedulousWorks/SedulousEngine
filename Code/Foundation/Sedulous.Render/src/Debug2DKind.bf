@@ -5,4 +5,6 @@ enum Debug2DKind : uint8
 {
 	case Text;
 	case Rectangle;
+	/// Position is the start, Size the end, Scale the thickness, in pixels.
+	case Line;
 }
