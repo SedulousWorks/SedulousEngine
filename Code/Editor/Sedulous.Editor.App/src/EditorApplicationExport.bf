@@ -16,9 +16,8 @@ namespace Sedulous.Editor.App;
 /// Export: a fresh template registry and presets run through the shared driver, the same
 /// ExportOne and ExportAll the export CLI calls, in two safe phases so the UI never freezes:
 /// a cook through the cook service, then, once it finishes, a background job that packs,
-/// stages and copies the player, reader-only. Plus the two management surfaces over the
-/// driver: the templates manager and the export-presets panel with its preset-editor form,
-/// every view-destroying action deferred through the UI mutation queue.
+/// stages and copies the player, reader-only. Plus the two dialogs over the driver: Export
+/// (the presets) and Export Templates, each given what it needs through its seams.
 extension EditorApplication
 {
 	private void RunExport(StringView presetName, bool all)
@@ -190,119 +189,6 @@ extension EditorApplication
 		outRegistry.Refresh(TemplatesRoot(.. scope .()), BuildLayout.PlayerDirectoryBeside(toolDir, .. scope .()));
 	}
 
-	/// A labelled form row, fixed-width label plus the field growing to fill; answers the row
-	/// so a caller can append trailing controls. Consumes the field reference.
-	/// A preset's own display, over the project's for this platform: the render resolution and
-	/// fit, and the window. Each group applies only when its box is ticked. The views are
-	/// borrowed from the dialog's content.
-	private class PresetDisplayFields
-	{
-		public CheckBox OwnRender;
-		public NumericField RenderWidth;
-		public NumericField RenderHeight;
-		public ComboBox RenderFit;
-		public CheckBox OwnWindow;
-		public NumericField WindowWidth;
-		public NumericField WindowHeight;
-		public ComboBox WindowMode;
-		public CheckBox WindowResizable;
-
-		public void Build(EditorApplication app, FlexLayout column, ExportPreset initial)
-		{
-			OwnRender = new CheckBox("Own render size (instead of the project's)", initial.OverridesRender);
-			column.AddView(OwnRender);
-			{
-				let row = app.AddFormRow(column, "Render size", null);
-				RenderWidth = SizeField(row, initial.RenderWidth, 0);
-				RenderHeight = SizeField(row, initial.RenderHeight, 0);
-				RenderFit = new ComboBox();
-				for (let name in StringView[4]("Stretch", "Letterbox", "Crop", "Integer scale"))
-					RenderFit.AddItem(name);
-				RenderFit.SetSelectedIndex((int32)initial.RenderFit);
-				row.AddView(RenderFit);
-			}
-			OwnWindow = new CheckBox("Own window (instead of the project's)", initial.OverridesWindow);
-			column.AddView(OwnWindow);
-			{
-				let row = app.AddFormRow(column, "Window", null);
-				WindowWidth = SizeField(row, initial.WindowWidth, 1);
-				WindowHeight = SizeField(row, initial.WindowHeight, 1);
-				WindowMode = new ComboBox();
-				for (let name in StringView[3]("Windowed", "Fullscreen", "Borderless"))
-					WindowMode.AddItem(name);
-				WindowMode.SetSelectedIndex((int32)initial.WindowMode);
-				row.AddView(WindowMode);
-				WindowResizable = new CheckBox("Resizable", initial.WindowResizable);
-				row.AddView(WindowResizable);
-			}
-		}
-
-		public void ApplyTo(ExportPreset preset)
-		{
-			preset.OverridesRender = OwnRender.IsChecked.Value;
-			preset.RenderWidth = (uint32)RenderWidth.Value;
-			preset.RenderHeight = (uint32)RenderHeight.Value;
-			preset.RenderFit = (FitMode)Math.Max(0, RenderFit.SelectedIndex);
-			preset.OverridesWindow = OwnWindow.IsChecked.Value;
-			preset.WindowWidth = (uint32)WindowWidth.Value;
-			preset.WindowHeight = (uint32)WindowHeight.Value;
-			preset.WindowMode = (WindowMode)Math.Max(0, WindowMode.SelectedIndex);
-			preset.WindowResizable = WindowResizable.IsChecked.Value;
-		}
-
-		private static NumericField SizeField(FlexLayout row, uint32 value, double least)
-		{
-			let field = new NumericField();
-			field.SetDecimalPlaces(0);
-			field.SetMin(least);
-			field.SetMax(16384);
-			field.SetStep(1);
-			field.SetValue(value);
-			var style = LayoutStyle();
-			style.Width = SizeSpec.Fixed(Unit.Dp(80));
-			style.AlignSelf = .Center;
-			row.AddView(field, style);
-			return field;
-		}
-	}
-
-	private FlexLayout AddFormRow(FlexLayout column, StringView label, View field)
-	{
-		let row = new FlexLayout();
-		row.Direction = .Horizontal;
-		row.Spacing = 8;
-		let text = new Label(label);
-		var narrow = LayoutStyle();
-		narrow.Width = SizeSpec.Fixed(Unit.Dp(120));
-		narrow.AlignSelf = .Center;
-		row.AddView(text, narrow);
-		if (field != null)
-		{
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			grow.AlignSelf = .Center;
-			row.AddView(field, grow);
-		}
-		var match = LayoutStyle();
-		match.Width = SizeSpec.Match();
-		column.AddView(row, match);
-		return row;
-	}
-
-	/// Swaps the open management dialog for a freshly built one: closes the current and runs
-	/// open, on the mutation queue. Takes ownership of the delegate.
-	private void QueueReplaceDialog(Dialog current, delegate void() open)
-	{
-		mUiHost.Context.MutationQueue.QueueAction(new [=current, =open]() =>
-			{
-				if (current != null)
-					current.Close();
-				open();
-			} ~ delete open);
-	}
-
-	private void ReopenExportPresetsPanel(Dialog current) => QueueReplaceDialog(current, new () => { OpenExportPresetsPanel(); });
-
 	/// Persists the in-memory preset set to the project's export_presets.xml.
 	private void SavePresetsController()
 	{
@@ -311,53 +197,6 @@ extension EditorApplication
 		let projectFs = scope NativeFileSystem(mProject.Directory);
 		if (mPresetsController.Save(projectFs) case .Err)
 			mContext.Notify(.Error, "Saving export presets FAILED (see console).");
-	}
-
-	/// The additional-files list as the ";"-separated text of the Extra Files field.
-	private static void JoinSemicolons(List<String> items, String outText)
-	{
-		for (int i < items.Count)
-		{
-			if (i > 0)
-				outText.Append(";");
-			outText.Append(items[i]);
-		}
-	}
-
-	private static void SplitSemicolons(StringView text, List<String> outItems)
-	{
-		for (var part in text.Split(';'))
-		{
-			part.Trim();
-			if (!part.IsEmpty)
-				outItems.Add(new String(part));
-		}
-	}
-
-	/// The native multi-select open file dialog appends the chosen paths to the Extra Files
-	/// field; the field survives even if the form closes before the async dialog resolves.
-	private void PickAdditionalFiles(EditText target)
-	{
-		if ((mHost == null) || (mHost.Shell == null) || (mHost.Shell.Dialogs == null))
-		{
-			mContext.Notify(.Error, "File dialogs are unavailable.");
-			return;
-		}
-		target.AddRef();
-		mHost.Shell.Dialogs.ShowOpenFile(new [=target](paths) =>
-			{
-				defer target.ReleaseRef();
-				if (paths.Length == 0)
-					return; // cancelled
-				let text = scope String(target.Text);
-				for (let path in paths)
-				{
-					if (!text.IsEmpty && !text.EndsWith(";"))
-						text.Append(";");
-					text.Append(path);
-				}
-				target.SetText(text);
-			}, .(), "", true, 0);
 	}
 
 	/// The export templates dialog, over whatever is open; null with no UI. The dialog is the
@@ -394,9 +233,7 @@ extension EditorApplication
 		return dialog;
 	}
 
-	/// The export presets panel: the project's export_presets.xml reloaded into the
-	/// controller, each preset with Export, Edit, Duplicate and Delete, plus Add, Export All
-	/// and Manage Templates in the footer.
+	/// The export dialog over the project's presets, reloaded from export_presets.xml.
 	private void OpenExportPresetsPanel()
 	{
 		if (mProject == null)
@@ -408,224 +245,31 @@ extension EditorApplication
 			return;
 		{
 			let projectFs = scope NativeFileSystem(mProject.Directory);
-			mPresetsController.Load(projectFs); // reflects edits the form persisted
+			mPresetsController.Load(projectFs);
 		}
-
-		let dialog = new Dialog("Export");
-		dialog.MinWidth.Value = 600.0f;
-		dialog.MaxWidth.Value = 820.0f;
-		dialog.MinHeight.Value = 220.0f;
-		dialog.MaxHeight.Value = 560.0f;
-
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 6;
-		column.AddView(new Label("Export presets (output directory: <project>/Dist):"));
-
-		for (int i < mPresetsController.Count)
-		{
-			let p = mPresetsController.At(i);
-			let text = scope String();
-			text.AppendF("{}  [{}/{}]", p.Name, p.Platform.IsEmpty ? "?" : StringView(p.Platform), p.EffectiveConfig);
-
-			let row = new FlexLayout();
-			row.Direction = .Horizontal;
-			row.Spacing = 6;
-			let label = new Label(text);
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			grow.AlignSelf = .Center;
-			row.AddView(label, grow);
-			let name = new String(p.Name);
-			let index = i;
-			let export = new Button("Export");
-			export.OnClick.Add(new [=dialog, =name, =this](b) =>
-				{
-					RunExport(name, false);
-					dialog.Close(.OK);
-				} ~ delete name);
-			row.AddView(export);
-			let edit = new Button("Edit");
-			edit.OnClick.Add(new [=dialog, =index, =this](b) =>
-				{
-					let current = new ExportPreset();
-					mPresetsController.At(index).CopyTo(current);
-					QueueReplaceDialog(dialog, new [=current, =index, =this]() => { OpenPresetEditor(current, index); } ~ delete current);
-				});
-			row.AddView(edit);
-			let duplicate = new Button("Duplicate");
-			duplicate.OnClick.Add(new [=dialog, =index, =this](b) =>
-				{
-					mPresetsController.Duplicate(index);
-					SavePresetsController();
-					ReopenExportPresetsPanel(dialog);
-				});
-			row.AddView(duplicate);
-			let remove = new Button("Delete");
-			remove.OnClick.Add(new [=dialog, =index, =this](b) =>
-				{
-					mPresetsController.Remove(index);
-					SavePresetsController();
-					ReopenExportPresetsPanel(dialog);
-				});
-			row.AddView(remove);
-			column.AddView(row);
-		}
-		dialog.SetContent(column);
-
-		let add = dialog.AddButton("Add...", .None);
-		add.OnClick.Add(new [=dialog, =this](b) =>
+		let seams = new ExportDialogSeams();
+		seams.Refresh = new [=this](registry) => { BuildTemplateRegistryMainThread(registry); };
+		seams.Save = new [=this]() => { SavePresetsController(); };
+		seams.RunExport = new [=this](preset, all) => { RunExport(preset, all); };
+		seams.OpenTemplates = new [=this]() => OpenTemplatesManager();
+		seams.PickFiles = new [=this](chosen) =>
 			{
-				let fresh = new ExportPreset();
-				fresh.Name.Set("New Preset");
-				fresh.Platform.Set(BuildLayout.HostPlatformName);
-				QueueReplaceDialog(dialog, new [=fresh, =this]() => { OpenPresetEditor(fresh, -1); } ~ delete fresh);
-			});
-		let exportAll = dialog.AddButton("Export All", .None);
-		exportAll.OnClick.Add(new [=dialog, =this](b) =>
-			{
-				RunExport("", true);
-				dialog.Close(.OK);
-			});
-		let templates = dialog.AddButton("Manage Templates...", .None);
-		templates.OnClick.Add(new [=dialog, =this](b) => { QueueReplaceDialog(dialog, new () => { OpenTemplatesManager(); }); });
-		dialog.AddButton("Close", .Cancel);
-		dialog.Show(mUiHost.Context);
-	}
-
-	/// The preset-editor form: name, a template dropdown (setting the template id and
-	/// deriving platform and config) or the explicit platform and config when "resolve by"
-	/// is chosen, player name, output subdir, extra files with a native picker, and the
-	/// symbols and prune toggles. Save writes through the controller, Add or Update, persists,
-	/// and returns to the panel; Cancel just returns. Borrows the initial preset.
-	private void OpenPresetEditor(ExportPreset initial, int editIndex)
-	{
-		if (mUiHost == null)
-			return;
-		let registry = scope TemplateRegistry();
-		BuildTemplateRegistryMainThread(registry);
-
-		let dialog = new Dialog((editIndex < 0) ? "Add Export Preset" : "Edit Export Preset");
-		dialog.MinWidth.Value = 600.0f;
-		dialog.MaxWidth.Value = 820.0f;
-		dialog.MinHeight.Value = 340.0f;
-		dialog.MaxHeight.Value = 640.0f;
-
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 6;
-
-		let nameEdit = new EditText();
-		nameEdit.SetText(initial.Name);
-		AddFormRow(column, "Name", nameEdit);
-
-		// The template dropdown: index 0 resolves by platform and config; each later item maps
-		// to a concrete template id with its platform and config, in the parallel lists.
-		let templateCombo = new ComboBox();
-		templateCombo.AddItem("(resolve by platform + config below)");
-		let comboIds = new List<String>();
-		let comboPlatforms = new List<String>();
-		let comboConfigs = new List<String>();
-		comboIds.Add(new String());
-		comboPlatforms.Add(new String());
-		comboConfigs.Add(new String());
-		int32 selectedCombo = 0;
-		for (int i < registry.Count)
-		{
-			let t = registry.At(i);
-			if (t == null)
-				continue;
-			let item = scope String();
-			item.AppendF("{} [{}/{}]", t.Name, t.Platform, t.EffectiveConfig);
-			if (t.IsHost)
-				item.Append(" (host)");
-			let idx = templateCombo.AddItem(item);
-			comboIds.Add(new String(t.Id));
-			comboPlatforms.Add(new String(t.Platform));
-			comboConfigs.Add(new String(t.EffectiveConfig));
-			if (!initial.TemplateId.IsEmpty && (initial.TemplateId == t.Id))
-				selectedCombo = idx;
-		}
-		templateCombo.SetSelectedIndex(selectedCombo);
-		AddFormRow(column, "Template", templateCombo);
-
-		let platformEdit = new EditText();
-		platformEdit.SetText(initial.Platform);
-		platformEdit.Placeholder.Value.Set(BuildLayout.HostPlatformName);
-		AddFormRow(column, "Platform", platformEdit);
-
-		let configEdit = new EditText();
-		configEdit.SetText(initial.Config);
-		configEdit.Placeholder.Value.Set("Release");
-		AddFormRow(column, "Config", configEdit);
-
-		let playerEdit = new EditText();
-		playerEdit.SetText(initial.PlayerName);
-		playerEdit.Placeholder.Value.Set("(template default)");
-		AddFormRow(column, "Player name", playerEdit);
-
-		let subdirEdit = new EditText();
-		subdirEdit.SetText(initial.OutputSubdir);
-		subdirEdit.Placeholder.Value.Set("(sanitized name)");
-		AddFormRow(column, "Output subdir", subdirEdit);
-
-		let filesEdit = new EditText();
-		filesEdit.SetText(JoinSemicolons(initial.AdditionalFiles, .. scope .()));
-		filesEdit.Placeholder.Value.Set("icon.ico;config.xml");
-		let filesRow = AddFormRow(column, "Extra files", filesEdit);
-		let browse = new Button("Add Files...");
-		browse.OnClick.Add(new [=filesEdit, =this](b) => { PickAdditionalFiles(filesEdit); });
-		filesRow.AddView(browse);
-
-		let symbolsCheck = new CheckBox("Stage debug symbols into the dist", initial.StageSymbols);
-		column.AddView(symbolsCheck);
-		let pruneCheck = new CheckBox("Prune to reachable content only", initial.PruneToReachable);
-		column.AddView(pruneCheck);
-		let display = new PresetDisplayFields();
-		display.Build(this, column, initial);
-		dialog.SetContent(column);
-		dialog.OnClosed.Add(new [=comboIds, =comboPlatforms, =comboConfigs, =display](d, result) =>
-			{
-				delete display;
-				DeleteContainerAndItems!(comboIds);
-				DeleteContainerAndItems!(comboPlatforms);
-				DeleteContainerAndItems!(comboConfigs);
-			});
-
-		let save = dialog.AddButton("Save", .None);
-		save.OnClick.Add(new [=dialog, =editIndex, =nameEdit, =templateCombo, =platformEdit, =configEdit, =playerEdit, =subdirEdit,
-			=filesEdit, =symbolsCheck, =pruneCheck, =comboIds, =comboPlatforms, =comboConfigs, =display, =this](b) =>
-			{
-				let result = scope ExportPreset();
-				result.Name.Set(nameEdit.Text);
-				let sel = templateCombo.SelectedIndex;
-				if ((sel > 0) && (sel < comboIds.Count))
+				if ((mHost == null) || (mHost.Shell == null) || (mHost.Shell.Dialogs == null))
 				{
-					result.TemplateId.Set(comboIds[sel]);
-					result.Platform.Set(comboPlatforms[sel]);
-					result.Config.Set(comboConfigs[sel]);
+					mContext.Notify(.Error, "File dialogs are unavailable.");
+					chosen(.());
+					delete chosen;
+					return;
 				}
-				else
-				{
-					result.Platform.Set(platformEdit.Text);
-					result.Config.Set(configEdit.Text);
-				}
-				result.PlayerName.Set(playerEdit.Text);
-				result.OutputSubdir.Set(subdirEdit.Text);
-				result.StageSymbols = symbolsCheck.IsChecked.Value;
-				result.PruneToReachable = pruneCheck.IsChecked.Value;
-				display.ApplyTo(result);
-				SplitSemicolons(filesEdit.Text, result.AdditionalFiles);
-
-				if (editIndex < 0)
-					mPresetsController.Add(result);
-				else
-					mPresetsController.Update(editIndex, result);
-				SavePresetsController();
-				ReopenExportPresetsPanel(dialog);
-			});
-		let cancel = dialog.AddButton("Cancel", .None);
-		cancel.OnClick.Add(new [=dialog, =this](b) => { ReopenExportPresetsPanel(dialog); });
+				mHost.Shell.Dialogs.ShowOpenFile(new [=chosen](paths) =>
+					{
+						chosen(paths);
+						delete chosen;
+					}, .(), "", true, 0);
+			};
+		seams.HostPlatform.Set(BuildLayout.HostPlatformName);
+		Absolutize(PathJoin(mProject.Directory, "Dist", .. scope .()), seams.OutputRoot);
+		let dialog = new ExportDialog(mContext, mPresetsController, seams);
 		dialog.Show(mUiHost.Context);
 	}
 }
