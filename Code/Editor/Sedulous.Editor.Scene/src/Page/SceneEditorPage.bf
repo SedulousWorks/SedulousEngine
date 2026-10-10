@@ -41,6 +41,10 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 {
 	/// Must match OnRenderWindow's projection.
 	private const float cFovY = 1.0472f;
+	/// The ground grid: a square this many metres wide in this many cells (one cell is what
+	/// the zoom readout reports).
+	private const float cGridSize = 20.0f;
+	private const int32 cGridDivisions = 20;
 
 	private EditorContext mContext;
 	private IApplicationHost mHost;
@@ -90,6 +94,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private double mFpsWindowSeconds = 0.0;
 	private uint32 mFpsWindowFrames = 0;
 	private String mFpsText = new .() ~ delete _;
+	/// Shown for a moment after each wheel zoom.
+	private ZoomReadout mZoomReadout = new .() ~ delete _;
 	private SceneViewState mView = .();
 	private List<(ToolbarToggle toggle, String id)> mToolToggles = new .() ~ { for (var t in _) delete t.id; delete _; };
 	/// A category's dropdown over the tools registered under it.
@@ -470,6 +476,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			let shiftDown = (keyboard != null)
 				&& (keyboard.IsKeyDown(.LeftShift) || keyboard.IsKeyDown(.RightShift));
 			mCamera.Update(keyboard, mViewport.Mouse, dt, !(modalToolActive && shiftDown));
+			if (mCamera.ZoomedThisUpdate)
+				mZoomReadout.Zoomed();
 		}
 		else
 		{
@@ -487,13 +495,17 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			let dd = mRender.DebugView(Internal.UnsafeCastToPtr(mViewport));
 			if (mView.ShowGrid)
 			{
-				dd.DrawGrid(.Zero, 20.0f, 20, .(0.63f, 0.63f, 0.65f, 1.0f)); // kept clear of the backdrop
+				dd.DrawGrid(.Zero, cGridSize, cGridDivisions, .(0.63f, 0.63f, 0.65f, 1.0f)); // kept clear of the backdrop
 				dd.DrawLine(.Zero, .(1, 0, 0), .(0.9f, 0.2f, 0.2f, 1.0f));
 				dd.DrawLine(.Zero, .(0, 1, 0), .(0.2f, 0.9f, 0.2f, 1.0f));
 				dd.DrawLine(.Zero, .(0, 0, 1), .(0.2f, 0.4f, 0.95f, 1.0f));
 			}
 			DrawEntityMarkers(dd);
 			DrawFrameRate(dd, dt);
+			mZoomReadout.Advance(dt);
+			let zoomOpacity = mZoomReadout.Opacity;
+			if (zoomOpacity > 0.0f)
+				DrawZoomReadout(dd, zoomOpacity);
 			DrawGizmos(dd);
 			if (mPropAnimPanel != null)
 				mPropAnimPanel.DrawOverlay(dd); // the live preview entity marker

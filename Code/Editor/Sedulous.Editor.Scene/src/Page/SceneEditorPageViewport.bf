@@ -140,6 +140,47 @@ extension SceneEditorPage
 		dd.DrawScreenTextRight(12.0f, 12.0f, mFpsText, .(0.85f, 0.85f, 0.85f, 1.0f));
 	}
 
+	/// The measurement overlay while zooming, bottom left, at `opacity`: the focus distance and
+	/// the grid cell over a scale bar of a round length at the focus. Clear of the tool status
+	/// (top left) and the frame rate (top right).
+	private void DrawZoomReadout(DebugDraw dd, float opacity)
+	{
+		if (!mViewport.IsReady || (mViewport.RenderHeight == 0))
+			return;
+		let height = (float)mViewport.RenderHeight;
+		let bar = ZoomReadout.ScaleBarAt(mCamera.FocusDistance, cFovY, height);
+		let focusText = scope String();
+		ZoomReadout.FormatMetres(mCamera.FocusDistance, focusText);
+		focusText.Append(" to focus");
+		// The cell of the grid as drawn; whether the grid shows is the page's toggle.
+		let cellText = scope String("grid cell ");
+		ZoomReadout.FormatMetres(cGridSize / (float)cGridDivisions, cellText);
+		let barText = ZoomReadout.FormatMetres(bar.Metres, .. scope String());
+
+		const float cMargin = 12.0f;
+		const float cPad = 6.0f;
+		const float cLine = (float)DebugFont.cCharHeight + 6.0f;
+		const float cGlyph = (float)DebugFont.cCharWidth;
+		let textWidth = cGlyph * (float)Math.Max(focusText.Length, cellText.Length);
+		let barWidth = bar.Pixels + 6.0f + cGlyph * (float)barText.Length;
+		let width = Math.Max(textWidth, barWidth) + 2.0f * cPad;
+		let boxHeight = 2.0f * cLine + 10.0f + 2.0f * cPad;
+		let left = cMargin;
+		let top = height - cMargin - boxHeight;
+		dd.DrawScreenRect(left, top, width, boxHeight, .(0.0f, 0.0f, 0.0f, 0.45f * opacity));
+
+		let ink = Color(0.85f, 0.85f, 0.85f, opacity);
+		let x = left + cPad;
+		dd.DrawScreenText(x, top + cPad, focusText, ink);
+		dd.DrawScreenText(x, top + cPad + cLine, cellText, ink);
+		// The bar: a line the length of its round measure, with end ticks, its length beside it.
+		let barY = top + cPad + 2.0f * cLine + 4.0f;
+		dd.DrawScreenRect(x, barY, bar.Pixels, 2.0f, ink);
+		dd.DrawScreenRect(x, barY - 3.0f, 1.0f, 8.0f, ink);
+		dd.DrawScreenRect(x + bar.Pixels - 1.0f, barY - 3.0f, 1.0f, 8.0f, ink);
+		dd.DrawScreenText(x + bar.Pixels + 6.0f, barY - 3.0f, barText, ink);
+	}
+
 	/// A small cross at every entity, and the selection's bounds.
 	private void DrawEntityMarkers(DebugDraw dd)
 	{

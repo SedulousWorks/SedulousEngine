@@ -27,6 +27,9 @@ class EditorCamera
 	/// The pivot distance ahead, the Alt+LMB turntable's centre.
 	public float FocusDistance = 12.0f;
 	public float PanSensitivity = 0.0015f;
+	/// The last Update dollied on the wheel, for the scene view's zoom readout. Turning,
+	/// panning and a wheel a tool owns leave it clear.
+	public bool ZoomedThisUpdate = false;
 
 	public Quaternion Rotation => Quaternion.FromAxisAngle(.(0.0f, 1.0f, 0.0f), Yaw) * Quaternion.FromAxisAngle(.(1.0f, 0.0f, 0.0f), Pitch);
 	public Float3 Forward => RotateVector(Rotation, Float3(0.0f, 0.0f, -1.0f));
@@ -72,6 +75,7 @@ class EditorCamera
 	/// the camera as well. The bare wheel stays the camera's, brush or no brush.
 	public void Update(IKeyboard keyboard, IMouse mouse, float dt, bool allowZoom = true)
 	{
+		ZoomedThisUpdate = false;
 		if (keyboard == null)
 			return;
 		if (mouse != null)
@@ -112,6 +116,7 @@ class EditorCamera
 				let factor = Math.Clamp(1.0f - ZoomFraction * scroll, 0.2f, 5.0f);
 				FocusDistance = Math.Max(0.05f, FocusDistance * factor);
 				Position = focus - Forward * FocusDistance;
+				ZoomedThisUpdate = true;
 			}
 		}
 		let flying = MouseCaptured || ((mouse != null) && mouse.IsButtonDown(.Right));

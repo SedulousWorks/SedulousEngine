@@ -84,6 +84,38 @@ static class EditorCameraTests
 		Test.Assert(cam.FocusDistance > 4.0f); // roughly back out, exponentially
 	}
 
+	/// An Update says when it zoomed on the wheel, and only then: the scene view's zoom
+	/// readout shows on it.
+	[Test]
+	public static void AnUpdateSaysWhenItZoomedOnTheWheelAndOnlyThen()
+	{
+		let cam = scope EditorCamera();
+		let keyboard = scope StubKeyboard();
+		let mouse = scope StubMouse();
+		let before = cam.FocusDistance;
+		mouse.Scroll = 1.0f;
+		cam.Update(keyboard, mouse, 0.016f);
+		Test.Assert(cam.ZoomedThisUpdate);
+		Test.Assert(cam.FocusDistance < before);
+
+		// The next frame without a notch clears it.
+		mouse.Scroll = 0.0f;
+		cam.Update(keyboard, mouse, 0.016f);
+		Test.Assert(!cam.ZoomedThisUpdate);
+
+		// A wheel a modal tool owns is no zoom.
+		mouse.Scroll = 1.0f;
+		cam.Update(keyboard, mouse, 0.016f, false);
+		Test.Assert(!cam.ZoomedThisUpdate);
+
+		// Turning the camera is no zoom either.
+		mouse.Scroll = 0.0f;
+		mouse.Rmb = true;
+		mouse.Dx = 40.0f;
+		cam.Update(keyboard, mouse, 0.016f);
+		Test.Assert(!cam.ZoomedThisUpdate);
+	}
+
 	[Test]
 	public static void RightButtonFreeLookTurnsByDeltaTimesSensitivity()
 	{
