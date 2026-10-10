@@ -391,4 +391,58 @@ class DragDropTests
 		drag.CancelDrag();
 		Test.Assert(!focus.HasCapture);
 	}
+
+	/// A source holding a scrollbar, as a draggable tree holds its list's overlay bar.
+	private class DraggablePanel : AbsoluteLayout, IDragSource
+	{
+		public override IDragSource AsDragSource() => this;
+		public DragData CreateDragData() => new DragData("test/plain");
+		public View CreateDragVisual(DragData data) => null;
+		public void OnDragStarted(DragData data) {}
+		public void OnDragCompleted(DragData data, DragDropEffects effect, bool cancelled) {}
+	}
+
+	/// A press on a scrollbar inside a drag source scrolls the bar and starts no drag; a press
+	/// on the row beside it still drags the source.
+	[Test]
+	public static void APressOnAScrollbarInsideASourceScrollsAndStartsNoDrag()
+	{
+		let context = scope UIContext();
+		let root = new RootView();
+		defer root.ReleaseRef();
+		UITest.Init(context, root, 400, 300);
+
+		let panel = new DraggablePanel();
+		let row = new TestView(100, 200);
+		let bar = new ScrollBar(false);
+		bar.MaxValue = 400.0f;
+		bar.ViewportSize = 200.0f;
+		var at = LayoutStyle();
+		at.Left = .(0, true);
+		at.Top = .(0, true);
+		panel.AddView(row, at);
+		at.Left = .(90, true); // over the row's right edge, as an overlay bar sits
+		at.Width = .(SizeSpec.Fixed(Unit.Dp(10)), true);
+		at.Height = .(SizeSpec.Fixed(Unit.Dp(200)), true);
+		panel.AddView(bar, at);
+		root.AddView(panel);
+		UITest.LayoutPass(context, root);
+		let input = context.GetInputManager();
+		let drag = context.DragDrop;
+
+		// On the bar's thumb (its top): the bar takes the gesture and scrolls; nothing drags.
+		input.ProcessMouseDown(.Left, 95, 20, 0);
+		Test.Assert(!drag.IsPotentialDrag);
+		input.ProcessMouseMove(95, 80);
+		Test.Assert(!drag.IsDragging);
+		Test.Assert(bar.Value > 0.0f);
+		input.ProcessMouseUp(.Left, 95, 80);
+
+		// On the row beside it: the source's drag, as before.
+		input.ProcessMouseDown(.Left, 40, 20, 0);
+		Test.Assert(drag.IsPotentialDrag);
+		input.ProcessMouseMove(40, 60);
+		Test.Assert(drag.IsDragging);
+		input.ProcessMouseUp(.Left, 40, 60);
+	}
 }

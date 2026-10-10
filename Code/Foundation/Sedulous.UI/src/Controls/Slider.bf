@@ -36,6 +36,9 @@ class Slider : View
 		Value.SetSilent(Clamp(value, minValue, maxValue));
 	}
 
+	/// A press drags the thumb: never a drag of a source above it (a slider in a draggable row).
+	public override bool OwnsPressDrag => true;
+
 	public override void OnMouseDown(MouseEventArgs e)
 	{
 		if (!IsEffectivelyEnabled())

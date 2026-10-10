@@ -31,6 +31,9 @@ class ScrollBar : View
 		Cursor = .Arrow;
 	}
 
+	/// A press on the bar drags its thumb or pages: never a drag of a source above it.
+	public override bool OwnsPressDrag => true;
+
 	public float Value
 	{
 		get => mValue;

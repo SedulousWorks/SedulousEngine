@@ -156,12 +156,15 @@ class InputManager
 		mPressedButton = button;
 
 		// A single left press on a drag source starts a POTENTIAL drag. The source is found by
-		// walking up, so a label inside a draggable row drags the row.
+		// walking up, so a label inside a draggable row drags the row; a view on the way up that
+		// drags on its own (a scrollbar over a draggable list's rows) ends the walk.
 		if ((hitView != null) && (button == .Left) && (mClickCount == 1))
 		{
 			var dragView = hitView;
 			while (dragView != null)
 			{
+				if (dragView.OwnsPressDrag)
+					break;
 				if (let source = dragView.AsDragSource())
 				{
 					mContext.DragDrop.BeginPotentialDrag(dragView, source, mMouseX, mMouseY,

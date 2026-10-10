@@ -415,6 +415,10 @@ class View : RefCounted, IPropertyOwner
 	public virtual ITooltipProvider AsTooltipProvider() => null;
 	public virtual IDragSource AsDragSource() => null;
 	public virtual IDropTarget AsDropTarget() => null;
+	/// Whether a left press on this view starts a drag of its own (a scrollbar's thumb, a
+	/// slider's), so no drag source above it may take the gesture: a scrollbar laid over a
+	/// draggable tree's rows scrolls the tree, never drags a row.
+	public virtual bool OwnsPressDrag => false;
 
 	/// Whether this view wants platform text input while it holds focus. A text editing
 	/// control overrides this to true, and the shell bridge starts and stops the window's
