@@ -37,6 +37,10 @@ static class EditorIcons
 	public static BakedSVGDrawable Folder = null;
 	public static BakedSVGDrawable Unknown = null;
 
+	// ---- asset views (the browser's and the picker's List and Grid toggles) ----
+	public static BakedSVGDrawable ViewList = null;
+	public static BakedSVGDrawable ViewGrid = null;
+
 	// ---- chrome ----
 	/// The tab and panel close X; the theme tints it.
 	public static BakedSVGDrawable Close = null;
@@ -80,6 +84,8 @@ static class EditorIcons
 		Skeleton = BakedSVGDrawable.FromString(cSkeleton);
 		Folder = BakedSVGDrawable.FromString(cFolder);
 		Unknown = BakedSVGDrawable.FromString(cUnknown);
+		ViewList = BakedSVGDrawable.FromString(cViewList);
+		ViewGrid = BakedSVGDrawable.FromString(cViewGrid);
 		Close = BakedSVGDrawable.FromString(cClose);
 		Add = BakedSVGDrawable.FromString(cAdd);
 		Remove = BakedSVGDrawable.FromString(cRemove);
@@ -117,6 +123,8 @@ static class EditorIcons
 		Skeleton = null;
 		Folder = null;
 		Unknown = null;
+		ViewList = null;
+		ViewGrid = null;
 		Close = null;
 		Add = null;
 		Remove = null;
@@ -135,7 +143,7 @@ static class EditorIcons
 	public static void Bakeable(List<BakedSVGDrawable> outIcons)
 	{
 		BakedSVGDrawable[?] all = .(
-			Translate, Rotate, Scale, WorldSpace, LocalSpace, Grid, Scene, Prefab, Mesh, SkinnedMesh, Material, Texture, ParticleFx, Animation, AnimGraph, Skeleton, Folder, Unknown, Close, Add, Remove, MoveUp, MoveDown, Copy, Edit, BrushRaise, BrushLower, BrushSmooth, BrushFlatten);
+			Translate, Rotate, Scale, WorldSpace, LocalSpace, Grid, Scene, Prefab, Mesh, SkinnedMesh, Material, Texture, ParticleFx, Animation, AnimGraph, Skeleton, Folder, Unknown, ViewList, ViewGrid, Close, Add, Remove, MoveUp, MoveDown, Copy, Edit, BrushRaise, BrushLower, BrushSmooth, BrushFlatten);
 		for (let icon in all)
 		{
 			if (icon != null)
@@ -340,6 +348,28 @@ static class EditorIcons
 		<svg viewBox="0 0 24 24">
 		  <path d="M6 3h8l5 5v12a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z" fill="none" stroke="#E0E0E0" stroke-width="1.4" stroke-linejoin="round"/>
 		  <path d="M14 3v5h5" fill="none" stroke="#E0E0E0" stroke-width="1.2"/>
+		</svg>
+		""";
+
+	/// List view: three rows, each a bullet and a line.
+	private const String cViewList = """
+		<svg viewBox="0 0 24 24">
+		  <rect x="3" y="5" width="3" height="3" rx="0.5" fill="#E0E0E0"/>
+		  <rect x="3" y="10.5" width="3" height="3" rx="0.5" fill="#E0E0E0"/>
+		  <rect x="3" y="16" width="3" height="3" rx="0.5" fill="#E0E0E0"/>
+		  <line x1="9" y1="6.5" x2="21" y2="6.5" stroke="#E0E0E0" stroke-width="1.8" stroke-linecap="round"/>
+		  <line x1="9" y1="12" x2="21" y2="12" stroke="#E0E0E0" stroke-width="1.8" stroke-linecap="round"/>
+		  <line x1="9" y1="17.5" x2="21" y2="17.5" stroke="#E0E0E0" stroke-width="1.8" stroke-linecap="round"/>
+		</svg>
+		""";
+
+	/// Grid view: four tiles.
+	private const String cViewGrid = """
+		<svg viewBox="0 0 24 24">
+		  <rect x="4" y="4" width="7" height="7" rx="1" fill="#E0E0E0"/>
+		  <rect x="13" y="4" width="7" height="7" rx="1" fill="#E0E0E0"/>
+		  <rect x="4" y="13" width="7" height="7" rx="1" fill="#E0E0E0"/>
+		  <rect x="13" y="13" width="7" height="7" rx="1" fill="#E0E0E0"/>
 		</svg>
 		""";
 

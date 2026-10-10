@@ -189,8 +189,7 @@ class AssetsView : ViewGroup
 	private GridView mGrid;
 	private EditText mFilterEdit;
 	private BreadcrumbBar mBreadcrumb;
-	private ToggleButton mListToggle;
-	private ToggleButton mGridToggle;
+	private ViewModeToggles mViewToggles;
 	private AssetGroupTreeAdapter mTreeAdapter ~ delete _;
 	private ListAdapter mListAdapter ~ delete _;
 	private GridAdapter mGridAdapter ~ delete _;
@@ -261,13 +260,11 @@ class AssetsView : ViewGroup
 			grow.FlexGrow = 1.0f;
 			grow.Height = SizeSpec.Match();
 			header.AddView(mBreadcrumb, grow);
-			mListToggle = new ToggleButton("List");
-			mGridToggle = new ToggleButton("Grid");
-			mListToggle.IsChecked.Value = true;
-			mListToggle.OnClick.Add(new (b) => { SetGridMode(false); });
-			mGridToggle.OnClick.Add(new (b) => { SetGridMode(true); });
-			header.AddView(mListToggle);
-			header.AddView(mGridToggle);
+			mViewToggles = new ViewModeToggles();
+			mViewToggles.OnModeChanged = new (grid) => { SetGridMode(grid); };
+			var center = LayoutStyle();
+			center.AlignSelf = .Center;
+			header.AddView(mViewToggles, center);
 			var headerStyle = LayoutStyle();
 			headerStyle.Width = SizeSpec.Match();
 			headerStyle.Height = SizeSpec.Fixed(Unit.Dp(26));
@@ -325,6 +322,9 @@ class AssetsView : ViewGroup
 
 	/// The left pane's group tree.
 	public TreeView GroupTree => mTree;
+	/// The List and Grid toggles over the content area.
+	public ViewModeToggles ViewToggles => mViewToggles;
+	public bool IsGridMode => mGridMode;
 
 	/// Per frame: the badges refresh after a cook finishes; database shape changes call
 	/// Rebuild.
@@ -612,8 +612,7 @@ class AssetsView : ViewGroup
 	private void SetGridMode(bool grid, bool persist = true)
 	{
 		mGridMode = grid;
-		mListToggle.IsChecked.Value = !grid;
-		mGridToggle.IsChecked.Value = grid;
+		mViewToggles.SetGridMode(grid);
 		mList.Visibility = grid ? .Gone : .Visible;
 		mGrid.Visibility = grid ? .Visible : .Gone;
 		Invalidate();

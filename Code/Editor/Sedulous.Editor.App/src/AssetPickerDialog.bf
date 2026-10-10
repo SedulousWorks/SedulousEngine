@@ -58,17 +58,7 @@ class AssetPickerDialog : Dialog
 			let instance = mOwner.Resolve(mOwner.mRows[position]);
 			if (instance == null)
 				return;
-			// The thumbnail wins; the type icon shows until one exists. Get also schedules
-			// a missing thumbnail, which appears on the next rebind: rows are passive
-			// re-queriers, like the inspector's picker slots.
-			Drawable drawable = null;
-			if (mOwner.mContext.Thumbnails != null)
-				drawable = mOwner.mContext.Thumbnails.Get(instance.Id);
-			if (drawable == null)
-				drawable = EditorIcons.ForAssetType(instance.TypeName);
-			if (drawable != null)
-				drawable.AddRef();
-			iconView.SetDrawable(drawable);
+			iconView.SetDrawable(mOwner.RetainedIconFor(instance));
 			let favorite = mOwner.mContext.IsFavorite(instance.Id);
 			let text = scope String();
 			if (favorite)
@@ -82,15 +72,83 @@ class AssetPickerDialog : Dialog
 		}
 	}
 
+	/// A tile: the thumbnail (or the type icon) centred over the name, which truncates.
+	private class GridAdapter : ListAdapterBase
+	{
+		private AssetPickerDialog mOwner;
+
+		public this(AssetPickerDialog owner) { mOwner = owner; }
+
+		public override int32 ItemCount => (int32)mOwner.mRows.Count;
+
+		public override View CreateView(int32 viewType)
+		{
+			let tile = new FlexLayout();
+			tile.Direction = .Vertical;
+			tile.Padding = .(4, 4);
+			let iconRow = new FlexLayout();
+			iconRow.Direction = .Horizontal;
+			iconRow.JustifyContent = .Center;
+			// Centred on the cross axis too, or the icon stretches to the row's height.
+			iconRow.AlignItems = .Center;
+			let iconView = new DrawableView();
+			iconView.DesiredWidth.Value = 48.0f;
+			iconView.DesiredHeight.Value = 48.0f;
+			iconRow.AddView(iconView);
+			let label = new Label();
+			label.FontSize.Value = 12.0f;
+			label.HAlign.Value = .Center;
+			label.Ellipsis.Value = true;
+			var grow = LayoutStyle();
+			grow.FlexGrow = 1.0f;
+			grow.Width = SizeSpec.Match();
+			tile.AddView(iconRow, grow);
+			var nameStyle = LayoutStyle();
+			nameStyle.Width = SizeSpec.Match();
+			nameStyle.Height = SizeSpec.Fixed(Unit.Dp(18));
+			tile.AddView(label, nameStyle);
+			return tile;
+		}
+
+		public override void BindView(View view, int32 position)
+		{
+			let tile = view as FlexLayout;
+			if ((tile == null) || (tile.ChildCount < 2) || (position < 0) || (position >= mOwner.mRows.Count))
+				return;
+			let iconRow = tile.GetChildAt(0) as FlexLayout;
+			let label = tile.GetChildAt(1) as Label;
+			if ((iconRow == null) || (iconRow.ChildCount < 1) || (label == null))
+				return;
+			let iconView = iconRow.GetChildAt(0) as DrawableView;
+			let instance = mOwner.Resolve(mOwner.mRows[position]);
+			if ((iconView == null) || (instance == null))
+				return;
+			iconView.SetDrawable(mOwner.RetainedIconFor(instance));
+			// A tile has room for the name alone; its tooltip carries the path and type the
+			// list row shows.
+			let favorite = mOwner.mContext.IsFavorite(instance.Id);
+			label.SetText(instance.Name);
+			label.TextColor.Value = favorite ? Color(1.0f, 0.85f, 0.45f, 1.0f) : Color(0.85f, 0.85f, 0.85f, 1.0f);
+			tile.TooltipText.Clear();
+			instance.GetPath(tile.TooltipText);
+			tile.TooltipText.Append("   -   ");
+			tile.TooltipText.Append(instance.TypeName);
+		}
+	}
+
 	/// Borrowed.
 	private EditorContext mContext;
 	private List<String> mTypeNames = new .() ~ DeleteContainerAndItems!(_);
 	// Borrowed: the content owns them.
 	private TreeView mTree;
 	private ListView mList;
+	private GridView mGrid;
+	private ViewModeToggles mViewToggles;
 	private EditText mFilterEdit;
 	private GroupTreeAdapter mGroups = new .() ~ delete _;
 	private RowAdapter mListAdapter ~ delete _;
+	private GridAdapter mGridAdapter ~ delete _;
+	private bool mGridMode = false;
 	private List<Guid> mRows = new .() ~ delete _;
 	private Group mSelectedGroup = null;
 	private String mFilter = new .() ~ delete _;
@@ -116,9 +174,24 @@ class AssetPickerDialog : Dialog
 				mFilter.Set(edit.Text);
 				RebuildList();
 			});
-		var match = LayoutStyle();
-		match.Width = SizeSpec.Match();
-		column.AddView(mFilterEdit, match);
+		{
+			// The filter, and the List and Grid toggles beside it.
+			let header = new FlexLayout();
+			header.Direction = .Horizontal;
+			header.Spacing = 6;
+			var grow = LayoutStyle();
+			grow.FlexGrow = 1.0f;
+			grow.AlignSelf = .Center;
+			header.AddView(mFilterEdit, grow);
+			mViewToggles = new ViewModeToggles();
+			mViewToggles.OnModeChanged = new (grid) => { SetGridMode(grid); };
+			var center = LayoutStyle();
+			center.AlignSelf = .Center;
+			header.AddView(mViewToggles, center);
+			var match = LayoutStyle();
+			match.Width = SizeSpec.Match();
+			column.AddView(header, match);
+		}
 
 		let split = new SplitView();
 		split.SplitRatio = 0.32f;
@@ -141,8 +214,30 @@ class AssetPickerDialog : Dialog
 				if (clickCount >= 2)
 					ConfirmAt(position);
 			});
-		mList.OnItemRightClicked.Add(new (position, x, y) => { ShowRowMenu(position, x, y); });
-		split.SetPanes(mTree, mList);
+		mList.OnItemRightClicked.Add(new (position, x, y) => { ShowRowMenu(mList, position, x, y); });
+		// The grid: the same rows as tiles, a larger thumbnail over the name.
+		mGridAdapter = new GridAdapter(this);
+		mGrid = new GridView();
+		mGrid.CellWidth.Value = 96.0f;
+		mGrid.CellHeight.Value = 84.0f;
+		mGrid.Visibility = .Gone;
+		mGrid.SetAdapter(mGridAdapter);
+		mGrid.OnItemClicked.Add(new (position, clickCount, x, y) =>
+			{
+				if (clickCount >= 2)
+					ConfirmAt(position);
+			});
+		mGrid.OnItemRightClicked.Add(new (position, x, y) => { ShowRowMenu(mGrid, position, x, y); });
+		let results = new FlexLayout();
+		results.Direction = .Vertical;
+		{
+			var fill = LayoutStyle();
+			fill.Width = SizeSpec.Match();
+			fill.FlexGrow = 1.0f;
+			results.AddView(mList, fill);
+			results.AddView(mGrid, fill);
+		}
+		split.SetPanes(mTree, results);
 		var grow = LayoutStyle();
 		grow.Width = SizeSpec.Match();
 		grow.FlexGrow = 1.0f;
@@ -150,7 +245,7 @@ class AssetPickerDialog : Dialog
 		SetContent(column);
 
 		let select = AddButton("Select", .None);
-		select.OnClick.Add(new (b) => { ConfirmAt(mList.Selection.FirstSelected()); });
+		select.OnClick.Add(new (b) => { ConfirmAt(SelectedPosition()); });
 		let clear = AddButton("Clear", .None);
 		clear.OnClick.Add(new (b) =>
 			{
@@ -161,12 +256,72 @@ class AssetPickerDialog : Dialog
 		AddButton("Cancel", .Cancel);
 
 		RebuildModel();
+		ApplySavedViewMode();
 	}
 
 	public ~this()
 	{
 		mTree.SetAdapter(null);
 		mList.SetAdapter(null);
+		mGrid.SetAdapter(null);
+	}
+
+	/// The List and Grid toggles beside the filter.
+	public ViewModeToggles ViewToggles => mViewToggles;
+	public bool IsGridMode => mGridMode;
+	/// The rows the dialog offers (instance ids), in the order both views show them.
+	public Span<Guid> Rows => mRows;
+	public ListView RowList => mList;
+	public GridView RowGrid => mGrid;
+
+	/// Shows the rows as a list or as a grid of tiles; `persist` remembers it for the project,
+	/// apart from the browser's choice: a picker is often a narrower choice (one asset type),
+	/// where tiles of thumbnails read differently.
+	public void SetGridMode(bool grid, bool persist = true)
+	{
+		mGridMode = grid;
+		mViewToggles.SetGridMode(grid);
+		mList.Visibility = grid ? .Gone : .Visible;
+		mGrid.Visibility = grid ? .Visible : .Gone;
+		Invalidate();
+		if (persist)
+		{
+			if (let store = mContext.ProjectEditorSettings)
+			{
+				store.Section<EditorAssetBrowserSettings>().PickerGridMode = grid;
+				store.MarkChanged<EditorAssetBrowserSettings>();
+				mContext.RequestProjectEditorSettingsSave();
+			}
+		}
+	}
+
+	/// The project's saved picker view, applied without saving it again.
+	private void ApplySavedViewMode()
+	{
+		let store = mContext.ProjectEditorSettings;
+		if (store == null)
+			return; // no project store yet: the default, list
+		if (let section = store.Find<EditorAssetBrowserSettings>())
+			SetGridMode(section.PickerGridMode, false);
+	}
+
+	/// The selected row in whichever view shows, or -1.
+	private int32 SelectedPosition() => mGridMode ? mGrid.Selection.FirstSelected() : mList.Selection.FirstSelected();
+
+	/// The thumbnail, or the type icon until one exists (the browser's pattern), with a
+	/// reference taken for the view that will hold it. Get also SCHEDULES a missing thumbnail,
+	/// which appears on the next rebind (scroll, filter, reopen): rows are passive re-queriers,
+	/// like the inspector's picker slots.
+	private Drawable RetainedIconFor(Instance instance)
+	{
+		Drawable drawable = null;
+		if (mContext.Thumbnails != null)
+			drawable = mContext.Thumbnails.Get(instance.Id);
+		if (drawable == null)
+			drawable = EditorIcons.ForAssetType(instance.TypeName);
+		if (drawable != null)
+			drawable.AddRef();
+		return drawable;
 	}
 
 	// ---- the model -------------------------------------------------------------------------
@@ -217,7 +372,9 @@ class AssetPickerDialog : Dialog
 			}
 		}
 		mList.Selection.ClearSelection();
+		mGrid.Selection.ClearSelection();
 		mList.NotifyDataChanged();
+		mGridAdapter.NotifyDataSetChanged();
 	}
 
 	private void CollectGroup(Group group, bool recurse)
@@ -269,7 +426,8 @@ class AssetPickerDialog : Dialog
 		Close(.OK);
 	}
 
-	private void ShowRowMenu(int32 position, float x, float y)
+	/// `source` is the list or the grid the row was right-clicked in.
+	private void ShowRowMenu(View source, int32 position, float x, float y)
 	{
 		if ((position < 0) || (position >= mRows.Count) || (Context == null))
 			return;
@@ -280,7 +438,7 @@ class AssetPickerDialog : Dialog
 				mContext.ToggleFavorite(id);
 				RebuildList();
 			});
-		let screenPos = mList.LocalToScreen(.(x, y));
+		let screenPos = source.LocalToScreen(.(x, y));
 		menu.Show(Context, screenPos.X, screenPos.Y);
 		menu.ReleaseRef();
 	}
