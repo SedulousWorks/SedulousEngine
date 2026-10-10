@@ -302,7 +302,6 @@ extension EditorApplication
 	}
 
 	private void ReopenExportPresetsPanel(Dialog current) => QueueReplaceDialog(current, new () => { OpenExportPresetsPanel(); });
-	private void ReopenTemplatesManager(Dialog current) => QueueReplaceDialog(current, new () => { OpenTemplatesManager(); });
 
 	/// Persists the in-memory preset set to the project's export_presets.xml.
 	private void SavePresetsController()
@@ -361,118 +360,38 @@ extension EditorApplication
 			}, .(), "", true, 0);
 	}
 
-	/// Imports a template bundle, a folder with a template.xml, into the templates root, then
-	/// rebuilds the manager.
-	private void ImportTemplateThenRefresh(Dialog current)
-	{
-		if ((mHost == null) || (mHost.Shell == null) || (mHost.Shell.Dialogs == null))
-		{
-			mContext.Notify(.Error, "File dialogs are unavailable.");
-			return;
-		}
-		mHost.Shell.Dialogs.ShowOpenFolder(new [=current, =this](paths) =>
-			{
-				if (paths.Length == 0)
-					return; // cancelled: the manager stays open
-				let id = scope String();
-				if (ExportTemplates.Import(paths[0], TemplatesRoot(.. scope .()), id) case .Ok)
-					mContext.Notify(.Success, scope $"Imported template '{id}'.");
-				else
-					mContext.Notify(.Error, "Import failed - the folder has no valid template.xml.");
-				ReopenTemplatesManager(current);
-			}, "", false, 0);
-	}
-
-	/// Creates a template bundle from a build directory holding the player and its runtime
-	/// libraries, installing it into the templates root, then rebuilds the manager.
-	private void CreateTemplateThenRefresh(Dialog current)
-	{
-		if ((mHost == null) || (mHost.Shell == null) || (mHost.Shell.Dialogs == null))
-		{
-			mContext.Notify(.Error, "File dialogs are unavailable.");
-			return;
-		}
-		mHost.Shell.Dialogs.ShowOpenFolder(new [=current, =this](paths) =>
-			{
-				if (paths.Length == 0)
-					return;
-				let id = scope String();
-				let dir = scope String();
-				if (ExportTemplates.Create(paths[0], TemplatesRoot(.. scope .()), .Install, id, dir) case .Ok)
-					mContext.Notify(.Success, scope $"Created template '{id}'.");
-				else
-					mContext.Notify(.Error, "Create failed - pick a build dir containing the player.");
-				ReopenTemplatesManager(current);
-			}, "", false, 0);
-	}
-
-	/// The templates manager: every registry template with its platform, config and engine
-	/// version and a soft engine-mismatch note; Import, Create and Remove (non-host only)
-	/// mutate the templates root and rebuild this dialog.
-	private void OpenTemplatesManager()
+	/// The export templates dialog, over whatever is open; null with no UI. The dialog is the
+	/// context's once shown.
+	private Dialog OpenTemplatesManager()
 	{
 		if (mUiHost == null)
-			return;
-		let registry = scope TemplateRegistry();
-		BuildTemplateRegistryMainThread(registry);
-
-		let dialog = new Dialog("Manage Export Templates");
-		dialog.MinWidth.Value = 560.0f;
-		dialog.MaxWidth.Value = 780.0f;
-		dialog.MinHeight.Value = 240.0f;
-		dialog.MaxHeight.Value = 560.0f;
-
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 6;
-		column.AddView(new Label("Installed export templates (the host build is always available):"));
-
-		for (int i < registry.Count)
-		{
-			let t = registry.At(i);
-			if (t == null)
-				continue;
-			let text = scope String();
-			text.AppendF("{}  [{}/{}]", t.Name, t.Platform, t.EffectiveConfig);
-			if (!t.EngineVersion.IsEmpty)
-				text.AppendF("  v{}", t.EngineVersion);
-			if (t.IsHost)
-				text.Append("  (host)");
-			if (!ExportTemplates.EngineMatches(t))
-				text.Append("  (!) engine mismatch");
-
-			let row = new FlexLayout();
-			row.Direction = .Horizontal;
-			row.Spacing = 8;
-			let label = new Label(text);
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			grow.AlignSelf = .Center;
-			row.AddView(label, grow);
-			if (!t.IsHost) // the host template is synthesised, never on disk, so not removable
+			return null;
+		let seams = new TemplatesDialogSeams();
+		seams.TemplatesRoot = new [=this](outRoot) => { TemplatesRoot(outRoot); };
+		seams.Refresh = new [=this](registry) => { BuildTemplateRegistryMainThread(registry); };
+		seams.PickFolder = new [=this](chosen) =>
 			{
-				let id = new String(t.Id);
-				let remove = new Button("Remove");
-				remove.OnClick.Add(new [=dialog, =id, =this](b) =>
+				if ((mHost == null) || (mHost.Shell == null) || (mHost.Shell.Dialogs == null))
+				{
+					mContext.Notify(.Error, "File dialogs are unavailable.");
+					chosen(default);
+					delete chosen;
+					return;
+				}
+				mHost.Shell.Dialogs.ShowOpenFolder(new [=chosen](paths) =>
 					{
-						if (ExportTemplates.Remove(TemplatesRoot(.. scope .()), id) case .Ok)
-							mContext.Notify(.Success, scope $"Removed template '{id}'.");
-						else
-							mContext.Notify(.Error, "Remove failed (see console).");
-						ReopenTemplatesManager(dialog);
-					} ~ delete id);
-				row.AddView(remove);
-			}
-			column.AddView(row);
-		}
-		dialog.SetContent(column);
-
-		let import = dialog.AddButton("Import...", .None);
-		import.OnClick.Add(new [=dialog, =this](b) => { ImportTemplateThenRefresh(dialog); });
-		let create = dialog.AddButton("Create...", .None);
-		create.OnClick.Add(new [=dialog, =this](b) => { CreateTemplateThenRefresh(dialog); });
-		dialog.AddButton("Close", .Cancel);
+						chosen((paths.Length > 0) ? StringView(paths[0]) : default);
+						delete chosen;
+					}, "", false, 0);
+			};
+		seams.RevealFolder = new [=this](folder) =>
+			{
+				if ((mHost != null) && (mHost.Shell != null) && (mHost.Shell.Dialogs != null))
+					mHost.Shell.Dialogs.OpenPath(folder);
+			};
+		let dialog = new TemplatesDialog(mContext, seams);
 		dialog.Show(mUiHost.Context);
+		return dialog;
 	}
 
 	/// The export presets panel: the project's export_presets.xml reloaded into the

@@ -104,6 +104,12 @@ extension EditorApplication
 			actions.Register(d);
 		}
 		{
+			// The templates are the editor's, shared by every project: beside Preferences.
+			let d = new EditorActionDeclaration("edit.exportTemplates", "Export Templates...", "Manage the export templates this editor exports with", "Edit/Export Templates...", 201);
+			d.Execute = new (page) => { OpenTemplatesManager(); };
+			actions.Register(d);
+		}
+		{
 			let d = new EditorActionDeclaration("project.settings", "Project Settings...", "Open the project settings", "Project/Project Settings...", 100);
 			d.Enabled = new (page) => mProject != null;
 			d.Execute = new (page) =>
@@ -120,11 +126,6 @@ extension EditorApplication
 			let d = new EditorActionDeclaration("project.export", "Export...", "Open the export presets panel", "Project/Export...", 300);
 			d.Enabled = new (page) => mProject != null;
 			d.Execute = new (page) => { OpenExportPresetsPanel(); };
-			actions.Register(d);
-		}
-		{
-			let d = new EditorActionDeclaration("project.manageTemplates", "Manage Templates...", "Manage the export templates", "Project/Manage Templates...", 301);
-			d.Execute = new (page) => { OpenTemplatesManager(); };
 			actions.Register(d);
 		}
 		{

@@ -46,6 +46,8 @@ static class EditorIcons
 	public static BakedSVGDrawable Close = null;
 	/// A magnifier: a search or filter field.
 	public static BakedSVGDrawable Search = null;
+	/// An amber triangle with "!": something to heed (a template built for another engine).
+	public static BakedSVGDrawable Warning = null;
 
 	// ---- list and row controls (the container list editor) ----
 	public static BakedSVGDrawable Add = null;
@@ -90,6 +92,7 @@ static class EditorIcons
 		ViewGrid = BakedSVGDrawable.FromString(cViewGrid);
 		Close = BakedSVGDrawable.FromString(cClose);
 		Search = BakedSVGDrawable.FromString(cSearch);
+		Warning = BakedSVGDrawable.FromString(cWarning);
 		Add = BakedSVGDrawable.FromString(cAdd);
 		Remove = BakedSVGDrawable.FromString(cRemove);
 		MoveUp = BakedSVGDrawable.FromString(cMoveUp);
@@ -130,6 +133,7 @@ static class EditorIcons
 		ViewGrid = null;
 		Close = null;
 		Search = null;
+		Warning = null;
 		Add = null;
 		Remove = null;
 		MoveUp = null;
@@ -147,7 +151,7 @@ static class EditorIcons
 	public static void Bakeable(List<BakedSVGDrawable> outIcons)
 	{
 		BakedSVGDrawable[?] all = .(
-			Translate, Rotate, Scale, WorldSpace, LocalSpace, Grid, Scene, Prefab, Mesh, SkinnedMesh, Material, Texture, ParticleFx, Animation, AnimGraph, Skeleton, Folder, Unknown, ViewList, ViewGrid, Close, Search, Add, Remove, MoveUp, MoveDown, Copy, Edit, BrushRaise, BrushLower, BrushSmooth, BrushFlatten);
+			Translate, Rotate, Scale, WorldSpace, LocalSpace, Grid, Scene, Prefab, Mesh, SkinnedMesh, Material, Texture, ParticleFx, Animation, AnimGraph, Skeleton, Folder, Unknown, ViewList, ViewGrid, Close, Search, Warning, Add, Remove, MoveUp, MoveDown, Copy, Edit, BrushRaise, BrushLower, BrushSmooth, BrushFlatten);
 		for (let icon in all)
 		{
 			if (icon != null)
@@ -382,6 +386,15 @@ static class EditorIcons
 		<svg viewBox="0 0 24 24">
 		  <circle cx="10" cy="10" r="6" fill="none" stroke="#E0E0E0" stroke-width="2"/>
 		  <line x1="14.5" y1="14.5" x2="20" y2="20" stroke="#E0E0E0" stroke-width="2.4" stroke-linecap="round"/>
+		</svg>
+		""";
+
+	/// Warning: a triangle with an exclamation mark, amber whatever the theme.
+	private const String cWarning = """
+		<svg viewBox="0 0 24 24">
+		  <path d="M12 3.5l9.5 16.5h-19z" fill="none" stroke="#E8B04A" stroke-width="1.6" stroke-linejoin="round"/>
+		  <path d="M12 9.5v5" fill="none" stroke="#E8B04A" stroke-width="1.8" stroke-linecap="round"/>
+		  <circle cx="12" cy="17.3" r="1" fill="#E8B04A"/>
 		</svg>
 		""";
 
