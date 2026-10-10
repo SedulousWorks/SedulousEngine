@@ -22,13 +22,18 @@ namespace Sedulous.Shaders;
 ///
 /// DEVELOPMENT WINS whenever both a compiler and a source root exist. A stray pack next to
 /// the binaries must never quietly take over a working development setup, because that kills
-/// hot reload with one log line and nothing else. Losing it has to be a choice.
+/// hot reload with one log line and nothing else. Losing it has to be a choice: the
+/// environment override, or a Shaders/.pack-first marker in the data root, which an editor
+/// distribution ships (its sources there to cook an export's pack from, the pack its own
+/// start). The development tree never has the marker, so its hot reload stays.
 class ShaderSystemHost
 {
 	/// The layout under the data root, spelled once.
 	public const String cShaderFolder = "Shaders";
 	public const String cShaderPackFile = "shaders.dpak";
 	public const String cShaderPackPath = "Shaders/shaders.dpak";
+	/// A data root that ships the sources AND a pack and wants the pack.
+	public const String cShaderPackFirstMarker = "Shaders/.pack-first";
 
 	/// Set in the environment to test a shipped configuration on a development machine.
 	private const String cPackEnvironmentVariable = "OPTION_USE_SHADER_PACK";
@@ -138,9 +143,11 @@ class ShaderSystemHost
 		case .Automatic:
 			if (!devPossible)
 				return true;
-			// Development works, so only an explicit environment override chooses the pack.
-			// An unset variable is an error rather than an empty string, so the failure IS
-			// the answer here.
+			// Development works, so only a distribution's marker or an explicit environment
+			// override chooses the pack. An unset variable is an error rather than an empty
+			// string, so the failure IS the answer there.
+			if ((mDataFileSystem != null) && mDataFileSystem.Exists(cShaderPackFirstMarker))
+				return true;
 			let value = scope String();
 			if (Environment.GetEnvironmentVariable(cPackEnvironmentVariable, value) case .Err)
 				return false;

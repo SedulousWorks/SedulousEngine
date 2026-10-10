@@ -220,5 +220,16 @@ class ShaderSystemHostTests
 			Test.Assert(host.Initialize(device, scope NativeFileSystem(root)) case .Ok);
 			Test.Assert(host.UsingPack == !HaveDxc());
 		}
+
+		// A distribution marks itself (Shaders/.pack-first): Automatic then starts from the
+		// pack although the sources, and a compiler, are there.
+		let marker = PathJoin(root, ShaderSystemHost.cShaderPackFirstMarker, .. scope String());
+		WriteFile(marker, .()).IgnoreError();
+		{
+			let host = scope ShaderSystemHost();
+			Test.Assert(host.Initialize(device, scope NativeFileSystem(root)) case .Ok);
+			Test.Assert(host.UsingPack, "the marker chooses the pack");
+			Test.Assert(host.PackVariantCount == 1);
+		}
 	}
 }
