@@ -27,16 +27,8 @@ class EditorPreferencesDialog : Dialog
 
 	private EditorContext mContext;
 	private Settings mSettings;
-	/// Borrowed: the content owns it.
-	private TabView mTabs = null;
-
-	/// A category's tab and the column its fields go in (the tab view owns the views).
-	private class Page
-	{
-		public String Category = new .() ~ delete _;
-		public FlexLayout Column;
-	}
-	private List<Page> mPages = new .() ~ DeleteContainerAndItems!(_);
+	/// The category tabs; their view is the content.
+	private CategoryTabs mTabs = new .() ~ delete _;
 	// Borrowed: the content owns them.
 	private EditText mRootEdit = null;
 	private EditText mFontEdit = null;
@@ -73,12 +65,9 @@ class EditorPreferencesDialog : Dialog
 		MinHeight.Value = 480.0f;
 		MaxHeight.Value = 480.0f;
 
-		mTabs = new TabView();
-		mTabs.TabsClosable.Value = false;
-
 		// Appearance: the editor's fonts and scale.
 		{
-			let column = AddPage("Appearance");
+			let column = mTabs.Column("Appearance");
 			StringView fontPath = "";
 			StringView monoPath = "";
 			if (let f = store.Find<EditorFontSettings>())
@@ -114,23 +103,23 @@ class EditorPreferencesDialog : Dialog
 			row.AddView(valueLabel, narrow);
 			UpdateScaleLabel(uiScale);
 			slider.OnValueChanged.Add(new (s, v) => { UpdateScaleLabel(v); });
-			AddNote(column, "Font changes apply on restart.");
+			CategoryTabs.AddNote(column, "Font changes apply on restart.");
 		}
 
 		// Export: where the export templates live.
 		{
-			let column = AddPage("Export");
+			let column = mTabs.Column("Export");
 			StringView current = "";
 			if (let s = store.Find<EditorExportSettings>())
 				current = s.TemplatesRoot;
 			mRootEdit = AddTextRow(column, "Templates root", current);
 			mRootEdit.Placeholder.Value.Set(ExportTemplates.DefaultRoot(.. scope .()));
-			AddNote(column, scope $"Blank uses ${ExportTemplates.cRootEnvironmentVariable}, else the templates folder under the editor's user data.");
+			CategoryTabs.AddNote(column, scope $"Blank uses ${ExportTemplates.cRootEnvironmentVariable}, else the templates folder under the editor's user data.");
 		}
 
 		// Agent access: the MCP host over the open project (EditorMcpSettings).
 		{
-			let column = AddPage("Agent access");
+			let column = mTabs.Column("Agent access");
 			let mcp = store.Find<EditorMcpSettings>();
 			let check = new CheckBox("Serve the open project to agents (MCP)", (mcp != null) && mcp.Enabled);
 			check.FontSize.Value = 12.0f;
@@ -144,14 +133,14 @@ class EditorPreferencesDialog : Dialog
 			mMcpPortEdit = AddTextRow(column, "MCP port", scope $"{port}");
 			mMcpTokenEdit = AddTextRow(column, "MCP token", (mcp != null) ? mcp.Token : "");
 			mMcpTokenEdit.Placeholder.Value.Set("minted on first enable");
-			AddNote(column, "Applies to the open project on Save; the token is also written to <user-data>/mcp-token for a local agent.");
+			CategoryTabs.AddNote(column, "Applies to the open project on Save; the token is also written to <user-data>/mcp-token for a local agent.");
 		}
 
 		// Game preview: the Game tab's resolutions (GamePreviewSettings), sizes to test at on
 		// this machine after the project's own and its export presets'. Staged, applied on Save.
 		{
-			let column = AddPage("Game preview");
-			AddNote(column, "Sizes the Game tab offers on this machine, after the project's own and its export presets'.");
+			let column = mTabs.Column("Game preview");
+			CategoryTabs.AddNote(column, "Sizes the Game tab offers on this machine, after the project's own and its export presets'.");
 			mPreviewColumn = new FlexLayout();
 			mPreviewColumn.Direction = .Vertical;
 			mPreviewColumn.Spacing = 4;
@@ -173,8 +162,8 @@ class EditorPreferencesDialog : Dialog
 		// Shortcuts: every action with its effective chord; a click on the chord captures the next
 		// key, Reset forgets the override. Staged in mShortcutEdits, applied on Save.
 		{
-			let column = AddPage("Shortcuts");
-			AddNote(column, "Click a chord and press the new keys (Esc cancels, Del clears). A chord another action holds is refused on Save, naming it.");
+			let column = mTabs.Column("Shortcuts");
+			CategoryTabs.AddNote(column, "Click a chord and press the new keys (Esc cancels, Del clears). A chord another action holds is refused on Save, naming it.");
 			for (let action in context.Actions.Actions)
 				AddShortcutRow(column, context.Actions, action);
 		}
@@ -184,7 +173,7 @@ class EditorPreferencesDialog : Dialog
 		// through their own closures.
 		for (let contribution in context.EditorSettingsContributions)
 		{
-			let column = AddPage(contribution.Category);
+			let column = mTabs.Column(contribution.Category);
 			for (let field in contribution.Bools)
 			{
 				let on = (field.Get != null) ? field.Get() : false;
@@ -201,7 +190,7 @@ class EditorPreferencesDialog : Dialog
 			}
 		}
 
-		SetContent(mTabs);
+		SetContent(mTabs.View);
 
 		let save = AddButton("Save", .None);
 		save.OnClick.Add(new (b) => { Apply(); });
@@ -210,7 +199,7 @@ class EditorPreferencesDialog : Dialog
 
 	/// The category tabs: Appearance, Export, Agent access, Game preview, Shortcuts, then one
 	/// per domain-contributed category. Borrowed.
-	public TabView Tabs => mTabs;
+	public TabView Tabs => mTabs.View;
 
 	/// The preview resolutions staged in the dialog (rows not removed).
 	public int PreviewRowCount
@@ -225,55 +214,7 @@ class EditorPreferencesDialog : Dialog
 	}
 
 	/// The tab for a category, or -1.
-	public int32 TabIndexOf(StringView category)
-	{
-		for (int i < mPages.Count)
-		{
-			if (mPages[i].Category == category)
-				return (int32)i;
-		}
-		return -1;
-	}
-
-	/// The column of a category's tab, made the first time the category is named: a padded
-	/// column in a vertical scroll, so a long page (the shortcuts) scrolls inside the fixed
-	/// dialog without spilling over its buttons.
-	private FlexLayout AddPage(StringView category)
-	{
-		for (let page in mPages)
-		{
-			if (page.Category == category)
-				return page.Column;
-		}
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 8;
-		column.Padding = .(12, 10);
-		let scroll = new ScrollView();
-		scroll.VScrollBarPolicy.Value = .Auto;
-		scroll.HScrollBarPolicy.Value = .Never;
-		var match = LayoutStyle();
-		match.Width = SizeSpec.Match();
-		scroll.AddView(column, match);
-		mTabs.AddTab(category, scroll);
-		let page = new Page();
-		page.Category.Set(category);
-		page.Column = column;
-		mPages.Add(page);
-		return column;
-	}
-
-	/// A quiet line of explanation under a page's fields.
-	private static void AddNote(FlexLayout column, StringView text)
-	{
-		let note = new Label(text);
-		note.FontSize.Value = 11.0f;
-		note.WordWrap.Value = true;
-		note.TextColor.Value = Color(0.55f, 0.55f, 0.55f, 1.0f);
-		var match = LayoutStyle();
-		match.Width = SizeSpec.Match();
-		column.AddView(note, match);
-	}
+	public int32 TabIndexOf(StringView category) => mTabs.IndexOf(category);
 
 	private void AddPreviewRow(StringView name, uint32 width, uint32 height)
 	{
