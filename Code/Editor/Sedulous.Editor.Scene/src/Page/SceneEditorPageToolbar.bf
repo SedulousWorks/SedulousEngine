@@ -384,6 +384,15 @@ extension SceneEditorPage
 		let menu = new ContextMenu();
 		defer menu.ReleaseRef();
 		menu.AddItem(scope $"{Mark(mView.ShowGrid)}Grid", new [=this]() => { mView.ShowGrid = !mView.ShowGrid; SaveViewPrefs(); });
+		// The grid's plane, one checked; and the debug line grid, to compare the two.
+		void Plane(StringView label, GridPlane plane)
+		{
+			menu.AddItem(scope $"{Mark(mView.GridPlane == plane)}{label}", new [=this, =plane]() => { mView.GridPlane = plane; SaveViewPrefs(); });
+		}
+		Plane("Grid on XZ (ground)", .XZ);
+		Plane("Grid on XY", .XY);
+		Plane("Grid on YZ", .YZ);
+		menu.AddItem(scope $"{Mark(mView.GridLines)}Grid as lines (to compare)", new [=this]() => { mView.GridLines = !mView.GridLines; SaveViewPrefs(); });
 		menu.AddItem(scope $"{Mark(mView.ShowMarkers)}Entity markers", new [=this]() => { mView.ShowMarkers = !mView.ShowMarkers; SaveViewPrefs(); });
 		menu.AddSeparator();
 		menu.AddItem(scope $"{Mark(mView.ShowLodOverlay)}LOD overlay", new [=this]() => { mView.ShowLodOverlay = !mView.ShowLodOverlay; SaveViewPrefs(); });

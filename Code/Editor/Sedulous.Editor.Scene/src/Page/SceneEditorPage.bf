@@ -41,10 +41,6 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 {
 	/// Must match OnRenderWindow's projection.
 	private const float cFovY = 1.0472f;
-	/// The ground grid: a square this many metres wide in this many cells (one cell is what
-	/// the zoom readout reports).
-	private const float cGridSize = 20.0f;
-	private const int32 cGridDivisions = 20;
 
 	private EditorContext mContext;
 	private IApplicationHost mHost;
@@ -509,7 +505,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			let dd = mRender.DebugView(Internal.UnsafeCastToPtr(mViewport));
 			if (mView.ShowGrid)
 			{
-				dd.DrawGrid(.Zero, cGridSize, cGridDivisions, .(0.63f, 0.63f, 0.65f, 1.0f)); // kept clear of the backdrop
+				DrawSceneGrid(dd);
 				dd.DrawLine(.Zero, .(1, 0, 0), .(0.9f, 0.2f, 0.2f, 1.0f));
 				dd.DrawLine(.Zero, .(0, 1, 0), .(0.2f, 0.9f, 0.2f, 1.0f));
 				dd.DrawLine(.Zero, .(0, 0, 1), .(0.2f, 0.4f, 0.95f, 1.0f));

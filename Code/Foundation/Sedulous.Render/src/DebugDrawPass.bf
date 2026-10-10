@@ -28,6 +28,8 @@ class DebugDrawPass
 	private uint32 mFramesInFlight;
 
 	private IPipelineLayout mGeomLayout = null;
+	/// The shader grid's push block, read by both stages.
+	private IPipelineLayout mGridLayout = null;
 	private IPipelineLayout mScreenLayout = null;
 	private IBindGroupLayout mScreenBindGroupLayout = null;
 	private ISampler mSampler = null;
@@ -78,6 +80,19 @@ class DebugDrawPass
 		if (!(mDevice.CreatePipelineLayout(geomLayoutDesc) case .Ok(let geomLayout)))
 			return .Err;
 		mGeomLayout = geomLayout;
+
+		// The shader grid: the view matrix and its parameters (debug_grid.*.hlsl, GridPush),
+		// read by both stages, at the first space like the geometry's.
+		var gridPush = PushConstantRange();
+		gridPush.Stages = .Vertex | .Fragment;
+		gridPush.Offset = 0;
+		gridPush.Size = (uint32)sizeof(GridPush);
+		gridPush.BindGroupIndex = 0;
+		var gridLayoutDesc = PipelineLayoutDesc();
+		gridLayoutDesc.PushConstantRanges = .(&gridPush, 1);
+		if (!(mDevice.CreatePipelineLayout(gridLayoutDesc) case .Ok(let gridLayout)))
+			return .Err;
+		mGridLayout = gridLayout;
 
 		// The screen work takes the font atlas and its sampler, and the inverse of the
 		// viewport's size as a push.
@@ -148,13 +163,22 @@ class DebugDrawPass
 			(view != null) ? view.OverlayTriangleVertices : default);
 		let total = (uint32)mGeomScratch.Count;
 
-		if (total == 0)
+		// The shader grid: the view's own list wins (editor chrome), then the scene's, then the
+		// global one.
+		GridPlaneDesc? gridDesc = null;
+		DebugDraw[3] lists = .(view, scene, global);
+		for (let list in lists)
+		{
+			if (!gridDesc.HasValue && (list != null))
+				gridDesc = list.GridPlane;
+		}
+		if ((total == 0) && !gridDesc.HasValue)
 			return;
 
 		let slot = (int)(viewIndex % cMaxViews) * (int)mFramesInFlight
 			+ (int)(frameIndex % mFramesInFlight);
-		let buffer = UploadGeometry(slot, mGeomScratch);
-		if (buffer == null)
+		let buffer = (total > 0) ? UploadGeometry(slot, mGeomScratch) : null;
+		if ((total > 0) && (buffer == null))
 			return;
 
 		let pipelines = EnsurePipelines(colorFormat, depthFormat);
@@ -166,6 +190,17 @@ class DebugDrawPass
 		let triangleCount = (uint32)(overlayTriangleStart - triangleStart);
 		let overlayTriangleCount = (uint32)(total - overlayTriangleStart);
 		let entry = mGeomPipelines[pipelines];
+		let drawGrid = gridDesc.HasValue && (entry.Grid != null);
+		var gridPush = GridPush();
+		if (drawGrid)
+		{
+			let g = gridDesc.Value;
+			gridPush.ViewProj = viewProj;
+			gridPush.OriginExtent = .(g.Origin.X, g.Origin.Y, g.Origin.Z, g.Extent);
+			gridPush.AxisUSpacing = .(g.AxisU.X, g.AxisU.Y, g.AxisU.Z, g.Spacing);
+			gridPush.AxisVBlend = .(g.AxisV.X, g.AxisV.Y, g.AxisV.Z, g.Blend);
+			gridPush.CameraFade = .(g.CameraPosition.X, g.CameraPosition.Y, g.CameraPosition.Z, g.FadeDistance);
+		}
 
 		graph.AddRenderPass("debug.geom", scope (builder) =>
 			{
@@ -178,6 +213,17 @@ class DebugDrawPass
 
 				builder.SetExecute(new (encoder) =>
 					{
+						// The grid first, so lines and gizmos draw over it: six vertices, the
+						// quad made in the vertex shader from the push block (no vertex buffer).
+						if (drawGrid)
+						{
+							var push = gridPush;
+							encoder.SetPipeline(entry.Grid);
+							encoder.SetPushConstants(.Vertex | .Fragment, 0, (uint32)sizeof(GridPush), &push);
+							encoder.Draw(6, 1, 0, 0);
+						}
+						if (buffer == null)
+							return;
 						encoder.SetVertexBuffer(0, buffer, 0);
 
 						// The pipeline is bound before the push, a push needing a bound layout.
@@ -436,7 +482,8 @@ class DebugDrawPass
 	/// The index of the entry for a pair of formats, or negative when it cannot be built.
 	private int EnsurePipelines(TextureFormat colorFormat, TextureFormat depthFormat)
 	{
-		let shaderVersion = mShaders.Version("debug_geom");
+		// Hot reload rebuilds: either shader's change does.
+		let shaderVersion = mShaders.Version("debug_geom") + mShaders.Version("debug_grid");
 
 		var index = -1;
 		for (int i < cMaxGeomFormats)
@@ -488,10 +535,50 @@ class DebugDrawPass
 			return -1;
 		}
 
+		// Optional: when it does not build (its shader missing from a pack), the lines still
+		// draw and the grid is skipped.
+		mGeomPipelines[index].Grid = MakeGridPipeline(colorFormat, depthFormat);
+
 		mGeomPipelines[index].ColorFormat = colorFormat;
 		mGeomPipelines[index].DepthFormat = depthFormat;
 		mGeomPipelines[index].ShaderVersion = shaderVersion;
 		return index;
+	}
+
+	/// The shader grid's pipeline: no vertex buffer, both faces, blended, depth tested but not
+	/// written, so the scene hides it as it does the lines.
+	private IRenderPipeline MakeGridPipeline(TextureFormat colorFormat, TextureFormat depthFormat)
+	{
+		let vertex = mShaders.GetVariant("debug_grid", .Vertex, .None);
+		let fragment = mShaders.GetVariant("debug_grid", .Fragment, .None);
+		if ((vertex == null) || (fragment == null) || (mGridLayout == null))
+			return null;
+
+		var color = ColorTargetState();
+		color.Format = colorFormat;
+		color.Blend = BlendState.AlphaBlend;
+
+		var fragmentState = FragmentState();
+		fragmentState.Shader = .(fragment, "main", .Fragment);
+		fragmentState.Targets = .(&color, 1);
+
+		var depthStencil = DepthStencilState();
+		depthStencil.Format = depthFormat;
+		depthStencil.DepthWriteEnabled = false;
+		depthStencil.DepthCompare = Depth.NearerOrEqual;
+
+		var desc = RenderPipelineDesc();
+		desc.Layout = mGridLayout;
+		desc.Vertex.Shader = .(vertex, "main", .Vertex);
+		desc.Fragment = fragmentState;
+		desc.Primitive.Topology = .TriangleList;
+		desc.Primitive.CullMode = .None; // seen from above or below
+		desc.DepthStencil = depthStencil;
+		desc.Label = "debug.grid";
+
+		if (!(mDevice.CreateRenderPipeline(desc) case .Ok(let pipeline)))
+			return null;
+		return pipeline;
 	}
 
 	private IRenderPipeline MakeGeomPipeline(TextureFormat colorFormat, TextureFormat depthFormat,
@@ -659,6 +746,8 @@ class DebugDrawPass
 			mDevice.DestroyRenderPipeline(ref entry.TriangleDepth);
 		if (entry.TriangleOverlay != null)
 			mDevice.DestroyRenderPipeline(ref entry.TriangleOverlay);
+		if (entry.Grid != null)
+			mDevice.DestroyRenderPipeline(ref entry.Grid);
 
 		entry.ColorFormat = .Undefined;
 		entry.DepthFormat = .Undefined;
@@ -692,6 +781,8 @@ class DebugDrawPass
 			mDevice.DestroySampler(ref mSampler);
 		if (mGeomLayout != null)
 			mDevice.DestroyPipelineLayout(ref mGeomLayout);
+		if (mGridLayout != null)
+			mDevice.DestroyPipelineLayout(ref mGridLayout);
 		if (mScreenLayout != null)
 			mDevice.DestroyPipelineLayout(ref mScreenLayout);
 		if (mScreenBindGroupLayout != null)

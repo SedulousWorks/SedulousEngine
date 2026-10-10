@@ -21,6 +21,8 @@ class DebugDraw
 	private List<DebugVertex> mTriangles = new .() ~ delete _;
 	private List<DebugVertex> mOverlayTriangles = new .() ~ delete _;
 	private List<Debug2DCommand> mCommands2D = new .() ~ delete _;
+	private GridPlaneDesc mGrid = .();
+	private bool mHasGrid = false;
 	private List<Debug3DTextCommand> mTextCommands3D = new .() ~ delete _;
 	private List<uint8> mTextChars = new .() ~ delete _;
 
@@ -33,7 +35,10 @@ class DebugDraw
 	public Span<uint8> TextChars => mTextChars;
 
 	public bool HasAnyDraws => !mLines.IsEmpty || !mOverlayLines.IsEmpty || !mTriangles.IsEmpty
-		|| !mOverlayTriangles.IsEmpty || !mCommands2D.IsEmpty || !mTextCommands3D.IsEmpty;
+		|| !mOverlayTriangles.IsEmpty || !mCommands2D.IsEmpty || !mTextCommands3D.IsEmpty || mHasGrid;
+
+	/// The shader grid this list asked for this frame, if any: one per list, the last wins.
+	public GridPlaneDesc? GridPlane => mHasGrid ? mGrid : null;
 
 	/// Drops everything accumulated. Once per frame, by the renderer.
 	public void Clear()
@@ -45,6 +50,15 @@ class DebugDraw
 		mCommands2D.Clear();
 		mTextCommands3D.Clear();
 		mTextChars.Clear();
+		mHasGrid = false;
+	}
+
+	/// A grid on a plane drawn by a shader: anti-aliased, fading, stepping with the camera
+	/// (GridPlaneDesc). One per list per frame.
+	public void DrawGridPlane(GridPlaneDesc grid)
+	{
+		mGrid = grid;
+		mHasGrid = true;
 	}
 
 	/// Packs a colour with RED in the LOW byte, which is what a normalised byte vertex

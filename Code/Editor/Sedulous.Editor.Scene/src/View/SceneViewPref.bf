@@ -47,6 +47,9 @@ class SceneViewPref : ISerializable
 	public bool ShowColliders = false;
 	public bool ShowMarkers = true;
 	public bool ShowFps = false;
+	/// The grid's plane (GridPlane: 0 XZ, 1 XY, 2 YZ) and whether it draws as debug lines.
+	public uint8 GridPlane = 0;
+	public bool GridLines = false;
 
 	/// False until a page has saved one; the camera then keeps its default framing.
 	public bool HasCamera = false;
@@ -60,7 +63,16 @@ class SceneViewPref : ISerializable
 	public bool HasSplits = false;
 	public SceneViewSplits Splits = .();
 
-	public SceneViewState State => .(ShowGrid, ShowLodOverlay, ShowColliders, ShowMarkers, ShowFps);
+	public SceneViewState State
+	{
+		get
+		{
+			var state = SceneViewState(ShowGrid, ShowLodOverlay, ShowColliders, ShowMarkers, ShowFps);
+			state.GridPlane = (GridPlane <= (uint8)Sedulous.Editor.Scene.GridPlane.YZ) ? (Sedulous.Editor.Scene.GridPlane)GridPlane : .XZ;
+			state.GridLines = GridLines;
+			return state;
+		}
+	}
 
 	public void Set(Guid scene, SceneViewState state)
 	{
@@ -70,6 +82,8 @@ class SceneViewPref : ISerializable
 		ShowColliders = state.ShowColliders;
 		ShowMarkers = state.ShowMarkers;
 		ShowFps = state.ShowFps;
+		GridPlane = (uint8)state.GridPlane;
+		GridLines = state.GridLines;
 	}
 
 	public void Serialize(ISerializer ar)
@@ -107,6 +121,11 @@ class SceneViewPref : ISerializable
 				SerializeValue(ar, "hierarchySplit", ref Splits.Hierarchy);
 				SerializeValue(ar, "inspectorSplit", ref Splits.Inspector);
 				SerializeValue(ar, "bottomDockSplit", ref Splits.BottomDock);
+			}
+			if ((ar.Mode != .Read) || ar.HasKey("gridPlane"))
+			{
+				SerializeValue(ar, "gridPlane", ref GridPlane);
+				SerializeValue(ar, "gridLines", ref GridLines);
 			}
 		}
 

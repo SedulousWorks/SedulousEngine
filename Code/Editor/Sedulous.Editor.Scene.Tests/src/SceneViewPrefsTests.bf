@@ -112,6 +112,11 @@ class SceneViewPrefsTests
 		Test.Assert(SceneViewPrefs.SaveView(store, sceneA, .(.(1.0f, 2.0f, 3.0f), 0.75f, 0.0f, 5.0f), Span<Guid>(),
 			SceneViewSplits(0.31f, 0.64f, 0.55f)));
 		Test.Assert(SceneViewPrefs.SaveView(store, sceneB, .(.(0.0f, 0.0f, 0.0f), 0.0f, 0.0f, 5.0f), Span<Guid>()));
+		// The grid's plane and style, per scene, saved with the toggles.
+		var gridState = SceneViewState();
+		gridState.GridPlane = .YZ;
+		gridState.GridLines = true;
+		Test.Assert(SceneViewPrefs.Save(store, sceneA, gridState));
 
 		let buffer = scope MemoryStream();
 		let factory = XmlSerializerFactory();
@@ -127,12 +132,15 @@ class SceneViewPrefsTests
 		Test.Assert((splits.Splits.Hierarchy == 0.31f) && (splits.Splits.Inspector == 0.64f) && (splits.Splits.BottomDock == 0.55f));
 		Test.Assert(splits.Camera.Yaw == 0.75f, "siblings intact");
 		Test.Assert(!SceneViewPrefs.Find(loaded, sceneB).HasSplits, "that page saved no splits");
+		let gridBack = SceneViewPrefs.Load(loaded, sceneA, .());
+		Test.Assert((gridBack.GridPlane == .YZ) && gridBack.GridLines);
+		Test.Assert(SceneViewPrefs.Load(loaded, sceneB, .()).GridPlane == .XZ);
 
 		// The same file with every split line removed: what a version 4 file saved before them is.
 		let older = scope String();
 		for (let line in saved.Split('\n'))
 		{
-			if (!line.Contains("plit", true))
+			if (!line.Contains("plit", true) && !line.Contains("gridPlane", true) && !line.Contains("gridLines", true))
 				older.AppendF("{}\n", line);
 		}
 		Test.Assert(older.Length < saved.Length, "the split keys were there, and are gone");
@@ -144,6 +152,8 @@ class SceneViewPrefsTests
 		let oldPref = SceneViewPrefs.Find(fromOld, sceneA);
 		Test.Assert(oldPref != null);
 		Test.Assert(!oldPref.HasSplits && oldPref.HasCamera && (oldPref.Camera.Yaw == 0.75f));
+		// The ground, the shader grid.
+		Test.Assert((oldPref.State.GridPlane == .XZ) && !oldPref.State.GridLines);
 	}
 
 	/// The entity origin crosses: on by default, and an off choice survives per scene while

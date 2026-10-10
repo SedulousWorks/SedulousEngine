@@ -15,6 +15,8 @@ struct DebugGeomPipelines
 	public IRenderPipeline LineOverlay = null;
 	public IRenderPipeline TriangleDepth = null;
 	public IRenderPipeline TriangleOverlay = null;
+	/// The shader grid; null when it did not build, and then the grid is skipped.
+	public IRenderPipeline Grid = null;
 	/// What the shader's version was when these were built, so a hot reload rebuilds them.
 	public uint64 ShaderVersion = 0;
 

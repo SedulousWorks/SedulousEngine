@@ -253,6 +253,23 @@ class DebugDrawTests
 		Test.Assert((Math.Abs(q[0].Y - q[3].Y) + Math.Abs(q[0].X - q[3].X)) > 0.0f);
 	}
 
+	/// A list carries one shader grid a frame, the last asked for, until cleared.
+	[Test]
+	public static void AListCarriesOneShaderGridTheLastAskedForUntilCleared()
+	{
+		let draw = scope DebugDraw();
+		Test.Assert(!draw.GridPlane.HasValue && !draw.HasAnyDraws);
+		var grid = GridPlaneDesc();
+		grid.Spacing = 1.0f;
+		draw.DrawGridPlane(grid);
+		grid.Spacing = 10.0f;
+		draw.DrawGridPlane(grid);
+		Test.Assert(draw.GridPlane.HasValue && (draw.GridPlane.Value.Spacing == 10.0f));
+		Test.Assert(draw.HasAnyDraws);
+		draw.Clear();
+		Test.Assert(!draw.GridPlane.HasValue && !draw.HasAnyDraws);
+	}
+
 	[Test]
 	public static void ClearingDropsTheTextStoreToo()
 	{

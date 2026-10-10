@@ -11,6 +11,10 @@ struct SceneViewState
 	public bool ShowMarkers = true;
 	/// The frame rate readout in the viewport's top right corner.
 	public bool ShowFps = false;
+	/// The plane the grid lies on.
+	public GridPlane GridPlane = .XZ;
+	/// Debug lines instead of the shader grid, kept to compare the two.
+	public bool GridLines = false;
 
 	public this() {}
 	public this(bool showGrid, bool showLodOverlay, bool showColliders = false,

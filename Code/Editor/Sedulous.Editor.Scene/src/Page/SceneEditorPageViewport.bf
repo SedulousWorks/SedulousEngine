@@ -162,6 +162,59 @@ extension SceneEditorPage
 		dd.DrawScreenTextRight(12.0f, 12.0f, mFpsText, .(0.85f, 0.85f, 0.85f, 1.0f));
 	}
 
+	/// The grid's spacing where the camera is now (by its distance from the grid's plane): what
+	/// the grid draws and the zoom readout reports.
+	private GridSpacing CurrentGridSpacing()
+	{
+		let axes = SceneGrid.AxesOf(mView.GridPlane);
+		return SceneGrid.SpacingFor(Math.Abs(Dot(mCamera.Position, axes.Normal)));
+	}
+
+	/// The grid on the chosen plane: the shader grid, or debug lines when GridLines.
+	private void DrawSceneGrid(DebugDraw dd)
+	{
+		let axes = SceneGrid.AxesOf(mView.GridPlane);
+		let along = Dot(mCamera.Position, axes.Normal);
+		let height = Math.Abs(along);
+		let step = SceneGrid.SpacingFor(height);
+		// The camera's foot on the plane: the grid is centred under it, wherever it flies.
+		let foot = mCamera.Position - axes.Normal * along;
+		if (!mView.GridLines)
+		{
+			var grid = GridPlaneDesc();
+			grid.Origin = foot;
+			grid.FadeDistance = SceneGrid.FadeDistance(height);
+			grid.Extent = grid.FadeDistance;
+			grid.AxisU = axes.U;
+			grid.AxisV = axes.V;
+			grid.Spacing = step.Spacing;
+			grid.Blend = step.Blend;
+			grid.CameraPosition = mCamera.Position;
+			dd.DrawGridPlane(grid);
+			return;
+		}
+		// The line grid, to compare: the same spacing, every tenth line brighter, a square a
+		// hundred cells each way snapped to the coarse spacing under the camera (so it does not
+		// swim), no fade and no blend between decades.
+		const int32 cHalfCells = 100;
+		let coarse = step.Spacing * 10.0f;
+		let cu = Math.Floor(Dot(foot, axes.U) / coarse) * coarse;
+		let cv = Math.Floor(Dot(foot, axes.V) / coarse) * coarse;
+		let half = step.Spacing * (float)cHalfCells;
+		// sRGB, like every colour: a light grey that stays clear of the backdrop.
+		let minor = Color(0.63f, 0.63f, 0.65f, 0.35f);
+		let major = Color(0.63f, 0.63f, 0.65f, 1.0f);
+		for (int32 i = -cHalfCells; i <= cHalfCells; i++)
+		{
+			let t = (float)i * step.Spacing;
+			let color = (i % 10 == 0) ? major : minor;
+			let alongV = axes.U * (cu + t);
+			let alongU = axes.V * (cv + t);
+			dd.DrawLine(alongV + axes.V * (cv - half), alongV + axes.V * (cv + half), color);
+			dd.DrawLine(alongU + axes.U * (cu - half), alongU + axes.U * (cu + half), color);
+		}
+	}
+
 	/// The orientation gizmo: the axis tripod turning with the camera, back to front so a knob
 	/// pointing at the viewer covers the arms and knobs behind it, the knob under the pointer
 	/// lit. The positive axes have an arm from the centre, the negative ones a dimmer knob alone.
@@ -203,7 +256,7 @@ extension SceneEditorPage
 		focusText.Append(" to focus");
 		// The cell of the grid as drawn; whether the grid shows is the page's toggle.
 		let cellText = scope String("grid cell ");
-		ZoomReadout.FormatMetres(cGridSize / (float)cGridDivisions, cellText);
+		ZoomReadout.FormatMetres(CurrentGridSpacing().Spacing, cellText);
 		let barText = ZoomReadout.FormatMetres(bar.Metres, .. scope String());
 
 		const float cMargin = 12.0f;
