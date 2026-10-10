@@ -150,6 +150,8 @@ class AssetPickerDialog : Dialog
 	private RowAdapter mListAdapter ~ delete _;
 	private GridAdapter mGridAdapter ~ delete _;
 	private bool mGridMode = false;
+	/// Its row's thumbnail rebinds when the service finishes one while the picker is open.
+	private uint64 mThumbnailListener = 0;
 	private List<Guid> mRows = new .() ~ delete _;
 	private Group mSelectedGroup = null;
 	private String mFilter = new .() ~ delete _;
@@ -265,10 +267,12 @@ class AssetPickerDialog : Dialog
 
 		RebuildModel();
 		ApplySavedViewMode();
+		mThumbnailListener = mContext.AddThumbnailListener(new (id) => { RefreshThumbnail(id); });
 	}
 
 	public ~this()
 	{
+		mContext.RemoveThumbnailListener(mThumbnailListener);
 		mTree.SetAdapter(null);
 		mList.SetAdapter(null);
 		mGrid.SetAdapter(null);
@@ -311,6 +315,20 @@ class AssetPickerDialog : Dialog
 			return; // no project store yet: the default, list
 		if (let section = store.Find<EditorAssetBrowserSettings>())
 			SetGridMode(section.PickerGridMode, false);
+	}
+
+	/// A thumbnail finished: its row, if the picker lists it, rebinds in both views.
+	private void RefreshThumbnail(Guid id)
+	{
+		for (int32 i < (int32)mRows.Count)
+		{
+			if (mRows[i] == id)
+			{
+				mListAdapter.NotifyRangeChanged(i, 1);
+				mGridAdapter.NotifyRangeChanged(i, 1);
+				return;
+			}
+		}
 	}
 
 	/// The selected row in whichever view shows, or -1.

@@ -290,4 +290,31 @@ static class AssetsViewTests
 			Test.Assert(picker.FilterHint.IsEmpty);
 		}
 	}
+
+	/// The picker hears a thumbnail finish while it is open, and stops when it closes.
+	[Test]
+	public static void ThePickerHearsAThumbnailFinishWhileOpenAndStopsWhenClosed()
+	{
+		let bench = scope Bench("scratch_asset_picker_thumbnails");
+		let heard = scope System.Collections.List<Guid>();
+		let listener = bench.Context.AddThumbnailListener(new [&heard](id) => { heard.Add(id); });
+		bench.Context.NotifyThumbnailReady(bench.Asset);
+		Test.Assert((heard.Count == 1) && (heard[0] == bench.Asset));
+		bench.Context.RemoveThumbnailListener(listener);
+		bench.Context.NotifyThumbnailReady(bench.Asset);
+		Test.Assert(heard.Count == 1);
+		Test.Assert(bench.Context.ThumbnailListenerCount == 0);
+
+		{
+			let picker = new AssetPickerDialog(bench.Context, .());
+			defer picker.ReleaseRef();
+			Test.Assert(bench.Context.ThumbnailListenerCount == 1);
+			picker.SetGridMode(true, false);
+			Test.Assert(picker.Rows.Length == 1);
+			bench.Context.NotifyThumbnailReady(bench.Asset); // rebinds its row; no thumbnail here
+			bench.Context.NotifyThumbnailReady(Guid(9, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0)); // not one of its rows
+		}
+		Test.Assert(bench.Context.ThumbnailListenerCount == 0);
+		bench.Context.NotifyThumbnailReady(bench.Asset); // nothing left to call into
+	}
 }

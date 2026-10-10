@@ -170,12 +170,14 @@ extension EditorApplication
 		delete mCookService.ExternalMutationLock;
 		mCookService.ExternalMutationLock = new () => mJobService.IsBusy;
 		mContext.Jobs = mJobService; // pages submit light work here
-		// Ready thumbnails rebind the browser; inspector slots re-query per refresh.
+		// Ready thumbnails rebind the browser and whatever listens on the context (an open
+		// asset picker); inspector slots re-query per refresh.
 		delete mThumbnailService.OnThumbnailReady;
 		mThumbnailService.OnThumbnailReady = new (id) =>
 			{
 				if (mAssetsView != null)
 					mAssetsView.RefreshThumbnail(id);
+				mContext.NotifyThumbnailReady(id);
 			};
 		mAssetsView = new AssetsView(mContext, mCookService, mJobService);
 		let assets = mAssetsView;

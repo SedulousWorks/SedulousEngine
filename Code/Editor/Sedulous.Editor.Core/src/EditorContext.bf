@@ -25,11 +25,18 @@ class EditorContext : IAssetEditSink
 {
 	public typealias OpenAssetInterceptor = delegate bool(Instance instance);
 	public typealias ImportListener = delegate void(Instance instance, ImportOptions options);
+	public typealias ThumbnailListener = delegate void(Guid id);
 
 	private class InterceptorEntry
 	{
 		public uint64 Id;
 		public OpenAssetInterceptor Fn ~ delete _;
+	}
+
+	private class ThumbnailEntry
+	{
+		public uint64 Id;
+		public ThumbnailListener Fn ~ delete _;
 	}
 
 	private class PendingAssetEdit
@@ -61,7 +68,9 @@ class EditorContext : IAssetEditSink
 	private EditorActionRegistry mActions = new .() ~ delete _;
 	private Selection<Instance> mAssetSelection = new .() ~ delete _;
 	private List<InterceptorEntry> mOpenInterceptors = new .() ~ DeleteContainerAndItems!(_);
+	/// Also numbers the thumbnail listeners.
 	private uint64 mNextInterceptorId = 0;
+	private List<ThumbnailEntry> mThumbnailListeners = new .() ~ DeleteContainerAndItems!(_);
 	private List<PendingAssetEdit> mPendingAssetEdits = new .() ~ DeleteContainerAndItems!(_);
 	private List<ScriptBreakpoint> mBreakpoints = new .() ~ DeleteContainerAndItems!(_);
 	private ScriptExecutionPoint mExecutionPoint = new .() ~ delete _;
@@ -348,6 +357,45 @@ class EditorContext : IAssetEditSink
 				mOpenInterceptors.RemoveAt(i);
 				return;
 			}
+		}
+	}
+
+	// ---- thumbnail readiness: the thumbnail service only queues a missing thumbnail, so a
+	// view showing one (the asset picker) hears here when it lands; the browser is told by the
+	// application directly ----
+
+	/// TAKES OWNERSHIP; remove with the returned id when the listener goes.
+	public uint64 AddThumbnailListener(ThumbnailListener listener)
+	{
+		let entry = new ThumbnailEntry();
+		entry.Id = ++mNextInterceptorId;
+		entry.Fn = listener;
+		mThumbnailListeners.Add(entry);
+		return entry.Id;
+	}
+
+	public void RemoveThumbnailListener(uint64 id)
+	{
+		for (int i < mThumbnailListeners.Count)
+		{
+			if (mThumbnailListeners[i].Id == id)
+			{
+				delete mThumbnailListeners[i];
+				mThumbnailListeners.RemoveAt(i);
+				return;
+			}
+		}
+	}
+
+	public int ThumbnailListenerCount => mThumbnailListeners.Count;
+
+	/// A thumbnail finished: every listener hears its asset's id.
+	public void NotifyThumbnailReady(Guid id)
+	{
+		for (let entry in mThumbnailListeners)
+		{
+			if (entry.Fn != null)
+				entry.Fn(id);
 		}
 	}
 
