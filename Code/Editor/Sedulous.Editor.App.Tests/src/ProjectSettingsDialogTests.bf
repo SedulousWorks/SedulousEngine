@@ -67,4 +67,120 @@ static class ProjectSettingsDialogTests
 		dialog.[Friend]Apply();
 		Test.Assert(settings.WindowMode == .Fullscreen);
 	}
+
+	/// Every view of type T under `view`, in tree order, through the visual children: a
+	/// dialog's layout and a scroll view's content are those.
+	private static void Collect<T>(View view, List<T> outViews) where T : View
+	{
+		if (let typed = view as T)
+			outViews.Add(typed);
+		if (let group = view as ViewGroup)
+		{
+			for (int i < group.VisualChildCount)
+			{
+				if (let child = group.GetVisualChild(i))
+					Collect(child, outViews);
+			}
+		}
+	}
+
+	/// The display settings are rows the dialog builds from their reflection (a field per
+	/// size, a combo per enum, a check box per flag), seeded from the manifest; Save writes
+	/// their edits back, a size clamped to its range.
+	[Test]
+	public static void NumberChoiceAndFlagRowsSaveTheirEdits()
+	{
+		RemoveDirectoryRecursive("settings_dialog_values");
+		defer RemoveDirectoryRecursive("settings_dialog_values");
+		Test.Assert(EditorProject.Create("settings_dialog_values", "P") case .Ok);
+		let project = EditorProject.Open("settings_dialog_values");
+		Test.Assert(project != null);
+		defer delete project;
+		let context = scope EditorContext();
+		context.SetProject(project);
+		defer context.SetProject(null);
+		{
+			let dialog = new ProjectSettingsDialog(context);
+			defer dialog.ReleaseRef();
+			let numbers = scope List<NumericField>();
+			let choices = scope List<ComboBox>();
+			let flags = scope List<CheckBox>();
+			let buttons = scope List<Button>();
+			Collect(dialog, numbers);
+			Collect(dialog, choices);
+			Collect(dialog, flags);
+			Collect(dialog, buttons);
+			// Render width, height; window width, height. MSAA's own, then render fit and
+			// window mode, in the settings' order.
+			Test.Assert(numbers.Count == 4);
+			Test.Assert(choices.Count == 3);
+			Test.Assert(flags.Count == 1);
+			Test.Assert(numbers[2].Value == 1280.0, "seeded from the manifest");
+			Test.Assert(choices[1].SelectedIndex == (int32)FitMode.Letterbox);
+			Test.Assert(flags[0].IsChecked.Value);
+
+			numbers[0].SetValue(640.0);
+			numbers[1].SetValue(360.0);
+			numbers[2].SetValue(0.0); // a window takes at least one pixel: the range clamps
+			choices[1].SetSelectedIndex((int32)FitMode.IntegerScale);
+			choices[2].SetSelectedIndex((int32)WindowMode.Fullscreen);
+			flags[0].IsChecked.Value = false;
+			Button save = null;
+			for (let button in buttons)
+			{
+				if (button.Text.Value == "Save")
+					save = button;
+			}
+			Test.Assert(save != null);
+			save.FireClick();
+		}
+		let settings = project.Settings;
+		Test.Assert(settings.RenderWidth == 640);
+		Test.Assert(settings.RenderHeight == 360);
+		Test.Assert(settings.WindowWidth == 1);
+		Test.Assert(settings.RenderFit == .IntegerScale);
+		Test.Assert(settings.WindowMode == .Fullscreen);
+		Test.Assert(!settings.WindowResizable);
+	}
+
+	/// An asset list setting (the other UI fonts) is a list of slots, one per entry the
+	/// manifest holds, beside a slot per single asset setting.
+	[Test]
+	public static void AnAssetListSettingIsASlotPerEntry()
+	{
+		RemoveDirectoryRecursive("settings_dialog_lists");
+		defer RemoveDirectoryRecursive("settings_dialog_lists");
+		Test.Assert(EditorProject.Create("settings_dialog_lists", "P") case .Ok);
+		let project = EditorProject.Open("settings_dialog_lists");
+		Test.Assert(project != null);
+		defer delete project;
+		let context = scope EditorContext();
+		context.SetProject(project);
+		defer context.SetProject(null);
+
+		var single = 0;
+		let fields = scope List<System.Reflection.FieldInfo>();
+		SettingFields.Of(typeof(ProjectSettings), fields);
+		for (let field in fields)
+		{
+			SettingFields.KindOf(field, let kind);
+			single += (kind == .Asset) ? 1 : 0;
+		}
+		{
+			let dialog = new ProjectSettingsDialog(context);
+			defer dialog.ReleaseRef();
+			let slots = scope List<AssetPickerSlot>();
+			Collect(dialog, slots);
+			Test.Assert(slots.Count == single, "the list is empty");
+		}
+		project.Settings.UiFontIds.Add(Guid.Create());
+		project.Settings.UiFontIds.Add(Guid.Create());
+		{
+			let dialog = new ProjectSettingsDialog(context);
+			defer dialog.ReleaseRef();
+			let slots = scope List<AssetPickerSlot>();
+			Collect(dialog, slots);
+			Test.Assert(slots.Count == single + 2, "a slot per listed font");
+		}
+	}
 }

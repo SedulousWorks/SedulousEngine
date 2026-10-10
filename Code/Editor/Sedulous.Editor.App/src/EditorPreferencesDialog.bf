@@ -212,6 +212,18 @@ class EditorPreferencesDialog : Dialog
 	/// per domain-contributed category. Borrowed.
 	public TabView Tabs => mTabs;
 
+	/// The preview resolutions staged in the dialog (rows not removed).
+	public int PreviewRowCount
+	{
+		get
+		{
+			var count = 0;
+			for (let row in mPreviewRows)
+				count += row.Removed ? 0 : 1;
+			return count;
+		}
+	}
+
 	/// The tab for a category, or -1.
 	public int32 TabIndexOf(StringView category)
 	{

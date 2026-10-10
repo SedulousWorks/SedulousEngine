@@ -266,6 +266,14 @@ static class ContainerListEditorTests
 		let slot = new CompactAssetSlot("Mesh", scope StringView[]("StaticMeshAsset"));
 		slot.Editor.BindAsset(context, new [&]() => current, new [&](id) => { current = id; });
 		slot.Build();
+		// The caption, then the row's slot, which takes a drop of its type.
+		Test.Assert(slot.ChildCount == 2);
+		let picker = slot.GetChildAt(1) as AssetPickerSlot;
+		Test.Assert(picker != null);
+		let mesh = Drag(cMaterial, "StaticMeshAsset");
+		defer mesh.ReleaseRef();
+		Test.Assert(picker.OnDrop(mesh, 0, 0) == .Link);
+		Test.Assert(current == cMaterial);
 		slot.ReleaseRef();
 
 		let dialog = new ProjectSettingsDialog(context);
