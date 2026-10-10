@@ -177,6 +177,32 @@ static class ContainerListEditorTests
 		Test.Assert((entityRow.EditorView as AssetPickerSlot).AsDropTarget() == null);
 	}
 
+	/// A bound row shows its empty text for nil, with nothing to clear, and refuses a drop of a
+	/// type it does not take; the refusal names every type it does.
+	[Test]
+	public static void ABoundRowShowsItsEmptyTextForNilAndARefusalNamesEveryAcceptedType()
+	{
+		let context = scope EditorContext();
+		Guid current = .();
+		let row = scope ResourceRefEditor("Mesh", "(primitive)", "Preview",
+			scope StringView[]("StaticMeshAsset", "SkinnedMeshAsset"));
+		row.EmptyText.Set("(primitive)");
+		row.BindAsset(context, new [&]() => current, new [&](id) => { current = id; });
+		Test.Assert(row.ValueText == "(primitive)");
+		let slot = row.EditorView as AssetPickerSlot;
+		Test.Assert(!slot.ClearButton.IsEnabled, "nil: nothing to clear, whatever the text says");
+
+		let texture = Drag(cTexture, "TextureAsset");
+		defer texture.ReleaseRef();
+		Test.Assert(slot.OnDrop(texture, 0, 0) == .None);
+		Test.Assert(current.IsNil);
+		let text = AssetPickerSlot.RejectionText("brick", "TextureAsset", row.AcceptedTypes, "field", .. scope .());
+		Test.Assert(text == "brick is a TextureAsset - this field takes StaticMeshAsset or SkinnedMeshAsset", text);
+		let three = AssetPickerSlot.RejectionText("brick", "TextureAsset",
+			scope String[]("StaticMeshAsset", "SkinnedMeshAsset", "MaterialAsset"), "list", .. scope .());
+		Test.Assert(three == "brick is a TextureAsset - this list takes StaticMeshAsset, SkinnedMeshAsset or MaterialAsset", three);
+	}
+
 	[Test]
 	public static void AnEntitySlotTakesAHierarchyRowAndNoAsset()
 	{
@@ -209,9 +235,11 @@ static class ContainerListEditorTests
 		slot.ClearButton.FireClick();
 		Test.Assert(current.IsNil && (row.ValueText == "(none)"));
 
-		// An asset slot, even the any asset one, refuses an entity.
+		// An asset slot, even the any asset one, refuses an entity, and says what it wanted.
 		let any = scope ResourceRefEditor("Thing", "(none)", "Cat", scope StringView[](AssetPickerSlot.cAnyAsset));
 		Test.Assert((any.EditorView as AssetPickerSlot).OnDrop(entity, 0, 0) == .None);
+		let refused = AssetPickerSlot.RejectionText("Cart", AssetPickerSlot.cEntity, any.AcceptedTypes, "field", .. scope .());
+		Test.Assert(refused == "Cart is an entity - this field takes any asset", refused);
 
 		// An entity list takes one on a slot and appends one.
 		let list = scope ContainerListEditor("Targets", "Follow");

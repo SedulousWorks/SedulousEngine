@@ -219,7 +219,7 @@ extension ParticleEffectEditorPage
 				};
 			slots.OnRejectedDrop = new [=this](assetName, typeName) =>
 				{
-					mContext.Notify(.Warning, scope $"{assetName} is a {typeName} - this list takes MaterialAsset");
+					mContext.Notify(.Warning, AssetPickerSlot.RejectionText(assetName, typeName, scope String[]("MaterialAsset"), "list", .. scope .()));
 				};
 			g.AddProperty(slots);
 		}

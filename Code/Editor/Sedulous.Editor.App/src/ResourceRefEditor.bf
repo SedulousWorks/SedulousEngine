@@ -104,8 +104,7 @@ class ResourceRefEditor : PropertyEditor
 		};
 		OnRejectedDrop = new [=this](assetName, typeName) =>
 		{
-			let wanted = mAcceptedTypes.IsEmpty ? StringView("?") : StringView(mAcceptedTypes[0]);
-			mContext.Notify(.Warning, scope $"{assetName} is a {typeName} - this field takes {wanted}");
+			mContext.Notify(.Warning, AssetPickerSlot.RejectionText(assetName, typeName, mAcceptedTypes, "field", .. scope .()));
 		};
 		Refresh();
 	}

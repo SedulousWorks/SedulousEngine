@@ -444,8 +444,7 @@ class InspectorSection
 		};
 		list.OnRejectedDrop = new [=owner, =types](assetName, typeName) =>
 		{
-			let wanted = types.IsEmpty ? StringView("?") : StringView(types[0]);
-			owner.Editor.Notify(.Warning, scope $"{assetName} is a {typeName} - this list takes {wanted}");
+			owner.Editor.Notify(.Warning, AssetPickerSlot.RejectionText(assetName, typeName, types, "list", .. scope .()));
 		};
 		Add(list, new [=owner, =list, =computeNames]() =>
 		{

@@ -85,7 +85,7 @@ extension SceneInspectorView
 		};
 		list.OnRejectedDrop = new [=this](assetName, typeName) =>
 		{
-			mEditor.Notify(.Warning, scope $"{assetName} is a {typeName} - this list takes ScriptClassAsset");
+			mEditor.Notify(.Warning, AssetPickerSlot.RejectionText(assetName, typeName, scope String[]("ScriptClassAsset"), "list", .. scope .()));
 		};
 		AddEditor(list, new () => {});
 

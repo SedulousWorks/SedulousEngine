@@ -172,6 +172,45 @@ class AssetPickerSlot : FlexLayout, IDropTarget
 		return false;
 	}
 
+	/// The warning for a refused drop, naming every type the refuser takes: "brick is a
+	/// TextureAsset - this field takes StaticMeshAsset or SkinnedMeshAsset". An entity and the
+	/// any-asset wildcard read as words, not as their type ids. `noun` is what refused it
+	/// ("field", "list").
+	public static void RejectionText(StringView assetName, StringView typeName, Span<String> accepted,
+		StringView noun, String outText)
+	{
+		let label = TypeLabel(typeName);
+		outText.AppendF("{} is {} {} - this {} takes ", assetName, Article(label), label, noun);
+		if (accepted.IsEmpty)
+		{
+			outText.Append("no asset");
+			return;
+		}
+		for (int i < accepted.Length)
+		{
+			if (i > 0)
+				outText.Append((i + 1 == accepted.Length) ? " or " : ", ");
+			outText.Append(TypeLabel(accepted[i]));
+		}
+	}
+
+	/// "an" before a vowel, "a" otherwise: the rejection text's article.
+	private static StringView Article(StringView word)
+	{
+		let first = word.IsEmpty ? 'x' : word[0];
+		return "AEIOUaeiou".Contains(first) ? "an" : "a";
+	}
+
+	/// A type as the rejection text names it: the entity and the wildcard as words.
+	private static StringView TypeLabel(StringView typeName)
+	{
+		if (typeName == cEntity)
+			return "entity";
+		if (typeName == cAnyAsset)
+			return "any asset";
+		return typeName;
+	}
+
 	// ---- IDropTarget (asset-browser and hierarchy drags) ----
 	// Any asset or entity drag is accepted at hover level so OnDrop can warn on a type
 	// mismatch (the manager never calls OnDrop for a None effect); the hover cue distinguishes
