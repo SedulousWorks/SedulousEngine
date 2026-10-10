@@ -58,10 +58,10 @@ class EditorPreferencesDialog : Dialog
 	{
 		mContext = context;
 		mSettings = store;
-		// A fixed size: a tab view measures only the page it shows, so a free height would jump
-		// as the tabs change. Each page scrolls inside it.
-		MinWidth.Value = 620.0f;
-		MaxWidth.Value = 760.0f;
+		// A fixed size: a tab view measures only the page it shows, so a free width or height
+		// would change as the tabs do. Each page scrolls inside it.
+		MinWidth.Value = 680.0f;
+		MaxWidth.Value = 680.0f;
 		MinHeight.Value = 480.0f;
 		MaxHeight.Value = 480.0f;
 

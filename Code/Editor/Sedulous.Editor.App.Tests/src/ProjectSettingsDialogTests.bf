@@ -245,4 +245,44 @@ static class ProjectSettingsDialogTests
 		Test.Assert(HasLabel(tabs, dialog.TabIndexOf("Display"), "MSAA"));
 		Test.Assert(!HasLabel(tabs, 0, "MSAA"));
 	}
+
+	/// Whether `dialog` measures to one size whichever of its tabs shows.
+	private static bool OneSizeAcrossTabs(Dialog dialog, TabView tabs)
+	{
+		Float2? first = null;
+		for (int32 i < tabs.TabCount)
+		{
+			tabs.SetSelectedIndex(i);
+			dialog.Measure(.(dialog.MinWidth.Value, dialog.MaxWidth.Value, dialog.MinHeight.Value, dialog.MaxHeight.Value));
+			if (first == null)
+				first = dialog.MeasuredSize;
+			else if ((Math.Abs(dialog.MeasuredSize.X - first.Value.X) > 0.01f) || (Math.Abs(dialog.MeasuredSize.Y - first.Value.Y) > 0.01f))
+				return false;
+		}
+		return tabs.TabCount > 1;
+	}
+
+	/// A tab view measures only the page it shows, so a settings dialog whose width or height
+	/// may vary changed size as the tabs did: Preferences and Project Settings keep one size.
+	[Test]
+	public static void SettingsDialogsKeepOneSizeWhicheverTabShows()
+	{
+		RemoveDirectoryRecursive("settings_dialog_size");
+		defer RemoveDirectoryRecursive("settings_dialog_size");
+		Test.Assert(EditorProject.Create("settings_dialog_size", "P") case .Ok);
+		let project = EditorProject.Open("settings_dialog_size");
+		Test.Assert(project != null);
+		defer delete project;
+		let context = scope EditorContext();
+		context.SetProject(project);
+		defer context.SetProject(null);
+		let store = scope Sedulous.Settings.Settings();
+
+		let preferences = new EditorPreferencesDialog(context, store);
+		defer preferences.ReleaseRef();
+		Test.Assert(OneSizeAcrossTabs(preferences, preferences.Tabs));
+		let settings = new ProjectSettingsDialog(context);
+		defer settings.ReleaseRef();
+		Test.Assert(OneSizeAcrossTabs(settings, settings.Tabs));
+	}
 }

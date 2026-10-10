@@ -73,9 +73,9 @@ class ProjectSettingsDialog : Dialog
 	{
 		mContext = context;
 		// A fixed size, as Preferences: a tab view measures only the page it shows, so a free
-		// height would jump as the tabs change. Each page scrolls inside it.
-		MinWidth.Value = 560.0f;
-		MaxWidth.Value = 680.0f;
+		// width or height would change as the tabs do. Each page scrolls inside it.
+		MinWidth.Value = 620.0f;
+		MaxWidth.Value = 620.0f;
 		MinHeight.Value = 420.0f;
 		MaxHeight.Value = 420.0f;
 
