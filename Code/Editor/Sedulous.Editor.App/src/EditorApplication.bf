@@ -111,7 +111,6 @@ class EditorApplication : IApplication
 	private float mTestOpenElapsed = 0.0f;
 	private uint32 mTestOpenStage = 0;
 	private bool mAutoRebuilt = false;
-	private float mResourceReportTimer = 0.0f;
 	private List<DroppedFile> mDroppedFiles = new .() ~ DeleteContainerAndItems!(_);
 	private ResourceManager mResources = null ~ delete _;
 
@@ -676,17 +675,6 @@ class EditorApplication : IApplication
 			mThumbnailStage.Update(); // the next queued GPU thumbnail job
 		if (mMcpHost != null)
 			mMcpHost.Pump(); // answers a waiting agent call HERE: tools touch main-thread state
-		// A periodic resident-product report while a project is open: the background work
-		// after open is what accumulates, so a single post-open snapshot misses it.
-		if (mProject != null)
-		{
-			mResourceReportTimer += dt;
-			if (mResourceReportTimer >= 15.0f)
-			{
-				mResourceReportTimer = 0.0f;
-				ReportResourceMemory();
-			}
-		}
 		// DPI drift: the window moved to a monitor with a different content scale, so the
 		// icon set re-bakes at the new device sizes and stays texel crisp.
 		if (mUiHost != null)
