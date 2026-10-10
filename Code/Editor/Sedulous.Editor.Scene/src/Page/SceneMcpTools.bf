@@ -27,7 +27,7 @@ namespace Sedulous.Editor.Scene;
 static class SceneMcpTools
 {
 	/// How many tools Register registers; a tripwire like the page tools'.
-	public const int cSceneLiveToolCount = 10 + SceneMcpEditTools.cEditToolCount;
+	public const int cSceneLiveToolCount = 11 + SceneMcpEditTools.cEditToolCount;
 
 	private const String cPageArgument = "the scene or prefab page's asset guid (default: the active page)";
 
@@ -732,6 +732,65 @@ static class SceneMcpTools
 				}
 				if (hasLookAt)
 					camera.LookAt(lookAt);
+				WriteCamera(page, camera, outResult);
+				return true;
+			});
+
+		let frameSchema = scope SchemaBuilder();
+		frameSchema.Str("page", cPageArgument);
+		frameSchema.Arr("entities", "string", "the entities to frame (default: the selection)");
+		server.RegisterTool("viewport_frame",
+			"Frame entities in a scene page's viewport, as the user's F (Scene > Frame Selection) does: the editor camera stands back along its view until they all fit, and orbits about their centre. `entities` names them (guids, names or slash paths; default: the selection). What is framed is the box the scene measures each entity and everything under it as (meshes, colliders), or a small box at an entity with nothing to measure. Moves at once, so a viewport_screenshot after it shows the framed view; returns the camera as viewport_camera_get does.",
+			frameSchema.Build(), .Adjusts,
+			new (arguments, outResult, outError) =>
+			{
+				let page = ResolveScenePage(context, arguments, outError);
+				if (page == null)
+					return false;
+				let scene = page as ISceneEditorPage;
+				let camera = scene.ViewportCamera;
+				if (camera == null)
+				{
+					outError.AppendF("page '{}' has no viewport", page.Title);
+					return false;
+				}
+				let edit = scene.EditContext;
+				let ids = scope List<Guid>();
+				let named = arguments.Get("entities");
+				if ((named != null) && named.IsArray)
+				{
+					for (int i < named.Count)
+					{
+						let text = named.At(i).AsString();
+						var id = Guid();
+						if (!(Guid.Parse(text) case .Ok(out id)))
+						{
+							let found = PieRunTool.FindEntity(edit.Scene, text);
+							if (!edit.Scene.IsValid(found))
+							{
+								outError.AppendF("no entity '{}' in page '{}' (a guid, a name or a slash path; scene_read shows the scene's entities)", text, page.Title);
+								return false;
+							}
+							id = edit.Scene.GetEntityId(found);
+						}
+						ids.Add(id);
+					}
+				}
+				else
+				{
+					for (let id in edit.EntitySelection.Items)
+						ids.Add(id);
+				}
+				if (ids.IsEmpty)
+				{
+					outError.Append("nothing to frame: pass `entities`, or select some first (selection_set)");
+					return false;
+				}
+				if (!scene.FrameEntities(ids, false))
+				{
+					outError.AppendF("page '{}' could not frame those entities", page.Title);
+					return false;
+				}
 				WriteCamera(page, camera, outResult);
 				return true;
 			});

@@ -34,6 +34,9 @@ class SceneHierarchyView : ViewGroup
 	private uint64 mRevision = uint64.MaxValue;
 	private bool mSyncing = false;
 
+	/// A row double-clicked: frame that entity. The page wires it to its viewport. Owned.
+	public delegate void(Guid entity) OnFrameEntity ~ delete _;
+
 	public this(SceneEditContext edit)
 	{
 		mEdit = edit;

@@ -689,6 +689,25 @@ class Scene
 	/// and a scene save both walk.
 	public Span<SceneSystem> Systems => mSortedSystems;
 
+	/// The world space box `entity` fills, as every system that measures entities
+	/// (ISceneEntityBounds) answers it, merged: a mesh and its collider give the box holding
+	/// both. False when no system has anything on the entity to measure.
+	public bool EntityWorldBounds(EntityHandle entity, out AABB outBounds)
+	{
+		outBounds = AABB.Empty();
+		var any = false;
+		for (let system in mSortedSystems)
+		{
+			let measures = system.AsEntityBounds;
+			if ((measures != null) && measures.EntityBounds(this, entity, let measured) && measured.IsValid())
+			{
+				outBounds = any ? Merge(outBounds, measured) : measured;
+				any = true;
+			}
+		}
+		return any;
+	}
+
 	/// Visits every component manager, in UpdateOrder.
 	public void ForEachManager(delegate void(ComponentManagerBase) fn)
 	{

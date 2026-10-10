@@ -22,6 +22,9 @@ class HierarchyAdapter : EntityTreeAdapter, IReorderableTreeAdapter
 	{
 		let row = new HierarchyRow();
 		row.FontSize.Value = 12.0f; // the inspector's dense text
+		// A double-click frames the entity in the viewport; a slow click, F2 and the menu
+		// still rename.
+		row.DoubleClickToEdit.Value = false;
 		let edit = mOwner.Edit;
 		row.OnRenameCommitted.Add(new [=edit, =row](label, newName) =>
 		{

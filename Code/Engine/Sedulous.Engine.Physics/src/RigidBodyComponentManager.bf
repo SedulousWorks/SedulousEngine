@@ -8,10 +8,21 @@ using Sedulous.Scene;
 namespace Sedulous.Engine.Physics;
 
 /// The pool of physics bodies, and the static level geometry they make: the static, solid
-/// bodies' collision shapes, which the navigation bake reads.
-class RigidBodyComponentManager : ResourceBindingComponentManager<RigidBodyComponent>, IStaticGeometrySource
+/// bodies' collision shapes, which the navigation bake reads. It measures its entities for the
+/// scene too (ISceneEntityBounds): a body's own shape, as authored, through the entity's world
+/// matrix. The manager rather than the physics scene system, which exists only while simulating.
+class RigidBodyComponentManager : ResourceBindingComponentManager<RigidBodyComponent>, IStaticGeometrySource, ISceneEntityBounds
 {
 	public override IStaticGeometrySource AsStaticGeometrySource => this;
+	public override ISceneEntityBounds AsEntityBounds => this;
+
+	public bool EntityBounds(Scene scene, EntityHandle entity, out AABB outBounds)
+	{
+		outBounds = AABB.Empty();
+		let c = Get(entity);
+		return (c != null)
+			&& ShapeBounds.World(scene, entity, c.Shape, c.HalfExtents, c.Radius, c.HalfHeight, c.CollisionShape.Get, out outBounds);
+	}
 
 	/// Static, solid bodies only: a dynamic or kinematic body moves and a trigger lets things
 	/// through, so neither is level geometry (a character is no rigid body at all). An inactive

@@ -29,6 +29,41 @@ class HierarchyViewTests
 		public bool HasText => !Stored.IsEmpty;
 	}
 
+	/// A double-click frames the row's entity, and no longer starts a rename: that is a slow
+	/// click, F2 or the menu.
+	[Test]
+	public static void ADoubleClickFramesTheRowsEntityNotARename()
+	{
+		let scene = scope Scene();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let hierarchy = new SceneHierarchyView(edit);
+		defer hierarchy.ReleaseRef();
+		let table = edit.CreateEntity("Table");
+		hierarchy.Refresh();
+
+		let framed = scope System.Collections.List<Guid>();
+		hierarchy.OnFrameEntity = new [&framed](id) => { framed.Add(id); };
+		let tree = hierarchy.Tree.InternalTreeView;
+
+		// One click selects, and frames nothing.
+		tree.OnItemClick(TreeItemClickInfo(0, 1));
+		Test.Assert(framed.IsEmpty);
+		Test.Assert(!edit.EntitySelection.IsEmpty && (edit.EntitySelection.Primary == table));
+
+		// A double-click selects and frames.
+		tree.OnItemClick(TreeItemClickInfo(0, 2));
+		Test.Assert((framed.Count == 1) && (framed[0] == table));
+
+		// The row leaves the double-click to the tree.
+		let row = tree.TreeAdapter.CreateView(0);
+		defer row.ReleaseRef();
+		let label = row as EditableLabel;
+		Test.Assert(label != null);
+		Test.Assert(!label.DoubleClickToEdit.Value);
+		Test.Assert(label.SlowClickToEdit.Value);
+	}
+
 	[Test]
 	public static void CollapseStateSurvivesSnapshotRebuilds()
 	{

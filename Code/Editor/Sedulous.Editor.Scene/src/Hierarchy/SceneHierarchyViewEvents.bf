@@ -25,6 +25,9 @@ extension SceneHierarchyView
 				mSyncing = true;
 				mEdit.EntitySelection.Set(id);
 				mSyncing = false;
+				// A double-click frames the entity; a slow click, F2 and the menu rename.
+				if ((info.ClickCount >= 2) && (OnFrameEntity != null))
+					OnFrameEntity(id);
 			}
 		});
 

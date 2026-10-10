@@ -11,8 +11,25 @@ namespace Sedulous.Engine.Render;
 ///
 /// It creates and frees every list a component points at, for the same reason the mesh pool
 /// does: the component is a struct the pool copies.
-class InstancedMeshComponentManager : ResourceBindingComponentManager<InstancedMeshComponent>
+///
+/// It measures its entities for the scene (ISceneEntityBounds): the set's merged world sphere,
+/// which extraction keeps current, as a box.
+class InstancedMeshComponentManager : ResourceBindingComponentManager<InstancedMeshComponent>, ISceneEntityBounds
 {
+	public override ISceneEntityBounds AsEntityBounds => this;
+
+	public bool EntityBounds(Scene scene, EntityHandle entity, out AABB outBounds)
+	{
+		outBounds = AABB.Empty();
+		let set = Get(entity);
+		// Empty, or not measured by extraction yet.
+		if ((set == null) || (set.Count == 0) || (set.CachedRadius <= 0.0f))
+			return false;
+		let r = set.CachedRadius;
+		outBounds = AABB.FromCenterExtents(set.CachedCenter, .(r, r, r));
+		return true;
+	}
+
 	protected override void OnComponentCreated(InstancedMeshComponent* component,
 		EntityHandle entity)
 	{

@@ -54,6 +54,7 @@ class SceneMcpEditToolsTests
 		public GizmoController Gizmos => null;
 		public bool CameraOwnsInput => false;
 		public Sedulous.Editor.Camera.EditorCamera ViewportCamera => null;
+		public bool FrameEntities(Span<Guid> entities, bool ease) => false;
 		public Result<void, ErrorCode> RequestViewportCapture(StringView path) => .Err(.NotSupported);
 		public ViewportCapture LastViewportCapture => null;
 		public bool MarkersShown => true;

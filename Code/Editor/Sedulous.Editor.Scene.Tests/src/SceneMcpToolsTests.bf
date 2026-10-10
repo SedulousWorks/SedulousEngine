@@ -55,6 +55,16 @@ class SceneMcpToolsTests
 		public ViewportCapture Capture = new .() ~ delete _;
 		public int CaptureRequests = 0;
 		public Sedulous.Editor.Camera.EditorCamera ViewportCamera => HasViewport ? Camera : null;
+		/// Records what was framed; the real page measures and moves the camera.
+		public List<Guid> Framed = new .() ~ delete _;
+		public bool FramedEased = true;
+		public bool FrameEntities(Span<Guid> entities, bool ease)
+		{
+			Framed.Clear();
+			Framed.AddRange(entities);
+			FramedEased = ease;
+			return HasViewport && !entities.IsEmpty;
+		}
 		public Result<void, ErrorCode> RequestViewportCapture(StringView path)
 		{
 			if (!HasViewport)
@@ -147,7 +157,7 @@ class SceneMcpToolsTests
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
 		Test.Assert(server.ToolCount == SceneMcpTools.cSceneLiveToolCount);
-		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 18, "a tripwire: bump deliberately when a live tool comes or goes");
+		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 19, "a tripwire: bump deliberately when a live tool comes or goes");
 		let onA = scope $"{{\"page\":\"{sceneA}\"}}";
 
 		// Default addressing: the active page, a scene page, then a page that is not one.
@@ -820,6 +830,65 @@ class SceneMcpToolsTests
 
 	/// The viewport camera reads and moves in degrees (position, yaw, pitch, lookAt wins), and
 	/// viewport_screenshot waits for the page's capture frame by frame.
+	/// viewport_frame frames named entities or the selection, at once (no glide, so a
+	/// screenshot after shows it), and returns the camera.
+	[Test]
+	public static void ViewportFrameFramesNamedEntitiesOrTheSelectionAtOnce()
+	{
+		let context = scope EditorContext();
+		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage("Bistro", Guid.Create()));
+		let server = scope McpServer();
+		SceneMcpTools.Register(server, context);
+		Test.Assert(server.ToolCount == SceneMcpTools.cSceneLiveToolCount);
+		context.SetActivePage(page);
+
+		let scene = page.EditContext.Scene;
+		let table = scene.GetEntityId(scene.CreateEntity("Table"));
+		let lamp = scene.GetEntityId(scene.CreateEntity("Lamp"));
+
+		// No viewport: refused by name.
+		{
+			let got = Call(server, "viewport_frame", "{\"entities\":[\"Table\"]}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.StartsWith("page 'Bistro' has no viewport"), got.Error);
+		}
+		page.HasViewport = true;
+
+		// Named entities: framed at once; the camera comes back.
+		{
+			let got = Call(server, "viewport_frame", "{\"entities\":[\"Table\",\"Lamp\"]}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert((page.Framed.Count == 2) && (page.Framed[0] == table) && (page.Framed[1] == lamp));
+			Test.Assert(!page.FramedEased);
+			Test.Assert(got.Payload.Get("focusDistance").IsNumber);
+		}
+
+		// No names: the selection; nothing selected: a refusal saying what to do.
+		{
+			let got = Call(server, "viewport_frame", "{}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.StartsWith("nothing to frame"), got.Error);
+		}
+		page.EditContext.EntitySelection.Set(lamp);
+		{
+			let got = Call(server, "viewport_frame", "{}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert((page.Framed.Count == 1) && (page.Framed[0] == lamp));
+		}
+
+		// A name the scene does not have.
+		{
+			let got = Call(server, "viewport_frame", "{\"entities\":[\"Sofa\"]}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.StartsWith("no entity 'Sofa'"), got.Error);
+		}
+	}
+
 	[Test]
 	public static void TheViewportCameraAndScreenshotTools()
 	{

@@ -214,6 +214,11 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			// Its context menus are the scene editor's actions over THIS page.
 			mHierarchy.SetActions(context.Actions, this);
 			mHierarchy.SetEditor(context);
+			mHierarchy.OnFrameEntity = new (entity) =>
+				{
+					var one = entity;
+					FrameEntities(.(&one, 1), true);
+				};
 			mInspector = new SceneInspectorView(context, mEditContext);
 
 			mSelectTool = (SelectTransformTool)mViewportTools.Add(new SelectTransformTool(mEditContext)); // the default
@@ -466,6 +471,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		mRouter.SetExternalCapture(false, mViewport.HostKeyboardFocusElsewhere);
 		mRouter.Update();
 		let viewportActive = mViewport.IsHovered() || mViewport.IsFocused();
+		// A frame glides on whether or not the viewport has the input: a hierarchy double-click
+		// frames while the mouse is over the hierarchy.
+		mCamera.Advance(dt);
 		if (viewportActive)
 		{
 			// The first consumer rule: a modal tool owns SHIFT and the wheel to resize itself,

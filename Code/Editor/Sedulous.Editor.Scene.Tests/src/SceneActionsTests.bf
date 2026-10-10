@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.UI;
@@ -55,7 +56,19 @@ class SceneActionsTests
 		public bool IsPaused => Paused;
 		public GizmoController Gizmos => GizmosSeen;
 		public bool CameraOwnsInput => Flying;
-		public Sedulous.Editor.Camera.EditorCamera ViewportCamera => null;
+		/// A viewport is pretended when HasViewport; FrameEntities records what it was asked.
+		public bool HasViewport = false;
+		private Sedulous.Editor.Camera.EditorCamera mCamera = new .() ~ delete _;
+		public Sedulous.Editor.Camera.EditorCamera ViewportCamera => HasViewport ? mCamera : null;
+		public List<Guid> Framed = new .() ~ delete _;
+		public bool FramedEased = false;
+		public bool FrameEntities(Span<Guid> entities, bool ease)
+		{
+			Framed.Clear();
+			Framed.AddRange(entities);
+			FramedEased = ease;
+			return !entities.IsEmpty;
+		}
 		public Result<void, ErrorCode> RequestViewportCapture(StringView path) => .Err(.NotSupported);
 		private ViewportCapture mCapture = new .() ~ delete _;
 		public ViewportCapture LastViewportCapture => mCapture;
@@ -157,6 +170,39 @@ class SceneActionsTests
 		Test.Assert(actions.Execute(SceneActionIds.GizmoTranslate, page) case .Ok);
 		Test.Assert(gizmos.Mode == .Translate);
 		page.GizmosSeen = null;
+	}
+
+	/// F frames the selection, eased, on a page with a viewport, and not while the camera
+	/// flies (its keys are its own then).
+	[Test]
+	public static void FFramesTheSelectionEasedOnAPageWithAViewport()
+	{
+		let context = scope EditorContext();
+		SceneActions.Register(context);
+		let actions = context.Actions;
+		Test.Assert(actions.Find(SceneActionIds.FrameSelection).MenuPath == "Scene/Frame Selection");
+		Test.Assert(actions.Shortcut(SceneActionIds.FrameSelection).Key == .F);
+		Test.Assert(actions.Shortcut(SceneActionIds.FrameSelection).Modifiers == .None);
+
+		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage());
+		// No viewport, or nothing selected: nothing to frame.
+		Test.Assert(!actions.IsEnabled(SceneActionIds.FrameSelection, page));
+		page.HasViewport = true;
+		Test.Assert(!actions.IsEnabled(SceneActionIds.FrameSelection, page));
+
+		let a = Guid.Create();
+		let b = Guid.Create();
+		page.EditContext.EntitySelection.Set(a);
+		page.EditContext.EntitySelection.Add(b);
+		Test.Assert(actions.IsEnabled(SceneActionIds.FrameSelection, page));
+
+		page.Flying = true;
+		Test.Assert(!actions.IsEnabled(SceneActionIds.FrameSelection, page));
+		page.Flying = false;
+
+		Test.Assert(actions.Execute(SceneActionIds.FrameSelection, page) case .Ok);
+		Test.Assert((page.Framed.Count == 2) && (page.Framed[0] == a) && (page.Framed[1] == b));
+		Test.Assert(page.FramedEased);
 	}
 
 	[Test]

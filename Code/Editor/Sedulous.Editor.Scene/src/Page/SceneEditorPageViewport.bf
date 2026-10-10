@@ -181,6 +181,56 @@ extension SceneEditorPage
 		dd.DrawScreenText(x + bar.Pixels + 6.0f, barY - 3.0f, barText, ink);
 	}
 
+	/// Frames entities in the viewport: the camera stands back along its view so the box
+	/// holding them all, each with everything under it, fits, and pivots its orbit on its centre.
+	/// The span is what the scene's systems measure (ISceneEntityBounds: meshes, colliders), or a
+	/// small one at an entity's position when none does. Eases there when `ease`. False when no
+	/// entity resolves or the page has no viewport.
+	public bool FrameEntities(Span<Guid> entities, bool ease)
+	{
+		if ((mScene == null) || (mViewport == null))
+			return false;
+		let scene = mScene;
+		var merged = AABB.Empty();
+		var any = false;
+		let pending = scope List<EntityHandle>();
+		for (let id in entities)
+		{
+			let e = scene.FindEntity(id);
+			if (!scene.IsValid(e))
+				continue;
+			// The entity and everything under it, as the hierarchy shows it: a gameplay root's
+			// model hangs below it.
+			var span = AABB.Empty();
+			var measured = false;
+			pending.Clear();
+			pending.Add(e);
+			while (!pending.IsEmpty)
+			{
+				let current = pending.PopBack();
+				if (scene.EntityWorldBounds(current, let part))
+				{
+					span = measured ? Merge(span, part) : part;
+					measured = true;
+				}
+				for (var child = scene.GetFirstChild(current); scene.IsValid(child); child = scene.GetNextSibling(child))
+					pending.Add(child);
+			}
+			if (!measured)
+			{
+				// Nothing in it measures (an empty, a light): its place, the marker's size.
+				let world = scene.GetWorldMatrix(e);
+				span = AABB.FromCenterExtents(.(world.M[3][0], world.M[3][1], world.M[3][2]), .(0.35f, 0.35f, 0.35f));
+			}
+			merged = any ? Merge(merged, span) : span;
+			any = true;
+		}
+		if (!any)
+			return false;
+		mCamera.FrameSphere(merged.Center(), Length(merged.Extents()), cFovY, ease);
+		return true;
+	}
+
 	/// A small cross at every entity, and the selection's bounds.
 	private void DrawEntityMarkers(DebugDraw dd)
 	{
@@ -188,8 +238,6 @@ extension SceneEditorPage
 			return;
 		let selection = mEditContext.EntitySelection;
 		let scene = mScene;
-		let meshes = scene.GetSystem<MeshComponentManager>();
-		let instanced = scene.GetSystem<InstancedMeshComponentManager>();
 		scene.ForEachEntity(scope [&](e) =>
 		{
 			let world = scene.GetWorldMatrix(e);
@@ -204,28 +252,12 @@ extension SceneEditorPage
 			dd.DrawLine(p - Float3(0, 0, s), p + Float3(0, 0, s), color);
 			if (!selected)
 				return;
-			if (meshes != null)
+			// What the scene's systems measure the entity as (meshes, colliders), so the box
+			// drawn is the one F frames; a small span at the origin when none does.
+			if (scene.EntityWorldBounds(e, let bounds))
 			{
-				if (let mc = meshes.Get(e))
-				{
-					if (let mesh = mc.Mesh.Get)
-					{
-						dd.DrawTransformedBox(mesh.Bounds.Min, mesh.Bounds.Max, world, color);
-						return;
-					}
-				}
-			}
-			if (instanced != null)
-			{
-				if (let imc = instanced.Get(e))
-				{
-					if ((imc.Mesh.Get != null) && (imc.Count > 0) && (imc.CachedRadius > 0.0f))
-					{
-						let r = imc.CachedRadius;
-						dd.DrawWireBoxCenter(imc.CachedCenter, .(r, r, r), color);
-						return;
-					}
-				}
+				dd.DrawWireBoxCenter(bounds.Center(), bounds.Extents(), color);
+				return;
 			}
 			dd.DrawWireBoxCenter(p, .(0.35f, 0.35f, 0.35f), color);
 		});

@@ -80,6 +80,13 @@ interface ISceneEditorPage
 	/// moves to look from somewhere specific; null on a page without a viewport.
 	EditorCamera ViewportCamera { get; }
 
+	/// Frames entities in the viewport: the camera stands back along its view so the box
+	/// holding them all, each with everything under it, fits, and pivots its orbit on its
+	/// centre. The box is what the scene's systems measure (ISceneEntityBounds: meshes,
+	/// colliders), or a small one at an entity's position when none does. Eases there when
+	/// `ease`. False when no entity resolves or the page has no viewport.
+	bool FrameEntities(Span<Guid> entities, bool ease);
+
 	/// Asks for the viewport's next rendered frame as a PNG at `path` (its directory must
 	/// exist), replacing a pending request. NotSupported on a page without a viewport.
 	Result<void, ErrorCode> RequestViewportCapture(StringView path);

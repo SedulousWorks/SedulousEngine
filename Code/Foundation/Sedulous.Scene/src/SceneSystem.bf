@@ -31,6 +31,9 @@ abstract class SceneSystem
 	/// And for one with static content to make solid (IStaticColliderSource); null for the rest.
 	public virtual IStaticColliderSource AsStaticColliderSource => null;
 
+	/// And for one that measures entities (ISceneEntityBounds); null for the rest.
+	public virtual ISceneEntityBounds AsEntityBounds => null;
+
 	/// The scene this system was added to. BORROWED: the scene outlives its systems. Set
 	/// by the scene before OnSceneCreate, so a system need not keep its own.
 	public Scene Scene { get; private set; } = null;

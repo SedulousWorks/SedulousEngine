@@ -12,8 +12,24 @@ namespace Sedulous.Engine.Render;
 ///
 /// It creates and frees each component's material lists, because a component is a struct in a
 /// packed pool and cannot own heap data itself.
-class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>
+///
+/// It measures its entities for the scene (ISceneEntityBounds): a mesh's bounds through the
+/// entity's world matrix, once the mesh is loaded.
+class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>, ISceneEntityBounds
 {
+	public override ISceneEntityBounds AsEntityBounds => this;
+
+	public bool EntityBounds(Scene scene, EntityHandle entity, out AABB outBounds)
+	{
+		outBounds = AABB.Empty();
+		let component = Get(entity);
+		let mesh = (component != null) ? component.Mesh.Get : null;
+		if ((mesh == null) || !mesh.Bounds.IsValid())
+			return false;
+		outBounds = TransformAABB(mesh.Bounds, scene.GetWorldMatrix(entity));
+		return true;
+	}
+
 	protected override void OnComponentCreated(MeshComponent* component, EntityHandle entity)
 	{
 		component.Materials = new List<Ref<Material>>();

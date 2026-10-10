@@ -18,6 +18,7 @@ static class SceneActionIds
 	public const String GizmoScale = "scene.gizmo.scale";
 	public const String GizmoWorldSpace = "scene.gizmo.worldSpace";
 	public const String Markers = "scene.view.markers";
+	public const String FrameSelection = "scene.view.frameSelection";
 	public const String AnimationPanel = "scene.view.animationPanel";
 	public const String EntityCreate = "scene.entity.create";
 	public const String EntityCreateChild = "scene.entity.createChild";
@@ -146,6 +147,23 @@ static class SceneActions
 		}
 
 		// ---- View ----
+		{
+			let d = new EditorActionDeclaration(SceneActionIds.FrameSelection, "Frame Selection", "Move the viewport camera so the selected entities fill the view, orbiting about them", "Scene/Frame Selection", 290);
+			d.Shortcut = .(.F);
+			d.ReadOnly = true; // the camera is the page's view, not the scene
+			d.Enabled = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					return (scene != null) && (scene.ViewportCamera != null)
+						&& !scene.EditContext.EntitySelection.IsEmpty && !scene.CameraOwnsInput;
+				};
+			d.Execute = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					scene.FrameEntities(scene.EditContext.EntitySelection.Items, true);
+				};
+			actions.Register(d);
+		}
 		{
 			let d = new EditorActionDeclaration(SceneActionIds.Markers, "Entity Markers", "Show every entity's marker in the viewport, not only the selected ones", "Scene/Entity Markers", 300);
 			d.Kind = .Toggle;

@@ -116,6 +116,48 @@ static class EditorCameraTests
 		Test.Assert(!cam.ZoomedThisUpdate);
 	}
 
+	/// FrameSphere stands back along its view until the sphere fits, pivoting on it: at once,
+	/// or eased over GlideSeconds; the user taking the camera stops a glide.
+	[Test]
+	public static void FrameSphereStandsBackAlongItsViewUntilTheSphereFits()
+	{
+		let cam = scope EditorCamera();
+		cam.Position = .Zero;
+		cam.LookAt(.(0.0f, 0.0f, -1.0f)); // looking down -Z
+		let forward = cam.Forward;
+		let fovY = 1.0472f;
+		let center = Float3(10.0f, 2.0f, -30.0f);
+
+		// At once: the direction kept, the pivot on the centre, the sphere inside the view.
+		cam.FrameSphere(center, 2.0f, fovY, false);
+		Test.Assert(!cam.IsGliding);
+		Test.Assert(Near(Dot(cam.Forward, forward), 1.0f));
+		let pivot = cam.Position + cam.Forward * cam.FocusDistance;
+		Test.Assert(Near(pivot.X, center.X) && Near(pivot.Y, center.Y) && Near(pivot.Z, center.Z));
+		Test.Assert(2.0f / cam.FocusDistance <= Math.Sin(0.5f * fovY)); // the sphere's angle fits the half view
+
+		// Eased: there over GlideSeconds, not before, wherever it started.
+		cam.Position = .Zero;
+		cam.FrameSphere(center, 2.0f, fovY);
+		Test.Assert(cam.IsGliding);
+		cam.Advance(cam.GlideSeconds * 0.5f);
+		Test.Assert(cam.IsGliding);
+		let halfway = cam.Position;
+		cam.Advance(cam.GlideSeconds);
+		Test.Assert(!cam.IsGliding);
+		Test.Assert(Length(cam.Position - halfway) > 0.01f); // half way was not there yet
+		let settled = cam.Position + cam.Forward * cam.FocusDistance;
+		Test.Assert(Near(settled.X, center.X) && Near(settled.Z, center.Z));
+
+		// The user taking the camera (a wheel notch) stops a glide where it is.
+		cam.FrameSphere(.(-50.0f, 0.0f, 0.0f), 1.0f, fovY);
+		let keyboard = scope StubKeyboard();
+		let mouse = scope StubMouse();
+		mouse.Scroll = 1.0f;
+		cam.Update(keyboard, mouse, 0.016f);
+		Test.Assert(!cam.IsGliding);
+	}
+
 	[Test]
 	public static void RightButtonFreeLookTurnsByDeltaTimesSensitivity()
 	{
