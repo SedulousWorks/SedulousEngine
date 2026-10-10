@@ -5,11 +5,30 @@ using Sedulous.Core.Serialization;
 
 namespace Sedulous.Editor.Scene;
 
+/// A scene page's split positions: hierarchy | the rest, viewport column | inspector, and
+/// viewport / bottom dock. The defaults are the page's own.
+struct SceneViewSplits
+{
+	public float Hierarchy = 0.2f;
+	public float Inspector = 0.72f;
+	public float BottomDock = 0.72f;
+
+	public this() {}
+
+	public this(float hierarchy, float inspector, float bottomDock)
+	{
+		Hierarchy = hierarchy;
+		Inspector = inspector;
+		BottomDock = bottomDock;
+	}
+}
+
 /// One scene's stored view state, keyed by the scene asset's guid.
 ///
 /// Version 2 adds the editor CAMERA and the entity SELECTION, so a scene reopens where it was
 /// left rather than at the default framing with nothing picked; version 3 adds the entity
-/// marker toggle, version 4 the frame rate readout. An older file is read by the gates below
+/// marker toggle, version 4 the frame rate readout and, appended to it, the page's split
+/// positions (a version 4 file saved before them reads none). An older file is read by the gates below
 /// and re-saved at the current version.
 /// HAND WRITTEN rather than generated: the body has to branch on the stored version, which a
 /// field walk cannot.
@@ -36,6 +55,10 @@ class SceneViewPref : ISerializable
 	/// The entities selected at close, by PERSISTENT id. One the scene no longer has is
 	/// dropped on restore rather than failing the load.
 	public List<Guid> Selection = new .() ~ delete _;
+
+	/// False until a page has saved them; the page's own split defaults then stand.
+	public bool HasSplits = false;
+	public SceneViewSplits Splits = .();
 
 	public SceneViewState State => .(ShowGrid, ShowLodOverlay, ShowColliders, ShowMarkers, ShowFps);
 
@@ -75,7 +98,17 @@ class SceneViewPref : ISerializable
 		if (ar.Version >= 3)
 			SerializeValue(ar, "showMarkers", ref ShowMarkers);
 		if (ar.Version >= 4)
+		{
 			SerializeValue(ar, "showFps", ref ShowFps);
+			// Appended keys: a file saved before them still loads, with the defaults.
+			if ((ar.Mode != .Read) || ar.HasKey("hasSplits"))
+			{
+				SerializeValue(ar, "hasSplits", ref HasSplits);
+				SerializeValue(ar, "hierarchySplit", ref Splits.Hierarchy);
+				SerializeValue(ar, "inspectorSplit", ref Splits.Inspector);
+				SerializeValue(ar, "bottomDockSplit", ref Splits.BottomDock);
+			}
+		}
 
 		ar.EndObject();
 		Sedulous.Core.Serialization.EndVersionedPayload(ar);

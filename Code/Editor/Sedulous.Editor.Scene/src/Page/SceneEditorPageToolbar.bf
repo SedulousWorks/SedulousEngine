@@ -247,21 +247,35 @@ extension SceneEditorPage
 			mContext.RequestProjectEditorSettingsSave();
 	}
 
-	/// Persists the camera framing and the entity selection, written when the page closes.
+	/// Persists the camera framing, the entity selection and the split positions, written when
+	/// the page closes.
 	private void SaveViewState()
 	{
 		let camera = SceneViewCamera(mCamera.Position, mCamera.Yaw, mCamera.Pitch, mCamera.FocusDistance);
 		let selection = (mEditContext != null) ? mEditContext.EntitySelection.Items : Span<Guid>();
-		if (SceneViewPrefs.SaveView(mContext.ProjectEditorSettings, InstanceId, camera, selection))
+		SceneViewSplits? splits = null;
+		if ((mHierarchySplit != null) && (mInspectorSplit != null) && (mViewportColumn != null))
+			splits = SceneViewSplits(mHierarchySplit.SplitRatio, mInspectorSplit.SplitRatio, mViewportColumn.SplitRatio);
+		if (SceneViewPrefs.SaveView(mContext.ProjectEditorSettings, InstanceId, camera, selection, splits))
 			mContext.RequestProjectEditorSettingsSave();
 	}
 
-	/// Restores that framing and selection, after the scene's content has loaded so the ids
-	/// can be checked. A pref with no camera leaves the default framing standing.
+	/// Restores that framing, selection and splits, after the scene's content has loaded so the
+	/// ids can be checked. A pref with no camera leaves the default framing standing, and one
+	/// with no splits the page's own.
 	private void RestoreViewState()
 	{
 		let pref = SceneViewPrefs.Find(mContext.ProjectEditorSettings, InstanceId);
-		if ((pref == null) || !pref.HasCamera)
+		if (pref == null)
+			return;
+		if (pref.HasSplits && (mHierarchySplit != null) && (mInspectorSplit != null) && (mViewportColumn != null))
+		{
+			// The bottom dock's ratio applies when it opens (its pane starts collapsed).
+			mHierarchySplit.SplitRatio = pref.Splits.Hierarchy;
+			mInspectorSplit.SplitRatio = pref.Splits.Inspector;
+			mViewportColumn.SplitRatio = pref.Splits.BottomDock;
+		}
+		if (!pref.HasCamera)
 			return;
 		mCamera.Position = pref.Camera.Position;
 		mCamera.Yaw = pref.Camera.Yaw;

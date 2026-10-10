@@ -44,10 +44,12 @@ static class SceneViewPrefs
 		return true;
 	}
 
-	/// Upserts `scene`'s camera and selection, leaving the view toggles alone.
+	/// Upserts `scene`'s camera, selection and, when given, the page's split positions,
+	/// leaving the view toggles alone.
 	///
 	/// Written when a page closes, so the next open comes back where the scene was left.
-	public static bool SaveView(Settings store, Guid scene, SceneViewCamera camera, Span<Guid> selection)
+	public static bool SaveView(Settings store, Guid scene, SceneViewCamera camera, Span<Guid> selection,
+		SceneViewSplits? splits = null)
 	{
 		let pref = Upsert(store, scene);
 		if (pref == null)
@@ -58,6 +60,11 @@ static class SceneViewPrefs
 		pref.Selection.Clear();
 		for (let id in selection)
 			pref.Selection.Add(id);
+		if (splits.HasValue)
+		{
+			pref.HasSplits = true;
+			pref.Splits = splits.Value;
+		}
 		store.MarkChanged<SceneViewSettings>();
 		return true;
 	}

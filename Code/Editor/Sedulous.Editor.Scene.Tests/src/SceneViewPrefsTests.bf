@@ -99,6 +99,53 @@ class SceneViewPrefsTests
 		Test.Assert(SceneViewPrefs.Find(loaded, scene).Selection.Count == 2);
 	}
 
+	/// The page's split positions: saved with the camera by a closing page, restored on reopen,
+	/// per scene; a file saved before the split keys existed still loads, with its camera and no
+	/// splits (the page keeps its own).
+	[Test]
+	public static void TheSplitPositionsRoundTripPerSceneAndAnOlderFileLoads()
+	{
+		SceneEditorSerializables.RegisterAll();
+		let sceneA = Guid(11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12);
+		let sceneB = Guid(13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14);
+		let store = scope Settings();
+		Test.Assert(SceneViewPrefs.SaveView(store, sceneA, .(.(1.0f, 2.0f, 3.0f), 0.75f, 0.0f, 5.0f), Span<Guid>(),
+			SceneViewSplits(0.31f, 0.64f, 0.55f)));
+		Test.Assert(SceneViewPrefs.SaveView(store, sceneB, .(.(0.0f, 0.0f, 0.0f), 0.0f, 0.0f, 5.0f), Span<Guid>()));
+
+		let buffer = scope MemoryStream();
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		Test.Assert(store.Save(buffer, factory) case .Ok);
+		let saved = scope String();
+		saved.Append(StringView((char8*)buffer.Bytes.Ptr, buffer.Bytes.Length));
+		buffer.Seek(0, .Begin);
+		let loaded = scope Settings();
+		Test.Assert(loaded.Load(buffer, factory) case .Ok);
+		let splits = SceneViewPrefs.Find(loaded, sceneA);
+		Test.Assert(splits.HasSplits);
+		Test.Assert((splits.Splits.Hierarchy == 0.31f) && (splits.Splits.Inspector == 0.64f) && (splits.Splits.BottomDock == 0.55f));
+		Test.Assert(splits.Camera.Yaw == 0.75f, "siblings intact");
+		Test.Assert(!SceneViewPrefs.Find(loaded, sceneB).HasSplits, "that page saved no splits");
+
+		// The same file with every split line removed: what a version 4 file saved before them is.
+		let older = scope String();
+		for (let line in saved.Split('\n'))
+		{
+			if (!line.Contains("plit", true))
+				older.AppendF("{}\n", line);
+		}
+		Test.Assert(older.Length < saved.Length, "the split keys were there, and are gone");
+		let oldFile = scope MemoryStream();
+		oldFile.Write(.((uint8*)older.Ptr, older.Length));
+		oldFile.Seek(0, .Begin);
+		let fromOld = scope Settings();
+		Test.Assert(fromOld.Load(oldFile, factory) case .Ok);
+		let oldPref = SceneViewPrefs.Find(fromOld, sceneA);
+		Test.Assert(oldPref != null);
+		Test.Assert(!oldPref.HasSplits && oldPref.HasCamera && (oldPref.Camera.Yaw == 0.75f));
+	}
+
 	/// The entity origin crosses: on by default, and an off choice survives per scene while
 	/// its siblings stay put.
 	[Test]

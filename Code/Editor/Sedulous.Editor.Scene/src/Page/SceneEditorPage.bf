@@ -149,6 +149,10 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private ViewportToolPanelHost mToolPanelHost = null ~ delete _;
 	private BottomDock mBottomDock = null;
 	private SplitView mViewportColumn = null;
+	/// Hierarchy | the rest, and viewport column | inspector; their positions are saved per
+	/// scene with the camera. Borrowed: the content owns them.
+	private SplitView mHierarchySplit = null;
+	private SplitView mInspectorSplit = null;
 	/// The clip open claim, removed on close.
 	private uint64 mOpenAssetInterceptorId = 0;
 	private ViewportView mViewport = null;
@@ -336,13 +340,13 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			return true;
 		});
 
-		let inner = new SplitView();
-		inner.SplitRatio = 0.72f;
-		inner.SetPanes(mViewportColumn, mInspector);
-		let topContent = new SplitView();
-		topContent.SplitRatio = 0.2f;
-		topContent.SetPanes(mHierarchy, inner);
-		mContent = topContent;
+		mInspectorSplit = new SplitView();
+		mInspectorSplit.SplitRatio = 0.72f;
+		mInspectorSplit.SetPanes(mViewportColumn, mInspector);
+		mHierarchySplit = new SplitView();
+		mHierarchySplit.SplitRatio = 0.2f;
+		mHierarchySplit.SetPanes(mHierarchy, mInspectorSplit);
+		mContent = mHierarchySplit;
 
 		mRouter = new InputRouter(host.Shell.Input);
 		// Framed on the origin, the orbit pivot there and the horizon level - then where this
