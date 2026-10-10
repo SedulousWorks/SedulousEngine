@@ -8,7 +8,7 @@ namespace Sedulous.Editor.Core;
 /// domains need them.
 class EditorSettingsContribution
 {
-	/// The dialog group header, "Navigation".
+	/// Its Preferences tab, "Navigation"; one tab per category, shared by contributions naming it.
 	public String Category = new .() ~ delete _;
 	public List<EditorSettingsBoolField> Bools = new .() ~ DeleteContainerAndItems!(_);
 

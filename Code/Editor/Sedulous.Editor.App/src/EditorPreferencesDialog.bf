@@ -10,12 +10,12 @@ namespace Sedulous.Editor.App;
 
 /// A modal editor for the per-user editor preferences, the settings store persisted at
 /// <user-data>/editor.settings.xml; distinct from ProjectSettingsDialog, which edits the
-/// project manifest. Fields: the export templates root (blank means $SEDULOUS_TEMPLATES_DIR,
-/// else <user-data>/templates, shown as the placeholder), the editor font paths (blank is
-/// the built-in chain), the UI scale, agent access (the MCP host), every action's shortcut, and
-/// every domain-contributed category. Save writes
-/// the sections back and persists them; font changes apply on the next start. Cancel
-/// discards.
+/// project manifest. A tab per category: Appearance (the editor font paths, blank is the
+/// built-in chain, and the UI scale), Export (the templates root, blank means
+/// $SEDULOUS_TEMPLATES_DIR, else <user-data>/templates), Agent access (the MCP host), Game
+/// preview (the Game tab's resolutions), Shortcuts, then one per domain-contributed category.
+/// Save writes every tab's sections back and persists them; font changes apply on the next
+/// start. Cancel discards.
 class EditorPreferencesDialog : Dialog
 {
 	/// Fired on Apply with the new UI scale so the app can apply it live (the host's scale
@@ -27,6 +27,16 @@ class EditorPreferencesDialog : Dialog
 
 	private EditorContext mContext;
 	private Settings mSettings;
+	/// Borrowed: the content owns it.
+	private TabView mTabs = null;
+
+	/// A category's tab and the column its fields go in (the tab view owns the views).
+	private class Page
+	{
+		public String Category = new .() ~ delete _;
+		public FlexLayout Column;
+	}
+	private List<Page> mPages = new .() ~ DeleteContainerAndItems!(_);
 	// Borrowed: the content owns them.
 	private EditText mRootEdit = null;
 	private EditText mFontEdit = null;
@@ -56,37 +66,34 @@ class EditorPreferencesDialog : Dialog
 	{
 		mContext = context;
 		mSettings = store;
-		MinWidth.Value = 560.0f;
-		MinHeight.Value = 220.0f;
+		// A fixed size: a tab view measures only the page it shows, so a free height would jump
+		// as the tabs change. Each page scrolls inside it.
+		MinWidth.Value = 620.0f;
 		MaxWidth.Value = 760.0f;
-		MaxHeight.Value = 560.0f;
+		MinHeight.Value = 480.0f;
+		MaxHeight.Value = 480.0f;
 
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 8;
+		mTabs = new TabView();
+		mTabs.TabsClosable.Value = false;
 
-		StringView current = "";
-		if (let s = store.Find<EditorExportSettings>())
-			current = s.TemplatesRoot;
-		mRootEdit = AddTextRow(column, "Templates root", current);
-		mRootEdit.Placeholder.Value.Set(ExportTemplates.DefaultRoot(.. scope .()));
-
-		StringView fontPath = "";
-		StringView monoPath = "";
-		if (let f = store.Find<EditorFontSettings>())
+		// Appearance: the editor's fonts and scale.
 		{
-			fontPath = f.FontPath;
-			monoPath = f.MonoFontPath;
-		}
-		mFontEdit = AddTextRow(column, "UI font (.ttf)", fontPath);
-		mFontEdit.Placeholder.Value.Set("built-in (embedded fallback)");
-		mMonoFontEdit = AddTextRow(column, "Mono font (.ttf)", monoPath);
-		mMonoFontEdit.Placeholder.Value.Set("built-in");
+			let column = AddPage("Appearance");
+			StringView fontPath = "";
+			StringView monoPath = "";
+			if (let f = store.Find<EditorFontSettings>())
+			{
+				fontPath = f.FontPath;
+				monoPath = f.MonoFontPath;
+			}
+			mFontEdit = AddTextRow(column, "UI font (.ttf)", fontPath);
+			mFontEdit.Placeholder.Value.Set("built-in (embedded fallback)");
+			mMonoFontEdit = AddTextRow(column, "Mono font (.ttf)", monoPath);
+			mMonoFontEdit.Placeholder.Value.Set("built-in");
 
-		float uiScale = 1.0f;
-		if (let u = store.Find<EditorUiSettings>())
-			uiScale = Math.Clamp(u.UiScale, EditorUiSettings.MinUiScale, EditorUiSettings.MaxUiScale);
-		{
+			float uiScale = 1.0f;
+			if (let u = store.Find<EditorUiSettings>())
+				uiScale = Math.Clamp(u.UiScale, EditorUiSettings.MinUiScale, EditorUiSettings.MaxUiScale);
 			let row = AddRow(column, "UI scale");
 			let slider = new Slider();
 			slider.Min.Value = EditorUiSettings.MinUiScale;
@@ -107,21 +114,25 @@ class EditorPreferencesDialog : Dialog
 			row.AddView(valueLabel, narrow);
 			UpdateScaleLabel(uiScale);
 			slider.OnValueChanged.Add(new (s, v) => { UpdateScaleLabel(v); });
+			AddNote(column, "Font changes apply on restart.");
 		}
+
+		// Export: where the export templates live.
 		{
-			let note = new Label("Font changes apply on restart.");
-			note.FontSize.Value = 11.0f;
-			note.TextColor.Value = Color(0.55f, 0.55f, 0.55f, 1.0f);
-			column.AddView(note);
+			let column = AddPage("Export");
+			StringView current = "";
+			if (let s = store.Find<EditorExportSettings>())
+				current = s.TemplatesRoot;
+			mRootEdit = AddTextRow(column, "Templates root", current);
+			mRootEdit.Placeholder.Value.Set(ExportTemplates.DefaultRoot(.. scope .()));
+			AddNote(column, scope $"Blank uses ${ExportTemplates.cRootEnvironmentVariable}, else the templates folder under the editor's user data.");
 		}
 
 		// Agent access: the MCP host over the open project (EditorMcpSettings).
 		{
-			let header = new Label("Agent access (MCP)");
-			header.FontSize.Value = 13.0f;
-			column.AddView(header);
+			let column = AddPage("Agent access");
 			let mcp = store.Find<EditorMcpSettings>();
-			let check = new CheckBox("Serve the open project to agents", (mcp != null) && mcp.Enabled);
+			let check = new CheckBox("Serve the open project to agents (MCP)", (mcp != null) && mcp.Enabled);
 			check.FontSize.Value = 12.0f;
 			check.TooltipText.Set("An MCP host on 127.0.0.1 for the project this editor has open; the token below is the secret an agent presents");
 			mMcpEnabled = check;
@@ -133,18 +144,14 @@ class EditorPreferencesDialog : Dialog
 			mMcpPortEdit = AddTextRow(column, "MCP port", scope $"{port}");
 			mMcpTokenEdit = AddTextRow(column, "MCP token", (mcp != null) ? mcp.Token : "");
 			mMcpTokenEdit.Placeholder.Value.Set("minted on first enable");
-			let note = new Label("Applies to the open project on Save; the token is also written to <user-data>/mcp-token for a local agent.");
-			note.FontSize.Value = 11.0f;
-			note.TextColor.Value = Color(0.55f, 0.55f, 0.55f, 1.0f);
-			column.AddView(note);
+			AddNote(column, "Applies to the open project on Save; the token is also written to <user-data>/mcp-token for a local agent.");
 		}
 
-		// The Game tab's preview resolutions (GamePreviewSettings): sizes to test at on this
-		// machine, after the project's own and its export presets'. Staged, applied on Save.
+		// Game preview: the Game tab's resolutions (GamePreviewSettings), sizes to test at on
+		// this machine after the project's own and its export presets'. Staged, applied on Save.
 		{
-			let header = new Label("Game preview resolutions");
-			header.FontSize.Value = 13.0f;
-			column.AddView(header);
+			let column = AddPage("Game preview");
+			AddNote(column, "Sizes the Game tab offers on this machine, after the project's own and its export presets'.");
 			mPreviewColumn = new FlexLayout();
 			mPreviewColumn.Direction = .Vertical;
 			mPreviewColumn.Spacing = 4;
@@ -166,24 +173,18 @@ class EditorPreferencesDialog : Dialog
 		// Shortcuts: every action with its effective chord; a click on the chord captures the next
 		// key, Reset forgets the override. Staged in mShortcutEdits, applied on Save.
 		{
-			let header = new Label("Shortcuts");
-			header.FontSize.Value = 13.0f;
-			column.AddView(header);
-			let note = new Label("Click a chord and press the new keys (Esc cancels, Del clears). A chord another action holds is refused on Save, naming it.");
-			note.FontSize.Value = 11.0f;
-			note.TextColor.Value = Color(0.55f, 0.55f, 0.55f, 1.0f);
-			column.AddView(note);
+			let column = AddPage("Shortcuts");
+			AddNote(column, "Click a chord and press the new keys (Esc cancels, Del clears). A chord another action holds is refused on Save, naming it.");
 			for (let action in context.Actions.Actions)
 				AddShortcutRow(column, context.Actions, action);
 		}
 
-		// The domain-contributed categories: the app hardcodes nothing, each domain's fields
-		// render generically here and write through their own closures.
+		// The domain-contributed categories, a tab each (contributions naming one category share
+		// it): the app hardcodes nothing, each domain's fields render generically here and write
+		// through their own closures.
 		for (let contribution in context.EditorSettingsContributions)
 		{
-			let header = new Label(contribution.Category);
-			header.FontSize.Value = 13.0f;
-			column.AddView(header);
+			let column = AddPage(contribution.Category);
 			for (let field in contribution.Bools)
 			{
 				let on = (field.Get != null) ? field.Get() : false;
@@ -200,18 +201,66 @@ class EditorPreferencesDialog : Dialog
 			}
 		}
 
-		// Scrolled, so the column can grow without spilling over the modal button row.
+		SetContent(mTabs);
+
+		let save = AddButton("Save", .None);
+		save.OnClick.Add(new (b) => { Apply(); });
+		AddButton("Cancel", .Cancel);
+	}
+
+	/// The category tabs: Appearance, Export, Agent access, Game preview, Shortcuts, then one
+	/// per domain-contributed category. Borrowed.
+	public TabView Tabs => mTabs;
+
+	/// The tab for a category, or -1.
+	public int32 TabIndexOf(StringView category)
+	{
+		for (int i < mPages.Count)
+		{
+			if (mPages[i].Category == category)
+				return (int32)i;
+		}
+		return -1;
+	}
+
+	/// The column of a category's tab, made the first time the category is named: a padded
+	/// column in a vertical scroll, so a long page (the shortcuts) scrolls inside the fixed
+	/// dialog without spilling over its buttons.
+	private FlexLayout AddPage(StringView category)
+	{
+		for (let page in mPages)
+		{
+			if (page.Category == category)
+				return page.Column;
+		}
+		let column = new FlexLayout();
+		column.Direction = .Vertical;
+		column.Spacing = 8;
+		column.Padding = .(12, 10);
 		let scroll = new ScrollView();
 		scroll.VScrollBarPolicy.Value = .Auto;
 		scroll.HScrollBarPolicy.Value = .Never;
 		var match = LayoutStyle();
 		match.Width = SizeSpec.Match();
 		scroll.AddView(column, match);
-		SetContent(scroll);
+		mTabs.AddTab(category, scroll);
+		let page = new Page();
+		page.Category.Set(category);
+		page.Column = column;
+		mPages.Add(page);
+		return column;
+	}
 
-		let save = AddButton("Save", .None);
-		save.OnClick.Add(new (b) => { Apply(); });
-		AddButton("Cancel", .Cancel);
+	/// A quiet line of explanation under a page's fields.
+	private static void AddNote(FlexLayout column, StringView text)
+	{
+		let note = new Label(text);
+		note.FontSize.Value = 11.0f;
+		note.WordWrap.Value = true;
+		note.TextColor.Value = Color(0.55f, 0.55f, 0.55f, 1.0f);
+		var match = LayoutStyle();
+		match.Width = SizeSpec.Match();
+		column.AddView(note, match);
 	}
 
 	private void AddPreviewRow(StringView name, uint32 width, uint32 height)
