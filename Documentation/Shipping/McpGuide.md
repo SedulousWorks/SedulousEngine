@@ -15,7 +15,8 @@ one writer), so an agent can work on what the user is looking at. Tell them apar
 `project_create` and `project_open` (the editor's project is the editor's), and the editor's
 long tools (a cook) keep the call open until the editor's own background service finishes:
 give the client a generous timeout rather than polling. The editor adds the page tools
-(`page_list`, `page_open`, `page_reload`, `page_close`), the action bridge (`action_list`,
+(`page_list`, `page_open`, `page_reload`, `page_close`), the whole-window capture
+(`editor_screenshot`), the action bridge (`action_list`,
 `action_state`, `action_execute`: everything a user can do by menu, chord, toolbar or context
 menu, over the active page, executed unattended; a dialog an action would open is closed as
 cancelled and named under `suppressedDialogs`, so the action most likely did nothing: use a
@@ -30,7 +31,11 @@ back along its view until they fit and orbits about them, at once, so a screensh
 it. `viewport_screenshot` writes what the viewport renders to a
 PNG and returns its path and size: the scene with the grid, the markers, the selection's
 gizmo and the tool's hint text, not the panels docked over the viewport. It brings the page to front first, since a
-hidden viewport never renders. Move the camera, shoot, read the file. `entity_inspect` is the inspector's
+hidden viewport never renders. Move the camera, shoot, read the file. `editor_screenshot`
+writes the whole editor window as the user sees it (panels, pages, menus, dialogs, toasts) the
+same way, `window: "all"` adding each floating window beside it, for checking the editor's own
+UI rather than a scene (the user's View > Screenshot Editor, F12, writes the same under
+`<user-data>/screenshots`). `entity_inspect` is the inspector's
 view of one entity: hierarchy, transform, every component's fields with asset references as
 guids and enums by name, the primary selection by default. `component_set` writes one of those
 fields through the page's undo path, one labelled step per call, the page dirty after and

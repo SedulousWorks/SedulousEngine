@@ -169,6 +169,13 @@ extension EditorApplication
 			actions.Register(d);
 		}
 		{
+			let d = new EditorActionDeclaration("view.screenshot", "Screenshot Editor", "Write the editor's main window, as it looks now, to a PNG under <user-data>/screenshots", "View/Screenshot Editor", 300);
+			d.Shortcut = .(.F12);
+			d.ReadOnly = true; // a file outside the project; nothing in it changes
+			d.Execute = new (page) => { TakeEditorScreenshot(); };
+			actions.Register(d);
+		}
+		{
 			let d = new EditorActionDeclaration("view.commandPalette", "Command Palette...", "Every action by name: type to filter, Enter runs it", "View/Command Palette...", 200);
 			d.Shortcut = .(.P, .Ctrl | .Shift);
 			d.ReadOnly = true; // the palette changes nothing itself

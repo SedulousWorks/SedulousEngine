@@ -106,8 +106,12 @@ class EditorApplication : IApplication
 	/// The auto-exit, auto-rebuild and screenshot accumulator.
 	private float mElapsed = 0.0f;
 	/// The --screenshot capture; the request is one shot.
-	private ScreenshotCapture mScreenshot = new .() ~ delete _;
+	/// Screenshots of the editor's windows: --screenshot, editor_screenshot, View > Screenshot.
+	private EditorWindowCapture mWindowCapture = new .() ~ delete _;
+	/// The --screenshot one shot is armed.
 	private bool mScreenshotFired = false;
+	/// View > Screenshot: tell the user when it is written.
+	private bool mAnnounceScreenshot = false;
 	private float mTestOpenElapsed = 0.0f;
 	private uint32 mTestOpenStage = 0;
 	private bool mAutoRebuilt = false;
@@ -700,17 +704,32 @@ class EditorApplication : IApplication
 			mEmbeddedApp.OnUpdate(mEmbeddedHost, dt);
 		}
 
-		// A screenshot recorded last frame: wait for the GPU, then map and write it.
-		if (mScreenshot.Recorded)
+		// Window screenshots recorded last frame: written once the GPU has run the copies; a
+		// window closed before it drew fails its capture rather than leaving it waiting.
+		if ((host.Graphics != null) && (host.Graphics.Raw != null))
+			mWindowCapture.Complete(host.Graphics.Raw);
+		if (mWindowCapture.Busy)
 		{
-			let graphics = host.Graphics;
-			if ((graphics != null) && (graphics.Raw != null))
+			let open = scope List<uint32>();
+			if ((host.Shell != null) && (host.Shell.WindowManager != null))
 			{
-				graphics.Raw.WaitIdle();
-				let written = scope Sedulous.Image.Image();
-				if (mScreenshot.Complete(graphics.Raw, written) case .Ok)
-					GlobalLog(.Information, "Editor: screenshot written to {}", mConfig.ScreenshotPath);
+				for (let window in host.Shell.WindowManager.Windows)
+				{
+					if ((window != null) && window.IsOpen)
+						open.Add(window.Id);
+				}
 			}
+			mWindowCapture.FailMissing(open);
+		}
+		if (mAnnounceScreenshot && !mWindowCapture.Busy)
+		{
+			mAnnounceScreenshot = false;
+			let shots = scope List<WindowShot>();
+			mWindowCapture.Shots(shots);
+			if (!shots.IsEmpty && (shots[0].State == .Written))
+				mContext.Notify(.Success, scope $"Screenshot saved: {shots[0].Path}");
+			else
+				mContext.Notify(.Error, "The screenshot failed (the Console, category Screenshot, says why)");
 		}
 
 		mElapsed += dt;
@@ -718,7 +737,11 @@ class EditorApplication : IApplication
 		if (!mConfig.ScreenshotPath.IsEmpty && !mScreenshotFired && (mElapsed >= mConfig.ScreenshotAfterSeconds))
 		{
 			mScreenshotFired = true;
-			mScreenshot.Request(mConfig.ScreenshotPath);
+			if (let main = host.MainRenderWindow)
+			{
+				var request = WindowShotRequest(main.Window.Id, true, mConfig.ScreenshotPath);
+				mWindowCapture.Request(.(&request, 1));
+			}
 		}
 		if ((mConfig.AutoExitSeconds > 0.0f) || (mConfig.AutoRebuildSeconds > 0.0f))
 		{
@@ -881,12 +904,13 @@ class EditorApplication : IApplication
 		}
 		if (mUiHost != null)
 			mUiHost.RenderWindow(ref frame);
-		// After the last draw into the main backbuffer; stays armed for a frame that has one.
-		if (mScreenshot.Armed && frame.Valid && (frame.Window === host.MainRenderWindow)
-			&& (host.Graphics != null) && (host.Graphics.Raw != null) && (frame.Encoder != null))
+		// A window screenshot: this window's finished backbuffer, UI included, when one of it is
+		// armed. The copy sits in this frame's command stream; OnUpdate writes it next frame.
+		if (frame.Valid && (frame.Window != null) && (frame.Encoder != null)
+			&& (host.Graphics != null) && (host.Graphics.Raw != null))
 		{
-			mScreenshot.Record(host.Graphics.Raw, frame.Encoder, frame.Backbuffer,
-				frame.Window.Swap.Format, frame.Width, frame.Height);
+			mWindowCapture.Record(host.Graphics.Raw, frame.Encoder, frame.Window.Window.Id,
+				frame.Backbuffer, frame.Window.Swap.Format, frame.Width, frame.Height);
 		}
 	}
 
@@ -909,7 +933,46 @@ class EditorApplication : IApplication
 		if (cUseDistanceFieldFonts)
 			DistanceFieldFonts.Shutdown();
 		if ((host.Graphics != null) && (host.Graphics.Raw != null))
-			mScreenshot.Release(host.Graphics.Raw);
+			mWindowCapture.Release(host.Graphics.Raw); // the readback buffers, while the device lives
+	}
+
+	/// The ids of the windows that can draw a frame now, the main window first; empty while the
+	/// main window is minimised (nothing to capture).
+	private void CapturableWindows(List<uint32> outWindows)
+	{
+		outWindows.Clear();
+		if (mHost == null)
+			return;
+		let main = mHost.MainRenderWindow;
+		if ((main == null) || !main.Window.IsOpen || main.Window.IsMinimized)
+			return; // a minimised editor draws no frame
+		outWindows.Add(main.Window.Id);
+		if ((mHost.Shell == null) || (mHost.Shell.WindowManager == null))
+			return;
+		for (let window in mHost.Shell.WindowManager.Windows)
+		{
+			if ((window != null) && (window.Id != main.Window.Id) && window.IsOpen && !window.IsMinimized)
+				outWindows.Add(window.Id);
+		}
+	}
+
+	/// View > Screenshot Editor (F12): the main window to a new PNG under
+	/// <user-data>/screenshots, the path or the failure toasted once written.
+	private void TakeEditorScreenshot()
+	{
+		let windows = scope List<uint32>();
+		CapturableWindows(windows);
+		if (windows.IsEmpty)
+			return;
+		let path = scope String();
+		if (!EditorWindowTools.NewScreenshotPath("editor", path))
+		{
+			mContext.Notify(.Error, "Could not create the screenshots folder");
+			return;
+		}
+		var request = WindowShotRequest(windows[0], true, path);
+		mWindowCapture.Request(.(&request, 1));
+		mAnnounceScreenshot = true;
 	}
 
 	/// The tab titles mirror the dirty state with a " *" suffix, polled per frame; the name

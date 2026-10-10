@@ -411,6 +411,12 @@ extension EditorApplication
 		actionSeams.Context = mContext;
 		actionSeams.Ui = mUiHost.Context;
 		EditorActionTools.Register(mMcpHost.Server, actionSeams);
+		// editor_screenshot, over the same capture as View > Screenshot.
+		let windowSeams = new WindowToolSeams();
+		windowSeams.Windows = new (outWindows) => { CapturableWindows(outWindows); };
+		windowSeams.Request = new (requests) => { mWindowCapture.Request(requests); };
+		windowSeams.Shots = new (outShots) => { mWindowCapture.Shots(outShots); };
+		EditorWindowTools.Register(mMcpHost.Server, windowSeams);
 		EditorMcpHostConfig config = .();
 		config.Port = (uint16)((mConfig.McpPort != 0) ? mConfig.McpPort : settings.Port);
 		config.Token = settings.Token;
