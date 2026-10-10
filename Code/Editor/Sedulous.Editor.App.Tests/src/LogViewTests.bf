@@ -247,4 +247,59 @@ static class LogViewTests
 		view.SetSearch("");
 		Test.Assert(view.VisibleEntryCount == 5);
 	}
+
+	/// Each level's chip counts its lines, follows a trim and a clear, and shows or hides them.
+	[Test]
+	public static void EachLevelsChipCountsItsLinesAndShowsOrHidesThem()
+	{
+		let view = new LogView();
+		defer view.ReleaseRef();
+		view.MaxEntries = 4;
+		Test.Assert(view.LevelCountText(.Error) == "0");
+		view.AddEntry(.Error, "A", "e1");
+		view.AddEntry(.Critical, "A", "e2"); // Critical counts as an error
+		view.AddEntry(.Warning, "A", "w1");
+		view.AddEntry(.Trace, "A", "t1"); // Trace counts as debug
+		Test.Assert((view.LevelCount(.Error) == 2) && (view.LevelCount(.Warning) == 1) && (view.LevelCount(.Debug) == 1));
+		Test.Assert(view.LevelCountText(.Error) == "2");
+
+		// A line rolling off the cap leaves its level's count.
+		view.AddEntry(.Information, "A", "i1");
+		Test.Assert((view.LevelCount(.Error) == 1) && (view.LevelCountText(.Error) == "1"));
+		Test.Assert(view.LevelCount(.Info) == 1);
+
+		// A chip off hides its level's lines; on again shows them. The chip follows a call too.
+		let warnings = view.LevelChip(.Warning);
+		Test.Assert((warnings != null) && warnings.IsChecked.Value);
+		warnings.IsChecked.Value = false;
+		Test.Assert(!view.IsBucketVisible(.Warning));
+		Test.Assert(view.VisibleEntryCount == 3);
+		view.SetBucketVisible(.Warning, true);
+		Test.Assert(warnings.IsChecked.Value);
+		Test.Assert(view.VisibleEntryCount == 4);
+
+		// Clear empties every count.
+		view.Clear();
+		for (int i < LogBucket.Count)
+			Test.Assert(view.LevelCount((LogBucket)i) == 0);
+		Test.Assert(view.LevelCountText(.Info) == "0");
+	}
+
+	/// The search field's x shows with text and clears it.
+	[Test]
+	public static void TheSearchFieldsXShowsWithTextAndClearsIt()
+	{
+		let view = new LogView();
+		defer view.ReleaseRef();
+		view.AddEntry(.Information, "A", "loaded");
+		view.AddEntry(.Information, "A", "failed");
+		let clear = view.ClearSearchButton;
+		Test.Assert((clear != null) && (clear.Visibility == .Hidden));
+		view.SetSearch("fail");
+		Test.Assert(view.VisibleEntryCount == 1);
+		Test.Assert(clear.Visibility == .Visible);
+		clear.FireClick();
+		Test.Assert(view.Search.IsEmpty && (view.VisibleEntryCount == 2));
+		Test.Assert(clear.Visibility == .Hidden);
+	}
 }
