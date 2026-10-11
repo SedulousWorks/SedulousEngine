@@ -116,6 +116,19 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// SEDULOUS_INPUT_TRACE: nought unread, 1 tracing, -1 not; and the frame counter it samples on.
 	private int mTraceUi = 0;
 	private int mTraceFrame = 0;
+	/// The finger driving the pointer (ReadPointer): whether one does, its id, and where it last
+	/// was (its release lands there). A flag, not an id of 0: a browser numbers fingers from 0.
+	private bool mTouchHeld = false;
+	private uint64 mTouchId = 0;
+	private Float2 mTouchLast = .(0.0f, 0.0f);
+	/// A finger has touched the screen: the touch guide shows.
+	private bool mTouchSeen = false;
+	/// After a touch the mouse waits until it moves: a phone's browser may leave its button
+	/// reported down (a synthesized or unpaired press), which must neither swallow the next
+	/// finger's press nor click on its own.
+	private bool mMouseWaits = false;
+	/// The touch controls' guide on the shared screen tier. Owned by its root.
+	private TouchGuideView mTouchGuide = null;
 
 	/// The data mount is BORROWED: the application resolves the data root, owns the mount and
 	/// outlives this.
@@ -162,6 +175,9 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// Push, pop and replace of screens over that root. Owned by the tier so its lifetime
 	/// matches the root's.
 	public ScreenStack Screens => mScreen.Stack;
+
+	/// The guide to the game's touch controls, on the shared screen tier beneath its screens.
+	public TouchGuideView TouchGuide => mTouchGuide;
 
 	/// The screen tier at the game's render resolution: it lays out at `width` x `height`
 	/// and draws, at the target's own resolution, into the rectangle `fit` puts that size
@@ -406,10 +422,10 @@ class UISubsystem : Subsystem, ISceneObserver
 		// CONSUMES the reference: the context owns the sheet from here.
 		mContext.SetStyleSheet(theme);
 
-		// The scene LESS screen tier. The screen root holds ONLY the global overlay layer,
-		// each scene's canvases and billboards living in that scene's own root, and it hit
-		// tests only while it HOLDS overlays: an empty full screen layer must never swallow
-		// the clicks meant for the canvases below it.
+		// The scene LESS screen tier. The screen root holds the screens pushed on it, the touch
+		// guide and the global overlay layer, each scene's canvases and billboards living in that
+		// scene's own root, and the overlay layer hit tests only while it HOLDS overlays: an
+		// empty full screen layer must never swallow the clicks meant for the canvases below it.
 		mScreen.Root = new RootView();
 		mContext.AddRootView(mScreen.Root);
 		mScreen.Stack.Attach(mScreen.Root);
@@ -418,6 +434,12 @@ class UISubsystem : Subsystem, ISceneObserver
 		overlay.IsHitTestVisible = false;
 		mScreen.Overlay = overlay;
 		mScreen.Root.AddView(mScreen.Overlay);
+		// The touch controls' guide, beneath the screens pushed on this root and the overlays.
+		mTouchGuide = new TouchGuideView();
+		var fill = LayoutStyle();
+		fill.Width = SizeSpec.Match();
+		fill.Height = SizeSpec.Match();
+		mScreen.Root.InsertView(mTouchGuide, 0, fill);
 	}
 
 	protected override void OnReady()
@@ -483,6 +505,7 @@ class UISubsystem : Subsystem, ISceneObserver
 			DropTier(tier);
 		mRunTiers.Clear();
 		mScreen.Overlay = null;
+		mTouchGuide = null;
 		if (mScreen.Root != null)
 		{
 			mContext.RemoveRootView(mScreen.Root);

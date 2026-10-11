@@ -373,6 +373,12 @@ class View : RefCounted, IPropertyOwner
 
 	// ---- Hit testing -------------------------------------------------------------------------
 
+	/// Whether a pointer over this view is the UI's to take, not the game's: a control that
+	/// answers it (focusable ones: buttons, sliders, fields, lists), a scroll view with room to
+	/// scroll, a screen that shields what is below. A plain layout box filling the screen (a
+	/// HUD's) is not, so a game under a pass-through HUD still gets its taps and clicks.
+	public virtual bool TakesPointer => IsFocusable;
+
 	/// The view at a point given in THIS view's coordinates, or null when the point misses.
 	///
 	/// A leaf answers itself when the point is inside its box. The three gates are separate on

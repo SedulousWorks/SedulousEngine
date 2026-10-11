@@ -38,7 +38,9 @@ extension UISubsystem
 			return;
 
 		let devices = mInput.ActiveSource;
-		let mouse = devices.Mouse;
+		// The pointer: the mouse, or the first finger while one is down (a phone has no mouse:
+		// a tap presses, a drag drags, so a scroll view scrolls).
+		let pointer = ReadPointer(devices);
 		let inputManager = mContext.GetInputManager();
 
 		// Where the pointer lands when a world panel took it: the active root IS that
@@ -46,13 +48,18 @@ extension UISubsystem
 		var panelPointer = false;
 		var panelPointerPx = Float2(0.0f, 0.0f);
 
-		PickActiveInputRoot(mouse, overlayActive, ref panelPointer, ref panelPointerPx);
-		PumpMouse(mouse, inputManager, panelPointer, panelPointerPx);
+		PickActiveInputRoot(pointer, overlayActive, ref panelPointer, ref panelPointerPx);
+		PumpPointer(pointer, inputManager, panelPointer, panelPointerPx);
 		PumpKeyboard(devices);
 		PumpGamepad(devices, inputManager);
 		ShowNavigationFocus();
-		PublishConsumption(mouse, panelPointer, inputManager);
-		TraceUi(mouse);
+		PublishConsumption(pointer, panelPointer, inputManager);
+		// The touch guide: from the first touch on, the controls of the sets in effect.
+		if ((devices.Touch != null) && devices.Touch.HasTouch)
+			mTouchSeen = true;
+		if (mTouchGuide != null)
+			mTouchGuide.Update(mInput, mTouchSeen);
+		TraceUi(devices.Mouse);
 	}
 
 	/// Whether this frame's input may reach a scene's root.
@@ -77,7 +84,7 @@ extension UISubsystem
 	/// the pointer; failing that the nearest interactive world panel the camera ray crosses;
 	/// and failing all of those the first eligible scene root that HAS canvas content, so a
 	/// gamepad still reaches a pause menu no pointer ever hovered.
-	private void PickActiveInputRoot(IMouse mouse, bool overlayActive, ref bool panelPointer,
+	private void PickActiveInputRoot(UIPointerFrame pointer, bool overlayActive, ref bool panelPointer,
 		ref Float2 panelPointerPx)
 	{
 		RootView target = null;
@@ -86,9 +93,9 @@ extension UISubsystem
 		if (overlayActive)
 			target = mScreen.Root; // the global overlays live on the shared tier
 
-		if ((target == null) && (mouse != null))
+		if ((target == null) && pointer.Present)
 		{
-			let point = Float2(mouse.X, mouse.Y);
+			let point = Float2(pointer.X, pointer.Y);
 
 			if (tier.Root != null)
 			{
@@ -112,7 +119,7 @@ extension UISubsystem
 			// The world tier: the pointer missed every overlay, so cast the scene camera's
 			// ray and take the NEAREST interactive panel it crosses.
 			if (target == null)
-				target = RayPickPanel(mouse, point, ref panelPointer, ref panelPointerPx);
+				target = RayPickPanel(pointer.Relative, point, ref panelPointer, ref panelPointerPx);
 
 			if (target == null)
 				panelPointer = false;
@@ -141,12 +148,11 @@ extension UISubsystem
 			mContext.SetActiveInputRoot(target);
 	}
 
-	private RootView RayPickPanel(IMouse mouse, Float2 point, ref bool panelPointer,
+	/// `centreAim`: a captured look mode, where the cursor is parked wherever it was grabbed, so
+	/// the crosshair IS the pointer and the ray goes through the centre of the view instead.
+	private RootView RayPickPanel(bool centreAim, Float2 point, ref bool panelPointer,
 		ref Float2 panelPointerPx)
 	{
-		// In a captured look mode the cursor is parked wherever it was grabbed, so the
-		// crosshair IS the pointer and the ray goes through the centre of the view instead.
-		let centreAim = mouse.RelativeMode;
 
 		RootView target = null;
 		var bestDistance = 0.0f;
@@ -202,57 +208,142 @@ extension UISubsystem
 		return target;
 	}
 
-	private void PumpMouse(IMouse mouse, InputManager inputManager, bool panelPointer,
+	/// This frame's pointer: the first finger while one is down, else the mouse.
+	private UIPointerFrame ReadPointer(IInputSourceProvider devices)
+	{
+		var frame = UIPointerFrame();
+		// A finger first: while the one driving is down it is the pointer, its left button held.
+		if (let touch = devices.Touch)
+		{
+			var point = TouchPoint();
+			var down = false;
+			let count = touch.TouchCount;
+			for (int32 i = 0; (i < count) && !down; i++)
+			{
+				if (touch.GetTouchPoint(i, out point) && (!mTouchHeld || (point.Id == mTouchId)))
+					down = true;
+			}
+			if (down)
+			{
+				frame.TouchBegan = !mTouchHeld;
+				mTouchHeld = true;
+				mTouchId = point.Id;
+				mTouchLast = .(point.PointerX, point.PointerY);
+				mMouseWaits = true;
+				frame.Present = true;
+				frame.Touch = true;
+				frame.X = point.PointerX;
+				frame.Y = point.PointerY;
+				frame.Buttons[0] = true;
+				frame.Used = true;
+				return frame;
+			}
+		}
+		if (mTouchHeld)
+		{
+			// It lifted: a release where it last was (a tap's click lands there).
+			mTouchHeld = false;
+			frame.Present = true;
+			frame.X = mTouchLast.X;
+			frame.Y = mTouchLast.Y;
+			frame.Used = true;
+			frame.Touch = true;
+			frame.TouchLifted = true;
+			return frame;
+		}
+		let mouse = devices.Mouse;
+		if (mouse == null)
+			return frame;
+		if (mMouseWaits)
+		{
+			if ((mouse.DeltaX == 0.0f) && (mouse.DeltaY == 0.0f) && (mouse.ScrollX == 0.0f) && (mouse.ScrollY == 0.0f))
+				return frame; // no pointer until the mouse moves
+			// It moved: it drives again, from the buttons as they are now (no edge from a stale one).
+			mMouseWaits = false;
+			mPrevButtons[0] = mouse.IsButtonDown(.Left);
+			mPrevButtons[1] = mouse.IsButtonDown(.Right);
+			mPrevButtons[2] = mouse.IsButtonDown(.Middle);
+		}
+		frame.Present = true;
+		frame.X = mouse.X;
+		frame.Y = mouse.Y;
+		frame.Buttons[0] = mouse.IsButtonDown(.Left);
+		frame.Buttons[1] = mouse.IsButtonDown(.Right);
+		frame.Buttons[2] = mouse.IsButtonDown(.Middle);
+		frame.ScrollX = mouse.ScrollX;
+		frame.ScrollY = mouse.ScrollY;
+		frame.Relative = mouse.RelativeMode;
+		// Moved by its MOTION, not its position: the platform's first report of where the cursor
+		// rests, and a warp, change the position with no motion at all.
+		frame.Used = (mouse.DeltaX != 0.0f) || (mouse.DeltaY != 0.0f) || (frame.ScrollX != 0.0f)
+			|| (frame.ScrollY != 0.0f) || frame.Buttons[0] || frame.Buttons[1] || frame.Buttons[2];
+		return frame;
+	}
+
+	private void PumpPointer(UIPointerFrame pointer, InputManager inputManager, bool panelPointer,
 		Float2 panelPointerPx)
 	{
-		if (mouse == null)
-			return;
-
-		// A pointer only counts once it is used: moved, clicked or scrolled. A cursor that
-		// sits still, hidden on a handheld say, hovers nothing while keys or a pad drive.
-		// Moved by its MOTION, not its position: the platform's first report of where the
-		// cursor rests, and a warp, change the position with no motion at all.
-		let moved = (mouse.DeltaX != 0.0f) || (mouse.DeltaY != 0.0f);
-		let used = moved || (mouse.ScrollY != 0.0f) || (mouse.ScrollX != 0.0f)
-			|| mouse.IsButtonDown(.Left) || mouse.IsButtonDown(.Right) || mouse.IsButtonDown(.Middle);
-		if (used)
-			mPointerLive = true;
-		if (!mPointerLive)
+		// A pointer only counts once it is used: moved, clicked or scrolled. A cursor that sits
+		// still, hidden on a handheld say, hovers nothing while keys or a pad drive.
+		if (pointer.Present)
 		{
+			if (pointer.Used)
+				mPointerLive = true;
+			if (!mPointerLive)
+				inputManager.ClearHover();
+		}
+		if (pointer.Present && mPointerLive)
+		{
+			var x = panelPointer ? panelPointerPx.X : pointer.X;
+			var y = panelPointer ? panelPointerPx.Y : pointer.Y;
+			// A screen tier drawn fitted takes its pointer in its own pixels.
+			let activeTier = TierOfRoot(mContext.ActiveInputRoot);
+			if (!panelPointer && (activeTier != null))
+			{
+				let screen = activeTier.PointerPoint(.(x, y));
+				x = screen.X;
+				y = screen.Y;
+			}
+			inputManager.ProcessMouseMove(x, y);
+
+			let uiButtons = scope Sedulous.UI.MouseButton[3](.Left, .Right, .Middle);
+			if (pointer.Touch)
+			{
+				// A finger's own edges: it came down, or it lifted (whatever the mouse reports).
+				if (pointer.TouchBegan)
+					inputManager.ProcessMouseDown(.Left, x, y, mContext.TotalTime);
+				else if (pointer.TouchLifted)
+					inputManager.ProcessMouseUp(.Left, x, y);
+				if (InputTracing && (pointer.TouchBegan || pointer.TouchLifted))
+				{
+					GlobalLog(.Information, scope $"UiTouch: finger {(pointer.TouchBegan ? "down" : "up")} at ({x},{y}) on {DescribeView(mContext.GetViewById(inputManager.HoveredId), .. scope .())}, pressed {DescribeView(mContext.GetViewById(inputManager.PressedId), .. scope .())}");
+				}
+			}
+			for (int i = 0; (i < 3) && !pointer.Touch; i++)
+			{
+				let down = pointer.Buttons[i];
+				if (down && !mPrevButtons[i])
+					inputManager.ProcessMouseDown(uiButtons[i], x, y, mContext.TotalTime);
+				else if (!down && mPrevButtons[i])
+					inputManager.ProcessMouseUp(uiButtons[i], x, y);
+				if (InputTracing && (down != mPrevButtons[i]))
+				{
+					GlobalLog(.Information, scope $"UiMouse: button {i} {(down ? "down" : "up")} at ({x},{y}) on {DescribeView(mContext.GetViewById(inputManager.HoveredId), .. scope .())}");
+				}
+				mPrevButtons[i] = down;
+			}
+
+			// Already a per frame delta.
+			if (pointer.ScrollY != 0.0f)
+				inputManager.ProcessMouseWheel(x, y, pointer.ScrollX, pointer.ScrollY);
+		}
+		// A lifted finger leaves no cursor behind: nothing stays hovered, and the mouse counts
+		// again only once it is used.
+		if (pointer.TouchLifted)
+		{
+			mPointerLive = false;
 			inputManager.ClearHover();
-			return;
 		}
-
-		var x = panelPointer ? panelPointerPx.X : mouse.X;
-		var y = panelPointer ? panelPointerPx.Y : mouse.Y;
-		// A screen tier drawn fitted takes its pointer in its own pixels.
-		let activeTier = TierOfRoot(mContext.ActiveInputRoot);
-		if (!panelPointer && (activeTier != null))
-		{
-			let screen = activeTier.PointerPoint(.(x, y));
-			x = screen.X;
-			y = screen.Y;
-		}
-		inputManager.ProcessMouseMove(x, y);
-
-		let shellButtons = scope Sedulous.Shell.MouseButton[3](.Left, .Right, .Middle);
-		let uiButtons = scope Sedulous.UI.MouseButton[3](.Left, .Right, .Middle);
-
-		for (int i < 3)
-		{
-			let down = mouse.IsButtonDown(shellButtons[i]);
-			if (down && !mPrevButtons[i])
-				inputManager.ProcessMouseDown(uiButtons[i], x, y, mContext.TotalTime);
-			else if (!down && mPrevButtons[i])
-				inputManager.ProcessMouseUp(uiButtons[i], x, y);
-
-			mPrevButtons[i] = down;
-		}
-
-		// Already a per frame delta.
-		let wheel = mouse.ScrollY;
-		if (wheel != 0.0f)
-			inputManager.ProcessMouseWheel(x, y, mouse.ScrollX, wheel);
 	}
 
 	/// The TAGGED event stream off the same provider: ordered key events and text payloads
@@ -400,17 +491,51 @@ extension UISubsystem
 		}
 	}
 
+	/// SEDULOUS_INPUT_TRACE set (on the web: the page's address has ?trace): the input path
+	/// explains itself in the log.
+	private bool InputTracing
+	{
+		get
+		{
+			if (mTraceUi == 0)
+			{
+				let value = scope String();
+				mTraceUi = ((Environment.GetEnvironmentVariable("SEDULOUS_INPUT_TRACE", value) case .Ok) && !value.IsEmpty) ? 1 : -1;
+			}
+			return mTraceUi > 0;
+		}
+	}
+
+	/// `view` for the trace: its name and type, or "none".
+	private static void DescribeView(View view, String outText)
+	{
+		if (view == null)
+		{
+			outText.Append("none");
+			return;
+		}
+		outText.AppendF("'{}' ", view.Name);
+		view.GetType().GetName(outText);
+	}
+
+	/// Whether the UI takes a pointer over `view`: it, or a view it sits in, answers pointers
+	/// (View.TakesPointer). A layout box alone, or the root, does not.
+	private static bool TakesPointerAt(View view)
+	{
+		for (var v = view; v != null; v = v.Parent)
+		{
+			if (v.TakesPointer)
+				return true;
+		}
+		return false;
+	}
+
 	/// SEDULOUS_INPUT_TRACE set: twice a second, what the UI holds - the focused view and how
 	/// focus got there, the hovered one, and where the pointer is in layout space - beside
 	/// the input path's own trace.
 	private void TraceUi(IMouse mouse)
 	{
-		if (mTraceUi == 0)
-		{
-			let value = scope String();
-			mTraceUi = ((Environment.GetEnvironmentVariable("SEDULOUS_INPUT_TRACE", value) case .Ok) && !value.IsEmpty) ? 1 : -1;
-		}
-		if ((mTraceUi < 0) || ((++mTraceFrame % 30) != 0))
+		if (!InputTracing || ((++mTraceFrame % 30) != 0))
 			return;
 		let line = scope String("UiTrace:");
 		let focus = mContext.GetFocusManager();
@@ -450,26 +575,22 @@ extension UISubsystem
 	/// The pointer probes the screen tier first, being topmost, then the ELIGIBLE scene
 	/// roots, under the same binding rule as the routing: an unbound editor context never
 	/// publishes a mask from heads up displays it cannot interact with anyway.
-	private void PublishConsumption(IMouse mouse, bool panelPointer, InputManager inputManager)
+	private void PublishConsumption(UIPointerFrame frame, bool panelPointer, InputManager inputManager)
 	{
 		var pointer = false;
 
-		if (mouse != null)
+		// Only what takes a pointer counts (TakesPointerAt): a pass-through HUD's layout boxes are
+		// hits, but a tap between its controls is the game's.
+		if (frame.Present)
 		{
-			let point = Float2(mouse.X, mouse.Y);
+			let point = Float2(frame.X, frame.Y);
 
 			let tier = InputTier();
 			if (tier.Root != null)
-			{
-				let hit = tier.Root.HitTest(tier.LayoutPoint(point));
-				pointer = (hit != null) && (hit !== tier.Root);
-			}
+				pointer = TakesPointerAt(tier.Root.HitTest(tier.LayoutPoint(point)));
 			// The global overlays sit on the shared tier, above a run's own.
 			if (!pointer && OverlayLayerWantsInput && (tier !== mScreen))
-			{
-				let hit = mScreen.Root.HitTest(mScreen.LayoutPoint(point));
-				pointer = (hit != null) && (hit !== mScreen.Root);
-			}
+				pointer = TakesPointerAt(mScreen.Root.HitTest(mScreen.LayoutPoint(point)));
 
 			for (let ui in mSceneUIs)
 			{
@@ -478,18 +599,17 @@ extension UISubsystem
 				if (!SceneRootEligible(ui) || (ui.Root == null))
 					continue;
 
-				let hit = ui.Root.HitTest(point);
-				pointer = (hit != null) && (hit !== ui.Root);
+				pointer = TakesPointerAt(ui.Root.HitTest(point));
 			}
 		}
 
 		// A panel the ray hit consumes the pointer like any hovered canvas would, and so
-		// does a pressed view, but NOT a pressed ROOT: a press over empty space parks on the
-		// root so the release still routes, and that is not an interaction. Without the root
-		// exclusion, ANY held click published a consumed mask and gated gameplay input for
-		// as long as the button was down.
+		// does a pressed view that takes the pointer, but NOT a pressed ROOT or layout box: a
+		// press over empty space parks on the root so the release still routes, and that is
+		// not an interaction. Without that, ANY held click published a consumed mask and gated
+		// gameplay input for as long as the button was down.
 		let pressedView = mContext.GetViewById(inputManager.PressedId);
-		let pressedOnUI = (pressedView != null) && (pressedView.Parent != null);
+		let pressedOnUI = TakesPointerAt(pressedView);
 		pointer = pointer || panelPointer || pressedOnUI;
 
 		let keyboard = mContext.WantsTextInput();
@@ -498,6 +618,7 @@ extension UISubsystem
 		var mask = ConsumptionMask();
 		mask.Pointer = pointer;
 		mask.Keyboard = keyboard;
-		mInput.Runtime.SetConsumptionMask(mask);
+		// On every runtime in play: a game's own reads its actions there.
+		mInput.ForEachActionRuntime(scope [&] (runtime) => runtime.SetConsumptionMask(mask));
 	}
 }

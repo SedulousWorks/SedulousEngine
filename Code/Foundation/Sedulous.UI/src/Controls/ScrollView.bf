@@ -108,6 +108,8 @@ class ScrollView : ViewGroup
 
 	public float MaxScrollX => Max(0.0f, mContentWidth - ViewportWidth);
 	public float MaxScrollY => Max(0.0f, mContentHeight - ViewportHeight);
+	/// A drag over it scrolls it, when it has room to.
+	public override bool TakesPointer => IsFocusable || (MaxScrollX > 0.0f) || (MaxScrollY > 0.0f);
 	public float ContentWidth => mContentWidth;
 	public float ContentHeight => mContentHeight;
 

@@ -147,7 +147,7 @@ class UIScreenTierTests
 
 	/// A menu screen of two buttons named for its run, as a game's title screen. The caller's
 	/// reference is the one Push consumes.
-	private static UIScreen MenuFor(UITestFixture fixture, StringView prefix)
+	public static UIScreen MenuFor(UITestFixture fixture, StringView prefix)
 	{
 		let document = UITestFixture.MakeDocument(scope $"""
 			<Flex direction="vertical" spacing="4">

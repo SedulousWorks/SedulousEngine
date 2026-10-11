@@ -64,6 +64,10 @@ class UIScreen : ViewGroup
 	/// Whether this screen blocks input from reaching screens below it. Modal and Opaque do.
 	public bool ShieldsInput => mMode != .Overlay;
 
+	/// A shielding screen takes the pointer wherever it lands on it; an overlay only where its
+	/// controls are.
+	public override bool TakesPointer => ShieldsInput || IsFocusable;
+
 	/// Whether this screen fully hides the screens below it. Only Opaque does.
 	public bool HidesBelow => mMode == .Opaque;
 

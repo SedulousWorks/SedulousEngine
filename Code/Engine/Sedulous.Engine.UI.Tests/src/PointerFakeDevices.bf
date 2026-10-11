@@ -5,17 +5,19 @@ using Sedulous.Shell;
 
 namespace Sedulous.Engine.UI.Tests;
 
-/// A pointer capable provider: a settable mouse for the polled pump plus the tagged event
-/// stream, which is the full shape a real source presents.
+/// A pointer capable provider: a settable mouse and fingers for the polled pump plus the tagged
+/// event stream, which is the full shape a real source presents.
 class PointerFakeDevices : IInputSourceProvider
 {
 	public PointerFakeMouse FakeMouse = new .() ~ delete _;
+	public PointerFakeTouch FakeTouch = new .() ~ delete _;
 	/// False stands in for a pointer less frame, the pad or keyboard only path.
 	public bool MousePresent = true;
 	public List<InputEvent> Queue = new .() ~ delete _;
 
 	public IKeyboard Keyboard => null;
 	public IMouse Mouse => MousePresent ? FakeMouse : null;
+	public ITouch Touch => FakeTouch;
 	public int32 GamepadCount => 0;
 	public IGamepad GetGamepad(int32 index) => null;
 	public Span<InputEvent> Events => Queue;

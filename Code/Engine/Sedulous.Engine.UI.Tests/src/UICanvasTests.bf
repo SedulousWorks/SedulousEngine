@@ -43,11 +43,11 @@ class UICanvasTests
 		Test.Assert(group.FindByName("resume-btn") != null);
 
 		// The tier split: a canvas parents into ITS SCENE's root, above that scene's
-		// billboard layer, and the screen root holds only the global overlay layer.
+		// billboard layer, and the screen root holds only the touch guide and the global overlay layer.
 		let sceneRoot = fixture.UI.SceneRoot(scene);
 		Test.Assert(sceneRoot != null);
 		Test.Assert(sceneRoot.ChildCount == 2, "the billboard layer and the canvas");
-		Test.Assert(fixture.UI.ScreenRoot.ChildCount == 1, "the overlay layer alone");
+		Test.Assert(fixture.UI.ScreenRoot.ChildCount == 2, "the touch guide and the overlay layer");
 		Test.Assert(sceneRoot.FindByName("resume-btn") != null);
 
 		// A hot reload: a NEW document rebuilds the tree. The STRUCTURE is what proves it,
