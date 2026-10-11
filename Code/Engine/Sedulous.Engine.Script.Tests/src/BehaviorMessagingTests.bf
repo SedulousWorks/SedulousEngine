@@ -181,6 +181,42 @@ static class BehaviorMessagingTests
 		Test.Assert(play.PropInt(a, "heard") == 6);
 	}
 
+	/// An inactive entity receives nothing: no messages, no bus events (contacts share the
+	/// message queue). Reactivated, it hears the next one.
+	[Test]
+	public static void AnInactiveEntityReceivesNoMessagesAndNoEvents()
+	{
+		let play = scope ScriptPlayScene();
+		let talker = play.Class("Talker", cTalker);
+		let orb = play.Class("Orb", cOrb);
+		let sender = play.AddBehavior(talker, "sender");
+		let target = play.AddBehavior(talker, "target");
+		let emitter = play.AddBehavior(orb, "emitter");
+		let listener = play.AddBehavior(orb, "listener");
+		play.Start();
+		play.Step();
+		play.Runtime.SetProperty(play.BehaviorOf(sender).Instance, "other", .FromEntity(target, play.Scene));
+
+		play.Scene.SetActive(target, false);
+		play.Scene.SetActive(listener, false);
+		play.Runtime.SetProperty(play.BehaviorOf(sender).Instance, "sendOnUpdate", .FromBool(true));
+		play.Runtime.SetProperty(play.BehaviorOf(emitter).Instance, "emit", .FromBool(true));
+		play.Step();
+		play.Step();
+		Test.Assert(play.PropInt(target, "hits") == 0, "no message to an inactive entity");
+		Test.Assert(play.PropInt(listener, "heard") == 0, "no bus event to an inactive entity");
+		Test.Assert(play.PropInt(emitter, "heard") == 3, "the active emitter still hears its own");
+
+		play.Scene.SetActive(target, true);
+		play.Scene.SetActive(listener, true);
+		play.Runtime.SetProperty(play.BehaviorOf(sender).Instance, "sendOnUpdate", .FromBool(true));
+		play.Runtime.SetProperty(play.BehaviorOf(emitter).Instance, "emit", .FromBool(true));
+		play.Step();
+		play.Step();
+		Test.Assert(play.PropInt(target, "hits") == 5, "reactivated, it hears the next message");
+		Test.Assert(play.PropInt(listener, "heard") == 3, "and the next event");
+	}
+
 	/// A Float3 emitted on the bus reaches a handler that takes it by value: a lock's place, a
 	/// noise's origin. Emit once took no Float3 at all, and Raptor's binder once handed such a
 	/// value to a handle parameter only, so `onSpotted(Float3 at)` got nothing and faulted

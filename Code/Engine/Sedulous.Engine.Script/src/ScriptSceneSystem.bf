@@ -556,6 +556,10 @@ class ScriptSceneSystem : SceneSystem
 		let components = mScene.GetSystem<ScriptComponentManager>();
 		if ((components == null) || !mScene.IsValid(pending.Target))
 			return;
+		// An inactive entity receives nothing: neither messages nor contacts, which share
+		// this queue.
+		if (!mScene.IsEffectivelyActive(pending.Target))
+			return;
 		let span = pending.Arguments;
 		for (int i = 0; ; i++)
 		{
@@ -630,6 +634,10 @@ class ScriptSceneSystem : SceneSystem
 		components.ForEach(scope [&] (component, owner) => { mTickOwners.Add(owner); });
 		for (let entity in mTickOwners)
 		{
+			// An inactive entity receives no bus events. Its behaviours keep Active (only the
+			// tick's freeze marks them suspended), so the behaviour filter below does not.
+			if (!mScene.IsEffectivelyActive(entity))
+				continue;
 			for (int i = 0; ; i++)
 			{
 				let component = components.Get(entity);
