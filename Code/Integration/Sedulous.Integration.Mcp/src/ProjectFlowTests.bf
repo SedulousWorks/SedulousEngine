@@ -111,7 +111,9 @@ static class ProjectFlowTests
 		Test.Assert(asset.Family == "Roboto");
 		Test.Assert(asset.Mode == .DistanceField, "one bake draws every size clean");
 		let root = project.SourceDb.RootGroup;
-		Test.Assert((root.GetGroup("Environment") != null) && (root.GetGroup("Environment").GetInstance("BlueSky") != null));
+		Test.Assert((root.GetGroup("Environment") != null) && (root.GetGroup("Environment").GetInstance("Sky") != null));
+		Test.Assert(FileExists(PathJoin(dir, "Sources/kloofendal_48d_partly_cloudy_puresky_1k.hdr", .. scope .())));
+		Test.Assert(!FileExists(PathJoin(dir, "Sources/BlueSky.hdr", .. scope .())), "the large one no more");
 		Test.Assert((root.GetGroup("Meshes") != null) && (root.GetGroup("Meshes").GetInstance("Cube") != null));
 		Test.Assert(FileExists(PathJoin(dir, "Sources/Roboto-Regular.ttf", .. scope .())));
 	}

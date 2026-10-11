@@ -19,8 +19,8 @@ namespace Sedulous.Editor.Project;
 static class ProjectSeed
 {
 	/// Seeds `project` from the engine data root's Assets/: Roboto as a distance-field font set
-	/// as the default UI font, the BlueSky sky, and the cube, sphere and plane (every primitive
-	/// with `allPrimitives`). The settings are the caller's to save.
+	/// as the default UI font, a 1K Poly Haven sky (CC0) as the default sky, and the cube, sphere
+	/// and plane (every primitive with `allPrimitives`). The settings are the caller's to save.
 	public static void SeedStarterContent(EditorProject project, StringView dataRoot, bool allPrimitives = false)
 	{
 		let root = project.SourceDb.RootGroup;
@@ -47,13 +47,16 @@ static class ProjectSeed
 				GlobalLog(.Warning, "Editor: starter font missing ({}), the new project has no default UI font", source);
 		}
 
-		// The default sky: BlueSky.hdr as an equirectangular skybox texture.
+		// The default sky: Poly Haven's Kloofendal 48d Partly Cloudy (Pure Sky) at 1K, CC0 (its
+		// licence beside it), an equirectangular skybox texture. A 1024 x 512 HDR of 1.4 MB: the
+		// 4096 x 2048 BlueSky (10 MB, nearly 3 s to cook) was more than a starting sky needs.
 		{
-			let source = DataPath(dataRoot, "Assets/environment/BlueSky.hdr", .. scope .());
+			let source = DataPath(dataRoot,
+				"Assets/environment/kloofendal_48d_partly_cloudy_puresky/kloofendal_48d_partly_cloudy_puresky_1k.hdr", .. scope .());
 			let copied = scope String();
 			if (ImportPaths.CopyIntoSources(importContext, source, copied) case .Ok)
 			{
-				if (let instance = GroupNamed(root, "Environment").CreateInstance("BlueSky", typeof(TextureAsset).GetFullName(.. scope .())))
+				if (let instance = GroupNamed(root, "Environment").CreateInstance("Sky", typeof(TextureAsset).GetFullName(.. scope .())))
 				{
 					let asset = scope TextureAsset();
 					asset.FileName.Set(copied);
