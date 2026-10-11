@@ -83,6 +83,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private ToolbarToggle mRotateToggle = null;
 	private ToolbarToggle mScaleToggle = null;
 	private ToolbarToggle mSpaceToggle = null;
+	/// The gizmo's vertex snap mode.
+	private ToolbarToggle mVertexSnapToggle = null;
 	/// One dropdown over the editor's debug draws: grid, entity markers, LOD overlay, the
 	/// edit time collider wireframes and the frame rate. Borrowed; the toolbar owns it.
 	private ToolbarMenuButton mOverlaysButton = null;

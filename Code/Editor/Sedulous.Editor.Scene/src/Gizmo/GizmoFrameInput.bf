@@ -14,6 +14,11 @@ struct GizmoFrameInput
 	public bool LeftReleased = false;
 	/// Held Ctrl.
 	public bool Snap = false;
+	/// Held V (the controller's VertexSnapMode does the same while on): a translate drag puts
+	/// the pivot on the vertex nearest where the cursor meets the scene's drawn surfaces,
+	/// whichever handle it holds (an absolute place, where Ctrl's snap steps the drag's
+	/// distance).
+	public bool VertexSnap = false;
 	/// W, E, R and X, as edges.
 	public bool KeyTranslate = false;
 	public bool KeyRotate = false;

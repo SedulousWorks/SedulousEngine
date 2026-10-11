@@ -25,6 +25,11 @@ class GizmoController
 	private Transform mDragStartLocal = .();
 	private Float4x4 mParentInverseWorld = .Identity();
 	private Quaternion mParentRotation = .Identity;
+	private bool mVertexSnapMode = false;
+	/// The vertex the pivot is snapped to (vertex snap), world space.
+	private Float3? mSnapTarget = null;
+	/// How far along the ray a snap target may be.
+	private const float cSnapReach = 10000.0f;
 
 	public this(SceneEditContext edit)
 	{
@@ -35,6 +40,18 @@ class GizmoController
 	public GizmoSpace Space => mSpace;
 	public TransformGizmo Gizmo => mGizmo;
 	public bool IsActive => mActive;
+
+	/// Vertex snap for every translate drag while on (the toolbar's toggle), as holding V
+	/// does for one.
+	public bool VertexSnapMode
+	{
+		get => mVertexSnapMode;
+		set => mVertexSnapMode = value;
+	}
+
+	/// The vertex a vertex snapping drag holds the pivot on this frame (world); none when not
+	/// snapping, or when the cursor is over no surface.
+	public Float3? SnapTarget => mSnapTarget;
 
 	/// Mode and space changes wait for a drag to finish, so the frame it measures against
 	/// never changes under it.
@@ -156,6 +173,33 @@ class GizmoController
 		if (!mActive)
 			return;
 		mGizmo.Draw(dd, mMode);
+		if (mSnapTarget.HasValue)
+		{
+			// The vertex the pivot sits on, seen through whatever is in front of it.
+			let mark = Color(1.0f, 0.85f, 0.2f, 1.0f);
+			dd.DrawWireSphereOverlay(mSnapTarget.Value, mGizmo.Size * 0.05f, mark, 16);
+			dd.DrawCross(mSnapTarget.Value, mGizmo.Size * 0.08f, mark, true);
+		}
+	}
+
+	/// The vertex under `ray` to snap the dragged entity onto: on any drawn surface but the
+	/// dragged entity's own and its descendants'.
+	private Float3? FindSnapVertex(GizmoRay ray, EntityHandle dragged)
+	{
+		let scene = mEdit.Scene;
+		// Never onto itself: the dragged entity and everything under it move with the drag.
+		delegate bool(EntityHandle entity) accept = scope [&] (candidate) =>
+			{
+				for (var e = candidate; e.IsAssigned; e = scene.GetParent(e))
+				{
+					if (e == dragged)
+						return false;
+				}
+				return true;
+			};
+		if (!scene.RaycastSurface(ray.Origin, Normalized(ray.Direction), cSnapReach, accept, let hit))
+			return null;
+		return hit.Vertex;
 	}
 
 	public StringView StatusText
@@ -166,8 +210,8 @@ class GizmoController
 			{
 			case .Translate:
 				return (mSpace == .World)
-					? "Move [World]  (W/E/R mode, X space, Ctrl snap)"
-					: "Move [Local]  (W/E/R mode, X space, Ctrl snap)";
+					? "Move [World]  (W/E/R mode, X space, Ctrl snap, V vertex snap)"
+					: "Move [Local]  (W/E/R mode, X space, Ctrl snap, V vertex snap)";
 			case .Rotate:
 				return (mSpace == .World)
 					? "Rotate [World]  (W/E/R mode, X space, Ctrl snap)"
@@ -197,6 +241,11 @@ class GizmoController
 			let worldDelta = mGizmo.UpdateTranslateDrag(input.Ray, input.Snap);
 			t.Position = mDragStartLocal.Position
 				+ TransformDirection(worldDelta, mParentInverseWorld);
+			// Vertex snap: the pivot ON the vertex under the cursor, whichever handle is held;
+			// over no surface, the drag as it is.
+			mSnapTarget = (input.VertexSnap || mVertexSnapMode) ? FindSnapVertex(input.Ray, entity) : null;
+			if (mSnapTarget.HasValue)
+				t.Position = TransformPoint(mSnapTarget.Value, mParentInverseWorld);
 		case .Rotate:
 			let d = mGizmo.UpdateRotateDrag(input.Ray, input.Snap);
 			let worldDelta = Quaternion.FromAxisAngle(d.Axis, d.Angle);
@@ -214,6 +263,7 @@ class GizmoController
 	private void FinishDrag()
 	{
 		mGizmo.EndDrag();
+		mSnapTarget = null;
 		if (mInGroup)
 		{
 			mEdit.Commands.EndGroup();

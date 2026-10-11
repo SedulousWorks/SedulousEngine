@@ -48,6 +48,15 @@ extension SceneEditorPage
 				actions.Execute(SceneActionIds.GizmoWorldSpace, this).IgnoreError();
 			SyncToolbar();
 		});
+		// Vertex snap for every move while checked (holding V does it for one drag).
+		mVertexSnapToggle = mToolbar.AddToggle("Vertex Snap");
+		mVertexSnapToggle.TooltipText.Set("Move the selection's pivot onto the vertex under the cursor (hold V for one drag)");
+		mVertexSnapToggle.OnCheckedChanged.Add(new [=this, =actions](toggle, value) =>
+		{
+			if (actions.IsChecked(SceneActionIds.GizmoVertexSnap, this) != value)
+				actions.Execute(SceneActionIds.GizmoVertexSnap, this).IgnoreError();
+			SyncToolbar();
+		});
 
 		mToolbar.AddSeparator();
 
@@ -305,6 +314,7 @@ extension SceneEditorPage
 		mScaleToggle.IsChecked = actions.IsChecked(SceneActionIds.GizmoScale, this);
 		let world = actions.IsChecked(SceneActionIds.GizmoWorldSpace, this);
 		mSpaceToggle.IsChecked = world;
+		mVertexSnapToggle.IsChecked = actions.IsChecked(SceneActionIds.GizmoVertexSnap, this);
 		if (mAnimationToggle != null)
 			mAnimationToggle.IsChecked = actions.IsChecked(SceneActionIds.AnimationPanel, this);
 		let spaceText = world ? "World" : "Local";

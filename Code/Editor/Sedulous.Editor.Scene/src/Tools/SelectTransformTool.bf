@@ -110,6 +110,7 @@ class SelectTransformTool : IViewportTool
 			gizmoInput.KeyRotate = input.Keyboard.IsKeyPressed(.E);
 			gizmoInput.KeyScale = input.Keyboard.IsKeyPressed(.R);
 			gizmoInput.KeyToggleSpace = input.Keyboard.IsKeyPressed(.X);
+			gizmoInput.VertexSnap = input.Keyboard.IsKeyDown(.V); // held
 		}
 		let consumed = mGizmos.Update(gizmoInput);
 

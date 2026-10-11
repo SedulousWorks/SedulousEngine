@@ -17,6 +17,7 @@ static class SceneActionIds
 	public const String GizmoRotate = "scene.gizmo.rotate";
 	public const String GizmoScale = "scene.gizmo.scale";
 	public const String GizmoWorldSpace = "scene.gizmo.worldSpace";
+	public const String GizmoVertexSnap = "scene.gizmo.vertexSnap";
 	public const String Markers = "scene.view.markers";
 	public const String FrameSelection = "scene.view.frameSelection";
 	public const String AnimationPanel = "scene.view.animationPanel";
@@ -143,6 +144,28 @@ static class SceneActions
 				{
 					let gizmos = (page as ISceneEditorPage).Gizmos;
 					gizmos.SetSpace((gizmos.Space == .World) ? .Local : .World);
+				};
+			actions.Register(d);
+		}
+		{
+			// Every move drag snaps the pivot onto the vertex under the cursor while on; holding
+			// V does it for one drag.
+			let d = new EditorActionDeclaration(SceneActionIds.GizmoVertexSnap, "Vertex Snap", "Moving with the gizmo puts the selection's pivot on the vertex under the cursor (hold V for one drag)", "Scene/Gizmo/Vertex Snap", 201);
+			d.Kind = .Toggle;
+			d.Enabled = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					return (scene != null) && (scene.Gizmos != null);
+				};
+			d.Checked = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					return (scene != null) && (scene.Gizmos != null) && scene.Gizmos.VertexSnapMode;
+				};
+			d.Execute = new (page) =>
+				{
+					let gizmos = (page as ISceneEditorPage).Gizmos;
+					gizmos.VertexSnapMode = !gizmos.VertexSnapMode;
 				};
 			actions.Register(d);
 		}

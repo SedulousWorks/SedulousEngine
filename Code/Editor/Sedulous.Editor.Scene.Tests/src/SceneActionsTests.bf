@@ -171,6 +171,13 @@ class SceneActionsTests
 		Test.Assert(actions.IsChecked(SceneActionIds.GizmoWorldSpace, page) == worldBefore);
 		Test.Assert(actions.Execute(SceneActionIds.GizmoWorldSpace, page) case .Ok);
 		Test.Assert(actions.IsChecked(SceneActionIds.GizmoWorldSpace, page) != worldBefore);
+		// Vertex snap: a toggle over the gizmo's mode, off to start.
+		Test.Assert(actions.Find(SceneActionIds.GizmoVertexSnap).MenuPath == "Scene/Gizmo/Vertex Snap");
+		Test.Assert(!actions.IsChecked(SceneActionIds.GizmoVertexSnap, page));
+		Test.Assert(actions.Execute(SceneActionIds.GizmoVertexSnap, page) case .Ok);
+		Test.Assert(gizmos.VertexSnapMode && actions.IsChecked(SceneActionIds.GizmoVertexSnap, page));
+		Test.Assert(actions.Execute(SceneActionIds.GizmoVertexSnap, page) case .Ok);
+		Test.Assert(!gizmos.VertexSnapMode);
 
 		// While the camera flies, W is the camera's: the mode chords refuse and the mode stays.
 		page.Flying = true;
