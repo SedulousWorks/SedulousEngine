@@ -15,7 +15,9 @@
 				<string name="templateId"/>
 				<string name="playerName">Sedulous Lamplight</string>
 				<string name="outputSubdir">Linux64</string>
-				<array name="additionalFiles" count="0"/>
+				<array name="additionalFiles" count="1">
+					<string>CREDITS.md</string>
+				</array>
 				<string name="config"/>
 				<bool name="stageSymbols">false</bool>
 				<bool name="pruneToReachable">false</bool>
@@ -41,7 +43,9 @@
 				<string name="templateId">sedulous-steamdeck-release-0.1.0</string>
 				<string name="playerName">Sedulous Lamplight</string>
 				<string name="outputSubdir">SteamDeck</string>
-				<array name="additionalFiles" count="0"/>
+				<array name="additionalFiles" count="1">
+					<string>CREDITS.md</string>
+				</array>
 				<string name="config"/>
 				<bool name="stageSymbols">false</bool>
 				<bool name="pruneToReachable">false</bool>
@@ -67,7 +71,9 @@
 				<string name="templateId">sedulous-web-release-0.1.0</string>
 				<string name="playerName">index</string>
 				<string name="outputSubdir">Web</string>
-				<array name="additionalFiles" count="0"/>
+				<array name="additionalFiles" count="1">
+					<string>CREDITS.md</string>
+				</array>
 				<string name="config"/>
 				<bool name="stageSymbols">false</bool>
 				<bool name="pruneToReachable">false</bool>
