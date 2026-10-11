@@ -43,6 +43,20 @@ class HttpParserTests
 		Test.Assert(parser.Push(Bytes("this is not http\r\n\r\n")) == .Failed);
 	}
 
+	/// A request line missing its version, or ending on its second separator, is refused and
+	/// never read past; a response may leave out its reason phrase, which is legal.
+	[Test]
+	public static void ARequestNeedsItsVersionAndAResponseMayOmitItsReason()
+	{
+		Test.Assert(scope HttpMessageParser(.Request).Push(Bytes("GET /path\r\n\r\n")) == .Failed);
+		Test.Assert(scope HttpMessageParser(.Request).Push(Bytes("GET\r\n\r\n")) == .Failed);
+		Test.Assert(scope HttpMessageParser(.Request).Push(Bytes("GET /path \r\n\r\n")) == .Failed, "an empty version");
+
+		let response = scope HttpMessageParser(.Response);
+		Test.Assert(response.Push(Bytes("HTTP/1.1 204\r\nContent-Length: 0\r\n\r\n")) != .Failed);
+		Test.Assert(response.Status == 204);
+	}
+
 	[Test]
 	public static void ChunkedTransferIsRefusedRatherThanHalfSupported()
 	{

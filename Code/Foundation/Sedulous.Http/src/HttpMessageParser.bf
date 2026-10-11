@@ -178,8 +178,9 @@ class HttpMessageParser
 
 		// Both separators must be PRESENT and have something after them. "complete garbage"
 		// clears a `secondSpace > Length` check, because the scan stops exactly at the end,
-		// and the version read below then runs one past it.
-		if ((firstSpace >= line.Length) || (secondSpace >= line.Length))
+		// and the version read below then runs one past it. A response may omit the reason
+		// phrase ("HTTP/1.1 204"): only the request form needs the third part.
+		if ((firstSpace >= line.Length) || ((mMode == .Request) && (secondSpace >= line.Length)))
 			return false;
 
 		if (mMode == .Request)
