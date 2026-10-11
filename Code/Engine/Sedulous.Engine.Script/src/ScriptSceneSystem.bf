@@ -77,6 +77,10 @@ class ScriptSceneSystem : SceneSystem
 
 	public override bool IsSimulationOnly => true;
 
+	/// Called at the end of every stop, once the instances are gone: the subsystem asks
+	/// there whether the run host can go. Owned.
+	public delegate void() OnRunStopped = null ~ delete _;
+
 	/// The subsystem, or a headless test, wires the run host in.
 	public void SetRunHost(ScriptRunHost host)
 	{
@@ -252,6 +256,8 @@ class ScriptSceneSystem : SceneSystem
 		StopLevel(true);
 		ClearSubscriptions();
 		ClearAndDeleteItems!(mMessages);
+		if (OnRunStopped != null)
+			OnRunStopped();
 	}
 
 	public override void OnEntityDestroyed(EntityHandle entity)

@@ -138,6 +138,9 @@ class GameInstance
 		// host itself with the fields. The input source is borrowed and may be gone by now, so
 		// the script's stop asks no pad of it to stop rumbling.
 		mInputSource = null;
+		// The host goes below whatever pins it, and the subsystem that installed its check may
+		// already be gone at shutdown: the check is not asked again.
+		DeleteAndNullify!(mRunHost.TeardownCheck);
 		StopScript();
 		ClearScenes();
 		mRunHost.Teardown();
@@ -591,6 +594,7 @@ class GameInstance
 		}
 		mGame = game;
 		mGameClass = scriptClass;
+		mRunHost.HasGameScriptHold = true;
 		SubscribeGameHandlers(scriptClass);
 		InvokeGame("launch", default);
 		GlobalLog(.Information, scope $"Run: game script '{scriptClass.ClassName}' launched");
@@ -616,6 +620,9 @@ class GameInstance
 		}
 		mGame = null;
 		mGameClass = null;
+		// The game held the host; it may go now, when no scene of the run still pins it.
+		mRunHost.HasGameScriptHold = false;
+		mRunHost.CheckTeardown();
 	}
 
 	/// Ticks the game script and moves the run's clock: once per frame, before the run bus

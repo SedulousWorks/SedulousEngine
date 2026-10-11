@@ -357,4 +357,51 @@ static class BehaviorLifecycleTests
 		Test.Assert(steps.AsInt == 2, "the rebuilt source compiled");
 		play.Host.Runtime.Release(walker);
 	}
+
+	/// A run host goes when nothing pins it: a stopped scene with no game script holding the
+	/// host leaves nothing, so the next play starts from a fresh runtime (its globals and its
+	/// random numbers new), where before a second play in the same tab carried the first one's
+	/// over. A game script's hold keeps the host through a stop until it is released.
+	[Test]
+	public static void ARunHostIsTornDownWhenNothingPinsItSoEachPlayStartsFresh()
+	{
+		let subsystem = scope ScriptSubsystem();
+		let play = scope ScriptPlayScene();
+		// Wired as the subsystem wires a composed scene and a game instance's host.
+		subsystem.OnSystemsReady(play.Scene);
+		play.Scripts.SetRunHost(play.Host);
+		play.Host.TeardownCheck = new (h) => { subsystem.MaybeTeardownRunHost(h); };
+
+		let starter = play.Class("Starter", """
+			int gStarts = 0;
+			class Starter
+			{
+				int seen = 0;
+				void onStart() { seen = ++gStarts; }
+			}
+			""");
+		let entity = play.AddBehavior(starter, "starter");
+		play.Start();
+		play.Step();
+		Test.Assert(play.PropInt(entity, "seen") == 1);
+		let firstRoll = play.Host.Random.IntRange(0, 1000000);
+
+		// Nothing pins the host: the stop tears it down.
+		play.Stop();
+		Test.Assert(!play.Host.IsActive, "the host went with the run");
+
+		// The next play: a fresh module, so the global starts over, and so do the numbers.
+		play.Start();
+		play.Step();
+		Test.Assert(play.PropInt(entity, "seen") == 1, "a second play does not see the first one's globals");
+		Test.Assert(play.Host.Random.IntRange(0, 1000000) == firstRoll, "the random numbers start over");
+
+		// A game script's hold keeps the host through a stop; releasing it lets the host go.
+		play.Host.HasGameScriptHold = true;
+		play.Stop();
+		Test.Assert(play.Host.IsActive, "held by the game script");
+		play.Host.HasGameScriptHold = false;
+		play.Host.CheckTeardown();
+		Test.Assert(!play.Host.IsActive, "released, it goes");
+	}
 }

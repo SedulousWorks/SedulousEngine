@@ -58,6 +58,20 @@ class ScriptRunHost
 	public ScriptRuntime Runtime => mRuntime;
 	public ScriptRandom Random => mRandom;
 
+	/// A game script running on this host pins it: no teardown while it lives. Set by the
+	/// game instance that launched it.
+	public bool HasGameScriptHold = false;
+	/// Asks the host's owner whether the host can go now (nothing pins it), and tears it down
+	/// when so. Installed by the ScriptSubsystem; null for a host nobody watches. Owned.
+	public delegate void(ScriptRunHost host) TeardownCheck = null ~ delete _;
+
+	/// Runs the owner's teardown check: what a game instance calls when its game script ends.
+	public void CheckTeardown()
+	{
+		if (TeardownCheck != null)
+			TeardownCheck(this);
+	}
+
 	/// Installs a service on this run, `Input` say: reached by a script as the handle of
 	/// its type, on the runtime now and on any later one. BORROWED.
 	public void SetService<T>(T service) where T : class
@@ -251,5 +265,9 @@ class ScriptRunHost
 		mModuleCurrent = false;
 		mModuleName.Clear();
 		mWarnedLanguage = false;
+		// The next run starts from the default seed, as a fresh run does: a second play in
+		// the same tab must not continue the first one's sequence.
+		delete mRandom;
+		mRandom = new .();
 	}
 }

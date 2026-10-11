@@ -12,8 +12,10 @@ namespace Sedulous.Engine.Script;
 /// scene composes.
 ///
 /// The application supplies the surface the run may reach and the services a script may
-/// find, through Configure; the subsystem owns the host and tears it down when the last
-/// scene that used it goes, so a run that never scripts pays nothing.
+/// find, through Configure. A host is torn down whenever nothing pins it (no game script
+/// holding it, no scene bound to it simulating, no live instances): after every scene stop
+/// and destroy, and when a game script ends. So every play starts from a fresh runtime, its
+/// globals and its random numbers new, and a run that never scripts pays nothing.
 class ScriptSubsystem : Subsystem, ISceneObserver
 {
 	/// Wires a fresh runtime: binds the surface, registers services. Set by the application
@@ -38,6 +40,28 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 				if (Configure != null)
 					Configure(runtime);
 			};
+		delete host.TeardownCheck;
+		host.TeardownCheck = new (h) => { MaybeTeardownRunHost(h); };
+	}
+
+	/// Tears `host` down when nothing pins it: no game script holding it, no scene bound to
+	/// it started and simulating, no live instances in those scenes. Per host, so a game
+	/// instance's host and the default one go independently.
+	public void MaybeTeardownRunHost(ScriptRunHost host)
+	{
+		if ((host == null) || !host.IsActive || host.HasGameScriptHold)
+			return;
+		for (let system in mSystems)
+		{
+			if (system.Host !== host)
+				continue;
+			let scene = system.OwningScene;
+			if (system.Started && (scene != null) && scene.SimulationEnabled)
+				return;
+			if (system.InstanceCount > 0)
+				return;
+		}
+		host.Teardown();
 	}
 
 	/// A debugger on the default host: the editor's scenes. A game instance's run is
@@ -62,6 +86,7 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 				if (Configure != null)
 					Configure(runtime);
 			};
+		mHost.TeardownCheck = new (h) => { MaybeTeardownRunHost(h); };
 		if (let scenes = Context.GetSubsystem<SceneSubsystem>())
 		{
 			scenes.RegisterObserver(this, .SystemsReady);
@@ -76,7 +101,11 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 			if (let scenes = Context.GetSubsystem<SceneSubsystem>())
 				scenes.UnregisterObserver(this);
 		}
+		// A scene stopped after this must not call back into a subsystem that is gone.
+		for (let system in mSystems)
+			DeleteAndNullify!(system.OnRunStopped);
 		mSystems.Clear();
+		DeleteAndNullify!(mHost.TeardownCheck);
 		mHost.Teardown();
 	}
 
@@ -101,20 +130,23 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 		if (system == null)
 			return;
 		system.SetRunHost(mHost);
+		// Each stop asks whether the system's CURRENT host can go: a game instance re-binds
+		// its scenes to its own host after this.
+		delete system.OnRunStopped;
+		system.OnRunStopped = new [=this, =system]() => { MaybeTeardownRunHost(system.Host); };
 		mSystems.Add(system);
 	}
 
 	/// The scene's teardown released its instances (the scene stops before it is
-	/// destroyed); when no scene is left on the host, the host goes too.
+	/// destroyed); the host it was bound to goes too when nothing else pins it.
 	public void OnDestroying(Scene scene)
 	{
 		let system = scene.GetSystem<ScriptSceneSystem>();
-		if (system != null)
-		{
-			mSystems.Remove(system);
-			system.SetRunHost(null);
-		}
-		if (mSystems.IsEmpty)
-			mHost.Teardown();
+		if (system == null)
+			return;
+		let host = system.Host;
+		mSystems.Remove(system);
+		system.SetRunHost(null);
+		MaybeTeardownRunHost(host);
 	}
 }
