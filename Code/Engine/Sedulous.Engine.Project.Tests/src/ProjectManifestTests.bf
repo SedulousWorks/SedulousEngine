@@ -49,11 +49,13 @@ class ProjectManifestTests
 		from.RenderFit = .Crop;
 		from.WindowMode = .Fullscreen;
 		from.WindowResizable = false;
+		from.Orientation = .Landscape;
 
 		let to = scope ProjectSettings();
 		Test.Assert(ProjectManifest.Copy(from, to) case .Ok);
 		Test.Assert((to.LoadingDocumentId == from.LoadingDocumentId) && (to.RenderMsaaSamples == 4));
 		Test.Assert((to.UiFontIds.Count == 1) && (to.RenderFit == .Crop) && (to.WindowMode == .Fullscreen) && !to.WindowResizable);
+		Test.Assert(to.Orientation == .Landscape);
 
 		// Field by field, whatever fields there are: both saved, the documents the same.
 		let fs = scope NativeFileSystem(kScratch);
@@ -128,6 +130,41 @@ class ProjectManifestTests
 			let read = scope ProjectSettings();
 			Test.Assert(ProjectManifest.Load(fs, read) case .Ok, "an older manifest loads");
 			Test.Assert((read.Name == "Fonts") && read.UiFontIds.IsEmpty);
+		}
+	}
+
+	/// The orientation is appended: a manifest an older engine wrote, without it, reads Any (the
+	/// game takes the window's shape, as before), and one that says Landscape keeps it.
+	[Test]
+	public static void AnOlderManifestReadsAnyOrientation()
+	{
+		FreshScratch();
+		let fs = scope NativeFileSystem(kScratch);
+		let written = scope ProjectSettings();
+		written.Name.Set("Turned");
+		written.Orientation = .Landscape;
+		Test.Assert(ProjectManifest.Save(fs, written) case .Ok);
+		{
+			let read = scope ProjectSettings();
+			Test.Assert(ProjectManifest.Load(fs, read) case .Ok);
+			Test.Assert(read.Orientation == .Landscape);
+		}
+
+		// The same manifest without its orientation element.
+		let path = scope $"{kScratch}/{ProjectLayout.ManifestFile}";
+		let text = scope String();
+		Test.Assert(File.ReadAllText(path, text) case .Ok);
+		let start = text.IndexOf("name=\"orientation\"");
+		Test.Assert(start >= 0, text);
+		let open = text.LastIndexOf('<', start);
+		let end = text.IndexOf('>', text.IndexOf("</", start)) + 1;
+		text.Remove(open, end - open);
+		Test.Assert(!text.Contains("orientation"), text);
+		Test.Assert(File.WriteAllText(path, text) case .Ok);
+		{
+			let read = scope ProjectSettings();
+			Test.Assert(ProjectManifest.Load(fs, read) case .Ok, "an older manifest loads");
+			Test.Assert((read.Name == "Turned") && (read.Orientation == .Any));
 		}
 	}
 

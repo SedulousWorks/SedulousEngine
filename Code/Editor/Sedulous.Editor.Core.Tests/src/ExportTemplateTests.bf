@@ -61,6 +61,8 @@ static class ExportTemplateTests
 		b.OutputSubdir.Set("Win64");
 		b.AdditionalFiles.Add(new String("icon.ico"));
 		b.AdditionalFiles.Add(new String("config.xml"));
+		b.OverridesOrientation = true;
+		b.Orientation = .Landscape;
 		written.Presets.Add(a);
 		written.Presets.Add(b);
 		Test.Assert(ExportPresetsFile.Save(root, written) case .Ok);
@@ -74,6 +76,8 @@ static class ExportTemplateTests
 		Test.Assert((win.Platform == "Win64") && (win.Config == "Debug") && win.StageSymbols && win.PruneToReachable);
 		Test.Assert((win.TemplateId == "sedulous-win64-0.1.0") && (win.PlayerName == "MyGame.exe"));
 		Test.Assert((win.AdditionalFiles.Count == 2) && (win.AdditionalFiles[0] == "icon.ico") && (win.AdditionalFiles[1] == "config.xml"));
+		Test.Assert(win.OverridesOrientation && (win.Orientation == .Landscape));
+		Test.Assert(!loaded.Presets[0].OverridesOrientation && (loaded.Presets[0].Orientation == .Any));
 		Test.Assert(loaded.Find("nope") == null);
 	}
 
@@ -104,7 +108,7 @@ static class ExportTemplateTests
 				Test.Assert((least == 1) && (most == 16384));
 			}
 		}
-		Test.Assert(keys == "name,platform,templateId,playerName,outputSubdir,additionalFiles,config,stageSymbols,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable", keys);
+		Test.Assert(keys == "name,platform,templateId,playerName,outputSubdir,additionalFiles,config,stageSymbols,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable,overridesOrientation,orientation", keys);
 	}
 
 	[Test]

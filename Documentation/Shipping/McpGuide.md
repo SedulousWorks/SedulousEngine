@@ -149,7 +149,9 @@ settings play reads, keyed by their names: the asset settings (`defaultSceneId`,
 the game UI loads beside the default, each a family a label picks with
 `font-family="<family>"`, a title face say; the display: `renderWidth`/`renderHeight`, the
 resolution the game draws at, 0 for its output's size, `renderFit`, and the player's
-`windowWidth`, `windowHeight`, `windowMode` and `windowResizable`; and `renderMsaaSamples`.
+`windowWidth`, `windowHeight`, `windowMode` and `windowResizable`; `orientation` (`Any`,
+`Landscape` or `Portrait`: the shape the game is made for, presented turned a quarter on a
+window of the other shape, a landscape game on a phone held upright); and `renderMsaaSamples`.
 Beside them, `settingCategories` says how they group: the Project Settings dialog's tabs in
 order (General, Startup, Audio, UI, Display), each with the names of its settings.
 `project_settings_set` changes them by the names `project_info` reports (a name that is no
@@ -241,7 +243,8 @@ when the project has no `export_presets.xml`). The dist lands under `<project>/D
 name that is no preset field is refused with the list). A preset for another device names
 that device's template by `templateId`, and can override the project's render resolution and
 window for it (`overridesRender` with `renderWidth`, `renderHeight` and `renderFit`;
-`overridesWindow` with `windowWidth`, `windowHeight`, `windowMode` and `windowResizable`, a
+`overridesWindow` with `windowWidth`, `windowHeight`, `windowMode` and `windowResizable`;
+`overridesOrientation` with `orientation`, a phone-facing Web preset's `Landscape` say; a
 choice by its value's name, `Fullscreen`). A template the machine lacks is kept, since presets travel with the
 project and templates do not; the preset's `template` comes back null until one is installed.
 

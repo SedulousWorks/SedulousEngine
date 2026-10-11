@@ -123,6 +123,7 @@ class DefaultApplication : IApplication, ISceneObserver
 	private uint32 mRenderHeight = 0;
 	private FitMode mRenderFit = .Letterbox;
 	private FittedInputSource mFittedInput = null ~ delete _;
+	private ScreenOrientation mOrientation = .Any;
 	/// OWNED: `Audio` to a script, over the subsystem and the app's resources.
 	private AudioFacade mAudioFacade = null ~ delete _;
 
@@ -710,31 +711,52 @@ class DefaultApplication : IApplication, ISceneObserver
 		mRenderFit = fit;
 		if (mUI != null)
 			mUI.SetScreenResolution(mRenderWidth, mRenderHeight, fit);
+		UpdateFittedInput();
+	}
+
+	public bool HasRenderResolution => (mRenderWidth > 0) && (mRenderHeight > 0);
+
+	/// The shape the game is made for: on a window of the other shape it is presented turned a
+	/// quarter. Any takes the window's shape.
+	public void SetOrientation(ScreenOrientation orientation)
+	{
+		mOrientation = orientation;
+		UpdateFittedInput();
+	}
+
+	public ScreenOrientation Orientation => mOrientation;
+
+	/// A render resolution or an orientation may move the game's frame off the window's: the
+	/// game then reads its pointer through the fitted source.
+	private bool FitsInput => HasRenderResolution || (mOrientation != .Any);
+
+	/// The fitted input while FitsInput, the shell's devices directly otherwise, for the input
+	/// subsystem and every instance.
+	private void UpdateFittedInput()
+	{
 		if (mInput == null)
 			return;
-		IInputSourceProvider source = mInput.ShellSource;
-		if (fixedSize)
+		if (FitsInput)
 		{
 			if (mFittedInput == null)
 				mFittedInput = new FittedInputSource(mInput.ShellSource);
-			mFittedInput.Fit = ContentFit(.(0, 0, 1, 1), .(width, height), fit);
+			// A placeholder until the first frame fits it to the window (RenderInstanceScene).
+			mFittedInput.Fit = ContentFit(.(0, 0, 1, 1), .(mRenderWidth, mRenderHeight), mRenderFit);
 			mInput.SetSourceProvider(mFittedInput);
-			source = mFittedInput;
 		}
 		else if (mFittedInput != null)
 		{
 			mInput.ClearSourceProviderIf(mFittedInput);
 		}
+		let source = GameInputSource;
 		ForEachInstance(scope [&] (instance) => { instance.SetInputSource(source); });
 	}
 
-	public bool HasRenderResolution => (mRenderWidth > 0) && (mRenderHeight > 0);
-
-	/// The source a run reads the devices through: fitted to the render resolution when the
-	/// game draws at one (pointer positions in render pixels), the shell's own otherwise. What
-	/// SetRenderResolution hands every instance, and an instance made after it starts with.
+	/// The source a run reads the devices through: fitted when the game's frame may be off the
+	/// window's (pointer positions in render pixels), the shell's own otherwise. What
+	/// UpdateFittedInput hands every instance, and an instance made after it starts with.
 	private IInputSourceProvider GameInputSource =>
-		(HasRenderResolution && (mFittedInput != null)) ? mFittedInput : mInput.ShellSource;
+		(FitsInput && (mFittedInput != null)) ? mFittedInput : mInput.ShellSource;
 
 	/// The scenes, the overlays, then the screenshot. A subclass that draws something of its
 	/// own over the scenes overrides this and calls RenderFrame, its own drawing, then
@@ -746,18 +768,26 @@ class DefaultApplication : IApplication, ISceneObserver
 	}
 
 	/// One scene into the backbuffer: at the window's size, or at the render resolution
-	/// fitted into it, the pointer's fit following the window as it resizes.
+	/// fitted into it, and turned a quarter when the game's orientation is not the window's
+	/// shape (a landscape game on a phone held upright draws at the window's pixels, turned).
+	/// The pointer's fit follows the window as it resizes and turns.
 	private void RenderInstanceScene(RenderSubsystem render, Scene scene, ITextureView target,
 		uint32 width, uint32 height, TextureFormat colorFormat)
 	{
-		if (!HasRenderResolution)
+		let windowW = (float)width;
+		let windowH = (float)height;
+		let turn = ContentFit.TurnFor(mOrientation, windowW, windowH);
+		let turned = turn != .None;
+		let content = HasRenderResolution ? Float2(mRenderWidth, mRenderHeight)
+			: (turned ? Float2(windowH, windowW) : Float2(windowW, windowH));
+		let fit = ContentFit(.(0, 0, windowW, windowH), content, HasRenderResolution ? mRenderFit : .Stretch, turn);
+		if (mFittedInput != null)
+			mFittedInput.Fit = fit;
+		if (!HasRenderResolution && !turned)
 		{
 			render.RenderScene(scene, target, colorFormat, width, height);
 			return;
 		}
-		let fit = ContentFit(.(0, 0, width, height), .(mRenderWidth, mRenderHeight), mRenderFit);
-		if (mFittedInput != null)
-			mFittedInput.Fit = fit;
 		let dst = fit.DstRect();
 		let viewport = ViewportRect((int32)dst.X, (int32)dst.Y, (uint32)Math.Max(dst.Width, 1.0f),
 			(uint32)Math.Max(dst.Height, 1.0f));

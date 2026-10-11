@@ -387,4 +387,18 @@ class ContentFitTests
 		Test.Assert(Near(dst.Y, 60));        // bars of 60 above and below
 		Test.Assert(!bars.ToContent(.(540, 30), ?), "in a bar");
 	}
+
+	[Test]
+	public static void AnOrientationTurnsOnlyAWindowOfTheOtherShape()
+	{
+		// Only a mismatched shape turns, and always three quarters (the game's top on the
+		// screen's left); a square window or Any never turns.
+		Test.Assert(ContentFit.TurnFor(.Landscape, 1080, 1920) == .ThreeQuarter);
+		Test.Assert(ContentFit.TurnFor(.Landscape, 1920, 1080) == .None);
+		Test.Assert(ContentFit.TurnFor(.Portrait, 1920, 1080) == .ThreeQuarter);
+		Test.Assert(ContentFit.TurnFor(.Portrait, 1080, 1920) == .None);
+		Test.Assert(ContentFit.TurnFor(.Landscape, 800, 800) == .None);
+		Test.Assert(ContentFit.TurnFor(.Any, 1080, 1920) == .None);
+		Test.Assert(ContentFit.TurnFor(.Any, 1920, 1080) == .None);
+	}
 }

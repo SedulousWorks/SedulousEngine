@@ -116,7 +116,8 @@ class TonemapPass
 		uint32 viewIndex, float exposure = 1.0f, float bloomIntensity = 0.0f,
 		Float2 uvScale = .(1, 1), Float2 uvOffset = .(0, 0), float aoStrength = 0.0f,
 		bool debugShowAo = false, bool agx = true, bool sceneYFlipped = false,
-		TonemapAutoExposure autoExposure = .(), TonemapGrading grading = .(), bool copyOnly = false)
+		TonemapAutoExposure autoExposure = .(), TonemapGrading grading = .(), bool copyOnly = false,
+		ContentRotation turn = .None)
 	{
 		let pipeline = EnsurePipeline(ldrFormat);
 		if (pipeline == null)
@@ -144,7 +145,7 @@ class TonemapPass
 			autoOn ? 1.0f : 0.0f, autoExposure.Key, autoExposure.MinExposure,
 			autoExposure.MaxExposure,
 			gradeOn ? grading.Intensity : 0.0f, gradeOn ? grading.LutSize : 0.0f,
-			EncodesOnWrite(ldrFormat) ? 0.0f : 1.0f, 0.0f, 0.0f, 0.0f);
+			EncodesOnWrite(ldrFormat) ? 0.0f : 1.0f, (float)(uint32)turn, 0.0f, 0.0f);
 
 		let load = clearColor ? LoadOp.Clear : LoadOp.Load;
 		let autoView = autoOn ? autoExposure.View : null;

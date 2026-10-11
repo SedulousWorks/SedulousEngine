@@ -14,6 +14,9 @@ struct SceneSize
 	public float SourceY = 0.0f;
 	public float SourceWidth = 1.0f;
 	public float SourceHeight = 1.0f;
+	/// How the finished image is turned as it is presented (a landscape game on a portrait
+	/// screen).
+	public ContentRotation Rotation = .None;
 
 	public this() {}
 
@@ -25,11 +28,15 @@ struct SceneSize
 
 	public bool IsSet => (Width > 0) && (Height > 0);
 
+	/// The image is presented turned.
+	public bool IsTurned => Rotation != .None;
+
 	/// A fit of a `width` x `height` scene into a region: the scene size, and the slice of it
 	/// the fit shows (the whole image, but for Crop).
 	public static SceneSize FromFit(ContentFit fit)
 	{
 		var size = SceneSize((uint32)fit.ContentSize.X, (uint32)fit.ContentSize.Y);
+		size.Rotation = fit.Rotation;
 		if ((fit.ContentSize.X > 0.0f) && (fit.ContentSize.Y > 0.0f))
 		{
 			let source = fit.SrcRect();

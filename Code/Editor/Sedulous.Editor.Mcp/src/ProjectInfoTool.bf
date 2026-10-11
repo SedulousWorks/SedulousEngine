@@ -20,7 +20,7 @@ static class ProjectInfoTool
 	public static void Register(McpServer server, ProjectSession session)
 	{
 		server.RegisterTool("project_info",
-			"Details about the currently open project: name, directory, sources root, and `settings`, keyed by the names project_settings_set takes: each asset setting (defaultSceneId, startupScriptId, defaultInputMapId, defaultBusLayoutId, defaultUiThemeId, loadingDocumentId, defaultUiFontId) as {guid, path} or null when unset, uiFontIds (the other UI fonts) a list of {guid, path}, the display (renderWidth/renderHeight, the resolution the game draws at, 0 for its output's size, and renderFit; the player's windowWidth, windowHeight, windowMode and windowResizable), name, nativeModule and renderMsaaSamples; and `settingCategories`, the dialog's tabs in order, each with its settings' names.",
+			"Details about the currently open project: name, directory, sources root, and `settings`, keyed by the names project_settings_set takes: each asset setting (defaultSceneId, startupScriptId, defaultInputMapId, defaultBusLayoutId, defaultUiThemeId, loadingDocumentId, defaultUiFontId) as {guid, path} or null when unset, uiFontIds (the other UI fonts) a list of {guid, path}, the display (renderWidth/renderHeight, the resolution the game draws at, 0 for its output's size, and renderFit; the player's windowWidth, windowHeight, windowMode and windowResizable; orientation, Any, Landscape or Portrait, the shape the game is made for, presented turned on a window of the other shape), name, nativeModule and renderMsaaSamples; and `settingCategories`, the dialog's tabs in order, each with its settings' names.",
 			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Info(session, outResult, outError));
 

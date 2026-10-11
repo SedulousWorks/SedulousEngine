@@ -70,6 +70,13 @@ class ExportPreset
 	[Appended, Setting("Window resizable")]
 	public bool WindowResizable = true;
 
+	/// This platform is held its own way (a phone-facing Web preset says Landscape, so a game
+	/// that takes any shape on a desktop is presented turned on a phone held upright).
+	[Appended, Setting("Own orientation")]
+	public bool OverridesOrientation = false;
+	[Appended, Setting("Orientation")]
+	public ScreenOrientation Orientation = .Any;
+
 	public void CopyTo(ExportPreset other)
 	{
 		other.Name.Set(Name);
@@ -92,6 +99,8 @@ class ExportPreset
 		other.WindowHeight = WindowHeight;
 		other.WindowMode = WindowMode;
 		other.WindowResizable = WindowResizable;
+		other.OverridesOrientation = OverridesOrientation;
+		other.Orientation = Orientation;
 	}
 
 	/// The config for resolution: empty reads as Release.

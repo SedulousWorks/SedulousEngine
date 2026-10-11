@@ -404,12 +404,12 @@ static class ExportDriver
 	/// and packed, whole or pruned to the closure when the preset asks and a scanner or a
 	/// precomputed root set is at hand, the shader pack cooked from `dataRoot`, the player,
 	/// the sidecars, the symbols when opted in, and the extra files staged.
-	/// A preset's own render resolution or window, over what the project's dist manifest
-	/// says: the platform's values ship in its player.xml. Nothing to do when it overrides
-	/// neither.
+	/// A preset's own render resolution, window or orientation, over what the project's dist
+	/// manifest says: the platform's values ship in its player.xml. Nothing to do when it
+	/// overrides none.
 	public static Result<void, ErrorCode> ApplyPresetDisplay(StringView outDir, ExportPreset preset)
 	{
-		if (!preset.OverridesRender && !preset.OverridesWindow)
+		if (!preset.OverridesRender && !preset.OverridesWindow && !preset.OverridesOrientation)
 			return .Ok;
 		let mount = scope NativeFileSystem(outDir);
 		let dist = scope ProjectSettings();
@@ -431,6 +431,8 @@ static class ExportDriver
 			dist.WindowMode = preset.WindowMode;
 			dist.WindowResizable = preset.WindowResizable;
 		}
+		if (preset.OverridesOrientation)
+			dist.Orientation = preset.Orientation;
 		if (ProjectManifest.Save(mount, dist, ProjectLayout.DistManifestFile) case .Err(let error))
 		{
 			GlobalLog(.Error, "Export: failed to write the preset's display into the dist manifest");

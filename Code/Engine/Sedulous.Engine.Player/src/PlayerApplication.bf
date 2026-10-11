@@ -318,6 +318,7 @@ class PlayerApplication : DefaultApplication
 		BindUITheme();
 		// The resolution the game draws at, fitted into whatever window it got.
 		SetRenderResolution(mSettings.RenderWidth, mSettings.RenderHeight, mSettings.RenderFit);
+		SetOrientation(mSettings.Orientation); // presented turned on a window of the other shape
 	}
 
 	/// The project's default map, onto the PRIMARY instance's own runtime. Unset or

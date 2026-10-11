@@ -92,6 +92,11 @@ class ProjectSettings
 	public WindowMode WindowMode = .Windowed;
 	[Appended, Setting("Window resizable", "Display")]
 	public bool WindowResizable = true;
+	/// The shape the game is made for: Any takes the window's; Landscape or Portrait is
+	/// presented turned on a window of the other shape (a landscape game on a phone held
+	/// upright). An export preset overrides it per platform.
+	[Appended, Setting("Orientation", "Display")]
+	public ScreenOrientation Orientation = .Any;
 
 	/// Whether the game draws at a fixed resolution rather than at its output's size.
 	public bool HasRenderResolution => (RenderWidth > 0) && (RenderHeight > 0);

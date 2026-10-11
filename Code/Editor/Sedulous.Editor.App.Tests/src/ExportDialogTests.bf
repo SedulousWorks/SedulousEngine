@@ -144,6 +144,33 @@ class ExportDialogTests
 		Test.Assert(!f.ExportedAll);
 	}
 
+	/// A preset holds the game its own way (a phone-facing Web preset says Landscape), and the
+	/// dialog shows the preset's choice again when it is selected.
+	[Test]
+	public static void APresetOverridesTheOrientation()
+	{
+		let f = scope Fixture();
+		let dialog = new ExportDialog(f.Context, f.Presets, f.Seams());
+		defer dialog.ReleaseRef();
+		Test.Assert(dialog.SelectedIndex == 0);
+		Test.Assert(!dialog.OrientationOverrideField.IsChecked.Value);
+		Test.Assert(dialog.OrientationField.SelectedIndex == (int32)ScreenOrientation.Any);
+
+		dialog.OrientationOverrideField.IsChecked.Value = true;
+		dialog.OrientationField.SetSelectedIndex((int32)ScreenOrientation.Landscape);
+		Test.Assert(f.Presets.At(0).OverridesOrientation);
+		Test.Assert(f.Presets.At(0).Orientation == .Landscape);
+		Test.Assert(!f.Presets.At(1).OverridesOrientation);
+
+		// The other preset shows its own; coming back shows this one's again.
+		dialog.Select(1);
+		Test.Assert(!dialog.OrientationOverrideField.IsChecked.Value);
+		Test.Assert(dialog.OrientationField.SelectedIndex == (int32)ScreenOrientation.Any);
+		dialog.Select(0);
+		Test.Assert(dialog.OrientationOverrideField.IsChecked.Value);
+		Test.Assert(dialog.OrientationField.SelectedIndex == (int32)ScreenOrientation.Landscape);
+	}
+
 	/// Add takes the host's platform, Duplicate names the copy, Remove keeps a neighbour
 	/// selected; each saves.
 	[Test]

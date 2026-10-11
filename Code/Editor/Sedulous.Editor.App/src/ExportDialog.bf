@@ -149,6 +149,10 @@ class ExportDialog : Dialog
 	private ComboBox mWindowMode;
 	private List<int64> mWindowModeValues = new .() ~ delete _;
 	private CheckBox mWindowResizable;
+	/// The preset is held its own way.
+	private CheckBox mOverridesOrientation;
+	private ComboBox mOrientation;
+	private List<int64> mOrientationValues = new .() ~ delete _;
 	// The presets' and the dialog's buttons.
 	private View mDuplicate;
 	private View mRemove;
@@ -408,6 +412,8 @@ class ExportDialog : Dialog
 	public EditText NameField => mName;
 	public ComboBox TemplateField => mTemplate;
 	public CheckBox PruneField => mPrune;
+	public CheckBox OrientationOverrideField => mOverridesOrientation;
+	public ComboBox OrientationField => mOrientation;
 
 	private FlexLayout AddRow(FlexLayout column, StringView label, View field)
 	{
@@ -579,6 +585,13 @@ class ExportDialog : Dialog
 		mWindowResizable = new CheckBox("Resizable", false);
 		mWindowResizable.OnCheckedChanged.Add(new [=this](c, v) => { StoreFields(); });
 		column.AddView(mWindowResizable);
+
+		mOverridesOrientation = new CheckBox("Held its own way (orientation)", false);
+		mOverridesOrientation.OnCheckedChanged.Add(new [=this](c, v) => { StoreFields(); });
+		column.AddView(mOverridesOrientation);
+		mOrientation = EnumCombo(typeof(ScreenOrientation), mOrientationValues);
+		mOrientation.OnSelectionChanged.Add(new [=this](c, i) => { StoreFields(); });
+		AddRow(column, "Orientation", mOrientation);
 	}
 
 	private void ClearIconCache()
@@ -686,6 +699,8 @@ class ExportDialog : Dialog
 			mWindowHeight.SetValue(preset.WindowHeight);
 			SelectEnum(mWindowMode, mWindowModeValues, (int64)preset.WindowMode);
 			mWindowResizable.IsChecked.Value = preset.WindowResizable;
+			mOverridesOrientation.IsChecked.Value = preset.OverridesOrientation;
+			SelectEnum(mOrientation, mOrientationValues, (int64)preset.Orientation);
 		}
 		mLoading = false;
 		UpdateResolve();
@@ -732,6 +747,8 @@ class ExportDialog : Dialog
 		preset.WindowHeight = (uint32)mWindowHeight.Value;
 		preset.WindowMode = (WindowMode)ChosenEnum(mWindowMode, mWindowModeValues);
 		preset.WindowResizable = mWindowResizable.IsChecked.Value;
+		preset.OverridesOrientation = mOverridesOrientation.IsChecked.Value;
+		preset.Orientation = (ScreenOrientation)ChosenEnum(mOrientation, mOrientationValues);
 		mPresets.Update(index, preset);
 		mDirty = true;
 

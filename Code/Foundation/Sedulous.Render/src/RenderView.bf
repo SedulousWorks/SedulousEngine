@@ -75,7 +75,8 @@ class RenderView
 		// A scene size of its own: the chain runs at it, the whole of it the view's.
 		let scene = settings.Scene;
 		let cropped = (scene.SourceX != 0.0f) || (scene.SourceY != 0.0f) || (scene.SourceWidth != 1.0f) || (scene.SourceHeight != 1.0f);
-		mScaled = scene.IsSet && ((scene.Width != mViewportWidth) || (scene.Height != mViewportHeight) || cropped);
+		mScaled = scene.IsSet && ((scene.Width != mViewportWidth) || (scene.Height != mViewportHeight) || cropped
+			|| scene.IsTurned);
 		if (mScaled)
 		{
 			mWidth = scene.Width;

@@ -513,6 +513,17 @@ static class ExportDriverTests
 		Test.Assert(ProjectManifest.Load(scope NativeFileSystem(dir), dist, ProjectLayout.DistManifestFile) case .Ok);
 		Test.Assert((dist.RenderWidth == 1280) && (dist.RenderHeight == 800) && (dist.RenderFit == .Crop), "the preset's render resolution");
 		Test.Assert((dist.WindowWidth == 1600) && (dist.WindowHeight == 900) && (dist.WindowMode == .Windowed), "the project's window");
+		Test.Assert(dist.Orientation == .Any, "not overridden: the project's");
+
+		// And the orientation: a phone-facing preset holds the game landscape.
+		preset.OverridesRender = false;
+		preset.OverridesOrientation = true;
+		preset.Orientation = .Landscape;
+		Test.Assert(ExportDriver.ApplyPresetDisplay(dir, preset) case .Ok);
+		let turned = scope ProjectSettings();
+		Test.Assert(ProjectManifest.Load(scope NativeFileSystem(dir), turned, ProjectLayout.DistManifestFile) case .Ok);
+		Test.Assert(turned.Orientation == .Landscape, "the preset's orientation");
+		Test.Assert(turned.RenderHeight == 800, "the render size applied before stays");
 	}
 
 	[Test]

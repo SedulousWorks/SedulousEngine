@@ -33,6 +33,19 @@ struct ContentFit
 		this.Rotation = rotation;
 	}
 
+	/// The turn a game of `orientation` takes on a `width` x `height` window: none when it
+	/// matches (or takes any shape), else three quarters, the game's top on the window's left (a
+	/// phone held upright shows a landscape game as it shows on the phone turned
+	/// counter-clockwise, Android's primary landscape).
+	public static ContentRotation TurnFor(ScreenOrientation orientation, float width, float height)
+	{
+		let tall = height > width;
+		let wide = width > height;
+		if (((orientation == .Landscape) && tall) || ((orientation == .Portrait) && wide))
+			return .ThreeQuarter;
+		return .None;
+	}
+
 	/// Where the content is drawn within the Region, in Region space. For Letterbox and
 	/// IntegerScale this is the centred, aspect-preserved sub-rect and the rest is bars;
 	/// for Stretch and Crop it is the whole Region.

@@ -110,20 +110,22 @@ static class ProjectSettingsDialogTests
 			Collect(dialog, choices);
 			Collect(dialog, flags);
 			Collect(dialog, buttons);
-			// Render width, height; window width, height. MSAA's own, then render fit and
-			// window mode, in the settings' order.
+			// Render width, height; window width, height. MSAA's own, then render fit, window
+			// mode and orientation, in the settings' order.
 			Test.Assert(numbers.Count == 4);
-			Test.Assert(choices.Count == 3);
+			Test.Assert(choices.Count == 4);
 			Test.Assert(flags.Count == 1);
 			Test.Assert(numbers[2].Value == 1280.0, "seeded from the manifest");
 			Test.Assert(choices[1].SelectedIndex == (int32)FitMode.Letterbox);
 			Test.Assert(flags[0].IsChecked.Value);
+			Test.Assert(choices[3].SelectedIndex == (int32)ScreenOrientation.Any);
 
 			numbers[0].SetValue(640.0);
 			numbers[1].SetValue(360.0);
 			numbers[2].SetValue(0.0); // a window takes at least one pixel: the range clamps
 			choices[1].SetSelectedIndex((int32)FitMode.IntegerScale);
 			choices[2].SetSelectedIndex((int32)WindowMode.Fullscreen);
+			choices[3].SetSelectedIndex((int32)ScreenOrientation.Landscape);
 			flags[0].IsChecked.Value = false;
 			Button save = null;
 			for (let button in buttons)
@@ -141,6 +143,7 @@ static class ProjectSettingsDialogTests
 		Test.Assert(settings.RenderFit == .IntegerScale);
 		Test.Assert(settings.WindowMode == .Fullscreen);
 		Test.Assert(!settings.WindowResizable);
+		Test.Assert(settings.Orientation == .Landscape);
 	}
 
 	/// An asset list setting (the other UI fonts) is a list of slots, one per entry the

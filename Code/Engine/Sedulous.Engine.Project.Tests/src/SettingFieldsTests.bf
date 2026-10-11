@@ -68,7 +68,7 @@ class SettingFieldsTests
 			SettingFields.Key(field, keys);
 		}
 		// The engine stamp and the path mirrors are not settings.
-		Test.Assert(keys == "name,defaultSceneId,nativeModule,defaultInputMapId,defaultBusLayoutId,defaultUiThemeId,startupScriptId,defaultUiFontId,loadingDocumentId,renderMsaaSamples,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable", keys);
+		Test.Assert(keys == "name,defaultSceneId,nativeModule,defaultInputMapId,defaultBusLayoutId,defaultUiThemeId,startupScriptId,defaultUiFontId,loadingDocumentId,renderMsaaSamples,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation", keys);
 
 		SettingKind Kind(StringView name)
 		{
@@ -89,6 +89,7 @@ class SettingFieldsTests
 		Test.Assert(Kind("RenderMsaaSamples") == .Count);
 		Test.Assert(Kind("RenderFit") == .Choice);
 		Test.Assert(Kind("WindowResizable") == .Flag);
+		Test.Assert(Kind("Orientation") == .Choice);
 
 		for (let field in fields)
 		{
