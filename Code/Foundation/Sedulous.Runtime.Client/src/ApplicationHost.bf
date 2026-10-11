@@ -234,11 +234,12 @@ class ApplicationHost : IApplicationHost
 
 	/// Frees what CloseWindow queued: the RenderWindow's GPU resources first, then the OS
 	/// window. At frame end, once the GPU has finished the frame.
+	/// Closes the render windows queued this frame, then frees every window the manager was
+	/// told to destroy: also those destroyed through the manager directly, which the host
+	/// never rendered to (the editor's splash), so the flush runs every frame, not only when
+	/// the host queued one of its own.
 	private void FlushPendingCloses()
 	{
-		if (mPendingClose.IsEmpty)
-			return;
-
 		let manager = (mShell != null) ? mShell.WindowManager : null;
 		for (let dead in mPendingClose)
 		{

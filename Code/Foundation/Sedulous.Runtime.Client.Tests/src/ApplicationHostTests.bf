@@ -255,4 +255,26 @@ class ApplicationHostTests
 		Test.Assert(host.Windows.Length == 1);
 		host.Stop();
 	}
+
+	/// A window created and destroyed through the window manager directly, which the host
+	/// never rendered to (the editor's splash), is gone after the next Tick: the manager's
+	/// queue is flushed every frame, not only when the host closed a window of its own.
+	[Test]
+	public static void AWindowDestroyedThroughTheManagerIsGoneAfterTheNextTick()
+	{
+		let shell = scope NullShell();
+		let app = scope RenderApp();
+		let host = scope ApplicationHost();
+		host.Start(app, shell, null);
+		let manager = shell.WindowManager;
+		let before = manager.Windows.Length;
+		var settings = WindowSettings();
+		settings.SoftwareSurface = true;
+		Test.Assert(manager.CreateWindow(settings) case .Ok(let splash));
+		Test.Assert(manager.Windows.Length == before + 1);
+		manager.DestroyWindow(splash);
+		host.Tick(0.016f);
+		Test.Assert(manager.Windows.Length == before, "the splash is gone");
+		host.Stop();
+	}
 }
