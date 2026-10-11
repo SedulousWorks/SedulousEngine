@@ -54,6 +54,19 @@ static class SettingsProfiles
 		return false;
 	}
 
+	/// As ApplyToScene, on a scene loaded to preview the profile on: the block first goes back to
+	/// its own values, so a scene that takes this profile (or another) by reference shows the
+	/// values being edited rather than the cooked ones.
+	public static bool PreviewInScene(SettingsProfileAsset asset, Sedulous.Scene.Scene scene, ResourceManager resources)
+	{
+		for (let system in scene.Systems)
+		{
+			if ((system.SettingsType != null) && (system.SettingsType == asset.ValuesType))
+				system.UseSettingsProfile(Guid.Empty);
+		}
+		return ApplyToScene(asset, scene, resources);
+	}
+
 	/// Writes a settings block's `values`, the profile asset's values layout, into the profile
 	/// asset `instance`, its other fields kept.
 	public static Result<void, ErrorCode> WriteValues(Instance instance, void* values)

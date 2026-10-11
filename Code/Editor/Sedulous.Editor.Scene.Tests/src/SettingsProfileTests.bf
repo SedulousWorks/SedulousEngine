@@ -10,8 +10,10 @@ using Sedulous.Pipeline.Core;
 using Sedulous.Render;
 using Sedulous.Render.Pipeline;
 using Sedulous.Scene;
+using Sedulous.Settings;
 using Sedulous.UI;
 using Sedulous.UI.Toolkit;
+using Sedulous.Xml.Serialization;
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -20,7 +22,8 @@ namespace Sedulous.Editor.Scene.Tests;
 /// and a source switch are one undo step each; Make Profile writes a profile asset from the
 /// block's values and switches to it; a profile-mode edit is queued for the save flow and
 /// written to the asset; the shared rows read where their target points and write through it;
-/// the profile page's preview takes the profile's values.
+/// the profile page's preview takes the profile's values, on the scene remembered for it, framed
+/// by its bounds.
 class SettingsProfileTests
 {
 	private static bool Near(float a, float b) => Math.Abs(a - b) < 1e-5f;
@@ -285,6 +288,93 @@ class SettingsProfileTests
 
 		let empty = scope Sedulous.Scene.Scene("empty");
 		Test.Assert(!SettingsProfiles.ApplyToScene(look, empty, null), "no block to take them");
+	}
+
+	/// A preview scene's block sourced from a profile shows the edited profile's values: the
+	/// preview switches it to its own fields first, so the values written there are in effect.
+	[Test]
+	public static void APreviewSceneWhoseBlockUsesAProfileShowsTheEditedValues()
+	{
+		let scene = scope Sedulous.Scene.Scene("profile.preview.sourced");
+		let env = scene.AddSystem<EnvironmentSystem>();
+		env.UseSettingsProfile(Guid.Create());
+		Test.Assert(env.Environment.Source == .Profile);
+
+		let environment = scope EnvironmentProfileAsset();
+		environment.Values.Turbidity = 6.5f;
+		Test.Assert(SettingsProfiles.PreviewInScene(environment, scene, null));
+		Test.Assert(env.Environment.Source == .Scene, "the block reads its own fields");
+		Test.Assert(Near(env.Effective.Turbidity, 6.5f));
+	}
+
+	/// The scene each profile is previewed on is remembered per profile, and survives the
+	/// store's file.
+	[Test]
+	public static void TheProfilesPreviewSceneIsRememberedPerProfile()
+	{
+		SceneEditorSerializables.RegisterAll();
+		let first = Guid(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2);
+		let second = Guid(3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4);
+		let level = Guid(5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6);
+
+		let store = scope Settings();
+		Test.Assert(store.Find<ProfilePreviewSettings>() == null);
+		let section = store.Section<ProfilePreviewSettings>();
+		section.Set(first, level);
+		section.Set(second, level);
+		section.Set(second, .()); // back to the built-in scene, updated in place
+		Test.Assert(section.Prefs.Count == 2);
+		Test.Assert(section.SceneFor(first) == level);
+		Test.Assert(section.SceneFor(second) == Guid());
+		Test.Assert(section.SceneFor(Guid.Create()) == Guid(), "none saved: the built-in scene");
+
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		let buffer = scope Sedulous.Core.IO.MemoryStream();
+		Test.Assert(store.Save(buffer, factory) case .Ok);
+		buffer.Seek(0, .Begin);
+		let loaded = scope Settings();
+		Test.Assert(loaded.Load(buffer, factory) case .Ok);
+		let read = loaded.Find<ProfilePreviewSettings>();
+		Test.Assert((read != null) && (read.Prefs.Count == 2));
+		Test.Assert(read.SceneFor(first) == level);
+		Test.Assert(read.SceneFor(second) == Guid());
+	}
+
+	/// Measures two entities as fixed boxes: what the render and physics domains answer.
+	private class BoxMeasure : SceneSystem, ISceneEntityBounds
+	{
+		public EntityHandle First = .Invalid;
+		public EntityHandle Second = .Invalid;
+		public override ISceneEntityBounds AsEntityBounds => this;
+
+		public bool EntityBounds(Sedulous.Scene.Scene scene, EntityHandle entity, out AABB outBounds)
+		{
+			outBounds = .();
+			if (entity == First)
+				outBounds = .(.(0.0f, 0.0f, 0.0f), .(1.0f, 1.0f, 1.0f));
+			else if (entity == Second)
+				outBounds = .(.(4.0f, -2.0f, 0.0f), .(5.0f, 0.0f, 3.0f));
+			else
+				return false;
+			return true;
+		}
+	}
+
+	/// The preview frames a loaded scene by the bounds of everything in it, merged; a scene
+	/// with nothing measured has none.
+	[Test]
+	public static void ASceneIsFramedByWhatItsSystemsMeasure()
+	{
+		let scene = scope Sedulous.Scene.Scene("bounds");
+		Test.Assert(!SceneLoading.SceneWorldBounds(scene, ?));
+		let measure = scene.AddSystem<BoxMeasure>();
+		measure.First = scene.CreateEntity("A");
+		measure.Second = scene.CreateEntity("B");
+		scene.CreateEntity("Unmeasured");
+		Test.Assert(SceneLoading.SceneWorldBounds(scene, let bounds));
+		Test.Assert(Near(bounds.Min.X, 0.0f) && Near(bounds.Min.Y, -2.0f) && Near(bounds.Min.Z, 0.0f));
+		Test.Assert(Near(bounds.Max.X, 5.0f) && Near(bounds.Max.Y, 1.0f) && Near(bounds.Max.Z, 3.0f));
 	}
 
 	/// The scene inspector's Scene tab for a block in profile mode: the block's own fields first,

@@ -22,10 +22,14 @@ using Sedulous.Editor.Preview;
 namespace Sedulous.Editor.Scene;
 
 /// Edits a profile asset (an Environment Profile, a Post Process Profile; any
-/// SettingsProfileAsset): a preview scene on the left (a ground, spheres of a few materials, a
-/// cube and a sun) rendered with the profile applied, and the profile's values on the right in
-/// the same rows a scene's settings section shows. Save writes the asset and cooks it, so every
-/// scene using the profile picks the change up.
+/// SettingsProfileAsset): a preview on the left rendered with the profile applied, and the
+/// profile's values on the right in the same rows a scene's settings section shows. The preview
+/// is a built-in scene (a ground, spheres of a few materials, a cube and a sun) or one of the
+/// project's scenes, picked in the Preview row, since a shared profile is tuned by how it looks
+/// in the levels: it loads as the scene page opens it, seen from where that page's camera was
+/// left, the profile's values over the scene's own. The choice is remembered per profile
+/// (ProfilePreviewSettings). Save writes the asset and cooks it, so every scene using the
+/// profile picks the change up.
 ///
 /// Edits are snapshot commands like the material page's: the whole asset serialized before and
 /// after (it is small), consecutive scrubs of one field merged, each apply re-applying the
@@ -40,6 +44,8 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 	private SettingsProfileAsset mAsset = null ~ delete _;
 
 	private PreviewViewport mPreview = null;
+	/// The project scene the profile is previewed on; nil is the built-in one.
+	private Guid mPreviewSceneId = .();
 	/// The preview's entities that draw the page's own meshes and materials, detached before
 	/// those go.
 	private List<EntityHandle> mPreviewEntities = new .() ~ delete _;
@@ -69,10 +75,8 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 		InstanceId = instance.Id;
 
 		mPreview = new PreviewViewport(host, uiHost, "profile.preview");
-		mPreview.Camera.Position = .(0.0f, 1.7f, 5.0f);
-		mPreview.Camera.LookAt(.(0.0f, 0.5f, 0.0f));
-		BuildPreviewScene();
-		ApplyPreview();
+		LoadPreviewPref();
+		LoadPreviewContent();
 
 		mGrid = new PropertyGrid();
 		RebuildGrid();
@@ -103,6 +107,20 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 	public override View ContentView => mContent;
 	public SettingsProfileAsset Asset => mAsset;
 	public PreviewViewport Preview => mPreview;
+
+	/// The scene the profile is previewed on (nil: the built-in one).
+	public Guid PreviewSceneId => mPreviewSceneId;
+
+	/// Previews on another scene (nil: the built-in one): the preview reloads, and the choice
+	/// is remembered for this profile.
+	public void SetPreviewScene(Guid scene)
+	{
+		if (scene == mPreviewSceneId)
+			return;
+		mPreviewSceneId = scene;
+		LoadPreviewContent();
+		SavePreviewPref();
+	}
 
 	/// The values' layout, and where they are: the rows' target reads both.
 	public Type ValuesType => (mAsset != null) ? mAsset.ValuesType : null;
@@ -240,7 +258,79 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 	{
 		let scene = (mPreview != null) ? mPreview.Scene : null;
 		if ((scene != null) && (mAsset != null))
-			SettingsProfiles.ApplyToScene(mAsset, scene, mContext.Resources);
+			SettingsProfiles.PreviewInScene(mAsset, scene, mContext.Resources);
+	}
+
+	/// The preview's content: the picked scene, loaded and seen from where its page's camera
+	/// was left (else framed whole), or the built-in scene when none is picked or it is gone.
+	private void LoadPreviewContent()
+	{
+		if (mPreview == null)
+			return;
+		// The built-in content draws the page's own meshes and materials: detached and freed
+		// before the scene that holds it goes.
+		ClearPreviewOverrides();
+		mPreviewEntities.Clear();
+		ClearAndDeleteItems(mPreviewMeshes);
+		ClearAndDeleteItems(mPreviewMaterials);
+		var scene = mPreview.ResetScene();
+		if (scene == null)
+			return;
+
+		let document = (!mPreviewSceneId.IsNil && (mContext.Project != null)) ? mContext.Project.SourceDb.GetInstance(mPreviewSceneId) : null;
+		var loaded = false;
+		if (document != null)
+		{
+			loaded = SceneLoading.LoadEditorScene(mContext, document, scene) case .Ok;
+			if (!loaded)
+			{
+				GlobalLog(.Warning, "Editor: profile '{}': preview scene '{}' did not load, showing the built-in one", mTitle, document.Name);
+				scene = mPreview.ResetScene();
+			}
+		}
+		let camera = mPreview.Camera;
+		if (loaded)
+		{
+			// From where that scene's page left its camera, else the whole scene in view.
+			let view = SceneViewPrefs.Find(mContext.ProjectEditorSettings, mPreviewSceneId);
+			if ((view != null) && view.HasCamera)
+			{
+				camera.Position = view.Camera.Position;
+				camera.Yaw = view.Camera.Yaw;
+				camera.Pitch = view.Camera.Pitch;
+				camera.FocusDistance = view.Camera.FocusDistance;
+			}
+			else if (SceneLoading.SceneWorldBounds(scene, let bounds))
+			{
+				camera.FrameSphere(bounds.Center(), Length(bounds.Extents()), 1.0472f, false);
+			}
+		}
+		else
+		{
+			camera.Position = .(0.0f, 1.7f, 5.0f);
+			camera.LookAt(.(0.0f, 0.5f, 0.0f));
+			BuildPreviewScene();
+		}
+		ApplyPreview();
+	}
+
+	private void LoadPreviewPref()
+	{
+		let store = mContext.ProjectEditorSettings;
+		if (store == null)
+			return;
+		if (let section = store.Find<ProfilePreviewSettings>())
+			mPreviewSceneId = section.SceneFor(InstanceId);
+	}
+
+	private void SavePreviewPref()
+	{
+		let store = mContext.ProjectEditorSettings;
+		if (store == null)
+			return;
+		store.Section<ProfilePreviewSettings>().Set(InstanceId, mPreviewSceneId);
+		store.MarkChanged<ProfilePreviewSettings>();
+		mContext.RequestProjectEditorSettingsSave();
 	}
 
 	/// The profile's values, in the rows a scene's settings section shows; the block's own
@@ -250,6 +340,16 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 		mGrid.Clear();
 		ClearAndDeleteItems(mRefreshers);
 		ClearAndDeleteItems(mOwned);
+
+		// The scene the profile is previewed on: the page's own, not the profile's data, and
+		// remembered per profile in the project's editor store.
+		{
+			let sceneRow = new ResourceRefEditor("Scene", "(built-in)", "Preview", scope StringView[]("SceneDocument"));
+			sceneRow.EmptyText.Set("(built-in)");
+			sceneRow.BindAsset(mContext, new [=this]() => mPreviewSceneId, new [=this](picked) => { SetPreviewScene(picked); });
+			mGrid.AddProperty(sceneRow);
+		}
+
 		let type = ValuesType;
 		let entry = (type != null) ? InspectorRegistry.Find(type) : null;
 		if (entry == null)

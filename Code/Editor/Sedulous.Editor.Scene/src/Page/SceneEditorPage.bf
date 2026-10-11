@@ -415,10 +415,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	/// scene.
 	private void LoadSceneContent(Instance instance)
 	{
-		let loaded = SceneStorage.LoadScene(instance, mScene);
+		let loaded = SceneLoading.LoadEditorScene(mContext, instance, mScene);
 		if (loaded case .Ok)
 		{
-			ResolveAll();
 			GlobalLog(.Information, "Editor: opened scene '{}'", mTitle);
 		}
 		else if (loaded case .Err(.NotFound))
@@ -431,30 +430,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		}
 	}
 
-	/// Binds the scene's references on the async path, spawns any parked prefab instances,
-	/// and binds what they brought.
-	private void ResolveAll()
-	{
-		let resources = mContext.Resources;
-		if (resources != null)
-		{
-			let async = AsyncBindScope(resources);
-			defer async.Dispose();
-			SceneResolve.ResolveSceneResources(mScene, resources);
-		}
-		if ((mScene.PendingPrefabInstanceCount > 0) && (mContext.Project != null))
-		{
-			let resolver = GameEditorPage.ProjectPrefabResolver(mContext);
-			defer delete resolver;
-			ScenePrefabs.ResolveScenePrefabs(mScene, resolver);
-			if (resources != null)
-			{
-				let async = AsyncBindScope(resources);
-				defer async.Dispose();
-				SceneResolve.ResolveSceneResources(mScene, resources);
-			}
-		}
-	}
+	/// Binds the scene's references, spawns any parked prefab instances, and binds what they
+	/// brought, as a scene opens (SceneLoading).
+	private void ResolveAll() => SceneLoading.ResolveAll(mContext, mScene);
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{

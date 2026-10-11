@@ -66,6 +66,21 @@ class PreviewViewport
 
 	public bool IsValid => mScene != null;
 	public Scene Scene => mScene;
+
+	/// Starts over with an empty scene, the old one and everything in it destroyed: a page
+	/// that previews on other content (a profile on one of the project's scenes) swaps it.
+	/// Null when the viewport has no scenes to make one in.
+	public Scene ResetScene()
+	{
+		if (mScenes == null)
+			return null;
+		let name = scope String((mScene != null) ? mScene.Name : "preview");
+		if (mScene != null)
+			mSceneManager.DestroyScene(mScene);
+		mScene = mSceneManager.CreateScene(name);
+		mScene.SetSimulationEnabled(false);
+		return mScene;
+	}
 	/// The viewport as a base View, for layout.
 	public View View => mViewport;
 	public EditorCamera Camera => mCamera;

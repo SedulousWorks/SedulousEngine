@@ -26,12 +26,14 @@ class SettingsProfilePageFactory : IEditorPageFactory
 	public EditorPage CreatePage(EditorContext context, Instance instance) => new SettingsProfilePage(context, mHost, mUiHost, instance);
 }
 
-/// The profile page's composition: the asset types' serializables and the page.
+/// The profile page's composition: the asset types' serializables, the editor's own (the
+/// preview scene each profile remembers), and the page.
 static class SettingsProfileEditor
 {
 	public static void Register(EditorContext context, IApplicationHost host, UIHost uiHost)
 	{
 		RenderPipeline.RegisterAll();
+		SceneEditorSerializables.RegisterAll();
 		context.Pages.Register(new SettingsProfilePageFactory(host, uiHost));
 	}
 }
