@@ -71,9 +71,15 @@ class ScriptSceneSystem : SceneSystem
 			components.SetScriptSystem(this);
 	}
 
-	/// Behaviours run BEFORE the rest of the update phase's gameplay: a script's writes
-	/// land before the systems that read them.
-	public override int32 UpdateOrder => -100;
+	/// Where the scene's scripts run in Update (the Level script, then the entity behaviours):
+	/// before the systems that act on what a script writes (the navigation crowd at -100,
+	/// animation at -2 and -1), so a destination or a graph parameter set in onUpdate takes
+	/// effect that frame; a script reads the positions those systems left the frame before. An
+	/// order of its own rather than a tie with the crowd, which only the composition's domain
+	/// order used to break.
+	public const int32 cUpdateOrder = -110;
+
+	public override int32 UpdateOrder => cUpdateOrder;
 
 	public override bool IsSimulationOnly => true;
 

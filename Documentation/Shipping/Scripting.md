@@ -28,6 +28,10 @@ Handlers dispatch **by presence**: implement only what you need.
 
 - Behaviors and levels: `onStart()`, `onUpdate(float dt)`, `onFixedUpdate(float dt)`,
   `onEnable()`, `onDisable()`, `onDestroy()` (behaviors), `onStop()` (levels).
+  Scripts update before the systems that act on what they write (the navigation crowd,
+  animation), so a destination or a graph parameter set in `onUpdate` takes effect this frame;
+  positions read there are where those systems left things last frame. A scene's Level script
+  updates before its entities' behaviors.
 - The game: `launch()`, `update(float dt)`, `exit()`.
 - `on<Event>(...)`: named events. Physics contacts arrive as events; any script can send one:
   `scene.Scripts.Send(entity, "Name", payload)` to one entity's behaviors, and
