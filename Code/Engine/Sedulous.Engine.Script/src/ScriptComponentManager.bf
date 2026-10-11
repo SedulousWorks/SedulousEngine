@@ -36,6 +36,10 @@ class ScriptComponentManager : ResourceBindingComponentManager<ScriptComponent>
 	/// The behaviour's class is bound through the manager the scene was resolved with.
 	public bool AddBehavior(EntityHandle entity, Guid scriptClass)
 	{
+		// No class names nothing to run: refused, rather than an empty behaviour (and a script
+		// component the entity did not have).
+		if (scriptClass.IsNil)
+			return false;
 		var component = Get(entity);
 		if (component == null)
 		{

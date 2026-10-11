@@ -404,4 +404,15 @@ static class BehaviorLifecycleTests
 		play.Host.CheckTeardown();
 		Test.Assert(!play.Host.IsActive, "released, it goes");
 	}
+
+	/// A behaviour with no class names nothing to run: AddBehavior refuses it, and an entity
+	/// without scripts is not given a component for it.
+	[Test]
+	public static void AddBehaviorRefusesANilClass()
+	{
+		let play = scope ScriptPlayScene();
+		let entity = play.Scene.CreateEntity("bare");
+		Test.Assert(!play.Components.AddBehavior(entity, Guid()));
+		Test.Assert(play.Components.Get(entity) == null, "no component was added for it");
+	}
 }
