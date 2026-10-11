@@ -370,7 +370,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		instance.Network.SetSpawnResolverFactory(new () => MakeSpawnResolver());
 
 		if (mInput != null)
-			instance.SetInputSource(mInput.ShellSource);
+			instance.SetInputSource(GameInputSource);
 		WireInstanceScripting(instance, mHost);
 
 		mExtraInstances.Add(instance);
@@ -705,6 +705,12 @@ class DefaultApplication : IApplication, ISceneObserver
 	}
 
 	public bool HasRenderResolution => (mRenderWidth > 0) && (mRenderHeight > 0);
+
+	/// The source a run reads the devices through: fitted to the render resolution when the
+	/// game draws at one (pointer positions in render pixels), the shell's own otherwise. What
+	/// SetRenderResolution hands every instance, and an instance made after it starts with.
+	private IInputSourceProvider GameInputSource =>
+		(HasRenderResolution && (mFittedInput != null)) ? mFittedInput : mInput.ShellSource;
 
 	/// The scenes, the overlays, then the screenshot. A subclass that draws something of its
 	/// own over the scenes overrides this and calls RenderFrame, its own drawing, then
