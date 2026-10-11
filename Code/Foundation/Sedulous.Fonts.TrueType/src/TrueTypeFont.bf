@@ -60,6 +60,26 @@ class TrueTypeFont : IFont
 	public stbtt_fontinfo* FontInfo => &mFontInfo;
 	public float Scale => mScale;
 
+	/// One glyph's coverage at the font's pixel height, for drawing text on the CPU (a splash
+	/// shown before there is a GPU): `outCoverage` gets width x height bytes (0 to 255), and
+	/// (x0, y0) is its top left relative to the pen on the baseline. False for a glyph with
+	/// nothing to draw (a space).
+	public bool RasterizeGlyph(int32 codepoint, List<uint8> outCoverage, out int32 width, out int32 height, out int32 x0, out int32 y0)
+	{
+		let glyph = stb_truetype.stbtt_FindGlyphIndex(&mFontInfo, codepoint);
+		int32 ix0 = 0, iy0 = 0, ix1 = 0, iy1 = 0;
+		stb_truetype.stbtt_GetGlyphBitmapBox(&mFontInfo, glyph, mScale, mScale, &ix0, &iy0, &ix1, &iy1);
+		width = ix1 - ix0;
+		height = iy1 - iy0;
+		x0 = ix0;
+		y0 = iy0;
+		if ((glyph <= 0) || (width <= 0) || (height <= 0))
+			return false;
+		outCoverage.Count = width * height;
+		stb_truetype.stbtt_MakeGlyphBitmap(&mFontInfo, outCoverage.Ptr, width, height, width, mScale, mScale, glyph);
+		return true;
+	}
+
 	// ---- IFont ----
 
 	public override uint32 BackendTypeId => TrueTypeCommon.BackendTypeId;

@@ -46,6 +46,40 @@ class SDL3ShellTests
 		Test.Assert(fixture.Shell.IsRunning);
 	}
 
+	/// A window made hidden stays out of sight until Show; a software window takes an image
+	/// drawn on the CPU (scaled when the sizes differ) and an icon. What the editor's splash
+	/// and its hidden main window stand on.
+	[Test]
+	public static void AHiddenWindowShowsOnShowAndASoftwareWindowTakesPixels()
+	{
+		var settings = WindowSettings();
+		settings.Width = 320;
+		settings.Height = 200;
+		settings.Hidden = true;
+		let fixture = scope ShellFixture(settings);
+		if (!fixture.Usable)
+			return; // no display: the shell degraded, as AShellCreatesItsWindowAndReportsState says
+		Test.Assert((SDL3.SDL_GetWindowFlags(fixture.Handle) & .SDL_WINDOW_HIDDEN) != 0);
+		fixture.Shell.MainWindow.Show();
+		Test.Assert((SDL3.SDL_GetWindowFlags(fixture.Handle) & .SDL_WINDOW_HIDDEN) == 0);
+
+		var soft = WindowSettings();
+		soft.Width = 64;
+		soft.Height = 32;
+		soft.SoftwareSurface = true;
+		Test.Assert(fixture.Shell.WindowManager.CreateWindow(soft) case .Ok(let window));
+		let pixels = scope List<uint8>();
+		pixels.Count = 64 * 32 * 4;
+		Test.Assert(window.PresentPixels(pixels, 64, 32));
+		Test.Assert(window.PresentPixels(pixels, 32, 16), "a smaller image scales to the window");
+		Test.Assert(!window.PresentPixels(pixels, 128, 64), "too few pixels for the size it names");
+
+		uint8[16 * 16 * 4] icon = default;
+		WindowIconImage[1] images = .(.(&icon[0], 16, 16));
+		window.SetIcon(images);
+		fixture.Shell.WindowManager.DestroyWindow(window);
+	}
+
 	[Test]
 	public static void ClosingTheMainWindowStopsTheShell()
 	{

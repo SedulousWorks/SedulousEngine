@@ -19,11 +19,34 @@ struct WindowSettings
 	public bool Borderless;
 	/// Windowed, exclusive or desktop fullscreen. A backend without fullscreen ignores it.
 	public WindowFullscreen Fullscreen;
+	/// Created hidden, shown by IWindow.Show: an application that is not ready to draw (the
+	/// editor while it starts, a splash on screen) keeps its window out of sight until it is.
+	public bool Hidden;
+	/// A window drawn on the CPU (IWindow.PresentPixels) rather than by the GPU: a splash
+	/// shown before there is a graphics device. Not for a window a swapchain presents to.
+	public bool SoftwareSurface;
 
 	public this()
 	{
 		Title = "Shell"; Width = 1280; Height = 720;
 		Positioned = false; X = 0; Y = 0;
 		Resizable = true; Borderless = false; Fullscreen = .None;
+		Hidden = false; SoftwareSurface = false;
+	}
+}
+
+/// One image of a window's icon: tightly packed 8 bit RGBA rows, `Width` x `Height`. The
+/// pixels are borrowed for the call that takes it.
+struct WindowIconImage
+{
+	public uint8* Rgba;
+	public uint32 Width;
+	public uint32 Height;
+
+	public this(uint8* rgba, uint32 width, uint32 height)
+	{
+		Rgba = rgba;
+		Width = width;
+		Height = height;
 	}
 }

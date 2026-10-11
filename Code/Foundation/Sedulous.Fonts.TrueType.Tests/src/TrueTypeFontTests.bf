@@ -218,4 +218,28 @@ class TrueTypeFontTests
 			scope $"the T sits at {positions[1].X}");
 		Test.Assert(Abs(laidOutWidth - together) < 0.001f, "and both overloads agree");
 	}
+
+	/// A glyph drawn on the CPU (the editor's splash, before there is a GPU): its coverage
+	/// fills the box the glyph info gives, ink in it, and a space has nothing to draw.
+	[Test]
+	public static void AGlyphRasterizesIntoItsBox()
+	{
+		let font = TestFont.Load();
+		Test.Assert(font != null);
+		defer delete font;
+
+		let coverage = scope List<uint8>();
+		Test.Assert(font.RasterizeGlyph(Cp('H'), coverage, let width, let height, let x0, let y0));
+		let bounds = font.GetGlyphInfo(Cp('H')).BoundingBox;
+		Test.Assert((width == (int32)bounds.Width) && (height == (int32)bounds.Height));
+		Test.Assert((x0 == (int32)bounds.X) && (y0 == (int32)bounds.Y));
+		Test.Assert(y0 < 0, "an upper case letter stands above the baseline");
+		Test.Assert(coverage.Count == width * height);
+		var inked = 0;
+		for (let a in coverage)
+			inked += (a == 255) ? 1 : 0;
+		Test.Assert(inked > 0, "the stems are solid");
+
+		Test.Assert(!font.RasterizeGlyph(Cp(' '), coverage, ?, ?, ?, ?), "a space has nothing to draw");
+	}
 }

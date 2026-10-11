@@ -31,10 +31,15 @@ class EditorShell
 	private DockablePanel mWelcome = null;
 	private DockablePanel mConsole = null;
 	private DockablePanel mAssets = null;
+	/// The Welcome page's heading, borrowed for the build (null: the name as text).
+	private Drawable mLogo = null;
 
 	/// Builds the chrome. `dockHost` (nullable) lets panels float into real OS windows.
-	public void Build(EditorContext context, IDockableWindowHost dockHost, uint32 width, uint32 height)
+	/// `logo` (EditorSplash.LoadLogo, borrowed) heads the Welcome page; null shows the name as
+	/// text.
+	public void Build(EditorContext context, IDockableWindowHost dockHost, uint32 width, uint32 height, Drawable logo = null)
 	{
+		mLogo = logo;
 		mRoot = new RootView();
 		mRoot.ViewportSize = .((float)width, (float)height);
 		mRoot.DpiScale = 1.0f;
@@ -104,9 +109,38 @@ class EditorShell
 	/// Rebuilds the default arrangement (View > Reset Layout).
 	public void ResetLayout() => DockDefaults();
 
+	/// The Welcome page: the logo (else the name) over a quiet line, centred in the panel.
+	private FlexLayout BuildWelcome()
+	{
+		let page = new FlexLayout();
+		page.Direction = .Vertical;
+		page.JustifyContent = .Center;
+		page.AlignItems = .Center;
+		page.Spacing = 14;
+		if (mLogo != null)
+		{
+			const float cLogoHeight = 72.0f;
+			mLogo.AddRef(); // the view's reference
+			let logo = new DrawableView(mLogo, cLogoHeight * EditorSplash.cEditorLogoAspect, cLogoHeight);
+			logo.Opacity = 0.9f;
+			page.AddView(logo);
+		}
+		else
+		{
+			let name = new Label("SedulousEngine");
+			name.FontSize.Value = 28.0f;
+			page.AddView(name);
+		}
+		let hint = new Label("Open an asset to begin");
+		hint.FontSize.Value = 13.0f;
+		hint.TextColor.Value = Color(0.55f, 0.55f, 0.57f, 1.0f);
+		page.AddView(hint);
+		return page;
+	}
+
 	private void BuildPanels()
 	{
-		mWelcome = mDock.AddPanel("Welcome", new Label("Editor - open an asset to begin"));
+		mWelcome = mDock.AddPanel("Welcome", BuildWelcome());
 		mWelcome.SetPersistenceId(cPanelWelcome);
 		mWelcome.Closable = false;
 

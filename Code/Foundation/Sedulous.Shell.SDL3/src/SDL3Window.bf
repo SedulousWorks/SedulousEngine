@@ -176,6 +176,55 @@ class SDL3Window : IWindow
 
 	public bool IsTextInputActive => mTextInputActive;
 
+	public void Show()
+	{
+		if (mWindow != null)
+			SDL3.SDL_ShowWindow(mWindow);
+	}
+
+	public bool PresentPixels(Span<uint8> rgba, uint32 width, uint32 height)
+	{
+		if ((mWindow == null) || (rgba.Length < (int)width * (int)height * 4))
+			return false;
+		let target = SDL3.SDL_GetWindowSurface(mWindow);
+		if (target == null)
+			return false;
+		let image = SDL3.SDL_CreateSurfaceFrom((int32)width, (int32)height, .SDL_PIXELFORMAT_RGBA32, rgba.Ptr, (int32)width * 4);
+		if (image == null)
+			return false;
+		// The window's surface may be larger than the image on a scaled display: scale to fit.
+		let drawn = ((target.w == (int32)width) && (target.h == (int32)height))
+			? SDL3.SDL_BlitSurface(image, null, target, null)
+			: SDL3.SDL_BlitSurfaceScaled(image, null, target, null, .SDL_SCALEMODE_LINEAR);
+		SDL3.SDL_DestroySurface(image);
+		return drawn && SDL3.SDL_UpdateWindowSurface(mWindow);
+	}
+
+	public void SetIcon(Span<WindowIconImage> images)
+	{
+		if ((mWindow == null) || images.IsEmpty || (images[0].Rgba == null))
+			return;
+		// The surfaces borrow the pixels; SDL copies them when it sets the icon.
+		let icon = SurfaceOf(images[0]);
+		if (icon == null)
+			return;
+		for (int i = 1; i < images.Length; i++)
+		{
+			if (images[i].Rgba == null)
+				continue;
+			if (let larger = SurfaceOf(images[i]))
+			{
+				SDL3.SDL_AddSurfaceAlternateImage(icon, larger); // the icon holds its own reference
+				SDL3.SDL_DestroySurface(larger);
+			}
+		}
+		SDL3.SDL_SetWindowIcon(mWindow, icon);
+		SDL3.SDL_DestroySurface(icon);
+	}
+
+	private static SDL_Surface* SurfaceOf(WindowIconImage image) =>
+		SDL3.SDL_CreateSurfaceFrom((int32)image.Width, (int32)image.Height, .SDL_PIXELFORMAT_RGBA32, image.Rgba, (int32)image.Width * 4);
+
 	/// Called by the pump when SDL reports a resize.
 	public void OnResized(uint32 width, uint32 height)
 	{

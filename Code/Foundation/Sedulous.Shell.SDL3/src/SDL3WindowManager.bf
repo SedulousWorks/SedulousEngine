@@ -160,6 +160,10 @@ class SDL3WindowManager : IWindowManager
 			flags |= .SDL_WINDOW_RESIZABLE;
 		if (settings.Borderless)
 			flags |= .SDL_WINDOW_BORDERLESS;
+		if (settings.Hidden)
+			flags |= .SDL_WINDOW_HIDDEN;
+		if (settings.SoftwareSurface)
+			return flags; // drawn through SDL's window surface: no Vulkan surface on it
 
 #if !BF_PLATFORM_WINDOWS && !BF_PLATFORM_MACOS
 		// SDL only attaches client side decorations to a window backed by a GPU surface, so

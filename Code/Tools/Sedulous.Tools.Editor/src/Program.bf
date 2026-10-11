@@ -89,9 +89,11 @@ class Program
 		GlobalLog(.Information, "Editor: starting (project: {})", config.ProjectDirectory);
 
 		WindowSettings windowSettings = .();
-		windowSettings.Title = "Editor";
+		windowSettings.Title = "SedulousEngine";
 		windowSettings.Width = 1600;
 		windowSettings.Height = 900;
+		// Hidden until the editor is ready: the splash shows until then (StartupFinished).
+		windowSettings.Hidden = true;
 		let shell = scope SDL3Shell(windowSettings);
 		if (shell.MainWindow == null)
 		{
@@ -99,6 +101,29 @@ class Program
 			delete config;
 			return 1;
 		}
+		let mainWindow = shell.MainWindow;
+		EditorSplash.ApplyWindowIcon(mainWindow, dataRoot);
+
+		// The splash, from now until the editor is ready: startup holds the main thread with
+		// nothing drawn (the device, the shader compiles, the fonts, the project and its
+		// pages). Declared before the app, so it outlives the app's calls into it.
+		let splash = EditorSplash.Open(shell, dataRoot, config.FontPath, config.EmbeddedFont, scope $"Version {EngineVersion.String}");
+		defer delete splash;
+		if (splash != null)
+			splash.Step("Starting the graphics device", 0.05f);
+		else
+			mainWindow.Show(); // no splash: show the window now
+		config.StartupProgress = new [=splash](status, progress) =>
+			{
+				if (splash != null)
+					splash.Step(status, progress);
+			};
+		config.StartupFinished = new [=splash, =mainWindow]() =>
+			{
+				mainWindow.Show();
+				if (splash != null)
+					splash.Close();
+			};
 
 		// Validation follows the build config unless the command line says otherwise: an
 		// optimized editor is for measuring, not for carrying the layer's cost.

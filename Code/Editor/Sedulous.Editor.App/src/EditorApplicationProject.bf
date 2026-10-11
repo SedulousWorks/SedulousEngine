@@ -267,10 +267,13 @@ extension EditorApplication
 			if (ProjectEditorSettings.ApplyOpenPages(mProjectEditorSettings, pages, let activePage) case .Ok)
 			{
 				UIEditorPage toActivate = null;
-				for (let id in pages)
+				for (int index < pages.Count)
 				{
+					let id = pages[index];
 					if (let instance = mProject.SourceDb.GetInstance(id))
 					{
+						// On the splash while the editor starts: the pages are the long part.
+						ReportStartup(scope $"Opening {instance.Name}", 0.72f + 0.26f * (float)index / (float)pages.Count);
 						let page = OpenInstancePage(instance);
 						if ((page != null) && (id == activePage))
 							toActivate = page;

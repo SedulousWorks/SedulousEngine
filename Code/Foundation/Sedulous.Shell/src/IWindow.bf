@@ -1,3 +1,5 @@
+using System;
+
 namespace Sedulous.Shell;
 
 interface IWindow
@@ -32,4 +34,17 @@ interface IWindow
 	void StartTextInput();
 	void StopTextInput();
 	bool IsTextInputActive { get; }
+
+	/// The window's icon (its title bar, the taskbar, the window switcher): the first image at
+	/// the normal scale, any others the same icon for larger display scales. The images are
+	/// copied. A backend with no window icon ignores it.
+	void SetIcon(Span<WindowIconImage> images) {}
+
+	/// Shows a window created hidden (WindowSettings.Hidden). Nothing when shown already.
+	void Show() {}
+
+	/// Puts an image on a software window (WindowSettings.SoftwareSurface): tightly packed 8
+	/// bit RGBA rows, `width` x `height`, scaled to the window when the sizes differ. False
+	/// when the backend has no software windows or the window is not one.
+	bool PresentPixels(Span<uint8> rgba, uint32 width, uint32 height) => false;
 }

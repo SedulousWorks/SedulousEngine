@@ -65,4 +65,11 @@ class EditorAppConfig
 	/// fresh project opens; the exe composes it because only the exe links every asset type.
 	/// Null means new projects start empty. Owned.
 	public delegate void(EditorContext context, EditorProject project) SeedNewProject ~ delete _;
+
+	/// Startup's progress, for the splash main shows until the editor is ready: what it is
+	/// doing now and how far along (0 to 1). Null: no splash.
+	public delegate void(StringView status, float progress) StartupProgress ~ delete _;
+	/// Called once at the end of OnStartup, the editor ready: main closes the splash and shows
+	/// the main window (created hidden while the splash is up). Null: nothing to do.
+	public delegate void() StartupFinished ~ delete _;
 }

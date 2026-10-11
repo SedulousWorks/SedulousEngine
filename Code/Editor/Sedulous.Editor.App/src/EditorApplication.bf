@@ -112,6 +112,11 @@ class EditorApplication : IApplication
 	private bool mScreenshotFired = false;
 	/// View > Screenshot: tell the user when it is written.
 	private bool mAnnounceScreenshot = false;
+	/// OnStartup is running: its steps go to the splash.
+	private bool mStarting = false;
+	/// The SedulousEngine logo (EditorSplash.LoadLogo) for the Welcome page; null when it did
+	/// not load. One reference, the page's view taking its own.
+	private SVGDrawable mLogo = null ~ _?.ReleaseRef();
 	private float mTestOpenElapsed = 0.0f;
 	private uint32 mTestOpenStage = 0;
 	private bool mAutoRebuilt = false;
@@ -187,10 +192,13 @@ class EditorApplication : IApplication
 		if (mainRw == null)
 			return;
 
+		mStarting = true; // the splash hears startup's steps until the editor is ready
+		ReportStartup("Loading settings", 0.12f);
 		LoadEditorSettings(); // the per-user prefs first: the font paths honour them
 		// Domains reach their own sections through the context.
 		mContext.UserEditorSettings = mEditorSettings;
 
+		ReportStartup("Loading fonts", 0.18f);
 		// Fonts: CPU rasterisation and baking, no device needed. The resolution chain per
 		// family is the Preferences override, the configured path, then the embedded face,
 		// since a relocated editor must never come up textless. Every failure is loud.
@@ -232,6 +240,7 @@ class EditorApplication : IApplication
 		EditorIcons.Initialize();
 		// The editor's mount over the data root: the UI host reads its VG shaders through it.
 		mDataFileSystem = new NativeFileSystem(mConfig.DataRoot);
+		ReportStartup("Preparing the interface", 0.30f);
 		mUiHost = new UIHost(host.Graphics, host.Shell, mFontService, mDataFileSystem);
 		mDockHost = new RuntimeDockableWindowHost(host, mUiHost);
 
@@ -275,7 +284,9 @@ class EditorApplication : IApplication
 		// main window's close button; File > Exit routes through the same helper.
 		host.Shell.SetMainWindowCloseHandler(new () => ConfirmExitAllowed());
 
-		mShell.Build(mContext, mDockHost, mainRw.Window.Width, mainRw.Window.Height);
+		// The logo heads the Welcome page.
+		mLogo = EditorSplash.LoadLogo(mConfig.DataRoot);
+		mShell.Build(mContext, mDockHost, mainRw.Window.Width, mainRw.Window.Height, mLogo);
 		// The active page follows dock-tab activation, not just open and close: with
 		// side-by-side tab groups Save was hitting whichever page opened last. Non-page
 		// panels leave the active page alone.
@@ -339,6 +350,7 @@ class EditorApplication : IApplication
 				GlobalLog(.Information, "Editor: embedded app requested exit({}) with no Game tab playing it", code);
 			};
 		mEmbeddedHost.SetExitHandler(mEmbeddedExitHandler);
+		ReportStartup("Starting the renderer", 0.45f);
 		mEmbeddedApp = new DefaultApplication();
 		mEmbeddedApp.SetDataRoot(mConfig.DataRoot); // the editor's root, not a re-walk
 		mEmbeddedApp.Configure(mEmbeddedHost);
@@ -353,6 +365,7 @@ class EditorApplication : IApplication
 		mRuntimeContext.Startup();
 		mEmbeddedApp.OnStartup(mEmbeddedHost);
 
+		ReportStartup("Loading the editors", 0.62f);
 		// The editor-wide actions first: the menu bar follows registration order.
 		RegisterActions();
 
@@ -371,9 +384,29 @@ class EditorApplication : IApplication
 		BuildMenus();
 
 		if (mConfig.StartInProjectManager)
+		{
+			ReportStartup("Opening the project manager", 0.80f);
 			EnterManagerMode();
+		}
 		else
+		{
+			ReportStartup(scope $"Opening {PathFilename(mConfig.ProjectDirectory, .. scope .())}", 0.70f);
 			OpenProjectAt(mConfig.ProjectDirectory);
+		}
+
+		// Ready: the splash goes and the main window (created hidden) comes up.
+		ReportStartup("Ready", 1.0f);
+		mStarting = false;
+		if (mConfig.StartupFinished != null)
+			mConfig.StartupFinished();
+	}
+
+	/// Tells the splash what startup is doing (EditorAppConfig.StartupProgress), while it is
+	/// starting; a project opened later reports nothing.
+	public void ReportStartup(StringView status, float progress)
+	{
+		if (mStarting && (mConfig.StartupProgress != null))
+			mConfig.StartupProgress(status, progress);
 	}
 
 	/// Loads one family across the sizes; falls back to the embedded face when the path
