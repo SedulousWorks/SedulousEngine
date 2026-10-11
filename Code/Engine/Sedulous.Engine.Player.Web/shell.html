@@ -113,8 +113,43 @@
       var hasOwn = own && own[1] && !/^[0-]*$/.test(own[1]);
       document.getElementById(hasOwn ? 'loading-name' : 'loading-logo').hidden = false;
     }
-    fetch('player.xml').then(function (r) { return r.ok ? r.text() : ''; }).then(showHeading)
+    fetch('player.xml').then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (text) { showHeading(text); holdOrientation(text); })
       .catch(function () { showHeading(''); });
+
+    // A game held one way (its manifest's orientation: 1 landscape, 2 portrait) on a touch device:
+    // the player's first tap asks for fullscreen and then for the screen to be locked that way,
+    // which a browser grants only from a tap (Android Chrome does; iPhone Safari and desktops
+    // refuse, and the engine then presents the game turned instead). Once: a player who leaves
+    // fullscreen is not pulled back. On the tap's end, so the tap itself reaches the game first.
+    function holdOrientation(text) {
+      var held = /<u8 name="orientation">(\d+)<\/u8>/.exec(text);
+      var way = held ? { '1': 'landscape', '2': 'portrait' }[held[1]] : null;
+      var touch = (navigator.maxTouchPoints || 0) > 0 || window.matchMedia('(pointer: coarse)').matches;
+      if (!way || !touch) return;
+      function hold() {
+        window.removeEventListener('touchend', hold, true);
+        var page = document.documentElement;
+        var full = page.requestFullscreen ? page.requestFullscreen({ navigationUI: 'hide' }) : null;
+        function note(text) { if (trace) trace(text); }
+        function lock() {
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock(way).then(function () { note('lock ' + way + ': granted'); },
+                                              function (e) { note('lock ' + way + ': refused (' + e.name + ')'); });
+          } else {
+            note('lock: not offered');
+          }
+        }
+        if (full && full.then) {
+          full.then(function () { note('fullscreen: granted'); lock(); },
+                    function (e) { note('fullscreen: refused (' + e.name + ')'); });
+        } else {
+          note('fullscreen: not offered');
+          lock();
+        }
+      }
+      window.addEventListener('touchend', hold, true);
+    }
 
     // WebGPU first: without it there is no point downloading a game. A browser can have the API
     // and still give no adapter (WebGPU turned off, or the GPU blocklisted). The words are for a
@@ -210,10 +245,28 @@
           var dpr = Math.min(window.devicePixelRatio || 1, 2);
           var w = Math.max(1, Math.floor(c.clientWidth * dpr));
           var h = Math.max(1, Math.floor(c.clientHeight * dpr));
-          if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+          if (c.width !== w || c.height !== h) {
+            c.width = w; c.height = h;
+            if (trace) {
+              trace('size: canvas ' + c.clientWidth + 'x' + c.clientHeight + ' css, ' + w + 'x' + h + ' px; window ' +
+                    window.innerWidth + 'x' + window.innerHeight + '; screen ' +
+                    (screen.orientation ? screen.orientation.type : '?'));
+            }
+          }
         }
         window.addEventListener('resize', resize);
         resize();
+        // A window resize event can come before the page has its new size: entering fullscreen and
+        // turning the screen (the orientation lock) fire it mid-change, and the canvas kept its
+        // portrait backing store under a landscape page, the game drawn turned and stretched. The
+        // canvas's own size changing is the event that matters, and the changes themselves are
+        // measured once more after they settle.
+        if (typeof ResizeObserver !== 'undefined') { new ResizeObserver(resize).observe(c); }
+        function settled() { requestAnimationFrame(function () { resize(); setTimeout(resize, 250); }); }
+        document.addEventListener('fullscreenchange', settled);
+        if (screen.orientation && screen.orientation.addEventListener) {
+          screen.orientation.addEventListener('change', settled);
+        }
         // The canvas is focusable (tabindex), which is what lets it receive key events at all:
         // take focus so the game's input reaches it at once.
         window.addEventListener('load', function () { c.focus(); });
