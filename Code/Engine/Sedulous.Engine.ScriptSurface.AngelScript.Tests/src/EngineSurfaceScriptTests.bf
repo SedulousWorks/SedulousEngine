@@ -454,6 +454,59 @@ static class EngineSurfaceScriptTests
 			"""), "Id has no setter either");
 	}
 
+	/// A script plays by content path, and names a bus as a game's options do: the four fixed
+	/// names (any case) reach the fixed buses, and an unknown bus reads untouched, not silent.
+	/// A path that names nothing plays nothing and does not fault.
+	[Test]
+	public static void AScriptPlaysByPathAndNamesTheFixedBuses()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("game", "game.as", """
+			bool playNothing()
+			{
+				bool any = Audio.PlayOneShotPath("Audio/Nowhere").IsValid;
+				any = any || Audio.PlayOneShot3DPath("Audio/Nowhere", Float3(1.0f, 0.0f, 0.0f)).IsValid;
+				any = any || Audio.PlayCuePath("Audio/Nowhere").IsValid;
+				any = any || Audio.PlayMusicPath("Audio/Nowhere", 0.5f).IsValid;
+				return any;
+			}
+			float options()
+			{
+				Audio.SetNamedBusVolume("Music", 0.5f);
+				Audio.SetNamedBusMuted("EFFECTS", true);
+				return Audio.NamedBusVolume("no such bus");
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let settings = new Sedulous.Audio.AudioEngineSettings();
+		settings.Headless = true;
+		let audio = new Sedulous.Engine.Audio.AudioSubsystem(settings);
+		let context = new Sedulous.Runtime.Context();
+		context.RegisterSubsystem<Sedulous.Engine.Audio.AudioSubsystem>(audio);
+		context.Startup();
+		defer { delete context; delete audio; }
+		let engine = audio.Engine;
+		let facade = scope Sedulous.Engine.Script.Facades.AudioFacade(audio, new () => (Sedulous.Resource.ResourceManager)null);
+		vm.SetService(facade);
+
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("game", "bool playNothing()", default, ref r), "ran without a fault");
+		Test.Assert(!r.AsBool, "nothing at the path, nothing played");
+
+		Test.Assert(vm.Call("game", "float options()", default, ref r), "ran");
+		Test.Assert(Math.Abs(engine.BusVolume(.Music) - 0.5f) < 1e-5f, "\"Music\" is the music bus");
+		Test.Assert(engine.BusMuted(.Effects), "\"EFFECTS\" is the effects bus");
+		Test.Assert(Math.Abs(r.AsFloat - 1.0f) < 1e-5f, "an unknown bus reads untouched");
+		context.Shutdown();
+	}
+
 	/// A script controls a playing voice through the Audio facade: it keeps the run's music
 	/// voice in a variable, eases its pitch and volume, and stops it with a fade. What a game
 	/// does to speed its music up as a clock runs down.

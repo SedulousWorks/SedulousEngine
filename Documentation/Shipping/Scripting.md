@@ -54,6 +54,15 @@ free functions. `script_api` lists exactly what each one binds.
 all. It reaches only the calling run's pad (a Game tab's, the player's), and the run's end
 stops it.
 
+`Audio` plays a clip or a cue by its asset id (`Audio.PlayOneShot(id)`, `PlayCue`, `PlayMusic`),
+or by its content path as the project names it: `Audio.PlayOneShotPath("Audio/Jump")`,
+`PlayOneShot3DPath(path, position)`, `PlayCuePath(path)`, `PlayMusicPath(path, fadeSeconds)`. A
+path resolves by type, a cue to one of its variants; a path that names nothing plays nothing
+and does not fault. A bus is named as a settings screen names it: `SetNamedBusVolume("music",
+0.5)`, `SetNamedBusMuted`, `NamedBusVolume`, `NamedBusMuted` take the four fixed buses (master,
+effects, music, ui, any case) and the bus layout's own named buses; an unknown bus reads full
+volume and unmuted.
+
 An entity's place, turn and size in the world, every ancestor's included, are
 `entity.GetWorldPosition()`, `GetWorldRotation()` and `GetWorldScale()` (identity and one for an
 invalid entity); `GetLocalTransform()` is its own. A lantern on a guard aims along

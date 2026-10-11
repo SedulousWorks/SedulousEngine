@@ -106,6 +106,24 @@ class AudioFacade
 	[Scriptable]
 	public void StopMusic(float fadeSeconds = 1.0f) => mAudio?.StopMusic(fadeSeconds, RunGroup);
 
+	// ---- by content path: the asset as the project names it ("Audio/Jump") ----
+	// A path resolves by type: a clip plays, a cue resolves one weighted variant. One that
+	// names nothing playable gives an invalid voice; a script never faults over content.
+
+	[Scriptable]
+	public VoiceHandle PlayOneShotPath(StringView path, AudioBus bus = .Effects) =>
+		((mAudio != null) && (Resources != null)) ? mAudio.PlayOneShotByPath(Resources, path, bus, RunGroup) : .();
+	[Scriptable]
+	public VoiceHandle PlayOneShot3DPath(StringView path, Float3 position) =>
+		((mAudio != null) && (Resources != null)) ? mAudio.PlayOneShot3DByPath(Resources, path, position, RunGroup) : .();
+	[Scriptable]
+	public VoiceHandle PlayCuePath(StringView path, AudioBus bus = .Effects) =>
+		((mAudio != null) && (Resources != null)) ? mAudio.PlayCueByPath(Resources, path, bus, RunGroup) : .();
+	/// The music track by path, cross faded from the run's last.
+	[Scriptable]
+	public VoiceHandle PlayMusicPath(StringView path, float crossFadeSeconds = 1.0f) =>
+		((mAudio != null) && (Resources != null)) ? mAudio.PlayMusicByPath(Resources, path, Math.Max(crossFadeSeconds, 0.0f), RunGroup) : .();
+
 	// ---- a playing voice: what a game changes while it plays (its music's speed) ----
 
 	/// The run's music voice, invalid when none is playing.
@@ -171,7 +189,9 @@ class AudioFacade
 		return (run != 0) ? engine.RunBusMuted(run, bus) : engine.BusMuted(bus);
 	}
 
-	/// A layout's named bus volume, by name: the run's own in a run, the bus's outside one.
+	/// A bus's volume by name: the four fixed names (master, effects, music, ui, any case)
+	/// first, then the applied layout's named buses; the run's own in a run, the bus's
+	/// outside one. An unknown name changes nothing.
 	[Scriptable]
 	public void SetNamedBusVolume(StringView name, float volume)
 	{
@@ -179,6 +199,11 @@ class AudioFacade
 		if (engine == null)
 			return;
 		let clamped = Math.Clamp(volume, 0.0f, 4.0f);
+		if (AudioBusNames.TryParse(name, let fixedBus))
+		{
+			SetBusVolume(fixedBus, clamped);
+			return;
+		}
 		let run = RunGroup;
 		if (run != 0)
 			engine.SetRunNamedBusVolume(run, name, clamped);
@@ -191,8 +216,13 @@ class AudioFacade
 		let engine = Engine;
 		if (engine == null)
 			return 1.0f;
+		if (AudioBusNames.TryParse(name, let fixedBus))
+			return BusVolume(fixedBus);
 		let run = RunGroup;
-		return (run != 0) ? engine.RunNamedBusVolume(run, name) : engine.NamedBusVolume(name);
+		if (run != 0)
+			return engine.RunNamedBusVolume(run, name);
+		// An unknown bus reads as untouched, full volume, not silent.
+		return engine.HasNamedBus(name) ? engine.NamedBusVolume(name) : 1.0f;
 	}
 	[Scriptable]
 	public void SetNamedBusMuted(StringView name, bool muted)
@@ -200,6 +230,11 @@ class AudioFacade
 		let engine = Engine;
 		if (engine == null)
 			return;
+		if (AudioBusNames.TryParse(name, let fixedBus))
+		{
+			SetBusMuted(fixedBus, muted);
+			return;
+		}
 		let run = RunGroup;
 		if (run != 0)
 			engine.SetRunNamedBusMuted(run, name, muted);
@@ -212,6 +247,8 @@ class AudioFacade
 		let engine = Engine;
 		if (engine == null)
 			return false;
+		if (AudioBusNames.TryParse(name, let fixedBus))
+			return BusMuted(fixedBus);
 		let run = RunGroup;
 		return (run != 0) ? engine.RunNamedBusMuted(run, name) : engine.NamedBusMuted(name);
 	}
