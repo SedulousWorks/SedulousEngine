@@ -1,13 +1,14 @@
 using System;
 using System.Collections;
 using Sedulous.Scene;
+using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene;
 
-/// A pre-order snapshot of a scene's entity tree, filtered by name: what a tree adapter
-/// reads rows from without touching the live scene mid layout. A node's id is its index;
-/// an entity shows when it or anything beneath it matches the filter, so a match keeps its
-/// path.
+/// A pre-order snapshot of a scene's entity tree, filtered by name or guid (SearchFilter):
+/// what a tree adapter reads rows from without touching the live scene mid layout. A node's
+/// id is its index; an entity shows when it or anything beneath it matches the filter, so a
+/// match keeps its path.
 class EntityTreeSnapshot
 {
 	public List<HierarchyNode> Nodes = new .() ~ DeleteContainerAndItems!(_);
@@ -15,30 +16,6 @@ class EntityTreeSnapshot
 	public String Filter = new .() ~ delete _;
 
 	public int Count => Nodes.Count;
-
-	/// A case insensitive substring match; an empty filter matches everything.
-	public static bool MatchesFilter(StringView name, StringView filter)
-	{
-		if (filter.IsEmpty)
-			return true;
-		if (name.Length < filter.Length)
-			return false;
-		for (int i = 0; i + filter.Length <= name.Length; i++)
-		{
-			var match = true;
-			for (int j < filter.Length)
-			{
-				if (name[i + j].ToLower != filter[j].ToLower)
-				{
-					match = false;
-					break;
-				}
-			}
-			if (match)
-				return true;
-		}
-		return false;
-	}
 
 	/// Rebuilds from the scene's current tree. `unnamed` labels an entity with no name.
 	public void Rebuild(Sedulous.Scene.Scene scene, StringView unnamed = default)
@@ -70,7 +47,7 @@ class EntityTreeSnapshot
 
 	private bool SubtreeMatches(Sedulous.Scene.Scene scene, EntityHandle e)
 	{
-		if (MatchesFilter(scene.GetEntityName(e), Filter))
+		if (SearchFilter.NameOrGuidMatches(scene.GetEntityName(e), scene.GetEntityId(e), Filter))
 			return true;
 		for (var c = scene.GetFirstChild(e); c.IsAssigned; c = scene.GetNextSibling(c))
 		{

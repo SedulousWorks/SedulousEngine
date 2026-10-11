@@ -138,6 +138,47 @@ class SceneHierarchyView : ViewGroup
 			data.ItemName.Set(mEdit.Scene.GetEntityName(h));
 	}
 
+	/// The filter field (a name, or a guid), for tests.
+	public EditText FilterField => mFilterEdit;
+
+	/// Opens every ancestor of `entity` in the tree as built, and forgets their collapse: done
+	/// after a rebuild, since a rebuild re-reads the collapse from the tree and would undo it.
+	private void ExpandAncestorsOf(Guid entity)
+	{
+		let flat = mTree.InternalTreeView.FlatAdapter;
+		let scene = mEdit.Scene;
+		var opened = false;
+		for (var e = scene.GetParent(scene.FindEntity(entity)); e.IsAssigned; e = scene.GetParent(e))
+		{
+			let ancestor = scene.GetEntityId(e);
+			mCollapsed.Remove(ancestor);
+			let node = mSnapshot.IndexOf(ancestor);
+			if ((flat != null) && (node >= 0) && !flat.IsExpanded(node))
+			{
+				flat.Expand(node);
+				opened = true;
+			}
+		}
+		if (opened)
+			mTree.InternalTreeView.InternalListView.NotifyDataChanged();
+	}
+
+	/// Scrolls the tree to `entity`'s row, when it shows.
+	private void RevealEntity(Guid entity)
+	{
+		let flat = mTree.InternalTreeView.FlatAdapter;
+		if (flat == null)
+			return;
+		for (int32 pos < flat.ItemCount)
+		{
+			if (GuidOfNode(flat.GetNodeId(pos)) == entity)
+			{
+				mTree.InternalTreeView.InternalListView.ScrollToPosition(pos);
+				return;
+			}
+		}
+	}
+
 	/// Scrolls to an entity's row and opens its name for editing.
 	public void BeginRename(Guid entity)
 	{
@@ -187,10 +228,6 @@ class SceneHierarchyView : ViewGroup
 	}
 
 	// ---- snapshot ----
-
-	/// A case insensitive substring match; an empty filter matches everything.
-	public static bool MatchesFilter(StringView name, StringView filter)
-		=> EntityTreeSnapshot.MatchesFilter(name, filter);
 
 	private void CaptureCollapseState()
 	{

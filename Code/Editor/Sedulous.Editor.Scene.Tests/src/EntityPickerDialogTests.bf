@@ -45,4 +45,39 @@ class EntityPickerDialogTests
 		Test.Assert(snapshot.IndexOf(scene.GetEntityId(lamp)) == 1);
 		Test.Assert(snapshot.IndexOf(Guid()) == -1);
 	}
+
+	/// The picker's filter finds an entity by its guid too, by its first digits or whole, and a
+	/// whole one is the choice.
+	[Test]
+	public static void TheFilterFindsAnEntityByItsGuidAndAWholeOneIsTheChoice()
+	{
+		let scene = scope Scene();
+		let crate = scene.CreateEntity("Crate");
+		let lamp = scene.CreateEntity("Lamp");
+		scene.SetParent(lamp, crate);
+		scene.CreateEntity("Barrel");
+
+		let dialog = new EntityPickerDialog(scene, scene.GetEntityId(crate));
+		defer dialog.ReleaseRef();
+		Test.Assert(dialog.NodeCount == 3);
+		Test.Assert(dialog.SelectedEntity == scene.GetEntityId(crate), "the current target, pre-selected");
+
+		void Type(StringView text)
+		{
+			dialog.FilterField.SetText(text);
+			dialog.FilterField.OnTextChanged(dialog.FilterField);
+		}
+		let bare = scope String();
+		for (let c in scene.GetEntityId(lamp).ToString(.. scope .()).RawChars)
+		{
+			if (c != '-')
+				bare.Append(c);
+		}
+		Type(StringView(bare, 0, 6));
+		Test.Assert(dialog.NodeCount == 2, "Lamp and the Crate holding it");
+		Type(bare);
+		Test.Assert(dialog.SelectedEntity == scene.GetEntityId(lamp), "a whole guid is the choice");
+		Type("barr");
+		Test.Assert(dialog.NodeCount == 1);
+	}
 }

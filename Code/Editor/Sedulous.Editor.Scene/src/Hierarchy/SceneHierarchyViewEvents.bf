@@ -69,7 +69,16 @@ extension SceneHierarchyView
 		mFilterEdit.OnTextChanged.Add(new [=this](edit) =>
 		{
 			mSnapshot.Filter.Set(edit.Text);
+			// A whole guid asks for that entity: shown with its ancestors open, selected (the
+			// inspector and the gizmo follow) and scrolled to.
+			let whole = SearchFilter.FilterAsGuid(edit.Text, let wanted) && mEdit.Scene.FindEntity(wanted).IsAssigned;
 			RebuildSnapshot(); // a filter change rebuilds regardless of the revision
+			if (whole)
+			{
+				ExpandAncestorsOf(wanted);
+				mEdit.EntitySelection.Set(wanted);
+				RevealEntity(wanted);
+			}
 		});
 
 		delete mEdit.EntitySelection.OnChanged;

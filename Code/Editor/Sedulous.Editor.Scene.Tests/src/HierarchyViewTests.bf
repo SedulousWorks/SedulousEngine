@@ -177,10 +177,10 @@ class HierarchyViewTests
 	[Test]
 	public static void TheFilterMatchesCaseInsensitivelyAndKeepsAMatchingChildsPath()
 	{
-		Test.Assert(SceneHierarchyView.MatchesFilter("Sun Light", "light"));
-		Test.Assert(SceneHierarchyView.MatchesFilter("Sun Light", ""));
-		Test.Assert(!SceneHierarchyView.MatchesFilter("Sun", "light"));
-		Test.Assert(!SceneHierarchyView.MatchesFilter("Su", "sun"));
+		Test.Assert(Sedulous.Editor.Core.SearchFilter.NameOrGuidMatches("Sun Light", Guid(), "light"));
+		Test.Assert(Sedulous.Editor.Core.SearchFilter.NameOrGuidMatches("Sun Light", Guid(), ""));
+		Test.Assert(!Sedulous.Editor.Core.SearchFilter.NameOrGuidMatches("Sun", Guid(), "light"));
+		Test.Assert(!Sedulous.Editor.Core.SearchFilter.NameOrGuidMatches("Su", Guid(), "sun"));
 	}
 
 	/// Copy ID puts the entity's persistent guid on the clipboard, and a view with no UI
@@ -208,5 +208,52 @@ class HierarchyViewTests
 		Test.Assert(hierarchy.CopyEntityId(entity));
 		Test.Assert(clipboard.Stored == scope $"{entity}");
 		Test.Assert(!hierarchy.CopyEntityId(.())); // a nil entity names nothing
+	}
+
+	/// A guid copied from a log line, an MCP answer or a scene file finds its entity, as one finds
+	/// an asset in the browser: whole or by its first digits, braces, dashes and case aside. A
+	/// whole one selects the entity, its folded ancestors opened to show it.
+	[Test]
+	public static void TheFilterFindsAnEntityByItsGuidAndAWholeOneSelectsIt()
+	{
+		let scene = scope Scene();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let hierarchy = new SceneHierarchyView(edit);
+		defer hierarchy.ReleaseRef();
+
+		let parent = edit.CreateEntity("Parent");
+		let child = edit.CreateEntity("Child", parent);
+		edit.CreateEntity("Sibling");
+		hierarchy.Refresh();
+		hierarchy.Tree.InternalTreeView.FlatAdapter.Collapse(0); // Parent folded: Child hidden
+		hierarchy.Tree.InternalTreeView.InternalListView.NotifyDataChanged();
+		Test.Assert(hierarchy.FlatCount == 2);
+
+		void Type(StringView text)
+		{
+			hierarchy.FilterField.SetText(text);
+			hierarchy.FilterField.OnTextChanged(hierarchy.FilterField);
+		}
+		let whole = child.ToString(.. scope .());
+
+		// Its first digits find the child and the ancestor holding it, and select nothing.
+		edit.EntitySelection.Clear(); // creating selected the new entity
+		Type(StringView(whole, 0, 8));
+		Test.Assert(edit.EntitySelection.IsEmpty, "first digits find, they do not select");
+
+		// The whole guid, braced and in capitals: selected, its folded parent opened.
+		let braced = scope String("{");
+		for (let c in whole.RawChars)
+			braced.Append(c.ToUpper);
+		braced.Append("}");
+		Type(braced);
+		Test.Assert(!edit.EntitySelection.IsEmpty && (edit.EntitySelection.Primary == child));
+		Test.Assert(hierarchy.FlatCount == 2, "Parent, now open, and Child");
+		Test.Assert(hierarchy.Tree.InternalTreeView.FlatAdapter.IsExpanded(0));
+
+		// A name still filters by name.
+		Type("sib");
+		Test.Assert(hierarchy.FlatCount == 1);
 	}
 }

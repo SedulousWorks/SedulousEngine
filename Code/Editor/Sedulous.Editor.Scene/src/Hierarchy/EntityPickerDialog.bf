@@ -2,11 +2,13 @@ using System;
 using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.UI;
+using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene;
 
-/// Picks an entity from the scene's tree, with a name filter: what an EntityRef field's
-/// picker opens. Select, Clear (a nil reference) or Cancel. The scene is borrowed.
+/// Picks an entity from the scene's tree, with a filter by name or guid (SearchFilter): what an
+/// EntityRef field's picker opens; a whole guid typed or pasted pre-selects what it names.
+/// Select, Clear (a nil reference) or Cancel. The scene is borrowed.
 class EntityPickerDialog : Dialog
 {
 	public delegate void(Guid) OnPicked ~ delete _;
@@ -83,6 +85,9 @@ class EntityPickerDialog : Dialog
 
 	public int NodeCount => mSnapshot.Count;
 	public int32 SelectedNode => mSelected;
+	/// For tests: the filter field, and the entity Select would confirm (nil: none).
+	public EditText FilterField => mFilterEdit;
+	public Guid SelectedEntity => mSnapshot.InRange(mSelected) ? mSnapshot.Nodes[mSelected].Id : Guid();
 
 	private void Confirm(Guid id)
 	{
@@ -94,12 +99,26 @@ class EntityPickerDialog : Dialog
 	private void RebuildTree()
 	{
 		mSnapshot.Rebuild(mScene);
-		mSelected = mSnapshot.IndexOf(mCurrent);
+		// The entity a whole guid names, else the current target, when it survived the filter.
+		var wanted = mCurrent;
+		if (SearchFilter.FilterAsGuid(mSnapshot.Filter, let typed))
+			wanted = typed;
+		mSelected = mSnapshot.IndexOf(wanted);
 		if (let flat = mTree.FlatAdapter)
 		{
 			for (int32 i < (int32)mSnapshot.Count)
 				flat.Expand(i); // parents only take effect
 			flat.RebuildVisibleList(); // repopulate from the source and notify the list
+			// The pre-selection shows selected, scrolled to (Select confirms it).
+			for (int32 pos < flat.ItemCount)
+			{
+				if ((mSelected >= 0) && (flat.GetNodeId(pos) == mSelected))
+				{
+					mTree.Selection.Select(pos);
+					mTree.InternalListView.ScrollToPosition(pos);
+					break;
+				}
+			}
 		}
 	}
 }
