@@ -85,16 +85,26 @@ struct NavAgentComponent : ISerializable
 	public float AppliedAcceleration = -1.0f;
 
 	// ---- the introspection cache, filled from the crowd each tick ----
+	// A script's to read: why an agent is not moving (its request failed, it is off the
+	// mesh, it has corners left), which only the debug overlay showed before.
 
+	[Scriptable]
 	[Hidden]
+	[ReadOnly]
 	public NavAgentCrowdState CrowdState = .Invalid;
+	[Scriptable]
 	[Hidden]
+	[ReadOnly]
 	public NavAgentTargetState CrowdTargetState = .None;
 	/// The crowd's current speed intent.
+	[Scriptable]
 	[Hidden]
+	[ReadOnly]
 	public float CrowdDesiredSpeed = 0.0f;
 	/// The corridor corners ahead, which is a hint at the path's progress.
+	[Scriptable]
 	[Hidden]
+	[ReadOnly]
 	public int32 PathCorners = 0;
 
 	public this() {}

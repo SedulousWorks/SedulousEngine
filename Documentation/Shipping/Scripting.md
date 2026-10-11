@@ -97,7 +97,10 @@ the entity, so it always reaches the component the entity has now; on an entity 
 the access fails the handler. An asset field takes the asset's guid (`sprite.TextureAsset`).
 Components with nothing for gameplay code are not script types: the script component itself
 (use `scene.Scripts`), the networked transform (replication drives it), and a navigation
-zone's bake settings. A network identity is one, read only.
+zone's bake settings. A network identity is one, read only. A navigation agent reports why it
+is or is not moving, read only: `CrowdState` (walking, off the mesh, or not in a crowd),
+`CrowdTargetState` (where its move request has got to: requesting, valid, failed),
+`CrowdDesiredSpeed`, and `PathCorners`, the corners left on its path.
 
 The facades are the stable verbs and the first place to look; a component is the direct route
 to its data. `script_api` lists both.

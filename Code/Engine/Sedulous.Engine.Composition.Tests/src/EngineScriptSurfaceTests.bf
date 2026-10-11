@@ -40,7 +40,7 @@ static class EngineScriptSurfaceTests
 		Test.Assert(s.Types.Count == EngineScriptSurface.TypeCount);
 		// Bump deliberately when a type is marked or unmarked; a surprise here is a lost or
 		// stray dependency of the root.
-		Test.Assert(EngineScriptSurface.TypeCount == 102, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		Test.Assert(EngineScriptSurface.TypeCount == 104, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]
@@ -113,6 +113,17 @@ static class EngineScriptSurfaceTests
 		let id = Field(network, "Id");
 		Test.Assert((id != null) && !id.CanWrite && (id.Set == null));
 		Test.Assert(Field(network, "Prefab") == null);
+		// A navigation agent reports why it is or is not moving, read only: its crowd's state,
+		// its request's, its speed intent, the corners left (filled by the crowd each tick).
+		let agent = s.Find("Sedulous.Engine.Navigation.NavAgentComponent");
+		Test.Assert(agent != null);
+		for (let name in StringView[?]("CrowdState", "CrowdTargetState", "CrowdDesiredSpeed", "PathCorners"))
+		{
+			let field = Field(agent, name);
+			Test.Assert((field != null) && !field.CanWrite && (field.Set == null), scope String(name));
+		}
+		Test.Assert(s.Find("Sedulous.Navigation.NavAgentCrowdState") != null);
+		Test.Assert(s.Find("Sedulous.Navigation.NavAgentTargetState") != null);
 
 		// And what the engine keeps to itself: no subsystem or manager is a script contract by
 		// being linked, and neither is a component with nothing for gameplay code.

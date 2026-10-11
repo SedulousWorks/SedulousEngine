@@ -1,6 +1,9 @@
+using Sedulous.Core;
+
 namespace Sedulous.Navigation;
 
 /// Where an agent's move request has got to.
+[Scriptable(.AllPublic)]
 enum NavAgentTargetState : uint8
 {
 	case None = 0;
