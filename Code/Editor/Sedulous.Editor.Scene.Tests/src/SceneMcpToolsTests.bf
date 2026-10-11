@@ -65,6 +65,7 @@ class SceneMcpToolsTests
 			FramedEased = ease;
 			return HasViewport && !entities.IsEmpty;
 		}
+		public Result<void, ErrorCode> RequestProjectThumbnail() => .Err(.NotSupported);
 		public Result<void, ErrorCode> RequestViewportCapture(StringView path)
 		{
 			if (!HasViewport)

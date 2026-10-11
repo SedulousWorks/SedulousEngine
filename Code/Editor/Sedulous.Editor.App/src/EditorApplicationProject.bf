@@ -505,7 +505,7 @@ extension EditorApplication
 			return;
 		if (mManagerView == null)
 		{
-			mManagerView = new ProjectManagerView();
+			mManagerView = new ProjectManagerView(mLogo);
 			// Open and Create swap the window's root, detaching the manager view whose button
 			// is mid dispatch: deferred through the mutation queue, like Close Project.
 			mManagerView.OnOpenProject = new (dir) =>

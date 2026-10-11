@@ -138,6 +138,16 @@ class EditorProject
 	public void SourcesRoot(String outPath) => PathJoin(mDirectory, ProjectLayout.SourcesDir, outPath);
 	/// Per user editor state: the dock layout, the open pages.
 	public void EditorStateRoot(String outPath) => PathJoin(mDirectory, ProjectLayout.EditorDir, outPath);
+	/// The picture the launcher shows a project by: its scene view, captured by the editor
+	/// (when the default scene opens without one, when it is saved, on Set as Project
+	/// Thumbnail) or an image the user chose, in the project's per machine editor folder (not
+	/// under version control).
+	public static void ThumbnailPath(StringView projectDirectory, String outPath)
+	{
+		let editorDir = PathJoin(projectDirectory, ProjectLayout.EditorDir, .. scope .());
+		PathJoin(editorDir, "launcher-thumbnail.png", outPath);
+	}
+
 	/// Thumbnails and cook hashes.
 	public void CacheRoot(String outPath) => PathJoin(mDirectory, ProjectLayout.CacheDir, outPath);
 

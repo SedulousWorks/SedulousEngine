@@ -21,6 +21,7 @@ using Sedulous.UI.Toolkit;
 using Sedulous.UI.Runtime;
 using Sedulous.UI.Viewport;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Camera;
 using Sedulous.Engine.DefaultApp;
@@ -171,6 +172,13 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private bool mRenderedThisFrame = false;
 	private uint32 mCaptureWidth = 0;
 	private uint32 mCaptureHeight = 0;
+	/// The launcher's picture of the project (EditorProject.ThumbnailPath): the default scene's
+	/// view, taken once it has settled when there is none yet, and on every save of it. Its
+	/// capture is the scene alone: mCleanCapture holds the overlays back from the frame the
+	/// armed capture records.
+	private bool mCleanCapture = false;
+	private bool mThumbnailChecked = false;
+	private float mThumbnailWait = 0.0f;
 	/// Borrowed; tracks dock and float moves.
 	private RenderWindow mHostWindow = null;
 	private bool mRenderedOnce = false;
@@ -381,8 +389,32 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		if (mViewport == null)
 			return .Err(.NotSupported);
 		mCapture.Request(path);
+		mCleanCapture = false; // what the viewport shows, overlays and all
 		return .Ok;
 	}
+
+	public Result<void, ErrorCode> RequestProjectThumbnail()
+	{
+		if (mContext.Project == null)
+			return .Err(.NotSupported);
+		let path = EditorProject.ThumbnailPath(mContext.Project.Directory, .. scope .());
+		CreateDirectory(PathParent(path, .. scope .()));
+		let requested = RequestViewportCapture(path);
+		mCleanCapture = requested case .Ok;
+		return requested;
+	}
+
+	private bool IsProjectDefaultScene
+	{
+		get
+		{
+			let project = mContext.Project;
+			return (project != null) && (InstanceId != Guid.Empty) && (project.Settings.DefaultSceneId == InstanceId);
+		}
+	}
+
+	/// The frame an armed project thumbnail records: the editor's overlays stay out of it.
+	private bool CleanCaptureFrame => mCleanCapture && mCapture.Armed;
 
 	private const String cAnimationTab = "animation";
 
@@ -441,6 +473,19 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		EnsureViewportBound();
 		if (mHostWindow == null)
 			return;
+		// A project with no launcher picture yet gets one from its default scene, once the view
+		// has been up a moment with nothing left loading (content pops in asynchronously).
+		if (!mThumbnailChecked && IsProjectDefaultScene)
+		{
+			mThumbnailWait += dt;
+			let settled = (mContext.Resources == null) || (mContext.Resources.PendingCount == 0);
+			if ((mThumbnailWait > 1.5f) && settled)
+			{
+				mThumbnailChecked = true;
+				if (!FileExists(EditorProject.ThumbnailPath(mContext.Project.Directory, .. scope .())))
+					RequestProjectThumbnail();
+			}
+		}
 
 		if (mHierarchy != null)
 			mHierarchy.Refresh(); // the scene revision rebuilds the tree
@@ -478,7 +523,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mPropAnimPanel.Tick(dt, mIsSimulating);
 		mPageEvents.Drain();
 
-		if ((mRender != null) && (mScene != null))
+		// None on the frame a project thumbnail is captured: the launcher shows the scene.
+		if ((mRender != null) && (mScene != null) && !CleanCaptureFrame)
 		{
 			let dd = mRender.DebugView(Internal.UnsafeCastToPtr(mViewport));
 			if (mView.ShowGrid)
@@ -537,7 +583,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 		let targetState = TargetState(mViewport.ColorTexture, mViewport.ColorState, .ShaderRead);
 		mRender.RenderScene(mScene, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, .(0, 0, w, h),
-			&cameraOverride, targetState, &mPostOverride, Internal.UnsafeCastToPtr(mViewport), mDebugView);
+			&cameraOverride, targetState, &mPostOverride, Internal.UnsafeCastToPtr(mViewport), CleanCaptureFrame ? null : mDebugView);
 		mViewport.ColorState = .ShaderRead;
 
 		mCaptureWidth = w;
@@ -559,6 +605,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		if (!rendered || !mCapture.Armed || (host.Graphics == null))
 			return;
 		mCapture.Record(host.Graphics.Raw, frame.Encoder, mViewport.ColorTexture, mViewport.ColorFormat, mCaptureWidth, mCaptureHeight, .ShaderRead);
+		mCleanCapture = false;
 	}
 
 	/// A change on disk replaces the scene, unless there are unsaved edits here.
@@ -632,6 +679,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		{
 			ClearDirty();
 			GlobalLog(.Information, "Editor: saved {} '{}'", isPrefab ? "prefab" : "scene", mTitle);
+			// The launcher's picture of the project follows its default scene as it is saved.
+			if (!isPrefab && IsProjectDefaultScene)
+				RequestProjectThumbnail();
 			if (isPrefab && (mScenes != null))
 			{
 				let payload = instance.ReadData("scene");

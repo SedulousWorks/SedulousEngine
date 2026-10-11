@@ -90,6 +90,10 @@ interface ISceneEditorPage
 	/// Asks for the viewport's next rendered frame as a PNG at `path` (its directory must
 	/// exist), replacing a pending request. NotSupported on a page without a viewport.
 	Result<void, ErrorCode> RequestViewportCapture(StringView path);
+	/// Captures the viewport as the project's launcher thumbnail (EditorProject.ThumbnailPath):
+	/// the scene alone, without the editor's overlays (grid, markers, gizmos, readouts, debug
+	/// view) in the captured frame. NotSupported without a viewport or a project.
+	Result<void, ErrorCode> RequestProjectThumbnail();
 	/// The latest request's state, as it advances frame by frame. BORROWED.
 	ViewportCapture LastViewportCapture { get; }
 

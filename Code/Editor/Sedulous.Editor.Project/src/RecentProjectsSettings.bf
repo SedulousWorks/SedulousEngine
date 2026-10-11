@@ -14,6 +14,9 @@ class RecentProjectsSettings
 	public const int cMaxEntries = 20;
 
 	public List<RecentProjectEntry> Entries = new .() ~ DeleteContainerAndItems!(_);
+	/// The launcher shows the projects as a grid of their pictures, else as a list.
+	[Appended]
+	public bool GridView = false;
 
 	public RecentProjectEntry Find(StringView path)
 	{

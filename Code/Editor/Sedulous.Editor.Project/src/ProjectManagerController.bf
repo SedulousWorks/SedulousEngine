@@ -66,4 +66,14 @@ class ProjectManagerController
 
 	/// Lazily creates the section.
 	public RecentProjectsSettings Entries => mStore.Section<RecentProjectsSettings>();
+
+	/// Whether the launcher shows a grid of the projects' pictures (else a list); kept in the
+	/// store with the recent projects (the caller saves it, as after Remove).
+	public bool GridView => mStore.Section<RecentProjectsSettings>().GridView;
+
+	public void SetGridView(bool grid)
+	{
+		mStore.Section<RecentProjectsSettings>().GridView = grid;
+		mStore.MarkChanged<RecentProjectsSettings>();
+	}
 }

@@ -48,6 +48,8 @@ static class EditorIcons
 	public static BakedSVGDrawable Search = null;
 	/// An amber triangle with "!": something to heed (a template built for another engine).
 	public static BakedSVGDrawable Warning = null;
+	/// Three dots in a row: a menu of more choices (a launcher project's).
+	public static BakedSVGDrawable More = null;
 
 	// ---- list and row controls (the container list editor) ----
 	public static BakedSVGDrawable Add = null;
@@ -93,6 +95,7 @@ static class EditorIcons
 		Close = BakedSVGDrawable.FromString(cClose);
 		Search = BakedSVGDrawable.FromString(cSearch);
 		Warning = BakedSVGDrawable.FromString(cWarning);
+		More = BakedSVGDrawable.FromString(cMore);
 		Add = BakedSVGDrawable.FromString(cAdd);
 		Remove = BakedSVGDrawable.FromString(cRemove);
 		MoveUp = BakedSVGDrawable.FromString(cMoveUp);
@@ -134,6 +137,7 @@ static class EditorIcons
 		Close = null;
 		Search = null;
 		Warning = null;
+		More = null;
 		Add = null;
 		Remove = null;
 		MoveUp = null;
@@ -151,7 +155,7 @@ static class EditorIcons
 	public static void Bakeable(List<BakedSVGDrawable> outIcons)
 	{
 		BakedSVGDrawable[?] all = .(
-			Translate, Rotate, Scale, WorldSpace, LocalSpace, Grid, Scene, Prefab, Mesh, SkinnedMesh, Material, Texture, ParticleFx, Animation, AnimGraph, Skeleton, Folder, Unknown, ViewList, ViewGrid, Close, Search, Warning, Add, Remove, MoveUp, MoveDown, Copy, Edit, BrushRaise, BrushLower, BrushSmooth, BrushFlatten);
+			Translate, Rotate, Scale, WorldSpace, LocalSpace, Grid, Scene, Prefab, Mesh, SkinnedMesh, Material, Texture, ParticleFx, Animation, AnimGraph, Skeleton, Folder, Unknown, ViewList, ViewGrid, Close, Search, Warning, More, Add, Remove, MoveUp, MoveDown, Copy, Edit, BrushRaise, BrushLower, BrushSmooth, BrushFlatten);
 		for (let icon in all)
 		{
 			if (icon != null)
@@ -386,6 +390,15 @@ static class EditorIcons
 		<svg viewBox="0 0 24 24">
 		  <circle cx="10" cy="10" r="6" fill="none" stroke="#E0E0E0" stroke-width="2"/>
 		  <line x1="14.5" y1="14.5" x2="20" y2="20" stroke="#E0E0E0" stroke-width="2.4" stroke-linecap="round"/>
+		</svg>
+		""";
+
+	/// More: three dots in a row, a menu of further choices.
+	private const String cMore = """
+		<svg viewBox="0 0 24 24">
+		  <circle cx="5.5" cy="12" r="2" fill="#E0E0E0"/>
+		  <circle cx="12" cy="12" r="2" fill="#E0E0E0"/>
+		  <circle cx="18.5" cy="12" r="2" fill="#E0E0E0"/>
 		</svg>
 		""";
 

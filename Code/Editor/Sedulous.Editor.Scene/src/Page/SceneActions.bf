@@ -20,6 +20,7 @@ static class SceneActionIds
 	public const String Markers = "scene.view.markers";
 	public const String FrameSelection = "scene.view.frameSelection";
 	public const String AnimationPanel = "scene.view.animationPanel";
+	public const String SetProjectThumbnail = "scene.view.setProjectThumbnail";
 	public const String EntityCreate = "scene.entity.create";
 	public const String EntityCreateChild = "scene.entity.createChild";
 	public const String EntityDuplicate = "scene.entity.duplicate";
@@ -193,6 +194,20 @@ static class SceneActions
 				{
 					let scene = page as ISceneEditorPage;
 					scene.SetAnimationPanelShown(!scene.AnimationPanelShown);
+				};
+			actions.Register(d);
+		}
+
+		{
+			// The launcher's picture of the project: this view, now (it is otherwise taken when
+			// the default scene opens without one and when it is saved).
+			let d = new EditorActionDeclaration(SceneActionIds.SetProjectThumbnail, "Set as Project Thumbnail", "Use this view as the picture the project launcher shows the project by", "Scene/Set as Project Thumbnail", 295);
+			d.ReadOnly = true; // a picture of the scene, not an edit of it
+			d.Enabled = new [=context](page) => ((page as ISceneEditorPage) != null) && (context.Project != null);
+			d.Execute = new [=context](page) =>
+				{
+					if ((page as ISceneEditorPage).RequestProjectThumbnail() case .Ok)
+						context.SetStatus("The launcher will show this view for the project.");
 				};
 			actions.Register(d);
 		}

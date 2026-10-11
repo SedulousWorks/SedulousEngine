@@ -56,6 +56,7 @@ class SceneMcpEditToolsTests
 		public Sedulous.Editor.Camera.EditorCamera ViewportCamera => null;
 		public bool FrameEntities(Span<Guid> entities, bool ease) => false;
 		public Result<void, ErrorCode> RequestViewportCapture(StringView path) => .Err(.NotSupported);
+		public Result<void, ErrorCode> RequestProjectThumbnail() => .Err(.NotSupported);
 		public ViewportCapture LastViewportCapture => null;
 		public bool MarkersShown => true;
 		public void SetMarkersShown(bool shown) {}

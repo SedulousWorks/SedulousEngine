@@ -3,7 +3,9 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.UI;
+using Sedulous.Core.IO;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -70,6 +72,15 @@ class SceneActionsTests
 			return !entities.IsEmpty;
 		}
 		public Result<void, ErrorCode> RequestViewportCapture(StringView path) => .Err(.NotSupported);
+		/// The project thumbnails asked for: a viewport takes them, none refuses.
+		public int ThumbnailRequests = 0;
+		public Result<void, ErrorCode> RequestProjectThumbnail()
+		{
+			if (!HasViewport)
+				return .Err(.NotSupported);
+			ThumbnailRequests++;
+			return .Ok;
+		}
 		private ViewportCapture mCapture = new .() ~ delete _;
 		public ViewportCapture LastViewportCapture => mCapture;
 		public bool MarkersShown => Markers;
@@ -292,5 +303,38 @@ class SceneActionsTests
 		let before = edit.Scene.EntityCount;
 		menu.ItemAt(0).Action();
 		Test.Assert(edit.Scene.EntityCount == before + 1);
+	}
+
+	/// Set as Project Thumbnail asks the page for its clean thumbnail capture (the scene
+	/// without the editor's overlays), and needs a project for the launcher to show it in.
+	[Test]
+	public static void SetAsProjectThumbnailAsksThePageForItsCleanCapture()
+	{
+		let dir = PathJoin(GetCurrentDirectory(.. scope .()), "scratch_scene_actions_thumbnail_project", .. scope .());
+		RemoveDirectoryRecursive(dir);
+		defer RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "P") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer delete project;
+
+		let context = scope EditorContext();
+		SceneActions.Register(context);
+		let actions = context.Actions;
+		Test.Assert(actions.Find(SceneActionIds.SetProjectThumbnail) != null);
+		Test.Assert(actions.Find(SceneActionIds.SetProjectThumbnail).ReadOnly);
+		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage());
+		page.HasViewport = true;
+
+		// No project: no launcher to show the picture.
+		Test.Assert(!actions.IsEnabled(SceneActionIds.SetProjectThumbnail, page));
+
+		// With one, the page takes the capture, not a plain viewport capture of what the
+		// viewport shows.
+		context.SetProject(project);
+		defer context.SetProject(null);
+		Test.Assert(actions.IsEnabled(SceneActionIds.SetProjectThumbnail, page));
+		Test.Assert(actions.Execute(SceneActionIds.SetProjectThumbnail, page) case .Ok);
+		Test.Assert(page.ThumbnailRequests == 1);
 	}
 }
