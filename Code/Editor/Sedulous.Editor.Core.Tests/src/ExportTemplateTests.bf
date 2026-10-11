@@ -172,10 +172,12 @@ static class ExportTemplateTests
 		Test.Assert((loaded.Symbols.Count == 1) && (loaded.Symbols[0] == "Sedulous.Engine.Player.Desktop.pdb"));
 		Test.Assert(loaded.Directory.IsEmpty && !loaded.IsHost, "the runtime fields are not serialized");
 
-		// The host: the shared libraries beside the player are its sidecars; nothing else is.
+		// The host: the shared libraries beside the player are its sidecars; nothing else is,
+		// and not the shader compiler, which is the editor's (the player renders from the pack).
 		SaveText(dir, "libjoltc.so", "so\n");
 		SaveText(dir, "libdxcompiler.so", "so\n");
 		SaveText(dir, "libSDL3.so.0", "so\n");
+		SaveText(dir, "libdxil.so", "so\n");
 		SaveText(dir, "libBeefRT.a", "a\n");
 		SaveText(dir, "build.dat", "x\n");
 		let host = scope ExportTemplate();
@@ -185,7 +187,7 @@ static class ExportTemplateTests
 		Test.Assert(host.PlayerBinary == BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .()));
 		Test.Assert(host.Directory == dir);
 		// A library carried by its soname counts too.
-		Test.Assert((host.Sidecars.Count == 3) && (host.Sidecars[0] == "libSDL3.so.0") && (host.Sidecars[1] == "libdxcompiler.so") && (host.Sidecars[2] == "libjoltc.so"), scope $"{host.Sidecars.Count} sidecars");
+		Test.Assert((host.Sidecars.Count == 2) && (host.Sidecars[0] == "libSDL3.so.0") && (host.Sidecars[1] == "libjoltc.so"), scope $"{host.Sidecars.Count} sidecars");
 	}
 
 	[Test]

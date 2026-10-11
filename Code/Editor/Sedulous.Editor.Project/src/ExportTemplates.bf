@@ -56,6 +56,17 @@ static class ExportTemplates
 		ClearAndDeleteItems(outTemplate.Sidecars);
 		if (DirectoryExists(playerDir))
 			BuildLayout.CollectSharedLibraries(playerDir, outTemplate.Sidecars);
+		// The shader compiler is the editor's, not the player's, which renders from the
+		// cooked shader pack: a template never carries it. It would only add weight, and its
+		// glibc floor would keep a template off an older system (the Steam Deck's).
+		for (int i = outTemplate.Sidecars.Count - 1; i >= 0; i--)
+		{
+			if (ExportStaging.IsDxcRuntimeLib(outTemplate.Sidecars[i]))
+			{
+				delete outTemplate.Sidecars[i];
+				outTemplate.Sidecars.RemoveAt(i);
+			}
+		}
 	}
 
 	public static void DefaultRoot(String outPath) => PathJoin(GetUserDataDirectory(.. scope .()), "templates", outPath);
