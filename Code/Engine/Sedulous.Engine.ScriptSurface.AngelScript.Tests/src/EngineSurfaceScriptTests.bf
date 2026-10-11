@@ -51,7 +51,7 @@ static class EngineSurfaceScriptTests
 		File.WriteAllText(apiPath, text).IgnoreError();
 		// One bound type per surface type: the facades, the components, the values they pass,
 		// the globals.
-		Test.Assert(api.Count == 103, scope $"{api.Count} bound types");
+		Test.Assert(api.Count == 110, scope $"{api.Count} bound types");
 		// Spot checks of the spelling at the engine's scale.
 		var scene = (ScriptApiType)null;
 		for (let t in api)
@@ -203,6 +203,67 @@ static class EngineSurfaceScriptTests
 		for (let p in vm.Problems)
 			Console.WriteLine("  {}", p);
 		Test.Assert(r.AsBool, "the lamp's light reached the script");
+	}
+
+	/// A script tunes the scene's environment and post processing live through scene.Render:
+	/// it reads the values in effect, changes them and hands them back. The scene's own values
+	/// take the edit, or its profile's while it uses one; the references (the profile) keep
+	/// their binding through the round trip.
+	[Test]
+	public static void AScriptTunesTheScenesEnvironmentAndPostProcessing()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("game", "game.as", """
+			void tune(Scene@ scene, float ambient)
+			{
+				EnvironmentSettings env = scene.Render.GetEnvironment();
+				env.AmbientIntensity = ambient;
+				scene.Render.SetEnvironment(env);
+				PostProcessSettings post = scene.Render.GetPostProcess();
+				post.ExposureEV = 1.5f;
+				scene.Render.SetPostProcess(post);
+			}
+			void fresh(Scene@ scene)
+			{
+				EnvironmentSettings made;
+				made.AmbientIntensity = 0.5f;
+				scene.Render.SetEnvironment(made);
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene();
+		let environment = scene.AddSystem<Sedulous.Engine.Render.EnvironmentSystem>();
+		let postProcess = scene.AddSystem<Sedulous.Engine.Render.PostProcessSystem>();
+		let profile = scope Sedulous.Engine.Render.EnvironmentProfile();
+		environment.Environment.Profile.SetDirect(profile);
+
+		var args = ScriptValue[2](.FromObject(scene), .FromFloat(0.75f));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("game", "void tune(Scene@, float)", args, ref r), "ran");
+		Test.Assert(Math.Abs(environment.Environment.AmbientIntensity - 0.75f) < 1e-5f, "the scene's own values");
+		Test.Assert(Math.Abs(postProcess.Post.ExposureEV - 1.5f) < 1e-5f);
+		Test.Assert(environment.Environment.Profile.Get == profile, "the reference kept its binding");
+		// A value the script made itself carries no binding at all: setting it changes the
+		// values, and the scene's references stay bound.
+		var sceneArg = ScriptValue[1](.FromObject(scene));
+		Test.Assert(vm.Call("game", "void fresh(Scene@)", sceneArg, ref r), "ran");
+		Test.Assert(Math.Abs(environment.Environment.AmbientIntensity - 0.5f) < 1e-5f);
+		Test.Assert(environment.Environment.Profile.Get == profile, "a made value does not unbind the profile");
+		environment.Environment.AmbientIntensity = 0.75f;
+
+		// Using its profile, the scene's values in effect are the profile's: the edit goes there.
+		environment.Environment.Source = .Profile;
+		args[1] = .FromFloat(0.25f);
+		Test.Assert(vm.Call("game", "void tune(Scene@, float)", args, ref r), "ran");
+		Test.Assert(Math.Abs(profile.Values.AmbientIntensity - 0.25f) < 1e-5f, "the profile took it");
+		Test.Assert(Math.Abs(environment.Environment.AmbientIntensity - 0.75f) < 1e-5f, "the scene's own stayed");
 	}
 
 	/// scene.Render sets and clears a mesh's own material properties: the component keeps

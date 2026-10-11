@@ -1,6 +1,7 @@
 using System;
 using Sedulous.Core;
 using Sedulous.Render;
+using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Script;
 using Sedulous.Engine.Render;
@@ -44,6 +45,48 @@ class RenderFacade : SceneFacade
 	/// light meter or a guard's eye, not a read of the frame; ask from a point off any surface.
 	[Scriptable]
 	public Float3 LightAt(Float3 position, uint32 groupMask = 0xFFFFFFFF) => RenderExtract.LightAt(Scene, position, groupMask);
+
+	// ---- the scene's environment and post processing, live ----
+	// What is in effect: the scene's own values, or its profile's while it uses one (and
+	// setting those changes the profile for every scene using it, as the editor does). A
+	// copy goes to the script; it changes the values and hands them back. The references in
+	// them (the profile, the sky texture) keep their assets: a script sets values, not assets.
+
+	private EnvironmentSystem Environment => Scene.GetSystem<EnvironmentSystem>();
+	private PostProcessSystem PostProcess => Scene.GetSystem<PostProcessSystem>();
+
+	/// The ambient, sky, fog and shadow settings in effect.
+	[Scriptable]
+	public EnvironmentSettings GetEnvironment() => (Environment != null) ? *Environment.Effective : EnvironmentSettings();
+	[Scriptable]
+	public void SetEnvironment(EnvironmentSettings settings)
+	{
+		if (let system = Environment)
+			CopyValues(system.Effective, settings);
+	}
+	/// The exposure, tonemap, bloom and anti aliasing in effect.
+	[Scriptable]
+	public PostProcessSettings GetPostProcess() => (PostProcess != null) ? *PostProcess.Effective : PostProcessSettings();
+	[Scriptable]
+	public void SetPostProcess(PostProcessSettings settings)
+	{
+		if (let system = PostProcess)
+			CopyValues(system.Effective, settings);
+	}
+
+	/// Every value field of `incoming` into `target`, the references excepted: a script's copy
+	/// carries a reference by its id alone, and writing that over the live one would drop its
+	/// binding (the sky would go untextured, the profile unread).
+	private static void CopyValues<T>(T* target, T incoming) where T : struct
+	{
+		var incoming;
+		for (let field in typeof(T).GetFields())
+		{
+			if (field.IsStatic || ReferenceShape.Is(field.FieldType))
+				continue;
+			Internal.MemCpy((uint8*)target + field.MemberOffset, (uint8*)&incoming + field.MemberOffset, field.FieldType.Size);
+		}
+	}
 }
 
 /// `scene.Debug`: lines, shapes and text drawn over the scene for a frame. The drawer is

@@ -105,6 +105,15 @@ scene; a name the material does not have, or a value wider than the property, ch
 nothing. Such a mesh draws on its own rather than batched with its twins, so set them on the
 few meshes that need them.
 
+The scene's environment and post processing are a script's to tune live:
+`scene.Render.GetEnvironment()` gives the ambient, sky, fog and shadow settings in effect, and
+`SetEnvironment(settings)` puts them back; `GetPostProcess()` / `SetPostProcess(settings)` do the
+same for exposure, tonemapping, bloom and anti aliasing. Read, change, set:
+`EnvironmentSettings env = scene.Render.GetEnvironment(); env.AmbientIntensity = 0.2f;
+scene.Render.SetEnvironment(env);`. While the scene uses a profile the edit changes the profile,
+so every scene using it changes too, as an edit in the editor does. A script sets values, not
+assets: the profile and the sky texture keep theirs. Runtime only, not saved with the scene.
+
 Components are script types too, as data with a few verbs: a script takes one from an
 entity, `CharacterComponent character = CharacterComponent(self);`, then reads and sets its
 fields and calls its verbs (`character.Move(vx, vz)`, `character.Jump(speed)`). The handle is

@@ -71,3 +71,16 @@ public text, Sedulous names itself), e841c88a (Raptor's backlog note).
 20. ~~8ac36257~~ (done) Sky Hopper: Bee Meadow and Cloud Fortress, built by `Tools/` (mcp.py, skygen.py,
     levels.py, ported as PaperKid's were).
 21. ~~b97873c9~~ (done) Sky Hopper: the level's card drops in once the fade clears.
+
+## Standing differences
+
+Recorded so a port audit does not flag them as missed halves:
+
+- Game native code: the player half is here (`PluginHost`, the native module setting), but the
+  editor and export halves are not. An export refuses a project that names a native module
+  (`ExportDriver`), so Raptor's native module build, reload and export commits have nothing to
+  land on yet.
+- Script values cross by copy: a scene's environment and post settings are read and set whole
+  through `scene.Render` (`GetEnvironment` / `SetEnvironment`, `GetPostProcess` /
+  `SetPostProcess`) rather than through Raptor's re-resolving `EnvironmentSettings.of(scene)`
+  handle, and a script sets their values, not the assets they reference.
