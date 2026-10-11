@@ -207,14 +207,29 @@ class ApplicationHostTests
 
 		host.Tick(0.016f);
 		Test.Assert(app.Renders == 2, "one per window");
+		Test.Assert(!host.IdleLastTick, "it presented");
+
+		// Every window minimised: nothing renders, and the tick is idle, so a desktop loop
+		// rests rather than spin; restored, it presents again.
+		let main = host.Windows[0].Window as NullWindow;
+		let second = host.Windows[1].Window as NullWindow;
+		main.SetMinimized(true);
+		second.SetMinimized(true);
+		host.Tick(0.016f);
+		Test.Assert(app.Renders == 2);
+		Test.Assert(host.IdleLastTick);
+		main.SetMinimized(false);
+		second.SetMinimized(false);
+		host.Tick(0.016f);
+		Test.Assert((app.Renders == 4) && !host.IdleLastTick);
 
 		host.CloseWindow(app.Second);
 		host.Tick(0.016f);
 		Test.Assert(host.Windows.Length == 1);
-		Test.Assert(app.Renders == 4, "the closing frame still rendered both");
+		Test.Assert(app.Renders == 6, "the closing frame still rendered both");
 
 		host.Tick(0.016f);
-		Test.Assert(app.Renders == 5, "only the survivor now");
+		Test.Assert(app.Renders == 7, "only the survivor now");
 
 		host.Stop();
 		Test.Assert(host.Windows.IsEmpty);

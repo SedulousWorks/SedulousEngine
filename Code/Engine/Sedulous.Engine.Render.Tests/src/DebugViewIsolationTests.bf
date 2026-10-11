@@ -52,6 +52,29 @@ class DebugViewIsolationTests
 		Test.Assert(!preview.HasAnyDraws);
 	}
 
+	/// The debug lists empty at every host iteration's end, whether or not a frame rendered: a
+	/// minimised window renders nothing, and lists cleared only by EndRendering grew by every
+	/// update's drawing until it came back.
+	[Test]
+	public static void TheDebugListsEmptyAtEveryIterationsEndAFrameRenderedOrNot()
+	{
+		let device = scope NullDevice();
+		let subsystem = scope RenderSubsystem(device, 2, null);
+		int32 key = 0;
+		let world = scope Scene("debug-scene");
+		for (int i < 100)
+		{
+			subsystem.DebugGlobal.DrawLine(.(0, 0, 0), .(1, 0, 0), Color(1, 1, 1, 1));
+			subsystem.DebugScreen.DrawLine(.(0, 0, 0), .(1, 0, 0), Color(1, 1, 1, 1));
+			subsystem.DebugScene(world).DrawLine(.(0, 0, 0), .(1, 0, 0), Color(1, 1, 1, 1));
+			subsystem.DebugView(&key).DrawLine(.(0, 0, 0), .(1, 0, 0), Color(1, 1, 1, 1));
+			Test.Assert(subsystem.DebugView(&key).HasAnyDraws);
+			subsystem.EndFrame(); // no rendering this iteration
+			Test.Assert(!subsystem.DebugGlobal.HasAnyDraws && !subsystem.DebugScreen.HasAnyDraws);
+			Test.Assert(!subsystem.DebugScene(world).HasAnyDraws && !subsystem.DebugView(&key).HasAnyDraws);
+		}
+	}
+
 	/// The plumbing behind the fix: a view carries BOTH lists, and an unkeyed one carries no
 	/// view list at all.
 	[Test]

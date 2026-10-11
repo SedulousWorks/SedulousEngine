@@ -30,6 +30,8 @@ class ApplicationHost : IApplicationHost
 	/// windows[0] is the main window. OWNED.
 	private List<RenderWindow> mWindows = new .() ~ DeleteContainerAndItems!(_);
 	private List<RenderWindow> mPendingClose = new .() ~ delete _;
+	/// The last Tick presented a frame to some window.
+	private bool mPresented = false;
 
 	private bool mStarted = false;
 	private bool mRunning = false;
@@ -83,6 +85,12 @@ class ApplicationHost : IApplicationHost
 		mStarted = true;
 	}
 
+	/// Whether the last Tick had windows to draw but presented to none (every one minimised,
+	/// or zero sized): nothing paced it, since the present is what waits on the display, so
+	/// a desktop loop rests rather than spin. False without graphics or windows, which a
+	/// headless host paces itself.
+	public bool IdleLastTick => (mGraphics != null) && !mWindows.IsEmpty && !mPresented;
+
 	/// Advances exactly one frame with an explicit delta.
 	///
 	/// The runner passes wall clock time; a test calls this directly, which is what makes
@@ -114,6 +122,7 @@ class ApplicationHost : IApplicationHost
 		}
 
 		// Every window, uniformly. The main window is simply the first.
+		mPresented = false;
 		if (mGraphics != null)
 		{
 			using (ProfileScope("Render"))
@@ -136,6 +145,7 @@ class ApplicationHost : IApplicationHost
 
 					using (ProfileScope("Render.Present"))
 						window.EndFrame(ref frame);
+					mPresented = true;
 				}
 				using (ProfileScope("Render.Advance"))
 					mGraphics.AdvanceFrame();

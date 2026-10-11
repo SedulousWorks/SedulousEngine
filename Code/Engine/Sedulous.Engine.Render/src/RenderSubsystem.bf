@@ -1101,7 +1101,22 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		}
 
 		// Immediate mode: the debug lists clear AFTER rendering, so the next frame's drawing
-		// starts empty. The application accumulates during its update, before the next begin.
+		// starts empty. Also at the end of every host iteration (EndFrame), so a host that
+		// renders outside the loop (a tool, a test) still finds them empty.
+		ClearDebugLists();
+	}
+
+	/// The end of every host iteration, whether or not a frame rendered: a minimised window
+	/// renders nothing, so EndRendering alone left the lists growing by every update's grid,
+	/// gizmos and wireframes until the window came back with gigabytes of lines to draw.
+	public override void EndFrame()
+	{
+		ClearDebugLists();
+	}
+
+	/// Empties every debug list: the global, the screen, each scene's and each view's.
+	private void ClearDebugLists()
+	{
 		mDebugGlobal.Clear();
 		mDebugScreen.Clear();
 		for (let debug in mDebugScenes.Values)

@@ -18,6 +18,9 @@ namespace Sedulous.Runtime.SDL3;
 /// agnostic; the concrete shell is built by the entry point and handed in.
 static class DesktopRunner
 {
+	/// How long the loop rests after a tick that presented nothing.
+	public const int32 cIdleRestMilliseconds = 10;
+
 	/// Runs until the shell or the host stops, and returns the application's exit code.
 	public static int RunApplication(IApplication app, IShell shell, GraphicsDevice graphics = null)
 	{
@@ -42,6 +45,10 @@ static class DesktopRunner
 				deltaTime = host.Settings.MaxFrameTime;
 
 			host.Tick(deltaTime);
+			// Nothing presented (every window minimised): the present is what paces the loop,
+			// so without one it would spin a core flat out. Rest instead.
+			if (host.IdleLastTick)
+				System.Threading.Thread.Sleep(cIdleRestMilliseconds);
 		}
 
 		host.Stop();
