@@ -95,8 +95,12 @@ class SceneAssetCreatorTests
 		Test.Assert(light != null);
 		Test.Assert(light.Type == .Directional);
 		Test.Assert(light.CastsShadows);
-		// Angled, not identity: the light's forward has a downward component.
+		// 40 degrees down, travelling toward +X and +Z, and strong enough that a first mesh's
+		// shadow reads (the sky fills a weak sun's shadow in).
 		let forward = RotateVector(loaded.GetLocalTransform(sun).Rotation, Float3(0, 0, -1));
-		Test.Assert(forward.Y < -0.5f);
+		Test.Assert(Math.Abs(forward.Y - (-0.6428f)) < 0.01f, "sin 40 degrees");
+		Test.Assert(forward.X > 0.5f);
+		Test.Assert(forward.Z > 0.5f);
+		Test.Assert(Math.Abs(light.Intensity - 4.0f) < 0.0001f);
 	}
 }

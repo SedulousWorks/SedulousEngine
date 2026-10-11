@@ -52,16 +52,20 @@ static class SceneCreators
 		doc.Name.Set(name);
 		if (!(instance.WriteObject(doc) case .Ok))
 			return null;
-		// A directional sun, angled so the first mesh dropped in is lit and shadowed. The
-		// intensity stays the component default, so the value a user tunes is the one shown.
+		// A directional sun, angled and strong enough that the first mesh dropped in casts a
+		// shadow you can see: at the component default (1) and 60 degrees up, the sky's light
+		// filled a short shadow in until it read as a smudge (user, 2026-10-11).
 		let seeded = scope Sedulous.Scene.Scene(name);
 		seeded.AddSystem<LightComponentManager>();
 		let sun = seeded.CreateEntity("Sun");
 		var t = Transform();
-		t.Rotation = Quaternion.FromAxisAngle(.(0, 1, 0), 0.35f) * Quaternion.FromAxisAngle(.(1, 0, 0), -1.05f);
+		// Shines along the entity's forward (-Z): 40 degrees down, travelling toward +X and +Z, so
+		// a shadow falls toward a camera that looks at the origin from that side.
+		t.Rotation = Quaternion.FromAxisAngle(.(0, 1, 0), -2.35619f) * Quaternion.FromAxisAngle(.(1, 0, 0), -0.698132f);
 		seeded.SetLocalTransform(sun, t);
 		let light = seeded.GetSystem<LightComponentManager>().Add(sun);
 		light.CastsShadows = true;
+		light.Intensity = 4.0f;
 		SceneStorage.SaveScene(seeded, instance).IgnoreError();
 		return instance;
 	}
