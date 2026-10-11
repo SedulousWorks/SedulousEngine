@@ -281,6 +281,9 @@ class Scene
 			mPrefabInstances.Add(state);
 	}
 
+	/// Every instance's state, BORROWED under the same discipline as FindPrefabInstanceByRoot.
+	public List<PrefabInstanceState> PrefabInstances => mPrefabInstances;
+
 	/// The instance whose root is `rootEntityId`, or null.
 	///
 	/// BORROWED, and only until the instance is torn down. A rebuild, a revert or a

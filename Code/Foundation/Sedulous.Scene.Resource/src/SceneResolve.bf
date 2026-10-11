@@ -122,6 +122,51 @@ static class SceneResolve
 		ReadSettingsPayload(ar, system, typeId);
 	}
 
+	/// A prefab instance's overrides of a type the scene had no manager for when it spawned
+	/// (its plugin absent), applied now that one has joined: the override on the member, and
+	/// its references to the prefab's own members remapped to the instance's copies, as at
+	/// spawn. An op still without a manager stays parked for the next arrival or the next save.
+	public static void ResolveUnresolvedPrefabOps(Scene scene)
+	{
+		let liveBySource = scope Dictionary<Guid, Guid>();
+		for (let state in scene.PrefabInstances)
+		{
+			if (state.UnresolvedComponentOps.IsEmpty)
+				continue;
+			liveBySource.Clear();
+			for (int i = 0; (i < state.SourceIds.Count) && (i < state.LiveIds.Count); i++)
+				liveBySource[state.SourceIds[i]] = state.LiveIds[i];
+
+			for (int i = 0; i < state.UnresolvedComponentOps.Count;)
+			{
+				let op = state.UnresolvedComponentOps[i];
+				let manager = scene.FindManagerBySerializationId(op.TypeId);
+				if (manager == null)
+				{
+					i++;
+					continue;
+				}
+				let entity = liveBySource.TryGetValue(op.SourceEntity, let live) ? scene.FindEntity(live) : EntityHandle.Invalid;
+				if (entity.IsAssigned)
+				{
+					if (op.Op == .Remove)
+					{
+						if (manager.HasComponent(entity))
+							manager.RemoveComponent(entity);
+					}
+					else
+					{
+						SceneStreamFormat.ComponentFromBlob(manager, entity, op.Blob);
+						PrefabEntityRefs.Remap(manager, entity, liveBySource);
+					}
+				}
+				// Applied, or its member is gone: either way it is no longer pending.
+				delete op;
+				state.UnresolvedComponentOps.RemoveAt(i);
+			}
+		}
+	}
+
 	/// Every parked record, against everything the scene now has.
 	public static void ResolveAllUnresolvedRecords(Scene scene)
 	{
@@ -133,6 +178,8 @@ static class SceneResolve
 					ResolveUnresolvedComponents(scene, manager);
 			});
 		}
+
+		ResolveUnresolvedPrefabOps(scene);
 
 		if (!scene.UnresolvedSettingsRecords.IsEmpty)
 		{

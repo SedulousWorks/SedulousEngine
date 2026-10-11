@@ -114,4 +114,54 @@ class PrefabUnresolvedOpTests
 		});
 		Test.Assert(sawOp, "the override of the absent type survived the save");
 	}
+
+	/// When the manager joins (a plugin loading into a live scene), a parked op is applied:
+	/// the override lands on the instance's member, and its references to the prefab's own
+	/// members (source ids, as a generator writes them) name the instance's copies.
+	[Test]
+	public static void AParkedOpIsAppliedWhenItsManagerJoins()
+	{
+		let payload = scope MemoryStream();
+		CapturePayload(payload);
+
+		// The plugin is absent when the instance spawns.
+		let scene = scope Scene();
+		let spawned = PrefabSpawn.Spawn(scene, payload, PrefabId);
+		let state = scene.FindPrefabInstanceByRoot(scene.GetEntityId(spawned));
+
+		// The override: a health of 50 aimed at the prefab's own root, by its source id.
+		let blob = scope List<uint8>();
+		let typeId = scope String();
+		{
+			let scratch = scope Scene();
+			let manager = scratch.AddSystem<HealthManager>();
+			let entity = scratch.CreateEntity("x");
+			let health = manager.Add(entity);
+			health.Value = 50.0f;
+			health.Target = .(state.SourceIds[0]);
+			SceneStreamFormat.ComponentToBlob(manager, entity, blob);
+			typeId.Set(manager.SerializationTypeId);
+		}
+		let delta = scope PendingPrefabInstance();
+		delta.PrefabId = PrefabId;
+		delta.SourceIds.AddRange(state.SourceIds);
+		delta.LiveIds.AddRange(state.LiveIds);
+		let op = new PendingPrefabComponentOp();
+		op.SourceEntity = state.SourceIds[0];
+		op.TypeId.Set(typeId);
+		op.Op = .Modify;
+		op.Blob.AddRange(blob);
+		delta.ComponentOps.Add(op);
+		PrefabDeltas.Apply(scene, state, delta);
+		Test.Assert(state.UnresolvedComponentOps.Count == 1, "parked: no manager yet");
+
+		// The manager joins, as a plugin's does, and the scene resolves what was parked.
+		let healthManager = scene.AddSystem<HealthManager>();
+		SceneResolve.ResolveAllUnresolvedRecords(scene);
+		Test.Assert(state.UnresolvedComponentOps.IsEmpty, "applied, no longer pending");
+		let health = healthManager.Get(spawned);
+		Test.Assert(health != null);
+		Test.Assert(health.Value == 50.0f, "the override, over the prefab's 200");
+		Test.Assert(health.Target.Id == state.LiveIds[0], "the reference names the instance's member");
+	}
 }
