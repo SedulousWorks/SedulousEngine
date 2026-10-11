@@ -46,6 +46,10 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 	/// origin: the field is read in three places and written in none.
 	private Float3 mCameraPos = .(0, 0, 0);
 
+	/// The point the alpha sort and the trail ribbons work from: the scene's primary camera,
+	/// as of the last simulated tick; the origin until a camera is found.
+	public Float3 CameraPosition => mCameraPos;
+
 	private List<int32> mSortOrder = new .() ~ delete _;
 	private List<float> mSortDistance = new .() ~ delete _;
 
@@ -217,6 +221,11 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 
 		using (ProfileScope("Particles.Simulate"))
 		{
+			// The point the back to front sort and the camera facing ribbons work from: the
+			// scene's primary camera, refreshed every tick. Without it both faced the origin.
+			var camera = ViewCamera();
+			if (Sedulous.Engine.Render.RenderExtract.ExtractPrimaryCamera(mScene, ref camera))
+				mCameraPos = camera.Position;
 			ForEach(scope (component, owner) =>
 				{
 					Simulate(component, owner, deltaTime);

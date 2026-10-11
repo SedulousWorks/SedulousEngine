@@ -276,4 +276,37 @@ class ParticleEffectRefTests
 		Test.Assert(Math.Abs(linear.X - SrgbToLinear(0.5f)) < 1e-5f);
 		Test.Assert(linear.W == 0.25f);
 	}
+
+	/// The alpha sort and the trail ribbons work from the scene's primary camera: it used to
+	/// stay at the origin for the life of the scene (read in three places, written in none).
+	[Test]
+	public static void TheManagerTakesItsCameraPositionFromTheScenesPrimaryCamera()
+	{
+		let scene = scope Scene();
+		let manager = scene.AddSystem<ParticleEffectComponentManager>();
+		let cameras = scene.AddSystem<Sedulous.Engine.Render.CameraComponentManager>();
+
+		scene.Update(0.1f);
+		Test.Assert(Near(manager.CameraPosition.X, 0.0f), "no camera yet: the origin");
+
+		let cameraEntity = scene.CreateEntity("Camera");
+		scene.SetLocalPosition(cameraEntity, .(3, 4, 5));
+		cameras.Add(cameraEntity).Primary = true;
+		scene.Update(0.1f);
+		scene.Update(0.1f);
+		let at = manager.CameraPosition;
+		Test.Assert(Near(at.X, 3.0f) && Near(at.Y, 4.0f) && Near(at.Z, 5.0f));
+
+		// It follows the camera.
+		scene.SetLocalPosition(cameraEntity, .(-1, 0, 2));
+		scene.Update(0.1f);
+		scene.Update(0.1f);
+		Test.Assert(Near(manager.CameraPosition.X, -1.0f) && Near(manager.CameraPosition.Z, 2.0f));
+
+		// An inactive primary is skipped: nothing else to pick, so the last known point stands.
+		scene.SetActive(cameraEntity, false);
+		scene.Update(0.1f);
+		scene.Update(0.1f);
+		Test.Assert(Near(manager.CameraPosition.X, -1.0f));
+	}
 }
