@@ -205,9 +205,29 @@ class DefaultApplication : IApplication, ISceneObserver
 		mBorrowedResources = borrowed;
 		if (mUI != null)
 			mUI.SetResourceManager(Resources); // the game UI's images bind through it
+		PointSpawnersAtContent();
 	}
 
-	public void SetContentDatabase(ContentDatabase database) => mContentDatabase = database;
+	public void SetContentDatabase(ContentDatabase database)
+	{
+		mContentDatabase = database;
+		PointSpawnersAtContent();
+	}
+
+	/// Every composed scene's spawn system pointed at the app's content and resources. When
+	/// either changes, the scenes that already exist follow (an editor's, across a project
+	/// close or switch), not only those composed after: one left pointing at a closed
+	/// project's database would spawn from freed memory.
+	private void PointSpawnersAtContent()
+	{
+		if (mScenes == null)
+			return;
+		mScenes.ForEachScene(scope (scene) =>
+			{
+				if (let spawner = scene.GetSystem<PrefabSpawnSystem>())
+					spawner.SetSource(mContentDatabase, Resources);
+			});
+	}
 	/// The database scene ids resolve in for script driven loads; the content database when
 	/// none is named.
 	public void SetSceneDatabase(ContentDatabase database) => mSceneDatabase = database;
@@ -221,6 +241,7 @@ class DefaultApplication : IApplication, ISceneObserver
 			RegisterStandardFactories(borrowed, host);
 		if (mUI != null)
 			mUI.SetResourceManager(Resources); // the game UI's images bind through it
+		PointSpawnersAtContent();
 	}
 
 	public void SetPrimaryScene(Scene scene) => mInstance.SetScene(scene);
@@ -531,6 +552,7 @@ class DefaultApplication : IApplication, ISceneObserver
 			mOwnedResources = new ResourceManager(mContentDatabase,
 				HasGlobalJobSystem() ? GlobalJobs() : null);
 		}
+		PointSpawnersAtContent();
 
 		let resources = Resources;
 		if (mUI != null)
