@@ -39,6 +39,11 @@ addToLibrary({
     }
   },
 
+  // `?trace` in the page's address: the input trace is wanted (shell.html shows it).
+  sedulous_page_wants_input_trace: function () {
+    return new URLSearchParams(location.search).has('trace') ? 1 : 0;
+  },
+
   // The page's loading card (shell.html) stays up until the game runs; a page without one has
   // nothing to update.
   sedulous_page_game_running: function () {

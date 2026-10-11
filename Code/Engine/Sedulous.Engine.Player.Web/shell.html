@@ -9,7 +9,14 @@
     /* The canvas fills the window; its backing pixel size is synced to the displayed size below
        so WebGPU renders at native resolution and the web shell reconfigures the swap chain to
        match. */
-    #canvas { display: block; width: 100vw; height: 100vh; outline: none; }
+    /* touch-action: the canvas takes its own touches (no pan, zoom or double-tap delay). The height
+       is the VISIBLE one (dvh): on a phone 100vh reaches behind the browser's bars, which hid the
+       bottom of the game. vh first for a browser without dvh. */
+    #canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; outline: none; touch-action: none; }
+    /* ?trace: what the page receives and what the engine makes of it, over the game. */
+    #trace { position: fixed; left: 0; top: 0; max-width: 100vw; padding: 4px 6px; margin: 0;
+             background: rgba(0,0,0,0.6); color: #cfe; font: 11px/1.25 monospace; white-space: pre-wrap;
+             pointer-events: none; z-index: 10; }
     /* What the page shows until the game draws: the engine's logo (or the game's name when the
        game has a loading screen of its own), what is downloading and how much has come, or why
        it cannot start. */
@@ -164,6 +171,33 @@
       }, function (error) { finished(); throw error; });
     };
 
+    // ?trace in the address: a panel of the browser's pointer events (each with whether the game
+    // took it: defaultPrevented) and the engine's input log (the player turns SEDULOUS_INPUT_TRACE
+    // on, WebPage.ApplyInputTrace).
+    var trace = null;
+    if (new URLSearchParams(location.search).has('trace')) {
+      var traceLines = [];
+      trace = function (text) {
+        var panel = document.getElementById('trace');
+        if (!panel) {
+          panel = document.createElement('pre');
+          panel.id = 'trace';
+          document.body.appendChild(panel);
+        }
+        traceLines.push(text);
+        if (traceLines.length > 28) traceLines.shift();
+        panel.textContent = traceLines.join('\n');
+      };
+      ['touchstart', 'touchend', 'touchcancel', 'mousedown', 'mouseup', 'click'].forEach(function (type) {
+        window.addEventListener(type, function (e) {
+          var p = e.changedTouches ? e.changedTouches[0] : e;
+          trace(type + ' (' + Math.round(p.clientX) + ',' + Math.round(p.clientY) + ')' +
+                (e.changedTouches ? ' id ' + p.identifier + ' of ' + e.touches.length : ' button ' + e.button) +
+                (e.defaultPrevented ? ' taken' : ' NOT taken') + ' on ' + (e.target.id || e.target.tagName));
+        });
+      });
+    }
+
     var Module = {
       canvas: (function () {
         var c = document.getElementById('canvas');
@@ -190,8 +224,8 @@
         console.error('the game stopped while loading: ' + what);
         loading.fail('Sorry, something went wrong while loading the game.', true);
       },
-      print: function (t) { console.log(t); },
-      printErr: function (t) { console.error(t); }
+      print: function (t) { console.log(t); if (trace && /Ui|Input/.test(t)) trace(t); },
+      printErr: function (t) { console.error(t); if (trace && /Ui|Input/.test(t)) trace(t); }
     };
   </script>
   {{{ SCRIPT }}}

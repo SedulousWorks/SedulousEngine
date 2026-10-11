@@ -35,6 +35,7 @@ class Program
 		InitGlobalLogger(new ConsoleLogger(.Information, "Player"), true);
 		GlobalLog(.Information, "Player {}", EngineVersion.String);
 
+		WebPage.ApplyInputTrace();
 		// Before the player reads the user's settings or a game its save.
 		WebPage.MountUserData();
 		StageDist();

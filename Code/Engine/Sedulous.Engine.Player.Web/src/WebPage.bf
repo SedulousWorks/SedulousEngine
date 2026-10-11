@@ -22,6 +22,8 @@ static class WebPage
 	[CLink, CallingConvention(.Cdecl)]
 	private static extern void sedulous_page_game_ended(int32 started);
 	[CLink, CallingConvention(.Cdecl)]
+	private static extern int32 sedulous_page_wants_input_trace();
+	[CLink, CallingConvention(.Cdecl)]
 	private static extern void emscripten_sleep(uint32 milliseconds);
 
 	/// Saves outlive the page: the user data directory (where a game's save and the user's
@@ -39,6 +41,15 @@ static class WebPage
 		UserDataPersister = => sedulous_persist_user_data;
 		GlobalLog(.Information, "Player: user data at '{}' ({})", directory,
 			(sedulous_user_data_persistent() != 0) ? "kept in the browser's storage" : "in memory for this page");
+	}
+
+	/// `?trace` in the page's address turns on the input trace (SEDULOUS_INPUT_TRACE): the input
+	/// path logs what it receives, which the page shows in a panel over the game (shell.html), so
+	/// a phone can show what it sends. Before the app starts, so before anything reads it.
+	public static void ApplyInputTrace()
+	{
+		if (sedulous_page_wants_input_trace() != 0)
+			Environment.SetEnvironmentVariable("SEDULOUS_INPUT_TRACE", "1").IgnoreError();
 	}
 
 	/// The game is running: the page's loading card can go.
