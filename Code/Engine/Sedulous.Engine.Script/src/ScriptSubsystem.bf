@@ -69,12 +69,12 @@ class ScriptSubsystem : Subsystem, ISceneObserver
 	public void RequestDebugger(delegate void(IScriptDebugger debugger) configurator) => mHost.RequestDebugger(configurator);
 	public bool IsDebugPaused => mHost.IsDebugPaused;
 
-	/// The default host's coroutines move with the context's time. An instance's host is
-	/// advanced by the instance, with its own gameplay time.
+	/// The default host's coroutines move with the context's time: `deltaTime` is already
+	/// scaled by it (the host passes the scaled delta), so it is not scaled again. An
+	/// instance's host is advanced by the instance, with its own gameplay time.
 	public override void Update(float deltaTime)
 	{
-		let scale = (Context != null) ? Context.TimeScale : 1.0f;
-		mHost.Advance(deltaTime * scale);
+		mHost.Advance(deltaTime);
 	}
 
 	protected override void OnReady()
