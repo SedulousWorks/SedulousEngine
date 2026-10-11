@@ -5,6 +5,7 @@ using Sedulous.Graphics.Gpu;
 using Sedulous.Runtime.SDL3;
 using Sedulous.Shell;
 using Sedulous.Shell.SDL3;
+using Sedulous.VFS;
 
 namespace Samples.ParticleFX;
 
@@ -40,6 +41,8 @@ class Program
 		// --screenshot <png> [--screenshot-frame N | --screenshot-after S] [--screenshot-exit]:
 		// a capture with no hand on F11.
 		app.SetScreenshotOptions(ScreenshotOptions.FromArguments(args));
+		// The engine data root: --data-root when given, else the discovery walk.
+		app.SetDataRoot(DataRootFromArguments(args, .. scope .()));
 		return DesktopRunner.RunApplication(app, shell, graphics);
 	}
 }

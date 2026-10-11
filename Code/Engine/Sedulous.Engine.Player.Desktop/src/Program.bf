@@ -96,6 +96,8 @@ class Program
 		// [--screenshot-exit]: a capture with no hand on F11, which is how a run proves what it
 		// drew; with a count, that many consecutive frames as <png stem>-<i>.png.
 		app.SetScreenshotOptions(ScreenshotOptions.FromArguments(args));
+		// The engine data root: --data-root when given, else the discovery walk.
+		app.SetDataRoot(DataRootFromArguments(args, .. scope .()));
 		return DesktopRunner.RunApplication(app, shell, graphics);
 	}
 
