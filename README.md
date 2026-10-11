@@ -141,6 +141,10 @@ grabs scored into combos, medal ghosts and your own best run alongside, and an a
 last course. The rider is driven through an animation graph by parameters, and the board leaves
 decal tracks in the snow. Its rider, trees and props are modelled by Blender scripts.
 
+| Courses | Ridge, past the gap | A run's results |
+|:---:|:---:|:---:|
+| ![Courses](Documentation/Images/Snowline-Title.png) | ![Ridge](Documentation/Images/Snowline-Ridge.png) | ![Results](Documentation/Images/Snowline-Results.png) |
+
 **Lamplight** is a night-time manor heist in pure stealth: lamplight and lantern shadows, a light
 meter that reads the renderer's own lights (a guard's eye reads the same), guards on navigation
 rounds who see by their lantern's cone, hear footsteps on each surface and come to a thrown
@@ -148,6 +152,10 @@ pebble, doors and gates to pick, walls that dither away between the camera and t
 reverb per room, and auto exposure from moonlit grounds into torch-lit cellars. Five levels, from
 the gardens to the vault on the upper floor. It is Raptor's, ported through the same tools, and
 not yet on SedulousDemos.
+
+| The Gardens | The Ground Floor | Away like a ghost |
+|:---:|:---:|:---:|
+| ![Gardens](Documentation/Images/Lamplight-Gardens.png) | ![Ground Floor](Documentation/Images/Lamplight-GroundFloor.png) | ![Results](Documentation/Images/Lamplight-Results.png) |
 
 ## Repository layout
 
