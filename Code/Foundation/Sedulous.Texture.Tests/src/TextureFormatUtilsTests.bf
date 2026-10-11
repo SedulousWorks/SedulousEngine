@@ -61,14 +61,12 @@ class TextureFormatUtilsTests
 		Test.Assert(TextureFormatUtils.Convert(.RGBA32F, .Linear) == .RGBA32Float);
 	}
 
-	/// R16 is the heightmap format and this RHI has no single channel sixteen bit unorm to
-	/// carry it, so it falls to the default. Pinned because that mapping is WRONG for the
-	/// bytes: it is only harmless while heightmaps stay CPU side, and this is the test that
-	/// fails when somebody tries to upload one.
+	/// R16, the heightmap format, takes the two byte unsigned container: a texel of the
+	/// data's own size, never RGBA8's four bytes over two byte samples. It has no sRGB form.
 	[Test]
-	public static void R16HasNoGpuFormatAndTakesTheDefault()
+	public static void R16TakesTheTwoByteUnsignedContainer()
 	{
-		Test.Assert(TextureFormatUtils.Convert(.R16, .Linear) == .RGBA8Unorm);
-		Test.Assert(TextureFormatUtils.Convert(.R16, .Srgb) == .RGBA8Unorm);
+		Test.Assert(TextureFormatUtils.Convert(.R16, .Linear) == .R16Uint);
+		Test.Assert(TextureFormatUtils.Convert(.R16, .Srgb) == .R16Uint);
 	}
 }

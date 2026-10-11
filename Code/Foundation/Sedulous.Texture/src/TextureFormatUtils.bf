@@ -43,12 +43,11 @@ static class TextureFormatUtils
 		case .RG32F: return .RG32Float;
 		case .RGB32F, .RGBA32F: return .RGBA32Float;
 
-		// R16 is the HEIGHTMAP format, and this RHI has no single channel sixteen bit
-		// unorm to carry it. It stays CPU side, where a heightfield reads the samples
-		// directly, so nothing asks for a GPU format for it. Falling through to the
-		// default here would silently upload it as RGBA8: named, so that is a decision
-		// rather than an omission.
-		default: return .RGBA8Unorm;
+		// R16, the heightmap format, in the two byte unsigned container: a heightfield reads
+		// the samples CPU side, and one that reaches the GPU must not be uploaded as RGBA8, a
+		// four byte texel over two byte data. No default: a new pixel format fails to compile
+		// here rather than silently becoming RGBA8.
+		case .R16: return .R16Uint;
 		}
 	}
 }
