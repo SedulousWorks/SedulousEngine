@@ -136,6 +136,31 @@ class ExpanderTests
 		Test.Assert(actions.Bounds.Y == (expander.HeaderBandHeight - 18) * 0.5f);
 	}
 
+	/// A view in place of the drawn title (an editable name) sits after the chevron, takes the
+	/// room up to the actions, and is centred down the band; clearing it goes back to the
+	/// drawn HeaderText.
+	[Test]
+	public static void AHeaderTitleViewSitsBetweenTheChevronAndTheActions()
+	{
+		let expander = new Expander("Header");
+		defer expander.ReleaseRef();
+		let actions = new TestView(44, 18);
+		let title = new TestView(60, 20);
+		expander.SetHeaderActions(actions);
+		expander.SetHeaderTitle(title);
+		Test.Assert(expander.HeaderTitle == title);
+
+		expander.Measure(BoxConstraints.Tight(400, 200));
+		expander.Layout(0, 0, 400, 200);
+		Test.Assert(title.Bounds.X == 24, "chevron x 8 + size 8 + gap 8");
+		Test.Assert(title.Bounds.X + title.Bounds.Width <= actions.Bounds.X);
+		Test.Assert(title.Bounds.Width > 60, "it takes the room up to the actions");
+		Test.Assert(title.Bounds.Y == (expander.HeaderBandHeight - 20) * 0.5f);
+
+		expander.SetHeaderTitle(null);
+		Test.Assert(expander.HeaderTitle == null);
+	}
+
 	/// A press the actions handled never reaches the toggle, which is the whole reason the
 	/// band is a layout row with real children rather than a painted strip.
 	[Test]

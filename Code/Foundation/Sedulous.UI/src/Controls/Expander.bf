@@ -102,6 +102,12 @@ class Expander : ViewGroup
 	public void SetHeaderActions(View actions, LayoutStyle layout) =>
 		mHeader.SetActions(actions, layout);
 
+	/// A view in place of the drawn title (an editable name, say), CONSUMING the caller's
+	/// reference; null draws HeaderText again. See ExpanderHeader.SetTitle.
+	public void SetHeaderTitle(View title) => mHeader.SetTitle(title);
+	/// Borrowed; may be null.
+	public View HeaderTitle => mHeader.Title;
+
 	/// The band's measured height, which is at least HeaderHeight once it has been measured.
 	public float HeaderBandHeight => mHeader.MeasuredSize.Y;
 

@@ -26,6 +26,8 @@ class ExpanderHeader : ViewGroup
 	private Expander mOwner;
 	/// BORROWED: held as a child, so the group's own reference is the owning one.
 	private View mActions = null;
+	/// A view in place of the drawn title; BORROWED the same way.
+	private View mTitle = null;
 
 	public this(Expander owner)
 	{
@@ -46,6 +48,23 @@ class ExpanderHeader : ViewGroup
 		if (actions != null)
 			AddView(actions);
 	}
+
+	/// Replaces the drawn title with a view, CONSUMING the caller's reference; null goes back to
+	/// the owner's HeaderText. An editable label renames what the section is about in place: it
+	/// sits after the chevron and ends where the actions begin, and a press it handles never
+	/// toggles the section.
+	public void SetTitle(View title)
+	{
+		if (mTitle != null)
+			RemoveView(mTitle);
+
+		mTitle = title;
+		if (title != null)
+			AddView(title);
+	}
+
+	/// Borrowed; may be null.
+	public View Title => mTitle;
 
 	/// The overload that also places the child; the other keeps whatever placement it carries.
 	public void SetActions(View actions, LayoutStyle layout)
@@ -75,6 +94,11 @@ class ExpanderHeader : ViewGroup
 			mActions.Measure(constraints.Loosen());
 			bandHeight = Max(bandHeight, mActions.MeasuredSize.Y + ActionsVPad * 2.0f);
 		}
+		if ((mTitle != null) && (mTitle.Visibility != .Gone))
+		{
+			mTitle.Measure(constraints.Loosen());
+			bandHeight = Max(bandHeight, mTitle.MeasuredSize.Y + ActionsVPad * 2.0f);
+		}
 
 		MeasuredSize = .(constraints.ConstrainWidth(constraints.BoundedMaxWidth(200.0f)),
 			constraints.ConstrainHeight(bandHeight));
@@ -82,13 +106,25 @@ class ExpanderHeader : ViewGroup
 
 	protected override void OnLayout(float left, float top, float width, float height)
 	{
-		if ((mActions == null) || (mActions.Visibility == .Gone))
-			return;
-
-		let size = mActions.MeasuredSize;
-		mActions.Layout(Max(0.0f, width - size.X - ActionsPad), Max(0.0f, (height - size.Y) * 0.5f),
-			size.X, size.Y);
+		if ((mActions != null) && (mActions.Visibility != .Gone))
+		{
+			let size = mActions.MeasuredSize;
+			mActions.Layout(Max(0.0f, width - size.X - ActionsPad), Max(0.0f, (height - size.Y) * 0.5f),
+				size.X, size.Y);
+		}
+		// The title takes the room from the chevron to the actions, at its own height, centred.
+		if ((mTitle != null) && (mTitle.Visibility != .Gone))
+		{
+			let x = TitleX;
+			let titleWidth = Max(0.0f, width - x - ReservedActionsWidth - 4.0f);
+			let titleHeight = Min(mTitle.MeasuredSize.Y, height);
+			mTitle.Measure(BoxConstraints.Tight(titleWidth, titleHeight));
+			mTitle.Layout(x, Max(0.0f, (height - titleHeight) * 0.5f), titleWidth, titleHeight);
+		}
 	}
+
+	/// Where the title begins: after the chevron.
+	private static float TitleX => ChevronX + ChevronSize + TextGap;
 
 	public override void OnDraw(UIDrawContext ctx)
 	{
@@ -153,8 +189,9 @@ class ExpanderHeader : ViewGroup
 
 	private void DrawTitle(UIDrawContext ctx)
 	{
+		// A title view draws itself in place of the text.
 		let title = mOwner.HeaderText;
-		if (title.IsEmpty || (ctx.FontService == null))
+		if ((mTitle != null) || title.IsEmpty || (ctx.FontService == null))
 			return;
 
 		let family = scope String();
@@ -168,7 +205,7 @@ class ExpanderHeader : ViewGroup
 
 		// The title's rect STOPS where the actions block begins, so a long title is truncated
 		// by its own bounds rather than running underneath the buttons.
-		let textX = ChevronX + ChevronSize + TextGap;
+		let textX = TitleX;
 		let textWidth = Max(0.0f, Width - textX - ReservedActionsWidth - 4.0f);
 		ctx.VG.DrawText(title, font, .(textX, 0, textWidth, Height), .Left, .Middle, color);
 	}
