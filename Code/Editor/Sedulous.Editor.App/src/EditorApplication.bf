@@ -961,6 +961,14 @@ class EditorApplication : IApplication
 		for (let entry in mPagePanels)
 			entry.Page.OnClose();
 		SaveLayout();
+		// The project's resources go now, detached first as CloseProject does: the manager drains
+		// its in-flight decodes through the global job system, which the host deletes as soon as
+		// this returns. Left to this app's field destructors, a decode still pending at quit (a
+		// terrain project's) was waited on through the deleted pool.
+		if (mEmbeddedApp != null)
+			mEmbeddedApp.AttachResourceManager(null, mEmbeddedHost);
+		mContext.Resources = null;
+		DeleteAndNullify!(mResources);
 		if (mEmbeddedApp != null)
 		{
 			mEmbeddedApp.OnShutdown(mEmbeddedHost);
