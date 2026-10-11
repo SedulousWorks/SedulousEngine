@@ -99,6 +99,19 @@ class ContextMenu : View, IPopupOwner
 
 	// ---- Showing ----------------------------------------------------------------------------
 
+	/// Every opening starts clean, whoever shows the menu: unhighlighted, scrolled to the top,
+	/// and rebuilt by OnOpening. A menu can be RETAINED and shown again (a menu bar's are), so
+	/// without this a reopened menu came up with the previous session's row still highlighted
+	/// until the pointer first moved. Show calls it; a menu bar, which shows its menus through
+	/// the popup layer directly, calls it too.
+	public void PrepareToOpen()
+	{
+		mHoveredIndex = -1;
+		mScrollY = 0;
+		if (OnOpening != null)
+			OnOpening(this);
+	}
+
 	/// Shows the menu at a screen position, nudged back on screen if it would not fit.
 	///
 	/// The caller KEEPS its reference; the layer takes one of its own and drops it on close.
@@ -106,13 +119,7 @@ class ContextMenu : View, IPopupOwner
 	/// the layer's is the last; a retained menu holds on to its own and can be shown again.
 	public void Show(UIContext context, float x, float y, IPopupOwner owner = null)
 	{
-		// A menu can be RETAINED and shown again, so every show starts clean. Without this a
-		// reopened menu came up with the previous session's row still highlighted, until the
-		// pointer first moved.
-		mHoveredIndex = -1;
-		mScrollY = 0;
-		if (OnOpening != null)
-			OnOpening(this);
+		PrepareToOpen();
 
 		// Cleared BEFORE the root is checked, so a show that cannot go ahead still leaves the
 		// menu in the state the next one expects.

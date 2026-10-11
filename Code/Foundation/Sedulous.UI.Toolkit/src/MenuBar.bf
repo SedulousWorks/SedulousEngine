@@ -266,11 +266,11 @@ class MenuBar : ViewGroup, IPopupOwner
 		// sitting on it and reading as one shape with the bar.
 		let screenPos = LocalToScreen(.(rect.X, mItemHeight + 2.0f));
 
-		// A menu built from live state fills itself now, before it measures: the bar shows it
-		// through the popup layer directly, so ContextMenu.Show's own call never runs here.
+		// The bar shows the menu through the popup layer directly, so ContextMenu.Show never
+		// runs here: the menu is prepared as Show would (clean, then filled from live state)
+		// before it measures.
 		let menu = mMenus[index].Menu;
-		if (menu.OnOpening != null)
-			menu.OnOpening(menu);
+		menu.PrepareToOpen();
 		menu.Measure(BoxConstraints.Loose(root.ViewportSize.X, root.ViewportSize.Y));
 
 		// The popup layer CONSUMES a reference whatever it is told about ownership, and the bar

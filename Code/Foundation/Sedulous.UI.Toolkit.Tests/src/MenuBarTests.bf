@@ -109,4 +109,30 @@ class MenuBarTests
 		Test.Assert(root.GetPopupLayer().PopupCount == 0);
 		context.MutationQueue.Drain();
 	}
+
+	/// A bar menu is retained and reopened, so it opens as ContextMenu.Show opens one: no row
+	/// left highlighted and no old scroll, even a static menu with no opening hook to rebuild it.
+	[Test]
+	public static void AReopenedMenuStartsUnhighlightedAtTheTop()
+	{
+		let context = scope UIContext();
+		let root = new RootView();
+		defer root.ReleaseRef();
+		root.ViewportSize = .(800, 600);
+		context.AddRootView(root);
+		let bar = new MenuBar();
+		root.AddView(bar);
+
+		let fileMenu = bar.AddMenu("File");
+		fileMenu.AddItem("New", new () => {});
+		fileMenu.AddItem("Open", new () => {});
+		// What the last session left: the second row hovered, the list scrolled.
+		fileMenu.[Friend]mHoveredIndex = 1;
+		fileMenu.[Friend]mScrollY = 12.0f;
+		bar.OpenMenuAt(0);
+		Test.Assert(fileMenu.HoveredIndex == -1);
+		Test.Assert(fileMenu.[Friend]mScrollY == 0);
+		bar.ClearMenus();
+		context.MutationQueue.Drain();
+	}
 }
