@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Threading;
 using Sedulous.Core;
+using Sedulous.Core.Logging;
 using joltc_Beef;
 
 namespace Sedulous.Physics;
@@ -418,7 +419,8 @@ class PhysicsWorld
 			// no mass and would trip the same assert; a zero scale is refused at shape creation,
 			// so the flat hull is the reachable case. It still collides, so it gets the mass and
 			// inertia of a solid box filling its local bounds, a centimetre thick at least,
-			// density derived or scaled to the explicit mass, and keeps simulating.
+			// density derived or scaled to the explicit mass, and keeps simulating; the warning
+			// points at the data.
 			var derived = JPH_MassProperties();
 			JPH_Shape_GetMassProperties(shape, &derived);
 			if (!(derived.mass > 0.0f) || derived.mass.IsInfinity)
@@ -434,6 +436,7 @@ class PhysicsWorld
 				JPH_BodyCreationSettings_SetOverrideMassProperties(settings,
 					.JPH_OverrideMassProperties_MassAndInertiaProvided);
 				JPH_BodyCreationSettings_SetMassPropertiesOverride(settings, &solid);
+				GlobalLog(.Warning, "Physics: a dynamic body's convex shape derives no mass (zero volume); using its bounds as a solid box ({} kg)", solid.mass);
 			}
 			else if (desc.MassOverride > 0.0f)
 			{
