@@ -54,6 +54,12 @@ free functions. `script_api` lists exactly what each one binds.
 all. It reaches only the calling run's pad (a Game tab's, the player's), and the run's end
 stops it.
 
+An input map's sets switch from a script: `Input.PushSet("Menu")` makes that set modal, so only
+its actions read while a menu is up and gameplay hears nothing, and `Input.PopSet()` takes it off
+again. What is held across either needs a fresh press, so a held Jump neither confirms the menu
+that opened nor fires as it closes. `Input.EnableSet(name, enabled)` turns a set on or off
+outside that stack.
+
 `Audio` plays a clip or a cue by its asset id (`Audio.PlayOneShot(id)`, `PlayCue`, `PlayMusic`),
 or by its content path as the project names it: `Audio.PlayOneShotPath("Audio/Jump")`,
 `PlayOneShot3DPath(path, position)`, `PlayCuePath(path)`, `PlayMusicPath(path, fadeSeconds)`. A

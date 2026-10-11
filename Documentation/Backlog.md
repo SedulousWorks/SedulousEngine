@@ -6,12 +6,11 @@ what is known; remove an item in the commit that resolves it.
 ## Decisions pending
 
 ### Input action sets for UI and gameplay
-`ActionRuntime` already has named sets with priorities, `EnableSet` / `DisableSet`, and a modal
-`PushExclusiveSet` / `PopExclusiveSet` stack that latches held input across the boundary. None
-of it is reachable from scripts, and the UI reads the pad directly (`UIInputPump.PumpGamepad`).
+`ActionRuntime` has named sets with priorities, `EnableSet` / `DisableSet`, and a modal
+`PushExclusiveSet` / `PopExclusiveSet` stack that latches held input across the boundary.
+Scripts reach it (`Input.PushSet`, `PopSet`, `EnableSet`, as Raptor's do); the UI still reads
+the pad directly (`UIInputPump.PumpGamepad`).
 
-- A. Scripts push and pop sets (`InputFacade` forwards to the run's runtime). A game's "Menu"
-  set silences gameplay under menus and gives B / Escape a "Back" action.
 - B. A screen declares its set in markup (`<screen input-set="Menu">`) and the screen stack
   pushes and pops it; needs balanced notifications from `ScreenStack` and a decision on which
   run's runtime the screen tier feeds.
@@ -19,7 +18,7 @@ of it is reachable from scripts, and the UI reads the pad directly (`UIInputPump
   rebindable UI and, later, per-device prompts. Touches the editor's play mode and the UI tests
   that fake a pad.
 
-Suggested order: A, then B, then C when rebinding or prompts are a goal. It also decides whether
+Suggested order: B, then C when rebinding or prompts are a goal. It also decides whether
 B (circle) closes Sky Hopper's settings menu. Waiting on the Raptor port settling.
 
 ### Project themes replace the built-in theme

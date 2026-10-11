@@ -44,4 +44,18 @@ class InputFacade
 	/// Stops every pad's rumble (a run's end stops it too).
 	[Scriptable]
 	public void StopRumble() => mRuntime?.StopRumble();
+
+	// ---- action sets: a menu over gameplay ----
+
+	/// Makes the set `name` modal: while it is on top only its actions read, so a "Menu" set
+	/// silences gameplay under a menu. What is held across the change needs a fresh press, so
+	/// a held Jump neither confirms the menu that opened nor fires as it closes.
+	[Scriptable]
+	public void PushSet(StringView name) => mRuntime?.PushExclusiveSet(name);
+	/// The last pushed set comes off; the one under it, or every enabled set, reads again.
+	[Scriptable]
+	public void PopSet() => mRuntime?.PopExclusiveSet();
+	/// Turns a set's actions on or off, outside the modal stack.
+	[Scriptable]
+	public void EnableSet(StringView name, bool enabled) => mRuntime?.EnableSet(name, enabled);
 }

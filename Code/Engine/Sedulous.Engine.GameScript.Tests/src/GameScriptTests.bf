@@ -496,6 +496,49 @@ static class GameScriptTests
 		Test.Assert(sourceB.Gamepad.RumbleCalls == 0);
 	}
 
+	/// A script makes a set modal under a menu and takes it off again, and turns a set off and
+	/// on: the run's own action runtime follows.
+	[Test]
+	public static void AScriptPushesAndPopsItsRunsActionSets()
+	{
+		const String cMenu = """
+			class Game
+			{
+				int step = 0;
+				void launch() {}
+				void update(float dt)
+				{
+					step++;
+					if (step == 1) { Input.PushSet("Menu"); }
+					if (step == 2) { Input.PopSet(); }
+					if (step == 3) { Input.EnableSet("Gameplay", false); }
+					if (step == 4) { Input.EnableSet("Gameplay", true); }
+				}
+			}
+			""";
+		let run = scope GameRun("scratch_game_sets");
+		let map = scope Sedulous.Input.InputMap();
+		for (let name in StringView[?]("Gameplay", "Menu"))
+		{
+			let set = new Sedulous.Input.ActionSet();
+			set.Name.Set(name);
+			map.Sets.Add(set);
+		}
+		run.Instance.SetInputMap(map);
+		let input = run.Instance.InputRuntime;
+		Test.Assert(run.Instance.StartScript(run.Class("Game", cMenu)));
+		Test.Assert(input.IsSetEnabled("Gameplay"));
+
+		run.Step();
+		Test.Assert(input.ExclusiveDepth == 1, "the menu's set is modal");
+		run.Step();
+		Test.Assert(input.ExclusiveDepth == 0, "and off again");
+		run.Step();
+		Test.Assert(!input.IsSetEnabled("Gameplay"));
+		run.Step();
+		Test.Assert(input.IsSetEnabled("Gameplay"));
+	}
+
 	/// Each run counts itself and keeps a best time; the second sees the first's values. The
 	/// first never flushes: the run writes what changed as it stops.
 	[Test]
