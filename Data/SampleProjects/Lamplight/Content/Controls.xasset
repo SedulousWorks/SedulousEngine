@@ -70,9 +70,9 @@
 						<u32 name="negY">0</u32>
 						<u32 name="posY">0</u32>
 						<f32 name="regionX">0</f32>
-						<f32 name="regionY">0.15</f32>
+						<f32 name="regionY">0.26</f32>
 						<f32 name="regionW">0.5</f32>
-						<f32 name="regionH">0.85</f32>
+						<f32 name="regionH">0.74</f32>
 						<f32 name="stickRadius">0.12</f32>
 					</array>
 					<string name="name">Sneak</string>
@@ -131,10 +131,10 @@
 						<u32 name="posX">0</u32>
 						<u32 name="negY">0</u32>
 						<u32 name="posY">0</u32>
-						<f32 name="regionX">0.5</f32>
-						<f32 name="regionY">0.575</f32>
-						<f32 name="regionW">0.25</f32>
-						<f32 name="regionH">0.425</f32>
+						<f32 name="regionX">0.86</f32>
+						<f32 name="regionY">0.46</f32>
+						<f32 name="regionW">0.13</f32>
+						<f32 name="regionH">0.24</f32>
 						<f32 name="stickRadius">0.15</f32>
 					</array>
 					<string name="name">Run</string>
@@ -193,10 +193,10 @@
 						<u32 name="posX">0</u32>
 						<u32 name="negY">0</u32>
 						<u32 name="posY">0</u32>
-						<f32 name="regionX">0.75</f32>
-						<f32 name="regionY">0.575</f32>
-						<f32 name="regionW">0.25</f32>
-						<f32 name="regionH">0.425</f32>
+						<f32 name="regionX">0.73</f32>
+						<f32 name="regionY">0.5</f32>
+						<f32 name="regionW">0.12</f32>
+						<f32 name="regionH">0.22</f32>
 						<f32 name="stickRadius">0.15</f32>
 					</array>
 					<string name="name">Interact</string>
@@ -255,10 +255,10 @@
 						<u32 name="posX">0</u32>
 						<u32 name="negY">0</u32>
 						<u32 name="posY">0</u32>
-						<f32 name="regionX">0.5</f32>
-						<f32 name="regionY">0.15</f32>
-						<f32 name="regionW">0.25</f32>
-						<f32 name="regionH">0.425</f32>
+						<f32 name="regionX">0.86</f32>
+						<f32 name="regionY">0.72</f32>
+						<f32 name="regionW">0.13</f32>
+						<f32 name="regionH">0.25</f32>
 						<f32 name="stickRadius">0.15</f32>
 					</array>
 					<string name="name">Throw</string>
@@ -317,10 +317,10 @@
 						<u32 name="posX">0</u32>
 						<u32 name="negY">0</u32>
 						<u32 name="posY">0</u32>
-						<f32 name="regionX">0.75</f32>
-						<f32 name="regionY">0.15</f32>
-						<f32 name="regionW">0.25</f32>
-						<f32 name="regionH">0.425</f32>
+						<f32 name="regionX">0.73</f32>
+						<f32 name="regionY">0.76</f32>
+						<f32 name="regionW">0.12</f32>
+						<f32 name="regionH">0.22</f32>
 						<f32 name="stickRadius">0.15</f32>
 					</array>
 					<string name="name">TurnLeft</string>
@@ -379,10 +379,10 @@
 						<u32 name="posX">0</u32>
 						<u32 name="negY">0</u32>
 						<u32 name="posY">0</u32>
-						<f32 name="regionX">0</f32>
-						<f32 name="regionY">0</f32>
-						<f32 name="regionW">0.3</f32>
-						<f32 name="regionH">0.15</f32>
+						<f32 name="regionX">0.73</f32>
+						<f32 name="regionY">0.26</f32>
+						<f32 name="regionW">0.12</f32>
+						<f32 name="regionH">0.2</f32>
 						<f32 name="stickRadius">0.15</f32>
 					</array>
 					<string name="name">TurnRight</string>
@@ -441,10 +441,10 @@
 						<u32 name="posX">0</u32>
 						<u32 name="negY">0</u32>
 						<u32 name="posY">0</u32>
-						<f32 name="regionX">0.58</f32>
-						<f32 name="regionY">0</f32>
-						<f32 name="regionW">0.3</f32>
-						<f32 name="regionH">0.15</f32>
+						<f32 name="regionX">0.86</f32>
+						<f32 name="regionY">0.22</f32>
+						<f32 name="regionW">0.13</f32>
+						<f32 name="regionH">0.22</f32>
 						<f32 name="stickRadius">0.15</f32>
 					</array>
 					<string name="name">Pause</string>
@@ -503,10 +503,10 @@
 						<u32 name="posX">0</u32>
 						<u32 name="negY">0</u32>
 						<u32 name="posY">0</u32>
-						<f32 name="regionX">0.88</f32>
-						<f32 name="regionY">0</f32>
-						<f32 name="regionW">0.12</f32>
-						<f32 name="regionH">0.15</f32>
+						<f32 name="regionX">0</f32>
+						<f32 name="regionY">0.11</f32>
+						<f32 name="regionW">0.09</f32>
+						<f32 name="regionH">0.13</f32>
 						<f32 name="stickRadius">0.15</f32>
 					</array>
 				</array>

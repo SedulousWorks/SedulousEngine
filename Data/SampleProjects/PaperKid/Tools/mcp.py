@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A tiny MCP client for the engine's two hosts.
+"""A tiny MCP client for the engine's two hosts (and `call`, for the other Tools scripts).
 
   mcp.py http <tool> [json-args]           one call to the editor (port $MCP_PORT, 7415)
   mcp.py http --list                       tools/list, names and first line
@@ -42,6 +42,22 @@ def http_rpc(method, params, ident=1):
     if raw.startswith("event:") or raw.startswith("data:"):
         raw = "\n".join(l[5:] for l in raw.splitlines() if l.startswith("data:"))
     return json.loads(raw)
+
+
+def call(tool, args):
+    """One tool call to the editor; the result parsed as JSON (or {"text": ...}). Exits on an error."""
+    r = http_rpc("tools/call", {"name": tool, "arguments": args})
+    if "error" in r:
+        raise SystemExit("%s failed: %s" % (tool, json.dumps(r["error"])[:2000]))
+    result = r["result"]
+    text = "".join(part.get("text", "") for part in result.get("content", []))
+    if result.get("isError"):
+        raise SystemExit("%s failed: %s" % (tool, text[:2000]))
+    try:
+        return json.loads(text)
+    except ValueError:
+        return {"text": text}
+
 
 
 def main():

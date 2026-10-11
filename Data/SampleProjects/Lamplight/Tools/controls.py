@@ -9,9 +9,10 @@ project's default.
 - Throw: G, or the west button (X): a pebble ahead, whose landing draws a guard to look.
 - Turn the camera a quarter left or right: Q / E, or the left and right shoulders.
 - Pause: Escape, or Start.
-- On a touch screen: a floating stick on the left moves; on the right, Interact and Throw over
-  Sneak and Run (held); turning along the top edge; Pause in the top-right corner. The engine draws
-  a guide to them once the screen is touched.
+- On a touch screen: a floating stick on the left half moves; compact buttons on the right,
+  Interact largest in the bottom-right corner, Throw beside it, Sneak above it, Run above Throw
+  (both held), the two turns above those; Pause small under the HUD's top-left. The engine draws
+  them (each zone is its button) once the screen is touched.
 Codes are the engine's enums' values (Sedulous.Shell KeyCode and GamepadButton, Sedulous.Input
 StickCode).
 """
@@ -30,21 +31,21 @@ LEFT_STICK = 0
 ACTIONS = [
     ("Move", AXIS2D, [dict(source=COMPOSITE, negX=A, posX=D, negY=S, posY=W),
                       dict(source=GAMEPAD_STICK, code=LEFT_STICK, invert=True),
-                      dict(source=TOUCH_STICK, region=(0, 0.15, 0.5, 0.85), stickRadius=0.12, invert=True)]),
+                      dict(source=TOUCH_STICK, region=(0, 0.26, 0.5, 0.74), stickRadius=0.12, invert=True)]),
     ("Sneak", BUTTON, [dict(source=KEY, code=C), dict(source=GAMEPAD_BUTTON, code=EAST),
-                       dict(source=TOUCH_BUTTON, region=(0.5, 0.575, 0.25, 0.425))]),
+                       dict(source=TOUCH_BUTTON, region=(0.86, 0.46, 0.13, 0.24))]),
     ("Run", BUTTON, [dict(source=KEY, code=LEFT_SHIFT), dict(source=GAMEPAD_BUTTON, code=LEFT_STICK_PRESS),
-                     dict(source=TOUCH_BUTTON, region=(0.75, 0.575, 0.25, 0.425))]),
+                     dict(source=TOUCH_BUTTON, region=(0.73, 0.50, 0.12, 0.22))]),
     ("Interact", BUTTON, [dict(source=KEY, code=F), dict(source=GAMEPAD_BUTTON, code=SOUTH),
-                          dict(source=TOUCH_BUTTON, region=(0.5, 0.15, 0.25, 0.425))]),
+                          dict(source=TOUCH_BUTTON, region=(0.86, 0.72, 0.13, 0.25))]),
     ("Throw", BUTTON, [dict(source=KEY, code=G), dict(source=GAMEPAD_BUTTON, code=WEST),
-                       dict(source=TOUCH_BUTTON, region=(0.75, 0.15, 0.25, 0.425))]),
+                       dict(source=TOUCH_BUTTON, region=(0.73, 0.76, 0.12, 0.22))]),
     ("TurnLeft", BUTTON, [dict(source=KEY, code=Q), dict(source=GAMEPAD_BUTTON, code=LEFT_SHOULDER),
-                          dict(source=TOUCH_BUTTON, region=(0, 0, 0.3, 0.15))]),
+                          dict(source=TOUCH_BUTTON, region=(0.73, 0.26, 0.12, 0.2))]),
     ("TurnRight", BUTTON, [dict(source=KEY, code=E), dict(source=GAMEPAD_BUTTON, code=RIGHT_SHOULDER),
-                           dict(source=TOUCH_BUTTON, region=(0.58, 0, 0.3, 0.15))]),
+                           dict(source=TOUCH_BUTTON, region=(0.86, 0.22, 0.13, 0.22))]),
     ("Pause", BUTTON, [dict(source=KEY, code=ESCAPE), dict(source=GAMEPAD_BUTTON, code=START),
-                       dict(source=TOUCH_BUTTON, region=(0.88, 0, 0.12, 0.15))]),
+                       dict(source=TOUCH_BUTTON, region=(0.0, 0.11, 0.09, 0.13))]),
 ]
 
 

@@ -32,6 +32,9 @@ Raptor's PaperKid tools, ported to this engine's asset envelopes, schema keys an
 - `anim.py`: the property-animation clips (the marker's bob, the porch mat's pulse) and the
   throw guides' glowing unlit material, written through `asset_data_write`; `kit.py` puts them on
   the delivery zone's pieces and the AimDot and TargetRing prefabs.
+- `touch.py`: the touch controls in the input map (Controls): a floating stick on the left half,
+  Throw in the bottom-right corner, Pause small in the top-left. It replaces only the map's touch
+  bindings, so it can run again after a change.
 - `scripts/*.as` + `render.py`: the game's scripts with `{{AssetName}}` placeholders (a prefab
   sharing a script's name is `{{Prefab:Name}}`); `render.py <Name>...` fills in the asset ids,
   writes `Sources/<Name>.as` and compile-checks it. `--check` compiles without writing; `--draft`

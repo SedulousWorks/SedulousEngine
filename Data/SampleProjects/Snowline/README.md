@@ -29,7 +29,9 @@ are saved. Winning a better medal on Ridge brings up the ending: the best on eve
 Controls: A and D (or the left stick) to carve, and in the air to spin; Space to jump, Left Shift
 to tuck, E to grab, Escape to pause (resume, restart the run or back to the courses). On a
 gamepad: A (cross) to jump, X (square) or the right shoulder to tuck, B (circle) to grab, Start
-to pause. The arrows and Enter, or the stick and A, drive the menus.
+to pause. The arrows and Enter, or the stick and A, drive the menus. On a touch screen: a stick anywhere on the left half to carve; buttons
+in the bottom-right corner to jump, tuck (beside it) and grab (above it); a small button under the
+clock for the title; a tap on the menus. They show once the screen is touched.
 
 ## Project layout
 

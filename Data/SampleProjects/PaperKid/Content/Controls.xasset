@@ -22,7 +22,7 @@
 					<bool name="timeScale">false</bool>
 					<u8 name="interaction">0</u8>
 					<f32 name="interactionSeconds">0.3</f32>
-					<array name="bindings" count="2">
+					<array name="bindings" count="3">
 						<u8 name="source">7</u8>
 						<u32 name="code">0</u32>
 						<u32 name="modifiers">0</u32>
@@ -57,6 +57,23 @@
 						<f32 name="regionW">1</f32>
 						<f32 name="regionH">1</f32>
 						<f32 name="stickRadius">0.15</f32>
+						<u8 name="source">9</u8>
+						<u32 name="code">0</u32>
+						<u32 name="modifiers">0</u32>
+						<i32 name="device">-1</i32>
+						<f32 name="deadZone">0.15</f32>
+						<f32 name="scale">1</f32>
+						<bool name="invert">true</bool>
+						<bool name="normalize">true</bool>
+						<u32 name="negX">0</u32>
+						<u32 name="posX">0</u32>
+						<u32 name="negY">0</u32>
+						<u32 name="posY">0</u32>
+						<f32 name="regionX">0</f32>
+						<f32 name="regionY">0.26</f32>
+						<f32 name="regionW">0.5</f32>
+						<f32 name="regionH">0.74</f32>
+						<f32 name="stickRadius">0.12</f32>
 					</array>
 					<string name="name">Throw</string>
 					<u8 name="kind">0</u8>
@@ -67,7 +84,7 @@
 					<bool name="timeScale">false</bool>
 					<u8 name="interaction">0</u8>
 					<f32 name="interactionSeconds">0.3</f32>
-					<array name="bindings" count="2">
+					<array name="bindings" count="3">
 						<u8 name="source">0</u8>
 						<u32 name="code">65</u32>
 						<u32 name="modifiers">0</u32>
@@ -102,6 +119,23 @@
 						<f32 name="regionW">1</f32>
 						<f32 name="regionH">1</f32>
 						<f32 name="stickRadius">0.15</f32>
+						<u8 name="source">8</u8>
+						<u32 name="code">0</u32>
+						<u32 name="modifiers">0</u32>
+						<i32 name="device">-1</i32>
+						<f32 name="deadZone">0.15</f32>
+						<f32 name="scale">1</f32>
+						<bool name="invert">false</bool>
+						<bool name="normalize">true</bool>
+						<u32 name="negX">0</u32>
+						<u32 name="posX">0</u32>
+						<u32 name="negY">0</u32>
+						<u32 name="posY">0</u32>
+						<f32 name="regionX">0.86</f32>
+						<f32 name="regionY">0.72</f32>
+						<f32 name="regionW">0.13</f32>
+						<f32 name="regionH">0.25</f32>
+						<f32 name="stickRadius">0.15</f32>
 					</array>
 					<string name="name">Pause</string>
 					<u8 name="kind">0</u8>
@@ -112,7 +146,7 @@
 					<bool name="timeScale">false</bool>
 					<u8 name="interaction">0</u8>
 					<f32 name="interactionSeconds">0.3</f32>
-					<array name="bindings" count="2">
+					<array name="bindings" count="3">
 						<u8 name="source">0</u8>
 						<u32 name="code">62</u32>
 						<u32 name="modifiers">0</u32>
@@ -146,6 +180,23 @@
 						<f32 name="regionY">0</f32>
 						<f32 name="regionW">1</f32>
 						<f32 name="regionH">1</f32>
+						<f32 name="stickRadius">0.15</f32>
+						<u8 name="source">8</u8>
+						<u32 name="code">0</u32>
+						<u32 name="modifiers">0</u32>
+						<i32 name="device">-1</i32>
+						<f32 name="deadZone">0.15</f32>
+						<f32 name="scale">1</f32>
+						<bool name="invert">false</bool>
+						<bool name="normalize">true</bool>
+						<u32 name="negX">0</u32>
+						<u32 name="posX">0</u32>
+						<u32 name="negY">0</u32>
+						<u32 name="posY">0</u32>
+						<f32 name="regionX">0</f32>
+						<f32 name="regionY">0.11</f32>
+						<f32 name="regionW">0.09</f32>
+						<f32 name="regionH">0.13</f32>
 						<f32 name="stickRadius">0.15</f32>
 					</array>
 				</array>

@@ -40,7 +40,9 @@ glowing dots along the paper's path and a ring spinning on the porch it is pulle
 
 Controls: WASD to ride and steer, Space to throw, Escape to pause; the arrows and Enter drive the
 menus. A gamepad works throughout: the left stick to ride and steer, A (cross) to throw and
-confirm, Start (Options) to pause.
+confirm, Start (Options) to pause. On a touch screen: a stick anywhere on the left half to ride and
+steer, a button in the bottom-right corner to throw, a small one in the top-left to pause, and a
+tap on the menus; they show once the screen is touched (`Tools/touch.py` binds them).
 
 ## Project layout
 

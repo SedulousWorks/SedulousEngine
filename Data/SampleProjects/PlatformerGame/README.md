@@ -26,7 +26,9 @@ score, stars and time of every level, and the best run, are saved and shown on t
 
 Controls: WASD to move, Space to jump, Escape to pause; the arrows and Enter drive the menus. A
 gamepad works throughout: the left stick to move (and the stick or d-pad in menus), A (cross)
-to jump and confirm, Start (Options) to pause.
+to jump and confirm, Start (Options) to pause. On a touch screen: a stick anywhere on the left half
+to move, a button in the bottom-right corner to jump, a small one in the top-left to pause, and a
+tap on the menus; they show once the screen is touched (`Tools/touch.py` binds them).
 
 ## Project layout
 

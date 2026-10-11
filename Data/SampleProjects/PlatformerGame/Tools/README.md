@@ -18,6 +18,9 @@ Raptor's Sky Hopper tools, ported to this engine's asset envelopes, schema keys 
   the shins, the pelvis Body) and an aim of the head (Neck, Head) on the Player, which drive the
   Character model's animator below it. PlayerController turns the feet off in the air; Coin.as
   points the head at the nearest coin within reach.
+- `touch.py`: the touch controls in the input map (Controls): a floating stick on the left half,
+  Jump in the bottom-right corner, Pause small in the top-left. It replaces only the map's touch
+  bindings, so it can run again after a change.
 
 Levels 1 to 3 were built earlier through the editor's tools, one entity at a time; their hearts
 and gems were placed afterwards through `scene_read` and `scene_write`.
