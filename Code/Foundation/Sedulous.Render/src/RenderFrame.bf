@@ -68,7 +68,7 @@ class RenderFrame
 	/// Sharing the prepass's instance data with the forward, which is on by default. Off
 	/// re-fills in the forward, for comparison.
 	private bool mInstanceSharing = true;
-	/// View frustum culling of the camera draw lists, off by default.
+	/// View frustum culling of the camera draw lists, on by default.
 	private bool mViewCulling = true;
 
 
