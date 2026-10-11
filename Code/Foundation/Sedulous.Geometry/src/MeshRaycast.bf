@@ -97,9 +97,9 @@ static class MeshRaycast
 			let okC = VertexIndex(mesh, i + 2, let ic);
 			if (!okA || !okB || !okC)
 				continue;
-			let a = mesh.Vertices[ia].Position;
-			let b = mesh.Vertices[ib].Position;
-			let c = mesh.Vertices[ic].Position;
+			let a = mesh.Vertices[(int)ia].Position;
+			let b = mesh.Vertices[(int)ib].Position;
+			let c = mesh.Vertices[(int)ic].Position;
 			let t = RayTriangle(origin, direction, a, b, c);
 			if ((t < 0.0f) || (t >= best))
 				continue;
