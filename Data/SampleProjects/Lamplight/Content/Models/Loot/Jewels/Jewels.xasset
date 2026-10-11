@@ -1,0 +1,104 @@
+<root>
+	<string name="guid">e106f005-74ff-9642-aee3-428acc0c5bce</string>
+	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">7383561851963481740</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">Jewels.glb</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">2980668452812246725</u64>
+				<u32 name="version">3</u32>
+			</array>
+			<object>
+				<array name="meshGuid" count="1">
+					<string>0d18c57f-8a8d-d441-9de0-95aa764e8f42</string>
+				</array>
+				<array name="meshSkinned" count="1">
+					<bool>false</bool>
+				</array>
+				<array name="meshMaterial" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="collisionGuid" count="0"/>
+				<array name="meshMaterialSlot" count="6">
+					<i32>0</i32>
+					<i32>1</i32>
+					<i32>2</i32>
+					<i32>3</i32>
+					<i32>4</i32>
+					<i32>5</i32>
+				</array>
+				<array name="meshSlotStart" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="meshSlotCount" count="1">
+					<i32>6</i32>
+				</array>
+				<array name="materialGuid" count="6">
+					<string>0d6c984b-cd7a-9047-8dd1-60c8b16734fb</string>
+					<string>55b46729-abce-ca49-8487-13e8adf30d1f</string>
+					<string>31e7f657-c267-2b40-9350-13d80d1344d9</string>
+					<string>a81da78a-b410-ec4c-a95e-06e26cb10ed7</string>
+					<string>ca5d269d-727e-804f-8702-9501d4989faa</string>
+					<string>3a4a247d-37e2-da41-b261-511f026daede</string>
+				</array>
+				<array name="materialAlbedo" count="6">
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+				</array>
+				<array name="nodeName" count="1">
+					<string>Jewels</string>
+				</array>
+				<array name="nodeParent" count="1">
+					<i32>-1</i32>
+				</array>
+				<array name="nodeTranslation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+					</object>
+				</array>
+				<array name="nodeRotation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+				</array>
+				<array name="nodeScale" count="1">
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+					</object>
+				</array>
+				<array name="nodeMesh" count="1">
+					<i32>0</i32>
+				</array>
+				<string name="skeletonGuid">00000000-0000-0000-0000-000000000000</string>
+				<array name="animationGuid" count="0"/>
+				<object name="boundsMin">
+					<f32 name="x">-0.18</f32>
+					<f32 name="y">0</f32>
+					<f32 name="z">-0.12</f32>
+				</object>
+				<object name="boundsMax">
+					<f32 name="x">0.18</f32>
+					<f32 name="y">0.36</f32>
+					<f32 name="z">0.14</f32>
+				</object>
+				<i32 name="skeletonParentNode">-2</i32>
+			</object>
+			<array name="entries" count="0"/>
+		</object>
+	</object>
+</root>

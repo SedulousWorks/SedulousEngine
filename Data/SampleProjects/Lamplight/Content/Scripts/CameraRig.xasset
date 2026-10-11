@@ -1,0 +1,15 @@
+<root>
+	<string name="guid">3468d725-08c9-5d4e-8990-cdacc96fe7ad</string>
+	<string name="typeName">Sedulous.Script.Pipeline.ScriptClassAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6162296549784860781</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">CameraRig.as</string>
+			<string name="language">angelscript</string>
+			<string name="className"/>
+		</object>
+	</object>
+</root>

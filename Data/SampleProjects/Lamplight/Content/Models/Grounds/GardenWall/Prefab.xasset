@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">3a1e8637-0672-4b49-b6ee-c3d5f67644b4</string>
+	<string name="typeName">Sedulous.Scene.Resource.PrefabDocument</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6298966941287295178</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="name">GardenWall</string>
+		</object>
+	</object>
+</root>

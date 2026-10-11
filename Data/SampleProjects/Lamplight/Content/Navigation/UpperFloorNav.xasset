@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">4bf6317b-3412-6142-8b51-4c5baa58173f</string>
+	<string name="typeName">Sedulous.Navigation.Pipeline.NavigationZoneAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">7150293957887444121</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+		</object>
+	</object>
+</root>

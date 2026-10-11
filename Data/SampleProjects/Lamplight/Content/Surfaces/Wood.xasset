@@ -1,0 +1,16 @@
+<root>
+	<string name="guid">4e5d8940-a2b6-b346-876c-cc3142818290</string>
+	<string name="typeName">Sedulous.Physics.Pipeline.PhysicalMaterialAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">14198505932413412206</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<f32 name="friction">0.6</f32>
+			<f32 name="restitution">0.05</f32>
+			<f32 name="density">700</f32>
+		</object>
+	</object>
+</root>

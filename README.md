@@ -141,6 +141,14 @@ grabs scored into combos, medal ghosts and your own best run alongside, and an a
 last course. The rider is driven through an animation graph by parameters, and the board leaves
 decal tracks in the snow. Its rider, trees and props are modelled by Blender scripts.
 
+**Lamplight** is a night-time manor heist in pure stealth: lamplight and lantern shadows, a light
+meter that reads the renderer's own lights (a guard's eye reads the same), guards on navigation
+rounds who see by their lantern's cone, hear footsteps on each surface and come to a thrown
+pebble, doors and gates to pick, walls that dither away between the camera and the thief, rain,
+reverb per room, and auto exposure from moonlit grounds into torch-lit cellars. Five levels, from
+the gardens to the vault on the upper floor. It is Raptor's, ported through the same tools, and
+not yet on SedulousDemos.
+
 ## Repository layout
 
 ```

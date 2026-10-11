@@ -1,0 +1,179 @@
+<root>
+	<string name="guid">4d82c3fb-3e54-ba46-a33c-3cfbe5c4b81b</string>
+	<string name="typeName">Sedulous.Animation.Pipeline.AnimationGraphAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">1281541014333241073</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<object name="source">
+				<array name="paramName" count="2">
+					<string>Speed</string>
+					<string>Searching</string>
+				</array>
+				<array name="paramType" count="2">
+					<u8>0</u8>
+					<u8>2</u8>
+				</array>
+				<array name="paramFloat" count="2">
+					<f32>0</f32>
+					<f32>0</f32>
+				</array>
+				<array name="paramInt" count="2">
+					<i32>0</i32>
+					<i32>0</i32>
+				</array>
+				<array name="paramBool" count="2">
+					<bool>false</bool>
+					<bool>false</bool>
+				</array>
+				<array name="layerName" count="1">
+					<string>Base</string>
+				</array>
+				<array name="layerDefaultState" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="layerBlendModeValue" count="1">
+					<u8>0</u8>
+				</array>
+				<array name="layerWeight" count="1">
+					<f32>1</f32>
+				</array>
+				<array name="layerMaskStart" count="1">
+					<u32>0</u32>
+				</array>
+				<array name="layerMaskCount" count="1">
+					<u32>0</u32>
+				</array>
+				<array name="layerStateStart" count="1">
+					<u32>0</u32>
+				</array>
+				<array name="layerStateCount" count="1">
+					<u32>2</u32>
+				</array>
+				<array name="layerTransitionStart" count="1">
+					<u32>0</u32>
+				</array>
+				<array name="layerTransitionCount" count="1">
+					<u32>2</u32>
+				</array>
+				<array name="maskWeight" count="0"/>
+				<array name="stateName" count="2">
+					<string>Move</string>
+					<string>Look</string>
+				</array>
+				<array name="stateSpeed" count="2">
+					<f32>1</f32>
+					<f32>1</f32>
+				</array>
+				<array name="stateLoop" count="2">
+					<bool>true</bool>
+					<bool>true</bool>
+				</array>
+				<array name="stateNodeKind" count="2">
+					<u8>1</u8>
+					<u8>0</u8>
+				</array>
+				<array name="stateNodeClip" count="2">
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>59d9bad8-f2d7-124f-8e77-64522f919851</string>
+				</array>
+				<array name="stateNodeParamIndex" count="2">
+					<i32>0</i32>
+					<i32>-1</i32>
+				</array>
+				<array name="stateNodeParamIndexX" count="2">
+					<i32>-1</i32>
+					<i32>-1</i32>
+				</array>
+				<array name="stateNodeParamIndexY" count="2">
+					<i32>-1</i32>
+					<i32>-1</i32>
+				</array>
+				<array name="stateEntryStart" count="2">
+					<u32>0</u32>
+					<u32>3</u32>
+				</array>
+				<array name="stateEntryCount" count="2">
+					<u32>3</u32>
+					<u32>0</u32>
+				</array>
+				<array name="entryThreshold" count="3">
+					<f32>0</f32>
+					<f32>1.2</f32>
+					<f32>4</f32>
+				</array>
+				<array name="entryPosition" count="0"/>
+				<array name="entryClip" count="3">
+					<string>4a9136ff-1250-254f-a7c1-76840473dbbb</string>
+					<string>1f7386bc-5080-8f41-82eb-745cd1d6b206</string>
+					<string>adaac31f-49e5-a94d-adfa-83791ccc2ba7</string>
+				</array>
+				<array name="transitionSource" count="2">
+					<i32>0</i32>
+					<i32>1</i32>
+				</array>
+				<array name="transitionDest" count="2">
+					<i32>1</i32>
+					<i32>0</i32>
+				</array>
+				<array name="transitionDuration" count="2">
+					<f32>0.3</f32>
+					<f32>0.3</f32>
+				</array>
+				<array name="transitionHasExitTime" count="2">
+					<bool>false</bool>
+					<bool>false</bool>
+				</array>
+				<array name="transitionExitTime" count="2">
+					<f32>1</f32>
+					<f32>1</f32>
+				</array>
+				<array name="transitionPriority" count="2">
+					<i32>0</i32>
+					<i32>0</i32>
+				</array>
+				<array name="transitionConditionStart" count="2">
+					<u32>0</u32>
+					<u32>1</u32>
+				</array>
+				<array name="transitionConditionCount" count="2">
+					<u32>1</u32>
+					<u32>1</u32>
+				</array>
+				<array name="conditionParamIndex" count="2">
+					<i32>1</i32>
+					<i32>1</i32>
+				</array>
+				<array name="conditionOp" count="2">
+					<u8>0</u8>
+					<u8>0</u8>
+				</array>
+				<array name="conditionThreshold" count="2">
+					<f32>1</f32>
+					<f32>0</f32>
+				</array>
+			</object>
+			<array name="layerLayouts" count="1">
+				<object>
+					<array name="statePositions" count="2">
+						<object>
+							<f32 name="x">280</f32>
+							<f32 name="y">120</f32>
+						</object>
+						<object>
+							<f32 name="x">500</f32>
+							<f32 name="y">120</f32>
+						</object>
+					</array>
+					<object name="anyStatePosition">
+						<f32 name="x">60</f32>
+						<f32 name="y">40</f32>
+					</object>
+				</object>
+			</array>
+		</object>
+	</object>
+</root>
