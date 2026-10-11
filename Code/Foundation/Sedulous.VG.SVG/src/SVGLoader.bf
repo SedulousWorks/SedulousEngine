@@ -658,11 +658,7 @@ static class SVGLoader
 			cursor++;
 		let name = content.Substring(nameStart, cursor - nameStart);
 
-		while ((pos < content.Length) && (content[pos] != '>'))
-			pos++;
-		let selfClosing = (pos > 0) && (pos <= content.Length) && (content[pos - 1] == '/');
-		if (pos < content.Length)
-			pos++;
+		let selfClosing = ScanToTagEnd(content, ref pos);
 
 		// An empty element has no body, and neither does a declaration or a doctype, which
 		// have no closing tag to look for.
@@ -670,6 +666,8 @@ static class SVGLoader
 			return;
 
 		// Same named elements NEST, so the first closing tag is not necessarily the match.
+		// Only a tag of THIS name moves the depth: a self closing child of any other name
+		// once closed a level, ending the skip early and dropping the siblings after it.
 		var depth = 1;
 		while ((pos < content.Length) && (depth > 0))
 		{
@@ -679,27 +677,68 @@ static class SVGLoader
 				continue;
 			}
 
-			if (SkipComment(content, ref pos))
+			if (SkipComment(content, ref pos) || SkipDelimited(content, ref pos, "<![CDATA[", "]]>")
+				|| SkipDelimited(content, ref pos, "<?", "?>"))
 				continue;
 
-			if (NameAt(content, pos + 2, name) && ((pos + 1) < content.Length)
-				&& (content[pos + 1] == '/'))
-				depth--;
-			else if (NameAt(content, pos + 1, name))
-				depth++;
-
-			pos++;
-			while ((pos < content.Length) && (content[pos] != '>'))
+			let closing = ((pos + 1) < content.Length) && (content[pos + 1] == '/');
+			let sameName = closing ? NameAt(content, pos + 2, name) : NameAt(content, pos + 1, name);
+			let emptyElement = ScanToTagEnd(content, ref pos);
+			if (sameName)
 			{
-				// A self closing occurrence opened and closed in one tag.
-				if ((content[pos] == '/') && ((pos + 1) < content.Length)
-					&& (content[pos + 1] == '>') && (depth > 1))
+				if (closing)
 					depth--;
-				pos++;
+				else if (!emptyElement)
+					depth++;
 			}
-			if (pos < content.Length)
-				pos++;
 		}
+	}
+
+	/// Moves `pos` from a tag's `<` to just past its `>`, a `>` inside a quoted attribute value
+	/// not counting. True when the tag closed itself with `/>`.
+	private static bool ScanToTagEnd(StringView content, ref int pos)
+	{
+		char8 quote = 0;
+		var last = (char8)0;
+		while (pos < content.Length)
+		{
+			let c = content[pos];
+			if (quote != 0)
+			{
+				if (c == quote)
+					quote = 0;
+			}
+			else if ((c == '"') || (c == '\''))
+				quote = c;
+			else if (c == '>')
+			{
+				pos++;
+				return last == '/';
+			}
+			if (!c.IsWhiteSpace)
+				last = c;
+			pos++;
+		}
+		return false;
+	}
+
+	/// Steps over a section from `open` to `close` (CDATA, a processing instruction), which
+	/// can hold anything, brackets included. False when none starts at `pos`.
+	private static bool SkipDelimited(StringView content, ref int pos, StringView open, StringView close)
+	{
+		if (!Matches(content, pos, open))
+			return false;
+		pos += open.Length;
+		while (pos < content.Length)
+		{
+			if (Matches(content, pos, close))
+			{
+				pos += close.Length;
+				return true;
+			}
+			pos++;
+		}
+		return true;
 	}
 
 	/// A comment ends at `-->` and can hold anything up to it, brackets included, so it is

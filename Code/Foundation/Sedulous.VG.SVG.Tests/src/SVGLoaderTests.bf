@@ -323,6 +323,38 @@ class SVGLoaderTests
 		Test.Assert(document.Elements.Count == 1);
 	}
 
+	/// Inside a skipped block, only a tag of the block's own name moves the nesting. A self
+	/// closing child of another name once closed a level, so the skip ended early and the
+	/// block's last closing tag ended the drawing's level, dropping the siblings after it.
+	[Test]
+	public static void ASelfClosingChildDoesNotEndTheSkipEarly()
+	{
+		let document = Load("""
+			<svg>
+				<metadata><metadata><x/></metadata></metadata>
+				<metadata><metadata/></metadata>
+				<rect width="10" height="10"/>
+			</svg>
+			""");
+		defer delete document;
+		Test.Assert(document.Elements.Count == 1, "the rectangle after the block survived");
+	}
+
+	/// A `>` inside a quoted attribute value does not end the tag: `title="a/>b"` once read
+	/// as a self closing `<desc>`, leaving its text and closing tag at the drawing's level.
+	[Test]
+	public static void AQuotedBracketDoesNotEndATag()
+	{
+		let document = Load("""
+			<svg>
+				<desc title="a/>b">a description</desc>
+				<rect width="10" height="10"/>
+			</svg>
+			""");
+		defer delete document;
+		Test.Assert(document.Elements.Count == 1, "the rectangle after the description survived");
+	}
+
 	/// A tag whose name merely STARTS with the skipped one does not close it.
 	[Test]
 	public static void ALongerNameDoesNotCloseTheSkippedTag()
