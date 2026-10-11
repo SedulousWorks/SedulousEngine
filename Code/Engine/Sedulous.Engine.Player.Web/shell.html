@@ -10,14 +10,17 @@
        so WebGPU renders at native resolution and the web shell reconfigures the swap chain to
        match. */
     #canvas { display: block; width: 100vw; height: 100vh; outline: none; }
-    /* What the page shows until the game draws: its name, what is downloading and how much has
-       come, or why it cannot start. */
+    /* What the page shows until the game draws: the engine's logo (or the game's name when the
+       game has a loading screen of its own), what is downloading and how much has come, or why
+       it cannot start. */
     #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
                background: #0a0a0c; color: #e8ecf3; font: 16px/1.4 system-ui, sans-serif;
                transition: opacity 0.4s ease; }
     #loading.done { opacity: 0; pointer-events: none; }
     #loading .card { width: min(420px, calc(100vw - 32px)); text-align: center; }
     #loading h1 { margin: 0 0 18px; font-size: 1.9rem; font-weight: 700; letter-spacing: 0.01em; }
+    #loading-logo { display: block; width: 100%; height: auto; margin: 0 0 22px; }
+    #loading-logo[hidden], #loading h1[hidden] { display: none; }
     #loading .bar { position: relative; height: 6px; border-radius: 3px; background: #23262e; overflow: hidden; }
     #loading .bar span { position: absolute; top: 0; bottom: 0; width: 35%; border-radius: 3px; background: #4da3ee;
                          animation: slide 1.2s ease-in-out infinite; }
@@ -34,7 +37,8 @@
 <body>
   <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
   <div id="loading"><div class="card">
-    <h1 id="loading-name">Loading</h1>
+    <img id="loading-logo" src="sedulous-logo.svg" alt="SedulousEngine" width="885" height="200" hidden>
+    <h1 id="loading-name" hidden>Loading</h1>
     <div class="bar"><span></span></div>
     <p id="loading-status">Starting</p>
     <button id="loading-again" type="button" onclick="location.reload()">Play again</button>
@@ -89,14 +93,21 @@
       }
     };
 
-    // The game's name, from the manifest the player reads too, for the card and the tab.
-    fetch('player.xml').then(function (r) { return r.ok ? r.text() : ''; }).then(function (text) {
+    // The game's name, from the manifest the player reads too, for the tab; the card shows the
+    // engine's logo, as the player's own loading screen does, unless the game names a loading
+    // screen of its own (then its name).
+    function showHeading(text) {
       var match = /<string name="name">([^<]*)<\/string>/.exec(text);
       if (match && match[1]) {
         document.title = match[1];
         document.getElementById('loading-name').textContent = match[1];
       }
-    }).catch(function () {});
+      var own = /<string name="loadingDocumentId">([^<]*)<\/string>/.exec(text);
+      var hasOwn = own && own[1] && !/^[0-]*$/.test(own[1]);
+      document.getElementById(hasOwn ? 'loading-name' : 'loading-logo').hidden = false;
+    }
+    fetch('player.xml').then(function (r) { return r.ok ? r.text() : ''; }).then(showHeading)
+      .catch(function () { showHeading(''); });
 
     // WebGPU first: without it there is no point downloading a game. A browser can have the API
     // and still give no adapter (WebGPU turned off, or the GPU blocklisted). The words are for a

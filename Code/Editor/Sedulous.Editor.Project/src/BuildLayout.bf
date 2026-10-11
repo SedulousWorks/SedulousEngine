@@ -17,6 +17,8 @@ static class BuildLayout
 	/// The template id prefix.
 	public const String cTemplateIdPrefix = "sedulous";
 	public const String cCompilerName = "Beef";
+	/// The engine's logo the web page's loading card shows, staged beside the page.
+	public const String cWebLogoName = "sedulous-logo.svg";
 	/// The platform tag of the web build; the Beef directory says wasm32.
 	public const String cWebPlatform = "Web";
 
@@ -127,8 +129,9 @@ static class BuildLayout
 			{
 				if (isDirectory || (name == pageName))
 					return;
-				// serve.py: the server the build stages beside the page, which an export ships.
-				if (name.EndsWith(".js") || name.EndsWith(".wasm") || name.EndsWith(".data") || (name == "serve.py"))
+				// serve.py and the engine's logo (the loading card's): what the build stages beside
+				// the page, which an export ships.
+				if (name.EndsWith(".js") || name.EndsWith(".wasm") || name.EndsWith(".data") || (name == "serve.py") || (name == cWebLogoName))
 					outNames.Add(new String(name));
 			});
 		outNames.Sort(scope (a, b) => a <=> b);

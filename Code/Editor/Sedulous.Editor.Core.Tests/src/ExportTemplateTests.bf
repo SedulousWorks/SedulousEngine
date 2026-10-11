@@ -497,6 +497,7 @@ static class ExportTemplateTests
 		SaveText(distDir, scope $"{BuildLayout.cWebPlayerBaseName}.js", "js\n");
 		SaveText(distDir, scope $"{BuildLayout.cWebPlayerBaseName}.wasm", "wasm\n");
 		SaveText(distDir, "serve.py", "print()\n");
+		SaveText(distDir, BuildLayout.cWebLogoName, "<svg/>\n");
 		let createdId = scope String();
 		let createdDir = scope String();
 		Test.Assert(ExportTemplates.Create(distDir, root, .Install, createdId, createdDir) case .Ok);
@@ -504,8 +505,9 @@ static class ExportTemplateTests
 		let manifest = scope ExportTemplate();
 		Test.Assert(ExportTemplates.LoadManifest(scope NativeFileSystem(createdDir), manifest) case .Ok);
 		Test.Assert((manifest.Platform == "Web") && (manifest.PlayerBinary == page) && (manifest.Compiler == "Emscripten"));
-		Test.Assert(manifest.Sidecars.Count == 3, scope $"{manifest.Sidecars.Count} web parts");
+		Test.Assert(manifest.Sidecars.Count == 4, scope $"{manifest.Sidecars.Count} web parts");
 		Test.Assert(FileExists(PathJoin(createdDir, "serve.py", .. scope .())), "the export's server ships with the page");
+		Test.Assert(FileExists(PathJoin(createdDir, BuildLayout.cWebLogoName, .. scope .())), "and the loading card's logo");
 		Test.Assert(FileExists(PathJoin(createdDir, scope $"{BuildLayout.cWebPlayerBaseName}.wasm", .. scope .())));
 	}
 

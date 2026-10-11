@@ -65,6 +65,9 @@ class PlayerApplication : DefaultApplication
 	// The boot splash and the asynchronous load behind it.
 	private SceneLoadHandle mBootLoad = .();
 	private View mSplashView = null;
+	/// The SedulousEngine logo the default loading screen shows, built into the player so a
+	/// game needs no file of it.
+	private const String cEngineLogo = Compiler.ReadText("../../../Data/Assets/branding/sedulous-logo.svg");
 	private String mBootScenePath = new .() ~ delete _;
 	private bool mBooting = false;
 
@@ -614,9 +617,10 @@ class PlayerApplication : DefaultApplication
 		if (document != null)
 			return UI.PushScreenOverlay(document);
 
-		let fallback = scope UIDocument();
-		DefaultSplashMarkup(fallback.Markup);
-		return UI.PushScreenOverlay(fallback);
+		// None authored: the engine's own, with its logo.
+		let view = DefaultLoadingScreen.Build(cEngineLogo);
+		UI.PushScreenOverlay(view);
+		return view;
 	}
 
 	private void PopSplash()
@@ -635,20 +639,5 @@ class PlayerApplication : DefaultApplication
 
 		if (let bar = root.FindByName<ProgressBar>("progress"))
 			bar.Value.Value = progress;
-	}
-
-	/// The built in splash, deliberately bare: a status line and a bar.
-	///
-	/// A distributed game authors its own and names it in the project; this only proves the
-	/// flow works with nothing authored at all. The two identifiers are the contract between
-	/// the application and whatever document is used.
-	private static void DefaultSplashMarkup(String outMarkup)
-	{
-		outMarkup.Set("""
-			<FlexLayout>
-			<Label id="status" text="Loading..."/>
-			<ProgressBar id="progress"/>
-			</FlexLayout>
-			""");
 	}
 }
