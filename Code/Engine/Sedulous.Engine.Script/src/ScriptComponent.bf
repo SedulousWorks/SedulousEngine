@@ -16,6 +16,7 @@ namespace Sedulous.Engine.Script;
 [SerializableComponent("script")]
 [DisplayName("Script")]
 [Category("Scripting")]
+[Description("Runs scripts on the entity, in order, each with its own property values.")]
 struct ScriptComponent : ISerializable, IComponentResources
 {
 	[Hidden]

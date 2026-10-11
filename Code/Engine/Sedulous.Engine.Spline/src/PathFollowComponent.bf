@@ -14,6 +14,7 @@ namespace Sedulous.Engine.Spline;
 [DisplayName("Path Follow")]
 [Category("Utility")]
 [Scriptable]
+[Description("Moves the entity along another entity's spline at a set speed, optionally facing its direction.")]
 struct PathFollowComponent : ISerializable
 {
 	/// The entity carrying the spline.

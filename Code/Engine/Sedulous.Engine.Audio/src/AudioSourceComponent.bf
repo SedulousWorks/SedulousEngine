@@ -16,6 +16,7 @@ namespace Sedulous.Engine.Audio;
 [DisplayName("Audio Source")]
 [Category("Audio")]
 [Scriptable]
+[Description("Plays a sound clip or cue from the entity, positioned in 3D or flat.")]
 struct AudioSourceComponent : ISerializable, IComponentResources
 {
 	// ---- authored ----

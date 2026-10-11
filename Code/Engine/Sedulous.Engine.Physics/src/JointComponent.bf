@@ -16,6 +16,7 @@ namespace Sedulous.Engine.Physics;
 [DisplayName("Joint")]
 [Category("Physics")]
 [Scriptable]
+[Description("Connects the entity's rigid body to another body or the world: fixed, point, hinge, slider or distance.")]
 struct JointComponent : ISerializable
 {
 	[Scriptable]

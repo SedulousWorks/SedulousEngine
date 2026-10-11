@@ -79,6 +79,7 @@ static class VegetationLayerV1
 [SerializableComponent("terrainVegetation", 4, 1)]
 [DisplayName("Terrain Vegetation")]
 [Category("Terrain")]
+[Description("Scatters grass, plants and props over the terrain on the same entity, by layer and painted mask.")]
 struct TerrainVegetationComponent : ISerializable, IComponentResources
 {
 	/// Grown from a source. OWNED, but created and freed by the manager: a struct component

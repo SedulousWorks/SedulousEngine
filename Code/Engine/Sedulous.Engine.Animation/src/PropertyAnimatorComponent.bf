@@ -23,6 +23,7 @@ namespace Sedulous.Engine.Animation;
 [DisplayName("Property Animator")]
 [Category("Animation")]
 [Scriptable]
+[Description("Plays a property animation clip on the entity, animating its transform and component values.")]
 struct PropertyAnimatorComponent : ISerializable, IComponentResources
 {
 	[Scriptable]

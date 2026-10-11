@@ -27,6 +27,7 @@ namespace Sedulous.Engine.Animation;
 [DisplayName("Skeletal Animation")]
 [Category("Animation")]
 [Scriptable]
+[Description("Plays one animation clip on a skeleton and poses the entity's skinned meshes with it.")]
 struct SkeletalAnimationComponent : ISerializable, IComponentResources
 {
 	[Scriptable]

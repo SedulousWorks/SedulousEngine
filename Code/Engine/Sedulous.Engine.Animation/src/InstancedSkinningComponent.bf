@@ -20,6 +20,7 @@ namespace Sedulous.Engine.Animation;
 [DisplayName("Instanced Skinning")]
 [Category("Animation")]
 [Scriptable]
+[Description("Animates an instanced mesh crowd from a small shared pool of poses of one clip.")]
 struct InstancedSkinningComponent
 {
 	/// BORROWED, and shared across the crowd.

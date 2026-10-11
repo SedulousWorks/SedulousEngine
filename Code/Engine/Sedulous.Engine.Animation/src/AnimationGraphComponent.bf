@@ -20,6 +20,7 @@ namespace Sedulous.Engine.Animation;
 [DisplayName("Animation Graph")]
 [Category("Animation")]
 [Scriptable]
+[Description("Animates a skeleton through an animation graph's states and blends, posing its skinned meshes.")]
 struct AnimationGraphComponent : ISerializable, IComponentResources
 {
 	[Scriptable]

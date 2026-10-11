@@ -15,6 +15,7 @@ namespace Sedulous.Engine.Render;
 [DisplayName("Reflection Probe")]
 [Category("Rendering")]
 [Scriptable]
+[Description("Captures the scene around the entity into a cubemap that gives reflections to surfaces in its box.")]
 struct ReflectionProbeComponent : ISerializable
 {
 	/// World units, axis aligned.

@@ -19,6 +19,7 @@ namespace Sedulous.Net.Replication;
 /// two sides silently. Prefab is replication's bookkeeping, off the surface.
 [SerializableComponent("net.Network")]
 [Scriptable]
+[Description("Marks the entity as networked, giving it a network id and an owner, server or client.")]
 struct NetworkComponent : ISerializable
 {
 	[Scriptable, ReadOnly]

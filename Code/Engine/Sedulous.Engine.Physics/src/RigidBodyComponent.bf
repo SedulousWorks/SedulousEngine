@@ -18,6 +18,7 @@ namespace Sedulous.Engine.Physics;
 [DisplayName("Rigid Body")]
 [Category("Physics")]
 [Scriptable]
+[Description("Makes the entity a physics body, static, kinematic or dynamic, with a collision shape.")]
 struct RigidBodyComponent : ISerializable, IComponentResources
 {
 	// ---- authored ----

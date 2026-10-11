@@ -22,6 +22,7 @@ namespace Sedulous.Engine.UI;
 [DisplayName("UI Canvas")]
 [Category("UI")]
 [Scriptable]
+[Description("Shows a UI document as a screen menu or HUD, or draws it into a render texture.")]
 struct UICanvasComponent : ISerializable, IComponentResources
 {
 	// ---- authored ----

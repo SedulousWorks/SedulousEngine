@@ -18,6 +18,7 @@ namespace Sedulous.Engine.UI;
 [DisplayName("UI Billboard")]
 [Category("UI")]
 [Scriptable]
+[Description("Shows a UI document on screen at the entity's position, such as a nameplate or health bar.")]
 struct UIBillboardComponent : ISerializable, IComponentResources
 {
 	// ---- authored ----

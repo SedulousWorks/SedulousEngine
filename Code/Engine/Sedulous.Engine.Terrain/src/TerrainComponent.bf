@@ -17,6 +17,7 @@ namespace Sedulous.Engine.Terrain;
 [DisplayName("Terrain")]
 [Category("Terrain")]
 [Scriptable]
+[Description("Draws a terrain asset, its heights and painted layers, as ground that navigation can walk.")]
 struct TerrainComponent : ISerializable, IComponentResources
 {
 	[Scriptable]

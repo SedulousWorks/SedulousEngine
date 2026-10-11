@@ -18,6 +18,7 @@ namespace Sedulous.Engine.Physics;
 [DisplayName("Collider")]
 [Category("Physics")]
 [Scriptable]
+[Description("Adds an extra collision shape to the nearest ancestor's rigid body.")]
 struct ColliderComponent : ISerializable, IComponentResources
 {
 	[Scriptable]

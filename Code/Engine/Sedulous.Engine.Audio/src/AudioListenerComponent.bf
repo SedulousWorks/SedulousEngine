@@ -11,6 +11,7 @@ namespace Sedulous.Engine.Audio;
 [DisplayName("Audio Listener")]
 [Category("Audio")]
 [Scriptable]
+[Description("Hears the scene from the entity; the first active listener is the one used.")]
 struct AudioListenerComponent : ISerializable
 {
 	[Scriptable]

@@ -13,6 +13,7 @@ namespace Sedulous.Engine.Render;
 [DisplayName("Sprite")]
 [Category("Rendering")]
 [Scriptable]
+[Description("Draws a textured billboard at the entity, facing the camera or fixed in the world.")]
 struct SpriteComponent : ISerializable, IComponentResources
 {
 	/// A runtime override for a sample or procedural art, which WINS over the asset.

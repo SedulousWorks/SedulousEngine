@@ -45,4 +45,26 @@ static class EngineSceneCompositionTests
 		Test.Assert(scratch.FindManagerBySerializationId("net.Network") != null);
 		Test.Assert(scratch.FindManagerBySerializationId("no.such.component") == null);
 	}
+
+	/// Every component says what it does for its entity, a sentence the Add Component picker
+	/// shows under its list: a new component without one is caught here, not in the picker.
+	[Test]
+	public static void EveryComponentSaysWhatItDoes()
+	{
+		let scratch = scope Scene("descriptions");
+		EngineSceneComposition.AddAllSceneManagers(scratch);
+		let missing = scope String();
+		var components = 0;
+		scratch.ForEachManager(scope [&] (manager) =>
+			{
+				let type = manager.ComponentType;
+				if (type == null)
+					return;
+				components++;
+				if (!(type.GetCustomAttribute<Sedulous.Core.DescriptionAttribute>() case .Ok(let description)) || String.IsNullOrEmpty(description.Text))
+					missing.AppendF("{} ", type.GetName(.. scope .()));
+			});
+		Test.Assert(components >= 30, scope $"{components} component types");
+		Test.Assert(missing.IsEmpty, scope $"no description: {missing}");
+	}
 }

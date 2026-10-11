@@ -26,6 +26,7 @@ namespace Sedulous.Engine.Particles;
 [DisplayName("Particle Effect")]
 [Category("Effects")]
 [Scriptable]
+[Description("Plays a particle effect at the entity: billboards, trails, meshes or lights.")]
 struct ParticleEffectComponent : ISerializable, IComponentResources
 {
 	/// BORROWED on the code path, and the clone below on the authored one. Code only; a script

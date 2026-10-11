@@ -24,6 +24,7 @@ namespace Sedulous.Engine.UI;
 [DisplayName("UI World Panel")]
 [Category("UI")]
 [Scriptable]
+[Description("Shows a UI document on a panel in the world, in the entity's plane, optionally taking pointer input.")]
 struct UIWorldPanelComponent : ISerializable, IComponentResources
 {
 	// ---- authored ----

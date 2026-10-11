@@ -16,6 +16,7 @@ namespace Sedulous.Net.Replication;
 ///
 /// Not a script type: replication owns it.
 [SerializableComponent("net.Transform")]
+[Description("Sends the entity's position, rotation and scale over the network, smoothed on clients.")]
 struct NetworkedTransform : ISerializable
 {
 	[Replicated] public Float3 Position = Float3.Zero;

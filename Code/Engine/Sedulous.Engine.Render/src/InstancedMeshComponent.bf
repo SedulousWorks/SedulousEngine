@@ -26,6 +26,7 @@ namespace Sedulous.Engine.Render;
 [DisplayName("Instanced Mesh")]
 [Category("Rendering")]
 [Scriptable]
+[Description("Draws one mesh and material at many instance transforms in a single draw, for scatter and crowds.")]
 struct InstancedMeshComponent : ISerializable, IComponentResources
 {
 	[Scriptable]

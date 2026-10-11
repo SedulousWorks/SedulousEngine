@@ -13,6 +13,7 @@ namespace Sedulous.Engine.Audio;
 [DisplayName("Reverb Zone")]
 [Category("Audio")]
 [Scriptable]
+[Description("Adds reverb to the scene's sound while the listener is inside its sphere.")]
 struct AudioReverbZoneComponent : ISerializable
 {
 	[Scriptable]

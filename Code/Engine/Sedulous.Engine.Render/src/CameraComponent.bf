@@ -15,6 +15,7 @@ namespace Sedulous.Engine.Render;
 [DisplayName("Camera")]
 [Category("Rendering")]
 [Scriptable]
+[Description("Views the scene from the entity, in perspective or orthographic, onto the screen or a render texture.")]
 struct CameraComponent : ISerializable, IComponentResources
 {
 	/// The mode first: the inspector shows only the fields of the chosen projection.

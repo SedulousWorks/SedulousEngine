@@ -16,6 +16,7 @@ namespace Sedulous.Engine.Spline;
 [DisplayName("Spline")]
 [Category("Utility")]
 [Scriptable]
+[Description("Holds a curve of points, open or closed, for paths and followers; shape it with the spline tool.")]
 struct SplineComponent : ISerializable
 {
 	/// BORROWED from the manager, which creates one per component and frees it again. A

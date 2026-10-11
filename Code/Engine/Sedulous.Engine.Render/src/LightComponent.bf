@@ -11,6 +11,7 @@ namespace Sedulous.Engine.Render;
 [DisplayName("Light")]
 [Category("Rendering")]
 [Scriptable]
+[Description("Lights the scene from the entity: directional, point or spot, optionally casting shadows.")]
 struct LightComponent : ISerializable
 {
 	[Scriptable]

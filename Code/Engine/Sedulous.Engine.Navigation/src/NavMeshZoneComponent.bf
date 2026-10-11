@@ -17,6 +17,7 @@ namespace Sedulous.Engine.Navigation;
 [SerializableComponent("navigation.Zone")]
 [DisplayName("Nav Mesh Zone")]
 [Category("Navigation")]
+[Description("Marks a box where a navigation mesh is baked, and loads that baked mesh for agents at run time.")]
 struct NavMeshZoneComponent : ISerializable, IComponentResources
 {
 	/// The zone's half extents in the entity's LOCAL space, which is the bake region.

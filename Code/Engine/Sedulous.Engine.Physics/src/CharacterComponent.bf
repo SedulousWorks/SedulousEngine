@@ -18,6 +18,7 @@ namespace Sedulous.Engine.Physics;
 [DisplayName("Character")]
 [Category("Physics")]
 [Scriptable]
+[Description("Moves the entity as a capsule character that walks slopes and steps, jumps and pushes bodies.")]
 struct CharacterComponent : ISerializable
 {
 	// ---- authored ----

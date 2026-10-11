@@ -27,6 +27,7 @@ namespace Sedulous.Engine.Render;
 [DisplayName("Mesh")]
 [Category("Rendering")]
 [Scriptable]
+[Description("Draws a mesh with its materials at the entity's transform.")]
 struct MeshComponent : ISerializable, IComponentResources
 {
 	[Scriptable]

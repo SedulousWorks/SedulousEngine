@@ -17,6 +17,7 @@ namespace Sedulous.Engine.Render;
 [DisplayName("Decal")]
 [Category("Rendering")]
 [Scriptable]
+[Description("Projects a texture onto the surfaces inside the entity's box, along its local Z axis.")]
 struct DecalComponent : ISerializable, IComponentResources
 {
 	/// A runtime override, which WINS over the asset. BORROWED. Code only; a script sets the

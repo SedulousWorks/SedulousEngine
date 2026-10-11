@@ -188,6 +188,7 @@ class IkRuntime
 [DisplayName("Two Bone IK")]
 [Category("Animation")]
 [Scriptable]
+[Description("Bends a two-bone chain so its end reaches a target, such as a foot on a step or a hand on a handle.")]
 struct TwoBoneIkComponent : ISerializable
 {
 	/// The chain by bone names. OWNED, created and freed by the manager.
@@ -270,6 +271,7 @@ class AimIkBone : ISerializable
 [DisplayName("Aim IK")]
 [Category("Animation")]
 [Scriptable]
+[Description("Turns a chain of bones so the last one points at a target, such as a head that follows.")]
 struct AimIkComponent : ISerializable
 {
 	/// Root first; the last one aims. OWNED, created and freed by the manager.
@@ -359,6 +361,7 @@ class FootIkLegBones : ISerializable
 [DisplayName("Foot IK")]
 [Category("Animation")]
 [Scriptable]
+[Description("Plants the character's feet on the ground under them, angled to its slope, and lowers the pelvis so they reach.")]
 struct FootIkComponent : ISerializable
 {
 	/// Up to four. OWNED, created and freed by the manager.

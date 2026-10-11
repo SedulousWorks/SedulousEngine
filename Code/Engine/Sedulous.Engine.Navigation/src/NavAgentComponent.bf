@@ -17,6 +17,7 @@ namespace Sedulous.Engine.Navigation;
 [DisplayName("Nav Agent")]
 [Category("Navigation")]
 [Scriptable]
+[Description("Steers the entity to targets over the navigation mesh, avoiding other agents.")]
 struct NavAgentComponent : ISerializable
 {
 	// ---- authored ----
