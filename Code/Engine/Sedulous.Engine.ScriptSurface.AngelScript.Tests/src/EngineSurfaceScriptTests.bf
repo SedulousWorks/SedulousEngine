@@ -515,6 +515,44 @@ static class EngineSurfaceScriptTests
 			"""), "Id has no setter either");
 	}
 
+	/// A path follower through its component, as Snowline's avalanche drives one: a script
+	/// sets its speed and stops it, and reads how far along it is.
+	[Test]
+	public static void AScriptDrivesAPathFollower()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("path", "path.as", """
+			float drive(const Entity &in e)
+			{
+				PathFollowComponent follow = PathFollowComponent(e);
+				follow.Speed = 3.5f;
+				follow.Playing = false;
+				return follow.Distance;
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene("path");
+		defer Sedulous.Script.SceneFacades.Release(scene);
+		let followers = scene.AddSystem<Sedulous.Engine.Spline.PathFollowComponentManager>();
+		let e = scene.CreateEntity("avalanche");
+		followers.Add(e);
+		followers.Get(e).Distance = 12.0f;
+
+		var args = ScriptValue[1](.FromEntity(e, scene));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("path", "float drive(const Entity &in)", args, ref r), "ran");
+		Test.Assert(Math.Abs(r.AsFloat - 12.0f) < 1e-5f, "how far along it is");
+		Test.Assert(followers.Get(e).Speed == 3.5f);
+		Test.Assert(!followers.Get(e).Playing, "stopped");
+	}
+
 	/// A script plays by content path, and names a bus as a game's options do: the four fixed
 	/// names (any case) reach the fixed buses, and an unknown bus reads untouched, not silent.
 	/// A path that names nothing plays nothing and does not fault.
