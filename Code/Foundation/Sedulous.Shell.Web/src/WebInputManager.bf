@@ -29,6 +29,9 @@ class WebInputManager : IInputManager
 	private uint32 mMainWindow;
 	private float mPointerScaleX = 1.0f;
 	private float mPointerScaleY = 1.0f;
+	/// The canvas's backing size: touches normalize over it.
+	private float mBackingWidth = 0.0f;
+	private float mBackingHeight = 0.0f;
 
 	public this()
 	{
@@ -149,6 +152,8 @@ class WebInputManager : IInputManager
 				&backingHeight) != .Success))
 			return;
 
+		mBackingWidth = (float)backingWidth;
+		mBackingHeight = (float)backingHeight;
 		if ((cssWidth > 0.0) && (backingWidth > 0))
 			mPointerScaleX = (float)((double)backingWidth / cssWidth);
 		if ((cssHeight > 0.0) && (backingHeight > 0))
@@ -207,12 +212,17 @@ class WebInputManager : IInputManager
 			mEvents.Add(wheel);
 
 		case .Touch:
+			// Backing pixels, where the mouse reports; normalized over the canvas for the touch
+			// bindings (the touch contract: they were pixels here, so no touch region ever
+			// matched in a browser).
 			let touchX = raw.X * mPointerScaleX;
 			let touchY = raw.Y * mPointerScaleY;
+			let normalX = (mBackingWidth > 0.0f) ? touchX / mBackingWidth : 0.0f;
+			let normalY = (mBackingHeight > 0.0f) ? touchY / mBackingHeight : 0.0f;
 			if (raw.Phase == .End)
 				mTouch.Remove(raw.TouchId);
 			else
-				mTouch.Upsert(raw.TouchId, touchX, touchY);
+				mTouch.Upsert(.(raw.TouchId, normalX, normalY, 1.0f, touchX, touchY));
 
 			InputEvent touch = .();
 			touch.Kind = (raw.Phase == .Start) ? .TouchDown

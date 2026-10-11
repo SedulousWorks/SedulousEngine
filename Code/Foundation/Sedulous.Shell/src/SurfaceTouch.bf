@@ -82,7 +82,8 @@ class SurfaceTouch : ITouch
 		if (!mSurface.Fit.ToContent(.(raw.X * window.X, raw.Y * window.Y), let inContent))
 			return false;
 
-		mapped = .(raw.Id, inContent.X / content.X, inContent.Y / content.Y, raw.Pressure);
+		// And in the surface's pointer space, content pixels, where its mouse reports.
+		mapped = .(raw.Id, inContent.X / content.X, inContent.Y / content.Y, raw.Pressure, inContent.X, inContent.Y);
 		return true;
 	}
 }

@@ -65,4 +65,22 @@ class InputSubsystemTests
 		input.ClearSourceProviderIf(tabA);
 		Test.Assert(input.ActiveSource !== tabA);
 	}
+
+	/// The runtimes in play: the subsystem's own, then each the host registers (a game
+	/// instance's), so the UI's consumption and the touch guide reach the game too.
+	[Test]
+	public static void EveryRuntimeInPlayIsReached()
+	{
+		let input = scope InputSubsystem(null);
+		int seen = 0;
+		input.ForEachRuntime(scope [&] (runtime) => { Test.Assert(runtime === input.Runtime); seen++; });
+		Test.Assert(seen == 1, "unset: its own alone");
+
+		let first = scope ActionRuntime();
+		let second = scope ActionRuntime();
+		input.SetRuntimesInPlay(new [=first, =second] (visit) => { visit(first); visit(second); });
+		let order = scope System.Collections.List<ActionRuntime>();
+		input.ForEachRuntime(scope [&] (runtime) => { order.Add(runtime); });
+		Test.Assert((order.Count == 3) && (order[0] === input.Runtime) && (order[1] === first) && (order[2] === second));
+	}
 }

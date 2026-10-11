@@ -92,7 +92,8 @@ class TouchBindingTests
 
 	/// The stick anchors where the finger LANDED, deflects over its radius, and clamps at
 	/// full. Anchoring on the finger rather than on the art is what makes one usable
-	/// without looking down at it.
+	/// without looking down at it. The finger is id 0, as a browser numbers its first finger:
+	/// the stick once took id 0 to mean no finger, so a phone's first touch never held it.
 	[Test]
 	public static void AFloatingStickAnchorsDeflectsAndClamps()
 	{
@@ -103,22 +104,53 @@ class TouchBindingTests
 		let move = runtime.Resolve("Move");
 		let devices = scope FakeDevices();
 
-		devices.FakeTouch.Set(2, 0.25f, 0.5f);
+		devices.FakeTouch.Set(0, 0.25f, 0.5f);
 		runtime.Update(devices, cStep);
 		Test.Assert(Near(runtime.Value2D(move).X, 0.0f), "the anchor IS the position");
 
 		// Half the radius out, minus what the dead zone takes off the bottom.
-		devices.FakeTouch.Set(2, 0.30f, 0.5f);
+		devices.FakeTouch.Set(0, 0.30f, 0.5f);
 		runtime.Update(devices, cStep);
 		Test.Assert(runtime.Value2D(move).X > 0.30f);
 		Test.Assert(runtime.Value2D(move).X < 0.60f);
 
-		devices.FakeTouch.Set(2, 0.60f, 0.5f);
+		devices.FakeTouch.Set(0, 0.60f, 0.5f);
 		runtime.Update(devices, cStep);
 		Test.Assert(Near(runtime.Value2D(move).X, 1.0f), "way past the radius is still full");
 		Test.Assert(Near(runtime.Value2D(move).Y, 0.0f));
 
-		devices.FakeTouch.Remove(2);
+		// The controls, as an on-screen guide reads them: each binding with its action, the
+		// stick held where its finger came down and where it is now.
+		{
+			int shown = 0;
+			var fireFirst = false;
+			var stickHeld = false;
+			var anchor = Float2.Zero;
+			var finger = Float2.Zero;
+			runtime.ForEachTouchControl(scope [&] (control) =>
+				{
+					if (shown == 0)
+						fireFirst = control.Action == "Fire";
+					shown++;
+					if (control.Binding.Source == .TouchStick)
+					{
+						stickHeld = control.Held;
+						anchor = control.Anchor;
+						finger = control.Finger;
+					}
+				});
+			Test.Assert((shown == 2) && fireFirst, "in map order");
+			Test.Assert(stickHeld);
+			Test.Assert(Near(anchor.X, 0.25f) && Near(finger.X, 0.60f));
+			// A disabled set shows nothing.
+			runtime.EnableSet("S", false);
+			int disabled = 0;
+			runtime.ForEachTouchControl(scope [&] (control) => { disabled++; });
+			Test.Assert(disabled == 0);
+			runtime.EnableSet("S");
+		}
+
+		devices.FakeTouch.Remove(0);
 		runtime.Update(devices, cStep);
 		Test.Assert(Near(runtime.Value2D(move).X, 0.0f), "and it lets go when the finger does");
 	}

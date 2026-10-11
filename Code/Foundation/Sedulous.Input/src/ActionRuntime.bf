@@ -42,9 +42,12 @@ class ActionRuntime
 		public float SinceLastTap = 1.0e9f;
 		public bool HoldFired = false;
 
-		/// A touch stick's owning contact and where it anchored.
+		/// A touch stick's owning contact: whether one holds it (a flag, not an id of 0: a
+		/// browser numbers fingers from 0), which, where it anchored and where it is now.
+		public bool TouchHeld = false;
 		public uint64 TouchId = 0;
 		public Float2 TouchAnchor = .Zero;
+		public Float2 TouchPoint = .Zero;
 
 		public this() {}
 	}
@@ -216,6 +219,57 @@ class ActionRuntime
 
 		mRefs.Add(entry);
 		return .((uint32)(mRefs.Count - 1));
+	}
+
+	// ---- the touch controls, for an on-screen guide ----
+
+	/// A touch control of the sets in effect, for an on-screen guide to them.
+	public struct TouchControl
+	{
+		/// The action it drives.
+		public StringView Action;
+		/// Its region, and a stick's reach (normalized).
+		public Binding Binding;
+		/// The action is held.
+		public bool Down;
+		/// A stick a finger holds: the anchor and the finger follow it.
+		public bool Held;
+		/// Where that finger came down (normalized).
+		public Float2 Anchor;
+		/// Where it is now (normalized).
+		public Float2 Finger;
+	}
+
+	/// Every touch binding (TouchButton, TouchStick) of the sets in effect: the enabled ones,
+	/// or the exclusive top alone while one is pushed. In map order.
+	public void ForEachTouchControl(delegate void(TouchControl control) visit)
+	{
+		let exclusiveTop = ExclusiveTopSet();
+		int flat = 0;
+		for (int s = 0; s < mMap.Sets.Count; s++)
+		{
+			let inEffect = mSetEnabled[s] && ((exclusiveTop < 0) || (s == exclusiveTop));
+			for (int a = 0; a < mMap.Sets[s].Actions.Count; a++, flat++)
+			{
+				if (!inEffect)
+					continue;
+				let action = mMap.Sets[s].Actions[a];
+				let state = mStates[flat];
+				for (let binding in action.Bindings)
+				{
+					if ((binding.Source != .TouchButton) && (binding.Source != .TouchStick))
+						continue;
+					var control = TouchControl();
+					control.Action = action.Name;
+					control.Binding = binding;
+					control.Down = state.Pressed;
+					control.Held = (binding.Source == .TouchStick) && state.TouchHeld;
+					control.Anchor = state.TouchAnchor;
+					control.Finger = state.TouchPoint;
+					visit(control);
+				}
+			}
+		}
 	}
 
 	// ---- per frame evaluation ----
@@ -661,7 +715,7 @@ class ActionRuntime
 		{
 			// No touch device: drop the anchor, so plugging one in later does not resume a
 			// stick from a contact that ended long ago.
-			state.TouchId = 0;
+			state.TouchHeld = false;
 			return result;
 		}
 
@@ -687,7 +741,7 @@ class ActionRuntime
 
 		// TouchStick: a FLOATING stick, anchored where its owning contact started rather
 		// than where any art sits. That is what makes one usable without looking at it.
-		if (state.TouchId != 0)
+		if (state.TouchHeld)
 		{
 			var owning = TouchPoint();
 			var alive = false;
@@ -703,10 +757,11 @@ class ActionRuntime
 
 			if (!alive)
 			{
-				state.TouchId = 0;
+				state.TouchHeld = false;
 			}
 			else
 			{
+				state.TouchPoint = .(owning.X, owning.Y);
 				let radius = (binding.StickRadius > 0.0f) ? binding.StickRadius : 0.15f;
 				var value = Float2((owning.X - state.TouchAnchor.X) / radius,
 					(owning.Y - state.TouchAnchor.Y) / radius);
@@ -725,14 +780,16 @@ class ActionRuntime
 			}
 		}
 
-		if (state.TouchId == 0)
+		if (!state.TouchHeld)
 		{
 			for (int32 i = 0; i < count; i++)
 			{
 				if (touch.GetTouchPoint(i, var point) && InRegion(point.X, point.Y))
 				{
+					state.TouchHeld = true;
 					state.TouchId = point.Id;
 					state.TouchAnchor = .(point.X, point.Y);
+					state.TouchPoint = state.TouchAnchor;
 					// The value stays zero this frame: the anchor IS the position.
 					break;
 				}

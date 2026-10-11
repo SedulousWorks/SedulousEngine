@@ -27,20 +27,18 @@ class WebTouch : ITouch
 		return true;
 	}
 
-	public void Upsert(uint64 id, float x, float y)
+	/// A touchstart or touchmove: normalized over the canvas, and in the mouse's backing pixels.
+	public void Upsert(TouchPoint point)
 	{
 		for (int i < mPoints.Count)
 		{
-			if (mPoints[i].Id == id)
+			if (mPoints[i].Id == point.Id)
 			{
-				var existing = mPoints[i];
-				existing.X = x;
-				existing.Y = y;
-				mPoints[i] = existing;
+				mPoints[i] = point;
 				return;
 			}
 		}
-		mPoints.Add(.(id, x, y));
+		mPoints.Add(point);
 	}
 
 	public void Remove(uint64 id)

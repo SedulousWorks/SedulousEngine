@@ -269,7 +269,13 @@ class SDL3Shell : IShell
 				e.Y = event.tfinger.y;
 				e.Value = event.tfinger.pressure;
 				mInput.EmitEvent(e);
-				mInput.TouchDevice.AddOrUpdate(.(e.TouchId, e.X, e.Y, e.Value));
+				// In the mouse's coordinates too (SDL window coordinates): normalized times the
+				// window's size.
+				int32 width = 0;
+				int32 height = 0;
+				if (let window = SDL3.SDL_GetWindowFromID(event.tfinger.windowID))
+					SDL3.SDL_GetWindowSize(window, &width, &height);
+				mInput.TouchDevice.AddOrUpdate(.(e.TouchId, e.X, e.Y, e.Value, e.X * (float)width, e.Y * (float)height));
 
 			case .SDL_EVENT_FINGER_UP:
 				var e = InputEvent();

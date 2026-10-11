@@ -206,6 +206,8 @@ class InputSurfaceTests
 		// x=100 of a 200 region showing 400 content is content x=200, normalised 0.5.
 		Test.Assert(Near(point.X, 0.5f), scope $"got {point.X}");
 		Test.Assert(Near(point.Pressure, 0.8f), "pressure passes through");
+		// And in the surface's pointer space, content pixels, where its mouse reports.
+		Test.Assert(Near(point.PointerX, 200.0f), scope $"got {point.PointerX}");
 
 		Test.Assert(!surface.Touch.GetTouchPoint(1, let beyond), "there is no second one here");
 		Test.Assert(!surface.Touch.GetTouchPoint(-1, let negative));
