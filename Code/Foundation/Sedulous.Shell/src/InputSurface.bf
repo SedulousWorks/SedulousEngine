@@ -68,6 +68,9 @@ class InputSurface
 	public void SetRegion(Rectangle region) => mFit.Region = region;
 	public void SetContentSize(Float2 size) => mFit.ContentSize = size;
 	public void SetFitMode(FitMode mode) => mFit.Mode = mode;
+	/// The content presented turned (a landscape game on a portrait screen): the pointer and
+	/// fingers turn back with it.
+	public void SetRotation(ContentRotation rotation) => mFit.Rotation = rotation;
 	public void SetWindowSize(Float2 size) => mWindowSize = size;
 	public Float2 WindowSize => mWindowSize;
 

@@ -230,6 +230,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		AdvanceScriptedInput();
 		EnsureViewportBound();
 		TickResolution(dt);
+		SyncGameFit(); // the target may have changed shape: the turn, and so the pointer's map
 		mViewport.SyncInputRegion();
 		// A running game owns the keys its focused viewport receives: the editor's arrow key
 		// focus moves and single key bindings stay out of it.
@@ -280,11 +281,11 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mCaptureY = 0;
 		mCaptureWidth = w;
 		mCaptureHeight = h;
-		if (HasRenderResolution)
+		let fit = GameFitIn(w, h);
+		if (GameFitted(fit))
 		{
-			// At the render resolution, fitted into the panel as the player fits its window;
-			// the capture is the game's image, without the bars.
-			let fit = RenderFitIn(w, h);
+			// At the render resolution (or turned), fitted into the panel as the player fits its
+			// window; the capture is the game's image, without the bars.
 			let dst = fit.DstRect();
 			let viewport = ViewportRect((int32)dst.X, (int32)dst.Y, (uint32)Math.Max(dst.Width, 1.0f), (uint32)Math.Max(dst.Height, 1.0f));
 			mRender.RenderScene(mScene, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, viewport,
@@ -321,6 +322,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		if ((mApp != null) && (mApp.UI != null))
 		{
 			mApp.UI.SetScreenResolution(mGameInstance, mRenderWidth, mRenderHeight, mRenderFit);
+			mApp.UI.SetScreenOrientation(mGameInstance, mOrientation);
 			mApp.UI.SetRenderRun(mGameInstance);
 		}
 		mRender.RenderOverlays(frame.Encoder, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, frame.FrameIndex);

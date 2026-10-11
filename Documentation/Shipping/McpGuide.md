@@ -73,7 +73,10 @@ does for a scene page: the pixels the tab drew, without the bars. A tab smaller 
 render resolution draws the game scaled down; the answer then adds `renderWidth`, `renderHeight`
 and `scale`, the PNG is that scaled image (soft text in it is the scale, not the font), and
 `pie_run`'s mouse positions, which are in render resolution pixels, are its pixels divided by
-`scale`.
+`scale`. With the tab's Phone toggle on, its screen is a phone held upright (720 x 1560, letterboxed
+in the panel), and a game held to the other orientation (its project's, or a chosen export
+preset's) is presented turned, as a phone shows it: the screenshot is portrait and the game
+sideways in it, while `pie_run` still takes the game's own pixels.
 
 `pie_run` is the playtest: it plays a device-level input timeline into one running instance
 for `duration` seconds of run time and answers what happened. The timeline takes keys by their

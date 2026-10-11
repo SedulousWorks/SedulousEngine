@@ -378,6 +378,46 @@ class ViewportViewTests
 		Test.Assert(view.Surface.Fit.Region.Height == 150);
 	}
 
+	/// The editor's Game tab previewing a phone held upright. The texture is the phone's screen (a
+	/// fixed 720x1560) letterboxed in the panel, and a landscape game inside it is presented
+	/// turned three quarters: the pointer maps through both, to the game's own pixels.
+	[Test]
+	public static void AFixedSizeScreenWithTurnedContentMapsThePointerThroughBoth()
+	{
+		let harness = scope Harness();
+		let input = scope NullInputManager();
+		let root = new RootView();
+		defer root.ReleaseRef();
+		let view = new ViewportView();
+		view.Initialize(harness.Device, harness.Renderer, input, 0);
+		Test.Assert(view.Surface != null);
+		root.AddView(view);
+		view.Layout(0, 0, 1000, 600);
+		view.SetFixedResolution(720, 1560);
+		view.FitMode = .Letterbox;
+		Test.Assert(view.RenderWidth == 720);
+		// The game at the phone's pixels turned (1560x720), filling the screen.
+		view.SetContentResolution(1560, 720, .Stretch, .ThreeQuarter);
+		view.SyncInputRegion();
+		let fit = view.Surface.Fit;
+
+		bool Near(float a, float b, float relative) => Math.Abs(a - b) <= relative * Math.Max(1.0f, Math.Abs(b));
+		// The phone's screen in the panel: 600 tall, 600 * 720 / 1560 wide, centred.
+		let width = 600.0f * 720.0f / 1560.0f;
+		let left = (1000.0f - width) * 0.5f;
+		// Near the screen's bottom-left: near the game's top-left (its top on the screen's left).
+		Test.Assert(fit.ToContent(.(left + 1.0f, 599.0f), var c));
+		Test.Assert(Near(c.X, 1560.0f / 600.0f, 0.05f) && Near(c.Y, 720.0f / width, 0.05f), scope $"({c.X}, {c.Y})");
+		// The screen's centre: the game's.
+		Test.Assert(fit.ToContent(.(500.0f, 300.0f), out c));
+		Test.Assert(Near(c.X, 780.0f, 0.001f) && Near(c.Y, 360.0f, 0.001f), scope $"({c.X}, {c.Y})");
+		// The screen's top-right: the game's bottom-right.
+		Test.Assert(fit.ToContent(.(left + width - 0.01f, 0.01f), out c));
+		Test.Assert(Near(c.X, 1560.0f, 0.01f) && Near(c.Y, 720.0f, 0.01f), scope $"({c.X}, {c.Y})");
+		// Beside the phone, in the panel's bars: no hit.
+		Test.Assert(!fit.ToContent(.(50.0f, 300.0f), out c));
+	}
+
 	/// ONE app keyboard: the viewport yields only when the host UI's focus is on something
 	/// else. Absent focus does NOT count as elsewhere, or clicking dead editor space would
 	/// mute a running game.

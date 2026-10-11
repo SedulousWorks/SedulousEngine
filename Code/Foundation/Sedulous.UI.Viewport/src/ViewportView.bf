@@ -92,17 +92,20 @@ class ViewportView : View
 
 	/// The resolution the content draws at INSIDE the texture, fitted by `fit`, when it draws
 	/// its own fitted image (a game at its render resolution, letterboxed in a panel sized
-	/// texture): the input surface then maps the pointer into that resolution. Nought is the
-	/// texture's own.
-	public void SetContentResolution(uint32 width, uint32 height, FitMode fit)
+	/// texture): the input surface then maps the pointer into that resolution, turned back when
+	/// the content is presented turned (`rotation`). Nought is the texture's own.
+	public void SetContentResolution(uint32 width, uint32 height, FitMode fit, ContentRotation rotation = .None)
 	{
 		mContentWidth = width;
 		mContentHeight = height;
 		mContentFit = fit;
+		mContentRotation = rotation;
 	}
 	private uint32 mContentWidth = 0;
 	private uint32 mContentHeight = 0;
 	private FitMode mContentFit = .Letterbox;
+	/// The content presented turned.
+	private ContentRotation mContentRotation = .None;
 
 	public this()
 	{
@@ -331,17 +334,41 @@ class ViewportView : View
 			dpi = Max(rootView.DpiScale, 0.01f);
 
 		let topLeft = LocalToScreen(.(0, 0));
-		mSurface.SetRegion(.(topLeft.X * dpi, topLeft.Y * dpi, Width * dpi, Height * dpi));
+		let region = Rectangle(topLeft.X * dpi, topLeft.Y * dpi, Width * dpi, Height * dpi);
+		mSurface.SetRegion(region);
+		mSurface.SetRotation(.None);
+		let texture = Float2(mTextureWidth, mTextureHeight);
 		if ((mContentWidth > 0) && (mContentHeight > 0))
 		{
 			// The content draws at a resolution of its own inside the texture: the pointer maps
-			// into THAT, through the content's own fit.
-			mSurface.SetContentSize(.(mContentWidth, mContentHeight));
+			// into THAT, through the content's own fit (and turn).
+			let content = Float2(mContentWidth, mContentHeight);
+			mSurface.SetContentSize(content);
 			mSurface.SetFitMode(mContentFit);
+			mSurface.SetRotation(mContentRotation);
+			if ((mFixedWidth > 0) && (mFixedHeight > 0) && (texture.X > 0.0f) && (texture.Y > 0.0f))
+			{
+				// Two steps in one fit: the texture (a fixed size, a phone's screen) is fitted
+				// into the view, and the content into the texture. The content's own rectangle,
+				// carried through the first step, is where the pointer maps through the second.
+				let drawn = ContentFit(region, texture, mFitMode).DstRect();
+				if (mContentFit == .Crop)
+				{
+					mSurface.SetRegion(drawn); // no bars, a slice: the fit scales evenly
+				}
+				else
+				{
+					let inside = ContentFit(.(0, 0, texture.X, texture.Y), content, mContentFit, mContentRotation).DstRect();
+					let sx = drawn.Width / texture.X;
+					let sy = drawn.Height / texture.Y;
+					mSurface.SetRegion(.(drawn.X + inside.X * sx, drawn.Y + inside.Y * sy, inside.Width * sx, inside.Height * sy));
+					mSurface.SetFitMode(.Stretch); // the region IS the content's rectangle
+				}
+			}
 		}
 		else
 		{
-			mSurface.SetContentSize(.(mTextureWidth, mTextureHeight));
+			mSurface.SetContentSize(texture);
 			mSurface.SetFitMode(mFitMode);
 		}
 		// The window's pixel size, which the touch transform converts normalised fingers

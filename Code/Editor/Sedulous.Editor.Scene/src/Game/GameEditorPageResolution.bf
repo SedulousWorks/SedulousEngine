@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.UI;
+using Sedulous.UI.Toolkit;
 using Sedulous.VFS;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -16,31 +17,24 @@ class GamePageSettings
 {
 	/// The chosen entry's key: "project", "export:<preset>", "preset:<name>" or "panel".
 	public String ResolutionKey = new .() ~ delete _;
+	/// The tab previews a phone held upright: its screen is a portrait phone's, and a game held
+	/// to the other orientation is presented turned.
+	[Appended]
+	public bool PhonePreview = false;
 }
 
-/// The resolution the Game tab draws at. The project's own render resolution comes first and
-/// is the default; then each export preset that draws at its own size; then the user's
-/// preview presets (editor preferences); then the panel's own size. A fixed choice is fitted
-/// into the panel by the project's render fit, as the player fits it into its window.
+/// The resolution the Game tab draws at (GameResolution.Collect says the choices). A fixed
+/// choice is fitted into the panel by the project's render fit, as the player fits it into its
+/// window, and turned when the game is held to the other orientation. The Phone toggle makes the
+/// tab's screen a phone held upright, letterboxed in the panel.
 extension GameEditorPage
 {
-	private class ResolutionChoice
-	{
-		public String Key = new .() ~ delete _;
-		public String Label = new .() ~ delete _;
-		/// Nought for the panel's own size.
-		public uint32 Width;
-		public uint32 Height;
-	}
-
-	private const String cProjectKey = "project";
-	private const String cPanelKey = "panel";
 	/// Seconds between looks at whether the choices changed (a preset, the project's
 	/// resolution): cheap, and a reopened dropdown is fresh within one.
 	private const float cResolutionRefreshSeconds = 1.0f;
 
 	private ComboBox mResolutionCombo;
-	private List<ResolutionChoice> mResolutionChoices = new .() ~ DeleteContainerAndItems!(_);
+	private List<GameResolutionChoice> mResolutionChoices = new .() ~ DeleteContainerAndItems!(_);
 	/// What the choices were built from; rebuilt only when it changes.
 	private String mResolutionSignature = new .() ~ delete _;
 	/// The chosen entry's key, kept across rebuilds and saved per project.
@@ -53,6 +47,11 @@ extension GameEditorPage
 	private uint32 mRenderWidth = 0;
 	private uint32 mRenderHeight = 0;
 	private FitMode mRenderFit = .Letterbox;
+	/// How the game is held (the chosen preset's, else the project's), and whether the tab
+	/// previews a phone held upright.
+	private ScreenOrientation mOrientation = .Any;
+	private bool mPhonePreview = false;
+	private ToolbarToggle mPhoneToggle;
 
 	private void CreateResolutionCombo()
 	{
@@ -68,8 +67,28 @@ extension GameEditorPage
 			SaveResolutionKey();
 			ApplyResolution();
 		});
+		// A phone held upright: the game as a phone would show it, turned when it is held the
+		// other way (mouse and touch map through the same turn).
+		mPhoneToggle = mToolbar.AddToggle("Phone");
+		mPhoneToggle.OnCheckedChanged.Add(new [=this](toggle, on) =>
+		{
+			if (mResolutionRebuilding)
+				return;
+			SetPhonePreview(on);
+			SaveResolutionKey();
+		});
 		LoadResolutionKey();
+		mResolutionRebuilding = true;
+		mPhoneToggle.IsChecked = mPhonePreview;
+		mResolutionRebuilding = false;
 		RefreshResolutionChoices(true);
+	}
+
+	/// The phone preview: the tab's screen becomes a portrait phone's, or the panel again.
+	private void SetPhonePreview(bool on)
+	{
+		mPhonePreview = on;
+		ApplyResolution();
 	}
 
 	/// Once a frame: rebuilds the choices when what they come from changed.
@@ -84,15 +103,12 @@ extension GameEditorPage
 
 	private void RefreshResolutionChoices(bool force)
 	{
-		let fresh = scope List<ResolutionChoice>();
+		let fresh = scope List<GameResolutionChoice>();
 		defer ClearAndDeleteItems(fresh);
 		CollectResolutionChoices(fresh);
 
 		let signature = scope String();
-		for (let choice in fresh)
-			signature.AppendF("{}={}x{};", choice.Key, choice.Width, choice.Height);
-		if (let settings = ProjectSettings())
-			signature.AppendF("fit={}", (int)settings.RenderFit);
+		GameResolution.Signature(fresh, ProjectSettings(), signature);
 		if (!force && (signature == mResolutionSignature))
 			return;
 		mResolutionSignature.Set(signature);
@@ -119,70 +135,23 @@ extension GameEditorPage
 		ApplyResolution();
 	}
 
-	private void CollectResolutionChoices(List<ResolutionChoice> outChoices)
+	private void CollectResolutionChoices(List<GameResolutionChoice> outChoices)
 	{
-		let settings = ProjectSettings();
-		{
-			let project = new ResolutionChoice();
-			project.Key.Set(cProjectKey);
-			if ((settings != null) && settings.HasRenderResolution)
-			{
-				project.Width = settings.RenderWidth;
-				project.Height = settings.RenderHeight;
-				project.Label.AppendF("Project {}x{}", project.Width, project.Height);
-			}
-			else
-			{
-				project.Label.Set("Project (panel size)");
-			}
-			outChoices.Add(project);
-		}
-
-		// The export presets that draw at their own size, as that platform would.
+		ExportPresetSet presets = null;
+		let loaded = scope ExportPresetSet();
 		if (let project = mContext.Project)
 		{
 			let root = scope NativeFileSystem(project.Directory);
-			let presets = scope ExportPresetSet();
-			if (ExportPresetsFile.Load(root, presets) case .Ok)
-			{
-				for (let preset in presets.Presets)
-				{
-					if (!preset.OverridesRender || (preset.RenderWidth == 0) || (preset.RenderHeight == 0))
-						continue;
-					let choice = new ResolutionChoice();
-					choice.Key.AppendF("export:{}", preset.Name);
-					choice.Label.AppendF("{} {}x{}", preset.Name, preset.RenderWidth, preset.RenderHeight);
-					choice.Width = preset.RenderWidth;
-					choice.Height = preset.RenderHeight;
-					outChoices.Add(choice);
-				}
-			}
+			if (ExportPresetsFile.Load(root, loaded) case .Ok)
+				presets = loaded;
 		}
-
-		if (let previews = GamePreviewSettings.From(mContext.UserEditorSettings))
-		{
-			for (let preset in previews.Presets)
-			{
-				if ((preset.Width == 0) || (preset.Height == 0))
-					continue;
-				let choice = new ResolutionChoice();
-				choice.Key.AppendF("preset:{}", preset.Name);
-				choice.Label.AppendF("{} {}x{}", preset.Name, preset.Width, preset.Height);
-				choice.Width = preset.Width;
-				choice.Height = preset.Height;
-				outChoices.Add(choice);
-			}
-		}
-
-		let panel = new ResolutionChoice();
-		panel.Key.Set(cPanelKey);
-		panel.Label.Set("Fit to panel");
-		outChoices.Add(panel);
+		GameResolution.Collect(ProjectSettings(), presets, GamePreviewSettings.From(mContext.UserEditorSettings), outChoices);
 	}
 
-	/// The chosen size, fitted into the panel by the project's render fit, as the player fits
-	/// it into its window: the scene draws at it into the fitted rectangle of a panel sized
-	/// target, the screen UI lays out at it and draws crisp, and the pointer maps into it.
+	/// The chosen size, fitted into the tab's screen by the project's render fit and turned to
+	/// how the game is held, as the player fits it into its window: the scene draws at it into
+	/// the fitted rectangle of the target, the screen UI lays out at it and draws crisp, and the
+	/// pointer maps into it.
 	private void ApplyResolution()
 	{
 		let index = mResolutionCombo.SelectedIndex;
@@ -193,16 +162,40 @@ extension GameEditorPage
 		mRenderWidth = choice.Width;
 		mRenderHeight = choice.Height;
 		mRenderFit = (settings != null) ? settings.RenderFit : .Letterbox;
-		mViewport.SetFixedResolution(0, 0);
-		mViewport.FitMode = .Stretch;
-		mViewport.SetContentResolution(mRenderWidth, mRenderHeight, mRenderFit);
+		mOrientation = choice.OverridesOrientation ? choice.Orientation : ((settings != null) ? settings.Orientation : .Any);
+		// The previewed phone's screen is the target, letterboxed in the panel; else the panel is.
+		mViewport.SetFixedResolution(mPhonePreview ? GameResolution.cPhonePreviewWidth : 0,
+			mPhonePreview ? GameResolution.cPhonePreviewHeight : 0);
+		mViewport.FitMode = mPhonePreview ? .Letterbox : .Stretch;
+		SyncGameFit();
 	}
 
-	/// The render resolution fitted into a panel sized target.
-	private ContentFit RenderFitIn(uint32 width, uint32 height) =>
-		ContentFit(.(0, 0, width, height), .(mRenderWidth, mRenderHeight), mRenderFit);
+	/// The input surface's content follows the game's fit on the tab's current target, which may
+	/// change shape (and so the turn, and the pointer's map) as the panel resizes.
+	private void SyncGameFit()
+	{
+		let w = mViewport.RenderWidth;
+		let h = mViewport.RenderHeight;
+		if ((w == 0) || (h == 0))
+		{
+			mViewport.SetContentResolution(mRenderWidth, mRenderHeight, mRenderFit);
+			return;
+		}
+		let fit = GameFitIn(w, h);
+		if (GameFitted(fit))
+			mViewport.SetContentResolution((uint32)fit.ContentSize.X, (uint32)fit.ContentSize.Y, fit.Mode, fit.Rotation);
+		else
+			mViewport.SetContentResolution(0, 0, mRenderFit);
+	}
 
-	private bool HasRenderResolution => (mRenderWidth > 0) && (mRenderHeight > 0);
+	/// The game on a `width` x `height` target (the panel, or the previewed phone's screen), as
+	/// the player puts it in its window.
+	private ContentFit GameFitIn(uint32 width, uint32 height) =>
+		GameResolution.GameFitOn(width, height, mRenderWidth, mRenderHeight, mRenderFit, mOrientation);
+
+	/// Whether the game draws fitted (at a resolution of its own, or turned) rather than straight
+	/// at the target.
+	private bool GameFitted(ContentFit fit) => ((mRenderWidth > 0) && (mRenderHeight > 0)) || (fit.Rotation != .None);
 
 	private Sedulous.Engine.Project.ProjectSettings ProjectSettings()
 	{
@@ -212,13 +205,14 @@ extension GameEditorPage
 
 	private void LoadResolutionKey()
 	{
-		mResolutionKey.Set(cProjectKey);
+		mResolutionKey.Set(GameResolution.cProjectKey);
 		if (let store = mContext.ProjectEditorSettings)
 		{
 			if (let section = store.Find<GamePageSettings>())
 			{
 				if (!section.ResolutionKey.IsEmpty)
 					mResolutionKey.Set(section.ResolutionKey);
+				mPhonePreview = section.PhonePreview;
 			}
 		}
 	}
@@ -229,6 +223,7 @@ extension GameEditorPage
 		if (store == null)
 			return;
 		store.Section<GamePageSettings>().ResolutionKey.Set(mResolutionKey);
+		store.Section<GamePageSettings>().PhonePreview = mPhonePreview;
 		store.MarkChanged<GamePageSettings>();
 		mContext.RequestProjectEditorSettingsSave();
 	}
