@@ -73,14 +73,14 @@ class InputSubsystemTests
 	{
 		let input = scope InputSubsystem(null);
 		int seen = 0;
-		input.ForEachRuntime(scope [&] (runtime) => { Test.Assert(runtime === input.Runtime); seen++; });
+		input.ForEachActionRuntime(scope [&] (runtime) => { Test.Assert(runtime === input.Runtime); seen++; });
 		Test.Assert(seen == 1, "unset: its own alone");
 
 		let first = scope ActionRuntime();
 		let second = scope ActionRuntime();
-		input.SetRuntimesInPlay(new [=first, =second] (visit) => { visit(first); visit(second); });
+		input.SetActionRuntimeProvider(new [=first, =second] (visit) => { visit(first); visit(second); });
 		let order = scope System.Collections.List<ActionRuntime>();
-		input.ForEachRuntime(scope [&] (runtime) => { order.Add(runtime); });
+		input.ForEachActionRuntime(scope [&] (runtime) => { order.Add(runtime); });
 		Test.Assert((order.Count == 3) && (order[0] === input.Runtime) && (order[1] === first) && (order[2] === second));
 	}
 }

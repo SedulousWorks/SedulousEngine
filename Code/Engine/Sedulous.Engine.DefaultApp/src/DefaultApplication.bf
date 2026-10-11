@@ -359,7 +359,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		mInput = new InputSubsystem((host.Shell != null) ? host.Shell.Input : null);
 		host.Context.RegisterSubsystem<InputSubsystem>(mInput);
 		// Every instance's action runtime, so the UI's consumption and touch guide reach the game.
-		mInput.SetRuntimesInPlay(new (visit) => { ForEachInstance(scope [&] (instance) => { visit(instance.InputRuntime); }); });
+		mInput.SetActionRuntimeProvider(new (visit) => { ForEachInstance(scope [&] (instance) => { visit(instance.InputRuntime); }); });
 		// The primary instance reads the shell's devices by default, which is the player's
 		// path; an editor tab overrides this to its own gated source.
 		mInstance.SetInputSource(mInput.ShellSource);

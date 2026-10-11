@@ -20,8 +20,11 @@ class InputSubsystem : Subsystem
 	private void* mBoundSceneKey = null;
 	private UnboundInputScenePolicy mUnboundScenePolicy = .AllScenes;
 	private ActionRuntime mRuntime = new .() ~ delete _;
-	/// The host's instances' runtimes (SetRuntimesInPlay). Owned.
-	private delegate void(delegate void(ActionRuntime runtime) visit) mRuntimesInPlay = null ~ delete _;
+	/// What ForEachActionRuntime calls with each runtime.
+	public typealias ActionRuntimeVisitor = delegate void(ActionRuntime runtime);
+
+	/// The host's instances' runtimes (SetActionRuntimeProvider). Owned.
+	private delegate void(ActionRuntimeVisitor visit) mActionRuntimeProvider = null ~ delete _;
 
 	/// A null device hub is tolerated: a headless run reads every device as released.
 	public this(IInputManager input)
@@ -35,18 +38,18 @@ class InputSubsystem : Subsystem
 	/// editor's Game tabs), beside this subsystem's own: the UI marks what it takes on every one
 	/// (else a tap on a menu also reached the game's actions) and shows their touch controls.
 	/// Unset: this subsystem's runtime alone. Consumed.
-	public void SetRuntimesInPlay(delegate void(delegate void(ActionRuntime runtime) visit) forEach)
+	public void SetActionRuntimeProvider(delegate void(ActionRuntimeVisitor visit) forEach)
 	{
-		delete mRuntimesInPlay;
-		mRuntimesInPlay = forEach;
+		delete mActionRuntimeProvider;
+		mActionRuntimeProvider = forEach;
 	}
 
 	/// This subsystem's runtime, then each in play.
-	public void ForEachRuntime(delegate void(ActionRuntime runtime) visit)
+	public void ForEachActionRuntime(ActionRuntimeVisitor visit)
 	{
 		visit(mRuntime);
-		if (mRuntimesInPlay != null)
-			mRuntimesInPlay(visit);
+		if (mActionRuntimeProvider != null)
+			mActionRuntimeProvider(visit);
 	}
 
 	/// The raw shell devices as a source, for a host with no gated viewport to point at.
