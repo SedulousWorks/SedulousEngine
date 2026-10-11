@@ -168,16 +168,16 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 	private void DrawTier(UIScreenTier tier, IRenderPassEncoder encoder, ScreenOverlayView view)
 	{
 		tier.TargetSize = .((float)view.Width, (float)view.Height);
-		if (tier.HasResolution)
+		var place = PlaceScreen(tier.Resolution, tier.FitMode, tier.Orientation, tier.TargetSize);
+		tier.Turn = place.Turn;
+		if (place.Fitted)
 		{
-			// Laid out at the screen resolution, drawn crisp at the target's resolution into the
-			// rectangle the game's image was fitted to.
-			let fit = tier.Fit;
-			let dst = fit.DstRect();
-			tier.Root.DpiScale = UIScreenTier.Dpi(fit);
-			DrawRootInPass(tier.Root, encoder, view.TargetFormat, (int32)dst.X, (int32)dst.Y,
-				(uint32)Math.Max(dst.Width, 1.0f), (uint32)Math.Max(dst.Height, 1.0f),
-				(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat));
+			// Laid out at the game's resolution (or shape), drawn crisp at the target's resolution
+			// into the rectangle the game's image was fitted to, turned with it.
+			tier.Root.DpiScale = place.DpiScale;
+			DrawRootInPass(tier.Root, encoder, view.TargetFormat, (int32)place.Rect.X, (int32)place.Rect.Y,
+				(uint32)Math.Max(place.Rect.Width, 1.0f), (uint32)Math.Max(place.Rect.Height, 1.0f),
+				(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat), 1, &place);
 			return;
 		}
 		DrawRootInPass(tier.Root, encoder, view.TargetFormat, 0, 0, view.Width, view.Height,
@@ -202,9 +202,11 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 	/// earlier in the same frame are never clobbered by a later one.
 	private void DrawRootInPass(RootView root, IRenderPassEncoder encoder, TextureFormat format,
 		int32 viewportX, int32 viewportY, uint32 width, uint32 height, int32 frameIndex,
-		bool stencilCapable = false, uint32 sampleCount = 1)
+		bool stencilCapable = false, uint32 sampleCount = 1, UIScreenPlacement* placement = null)
 	{
-		root.ViewportSize = .((float)width, (float)height);
+		// A turned tier lays out in its own frame (the rectangle turned back) and draws through the
+		// turn; everything else at the rectangle's size.
+		root.ViewportSize = (placement != null) ? placement.DrawSize : Float2((float)width, (float)height);
 		mContext.UpdateRootView(root);
 
 		// What is EMITTED has to match the pass it will be rendered into: stencil fill
@@ -214,6 +216,8 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 
 		mRenderState.Context.SetStencilFills(stencil);
 		mRenderState.Context.Clear();
+		if (placement != null)
+			mRenderState.Context.SetTransform(placement.Transform); // under the root's own DpiScale
 		mContext.DrawRootView(root, mRenderState.Context);
 
 		let batch = mRenderState.Context.GetBatch();

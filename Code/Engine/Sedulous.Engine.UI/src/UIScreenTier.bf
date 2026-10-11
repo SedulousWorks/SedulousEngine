@@ -24,11 +24,23 @@ class UIScreenTier
 	public FitMode FitMode = .Letterbox;
 	/// The target the tier last drew into, which the pointer maps against.
 	public Float2 TargetSize = .Zero;
+	/// The game's orientation, and the turn it took on the last target drawn.
+	public ScreenOrientation Orientation = .Any;
+	public ContentRotation Turn = .None;
 
 	public bool HasResolution => (Resolution.X > 0.0f) && (Resolution.Y > 0.0f);
 
-	/// The resolution fitted into the last target drawn.
-	public ContentFit Fit => ContentFit(.(0, 0, TargetSize.X, TargetSize.Y), Resolution, FitMode);
+	/// The game's frame fitted into the last target drawn, as UISubsystem.PlaceScreen fitted it:
+	/// the turn it took, and without a resolution the target's pixels at the game's shape.
+	public ContentFit Fit
+	{
+		get
+		{
+			let swaps = (Turn == .Quarter) || (Turn == .ThreeQuarter);
+			let content = HasResolution ? Resolution : (swaps ? Float2(TargetSize.Y, TargetSize.X) : TargetSize);
+			return ContentFit(.(0, 0, TargetSize.X, TargetSize.Y), content, HasResolution ? FitMode : .Stretch, Turn);
+		}
+	}
 
 	/// A render space point in the tier's layout units: offset by the part of the resolution a
 	/// crop leaves out, and nothing else.

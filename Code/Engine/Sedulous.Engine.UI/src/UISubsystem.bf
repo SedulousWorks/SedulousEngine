@@ -187,6 +187,49 @@ class UISubsystem : Subsystem, ISceneObserver
 
 	public bool HasScreenResolution => mScreen.HasResolution;
 
+	/// The game's orientation: on a target of the other shape the screen tier lays out at the
+	/// game's shape (its render resolution, else the target's sides swapped) and draws turned a
+	/// quarter, as the game's image is presented. Its pointer arrives in the game's frame already
+	/// (the fitted input turns it). Any: never turned.
+	public void SetScreenOrientation(ScreenOrientation orientation) => mScreen.Orientation = orientation;
+
+	/// Where a screen tier at `resolution` (none: 0 x 0), fitted by `fit` and held to
+	/// `orientation`, draws on a `target` sized target: what a draw applies, and a test reads.
+	public static UIScreenPlacement PlaceScreen(Float2 resolution, FitMode fit, ScreenOrientation orientation, Float2 target)
+	{
+		var place = UIScreenPlacement();
+		if ((target.X <= 0.0f) || (target.Y <= 0.0f))
+			return place;
+		let turn = ContentFit.TurnFor(orientation, target.X, target.Y);
+		let hasResolution = (resolution.X > 0.0f) && (resolution.Y > 0.0f);
+		if (!hasResolution && (turn == .None))
+			return place; // the plain draw
+		let swaps = (turn == .Quarter) || (turn == .ThreeQuarter);
+		// The game's frame: its resolution, else the target's own pixels at the game's shape.
+		let content = hasResolution ? resolution : (swaps ? Float2(target.Y, target.X) : target);
+		let placed = ContentFit(.(0, 0, target.X, target.Y), content, hasResolution ? fit : .Stretch, turn);
+		place.Fitted = true;
+		place.Turn = turn;
+		place.Rect = placed.DstRect();
+		place.DrawSize = swaps ? Float2(place.Rect.Height, place.Rect.Width) : Float2(place.Rect.Width, place.Rect.Height);
+		place.DpiScale = UIScreenTier.Dpi(placed); // layout units per target pixel, down the game's height
+		if (turn != .None)
+		{
+			// The root's pixels onto the rectangle's, turned as the game's image is: the image of
+			// the origin and of each axis through the same fit, as a row-vector affine.
+			let turned = ContentFit(.(0, 0, place.Rect.Width, place.Rect.Height), place.DrawSize, .Stretch, turn);
+			let origin = turned.FromContent(.(0, 0));
+			let xAxis = turned.FromContent(.(1, 0));
+			let yAxis = turned.FromContent(.(0, 1));
+			place.Transform = Float4x4(
+				xAxis.X - origin.X, xAxis.Y - origin.Y, 0, 0,
+				yAxis.X - origin.X, yAxis.Y - origin.Y, 0, 0,
+				0, 0, 1, 0,
+				origin.X, origin.Y, 0, 1);
+		}
+		return place;
+	}
+
 	// ==================== a screen tier per run ====================
 	// The player runs one game, so its runs share the one screen tier. The editor runs a game
 	// per Game tab inside one application: with run screens on, each run (a run key, as
@@ -213,6 +256,11 @@ class UISubsystem : Subsystem, ISceneObserver
 	/// push; the shared tier's with run screens off or no run.
 	public void SetScreenResolution(Object run, uint32 width, uint32 height, FitMode fit)
 		=> TierFor(run).ApplyResolution(width, height, fit);
+
+	/// The orientation of `run`'s tier, made on first use as SetScreenResolution; the shared
+	/// tier's with run screens off or no run.
+	public void SetScreenOrientation(Object run, ScreenOrientation orientation)
+		=> TierFor(run).Orientation = orientation;
 
 	/// The run whose screen tier the next screen overlay draw shows (null: the shared tier
 	/// alone), set by a host around its overlay draw for that run's view.

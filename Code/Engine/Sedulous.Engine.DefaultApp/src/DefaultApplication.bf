@@ -721,6 +721,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	public void SetOrientation(ScreenOrientation orientation)
 	{
 		mOrientation = orientation;
+		if (mUI != null)
+			mUI.SetScreenOrientation(orientation); // the screen tier turns with the game's image
 		UpdateFittedInput();
 	}
 
