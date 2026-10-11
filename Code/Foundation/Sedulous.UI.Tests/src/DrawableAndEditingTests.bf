@@ -44,6 +44,40 @@ class DrawableAndEditingTests
 		Test.Assert(list.Get(.Pressed) == normal, "still falls back");
 	}
 
+	/// A combination nothing defines takes the defined part of it that says the most: a press is
+	/// also a hover, and it must look pressed, not hovered (a strip by bit value dropped Pressed
+	/// before Hover); a checked toggle under the pointer stays checked.
+	[Test]
+	public static void APartialMatchTakesTheWeightiestDefinedState()
+	{
+		let list = new StateListDrawable();
+		defer list.ReleaseRef();
+		list.Set(.Normal, new ColorDrawable(Color.Black));
+		list.Set(.Hover, new ColorDrawable(Color.Green));
+		list.Set(.Pressed, new ColorDrawable(Color.Red));
+		list.Set(.Focused, new ColorDrawable(Color.Blue));
+		list.Set(.Checked, new ColorDrawable(Color.White));
+		let hover = list.Get(.Hover);
+		let pressed = list.Get(.Pressed);
+		let focused = list.Get(.Focused);
+		let isChecked = list.Get(.Checked);
+
+		Test.Assert(list.Get(.Pressed | .Hover) == pressed, "a press is also a hover");
+		Test.Assert(list.Get(.Pressed | .Focused | .Hover) == pressed);
+		Test.Assert(list.Get(.Focused | .Hover) == focused);
+		Test.Assert(list.Get(.Checked | .Hover) == isChecked, "a toggle stays checked under the pointer");
+
+		// An exact combination still wins over its parts.
+		list.Set(.Pressed | .Hover, new ColorDrawable(Color(1.0f, 1.0f, 0.0f, 1.0f)));
+		Test.Assert(list.Get(.Pressed | .Hover) != pressed);
+
+		// With only Hover defined, Hover|Focused still finds it.
+		let onlyHover = new StateListDrawable();
+		defer onlyHover.ReleaseRef();
+		onlyHover.Set(.Hover, new ColorDrawable(Color.Green));
+		Test.Assert(onlyHover.Get(.Hover | .Focused) == onlyHover.Get(.Hover));
+	}
+
 	/// With nothing at all declared, every lookup is null rather than some arbitrary entry.
 	[Test]
 	public static void AnEmptyStateListAnswersNull()
