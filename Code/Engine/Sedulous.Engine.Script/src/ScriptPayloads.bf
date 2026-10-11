@@ -8,8 +8,8 @@ namespace Sedulous.Engine.Script;
 /// How a bus payload crosses into a handler's argument.
 static class ScriptPayloads
 {
-	/// A bus payload in the frame's kinds: the scalar kinds, a string, an entity tagged
-	/// with `scene`. Anything else is Nil, and the handler is called without it.
+	/// A bus payload in the frame's kinds: the scalar kinds, a Float3 or a Float4, a string,
+	/// an entity tagged with `scene`. Anything else is Nil, and the handler is called without it.
 	public static ScriptValue ValueOf(Variant payload, Scene scene)
 	{
 		if (!payload.HasValue)
@@ -23,6 +23,7 @@ static class ScriptPayloads
 		if (type == typeof(bool)) return .FromBool(payload.Get<bool>());
 		if (type == typeof(EntityHandle)) return .FromEntity(payload.Get<EntityHandle>(), scene);
 		if (type == typeof(Float3)) return .FromFloat3(payload.Get<Float3>());
+		if (type == typeof(Float4)) return .FromFloat4(payload.Get<Float4>());
 		if (type == typeof(String)) return .FromString(payload.Get<String>());
 		return .Nil;
 	}
@@ -34,4 +35,5 @@ static class ScriptPayloads
 	public static Variant Of(StringView value) => Variant.Create(new String(value), true);
 	public static Variant Of(EntityHandle value) => Variant.Create(value);
 	public static Variant Of(Float3 value) => Variant.Create(value);
+	public static Variant Of(Float4 value) => Variant.Create(value);
 }

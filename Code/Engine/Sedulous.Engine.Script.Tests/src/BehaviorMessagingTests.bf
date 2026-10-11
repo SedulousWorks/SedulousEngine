@@ -221,6 +221,38 @@ static class BehaviorMessagingTests
 	/// noise's origin. Emit once took no Float3 at all, and Raptor's binder once handed such a
 	/// value to a handle parameter only, so `onSpotted(Float3 at)` got nothing and faulted
 	/// (Raptor 4a7f2ccd).
+	/// A Float4 too: a noise's origin and its loudness in one event, as Lamplight's guards hear
+	/// them (Raptor's `emit("Noise", Float4(x, y, z, loudness))`). Emit once took no Float4, so
+	/// the noise had to go as two events, and its delivery turned one into Nil.
+	[Test]
+	public static void AFloat4EventReachesAHandlerTakingItByValue()
+	{
+		let play = scope ScriptPlayScene();
+		let listener = play.Class("Listener", """
+			class Listener
+			{
+				Scene@ scene;
+				bool emit = false;
+				float heardX = 0;
+				float heardW = 0;
+				void onUpdate(float dt) { if (emit) { emit = false; scene.Scripts.Emit("Noise", Float4(1.0f, 2.0f, 3.0f, 0.5f)); } }
+				void onNoise(Float4 n) { heardX = n.X; heardW = n.W; }
+			}
+			""");
+		let a = play.AddBehavior(listener, "a");
+		play.Start();
+		play.Step();
+		play.Runtime.SetProperty(play.BehaviorOf(a).Instance, "emit", .FromBool(true));
+		play.Step();
+
+		Test.Assert(!play.BehaviorOf(a).Faulted, "the handler ran without faulting");
+		var v = ScriptValue.Nil;
+		play.Runtime.GetProperty(play.BehaviorOf(a).Instance, "heardX", ref v);
+		Test.Assert(v.AsNumber == 1.0, "the place arrived");
+		play.Runtime.GetProperty(play.BehaviorOf(a).Instance, "heardW", ref v);
+		Test.Assert(v.AsNumber == 0.5, "and the loudness with it");
+	}
+
 	[Test]
 	public static void AnEventsValueReachesAHandlerTakingItByValue()
 	{
