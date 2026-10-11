@@ -117,6 +117,23 @@ class ApplicationHostTests
 		host.Stop();
 	}
 
+	/// An exit asked for during startup (an application that cannot start: no data root, an
+	/// unreadable dist) ends the run before its first frame, rather than being overwritten
+	/// when Start completes.
+	[Test]
+	public static void AnExitRequestedDuringStartupEndsTheRunBeforeTheFirstFrame()
+	{
+		let app = scope LifecycleApp();
+		app.ExitDuringStartup = 3;
+		let host = scope ApplicationHost();
+		host.Start(app);
+
+		Test.Assert(!host.IsRunning);
+		Test.Assert(host.ExitCode == 3);
+		Test.Assert(app.CountOf(.Update) == 0);
+		host.Stop();
+	}
+
 	[Test]
 	public static void RequestExitStopsAManualRunLoop()
 	{

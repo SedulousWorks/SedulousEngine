@@ -16,6 +16,9 @@ class LifecycleApp : IApplication
 	public CountingSubsystem Subsystem = null;
 	public int FixedUpdates = 0;
 	public bool SubsystemLiveAtStartup = false;
+	/// When set, OnStartup asks the host to exit with this code, as an application that
+	/// cannot start (no data root) does.
+	public int? ExitDuringStartup = null;
 
 	public ApplicationSettings Settings
 	{
@@ -38,6 +41,8 @@ class LifecycleApp : IApplication
 		Order.Add(.Startup);
 		// Configure ran BEFORE Context.Startup, so by now the subsystem is initialised.
 		SubsystemLiveAtStartup = Subsystem.IsInitialized;
+		if (ExitDuringStartup != null)
+			host.RequestExit(ExitDuringStartup.Value);
 	}
 
 	public void OnLaunch(IApplicationHost host) => Order.Add(.Launch);

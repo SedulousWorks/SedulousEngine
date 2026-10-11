@@ -50,6 +50,10 @@ class ApplicationHost : IApplicationHost
 		mShell = shell;
 		mGraphics = graphics;
 		mSettings = app.Settings;
+		// Running from here on, so a RequestExit raised DURING startup (Configure, OnStartup:
+		// no data root, an unreadable dist) is honoured by the run loop instead of being
+		// overwritten when Start completes.
+		mRunning = true;
 
 		// The job system comes up BEFORE any subsystem, so every one of them can use it,
 		// and goes down last in Stop, after everything that might still reach for it.
@@ -77,7 +81,6 @@ class ApplicationHost : IApplicationHost
 		// A standalone host enters play at once; an editor would call this on Play.
 		mApp.OnLaunch(this);
 		mStarted = true;
-		mRunning = true;
 	}
 
 	/// Advances exactly one frame with an explicit delta.
