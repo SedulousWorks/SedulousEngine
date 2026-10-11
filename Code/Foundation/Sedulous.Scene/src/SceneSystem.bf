@@ -34,6 +34,10 @@ abstract class SceneSystem
 	/// And for one that measures entities (ISceneEntityBounds); null for the rest.
 	public virtual ISceneEntityBounds AsEntityBounds => null;
 
+	/// And for one that answers rays against what it draws (ISceneSurfaceQuery); null for the
+	/// rest.
+	public virtual ISceneSurfaceQuery AsSurfaceQuery => null;
+
 	/// The scene this system was added to. BORROWED: the scene outlives its systems. Set
 	/// by the scene before OnSceneCreate, so a system need not keep its own.
 	public Scene Scene { get; private set; } = null;

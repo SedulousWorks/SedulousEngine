@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Geometry;
 using Sedulous.Materials;
 using Sedulous.Render;
 using Sedulous.Resource;
@@ -14,10 +15,89 @@ namespace Sedulous.Engine.Render;
 /// packed pool and cannot own heap data itself.
 ///
 /// It measures its entities for the scene (ISceneEntityBounds): a mesh's bounds through the
-/// entity's world matrix, once the mesh is loaded.
-class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>, ISceneEntityBounds
+/// entity's world matrix, once the mesh is loaded. And it answers rays against its meshes'
+/// triangles (ISceneSurfaceQuery; a skinned mesh in its bind pose, the pose its CPU vertices
+/// hold).
+class MeshComponentManager : ResourceBindingComponentManager<MeshComponent>, ISceneEntityBounds, ISceneSurfaceQuery
 {
 	public override ISceneEntityBounds AsEntityBounds => this;
+	public override ISceneSurfaceQuery AsSurfaceQuery => this;
+
+	public bool RaycastSurface(Scene scene, Float3 origin, Float3 direction, float maxDistance, delegate bool(EntityHandle entity) accept, out SceneSurfaceHit outHit)
+	{
+		var found = SceneSurfaceHit();
+		var any = false;
+		var reach = maxDistance;
+		ForEach(scope [&] (component, entity) =>
+			{
+				let mesh = component.Mesh.Get;
+				if ((mesh == null) || mesh.Vertices.IsEmpty || !scene.IsEffectivelyActive(entity))
+					return;
+				if ((accept != null) && !accept(entity))
+					return;
+				// The ray in the mesh's space, its direction NOT normalized: distances along it
+				// stay world distances along the world ray.
+				let world = scene.GetWorldMatrix(entity);
+				let toLocal = Inverse(world);
+				let localOrigin = TransformPoint(origin, toLocal);
+				let localDirection = TransformDirection(direction, toLocal);
+				if (mesh.Bounds.IsValid() && !RayMeetsBox(localOrigin, localDirection, mesh.Bounds, reach))
+					return;
+				if (!MeshRaycast.Raycast(mesh, localOrigin, localDirection, reach, let hit))
+					return;
+				reach = hit.Distance;
+				any = true;
+				found.Entity = entity;
+				found.Distance = hit.Distance;
+				found.Position = TransformPoint(hit.Position, world);
+				let normal = TransformDirection(hit.Normal, Transpose(toLocal));
+				found.Normal = (LengthSquared(normal) > 0.0f) ? Normalized(normal) : Float3.UnitY;
+				// The corner nearest the hit, measured in the world (a scaled mesh's nearest
+				// corner in its own space need not be the nearest on screen).
+				var best = -1.0f;
+				for (let corner in hit.Corners)
+				{
+					let at = TransformPoint(corner, world);
+					let d = LengthSquared(at - found.Position);
+					if ((best < 0.0f) || (d < best))
+					{
+						best = d;
+						found.Vertex = at;
+					}
+				}
+			});
+		outHit = found;
+		return any;
+	}
+
+	/// Whether the ray (any direction length) meets `bounds` before `reach`, in its units.
+	private static bool RayMeetsBox(Float3 origin, Float3 direction, AABB bounds, float reach)
+	{
+		var enter = 0.0f;
+		var leave = reach;
+		float[3] o = .(origin.X, origin.Y, origin.Z);
+		float[3] d = .(direction.X, direction.Y, direction.Z);
+		float[3] lo = .(bounds.Min.X, bounds.Min.Y, bounds.Min.Z);
+		float[3] hi = .(bounds.Max.X, bounds.Max.Y, bounds.Max.Z);
+		for (int axis < 3)
+		{
+			if (Math.Abs(d[axis]) < 1e-12f)
+			{
+				if ((o[axis] < lo[axis]) || (o[axis] > hi[axis]))
+					return false; // parallel to the slab and outside it
+				continue;
+			}
+			var t0 = (lo[axis] - o[axis]) / d[axis];
+			var t1 = (hi[axis] - o[axis]) / d[axis];
+			if (t0 > t1)
+				Swap!(t0, t1);
+			enter = Math.Max(enter, t0);
+			leave = Math.Min(leave, t1);
+			if (enter > leave)
+				return false;
+		}
+		return true;
+	}
 
 	public bool EntityBounds(Scene scene, EntityHandle entity, out AABB outBounds)
 	{

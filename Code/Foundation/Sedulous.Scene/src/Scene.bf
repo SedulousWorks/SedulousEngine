@@ -711,6 +711,28 @@ class Scene
 		return any;
 	}
 
+	/// The closest hit of a ray on the scene's drawn surfaces, as every system that answers
+	/// rays against what it draws (ISceneSurfaceQuery) finds it: along unit `direction` from
+	/// `origin` within `maxDistance`, on the entities `accept` takes (null takes all). False on
+	/// a miss.
+	public bool RaycastSurface(Float3 origin, Float3 direction, float maxDistance, delegate bool(EntityHandle entity) accept, out SceneSurfaceHit outHit)
+	{
+		outHit = .();
+		var any = false;
+		var reach = maxDistance;
+		for (let system in mSortedSystems)
+		{
+			let query = system.AsSurfaceQuery;
+			if ((query != null) && query.RaycastSurface(this, origin, direction, reach, accept, let hit) && (hit.Distance <= reach))
+			{
+				reach = hit.Distance; // the next system need only beat it
+				outHit = hit;
+				any = true;
+			}
+		}
+		return any;
+	}
+
 	/// Visits every component manager, in UpdateOrder.
 	public void ForEachManager(delegate void(ComponentManagerBase) fn)
 	{
