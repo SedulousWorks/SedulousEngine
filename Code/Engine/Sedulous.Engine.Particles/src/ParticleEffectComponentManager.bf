@@ -42,8 +42,8 @@ class ParticleEffectComponentManager : ResourceBindingComponentManager<ParticleE
 	/// The current component's emitter frame, which is what re bases a locally simulated
 	/// system at extract.
 	private Float4x4 mEmitterWorld = Float4x4.Identity();
-	/// Nothing sets this yet, so the sorting and the ribbon orientation both work from the
-	/// origin: the field is read in three places and written in none.
+	/// The scene's primary camera, taken each simulated tick: the alpha sort and the trail
+	/// ribbons work from it (the origin until a camera is found).
 	private Float3 mCameraPos = .(0, 0, 0);
 
 	/// The point the alpha sort and the trail ribbons work from: the scene's primary camera,
