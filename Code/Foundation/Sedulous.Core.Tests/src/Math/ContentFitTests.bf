@@ -361,6 +361,9 @@ class ContentFitTests
 					Test.Assert(fit.ToContent(there, let back), scope $"{rotation} {mode}: maps back");
 					Test.Assert(Near(back.X, point.X, 0.001f) && Near(back.Y, point.Y, 0.001f), scope $"{rotation} {mode}: round trip");
 					Test.Assert(dst.Contains(there), scope $"{rotation} {mode}: inside the drawn rectangle");
+					// The unclamped map agrees wherever the clamped one maps.
+					let free = fit.ToContentUnclamped(there);
+					Test.Assert(Near(free.X, back.X) && Near(free.Y, back.Y), scope $"{rotation} {mode}: unclamped agrees");
 				}
 				Test.Assert((dst.X >= region.X - 0.01f) && (dst.Y >= region.Y - 0.01f)
 					&& (dst.X + dst.Width <= region.X + region.Width + 0.01f)
@@ -386,6 +389,11 @@ class ContentFitTests
 		Test.Assert(Near(dst.Height, 1800)); // 300 x 6
 		Test.Assert(Near(dst.Y, 60));        // bars of 60 above and below
 		Test.Assert(!bars.ToContent(.(540, 30), ?), "in a bar");
+		// Unclamped, the bar maps past the content's edge: turned a quarter, the screen's top is
+		// the content's left.
+		let free = bars.ToContentUnclamped(.(540, 30));
+		Test.Assert(free.X < 0.0f);
+		Test.Assert(Near(free.Y, 90.0f));
 	}
 
 	[Test]

@@ -8,7 +8,8 @@ namespace Sedulous.Engine.Input;
 /// The devices of another source with the MOUSE and the TOUCHES mapped into a fitted content
 /// space: a game drawn at a fixed render resolution and fitted into its window reads its pointer
 /// in render pixels, wherever the window puts the image, and a finger normalized over that image
-/// (where its touch regions are). The keyboard, the pads and the event stream pass through.
+/// (where its touch regions are). A turned present turns them back, so a game reads them in its
+/// own frame. The keyboard, the pads and the event stream pass through.
 ///
 /// Ungated, unlike an editor viewport's surface: it is the whole window's input, so a player
 /// who never moves the mouse still has the keyboard. Over a letterbox bar the pointer maps
@@ -38,16 +39,9 @@ class FittedInputSource : IInputSourceProvider
 	public ITouch Touch => (mInner.Touch != null) ? mTouch : null;
 	public Span<InputEvent> Events => mInner.Events;
 
-	/// A window point in render pixels, through the fit and without the bars' clamp.
-	public Float2 ToContent(Float2 point)
-	{
-		let dst = Fit.DstRect();
-		let src = Fit.SrcRect();
-		if ((dst.Width <= 0.0f) || (dst.Height <= 0.0f))
-			return point;
-		return .(src.X + (point.X - dst.X) / dst.Width * src.Width,
-			src.Y + (point.Y - dst.Y) / dst.Height * src.Height);
-	}
+	/// A window point in render pixels, through the fit (its turn included) and without the
+	/// bars' clamp.
+	public Float2 ToContent(Float2 point) => Fit.ToContentUnclamped(point);
 }
 
 /// The inner mouse, its position and motion in the fitted content space.
@@ -68,8 +62,10 @@ class FittedMouse : IMouse
 	public float GlobalX => Raw.GlobalX;
 	public float GlobalY => Raw.GlobalY;
 	/// Motion in render pixels too, so a look speed does not change with the window's size.
-	public float DeltaX => Raw.DeltaX * mSource.Fit.Scale().X;
-	public float DeltaY => Raw.DeltaY * mSource.Fit.Scale().Y;
+	/// Turned with the content as well as scaled: on a turned present, moving the mouse up the
+	/// window moves right across the game.
+	public float DeltaX => mSource.Fit.ToContentDelta(.(Raw.DeltaX, Raw.DeltaY)).X;
+	public float DeltaY => mSource.Fit.ToContentDelta(.(Raw.DeltaX, Raw.DeltaY)).Y;
 	public float ScrollX => Raw.ScrollX;
 	public float ScrollY => Raw.ScrollY;
 	public bool IsButtonDown(MouseButton button) => Raw.IsButtonDown(button);

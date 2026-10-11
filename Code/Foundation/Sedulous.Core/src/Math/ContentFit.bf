@@ -77,10 +77,19 @@ struct ContentFit
 		if (!p.dst.Contains(local))
 			return false;
 
-		let rx = (local.X - p.dst.X) / p.dst.Width;
-		let ry = (local.Y - p.dst.Y) / p.dst.Height;
-		result = .(p.src.X + rx * p.src.Width, p.src.Y + ry * p.src.Height);
+		result = LocalToContent(p, local);
 		return true;
+	}
+
+	/// Region space to content space with no bound: over a letterbox bar it maps outside the
+	/// content rather than failing, for a pointer that keeps reporting wherever it is (a window's
+	/// whole input). A degenerate fit returns the point.
+	public Float2 ToContentUnclamped(Float2 pt)
+	{
+		let p = Compute();
+		if ((p.dst.Width <= 0.0f) || (p.dst.Height <= 0.0f))
+			return pt;
+		return LocalToContent(p, ToLocal(pt));
 	}
 
 	/// Content space to Region space, the inverse of ToContent. Used to place an IME
@@ -166,6 +175,14 @@ struct ContentFit
 		public Rectangle src;
 
 		public this(Rectangle dst, Rectangle src) { this.dst = dst; this.src = src; }
+	}
+
+	/// A local frame point in content space, through a placement with a drawn area.
+	private static Float2 LocalToContent(Placement p, Float2 local)
+	{
+		let rx = (local.X - p.dst.X) / p.dst.Width;
+		let ry = (local.Y - p.dst.Y) / p.dst.Height;
+		return .(p.src.X + rx * p.src.Width, p.src.Y + ry * p.src.Height);
 	}
 
 	/// The placement in the local frame (the Region turned back, at the origin).

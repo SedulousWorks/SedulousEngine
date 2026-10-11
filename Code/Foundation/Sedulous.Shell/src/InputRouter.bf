@@ -193,8 +193,7 @@ class InputRouter
 			var contentDelta = Float2.Zero;
 			if (surface === target)
 			{
-				let scale = surface.Fit.Scale();
-				contentDelta = .(delta.X * scale.X, delta.Y * scale.Y);
+				contentDelta = surface.Fit.ToContentDelta(delta); // turned with a turned fit, then scaled
 			}
 
 			surface.ApplyGate(surface === mHovered, surface === mFocused, surface === mCaptured,

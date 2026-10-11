@@ -274,4 +274,41 @@ class InputSurfaceTests
 		surface.SetWindowSize(.(800, 600));
 		Test.Assert(Near(surface.WindowSize.X, 800.0f));
 	}
+
+	/// The editor's Game tab previewing a portrait phone: a landscape game turned three
+	/// quarters in a portrait viewport. The router maps the mouse and a finger into the game's
+	/// frame and turns a drag's motion with it.
+	[Test]
+	public static void ATurnedSurfaceReadsTheMouseAndFingersInTheGamesFrame()
+	{
+		let raw = scope FakeInputManager();
+		raw.Hover = 1;
+		raw.Focus = 1;
+		// A 600x800 viewport at (100, 100) of a 1920x1080 window, showing an 800x600 game turned.
+		let surface = new InputSurface(raw, 1, ContentFit(.(100, 100, 600, 800), .(800, 600), .Stretch, .ThreeQuarter));
+		defer delete surface;
+		surface.SetWindowSize(.(1920, 1080));
+		let router = scope InputRouter(raw);
+		router.AddSurface(surface);
+		defer router.RemoveSurface(surface);
+
+		// Near the viewport's bottom-left is near the game's top-left.
+		raw.MouseDevice.PosX = 110;
+		raw.MouseDevice.PosY = 890;
+		router.Update();
+		Test.Assert(router.Hovered === surface);
+		Test.Assert(Near(surface.Mouse.X, 10.0f) && Near(surface.Mouse.Y, 10.0f), scope $"got ({surface.Mouse.X}, {surface.Mouse.Y})");
+
+		// A drag up the viewport moves right across the game.
+		raw.MouseDevice.MoveY = -10;
+		router.Update();
+		Test.Assert(Near(surface.Mouse.DeltaX, 10.0f) && Near(surface.Mouse.DeltaY, 0.0f), scope $"got ({surface.Mouse.DeltaX}, {surface.Mouse.DeltaY})");
+
+		// A finger at the same place is at the game's top-left too, normalized over the game.
+		raw.TouchDevice.Points.Add(.(1, 110.0f / 1920.0f, 890.0f / 1080.0f));
+		Test.Assert(surface.Touch.TouchCount == 1);
+		Test.Assert(surface.Touch.GetTouchPoint(0, let mapped));
+		Test.Assert(Near(mapped.PointerX, 10.0f, 0.1f) && Near(mapped.PointerY, 10.0f, 0.1f), scope $"got ({mapped.PointerX}, {mapped.PointerY})");
+		Test.Assert(Near(mapped.X, 10.0f / 800.0f, 0.001f) && Near(mapped.Y, 10.0f / 600.0f, 0.001f));
+	}
 }
