@@ -31,6 +31,10 @@ class TouchGuideView : AbsoluteLayout
 		public float Radius;
 	}
 
+	/// A control's name is this share of its guide's diameter, and never smaller than the least.
+	private const float cGuideFontPerSize = 0.16f;
+	private const float cGuideMinFontSize = 15.0f;
+
 	private List<Shown> mControls = new .() ~ delete _;
 	/// One per control, its action's name. Children of this view, which owns them.
 	private List<Label> mLabels = new .() ~ delete _;
@@ -69,7 +73,6 @@ class TouchGuideView : AbsoluteLayout
 							if (mLabels.Count < mControls.Count)
 							{
 								let label = new Label();
-								label.FontSize.Value = 15.0f;
 								label.HAlign.Value = .Center;
 								label.IsHitTestVisible = false;
 								mLabels.Add(label);
@@ -90,9 +93,13 @@ class TouchGuideView : AbsoluteLayout
 				continue;
 			let centre = GuideCentre(mControls[i], w, h);
 			let size = GuideRadius(mControls[i], w, h) * 2.0f;
+			// The name grows with its button, as the button grows with the screen: a fixed size was
+			// legible on a desktop window and tiny on a phone's many pixels.
+			let fontSize = Math.Max(cGuideMinFontSize, size * cGuideFontPerSize);
+			label.FontSize.Value = fontSize;
 			var place = LayoutStyle();
 			place.Left = centre.X - size * 0.5f;
-			place.Top = centre.Y - 10.0f;
+			place.Top = centre.Y - fontSize * 0.65f; // the line's middle on the centre
 			place.Width = SizeSpec.Fixed(Unit.Dp(size));
 			label.SetLayout(place);
 			label.TextColor.Value = Color(1.0f, 1.0f, 1.0f, mControls[i].Down ? 1.0f : 0.85f);

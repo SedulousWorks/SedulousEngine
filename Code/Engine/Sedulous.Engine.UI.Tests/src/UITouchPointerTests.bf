@@ -145,6 +145,33 @@ class UITouchPointerTests
 		fixture.UI.UiContext.UpdateRootView(screenRoot);
 		Test.Assert(guide.Parent === screenRoot);
 		Test.Assert(Near(guide.Width, 800.0f));
+		// Each name is sized by its button, so it reads on a phone's many pixels as on a desktop:
+		// a larger screen, a larger name, never below the least.
+		float JumpFont()
+		{
+			for (int i < guide.ChildCount)
+			{
+				if (let label = guide.GetChildAt(i) as Label)
+				{
+					if ((label.Text.Value == "Jump") && label.FontSize.Value.HasValue)
+						return label.FontSize.Value.Value;
+				}
+			}
+			return 0.0f;
+		}
+		devices.FakeTouch.Put(1, 600.0f, 300.0f);
+		fixture.Frame();
+		let small = JumpFont();
+		Test.Assert(small >= 15.0f, scope $"{small}");
+		screenRoot.ViewportSize = .(2340.0f, 1080.0f); // a phone's pixels, the game turned on it
+		fixture.UI.UiContext.UpdateRootView(screenRoot);
+		fixture.Frame();
+		let large = JumpFont();
+		Test.Assert((large > small * 1.5f) && (large > 40.0f), scope $"{small} then {large}");
+		screenRoot.ViewportSize = .(800.0f, 600.0f);
+		fixture.UI.UiContext.UpdateRootView(screenRoot);
+		devices.FakeTouch.Points.Clear();
+
 		// A set out of effect shows nothing.
 		fixture.Input.Runtime.DisableSet("Gameplay");
 		fixture.Frame();
