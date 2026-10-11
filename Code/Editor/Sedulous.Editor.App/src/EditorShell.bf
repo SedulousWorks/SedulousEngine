@@ -11,13 +11,15 @@ namespace Sedulous.Editor.App;
 /// status bar. The global panels are Assets and Console only: everything scene-scoped
 /// (viewport, hierarchy, inspector, selection, camera) lives inside each editor page,
 /// because several scene pages can be open at once. The dock centre is the document area:
-/// each open page docks there as a closable tab via AddPagePanel; a non-closable Welcome
-/// panel holds the centre until the first page opens and keeps the centre tab group alive
-/// when all pages close.
+/// each open page docks there as a closable tab via AddPagePanel; the non-closable Project
+/// panel holds the centre (it keeps the centre tab group alive when all pages close, so a newly
+/// opened page docks there and not among the tool panels). With a project open it shows the
+/// project's page (SetProjectContent, ProjectHomeView); without one, the logo.
 class EditorShell
 {
-	/// Stable persistence ids for the global panels; the layout match keys, never renamed.
-	public const String cPanelWelcome = "welcome";
+	/// Stable persistence ids for the global panels; the layout match keys, never renamed: the
+	/// Project panel keeps the id it had as the Welcome panel, so saved layouts still place it.
+	public const String cPanelProject = "welcome";
 	public const String cPanelConsole = "console";
 	public const String cPanelAssets = "assets";
 
@@ -28,15 +30,15 @@ class EditorShell
 	private DockManager mDock = null;
 	private LogView mLogView = null;
 	// Borrowed: the DockManager owns registered panels.
-	private DockablePanel mWelcome = null;
+	private DockablePanel mProject = null;
 	private DockablePanel mConsole = null;
 	private DockablePanel mAssets = null;
-	/// The Welcome page's heading, borrowed for the build (null: the name as text).
+	/// The Project panel's heading without a project, borrowed (null: the name as text).
 	private Drawable mLogo = null;
 
 	/// Builds the chrome. `dockHost` (nullable) lets panels float into real OS windows.
-	/// `logo` (EditorSplash.LoadLogo, borrowed) heads the Welcome page; null shows the name as
-	/// text.
+	/// `logo` (EditorSplash.LoadLogo, borrowed) heads the Project panel without a project; null
+	/// shows the name as text.
 	public void Build(EditorContext context, IDockableWindowHost dockHost, uint32 width, uint32 height, Drawable logo = null)
 	{
 		mLogo = logo;
@@ -73,7 +75,7 @@ class EditorShell
 	public MenuBar Menus => mMenuBar;
 	public StatusBar StatusBar => mStatusBar;
 	public DockManager Docks => mDock;
-	public DockablePanel WelcomePanel => mWelcome;
+	public DockablePanel ProjectPanel => mProject;
 	public DockablePanel ConsolePanel => mConsole;
 	public DockablePanel AssetsPanel => mAssets;
 
@@ -83,6 +85,15 @@ class EditorShell
 	{
 		if (mAssets != null)
 			mAssets.SetContent(content);
+	}
+
+	/// Shows the open project's page in the Project panel, consuming the reference; null (the
+	/// project closed) shows the logo again.
+	public void SetProjectContent(View content)
+	{
+		if (mProject == null)
+			return;
+		mProject.SetContent((content != null) ? content : BuildWelcome());
 	}
 
 	/// The Console panel's log view, fed by the app's EditorLogBuffer drain.
@@ -97,7 +108,7 @@ class EditorShell
 	{
 		let panel = mDock.AddPanel(title, content);
 		panel.Closable = true;
-		mDock.DockPanelRelativeTo(panel, .Center, mWelcome.Parent);
+		mDock.DockPanelRelativeTo(panel, .Center, mProject.Parent);
 		return panel;
 	}
 
@@ -109,7 +120,7 @@ class EditorShell
 	/// Rebuilds the default arrangement (View > Reset Layout).
 	public void ResetLayout() => DockDefaults();
 
-	/// The Welcome page: the logo (else the name) over a quiet line, centred in the panel.
+	/// The Project panel without a project: the logo (else the name) over a quiet line, centred.
 	private FlexLayout BuildWelcome()
 	{
 		let page = new FlexLayout();
@@ -140,9 +151,9 @@ class EditorShell
 
 	private void BuildPanels()
 	{
-		mWelcome = mDock.AddPanel("Welcome", BuildWelcome());
-		mWelcome.SetPersistenceId(cPanelWelcome);
-		mWelcome.Closable = false;
+		mProject = mDock.AddPanel("Project", BuildWelcome());
+		mProject.SetPersistenceId(cPanelProject);
+		mProject.Closable = false;
 
 		mLogView = new LogView();
 		mConsole = mDock.AddPanel("Console", mLogView);
@@ -166,7 +177,7 @@ class EditorShell
 		// so both show at once. A dock inserts its split at half, so both ratios are set
 		// afterwards; a ratio is the FIRST child's share, the document's for the root and
 		// Assets' for the pane.
-		mDock.DockPanel(mWelcome, .Center);
+		mDock.DockPanel(mProject, .Center);
 		mDock.DockPanel(mAssets, .Bottom);
 		mDock.DockPanelRelativeTo(mConsole, .Right, mAssets.Parent);
 		if (let split = mDock.RootNode as DockSplit)

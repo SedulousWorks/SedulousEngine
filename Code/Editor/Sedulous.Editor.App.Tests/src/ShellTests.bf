@@ -37,10 +37,12 @@ static class ShellTests
 		Test.Assert(shell.StatusBar != null);
 		Test.Assert(shell.Docks != null);
 
-		// The global panels are Assets and Console plus the Welcome centre placeholder;
-		// scene-scoped views live inside pages, never in the shell.
-		Test.Assert(shell.WelcomePanel != null);
-		Test.Assert(shell.WelcomePanel.PersistenceId == "welcome");
+		// The global panels are Assets and Console plus the Project panel holding the centre;
+		// scene-scoped views live inside pages, never in the shell. The Project panel keeps the
+		// id it had as the Welcome panel, so saved layouts still place it.
+		Test.Assert(shell.ProjectPanel != null);
+		Test.Assert(shell.ProjectPanel.Title == "Project");
+		Test.Assert(shell.ProjectPanel.PersistenceId == "welcome");
 		Test.Assert(shell.ConsolePanel.PersistenceId == "console");
 		Test.Assert(shell.AssetsPanel.PersistenceId == "assets");
 		Test.Assert(shell.Docks.FindPanelById("assets") === shell.AssetsPanel);
@@ -93,8 +95,8 @@ static class ShellTests
 		Test.Assert(page != null);
 		Test.Assert(page.Closable);
 
-		// The page tabs with the Welcome panel in the centre group.
-		Test.Assert(page.Parent === shell.WelcomePanel.Parent);
+		// The page tabs with the Project panel in the centre group.
+		Test.Assert(page.Parent === shell.ProjectPanel.Parent);
 	}
 
 	private static bool SameNodes(DockLayoutNode a, DockLayoutNode b)

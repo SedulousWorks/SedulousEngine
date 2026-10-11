@@ -114,8 +114,8 @@ class EditorApplication : IApplication
 	private bool mAnnounceScreenshot = false;
 	/// OnStartup is running: its steps go to the splash.
 	private bool mStarting = false;
-	/// The SedulousEngine logo (EditorSplash.LoadLogo) for the Welcome page; null when it did
-	/// not load. One reference, the page's view taking its own.
+	/// The SedulousEngine logo (EditorSplash.LoadLogo) for the Project panel without a project
+	/// and the launcher; null when it did not load. One reference, the page's view taking its own.
 	private SVGDrawable mLogo = null ~ _?.ReleaseRef();
 	private float mTestOpenElapsed = 0.0f;
 	private uint32 mTestOpenStage = 0;
@@ -149,6 +149,8 @@ class EditorApplication : IApplication
 	private ActionMenuBar mActionMenus = null ~ delete _;
 	private ActionShortcuts mActionShortcuts = null ~ delete _;
 	private AssetsView mAssetsView = null ~ { if (_ != null) _.ReleaseRef(); };
+	/// The Project panel's page while a project is open.
+	private ProjectHomeView mProjectHome = null ~ delete _;
 	/// Borrowed; the shell root owns it.
 	private ToastHost mToastHost = null;
 	private List<PagePanel> mPagePanels = new .() ~ delete _;
@@ -284,7 +286,7 @@ class EditorApplication : IApplication
 		// main window's close button; File > Exit routes through the same helper.
 		host.Shell.SetMainWindowCloseHandler(new () => ConfirmExitAllowed());
 
-		// The logo heads the Welcome page.
+		// The logo heads the Project panel (without a project) and the launcher.
 		mLogo = EditorSplash.LoadLogo(mConfig.DataRoot);
 		mShell.Build(mContext, mDockHost, mainRw.Window.Width, mainRw.Window.Height, mLogo);
 		// The active page follows dock-tab activation, not just open and close: with
@@ -820,6 +822,8 @@ class EditorApplication : IApplication
 
 		if (mAssetsView != null)
 			mAssetsView.Refresh();
+		if (mProjectHome != null)
+			mProjectHome.Refresh();
 		if (mResources != null)
 		{
 			mResources.Pump(); // async resource loads finalise

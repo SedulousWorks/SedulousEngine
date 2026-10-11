@@ -390,46 +390,8 @@ class ProjectManagerView
 	}
 
 	/// The project's picture (its thumbnail, else a tile with its initial), `w` x `h`.
-	private View Picture(Card card, float w, float h, float radius)
-	{
-		var size = LayoutStyle();
-		size.Width = SizeSpec.Fixed(Unit.Dp(w));
-		size.Height = SizeSpec.Fixed(Unit.Dp(h));
-		let frame = new FlexLayout();
-		let image = new Image();
-		if (!card.Missing && (ImageIO.LoadImage(EditorProject.ThumbnailPath(card.Path, .. scope .()), image) case .Ok))
-		{
-			mThumbnails.Add(image); // the view borrows it
-			let view = new ImageView(image);
-			view.ScaleType.Value = .CenterCrop;
-			view.CornerRadius.Value = .(radius);
-			frame.AddView(view, size);
-			return frame;
-		}
-		delete image;
-		// No picture yet: the project's initial on a quiet tile.
-		let tile = new Panel();
-		tile.SetStyle(.Background, new RoundedRectDrawable(Color(1, 1, 1, 0.05f), radius, Color(1, 1, 1, 0.08f), 1.0f));
-		let initial = scope String();
-		if (card.Name.IsEmpty)
-			initial.Append('?');
-		else
-		{
-			for (let c in card.Name.DecodedChars)
-			{
-				initial.Append(c);
-				break;
-			}
-		}
-		let letter = new Label(initial);
-		letter.FontSize.Value = h * 0.42f;
-		letter.TextColor.Value = Color(1, 1, 1, 0.35f);
-		letter.HAlign.Value = .Center;
-		letter.VAlign.Value = .Middle;
-		tile.AddView(letter);
-		frame.AddView(tile, size);
-		return frame;
-	}
+	private View Picture(Card card, float w, float h, float radius) =>
+		ProjectPicture.Make(card.Missing ? "" : StringView(card.Path), card.Name, w, h, radius, mThumbnails);
 
 	/// The "more" button: the project's menu.
 	private IconButton MoreButton(Card card)

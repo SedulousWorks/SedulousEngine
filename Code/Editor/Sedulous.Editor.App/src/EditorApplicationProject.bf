@@ -151,7 +151,12 @@ extension EditorApplication
 
 		// Settings-derived session state re-applies on save.
 		delete mContext.OnProjectSettingsChanged;
-		mContext.OnProjectSettingsChanged = new () => { ApplyProjectUiDefaults(); };
+		mContext.OnProjectSettingsChanged = new () =>
+			{
+				ApplyProjectUiDefaults();
+				if (mProjectHome != null)
+					mProjectHome.MarkChanged(); // the Project page shows the settings
+			};
 
 		// The cook service and the real Assets panel.
 		mCookService.Initialize(mProject, mBuilders);
@@ -258,6 +263,15 @@ extension EditorApplication
 			};
 		mAssetsView.AddRef();
 		mShell.SetAssetsContent(mAssetsView);
+		// The Project panel shows the project's page; its links open assets as the browser does.
+		mProjectHome = new ProjectHomeView(mContext, mCookService);
+		mProjectHome.OnOpenAsset = new (id) =>
+			{
+				if (let instance = (mProject != null) ? mProject.SourceDb.GetInstance(id) : null)
+					OpenInstancePage(instance);
+			};
+		mProjectHome.View.AddRef(); // the panel's reference
+		mShell.SetProjectContent(mProjectHome.View);
 
 		// The pages from the last session reopen, falling back to the default document, then
 		// the dock layout restores so page panels land back in their arrangement: the panels
@@ -472,6 +486,8 @@ extension EditorApplication
 			mAssetsView.ReleaseRef();
 			mAssetsView = null;
 		}
+		mShell.SetProjectContent(null);
+		DeleteAndNullify!(mProjectHome);
 		DeleteAndNullify!(mContext.OnCookRequested);
 		DeleteAndNullify!(mContext.CookBusy);
 		DeleteAndNullify!(mContext.OnFavoritesChanged);
