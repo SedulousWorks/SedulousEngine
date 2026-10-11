@@ -231,6 +231,38 @@ class attachable.
 **Diagnostics**: `log_write` a marker, do the risky thing, then `log_read` with
 `sinceSequence` set to the marker's sequence to see exactly what the engine said after it.
 
+**Screenshots**: four ways in, by what the picture is of. Each writes a PNG, by default under
+`<user-data>/screenshots` (`~/.local/share/Sedulous/screenshots` on Linux), and answers its path;
+read the file before trusting it, and leave the judgement of how it looks to the user.
+- *The game (PIE)*, for a game's README, a store page or a playtest: `pie_start`, then
+  `pie_screenshot` (`<pie>-<pid>-<n>.png`), or `pie_run` with `screenshots` at run times
+  (`<pie>-<pid>-run<N>-<seconds>.png`, the seconds to two places), the pixels the Game tab drew.
+  For a fixed size whatever the tab, set the game's render size first (`project_settings_set`
+  `renderWidth`/`renderHeight`, 1280 x 720 for a README) and put it back after (0 / 0 when it
+  was unset); the PNG is scaled to the tab when the tab is smaller (the answer's `scale`).
+  Reach a screen by playing to it: a menu by a timeline (`Right`, `Return`), a level by a scene
+  override (`project_settings_set` `defaultSceneId` to the level and `startupScriptId` to
+  `""`, restored after, in a `finally`), a late moment by a scripted route, and a results
+  screen by finishing a run. Take a few times around the moment (`[23.9, 24.3, 24.7, 25.1]`)
+  and pick one. A run that finishes writes the game's save: copy the project's
+  `Editor/<Game>.save.xml` aside right before, run with a test save that unlocks what the shot
+  needs, and copy the user's back after; never reuse an older backup, since the user plays
+  between runs.
+- *A scene in the editor*: `viewport_frame` the entities (or `viewport_camera_set` a position and
+  a `lookAt`), then `viewport_screenshot`, which brings the page to front since a hidden
+  viewport never renders.
+- *The editor itself* (panels, dialogs, menus, toasts): `editor_screenshot`
+  (`editor-<pid>-<n>.png`; `window: "all"` adds each floating window), as the user's F12 (View >
+  Screenshot Editor) does. For a run with no MCP, `Sedulous.Tools.Editor --project <dir>
+  --screenshot <png> [--screenshot-after <s>]` writes the main window once it has drawn.
+- *An exported game (the player)*, which is a different host from PIE: `<dist>/<player>
+  --screenshot <png> [--screenshot-frame N | --screenshot-after S] [--screenshot-count N]
+  [--screenshot-exit]` writes the window at frame N (30 by default) or after S seconds, N files
+  in a row when counted (`shot-0.png`, ...: frame-to-frame changes such as TAA's jitter), and
+  quits after the last. It plays no input, so it shows what the game opens on (`--scene <path>`
+  opens another); its window is the project's `windowWidth` / `windowHeight`. Compare it with
+  PIE's picture of the same screen: a difference is a finding.
+
 **Export**: `project_health` first, to catch breakage before a long cook, then
 `project_export` (`preset` optional; the default is the first, or the host platform preset
 when the project has no `export_presets.xml`). The dist lands under `<project>/Dist` unless
