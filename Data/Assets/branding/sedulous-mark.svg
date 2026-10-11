@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Sedulous mark: a block S in a viewport's crop marks. -->
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="#1F2227"/>
+  <path d="M44 80 V56 a8 8 0 0 1 8 -8 H76 M180 48 H204 a8 8 0 0 1 8 8 V80 M212 176 V200 a8 8 0 0 1 -8 8 H180 M76 208 H52 a8 8 0 0 1 -8 -8 V176" fill="none" stroke="#E6E8EB" stroke-width="11" stroke-linecap="round"/>
+  <g transform="translate(128 128) scale(0.72) translate(-128 -128)">
+    <path d="M184 64 H90 a18 18 0 0 0 -18 18 V110 a18 18 0 0 0 18 18 H166 a18 18 0 0 1 18 18 V174 a18 18 0 0 1 -18 18 H72" fill="none" stroke="#F58F42" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

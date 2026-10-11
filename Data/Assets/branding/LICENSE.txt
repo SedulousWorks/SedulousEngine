@@ -1,0 +1,19 @@
+SedulousEngine name and logo
+Copyright (c) 2026-Present Robert Campbell. All rights reserved.
+
+The files in this folder (the SedulousEngine mark, in every size and format, and the
+wordmark) are not covered by the MIT licence of the rest of this repository. They identify
+the SedulousEngine project and may not be used to identify any other project, product or
+fork, nor modified, without written permission.
+
+You may show them unchanged to refer to SedulousEngine itself (in an article, a talk, or a
+"made with SedulousEngine" credit for a game built on it).
+
+Files: sedulous-mark.svg (the mark), sedulous-mark-small.svg (the mark at 24 px and below),
+sedulous-logo.svg and sedulous-logo-light.svg (the mark and the wordmark, for dark and for
+light backgrounds), sedulous-icon-<size>.png (the window and taskbar icon),
+sedulous-logo-splash.png (the logo at the editor splash's size, rendered from
+sedulous-logo.svg).
+
+The wordmark's letters are Roboto Bold and Regular, drawn as outlines (Roboto by Christian
+Robertson, font data copyright Google 2011; its terms are in ../fonts/roboto/NOTICE.txt).
