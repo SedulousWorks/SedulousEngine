@@ -270,4 +270,121 @@ class ContentFitTests
 			out content));
 		Test.Assert(NearlyEqual(content, Float2(cContentW * 0.5f, cContentH * 0.5f), 1.0e-2f));
 	}
+
+	// ---- Turned (the content presented in quarter turns: a landscape game on a portrait screen) ----
+
+	/// Near, relative to the size of what is compared (as doctest's Approx), for the screen-sized
+	/// values of the turned cases.
+	private static bool Near(float a, float b, float relative = 1.0e-5f) =>
+		Math.Abs(a - b) <= relative * Math.Max(1.0f, Math.Max(Math.Abs(a), Math.Abs(b)));
+
+	private static bool RectIs(Rectangle r, float x, float y, float w, float h) =>
+		Near(r.X, x) && Near(r.Y, y) && Near(r.Width, w) && Near(r.Height, h);
+
+	private static bool PointIs(Float2 p, float x, float y) => Near(p.X, x) && Near(p.Y, y);
+
+	[Test]
+	public static void UnturnedFitsAsItAlwaysDidAndTakesDeltas()
+	{
+		// 320x180 letterboxed into a 1280x1080 region at (100, 50): scale 4, bars of 180 above
+		// and below.
+		let fit = ContentFit(.(100, 50, 1280, 1080), .(320, 180), .Letterbox);
+		Test.Assert(RectIs(fit.DstRect(), 100, 50 + 180, 1280, 720));
+		Test.Assert(RectIs(fit.SrcRect(), 0, 0, 320, 180));
+		Test.Assert(fit.ToContent(.(100 + 640, 50 + 540), let c));
+		Test.Assert(PointIs(c, 160, 90));
+		Test.Assert(!fit.ToContent(.(100 + 640, 50 + 90), ?), "in a bar");
+		Test.Assert(PointIs(fit.FromContent(.(0, 0)), 100, 50 + 180));
+		Test.Assert(PointIs(fit.Scale(), 0.25f, 0.25f));
+		Test.Assert(PointIs(fit.ToContentDelta(.(8, -4)), 2, -1));
+
+		// Crop: the whole region shows a centred slice of the content.
+		let crop = ContentFit(.(0, 0, 100, 100), .(200, 100), .Crop);
+		Test.Assert(RectIs(crop.DstRect(), 0, 0, 100, 100));
+		Test.Assert(RectIs(crop.SrcRect(), 50, 0, 100, 100));
+	}
+
+	[Test]
+	public static void ALandscapeGameTurnedAQuarterFillsAPortraitScreen()
+	{
+		// 1920x1080 content on a 1080x1920 portrait region: the turned-back region is 1920x1080,
+		// so it fits exactly whichever way it is turned a quarter.
+		for (let rotation in ContentRotation[2](.Quarter, .ThreeQuarter))
+		{
+			let fit = ContentFit(.(0, 0, 1080, 1920), .(1920, 1080), .Letterbox, rotation);
+			Test.Assert(RectIs(fit.DstRect(), 0, 0, 1080, 1920));
+			Test.Assert(RectIs(fit.SrcRect(), 0, 0, 1920, 1080));
+			Test.Assert(PointIs(fit.Scale(), 1, 1));
+		}
+
+		// Three quarters (the phone held upright, the game's top on the screen's left): the
+		// content's top-left corner is the screen's bottom-left, its top-right the screen's
+		// top-left.
+		let fit = ContentFit(.(0, 0, 1080, 1920), .(1920, 1080), .Letterbox, .ThreeQuarter);
+		Test.Assert(PointIs(fit.FromContent(.(0, 0)), 0, 1920));
+		Test.Assert(PointIs(fit.FromContent(.(1920, 0)), 0, 0));
+		Test.Assert(PointIs(fit.FromContent(.(1920, 1080)), 1080, 0));
+		Test.Assert(fit.ToContent(.(1, 1919), let c), "near the screen's bottom-left: the content's top-left");
+		Test.Assert(PointIs(c, 1, 1));
+		// Moving a finger up the screen moves right across the content; right across the
+		// screen, down.
+		Test.Assert(PointIs(fit.ToContentDelta(.(0, -10)), 10, 0));
+		Test.Assert(PointIs(fit.ToContentDelta(.(10, 0)), 0, 10));
+
+		// A quarter: the content's top-left is the screen's top-right.
+		let quarter = ContentFit(.(0, 0, 1080, 1920), .(1920, 1080), .Letterbox, .Quarter);
+		Test.Assert(PointIs(quarter.FromContent(.(0, 0)), 1080, 0));
+		Test.Assert(PointIs(quarter.ToContentDelta(.(0, 10)), 10, 0));
+	}
+
+	[Test]
+	public static void PointsRoundTripThroughEveryTurnAndMode()
+	{
+		// An offset region of another shape than the content: bars, crops and a floored scale in
+		// every turn. A point of the content maps to the region and back to itself, inside the
+		// drawn rectangle, which sits inside the region.
+		let region = Rectangle(30, 20, 700, 1300);
+		for (let rotation in ContentRotation[4](.None, .Quarter, .Half, .ThreeQuarter))
+		{
+			for (let mode in FitMode[4](.Stretch, .Letterbox, .Crop, .IntegerScale))
+			{
+				let fit = ContentFit(region, .(640, 360), mode, rotation);
+				let src = fit.SrcRect();
+				let dst = fit.DstRect();
+				let inside = Float2[3](
+					.(src.X + src.Width * 0.5f, src.Y + src.Height * 0.5f),
+					.(src.X + src.Width * 0.2f, src.Y + src.Height * 0.7f),
+					.(src.X + src.Width * 0.9f, src.Y + src.Height * 0.1f));
+				for (let point in inside)
+				{
+					let there = fit.FromContent(point);
+					Test.Assert(fit.ToContent(there, let back), scope $"{rotation} {mode}: maps back");
+					Test.Assert(Near(back.X, point.X, 0.001f) && Near(back.Y, point.Y, 0.001f), scope $"{rotation} {mode}: round trip");
+					Test.Assert(dst.Contains(there), scope $"{rotation} {mode}: inside the drawn rectangle");
+				}
+				Test.Assert((dst.X >= region.X - 0.01f) && (dst.Y >= region.Y - 0.01f)
+					&& (dst.X + dst.Width <= region.X + region.Width + 0.01f)
+					&& (dst.Y + dst.Height <= region.Y + region.Height + 0.01f), scope $"{rotation} {mode}: inside the region");
+			}
+		}
+	}
+
+	[Test]
+	public static void AHalfTurnAndTheBarsOfATurnedLetterbox()
+	{
+		// A half turn: the content's top-left is the region's bottom-right.
+		let half = ContentFit(.(0, 0, 200, 100), .(200, 100), .Stretch, .Half);
+		Test.Assert(PointIs(half.FromContent(.(0, 0)), 200, 100));
+		Test.Assert(PointIs(half.ToContentDelta(.(3, 4)), -3, -4));
+
+		// 300x180 in a 1080x1920 portrait region turned a quarter: the turned-back region is
+		// 1920x1080, the content letterboxed in it at scale 6, so there are bars along what is
+		// the screen's top and bottom (the turned-back region's sides).
+		let bars = ContentFit(.(0, 0, 1080, 1920), .(300, 180), .Letterbox, .Quarter);
+		let dst = bars.DstRect();
+		Test.Assert(Near(dst.Width, 1080));
+		Test.Assert(Near(dst.Height, 1800)); // 300 x 6
+		Test.Assert(Near(dst.Y, 60));        // bars of 60 above and below
+		Test.Assert(!bars.ToContent(.(540, 30), ?), "in a bar");
+	}
 }
