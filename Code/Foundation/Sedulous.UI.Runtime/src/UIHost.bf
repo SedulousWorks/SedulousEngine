@@ -470,7 +470,9 @@ class UIHost
 
 		mFramesDrawn++;
 
-		if (structural || mContext.NeedsLayout)
+		// Gating off is the escape hatch: every frame lays out as well as draws, not only
+		// those that damaged the layout.
+		if (!mDamageGateEnabled || structural || mContext.NeedsLayout)
 		{
 			mFramesLaidOut++;
 			for (let attached in mAttached)
