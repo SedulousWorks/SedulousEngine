@@ -268,6 +268,53 @@ class PakTests
 		Test.Assert(WriteFile(path, stream.Bytes) case .Ok);
 	}
 
+	/// A pak of one four byte entry "a" after the header, its table after the data, the
+	/// entry's offset, stored size and compression as given.
+	private static void WriteOneEntryPak(StringView path, uint64 offset, uint64 storedSize, uint16 compression)
+	{
+		let stream = scope MemoryStream();
+		let writer = scope BinaryWriter(stream);
+		let tocOffset = (uint64)cPakHeaderSize + 4;
+		let tocSize = (uint64)(2 + 1 + 8 + 8 + 8 + 2);
+		writer.Write(cPakMagic);
+		writer.Write(cPakVersion);
+		writer.Write((uint64)1);
+		writer.Write(tocOffset);
+		writer.Write(tocSize);
+		for (int i < 4)
+			writer.Write((uint8)(i + 1));
+		writer.Write((uint16)1);
+		writer.Write((uint8)'a');
+		writer.Write(offset);
+		writer.Write(storedSize);
+		writer.Write(storedSize);
+		writer.Write(compression);
+		Test.Assert(WriteFile(path, stream.Bytes) case .Ok);
+	}
+
+	/// An entry's bytes live in the data heap between the header and the table: one that
+	/// reaches into either would serve the header's or the table's bytes as its content, so
+	/// the whole pak is refused, as it is for a compression that does not exist.
+	[Test]
+	public static void AnEntryOutsideTheDataHeapIsRefused()
+	{
+		FreshScratch();
+		let path = PathValid(.. scope String());
+
+		// The sound entry loads, so the guards are not refusing everything.
+		WriteOneEntryPak(path, (uint64)cPakHeaderSize, 4, cCompressionNone);
+		Test.Assert((scope PakFileSystem(path)).IsValid);
+
+		WriteOneEntryPak(path, 0, 4, cCompressionNone);
+		Test.Assert(!(scope PakFileSystem(path)).IsValid, "an entry inside the header");
+		WriteOneEntryPak(path, (uint64)cPakHeaderSize, 10, cCompressionNone);
+		Test.Assert(!(scope PakFileSystem(path)).IsValid, "an entry running into the table");
+		WriteOneEntryPak(path, (uint64)cPakHeaderSize + 4, 1, cCompressionNone);
+		Test.Assert(!(scope PakFileSystem(path)).IsValid, "an entry starting inside the table");
+		WriteOneEntryPak(path, (uint64)cPakHeaderSize, 4, 7);
+		Test.Assert(!(scope PakFileSystem(path)).IsValid, "a compression that does not exist");
+	}
+
 	/// The header is the least trustworthy part of a corrupt file, and everything below it
 	/// is sized from it. Seeking to tocOffset and looping entryCount times without asking
 	/// whether either could be real turns a damaged byte into a wild seek or an allocation

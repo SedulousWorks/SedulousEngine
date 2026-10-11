@@ -190,9 +190,11 @@ class PakFileSystem : IFileSystem, IEnumerableFileSystem
 				return;
 			}
 
-			// An entry that points outside the file is corrupt, and following it would
-			// read whatever happened to be at that offset.
-			if ((entry.Offset > (uint64)fileSize) || (entry.StoredSize > (uint64)fileSize - entry.Offset))
+			// An entry's bytes live in the data heap, between the header and the table: a range
+			// outside it would hand a reader the header's or the table's bytes, or nothing.
+			// Only the stored compression exists, so any other marks a corrupt table.
+			if ((entry.Offset < (uint64)cPakHeaderSize) || (entry.Offset > tocOffset) ||
+				(entry.StoredSize > tocOffset - entry.Offset) || (entry.Compression != cCompressionNone))
 			{
 				delete locator;
 				return;
