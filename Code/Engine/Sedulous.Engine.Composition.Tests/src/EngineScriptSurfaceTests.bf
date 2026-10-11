@@ -86,7 +86,7 @@ static class EngineScriptSurfaceTests
 
 		// What the facades reach: the values they pass.
 		let hit = s.Find("Sedulous.Engine.Physics.PhysicsHit");
-		Test.Assert((hit != null) && hit.AllPublic && (hit.Fields.Count == 6));
+		Test.Assert((hit != null) && hit.AllPublic && (hit.Fields.Count == 7));
 		let float3 = s.Find("Sedulous.Core.Float3");
 		Test.Assert((float3 != null) && (float3.Kind == .Struct) && float3.AllPublic);
 		let core = s.Find("Sedulous.Core");
