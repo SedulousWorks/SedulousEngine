@@ -156,20 +156,22 @@ class SceneViewPrefsTests
 		Test.Assert((oldPref.State.GridPlane == .XZ) && !oldPref.State.GridLines);
 	}
 
-	/// The entity origin crosses: on by default, and an off choice survives per scene while
+	/// The entity origin crosses: off by default, and an on choice survives per scene while
 	/// its siblings stay put.
 	[Test]
-	public static void TheMarkerToggleDefaultsOnAndSurvivesPerScene()
+	public static void TheMarkerToggleDefaultsOffAndSurvivesPerScene()
 	{
 		SceneEditorSerializables.RegisterAll();
 		let sceneA = Guid(11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12);
 		let sceneB = Guid(13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14);
 		let fb = SceneViewState();
-		Test.Assert(fb.ShowMarkers);
+		Test.Assert(!fb.ShowMarkers);
+		// A pref read from a file without the key (before version 3) keeps the field's default.
+		Test.Assert(!scope SceneViewPref().ShowMarkers);
 
 		let store = scope Settings();
-		Test.Assert(SceneViewPrefs.Load(store, sceneA, fb).ShowMarkers);
-		Test.Assert(SceneViewPrefs.Save(store, sceneA, .(true, true, true, false)));
+		Test.Assert(!SceneViewPrefs.Load(store, sceneA, fb).ShowMarkers);
+		Test.Assert(SceneViewPrefs.Save(store, sceneA, .(true, true, true, true)));
 		Test.Assert(SceneViewPrefs.Save(store, sceneB, .(true, false)));
 
 		let buffer = scope MemoryStream();
@@ -180,9 +182,9 @@ class SceneViewPrefsTests
 		let loaded = scope Settings();
 		Test.Assert(loaded.Load(buffer, factory) case .Ok);
 
-		Test.Assert(!SceneViewPrefs.Load(loaded, sceneA, fb).ShowMarkers);
+		Test.Assert(SceneViewPrefs.Load(loaded, sceneA, fb).ShowMarkers, "a saved on round-trips");
 		Test.Assert(SceneViewPrefs.Load(loaded, sceneA, fb).ShowColliders);
-		Test.Assert(SceneViewPrefs.Load(loaded, sceneB, fb).ShowMarkers); // untouched: the default
+		Test.Assert(!SceneViewPrefs.Load(loaded, sceneB, fb).ShowMarkers); // untouched: the default
 	}
 
 	/// The frame rate readout: off by default, round tripping per scene beside its siblings.

@@ -24,7 +24,7 @@ class SceneActionsTests
 		private SceneEditContext mEdit ~ delete _;
 		public bool Simulating = false;
 		public bool Paused = false;
-		public bool Markers = true;
+		public bool Markers = false; // a scene page's default
 		public bool Flying = false;
 		/// BORROWED; null is a page without a viewport.
 		public GizmoController GizmosSeen = null;
@@ -143,11 +143,11 @@ class SceneActionsTests
 		Test.Assert(!page.Simulating);
 		Test.Assert(actions.Execute(SceneActionIds.SimulateStop, page) case .Err(.NotSupported));
 
-		// Markers: a toggle over the page's flag.
-		Test.Assert(actions.IsChecked(SceneActionIds.Markers, page));
-		Test.Assert(actions.Execute(SceneActionIds.Markers, page) case .Ok);
-		Test.Assert(!page.Markers);
+		// Markers: a toggle over the page's flag, off to start.
 		Test.Assert(!actions.IsChecked(SceneActionIds.Markers, page));
+		Test.Assert(actions.Execute(SceneActionIds.Markers, page) case .Ok);
+		Test.Assert(page.Markers);
+		Test.Assert(actions.IsChecked(SceneActionIds.Markers, page));
 
 		// The animation panel: a toggle over the page's bottom panel, off to start.
 		Test.Assert(!actions.IsChecked(SceneActionIds.AnimationPanel, page));

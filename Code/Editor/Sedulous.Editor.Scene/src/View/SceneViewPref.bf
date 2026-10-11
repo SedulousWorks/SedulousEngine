@@ -45,7 +45,8 @@ class SceneViewPref : ISerializable
 	public bool ShowGrid = true;
 	public bool ShowLodOverlay = false;
 	public bool ShowColliders = false;
-	public bool ShowMarkers = true;
+	/// Off unless saved on: a file from before version 3, without the key, reads the default.
+	public bool ShowMarkers = false;
 	public bool ShowFps = false;
 	/// The grid's plane (GridPlane: 0 XZ, 1 XY, 2 YZ) and whether it draws as debug lines.
 	public uint8 GridPlane = 0;
