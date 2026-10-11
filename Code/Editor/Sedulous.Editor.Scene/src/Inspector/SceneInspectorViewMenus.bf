@@ -6,16 +6,11 @@ using Sedulous.UI;
 
 namespace Sedulous.Editor.Scene;
 
-/// The Add Component menu, grouped by category, and the Paste Component button.
+/// The Add Component picker, and the Paste Component button.
 extension SceneInspectorView
 {
-	private class MenuEntry
-	{
-		public String Label = new .() ~ delete _;
-		public String Category = new .() ~ delete _;
-		public Type Type = null;
-	}
-
+	/// Add Component: a picker with a search field over every registered component the entity
+	/// lacks, by category then name; the pick adds the component as one command.
 	private void ShowAddComponentMenu()
 	{
 		let id = SelectedEntity;
@@ -23,49 +18,31 @@ extension SceneInspectorView
 		if (!e.IsAssigned || (Context == null))
 			return;
 
-		let edit = mEdit;
-		let menu = new ContextMenu();
-		defer menu.ReleaseRef();
-
-		// Every registered component the entity lacks, sorted by category then label.
-		let entries = scope List<MenuEntry>();
-		defer { ClearAndDeleteItems(entries); }
+		let choices = new List<ComponentChoice>();
 		mEdit.Scene.ForEachManager(scope [&](mgr) =>
 		{
 			let type = mgr.ComponentType;
 			let registered = InspectorRegistry.Find(type);
 			if ((registered == null) || mgr.HasComponent(e))
 				return;
-			let entry = new MenuEntry();
-			entry.Label.Set(registered.DisplayName);
-			entry.Category.Set(registered.Category);
-			entry.Type = type;
-			entries.Add(entry);
+			let choice = new ComponentChoice();
+			choice.Label.Set(registered.DisplayName);
+			choice.Category.Set(registered.Category);
+			choice.Type = type;
+			if (type.GetCustomAttribute<DescriptionAttribute>() case .Ok(let description))
+				choice.Description.Set(description.Text);
+			choices.Add(choice);
 		});
-		entries.Sort(scope (a, b) =>
+		choices.Sort(scope (a, b) =>
 		{
 			let byCategory = String.Compare(a.Category, b.Category, false);
 			return (byCategory != 0) ? byCategory : String.Compare(a.Label, b.Label, false);
 		});
 
-		ContextMenu section = null;
-		let sectionName = scope String();
-		for (let entry in entries)
-		{
-			if ((section == null) || (entry.Category != sectionName))
-			{
-				let item = menu.AddSubmenu(entry.Category);
-				section = item.Submenu;
-				sectionName.Set(entry.Category);
-			}
-			if (section != null)
-			{
-				let type = entry.Type;
-				section.AddItem(entry.Label, new [=edit, =id, =type]() => { edit.AddComponent(id, type); });
-			}
-		}
-		let screenPos = mAddButton.LocalToScreen(.(0.0f, 0.0f));
-		menu.Show(Context, screenPos.X, screenPos.Y);
+		let edit = mEdit;
+		let picker = new ComponentPickerDialog(choices);
+		picker.OnPicked = new [=edit, =id](type) => { edit.AddComponent(id, type); };
+		picker.Show(Context);
 	}
 
 	/// The clipboard can change any frame; the button shows while it holds a component.
