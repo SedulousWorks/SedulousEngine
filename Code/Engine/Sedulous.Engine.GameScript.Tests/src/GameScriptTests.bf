@@ -261,8 +261,10 @@ static class GameScriptTests
 		// The fault is remembered with where it happened, and the run's clock kept moving.
 		Test.Assert(run.Instance.ScriptFault.StartsWith("faulted in update"), scope String(run.Instance.ScriptFault));
 		Test.Assert(Math.Abs(run.Instance.RunTime - 4.0 / 60.0) < 1e-5);
+		Test.Assert(run.Instance.RealDeltaTime > 0);
 		run.Instance.ResetRunClock();
 		Test.Assert(run.Instance.RunTime == 0);
+		Test.Assert(run.Instance.RealDeltaTime == 0, "a new run does not read the last one's frame time");
 		// A new start clears it.
 		Test.Assert(run.Instance.StartScript(game));
 		Test.Assert(run.Instance.ScriptFault.IsEmpty);

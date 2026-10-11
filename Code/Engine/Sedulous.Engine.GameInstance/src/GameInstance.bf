@@ -559,7 +559,13 @@ class GameInstance
 	/// Seconds of frames since ResetRunClock, unscaled (see mRunTime); standing still while
 	/// the debugger holds the run.
 	public double RunTime => mRunTime;
-	public void ResetRunClock() { mRunTime = 0; }
+	/// A run's clock from zero: its time, and its real delta, which `launch()` would otherwise
+	/// read as the previous run's last frame.
+	public void ResetRunClock()
+	{
+		mRunTime = 0;
+		mRealDelta = 0;
+	}
 
 	/// This frame's seconds before any time scale, the context's included. `update(dt)`
 	/// already ignores Run.TimeScale; coroutine waits stand still at TimeScale 0.
