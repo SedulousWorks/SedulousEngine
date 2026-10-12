@@ -16,7 +16,7 @@ namespace Sedulous.Engine.Physics;
 // The inspector writes a field through RUNTIME reflection, so every field needs its
 // data emitted; an attribute on a field forces that, a bare field has nothing to.
 [Reflect(.Type | .NonStaticFields)]
-[DisplayName("Physics Settings")]
+[DisplayName("Physics")]
 [Category("Physics")]
 [Scriptable]
 class PhysicsSceneSettings : ISerializable

@@ -355,7 +355,7 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 		if (entry == null)
 			return;
 		let target = Own(new ProfileValuesTarget(this));
-		let section = scope InspectorSection(this, target, entry.DisplayName);
+		let section = scope InspectorSection(this, target, entry.SettingsSectionName(.. scope .()));
 		entry.Build(section);
 	}
 

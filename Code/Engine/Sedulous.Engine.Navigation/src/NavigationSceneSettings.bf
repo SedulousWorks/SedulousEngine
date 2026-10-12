@@ -12,7 +12,7 @@ namespace Sedulous.Engine.Navigation;
 // The inspector writes a field through RUNTIME reflection, so every field needs its
 // data emitted; an attribute on a field forces that, a bare field has nothing to.
 [Reflect(.Type | .NonStaticFields)]
-[DisplayName("Navigation Settings")]
+[DisplayName("Navigation")]
 [Category("Navigation")]
 [Scriptable]
 struct NavigationSceneSettings : ISerializable

@@ -424,4 +424,21 @@ class SettingsProfileTests
 		Test.Assert((grid.PropertyAt(IndexOf("Open Profile")) as ButtonEditor).DisplayName == "Values: this scene's");
 		Test.Assert((grid.PropertyAt(IndexOf("Make Profile")) as ButtonEditor).ButtonEnabled);
 	}
+
+	/// Each scene settings block's section, on the Scene tab and on its profile's page alike, is
+	/// named for what it sets, not for its type.
+	[Test]
+	public static void SettingsSectionsTakeTheirTypesDisplayName()
+	{
+		InspectorRegistry.Register<EnvironmentSettings>();
+		InspectorRegistry.Register<PostProcessSettings>();
+		InspectorRegistry.Register<Sedulous.Engine.Physics.PhysicsSceneSettings>();
+		InspectorRegistry.Register<Sedulous.Engine.Navigation.NavigationSceneSettings>();
+		InspectorRegistry.Register<Sedulous.Engine.Script.SceneScriptSettings>();
+		Test.Assert(InspectorRegistry.Find(typeof(EnvironmentSettings)).SettingsSectionName(.. scope .()) == "Environment");
+		Test.Assert(InspectorRegistry.Find(typeof(PostProcessSettings)).SettingsSectionName(.. scope .()) == "Post Processing");
+		Test.Assert(InspectorRegistry.Find(typeof(Sedulous.Engine.Physics.PhysicsSceneSettings)).SettingsSectionName(.. scope .()) == "Physics");
+		Test.Assert(InspectorRegistry.Find(typeof(Sedulous.Engine.Navigation.NavigationSceneSettings)).SettingsSectionName(.. scope .()) == "Navigation");
+		Test.Assert(InspectorRegistry.Find(typeof(Sedulous.Engine.Script.SceneScriptSettings)).SettingsSectionName(.. scope .()) == "Scene Script");
+	}
 }

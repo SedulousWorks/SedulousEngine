@@ -21,14 +21,7 @@ extension SceneInspectorView
 			let entry = InspectorRegistry.Find(type);
 			if (entry == null)
 				continue;
-			let category = scope String(entry.DisplayName);
-			// A type named "...Settings" with no label of its own reads as the thing it sets.
-			let suffix = "Settings";
-			if ((category.Length > suffix.Length) && category.EndsWith(suffix))
-			{
-				category.RemoveFromEnd(suffix.Length);
-				category.TrimEnd();
-			}
+			let category = entry.SettingsSectionName(.. scope .());
 
 			let section = scope InspectorSection(this, new SettingsTarget(mEdit, type), category);
 			Keep(section.Target);
