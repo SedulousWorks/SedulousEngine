@@ -89,7 +89,12 @@ struct VSOutput {
     float4 prevClip  : TEXCOORD6;   // unjittered previous clip pos (motion vectors)
     nointerpolation float fade : TEXCOORD7;   // screen-door fade, 0 = solid (forward.ps DITHER)
 };
-VSOutput main(VSInput input) {
+// The vertex function's name: `main` for the engine's own file per stage; a one file shader that
+// includes this library beside its own pixel function names it (#define FORWARD_VS_ENTRY VSMain).
+#ifndef FORWARD_VS_ENTRY
+#define FORWARD_VS_ENTRY main
+#endif
+VSOutput FORWARD_VS_ENTRY(VSInput input) {
     VSOutput o;
 #ifdef INSTANCED
     float4x4 world     = Instances[input.dataOffsets.x].World;

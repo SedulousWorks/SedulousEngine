@@ -37,16 +37,18 @@ class WgslCookTests
 		}
 		""";
 
-	private static void BinPath(StringView tool, String outPath)
+	private static void BinPath(StringView tool, String outPath) => RepositoryPath("Bin", tool, outPath);
+
+	/// A file of this repository, `folder/relative`: found by walking up from the test
+	/// executable, whose build folder moves per configuration. Empty when it is not there.
+	private static void RepositoryPath(StringView folder, StringView relative, String outPath)
 	{
-		// The repository's vendored binaries, in its Bin/ folder: found by walking up from the
-		// test executable, whose build folder moves per configuration.
 		outPath.Clear();
 		let directory = GetExecutableDirectory(.. scope String());
 		while (!directory.IsEmpty)
 		{
-			let candidate = PathJoin(directory, "Bin", .. scope String());
-			PathJoin(candidate, tool, outPath..Clear());
+			let candidate = PathJoin(directory, folder, .. scope String());
+			PathJoin(candidate, relative, outPath..Clear());
 			if (FileExists(outPath))
 				return;
 			let parent = PathParent(directory, .. scope String());
@@ -160,6 +162,37 @@ class WgslCookTests
 			Test.Assert(result.Wgsl.Contains(scope $"fn {s.entry}("));
 			Test.Assert(!result.Wgsl.Contains("fn main("));
 		}
+	}
+
+	/// A one file shader includes the engine's forward vertex library beside its own pixel
+	/// function, naming the library's vertex function for itself (FORWARD_VS_ENTRY): the
+	/// compiled module's entry is that name, not `main`.
+	[Test]
+	public static void TheForwardVertexLibraryTakesTheIncludersEntryName()
+	{
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+		let library = RepositoryPath("Data/Shaders", "forward_vs.hlsli", .. scope String());
+		Test.Assert(!library.IsEmpty, "the engine's shader folder is found");
+		let shaderDirectory = PathParent(library, .. scope String());
+
+		let source = """
+			#define FORWARD_VS_ENTRY VSMain
+			#include "forward_vs.hlsli"
+			""";
+		StringView[1] includePaths = .(shaderDirectory);
+		var options = CompileOptions();
+		options.IncludePaths = includePaths;
+		options.BindingShifts = BindingShifts.Standard;
+		options.BindingShiftSets = 4;
+		var spirv = compiler.Compile(.((uint8*)source.Ptr, source.Length), .Vertex, "VSMain", .SPIRV, options);
+		defer spirv.Dispose();
+		Test.Assert(spirv.Success, scope $"the library compiles as VSMain: {spirv.Messages}");
+		let names = scope List<String>();
+		defer { ClearAndDeleteItems!(names); }
+		SpirvEntryPointNames(spirv.Bytecode, names);
+		Test.Assert((names.Count == 1) && (names[0] == "VSMain"));
 	}
 
 	/// HLSL becomes WGSL, and the binding shifts SURVIVE the translation.
