@@ -41,6 +41,8 @@ class ShaderSystem
 	private Dictionary<uint64, ShaderFlags> mDeclaredMasks = new .() ~ delete _;
 	/// Keys already complained about, so a per frame retry does not drown the log.
 	private HashSet<uint64> mLoggedFailures = new HashSet<uint64>() ~ delete _;
+	/// Variants that compiled and failed (see GetVariant); forgotten when the source changes.
+	private HashSet<ShaderVariantKey> mFailedVariants = new .() ~ delete _;
 	/// Variant to the GPU module it owns.
 	private Dictionary<ShaderVariantKey, Sedulous.RHI.IShaderModule> mCache = new .() ~ delete _;
 	private Dictionary<uint64, uint64> mVersions = new Dictionary<uint64, uint64>() ~ delete _;
@@ -78,15 +80,18 @@ class ShaderSystem
 	}
 
 	public IShaderSourceProvider SourceProvider => mProvider;
+	/// How many variants failed and wait for their source to change.
+	public int FailedVariantCount => mFailedVariants.Count;
 	public CookedShaderPack CookedPack => mPack;
 
 	/// Registers a stage's HLSL, taking an owned copy, and the entry point that stage's
 	/// function is called in it (one file may serve both stages as VSMain and PSMain).
 	///
-	/// An explicitly registered source is compiled with the RAW requested flags. It sits
-	/// outside the corpus lattice by definition, so there is no declared mask to intersect
-	/// with and every requested define is applied.
-	public void RegisterSource(StringView name, ShaderStage stage, StringView hlsl, StringView entryPoint)
+	/// With a declared variant mask (a cooked shader asset's lattice) requests canonicalize onto
+	/// it, as the corpus's do; without one the RAW requested flags compile, every requested
+	/// define applied. Registering forgets the shader's failed variants.
+	public void RegisterSource(StringView name, ShaderStage stage, StringView hlsl, StringView entryPoint,
+		ShaderFlags? declaredMask = null)
 	{
 		let key = SourceKey(name, stage);
 		if (mSources.TryGetValue(key, let existing))
@@ -96,7 +101,11 @@ class ShaderSystem
 		source.EntryPoint.Set(entryPoint);
 		mSources[key] = source;
 		// Explicit registration overrides whatever a provider fetch had decided.
-		mDeclaredMasks.Remove(key);
+		if (declaredMask.HasValue)
+			mDeclaredMasks[key] = declaredMask.Value;
+		else
+			mDeclaredMasks.Remove(key);
+		ForgetFailures(ShaderFlagNames.ShaderNameHash(name));
 	}
 
 	/// The provider is BORROWED and may be null.
@@ -156,8 +165,10 @@ class ShaderSystem
 
 	/// The GPU module for a variant, compiled or looked up on first request and cached.
 	///
-	/// Null when the source is unknown or the compile failed. A FAILURE IS NOT CACHED, so a
-	/// later request retries, which is what makes fixing a shader and saving it work.
+	/// Null when the source is unknown or the compile failed. A failed variant is remembered
+	/// until its source changes (RegisterSource, InvalidateShader, a reload), so a broken shader
+	/// is compiled and reported once, not every frame the renderer asks for it; fixing it and
+	/// saving still works.
 	public Sedulous.RHI.IShaderModule GetVariant(StringView name, ShaderStage stage, ShaderFlags flags)
 	{
 		if (mPack == null)
@@ -183,6 +194,7 @@ class ShaderSystem
 	public int InvalidateShader(StringView name)
 	{
 		let nameHash = ShaderFlagNames.ShaderNameHash(name);
+		ForgetFailures(nameHash);
 
 		let toRemove = scope List<ShaderVariantKey>();
 		for (let pair in mCache)
@@ -255,10 +267,17 @@ class ShaderSystem
 		if (mCache.TryGetValue(key, let cached))
 			return cached;
 
+		// A variant that failed waits for its source to change: compiled and reported once, not
+		// every frame the renderer asks for it.
+		if (mFailedVariants.Contains(key))
+			return null;
 		let source = mSources[sourceKey];
 		let module = Compile(source.Hlsl, source.EntryPoint, stage, canonical);
 		if (module == null)
+		{
+			mFailedVariants.Add(key);
 			return null;
+		}
 
 		mCache[key] = module;
 		return module;
@@ -417,6 +436,17 @@ class ShaderSystem
 			}
 		}
 		mCache.Clear();
+	}
+
+	/// Drops the remembered failures of a shader's variants: its source changed.
+	private void ForgetFailures(uint64 nameHash)
+	{
+		let forget = scope List<ShaderVariantKey>();
+		for (let key in mFailedVariants)
+			if (key.NameHash == nameHash)
+				forget.Add(key);
+		for (let key in forget)
+			mFailedVariants.Remove(key);
 	}
 
 	private static uint64 SourceKey(StringView name, ShaderStage stage)

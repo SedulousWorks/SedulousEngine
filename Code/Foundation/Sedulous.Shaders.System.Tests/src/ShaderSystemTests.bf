@@ -137,14 +137,51 @@ class ShaderSystemTests
 		Test.Assert(skinned != null, "and so did the flagged one");
 		Test.Assert(plain != skinned, "they are separate modules, so the define took effect");
 
-		// A source that cannot compile yields null, and asking again still tries.
+		// A source that cannot compile yields null, and is not compiled again until it changes.
 		shaders.RegisterSource("broken", .Fragment, "this is not valid hlsl @#$", "main");
+		Test.Assert(shaders.GetVariant("broken", .Fragment, .None) == null);
+		Test.Assert(shaders.FailedVariantCount == 1, "remembered, so not compiled again");
+		Test.Assert(shaders.GetVariant("broken", .Fragment, .None) == null);
+		shaders.InvalidateShader("broken");
+		Test.Assert(shaders.FailedVariantCount == 0, "invalidating forgets it");
 		Test.Assert(shaders.GetVariant("broken", .Fragment, .None) == null);
 
 		shaders.RegisterSource("broken", .Fragment,
 			"float4 main() : SV_Target0 { return 0; }", "main");
 		Test.Assert(shaders.GetVariant("broken", .Fragment, .None) != null,
-			"the fixed source compiles, so the failure was not cached");
+			"the fixed source compiles: registering forgot the failure");
+		Test.Assert(shaders.FailedVariantCount == 0);
+	}
+
+	/// A registered source with a declared mask (a cooked shader asset's lattice) canonicalizes
+	/// requests onto it, as the corpus does: a flag the stage ignores lands on the variant it has.
+	[Test]
+	public static void ARegisteredSourcesDeclaredMaskCanonicalizesRequests()
+	{
+		IBackend backend = null;
+		let device = MakeDevice(&backend);
+		Test.Assert(device != null);
+		defer
+		{
+			device.Destroy();
+			backend.Destroy();
+			delete backend;
+		}
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+
+		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
+		shaders.OptimizationLevel = 0;
+		shaders.RegisterSource("masked", .Fragment, cFlaggedPixelShader, "main", ShaderFlags.Skinned);
+		let skinned = shaders.GetVariant("masked", .Fragment, .Skinned);
+		Test.Assert(skinned != null);
+		Test.Assert(shaders.GetVariant("masked", .Fragment, .Skinned | .GBuffer) == skinned, "GBUFFER is not declared: stripped");
+		Test.Assert(shaders.GetVariant("masked", .Fragment, .GBuffer) == shaders.GetVariant("masked", .Fragment, .None));
+
+		// Without a mask the raw flags compile: GBUFFER makes a variant of its own.
+		shaders.RegisterSource("raw", .Fragment, cFlaggedPixelShader, "main");
+		Test.Assert(shaders.GetVariant("raw", .Fragment, .GBuffer) != shaders.GetVariant("raw", .Fragment, .None));
 	}
 
 	/// The device's format picks the pack bucket. Pure, so it needs no device.
