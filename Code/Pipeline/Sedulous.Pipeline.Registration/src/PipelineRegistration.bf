@@ -69,10 +69,10 @@ namespace Sedulous.Pipeline.Registration;
 static class PipelineRegistration
 {
 	public const int cBuilderCount = 31;
-	public const int cImporterCount = 10;
+	public const int cImporterCount = 11;
 	/// The creators every build has; the scripts add three per language with a cook on top
 	/// (ScriptCreators.CountFor).
-	public const int cCreatorCount = 28;
+	public const int cCreatorCount = 29;
 
 	/// The pipeline surface the script cooks compile against, made by the type registration
 	/// and released by Teardown.
@@ -219,6 +219,7 @@ static class PipelineRegistration
 		RenderCreators.Register(registry);
 		AudioCreators.Register(registry);
 		UICreators.Register(registry);
+		ShaderCreators.Register(registry);
 		HeightfieldCreators.Register(registry);
 		TerrainCreators.Register(registry);
 		VegetationCreators.Register(registry);
@@ -233,6 +234,7 @@ static class PipelineRegistration
 		registry.Register(new TextureFileImporter());
 		registry.Register(new ModelFileImporter());
 		registry.Register(new UIFileImporter());
+		registry.Register(new ShaderFileImporter());
 		registry.Register(new AudioFileImporter());
 		registry.Register(new ScriptFileImporter());
 		registry.Register(new FontAssetImporter());
