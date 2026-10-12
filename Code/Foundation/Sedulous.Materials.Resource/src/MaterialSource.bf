@@ -98,6 +98,44 @@ class MaterialSource
 		outSource.UniformDefaults.AddRange(material.DefaultUniformData);
 	}
 
+	/// A runtime material from this source, drawn with `shaderName`: its property layout, default
+	/// values, render state and sampler addressing; its textures are left unbound (the factory
+	/// resolves them through the resource manager, an editor preview through its own). The one
+	/// conversion, so a preview draws what a loaded material draws. The caller owns the result.
+	///
+	/// The layout is taken verbatim. The offsets are the COOK's, not recomputed here: the shader
+	/// was compiled against them, and rederiving them would be a second opinion that can disagree.
+	public Material ToMaterial(StringView shaderName)
+	{
+		let material = new Material();
+		material.Name.Set(Name);
+		material.ShaderName.Set(shaderName);
+		material.ShaderFlags = (Sedulous.Shaders.ShaderFlags)ShaderFlags;
+		for (int i < PropertyNames.Count)
+		{
+			var def = MaterialPropertyDef();
+			def.Name = PropertyNames[i];
+			def.Type = (i < PropertyTypes.Count) ? (MaterialPropertyType)PropertyTypes[i] : .Float;
+			def.Binding = (i < PropertyBindings.Count) ? PropertyBindings[i] : 0;
+			def.Offset = (i < PropertyOffsets.Count) ? PropertyOffsets[i] : 0;
+			def.Size = (i < PropertySizes.Count) ? PropertySizes[i] : 0;
+			material.AddProperty(def);
+		}
+		material.AllocateDefaultUniformData();
+		material.SetRawDefaultUniformData(UniformDefaults);
+
+		material.Pipeline = .();
+		material.Pipeline.ShaderName = material.ShaderName;
+		material.Pipeline.ShaderFlags = material.ShaderFlags;
+		material.Pipeline.BlendMode = BlendMode;
+		material.Pipeline.DepthMode = DepthMode;
+		material.Pipeline.CullMode = CullMode;
+		material.Pipeline.VertexLayout = VertexLayout;
+		material.SamplerU = (Sedulous.RHI.AddressMode)SamplerU;
+		material.SamplerV = (Sedulous.RHI.AddressMode)SamplerV;
+		return material;
+	}
+
 	/// Once read (the [Serializable] hook): stored colours typed as the template declares them.
 	public void AfterRead()
 	{

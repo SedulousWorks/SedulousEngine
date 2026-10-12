@@ -49,23 +49,7 @@ class MaterialFactory : IResourceFactory
 			return null;
 		}
 
-		let material = new Material();
-		material.Name.Set(source.Name);
-		ResolveShaderName(manager, source, material.ShaderName);
-		material.ShaderFlags = (ShaderFlags)source.ShaderFlags;
-
-		DeclareProperties(source, material);
-
-		material.Pipeline = .();
-		material.Pipeline.ShaderName = material.ShaderName;
-		material.Pipeline.ShaderFlags = material.ShaderFlags;
-		material.Pipeline.BlendMode = source.BlendMode;
-		material.Pipeline.DepthMode = source.DepthMode;
-		material.Pipeline.CullMode = source.CullMode;
-		material.Pipeline.VertexLayout = source.VertexLayout;
-
-		material.SamplerU = (AddressMode)source.SamplerU;
-		material.SamplerV = (AddressMode)source.SamplerV;
+		let material = source.ToMaterial(ResolveShaderName(manager, source, .. scope .()));
 
 		BindDefaultTextures(manager, source, material);
 		return material;
@@ -87,27 +71,6 @@ class MaterialFactory : IResourceFactory
 
 		if (outName.IsEmpty)
 			outName.Set(source.ShaderName);
-	}
-
-	/// The declared layout, verbatim. The offsets are the COOK's, not recomputed here: the
-	/// shader was compiled against them, and rederiving them would be a second opinion that
-	/// can disagree.
-	private static void DeclareProperties(MaterialSource source, Material material)
-	{
-		for (int i = 0; i < source.PropertyNames.Count; i++)
-		{
-			var def = MaterialPropertyDef();
-			def.Name = source.PropertyNames[i];
-			def.Type = (i < source.PropertyTypes.Count)
-				? (MaterialPropertyType)source.PropertyTypes[i] : .Float;
-			def.Binding = (i < source.PropertyBindings.Count) ? source.PropertyBindings[i] : 0;
-			def.Offset = (i < source.PropertyOffsets.Count) ? source.PropertyOffsets[i] : 0;
-			def.Size = (i < source.PropertySizes.Count) ? source.PropertySizes[i] : 0;
-			material.AddProperty(def);
-		}
-
-		material.AllocateDefaultUniformData();
-		material.SetRawDefaultUniformData(source.UniformDefaults);
 	}
 
 	/// Resolves the stored texture slots and installs them as the material's defaults.

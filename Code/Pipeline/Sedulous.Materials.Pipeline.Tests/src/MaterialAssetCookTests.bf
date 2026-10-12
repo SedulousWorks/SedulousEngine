@@ -200,4 +200,74 @@ class MaterialAssetCookTests
 		context.Output = database.RootGroup.CreateInstance("m", cProductType);
 		Test.Assert(scope MaterialAssetBuilder().Build(asset, context) case .Err);
 	}
+
+	/// The layout the cook applies, called directly (the editor previews a shader's material and
+	/// re-lays a material out when its shader is switched): with nothing authored, every property
+	/// takes the shader's default; the render state comes from the authored material.
+	[Test]
+	public static void AShadersTableLaysOutAFreshMaterialWithItsDefaults()
+	{
+		let block = scope ShaderPropertiesBlock();
+		ShaderProperties.Parse("properties {\n  Color BaseColor = (1, 0.5, 0.25, 1);\n  float Roughness = 0.7;\n  int Steps = 4;\n  Texture AlbedoMap;\n  Sampler MainSampler;\n}\n", block);
+		Test.Assert(block.IsOk);
+		let shader = scope ShaderSource();
+		shader.Name.Set("lava");
+		shader.SetProperties(block);
+
+		let authored = scope MaterialSource();
+		authored.Name.Set("preview");
+		authored.BlendMode = .AlphaBlend;
+		let product = scope MaterialSource();
+		MaterialShaderLayout.LayOut(authored, shader, product);
+
+		Test.Assert(product.Name == "preview");
+		Test.Assert(product.ShaderName == "lava", "drawn with the shader's name");
+		Test.Assert(product.BlendMode == .AlphaBlend);
+		Test.Assert((product.PropertyNames.Count == 5) && (product.PropertyNames[3] == "AlbedoMap"));
+		Test.Assert(product.TextureSlots.IsEmpty, "nothing bound: the slot takes the system default");
+		Test.Assert(product.UniformDefaults.Count == (int)block.UniformSize);
+		Test.Assert(Near(*(float*)(product.UniformDefaults.Ptr + 4), 0.5f));
+		Test.Assert(Near(*(float*)(product.UniformDefaults.Ptr + 16), 0.7f));
+		Test.Assert(*(int32*)(product.UniformDefaults.Ptr + 20) == 4);
+	}
+
+	/// A material moved to another shader keeps what still fits: a PBR material moved to the
+	/// built-in Unlit keeps its BaseColor and its albedo texture; what Unlit lacks is dropped.
+	[Test]
+	public static void ValuesCarryOntoAnotherShadersLayoutByNameTypeAndSize()
+	{
+		let pbrMaterial = MaterialPresets.CreatePbr("m");
+		defer delete pbrMaterial;
+		let unlitMaterial = MaterialPresets.CreateUnlit("m");
+		defer delete unlitMaterial;
+		let pbr = scope MaterialSource();
+		MaterialSource.FromMaterial(pbrMaterial, Guid(), pbr);
+		let unlit = scope MaterialSource();
+		MaterialSource.FromMaterial(unlitMaterial, Guid(), unlit);
+
+		int IndexOf(MaterialSource source, StringView name)
+		{
+			for (int i < source.PropertyNames.Count)
+				if (source.PropertyNames[i] == name)
+					return i;
+			return -1;
+		}
+		let baseIndex = IndexOf(pbr, "BaseColor");
+		Test.Assert(baseIndex >= 0);
+		Float4 red = .(1, 0, 0, 1);
+		Internal.MemCpy(&pbr.UniformDefaults[(int)pbr.PropertyOffsets[baseIndex]], &red, sizeof(Float4));
+		let albedo = Guid(5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		pbr.TextureSlots.Add(new String("AlbedoMap"));
+		pbr.TextureIds.Add(albedo);
+		pbr.TextureSlots.Add(new String("NormalMap")); // Unlit has none
+		pbr.TextureIds.Add(Guid(7, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+
+		MaterialShaderLayout.CarryValues(pbr, unlit);
+
+		let unlitBase = IndexOf(unlit, "BaseColor");
+		Test.Assert(unlitBase >= 0);
+		let carried = *(Float4*)(unlit.UniformDefaults.Ptr + unlit.PropertyOffsets[unlitBase]);
+		Test.Assert((carried.X == 1.0f) && (carried.Y == 0.0f));
+		Test.Assert((unlit.TextureSlots.Count == 1) && (unlit.TextureSlots[0] == "AlbedoMap") && (unlit.TextureIds[0] == albedo));
+	}
 }

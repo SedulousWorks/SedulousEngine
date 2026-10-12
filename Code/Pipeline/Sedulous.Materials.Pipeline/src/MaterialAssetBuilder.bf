@@ -59,15 +59,20 @@ class MaterialAssetBuilder : IAssetBuilder
 			return .Err(.NotFound);
 		}
 		let product = scope MaterialSource();
-		LayOutByShader(material.Source, shader, product);
+		MaterialShaderLayout.LayOut(material.Source, shader, product);
 		return context.Output.WriteObject(product);
 	}
+}
 
-	/// A material on a custom shader, laid out by the shader's property table: each property in
-	/// the shader's order and at its offset, its value taken from the authored material by name
-	/// where the type and size match, else the shader's default. An authored value the shader no
-	/// longer declares is dropped with a warning; so is a texture binding to a slot it lacks.
-	public static void LayOutByShader(MaterialSource authored, ShaderSource shader, MaterialSource outProduct)
+/// A material laid out by a custom shader's property table, and a material's values carried onto
+/// another layout of it. The cook lays a material out so; the editor previews one so and keeps its
+/// values when it moves to another shader.
+static class MaterialShaderLayout
+{
+	/// A material on a custom shader, laid out by the shader's property table: each property in the
+	/// shader's order and at its offset, at the shader's default, then the authored material's
+	/// values carried over (CarryValues).
+	public static void LayOut(MaterialSource authored, ShaderSource shader, MaterialSource outProduct)
 	{
 		// Name, shader reference, render state and samplers come from the authored material.
 		outProduct.Name.Set(authored.Name);
@@ -85,8 +90,6 @@ class MaterialAssetBuilder : IAssetBuilder
 		outProduct.PropertyBindings.Clear();
 		outProduct.PropertyOffsets.Clear();
 		outProduct.PropertySizes.Clear();
-		ClearAndDeleteItems!(outProduct.TextureSlots);
-		outProduct.TextureIds.Clear();
 		outProduct.UniformDefaults.Clear();
 		outProduct.UniformDefaults.Resize((int)shader.UniformSize);
 		for (var b in ref outProduct.UniformDefaults)
@@ -98,51 +101,61 @@ class MaterialAssetBuilder : IAssetBuilder
 		for (int i < table.Count)
 		{
 			let property = table[i];
-			let type = MaterialTypeOf(property.Type);
 			outProduct.PropertyNames.Add(new String(property.Name));
-			outProduct.PropertyTypes.Add((uint8)type);
+			outProduct.PropertyTypes.Add((uint8)MaterialTypeOf(property.Type));
 			outProduct.PropertyBindings.Add((uint32)i);
 			outProduct.PropertyOffsets.Add(property.Offset);
 			outProduct.PropertySizes.Add(property.Size);
+			if (property.Size != 0)
+				WriteDefault(property, &outProduct.UniformDefaults[(int)property.Offset]);
+		}
+		CarryValues(authored, outProduct);
+	}
 
-			if (property.Size == 0)
+	/// Carries a material's values onto another layout of it (`to`: its properties, offsets and
+	/// defaults in place, no texture bound): each uniform whose name, type and size match keeps its
+	/// value, each texture binding whose slot `to` still has as a texture keeps its texture, and the
+	/// rest of `to` keeps its defaults. What does not carry is dropped with a warning.
+	public static void CarryValues(MaterialSource from, MaterialSource to)
+	{
+		ClearAndDeleteItems!(to.TextureSlots);
+		to.TextureIds.Clear();
+		for (int i < to.PropertyNames.Count)
+		{
+			let name = to.PropertyNames[i];
+			let type = (i < to.PropertyTypes.Count) ? to.PropertyTypes[i] : 0;
+			let size = (i < to.PropertySizes.Count) ? to.PropertySizes[i] : 0;
+			if (size == 0)
 			{
-				// A texture keeps its authored binding when the slot is still a texture.
-				if (property.Type == .Sampler)
-					continue;
-				let slot = IndexOf(authored.TextureSlots, property.Name);
-				if ((slot >= 0) && (slot < authored.TextureIds.Count))
+				let kind = (MaterialPropertyType)type;
+				let slot = IndexOf(from.TextureSlots, name);
+				if (((kind == .Texture2D) || (kind == .TextureCube)) && (slot >= 0) && (slot < from.TextureIds.Count))
 				{
-					outProduct.TextureSlots.Add(new String(property.Name));
-					outProduct.TextureIds.Add(authored.TextureIds[slot]);
+					to.TextureSlots.Add(new String(name));
+					to.TextureIds.Add(from.TextureIds[slot]);
 				}
 				continue;
 			}
-			let authoredIndex = IndexOf(authored.PropertyNames, property.Name);
-			let sameKind = (authoredIndex >= 0) && (authoredIndex < authored.PropertyTypes.Count)
-				&& (authoredIndex < authored.PropertyOffsets.Count) && (authoredIndex < authored.PropertySizes.Count)
-				&& (authored.PropertyTypes[authoredIndex] == (uint8)type) && (authored.PropertySizes[authoredIndex] == property.Size);
-			let from = sameKind ? (int)authored.PropertyOffsets[authoredIndex] : 0;
-			if (sameKind && (from + (int)property.Size <= authored.UniformDefaults.Count))
-			{
-				Internal.MemCpy(&outProduct.UniformDefaults[(int)property.Offset], &authored.UniformDefaults[from], property.Size);
+			let index = IndexOf(from.PropertyNames, name);
+			if (index < 0)
 				continue;
-			}
-			WriteDefault(property, &outProduct.UniformDefaults[(int)property.Offset]);
+			let sameKind = (index < from.PropertyTypes.Count) && (index < from.PropertyOffsets.Count)
+				&& (index < from.PropertySizes.Count) && (from.PropertyTypes[index] == type) && (from.PropertySizes[index] == size);
+			let at = (i < to.PropertyOffsets.Count) ? (int)to.PropertyOffsets[i] : 0;
+			if (sameKind && ((int)(from.PropertyOffsets[index] + size) <= from.UniformDefaults.Count)
+				&& (at + (int)size <= to.UniformDefaults.Count))
+				Internal.MemCpy(&to.UniformDefaults[at], &from.UniformDefaults[(int)from.PropertyOffsets[index]], size);
 		}
 
-		for (let name in authored.PropertyNames)
+		for (let name in from.PropertyNames)
 		{
-			var kept = false;
-			for (let property in table)
-				kept = kept || (property.Name == name);
-			if (!kept)
-				GlobalLog(.Warning, "Materials: material '{}': '{}' is not a property of shader '{}' - dropped", authored.Name, name, shader.Name);
+			if (IndexOf(to.PropertyNames, name) < 0)
+				GlobalLog(.Warning, "Materials: material '{}': '{}' is not a property of shader '{}' - dropped", from.Name, name, to.ShaderName);
 		}
-		for (let slot in authored.TextureSlots)
+		for (let slot in from.TextureSlots)
 		{
-			if (IndexOf(outProduct.TextureSlots, slot) < 0)
-				GlobalLog(.Warning, "Materials: material '{}': shader '{}' has no texture '{}' - its binding is dropped", authored.Name, shader.Name, slot);
+			if (IndexOf(to.TextureSlots, slot) < 0)
+				GlobalLog(.Warning, "Materials: material '{}': shader '{}' has no texture '{}' - its binding is dropped", from.Name, to.ShaderName, slot);
 		}
 	}
 

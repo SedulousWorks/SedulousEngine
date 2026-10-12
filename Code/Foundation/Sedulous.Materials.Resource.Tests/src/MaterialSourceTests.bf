@@ -196,4 +196,36 @@ class MaterialSourceTests
 		source.AdoptTemplateColorTypes();
 		Test.Assert(source.PropertyTypes[baseColor] == (uint8)MaterialPropertyType.Float4);
 	}
+
+	/// The one conversion from a cooked source to a runtime material (the factory and the editor's
+	/// previews): its layout, defaults, render state and sampler addressing, under the shader name
+	/// given, with no texture bound.
+	[Test]
+	public static void ToMaterialCarriesLayoutDefaultsAndRenderState()
+	{
+		let source = scope MaterialSource();
+		source.Name.Set("lava");
+		source.ShaderName.Set("ignored"); // the caller names the shader it resolved
+		source.BlendMode = .AlphaBlend;
+		source.CullMode = .None;
+		source.SamplerU = (uint8)Sedulous.RHI.AddressMode.MirrorRepeat;
+		source.PropertyNames.Add(new String("Glow"));
+		source.PropertyTypes.Add((uint8)MaterialPropertyType.Float);
+		source.PropertyBindings.Add(0);
+		source.PropertyOffsets.Add(4);
+		source.PropertySizes.Add(4);
+		source.UniformDefaults.Resize(16);
+		for (var b in ref source.UniformDefaults)
+			b = 0;
+		var glow = 4.0f;
+		Internal.MemCpy(&source.UniformDefaults[4], &glow, sizeof(float));
+
+		let material = source.ToMaterial("lava_shader");
+		defer delete material;
+		Test.Assert((material.Name == "lava") && (material.ShaderName == "lava_shader") && (material.Pipeline.ShaderName == "lava_shader"));
+		Test.Assert((material.Pipeline.BlendMode == .AlphaBlend) && (material.Pipeline.CullMode == .None));
+		Test.Assert(material.SamplerU == .MirrorRepeat);
+		Test.Assert(material.FindProperty("Glow", let def) && (def.Offset == 4));
+		Test.Assert((material.DefaultUniformData.Length >= 8) && (*(float*)(material.DefaultUniformData.Ptr + 4) == 4.0f));
+	}
 }

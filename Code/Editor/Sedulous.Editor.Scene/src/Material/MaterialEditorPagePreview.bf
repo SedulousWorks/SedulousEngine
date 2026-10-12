@@ -51,31 +51,7 @@ extension MaterialEditorPage
 			return;
 		let src = mAsset.Source;
 
-		let material = new Material();
-		material.Name.Set(src.Name);
-		material.ShaderName.Set(src.ShaderName);
-		material.ShaderFlags = (ShaderFlags)src.ShaderFlags;
-		for (int i < src.PropertyNames.Count)
-		{
-			var d = MaterialPropertyDef();
-			d.Name = src.PropertyNames[i];
-			d.Type = (i < src.PropertyTypes.Count) ? (MaterialPropertyType)src.PropertyTypes[i] : .Float;
-			d.Binding = (i < src.PropertyBindings.Count) ? src.PropertyBindings[i] : 0;
-			d.Offset = (i < src.PropertyOffsets.Count) ? src.PropertyOffsets[i] : 0;
-			d.Size = (i < src.PropertySizes.Count) ? src.PropertySizes[i] : 0;
-			material.AddProperty(d);
-		}
-		material.AllocateDefaultUniformData();
-		material.SetRawDefaultUniformData(src.UniformDefaults);
-		material.Pipeline = .();
-		material.Pipeline.ShaderName = material.ShaderName;
-		material.Pipeline.ShaderFlags = material.ShaderFlags;
-		material.Pipeline.BlendMode = src.BlendMode;
-		material.Pipeline.DepthMode = src.DepthMode;
-		material.Pipeline.CullMode = src.CullMode;
-		material.Pipeline.VertexLayout = src.VertexLayout;
-		material.SamplerU = (AddressMode)src.SamplerU;
-		material.SamplerV = (AddressMode)src.SamplerV;
+		let material = src.ToMaterial(src.ShaderName);
 
 		ForgetPreviewTextures();
 		if (mContext.Resources != null)
