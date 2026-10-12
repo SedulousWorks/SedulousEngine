@@ -23,7 +23,8 @@ namespace Sedulous.Tools.Editor;
 /// EditorRegistration.
 ///
 /// Usage: Sedulous.Tools.Editor [projectDirectory] [--project <dir>] [--data-root <dir>]
-///   [--exit-after <s>] [--rebuild-after <s>] [--screenshot <png> [--screenshot-after <s>]]
+///   [--exit-after <s>] [--rebuild-after <s>] [--screenshot <png> [--screenshot-after <s>]
+///   [--screenshot-exit]] (the main window as a PNG; --screenshot-exit quits once it is written)
 ///   [--mcp] [--mcp-port <n>] (the MCP host for this run: agent access to the open project
 ///   over 127.0.0.1; the persisted preference is in Preferences)
 ///   [--seed] [--seed-primitives] [--version]
@@ -169,6 +170,8 @@ class Program
 		{
 			if (arg == "--seed")
 				config.SeedOnScaffold = true; // a scaffolded project also gets the starter content
+			else if (arg == "--screenshot-exit")
+				config.ScreenshotExit = true;
 			else if (arg == "--mcp")
 				config.McpEnabled = true; // the MCP host for this run, whatever the preference says
 			else if (arg == "--seed-primitives")

@@ -50,6 +50,9 @@ class EditorAppConfig
 	/// never), once ScreenshotAfterSeconds have run, so a run proves what it drew.
 	public String ScreenshotPath = new .() ~ delete _;
 	public float ScreenshotAfterSeconds = 0.0f;
+	/// --screenshot-exit: request the clean shutdown once that capture is written (or has
+	/// failed), the player's flag of the same name, so a capture run needs no --exit-after guess.
+	public bool ScreenshotExit = false;
 	/// The MCP host for THIS run: --mcp enables it regardless of the preference and
 	/// --mcp-port <n> picks its port (0 is the preference's), so an agent that launches the
 	/// editor itself needs no UI. EditorMcpSettings is the persisted preference.

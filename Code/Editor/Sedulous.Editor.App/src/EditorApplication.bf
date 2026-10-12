@@ -784,6 +784,10 @@ class EditorApplication : IApplication
 				mWindowCapture.Request(.(&request, 1));
 			}
 		}
+		// The capture settles a frame or two after it fires (record, then map and write); Busy
+		// clears whether the file was written or the capture failed.
+		if (!mConfig.ScreenshotPath.IsEmpty && mConfig.ScreenshotExit && mScreenshotFired && !mWindowCapture.Busy)
+			host.RequestExit();
 		if ((mConfig.AutoExitSeconds > 0.0f) || (mConfig.AutoRebuildSeconds > 0.0f))
 		{
 			if ((mConfig.AutoExitSeconds > 0.0f) && (mElapsed >= mConfig.AutoExitSeconds))

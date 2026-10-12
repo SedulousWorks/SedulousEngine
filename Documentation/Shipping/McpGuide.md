@@ -257,7 +257,8 @@ read the file before trusting it, and leave the judgement of how it looks to the
 - *The editor itself* (panels, dialogs, menus, toasts): `editor_screenshot`
   (`editor-<pid>-<n>.png`; `window: "all"` adds each floating window), as the user's F12 (View >
   Screenshot Editor) does. For a run with no MCP, `Sedulous.Tools.Editor --project <dir>
-  --screenshot <png> [--screenshot-after <s>]` writes the main window once it has drawn.
+  --screenshot <png> [--screenshot-after <s>] [--screenshot-exit]` writes the main window once it
+  has drawn, and with `--screenshot-exit` quits once the file is written.
 - *An exported game (the player)*, which is a different host from PIE: `<dist>/<player>
   --screenshot <png> [--screenshot-frame N | --screenshot-after S] [--screenshot-count N]
   [--screenshot-exit]` writes the window at frame N (30 by default) or after S seconds, N files
