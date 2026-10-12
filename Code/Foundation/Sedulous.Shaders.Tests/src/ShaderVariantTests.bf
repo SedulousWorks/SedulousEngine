@@ -9,6 +9,22 @@ namespace Sedulous.Shaders.Tests;
 class ShaderVariantTests
 {
 	/// The directive names flags; anything it did not name stays out of the mask.
+	/// One file, two stages, two lattices: each stage takes its tagged line; a stage with none
+	/// takes the untagged form (the corpus's), else no variants.
+	[Test]
+	public static void AOneFileShaderDeclaresEachStagesVariants()
+	{
+		let oneFile = "// variants(vertex): SKINNED INSTANCED\n// variants(fragment): GBUFFER ALPHA_TEST\n";
+		Test.Assert(ShaderVariants.ParseStageVariantDirective(oneFile, .Vertex).Mask == (ShaderFlags.Skinned | .Instanced));
+		Test.Assert(ShaderVariants.ParseStageVariantDirective(oneFile, .Fragment).Mask == (ShaderFlags.GBuffer | .AlphaTest));
+		Test.Assert(!ShaderVariants.ParseStageVariantDirective(oneFile, .Compute).Present);
+		// The untagged corpus form is not mistaken for a tagged one, and serves every stage.
+		Test.Assert(!ShaderVariants.ParseVariantDirective(oneFile).Present);
+		let corpus = "// variants: WIND\n";
+		Test.Assert(ShaderVariants.ParseStageVariantDirective(corpus, .Vertex).Mask == .Wind);
+		Test.Assert(ShaderVariants.ParseStageVariantDirective(corpus, .Fragment).Mask == .Wind);
+	}
+
 	[Test]
 	public static void TheDirectiveMapsNamesToAMask()
 	{

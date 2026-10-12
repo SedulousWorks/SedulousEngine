@@ -28,8 +28,9 @@ static class ShaderVariants
 	///
 	/// The tag may sit anywhere on a line after the `//`; tokens are whitespace separated
 	/// define names. An unknown token is IGNORED rather than an error, so a shader may name
-	/// a flag that does not exist yet without breaking the cook.
-	public static VariantDirective ParseVariantDirective(StringView source)
+	/// a flag that does not exist yet without breaking the cook. `tag` is the directive's text
+	/// (ParseStageVariantDirective passes a stage's tagged form).
+	public static VariantDirective ParseVariantDirective(StringView source, StringView tag = cTag)
 	{
 		VariantDirective result = .();
 
@@ -37,11 +38,11 @@ static class ShaderVariants
 		let data = source.Ptr;
 		for (int i = 0; i < length; ++i)
 		{
-			if ((i + cTag.Length > length) || (source.Substring(i, cTag.Length) != cTag))
+			if ((i + tag.Length > length) || (source.Substring(i, tag.Length) != tag))
 				continue;
 
 			result.Present = true;
-			int at = i + cTag.Length;
+			int at = i + tag.Length;
 			while ((at < length) && (data[at] != '\n'))
 			{
 				while ((at < length) && ((data[at] == ' ') || (data[at] == '\t')
@@ -85,6 +86,29 @@ static class ShaderVariants
 	/// Applied in development and in a shipped build identically, which is what makes the two
 	/// behave the same and what dedupes variants: a pixel shader that ignores SKINNED stops
 	/// recompiling once per skinned mesh.
+	/// A one file shader declares each stage's lattice: `// variants(vertex): SKINNED INSTANCED`
+	/// and `// variants(fragment): GBUFFER ALPHA_TEST` (also `compute`). A stage with no tagged
+	/// line takes the untagged `// variants:` (the corpus's form, every stage of its file), else
+	/// none.
+	public static VariantDirective ParseStageVariantDirective(StringView source, ShaderStage stage)
+	{
+		StringView tag = default;
+		switch (stage)
+		{
+		case .Vertex: tag = "variants(vertex):";
+		case .Fragment: tag = "variants(fragment):";
+		case .Compute: tag = "variants(compute):";
+		default:
+		}
+		if (!tag.IsEmpty)
+		{
+			let tagged = ParseVariantDirective(source, tag);
+			if (tagged.Present)
+				return tagged;
+		}
+		return ParseVariantDirective(source);
+	}
+
 	public static ShaderFlags CanonicalizeFlags(ShaderFlags requested, ShaderFlags declared)
 		=> requested & declared;
 
