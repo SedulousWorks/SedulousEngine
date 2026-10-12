@@ -25,6 +25,7 @@ using Sedulous.Editor.Generic;
 using Sedulous.Editor.Script;
 using Sedulous.Editor.Script.AngelScript;
 using Sedulous.Editor.Shaders;
+using Sedulous.VFS;
 
 namespace Sedulous.Tools.Editor;
 
@@ -50,6 +51,8 @@ static class EditorRegistration
 
 		SceneEditor.Register(context, host, uiHost, app.EmbeddedApplication);
 		MaterialEditor.Register(context, host, uiHost);
+		// A custom shader's page; its checks compile against the engine's shader library.
+		ShaderEditor.Register(context, host, uiHost, DataPath(app.DataRoot, "Shaders", .. scope .()));
 		SettingsProfileEditor.Register(context, host, uiHost);
 		MeshEditor.Register(context, host, uiHost);
 		ParticleEditor.Register(context, host, uiHost);
