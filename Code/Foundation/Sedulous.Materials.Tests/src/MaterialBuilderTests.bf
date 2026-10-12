@@ -48,10 +48,10 @@ class MaterialBuilderTests
 		Test.Assert(seeded[1] == 0.0f);
 	}
 
-	/// A three component vector occupies SIXTEEN bytes. Packing it tightly would put every
-	/// following member where the shader does not read from.
+	/// A three component vector packs by HLSL's rule, as the shader reads it: it fills the rest
+	/// of a scalar's row, and a scalar after it shares its last lane.
 	[Test]
-	public static void AThreeComponentVectorTakesAWholeSlot()
+	public static void AThreeComponentVectorPacksByHlslsRule()
 	{
 		let builder = scope MaterialBuilder("m");
 		let material = builder
@@ -67,10 +67,40 @@ class MaterialBuilderTests
 		Test.Assert(material.FindProperty("b", let b));
 
 		Test.Assert(a.Offset == 0);
-		Test.Assert(v.Offset == 16, "aligned up past the scalar");
-		Test.Assert(v.Size == 12, "declared as twelve...");
-		Test.Assert(b.Offset == 32, "...but consuming sixteen");
-		Test.Assert(material.UniformDataSize == 48);
+		Test.Assert(v.Offset == 4, "the rest of the scalar's row");
+		Test.Assert(v.Size == 12);
+		Test.Assert(b.Offset == 16, "the next row");
+		Test.Assert(material.UniformDataSize == 32);
+	}
+
+	/// A material built in code and a shader's properties block lay the same list out the same
+	/// way: HLSL's cbuffer packing, the offsets the shader reads.
+	[Test]
+	public static void UniformsLayOutAsAPropertiesBlockDoes()
+	{
+		let builder = scope MaterialBuilder("packed");
+		let material = builder
+			..Shader("custom")
+			..Float3("Direction", .(0, 1, 0))
+			..Float("Strength", 2.0f)
+			..Float2("Scroll", .(1, 0))
+			..Float("A", 0.0f)
+			..Float2("Wobble", .(0, 0))
+			..Color("Tint", .(1, 1, 1, 1))
+			.Build();
+		defer delete material;
+		let block = scope ShaderPropertiesBlock();
+		ShaderProperties.Parse("properties {\n  float3 Direction;\n  float Strength;\n  float2 Scroll;\n  float A;\n  float2 Wobble;\n  Color Tint;\n}\n", block);
+		Test.Assert(block.IsOk);
+		Test.Assert(block.Properties.Count == material.PropertyCount);
+		for (let property in block.Properties)
+		{
+			Test.Assert(material.FindProperty(property.Name, let def), scope $"{property.Name}");
+			Test.Assert((def.Offset == property.Offset) && (def.Size == property.Size), scope $"{property.Name} where the shader reads it");
+		}
+		Test.Assert(material.FindProperty("Strength", let strength) && (strength.Offset == 12), "in the float3's last lane");
+		Test.Assert(material.FindProperty("Wobble", let wobble) && (wobble.Offset == 32), "at 28 it would straddle a row");
+		Test.Assert(material.UniformDataSize == block.UniformSize);
 	}
 
 	/// Scalars and two component vectors pack tightly, which is the whole reason the

@@ -91,7 +91,7 @@ class MaterialBuilder
 
 	public MaterialBuilder Float(StringView name, float value = 0.0f)
 	{
-		AddUniform(name, .Float, 4, false);
+		AddUniform(name, .Float, 4);
 		mMaterial.AllocateDefaultUniformData();
 		mMaterial.SetDefaultFloat(name, value);
 		return this;
@@ -99,7 +99,7 @@ class MaterialBuilder
 
 	public MaterialBuilder Float2(StringView name, Float2 value = .Zero)
 	{
-		AddUniform(name, .Float2, 8, false);
+		AddUniform(name, .Float2, 8);
 		mMaterial.AllocateDefaultUniformData();
 		mMaterial.SetDefaultFloat2(name, value);
 		return this;
@@ -110,7 +110,7 @@ class MaterialBuilder
 	/// offset the shader does not read from.
 	public MaterialBuilder Float3(StringView name, Float3 value = .Zero)
 	{
-		AddUniform(name, .Float3, 12, true);
+		AddUniform(name, .Float3, 12);
 		mMaterial.AllocateDefaultUniformData();
 		mMaterial.SetDefaultFloat3(name, value);
 		return this;
@@ -118,7 +118,7 @@ class MaterialBuilder
 
 	public MaterialBuilder Float4(StringView name, Float4 value = .Zero)
 	{
-		AddUniform(name, .Float4, 16, true);
+		AddUniform(name, .Float4, 16);
 		mMaterial.AllocateDefaultUniformData();
 		mMaterial.SetDefaultFloat4(name, value);
 		return this;
@@ -128,7 +128,7 @@ class MaterialBuilder
 	/// transparent black.
 	public MaterialBuilder Color(StringView name, Float4 value = .(1, 1, 1, 1))
 	{
-		AddUniform(name, .Color, 16, true);
+		AddUniform(name, .Color, 16);
 		mMaterial.AllocateDefaultUniformData();
 		mMaterial.SetDefaultFloat4(name, value);
 		return this;
@@ -138,7 +138,7 @@ class MaterialBuilder
 	/// above white.
 	public MaterialBuilder ColorHdr(StringView name, Float4 colorAndIntensity)
 	{
-		AddUniform(name, .ColorHdr, 16, true);
+		AddUniform(name, .ColorHdr, 16);
 		mMaterial.AllocateDefaultUniformData();
 		mMaterial.SetDefaultFloat4(name, colorAndIntensity);
 		return this;
@@ -180,22 +180,18 @@ class MaterialBuilder
 		return finished;
 	}
 
-	private void AddUniform(StringView name, MaterialPropertyType type, uint32 size, bool align16)
+	/// Lays a uniform out by HLSL's cbuffer packing (ShaderProperties.PackCbufferMember, the rule
+	/// a properties block's generated cbuffer follows too), so the offsets are where the shader
+	/// reads: a float after a float3 shares its row, a float2 never straddles one.
+	private void AddUniform(StringView name, MaterialPropertyType type, uint32 size)
 	{
-		if (align16)
-			mUniformOffset = (mUniformOffset + 15) & ~(uint32)15;
-
 		var def = MaterialPropertyDef();
 		def.Name = name;
 		def.Type = type;
 		def.Binding = mBinding;
-		def.Offset = mUniformOffset;
+		def.Offset = ShaderProperties.PackCbufferMember(ref mUniformOffset, size);
 		def.Size = size;
 		mMaterial.AddProperty(def);
-
-		// A three or four component vector consumes a whole sixteen byte slot whatever its
-		// declared size.
-		mUniformOffset += align16 ? 16 : size;
 		mBinding++;
 	}
 
