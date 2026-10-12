@@ -51,39 +51,29 @@ class ShaderAssetBuilder : IAssetBuilder
 		if (AssetSource.ReadText(context, file, text) case .Err(let readError))
 			return .Err(readError);
 
-		// The properties block becomes the set-2 declarations; `#line` keeps the author's line
-		// numbers for everything after it.
-		let expanded = scope String();
-		let block = scope ShaderPropertiesBlock();
-		ShaderProperties.Expand(text, file, expanded, block);
-		for (let error in block.Errors)
-			GlobalLog(.Error, "Shaders: {}:{}: {} - cook failed", file, error.Line, error.Message);
-		if (!block.IsOk)
-			return .Err(.InvalidArgument);
-
-		// Each stage's lattice; a flag the file tests but no stage declares would never be
-		// compiled, so it fails the cook (the corpus's drift lint, over both stages).
-		let vertexMask = ShaderVariants.ParseStageVariantDirective(text, .Vertex).Mask;
-		let fragmentMask = ShaderVariants.ParseStageVariantDirective(text, .Fragment).Mask;
-		let undeclared = scope List<StringView>();
-		ShaderVariants.FindUndeclaredFlagUses(text, vertexMask | fragmentMask, undeclared);
-		for (let flag in undeclared)
-			GlobalLog(.Error, "Shaders: {}: tests {} but no stage declares it (add it to a // variants(vertex): or // variants(fragment): line) - cook failed", file, flag);
-		if (!undeclared.IsEmpty)
-			return .Err(.InvalidArgument);
-
-		if (!CompileEveryVariant(file, expanded, shader, vertexMask, fragmentMask))
+		// What the cook proves: the block expands, every flag tested is declared, and every
+		// variant of both stages compiles. Each error is logged where it is, and fails it.
+		var options = ShaderCheckOptions();
+		options.VertexEntryPoint = shader.VertexEntryPoint;
+		options.FragmentEntryPoint = shader.FragmentEntryPoint;
+		options.ShaderLibrary = mShaderLibrary;
+		options.Depth = .EveryVariant;
+		let check = scope ShaderCheck();
+		check.Run(text, file, options);
+		for (let error in check.Errors)
+			GlobalLog(.Error, "Shaders: {} - cook failed", error.Format(.. scope .()));
+		if (!check.IsOk)
 			return .Err(.InvalidArgument);
 
 		let cooked = scope ShaderSource();
 		cooked.Name.Set(shader.Name);
-		cooked.VertexSource.Set(expanded);
-		cooked.FragmentSource.Set(expanded);
+		cooked.VertexSource.Set(check.Expanded);
+		cooked.FragmentSource.Set(check.Expanded);
 		cooked.VertexEntryPoint.Set(shader.VertexEntryPoint);
 		cooked.FragmentEntryPoint.Set(shader.FragmentEntryPoint);
-		cooked.VertexVariantMask = (uint32)vertexMask;
-		cooked.FragmentVariantMask = (uint32)fragmentMask;
-		cooked.SetProperties(block);
+		cooked.VertexVariantMask = (uint32)check.VertexMask;
+		cooked.FragmentVariantMask = (uint32)check.FragmentMask;
+		cooked.SetProperties(check.Block);
 		return context.Output.WriteObject(cooked);
 	}
 
@@ -103,53 +93,5 @@ class ShaderAssetBuilder : IAssetBuilder
 				return;
 		}
 		outFile.Clear();
-	}
-
-	/// Compiles both stages' every declared variant to SPIR-V, logging a failure as DXC reports
-	/// it (`File.hlsl:line:col: error: ...`). True when all compile.
-	private bool CompileEveryVariant(StringView file, StringView expanded, ShaderAsset shader, ShaderFlags vertexMask,
-		ShaderFlags fragmentMask)
-	{
-		let compiler = scope ShaderCompiler();
-		if (compiler.Initialize() case .Err)
-		{
-			GlobalLog(.Error, "Shaders: {}: the DXC compiler is unavailable - cook failed", file);
-			return false;
-		}
-		StringView[1] includePaths = .(mShaderLibrary);
-		(ShaderStage stage, StringView entryPoint, ShaderFlags mask)[2] stages = .(
-			(.Vertex, shader.VertexEntryPoint, vertexMask),
-			(.Fragment, shader.FragmentEntryPoint, fragmentMask));
-
-		let variants = scope List<ShaderFlags>();
-		let defines = scope List<ShaderDefine>();
-		for (let stage in stages)
-		{
-			variants.Clear();
-			ShaderVariants.EnumerateVariants(stage.mask, variants);
-			for (let flags in variants)
-			{
-				defines.Clear();
-				ShaderFlagNames.AppendDefines(flags, defines);
-				var options = CompileOptions();
-				options.Defines = defines;
-				if (!mShaderLibrary.IsEmpty)
-					options.IncludePaths = includePaths;
-				options.BindingShifts = BindingShifts.Standard;
-				options.BindingShiftSets = 4;
-				options.SourceName = file;
-				var result = compiler.Compile(.((uint8*)expanded.Ptr, expanded.Length), stage.stage, stage.entryPoint,
-					.SPIRV, options);
-				defer result.Dispose();
-				if (!result.Success)
-				{
-					// One stage's first failure says what is wrong; the rest repeat it.
-					GlobalLog(.Error, "Shaders: {} ({}, variant flags {}) - cook failed: {}", file, stage.entryPoint,
-						(uint32)flags, result.Messages);
-					return false;
-				}
-			}
-		}
-		return true;
 	}
 }
