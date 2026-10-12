@@ -195,6 +195,67 @@ class WgslCookTests
 		Test.Assert((names.Count == 1) && (names[0] == "VSMain"));
 	}
 
+	/// A project's shader cooks into a dist pack the way the corpus does: each stage under its own
+	/// entry point and lattice, every variant, for every requested format. The toon sample's
+	/// shader (a properties block, VSMain from the engine's vertex library, PSMain) is the real
+	/// case; WGSL passing naga and tint is the web build's proof.
+	[Test]
+	public static void AOneFileProjectShaderCooksBothStagesIntoThePack()
+	{
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+		let library = RepositoryPath("Data/Shaders", "forward_vs.hlsli", .. scope String());
+		let toonPath = RepositoryPath("Data/Assets/shaders/toon", "toon.hlsl", .. scope String());
+		Test.Assert(!library.IsEmpty && !toonPath.IsEmpty);
+		let shaderDirectory = PathParent(library, .. scope String());
+		let text = scope String();
+		Test.Assert(System.IO.File.ReadAllText(toonPath, text) case .Ok);
+		let expanded = scope String();
+		let block = scope ShaderPropertiesBlock();
+		ShaderProperties.Expand(text, "toon.hlsl", expanded, block);
+		Test.Assert(block.IsOk);
+
+		let scratch = ScratchDirectory(.. scope String());
+		let translator = scope WgslTranslator(compiler, scratch);
+		translator.SetNagaPath(NagaPath(.. scope String()));
+		translator.SetTintPath(TintPath(.. scope String()));
+		let formats = scope List<CookedShaderFormat>();
+		formats.Add(.SpirV);
+		if (ToolsPresent())
+			formats.Add(.Wgsl);
+		var options = ShaderCookOptions();
+		options.ShaderDirectory = shaderDirectory;
+		options.ScratchDirectory = scratch;
+		options.Formats = formats;
+		StringView[1] includePaths = .(shaderDirectory);
+
+		let pack = scope CookedShaderPack();
+		let report = scope ShaderCookReport();
+		let vertexMask = ShaderVariants.ParseStageVariantDirective(text, .Vertex).Mask;
+		let fragmentMask = ShaderVariants.ParseStageVariantDirective(text, .Fragment).Mask;
+		let vertexOk = ShaderPackCooker.CookShaderStage(compiler, translator, "toon", .Vertex, expanded, "VSMain",
+			vertexMask, "toon.hlsl", options, includePaths, pack, report);
+		let fragmentOk = ShaderPackCooker.CookShaderStage(compiler, translator, "toon", .Fragment, expanded, "PSMain",
+			fragmentMask, "toon.hlsl", options, includePaths, pack, report);
+		for (let error in report.Errors)
+			Console.WriteLine(error);
+		Test.Assert(vertexOk && fragmentOk);
+
+		Test.Assert(pack.EntryPoint("toon", .Vertex) == "VSMain");
+		Test.Assert(pack.EntryPoint("toon", .Fragment) == "PSMain");
+		Test.Assert(pack.DeclaredMask("toon", .Fragment) == fragmentMask);
+		// Every variant of every stage, in every format: 4 vertex and 8 fragment per format.
+		Test.Assert(report.VariantsCooked == 12 * formats.Count);
+		for (let format in formats)
+		{
+			Test.Assert(pack.Find("toon", .Vertex, .Skinned | .Instanced, format) case .Ok);
+			Test.Assert(pack.Find("toon", .Fragment, .GBuffer | .AlphaTest | .Dither, format) case .Ok);
+		}
+		if (formats.Count == 1)
+			Console.WriteLine("SKIP (the WGSL half): no naga or tint");
+	}
+
 	/// HLSL becomes WGSL, and the binding shifts SURVIVE the translation.
 	///
 	/// The shifts are the load bearing part: a texture at t0 must land on binding 100 and a

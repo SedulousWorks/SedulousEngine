@@ -69,27 +69,55 @@ static class ShaderPackCooker
 			if (!LintIsClean(options.ShaderDirectory, source, directive.Mask, fileName, report))
 				continue;
 
-			// Recorded so a shipped runtime can canonicalize onto the cooked lattice, which
-			// is what makes development and a shipped build behave the same.
-			pack.AddDeclaredMask(stem, stage, directive.Mask);
-			pack.AddEntryPoint(stem, stage, ShaderCorpus.EntryPoint); // the corpus: a file per stage
-
-			let variants = scope List<ShaderFlags>();
-			ShaderVariants.EnumerateVariants(directive.Mask, variants);
-
 			report.FilesCooked++;
-			for (let flags in variants)
-			{
-				for (let format in options.Formats)
-				{
-					if (CookOne(compiler, translator, source, stage, flags, format, options,
-						includePaths, stem, fileName, pack, report))
-						report.VariantsCooked++;
-				}
-			}
+			// The corpus: a file per stage, each with its `main`.
+			CookShaderStage(compiler, translator, stem, stage, source, ShaderCorpus.EntryPoint, directive.Mask, fileName,
+				options, includePaths, pack, report);
 		}
 
 		report.Success = report.Errors.IsEmpty;
+	}
+
+	/// Cooks one shader stage into the pack: records its lattice and entry point, then emits
+	/// every declared variant in every requested format. What the corpus cook does per stage
+	/// file, and what an export does per stage of a project's shader (its expanded source,
+	/// VSMain and PSMain). `sourceName` names the source in errors. False, the errors in the
+	/// report, when any variant fails.
+	public static bool CookShaderStage(ShaderCompiler compiler, WgslTranslator translator, StringView name,
+		ShaderStage stage, StringView source, StringView entryPoint, ShaderFlags mask, StringView sourceName,
+		ShaderCookOptions options, Span<StringView> includePaths, CookedShaderPack pack, ShaderCookReport report)
+	{
+		// Recorded so a shipped runtime canonicalizes onto the cooked lattice, which is what
+		// makes development and a shipped build behave the same, and its modules run the
+		// stage's function.
+		pack.AddDeclaredMask(name, stage, mask);
+		pack.AddEntryPoint(name, stage, entryPoint);
+
+		let variants = scope List<ShaderFlags>();
+		ShaderVariants.EnumerateVariants(mask, variants);
+		var ok = true;
+		for (let flags in variants)
+		{
+			for (let format in options.Formats)
+			{
+				if (CookOne(compiler, translator, source, stage, entryPoint, flags, format, options, includePaths, name,
+					sourceName, pack, report))
+					report.VariantsCooked++;
+				else
+					ok = false;
+			}
+		}
+		return ok;
+	}
+
+	/// A WGSL translator for a cook: its intermediates under `scratchDirectory`, tint per
+	/// `validate`, and the vendored binaries beside the executable. The caller owns it.
+	public static WgslTranslator CreateTranslator(ShaderCompiler compiler, StringView scratchDirectory, bool validate)
+	{
+		let translator = new WgslTranslator(compiler, scratchDirectory);
+		translator.SetValidateWithTint(validate);
+		ConfigureTools(translator);
+		return translator;
 	}
 
 	/// Points the translator at the vendored binaries beside the executable.
@@ -272,14 +300,14 @@ static class ShaderPackCooker
 
 	/// Compiles or translates one variant and format pair into the pack.
 	private static bool CookOne(ShaderCompiler compiler, WgslTranslator translator,
-		StringView source, ShaderStage stage, ShaderFlags flags, CookedShaderFormat format,
+		StringView source, ShaderStage stage, StringView entryPoint, ShaderFlags flags, CookedShaderFormat format,
 		ShaderCookOptions options, Span<StringView> includePaths, StringView stem,
 		StringView fileName, CookedShaderPack pack, ShaderCookReport report)
 	{
 		if (format == .Wgsl)
 		{
 			let translated = scope WgslCookResult();
-			translator.Translate(source, stage, ShaderCorpus.EntryPoint, flags, includePaths, translated);
+			translator.Translate(source, stage, entryPoint, flags, includePaths, translated);
 			if (!translated.Success)
 			{
 				report.AddError(fileName, translated.Error);
@@ -299,6 +327,7 @@ static class ShaderPackCooker
 		compileOptions.Defines = defines;
 		compileOptions.IncludePaths = includePaths;
 		compileOptions.PreserveInterface = ShaderVariants.ParsePreserveInterfaceDirective(source);
+		compileOptions.SourceName = fileName;
 
 		ShaderTarget target = .SPIRV;
 		if (format == .SpirV)
@@ -312,7 +341,7 @@ static class ShaderPackCooker
 			target = .DXIL;
 		}
 
-		var compiled = compiler.Compile(.((uint8*)source.Ptr, source.Length), stage, ShaderCorpus.EntryPoint,
+		var compiled = compiler.Compile(.((uint8*)source.Ptr, source.Length), stage, entryPoint,
 			target, compileOptions);
 		defer compiled.Dispose();
 
