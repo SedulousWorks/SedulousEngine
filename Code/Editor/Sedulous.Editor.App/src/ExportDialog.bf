@@ -137,6 +137,7 @@ class ExportDialog : Dialog
 	private EditText mFiles;
 	private CheckBox mSymbols;
 	private CheckBox mPrune;
+	private CheckBox mShaderSource;
 	// Display.
 	private CheckBox mOverridesRender;
 	private NumericField mRenderWidth;
@@ -412,6 +413,7 @@ class ExportDialog : Dialog
 	public EditText NameField => mName;
 	public ComboBox TemplateField => mTemplate;
 	public CheckBox PruneField => mPrune;
+	public CheckBox ShaderSourceField => mShaderSource;
 	public CheckBox OrientationOverrideField => mOverridesOrientation;
 	public ComboBox OrientationField => mOrientation;
 
@@ -519,6 +521,10 @@ class ExportDialog : Dialog
 		mPrune.TooltipText.Set("Pack the closure of the default scene, the startup script and the other settings' assets, not every cooked asset");
 		mPrune.OnCheckedChanged.Add(new [=this](c, v) => { StoreFields(); });
 		column.AddView(mPrune);
+		mShaderSource = new CheckBox("Include shader source", false);
+		mShaderSource.TooltipText.Set("Ship the project's shaders as HLSL too, beside the cooked bytecode (for modders to read)");
+		mShaderSource.OnCheckedChanged.Add(new [=this](c, v) => { StoreFields(); });
+		column.AddView(mShaderSource);
 	}
 
 	/// Asks for files and appends them to the extra files. The dialog holds a reference across
@@ -690,6 +696,7 @@ class ExportDialog : Dialog
 			mFiles.SetText(JoinFiles(preset.AdditionalFiles, .. scope .()));
 			mSymbols.IsChecked.Value = preset.StageSymbols;
 			mPrune.IsChecked.Value = preset.PruneToReachable;
+			mShaderSource.IsChecked.Value = preset.IncludeShaderSource;
 			mOverridesRender.IsChecked.Value = preset.OverridesRender;
 			mRenderWidth.SetValue(preset.RenderWidth);
 			mRenderHeight.SetValue(preset.RenderHeight);
@@ -738,6 +745,7 @@ class ExportDialog : Dialog
 		SplitFiles(mFiles.Text, preset.AdditionalFiles);
 		preset.StageSymbols = mSymbols.IsChecked.Value;
 		preset.PruneToReachable = mPrune.IsChecked.Value;
+		preset.IncludeShaderSource = mShaderSource.IsChecked.Value;
 		preset.OverridesRender = mOverridesRender.IsChecked.Value;
 		preset.RenderWidth = (uint32)mRenderWidth.Value;
 		preset.RenderHeight = (uint32)mRenderHeight.Value;

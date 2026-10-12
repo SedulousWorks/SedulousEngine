@@ -225,10 +225,12 @@ static class ExportDriver
 
 	/// Stages the scenes, packs each variant's cooked tree with them, writes the dist
 	/// manifest, and with a reachable set prunes and reports. `sceneStreams` pre-transcoded
-	/// scene bytes by guid, null for verbatim.
+	/// scene bytes by guid, null for verbatim. The project's custom shaders are recorded in
+	/// `stats` for the shader pack step and staged without their HLSL unless
+	/// `includeShaderSource`.
 	public static Result<void, ErrorCode> ExportContent(EditorProject project, StringView outDir, ExportStats stats,
 		ExportProgress onProgress, Dictionary<Guid, List<uint8>> sceneStreams, HashSet<Guid> reachable,
-		List<ExportRoot> roots, PruningReport outReport, List<ContentVariant> variants)
+		List<ExportRoot> roots, PruningReport outReport, List<ContentVariant> variants, bool includeShaderSource = false)
 	{
 		if (onProgress != null)
 			onProgress("Staging scenes...", 0.65f);
@@ -240,6 +242,9 @@ static class ExportDriver
 		let stagingMount = scope NativeFileSystem(stagingDir);
 		let droppedScenes = scope List<String>();
 		defer { ClearAndDeleteItems(droppedScenes); }
+		// Cooked products replaced by a staged, stripped copy.
+		let strippedShaders = scope HashSet<String>();
+		defer { for (let path in strippedShaders) delete path; }
 		{
 			SerializerFactory binary = scope (stream, mode) => new BinarySerializerContext(stream, mode);
 			let staging = scope ContentDatabase(stagingMount, binary, ProjectLayout.CookedAssetExtension);
@@ -261,6 +266,27 @@ static class ExportDriver
 				staged++;
 			}
 			stats.ScenesStaged = staged;
+
+			// The project's custom shaders the dist ships: recorded for the shader pack step,
+			// which cooks them to bytecode; staged without their HLSL unless the preset keeps it
+			// (the project's own Cooked/ keeps its source for the editor, so a copy is staged).
+			let shaderType = typeof(Sedulous.Shaders.Resource.ShaderSource).GetFullName(.. scope .());
+			let products = scope List<Instance>();
+			ExportStaging.CollectAllInstances(project.CookedDb.RootGroup, products);
+			for (let product in products)
+			{
+				if ((product.TypeName != shaderType) || ((reachable != null) && !reachable.Contains(product.Id)))
+					continue;
+				stats.Shaders.Add(product.Id);
+				if (includeShaderSource)
+					continue;
+				if (!ExportStaging.StageStrippedShader(product, staging))
+				{
+					GlobalLog(.Error, "Export: failed to stage shader '{}'", product.GetPath(.. scope .()));
+					return .Err(.Internal);
+				}
+				strippedShaders.Add(product.GetPath(.. new String()));
+			}
 		}
 
 		HashSet<String> reachablePaths = null;
@@ -304,7 +330,7 @@ static class ExportDriver
 		{
 			let pak = scope PakBuilder();
 			let cookedMount = scope NativeFileSystem(variant.CookedDir);
-			if (!ExportStaging.PackTree(cookedMount, "", pak, ref stats.FilesPacked, reachablePaths)
+			if (!ExportStaging.PackTree(cookedMount, "", pak, ref stats.FilesPacked, reachablePaths, strippedShaders)
 				|| !ExportStaging.PackTree(stagingMount, "", pak, ref stats.FilesPacked, null))
 			{
 				GlobalLog(.Error, "Export: packing failed for variant '{}'", variant.PakName);
@@ -361,7 +387,7 @@ static class ExportDriver
 	/// The whole project cooked, the variants cooked, and the content exported.
 	public static Result<void, ErrorCode> ExportProject(EditorProject project, StringView outDir, BuilderRegistry builders, bool rebuild,
 		ExportStats outStats = null, ExportProgress onProgress = null, Dictionary<Guid, List<uint8>> sceneStreams = null,
-		List<ContentVariant> variants = null)
+		List<ContentVariant> variants = null, bool includeShaderSource = false)
 	{
 		let stats = scope ExportStats();
 		defer { if (outStats != null) stats.CopyTo(outStats); }
@@ -395,7 +421,7 @@ static class ExportDriver
 			GlobalLog(.Error, "Export: aborting - a variant cook failed");
 			return .Err(.Internal);
 		}
-		return ExportContent(project, outDir, stats, onProgress, sceneStreams, null, null, null, effective);
+		return ExportContent(project, outDir, stats, onProgress, sceneStreams, null, null, null, effective, includeShaderSource);
 	}
 
 	// ---- one preset ----
@@ -508,18 +534,18 @@ static class ExportDriver
 				let reachable = scope HashSet<Guid>();
 				for (let g in reachableList)
 					reachable.Add(g);
-				contentStatus = ExportContent(project, result.OutputDir, result.Content, onProgress, sceneStreams, reachable, seeds, result.Pruning, variants);
+				contentStatus = ExportContent(project, result.OutputDir, result.Content, onProgress, sceneStreams, reachable, seeds, result.Pruning, variants, preset.IncludeShaderSource);
 			}
 		}
 		else if (cook)
 		{
-			contentStatus = ExportProject(project, result.OutputDir, builders, rebuild, result.Content, onProgress, sceneStreams, variants);
+			contentStatus = ExportProject(project, result.OutputDir, builders, rebuild, result.Content, onProgress, sceneStreams, variants, preset.IncludeShaderSource);
 		}
 		else
 		{
 			contentStatus = CookVariantTargets(project, builders, variants, rebuild, onProgress);
 			if (contentStatus case .Ok)
-				contentStatus = ExportContent(project, result.OutputDir, result.Content, onProgress, sceneStreams, null, null, null, variants);
+				contentStatus = ExportContent(project, result.OutputDir, result.Content, onProgress, sceneStreams, null, null, null, variants, preset.IncludeShaderSource);
 		}
 		if (contentStatus case .Err)
 			return .Err(.Internal);
@@ -539,7 +565,8 @@ static class ExportDriver
 		if (onProgress != null)
 			onProgress("Cooking shaders...", 0.95f);
 		{
-			if (ExportStaging.StageShaderPack(result.OutputDir, dataRoot, preset.Platform, let shaderVariants) case .Err)
+			if (ExportStaging.StageShaderPack(result.OutputDir, dataRoot, preset.Platform, project.CookedDb, result.Content.Shaders,
+				let shaderVariants) case .Err)
 				return .Err(.Internal);
 			result.FilesStaged += 2;
 			GlobalLog(.Information, "Export: staged Data/{} ({} variants)", Sedulous.Shaders.ShaderSystemHost.cShaderPackPath, shaderVariants);

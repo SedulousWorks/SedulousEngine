@@ -77,6 +77,12 @@ class ExportPreset
 	[Appended, Setting("Orientation")]
 	public ScreenOrientation Orientation = .Any;
 
+	/// The dist keeps its custom shaders' HLSL (a game that wants modders to read them). Off:
+	/// the pack carries the shaders as bytecode and the dist ships no shader source, as the
+	/// engine's own ship none.
+	[Appended, Setting("Include shader source")]
+	public bool IncludeShaderSource = false;
+
 	public void CopyTo(ExportPreset other)
 	{
 		other.Name.Set(Name);
@@ -101,6 +107,7 @@ class ExportPreset
 		other.WindowResizable = WindowResizable;
 		other.OverridesOrientation = OverridesOrientation;
 		other.Orientation = Orientation;
+		other.IncludeShaderSource = IncludeShaderSource;
 	}
 
 	/// The config for resolution: empty reads as Release.

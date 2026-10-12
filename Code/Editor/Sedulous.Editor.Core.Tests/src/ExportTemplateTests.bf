@@ -63,6 +63,7 @@ static class ExportTemplateTests
 		b.AdditionalFiles.Add(new String("config.xml"));
 		b.OverridesOrientation = true;
 		b.Orientation = .Landscape;
+		b.IncludeShaderSource = true;
 		written.Presets.Add(a);
 		written.Presets.Add(b);
 		Test.Assert(ExportPresetsFile.Save(root, written) case .Ok);
@@ -78,6 +79,8 @@ static class ExportTemplateTests
 		Test.Assert((win.AdditionalFiles.Count == 2) && (win.AdditionalFiles[0] == "icon.ico") && (win.AdditionalFiles[1] == "config.xml"));
 		Test.Assert(win.OverridesOrientation && (win.Orientation == .Landscape));
 		Test.Assert(!loaded.Presets[0].OverridesOrientation && (loaded.Presets[0].Orientation == .Any));
+		Test.Assert(win.IncludeShaderSource, "keeping shader source round trips");
+		Test.Assert(!loaded.Presets[0].IncludeShaderSource, "no shader source by default");
 		Test.Assert(loaded.Find("nope") == null);
 	}
 
@@ -108,7 +111,7 @@ static class ExportTemplateTests
 				Test.Assert((least == 1) && (most == 16384));
 			}
 		}
-		Test.Assert(keys == "name,platform,templateId,playerName,outputSubdir,additionalFiles,config,stageSymbols,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable,overridesOrientation,orientation", keys);
+		Test.Assert(keys == "name,platform,templateId,playerName,outputSubdir,additionalFiles,config,stageSymbols,pruneToReachable,overridesRender,renderWidth,renderHeight,renderFit,overridesWindow,windowWidth,windowHeight,windowMode,windowResizable,overridesOrientation,orientation,includeShaderSource", keys);
 	}
 
 	[Test]

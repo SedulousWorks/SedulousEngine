@@ -567,6 +567,123 @@ static class ExportDriverTests
 		Test.Assert(pack.Find("tonemap", .Fragment, .None, .SpirV) case .Err, "and nothing the browser cannot use");
 	}
 
+	/// A project's custom shader ships as bytecode: the export cooks both its stages, every
+	/// declared variant under its entry point, into the dist's shader pack beside the engine's,
+	/// so a compiler free player draws it; the dist's product carries no HLSL unless the preset
+	/// keeps it.
+	[Test]
+	public static void ACustomShaderShipsAsBytecodeInTheDistPackItsSourceLeftOut()
+	{
+		{
+			let probe = scope Sedulous.Shaders.ShaderCompiler();
+			if (probe.Initialize() case .Err) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		}
+		let fx = scope ExportProjectFixture("scratch_export_shader");
+		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
+		Sedulous.Shaders.Pipeline.ShadersPipeline.RegisterAll();
+		Sedulous.Shaders.Resource.ShaderResources.RegisterAll();
+		{
+			let sources = scope NativeFileSystem(fx.Project.SourcesRoot(.. scope .()));
+			let text = """
+				// variants(fragment): GBUFFER
+				properties
+				{
+				    Color Tint = (1, 0.5, 0);
+				}
+				float4 VSMain(uint id : SV_VertexID) : SV_Position {
+				    return float4(0, 0, 0, 1);
+				}
+				float4 PSMain() : SV_Target0 { return Tint; }
+				""";
+			Test.Assert(sources.Save("glow.hlsl", .((uint8*)text.Ptr, text.Length)) case .Ok);
+			let asset = scope Sedulous.Shaders.Pipeline.ShaderAsset();
+			Sedulous.Shaders.Pipeline.ShaderImporter.Import("glow", "glow.hlsl", asset);
+			let instance = fx.Project.SourceDb.RootGroup.CreateInstance("glow", typeof(Sedulous.Shaders.Pipeline.ShaderAsset).GetFullName(.. scope .()));
+			Test.Assert((instance != null) && (instance.WriteObject(asset) case .Ok));
+		}
+		fx.Builders.Register(new Sedulous.Shaders.Pipeline.ShaderAssetBuilder(dataRoot));
+
+		String ExportWith(bool includeSource, StringView subdir)
+		{
+			let preset = ExportProjectFixture.HostPreset(subdir, subdir);
+			defer delete preset;
+			preset.IncludeShaderSource = includeSource;
+			let result = scope ExportResult();
+			Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok);
+			Test.Assert(result.Content.CookFailed == 0);
+			Test.Assert(result.Content.Shaders.Count == 1);
+			return new String(result.OutputDir);
+		}
+
+		SerializerFactory binary = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+		// Whether the dist's pak holds the shader's HLSL anywhere, in any entry: a reader finds
+		// the stripped copy, but the original product must not ship beside it either.
+		bool PakHasSource(StringView distDir)
+		{
+			let bytes = scope List<uint8>();
+			Test.Assert(ReadFile(PathJoin(distDir, ProjectLayout.DistContentPak, .. scope .()), bytes) case .Ok);
+			let needle = "return Tint;";
+			for (int i = 0; i + needle.Length <= bytes.Count; i++)
+				if (Internal.MemCmp(&bytes[i], needle.Ptr, needle.Length) == 0)
+					return true;
+			return false;
+		}
+		Sedulous.Shaders.Resource.ShaderSource ReadGlow(StringView distDir)
+		{
+			let pak = scope PakFileSystem(PathJoin(distDir, ProjectLayout.DistContentPak, .. scope .()));
+			let db = OpenDistPak(distDir, pak, binary);
+			defer delete db;
+			let product = db.GetInstanceByPath("glow");
+			Test.Assert(product != null);
+			let object = product.ReadObject();
+			return Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as Sedulous.Shaders.Resource.ShaderSource;
+		}
+
+		// The default: bytecode only.
+		let stripped = ExportWith(false, "stripped");
+		defer delete stripped;
+		{
+			let packStream = scope NativeFileSystem(stripped).Open("Data/Shaders/shaders.dpak", .Read);
+			Test.Assert(packStream != null);
+			defer delete packStream;
+			let pack = scope Sedulous.Shaders.CookedShaderPack();
+			Test.Assert(pack.Read(packStream) case .Ok);
+			Test.Assert(pack.EntryPoint("glow", .Vertex) == "VSMain");
+			Test.Assert(pack.EntryPoint("glow", .Fragment) == "PSMain");
+			Test.Assert(pack.Find("glow", .Fragment, .GBuffer, .SpirV) case .Ok);
+			Test.Assert(pack.Find("glow", .Fragment, .None, .SpirV) case .Ok);
+			Test.Assert(pack.Find("forward", .Fragment, .None, .SpirV) case .Ok, "the engine's");
+
+			let source = ReadGlow(stripped);
+			Test.Assert(source != null);
+			defer delete source;
+			Test.Assert(source.VertexSource.IsEmpty && source.FragmentSource.IsEmpty, "no HLSL in the dist");
+			Test.Assert(source.FragmentEntryPoint == "PSMain", "the rest of the product stays");
+			Test.Assert(source.FragmentVariantMask == (uint32)Sedulous.Shaders.ShaderFlags.GBuffer);
+			Test.Assert(source.PropertyNames.Count == 1);
+			Test.Assert(!PakHasSource(stripped), "the original product does not ship beside the stripped one");
+		}
+		// The project's own product keeps its source: the editor compiles from it.
+		{
+			let object = fx.Project.CookedDb.GetInstanceByPath("glow").ReadObject();
+			let source = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as Sedulous.Shaders.Resource.ShaderSource;
+			Test.Assert(source != null);
+			defer delete source;
+			Test.Assert(!source.FragmentSource.IsEmpty);
+		}
+
+		// The preset keeps the source.
+		let kept = ExportWith(true, "kept");
+		defer delete kept;
+		{
+			let source = ReadGlow(kept);
+			Test.Assert(source != null);
+			defer delete source;
+			Test.Assert(!source.FragmentSource.IsEmpty);
+			Test.Assert(PakHasSource(kept));
+		}
+	}
+
 	[Test]
 	public static void CollectSceneStreamsKeysWhatTheStagerAcceptsWalkingNestedGroups()
 	{

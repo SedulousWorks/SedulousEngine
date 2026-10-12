@@ -7,6 +7,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Content;
 using Sedulous.Scene.Resource;
 using Sedulous.Shaders;
+using Sedulous.Shaders.Resource;
 using Sedulous.VFS;
 using Sedulous.VFS.Pak;
 
@@ -34,7 +35,9 @@ static class ExportStaging
 	}
 
 	/// Every file under `folder` of the mount into the pak; `reachablePaths` null packs all.
-	public static bool PackTree(NativeFileSystem mount, StringView folder, PakBuilder pak, ref int fileCount, HashSet<String> reachablePaths)
+	/// `excludedPaths`: instances whose files are left out, a stripped copy being staged instead.
+	public static bool PackTree(NativeFileSystem mount, StringView folder, PakBuilder pak, ref int fileCount, HashSet<String> reachablePaths,
+		HashSet<String> excludedPaths = null)
 	{
 		let entries = scope List<DirEntry>();
 		defer { for (var entry in entries) entry.Dispose(); }
@@ -45,12 +48,14 @@ static class ExportStaging
 			let path = folder.IsEmpty ? scope:: String(entry.Name) : PathJoin(folder, entry.Name, .. scope:: .());
 			if (entry.IsDirectory)
 			{
-				if (!PackTree(mount, path, pak, ref fileCount, reachablePaths))
+				if (!PackTree(mount, path, pak, ref fileCount, reachablePaths, excludedPaths))
 					return false;
 				continue;
 			}
 			if ((reachablePaths != null) && !FileOwnerReachable(path, reachablePaths))
 				continue;
+			if ((excludedPaths != null) && FileOwnerReachable(path, excludedPaths))
+				continue; // replaced by a staged copy
 			let stream = mount.Open(path, .Read);
 			if (stream == null)
 				return false;
@@ -65,19 +70,45 @@ static class ExportStaging
 		return true;
 	}
 
-	/// The scene's document and stream into the staging database at the same group path,
-	/// the stream pre-transcoded when `sceneStreams` has it, else verbatim.
-	public static bool StageScene(Instance scene, ContentDatabase staging, Dictionary<Guid, List<uint8>> sceneStreams)
+	/// The staging database's group for an instance's group path, created as needed.
+	private static Group StagingGroup(Instance instance, ContentDatabase staging)
 	{
 		var group = staging.RootGroup;
-		for (let part in scene.OwningGroup.GetPath(.. scope .()).Split('/'))
+		for (let part in instance.OwningGroup.GetPath(.. scope .()).Split('/'))
 		{
 			if (part.IsEmpty)
 				continue;
 			group = group.CreateGroup(part);
 			if (group == null)
-				return false;
+				return null;
 		}
+		return group;
+	}
+
+	/// A custom shader's cooked product, staged without its HLSL under the SAME id and path:
+	/// the dist's pack carries the shader as bytecode; the entries, lattices and property table
+	/// stay, so materials and the runtime still resolve it.
+	public static bool StageStrippedShader(Instance product, ContentDatabase staging)
+	{
+		let object = product.ReadObject();
+		defer { if (object != null) delete object; }
+		let shader = (object != null) ? Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as ShaderSource : null;
+		let group = StagingGroup(product, staging);
+		if ((shader == null) || (group == null))
+			return false;
+		shader.VertexSource.Clear();
+		shader.FragmentSource.Clear();
+		let staged = group.CreateInstanceWithId(product.Id, product.Name, product.TypeName);
+		return (staged != null) && (staged.WriteObject(shader) case .Ok);
+	}
+
+	/// The scene's document and stream into the staging database at the same group path,
+	/// the stream pre-transcoded when `sceneStreams` has it, else verbatim.
+	public static bool StageScene(Instance scene, ContentDatabase staging, Dictionary<Guid, List<uint8>> sceneStreams)
+	{
+		let group = StagingGroup(scene, staging);
+		if (group == null)
+			return false;
 		let object = scene.ReadObject();
 		if (object == null)
 			return false;
@@ -159,10 +190,12 @@ static class ExportStaging
 			outFormats.Add(.SpirV);
 	}
 
-	/// Cooks the engine shader corpus under the data root into <dist>/Data/Shaders/
-	/// shaders.dpak and writes the data root marker beside it, so the shipped player finds
-	/// its data the way every executable does.
-	public static Result<void, ErrorCode> StageShaderPack(StringView outputDir, StringView dataRoot, StringView platform, out int outVariants)
+	/// Cooks the engine shader corpus under the data root, and the project's custom shaders the
+	/// dist ships (`projectShaders`, their cooked ShaderSource products in `cooked`), into
+	/// <dist>/Data/Shaders/shaders.dpak, and writes the data root marker beside it, so the
+	/// shipped player finds its data the way every executable does and renders with no compiler.
+	public static Result<void, ErrorCode> StageShaderPack(StringView outputDir, StringView dataRoot, StringView platform,
+		ContentDatabase cooked, Span<Guid> projectShaders, out int outVariants)
 	{
 		outVariants = 0;
 		let shaderDir = DataPath(dataRoot, ShaderSystemHost.cShaderFolder, .. scope .());
@@ -186,6 +219,33 @@ static class ExportStaging
 		let pack = scope CookedShaderPack();
 		let report = scope ShaderCookReport();
 		ShaderPackCooker.CookEngineShaders(compiler, options, pack, report);
+
+		// The project's shaders: each stage under its entry point and lattice, every variant,
+		// with the engine library on the include path (what their cook compiled against).
+		if (!projectShaders.IsEmpty)
+		{
+			StringView[1] includePaths = .(shaderDir);
+			let translator = ShaderPackCooker.CreateTranslator(compiler, outputDir, options.ValidateWgsl);
+			defer delete translator;
+			for (let id in projectShaders)
+			{
+				let product = (cooked != null) ? cooked.GetInstance(id) : null;
+				let object = (product != null) ? product.ReadObject() : null;
+				defer { if (object != null) delete object; }
+				let source = (object != null) ? Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(object)) as ShaderSource : null;
+				if (source == null)
+				{
+					report.AddError("a custom shader", "its cooked product is missing");
+					continue;
+				}
+				let sourceName = scope $"{source.Name}.hlsl";
+				ShaderPackCooker.CookShaderStage(compiler, translator, source.Name, .Vertex, source.VertexSource,
+					source.VertexEntryPoint, (ShaderFlags)source.VertexVariantMask, sourceName, options, includePaths, pack, report);
+				ShaderPackCooker.CookShaderStage(compiler, translator, source.Name, .Fragment, source.FragmentSource,
+					source.FragmentEntryPoint, (ShaderFlags)source.FragmentVariantMask, sourceName, options, includePaths, pack, report);
+			}
+			report.Success = report.Errors.IsEmpty;
+		}
 		for (let error in report.Errors)
 			GlobalLog(.Error, "Export: shader cook: {}", error);
 		if (!report.Success)
