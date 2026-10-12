@@ -121,6 +121,21 @@ class ReflectionProbeSystemTests
 		Test.Assert(probes.Captures.IsEmpty);
 		// And the ranges came back identical, the layout being rebuilt the same way.
 		Test.Assert(probes.RangeFor(sceneB).Base == 1);
+
+		// A capture request (a Manual probe's Capture()) recaptures that probe once, then it
+		// is quiet again: Manual captured only at the start, with no way to ask again.
+		listA[0].Update = .Manual;
+		listA[0].CaptureRequest++;
+		probes.BeginFrame();
+		probes.Assign(sceneA, .(&listA[0], 1));
+		probes.Assign(sceneB, .(&listB[0], 2));
+		Test.Assert(probes.Captures.Length == 1);
+		Test.Assert(probes.Captures[0].Scene == sceneA);
+		probes.MarkCaptured(probes.Captures[0].Slot);
+		probes.BeginFrame();
+		probes.Assign(sceneA, .(&listA[0], 1));
+		probes.Assign(sceneB, .(&listB[0], 2));
+		Test.Assert(probes.Captures.IsEmpty);
 	}
 
 	/// A probe keeps its SLICE from frame to frame, keyed on its own tag, which is what lets a

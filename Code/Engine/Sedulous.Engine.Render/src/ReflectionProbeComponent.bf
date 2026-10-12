@@ -42,8 +42,17 @@ struct ReflectionProbeComponent : ISerializable
 	public bool Parallax = true;
 	[Scriptable]
 	public bool Enabled = true;
+	/// Runtime: the capture requests made so far (never serialized). A Manual probe captures
+	/// only when asked; any probe recaptures once when asked (after its room changed).
+	[Hidden]
+	public uint32 CaptureRequests = 0;
 
 	public this() {}
+
+	/// Asks for one capture: a Manual probe's only way to capture again, and a Static one's
+	/// after what it reflects has changed.
+	[Scriptable]
+	public void Capture() mut => CaptureRequests++;
 
 	public void Serialize(ISerializer ar) mut
 	{

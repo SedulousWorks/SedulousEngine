@@ -42,6 +42,8 @@ class ReflectionProbeSystem
 		public bool Captured;
 		/// It needs capturing again this frame.
 		public bool Dirty;
+		/// The probe's capture request count when last seen.
+		public uint32 CaptureRequest;
 	}
 
 	/// One scene's run of records, appended in the order the scenes are assigned.
@@ -186,10 +188,12 @@ class ReflectionProbeSystem
 
 			let signature = TransformSignature(probe);
 			if (!mSlotStates[slot].Captured || (mSlotStates[slot].Signature != signature)
-				|| (probe.Update == .Realtime) || (mCaptureWarmup > 0))
+				|| (probe.Update == .Realtime) || (mSlotStates[slot].CaptureRequest != probe.CaptureRequest)
+				|| (mCaptureWarmup > 0))
 				mSlotStates[slot].Dirty = true;
 
 			mSlotStates[slot].Signature = signature;
+			mSlotStates[slot].CaptureRequest = probe.CaptureRequest;
 			mSlotStates[slot].ProbeKey = probe.Key;
 
 			if (mSlotStates[slot].Dirty)

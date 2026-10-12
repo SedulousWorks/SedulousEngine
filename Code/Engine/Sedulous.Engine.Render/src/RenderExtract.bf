@@ -778,6 +778,7 @@ static class RenderExtract
 				probe.Priority = component.Priority;
 				probe.Update = component.Update;
 				probe.Parallax = component.Parallax;
+				probe.CaptureRequest = component.CaptureRequests;
 				outScene.AddReflectionProbe(probe);
 				count++;
 			});

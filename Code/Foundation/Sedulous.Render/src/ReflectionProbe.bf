@@ -30,6 +30,9 @@ struct ReflectionProbe
 	public ProbeUpdateMode Update = .Static;
 	/// Whether to box project the reflection ray, rather than treating it as infinitely far.
 	public bool Parallax = true;
+	/// Counts capture requests (a Manual probe's Capture()); a value the system has not seen
+	/// recaptures the probe once, in any update mode.
+	public uint32 CaptureRequest = 0;
 
 	public this() {}
 }
