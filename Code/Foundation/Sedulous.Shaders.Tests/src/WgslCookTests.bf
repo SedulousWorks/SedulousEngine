@@ -39,13 +39,23 @@ class WgslCookTests
 
 	private static void BinPath(StringView tool, String outPath)
 	{
-		// The repository's vendored binaries, found relative to this source tree rather than
-		// to the build output, which moves per configuration.
-		outPath.Set(cRepositoryBin);
-		outPath.Append(tool);
+		// The repository's vendored binaries, in its Bin/ folder: found by walking up from the
+		// test executable, whose build folder moves per configuration.
+		outPath.Clear();
+		let directory = GetExecutableDirectory(.. scope String());
+		while (!directory.IsEmpty)
+		{
+			let candidate = PathJoin(directory, "Bin", .. scope String());
+			PathJoin(candidate, tool, outPath..Clear());
+			if (FileExists(outPath))
+				return;
+			let parent = PathParent(directory, .. scope String());
+			if (parent == directory)
+				break;
+			directory.Set(parent);
+		}
+		outPath.Clear();
 	}
-
-	private const String cRepositoryBin = "/home/robert/Dev/CS/GameEngine/Sedulous/Bin/";
 
 	private static bool ToolsPresent()
 	{
@@ -185,7 +195,7 @@ class WgslCookTests
 		// A naga path that does not exist: the process cannot start, which is a different
 		// failure from a naga that ran and refused.
 		let missing = scope WgslTranslator(compiler, scratch);
-		missing.SetNagaPath(scope $"{cRepositoryBin}Naga/bin/linux-x86_64/naga_does_not_exist");
+		missing.SetNagaPath(scope $"{NagaPath(.. scope String())}_does_not_exist");
 		let notRun = scope WgslCookResult();
 		missing.Translate(cCleanPixelShader, .Fragment, .None, default, notRun);
 		Test.Assert(!notRun.Success);
