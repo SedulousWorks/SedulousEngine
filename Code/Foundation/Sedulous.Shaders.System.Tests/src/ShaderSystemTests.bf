@@ -320,10 +320,10 @@ class ShaderSystemTests
 			"the registered source still resolves in pack mode");
 	}
 
-	/// A registered source in a COMPILER FREE build cannot be served, and says so rather than
-	/// silently returning nothing.
+	/// A registered source in a COMPILER FREE build that the pack never cooked is a miss: a
+	/// source needs a compiler, and there is none.
 	[Test]
-	public static void ARegisteredSourceCannotBeServedWithoutACompiler()
+	public static void ARegisteredSourceThePackLacksIsAMissWithoutACompiler()
 	{
 		IBackend backend = null;
 		let device = MakeDevice(&backend);
@@ -349,6 +349,38 @@ class ShaderSystemTests
 			"a source needs a compiler, and there is none");
 		Test.Assert(shaders.GetVariant("cooked", .Fragment, .None) != null,
 			"while the cooked one still resolves");
+	}
+
+	/// A shipped build (no compiler) serves a project's registered shader from the pack, as the
+	/// corpus is served: the export cooked it there with its entry point and lattice.
+	[Test]
+	public static void ACompilerFreeBuildServesARegisteredShaderFromThePack()
+	{
+		IBackend backend = null;
+		let device = MakeDevice(&backend);
+		Test.Assert(device != null);
+		defer
+		{
+			device.Destroy();
+			backend.Destroy();
+			delete backend;
+		}
+
+		uint8[4] blob = .(1, 2, 3, 4);
+		let pack = scope CookedShaderPack();
+		pack.Add("toon", .Fragment, .None, .SpirV, blob);
+		pack.Add("toon", .Fragment, .GBuffer, .SpirV, blob);
+		pack.AddDeclaredMask("toon", .Fragment, .GBuffer);
+		pack.AddEntryPoint("toon", .Fragment, "PSMain");
+
+		let shaders = scope Sedulous.Shaders.ShaderSystem(device);
+		shaders.SetCookedPack(pack);
+		shaders.RegisterSource("toon", .Fragment, "", "PSMain", ShaderFlags.GBuffer);
+		let plain = shaders.GetVariant("toon", .Fragment, .None);
+		Test.Assert((plain != null) && (plain.EntryPoint == "PSMain"));
+		Test.Assert(shaders.GetVariant("toon", .Fragment, .Skinned) == plain, "a flag the stage never declared reduces to the cooked variant");
+		Test.Assert(shaders.GetVariant("toon", .Fragment, .GBuffer) != null);
+		Test.Assert(shaders.GetVariant("toon", .Vertex, .None) == null, "a stage the pack never cooked is a miss");
 	}
 
 	/// Removing a source drops it: the next request has nothing to compile.

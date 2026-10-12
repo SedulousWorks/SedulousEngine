@@ -177,18 +177,12 @@ class ShaderSystem
 		if (mPack == null)
 			return GetCompiledVariant(name, stage, flags);
 
-		// An explicitly registered source beats the pack. The engine pack covers the engine
-		// corpus, while registered sources carry bespoke inline shaders and user shader
-		// assets, and those must keep resolving in pack mode or a custom material shader
-		// dies in a shipped build.
-		if (mSources.ContainsKey(SourceKey(name, stage)))
-		{
-			if (mCompiler != null)
-				return GetCompiledVariant(name, stage, flags);
-
-			ReportRegisteredSourceInPackMode(name, stage);
-			return null;
-		}
+		// A registered source (a project's shader, a bespoke inline one) compiles while a
+		// compiler is here: the editor's source is newer than any pack. Without one (a shipped
+		// build) the pack serves it like the corpus: the export cooked the project's shaders into
+		// it, with their entry points and lattices, and only a variant it lacks is a loud miss.
+		if ((mCompiler != null) && mSources.ContainsKey(SourceKey(name, stage)))
+			return GetCompiledVariant(name, stage, flags);
 		return GetCookedVariant(name, stage, flags);
 	}
 
@@ -417,15 +411,6 @@ class ShaderSystem
 			{
 				Console.Error.WriteLine(scope $"    the pack has: flags {(uint32)flags} format {cookedFormat}");
 			});
-	}
-
-	private void ReportRegisteredSourceInPackMode(StringView name, ShaderStage stage)
-	{
-		let key = SourceKey(name, stage);
-		if (mLoggedFailures.Contains(key))
-			return;
-		mLoggedFailures.Add(key);
-		Console.Error.WriteLine(scope $"Sedulous.Shaders: registered source '{name}' stage {stage} cannot be compiled in compiler free pack mode; cook it to bytecode or ship a compiler");
 	}
 
 	private void DestroyAll()
