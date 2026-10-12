@@ -118,7 +118,8 @@ class ShaderAssetCookTests
 
 	/// One cook of `source` saved as shader.hlsl, its product read back into `outProduct` (null
 	/// when the cook failed, else the caller's to delete).
-	private static Result<void, ErrorCode> Cook(StringView source, StringView dataRoot, out ShaderSource outProduct)
+	private static Result<void, ErrorCode> Cook(StringView source, StringView dataRoot, out ShaderSource outProduct,
+		StringView name = "custom")
 	{
 		outProduct = null;
 		let sourceMount = scope NativeFileSystem(cSourceRoot);
@@ -134,7 +135,7 @@ class ShaderAssetCookTests
 			Test.Assert(instance != null);
 			id = instance.Id;
 			let asset = scope ShaderAsset();
-			ShaderImporter.Import("custom", "shader.hlsl", asset);
+			ShaderImporter.Import(name, "shader.hlsl", asset);
 			let context = scope AssetBuildContext();
 			context.Sources = sourceMount;
 			context.Output = instance;
@@ -267,5 +268,22 @@ class ShaderAssetCookTests
 		Test.Assert(source.VertexVariantMask == (uint32)(ShaderFlags.Skinned | .Instanced));
 		Test.Assert(source.FragmentVariantMask == (uint32)(ShaderFlags.AlphaTest | .GBuffer | .Dither));
 		Test.Assert(!source.PropertyNames.IsEmpty);
+	}
+
+	/// One name keys a shader in the shader system and a shipped build's pack, so a project shader
+	/// named like an engine shader would replace the engine's everywhere. The cook refuses it.
+	[Test]
+	public static void AProjectShaderCannotTakeAnEngineShadersName()
+	{
+		let dataRoot = FindDataRoot(.. scope String());
+		Test.Assert(!dataRoot.IsEmpty);
+		Fresh();
+		defer Clean();
+		let errors = new ErrorLines();
+		InitGlobalLogger(errors, true);
+		defer ShutdownGlobalLogger();
+
+		Test.Assert(Cook(cGood, dataRoot, ?, "forward") case .Err);
+		Test.Assert(errors.Text.Contains("the name 'forward' is the engine's shader"), scope $"{errors.Text}");
 	}
 }

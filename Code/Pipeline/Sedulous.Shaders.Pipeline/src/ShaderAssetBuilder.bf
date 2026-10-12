@@ -41,6 +41,12 @@ class ShaderAssetBuilder : IAssetBuilder
 
 		let shader = (ShaderAsset)asset;
 		let file = shader.FileName.Value;
+		let taken = EngineShaderFile(shader.Name, .. scope String());
+		if (!taken.IsEmpty)
+		{
+			GlobalLog(.Error, "Shaders: {}: the name '{}' is the engine's shader ({}): one name keys a shader in the shader system and a shipped build's pack, so rename it - cook failed", file, shader.Name, taken);
+			return .Err(.InvalidArgument);
+		}
 		let text = scope String();
 		if (AssetSource.ReadText(context, file, text) case .Err(let readError))
 			return .Err(readError);
@@ -79,6 +85,24 @@ class ShaderAssetBuilder : IAssetBuilder
 		cooked.FragmentVariantMask = (uint32)fragmentMask;
 		cooked.SetProperties(block);
 		return context.Output.WriteObject(cooked);
+	}
+
+	/// The engine library's file for a shader of this name (`forward` is forward.ps.hlsl), or
+	/// empty when the name is free. A project shader with an engine shader's name would replace
+	/// it everywhere the name is looked up.
+	private void EngineShaderFile(StringView name, String outFile)
+	{
+		if (mShaderLibrary.IsEmpty || name.IsEmpty)
+			return;
+		StringView[3] suffixes = .(".vs.hlsl", ".ps.hlsl", ".cs.hlsl");
+		for (let suffix in suffixes)
+		{
+			outFile.Set(name);
+			outFile.Append(suffix);
+			if (FileExists(PathJoin(mShaderLibrary, outFile, .. scope String())))
+				return;
+		}
+		outFile.Clear();
 	}
 
 	/// Compiles both stages' every declared variant to SPIR-V, logging a failure as DXC reports
