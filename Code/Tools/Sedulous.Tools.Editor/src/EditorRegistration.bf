@@ -24,6 +24,7 @@ using Sedulous.Editor.Physics;
 using Sedulous.Editor.Generic;
 using Sedulous.Editor.Script;
 using Sedulous.Editor.Script.AngelScript;
+using Sedulous.Editor.Shaders;
 
 namespace Sedulous.Tools.Editor;
 
@@ -83,6 +84,7 @@ static class EditorRegistration
 
 		// The script page browses the engine facade surface the embedded runtime binds.
 		AngelScriptEditorUI.Register();
+		HlslEditorUI.Register(); // a custom shader's syntax
 		ScriptEditor.Register(context, app.EmbeddedApplication.ScriptSurface);
 
 		// File > New: every pipeline domain's creators, the scripts' among them.
