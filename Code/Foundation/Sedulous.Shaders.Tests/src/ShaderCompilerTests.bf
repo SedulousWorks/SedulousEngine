@@ -127,6 +127,29 @@ class ShaderCompilerTests
 		Test.Assert(!result.Messages.IsEmpty, "the failure explains itself");
 	}
 
+	/// A compile error names the file its author knows, with the line, so an editor or a cook
+	/// log can point at it; without a name DXC reports a placeholder.
+	[Test]
+	public static void ACompileErrorNamesTheSourcesFileAndLine()
+	{
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+
+		let broken = """
+			float4 main() : SV_Target0 {
+			    return float4(1, 0, 0, 1) * Sped;
+			}
+			""";
+		var options = CompileOptions();
+		options.SourceName = "Toon.hlsl";
+		var result = compiler.Compile(AsBytes(broken), .Fragment, "main", .SPIRV, options);
+		defer result.Dispose();
+		Test.Assert(!result.Success);
+		Test.Assert(result.Messages.Contains("Toon.hlsl:2:"), scope $"the file and line: {result.Messages}");
+		Test.Assert(result.Messages.Contains("Sped"));
+	}
+
 	/// A compile that succeeds still runs when asked for DXIL rather than SPIR-V, and the
 	/// two blobs differ: the target is not being ignored.
 	[Test]

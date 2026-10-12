@@ -34,5 +34,9 @@ struct CompileOptions
 	/// `// preserve-interface` directive.
 	public bool PreserveInterface = false;
 
+	/// The source's file name as its author knows it (`Toon.hlsl`): DXC's messages name it
+	/// (`Toon.hlsl:12:5: error: ...`) instead of a placeholder. Empty is DXC's default.
+	public StringView SourceName = default;
+
 	public this() {}
 }

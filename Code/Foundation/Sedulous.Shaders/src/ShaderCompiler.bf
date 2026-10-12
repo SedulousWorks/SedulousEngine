@@ -157,6 +157,10 @@ class ShaderCompiler
 			return owned;
 		}
 
+		// The positional argument: the input's file name, which DXC's messages then name.
+		if (!options.SourceName.IsEmpty)
+			arguments.Add(Own(options.SourceName));
+
 		arguments.Add("-E");
 		arguments.Add(Own(entryPoint.IsEmpty ? "main" : entryPoint));
 
