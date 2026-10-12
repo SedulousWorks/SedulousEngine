@@ -2,25 +2,7 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 // variants: GBUFFER
-cbuffer View : register(b0, space0) {        // shared with the VS (same layout)
-    row_major float4x4 ViewProj;
-    row_major float4x4 View;
-    row_major float4x4 CascadeViewProj[4];
-    float3 CameraPos; float LightCount;
-    uint   LightOffset; int ClusterVpX; int ClusterVpY; float IBLMaxLod;
-    uint   ClusterGridX; uint ClusterGridY; uint ClusterSliceCount; uint ClusterTileSize;
-    float  ClusterNear;  float ClusterFar;  float ClusterLogScale;  float ClusterLogBias;
-    float3 Ambient; float ShadowCascadeCount;
-    float4 CascadeSplitFar;
-    float4 CascadeTexelSize;
-    float  ShadowNormalBias; float ShadowDepthBias; float CascadeLayerBase; uint LocalShadowBase;
-    row_major float4x4 PrevViewProj;
-    float4 Jitter;
-    float4 ProbeCenter;
-    float4 ProbeBoxMin;
-    float4 ProbeBoxMax;
-    float4 ShadowParams;
-};
+#include "view.hlsli"
 
 cbuffer Material : register(b0, space2) {
     float4 BaseColor;

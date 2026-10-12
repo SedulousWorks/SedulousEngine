@@ -35,7 +35,7 @@ struct GpuLight
 	public this() {}
 
 	/// The share of this light's intensity that reaches `point`, before any shadow: the
-	/// forward shader's range falloff and spot cone (forward.ps.hlsl Attenuation and
+	/// forward shader's range falloff and spot cone (lighting.hlsli Attenuation and
 	/// SpotAttenuation, kept the same), on the CPU, for a game asking how lit a place is. One
 	/// for a directional light.
 	public float FalloffAt(Float3 point)
