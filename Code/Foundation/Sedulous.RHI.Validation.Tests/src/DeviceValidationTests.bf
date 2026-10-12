@@ -106,7 +106,7 @@ class DeviceValidationTests
 		Test.Assert(fixture.Device.CreatePipelineLayout(.() { Label = "DeviceValidationTests.PipelinesNeedALayoutAndAShader" }) case .Ok(var layout));
 		fixture.Own(layout);
 		Test.Assert(fixture.Device.CreateShaderModule(
-			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
+			.() { Code = scope uint8[4](1, 2, 3, 4), EntryPoint = "main" }) case .Ok(var module));
 			fixture.Own(module);
 		fixture.Messages.Clear();
 
@@ -139,6 +139,45 @@ class DeviceValidationTests
 		compute.Layout = layout;
 		Test.Assert(fixture.Device.CreateComputePipeline(compute) case .Err);
 		Test.Assert(fixture.Messages.HasError("compute shader module is null"));
+
+		fixture.Device.DestroyShaderModule(ref module);
+		fixture.Device.DestroyPipelineLayout(ref layout);
+	}
+
+	/// A stage runs the entry it names or its module's; with neither, nothing says which
+	/// function to run, and the pipeline is refused rather than guessing `main`.
+	[Test]
+	public static void AStageWithNoEntryPointAnywhereIsRefused()
+	{
+		let fixture = scope ValidationFixture();
+		Test.Assert(fixture.Device.CreatePipelineLayout(.() { Label = "DeviceValidationTests.AStageWithNoEntryPointAnywhereIsRefused" }) case .Ok(var layout));
+		fixture.Own(layout);
+		Test.Assert(fixture.Device.CreateShaderModule(
+			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
+			fixture.Own(module);
+		fixture.Messages.Clear();
+
+		var render = RenderPipelineDesc();
+		render.Label = "DeviceValidationTests.AStageWithNoEntryPointAnywhereIsRefused";
+		render.Layout = layout;
+		render.Vertex.Shader = .(module, .Vertex);
+		Test.Assert(fixture.Device.CreateRenderPipeline(render) case .Err);
+		Test.Assert(fixture.Messages.HasError("names no entry point"));
+
+		// The stage naming one is enough.
+		fixture.Messages.Clear();
+		render.Vertex.Shader = .(module, "VSMain", .Vertex);
+		Test.Assert(fixture.Device.CreateRenderPipeline(render) case .Ok(var renderPipeline));
+		fixture.Own(renderPipeline);
+		fixture.Device.DestroyRenderPipeline(ref renderPipeline);
+
+		fixture.Messages.Clear();
+		var compute = ComputePipelineDesc();
+		compute.Label = "DeviceValidationTests.AStageWithNoEntryPointAnywhereIsRefused";
+		compute.Layout = layout;
+		compute.Compute = .(module, .Compute);
+		Test.Assert(fixture.Device.CreateComputePipeline(compute) case .Err);
+		Test.Assert(fixture.Messages.HasError("names no entry point"));
 
 		fixture.Device.DestroyShaderModule(ref module);
 		fixture.Device.DestroyPipelineLayout(ref layout);

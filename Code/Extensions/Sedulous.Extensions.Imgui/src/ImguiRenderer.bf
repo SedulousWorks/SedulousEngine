@@ -507,10 +507,10 @@ class ImguiRenderer
 
 		RenderPipelineDesc desc = .();
 		desc.Layout = mPipelineLayout;
-		desc.Vertex.Shader = .(vertexShader, "main", .Vertex);
+		desc.Vertex.Shader = .(vertexShader, .Vertex);
 		desc.Vertex.Buffers = buffers;
 		FragmentState fragment = .();
-		fragment.Shader = .(fragmentShader, "main", .Fragment);
+		fragment.Shader = .(fragmentShader, .Fragment);
 		fragment.Targets = targets;
 		desc.Fragment = fragment;
 		desc.Primitive.Topology = .TriangleList;

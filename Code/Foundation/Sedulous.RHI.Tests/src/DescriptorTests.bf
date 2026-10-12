@@ -159,7 +159,8 @@ class DescriptorTests
 		Test.Assert(target.WriteMask == .All);
 
 		let stage = ProgrammableStage();
-		Test.Assert(stage.EntryPoint == "main");
+		Test.Assert(stage.EntryPoint.IsEmpty, "empty: the module's own entry point");
+		Test.Assert(stage.ResolvedEntryPoint.IsEmpty, "no module, so no entry at all");
 		Test.Assert(stage.Stage == .None);
 	}
 

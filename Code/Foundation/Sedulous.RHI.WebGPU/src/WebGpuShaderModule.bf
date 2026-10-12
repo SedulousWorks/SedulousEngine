@@ -16,8 +16,10 @@ sealed class WebGpuShaderModule : IShaderModule
 	private const uint32 cSpirvMagic = 0x07230203;
 
 	private WGPUShaderModule mHandle;
+	private String mEntryPoint = new .() ~ delete _;
 
 	public WGPUShaderModule Handle => mHandle;
+	public StringView EntryPoint => mEntryPoint;
 
 	public ~this()
 	{
@@ -30,6 +32,7 @@ sealed class WebGpuShaderModule : IShaderModule
 
 	public Result<void> Initialize(WGPUDevice device, ShaderModuleDesc desc)
 	{
+		mEntryPoint.Set(desc.EntryPoint);
 		WGPUShaderModuleDescriptor module = .();
 		module.label = WebGpuConversions.ToWgpuStringView(desc.Label);
 

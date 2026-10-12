@@ -134,7 +134,7 @@ class ShaderSystemHostTests
 			"but nothing resolves from files");
 
 		host.System.RegisterSource("inline", .Fragment,
-			"float4 main() : SV_Target0 { return 0; }");
+			"float4 main() : SV_Target0 { return 0; }", "main");
 		Test.Assert(host.GetVariant("inline", .Fragment, .None) != null,
 			"while a registered source still works");
 	}
@@ -188,6 +188,7 @@ class ShaderSystemHostTests
 			let pack = scope CookedShaderPack();
 			var blob = uint8[1](1);
 			pack.Add("x", .Vertex, .None, .SpirV, .(&blob[0], 1));
+			pack.AddEntryPoint("x", .Vertex, "main");
 			let output = scope FileStream(PathJoin(root, ShaderSystemHost.cShaderPackPath, .. scope String()), .Write);
 			Test.Assert(output.IsValid);
 			Test.Assert(pack.Write(output) case .Ok);

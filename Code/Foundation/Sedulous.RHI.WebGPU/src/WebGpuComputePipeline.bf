@@ -38,8 +38,11 @@ sealed class WebGpuComputePipeline : IComputePipeline
 		WGPUComputePipelineDescriptor wgpu = .();
 		wgpu.label = WebGpuConversions.ToWgpuStringView(desc.Label);
 		wgpu.layout = mLayout.Handle;
+		let entryPoint = desc.Compute.ResolvedEntryPoint;
+		if (entryPoint.IsEmpty)
+			return .Err; // no entry point named by the stage or its module
 		wgpu.compute.module = module.Handle;
-		wgpu.compute.entryPoint = WebGpuConversions.ToWgpuStringView(desc.Compute.EntryPoint);
+		wgpu.compute.entryPoint = WebGpuConversions.ToWgpuStringView(entryPoint);
 
 		mHandle = wgpuDeviceCreateComputePipeline(device, &wgpu);
 		return (mHandle != null) ? .Ok : .Err;

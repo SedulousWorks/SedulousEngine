@@ -26,9 +26,15 @@ class ShaderSystem
 	private IShaderSourceProvider mProvider = null;
 	private CookedShaderPack mPack = null;
 
-	/// Name and stage to HLSL.
-	private Dictionary<uint64, String> mSources = new Dictionary<uint64, String>()
-		~ DeleteDictionaryAndValues!(_);
+	/// A stage's source and the name of its function in it.
+	private class Source
+	{
+		public String Hlsl = new .() ~ delete _;
+		public String EntryPoint = new .() ~ delete _;
+	}
+
+	/// Name and stage to HLSL and entry point.
+	private Dictionary<uint64, Source> mSources = new .() ~ DeleteDictionaryAndValues!(_);
 	/// The declared mask per PROVIDER FETCHED source, which is the development half of the
 	/// canonicalization contract. An explicitly registered source has no entry and compiles
 	/// the raw flags.
@@ -74,17 +80,21 @@ class ShaderSystem
 	public IShaderSourceProvider SourceProvider => mProvider;
 	public CookedShaderPack CookedPack => mPack;
 
-	/// Registers a stage's HLSL, taking an owned copy.
+	/// Registers a stage's HLSL, taking an owned copy, and the entry point that stage's
+	/// function is called in it (one file may serve both stages as VSMain and PSMain).
 	///
 	/// An explicitly registered source is compiled with the RAW requested flags. It sits
 	/// outside the corpus lattice by definition, so there is no declared mask to intersect
 	/// with and every requested define is applied.
-	public void RegisterSource(StringView name, ShaderStage stage, StringView hlsl)
+	public void RegisterSource(StringView name, ShaderStage stage, StringView hlsl, StringView entryPoint)
 	{
 		let key = SourceKey(name, stage);
 		if (mSources.TryGetValue(key, let existing))
 			delete existing;
-		mSources[key] = new String(hlsl);
+		let source = new Source();
+		source.Hlsl.Set(hlsl);
+		source.EntryPoint.Set(entryPoint);
+		mSources[key] = source;
 		// Explicit registration overrides whatever a provider fetch had decided.
 		mDeclaredMasks.Remove(key);
 	}
@@ -245,7 +255,8 @@ class ShaderSystem
 		if (mCache.TryGetValue(key, let cached))
 			return cached;
 
-		let module = Compile(mSources[sourceKey], stage, canonical);
+		let source = mSources[sourceKey];
+		let module = Compile(source.Hlsl, source.EntryPoint, stage, canonical);
 		if (module == null)
 			return null;
 
@@ -258,8 +269,8 @@ class ShaderSystem
 		if (mProvider == null)
 			return false;
 
-		let fetched = new String();
-		if (!mProvider.FetchSource(name, stage, fetched))
+		let fetched = new Source();
+		if (!mProvider.FetchSource(name, stage, fetched.Hlsl, fetched.EntryPoint))
 		{
 			delete fetched;
 			return false;
@@ -268,7 +279,7 @@ class ShaderSystem
 
 		// A corpus source carries the variant directive; absent means single variant, the
 		// same rule the cook applies.
-		let directive = ShaderVariants.ParseVariantDirective(fetched);
+		let directive = ShaderVariants.ParseVariantDirective(fetched.Hlsl);
 		mDeclaredMasks[sourceKey] = directive.Present ? directive.Mask : .None;
 		return true;
 	}
@@ -294,8 +305,18 @@ class ShaderSystem
 			return null;
 		}
 
+		// The entry the cook compiled this stage for; a pack without one predates entry names
+		// (format 3) and is refused at load, so empty here is a cook bug.
+		let entryPoint = mPack.EntryPoint(nameHash, stage);
+		if (entryPoint.IsEmpty)
+		{
+			Console.Error.WriteLine(scope $"Sedulous.Shaders: cooked shader '{name}' stage {stage} has no entry point in the pack");
+			return null;
+		}
+
 		var desc = Sedulous.RHI.ShaderModuleDesc();
 		desc.Code = blob;
+		desc.EntryPoint = entryPoint;
 		if (!(mDevice.CreateShaderModule(desc) case .Ok(let module)))
 			return null;
 
@@ -303,7 +324,8 @@ class ShaderSystem
 		return module;
 	}
 
-	private Sedulous.RHI.IShaderModule Compile(StringView source, ShaderStage stage, ShaderFlags flags)
+	private Sedulous.RHI.IShaderModule Compile(StringView source, StringView entryPoint, ShaderStage stage,
+		ShaderFlags flags)
 	{
 		// Compiler free pack mode: on demand compilation is simply unavailable.
 		if (mCompiler == null)
@@ -335,7 +357,7 @@ class ShaderSystem
 			}
 		}
 
-		var compiled = mCompiler.Compile(.((uint8*)source.Ptr, source.Length), stage, "main",
+		var compiled = mCompiler.Compile(.((uint8*)source.Ptr, source.Length), stage, entryPoint,
 			target, options);
 		defer compiled.Dispose();
 
@@ -348,6 +370,7 @@ class ShaderSystem
 
 		var desc = Sedulous.RHI.ShaderModuleDesc();
 		desc.Code = compiled.Bytecode;
+		desc.EntryPoint = entryPoint;
 		if (mDevice.CreateShaderModule(desc) case .Ok(let module))
 			return module;
 		return null;

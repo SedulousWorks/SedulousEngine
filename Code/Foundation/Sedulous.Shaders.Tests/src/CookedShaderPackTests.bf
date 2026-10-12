@@ -21,6 +21,8 @@ class CookedShaderPackTests
 		pack.Add("forward", .Vertex, .None, .SpirV, vertexSpirv);
 		pack.Add("forward", .Fragment, .GBuffer, .Wgsl, fragmentWgsl);
 		pack.AddDeclaredMask("forward", .Fragment, .AlphaTest | .GBuffer);
+		pack.AddEntryPoint("forward", .Vertex, "main");
+		pack.AddEntryPoint("forward", .Fragment, "PSMain");
 		Test.Assert(pack.Count == 2);
 
 		let buffer = scope MemoryStream();
@@ -56,6 +58,30 @@ class CookedShaderPackTests
 			| ShaderFlags.GBuffer));
 		Test.Assert(loaded.DeclaredMask("forward", .Vertex) == .None,
 			"a stage that declared none reports none");
+
+		// Each stage's entry point survives too: the runtime gives it to the module it creates.
+		Test.Assert(loaded.EntryPoint("forward", .Vertex) == "main");
+		Test.Assert(loaded.EntryPoint("forward", .Fragment) == "PSMain");
+		Test.Assert(loaded.EntryPoint("nope", .Vertex).IsEmpty);
+	}
+
+	/// A version 2 pack has no entry points: read as one, every stage would run as `main`, so
+	/// it is refused and the export cooks it again.
+	[Test]
+	public static void APackFromBeforeEntryPointsIsRefused()
+	{
+		let buffer = scope MemoryStream();
+		{
+			let writer = scope BinaryWriter(buffer);
+			writer.Write<uint32>(0x4b505344); // "DSPK"
+			writer.Write<uint32>(2);
+			writer.Write<uint32>(0); // names
+			writer.Write<uint32>(0); // declared masks
+			writer.Write<uint32>(0); // entries
+		}
+		Test.Assert(buffer.Seek(0, .Begin) == 0);
+		let loaded = scope CookedShaderPack();
+		Test.Assert(loaded.Read(buffer) case .Err);
 	}
 
 	/// Re-adding a variant overwrites in place. A pushed duplicate would sit orphaned in the

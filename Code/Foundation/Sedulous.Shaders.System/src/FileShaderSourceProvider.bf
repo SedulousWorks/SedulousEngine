@@ -128,12 +128,15 @@ class FileShaderSourceProvider : IShaderSourceProvider, IShaderIncludeResolver
 		return (inFolder != path) && mMount.Exists(path) && ReadWholeFile(path, outSource);
 	}
 
-	public bool FetchSource(StringView name, ShaderStage stage, String outSource)
+	public bool FetchSource(StringView name, ShaderStage stage, String outSource, String outEntryPoint)
 	{
 		for (let entry in mEntries)
 		{
 			if ((entry.Stage == stage) && (entry.Name == name))
+			{
+				outEntryPoint.Set(ShaderCorpus.EntryPoint); // a file per stage
 				return ReadWholeFile(entry.FileName, outSource);
+			}
 		}
 		return false;
 	}

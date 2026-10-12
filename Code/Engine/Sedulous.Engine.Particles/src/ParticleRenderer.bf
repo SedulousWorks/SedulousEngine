@@ -596,7 +596,7 @@ class ParticleRenderer : Renderer
 		target.Blend = BlendFor(mode);
 
 		var fragment = FragmentState();
-		fragment.Shader = .(ps, "main", .Fragment);
+		fragment.Shader = .(ps, .Fragment);
 		fragment.Targets = .(&target, 1);
 
 		var depthStencil = DepthStencilState();
@@ -607,7 +607,7 @@ class ParticleRenderer : Renderer
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = pipelineLayout;
-		desc.Vertex.Shader = .(vs, "main", .Vertex);
+		desc.Vertex.Shader = .(vs, .Vertex);
 		desc.Vertex.Buffers = .(&vertexLayout, 1);
 		desc.Fragment = fragment;
 		desc.DepthStencil = depthStencil;

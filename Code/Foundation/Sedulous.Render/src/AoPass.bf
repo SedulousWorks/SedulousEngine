@@ -366,12 +366,12 @@ class AoPass
 		color.Format = format;
 
 		var fragmentState = FragmentState();
-		fragmentState.Shader = .(fragment, "main", .Fragment);
+		fragmentState.Shader = .(fragment, .Fragment);
 		fragmentState.Targets = .(&color, 1);
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = layout;
-		desc.Vertex.Shader = .(vertex, "main", .Vertex);
+		desc.Vertex.Shader = .(vertex, .Vertex);
 		desc.Fragment = fragmentState;
 		desc.Primitive.Topology = .TriangleList;
 		desc.Primitive.CullMode = .None;

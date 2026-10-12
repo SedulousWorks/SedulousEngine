@@ -366,7 +366,7 @@ class SpriteRenderer : Renderer
 			: BlendState.AlphaBlend;
 
 		var fragmentState = FragmentState();
-		fragmentState.Shader = .(fragment, "main", .Fragment);
+		fragmentState.Shader = .(fragment, .Fragment);
 		fragmentState.Targets = .(&target, 1);
 
 		var depthStencil = DepthStencilState();
@@ -377,7 +377,7 @@ class SpriteRenderer : Renderer
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = mPipelineLayout;
-		desc.Vertex.Shader = .(vertex, "main", .Vertex);
+		desc.Vertex.Shader = .(vertex, .Vertex);
 		desc.Vertex.Buffers = .(&bufferLayout, 1);
 		desc.Fragment = fragmentState;
 		desc.DepthStencil = depthStencil;

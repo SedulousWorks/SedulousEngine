@@ -53,7 +53,7 @@ class EncoderValidationTests
 		Test.Assert(fixture.Device.CreatePipelineLayout(.() { Label = "EncoderValidationTests.ADrawNeedsAPipelineAViewportAndAScissor" }) case .Ok(var layout));
 		fixture.Own(layout);
 		Test.Assert(fixture.Device.CreateShaderModule(
-			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
+			.() { Code = scope uint8[4](1, 2, 3, 4), EntryPoint = "main" }) case .Ok(var module));
 			fixture.Own(module);
 		var pipelineDesc = RenderPipelineDesc();
 		pipelineDesc.Label = "EncoderValidationTests.ADrawNeedsAPipelineAViewportAndAScissor";
@@ -305,7 +305,7 @@ class EncoderValidationTests
 		Test.Assert(fixture.Device.CreatePipelineLayout(.() { Label = "EncoderValidationTests.ComputePassRulesMirrorTheRenderPassOnes" }) case .Ok(var layout));
 		fixture.Own(layout);
 		Test.Assert(fixture.Device.CreateShaderModule(
-			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
+			.() { Code = scope uint8[4](1, 2, 3, 4), EntryPoint = "main" }) case .Ok(var module));
 			fixture.Own(module);
 		var desc = ComputePipelineDesc();
 		desc.Label = "EncoderValidationTests.ComputePassRulesMirrorTheRenderPassOnes";
@@ -347,7 +347,7 @@ class EncoderValidationTests
 		Test.Assert(fixture.Device.CreatePipelineLayout(.() { Label = "EncoderValidationTests.ABundleNeedsAPipelineButNotAViewport" }) case .Ok(var layout));
 		fixture.Own(layout);
 		Test.Assert(fixture.Device.CreateShaderModule(
-			.() { Code = scope uint8[4](1, 2, 3, 4) }) case .Ok(var module));
+			.() { Code = scope uint8[4](1, 2, 3, 4), EntryPoint = "main" }) case .Ok(var module));
 			fixture.Own(module);
 		var desc = RenderPipelineDesc();
 		desc.Label = "EncoderValidationTests.ABundleNeedsAPipelineButNotAViewport";

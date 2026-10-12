@@ -77,13 +77,15 @@ class FileProviderTests
 		Test.Assert(names.Count == 3);
 
 		let source = scope String();
-		Test.Assert(provider.FetchSource("tonemap", .Fragment, source));
+		let entryPoint = scope String();
+		Test.Assert(provider.FetchSource("tonemap", .Fragment, source, entryPoint));
 		Test.Assert(source.Contains("SV_Target0"), "the file's real contents came back");
+		Test.Assert(entryPoint == "main", "a corpus file per stage, each with its main");
 
 		// The stage is part of the identity: the same stem in another stage is a miss.
 		source.Clear();
-		Test.Assert(!provider.FetchSource("tonemap", .Vertex, source));
-		Test.Assert(!provider.FetchSource("nosuchshader", .Fragment, source));
+		Test.Assert(!provider.FetchSource("tonemap", .Vertex, source, entryPoint));
+		Test.Assert(!provider.FetchSource("nosuchshader", .Fragment, source, entryPoint));
 	}
 
 	/// A root that does not exist is refused, so a caller falls back loudly rather than
@@ -205,7 +207,7 @@ class FileProviderTests
 			#endif
 			    return float4(0, 0, 1, 1);
 			}
-			""");
+			""", "main");
 		let rawPlain = shaders.GetVariant("raw", .Fragment, .None);
 		let rawGBuffer = shaders.GetVariant("raw", .Fragment, .GBuffer);
 		Test.Assert(rawPlain != null && rawGBuffer != null);

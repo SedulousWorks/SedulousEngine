@@ -548,12 +548,12 @@ class SsgiPass
 		color.Format = cHdrFormat;
 
 		var fragmentState = FragmentState();
-		fragmentState.Shader = .(fragment, "main", .Fragment);
+		fragmentState.Shader = .(fragment, .Fragment);
 		fragmentState.Targets = .(&color, 1);
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = pipelineLayout;
-		desc.Vertex.Shader = .(vertex, "main", .Vertex);
+		desc.Vertex.Shader = .(vertex, .Vertex);
 		desc.Fragment = fragmentState;
 		desc.Primitive.Topology = .TriangleList;
 		desc.Primitive.CullMode = .None;
@@ -588,12 +588,12 @@ class SsgiPass
 		targets[1].Format = cHdrFormat;
 
 		var fragmentState = FragmentState();
-		fragmentState.Shader = .(fragment, "main", .Fragment);
+		fragmentState.Shader = .(fragment, .Fragment);
 		fragmentState.Targets = .(&targets[0], 2);
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = mResolvePipelineLayout;
-		desc.Vertex.Shader = .(vertex, "main", .Vertex);
+		desc.Vertex.Shader = .(vertex, .Vertex);
 		desc.Fragment = fragmentState;
 		desc.Primitive.Topology = .TriangleList;
 		desc.Primitive.CullMode = .None;

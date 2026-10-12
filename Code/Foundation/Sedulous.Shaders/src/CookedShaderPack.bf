@@ -18,8 +18,9 @@ class CookedShaderPack
 {
 	/// "DSPK" little endian.
 	private const uint32 cMagic = 0x4b505344;
-	/// Version 2 added the declared mask table.
-	private const uint32 cVersion = 2;
+	/// Version 2 added the declared mask table; 3 the entry point table. An older pack is
+	/// refused: it would run every stage as `main`, so the export cooks it again.
+	private const uint32 cVersion = 3;
 
 	private class Entry
 	{
@@ -38,6 +39,8 @@ class CookedShaderPack
 		~ DeleteDictionaryAndValues!(_);
 	/// Mask key to the declared flag bits.
 	private Dictionary<uint64, uint32> mDeclaredMasks = new Dictionary<uint64, uint32>() ~ delete _;
+	/// Mask key to the entry point that stage was cooked for.
+	private Dictionary<uint64, String> mEntryPoints = new .() ~ DeleteDictionaryAndValues!(_);
 
 	public int Count => mEntries.Count;
 	public bool IsEmpty => mEntries.IsEmpty;
@@ -99,6 +102,30 @@ class CookedShaderPack
 	public ShaderFlags DeclaredMask(StringView name, ShaderStage stage)
 		=> DeclaredMask(ShaderFlagNames.ShaderNameHash(name), stage);
 
+	/// Records the entry point a stage was cooked for, its function's name in the source; the
+	/// runtime gives it to the module it creates, so pipelines run the function the source
+	/// declares. The cook calls this once per stage.
+	public void AddEntryPoint(StringView name, ShaderStage stage, StringView entryPoint)
+	{
+		let key = MaskKey(ShaderFlagNames.ShaderNameHash(name), stage);
+		if (mEntryPoints.TryGetValue(key, let existing))
+			existing.Set(entryPoint);
+		else
+			mEntryPoints[key] = new String(entryPoint);
+	}
+
+	/// The entry point a name and stage were cooked for; empty when the stage is absent.
+	/// Stable while the pack is not modified.
+	public StringView EntryPoint(uint64 nameHash, ShaderStage stage)
+	{
+		if (mEntryPoints.TryGetValue(MaskKey(nameHash, stage), let entryPoint))
+			return entryPoint;
+		return default;
+	}
+
+	public StringView EntryPoint(StringView name, ShaderStage stage)
+		=> EntryPoint(ShaderFlagNames.ShaderNameHash(name), stage);
+
 	/// The cooked blob, or an empty span when absent, which at runtime is a cook coverage
 	/// bug rather than a normal miss.
 	public Result<Span<uint8>> Find(uint64 nameHash, ShaderStage stage, ShaderFlags flags,
@@ -155,6 +182,13 @@ class CookedShaderPack
 			writer.Write<uint32>(pair.value);
 		}
 
+		writer.Write<uint32>((uint32)mEntryPoints.Count);
+		for (let pair in mEntryPoints)
+		{
+			writer.Write<uint64>(pair.key);
+			writer.WriteString(pair.value);
+		}
+
 		writer.Write<uint32>((uint32)mEntries.Count);
 		for (let entry in mEntries)
 		{
@@ -183,6 +217,8 @@ class CookedShaderPack
 		if (ReadNames(reader, stream) case .Err)
 			return .Err;
 		if (ReadMasks(reader, stream) case .Err)
+			return .Err;
+		if (ReadEntryPoints(reader, stream) case .Err)
 			return .Err;
 		if (ReadEntries(reader, stream) case .Err)
 			return .Err;
@@ -249,6 +285,28 @@ class CookedShaderPack
 		return .Ok;
 	}
 
+	private Result<void> ReadEntryPoints(BinaryReader reader, IStream stream)
+	{
+		uint32 count = 0;
+		reader.Read<uint32>(out count);
+		// Key and length are 12 bytes minimum per record.
+		if (count > Remaining(stream) / 12)
+			return .Err;
+
+		for (uint32 i = 0; (i < count) && reader.IsOk; ++i)
+		{
+			uint64 key = 0;
+			reader.Read<uint64>(out key);
+			let entryPoint = scope String();
+			reader.ReadString(entryPoint);
+			if (mEntryPoints.TryGetValue(key, let existing))
+				existing.Set(entryPoint);
+			else
+				mEntryPoints[key] = new String(entryPoint);
+		}
+		return .Ok;
+	}
+
 	private Result<void> ReadEntries(BinaryReader reader, IStream stream)
 	{
 		uint32 count = 0;
@@ -305,6 +363,9 @@ class CookedShaderPack
 			delete pair.value;
 		mNames.Clear();
 		mDeclaredMasks.Clear();
+		for (let pair in mEntryPoints)
+			delete pair.value;
+		mEntryPoints.Clear();
 	}
 
 	private static uint64 MaskKey(uint64 nameHash, ShaderStage stage)

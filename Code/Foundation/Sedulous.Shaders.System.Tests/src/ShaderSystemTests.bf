@@ -46,6 +46,66 @@ class ShaderSystemTests
 		return compiler;
 	}
 
+	/// One file can serve both stages as named functions: each registered stage carries its
+	/// entry, every module made from it records that entry (so a pipeline need not name it), and
+	/// the cooked path takes the entry from the pack.
+	[Test]
+	public static void AStagesEntryPointIsRegisteredWithItAndRecordedOnItsModules()
+	{
+		IBackend backend = null;
+		let device = MakeDevice(&backend);
+		Test.Assert(device != null);
+		defer
+		{
+			device.Destroy();
+			backend.Destroy();
+			delete backend;
+		}
+
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+
+		let oneFile = """
+			struct VSOut { float4 pos : SV_Position; };
+			VSOut VSMain(uint id : SV_VertexID) { VSOut o; o.pos = float4(0, 0, 0, 1); return o; }
+			float4 PSMain(VSOut input) : SV_Target0 { return float4(1, 0, 0, 1); }
+			""";
+		{
+			let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
+			shaders.OptimizationLevel = 0;
+			shaders.RegisterSource("one", .Vertex, oneFile, "VSMain");
+			shaders.RegisterSource("one", .Fragment, oneFile, "PSMain");
+			let vs = shaders.GetVariant("one", .Vertex, .None);
+			let ps = shaders.GetVariant("one", .Fragment, .None);
+			Test.Assert((vs != null) && (ps != null));
+			Test.Assert(vs.EntryPoint == "VSMain");
+			Test.Assert(ps.EntryPoint == "PSMain");
+			// A stage that names none runs its module's own; one that names one runs that.
+			Test.Assert(ProgrammableStage(vs, .Vertex).ResolvedEntryPoint == "VSMain");
+			Test.Assert(ProgrammableStage(vs, "Other", .Vertex).ResolvedEntryPoint == "Other");
+
+			// A wrong entry name is a compile failure, not a module named something it lacks.
+			shaders.RegisterSource("wrong", .Vertex, oneFile, "NoSuchFunction");
+			Test.Assert(shaders.GetVariant("wrong", .Vertex, .None) == null);
+		}
+		{
+			// Compiler free: the cooked pack supplies the entry the cook compiled the stage for.
+			uint8[4] blob = .(1, 2, 3, 4);
+			let pack = scope CookedShaderPack();
+			pack.Add("cooked", .Fragment, .None, .SpirV, blob);
+			pack.AddEntryPoint("cooked", .Fragment, "PSMain");
+			let shaders = scope Sedulous.Shaders.ShaderSystem(device);
+			shaders.SetCookedPack(pack);
+			let module = shaders.GetVariant("cooked", .Fragment, .None);
+			Test.Assert((module != null) && (module.EntryPoint == "PSMain"));
+
+			// A pack stage with no entry recorded is refused, not run as `main`.
+			pack.Add("unnamed", .Fragment, .None, .SpirV, blob);
+			Test.Assert(shaders.GetVariant("unnamed", .Fragment, .None) == null);
+		}
+	}
+
 	/// The requested flags become defines, and a FAILURE IS NOT CACHED: a shader fixed after
 	/// a bad compile must resolve on the next request, which is what makes hot reload useful.
 	[Test]
@@ -69,7 +129,7 @@ class ShaderSystemTests
 		// Nothing here reads the bytecode's quality, and optimization is most of what
 		// DXC spends its time on.
 		shaders.OptimizationLevel = 0;
-		shaders.RegisterSource("flagged", .Fragment, cFlaggedPixelShader);
+		shaders.RegisterSource("flagged", .Fragment, cFlaggedPixelShader, "main");
 
 		let plain = shaders.GetVariant("flagged", .Fragment, .None);
 		let skinned = shaders.GetVariant("flagged", .Fragment, .Skinned);
@@ -78,11 +138,11 @@ class ShaderSystemTests
 		Test.Assert(plain != skinned, "they are separate modules, so the define took effect");
 
 		// A source that cannot compile yields null, and asking again still tries.
-		shaders.RegisterSource("broken", .Fragment, "this is not valid hlsl @#$");
+		shaders.RegisterSource("broken", .Fragment, "this is not valid hlsl @#$", "main");
 		Test.Assert(shaders.GetVariant("broken", .Fragment, .None) == null);
 
 		shaders.RegisterSource("broken", .Fragment,
-			"float4 main() : SV_Target0 { return 0; }");
+			"float4 main() : SV_Target0 { return 0; }", "main");
 		Test.Assert(shaders.GetVariant("broken", .Fragment, .None) != null,
 			"the fixed source compiles, so the failure was not cached");
 	}
@@ -118,6 +178,7 @@ class ShaderSystemTests
 		pack.Add("lit", .Fragment, .Skinned, .SpirV, blob);
 		// The stage branches only on SKINNED.
 		pack.AddDeclaredMask("lit", .Fragment, .Skinned);
+		pack.AddEntryPoint("lit", .Fragment, "main");
 
 		// Constructed WITHOUT a compiler, which is what a shipped build has.
 		let shaders = scope Sedulous.Shaders.ShaderSystem(device);
@@ -163,7 +224,7 @@ class ShaderSystemTests
 		// Nothing here reads the bytecode's quality, and optimization is most of what
 		// DXC spends its time on.
 		shaders.OptimizationLevel = 0;
-		shaders.RegisterSource("cached", .Fragment, cFlaggedPixelShader);
+		shaders.RegisterSource("cached", .Fragment, cFlaggedPixelShader, "main");
 
 		Test.Assert(shaders.Version("cached") == 0, "an untouched shader is at version zero");
 
@@ -204,6 +265,7 @@ class ShaderSystemTests
 		uint8[8] blob = .(1, 2, 3, 4, 5, 6, 7, 8);
 		let pack = scope CookedShaderPack();
 		pack.Add("overridden", .Fragment, .None, .SpirV, blob);
+		pack.AddEntryPoint("overridden", .Fragment, "main");
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
 		// Nothing here reads the bytecode's quality, and optimization is most of what
@@ -215,7 +277,7 @@ class ShaderSystemTests
 		Test.Assert(shaders.GetVariant("overridden", .Fragment, .None) != null);
 
 		shaders.RegisterSource("overridden", .Fragment,
-			"float4 main() : SV_Target0 { return float4(1, 1, 1, 1); }");
+			"float4 main() : SV_Target0 { return float4(1, 1, 1, 1); }", "main");
 		// Registering must not be shadowed by the pack entry of the same name.
 		Test.Assert(shaders.GetVariant("overridden", .Fragment, .None) != null,
 			"the registered source still resolves in pack mode");
@@ -239,11 +301,12 @@ class ShaderSystemTests
 		uint8[8] blob = .(1, 2, 3, 4, 5, 6, 7, 8);
 		let pack = scope CookedShaderPack();
 		pack.Add("cooked", .Fragment, .None, .SpirV, blob);
+		pack.AddEntryPoint("cooked", .Fragment, "main");
 
 		let shaders = scope Sedulous.Shaders.ShaderSystem(device);
 		shaders.SetCookedPack(pack);
 		shaders.RegisterSource("uncooked", .Fragment,
-			"float4 main() : SV_Target0 { return 0; }");
+			"float4 main() : SV_Target0 { return 0; }", "main");
 
 		Test.Assert(shaders.GetVariant("uncooked", .Fragment, .None) == null,
 			"a source needs a compiler, and there is none");
@@ -274,7 +337,7 @@ class ShaderSystemTests
 		// DXC spends its time on.
 		shaders.OptimizationLevel = 0;
 		shaders.RegisterSource("temporary", .Fragment,
-			"float4 main() : SV_Target0 { return 0; }");
+			"float4 main() : SV_Target0 { return 0; }", "main");
 		Test.Assert(shaders.GetVariant("temporary", .Fragment, .None) != null);
 
 		shaders.RemoveSource("temporary");

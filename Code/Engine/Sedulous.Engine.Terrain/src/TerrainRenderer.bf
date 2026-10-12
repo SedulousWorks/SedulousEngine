@@ -1028,7 +1028,7 @@ class TerrainRenderer : Renderer
 		targets[4].Format = RenderFormats.GAlbedo;
 
 		var fragment = FragmentState();
-		fragment.Shader = .(ps, "main", .Fragment);
+		fragment.Shader = .(ps, .Fragment);
 		fragment.Targets = .(&targets[0], 5);
 
 		var depthStencil = DepthStencilState();
@@ -1040,7 +1040,7 @@ class TerrainRenderer : Renderer
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = holes ? mHolePipelineLayout : mPipelineLayout;
-		desc.Vertex.Shader = .(vs, "main", .Vertex);
+		desc.Vertex.Shader = .(vs, .Vertex);
 		desc.Vertex.Buffers = .(&layout, 1);
 		desc.Fragment = fragment;
 		desc.DepthStencil = depthStencil;
@@ -1122,14 +1122,14 @@ class TerrainRenderer : Renderer
 		var desc = RenderPipelineDesc();
 		// Three sets, the material left out: the depth vertex shader samples none of it.
 		desc.Layout = holes ? mHoleDepthPipelineLayout : mDepthPipelineLayout;
-		desc.Vertex.Shader = .(vs, "main", .Vertex);
+		desc.Vertex.Shader = .(vs, .Vertex);
 		desc.Vertex.Buffers = .(&layout, 1);
 		// No fragment stage and no colour targets is what makes it depth only; the HOLES twin
 		// adds the discarding stage, still with no colour target.
 		if (holes)
 		{
 			var holeFragment = FragmentState();
-			holeFragment.Shader = .(holePs, "main", .Fragment);
+			holeFragment.Shader = .(holePs, .Fragment);
 			desc.Fragment = holeFragment;
 		}
 		desc.DepthStencil = depthStencil;
@@ -1177,7 +1177,7 @@ class TerrainRenderer : Renderer
 		targets[0].Format = colorFormat;
 
 		var fragment = FragmentState();
-		fragment.Shader = .(ps, "main", .Fragment);
+		fragment.Shader = .(ps, .Fragment);
 		fragment.Targets = .(&targets[0], 1);
 
 		var depthStencil = DepthStencilState();
@@ -1188,7 +1188,7 @@ class TerrainRenderer : Renderer
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = holes ? mHoleDepthPipelineLayout : mDepthPipelineLayout;
-		desc.Vertex.Shader = .(vs, "main", .Vertex);
+		desc.Vertex.Shader = .(vs, .Vertex);
 		desc.Vertex.Buffers = .(&layout, 1);
 		desc.Fragment = fragment;
 		desc.DepthStencil = depthStencil;

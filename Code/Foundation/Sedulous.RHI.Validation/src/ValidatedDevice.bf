@@ -264,6 +264,12 @@ class ValidatedDevice : IDevice
 			ValidationLog.Error("Device.CreateRenderPipeline: the vertex shader module is null");
 			return .Err;
 		}
+		if (desc.Vertex.Shader.ResolvedEntryPoint.IsEmpty || (desc.Fragment.HasValue
+			&& (desc.Fragment.Value.Shader.Module != null) && desc.Fragment.Value.Shader.ResolvedEntryPoint.IsEmpty))
+		{
+			ValidationLog.Error("Device.CreateRenderPipeline: a stage names no entry point and its module declares none");
+			return .Err;
+		}
 		return TrackCreated(mInner.CreateRenderPipeline(desc), mRenderPipelines);
 	}
 
@@ -279,6 +285,11 @@ class ValidatedDevice : IDevice
 		if (desc.Compute.Module == null)
 		{
 			ValidationLog.Error("Device.CreateComputePipeline: the compute shader module is null");
+			return .Err;
+		}
+		if (desc.Compute.ResolvedEntryPoint.IsEmpty)
+		{
+			ValidationLog.Error("Device.CreateComputePipeline: the stage names no entry point and its module declares none");
 			return .Err;
 		}
 		return TrackCreated(mInner.CreateComputePipeline(desc), mComputePipelines);

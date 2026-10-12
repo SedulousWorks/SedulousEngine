@@ -56,6 +56,7 @@ static class ShaderHelpers
 		var desc = ShaderModuleDesc();
 		desc.Code = compiled.Bytecode;
 		desc.Label = label;
+		desc.EntryPoint = entryPoint;
 		return device.CreateShaderModule(desc);
 	}
 }

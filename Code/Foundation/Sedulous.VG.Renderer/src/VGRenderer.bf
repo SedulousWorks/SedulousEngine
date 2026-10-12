@@ -1021,11 +1021,11 @@ class VGRenderer
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = mPipelineLayout;
-		desc.Vertex.Shader = .(vertexShader, "main", Sedulous.RHI.ShaderStage.Vertex);
+		desc.Vertex.Shader = .(vertexShader, Sedulous.RHI.ShaderStage.Vertex);
 		desc.Vertex.Buffers = vertexBuffers;
 
 		var fragment = FragmentState();
-		fragment.Shader = .(fragmentShader, "main", Sedulous.RHI.ShaderStage.Fragment);
+		fragment.Shader = .(fragmentShader, Sedulous.RHI.ShaderStage.Fragment);
 		fragment.Targets = colorTargets;
 		desc.Fragment = fragment;
 

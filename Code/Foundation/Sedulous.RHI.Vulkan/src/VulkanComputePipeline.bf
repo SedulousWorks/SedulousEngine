@@ -25,7 +25,9 @@ class VulkanComputePipeline : IComputePipeline
 			return .Err;
 
 		// Outlives the create call, which only holds a pointer to it.
-		let entryPoint = scope String(desc.Compute.EntryPoint);
+		let entryPoint = scope String(desc.Compute.ResolvedEntryPoint);
+		if (entryPoint.IsEmpty)
+			return .Err; // no entry point named by the stage or its module
 
 		VkPipelineShaderStageCreateInfo stage = .();
 		stage.stage = .VK_SHADER_STAGE_COMPUTE_BIT;

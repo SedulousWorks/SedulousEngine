@@ -12,8 +12,11 @@ namespace Sedulous.RHI.DX12;
 class DxShaderModule : IShaderModule
 {
 	private List<uint8> mBytecode = new .() ~ delete _;
+	private String mEntryPoint = new .() ~ delete _;
 
 	public Span<uint8> Bytecode => mBytecode;
+	/// Recorded for the pipeline's callers; D3D12 itself runs the blob's one entry.
+	public StringView EntryPoint => mEntryPoint;
 
 	public Result<void> Initialize(ShaderModuleDesc desc)
 	{
@@ -22,6 +25,7 @@ class DxShaderModule : IShaderModule
 
 		mBytecode.Clear();
 		mBytecode.AddRange(desc.Code);
+		mEntryPoint.Set(desc.EntryPoint);
 		return .Ok;
 	}
 

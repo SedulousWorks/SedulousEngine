@@ -74,7 +74,7 @@ class DxRayTracingPipeline : IRayTracingPipeline
 			if ((stage.Module as DxShaderModule) == null)
 				continue;
 			let w = new List<char16>();
-			Widen(stage.EntryPoint, w);
+			Widen(stage.ResolvedEntryPoint, w);
 			wideNames.Add(w);
 		}
 
@@ -150,7 +150,7 @@ class DxRayTracingPipeline : IRayTracingPipeline
 					((int)group.GeneralShaderIndex < desc.Stages.Length))
 				{
 					mGroupExportNames.Add(new String(
-						desc.Stages[(int)group.GeneralShaderIndex].EntryPoint));
+						desc.Stages[(int)group.GeneralShaderIndex].ResolvedEntryPoint));
 				}
 				else
 				{

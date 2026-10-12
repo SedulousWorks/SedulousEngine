@@ -85,6 +85,83 @@ class WgslCookTests
 		CreateDirectory(outPath);
 	}
 
+	/// One file, both stages, each its own entry point: what a one file custom shader is.
+	private const String cTwoEntryShader = """
+		cbuffer C : register(b0, space0) { float4 Tint; };
+		struct VSOut { float4 pos : SV_Position; float2 uv : TEXCOORD0; };
+		VSOut VSMain(uint id : SV_VertexID) {
+		    VSOut o;
+		    o.uv = float2((id << 1) & 2, id & 2);
+		    o.pos = float4(o.uv * 2.0 - 1.0, 0.0, 1.0);
+		    return o;
+		}
+		float4 PSMain(VSOut input) : SV_Target0 {
+		    return float4(input.uv, 0.0, 1.0) * Tint;
+		}
+		""";
+
+	/// The names of a SPIR-V module's OpEntryPoint instructions (opcode 15: the execution
+	/// model, the id, then the name as a nul terminated literal string).
+	private static void SpirvEntryPointNames(Span<uint8> code, List<String> outNames)
+	{
+		let words = (uint32*)code.Ptr;
+		let count = code.Length / 4;
+		int i = 5;
+		while (i < count)
+		{
+			let wordCount = (int)(words[i] >> 16);
+			let opcode = words[i] & 0xFFFF;
+			if (wordCount == 0)
+				break;
+			if ((opcode == 15) && (wordCount > 3))
+				outNames.Add(new String((char8*)&words[i + 3]));
+			i += wordCount;
+		}
+	}
+
+	/// A custom shader is one file whose stages are named functions, not a `main` per file. The
+	/// name survives every target: SPIR-V carries it as the entry point, DXIL compiles from it,
+	/// and the WGSL cook keeps it (naga takes SPIR-V's entry name), so a pipeline can ask each
+	/// backend for the name the source declares.
+	[Test]
+	public static void OneFilesEntryPointsKeepTheirNamesInEveryTarget()
+	{
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+
+		let source = Span<uint8>((uint8*)cTwoEntryShader.Ptr, cTwoEntryShader.Length);
+		(ShaderStage stage, String entry)[2] stages = .((.Vertex, "VSMain"), (.Fragment, "PSMain"));
+		for (let s in stages)
+		{
+			var spirv = compiler.Compile(source, s.stage, s.entry, .SPIRV, .());
+			Test.Assert(spirv.Success, scope $"SPIR-V {s.entry}");
+			let names = scope List<String>();
+			SpirvEntryPointNames(spirv.Bytecode, names);
+			Test.Assert((names.Count == 1) && (names[0] == s.entry), scope $"the SPIR-V entry is {s.entry}");
+			ClearAndDeleteItems!(names);
+			spirv.Dispose();
+
+			var dxil = compiler.Compile(source, s.stage, s.entry, .DXIL, .());
+			Test.Assert(dxil.Success, scope $"DXIL {s.entry}");
+			dxil.Dispose();
+		}
+
+		if (!ToolsPresent()) { Console.WriteLine("SKIP (the WGSL half): no naga or tint"); return; }
+		let scratch = ScratchDirectory(.. scope String());
+		let translator = scope WgslTranslator(compiler, scratch);
+		translator.SetNagaPath(NagaPath(.. scope String()));
+		translator.SetTintPath(TintPath(.. scope String()));
+		for (let s in stages)
+		{
+			let result = scope WgslCookResult();
+			translator.Translate(cTwoEntryShader, s.stage, s.entry, .None, default, result);
+			Test.Assert(result.Success, scope $"naga translated {s.entry} and tint accepted it: {result.Error}");
+			Test.Assert(result.Wgsl.Contains(scope $"fn {s.entry}("));
+			Test.Assert(!result.Wgsl.Contains("fn main("));
+		}
+	}
+
 	/// HLSL becomes WGSL, and the binding shifts SURVIVE the translation.
 	///
 	/// The shifts are the load bearing part: a texture at t0 must land on binding 100 and a
@@ -104,7 +181,7 @@ class WgslCookTests
 		translator.SetTintPath(TintPath(.. scope String()));
 
 		let result = scope WgslCookResult();
-		translator.Translate(cCleanPixelShader, .Fragment, .None, default, result);
+		translator.Translate(cCleanPixelShader, .Fragment, "main", .None, default, result);
 
 		Test.Assert(result.Success, "the clean shader translated and validated");
 		Test.Assert(result.FailedStage == .Ok);
@@ -134,7 +211,7 @@ class WgslCookTests
 		translator.SetTintPath(TintPath(.. scope String()));
 
 		let validated = scope WgslCookResult();
-		translator.Translate(cNonUniformPixelShader, .Fragment, .None, default, validated);
+		translator.Translate(cNonUniformPixelShader, .Fragment, "main", .None, default, validated);
 		Test.Assert(!validated.Success, "the non-uniform shader was rejected");
 		Test.Assert(validated.FailedStage == .Validate, "at the validation gate, not earlier");
 		Test.Assert(!validated.Error.IsEmpty, "with tint's own diagnostic");
@@ -142,7 +219,7 @@ class WgslCookTests
 		// naga alone lets it through: without the second gate this would have shipped.
 		let unvalidated = scope WgslCookResult();
 		translator.SetValidateWithTint(false);
-		translator.Translate(cNonUniformPixelShader, .Fragment, .None, default, unvalidated);
+		translator.Translate(cNonUniformPixelShader, .Fragment, "main", .None, default, unvalidated);
 		Test.Assert(unvalidated.Success, "naga alone translates it happily");
 	}
 
@@ -162,14 +239,14 @@ class WgslCookTests
 		// Deliberately no tint path.
 
 		let result = scope WgslCookResult();
-		translator.Translate(cCleanPixelShader, .Fragment, .None, default, result);
+		translator.Translate(cCleanPixelShader, .Fragment, "main", .None, default, result);
 		Test.Assert(!result.Success, "no tint means no validated WGSL");
 		Test.Assert(result.FailedStage == .Validate);
 
 		// Waiving it is an explicit choice the caller owns.
 		translator.SetValidateWithTint(false);
 		let waived = scope WgslCookResult();
-		translator.Translate(cCleanPixelShader, .Fragment, .None, default, waived);
+		translator.Translate(cCleanPixelShader, .Fragment, "main", .None, default, waived);
 		Test.Assert(waived.Success, "and waiving validation cooks it anyway");
 	}
 
@@ -187,7 +264,7 @@ class WgslCookTests
 		// No naga configured at all.
 		let unconfigured = scope WgslTranslator(compiler, scratch);
 		let result = scope WgslCookResult();
-		unconfigured.Translate(cCleanPixelShader, .Fragment, .None, default, result);
+		unconfigured.Translate(cCleanPixelShader, .Fragment, "main", .None, default, result);
 		Test.Assert(!result.Success);
 		Test.Assert(result.FailedStage == .Translate);
 		Test.Assert(!result.Error.IsEmpty);
@@ -197,7 +274,7 @@ class WgslCookTests
 		let missing = scope WgslTranslator(compiler, scratch);
 		missing.SetNagaPath(scope $"{NagaPath(.. scope String())}_does_not_exist");
 		let notRun = scope WgslCookResult();
-		missing.Translate(cCleanPixelShader, .Fragment, .None, default, notRun);
+		missing.Translate(cCleanPixelShader, .Fragment, "main", .None, default, notRun);
 		Test.Assert(!notRun.Success);
 		Test.Assert(notRun.FailedStage == .Translate);
 		Test.Assert(notRun.Error.Contains("naga"), "the message names the tool");
@@ -218,7 +295,7 @@ class WgslCookTests
 		translator.SetTintPath(TintPath(.. scope String()));
 
 		let result = scope WgslCookResult();
-		translator.Translate("this is not valid hlsl @#$", .Fragment, .None, default, result);
+		translator.Translate("this is not valid hlsl @#$", .Fragment, "main", .None, default, result);
 
 		Test.Assert(!result.Success);
 		Test.Assert(result.FailedStage == .Compile, "the failure is attributed to DXC");
@@ -247,7 +324,7 @@ class WgslCookTests
 		translator.SetTintPath(TintPath(.. scope String()));
 
 		let result = scope WgslCookResult();
-		translator.Translate(cCleanPixelShader, .Fragment, .None, default, result);
+		translator.Translate(cCleanPixelShader, .Fragment, "main", .None, default, result);
 		Test.Assert(result.Success);
 
 		int leftOver = 0;

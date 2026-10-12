@@ -11,8 +11,9 @@ namespace Sedulous.Shaders;
 /// wins, so a module with a bespoke inline shader keeps working unchanged.
 interface IShaderSourceProvider
 {
-	/// The HLSL for a name and stage; false when this provider has no such shader.
-	bool FetchSource(StringView name, ShaderStage stage, String outSource);
+	/// The HLSL for a name and stage, and the entry point that stage's function is called in
+	/// it; false when this provider has no such shader.
+	bool FetchSource(StringView name, ShaderStage stage, String outSource, String outEntryPoint);
 
 	/// Every shader name this can serve, for tooling.
 	void CollectShaderNames(List<String> outNames);

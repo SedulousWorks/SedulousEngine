@@ -279,7 +279,7 @@ class ClusterSystem
 	{
 		var desc = ComputePipelineDesc();
 		desc.Layout = mPipelineLayout;
-		desc.Compute = .(compute, "main", .Compute);
+		desc.Compute = .(compute, .Compute);
 		desc.Label = "cluster.build";
 
 		if (!(mDevice.CreateComputePipeline(desc) case .Ok(let pipeline)))

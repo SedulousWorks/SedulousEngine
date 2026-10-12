@@ -43,8 +43,8 @@ class ShaderFactory : IResourceFactory
 		if (source.Name.IsEmpty)
 			return null;
 
-		mSystem.RegisterSource(source.Name, .Vertex, source.VertexSource);
-		mSystem.RegisterSource(source.Name, .Fragment, source.FragmentSource);
+		mSystem.RegisterSource(source.Name, .Vertex, source.VertexSource, source.VertexEntryPoint);
+		mSystem.RegisterSource(source.Name, .Fragment, source.FragmentSource, source.FragmentEntryPoint);
 		// Drops variants compiled from the PREVIOUS source and bumps the version, which is
 		// what makes a reload observable rather than silently serving stale modules.
 		mSystem.InvalidateShader(source.Name);

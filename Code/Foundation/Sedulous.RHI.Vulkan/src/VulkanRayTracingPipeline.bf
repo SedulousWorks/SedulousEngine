@@ -37,7 +37,7 @@ class VulkanRayTracingPipeline : IRayTracingPipeline
 			if (module == null)
 				return .Err;
 
-			let entry = new String(desc.Stages[i].EntryPoint);
+			let entry = new String(desc.Stages[i].ResolvedEntryPoint);
 			entryPoints.Add(entry);
 
 			stages[i] = .();

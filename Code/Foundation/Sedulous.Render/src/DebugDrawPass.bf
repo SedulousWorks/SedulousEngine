@@ -559,7 +559,7 @@ class DebugDrawPass
 		color.Blend = BlendState.AlphaBlend;
 
 		var fragmentState = FragmentState();
-		fragmentState.Shader = .(fragment, "main", .Fragment);
+		fragmentState.Shader = .(fragment, .Fragment);
 		fragmentState.Targets = .(&color, 1);
 
 		var depthStencil = DepthStencilState();
@@ -569,7 +569,7 @@ class DebugDrawPass
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = mGridLayout;
-		desc.Vertex.Shader = .(vertex, "main", .Vertex);
+		desc.Vertex.Shader = .(vertex, .Vertex);
 		desc.Fragment = fragmentState;
 		desc.Primitive.Topology = .TriangleList;
 		desc.Primitive.CullMode = .None; // seen from above or below
@@ -603,7 +603,7 @@ class DebugDrawPass
 		color.Blend = BlendState.AlphaBlend;
 
 		var fragmentState = FragmentState();
-		fragmentState.Shader = .(fragment, "main", .Fragment);
+		fragmentState.Shader = .(fragment, .Fragment);
 		fragmentState.Targets = .(&color, 1);
 
 		var depthStencil = DepthStencilState();
@@ -613,7 +613,7 @@ class DebugDrawPass
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = mGeomLayout;
-		desc.Vertex.Shader = .(vertex, "main", .Vertex);
+		desc.Vertex.Shader = .(vertex, .Vertex);
 		desc.Vertex.Buffers = .(&bufferLayout, 1);
 		desc.Fragment = fragmentState;
 		desc.Primitive.Topology = topology;
@@ -656,12 +656,12 @@ class DebugDrawPass
 		color.Blend = BlendState.AlphaBlend;
 
 		var fragmentState = FragmentState();
-		fragmentState.Shader = .(fragment, "main", .Fragment);
+		fragmentState.Shader = .(fragment, .Fragment);
 		fragmentState.Targets = .(&color, 1);
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = mScreenLayout;
-		desc.Vertex.Shader = .(vertex, "main", .Vertex);
+		desc.Vertex.Shader = .(vertex, .Vertex);
 		desc.Vertex.Buffers = .(&bufferLayout, 1);
 		desc.Fragment = fragmentState;
 		desc.Primitive.Topology = .TriangleList;

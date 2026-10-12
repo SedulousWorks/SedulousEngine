@@ -31,7 +31,9 @@ class VulkanRenderPipeline : IRenderPipeline
 
 		// The entry point names must OUTLIVE the create call, since the structures only
 		// hold pointers into them.
-		let vertexEntry = scope String(desc.Vertex.Shader.EntryPoint);
+		let vertexEntry = scope String(desc.Vertex.Shader.ResolvedEntryPoint);
+		if (vertexEntry.IsEmpty)
+			return .Err; // no entry point named by the stage or its module
 		let fragmentEntry = scope String();
 
 		let stages = scope List<VkPipelineShaderStageCreateInfo>();
@@ -47,7 +49,9 @@ class VulkanRenderPipeline : IRenderPipeline
 			let fragment = desc.Fragment.Value;
 			if (let fragmentModule = fragment.Shader.Module as VulkanShaderModule)
 			{
-				fragmentEntry.Set(fragment.Shader.EntryPoint);
+				fragmentEntry.Set(fragment.Shader.ResolvedEntryPoint);
+				if (fragmentEntry.IsEmpty)
+					return .Err;
 				VkPipelineShaderStageCreateInfo fragmentStage = .();
 				fragmentStage.stage = .VK_SHADER_STAGE_FRAGMENT_BIT;
 				fragmentStage.module = fragmentModule.Handle;

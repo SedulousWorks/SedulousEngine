@@ -56,6 +56,7 @@ class RendererFixture
 		var desc = ShaderModuleDesc();
 		desc.Label = "RendererFixture.CreateModule";
 		desc.Code = .(&code[0], 4);
+		desc.EntryPoint = "main";
 		return Device.CreateShaderModule(desc).Value;
 	}
 

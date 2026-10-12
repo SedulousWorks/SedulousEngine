@@ -147,7 +147,7 @@ class PipelineStateCache
 		if (config.Instanced)
 			buffers[bufferCount++] = VertexLayouts.InstanceOffsetsBufferLayout();
 
-		desc.Vertex.Shader = .(vertexModule, "main", Sedulous.RHI.ShaderStage.Vertex);
+		desc.Vertex.Shader = .(vertexModule, Sedulous.RHI.ShaderStage.Vertex);
 		if (bufferCount > 0)
 			desc.Vertex.Buffers = .(&buffers[0], bufferCount);
 
@@ -183,7 +183,7 @@ class PipelineStateCache
 			}
 
 			var fragment = FragmentState();
-			fragment.Shader = .(fragmentModule, "main", Sedulous.RHI.ShaderStage.Fragment);
+			fragment.Shader = .(fragmentModule, Sedulous.RHI.ShaderStage.Fragment);
 			fragment.Targets = .(&colorTargets[0], count);
 			desc.Fragment = fragment;
 		}

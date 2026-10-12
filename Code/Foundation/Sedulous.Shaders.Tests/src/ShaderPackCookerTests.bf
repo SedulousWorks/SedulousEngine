@@ -107,6 +107,9 @@ class ShaderPackCookerTests
 			"the variants are not the same blob");
 
 		Test.Assert(pack.Find("flat", .Fragment, .None, .SpirV) case .Ok);
+		// Every corpus stage records the corpus's entry point, `main`.
+		Test.Assert(pack.EntryPoint("forward", .Vertex) == ShaderCorpus.EntryPoint);
+		Test.Assert(pack.EntryPoint("flat", .Fragment) == ShaderCorpus.EntryPoint);
 
 		// The mask is what a shipped runtime canonicalizes with.
 		Test.Assert(pack.DeclaredMask("forward", .Vertex)

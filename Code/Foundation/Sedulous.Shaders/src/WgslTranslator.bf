@@ -47,7 +47,9 @@ class WgslTranslator
 	public bool HasNaga => !mNagaPath.IsEmpty;
 	public bool HasTint => !mTintPath.IsEmpty;
 
-	public void Translate(StringView hlsl, ShaderStage stage, ShaderFlags flags,
+	/// `entryPoint` is the stage's function in `hlsl`; the WGSL keeps its name (naga carries the
+	/// SPIR-V entry name through), so a pipeline asks for the same name on every backend.
+	public void Translate(StringView hlsl, ShaderStage stage, StringView entryPoint, ShaderFlags flags,
 		Span<StringView> includePaths, WgslCookResult outResult)
 	{
 		outResult.Success = false;
@@ -63,7 +65,7 @@ class WgslTranslator
 		}
 
 		let spirv = scope List<uint8>();
-		if (CompileToSpirv(hlsl, stage, flags, includePaths, spirv, outResult) case .Err)
+		if (CompileToSpirv(hlsl, stage, entryPoint, flags, includePaths, spirv, outResult) case .Err)
 			return;
 
 		let id = mCounter++;
@@ -102,7 +104,7 @@ class WgslTranslator
 	}
 
 	/// The DXC half, with the WebGPU compile settings the runtime would use.
-	private Result<void> CompileToSpirv(StringView hlsl, ShaderStage stage, ShaderFlags flags,
+	private Result<void> CompileToSpirv(StringView hlsl, ShaderStage stage, StringView entryPoint, ShaderFlags flags,
 		Span<StringView> includePaths, List<uint8> outSpirv, WgslCookResult outResult)
 	{
 		let defines = scope List<ShaderDefine>();
@@ -124,7 +126,7 @@ class WgslTranslator
 		options.IncludePaths = includePaths;
 		options.PreserveInterface = ShaderVariants.ParsePreserveInterfaceDirective(hlsl);
 
-		var compiled = mCompiler.Compile(.((uint8*)hlsl.Ptr, hlsl.Length), stage, "main",
+		var compiled = mCompiler.Compile(.((uint8*)hlsl.Ptr, hlsl.Length), stage, entryPoint,
 			.SPIRV, options);
 		defer compiled.Dispose();
 

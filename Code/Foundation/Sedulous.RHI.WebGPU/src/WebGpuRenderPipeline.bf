@@ -51,8 +51,11 @@ sealed class WebGpuRenderPipeline : IRenderPipeline
 		if (vertexModule == null)
 			return .Err;
 
+		let vertexEntry = desc.Vertex.Shader.ResolvedEntryPoint;
+		if (vertexEntry.IsEmpty)
+			return .Err; // no entry point named by the stage or its module
 		wgpu.vertex.module = vertexModule.Handle;
-		wgpu.vertex.entryPoint = WebGpuConversions.ToWgpuStringView(desc.Vertex.Shader.EntryPoint);
+		wgpu.vertex.entryPoint = WebGpuConversions.ToWgpuStringView(vertexEntry);
 
 		// The attribute arrays are pointed AT by the buffer layouts, so they have to
 		// outlive this call and keep their addresses. One list per buffer, none of them
@@ -167,8 +170,11 @@ sealed class WebGpuRenderPipeline : IRenderPipeline
 			if (fragmentModule == null)
 				return .Err;
 
+			let fragmentEntry = fs.Shader.ResolvedEntryPoint;
+			if (fragmentEntry.IsEmpty)
+				return .Err;
 			fragment.module = fragmentModule.Handle;
-			fragment.entryPoint = WebGpuConversions.ToWgpuStringView(fs.Shader.EntryPoint);
+			fragment.entryPoint = WebGpuConversions.ToWgpuStringView(fragmentEntry);
 
 			for (let target in fs.Targets)
 			{

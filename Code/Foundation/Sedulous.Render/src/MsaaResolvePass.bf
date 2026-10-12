@@ -171,7 +171,7 @@ class MsaaResolvePass
 		targets[3].Format = RenderFormats.GAlbedo;
 
 		var fragmentState = FragmentState();
-		fragmentState.Shader = .(fragment, "main", .Fragment);
+		fragmentState.Shader = .(fragment, .Fragment);
 		fragmentState.Targets = .(&targets[0], 4);
 
 		// The depth is written from the shader, and a backend gates that write on the depth
@@ -185,7 +185,7 @@ class MsaaResolvePass
 
 		var desc = RenderPipelineDesc();
 		desc.Layout = mPipelineLayout;
-		desc.Vertex.Shader = .(vertex, "main", .Vertex);
+		desc.Vertex.Shader = .(vertex, .Vertex);
 		desc.Fragment = fragmentState;
 		desc.DepthStencil = depthStencil;
 		desc.Primitive.Topology = .TriangleList;

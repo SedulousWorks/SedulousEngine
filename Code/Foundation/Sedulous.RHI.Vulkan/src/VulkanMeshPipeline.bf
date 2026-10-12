@@ -30,7 +30,9 @@ class VulkanMeshPipeline : IMeshPipeline
 			return .Err;
 
 		let taskEntry = scope String();
-		let meshEntry = scope String(desc.Mesh.EntryPoint);
+		let meshEntry = scope String(desc.Mesh.ResolvedEntryPoint);
+		if (meshEntry.IsEmpty)
+			return .Err; // no entry point named by the stage or its module
 		let fragmentEntry = scope String();
 		let stages = scope List<VkPipelineShaderStageCreateInfo>();
 
@@ -39,7 +41,7 @@ class VulkanMeshPipeline : IMeshPipeline
 		{
 			if (let taskModule = desc.Task.Value.Module as VulkanShaderModule)
 			{
-				taskEntry.Set(desc.Task.Value.EntryPoint);
+				taskEntry.Set(desc.Task.Value.ResolvedEntryPoint);
 				VkPipelineShaderStageCreateInfo taskStage = .();
 				taskStage.stage = .VK_SHADER_STAGE_TASK_BIT_EXT;
 				taskStage.module = taskModule.Handle;
@@ -58,7 +60,7 @@ class VulkanMeshPipeline : IMeshPipeline
 		{
 			if (let fragmentModule = desc.Fragment.Value.Shader.Module as VulkanShaderModule)
 			{
-				fragmentEntry.Set(desc.Fragment.Value.Shader.EntryPoint);
+				fragmentEntry.Set(desc.Fragment.Value.Shader.ResolvedEntryPoint);
 				VkPipelineShaderStageCreateInfo fragmentStage = .();
 				fragmentStage.stage = .VK_SHADER_STAGE_FRAGMENT_BIT;
 				fragmentStage.module = fragmentModule.Handle;

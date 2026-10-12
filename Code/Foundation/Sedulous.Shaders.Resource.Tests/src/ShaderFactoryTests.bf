@@ -91,6 +91,8 @@ class ShaderFactoryTests
 
 			let record = scope ShaderSource();
 			record.Name.Set(name);
+			record.VertexEntryPoint.Set("main");
+			record.FragmentEntryPoint.Set("main");
 			record.VertexSource.Set("""
 				float4 main(uint id : SV_VertexID) : SV_Position {
 				    return float4(0, 0, 0, 1);
@@ -157,7 +159,7 @@ class ShaderFactoryTests
 
 		// A second build, as a reload would do.
 		fixture.Shaders.RegisterSource("reloaded", .Fragment,
-			"float4 main() : SV_Target0 { return float4(0, 1, 0, 1); }");
+			"float4 main() : SV_Target0 { return float4(0, 1, 0, 1); }", "main");
 		fixture.Shaders.InvalidateShader("reloaded");
 
 		Test.Assert(shader.Version > afterBuild, "the version moved again");

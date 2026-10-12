@@ -106,6 +106,8 @@ class MaterialFixture
 		let instance = Database.RootGroup.CreateInstance(name, ShaderTypeName);
 		let record = scope ShaderSource();
 		record.Name.Set(name);
+		record.VertexEntryPoint.Set("main");
+		record.FragmentEntryPoint.Set("main");
 		record.VertexSource.Set("float4 main() : SV_Position { return 0; }");
 		record.FragmentSource.Set("float4 main() : SV_Target0 { return 1; }");
 		instance.WriteObject(record).IgnoreError();

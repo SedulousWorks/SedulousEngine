@@ -82,7 +82,7 @@ class NullDevice : IDevice
 	}
 
 	public Result<IShaderModule> CreateShaderModule(ShaderModuleDesc desc)
-		=> .Ok(new NullShaderModule());
+		=> .Ok(new NullShaderModule(desc.EntryPoint));
 
 	public Result<IBindGroupLayout> CreateBindGroupLayout(BindGroupLayoutDesc desc)
 		=> .Ok(new NullBindGroupLayout());

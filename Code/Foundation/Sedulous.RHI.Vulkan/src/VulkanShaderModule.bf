@@ -9,13 +9,16 @@ namespace Sedulous.RHI.Vulkan;
 class VulkanShaderModule : IShaderModule
 {
 	private VkShaderModule mModule;
+	private String mEntryPoint = new .() ~ delete _;
 
 	public VkShaderModule Handle => mModule;
+	public StringView EntryPoint => mEntryPoint;
 
 	public Result<void> Initialize(VkDevice device, ShaderModuleDesc desc)
 	{
 		if (desc.Code.IsEmpty)
 			return .Err;
+		mEntryPoint.Set(desc.EntryPoint);
 
 		VkShaderModuleCreateInfo createInfo = .();
 		createInfo.codeSize = (uint)desc.Code.Length;

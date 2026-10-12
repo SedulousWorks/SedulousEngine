@@ -1,6 +1,7 @@
 using System;
 using Sedulous.Core;
 using Sedulous.Pipeline.Core;
+using Sedulous.Shaders;
 using Sedulous.Shaders.Resource;
 
 namespace Sedulous.Shaders.Pipeline;
@@ -10,6 +11,8 @@ class ShaderAssetBuilder : IAssetBuilder
 {
 	public Type AssetType => typeof(ShaderAsset);
 	public Type ProductType => typeof(ShaderSource);
+	/// 2: the product names each stage's entry point.
+	public int32 Version => 2;
 
 	/// The fragment file is a SECOND source input, the vertex one being the implicit file name,
 	/// so editing it has to dirty this shader's recipe hash.
@@ -28,6 +31,9 @@ class ShaderAssetBuilder : IAssetBuilder
 		let shader = (ShaderAsset)asset;
 		let cooked = scope ShaderSource();
 		cooked.Name.Set(shader.Name);
+		// A file per stage, each with its `main`: this asset's shape, the corpus's convention.
+		cooked.VertexEntryPoint.Set(ShaderCorpus.EntryPoint);
+		cooked.FragmentEntryPoint.Set(ShaderCorpus.EntryPoint);
 
 		if (AssetSource.ReadText(context, shader.FileName.Value, cooked.VertexSource)
 			case .Err(let vertexError))

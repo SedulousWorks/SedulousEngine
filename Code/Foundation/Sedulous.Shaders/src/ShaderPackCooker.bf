@@ -72,6 +72,7 @@ static class ShaderPackCooker
 			// Recorded so a shipped runtime can canonicalize onto the cooked lattice, which
 			// is what makes development and a shipped build behave the same.
 			pack.AddDeclaredMask(stem, stage, directive.Mask);
+			pack.AddEntryPoint(stem, stage, ShaderCorpus.EntryPoint); // the corpus: a file per stage
 
 			let variants = scope List<ShaderFlags>();
 			ShaderVariants.EnumerateVariants(directive.Mask, variants);
@@ -278,7 +279,7 @@ static class ShaderPackCooker
 		if (format == .Wgsl)
 		{
 			let translated = scope WgslCookResult();
-			translator.Translate(source, stage, flags, includePaths, translated);
+			translator.Translate(source, stage, ShaderCorpus.EntryPoint, flags, includePaths, translated);
 			if (!translated.Success)
 			{
 				report.AddError(fileName, translated.Error);
@@ -311,7 +312,7 @@ static class ShaderPackCooker
 			target = .DXIL;
 		}
 
-		var compiled = compiler.Compile(.((uint8*)source.Ptr, source.Length), stage, "main",
+		var compiled = compiler.Compile(.((uint8*)source.Ptr, source.Length), stage, ShaderCorpus.EntryPoint,
 			target, compileOptions);
 		defer compiled.Dispose();
 
