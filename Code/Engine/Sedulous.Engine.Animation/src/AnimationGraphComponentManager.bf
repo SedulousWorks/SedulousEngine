@@ -66,6 +66,12 @@ class AnimationGraphComponentManager : ResourceBindingComponentManager<Animation
 			player.SetFloat(name, value);
 	}
 
+	public void SetInt(EntityHandle entity, StringView name, int32 value)
+	{
+		if (let player = Player(entity))
+			player.SetInt(name, value);
+	}
+
 	public void SetBool(EntityHandle entity, StringView name, bool value)
 	{
 		if (let player = Player(entity))

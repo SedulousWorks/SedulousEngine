@@ -35,6 +35,8 @@ class AnimationFacade : SceneFacade
 	[Scriptable]
 	public void SetFloat(EntityHandle entity, StringView name, float value) => Graphs?.SetFloat(entity, name, value);
 	[Scriptable]
+	public void SetInt(EntityHandle entity, StringView name, int32 value) => Graphs?.SetInt(entity, name, value);
+	[Scriptable]
 	public void SetBool(EntityHandle entity, StringView name, bool value) => Graphs?.SetBool(entity, name, value);
 	[Scriptable]
 	public void SetTrigger(EntityHandle entity, StringView name) => Graphs?.SetTrigger(entity, name);

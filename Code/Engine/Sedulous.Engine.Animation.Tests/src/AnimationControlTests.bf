@@ -160,6 +160,7 @@ static class AnimationControlTests
 		AnimationResourceFixture.BuildChain(skeleton);
 		let graph = scope AnimationGraph();
 		let speed = graph.AddParameter("Speed", .Float);
+		let stance = graph.AddParameter("Stance", .Int);
 		let grounded = graph.AddParameter("Grounded", .Bool);
 		let jump = graph.AddParameter("Jump", .Trigger);
 		graph.AddLayer(new AnimationLayer("Base"));
@@ -178,9 +179,11 @@ static class AnimationControlTests
 		Test.Assert(Near(player.GetFloat(speed), 0.0f), "the early set was dropped, not queued");
 
 		graphs.SetFloat(entity, "Speed", 3.0f);
+		graphs.SetInt(entity, "Stance", 2);
 		graphs.SetBool(entity, "Grounded", true);
 		graphs.SetTrigger(entity, "Jump");
 		Test.Assert(Near(player.GetFloat(speed), 3.0f));
+		Test.Assert(player.GetInt(stance) == 2);
 		Test.Assert(player.GetBool(grounded));
 		Test.Assert(player.GetBool(jump), "armed");
 
@@ -188,10 +191,13 @@ static class AnimationControlTests
 		scene.Update(cStep);
 		Test.Assert(!player.GetBool(jump), "consumed");
 		Test.Assert(Near(player.GetFloat(speed), 3.0f));
+		Test.Assert(player.GetInt(stance) == 2);
 		Test.Assert(player.GetBool(grounded));
 
 		// An unknown name is a no-op, as is an entity without a graph.
 		graphs.SetFloat(entity, "Missing", 9.0f);
+		graphs.SetInt(entity, "Missing", 7);
+		Test.Assert(player.GetInt(stance) == 2);
 		graphs.SetBool(scene.CreateEntity("Bare"), "Grounded", false);
 		Test.Assert(player.GetBool(grounded));
 	}
