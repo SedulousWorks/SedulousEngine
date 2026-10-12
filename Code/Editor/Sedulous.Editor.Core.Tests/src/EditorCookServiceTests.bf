@@ -9,6 +9,7 @@ using Sedulous.Pipeline.Importer;
 using Sedulous.Pipeline.Registration;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
+using Sedulous.VFS;
 
 namespace Sedulous.Editor.Core.Tests;
 
@@ -62,7 +63,7 @@ static class EditorCookServiceTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllImporters(importers);
 

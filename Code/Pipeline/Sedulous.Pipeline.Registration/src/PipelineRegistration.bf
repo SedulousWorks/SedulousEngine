@@ -155,8 +155,9 @@ static class PipelineRegistration
 	}
 
 	/// Fills `registry` with every asset builder the engine ships. Independent of
-	/// RegisterPipelineTypes, though a cook needs both.
-	public static void RegisterAllBuilders(BuilderRegistry registry)
+	/// RegisterPipelineTypes, though a cook needs both. `dataRoot` is the engine's data root:
+	/// a custom shader's cook compiles against its shader library (`Shaders/`).
+	public static void RegisterAllBuilders(BuilderRegistry registry, StringView dataRoot)
 	{
 		registry.Register(new TextureAssetBuilder());
 		registry.Register(new RenderTextureAssetBuilder());
@@ -173,7 +174,7 @@ static class PipelineRegistration
 		registry.Register(new AnimationGraphAssetBuilder());
 		registry.Register(new PropertyAnimationClipAssetBuilder());
 		registry.Register(new MaterialAssetBuilder());
-		registry.Register(new ShaderAssetBuilder());
+		registry.Register(new ShaderAssetBuilder(dataRoot));
 		registry.Register(new ParticleEffectAssetBuilder());
 		registry.Register(new InputMapAssetBuilder());
 		registry.Register(new ModelManifestAssetBuilder());

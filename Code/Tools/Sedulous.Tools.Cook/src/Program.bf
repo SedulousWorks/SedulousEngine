@@ -31,7 +31,7 @@ class Program
 	{
 		if (args.Count < 1)
 		{
-			Console.Error.WriteLine("usage: Sedulous.Tools.Cook <projectDirectory> [--rebuild] [--dry-run] [--target <id>]");
+			Console.Error.WriteLine("usage: Sedulous.Tools.Cook <projectDirectory> [--rebuild] [--dry-run] [--target <id>] [--data-root <dir>]");
 			return 1;
 		}
 		bool rebuild = false;
@@ -52,6 +52,8 @@ class Program
 				}
 				targetId.Set(args[++i]);
 			}
+			else if ((args[i] == "--data-root") && (i + 1 < args.Count))
+				i++; // read by ResolveDataRoot below
 			else
 			{
 				Console.Error.WriteLine("unknown option: {}", args[i]);
@@ -76,7 +78,15 @@ class Program
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		// The engine data root: a custom shader's cook compiles against its shader library.
+		let dataRoot = scope String();
+		ResolveDataRoot(args, dataRoot);
+		if (dataRoot.IsEmpty)
+		{
+			Console.Error.WriteLine("Sedulous.Tools.Cook: no data root (put Data/ with its .dataroot marker beside the tool, or pass --data-root <dir>)");
+			return 1;
+		}
+		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
 
 		let sourcesMount = scope NativeFileSystem(project.SourcesRoot(.. scope .()));
 		let cacheMount = scope NativeFileSystem(project.CacheRoot(.. scope .()));

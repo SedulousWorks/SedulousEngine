@@ -95,11 +95,20 @@ class Program
 		}
 		defer delete project;
 
+		// The engine data root: the Shaders the export cooks, and a custom shader's includes.
+		let dataRoot = scope String();
+		ResolveDataRoot(args, dataRoot);
+		if (dataRoot.IsEmpty)
+		{
+			Console.Error.WriteLine("Sedulous.Tools.Export: no data root (put Data/ with its .dataroot marker beside the tool, or pass --data-root <dir>)");
+			return 1;
+		}
+
 		// The pipeline's composition root, and the builders it fills.
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
 
 		// The scene streams pre-transcoded over the FULL manager set, and the scanner the
 		// pruning walks with; both from the engine's scene surface.
@@ -124,13 +133,6 @@ class Program
 			outRoot.Set(outArg);
 		else
 			PathJoin(project.Directory, "Dist", outRoot);
-		let dataRoot = scope String();
-		ResolveDataRoot(args, dataRoot);
-		if (dataRoot.IsEmpty)
-		{
-			Console.Error.WriteLine("Sedulous.Tools.Export: no data root (put Data/ with its .dataroot marker beside the tool, or pass --data-root <dir>)");
-			return 1;
-		}
 
 		if (all)
 		{

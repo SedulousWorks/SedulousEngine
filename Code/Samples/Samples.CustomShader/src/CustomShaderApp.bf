@@ -136,11 +136,12 @@ class CustomShaderApp : DefaultApplication
 		base.OnShutdown(host);
 	}
 
-	/// The shader, one file with both stages (VSMain and PSMain), read from the data root and
-	/// registered by name with each stage's entry point. A registered source wins over the cooked
-	/// pack and compiles on first use (DXC, so a development build: a compiler free dist cannot
-	/// compile it). Every module made from it records its entry, so the renderer's pipelines run
-	/// VSMain and PSMain unbidden.
+	/// The shader, one file with both stages (VSMain and PSMain), read from the data root. Its
+	/// properties block becomes the generated set-2 declarations (as a shader asset's cook does
+	/// it), and each stage is registered by name with its entry point and the variants it
+	/// declares. A registered source wins over the cooked pack and compiles on first use (DXC, so
+	/// a development build: a compiler free dist cannot compile it). Every module made from it
+	/// records its entry, so the renderer's pipelines run VSMain and PSMain unbidden.
 	private bool RegisterToonShader(ShaderSystem shaders)
 	{
 		let path = DataPath(cShaderFile, .. scope String());
@@ -150,14 +151,21 @@ class CustomShaderApp : DefaultApplication
 			Console.Error.WriteLine(scope $"CustomShader: missing the toon shader: {path}");
 			return false;
 		}
-		shaders.RegisterSource("toon", .Vertex, text, "VSMain");
-		shaders.RegisterSource("toon", .Fragment, text, "PSMain");
+		let expanded = scope String();
+		let block = scope ShaderPropertiesBlock();
+		ShaderProperties.Expand(text, "toon.hlsl", expanded, block);
+		for (let error in block.Errors)
+			Console.Error.WriteLine(scope $"CustomShader: toon.hlsl:{error.Line}: {error.Message}");
+		if (!block.IsOk)
+			return false;
+		shaders.RegisterSource("toon", .Vertex, expanded, "VSMain", ShaderVariants.ParseStageVariantDirective(text, .Vertex).Mask);
+		shaders.RegisterSource("toon", .Fragment, expanded, "PSMain", ShaderVariants.ParseStageVariantDirective(text, .Fragment).Mask);
 		return true;
 	}
 
 	/// The toon material: the properties toon.hlsl's block declares, in its order, so the builder
-	/// lays them out where the shader's set-2 block puts them, then the albedo map and its
-	/// sampler, t0 and s0.
+	/// lays them out where the generated set-2 block puts them (both pack by HLSL's rules), then
+	/// the albedo map and its sampler, t0 and s0.
 	private Material CreateToon(StringView name, Float4 baseColor, Float4 shadowColor, float bands = 3.0f)
 	{
 		let material = scope MaterialBuilder(name)

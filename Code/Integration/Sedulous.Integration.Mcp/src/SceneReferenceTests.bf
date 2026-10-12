@@ -16,6 +16,7 @@ using Sedulous.Scene.Resource;
 using Sedulous.Script.Resource;
 using Sedulous.Xml.Serialization;
 using static Sedulous.Integration.Mcp.McpCalls;
+using Sedulous.VFS;
 
 namespace Sedulous.Integration.Mcp;
 
@@ -30,7 +31,7 @@ static class SceneReferenceTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		return SceneReference.Generate(builders);
 	}
 
@@ -74,7 +75,7 @@ static class SceneReferenceTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 
 		let assets = scope List<Type>();
 		SceneReference.SourceAssetTypesFor(builders, typeof(Sedulous.Engine.Render.EnvironmentProfile), assets);
@@ -299,7 +300,7 @@ static class SceneReferenceTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let importers = scope ImporterRegistry();
 		let logBuffer = scope EditorLogBuffer();
 		let session = scope ProjectSession(); // the stdio host's shape: no project open

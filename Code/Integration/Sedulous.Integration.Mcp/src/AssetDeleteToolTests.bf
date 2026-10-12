@@ -11,6 +11,7 @@ using Sedulous.Pipeline.Registration;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
 using static Sedulous.Integration.Mcp.McpCalls;
+using Sedulous.VFS;
 
 namespace Sedulous.Integration.Mcp;
 
@@ -37,7 +38,7 @@ static class AssetDeleteToolTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let server = scope McpServer();
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();

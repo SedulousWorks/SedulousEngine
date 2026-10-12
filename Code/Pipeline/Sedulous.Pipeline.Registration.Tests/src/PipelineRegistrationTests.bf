@@ -22,7 +22,7 @@ static class PipelineRegistrationTests
 	{
 		let registry = scope BuilderRegistry();
 		Test.Assert(registry.Count == 0);
-		PipelineRegistration.RegisterAllBuilders(registry);
+		PipelineRegistration.RegisterAllBuilders(registry, FindDataRoot(.. scope .()));
 		Test.Assert(registry.Count == PipelineRegistration.cBuilderCount, scope $"{registry.Count} builders");
 
 		// Each handles its own asset type: no two builders claim one.
@@ -59,7 +59,7 @@ static class PipelineRegistrationTests
 
 		// Routing still works after registration.
 		let registry = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(registry);
+		PipelineRegistration.RegisterAllBuilders(registry, FindDataRoot(.. scope .()));
 		Test.Assert(registry.Count == PipelineRegistration.cBuilderCount);
 	}
 
@@ -73,7 +73,7 @@ static class PipelineRegistrationTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let registry = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(registry);
+		PipelineRegistration.RegisterAllBuilders(registry, FindDataRoot(.. scope .()));
 		registry.ForEach(scope (builder) =>
 			{
 				let product = builder.ProductType;

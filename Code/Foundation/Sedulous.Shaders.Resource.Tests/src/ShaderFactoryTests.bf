@@ -93,6 +93,8 @@ class ShaderFactoryTests
 			record.Name.Set(name);
 			record.VertexEntryPoint.Set("main");
 			record.FragmentEntryPoint.Set("main");
+			// The lattice a cook would have found: the fragment branches on SKINNED.
+			record.FragmentVariantMask = (uint32)ShaderFlags.Skinned;
 			record.VertexSource.Set("""
 				float4 main(uint id : SV_VertexID) : SV_Position {
 				    return float4(0, 0, 0, 1);
@@ -135,6 +137,10 @@ class ShaderFactoryTests
 		let plain = shader.GetVariant(.Fragment, .None);
 		let skinned = shader.GetVariant(.Fragment, .Skinned);
 		Test.Assert(skinned !== plain, "a flagged variant is its own module");
+		// The product's lattice reached the system: a flag the stage does not declare is
+		// stripped, landing on a variant that exists.
+		Test.Assert(shader.GetVariant(.Fragment, .GBuffer) === plain, "GBUFFER is not declared");
+		Test.Assert(shader.GetVariant(.Fragment, .Skinned | .GBuffer) === skinned);
 	}
 
 	/// Building the resource INVALIDATES the shader, so a reload drops stale variants and

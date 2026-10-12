@@ -183,7 +183,7 @@ static class ProjectFlowTests
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		PipelineRegistration.RegisterAllImporters(importers);
 
 		let server = scope McpServer();
@@ -257,7 +257,7 @@ static class ProjectFlowTests
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		PipelineRegistration.RegisterAllImporters(importers);
 		let server = scope McpServer();
 		let session = scope ProjectSession();
@@ -353,7 +353,7 @@ static class ProjectFlowTests
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
 		let creators = scope AssetCreatorRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		PipelineRegistration.RegisterAllImporters(importers);
 		PipelineRegistration.RegisterAllCreators(creators);
 
@@ -421,7 +421,7 @@ static class ProjectFlowTests
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let creators = scope AssetCreatorRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		PipelineRegistration.RegisterAllCreators(creators);
 
 		let server = scope McpServer();
@@ -535,7 +535,7 @@ static class ProjectFlowTests
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let creators = scope AssetCreatorRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		PipelineRegistration.RegisterAllCreators(creators);
 
 		let server = scope McpServer();
@@ -674,7 +674,7 @@ static class ProjectFlowTests
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		PipelineRegistration.RegisterAllImporters(importers);
 
 		let server = scope McpServer();

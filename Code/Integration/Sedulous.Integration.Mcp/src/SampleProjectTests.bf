@@ -87,7 +87,7 @@ static class SampleProjectTests
 
 		// And it COOKS, through the same tools an agent uses.
 		let builders = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllImporters(importers);
 		let server = scope McpServer();

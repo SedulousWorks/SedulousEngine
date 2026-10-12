@@ -6,6 +6,7 @@ using Sedulous.Engine.Composition;
 using Sedulous.Pipeline.Core;
 using Sedulous.Pipeline.Registration;
 using Sedulous.Resource;
+using Sedulous.VFS;
 
 namespace Sedulous.Integration.Composition;
 
@@ -24,7 +25,7 @@ class CompositionPipelineTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		Test.Assert(builders.Count == PipelineRegistration.cBuilderCount);
 
 		let descriptions = scope List<ResourceFactoryDesc*>();

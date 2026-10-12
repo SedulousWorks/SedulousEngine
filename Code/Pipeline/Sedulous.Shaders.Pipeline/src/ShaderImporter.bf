@@ -2,17 +2,13 @@ using System;
 
 namespace Sedulous.Shaders.Pipeline;
 
-/// Filling a shader asset from a name and its two source paths.
-///
-/// NOT an IFileImporter: a shader takes two files, and dropping one of them says nothing about
-/// where the other is. This is the authoring call an editor page makes once it has both.
+/// Filling a shader asset from a name and its .hlsl path: the authoring call an editor page
+/// makes. The entry points keep their defaults (VSMain and PSMain) unless the caller sets them.
 static class ShaderImporter
 {
-	public static void Import(StringView name, StringView vertexFile, StringView fragmentFile,
-		ShaderAsset outAsset)
+	public static void Import(StringView name, StringView file, ShaderAsset outAsset)
 	{
 		outAsset.Name.Set(name);
-		outAsset.FileName.Set(vertexFile);
-		outAsset.FragmentFile.Set(fragmentFile);
+		outAsset.FileName.Set(file);
 	}
 }

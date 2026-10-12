@@ -35,7 +35,7 @@ static class HeadlessCookTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let importers = scope ImporterRegistry();
 		PipelineRegistration.RegisterAllImporters(importers);
 

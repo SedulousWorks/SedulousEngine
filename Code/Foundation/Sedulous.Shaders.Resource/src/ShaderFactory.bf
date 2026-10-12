@@ -43,8 +43,12 @@ class ShaderFactory : IResourceFactory
 		if (source.Name.IsEmpty)
 			return null;
 
-		mSystem.RegisterSource(source.Name, .Vertex, source.VertexSource, source.VertexEntryPoint);
-		mSystem.RegisterSource(source.Name, .Fragment, source.FragmentSource, source.FragmentEntryPoint);
+		// Each stage with its entry point and the variant lattice the cook compiled, so a request
+		// canonicalizes onto a variant the cook proved, as the corpus's do.
+		mSystem.RegisterSource(source.Name, .Vertex, source.VertexSource, source.VertexEntryPoint,
+			(ShaderFlags)source.VertexVariantMask);
+		mSystem.RegisterSource(source.Name, .Fragment, source.FragmentSource, source.FragmentEntryPoint,
+			(ShaderFlags)source.FragmentVariantMask);
 		// Drops variants compiled from the PREVIOUS source and bumps the version, which is
 		// what makes a reload observable rather than silently serving stale modules.
 		mSystem.InvalidateShader(source.Name);

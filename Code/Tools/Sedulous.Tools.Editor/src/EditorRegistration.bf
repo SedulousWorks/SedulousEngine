@@ -90,7 +90,7 @@ static class EditorRegistration
 
 		// The cook service routes through the same builder and importer sets the cook CLI
 		// has.
-		PipelineRegistration.RegisterAllBuilders(app.Builders);
+		PipelineRegistration.RegisterAllBuilders(app.Builders, app.DataRoot);
 		PipelineRegistration.RegisterAllImporters(context.Importers);
 	}
 }

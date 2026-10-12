@@ -41,6 +41,16 @@ class Program
 		InitGlobalLogger(logger, true);
 		defer ShutdownGlobalLogger();
 
+		// The engine data root, whose Shaders the export cooks and a custom shader's cook includes: --data-root, else the
+		// Data/.dataroot walk from this tool.
+		let dataRoot = scope String();
+		ResolveDataRoot(args, dataRoot);
+		if (dataRoot.IsEmpty)
+		{
+			Console.Error.WriteLine("Sedulous.Tools.Mcp: no data root (put Data/ with its .dataroot marker beside the tool, or pass --data-root <dir>)");
+			return 1;
+		}
+
 		// The pipeline's composition root: every type, backend and cook, the pipeline script
 		// surface, then the host's builder and importer sets. They outlive the server and
 		// back asset_cook, asset_import, asset_uses and project_health.
@@ -48,7 +58,7 @@ class Program
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, dataRoot);
 		PipelineRegistration.RegisterAllImporters(importers);
 		// File > New's creators, the same set the editor offers (after the types: the script
 		// creators enumerate the registered cooks).
@@ -58,15 +68,6 @@ class Program
 		let server = scope McpServer();
 		server.SetServerInfo("engine-mcp", "0.1.0");
 
-		// The engine data root, whose Shaders the export cooks: --data-root, else the
-		// Data/.dataroot walk from this tool.
-		let dataRoot = scope String();
-		ResolveDataRoot(args, dataRoot);
-		if (dataRoot.IsEmpty)
-		{
-			Console.Error.WriteLine("Sedulous.Tools.Mcp: no data root (put Data/ with its .dataroot marker beside the tool, or pass --data-root <dir>)");
-			return 1;
-		}
 
 		// The session every tool works through. This host OWNS the project it opens:
 		// project_open stores it in the owner and points the session at it. Both outlive

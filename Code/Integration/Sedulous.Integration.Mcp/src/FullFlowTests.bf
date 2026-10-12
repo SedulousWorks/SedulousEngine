@@ -17,6 +17,7 @@ using Sedulous.Script.Pipeline;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
 using static Sedulous.Integration.Mcp.McpCalls;
+using Sedulous.VFS;
 
 namespace Sedulous.Integration.Mcp;
 
@@ -34,7 +35,7 @@ static class FullFlowTests
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
 		let importers = scope ImporterRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		PipelineRegistration.RegisterAllImporters(importers);
 
 		// The flow runs over the SHARED engine surface (what every host serves) plus the

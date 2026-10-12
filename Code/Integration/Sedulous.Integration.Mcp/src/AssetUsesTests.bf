@@ -15,6 +15,7 @@ using Sedulous.Materials.Pipeline;
 using Sedulous.Audio.Pipeline;
 using Sedulous.Editor.Mcp;
 using static Sedulous.Integration.Mcp.McpCalls;
+using Sedulous.VFS;
 
 namespace Sedulous.Integration.Mcp;
 
@@ -34,7 +35,7 @@ static class AssetUsesTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let server = scope McpServer();
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();
@@ -118,7 +119,7 @@ static class AssetUsesTests
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
 		let builders = scope BuilderRegistry();
-		PipelineRegistration.RegisterAllBuilders(builders);
+		PipelineRegistration.RegisterAllBuilders(builders, FindDataRoot(.. scope .()));
 		let server = scope McpServer();
 		let session = scope ProjectSession();
 		let owner = scope ProjectOwner();

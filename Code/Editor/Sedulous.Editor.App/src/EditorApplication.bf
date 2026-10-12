@@ -171,6 +171,8 @@ class EditorApplication : IApplication
 	/// The exe registers every engine builder here, mirroring the cook CLI's set; the cook
 	/// service routes through it.
 	public BuilderRegistry Builders => mBuilders;
+	/// The engine data root this editor runs from (its config's, resolved at launch).
+	public StringView DataRoot => mConfig.DataRoot;
 	public EditorCookService CookService => mCookService;
 	public ResourceManager Resources => mResources;
 	/// Valid after OnStartup; the Game page drives its play bracket through it.

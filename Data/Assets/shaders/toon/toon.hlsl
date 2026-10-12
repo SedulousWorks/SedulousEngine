@@ -5,13 +5,17 @@
 // each registered by name. Cel shading in hard bands, a shadow colour and a rim light, in place of
 // the engine's PBR. A LOW-LEVEL custom shader forks the whole lighting and keeps the frame's
 // contract:
-//   - the vertex stage: the mesh vertex in, VSOutput out, the SKINNED / INSTANCED / WIND variants.
+//   - the vertex stage: the mesh vertex in, VSOutput out, the SKINNED / INSTANCED variants.
 //     The engine's forward vertex library is exactly that, so VSMain is it, under its own name.
 //   - the pixel stage: the View constants, lights, shadow maps and clusters (sets 0 and 3) declared
-//     as forward.ps.hlsl declares them, its own material block in set 2 (laid out by the material's
-//     properties, in order), and under GBUFFER the five targets the post stack reads (colour, view
-//     normal, motion vector, roughness/metallic, albedo).
+//     as forward.ps.hlsl declares them, its material parameters in a properties block (the
+//     engine generates set 2 from it), and under GBUFFER the five targets the post stack reads
+//     (colour, view normal, motion vector, roughness/metallic, albedo).
 // Ported from the previous engine's RenderMaterialsCustom sample.
+
+// No wind sway: wind.hlsli reads the PBR material's layout, which a toon material does not have.
+// variants(vertex): SKINNED INSTANCED
+// variants(fragment): ALPHA_TEST GBUFFER DITHER
 
 // ==== The vertex stage ====
 #define FORWARD_VS_ENTRY VSMain
@@ -208,18 +212,19 @@ uint ClusterIndex(float2 screenPos, float viewDepth) {
     slice = clamp(slice, 0, (int)ClusterSliceCount - 1);
     return tileX + tileY * ClusterGridX + (uint)slice * ClusterGridX * ClusterGridY;
 }
-// ==== The toon material (set 2): laid out by the material's properties, in their order ====
-cbuffer Material : register(b0, space2) {
-    float4 BaseColor;        // offset 0
-    float4 ShadowColor;      // 16: the colour of the unlit side
-    float4 RimColor;         // 32
-    float  Bands;            // 48: how many steps the light falls into
-    float  RimPower;         // 52: how tight the rim is
-    float  RimIntensity;     // 56
-    float  AlphaCutoff;      // 60: ALPHA_TEST threshold
-};
-Texture2D    AlbedoMap   : register(t0, space2);
-SamplerState MainSampler : register(s0, space2);
+// ==== The toon material (set 2): declared once, here; the engine generates the declarations ====
+properties
+{
+    Color   BaseColor    = (1, 1, 1, 1);
+    Color   ShadowColor  = (0.3, 0.1, 0.1, 1); // the colour of the unlit side
+    Color   RimColor     = (1, 0.95, 0.85, 1);
+    float   Bands        = 3   [1, 8];          // how many steps the light falls into
+    float   RimPower     = 3   [0.5, 16];       // how tight the rim is
+    float   RimIntensity = 0.6 [0, 4];
+    float   AlphaCutoff  = 0.5 [0, 1];          // the ALPHA_TEST threshold
+    Texture AlbedoMap;
+    Sampler MainSampler;
+}
 
 
 // ==== Toon shading ====
