@@ -42,6 +42,17 @@ class PhysicsFacade : SceneFacade
 	/// An impulse on the entity's body: `entity.ApplyImpulse(...)` too.
 	[Scriptable, ScriptOnEntity]
 	public void ApplyImpulse(EntityHandle entity, Float3 impulse) => System?.ApplyImpulse(entity, impulse);
+	/// Sets the entity's body moving at this velocity (m/s) now: a launch, a dash, a hard stop.
+	/// A body spawned this frame takes it once it is built.
+	[Scriptable]
+	public void SetVelocity(EntityHandle entity, Float3 velocity) => System?.SetVelocity(entity, velocity);
+	/// The body's velocity in m/s; zero without a built body.
+	[Scriptable]
+	public Float3 Velocity(EntityHandle entity) => System?.Velocity(entity) ?? .(0, 0, 0);
+	/// Holds a steady force (newtons) on the entity's dynamic body every physics step until set
+	/// again; zero lets go. Right at any frame rate, where a per frame push is not.
+	[Scriptable]
+	public void SetForce(EntityHandle entity, Float3 force) => System?.SetForce(entity, force);
 
 	// ---- character controllers ----
 	// A character is kinematic: the scene's physics step moves it from the intent written

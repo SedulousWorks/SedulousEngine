@@ -90,6 +90,13 @@ position and normal, the struck face's `Surface` slot on a cooked mesh, and the 
 struck body (its rigid body's physical material, nil without one): what is underfoot, for a
 step's sound.
 
+A body's motion from a script: `scene.Physics.ApplyImpulse(entity, impulse)` for a kick,
+`SetVelocity(entity, velocity)` to set its speed now (a launch, a dash, a stop) and `Velocity(entity)`
+to read it, and `SetForce(entity, force)` for a steady push in newtons: thrust, wind. A force is
+held, added before every physics step until set again (zero lets go), so it acts the same at any
+frame rate; a push repeated each frame would not. An impulse or a velocity given to a body
+spawned this frame waits for its body to be built.
+
 `scene.Render.LightAt(position)` answers how much light reaches a place, linear RGB: every
 enabled light by the renderer's own range falloff and spot cone, plus the environment's
 ambient. A light that casts shadows is stopped by what stands between (a ray through the

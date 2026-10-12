@@ -235,6 +235,45 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 		component.PendingImpulse += impulse;
 	}
 
+	/// Sets the entity's body moving at `velocity` (m/s) now: a launch, a dash, a hard stop. A
+	/// body not built yet (spawned this frame) takes it when it is, as an impulse does.
+	public void SetVelocity(EntityHandle entity, Float3 velocity)
+	{
+		let component = BodyOf(entity);
+		if (component == null)
+			return;
+		if ((mWorld != null) && component.Body.IsValid)
+		{
+			mWorld.SetLinearVelocity(component.Body, velocity);
+			return;
+		}
+		component.PendingVelocity = velocity;
+		component.HasPendingVelocity = true;
+	}
+
+	/// The body's velocity in m/s; zero without a built body.
+	public Float3 Velocity(EntityHandle entity)
+	{
+		let component = BodyOf(entity);
+		return ((component != null) && (mWorld != null) && component.Body.IsValid)
+			? mWorld.LinearVelocity(component.Body) : .(0, 0, 0);
+	}
+
+	/// Holds a steady force (newtons) on the entity's dynamic body, every physics step until it
+	/// is set again (zero lets go): thrust, wind, a tractor beam. Holding it is what makes it
+	/// right at any frame rate; a per frame push would land on whichever step came next, or none.
+	public void SetForce(EntityHandle entity, Float3 force)
+	{
+		if (let component = BodyOf(entity))
+			component.HeldForce = force;
+	}
+
+	private RigidBodyComponent* BodyOf(EntityHandle entity)
+	{
+		let bodies = (mScene != null) ? mScene.GetSystem<RigidBodyComponentManager>() : null;
+		return (bodies != null) ? bodies.Get(entity) : null;
+	}
+
 	// ---- the play lifecycle ----
 
 	public override void OnSceneStarted()
@@ -269,6 +308,8 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 						// The queue belongs to the RUN: an impulse queued in the last frame
 						// before a stop must not fire as an unexplained kick at the next play.
 						component.PendingImpulse = .(0, 0, 0);
+						component.HasPendingVelocity = false;
+						component.HeldForce = .(0, 0, 0);
 					});
 			}
 
@@ -329,6 +370,15 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 					if (Decompose(mScene.GetWorldMatrix(entity), let position,
 						let rotation, ?))
 						mWorld.MoveKinematic(component.Body, position, rotation, fixedDeltaTime);
+				});
+
+			// Held forces (SetForce): the world clears a force after each step, so a force a
+			// script holds is added again before every step it should act in.
+			bodies.ForEach(scope (component, entity) =>
+				{
+					if (component.Body.IsValid && (component.Motion == .Dynamic)
+						&& ((component.HeldForce.X != 0.0f) || (component.HeldForce.Y != 0.0f) || (component.HeldForce.Z != 0.0f)))
+						mWorld.AddForce(component.Body, component.HeldForce);
 				});
 
 			// The motor fields are LIVE, so an inspector edit or a gameplay change applies on
@@ -642,6 +692,11 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 			mWorld.AddImpulse(component.Body, component.PendingImpulse);
 			component.PendingImpulse = .(0, 0, 0);
 		}
+		if (component.HasPendingVelocity)
+		{
+			mWorld.SetLinearVelocity(component.Body, component.PendingVelocity);
+			component.HasPendingVelocity = false;
+		}
 	}
 
 	private void BuildCharacters()
@@ -872,7 +927,10 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 						// frame would otherwise accumulate an unbounded launch that fires
 						// whenever the body finally appears.
 						if (!component.Body.IsValid)
+						{
 							component.PendingImpulse = .(0, 0, 0);
+							component.HasPendingVelocity = false;
+						}
 						return;
 					}
 
@@ -888,6 +946,7 @@ class PhysicsSceneSystem : SceneSystem, ISceneRayQuery
 						// An impulse queued while active dies with the body, so coming back
 						// does not launch a sum accumulated across the dark window.
 						component.PendingImpulse = .(0, 0, 0);
+						component.HasPendingVelocity = false;
 					}
 					else if (!component.Body.IsValid)
 					{

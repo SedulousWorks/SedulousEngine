@@ -91,6 +91,17 @@ struct RigidBodyComponent : ISerializable, IComponentResources
 	/// then flushed once the body is created.
 	[Hidden]
 	public Float3 PendingImpulse = .(0, 0, 0);
+	/// A velocity set BEFORE the body existed (SetVelocity on a prefab spawned this frame), set
+	/// once when the body is created; dropped wherever the impulse queue is.
+	[Hidden]
+	public Float3 PendingVelocity = .(0, 0, 0);
+	[Hidden]
+	public bool HasPendingVelocity = false;
+	/// A steady force a script holds on the body (SetForce), in newtons, applied every fixed
+	/// step until set back to zero: the physics world clears a force after each step, and a
+	/// behavior runs per frame, not per step. Run scoped (a stop clears it), never serialized.
+	[Hidden]
+	public Float3 HeldForce = .(0, 0, 0);
 
 	/// The effective active state this domain last reconciled against, which is what turns a
 	/// change into an edge rather than a per frame comparison.
