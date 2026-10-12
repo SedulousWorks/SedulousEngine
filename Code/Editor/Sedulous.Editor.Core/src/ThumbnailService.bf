@@ -257,6 +257,14 @@ class ThumbnailService
 			if (!diskHit)
 			{
 				delete slot;
+				if (hash == 0)
+				{
+					// Not cooked yet (a new project's first cook still running): the stage would
+					// bind a product that is not there and fail. Wait quietly; the cook finished
+					// InvalidateAll drops this entry and the next Get queues the job.
+					Store(id, null);
+					return;
+				}
 				if (mActiveSceneJob == id)
 					return;
 				for (let queued in mSceneQueue)

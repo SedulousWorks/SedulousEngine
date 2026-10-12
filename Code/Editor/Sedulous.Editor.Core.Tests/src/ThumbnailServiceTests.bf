@@ -166,6 +166,24 @@ static class ThumbnailServiceTests
 		Test.Assert(fileExists, "the PNG persisted on the light lane");
 	}
 
+	/// A new project's first open: its meshes are not cooked yet (no content hash), so a scene
+	/// thumbnail would bind a missing product and fail, warning twice per asset. It waits quietly
+	/// instead, and the cook finishing (InvalidateAll) lets the next Get queue it.
+	[Test]
+	public static void ASceneGeneratedTypeWaitsForItsCookRatherThanFailing()
+	{
+		Scratch("thumbs_gpu_uncooked", .. scope .());
+		let fx = scope ThumbnailFixture("thumbs_gpu_uncooked", 0, false, true);
+		Test.Assert(fx.Service.Get(fx.Known) == null);
+		Test.Assert(fx.Service.QueuedSceneJobs == 0, "nothing to stage yet");
+		Test.Assert(fx.Service.Get(fx.Known) == null);
+		Test.Assert(fx.Service.QueuedSceneJobs == 0, "and no retry every frame");
+		fx.Hash = 0x77; // the cook finished
+		fx.Service.InvalidateAll();
+		Test.Assert(fx.Service.Get(fx.Known) == null);
+		Test.Assert(fx.Service.QueuedSceneJobs == 1, "now it renders");
+	}
+
 	[Test]
 	public static void AFailedStageResultCachesANegativeAndNeverRequeues()
 	{

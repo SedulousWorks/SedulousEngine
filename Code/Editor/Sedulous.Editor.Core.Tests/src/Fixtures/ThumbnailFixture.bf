@@ -25,9 +25,12 @@ class ThumbnailFixture
 	public Guid Known;
 	public int Prepares = 0;
 	public int Generates = 0;
+	/// The content hash the service sees (0: not cooked yet).
+	public uint64 Hash;
 
 	public this(StringView cacheDir, uint64 hash = 0x77, bool failGenerate = false, bool gpu = false)
 	{
+		Hash = hash;
 		PathJoin(Directory.GetCurrentDirectory(.. scope .()), cacheDir, CacheDir);
 		CreateDirectory(CacheDir);
 		PathJoin(Directory.GetCurrentDirectory(.. scope .()), "thumbs_empty_mount", MountDir);
@@ -48,7 +51,7 @@ class ThumbnailFixture
 			generator.FailGenerate = failGenerate;
 			Service.RegisterGenerator(generator);
 		}
-		Service.Configure(CacheDir, new (id) => (id == Known) ? Instance : null, Jobs, new (id) => hash, MountDir);
+		Service.Configure(CacheDir, new (id) => (id == Known) ? Instance : null, Jobs, new (id) => Hash, MountDir);
 	}
 
 	/// Pumps the light lane to completion; bounded so a hang fails.

@@ -607,15 +607,19 @@ class EditorApplication : IApplication
 	{
 		if ((mProject == null) || (mResources == null) || (mEmbeddedApp == null) || (mEmbeddedApp.UI == null))
 			return;
+		// Bound only once cooked: a new project's first open asks before its first cook has
+		// made them, and a bind of a product that is not there warns of a broken reference.
+		let cooked = mProject.CookedDb;
+		bool Ready(Guid id) => id.IsSet && (cooked.GetInstance(id) != null);
 		let themeId = mProject.Settings.DefaultUiThemeId;
-		if (themeId.IsSet)
+		if (Ready(themeId))
 		{
 			let theme = mResources.Bind<Sedulous.UI.Resource.UITheme>(themeId).Get;
 			if (theme != null)
 				mEmbeddedApp.UI.SetDefaultTheme(theme);
 		}
 		let fontId = mProject.Settings.DefaultUiFontId;
-		if (fontId.IsSet)
+		if (Ready(fontId))
 		{
 			let font = mResources.Bind<Font>(fontId).Get;
 			if (font != null)
@@ -624,6 +628,8 @@ class EditorApplication : IApplication
 		let extras = scope List<Font>();
 		for (let id in mProject.Settings.UiFontIds)
 		{
+			if (!Ready(id))
+				continue;
 			if (let font = mResources.Bind<Font>(id).Get)
 				extras.Add(font);
 		}
