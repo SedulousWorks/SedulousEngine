@@ -144,6 +144,9 @@ class ShaderSystem
 			RemoveSource(name);
 			InvalidateShader(name);
 		}
+		// A registered shader (a project's) may include a changed library file; the provider
+		// cannot say which, so every remembered failure gets another compile.
+		mFailedVariants.Clear();
 		return changed.Count;
 	}
 

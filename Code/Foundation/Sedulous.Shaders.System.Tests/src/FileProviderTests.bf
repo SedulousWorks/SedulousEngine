@@ -268,6 +268,54 @@ class FileProviderTests
 			"and the shader still resolves afterwards");
 	}
 
+	/// A registered (project) shader that includes a library file the provider serves: its
+	/// failure is remembered, and fixing the library and reloading gives it another compile,
+	/// since the provider cannot say which registered shaders include the file.
+	[Test]
+	public static void AReloadRetriesARegisteredShadersRememberedFailure()
+	{
+		let root = MakeRoot("reloadfailure", .. scope String());
+		defer { RemoveDirectoryRecursive(root); }
+		Write(root, "reload_common.hlsli", "// v1\n");
+		Write(root, "corpus.ps.hlsl", "#include \"reload_common.hlsli\"\nfloat4 main() : SV_Target0 { return 1; }\n");
+
+		IBackend backend = null;
+		let device = MakeDevice(&backend);
+		Test.Assert(device != null);
+		defer
+		{
+			device.Destroy();
+			backend.Destroy();
+			delete backend;
+		}
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+
+		let provider = scope FileShaderSourceProvider();
+		Test.Assert(provider.Initialize(scope NativeFileSystem(root), "") case .Ok);
+		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
+		shaders.OptimizationLevel = 0;
+		shaders.SetSourceProvider(provider);
+		shaders.SetIncludeResolver(provider);
+
+		// The library does not yet define what the project shader needs: it fails, remembered.
+		shaders.RegisterSource("user", .Fragment, "#include \"reload_common.hlsli\"\nfloat4 main() : SV_Target0 { return float4(COMMON_RED, 0, 0, 1); }\n", "main");
+		Test.Assert(shaders.GetVariant("user", .Fragment, .None) == null);
+		Test.Assert(shaders.FailedVariantCount == 1);
+
+		Write(root, "reload_common.hlsli", "// v2, bigger than before\n#define COMMON_RED 1\n");
+		int reloaded = 0;
+		for (int i < FileShaderSourceProvider.PollEveryNCalls * 2)
+		{
+			reloaded += shaders.PumpReloads();
+			if (reloaded > 0)
+				break;
+		}
+		Test.Assert(reloaded > 0, "the library edit was seen");
+		Test.Assert(shaders.GetVariant("user", .Fragment, .None) != null, "the project shader that needed it now compiles");
+	}
+
 	/// Reload detection works with an ABSOLUTE root.
 	///
 	/// A regression test: the mount joins its root with each relative name, so a root that
