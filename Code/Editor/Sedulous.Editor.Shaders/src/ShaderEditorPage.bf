@@ -136,6 +136,10 @@ class ShaderEditorPage : UIEditorPage
 
 		// Right: the preview over the asset's fields.
 		mPreview = new PreviewViewport(host, uiHost, "shader.preview");
+		// The scene's clock runs only while it simulates, and Time() reads it: a surface that
+		// scrolls or a Vertex() that moves would stand still otherwise.
+		if (mPreview.Scene != null)
+			mPreview.Scene.SetSimulationEnabled(true);
 		mPreview.Camera.Position = .(0.0f, 0.9f, 2.6f);
 		mPreview.Camera.LookAt(.(0.0f, 0.0f, 0.0f));
 		BuildPreviewScene();

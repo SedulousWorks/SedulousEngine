@@ -93,6 +93,10 @@ class MaterialEditorPage : UIEditorPage
 		BindShader(); // a material on a shader asset shows the shader's current properties
 
 		mPreview = new PreviewViewport(host, uiHost, "material.preview");
+		// The scene's clock runs only while it simulates: a material on a shader that animates
+		// with Time() (a scrolling surface, moving vertices, wind) moves in its preview.
+		if (mPreview.Scene != null)
+			mPreview.Scene.SetSimulationEnabled(true);
 		mPreview.Camera.Position = .(0.0f, 0.9f, 2.6f);
 		mPreview.Camera.LookAt(.(0.0f, 0.0f, 0.0f));
 
