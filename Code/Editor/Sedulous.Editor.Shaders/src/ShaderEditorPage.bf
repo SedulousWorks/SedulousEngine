@@ -255,6 +255,10 @@ class ShaderEditorPage : UIEditorPage
 		if (mPreview != null)
 			mPreview.Shutdown();
 		RemovePreviewShader();
+		// The editor's shutdown closes every page and then deletes the shader system before the
+		// pages: once closed, the page does not reach the system again (the destructor's removal
+		// would run on a deleted system).
+		mShaders = null;
 	}
 
 	private void BuildPreviewScene()
