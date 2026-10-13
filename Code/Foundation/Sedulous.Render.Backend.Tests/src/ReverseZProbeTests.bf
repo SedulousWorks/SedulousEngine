@@ -301,7 +301,7 @@ class ReverseZProbeTests
 			Test.Assert(BlueDominant(image.At(cSize / 2, cSize / 2 + 20)), scope $"{kind}: the far cube below");
 			// A corner nothing reached keeps the clear: the far plane is still the far plane.
 			let corner = image.At(1, 1);
-			Test.Assert((corner[0] + corner[1] + corner[2]) == 0, scope $"{kind}: the corner kept the clear");
+			Test.Assert(((int32)corner[0] + corner[1] + corner[2]) == 0, scope $"{kind}: the corner kept the clear");
 		}
 
 		// Precision at distance: solid red, no wall bleeding through the 0.02 gap.
