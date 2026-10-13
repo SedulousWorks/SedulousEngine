@@ -83,6 +83,35 @@ static class EngineSurfaceScriptTests
 		Test.Assert(globals.Contains("float Clamp(float x, float lo, float hi)"), globals);
 	}
 
+	/// A script calls Min, Max and Clamp on the engine surface and gets their answers. The
+	/// surface also has an enum value named Clamp (TonemapOperator.Clamp, visible unqualified):
+	/// the call still reaches the function, and the value is still there, qualified.
+	[Test]
+	public static void AScriptCallsMinMaxAndClamp()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+
+		let ok = vm.Compile("math", "math.as", """
+			float run()
+			{
+				return Clamp(5.0f, 0.0f, 1.0f) + Min(2.0f, -3.0f) * 10.0f + Max(2.0f, -3.0f) * 100.0f;
+			}
+			int tonemap() { return int(TonemapOperator::Clamp); }
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("math", "float run()", default, ref r), "ran");
+		Test.Assert(Math.Abs(r.AsFloat - (1.0f - 30.0f + 200.0f)) < 1e-4, scope $"got {r.AsFloat}");
+		Test.Assert(vm.Call("math", "int tonemap()", default, ref r), "the enum value, qualified");
+		Test.Assert(r.AsInt == 0, "TonemapOperator.Clamp is nought");
+	}
+
 	[Test]
 	public static void AScriptDrivesAScene()
 	{
