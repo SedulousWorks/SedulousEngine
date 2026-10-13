@@ -3,13 +3,8 @@
 // with a little lag so a step does not jolt the view.
 //
 // Its globals carry the rig's name: every behaviour compiles into one module here, and Thief.as
-// has a kPi and a Saturate of its own.
+// has a kPi of its own.
 const float kRigPi = 3.14159265f;
-
-float RigSaturate(float x)
-{
-	return x < 0.0f ? 0.0f : (x > 1.0f ? 1.0f : x);
-}
 
 class CameraRig
 {
@@ -43,11 +38,11 @@ class CameraRig
 		float delta = want - m_yaw;
 		while (delta > kRigPi) delta -= 2.0f * kRigPi;
 		while (delta < -kRigPi) delta += 2.0f * kRigPi;
-		m_yaw += delta * RigSaturate(swing * dt);
+		m_yaw += delta * Clamp(swing * dt, 0.0f, 1.0f);
 		if (target.IsValid())
 		{
 			Float3 at = target.GetWorldPosition();
-			float k = RigSaturate(follow * dt);
+			float k = Clamp(follow * dt, 0.0f, 1.0f);
 			m_focus = Float3(m_focus.X + (at.X - m_focus.X) * k, m_focus.Y + (at.Y - m_focus.Y) * k,
 			                 m_focus.Z + (at.Z - m_focus.Z) * k);
 		}

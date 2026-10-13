@@ -6,11 +6,6 @@
 
 const float kPi = 3.14159265f;
 
-float Saturate(float x)
-{
-	return x < 0.0f ? 0.0f : (x > 1.0f ? 1.0f : x);
-}
-
 class Thief
 {
 	Entity self;
@@ -84,7 +79,7 @@ class Thief
 		float delta = want - m_yaw;
 		while (delta > kPi) delta -= 2.0f * kPi;
 		while (delta < -kPi) delta += 2.0f * kPi;
-		m_yaw += delta * Saturate(turnRate * dt);
+		m_yaw += delta * Clamp(turnRate * dt, 0.0f, 1.0f);
 		self.SetLocalRotation(FromYawPitchRoll(m_yaw, 0.0f, 0.0f));
 	}
 

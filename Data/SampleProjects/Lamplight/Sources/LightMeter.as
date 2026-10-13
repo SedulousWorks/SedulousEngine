@@ -43,7 +43,7 @@ class LightMeter
 	void onUpdate(float dt)
 	{
 		float k = follow * dt;
-		m_shown += (level() - m_shown) * (k > 1.0f ? 1.0f : k);
+		m_shown += (level() - m_shown) * Min(k, 1.0f);
 		if (m_bar.IsValid)
 		{
 			m_bar.SetValue(m_shown);
@@ -60,7 +60,7 @@ class LightMeter
 	private void glow()
 	{
 		float dark = (glowBelow - m_shown) / glowBelow;
-		float g = glowStrength * (dark < 0.0f ? 0.0f : (dark > 1.0f ? 1.0f : dark));
+		float g = glowStrength * Clamp(dark, 0.0f, 1.0f);
 		if (Abs(g - m_glow) < 0.01f)
 		{
 			return;
