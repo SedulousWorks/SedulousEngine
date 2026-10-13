@@ -9,6 +9,12 @@ namespace Sedulous.Render;
 /// Pure maths, so all of it is testable without a device.
 static class ShadowMath
 {
+	/// How far a view's directional shadows reach from its draw eye: the scene's `distance` past
+	/// the eye (at least a metre), clamped to the camera's far plane. A view drawn from behind its
+	/// eye (ViewCamera.PullBack) reaches that much further, so its shadows cover the same ground.
+	public static float ShadowReach(ViewCamera camera, float distance) =>
+		Math.Min(camera.FarZ, Math.Max(distance, 1.0f) + camera.PullBack);
+
 	/// Unprojects a clip space corner back into the world.
 	public static Float3 UnprojectNDC(Float4x4 inverseViewProj, float ndcX, float ndcY, float ndcZ)
 	{

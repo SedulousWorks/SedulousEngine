@@ -14,6 +14,11 @@ struct ViewCamera
 	public Float3 Position = .(0, 0, 0);
 	/// What a depth key is normalised against.
 	public float FarZ = 1000.0f;
+	/// How far behind Position the view draws from, along its view: an orthographic editor view
+	/// pulled back to show what lies behind its eye's plane (the view matrix's origin is there;
+	/// Position stays the eye). What reaches a distance from the eye, the shadows, reaches this
+	/// much further from the draw eye.
+	public float PullBack = 0.0f;
 
 	public this() {}
 

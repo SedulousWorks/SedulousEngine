@@ -569,10 +569,13 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mGameUI.RenderCanvasTextures(frame.Encoder, (int32)frame.FrameIndex);
 
 		var camera = ViewCamera();
-		camera.View = Float4x4.LookAtRH(mCamera.Position, mCamera.Position + mCamera.Forward, mCamera.Up);
+		// From the draw eye (behind the eye under orthographic); Position stays the eye, for what
+		// the renderer measures from it (foliage fade, terrain, level of detail).
+		camera.View = Float4x4.LookAtRH(mCamera.DrawEye, mCamera.DrawEye + mCamera.Forward, mCamera.Up);
 		camera.Projection = mCamera.Projection((float)w / (float)h);
 		camera.Position = mCamera.Position;
-		camera.FarZ = mCamera.FarZ;
+		camera.FarZ = mCamera.DrawFar;
+		camera.PullBack = mCamera.DrawPullBack;
 
 		var cameraOverride = CameraOverride();
 		cameraOverride.Camera = camera;

@@ -40,7 +40,9 @@ extension SceneEditorPage
 			return false;
 		var input = ViewportToolInput();
 		input.DeltaSeconds = deltaSeconds;
-		input.CameraPosition = mCamera.Position;
+		// The draw eye: under orthographic what lies behind the eye's own plane is in view too, and
+		// the gizmo's size and the marquee take a depth from here (the eye in perspective).
+		input.CameraPosition = mCamera.DrawEye;
 		input.CameraForward = mCamera.Forward;
 		input.CameraUp = mCamera.Up;
 		input.FovY = mCamera.FovY;
@@ -131,11 +133,13 @@ extension SceneEditorPage
 		ctx.Scene = mScene;
 		ctx.CameraPosition = mCamera.Position;
 		var gizmoCamera = ViewCamera();
-		gizmoCamera.View = Float4x4.LookAtRH(mCamera.Position, mCamera.Position + mCamera.Forward, mCamera.Up);
+		gizmoCamera.View = Float4x4.LookAtRH(mCamera.DrawEye, mCamera.DrawEye + mCamera.Forward, mCamera.Up);
 		let gizmoAspect = ((mViewport != null) && mViewport.IsReady && (mViewport.RenderHeight > 0))
 			? (float)mViewport.RenderWidth / (float)mViewport.RenderHeight : 16.0f / 9.0f;
 		gizmoCamera.Projection = mCamera.Projection(gizmoAspect);
 		gizmoCamera.Position = mCamera.Position;
+		gizmoCamera.FarZ = mCamera.DrawFar;
+		gizmoCamera.PullBack = mCamera.DrawPullBack;
 		ctx.ViewCamera = &gizmoCamera;
 		ctx.LodOverlay = mView.ShowLodOverlay;
 		ctx.ShowColliders = mView.ShowColliders;

@@ -1263,9 +1263,9 @@ class RenderFrame
 
 			let view = mViews.At(i);
 			let lightDirection = context.Scene.DirectionalShadowData.Direction;
-			// The scene's reach (its environment settings), clamped to the camera's far plane.
+			// The scene's reach (its environment settings), from the view's eye (ShadowReach).
 			let reach = context.Scene.ShadowSettings;
-			let distance = Min(view.Camera.FarZ, Max(reach.Distance, 1.0f));
+			let distance = ShadowMath.ShadowReach(view.Camera, reach.Distance);
 			var cascades = ShadowMath.ComputeCascades(view.Camera, lightDirection, distance,
 				shadowResolution, Math.Clamp(reach.CascadeSplit, 0.0f, 1.0f));
 			cascades.FarFade = reach.FadeDistance;

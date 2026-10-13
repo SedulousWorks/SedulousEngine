@@ -247,6 +247,52 @@ static class EditorCameraTests
 		Test.Assert(Dot(directionB, cam.Forward) < 0.95f);
 	}
 
+	/// Under orthographic the view draws from one view height behind its eye, showing the
+	/// ground below the eye. An eye 12 m up, tipped 35 degrees down, zoomed out: the view is
+	/// 34.6 m tall, so at the eye's plane its bottom edge lies under the ground, and the ground
+	/// there is nearer than that plane, which a volume starting at it cut away.
+	[Test]
+	public static void AnOrthographicViewDrawsFromAViewHeightBackShowingTheGroundBelowTheEye()
+	{
+		let cam = scope EditorCamera();
+		cam.Position = .(0.0f, 12.0f, 10.0f);
+		cam.Yaw = 0.0f;
+		cam.Pitch = -0.61f;
+		cam.FocusDistance = 30.0f;
+
+		// Perspective draws from the eye.
+		Test.Assert(Near(cam.DrawPullBack, 0.0f));
+		Test.Assert(Near(cam.DrawEye.Z, cam.Position.Z));
+		Test.Assert(Near(cam.DrawFar, cam.FarZ));
+
+		cam.SetOrthographic(true);
+		Test.Assert(Near(cam.DrawPullBack, cam.OrthoHeight));
+		let drawEye = cam.DrawEye;
+		Test.Assert(Near(Dot(cam.Position - drawEye, cam.Forward), cam.OrthoHeight));
+		// The eye stays put, the far plane keeps its reach past it, and the projection says so.
+		Test.Assert(Near(cam.Position.Y, 12.0f));
+		Test.Assert(Near(cam.DrawFar, cam.FarZ + cam.OrthoHeight));
+		Test.Assert(Math.Abs(cam.Projection(1.5f).ProjectionFarPlane - cam.DrawFar) < 0.001f * cam.DrawFar);
+
+		// A ray through the bottom of the view starts on the draw eye's plane, so it finds the
+		// ground below the eye, behind the eye's own plane.
+		cam.RayThrough(0.0f, -1.0f, 1.5f, let origin, let direction);
+		Test.Assert(direction.Y < 0.0f);
+		// Starting there matters to a pick, which takes the first hit past the origin: from the
+		// eye's own plane it would never meet the ground behind that plane.
+		Test.Assert(Near(Dot(origin - drawEye, cam.Forward), 0.0f), "the ray starts on the draw eye's plane");
+		let hit = origin + direction * (-origin.Y / direction.Y);
+		Test.Assert(Dot(hit - cam.Position, cam.Forward) < 0.0f, "behind the eye's plane");
+		Test.Assert(Dot(hit - drawEye, cam.Forward) >= cam.NearZ, "past the near plane");
+		// What stands two view heights behind the eye stays clipped.
+		let farBehind = cam.Position - cam.Forward * (2.0f * cam.OrthoHeight);
+		Test.Assert(Dot(farBehind - drawEye, cam.Forward) < cam.NearZ);
+
+		// Zooming in brings it closer: the reach follows the view height.
+		cam.FocusDistance = 10.0f;
+		Test.Assert(Near(cam.DrawPullBack, cam.OrthoHeight));
+	}
+
 	/// A snap to an axis turns orthographic and looks straight down for a top view; a look away
 	/// turns it back. Chosen by hand it stays through a look, and with the preference off a snap
 	/// leaves the projection alone.

@@ -70,10 +70,24 @@ class EditorCamera
 		if (Orthographic)
 		{
 			let height = OrthoHeight;
-			return Float4x4.OrthographicRH(height * aspect, height, NearZ, FarZ);
+			return Float4x4.OrthographicRH(height * aspect, height, NearZ, DrawFar);
 		}
 		return Float4x4.PerspectiveFovRH(FovY, aspect, NearZ, FarZ);
 	}
+
+	/// How far behind the eye the view draws from: one view height under orthographic, none in
+	/// perspective. An orthographic volume starting at the eye's plane cut away, in a view tipped
+	/// down, the ground below the eye; drawing from further back along the view changes nothing
+	/// on screen but what is clipped. One view height shows that ground in the views people tip
+	/// and follows the zoom, while what stands further behind the eye stays clipped (a wall far
+	/// behind it would otherwise cover the view). The eye itself stays put: what is measured from
+	/// it (orbit, zoom, the renderer's distance fades) is as in perspective.
+	public float DrawPullBack => Orthographic ? OrthoHeight : 0.0f;
+	/// Where the view draws from: the eye, or under orthographic the point pulled back along the
+	/// view behind it (the view matrix's origin; the eye stays Position).
+	public Float3 DrawEye => Position - Forward * DrawPullBack;
+	/// The far plane from the draw eye: as far past the eye as ever.
+	public float DrawFar => FarZ + DrawPullBack;
 
 	/// Switches between perspective and orthographic by hand (the toggle); what is in view
 	/// stays.
@@ -85,13 +99,14 @@ class EditorCamera
 
 	/// The world ray through a viewport point given in NDC (x right, y up, each -1 to 1) for a
 	/// view `aspect` wide over tall: from the eye fanning out in perspective; parallel to the
-	/// view under orthographic, starting on the eye's plane.
+	/// view under orthographic, starting on the draw eye's plane (DrawEye), so what lies behind
+	/// the eye's own plane is picked too.
 	public void RayThrough(float ndcX, float ndcY, float aspect, out Float3 origin, out Float3 direction)
 	{
 		if (Orthographic)
 		{
 			let halfHeight = 0.5f * OrthoHeight;
-			origin = Position + Right * (ndcX * halfHeight * aspect) + Up * (ndcY * halfHeight);
+			origin = DrawEye + Right * (ndcX * halfHeight * aspect) + Up * (ndcY * halfHeight);
 			direction = Forward;
 			return;
 		}

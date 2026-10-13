@@ -421,4 +421,20 @@ class ShadowMathTests
 		Test.Assert(Abs(moved.X - still.X) > 0.01f);
 		Test.Assert(moved.X == moved.X, "finite");
 	}
+
+	/// A view drawn from behind its eye reaches as far past the eye: the cascades start at the
+	/// draw eye, so an orthographic editor view pulled back 40 m must reach 40 m further from
+	/// there, or its shadows would end 40 m short of where they did.
+	[Test]
+	public static void AViewDrawnFromBehindItsEyeReachesAsFarPastTheEye()
+	{
+		var camera = ViewCamera();
+		camera.FarZ = 1000.0f;
+		Test.Assert(Math.Abs(ShadowMath.ShadowReach(camera, 120.0f) - 120.0f) < 1e-3f);
+		Test.Assert(Math.Abs(ShadowMath.ShadowReach(camera, 0.0f) - 1.0f) < 1e-3f, "at least a metre");
+		camera.PullBack = 40.0f;
+		camera.FarZ = 1040.0f;
+		Test.Assert(Math.Abs(ShadowMath.ShadowReach(camera, 120.0f) - 160.0f) < 1e-3f);
+		Test.Assert(Math.Abs(ShadowMath.ShadowReach(camera, 5000.0f) - 1040.0f) < 1e-3f, "never past the far plane");
+	}
 }
