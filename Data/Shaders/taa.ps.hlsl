@@ -17,12 +17,15 @@ struct TaaPush {
     float  MotionScale;    // per pixel of motion a frame: history drops by half at 1/MotionScale px (0 = ignore)
     float  NearPlane;      // camera near - linearize depth for the disocclusion test
     float  FarPlane;       // camera far
+    int    Orthographic;   // 1: an orthographic camera's depth is linear (projection.hlsli)
+    int    _pad0; int _pad1; int _pad2;
 };
 PUSH_CONSTANT(TaaPush, pc, space1);
 
 // Linearize the NDC depth (depth.hlsli's convention) to view-space Z, so the disocclusion threshold is
 // depth-independent. Sky/background (kDepthFar) maps to FarPlane; there's no divide-by-zero in [0,1].
 #include "depth.hlsli"
+#include "projection.hlsli"
 
 float  Luminance(float3 c)  { return dot(c, float3(0.2126, 0.7152, 0.0722)); }
 float3 RGBToYCoCg(float3 c) { return float3(0.25*c.r + 0.5*c.g + 0.25*c.b, 0.5*c.r - 0.5*c.b, -0.25*c.r + 0.5*c.g - 0.25*c.b); }
@@ -69,7 +72,7 @@ PSOut main(float4 pos : SV_Position, float2 uv : TEXCOORD0) {
 
     // This pixel's surface depth (linear) - stored in the history alpha so next frame can compare against
     // it at the reprojected position (the disocclusion test below).
-    float centerLin = LinearizeDepth(DepthTexture.SampleLevel(PointSamp, uv, 0).r, pc.NearPlane, pc.FarPlane);
+    float centerLin = LinearViewDepth(DepthTexture.SampleLevel(PointSamp, uv, 0).r, pc.NearPlane, pc.FarPlane, pc.Orthographic != 0);
 
     // Closest depth in a 3x3 neighborhood -> stable motion-vector selection (reduces silhouette ghosting).
     float  closestDepth = FarthestDepth();
@@ -102,7 +105,7 @@ PSOut main(float4 pos : SV_Position, float2 uv : TEXCOORD0) {
     float linPrev  = HistoryColor.SampleLevel(PointSamp, historyUV, 0).a;
     float motionPx = length(motion / pc.TexelSize);   // motion-vector magnitude in pixels
     if (linPrev > 0.0 && motionPx > 0.5) {
-        float linCur   = LinearizeDepth(closestDepth, pc.NearPlane, pc.FarPlane);
+        float linCur   = LinearViewDepth(closestDepth, pc.NearPlane, pc.FarPlane, pc.Orthographic != 0);
         float relDiff  = abs(linCur - linPrev) / max(min(linCur, linPrev), 0.001);
         if (relDiff > 0.1) { o.Color = float4(current, 1.0); o.History = float4(current, centerLin); return o; }
     }

@@ -996,7 +996,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			settings.FrustumCull = !postOverride.DisableCulling;
 		}
 
-		// An orthographic view has no perspective depth for the screen space passes to read.
+		// An orthographic view has no eye point for SSR's and SSGI's marches.
 		if (camera.Projection.IsOrthographic)
 			ScenePost.LimitForOrthographic(ref settings.Post);
 

@@ -17,7 +17,8 @@ struct GtaoPush
 	/// temporal resolve can average it away.
 	public int32 FrameMod = 0;
 	public int32 DebugMode = 0;
-	public int32 Pad = 0;
+	/// One: the view rays are parallel, no divide by depth.
+	public int32 Orthographic = 0;
 
 	public this() {}
 }
@@ -38,6 +39,9 @@ struct SsaoPush
 	public float Bias = 0.05f;
 	public int32 SampleCount = 16;
 	public int32 DebugMode = 0;
+	/// One: the view rays are parallel, no divide by depth.
+	public int32 Orthographic = 0;
+	public int32 Pad = 0;
 
 	public this() {}
 }

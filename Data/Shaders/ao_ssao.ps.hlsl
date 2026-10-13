@@ -3,6 +3,7 @@
 
 #include "push_constant.hlsli"
 #include "depth.hlsli"
+#include "projection.hlsli"
 #include "ao_common.hlsli"
 
 Texture2D    DepthTex  : register(t0, space0);
@@ -11,7 +12,7 @@ SamplerState PointSamp : register(s0, space0);
 struct SsaoPush {
     row_major float4x4 InvProj;   // (ndc, depth) -> view space
     float2 TexelSize;
-    float2 Jitter;                // this frame's projection jitter (proj(2,0), proj(2,1)) in NDC
+    float2 Jitter;                // this frame's projection jitter in NDC (projection::JitterOf)
     float  ProjXX;                // projection(0,0): view -> ndc.x
     float  ProjYY;                // projection(1,1): view -> ndc.y
     float  Radius;
@@ -19,6 +20,8 @@ struct SsaoPush {
     float  Bias;
     int    SampleCount;
     int    DebugMode;
+    int    Orthographic;          // 1: parallel view rays (projection.hlsli)
+    int    _pad;
 };
 PUSH_CONSTANT(SsaoPush, pc, space1);
 
@@ -28,11 +31,11 @@ float3 ViewPos(float2 uv, float depth) {
     return h.xyz / h.w;
 }
 // View-space position -> top-origin uv (inverse of ViewPos's uv->ndc: uv.y = (1-ndc.y)/2). The jitter
-// (in the projection's z-row, not the diagonal ProjXX/YY) must be included or the back-projected UV won't
-// match the jittered depth buffer we sample -> per-frame occlusion oscillation (flicker under TAA).
+// (off the diagonal ProjXX/YY) must be included or the back-projected UV won't match the jittered
+// depth buffer we sample -> per-frame occlusion oscillation (flicker under TAA).
 float2 ViewToUv(float3 vp) {
-    // Full jittered ndc = diagonal ndc - jitter (the jitter lives in proj's z-row: ndc shifts by -jitter).
-    float2 ndc = float2(vp.x * pc.ProjXX, vp.y * pc.ProjYY) / max(-vp.z, 1e-4) - pc.Jitter;
+    // Full jittered ndc = diagonal ndc - jitter (either projection shifts ndc by -jitter).
+    float2 ndc = ViewToNdcXY(vp, float2(pc.ProjXX, pc.ProjYY), pc.Orthographic != 0) - pc.Jitter;
     return float2(ndc.x * 0.5 + 0.5, 0.5 - 0.5 * ndc.y);
 }
 static const float3 KERNEL[16] = {

@@ -240,4 +240,47 @@ class Float4x4Tests
 		Test.Assert(NearlyEqual(perspective.ProjectionNearPlane, 0.3f, 1.0e-4f));
 		Test.Assert(NearlyEqual(ortho.ProjectionNearPlane, -50.0f, 1.0e-3f));
 	}
+
+	/// An orthographic depth linearizes back to its distance.
+	[Test]
+	public static void AnOrthographicDepthLinearizesBackToItsDistance()
+	{
+		let n = -20.0f;
+		let f = 80.0f;
+		let ortho = Float4x4.OrthographicRH(10.0f, 10.0f, n, f);
+		for (let d in scope float[](-20.0f, -3.5f, 0.0f, 12.0f, 79.0f))
+		{
+			let clip = Float4(0.0f, 0.0f, -d, 1.0f) * ortho;
+			Test.Assert(NearlyEqual(Projection.LinearizeDepthOrthographic(clip.Z / clip.W, n, f), d, 1.0e-3f));
+		}
+	}
+
+	/// The TAA jitter shifts NDC by the same amount at every depth, in either projection.
+	[Test]
+	public static void TheTaaJitterShiftsNdcByTheSameAmountAtEveryDepthEitherProjection()
+	{
+		Float2 NdcXY(Float4x4 projection, float x, float y, float distance)
+		{
+			let clip = Float4(x, y, -distance, 1.0f) * projection;
+			return .(clip.X / clip.W, clip.Y / clip.W);
+		}
+		let jx = 0.0031f;
+		let jy = -0.0017f;
+		for (let plain in scope Float4x4[](Float4x4.PerspectiveFovRH(1.0f, 1.5f, 0.1f, 500.0f),
+			Float4x4.OrthographicRH(20.0f, 12.0f, 0.1f, 500.0f)))
+		{
+			var jittered = plain;
+			Projection.ApplyJitter(ref jittered, jx, jy);
+			Test.Assert(NearlyEqual(Projection.JitterOf(jittered).X, jx, 1.0e-7f));
+			Test.Assert(NearlyEqual(Projection.JitterOf(jittered).Y, jy, 1.0e-7f));
+			Test.Assert(NearlyEqual(jittered.ProjectionNearPlane, plain.ProjectionNearPlane, 1.0e-4f));
+			for (let distance in scope float[](1.0f, 40.0f, 300.0f))
+			{
+				let a = NdcXY(plain, 0.7f, -0.4f, distance);
+				let b = NdcXY(jittered, 0.7f, -0.4f, distance);
+				Test.Assert(NearlyEqual(b.X - a.X, -jx, 1.0e-5f));
+				Test.Assert(NearlyEqual(b.Y - a.Y, -jy, 1.0e-5f));
+			}
+		}
+	}
 }

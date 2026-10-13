@@ -3,6 +3,7 @@
 
 #include "push_constant.hlsli"
 #include "depth.hlsli"
+#include "projection.hlsli"
 #include "ao_common.hlsli"
 
 Texture2D    DepthTex  : register(t0, space0);
@@ -16,7 +17,7 @@ struct GtaoPush {
     float  ProjScaleY;            // projection(1,1): world radius -> screen (at unit view depth)
     int    FrameMod;              // per-frame noise rotation (unused while AO is static)
     int    DebugMode;             // 0=AO, 2=Nx, 3=Ny, 4=Nz, 5=viewZ, 6=rawDepth
-    int    _pad;
+    int    Orthographic;          // 1: parallel view rays (projection.hlsli)
 };
 PUSH_CONSTANT(GtaoPush, pc, space1);
 
@@ -39,11 +40,13 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
 
     float3 P = ViewPos(uv, depth);
     float3 N = OctDecode(NormalTex.SampleLevel(PointSamp, uv, 0).rg);
-    float3 V = normalize(-P);
+    const bool ortho = pc.Orthographic != 0;
+    float3 V = ViewDirToViewer(P, ortho);
 
-    // uv-space march radius for this pixel's depth. NDC spans [-1,1] (length 2) -> uv [0,1] (length 1),
-    // hence the /2. Clamp: at least one texel, at most a quarter screen.
-    float screenR = pc.Radius * pc.ProjScaleY / (2.0 * max(-P.z, 1e-3));
+    // uv-space march radius for this pixel's depth (under orthographic, the same at every depth).
+    // NDC spans [-1,1] (length 2) -> uv [0,1] (length 1), hence the /2. Clamp: at least one texel,
+    // at most a quarter screen.
+    float screenR = pc.Radius * pc.ProjScaleY / (2.0 * max(ProjectionDivide(P, ortho), 1e-3));
     screenR = clamp(screenR, pc.TexelSize.y, 0.25);
 
     // Static interleaved-gradient noise (blur denoises it; static avoids temporal flicker).

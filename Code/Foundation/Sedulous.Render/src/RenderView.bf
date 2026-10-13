@@ -179,12 +179,11 @@ class RenderView
 	/// A SUB PIXEL jitter on the projection, so every downstream read of the view projection,
 	/// the prepass, the forward and the sky alike, uses the same jittered matrix.
 	///
-	/// Row vector convention: offsetting the third row's first two components shifts clip
-	/// space by the jitter times the clip w, which is a constant offset in pixels.
+	/// A constant NDC shift in either projection: Projection.ApplyJitter puts it in the row that
+	/// does that, and the passes read it back with Projection.JitterOf.
 	public void ApplyProjectionJitter(float jitterX, float jitterY)
 	{
-		mCamera.Projection[2, 0] += jitterX;
-		mCamera.Projection[2, 1] += jitterY;
+		Projection.ApplyJitter(ref mCamera.Projection, jitterX, jitterY);
 	}
 
 	/// The per SCENE debug draw list, which appears in every view of that scene: physics and

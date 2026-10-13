@@ -21,6 +21,11 @@ struct TaaPush
 	public float MotionScale = 1.0f / 32.0f;
 	public float NearPlane = 0.1f;
 	public float FarPlane = 1000.0f;
+	/// One: an orthographic camera's depth is linear (taa.ps.hlsl's disocclusion test).
+	public int32 Orthographic = 0;
+	public int32 Pad0 = 0;
+	public int32 Pad1 = 0;
+	public int32 Pad2 = 0;
 
 	public this() {}
 }

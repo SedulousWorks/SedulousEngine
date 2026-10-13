@@ -38,4 +38,30 @@ static class Projection
 	/// The forward map, for tests and for anything that must place a value at a distance.
 	public static float DepthAtDistance(float distance, float zNear, float zFar)
 		=> zNear * (zFar - distance) / ((zFar - zNear) * distance);
+
+	/// Reverse-Z orthographic NDC depth to a view space distance along the view, the inverse of
+	/// OrthographicRH's z row, linear: d = f - ndc (f - n). ndc 1 is n, ndc 0 is f.
+	public static float LinearizeDepthOrthographic(float ndcDepth, float zNear, float zFar)
+		=> zFar - ndcDepth * (zFar - zNear);
+
+	/// The TAA jitter: a sub-pixel shift of every NDC position by minus (jx, jy), the same for both
+	/// projections. A perspective one carries it in row 2 (scaled by w, the view depth, so a
+	/// constant NDC shift); an orthographic one keeps w at one, so row 2 would shift by depth and
+	/// the jitter goes in row 3 instead. JitterOf reads back what ApplyJitter put in.
+	public static void ApplyJitter(ref Float4x4 projection, float jx, float jy)
+	{
+		if (projection.IsOrthographic)
+		{
+			projection.M[3][0] -= jx;
+			projection.M[3][1] -= jy;
+		}
+		else
+		{
+			projection.M[2][0] += jx;
+			projection.M[2][1] += jy;
+		}
+	}
+
+	public static Float2 JitterOf(Float4x4 projection) => projection.IsOrthographic
+		? Float2(-projection.M[3][0], -projection.M[3][1]) : Float2(projection.M[2][0], projection.M[2][1]);
 }

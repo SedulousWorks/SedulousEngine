@@ -1855,7 +1855,7 @@ class RenderFrame
 			{
 				sceneColor = mTaa.DeclareTaa(mGraph, litHdr, postVelocity, postDepth, historySlot,
 					view.Width, view.Height, post.TaaBlend, post.TaaGamma, mTaaMotionScale, view.Camera.NearPlane,
-					view.Camera.FarPlane);
+					view.Camera.FarPlane, view.Camera.IsOrthographic);
 			}
 
 			// The blended work AFTER the resolve, into the resolved image, with the UNJITTERED

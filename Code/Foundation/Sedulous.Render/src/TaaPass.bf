@@ -123,7 +123,7 @@ class TaaPass
 	/// on with an aliased image rather than a missing one.
 	public RGHandle DeclareTaa(RenderGraph graph, RGHandle current, RGHandle motion,
 		RGHandle depth, uint32 viewIndex, uint32 width, uint32 height, float blendFactor,
-		float varianceGamma, float motionScale, float nearPlane, float farPlane)
+		float varianceGamma, float motionScale, float nearPlane, float farPlane, bool orthographic)
 	{
 		if ((viewIndex >= MaxViews) || (width == 0) || (height == 0))
 			return current;
@@ -167,6 +167,7 @@ class TaaPass
 		push.MotionScale = motionScale;
 		push.NearPlane = nearPlane;
 		push.FarPlane = (farPlane > nearPlane) ? farPlane : 1000.0f;
+		push.Orthographic = orthographic ? 1 : 0;
 
 		let previousView = mViews[viewIndex].Views[previousSlot];
 

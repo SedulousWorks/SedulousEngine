@@ -161,6 +161,7 @@ class AoPass
 			push.ProjScaleY = proj[1, 1];
 			push.FrameMod = (int32)(frameIndex & 63);
 			push.DebugMode = debugMode;
+			push.Orthographic = proj.IsOrthographic ? 1 : 0;
 
 			DeclareGenerate(graph, depth, normal, raw, width, height, mGtaoPipeline, &push,
 				sizeof(GtaoPush));
@@ -172,8 +173,9 @@ class AoPass
 			push.TexelSize = texel;
 			push.ProjXX = proj[0, 0];
 			push.ProjYY = proj[1, 1];
-			// The projection's own jitter, taken from its third row.
-			push.Jitter = .(proj[2, 0], proj[2, 1]);
+			// The projection's own jitter, so the back projection matches the jittered depth.
+			push.Jitter = Projection.JitterOf(proj);
+			push.Orthographic = proj.IsOrthographic ? 1 : 0;
 			push.Radius = radius;
 			push.Intensity = intensity;
 			push.Bias = 0.05f;

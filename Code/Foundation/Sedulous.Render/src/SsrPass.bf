@@ -214,7 +214,7 @@ class SsrPass
 		tracePush.InvProj = invProj;
 		tracePush.VpMin = vpMin;
 		tracePush.VpSize = vpSize;
-		tracePush.Jitter = .(proj[2, 0], proj[2, 1]);
+		tracePush.Jitter = Projection.JitterOf(proj);
 		tracePush.ProjXX = proj[0, 0];
 		tracePush.ProjYY = proj[1, 1];
 		tracePush.Thickness = parameters.Thickness;
