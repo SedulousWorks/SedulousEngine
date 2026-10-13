@@ -83,6 +83,15 @@ static
 	[Scriptable]
 	[Inline] public static float Lerp(float a, float b, float t) => a + (b - a) * t;
 
+	// By value and for floats, for scripts: Base's Min, Max and Clamp are generic, which the
+	// script surface cannot carry. An exact float match, so Beef callers pick these too.
+	[Scriptable]
+	[Inline] public static float Min(float a, float b) => (b < a) ? b : a;
+	[Scriptable]
+	[Inline] public static float Max(float a, float b) => (a < b) ? b : a;
+	[Scriptable]
+	[Inline] public static float Clamp(float x, float lo, float hi) => (x < lo) ? lo : ((hi < x) ? hi : x);
+
 	[Scriptable]
 	[Inline]
 	public static bool NearlyEqual(float a, float b, float epsilon = Epsilon) =>

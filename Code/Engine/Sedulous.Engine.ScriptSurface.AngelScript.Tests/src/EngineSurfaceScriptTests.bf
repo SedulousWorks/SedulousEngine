@@ -72,6 +72,15 @@ static class EngineSurfaceScriptTests
 					agentApi.AppendF("{}\n", m.Signature);
 		Test.Assert(agentApi.Contains("bool NavAgentComponent.Finished (read only)"), agentApi);
 		Test.Assert(agentApi.Contains("Float3 NavAgentComponent.DesiredVelocity (read only)"), agentApi);
+		// The math a game script reaches for, beside Lerp: Min, Max and Clamp by value.
+		let globals = scope String();
+		for (let t in api)
+			if (t.ScriptName.IsEmpty)
+				for (let m in t.Members)
+					globals.AppendF("{}\n", m.Signature);
+		Test.Assert(globals.Contains("float Lerp(float a, float b, float t)"), globals);
+		Test.Assert(globals.Contains("float Min(float a, float b)") && globals.Contains("float Max(float a, float b)"), globals);
+		Test.Assert(globals.Contains("float Clamp(float x, float lo, float hi)"), globals);
 	}
 
 	[Test]

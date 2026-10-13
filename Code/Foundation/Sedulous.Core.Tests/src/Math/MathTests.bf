@@ -133,4 +133,14 @@ class MathTests
 		// Extrapolates rather than clamping, which is the documented behaviour.
 		Test.Assert(Lerp(0.0f, 10.0f, 2.0f) == 20.0f);
 	}
+
+	/// The float Min, Max and Clamp a script calls, by value.
+	[Test]
+	public static void MinMaxAndClampForFloats()
+	{
+		Test.Assert((Min(2.0f, -1.0f) == -1.0f) && (Max(2.0f, -1.0f) == 2.0f));
+		Test.Assert(Clamp(5.0f, 0.0f, 1.0f) == 1.0f);
+		Test.Assert(Clamp(-5.0f, 0.0f, 1.0f) == 0.0f);
+		Test.Assert(Clamp(0.25f, 0.0f, 1.0f) == 0.25f);
+	}
 }
