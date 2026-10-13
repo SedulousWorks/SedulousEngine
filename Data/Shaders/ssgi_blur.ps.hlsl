@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026-Present Robert Campbell
 
-// SSGI spatial denoise: a depth-aware 5x5 sparse cross gather over the raw trace, run
-// BETWEEN trace and temporal resolve. At 1-4 rays/pixel the raw estimate is mostly
-// misses + occasional hits; the temporal pass alone cannot converge it (its variance
-// clip is built from the noisy current frame), so neighbors share their hits first.
+// SSGI spatial denoise: a depth-aware 5x5 sparse cross gather. Run once over the raw trace,
+// BETWEEN trace and temporal resolve (at 1-4 rays/pixel the raw estimate is mostly misses +
+// occasional hits, so neighbors share their hits first), then again over the ACCUMULATED
+// bounce at a widening Step (1, 2, 4, 8: an a-trous filter), so the history can stay close to
+// what the frame shows (no trail behind a moving light) without its noise showing as blotches.
 // Depth weighting keeps the gather from bleeding across silhouettes.
 
 #include "push_constant.hlsli"
@@ -15,7 +16,7 @@ SamplerState      PointSamp: register(s0, space0);
 struct SsgiBlurPush {
     float2 TexelSize;      // 1 / full size
     float  DepthSigma;     // view-space depth tolerance scale (relative)
-    float  _pad0;
+    float  Step;           // tap spacing in pixels (the a-trous passes after the accumulate widen it)
     row_major float4x4 InvProj;
     float2 VpMin;
     float2 VpSize;
@@ -51,7 +52,7 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float  wsum = 1.0;
     float  tol = max(cd * pc.DepthSigma, 0.02);   // relative depth tolerance
     [unroll] for (int i = 0; i < 12; ++i) {
-        float2 su = uv + kOffsets[i] * pc.TexelSize;
+        float2 su = uv + kOffsets[i] * pc.Step * pc.TexelSize;
         float  sd = LinearDepth(su);
         float  w = kRingW[i] * saturate(1.0 - abs(sd - cd) / tol);
         sum  += GiTex.SampleLevel(PointSamp, su, 0) * w;

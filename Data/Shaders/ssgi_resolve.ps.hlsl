@@ -27,11 +27,11 @@ struct SsgiResolvePush {
     float2 TexelSize;
     float  BlendFactor;    // max history weight (~0.92 - GI is noisier than SSR, lean on history)
     float  HistoryValid;   // 0 = first frame (no history)
-    float  VarianceGamma;  // neighborhood clip half-width in stddevs
+    float  VarianceGamma;  // the history box half-width, in stddevs of the wide neighbourhood
     float  MotionScale;    // how fast history drops with motion
     int    TemporalOn;     // 0 = skip history blend
     int    Debug;          // >0 = output the accumulated GI raw (no composite)
-    float  GhostReject;    // history-vs-current luma-diff rejection strength
+    int    OutputAccum;    // 1 = write the accumulated bounce (rgb + hit share), the denoise's input
     float  Intensity;      // GI strength
     float4 ViewToWorld0;   // rows of the camera's world rotation: view-space normal -> world
     float4 ViewToWorld1;
@@ -75,6 +75,9 @@ float3 SkyRadiance(float2 uv) {
 
 float3 RGBToYCoCg(float3 c) { return float3(0.25*c.r + 0.5*c.g + 0.25*c.b, 0.5*c.r - 0.5*c.b, -0.25*c.r + 0.5*c.g - 0.25*c.b); }
 float3 YCoCgToRGB(float3 c) { float t = c.x - c.z; return float3(t + c.y, c.x + c.z, t - c.y); }
+// YCoCg over (1 + luma), and back: the compressed space the history accumulates in.
+float3 Compress(float3 ycocg) { return ycocg / (1.0 + max(ycocg.x, 0.0)); }
+float3 Expand(float3 compressed) { return compressed / max(1.0 - compressed.x, 1e-3); }
 float3 ClipToAABB(float3 color, float3 aabbMin, float3 aabbMax) {
     float3 center  = (aabbMax + aabbMin) * 0.5;
     float3 extents = (aabbMax - aabbMin) * 0.5;
@@ -95,14 +98,22 @@ PSOut main(float4 pos : SV_Position, float2 uv : TEXCOORD0) {
         float2 vel     = VelocityTex.SampleLevel(PointSamp, uv, 0).rg;
         float2 histLoc = localUv - vel;
         if (all(histLoc >= 0.0) && all(histLoc <= 1.0)) {
+            // The history is held to a box around what a wide neighbourhood (5x5 taps two pixels
+            // apart) shows now, VarianceGamma deviations from its mean. A still pixel's history
+            // was trusted as it was, so a moving light's bounce stayed where the light had been (a
+            // trail behind Lamplight's guard and his lantern); the trace is too sparse for a 3x3
+            // box, whose spread let the old bounce through, so the box is wide and tight. Box and
+            // blend work in a compressed space, each colour over (1 + its luma) (Karis), so the
+            // few rays that hit a small bright source neither stretch the box nor lodge in the
+            // history.
             float3 m1 = float3(0,0,0), m2 = float3(0,0,0);
-            [unroll] for (int ny = -1; ny <= 1; ++ny) {
-                [unroll] for (int nx = -1; nx <= 1; ++nx) {
-                    float3 y = RGBToYCoCg(GiTex.SampleLevel(PointSamp, uv + float2(nx, ny) * pc.TexelSize, 0).rgb);
+            [unroll] for (int ny = -2; ny <= 2; ++ny) {
+                [unroll] for (int nx = -2; nx <= 2; ++nx) {
+                    float3 y = Compress(RGBToYCoCg(GiTex.SampleLevel(PointSamp, uv + float2(nx, ny) * 2.0 * pc.TexelSize, 0).rgb));
                     m1 += y; m2 += y * y;
                 }
             }
-            m1 /= 9.0; m2 /= 9.0;
+            m1 /= 25.0; m2 /= 25.0;
             float3 sigma  = sqrt(max(m2 - m1 * m1, 0.0));
             float3 boxMin = m1 - pc.VarianceGamma * sigma;
             float3 boxMax = m1 + pc.VarianceGamma * sigma;
@@ -115,22 +126,11 @@ PSOut main(float4 pos : SV_Position, float2 uv : TEXCOORD0) {
             // (select = OpSelect, naga-safe); clamp's min/max eat infinities.
             hist.rgb = select(hist.rgb == hist.rgb, clamp(hist.rgb, 0.0, 65504.0),
                               float3(0.0, 0.0, 0.0));
-            float3 rawHistY = RGBToYCoCg(hist.rgb);
-            float3 curY    = RGBToYCoCg(curG.rgb);
-            // Ghost-reject ONLY when HISTORY is the bright outlier (a trailing glow after
-            // light moved away). A bright CURRENT outlier is precisely what accumulation
-            // must average away - dropping history on it was the firefly FLASH path.
-            float  ghost = saturate(1.0 - max(rawHistY.x - curY.x, 0.0) * pc.GhostReject);
+            float3 curY  = Compress(RGBToYCoCg(curG.rgb));
+            float3 histY = ClipToAABB(Compress(RGBToYCoCg(hist.rgb)), boxMin, boxMax);
             float  motionMag = saturate(length(vel) * pc.MotionScale);
-            // Variance-clip only under motion / ghost suspicion. When the camera is still
-            // the clip is the OTHER flash path: a blurred firefly elevates its whole 3x3
-            // neighborhood, so the box sits at the blob and drags trusted history up into
-            // it regardless of blend weight. Still + trusted history = raw accumulation;
-            // the estimator variance then dies at blend^n as intended.
-            float  clipStrength = saturate(motionMag + (1.0 - ghost));
-            float3 histY = lerp(rawHistY, ClipToAABB(rawHistY, boxMin, boxMax), clipStrength);
-            float  blend = pc.BlendFactor * (1.0 - 0.5 * motionMag) * ghost;
-            accum = float4(max(YCoCgToRGB(lerp(curY, histY, blend)), 0.0), lerp(curG.a, hist.a, blend));
+            float  blend = pc.BlendFactor * (1.0 - 0.5 * motionMag);
+            accum = float4(max(YCoCgToRGB(Expand(lerp(curY, histY, blend))), 0.0), lerp(curG.a, hist.a, blend));
         }
     }
 
@@ -139,6 +139,7 @@ PSOut main(float4 pos : SV_Position, float2 uv : TEXCOORD0) {
     float3 hdr = HdrTex.SampleLevel(PointSamp, uv, 0).rgb;
     float3 albedo = AlbedoTex.SampleLevel(PointSamp, uv, 0).rgb;
     float3 bounce = accum.rgb - accum.a * SkyRadiance(uv); // what the hits found, less the sky they hid
+    if (pc.OutputAccum != 0) { o.Color = accum; return o; }
     o.Color = (pc.Debug > 0) ? float4(accum.rgb, 1.0)
                              : float4(max(hdr + albedo * bounce * pc.Intensity, 0.0), 1.0);
     return o;

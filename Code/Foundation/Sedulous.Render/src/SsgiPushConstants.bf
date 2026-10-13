@@ -46,7 +46,8 @@ struct SsgiBlurPush
 {
 	public Float2 TexelSize = .(0, 0);
 	public float DepthSigma = 0.05f;
-	public float Pad0 = 0.0f;
+	/// Tap spacing in pixels: one before the accumulate, 1, 2, 4 and 8 after it.
+	public float Step = 1.0f;
 	public Float4x4 InvProj = .Identity();
 	public Float2 VpMin = .(0, 0);
 	public Float2 VpSize = .(1, 1);
@@ -69,7 +70,9 @@ struct SsgiResolvePush
 	public float MotionScale = 24.0f;
 	public int32 TemporalOn = 1;
 	public int32 Debug = 0;
-	public float GhostReject = 3.0f;
+	/// One writes the accumulated bounce (rgb and the hit share), the denoise's input, rather
+	/// than the composite.
+	public int32 OutputAccum = 0;
 	public float Intensity = 1.0f;
 	/// HLSL starts a float4 on a 16 byte boundary, and Float4 here is only 4 byte aligned, so
 	/// the pad keeps these offsets the shader's (a shifted read scrambled the sky term).

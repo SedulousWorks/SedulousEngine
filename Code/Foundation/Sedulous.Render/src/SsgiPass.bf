@@ -105,6 +105,11 @@ class SsgiPass
 	/// (the filtered bounce, velocity, HDR, albedo, normal, and the SH sky with its context's
 	/// generation) is a different one.
 	private BindGroupCache<5> mResolveBindGroups = new .() ~ delete _;
+	/// The composite's groups, kept apart from the accumulate's: the two read the same history
+	/// views a frame apart from different inputs, and in one cache each would evict the other
+	/// every frame.
+	private const String[4] cDenoiseNames = .("ssgi.denoise1", "ssgi.denoise2", "ssgi.denoise3", "ssgi.denoise4");
+	private BindGroupCache<5> mCompositeBindGroups = new .() ~ delete _;
 	/// Bound in the SH slot when a scene has no SH sky: the composite then never reads it (its
 	/// dimmer is nought), so its contents do not matter.
 	private IBuffer mDummyShBuffer = null;
@@ -387,9 +392,8 @@ class SsgiPass
 			});
 
 		// The spatial denoise: neighbours share their hits, depth aware, before the frames are
-		// accumulated. At one to four rays the raw estimate alone cannot converge.
-		let filtered = graph.CreateTransient("ssgi.filtered", .(cHdrFormat, width, height));
-
+		// accumulated (at one to four rays the raw estimate alone cannot converge), and again
+		// after it at a widening step (the a-trous passes below).
 		var blurPush = SsgiBlurPush();
 		blurPush.TexelSize = texelSize;
 		blurPush.DepthSigma = (parameters.DepthSigma > 1e-3f) ? parameters.DepthSigma : 1e-3f;
@@ -398,30 +402,37 @@ class SsgiPass
 		blurPush.VpSize = vpSize;
 		blurPush.YSign = mDevice.NeedsClipSpaceYFlip ? 1.0f : -1.0f;
 
-		graph.AddRenderPass("ssgi.blur", scope (builder) =>
-			{
-				builder.SetColorTarget(0, filtered, .Clear, .Store, .Black);
-				builder.ReadTexture(bounce);
-				builder.ReadTexture(depth);
-				builder.NeverCull();
+		void DeclareBlur(StringView name, RGHandle source, RGHandle target, float step)
+		{
+			var pushed = blurPush;
+			pushed.Step = step;
+			graph.AddRenderPass(name, scope (builder) =>
+				{
+					builder.SetColorTarget(0, target, .Clear, .Store, .Black);
+					builder.ReadTexture(source);
+					builder.ReadTexture(depth);
+					builder.NeverCull();
 
-				builder.SetExecute(new (encoder) =>
-					{
-						let bindGroup = EnsureBlurBindGroup(graph.GetTextureView(bounce),
-							graph.GetTextureView(depth),
-							graph.GetTextureGeneration(bounce)
-							^ (graph.GetTextureGeneration(depth) &* 1099511628211UL));
-						if (bindGroup == null)
-							return;
+					builder.SetExecute(new (encoder) =>
+						{
+							let bindGroup = EnsureBlurBindGroup(graph.GetTextureView(source),
+								graph.GetTextureView(depth),
+								graph.GetTextureGeneration(source)
+								^ (graph.GetTextureGeneration(depth) &* 1099511628211UL));
+							if (bindGroup == null)
+								return;
 
-						encoder.SetPipeline(mBlurPipeline);
-						encoder.SetBindGroup(0, bindGroup);
+							encoder.SetPipeline(mBlurPipeline);
+							encoder.SetBindGroup(0, bindGroup);
 
-						var constants = blurPush;
-						encoder.SetPushConstants(.Fragment, 0, sizeof(SsgiBlurPush), &constants);
-						encoder.Draw(3, 1, 0, 0);
-					});
-			});
+							var constants = pushed;
+							encoder.SetPushConstants(.Fragment, 0, sizeof(SsgiBlurPush), &constants);
+							encoder.Draw(3, 1, 0, 0);
+						});
+				});
+		}
+		let filtered = graph.CreateTransient("ssgi.filtered", .(cHdrFormat, width, height));
+		DeclareBlur("ssgi.blur", bounce, filtered, 1.0f);
 
 		// The resolve: reproject, clip against the neighbourhood, accumulate, then composite.
 		if (!EnsureHistory(ref mViews[viewIndex], width, height))
@@ -452,7 +463,6 @@ class SsgiPass
 		resolvePush.MotionScale = parameters.MotionScale;
 		resolvePush.TemporalOn = parameters.Temporal ? 1 : 0;
 		resolvePush.Debug = parameters.Debug;
-		resolvePush.GhostReject = parameters.GhostReject;
 		resolvePush.Intensity = (parameters.Intensity >= 0.0f) ? parameters.Intensity : 0.0f;
 		// The ambient a hit replaces: the camera's world rotation turns the G-buffer's view space
 		// normal to world space, where the SH sky is. No SH sky is the flat fill alone, as in
@@ -470,9 +480,19 @@ class SsgiPass
 
 		let previousView = mViews[viewIndex].Views[previousSlot];
 
+		// The accumulate writes the history and, when the denoise runs, the accumulated bounce
+		// itself (rgb and the hit share) rather than the composite: the a-trous passes smooth
+		// that, and the same shader, its accumulate off, composites the result. The history
+		// stays unfiltered, so the denoise never feeds back into it.
+		let denoisePasses = (parameters.Temporal && (parameters.Debug == 0)) ? Math.Min(parameters.DenoisePasses, 4) : 0;
+		let accumulated = (denoisePasses > 0)
+			? graph.CreateTransient("ssgi.accum", .(cHdrFormat, width, height))
+			: composited;
+		resolvePush.OutputAccum = (denoisePasses > 0) ? 1 : 0;
+
 		graph.AddRenderPass("ssgi.resolve", scope (builder) =>
 			{
-				builder.SetColorTarget(0, composited, .Clear, .Store, .Black);
+				builder.SetColorTarget(0, accumulated, .Clear, .Store, .Black);
 				builder.SetColorTarget(1, historyCurrent, .Clear, .Store, .Black);
 				builder.ReadTexture(filtered);
 				builder.ReadTexture(historyPrevious);
@@ -493,7 +513,7 @@ class SsgiPass
 						inputs.Set(3, graph.GetTextureView(albedo), graph.GetTextureGeneration(albedo));
 						inputs.Set(4, graph.GetTextureView(normal), graph.GetTextureGeneration(normal));
 						inputs.SetBuffer(shBuffer, shGeneration);
-						let bindGroup = EnsureResolveBindGroup(previousView, inputs);
+						let bindGroup = EnsureResolveBindGroup(mResolveBindGroups, previousView, inputs);
 						if (bindGroup == null)
 							return;
 
@@ -505,6 +525,64 @@ class SsgiPass
 						encoder.Draw(3, 1, 0, 0);
 					});
 			});
+
+		if (denoisePasses > 0)
+		{
+			// A-trous: the depth aware gather again, its taps 1, 2, 4 and 8 pixels apart.
+			var source = accumulated;
+			for (uint32 pass < denoisePasses)
+			{
+				let name = cDenoiseNames[pass];
+				let target = graph.CreateTransient(name, .(cHdrFormat, width, height));
+				DeclareBlur(name, source, target, (float)(1U << (int32)pass));
+				source = target;
+			}
+
+			// The composite: the resolve with its accumulate off reads the smoothed bounce as its
+			// current frame. Its history input is bound (this frame's) and unread; its history
+			// output is a scratch target.
+			var compositePush = resolvePush;
+			compositePush.TemporalOn = 0;
+			compositePush.OutputAccum = 0;
+			let scratch = graph.CreateTransient("ssgi.compositeScratch", .(cHdrFormat, width, height));
+			let currentView = mViews[viewIndex].Views[currentSlot];
+			let smoothed = source;
+			graph.AddRenderPass("ssgi.composite", scope (builder) =>
+				{
+					builder.SetColorTarget(0, composited, .Clear, .Store, .Black);
+					builder.SetColorTarget(1, scratch, .Clear, .Store, .Black);
+					builder.ReadTexture(smoothed);
+					builder.ReadTexture(historyCurrent);
+					builder.ReadTexture(velocity);
+					builder.ReadTexture(hdr);
+					builder.ReadTexture(albedo);
+					builder.ReadTexture(normal);
+					if (shHandle.IsValid)
+						builder.ReadBuffer(shHandle);
+					builder.NeverCull();
+
+					builder.SetExecute(new (encoder) =>
+						{
+							var inputs = BindGroupInputs<5>();
+							inputs.Set(0, graph.GetTextureView(smoothed), graph.GetTextureGeneration(smoothed));
+							inputs.Set(1, graph.GetTextureView(velocity), graph.GetTextureGeneration(velocity));
+							inputs.Set(2, graph.GetTextureView(hdr), graph.GetTextureGeneration(hdr));
+							inputs.Set(3, graph.GetTextureView(albedo), graph.GetTextureGeneration(albedo));
+							inputs.Set(4, graph.GetTextureView(normal), graph.GetTextureGeneration(normal));
+							inputs.SetBuffer(shBuffer, shGeneration);
+							let bindGroup = EnsureResolveBindGroup(mCompositeBindGroups, currentView, inputs);
+							if (bindGroup == null)
+								return;
+
+							encoder.SetPipeline(mResolvePipeline);
+							encoder.SetBindGroup(0, bindGroup);
+
+							var constants = compositePush;
+							encoder.SetPushConstants(.Fragment, 0, sizeof(SsgiResolvePush), &constants);
+							encoder.Draw(3, 1, 0, 0);
+						});
+				});
+		}
 
 		mViews[viewIndex].Current = previousSlot;
 		mViews[viewIndex].Valid = true;
@@ -799,12 +877,13 @@ class SsgiPass
 		return bindGroup;
 	}
 
-	private IBindGroup EnsureResolveBindGroup(ITextureView historyPrevious, BindGroupInputs<5> inputs)
+	private IBindGroup EnsureResolveBindGroup(BindGroupCache<5> cache, ITextureView historyPrevious,
+		BindGroupInputs<5> inputs)
 	{
 		if ((historyPrevious == null) || !inputs.Complete)
 			return null;
 
-		if (let cached = mResolveBindGroups.Find(historyPrevious, inputs, var stale))
+		if (let cached = cache.Find(historyPrevious, inputs, var stale))
 			return cached;
 		// A frame in flight may still bind the stale group, so it is retired, not destroyed.
 		if (stale != null)
@@ -828,7 +907,7 @@ class SsgiPass
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
 
-		mResolveBindGroups.Store(historyPrevious, inputs, bindGroup);
+		cache.Store(historyPrevious, inputs, bindGroup);
 		return bindGroup;
 	}
 
@@ -859,6 +938,7 @@ class SsgiPass
 		mBlurBindGroups.Clear();
 
 		mResolveBindGroups.Release(scope (bindGroup) => { var group = bindGroup; mDevice.DestroyBindGroup(ref group); });
+		mCompositeBindGroups.Release(scope (bindGroup) => { var group = bindGroup; mDevice.DestroyBindGroup(ref group); });
 
 		for (var retired in ref mRetired)
 		{
