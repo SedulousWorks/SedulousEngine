@@ -179,9 +179,11 @@ class ShaderSystem
 
 		// A registered source (a project's shader, a bespoke inline one) compiles while a
 		// compiler is here: the editor's source is newer than any pack. Without one (a shipped
-		// build) the pack serves it like the corpus: the export cooked the project's shaders into
-		// it, with their entry points and lattices, and only a variant it lacks is a loud miss.
-		if ((mCompiler != null) && mSources.ContainsKey(SourceKey(name, stage)))
+		// build), or when the source is empty (an export stripped it and cooked the shader into
+		// the pack instead: a dist's player can still carry a compiler, a dev build does), the
+		// pack serves it like the corpus, with its entry points and lattices, and only a variant
+		// it lacks is a loud miss.
+		if ((mCompiler != null) && mSources.TryGetValue(SourceKey(name, stage), let registered) && !registered.Hlsl.IsEmpty)
 			return GetCompiledVariant(name, stage, flags);
 		return GetCookedVariant(name, stage, flags);
 	}

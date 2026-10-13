@@ -383,6 +383,39 @@ class ShaderSystemTests
 		Test.Assert(shaders.GetVariant("toon", .Vertex, .None) == null, "a stage the pack never cooked is a miss");
 	}
 
+	/// A dist's player can carry a compiler (a dev build exported as a host template does), but the
+	/// export stripped the project shader's source: an empty registered source is served from the
+	/// pack, never compiled (DXC would report a missing entry point).
+	[Test]
+	public static void WithACompilerAStrippedRegisteredShaderIsServedFromThePack()
+	{
+		IBackend backend = null;
+		let device = MakeDevice(&backend);
+		Test.Assert(device != null);
+		defer
+		{
+			device.Destroy();
+			backend.Destroy();
+			delete backend;
+		}
+
+		let compiler = MakeCompiler();
+		if (compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		defer delete compiler;
+
+		uint8[4] blob = .(1, 2, 3, 4);
+		let pack = scope CookedShaderPack();
+		pack.Add("toon", .Fragment, .None, .SpirV, blob);
+		pack.AddEntryPoint("toon", .Fragment, "PSMain");
+
+		let shaders = scope Sedulous.Shaders.ShaderSystem(compiler, device);
+		shaders.SetCookedPack(pack);
+		shaders.RegisterSource("toon", .Fragment, "", "PSMain");
+		let module = shaders.GetVariant("toon", .Fragment, .None);
+		Test.Assert((module != null) && (module.EntryPoint == "PSMain"));
+		Test.Assert(shaders.FailedVariantCount == 0, "nothing was compiled");
+	}
+
 	/// Removing a source drops it: the next request has nothing to compile.
 	[Test]
 	public static void RemovingASourceDropsIt()
