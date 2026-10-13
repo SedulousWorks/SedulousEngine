@@ -21,6 +21,10 @@ struct BoxConstraints
 		MaxHeight = maxHeight;
 	}
 
+	public static bool operator==(BoxConstraints a, BoxConstraints b) =>
+		(a.MinWidth == b.MinWidth) && (a.MaxWidth == b.MaxWidth) && (a.MinHeight == b.MinHeight)
+		&& (a.MaxHeight == b.MaxHeight);
+
 	/// An exact size on both axes.
 	public static BoxConstraints Tight(float width, float height) =>
 		.(width, width, height, height);

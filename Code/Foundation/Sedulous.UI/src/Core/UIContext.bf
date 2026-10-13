@@ -20,6 +20,7 @@ class UIContext
 	// first frame unlaid-out, and it stays that way until something resizes the window.
 	private bool mNeedsRedraw = true;
 	private bool mNeedsLayout = true;
+	private uint64 mMeasureGeneration = 1;
 	private float mDeltaTime = 0.0f;
 	private float mTotalTime = 0.0f;
 
@@ -102,7 +103,13 @@ class UIContext
 		mNeedsLayout = true;
 		// A relayout always redraws.
 		mNeedsRedraw = true;
+		// What a view measured before may no longer hold.
+		mMeasureGeneration++;
 	}
+
+	/// Views answer repeat measures within one generation (View.Measure); a new layout pass
+	/// or any invalidation starts the next.
+	public uint64 MeasureGeneration => mMeasureGeneration;
 
 	public float DeltaTime => mDeltaTime;
 	public float TotalTime => mTotalTime;
@@ -365,6 +372,8 @@ class UIContext
 			return;
 
 		mPhase = .Layout;
+		// A pass measures afresh, then reuses answers within itself.
+		mMeasureGeneration++;
 		let logical = root.LogicalSize;
 		root.Measure(BoxConstraints.Tight(logical.X, logical.Y));
 		root.Layout(0, 0, logical.X, logical.Y);

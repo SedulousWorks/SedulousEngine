@@ -12,6 +12,27 @@ extension View
 	private LayoutStyle mEffectiveLayout = .();
 	private bool mStyledOverflowHidden = false;
 
+	/// One of the measure store's answers (Measure).
+	private struct MeasureAnswer
+	{
+		public BoxConstraints Constraints;
+		public Float2 Size;
+	}
+	/// Eight: each nesting level below brings a request of its own (its measured height), so a
+	/// deep page needs a few; four evicted answers still wanted, and the counts grew again.
+	private const int cMeasureAnswers = 8;
+	/// This pass's last few answers.
+	private MeasureAnswer[cMeasureAnswers] mMeasureAnswers = default;
+	private int mMeasureAnswerCount = 0;
+	private int mMeasureAnswerNext = 0;
+	private uint64 mMeasureGeneration = uint64.MaxValue;
+	/// What the subtree's state was last really measured for.
+	private BoxConstraints mMeasuredFor = .();
+	/// The last request, which is what the parent lays this view out by.
+	private BoxConstraints mMeasureRequest = .();
+	/// The last request was answered from the store for other constraints than mMeasuredFor.
+	private bool mMeasureStale = false;
+
 	/// This view's EFFECTIVE placement: every declared inline field, with the undeclared ones
 	/// filled from the cascade. Read by whichever container holds the view.
 	public LayoutStyle Layout => mEffectiveLayout;
@@ -238,8 +259,53 @@ extension View
 	/// so no parent has to, and the FIXED size spec, resolved here once in logical units.
 	/// Match and Wrap stay parent negotiated looseness, since resolving Match here would
 	/// defeat a container's deliberate cross axis demotion.
+	///
+	/// Within one layout pass a view answers a repeat request with the same constraints from
+	/// its last answers (up to eight) rather than measuring its subtree again: nested flex
+	/// containers measure each child more than once, and that doubled at every level (a deep
+	/// page measured its leaves hundreds of times a pass). The answer is the same; what a
+	/// stored answer cannot bring back is the subtree's own state (each child keeps what its
+	/// LAST real measure gave it), so Layout first measures the subtree again, once, when the
+	/// last request was answered from the store for other constraints than the subtree holds.
+	/// Invalidation (MarkNeedsLayout) and each layout pass start the store afresh.
 	public void Measure(BoxConstraints constraints)
 	{
+		mMeasureRequest = constraints;
+		if (Context == null)
+		{
+			MeasureUncached(constraints);
+			return;
+		}
+		let generation = Context.MeasureGeneration;
+		if (mMeasureGeneration != generation)
+		{
+			mMeasureGeneration = generation;
+			mMeasureAnswerCount = 0;
+			mMeasureAnswerNext = 0;
+		}
+		else
+		{
+			for (int i < mMeasureAnswerCount)
+			{
+				if (mMeasureAnswers[i].Constraints == constraints)
+				{
+					MeasuredSize = mMeasureAnswers[i].Size;
+					mMeasureStale = !(constraints == mMeasuredFor);
+					return;
+				}
+			}
+		}
+		MeasureUncached(constraints);
+		mMeasureAnswers[mMeasureAnswerNext] = .() { Constraints = constraints, Size = MeasuredSize };
+		mMeasureAnswerNext = (mMeasureAnswerNext + 1) % cMeasureAnswers;
+		mMeasureAnswerCount = Math.Min(mMeasureAnswerCount + 1, cMeasureAnswers);
+	}
+
+	/// The real measure, which the store in Measure answers repeats of.
+	private void MeasureUncached(BoxConstraints constraints)
+	{
+		mMeasuredFor = constraints;
+		mMeasureStale = false;
 		// This view's effective layout, and its children's: a container reads child.Layout
 		// before measuring each child.
 		RefreshEffectiveLayout();
@@ -356,6 +422,11 @@ extension View
 	/// composes to the global one because every ancestor rounds too.
 	public void Layout(float x, float y, float width, float height)
 	{
+		// The parent lays this view out by its last answer; when that came from the measure
+		// store for other constraints than the subtree last held, measure the subtree for it,
+		// once, so every child lays out by what that request gives it (Measure).
+		if (mMeasureStale)
+			MeasureUncached(mMeasureRequest);
 		let margin = mEffectiveLayout.Margin.Value;
 		var left = x + margin.Left;
 		var top = y + margin.Top;
