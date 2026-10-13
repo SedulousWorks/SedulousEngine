@@ -104,8 +104,12 @@ class TouchGuideView : AbsoluteLayout
 			label.SetLayout(place);
 			label.TextColor.Value = Color(1.0f, 1.0f, 1.0f, mControls[i].Down ? 1.0f : 0.85f);
 		}
+		// Redraw while a control shows (fingers move), and once more as the last one goes; idle
+		// with nothing shown it asks for nothing, rather than a layout every frame.
+		let wasShown = Visibility == .Visible;
 		Visibility = mControls.IsEmpty ? .Gone : .Visible;
-		Invalidate();
+		if (!mControls.IsEmpty || wasShown)
+			Invalidate();
 	}
 
 	public override void OnDraw(UIDrawContext ctx)

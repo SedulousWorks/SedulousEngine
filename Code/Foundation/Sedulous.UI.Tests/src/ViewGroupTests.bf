@@ -174,6 +174,36 @@ class ViewGroupTests
 		Test.Assert(context.NeedsLayout);
 	}
 
+	/// Setting a button's text or a scroll bar's viewport to what it already is marks no damage.
+	/// A page syncing its toolbar each frame, and a scroll view setting its bars from its own
+	/// Layout, kept the editor re-laying-out its whole window every frame. A change still asks.
+	[Test]
+	public static void SettingAButtonsTextOrAScrollBarsViewportToWhatItIsMarksNoDamage()
+	{
+		MakeTree(let context, let root, 200, 300);
+		defer { root.ReleaseRef(); delete context; }
+
+		let button = new Button("Pin");
+		let bar = new ScrollBar();
+		root.AddView(button);
+		root.AddView(bar);
+		bar.ViewportSize = 120.0f;
+		UITest.LayoutPass(context, root);
+		context.ClearLayoutDamage();
+
+		button.SetText("Pin");
+		bar.ViewportSize = 120.0f;
+		bar.IsHorizontal = bar.IsHorizontal;
+		Test.Assert(!context.NeedsLayout, "an identical value is not a change");
+
+		button.SetText("Unpin");
+		Test.Assert(context.NeedsLayout);
+		UITest.LayoutPass(context, root);
+		context.ClearLayoutDamage();
+		bar.ViewportSize = 90.0f;
+		Test.Assert(context.NeedsLayout);
+	}
+
 	/// A VISUAL invalidation asks for a redraw without asking for a relayout.
 	///
 	/// That distinction is what keeps a hover tint, a press state or a focus ring from

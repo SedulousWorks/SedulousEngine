@@ -66,7 +66,12 @@ class ScrollBar : View
 		set
 		{
 			// Never zero: the thumb ratio divides by it.
-			mViewportSize = Max(1.0f, value);
+			let size = Max(1.0f, value);
+			// On a change only: a scroll view sets its bars' viewport from its own Layout, and an
+			// unconditional invalidate there asked for another layout every frame, forever.
+			if (mViewportSize == size)
+				return;
+			mViewportSize = size;
 			Invalidate();
 		}
 	}
@@ -76,6 +81,8 @@ class ScrollBar : View
 		get => mIsHorizontal;
 		set
 		{
+			if (mIsHorizontal == value)
+				return;
 			mIsHorizontal = value;
 			Invalidate();
 		}

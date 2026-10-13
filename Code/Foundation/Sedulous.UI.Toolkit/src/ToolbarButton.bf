@@ -30,8 +30,12 @@ class ToolbarButton : ToolbarItem
 
 	public StringView Text => mText;
 
+	/// Invalidates on a change only: a page syncs its toolbar every frame, and an unconditional
+	/// invalidate re-laid-out the whole editor each frame.
 	public void SetText(StringView text)
 	{
+		if (StringView(mText) == text)
+			return;
 		mText.Set(text);
 		Invalidate();
 	}

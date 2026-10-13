@@ -106,4 +106,30 @@ class ToolbarTests
 		menuButton.Measure(constraints);
 		Test.Assert(menuButton.MeasuredSize.X == plain.MeasuredSize.X + ToolbarMenuButton.CaretWidth);
 	}
+
+	/// Setting a button's text to what it is marks no damage: a page syncs its toolbar every
+	/// frame, and an unconditional invalidate re-laid-out the editor each frame. A change still
+	/// asks.
+	[Test]
+	public static void SettingAButtonsTextToWhatItIsMarksNoDamage()
+	{
+		let context = scope UIContext();
+		let root = new RootView();
+		defer root.ReleaseRef();
+		root.ViewportSize = .(400, 100);
+		context.AddRootView(root);
+		let bar = new Toolbar();
+		root.AddView(bar);
+		let button = bar.AddButton("Pin");
+		context.BeginFrame(0.016f);
+		root.Measure(BoxConstraints.Tight(400, 100));
+		root.Layout(0, 0, 400, 100);
+		context.ClearLayoutDamage();
+
+		button.SetText("Pin");
+		Test.Assert(!context.NeedsLayout, "an identical text is not a change");
+		button.SetText("Unpin");
+		Test.Assert(context.NeedsLayout);
+		Test.Assert(button.Text == "Unpin");
+	}
 }

@@ -36,11 +36,12 @@ class Button : ButtonBase
 		// The property compares CONTENT and keeps the old string for equal text, so which
 		// of the two is the stale one is decided by identity: a per frame SetText with an
 		// unchanged label leaked a string a frame.
+		// The property invalidates on a change only: a caller that sets the same text every
+		// frame (a toolbar's state sync) must not re-lay-out the window each frame.
 		if (Text.Value === replacement)
 			delete previous;
 		else
 			delete replacement;
-		Invalidate();
 	}
 
 	/// A button's own padding when no sheet declares one, so it is comfortable untheme d.
