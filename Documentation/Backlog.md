@@ -101,6 +101,16 @@ mJitterIndex, view.Width, view.Height)`), the variance clip's gamma (1.25) and b
 Catmull-Rom sampling or a sharpening pass. Measure frame to frame edge change on a static scene
 before and after each change.
 
+### An orthographic scene view clips what lies nearer than its eye
+Found 2026-10-13 checking the orthographic scene view, the same in Raptor (queued in its
+backlog-0.1). The editor camera keeps the eye where perspective had it (`EditorCamera.
+Projection`, near plane 0.1), so under orthographic everything between the eye's plane and the
+viewer is clipped: a view tipped down shows bare backdrop below the near ground. A design
+choice, not a slip. Pulling the eye back along the view moves the render camera, the gizmo
+camera and the picking ray's origin, and shifts what is measured from the eye (cascade splits,
+fog). A negative near plane meets shaders that assume a positive view depth (TAA's disocclusion
+divides by it). Raptor builds the fix first; port it.
+
 ### Auto exposure settles visibly at the start of a scene
 Raptor's finding (2026-10-03), the same here: a scene loads with the exposure where the last one
 left it and adapts toward its target over a second or two, a dim and brighten every time a level
