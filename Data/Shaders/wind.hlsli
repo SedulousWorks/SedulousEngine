@@ -24,9 +24,8 @@ cbuffer Material : register(b0, space2) {
     float  WindHeight;         // the local y at which the sway reaches full strength (roots at y <= 0)
 };
 
+#include "wind_sway.hlsli"
+
 float3 WindSway(float3 worldPos, float localY, float time) {
-    float mask  = saturate(localY / max(WindHeight, 1e-3));
-    float phase = time * WindSpeed + dot(worldPos.xz, float2(0.37, 0.61));
-    float sway  = sin(phase) * 0.7 + sin(phase * 2.3 + 1.7) * 0.3;
-    return float3(sway, 0.0, 0.6 * sway) * (WindStrength * mask * mask);
+    return WindSwayOf(worldPos, localY, time, WindStrength, WindSpeed, WindHeight);
 }

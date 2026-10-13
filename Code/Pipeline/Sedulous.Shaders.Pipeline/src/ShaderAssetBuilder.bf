@@ -9,8 +9,9 @@ using Sedulous.Shaders.Resource;
 
 namespace Sedulous.Shaders.Pipeline;
 
-/// Cooks a shader asset: reads its one file, replaces its properties block with the generated
-/// set-2 declarations, and COMPILES every variant both stages declare, with the engine's shader
+/// Cooks a shader asset: reads its one file (a low-level shader, or a surface shader assembled
+/// from the engine's templates into its forward, depth and pick programs), replaces its properties
+/// block with the generated set-2 declarations, and COMPILES every variant both stages declare, with the engine's shader
 /// library on the include path. A failure fails the cook with `File.hlsl:line: message` (the
 /// cook keeps the last good product), so a broken shader is caught here rather than at draw
 /// time, every frame. Success writes a ShaderSource carrying the expanded source, both entries,
@@ -66,14 +67,23 @@ class ShaderAssetBuilder : IAssetBuilder
 		if (!check.IsOk)
 			return .Err(.InvalidArgument);
 
+		// The main program, then the others (a surface shader's depth and pick).
+		let main = check.Programs[0];
 		let cooked = scope ShaderSource();
 		cooked.Name.Set(shader.Name);
-		cooked.VertexSource.Set(check.Expanded);
-		cooked.FragmentSource.Set(check.Expanded);
-		cooked.VertexEntryPoint.Set(shader.VertexEntryPoint);
-		cooked.FragmentEntryPoint.Set(shader.FragmentEntryPoint);
-		cooked.VertexVariantMask = (uint32)check.VertexMask;
-		cooked.FragmentVariantMask = (uint32)check.FragmentMask;
+		cooked.VertexSource.Set(main.Text);
+		cooked.FragmentSource.Set(main.Text);
+		cooked.VertexEntryPoint.Set(main.VertexEntryPoint);
+		cooked.FragmentEntryPoint.Set(main.FragmentEntryPoint);
+		cooked.VertexVariantMask = (uint32)main.VertexMask;
+		cooked.FragmentVariantMask = (uint32)main.FragmentMask;
+		for (int i = 1; i < check.Programs.Count; i++)
+		{
+			let program = check.Programs[i];
+			cooked.AddProgram(program.Suffix, program.Text, program.VertexEntryPoint, program.VertexMask,
+				program.Text, program.FragmentEntryPoint, program.FragmentMask);
+		}
+		cooked.DepthProgramsAlways = check.HasVertex; // it moves its vertices in every pass
 		cooked.SetProperties(check.Block);
 		return context.Output.WriteObject(cooked);
 	}

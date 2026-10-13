@@ -567,6 +567,77 @@ static class ExportDriverTests
 		Test.Assert(pack.Find("tonemap", .Fragment, .None, .SpirV) case .Err, "and nothing the browser cannot use");
 	}
 
+	/// A surface shader is three programs: the dist's pack holds the depth and pick programs'
+	/// variants beside the forward one's, and the dist's product keeps none of their HLSL.
+	[Test]
+	public static void ASurfaceShaderShipsItsDepthAndPickProgramsInTheDistPack()
+	{
+		{
+			let probe = scope Sedulous.Shaders.ShaderCompiler();
+			if (probe.Initialize() case .Err) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		}
+		let fx = scope ExportProjectFixture("scratch_export_surface");
+		let dataRoot = ExportProjectFixture.DataRoot(.. scope .());
+		Sedulous.Shaders.Pipeline.ShadersPipeline.RegisterAll();
+		Sedulous.Shaders.Resource.ShaderResources.RegisterAll();
+		{
+			let sources = scope NativeFileSystem(fx.Project.SourcesRoot(.. scope .()));
+			let text = """
+				// surface: lit
+				properties
+				{
+				    float Height = 0.2;
+				}
+				void Surface(SurfaceInput input, inout SurfaceOutput surface) {
+				    surface.albedo = float3(0.1, 0.4, 0.8);
+				}
+				void Vertex(inout VertexInput v) {
+				    v.position.y += sin(v.position.x + Time()) * Height;
+				}
+				""";
+			Test.Assert(sources.Save("waves.hlsl", .((uint8*)text.Ptr, text.Length)) case .Ok);
+			let asset = scope Sedulous.Shaders.Pipeline.ShaderAsset();
+			Sedulous.Shaders.Pipeline.ShaderImporter.Import("waves", "waves.hlsl", asset);
+			let instance = fx.Project.SourceDb.RootGroup.CreateInstance("waves", typeof(Sedulous.Shaders.Pipeline.ShaderAsset).GetFullName(.. scope .()));
+			Test.Assert((instance != null) && (instance.WriteObject(asset) case .Ok));
+		}
+		fx.Builders.Register(new Sedulous.Shaders.Pipeline.ShaderAssetBuilder(dataRoot));
+
+		let preset = ExportProjectFixture.HostPreset("dist", "dist");
+		defer delete preset;
+		let result = scope ExportResult();
+		Test.Assert(ExportDriver.ExportOne(fx.Project, preset, fx.Templates, fx.Builders, fx.OutRoot, dataRoot, false, result) case .Ok);
+		Test.Assert(result.Content.CookFailed == 0);
+
+		let packStream = scope NativeFileSystem(result.OutputDir).Open("Data/Shaders/shaders.dpak", .Read);
+		Test.Assert(packStream != null);
+		defer delete packStream;
+		let pack = scope Sedulous.Shaders.CookedShaderPack();
+		Test.Assert(pack.Read(packStream) case .Ok);
+		Test.Assert(pack.Find("waves", .Fragment, .GBuffer, .SpirV) case .Ok);
+		Test.Assert(pack.Find("waves.depth", .Vertex, .Instanced, .SpirV) case .Ok);
+		Test.Assert(pack.Find("waves.depth", .Fragment, .AlphaTest, .SpirV) case .Ok);
+		Test.Assert(pack.Find("waves.pick", .Vertex, .Skinned, .SpirV) case .Ok);
+
+		SerializerFactory binary = scope (stream, mode) => new BinarySerializerContext(stream, mode);
+		let pak = scope PakFileSystem(PathJoin(result.OutputDir, ProjectLayout.DistContentPak, .. scope .()));
+		let db = OpenDistPak(result.OutputDir, pak, binary);
+		defer delete db;
+		let product = db.GetInstanceByPath("waves");
+		Test.Assert(product != null);
+		let object = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(product.ReadObject()));
+		defer delete object;
+		let source = object as Sedulous.Shaders.Resource.ShaderSource;
+		Test.Assert(source != null);
+		Test.Assert(source.DepthProgramsAlways, "it moves its vertices");
+		let programs = scope List<Sedulous.Shaders.Resource.ShaderProgram>();
+		defer { ClearAndDeleteItems!(programs); }
+		source.GetPrograms(programs);
+		Test.Assert(programs.Count == 3);
+		for (let program in programs)
+			Test.Assert(program.VertexSource.IsEmpty && program.FragmentSource.IsEmpty, "no HLSL in the dist");
+	}
+
 	/// A project's custom shader ships as bytecode: the export cooks both its stages, every
 	/// declared variant under its entry point, into the dist's shader pack beside the engine's,
 	/// so a compiler free player draws it; the dist's product carries no HLSL unless the preset

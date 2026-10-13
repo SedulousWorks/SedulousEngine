@@ -126,11 +126,31 @@ VSOutput FORWARD_VS_ENTRY(VSInput input) {
     worldPos.xyz     += WindSway(worldPos.xyz, lp.y, IblParams.z);
     prevWorldPos.xyz += WindSway(prevWorldPos.xyz, lpPrev.y, IblParams.w);
 #endif
+#ifdef SURFACE_PROGRAM
+    // A surface shader's Vertex(): this frame's position at this frame's time, and last frame's at
+    // last frame's (so a moving surface reprojects); the normal and tangent are this frame's.
+    float3 nWS = mul(float4(ln, 0.0), world).xyz;
+    float3 tWS = mul(float4(lt, 0.0), world).xyz;
+    float4 color = input.color * tint;
+    {
+        float3 nPrev = nWS;
+        float3 tPrev = tWS;
+        SurfaceVertexApply(prevWorldPos.xyz, nPrev, tPrev, lpPrev, input.uv, color, IblParams.w);
+    }
+    SurfaceVertexApply(worldPos.xyz, nWS, tWS, lp, input.uv, color, IblParams.z);
+#endif
     o.clip      = mul(worldPos, ViewProj);
+#ifdef SURFACE_PROGRAM
+    o.normalWS  = normalize(nWS);
+    o.color     = color;
+    o.uv        = input.uv;
+    o.tangentWS = float4(tWS, input.tangent.w);
+#else
     o.normalWS  = normalize(mul(float4(ln, 0.0), world).xyz);
     o.color     = input.color * tint;                           // vertex color * per-instance tint
     o.uv        = input.uv;                                     // consume the full vertex layout
     o.tangentWS = float4(mul(float4(lt, 0.0), world).xyz, input.tangent.w);
+#endif
     o.worldPos  = worldPos.xyz;
     o.curClip   = o.clip;                                        // (jitter is baked into ViewProj; PS unjitters)
     o.prevClip  = mul(prevWorldPos, PrevViewProj);
