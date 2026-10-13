@@ -1,0 +1,25 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Integration.Shaders"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Integration.Shaders.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Materials.PipelineCache" = "*"
+"Sedulous.Render" = "*"
+"Sedulous.Render.Api" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.TestSupport" = "*"
+"Sedulous.RHI.DX12" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+"Sedulous.RHI.WebGPU" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Shaders.System" = "*"
+"Sedulous.Shaders.Resource" = "*"
+"Sedulous.Shaders.Pipeline" = "*"
