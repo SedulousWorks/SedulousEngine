@@ -49,10 +49,15 @@ float Quantize(float value, float bands) {
 
 // One light's toon contribution: the banded diffuse between the shadow colour and the albedo. The
 // light reaches as far as the engine's lights do (LightDirection); only the response is stylised.
+// Only the facing is banded; the shadow is one edge on its own. Banded together, the shadow map's
+// filtered edge became a band of its own (a pale ring around every shadow) and the core's edge
+// traced the shadow map's texels. The edge is a narrow smoothstep rather than a step, so it does
+// not alias; a width from fwidth(shadow) would need uniform control flow, which this per-pixel
+// light loop is not (WGSL refuses the derivative).
 float3 ToonLight(GpuLight light, float3 worldPos, float3 N, float3 albedo, float shadow) {
     float atten;
     float3 L = LightDirection(light, worldPos, atten);
-    float lit = Quantize(saturate(dot(N, L)) * shadow, Bands);
+    float lit = Quantize(saturate(dot(N, L)), Bands) * smoothstep(0.4, 0.6, shadow);
     float3 tone = lerp(ShadowColor.rgb * albedo, albedo, lit);
     return tone * light.color * light.intensity * saturate(atten);
 }
