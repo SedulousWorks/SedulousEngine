@@ -2,6 +2,9 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 // variants: ALPHA_TEST GBUFFER DITHER
+// preserve-interface
+// (Keeps every input of forward_vs.hlsli's VSOutput in the interface, read or not: a variant that
+// does not read one (the fade without DITHER) would otherwise leave a vertex output unmatched.)
 #include "lighting.hlsli"
 #include "forward_ps.hlsli"
 cbuffer Material : register(b0, space2) {    // data-driven PBR material (inferred from properties)

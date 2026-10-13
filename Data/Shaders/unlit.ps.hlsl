@@ -2,6 +2,9 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 // variants: GBUFFER
+// preserve-interface
+// (Keeps every input of forward_vs.hlsli's VSOutput in the interface, read or not: a variant that
+// does not read one (the fade without DITHER) would otherwise leave a vertex output unmatched.)
 #include "view.hlsli"
 
 cbuffer Material : register(b0, space2) {
@@ -19,6 +22,7 @@ struct PSInput {
     float3 worldPos  : TEXCOORD4;
     float4 curClip   : TEXCOORD5;
     float4 prevClip  : TEXCOORD6;
+    nointerpolation float fade : TEXCOORD7;   // forward_vs.hlsli's screen-door fade (unlit has no DITHER)
 };
 
 float2 OctEncode(float3 n) {

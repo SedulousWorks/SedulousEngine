@@ -16,6 +16,7 @@
 // No wind sway: wind.hlsli reads the PBR material's layout, which a toon material does not have.
 // variants(vertex): SKINNED INSTANCED
 // variants(fragment): ALPHA_TEST GBUFFER DITHER
+// preserve-interface (the pixel stage keeps VSOutput's fade input when DITHER is off)
 
 // ==== The vertex stage ====
 #define FORWARD_VS_ENTRY VSMain

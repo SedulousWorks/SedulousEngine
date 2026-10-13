@@ -102,6 +102,7 @@ class ShaderCheck
 			compiler = owned;
 		}
 
+		let preserveInterface = ShaderVariants.ParsePreserveInterfaceDirective(text);
 		StringView[1] includePaths = .(options.ShaderLibrary);
 		(ShaderStage stage, StringView entryPoint, ShaderFlags mask)[2] stages = .(
 			(.Vertex, options.VertexEntryPoint, VertexMask),
@@ -126,6 +127,7 @@ class ShaderCheck
 				compile.BindingShifts = BindingShifts.Standard;
 				compile.BindingShiftSets = 4;
 				compile.SourceName = file;
+				compile.PreserveInterface = preserveInterface; // as the runtime compiles it
 				var result = compiler.Compile(.((uint8*)Expanded.Ptr, Expanded.Length), stage.stage, stage.entryPoint,
 					.SPIRV, compile);
 				defer result.Dispose();

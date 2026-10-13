@@ -2,6 +2,9 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 // variants: SKINNED INSTANCED ALPHA_TEST WIND
+// preserve-interface
+// (Keeps every vertex input in the interface: the pipeline binds the full mesh layout, and an input
+// stripped as unread is an attribute the vertex stage does not consume, a validation warning.)
 cbuffer ShadowView : register(b0, space0) {
     row_major float4x4 LightViewProj;
     float4             ShadowWind;   // x = time (s) for the WIND sway, y/z = the instance fade start/end (a faded set's private slot; 0 = none)

@@ -1784,16 +1784,8 @@ class MeshRenderer : Renderer
 		var skinned = (md.BoneMatrices != null) && (md.BoneCount > 0) && (md.Mesh != null)
 			&& md.Mesh.IsSkinned && (mesh.SkinBuffer != null);
 
-		// A masked caster casts a HOLEY shadow through the alpha test, which needs its material.
-		let masked = (md.Material != null) && (md.Material.Pipeline.BlendMode == .Masked);
-		// A windy caster needs set two as well, the sway reading the material's wind lanes.
-		let wind = MaterialWantsWind(md.Material);
-		var config = pick
-			? PickConfigFor(context, false, masked, wind)
-			: ShadowConfigFor(context, false, masked, wind);
-		// A two sided material picks both faces.
-		if (pick && (md.Material != null))
-			config.CullMode = md.Material.Pipeline.CullMode;
+		let choice = DepthLikeFor(context, md.Material, false, pick);
+		var config = choice.Config;
 
 		if (skinned)
 		{
@@ -1811,7 +1803,7 @@ class MeshRenderer : Renderer
 
 		IBindGroup materialSet = null;
 		var layout = mShadowPipelineLayoutSingle;
-		if (masked || wind)
+		if (choice.MaterialSet)
 		{
 			let set2 = mMaterials.GetOrCreateLayout(md.Material);
 			layout = GetOrCreateShadowMaskedLayout(set2, false);
@@ -1875,15 +1867,8 @@ class MeshRenderer : Renderer
 		let head = (MeshRenderData)items[first].Data;
 		let skinned = (head.BoneMatrices != null) && (head.Mesh != null) && head.Mesh.IsSkinned
 			&& (mesh.SkinBuffer != null);
-		let masked = (head.Material != null) && (head.Material.Pipeline.BlendMode == .Masked);
-		// Set two as well, for the sway.
-		let wind = MaterialWantsWind(head.Material);
-
-		var config = pick
-			? PickConfigFor(context, true, masked, wind)
-			: ShadowConfigFor(context, true, masked, wind);
-		if (pick && (head.Material != null))
-			config.CullMode = head.Material.Pipeline.CullMode;
+		let choice = DepthLikeFor(context, head.Material, true, pick);
+		var config = choice.Config;
 		if (skinned)
 		{
 			config.VertexLayout = .SkinnedMesh;
@@ -1892,7 +1877,7 @@ class MeshRenderer : Renderer
 
 		IBindGroup materialSet = null;
 		var layout = mShadowPipelineLayoutInstanced;
-		if (masked || wind)
+		if (choice.MaterialSet)
 		{
 			let set2 = mMaterials.GetOrCreateLayout(head.Material);
 			layout = GetOrCreateShadowMaskedLayout(set2, true);
@@ -2138,15 +2123,8 @@ class MeshRenderer : Renderer
 			}
 		}
 
-		let masked = (multiMesh.Material != null)
-			&& (multiMesh.Material.Pipeline.BlendMode == .Masked);
-		// Set two as well, for the sway.
-		let wind = MaterialWantsWind(multiMesh.Material);
-		var config = pick
-			? PickConfigFor(context, true, masked, wind)
-			: ShadowConfigFor(context, true, masked, wind);
-		if (pick && (multiMesh.Material != null))
-			config.CullMode = multiMesh.Material.Pipeline.CullMode;
+		let choice = DepthLikeFor(context, multiMesh.Material, true, pick);
+		var config = choice.Config;
 		if (skinned)
 		{
 			config.VertexLayout = .SkinnedMesh;
@@ -2155,7 +2133,7 @@ class MeshRenderer : Renderer
 
 		IBindGroup materialSet = null;
 		var layout = mShadowPipelineLayoutInstanced;
-		if (masked || wind)
+		if (choice.MaterialSet)
 		{
 			let set2 = mMaterials.GetOrCreateLayout(multiMesh.Material);
 			layout = GetOrCreateShadowMaskedLayout(set2, true);
@@ -2209,6 +2187,37 @@ class MeshRenderer : Renderer
 	}
 
 	// ==================== Pipeline configuration ====================
+
+	/// The depth like pipeline (the depth prepass and shadows, or the pick) for a draw of
+	/// `material`, and whether the draw binds the material's set two.
+	public struct DepthLikeChoice
+	{
+		public PipelineConfig Config;
+		/// A masked cut-out, wind, or the material's own program.
+		public bool MaterialSet;
+	}
+
+	/// The built-in program, or the material's own when its shader has one for this pass (it
+	/// moves its vertices, or cuts out with its own alpha): drawn with it, over the material's
+	/// set two it was generated for. One choice for the single, instanced and MultiMesh casters.
+	/// The config names the material's program by view: the material outlives the draw.
+	public static DepthLikeChoice DepthLikeFor(RenderRecordContext context, Material material, bool instanced, bool pick)
+	{
+		// A masked caster casts a HOLEY shadow through the alpha test, which needs its material.
+		let masked = (material != null) && (material.Pipeline.BlendMode == .Masked);
+		// A windy caster needs set two as well, the sway reading the material's wind lanes.
+		let wind = MaterialWantsWind(material);
+		var choice = DepthLikeChoice();
+		choice.Config = pick ? PickConfigFor(context, instanced, masked, wind) : ShadowConfigFor(context, instanced, masked, wind);
+		let own = (material == null) ? StringView() : (pick ? StringView(material.PickShaderName) : StringView(material.DepthShaderName));
+		if (!own.IsEmpty)
+			choice.Config.ShaderName = own;
+		// A two sided material picks both faces.
+		if (pick && (material != null))
+			choice.Config.CullMode = material.Pipeline.CullMode;
+		choice.MaterialSet = masked || wind || !own.IsEmpty;
+		return choice;
+	}
 
 	/// The depth only configuration for a shadow pass.
 	private static PipelineConfig ShadowConfigFor(RenderRecordContext context, bool instanced,

@@ -75,4 +75,42 @@ class WindTests
 		Test.Assert(!scene.HasTime);
 		Test.Assert(scene.TimeSeconds == 0.0f);
 	}
+
+	/// The depth like passes (the depth prepass, the shadow maps, the pick): the built-in programs,
+	/// or a material's own when its shader has them, which then bind the material's set two they
+	/// were generated for.
+	[Test]
+	public static void AMaterialsOwnDepthAndPickProgramsReplaceTheBuiltIns()
+	{
+		let context = RenderRecordContext();
+		let plain = MaterialPresets.CreatePbr("plain");
+		defer delete plain;
+		let builtIn = MeshRenderer.DepthLikeFor(context, plain, false, false);
+		Test.Assert(builtIn.Config.ShaderName == "shadow_depth");
+		Test.Assert(!builtIn.MaterialSet, "opaque, still: no set two");
+		Test.Assert(builtIn.Config.DepthOnly);
+
+		let waves = MaterialPresets.CreatePbr("waves");
+		defer delete waves;
+		waves.DepthShaderName.Set("waves.depth");
+		waves.PickShaderName.Set("waves.pick");
+		waves.Pipeline.CullMode = .None;
+		let depth = MeshRenderer.DepthLikeFor(context, waves, true, false);
+		Test.Assert(depth.Config.ShaderName == "waves.depth");
+		Test.Assert(depth.MaterialSet);
+		Test.Assert(depth.Config.ShaderFlags.HasFlag(.Instanced));
+		Test.Assert(depth.Config.DepthOnly, "opaque: its vertex stage alone");
+		let pick = MeshRenderer.DepthLikeFor(context, waves, false, true);
+		Test.Assert(pick.Config.ShaderName == "waves.pick");
+		Test.Assert(pick.Config.CullMode == .None, "as the material draws");
+
+		// Masked: the cut-out's fragment runs, over the material's set two.
+		waves.Pipeline.BlendMode = .Masked;
+		let masked = MeshRenderer.DepthLikeFor(context, waves, false, false);
+		Test.Assert(!masked.Config.DepthOnly);
+		Test.Assert(masked.Config.ShaderFlags.HasFlag(.AlphaTest));
+
+		// No material: the built-in.
+		Test.Assert(MeshRenderer.DepthLikeFor(context, null, false, true).Config.ShaderName == "pick_ids");
+	}
 }

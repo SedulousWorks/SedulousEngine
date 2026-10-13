@@ -37,6 +37,11 @@ class Material
 
 	public String Name = new .() ~ delete _;
 	public String ShaderName = new .() ~ delete _;
+	/// The shader's own programs for the depth like passes (the camera depth prepass, the shadow
+	/// maps, the editor's pick), when it has them (a surface shader that moves its vertices or
+	/// cuts out with its own alpha); empty is the built-in `shadow_depth` and `pick_ids`.
+	public String DepthShaderName = new .() ~ delete _;
+	public String PickShaderName = new .() ~ delete _;
 	public ShaderFlags ShaderFlags = .None;
 	public PipelineConfig Pipeline = .();
 

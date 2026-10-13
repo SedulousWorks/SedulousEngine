@@ -20,6 +20,7 @@ static class ShaderCreators
 		// every light, shadow and reflection probe; change the pixel stage to make it your own.
 		// variants(vertex): SKINNED INSTANCED
 		// variants(fragment): ALPHA_TEST GBUFFER DITHER
+		// preserve-interface (the pixel stage keeps VSOutput's fade input when DITHER is off)
 
 		// The vertex stage: the engine's, under the name VSMain.
 		#define FORWARD_VS_ENTRY VSMain

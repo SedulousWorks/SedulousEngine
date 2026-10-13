@@ -11,6 +11,9 @@
 //   - MultiMesh set:   cbuffer PickView's SetPickId (one entity for the whole set; its instance
 //                      buffer is persistent and its ramp shared, so the id rides the view slot).
 // variants: SKINNED INSTANCED ALPHA_TEST WIND
+// preserve-interface
+// (Keeps every vertex input in the interface: the pipeline binds the full mesh layout, and an input
+// stripped as unread is an attribute the vertex stage does not consume, a validation warning.)
 cbuffer PickView : register(b0, space0) {
     row_major float4x4 ViewProj;   // the cropped world->clip
     uint2              SetPickId;  // x != 0: every draw in this group is this entity
