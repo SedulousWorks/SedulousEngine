@@ -76,7 +76,7 @@ float4 main(PSInput input) : SV_Target0 {
             N = normalize(nTex.x * T + nTex.y * B + nTex.z * N);
         }
     }
-    float3 V = normalize(CameraPos - input.worldPos);
+    float3 V = ViewDirToCamera(input.worldPos); // parallel under an orthographic view
 
     float4 albedoTex = AlbedoMap.Sample(MainSampler, input.uv);
     float3 albedo    = input.color.rgb * BaseColor.rgb * albedoTex.rgb;

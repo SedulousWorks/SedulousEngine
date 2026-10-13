@@ -102,6 +102,10 @@ class RenderFrame
 	/// Indexed by history slot (HistorySlotFor).
 	private List<Float4x4> mPrevViewProj = new .() ~ delete _;
 	private List<Float4x4> mCurViewProj = new .() ~ delete _;
+	/// The sky's view-projection by history slot (the view's, or an orthographic view's perspective
+	/// stand-in: SkyProjection), for its motion vectors.
+	private List<Float4x4> mPrevSkyViewProj = new .() ~ delete _;
+	private List<Float4x4> mCurSkyViewProj = new .() ~ delete _;
 	private List<Float2> mPrevJitter = new .() ~ delete _;
 	private List<Float2> mCurJitter = new .() ~ delete _;
 
@@ -1091,6 +1095,9 @@ class RenderFrame
 		mPrevViewProj.Clear();
 		for (let value in mCurViewProj)
 			mPrevViewProj.Add(value);
+		mPrevSkyViewProj.Clear();
+		for (let value in mCurSkyViewProj)
+			mPrevSkyViewProj.Add(value);
 		mPrevJitter.Clear();
 		for (let value in mCurJitter)
 			mPrevJitter.Add(value);
@@ -1638,6 +1645,11 @@ class RenderFrame
 		// is applied BEFORE the matrix is read, so the prepass, the forward and the sky all use
 		// the SAME jittered one: a mismatch would break the early rejection.
 		let unjitteredViewProj = view.Camera.ViewProjection;
+		// The sky's own view-projection. A perspective view's is the view's; an orthographic view's
+		// rays are parallel, which would paint the whole background one colour, so the sky draws as
+		// a 60 degree perspective with the same view would see it, and its motion comes from that
+		// stand-in turning.
+		let skyViewProj = SkyProjection.SkyViewProjection(view.Camera);
 		// GPU picking: a view whose viewport has pending requests re-emits its draws as id
 		// writers into per request rect sized targets. Declared BEFORE the jitter below moves
 		// the camera: a pick must see the unjittered pixel grid, or a one texel crop slides by
@@ -1665,6 +1677,11 @@ class RenderFrame
 		while (mCurViewProj.Count <= slot)
 			mCurViewProj.Add(currentViewProj);
 		mCurViewProj[slot] = currentViewProj;
+
+		let prevSkyViewProj = (!historyFresh && (slot < mPrevSkyViewProj.Count)) ? mPrevSkyViewProj[slot] : skyViewProj;
+		while (mCurSkyViewProj.Count <= slot)
+			mCurSkyViewProj.Add(skyViewProj);
+		mCurSkyViewProj[slot] = skyViewProj;
 
 		let prevJitter = (!historyFresh && (slot < mPrevJitter.Count)) ? mPrevJitter[slot] : jitter;
 		while (mCurJitter.Count <= slot)
@@ -1697,13 +1714,15 @@ class RenderFrame
 			// it oscillate below a pixel each frame, which the temporal resolve can only partly
 			// cancel. Unjittered leaves a still camera's sky still; the pass still writes a
 			// geometric motion vector, so a rotation reprojects.
-			let invViewProj = Inverse(unjitteredViewProj);
+			let invViewProj = Inverse(skyViewProj);
 			// The crisp disc is for the untextured skies; a textured environment carries its own.
 			let sunIntensity = viewIbl.HasSunDisc ? viewIbl.Sky.SunIntensity : 0.0f;
+			// An orthographic view's stand-in is unjittered both frames: no jitter to remove.
+			let standIn = view.Camera.IsOrthographic;
 
 			mSky.DeclareSky(mGraph, colorTarget, velocityTarget, depth, viewIbl.EnvHandle,
-				viewIbl.EnvView, colorFormat, mPass.DepthFormat, invViewProj, prevViewProj, jitter,
-				prevJitter, view.Camera.Position, viewIbl.Sky.BackgroundIntensity, viewIbl.SunDir,
+				viewIbl.EnvView, colorFormat, mPass.DepthFormat, invViewProj, standIn ? prevSkyViewProj : prevViewProj,
+				standIn ? Float2(0, 0) : jitter, standIn ? Float2(0, 0) : prevJitter, view.Camera.Position, viewIbl.Sky.BackgroundIntensity, viewIbl.SunDir,
 				viewIbl.Sky.SunAngularSize, .(1.0f, 0.98f, 0.92f), sunIntensity, view.ViewportX,
 				view.ViewportY, view.ViewportWidth, view.ViewportHeight, mFrameIndex, viewIndex,
 				viewIbl.Uid, msaaSamples);

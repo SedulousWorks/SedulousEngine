@@ -16,7 +16,10 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0, float4 col : COLOR0
     // surface behind it. Sample the scene depth, reconstruct its view-space depth, compare to the fragment's.
     if (softDist > 0.0) {
         float d = SceneDepth.Load(int3(int2(pos.xy), 0)).r;
-        float sceneLin = -DepthParams.y / (d * DepthParams.z - DepthParams.x);   // positive view-space depth
+        // Positive view-space depth. Proj[2][3] is -1 for a perspective projection and 0 for an
+        // orthographic one, whose depth is linear: d = Proj[2][2] * z + Proj[3][2].
+        float sceneLin = (DepthParams.z == 0.0) ? (DepthParams.y - d) / DepthParams.x
+                                                : -DepthParams.y / (d * DepthParams.z - DepthParams.x);
         c.a *= saturate((sceneLin - linZ) / max(softDist, 1e-3));
     }
     return c;

@@ -252,6 +252,8 @@ class ParticleRenderer : Renderer
 		var viewUniforms = ViewUniforms();
 		viewUniforms.ViewProj = context.ViewProj;
 		viewUniforms.View = context.ViewMatrix;
+		// The projection's depth terms (M[2][3] is nought for an orthographic projection, which the
+		// shader linearizes as such) and the soft particle fade distance.
 		viewUniforms.DepthParams = .(projection.M[2][2], projection.M[3][2], projection.M[2][3],
 			0.0f);
 		Internal.MemCpy(viewRange.Ptr, &viewUniforms, sizeof(ViewUniforms));

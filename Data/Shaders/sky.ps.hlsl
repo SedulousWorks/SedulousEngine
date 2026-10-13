@@ -29,9 +29,9 @@ PSOut main(PSIn i) {
     float2 curNDC   = i.ndc;
     float2 prevNDC  = prevClip.xy / prevClip.w + Jitter.zw;
     float2 velocity = (curNDC - prevNDC) * float2(0.5, -0.5);
-    // An orthographic view keeps w = 1 for points and so 0 for a direction: no reprojection to take,
-    // and a NaN would poison TAA's history. The sky holds still there for now (orthographic views
-    // P2 gives it a velocity from the camera's turn).
+    // A direction through an orthographic matrix has w = 0. The renderer hands an orthographic
+    // view a perspective stand-in (SkyViewProjection), so this is a guard: a NaN here would
+    // poison TAA's history.
     if (abs(prevClip.w) < 1e-6) { velocity = float2(0.0, 0.0); }
 
     PSOut o; o.color = float4(c, 1.0); o.velocity = velocity; return o;

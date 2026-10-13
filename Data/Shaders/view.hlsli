@@ -29,4 +29,24 @@ cbuffer View : register(b0, space0) {
     float4 IblParams;                  // x = IBL diffuse intensity, y = IBL specular intensity, z = time (s), w = last frame's time
 };
 
+// Whether this view is orthographic: its view-projection's w column is exactly zero then (w stays 1)
+// and never for a perspective one (w is the view depth); neither projection's jitter touches it.
+bool ViewIsOrthographic() {
+    return ViewProj[0][3] == 0.0 && ViewProj[1][3] == 0.0 && ViewProj[2][3] == 0.0;
+}
+
+// The unit direction from a world point toward the viewer: to the camera under perspective; under
+// orthographic every view ray is parallel, so straight back along the view.
+float3 ViewDirToCamera(float3 worldPos) {
+    return ViewIsOrthographic() ? normalize(float3(View[0][2], View[1][2], View[2][2]))
+                                : normalize(CameraPos - worldPos);
+}
+
+// A point toward the viewer for code that takes an eye position and aims at it (a surface's
+// viewDir): the camera itself under perspective; under orthographic, a metre back along the view
+// from the point, so the aim is the parallel view direction.
+float3 ViewEyeFor(float3 worldPos) {
+    return ViewIsOrthographic() ? worldPos + ViewDirToCamera(worldPos) : CameraPos;
+}
+
 #endif

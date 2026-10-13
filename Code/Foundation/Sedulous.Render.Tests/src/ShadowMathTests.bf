@@ -341,4 +341,84 @@ class ShadowMathTests
 		Test.Assert(Near(camera.NearPlane, 0.1f, 2.0e-3f) && Near(camera.FarPlane, 2000.0f, 0.2f));
 		Test.Assert(Near(camera.OrthoHeight, 18.0f, 1.0e-3f));
 	}
+
+	/// An orthographic view's cascades cover its box from the near plane to the reach: a camera
+	/// 30 m back and 20 m tall, a point anywhere across the view at any depth up to the reach,
+	/// lands inside the cascade that covers its depth.
+	[Test]
+	public static void AnOrthographicViewsCascadesCoverItsBoxFromTheNearPlaneToTheReach()
+	{
+		var camera = ViewCamera();
+		let eye = Float3(0, 5, 30);
+		camera.View = Float4x4.LookAtRH(eye, .(0, 0, 0), .(0, 1, 0));
+		camera.Projection = Float4x4.OrthographicRH(20.0f * 16.0f / 9.0f, 20.0f, 0.1f, 200.0f);
+		camera.FarZ = 200.0f;
+		let sun = Normalized(Float3(-0.17f, -0.87f, -0.47f));
+		let cascades = ShadowMath.ComputeCascades(camera, sun, 60.0f, 1024);
+		Test.Assert(cascades.Valid);
+		let toWorld = Inverse(camera.View);
+		let halfW = 10.0f * 16.0f / 9.0f * 0.95f;
+		let halfH = 10.0f * 0.95f;
+		for (let depth in scope float[](0.5f, 12.0f, 35.0f, 59.0f))
+		{
+			int c = 0;
+			while ((c + 1 < ShadowCascades.Count) && (cascades.SplitFar[c] < depth))
+				c++;
+			for (let k in scope Float2[](.(-1, -1), .(1, -1), .(1, 1), .(-1, 1), .(0, 0)))
+			{
+				let world = TransformPoint(Float3(k.X * halfW, k.Y * halfH, -depth), toWorld);
+				let lightClip = TransformPoint(world, cascades.ViewProjection[c]);
+				Test.Assert((Abs(lightClip.X) <= 1.0f) && (Abs(lightClip.Y) <= 1.0f), scope $"depth {depth}, cascade {c}: {lightClip}");
+				Test.Assert((lightClip.Z >= 0.0f) && (lightClip.Z <= 1.0f), scope $"depth {depth}, cascade {c}: {lightClip}");
+			}
+		}
+	}
+
+	/// An orthographic view's sky draws through a perspective stand-in; a perspective view's sky
+	/// is the view's own.
+	[Test]
+	public static void AnOrthographicViewsSkyDrawsThroughAPerspectiveStandIn()
+	{
+		var camera = ViewCamera();
+		let eye = Float3(0, 2, 10);
+		camera.Position = eye;
+		camera.View = Float4x4.LookAtRH(eye, .(0, 2, 0), .(0, 1, 0));
+		camera.Projection = Float4x4.PerspectiveFovRH(1.0f, 16.0f / 9.0f, 0.1f, 500.0f);
+		let perspectiveSky = SkyProjection.SkyViewProjection(camera);
+		let perspectiveView = camera.ViewProjection;
+		for (int r < 4)
+			for (int c < 4)
+				Test.Assert(perspectiveSky.M[r][c] == perspectiveView.M[r][c]);
+
+		// An orthographic view's: a 60 degree perspective looking where the view looks.
+		camera.Projection = Float4x4.OrthographicRH(16.0f, 9.0f, 0.1f, 500.0f);
+		let sky = SkyProjection.SkyViewProjection(camera);
+		// w carries depth again: the view-projection's w column is not nought (view.hlsli's test).
+		Test.Assert(Abs(sky.M[0][3]) + Abs(sky.M[1][3]) + Abs(sky.M[2][3]) > 0.5f);
+		let inverseSky = Inverse(sky);
+		Float3 Ray(float x, float y)
+		{
+			let h = Float4(x, y, Projection.NdcDepthFar, 1.0f) * inverseSky;
+			return Normalized(Float3(h.X / h.W, h.Y / h.W, h.Z / h.W) - eye);
+		}
+		let centre = Ray(0.0f, 0.0f);
+		Test.Assert(Near(centre.Z, -1.0f, 1.0e-4f));
+		let top = Ray(0.0f, 1.0f); // half of 60 degrees above the view
+		Test.Assert(Near(Atan2(top.Y, -top.Z), 0.5235988f, 1.0e-3f));
+
+		// A direction lands where it did for a still camera, and moves when the camera turns: the
+		// sky's motion (a direction through an orthographic matrix has w nought, no motion at all).
+		Float2 NdcOf(Float4x4 viewProj, Float3 direction)
+		{
+			let clip = Float4(direction.X, direction.Y, direction.Z, 0.0f) * viewProj;
+			return .(clip.X / clip.W, clip.Y / clip.W);
+		}
+		let direction = Normalized(Float3(0.2f, 0.1f, -1.0f));
+		let still = NdcOf(sky, direction);
+		var turned = camera;
+		turned.View = Float4x4.LookAtRH(eye, .(0.3f, 2, 0), .(0, 1, 0));
+		let moved = NdcOf(SkyProjection.SkyViewProjection(turned), direction);
+		Test.Assert(Abs(moved.X - still.X) > 0.01f);
+		Test.Assert(moved.X == moved.X, "finite");
+	}
 }

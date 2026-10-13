@@ -23,7 +23,8 @@ float4 PSMain(VSOutput input) : SV_Target0 {
     ScreenDoorFade(input.clip.xy, input.fade);
 #endif
     SurfaceOutput s = SurfaceEvaluate(input.worldPos, input.normalWS, input.tangentWS, input.uv,
-                                      input.color, CameraPos, input.clip, IblParams.z);
+                                      input.color, ViewEyeFor(input.worldPos), input.clip,
+                                      IblParams.z);
     float alpha = s.alpha;
 #ifdef ALPHA_TEST
     if (alpha < SurfaceAlphaCutoff()) { discard; }
@@ -42,7 +43,7 @@ float4 PSMain(VSOutput input) : SV_Target0 {
     }
     float viewDepth = -mul(float4(input.worldPos, 1.0), View).z;
 #ifdef SURFACE_LIT
-    float3 V         = normalize(CameraPos - input.worldPos);
+    float3 V         = ViewDirToCamera(input.worldPos); // parallel under an orthographic view
     float3 albedo    = s.albedo;
     float  metallic  = saturate(s.metallic);
     float  roughness = clamp(s.roughness, 0.045, 1.0);
