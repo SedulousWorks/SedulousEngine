@@ -9,6 +9,8 @@ using Sedulous.Geometry;
 using Sedulous.Materials;
 using Sedulous.Materials.Resource;
 using Sedulous.Materials.Pipeline;
+using Sedulous.Shaders;
+using Sedulous.Shaders.Resource;
 using Sedulous.Texture.Resource;
 using Sedulous.RHI;
 using Sedulous.Runtime.Client;
@@ -53,6 +55,15 @@ class MaterialEditorPage : UIEditorPage
 	private List<Proxy<Texture>> mPreviewTextures = new .() ~ delete _;
 	private List<ITextureView> mPreviewTextureViews = new .() ~ delete _;
 
+	/// The material's shader asset, when it is on one: its resource (the version says when it
+	/// recooked) and its property table (the rows' ranges).
+	private Proxy<ShaderResource> mShader = default;
+	private uint64 mShaderVersion = 0;
+	private List<ShaderProperty> mShaderTable = new .() ~ DeleteContainerAndItems!(_);
+	/// The rows change with the layout (a shader switched, undone or recooked): rebuilt on the
+	/// next update, never inside the grid callback that caused it.
+	private bool mGridDirty = false;
+
 	/// Borrowed: the content owns it.
 	private PropertyGrid mGrid = null;
 	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
@@ -79,6 +90,7 @@ class MaterialEditorPage : UIEditorPage
 			if (!ForwardMaterialContract.IsComplete(mAsset.Source, missing))
 				GlobalLog(.Error, "Editor: material '{}' is missing the forward shader property '{}' (a stale source); re-create it, the runtime refuses to build it", mTitle, missing);
 		}
+		BindShader(); // a material on a shader asset shows the shader's current properties
 
 		mPreview = new PreviewViewport(host, uiHost, "material.preview");
 		mPreview.Camera.Position = .(0.0f, 0.9f, 2.6f);
@@ -117,6 +129,7 @@ class MaterialEditorPage : UIEditorPage
 		// they go, then the viewport and its scene.
 		ClearPreviewOverrides();
 		ForgetPreviewTextures();
+		mShader.Forget();
 		delete mPreview;
 		delete mPreviewMaterial;
 		delete mPreviewMesh;
@@ -146,6 +159,18 @@ class MaterialEditorPage : UIEditorPage
 				RebuildPreviewMaterial();
 				break;
 			}
+		}
+
+		// The shader asset recooked (its properties may have changed): re-lay the material by it.
+		if ((mShader.Get != null) && (mShader.Get.Version != mShaderVersion))
+		{
+			BindShader();
+			RebuildPreviewMaterial();
+		}
+		if (mGridDirty)
+		{
+			mGridDirty = false;
+			RebuildGrid();
 		}
 
 		for (let refresher in mRefreshers)
@@ -186,7 +211,22 @@ class MaterialEditorPage : UIEditorPage
 	{
 		if (mAsset == null)
 			return;
+		let shaderBefore = mAsset.Source.ShaderId;
+		let namesBefore = scope List<String>();
+		defer { ClearAndDeleteItems!(namesBefore); }
+		for (let name in mAsset.Source.PropertyNames)
+			namesBefore.Add(new String(name));
 		MaterialSourceEdit.Apply(mAsset.Source, blob);
+		// A shader switched (or its switch undone) changes the rows and what the preview binds.
+		if (mAsset.Source.ShaderId != shaderBefore)
+		{
+			BindShader();
+			mGridDirty = true;
+		}
+		var sameRows = namesBefore.Count == mAsset.Source.PropertyNames.Count;
+		for (int i = 0; sameRows && (i < namesBefore.Count); i++)
+			sameRows = namesBefore[i] == mAsset.Source.PropertyNames[i];
+		mGridDirty |= !sameRows;
 		RebuildPreviewMaterial();
 	}
 

@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
+using Sedulous.Core.Serialization;
 using Sedulous.Materials.Resource;
 using Sedulous.Pipeline.Core;
 using Sedulous.Shaders;
@@ -64,11 +66,58 @@ class MaterialAssetBuilder : IAssetBuilder
 	}
 }
 
-/// A material laid out by a custom shader's property table, and a material's values carried onto
-/// another layout of it. The cook lays a material out so; the editor previews one so and keeps its
-/// values when it moves to another shader.
+/// A material laid out by a custom shader's property table, a material's values carried onto
+/// another layout of it, and a material moved to another shader. The cook lays a material out so;
+/// the editor previews one so and keeps its values when it moves to another shader.
 static class MaterialShaderLayout
 {
+	/// Puts a material on a custom shader (`shaderId`, whose cooked `shader` is given): laid out by
+	/// the shader's table, every value whose name, type and size still fit kept. What the material
+	/// page's Shader row does, so a saved material is in its shader's layout (a cook re-lays it
+	/// anyway, but a material left in another layout warns on every cook).
+	public static void SetShader(MaterialSource source, Guid shaderId, ShaderSource shader)
+	{
+		source.ShaderId = shaderId;
+		let laid = scope MaterialSource();
+		LayOut(source, shader, laid);
+		Assign(source, laid);
+	}
+
+	/// Puts a material back on a built-in shader, PBR or Unlit: the built-in's own layout (what
+	/// Create > Materials makes), the material's values and render state carried onto it.
+	public static void SetBuiltInShader(MaterialSource source, bool unlit)
+	{
+		let built = unlit ? MaterialPresets.CreateUnlit(source.Name) : MaterialPresets.CreatePbr(source.Name);
+		defer delete built;
+		let to = scope MaterialSource();
+		MaterialSource.FromMaterial(built, .(), to);
+		to.Name.Set(source.Name);
+		to.BlendMode = source.BlendMode;
+		to.DepthMode = source.DepthMode;
+		to.CullMode = source.CullMode;
+		to.VertexLayout = source.VertexLayout;
+		to.SamplerU = source.SamplerU;
+		to.SamplerV = source.SamplerV;
+		CarryValues(source, to);
+		Assign(source, to);
+	}
+
+	/// Replaces `to` with `from`, every field: its serialization is the complete list of what a
+	/// MaterialSource holds.
+	public static void Assign(MaterialSource to, MaterialSource from)
+	{
+		let stream = scope MemoryStream();
+		{
+			let write = scope BinarySerializer(stream, .Write);
+			ISerializable serializable = from;
+			serializable.Serialize(write);
+		}
+		stream.Seek(0, .Begin);
+		let read = scope BinarySerializer(stream, .Read);
+		ISerializable serializable = to;
+		serializable.Serialize(read);
+	}
+
 	/// A material on a custom shader, laid out by the shader's property table: each property in the
 	/// shader's order and at its offset, at the shader's default, then the authored material's
 	/// values carried over (CarryValues).

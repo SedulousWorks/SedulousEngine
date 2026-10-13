@@ -270,4 +270,70 @@ class MaterialAssetCookTests
 		Test.Assert((carried.X == 1.0f) && (carried.Y == 0.0f));
 		Test.Assert((unlit.TextureSlots.Count == 1) && (unlit.TextureSlots[0] == "AlbedoMap") && (unlit.TextureIds[0] == albedo));
 	}
+
+	/// A material switched onto a custom shader and back, as the material page's Shader row does
+	/// it: on the shader it is the shader's layout with the shader's name and id, its BaseColor and
+	/// render state kept; back on the built-in Unlit it is Unlit's layout, the id nil, the colour and
+	/// state still kept.
+	[Test]
+	public static void AMaterialMovesOntoACustomShaderAndBackKeepingWhatFits()
+	{
+		let block = scope ShaderPropertiesBlock();
+		ShaderProperties.Parse("properties {\n  float Speed = 3;\n  Color BaseColor = (1, 1, 1, 1);\n}\n", block);
+		Test.Assert(block.IsOk);
+		let shader = scope ShaderSource();
+		shader.Name.Set("lava");
+		shader.SetProperties(block);
+
+		let pbrMaterial = MaterialPresets.CreatePbr("m");
+		defer delete pbrMaterial;
+		let source = scope MaterialSource();
+		MaterialSource.FromMaterial(pbrMaterial, Guid(), source);
+		source.CullMode = .None;
+		Float4 red = .(1, 0, 0, 1);
+		Test.Assert(MaterialSourceRead.Write(source, "BaseColor", red));
+
+		let lava = Guid(3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5);
+		MaterialShaderLayout.SetShader(source, lava, shader);
+		Test.Assert((source.ShaderId == lava) && (source.ShaderName == "lava"));
+		Test.Assert((source.PropertyNames.Count == 2) && (source.PropertyNames[0] == "Speed"));
+		Test.Assert(source.CullMode == .None);
+		Test.Assert(MaterialSourceRead.Read<Float4>(source, "BaseColor") == red);
+		Test.Assert(MaterialSourceRead.Read<float>(source, "Speed") == 3.0f, "the shader's default");
+
+		MaterialShaderLayout.SetBuiltInShader(source, true);
+		Test.Assert(source.ShaderId.IsNil && (source.ShaderName == "unlit"));
+		Test.Assert(MaterialSourceRead.Find(source, "Speed") < 0, "Unlit's layout");
+		Test.Assert(source.CullMode == .None);
+		Test.Assert(MaterialSourceRead.Read<Float4>(source, "BaseColor") == red);
+	}
+}
+
+/// Reads and writes a source's packed uniform by name, for the tests.
+static class MaterialSourceRead
+{
+	public static int Find(MaterialSource source, StringView name)
+	{
+		for (int i < source.PropertyNames.Count)
+			if (source.PropertyNames[i] == name)
+				return i;
+		return -1;
+	}
+
+	public static T Read<T>(MaterialSource source, StringView name)
+	{
+		let index = Find(source, name);
+		Test.Assert(index >= 0);
+		return *(T*)(source.UniformDefaults.Ptr + source.PropertyOffsets[index]);
+	}
+
+	public static bool Write<T>(MaterialSource source, StringView name, T value)
+	{
+		let index = Find(source, name);
+		if (index < 0)
+			return false;
+		var v = value;
+		Internal.MemCpy(source.UniformDefaults.Ptr + source.PropertyOffsets[index], &v, sizeof(T));
+		return true;
+	}
 }

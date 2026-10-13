@@ -51,7 +51,9 @@ extension MaterialEditorPage
 			return;
 		let src = mAsset.Source;
 
-		let material = src.ToMaterial(src.ShaderName);
+		// A shader asset draws under its resource's name (binding it registered the source).
+		let shader = mShader.Get;
+		let material = src.ToMaterial((shader != null) ? shader.Name : StringView(src.ShaderName));
 
 		ForgetPreviewTextures();
 		if (mContext.Resources != null)

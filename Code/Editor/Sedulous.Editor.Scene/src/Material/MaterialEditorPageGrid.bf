@@ -8,14 +8,16 @@ using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 
-/// The grid half: the shader line, the preview shape and mesh rows, the pipeline presets,
-/// then one row per declared property: a slider or a float for scalars, a colour for
-/// float4s, a picker for textures.
+/// The grid half: the shader (an asset, or a built-in), the preview shape and mesh rows, the
+/// pipeline presets, then one row per declared property: a slider or a float for scalars, a
+/// row of its size for each vector and int, a colour for declared colours, a picker for
+/// textures.
 extension MaterialEditorPage
 {
 	private static readonly StringView[6] cBlendItems = .("Opaque", "Masked", "AlphaBlend", "Additive", "Multiply", "PremultipliedAlpha");
 	private static readonly StringView[4] cDepthItems = .("Disabled", "ReadWrite", "ReadOnly", "WriteOnly");
 	private static readonly StringView[3] cCullItems = .("None", "Back", "Front");
+	private static readonly StringView[2] cBuiltIns = .("PBR", "Unlit");
 
 	private void RebuildGrid()
 	{
@@ -25,8 +27,22 @@ extension MaterialEditorPage
 			return;
 		let src = mAsset.Source;
 
-		let shaderShown = src.ShaderName.IsEmpty ? "(shader asset)" : StringView(src.ShaderName);
-		mGrid.AddProperty(new StringEditor("Shader", shaderShown, null, "Material"));
+		// The shader: a shader asset, or nil for a built-in (PBR or Unlit, picked below).
+		let shader = new ResourceRefEditor("Shader", AssetNameFor(src.ShaderId), "Material", scope StringView[]("ShaderAsset"));
+		shader.EmptyText.Set("(built-in)");
+		shader.BindAsset(mContext, new [=this]() => (mAsset != null) ? mAsset.Source.ShaderId : Guid(),
+			new [=this](picked) => SwitchShader(picked));
+		AddEditor(shader, new [=shader]() => { shader.Refresh(); });
+		if (src.ShaderId.IsNil)
+		{
+			let builtIn = new EnumEditor("Built-in", (src.ShaderName == "unlit") ? 1 : 0, cBuiltIns,
+				new [=this](index) => SwitchToBuiltIn(index == 1), "Material");
+			AddEditor(builtIn, new [=this, =builtIn]() =>
+				{
+					if (mAsset != null)
+						builtIn.SetValue((mAsset.Source.ShaderName == "unlit") ? 1 : 0);
+				});
+		}
 
 		let shape = new EnumEditor("Shape", (int32)mPreviewShape, MaterialPreviewShapes.Names, new (index) =>
 			{
@@ -63,7 +79,10 @@ extension MaterialEditorPage
 			switch (MaterialPropertyRow.For(type))
 			{
 			case .Number: AddFloatRow(name);
+			case .Numbers2: AddFloat2Row(name);
+			case .Numbers3: AddFloat3Row(name);
 			case .Numbers4: AddFloat4Row(name);
+			case .Integer: AddIntRow(name);
 			case .Color: AddColorRow(name, false);
 			case .ColorWithIntensity: AddColorRow(name, true);
 			case .Texture: AddTextureRow(name);
@@ -103,12 +122,16 @@ extension MaterialEditorPage
 
 	private void AddFloatRow(String name)
 	{
+		// The standard PBR factors are all 0..1; a shader asset's property declares its own range.
+		let ranged = ShaderRange(name, var min, var max);
 		let zeroToOne = (name == "Metallic") || (name == "Roughness") || (name == "OcclusionStrength") || (name == "AlphaCutoff");
 		let zeroToTwo = name == "NormalScale";
+		if (!ranged && zeroToTwo)
+			max = 2.0f;
 		let label = PropertyNames.Prettify(name, .. scope .());
-		if (zeroToOne || zeroToTwo)
+		if (ranged || zeroToOne || zeroToTwo)
 		{
-			let editor = new RangeEditor(name, ReadFloat(name), 0.0f, zeroToTwo ? 2.0f : 1.0f, 0.01f, new [=this, =name](v) =>
+			let editor = new RangeEditor(name, ReadFloat(name), min, max, 0.01f, new [=this, =name](v) =>
 				{
 					ApplyEdit(name, new [=name, =v](s) => MaterialSourceEdit.WriteFloat(s, name, v));
 				}, "Properties");
@@ -123,6 +146,45 @@ extension MaterialEditorPage
 			}, "Properties");
 		editor.SetDisplayName(label);
 		AddEditor(editor, new [=this, =editor, =name]() => editor.SetValue(ReadFloat(name)));
+	}
+
+	private void AddFloat2Row(String name)
+	{
+		let editor = new Float2Editor(name, Read<Float2>(name), -100000.0f, 100000.0f, 0.01f, new [=this, =name](v) =>
+			{
+				ApplyEdit(name, new [=name, =v](s) => { var value = v; MaterialSourceEdit.WriteUniform(s, name, &value, sizeof(Float2)); });
+			}, "Properties");
+		editor.SetDisplayName(PropertyNames.Prettify(name, .. scope .()));
+		AddEditor(editor, new [=this, =editor, =name]() => editor.SetValue(Read<Float2>(name)));
+	}
+
+	private void AddFloat3Row(String name)
+	{
+		let editor = new Float3Editor(name, Read<Float3>(name), -100000.0f, 100000.0f, 0.01f, new [=this, =name](v) =>
+			{
+				ApplyEdit(name, new [=name, =v](s) => { var value = v; MaterialSourceEdit.WriteUniform(s, name, &value, sizeof(Float3)); });
+			}, "Properties");
+		editor.SetDisplayName(PropertyNames.Prettify(name, .. scope .()));
+		AddEditor(editor, new [=this, =editor, =name]() => editor.SetValue(Read<Float3>(name)));
+	}
+
+	/// An int as the shader reads it; a shader asset's int may declare its range.
+	private void AddIntRow(String name)
+	{
+		var min = (int64)int32.MinValue;
+		var max = (int64)int32.MaxValue;
+		if (ShaderRange(name, let lo, let hi))
+		{
+			min = (int64)lo;
+			max = (int64)hi;
+		}
+		let editor = new IntEditor(name, Read<int32>(name), min, max, new [=this, =name](v) =>
+			{
+				var value = (int32)v;
+				ApplyEdit(name, new [=name, =value](s) => { var stored = value; MaterialSourceEdit.WriteUniform(s, name, &stored, sizeof(int32)); });
+			}, "Properties");
+		editor.SetDisplayName(PropertyNames.Prettify(name, .. scope .()));
+		AddEditor(editor, new [=this, =editor, =name]() => editor.SetValue(Read<int32>(name)));
 	}
 
 	/// Plain numbers: only a declared colour property gets a colour picker.
@@ -170,6 +232,15 @@ extension MaterialEditorPage
 		editor.BindAsset(mContext, new [=this, =slot]() => (mAsset != null) ? MaterialSourceEdit.TextureFor(mAsset.Source, slot) : Guid(),
 			new [=this, =slot](picked) => { ApplyEdit(slot, new [=slot, =picked](s) => MaterialSourceEdit.SetTexture(s, slot, picked)); });
 		AddEditor(editor, new [=editor]() => { editor.Refresh(); });
+	}
+
+	/// A uniform read as `T`, zero when the source lacks it.
+	private T Read<T>(StringView name) where T : struct
+	{
+		var value = default(T);
+		if (mAsset != null)
+			MaterialSourceEdit.ReadUniform(mAsset.Source, name, &value, sizeof(T));
+		return value;
 	}
 
 	private float ReadFloat(StringView name) => (mAsset != null) ? MaterialSourceEdit.ReadFloat(mAsset.Source, name) : 0.0f;

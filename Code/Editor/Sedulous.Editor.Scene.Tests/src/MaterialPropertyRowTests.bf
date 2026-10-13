@@ -16,8 +16,21 @@ class MaterialPropertyRowTests
 		Test.Assert(MaterialPropertyRow.For(.Float) == .Number);
 		Test.Assert(MaterialPropertyRow.For(.Texture2D) == .Texture);
 		Test.Assert(MaterialPropertyRow.For(.Sampler) == .None);
+	}
 
-		// The builtin PBR template's colours land on colour rows.
+	/// Every value a shader's properties block can declare has a row of its own size: a custom
+	/// shader's float2, float3 and int are edited as what they are, not as four floats.
+	[Test]
+	public static void AShadersFloat2Float3AndIntGetRowsOfTheirOwn()
+	{
+		Test.Assert(MaterialPropertyRow.For(.Float2) == .Numbers2);
+		Test.Assert(MaterialPropertyRow.For(.Float3) == .Numbers3);
+		Test.Assert(MaterialPropertyRow.For(.Int) == .Integer);
+	}
+
+	[Test]
+	public static void TheBuiltinPbrTemplatesColoursLandOnColourRows()
+	{
 		let pbr = MaterialPresets.BuiltinTemplate("forward");
 		defer delete pbr;
 		Test.Assert(pbr.FindProperty("BaseColor", let baseColor) && (MaterialPropertyRow.For(baseColor.Type) == .Color));

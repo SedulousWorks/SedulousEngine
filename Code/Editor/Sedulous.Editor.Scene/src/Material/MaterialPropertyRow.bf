@@ -8,10 +8,13 @@ namespace Sedulous.Editor.Scene;
 /// intensity for a colour that may pass white, and plain numbers for any other Float4.
 enum MaterialPropertyRow
 {
-	/// Not shown (samplers, ints, matrices until a preset needs them).
+	/// Not shown (samplers, matrices).
 	case None;
 	case Number;
+	case Numbers2;
+	case Numbers3;
 	case Numbers4;
+	case Integer;
 	case Color;
 	case ColorWithIntensity;
 	case Texture;
@@ -22,7 +25,10 @@ enum MaterialPropertyRow
 		switch (type)
 		{
 		case .Float: return .Number;
+		case .Float2: return .Numbers2;
+		case .Float3: return .Numbers3;
 		case .Float4: return .Numbers4;
+		case .Int: return .Integer;
 		case .Color: return .Color;
 		case .ColorHdr: return .ColorWithIntensity;
 		case .Texture2D, .TextureCube: return .Texture;
