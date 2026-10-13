@@ -500,7 +500,7 @@ static class ShaderProperties
 			// A colour may leave its alpha out (opaque).
 			let colour = (property.Type == .Color) || (property.Type == .ColorHdr);
 			let colourWithoutAlpha = colour && (count == 3);
-			if ((count != row.Components) && !colourWithoutAlpha)
+			if ((count != (int)row.Components) && !colourWithoutAlpha)
 			{
 				AddError(block, line, scope $"'{property.Name}' is a {row.Keyword}: its default needs {row.Components} {(row.Components == 1) ? "value" : "values"}");
 				return false;

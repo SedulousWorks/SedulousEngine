@@ -193,7 +193,7 @@ static class MaterialShaderLayout
 			let at = (i < to.PropertyOffsets.Count) ? (int)to.PropertyOffsets[i] : 0;
 			if (sameKind && ((int)(from.PropertyOffsets[index] + size) <= from.UniformDefaults.Count)
 				&& (at + (int)size <= to.UniformDefaults.Count))
-				Internal.MemCpy(&to.UniformDefaults[at], &from.UniformDefaults[(int)from.PropertyOffsets[index]], size);
+				Internal.MemCpy(&to.UniformDefaults[at], &from.UniformDefaults[(int)from.PropertyOffsets[index]], (int)size);
 		}
 
 		for (let name in from.PropertyNames)
@@ -243,6 +243,6 @@ static class MaterialShaderLayout
 			return;
 		}
 		float[4] values = .(property.Value.X, property.Value.Y, property.Value.Z, property.Value.W);
-		Internal.MemCpy(at, &values[0], property.Size);
+		Internal.MemCpy(at, &values[0], (int)property.Size);
 	}
 }
