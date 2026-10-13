@@ -1,0 +1,16 @@
+<root>
+	<string name="guid">eaaca1ff-2956-bf45-9ff3-cbc444d50119</string>
+	<string name="typeName">Sedulous.Shaders.Pipeline.ShaderAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">15491032727433757188</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">10_Toon.hlsl</string>
+			<string name="name">10_Toon</string>
+			<string name="vertexEntryPoint">VSMain</string>
+			<string name="fragmentEntryPoint">PSMain</string>
+		</object>
+	</object>
+</root>

@@ -157,6 +157,17 @@ not yet on SedulousDemos.
 |:---:|:---:|:---:|
 | ![Gardens](Documentation/Images/Lamplight-Gardens.png) | ![Ground Floor](Documentation/Images/Lamplight-GroundFloor.png) | ![Results](Documentation/Images/Lamplight-Results.png) |
 
+**The Shader Gallery** is the custom shaders sample: a hall of eleven lesson shaders to fly
+through, each on its own plinth and each `.hlsl` a short commented lesson that builds on the one
+before, surface shaders first (an unlit colour, textures, lava, a hologram, triplanar rock, a
+dissolve, waves and a flag that move their vertices, the built-in PBR) and then two low-level ones
+(a toon and lighting of its own). Pick a lesson in the list and the camera glides to it. It is
+Raptor's, ported through the same tools, and not yet on SedulousDemos.
+
+| The hall | Hologram | Toon |
+|:---:|:---:|:---:|
+| ![Hall](Documentation/Images/ShaderGallery-Hall.png) | ![Hologram](Documentation/Images/ShaderGallery-Hologram.png) | ![Toon](Documentation/Images/ShaderGallery-Toon.png) |
+
 ## Repository layout
 
 ```

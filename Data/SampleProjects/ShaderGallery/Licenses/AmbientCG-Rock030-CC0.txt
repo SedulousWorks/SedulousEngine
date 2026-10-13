@@ -1,0 +1,9 @@
+Rock 030, 1K JPG (Color and NormalGL maps)
+https://ambientcg.com/view?id=Rock030
+
+Published by ambientCG (Lennart Demes).
+Licensed CC0 1.0 Universal (public domain dedication): https://creativecommons.org/publicdomain/zero/1.0/
+ambientCG's licence: https://docs.ambientcg.com/license/
+
+Used unchanged: Rock030_Color.jpg and Rock030_NormalGL.jpg (renamed from Rock030_1K-JPG_Color.jpg and
+Rock030_1K-JPG_NormalGL.jpg).

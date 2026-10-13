@@ -1,0 +1,156 @@
+<root>
+	<string name="guid">4a2ec04a-3317-f449-97f4-d1bc5c1389d5</string>
+	<string name="typeName">Sedulous.Materials.Pipeline.MaterialAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6954260022368370024</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<array name="dataVersions" count="1">
+				<u64 name="type">14214410887517557523</u64>
+				<u32 name="version">3</u32>
+			</array>
+			<object>
+				<string name="name">Dissolve</string>
+				<string name="shaderId">c5d23db7-2fa7-0340-a54b-cef5bcd68bc6</string>
+				<string name="shaderName">06_Dissolve</string>
+				<u32 name="shaderFlags">0</u32>
+				<u8 name="blendMode">1</u8>
+				<u8 name="depthMode">1</u8>
+				<u8 name="cullMode">1</u8>
+				<u8 name="vertexLayout">4</u8>
+				<array name="propertyNames" count="9">
+					<string>Paint</string>
+					<string>EdgeColour</string>
+					<string>Speed</string>
+					<string>EdgeWidth</string>
+					<string>EdgeGlow</string>
+					<string>Tiling</string>
+					<string>AlphaCutoff</string>
+					<string>Pattern</string>
+					<string>MainSampler</string>
+				</array>
+				<array name="propertyTypes" count="9">
+					<u8>12</u8>
+					<u8>12</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>9</u8>
+					<u8>11</u8>
+				</array>
+				<array name="propertyBindings" count="9">
+					<u32>0</u32>
+					<u32>1</u32>
+					<u32>2</u32>
+					<u32>3</u32>
+					<u32>4</u32>
+					<u32>5</u32>
+					<u32>6</u32>
+					<u32>7</u32>
+					<u32>8</u32>
+				</array>
+				<array name="propertyOffsets" count="9">
+					<u32>0</u32>
+					<u32>16</u32>
+					<u32>32</u32>
+					<u32>36</u32>
+					<u32>40</u32>
+					<u32>44</u32>
+					<u32>48</u32>
+					<u32>0</u32>
+					<u32>0</u32>
+				</array>
+				<array name="propertySizes" count="9">
+					<u32>16</u32>
+					<u32>16</u32>
+					<u32>4</u32>
+					<u32>4</u32>
+					<u32>4</u32>
+					<u32>4</u32>
+					<u32>4</u32>
+					<u32>0</u32>
+					<u32>0</u32>
+				</array>
+				<array name="uniformDefaults" count="64">
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>64</u8>
+					<u8>63</u8>
+					<u8>20</u8>
+					<u8>174</u8>
+					<u8>71</u8>
+					<u8>63</u8>
+					<u8>154</u8>
+					<u8>153</u8>
+					<u8>89</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>102</u8>
+					<u8>102</u8>
+					<u8>230</u8>
+					<u8>62</u8>
+					<u8>205</u8>
+					<u8>204</u8>
+					<u8>204</u8>
+					<u8>61</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>51</u8>
+					<u8>51</u8>
+					<u8>179</u8>
+					<u8>62</u8>
+					<u8>143</u8>
+					<u8>194</u8>
+					<u8>117</u8>
+					<u8>61</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>192</u8>
+					<u8>64</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+				</array>
+				<array name="textureSlots" count="1">
+					<string>Pattern</string>
+				</array>
+				<array name="textureIds" count="1">
+					<string>9963ae2b-b246-9c4b-be13-b7b68757b76b</string>
+				</array>
+				<u8 name="samplerU">0</u8>
+				<u8 name="samplerV">0</u8>
+			</object>
+		</object>
+	</object>
+</root>

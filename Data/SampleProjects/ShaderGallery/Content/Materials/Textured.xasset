@@ -1,0 +1,104 @@
+<root>
+	<string name="guid">cca0d436-3f73-0445-99d5-f8ec91a02d4f</string>
+	<string name="typeName">Sedulous.Materials.Pipeline.MaterialAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6954260022368370024</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<array name="dataVersions" count="1">
+				<u64 name="type">14214410887517557523</u64>
+				<u32 name="version">3</u32>
+			</array>
+			<object>
+				<string name="name">Textured</string>
+				<string name="shaderId">9a2d73a0-4346-f746-81cf-ba6e5d6c535e</string>
+				<string name="shaderName">02_Textured</string>
+				<u32 name="shaderFlags">0</u32>
+				<u8 name="blendMode">0</u8>
+				<u8 name="depthMode">1</u8>
+				<u8 name="cullMode">1</u8>
+				<u8 name="vertexLayout">4</u8>
+				<array name="propertyNames" count="5">
+					<string>Paint</string>
+					<string>Tiling</string>
+					<string>Roughness</string>
+					<string>Albedo</string>
+					<string>MainSampler</string>
+				</array>
+				<array name="propertyTypes" count="5">
+					<u8>12</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>9</u8>
+					<u8>11</u8>
+				</array>
+				<array name="propertyBindings" count="5">
+					<u32>0</u32>
+					<u32>1</u32>
+					<u32>2</u32>
+					<u32>3</u32>
+					<u32>4</u32>
+				</array>
+				<array name="propertyOffsets" count="5">
+					<u32>0</u32>
+					<u32>16</u32>
+					<u32>20</u32>
+					<u32>0</u32>
+					<u32>0</u32>
+				</array>
+				<array name="propertySizes" count="5">
+					<u32>16</u32>
+					<u32>4</u32>
+					<u32>4</u32>
+					<u32>0</u32>
+					<u32>0</u32>
+				</array>
+				<array name="uniformDefaults" count="32">
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>64</u8>
+					<u8>154</u8>
+					<u8>153</u8>
+					<u8>25</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+				</array>
+				<array name="textureSlots" count="1">
+					<string>Albedo</string>
+				</array>
+				<array name="textureIds" count="1">
+					<string>e3fa8d65-690f-224e-ba75-232ddd0079d5</string>
+				</array>
+				<u8 name="samplerU">0</u8>
+				<u8 name="samplerV">0</u8>
+			</object>
+		</object>
+	</object>
+</root>

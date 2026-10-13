@@ -1,0 +1,16 @@
+<root>
+	<string name="guid">2f415d3a-01dc-5942-be5e-b32d2be4f057</string>
+	<string name="typeName">Sedulous.Shaders.Pipeline.ShaderAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">15491032727433757188</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">09_BuiltInPbr.hlsl</string>
+			<string name="name">09_BuiltInPbr</string>
+			<string name="vertexEntryPoint">VSMain</string>
+			<string name="fragmentEntryPoint">PSMain</string>
+		</object>
+	</object>
+</root>

@@ -1,0 +1,16 @@
+<root>
+	<string name="guid">c5d23db7-2fa7-0340-a54b-cef5bcd68bc6</string>
+	<string name="typeName">Sedulous.Shaders.Pipeline.ShaderAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">15491032727433757188</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">06_Dissolve.hlsl</string>
+			<string name="name">06_Dissolve</string>
+			<string name="vertexEntryPoint">VSMain</string>
+			<string name="fragmentEntryPoint">PSMain</string>
+		</object>
+	</object>
+</root>

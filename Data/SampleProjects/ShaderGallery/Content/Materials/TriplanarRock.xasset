@@ -1,0 +1,121 @@
+<root>
+	<string name="guid">97596a7d-afcd-df4c-b94c-0abffc40251e</string>
+	<string name="typeName">Sedulous.Materials.Pipeline.MaterialAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6954260022368370024</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName"/>
+			<array name="dataVersions" count="1">
+				<u64 name="type">14214410887517557523</u64>
+				<u32 name="version">3</u32>
+			</array>
+			<object>
+				<string name="name">TriplanarRock</string>
+				<string name="shaderId">a4196d55-7eb8-8449-af37-ab91eea07452</string>
+				<string name="shaderName">05_TriplanarRock</string>
+				<u32 name="shaderFlags">0</u32>
+				<u8 name="blendMode">0</u8>
+				<u8 name="depthMode">1</u8>
+				<u8 name="cullMode">1</u8>
+				<u8 name="vertexLayout">4</u8>
+				<array name="propertyNames" count="8">
+					<string>Paint</string>
+					<string>Scale</string>
+					<string>Sharpness</string>
+					<string>BumpStrength</string>
+					<string>Roughness</string>
+					<string>RockColour</string>
+					<string>RockNormal</string>
+					<string>MainSampler</string>
+				</array>
+				<array name="propertyTypes" count="8">
+					<u8>12</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>9</u8>
+					<u8>9</u8>
+					<u8>11</u8>
+				</array>
+				<array name="propertyBindings" count="8">
+					<u32>0</u32>
+					<u32>1</u32>
+					<u32>2</u32>
+					<u32>3</u32>
+					<u32>4</u32>
+					<u32>5</u32>
+					<u32>6</u32>
+					<u32>7</u32>
+				</array>
+				<array name="propertyOffsets" count="8">
+					<u32>0</u32>
+					<u32>16</u32>
+					<u32>20</u32>
+					<u32>24</u32>
+					<u32>28</u32>
+					<u32>0</u32>
+					<u32>0</u32>
+					<u32>0</u32>
+				</array>
+				<array name="propertySizes" count="8">
+					<u32>16</u32>
+					<u32>4</u32>
+					<u32>4</u32>
+					<u32>4</u32>
+					<u32>4</u32>
+					<u32>0</u32>
+					<u32>0</u32>
+					<u32>0</u32>
+				</array>
+				<array name="uniformDefaults" count="32">
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>205</u8>
+					<u8>204</u8>
+					<u8>76</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>64</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>128</u8>
+					<u8>63</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>0</u8>
+					<u8>63</u8>
+				</array>
+				<array name="textureSlots" count="2">
+					<string>RockColour</string>
+					<string>RockNormal</string>
+				</array>
+				<array name="textureIds" count="2">
+					<string>f94e75d1-e9fb-af41-958b-541175bc430d</string>
+					<string>bf7cd9ca-9c77-8849-aff8-a6f3922f2c72</string>
+				</array>
+				<u8 name="samplerU">0</u8>
+				<u8 name="samplerV">0</u8>
+			</object>
+		</object>
+	</object>
+</root>
