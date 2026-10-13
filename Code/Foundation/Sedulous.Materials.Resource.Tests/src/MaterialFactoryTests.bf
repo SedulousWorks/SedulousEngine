@@ -82,10 +82,42 @@ class MaterialFactoryTests
 
 		Test.Assert(material.Get != null);
 		Test.Assert(material.Get.ShaderName == "lit", "the resource, not the fallback name");
+		Test.Assert(material.Get.DepthShaderName.IsEmpty && material.Get.PickShaderName.IsEmpty,
+			"no programs of its own: the built-in depth and pick");
 
 		let dependencies = scope System.Collections.List<Guid>();
 		fixture.Manager.GetDependencies(id, dependencies);
 		Test.Assert(dependencies.Contains(shaderId), "the edge a shader reload travels");
+	}
+
+	/// A material on a shader with its own depth and pick programs draws the depth like passes
+	/// with them: always when the shader moves its vertices, else only when the material is
+	/// masked.
+	[Test]
+	public static void AMaterialTakesItsShadersDepthAndPickProgramsWhereNeeded()
+	{
+		for (let always in scope bool[](false, true))
+		{
+			let fixture = scope MaterialFixture("scratch_material_programs");
+			let shaderId = fixture.CookShader("lit", true, always);
+			let opaqueSource = CustomSource("opaque");
+			defer delete opaqueSource;
+			opaqueSource.ShaderId = shaderId;
+			let maskedSource = CustomSource("masked");
+			defer delete maskedSource;
+			maskedSource.ShaderId = shaderId;
+			maskedSource.BlendMode = .Masked;
+			let opaque = fixture.Manager.Bind<Material>(fixture.CookMaterial("opaque", opaqueSource)).Get;
+			let masked = fixture.Manager.Bind<Material>(fixture.CookMaterial("masked", maskedSource)).Get;
+			Test.Assert((opaque != null) && (masked != null));
+
+			Test.Assert(masked.DepthShaderName == "lit.depth");
+			Test.Assert(masked.PickShaderName == "lit.pick");
+			if (always)
+				Test.Assert(opaque.DepthShaderName == "lit.depth", "it moves its vertices: its own depth, opaque too");
+			else
+				Test.Assert(opaque.DepthShaderName.IsEmpty && opaque.PickShaderName.IsEmpty, "opaque, still: the built-ins");
+		}
 	}
 
 	/// A shader id that resolves to nothing falls back to the name rather than failing: a

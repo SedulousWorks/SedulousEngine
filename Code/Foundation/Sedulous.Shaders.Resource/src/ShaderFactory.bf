@@ -2,6 +2,7 @@ using System;
 using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Resource;
+using System.Collections;
 using Sedulous.Shaders;
 
 namespace Sedulous.Shaders.Resource;
@@ -43,18 +44,26 @@ class ShaderFactory : IResourceFactory
 		if (source.Name.IsEmpty)
 			return null;
 
-		// Each stage with its entry point and the variant lattice the cook compiled, so a request
-		// canonicalizes onto a variant the cook proved, as the corpus's do.
-		mSystem.RegisterSource(source.Name, .Vertex, source.VertexSource, source.VertexEntryPoint,
-			(ShaderFlags)source.VertexVariantMask);
-		mSystem.RegisterSource(source.Name, .Fragment, source.FragmentSource, source.FragmentEntryPoint,
-			(ShaderFlags)source.FragmentVariantMask);
-		// Drops variants compiled from the PREVIOUS source and bumps the version, which is
-		// what makes a reload observable rather than silently serving stale modules.
-		mSystem.InvalidateShader(source.Name);
+		// Each program, each stage with its entry point and the variant lattice the cook compiled,
+		// so a request canonicalizes onto a variant the cook proved, as the corpus's do.
+		let programs = scope List<ShaderProgram>();
+		defer { ClearAndDeleteItems!(programs); }
+		source.GetPrograms(programs);
+		for (let program in programs)
+		{
+			mSystem.RegisterSource(program.Name, .Vertex, program.VertexSource, program.VertexEntryPoint,
+				program.VertexVariantMask);
+			mSystem.RegisterSource(program.Name, .Fragment, program.FragmentSource, program.FragmentEntryPoint,
+				program.FragmentVariantMask);
+			// Drops variants compiled from the PREVIOUS source and bumps the version, which is
+			// what makes a reload observable rather than silently serving stale modules.
+			mSystem.InvalidateShader(program.Name);
+		}
 
 		let product = new ShaderResource();
 		product.Initialize(mSystem, source.Name);
+		product.SetDepthPrograms(source.HasProgram(ShaderSource.cDepthProgramSuffix),
+			source.HasProgram(ShaderSource.cPickProgramSuffix), source.DepthProgramsAlways);
 		return product;
 	}
 }

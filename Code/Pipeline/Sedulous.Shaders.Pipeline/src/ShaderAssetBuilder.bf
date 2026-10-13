@@ -23,8 +23,9 @@ class ShaderAssetBuilder : IAssetBuilder
 	public Type AssetType => typeof(ShaderAsset);
 	public Type ProductType => typeof(ShaderSource);
 	/// 2: the product names each stage's entry point. 3: one file, compiled at cook time; the
-	/// product carries the expanded source, the lattices and the property table.
-	public int32 Version => 3;
+	/// product carries the expanded source, the lattices and the property table. 4: the product
+	/// carries programs beside the main one (a surface shader's depth and pick).
+	public int32 Version => 4;
 
 	/// `dataRoot`: the engine's data root, whose shader library (`Shaders/`) is on every custom
 	/// shader's include path. Empty: includes resolve nowhere.

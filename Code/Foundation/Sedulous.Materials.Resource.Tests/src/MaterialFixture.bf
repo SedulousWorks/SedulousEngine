@@ -101,7 +101,9 @@ class MaterialFixture
 		return instance.Id;
 	}
 
-	public Guid CookShader(StringView name)
+	/// `programs`: with its own depth and pick programs, used by every material on it when
+	/// `always`, else by a masked one only.
+	public Guid CookShader(StringView name, bool programs = false, bool always = false)
 	{
 		let instance = Database.RootGroup.CreateInstance(name, ShaderTypeName);
 		let record = scope ShaderSource();
@@ -110,6 +112,12 @@ class MaterialFixture
 		record.FragmentEntryPoint.Set("main");
 		record.VertexSource.Set("float4 main() : SV_Position { return 0; }");
 		record.FragmentSource.Set("float4 main() : SV_Target0 { return 1; }");
+		if (programs)
+		{
+			record.AddProgram(ShaderSource.cDepthProgramSuffix, record.VertexSource, "main", .None, record.FragmentSource, "main", .None);
+			record.AddProgram(ShaderSource.cPickProgramSuffix, record.VertexSource, "main", .None, record.FragmentSource, "main", .None);
+			record.DepthProgramsAlways = always;
+		}
 		instance.WriteObject(record).IgnoreError();
 		return instance.Id;
 	}

@@ -96,8 +96,7 @@ static class ExportStaging
 		let group = StagingGroup(product, staging);
 		if ((shader == null) || (group == null))
 			return false;
-		shader.VertexSource.Clear();
-		shader.FragmentSource.Clear();
+		shader.StripSources(); // every program's HLSL
 		let staged = group.CreateInstanceWithId(product.Id, product.Name, product.TypeName);
 		return (staged != null) && (staged.WriteObject(shader) case .Ok);
 	}
@@ -238,11 +237,19 @@ static class ExportStaging
 					report.AddError("a custom shader", "its cooked product is missing");
 					continue;
 				}
+				// Each program's stages under their entry points and lattices (a surface shader's
+				// depth and pick beside its main one).
 				let sourceName = scope $"{source.Name}.hlsl";
-				ShaderPackCooker.CookShaderStage(compiler, translator, source.Name, .Vertex, source.VertexSource,
-					source.VertexEntryPoint, (ShaderFlags)source.VertexVariantMask, sourceName, options, includePaths, pack, report);
-				ShaderPackCooker.CookShaderStage(compiler, translator, source.Name, .Fragment, source.FragmentSource,
-					source.FragmentEntryPoint, (ShaderFlags)source.FragmentVariantMask, sourceName, options, includePaths, pack, report);
+				let programs = scope List<ShaderProgram>();
+				defer { ClearAndDeleteItems!(programs); }
+				source.GetPrograms(programs);
+				for (let program in programs)
+				{
+					ShaderPackCooker.CookShaderStage(compiler, translator, program.Name, .Vertex, program.VertexSource,
+						program.VertexEntryPoint, program.VertexVariantMask, sourceName, options, includePaths, pack, report);
+					ShaderPackCooker.CookShaderStage(compiler, translator, program.Name, .Fragment, program.FragmentSource,
+						program.FragmentEntryPoint, program.FragmentVariantMask, sourceName, options, includePaths, pack, report);
+				}
 			}
 			report.Success = report.Errors.IsEmpty;
 		}

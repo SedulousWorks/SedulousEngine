@@ -49,16 +49,20 @@ class MaterialFactory : IResourceFactory
 			return null;
 		}
 
-		let material = source.ToMaterial(ResolveShaderName(manager, source, .. scope .()));
+		let depthName = scope String();
+		let pickName = scope String();
+		let material = source.ToMaterial(ResolveShaderName(manager, source, depthName, pickName, .. scope .()));
+		material.DepthShaderName.Set(depthName);
+		material.PickShaderName.Set(pickName);
 
 		BindDefaultTextures(manager, source, material);
 		return material;
 	}
 
 	/// The cooked shader's name, or the builtin named directly when there is no resource to
-	/// point at.
+	/// point at; and the shader's own depth and pick programs, where the material needs them.
 	private static void ResolveShaderName(ResourceManager manager, MaterialSource source,
-		String outName)
+		String outDepthName, String outPickName, String outName)
 	{
 		if (source.ShaderId != Guid())
 		{
@@ -66,7 +70,12 @@ class MaterialFactory : IResourceFactory
 			// a lookup: it is how a shader reload reaches every material using it.
 			let shader = manager.Bind<ShaderResource>(source.ShaderId);
 			if (shader.Get != null)
+			{
 				outName.Set(shader.Get.Name);
+				let masked = source.BlendMode == .Masked;
+				outDepthName.Set(shader.Get.DepthProgram(masked));
+				outPickName.Set(shader.Get.PickProgram(masked));
+			}
 		}
 
 		if (outName.IsEmpty)

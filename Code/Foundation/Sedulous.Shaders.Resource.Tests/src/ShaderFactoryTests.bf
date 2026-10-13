@@ -200,4 +200,85 @@ class ShaderFactoryTests
 		let proxy = fixture.Manager.Bind<ShaderResource>(instance.Id);
 		Test.Assert(proxy.Get == null, "an unnamed record produces no product");
 	}
+
+	private const String cVertex = """
+		float4 main(uint id : SV_VertexID) : SV_Position {
+		    return float4(0, 0, 0, 1);
+		}
+		""";
+
+	/// A shader with programs beside its main one (a surface shader's depth and pick): each is
+	/// registered under the shader's name plus its suffix, the product round-trips them, and the
+	/// resource says which a material uses (always, or only for a masked one).
+	[Test]
+	public static void AShadersDepthAndPickProgramsRegisterBesideIt()
+	{
+		let fixture = scope Fixture("scratch_shader_programs");
+		if (fixture.Compiler == null) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+
+		let instance = fixture.Database.RootGroup.CreateInstance("waves", "Sedulous.Shaders.Resource.ShaderSource");
+		{
+			let record = scope ShaderSource();
+			record.Name.Set("waves");
+			record.VertexSource.Set(cVertex);
+			record.VertexEntryPoint.Set("main");
+			record.FragmentEntryPoint.Set("none"); // the main fragment is not asked for here
+			record.AddProgram(ShaderSource.cDepthProgramSuffix, cVertex, "main", .None, "", "none", .None);
+			record.AddProgram(ShaderSource.cPickProgramSuffix, cVertex, "main", .None, "", "none", .None);
+			Test.Assert(instance.WriteObject(record) case .Ok);
+		}
+
+		{
+			let object = Internal.UnsafeCastToObject(Internal.UnsafeCastToPtr(fixture.Database.ReadObject(instance.Id)));
+			defer delete object;
+			let read = object as ShaderSource;
+			Test.Assert(read != null);
+			let programs = scope List<ShaderProgram>();
+			defer { ClearAndDeleteItems!(programs); }
+			read.GetPrograms(programs); // round-tripped
+			Test.Assert(programs.Count == 3);
+			Test.Assert((programs[0].Name == "waves") && (programs[1].Name == "waves.depth") && (programs[2].Name == "waves.pick"));
+			Test.Assert(programs[1].VertexEntryPoint == "main");
+		}
+
+		let shader = fixture.Manager.Bind<ShaderResource>(instance.Id).Get;
+		Test.Assert(shader != null);
+		Test.Assert(fixture.Shaders.GetVariant("waves.depth", .Vertex, .None) != null);
+		Test.Assert(fixture.Shaders.GetVariant("waves.pick", .Vertex, .None) != null);
+		// Not always: only a masked material uses them.
+		Test.Assert(shader.DepthProgram(false).IsEmpty);
+		Test.Assert(shader.DepthProgram(true) == "waves.depth");
+		Test.Assert(shader.PickProgram(true) == "waves.pick");
+	}
+
+	/// A shader whose programs are always used (it moves its vertices) hands them to an opaque
+	/// material too; one without programs hands none, masked or not.
+	[Test]
+	public static void ProgramsAlwaysUsedReachAnOpaqueMaterialAndNoneAreNone()
+	{
+		let resource = scope ShaderResource();
+		resource.Initialize(null, "waves");
+		resource.SetDepthPrograms(true, true, true);
+		Test.Assert(resource.DepthProgram(false) == "waves.depth");
+		Test.Assert(resource.PickProgram(false) == "waves.pick");
+		resource.SetDepthPrograms(false, false, true);
+		Test.Assert(resource.DepthProgram(true).IsEmpty && resource.PickProgram(true).IsEmpty);
+	}
+
+	/// Stripping an export's copy empties every program's HLSL and keeps the rest.
+	[Test]
+	public static void StrippingEmptiesEveryProgramsHlsl()
+	{
+		let source = scope ShaderSource();
+		source.Name.Set("waves");
+		source.VertexSource.Set(cVertex);
+		source.FragmentSource.Set(cVertex);
+		source.AddProgram(ShaderSource.cDepthProgramSuffix, cVertex, "VSMain", .None, cVertex, "PSMain", .None);
+		source.DepthProgramsAlways = true;
+		source.StripSources();
+		Test.Assert(source.VertexSource.IsEmpty && source.FragmentSource.IsEmpty);
+		Test.Assert(source.ProgramVertexSources[0].IsEmpty && source.ProgramFragmentSources[0].IsEmpty);
+		Test.Assert(source.ProgramVertexEntryPoints[0] == "VSMain", "the entries stay");
+		Test.Assert(source.HasProgram(".depth") && source.DepthProgramsAlways);
+	}
 }

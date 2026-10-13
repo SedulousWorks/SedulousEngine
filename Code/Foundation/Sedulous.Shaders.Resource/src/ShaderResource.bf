@@ -13,6 +13,9 @@ class ShaderResource
 {
 	private ShaderSystem mSystem = null;
 	private String mName = new String() ~ delete _;
+	private String mDepthName = new String() ~ delete _;
+	private String mPickName = new String() ~ delete _;
+	private bool mDepthProgramsAlways = false;
 
 	/// The system is BORROWED and must outlive this.
 	public void Initialize(ShaderSystem system, StringView name)
@@ -22,6 +25,27 @@ class ShaderResource
 	}
 
 	public StringView Name => mName;
+
+	/// Records the shader's own depth like programs (a ShaderSource's .depth and .pick), and
+	/// whether they replace the built-ins for every material or only for a masked one.
+	public void SetDepthPrograms(bool depth, bool pick, bool always)
+	{
+		mDepthName.Clear();
+		mPickName.Clear();
+		if (depth)
+			mDepthName..Set(mName).Append(ShaderSource.cDepthProgramSuffix);
+		if (pick)
+			mPickName..Set(mName).Append(ShaderSource.cPickProgramSuffix);
+		mDepthProgramsAlways = always;
+	}
+
+	/// The program a material on this shader draws the depth prepass and shadows with: the
+	/// shader's own when it has one and needs it (it moves its vertices, or the material is
+	/// masked and cuts out with the shader's alpha); empty is the built-in.
+	public StringView DepthProgram(bool masked) => (mDepthProgramsAlways || masked) ? StringView(mDepthName) : StringView();
+
+	/// The program its pick draws with, chosen as DepthProgram is.
+	public StringView PickProgram(bool masked) => (mDepthProgramsAlways || masked) ? StringView(mPickName) : StringView();
 
 	/// The reload signal, bumped whenever the shader is rebuilt.
 	///
