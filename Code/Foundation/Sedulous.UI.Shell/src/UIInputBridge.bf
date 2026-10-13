@@ -36,6 +36,18 @@ class UIInputBridge
 		mTextInputTarget = window;
 	}
 
+	/// The window whose platform text input follows UI focus, or null.
+	public IWindow TextInputTarget => mTextInputTarget;
+
+	/// A window going away: if it is the text input target, the bridge lets go of it. The
+	/// target is borrowed, and the next sync would call into a destroyed window; the host
+	/// points it at the focused window again on its next update.
+	public void ForgetWindow(IWindow window)
+	{
+		if ((window != null) && (mTextInputTarget == window))
+			mTextInputTarget = null;
+	}
+
 	/// Brings the window's text input into line with what is focused.
 	///
 	/// Called after every dispatch, because a click or a Tab can move focus and the platform

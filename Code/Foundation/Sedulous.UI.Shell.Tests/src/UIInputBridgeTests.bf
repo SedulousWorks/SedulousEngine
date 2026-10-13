@@ -175,6 +175,31 @@ class UIInputBridgeTests
 		bridge.SyncTextInput();
 	}
 
+	/// A window going away stops being the text input target. The editor's crash: a floating
+	/// window was the target, it closed, and the next sync called into it.
+	[Test]
+	public static void AWindowGoingAwayStopsBeingTheTextInputTarget()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let edit = new EditText();
+		root.AddView(edit);
+		LayoutPass(context, root);
+		context.GetFocusManager().SetFocus(edit);
+
+		let main = scope MockWindow();
+		let floating = scope MockWindow();
+		let bridge = scope UIInputBridge(context);
+		bridge.SetTextInputTarget(floating);
+		bridge.ForgetWindow(main);
+		Test.Assert(bridge.TextInputTarget == floating, "another window going leaves the target alone");
+		bridge.ForgetWindow(floating);
+		Test.Assert(bridge.TextInputTarget == null);
+		bridge.SyncTextInput();
+		Test.Assert(!floating.TextInputRunning && !main.TextInputRunning, "with no target the sync touches no window");
+	}
+
 	// ---- Key mapping --------------------------------------------------------------------------
 
 	/// The contiguous ranges map arithmetically, so a gap in one of them would show here.

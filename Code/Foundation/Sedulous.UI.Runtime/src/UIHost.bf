@@ -244,6 +244,10 @@ class UIHost
 
 			mRouter.RemoveSurface(data.Surface);
 			mContext.RemoveRootView(data.Root);
+			// The window is closed after this, so the bridge's text input must not keep it:
+			// until the next focus refresh the hover pump synced the IME against it, and a
+			// closed floating window crashed the editor there.
+			mBridge.ForgetWindow(window.Window);
 			mAttached.RemoveAt(i);
 			return;
 		}
