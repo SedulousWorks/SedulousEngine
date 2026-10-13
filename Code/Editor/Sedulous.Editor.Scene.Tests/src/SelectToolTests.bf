@@ -541,4 +541,41 @@ class SelectToolTests
 		Test.Assert(selection.Count == 1);
 		Test.Assert(selection.Contains(asideId));
 	}
+
+	/// Under an orthographic view 8 m tall the marquee projects origins without perspective: a
+	/// point lands by its offset across the view alone, so an entity 40 m further back along
+	/// the same line lands on the same pixel (in perspective it would move toward the centre).
+	[Test]
+	public static void UnderAnOrthographicViewTheMarqueeProjectsOriginsWithoutPerspective()
+	{
+		let scene = scope Scene();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let tool = scope SelectTransformTool(edit); // no picker
+		let asideId = edit.CreateEntity("Aside");
+		let behindItId = edit.CreateEntity("BehindIt");
+		let centreId = edit.CreateEntity("Centre");
+		PlaceAt(edit, scene, asideId, .(3.0f, 1.0f, 0.0f));
+		PlaceAt(edit, scene, behindItId, .(3.0f, 1.0f, -40.0f));
+		scene.UpdateTransforms();
+		let selection = edit.EntitySelection;
+		selection.Clear();
+		ViewportToolInput Ortho(ViewportToolInput input)
+		{
+			var orthographic = input;
+			orthographic.OrthoHeight = 8.0f;
+			return orthographic;
+		}
+		// (3, 1) across a view 8 tall and 8 * 640 / 360 wide.
+		let ax = (int32)((3.0f / (4.0f * 640.0f / 360.0f) * 0.5f + 0.5f) * 640.0f);
+		let ay = (int32)((0.5f - 1.0f / 4.0f * 0.5f) * 360.0f);
+		let empty = Float3(50.0f, 0.0f, 0.0f);
+		Test.Assert(!tool.Update(Ortho(PixelFrame(empty, true, ax - 6, ay - 6))));
+		tool.Update(Ortho(DragFrame(empty, ax + 6, ay + 6)));
+		tool.Update(Ortho(ReleaseFrame(empty, ax + 6, ay + 6)));
+		Test.Assert(selection.Contains(asideId));
+		Test.Assert(selection.Contains(behindItId), "the same pixel, 40 m further back");
+		Test.Assert(!selection.Contains(centreId));
+		Test.Assert(selection.Count == 2);
+	}
 }

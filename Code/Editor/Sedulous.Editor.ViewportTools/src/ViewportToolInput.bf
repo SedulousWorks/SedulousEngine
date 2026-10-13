@@ -11,7 +11,10 @@ struct ViewportToolInput
 	public ViewportRay Ray = .();
 	public Float3 CameraPosition = .Zero;
 	public Float3 CameraForward = .(0.0f, 0.0f, -1.0f);
+	public Float3 CameraUp = .(0.0f, 1.0f, 0.0f);
 	public float FovY = 1.0472f;
+	/// Above nought: an orthographic view this tall, in world units.
+	public float OrthoHeight = 0.0f;
 
 	/// False when the pointer is not over the viewport this frame: a tool keeps its
 	/// selection-tracking visuals in sync but clears hover, ignores buttons, and finishes or

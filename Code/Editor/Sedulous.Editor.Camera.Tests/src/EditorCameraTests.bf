@@ -201,4 +201,79 @@ static class EditorCameraTests
 		cam.Update(keyboard, mouse, 0.5f);
 		Test.Assert(Near(cam.Position.X, 1.0f) && Near(cam.Position.Y, 2.0f) && Near(cam.Position.Z, 3.0f));
 	}
+
+	/// The orthographic height is what the view spans at the pivot, and follows the zoom;
+	/// switching keeps the eye and the pivot, and only the projection changes, to that height.
+	[Test]
+	public static void AnOrthographicHeightIsWhatTheViewSpansAtThePivotAndFollowsTheZoom()
+	{
+		let cam = scope EditorCamera();
+		cam.FocusDistance = 10.0f;
+		Test.Assert(Near(cam.OrthoHeight, 2.0f * 10.0f * Math.Tan(0.5f * cam.FovY)));
+		cam.FocusDistance = 5.0f; // a zoom in halves it
+		Test.Assert(Near(cam.OrthoHeight, 2.0f * 5.0f * Math.Tan(0.5f * cam.FovY)));
+
+		let eye = cam.Position;
+		cam.SetOrthographic(true);
+		Test.Assert(Near(cam.Position.X, eye.X) && Near(cam.Position.Z, eye.Z));
+		let ortho = cam.Projection(2.0f);
+		Test.Assert(ortho.IsOrthographic);
+		Test.Assert(Near(2.0f / ortho.M[1][1], cam.OrthoHeight));
+		Test.Assert(Near(2.0f / ortho.M[0][0], cam.OrthoHeight * 2.0f));
+		cam.SetOrthographic(false);
+		Test.Assert(!cam.Projection(2.0f).IsOrthographic);
+	}
+
+	/// An orthographic ray runs along the view, from a point that moves with the pixel; a
+	/// perspective one starts at the eye and fans out.
+	[Test]
+	public static void AnOrthographicRayRunsAlongTheViewFromAPointThatMovesWithThePixel()
+	{
+		let cam = scope EditorCamera();
+		cam.LookAt(.Zero);
+		cam.SetOrthographic(true);
+		cam.RayThrough(0.0f, 0.0f, 1.5f, let originA, let directionA);
+		cam.RayThrough(1.0f, 1.0f, 1.5f, let originB, var directionB);
+		Test.Assert(Near(Dot(directionA, cam.Forward), 1.0f));
+		Test.Assert(Near(Dot(directionB, cam.Forward), 1.0f));
+		// The corner's ray starts half the view up and half its width across from the centre's.
+		let offset = originB - originA;
+		Test.Assert(Near(Dot(offset, cam.Up), 0.5f * cam.OrthoHeight));
+		Test.Assert(Near(Dot(offset, cam.Right), 0.5f * cam.OrthoHeight * 1.5f));
+
+		cam.SetOrthographic(false);
+		cam.RayThrough(1.0f, 1.0f, 1.5f, let eyeOrigin, out directionB);
+		Test.Assert(Near(eyeOrigin.X, cam.Position.X));
+		Test.Assert(Dot(directionB, cam.Forward) < 0.95f);
+	}
+
+	/// A snap to an axis turns orthographic and looks straight down for a top view; a look away
+	/// turns it back. Chosen by hand it stays through a look, and with the preference off a snap
+	/// leaves the projection alone.
+	[Test]
+	public static void ASnapToAnAxisTurnsOrthographicAndTurningAwayTurnsItOff()
+	{
+		let cam = scope EditorCamera();
+		cam.SnapToAxis(0.0f, -EditorCamera.cStraightPitch); // the top view
+		Test.Assert(cam.Orthographic);
+		Test.Assert(cam.IsOrthographicFromSnap);
+		Test.Assert(Near(cam.Forward.Y, -1.0f), "straight down, past the mouse look's limit");
+
+		let keyboard = scope StubKeyboard();
+		let mouse = scope StubMouse();
+		mouse.Rmb = true;
+		cam.Update(keyboard, mouse, 0.016f); // held still: stays
+		Test.Assert(cam.Orthographic);
+		mouse.Dx = 20.0f;
+		cam.Update(keyboard, mouse, 0.016f); // a look away: back to perspective
+		Test.Assert(!cam.Orthographic);
+
+		cam.SetOrthographic(true);
+		cam.Update(keyboard, mouse, 0.016f);
+		Test.Assert(cam.Orthographic, "chosen by hand, it stays through a look");
+		let manual = scope EditorCamera();
+		manual.AutoOrthographic = false;
+		manual.SnapToAxis(0.0f, 0.0f);
+		Test.Assert(!manual.Orthographic);
+	}
 }

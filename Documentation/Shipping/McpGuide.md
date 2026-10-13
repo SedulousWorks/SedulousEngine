@@ -24,8 +24,9 @@ dedicated tool or ask the user) and the scene page's live tools
 (`selection_get`, `selection_set`, `simulate_start`, `simulate_stop`, `entity_inspect`,
 `component_set`, `viewport_camera_get`, `viewport_camera_set`, `viewport_frame`, `viewport_screenshot`,
 `navigation_bake`, each addressed by the page's asset guid). `viewport_camera_get` and `viewport_camera_set` read and
-move the viewport's editor camera in degrees (a position, a yaw and pitch, or a `lookAt` point;
-editor state only, no undo step). `viewport_frame` frames entities (by name, path or guid;
+move the viewport's editor camera in degrees (a position, a yaw and pitch, or a `lookAt` point),
+and switch it to `orthographic` (an `orthoHeight` zooms it about its focus; the height follows
+the zoom in either projection); editor state only, no undo step. `viewport_frame` frames entities (by name, path or guid;
 default the selection), each with everything under it, as the user's F does: the camera stands
 back along its view until they fit and orbits about them, at once, so a screenshot after shows
 it. `viewport_screenshot` writes what the viewport renders to a

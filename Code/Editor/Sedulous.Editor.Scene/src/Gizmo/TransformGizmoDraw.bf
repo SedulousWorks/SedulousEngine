@@ -49,7 +49,7 @@ extension TransformGizmo
 		if (Dot(lineDir, lineDir) < 0.0001f)
 			return;
 		let mid = (from + to) * 0.5f;
-		var side = Cross(lineDir, mid - mCameraPos);
+		var side = Cross(lineDir, ViewDirAt(mid));
 		let lenSq = Dot(side, side);
 		if (lenSq < 0.0001f)
 			return; // pointing at the camera: zero apparent width
@@ -65,7 +65,7 @@ extension TransformGizmo
 		let end = Position + dir * Size;
 		DrawThickLine(dd, Position, end, color, thickness);
 
-		let viewDir = Normalized(end - mCameraPos);
+		let viewDir = ViewDirAt(end);
 		var side = Cross(dir, viewDir);
 		let lenSq = Dot(side, side);
 		if (lenSq > 0.0001f)

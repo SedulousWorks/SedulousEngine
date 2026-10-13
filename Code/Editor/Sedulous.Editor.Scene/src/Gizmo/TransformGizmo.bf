@@ -22,6 +22,8 @@ class TransformGizmo
 
 	protected Float3 mCameraPos = .Zero;
 	protected Float3 mCameraForward = .(0, 0, -1);
+	/// Every view ray runs along mCameraForward.
+	protected bool mOrthographic = false;
 
 	protected GizmoAxis mHovered = .None;
 	protected GizmoAxis mSelected = .None;
@@ -39,18 +41,25 @@ class TransformGizmo
 	public GizmoAxis Selected => mSelected;
 	public bool IsDragging => mDragging;
 
-	public void SetCamera(Float3 cameraPosition, Float3 cameraForward)
+	/// The camera facts for grazing tests, quadrant flips, half ring culling and sizing. Under
+	/// an orthographic view every view ray runs along `cameraForward`.
+	public void SetCamera(Float3 cameraPosition, Float3 cameraForward, bool orthographic = false)
 	{
 		mCameraPos = cameraPosition;
 		mCameraForward = Normalized(cameraForward);
+		mOrthographic = orthographic;
 	}
 
 	/// The world size that keeps the gizmo a constant fraction of the view at `point`'s
-	/// depth; zero or negative at or behind the camera plane.
+	/// depth; under an orthographic view `orthoHeight` tall (above nought), half that height
+	/// times the ratio, the same at every depth. Zero or negative at or behind the camera
+	/// plane.
 	public static float ScreenScale(Float3 cameraPos, Float3 cameraForward, float fovY,
-		Float3 point, float ratio = 0.3f)
+		Float3 point, float ratio = 0.3f, float orthoHeight = 0.0f)
 	{
 		let depth = Dot(point - cameraPos, Normalized(cameraForward));
+		if (orthoHeight > 0.0f)
+			return (depth > 0.0f) ? 0.5f * orthoHeight * ratio : 0.0f; // the same size at any depth
 		return Tan(fovY * 0.5f) * depth * ratio;
 	}
 
@@ -350,7 +359,10 @@ class TransformGizmo
 
 	// ---- frames ----
 
-	protected Float3 ViewDir => Normalized(Position - mCameraPos);
+	protected Float3 ViewDir => ViewDirAt(Position);
+
+	/// The view ray's direction at `point`: from the eye, or along the view when orthographic.
+	protected Float3 ViewDirAt(Float3 point) => mOrthographic ? mCameraForward : Normalized(point - mCameraPos);
 
 	protected Float3 CameraRight
 	{
@@ -389,7 +401,7 @@ class TransformGizmo
 	{
 		Float3 u = ?, v = ?;
 		PlaneBasis(plane, out u, out v);
-		let toCam = mCameraPos - Position;
+		let toCam = -ViewDirAt(Position);
 		su = (Dot(u, toCam) >= 0.0f) ? 1.0f : -1.0f;
 		sv = (Dot(v, toCam) >= 0.0f) ? 1.0f : -1.0f;
 	}

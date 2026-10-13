@@ -965,6 +965,30 @@ class SceneMcpToolsTests
 			Test.Assert(got.Error.StartsWith("`position` takes [x, y, z]"), got.Error);
 			Test.Assert(Near(page.Camera.Yaw, 0.0));
 		}
+		// Orthographic: on, and zoomed about the focus to a height (the focus 10 m ahead, at the
+		// origin); a height of nought is refused; and off again.
+		{
+			let got = Call(server, "viewport_camera_set", scope $"{{\"page\":\"{pageGuid}\",\"orthographic\":true,\"orthoHeight\":6}}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(page.Camera.Orthographic);
+			Test.Assert(Near(page.Camera.OrthoHeight, 6.0));
+			Test.Assert(got.Payload.Get("orthographic").AsBool());
+			Test.Assert(Near(got.Payload.Get("orthoHeight").AsNumber(), 6.0));
+			let focus = page.Camera.Position + page.Camera.Forward * page.Camera.FocusDistance;
+			Test.Assert(Near(focus.Z, 0.0), "zoomed about the focus");
+		}
+		{
+			let got = Call(server, "viewport_camera_set", scope $"{{\"page\":\"{pageGuid}\",\"orthoHeight\":0}}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+		}
+		{
+			let got = Call(server, "viewport_camera_set", scope $"{{\"page\":\"{pageGuid}\",\"orthographic\":false}}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(!page.Camera.Orthographic);
+		}
 
 		// The screenshot: the first pump brings the page to front and asks for the capture,
 		// then the call is re-entered each pump until the page reports the frame written.

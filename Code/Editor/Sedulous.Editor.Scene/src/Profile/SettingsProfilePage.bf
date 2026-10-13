@@ -302,7 +302,7 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 			}
 			else if (SceneLoading.SceneWorldBounds(scene, let bounds))
 			{
-				camera.FrameSphere(bounds.Center(), Length(bounds.Extents()), 1.0472f, false);
+				camera.FrameSphere(bounds.Center(), Length(bounds.Extents()), camera.FovY, false);
 			}
 		}
 		else

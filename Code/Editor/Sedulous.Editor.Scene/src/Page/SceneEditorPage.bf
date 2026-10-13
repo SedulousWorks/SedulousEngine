@@ -40,9 +40,6 @@ namespace Sedulous.Editor.Scene;
 /// registry and views, and releases its content view on destruction.
 class SceneEditorPage : UIEditorPage, ISceneEditorPage
 {
-	/// Must match OnRenderWindow's projection.
-	private const float cFovY = 1.0472f;
-
 	private EditorContext mContext;
 	private IApplicationHost mHost;
 	private UIHost mUiHost;
@@ -573,9 +570,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 		var camera = ViewCamera();
 		camera.View = Float4x4.LookAtRH(mCamera.Position, mCamera.Position + mCamera.Forward, mCamera.Up);
-		camera.Projection = Float4x4.PerspectiveFovRH(cFovY, (float)w / (float)h, 0.1f, 1000.0f);
+		camera.Projection = mCamera.Projection((float)w / (float)h);
 		camera.Position = mCamera.Position;
-		camera.FarZ = 1000.0f;
+		camera.FarZ = mCamera.FarZ;
 
 		var cameraOverride = CameraOverride();
 		cameraOverride.Camera = camera;

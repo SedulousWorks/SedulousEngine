@@ -28,10 +28,7 @@ extension SceneEditorPage
 			return false;
 		let ndcX = 2.0f * (mouse.X / (float)w) - 1.0f;
 		let ndcY = 1.0f - 2.0f * (mouse.Y / (float)h);
-		let tanY = Tan(cFovY * 0.5f);
-		let tanX = tanY * ((float)w / (float)h);
-		outRay.Origin = mCamera.Position;
-		outRay.Direction = Normalized(mCamera.Forward + mCamera.Right * (ndcX * tanX) + mCamera.Up * (ndcY * tanY));
+		mCamera.RayThrough(ndcX, ndcY, (float)w / (float)h, out outRay.Origin, out outRay.Direction);
 		return true;
 	}
 
@@ -45,7 +42,9 @@ extension SceneEditorPage
 		input.DeltaSeconds = deltaSeconds;
 		input.CameraPosition = mCamera.Position;
 		input.CameraForward = mCamera.Forward;
-		input.FovY = cFovY;
+		input.CameraUp = mCamera.Up;
+		input.FovY = mCamera.FovY;
+		input.OrthoHeight = mCamera.Orthographic ? mCamera.OrthoHeight : 0.0f;
 		input.EditingLocked = mIsSimulating;
 		GizmoRay ray = ?;
 		input.PointerValid = viewportActive && MakeMouseRay(out ray);
@@ -88,11 +87,19 @@ extension SceneEditorPage
 		if (input.LeftPressed && mViewport.IsHovered())
 		{
 			let gizmo = ViewGizmo.LayoutFor(mCamera.Right, mCamera.Up, mCamera.Forward, (float)input.ViewportWidth);
-			let hit = ViewGizmo.Hit(gizmo, (float)input.PointerX, (float)input.PointerY);
+			let px = (float)input.PointerX;
+			let py = (float)input.PointerY;
+			let hit = ViewGizmo.Hit(gizmo, px, py);
 			if (hit >= 0)
 			{
 				ViewGizmo.SnapAngles(gizmo.Poles[hit].Axis, mCamera.Yaw, let yaw, let pitch);
-				mCamera.TurnAboutPivot(yaw, pitch);
+				mCamera.AutoOrthographic = EditorUiSettings.AutoOrthographicViews(mContext.UserEditorSettings);
+				mCamera.SnapToAxis(yaw, pitch);
+				mViewGizmoPressed = true;
+			}
+			else if (ViewGizmo.HitCentre(gizmo, px, py))
+			{
+				mCamera.SetOrthographic(!mCamera.Orthographic);
 				mViewGizmoPressed = true;
 			}
 		}
@@ -127,7 +134,7 @@ extension SceneEditorPage
 		gizmoCamera.View = Float4x4.LookAtRH(mCamera.Position, mCamera.Position + mCamera.Forward, mCamera.Up);
 		let gizmoAspect = ((mViewport != null) && mViewport.IsReady && (mViewport.RenderHeight > 0))
 			? (float)mViewport.RenderWidth / (float)mViewport.RenderHeight : 16.0f / 9.0f;
-		gizmoCamera.Projection = Float4x4.PerspectiveFovRH(cFovY, gizmoAspect, 0.1f, 1000.0f);
+		gizmoCamera.Projection = mCamera.Projection(gizmoAspect);
 		gizmoCamera.Position = mCamera.Position;
 		ctx.ViewCamera = &gizmoCamera;
 		ctx.LodOverlay = mView.ShowLodOverlay;
@@ -162,20 +169,26 @@ extension SceneEditorPage
 		dd.DrawScreenTextRight(12.0f, 12.0f, mFpsText, .(0.85f, 0.85f, 0.85f, 1.0f));
 	}
 
+	/// How high the camera is over the grid's plane, for its spacing: the eye's height in
+	/// perspective; under orthographic, the pivot's distance (what the view spans), since an
+	/// orthographic eye may stand level with the plane and still see across it.
+	private float GridViewHeight()
+	{
+		if (mCamera.Orthographic)
+			return mCamera.FocusDistance;
+		return Math.Abs(Dot(mCamera.Position, SceneGrid.AxesOf(mView.GridPlane).Normal));
+	}
+
 	/// The grid's spacing where the camera is now (by its distance from the grid's plane): what
 	/// the grid draws and the zoom readout reports.
-	private GridSpacing CurrentGridSpacing()
-	{
-		let axes = SceneGrid.AxesOf(mView.GridPlane);
-		return SceneGrid.SpacingFor(Math.Abs(Dot(mCamera.Position, axes.Normal)));
-	}
+	private GridSpacing CurrentGridSpacing() => SceneGrid.SpacingFor(GridViewHeight());
 
 	/// The grid on the chosen plane: the shader grid, or debug lines when GridLines.
 	private void DrawSceneGrid(DebugDraw dd)
 	{
 		let axes = SceneGrid.AxesOf(mView.GridPlane);
 		let along = Dot(mCamera.Position, axes.Normal);
-		let height = Math.Abs(along);
+		let height = GridViewHeight();
 		let step = SceneGrid.SpacingFor(height);
 		// The camera's foot on the plane: the grid is centred under it, wherever it flies.
 		let foot = mCamera.Position - axes.Normal * along;
@@ -240,6 +253,15 @@ extension SceneEditorPage
 			let ink = pole.Positive ? Color(0.08f, 0.08f, 0.08f, 1.0f) : Color(0.9f, 0.9f, 0.9f, 1.0f);
 			dd.DrawScreenText(pole.Screen.X - 0.5f * cGlyph * (float)label.Length, pole.Screen.Y - 0.5f * cGlyphHeight, label, ink);
 		}
+		// The centre: a click switches the projection; under the tripod, which one is on.
+		let overCentre = mViewport.IsHovered() && (mViewport.Mouse != null)
+			&& ViewGizmo.HitCentre(gizmo, mViewport.Mouse.X, mViewport.Mouse.Y);
+		let c = 0.5f * ViewGizmo.cCentre;
+		let centre = overCentre ? Color(1.0f, 1.0f, 1.0f, 1.0f) : Color(0.75f, 0.75f, 0.75f, 1.0f);
+		dd.DrawScreenRect(gizmo.Center.X - c, gizmo.Center.Y - c, ViewGizmo.cCentre, ViewGizmo.cCentre, centre);
+		let projection = ViewGizmo.ProjectionLabel(mCamera.Orthographic);
+		dd.DrawScreenText(gizmo.Center.X - 0.5f * cGlyph * (float)projection.Length,
+			gizmo.Center.Y + ViewGizmo.cArm + ViewGizmo.cKnob, projection, .(0.85f, 0.85f, 0.85f, 1.0f));
 	}
 
 	/// The measurement overlay while zooming, bottom left, at `opacity`: the focus distance and
@@ -250,7 +272,7 @@ extension SceneEditorPage
 		if (!mViewport.IsReady || (mViewport.RenderHeight == 0))
 			return;
 		let height = (float)mViewport.RenderHeight;
-		let bar = ZoomReadout.ScaleBarAt(mCamera.FocusDistance, cFovY, height);
+		let bar = ZoomReadout.ScaleBarAt(mCamera.FocusDistance, mCamera.FovY, height);
 		let focusText = scope String();
 		ZoomReadout.FormatMetres(mCamera.FocusDistance, focusText);
 		focusText.Append(" to focus");
@@ -329,7 +351,7 @@ extension SceneEditorPage
 		}
 		if (!any)
 			return false;
-		mCamera.FrameSphere(merged.Center(), Length(merged.Extents()), cFovY, ease);
+		mCamera.FrameSphere(merged.Center(), Length(merged.Extents()), mCamera.FovY, ease);
 		return true;
 	}
 

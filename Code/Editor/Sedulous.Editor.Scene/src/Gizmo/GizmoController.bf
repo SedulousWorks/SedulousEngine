@@ -94,7 +94,7 @@ class GizmoController
 		}
 
 		let scene = mEdit.Scene;
-		mGizmo.SetCamera(input.CameraPosition, input.CameraForward);
+		mGizmo.SetCamera(input.CameraPosition, input.CameraForward, input.OrthoHeight > 0.0f);
 
 		let world = scene.ComposeWorldMatrix(entity);
 		mGizmo.Position = .(world.M[3][0], world.M[3][1], world.M[3][2]);
@@ -112,7 +112,7 @@ class GizmoController
 		}
 
 		let scale = TransformGizmo.ScreenScale(input.CameraPosition, input.CameraForward,
-			input.FovY, mGizmo.Position);
+			input.FovY, mGizmo.Position, 0.3f, input.OrthoHeight);
 		if (scale <= 0.0001f) // at or behind the camera plane
 		{
 			AbortDrag();

@@ -260,7 +260,7 @@ extension SceneEditorPage
 	/// the page closes.
 	private void SaveViewState()
 	{
-		let camera = SceneViewCamera(mCamera.Position, mCamera.Yaw, mCamera.Pitch, mCamera.FocusDistance);
+		let camera = SceneViewCamera(mCamera.Position, mCamera.Yaw, mCamera.Pitch, mCamera.FocusDistance, mCamera.Orthographic);
 		let selection = (mEditContext != null) ? mEditContext.EntitySelection.Items : Span<Guid>();
 		SceneViewSplits? splits = null;
 		if ((mHierarchySplit != null) && (mInspectorSplit != null) && (mViewportColumn != null))
@@ -290,6 +290,7 @@ extension SceneEditorPage
 		mCamera.Yaw = pref.Camera.Yaw;
 		mCamera.Pitch = pref.Camera.Pitch;
 		mCamera.FocusDistance = pref.Camera.FocusDistance;
+		mCamera.SetOrthographic(pref.Camera.Orthographic);
 		if ((mEditContext == null) || (mScene == null) || pref.Selection.IsEmpty)
 			return;
 		// Only ids the scene still has: one deleted since, or spawned by a Simulate run that

@@ -20,6 +20,7 @@ static class SceneActionIds
 	public const String GizmoVertexSnap = "scene.gizmo.vertexSnap";
 	public const String Markers = "scene.view.markers";
 	public const String FrameSelection = "scene.view.frameSelection";
+	public const String Orthographic = "scene.view.orthographic";
 	public const String AnimationPanel = "scene.view.animationPanel";
 	public const String SetProjectThumbnail = "scene.view.setProjectThumbnail";
 	public const String EntityCreate = "scene.entity.create";
@@ -185,6 +186,29 @@ static class SceneActions
 				{
 					let scene = page as ISceneEditorPage;
 					scene.FrameEntities(scene.EditContext.EntitySelection.Items, true);
+				};
+			actions.Register(d);
+		}
+		{
+			let d = new EditorActionDeclaration(SceneActionIds.Orthographic, "Orthographic", "Draw the viewport without perspective, every view ray parallel: what is in view stays", "Scene/Orthographic", 291);
+			d.Kind = .Toggle;
+			d.Shortcut = .(.Keypad5);
+			d.AlternateShortcut = .(.O);
+			d.ReadOnly = true; // the camera is the page's view, not the scene
+			d.Enabled = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					return (scene != null) && (scene.ViewportCamera != null) && !scene.CameraOwnsInput;
+				};
+			d.Checked = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					return (scene != null) && (scene.ViewportCamera != null) && scene.ViewportCamera.Orthographic;
+				};
+			d.Execute = new (page) =>
+				{
+					let camera = (page as ISceneEditorPage).ViewportCamera;
+					camera.SetOrthographic(!camera.Orthographic);
 				};
 			actions.Register(d);
 		}

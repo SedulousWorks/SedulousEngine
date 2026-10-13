@@ -662,7 +662,7 @@ static class SceneMcpTools
 		let getSchema = scope SchemaBuilder();
 		getSchema.Str("page", cPageArgument);
 		server.RegisterTool("viewport_camera_get",
-			"The pose a scene page's viewport looks from: the editor camera's position, yaw and pitch in degrees (yaw 0 looks down -Z, positive pitch looks up), its forward vector and its orbit focus distance. Defaults to the active page.",
+			"The pose a scene page's viewport looks from: the editor camera's position, yaw and pitch in degrees (yaw 0 looks down -Z, positive pitch looks up), its forward vector, its orbit focus distance, whether it draws orthographic, and the height an orthographic view spans (what the field of view spans at the focus, so it follows the zoom). Defaults to the active page.",
 			getSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
@@ -685,8 +685,10 @@ static class SceneMcpTools
 		setSchema.Number("yawDegrees", "rotation about the up axis; 0 looks down -Z");
 		setSchema.Number("pitchDegrees", "tilt; positive looks up, clamped short of straight up or down");
 		setSchema.Arr("lookAt", "number", "the point [x, y, z] to aim at from the position");
+		setSchema.Boolean("orthographic", "draw without perspective (true) or with it (false)");
+		setSchema.Number("orthoHeight", "the world height an orthographic view spans; the camera zooms about its focus to it");
 		server.RegisterTool("viewport_camera_set",
-			"Move a scene page's viewport camera - to look at something from somewhere specific before a viewport_screenshot, or to show the user a spot. Sets what is given: `position` ([x, y, z]), then `yawDegrees` and `pitchDegrees`, then `lookAt` ([x, y, z]: aims from the position at that point, horizon level, and moves the orbit focus there; it wins over yaw and pitch). Nothing given changes nothing. Returns the pose as viewport_camera_get does. Editor state only: no scene edit, no undo step.",
+			"Move a scene page's viewport camera - to look at something from somewhere specific before a viewport_screenshot, or to show the user a spot. Sets what is given: `position` ([x, y, z]), then `yawDegrees` and `pitchDegrees`, then `lookAt` ([x, y, z]: aims from the position at that point, horizon level, and moves the orbit focus there; it wins over yaw and pitch), then `orthographic` (true draws without perspective, keeping what is in view) and `orthoHeight` (the world height an orthographic view spans: the camera zooms about its focus to it, in either projection). Nothing given changes nothing. Returns the pose as viewport_camera_get does. Editor state only: no scene edit, no undo step.",
 			setSchema.Build(), .Adjusts,
 			new (arguments, outResult, outError) =>
 			{
@@ -721,6 +723,18 @@ static class SceneMcpTools
 					outError.Append("`yawDegrees` and `pitchDegrees` take a number");
 					return false;
 				}
+				let orthographic = arguments.Get("orthographic");
+				if ((orthographic != null) && !orthographic.IsBool)
+				{
+					outError.Append("`orthographic` takes true or false");
+					return false;
+				}
+				let orthoHeight = arguments.Get("orthoHeight");
+				if ((orthoHeight != null) && (!orthoHeight.IsNumber || !(orthoHeight.AsNumber() > 0.0)))
+				{
+					outError.Append("`orthoHeight` takes a number above 0");
+					return false;
+				}
 				if (hasPosition)
 					camera.Position = position;
 				if (yaw != null)
@@ -732,6 +746,15 @@ static class SceneMcpTools
 				}
 				if (hasLookAt)
 					camera.LookAt(lookAt);
+				if (orthographic != null)
+					camera.SetOrthographic(orthographic.AsBool());
+				if (orthoHeight != null)
+				{
+					// The height is what the field of view spans at the focus: zoom about it.
+					let focus = camera.Position + camera.Forward * camera.FocusDistance;
+					camera.FocusDistance = (float)orthoHeight.AsNumber() / (2.0f * System.Math.Tan(0.5f * camera.FovY));
+					camera.Position = focus - camera.Forward * camera.FocusDistance;
+				}
 				WriteCamera(page, camera, outResult);
 				return true;
 			});
@@ -881,6 +904,8 @@ static class SceneMcpTools
 		var forward = camera.Forward;
 		outResult.Set("forward", ComponentJson.ValueJson(typeof(Float3), &forward));
 		outResult.Set("focusDistance", JsonValue.MakeNumber(camera.FocusDistance));
+		outResult.Set("orthographic", JsonValue.MakeBool(camera.Orthographic));
+		outResult.Set("orthoHeight", JsonValue.MakeNumber(camera.OrthoHeight));
 	}
 
 	public static bool ReadFloat3(JsonValue value, out Float3 outValue)

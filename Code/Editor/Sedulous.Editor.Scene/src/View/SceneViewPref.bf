@@ -28,7 +28,8 @@ struct SceneViewSplits
 /// Version 2 adds the editor CAMERA and the entity SELECTION, so a scene reopens where it was
 /// left rather than at the default framing with nothing picked; version 3 adds the entity
 /// marker toggle, version 4 the frame rate readout and, appended to it, the page's split
-/// positions (a version 4 file saved before them reads none). An older file is read by the gates below
+/// positions (a version 4 file saved before them reads none), then the grid's plane and the
+/// camera's projection the same way. An older file is read by the gates below
 /// and re-saved at the current version.
 /// HAND WRITTEN rather than generated: the body has to branch on the stored version, which a
 /// field walk cannot.
@@ -128,6 +129,8 @@ class SceneViewPref : ISerializable
 				SerializeValue(ar, "gridPlane", ref GridPlane);
 				SerializeValue(ar, "gridLines", ref GridLines);
 			}
+			if ((ar.Mode != .Read) || ar.HasKey("cameraOrthographic"))
+				SerializeValue(ar, "cameraOrthographic", ref Camera.Orthographic);
 		}
 
 		ar.EndObject();

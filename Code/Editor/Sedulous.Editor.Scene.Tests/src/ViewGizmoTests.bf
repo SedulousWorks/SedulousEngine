@@ -93,11 +93,11 @@ class ViewGizmoTests
 			Test.Assert(Near(after.X, pivot.X) && Near(after.Y, pivot.Y) && Near(after.Z, pivot.Z), "the pivot stays");
 		}
 
-		// Top: straight down as far as the camera pitches, keeping the yaw; bottom: up.
+		// Top: straight down, keeping the yaw; bottom: straight up.
 		ViewGizmo.SnapAngles(.(0, 1, 0), 0.7f, let topYaw, let topPitch);
-		Test.Assert(Near(topYaw, 0.7f) && Near(topPitch, -ViewGizmo.cMaxPitch));
+		Test.Assert(Near(topYaw, 0.7f) && Near(topPitch, -ViewGizmo.cStraightPitch));
 		ViewGizmo.SnapAngles(.(0, -1, 0), 0.7f, ?, let bottomPitch);
-		Test.Assert(Near(bottomPitch, ViewGizmo.cMaxPitch));
+		Test.Assert(Near(bottomPitch, ViewGizmo.cStraightPitch));
 	}
 
 	/// Knobs are labelled by axis, coloured by axis, the negatives dimmer.
@@ -120,5 +120,23 @@ class ViewGizmoTests
 		Test.Assert(dimGreen.G > dimGreen.R);
 		Test.Assert(dimGreen.G < ViewGizmo.ColorOf(y, false).G);
 		Test.Assert(ViewGizmo.ColorOf(x, true).R >= red.R, "hovered: no dimmer");
+	}
+
+	/// The centre switches the projection, unless a knob covers it.
+	[Test]
+	public static void TheCentreSwitchesTheProjectionUnlessAKnobCoversIt()
+	{
+		// Looking down -Z: the Z knobs sit on the centre, covering it.
+		let front = ViewGizmo.LayoutFor(.(1, 0, 0), .(0, 1, 0), .(0, 0, -1), 800.0f);
+		Test.Assert(!ViewGizmo.HitCentre(front, front.Center.X, front.Center.Y));
+		// From above and to the side no knob is over the centre.
+		let forward = Normalized(Float3(-1, -1, -1));
+		let right = Normalized(Cross(forward, .(0, 1, 0)));
+		let up = Cross(right, forward);
+		let angled = ViewGizmo.LayoutFor(right, up, forward, 800.0f);
+		Test.Assert(ViewGizmo.HitCentre(angled, angled.Center.X, angled.Center.Y));
+		Test.Assert(!ViewGizmo.HitCentre(angled, angled.Center.X + 20.0f, angled.Center.Y + 20.0f));
+		Test.Assert(ViewGizmo.ProjectionLabel(true) == "Ortho");
+		Test.Assert(ViewGizmo.ProjectionLabel(false) == "Persp");
 	}
 }

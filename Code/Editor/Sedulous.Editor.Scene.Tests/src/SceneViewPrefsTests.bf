@@ -71,7 +71,7 @@ class SceneViewPrefsTests
 		Test.Assert(!SceneViewPrefs.Find(store, scene).HasCamera);
 
 		Guid[2] selection = .(entityA, entityB);
-		Test.Assert(SceneViewPrefs.SaveView(store, scene, .(.(1.0f, 2.0f, 3.0f), 0.5f, -0.25f, 7.5f),
+		Test.Assert(SceneViewPrefs.SaveView(store, scene, .(.(1.0f, 2.0f, 3.0f), 0.5f, -0.25f, 7.5f, true),
 			.(&selection[0], selection.Count)));
 
 		let buffer = scope MemoryStream();
@@ -89,6 +89,7 @@ class SceneViewPrefsTests
 		Test.Assert(pref.Camera.Yaw == 0.5f);
 		Test.Assert(pref.Camera.Pitch == -0.25f);
 		Test.Assert(pref.Camera.FocusDistance == 7.5f);
+		Test.Assert(pref.Camera.Orthographic, "the projection comes back with the framing");
 		Test.Assert(pref.Selection.Count == 2);
 		Test.Assert(pref.Selection[0] == entityA);
 		Test.Assert(pref.Selection[1] == entityB);

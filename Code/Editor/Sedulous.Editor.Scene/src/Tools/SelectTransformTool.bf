@@ -98,6 +98,7 @@ class SelectTransformTool : IViewportTool
 		gizmoInput.CameraPosition = input.CameraPosition;
 		gizmoInput.CameraForward = input.CameraForward;
 		gizmoInput.FovY = input.FovY;
+		gizmoInput.OrthoHeight = input.OrthoHeight;
 		// A locked page still picks, but never drags.
 		gizmoInput.PointerValid = input.PointerValid && !input.EditingLocked;
 		gizmoInput.LeftPressed = input.LeftPressed;
@@ -215,17 +216,22 @@ class SelectTransformTool : IViewportTool
 		outPicked.Clear();
 		if ((input.ViewportWidth == 0) || (input.ViewportHeight == 0))
 			return;
-		// The view's basis from the camera forward, roll free like the editor camera, and its
-		// frustum tangents from the field of view and the viewport aspect: enough to project
-		// an origin to a pixel.
+		// The view's basis from the camera forward and up (a view straight down keeps its turn),
+		// and how far a pixel reaches: the frustum tangents from the field of view and the
+		// viewport aspect in perspective, half the view's height and width under orthographic.
+		// Enough to project an origin to a pixel.
 		let forward = Normalized(input.CameraForward);
-		var right = Cross(forward, Float3(0.0f, 1.0f, 0.0f));
+		var right = Cross(forward, input.CameraUp);
 		if (Dot(right, right) < 1e-6f)
-			right = .(1.0f, 0.0f, 0.0f); // looking straight up or down
+			right = Cross(forward, Float3(0.0f, 0.0f, -1.0f)); // an up along the view: any side
 		right = Normalized(right);
 		let up = Cross(right, forward);
+		let aspect = (float)input.ViewportWidth / (float)input.ViewportHeight;
+		let orthographic = input.OrthoHeight > 0.0f;
 		let tanY = Tan(input.FovY * 0.5f);
-		let tanX = tanY * ((float)input.ViewportWidth / (float)input.ViewportHeight);
+		let tanX = tanY * aspect;
+		let halfHeight = 0.5f * input.OrthoHeight;
+		let halfWidth = halfHeight * aspect;
 		let w = (float)input.ViewportWidth;
 		let h = (float)input.ViewportHeight;
 		let scene = mEdit.Scene;
@@ -237,8 +243,8 @@ class SelectTransformTool : IViewportTool
 			let z = Dot(d, forward);
 			if (z <= 1e-4f)
 				return; // behind the camera
-			let nx = Dot(d, right) / (z * tanX);
-			let ny = Dot(d, up) / (z * tanY);
+			let nx = orthographic ? Dot(d, right) / halfWidth : Dot(d, right) / (z * tanX);
+			let ny = orthographic ? Dot(d, up) / halfHeight : Dot(d, up) / (z * tanY);
 			let px = (nx * 0.5f + 0.5f) * w;
 			let py = (0.5f - ny * 0.5f) * h;
 			if ((px >= (float)x0) && (px < (float)(x1 + 1)) && (py >= (float)y0) && (py < (float)(y1 + 1)))

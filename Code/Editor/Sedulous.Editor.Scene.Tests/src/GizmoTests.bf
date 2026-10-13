@@ -164,4 +164,19 @@ class GizmoTests
 		Test.Assert(dd.TextCommands3D.Length == 1);
 		g.EndDrag();
 	}
+
+	/// Under an orthographic view 12 m tall the gizmo keeps one size at every depth: half the
+	/// height times the ratio, near or far, and hidden behind the camera as in perspective.
+	[Test]
+	public static void UnderAnOrthographicViewItKeepsOneSizeAtEveryDepth()
+	{
+		let near = TransformGizmo.ScreenScale(CamPos, CamFwd, 1.0472f, .(0, 0, 8), 0.3f, 12.0f);
+		let far = TransformGizmo.ScreenScale(CamPos, CamFwd, 1.0472f, .(0, 0, -90), 0.3f, 12.0f);
+		Test.Assert(Near(near, 0.5f * 12.0f * 0.3f));
+		Test.Assert(Near(far, near));
+		Test.Assert(TransformGizmo.ScreenScale(CamPos, CamFwd, 1.0472f, .(0, 0, 11), 0.3f, 12.0f) <= 0.0f);
+		// In perspective it grows with depth.
+		Test.Assert(TransformGizmo.ScreenScale(CamPos, CamFwd, 1.0472f, .(0, 0, -90))
+			> TransformGizmo.ScreenScale(CamPos, CamFwd, 1.0472f, .(0, 0, 8)));
+	}
 }

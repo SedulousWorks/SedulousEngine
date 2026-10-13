@@ -12,13 +12,16 @@ struct SceneViewCamera
 	public float Yaw = 0.0f;
 	public float Pitch = 0.0f;
 	public float FocusDistance = 12.0f;
+	/// Whether the view draws without perspective.
+	public bool Orthographic = false;
 
 	public this() {}
-	public this(Float3 position, float yaw, float pitch, float focusDistance)
+	public this(Float3 position, float yaw, float pitch, float focusDistance, bool orthographic = false)
 	{
 		Position = position;
 		Yaw = yaw;
 		Pitch = pitch;
 		FocusDistance = focusDistance;
+		Orthographic = orthographic;
 	}
 }

@@ -34,7 +34,9 @@ class PreviewViewport
 	private SceneManager mSceneManager = new .() ~ delete _;
 	private RenderSubsystem mRender = null;
 	private Scene mScene = null;
-	private EditorCamera mCamera = new .() ~ delete _;
+	/// A preview looks at one asset close up: a nearer near plane and a shorter reach than the
+	/// scene view's.
+	private EditorCamera mCamera = new .() { NearZ = 0.05f, FarZ = 500.0f } ~ delete _;
 	private InputRouter mRouter ~ delete _;
 	private ViewportView mViewport = null;
 	private bool mMounted = false;
@@ -148,9 +150,9 @@ class PreviewViewport
 
 		var camera = ViewCamera();
 		camera.View = Float4x4.LookAtRH(mCamera.Position, mCamera.Position + mCamera.Forward, mCamera.Up);
-		camera.Projection = Float4x4.PerspectiveFovRH(1.0472f, (float)w / (float)h, 0.05f, 500.0f);
+		camera.Projection = mCamera.Projection((float)w / (float)h);
 		camera.Position = mCamera.Position;
-		camera.FarZ = 500.0f;
+		camera.FarZ = mCamera.FarZ;
 
 		var cameraOverride = CameraOverride();
 		cameraOverride.Camera = camera;

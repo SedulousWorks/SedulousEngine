@@ -9,6 +9,8 @@ struct GizmoFrameInput
 	public Float3 CameraPosition = .Zero;
 	public Float3 CameraForward = .(0, 0, -1);
 	public float FovY = 1.0472f;
+	/// Above nought: an orthographic view this tall, in world units.
+	public float OrthoHeight = 0.0f;
 	public bool LeftPressed = false;
 	public bool LeftDown = false;
 	public bool LeftReleased = false;

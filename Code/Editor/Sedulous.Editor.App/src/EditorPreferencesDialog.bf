@@ -36,6 +36,7 @@ class EditorPreferencesDialog : Dialog
 	private Slider mUiScaleSlider = null;
 	private Label mUiScaleLabel = null;
 	private CheckBox mMcpEnabled = null;
+	private CheckBox mAutoOrthographic = null;
 	private EditText mMcpPortEdit = null;
 	private EditText mMcpTokenEdit = null;
 	/// Staged; applied and persisted on Save.
@@ -104,6 +105,17 @@ class EditorPreferencesDialog : Dialog
 			UpdateScaleLabel(uiScale);
 			slider.OnValueChanged.Add(new (s, v) => { UpdateScaleLabel(v); });
 			CategoryTabs.AddNote(column, "Font changes apply on restart.");
+
+			// The scene view: snapping to an axis view turns it orthographic.
+			let view = store.Find<EditorUiSettings>();
+			let autoOrthographic = new CheckBox("Axis views are orthographic", (view == null) || view.AutoOrthographic);
+			autoOrthographic.FontSize.Value = 12.0f;
+			autoOrthographic.TooltipText.Set("Snapping a scene view to an axis (its orientation gizmo) turns it orthographic, and turning away turns it back");
+			mAutoOrthographic = autoOrthographic;
+			var checkStyle = LayoutStyle();
+			checkStyle.Width = SizeSpec.Match();
+			checkStyle.Height = SizeSpec.Fixed(Unit.Dp(22.0f));
+			column.AddView(autoOrthographic, checkStyle);
 		}
 
 		// Export: where the export templates live.
@@ -359,6 +371,7 @@ class EditorPreferencesDialog : Dialog
 		mSettings.MarkChanged<EditorFontSettings>();
 		let uiScale = Math.Clamp(mUiScaleSlider.Value.Value, EditorUiSettings.MinUiScale, EditorUiSettings.MaxUiScale);
 		mSettings.Section<EditorUiSettings>().UiScale = uiScale;
+		mSettings.Section<EditorUiSettings>().AutoOrthographic = mAutoOrthographic.IsChecked.Value;
 		mSettings.MarkChanged<EditorUiSettings>();
 		if (OnUiScaleApplied != null)
 			OnUiScaleApplied(uiScale); // live: the host scale and the icon re-bake

@@ -26,7 +26,8 @@ struct ViewGizmoLayout
 }
 
 /// The scene view's orientation gizmo, top right: the axis tripod turning with the camera, a
-/// click on a knob turning the camera about its pivot to look along that axis. The pure parts,
+/// click on a knob turning the camera about its pivot to look along that axis, and a click on
+/// the centre switching the view between perspective and orthographic. The pure parts,
 /// testable without a viewport; the page draws them and routes the click.
 static class ViewGizmo
 {
@@ -38,8 +39,10 @@ static class ViewGizmo
 	public const float cMargin = 12.0f;
 	/// From the top edge, below the frame rate readout's line.
 	public const float cTop = 28.0f;
-	/// The camera's own pitch limit.
-	public const float cMaxPitch = 1.55f;
+	/// A top or bottom view looks straight down or up.
+	public const float cStraightPitch = 1.5707963f;
+	/// The centre's side, in pixels: the projection toggle.
+	public const float cCentre = 10.0f;
 
 	/// Where the knobs sit for a camera whose basis is `right`, `up`, `forward`, in a viewport
 	/// `viewportWidth` pixels wide: each axis seen along the view, as the tripod shows it.
@@ -80,15 +83,26 @@ static class ViewGizmo
 		return -1;
 	}
 
+	/// Whether pixel (x, y) is on the centre, and no knob covers it: a knob is hit first.
+	public static bool HitCentre(ViewGizmoLayout layout, float x, float y)
+	{
+		let half = 0.5f * cCentre;
+		return (Hit(layout, x, y) < 0) && (x >= layout.Center.X - half) && (x <= layout.Center.X + half)
+			&& (y >= layout.Center.Y - half) && (y <= layout.Center.Y + half);
+	}
+
+	/// What the centre says the view is.
+	public static StringView ProjectionLabel(bool orthographic) => orthographic ? "Ortho" : "Persp";
+
 	/// The camera angles that look along `axis` from its side toward the centre: +X looks down
-	/// -X (yaw 90 degrees), +Z down -Z (yaw 0). Y keeps `currentYaw` and pitches to the camera's
-	/// limit, straight down from +Y and up from -Y.
+	/// -X (yaw 90 degrees), +Z down -Z (yaw 0). Y keeps `currentYaw` and looks straight down
+	/// from +Y, up from -Y.
 	public static void SnapAngles(Float3 axis, float currentYaw, out float yaw, out float pitch)
 	{
 		if ((axis.Y > 0.5f) || (axis.Y < -0.5f))
 		{
 			yaw = currentYaw;
-			pitch = (axis.Y > 0.0f) ? -cMaxPitch : cMaxPitch;
+			pitch = (axis.Y > 0.0f) ? -cStraightPitch : cStraightPitch;
 			return;
 		}
 		// Forward is -axis: (-cos(p) sin(y), sin(p), -cos(p) cos(y)) at pitch nought.

@@ -223,6 +223,38 @@ class SceneActionsTests
 		Test.Assert(page.FramedEased);
 	}
 
+	/// Numpad 5 or O switches the viewport between perspective and orthographic, keeping what
+	/// is in view, on a page with a viewport and not while the camera flies.
+	[Test]
+	public static void Numpad5OrOSwitchesTheViewportBetweenPerspectiveAndOrthographic()
+	{
+		let context = scope EditorContext();
+		SceneActions.Register(context);
+		let actions = context.Actions;
+		Test.Assert(actions.Find(SceneActionIds.Orthographic).MenuPath == "Scene/Orthographic");
+		Test.Assert(actions.Shortcut(SceneActionIds.Orthographic).Key == .Keypad5);
+		Test.Assert(actions.AlternateShortcut(SceneActionIds.Orthographic).Key == .O);
+
+		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage());
+		Test.Assert(!actions.IsEnabled(SceneActionIds.Orthographic, page), "no viewport");
+		page.HasViewport = true;
+		Test.Assert(actions.IsEnabled(SceneActionIds.Orthographic, page));
+		Test.Assert(!actions.IsChecked(SceneActionIds.Orthographic, page));
+
+		let camera = page.ViewportCamera;
+		let eye = camera.Position;
+		Test.Assert(actions.Execute(SceneActionIds.Orthographic, page) case .Ok);
+		Test.Assert(camera.Orthographic);
+		Test.Assert(actions.IsChecked(SceneActionIds.Orthographic, page));
+		Test.Assert(camera.Position == eye, "the view stays where it was");
+		Test.Assert(actions.Execute(SceneActionIds.Orthographic, page) case .Ok);
+		Test.Assert(!camera.Orthographic);
+
+		// While the camera flies, its keys are its own.
+		page.Flying = true;
+		Test.Assert(!actions.IsEnabled(SceneActionIds.Orthographic, page));
+	}
+
 	[Test]
 	public static void TheEntityActionsActOnThePrimaryLockWhileSimulatingAndReachThePrefabFlows()
 	{

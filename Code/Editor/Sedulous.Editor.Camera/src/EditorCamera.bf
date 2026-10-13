@@ -13,6 +13,9 @@ class EditorCamera
 	/// How far the look tilts, radians: short of straight up or down, so the up vector stays
 	/// defined. The mouse look and a scripted pose both keep to it.
 	public const float cPitchLimit = 1.55f;
+	/// Straight down or up: an axis snap's top or bottom view, past the look's limit. The
+	/// camera's up stays defined there, as it comes from the yaw.
+	public const float cStraightPitch = 1.5707963f;
 
 	public Float3 Position = .(6.0f, 5.0f, 10.0f);
 	/// 0 looks down -Z; the defaults aim at the origin.
@@ -32,7 +35,19 @@ class EditorCamera
 	public bool ZoomedThisUpdate = false;
 	/// A frame eases over this long; nought jumps.
 	public float GlideSeconds = 0.3f;
+	/// The vertical field of view, radians (60 degrees).
+	public float FovY = 1.0472f;
+	public float NearZ = 0.1f;
+	public float FarZ = 1000.0f;
+	/// Orthographic: the view keeps the camera's eye, pivot and framing, and draws parallel.
+	/// Its height is what the field of view spans at the pivot (OrthoHeight), so zoom, frame,
+	/// pan and orbit work as they do in perspective and switching keeps what is in view.
+	public bool Orthographic = false;
+	/// Snapping to an axis view (SnapToAxis) turns orthographic, and turning away turns back:
+	/// the editor's preference, set by the page.
+	public bool AutoOrthographic = true;
 
+	private bool mOrthographicFromSnap = false;
 	private bool mGliding = false;
 	private float mGlideElapsed = 0.0f;
 	private Float3 mGlideFrom = .Zero;
@@ -44,6 +59,46 @@ class EditorCamera
 	public Float3 Forward => RotateVector(Rotation, Float3(0.0f, 0.0f, -1.0f));
 	public Float3 Right => RotateVector(Rotation, Float3(1.0f, 0.0f, 0.0f));
 	public Float3 Up => RotateVector(Rotation, Float3(0.0f, 1.0f, 0.0f));
+
+	/// An orthographic view's height in world units: what the field of view spans at the
+	/// pivot, so it follows the zoom (FocusDistance).
+	public float OrthoHeight => 2.0f * FocusDistance * Math.Tan(0.5f * FovY);
+
+	/// The projection for a view `aspect` wide over tall, perspective or orthographic.
+	public Float4x4 Projection(float aspect)
+	{
+		if (Orthographic)
+		{
+			let height = OrthoHeight;
+			return Float4x4.OrthographicRH(height * aspect, height, NearZ, FarZ);
+		}
+		return Float4x4.PerspectiveFovRH(FovY, aspect, NearZ, FarZ);
+	}
+
+	/// Switches between perspective and orthographic by hand (the toggle); what is in view
+	/// stays.
+	public void SetOrthographic(bool on)
+	{
+		Orthographic = on;
+		mOrthographicFromSnap = false;
+	}
+
+	/// The world ray through a viewport point given in NDC (x right, y up, each -1 to 1) for a
+	/// view `aspect` wide over tall: from the eye fanning out in perspective; parallel to the
+	/// view under orthographic, starting on the eye's plane.
+	public void RayThrough(float ndcX, float ndcY, float aspect, out Float3 origin, out Float3 direction)
+	{
+		if (Orthographic)
+		{
+			let halfHeight = 0.5f * OrthoHeight;
+			origin = Position + Right * (ndcX * halfHeight * aspect) + Up * (ndcY * halfHeight);
+			direction = Forward;
+			return;
+		}
+		let tanY = Math.Tan(0.5f * FovY);
+		origin = Position;
+		direction = Normalized(Forward + Right * (ndcX * tanY * aspect) + Up * (ndcY * tanY));
+	}
 
 	/// Aims Forward at `target` with a level horizon; the target becomes the pivot.
 	public void LookAt(Float3 target)
@@ -111,15 +166,40 @@ class EditorCamera
 	public bool IsGliding => mGliding;
 
 	/// Turns to `newYaw` and `newPitch` about the orbit pivot: what the camera looks at stays
-	/// put and the camera swings round it (the orientation gizmo's snap to an axis). Stops a
-	/// glide.
+	/// put and the camera swings round it. Stops a glide. A pitch may reach straight up or down
+	/// (a top view), past the mouse look's limit.
 	public void TurnAboutPivot(float newYaw, float newPitch)
 	{
 		let pivot = Position + Forward * FocusDistance;
 		Yaw = newYaw;
-		Pitch = Math.Clamp(newPitch, -cPitchLimit, cPitchLimit);
+		Pitch = Math.Clamp(newPitch, -cStraightPitch, cStraightPitch);
 		Position = pivot - Forward * FocusDistance;
 		mGliding = false;
+	}
+
+	/// The orientation gizmo's snap to an axis view: TurnAboutPivot, and with
+	/// AutoOrthographic, orthographic until the camera is turned away.
+	public void SnapToAxis(float newYaw, float newPitch)
+	{
+		TurnAboutPivot(newYaw, newPitch);
+		if (AutoOrthographic && !Orthographic)
+		{
+			Orthographic = true;
+			mOrthographicFromSnap = true;
+		}
+	}
+
+	/// Whether the view is orthographic because a snap made it so, which turning away undoes.
+	public bool IsOrthographicFromSnap => mOrthographicFromSnap;
+
+	/// A turn of the mouse leaves an axis view: a snap's orthographic goes back to perspective.
+	private void LeaveSnapView(IMouse mouse)
+	{
+		if (mOrthographicFromSnap && ((mouse.DeltaX != 0.0f) || (mouse.DeltaY != 0.0f)))
+		{
+			Orthographic = false;
+			mOrthographicFromSnap = false;
+		}
 	}
 
 	public void ReleaseCapture(IMouse mouse)
@@ -162,6 +242,7 @@ class EditorCamera
 				Pitch -= mouse.DeltaY * LookSensitivity;
 				Pitch = Math.Clamp(Pitch, -cPitchLimit, cPitchLimit);
 				Position = focus - Forward * FocusDistance;
+				LeaveSnapView(mouse);
 			}
 			else if (MouseCaptured || mouse.IsButtonDown(.Right))
 			{
@@ -169,6 +250,7 @@ class EditorCamera
 				Yaw -= mouse.DeltaX * LookSensitivity;
 				Pitch -= mouse.DeltaY * LookSensitivity;
 				Pitch = Math.Clamp(Pitch, -cPitchLimit, cPitchLimit);
+				LeaveSnapView(mouse);
 			}
 			if (mouse.IsButtonDown(.Middle))
 			{
