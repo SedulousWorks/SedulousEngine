@@ -15,13 +15,27 @@ class Label : View
 	public Property<String> Text = new .(new String()) ~ delete _;
 	public Property<TextAlignment> HAlign = new .(.Left) ~ delete _;
 	public Property<VerticalAlignment> VAlign = new .(.Middle) ~ delete _;
-	public Property<bool> WordWrap = new .(false) ~ delete _;
+	/// Null: the `word-wrap` style (inherited), else off.
+	public Property<bool?> WordWrap = new .() ~ delete _;
 	public Property<bool> Ellipsis = new .(false) ~ delete _;
 	/// Null defers to the cascade.
 	public Property<float?> FontSize = new .() ~ delete _;
 	public Property<String> FontFamily = new .(new String()) ~ delete _;
 	/// The label's own colour; null defers to the style's text-color.
 	public Property<Color?> TextColor = new .() ~ delete _;
+
+	/// Whether the text wraps at the label's width: its own WordWrap when set, else the
+	/// `word-wrap` style (inherited, so a container's style reaches its labels).
+	public bool IsWordWrapped
+	{
+		get
+		{
+			if (WordWrap.Value.HasValue)
+				return WordWrap.Value.Value;
+			let styled = ResolveStyle(.WordWrap).AsBool;
+			return styled.HasValue && styled.Value;
+		}
+	}
 
 	/// The colour the text draws with (before a disabled label dims it): the label's own, else
 	/// the style's text-color, else the default.
@@ -145,7 +159,7 @@ class Label : View
 				let family = scope String();
 				ResolveStyleFontFamily(family, FontFamily.Value);
 
-				if (WordWrap.Value && (font.Shaper != null))
+				if (IsWordWrapped && (font.Shaper != null))
 					MeasureWrapped(font, text, family, fontSize, constraints, out textWidth,
 						out textHeight);
 				else if (HasNewlines(text))
@@ -238,7 +252,7 @@ class Label : View
 		ResolveStyleFontFamily(family, FontFamily.Value);
 		let fontSize = ResolveFontSize();
 
-		if (WordWrap.Value)
+		if (IsWordWrapped)
 			DrawWrapped(ctx, font, text, family, fontSize, textColor);
 		else if (HasNewlines(text))
 			DrawLines(ctx, font, text, family, fontSize, textColor);

@@ -251,6 +251,27 @@ class CascadeTests
 			"corner radius is not inheritable");
 	}
 
+	/// A label wraps by the `word-wrap` style as by its markup attribute: the style was parsed and
+	/// inherited but the label read only its own property.
+	[Test]
+	public static void ALabelWrapsByTheWordWrapStyleItsOwnSettingFirst()
+	{
+		let fixture = scope Fixture(LoadSSS(".wraps { word-wrap: true; }"));
+		let plain = new Label();
+		fixture.Root.AddView(plain);
+		Test.Assert(!plain.IsWordWrapped, "nothing says so: off");
+
+		let container = fixture.Group(fixture.Root, "wraps");
+		let styled = new Label();
+		container.AddView(styled);
+		Test.Assert(styled.IsWordWrapped, "the container's style reaches it");
+
+		styled.WordWrap.Value = false; // its own setting wins over the style
+		Test.Assert(!styled.IsWordWrapped);
+		plain.WordWrap.Value = true;
+		Test.Assert(plain.IsWordWrapped);
+	}
+
 	/// `inherit` takes the parent's value even for a property that would not inherit on its own;
 	/// `initial` unsets, so not even an inheritable property comes through.
 	[Test]
