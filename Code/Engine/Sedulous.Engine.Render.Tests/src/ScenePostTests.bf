@@ -209,21 +209,4 @@ class ScenePostTests
 		Test.Assert(config.SsrEnabled);
 		Test.Assert(config.TaaEnabled);
 	}
-
-	/// An orthographic view drops the passes that still assume an eye point; AO and TAA handle
-	/// it, and what reads only the colour stays.
-	[Test]
-	public static void AnOrthographicViewDropsThePassesThatStillAssumeAnEyePoint()
-	{
-		var config = Base();
-		config.FxaaEnabled = true;
-		ScenePost.LimitForOrthographic(ref config);
-		Test.Assert(config.AoMode == 1);
-		Test.Assert(!config.SsrEnabled);
-		Test.Assert(!config.SsgiEnabled);
-		Test.Assert(config.TaaEnabled);
-		Test.Assert(config.BloomEnabled);
-		Test.Assert(config.FxaaEnabled);
-		Test.Assert(config.AutoExposure);
-	}
 }

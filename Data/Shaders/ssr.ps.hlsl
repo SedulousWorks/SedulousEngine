@@ -3,6 +3,7 @@
 
 #include "push_constant.hlsli"
 #include "depth.hlsli"
+#include "projection.hlsli"
 Texture2D<float4> SceneTex    : register(t0, space0);   // lit HDR (reflected + composited into)
 Texture2D         DepthTex    : register(t1, space0);
 Texture2D         NormalTex   : register(t2, space0);   // octahedral view-space normal
@@ -26,7 +27,7 @@ struct SsrPush {
     row_major float4x4 InvProj;   // (viewport-local ndc, depth) -> view space
     float2 VpMin;                 // this view's sub-rect origin in FULL-texture uv
     float2 VpSize;                // this view's sub-rect size in FULL-texture uv
-    float2 Jitter;                // projection z-row (proj(2,0), proj(2,1)): jittered ndc match
+    float2 Jitter;                // this frame's projection jitter in NDC (projection::JitterOf)
     float  ProjXX;                // projection(0,0): view.x -> ndc.x
     float  ProjYY;                // projection(1,1): view.y -> ndc.y
     float  Thickness;             // view-space linear-depth acceptance band (hit thickness)
@@ -57,9 +58,12 @@ float3 ViewPos(float2 luv, float depth) {
     float4 h = mul(float4(ndc, depth, 1.0), pc.InvProj);
     return h.xyz / h.w;
 }
-// view-space position -> viewport-LOCAL uv (jitter-aware). Diagonal proj terms + w = -view.z.
+// Whether this view is orthographic (its rays parallel): read off the inverse projection.
+static bool g_ortho;
+// view-space position -> viewport-LOCAL uv (jitter-aware). Diagonal proj terms, divided by the
+// depth under perspective.
 float2 ViewToLocal(float3 vp) {
-    float2 ndc = float2(vp.x * pc.ProjXX, vp.y * pc.ProjYY) / max(-vp.z, 1e-4) - pc.Jitter;
+    float2 ndc = ViewToNdcXY(vp, float2(pc.ProjXX, pc.ProjYY), g_ortho) - pc.Jitter;
     return float2(ndc.x * 0.5 + 0.5, ndc.y * pc.YSign * 0.5 + 0.5);
 }
 float2 LocalToFull(float2 luv) { return pc.VpMin + luv * pc.VpSize; }   // local uv -> full-texture uv (sampling)
@@ -80,10 +84,11 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float  roughFade = saturate(1.0 - roughness / max(pc.RoughnessCutoff, 1e-3));
     if (roughFade <= 0.0) { return float4(0.0, 0.0, 0.0, 0.0); }
 
+    g_ortho = InverseIsOrthographic(pc.InvProj);
     float2 luv = FullToLocal(uv);                 // this pixel's viewport-local uv
     float3 P = ViewPos(luv, depth);
     float3 N = OctDecode(NormalTex.SampleLevel(PointSamp, uv, 0).rg);
-    float3 V = normalize(-P);
+    float3 V = ViewDirToViewer(P, g_ortho);       // parallel under an orthographic view
     float3 R = reflect(-V, N);                     // view-space reflection ray
     if (pc.Debug == 4) { return float4(R * 0.5 + 0.5, 1.0); }
 
@@ -97,11 +102,12 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     if (R.z > 1e-4) { rayLen = min(rayLen, max((-0.05 - P.z) / R.z, 0.0)); }
     float3 endVS = P + R * rayLen;
 
-    // Segment in viewport-local uv; 1/w interpolated linearly along it (perspective-correct depth).
+    // Segment in viewport-local uv; its depth key (1/w, or the depth under orthographic)
+    // interpolated linearly along it.
     float2 luv0 = luv;
     float2 luv1 = ViewToLocal(endVS);
-    float  iz0 = 1.0 / max(-P.z, 1e-4);
-    float  iz1 = 1.0 / max(-endVS.z, 1e-4);
+    float  iz0 = DepthKey(-P.z, g_ortho);
+    float  iz1 = DepthKey(-endVS.z, g_ortho);
 
     // Clamp the far end to the viewport box [0,1]^2 so all MaxSteps land on-screen (max sample density).
     float2 d = luv1 - luv0;
@@ -112,7 +118,7 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float2 tHi  = max(tTo0, tTo1);                 // exit parameter per axis
     float  tExit = clamp(min(min(tHi.x, tHi.y), 1.0), 0.0, 1.0);
     luv1 = luv0 + (luv1 - luv0) * tExit;
-    iz1  = lerp(iz0, iz1, tExit);                  // 1/w is linear in the segment parameter
+    iz1  = lerp(iz0, iz1, tExit);                  // the key is linear in the segment parameter
 
     // The march ignores samples within a pixel and a half of where it starts: there the depth buffer
     // still reads the reflecting surface itself, and with the step-sized band below a grazing ray,
@@ -136,14 +142,14 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
         if (any(ls < 0.0) || any(ls > 1.0)) { break; }         // left the viewport
         float  sd = DepthTex.SampleLevel(PointSamp, LocalToFull(ls), 0).r;
         if (IsBackgroundDepth(sd)) { jPrev = j; continue; }    // sky: nothing to hit
-        float  rayLin  = 1.0 / lerp(iz0, iz1, j);              // ray linear depth (= -view.z)
+        float  rayLin  = KeyDepth(lerp(iz0, iz1, j), g_ortho); // ray linear depth (= -view.z)
         float  surfLin = -ViewPos(ls, sd).z;                   // stored surface linear depth
         float  dif = rayLin - surfLin;                         // >0 once the ray passes behind the surface
         // The acceptance band is at least the depth the ray itself crossed since the last step: a
         // ray marching across the screen toward a distant surface moves metres in depth per step,
         // and a fixed band let it step over the surface it should have hit (a far reflection broke
         // into a sparse dither). The binary refine below finds the crossing inside the step.
-        float  band = max(pc.Thickness, abs(rayLin - 1.0 / lerp(iz0, iz1, jPrev)));
+        float  band = max(pc.Thickness, abs(rayLin - KeyDepth(lerp(iz0, iz1, jPrev), g_ortho)));
         if (dif > 0.05 && dif < band) { hit = true; jHit = j; break; }
         jPrev = j;
     }
@@ -155,7 +161,7 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
         float  m = 0.5 * (a + b);
         float2 mls = lerp(luv0, luv1, m);
         float  mSurf = -ViewPos(mls, DepthTex.SampleLevel(PointSamp, LocalToFull(mls), 0).r).z;
-        if (1.0 / lerp(iz0, iz1, m) - mSurf > 0.0) { b = m; } else { a = m; }
+        if (KeyDepth(lerp(iz0, iz1, m), g_ortho) - mSurf > 0.0) { b = m; } else { a = m; }
     }
     float2 hitLocal = lerp(luv0, luv1, b);
     float2 hitFull  = LocalToFull(hitLocal);

@@ -68,15 +68,6 @@ static class ScenePost
 		return config;
 	}
 
-	/// SSR's and SSGI's marches still cast their rays from an eye point, so an orthographic view
-	/// runs without them (AO and TAA handle both projections). What reads only the colour stays.
-	/// Like ApplyOverride, the motion requirement is the caller's to settle after.
-	public static void LimitForOrthographic(ref ViewPostConfig config)
-	{
-		config.SsrEnabled = false;
-		config.SsgiEnabled = false;
-	}
-
 	/// Applies an editor viewport's EPHEMERAL show flags, which strip effects for editing
 	/// clarity and are never written back to the scene.
 	///

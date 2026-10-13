@@ -36,6 +36,23 @@ float LinearizeDepthOrthographic(float ndcDepth, float zNear, float zFar) {
     return zFar - ndcDepth * (zFar - zNear);
 }
 
+// Whether an inverse projection (row-major, row-vector: ndc -> view) undoes an orthographic one:
+// its w column is exactly zero then (w stays 1), and never for a perspective one (w carries the
+// depth). For a pass that has the inverse in hand and no room for a flag.
+bool InverseIsOrthographic(float4x4 invProj) {
+    return invProj[0][3] == 0.0 && invProj[1][3] == 0.0 && invProj[2][3] == 0.0;
+}
+
+// A screen-space march's depth along its segment. A perspective ray's 1/depth is linear in screen
+// space (perspective-correct interpolation), an orthographic ray's depth itself is: DepthKey turns
+// a depth into what interpolates linearly, KeyDepth back.
+float DepthKey(float linearDepth, bool orthographic) {
+    return orthographic ? linearDepth : 1.0 / max(linearDepth, 1e-4);
+}
+float KeyDepth(float key, bool orthographic) {
+    return orthographic ? key : 1.0 / key;
+}
+
 // NDC depth -> view-space distance along the view, for either projection.
 float LinearViewDepth(float ndcDepth, float zNear, float zFar, bool orthographic) {
     return orthographic ? LinearizeDepthOrthographic(ndcDepth, zNear, zFar)

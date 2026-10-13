@@ -996,10 +996,6 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			settings.FrustumCull = !postOverride.DisableCulling;
 		}
 
-		// An orthographic view has no eye point for SSR's and SSGI's marches.
-		if (camera.Projection.IsOrthographic)
-			ScenePost.LimitForOrthographic(ref settings.Post);
-
 		// The editor's debug view: a pass through selection, validated per view at declare
 		// time, so an unknown resource name simply shows the final image.
 		if (debugView != null)

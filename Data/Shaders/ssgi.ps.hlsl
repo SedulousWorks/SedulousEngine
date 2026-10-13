@@ -12,6 +12,7 @@
 
 #include "push_constant.hlsli"
 #include "depth.hlsli"
+#include "projection.hlsli"
 Texture2D<float4> SceneTex  : register(t0, space0);   // PREFILTERED lit HDR (quarter-res box
                                                       // average, ssgi_down) - every gather tap
                                                       // is a ~16-pixel mean, so one blown-out
@@ -25,7 +26,7 @@ struct SsgiPush {
     row_major float4x4 InvProj;   // (viewport-local ndc, depth) -> view space
     float2 VpMin;                 // this view's sub-rect origin in FULL-texture uv
     float2 VpSize;                // this view's sub-rect size in FULL-texture uv
-    float2 Jitter;                // projection z-row (proj(2,0), proj(2,1)): jittered ndc match
+    float2 Jitter;                // this frame's projection jitter in NDC (projection::JitterOf)
     float  ProjXX;                // projection(0,0): view.x -> ndc.x
     float  ProjYY;                // projection(1,1): view.y -> ndc.y
     float  Thickness;             // view-space linear-depth acceptance band (hit thickness)
@@ -52,8 +53,10 @@ float3 ViewPos(float2 luv, float depth) {
     float4 h = mul(float4(ndc, depth, 1.0), pc.InvProj);
     return h.xyz / h.w;
 }
+// Whether this view is orthographic (its rays parallel): read off the inverse projection.
+static bool g_ortho;
 float2 ViewToLocal(float3 vp) {
-    float2 ndc = float2(vp.x * pc.ProjXX, vp.y * pc.ProjYY) / max(-vp.z, 1e-4) - pc.Jitter;
+    float2 ndc = ViewToNdcXY(vp, float2(pc.ProjXX, pc.ProjYY), g_ortho) - pc.Jitter;
     return float2(ndc.x * 0.5 + 0.5, ndc.y * pc.YSign * 0.5 + 0.5);
 }
 float2 LocalToFull(float2 luv) { return pc.VpMin + luv * pc.VpSize; }
@@ -72,7 +75,7 @@ float3 MarchRay(float3 P, float3 D, float2 luv0start, float iz0, float jit, out 
 
     float2 luv0 = luv0start;
     float2 luv1 = ViewToLocal(endVS);
-    float  iz1 = 1.0 / max(-endVS.z, 1e-4);
+    float  iz1 = DepthKey(-endVS.z, g_ortho); // 1/w, or the depth under orthographic: linear along it
 
     // Clamp the far end to the viewport box so every step lands on-screen.
     float2 d = luv1 - luv0;
@@ -93,7 +96,7 @@ float3 MarchRay(float3 P, float3 D, float2 luv0start, float iz0, float jit, out 
         if (any(ls < 0.0) || any(ls > 1.0)) { break; }
         float  sd = DepthTex.SampleLevel(PointSamp, LocalToFull(ls), 0).r;
         if (IsBackgroundDepth(sd)) { jPrev = j; continue; }   // sky: nothing to hit
-        float  rayLin  = 1.0 / lerp(iz0, iz1, j);
+        float  rayLin  = KeyDepth(lerp(iz0, iz1, j), g_ortho);
         float  surfLin = -ViewPos(ls, sd).z;
         float  dif = rayLin - surfLin;
         if (dif > 0.05 && dif < pc.Thickness) { hit = true; jHit = j; break; }
@@ -107,7 +110,7 @@ float3 MarchRay(float3 P, float3 D, float2 luv0start, float iz0, float jit, out 
         float  m = 0.5 * (a + b);
         float2 mls = lerp(luv0, luv1, m);
         float  mSurf = -ViewPos(mls, DepthTex.SampleLevel(PointSamp, LocalToFull(mls), 0).r).z;
-        if (1.0 / lerp(iz0, iz1, m) - mSurf > 0.0) { b = m; } else { a = m; }
+        if (KeyDepth(lerp(iz0, iz1, m), g_ortho) - mSurf > 0.0) { b = m; } else { a = m; }
     }
     float2 hitLocal = lerp(luv0, luv1, b);
     // The refine walks toward the surface CROSSING, not the surface: at silhouette edges it
@@ -141,10 +144,11 @@ float4 main(float4 pos : SV_Position, float2 uv : TEXCOORD0) : SV_Target {
     float depth = DepthTex.SampleLevel(PointSamp, uv, 0).r;
     if (IsBackgroundDepth(depth)) { return float4(0.0, 0.0, 0.0, 0.0); }   // background receives no GI
 
+    g_ortho = InverseIsOrthographic(pc.InvProj);
     float2 luv = FullToLocal(uv);
     float3 P = ViewPos(luv, depth);
     float3 N = OctDecode(NormalTex.SampleLevel(PointSamp, uv, 0).rg);
-    float  iz0 = 1.0 / max(-P.z, 1e-4);
+    float  iz0 = DepthKey(-P.z, g_ortho);
 
     // Tangent frame around the (view-space) normal for hemisphere sampling.
     float3 up = abs(N.z) < 0.98 ? float3(0.0, 0.0, 1.0) : float3(1.0, 0.0, 0.0);
