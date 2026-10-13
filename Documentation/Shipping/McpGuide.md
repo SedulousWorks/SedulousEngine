@@ -244,9 +244,10 @@ variants lines and the forward contract (`forward_vs.hlsli`, `lighting.hlsli`,
 file, line and column, plus the parsed properties and the main program's variant flags), then
 `asset_cook`. A property is a global name in the generated code: one the engine's shaders already
 use (`Tint`) is an error at its line. A surface reads the camera and the clock through its input
-and `Time()`, not the frame's constants. A material goes on a shader by `asset_data_write`: its
-`shaderId` the shader asset's guid; the cook lays the material out by the shader's properties,
-keeping the values whose name and type match.
+and `Time()`, not the frame's constants. A material goes on a shader by `material_set_shader`
+(the shader cooked first): laid out by the shader's properties and saved, the values whose name
+and type fit kept; `pbr` or `unlit` puts it back on a built-in. Not by `asset_data_write` of its
+`shaderId`, which leaves it in its old layout, warned about on every cook.
 
 **Diagnostics**: `log_write` a marker, do the risky thing, then `log_read` with
 `sinceSequence` set to the marker's sequence to see exactly what the engine said after it.
