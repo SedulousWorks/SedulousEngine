@@ -219,7 +219,9 @@ class OrthographicProbeTests
 			Console.WriteLine(scope $"{kind} {mode}: AO on/off at the edge {edge} (perspective {referenceEdge}), on the open wall {open} (perspective {referenceOpen})");
 			Test.Assert(edgeOff > 100.0f, scope $"{kind}: the walls are where we look");
 			Test.Assert(edge < 0.99f, scope $"{kind}: the corner occludes itself");
-			Test.Assert(Math.Abs(edge - referenceEdge) < 0.03f, scope $"{kind} {mode}: the edge {edge} against {referenceEdge}");
+			// Tight: the fixed passes match to 0.0015 (GTAO) and 0.0001 (SSAO), and an orthographic
+			// flag forced off misses by 0.017 (SSAO) and 0.039 (GTAO).
+			Test.Assert(Math.Abs(edge - referenceEdge) < 0.005f, scope $"{kind} {mode}: the edge {edge} against {referenceEdge}");
 			Test.Assert(Math.Abs(open - referenceOpen) < 0.06f, scope $"{kind} {mode}: the open wall {open} against {referenceOpen}");
 		}
 	}
