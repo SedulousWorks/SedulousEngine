@@ -69,6 +69,14 @@ static class ShellInputMapping
 		if (key == .Num0)
 			return .Num0;
 
+		// The keypad's digits, which editors bind on their own (Keypad 5 for an orthographic
+		// view): the shell runs 0 to 9 and the UI 1 to 9 then 0, so zero is mapped on its own.
+		if (MapRange(key, .Keypad1, .Keypad9, Sedulous.UI.KeyCode.Keypad1) case .Ok(let keypadDigit))
+			return keypadDigit;
+
+		if (key == .Keypad0)
+			return .Keypad0;
+
 		return ToUINamedKey(key);
 	}
 
@@ -89,6 +97,11 @@ static class ShellInputMapping
 		{
 		// Both mean CONFIRM to a control, so the keypad's enter is not distinguished.
 		case .Return, .KeypadEnter: return .Return;
+		case .KeypadDivide: return .KeypadDivide;
+		case .KeypadMultiply: return .KeypadMultiply;
+		case .KeypadMinus: return .KeypadMinus;
+		case .KeypadPlus: return .KeypadPlus;
+		case .KeypadDecimal: return .KeypadPeriod;
 		case .Escape: return .Escape;
 		case .Backspace: return .Backspace;
 		case .Tab: return .Tab;

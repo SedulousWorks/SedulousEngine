@@ -237,6 +237,31 @@ class UIInputBridgeTests
 		Test.Assert(probe.Last == .Return);
 	}
 
+	/// The keypad's other keys reach the UI as themselves, so a shortcut can bind them (Keypad 5
+	/// for an orthographic view): before, all but enter arrived as Unknown.
+	[Test]
+	public static void TheKeypadsKeysReachTheUiAsThemselves()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let probe = new KeyProbe();
+		root.AddView(probe);
+		context.GetFocusManager().SetFocus(probe);
+
+		let bridge = scope UIInputBridge(context);
+		(Sedulous.Shell.KeyCode shell, Sedulous.UI.KeyCode ui)[8] cases = .((.Keypad1, .Keypad1), (.Keypad5, .Keypad5),
+			(.Keypad9, .Keypad9), (.Keypad0, .Keypad0), (.KeypadDivide, .KeypadDivide), (.KeypadMultiply, .KeypadMultiply),
+			(.KeypadPlus, .KeypadPlus), (.KeypadDecimal, .KeypadPeriod));
+		for (let c in cases)
+		{
+			bridge.Dispatch(KeyDown(c.shell));
+			Test.Assert(probe.Last == c.ui, scope $"{c.shell} reached the UI as {probe.Last}");
+		}
+		bridge.Dispatch(KeyDown(.KeypadMinus));
+		Test.Assert(probe.Last == .KeypadMinus);
+	}
+
 	/// The punctuation row maps, because editors bind chords on it.
 	[Test]
 	public static void ThePunctuationRowMapsForChords()
