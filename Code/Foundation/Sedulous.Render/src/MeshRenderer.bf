@@ -454,8 +454,11 @@ class MeshRenderer : Renderer
 		mClusterLayout = clusterLayout;
 
 		// The depth only path: a vertex stage and a two set layout, the light's view and the
-		// SAME object or instance layouts the forward uses, so those groups are reused.
-		var shadowViewEntry = BindGroupLayoutEntry.UniformBuffer(0, .Vertex);
+		// SAME object or instance layouts the forward uses, so those groups are reused. The view
+		// is the pixel stage's too: a masked surface's depth and pick pixel stages run its
+		// Surface() at the view's camera position and time (ShadowCamera and ShadowWind,
+		// PickCamera and WindTime).
+		var shadowViewEntry = BindGroupLayoutEntry.UniformBuffer(0, .Vertex | .Fragment);
 		shadowViewEntry.HasDynamicOffset = true;
 		// Its set nought carries the skinning pool too, so a skinned caster deforms its shadow.
 		let shadowBoneEntry = BindGroupLayoutEntry.StorageBuffer(4, .Vertex, true,

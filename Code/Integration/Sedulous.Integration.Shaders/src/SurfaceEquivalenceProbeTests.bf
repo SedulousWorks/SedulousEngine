@@ -33,13 +33,22 @@ class SurfaceEquivalenceProbeTests
 	private enum Backend { Vulkan, WebGpu, Dx12 }
 
 	/// The surface PBR's programs, checked as the shader cook proves them: every variant.
-	private static ShaderCheck CookSurfacePbr(String library)
+	/// `timedAlpha`: the cut-out also reads Time() (the depth and pick views' clock), through a
+	/// factor that is always one but that the compiler cannot fold, as a dissolve does; otherwise
+	/// the depth pixel stage reads nothing of the view's buffer and its layout goes untested.
+	private static ShaderCheck CookSurfacePbr(String library, bool timedAlpha = false)
 	{
 		let dataRoot = FindDataRoot(.. scope String());
 		Test.Assert(!dataRoot.IsEmpty);
 		DataPath(dataRoot, "Shaders", library);
 		let text = scope String();
 		Test.Assert(System.IO.File.ReadAllText(DataPath(dataRoot, "Assets/shaders/surface_pbr/surface_pbr.hlsl", .. scope .()), text) case .Ok);
+		if (timedAlpha)
+		{
+			let alphaLine = "surface.alpha  = input.color.a * BaseColor.a * albedoTex.a;";
+			Test.Assert(text.Contains(alphaLine));
+			text.Replace(alphaLine, "surface.alpha  = input.color.a * BaseColor.a * albedoTex.a * step(-1.0, Time());");
+		}
 		var options = ShaderCheckOptions();
 		options.ShaderLibrary = library;
 		let check = new ShaderCheck();
@@ -72,8 +81,10 @@ class SurfaceEquivalenceProbeTests
 	}
 
 	/// The scene drawn twice at one time (the second frame's previous time equals its own) and
-	/// read back. Empty when the frame could not be built.
-	private static void RenderScene(IDevice device, ShaderCheck cooked, bool surface, List<uint8> outPixels)
+	/// read back. Empty when the frame could not be built. `cutOut` makes the ball a masked
+	/// material whose alpha is under its cut-off everywhere, so its depth and shadow draws run the
+	/// surface's own pixel stage and cut the whole ball away.
+	private static void RenderScene(IDevice device, ShaderCheck cooked, bool surface, List<uint8> outPixels, bool cutOut = false)
 	{
 		let dataMount = scope NativeFileSystem(FindDataRoot(.. scope String()));
 		let host = scope ShaderSystemHost();
@@ -93,6 +104,9 @@ class SurfaceEquivalenceProbeTests
 			// fallback (a missing program would skip the draw, and the images would differ).
 			Test.Assert(shaders.GetVariant(cSurfaceName, .Fragment, .GBuffer) != null);
 			Test.Assert(shaders.GetVariant("surface_pbr.depth", .Vertex, .None) != null);
+			// The cut-out's own depth pixel stage: what the shadow and the prepass run.
+			if (cutOut)
+				Test.Assert(shaders.GetVariant("surface_pbr.depth", .Fragment, .AlphaTest) != null);
 		}
 
 		let psoCache = scope PipelineStateCache(shaders, device);
@@ -104,7 +118,11 @@ class SurfaceEquivalenceProbeTests
 			return;
 		let registry = scope RendererRegistry();
 		registry.Register(meshRenderer);
-		let frame = scope RenderFrame(device, registry, 2);
+		// The shadow maps: without them the frame records no shadow pass at all.
+		let shadows = scope ShadowSystem(device, 2);
+		if (shadows.Initialize() case .Err)
+			return;
+		let frame = scope RenderFrame(device, registry, 2, null, null, shadows);
 
 		let sphere = Primitives.Sphere(1.0f, 48, 24);
 		defer delete sphere;
@@ -116,6 +134,11 @@ class SurfaceEquivalenceProbeTests
 		defer delete floor;
 		floor.SetDefaultFloat("WindStrength", 0.0f); // the ground stays put
 		ball.SetDefaultFloat4("EmissiveColor", .(0.05f, 0.02f, 0.0f, 1.0f));
+		if (cutOut)
+		{
+			ball.SetDefaultFloat4("BaseColor", .(0.8f, 0.3f, 0.2f, 0.1f));
+			ball.Pipeline.BlendMode = .Masked;
+		}
 
 		let scene = scope ExtractedScene();
 		scene.SetAmbient(.(0.15f, 0.15f, 0.18f));
@@ -125,13 +148,15 @@ class SurfaceEquivalenceProbeTests
 		b.WorldRadius = 1.5f;
 		b.Mesh = sphere;
 		b.Material = ball;
-		b.Category = RenderCategories.Opaque;
+		b.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(sphere), Internal.UnsafeCastToPtr(ball)); // as extraction sets it
+		b.Category = cutOut ? RenderCategories.Masked : RenderCategories.Opaque;
 		let g = scene.Add<MeshRenderData>();
 		g.World = Float4x4.Translation(.(0.0f, 0.0f, -6.0f));
 		g.WorldCenter = .(0.0f, 0.0f, -6.0f);
 		g.WorldRadius = 6.0f;
 		g.Mesh = ground;
 		g.Material = floor;
+		g.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(ground), Internal.UnsafeCastToPtr(floor));
 		g.Category = RenderCategories.Opaque;
 		var sun = GpuLight();
 		sun.Type = 0.0f;
@@ -280,5 +305,53 @@ class SurfaceEquivalenceProbeTests
 			backend.Destroy();
 			delete backend;
 		}
+	}
+
+	/// A masked surface's depth and pick pixel stages run its Surface() at the view's camera and
+	/// time, read from the shadow view's buffer: the layout must give that buffer to the pixel
+	/// stage too. Vulkan with validation on, as a dissolve found it (a validation error the driver
+	/// tolerates; WebGPU refuses such a pipeline). The cut ball is gone, and so is its shadow.
+	[Test]
+	public static void AMaskedSurfacesShadowRunsItsCutOutUnderValidation()
+	{
+		{
+			let compiler = scope ShaderCompiler();
+			if (compiler.Initialize() case .Err) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		}
+		let cooked = CookSurfacePbr(scope .(), true);
+		defer delete cooked;
+		if (!(VulkanRhi.CreateBackend(true) case .Ok(let backend)))
+		{
+			Console.WriteLine("SKIP: no Vulkan");
+			return;
+		}
+		defer { backend.Destroy(); delete backend; }
+		let device = RhiTestSupport.MakeTestDevice(backend);
+		if (device == null)
+		{
+			Console.WriteLine("SKIP: no Vulkan device");
+			return;
+		}
+		let errorsBefore = VulkanRhi.ValidationErrorCount;
+		let whole = scope List<uint8>();
+		RenderScene(device, cooked, true, whole);
+		let cut = scope List<uint8>();
+		RenderScene(device, cooked, true, cut, true);
+		device.Destroy();
+		Test.Assert(VulkanRhi.ValidationErrorCount == errorsBefore, scope $"{VulkanRhi.ValidationErrorCount - errorsBefore} validation errors");
+		Test.Assert(whole.Count == cSize * cSize * 4);
+		Test.Assert(cut.Count == whole.Count);
+		// The ball covers a good part of the frame; cut away, the ground shows there instead.
+		uint32 changed = 0;
+		for (int i = 0; i < whole.Count; i += 4)
+		{
+			int32 d = 0;
+			for (int c < 3)
+				d = Math.Max(d, Math.Abs((int32)whole[i + c] - (int32)cut[i + c]));
+			if (d > 8)
+				changed++;
+		}
+		Console.WriteLine(scope $"pixels the cut changes: {changed}");
+		Test.Assert(changed > cSize * cSize / 20, scope $"{changed} pixels changed");
 	}
 }
