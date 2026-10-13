@@ -110,6 +110,7 @@ class SsgiPass
 	/// every frame.
 	private const String[4] cDenoiseNames = .("ssgi.denoise1", "ssgi.denoise2", "ssgi.denoise3", "ssgi.denoise4");
 	private BindGroupCache<5> mCompositeBindGroups = new .() ~ delete _;
+	private uint64 mBindGroupsBuilt = 0;
 	/// Bound in the SH slot when a scene has no SH sky: the composite then never reads it (its
 	/// dimmer is nought), so its contents do not matter.
 	private IBuffer mDummyShBuffer = null;
@@ -264,6 +265,10 @@ class SsgiPass
 		if (slot < cMaxViews)
 			mViews[slot].Valid = false;
 	}
+
+	/// Bind groups built so far: a frame whose inputs all came back builds none, so a count
+	/// that keeps climbing on a still view is a cache throwing groups away.
+	public uint64 BindGroupsBuilt => mBindGroupsBuilt;
 
 	/// Bounces the scene into a fresh transient, and answers it. The scene comes back
 	/// unchanged when it cannot run.
@@ -798,6 +803,7 @@ class SsgiPass
 
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
+		mBindGroupsBuilt++;
 
 		mDownBindGroups[key] = .() { BindGroup = bindGroup, Generation = generation };
 		return bindGroup;
@@ -833,6 +839,7 @@ class SsgiPass
 
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
+		mBindGroupsBuilt++;
 
 		mBindGroups[key] = .()
 			{
@@ -869,6 +876,7 @@ class SsgiPass
 
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
+		mBindGroupsBuilt++;
 
 		mBlurBindGroups[key] = .()
 			{
@@ -906,6 +914,7 @@ class SsgiPass
 
 		if (!(mDevice.CreateBindGroup(desc) case .Ok(let bindGroup)))
 			return null;
+		mBindGroupsBuilt++;
 
 		cache.Store(historyPrevious, inputs, bindGroup);
 		return bindGroup;

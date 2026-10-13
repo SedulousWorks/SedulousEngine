@@ -46,6 +46,8 @@ class SsgiTemporalProbeTests
 		public float Blotch;
 		/// Mean per pixel frame to frame change on the wall once it stands.
 		public float Shimmer;
+		/// Bind groups SSGI built over the standing frames, whose inputs all repeat.
+		public uint64 GroupsStanding;
 	}
 
 	private static ViewCamera Camera()
@@ -223,6 +225,7 @@ class SsgiTemporalProbeTests
 		let lastWall = scope List<float>();
 		var previous = -1.0f;
 		var x = cStart;
+		uint64 groupsAtStand = 0;
 		for (uint32 i < cSettle + cWalk + cStill)
 		{
 			if ((i >= cSettle) && (i < cSettle + cWalk))
@@ -247,6 +250,8 @@ class SsgiTemporalProbeTests
 			fence.Wait((uint64)i + 1);
 			pool.DestroyEncoder(ref encoder);
 
+			if (i == cSettle + cWalk + 20)
+				groupsAtStand = ssgi.BindGroupsBuilt;
 			let walking = (i >= cSettle + 30) && (i < cSettle + cWalk); // past the start-up
 			let standing = i >= cSettle + cWalk + 20;
 			if (!walking && !standing)
@@ -310,6 +315,7 @@ class SsgiTemporalProbeTests
 		result.Wobble = (float)(wobble / Math.Max(stillSamples - 1, 1));
 		result.NearStill = (float)(still / Math.Max(stillSamples, 1));
 		result.Shimmer = (float)(shimmer / Math.Max(shimmerSamples, 1));
+		result.GroupsStanding = ssgi.BindGroupsBuilt - groupsAtStand;
 		return true;
 	}
 
@@ -327,7 +333,7 @@ class SsgiTemporalProbeTests
 			Test.Assert(builtOff && builtOn, scope $"{kind}: the lantern rendered");
 			if (!builtOff || !builtOn)
 				continue;
-			Console.WriteLine(scope $"{kind}: specks a frame {on.Specks} ({off.Specks} without SSGI); floor behind {on.Behind} vs ahead {on.Ahead}; standing: floor {on.NearStill}, wobble {on.Wobble}, mottling {on.Blotch} ({off.Blotch} without SSGI), shimmer a pixel {on.Shimmer}");
+			Console.WriteLine(scope $"{kind}: specks a frame {on.Specks} ({off.Specks} without SSGI); floor behind {on.Behind} vs ahead {on.Ahead}; standing: floor {on.NearStill}, wobble {on.Wobble}, mottling {on.Blotch} ({off.Blotch} without SSGI), shimmer a pixel {on.Shimmer}, bind groups built standing {on.GroupsStanding}");
 			Test.Assert(on.NearStill > off.NearStill + 10.0f, scope $"{kind}: the bounce is there to see");
 			// No trail: behind the light no brighter than ahead of it (the trusted history left
 			// it 38.6 behind against 23.7 ahead). No flashes on top of the scene's own edges, and
@@ -343,6 +349,10 @@ class SsgiTemporalProbeTests
 			// wall beside the glow flickering once it stood; four rays of half the steps (the
 			// same taps) settle it.
 			Test.Assert(on.Shimmer <= 0.7f, scope $"{kind}: shimmer {on.Shimmer}");
+			// A still view's inputs all come back, so its bind groups do too. A composite sharing
+			// the accumulate's cache, keyed by the same history view, threw each other's group
+			// away: two built a frame.
+			Test.Assert(on.GroupsStanding == 0, scope $"{kind}: {on.GroupsStanding} bind groups built standing");
 		}
 	}
 }
