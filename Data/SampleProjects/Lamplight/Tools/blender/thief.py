@@ -73,11 +73,14 @@ def build(b):
 
 
 GAITS = {
-    #        frames, thigh swing, knee lift, arm swing, elbow, thigh0, knee0, lean, bob, breathing
+    # Standing: frames, thigh swing, knee lift, arm swing, elbow, thigh0, knee0, lean, bob, breathing.
+    # Moving: speed (m/s), stance (of the cycle) and lift (m) place the feet instead (figure.py).
     "Idle":   dict(frames=48, thigh=0, knee=0, arm=0, elbow=10, thigh0=0, knee0=4, lean=2, bob=0.0, breath=1),
-    "Walk":   dict(frames=24, thigh=28, knee=45, arm=22, elbow=14, thigh0=0, knee0=6, lean=5, bob=0.025, breath=0),
-    "Sneak":  dict(frames=29, thigh=20, knee=25, arm=8, elbow=50, thigh0=40, knee0=75, lean=24, bob=0.015, breath=0),
-    "Run":    dict(frames=14, thigh=45, knee=90, arm=40, elbow=75, thigh0=8, knee0=20, lean=14, bob=0.05, breath=0),
+    "Walk":   dict(frames=24, speed=1.6, stance=0.6, lift=0.11, arm=22, elbow=14, thigh0=0, knee0=6, lean=5, breath=0),
+    "Sneak":  dict(frames=29, speed=1.0, stance=0.65, lift=0.08, arm=8, elbow=50, thigh0=40, knee0=75, lean=24,
+                  breath=0),
+    "Run":    dict(frames=14, speed=4.5, stance=0.35, lift=0.20, arm=40, elbow=75, thigh0=8, knee0=20, lean=14,
+                  breath=0),
     "Crouch": dict(frames=48, thigh=0, knee=0, arm=0, elbow=55, thigh0=45, knee0=85, lean=26, bob=0.0, breath=1),
 }
 

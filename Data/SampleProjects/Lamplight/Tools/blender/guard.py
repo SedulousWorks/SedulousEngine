@@ -84,13 +84,14 @@ def build(b):
     box("LanternBase", (0.12 * s, 0.03 * s, 0.12 * s), top + b._p(0, -0.175, 0), "Brass", "hand_L", bevel=0.01)
 
 GAITS = {
-    #        frames, thigh swing, knee lift, arm swing, elbow, thigh0, knee0, lean, bob, breathing
+    # Standing: frames, thigh swing, knee lift, arm swing, elbow, thigh0, knee0, lean, bob, breathing.
+    # Moving: speed (m/s), stance (of the cycle) and lift (m) place the feet instead (figure.py).
     "Idle": dict(frames=48, thigh=0, knee=0, arm=0, elbow=10, thigh0=0, knee0=4, lean=2, bob=0.0, breath=1,
                  holdLeft=HOLD),
-    "Walk": dict(frames=24, thigh=22, knee=35, arm=16, elbow=12, thigh0=0, knee0=5, lean=3, bob=0.02, breath=0,
-                 holdLeft=HOLD),
-    "Run": dict(frames=16, thigh=42, knee=85, arm=35, elbow=70, thigh0=8, knee0=18, lean=12, bob=0.045, breath=0,
-                holdLeft=HOLD),
+    "Walk": dict(frames=24, speed=1.2, stance=0.6, lift=0.10, arm=16, elbow=12, thigh0=0, knee0=5, lean=3,
+                 breath=0, holdLeft=HOLD),
+    "Run": dict(frames=16, speed=4.0, stance=0.35, lift=0.20, arm=35, elbow=70, thigh0=8, knee0=18, lean=12,
+                breath=0, holdLeft=HOLD),
     "Look": dict(frames=72, thigh=0, knee=0, arm=0, elbow=10, thigh0=0, knee0=4, lean=2, bob=0.0, breath=1,
                  holdLeft=HOLD, look=55),
 }
