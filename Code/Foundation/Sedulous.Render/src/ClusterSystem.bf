@@ -185,9 +185,10 @@ class ClusterSystem
 		if (!EnsureBuffers(bufferSlot, totalClusters))
 			return binding;
 
-		// The camera carries only its far plane; the near one matches the component's default.
-		let nearZ = 0.1f;
-		let farZ = (view.Camera.FarZ > 0.0f) ? view.Camera.FarZ : 1000.0f;
+		// The camera's own planes. The slices are logarithmic in view depth, so the near one stays
+		// in front of the eye (an orthographic projection's near plane may sit at or behind it).
+		let nearZ = Max(view.Camera.NearPlane, 0.01f);
+		let farZ = Max(view.Camera.FarPlane, nearZ + 1.0f);
 		// The inverse of the kernel's slice function. The slice count factor is essential:
 		// without it every depth collapses into the first slice.
 		let logScale = (float)cSliceCount / Log(farZ / nearZ);

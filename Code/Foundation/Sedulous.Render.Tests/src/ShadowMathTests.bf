@@ -310,4 +310,35 @@ class ShadowMathTests
 		Test.Assert(ShadowMath.MovingCasterTouchesTile(torch, 6.0f, away, inside));
 		Test.Assert(!ShadowMath.MovingCasterTouchesTile(torch, 6.0f, away, away));
 	}
+
+	/// The cascades start at the camera's own near plane: a camera whose near plane is 2 m, with
+	/// uniform splits (lambda nought) over a 60 m reach, ends its first cascade a quarter of the
+	/// way from 2 m to 60 m, not from the 0.1 m once assumed.
+	[Test]
+	public static void TheCascadesStartAtTheCamerasOwnNearPlane()
+	{
+		var camera = ViewCamera();
+		camera.View = Float4x4.LookAtRH(.(0, 2, 0), .(0, 2, -10), .(0, 1, 0));
+		camera.Projection = Float4x4.PerspectiveFovRH(1.0472f, 16.0f / 9.0f, 2.0f, 400.0f);
+		camera.FarZ = 400.0f;
+		let sun = Normalized(Float3(-0.17f, -0.87f, -0.47f));
+		let cascades = ShadowMath.ComputeCascades(camera, sun, 60.0f, 1024, 0.0f);
+		Test.Assert(Near(cascades.SplitFar[0], 2.0f + 58.0f / 4.0f, 0.02f), scope $"{cascades.SplitFar[0]}");
+	}
+
+	/// A view's camera reads its kind, planes and height from its projection.
+	[Test]
+	public static void AViewsCameraReadsItsKindPlanesAndHeightFromItsProjection()
+	{
+		var camera = ViewCamera();
+		camera.Projection = Float4x4.PerspectiveFovRH(1.0472f, 16.0f / 9.0f, 0.5f, 300.0f);
+		Test.Assert(!camera.IsOrthographic);
+		Test.Assert(Near(camera.NearPlane, 0.5f, 1.0e-3f) && Near(camera.FarPlane, 300.0f, 0.05f));
+		Test.Assert(camera.OrthoHeight == 0.0f);
+
+		camera.Projection = Float4x4.OrthographicRH(32.0f, 18.0f, 0.1f, 2000.0f);
+		Test.Assert(camera.IsOrthographic);
+		Test.Assert(Near(camera.NearPlane, 0.1f, 2.0e-3f) && Near(camera.FarPlane, 2000.0f, 0.2f));
+		Test.Assert(Near(camera.OrthoHeight, 18.0f, 1.0e-3f));
+	}
 }

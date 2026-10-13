@@ -40,18 +40,20 @@ static class ShadowMath
 
 		const int cCount = ShadowCascades.Count;
 
-		let nearZ = 0.1f;
+		let nearZ = camera.NearPlane; // the camera's own near plane, read from its projection
 		let farZ = Max(nearZ + 1.0f, shadowDistance);
 		// The frustum corners below span the CAMERA's whole depth range, so a split depth
 		// has to become a fraction of that rather than of the shorter shadow range.
-		let cameraFar = Max(farZ, camera.FarZ);
+		let cameraFar = Max(farZ, camera.FarPlane);
+		// The log split needs a near plane in front of the eye.
+		let logNear = Max(nearZ, 0.01f);
 
 		float[cCount + 1] splits = default;
 		splits[0] = nearZ;
 		for (int i = 1; i <= cCount; i++)
 		{
 			let fraction = (float)i / (float)cCount;
-			let logarithmic = nearZ * Pow(farZ / nearZ, fraction);
+			let logarithmic = logNear * Pow(farZ / logNear, fraction);
 			let uniform = nearZ + (farZ - nearZ) * fraction;
 			splits[i] = lambda * logarithmic + (1.0f - lambda) * uniform;
 		}

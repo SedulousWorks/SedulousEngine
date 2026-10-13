@@ -220,4 +220,24 @@ class Float4x4Tests
 		Test.Assert(Float4x4.OrthographicRH(40.0f, 22.5f, 0.1f, 100.0f).IsOrthographic);
 		Test.Assert(!Float4x4.PerspectiveFovRH(1.0f, 16.0f / 9.0f, 0.1f, 100.0f).IsOrthographic);
 	}
+
+	/// A projection's near and far planes read back from it, jittered or not.
+	[Test]
+	public static void AProjectionsPlanesReadBackJitteredOrNot()
+	{
+		var perspective = Float4x4.PerspectiveFovRH(1.0f, 16.0f / 9.0f, 0.3f, 250.0f);
+		Test.Assert(NearlyEqual(perspective.ProjectionNearPlane, 0.3f, 1.0e-4f));
+		Test.Assert(NearlyEqual(perspective.ProjectionFarPlane, 250.0f, 1.0e-2f));
+		var ortho = Float4x4.OrthographicRH(40.0f, 22.5f, -50.0f, 120.0f);
+		Test.Assert(NearlyEqual(ortho.ProjectionNearPlane, -50.0f, 1.0e-3f));
+		Test.Assert(NearlyEqual(ortho.ProjectionFarPlane, 120.0f, 1.0e-3f));
+
+		// The TAA jitter sits in row 2 (perspective) or row 3 (orthographic), x and y: not the planes.
+		perspective.M[2][0] += 0.0007f;
+		perspective.M[2][1] -= 0.0004f;
+		ortho.M[3][0] += 0.0007f;
+		ortho.M[3][1] -= 0.0004f;
+		Test.Assert(NearlyEqual(perspective.ProjectionNearPlane, 0.3f, 1.0e-4f));
+		Test.Assert(NearlyEqual(ortho.ProjectionNearPlane, -50.0f, 1.0e-3f));
+	}
 }

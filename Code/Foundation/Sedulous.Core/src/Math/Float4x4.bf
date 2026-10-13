@@ -60,6 +60,26 @@ struct Float4x4
 	/// 0, 0, 0, 1), where a perspective one moves view depth into w and leaves M[3][3] nought.
 	public bool IsOrthographic => M[3][3] != 0.0f;
 
+	/// The far plane a projection was built with, read back from its z column (the TAA jitter, in
+	/// row 2 or 3's x and y, leaves it alone): m22 = n / (f - n) and m32 = f n / (f - n) in a
+	/// perspective one, m22 = 1 / (f - n) and m32 = f / (f - n) in an orthographic one, so
+	/// f = m32 / m22 in both. Nought when m22 is.
+	public float ProjectionFarPlane => (M[2][2] != 0.0f) ? (M[3][2] / M[2][2]) : 0.0f;
+
+	/// The near plane, read back as ProjectionFarPlane is: n = m22 f / (1 + m22) in a perspective
+	/// projection, n = f - 1 / m22 in an orthographic one. Nought when m22 is.
+	public float ProjectionNearPlane
+	{
+		get
+		{
+			let a = M[2][2];
+			if (a == 0.0f)
+				return 0.0f;
+			let zFar = M[3][2] / a;
+			return IsOrthographic ? (zFar - 1.0f / a) : (a * zFar / (1.0f + a));
+		}
+	}
+
 	[Scriptable]
 	public static Float4x4 Identity() => .(
 		1.0f, 0.0f, 0.0f, 0.0f,

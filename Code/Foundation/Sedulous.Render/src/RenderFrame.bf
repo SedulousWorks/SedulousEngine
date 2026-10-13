@@ -1853,10 +1853,9 @@ class RenderFrame
 			var sceneColor = litHdr;
 			if (post.TaaEnabled && (mTaa != null))
 			{
-				let farZ = (view.Camera.FarZ > 0.0f) ? view.Camera.FarZ : 1000.0f;
 				sceneColor = mTaa.DeclareTaa(mGraph, litHdr, postVelocity, postDepth, historySlot,
-					view.Width, view.Height, post.TaaBlend, post.TaaGamma, mTaaMotionScale, 0.1f,
-					farZ);
+					view.Width, view.Height, post.TaaBlend, post.TaaGamma, mTaaMotionScale, view.Camera.NearPlane,
+					view.Camera.FarPlane);
 			}
 
 			// The blended work AFTER the resolve, into the resolved image, with the UNJITTERED
