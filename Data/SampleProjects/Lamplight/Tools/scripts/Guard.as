@@ -46,8 +46,6 @@ class Guard
 	private Float3 m_spot = Float3(0.0f, 0.0f, 0.0f);
 	private float m_timer = 0.0f;
 	private Float3 m_home = Float3(0.0f, 0.0f, 0.0f);
-	private Float3 m_last = Float3(0.0f, 0.0f, 0.0f);
-	private float m_lastDt = 0.0f; // the frame the crowd moved him over, for his speed
 	private float m_yaw = 0.0f;
 	private Entity m_figure;
 	private float m_calm = 0.0f; // after a catch: not looking for the thief yet
@@ -57,7 +55,6 @@ class Guard
 	void onStart()
 	{
 		m_home = self.GetWorldPosition();
-		m_last = m_home;
 		patrol();
 	}
 
@@ -270,14 +267,12 @@ class Guard
 	private void animate(float d)
 	{
 		Float3 p = self.GetWorldPosition();
-		// Scripts run before the crowd, so the move since m_last is the crowd's step LAST frame,
-		// taken over last frame's dt: divided by this frame's, uneven frames swing his speed
-		// (0.65 to 2.09 m/s at a steady 1.2) and the graph's Idle/Walk/Run blend jerks with it.
-		float step = (m_lastDt > 0.0f) ? m_lastDt : d;
-		float vx = (p.X - m_last.X) / step;
-		float vz = (p.Z - m_last.Z) / step;
-		m_last = p;
-		m_lastDt = d;
+		// The crowd's own velocity for him, not his positions differenced: scripts update before
+		// the crowd, so a position here is last frame's, and dividing its change by this frame's
+		// time swings the speed (and the graph's blend) with every uneven frame.
+		Float3 v = NavAgentComponent(self).DesiredVelocity;
+		float vx = v.X;
+		float vz = v.Z;
 		float speed = Sqrt(vx * vx + vz * vz);
 		if (speed > 0.2f && m_state != kSuspicious)
 			face(Float3(p.X + vx, p.Y, p.Z + vz), d);

@@ -30,8 +30,11 @@ Handlers dispatch **by presence**: implement only what you need.
   `onEnable()`, `onDisable()`, `onDestroy()` (behaviors), `onStop()` (levels).
   Scripts update before the systems that act on what they write (the navigation crowd,
   animation), so a destination or a graph parameter set in `onUpdate` takes effect this frame;
-  positions read there are where those systems left things last frame. A scene's Level script
-  updates before its entities' behaviors.
+  positions read there are where those systems left things last frame. So a speed is not a
+  moved position over `dt`: that move was made last frame, with last frame's time, and on uneven
+  frames the quotient swings (a navigation agent's speed fed to its graph jerks its walk). Read
+  the speed the system reports, a navigation agent's `DesiredVelocity` say. A scene's Level
+  script updates before its entities' behaviors.
 - The game: `launch()`, `update(float dt)`, `exit()`.
 - `on<Event>(...)`: named events. Physics contacts arrive as events; any script can send one:
   `scene.Scripts.Send(entity, "Name", payload)` to one entity's behaviors, and
