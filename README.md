@@ -150,8 +150,7 @@ meter that reads the renderer's own lights (a guard's eye reads the same), guard
 rounds who see by their lantern's cone, hear footsteps on each surface and come to a thrown
 pebble, doors and gates to pick, walls that dither away between the camera and the thief, rain,
 reverb per room, and auto exposure from moonlit grounds into torch-lit cellars. Five levels, from
-the gardens to the vault on the upper floor. It is Raptor's, ported through the same tools, and
-not yet on SedulousDemos.
+the gardens to the vault on the upper floor.
 
 | The Gardens | The Ground Floor | Away like a ghost |
 |:---:|:---:|:---:|
@@ -161,8 +160,7 @@ not yet on SedulousDemos.
 through, each on its own plinth and each `.hlsl` a short commented lesson that builds on the one
 before, surface shaders first (an unlit colour, textures, lava, a hologram, triplanar rock, a
 dissolve, waves and a flag that move their vertices, the built-in PBR) and then two low-level ones
-(a toon and lighting of its own). Pick a lesson in the list and the camera glides to it. It is
-Raptor's, ported through the same tools, and not yet on SedulousDemos.
+(a toon and lighting of its own). Pick a lesson in the list and the camera glides to it.
 
 | The hall | Hologram | Toon |
 |:---:|:---:|:---:|
