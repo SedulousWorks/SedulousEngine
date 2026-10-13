@@ -59,7 +59,7 @@ class ShaderCreatorTests
 		let database = scope ContentDatabase(mount, serializers, "rasset");
 		let creators = scope AssetCreatorRegistry();
 		ShaderCreators.Register(creators);
-		let creator = creators.FindByLabel("Shader");
+		let creator = creators.FindByLabel("Low-Level Shader");
 		Test.Assert((creator != null) && (creator.Category == "Materials"));
 
 		let first = creator.Create(null, database.RootGroup, sources, "Lava");
@@ -108,5 +108,38 @@ class ShaderCreatorTests
 		defer delete asset;
 		Test.Assert((asset.Name == "Hologram") && (asset.FileName.Value == "Hologram.hlsl"));
 		Test.Assert(FileExists(PathJoin(sources, "Hologram.hlsl", .. scope .())));
+	}
+
+	/// The surface creators: Lit and Unlit Surface Shader beside Low-Level Shader, each starter a
+	/// surface shader that compiles, every program and variant, against the engine's library.
+	[Test]
+	public static void TheSurfaceStartersCompileAsSurfaceShaders()
+	{
+		let creators = scope AssetCreatorRegistry();
+		ShaderCreators.Register(creators);
+		Test.Assert(creators.FindByLabel("Lit Surface Shader") != null);
+		Test.Assert(creators.FindByLabel("Unlit Surface Shader") != null);
+		Test.Assert(creators.FindByLabel("Low-Level Shader") != null);
+		Test.Assert(creators.FindByLabel("Shader") == null, "renamed");
+		{
+			let compiler = scope ShaderCompiler();
+			if (compiler.Initialize() case .Err) { Console.WriteLine("SKIP: no DXC runtime"); return; }
+		}
+		var options = ShaderCheckOptions();
+		let library = DataPath(FindDataRoot(.. scope String()), "Shaders", .. scope .());
+		options.ShaderLibrary = library;
+		for (let (text, model) in scope (StringView, SurfaceModel)[]((ShaderCreators.cLitSurfaceStarter, .Lit),
+			(ShaderCreators.cUnlitSurfaceStarter, .Unlit)))
+		{
+			let check = scope ShaderCheck();
+			check.Run(text, "Starter.hlsl", options);
+			let errors = scope String();
+			for (let error in check.Errors)
+				error.Format(errors..Append('\n'));
+			Test.Assert(check.IsOk, errors);
+			Test.Assert(check.Surface == model);
+			Test.Assert(!check.HasVertex, "the lava's Vertex() is a commented example");
+			Test.Assert(check.Programs.Count == 3);
+		}
 	}
 }

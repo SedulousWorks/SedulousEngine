@@ -310,7 +310,8 @@ class ShaderEditorPage : UIEditorPage
 		mErrorView.SetText(detail);
 		if (check.IsOk)
 		{
-			mStatus.SetText(scope $"Compiles ({check.Block.Properties.Count} properties). Save checks every variant.");
+			let kind = (check.Surface == .Lit) ? "Lit surface shader" : ((check.Surface == .Unlit) ? "Unlit surface shader" : "Low-level shader");
+			mStatus.SetText(scope $"{kind}: compiles ({check.Block.Properties.Count} properties). Save checks every variant.");
 			UpdatePreview(check);
 			return;
 		}
@@ -323,9 +324,11 @@ class ShaderEditorPage : UIEditorPage
 		let scene = (mPreview != null) ? mPreview.Scene : null;
 		if ((mShaders == null) || (scene == null) || !mSphere.IsAssigned)
 			return;
-		// The text as the cook would ship it, under the page's own name, with its lattices.
-		mShaders.RegisterSource(mPreviewName, .Vertex, check.Expanded, mAsset.VertexEntryPoint, check.VertexMask);
-		mShaders.RegisterSource(mPreviewName, .Fragment, check.Expanded, mAsset.FragmentEntryPoint, check.FragmentMask);
+		// The main program as the cook would ship it (a surface shader's forward program), under
+		// the page's own name, with its entries and lattices.
+		let main = check.Programs[0];
+		mShaders.RegisterSource(mPreviewName, .Vertex, main.Text, main.VertexEntryPoint, main.VertexMask);
+		mShaders.RegisterSource(mPreviewName, .Fragment, main.Text, main.FragmentEntryPoint, main.FragmentMask);
 		mShaders.InvalidateShader(mPreviewName);
 
 		// A material laid out by the block as a cooked material on this shader is, at its

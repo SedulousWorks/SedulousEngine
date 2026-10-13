@@ -72,7 +72,7 @@ static class PipelineRegistration
 	public const int cImporterCount = 11;
 	/// The creators every build has; the scripts add three per language with a cook on top
 	/// (ScriptCreators.CountFor).
-	public const int cCreatorCount = 29;
+	public const int cCreatorCount = 31;
 
 	/// The pipeline surface the script cooks compile against, made by the type registration
 	/// and released by Teardown.

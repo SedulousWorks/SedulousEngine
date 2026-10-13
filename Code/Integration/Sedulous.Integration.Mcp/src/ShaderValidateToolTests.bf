@@ -40,6 +40,15 @@ static class ShaderValidateToolTests
 		Test.Assert(good.Get("vertexVariants").Count == 2); // SKINNED INSTANCED
 		Test.Assert(good.Get("fragmentVariants").Count == 3); // ALPHA_TEST GBUFFER DITHER
 		Test.Assert(good.Get("fragmentVariants").At(0).AsString() == "ALPHA_TEST");
+		Test.Assert(good.Get("kind").AsString() == "lowLevel");
+
+		// A surface shader: its kind and its Vertex().
+		let lava = CallOk(server, "shader_validate", With(Obj(), "source", ShaderCreators.cLitSurfaceStarter));
+		defer delete lava;
+		Test.Assert(lava.Get("valid").AsBool(), scope $"{lava.Get("errors").ToString(.. scope .())}");
+		Test.Assert(lava.Get("kind").AsString() == "lit");
+		Test.Assert(!lava.Get("hasVertex").AsBool());
+		Test.Assert(lava.Get("properties").Count == 5);
 
 		let bad = CallOk(server, "shader_validate", With(With(Obj(), "source",
 			"properties\n{\n    float Glow = 1;\n}\nfloat4 VSMain(uint id : SV_VertexID) : SV_Position { return 0; }\nfloat4 PSMain() : SV_Target0 { return Glw; }\n"),

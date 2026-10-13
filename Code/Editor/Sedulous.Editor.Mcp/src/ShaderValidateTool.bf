@@ -8,8 +8,9 @@ using Sedulous.Shaders.Pipeline;
 namespace Sedulous.Editor.Mcp;
 
 /// shader_validate: checks a custom shader's source WITHOUT saving it, through ShaderCheck, the
-/// check the shader cook runs (the properties block expanded, every flag tested declared, every
-/// variant of both stages compiled with DXC against the engine's shader library). Returns the
+/// check the shader cook runs (the properties block expanded, a surface shader assembled into its
+/// programs, every flag tested declared, every program's every variant compiled with DXC against
+/// the engine's shader library). Returns the
 /// errors with file, line and column, and the parsed properties and each stage's variant flags, so
 /// the agent sees what a material on it will show. Project independent.
 static class ShaderValidateTool
@@ -26,7 +27,7 @@ static class ShaderValidateTool
 		let library = new String(shaderLibrary);
 		server.RegisterTool("shader_validate",
 			"""
-			CHECK a custom shader's .hlsl source without saving: the exact check the shader cook runs (its properties block expanded, every #ifdef flag declared on a // variants(vertex): or // variants(fragment): line, every variant of both stages compiled against the engine's shader library). Returns errors with file, line and column (an error under one flag says so), and on success the parsed properties (name, type, default, range) and each stage's variant flags. Use as the loop while writing a shader, BEFORE cooking it.
+			CHECK a custom shader's .hlsl source without saving: the exact check the shader cook runs (its properties block expanded; a surface shader, `// surface: lit` or `unlit`, assembled into its forward, depth and pick programs; a low-level shader's #ifdef flags declared on its // variants(vertex): or // variants(fragment): lines; every program's every variant compiled against the engine's shader library). Returns errors with file, line and column (an error under one flag says so), the kind (lit, unlit or lowLevel) and whether it has a Vertex(), and on success the parsed properties (name, type, default, range) and the main program's variant flags. Use as the loop while writing a shader, BEFORE cooking it.
 			""",
 			schema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) => Validate(arguments, library, outResult, outError), library);
@@ -88,6 +89,8 @@ static class ShaderValidateTool
 			properties.Add(entry);
 		}
 		outResult.Set("properties", properties);
+		outResult.Set("kind", JsonValue.MakeString((check.Surface == .Lit) ? "lit" : ((check.Surface == .Unlit) ? "unlit" : "lowLevel")));
+		outResult.Set("hasVertex", JsonValue.MakeBool(check.HasVertex));
 		outResult.Set("vertexVariants", FlagNames(check.VertexMask));
 		outResult.Set("fragmentVariants", FlagNames(check.FragmentMask));
 		return true;

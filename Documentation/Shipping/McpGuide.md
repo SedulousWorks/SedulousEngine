@@ -231,14 +231,22 @@ and refuses assignment. `script_create` seeds a starter asset (the behavior, lev
 edit the returned source FILE, loop on `script_validate`, and `asset_cook` to make the
 class attachable.
 
-**Shaders**: a custom shader is one `.hlsl` (both stages, `VSMain` and `PSMain`) with a
-`properties` block declaring its materials' parameters. `asset_create` with the `Shader`
-creator writes a starter lit by the engine's library (`forward_vs.hlsli`, `lighting.hlsli`,
-`forward_ps.hlsli`) to Sources/ and links it; edit that FILE, loop on `shader_validate` (every
-variant, as the cook compiles them; each error with its file, line and column, plus the parsed
-properties and the variant flags each stage declares), then `asset_cook`. A material goes on it
-by `asset_data_write`: its `shaderId` the shader asset's guid; the cook lays the material out by
-the shader's properties, keeping the values whose name and type match.
+**Shaders**: a custom shader is one `.hlsl` with a `properties` block declaring its materials'
+parameters, in one of two kinds. A SURFACE shader (a `// surface: lit` or `// surface: unlit`
+line) holds `void Surface(SurfaceInput input, inout SurfaceOutput surface)` and optionally
+`void Vertex(inout VertexInput v)` (world space; its shadows, depth and picking follow); the
+engine wraps it in its forward, depth and pick programs and every variant, so it writes no
+variants lines. A LOW-LEVEL shader is the whole program, `VSMain` and `PSMain` with its own
+variants lines and the forward contract (`forward_vs.hlsli`, `lighting.hlsli`,
+`forward_ps.hlsli`). `asset_create` with `Lit Surface Shader`, `Unlit Surface Shader` or
+`Low-Level Shader` writes a starter to Sources/ and links it; edit that FILE, loop on
+`shader_validate` (every program and variant, as the cook compiles them; each error with its
+file, line and column, plus the parsed properties and the main program's variant flags), then
+`asset_cook`. A property is a global name in the generated code: one the engine's shaders already
+use (`Tint`) is an error at its line. A surface reads the camera and the clock through its input
+and `Time()`, not the frame's constants. A material goes on a shader by `asset_data_write`: its
+`shaderId` the shader asset's guid; the cook lays the material out by the shader's properties,
+keeping the values whose name and type match.
 
 **Diagnostics**: `log_write` a marker, do the risky thing, then `log_read` with
 `sinceSequence` set to the marker's sequence to see exactly what the engine said after it.

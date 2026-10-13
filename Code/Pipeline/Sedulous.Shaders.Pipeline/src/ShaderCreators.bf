@@ -6,15 +6,74 @@ using Sedulous.Pipeline.Core;
 
 namespace Sedulous.Shaders.Pipeline;
 
-/// The custom shader's New Asset creator (File > New, asset_create): a starter .hlsl in the
+/// The custom shaders' New Asset creators (File > New, asset_create): a starter .hlsl in the
 /// sources folder linked to a new shader asset named like its instance, the name materials find it
-/// by. The starter is the shortest correct low-level shader: the engine's vertex stage, a
-/// properties block, and a pixel stage lit by the engine's lighting library that keeps the forward
-/// pass's contract (the DITHER fade, the ALPHA_TEST cut-out, the five GBUFFER targets), ready to be
-/// made one's own.
+/// by. Lit and Unlit Surface Shader start from a Surface() the engine wraps (the lava, a coloured
+/// texture); Low-Level Shader from the shortest correct low-level shader: the engine's vertex
+/// stage, a properties block, and a pixel stage lit by the engine's lighting library that keeps
+/// the forward pass's contract (the DITHER fade, the ALPHA_TEST cut-out, the five GBUFFER
+/// targets), ready to be made one's own.
 static class ShaderCreators
 {
-	/// The starter a new shader asset's .hlsl holds.
+	/// The starter a new lit surface shader's .hlsl holds: the lava of the custom shaders docs.
+	public const String cLitSurfaceStarter = """
+		// A surface shader: say what the surface is, and the engine lights it, with every light,
+		// shadow and reflection probe, in every pass (shadows and picking included).
+		// surface: lit
+
+		// The material's parameters: the material page shows these as its rows.
+		properties
+		{
+		    Color   CrackColor = (1.0, 0.35, 0.05, 1.0);
+		    float   Speed      = 0.2 [0, 2];
+		    float   Glow       = 4.0 [0, 20];
+		    Texture Cracks;
+		    Sampler MainSampler;
+		}
+
+		// Glowing cracks scrolling over dark rock. Give the material a Cracks texture (white = crack).
+		void Surface(SurfaceInput input, inout SurfaceOutput surface)
+		{
+		    float2 uv = input.uv + float2(0.0, Time() * Speed);
+		    float crack = Cracks.Sample(MainSampler, uv).r;
+		    surface.albedo = lerp(float3(0.08, 0.05, 0.04), CrackColor.rgb, crack);
+		    surface.roughness = 0.9;
+		    surface.emissive = CrackColor.rgb * crack * Glow;
+		}
+
+		// Optional: move the surface's vertices, in world space (its shadow and depth follow), e.g. waves:
+		// void Vertex(inout VertexInput v)
+		// {
+		//     v.position.y += sin(v.position.x * 2.0 + Time()) * 0.1;
+		// }
+
+		""";
+
+	/// The starter a new unlit surface shader's .hlsl holds: a colour and a texture, unaffected by
+	/// light.
+	public const String cUnlitSurfaceStarter = """
+		// An unlit surface shader: the surface's colour as it is, unaffected by light (it still casts
+		// shadows and can be picked).
+		// surface: unlit
+
+		properties
+		{
+		    Color   BaseColor   = (1, 1, 1, 1);
+		    float   AlphaCutoff = 0.5 [0, 1];   // where a masked material cuts out
+		    Texture AlbedoMap;
+		    Sampler MainSampler;
+		}
+
+		void Surface(SurfaceInput input, inout SurfaceOutput surface)
+		{
+		    float4 c = AlbedoMap.Sample(MainSampler, input.uv) * BaseColor * input.color;
+		    surface.albedo = c.rgb;
+		    surface.alpha = c.a;
+		}
+
+		""";
+
+	/// The starter a new low-level shader's .hlsl holds.
 	public const String cStarter = """
 		// A low-level shader: the whole pixel stage is yours. This one shades the engine's way, with
 		// every light, shadow and reflection probe; change the pixel stage to make it your own.
@@ -84,19 +143,24 @@ static class ShaderCreators
 
 	public static void Register(AssetCreatorRegistry registry)
 	{
-		registry.Register(new AssetCreator("Shader", "Materials", typeof(ShaderAsset), new (context) => Create(context)).Under("Shaders"));
+		registry.Register(new AssetCreator("Lit Surface Shader", "Materials", typeof(ShaderAsset),
+			new (context) => Create(context, "SurfaceShader", cLitSurfaceStarter)).Under("Shaders"));
+		registry.Register(new AssetCreator("Unlit Surface Shader", "Materials", typeof(ShaderAsset),
+			new (context) => Create(context, "UnlitShader", cUnlitSurfaceStarter)).Under("Shaders"));
+		registry.Register(new AssetCreator("Low-Level Shader", "Materials", typeof(ShaderAsset),
+			new (context) => Create(context, "Shader", cStarter)).Under("Shaders"));
 	}
 
-	/// The starter in a new .hlsl under the sources folder, named like the instance, and the
-	/// shader asset linking it. Refused without a sources folder.
-	private static Instance Create(AssetCreationContext context)
+	/// `starter` in a new .hlsl under the sources folder, named like the instance, and the shader
+	/// asset linking it. Refused without a sources folder.
+	private static Instance Create(AssetCreationContext context, StringView baseName, StringView starter)
 	{
 		let target = context.Target;
 		if ((target == null) || context.SourcesRoot.IsEmpty)
 			return null;
-		let name = target.UniqueInstanceName(context.NameOr("Shader"), .. scope .());
+		let name = target.UniqueInstanceName(context.NameOr(baseName), .. scope .());
 		let fileName = scope $"{name}.hlsl";
-		if (WriteFile(PathJoin(context.SourcesRoot, fileName, .. scope .()), Span<uint8>((uint8*)cStarter.Ptr, cStarter.Length)) case .Err)
+		if (WriteFile(PathJoin(context.SourcesRoot, fileName, .. scope .()), Span<uint8>((uint8*)starter.Ptr, starter.Length)) case .Err)
 			return null;
 		let instance = target.CreateInstance(name, typeof(ShaderAsset).GetFullName(.. scope .()));
 		if (instance == null)
