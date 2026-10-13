@@ -20,9 +20,9 @@ using static Sedulous.Integration.Mcp.McpCalls;
 
 namespace Sedulous.Integration.Mcp;
 
-/// The tracked sample project (Data/SampleProjects/PaperKid) must stay readable at the
-/// CURRENT data versions: a wire version bump or a key rename that forgets to upgrade its
-/// sources leaves it refused by the strict readers. This registers the whole pipeline the way
+/// The tracked sample projects (Data/SampleProjects: PaperKid, Shader Gallery) must stay
+/// readable at the CURRENT data versions: a wire version bump or a key rename that forgets to
+/// upgrade their sources leaves them refused by the strict readers. This registers the whole pipeline the way
 /// the cook tool does, opens a scratch copy (so opening never writes into the tracked tree),
 /// reads every instance back, and cooks it through the tools an agent uses. It registers
 /// what it needs itself (the pipeline types; the component reflection and the script surface
@@ -55,8 +55,11 @@ static class SampleProjectTests
 		return read;
 	}
 
-	[Test]
-	public static void EveryPaperKidSourceReadsAtTheCurrentDataVersionsAndCooks()
+	/// Reads every instance of the sample in Data/SampleProjects/`name` from a scratch copy,
+	/// cooks it through the tools an agent uses, and checks every script override it stores names
+	/// a property of its cooked class. The floors catch a group silently skipped or a cook that
+	/// built less than the sample has.
+	private static void CheckSampleProject(StringView name, StringView scratch, int readFloor, int cookedFloor, int overrideFloor)
 	{
 		PipelineRegistration.RegisterPipelineTypes();
 		defer PipelineRegistration.Teardown();
@@ -64,10 +67,10 @@ static class SampleProjectTests
 		let dataRoot = scope String();
 		FindDataRoot(dataRoot);
 		Test.Assert(!dataRoot.IsEmpty, "the Data/.dataroot walk from the test binary");
-		let source = PathJoin(dataRoot, "SampleProjects/PaperKid", .. scope .());
+		let source = PathJoin(dataRoot, scope $"SampleProjects/{name}", .. scope .());
 		Test.Assert(DirectoryExists(source));
 
-		let dir = Scratch("scratch_paperkid_versions", .. scope .());
+		let dir = Scratch(scratch, .. scope .());
 		defer RemoveDirectoryRecursive(dir);
 		Test.Assert(ExportTemplates.CopyTree(source, dir), "the sample copies to scratch");
 		{
@@ -75,14 +78,7 @@ static class SampleProjectTests
 			Test.Assert(project != null);
 			defer delete project;
 			let read = ReadAllInstances(project.SourceDb.RootGroup);
-			// Every instance, counted: a floor catches a group silently skipped. PaperKid has
-			// 234: 6 scenes (five blocks and the title), 19 kit prefabs, 13 scripts, 18 audio
-			// clips, 4 fonts, 5 meshes, 5 navigation zones, 7 UI documents and their theme, 4
-			// particle effects and their sprite, 2 animation clips, a material, the two render
-			// profiles, the input map, the minimap's render texture, and the 13 Blender models
-			// with their prefabs, meshes, materials, skeletons and clips (146). Raise the floor
-			// when the sample grows.
-			Test.Assert(read >= 234, scope $"read {read} instances");
+			Test.Assert(read >= readFloor, scope $"{name}: read {read} instances");
 		}
 
 		// And it COOKS, through the same tools an agent uses.
@@ -101,10 +97,8 @@ static class SampleProjectTests
 		force.Set("force", JsonValue.MakeBool(true));
 		let cooked = CallOk(server, "asset_cook", force);
 		defer delete cooked;
-		// Every buildable asset cooked: 196, all but the scenes and the prefabs (the kit's and the
-		// models'), which stage rather than cook. And nothing failed.
-		Test.Assert(cooked.Get("cooked").AsInt() >= 196, scope $"cooked {cooked.Get("cooked").AsInt()}");
-		Test.Assert(cooked.Get("failed").AsInt() == 0, scope $"{cooked.Get("failed").AsInt()} failed");
+		Test.Assert(cooked.Get("cooked").AsInt() >= cookedFloor, scope $"{name}: cooked {cooked.Get("cooked").AsInt()}");
+		Test.Assert(cooked.Get("failed").AsInt() == 0, scope $"{name}: {cooked.Get("failed").AsInt()} failed");
 
 		// Every script override a scene or prefab stores, a behaviour's or the Level's, names a
 		// property its cooked class declares: the key is the property name's hash, so a hash
@@ -115,11 +109,34 @@ static class SampleProjectTests
 			Test.Assert(project != null);
 			defer delete project;
 			let overrides = CheckOverrides(project, project.SourceDb.RootGroup);
-			// 107: the five blocks' Level settings (35), their camera's and minimap's behaviours
-			// (15), the kit's (13, the pedestrian's walk clip among them) and the title street's
-			// strollers and pets (44).
-			Test.Assert(overrides >= 107, scope $"{overrides} overrides checked");
+			Test.Assert(overrides >= overrideFloor, scope $"{name}: {overrides} overrides checked");
 		}
+	}
+
+	[Test]
+	public static void EveryPaperKidSourceReadsAtTheCurrentDataVersionsAndCooks()
+	{
+		// 234 instances: 6 scenes (five blocks and the title), 19 kit prefabs, 13 scripts, 18
+		// audio clips, 4 fonts, 5 meshes, 5 navigation zones, 7 UI documents and their theme, 4
+		// particle effects and their sprite, 2 animation clips, a material, the two render
+		// profiles, the input map, the minimap's render texture, and the 13 Blender models with
+		// their prefabs, meshes, materials, skeletons and clips (146). 196 cook: all but the
+		// scenes and the prefabs, which stage rather than cook. 107 overrides: the five blocks'
+		// Level settings (35), their camera's and minimap's behaviours (15), the kit's (13, the
+		// pedestrian's walk clip among them) and the title street's strollers and pets (44).
+		// Raise the floors when the sample grows.
+		CheckSampleProject("PaperKid", "scratch_paperkid_versions", 234, 196, 107);
+	}
+
+	[Test]
+	public static void TheShaderGallerySourcesReadAtTheCurrentDataVersionsAndCook()
+	{
+		// 50 instances: 11 lesson shaders (surface and low-level, every program compiled by the
+		// cook) and their materials, the hall's 3 materials, 4 textures and the sky, 4 Blender
+		// models with their meshes and prefabs, the 3 primitives, the hall, the camera's script,
+		// the list, the font and the input map. 45 cook: all but the hall and the 4 prefabs. The 2
+		// overrides are the camera's starting yaw and pitch.
+		CheckSampleProject("ShaderGallery", "scratch_shadergallery_versions", 50, 45, 2);
 	}
 
 	/// The number of script overrides checked under `group`: a behaviour's against its cooked
