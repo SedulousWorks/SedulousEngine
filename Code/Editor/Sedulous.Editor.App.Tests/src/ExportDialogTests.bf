@@ -47,10 +47,12 @@ class ExportDialogTests
 			linuxPreset.Name.Set("Linux");
 			linuxPreset.Platform.Set("Linux64");
 			Presets.Add(linuxPreset);
-			let windows = scope ExportPreset();
-			windows.Name.Set("Windows");
-			windows.Platform.Set("Win64");
-			Presets.Add(windows);
+			// A platform no machine running the tests hosts (the registry always adds the running
+			// build as a template, so a Win64 preset finds one on a Windows runner).
+			let web = scope ExportPreset();
+			web.Name.Set("Web");
+			web.Platform.Set("Web");
+			Presets.Add(web);
 		}
 
 		public ~this()
@@ -90,12 +92,12 @@ class ExportDialogTests
 		Test.Assert(dialog.TabIndexOf("Display") == 2);
 		Test.Assert(dialog.NameField.Text == "Linux");
 
-		// Linux resolves to the installed template; Windows has none here, and says so.
+		// Linux resolves to the installed template; Web has none here, and says so.
 		Test.Assert((dialog.Resolved != null) && (dialog.Resolved.Id == "t-linux"));
 		Test.Assert(dialog.ResolveText == "Exports with Linux Release", scope String(dialog.ResolveText));
 		dialog.Select(1);
 		Test.Assert(dialog.Resolved == null);
-		Test.Assert(dialog.ResolveText == "No template for Win64 Release here", scope String(dialog.ResolveText));
+		Test.Assert(dialog.ResolveText == "No template for Web Release here", scope String(dialog.ResolveText));
 
 		// A template picked by name decides the platform and config.
 		let template = dialog.TemplateField;
