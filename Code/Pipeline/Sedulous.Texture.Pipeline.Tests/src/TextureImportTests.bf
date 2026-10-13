@@ -65,6 +65,8 @@ class TextureImportTests
 	{
 		Test.Assert(TextureUsageInference.Infer("foo_nor_gl_4k") == .Normal);
 		Test.Assert(TextureUsageInference.Infer("brick_NORMAL") == .Normal);
+		Test.Assert(TextureUsageInference.Infer("Rock030_NormalGL") == .Normal); // ambientCG
+		Test.Assert(TextureUsageInference.Infer("Rock030_1K-JPG_NormalDX") == .Normal);
 		Test.Assert(TextureUsageInference.Infer("bar_disp_2k") == .Mask);
 		Test.Assert(TextureUsageInference.Infer("ground_rough_1k") == .Mask);
 		Test.Assert(TextureUsageInference.Infer("kit_orm") == .Mask);

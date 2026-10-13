@@ -6,8 +6,10 @@ namespace Sedulous.Texture.Pipeline;
 /// Guessing what a texture is FOR from the name conventions texture packs share.
 static class TextureUsageInference
 {
-	private static readonly StringView[6] cNormalTokens =
-		.("_normal", "_norm", "_nrm", "_nor", "_ddn", "normalmap");
+	/// ambientCG glues the map's convention on ("Rock030_NormalGL", "_NormalDX"), which the
+	/// boundary rule would otherwise read as an ordinary word.
+	private static readonly StringView[8] cNormalTokens =
+		.("_normal", "_normalgl", "_normaldx", "_norm", "_nrm", "_nor", "_ddn", "normalmap");
 
 	private static readonly StringView[8] cMaskTokens =
 		.("_disp", "_height", "_mask", "_rough", "_ao", "_orm", "_arm", "_metal");
