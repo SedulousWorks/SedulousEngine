@@ -28,6 +28,8 @@ corlib = "*"
 "Sedulous.Materials.Pipeline" = "*"
 "Sedulous.Audio.Pipeline" = "*"
 "Sedulous.Script.Pipeline" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Shaders.Pipeline" = "*"
 "Sedulous.Editor.Project" = "*"
 "Sedulous.Editor.Mcp" = "*"
 

@@ -12,6 +12,9 @@ class EngineToolPaths
 	public String KnownIssues = new .() ~ delete _;
 	/// The curated shipping docs directory, served as docs://<name>. Empty registers none.
 	public String ShippingDocsDir = new .() ~ delete _;
+	/// The engine's Shaders/ folder under the data root, shader_validate's include path. Empty
+	/// resolves no include.
+	public String ShaderLibrary = new .() ~ delete _;
 
 	/// Fills KnownIssues and ShippingDocsDir, walking UP from each start directory in turn (a
 	/// host passes its executable's directory, then its working directory) and checking the

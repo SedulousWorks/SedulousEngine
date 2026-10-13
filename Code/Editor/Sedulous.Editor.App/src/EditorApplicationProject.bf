@@ -376,6 +376,8 @@ extension EditorApplication
 		}
 		let paths = scope EngineToolPaths();
 		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .())));
+		// shader_validate compiles against the engine's shader library under the data root.
+		DataPath(mConfig.DataRoot, "Shaders", paths.ShaderLibrary);
 		mMcpSession.Project = mProject;
 		// The operations run on THIS application's services, so an agent's cook, import or
 		// export takes the same background paths the menus do and the editor stays live.

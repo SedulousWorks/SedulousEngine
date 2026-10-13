@@ -79,6 +79,8 @@ class Program
 		// the executable.
 		let paths = scope EngineToolPaths();
 		paths.LocateShippingDocs(scope StringView[](GetExecutableDirectory(.. scope .()), GetCurrentDirectory(.. scope .())));
+		// shader_validate compiles against the engine's shader library under the data root.
+		DataPath(dataRoot, "Shaders", paths.ShaderLibrary);
 		// This host runs the cook, import and export INLINE: the export stages the player from
 		// beside this executable and cooks shaders from the data root.
 		let operations = scope InlineProjectOperations(session, builders,
