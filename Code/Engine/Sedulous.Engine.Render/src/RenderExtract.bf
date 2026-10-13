@@ -41,7 +41,13 @@ static class RenderExtract
 
 		switch (material.Pipeline.BlendMode)
 		{
-		case .Opaque: return RenderCategories.Opaque;
+		case .Opaque:
+			// A material whose shader moves its vertices draws its depth with a program of its
+			// own (Material.DepthShaderName), compiled apart from its forward program: the two
+			// need not place a vertex to the last bit, and the forward pass's equal test against
+			// the camera depth prepass would flicker where they differ. Out of the prepass, as a
+			// fading mesh is.
+			return material.DepthShaderName.IsEmpty ? RenderCategories.Opaque : RenderCategories.Masked;
 		case .Masked: return RenderCategories.Masked;
 		default: return RenderCategories.Transparent;
 		}
