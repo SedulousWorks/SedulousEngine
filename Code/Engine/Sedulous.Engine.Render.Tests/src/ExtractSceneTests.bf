@@ -158,6 +158,45 @@ class ExtractSceneTests
 		Test.Assert(snapshot.Size == 1);
 	}
 
+	/// A skinned mesh in a scene that is not simulating reports no motion. The animator's last
+	/// two poses stay a step apart while nothing advances them; drawn as motion, TAA kept
+	/// dropping its history on a paused character.
+	[Test]
+	public static void ASkinnedMeshInASceneThatIsNotSimulatingReportsNoMotion()
+	{
+		let scene = scope Scene();
+		let meshes = scene.AddSystem<MeshComponentManager>();
+		let mesh = Primitives.Quad();
+		defer delete mesh;
+		var pose = Float4x4[1](Float4x4.Translation(.(0.1f, 0.0f, 0.0f)));
+		var lastPose = Float4x4[1](Float4x4.Identity());
+		{
+			let component = meshes.Add(scene.CreateEntity());
+			component.Mesh.SetDirect(mesh);
+			component.BoneMatrices = &pose[0];
+			component.PrevBoneMatrices = &lastPose[0];
+			component.BoneCount = 1;
+		}
+		scene.UpdateTransforms();
+
+		let running = scope ExtractedScene();
+		RenderExtract.ExtractSceneInto(scene, running);
+		Test.Assert(running.Size == 1);
+		for (let item in running.Items)
+			Test.Assert(((MeshRenderData)item).PreviousBoneMatrices == &lastPose[0]);
+
+		scene.SetSimulationEnabled(false);
+		let paused = scope ExtractedScene();
+		RenderExtract.ExtractSceneInto(scene, paused);
+		Test.Assert(paused.Size == 1);
+		for (let item in paused.Items)
+		{
+			let data = (MeshRenderData)item;
+			Test.Assert(data.BoneMatrices == &pose[0], "still drawn in its pose");
+			Test.Assert(data.PreviousBoneMatrices == null, "and that pose as last frame's: no motion");
+		}
+	}
+
 	[Test]
 	public static void ExtractOnASceneWithoutRenderManagersIsEmpty()
 	{

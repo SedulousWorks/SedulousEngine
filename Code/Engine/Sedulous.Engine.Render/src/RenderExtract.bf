@@ -109,7 +109,11 @@ static class RenderExtract
 		data.SortBatchKey = SortKeys.BatchKey(Internal.UnsafeCastToPtr(component.Mesh.Get),
 			Internal.UnsafeCastToPtr(primary));
 		data.BoneMatrices = component.BoneMatrices;
-		data.PreviousBoneMatrices = component.PrevBoneMatrices;
+		// Null reuses the current pose: no motion. A scene that is not simulating (the editor's
+		// pause, a debugger break) runs no animation, so the pose holds still, but the animator's
+		// last two poses stay a step apart: drawn as motion, TAA dropped its history on every
+		// skinned character every frame and they shimmered.
+		data.PreviousBoneMatrices = scene.SimulationEnabled ? component.PrevBoneMatrices : null;
 		data.BoneCount = component.BoneCount;
 		// Per view level selection happens in the renderer: ONE snapshot, many views.
 		data.LodBias = component.LodBias;
