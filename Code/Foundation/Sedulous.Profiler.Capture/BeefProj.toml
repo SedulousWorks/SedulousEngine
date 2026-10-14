@@ -1,0 +1,12 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Profiler.Capture"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Profiler.Capture.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Profiler" = "*"
+"Sedulous.Json" = "*"

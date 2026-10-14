@@ -34,6 +34,7 @@ using Sedulous.Image;
 using Sedulous.Net.Manager;
 using Sedulous.Net.Replication;
 using Sedulous.Profiler;
+using Sedulous.Profiler.Capture;
 using Sedulous.Resource;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
@@ -139,6 +140,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// The P key armed the profiler, for the rest of the run.
 	private bool mProfilerArmedByKey = false;
 	private float mExitAfterSeconds = 0.0f;
+	/// --profile-capture: seconds to capture from the start, begun once the profiler is installed.
+	private double mProfileCaptureSeconds = 0.0;
 	private float mRunSeconds = 0.0f;
 
 	// ==================== accessors ====================
@@ -182,6 +185,10 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// Exits the host after this many seconds of updates, nought never. The player's
 	/// --exit-after.
 	public void SetExitAfterSeconds(float seconds) => mExitAfterSeconds = seconds;
+
+	/// A profile capture of the first `seconds` of the run, to <user-data>/profiles (as F9
+	/// takes one of the next five); nought takes none.
+	public void SetProfileCaptureSeconds(double seconds) => mProfileCaptureSeconds = seconds;
 
 	/// An explicit data root, which beats the discovery walk. The player fills this from
 	/// --data-root; set it before Configure or it is too late to matter.
@@ -543,6 +550,10 @@ class DefaultApplication : IApplication, ISceneObserver
 		// should have one.
 		if (!HasGlobalProfiler())
 			InitGlobalProfiler(new Profiler(), true);
+#if !SHIPPING
+		if (mProfileCaptureSeconds > 0.0)
+			StartProfileCapture(mProfileCaptureSeconds);
+#endif
 
 		RegisterProductTypes();
 
@@ -623,7 +634,31 @@ class DefaultApplication : IApplication, ISceneObserver
 			});
 
 		DumpProfileOnRequest(host);
+		ProfileCaptureOnRequest(host);
 		CaptureOnRequest(host);
+	}
+
+	/// F9: a capture of the next five seconds, to <user-data>/profiles (a .aeprofile, the
+	/// profile stream, and a .json beside it for Perfetto).
+	private void ProfileCaptureOnRequest(IApplicationHost host)
+	{
+#if !SHIPPING
+		let shell = host.Shell;
+		let input = (shell != null) ? shell.Input : null;
+		let keyboard = (input != null) ? input.Keyboard : null;
+		if ((keyboard != null) && keyboard.IsKeyPressed(.F9))
+			StartProfileCapture(5.0);
+#endif
+	}
+
+	private void StartProfileCapture(double seconds)
+	{
+		if (!HasGlobalProfiler())
+			return;
+		let folder = GetUserDataDirectory(.. scope .());
+		folder.Append("/profiles");
+		if (CaptureRecorder.Process.Start(GlobalProfiler(), seconds, folder))
+			GlobalLog(.Information, "Profiler: capturing {} seconds to {}", seconds, folder);
 	}
 
 	/// Press F11 for a timestamped PNG in the working directory.

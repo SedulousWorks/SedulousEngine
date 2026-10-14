@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Core.Logging;
 using Sedulous.Graphics;
 using Sedulous.Profiler;
+using Sedulous.Profiler.Capture;
 using Sedulous.Runtime;
 using Sedulous.Shell;
 
@@ -54,6 +55,8 @@ class ApplicationHost : IApplicationHost
 		mShell = shell;
 		mGraphics = graphics;
 		mSettings = app.Settings;
+		// Captures say which build and platform recorded them.
+		CaptureRecorder.Process.SetBuild(HostPlatformName, BuildStamp(.. scope .()));
 		// The thread running the frames: its lane in the profiler, unless the app named it.
 		if (ThreadNames.Current.IsEmpty)
 			ThreadNames.SetCurrent("Main");
@@ -165,6 +168,50 @@ class ApplicationHost : IApplicationHost
 			mDeviceCounters.Publish(mGraphics.Raw, GlobalProfiler());
 #endif
 		ProfileFrameEnd();
+#if !SHIPPING
+		// A capture running (a key, a flag, a tool) writes its files once its time is up.
+		let recorder = CaptureRecorder.Process;
+		if (recorder.Capturing && HasGlobalProfiler() && recorder.OnFrameEnd(GlobalProfiler()))
+			GlobalLog(.Information, "Profiler: capture written: {}", recorder.LastCapture);
+#endif
+	}
+
+	/// The platform tag captures carry, as the export templates name it.
+	private static StringView HostPlatformName
+	{
+		get
+		{
+#if BF_PLATFORM_WINDOWS
+			return "Win64";
+#elif BF_PLATFORM_MACOS
+			return "macOS";
+#elif BF_PLATFORM_WASM
+			return "Web";
+#else
+			return "Linux64";
+#endif
+		}
+	}
+
+	/// What build recorded a capture: the config, and when the executable was written where it
+	/// can be read.
+	private static void BuildStamp(String outStamp)
+	{
+#if SHIPPING
+		outStamp.Append("Shipping");
+#elif DEBUG
+		outStamp.Append("Debug");
+#else
+		outStamp.Append("Release");
+#endif
+#if !BF_PLATFORM_WASM
+		let exe = Environment.GetExecutableFilePath(.. scope .());
+		if (!exe.IsEmpty && (System.IO.File.GetLastWriteTimeUtc(exe) case .Ok(let time)))
+		{
+			outStamp.Append(' ');
+			time.ToString(outStamp, "yyyy-MM-ddTHH:mm:ssZ");
+		}
+#endif
 	}
 
 	/// Tears the application down: leave play, stop the context, destroy the windows.

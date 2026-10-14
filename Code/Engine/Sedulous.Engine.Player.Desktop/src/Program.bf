@@ -8,6 +8,7 @@ using Sedulous.Engine.Player;
 using Sedulous.Engine.Project;
 using Sedulous.Graphics;
 using Sedulous.Graphics.Gpu;
+using Sedulous.Profiler.Capture;
 using Sedulous.Runtime.SDL3;
 using Sedulous.Shell;
 using Sedulous.Shell.SDL3;
@@ -92,6 +93,10 @@ class Program
 		defer delete graphics;
 
 		let app = scope PlayerApplication(options);
+		// Captures are named after the game.
+		CaptureRecorder.Process.SetApplication(manifest.Name.IsEmpty ? "Player" : StringView(manifest.Name));
+		// --profile-capture <seconds>: a capture from the start, to <user-data>/profiles.
+		app.SetProfileCaptureSeconds(ProfileCaptureSeconds(args));
 		// --screenshot <png> [--screenshot-frame N | --screenshot-after S] [--screenshot-count N]
 		// [--screenshot-exit]: a capture with no hand on F11, which is how a run proves what it
 		// drew; with a count, that many consecutive frames as <png stem>-<i>.png.
@@ -99,6 +104,17 @@ class Program
 		// The engine data root: --data-root when given, else the discovery walk.
 		app.SetDataRoot(DataRootFromArguments(args, .. scope .()));
 		return DesktopRunner.RunApplication(app, shell, graphics);
+	}
+
+	/// --profile-capture's seconds, nought without it.
+	private static double ProfileCaptureSeconds(String[] args)
+	{
+		for (int i = 0; i < args.Count - 1; i++)
+		{
+			if (args[i] == "--profile-capture")
+				return double.Parse(args[i + 1]).GetValueOrDefault();
+		}
+		return 0.0;
 	}
 
 	/// The positional project directory, then the flags.
