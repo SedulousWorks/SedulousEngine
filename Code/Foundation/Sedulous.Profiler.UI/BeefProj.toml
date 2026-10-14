@@ -1,0 +1,14 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Profiler.UI"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Profiler.UI.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Profiler" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.VG" = "*"
