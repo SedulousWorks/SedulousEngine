@@ -240,6 +240,40 @@ static class GameScriptTests
 		Test.Assert((run.ExitCode == 3) && (run.Exits == 1), "the exit reached the host with its code");
 	}
 
+	/// Both calls are bound in every build (a script compiles the same in a shipped game); the
+	/// app decides what they do, and one that wires nothing leaves them harmless.
+	[Test]
+	public static void TheProfilerOverlayCallsRouteToTheAppANoOpUnwired()
+	{
+		let source = """
+			class Game
+			{
+				bool available = true;
+				void launch()
+				{
+					available = Run.ProfilerAvailable();
+					Run.SetProfilerOverlay(true);
+				}
+				void exit() { Run.SetProfilerOverlay(false); }
+			}
+			""";
+		{
+			let unwired = scope GameRun("scratch_game_profiler_unwired");
+			Test.Assert(unwired.Instance.StartScript(unwired.Class("Game", source)));
+			Test.Assert(!unwired.PropBool("available"));
+			unwired.Instance.StopScript();
+		}
+
+		let run = scope GameRun("scratch_game_profiler");
+		let calls = scope List<bool>();
+		run.Instance.SetProfilerOverlay(new (shown) => calls.Add(shown), new () => true);
+		Test.Assert(run.Instance.StartScript(run.Class("Game", source)));
+		Test.Assert(run.PropBool("available"));
+		Test.Assert((calls.Count == 1) && calls[0]);
+		run.Instance.StopScript(); // exit() hides it
+		Test.Assert((calls.Count == 2) && !calls[1]);
+	}
+
 	[Test]
 	public static void AFaultingUpdateStopsTheScriptNotTheRun()
 	{

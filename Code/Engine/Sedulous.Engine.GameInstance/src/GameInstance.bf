@@ -86,6 +86,10 @@ class GameInstance
 	/// Where `Run.RequestExit` goes: the host's loop, or the editor's Game tab session.
 	/// TAKES OWNERSHIP of the delegate.
 	public typealias ExitRequest = delegate void(int32 code);
+	/// Shows or hides the app's profiler overlay.
+	public typealias ProfilerOverlayRequest = delegate void(bool shown);
+	/// Whether the app can show a profiler overlay.
+	public typealias ProfilerAvailability = delegate bool();
 
 	/// OWNED: this run's script host, the gameplay context the game script AND this
 	/// instance's scenes' behaviours share. The subsystem wires it like its own; the
@@ -113,6 +117,8 @@ class GameInstance
 	private float mRealDelta = 0;
 	private SceneLoader mSceneLoader = null ~ delete _;
 	private ExitRequest mExitRequest = null ~ delete _;
+	private ProfilerOverlayRequest mProfilerOverlay = null ~ delete _;
+	private ProfilerAvailability mProfilerAvailable = null ~ delete _;
 	private Dictionary<String, uint32> mGameSubscriptions = new .() ~ DeleteDictionaryAndKeys!(_);
 	private List<delegate void(Variant)> mGameCallbacks = new .() ~ DeleteContainerAndItems!(_);
 	private List<String> mGameHandlerNames = new .() ~ DeleteContainerAndItems!(_);
@@ -481,6 +487,17 @@ class GameInstance
 		mExitRequest = request;
 	}
 
+	/// The app's profiler overlay, behind Run.SetProfilerOverlay and Run.ProfilerAvailable.
+	/// TAKES OWNERSHIP of both; either may be null, and unwired nothing shows and the
+	/// profiler reads unavailable.
+	public void SetProfilerOverlay(ProfilerOverlayRequest request, ProfilerAvailability available)
+	{
+		delete mProfilerOverlay;
+		mProfilerOverlay = request;
+		delete mProfilerAvailable;
+		mProfilerAvailable = available;
+	}
+
 	/// Starts a level load by id: the ticket a script polls, or nought when the load could
 	/// not start, a wrong id or no loader. The scene activates through the app's policy once
 	/// its resources land, on the pump, and replaces the current one then.
@@ -525,6 +542,22 @@ class GameInstance
 		if (mExitRequest != null)
 			mExitRequest(code);
 	}
+
+	/// Shows or hides the app's profiler overlay (frame times, the longest scopes and GPU
+	/// passes, the counters), for a game's debug menu. The app decides what that means; in a
+	/// ShippingRelease build nothing shows. Bound in every build, so a script compiles the
+	/// same in the shipped game; unwired, a no-op.
+	[Scriptable]
+	public void SetProfilerOverlay(bool shown)
+	{
+		if (mProfilerOverlay != null)
+			mProfilerOverlay(shown);
+	}
+
+	/// Whether SetProfilerOverlay can show anything here: false in a ShippingRelease build and
+	/// where the app has no overlay, so a debug menu can hide its entry; false unwired.
+	[Scriptable]
+	public bool ProfilerAvailable() => (mProfilerAvailable != null) && mProfilerAvailable();
 
 	/// Publishes on the run bus, which every scene of this run shares: the Game orchestrator
 	/// and every behaviour declaring `on<Event>` hear it when the bus drains.

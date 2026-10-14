@@ -21,6 +21,9 @@ join later without changing the assets. The bound surface is described per backe
 - **Game**: the run's orchestrator, the reserved class `Game`, set as the project's startup
   script. It runs for the whole game run, across scene loads, and reaches the run through
   the `Run` service: `Run.LoadScene(sceneId)`, `Run.RequestExit()`, `Run.Emit(...)`.
+  A debug menu can show the profiler overlay with `Run.SetProfilerOverlay(true)`;
+  `Run.ProfilerAvailable()` says whether this build and app have one (never in a shipped
+  build), so the menu can hide its entry. Both compile in every build.
 
 ## Lifecycle and events
 
