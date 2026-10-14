@@ -6,19 +6,27 @@ namespace Sedulous.Profiler;
 #define SEDULOUS_PROFILING
 #endif
 
-/// What ProfileScope hands to a using statement. Closing the block closes the scope.
+/// What ProfileScope hands to a using statement. Closing the block closes the scope, if it
+/// opened one: a scope begun while the profiler was unarmed opened nothing, and closing it
+/// after an Arm inside must not close the thread's enclosing scope instead.
 ///
-/// Empty: the profiler keeps the open scope on its own per thread stack, so the token
-/// carries nothing and costs nothing to pass around. When profiling is compiled out the
-/// call that produces it is skipped along with this Dispose, so the whole using statement
-/// disappears rather than becoming a pair of empty calls.
+/// When profiling is compiled out the call that produces it is skipped along with this
+/// Dispose, so the whole using statement disappears.
 struct ProfileScopeToken : IDisposable
 {
+	private bool mBegan;
+
+	public this(bool began)
+	{
+		mBegan = began;
+	}
+
 #if !SEDULOUS_PROFILING
 	[SkipCall]
 #endif
 	public void Dispose()
 	{
-		ProfileScopeEnd();
+		if (mBegan && HasGlobalProfiler())
+			GlobalProfiler().EndScope();
 	}
 }

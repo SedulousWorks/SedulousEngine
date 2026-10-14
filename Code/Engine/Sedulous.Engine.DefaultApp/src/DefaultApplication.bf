@@ -136,6 +136,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// Of the --screenshot run: --screenshot-count frames, then done.
 	private uint32 mScreenshotsTaken = 0;
 	private bool mScreenshotExitPending = false;
+	/// The P key armed the profiler, for the rest of the run.
+	private bool mProfilerArmedByKey = false;
 	private float mExitAfterSeconds = 0.0f;
 	private float mRunSeconds = 0.0f;
 
@@ -687,6 +689,15 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		if (HasGlobalProfiler())
 		{
+			// The profiler records only while something watches it: the first press arms it for
+			// the rest of the run, and each press prints the newest frame.
+			if (!mProfilerArmedByKey)
+			{
+				GlobalProfiler().Arm();
+				mProfilerArmedByKey = true;
+				Console.WriteLine("Profiler armed; press P again for a frame.");
+				return;
+			}
 			let report = scope String();
 			GlobalProfiler().BuildReport(report);
 			Console.WriteLine(report);

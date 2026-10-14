@@ -1,218 +1,465 @@
 using System;
 using System.Collections;
 using System.Threading;
+using Sedulous.Core;
 
 namespace Sedulous.Profiler;
 
-/// A hierarchical CPU scope profiler.
+/// The capture store every profiler view reads. Threads record the scopes they finish into
+/// rings of their own, without a lock; at the end of each frame the frame thread gathers them
+/// into a FRAME RECORD and keeps the last few seconds of records. A record refers to nothing in
+/// the process (names are ids into a table, threads are indices), so the same record can be
+/// saved to a capture file or sent to another process and mean the same there.
 ///
-/// Scopes nest into a per thread tree; at frame end every thread's samples merge into the
-/// completed frame snapshot, which is what a report or an overlay reads.
+/// Recording costs a branch until something ARMS the profiler (a view, a capture, the P key);
+/// arms are counted, so two watchers keep it on until both let go.
 ///
-/// An ordinary object rather than a singleton, so a test can hold its own and two of them
-/// cannot see each other's threads. The process wide one that instrumentation reaches for
-/// is installed separately, the same way the logger is.
+/// An ordinary object rather than a singleton, so a test can hold its own; the process wide one
+/// instrumentation reaches for is installed beside it (GlobalProfiler).
 ///
-/// Thread safety: BeginScope and EndScope touch only their own thread's data. The thread
-/// registry and the frame swap are guarded. EndFrame drains the worker buffers WITHOUT
-/// their owners' cooperation, which is safe only because a frame ends when the workers are
-/// idle; that is the contract.
+/// Threads: any thread may record scopes and intern names. Everything else (frames, counters,
+/// GPU passes, reading records and tables) belongs to the FRAME THREAD, the one calling
+/// BeginFrame.
 class Profiler
 {
-	private const int32 kHistory = 64;
+	/// About five seconds at 60 frames a second.
+	public const uint32 DefaultHistory = 300;
+	/// Scopes a frame thread, and any other thread, can hold unread between two frame ends.
+	public const uint32 DefaultFrameThreadRing = 65536;
+	public const uint32 DefaultThreadRing = 16384;
 
-	private bool mEnabled = true;
-	private uint64 mFrameNumber;
-	private int64 mFrameStartTick;
-	private ProfileFrame mCompleted = new .() ~ delete _;
-	/// Guards the thread registry and the frame swap.
-	private Monitor mLock = new .() ~ delete _;
-	private List<ProfileThreadData> mThreads = new .() ~ DeleteContainerAndItems!(_);
-	private Dictionary<int, ProfileThreadData> mThreadsById = new .() ~ delete _;
-	private int32 mNextThreadIndex;
-	private double[kHistory] mHistory;
-	private int32 mHistoryHead;
-	private int32 mHistoryCount;
+	private const int32 cFrameTimes = 64;
 
-	/// Identity rather than the pointer, so a thread's cached slot cannot be mistaken for
-	/// a later profiler that happened to be allocated at the same address.
+	/// One recording thread. The ring is single producer (its thread), single consumer (the
+	/// frame thread at frame end): Written and Read count events ever, and the ring indexes them
+	/// modulo its power of two size.
+	private class ThreadData
+	{
+		public uint32 Index;
+		public int ThreadId;
+		public String Name = new .() ~ delete _;
+		public ScopeEvent[] Ring ~ delete _;
+		public volatile int64 Written;
+		public volatile int64 Read;
+		public int32 Dropped;
+		/// The open scopes: its thread only.
+		public List<OpenScope> Stack = new .() ~ delete _;
+		/// Names it has interned, by content: its thread only. Keys owned.
+		public Dictionary<String, uint32> NameIds = new .() ~ DeleteDictionaryAndKeys!(_);
+	}
+
+	private struct OpenScope
+	{
+		public uint32 Name;
+		public int64 BeginTick;
+	}
+
+	/// Identity rather than the pointer, so a thread's cached slot cannot be mistaken for a later
+	/// profiler that happened to be allocated at the same address.
 	private static int32 sNextProfilerId;
 	private int32 mId;
-
 	[ThreadStatic] private static int32 sCachedOwnerId;
-	[ThreadStatic] private static ProfileThreadData sCachedLocal;
+	[ThreadStatic] private static ThreadData sCachedLocal;
+
+	private int32 mArmCount;
+	private uint32 mFrameThreadRing = DefaultFrameThreadRing;
+	private uint32 mThreadRing = DefaultThreadRing;
+
+	/// Guards the thread registry, the pending names and the name lookup.
+	private Monitor mLock = new .() ~ delete _;
+	private List<ThreadData> mThreads = new .() ~ DeleteContainerAndItems!(_);
+	private List<String> mPendingNames = new .() ~ DeleteContainerAndItems!(_);
+	/// Keys borrowed from mNames or mPendingNames, which own them.
+	private Dictionary<StringView, uint32> mNameIds = new .() ~ delete _;
+
+	// The frame thread's view, published at frame end.
+	private List<String> mNames = new .() ~ DeleteContainerAndItems!(_);
+	private List<ThreadInfo> mThreadInfos = new .() ~ DeleteContainerAndItems!(_);
+
+	private uint64 mFrameNumber;
+	private int64 mFrameBeginTick;
+	private volatile int mFrameThreadId = -1;
+	private List<FrameRecord> mHistory = new .() ~ DeleteContainerAndItems!(_);
+	private uint64 mRecordedFrames;
+	private uint64 mLatestRecorded;
+
+	private List<CounterInfo> mCounters = new .() ~ DeleteContainerAndItems!(_);
+	private List<double> mCounterValues = new .() ~ delete _;
+	private List<bool> mCounterSet = new .() ~ delete _;
+
+	private double[cFrameTimes] mFrameTimes;
+	private int32 mFrameTimeHead;
+	private int32 mFrameTimeCount;
 
 	public this()
 	{
 		mId = Interlocked.Increment(ref sNextProfilerId);
+		SetHistoryLength(DefaultHistory);
 	}
 
-	public bool Enabled
+	// ---- arming -----------------------------------------------------------------------------
+
+	/// Starts recording; each Arm is undone by one Disarm.
+	public void Arm() => Interlocked.Increment(ref mArmCount);
+
+	/// Undoes one Arm; one too many does not wrap.
+	public void Disarm()
 	{
-		get => mEnabled;
-		set => mEnabled = value;
-	}
-
-	/// The last finished frame. Valid until the next EndFrame, which reuses it.
-	public ProfileFrame CompletedFrame => mCompleted;
-
-	public void BeginFrame()
-	{
-		if (!mEnabled)
-			return;
-		mFrameStartTick = ProfileClock.Now();
-	}
-
-	public void EndFrame()
-	{
-		if (!mEnabled)
-			return;
-
-		let endTick = ProfileClock.Now();
-		using (mLock.Enter())
+		var count = Volatile.Read(ref mArmCount);
+		while (count > 0)
 		{
-			mCompleted.Samples.Clear();
-			mCompleted.FrameNumber = mFrameNumber;
-			mCompleted.FrameStartTick = mFrameStartTick;
-			mCompleted.FrameDurationTicks = (endTick >= mFrameStartTick) ? (endTick - mFrameStartTick) : 0;
-
-			for (let thread in mThreads)
-			{
-				for (let sample in thread.Samples)
-					mCompleted.Samples.Add(sample);
-				thread.Samples.Clear();
-				// Defensive: an unbalanced scope must not leak into the next frame.
-				thread.Stack.Clear();
-			}
-
-			PushHistory(mCompleted.FrameMs);
-			mFrameNumber++;
+			let seen = Interlocked.CompareExchange(ref mArmCount, count, count - 1);
+			if (seen == count)
+				return;
+			count = seen;
 		}
 	}
 
-	public void BeginScope(StringView name)
-	{
-		if (!mEnabled)
-			return;
+	public bool Armed => Volatile.Read(ref mArmCount) > 0;
 
-		let thread = Local();
-		thread.Stack.Add(ProfileThreadData.ActiveScope()
-			{
-				Name = name,
-				StartTick = ProfileClock.Now(),
-				Depth = (int32)thread.Stack.Count
-			});
+	/// How many scopes a thread can hold between two frame ends before it drops new ones.
+	/// Read when a thread first records, so set it before arming.
+	public void SetRingCapacity(uint32 frameThread, uint32 otherThreads)
+	{
+		mFrameThreadRing = RoundUpPow2(frameThread);
+		mThreadRing = RoundUpPow2(otherThreads);
 	}
 
+	// ---- scopes (any thread) ----------------------------------------------------------------
+
+	/// Opens a scope. False when nothing was opened (unarmed); then do not EndScope. Each
+	/// thread interns a name once and looks it up by content after, so a name made at run time
+	/// (a pass's) works as a literal does.
+	public bool BeginScope(StringView name)
+	{
+		if (!Armed)
+			return false;
+		let thread = Local();
+		uint32 id = 0;
+		if (!thread.NameIds.TryGetValueAlt(name, out id))
+		{
+			id = InternName(name);
+			thread.NameIds[new String(name)] = id;
+		}
+		thread.Stack.Add(.() { Name = id, BeginTick = ProfileClock.Now() });
+		return true;
+	}
+
+	/// Closes the scope this thread opened last.
 	public void EndScope()
 	{
-		if (!mEnabled)
-			return;
-
 		let thread = Local();
 		if (thread.Stack.IsEmpty)
 			return;
-
-		let active = thread.Stack.PopBack();
-		let now = ProfileClock.Now();
-		thread.Samples.Add(ProfileSample()
-			{
-				Name = active.Name,
-				StartTick = active.StartTick,
-				DurationTicks = (now >= active.StartTick) ? (now - active.StartTick) : 0,
-				Depth = active.Depth,
-				ThreadIndex = thread.Index
-			});
+		let open = thread.Stack.PopBack();
+		let written = thread.Written;
+		if (written - Volatile.Read(ref thread.Read) >= thread.Ring.Count)
+		{
+			Interlocked.Increment(ref thread.Dropped);
+			return;
+		}
+		thread.Ring[(int)(written & (thread.Ring.Count - 1))] =
+			ScopeEvent(open.Name, (uint32)thread.Stack.Count, open.BeginTick, ProfileClock.Now());
+		Volatile.Write(ref thread.Written, written + 1);
 	}
 
-	/// Rolling average of recent frame times in milliseconds, which is the number worth
-	/// putting on screen: a single frame jitters too much to read.
+	/// The id of `name`, added to the table if new. Any thread: a name another thread adds joins
+	/// the table the frame thread reads at the next frame end; one the frame thread adds (a GPU
+	/// pass's) joins it at once.
+	public uint32 InternName(StringView name)
+	{
+		using (mLock.Enter())
+		{
+			if (mNameIds.TryGetValue(name, let known))
+				return known;
+			let id = (uint32)(mNames.Count + mPendingNames.Count);
+			let copy = new String(name);
+			mPendingNames.Add(copy);
+			mNameIds[copy] = id;
+			if (Thread.CurrentThread.Id == mFrameThreadId)
+				PublishPendingNames();
+			return id;
+		}
+	}
+
+	// ---- frames (the frame thread) ----------------------------------------------------------
+
+	public void BeginFrame()
+	{
+		mFrameBeginTick = ProfileClock.Now();
+		mFrameThreadId = Thread.CurrentThread.Id;
+	}
+
+	/// Closes the frame: gathers what every thread finished into its record (when armed),
+	/// publishes new names and threads, and moves on to the next frame number.
+	public void EndFrame()
+	{
+		let endTick = ProfileClock.Now();
+		let threads = scope List<ThreadData>();
+		using (mLock.Enter())
+		{
+			PublishPendingNames();
+			for (let thread in mThreads)
+			{
+				threads.Add(thread);
+				if (thread.Index >= mThreadInfos.Count)
+				{
+					let info = new ThreadInfo();
+					info.Index = thread.Index;
+					info.Name.Set(thread.Name);
+					mThreadInfos.Add(info);
+				}
+			}
+		}
+
+		FrameRecord record = null;
+		if (Armed)
+		{
+			record = mHistory[(int)(mFrameNumber % (uint64)mHistory.Count)];
+			record.Clear();
+			record.FrameNumber = mFrameNumber;
+			record.BeginTick = mFrameBeginTick;
+			record.EndTick = endTick;
+			mRecordedFrames++;
+			mLatestRecorded = mFrameNumber;
+		}
+		for (let thread in threads)
+		{
+			let written = thread.Written;
+			let read = thread.Read;
+			let dropped = Interlocked.Exchange(ref thread.Dropped, 0);
+			if ((record != null) && ((written > read) || (dropped > 0)))
+			{
+				let frame = new ThreadFrame();
+				frame.Thread = thread.Index;
+				frame.Dropped = (uint32)dropped;
+				for (var i = read; i < written; i++)
+					frame.Scopes.Add(thread.Ring[(int)(i & (thread.Ring.Count - 1))]);
+				record.Threads.Add(frame);
+			}
+			// Unarmed, what was left is let go.
+			Volatile.Write(ref thread.Read, written);
+		}
+		if (record != null)
+		{
+			for (int id < mCounterSet.Count)
+			{
+				if (mCounterSet[id])
+				{
+					record.Counters.Add(.((uint32)id, mCounterValues[id]));
+					mCounterSet[id] = false;
+				}
+			}
+		}
+		PushFrameTime(ProfileClock.ToMilliseconds((endTick >= mFrameBeginTick) ? (endTick - mFrameBeginTick) : 0));
+		mFrameNumber++;
+	}
+
+	/// The number the frame now running will have.
+	public uint64 CurrentFrameNumber => mFrameNumber;
+
+	/// Keeps the last `frames` records (at least one); forgets the ones kept so far.
+	public void SetHistoryLength(uint32 frames)
+	{
+		let count = (frames > 0) ? frames : 1;
+		ClearAndDeleteItems(mHistory);
+		for (uint32 i < count)
+			mHistory.Add(new FrameRecord());
+		mRecordedFrames = 0;
+	}
+
+	public uint32 HistoryLength => (uint32)mHistory.Count;
+
+	/// Frame `frameNumber`'s record while it is still kept, else null.
+	public FrameRecord Frame(uint64 frameNumber)
+	{
+		if (mRecordedFrames == 0)
+			return null;
+		let record = mHistory[(int)(frameNumber % (uint64)mHistory.Count)];
+		return ((record.FrameNumber == frameNumber) && (record.EndTick != 0)) ? record : null;
+	}
+
+	/// The newest record, null when nothing was recorded.
+	public FrameRecord LatestFrame => (mRecordedFrames == 0) ? null : Frame(mLatestRecorded);
+
+	// ---- GPU passes (the frame thread) ------------------------------------------------------
+
+	/// Frame `frameNumber`'s GPU passes, when they arrive; let go once the record is gone.
+	public void SubmitGpuPasses(uint64 frameNumber, Span<GpuPassEvent> passes)
+	{
+		let record = Frame(frameNumber);
+		if (record == null)
+			return;
+		record.Gpu.Clear();
+		for (let pass in passes)
+			record.Gpu.Add(pass);
+		record.GpuValid = true;
+	}
+
+	// ---- counters (the frame thread) --------------------------------------------------------
+
+	/// A counter's id, registered once under its name.
+	public uint32 RegisterCounter(StringView name, CounterUnit unit)
+	{
+		for (int id < mCounters.Count)
+		{
+			if (mCounters[id].Name == name)
+				return (uint32)id;
+		}
+		let info = new CounterInfo();
+		info.Name.Set(name);
+		info.Unit = unit;
+		mCounters.Add(info);
+		mCounterValues.Add(0.0);
+		mCounterSet.Add(false);
+		return (uint32)(mCounters.Count - 1);
+	}
+
+	/// This frame's value of counter `id`; the frame's record takes the last one set.
+	public void SetCounter(uint32 id, double value)
+	{
+		if (id < (uint32)mCounterValues.Count)
+		{
+			mCounterValues[id] = value;
+			mCounterSet[id] = true;
+		}
+	}
+
+	// ---- tables (the frame thread; as of the last frame end) --------------------------------
+
+	public StringView NameOf(uint32 id) => (id < (uint32)mNames.Count) ? mNames[id] : StringView();
+	public uint32 NameCount => (uint32)mNames.Count;
+	public Span<ThreadInfo> Threads => mThreadInfos;
+	public Span<CounterInfo> Counters => mCounters;
+
+	// ---- summaries --------------------------------------------------------------------------
+
+	/// The mean of the last 64 frame times in milliseconds, armed or not.
 	public double AverageFrameMs
 	{
 		get
 		{
-			if (mHistoryCount == 0)
+			if (mFrameTimeCount == 0)
 				return 0.0;
 			var sum = 0.0;
-			for (int32 i < mHistoryCount)
-				sum += mHistory[i];
-			return sum / mHistoryCount;
+			for (int32 i < mFrameTimeCount)
+				sum += mFrameTimes[i];
+			return sum / mFrameTimeCount;
 		}
 	}
 
-	/// How many threads have recorded anything, which is also the range of ThreadIndex.
-	public int32 ThreadCount
-	{
-		get
-		{
-			using (mLock.Enter())
-				return mNextThreadIndex;
-		}
-	}
-
-	/// A human readable dump: the frame headline, then the scope tree indented by depth.
-	///
-	/// Ordered by start tick and THEN by depth. Start tick alone, relying on the sort being
-	/// stable, puts a child before its parent whenever the two share a tick; at microsecond
-	/// resolution they routinely do. Depth breaks the tie correctly, since a parent both
-	/// starts no later than its child and is shallower.
+	/// The newest record as text (the P key): its time, then each thread's scopes in the order
+	/// they began, indented by depth, then the GPU passes.
 	public void BuildReport(String outReport)
 	{
-		let frame = mCompleted;
-		outReport.AppendF("=== Profile: frame {}  {:F3} ms (avg {:F3} ms)  {} samples ===\n",
-			frame.FrameNumber, frame.FrameMs, AverageFrameMs, frame.Samples.Count);
-
-		let order = scope List<int>();
-		for (int i < frame.Samples.Count)
-			order.Add(i);
-		order.Sort(scope (a, b) =>
-			{
-				let left = frame.Samples[a];
-				let right = frame.Samples[b];
-				if (left.StartTick != right.StartTick)
-					return left.StartTick <=> right.StartTick;
-				return left.Depth <=> right.Depth;
-			});
-
-		for (let index in order)
+		let frame = LatestFrame;
+		if (frame == null)
 		{
-			let sample = frame.Samples[index];
-			outReport.Append("  ");
-			for (int32 d < sample.Depth)
-				outReport.Append("  ");
-			outReport.Append(sample.Name);
-			outReport.AppendF(": {:F3} ms [t{}]\n", sample.DurationMs, sample.ThreadIndex);
+			outReport.Append(Armed ? "=== Profile: no frame recorded yet ===\n" : "=== Profile: not armed ===\n");
+			return;
+		}
+		var scopes = 0;
+		for (let thread in frame.Threads)
+			scopes += thread.Scopes.Count;
+		outReport.AppendF("=== Profile: frame {}  {:F3} ms (avg {:F3} ms)  {} scopes ===\n",
+			frame.FrameNumber, frame.Ms, AverageFrameMs, scopes);
+		for (let thread in frame.Threads)
+		{
+			let threadName = (thread.Thread < (uint32)mThreadInfos.Count) ? (StringView)mThreadInfos[thread.Thread].Name : "?";
+			outReport.AppendF("  [{}]", threadName);
+			if (thread.Dropped > 0)
+				outReport.AppendF(" ({} dropped)", thread.Dropped);
+			outReport.Append("\n");
+			// Parents begin before their children; scopes are recorded as they finish, children
+			// first, so a tick shared with the parent is broken by depth.
+			let order = scope List<int>();
+			for (int i < thread.Scopes.Count)
+				order.Add(i);
+			order.Sort(scope (a, b) =>
+				{
+					let left = thread.Scopes[a];
+					let right = thread.Scopes[b];
+					if (left.BeginTick != right.BeginTick)
+						return left.BeginTick <=> right.BeginTick;
+					return left.Depth <=> right.Depth;
+				});
+			for (let index in order)
+			{
+				let recorded = thread.Scopes[index];
+				outReport.Append("    ");
+				for (uint32 d < recorded.Depth)
+					outReport.Append("  ");
+				outReport.AppendF("{}: {:F3} ms\n", NameOf(recorded.Name), ProfileClock.ToMilliseconds(recorded.EndTick - recorded.BeginTick));
+			}
+		}
+		if (frame.GpuValid)
+		{
+			outReport.Append("  [GPU]\n");
+			for (let pass in frame.Gpu)
+				outReport.AppendF("    {}: {:F3} ms\n", NameOf(pass.Name), ProfileClock.ToMilliseconds(pass.EndTick - pass.BeginTick));
 		}
 	}
 
-	/// This thread's data, created and registered on first use.
-	private ProfileThreadData Local()
+	// ---- internals --------------------------------------------------------------------------
+
+	/// The calling thread's data for THIS profiler: a per thread cache of the last profiler it
+	/// recorded into, else found or made under the lock.
+	private ThreadData Local()
 	{
 		if (sCachedOwnerId == mId)
 			return sCachedLocal;
-
+		let threadId = Thread.CurrentThread.Id;
+		ThreadData found = null;
 		using (mLock.Enter())
 		{
-			let id = Thread.CurrentThread.Id;
-			ProfileThreadData thread;
-			if (!mThreadsById.TryGetValue(id, out thread))
+			for (let thread in mThreads)
 			{
-				thread = new ProfileThreadData();
-				thread.Index = mNextThreadIndex++;
-				mThreadsById[id] = thread;
-				mThreads.Add(thread);
+				if (thread.ThreadId == threadId)
+				{
+					found = thread;
+					break;
+				}
 			}
-			sCachedOwnerId = mId;
-			sCachedLocal = thread;
-			return thread;
+			if (found == null)
+			{
+				found = new ThreadData();
+				found.Index = (uint32)mThreads.Count;
+				found.ThreadId = threadId;
+				let named = ThreadNames.Current;
+				if (named.IsEmpty)
+					found.Name.AppendF("Thread {}", found.Index);
+				else
+					found.Name.Set(named);
+				found.Ring = new ScopeEvent[(threadId == mFrameThreadId) ? mFrameThreadRing : mThreadRing];
+				mThreads.Add(found);
+			}
 		}
+		sCachedOwnerId = mId;
+		sCachedLocal = found;
+		return found;
 	}
 
-	private void PushHistory(double ms)
+	/// Under the lock, on the frame thread: pending names join the table it reads, in id order.
+	private void PublishPendingNames()
 	{
-		mHistory[mHistoryHead] = ms;
-		mHistoryHead = (mHistoryHead + 1) % kHistory;
-		if (mHistoryCount < kHistory)
-			mHistoryCount++;
+		for (let name in mPendingNames)
+			mNames.Add(name);
+		mPendingNames.Clear();
+	}
+
+	private static uint32 RoundUpPow2(uint32 value)
+	{
+		uint32 result = 1;
+		while ((result < value) && (result < (1U << 30)))
+			result <<= 1;
+		return result;
+	}
+
+	private void PushFrameTime(double ms)
+	{
+		mFrameTimes[mFrameTimeHead] = ms;
+		mFrameTimeHead = (mFrameTimeHead + 1) % cFrameTimes;
+		if (mFrameTimeCount < cFrameTimes)
+			mFrameTimeCount++;
 	}
 }

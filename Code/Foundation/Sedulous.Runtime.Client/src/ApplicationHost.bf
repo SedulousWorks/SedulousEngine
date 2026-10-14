@@ -52,6 +52,9 @@ class ApplicationHost : IApplicationHost
 		mShell = shell;
 		mGraphics = graphics;
 		mSettings = app.Settings;
+		// The thread running the frames: its lane in the profiler, unless the app named it.
+		if (ThreadNames.Current.IsEmpty)
+			ThreadNames.SetCurrent("Main");
 		// Running from here on, so a RequestExit raised DURING startup (Configure, OnStartup:
 		// no data root, an unreadable dist) is honoured by the run loop instead of being
 		// overwritten when Start completes.

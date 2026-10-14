@@ -584,8 +584,8 @@ class RenderFrame
 			// The cascade's matrix already reaches back toward the light, so its frustum is the
 			// right assignment volume and each caster lands in about one cascade rather than
 			// being drawn into all of them.
-			ProfileScopeBegin("shadow.cull"); // the per cascade frustum scan
-			defer ProfileScopeEnd();
+			var scopeToken = ProfileScope("shadow.cull"); // the per cascade frustum scan
+			defer scopeToken.Dispose();
 
 			let frustum = BoundingFrustum(lightViewProj);
 			mShadowCullScratch.Clear();
@@ -645,8 +645,8 @@ class RenderFrame
 		// and handing a whole category run to the first item's renderer would give one
 		// renderer another's data to read as its own. A sprite's depth only resolve does
 		// nothing, sprites casting no shadows.
-		ProfileScopeBegin("shadow.resolve"); // the per survivor resolve and emit
-		defer ProfileScopeEnd();
+		var scopeToken = ProfileScope("shadow.resolve"); // the per survivor resolve and emit
+		defer scopeToken.Dispose();
 
 		mShadowResolved.Clear();
 		var i = 0;
@@ -999,7 +999,7 @@ class RenderFrame
 		if (mEncoder == null)
 			return;
 
-		ProfileScopeBegin("Compose.Head");
+		var phase = ProfileScope("Compose.Head");
 		uint32 totalDraws = 0;
 		for (int i < mViews.ActiveCount)
 			totalDraws += (uint32)mViews.At(i).DrawList.Length;
@@ -1061,35 +1061,35 @@ class RenderFrame
 		// renderers' ring sizing.
 		let localPassCount = (uint32)(mRealtimeAtlasDraws.Count + mStaticRenderDraws.Count);
 
-		ProfileScopeEnd();
-		ProfileScopeBegin("Compose.Prepare");
+		phase.Dispose();
+		phase = ProfileScope("Compose.Prepare");
 		PrepareRenderers(totalDraws, sceneCount, shadowMap, shadowGeneration, atlasView,
 			atlasGeneration, localPassCount);
 
-		ProfileScopeEnd();
-		ProfileScopeBegin("Compose.Declare");
+		phase.Dispose();
+		phase = ProfileScope("Compose.Declare");
 		DeclareFrame(sceneCount, hasShadow, shadowMap, atlasView, staticTileCount, renderStatic);
 
 		// Unmap the decal ring before the graph executes.
 		if (mDecalPass != null)
 			mDecalPass.EndFrame();
 
-		ProfileScopeEnd();
-		ProfileScopeBegin("Compose.Execute");
+		phase.Dispose();
+		phase = ProfileScope("Compose.Execute");
 		mGraph.Execute(mEncoder).IgnoreError();
-		ProfileScopeEnd();
+		phase.Dispose();
 		// Age out the transient pool. Executing only RETURNS transients to it; this is what
 		// destroys the entries nothing has used for a while. Without it the pool keeps every
 		// size ever seen, which is invisible while one size recurs and an unbounded leak once
 		// a viewport starts resizing.
-		ProfileScopeBegin("Compose.GraphEndFrame");
+		phase = ProfileScope("Compose.GraphEndFrame");
 		mGraph.EndFrame();
-		ProfileScopeEnd();
+		phase.Dispose();
 
-		ProfileScopeBegin("Compose.FinishFrame");
+		phase = ProfileScope("Compose.FinishFrame");
 		for (let renderer in mRegistry.Unique)
 			renderer.FinishFrame();
-		ProfileScopeEnd();
+		phase.Dispose();
 
 		// This frame's matrices become next frame's previous ones.
 		mPrevViewProj.Clear();

@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 using Sedulous.Profiler;
 
 namespace Sedulous.Profiler.Tests;
@@ -16,15 +17,18 @@ class GlobalProfilerTests
 		// The whole point: a unit test or a headless tool never installs one, and the
 		// instrumentation scattered through the engine still has to be callable.
 		ProfileFrameBegin();
-		ProfileScopeBegin("Nowhere");
-		ProfileScopeEnd();
+		using (ProfileScope("Nowhere"))
+		{
+		}
 		ProfileFrameEnd();
 	}
 
+	/// A token closes its scope under defer too, for a region that is not a block.
 	[Test]
 	public static void TheFrontendRecordsIntoTheInstalledProfiler()
 	{
 		let profiler = scope Profiler();
+		profiler.Arm();
 		InitGlobalProfiler(profiler);
 		defer ShutdownGlobalProfiler();
 
@@ -33,18 +37,126 @@ class GlobalProfilerTests
 
 		ProfileFrameBegin();
 		{
-			ProfileScopeBegin("Outer");
-			defer ProfileScopeEnd();
+			var outer = ProfileScope("Outer");
+			defer outer.Dispose();
 
-			ProfileScopeBegin("Inner");
-			ProfileScopeEnd();
+			using (ProfileScope("Inner"))
+			{
+			}
 		}
 		ProfileFrameEnd();
 
-		let frame = profiler.CompletedFrame;
-		Test.Assert(frame.Samples.Count == 2, scope $"got {frame.Samples.Count}");
-		Test.Assert(DepthOf(frame, "Outer") == 0);
-		Test.Assert(DepthOf(frame, "Inner") == 1, "defer closed the outer scope after the inner one");
+		let frame = profiler.LatestFrame;
+		Test.Assert(ScopeCount(frame) == 2, scope $"got {ScopeCount(frame)}");
+		Test.Assert(DepthOf(profiler, frame, "Outer") == 0);
+		Test.Assert(DepthOf(profiler, frame, "Inner") == 1, "defer closed the outer scope after the inner one");
+	}
+
+	/// A scope opened while unarmed is not closed by arming inside it: the token closes only
+	/// what it opened, so the thread's nesting stays right.
+	[Test]
+	public static void AScopeOpenedWhileUnarmedIsNotClosedByArmingInsideIt()
+	{
+		let profiler = scope Profiler();
+		InitGlobalProfiler(profiler);
+		defer ShutdownGlobalProfiler();
+
+		ProfileFrameBegin();
+		using (ProfileScope("Unrecorded"))
+		{
+			profiler.Arm();
+			using (ProfileScope("Recorded"))
+			{
+			}
+		}
+		ProfileFrameEnd();
+
+		let frame = profiler.LatestFrame;
+		Test.Assert(frame != null);
+		Test.Assert(DepthOf(profiler, frame, "Unrecorded") == -1);
+		Test.Assert(DepthOf(profiler, frame, "Recorded") == 0);
+		Test.Assert(ScopeCount(frame) == 1);
+
+		// Where it would hurt: inside a recorded scope, the unrecorded one's close must not end
+		// the parent, or what follows would land at the parent's depth, outside it.
+		ProfileFrameBegin();
+		using (ProfileScope("Parent"))
+		{
+			profiler.Disarm();
+			using (ProfileScope("Skipped"))
+				profiler.Arm();
+			using (ProfileScope("Child"))
+			{
+			}
+		}
+		ProfileFrameEnd();
+		let second = profiler.LatestFrame;
+		Test.Assert(DepthOf(profiler, second, "Child") == 1, "the child is still inside its parent");
+		Test.Assert(DepthOf(profiler, second, "Parent") == 0);
+	}
+
+	/// Every job a job system runs shows as a "Job" scope on the lane of the thread that ran
+	/// it, a worker's or the waiting caller's, with its own scopes nested inside.
+	[Test]
+	public static void AJobSystemsJobsShowOnTheirThreadsLanesWithTheirScopesInside()
+	{
+		let profiler = scope Profiler();
+		profiler.Arm();
+		InitGlobalProfiler(profiler);
+		defer ShutdownGlobalProfiler();
+
+		ProfileFrameBegin();
+		{
+			let jobs = scope JobSystem(2);
+			for (int i < 40)
+			{
+				jobs.Submit(new () =>
+					{
+						using (ProfileScope("Inside a job"))
+							Spin();
+					});
+			}
+			jobs.WaitForAll();
+		}
+		ProfileFrameEnd();
+
+		let frame = profiler.LatestFrame;
+		Test.Assert(frame != null);
+		var jobScopes = 0;
+		var insideScopes = 0;
+		for (let thread in frame.Threads)
+		{
+			let lane = profiler.Threads[thread.Thread].Name;
+			for (let recorded in thread.Scopes)
+			{
+				if (profiler.NameOf(recorded.Name) == "Job")
+				{
+					jobScopes++;
+					Test.Assert(recorded.Depth == 0);
+					Test.Assert(lane.StartsWith("Worker ") || lane.StartsWith("Thread ") || (lane == ThreadNames.Current), lane);
+				}
+				if (profiler.NameOf(recorded.Name) == "Inside a job")
+				{
+					insideScopes++;
+					Test.Assert(recorded.Depth == 1);
+				}
+			}
+		}
+		Test.Assert(jobScopes == 40, scope $"{jobScopes} job scopes");
+		Test.Assert(insideScopes == 40, scope $"{insideScopes} scopes inside jobs");
+
+		// Shutting the profiler down takes the hooks with it.
+		ShutdownGlobalProfiler();
+		Test.Assert(JobHooks.Current == null);
+	}
+
+	/// Busy until the tick counter moves, so a scope has a duration it can see.
+	private static void Spin()
+	{
+		let start = ProfileClock.Now();
+		while (ProfileClock.Now() == start)
+		{
+		}
 	}
 
 	/// The form instrumentation should actually use. Leaving the block closes the scope,
@@ -53,6 +165,7 @@ class GlobalProfilerTests
 	public static void UsingBracketsAScopeWithItsBlock()
 	{
 		let profiler = scope Profiler();
+		profiler.Arm();
 		InitGlobalProfiler(profiler);
 		defer ShutdownGlobalProfiler();
 
@@ -70,11 +183,11 @@ class GlobalProfilerTests
 		}
 		ProfileFrameEnd();
 
-		let frame = profiler.CompletedFrame;
-		Test.Assert(frame.Samples.Count == 3, scope $"got {frame.Samples.Count}");
-		Test.Assert(DepthOf(frame, "Outer") == 0);
-		Test.Assert(DepthOf(frame, "Inner") == 1);
-		Test.Assert(DepthOf(frame, "Sibling") == 1, "a sibling of Inner, not nested in it");
+		let frame = profiler.LatestFrame;
+		Test.Assert(ScopeCount(frame) == 3, scope $"got {ScopeCount(frame)}");
+		Test.Assert(DepthOf(profiler, frame, "Outer") == 0);
+		Test.Assert(DepthOf(profiler, frame, "Inner") == 1);
+		Test.Assert(DepthOf(profiler, frame, "Sibling") == 1, "a sibling of Inner, not nested in it");
 	}
 
 	/// An early return still closes the scope, which is the reason to prefer using over a
@@ -83,6 +196,7 @@ class GlobalProfilerTests
 	public static void UsingClosesTheScopeOnAnEarlyReturn()
 	{
 		let profiler = scope Profiler();
+		profiler.Arm();
 		InitGlobalProfiler(profiler);
 		defer ShutdownGlobalProfiler();
 
@@ -93,9 +207,9 @@ class GlobalProfilerTests
 		}
 		ProfileFrameEnd();
 
-		let frame = profiler.CompletedFrame;
-		Test.Assert(frame.Samples.Count == 2);
-		Test.Assert(DepthOf(frame, "After") == 0, "the abandoned scope was closed, not left open");
+		let frame = profiler.LatestFrame;
+		Test.Assert(ScopeCount(frame) == 2);
+		Test.Assert(DepthOf(profiler, frame, "After") == 0, "the abandoned scope was closed, not left open");
 	}
 
 	private static void ReturnsEarly()
@@ -128,12 +242,23 @@ class GlobalProfilerTests
 		borrowed.EndFrame();
 	}
 
-	private static int32 DepthOf(ProfileFrame frame, StringView name)
+	private static int ScopeCount(FrameRecord frame)
 	{
-		for (let sample in frame.Samples)
+		var count = 0;
+		for (let thread in frame.Threads)
+			count += thread.Scopes.Count;
+		return count;
+	}
+
+	private static int32 DepthOf(Profiler profiler, FrameRecord frame, StringView name)
+	{
+		for (let thread in frame.Threads)
 		{
-			if (sample.Name == name)
-				return sample.Depth;
+			for (let recorded in thread.Scopes)
+			{
+				if (profiler.NameOf(recorded.Name) == name)
+					return (int32)recorded.Depth;
+			}
 		}
 		return -1;
 	}

@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 
 namespace Sedulous.Profiler;
 
@@ -30,25 +31,36 @@ namespace Sedulous.Profiler;
 ///
 /// That form is free too: a skipped call still type checks as a value, so when profiling
 /// is compiled out the factory, the argument and the Dispose all go, and the using
-/// statement is gone with them. ProfileScopeBegin and ProfileScopeEnd are there for a
-/// region that is not a block, and take defer instead.
+/// statement is gone with them.
 ///
-/// Names must be literals or otherwise outlive the frame: samples borrow them.
+/// Nothing is recorded until the profiler is ARMED (Profiler.Arm), and a name is copied into
+/// the profiler's table, so a name made at run time is as good as a literal.
 static
 {
 	private static Profiler sGlobalProfiler;
 	private static bool sOwnsGlobalProfiler;
 
-	/// Installs the global profiler, replacing and, if owned, deleting any previous one.
+	/// The job system's hooks: every job a JobSystem runs shows as a "Job" scope on its
+	/// worker's lane, under which its own scopes nest.
+	private static JobHooks sJobHooks = new .(
+		() => (sGlobalProfiler != null) && sGlobalProfiler.BeginScope("Job"),
+		() => { if (sGlobalProfiler != null) sGlobalProfiler.EndScope(); }) ~ delete _;
+
+	/// Installs the global profiler, replacing and, if owned, deleting any previous one; every
+	/// job system's jobs show in it from then on.
 	public static void InitGlobalProfiler(Profiler profiler, bool owns = false)
 	{
 		ShutdownGlobalProfiler();
 		sGlobalProfiler = profiler;
 		sOwnsGlobalProfiler = owns;
+		if (profiler != null)
+			JobHooks.Set(sJobHooks);
 	}
 
 	public static void ShutdownGlobalProfiler()
 	{
+		if (JobHooks.Current == sJobHooks)
+			JobHooks.Set(null);
 		if (sOwnsGlobalProfiler && (sGlobalProfiler != null))
 			delete sGlobalProfiler;
 		sGlobalProfiler = null;
@@ -77,31 +89,13 @@ static
 			sGlobalProfiler.EndFrame();
 	}
 
+	/// Opens a scope that the token closes; it closes only what it opened, so arming or
+	/// disarming inside it leaves the thread's nesting balanced.
 #if !SEDULOUS_PROFILING
 	[SkipCall]
 #endif
 	public static ProfileScopeToken ProfileScope(StringView name)
 	{
-		if (sGlobalProfiler != null)
-			sGlobalProfiler.BeginScope(name);
-		return .();
-	}
-
-#if !SEDULOUS_PROFILING
-	[SkipCall]
-#endif
-	public static void ProfileScopeBegin(StringView name)
-	{
-		if (sGlobalProfiler != null)
-			sGlobalProfiler.BeginScope(name);
-	}
-
-#if !SEDULOUS_PROFILING
-	[SkipCall]
-#endif
-	public static void ProfileScopeEnd()
-	{
-		if (sGlobalProfiler != null)
-			sGlobalProfiler.EndScope();
+		return .((sGlobalProfiler != null) && sGlobalProfiler.BeginScope(name));
 	}
 }

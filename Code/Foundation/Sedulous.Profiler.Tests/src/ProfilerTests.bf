@@ -1,359 +1,323 @@
 using System;
 using System.Collections;
 using System.Threading;
+using Sedulous.Core;
 using Sedulous.Profiler;
 
 namespace Sedulous.Profiler.Tests;
 
-/// Each case builds its own profiler rather than poking a shared singleton.
+/// The capture store: threads record the scopes they finish into rings of their own, the frame
+/// end gathers them into a frame record that refers to nothing in the process (names are ids,
+/// threads indices), and the last few seconds of records are kept. Each case builds its own
+/// profiler rather than poking a shared one.
 class ProfilerTests
 {
-	[Test]
-	public static void ASingleScopeIsRecorded()
+	/// Busy until the tick counter moves, so a scope has a duration it can see.
+	private static void Spin()
 	{
-		let profiler = scope Profiler();
-		profiler.BeginFrame();
+		let start = ProfileClock.Now();
+		while (ProfileClock.Now() == start)
 		{
-			profiler.BeginScope("Alpha");
-			profiler.EndScope();
 		}
-		profiler.EndFrame();
+	}
 
-		let frame = profiler.CompletedFrame;
-		Test.Assert(frame.Samples.Count == 1);
-		Test.Assert(frame.Samples[0].Name == "Alpha");
-		Test.Assert(frame.Samples[0].Depth == 0);
+	private static bool Contains(StringView text, StringView needle) => text.IndexOf(needle) >= 0;
+
+	[Test]
+	public static void UnarmedNothingIsRecordedAndNothingIsKept()
+	{
+		let p = scope Profiler();
+		Test.Assert(!p.Armed);
+		p.BeginFrame();
+		Test.Assert(!p.BeginScope("Alpha"));
+		p.EndFrame();
+		Test.Assert(p.LatestFrame == null);
+		Test.Assert(p.CurrentFrameNumber == 1, "frames are counted anyway");
+		let report = scope String();
+		p.BuildReport(report);
+		Test.Assert(Contains(report, "not armed"), report);
 	}
 
 	[Test]
-	public static void NestedScopesGetIncreasingDepth()
+	public static void AFrameHoldsItsThreadsScopesNestedInTicks()
 	{
-		let profiler = scope Profiler();
-		profiler.BeginFrame();
+		let p = scope Profiler();
+		p.Arm();
+		p.BeginFrame();
+		Test.Assert(p.BeginScope("Outer"));
+		Test.Assert(p.BeginScope("Inner"));
+		Test.Assert(p.BeginScope("Deepest"));
+		Spin();
+		p.EndScope();
+		p.EndScope();
+		p.EndScope();
+		Test.Assert(p.BeginScope("Sibling"));
+		p.EndScope();
+		p.EndFrame();
+
+		let frame = p.LatestFrame;
+		Test.Assert(frame != null);
+		Test.Assert(frame.FrameNumber == 0);
+		Test.Assert(frame.EndTick >= frame.BeginTick);
+		Test.Assert(frame.Threads.Count == 1);
+		let thread = frame.Threads[0];
+		Test.Assert(thread.Dropped == 0);
+		// Recorded as they finished: the deepest first.
+		Test.Assert(thread.Scopes.Count == 4);
+		Test.Assert((p.NameOf(thread.Scopes[0].Name) == "Deepest") && (thread.Scopes[0].Depth == 2));
+		Test.Assert((p.NameOf(thread.Scopes[1].Name) == "Inner") && (thread.Scopes[1].Depth == 1));
+		Test.Assert((p.NameOf(thread.Scopes[2].Name) == "Outer") && (thread.Scopes[2].Depth == 0));
+		Test.Assert((p.NameOf(thread.Scopes[3].Name) == "Sibling") && (thread.Scopes[3].Depth == 0));
+		// Each lies inside its parent, and the frame holds them all.
+		Test.Assert(thread.Scopes[0].BeginTick >= thread.Scopes[1].BeginTick);
+		Test.Assert(thread.Scopes[0].EndTick <= thread.Scopes[1].EndTick);
+		Test.Assert(thread.Scopes[1].EndTick <= thread.Scopes[2].EndTick);
+		Test.Assert(thread.Scopes[0].EndTick > thread.Scopes[0].BeginTick);
+		Test.Assert(thread.Scopes[2].BeginTick >= frame.BeginTick);
+		Test.Assert(thread.Scopes[3].EndTick <= frame.EndTick);
+		// A name used twice is one name.
+		let outer = thread.Scopes[2].Name;
+		p.BeginFrame();
+		Test.Assert(p.BeginScope("Outer"));
+		p.EndScope();
+		p.EndFrame();
+		Test.Assert(p.LatestFrame.Threads[0].Scopes[0].Name == outer);
+	}
+
+	/// A record refers to nothing in the process: a name made at run time is copied into the
+	/// table, and outlives the string it came from.
+	[Test]
+	public static void NamesOutliveTheStringsTheyCameFrom()
+	{
+		let p = scope Profiler();
+		p.Arm();
+		p.BeginFrame();
 		{
-			profiler.BeginScope("Outer");
-			defer profiler.EndScope();
-
-			profiler.BeginScope("Inner");
-			profiler.EndScope();
-
-			profiler.BeginScope("Inner2");
-			profiler.EndScope();
+			let made = scope String()..AppendF("Pass {}", 7);
+			Test.Assert(p.BeginScope(made));
+			p.EndScope();
+			made.Set("overwritten");
 		}
-		profiler.EndFrame();
-
-		let frame = profiler.CompletedFrame;
-		Test.Assert(frame.Samples.Count == 3);
-		Test.Assert(DepthOf(profiler, "Outer") == 0);
-		Test.Assert(DepthOf(profiler, "Inner") == 1);
-		Test.Assert(DepthOf(profiler, "Inner2") == 1);
+		p.EndFrame();
+		let name = p.LatestFrame.Threads[0].Scopes[0].Name;
+		Test.Assert(p.NameOf(name) == "Pass 7");
+		Test.Assert(p.InternName("Pass 7") == name);
 	}
 
-	/// A scope closed on a later frame than it was opened does not carry into it: EndFrame
-	/// clears the open stack, so the next frame starts at depth zero rather than drifting
-	/// deeper every frame.
-	[Test]
-	public static void AnUnbalancedScopeDoesNotLeakIntoTheNextFrame()
+	private static ThreadFrame ThreadNamed(Profiler p, FrameRecord frame, StringView name)
 	{
-		let profiler = scope Profiler();
-		profiler.BeginFrame();
-		profiler.BeginScope("NeverClosed");
-		profiler.EndFrame();
-
-		Test.Assert(profiler.CompletedFrame.Samples.Count == 0, "it never closed, so it never recorded");
-
-		profiler.BeginFrame();
-		profiler.BeginScope("Fresh");
-		profiler.EndScope();
-		profiler.EndFrame();
-
-		let frame = profiler.CompletedFrame;
-		Test.Assert(frame.Samples.Count == 1);
-		Test.Assert(frame.Samples[0].Depth == 0, "not nested inside the abandoned scope");
-	}
-
-	/// An unmatched EndScope is ignored rather than reaching past the bottom of the stack.
-	[Test]
-	public static void AnUnmatchedEndIsHarmless()
-	{
-		let profiler = scope Profiler();
-		profiler.BeginFrame();
-		profiler.EndScope();
-		profiler.EndScope();
-		profiler.BeginScope("Alpha");
-		profiler.EndScope();
-		profiler.EndFrame();
-
-		Test.Assert(profiler.CompletedFrame.Samples.Count == 1);
-	}
-
-	[Test]
-	public static void DisabledRecordsNothing()
-	{
-		let profiler = scope Profiler();
-		profiler.BeginFrame();
-		profiler.EndFrame();
-		Test.Assert(profiler.CompletedFrame.Samples.Count == 0);
-
-		profiler.Enabled = false;
-		profiler.BeginFrame();
-		profiler.BeginScope("Ignored");
-		profiler.EndScope();
-		profiler.EndFrame();
-
-		Test.Assert(profiler.CompletedFrame.Samples.Count == 0, "unchanged, since disabled did nothing");
-
-		// And it was not merely withheld: re enabling must not spill what was recorded
-		// while it was off into the next frame.
-		profiler.Enabled = true;
-		profiler.BeginFrame();
-		profiler.BeginScope("Kept");
-		profiler.EndScope();
-		profiler.EndFrame();
-
-		let frame = profiler.CompletedFrame;
-		Test.Assert(frame.Samples.Count == 1, scope $"got {frame.Samples.Count} samples");
-		Test.Assert(frame.Samples[0].Name == "Kept", "the scope taken while disabled did not surface later");
-	}
-
-	[Test]
-	public static void TheFrameNumberAdvances()
-	{
-		let profiler = scope Profiler();
-		profiler.BeginFrame();
-		profiler.BeginScope("Work");
-		profiler.EndScope();
-		profiler.EndFrame();
-		let first = profiler.CompletedFrame.FrameNumber;
-
-		profiler.BeginFrame();
-		profiler.BeginScope("Work");
-		profiler.EndScope();
-		profiler.EndFrame();
-
-		Test.Assert(profiler.CompletedFrame.FrameNumber == first + 1);
-	}
-
-	/// A frame's samples are ITS samples: the snapshot is rebuilt, not appended to.
-	[Test]
-	public static void EachFrameReplacesTheLastSnapshot()
-	{
-		let profiler = scope Profiler();
-		profiler.BeginFrame();
-		profiler.BeginScope("First");
-		profiler.EndScope();
-		profiler.EndFrame();
-
-		profiler.BeginFrame();
-		profiler.BeginScope("Second");
-		profiler.EndScope();
-		profiler.EndFrame();
-
-		let frame = profiler.CompletedFrame;
-		Test.Assert(frame.Samples.Count == 1, "the first frame's sample did not carry over");
-		Test.Assert(frame.Samples[0].Name == "Second");
-	}
-
-	/// Scopes closed between frames are drained by the frame that ends after them, rather
-	/// than being dropped.
-	[Test]
-	public static void AverageFrameMsCoversTheFramesSoFar()
-	{
-		let profiler = scope Profiler();
-		Test.Assert(profiler.AverageFrameMs == 0.0, "no frames yet, so no average");
-
-		for (int i < 3)
+		for (let thread in frame.Threads)
 		{
-			profiler.BeginFrame();
-			Spin(2);
-			profiler.EndFrame();
+			if ((thread.Thread < (uint32)p.Threads.Length) && (p.Threads[thread.Thread].Name == name))
+				return thread;
 		}
-
-		Test.Assert(profiler.AverageFrameMs > 0.0);
-		Test.Assert(profiler.AverageFrameMs <= profiler.CompletedFrame.FrameMs * 10, "in the region of a frame");
+		return null;
 	}
 
+	/// Every thread's scopes reach the frame, under the thread's name.
 	[Test]
-	public static void AScopeMeasuresTheTimeItSpans()
+	public static void EveryThreadsScopesReachTheFrameUnderTheThreadsName()
 	{
-		let profiler = scope Profiler();
-		profiler.BeginFrame();
-		profiler.BeginScope("Slow");
-		Spin(5);
-		profiler.EndScope();
-		profiler.EndFrame();
-
-		let frame = profiler.CompletedFrame;
-		Test.Assert(frame.Samples[0].DurationTicks > 0, "a measurable span, not zero");
-		Test.Assert(frame.Samples[0].DurationMs <= frame.FrameMs, "and within the frame that contains it");
-	}
-
-	/// The report exists to be read, so the shape is what is checked: a headline, and a
-	/// line per sample indented by depth with the parent above the child.
-	[Test]
-	public static void TheReportNestsChildrenUnderTheirParent()
-	{
-		let profiler = scope Profiler();
-		profiler.BeginFrame();
-		profiler.BeginScope("Outer");
-		profiler.BeginScope("Inner");
-		profiler.EndScope();
-		profiler.EndScope();
-		profiler.EndFrame();
-
-		let report = scope String();
-		profiler.BuildReport(report);
-
-		Test.Assert(report.Contains("=== Profile: frame"));
-		let outer = report.IndexOf("  Outer:");
-		let inner = report.IndexOf("    Inner:");
-		Test.Assert(outer >= 0, scope $"no outer line in:\n{report}");
-		Test.Assert(inner >= 0, scope $"no indented inner line in:\n{report}");
-		Test.Assert(outer < inner, "the parent precedes its child even when they share a start tick");
-	}
-
-	/// The tie itself, which is the case the ordering exists for and the one the test
-	/// above cannot force: two scopes that really do share a start tick. The snapshot is
-	/// plain data, so the samples are crafted rather than raced for.
-	[Test]
-	public static void TheReportPutsAParentBeforeAChildThatSharesItsStartTick()
-	{
-		let profiler = scope Profiler();
-		profiler.BeginFrame();
-		profiler.EndFrame();
-
-		let samples = profiler.CompletedFrame.Samples;
-		samples.Clear();
-		// Recorded in completion order, so the child is added FIRST: a sort that leans on
-		// stability alone would keep it there.
-		samples.Add(ProfileSample() { Name = "Child", StartTick = 1000, DurationTicks = 1, Depth = 1 });
-		samples.Add(ProfileSample() { Name = "Parent", StartTick = 1000, DurationTicks = 2, Depth = 0 });
-
-		let report = scope String();
-		profiler.BuildReport(report);
-
-		let parent = report.IndexOf("  Parent:");
-		let child = report.IndexOf("    Child:");
-		Test.Assert(parent >= 0 && child >= 0, scope $"missing a line in:\n{report}");
-		Test.Assert(parent < child, scope $"the child was printed above its parent:\n{report}");
-	}
-
-	/// Siblings print in the order they STARTED, not the order they finished. Samples are
-	/// recorded on close, so a long scope that began first lands after a short one that
-	/// began later, and the report has to undo that.
-	[Test]
-	public static void TheReportOrdersSiblingsByWhenTheyStarted()
-	{
-		let profiler = scope Profiler();
-		profiler.BeginFrame();
-		profiler.EndFrame();
-
-		let samples = profiler.CompletedFrame.Samples;
-		samples.Clear();
-		samples.Add(ProfileSample() { Name = "Second", StartTick = 2000, DurationTicks = 1, Depth = 0 });
-		samples.Add(ProfileSample() { Name = "First", StartTick = 1000, DurationTicks = 9, Depth = 0 });
-
-		let report = scope String();
-		profiler.BuildReport(report);
-
-		let first = report.IndexOf("  First:");
-		let second = report.IndexOf("  Second:");
-		Test.Assert(first >= 0 && second >= 0, scope $"missing a line in:\n{report}");
-		Test.Assert(first < second, scope $"printed out of start order:\n{report}");
-	}
-
-	/// Every thread gets its own stack, so concurrent scopes neither interleave into one
-	/// tree nor lose samples.
-	[Test]
-	public static void ThreadsRecordIndependently()
-	{
-		let profiler = scope Profiler();
-		profiler.BeginFrame();
-
-		let threads = scope List<Thread>();
-		for (int t < 4)
+		let p = scope Profiler();
+		p.Arm();
+		p.BeginFrame();
 		{
-			let thread = new Thread(new () =>
+			let a = scope Thread(new () =>
 				{
-					profiler.BeginScope("Worker");
-					profiler.BeginScope("Nested");
-					profiler.EndScope();
-					profiler.EndScope();
+					ThreadNames.SetCurrent("Loader");
+					for (int i < 5)
+					{
+						p.BeginScope("Load");
+						p.EndScope();
+					}
 				});
-			threads.Add(thread);
-			thread.Start(false);
+			let b = scope Thread(new () =>
+				{
+					ThreadNames.SetCurrent("Mixer");
+					p.BeginScope("Mix");
+					p.BeginScope("Voice");
+					p.EndScope();
+					p.EndScope();
+				});
+			a.Start(false);
+			b.Start(false);
+			a.Join();
+			b.Join();
 		}
-		for (let thread in threads)
-		{
-			thread.Join();
-			delete thread;
-		}
+		p.EndFrame();
 
-		profiler.EndFrame();
-
-		let frame = profiler.CompletedFrame;
-		Test.Assert(frame.Samples.Count == 8, scope $"got {frame.Samples.Count} samples");
-		Test.Assert(profiler.ThreadCount == 4, scope $"got {profiler.ThreadCount} threads");
-
-		// Each thread nested exactly once, and no thread's depth ran away.
-		var nested = 0;
-		let seen = scope List<int32>();
-		for (let sample in frame.Samples)
-		{
-			Test.Assert(sample.Depth < 2, "one nesting level, not a shared stack");
-			if (sample.Depth == 1)
-				nested++;
-			if (!seen.Contains(sample.ThreadIndex))
-				seen.Add(sample.ThreadIndex);
-		}
-		Test.Assert(nested == 4);
-		Test.Assert(seen.Count == 4, "four distinct thread indices");
+		let frame = p.LatestFrame;
+		Test.Assert(frame != null);
+		let loader = ThreadNamed(p, frame, "Loader");
+		let mixer = ThreadNamed(p, frame, "Mixer");
+		Test.Assert((loader != null) && (mixer != null));
+		Test.Assert(loader.Scopes.Count == 5);
+		Test.Assert(mixer.Scopes.Count == 2);
+		Test.Assert((p.NameOf(mixer.Scopes[0].Name) == "Voice") && (mixer.Scopes[0].Depth == 1));
+		Test.Assert(loader.Thread != mixer.Thread);
 	}
 
-	/// Two profilers do not see each other's threads: the cached thread slot is tagged with
-	/// its owner so that it does not leak across them, which a singleton could never express.
+	/// A full ring drops new scopes and says how many; the next frame has room again.
 	[Test]
-	public static void TwoProfilersDoNotShareThreadState()
+	public static void AFullRingDropsNewScopesAndSaysHowMany()
 	{
-		let first = scope Profiler();
-		let second = scope Profiler();
+		let p = scope Profiler();
+		p.SetRingCapacity(4, 4);
+		p.Arm();
+		p.BeginFrame();
+		for (int i < 10)
+		{
+			Test.Assert(p.BeginScope("Burst"));
+			p.EndScope();
+		}
+		p.EndFrame();
+		Test.Assert(p.LatestFrame.Threads[0].Scopes.Count == 4);
+		Test.Assert(p.LatestFrame.Threads[0].Dropped == 6);
 
-		first.BeginFrame();
-		second.BeginFrame();
-
-		first.BeginScope("First");
-		second.BeginScope("Second");
-		second.EndScope();
-		first.EndScope();
-
-		first.EndFrame();
-		second.EndFrame();
-
-		Test.Assert(first.CompletedFrame.Samples.Count == 1);
-		Test.Assert(first.CompletedFrame.Samples[0].Name == "First");
-		Test.Assert(first.CompletedFrame.Samples[0].Depth == 0, "not nested inside the other profiler's scope");
-		Test.Assert(second.CompletedFrame.Samples.Count == 1);
-		Test.Assert(second.CompletedFrame.Samples[0].Name == "Second");
-		Test.Assert(second.CompletedFrame.Samples[0].Depth == 0);
+		p.BeginFrame();
+		Test.Assert(p.BeginScope("Burst"));
+		p.EndScope();
+		p.EndFrame();
+		Test.Assert(p.LatestFrame.Threads[0].Scopes.Count == 1);
+		Test.Assert(p.LatestFrame.Threads[0].Dropped == 0);
 	}
 
-	private static int32 DepthOf(Profiler profiler, StringView name)
+	/// The history keeps the last frames, each found by its number.
+	[Test]
+	public static void TheHistoryKeepsTheLastFramesEachFoundByItsNumber()
 	{
-		for (let sample in profiler.CompletedFrame.Samples)
+		let p = scope Profiler();
+		p.SetHistoryLength(3);
+		p.Arm();
+		for (int f < 5)
 		{
-			if (sample.Name == name)
-				return sample.Depth;
+			p.BeginFrame();
+			Test.Assert(p.BeginScope("Work"));
+			p.EndScope();
+			p.EndFrame();
 		}
-		return -1;
+		Test.Assert(p.Frame(0) == null);
+		Test.Assert(p.Frame(1) == null);
+		Test.Assert((p.Frame(2) != null) && (p.Frame(2).FrameNumber == 2));
+		Test.Assert(p.Frame(4) != null);
+		Test.Assert(p.LatestFrame == p.Frame(4));
+		Test.Assert(p.Frame(5) == null, "not run yet");
+		Test.Assert(p.Frame(3).BeginTick >= p.Frame(2).EndTick);
 	}
 
-	/// Burns at least this many microseconds of wall clock. Sleep has millisecond
-	/// granularity at best and can undershoot; this cannot.
-	private static void Spin(int64 micros)
+	/// Arms are counted, and an unarmed frame keeps no record; scopes left in a ring when the
+	/// profiler is disarmed are let go, not shown later.
+	[Test]
+	public static void ArmsAreCountedAndAnUnarmedFrameKeepsNoRecord()
 	{
-		let until = ProfileClock.Now() + micros;
-		while (ProfileClock.Now() < until)
-		{
-		}
+		let p = scope Profiler();
+		p.Arm();
+		p.Arm();
+		p.Disarm();
+		Test.Assert(p.Armed);
+		p.Disarm();
+		Test.Assert(!p.Armed);
+		p.Disarm(); // one too many does not wrap
+		Test.Assert(!p.Armed);
+		p.Arm();
+		Test.Assert(p.Armed);
+		p.Disarm();
+
+		p.Arm();
+		p.BeginFrame();
+		Test.Assert(p.BeginScope("Before"));
+		p.EndScope();
+		p.Disarm();
+		p.EndFrame();
+		p.Arm();
+		p.BeginFrame();
+		p.EndFrame();
+		Test.Assert(p.LatestFrame != null);
+		Test.Assert(p.LatestFrame.Threads.IsEmpty);
+	}
+
+	/// GPU passes join their frame's record when they arrive, a frame or two late; passes for
+	/// a frame the history no longer keeps are let go.
+	[Test]
+	public static void GpuPassesJoinTheirFramesRecordWhenTheyArrive()
+	{
+		let p = scope Profiler();
+		p.SetHistoryLength(2);
+		p.Arm();
+		p.BeginFrame();
+		p.EndFrame(); // frame 0
+		p.BeginFrame();
+		p.EndFrame(); // frame 1
+		Test.Assert(!p.Frame(0).GpuValid);
+
+		let shadow = p.InternName("shadow");
+		GpuPassEvent[2] passes = .(.(shadow, 0, 0, 100, 250), .(shadow, 0, 1, 260, 300));
+		p.SubmitGpuPasses(0, passes);
+		Test.Assert(p.Frame(0).GpuValid);
+		Test.Assert(p.Frame(0).Gpu.Count == 2);
+		Test.Assert(p.Frame(0).Gpu[1].Queue == 1);
+		Test.Assert(p.Frame(0).Gpu[0].EndTick == 250);
+
+		p.BeginFrame();
+		p.EndFrame(); // frame 2 takes frame 0's slot
+		p.SubmitGpuPasses(0, passes);
+		Test.Assert(!p.Frame(2).GpuValid);
+		Test.Assert(p.Frame(0) == null);
+	}
+
+	/// Counters are registered once, and a frame keeps the values set in it, the last one set
+	/// winning.
+	[Test]
+	public static void CountersAreRegisteredOnceAndAFrameKeepsTheValuesSetInIt()
+	{
+		let p = scope Profiler();
+		let draws = p.RegisterCounter("Draws", .Count);
+		let memory = p.RegisterCounter("Texture memory", .Bytes);
+		Test.Assert(p.RegisterCounter("Draws", .Count) == draws);
+		Test.Assert(p.Counters.Length == 2);
+		Test.Assert(p.Counters[memory].Unit == .Bytes);
+
+		p.Arm();
+		p.BeginFrame();
+		p.SetCounter(draws, 10.0);
+		p.SetCounter(draws, 12.0);
+		p.SetCounter(memory, 4096.0);
+		p.EndFrame();
+		Test.Assert(p.LatestFrame.Counters.Count == 2);
+		Test.Assert(p.LatestFrame.Counters[0].Counter == draws);
+		Test.Assert(p.LatestFrame.Counters[0].Value == 12.0);
+
+		p.BeginFrame();
+		p.SetCounter(memory, 8192.0);
+		p.EndFrame();
+		Test.Assert(p.LatestFrame.Counters.Count == 1, "draws was not set this frame");
+		Test.Assert(p.LatestFrame.Counters[0].Counter == memory);
+	}
+
+	/// The report shows the newest frame by thread, indented by depth, then the GPU passes.
+	[Test]
+	public static void TheReportShowsTheNewestFrameByThreadIndentedByDepth()
+	{
+		let p = scope Profiler();
+		p.Arm();
+		p.BeginFrame();
+		Test.Assert(p.BeginScope("Update"));
+		Test.Assert(p.BeginScope("Physics"));
+		p.EndScope();
+		p.EndScope();
+		p.EndFrame();
+		let pass = p.InternName("forward");
+		GpuPassEvent[1] gpu = .(.(pass, 0, 0, 0, 10));
+		p.SubmitGpuPasses(0, gpu);
+		let report = scope String();
+		p.BuildReport(report);
+		Test.Assert(Contains(report, "=== Profile: frame 0"), report);
+		Test.Assert(Contains(report, "2 scopes"), report);
+		Test.Assert(Contains(report, "    Update: "), report);
+		Test.Assert(Contains(report, "      Physics: "), report);
+		Test.Assert(Contains(report, "[GPU]"), report);
+		Test.Assert(Contains(report, "    forward: "), report);
+		// Update begins first, so it is listed before its child.
+		Test.Assert(report.IndexOf("Update") < report.IndexOf("Physics"));
 	}
 }
