@@ -26,6 +26,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
 using Sedulous.Editor.Preview;
+using Sedulous.Profiler;
 
 namespace Sedulous.Editor.App;
 
@@ -192,6 +193,10 @@ class EditorApplication : IApplication
 	public void OnStartup(IApplicationHost host)
 	{
 		mHost = host;
+		// The editor's own profiler, which a Play-in-editor game shares (one process): what
+		// profiler_capture records.
+		if (!HasGlobalProfiler())
+			InitGlobalProfiler(new Sedulous.Profiler.Profiler(), true);
 		let mainRw = host.MainRenderWindow;
 		if (mainRw == null)
 			return;

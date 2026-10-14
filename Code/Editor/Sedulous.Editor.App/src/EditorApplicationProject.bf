@@ -15,6 +15,8 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
 using Sedulous.Editor.Preview;
+using Sedulous.Profiler;
+using Sedulous.Profiler.Capture;
 
 namespace Sedulous.Editor.App;
 
@@ -438,6 +440,13 @@ extension EditorApplication
 		windowSeams.Request = new (requests) => { mWindowCapture.Request(requests); };
 		windowSeams.Shots = new (outShots) => { mWindowCapture.Shots(outShots); };
 		EditorWindowTools.Register(mMcpHost.Server, windowSeams);
+		// profiler_capture: the process's recorder, which the host advances after each frame.
+		let profilerSeams = new ProfilerToolSeams();
+		profilerSeams.Profiler = GlobalProfiler();
+		profilerSeams.Recorder = CaptureRecorder.Process;
+		CaptureRecorder.Process.SetApplication("Editor"); // its captures' names and header
+		PathJoin(GetUserDataDirectory(.. scope .()), "profiles", profilerSeams.Folder);
+		EditorProfilerTools.Register(mMcpHost.Server, profilerSeams);
 		EditorMcpHostConfig config = .();
 		config.Port = (uint16)((mConfig.McpPort != 0) ? mConfig.McpPort : settings.Port);
 		config.Token = settings.Token;
