@@ -36,6 +36,11 @@ class GpuProfileProbeTests
 		public uint32 WithCounts;
 		public uint64 Primitives;
 		public uint64 Fragments;
+		/// The device's counts over one frame (IDevice.Counters), fewest, and the render target
+		/// memory held during the frames.
+		public uint64 FewestDraws;
+		public uint64 FewestPasses;
+		public uint64 TargetBytes;
 	}
 
 	private static bool Run(BackendProbeFixture fixture, Profiler profiler, out Measure result)
@@ -111,6 +116,8 @@ class GpuProfileProbeTests
 		// frame k lies inside frame k's CPU span.
 		profiler.Arm();
 		uint64 firstFrame = 0;
+		result.FewestDraws = uint64.MaxValue;
+		result.FewestPasses = uint64.MaxValue;
 		for (uint32 i < cFrames)
 		{
 			profiler.BeginFrame();
@@ -119,9 +126,14 @@ class GpuProfileProbeTests
 			if (!(pool.CreateEncoder() case .Ok(var encoder)))
 				return false;
 			settings.TargetCurrentState = (i == 0) ? .Undefined : .CopySrc;
+			let before = device.Counters();
 			frame.Begin(encoder, i % 2);
 			frame.AddView(scene, camera, settings, targetView, .RGBA8Unorm, cSize, cSize);
 			frame.End();
+			let after = device.Counters();
+			result.FewestDraws = Math.Min(result.FewestDraws, after.Draws - before.Draws);
+			result.FewestPasses = Math.Min(result.FewestPasses, after.RenderPasses - before.RenderPasses);
+			result.TargetBytes = after.RenderTargetBytes;
 			let commandBuffer = encoder.Finish();
 			if (commandBuffer == null)
 			{
@@ -198,12 +210,16 @@ class GpuProfileProbeTests
 			Test.Assert(built, scope $"{kind}: the frames rendered");
 			if (!built)
 				continue;
-			Console.WriteLine(scope $"{kind}: {m.FramesWithGpu} frames with GPU passes, {m.Passes} passes, {m.OutsideFrame} outside their frame, {m.OutOfOrder} out of order, {m.WithCounts} with counts; one frame: {m.Primitives} primitives, {m.Fragments} fragments");
+			Console.WriteLine(scope $"{kind}: {m.FramesWithGpu} frames with GPU passes, {m.Passes} passes, {m.OutsideFrame} outside their frame, {m.OutOfOrder} out of order, {m.WithCounts} with counts; one frame: {m.Primitives} primitives, {m.Fragments} fragments; the device counts at least {m.FewestDraws} draws and {m.FewestPasses} render passes a frame, {m.TargetBytes >> 10} KiB of render targets");
 			Test.Assert(m.FramesWithGpu == cFrames - 2, scope $"{kind}: {m.FramesWithGpu} frames with GPU passes");
 			Test.Assert(m.Passes >= m.FramesWithGpu);
 			Test.Assert(m.OutsideFrame == 0, scope $"{kind}: {m.OutsideFrame} passes outside their frame");
 			Test.Assert(m.OutOfOrder == 0, scope $"{kind}: {m.OutOfOrder} passes out of order");
 			Test.Assert(m.UnnamedOnCpu == 0, scope $"{kind}: {m.UnnamedOnCpu} passes the CPU lane does not name");
+			// The depth prepass and the forward pass draw the cube, the tonemap its triangle.
+			Test.Assert(m.FewestDraws >= 3, scope $"{kind}: {m.FewestDraws} draws a frame");
+			Test.Assert(m.FewestPasses >= 3, scope $"{kind}: {m.FewestPasses} render passes a frame");
+			Test.Assert(m.TargetBytes >= cSize * cSize * 4, "the probe's own target, at least");
 			if (fixture.Device.Features.PipelineStatisticsQueries)
 			{
 				Test.Assert(m.WithCounts == m.Passes);

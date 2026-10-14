@@ -26,6 +26,8 @@ class ApplicationHost : IApplicationHost
 	private IApplication mApp = null;
 	private IShell mShell = null;
 	private GraphicsDevice mGraphics = null;
+	/// The device's counts to the profiler, per frame.
+	private DeviceCounterPublisher mDeviceCounters = new .() ~ delete _;
 
 	/// windows[0] is the main window. OWNED.
 	private List<RenderWindow> mWindows = new .() ~ DeleteContainerAndItems!(_);
@@ -157,6 +159,11 @@ class ApplicationHost : IApplicationHost
 
 		mContext.EndFrame();
 		FlushPendingCloses();
+#if !SHIPPING
+		// The device's counts for this frame (draws, passes, binds, memory) to the profiler.
+		if ((mGraphics != null) && (mGraphics.Raw != null) && HasGlobalProfiler())
+			mDeviceCounters.Publish(mGraphics.Raw, GlobalProfiler());
+#endif
 		ProfileFrameEnd();
 	}
 
