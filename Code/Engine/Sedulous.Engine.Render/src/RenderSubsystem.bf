@@ -515,18 +515,6 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			mIblSystem.SetCubemap(faceSize, sixFaces);
 	}
 
-	/// Reads back the GPU timings for the last frame.
-	///
-	/// IDLES the device first, because the timings are only there once the work that produced
-	/// them has finished. A debug path, never a per frame one.
-	public void BuildGpuProfileReport(String outReport)
-	{
-		if ((mFrame == null) || (mDevice == null))
-			return;
-
-		mDevice.WaitIdle();
-		mFrame.ReadGpuProfile(outReport);
-	}
 
 	// ---- bring up ---------------------------------------------------------------------------
 
@@ -673,8 +661,6 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		mFrame = new RenderFrame(mDevice, mRegistry, mFramesInFlight, mClusterSystem,
 			mTonemapPass, mShadowSystem, mIblSystem, mSkyPass, mBloomPass, mTaaPass, mAoPass,
 			mFxaaPass, mExposurePass, mDebugBlitPass);
-		// Per pass timestamps, cheap enough to leave on and read from a debug dump.
-		mFrame.EnableGpuProfiling();
 		if (mPickSystem != null)
 			mFrame.SetPick(mPickSystem);
 	}

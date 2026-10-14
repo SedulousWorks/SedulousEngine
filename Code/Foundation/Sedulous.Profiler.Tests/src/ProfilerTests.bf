@@ -157,6 +157,23 @@ class ProfilerTests
 		Test.Assert(loader.Thread != mixer.Thread);
 	}
 
+	/// A scope can be opened by a name kept as an id: a render graph names the same passes every
+	/// frame, so it interns once and opens by id.
+	[Test]
+	public static void AScopeCanBeOpenedByANameKeptAsAnId()
+	{
+		let p = scope Profiler();
+		let shadows = p.InternName("shadows");
+		Test.Assert(!p.BeginScope(shadows), "unarmed");
+		p.Arm();
+		p.BeginFrame();
+		Test.Assert(p.BeginScope(shadows));
+		p.EndScope();
+		p.EndFrame();
+		Test.Assert(p.LatestFrame.Threads[0].Scopes[0].Name == shadows);
+		Test.Assert(p.NameOf(shadows) == "shadows");
+	}
+
 	/// A full ring drops new scopes and says how many; the next frame has room again.
 	[Test]
 	public static void AFullRingDropsNewScopesAndSaysHowMany()
@@ -257,6 +274,14 @@ class ProfilerTests
 		Test.Assert(p.Frame(0).Gpu.Count == 2);
 		Test.Assert(p.Frame(0).Gpu[1].Queue == 1);
 		Test.Assert(p.Frame(0).Gpu[0].EndTick == 250);
+		// Another render graph of the same frame adds its passes beside them, with its counts.
+		var other = GpuPassEvent(p.InternName("preview"), 0, 0, 400, 450);
+		other.HasCounts = true;
+		other.Counts.InputVertices = 36;
+		p.SubmitGpuPasses(0, .(&other, 1));
+		Test.Assert(p.Frame(0).Gpu.Count == 3);
+		Test.Assert(p.Frame(0).Gpu[2].HasCounts && (p.Frame(0).Gpu[2].Counts.InputVertices == 36));
+		Test.Assert(!p.Frame(0).Gpu[0].HasCounts);
 
 		p.BeginFrame();
 		p.EndFrame(); // frame 2 takes frame 0's slot

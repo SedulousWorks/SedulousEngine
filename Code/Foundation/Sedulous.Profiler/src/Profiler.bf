@@ -145,6 +145,16 @@ class Profiler
 		return true;
 	}
 
+	/// Opens a scope by a name already interned (InternName), which a caller naming the same
+	/// scopes every frame keeps.
+	public bool BeginScope(uint32 name)
+	{
+		if (!Armed)
+			return false;
+		Local().Stack.Add(.() { Name = name, BeginTick = ProfileClock.Now() });
+		return true;
+	}
+
 	/// Closes the scope this thread opened last.
 	public void EndScope()
 	{
@@ -284,13 +294,13 @@ class Profiler
 
 	// ---- GPU passes (the frame thread) ------------------------------------------------------
 
-	/// Frame `frameNumber`'s GPU passes, when they arrive; let go once the record is gone.
+	/// Adds GPU passes to frame `frameNumber`'s record when they arrive (each render graph of
+	/// the frame sends its own); let go once the record is gone.
 	public void SubmitGpuPasses(uint64 frameNumber, Span<GpuPassEvent> passes)
 	{
 		let record = Frame(frameNumber);
 		if (record == null)
 			return;
-		record.Gpu.Clear();
 		for (let pass in passes)
 			record.Gpu.Add(pass);
 		record.GpuValid = true;

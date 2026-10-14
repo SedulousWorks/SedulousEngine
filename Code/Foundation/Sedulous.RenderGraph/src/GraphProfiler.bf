@@ -1,220 +1,334 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Profiler;
 using Sedulous.RHI;
 
 namespace Sedulous.RenderGraph;
 
-/// Per pass GPU timing, from a pair of timestamps around each pass.
-///
-/// The timestamps are written into a query set and resolved into a readback buffer, so the
-/// results are a FRAME BEHIND at least: they are read once the GPU has actually finished,
-/// which is the caller's business rather than this one's.
+/// The render graph's half of the profiler. Each executed pass is timed by a pair of GPU
+/// timestamps and, where the device counts them, a pipeline statistics query, into query sets
+/// of the frame's slot; when the slot comes round (the GPU finished that frame), its results
+/// are put on the CPU's clock and handed to the profiler as that frame's GPU passes. Nothing is
+/// measured, nor any query written, while the profiler is not armed.
 class GraphProfiler
 {
-	private IDevice mDevice = null;
-	private IQuerySet mQuerySet = null;
-	private IBuffer mReadbackBuffer = null;
-	private int32 mMaxPasses = 0;
-	private bool mInitialized = false;
-	private List<String> mPassNames = new .() ~ DeleteContainerAndItems!(_);
-	private List<float> mPassTimesMs = new .() ~ delete _;
-	private float mTimestampPeriod = 0.0f;
+	/// Passes timed in one frame of one graph.
+	public const uint32 MaxPasses = 256;
 
-	public bool Enabled = true;
+	private class Slot
+	{
+		public IQuerySet Timestamps;
+		public IQuerySet Statistics;
+		public IBuffer TimestampReadback;
+		public IBuffer StatisticsReadback;
+		/// The passes measured, in order.
+		public List<uint32> Names = new .() ~ delete _;
+		public uint64 FrameNumber;
+		public bool Pending;
+	}
+
+	private IDevice mDevice;
+	private IQueue mQueue;
+	private List<Slot> mSlots = new .() ~ DeleteContainerAndItems!(_);
+	/// The slot being measured this frame, and the profiler measuring it.
+	private Slot mCurrent;
+	private Profiler mProfiler;
+	private bool mInPass;
+	private uint32 mStatisticsSize;
+	/// Nanoseconds per GPU tick.
+	private double mPeriod = 1.0;
+	private bool mCalibrated;
+	private uint64 mGpuOrigin;
+	private int64 mCpuOrigin;
+	private int64 mLastCalibration;
 
 	public ~this()
 	{
 		Destroy();
 	}
 
-	public bool IsInitialized => mInitialized;
-
-	/// Two timestamps per pass, and a readback buffer to resolve them into.
-	public Result<void> Init(IDevice device, int32 maxPasses = 64)
+	/// Makes the query sets and readbacks for `slots` frames in flight. Needs a device with
+	/// timestamps (DeviceFeatures.TimestampQueries); statistics where it has them.
+	public Result<void> Init(IDevice device, uint32 slots)
 	{
+		if (!device.Features.TimestampQueries || (slots == 0))
+			return .Err;
 		mDevice = device;
-		mMaxPasses = maxPasses;
-
-		var queryDesc = QuerySetDesc();
-		queryDesc.Type = .Timestamp;
-		queryDesc.Count = (uint32)(maxPasses * 2);
-		queryDesc.Label = "RG_Profiler_Queries";
-		if (!(device.CreateQuerySet(queryDesc) case .Ok(let querySet)))
+		mQueue = device.GetQueue(.Graphics);
+		if (mQueue == null)
 			return .Err;
-		mQuerySet = querySet;
-
-		var bufferDesc = BufferDesc();
-		bufferDesc.Size = (uint64)maxPasses * 2 * sizeof(uint64);
-		bufferDesc.Usage = .CopyDst;
-		bufferDesc.Memory = .GpuToCpu;
-		bufferDesc.Label = "RG_Profiler_Readback";
-		if (!(device.CreateBuffer(bufferDesc) case .Ok(let buffer)))
-			return .Err;
-		mReadbackBuffer = buffer;
-
-		mPassTimesMs.Resize(maxPasses);
-		mInitialized = true;
+		mStatisticsSize = device.Features.PipelineStatisticsQueries ? device.QueryResultSize(.PipelineStatistics) : 0;
+		for (uint32 i < slots)
+		{
+			let slot = new Slot();
+			mSlots.Add(slot);
+			var desc = QuerySetDesc();
+			desc.Type = .Timestamp;
+			desc.Count = MaxPasses * 2;
+			desc.Label = "RG_Profiler_Timestamps";
+			if (!(device.CreateQuerySet(desc) case .Ok(let timestamps)))
+			{
+				Destroy();
+				return .Err;
+			}
+			slot.Timestamps = timestamps;
+			slot.TimestampReadback = MakeReadback((uint64)MaxPasses * 2 * sizeof(uint64));
+			if (slot.TimestampReadback == null)
+			{
+				Destroy();
+				return .Err;
+			}
+			if (mStatisticsSize > 0)
+			{
+				desc.Type = .PipelineStatistics;
+				desc.Count = MaxPasses;
+				desc.Label = "RG_Profiler_Statistics";
+				if (!(device.CreateQuerySet(desc) case .Ok(let statistics)))
+				{
+					Destroy();
+					return .Err;
+				}
+				slot.Statistics = statistics;
+				slot.StatisticsReadback = MakeReadback((uint64)MaxPasses * mStatisticsSize);
+				if (slot.StatisticsReadback == null)
+				{
+					Destroy();
+					return .Err;
+				}
+			}
+		}
+		mPeriod = mQueue.TimestampPeriod();
 		return .Ok;
 	}
 
-	/// Resets the query set at the START of the frame's encoder.
-	///
-	/// A timestamp can only be written into a freshly reset pool, and the reset itself has to
-	/// be outside any render pass, which is why it happens here rather than per pass.
-	public void BeginFrame(ICommandEncoder encoder)
+	/// Starts a frame in `slot`: first hands `profiler` what the slot's last frame measured (its
+	/// GPU work is done by now), then, when the profiler is armed, starts measuring this one.
+	/// False when nothing is measured this frame.
+	public bool BeginFrame(ICommandEncoder encoder, uint32 slot, Profiler profiler)
 	{
-		if (!mInitialized || !Enabled)
-			return;
-
-		encoder.ResetQuerySet(mQuerySet, 0, (uint32)(mMaxPasses * 2));
-		ClearAndDeleteItems!(mPassNames);
-	}
-
-	public void BeginPass(ICommandEncoder encoder, int32 passIndex, StringView passName)
-	{
-		if (!mInitialized || !Enabled || (passIndex >= mMaxPasses))
-			return;
-
-		while ((int32)mPassNames.Count <= passIndex)
-			mPassNames.Add(new String());
-		mPassNames[passIndex].Set(passName);
-
-		encoder.WriteTimestamp(mQuerySet, (uint32)(passIndex * 2));
-	}
-
-	public void EndPass(ICommandEncoder encoder, int32 passIndex)
-	{
-		if (!mInitialized || !Enabled || (passIndex >= mMaxPasses))
-			return;
-
-		encoder.WriteTimestamp(mQuerySet, (uint32)(passIndex * 2 + 1));
-	}
-
-	/// Copies the written timestamps into the readback buffer, after every pass is recorded.
-	public void Resolve(ICommandEncoder encoder, int32 passCount)
-	{
-		if (!mInitialized || !Enabled || (passCount == 0))
-			return;
-
-		let queryCount = (uint32)Min(passCount * 2, mMaxPasses * 2);
-		encoder.ResolveQuerySet(mQuerySet, 0, queryCount, mReadbackBuffer, 0);
-	}
-
-	/// Reads the results and appends a report. ONLY once the GPU has finished the frame those
-	/// timestamps came from, or the numbers are whatever was in the buffer before.
-	public void ReadResults(int32 passCount, String outReport)
-	{
-		if (!mInitialized || !Enabled || (passCount == 0))
-			return;
-
-		let mapped = (uint64*)mReadbackBuffer.Map();
-		if (mapped == null)
-			return;
-		defer mReadbackBuffer.Unmap();
-
-		let count = Min(passCount, mMaxPasses);
-		var totalMs = 0.0f;
-
-		outReport.Append("=== GPU Pass Timing ===\n");
-		for (int32 i = 0; i < count; i++)
+		if (mSlots.IsEmpty)
+			return false;
+		mCurrent = mSlots[(int)(slot % (uint32)mSlots.Count)];
+		Collect(mCurrent, profiler);
+		if ((profiler == null) || !profiler.Armed || !Calibrate())
 		{
-			let begin = mapped[i * 2];
-			let end = mapped[i * 2 + 1];
-			// A pass that never ran leaves its pair untouched, which reads as no time at all
-			// rather than as an enormous negative one.
-			let ticks = (end > begin) ? (end - begin) : 0;
-			let ms = (float)ticks * mTimestampPeriod / 1000000.0f;
-			mPassTimesMs[i] = ms;
-			totalMs += ms;
-
-			outReport.AppendF("  {} ms  {}\n", ms, NameOf(i));
+			mCurrent = null;
+			return false;
 		}
-		outReport.AppendF("  --------\n  {} ms  TOTAL\n", totalMs);
-
-		AppendAggregate(count, outReport);
+		mProfiler = profiler;
+		mCurrent.FrameNumber = profiler.CurrentFrameNumber;
+		mCurrent.Names.Clear();
+		encoder.ResetQuerySet(mCurrent.Timestamps, 0, MaxPasses * 2);
+		if (mCurrent.Statistics != null)
+			encoder.ResetQuerySet(mCurrent.Statistics, 0, MaxPasses);
+		return true;
 	}
 
-	/// The same numbers gathered BY NAME, so twenty four identically named probe passes read
-	/// as one line rather than twenty four, sorted with the expensive first.
-	private void AppendAggregate(int32 count, String outReport)
+	/// Around a pass's work, its barriers included, outside any render pass.
+	public void BeginPass(ICommandEncoder encoder, uint32 name)
 	{
-		// VIEWS into the profiler's own name list, never copies. A copy here was allocated
-		// inside the loop body, so it was freed at the end of the iteration that made it and
-		// the next comparison read a dangling string.
-		let names = scope List<StringView>();
-		let sums = scope List<float>();
-		let counts = scope List<int32>();
+		if ((mCurrent == null) || (mCurrent.Names.Count >= MaxPasses))
+			return;
+		let index = (uint32)mCurrent.Names.Count;
+		mCurrent.Names.Add(name);
+		encoder.WriteTimestamp(mCurrent.Timestamps, index * 2);
+		if (mCurrent.Statistics != null)
+			encoder.BeginPipelineStatisticsQuery(mCurrent.Statistics, index);
+		mInPass = true;
+	}
 
-		for (int32 i = 0; i < count; i++)
+	public void EndPass(ICommandEncoder encoder)
+	{
+		if ((mCurrent == null) || !mInPass)
+			return;
+		let index = (uint32)(mCurrent.Names.Count - 1);
+		if (mCurrent.Statistics != null)
+			encoder.EndPipelineStatisticsQuery(mCurrent.Statistics, index);
+		encoder.WriteTimestamp(mCurrent.Timestamps, index * 2 + 1);
+		mInPass = false;
+	}
+
+	/// After the frame's last pass: copies the results out, to be read when the slot comes
+	/// round.
+	public void EndFrame(ICommandEncoder encoder)
+	{
+		if (mCurrent == null)
+			return;
+		let count = (uint32)mCurrent.Names.Count;
+		if (count > 0)
 		{
-			let name = NameOf(i);
-			var found = -1;
-			for (int a < names.Count)
-			{
-				if (names[a] == name)
-				{
-					found = a;
-					break;
-				}
-			}
-
-			if (found < 0)
-			{
-				names.Add(name);
-				sums.Add(mPassTimesMs[i]);
-				counts.Add(1);
-				continue;
-			}
-
-			sums[found] += mPassTimesMs[i];
-			counts[found]++;
+			encoder.ResolveQuerySet(mCurrent.Timestamps, 0, count * 2, mCurrent.TimestampReadback, 0);
+			if (mCurrent.Statistics != null)
+				encoder.ResolveQuerySet(mCurrent.Statistics, 0, count, mCurrent.StatisticsReadback, 0);
+			mCurrent.Pending = true;
 		}
-
-		// A selection sort, because there are only ever a handful of distinct names.
-		for (int i < names.Count)
-		{
-			for (int j = i + 1; j < names.Count; j++)
-			{
-				if (sums[j] <= sums[i])
-					continue;
-
-				Swap!(names[i], names[j]);
-				Swap!(sums[i], sums[j]);
-				Swap!(counts[i], counts[j]);
-			}
-		}
-
-		outReport.Append("=== GPU by pass name (expensive first) ===\n");
-		for (int i < names.Count)
-			outReport.AppendF("  {} ms  (x{})  {}\n", sums[i], counts[i], names[i]);
-	}
-
-	private StringView NameOf(int32 index) =>
-		(index < (int32)mPassNames.Count) ? mPassNames[index] : "???";
-
-	public float GetPassTimeMs(int32 passIndex)
-	{
-		if ((passIndex < 0) || (passIndex >= (int32)mPassTimesMs.Count))
-			return 0.0f;
-		return mPassTimesMs[passIndex];
-	}
-
-	/// Nanoseconds per tick, which is the backend's to tell us.
-	public void SetTimestampPeriod(float nanosecondsPerTick)
-	{
-		mTimestampPeriod = nanosecondsPerTick;
+		mCurrent = null;
 	}
 
 	public void Destroy()
 	{
 		if (mDevice != null)
 		{
-			if (mReadbackBuffer != null)
-				mDevice.DestroyBuffer(ref mReadbackBuffer);
-			if (mQuerySet != null)
-				mDevice.DestroyQuerySet(ref mQuerySet);
+			for (let slot in mSlots)
+			{
+				if (slot.Timestamps != null)
+					mDevice.DestroyQuerySet(ref slot.Timestamps);
+				if (slot.Statistics != null)
+					mDevice.DestroyQuerySet(ref slot.Statistics);
+				if (slot.TimestampReadback != null)
+					mDevice.DestroyBuffer(ref slot.TimestampReadback);
+				if (slot.StatisticsReadback != null)
+					mDevice.DestroyBuffer(ref slot.StatisticsReadback);
+			}
 		}
-		mInitialized = false;
+		ClearAndDeleteItems(mSlots);
+		mCurrent = null;
+		mDevice = null;
+	}
+
+	private IBuffer MakeReadback(uint64 size)
+	{
+		var desc = BufferDesc();
+		desc.Size = size;
+		desc.Usage = .CopyDst;
+		desc.Memory = .GpuToCpu;
+		desc.Label = "RG_Profiler_Readback";
+		if (mDevice.CreateBuffer(desc) case .Ok(let buffer))
+			return buffer;
+		return null;
+	}
+
+	/// Keeps the GPU to CPU clock mapping fresh: a calibrated pair once a second where the
+	/// device reads both clocks together (drift corrected as it goes), else one sync point.
+	private bool Calibrate()
+	{
+		let now = ProfileClock.Now();
+		if (mDevice.Features.TimestampCalibration)
+		{
+			if (mCalibrated && (now - mLastCalibration < ProfileClock.TicksPerSecond))
+				return true;
+			if (mQueue.CalibrateTimestamps(let gpu, let cpu))
+			{
+				mGpuOrigin = gpu;
+				mCpuOrigin = cpu;
+				mLastCalibration = now;
+				mCalibrated = true;
+			}
+			return mCalibrated;
+		}
+		if (!mCalibrated)
+			mCalibrated = SyncPoint();
+		return mCalibrated;
+	}
+
+	/// Without calibrated timestamps: lets the queue go idle, then writes one timestamp and waits
+	/// for it. It ran between the submit and the wait's end, so its CPU time is the middle of the
+	/// two, off by half that round trip at most. Once, when profiling first starts.
+	private bool SyncPoint()
+	{
+		var desc = QuerySetDesc();
+		desc.Type = .Timestamp;
+		desc.Count = 1;
+		desc.Label = "RG_Profiler_Sync";
+		IQuerySet set = null;
+		IBuffer readback = null;
+		ICommandPool pool = null;
+		IFence fence = null;
+		defer
+		{
+			if (fence != null)
+				mDevice.DestroyFence(ref fence);
+			if (pool != null)
+				mDevice.DestroyCommandPool(ref pool);
+			if (readback != null)
+				mDevice.DestroyBuffer(ref readback);
+			if (set != null)
+				mDevice.DestroyQuerySet(ref set);
+		}
+		if (!(mDevice.CreateQuerySet(desc) case .Ok(let createdSet)))
+			return false;
+		set = createdSet;
+		readback = MakeReadback(sizeof(uint64));
+		if (readback == null)
+			return false;
+		if (!(mDevice.CreateCommandPool(.Graphics) case .Ok(let createdPool)))
+			return false;
+		pool = createdPool;
+		if (!(mDevice.CreateFence(0) case .Ok(let createdFence)))
+			return false;
+		fence = createdFence;
+		if (!(pool.CreateEncoder() case .Ok(var encoder)))
+			return false;
+		defer pool.DestroyEncoder(ref encoder);
+		encoder.ResetQuerySet(set, 0, 1);
+		encoder.WriteTimestamp(set, 0);
+		encoder.ResolveQuerySet(set, 0, 1, readback, 0);
+		let commandBuffer = encoder.Finish();
+		if (commandBuffer == null)
+			return false;
+		mQueue.WaitIdle();
+		let before = ProfileClock.Now();
+		var buffers = ICommandBuffer[1](commandBuffer);
+		mQueue.Submit(.(&buffers[0], 1), fence, 1);
+		let waited = fence.Wait(1);
+		let after = ProfileClock.Now();
+		if (!waited)
+			return false;
+		let mapped = (uint64*)readback.Map();
+		if (mapped == null)
+			return false;
+		let stamp = mapped[0];
+		readback.Unmap();
+		if (stamp == 0)
+			return false;
+		mGpuOrigin = stamp;
+		mCpuOrigin = before + (after - before) / 2;
+		return true;
+	}
+
+	private int64 ToCpuTicks(uint64 gpu)
+	{
+		let nanoseconds = (double)(int64)(gpu - mGpuOrigin) * mPeriod;
+		return mCpuOrigin + (int64)(nanoseconds * ProfileClock.TicksPerSecond / 1.0e9);
+	}
+
+	/// A slot's last frame, done on the GPU: its passes on the CPU's clock, to the profiler.
+	private void Collect(Slot slot, Profiler profiler)
+	{
+		if (!slot.Pending)
+			return;
+		slot.Pending = false;
+		let stamps = (uint64*)slot.TimestampReadback.Map();
+		if (stamps == null)
+			return;
+		let statistics = (slot.Statistics != null) ? (uint8*)slot.StatisticsReadback.Map() : null;
+		let passes = scope List<GpuPassEvent>();
+		for (int i < slot.Names.Count)
+		{
+			let begin = stamps[i * 2];
+			let end = stamps[i * 2 + 1];
+			if ((begin == 0) || (end < begin))
+				continue; // not written, or the counter wrapped
+			var pass = GpuPassEvent(slot.Names[i], 0, 0, ToCpuTicks(begin), ToCpuTicks(end));
+			if (statistics != null)
+			{
+				let counts = mDevice.DecodePipelineStatistics(statistics + i * mStatisticsSize);
+				pass.HasCounts = true;
+				pass.Counts.InputVertices = counts.InputVertices;
+				pass.Counts.InputPrimitives = counts.InputPrimitives;
+				pass.Counts.VertexInvocations = counts.VertexInvocations;
+				pass.Counts.ClippingPrimitives = counts.ClippingPrimitives;
+				pass.Counts.FragmentInvocations = counts.FragmentInvocations;
+				pass.Counts.ComputeInvocations = counts.ComputeInvocations;
+			}
+			passes.Add(pass);
+		}
+		if (statistics != null)
+			slot.StatisticsReadback.Unmap();
+		slot.TimestampReadback.Unmap();
+		// The frame numbers are the profiler's that measured them; another has none of them.
+		if ((profiler != null) && (profiler == mProfiler))
+			profiler.SubmitGpuPasses(slot.FrameNumber, passes);
 	}
 }

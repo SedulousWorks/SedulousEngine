@@ -275,7 +275,6 @@ class RenderFrame
 		mSsrParams = parameters;
 	}
 
-	public void EnableGpuProfiling() => mGraph.EnableGpuProfiling();
 
 	public void SetExposure(float exposure) => mExposure = exposure;
 
@@ -373,14 +372,6 @@ class RenderFrame
 	/// The frame's graph, for introspection. Valid from the end of a frame until the next
 	/// begin rebuilds it.
 	public RenderGraph Graph => mGraph;
-
-	public void ReadGpuProfile(String outReport)
-	{
-		let profiler = mGraph.GpuProfiler;
-		if (profiler != null)
-			profiler.ReadResults(mGraph.LastProfiledPassCount, outReport);
-		mGraph.AppendCpuPassReport(outReport);
-	}
 
 	// ==================== The frame ====================
 

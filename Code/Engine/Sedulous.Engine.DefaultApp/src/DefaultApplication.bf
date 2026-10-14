@@ -698,16 +698,11 @@ class DefaultApplication : IApplication, ISceneObserver
 				Console.WriteLine("Profiler armed; press P again for a frame.");
 				return;
 			}
+			// The newest frame, its GPU passes included once they have arrived (a frame or two
+			// late).
 			let report = scope String();
 			GlobalProfiler().BuildReport(report);
 			Console.WriteLine(report);
-		}
-
-		if (let renderer = host.Context.GetSubsystem<RenderSubsystem>())
-		{
-			let gpu = scope String();
-			renderer.BuildGpuProfileReport(gpu);
-			Console.WriteLine(gpu);
 		}
 	}
 

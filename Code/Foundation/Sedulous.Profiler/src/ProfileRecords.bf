@@ -21,6 +21,17 @@ struct ScopeEvent
 	}
 }
 
+/// What the GPU counted while a pass ran (pipeline statistics), where the device counts.
+struct GpuPassCounts
+{
+	public uint64 InputVertices;
+	public uint64 InputPrimitives;
+	public uint64 VertexInvocations;
+	public uint64 ClippingPrimitives;
+	public uint64 FragmentInvocations;
+	public uint64 ComputeInvocations;
+}
+
 /// One GPU pass of a frame, its ticks already on the CPU clock.
 struct GpuPassEvent
 {
@@ -30,6 +41,9 @@ struct GpuPassEvent
 	public uint32 Queue;
 	public int64 BeginTick;
 	public int64 EndTick;
+	/// The device counted pipeline statistics.
+	public bool HasCounts;
+	public GpuPassCounts Counts;
 
 	public this(uint32 name, uint32 depth, uint32 queue, int64 beginTick, int64 endTick)
 	{
@@ -38,6 +52,8 @@ struct GpuPassEvent
 		Queue = queue;
 		BeginTick = beginTick;
 		EndTick = endTick;
+		HasCounts = false;
+		Counts = .();
 	}
 }
 

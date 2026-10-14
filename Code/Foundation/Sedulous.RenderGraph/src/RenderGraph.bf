@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
-using System.Diagnostics;
 using Sedulous.Core;
+using Sedulous.Profiler;
 using Sedulous.RHI;
 
 namespace Sedulous.RenderGraph;
@@ -36,9 +36,13 @@ class RenderGraph
 	/// wanted them.
 	private List<ITextureView> mSubresourceViews = new .() ~ delete _;
 
+	/// Made the first frame the profiler is armed; never, where the device has no timestamps.
 	private GraphProfiler mGpuProfiler = null ~ delete _;
-	private int32 mLastProfiledPassCount = 0;
-	private List<PassCpuTime> mPassCpu = new .() ~ delete _;
+	private bool mGpuProfilerUnavailable = false;
+	/// Pass names as the profiler's ids, interned once each (a graph names the same passes every
+	/// frame), for the profiler they were interned in. Keys owned.
+	private Dictionary<String, uint32> mProfileNames = new .() ~ DeleteDictionaryAndKeys!(_);
+	private Sedulous.Profiler.Profiler mProfileNamesOwner = null;
 
 	private int32 mFrameIndex = 0;
 	private uint32 mOutputWidth = 1920;
@@ -89,89 +93,6 @@ class RenderGraph
 	public uint32 OutputWidth => mOutputWidth;
 	public uint32 OutputHeight => mOutputHeight;
 
-	// ---- profiling ----
-
-	/// Turns on per pass GPU timestamps. Lazy, since it needs the device, and idempotent.
-	public void EnableGpuProfiling()
-	{
-		if ((mGpuProfiler != null) || (mDevice == null))
-			return;
-
-		let profiler = new GraphProfiler();
-		if (profiler.Init(mDevice) case .Err)
-		{
-			delete profiler;
-			return;
-		}
-		mGpuProfiler = profiler;
-
-		let queue = mDevice.GetQueue(.Graphics, 0);
-		if (queue != null)
-			mGpuProfiler.SetTimestampPeriod(queue.TimestampPeriod());
-	}
-
-	/// The profiler, or null when it was never turned on. BORROWED. Its results are read
-	/// once the GPU has finished the frame they came from.
-	public GraphProfiler GpuProfiler => mGpuProfiler;
-	public int32 LastProfiledPassCount => mLastProfiledPassCount;
-
-	/// This frame's per pass CPU RECORD cost, gathered by name with the expensive first.
-	public void AppendCpuPassReport(String outReport)
-	{
-		// VIEWS into the pass records, never copies. A copy here was allocated inside the loop
-		// body, so it was freed at the end of the iteration that made it and the next
-		// comparison read a dangling string.
-		let names = scope List<StringView>();
-		let ticks = scope List<int64>();
-		let counts = scope List<int32>();
-		var total = (int64)0;
-
-		for (let pass in mPassCpu)
-		{
-			total += pass.Ticks;
-
-			var found = -1;
-			for (int i < names.Count)
-			{
-				if (names[i] == pass.Name)
-				{
-					found = i;
-					break;
-				}
-			}
-
-			if (found < 0)
-			{
-				names.Add(pass.Name);
-				ticks.Add(pass.Ticks);
-				counts.Add(1);
-				continue;
-			}
-
-			ticks[found] += pass.Ticks;
-			counts[found]++;
-		}
-
-		// A selection sort, because there are only ever a handful of distinct names.
-		for (int i < names.Count)
-		{
-			for (int j = i + 1; j < names.Count; j++)
-			{
-				if (ticks[j] <= ticks[i])
-					continue;
-
-				Swap!(names[i], names[j]);
-				Swap!(ticks[i], ticks[j]);
-				Swap!(counts[i], counts[j]);
-			}
-		}
-
-		outReport.Append("=== CPU by pass name (record cost, expensive first) ===\n");
-		for (int i < names.Count)
-			outReport.AppendF("  {} ms  (x{})  {}\n", ToMilliseconds(ticks[i]), counts[i], names[i]);
-		outReport.AppendF("  --------\n  {} ms  TOTAL (pass record)\n", ToMilliseconds(total));
-	}
-
 	// ---- the frame ----
 
 	public void BeginFrame(int32 frameIndex)
@@ -215,13 +136,13 @@ class RenderGraph
 
 		mBarrierSolver.Reset(ResourceSpan());
 
-		// The query set is reset up front, which has to happen outside any render pass.
-		let profiling = (mGpuProfiler != null);
-		if (profiling)
-		{
-			mGpuProfiler.BeginFrame(encoder);
-			mPassCpu.Clear();
-		}
+#if PROFILING || DEBUG || TEST
+		// While the profiler is armed, every executed pass is a CPU scope (its recording) and,
+		// where the device has timestamps, a GPU pass of this frame (GraphProfiler).
+		let cpuProfiler = GlobalProfiler();
+		let profiling = (cpuProfiler != null) && cpuProfiler.Armed;
+		let gpuProfiler = BeginGpuProfiling(encoder, cpuProfiler);
+#endif
 
 		// Where each imported texture with a final state is used for the last time, as a
 		// position in the execution order: it takes its final state right after that pass.
@@ -241,7 +162,6 @@ class RenderGraph
 			}
 		}
 
-		var profiledPassCount = (int32)0;
 		for (int position < mExecutionOrder.Count)
 		{
 			let pass = mPasses[mExecutionOrder[position]];
@@ -250,10 +170,20 @@ class RenderGraph
 			if ((pass.Condition != null) && !pass.Condition())
 				continue;
 
-			let cpuStart = profiling ? Stopwatch.GetTimestamp() : 0;
-			encoder.BeginDebugLabel(pass.Name);
+			// A pass's CPU cost (barriers and record or execute, any bundle build or wait included)
+			// as a scope under its name: the graph's execute is often CPU bound while the GPU is
+			// idle.
+#if PROFILING || DEBUG || TEST
+			var passScope = false;
 			if (profiling)
-				mGpuProfiler.BeginPass(encoder, profiledPassCount, pass.Name);
+			{
+				let passName = ProfileNameFor(cpuProfiler, pass.Name);
+				passScope = cpuProfiler.BeginScope(passName);
+				if (gpuProfiler != null)
+					gpuProfiler.BeginPass(encoder, passName);
+			}
+#endif
+			encoder.BeginDebugLabel(pass.Name);
 
 			mBarrierSolver.EmitBarriers(pass, ResourceSpan(), encoder);
 
@@ -274,22 +204,19 @@ class RenderGraph
 					mFinalAfter[(int)access.Handle.Index] = -1; // once, however many accesses
 				}
 			}
-			if (profiling)
-			{
-				mGpuProfiler.EndPass(encoder, profiledPassCount);
-				profiledPassCount++;
-			}
 			encoder.EndDebugLabel();
-
-			if (profiling)
-				mPassCpu.Add(.(pass.Name, Stopwatch.GetTimestamp() - cpuStart));
+#if PROFILING || DEBUG || TEST
+			if (gpuProfiler != null)
+				gpuProfiler.EndPass(encoder);
+			if (passScope)
+				cpuProfiler.EndScope();
+#endif
 		}
 
-		if (mGpuProfiler != null)
-		{
-			mGpuProfiler.Resolve(encoder, profiledPassCount);
-			mLastProfiledPassCount = profiledPassCount;
-		}
+#if PROFILING || DEBUG || TEST
+		if (gpuProfiler != null)
+			gpuProfiler.EndFrame(encoder);
+#endif
 
 		mBarrierSolver.EmitFinalTransitions(ResourceSpan(), encoder);
 		mBarrierSolver.UpdatePersistentStates(ResourceSpan());
@@ -538,7 +465,43 @@ class RenderGraph
 
 	private Span<RenderGraphResource> ResourceSpan() => .(mResources.Ptr, mResources.Count);
 
-	private static double ToMilliseconds(int64 ticks) => ticks / 1000.0;
+	/// This frame's GPU profiler, made when first needed; null when nothing is measured. The slot
+	/// the frame's queries go in is the frame's own (the deferred deletions' slot), so a slot's
+	/// results are read when it comes round, its GPU work done.
+	private GraphProfiler BeginGpuProfiling(ICommandEncoder encoder, Sedulous.Profiler.Profiler profiler)
+	{
+		if (mGpuProfiler == null)
+		{
+			if (mGpuProfilerUnavailable || (mDevice == null) || (profiler == null) || !profiler.Armed)
+				return null;
+			mGpuProfiler = new GraphProfiler();
+			if (mGpuProfiler.Init(mDevice, (uint32)mDeferredDeletions.Count) case .Err)
+			{
+				DeleteAndNullify!(mGpuProfiler);
+				mGpuProfilerUnavailable = true; // no timestamps here (a browser): CPU scopes only
+				return null;
+			}
+		}
+		let slot = (uint32)mFrameIndex % (uint32)mDeferredDeletions.Count;
+		return mGpuProfiler.BeginFrame(encoder, slot, profiler) ? mGpuProfiler : null;
+	}
+
+	/// A pass name's id in `profiler`, interned once.
+	private uint32 ProfileNameFor(Sedulous.Profiler.Profiler profiler, StringView name)
+	{
+		if (mProfileNamesOwner != profiler)
+		{
+			for (let key in mProfileNames.Keys)
+				delete key;
+			mProfileNames.Clear();
+			mProfileNamesOwner = profiler;
+		}
+		if (mProfileNames.TryGetValueAlt(name, let known))
+			return known;
+		let id = profiler.InternName(name);
+		mProfileNames[new String(name)] = id;
+		return id;
+	}
 
 	private List<DeferredDeletion> DeferredSlot() =>
 		mDeferredDeletions[mFrameIndex % mDeferredDeletions.Count];
