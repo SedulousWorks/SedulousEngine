@@ -321,8 +321,12 @@ class JobSystem
 
 	private void RunJob(JobItem job)
 	{
+		let hooks = JobHooks.Current;
+		let began = (hooks != null) && (hooks.Begin != null) && hooks.Begin();
 		job.Work();
 		delete job.Work;
+		if (began && (hooks.End != null))
+			hooks.End();
 
 		// The completion signal is handled BEFORE this job leaves mPending, because a
 		// continuation joins mPending before its predecessor leaves it. Otherwise
@@ -362,6 +366,7 @@ class JobSystem
 	{
 		sSlotOwnerId = mId;
 		sSlot = index;
+		ThreadNames.SetCurrent(scope String()..AppendF("Worker {}", index));
 
 		for (;;)
 		{

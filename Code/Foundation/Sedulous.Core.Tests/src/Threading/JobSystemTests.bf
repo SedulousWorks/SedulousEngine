@@ -325,4 +325,90 @@ class JobSystemTests
 		jobs.Wait(done);
 		Test.Assert(done.Value == 0);
 	}
+
+	/// A thread's name is its own, kept to 31 bytes: each thread starts unnamed and names only
+	/// itself.
+	[Test]
+	public static void AThreadsNameIsItsOwnKeptTo31Bytes()
+	{
+		let seen = scope String();
+		let thread = scope Thread(new [&]() =>
+			{
+				seen.Append(ThreadNames.Current);
+				ThreadNames.SetCurrent("Loader");
+				seen.Append("|");
+				seen.Append(ThreadNames.Current);
+			});
+		thread.Start(false);
+		thread.Join();
+		Test.Assert(seen == "|Loader", seen);
+
+		let before = scope String(ThreadNames.Current);
+		ThreadNames.SetCurrent("A thread with a name far longer than thirty-one bytes");
+		Test.Assert(ThreadNames.Current.Length == 31);
+		Test.Assert(ThreadNames.Current == "A thread with a name far longer");
+		ThreadNames.SetCurrent(before);
+	}
+
+	private static int32 sHookBegins;
+	private static int32 sHookEnds;
+	/// What Begin answers: true opened a scope, false did not.
+	private static bool sHookAnswer = true;
+
+	/// Job hooks bracket every job, and End runs only for what Begin opened: how the profiler
+	/// shows a worker's jobs, on its thread.
+	[Test]
+	public static void JobHooksBracketEveryJobAndEndOnlyWhatBeginOpened()
+	{
+		sHookBegins = 0;
+		sHookEnds = 0;
+		sHookAnswer = true;
+		let hooks = scope JobHooks(
+			() => { Interlocked.Increment(ref sHookBegins); return sHookAnswer; },
+			() => { Interlocked.Increment(ref sHookEnds); });
+		JobHooks.Set(hooks);
+		defer JobHooks.Set(null);
+		{
+			let jobs = scope JobSystem(3);
+			for (int i < 200)
+				jobs.Submit(new () => {});
+			jobs.WaitForAll();
+			Test.Assert(sHookBegins == 200);
+			Test.Assert(sHookEnds == 200);
+
+			// A Begin that opened nothing is not ended.
+			sHookAnswer = false;
+			for (int i < 50)
+				jobs.Submit(new () => {});
+			jobs.WaitForAll();
+			Test.Assert(sHookBegins == 250);
+			Test.Assert(sHookEnds == 200);
+		}
+		JobHooks.Set(null);
+		Test.Assert(JobHooks.Current == null);
+	}
+
+	/// A JobSystem's workers are named by their slot, "Worker N".
+	[Test]
+	public static void AJobSystemsWorkersAreNamedByTheirSlot()
+	{
+		let jobs = scope JobSystem(3);
+		let lock = scope Monitor();
+		let names = scope List<String>();
+		defer { ClearAndDeleteItems!(names); }
+		jobs.ParallelFor(3000, scope [&](i) =>
+			{
+				let slot = jobs.CurrentSlot;
+				if ((slot >= 0) && (slot < jobs.WorkerCount))
+				{
+					using (lock.Enter())
+					{
+						names.Add(new String(ThreadNames.Current));
+						names.Add(new String()..AppendF("Worker {}", slot));
+					}
+				}
+			});
+		for (int i = 0; i + 1 < names.Count; i += 2)
+			Test.Assert(names[i] == names[i + 1], names[i]);
+	}
 }
