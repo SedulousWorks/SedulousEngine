@@ -292,6 +292,19 @@ class Profiler
 	/// The newest record, null when nothing was recorded.
 	public FrameRecord LatestFrame => (mRecordedFrames == 0) ? null : Frame(mLatestRecorded);
 
+	/// Whether any frame was recorded; then the frames kept lie between OldestKeptFrame and
+	/// LatestRecordedFrame (an unarmed frame between them has no record).
+	public bool HasFrames => mRecordedFrames > 0;
+	public uint64 LatestRecordedFrame => mLatestRecorded;
+	public uint64 OldestKeptFrame
+	{
+		get
+		{
+			let size = (uint64)mHistory.Count;
+			return (mLatestRecorded + 1 > size) ? (mLatestRecorded + 1 - size) : 0;
+		}
+	}
+
 	// ---- GPU passes (the frame thread) ------------------------------------------------------
 
 	/// Adds GPU passes to frame `frameNumber`'s record when they arrive (each render graph of
