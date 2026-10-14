@@ -148,6 +148,10 @@ sealed class WebGpuDevice : IDevice
 	/// carries the same convention. No pass needs a Y compensation on this backend.
 	public bool NeedsClipSpaceYFlip => false;
 
+	/// No pipeline statistics on WebGPU: a statistics result takes no room and reads as nought.
+	public uint32 QueryResultSize(QueryType type) => (type == .PipelineStatistics) ? 0 : 8;
+	public PipelineStatistics DecodePipelineStatistics(void* result) => .();
+
 	// Ray tracing has no WebGPU shape at all, so the handle sizes are zero and every
 	// creation path takes IDevice's refusing default.
 	public uint32 ShaderGroupHandleSize => 0;

@@ -97,6 +97,25 @@ class DxDevice : IDevice
 	public ShaderFormat PreferredShaderFormat => .DXIL;
 	/// D3D12 and the RHI agree on clip space, so nothing has to be flipped.
 	public bool NeedsClipSpaceYFlip => false;
+
+	/// A statistics query resolves to D3D12's own eleven counter record.
+	public uint32 QueryResultSize(QueryType type) =>
+		(type == .PipelineStatistics) ? (uint32)sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS) : 8;
+
+	public PipelineStatistics DecodePipelineStatistics(void* result)
+	{
+		var statistics = PipelineStatistics();
+		if (result == null)
+			return statistics;
+		let d3d = (D3D12_QUERY_DATA_PIPELINE_STATISTICS*)result;
+		statistics.InputVertices = d3d.IAVertices;
+		statistics.InputPrimitives = d3d.IAPrimitives;
+		statistics.VertexInvocations = d3d.VSInvocations;
+		statistics.ClippingPrimitives = d3d.CPrimitives;
+		statistics.FragmentInvocations = d3d.PSInvocations;
+		statistics.ComputeInvocations = d3d.CSInvocations;
+		return statistics;
+	}
 	public uint32 ShaderGroupHandleSize => mShaderGroupHandleSize;
 	public uint32 ShaderGroupHandleAlignment => mShaderGroupHandleAlignment;
 	public uint32 ShaderGroupBaseAlignment => mShaderGroupBaseAlignment;

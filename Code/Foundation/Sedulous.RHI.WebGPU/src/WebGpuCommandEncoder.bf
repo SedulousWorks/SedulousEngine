@@ -343,6 +343,11 @@ sealed class WebGpuCommandEncoder : ICommandEncoder
 	{
 	}
 
+	/// WebGPU has no pipeline statistics (DeviceFeatures.PipelineStatisticsQueries is false and
+	/// no such query set can be made), so there is nothing to begin or end.
+	public void BeginPipelineStatisticsQuery(IQuerySet querySet, uint32 index) {}
+	public void EndPipelineStatisticsQuery(IQuerySet querySet, uint32 index) {}
+
 	public void WriteTimestamp(IQuerySet querySet, uint32 index)
 	{
 		let set = querySet as WebGpuQuerySet;

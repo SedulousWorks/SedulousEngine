@@ -151,6 +151,15 @@ sealed class WebGpuQueue : IQueue
 		batch = null;
 	}
 
+	/// WebGPU offers no way to read a GPU timestamp together with the CPU's clock
+	/// (DeviceFeatures.TimestampCalibration is false); a profiler syncs the two another way.
+	public bool CalibrateTimestamps(out uint64 gpuTimestamp, out int64 cpuMicroseconds)
+	{
+		gpuTimestamp = 0;
+		cpuMicroseconds = 0;
+		return false;
+	}
+
 	public float TimestampPeriod()
 	{
 		return WebGpuApi.NativeOnly.QueueTimestampPeriod(mQueue);

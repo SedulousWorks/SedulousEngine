@@ -173,12 +173,16 @@ sealed class WebGpuAdapter : IAdapter
 		// Encoder level WriteTimestamp - the RHI's ICommandEncoder.WriteTimestamp, which the
 		// GPU graph profiler uses - is a SEPARATE wgpu feature from pass boundary timestamps.
 		// The enum is wgpu-native only, so a browser never has it.
+		var encoderTimestampsEnabled = false;
 #if !BF_PLATFORM_WASM
 		let encoderTimestamps =
 			(WGPUFeatureName)WGPUNativeFeature.WGPUNativeFeature_TimestampQueryInsideEncoders;
 		if (info.SupportedFeatures.TimestampQueries
 			&& (wgpuAdapterHasFeature(mHandle, encoderTimestamps) != 0))
+		{
 			required.Add(encoderTimestamps);
+			encoderTimestampsEnabled = true;
+		}
 #endif
 
 		// The adapter's OWN limits are requested wholesale, which is always legal and
@@ -292,6 +296,9 @@ sealed class WebGpuAdapter : IAdapter
 		// would make a capability checking caller disable the very paths the emulator
 		// exists to serve.
 		features.MaxPushConstantSize = 128;
+		// The RHI's timestamp feature is ICommandEncoder.WriteTimestamp, which needs the in
+		// encoder feature: a browser's TimestampQuery alone writes nothing there.
+		features.TimestampQueries = encoderTimestampsEnabled;
 		wrapper.SetFeatures(features);
 		wrapper.SetImmediatesSupported(immediatesSupported);
 

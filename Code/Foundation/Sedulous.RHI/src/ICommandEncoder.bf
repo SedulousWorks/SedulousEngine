@@ -63,7 +63,14 @@ interface ICommandEncoder
 	void ResetQuerySet(IQuerySet querySet, uint32 first, uint32 count);
 	void WriteTimestamp(IQuerySet querySet, uint32 index);
 
-	/// Copies query results into a buffer, which is how they are read back.
+	/// Counts pipeline statistics (DeviceFeatures.PipelineStatisticsQueries) into query `index`
+	/// of a PipelineStatistics set, from Begin to End, both outside any pass (one may span whole
+	/// passes). One statistics query at a time: they do not nest.
+	void BeginPipelineStatisticsQuery(IQuerySet querySet, uint32 index);
+	void EndPipelineStatisticsQuery(IQuerySet querySet, uint32 index);
+
+	/// Copies query results into a buffer, which is how they are read back: `count` results
+	/// from `dstOffset`, each IDevice.QueryResultSize(type) bytes apart.
 	void ResolveQuerySet(IQuerySet querySet, uint32 first, uint32 count, IBuffer dst,
 		uint64 dstOffset);
 

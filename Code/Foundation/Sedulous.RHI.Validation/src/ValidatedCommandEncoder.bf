@@ -17,6 +17,9 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	private int mOpenDebugLabels = 0;
 	private bool mRayTracingPipelineBound = false;
+	/// The open pipeline statistics query, if any.
+	private IQuerySet mStatisticsQuery = null;
+	private uint32 mStatisticsIndex = 0;
 
 	public this(ICommandEncoder inner)
 	{
@@ -223,6 +226,39 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		mInner.WriteTimestamp(querySet, index);
 	}
 
+	/// Statistics queries do not nest, and are counted outside any pass.
+	public void BeginPipelineStatisticsQuery(IQuerySet querySet, uint32 index)
+	{
+		if (NotRecording("BeginPipelineStatisticsQuery"))
+			return;
+		if ((querySet == null) || (querySet.Type != .PipelineStatistics))
+		{
+			ValidationLog.Error("CommandEncoder.BeginPipelineStatisticsQuery: needs a PipelineStatistics query set");
+			return;
+		}
+		if (mStatisticsQuery != null)
+		{
+			ValidationLog.Error("CommandEncoder.BeginPipelineStatisticsQuery: one is already open (they do not nest)");
+			return;
+		}
+		mStatisticsQuery = querySet;
+		mStatisticsIndex = index;
+		mInner.BeginPipelineStatisticsQuery(querySet, index);
+	}
+
+	public void EndPipelineStatisticsQuery(IQuerySet querySet, uint32 index)
+	{
+		if (NotRecording("EndPipelineStatisticsQuery"))
+			return;
+		if ((querySet == null) || (querySet != mStatisticsQuery) || (index != mStatisticsIndex))
+		{
+			ValidationLog.Error("CommandEncoder.EndPipelineStatisticsQuery: does not match the open query");
+			return;
+		}
+		mStatisticsQuery = null;
+		mInner.EndPipelineStatisticsQuery(querySet, index);
+	}
+
 	public void ResolveQuerySet(IQuerySet querySet, uint32 first, uint32 count, IBuffer dst,
 		uint64 dstOffset)
 	{
@@ -292,6 +328,8 @@ class ValidatedCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		}
 		if (mOpenDebugLabels > 0)
 			ValidationLog.Warn(scope $"CommandEncoder.Finish: {mOpenDebugLabels} debug label(s) were not closed");
+		if (mStatisticsQuery != null)
+			ValidationLog.Error("CommandEncoder.Finish: a pipeline statistics query is still open");
 
 		mState = .Finished;
 		return mInner.Finish();

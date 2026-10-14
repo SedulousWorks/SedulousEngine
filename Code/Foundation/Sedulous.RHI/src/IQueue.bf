@@ -36,4 +36,11 @@ interface IQueue
 
 	/// Nanoseconds per timestamp tick, which converts a query result into a duration.
 	float TimestampPeriod();
+
+	/// A GPU timestamp (in this queue's timestamp ticks) and the CPU's monotonic clock read at
+	/// the same moment, the CPU's in MICROSECONDS of CLOCK_MONOTONIC on POSIX and of
+	/// QueryPerformanceCounter on Windows (the profiler's clock), to place the queue's
+	/// timestamps on the CPU's. False, with both left at nought, when the device cannot
+	/// (DeviceFeatures.TimestampCalibration).
+	bool CalibrateTimestamps(out uint64 gpuTimestamp, out int64 cpuMicroseconds);
 }

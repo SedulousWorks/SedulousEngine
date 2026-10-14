@@ -35,6 +35,10 @@ class VulkanQueue : IQueue
 	/// turns a query difference into a duration.
 	public float TimestampPeriod() => mTimestampPeriod;
 
+	/// The device holds the calibration entry point.
+	public bool CalibrateTimestamps(out uint64 gpuTimestamp, out int64 cpuMicroseconds) =>
+		mDevice.CalibrateTimestamps(out gpuTimestamp, out cpuMicroseconds);
+
 	public void WaitIdle()
 	{
 		if (mQueue != .Null)

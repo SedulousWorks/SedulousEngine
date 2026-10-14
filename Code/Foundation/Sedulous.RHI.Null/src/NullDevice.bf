@@ -33,6 +33,10 @@ class NullDevice : IDevice
 	/// space reconstruction test negate a Y it did not need to.
 	public bool NeedsClipSpaceYFlip => false;
 
+	/// No statistics: a statistics result takes no room and reads as nought.
+	public uint32 QueryResultSize(QueryType type) => (type == .PipelineStatistics) ? 0 : 8;
+	public PipelineStatistics DecodePipelineStatistics(void* result) => .();
+
 	public IQueue GetQueue(QueueType type, uint32 index)
 	{
 		switch (type)

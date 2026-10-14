@@ -608,8 +608,21 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			query.Handle, index);
 	}
 
+	public void BeginPipelineStatisticsQuery(IQuerySet querySet, uint32 index)
+	{
+		if (let query = querySet as VulkanQuerySet)
+			VulkanNative.vkCmdBeginQuery(mCommandBuffer, query.Handle, index, 0);
+	}
+
+	public void EndPipelineStatisticsQuery(IQuerySet querySet, uint32 index)
+	{
+		if (let query = querySet as VulkanQuerySet)
+			VulkanNative.vkCmdEndQuery(mCommandBuffer, query.Handle, index);
+	}
+
 	/// Copies results into a buffer, WAITING for them: without that the destination holds
-	/// whatever was there when the copy ran.
+	/// whatever was there when the copy ran. One result per query, as wide as its kind
+	/// (IDevice.QueryResultSize): a statistics query carries all six of its counters.
 	public void ResolveQuerySet(IQuerySet querySet, uint32 first, uint32 count, IBuffer dst,
 		uint64 dstOffset)
 	{
@@ -618,8 +631,10 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		if ((query == null) || (destination == null))
 			return;
 
+		let stride = (query.Type == .PipelineStatistics)
+			? (uint64)VulkanQuerySet.PipelineStatisticsCounters * sizeof(uint64) : sizeof(uint64);
 		VulkanNative.vkCmdCopyQueryPoolResults(mCommandBuffer, query.Handle, first, count,
-			destination.Handle, dstOffset, sizeof(uint64),
+			destination.Handle, dstOffset, stride,
 			.VK_QUERY_RESULT_64_BIT | .VK_QUERY_RESULT_WAIT_BIT);
 	}
 

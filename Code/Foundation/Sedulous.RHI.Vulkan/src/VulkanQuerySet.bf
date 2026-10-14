@@ -8,6 +8,9 @@ namespace Sedulous.RHI.Vulkan;
 /// A Vulkan query pool.
 class VulkanQuerySet : IQuerySet
 {
+	/// The counters a statistics query counts (the RHI's six), each a uint64.
+	public const uint32 PipelineStatisticsCounters = 6;
+
 	private VkQueryPool mPool;
 	private QueryType mType = .Timestamp;
 	private uint32 mCount = 0;
@@ -32,12 +35,14 @@ class VulkanQuerySet : IQuerySet
 			createInfo.queryType = .VK_QUERY_TYPE_OCCLUSION;
 		case .PipelineStatistics:
 			createInfo.queryType = .VK_QUERY_TYPE_PIPELINE_STATISTICS;
-			// The statistics a renderer actually looks at. They must be named at creation,
-			// because the set of counters decides how wide a result is.
+			// The RHI's six counters. They must be named at creation, because the set of
+			// counters decides how wide a result is, and Vulkan writes the enabled ones in bit
+			// order, which VulkanDevice.DecodePipelineStatistics reads back.
 			createInfo.pipelineStatistics =
 				.VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT
 				| .VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT
 				| .VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT
+				| .VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT
 				| .VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT
 				| .VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
 		}

@@ -166,6 +166,18 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 			mCmdList.EndQuery(qs.Handle, .D3D12_QUERY_TYPE_TIMESTAMP, index);
 	}
 
+	public void BeginPipelineStatisticsQuery(IQuerySet querySet, uint32 index)
+	{
+		if (let qs = querySet as DxQuerySet)
+			mCmdList.BeginQuery(qs.Handle, .D3D12_QUERY_TYPE_PIPELINE_STATISTICS, index);
+	}
+
+	public void EndPipelineStatisticsQuery(IQuerySet querySet, uint32 index)
+	{
+		if (let qs = querySet as DxQuerySet)
+			mCmdList.EndQuery(qs.Handle, .D3D12_QUERY_TYPE_PIPELINE_STATISTICS, index);
+	}
+
 	public void ResetQuerySet(IQuerySet querySet, uint32 first, uint32 count)
 	{
 		// D3D12 needs no explicit reset: a query is reset implicitly when it is written.

@@ -5,6 +5,7 @@ using Sedulous.RHI;
 using Win32;
 using Win32.Foundation;
 using Win32.Graphics.Direct3D12;
+using Win32.System.Performance;
 using Win32.System.Threading;
 using Win32.System.WindowsProgramming;
 
@@ -130,6 +131,26 @@ class DxQueue : IQueue
 	}
 
 	public float TimestampPeriod() => mTsPeriod;
+
+	/// The queue's timestamp and QueryPerformanceCounter read together, the counter turned into
+	/// microseconds as the profiler's clock reads it on Windows.
+	public bool CalibrateTimestamps(out uint64 gpuTimestamp, out int64 cpuMicroseconds)
+	{
+		gpuTimestamp = 0;
+		cpuMicroseconds = 0;
+		uint64 gpu = 0;
+		uint64 cpu = 0;
+		if (FAILED(mQueue.GetClockCalibration(&gpu, &cpu)))
+			return false;
+		LARGE_INTEGER frequency = .();
+		if ((QueryPerformanceFrequency(&frequency) == FALSE) || (frequency.QuadPart <= 0))
+			return false;
+		let perSecond = (uint64)frequency.QuadPart;
+		gpuTimestamp = gpu;
+		// Whole seconds and the remainder apart, so the product cannot overflow.
+		cpuMicroseconds = (int64)((cpu / perSecond) * 1000000 + (cpu % perSecond) * 1000000 / perSecond);
+		return true;
+	}
 
 	public void Cleanup()
 	{

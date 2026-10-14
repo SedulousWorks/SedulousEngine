@@ -58,6 +58,8 @@ class RecordingEncoder : ICommandEncoder
 
 	public void ResetQuerySet(IQuerySet querySet, uint32 first, uint32 count) {}
 	public void WriteTimestamp(IQuerySet querySet, uint32 index) {}
+	public void BeginPipelineStatisticsQuery(IQuerySet querySet, uint32 index) {}
+	public void EndPipelineStatisticsQuery(IQuerySet querySet, uint32 index) {}
 	public void ResolveQuerySet(IQuerySet querySet, uint32 first, uint32 count, IBuffer dst,
 		uint64 dstOffset) {}
 

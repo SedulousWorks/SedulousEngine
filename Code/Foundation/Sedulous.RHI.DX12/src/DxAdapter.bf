@@ -82,6 +82,7 @@ class DxAdapter : IAdapter
 		{
 			f.BindlessDescriptors = true; // DX12 always supports descriptor indexing
 			f.TimestampQueries = true;
+			f.TimestampCalibration = true; // ID3D12CommandQueue.GetClockCalibration
 			f.OcclusionQueries = true; // BeginQuery works anywhere in a pass
 			f.BorderSampling = true;
 			f.MultiDrawIndirect = true;

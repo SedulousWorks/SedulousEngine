@@ -98,6 +98,8 @@ class ValidatedQueue : IQueue
 	}
 
 	public float TimestampPeriod() => mInner.TimestampPeriod();
+	public bool CalibrateTimestamps(out uint64 gpuTimestamp, out int64 cpuMicroseconds) =>
+		mInner.CalibrateTimestamps(out gpuTimestamp, out cpuMicroseconds);
 
 	/// A null command buffer is almost always a Finish that was never called, and a backend
 	/// dereferences it without checking.

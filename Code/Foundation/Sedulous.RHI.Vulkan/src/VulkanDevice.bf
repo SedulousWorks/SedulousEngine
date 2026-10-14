@@ -29,6 +29,9 @@ class VulkanDevice : IDevice
 	private VkSemaphore mPendingPresent = .Null;
 	private bool mHasPendingSync = false;
 
+	/// Reads the device's timestamp and the host clock together; null without the extension.
+	private VulkanNative.vkGetCalibratedTimestampsKHRFunction mGetCalibratedTimestamps = null;
+
 	private uint32 mShaderGroupHandleSize = 0;
 	private uint32 mShaderGroupHandleAlignment = 0;
 	private uint32 mShaderGroupBaseAlignment = 0;
@@ -93,6 +96,8 @@ class VulkanDevice : IDevice
 			extensions.Add("VK_KHR_deferred_host_operations");
 			extensions.Add("VK_KHR_ray_query");
 		}
+		if (let calibration = adapter.CalibratedTimestampsExtension)
+			extensions.Add(calibration);
 
 		// The feature chain, built from the tail backwards. Dynamic rendering and
 		// synchronization2 are what the encoders are written against, so they are required
@@ -162,6 +167,15 @@ class VulkanDevice : IDevice
 		if (VulkanNative.vkCreateDevice(adapter.PhysicalDevice, &createInfo, null, &mDevice)
 			!= .VK_SUCCESS)
 			return .Err;
+
+		// The KHR and EXT calibration entry points share a signature.
+		if (mFeatures.TimestampCalibration)
+		{
+			mGetCalibratedTimestamps = (VulkanNative.vkGetCalibratedTimestampsKHRFunction)VulkanNative.vkGetDeviceProcAddr(mDevice, "vkGetCalibratedTimestampsKHR");
+			if (mGetCalibratedTimestamps == null)
+				mGetCalibratedTimestamps = (VulkanNative.vkGetCalibratedTimestampsKHRFunction)VulkanNative.vkGetDeviceProcAddr(mDevice, "vkGetCalibratedTimestampsEXT");
+			mFeatures.TimestampCalibration = mGetCalibratedTimestamps != null;
+		}
 
 		RetrieveQueues(adapter, desc, graphicsFamily, computeFamily, transferFamily);
 
@@ -284,6 +298,65 @@ class VulkanDevice : IDevice
 	/// False: Vulkan flips clip space Y with a negative height viewport, so a screen space
 	/// pass needs no further negation.
 	public bool NeedsClipSpaceYFlip => false;
+
+	/// A statistics query carries the RHI's six counters (VulkanQuerySet), in bit order: input
+	/// vertices, input primitives, vertex invocations, clipping primitives, fragment
+	/// invocations, compute invocations.
+	public uint32 QueryResultSize(QueryType type)
+	{
+		if (type == .PipelineStatistics)
+			return mFeatures.PipelineStatisticsQueries ? VulkanQuerySet.PipelineStatisticsCounters * sizeof(uint64) : 0;
+		return sizeof(uint64);
+	}
+
+	public PipelineStatistics DecodePipelineStatistics(void* result)
+	{
+		var statistics = PipelineStatistics();
+		if ((result == null) || !mFeatures.PipelineStatisticsQueries)
+			return statistics;
+		let counters = (uint64*)result;
+		statistics.InputVertices = counters[0];
+		statistics.InputPrimitives = counters[1];
+		statistics.VertexInvocations = counters[2];
+		statistics.ClippingPrimitives = counters[3];
+		statistics.FragmentInvocations = counters[4];
+		statistics.ComputeInvocations = counters[5];
+		return statistics;
+	}
+
+	/// Reads the device's timestamp and the host clock together (IQueue.CalibrateTimestamps):
+	/// CLOCK_MONOTONIC nanoseconds or QueryPerformanceCounter counts, turned into the
+	/// profiler's microseconds.
+	public bool CalibrateTimestamps(out uint64 gpuTimestamp, out int64 cpuMicroseconds)
+	{
+		gpuTimestamp = 0;
+		cpuMicroseconds = 0;
+		if (mGetCalibratedTimestamps == null)
+			return false;
+		VkCalibratedTimestampInfoKHR[2] infos = .(.(), .());
+		infos[0].timeDomain = .VK_TIME_DOMAIN_DEVICE_KHR;
+		infos[1].timeDomain = mAdapter.HostTimeDomain;
+		uint64[2] values = .(0, 0);
+		uint64 deviation = 0;
+		if (mGetCalibratedTimestamps(mDevice, 2, &infos[0], &values[0], &deviation) != .VK_SUCCESS)
+			return false;
+		gpuTimestamp = values[0];
+#if BF_PLATFORM_WINDOWS
+		int64 frequency = 0;
+		if ((QueryPerformanceFrequency(&frequency) == 0) || (frequency <= 0))
+			return false;
+		let perSecond = (uint64)frequency;
+		cpuMicroseconds = (int64)((values[1] / perSecond) * 1000000 + (values[1] % perSecond) * 1000000 / perSecond);
+#else
+		cpuMicroseconds = (int64)(values[1] / 1000);
+#endif
+		return true;
+	}
+
+#if BF_PLATFORM_WINDOWS
+	[Import("kernel32.lib"), CLink, CallingConvention(.Stdcall)]
+	private static extern int32 QueryPerformanceFrequency(int64* frequency);
+#endif
 
 	public uint32 ShaderGroupHandleSize => mShaderGroupHandleSize;
 	public uint32 ShaderGroupHandleAlignment => mShaderGroupHandleAlignment;

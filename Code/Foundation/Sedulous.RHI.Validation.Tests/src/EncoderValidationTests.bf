@@ -466,4 +466,50 @@ class EncoderValidationTests
 		encoder.Barrier(.());
 		Test.Assert(fixture.Messages.Count == 0, "ending it returns the encoder to recording");
 	}
+
+	/// Pipeline statistics queries are one at a time, on a statistics set: a query cannot nest,
+	/// ends the query it began, and is closed before the encoder finishes; the layer reports
+	/// each, and passes the device's answers (here Null's: no statistics, no calibration)
+	/// through.
+	[Test]
+	public static void PipelineStatisticsQueriesAreOneAtATimeOnAStatisticsSet()
+	{
+		let fixture = scope ValidationFixture();
+		let device = fixture.Device;
+		Test.Assert(device.QueryResultSize(.Timestamp) == 8);
+		Test.Assert(device.QueryResultSize(.PipelineStatistics) == 0);
+		Test.Assert(device.DecodePipelineStatistics(null).InputVertices == 0);
+		Test.Assert(!device.GetQueue(.Graphics).CalibrateTimestamps(?, ?));
+
+		var desc = QuerySetDesc();
+		desc.Type = .PipelineStatistics;
+		desc.Count = 2;
+		Test.Assert(device.CreateQuerySet(desc) case .Ok(var statistics));
+		defer device.DestroyQuerySet(ref statistics);
+		desc.Type = .Timestamp;
+		Test.Assert(device.CreateQuerySet(desc) case .Ok(var timestamps));
+		defer device.DestroyQuerySet(ref timestamps);
+		Test.Assert(device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		fixture.Own(pool);
+		Test.Assert(pool.CreateEncoder() case .Ok(let encoder));
+		fixture.Messages.Clear();
+
+		encoder.BeginPipelineStatisticsQuery(timestamps, 0);
+		Test.Assert(fixture.Messages.HasError("needs a PipelineStatistics query set"));
+		fixture.Messages.Clear();
+		encoder.BeginPipelineStatisticsQuery(statistics, 0);
+		Test.Assert(fixture.Messages.Count == 0, "a good begin");
+		encoder.BeginPipelineStatisticsQuery(statistics, 1);
+		Test.Assert(fixture.Messages.HasError("they do not nest"));
+		fixture.Messages.Clear();
+		encoder.EndPipelineStatisticsQuery(statistics, 1);
+		Test.Assert(fixture.Messages.HasError("does not match the open query"));
+		fixture.Messages.Clear();
+		encoder.EndPipelineStatisticsQuery(statistics, 0);
+		Test.Assert(fixture.Messages.Count == 0, "a good end");
+		encoder.BeginPipelineStatisticsQuery(statistics, 1);
+		let commandBuffer = encoder.Finish(); // left open
+		Test.Assert(fixture.Messages.HasError("a pipeline statistics query is still open"));
+		Test.Assert(commandBuffer != null);
+	}
 }

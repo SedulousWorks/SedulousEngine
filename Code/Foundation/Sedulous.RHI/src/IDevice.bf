@@ -46,6 +46,15 @@ interface IDevice
 	/// fails texture and pipeline creation.
 	bool SupportsSampleCount(uint32 count) => count <= 1;
 
+	/// The bytes one query of `type` takes in the buffer ResolveQuerySet writes: eight for a
+	/// timestamp or an occlusion count, a backend's own record for pipeline statistics (nought
+	/// when the device has none, DeviceFeatures.PipelineStatisticsQueries).
+	uint32 QueryResultSize(QueryType type);
+
+	/// One resolved pipeline statistics query (QueryResultSize(.PipelineStatistics) bytes at
+	/// `result`) in the RHI's terms; all nought without the feature.
+	PipelineStatistics DecodePipelineStatistics(void* result);
+
 	// ---- creation ----
 
 	Result<IBuffer> CreateBuffer(BufferDesc desc);

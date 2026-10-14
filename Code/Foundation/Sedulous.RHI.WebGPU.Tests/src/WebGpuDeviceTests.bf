@@ -38,6 +38,26 @@ class WebGpuDeviceTests
 		device.Destroy(); // idempotent: the adapter destroys it again at teardown
 	}
 
+	/// WebGPU has no pipeline statistics, so a statistics result takes no room and reads as
+	/// nought, and no GPU timestamp can be read beside the CPU's clock: a profiler syncs the two
+	/// another way.
+	[Test]
+	public static void NoPipelineStatisticsAndNoTimestampCalibration()
+	{
+		let backend = scope WebGpuBackend();
+		let device = WebGpuTestDevice.TryCreate(backend);
+		if (device == null)
+			return;
+		defer backend.Destroy();
+
+		Test.Assert(!device.Features.PipelineStatisticsQueries);
+		Test.Assert(!device.Features.TimestampCalibration);
+		Test.Assert(device.QueryResultSize(.PipelineStatistics) == 0);
+		Test.Assert(device.QueryResultSize(.Timestamp) == 8);
+		Test.Assert(device.DecodePipelineStatistics(null).FragmentInvocations == 0);
+		Test.Assert(!device.GetQueue(.Graphics).CalibrateTimestamps(?, ?));
+	}
+
 	/// WebGPU guarantees ONLY 1 and 4 for the renderer's colour and depth formats. 2x
 	/// needs the adapter specific format features, which are not enabled, and creating a
 	/// 2 sample texture aborts the device - so callers snap 2x to 1x off this answer.

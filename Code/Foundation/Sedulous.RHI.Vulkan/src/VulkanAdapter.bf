@@ -25,6 +25,14 @@ class VulkanAdapter : IAdapter
 	private bool mSupportsDescriptorIndexing = false;
 	private bool mSupportsMeshShader = false;
 	private bool mSupportsRayTracing = false;
+	/// The calibrated timestamps extension to enable (KHR or EXT), null when the device cannot
+	/// read its timestamps together with the clock the profiler reads.
+	private char8* mCalibratedTimestampsExtension = null;
+#if BF_PLATFORM_WINDOWS
+	private VkTimeDomainKHR mHostTimeDomain = .VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR;
+#else
+	private VkTimeDomainKHR mHostTimeDomain = .VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR;
+#endif
 
 	public this(VkPhysicalDevice physicalDevice, VkInstance instance)
 	{
@@ -59,6 +67,10 @@ class VulkanAdapter : IAdapter
 	public bool SupportsDescriptorIndexing => mSupportsDescriptorIndexing;
 	public bool SupportsMeshShader => mSupportsMeshShader;
 	public bool SupportsRayTracing => mSupportsRayTracing;
+	public char8* CalibratedTimestampsExtension => mCalibratedTimestampsExtension;
+	/// The profiler's clock as a Vulkan time domain: CLOCK_MONOTONIC on POSIX,
+	/// QueryPerformanceCounter on Windows.
+	public VkTimeDomainKHR HostTimeDomain => mHostTimeDomain;
 
 	public void GetInfo(AdapterInfo outInfo)
 	{
@@ -115,6 +127,7 @@ class VulkanAdapter : IAdapter
 		f.MeshShaders = mSupportsMeshShader;
 		f.RayTracing = mSupportsRayTracing;
 		f.PipelineStatisticsQueries = mFeatures10.pipelineStatisticsQuery;
+		f.TimestampCalibration = mCalibratedTimestampsExtension != null;
 
 		// Mesh limits come from a second properties query, and are only asked for when the
 		// extension is there: chaining the struct otherwise reads a field the driver never
@@ -231,6 +244,31 @@ class VulkanAdapter : IAdapter
 		}
 	}
 
+	/// Whether the device can read its own timestamps and the host clock together. The KHR and
+	/// EXT entry points share a signature; the instance answers whichever exists.
+	private bool HasCalibrationDomains()
+	{
+		var query = (VulkanNative.vkGetPhysicalDeviceCalibrateableTimeDomainsKHRFunction)VulkanNative.vkGetInstanceProcAddr(mInstance, "vkGetPhysicalDeviceCalibrateableTimeDomainsKHR");
+		if (query == null)
+			query = (VulkanNative.vkGetPhysicalDeviceCalibrateableTimeDomainsKHRFunction)VulkanNative.vkGetInstanceProcAddr(mInstance, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
+		if (query == null)
+			return false;
+		uint32 count = 0;
+		if ((query(mPhysicalDevice, &count, null) != .VK_SUCCESS) || (count == 0))
+			return false;
+		let domains = scope VkTimeDomainKHR[count];
+		if (query(mPhysicalDevice, &count, &domains[0]) != .VK_SUCCESS)
+			return false;
+		var device = false;
+		var host = false;
+		for (uint32 i < count)
+		{
+			device |= domains[i] == .VK_TIME_DOMAIN_DEVICE_KHR;
+			host |= domains[i] == mHostTimeDomain;
+		}
+		return device && host;
+	}
+
 	/// What the device offers, from its extension list and its core version.
 	private void QueryExtensionSupport()
 	{
@@ -255,8 +293,16 @@ class VulkanAdapter : IAdapter
 			case "VK_EXT_descriptor_indexing": mSupportsDescriptorIndexing = true;
 			case "VK_EXT_mesh_shader": mSupportsMeshShader = true;
 			case "VK_KHR_ray_tracing_pipeline": mSupportsRayTracing = true;
+			case "VK_KHR_calibrated_timestamps": mCalibratedTimestampsExtension = "VK_KHR_calibrated_timestamps";
+			case "VK_EXT_calibrated_timestamps":
+				if (mCalibratedTimestampsExtension == null)
+					mCalibratedTimestampsExtension = "VK_EXT_calibrated_timestamps";
 			}
 		}
+		// Calibration is only of use when both the device's domain and the host clock the
+		// profiler reads are offered.
+		if ((mCalibratedTimestampsExtension != null) && !HasCalibrationDomains())
+			mCalibratedTimestampsExtension = null;
 
 		// From 1.3 these are CORE, so a device that supports the version supports them
 		// whether or not it still advertises the extension.

@@ -45,4 +45,12 @@ class NullQueue : IQueue
 
 	/// One nanosecond per tick, so a timestamp difference reads directly as nanoseconds.
 	public float TimestampPeriod() => 1.0f;
+
+	/// No GPU, so no clock to read.
+	public bool CalibrateTimestamps(out uint64 gpuTimestamp, out int64 cpuMicroseconds)
+	{
+		gpuTimestamp = 0;
+		cpuMicroseconds = 0;
+		return false;
+	}
 }
