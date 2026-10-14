@@ -139,6 +139,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	private bool mScreenshotExitPending = false;
 	/// The P key armed the profiler, for the rest of the run.
 	private bool mProfilerArmedByKey = false;
+	/// OnStartup installed the global profiler, so OnShutdown takes it down.
+	private bool mInstalledProfiler = false;
 	private float mExitAfterSeconds = 0.0f;
 	/// --profile-capture: seconds to capture from the start, begun once the profiler is installed.
 	private double mProfileCaptureSeconds = 0.0;
@@ -549,7 +551,10 @@ class DefaultApplication : IApplication, ISceneObserver
 		// DumpProfileOnRequest could never run. An application is exactly the case that
 		// should have one.
 		if (!HasGlobalProfiler())
+		{
 			InitGlobalProfiler(new Profiler(), true);
+			mInstalledProfiler = true;
+		}
 #if !SHIPPING
 		if (mProfileCaptureSeconds > 0.0)
 			StartProfileCapture(mProfileCaptureSeconds);
@@ -885,8 +890,13 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	public virtual void OnShutdown(IApplicationHost host)
 	{
-		// Paired with the install in OnStartup; owned, so this frees it.
-		ShutdownGlobalProfiler();
+		// Paired with the install in OnStartup; owned, so this frees it. One this application
+		// found installed (an editor's, which its Play-in-editor game shares) stays.
+		if (mInstalledProfiler)
+		{
+			ShutdownGlobalProfiler();
+			mInstalledProfiler = false;
+		}
 		mContactBridge.Uninstall();
 		// Every game script's exit() before its scenes go.
 		ForEachInstance(scope (instance) => instance.StopScript());
