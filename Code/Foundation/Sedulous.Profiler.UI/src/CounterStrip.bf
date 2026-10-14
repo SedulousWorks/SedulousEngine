@@ -34,11 +34,21 @@ class CounterStrip : ProfilerView
 		let column = Width / (float)Columns;
 		for (int i < mRows.Count)
 		{
-			let x = (float)(i % Columns) * column;
-			let y = (float)(i / Columns) * LineHeight;
+			let cell = CellOf(i);
+			let x = cell.X;
+			let y = cell.Y;
 			DrawLabel(ctx, mRows[i].Name, .(x, y, column - 70, LineHeight), Palette.Dim);
 			DrawLabel(ctx, mRows[i].Value, .(x + column - 72, y, 68, LineHeight), Palette.Text, .Right);
 		}
+	}
+
+	/// Where row `index` draws: across the columns, then down a line. Whole numbers of rows: an
+	/// int over a uint32 here once came out fractional and dropped the right column half a
+	/// line.
+	public Float2 CellOf(int index)
+	{
+		let columns = (int)Columns;
+		return .((float)(index % columns) * (Width / (float)Columns), (float)(index / columns) * LineHeight);
 	}
 
 	protected override void OnMeasure(BoxConstraints constraints)

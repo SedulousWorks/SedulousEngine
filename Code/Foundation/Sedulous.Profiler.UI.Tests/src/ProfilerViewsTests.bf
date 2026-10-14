@@ -120,6 +120,11 @@ class ProfilerViewsTests
 		Test.Assert(counters.Rows[0].Name == "Draws");
 		Test.Assert(counters.Rows[0].Value == "120");
 		Test.Assert(counters.Rows[1].Value == "2.0 MiB");
+		// Two to a line: the second beside the first, the third under it.
+		Stage(counters, 300, 100);
+		Test.Assert(Near(counters.CellOf(1).X, 150.0) && Near(counters.CellOf(1).Y, 0.0));
+		Test.Assert(Near(counters.CellOf(2).X, 0.0) && Near(counters.CellOf(2).Y, FrameTimeGraph.LineHeight));
+		Test.Assert(Near(counters.CellOf(3).Y, FrameTimeGraph.LineHeight));
 	}
 
 	[Test]
