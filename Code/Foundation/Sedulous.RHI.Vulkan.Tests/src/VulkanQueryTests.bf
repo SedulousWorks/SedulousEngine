@@ -189,4 +189,86 @@ class VulkanQueryTests
 				}
 			});
 	}
+
+	/// The profiler wraps each pass in a statistics query, and a pass may run render bundles:
+	/// Vulkan requires a secondary command buffer to inherit the active query's statistics
+	/// flags, or vkCmdExecuteCommands is invalid (the profiler armed in any game that uses
+	/// bundles). Under the layers, a bundle run inside a statistics query adds no error.
+	[Test]
+	public static void ABundleRunsInsideAStatisticsQueryWithoutAValidationError()
+	{
+		if (!(VulkanRhi.CreateBackend(true) case .Ok(let backend)))
+		{
+			Console.WriteLine("SKIP: no Vulkan");
+			return;
+		}
+		defer { backend.Destroy(); delete backend; }
+		let adapters = backend.EnumerateAdapters();
+		if (adapters.IsEmpty)
+		{
+			Console.WriteLine("SKIP: no Vulkan adapter");
+			return;
+		}
+		if (!(adapters[0].CreateDevice(DeviceDesc()) case .Ok(let device)))
+		{
+			Console.WriteLine("SKIP: no Vulkan device");
+			return;
+		}
+		defer device.Destroy();
+		if (!device.Features.PipelineStatisticsQueries)
+		{
+			Console.WriteLine("SKIP: no pipeline statistics on this adapter");
+			return;
+		}
+		let errorsBefore = VulkanRhi.ValidationErrorCount;
+
+		var queryDesc = QuerySetDesc();
+		queryDesc.Type = .PipelineStatistics;
+		queryDesc.Count = 1;
+		queryDesc.Label = "VulkanQueryTests.bundleStatistics";
+		Test.Assert(device.CreateQuerySet(queryDesc) case .Ok(var set));
+		defer device.DestroyQuerySet(ref set);
+		Test.Assert(device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 64, 64)) case .Ok(var target));
+		defer device.DestroyTexture(ref target);
+		Test.Assert(device.CreateTextureView(target, TextureViewDesc()) case .Ok(var view));
+		defer device.DestroyTextureView(ref view);
+
+		Test.Assert(device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		defer device.DestroyCommandPool(ref pool);
+		Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+		var bundleDesc = RenderBundleDesc();
+		bundleDesc.ColorFormats[0] = .RGBA8Unorm;
+		bundleDesc.ColorFormatCount = 1;
+		bundleDesc.Width = 64;
+		bundleDesc.Height = 64;
+		bundleDesc.Label = "VulkanQueryTests.bundle";
+		let bundleEncoder = encoder.CreateRenderBundleEncoder(bundleDesc);
+		Test.Assert(bundleEncoder != null);
+		let bundle = bundleEncoder.Finish();
+		Test.Assert(bundle != null);
+
+		encoder.ResetQuerySet(set, 0, 1);
+		encoder.TransitionTexture(target, .Undefined, .RenderTarget);
+		encoder.BeginPipelineStatisticsQuery(set, 0);
+		var attachment = ColorAttachment();
+		attachment.View = view;
+		var passDesc = RenderPassDesc();
+		passDesc.ColorAttachments.Add(attachment);
+		passDesc.Contents = .SecondaryCommandBuffers;
+		let pass = encoder.BeginRenderPass(passDesc);
+		var bundles = IRenderBundle[1](bundle);
+		pass.ExecuteBundles(bundles);
+		pass.End();
+		encoder.EndPipelineStatisticsQuery(set, 0);
+		let commandBuffer = encoder.Finish();
+		Test.Assert(commandBuffer != null);
+		Test.Assert(device.CreateFence(0) case .Ok(var fence));
+		defer device.DestroyFence(ref fence);
+		var buffers = ICommandBuffer[1](commandBuffer);
+		device.GetQueue(.Graphics).Submit(.(&buffers[0], 1), fence, 1);
+		Test.Assert(fence.Wait(1));
+		Test.Assert(VulkanRhi.ValidationErrorCount == errorsBefore,
+			scope $"{VulkanRhi.ValidationErrorCount - errorsBefore} validation errors");
+		pool.DestroyEncoder(ref encoder);
+	}
 }

@@ -21,6 +21,8 @@ class VulkanCommandPool : ICommandPool
 	private VulkanDevice mOwner;
 	private uint32 mFamilyIndex;
 	private QueueType mQueueType;
+	/// What a render bundle inherits: the statistics flags, where the device has them.
+	private VkQueryPipelineStatisticFlags mInheritedStatistics;
 
 	private List<VkCommandBuffer> mFreeHandles = new .() ~ delete _;
 	private List<VulkanCommandBuffer> mTrackedBuffers = new .() ~ DeleteContainerAndItems!(_);
@@ -45,6 +47,11 @@ class VulkanCommandPool : ICommandPool
 		mDevice = device;
 		mOwner = owner;
 		mQueueType = queueType;
+		// A statistics query may be active around a bundle (the profiler's, per pass); Vulkan
+		// then requires the bundle to inherit the query's flags, which the device can only when
+		// it enabled pipelineStatisticsQuery (it enables every 1.0 feature the adapter has).
+		mInheritedStatistics = adapter.Features10.pipelineStatisticsQuery
+			? VulkanQuerySet.PipelineStatisticsFlags : default;
 
 		let family = adapter.FindQueueFamily(queueType);
 		if (family < 0)
@@ -168,7 +175,7 @@ class VulkanCommandPool : ICommandPool
 			return null;
 
 		let encoder = new VulkanRenderBundleEncoder();
-		if (encoder.Initialize(mDevice, secondary, desc) case .Err)
+		if (encoder.Initialize(mDevice, secondary, desc, mInheritedStatistics) case .Err)
 		{
 			delete encoder;
 			return null;

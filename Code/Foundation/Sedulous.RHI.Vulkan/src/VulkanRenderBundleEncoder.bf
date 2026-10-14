@@ -21,8 +21,10 @@ class VulkanRenderBundleEncoder : IRenderBundleEncoder
 
 	public VulkanRenderBundle ProducedBundle => mBundle;
 
+	/// `inheritedStatistics` are the pipeline statistics a query active around the bundle
+	/// counts, which Vulkan requires the bundle to inherit.
 	public Result<void> Initialize(VkDevice device, VkCommandBuffer commandBuffer,
-		RenderBundleDesc desc)
+		RenderBundleDesc desc, VkQueryPipelineStatisticFlags inheritedStatistics)
 	{
 		mCommandBuffer = commandBuffer;
 
@@ -49,6 +51,7 @@ class VulkanRenderBundleEncoder : IRenderBundleEncoder
 
 		VkCommandBufferInheritanceInfo inheritance = .();
 		inheritance.pNext = &inheritRendering;
+		inheritance.pipelineStatistics = inheritedStatistics; // a statistics query may be active around it
 
 		VkCommandBufferBeginInfo beginInfo = .();
 		beginInfo.flags = .VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT

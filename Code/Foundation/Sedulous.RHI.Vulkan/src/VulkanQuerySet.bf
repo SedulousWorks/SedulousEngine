@@ -8,6 +8,18 @@ namespace Sedulous.RHI.Vulkan;
 /// A Vulkan query pool.
 class VulkanQuerySet : IQuerySet
 {
+	/// The RHI's six pipeline statistics, the flags of every statistics query pool. Vulkan
+	/// writes the enabled ones in bit order, which VulkanDevice.DecodePipelineStatistics reads
+	/// back. A render bundle inherits the same flags, since a pool's query may be active around
+	/// it.
+	public const VkQueryPipelineStatisticFlags PipelineStatisticsFlags =
+		.VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT
+		| .VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT
+		| .VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT
+		| .VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT
+		| .VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT
+		| .VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+
 	/// The counters a statistics query counts (the RHI's six), each a uint64.
 	public const uint32 PipelineStatisticsCounters = 6;
 
@@ -35,16 +47,8 @@ class VulkanQuerySet : IQuerySet
 			createInfo.queryType = .VK_QUERY_TYPE_OCCLUSION;
 		case .PipelineStatistics:
 			createInfo.queryType = .VK_QUERY_TYPE_PIPELINE_STATISTICS;
-			// The RHI's six counters. They must be named at creation, because the set of
-			// counters decides how wide a result is, and Vulkan writes the enabled ones in bit
-			// order, which VulkanDevice.DecodePipelineStatistics reads back.
-			createInfo.pipelineStatistics =
-				.VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT
-				| .VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT
-				| .VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT
-				| .VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT
-				| .VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT
-				| .VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+			// Named at creation, because the set of counters decides how wide a result is.
+			createInfo.pipelineStatistics = PipelineStatisticsFlags;
 		}
 
 		if (VulkanNative.vkCreateQueryPool(device, &createInfo, null, &mPool) != .VK_SUCCESS)
