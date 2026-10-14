@@ -11,7 +11,7 @@
 # Everything lives under build/steamdeck/ at the repository root:
 #   beef/      the Beef clone, built in the container once per commit
 #   src/       the copy of this repository the container builds, its dependency builds kept
-#   out/       the player bundle, Release_Linux64/Sedulous.Engine.Player.Desktop
+#   out/       the player bundle, ShippingRelease_Linux64/Sedulous.Engine.Player.Desktop
 #   template/  that bundle as an export template, installed for this user
 #
 # Then export with a preset whose template is the Steam Deck one (its id is printed at the end).
@@ -80,7 +80,7 @@ USER_ARGS=()
 # The template, written by the host's export tool so it is the format this engine reads, under
 # the Steam Deck's own identity, so it sits beside a desktop Linux template instead of
 # replacing it.
-BUNDLE="$STATE/out/Release_Linux64/Sedulous.Engine.Player.Desktop"
+BUNDLE="$STATE/out/ShippingRelease_Linux64/Sedulous.Engine.Player.Desktop"
 TEMPLATE="$STATE/template"
 [ -x "$EXPORT_TOOL" ] || { echo "!! no export tool at $EXPORT_TOOL; build Sedulous.Tools.Export" >&2; exit 1; }
 VERSION="$(sed -n 's/.*const String String = "\([0-9][0-9.]*\)".*/\1/p' "$ROOT/Code/Engine/Sedulous.Engine.Project/src/EngineVersion.bf" | head -1)"
@@ -89,7 +89,7 @@ rm -rf "$TEMPLATE"
 "$EXPORT_TOOL" --template create "$BUNDLE" --out "$TEMPLATE" \
 	--id "sedulous-steamdeck-release-$VERSION" \
 	--name "Steam Deck $VERSION" \
-	--notes "Linux64 Release built for glibc 2.35 (Ubuntu 22.04), carrying its own SDL3." \
+	--notes "Linux64 shipping build (ShippingRelease) for glibc 2.35 (Ubuntu 22.04), carrying its own SDL3." \
 	--icon handheld
 "$EXPORT_TOOL" --template import "$TEMPLATE"
 echo

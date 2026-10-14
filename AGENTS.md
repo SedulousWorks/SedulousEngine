@@ -14,6 +14,9 @@ BeefBuild -proddir=. -platform=Linux64 -test -project=Sedulous.Core.Tests
 ```
 
 - Outputs land in `Code/build/<Config>_<Platform>/<Project>/`.
+- Configs: Debug, Test, Release (optimised, the profiler compiled in) and ShippingRelease
+  (Release without the profiler: `SHIPPING` is defined). The export templates a game ships on
+  are ShippingRelease builds; a Release build packages as the `profile` template.
 - Build ONE project at a time, and never beside another heavy build (a second BeefBuild, the
   Steam Deck container, another engine's build). Two at once has run the machine out of memory.
 - A tool built before a change does not have it: rebuild the editor, the player or

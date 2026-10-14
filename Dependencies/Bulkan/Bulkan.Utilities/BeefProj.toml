@@ -17,3 +17,6 @@ LibPaths = ["$(ProjectDir)/dist/VulkanMemoryAllocator.lib"]
 
 [Configs.Test.Win64]
 LibPaths = ["$(ProjectDir)/dist/VulkanMemoryAllocator.lib"]
+
+[Configs.ShippingRelease.Win64]
+LibPaths = ["$(ProjectDir)/dist/VulkanMemoryAllocator.lib"]

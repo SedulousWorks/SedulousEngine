@@ -110,8 +110,11 @@ static class ExportTemplates
 			template.PlayerBinary.Set(webPage);
 			template.Compiler.Set("Emscripten");
 			// A web dist is another toolchain's build: the tool's own config says nothing
-			// about it, so only its build directory can name one, else Release.
+			// about it, so only its folder can name one: the profiling build's dist-profile,
+			// else the shipping build's.
 			template.Config.Clear();
+			if (PathFilename(scope String(playerDir)..TrimEnd('/')..TrimEnd('\\'), .. scope .()) == BuildLayout.cWebProfileDist)
+				template.Config.Set("Profile");
 			ClearAndDeleteItems(template.Sidecars);
 			BuildLayout.CollectWebParts(playerDir, webPage, template.Sidecars);
 		}
@@ -119,7 +122,7 @@ static class ExportTemplates
 		let parsedPlatform = scope String();
 		BuildLayout.ParseBuildDirectory(playerDir, parsedConfig, parsedPlatform);
 		if (!parsedConfig.IsEmpty)
-			template.Config.Set(parsedConfig);
+			template.Config.Set(BuildLayout.TemplateConfigFor(parsedConfig));
 		if (template.Config.IsEmpty)
 			template.Config.Set("Release");
 		if (!parsedPlatform.IsEmpty && (template.Platform != BuildLayout.cWebPlatform))

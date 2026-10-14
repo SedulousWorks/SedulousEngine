@@ -99,13 +99,29 @@ static class BuildLayout
 		// build directory, and the caller's defaults survive.
 		let config = name.Substring(0, underscore);
 		let platform = name.Substring(underscore + 1);
-		if ((config != "Debug") && (config != "Release") && (config != "Test"))
+		if ((config != "Debug") && (config != "Release") && (config != "ShippingRelease") && (config != "Test"))
 			return;
 		if ((platform != "Linux64") && (platform != "Win64") && (platform != "macOS") && (platform != "wasm32"))
 			return;
 		outConfig.Set(config);
 		outPlatform.Set((platform == "wasm32") ? cWebPlatform : platform);
 	}
+
+	/// The config a template made from a `buildConfig` build is named by. The shipping build
+	/// (ShippingRelease, no profiler) is what a game ships, so it is the Release template the
+	/// presets name; a plain Release build carries the profiler, its overlay and its capture,
+	/// and is the Profile template, to profile a game where it runs.
+	public static StringView TemplateConfigFor(StringView buildConfig)
+	{
+		if (buildConfig == "ShippingRelease")
+			return "Release";
+		if (buildConfig == "Release")
+			return "Profile";
+		return buildConfig;
+	}
+
+	/// The web player's profiling build writes here, beside the shipping build's dist/.
+	public const String cWebProfileDist = "dist-profile";
 
 	/// The shared libraries beside a player: its runtime sidecars.
 	public static void CollectSharedLibraries(StringView directory, List<String> outNames)

@@ -30,3 +30,12 @@ LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libmeshoptimizer.a"]
 
 [Configs.Release.wasm32]
 LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libmeshoptimizer.a"]
+
+[Configs.ShippingRelease.Win64]
+LibPaths = ["$(ProjectDir)/dist/Release-Win64/meshoptimizer.lib"]
+
+[Configs.ShippingRelease.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libmeshoptimizer.a"]
+
+[Configs.ShippingRelease.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libmeshoptimizer.a"]

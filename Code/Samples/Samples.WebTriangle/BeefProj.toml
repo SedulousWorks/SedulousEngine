@@ -29,3 +29,8 @@ OtherLinkFlags = "$(LinkFlags) -O3 --use-port=emdawnwebgpu:cpp_bindings=false -s
 TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"
 OtherLinkFlags = "$(LinkFlags) -O3 --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"
+
+[Configs.ShippingRelease.wasm32]
+TargetName = "$(ProjectName).html"
+TargetDirectory = "$(ProjectDir)/dist"
+OtherLinkFlags = "$(LinkFlags) -O3 --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 --shell-file $(ProjectDir)/shell.html"

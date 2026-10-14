@@ -27,3 +27,12 @@ LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libstb_image.a"]
 
 [Configs.Release.wasm32]
 LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libstb_image.a"]
+
+[Configs.ShippingRelease.Win64]
+LibPaths = ["$(ProjectDir)/dist/Release-Win64/stb_image.lib"]
+
+[Configs.ShippingRelease.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libstb_image.a"]
+
+[Configs.ShippingRelease.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libstb_image.a"]

@@ -30,3 +30,12 @@ LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libastcenc.a"]
 
 [Configs.Release.wasm32]
 LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libastcenc.a"]
+
+[Configs.ShippingRelease.Win64]
+LibPaths = ["$(ProjectDir)/dist/Release-Win64/astcenc.lib"]
+
+[Configs.ShippingRelease.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libastcenc.a"]
+
+[Configs.ShippingRelease.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libastcenc.a"]

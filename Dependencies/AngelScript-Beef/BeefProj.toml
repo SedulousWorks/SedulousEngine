@@ -32,3 +32,12 @@ LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libangelscript_beef.a", "$(Projec
 
 [Configs.Release.wasm32]
 LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libangelscript_beef.a", "$(ProjectDir)/dist/Release-wasm32/libangelscript.a"]
+
+[Configs.ShippingRelease.Win64]
+LibPaths = ["$(ProjectDir)/dist/Release-Win64/angelscript_beef.lib", "$(ProjectDir)/dist/Release-Win64/angelscript.lib"]
+
+[Configs.ShippingRelease.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libangelscript_beef.a", "$(ProjectDir)/dist/Release-Linux64/libangelscript.a"]
+
+[Configs.ShippingRelease.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libangelscript_beef.a", "$(ProjectDir)/dist/Release-wasm32/libangelscript.a"]

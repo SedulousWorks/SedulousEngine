@@ -2,7 +2,7 @@ using System;
 
 namespace Sedulous.Profiler;
 
-#if PROFILING || DEBUG || TEST
+#if !SHIPPING
 #define SEDULOUS_PROFILING
 #endif
 

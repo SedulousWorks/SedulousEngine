@@ -136,7 +136,7 @@ class RenderGraph
 
 		mBarrierSolver.Reset(ResourceSpan());
 
-#if PROFILING || DEBUG || TEST
+#if !SHIPPING
 		// While the profiler is armed, every executed pass is a CPU scope (its recording) and,
 		// where the device has timestamps, a GPU pass of this frame (GraphProfiler).
 		let cpuProfiler = GlobalProfiler();
@@ -173,7 +173,7 @@ class RenderGraph
 			// A pass's CPU cost (barriers and record or execute, any bundle build or wait included)
 			// as a scope under its name: the graph's execute is often CPU bound while the GPU is
 			// idle.
-#if PROFILING || DEBUG || TEST
+#if !SHIPPING
 			var passScope = false;
 			if (profiling)
 			{
@@ -205,7 +205,7 @@ class RenderGraph
 				}
 			}
 			encoder.EndDebugLabel();
-#if PROFILING || DEBUG || TEST
+#if !SHIPPING
 			if (gpuProfiler != null)
 				gpuProfiler.EndPass(encoder);
 			if (passScope)
@@ -213,7 +213,7 @@ class RenderGraph
 #endif
 		}
 
-#if PROFILING || DEBUG || TEST
+#if !SHIPPING
 		if (gpuProfiler != null)
 			gpuProfiler.EndFrame(encoder);
 #endif

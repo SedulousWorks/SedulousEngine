@@ -30,3 +30,12 @@ LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libbc7enc-c.a"]
 
 [Configs.Release.wasm32]
 LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libbc7enc-c.a"]
+
+[Configs.ShippingRelease.Win64]
+LibPaths = ["$(ProjectDir)/dist/Release-Win64/bc7enc-c.lib"]
+
+[Configs.ShippingRelease.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libbc7enc-c.a"]
+
+[Configs.ShippingRelease.wasm32]
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libbc7enc-c.a"]

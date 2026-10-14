@@ -4,14 +4,14 @@
 #   /work  a copy of this repository (the sources, not the host's builds)
 #   /out   where the player bundle lands
 #
-# Builds, in order: Beef (once per commit), the native dependencies, the Release player. Then
+# Builds, in order: Beef (once per commit), the native dependencies, the shipping player (ShippingRelease: Release without the profiler). Then
 # stages the player with the shared libraries it needs and checks that nothing in the bundle
 # asks for a glibc newer than the Deck's.
 set -euo pipefail
 
 MAX_GLIBC="2.35"
-BUNDLE="/out/Release_Linux64/Sedulous.Engine.Player.Desktop"
-PLAYER_BUILD="/work/Code/build/Release_Linux64/Sedulous.Engine.Player.Desktop"
+BUNDLE="/out/ShippingRelease_Linux64/Sedulous.Engine.Player.Desktop"
+PLAYER_BUILD="/work/Code/build/ShippingRelease_Linux64/Sedulous.Engine.Player.Desktop"
 # Editor only: the player loads DXC on demand and never compiles a shader from a cooked pack,
 # and DXC's prebuilt library asks for glibc 2.38.
 LEAVE_OUT="libdxcompiler.so libdxil.so"
@@ -51,9 +51,9 @@ for script in /work/Dependencies/*/build-native.sh; do
 done
 
 # --- the player ---------------------------------------------------------------------------
-log "Sedulous.Engine.Player.Desktop (Release)"
+log "Sedulous.Engine.Player.Desktop (ShippingRelease)"
 cd /work/Code
-"$BEEFBUILD" -proddir=. -config=Release -platform=Linux64 -project=Sedulous.Engine.Player.Desktop
+"$BEEFBUILD" -proddir=. -config=ShippingRelease -platform=Linux64 -project=Sedulous.Engine.Player.Desktop
 
 # --- the bundle ---------------------------------------------------------------------------
 log "Stage $BUNDLE"

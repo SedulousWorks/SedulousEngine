@@ -49,6 +49,12 @@ OtherLinkFlags = "$(LinkFlags) -O3 -lwebsocket.js --use-port=emdawnwebgpu:cpp_bi
 
 [Configs.Release.wasm32]
 TargetName = "$(ProjectName).html"
+TargetDirectory = "$(ProjectDir)/dist-profile"
+PostBuildCmds = ["CopyToTarget(\"$(ProjectDir)/serve.py\")", "CopyToTarget(\"$(ProjectDir)/../../../Data/Assets/branding/sedulous-logo.svg\")"]
+OtherLinkFlags = "$(LinkFlags) -O3 -lwebsocket.js --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 -lidbfs.js --js-library $(ProjectDir)/player.js --shell-file $(ProjectDir)/shell.html"
+
+[Configs.ShippingRelease.wasm32]
+TargetName = "$(ProjectName).html"
 TargetDirectory = "$(ProjectDir)/dist"
 PostBuildCmds = ["CopyToTarget(\"$(ProjectDir)/serve.py\")", "CopyToTarget(\"$(ProjectDir)/../../../Data/Assets/branding/sedulous-logo.svg\")"]
 OtherLinkFlags = "$(LinkFlags) -O3 -lwebsocket.js --use-port=emdawnwebgpu:cpp_bindings=false -s ASYNCIFY -s ASYNCIFY_STACK_SIZE=1048576 -s STACK_SIZE=2097152 -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 -lidbfs.js --js-library $(ProjectDir)/player.js --shell-file $(ProjectDir)/shell.html"

@@ -37,3 +37,15 @@ LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libjoltc.a", "$(ProjectDir)/dist/
 [Configs.Release.wasm32]
 # joltc BEFORE Jolt: the linker resolves left to right and the wrapper is what references it.
 LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libjoltc.a", "$(ProjectDir)/dist/Release-wasm32/libJolt.a"]
+
+[Configs.ShippingRelease.Win64]
+LibPaths = ["$(ProjectDir)/dist/Release-Win64/joltc.lib", "$(ProjectDir)/dist/Release-Win64/jolt.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Release-Win64/*.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/Release-Win64/*.pdb\")"]
+
+[Configs.ShippingRelease.Linux64]
+LibPaths = ["$(ProjectDir)/dist/Release-Linux64/libjoltc.so"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/Release-Linux64/*.so\")"]
+
+[Configs.ShippingRelease.wasm32]
+# joltc BEFORE Jolt: the linker resolves left to right and the wrapper is what references it.
+LibPaths = ["$(ProjectDir)/dist/Release-wasm32/libjoltc.a", "$(ProjectDir)/dist/Release-wasm32/libJolt.a"]

@@ -3,7 +3,7 @@ using Sedulous.Core;
 
 namespace Sedulous.Profiler;
 
-#if PROFILING || DEBUG || TEST
+#if !SHIPPING
 #define SEDULOUS_PROFILING
 #endif
 
@@ -18,9 +18,9 @@ namespace Sedulous.Profiler;
 /// them: [SkipCall] removes the call at the CALL SITE, arguments and all, so an
 /// uninstrumented build pays nothing at all rather than paying for a check.
 ///
-/// Profiling is compiled in for a debug or test build, and for any build that defines
-/// PROFILING; a release build without it compiles these to nothing. PROFILING exists
-/// because the build worth profiling is usually the optimised one.
+/// Profiling is compiled into every build but the shipping one (the ShippingRelease config,
+/// which defines SHIPPING and builds the export templates): Release keeps it, since Release is
+/// where timings mean something. In shipping these compile to nothing.
 ///
 /// A scope is bracketed with using, which is Beef's answer to the RAII helper:
 ///

@@ -434,8 +434,9 @@ static class ExportTemplateTests
 		let basePath = Scratch("scratch_createtmpl", .. scope .());
 		let root = Scratch("scratch_createtmpl_root", .. scope .());
 		defer { RemoveDirectoryRecursive(basePath); RemoveDirectoryRecursive(root); }
-		// A Beef build directory: <build>/Release_<Platform>/<Player>/.
-		let buildDir = PathJoin(PathJoin(basePath, scope $"Release_{BuildLayout.HostPlatformName}", .. scope .()), BuildLayout.cPlayerBaseName, .. scope .());
+		// A Beef build directory: <build>/ShippingRelease_<Platform>/<Player>/, the shipping
+		// build that is the Release template.
+		let buildDir = PathJoin(PathJoin(basePath, scope $"ShippingRelease_{BuildLayout.HostPlatformName}", .. scope .()), BuildLayout.cPlayerBaseName, .. scope .());
 		CreateDirectory(buildDir);
 		let playerName = BuildLayout.ExecutableName(BuildLayout.cPlayerBaseName, .. scope .());
 		SaveText(buildDir, playerName, "#!player\n");
@@ -465,6 +466,16 @@ static class ExportTemplateTests
 		let found = registry.FindById(createdId);
 		Test.Assert((found != null) && !found.IsHost && (found.Config == "Release"));
 		Test.Assert(registry.FindBy(BuildLayout.HostPlatformName, "Release") == found);
+
+		// A plain Release build carries the profiler: the Profile template, beside it.
+		let profileBuild = PathJoin(PathJoin(basePath, scope $"Release_{BuildLayout.HostPlatformName}", .. scope .()), BuildLayout.cPlayerBaseName, .. scope .());
+		CreateDirectory(profileBuild);
+		SaveText(profileBuild, playerName, "#!player\n");
+		let profileId = scope String();
+		Test.Assert(ExportTemplates.Create(profileBuild, root, .Install, profileId) case .Ok);
+		Test.Assert(profileId == scope $"sedulous-{scope String(BuildLayout.HostPlatformName)..ToLower()}-profile-{EngineVersion.String}", scope $"{profileId}");
+		registry.Refresh(root, basePath);
+		Test.Assert(registry.FindBy(BuildLayout.HostPlatformName, "Release") == registry.FindById(createdId), "the shipping one is still the Release template");
 	}
 
 	[Test]
@@ -509,6 +520,15 @@ static class ExportTemplateTests
 		let createdDir = scope String();
 		Test.Assert(ExportTemplates.Create(distDir, root, .Install, createdId, createdDir) case .Ok);
 		Test.Assert(createdId == scope $"sedulous-web-release-{EngineVersion.String}", scope $"{createdId}");
+		// The profiling build writes beside it, to dist-profile: the Profile template.
+		let profileDist = PathJoin(basePath, BuildLayout.cWebProfileDist, .. scope .());
+		CreateDirectory(profileDist);
+		SaveText(profileDist, page, "<html></html>\n");
+		SaveText(profileDist, scope $"{BuildLayout.cWebPlayerBaseName}.js", "js\n");
+		SaveText(profileDist, scope $"{BuildLayout.cWebPlayerBaseName}.wasm", "wasm\n");
+		let profileId = scope String();
+		Test.Assert(ExportTemplates.Create(profileDist, root, .Install, profileId) case .Ok);
+		Test.Assert(profileId == scope $"sedulous-web-profile-{EngineVersion.String}", scope $"{profileId}");
 		let manifest = scope ExportTemplate();
 		Test.Assert(ExportTemplates.LoadManifest(scope NativeFileSystem(createdDir), manifest) case .Ok);
 		Test.Assert((manifest.Platform == "Web") && (manifest.PlayerBinary == page) && (manifest.Compiler == "Emscripten"));

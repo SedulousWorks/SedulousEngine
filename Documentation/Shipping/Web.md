@@ -9,13 +9,18 @@ A web template is the browser player's build, packaged. From a checkout's `Code/
 emscripten's environment set (`source <emsdk>/emsdk_env.sh`):
 
 ```
-BeefBuild -proddir=. -config=Release -platform=wasm32 -project=Sedulous.Engine.Player.Web
+BeefBuild -proddir=. -config=ShippingRelease -platform=wasm32 -project=Sedulous.Engine.Player.Web
 Sedulous.Tools.Export --template create Engine/Sedulous.Engine.Player.Web/dist --install
 ```
 
 The build writes the page, its script, its module and `serve.py` to the project's `dist/`; the
-second line installs them as `sedulous-web-release-<engine version>`. A player rebuilt after an
-engine change reaches a game only once its template is created and installed again.
+second line installs them as `sedulous-web-release-<engine version>`, the template a game ships
+on: ShippingRelease is Release without the profiler. A player rebuilt after an engine change
+reaches a game only once its template is created and installed again.
+
+To profile a game in the browser, build the player with `-config=Release` instead: it carries
+the profiler, its overlay and its capture, writes to `dist-profile/`, and installs from there as
+`sedulous-web-profile-<engine version>`, for a preset to name in place of the release one.
 
 ## A web export
 
