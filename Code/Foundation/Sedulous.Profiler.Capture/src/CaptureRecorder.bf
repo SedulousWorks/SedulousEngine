@@ -47,6 +47,9 @@ class CaptureRecorder
 	/// Who records: the application (a player sets its project's name), written into each
 	/// capture's header and its file name.
 	public void SetApplication(StringView name) => mApplication.Set(name);
+	public StringView Application => mApplication;
+	public StringView Platform => mPlatform;
+	public StringView Build => mBuild;
 
 	/// The platform and build (the host sets them), written into each capture's header.
 	public void SetBuild(StringView platform, StringView build)
@@ -103,8 +106,24 @@ class CaptureRecorder
 	{
 		CreateDirectory(mFolder); // its parents too
 		let source = scope LiveProfileSource(profiler);
-		let first = Math.Max(mFirstFrame, source.OldestFrame);
-		let streamPath = scope $"{mBase}.aeprofile";
+		let header = scope StreamHeader();
+		header.TickFrequency = source.TickFrequency;
+		header.Application.Set(mApplication);
+		header.Platform.Set(mPlatform);
+		header.Build.Set(mBuild);
+		let written = WriteCaptureFiles(source, Math.Max(mFirstFrame, source.OldestFrame), mLastFrame, mBase, header, .. scope .());
+		if (!written.IsEmpty)
+			mLastCapture.Set(written);
+	}
+
+	/// Writes `source`'s frames `first` to `last` as a capture: `<basePath>.aeprofile`, the
+	/// profile stream, and `<basePath>.json` beside it, Chrome trace JSON for Perfetto. The folder
+	/// must exist. Appends the stream file's path to `outPath`, nothing when it could not be
+	/// written.
+	public static void WriteCaptureFiles(IProfileSource source, uint64 first, uint64 last, StringView basePath,
+		StreamHeader header, String outPath)
+	{
+		let streamPath = scope $"{basePath}.aeprofile";
 		{
 			let file = scope FileStream(streamPath, .Write);
 			if (!file.IsValid)
@@ -113,23 +132,18 @@ class CaptureRecorder
 				return;
 			}
 			let writer = scope ProfileStreamWriter(file);
-			let header = scope StreamHeader();
-			header.TickFrequency = source.TickFrequency;
-			header.Application.Set(mApplication);
-			header.Platform.Set(mPlatform);
-			header.Build.Set(mBuild);
 			writer.WriteHeader(header);
-			for (var n = first; n <= mLastFrame; n++)
+			for (var n = first; n <= last; n++)
 			{
 				if (let frame = source.Frame(n))
 					writer.WriteFrame(source, frame);
 			}
 		}
 		let json = scope String();
-		ChromeTrace.Write(source, first, mLastFrame, mApplication, json);
-		let jsonFile = scope FileStream(scope $"{mBase}.json", .Write);
+		ChromeTrace.Write(source, first, last, header.Application, json);
+		let jsonFile = scope FileStream(scope $"{basePath}.json", .Write);
 		if (jsonFile.IsValid)
 			jsonFile.Write(.((uint8*)json.Ptr, json.Length));
-		mLastCapture.Set(streamPath);
+		outPath.Append(streamPath);
 	}
 }

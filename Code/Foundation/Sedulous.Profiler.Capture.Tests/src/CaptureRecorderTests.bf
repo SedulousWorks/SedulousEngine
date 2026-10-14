@@ -66,4 +66,42 @@ class CaptureRecorderTests
 		defer delete trace;
 		Test.Assert(trace.Get("traceEvents").IsArray);
 	}
+
+	/// The editor's panel saves what it recorded this way, as the recorder writes a capture.
+	[Test]
+	public static void AnySourcesFramesARecordingsTooAsTheStreamAndTheChromeTrace()
+	{
+		let p = scope Profiler();
+		p.Arm();
+		let live = scope LiveProfileSource(p);
+		let recording = scope ProfileRecording();
+		recording.Begin(live);
+		for (uint32 f < 3)
+		{
+			p.BeginFrame();
+			Test.Assert(p.BeginScope("Panel"));
+			p.EndScope();
+			p.EndFrame();
+		}
+		recording.Pull(live, 0);
+		Test.Assert(CreateDirectory("scratch_capture_files"));
+		let header = scope StreamHeader();
+		header.TickFrequency = recording.TickFrequency;
+		header.Application.Set("Editor");
+		let path = CaptureRecorder.WriteCaptureFiles(recording, recording.OldestFrame, recording.NewestFrame,
+			"scratch_capture_files/saved", header, .. scope .());
+		Test.Assert(path == "scratch_capture_files/saved.aeprofile", path);
+		{
+			let file = scope FileStream(path, .Read);
+			Test.Assert(file.IsValid);
+			let capture = scope ProfileCapture();
+			Test.Assert(capture.Read(file));
+			Test.Assert(capture.FrameCount == 3);
+			Test.Assert(capture.Header.Application == "Editor");
+		}
+		Test.Assert(FileExists("scratch_capture_files/saved.json"));
+
+		// A folder that is not there: nothing written, an empty answer.
+		Test.Assert(CaptureRecorder.WriteCaptureFiles(recording, 0, 0, "scratch_no_such_folder/x/saved", header, .. scope .()).IsEmpty);
+	}
 }
