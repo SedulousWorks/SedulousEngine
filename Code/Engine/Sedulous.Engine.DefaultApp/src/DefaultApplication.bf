@@ -139,6 +139,10 @@ class DefaultApplication : IApplication, ISceneObserver
 	private bool mScreenshotExitPending = false;
 	/// The P key armed the profiler, for the rest of the run.
 	private bool mProfilerArmedByKey = false;
+	/// --profile-overlay: the overlay shown from the start, once the UI is up.
+	private bool mProfilerOverlayAtStart = false;
+	/// Made on first show (F3, --profile-overlay, Run.SetProfilerOverlay).
+	private ProfilerOverlayHost mProfilerOverlay ~ delete _;
 	/// OnStartup installed the global profiler, so OnShutdown takes it down.
 	private bool mInstalledProfiler = false;
 	private float mExitAfterSeconds = 0.0f;
@@ -191,6 +195,21 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// A profile capture of the first `seconds` of the run, to <user-data>/profiles (as F9
 	/// takes one of the next five); nought takes none.
 	public void SetProfileCaptureSeconds(double seconds) => mProfileCaptureSeconds = seconds;
+
+	/// Shows the profiler overlay once the UI is up (the player's --profile-overlay, the web
+	/// page's ?profile-overlay). F3 toggles it at any time.
+	public void SetProfilerOverlayAtStart(bool shown) => mProfilerOverlayAtStart = shown;
+
+	/// The overlay host, made on first use over the global profiler; it shows on this app's UI.
+	public ProfilerOverlayHost ProfilerOverlay
+	{
+		get
+		{
+			if (mProfilerOverlay == null)
+				mProfilerOverlay = new ProfilerOverlayHost(HasGlobalProfiler() ? GlobalProfiler() : null);
+			return mProfilerOverlay;
+		}
+	}
 
 	/// An explicit data root, which beats the discovery walk. The player fills this from
 	/// --data-root; set it before Configure or it is too late to matter.
@@ -438,6 +457,24 @@ class DefaultApplication : IApplication, ISceneObserver
 					});
 			});
 		instance.SetExitRequest(new (code) => host.RequestExit(code));
+		// Run.SetProfilerOverlay / Run.ProfilerAvailable: this app's overlay, the one F3
+		// toggles. In ShippingRelease it shows nothing and reads unavailable; the calls stay.
+		instance.SetProfilerOverlay(new (shown) =>
+			{
+				if (mUI == null)
+					return;
+				if (shown)
+					ProfilerOverlay.Show(mUI);
+				else if (mProfilerOverlay != null)
+					mProfilerOverlay.Hide();
+			}, new () =>
+			{
+#if SHIPPING
+				return false;
+#else
+				return (mUI != null) && HasGlobalProfiler();
+#endif
+			});
 		instance.SetSceneActivationPolicy(new (scene) => ApplyLoadedSceneActivation(scene));
 		InstallRunAudio(instance);
 		InstallRunUi(instance);
@@ -577,7 +614,11 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		let resources = Resources;
 		if (mUI != null)
+		{
 			mUI.SetResourceManager(resources); // the game UI's images bind through it
+			if (mProfilerOverlayAtStart)
+				ProfilerOverlay.Show(mUI);
+		}
 		// A headless or content free application attaches one later, or never.
 		if (resources == null)
 			return;
@@ -640,6 +681,7 @@ class DefaultApplication : IApplication, ISceneObserver
 
 		DumpProfileOnRequest(host);
 		ProfileCaptureOnRequest(host);
+		ProfilerOverlayOnRequest(host);
 		CaptureOnRequest(host);
 	}
 
@@ -654,6 +696,19 @@ class DefaultApplication : IApplication, ISceneObserver
 		if ((keyboard != null) && keyboard.IsKeyPressed(.F9))
 			StartProfileCapture(5.0);
 #endif
+	}
+
+	/// F3: the profiler overlay on and off; and while it shows, the frames that ended since
+	/// reach its views before the UI draws.
+	private void ProfilerOverlayOnRequest(IApplicationHost host)
+	{
+		let shell = host.Shell;
+		let input = (shell != null) ? shell.Input : null;
+		let keyboard = (input != null) ? input.Keyboard : null;
+		if ((keyboard != null) && keyboard.IsKeyPressed(.F3) && (mUI != null))
+			ProfilerOverlay.Toggle(mUI);
+		if (mProfilerOverlay != null)
+			mProfilerOverlay.Refresh();
 	}
 
 	private void StartProfileCapture(double seconds)
@@ -890,6 +945,9 @@ class DefaultApplication : IApplication, ISceneObserver
 
 	public virtual void OnShutdown(IApplicationHost host)
 	{
+		// Off the UI's overlay layer and the profiler let go, while both are alive.
+		if (mProfilerOverlay != null)
+			mProfilerOverlay.Hide();
 		// Paired with the install in OnStartup; owned, so this frees it. One this application
 		// found installed (an editor's, which its Play-in-editor game shares) stays.
 		if (mInstalledProfiler)

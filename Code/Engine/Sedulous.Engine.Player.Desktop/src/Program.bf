@@ -97,6 +97,8 @@ class Program
 		CaptureRecorder.Process.SetApplication(manifest.Name.IsEmpty ? "Player" : StringView(manifest.Name));
 		// --profile-capture <seconds>: a capture from the start, to <user-data>/profiles.
 		app.SetProfileCaptureSeconds(ProfileCaptureSeconds(args));
+		// --profile-overlay: the profiler overlay from the start (F3 toggles it either way).
+		app.SetProfilerOverlayAtStart(HasFlag(args, "--profile-overlay"));
 		// --screenshot <png> [--screenshot-frame N | --screenshot-after S] [--screenshot-count N]
 		// [--screenshot-exit]: a capture with no hand on F11, which is how a run proves what it
 		// drew; with a count, that many consecutive frames as <png stem>-<i>.png.
@@ -104,6 +106,16 @@ class Program
 		// The engine data root: --data-root when given, else the discovery walk.
 		app.SetDataRoot(DataRootFromArguments(args, .. scope .()));
 		return DesktopRunner.RunApplication(app, shell, graphics);
+	}
+
+	private static bool HasFlag(String[] args, StringView flag)
+	{
+		for (let arg in args)
+		{
+			if (arg == flag)
+				return true;
+		}
+		return false;
 	}
 
 	/// --profile-capture's seconds, nought without it.

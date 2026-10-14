@@ -266,8 +266,10 @@ captures rather than reading one number in isolation. The files stay: `path` is 
 the same frames as Chrome trace JSON for Perfetto or chrome://tracing; hand those to the user
 for a timeline. A debug editor is slower than an exported game, so measure the game's own
 timing in its player: `<dist>/<player> --profile-capture <seconds>` writes the same two files
-under `<user-data>/profiles` (F9 in any running game does too). A ShippingRelease build has no
-profiler, and says so.
+under `<user-data>/profiles` (F9 in any running game does too), and `--profile-overlay` shows
+the profiler overlay (frame times, the longest scopes and passes, the counters) in its window
+and so in its `--screenshot` (F3 toggles it). A ShippingRelease build has no profiler, and says
+so.
 
 **Screenshots**: four ways in, by what the picture is of. Each writes a PNG, by default under
 `<user-data>/screenshots` (`~/.local/share/Sedulous/screenshots` on Linux), and answers its path;
