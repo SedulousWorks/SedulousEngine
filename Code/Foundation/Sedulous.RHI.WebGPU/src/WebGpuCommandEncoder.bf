@@ -33,6 +33,19 @@ sealed class WebGpuCommandEncoder : ICommandEncoder
 	private WGPUBuffer mQueryScratch = null;
 	private uint64 mQueryScratchSize = 0;
 
+	private DeviceCounterBlock mCounters;
+
+	/// The device's counts, BORROWED: this encoder and its passes bump them.
+	public DeviceCounterBlock Counters
+	{
+		set
+		{
+			mCounters = value;
+			mRenderPass.Counters = value;
+			mComputePass.Counters = value;
+		}
+	}
+
 	public void Initialize(WGPUDevice device, WebGpuBlitHelper blitHelper)
 	{
 		mDevice = device;
@@ -158,6 +171,7 @@ sealed class WebGpuCommandEncoder : ICommandEncoder
 			height = Math.Max(sized.Texture.Desc.Height >> mip, 1);
 		}
 		mRenderPass.Begin(mDevice, pass, width, height);
+		mCounters?.RenderPass();
 		return mRenderPass;
 	}
 
@@ -170,6 +184,7 @@ sealed class WebGpuCommandEncoder : ICommandEncoder
 
 		let pass = wgpuCommandEncoderBeginComputePass(mEncoder, &wgpu);
 		mComputePass.Begin(mDevice, pass);
+		mCounters?.ComputePass();
 		return mComputePass;
 	}
 

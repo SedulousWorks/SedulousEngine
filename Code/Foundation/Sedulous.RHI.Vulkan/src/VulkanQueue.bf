@@ -232,8 +232,10 @@ class VulkanQueue : IQueue
 
 	public Result<ITransferBatch> CreateTransferBatch()
 	{
-		return .Ok(new VulkanTransferBatch(mDevice.Handle, mDevice.Adapter.PhysicalDevice,
-			mQueue, mFamilyIndex));
+		let batch = new VulkanTransferBatch(mDevice.Handle, mDevice.Adapter.PhysicalDevice,
+			mQueue, mFamilyIndex);
+		batch.Counters = mDevice.CounterBlock;
+		return .Ok(batch);
 	}
 
 	public void DestroyTransferBatch(ref ITransferBatch batch)

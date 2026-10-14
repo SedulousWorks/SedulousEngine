@@ -99,11 +99,15 @@ class DxTransferBatch : ITransferBatch
 		return staging;
 	}
 
+	/// The device's counts, BORROWED; null counts nothing.
+	public DeviceCounterBlock Counters;
+
 	public void WriteBuffer(IBuffer dst, uint64 dstOffset, Span<uint8> data)
 	{
 		let dxDst = dst as DxBuffer;
 		if ((dxDst == null) || (data.Length == 0))
 			return;
+		Counters?.Transfer((uint64)data.Length);
 
 		EnsureRecording();
 
@@ -126,6 +130,7 @@ class DxTransferBatch : ITransferBatch
 		let dxTex = dst as DxTexture;
 		if ((dxTex == null) || (data.Length == 0))
 			return;
+		Counters?.Transfer((uint64)data.Length);
 
 		EnsureRecording();
 

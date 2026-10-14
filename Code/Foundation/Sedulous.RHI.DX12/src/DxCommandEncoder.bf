@@ -65,6 +65,7 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public IRenderPassEncoder BeginRenderPass(RenderPassDesc desc)
 	{
+		mRpeCtx.Counters?.RenderPass();
 		EnsureDescriptorHeaps();
 
 		if (desc.TimestampQuerySet != null)
@@ -147,6 +148,7 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public IComputePassEncoder BeginComputePass(StringView label = default)
 	{
+		mRpeCtx.Counters?.ComputePass();
 		EnsureDescriptorHeaps();
 		mCpe.Begin();
 		return mCpe;
@@ -876,6 +878,7 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void SetRayTracingPipeline(IRayTracingPipeline pipeline)
 	{
+		mRpeCtx.Counters?.PipelineBinds();
 		mCurrentRtPipeline = pipeline as DxRayTracingPipeline;
 		if (mCurrentRtPipeline == null)
 			return;
@@ -897,6 +900,7 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets = default)
 	{
+		mRpeCtx.Counters?.BindGroupBinds();
 		let dxGroup = group as DxBindGroup;
 		if ((dxGroup == null) || (mCurrentRtPipeline == null))
 			return;
@@ -979,6 +983,7 @@ class DxCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		IBuffer hitSBT, uint64 hitOffset, uint64 hitStride,
 		uint32 width, uint32 height, uint32 depth = 1)
 	{
+		mRpeCtx.Counters?.Dispatches(); // a trace counts as a dispatch
 		ID3D12GraphicsCommandList4* cmdList4 = null;
 		if (FAILED(mCmdList.QueryInterface(ID3D12GraphicsCommandList4.IID, (void**)&cmdList4)) ||
 			(cmdList4 == null))

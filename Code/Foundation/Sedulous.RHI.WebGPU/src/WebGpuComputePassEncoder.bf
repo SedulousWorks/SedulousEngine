@@ -10,6 +10,8 @@ sealed class WebGpuComputePassEncoder : IComputePassEncoder
 {
 	private WGPUComputePassEncoder mEncoder;
 	private PushConstantEmulator mPushConstants = new .() ~ delete _;
+	/// The device's counts, BORROWED, set by the command encoder; null counts nothing.
+	public DeviceCounterBlock Counters;
 
 	public void Begin(WGPUDevice device, WGPUComputePassEncoder encoder)
 	{
@@ -25,6 +27,7 @@ sealed class WebGpuComputePassEncoder : IComputePassEncoder
 
 		wgpuComputePassEncoderSetPipeline(mEncoder, wgpuPipeline.Handle);
 		mPushConstants.SetPipeline(wgpuPipeline.PushConstants);
+		Counters?.PipelineBinds();
 	}
 
 	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets = default)
@@ -35,6 +38,7 @@ sealed class WebGpuComputePassEncoder : IComputePassEncoder
 
 		wgpuComputePassEncoderSetBindGroup(mEncoder, index, wgpuGroup.Handle,
 			(uint)dynamicOffsets.Length, dynamicOffsets.Ptr);
+		Counters?.BindGroupBinds();
 	}
 
 	public void SetPushConstants(ShaderStage stages, uint32 offset, uint32 size, void* data)
@@ -49,6 +53,7 @@ sealed class WebGpuComputePassEncoder : IComputePassEncoder
 	{
 		FlushPushConstants();
 		wgpuComputePassEncoderDispatchWorkgroups(mEncoder, x, y, z);
+		Counters?.Dispatches();
 	}
 
 	public void DispatchIndirect(IBuffer buffer, uint64 offset)
@@ -59,6 +64,7 @@ sealed class WebGpuComputePassEncoder : IComputePassEncoder
 
 		FlushPushConstants();
 		wgpuComputePassEncoderDispatchWorkgroupsIndirect(mEncoder, wgpuBuffer.Handle, offset);
+		Counters?.Dispatches();
 	}
 
 	/// Nothing to do: WebGPU tracks hazards itself, and dispatch ordering within a pass

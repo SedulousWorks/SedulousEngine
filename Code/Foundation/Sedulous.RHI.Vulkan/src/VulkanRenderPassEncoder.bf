@@ -12,6 +12,8 @@ class VulkanRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 	private VkDevice mDevice;
 	private VulkanRenderPipeline mPipeline;
 	private VulkanMeshPipeline mMeshPipeline;
+	/// The device's counts, BORROWED, set by the command encoder; null counts nothing.
+	public DeviceCounterBlock Counters;
 
 	public this(VkCommandBuffer commandBuffer, VkDevice device)
 	{
@@ -39,6 +41,7 @@ class VulkanRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 
 	public void SetPipeline(IRenderPipeline pipeline)
 	{
+		Counters?.PipelineBinds();
 		mPipeline = pipeline as VulkanRenderPipeline;
 		mMeshPipeline = null;
 		if (mPipeline != null)
@@ -50,6 +53,7 @@ class VulkanRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 
 	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets)
 	{
+		Counters?.BindGroupBinds();
 		let bindGroup = group as VulkanBindGroup;
 		let layout = CurrentLayout();
 		if ((bindGroup == null) || (layout == null))
@@ -129,16 +133,23 @@ class VulkanRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 
 	public void Draw(uint32 vertexCount, uint32 instanceCount, uint32 firstVertex,
 		uint32 firstInstance)
-		=> VulkanNative.vkCmdDraw(mCommandBuffer, vertexCount, instanceCount, firstVertex,
+	{
+		Counters?.Draws();
+		VulkanNative.vkCmdDraw(mCommandBuffer, vertexCount, instanceCount, firstVertex,
 			firstInstance);
+	}
 
 	public void DrawIndexed(uint32 indexCount, uint32 instanceCount, uint32 firstIndex,
 		int32 baseVertex, uint32 firstInstance)
-		=> VulkanNative.vkCmdDrawIndexed(mCommandBuffer, indexCount, instanceCount, firstIndex,
+	{
+		Counters?.Draws();
+		VulkanNative.vkCmdDrawIndexed(mCommandBuffer, indexCount, instanceCount, firstIndex,
 			baseVertex, firstInstance);
+	}
 
 	public void DrawIndirect(IBuffer buffer, uint64 offset, uint32 drawCount, uint32 stride)
 	{
+		Counters?.Draws(drawCount);
 		let vulkanBuffer = buffer as VulkanBuffer;
 		if (vulkanBuffer == null)
 			return;
@@ -148,6 +159,7 @@ class VulkanRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 
 	public void DrawIndexedIndirect(IBuffer buffer, uint64 offset, uint32 drawCount, uint32 stride)
 	{
+		Counters?.Draws(drawCount);
 		let vulkanBuffer = buffer as VulkanBuffer;
 		if (vulkanBuffer == null)
 			return;
@@ -170,6 +182,9 @@ class VulkanRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 			{
 				secondaries[count] = bundle.Handle;
 				count++;
+				// A bundle's recorded work counts each time it runs.
+				if (Counters != null)
+					bundle.Counts.AddTo(Counters);
 			}
 		}
 		if (count == 0)
@@ -214,6 +229,7 @@ class VulkanRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 
 	public void SetMeshPipeline(IMeshPipeline pipeline)
 	{
+		Counters?.PipelineBinds();
 		mMeshPipeline = pipeline as VulkanMeshPipeline;
 		mPipeline = null;
 		if (mMeshPipeline != null)
@@ -224,12 +240,16 @@ class VulkanRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 	}
 
 	public void DrawMeshTasks(uint32 groupCountX, uint32 groupCountY, uint32 groupCountZ)
-		=> VulkanNative.vkCmdDrawMeshTasksEXT(mCommandBuffer, groupCountX, groupCountY,
+	{
+		Counters?.Draws();
+		VulkanNative.vkCmdDrawMeshTasksEXT(mCommandBuffer, groupCountX, groupCountY,
 			groupCountZ);
+	}
 
 	public void DrawMeshTasksIndirect(IBuffer buffer, uint64 offset, uint32 drawCount,
 		uint32 stride)
 	{
+		Counters?.Draws(drawCount);
 		let vulkanBuffer = buffer as VulkanBuffer;
 		if (vulkanBuffer == null)
 			return;
@@ -242,6 +262,7 @@ class VulkanRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 	public void DrawMeshTasksIndirectCount(IBuffer buffer, uint64 offset, IBuffer countBuffer,
 		uint64 countOffset, uint32 maxDrawCount, uint32 stride)
 	{
+		Counters?.Draws(maxDrawCount); // the count is on the GPU: at most this many
 		let vulkanBuffer = buffer as VulkanBuffer;
 		let vulkanCount = countBuffer as VulkanBuffer;
 		if ((vulkanBuffer == null) || (vulkanCount == null))

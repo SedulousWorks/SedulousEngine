@@ -10,6 +10,8 @@ namespace Sedulous.RHI.WebGPU;
 sealed class WebGpuRenderBundle : IRenderBundle
 {
 	private WGPURenderBundle mHandle;
+	/// What it recorded, counted each time it is executed.
+	public RecordedCounts Counts;
 
 	public WGPURenderBundle Handle => mHandle;
 

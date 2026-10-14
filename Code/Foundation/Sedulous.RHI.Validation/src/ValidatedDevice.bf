@@ -71,6 +71,8 @@ class ValidatedDevice : IDevice
 	public bool NeedsClipSpaceYFlip => mInner.NeedsClipSpaceYFlip;
 	public uint32 MaxColorDepthSampleCount => mInner.MaxColorDepthSampleCount;
 	public bool SupportsSampleCount(uint32 count) => mInner.SupportsSampleCount(count);
+	public DeviceCounters Counters() => mInner.Counters();
+	public bool MemoryBudget(out uint64 budgetBytes, out uint64 usedBytes) => mInner.MemoryBudget(out budgetBytes, out usedBytes);
 	public uint32 QueryResultSize(QueryType type) => mInner.QueryResultSize(type);
 	public PipelineStatistics DecodePipelineStatistics(void* result) => mInner.DecodePipelineStatistics(result);
 	public FormatSupport GetFormatSupport(TextureFormat format) => mInner.GetFormatSupport(format);

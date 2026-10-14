@@ -22,6 +22,7 @@ class DxComputePassEncoder : IComputePassEncoder
 
 	public void SetPipeline(IComputePipeline pipeline)
 	{
+		mCtx.Counters?.PipelineBinds();
 		let dxPipeline = pipeline as DxComputePipeline;
 		if (dxPipeline == null)
 			return;
@@ -33,6 +34,7 @@ class DxComputePassEncoder : IComputePassEncoder
 
 	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets = default)
 	{
+		mCtx.Counters?.BindGroupBinds();
 		let dxGroup = group as DxBindGroup;
 		if ((dxGroup == null) || (mCurrentPipeline == null))
 			return;
@@ -117,10 +119,15 @@ class DxComputePassEncoder : IComputePassEncoder
 			data, offset / 4);
 	}
 
-	public void Dispatch(uint32 x, uint32 y = 1, uint32 z = 1) => mCtx.CmdList.Dispatch(x, y, z);
+	public void Dispatch(uint32 x, uint32 y = 1, uint32 z = 1)
+	{
+		mCtx.Counters?.Dispatches();
+		mCtx.CmdList.Dispatch(x, y, z);
+	}
 
 	public void DispatchIndirect(IBuffer buffer, uint64 offset)
 	{
+		mCtx.Counters?.Dispatches();
 		let dxBuf = buffer as DxBuffer;
 		if ((dxBuf == null) || (mCtx.DispatchSig == null))
 			return;

@@ -20,6 +20,8 @@ class DxRenderBundleEncoder : IRenderBundleEncoder
 	private ID3D12GraphicsCommandList* mList = null; // owned
 	private ID3D12CommandAllocator* mAlloc = null; // owned
 	private DxRenderBundle mBundle = null; // owned once finished
+	/// What it recorded; its recorder counts nothing, a bundle's context carrying no counters.
+	private RecordedCounts mRecorded;
 
 	public this(DxRenderPassContext ctx, ID3D12GraphicsCommandList* list,
 		ID3D12CommandAllocator* alloc)
@@ -33,10 +35,17 @@ class DxRenderBundleEncoder : IRenderBundleEncoder
 		mRec.Begin(.());
 	}
 
-	public void SetPipeline(IRenderPipeline p) => mRec.SetPipeline(p);
+	public void SetPipeline(IRenderPipeline p)
+	{
+		mRecorded.PipelineBinds++;
+		mRec.SetPipeline(p);
+	}
 
-	public void SetBindGroup(uint32 i, IBindGroup g, Span<uint32> d = default) =>
+	public void SetBindGroup(uint32 i, IBindGroup g, Span<uint32> d = default)
+	{
+		mRecorded.BindGroupBinds++;
 		mRec.SetBindGroup(i, g, d);
+	}
 
 	public void SetPushConstants(ShaderStage s, uint32 o, uint32 sz, void* d) =>
 		mRec.SetPushConstants(s, o, sz, d);
@@ -47,17 +56,30 @@ class DxRenderBundleEncoder : IRenderBundleEncoder
 	public void SetIndexBuffer(IBuffer b, IndexFormat f, uint64 o = 0) =>
 		mRec.SetIndexBuffer(b, f, o);
 
-	public void Draw(uint32 v, uint32 inst = 1, uint32 fv = 0, uint32 fi = 0) =>
+	public void Draw(uint32 v, uint32 inst = 1, uint32 fv = 0, uint32 fi = 0)
+	{
+		mRecorded.Draws++;
 		mRec.Draw(v, inst, fv, fi);
+	}
 
 	public void DrawIndexed(uint32 ic, uint32 inst = 1, uint32 fi = 0, int32 bv = 0,
-		uint32 finst = 0) => mRec.DrawIndexed(ic, inst, fi, bv, finst);
+		uint32 finst = 0)
+	{
+		mRecorded.Draws++;
+		mRec.DrawIndexed(ic, inst, fi, bv, finst);
+	}
 
-	public void DrawIndirect(IBuffer b, uint64 o, uint32 dc = 1, uint32 st = 0) =>
+	public void DrawIndirect(IBuffer b, uint64 o, uint32 dc = 1, uint32 st = 0)
+	{
+		mRecorded.Draws += dc;
 		mRec.DrawIndirect(b, o, dc, st);
+	}
 
-	public void DrawIndexedIndirect(IBuffer b, uint64 o, uint32 dc = 1, uint32 st = 0) =>
+	public void DrawIndexedIndirect(IBuffer b, uint64 o, uint32 dc = 1, uint32 st = 0)
+	{
+		mRecorded.Draws += dc;
 		mRec.DrawIndexedIndirect(b, o, dc, st);
+	}
 
 	/// Closes the list and hands back the bundle. Idempotent: finishing twice answers the
 	/// same bundle rather than closing a closed list.
@@ -76,6 +98,7 @@ class DxRenderBundleEncoder : IRenderBundleEncoder
 		// The root signature and pipeline state the recorder ended on, which the parent list
 		// has to carry before this bundle runs.
 		mBundle = new DxRenderBundle(mList, mAlloc, mRec.CurrentRootSig, mRec.CurrentPso);
+		mBundle.Counts = mRecorded;
 		return mBundle;
 	}
 

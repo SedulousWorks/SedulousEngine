@@ -9,6 +9,7 @@ using Win32;
 using Win32.Graphics.Direct3D;
 using Win32.Graphics.Direct3D.Fxc;
 using Win32.Graphics.Direct3D12;
+using Win32.Graphics.Dxgi;
 using Win32.Graphics.Dxgi.Common;
 using Win32.System.Com;
 
@@ -30,6 +31,8 @@ class DxDevice : IDevice
 	private ID3D12Device* mDevice = null; // owned, released in Destroy
 	private ID3D12InfoQueue* mInfoQueue = null; // owned, released in Destroy
 	private DxAdapter mAdapter = null; // NOT owned, the adapter outlives its devices
+	/// What its encoders recorded and its resources hold (IDevice.Counters).
+	private DeviceCounterBlock mCounters = new .() ~ delete _;
 
 	private DeviceFeatures mFeatures = .();
 	private uint32 mShaderGroupHandleSize = 0;
@@ -74,6 +77,8 @@ class DxDevice : IDevice
 	// ---- what the rest of the backend reaches for ----
 	public ID3D12Device* Handle => mDevice;
 	public DxAdapter Adapter => mAdapter;
+	/// The counts its encoders, queues and resources bump.
+	public DeviceCounterBlock CounterBlock => mCounters;
 	public DxDescriptorHeapAllocator RtvHeap => mRtvHeap;
 	public DxDescriptorHeapAllocator DsvHeap => mDsvHeap;
 	public DxDescriptorHeapAllocator SrvHeap => mSrvHeap;
@@ -97,6 +102,27 @@ class DxDevice : IDevice
 	public ShaderFormat PreferredShaderFormat => .DXIL;
 	/// D3D12 and the RHI agree on clip space, so nothing has to be flipped.
 	public bool NeedsClipSpaceYFlip => false;
+
+	public DeviceCounters Counters() => mCounters.Snapshot();
+
+	/// The local (device) memory segment's budget and this process's use of it.
+	public bool MemoryBudget(out uint64 budgetBytes, out uint64 usedBytes)
+	{
+		budgetBytes = 0;
+		usedBytes = 0;
+		if ((mAdapter == null) || (mAdapter.Handle == null))
+			return false;
+		IDXGIAdapter3* adapter3 = null;
+		if (FAILED(mAdapter.Handle.QueryInterface(IDXGIAdapter3.IID, (void**)&adapter3)) || (adapter3 == null))
+			return false;
+		defer adapter3.Release();
+		DXGI_QUERY_VIDEO_MEMORY_INFO info = .();
+		if (FAILED(adapter3.QueryVideoMemoryInfo(0, .DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info)))
+			return false;
+		budgetBytes = info.Budget;
+		usedBytes = info.CurrentUsage;
+		return true;
+	}
 
 	/// A statistics query resolves to D3D12's own eleven counter record.
 	public uint32 QueryResultSize(QueryType type) =>
@@ -368,6 +394,7 @@ class DxDevice : IDevice
 			return .Err;
 		}
 		SetDebugName((ID3D12Object*)b.Handle, desc.Label);
+		mCounters.BufferMade(desc.Size);
 		return .Ok(b);
 	}
 
@@ -380,6 +407,8 @@ class DxDevice : IDevice
 			return .Err;
 		}
 		SetDebugName((ID3D12Object*)t.Handle, desc.Label);
+		// The description's size: the driver may pad (GetResourceAllocationInfo would say).
+		mCounters.TextureMade(DeviceCounterBlock.EstimateTextureBytes(desc), DeviceCounterBlock.CountsAsRenderTarget(desc));
 		return .Ok(t);
 	}
 
@@ -639,13 +668,23 @@ class DxDevice : IDevice
 
 	public void DestroyBuffer(ref IBuffer buffer)
 	{
-		if (let r = buffer as DxBuffer) { r.Cleanup(); delete r; }
+		if (let r = buffer as DxBuffer)
+		{
+			mCounters.BufferFreed(r.Desc.Size);
+			r.Cleanup();
+			delete r;
+		}
 		buffer = null;
 	}
 
 	public void DestroyTexture(ref ITexture texture)
 	{
-		if (let r = texture as DxTexture) { r.Cleanup(); delete r; }
+		if (let r = texture as DxTexture)
+		{
+			mCounters.TextureFreed(DeviceCounterBlock.EstimateTextureBytes(r.Desc), DeviceCounterBlock.CountsAsRenderTarget(r.Desc));
+			r.Cleanup();
+			delete r;
+		}
 		texture = null;
 	}
 

@@ -146,4 +146,47 @@ class VulkanQueryTests
 				pool.DestroyEncoder(ref encoder);
 			});
 	}
+
+	/// Memory held follows the real allocations (the driver's sizes, at least what was asked),
+	/// back to where it was once they are freed; and the driver reports its budget where it
+	/// can.
+	[Test]
+	public static void MemoryHeldFollowsRealAllocationsAndTheDriverReportsItsBudget()
+	{
+		WithDevice(scope (device) =>
+			{
+				let before = device.Counters();
+				var bufferDesc = BufferDesc();
+				bufferDesc.Size = 1 << 20;
+				bufferDesc.Usage = .Storage;
+				bufferDesc.Label = "VulkanQueryTests.counters.buffer";
+				Test.Assert(device.CreateBuffer(bufferDesc) case .Ok(var buffer));
+				var targetDesc = TextureDesc.RenderTarget(.RGBA8Unorm, 256, 256);
+				targetDesc.Label = "VulkanQueryTests.counters.target";
+				Test.Assert(device.CreateTexture(targetDesc) case .Ok(var target));
+				let held = device.Counters();
+				Test.Assert(held.BufferBytes - before.BufferBytes >= bufferDesc.Size);
+				Test.Assert(held.RenderTargetBytes - before.RenderTargetBytes >= 256 * 256 * 4);
+				Test.Assert(held.Buffers == before.Buffers + 1);
+				Test.Assert(held.Textures == before.Textures + 1);
+				device.DestroyTexture(ref target);
+				device.DestroyBuffer(ref buffer);
+				let after = device.Counters();
+				Test.Assert(after.BufferBytes == before.BufferBytes);
+				Test.Assert(after.RenderTargetBytes == before.RenderTargetBytes);
+
+				if (device.Features.MemoryBudget)
+				{
+					Test.Assert(device.MemoryBudget(let budget, let used));
+					Console.WriteLine(scope $"memory budget {budget >> 20} MiB, used {used >> 20} MiB");
+					Test.Assert(budget > 0);
+					Test.Assert(used <= budget * 2);
+				}
+				else
+				{
+					Test.Assert(!device.MemoryBudget(?, ?));
+					Console.WriteLine("no VK_EXT_memory_budget on this adapter");
+				}
+			});
+	}
 }

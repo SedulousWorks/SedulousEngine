@@ -59,6 +59,7 @@ class DxRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 
 	public void SetPipeline(IRenderPipeline pipeline)
 	{
+		mCtx.Counters?.PipelineBinds();
 		let dxPipeline = pipeline as DxRenderPipeline;
 		if (dxPipeline == null)
 			return;
@@ -84,6 +85,7 @@ class DxRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 
 	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets = default)
 	{
+		mCtx.Counters?.BindGroupBinds();
 		let dxGroup = group as DxBindGroup;
 		if (dxGroup == null)
 			return;
@@ -230,12 +232,14 @@ class DxRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 	public void Draw(uint32 vertexCount, uint32 instanceCount = 1, uint32 firstVertex = 0,
 		uint32 firstInstance = 0)
 	{
+		mCtx.Counters?.Draws();
 		mCtx.CmdList.DrawInstanced(vertexCount, instanceCount, firstVertex, firstInstance);
 	}
 
 	public void DrawIndexed(uint32 indexCount, uint32 instanceCount = 1, uint32 firstIndex = 0,
 		int32 baseVertex = 0, uint32 firstInstance = 0)
 	{
+		mCtx.Counters?.Draws();
 		mCtx.CmdList.DrawIndexedInstanced(indexCount, instanceCount, firstIndex, baseVertex,
 			firstInstance);
 	}
@@ -243,6 +247,7 @@ class DxRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 	public void DrawIndirect(IBuffer buffer, uint64 offset, uint32 drawCount = 1,
 		uint32 stride = 0)
 	{
+		mCtx.Counters?.Draws(drawCount);
 		let dxBuf = buffer as DxBuffer;
 		if ((dxBuf == null) || (mCtx.DrawSig == null))
 			return;
@@ -260,6 +265,7 @@ class DxRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 	public void DrawIndexedIndirect(IBuffer buffer, uint64 offset, uint32 drawCount = 1,
 		uint32 stride = 0)
 	{
+		mCtx.Counters?.Draws(drawCount);
 		let dxBuf = buffer as DxBuffer;
 		if ((dxBuf == null) || (mCtx.DrawIndexedSig == null))
 			return;
@@ -294,6 +300,7 @@ class DxRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 
 	public void SetMeshPipeline(IMeshPipeline pipeline)
 	{
+		mCtx.Counters?.PipelineBinds();
 		let dxPipeline = pipeline as DxMeshPipeline;
 		if (dxPipeline == null)
 			return;
@@ -307,6 +314,7 @@ class DxRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 
 	public void DrawMeshTasks(uint32 groupCountX, uint32 groupCountY = 1, uint32 groupCountZ = 1)
 	{
+		mCtx.Counters?.Draws();
 		// DispatchMesh is only on ID3D12GraphicsCommandList6, so the list is queried per call
 		// and the reference given straight back.
 		ID3D12GraphicsCommandList6* cmdList6 = null;
@@ -321,6 +329,7 @@ class DxRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 	public void DrawMeshTasksIndirect(IBuffer buffer, uint64 offset, uint32 drawCount = 1,
 		uint32 stride = 0)
 	{
+		mCtx.Counters?.Draws(drawCount);
 		let dxBuf = buffer as DxBuffer;
 		if ((dxBuf == null) || (mCtx.DispatchMeshSig == null))
 			return;
@@ -336,6 +345,7 @@ class DxRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 	public void DrawMeshTasksIndirectCount(IBuffer buffer, uint64 offset, IBuffer countBuffer,
 		uint64 countOffset, uint32 maxDrawCount, uint32 stride)
 	{
+		mCtx.Counters?.Draws(maxDrawCount); // the count is on the GPU: at most this many
 		let dxBuf = buffer as DxBuffer;
 		let dxCountBuf = countBuffer as DxBuffer;
 		if ((dxBuf == null) || (dxCountBuf == null) || (mCtx.DispatchMeshSig == null))
@@ -352,6 +362,9 @@ class DxRenderPassEncoder : IRenderPassEncoder, IMeshShaderPassExt
 		{
 			if (let dxBundle = b as DxRenderBundle)
 			{
+				// A bundle's recorded work counts each time it runs.
+				if (mCtx.Counters != null)
+					dxBundle.Counts.AddTo(mCtx.Counters);
 				// D3D12 requires the PARENT list to carry the same root signature and pipeline
 				// state before a bundle runs; a bundle does not carry its own.
 				if (dxBundle.RootSig != null)

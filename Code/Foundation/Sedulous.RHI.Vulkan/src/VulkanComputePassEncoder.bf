@@ -11,6 +11,8 @@ class VulkanComputePassEncoder : IComputePassEncoder
 {
 	private VkCommandBuffer mCommandBuffer;
 	private VulkanComputePipeline mPipeline;
+	/// The device's counts, BORROWED, set by the command encoder; null counts nothing.
+	public DeviceCounterBlock Counters;
 
 	public this(VkCommandBuffer commandBuffer) => mCommandBuffer = commandBuffer;
 
@@ -23,6 +25,7 @@ class VulkanComputePassEncoder : IComputePassEncoder
 
 	public void SetPipeline(IComputePipeline pipeline)
 	{
+		Counters?.PipelineBinds();
 		mPipeline = pipeline as VulkanComputePipeline;
 		if (mPipeline != null)
 		{
@@ -33,6 +36,7 @@ class VulkanComputePassEncoder : IComputePassEncoder
 
 	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets)
 	{
+		Counters?.BindGroupBinds();
 		let bindGroup = group as VulkanBindGroup;
 		if ((bindGroup == null) || (mPipeline == null))
 			return;
@@ -60,10 +64,14 @@ class VulkanComputePassEncoder : IComputePassEncoder
 	/// A grid of WORKGROUPS, not of threads: the total is this times the workgroup size the
 	/// shader declared.
 	public void Dispatch(uint32 x, uint32 y, uint32 z)
-		=> VulkanNative.vkCmdDispatch(mCommandBuffer, x, y, z);
+	{
+		Counters?.Dispatches();
+		VulkanNative.vkCmdDispatch(mCommandBuffer, x, y, z);
+	}
 
 	public void DispatchIndirect(IBuffer buffer, uint64 offset)
 	{
+		Counters?.Dispatches();
 		let vulkanBuffer = buffer as VulkanBuffer;
 		if (vulkanBuffer == null)
 			return;

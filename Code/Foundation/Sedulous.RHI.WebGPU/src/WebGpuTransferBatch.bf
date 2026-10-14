@@ -48,11 +48,15 @@ sealed class WebGpuTransferBatch : ITransferBatch
 		mQueue = queue;
 	}
 
+	/// The device's counts, BORROWED; null counts nothing.
+	public DeviceCounterBlock Counters;
+
 	public void WriteBuffer(IBuffer dst, uint64 dstOffset, Span<uint8> data)
 	{
 		let destination = dst as WebGpuBuffer;
 		if (destination == null)
 			return;
+		Counters?.Transfer((uint64)data.Length);
 
 		BufferWrite write = .();
 		write.Destination = destination.Handle;
@@ -69,6 +73,7 @@ sealed class WebGpuTransferBatch : ITransferBatch
 		let destination = dst as WebGpuTexture;
 		if (destination == null)
 			return;
+		Counters?.Transfer((uint64)data.Length);
 
 		TextureWrite write = .();
 		write.Destination = destination.Handle;

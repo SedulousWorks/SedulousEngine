@@ -16,6 +16,8 @@ struct DxComputePassContext
 	public DxGpuDescriptorHeap GpuSamplerHeap = null;
 	/// The indirect dispatch signature, cached on the device.
 	public ID3D12CommandSignature* DispatchSig = null;
+	/// The device's counts (IDevice.Counters), BORROWED; null counts nothing.
+	public DeviceCounterBlock Counters = null;
 
 	public this() {}
 }

@@ -20,6 +20,9 @@ sealed class WebGpuCommandPool : ICommandPool
 	private List<WebGpuCommandEncoder> mEncoders = new .() ~ DeleteContainerAndItems!(_);
 	private List<WebGpuRenderBundleEncoder> mBundleEncoders = new .() ~ DeleteContainerAndItems!(_);
 
+	/// The device's counts, BORROWED, handed to every encoder this pool makes.
+	public DeviceCounterBlock Counters;
+
 	public void Initialize(WGPUDevice device, WebGpuBlitHelper blitHelper)
 	{
 		mDevice = device;
@@ -30,6 +33,7 @@ sealed class WebGpuCommandPool : ICommandPool
 	{
 		let encoder = new WebGpuCommandEncoder();
 		encoder.Initialize(mDevice, mBlitHelper);
+		encoder.Counters = Counters;
 		mEncoders.Add(encoder);
 		return .Ok(encoder);
 	}

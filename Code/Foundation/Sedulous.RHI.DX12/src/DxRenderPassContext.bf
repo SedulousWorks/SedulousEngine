@@ -17,6 +17,9 @@ struct DxRenderPassContext
 	public ID3D12CommandSignature* DrawSig = null;
 	public ID3D12CommandSignature* DrawIndexedSig = null;
 	public ID3D12CommandSignature* DispatchMeshSig = null;
+	/// The device's counts (IDevice.Counters), BORROWED; null for a bundle's pass, which counts
+	/// what it recorded and adds that each time it is executed.
+	public DeviceCounterBlock Counters = null;
 
 	public this() {}
 }

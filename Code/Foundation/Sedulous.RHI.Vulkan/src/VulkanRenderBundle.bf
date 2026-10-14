@@ -10,6 +10,8 @@ namespace Sedulous.RHI.Vulkan;
 class VulkanRenderBundle : IRenderBundle
 {
 	private VkCommandBuffer mCommandBuffer;
+	/// What it recorded, counted each time it is executed.
+	public RecordedCounts Counts;
 
 	public this(VkCommandBuffer commandBuffer) => mCommandBuffer = commandBuffer;
 

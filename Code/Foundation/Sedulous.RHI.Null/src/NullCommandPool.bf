@@ -11,7 +11,13 @@ namespace Sedulous.RHI.Null;
 /// freeing anything.
 class NullCommandPool : ICommandPool
 {
-	private NullCommandEncoder mEncoder = new .() ~ delete _;
+	private NullCommandEncoder mEncoder ~ delete _;
+
+	/// `counters` is the device's, BORROWED: the pool's encoder counts its work there.
+	public this(DeviceCounterBlock counters)
+	{
+		mEncoder = new .(counters);
+	}
 
 	public Result<ICommandEncoder> CreateEncoder() => .Ok(mEncoder);
 

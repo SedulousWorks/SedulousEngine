@@ -18,6 +18,8 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 	private uint32 mWidth = 0;
 	private uint32 mHeight = 0;
 	private PushConstantEmulator mPushConstants = new .() ~ delete _;
+	/// The device's counts, BORROWED, set by the command encoder; null counts nothing.
+	public DeviceCounterBlock Counters;
 
 	/// `width` by `height`: the pass's render area (its attachments' size), which scissors are
 	/// clipped to.
@@ -37,6 +39,7 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 
 		wgpuRenderPassEncoderSetPipeline(mEncoder, wgpuPipeline.Handle);
 		mPushConstants.SetPipeline(wgpuPipeline.PushConstants);
+		Counters?.PipelineBinds();
 	}
 
 	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets = default)
@@ -47,6 +50,7 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 
 		wgpuRenderPassEncoderSetBindGroup(mEncoder, index, wgpuGroup.Handle,
 			(uint)dynamicOffsets.Length, dynamicOffsets.Ptr);
+		Counters?.BindGroupBinds();
 	}
 
 	public void SetPushConstants(ShaderStage stages, uint32 offset, uint32 size, void* data)
@@ -126,6 +130,7 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 		FlushPushConstants();
 		wgpuRenderPassEncoderDraw(mEncoder, vertexCount, instanceCount, firstVertex,
 			firstInstance);
+		Counters?.Draws();
 	}
 
 	public void DrawIndexed(uint32 indexCount, uint32 instanceCount = 1, uint32 firstIndex = 0,
@@ -134,6 +139,7 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 		FlushPushConstants();
 		wgpuRenderPassEncoderDrawIndexed(mEncoder, indexCount, instanceCount, firstIndex,
 			baseVertex, firstInstance);
+		Counters?.Draws();
 	}
 
 	public void DrawIndirect(IBuffer buffer, uint64 offset, uint32 drawCount = 1,
@@ -149,6 +155,7 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 		for (uint32 i = 0; i < drawCount; i++)
 			wgpuRenderPassEncoderDrawIndirect(mEncoder, wgpuBuffer.Handle,
 				offset + (uint64)i * stride);
+		Counters?.Draws(drawCount);
 	}
 
 	public void DrawIndexedIndirect(IBuffer buffer, uint64 offset, uint32 drawCount = 1,
@@ -162,6 +169,7 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 		for (uint32 i = 0; i < drawCount; i++)
 			wgpuRenderPassEncoderDrawIndexedIndirect(mEncoder, wgpuBuffer.Handle,
 				offset + (uint64)i * stride);
+		Counters?.Draws(drawCount);
 	}
 
 	public void ExecuteBundles(Span<IRenderBundle> bundles)
@@ -181,6 +189,9 @@ sealed class WebGpuRenderPassEncoder : IRenderPassEncoder
 			{
 				handles[count] = wgpuBundle.Handle;
 				count++;
+				// A bundle's recorded work counts each time it runs.
+				if (Counters != null)
+					wgpuBundle.Counts.AddTo(Counters);
 			}
 		}
 

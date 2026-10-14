@@ -46,6 +46,15 @@ interface IDevice
 	/// fails texture and pipeline creation.
 	bool SupportsSampleCount(uint32 count) => count <= 1;
 
+	/// What this device has recorded since it was made and the memory it holds now, for the
+	/// profiler's counters (DeviceCounters).
+	DeviceCounters Counters();
+
+	/// The driver's own GPU memory figures, where it gives them (DeviceFeatures.MemoryBudget):
+	/// what the device local heaps may hold and what this process uses of them. False, both
+	/// nought, when it does not.
+	bool MemoryBudget(out uint64 budgetBytes, out uint64 usedBytes);
+
 	/// The bytes one query of `type` takes in the buffer ResolveQuerySet writes: eight for a
 	/// timestamp or an occlusion count, a backend's own record for pipeline statistics (nought
 	/// when the device has none, DeviceFeatures.PipelineStatisticsQueries).

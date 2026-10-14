@@ -68,11 +68,15 @@ class VulkanTransferBatch : ITransferBatch
 		mQueueFamilyIndex = queueFamilyIndex;
 	}
 
+	/// The device's counts, BORROWED; null counts nothing.
+	public DeviceCounterBlock Counters;
+
 	public void WriteBuffer(IBuffer dst, uint64 dstOffset, Span<uint8> data)
 	{
 		let buffer = dst as VulkanBuffer;
 		if (buffer == null || data.IsEmpty)
 			return;
+		Counters?.Transfer((uint64)data.Length);
 
 		if (EnsureStagingBuffer(mStagingOffset + (uint64)data.Length) case .Err)
 			return;
@@ -96,6 +100,7 @@ class VulkanTransferBatch : ITransferBatch
 		let texture = dst as VulkanTexture;
 		if (texture == null || data.IsEmpty)
 			return;
+		Counters?.Transfer((uint64)data.Length);
 
 		if (EnsureStagingBuffer(mStagingOffset + (uint64)data.Length) case .Err)
 			return;

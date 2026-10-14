@@ -11,9 +11,12 @@ class VulkanBuffer : IBuffer
 	private BufferDesc mDesc;
 	private VkBuffer mBuffer;
 	private VkDeviceMemory mMemory;
+	/// The bytes the driver allocated for it (IDevice.Counters).
+	private uint64 mAllocationSize;
 	private void* mMapped;
 
 	public BufferDesc Desc => mDesc;
+	public uint64 AllocationSize => mAllocationSize;
 	public VkBuffer Handle => mBuffer;
 	public VkDeviceMemory Memory => mMemory;
 
@@ -75,6 +78,7 @@ class VulkanBuffer : IBuffer
 		}
 
 		VulkanNative.vkBindBufferMemory(device, mBuffer, mMemory, 0);
+		mAllocationSize = requirements.size;
 
 		// Host visible memory is mapped ONCE and stays mapped for the buffer's life.
 		// Mapping is not free, and a per frame uniform buffer would otherwise pay for it

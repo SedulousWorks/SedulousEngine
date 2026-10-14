@@ -28,6 +28,7 @@ class VulkanAdapter : IAdapter
 	/// The calibrated timestamps extension to enable (KHR or EXT), null when the device cannot
 	/// read its timestamps together with the clock the profiler reads.
 	private char8* mCalibratedTimestampsExtension = null;
+	private bool mSupportsMemoryBudget = false;
 #if BF_PLATFORM_WINDOWS
 	private VkTimeDomainKHR mHostTimeDomain = .VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR;
 #else
@@ -68,6 +69,7 @@ class VulkanAdapter : IAdapter
 	public bool SupportsMeshShader => mSupportsMeshShader;
 	public bool SupportsRayTracing => mSupportsRayTracing;
 	public char8* CalibratedTimestampsExtension => mCalibratedTimestampsExtension;
+	public bool SupportsMemoryBudget => mSupportsMemoryBudget;
 	/// The profiler's clock as a Vulkan time domain: CLOCK_MONOTONIC on POSIX,
 	/// QueryPerformanceCounter on Windows.
 	public VkTimeDomainKHR HostTimeDomain => mHostTimeDomain;
@@ -128,6 +130,7 @@ class VulkanAdapter : IAdapter
 		f.RayTracing = mSupportsRayTracing;
 		f.PipelineStatisticsQueries = mFeatures10.pipelineStatisticsQuery;
 		f.TimestampCalibration = mCalibratedTimestampsExtension != null;
+		f.MemoryBudget = mSupportsMemoryBudget;
 
 		// Mesh limits come from a second properties query, and are only asked for when the
 		// extension is there: chaining the struct otherwise reads a field the driver never
@@ -293,6 +296,7 @@ class VulkanAdapter : IAdapter
 			case "VK_EXT_descriptor_indexing": mSupportsDescriptorIndexing = true;
 			case "VK_EXT_mesh_shader": mSupportsMeshShader = true;
 			case "VK_KHR_ray_tracing_pipeline": mSupportsRayTracing = true;
+			case "VK_EXT_memory_budget": mSupportsMemoryBudget = true;
 			case "VK_KHR_calibrated_timestamps": mCalibratedTimestampsExtension = "VK_KHR_calibrated_timestamps";
 			case "VK_EXT_calibrated_timestamps":
 				if (mCalibratedTimestampsExtension == null)

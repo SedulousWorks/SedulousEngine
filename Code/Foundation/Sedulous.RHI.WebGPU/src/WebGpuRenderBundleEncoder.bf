@@ -14,6 +14,8 @@ sealed class WebGpuRenderBundleEncoder : IRenderBundleEncoder
 	private WGPURenderBundleEncoder mEncoder;
 	private PushConstantEmulator mPushConstants = new .() ~ delete _;
 	private List<WebGpuRenderBundle> mBundles = new .() ~ DeleteContainerAndItems!(_);
+	/// What this recording has recorded, which the bundle counts each time it runs.
+	private RecordedCounts mRecorded;
 
 	public Result<void> Initialize(WGPUDevice device, RenderBundleDesc desc)
 	{
@@ -52,6 +54,7 @@ sealed class WebGpuRenderBundleEncoder : IRenderBundleEncoder
 
 		wgpuRenderBundleEncoderSetPipeline(mEncoder, wgpuPipeline.Handle);
 		mPushConstants.SetPipeline(wgpuPipeline.PushConstants);
+		mRecorded.PipelineBinds++;
 	}
 
 	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets = default)
@@ -62,6 +65,7 @@ sealed class WebGpuRenderBundleEncoder : IRenderBundleEncoder
 
 		wgpuRenderBundleEncoderSetBindGroup(mEncoder, index, wgpuGroup.Handle,
 			(uint)dynamicOffsets.Length, dynamicOffsets.Ptr);
+		mRecorded.BindGroupBinds++;
 	}
 
 	public void SetPushConstants(ShaderStage stages, uint32 offset, uint32 size, void* data)
@@ -97,6 +101,7 @@ sealed class WebGpuRenderBundleEncoder : IRenderBundleEncoder
 		FlushPushConstants();
 		wgpuRenderBundleEncoderDraw(mEncoder, vertexCount, instanceCount, firstVertex,
 			firstInstance);
+		mRecorded.Draws++;
 	}
 
 	public void DrawIndexed(uint32 indexCount, uint32 instanceCount = 1, uint32 firstIndex = 0,
@@ -105,6 +110,7 @@ sealed class WebGpuRenderBundleEncoder : IRenderBundleEncoder
 		FlushPushConstants();
 		wgpuRenderBundleEncoderDrawIndexed(mEncoder, indexCount, instanceCount, firstIndex,
 			baseVertex, firstInstance);
+		mRecorded.Draws++;
 	}
 
 	public void DrawIndirect(IBuffer buffer, uint64 offset, uint32 drawCount = 1,
@@ -119,6 +125,7 @@ sealed class WebGpuRenderBundleEncoder : IRenderBundleEncoder
 		for (uint32 i = 0; i < drawCount; i++)
 			wgpuRenderBundleEncoderDrawIndirect(mEncoder, wgpuBuffer.Handle,
 				offset + (uint64)i * stride);
+		mRecorded.Draws += drawCount;
 	}
 
 	public void DrawIndexedIndirect(IBuffer buffer, uint64 offset, uint32 drawCount = 1,
@@ -132,6 +139,7 @@ sealed class WebGpuRenderBundleEncoder : IRenderBundleEncoder
 		for (uint32 i = 0; i < drawCount; i++)
 			wgpuRenderBundleEncoderDrawIndexedIndirect(mEncoder, wgpuBuffer.Handle,
 				offset + (uint64)i * stride);
+		mRecorded.Draws += drawCount;
 	}
 
 	public IRenderBundle Finish()
@@ -143,6 +151,8 @@ sealed class WebGpuRenderBundleEncoder : IRenderBundleEncoder
 
 		let bundle = new WebGpuRenderBundle();
 		bundle.Adopt(handle);
+		bundle.Counts = mRecorded;
+		mRecorded = .();
 		mBundles.Add(bundle); // owned until this encoder goes
 		return bundle;
 	}

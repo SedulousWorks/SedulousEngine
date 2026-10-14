@@ -16,6 +16,8 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	private VulkanComputePassEncoder mComputePass ~ delete _;
 	private VulkanCommandBuffer mFinished;
 	private VulkanRayTracingPipeline mRayTracingPipeline;
+	/// The device's counts, BORROWED; null counts nothing.
+	private DeviceCounterBlock mCounters;
 
 	public this(VkCommandBuffer commandBuffer, VkDevice device, VulkanCommandPool pool)
 	{
@@ -24,6 +26,9 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		mPool = pool;
 		mRenderPass = new VulkanRenderPassEncoder(commandBuffer, device);
 		mComputePass = new VulkanComputePassEncoder(commandBuffer);
+		mCounters = (pool?.Owner != null) ? pool.Owner.CounterBlock : null;
+		mRenderPass.Counters = mCounters;
+		mComputePass.Counters = mCounters;
 	}
 
 	public VkCommandBuffer Handle => mCommandBuffer;
@@ -32,6 +37,7 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	/// framebuffer, only the attachments named here.
 	public IRenderPassEncoder BeginRenderPass(RenderPassDesc desc)
 	{
+		mCounters?.RenderPass();
 		var attachments = desc.ColorAttachments;
 		let colorCount = attachments.Count;
 		let colorInfos = scope VkRenderingAttachmentInfo[colorCount == 0 ? 1 : colorCount];
@@ -163,6 +169,7 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	/// A compute pass is not a Vulkan object, so this only resets what is bound.
 	public IComputePassEncoder BeginComputePass(StringView label)
 	{
+		mCounters?.ComputePass();
 		mComputePass.Begin(mCommandBuffer);
 		return mComputePass;
 	}
@@ -853,6 +860,7 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void SetRayTracingPipeline(IRayTracingPipeline pipeline)
 	{
+		mCounters?.PipelineBinds();
 		mRayTracingPipeline = pipeline as VulkanRayTracingPipeline;
 		if (mRayTracingPipeline != null)
 		{
@@ -863,6 +871,7 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 
 	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets)
 	{
+		mCounters?.BindGroupBinds();
 		let bindGroup = group as VulkanBindGroup;
 		if ((bindGroup == null) || (mRayTracingPipeline == null))
 			return;
@@ -892,6 +901,7 @@ class VulkanCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 		IBuffer hitSBT, uint64 hitOffset, uint64 hitStride,
 		uint32 width, uint32 height, uint32 depth)
 	{
+		mCounters?.Dispatches(); // a trace counts as a dispatch
 		let raygen = raygenSBT as VulkanBuffer;
 		// The raygen table is the only one a trace cannot do without.
 		if (raygen == null)

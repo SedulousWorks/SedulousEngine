@@ -25,6 +25,8 @@ sealed class WebGpuQueue : IQueue
 	/// BORROWED, owned by the device.
 	private WebGpuBufferRegistry mBufferRegistry;
 	private List<WebGpuTransferBatch> mBatches = new .() ~ DeleteContainerAndItems!(_);
+	/// The device's counts, BORROWED, which its transfer batches bump.
+	public DeviceCounterBlock Counters;
 
 	public QueueType QueueType => mType;
 	public WGPUQueue Handle => mQueue;
@@ -130,6 +132,7 @@ sealed class WebGpuQueue : IQueue
 	{
 		let batch = new WebGpuTransferBatch();
 		batch.Initialize(mInstance, mDevice, mQueue);
+		batch.Counters = Counters;
 		mBatches.Add(batch);
 		return .Ok(batch);
 	}

@@ -31,6 +31,11 @@ class VulkanDevice : IDevice
 
 	/// Reads the device's timestamp and the host clock together; null without the extension.
 	private VulkanNative.vkGetCalibratedTimestampsKHRFunction mGetCalibratedTimestamps = null;
+	/// What its encoders recorded and its resources hold (IDevice.Counters).
+	private DeviceCounterBlock mCounters = new .() ~ delete _;
+
+	/// The counts its encoders, queues and resources bump.
+	public DeviceCounterBlock CounterBlock => mCounters;
 
 	private uint32 mShaderGroupHandleSize = 0;
 	private uint32 mShaderGroupHandleAlignment = 0;
@@ -98,6 +103,8 @@ class VulkanDevice : IDevice
 		}
 		if (let calibration = adapter.CalibratedTimestampsExtension)
 			extensions.Add(calibration);
+		if (adapter.SupportsMemoryBudget)
+			extensions.Add("VK_EXT_memory_budget");
 
 		// The feature chain, built from the tail backwards. Dynamic rendering and
 		// synchronization2 are what the encoders are written against, so they are required
@@ -298,6 +305,30 @@ class VulkanDevice : IDevice
 	/// False: Vulkan flips clip space Y with a negative height viewport, so a screen space
 	/// pass needs no further negation.
 	public bool NeedsClipSpaceYFlip => false;
+
+	public DeviceCounters Counters() => mCounters.Snapshot();
+
+	/// The device local heaps' budget and this process's use of them (VK_EXT_memory_budget).
+	public bool MemoryBudget(out uint64 budgetBytes, out uint64 usedBytes)
+	{
+		budgetBytes = 0;
+		usedBytes = 0;
+		if (!mFeatures.MemoryBudget)
+			return false;
+		VkPhysicalDeviceMemoryBudgetPropertiesEXT budget = .();
+		VkPhysicalDeviceMemoryProperties2 properties = .();
+		properties.pNext = &budget;
+		VulkanNative.vkGetPhysicalDeviceMemoryProperties2(mAdapter.PhysicalDevice, &properties);
+		for (uint32 i < properties.memoryProperties.memoryHeapCount)
+		{
+			if ((properties.memoryProperties.memoryHeaps[i].flags & .VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) != 0)
+			{
+				budgetBytes += budget.heapBudget[i];
+				usedBytes += budget.heapUsage[i];
+			}
+		}
+		return true;
+	}
 
 	/// A statistics query carries the RHI's six counters (VulkanQuerySet), in bit order: input
 	/// vertices, input primitives, vertex invocations, clipping primitives, fragment
@@ -526,6 +557,7 @@ class VulkanDevice : IDevice
 			delete buffer;
 			return .Err;
 		}
+		mCounters.BufferMade(buffer.AllocationSize);
 		return .Ok(buffer);
 	}
 
@@ -537,6 +569,7 @@ class VulkanDevice : IDevice
 			delete texture;
 			return .Err;
 		}
+		mCounters.TextureMade(texture.AllocationSize, DeviceCounterBlock.CountsAsRenderTarget(desc));
 		return .Ok(texture);
 	}
 
@@ -691,6 +724,7 @@ class VulkanDevice : IDevice
 	{
 		if (let resource = x as VulkanBuffer)
 		{
+			mCounters.BufferFreed(resource.AllocationSize);
 			resource.Cleanup(mDevice);
 			delete resource;
 		}
@@ -700,6 +734,7 @@ class VulkanDevice : IDevice
 	{
 		if (let resource = x as VulkanTexture)
 		{
+			mCounters.TextureFreed(resource.AllocationSize, DeviceCounterBlock.CountsAsRenderTarget(resource.Desc));
 			resource.Cleanup(mDevice);
 			delete resource;
 		}

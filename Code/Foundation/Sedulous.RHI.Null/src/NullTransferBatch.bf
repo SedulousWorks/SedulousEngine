@@ -8,10 +8,19 @@ namespace Sedulous.RHI.Null;
 /// at once, so a caller that waits on the upload makes progress instead of hanging.
 class NullTransferBatch : ITransferBatch
 {
-	public void WriteBuffer(IBuffer dst, uint64 dstOffset, Span<uint8> data) {}
+	/// The device's counts, BORROWED.
+	public DeviceCounterBlock Counters;
+
+	public void WriteBuffer(IBuffer dst, uint64 dstOffset, Span<uint8> data)
+	{
+		Counters?.Transfer((uint64)data.Length);
+	}
 
 	public void WriteTexture(ITexture dst, Span<uint8> data, TextureDataLayout layout,
-		Extent3D extent, uint32 mipLevel, uint32 arrayLayer) {}
+		Extent3D extent, uint32 mipLevel, uint32 arrayLayer)
+	{
+		Counters?.Transfer((uint64)data.Length);
+	}
 
 	public Result<void> Submit() => .Ok;
 

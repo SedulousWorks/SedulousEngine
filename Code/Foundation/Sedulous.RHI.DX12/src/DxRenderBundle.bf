@@ -18,6 +18,8 @@ class DxRenderBundle : IRenderBundle
 	private ID3D12CommandAllocator* mAlloc = null; // owned, outlives execution
 	private ID3D12RootSignature* mRootSig = null; // NOT owned, the layout's
 	private ID3D12PipelineState* mPso = null; // NOT owned, the pipeline's
+	/// What it recorded, counted each time it is executed.
+	public RecordedCounts Counts;
 
 	public ID3D12GraphicsCommandList* Handle => mList;
 	public ID3D12RootSignature* RootSig => mRootSig;

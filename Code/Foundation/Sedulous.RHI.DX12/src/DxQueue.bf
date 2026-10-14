@@ -117,6 +117,7 @@ class DxQueue : IQueue
 			delete batch;
 			return .Err;
 		}
+		batch.Counters = mDevice.CounterBlock;
 		return .Ok(batch);
 	}
 

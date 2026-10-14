@@ -17,6 +17,9 @@ struct DeviceFeatures
 	/// IQueue.CalibrateTimestamps can read a GPU timestamp and the CPU's clock together
 	/// (Vulkan's calibrated timestamps, D3D12's GetClockCalibration).
 	public bool TimestampCalibration = false;
+	/// IDevice.MemoryBudget answers (Vulkan's VK_EXT_memory_budget, DXGI's
+	/// QueryVideoMemoryInfo).
+	public bool MemoryBudget = false;
 	public bool PipelineStatisticsQueries = false;
 
 	/// Begin and end an occlusion query anywhere inside a render pass. WebGPU cannot honour

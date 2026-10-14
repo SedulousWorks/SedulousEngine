@@ -14,12 +14,15 @@ class NullDevice : IDevice
 	private NullQueue mGraphicsQueue = new .() ~ delete _;
 	private NullQueue mComputeQueue = new .() ~ delete _;
 	private NullQueue mTransferQueue = new .() ~ delete _;
+	/// What its encoders recorded and its resources hold, though nothing reaches a GPU: the
+	/// profiler's counters read the same on the headless backend.
+	private DeviceCounterBlock mCounters = new .() ~ delete _;
 
 	public this()
 	{
-		mGraphicsQueue.Initialize(.Graphics);
-		mComputeQueue.Initialize(.Compute);
-		mTransferQueue.Initialize(.Transfer);
+		mGraphicsQueue.Initialize(.Graphics, mCounters);
+		mComputeQueue.Initialize(.Compute, mCounters);
+		mTransferQueue.Initialize(.Transfer, mCounters);
 	}
 
 	public DeviceType Type => .Null;
@@ -36,6 +39,16 @@ class NullDevice : IDevice
 	/// No statistics: a statistics result takes no room and reads as nought.
 	public uint32 QueryResultSize(QueryType type) => (type == .PipelineStatistics) ? 0 : 8;
 	public PipelineStatistics DecodePipelineStatistics(void* result) => .();
+
+	public DeviceCounters Counters() => mCounters.Snapshot();
+
+	/// No driver to ask.
+	public bool MemoryBudget(out uint64 budgetBytes, out uint64 usedBytes)
+	{
+		budgetBytes = 0;
+		usedBytes = 0;
+		return false;
+	}
 
 	public IQueue GetQueue(QueueType type, uint32 index)
 	{
@@ -61,6 +74,7 @@ class NullDevice : IDevice
 	{
 		let buffer = new NullBuffer();
 		buffer.Initialize(desc);
+		mCounters.BufferMade(desc.Size);
 		return .Ok(buffer);
 	}
 
@@ -68,6 +82,7 @@ class NullDevice : IDevice
 	{
 		let texture = new NullTexture();
 		texture.Initialize(desc);
+		mCounters.TextureMade(DeviceCounterBlock.EstimateTextureBytes(desc), DeviceCounterBlock.CountsAsRenderTarget(desc));
 		return .Ok(texture);
 	}
 
@@ -115,7 +130,7 @@ class NullDevice : IDevice
 	}
 
 	public Result<ICommandPool> CreateCommandPool(QueueType queueType)
-		=> .Ok(new NullCommandPool());
+		=> .Ok(new NullCommandPool(mCounters));
 
 	public Result<IFence> CreateFence(uint64 initialValue)
 	{
@@ -143,8 +158,21 @@ class NullDevice : IDevice
 	// Each nulls the caller's handle as well as freeing, so a stale variable cannot be
 	// used again.
 
-	public void DestroyBuffer(ref IBuffer buffer) { delete buffer; buffer = null; }
-	public void DestroyTexture(ref ITexture texture) { delete texture; texture = null; }
+	public void DestroyBuffer(ref IBuffer buffer)
+	{
+		if (buffer != null)
+			mCounters.BufferFreed(buffer.Desc.Size);
+		delete buffer;
+		buffer = null;
+	}
+
+	public void DestroyTexture(ref ITexture texture)
+	{
+		if (texture != null)
+			mCounters.TextureFreed(DeviceCounterBlock.EstimateTextureBytes(texture.Desc), DeviceCounterBlock.CountsAsRenderTarget(texture.Desc));
+		delete texture;
+		texture = null;
+	}
 	public void DestroyTextureView(ref ITextureView view) { delete view; view = null; }
 	public void DestroySampler(ref ISampler sampler) { delete sampler; sampler = null; }
 	public void DestroyShaderModule(ref IShaderModule module) { delete module; module = null; }

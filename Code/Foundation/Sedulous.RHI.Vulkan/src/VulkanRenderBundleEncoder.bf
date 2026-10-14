@@ -12,6 +12,8 @@ namespace Sedulous.RHI.Vulkan;
 /// than taken from the pass that later executes it.
 class VulkanRenderBundleEncoder : IRenderBundleEncoder
 {
+	/// What this recording has recorded, which the bundle counts each time it runs.
+	private RecordedCounts mRecorded;
 	private VkCommandBuffer mCommandBuffer;
 	private VulkanRenderPipeline mPipeline;
 	private VulkanRenderBundle mBundle ~ delete _;
@@ -81,6 +83,7 @@ class VulkanRenderBundleEncoder : IRenderBundleEncoder
 
 	public void SetPipeline(IRenderPipeline pipeline)
 	{
+		mRecorded.PipelineBinds++;
 		mPipeline = pipeline as VulkanRenderPipeline;
 		if (mPipeline != null)
 		{
@@ -93,6 +96,7 @@ class VulkanRenderBundleEncoder : IRenderBundleEncoder
 	/// nothing rather than binding against the wrong layout.
 	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets)
 	{
+		mRecorded.BindGroupBinds++;
 		let bindGroup = group as VulkanBindGroup;
 		if ((bindGroup == null) || (mPipeline == null))
 			return;
@@ -139,18 +143,25 @@ class VulkanRenderBundleEncoder : IRenderBundleEncoder
 
 	public void Draw(uint32 vertexCount, uint32 instanceCount, uint32 firstVertex,
 		uint32 firstInstance)
-		=> VulkanNative.vkCmdDraw(mCommandBuffer, vertexCount, instanceCount, firstVertex,
+	{
+		mRecorded.Draws++;
+		VulkanNative.vkCmdDraw(mCommandBuffer, vertexCount, instanceCount, firstVertex,
 			firstInstance);
+	}
 
 	public void DrawIndexed(uint32 indexCount, uint32 instanceCount, uint32 firstIndex,
 		int32 baseVertex, uint32 firstInstance)
-		=> VulkanNative.vkCmdDrawIndexed(mCommandBuffer, indexCount, instanceCount, firstIndex,
+	{
+		mRecorded.Draws++;
+		VulkanNative.vkCmdDrawIndexed(mCommandBuffer, indexCount, instanceCount, firstIndex,
 			baseVertex, firstInstance);
+	}
 
 	/// A stride of zero means tightly packed, which for an indirect draw command is twenty
 	/// bytes, or sixteen for the non indexed form.
 	public void DrawIndirect(IBuffer buffer, uint64 offset, uint32 drawCount, uint32 stride)
 	{
+		mRecorded.Draws += drawCount;
 		let vulkanBuffer = buffer as VulkanBuffer;
 		if (vulkanBuffer == null)
 			return;
@@ -160,6 +171,7 @@ class VulkanRenderBundleEncoder : IRenderBundleEncoder
 
 	public void DrawIndexedIndirect(IBuffer buffer, uint64 offset, uint32 drawCount, uint32 stride)
 	{
+		mRecorded.Draws += drawCount;
 		let vulkanBuffer = buffer as VulkanBuffer;
 		if (vulkanBuffer == null)
 			return;
@@ -177,6 +189,7 @@ class VulkanRenderBundleEncoder : IRenderBundleEncoder
 		mFinished = true;
 		VulkanNative.vkEndCommandBuffer(mCommandBuffer);
 		mBundle = new VulkanRenderBundle(mCommandBuffer);
+		mBundle.Counts = mRecorded;
 		return mBundle;
 	}
 }

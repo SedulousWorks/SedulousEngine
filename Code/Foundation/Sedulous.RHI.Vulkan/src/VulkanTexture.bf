@@ -35,10 +35,14 @@ class VulkanTexture : ITexture
 	/// per level bookkeeping.
 	private List<VkImageLayout> mSubresourceLayouts = new List<VkImageLayout>() ~ delete _;
 	private VkDeviceMemory mMemory;
+	/// The bytes the driver allocated for it (IDevice.Counters); nought for an image it does not
+	/// own, a swap chain's.
+	private uint64 mAllocationSize;
 	/// False for a swap chain image, which the chain owns and this only describes.
 	private bool mOwnsImage = true;
 
 	public TextureDesc Desc => mDesc;
+	public uint64 AllocationSize => mAllocationSize;
 	public ResourceState InitialState { get; set; } = .Undefined;
 	public VkImage Handle => mImage;
 
@@ -99,6 +103,7 @@ class VulkanTexture : ITexture
 			mImage = .Null;
 			return .Err;
 		}
+		mAllocationSize = requirements.size;
 
 		Interlocked.Increment(ref sLiveAllocations);
 		VulkanNative.vkBindImageMemory(device, mImage, mMemory, 0);

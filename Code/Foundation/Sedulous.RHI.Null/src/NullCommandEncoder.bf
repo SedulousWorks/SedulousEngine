@@ -14,13 +14,30 @@ class NullCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	private NullRenderPassEncoder mRenderPass = new .() ~ delete _;
 	private NullComputePassEncoder mComputePass = new .() ~ delete _;
 	private NullRenderBundleEncoder mBundleEncoder = new .() ~ delete _;
+	/// The device's counts, BORROWED; null counts nothing.
+	private DeviceCounterBlock mCounters;
+
+	public this(DeviceCounterBlock counters = null)
+	{
+		mCounters = counters;
+		mRenderPass.Counters = counters;
+		mComputePass.Counters = counters;
+	}
 	private NullCommandBuffer mCommandBuffer = new .() ~ delete _;
 
 	/// The pool reaches this to answer its own CreateRenderBundleEncoder.
 	public NullRenderBundleEncoder BundleEncoder => mBundleEncoder;
 
-	public IRenderPassEncoder BeginRenderPass(RenderPassDesc desc) => mRenderPass;
-	public IComputePassEncoder BeginComputePass(StringView label) => mComputePass;
+	public IRenderPassEncoder BeginRenderPass(RenderPassDesc desc)
+	{
+		mCounters?.RenderPass();
+		return mRenderPass;
+	}
+	public IComputePassEncoder BeginComputePass(StringView label)
+	{
+		mCounters?.ComputePass();
+		return mComputePass;
+	}
 	public IRenderBundleEncoder CreateRenderBundleEncoder(RenderBundleDesc desc)
 		=> mBundleEncoder;
 
@@ -56,11 +73,11 @@ class NullCommandEncoder : ICommandEncoder, IRayTracingEncoderExt
 	public void BuildTopLevelAccelStruct(IAccelStruct dst, IBuffer scratchBuffer,
 		uint64 scratchOffset, IBuffer instanceBuffer, uint64 instanceOffset,
 		uint32 instanceCount) {}
-	public void SetRayTracingPipeline(IRayTracingPipeline pipeline) {}
-	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets) {}
+	public void SetRayTracingPipeline(IRayTracingPipeline pipeline) => mCounters?.PipelineBinds();
+	public void SetBindGroup(uint32 index, IBindGroup group, Span<uint32> dynamicOffsets) => mCounters?.BindGroupBinds();
 	public void SetPushConstants(ShaderStage stages, uint32 offset, uint32 size, void* data) {}
 	public void TraceRays(IBuffer raygenSBT, uint64 raygenOffset, uint64 raygenStride,
 		IBuffer missSBT, uint64 missOffset, uint64 missStride,
 		IBuffer hitSBT, uint64 hitOffset, uint64 hitStride,
-		uint32 width, uint32 height, uint32 depth) {}
+		uint32 width, uint32 height, uint32 depth) => mCounters?.Dispatches(); // a trace counts as a dispatch
 }

@@ -16,7 +16,12 @@ class NullQueue : IQueue
 
 	public QueueType QueueType => mQueueType;
 
-	public void Initialize(QueueType queueType) => mQueueType = queueType;
+	/// `counters` is the device's, BORROWED: the transfer batch counts its bytes there.
+	public void Initialize(QueueType queueType, DeviceCounterBlock counters)
+	{
+		mQueueType = queueType;
+		mTransferBatch.Counters = counters;
+	}
 
 	public void Submit(Span<ICommandBuffer> commandBuffers) {}
 

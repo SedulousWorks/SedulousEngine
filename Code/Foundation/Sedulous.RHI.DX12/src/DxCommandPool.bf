@@ -67,6 +67,7 @@ class DxCommandPool : ICommandPool
 		rpeCtx.DrawSig = mDevice.DrawSignature;
 		rpeCtx.DrawIndexedSig = mDevice.DrawIndexedSignature;
 		rpeCtx.DispatchMeshSig = mDevice.DispatchMeshSignature;
+		rpeCtx.Counters = mDevice.CounterBlock;
 
 		DxComputePassContext cpeCtx = .();
 		cpeCtx.CmdList = cmdList;
@@ -74,6 +75,7 @@ class DxCommandPool : ICommandPool
 		cpeCtx.GpuSrvHeap = mDevice.GpuSrvHeap;
 		cpeCtx.GpuSamplerHeap = mDevice.GpuSamplerHeap;
 		cpeCtx.DispatchSig = mDevice.DispatchSignature;
+		cpeCtx.Counters = mDevice.CounterBlock;
 
 		let enc = new DxCommandEncoder(mDevice, cmdList, this, rpeCtx, cpeCtx);
 		mUnfinishedEncoders++; // balanced by Finish closing the list

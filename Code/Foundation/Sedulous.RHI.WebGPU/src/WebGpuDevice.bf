@@ -21,6 +21,8 @@ sealed class WebGpuDevice : IDevice
 
 	private WebGpuBlitHelper mBlitHelper = new .() ~ delete _;
 	private WebGpuBufferRegistry mBufferRegistry = new .() ~ delete _;
+	/// What its encoders recorded and its resources hold (IDevice.Counters).
+	private DeviceCounterBlock mCounters = new .() ~ delete _;
 
 	// ONE WebGPU queue, three RHI typed views of it. See WebGpuQueue.
 	private WebGpuQueue mGraphicsQueue = new .() ~ delete _;
@@ -51,6 +53,9 @@ sealed class WebGpuDevice : IDevice
 		mGraphicsQueue.Initialize(instance, device, queue, .Graphics, mBufferRegistry);
 		mComputeQueue.Initialize(instance, device, queue, .Compute, mBufferRegistry);
 		mTransferQueue.Initialize(instance, device, queue, .Transfer, mBufferRegistry);
+		mGraphicsQueue.Counters = mCounters;
+		mComputeQueue.Counters = mCounters;
+		mTransferQueue.Counters = mCounters;
 		mBlitHelper.Initialize(device);
 
 		// DEBUG: force the FULL browser shader path on desktop wgpu-native - WGSL text AND
@@ -147,6 +152,16 @@ sealed class WebGpuDevice : IDevice
 	/// adjustment, and the WGSL cook passes naga --keep-coordinate-space so the cooked WGSL
 	/// carries the same convention. No pass needs a Y compensation on this backend.
 	public bool NeedsClipSpaceYFlip => false;
+
+	public DeviceCounters Counters() => mCounters.Snapshot();
+
+	/// WebGPU has no way to ask the driver.
+	public bool MemoryBudget(out uint64 budgetBytes, out uint64 usedBytes)
+	{
+		budgetBytes = 0;
+		usedBytes = 0;
+		return false;
+	}
 
 	/// No pipeline statistics on WebGPU: a statistics result takes no room and reads as nought.
 	public uint32 QueryResultSize(QueryType type) => (type == .PipelineStatistics) ? 0 : 8;
@@ -255,6 +270,7 @@ sealed class WebGpuDevice : IDevice
 		}
 
 		mBufferRegistry.Add(buffer);
+		mCounters.BufferMade(desc.Size);
 		return .Ok(buffer);
 	}
 
@@ -267,6 +283,7 @@ sealed class WebGpuDevice : IDevice
 			return .Err;
 		}
 
+		mCounters.TextureMade(DeviceCounterBlock.EstimateTextureBytes(desc), DeviceCounterBlock.CountsAsRenderTarget(desc));
 		return .Ok(texture);
 	}
 
@@ -381,6 +398,7 @@ sealed class WebGpuDevice : IDevice
 	{
 		let pool = new WebGpuCommandPool();
 		pool.Initialize(mDevice, mBlitHelper);
+		pool.Counters = mCounters;
 		return .Ok(pool);
 	}
 
@@ -425,6 +443,7 @@ sealed class WebGpuDevice : IDevice
 		if (let resource = x as WebGpuBuffer)
 		{
 			mBufferRegistry.Remove(resource);
+			mCounters.BufferFreed(resource.Desc.Size);
 			delete resource;
 		}
 
@@ -434,7 +453,10 @@ sealed class WebGpuDevice : IDevice
 	public void DestroyTexture(ref ITexture x)
 	{
 		if (let resource = x as WebGpuTexture)
+		{
+			mCounters.TextureFreed(DeviceCounterBlock.EstimateTextureBytes(resource.Desc), DeviceCounterBlock.CountsAsRenderTarget(resource.Desc));
 			delete resource;
+		}
 
 		x = null;
 	}
