@@ -236,8 +236,7 @@ class Builder:
         cam = d.stable_id("entity")
         d.entity("Camera", (x, 9.0, z + 7.0), pitch(-48.0), eid=cam)
         d.add(cam, "camera", fovYRadians=0.9)
-        d.script(player, (asset("ScriptClassAsset", "Player"), {"camera": ("entity", cam), "crowd": ("entity", crowd),
-                                                                "seat": 0}))
+        d.script(player, (asset("ScriptClassAsset", "Player"), {"camera": ("entity", cam), "crowd": ("entity", crowd)}))
         d.script(cam, (asset("ScriptClassAsset", "CameraRig"), {"target": ("entity", player), "distance": 7.0,
                                                                  "height": 9.0}))
         bots = []

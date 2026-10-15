@@ -18903,16 +18903,13 @@
 					<string name="script">df3731eb-4d37-d147-95b4-af116d3c467a</string>
 					<bool name="enabled">true</bool>
 					<f32 name="updateInterval">0</f32>
-					<array name="overrides" count="3">
+					<array name="overrides" count="2">
 						<u64 name="nameHash">8056904078410733902</u64>
 						<u8 name="kind">7</u8>
 						<string name="id">175a7d1b-c4a9-57b8-abf7-dab6337b3f6f</string>
 						<u64 name="nameHash">876332341124989774</u64>
 						<u8 name="kind">7</u8>
 						<string name="id">2af490a6-4bf7-50dc-a3f5-5117c950620f</string>
-						<u64 name="nameHash">3245108620458275816</u64>
-						<u8 name="kind">2</u8>
-						<f64 name="number">0</f64>
 					</array>
 				</array>
 			</object>
@@ -30981,10 +30978,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -30993,10 +30996,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31005,10 +31014,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31017,10 +31032,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31029,10 +31050,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31041,10 +31068,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31053,10 +31086,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31065,10 +31104,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31077,10 +31122,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31089,10 +31140,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31101,10 +31158,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31113,10 +31176,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31125,10 +31194,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31137,10 +31212,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31149,10 +31230,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31161,10 +31248,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31173,10 +31266,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31185,10 +31284,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31197,10 +31302,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31209,10 +31320,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31221,10 +31338,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31233,10 +31356,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31245,10 +31374,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31257,10 +31392,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31269,10 +31410,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31281,10 +31428,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31293,10 +31446,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31305,10 +31464,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31317,10 +31482,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31329,10 +31500,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31341,10 +31518,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31353,10 +31536,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31365,10 +31554,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31377,10 +31572,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31389,10 +31590,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31401,10 +31608,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31413,10 +31626,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31425,10 +31644,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31437,10 +31662,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31449,10 +31680,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31461,10 +31698,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31473,10 +31716,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31485,10 +31734,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31497,10 +31752,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31509,10 +31770,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31521,10 +31788,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31533,10 +31806,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31545,10 +31824,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31557,10 +31842,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31569,10 +31860,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31581,10 +31878,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31593,10 +31896,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31605,10 +31914,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31617,10 +31932,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31629,10 +31950,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31641,10 +31968,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31653,10 +31986,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31665,10 +32004,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31677,10 +32022,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31689,10 +32040,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31701,10 +32058,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31713,10 +32076,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31725,10 +32094,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31737,10 +32112,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31749,10 +32130,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31761,10 +32148,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31773,10 +32166,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31785,10 +32184,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31797,10 +32202,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31809,10 +32220,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31821,10 +32238,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31833,10 +32256,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31845,10 +32274,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31857,10 +32292,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31869,10 +32310,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31881,10 +32328,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31893,10 +32346,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31905,10 +32364,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31917,10 +32382,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31929,10 +32400,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31941,10 +32418,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31953,10 +32436,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31965,10 +32454,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31977,10 +32472,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -31989,10 +32490,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32001,10 +32508,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32013,10 +32526,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32025,10 +32544,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32037,10 +32562,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32049,10 +32580,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32061,10 +32598,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32073,10 +32616,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32085,10 +32634,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32097,10 +32652,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32109,10 +32670,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32121,10 +32688,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32133,10 +32706,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32145,10 +32724,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32157,10 +32742,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32169,10 +32760,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32181,10 +32778,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32193,10 +32796,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32205,10 +32814,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32217,10 +32832,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32229,10 +32850,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32241,10 +32868,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32253,10 +32886,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32265,10 +32904,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32277,10 +32922,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32289,10 +32940,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32301,10 +32958,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32313,10 +32976,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32325,10 +32994,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32337,10 +33012,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32349,10 +33030,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32361,10 +33048,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32373,10 +33066,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32385,10 +33084,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32397,10 +33102,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32409,10 +33120,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32421,10 +33138,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32433,10 +33156,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32445,10 +33174,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32457,10 +33192,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32469,10 +33210,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32481,10 +33228,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32493,10 +33246,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32505,10 +33264,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32517,10 +33282,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32529,10 +33300,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32541,10 +33318,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32553,10 +33336,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32565,10 +33354,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32577,10 +33372,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32589,10 +33390,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32601,10 +33408,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32613,10 +33426,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32625,10 +33444,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32637,10 +33462,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32649,10 +33480,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32661,10 +33498,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32673,10 +33516,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32685,10 +33534,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32697,10 +33552,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32709,10 +33570,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32721,10 +33588,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32733,10 +33606,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32745,10 +33624,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32757,10 +33642,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32769,10 +33660,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32781,10 +33678,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32793,10 +33696,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32805,10 +33714,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32817,10 +33732,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32829,10 +33750,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32841,10 +33768,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32853,10 +33786,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32865,10 +33804,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32877,10 +33822,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32889,10 +33840,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32901,10 +33858,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32913,10 +33876,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32925,10 +33894,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32937,10 +33912,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32949,10 +33930,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32961,10 +33948,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32973,10 +33966,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32985,10 +33984,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -32997,10 +34002,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">593789ee-a3c8-5c63-83da-10730bf81fcf</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -33009,10 +34020,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7a67de9c-8db4-5bdd-9652-cc5b841f2918</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -33021,10 +34038,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">65a6d5d9-e171-55a1-9cf5-8f5cb1e21376</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -33033,10 +34056,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">ae819bca-060e-50be-8a37-e04da2a14d92</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -33045,10 +34074,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">15ea168b-c86e-5017-b9df-38ce67113817</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
@@ -33057,10 +34092,16 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">9795857015741610453</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="instancedMesh">7e173d94-8fe6-5ef6-a6ff-692d280639cd</string>
 				<u32 name="clip">0</u32>
+				<object name="tint">
+					<f32 name="r">1</f32>
+					<f32 name="g">1</f32>
+					<f32 name="b">1</f32>
+					<f32 name="a">1</f32>
+				</object>
 			</object>
 		</object>
 		<object>
