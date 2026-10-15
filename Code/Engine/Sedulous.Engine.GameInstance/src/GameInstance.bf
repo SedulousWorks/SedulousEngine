@@ -655,19 +655,26 @@ class GameInstance
 			ActionRuntime.StopAllRumble(mInputSource);
 		// What the game saved and did not write yet is kept: the run writes it as it ends.
 		mSave.Flush();
-		if (mGame == null)
-			return;
-		InvokeGame("exit", default);
-		if ((mGame != null) && (mRunHost.Runtime != null))
+		if (mGame != null)
 		{
-			mRunHost.Runtime.CancelCoroutinesFor(mGame);
-			mRunHost.Runtime.Release(mGame);
+			InvokeGame("exit", default);
+			if ((mGame != null) && (mRunHost.Runtime != null))
+			{
+				mRunHost.Runtime.CancelCoroutinesFor(mGame);
+				mRunHost.Runtime.Release(mGame);
+			}
+			mGame = null;
+			mGameClass = null;
+			// The game held the host; it may go now, when no scene of the run still pins it.
+			mRunHost.HasGameScriptHold = false;
+			mRunHost.CheckTeardown();
+			// Networking belongs to the game's run: what it hosted or joined closes with it,
+			// after its exit() had the chance to say goodbye. An editor's Game tab stopped and
+			// started again would otherwise come back still a server, its port still held.
+			// Only a game's stop: StartScript stops first, and an app's startup preset hosts
+			// or joins before the game launches.
+			mNetwork.StopNetworking();
 		}
-		mGame = null;
-		mGameClass = null;
-		// The game held the host; it may go now, when no scene of the run still pins it.
-		mRunHost.HasGameScriptHold = false;
-		mRunHost.CheckTeardown();
 	}
 
 	/// Ticks the game script and moves the run's clock: once per frame, before the run bus

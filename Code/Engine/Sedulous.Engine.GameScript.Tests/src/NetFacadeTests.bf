@@ -269,4 +269,25 @@ class NetFacadeTests
 		Test.Assert(!run.PropBool("offlineMine"), "offline nothing is mine, and the call does not fail");
 		Test.Assert(run.PropBool("finished"));
 	}
+
+	/// What a game hosted closes when the game stops (an editor's Game tab stopped and started
+	/// again came back still a server, its port held). A host the app opened before the game
+	/// launched, a startup preset's, outlives the launch, which stops nothing that ran.
+	[Test]
+	public static void AGamesStopClosesWhatItHosted()
+	{
+		let run = scope GameRun("scratch_net_stop");
+		let game = run.Class("Game", "class Game { void launch() { Net.StartServer(0); } }");
+		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.Instance.NetEndpoint != null);
+		run.Instance.StopScript();
+		Test.Assert(run.Instance.NetEndpoint == null, "the game's server closed with it");
+
+		Test.Assert(run.Instance.StartServer(0, false), "a startup preset's host");
+		let quiet = run.Class("Game", "class Game { void launch() {} }");
+		Test.Assert(run.Instance.StartScript(quiet));
+		Test.Assert(run.Instance.NetEndpoint != null, "the launch stopped no game, so the host stands");
+		run.Instance.StopScript();
+		Test.Assert(run.Instance.NetEndpoint == null);
+	}
 }
