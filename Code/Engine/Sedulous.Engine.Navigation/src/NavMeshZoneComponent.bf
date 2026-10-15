@@ -14,7 +14,7 @@ namespace Sedulous.Engine.Navigation;
 /// cooked product and nothing else.
 ///
 /// Not a script type: its fields are bake settings, read only when the zone is baked.
-[SerializableComponent("navigation.Zone")]
+[SerializableComponent("navigation.Zone", 2, 1)]
 [DisplayName("Nav Mesh Zone")]
 [Category("Navigation")]
 [Description("Marks a box where a navigation mesh is baked, and loads that baked mesh for agents at run time.")]
@@ -29,6 +29,9 @@ struct NavMeshZoneComponent : ISerializable, IComponentResources
 	public float AgentHeight = 2.0f;
 	public float AgentMaxClimb = 0.9f;
 	public float AgentMaxSlopeDegrees = 45.0f;
+
+	/// The most agents the zone's crowd moves at once; one past it does not join.
+	public int32 MaxAgents = 128;
 
 	/// The cooked navmesh this zone loads.
 	public Ref<NavigationZoneResource> Zone = .(Guid());
@@ -55,5 +58,9 @@ struct NavMeshZoneComponent : ISerializable, IComponentResources
 		SerializeValue(ar, "agentMaxClimb", ref AgentMaxClimb);
 		SerializeValue(ar, "agentMaxSlopeDegrees", ref AgentMaxSlopeDegrees);
 		SerializeValue(ar, "zone", ref Zone.Id);
+		// Version 1 had no agent limit: the crowd moved 128, which a zone read from it keeps.
+		if ((ar.Mode == .Read) && (ar.Version == 1))
+			return;
+		SerializeValue(ar, "maxAgents", ref MaxAgents);
 	}
 }

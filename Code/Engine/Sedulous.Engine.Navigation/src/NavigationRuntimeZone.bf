@@ -21,6 +21,8 @@ class NavigationRuntimeZone
 	/// a few frames and then frees it, so the zone notices the swap before then and rebuilds
 	/// over the new one (NavigationSceneSystem.RebuildReloadedZones).
 	public NavigationZoneResource BuiltFrom = null;
+	/// The zone's agent limit, its crowd's size.
+	public int32 MaxAgents = 128;
 	public EntityHandle Entity = .Invalid;
 
 	public Float4x4 World = Float4x4.Identity();

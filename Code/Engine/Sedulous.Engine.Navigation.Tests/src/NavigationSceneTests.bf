@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Core.Logging;
+using Sedulous.Core.Serialization;
 using Sedulous.Engine.Navigation;
 using Sedulous.Navigation;
 using Sedulous.Scene;
@@ -335,5 +337,79 @@ class NavigationSceneTests
 		Test.Assert(log.Has("agent 'offMesh'") && log.Has("found no navmesh where it stands"), "the agent off the ground says so");
 		Test.Assert(log.Has("agent 'inEmpty'") && log.Has("agent 'lost'"), "the agents in no usable zone say so");
 		Test.Assert(!log.Has("'fine'") && !log.Has("'baked'"), "what works says nothing");
+	}
+
+	/// A zone's MaxAgents is how many agents its crowd moves: past the old fixed 128 for
+	/// Masquerade's crowd, and only what it was given for a small zone.
+	[Test]
+	public static void AZonesMaxAgentsIsHowManyAgentsItsCrowdMoves()
+	{
+		let fixture = scope NavigationSceneFixture("scratch_navmax_db");
+		let zoneId = fixture.Database.RootGroup.CreateInstance("zone", "Sedulous.Navigation.Resource.NavigationZoneSource").Id;
+		fixture.WriteGroundZone(zoneId, 30.0f);
+
+		int Joined(int32 limit, int count)
+		{
+			let scene = scope Scene("navmax");
+			NavigationScene.AddNavigationSceneManagers(scene);
+			let zoneEntity = scene.CreateEntity("zone");
+			let zone = scene.GetSystem<NavMeshZoneComponentManager>().Add(zoneEntity);
+			zone.Extents = .(35, 10, 35);
+			zone.MaxAgents = limit;
+			zone.Zone.SetId(zoneId);
+			zone.Zone.Bind(fixture.Manager);
+			let agents = scene.GetSystem<NavAgentComponentManager>();
+			for (int i < count)
+			{
+				let e = scene.CreateEntity();
+				scene.SetLocalPosition(e, .(-25.0f + (float)(i % 25) * 2.0f, 0, -25.0f + (float)(i / 25) * 2.0f));
+				agents.Add(e).Radius = 0.3f;
+			}
+			scene.UpdateTransforms();
+			scene.Start();
+			int n = 0;
+			agents.ForEach(scope [&](agent, entity) => { if (agent.AgentId >= 0) n++; });
+			scene.Stop();
+			return n;
+		}
+		Test.Assert(Joined(200, 150) == 150, "Masquerade's crowd: past the old fixed 128");
+		Test.Assert(Joined(3, 5) == 3, "a small zone takes only what it was given");
+	}
+
+	/// A version 1 zone record (no agent limit) reads, leaving the limit as it was.
+	[Test]
+	public static void AVersionOneZoneRecordReadsWithTheDefaultAgentLimit()
+	{
+		let stream = scope MemoryStream();
+		{
+			// The version 1 fields, by hand: the extents, the bake profile and the zone.
+			let writer = scope BinarySerializer(stream, .Write);
+			var extents = Float3(20, 10, 20);
+			writer.Key("extents");
+			Sedulous.Core.Serialization.Serialize(writer, ref extents);
+			for (let value in float[6](0.3f, 0.2f, 0.6f, 2.0f, 0.9f, 45.0f))
+			{
+				var v = value;
+				SerializeValue(writer, "f", ref v);
+			}
+			var id = Guid();
+			SerializeValue(writer, "zone", ref id);
+			var trailing = 77u;
+			SerializeValue(writer, "trailing", ref trailing);
+			Test.Assert(writer.IsOk);
+		}
+		stream.Seek(0, .Begin);
+		let reader = scope BinarySerializer(stream, .Read);
+		reader.PushVersionScope(scope SerializedDataVersion[](.(TypeIdOf("navigation.Zone"), 1)));
+		var zone = NavMeshZoneComponent();
+		zone.MaxAgents = 7;
+		zone.Serialize(reader);
+		uint32 trailing = 0;
+		SerializeValue(reader, "trailing", ref trailing);
+		reader.PopVersionScope();
+		Test.Assert(reader.IsOk);
+		Test.Assert(zone.MaxAgents == 7, "no maxAgents asked of a version 1 record");
+		Test.Assert(Math.Abs(zone.AgentRadius - 0.6f) < 1e-4f);
+		Test.Assert(trailing == 77, "nothing past the version 1 fields was consumed");
 	}
 }

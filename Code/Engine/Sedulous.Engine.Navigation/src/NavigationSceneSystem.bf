@@ -24,7 +24,6 @@ namespace Sedulous.Engine.Navigation;
 class NavigationSceneSystem : SceneSystem
 {
 	/// What one crowd holds.
-	private const int32 cMaxAgentsPerZone = 128;
 
 	/// BORROWED: the scene outlives its systems.
 	private Scene mScene = null;
@@ -246,6 +245,7 @@ class NavigationSceneSystem : SceneSystem
 				runtime.Center = mScene.GetWorldPosition(entity);
 				runtime.Extents = zone.Extents;
 				runtime.Entity = entity;
+				runtime.MaxAgents = Math.Max(zone.MaxAgents, 1);
 				BuildCrowd(runtime, product);
 
 				zone.RuntimeIndex = (int32)mZones.Count;
@@ -294,7 +294,7 @@ class NavigationSceneSystem : SceneSystem
 	{
 		zone.BuiltFrom = product;
 		let radius = (product.Mesh.BakedAgentRadius > 0.0f) ? product.Mesh.BakedAgentRadius : 0.6f;
-		zone.Crowd = new NavigationCrowd(product.Mesh, cMaxAgentsPerZone, radius);
+		zone.Crowd = new NavigationCrowd(product.Mesh, zone.MaxAgents, radius);
 		zone.Query = new NavigationMeshQuery(product.Mesh);
 	}
 
@@ -339,7 +339,10 @@ class NavigationSceneSystem : SceneSystem
 			runtime.BuiltFrom = null;
 			let usable = (now != null) && now.IsValid;
 			if (usable)
+			{
+				runtime.MaxAgents = Math.Max(component.MaxAgents, 1);
 				BuildCrowd(runtime, now);
+			}
 
 			let zoneIndex = (int32)i;
 			agents.ForEach(scope [&] (agent, entity) =>
