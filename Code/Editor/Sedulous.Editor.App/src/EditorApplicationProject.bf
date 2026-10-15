@@ -428,6 +428,8 @@ extension EditorApplication
 				}
 			};
 		EditorPageTools.Register(mMcpHost.Server, pageSeams);
+		// layout_get / panel_dock: the dock the tabs are dragged in.
+		EditorLayoutTools.Register(mMcpHost.Server, mShell.Docks);
 		// The action bridge: everything a user can do by command, unattended (the dialogs an
 		// action opens are suppressed and reported).
 		let actionSeams = new ActionToolSeams();

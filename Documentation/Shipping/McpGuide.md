@@ -15,7 +15,11 @@ one writer), so an agent can work on what the user is looking at. Tell them apar
 `project_create` and `project_open` (the editor's project is the editor's), and the editor's
 long tools (a cook) keep the call open until the editor's own background service finishes:
 give the client a generous timeout rather than polling. The editor adds the page tools
-(`page_list`, `page_open`, `page_reload`, `page_close`), the whole-window capture
+(`page_list`, `page_open`, `page_reload`, `page_close`), the layout tools (`layout_get`, the
+dock's tree of splits and tab groups with every panel by id: a page's asset guid, a Game tab's PIE
+id, `welcome` for Project, `assets`, `console`, `profiler`; `panel_dock`, which moves a panel
+beside another, into its tabs or floating, as dragging its tab does, `share` setting its part of
+the split), the whole-window capture
 (`editor_screenshot`), the action bridge (`action_list`,
 `action_state`, `action_execute`: everything a user can do by menu, chord, toolbar or context
 menu, over the active page, executed unattended; a dialog an action would open is closed as
@@ -82,6 +86,12 @@ sideways in it, while `pie_run` still takes the game's own pixels. `pie_resoluti
 a tab's resolution dropdown and Phone toggle: an entry by its key (`project`, `export:<preset>`,
 `preset:<name>`, `panel`), its label, or a size (`1280x720`); the choice is the dropdown's, kept
 for the project, so every Game tab opens at it.
+
+A networked game is played with two tabs at once: `pie_start`, then `pie_start` with
+`newInstance`, then `panel_dock {panel: "game-page-1", position: "right", relativeTo:
+"game-page"}` so both show (a background tab renders nothing), host in one and join from the
+other, each driven by its own `pie_run`. A narrow tab draws the game scaled down, so read each
+screenshot's `scale` before clicking.
 
 `pie_run` is the playtest: it plays a device-level input timeline into one running instance
 for `duration` seconds of run time and answers what happened. The timeline takes keys by their

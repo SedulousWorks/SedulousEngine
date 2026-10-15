@@ -45,6 +45,13 @@ port is 7405; the token is minted on first enable and written to `<user-data>/mc
   then execute by id. `action_execute` runs unattended: a dialog the action would open is
   closed as cancelled and named under `suppressedDialogs`. The action then most likely did
   nothing, so use a dedicated tool for that step or ask the user; never retry it blind.
+- The layout tools are the editor host's: `layout_get` shows the dock (splits, tab groups, every
+  panel by id: a page's asset guid, a Game tab's PIE id, `welcome` for Project, `assets`,
+  `console`, `profiler`), and `panel_dock` moves a panel beside another, into its tabs or
+  floating. For a networked playtest, two Game tabs side by side: `pie_start`, `pie_start` with
+  `newInstance`, then `panel_dock {panel: "game-page-1", position: "right", relativeTo:
+  "game-page"}`; `pie_resolution` sets each tab's resolution dropdown (`1280x720`, a label or a
+  key) and Phone toggle.
 - The page tools (`page_list`, `page_open`, `page_reload`, `page_close`) are the editor host's
   alone, and so are the scene page's live tools (`selection_get`, `selection_set`,
   `simulate_start`, `simulate_stop`, `entity_inspect`, `component_set`, each addressed by the
