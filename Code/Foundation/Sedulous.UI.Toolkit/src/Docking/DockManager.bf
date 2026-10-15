@@ -364,7 +364,14 @@ class DockManager : ViewGroup, IDropTarget, IPopupOwner, IDockHost
 			return;
 		}
 
-		// An overlay window is a popup, and closing it releases the layer's reference.
+		// An overlay window is a popup, and closing it releases the layer's reference. One that
+		// never reached the layer (no context to show it in, a headless dock) holds only the
+		// reference FloatPanel made, which nothing else would ever release.
+		if (window.Parent == null)
+		{
+			window.ReleaseRef();
+			return;
+		}
 		if (let root = Root())
 			root.GetPopupLayer().ClosePopup(window);
 	}

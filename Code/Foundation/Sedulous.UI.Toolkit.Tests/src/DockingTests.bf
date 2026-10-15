@@ -885,4 +885,24 @@ class DockingTests
 		Test.Assert(bed.Manager.PanelCount == 3);
 		Test.Assert(page.IsPendingDeletion);
 	}
+
+	/// A dock with no UI context (a headless editor shell) cannot show a floated panel's window,
+	/// so the window never reaches the popup layer; docking the panel back must still free it.
+	/// The leak this guards shows under ASan (Tools/asan-test.py).
+	[Test]
+	public static void AHeadlessDockFreesTheWindowOfAPanelDockedBack()
+	{
+		let manager = new DockManager();
+		defer manager.ReleaseRef();
+		let panel = manager.AddPanel("Tool", new Label("T"));
+		panel.SetPersistenceId("tool");
+		manager.DockPanel(panel, .Center);
+		manager.FloatPanel(panel, 10, 10);
+		let window = panel.Parent as DockableWindow;
+		Test.Assert(window != null);
+		Test.Assert(window.Parent == null, "nothing to show it in");
+		manager.DockPanel(panel, .Center);
+		Test.Assert(!(panel.Parent is DockableWindow));
+		Test.Assert(panel.Parent is DockTabGroup);
+	}
 }
