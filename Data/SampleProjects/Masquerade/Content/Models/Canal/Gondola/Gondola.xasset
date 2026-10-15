@@ -1,0 +1,110 @@
+<root>
+	<string name="guid">4f88648c-6081-6b4c-a471-7d6739d600fa</string>
+	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">7383561851963481740</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">Gondola.glb</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">2980668452812246725</u64>
+				<u32 name="version">3</u32>
+			</array>
+			<object>
+				<array name="meshGuid" count="1">
+					<string>a515d03a-ad09-e640-b9cd-536f069ebd3d</string>
+				</array>
+				<array name="meshSkinned" count="1">
+					<bool>false</bool>
+				</array>
+				<array name="meshMaterial" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="collisionGuid" count="0"/>
+				<array name="meshMaterialSlot" count="8">
+					<i32>0</i32>
+					<i32>1</i32>
+					<i32>2</i32>
+					<i32>3</i32>
+					<i32>4</i32>
+					<i32>5</i32>
+					<i32>6</i32>
+					<i32>7</i32>
+				</array>
+				<array name="meshSlotStart" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="meshSlotCount" count="1">
+					<i32>8</i32>
+				</array>
+				<array name="materialGuid" count="8">
+					<string>9abb6d55-b77d-eb43-a00f-1a2fe34581b1</string>
+					<string>a68c4e26-34b9-1f4e-8f56-251a559e0821</string>
+					<string>4cfd0a6a-8222-3e4e-863e-96d929edc7f4</string>
+					<string>a3dc14be-a1ae-8c46-85a3-97788947707a</string>
+					<string>d22b0d38-95bc-0e48-844f-ddee658f89f2</string>
+					<string>0f609b31-4d53-134e-ab7b-b0b389262d8f</string>
+					<string>85281234-532c-1a4b-977f-c8560574b6c7</string>
+					<string>d22087ef-518a-5d4e-8366-631f05788652</string>
+				</array>
+				<array name="materialAlbedo" count="8">
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+				</array>
+				<array name="nodeName" count="1">
+					<string>Gondola</string>
+				</array>
+				<array name="nodeParent" count="1">
+					<i32>-1</i32>
+				</array>
+				<array name="nodeTranslation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+					</object>
+				</array>
+				<array name="nodeRotation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+				</array>
+				<array name="nodeScale" count="1">
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+					</object>
+				</array>
+				<array name="nodeMesh" count="1">
+					<i32>0</i32>
+				</array>
+				<string name="skeletonGuid">00000000-0000-0000-0000-000000000000</string>
+				<array name="animationGuid" count="0"/>
+				<object name="boundsMin">
+					<f32 name="x">-0.6499996</f32>
+					<f32 name="y">-0.31214905</f32>
+					<f32 name="z">-3.5024495</f32>
+				</object>
+				<object name="boundsMax">
+					<f32 name="x">0.64999986</f32>
+					<f32 name="y">2.07</f32>
+					<f32 name="z">3.675</f32>
+				</object>
+				<i32 name="skeletonParentNode">-2</i32>
+			</object>
+			<array name="entries" count="0"/>
+		</object>
+	</object>
+</root>

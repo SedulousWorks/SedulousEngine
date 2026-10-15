@@ -1,0 +1,104 @@
+<root>
+	<string name="guid">5801dd45-dad7-c94f-b755-92dad3b354cb</string>
+	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">7383561851963481740</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">DoorRose.glb</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">2980668452812246725</u64>
+				<u32 name="version">3</u32>
+			</array>
+			<object>
+				<array name="meshGuid" count="1">
+					<string>f0f44951-bc85-0b4b-95aa-6e33ba241b05</string>
+				</array>
+				<array name="meshSkinned" count="1">
+					<bool>false</bool>
+				</array>
+				<array name="meshMaterial" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="collisionGuid" count="0"/>
+				<array name="meshMaterialSlot" count="6">
+					<i32>0</i32>
+					<i32>1</i32>
+					<i32>2</i32>
+					<i32>3</i32>
+					<i32>4</i32>
+					<i32>5</i32>
+				</array>
+				<array name="meshSlotStart" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="meshSlotCount" count="1">
+					<i32>6</i32>
+				</array>
+				<array name="materialGuid" count="6">
+					<string>8e3e15cf-9944-b646-b22a-ce2f8c346fb4</string>
+					<string>74b4276c-d311-9a49-a569-814216f314d8</string>
+					<string>a073748d-1af6-2943-b63f-74a3a2e88fbe</string>
+					<string>ba20087e-b993-0844-827f-f8902dfd1b3f</string>
+					<string>4676b052-7474-944e-baa7-262daa88eaec</string>
+					<string>96ff9563-f503-8d4d-9915-befd7bf40ba2</string>
+				</array>
+				<array name="materialAlbedo" count="6">
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+				</array>
+				<array name="nodeName" count="1">
+					<string>DoorRose</string>
+				</array>
+				<array name="nodeParent" count="1">
+					<i32>-1</i32>
+				</array>
+				<array name="nodeTranslation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+					</object>
+				</array>
+				<array name="nodeRotation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+				</array>
+				<array name="nodeScale" count="1">
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+					</object>
+				</array>
+				<array name="nodeMesh" count="1">
+					<i32>0</i32>
+				</array>
+				<string name="skeletonGuid">00000000-0000-0000-0000-000000000000</string>
+				<array name="animationGuid" count="0"/>
+				<object name="boundsMin">
+					<f32 name="x">-1</f32>
+					<f32 name="y">0</f32>
+					<f32 name="z">-0.28</f32>
+				</object>
+				<object name="boundsMax">
+					<f32 name="x">1</f32>
+					<f32 name="y">8</f32>
+					<f32 name="z">0.45</f32>
+				</object>
+				<i32 name="skeletonParentNode">-2</i32>
+			</object>
+			<array name="entries" count="0"/>
+		</object>
+	</object>
+</root>

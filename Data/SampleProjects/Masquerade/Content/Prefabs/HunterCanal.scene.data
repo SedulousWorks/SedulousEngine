@@ -1,0 +1,343 @@
+<root>
+	<u32 name="magic">3586350318</u32>
+	<u32 name="version">3</u32>
+	<string name="name">HunterCanal</string>
+	<array name="entities" count="8">
+		<string name="id">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
+		<string name="name">Hunter</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">1bab6913-ced2-5dcd-8296-a5b3e7dbbca2</string>
+		<string name="name">LookGownRose</string>
+		<u8 name="active">1</u8>
+		<string name="parent">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">7002ceb2-3311-5469-9177-aac595ce500c</string>
+		<string name="name">LookGownTeal</string>
+		<u8 name="active">0</u8>
+		<string name="parent">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">2af0a724-2fdd-5085-920f-a867b9097978</string>
+		<string name="name">LookGownGold</string>
+		<u8 name="active">0</u8>
+		<string name="parent">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">007d0bfb-48d2-5f6c-8633-b2afcbfb45af</string>
+		<string name="name">LookCoatBlack</string>
+		<u8 name="active">0</u8>
+		<string name="parent">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">f4a279ca-38b9-5967-96e0-e3a7aba741e0</string>
+		<string name="name">LookCoatPlum</string>
+		<u8 name="active">0</u8>
+		<string name="parent">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">37603679-ff58-5d32-8da1-773ca60f05ee</string>
+		<string name="name">LookCoatIvory</string>
+		<u8 name="active">0</u8>
+		<string name="parent">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">2d8fa519-3153-5515-9dbb-984b766ea506</string>
+		<string name="name">Flare</string>
+		<u8 name="active">1</u8>
+		<string name="parent">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">2.1</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+	</array>
+	<array name="components" count="11">
+		<object>
+			<string name="owner">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">df3731eb-4d37-d147-95b4-af116d3c467a</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="0"/>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">1bab6913-ced2-5dcd-8296-a5b3e7dbbca2</string>
+			<string name="type">instance_member</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">9795857015741610453</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<string name="instancedMesh">890ad487-280f-53ca-8d20-00d52a23d790</string>
+				<u32 name="clip">0</u32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">7002ceb2-3311-5469-9177-aac595ce500c</string>
+			<string name="type">instance_member</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">9795857015741610453</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<string name="instancedMesh">3865e28f-c442-525f-bfc1-9b2c28e67b23</string>
+				<u32 name="clip">0</u32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">2af0a724-2fdd-5085-920f-a867b9097978</string>
+			<string name="type">instance_member</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">9795857015741610453</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<string name="instancedMesh">3f13378a-2fe1-5c71-9c11-0435bd50ffa7</string>
+				<u32 name="clip">0</u32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">007d0bfb-48d2-5f6c-8633-b2afcbfb45af</string>
+			<string name="type">instance_member</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">9795857015741610453</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<string name="instancedMesh">b2c56c06-96ba-5d5b-b0c3-28e2f9989f3c</string>
+				<u32 name="clip">0</u32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">f4a279ca-38b9-5967-96e0-e3a7aba741e0</string>
+			<string name="type">instance_member</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">9795857015741610453</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<string name="instancedMesh">572c0f37-76e1-5e6d-8617-5b9239ecafb3</string>
+				<u32 name="clip">0</u32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">37603679-ff58-5d32-8da1-773ca60f05ee</string>
+			<string name="type">instance_member</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">9795857015741610453</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<string name="instancedMesh">ec19338b-9086-504b-83d7-f41a107ba3e5</string>
+				<u32 name="clip">0</u32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">2d8fa519-3153-5515-9dbb-984b766ea506</string>
+			<string name="type">light</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">2265827012839742223</u64>
+					<u32 name="version">2</u32>
+				</array>
+				<u32 name="type">1</u32>
+				<object name="color">
+					<f32 name="r">1</f32>
+					<f32 name="g">0.78</f32>
+					<f32 name="b">0.3</f32>
+					<f32 name="a">1</f32>
+				</object>
+				<f32 name="intensity">0</f32>
+				<f32 name="range">6</f32>
+				<f32 name="innerAngle">0.5</f32>
+				<f32 name="outerAngle">0.6</f32>
+				<u32 name="shadowUpdate">0</u32>
+				<bool name="enabled">true</bool>
+				<bool name="castsShadows">false</bool>
+				<f32 name="shadowStrength">1</f32>
+				<f32 name="shadowNormalBias">0.02</f32>
+				<f32 name="shadowDepthBiasScale">1</f32>
+			</object>
+		</object>
+		<object>
+			<string name="owner">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
+			<string name="type">navigation.Agent</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">17631806423189705212</u64>
+					<u32 name="version">3</u32>
+				</array>
+				<f32 name="radius">0.3</f32>
+				<f32 name="height">1.7</f32>
+				<f32 name="maxSpeed">3.2</f32>
+				<f32 name="maxAcceleration">6</f32>
+				<bool name="moveEntity">true</bool>
+				<f32 name="stopDistance">0</f32>
+				<bool name="avoidOthers">false</bool>
+			</object>
+		</object>
+		<object>
+			<string name="owner">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
+			<string name="type">net.Network</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1770026783496066112</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<u32 name="id">0</u32>
+				<u8 name="authority">0</u8>
+				<string name="prefab">00000000-0000-0000-0000-000000000000</string>
+			</object>
+		</object>
+		<object>
+			<string name="owner">29f5ee98-8548-5968-bbf7-9c9885bfbf50</string>
+			<string name="type">net.Transform</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">14675443620847193994</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<object name="position">
+					<f32 name="x">0</f32>
+					<f32 name="y">0</f32>
+					<f32 name="z">0</f32>
+				</object>
+				<object name="rotation">
+					<f32 name="x">0</f32>
+					<f32 name="y">0</f32>
+					<f32 name="z">0</f32>
+					<f32 name="w">1</f32>
+				</object>
+				<object name="scale">
+					<f32 name="x">1</f32>
+					<f32 name="y">1</f32>
+					<f32 name="z">1</f32>
+				</object>
+			</object>
+		</object>
+	</array>
+	<array name="systemSettings" count="0"/>
+	<u8 name="prefabMode">4</u8>
+	<array name="prefabInstances" count="0"/>
+</root>

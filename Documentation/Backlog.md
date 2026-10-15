@@ -77,8 +77,8 @@ Game-tier scripts are not reloaded while a Game tab runs.
 ### The sample-project test covers PaperKid and the Shader Gallery only
 `Integration/Sedulous.Integration.Mcp/src/SampleProjectTests.bf` reads and cooks PaperKid and the
 Shader Gallery (CheckSampleProject) so a data-version change cannot leave them unreadable. Sky
-Hopper (`Data/SampleProjects/PlatformerGame`), Snowline and Lamplight have no such guard: a case
-each, with their floors.
+Hopper (`Data/SampleProjects/PlatformerGame`), Snowline, Lamplight and Masquerade have no such guard:
+a case each, with their floors.
 
 ### Sprite and decal textures have no `ref` in the scene schema
 `SpriteComponent.TextureAsset` and `DecalComponent.TextureAsset` are written under the key

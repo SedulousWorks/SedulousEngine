@@ -1,0 +1,13 @@
+<root>
+	<string name="guid">5a2158f6-3035-4340-b6f9-ca7c1df1d9c4</string>
+	<string name="typeName">Sedulous.Scene.Resource.PrefabDocument</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">6298966941287295178</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="name">DoorWhite</string>
+		</object>
+	</object>
+</root>

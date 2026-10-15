@@ -1,0 +1,30 @@
+<root>
+	<array name="dataVersions" count="1">
+		<u64 name="type">15697994609334965484</u64>
+		<u32 name="version">9</u32>
+	</array>
+	<object>
+		<string name="name">Masquerade</string>
+		<string name="engineVersion">0.1.0</string>
+		<string name="defaultSceneId">9f75a606-4c88-6646-8c10-0f79b1ec6760</string>
+		<string name="defaultScene">Scenes/Palace</string>
+		<string name="startupScript">Scripts/Masquerade</string>
+		<string name="nativeModule"/>
+		<string name="defaultInputMapId">ebd9f292-e4f5-f449-a6d6-c04c9318c60f</string>
+		<string name="defaultBusLayoutId">00000000-0000-0000-0000-000000000000</string>
+		<string name="defaultUiThemeId">00000000-0000-0000-0000-000000000000</string>
+		<string name="startupScriptId">221ba031-6dff-bb4b-843d-2ae8d95bd855</string>
+		<string name="defaultUiFontId">e613c971-1cbe-c54a-9ffd-5220e8f69837</string>
+		<string name="loadingDocumentId">00000000-0000-0000-0000-000000000000</string>
+		<u32 name="renderMsaaSamples">1</u32>
+		<array name="uiFontIds" count="0"/>
+		<u32 name="renderWidth">0</u32>
+		<u32 name="renderHeight">0</u32>
+		<u8 name="renderFit">1</u8>
+		<u32 name="windowWidth">1280</u32>
+		<u32 name="windowHeight">720</u32>
+		<u8 name="windowMode">0</u8>
+		<bool name="windowResizable">true</bool>
+		<u8 name="orientation">0</u8>
+	</object>
+</root>

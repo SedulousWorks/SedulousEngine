@@ -1,0 +1,104 @@
+<root>
+	<string name="guid">dbe501d0-f055-6c4e-b86d-6589317e2da8</string>
+	<string name="typeName">Sedulous.ModelImporter.ModelManifestAsset</string>
+	<array name="dataVersions" count="1">
+		<u64 name="type">7383561851963481740</u64>
+		<u32 name="version">0</u32>
+	</array>
+	<object name="payload">
+		<object>
+			<string name="fileName">DoorWhite.glb</string>
+			<array name="dataVersions" count="1">
+				<u64 name="type">2980668452812246725</u64>
+				<u32 name="version">3</u32>
+			</array>
+			<object>
+				<array name="meshGuid" count="1">
+					<string>c65cf0d3-f36c-3e4c-8775-39f18bcf61c2</string>
+				</array>
+				<array name="meshSkinned" count="1">
+					<bool>false</bool>
+				</array>
+				<array name="meshMaterial" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="collisionGuid" count="0"/>
+				<array name="meshMaterialSlot" count="6">
+					<i32>0</i32>
+					<i32>1</i32>
+					<i32>2</i32>
+					<i32>3</i32>
+					<i32>4</i32>
+					<i32>5</i32>
+				</array>
+				<array name="meshSlotStart" count="1">
+					<i32>0</i32>
+				</array>
+				<array name="meshSlotCount" count="1">
+					<i32>6</i32>
+				</array>
+				<array name="materialGuid" count="6">
+					<string>877d9b6c-2dba-444f-915d-74df34b2cf37</string>
+					<string>67c2127b-eccf-7d42-8f1d-14e8fc431527</string>
+					<string>c63a2454-4265-2f4d-ae1d-330161e3eea5</string>
+					<string>8cd688ae-9890-fb46-8178-82a6414358ea</string>
+					<string>0f90e3ba-7699-3b48-9382-880192a57cc8</string>
+					<string>79cc8aa7-638f-4d47-a669-c7b78968eeac</string>
+				</array>
+				<array name="materialAlbedo" count="6">
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+					<string>00000000-0000-0000-0000-000000000000</string>
+				</array>
+				<array name="nodeName" count="1">
+					<string>DoorWhite</string>
+				</array>
+				<array name="nodeParent" count="1">
+					<i32>-1</i32>
+				</array>
+				<array name="nodeTranslation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+					</object>
+				</array>
+				<array name="nodeRotation" count="1">
+					<object>
+						<f32 name="x">0</f32>
+						<f32 name="y">0</f32>
+						<f32 name="z">0</f32>
+						<f32 name="w">1</f32>
+					</object>
+				</array>
+				<array name="nodeScale" count="1">
+					<object>
+						<f32 name="x">1</f32>
+						<f32 name="y">1</f32>
+						<f32 name="z">1</f32>
+					</object>
+				</array>
+				<array name="nodeMesh" count="1">
+					<i32>0</i32>
+				</array>
+				<string name="skeletonGuid">00000000-0000-0000-0000-000000000000</string>
+				<array name="animationGuid" count="0"/>
+				<object name="boundsMin">
+					<f32 name="x">-1</f32>
+					<f32 name="y">0</f32>
+					<f32 name="z">-0.28</f32>
+				</object>
+				<object name="boundsMax">
+					<f32 name="x">1</f32>
+					<f32 name="y">8</f32>
+					<f32 name="z">0.45</f32>
+				</object>
+				<i32 name="skeletonParentNode">-2</i32>
+			</object>
+			<array name="entries" count="0"/>
+		</object>
+	</object>
+</root>
