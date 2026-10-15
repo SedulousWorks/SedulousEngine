@@ -313,7 +313,7 @@ class GraphProfiler
 			var pass = GpuPassEvent(slot.Names[i], 0, 0, ToCpuTicks(begin), ToCpuTicks(end));
 			if (statistics != null)
 			{
-				let counts = mDevice.DecodePipelineStatistics(statistics + i * mStatisticsSize);
+				let counts = mDevice.DecodePipelineStatistics(statistics + i * (int)mStatisticsSize);
 				pass.HasCounts = true;
 				pass.Counts.InputVertices = counts.InputVertices;
 				pass.Counts.InputPrimitives = counts.InputPrimitives;

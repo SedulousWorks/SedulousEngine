@@ -264,7 +264,7 @@ class VulkanAdapter : IAdapter
 			return false;
 		var device = false;
 		var host = false;
-		for (uint32 i < count)
+		for (int i < (int)count)
 		{
 			device |= domains[i] == .VK_TIME_DOMAIN_DEVICE_KHR;
 			host |= domains[i] == mHostTimeDomain;

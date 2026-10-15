@@ -80,7 +80,7 @@ static class ChromeTrace
 			{
 				if (value.Counter >= (uint32)counters.Length)
 					continue;
-				let e = Event(counters[value.Counter].Name, "C", 0);
+				let e = Event(counters[(int)value.Counter].Name, "C", 0);
 				e.Set("ts", JsonValue.MakeNumber(Us(frame.BeginTick)));
 				let args = JsonValue.MakeObject();
 				args.Set("value", JsonValue.MakeNumber(value.Value));

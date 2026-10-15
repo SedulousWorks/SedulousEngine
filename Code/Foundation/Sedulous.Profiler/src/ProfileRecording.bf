@@ -99,7 +99,7 @@ class ProfileRecording : IProfileSource
 		return ((low < mCount) && (At(low).FrameNumber == frameNumber)) ? At(low) : null;
 	}
 
-	public StringView NameOf(uint32 id) => (id < (uint32)mNames.Count) ? mNames[id] : StringView();
+	public StringView NameOf(uint32 id) => (id < (uint32)mNames.Count) ? mNames[(int)id] : StringView();
 	public uint32 NameCount => (uint32)mNames.Count;
 	public Span<ThreadInfo> Threads => mThreads;
 	public Span<CounterInfo> Counters => mCounters;

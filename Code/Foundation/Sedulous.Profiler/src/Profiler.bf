@@ -212,7 +212,7 @@ class Profiler
 			for (let thread in mThreads)
 			{
 				threads.Add(thread);
-				if (thread.Index >= mThreadInfos.Count)
+				if (thread.Index >= (uint32)mThreadInfos.Count)
 				{
 					let info = new ThreadInfo();
 					info.Index = thread.Index;
@@ -343,14 +343,14 @@ class Profiler
 	{
 		if (id < (uint32)mCounterValues.Count)
 		{
-			mCounterValues[id] = value;
-			mCounterSet[id] = true;
+			mCounterValues[(int)id] = value;
+			mCounterSet[(int)id] = true;
 		}
 	}
 
 	// ---- tables (the frame thread; as of the last frame end) --------------------------------
 
-	public StringView NameOf(uint32 id) => (id < (uint32)mNames.Count) ? mNames[id] : StringView();
+	public StringView NameOf(uint32 id) => (id < (uint32)mNames.Count) ? mNames[(int)id] : StringView();
 	public uint32 NameCount => (uint32)mNames.Count;
 	public Span<ThreadInfo> Threads => mThreadInfos;
 	public Span<CounterInfo> Counters => mCounters;
@@ -388,7 +388,7 @@ class Profiler
 			frame.FrameNumber, frame.Ms, AverageFrameMs, scopes);
 		for (let thread in frame.Threads)
 		{
-			let threadName = (thread.Thread < (uint32)mThreadInfos.Count) ? (StringView)mThreadInfos[thread.Thread].Name : "?";
+			let threadName = (thread.Thread < (uint32)mThreadInfos.Count) ? (StringView)mThreadInfos[(int)thread.Thread].Name : "?";
 			outReport.AppendF("  [{}]", threadName);
 			if (thread.Dropped > 0)
 				outReport.AppendF(" ({} dropped)", thread.Dropped);

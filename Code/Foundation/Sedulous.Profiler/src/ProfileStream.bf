@@ -133,7 +133,7 @@ class ProfileStreamWriter
 			let w = scope BinaryWriter(mPayload);
 			w.Write(mThreadsSent);
 			w.Write((uint32)((uint32)threads.Length - mThreadsSent));
-			for (int i = mThreadsSent; i < threads.Length; i++)
+			for (int i = (int)mThreadsSent; i < threads.Length; i++)
 			{
 				w.Write(threads[i].Index);
 				w.WriteString(threads[i].Name);
@@ -148,7 +148,7 @@ class ProfileStreamWriter
 			let w = scope BinaryWriter(mPayload);
 			w.Write(mCountersSent);
 			w.Write((uint32)((uint32)counters.Length - mCountersSent));
-			for (int i = mCountersSent; i < counters.Length; i++)
+			for (int i = (int)mCountersSent; i < counters.Length; i++)
 			{
 				w.WriteString(counters[i].Name);
 				w.Write((uint8)counters[i].Unit);
@@ -244,7 +244,7 @@ class ProfileCapture : IProfileSource
 		return ((lo < mFrames.Count) && (mFrames[lo].FrameNumber == frameNumber)) ? mFrames[lo] : null;
 	}
 
-	public StringView NameOf(uint32 id) => (id < (uint32)mNames.Count) ? mNames[id] : StringView();
+	public StringView NameOf(uint32 id) => (id < (uint32)mNames.Count) ? mNames[(int)id] : StringView();
 	public uint32 NameCount => (uint32)mNames.Count;
 	public Span<ThreadInfo> Threads => mThreads;
 	public Span<CounterInfo> Counters => mCounters;
