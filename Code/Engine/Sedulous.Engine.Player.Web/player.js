@@ -44,6 +44,12 @@ addToLibrary({
     return new URLSearchParams(location.search).has('trace') ? 1 : 0;
   },
 
+  // `?profile-overlay` in the page's address: the profiler overlay from the start, as the
+  // desktop player's --profile-overlay (the browser has no command line); F3 toggles it.
+  sedulous_page_wants_profiler_overlay: function () {
+    return new URLSearchParams(location.search).has('profile-overlay') ? 1 : 0;
+  },
+
   // The page's loading card (shell.html) stays up until the game runs; a page without one has
   // nothing to update.
   sedulous_page_game_running: function () {

@@ -21,6 +21,9 @@ reaches a game only once its template is created and installed again.
 To profile a game in the browser, build the player with `-config=Release` instead: it carries
 the profiler, its overlay and its capture, writes to `dist-profile/`, and installs from there as
 `sedulous-web-profile-<engine version>`, for a preset to name in place of the release one.
+On a page from the profile template, `?profile-overlay` in the address (for example
+`http://localhost:8000/?profile-overlay`) shows the profiler overlay from the start, as the
+desktop player's `--profile-overlay` does; F3 toggles it either way.
 
 ## A web export
 

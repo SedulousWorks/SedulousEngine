@@ -24,6 +24,8 @@ static class WebPage
 	[CLink, CallingConvention(.Cdecl)]
 	private static extern int32 sedulous_page_wants_input_trace();
 	[CLink, CallingConvention(.Cdecl)]
+	private static extern int32 sedulous_page_wants_profiler_overlay();
+	[CLink, CallingConvention(.Cdecl)]
 	private static extern void emscripten_sleep(uint32 milliseconds);
 
 	/// Saves outlive the page: the user data directory (where a game's save and the user's
@@ -51,6 +53,10 @@ static class WebPage
 		if (sedulous_page_wants_input_trace() != 0)
 			Environment.SetEnvironmentVariable("SEDULOUS_INPUT_TRACE", "1").IgnoreError();
 	}
+
+	/// `?profile-overlay` in the page's address: the profiler overlay from the start, as the
+	/// desktop player's --profile-overlay.
+	public static bool WantsProfilerOverlay => sedulous_page_wants_profiler_overlay() != 0;
 
 	/// The game is running: the page's loading card can go.
 	public static void GameRunning() => sedulous_page_game_running();

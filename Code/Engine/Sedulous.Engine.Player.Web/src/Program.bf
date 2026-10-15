@@ -68,6 +68,7 @@ class Program
 		options.ProjectDir.Set(".");
 
 		let app = new WebPlayerApplication(options);
+		app.SetProfilerOverlayAtStart(WebPage.WantsProfilerOverlay);
 		return WebRunner.RunApplication(app, shell, graphics);
 	}
 
