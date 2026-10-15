@@ -76,7 +76,7 @@ through the MCP tools, **PaperKid**, rebuilt the same way (its authoring scripts
 **Shader Gallery**, Raptor's custom shaders sample ported the same way (its scripts in `Tools/`),
 and **Masquerade**, Raptor's networked masked ball ported the same way (its scripts in `Tools/`).
 Their `Cooked/`, `.cache/`, `Editor/` and `Dist/` are generated and ignored. Integration.Mcp
-checks that PaperKid and the Shader Gallery read at the current data versions and cook. Each one's `CREDITS.md` and
+checks that PaperKid, the Shader Gallery and Masquerade read at the current data versions and cook. Each one's `CREDITS.md` and
 `Licenses/` must stay in step with its assets.
 
 ## Steam Deck

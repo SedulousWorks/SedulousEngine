@@ -139,6 +139,18 @@ static class SampleProjectTests
 		CheckSampleProject("ShaderGallery", "scratch_shadergallery_versions", 50, 45, 2);
 	}
 
+	[Test]
+	public static void TheMasqueradeSourcesReadAtTheCurrentDataVersionsAndCook()
+	{
+		// 326 instances: 3 maps and 3 hunter prefabs, 6 rigged costumes with their clips and
+		// materials, the palace, canal and garden kits, 3 navigation zones, 6 scripts, 4 UI
+		// documents, the profiles, the input map, the font, the sky and the primitives. 281 cook:
+		// all but the maps, the prefabs and the model manifests. The 957 overrides are the
+		// guests', bots', player's, camera's and Ball's settings and references. Raise the floors
+		// when the sample grows (its look and sound are still to come).
+		CheckSampleProject("Masquerade", "scratch_masquerade_versions", 326, 281, 957);
+	}
+
 	/// The number of script overrides checked under `group`: a behaviour's against its cooked
 	/// class, and a scene's Level script's against its own.
 	private static int CheckOverrides(EditorProject project, Group group)
