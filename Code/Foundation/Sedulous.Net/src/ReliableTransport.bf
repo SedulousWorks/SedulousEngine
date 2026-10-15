@@ -258,6 +258,19 @@ class ReliableTransport : INetTransport
 		connection.State = .Disconnected;
 	}
 
+	/// Says goodbye to every connection, connected or still connecting, as Disconnect does to
+	/// one: the other ends hear it at once instead of waiting out their timeout.
+	public void DisconnectAll()
+	{
+		for (let connection in mConnections)
+		{
+			if (connection.State == .Disconnected)
+				continue;
+			SendControl(connection, .Disconnect);
+			connection.State = .Disconnected;
+		}
+	}
+
 	public bool Poll(NetEvent outEvent)
 	{
 		if (mEventHead >= mEvents.Count)

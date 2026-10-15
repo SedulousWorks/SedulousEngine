@@ -94,6 +94,9 @@ class NetSession
 
 	public void Disconnect(PeerId peer) => mTransport.Disconnect(peer);
 
+	/// Says goodbye to every peer at once (see ReliableTransport.DisconnectAll).
+	public void DisconnectAll() => mTransport.DisconnectAll();
+
 	// ---- Pump ---------------------------------------------------------------------------------
 
 	public void Update(float deltaMs)

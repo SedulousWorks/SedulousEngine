@@ -55,6 +55,12 @@ class NetworkManager
 
 	public ~this()
 	{
+		// Closing an endpoint (a game leaving, a host stopping) tells every peer, so a host frees
+		// a leaver's seat at once and a client sees its host go, instead of each waiting out the
+		// transport's timeout. The socket is still open here: an owned one goes after the
+		// session, and a borrowed one outlives the manager.
+		mSession.DisconnectAll();
+
 		// Explicit, and in this order: the session BORROWS the socket, so freeing an owned
 		// socket while the session still lives is a use after free. Field declaration order is
 		// too quiet a thing to rest that on.

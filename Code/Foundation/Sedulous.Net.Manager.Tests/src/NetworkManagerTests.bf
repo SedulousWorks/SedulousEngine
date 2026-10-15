@@ -73,6 +73,56 @@ class NetworkManagerTests
 		Test.Assert(from == server.Session.Peers[0].Id);
 	}
 
+	/// A client that closes (a player leaving the game) says so: the host drops it within a few
+	/// updates, not at its timeout, and a host that closes is gone for its client as soon.
+	[Test]
+	public static void AnEndpointThatClosesTellsItsPeersAtOnce()
+	{
+		let network = scope SimDatagramNetwork(SimConditions());
+		let serverSocket = network.CreateSocket();
+		let server = scope NetworkManager(serverSocket);
+		server.StartServer(true);
+		{
+			let client = scope NetworkManager(network.CreateSocket());
+			client.ConnectTo(serverSocket.LocalEndpoint);
+			for (int i = 0; (i < 40) && (server.Session.PeerCount == 0); i++)
+			{
+				network.Advance(10.0f);
+				server.Update(10.0f);
+				client.Update(10.0f);
+			}
+			Test.Assert(server.Session.PeerCount == 1);
+		} // the client closes
+		for (int i < 10) // 100 ms, far inside the timeout
+		{
+			network.Advance(10.0f);
+			server.Update(10.0f);
+		}
+		Test.Assert(server.Session.PeerCount == 0, "the host heard the client go");
+
+		// The other way: the host closes, and its client knows within as long.
+		let hostSocket = network.CreateSocket();
+		let client = scope NetworkManager(network.CreateSocket());
+		{
+			let host = scope NetworkManager(hostSocket);
+			host.StartServer(true);
+			client.ConnectTo(hostSocket.LocalEndpoint);
+			for (int i = 0; (i < 40) && (client.Session.PeerCount == 0); i++)
+			{
+				network.Advance(10.0f);
+				host.Update(10.0f);
+				client.Update(10.0f);
+			}
+			Test.Assert(client.Session.PeerCount == 1);
+		}
+		for (int i < 10)
+		{
+			network.Advance(10.0f);
+			client.Update(10.0f);
+		}
+		Test.Assert(client.Session.PeerCount == 0, "the client heard the host go");
+	}
+
 	[Test]
 	public static void TheFactoriesOwnTheirSocketsAndExchangeAnRpcOverLoopback()
 	{
