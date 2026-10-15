@@ -21,11 +21,15 @@ class NetSession
 	private enum ControlType : uint8
 	{
 		case TimeSync = 0;
+		/// Server to a new client: the PeerId the server knows it by.
+		case Welcome = 1;
 	}
 
 	private ReliableTransport mTransport ~ delete _;
 	private NetRole mRole = .None;
 	private PeerId mServerPeer = InvalidPeer;
+	/// Client: its id on the server, from the welcome.
+	private PeerId mLocalPeer = InvalidPeer;
 	private double mNowMs = 0.0;
 	private List<NetPeer> mPeers = new .() ~ delete _;
 
@@ -181,6 +185,10 @@ class NetSession
 	public int PeerCount => mPeers.Count;
 	/// Client side: the server's peer.
 	public PeerId ServerPeer => mServerPeer;
+	/// Client: the id the server gave this client (its PeerId on the server), from the welcome
+	/// the server sends when it accepts the connection; InvalidPeer until then, and on a
+	/// server. A client names what it owns by this.
+	public PeerId LocalPeer => mLocalPeer;
 	public TransportStats Stats(PeerId peer) => mTransport.Stats(peer);
 	public ReliableTransport Transport => mTransport;
 
@@ -194,6 +202,14 @@ class NetSession
 				return;
 		}
 		mPeers.Add(.(id, mNowMs));
+		if (IsServer)
+		{
+			// Tells the client who it is here: it names its own entities (an owner) by this id.
+			let writer = scope BitWriter();
+			writer.WriteU8((uint8)ControlType.Welcome);
+			writer.WriteU32((uint32)id);
+			mTransport.Send(id, ControlChannel, writer.Data, .ReliableOrdered);
+		}
 	}
 
 	private void RemovePeer(PeerId id)
@@ -214,6 +230,14 @@ class NetSession
 		let type = reader.ReadU8();
 		if (!reader.Ok)
 			return;
+
+		if (((ControlType)type == .Welcome) && !IsServer)
+		{
+			let self = reader.ReadU32();
+			if (reader.Ok)
+				mLocalPeer = (PeerId)self;
+			return;
+		}
 
 		if (((ControlType)type != .TimeSync) || IsServer)
 			return;

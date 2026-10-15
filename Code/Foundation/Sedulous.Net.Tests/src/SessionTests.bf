@@ -156,6 +156,43 @@ class SessionTests
 			Test.Assert(event.Channel != NetSession.ControlChannel);
 	}
 
+	/// The server tells each client the id it knows it by, reliably (some packets are lost
+	/// here); the welcome is the session's own business and never reaches the game.
+	[Test]
+	public static void TheServerWelcomesEachClientWithTheIdItKnowsItBy()
+	{
+		var sim = SimConditions();
+		sim.LatencyMs = 20.0f;
+		sim.LossPct = 0.2f;
+		sim.Seed = 5;
+		let network = scope SimDatagramNetwork(sim);
+		let serverSocket = network.CreateSocket();
+		let server = scope NetSession(serverSocket);
+		let clientA = scope NetSession(network.CreateSocket());
+		let clientB = scope NetSession(network.CreateSocket());
+		server.StartServer();
+		Test.Assert(clientA.LocalPeer == InvalidPeer, "not welcomed yet");
+		clientA.Connect(serverSocket.LocalEndpoint);
+		clientB.Connect(serverSocket.LocalEndpoint);
+		for (int i < 60)
+		{
+			network.Advance(10.0f);
+			server.Update(10.0f);
+			clientA.Update(10.0f);
+			clientB.Update(10.0f);
+		}
+		Test.Assert(server.PeerCount == 2);
+		Test.Assert((clientA.LocalPeer != InvalidPeer) && (clientB.LocalPeer != InvalidPeer));
+		Test.Assert(clientA.LocalPeer != clientB.LocalPeer);
+		// Each client's id is one the server holds for it.
+		Test.Assert((server.Peers[0].Id == clientA.LocalPeer) || (server.Peers[1].Id == clientA.LocalPeer));
+		Test.Assert((server.Peers[0].Id == clientB.LocalPeer) || (server.Peers[1].Id == clientB.LocalPeer));
+		Test.Assert(server.LocalPeer == InvalidPeer, "the server is no one's client");
+		let event = scope NetEvent();
+		while (clientA.PollEvent(event))
+			Test.Assert(event.Kind != .Received, "no welcome reaches the game");
+	}
+
 	[Test]
 	public static void TheClientClockSyncsToTheServer()
 	{
