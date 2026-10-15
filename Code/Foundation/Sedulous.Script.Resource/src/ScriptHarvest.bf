@@ -19,8 +19,11 @@ namespace Sedulous.Script.Resource;
 /// The field's declared type picks the kind (float, int, bool, string, Color, Float3,
 /// Entity); a Guid field whose first token is `"asset:<Type>"` is an asset reference. The
 /// first token is the default, and a quoted second token is the description the inspector
-/// shows. An annotated field of any other type is an error, so a typo never silently drops a
-/// property. A handler is any `on` prefixed method.
+/// shows. After those, a bare `replicated` keeps the property the same on every peer of a
+/// networked game: `[0, "What the guest is doing", replicated] int activity;`. An annotated
+/// field of any other type, any other bare word, or a replicated entity or asset reference is
+/// an error, so a typo never silently drops a property. A handler is any `on` prefixed
+/// method.
 static class ScriptHarvest
 {
 	/// What the host injects into every instance that declares it.
@@ -74,8 +77,32 @@ static class ScriptHarvest
 				continue;
 			}
 			ParseDefault(desc.Type, firstToken, ref desc.Default);
-			if ((tokens.Count > 1) && IsQuoted(tokens[1]))
-				Unquote(tokens[1], desc.Description);
+			bool wordOk = true;
+			for (int t = 1; t < tokens.Count; t++)
+			{
+				let token = tokens[t];
+				if ((t == 1) && IsQuoted(token))
+					Unquote(token, desc.Description);
+				else if (token == "replicated")
+					desc.Replicated = true;
+				else
+				{
+					outProblems?.Add(new $"{className}: property '{m.Name}' has an unknown word '{token}' in its metadata (after the default: a \"description\", then replicated)");
+					wordOk = false;
+					break;
+				}
+			}
+			if (wordOk && desc.Replicated && ((desc.Type == .Entity) || (desc.Type == .Asset)))
+			{
+				outProblems?.Add(new $"{className}: property '{m.Name}' cannot be replicated: an entity or asset reference means nothing on another machine");
+				wordOk = false;
+			}
+			if (!wordOk)
+			{
+				delete desc;
+				ok = false;
+				continue;
+			}
 			outSource.Properties.Add(desc);
 		}
 		return ok;

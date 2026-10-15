@@ -221,6 +221,11 @@ property with its description as the tooltip and saves per instance values over 
   for a reference to an asset of that type. An annotated field of any other type fails the
   cook, naming the field.
 - The annotation's default is what applies, so leave the field without an initialiser.
+- A bare `replicated` after the default and description keeps the property the same on
+  every peer of a networked game: `[0, "What the guest is doing", replicated] int activity;`.
+  The host sends a networked entity's live value and clients write it in. Any other bare
+  word fails the cook, as does a replicated Entity or asset reference (it means nothing on
+  another machine).
 
 ## Working through the MCP tools
 

@@ -18,6 +18,11 @@ class ScriptPropertyDesc : ISerializable
 	public ScriptPropertyValue Default = .() ~ { if (_.Text != null) delete _.Text; };
 	/// The inspector tooltip.
 	public String Description = new .() ~ delete _;
+	/// Kept the same on every peer of a networked game: the host sends the live value of a
+	/// networked entity's behaviour, clients write it in (a `replicated` word after the
+	/// default and description). Numbers, bools, text, colours and vectors; an entity or asset
+	/// reference means nothing on another machine and is refused at cook.
+	public bool Replicated = false;
 
 	public void Serialize(ISerializer ar)
 	{
@@ -29,6 +34,7 @@ class ScriptPropertyDesc : ISerializable
 		ar.Key("default");
 		Default.Serialize(ar);
 		Sedulous.Core.Serialization.Serialize(ar, "description", Description);
+		SerializeValue(ar, "replicated", ref Replicated);
 		if (ar.Mode == .Read)
 			Hash = ScriptPropertyNames.HashOf(Name);
 	}

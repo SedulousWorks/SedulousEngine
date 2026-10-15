@@ -33,6 +33,42 @@ static class BehaviorPropertyTests
 		}
 		""";
 
+	/// A `replicated` word after the default (and description) marks a property; any other
+	/// bare word, or a replicated entity reference, fails the harvest with the reason.
+	[Test]
+	public static void AReplicatedWordMarksAPropertyAStrayWordOrAReplicatedReferenceFails()
+	{
+		let play = scope ScriptPlayScene();
+		let guest = play.Class("Guest", """
+			class Guest
+			{
+				[0, "What the guest is doing", replicated] int activity;
+				[1.5, replicated] float pace;
+				[true, "Local only"] bool chatty;
+				void onUpdate(float dt) {}
+			}
+			""");
+		Test.Assert(guest.Properties.Count == 3);
+		Test.Assert(guest.FindProperty("activity").Replicated);
+		Test.Assert(guest.FindProperty("activity").Description == "What the guest is doing");
+		Test.Assert(guest.FindProperty("pace").Replicated && (guest.FindProperty("pace").Default.Number == 1.5));
+		Test.Assert(!guest.FindProperty("chatty").Replicated);
+
+		bool Refused(StringView source, StringView reason)
+		{
+			let runtime = play.Host.EnsureRuntime(Sedulous.Script.AngelScript.AngelScriptBackend.cLanguage);
+			Test.Assert(runtime.Compile("refused", "Guest.as", source));
+			let record = scope ScriptClassSource();
+			let problems = scope List<String>();
+			defer ClearAndDeleteItems(problems);
+			let ok = ScriptHarvest.Harvest(runtime, "refused", "Guest", record, problems);
+			runtime.DiscardModule("refused");
+			return !ok && (problems.Count == 1) && problems[0].Contains(reason);
+		}
+		Test.Assert(Refused("class Guest { [0, replicate] int activity; void onUpdate(float dt) {} }", "unknown word 'replicate'"));
+		Test.Assert(Refused("class Guest { [null, replicated] Entity partner; void onUpdate(float dt) {} }", "cannot be replicated"));
+	}
+
 	[Test]
 	public static void HarvestedDefaultsApplyAndOverridesWin()
 	{

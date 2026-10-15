@@ -14,8 +14,9 @@ class ScriptClassAssetBuilder : IAssetBuilder
 	public Type AssetType => typeof(ScriptClassAsset);
 	public Type ProductType => typeof(ScriptClassSource);
 
-	/// The shell's own version plus every cook's, so a cook change recooks.
-	public int32 Version => 1 + ScriptLanguageCooks.VersionSum;
+	/// The shell's own version (2: each property a replicated flag) plus every cook's, so a
+	/// cook change recooks.
+	public int32 Version => 2 + ScriptLanguageCooks.VersionSum;
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{

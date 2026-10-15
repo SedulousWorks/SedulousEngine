@@ -62,6 +62,7 @@ class ScriptClass
 			if (p.Default.Text != null)
 				copy.Default.Text = new String(p.Default.Text);
 			copy.Description.Set(p.Description);
+			copy.Replicated = p.Replicated;
 			Properties.Add(copy);
 		}
 		ClearAndDeleteItems!(Handlers);
