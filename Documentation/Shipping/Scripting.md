@@ -147,6 +147,16 @@ is or is not moving, read only: `CrowdState` (walking, off the mesh, or not in a
 The facades are the stable verbs and the first place to look; a component is the direct route
 to its data. `script_api` lists both.
 
+## Networking
+
+The `Net` service is the run's networking. A game's menu hosts with `Net.StartServer(port)`
+(or `Net.StartDedicatedServer(port)`, which does not play), joins with
+`Net.Connect(host, port)` and leaves with `Net.Disconnect()`; `Net.IsServer`, `Net.IsClient`,
+`Net.PeerCount`, `Net.NetworkTick` and `Net.NetworkTimeMs` say where it stands. A web build
+joins the same port: the host opens a browser gateway one port above it. Messages go by
+name: `Net.Rpc("ready")`, `Net.RpcNumber("score", 12)` or `Net.RpcText("chat", "hi")` from a
+client reach the host, and from the host every client. Offline every call does nothing.
+
 ## Saving
 
 The `Save` service keeps values between runs: a best time, a high score, an unlocked level, the

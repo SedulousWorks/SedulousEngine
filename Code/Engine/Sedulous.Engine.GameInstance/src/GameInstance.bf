@@ -100,6 +100,8 @@ class GameInstance
 	/// OWNED: this run's save, and `Save` to its scripts over it.
 	private RunSave mSave = new .() ~ delete _;
 	private SaveFacade mSaveFacade = null ~ delete _;
+	/// OWNED: `Net` to this run's scripts, over the networking controller.
+	private NetFacade mNetFacade = null ~ delete _;
 	/// The orchestrator: an instance of the game script's class. Null when no script runs.
 	private ScriptObject mGame = null;
 	/// BORROWED: the resource manager owns the product.
@@ -136,6 +138,8 @@ class GameInstance
 		mRunHost.SetService(mInputFacade);
 		mSaveFacade = new SaveFacade(mSave);
 		mRunHost.SetService(mSaveFacade);
+		mNetFacade = new NetFacade(mNetwork);
+		mRunHost.SetService(mNetFacade);
 	}
 
 	public ~this()

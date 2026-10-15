@@ -15,8 +15,8 @@ namespace Sedulous.Net.Manager;
 /// networking state, so an endpoint lives with the instance that runs it: N instances hold N
 /// independent endpoints.
 ///
-/// No script service here: a Net facade, its binding and a network controller interface
-/// would only exist to reach this from a script, and that surface has not been asked for.
+/// Scripts reach it as `Net` (Engine.GameInstance's NetFacade), through the run's network
+/// controller, which outlives every endpoint it opens.
 class NetworkManager
 {
 	/// Reserved for replication deltas, alongside NetSession.ControlChannel at 255 and
