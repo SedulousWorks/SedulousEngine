@@ -23,6 +23,10 @@ class NetworkController
 	/// one round.
 	public typealias SpawnResolverFactory = delegate StateReplication.SpawnHandler();
 
+	/// Who hears an endpoint opened (hosting or joining), before any traffic: the run's Net
+	/// facade installs its message handlers on it.
+	public Event<delegate void(NetworkManager endpoint)> OnEndpointOpened ~ _.Dispose();
+
 	/// OWNED: this run's endpoint. Null is offline.
 	private NetworkManager mNet = null ~ delete _;
 	private SpawnResolverFactory mSpawnResolverFactory = null ~ delete _;
@@ -85,6 +89,7 @@ class NetworkController
 
 		if (mSpawnResolverFactory != null)
 			mNet.Replication.SetSpawnHandler(mSpawnResolverFactory());
+		OnEndpointOpened(mNet);
 
 		if (mNet.WebSocketBoundPort != 0)
 			GlobalLog(.Information,
@@ -123,6 +128,7 @@ class NetworkController
 
 		if (mSpawnResolverFactory != null)
 			mNet.Replication.SetSpawnHandler(mSpawnResolverFactory());
+		OnEndpointOpened(mNet);
 
 		GlobalLog(.Information, "NetworkController: connecting to {}:{}", host, port);
 		return true;

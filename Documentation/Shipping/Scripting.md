@@ -155,7 +155,12 @@ The `Net` service is the run's networking. A game's menu hosts with `Net.StartSe
 `Net.PeerCount`, `Net.NetworkTick` and `Net.NetworkTimeMs` say where it stands. A web build
 joins the same port: the host opens a browser gateway one port above it. Messages go by
 name: `Net.Rpc("ready")`, `Net.RpcNumber("score", 12)` or `Net.RpcText("chat", "hi")` from a
-client reach the host, and from the host every client. Offline every call does nothing.
+client reach the host, and from the host every client. A script receives one with
+`Net.On("ready", NetHandler(this.onReady))`, `Net.OnNumber("score", NetNumberHandler(this.onScore))`
+or `Net.OnText("chat", NetTextHandler(this.onChat))`: the handler gets the sender's id first
+(on the host the client that sent it, on a client the host), then the number or the text.
+Register before hosting or joining too; a later registration of a name replaces it, and a
+message of another kind than its handler takes is dropped. Offline every call does nothing.
 
 ## Saving
 
