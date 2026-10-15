@@ -77,10 +77,13 @@ class NavigationSceneSystem : SceneSystem
 
 		if (let agents = mScene.GetSystem<NavAgentComponentManager>())
 		{
+			// Their crowds are gone with the zones.
+			agents.TakeReleased(scope .());
 			agents.ForEach(scope (agent, entity) =>
 				{
 					agent.AgentId = -1;
 					agent.ZoneIndex = -1;
+					agent.Registered = false;
 					agent.HasTarget = false;
 					agent.Finished = true;
 				});
@@ -106,6 +109,17 @@ class NavigationSceneSystem : SceneSystem
 
 		using (ProfileScope("Navigation.Update"))
 		{
+			// A destroyed agent leaves its crowd, else it stands there for ever, an obstacle no
+			// one can see, holding a slot. Before any rebuild below: the slot is the crowd's it
+			// was taken in, and in a rebuilt crowd the same number names another agent.
+			let released = scope List<NavAgentComponentManager.ReleasedAgent>();
+			agents.TakeReleased(released);
+			for (let gone in released)
+			{
+				if ((gone.ZoneIndex >= 0) && (gone.ZoneIndex < mZones.Count) && (mZones[gone.ZoneIndex].Crowd != null))
+					mZones[gone.ZoneIndex].Crowd.RemoveAgent(gone.AgentId);
+			}
+
 			// Nought: a zone whose navmesh was re-baked and reloaded since its crowd was built
 			// gets a crowd over the new one, before anything steps the old.
 			RebuildReloadedZones(agents);
@@ -113,6 +127,9 @@ class NavigationSceneSystem : SceneSystem
 			// One: apply the pending warps and requests. The crowd works in ZONE LOCAL space.
 			agents.ForEach(scope (agent, entity) =>
 				{
+					// Added since the start: a spawned prefab's, a network spawn's.
+					if (!agent.Registered)
+						Register(agent, entity);
 					if (agent.WarpRequested)
 						Warp(agent, entity);
 					ApplyRequests(agent);
@@ -309,32 +326,41 @@ class NavigationSceneSystem : SceneSystem
 
 		agents.ForEach(scope (agent, entity) =>
 			{
-				let worldPosition = mScene.GetWorldPosition(entity);
-				agent.ZoneIndex = FindZoneContaining(worldPosition);
-				agent.AgentId = -1;
-				if (agent.ZoneIndex < 0)
-				{
-					// Said, not silent: an agent that never moves is otherwise a mystery.
-					GlobalLog(.Warning, "Navigation: agent '{}' at ({}, {}, {}) is in no navigation zone; it will not move",
-						mScene.GetEntityName(entity), worldPosition.X, worldPosition.Y, worldPosition.Z);
-					return;
-				}
-
-				let zone = mZones[agent.ZoneIndex];
-				agent.AgentId = AddToCrowd(zone, agent, worldPosition);
-				if (agent.AgentId < 0)
-				{
-					GlobalLog(.Warning, "Navigation: agent '{}' at ({}, {}, {}): the zone's crowd is full; it will not move",
-						mScene.GetEntityName(entity), worldPosition.X, worldPosition.Y, worldPosition.Z);
-				}
-				else if (zone.Crowd.AgentState(agent.AgentId).State == .Invalid)
-				{
-					// The crowd still adds an agent it could not place, in a state that never moves,
-					// so the slot alone says nothing.
-					GlobalLog(.Warning, "Navigation: agent '{}' at ({}, {}, {}) found no navmesh where it stands; it will not move (is it on baked ground, and was the zone baked?)",
-						mScene.GetEntityName(entity), worldPosition.X, worldPosition.Y, worldPosition.Z);
-				}
+				Register(agent, entity);
 			});
+	}
+
+	/// One agent into the crowd of the zone it stands in: every agent at the start, and one
+	/// added later (a spawned prefab's) on the first update that sees it. Once, whatever the
+	/// outcome, so an agent outside every zone is said once rather than every frame.
+	private void Register(NavAgentComponent* agent, EntityHandle entity)
+	{
+		agent.Registered = true;
+		let worldPosition = mScene.GetWorldPosition(entity);
+		agent.ZoneIndex = FindZoneContaining(worldPosition);
+		agent.AgentId = -1;
+		if (agent.ZoneIndex < 0)
+		{
+			// Said, not silent: an agent that never moves is otherwise a mystery.
+			GlobalLog(.Warning, "Navigation: agent '{}' at ({}, {}, {}) is in no navigation zone; it will not move",
+				mScene.GetEntityName(entity), worldPosition.X, worldPosition.Y, worldPosition.Z);
+			return;
+		}
+
+		let zone = mZones[agent.ZoneIndex];
+		agent.AgentId = AddToCrowd(zone, agent, worldPosition);
+		if (agent.AgentId < 0)
+		{
+			GlobalLog(.Warning, "Navigation: agent '{}' at ({}, {}, {}): the zone's crowd is full; it will not move",
+				mScene.GetEntityName(entity), worldPosition.X, worldPosition.Y, worldPosition.Z);
+		}
+		else if (zone.Crowd.AgentState(agent.AgentId).State == .Invalid)
+		{
+			// The crowd still adds an agent it could not place, in a state that never moves,
+			// so the slot alone says nothing.
+			GlobalLog(.Warning, "Navigation: agent '{}' at ({}, {}, {}) found no navmesh where it stands; it will not move (is it on baked ground, and was the zone baked?)",
+				mScene.GetEntityName(entity), worldPosition.X, worldPosition.Y, worldPosition.Z);
+		}
 	}
 
 	/// The crowd and the query over `product`'s navmesh, which the zone then remembers.

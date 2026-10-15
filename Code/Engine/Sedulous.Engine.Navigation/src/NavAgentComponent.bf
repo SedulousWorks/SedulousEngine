@@ -56,6 +56,9 @@ struct NavAgentComponent : ISerializable
 	/// The crowd's handle within the zone, minus one when unregistered.
 	[Hidden]
 	public int32 AgentId = -1;
+	/// Tried for a crowd: at the start, or on the first update after it was added.
+	[Hidden]
+	public bool Registered = false;
 	/// The live zone index, minus one when the agent is outside every zone.
 	[Hidden]
 	public int32 ZoneIndex = -1;

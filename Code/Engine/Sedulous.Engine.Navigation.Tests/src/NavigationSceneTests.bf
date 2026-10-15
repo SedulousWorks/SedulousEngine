@@ -635,4 +635,97 @@ class NavigationSceneTests
 		let turnedOff = WalkPast(fixture, zoneId, false, true);
 		Test.Assert(turnedOff.EndX > 1.0f, scope $"turned off live, past it (ended at {turnedOff.EndX})");
 	}
+
+	/// An agent added after the scene starts (a spawned prefab's, a network spawn's) joins the
+	/// crowd on the next update, and a destroyed one leaves it: in a zone that takes one agent,
+	/// the first, gone, makes room for a second added later, which then walks.
+	[Test]
+	public static void AnAgentAddedLaterJoinsItsCrowdAndADestroyedOneLeavesIt()
+	{
+		let fixture = scope NavigationSceneFixture("scratch_navlate_db");
+		let zoneId = fixture.CookGroundZone("zone");
+		let scene = scope Scene("navlate");
+		NavigationScene.AddNavigationSceneManagers(scene);
+		let zone = scene.GetSystem<NavMeshZoneComponentManager>().Add(scene.CreateEntity("zone"));
+		zone.Extents = .(15, 10, 15);
+		// Room for one.
+		zone.MaxAgents = 1;
+		zone.Zone.SetId(zoneId);
+		zone.Zone.Bind(fixture.Manager);
+		let agents = scene.GetSystem<NavAgentComponentManager>();
+		let first = scene.CreateEntity("first");
+		scene.SetLocalPosition(first, .(-5, 0, 0));
+		agents.Add(first);
+		scene.UpdateTransforms();
+		scene.Start();
+		scene.SetSimulationEnabled(true);
+		Test.Assert(agents.Get(first).AgentId >= 0);
+
+		scene.DestroyEntity(first);
+		// Its slot is given back.
+		scene.Update(cStep);
+
+		let second = scene.CreateEntity("second");
+		scene.SetLocalPosition(second, .(-5, 0, 2));
+		agents.Add(second);
+		scene.UpdateTransforms();
+		// It joins.
+		scene.Update(cStep);
+		Test.Assert(agents.Get(second).AgentId >= 0, "the late agent joined the crowd the first left");
+
+		agents.Get(second).Navigate(.(5, 0, 2));
+		for (int step < cCrossingSteps)
+		{
+			if (agents.Get(second).Finished)
+				break;
+			scene.Update(cStep);
+		}
+		Test.Assert(agents.Get(second).Finished);
+		Test.Assert(Math.Abs(scene.GetWorldPosition(second).X - 5.0f) < 1.5f);
+
+		scene.SetSimulationEnabled(false);
+		scene.Stop();
+	}
+
+	/// A destroyed agent's slot is freed in the crowd it was taken in. Destroyed in the frame its
+	/// zone's navmesh reloads, the crowd is rebuilt with the agents left re-added from slot
+	/// nought, so freeing the old number after the rebuild would take out whoever holds it now.
+	[Test]
+	public static void ADestroyedAgentsSlotIsFreedBeforeAReloadRebuildsItsCrowd()
+	{
+		let fixture = scope NavigationSceneFixture("scratch_navgone_db");
+		let zoneId = fixture.CookGroundZone("zone");
+		let scene = scope Scene("navgone");
+		NavigationScene.AddNavigationSceneManagers(scene);
+		let zone = scene.GetSystem<NavMeshZoneComponentManager>().Add(scene.CreateEntity("zone"));
+		zone.Extents = .(15, 10, 15);
+		zone.Zone.SetId(zoneId);
+		zone.Zone.Bind(fixture.Manager);
+		let agents = scene.GetSystem<NavAgentComponentManager>();
+		let gone = scene.CreateEntity("gone");
+		scene.SetLocalPosition(gone, .(-5, 0, -2));
+		agents.Add(gone);
+		let walker = scene.CreateEntity("walker");
+		scene.SetLocalPosition(walker, .(-5, 0, 2));
+		agents.Add(walker);
+		scene.UpdateTransforms();
+		scene.Start();
+		scene.SetSimulationEnabled(true);
+		Test.Assert((agents.Get(gone).AgentId == 0) && (agents.Get(walker).AgentId == 1));
+		agents.Get(walker).Navigate(.(5, 0, 2));
+		Run(scene, 10);
+
+		scene.DestroyEntity(gone);
+		fixture.WriteGroundZone(zoneId, 12.0f);
+		fixture.Manager.Reload(zoneId);
+		for (int frame < 16)
+			fixture.Manager.CollectGarbage();
+
+		Run(scene, cCrossingSteps, agents.Get(walker));
+		Test.Assert(agents.Get(walker).Finished, "the one left still walks");
+		Test.Assert(Math.Abs(scene.GetWorldPosition(walker).X - 5.0f) < 1.5f);
+
+		scene.SetSimulationEnabled(false);
+		scene.Stop();
+	}
 }
