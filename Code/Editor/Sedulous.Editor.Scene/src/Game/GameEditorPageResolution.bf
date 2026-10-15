@@ -84,6 +84,43 @@ extension GameEditorPage
 		RefreshResolutionChoices(true);
 	}
 
+	public List<GameResolutionChoice> ResolutionChoices()
+	{
+		RefreshResolutionChoices(false);
+		return mResolutionChoices;
+	}
+
+	public StringView ResolutionKey => mResolutionKey;
+
+	public bool SelectResolution(StringView key)
+	{
+		RefreshResolutionChoices(false);
+		for (int32 i < (int32)mResolutionChoices.Count)
+		{
+			if (mResolutionChoices[i].Key != key)
+				continue;
+			mResolutionRebuilding = true; // the dropdown shows it; its handler stays out
+			mResolutionCombo.SetSelectedIndex(i);
+			mResolutionRebuilding = false;
+			mResolutionKey.Set(mResolutionChoices[i].Key);
+			SaveResolutionKey();
+			ApplyResolution();
+			return true;
+		}
+		return false;
+	}
+
+	public bool PhonePreview => mPhonePreview;
+
+	public void SelectPhonePreview(bool on)
+	{
+		mResolutionRebuilding = true; // the toggle shows it; its handler stays out
+		mPhoneToggle.IsChecked = on;
+		mResolutionRebuilding = false;
+		SetPhonePreview(on);
+		SaveResolutionKey();
+	}
+
 	/// The phone preview: the tab's screen becomes a portrait phone's, or the panel again.
 	private void SetPhonePreview(bool on)
 	{

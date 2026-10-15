@@ -9,14 +9,15 @@ using Sedulous.Editor.Core;
 namespace Sedulous.Editor.Scene;
 
 /// The play-in-editor tools the editor's MCP host serves through the scene editor's tool
-/// contribution: pie_start, pie_stop, pie_state, pie_list and pie_screenshot. PIE is not one
+/// contribution: pie_start, pie_stop, pie_state, pie_list, pie_resolution, pie_screenshot and
+/// pie_run (PieRunTool). PIE is not one
 /// game: every Game tab runs its own instance, so every call addresses ONE by its `pie` id
 /// (`game-page` for the primary, `game-page-1`, ... for Play New Instance's), defaulting to
 /// the primary, and every answer names the instance it is about.
 static class PieMcpTools
 {
 	/// How many tools Register registers; a tripwire like the scene tools'.
-	public const int cPieToolCount = 6;
+	public const int cPieToolCount = 7;
 
 	/// The primary Game tab's id.
 	public const String cPrimaryId = "game-page";
@@ -105,6 +106,15 @@ static class PieMcpTools
 				return true;
 			});
 
+		let resolutionSchema = scope SchemaBuilder();
+		resolutionSchema.Str("pie", cPieArgument);
+		resolutionSchema.Str("resolution", "the entry to choose: a key, a label or a size like 1280x720");
+		resolutionSchema.Boolean("phone", "preview a phone held upright (the Phone toggle)");
+		server.RegisterTool("pie_resolution",
+			"The resolution one Game tab draws the game at, as its dropdown sets it, and its Phone toggle (a phone held upright). Without `resolution` or `phone`, reads them. `resolution` chooses an entry by its key (`project`, `export:<preset>`, `preset:<name>`, `panel`), its label as the dropdown shows it (any case), or a size (`1280x720`, the first entry of that size); `phone` sets the toggle. A choice is the dropdown's own: shown there, kept for the project (every Game tab opens at it), applied at once, running or not. Returns {pie, resolution, phone, choices}, each entry {key, label, width, height} (0 x 0: the panel's size). An entry that matches nothing is an error listing the choices.",
+			resolutionSchema.Build(), .Adjusts,
+			new (arguments, outResult, outError) => Resolution(context, arguments, outResult, outError));
+
 		let shotSchema = scope SchemaBuilder();
 		shotSchema.Str("pie", cPieArgument);
 		shotSchema.Str("path", "the PNG to write (default: a new file under <user-data>/screenshots)");
@@ -116,6 +126,80 @@ static class PieMcpTools
 			serial);
 
 		PieRunTool.Register(server, context);
+	}
+
+	/// The entry an agent asks for (pie_resolution): by its key ("preset:HD"), by its label as
+	/// the dropdown shows it, in any case ("hd 1280x720"), or by a size ("1280x720", the first
+	/// entry of that size). -1 when none matches.
+	public static int MatchResolution(List<GameResolutionChoice> choices, StringView asked)
+	{
+		for (int i < choices.Count)
+		{
+			if (choices[i].Key == asked)
+				return i;
+		}
+		for (int i < choices.Count)
+		{
+			if (StringView(choices[i].Label).Equals(asked, true))
+				return i;
+		}
+		let size = scope String();
+		for (int i < choices.Count)
+		{
+			if (choices[i].Width == 0)
+				continue;
+			size.Clear();
+			size.AppendF("{}x{}", choices[i].Width, choices[i].Height);
+			if (size == asked)
+				return i;
+		}
+		return -1;
+	}
+
+	private static bool Resolution(EditorContext context, JsonValue arguments, JsonValue outResult, String outError)
+	{
+		let page = ResolvePie(context, arguments, outError);
+		if (page == null)
+			return false;
+		let pie = page as IPieInstancePage;
+		let asked = arguments.Get("resolution")?.AsString() ?? StringView();
+		if (!asked.IsEmpty)
+		{
+			let choices = pie.ResolutionChoices();
+			let match = MatchResolution(choices, asked);
+			if (match < 0)
+			{
+				outError.AppendF("no resolution '{}' in {}'s dropdown; it offers: ", asked, pie.PieId);
+				for (int i < choices.Count)
+					outError.AppendF("{}{} ({})", (i > 0) ? ", " : "", choices[i].Key, choices[i].Label);
+				return false;
+			}
+			pie.SelectResolution(choices[match].Key);
+		}
+		if (let phone = arguments.Get("phone"))
+		{
+			if (phone.IsBool)
+				pie.SelectPhonePreview(phone.AsBool());
+		}
+		let choices = pie.ResolutionChoices();
+		let items = JsonValue.MakeArray();
+		JsonValue chosen = null;
+		for (let choice in choices)
+		{
+			let item = JsonValue.MakeObject();
+			item.Set("key", JsonValue.MakeString(choice.Key));
+			item.Set("label", JsonValue.MakeString(choice.Label));
+			item.Set("width", JsonValue.MakeNumber(choice.Width));
+			item.Set("height", JsonValue.MakeNumber(choice.Height));
+			items.Add(item);
+			if ((chosen == null) && (choice.Key == pie.ResolutionKey))
+				chosen = item.Clone();
+		}
+		outResult.Set("pie", JsonValue.MakeString(pie.PieId));
+		outResult.Set("resolution", chosen ?? JsonValue.MakeNull());
+		outResult.Set("phone", JsonValue.MakeBool(pie.PhonePreview));
+		outResult.Set("choices", items);
+		return true;
 	}
 
 	/// A written capture's size into a tool's answer: the PNG's (`width`, `height`, the pixels

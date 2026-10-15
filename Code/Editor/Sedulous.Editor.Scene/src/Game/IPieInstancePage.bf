@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Input;
 using Sedulous.Script;
@@ -17,7 +18,8 @@ enum PieScriptState
 }
 
 /// What one play-in-editor instance, a Game tab, lets the PIE tools act through: its id, its
-/// run's start and stop, the state of the run, and a capture of what it renders. The Game page
+/// run's start and stop, the state of the run, a capture of what it renders, scripted input in
+/// place of the viewport's, and the resolution it draws at. The Game page
 /// implements it; a module reaches it with `page as IPieInstancePage`.
 interface IPieInstancePage
 {
@@ -67,4 +69,17 @@ interface IPieInstancePage
 	void EndScriptedInput();
 	/// A script is installed (until the viewport's input is back).
 	bool IsScripted { get; }
+
+	/// The resolutions the tab's dropdown offers, in its order, fresh (an export preset or a
+	/// preview resolution added since shows). BORROWED: the page's own list.
+	List<GameResolutionChoice> ResolutionChoices();
+	/// The chosen one's key.
+	StringView ResolutionKey { get; }
+	/// Chooses the entry with this key as the dropdown does: shown there, kept for the
+	/// project, applied at once. False when no entry has it.
+	bool SelectResolution(StringView key);
+	/// The tab previews a phone held upright (its Phone toggle).
+	bool PhonePreview { get; }
+	/// Sets the Phone toggle as a click does: shown, kept for the project, applied at once.
+	void SelectPhonePreview(bool on);
 }

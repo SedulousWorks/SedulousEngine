@@ -96,6 +96,47 @@ class PieMcpToolsTests
 		public void EndScriptedInput() { if (Scripted != null) ScriptEnding = true; }
 		public bool IsScripted => Scripted != null;
 
+		/// The dropdown: the project's, two preview resolutions and the panel's, the project's
+		/// chosen.
+		public List<GameResolutionChoice> Resolutions = new .() ~ DeleteContainerAndItems!(_);
+		public String ResolutionKeyValue = new .("project") ~ delete _;
+		public bool Phone = false;
+		public List<GameResolutionChoice> ResolutionChoices()
+		{
+			if (Resolutions.IsEmpty)
+			{
+				AddResolution("project", "Project 1920x1080", 1920, 1080);
+				AddResolution("preset:HD", "HD 1280x720", 1280, 720);
+				AddResolution("preset:Steam Deck", "Steam Deck 1280x800", 1280, 800);
+				AddResolution("panel", "Fit to panel", 0, 0);
+			}
+			return Resolutions;
+		}
+		private void AddResolution(StringView key, StringView label, uint32 width, uint32 height)
+		{
+			let choice = new GameResolutionChoice();
+			choice.Key.Set(key);
+			choice.Label.Set(label);
+			choice.Width = width;
+			choice.Height = height;
+			Resolutions.Add(choice);
+		}
+		public StringView ResolutionKey => ResolutionKeyValue;
+		public bool SelectResolution(StringView key)
+		{
+			for (let choice in ResolutionChoices())
+			{
+				if (choice.Key == key)
+				{
+					ResolutionKeyValue.Set(key);
+					return true;
+				}
+			}
+			return false;
+		}
+		public bool PhonePreview => Phone;
+		public void SelectPhonePreview(bool on) { Phone = on; }
+
 		/// The cook went idle: the run starts (or fails to) in the scene.
 		public void CookDone(StringView scene)
 		{
@@ -217,7 +258,7 @@ class PieMcpToolsTests
 		let server = scope McpServer();
 		PieMcpTools.Register(server, context);
 		Test.Assert(server.ToolCount == PieMcpTools.cPieToolCount);
-		Test.Assert(PieMcpTools.cPieToolCount == 6, "a tripwire: bump deliberately when a PIE tool comes or goes");
+		Test.Assert(PieMcpTools.cPieToolCount == 7, "a tripwire: bump deliberately when a PIE tool comes or goes");
 
 		// Nothing open: the state names the fix; no project, and the play action refuses.
 		{
@@ -744,6 +785,66 @@ class PieMcpToolsTests
 			let stopped = Call(server, "entity_inspect", "{\"pie\":\"game-page-1\",\"entity\":\"Player\"}");
 			defer delete stopped;
 			Test.Assert(stopped.Error.StartsWith("PIE instance 'game-page-1' is not running a scene"), stopped.Error);
+		}
+	}
+
+	/// pie_resolution reads a tab's dropdown and Phone toggle, and chooses an entry by its key,
+	/// its label in any case, or a size, on the tab asked for only; one matching nothing is an
+	/// error naming what there is, and the choice stands.
+	[Test]
+	public static void PieResolutionReadsTheTabsChoiceAndChoosesByKeyLabelOrSize()
+	{
+		let context = scope EditorContext();
+		let host = RunningPie(context, "game-page");
+		let client = RunningPie(context, "game-page-1");
+		let server = scope McpServer();
+		PieMcpTools.Register(server, context);
+
+		// Read: the chosen entry, the toggle, and every entry the dropdown offers.
+		{
+			let got = Call(server, "pie_resolution", "{}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(got.Payload.Get("pie").AsString() == "game-page");
+			Test.Assert(got.Payload.Get("resolution").Get("key").AsString() == "project");
+			Test.Assert(got.Payload.Get("resolution").Get("width").AsNumber() == 1920);
+			Test.Assert(!got.Payload.Get("phone").AsBool());
+			Test.Assert(got.Payload.Get("choices").Count == 4);
+		}
+		// By size: the first entry of that size, on the tab asked for only.
+		{
+			let got = Call(server, "pie_resolution", "{\"pie\":\"game-page-1\",\"resolution\":\"1280x720\"}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(client.ResolutionKeyValue == "preset:HD");
+			Test.Assert(host.ResolutionKeyValue == "project");
+			Test.Assert(got.Payload.Get("resolution").Get("label").AsString() == "HD 1280x720");
+		}
+		// By label, in any case, with the phone toggle.
+		{
+			let got = Call(server, "pie_resolution", "{\"pie\":\"game-page-1\",\"resolution\":\"steam deck 1280x800\",\"phone\":true}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(client.ResolutionKeyValue == "preset:Steam Deck");
+			Test.Assert(client.Phone);
+			Test.Assert(got.Payload.Get("phone").AsBool());
+		}
+		// By key; the toggle stays as it was when not asked.
+		{
+			let got = Call(server, "pie_resolution", "{\"pie\":\"game-page-1\",\"resolution\":\"panel\"}");
+			defer delete got;
+			Test.Assert(got.Ok, got.Error);
+			Test.Assert(client.ResolutionKeyValue == "panel");
+			Test.Assert(client.Phone);
+			Test.Assert(got.Payload.Get("resolution").Get("width").AsNumber() == 0);
+		}
+		// Nothing of that name: an error naming what there is; the choice stands.
+		{
+			let got = Call(server, "pie_resolution", "{\"pie\":\"game-page-1\",\"resolution\":\"640x480\"}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.Contains("preset:HD"), got.Error);
+			Test.Assert(client.ResolutionKeyValue == "panel");
 		}
 	}
 }
