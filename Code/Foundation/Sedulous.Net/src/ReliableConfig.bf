@@ -22,6 +22,8 @@ struct ReliableConfig
 	/// by the network underneath us. A large reliable message is split into pieces this size
 	/// and reassembled by the receiver.
 	public uint32 MaxPacketBytes = 1200;
+	/// The most Data packets one update sends a connection: a burst's cap.
+	public uint32 MaxPacketsPerUpdate = 64;
 
 	public this() {}
 }

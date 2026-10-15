@@ -130,6 +130,55 @@ class ReliableTests
 			Test.Assert(got[i] == (uint8)i);
 	}
 
+	/// More than a packet's worth due at once (a replication delta of a crowd) goes out the
+	/// same update, not a packet an update: at one an update a big delta drained over several
+	/// updates while the next ones queued behind it, and the delay grew without end.
+	[Test]
+	public static void ABurstBiggerThanAPacketGoesOutInOneUpdate()
+	{
+		let fixture = scope Fixture(Conditions(10.0f, 0.0f, 0.0f, 0.0f, 1));
+		fixture.Server.SetAccepting(true);
+		let serverPeer = fixture.Client.Connect(fixture.ServerSocket.LocalEndpoint);
+		fixture.Pump(20);
+		DrainReceived(fixture.Server, scope .());
+
+		for (uint8 i = 0; i < 20; i++)
+		{
+			let message = scope uint8[1000]; // one to a packet
+			message[0] = i;
+			fixture.Client.Send(serverPeer, 1, message, .ReliableOrdered);
+		}
+		fixture.Pump(3); // the latency and a step or two: far fewer updates than messages
+		let got = scope List<uint8>();
+		DrainReceived(fixture.Server, got);
+		Test.Assert(got.Count == 20, scope $"{got.Count} of 20 arrived");
+		for (int i < got.Count)
+			Test.Assert(got[i] == (uint8)i);
+	}
+
+	/// Unreliable messages that do not fit the packet wait for the next one; they used to be
+	/// dropped.
+	[Test]
+	public static void UnreliableMessagesBeyondOnePacketAreSentNotDropped()
+	{
+		let fixture = scope Fixture(Conditions(10.0f, 0.0f, 0.0f, 0.0f, 1));
+		fixture.Server.SetAccepting(true);
+		let serverPeer = fixture.Client.Connect(fixture.ServerSocket.LocalEndpoint);
+		fixture.Pump(20);
+		DrainReceived(fixture.Server, scope .());
+
+		for (uint8 i = 0; i < 10; i++)
+		{
+			let message = scope uint8[600]; // two do not fit one packet
+			message[0] = i;
+			fixture.Client.Send(serverPeer, 1, message, .Unreliable);
+		}
+		fixture.Pump(3);
+		let got = scope List<uint8>();
+		DrainReceived(fixture.Server, got);
+		Test.Assert(got.Count == 10, scope $"{got.Count} of 10: no loss in the sim, so all of them");
+	}
+
 	[Test]
 	public static void DuplicationNeverDoubleDelivers()
 	{

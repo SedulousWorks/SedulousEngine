@@ -437,13 +437,20 @@ class ReliableTransport : INetTransport
 			message.LastSentMs = mNowMs;
 		}
 
+		int unreliableTaken = 0;
 		for (let message in connection.PendingUnreliable)
 		{
 			if ((message.Data.Count + cUnreliableOverhead) > budget)
 				break;
 			chosen.Add(message);
 			budget -= (message.Data.Count + cUnreliableOverhead);
+			unreliableTaken++;
 		}
+		// One that fits no packet at all (unreliable messages are not fragmented) goes, rather
+		// than holding the queue up for ever.
+		if ((unreliableTaken == 0) && !connection.PendingUnreliable.IsEmpty
+			&& ((connection.PendingUnreliable[0].Data.Count + cUnreliableOverhead) > (int)mConfig.MaxPacketBytes))
+			unreliableTaken = 1;
 
 		writer.WriteVarU32((uint32)chosen.Count);
 		for (let message in chosen)
@@ -465,9 +472,15 @@ class ReliableTransport : INetTransport
 			writer.WriteBytes(message.Data);
 		}
 
-		// Unreliable is sent ONCE, whether or not it fitted: an unreliable message that waits
-		// for the next packet is a reliable one with extra steps.
-		ClearAndDeleteItems!(connection.PendingUnreliable);
+		// Unreliable is sent once. Only those this packet carried leave the queue (they were
+		// written above, so they may go now); the rest go in the next packet. Dropping the
+		// rest, as this once did, lost every unreliable message past the first packet's worth.
+		if (unreliableTaken > 0)
+		{
+			for (int i < unreliableTaken)
+				delete connection.PendingUnreliable[i];
+			connection.PendingUnreliable.RemoveRange(0, unreliableTaken);
+		}
 
 		RecordSent(connection, record);
 		RawSend(connection, writer);
@@ -511,6 +524,13 @@ class ReliableTransport : INetTransport
 		{
 			connection.AckPending = false;
 			SendDataPacket(connection);
+			// As many packets as the due work fills (a delta bigger than a packet, a burst), up
+			// to a cap: one an update drained a big delta over several updates while the next
+			// ones queued behind it, and the lag grew without end. Each reliable sent is
+			// stamped, so the loop ends.
+			for (uint32 more = 1; (more < mConfig.MaxPacketsPerUpdate)
+				&& (AnyReliableDue(connection) || !connection.PendingUnreliable.IsEmpty); more++)
+				SendDataPacket(connection);
 		}
 	}
 
