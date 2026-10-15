@@ -28,6 +28,24 @@ static class NavigationFixture
 		indices.Add(from + 1);
 	}
 
+	/// A walkable floor raised to `y`, wound to face up.
+	public static void AddFloor(List<Float3> verts, List<uint32> indices, float minX,
+		float maxX, float minZ, float maxZ, float y)
+	{
+		let from = (uint32)verts.Count;
+		verts.Add(.(minX, y, minZ));
+		verts.Add(.(maxX, y, minZ));
+		verts.Add(.(maxX, y, maxZ));
+		verts.Add(.(minX, y, maxZ));
+
+		indices.Add(from + 0);
+		indices.Add(from + 3);
+		indices.Add(from + 2);
+		indices.Add(from + 0);
+		indices.Add(from + 2);
+		indices.Add(from + 1);
+	}
+
 	/// A solid box: a top and four walls.
 	///
 	/// The WINDING does not matter here. The box only has to rasterise as something tall, so

@@ -46,6 +46,33 @@ class NavigationBakeTests
 		Test.Assert(NavigationMeshBuilder.Build(verts, badIndices, parameters, empty) case .Err);
 	}
 
+	/// A climb that is a whole number of cells counts in full: 0.45 m over 0.15 m cells is three,
+	/// though 0.45 / 0.15 is 2.9999998 in floats. A floor 0.5 m up, three cells above the
+	/// ground's top as Recast quantizes them (two cells reach 0.45 m), is within it and joins
+	/// the ground.
+	[Test]
+	public static void AClimbOfAWholeNumberOfCellsCountsEveryOne()
+	{
+		let verts = scope List<Float3>();
+		let indices = scope List<uint32>();
+		AddGround(verts, indices, -10, 0, -5, 5);
+		AddFloor(verts, indices, 0, 10, -5, 5, 0.5f);
+		var parameters = NavigationBakeParams();
+		parameters.CellSize = 0.2f;
+		parameters.CellHeight = 0.15f;
+		parameters.AgentMaxClimb = 0.45f;
+		parameters.AgentRadius = 0.3f;
+		let blob = scope List<uint8>();
+		Test.Assert(NavigationMeshBuilder.Build(verts, indices, parameters, blob) case .Ok);
+		let mesh = scope NavigationMesh();
+		Test.Assert(mesh.Load(blob) case .Ok);
+		let query = scope NavigationMeshQuery(mesh);
+		Test.Assert(query.IsValid);
+		let path = scope NavigationPath();
+		Test.Assert(query.FindPath(.(-5, 0, 0), .(5, 0.5f, 0), path) case .Ok);
+		Test.Assert(path.Complete, "up the step: it was cut off when the climb came out at two cells");
+	}
+
 	/// A large ground SPLITS into tiles, and the stitched mesh still carries a path corner to
 	/// corner across every seam.
 	[Test]

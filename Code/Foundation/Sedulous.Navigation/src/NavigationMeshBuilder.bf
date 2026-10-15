@@ -308,9 +308,12 @@ static class NavigationMeshBuilder
 
 		let cellSize = parameters.CellSize;
 		let cellHeight = parameters.CellHeight;
-		let walkableHeight = (int32)Ceil(parameters.AgentHeight / cellHeight);
-		let walkableClimb = (int32)Floor(parameters.AgentMaxClimb / cellHeight);
-		let walkableRadius = (int32)Ceil(parameters.AgentRadius / cellSize);
+		// In cells, a setting that is a whole number of them counting as exactly that many:
+		// 0.25 / 0.05 is 4.9999999 in floats, and a bare floor made a 0.25 m climb 0.2 m.
+		const float cWhole = 1e-4f;
+		let walkableHeight = (int32)Ceil(parameters.AgentHeight / cellHeight - cWhole);
+		let walkableClimb = (int32)Floor(parameters.AgentMaxClimb / cellHeight + cWhole);
+		let walkableRadius = (int32)Ceil(parameters.AgentRadius / cellSize - cWhole);
 		let maxEdgeLen = (int32)(12.0f / cellSize);
 		const float cMaxSimplificationError = 1.3f;
 		const int32 cMinRegionArea = 8 * 8;
