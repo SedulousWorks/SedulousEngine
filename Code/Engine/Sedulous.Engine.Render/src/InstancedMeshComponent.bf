@@ -94,6 +94,9 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	public List<Float4x4> MemberWorld = null;
 	[Hidden]
 	public List<uint32> MemberClips = null;
+	/// Their own tints, linear, beside the clips.
+	[Hidden]
+	public List<Color> MemberTints = null;
 	[Hidden]
 	public List<Float4x4> DrawTransforms = null;
 	[Hidden]

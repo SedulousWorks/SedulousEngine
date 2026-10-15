@@ -161,4 +161,63 @@ class InstancedMeshExtractTests
 		// Members are drawn, never authored: the set's own list stays empty for a save.
 		Test.Assert(set.Instances.IsEmpty);
 	}
+
+	/// A member's tint: its instance's colour (decoded to linear), times the set's colour when
+	/// the set authors no tints; untinted members leave the set drawing with its one shared
+	/// colour.
+	[Test]
+	public static void AMemberDrawsWithItsOwnTintTimesTheSetsColour()
+	{
+		let scene = scope Scene("world");
+		let sets = scene.AddSystem<InstancedMeshComponentManager>();
+		let members = scene.AddSystem<InstanceMemberComponentManager>();
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let crowd = scene.CreateEntity("Guests");
+		let set = sets.Add(crowd); // seeded with one authored instance
+		set.Mesh.SetDirect(cube);
+		set.Color = .(0.5f, 1.0f, 1.0f, 1.0f);
+		let a = scene.CreateEntity("A");
+		members.Add(a).InstancedMesh.Id = scene.GetEntityId(crowd);
+		let b = scene.CreateEntity("B");
+		members.Add(b).InstancedMesh.Id = scene.GetEntityId(crowd);
+		scene.UpdateTransforms();
+
+		// Untinted: one shared colour, no per instance list.
+		{
+			let snapshot = scope ExtractedScene();
+			RenderExtract.ExtractInstancedMeshesInto(scene, snapshot);
+			Test.Assert(snapshot.Size == 1);
+			Test.Assert(((MultiMeshRenderData)snapshot.Items[0]).Tints == null);
+		}
+
+		// B glows red: every instance gets a tint, the authored one and A the set's colour, B its
+		// red times it.
+		members.Get(b).Tint = .(1.0f, 0.0f, 0.0f, 1.0f);
+		let shared = ToLinear(set.Color);
+		{
+			let snapshot = scope ExtractedScene();
+			RenderExtract.ExtractInstancedMeshesInto(scene, snapshot);
+			let data = (MultiMeshRenderData)snapshot.Items[0];
+			Test.Assert(data.InstanceCount == 3);
+			Test.Assert(data.Tints != null);
+			Test.Assert(NearlyEqual(data.Tints[0], shared, 1e-4f));
+			Test.Assert(NearlyEqual(data.Tints[1], shared, 1e-4f));
+			Test.Assert(NearlyEqual(data.Tints[2], .(shared.R, 0.0f, 0.0f, 1.0f), 1e-4f));
+		}
+
+		// With authored tints the set's colour steps aside: B is its own red, decoded.
+		set.Tints.Add(.(0.0f, 0.0f, 1.0f, 1.0f));
+		set.Version++;
+		members.Get(b).Tint = .(0.5f, 0.0f, 0.0f, 1.0f);
+		{
+			let snapshot = scope ExtractedScene();
+			RenderExtract.ExtractInstancedMeshesInto(scene, snapshot);
+			let data = (MultiMeshRenderData)snapshot.Items[0];
+			Test.Assert(data.Tints != null);
+			Test.Assert(NearlyEqual(data.Tints[0], .(0.0f, 0.0f, 1.0f, 1.0f), 1e-4f));
+			Test.Assert(NearlyEqual(data.Tints[1], .(1.0f, 1.0f, 1.0f, 1.0f), 1e-4f));
+			Test.Assert(NearlyEqual(data.Tints[2], ToLinear(Color(0.5f, 0.0f, 0.0f, 1.0f)), 1e-4f));
+		}
+	}
 }

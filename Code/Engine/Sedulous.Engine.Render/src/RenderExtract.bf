@@ -243,6 +243,7 @@ static class RenderExtract
 			{
 				component.MemberWorld.Clear();
 				component.MemberClips.Clear();
+				component.MemberTints.Clear();
 			});
 		if (let members = scene.GetSystem<InstanceMemberComponentManager>())
 		{
@@ -256,6 +257,7 @@ static class RenderExtract
 						return;
 					set.MemberWorld.Add(scene.GetWorldMatrix(entity));
 					set.MemberClips.Add(member.Clip);
+					set.MemberTints.Add(ToLinear(member.Tint));
 				});
 		}
 
@@ -329,15 +331,23 @@ static class RenderExtract
 				data.Transforms = drawn.Ptr;
 				let tintsMatch = !component.LinearTints.IsEmpty
 					&& (component.LinearTints.Count == component.Instances.Count);
-				if (tintsMatch && hasMembers)
+				var memberTinted = false;
+				for (let tint in component.MemberTints)
+					memberTinted |= (tint.R != 1.0f) || (tint.G != 1.0f) || (tint.B != 1.0f) || (tint.A != 1.0f);
+				let perInstance = tintsMatch || memberTinted;
+				if (perInstance && hasMembers)
 				{
-					// The authored tints, then the members untinted.
+					// The authored tints (or the set's colour for each), then each member's tint,
+					// times the set's colour where the set authors none.
+					let shared = ToLinear(component.Color);
 					component.DrawTints.Clear();
-					component.DrawTints.AddRange(component.LinearTints);
-					for (int i < component.MemberWorld.Count)
-						component.DrawTints.Add(.(1.0f, 1.0f, 1.0f, 1.0f));
+					for (int i < component.Instances.Count)
+						component.DrawTints.Add(tintsMatch ? component.LinearTints[i] : shared);
+					let under = tintsMatch ? Color(1.0f, 1.0f, 1.0f, 1.0f) : shared;
+					for (let tint in component.MemberTints)
+						component.DrawTints.Add(.(tint.R * under.R, tint.G * under.G, tint.B * under.B, tint.A * under.A));
 				}
-				data.Tints = tintsMatch ? (hasMembers ? component.DrawTints.Ptr : component.LinearTints.Ptr) : null;
+				data.Tints = perInstance ? (hasMembers ? component.DrawTints.Ptr : component.LinearTints.Ptr) : null;
 				data.InstanceCount = drawnCount;
 				data.Version = component.ComposedVersion;
 				data.Mesh = component.Mesh.Get;

@@ -41,6 +41,7 @@ class InstancedMeshComponentManager : ResourceBindingComponentManager<InstancedM
 		component.InstanceClips = new List<uint32>();
 		component.MemberWorld = new List<Float4x4>();
 		component.MemberClips = new List<uint32>();
+		component.MemberTints = new List<Color>();
 		component.DrawTransforms = new List<Float4x4>();
 		component.DrawClips = new List<uint32>();
 		component.DrawTints = new List<Color>();
@@ -63,6 +64,7 @@ class InstancedMeshComponentManager : ResourceBindingComponentManager<InstancedM
 		DeleteAndNullify!(component.InstanceClips);
 		DeleteAndNullify!(component.MemberWorld);
 		DeleteAndNullify!(component.MemberClips);
+		DeleteAndNullify!(component.MemberTints);
 		DeleteAndNullify!(component.DrawTransforms);
 		DeleteAndNullify!(component.DrawClips);
 		DeleteAndNullify!(component.DrawTints);

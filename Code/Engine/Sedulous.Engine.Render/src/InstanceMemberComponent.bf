@@ -11,7 +11,9 @@ namespace Sedulous.Engine.Render;
 /// navigation, physics, replication, a script, the editor's gizmo. Many entities, one draw:
 /// pickups, props, units, the guests of a crowd. Extraction adds the members after the
 /// instanced mesh's own authored instances each frame; nothing of theirs is saved into it.
-[SerializableComponent("instance_member")]
+///
+/// Data version 2 adds the tint (a version 1 member reads untinted).
+[SerializableComponent("instance_member", 2)]
 [DisplayName("Instance Member")]
 [Category("Rendering")]
 [Scriptable]
@@ -24,6 +26,11 @@ struct InstanceMemberComponent : ISerializable
 	/// Its clip: the index in the instanced skinning's clip list.
 	[Scriptable, Description("Its clip: the index in the instanced skinning's clip list")]
 	public uint32 Clip = 0;
+	/// Its own tint (sRGB, as entered), times the set's colour when the set authors no tints:
+	/// the instance's colour, which a custom shader reads as its input colour (a glow, a mark),
+	/// so one guest can look different from the rest.
+	[Scriptable, Description("Its own tint, times the set's colour: the colour a custom shader reads")]
+	public Color Tint = .(1.0f, 1.0f, 1.0f, 1.0f);
 
 	public this() {}
 
@@ -31,6 +38,12 @@ struct InstanceMemberComponent : ISerializable
 	{
 		SerializeValue(ar, "instancedMesh", ref InstancedMesh.Id);
 		SerializeValue(ar, "clip", ref Clip);
+		// A version 1 member is untinted.
+		if ((ar.Mode == .Write) || (ar.Version >= 2))
+		{
+			ar.Key("tint");
+			Sedulous.Core.Serialization.Serialize(ar, ref Tint);
+		}
 	}
 }
 
