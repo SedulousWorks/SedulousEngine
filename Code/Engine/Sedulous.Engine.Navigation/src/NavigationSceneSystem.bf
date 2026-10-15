@@ -149,16 +149,19 @@ class NavigationSceneSystem : SceneSystem
 		// A live steering change, from a script or an inspector, pushes into the crowd. VALUE
 		// COMPARED, so an unchanged agent costs two float compares.
 		if ((agent.MaxSpeed != agent.AppliedSpeed)
-			|| (agent.MaxAcceleration != agent.AppliedAcceleration))
+			|| (agent.MaxAcceleration != agent.AppliedAcceleration)
+			|| (agent.AvoidOthers != agent.AppliedAvoidOthers))
 		{
 			var parameters = NavigationAgentParams();
 			parameters.Radius = agent.Radius;
 			parameters.Height = agent.Height;
 			parameters.MaxSpeed = agent.MaxSpeed;
 			parameters.MaxAcceleration = agent.MaxAcceleration;
+			parameters.AvoidOthers = agent.AvoidOthers;
 			zone.Crowd.SetAgentParams(agent.AgentId, parameters);
 			agent.AppliedSpeed = agent.MaxSpeed;
 			agent.AppliedAcceleration = agent.MaxAcceleration;
+			agent.AppliedAvoidOthers = agent.AvoidOthers;
 		}
 
 		if (agent.TargetDirty)
@@ -172,6 +175,12 @@ class NavigationSceneSystem : SceneSystem
 		{
 			zone.Crowd.ClearTarget(agent.AgentId);
 			agent.StopRequested = false;
+		}
+
+		if (agent.VelocityDirty)
+		{
+			zone.Crowd.SetVelocity(agent.AgentId, TransformDirection(agent.SteerVelocity, zone.InverseWorld));
+			agent.VelocityDirty = false;
 		}
 	}
 
@@ -233,7 +242,7 @@ class NavigationSceneSystem : SceneSystem
 		agent.CrowdDesiredSpeed = state.DesiredSpeed;
 		agent.PathCorners = state.CornerCount;
 
-		if (agent.MoveEntity && agent.HasTarget)
+		if (agent.MoveEntity && (agent.HasTarget || agent.Steering))
 		{
 			// Assumes an UNPARENTED agent, where the local transform is the world one. A
 			// parented one would need the world to parent conversion.
@@ -346,9 +355,11 @@ class NavigationSceneSystem : SceneSystem
 		parameters.Height = agent.Height;
 		parameters.MaxSpeed = agent.MaxSpeed;
 		parameters.MaxAcceleration = agent.MaxAcceleration;
+		parameters.AvoidOthers = agent.AvoidOthers;
 		// The live change compare starts in step.
 		agent.AppliedSpeed = agent.MaxSpeed;
 		agent.AppliedAcceleration = agent.MaxAcceleration;
+		agent.AppliedAvoidOthers = agent.AvoidOthers;
 		return zone.Crowd.AddAgent(TransformPoint(worldPosition, zone.InverseWorld), parameters);
 	}
 
@@ -391,6 +402,8 @@ class NavigationSceneSystem : SceneSystem
 					agent.AgentId = usable ? AddToCrowd(runtime, agent, mScene.GetWorldPosition(entity)) : -1;
 					// On its way again.
 					agent.TargetDirty = agent.HasTarget && !agent.Finished;
+					// Or moving as it was.
+					agent.VelocityDirty = agent.Steering;
 				});
 		}
 	}

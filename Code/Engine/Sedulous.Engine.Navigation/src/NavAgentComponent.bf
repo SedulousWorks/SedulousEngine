@@ -12,8 +12,9 @@ namespace Sedulous.Engine.Navigation;
 /// scene system's tick consumes them, which is what keeps a call from a behaviour safe
 /// whenever it happens, including before the crowd exists.
 ///
-/// Everything below the authored block is transient and never serialized.
-[SerializableComponent("navigation.Agent", 2)]
+/// Everything below the authored block is transient and never serialized. Data version 3
+/// adds Avoid Others; a version 2 agent reads as one that avoids others, as all did.
+[SerializableComponent("navigation.Agent", 3, 2)]
 [DisplayName("Nav Agent")]
 [Category("Navigation")]
 [Scriptable]
@@ -42,6 +43,14 @@ struct NavAgentComponent : ISerializable
 	[Scriptable]
 	public bool MoveEntity = true;
 
+	/// Steer round other agents (on, the default: a guest in a crowd). Off, it goes straight
+	/// where it is sent and shoulders past anyone in its way, the crowd pushing them apart (a
+	/// player's character: avoiding, a velocity driven agent holds back from anyone ahead).
+	[Scriptable]
+	[DisplayName("Avoid Others")]
+	[Description("Steer round other agents. Off, it goes straight where it is sent and shoulders past anyone in its way (a player's character)")]
+	public bool AvoidOthers = true;
+
 	// ---- runtime ----
 
 	/// The crowd's handle within the zone, minus one when unregistered.
@@ -61,6 +70,14 @@ struct NavAgentComponent : ISerializable
 	/// A halt the tick has not applied yet.
 	[Hidden]
 	public bool StopRequested = false;
+	/// Moving by Move (a velocity) rather than to a target.
+	[Hidden]
+	public bool Steering = false;
+	/// A Move the tick has not applied yet, and its velocity.
+	[Hidden]
+	public bool VelocityDirty = false;
+	[Hidden]
+	public Float3 SteerVelocity = .(0, 0, 0);
 	/// A warp the tick has not applied yet, and where to.
 	[Hidden]
 	public bool WarpRequested = false;
@@ -89,6 +106,8 @@ struct NavAgentComponent : ISerializable
 	public float AppliedSpeed = -1.0f;
 	[Hidden]
 	public float AppliedAcceleration = -1.0f;
+	[Hidden]
+	public bool AppliedAvoidOthers = true;
 
 	// ---- the introspection cache, filled from the crowd each tick ----
 	// A script's to read: why an agent is not moving (its request failed, it is off the
@@ -120,6 +139,7 @@ struct NavAgentComponent : ISerializable
 	public void Navigate(Float3 destination) mut
 	{
 		Target = destination;
+		Steering = false;
 		HasTarget = true;
 		TargetDirty = true;
 		StopRequested = false;
@@ -130,6 +150,7 @@ struct NavAgentComponent : ISerializable
 	[Scriptable]
 	public void Stop() mut
 	{
+		Steering = false;
 		HasTarget = false;
 		StopRequested = true;
 		Finished = true;
@@ -144,10 +165,27 @@ struct NavAgentComponent : ISerializable
 	{
 		WarpTo = position;
 		WarpRequested = true;
+		Steering = false;
 		HasTarget = false;
 		TargetDirty = false;
 		StopRequested = false;
 		Finished = true;
+	}
+
+	/// Moves at a velocity across the ground (metres a second, world X and Z) instead of to a
+	/// point: a player's stick, sent each frame. No path is planned, so it is answered at once;
+	/// the crowd keeps the agent on the navmesh. Lasts until Navigate, Stop or Warp; Move(0, 0)
+	/// stands still, still in the crowd.
+	[Scriptable]
+	public void Move(float vx, float vz) mut
+	{
+		SteerVelocity = .(vx, 0, vz);
+		Steering = true;
+		VelocityDirty = true;
+		HasTarget = false;
+		TargetDirty = false;
+		StopRequested = false;
+		Finished = (vx == 0.0f) && (vz == 0.0f);
 	}
 
 	/// A destination, a speed and an arrival radius in one call, which is the common scripted
@@ -168,5 +206,8 @@ struct NavAgentComponent : ISerializable
 		SerializeValue(ar, "maxAcceleration", ref MaxAcceleration);
 		SerializeValue(ar, "moveEntity", ref MoveEntity);
 		SerializeValue(ar, "stopDistance", ref StopDistance);
+		// Data version 3: a version 2 agent avoids others, as all did.
+		if ((ar.Mode == .Write) || (ar.Version >= 3))
+			SerializeValue(ar, "avoidOthers", ref AvoidOthers);
 	}
 }

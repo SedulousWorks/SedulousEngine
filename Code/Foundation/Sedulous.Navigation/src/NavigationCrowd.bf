@@ -57,11 +57,6 @@ class NavigationCrowd
 		FillParams(ref ap, parameters);
 		ap.separationWeight = cSeparationWeight;
 		ap.obstacleAvoidanceType = cObstacleAvoidanceType;
-		ap.updateFlags = (uint8)((int32)dtCrowdUpdateFlags.DT_CROWD_ANTICIPATE_TURNS
-			| (int32)dtCrowdUpdateFlags.DT_CROWD_OPTIMIZE_VIS
-			| (int32)dtCrowdUpdateFlags.DT_CROWD_OPTIMIZE_TOPO
-			| (int32)dtCrowdUpdateFlags.DT_CROWD_OBSTACLE_AVOIDANCE
-			| (int32)dtCrowdUpdateFlags.DT_CROWD_SEPARATION);
 
 		float[3] pos = .(position.X, position.Y, position.Z);
 		return C_dtCrowdAddAgent(mCrowd, &pos[0], &ap);
@@ -76,8 +71,8 @@ class NavigationCrowd
 	/// Updates a LIVE agent's steering profile without removing and re-adding it, which is how
 	/// a speed changes mid stride.
 	///
-	/// The flags and the avoidance preset the add configured are KEPT: only what the profile
-	/// names is written.
+	/// The avoidance preset the add configured is KEPT: only what the profile names is written,
+	/// the behaviour flags included.
 	public void SetAgentParams(int32 agentId, NavigationAgentParams parameters)
 	{
 		if (!IsAgentValid(agentId))
@@ -99,6 +94,20 @@ class NavigationCrowd
 		// one rather than every agent sharing one distance.
 		ap.collisionQueryRange = parameters.Radius * cCollisionQueryRadii;
 		ap.pathOptimizationRange = parameters.Radius * cPathOptimizationRadii;
+		ap.updateFlags = UpdateFlags(parameters);
+	}
+
+	/// The crowd behaviours an agent runs: always the path smoothing, and the avoidance and
+	/// separation unless it goes straight where it is sent.
+	private static uint8 UpdateFlags(NavigationAgentParams parameters)
+	{
+		var flags = (int32)dtCrowdUpdateFlags.DT_CROWD_ANTICIPATE_TURNS
+			| (int32)dtCrowdUpdateFlags.DT_CROWD_OPTIMIZE_VIS
+			| (int32)dtCrowdUpdateFlags.DT_CROWD_OPTIMIZE_TOPO;
+		if (parameters.AvoidOthers)
+			flags |= (int32)dtCrowdUpdateFlags.DT_CROWD_OBSTACLE_AVOIDANCE
+				| (int32)dtCrowdUpdateFlags.DT_CROWD_SEPARATION;
+		return (uint8)flags;
 	}
 
 	/// Steers an agent toward a target, SNAPPED to the nearest polygon. False when the agent
@@ -127,6 +136,17 @@ class NavigationCrowd
 			return false;
 
 		return C_dtCrowdRequestMoveTarget(mCrowd, agentId, reference, &nearest[0]) != 0;
+	}
+
+	/// Drives the agent at `velocity` (metres a second, the crowd's space) instead of to a
+	/// point: no path, the crowd keeps it on the navmesh and, if it avoids others, out of their
+	/// way (a player's stick). False when the agent is not live.
+	public bool SetVelocity(int32 agentId, Float3 velocity)
+	{
+		if ((mCrowd == default) || (agentId < 0))
+			return false;
+		float[3] v = .(velocity.X, velocity.Y, velocity.Z);
+		return C_dtCrowdRequestMoveVelocity(mCrowd, agentId, &v[0]) != 0;
 	}
 
 	public void ClearTarget(int32 agentId)

@@ -462,4 +462,177 @@ class NavigationSceneTests
 		scene.SetSimulationEnabled(false);
 		scene.Stop();
 	}
+
+	/// The scene, zone and one agent at (-5, 0, 0) the moving tests share, started and
+	/// simulating.
+	private static NavAgentComponent* StartWithAgent(NavigationSceneFixture fixture, Guid zoneId, Scene scene,
+		out EntityHandle agentEntity)
+	{
+		NavigationScene.AddNavigationSceneManagers(scene);
+		let zone = scene.GetSystem<NavMeshZoneComponentManager>().Add(scene.CreateEntity("zone"));
+		zone.Extents = .(15, 10, 15);
+		zone.Zone.SetId(zoneId);
+		zone.Zone.Bind(fixture.Manager);
+		agentEntity = scene.CreateEntity("agent");
+		scene.SetLocalPosition(agentEntity, .(-5, 0, 0));
+		return scene.GetSystem<NavAgentComponentManager>().Add(agentEntity);
+	}
+
+	/// Move(vx, vz): an agent driven by a velocity (a player's stick) instead of to a point. No
+	/// path is planned, so it starts the frame it is asked, keeps the speed asked, and stands on
+	/// Move(0, 0).
+	[Test]
+	public static void AnAgentMovedByAVelocityGoesAtOnceAtThatSpeed()
+	{
+		let fixture = scope NavigationSceneFixture("scratch_navmove_db");
+		let zoneId = fixture.CookGroundZone("zone");
+		let scene = scope Scene("nav");
+		let agent = StartWithAgent(fixture, zoneId, scene, let agentEntity);
+		agent.MaxSpeed = 3.0f;
+		scene.UpdateTransforms();
+		scene.Start();
+		scene.SetSimulationEnabled(true);
+		Test.Assert(agent.AgentId >= 0);
+
+		// East at 1.5 m/s: moving within a few frames, then 1.5 m a second.
+		for (int step < 3)
+		{
+			agent.Move(1.5f, 0.0f);
+			scene.Update(cStep);
+		}
+		Test.Assert(scene.GetWorldPosition(agentEntity).X > -5.0f + 0.01f, "moving at once");
+		let before = scene.GetWorldPosition(agentEntity).X;
+		for (int step < 60)
+		{
+			agent.Move(1.5f, 0.0f);
+			scene.Update(cStep);
+		}
+		let travelled = scene.GetWorldPosition(agentEntity).X - before;
+		Test.Assert(Math.Abs(travelled - 3.0f) < 0.3f, scope $"two seconds at 1.5 m/s went {travelled}");
+		Test.Assert(Math.Abs(scene.GetWorldPosition(agentEntity).Z) < 0.1f);
+
+		// Move(0, 0): it stands where it is, still in the crowd.
+		for (int step < 30)
+		{
+			agent.Move(0.0f, 0.0f);
+			scene.Update(cStep);
+		}
+		let stood = scene.GetWorldPosition(agentEntity).X;
+		Run(scene, 15);
+		Test.Assert(Math.Abs(scene.GetWorldPosition(agentEntity).X - stood) < 0.02f);
+		Test.Assert(agent.AgentId >= 0);
+
+		scene.SetSimulationEnabled(false);
+		scene.Stop();
+	}
+
+	/// A version 2 agent record (no Avoid Others) reads as one that avoids others, as all did.
+	[Test]
+	public static void AVersionTwoAgentRecordReadsAsOneThatAvoidsOthers()
+	{
+		let stream = scope MemoryStream();
+		{
+			// The version 2 fields, by hand.
+			let writer = scope BinarySerializer(stream, .Write);
+			for (let value in float[4](0.3f, 1.7f, 3.0f, 6.0f))
+			{
+				var v = value;
+				SerializeValue(writer, "f", ref v);
+			}
+			var moveEntity = true;
+			SerializeValue(writer, "moveEntity", ref moveEntity);
+			var stopDistance = 0.0f;
+			SerializeValue(writer, "stopDistance", ref stopDistance);
+			var trailing = 77u;
+			SerializeValue(writer, "trailing", ref trailing);
+			Test.Assert(writer.IsOk);
+		}
+		stream.Seek(0, .Begin);
+		let reader = scope BinarySerializer(stream, .Read);
+		reader.PushVersionScope(scope SerializedDataVersion[](.(TypeIdOf("navigation.Agent"), 2)));
+		var agent = NavAgentComponent();
+		agent.AvoidOthers = false;
+		agent.Serialize(reader);
+		uint32 trailing = 0;
+		SerializeValue(reader, "trailing", ref trailing);
+		reader.PopVersionScope();
+		Test.Assert(reader.IsOk);
+		Test.Assert(!agent.AvoidOthers, "no avoidOthers asked of a version 2 record: left as it was");
+		Test.Assert(Math.Abs(agent.Radius - 0.3f) < 1e-4f);
+		Test.Assert(trailing == 77, "nothing past the version 2 fields was consumed");
+		Test.Assert(NavAgentComponent().AvoidOthers, "and a fresh agent, which a load starts from, avoids others");
+	}
+
+	/// How far off its line a walker driven east past a standing agent strays, the least gap
+	/// between them, and where it ends up.
+	private struct PassRun
+	{
+		public float Stray = 0.0f;
+		public float Closest = 100.0f;
+		public float EndX = 0.0f;
+	}
+
+	/// `live`: avoidance set after the start, as an inspector edit or a script changes it while
+	/// the agent is in its crowd.
+	private static PassRun WalkPast(NavigationSceneFixture fixture, Guid zoneId, bool avoidOthers, bool live = false)
+	{
+		let scene = scope Scene("nav");
+		NavigationScene.AddNavigationSceneManagers(scene);
+		let zone = scene.GetSystem<NavMeshZoneComponentManager>().Add(scene.CreateEntity("zone"));
+		zone.Extents = .(15, 10, 15);
+		zone.Zone.SetId(zoneId);
+		zone.Zone.Bind(fixture.Manager);
+		let agents = scene.GetSystem<NavAgentComponentManager>();
+		let standing = scene.CreateEntity("standing");
+		// A little off the line, as people are.
+		scene.SetLocalPosition(standing, .(0, 0, 0.15f));
+		agents.Add(standing).Radius = 0.4f;
+		let walker = scene.CreateEntity("walker");
+		scene.SetLocalPosition(walker, .(-4, 0, 0));
+		var w = agents.Add(walker);
+		w.Radius = 0.4f;
+		if (!live)
+			w.AvoidOthers = avoidOthers;
+		scene.UpdateTransforms();
+		scene.Start();
+		scene.SetSimulationEnabled(true);
+		if (live)
+			agents.Get(walker).AvoidOthers = avoidOthers;
+		var run = PassRun();
+		// Five seconds at thirty hertz, at 1.5 m/s.
+		for (int step < 150)
+		{
+			w = agents.Get(walker);
+			w.Move(1.5f, 0.0f);
+			scene.Update(cStep);
+			let p = scene.GetWorldPosition(walker);
+			let q = scene.GetWorldPosition(standing);
+			run.Stray = Math.Max(run.Stray, Math.Abs(p.Z));
+			run.Closest = Math.Min(run.Closest, Math.Sqrt((p.X - q.X) * (p.X - q.X) + (p.Z - q.Z) * (p.Z - q.Z)));
+		}
+		run.EndX = scene.GetWorldPosition(walker).X;
+		scene.SetSimulationEnabled(false);
+		scene.Stop();
+		return run;
+	}
+
+	/// Avoid Others: a velocity driven agent that avoids others holds back from one standing in
+	/// its way (Detour's avoidance will not close on it: to a player, an invisible wall); one
+	/// that does not shoulders past, the crowd's collision step pushing the two apart.
+	[Test]
+	public static void AnAgentThatDoesNotAvoidOthersShouldersPastOneInItsWay()
+	{
+		let fixture = scope NavigationSceneFixture("scratch_navavoid_db");
+		let zoneId = fixture.CookGroundZone("zone");
+		let avoiding = WalkPast(fixture, zoneId, true);
+		let straight = WalkPast(fixture, zoneId, false);
+		Test.Assert(avoiding.Closest > 1.0f, scope $"held back, short of the one in its way (closest {avoiding.Closest})");
+		Test.Assert(avoiding.EndX < 0.0f, scope $"and never got past it (ended at {avoiding.EndX})");
+		Test.Assert(straight.EndX > 1.0f, scope $"past it (ended at {straight.EndX})");
+		Test.Assert(straight.Closest > 0.3f, scope $"brushing it aside, not through its middle (closest {straight.Closest})");
+		Test.Assert(straight.Stray < 0.5f, scope $"near its line (strayed {straight.Stray})");
+		// Turned off while it is in its crowd, it goes straight past as well.
+		let turnedOff = WalkPast(fixture, zoneId, false, true);
+		Test.Assert(turnedOff.EndX > 1.0f, scope $"turned off live, past it (ended at {turnedOff.EndX})");
+	}
 }
