@@ -1,5 +1,8 @@
 using System;
 using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.Net;
+using Sedulous.Scene;
+using Sedulous.Scene.Resource;
 
 namespace Sedulous.Engine.GameScript.Tests;
 
@@ -202,5 +205,68 @@ class NetFacadeTests
 				break;
 		}
 		Test.Assert(client.PropInt("left") == 0, "the client heard the host go");
+	}
+
+	/// The entity a host's spawn answers is the replicated scene's, so the script can use it:
+	/// valid, named, and the player's it was spawned for. Net is a run service, not a scene's,
+	/// so before its entities named their scene the handle resolved nowhere and read invalid
+	/// (Masquerade's host never seated a joining player). Offline it has no scene, and an entity
+	/// from one is still taken: IsMine says no rather than failing the call.
+	[Test]
+	public static void AHostsSpawnIsAnEntityTheScriptCanUse()
+	{
+		let run = scope GameRun("scratch_net_spawn_entity");
+		let hunter = run.AuthorPrefab("Hunter");
+		let level = run.AuthorLevel("Palace");
+		let database = run.Database;
+		run.MoreSystems = new (scene) =>
+			{
+				NetworkScene.AddNetworkSceneManagers(scene);
+				scene.AddSystem<PrefabSpawnSystem>().SetSource(database, null);
+			};
+		let game = run.Class("Game", scope $$"""
+			class Game
+			{
+				bool loaded = false;
+				bool spawned = false;
+				bool valid = false;
+				bool named = false;
+				bool mine = true;
+				bool ownMine = false;
+				bool offlineMine = true;
+				bool finished = false;
+				void launch()
+				{
+					Net.StartServer(0);
+					loaded = Run.LoadScene(Guid::FromString("{{level}}"));
+				}
+				void update(float dt)
+				{
+					if (spawned || !Run.SceneReady)
+						return;
+					spawned = true;
+					Guid prefab = Guid::FromString("{{hunter}}");
+					Entity theirs = Net.SpawnFor(3, prefab, Float3(1, 2, 3));
+					valid = theirs.IsValid();
+					named = theirs.GetName() == "Hunter";
+					mine = Net.IsMine(theirs);
+					ownMine = Net.IsMine(Net.Spawn(prefab, Float3(0, 0, 0)));
+					Net.Disconnect();
+					offlineMine = Net.IsMine(theirs);
+					finished = true;
+				}
+			}
+			""");
+		Test.Assert(run.Instance.StartScript(game));
+		Test.Assert(run.PropBool("loaded"));
+		run.Step(2);
+		Test.Assert(run.Instance.ScriptFault.IsEmpty, scope $"faulted: {run.Instance.ScriptFault}");
+		Test.Assert(run.PropBool("spawned"));
+		Test.Assert(run.PropBool("valid"), "the spawned entity is one the script can use");
+		Test.Assert(run.PropBool("named"));
+		Test.Assert(!run.PropBool("mine"), "player 3's, not the host's");
+		Test.Assert(run.PropBool("ownMine"), "the host's own spawn is its");
+		Test.Assert(!run.PropBool("offlineMine"), "offline nothing is mine, and the call does not fail");
+		Test.Assert(run.PropBool("finished"));
 	}
 }

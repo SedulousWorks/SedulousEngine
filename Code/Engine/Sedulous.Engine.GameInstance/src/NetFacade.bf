@@ -19,8 +19,11 @@ namespace Sedulous.Engine.GameInstance;
 /// from the host to every client, and On, OnNumber and OnText receive one. Players are named by
 /// id: nought the host, a client the id the host's welcome gave it. The game instance installs
 /// one on its run.
+///
+/// Its entities are the replicated scene's (IScriptEntityScene): a spawn answers one a script
+/// can use, and IsMine takes one from there.
 [Scriptable, ServiceFacade("Net")]
-class NetFacade
+class NetFacade : IScriptEntityScene
 {
 	/// What a script message carries after its id: the sending call writes the kind first, so
 	/// the receiving handler knows what follows (nothing, a number, or a text).
@@ -64,6 +67,9 @@ class NetFacade
 	}
 
 	private NetworkManager Endpoint => (mController != null) ? mController.NetEndpoint : null;
+
+	/// The scene its entities live in: the endpoint's replicated scene, none offline.
+	public Scene EntityScene => (Endpoint != null) ? Endpoint.ReplicatedScene : null;
 
 	/// Hosting: this run is the server (a listen or a dedicated one).
 	[Scriptable]

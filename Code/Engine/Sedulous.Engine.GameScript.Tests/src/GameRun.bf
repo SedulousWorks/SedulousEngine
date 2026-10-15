@@ -37,6 +37,9 @@ class GameRun
 	private String mRoot = new .() ~ delete _;
 	private List<ScriptClass> mClasses = new .();
 	private delegate void(Scene) mInstaller ~ delete _;
+	/// More systems for each scene the run makes, beside the script managers (a test's
+	/// networking and prefab spawning). OWNED.
+	public delegate void(Scene) MoreSystems ~ delete _;
 	private int mHarvested = 0;
 
 	public this(StringView name)
@@ -64,7 +67,12 @@ class GameRun
 				runtime.Bind(Surface);
 				ClearAndDeleteItems!(runtime.Problems);
 			};
-		mInstaller = new (scene) => ScriptScene.AddScriptSceneManagers(scene);
+		mInstaller = new (scene) =>
+			{
+				ScriptScene.AddScriptSceneManagers(scene);
+				if (MoreSystems != null)
+					MoreSystems(scene);
+			};
 		Instance.Scenes.SetSceneInstaller(mInstaller);
 		Instance.SetSceneLoader(new (sceneId) =>
 			{
@@ -105,6 +113,19 @@ class GameRun
 			authored.CreateEntity(scope $"e{i}");
 		Test.Assert(SceneStorage.SaveScene(authored, sceneInstance) case .Ok);
 		return sceneInstance.Id;
+	}
+
+	/// The run's content database, where its levels and prefabs are authored.
+	public ContentDatabase Database => mDatabase;
+
+	/// An authored prefab of one entity named `name` in the content database, by id.
+	public Guid AuthorPrefab(StringView name)
+	{
+		let instance = mDatabase.RootGroup.CreateInstance(name, "Sedulous.Scene.Resource.PrefabDocument");
+		let template = scope Scene(name);
+		template.CreateEntity(name);
+		Test.Assert(SceneStorage.SavePrefab(template, instance) case .Ok);
+		return instance.Id;
 	}
 
 	/// Compiles and harvests a class through the run's own runtime: what the cook produces.

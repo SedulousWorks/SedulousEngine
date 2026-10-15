@@ -65,13 +65,13 @@ struct ScriptCallFrame
 	public Scene SceneOf(ScriptValue entity) => entity.AsEntityScene ?? Context.Scene;
 
 	/// Argument `i`, an entity, belongs to `scene`, or a failure. An entity that names no
-	/// scene is taken to be in it.
+	/// scene is taken to be in it, and a call in no scene (a service with none now) takes any.
 	public bool ExpectEntityIn(int i, Scene scene) mut
 	{
 		if (i >= Args.Length)
 			return true;
 		let owner = Args[i].AsEntityScene;
-		if ((owner == null) || (owner === scene))
+		if ((owner == null) || (scene == null) || (owner === scene))
 			return true;
 		Fail(scope $"argument {i}: the entity belongs to another scene");
 		return false;

@@ -1233,6 +1233,11 @@ static class ScriptSurfaceWalker
 		{
 		case .SceneSystem, .ComponentManager, .SceneFacade: outExpr.Set("self.Scene");
 		case .Component: outExpr.Set("scene");
+		case .Service:
+			// A service that knows its entities' scene tags the ones it answers with it, and
+			// checks the ones it takes against it.
+			if (ctx.Type.ImplementsInterface(typeof(IScriptEntityScene)))
+				outExpr.Set("self.EntityScene");
 		case .Plain:
 			if ((ctx.Kind == .Class) && (ctx.FullName == "Sedulous.Scene.Scene"))
 				outExpr.Set("self");
