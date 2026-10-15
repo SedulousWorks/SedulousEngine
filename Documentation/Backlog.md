@@ -138,6 +138,13 @@ and make the resolution a render setting (1024, 2048, 4096); local light shadows
 (`SampleLocalShadow`) the same. Contact hardening (PCSS) after, if wanted. Changes every game's
 shadows slightly: the full test lanes and a visual check on the sample games.
 
+### A slot's own depth and shadow program
+The forward pass draws each submesh with its slot's material (2026-10-15), but the depth prepass,
+shadows and picking still draw a mesh (and an instanced set) whole with its first material
+(`MeshRenderer.DepthLikeFor` over `md.Material`): a custom shader that moves its vertices or
+cuts out, on any slot but the first, casts and occludes as if it did neither. Wanted: per
+submesh depth draws where a slot's material has its own depth program, wind, or a cutout.
+
 ## Documentation and content
 
 - Port Raptor's documentation (`Documentation/Systems`, `Guides`, `GETTING-STARTED.md`) doc by

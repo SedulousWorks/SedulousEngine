@@ -1737,7 +1737,8 @@ class MeshRenderer : Renderer
 			if (layout == null)
 				return;
 
-			let pipeline = mPsoCache.GetPipeline(config, layout, context.ColorFormat);
+			let own = SlotConfigFor(md, config, candidate, context, instanced);
+			let pipeline = mPsoCache.GetPipeline(own, layout, context.ColorFormat);
 			if (pipeline == null)
 				return;
 
@@ -2309,10 +2310,38 @@ class MeshRenderer : Renderer
 	/// The forward configuration for one item, taken from its material and specialised for the
 	/// pass it is drawing into.
 	private static PipelineConfig ConfigFor(MeshRenderData md, RenderRecordContext context,
+		bool instanced) => ConfigFor(md, md.Material, context, instanced);
+
+	/// A submesh's pipeline: its slot material's when that differs from the mesh's and draws in
+	/// the same pass (the same colour targets), with the mesh's skinning; else the mesh's own.
+	/// A slot drawing with the mesh's program bound the slot's material group to a layout it
+	/// was not made for: a custom shader on any slot but the first drew wrongly or, on WebGPU,
+	/// not at all.
+	private static PipelineConfig SlotConfigFor(MeshRenderData md, PipelineConfig meshConfig, Material slot,
+		RenderRecordContext context, bool instanced)
+	{
+		if ((slot == null) || (slot === md.Material))
+			return meshConfig;
+		var config = ConfigFor(md, slot, context, instanced);
+		// A slot of another blend class (a transparent slot on an opaque mesh) belongs to another
+		// pass, whose targets this one does not have: it keeps the mesh's pipeline.
+		if (config.ColorTargetCount != meshConfig.ColorTargetCount)
+			return meshConfig;
+		if (meshConfig.VertexLayout == .SkinnedMesh)
+		{
+			config.VertexLayout = .SkinnedMesh;
+			config.ShaderFlags |= .Skinned;
+		}
+		return config;
+	}
+
+	/// The forward configuration of `material` (null: the default opaque one) for one item: a
+	/// slot draws with its own program over the item's per draw state (its fade).
+	private static PipelineConfig ConfigFor(MeshRenderData md, Material material, RenderRecordContext context,
 		bool instanced)
 	{
-		var config = (md.Material != null)
-			? md.Material.Pipeline
+		var config = (material != null)
+			? material.Pipeline
 			: PipelineConfig.ForOpaqueMesh("forward");
 
 		config.DepthFormat = context.DepthFormat;
@@ -2323,7 +2352,7 @@ class MeshRenderer : Renderer
 		if (instanced)
 			config.ShaderFlags |= .Instanced;
 		// The material's wind lanes sway it.
-		if (MaterialWantsWind(md.Material))
+		if (MaterialWantsWind(material))
 			config.ShaderFlags |= .Wind;
 		// The screen door fade (a cutaway).
 		if (md.Fade > 0.0f)
