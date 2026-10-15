@@ -55,6 +55,13 @@ class NetFacadeSpawnTests
 		Test.Assert(component.Id.IsValid);
 		Test.Assert(component.Prefab == guest, "with its prefab, so a client can build its own");
 		Test.Assert(!net.Spawn(Guid.Create(), .(0, 0, 0)).IsAssigned, "a prefab the scene cannot spawn: nothing");
+		// The host's own spawn is its; one spawned for a client is that client's, not the host's.
+		Test.Assert(component.Owner == 0);
+		Test.Assert(net.IsMine(spawned), "the host's own");
+		let theirs = net.SpawnFor(7, guest, .(0, 0, 0));
+		Test.Assert(scene.GetSystem<NetworkComponentManager>().Get(theirs).Owner == 7);
+		Test.Assert(!net.IsMine(theirs), "player 7's, not the host's");
+		Test.Assert(!net.IsMine(scene.CreateEntity("plain")), "not networked: no one's");
 
 		let clientScene = scope Scene("Palace");
 		NetworkScene.AddNetworkSceneManagers(clientScene);

@@ -164,6 +164,13 @@ message of another kind than its handler takes is dropped. The host puts a netwo
 into the game with `Net.Spawn(prefab, position)`: it spawns in the replicated scene with a
 network id, so every client builds its own copy (a player who joins later too); the prefab's
 root needs a networked transform for its movement to follow. A client's call spawns nothing.
+Players are named by id: nought is the host, a client the id the host's welcome gives it.
+`Net.LocalPlayer` is this game's own (-1 offline, or on a client before the welcome);
+`Net.OnJoin(NetHandler(this.onJoin))` and `Net.OnLeave(...)` hear players come and go (on a
+client, its own join once welcomed, and the host leaving as player nought). The host sends to
+one player with `Net.RpcTo`, `Net.RpcNumberTo` and `Net.RpcTextTo`, and spawns a prefab a
+player owns with `Net.SpawnFor(player, prefab, position)`; `Net.IsMine(entity)` says whether
+an entity is this game's own. On a client every message's sender is the host, nought.
 Offline every call does nothing.
 
 ## Saving

@@ -173,6 +173,36 @@ class NetworkManager
 	/// designer marks an entity networked and it just replicates on host. On a client the same
 	/// ids are DERIVED rather than received, so incoming state lands on the client's own
 	/// authored entity instead of minting a duplicate beside it.
+	/// Players joining and leaving, by player id (nought the host, else a client's PeerId on
+	/// the server).
+	public typealias PlayerEvents = delegate void(bool joined, uint32 player);
+
+	private PlayerEvents mPlayerEvents = null ~ delete _;
+	/// Client: the welcome has been reported.
+	private bool mWelcomed = false;
+
+	/// Who hears players join and leave. On the host: a client joined or left. On a client:
+	/// it joined itself (its own id, once the server welcomed it), or the host left (nought).
+	/// TAKES OWNERSHIP; null stops it.
+	public void SetPlayerEvents(PlayerEvents handler)
+	{
+		delete mPlayerEvents;
+		mPlayerEvents = handler;
+	}
+
+	/// The player a session event is about, to the player events (see SetPlayerEvents).
+	private void ReportPlayer(NetEvent event)
+	{
+		if (mPlayerEvents == null)
+			return;
+		if (mSession.IsServer && (event.Kind == .Connected))
+			mPlayerEvents(true, event.Peer);
+		else if (mSession.IsServer && (event.Kind == .Disconnected))
+			mPlayerEvents(false, event.Peer);
+		else if (mSession.IsClient && (event.Kind == .Disconnected))
+			mPlayerEvents(false, 0); // the host went
+	}
+
 	/// The scene this endpoint replicates; null is none.
 	public Scene ReplicatedScene => mScene;
 
@@ -226,8 +256,18 @@ class NetworkManager
 
 				if (event.Kind == .Disconnected)
 					mReplication.ForgetPeer(event.Peer);
+				if ((event.Kind == .Connected) || (event.Kind == .Disconnected))
+					ReportPlayer(event);
 				if (onEvent != null)
 					onEvent(event);
+			}
+
+			// A client has joined once the server has said who it is (the session's welcome).
+			if (mSession.IsClient && !mWelcomed && (mSession.LocalPeer != InvalidPeer))
+			{
+				mWelcomed = true;
+				if (mPlayerEvents != null)
+					mPlayerEvents(true, mSession.LocalPeer);
 			}
 		}
 	}

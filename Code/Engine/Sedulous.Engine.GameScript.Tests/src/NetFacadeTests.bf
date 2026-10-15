@@ -129,4 +129,78 @@ class NetFacadeTests
 		// A text sent to a number handler reached nothing: the score stands.
 		Test.Assert(Math.Abs(host.PropFloat("score") - 42.5f) < 0.001f);
 	}
+
+	/// Players by id: the host is nought and hears a client join with the client's id; the
+	/// client hears its own join once the host welcomes it, knows itself by that id, gets a
+	/// message sent to it alone from the host (sender nought), and hears the host leave.
+	[Test]
+	public static void PlayersJoinAreToldWhoTheyAreAndHearOneToOneMessages()
+	{
+		let host = scope GameRun("scratch_net_players_host");
+		let hostGame = host.Class("Game", """
+			class Game
+			{
+				int joined = -1;
+				int self = -2;
+				void onJoin(int player) { joined = player; Net.RpcNumberTo(player, "welcome", player * 10); Net.RpcTo(99, "nobody"); }
+				void launch()
+				{
+					Net.OnJoin(NetHandler(this.onJoin));
+					Net.StartServer(0);
+					self = Net.LocalPlayer;
+				}
+				void exit() { Net.Disconnect(); }
+			}
+			""");
+		Test.Assert(host.Instance.StartScript(hostGame));
+		Test.Assert(host.PropInt("self") == 0, "the host is player nought");
+		let port = host.Instance.NetEndpoint.BoundPort;
+
+		let client = scope GameRun("scratch_net_players_client");
+		let clientGame = client.Class("Game", scope $$"""
+			class Game
+			{
+				int before = -2;
+				int joinedAs = -1;
+				int self = -2;
+				double welcome = 0;
+				int welcomeFrom = -1;
+				int left = -1;
+				void onJoin(int player) { joinedAs = player; self = Net.LocalPlayer; }
+				void onWelcome(int sender, double value) { welcome = value; welcomeFrom = sender; }
+				void onLeave(int player) { left = player; }
+				void launch()
+				{
+					Net.OnJoin(NetHandler(this.onJoin));
+					Net.OnLeave(NetHandler(this.onLeave));
+					Net.OnNumber("welcome", NetNumberHandler(this.onWelcome));
+					Net.Connect("127.0.0.1", {{port}});
+					before = Net.LocalPlayer;
+				}
+			}
+			""");
+		Test.Assert(client.Instance.StartScript(clientGame));
+		Test.Assert(client.PropInt("before") == -1, "not welcomed yet");
+		for (int i < 300)
+		{
+			Pump(host, client, 1);
+			if (client.PropFloat("welcome") != 0)
+				break;
+		}
+		let clientId = (int)host.Instance.NetEndpoint.Session.Peers[0].Id;
+		Test.Assert(host.PropInt("joined") == clientId, "the host heard the client join, by its id");
+		Test.Assert(client.PropInt("joinedAs") == clientId, "the client heard itself join, by the same id");
+		Test.Assert(client.PropInt("self") == clientId);
+		Test.Assert(Math.Abs(client.PropFloat("welcome") - (float)(clientId * 10)) < 0.001f, "a message to it alone");
+		Test.Assert(client.PropInt("welcomeFrom") == 0, "from the host, player nought");
+
+		host.Instance.StopScript(); // exit(): the host leaves
+		for (int i < 600)
+		{
+			Pump(host, client, 1);
+			if (client.PropInt("left") >= 0)
+				break;
+		}
+		Test.Assert(client.PropInt("left") == 0, "the client heard the host go");
+	}
 }
