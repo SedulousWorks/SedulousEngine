@@ -108,6 +108,25 @@ class Thing
 	[Scriptable]
 	public bool FirePoke() => (Handler != null) && Handler.Invoke();
 
+	/// A callback with a shape of its own, `void ThingNudged(int times, const string &in why)`:
+	/// OWNED, replaced by the next, null clears.
+	public ScriptDelegate NudgeHandler = null ~ delete _;
+	[Scriptable, ScriptCallback("void ThingNudged(int times, const string &in why)")]
+	public void OnNudge(ScriptDelegate handler)
+	{
+		delete NudgeHandler;
+		NudgeHandler = handler;
+	}
+	/// Fires the nudge callback with its arguments; false when none, dead, or faulted.
+	public bool FireNudge(int32 times, StringView why)
+	{
+		if (NudgeHandler == null)
+			return false;
+		var args = ScriptValue[2](.FromInt(times), .FromString(why));
+		var result = ScriptValue.Nil;
+		return NudgeHandler.Invoke(args, ref result);
+	}
+
 	// Observed by the tests, not on the surface.
 	public Vec2 LastTarget;
 	public float LastSpeed;

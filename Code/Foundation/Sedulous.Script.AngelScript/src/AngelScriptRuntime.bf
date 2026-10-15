@@ -68,6 +68,10 @@ class AngelScriptRuntime : ScriptRuntime
 	private Dictionary<String, AS.Builder*> mBuilders = new .() ~ DeleteDictionaryAndKeys!(_);
 	/// Surface types by their AngelScript name, for declarations.
 	private Dictionary<String, ScriptTypeInfo> mByName = new .() ~ DeleteDictionaryAndKeys!(_);
+	/// The callback shapes declared as funcdefs, by name: once per engine, which they outlive
+	/// no binding of. Recorded in the API once per binding.
+	private HashSet<String> mDeclaredShapes = new .() ~ DeleteContainerAndItems!(_);
+	private HashSet<String> mRecordedShapes = new .() ~ DeleteContainerAndItems!(_);
 
 	public override StringView Name => "AngelScript";
 	public override ScriptCallContext Context => mCallContext;
@@ -279,6 +283,7 @@ class AngelScriptRuntime : ScriptRuntime
 	{
 		base.Bind(surface, domains);
 		ClearAndDeleteItems!(mApi);
+		ClearAndDeleteItems!(mRecordedShapes);
 		DeleteDictionaryAndValues!(mHandleOf);
 		mHandleOf = new .();
 		// The language's own globals, bound before any surface.
@@ -403,7 +408,7 @@ class AngelScriptRuntime : ScriptRuntime
 		for (let p in m.EntityParams)
 		{
 			let d = new String();
-			if (!ParamDecl(p.Kind, p.TypeName, p.IsByRef, d))
+			if (!ParamDecl(p, d))
 			{
 				delete d;
 				return;
@@ -581,7 +586,7 @@ class AngelScriptRuntime : ScriptRuntime
 		for (let p in m.Params)
 		{
 			let d = new String();
-			if (!ParamDecl(p.Kind, p.TypeName, p.IsByRef, d))
+			if (!ParamDecl(p, d))
 			{
 				delete d;
 				Problem(scope $"{t.FullName}.{m.Name}: parameter {p.Name} is {p.TypeName}, which has no AngelScript type, skipped");
@@ -775,6 +780,57 @@ class AngelScriptRuntime : ScriptRuntime
 			return .Struct;
 		}
 		return .Nil;
+	}
+
+	/// A surface parameter's declaration: a callback with a shape of its own takes a handle of
+	/// that shape, declared the first time a parameter names it; the rest as below.
+	private bool ParamDecl(ScriptParamInfo p, String outDecl)
+	{
+		if ((p.Kind == .Delegate) && !p.CallbackShape.IsEmpty)
+		{
+			let name = DeclareShape(p.CallbackShape, .. scope .());
+			if (name.IsEmpty)
+				return false;
+			outDecl.AppendF("{}@", name);
+			return true;
+		}
+		return ParamDecl(p.Kind, p.TypeName, p.IsByRef, outDecl);
+	}
+
+	/// A callback shape (`void NetHandler(int sender)`) as a funcdef, declared once per engine
+	/// and recorded once per binding; appends its name, nothing when it does not declare.
+	private void DeclareShape(StringView declaration, String outName)
+	{
+		let open = declaration.IndexOf('(');
+		if (open <= 0)
+		{
+			Problem(scope $"the callback shape '{declaration}' names no function");
+			return;
+		}
+		var head = declaration.Substring(0, open);
+		head.TrimEnd();
+		let space = head.LastIndexOf(' ');
+		let name = StringView(head, space + 1);
+		if (name.IsEmpty)
+		{
+			Problem(scope $"the callback shape '{declaration}' names no function");
+			return;
+		}
+		if (!mDeclaredShapes.ContainsAlt(name))
+		{
+			if (AS.asc_engine_register_funcdef(mEngine, scope String(declaration).CStr()) < 0)
+			{
+				Problem(scope $"the callback shape '{declaration}' did not declare");
+				return;
+			}
+			mDeclaredShapes.Add(new String(name));
+		}
+		if (!mRecordedShapes.ContainsAlt(name))
+		{
+			mRecordedShapes.Add(new String(name));
+			Record(GlobalApi, name, scope $"funcdef {declaration}", true, .Constant);
+		}
+		outName.Append(name);
 	}
 
 	/// A parameter's declaration: primitives and handles by value, value types and strings

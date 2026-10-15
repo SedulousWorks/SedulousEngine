@@ -16,4 +16,7 @@ class ScriptParamInfo
 	/// value itself is not carried: the thunk calls the shorter arity and the compiler
 	/// supplies it, in the declaring context.
 	public bool HasDefault = false;
+	/// For a callback (Kind Delegate): the function shape it takes, in funcdef form, from the
+	/// method's [ScriptCallback]; empty is the plain `ScriptCallback`, no arguments.
+	public String CallbackShape = new .() ~ delete _;
 }

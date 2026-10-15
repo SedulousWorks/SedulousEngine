@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.Script;
@@ -300,6 +301,67 @@ static class FixtureScriptTests
 		delete vm;
 		Test.Assert((thing.Handler != null) && !thing.Handler.IsAlive);
 		Test.Assert(!thing.FirePoke(), "a dead callback answers false");
+	}
+
+	/// A callback with a shape of its own: the method's [ScriptCallback] declares the funcdef,
+	/// scripts name it without declaring it, and native code calls it with arguments.
+	[Test]
+	public static void ACallbackWithAShapeTakesItsArguments()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = new AngelScriptRuntime();
+		defer delete vm;
+		vm.Bind(s);
+		let ok = vm.Compile("t", "t.as", """
+			int total = 0;
+			string last;
+			void onFree(int times, const string &in why) { total += times; last = why; }
+			class Owner
+			{
+				int hits = 0;
+				void onNudge(int times, const string &in why) { hits += times * 100; }
+			}
+			Owner@ bindMethod(Thing@ t) { Owner o; t.OnNudge(ThingNudged(o.onNudge)); return o; }
+			void bindFree(Thing@ t) { t.OnNudge(onFree); }
+			int totalOf() { return total; }
+			bool lastIs(const string &in s) { return last == s; }
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled: the shape is a type scripts name without declaring it");
+		// The bound API lists the shape among the globals, as the language's own funcdefs are.
+		let api = scope List<ScriptApiType>();
+		defer ClearAndDeleteItems(api);
+		vm.DescribeBoundApi(api);
+		bool listed = false;
+		for (let t in api)
+		{
+			if (let member = t.Find("ThingNudged"))
+				listed = member.Signature.Contains("void ThingNudged(int times, const string &in why)");
+		}
+		Test.Assert(listed, "the shape is in the bound API");
+
+		let thing = scope Thing();
+		var arg = ScriptValue[1](.FromObject(thing));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("t", "void bindFree(Thing@)", arg, ref r));
+		Test.Assert(thing.FireNudge(3, "elbow"));
+		Test.Assert(vm.Call("t", "int totalOf()", default, ref r) && (r.AsInt == 3));
+		var text = ScriptValue[1](.FromString("elbow"));
+		Test.Assert(vm.Call("t", "bool lastIs(const string &in)", text, ref r) && r.AsBool, "the text arrived");
+
+		Test.Assert(vm.Call("t", "Owner@ bindMethod(Thing@)", arg, ref r), "a method delegate of the shape");
+		Test.Assert(thing.FireNudge(2, "shove"));
+		// The method ran on its object: the free function's total is unchanged.
+		Test.Assert(vm.Call("t", "int totalOf()", default, ref r) && (r.AsInt == 3));
+
+		// A function of another shape is refused at compile time.
+		let refused = vm.Compile("u", "u.as", """
+			void wrong() {}
+			void bind(Thing@ t) { t.OnNudge(wrong); }
+			""");
+		Test.Assert(!refused, "a mismatched function does not compile");
 	}
 
 	/// A scene facade to a script: reached as `scene.Widgets` where a Scene exists, here

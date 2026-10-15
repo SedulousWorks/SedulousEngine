@@ -959,13 +959,17 @@ static class ScriptSurfaceWalker
 				pt = r.UnderlyingType;
 			}
 			let ptn = pt.GetFullName(.. scope .());
-			code.AppendF(".Param({}, {}, .{}", Quote(m.GetParamName(i), .. scope .()), Quote(ptn, .. scope .()), ScriptValueMap.KindOf(pt, .. scope .()));
+			let kind = ScriptValueMap.KindOf(pt, .. scope .());
+			code.AppendF(".Param({}, {}, .{}", Quote(m.GetParamName(i), .. scope .()), Quote(ptn, .. scope .()), kind);
 			if (HasDefault(m, i))
 				code.AppendF(", {}, true)", Bool(byRef));
 			else if (byRef)
 				code.Append(", true)");
 			else
 				code.Append(")");
+			// A callback's function shape, where its method names one.
+			if ((kind == "Delegate") && (m.GetCustomAttribute<ScriptCallbackAttribute>() case .Ok(let shape)))
+				code.AppendF(".Shape({})", Quote(shape.Declaration, .. scope .()));
 		}
 	}
 

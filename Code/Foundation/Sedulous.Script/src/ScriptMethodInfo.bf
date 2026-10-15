@@ -53,6 +53,14 @@ class ScriptMethodInfo
 		return this;
 	}
 
+	/// The function shape of the last parameter added, a callback's. Chains.
+	public ScriptMethodInfo Shape(StringView declaration)
+	{
+		if (!Params.IsEmpty)
+			Params.Back.CallbackShape.Set(declaration);
+		return this;
+	}
+
 	public ScriptMethodInfo Returns(ScriptValueKind kind)
 	{
 		ReturnKind = kind;
