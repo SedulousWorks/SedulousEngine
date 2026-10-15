@@ -460,7 +460,7 @@ class WebSceneApp : DefaultApplication
 		let ring = mScene.CreateEntity("ring");
 		let component = instanced.Add(ring);
 		component.Mesh.SetDirect(Track(Primitives.Cube(0.3f)));
-		component.Material.SetDirect(Track(MaterialPresets.CreatePbr("lit",
+		component.SetMaterial(Track(MaterialPresets.CreatePbr("lit",
 			.(0.3f, 0.8f, 0.5f, 1.0f), 0.2f, 0.5f)));
 
 		const int32 cCount = 256;

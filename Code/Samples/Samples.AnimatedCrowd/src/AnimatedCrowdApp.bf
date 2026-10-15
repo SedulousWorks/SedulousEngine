@@ -440,13 +440,13 @@ class AnimatedCrowdApp : DefaultApplication
 				let entity = mScene.CreateEntity("crowd_part");
 				let component = sets.Add(entity);
 				component.Mesh.SetDirect(drawMeshes[p]);
-				component.Material.SetDirect(drawMaterials[p]);
 
-				// COPIED, never assigned. The pool creates and frees each of these lists. Handing
-				// the component a list this method owns instead would leave it pointing at freed
-				// memory the moment the scope below ran, and leak the pool's own list.
-				component.SubmeshMaterials.Clear();
-				component.SubmeshMaterials.AddRange(drawSubmeshMaterials[p]);
+				// One material for the whole part, or one per submesh slot. COPIED into the
+				// pool's own list, which it creates and frees.
+				if (drawSubmeshMaterials[p].IsEmpty)
+					component.SetMaterial(drawMaterials[p]);
+				else
+					component.SetMaterials(drawSubmeshMaterials[p]);
 
 				// BEFORE SetInstances: the version bump it makes is what uploads the tints.
 				component.Tints.Clear();

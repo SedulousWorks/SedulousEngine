@@ -1,7 +1,11 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
+using Sedulous.Materials;
+using Sedulous.Render;
+using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 
@@ -18,6 +22,8 @@ class InstancedMeshRefTests
 	{
 		let meshId = Guid(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
 		let materialId = Guid(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+		// A second part: a multi material mesh.
+		let maskId = Guid(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
 
 		let blob = scope MemoryStream();
 		{
@@ -26,7 +32,9 @@ class InstancedMeshRefTests
 			let entity = scene.CreateEntity("Scatter");
 			let component = sets.Add(entity);
 			component.Mesh.SetId(meshId);
-			component.Material.SetId(materialId);
+			// One per submesh slot.
+			for (let id in Guid[2](materialId, maskId))
+				component.Materials.Add(Ref<Material>(id));
 
 			// Replace the editor workflow seed: a fresh component starts with ONE identity
 			// instance.
@@ -64,7 +72,9 @@ class InstancedMeshRefTests
 			});
 		Test.Assert(component != null);
 		Test.Assert(component.Mesh.Id == meshId);
-		Test.Assert(component.Material.Id == materialId);
+		Test.Assert(component.Materials.Count == 2);
+		Test.Assert(component.Materials[0].Id == materialId);
+		Test.Assert(component.Materials[1].Id == maskId);
 		Test.Assert(component.Count == 2);
 		Test.Assert(Near(component.Instances[0].M[3][0], 1.0f));
 		Test.Assert(Near(component.Instances[1].M[3][1], 2.0f));
@@ -78,5 +88,53 @@ class InstancedMeshRefTests
 		Test.Assert(component.Version >= 1);
 		Test.Assert(component.BoundsVersion == 0);
 		Test.Assert(component.PosePool == null);
+	}
+
+	/// A version 1 record saved one material: it reads as slot 0, and the pose fields it never
+	/// had keep a fresh set's.
+	[Test]
+	public static void AVersionOneRecordReadsItsMaterialAsSlotZero()
+	{
+		let meshId = Guid(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+		let materialId = Guid(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+		let stream = scope MemoryStream();
+		{
+			// The version 1 fields, by hand.
+			let writer = scope BinarySerializer(stream, .Write);
+			var mesh = meshId;
+			SerializeValue(writer, "mesh", ref mesh);
+			var material = materialId;
+			SerializeValue(writer, "material", ref material);
+			let instances = scope List<Float4x4>() { Float4x4.Translation(.(4, 0, 0)) };
+			writer.Key("instances");
+			SerializeList(writer, instances);
+			var color = Color(1, 1, 1, 1);
+			writer.Key("color");
+			Sedulous.Core.Serialization.Serialize(writer, ref color);
+			let tints = scope List<Color>();
+			writer.Key("tints");
+			SerializeList(writer, tints);
+			var visible = true;
+			SerializeValue(writer, "visible", ref visible);
+			var trailing = 77u;
+			SerializeValue(writer, "trailing", ref trailing);
+			Test.Assert(writer.IsOk);
+		}
+
+		let scene = scope Scene();
+		let component = scene.AddSystem<InstancedMeshComponentManager>().Add(scene.CreateEntity("Scatter"));
+		stream.Seek(0, .Begin);
+		let reader = scope BinarySerializer(stream, .Read);
+		reader.PushVersionScope(scope SerializedDataVersion[](.(TypeIdOf("instanced_mesh"), 1)));
+		component.Serialize(reader);
+		uint32 trailing = 0;
+		SerializeValue(reader, "trailing", ref trailing);
+		reader.PopVersionScope();
+		Test.Assert(reader.IsOk);
+		Test.Assert(component.Mesh.Id == meshId);
+		Test.Assert((component.Materials.Count == 1) && (component.Materials[0].Id == materialId), "the one material is slot 0");
+		Test.Assert((component.Count == 1) && Near(component.Instances[0].M[3][0], 4.0f));
+		Test.Assert(component.PoseAssignment == .Hashed);
+		Test.Assert(trailing == 77, "nothing past the version 1 fields was consumed");
 	}
 }

@@ -10,8 +10,8 @@ using Sedulous.Resource;
 
 namespace Sedulous.Engine.Render;
 
-/// ONE shared mesh and material drawn at N per instance transforms, which live on the GPU in
-/// a buffer the renderer owns.
+/// ONE shared mesh and its materials drawn at N per instance transforms, which live on the GPU
+/// in a buffer the renderer owns.
 ///
 /// Its per frame CPU cost is constant in the instance count: the set extracts as one item,
 /// culls as one merged bounds, and draws once per pass, with depth, forward and every shadow
@@ -22,22 +22,27 @@ namespace Sedulous.Engine.Render;
 /// renderer re uploads, and extraction recomputes the merged bounds, ONLY when that changes.
 ///
 /// Every list here is BORROWED from the manager, which creates and frees them.
+///
+/// Data version 2 adds the materials list (version 1 saved one material, read as slot 0) and
+/// the pose policy, indices and clips.
 [SerializableComponent("instanced_mesh", 2, 1)]
 [DisplayName("Instanced Mesh")]
 [Category("Rendering")]
 [Scriptable]
-[Description("Draws one mesh and material at many instance transforms in a single draw, for scatter and crowds.")]
+[Description("Draws one mesh with its materials at many instance transforms in a single draw, for scatter and crowds.")]
 struct InstancedMeshComponent : ISerializable, IComponentResources
 {
 	[Scriptable]
 	public Ref<StaticMesh> Mesh = .(Guid());
-	[Scriptable]
-	public Ref<Material> Material = .(Guid());
-	/// Optional per submesh materials, indexed by the submesh's material index. Non empty
-	/// means each submesh draws with its own; otherwise the one above covers the whole mesh.
-	/// Runtime only, because a per submesh material REF belongs to a prefab.
+	/// The material list, indexed by the submesh's material index, as a mesh's: slot 0 doubles
+	/// as the whole mesh's material, so a single material mesh holds one entry and a mesh of
+	/// several parts (a guest's body, gown and mask) one per slot.
+	[Description("Material slots, indexed by the mesh's submesh material index. Slot 0 also covers single-material meshes and any submesh whose index has no slot.")]
+	public List<Ref<Material>> Materials = null;
+	/// The raw view EXTRACTION refreshes from the refs every frame, so a late cook or a hot
+	/// reload heals live.
 	[Hidden]
-	public List<Material> SubmeshMaterials = null;
+	public List<Material> MaterialCache = null;
 	/// ENTITY RELATIVE: instance i draws at Instances[i] times the entity's world matrix, so
 	/// moving the entity moves the whole set.
 	public List<Float4x4> Instances = null;
@@ -133,7 +138,33 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	public void ResolveResources(ResourceManager manager) mut
 	{
 		Mesh.Bind(manager);
-		Material.Bind(manager);
+		for (int i < Materials.Count)
+		{
+			var reference = Materials[i];
+			reference.Bind(manager);
+			Materials[i] = reference;
+		}
+	}
+
+	/// One material for the whole mesh, for runtime code that has the object rather than an id.
+	public void SetMaterial(Material material) mut
+	{
+		Materials.Clear();
+		var reference = Ref<Material>(Guid());
+		reference.SetDirect(material);
+		Materials.Add(reference);
+	}
+
+	/// A material per submesh slot, in slot order.
+	public void SetMaterials(Span<Material> list) mut
+	{
+		Materials.Clear();
+		for (let material in list)
+		{
+			var reference = Ref<Material>(Guid());
+			reference.SetDirect(material);
+			Materials.Add(reference);
+		}
 	}
 
 	/// Replaces the whole set in one go, which is the fast path for static content: one
@@ -175,7 +206,40 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	public void Serialize(ISerializer ar) mut
 	{
 		SerializeValue(ar, "mesh", ref Mesh.Id);
-		SerializeValue(ar, "material", ref Material.Id);
+		// Version 1 saved one material, which is slot 0.
+		if ((ar.Mode == .Read) && (ar.Version == 1))
+		{
+			var reference = Ref<Material>(Guid());
+			SerializeValue(ar, "material", ref reference.Id);
+			Materials.Clear();
+			Materials.Add(reference);
+		}
+		else
+		{
+			ar.Key("materials");
+			uint32 count = (uint32)Materials.Count;
+			ar.BeginArray(ref count);
+			if (ar.Mode == .Read)
+			{
+				Materials.Clear();
+				Materials.Reserve((int)count);
+				for (uint32 i < count)
+				{
+					var reference = Ref<Material>(Guid());
+					SerializeValue(ar, ref reference.Id);
+					Materials.Add(reference);
+				}
+			}
+			else
+			{
+				for (int i < Materials.Count)
+				{
+					var id = Materials[i].Id;
+					SerializeValue(ar, ref id);
+				}
+			}
+			ar.EndArray();
+		}
 
 		ar.Key("instances");
 		SerializeList(ar, Instances);

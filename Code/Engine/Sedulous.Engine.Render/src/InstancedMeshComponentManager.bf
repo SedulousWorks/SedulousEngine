@@ -33,7 +33,8 @@ class InstancedMeshComponentManager : ResourceBindingComponentManager<InstancedM
 	protected override void OnComponentCreated(InstancedMeshComponent* component,
 		EntityHandle entity)
 	{
-		component.SubmeshMaterials = new List<Material>();
+		component.Materials = new List<Ref<Material>>();
+		component.MaterialCache = new List<Material>();
 		component.Instances = new List<Float4x4>();
 		component.Tints = new List<Color>();
 		component.PoseIndices = new List<uint32>();
@@ -54,7 +55,8 @@ class InstancedMeshComponentManager : ResourceBindingComponentManager<InstancedM
 	protected override void OnComponentDestroyed(InstancedMeshComponent* component,
 		EntityHandle entity)
 	{
-		DeleteAndNullify!(component.SubmeshMaterials);
+		DeleteAndNullify!(component.Materials);
+		DeleteAndNullify!(component.MaterialCache);
 		DeleteAndNullify!(component.Instances);
 		DeleteAndNullify!(component.Tints);
 		DeleteAndNullify!(component.PoseIndices);

@@ -341,19 +341,25 @@ static class RenderExtract
 				data.InstanceCount = drawnCount;
 				data.Version = component.ComposedVersion;
 				data.Mesh = component.Mesh.Get;
-				data.Material = component.Material.Get;
-				data.SubmeshMaterials = component.SubmeshMaterials.IsEmpty
-					? null : component.SubmeshMaterials.Ptr;
-				data.SubmeshMaterialCount = (uint32)component.SubmeshMaterials.Count;
+				// The raw material view, refreshed from the refs every frame (as a mesh's), so a
+				// late cook or a hot reload heals live; routed per submesh only with several.
+				component.MaterialCache.Clear();
+				for (int i < component.Materials.Count)
+					component.MaterialCache.Add(component.Materials[i].Get);
+				let primary = component.MaterialCache.IsEmpty ? null : component.MaterialCache[0];
+				let multiMaterial = component.MaterialCache.Count > 1;
+				data.Material = primary;
+				data.SubmeshMaterials = multiMaterial ? component.MaterialCache.Ptr : null;
+				data.SubmeshMaterialCount = multiMaterial ? (uint32)component.MaterialCache.Count : 0;
 				data.Color = ToLinear(component.Color);
 				// The merged bounds are what let the whole set cull and depth sort as one.
 				data.WorldCenter = component.CachedCenter;
 				data.WorldRadius = component.CachedRadius;
 				data.EntityId = PackEntity(entity);
-				data.Category = CategoryForMaterial(component.Material.Get);
+				data.Category = CategoryForMaterial(primary);
 				data.SortBatchKey = SortKeys.BatchKey(
 					Internal.UnsafeCastToPtr(component.Mesh.Get),
-					Internal.UnsafeCastToPtr(component.Material.Get));
+					Internal.UnsafeCastToPtr(primary));
 
 				data.PosePool = component.PosePool;
 				data.PreviousPosePool = component.PrevPosePool;

@@ -82,4 +82,72 @@ class MaterialCacheTests
 			Test.Assert(data.SubmeshMaterialCount == 0);
 		}
 	}
+
+	/// An instanced mesh of several parts (a guest's body, gown and mask) carries a material per
+	/// submesh slot, as a mesh does: slot 0 is the primary, several slots route per submesh, and
+	/// the view is refreshed from the refs every frame.
+	[Test]
+	public static void AnInstancedMaterialListDrawsAPartPerSlotAndLateBindsHeal()
+	{
+		let scene = scope Scene("world");
+		let sets = scene.AddSystem<InstancedMeshComponentManager>();
+
+		let cube = Primitives.Cube(1.0f);
+		defer delete cube;
+		let builderA = scope MaterialBuilder("a");
+		let matA = builderA..Shader("forward").Build();
+		defer delete matA;
+		let builderB = scope MaterialBuilder("b");
+		let matB = builderB..Shader("forward").Build();
+		defer delete matB;
+
+		let component = sets.Add(scene.CreateEntity("crowd"));
+		component.Mesh.SetDirect(cube);
+		var resolved = Ref<Material>(Guid());
+		resolved.SetDirect(matA);
+		component.Materials.Add(resolved);
+		var late = Ref<Material>(Guid());
+		late.SetId(Guid(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11));
+		component.Materials.Add(late);
+		scene.UpdateTransforms();
+
+		{
+			let first = scope ExtractedScene();
+			RenderExtract.ExtractInstancedMeshesInto(scene, first);
+			Test.Assert(first.Size == 1);
+			let data = (MultiMeshRenderData)first.Items[0];
+			Test.Assert(data.Material == matA);
+			Test.Assert(data.SubmeshMaterialCount == 2);
+			Test.Assert(data.SubmeshMaterials[1] == null, "not cooked yet");
+		}
+
+		var healed = component.Materials[1];
+		healed.SetDirect(matB);
+		component.Materials[1] = healed;
+		{
+			let second = scope ExtractedScene();
+			RenderExtract.ExtractInstancedMeshesInto(scene, second);
+			let data = (MultiMeshRenderData)second.Items[0];
+			Test.Assert(data.SubmeshMaterials[1] == matB, "healed, with no reopen");
+		}
+
+		// One material covers the whole mesh: no submesh routing.
+		component.SetMaterial(matB);
+		{
+			let third = scope ExtractedScene();
+			RenderExtract.ExtractInstancedMeshesInto(scene, third);
+			let data = (MultiMeshRenderData)third.Items[0];
+			Test.Assert(data.Material == matB);
+			Test.Assert(data.SubmeshMaterialCount == 0);
+		}
+
+		// Runtime code with the objects in hand fills a slot each.
+		component.SetMaterials(Material[2](matB, matA));
+		{
+			let fourth = scope ExtractedScene();
+			RenderExtract.ExtractInstancedMeshesInto(scene, fourth);
+			let data = (MultiMeshRenderData)fourth.Items[0];
+			Test.Assert((data.Material == matB) && (data.SubmeshMaterialCount == 2) && (data.SubmeshMaterials[1] == matA));
+		}
+	}
 }

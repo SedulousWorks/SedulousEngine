@@ -468,7 +468,7 @@ class RenderStressTestApp : DefaultApplication
 		let set = sets.Has(mMultiMeshEntity) ? sets.Get(mMultiMeshEntity)
 			: sets.Add(mMultiMeshEntity);
 		set.Mesh.SetDirect(mSphere);
-		set.Material.SetDirect(mSharedMaterial);
+		set.SetMaterial(mSharedMaterial);
 		set.SetInstances(mInstanceTransforms);
 	}
 
