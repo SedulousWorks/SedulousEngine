@@ -11,8 +11,9 @@ namespace Sedulous.Editor.Mcp;
 /// TEXT sources: files are truth and the editor is not involved. This is what makes an agent
 /// scene capable headlessly, structural authoring through the same stream the editor saves.
 ///
-/// Writes validate FIRST and refuse with the reasons; a passing write stores the agent's XML
-/// verbatim, since the reader accepted it and the editor and the cook will too.
+/// Writes validate FIRST and refuse with the reasons; a passing write stores the scene as the
+/// editor saves it (SceneStorage.SourceText over the validated scratch), so a generated file
+/// reads like a saved one.
 static class SceneTools
 {
 	/// One read/write pair's identity, owned by its tools.
@@ -79,7 +80,7 @@ static class SceneTools
 		schema.Str("name", "name for a NEW asset (when no guid)");
 		schema.Str("group", "slash-joined group path for a NEW asset (default root)");
 		server.RegisterTool(tool,
-			scope $"Write a {kind}'s XML source. VALIDATES FIRST and refuses with the reasons on failure (nothing is written then). Pass `guid` to overwrite an existing {kind} OR `name` (+ optional `group` path) to create a new one. On success the XML is stored verbatim as the asset's source of truth.",
+			scope $"Write a {kind}'s XML source. VALIDATES FIRST and refuses with the reasons on failure (nothing is written then). Pass `guid` to overwrite an existing {kind} OR `name` (+ optional `group` path) to create a new one. On success the scene is stored as the asset's source of truth exactly as the editor saves it (its layout and number formatting), however it was passed.",
 			schema.Build(), .Overwrites,
 			new (arguments, outResult, outError) => Write(document, arguments, outResult, outError),
 			document);
@@ -196,8 +197,12 @@ static class SceneTools
 			outError.Append("`xml` is required and was empty");
 			return false;
 		}
+		// What is stored is the scene as the editor saves it, however the caller laid it out or
+		// wrote its numbers (indented, 1.0 for 1), so the file reads like one the editor saved
+		// and a later save rewrites nothing.
+		let stored = scope String();
 		let report = scope SceneParseReport();
-		SceneValidation.Parse(xml, report);
+		SceneValidation.Parse(xml, report, stored, document.WantedType == McpTools.cSceneDocument);
 		CheckPrefabs(session, report);
 		if (!report.Valid)
 		{
@@ -246,7 +251,7 @@ static class SceneTools
 			}
 		}
 
-		// The primary document, for name discovery, then the verbatim XML stream.
+		// The primary document, for name discovery, then the scene stream.
 		let documentName = report.SceneName.IsEmpty ? StringView(instance.Name) : StringView(report.SceneName);
 		Result<void, ErrorCode> wroteObject;
 		if (document.WantedType == McpTools.cSceneDocument)
@@ -266,7 +271,7 @@ static class SceneTools
 			outError.AppendF("failed writing the {} document envelope", document.Kind);
 			return false;
 		}
-		if (instance.WriteData(SceneStorage.cStreamName, .((uint8*)xml.Ptr, xml.Length), .Text) case .Err)
+		if (instance.WriteData(SceneStorage.cStreamName, .((uint8*)stored.Ptr, stored.Length), .Text) case .Err)
 		{
 			outError.Append("failed writing the scene stream to disk");
 			return false;

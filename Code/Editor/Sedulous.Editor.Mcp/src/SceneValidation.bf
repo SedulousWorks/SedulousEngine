@@ -13,8 +13,11 @@ namespace Sedulous.Editor.Mcp;
 /// warning the capture keeps.
 static class SceneValidation
 {
-	/// Fills `outReport` from `xml`. The transcode is the same pass the export runs.
-	public static void Parse(StringView xml, SceneParseReport outReport)
+	/// Fills `outReport` from `xml`. The transcode is the same pass the export runs. With
+	/// `outSourceText`, a valid scene also comes back as the source text the editor would save
+	/// for it (a scene with its settings, a prefab without): what a write stores.
+	public static void Parse(StringView xml, SceneParseReport outReport, String outSourceText = null,
+		bool includeSettings = true)
 	{
 		let capture = scope SceneLogCapture();
 		capture.Start();
@@ -36,6 +39,15 @@ static class SceneValidation
 			outReport.Valid = false;
 			outReport.Error.Set(scope $"the scene stream did not parse ({error}) - fix the XML and validate again");
 			return;
+		}
+		if (outSourceText != null)
+		{
+			if (SceneStorage.SourceText(scratch, includeSettings, outSourceText) case .Err(let error))
+			{
+				outReport.Valid = false;
+				outReport.Error.Set(scope $"the scene parsed but did not serialize ({error})");
+				return;
+			}
 		}
 		outReport.Valid = true;
 		outReport.SceneName.Set(scratch.Name);

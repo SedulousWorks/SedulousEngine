@@ -83,7 +83,8 @@ static class SceneFlowTests
 		let announced = scope System.Collections.List<Guid>();
 		session.OnAssetWritten = new [&announced](id) => { announced.Add(id); };
 
-		// scene_write creates a new scene from the xml; the stored stream is byte identical.
+		// scene_write creates a new scene from the xml; a scene as the editor saved it (what
+		// scene_read gives) is stored byte identical.
 		let written = CallOk(server, "scene_write", With(With(With(Obj(), "xml", seedXml), "name", "authored"), "group", "levels"));
 		defer delete written;
 		Test.Assert(written.Get("written").AsBool());
@@ -92,7 +93,23 @@ static class SceneFlowTests
 		Test.Assert(announced[0] == Guid.Parse(newGuid).Get());
 		let readBack = CallOk(server, "scene_read", With(Obj(), "guid", newGuid));
 		defer delete readBack;
-		Test.Assert(readBack.Get("xml").AsString() == seedXml, "verbatim storage");
+		Test.Assert(readBack.Get("xml").AsString() == seedXml, "the editor's save, kept as is");
+
+		// The same scene as a generator script writes it, laid out its own way and with its
+		// numbers its own way (1.0 for 1), is stored as the editor saves it, so the file reads
+		// like one the editor saved and a later save rewrites nothing.
+		{
+			let scripted = scope String(seedXml);
+			scripted.Replace("><", ">\n\t<");
+			let before = scripted.Length;
+			scripted.Replace(">1</f32>", ">1.0</f32>");
+			Test.Assert(scripted.Length > before, "the seed has a 1 to write as 1.0");
+			let compact = CallOk(server, "scene_write", With(With(Obj(), "xml", scripted), "name", "scripted"));
+			defer delete compact;
+			let stored = CallOk(server, "scene_read", With(Obj(), "guid", compact.Get("guid").AsString()));
+			defer delete stored;
+			Test.Assert(stored.Get("xml").AsString() == seedXml, "stored as the editor saves it");
+		}
 		let storedValid = CallOk(server, "scene_validate", With(Obj(), "guid", newGuid));
 		defer delete storedValid;
 		Test.Assert(storedValid.Get("valid").AsBool());
@@ -112,13 +129,13 @@ static class SceneFlowTests
 		let both = scope String();
 		CallErr(server, "scene_validate", With(With(Obj(), "xml", "x"), "guid", newGuid), both);
 		Test.Assert(neither.Contains("exactly one") && both.Contains("exactly one"));
-		Test.Assert(announced.Count == 1, "nothing written, nothing announced");
+		Test.Assert(announced.Count == 2, "nothing refused was announced");
 
 		// A single root scene is a legal prefab; two roots are refused with the reason.
 		let okPrefab = CallOk(server, "prefab_write", With(With(Obj(), "xml", seedXml), "name", "goodprefab"));
 		defer delete okPrefab;
 		Test.Assert(okPrefab.Get("written").AsBool());
-		Test.Assert(announced.Count == 2, "the prefab write announced too");
+		Test.Assert(announced.Count == 3, "the prefab write announced too");
 		{
 			let twoRoots = scope Scene("pair");
 			EngineSceneComposition.AddAllSceneManagers(twoRoots);

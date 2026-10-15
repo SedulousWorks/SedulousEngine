@@ -129,7 +129,10 @@ behaviour's properties under `live` beside what is authored.
   involved. Do NOT run against a project an open editor is actively editing: two writers,
   one set of files.
 - **Validate first writes.** `scene_write` and `prefab_write` refuse invalid content with the
-  full report; a refusal is the tool working, never something to bypass.
+  full report; a refusal is the tool working, never something to bypass. What they store is the
+  scene exactly as the editor saves it (its layout and number formatting), however the XML was
+  passed, so a generated file reads like a saved one and a later save in the editor changes
+  only what changed.
 - **Read before destructive changes.** `asset_uses` before deleting anything;
   `project_health` after: dangling references surface later, not at delete time.
 - **Arguments are checked by name.** An argument a tool does not declare is refused as a

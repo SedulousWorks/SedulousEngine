@@ -90,16 +90,27 @@ static class SceneStorage
 		return WriteSceneStream(scene, instance, false);
 	}
 
-	private static Result<void, ErrorCode> WriteSceneStream(Scene scene, Instance instance,
-		bool includeSettings)
+	/// The text a scene or prefab source holds: the world serialized as the editor saves it
+	/// (prefab instances as reference and delta records; a scene with its system settings, a
+	/// prefab without). Whatever writes a source writes this, so a file reads the same whoever
+	/// wrote it and a later save changes only what changed.
+	public static Result<void, ErrorCode> SourceText(Scene scene, bool includeSettings, String outText)
 	{
 		let serializer = scope XmlSerializer();
 		SceneSerializer.SerializeScene(serializer, scene, .Referenced, includeSettings, .Text);
 		if (!serializer.IsOk)
 			return serializer.Status;
 
+		serializer.GetOutput(outText);
+		return .Ok;
+	}
+
+	private static Result<void, ErrorCode> WriteSceneStream(Scene scene, Instance instance,
+		bool includeSettings)
+	{
 		let text = scope String();
-		serializer.GetOutput(text);
+		if (SourceText(scene, includeSettings, text) case .Err(let error))
+			return .Err(error);
 		return instance.WriteData(cStreamName, .((uint8*)text.Ptr, text.Length), .Text);
 	}
 }
