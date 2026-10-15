@@ -37,7 +37,7 @@ class Ghost
 	{
 		if (m_seconds <= 0.0f || !m_started)
 			return;
-		PathFollowComponent follow = PathFollowComponent(self);
+		PathFollowComponent@ follow = PathFollowComponent::of(self);
 		m_time += dt;
 		float cruise = finishDistance / (m_seconds - rampSeconds * 0.5f);
 		follow.Speed = (m_time < rampSeconds) ? cruise * m_time / rampSeconds : cruise;
@@ -48,7 +48,7 @@ class Ghost
 	void onRunRestart(int unused)
 	{
 		m_time = 0.0f;
-		PathFollowComponent follow = PathFollowComponent(self);
+		PathFollowComponent@ follow = PathFollowComponent::of(self);
 		follow.Distance = 0.0f;
 		follow.Speed = 0.0f;
 		follow.Playing = true;

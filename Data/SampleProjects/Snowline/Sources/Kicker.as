@@ -42,7 +42,7 @@ class Kicker
 		bool within = Abs(across) <= width * 0.5f;
 		if (within && m_lastAlong < 0.0f && along >= 0.0f)
 		{
-			Float3 v = CharacterComponent(m_rider).Velocity;
+			Float3 v = CharacterComponent::of(m_rider).Velocity;
 			m_entrySpeed = Length(v);
 		}
 		float lip = run * flat; // the lip's distance along, level

@@ -68,7 +68,7 @@ class Door
 		if (picking != m_picking)
 		{
 			m_picking = picking;
-			TwoBoneIkComponent ik = TwoBoneIkComponent(thief);
+			TwoBoneIkComponent@ ik = TwoBoneIkComponent::of(thief);
 			ik.Weight = picking ? 1.0f : 0.0f;
 		}
 		if (!locked && Input.WasPressed("Interact") && (near || m_target != 0.0f))

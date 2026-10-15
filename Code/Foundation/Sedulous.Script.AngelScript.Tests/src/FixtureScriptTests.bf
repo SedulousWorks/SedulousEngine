@@ -175,7 +175,7 @@ static class FixtureScriptTests
 		// handles a host passes in, and an entity by the value it passes in.
 		let ok = vm.Compile("t", "t.as", """
 			int ticks(FixtureSystem@ fixture) { return fixture.Ticks; }
-			float widget(const Entity &in e, WidgetComponentManager@ widgets) { WidgetComponent w(e); w.Size = w.Size * 2; widgets.Poke(e); return w.Size; }
+			float widget(const Entity &in e, WidgetComponentManager@ widgets) { WidgetComponent@ w = WidgetComponent::of(e); w.Size = w.Size * 2; widgets.Poke(e); return w.Size; }
 			""");
 		Dump(vm);
 		Test.Assert(ok, "compiled");

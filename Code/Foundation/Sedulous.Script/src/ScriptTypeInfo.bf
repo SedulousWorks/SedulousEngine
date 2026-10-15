@@ -35,6 +35,9 @@ class ScriptTypeInfo
 	/// For a SceneSystem or ComponentManager: the callable that answers the scene's
 	/// instance, Self being the scene. How a script reaches `scene.Physics`.
 	public ScriptThunk FromScene = null;
+	/// A component's: whether the entity in Self carries one, a Bool result. What a backend's
+	/// `X.of(entity)` asks before it hands out a handle, so a missing component is null.
+	public ScriptThunk IsOn = null;
 
 	public List<ScriptFieldInfo> Fields = new .() ~ DeleteContainerAndItems!(_);
 	public List<ScriptMethodInfo> Methods = new .() ~ DeleteContainerAndItems!(_);
@@ -126,6 +129,12 @@ class ScriptTypeInfo
 	public ScriptTypeInfo ResolvedBy(ScriptThunk fromScene)
 	{
 		FromScene = fromScene;
+		return this;
+	}
+
+	public ScriptTypeInfo PresentBy(ScriptThunk isOn)
+	{
+		IsOn = isOn;
 		return this;
 	}
 

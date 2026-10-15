@@ -96,7 +96,7 @@ class PlayerController
 		{
 			m_invulnerable -= dt;
 		}
-		CharacterComponent character(self);
+		CharacterComponent@ character = CharacterComponent::of(self);
 		if (m_respawning >= 0.0f)
 		{
 			// Out of sight at the safe ground, standing still while the camera arrives.
@@ -121,7 +121,7 @@ class PlayerController
 		bool grounded = character.Grounded;
 		// The feet stand on the ground under them only while the hero stands on it: in the air the
 		// jump pose holds them at the model's ground, and they would reach for the floor below.
-		FootIkComponent(self).Active = grounded;
+		FootIkComponent::of(self).Active = grounded;
 		m_sinceGrounded = grounded ? 0.0f : m_sinceGrounded + dt;
 		// A hard landing kicks up dust; a hop off a step does not.
 		if (grounded && !m_wasGrounded && (m_airTime > 0.35f))
@@ -205,7 +205,7 @@ class PlayerController
 	// Came down on an enemy: bounce off it, in the air as on the ground.
 	void onBounce()
 	{
-		CharacterComponent character(self);
+		CharacterComponent@ character = CharacterComponent::of(self);
 		character.Launch(bounceSpeed);
 		m_sinceGrounded = 1000.0f; // the bounce is not a coyote jump
 		Input.Rumble(0.25f, 0.6f, 0.12f); // a sharp kick off the enemy
@@ -242,7 +242,7 @@ class PlayerController
 		m_velZ = 0.0f;
 		scene.Prefabs.Spawn(kPoof, self.GetWorldPosition());
 		Input.Rumble(0.8f, 0.5f, 0.3f); // the jolt of a fall or a hit
-		CharacterComponent character(self);
+		CharacterComponent@ character = CharacterComponent::of(self);
 		character.SetPosition(m_spawn);
 		m_yaw = m_spawnYaw;
 		self.SetLocalRotation(Quaternion::FromAxisAngle(Float3::UnitY, m_yaw));

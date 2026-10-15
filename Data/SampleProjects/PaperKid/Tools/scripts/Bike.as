@@ -148,7 +148,7 @@ class Bike
 		updateSpeed(move.Y, dt);
 		updateHeading(move.X, dt);
 		Float3 forward = facing();
-		CharacterComponent(self).Move(forward.X * m_speed, forward.Z * m_speed);
+		CharacterComponent::of(self).Move(forward.X * m_speed, forward.Z * m_speed);
 		// Lean into the turn (a positive roll tips the top toward screen right from behind, the
 		// way a right turn leans), eased so it settles rather than snaps; wobble while recovering.
 		float authority = Abs(m_speed) / maxSpeed;
@@ -197,7 +197,7 @@ class Bike
 				scene.Animation.Play(m_kid);
 			}
 		}
-		SkeletalAnimationComponent(m_kid).Speed = pace;
+		SkeletalAnimationComponent::of(m_kid).Speed = pace;
 	}
 
 	private void startThrowClip()
@@ -405,7 +405,7 @@ class Bike
 			return false;
 		}
 		// An impulse is mass times the change in speed; the paper's mass is its rigid body's.
-		float mass = RigidBodyComponent(paper).Mass;
+		float mass = RigidBodyComponent::of(paper).Mass;
 		if (mass <= 0.0f)
 		{
 			mass = 1.0f;

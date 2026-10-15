@@ -34,7 +34,7 @@ static class PipelineScriptSurfaceTests
 
 	/// Nothing beyond the runtime surface but the Pipeline domain's own types, so a script cook
 	/// or an MCP check passes exactly the code the running game compiles. The components are on
-	/// both: `CharacterComponent(self)` validates and runs.
+	/// both: `CharacterComponent::of(self)` validates and runs.
 	[Test]
 	public static void OnlyTheToolingIsAddedToTheRuntime()
 	{

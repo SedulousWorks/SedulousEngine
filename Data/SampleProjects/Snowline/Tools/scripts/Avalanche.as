@@ -50,7 +50,7 @@ class Avalanche
 		if (!here.Valid)
 			return;
 		float rider = here.Distance;
-		PathFollowComponent follow = PathFollowComponent(self);
+		PathFollowComponent@ follow = PathFollowComponent::of(self);
 		if (!m_released)
 		{
 			if (rider < release)
@@ -126,7 +126,7 @@ class Avalanche
 		m_speed = 0.0f;
 		m_lastGap = -1;
 		m_passing = -1.0f;
-		PathFollowComponent follow = PathFollowComponent(self);
+		PathFollowComponent@ follow = PathFollowComponent::of(self);
 		follow.Speed = 0.0f;
 		follow.Distance = 0.0f;
 		quiet();
@@ -134,7 +134,7 @@ class Avalanche
 
 	private void quiet()
 	{
-		PathFollowComponent(self).Speed = 0.0f;
+		PathFollowComponent::of(self).Speed = 0.0f;
 		Entity front = child("Front");
 		if (front.IsValid())
 			scene.Particles.Stop(front);

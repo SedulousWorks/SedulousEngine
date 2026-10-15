@@ -132,7 +132,7 @@ class Board
 	{
 		if (d <= 0.0f)
 			return;
-		CharacterComponent c = CharacterComponent(self);
+		CharacterComponent@ c = CharacterComponent::of(self);
 		bool struck = hitSomething(c);
 		Float3 v = alongTheSnow(c);
 		if (m_fromRest)
@@ -239,7 +239,7 @@ class Board
 
 	// One step of the board's motion: on the snow, gravity along the slope, friction, a carve's
 	// scrub, drag and the carve's turn (and a jump's pop); in the air, gravity.
-	private Float3 integrate(CharacterComponent c, Float3 v, bool grounded, float steer, bool tuck,
+	private Float3 integrate(CharacterComponent@ c, Float3 v, bool grounded, float steer, bool tuck,
 		bool jump, float d)
 	{
 		const float g = 9.81f;
@@ -275,7 +275,7 @@ class Board
 	// down the course as at the start, the first gate next.
 	void onRunRestart(int unused)
 	{
-		CharacterComponent(self).SetPosition(m_start);
+		CharacterComponent::of(self).SetPosition(m_start);
 		self.SetLocalRotation(m_startRotation);
 		m_yaw = startYaw();
 		m_fromRest = true;
@@ -450,7 +450,7 @@ class Board
 	//   17 to 7 m/s up a kicker;
 	// - landing from real air, it keeps what lies along the snow and loses what went into it.
 	// Speed lost to anything else (a rock, a tree) stays lost.
-	private Float3 alongTheSnow(CharacterComponent c)
+	private Float3 alongTheSnow(CharacterComponent@ c)
 	{
 		Float3 v = c.Velocity;
 		if (!c.Grounded)
@@ -514,7 +514,7 @@ class Board
 
 	// Whether the character's step took a lot of speed into something that is not the snow: a
 	// tree, a rock. (Speed the snow takes goes along its normal, and alongTheSnow gives it back.)
-	private bool hitSomething(CharacterComponent c)
+	private bool hitSomething(CharacterComponent@ c)
 	{
 		if (m_crash > 0.0f)
 			return false;

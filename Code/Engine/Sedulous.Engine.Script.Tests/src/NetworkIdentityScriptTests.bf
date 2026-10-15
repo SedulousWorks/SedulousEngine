@@ -23,7 +23,7 @@ static class NetworkIdentityScriptTests
 				int seen = -1;
 				void onStart()
 				{
-					NetworkComponent network = NetworkComponent(self);
+					NetworkComponent@ network = NetworkComponent::of(self);
 					seen = ((network.Authority == NetworkAuthority::Server) ? 1000 : 0) + int(network.Id.Value);
 				}
 			}
@@ -55,7 +55,7 @@ static class NetworkIdentityScriptTests
 			class Tweaker
 			{
 				Entity self;
-				void onStart() { NetworkComponent(self).Authority = NetworkAuthority::Client; }
+				void onStart() { NetworkComponent::of(self).Authority = NetworkAuthority::Client; }
 			}
 			""");
 		record.Handlers.Add(new String("onStart"));

@@ -45,7 +45,7 @@ class Coin
 		if (distance < radius)
 		{
 			// A coin still in reach takes the look back next frame.
-			AimIkComponent(m_player).Active = false;
+			AimIkComponent::of(m_player).Active = false;
 			scene.Scripts.Emit("CoinCollected", value);
 			scene.Prefabs.Spawn(kCoinSparkle, self.GetWorldPosition());
 			Audio.PlayOneShot(kCoinSound, AudioBus::Effects, 0.7f);
@@ -56,7 +56,7 @@ class Coin
 	// The nearest coin in reach this frame turns the hero's head to it; none, and the head eases back.
 	private void look(float distance)
 	{
-		AimIkComponent aim(m_player);
+		AimIkComponent@ aim = AimIkComponent::of(m_player);
 		double frame = scene.Scripts.Elapsed;
 		if (frame != g_lookFrame)
 		{

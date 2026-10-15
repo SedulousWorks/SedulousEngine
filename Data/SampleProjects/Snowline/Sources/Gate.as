@@ -90,7 +90,7 @@ class Gate
 		bool inReach = along > -brushAlong && along < brushAlong && fromPole > -brushIn && fromPole < brushOut;
 		if (inReach && !wasInReach && flag.IsValid())
 		{
-			Float3 v = CharacterComponent(m_rider).Velocity;
+			Float3 v = CharacterComponent::of(m_rider).Velocity;
 			scene.Physics.ApplyImpulse(flag, Float3(v.X * brushPush, 0.0f, v.Z * brushPush));
 		}
 		return inReach;

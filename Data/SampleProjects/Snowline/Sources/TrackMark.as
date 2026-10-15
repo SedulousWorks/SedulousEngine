@@ -17,7 +17,7 @@ class TrackMark
 		Entity decal = self.GetFirstChild();
 		if (decal.IsValid())
 		{
-			DecalComponent mark = DecalComponent(decal);
+			DecalComponent@ mark = DecalComponent::of(decal);
 			Color c = mark.Color;
 			if (m_alpha < 0.0f)
 				m_alpha = c.A;

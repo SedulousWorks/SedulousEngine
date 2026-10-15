@@ -21,7 +21,7 @@ class Pedestrian
 
 	void onStart()
 	{
-		NavAgentComponent(self).MaxSpeed = speed;
+		NavAgentComponent::of(self).MaxSpeed = speed;
 		pickTarget();
 		m_figure = self.FindChildByName("PedestrianModel");
 		if (m_figure.IsValid() && !walkClip.IsNil)
@@ -34,7 +34,7 @@ class Pedestrian
 	void onPedestrianSpeed(float s)
 	{
 		speed = s;
-		NavAgentComponent(self).MaxSpeed = speed;
+		NavAgentComponent::of(self).MaxSpeed = speed;
 	}
 
 	void onBlockRing(float ring)
@@ -46,7 +46,7 @@ class Pedestrian
 
 	void onUpdate(float dt)
 	{
-		NavAgentComponent agent = NavAgentComponent(self);
+		NavAgentComponent@ agent = NavAgentComponent::of(self);
 		if (m_walking && agent.Finished)
 		{
 			pickTarget();
@@ -66,7 +66,7 @@ class Pedestrian
 		}
 		if (m_figure.IsValid())
 		{
-			SkeletalAnimationComponent(m_figure).Speed = pace / walkMetres;
+			SkeletalAnimationComponent::of(m_figure).Speed = pace / walkMetres;
 		}
 	}
 
@@ -86,7 +86,7 @@ class Pedestrian
 			x = across;
 			z = along;
 		}
-		NavAgentComponent(self).Navigate(Float3(x, 0.0f, z));
+		NavAgentComponent::of(self).Navigate(Float3(x, 0.0f, z));
 		m_walking = true;
 	}
 }

@@ -95,7 +95,7 @@ class Enemy
 		{
 			return;
 		}
-		bool airborne = !CharacterComponent(m_player).Grounded;
+		bool airborne = !CharacterComponent::of(m_player).Grounded;
 		if (airborne && (fallSpeed >= stompSpeed))
 		{
 			scene.Scripts.Emit("EnemyDefeated", 1);

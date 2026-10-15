@@ -47,7 +47,7 @@ Handlers dispatch **by presence**: implement only what you need.
   is a float, an int, a bool, a string, an entity, a `Float3` (a lock's place) or a `Float4` (a
   place and a measure together: a noise's origin and its loudness), and the handler takes it by
   value: `void onPicking(Float3 at)`, `void onNoise(Float4 n)`.
-- Networked entities: gate on `NetworkComponent(self).Authority` (`NetworkAuthority::Server` or
+- Networked entities: gate on `NetworkComponent::of(self).Authority` (`NetworkAuthority::Server` or
   `Client`): the owning side drives, the rest interpolate. It reads; replication owns the
   identity, so nothing on it is assignable from a script.
 
@@ -88,7 +88,7 @@ invalid entity); `GetLocalTransform()` is its own. A lantern on a guard aims alo
 A world-space UI component (`UICanvasComponent`, `UIBillboardComponent`,
 `UIWorldPanelComponent`) hands a script its instantiated tree as `Root`, the same
 `ViewGroup` handle `Ui.Root` gives the screen tier, so the same finders reach inside it: a meter
-over a guard's head is `UIBillboardComponent(guard).Root.FindProgressBar("meter")`. Before
+over a guard's head is `UIBillboardComponent::of(guard).Root.FindProgressBar("meter")`. Before
 the tree is built the handle is null but valid, and every finder misses quietly.
 
 `scene.Physics.RayCast(...)` answers a `PhysicsHit`: whether it hit, the entity, the distance,
@@ -132,11 +132,12 @@ scene.Render.SetEnvironment(env);`. While the scene uses a profile the edit chan
 so every scene using it changes too, as an edit in the editor does. A script sets values, not
 assets: the profile and the sky texture keep theirs. Runtime only, not saved with the scene.
 
-Components are script types too, as data with a few verbs: a script takes one from an
-entity, `CharacterComponent character = CharacterComponent(self);`, then reads and sets its
-fields and calls its verbs (`character.Move(vx, vz)`, `character.Jump(speed)`). The handle is
-the entity, so it always reaches the component the entity has now; on an entity without one,
-the access fails the handler. An asset field takes the asset's guid (`sprite.TextureAsset`).
+Components are script types too, as data with a few verbs: a script takes a handle to one
+from an entity, `CharacterComponent@ character = CharacterComponent::of(self);`, then reads
+and sets its fields and calls its verbs (`character.Move(vx, vz)`, `character.Jump(speed)`).
+`of` is null when the entity has no such component, so `if (character !is null)` is the test.
+The handle holds the entity, so it reaches the component the entity has now; used after the
+component has gone, the access fails the handler. An asset field takes the asset's guid (`sprite.TextureAsset`).
 Components with nothing for gameplay code are not script types: the script component itself
 (use `scene.Scripts`), the networked transform (replication drives it), and a navigation
 zone's bake settings. A network identity is one, read only. A navigation agent reports why it

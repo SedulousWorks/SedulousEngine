@@ -29,7 +29,7 @@ class CutawayWall
 		if (next != m_fade)
 		{
 			m_fade = next;
-			MeshComponent mesh = MeshComponent(self);
+			MeshComponent@ mesh = MeshComponent::of(self);
 			mesh.Fade = m_fade;
 		}
 	}

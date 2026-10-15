@@ -27,7 +27,7 @@ class Footsteps
 
 	void onUpdate(float dt)
 	{
-		Float3 v = CharacterComponent(self).Velocity;
+		Float3 v = CharacterComponent::of(self).Velocity;
 		float speed = Sqrt(v.X * v.X + v.Z * v.Z);
 		if (speed < 0.2f)
 		{

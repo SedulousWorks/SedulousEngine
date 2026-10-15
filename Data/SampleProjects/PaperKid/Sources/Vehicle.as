@@ -15,7 +15,7 @@ class Vehicle
 
 	void onStart()
 	{
-		NavAgentComponent(self).MaxSpeed = speed;
+		NavAgentComponent::of(self).MaxSpeed = speed;
 		// Head for the corner ahead of where the car stands.
 		Float3 at = self.GetWorldPosition();
 		m_lane = Abs(at.X) > Abs(at.Z) ? Abs(at.X) : Abs(at.Z);
@@ -26,12 +26,12 @@ class Vehicle
 	void onTrafficSpeed(float s)
 	{
 		speed = s;
-		NavAgentComponent(self).MaxSpeed = speed;
+		NavAgentComponent::of(self).MaxSpeed = speed;
 	}
 
 	void onUpdate(float dt)
 	{
-		NavAgentComponent agent = NavAgentComponent(self);
+		NavAgentComponent@ agent = NavAgentComponent::of(self);
 		if (agent.Finished)
 		{
 			advance();
@@ -47,7 +47,7 @@ class Vehicle
 	private void advance()
 	{
 		m_corner = (m_corner + direction + 4) % 4;
-		NavAgentComponent(self).Navigate(corner(m_corner));
+		NavAgentComponent::of(self).Navigate(corner(m_corner));
 	}
 
 	// The ring's corners, clockwise seen from above (+Y): north-west, north-east, south-east,

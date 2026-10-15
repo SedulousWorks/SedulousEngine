@@ -47,7 +47,7 @@ class Lamp
 	{
 		if (light.IsValid())
 		{
-			LightComponent lamp = LightComponent(light);
+			LightComponent@ lamp = LightComponent::of(light);
 			lamp.Enabled = lit;
 		}
 		scene.Render.SetMaterial(self, lit ? flameLit : flameOut, flameSlot);

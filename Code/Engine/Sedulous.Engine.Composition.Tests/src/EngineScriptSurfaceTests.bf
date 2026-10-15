@@ -94,7 +94,7 @@ static class EngineScriptSurfaceTests
 		Test.Assert(s.Find("Sedulous.Scene.Scene") != null, "the scene, the facades' home");
 
 		// The components, as data with their few verbs: a script takes one from an entity,
-		// `CharacterComponent(self)`, and reaches its fields through the manager.
+		// `CharacterComponent::of(self)`, and reaches its fields through the manager.
 		let character = s.Find("Sedulous.Engine.Physics.CharacterComponent");
 		Test.Assert((character != null) && (character.Role == .Component));
 		Test.Assert(Method(character, "Move") != null);

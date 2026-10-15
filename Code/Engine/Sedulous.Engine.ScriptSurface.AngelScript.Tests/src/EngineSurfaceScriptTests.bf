@@ -417,7 +417,7 @@ static class EngineSurfaceScriptTests
 		let ok = vm.Compile("game", "game.as", """
 			float drive(const Entity &in rider)
 			{
-				CharacterComponent character = CharacterComponent(rider);
+				CharacterComponent@ character = CharacterComponent::of(rider);
 				character.StepUp = 0.6f;
 				character.Move(3.0f, -4.0f);
 				character.Jump(5.5f);
@@ -425,7 +425,7 @@ static class EngineSurfaceScriptTests
 			}
 			float probe(const Entity &in bystander)
 			{
-				return CharacterComponent(bystander).StepUp;
+				return CharacterComponent::of(bystander).StepUp;
 			}
 			""");
 		for (let p in vm.Problems)
@@ -467,8 +467,8 @@ static class EngineSurfaceScriptTests
 		let ok = vm.Compile("game", "game.as", """
 			void dance(const Entity &in self)
 			{
-				InstanceMemberComponent(self).Clip = 3;
-				InstancedMeshComponent(self).PoseAssignment = PoseAssignment::Unison;
+				InstanceMemberComponent::of(self).Clip = 3;
+				InstancedMeshComponent::of(self).PoseAssignment = PoseAssignment::Unison;
 			}
 			""");
 		for (let p in vm.Problems)
@@ -489,6 +489,57 @@ static class EngineSurfaceScriptTests
 		Test.Assert(sets.Get(e).PoseAssignment == .Unison);
 	}
 
+	/// `X::of(entity)` is a handle, null when the entity has no such component, so `is null`
+	/// is the test; a handle kept after its component has gone fails what uses it, never a
+	/// write through nothing.
+	[Test]
+	public static void OfIsNullWithoutTheComponentAndAGoneOneIsAnError()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+		let ok = vm.Compile("game", "game.as", """
+			InstanceMemberComponent@ held;
+			bool missing(const Entity &in e) { return InstanceMemberComponent::of(e) is null; }
+			int clip(const Entity &in e)
+			{
+				InstanceMemberComponent@ m = InstanceMemberComponent::of(e);
+				return (m is null) ? -1 : int(m.Clip);
+			}
+			void take(const Entity &in e) { @held = InstanceMemberComponent::of(e); }
+			int heldClip() { return int(held.Clip); }
+			void setHeld() { held.Clip = 9; }
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene("of");
+		defer Sedulous.Script.SceneFacades.Release(scene);
+		let members = scene.AddSystem<Sedulous.Engine.Render.InstanceMemberComponentManager>();
+		let bare = scene.CreateEntity("bare");
+		let member = scene.CreateEntity("member");
+		members.Add(member).Clip = 5;
+		var bareArgs = ScriptValue[1](.FromEntity(bare, scene));
+		var memberArgs = ScriptValue[1](.FromEntity(member, scene));
+		var r = ScriptValue.Nil;
+
+		Test.Assert(vm.Call("game", "bool missing(const Entity &in)", bareArgs, ref r) && r.AsBool, "null without the component");
+		Test.Assert(vm.Call("game", "bool missing(const Entity &in)", memberArgs, ref r) && !r.AsBool, "a handle with it");
+		Test.Assert(vm.Call("game", "int clip(const Entity &in)", bareArgs, ref r) && (r.AsInt == -1));
+		Test.Assert(vm.Call("game", "int clip(const Entity &in)", memberArgs, ref r) && (r.AsInt == 5));
+
+		// Kept, then the component goes: reading or writing through the handle is an error.
+		Test.Assert(vm.Call("game", "void take(const Entity &in)", memberArgs, ref r));
+		Test.Assert(vm.Call("game", "int heldClip()", default, ref r) && (r.AsInt == 5), "the kept handle reads");
+		members.Remove(member);
+		Test.Assert(!vm.Call("game", "int heldClip()", default, ref r), "gone: the read fails");
+		Test.Assert(!vm.Call("game", "void setHeld()", default, ref r), "gone: the write fails");
+		Test.Assert(!members.Has(member), "and adds nothing");
+		// A handle still held when the module goes is released with it (ASan checks).
+	}
+
 	/// A board's surface: the motion and the ground under the character read, never written
 	/// (the tick measures them; here they are seeded), and the whole velocity driven, by
 	/// components or by a Float3.
@@ -503,14 +554,14 @@ static class EngineSurfaceScriptTests
 		let ok = vm.Compile("board", "board.as", """
 			void ride(const Entity &in rider)
 			{
-				CharacterComponent c = CharacterComponent(rider);
+				CharacterComponent@ c = CharacterComponent::of(rider);
 				Float3 v = c.Velocity;
 				Float3 n = c.GroundNormal;
 				c.Drive(v.X + n.X, v.Y + n.Y, v.Z + n.Z);
 			}
 			void push(const Entity &in rider)
 			{
-				CharacterComponent(rider).Drive(Float3(-5.0f, 0.0f, 1.0f));
+				CharacterComponent::of(rider).Drive(Float3(-5.0f, 0.0f, 1.0f));
 			}
 			""");
 		for (let p in vm.Problems)
@@ -537,7 +588,7 @@ static class EngineSurfaceScriptTests
 		let writer = scope AngelScriptRuntime();
 		writer.Bind(s);
 		Test.Assert(!writer.Compile("w", "w.as", """
-			void cheat(const Entity &in e) { CharacterComponent(e).Velocity = Float3(9.0f, 0.0f, 0.0f); }
+			void cheat(const Entity &in e) { CharacterComponent::of(e).Velocity = Float3(9.0f, 0.0f, 0.0f); }
 			"""), "measured, not written: the assignment does not compile");
 	}
 
@@ -554,7 +605,7 @@ static class EngineSurfaceScriptTests
 		let ok = vm.Compile("net", "net.as", """
 			int gate(const Entity &in e)
 			{
-				NetworkComponent network = NetworkComponent(e);
+				NetworkComponent@ network = NetworkComponent::of(e);
 				int owned = (network.Authority == NetworkAuthority::Server) ? 1000 : 0;
 				return owned + int(network.Id.Value);
 			}
@@ -579,10 +630,10 @@ static class EngineSurfaceScriptTests
 		let writer = scope AngelScriptRuntime();
 		writer.Bind(s);
 		Test.Assert(!writer.Compile("w", "w.as", """
-			void flip(const Entity &in e) { NetworkComponent(e).Authority = NetworkAuthority::Client; }
+			void flip(const Entity &in e) { NetworkComponent::of(e).Authority = NetworkAuthority::Client; }
 			"""), "no setter: the assignment does not compile");
 		Test.Assert(!writer.Compile("w2", "w2.as", """
-			void renumber(const Entity &in e) { NetworkComponent network = NetworkComponent(e); network.Id = NetworkId(7); }
+			void renumber(const Entity &in e) { NetworkComponent@ network = NetworkComponent::of(e); network.Id = NetworkId(7); }
 			"""), "Id has no setter either");
 	}
 
@@ -599,7 +650,7 @@ static class EngineSurfaceScriptTests
 		let ok = vm.Compile("path", "path.as", """
 			float drive(const Entity &in e)
 			{
-				PathFollowComponent follow = PathFollowComponent(e);
+				PathFollowComponent@ follow = PathFollowComponent::of(e);
 				follow.Speed = 3.5f;
 				follow.Playing = false;
 				return follow.Distance;

@@ -39,7 +39,7 @@ class Thief
 
 	void onUpdate(float dt)
 	{
-		CharacterComponent body = CharacterComponent(self);
+		CharacterComponent@ body = CharacterComponent::of(self);
 		bool crouched = Input.IsDown("Sneak");
 		m_sinceThrow += dt;
 		if (Input.WasPressed("Throw") && m_sinceThrow >= throwEvery)
@@ -91,7 +91,7 @@ class Thief
 	// Caught by a guard (Guard.as): back to the last checkpoint.
 	void onCaught(Float3 at)
 	{
-		CharacterComponent(self).SetPosition(m_checkpoint);
+		CharacterComponent::of(self).SetPosition(m_checkpoint);
 	}
 
 	// A checkpoint reached: a catch now sends the thief back here, and the HUD says so.
@@ -132,7 +132,7 @@ class Thief
 		}
 		// An impulse is the mass times the change in speed: up at about 35 degrees. The pebble's
 		// prefab carries a rigid body (an entity without one would fail the handler here).
-		float mass = RigidBodyComponent(stone).Mass;
+		float mass = RigidBodyComponent::of(stone).Mass;
 		if (mass <= 0.0f)
 		{
 			mass = 1.0f;
@@ -143,7 +143,7 @@ class Thief
 
 	// The graph by what the body did: its speed along the floor (so a thief pressed against a wall
 	// stands rather than runs on the spot), and crouched while sneaking.
-	private void animate(CharacterComponent body, bool crouched)
+	private void animate(CharacterComponent@ body, bool crouched)
 	{
 		Entity fig = figure();
 		if (!fig.IsValid())

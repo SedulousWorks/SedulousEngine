@@ -14,7 +14,7 @@ class Flicker
 
 	void onStart()
 	{
-		m_base = LightComponent(self).Intensity;
+		m_base = LightComponent::of(self).Intensity;
 		m_time = self.GetWorldPosition().X * 1.7f + self.GetWorldPosition().Z * 0.9f; // each torch its own
 	}
 
@@ -23,6 +23,6 @@ class Flicker
 		m_time += dt * rate;
 		float wave = 0.5f * Sin(m_time * 2.3f) + 0.3f * Sin(m_time * 5.1f + 1.3f)
 		             + 0.2f * Sin(m_time * 13.7f + 0.4f);
-		LightComponent(self).Intensity = m_base * (1.0f + amount * wave);
+		LightComponent::of(self).Intensity = m_base * (1.0f + amount * wave);
 	}
 }

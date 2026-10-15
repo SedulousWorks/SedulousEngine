@@ -18,8 +18,9 @@ namespace Sedulous.Script.AngelScript;
 ///  - a class is a reference type without a count (the engine owns its objects), held by
 ///    handle; an object a factory creates is kept by the runtime and freed with it;
 ///  - an entity is a value carrying its handle AND its scene, so a call on it resolves in
-///    that scene however many scenes there are; a component is a value holding the entity:
-///    `MeshComponent(entity).Visible`;
+///    that scene however many scenes there are; a component is a counted handle holding the
+///    entity, null when the entity has none: `MeshComponent::of(entity).Visible`, and a use
+///    through a handle whose component has gone since is the script's error;
 ///  - a scene system or component manager is a read only property on Scene named for it
 ///    (its display name, else its type name without the role suffix): `scene.Physics.RayCast(...)`;
 ///    the handle is the scene's own instance, and a script may keep it;
@@ -34,6 +35,16 @@ namespace Sedulous.Script.AngelScript;
 /// noted in Problems, as is a name AngelScript refuses.
 class AngelScriptRuntime : ScriptRuntime
 {
+	/// What a script's component handle points at: the entity FIRST, so a member reads its
+	/// self exactly as from an entity, then the count. Allocated by `of`, freed by the last
+	/// release.
+	[CRepr]
+	private struct ComponentHandle
+	{
+		public ScriptEntity Entity;
+		public int32 References;
+	}
+
 	private AS.Engine* mEngine = null;
 	/// Execution contexts, one per call in flight: a script calling the engine calling a
 	/// script needs a second, so they are pooled rather than one.
@@ -336,8 +347,18 @@ class AngelScriptRuntime : ScriptRuntime
 				ApiType(AsName(t), t.FullName, false);
 				return;
 			}
-			// A component is held by its entity; any other struct by its own bytes.
-			let size = (t.Role == .Component) ? (int32)sizeof(ScriptEntity) : t.Size;
+			// A component is a counted handle holding its entity (ComponentHandle), so `of`
+			// can answer null; any other struct is a value of its own bytes.
+			if (t.Role == .Component)
+			{
+				if (Check(AS.asc_engine_register_object_type(mEngine, scope String(AsName(t)).CStr(), 0, AS.asOBJ_REF), t.FullName))
+				{
+					mByName[new String(AsName(t))] = t;
+					ApiType(AsName(t), t.FullName, false);
+				}
+				return;
+			}
+			let size = t.Size;
 			let flags = AS.asOBJ_VALUE | AS.asOBJ_POD | AS.asOBJ_APP_CLASS | ((t.Align >= 8) ? AS.asOBJ_APP_CLASS_ALIGN8 : 0);
 			if (Check(AS.asc_engine_register_object_type(mEngine, scope String(AsName(t)).CStr(), size, flags), t.FullName))
 			{
@@ -365,16 +386,10 @@ class AngelScriptRuntime : ScriptRuntime
 		else if ((t.Role == .SceneSystem) || (t.Role == .ComponentManager) || (t.Role == .SceneFacade))
 			DeclareSceneProperty(t);
 
-		// A component is constructed from the entity it lives on.
+		// A component is reached from the entity it lives on: `X::of(entity)`, a counted
+		// handle, null when the entity has none.
 		if (t.Role == .Component)
-		{
-			let b = new AngelScriptBinding();
-			b.Kind = .ComponentFromEntity;
-			b.Owner = t;
-			mBindings.Add(b);
-			if (Check(AS.asc_engine_register_object_behaviour(mEngine, scope String(AsName(t)).CStr(), AS.asBEHAVE_CONSTRUCT, "void f(const Entity &in)", Internal.UnsafeCastToPtr(b)), t.FullName))
-				Record(ApiType(AsName(t), t.FullName, false), AsName(t), scope $"{AsName(t)}(const Entity &in entity)", false, .Method);
-		}
+			BindComponentHandle(t);
 
 		let statics = scope String();
 		if (t.Kind != .Global)
@@ -394,6 +409,35 @@ class AngelScriptRuntime : ScriptRuntime
 			if (m.OnEntity)
 				BindEntityMethod(t, m);
 		}
+	}
+
+	/// A component's handle: its reference count and `X::of(entity)`.
+	private void BindComponentHandle(ScriptTypeInfo t)
+	{
+		let typeName = scope String(AsName(t));
+		for (let kind in AngelScriptBinding.Role[2](.ComponentAddRef, .ComponentRelease))
+		{
+			let b = new AngelScriptBinding();
+			b.Kind = kind;
+			b.Owner = t;
+			mBindings.Add(b);
+			let behaviour = (kind == .ComponentAddRef) ? AS.asBEHAVE_ADDREF : AS.asBEHAVE_RELEASE;
+			Check(AS.asc_engine_register_object_behaviour(mEngine, typeName.CStr(), behaviour, "void f()", Internal.UnsafeCastToPtr(b)), t.FullName);
+		}
+		if (t.IsOn == null)
+		{
+			Problem(scope $"{t.FullName}: a component with no manager to find it by, so no {typeName}::of");
+			return;
+		}
+		let b = new AngelScriptBinding();
+		b.Kind = .ComponentOf;
+		b.Owner = t;
+		mBindings.Add(b);
+		AS.asc_engine_set_default_namespace(mEngine, typeName.CStr());
+		let rc = AS.asc_engine_register_global_function(mEngine, scope $"{typeName}@ of(const Entity &in entity)", Internal.UnsafeCastToPtr(b));
+		AS.asc_engine_set_default_namespace(mEngine, "");
+		if (Check(rc, scope $"{t.FullName}::of"))
+			Record(ApiType(typeName, t.FullName, false), "of", scope $"{typeName}@ {typeName}::of(const Entity &in entity)", true, .Method);
 	}
 
 	/// The entity side of an entity-first method, on the Entity value: the parameters after
@@ -886,10 +930,35 @@ class AngelScriptRuntime : ScriptRuntime
 		defer { context.ReleaseScratch(mark); }
 		switch (b.Kind)
 		{
-		case .ComponentFromEntity:
-			// The value's bytes ARE the entity, scene included.
-			let entity = *(ScriptEntity*)AS.asc_generic_get_arg_address(gen, 0);
-			*(ScriptEntity*)AS.asc_generic_get_object(gen) = entity;
+		case .ComponentOf:
+		{
+			let entity = AS.asc_generic_get_arg_address(gen, 0);
+			var frame = ScriptCallFrame(context, default);
+			frame.Self = ReadValue(entity, .Entity, "");
+			b.Owner.IsOn(ref frame);
+			if (frame.Failed)
+			{
+				AS.asc_set_active_exception(scope String(frame.Error).CStr());
+				return;
+			}
+			// The handle a script holds, its count the one reference returned.
+			ComponentHandle* handle = null;
+			if (frame.Result.AsBool)
+			{
+				handle = (ComponentHandle*)Internal.StdMalloc(sizeof(ComponentHandle));
+				handle.Entity = *(ScriptEntity*)entity;
+				handle.References = 1;
+			}
+			AS.asc_generic_set_return_address(gen, handle);
+			return;
+		}
+		case .ComponentAddRef:
+			((ComponentHandle*)AS.asc_generic_get_object(gen)).References++;
+			return;
+		case .ComponentRelease:
+			let handle = (ComponentHandle*)AS.asc_generic_get_object(gen);
+			if (--handle.References == 0)
+				Internal.StdFree(handle);
 			return;
 		case .StartCoroutine:
 			StartCoroutine((AS.Function*)AS.asc_generic_get_arg_address(gen, 0));

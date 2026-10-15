@@ -17,8 +17,12 @@ class AngelScriptBinding
 		case Get;
 		/// A property setter: Field.Set.
 		case Set;
-		/// A component value's constructor from an entity: no thunk, the backend's own.
-		case ComponentFromEntity;
+		/// `X::of(entity)`: a handle to the entity's component, null without one. Owner.IsOn
+		/// answers; the handle is the backend's own.
+		case ComponentOf;
+		/// A component handle's reference count, up and down: the backend's own.
+		case ComponentAddRef;
+		case ComponentRelease;
 		/// A value type's construct behaviour: Method is the constructor thunk.
 		case Construct;
 		/// `scene.Physics`: Owner.FromScene with the scene as Self.

@@ -128,7 +128,7 @@ class Pet
 		}
 		if (m_model.IsValid())
 		{
-			SkeletalAnimationComponent(m_model).Speed = 1.0f;
+			SkeletalAnimationComponent::of(m_model).Speed = 1.0f;
 		}
 	}
 
@@ -146,7 +146,7 @@ class Pet
 	{
 		if (m_model.IsValid())
 		{
-			SkeletalAnimationComponent(m_model).Speed = pace / walkMetres;
+			SkeletalAnimationComponent::of(m_model).Speed = pace / walkMetres;
 		}
 	}
 }

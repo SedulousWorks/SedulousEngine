@@ -256,7 +256,7 @@ static class ScriptSurfaceWalker
 
 	/// Keeps of the marked candidates only what a script can reach: the seeds are the scene
 	/// and service facades, the global static blocks, the Scene, and every marked component
-	/// that has a manager (a script takes one from an entity, `CharacterComponent(self)`);
+	/// that has a manager (a script takes one from an entity, `CharacterComponent::of(self)`);
 	/// then every type a kept type's members name, transitively, a component bringing its
 	/// manager. `known` is cut to the same set, so the closure check speaks of this surface.
 	/// `withTooling` seeds every candidate outside the Runtime domain as well.
@@ -498,6 +498,8 @@ static class ScriptSurfaceWalker
 			}
 			ctx.Role = .Component;
 			ctx.Code.AppendF("\t\tt.As(.Component, {}, {});\n", Quote(ctx.Manager, .. scope .()), Quote(typeId, .. scope .()));
+			if (!ctx.Manager.IsEmpty)
+				EmitPresence(ctx);
 			return;
 		}
 
@@ -1280,6 +1282,16 @@ static class ScriptSurfaceWalker
 			outCode.AppendF("\tlet self = SceneFacades.Resolve<{}>(scene);\n", ctx.FullName);
 		else
 			outCode.AppendF("\tlet self = scene.GetSystem<{}>();\n\tif (self == null) {{ frame.Fail(\"no {} in the entity's scene\"); return; }}\n", ctx.FullName, ctx.Name);
+	}
+
+	/// A component's presence test: the entity in Self, its scene's manager, and whether that
+	/// pools one for it. No scene or no manager is simply no.
+	[Comptime]
+	private static void EmitPresence(TypeCtx ctx)
+	{
+		let name = ctx.NextThunk(.. scope .());
+		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n\tframe.Begin();\n\tif (frame.Self.Kind != .Entity) {{ frame.Fail(\"self is not an entity\"); return; }}\n\tlet scene = frame.SceneOf(frame.Self);\n\tlet manager = (scene != null) ? scene.GetSystem<{}>() : null;\n\tframe.Result = .FromBool((manager != null) && (manager.Get(frame.Self.AsEntity) != null));\n}}\n\n", name, ctx.Manager);
+		ctx.Code.AppendF("\t\tt.PresentBy(=> {});\n", name);
 	}
 
 	/// The resolver a scene system or manager gets: the scene's instance, Self the scene.

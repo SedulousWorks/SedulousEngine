@@ -32,7 +32,7 @@ class Stroller
 		{
 			scene.Animation.SetClip(m_model, walkClip);
 			scene.Animation.Play(m_model);
-			SkeletalAnimationComponent(m_model).Speed = speed / walkMetres;
+			SkeletalAnimationComponent::of(m_model).Speed = speed / walkMetres;
 		}
 	}
 

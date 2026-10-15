@@ -42,7 +42,7 @@ class Gap
 		m_lastAlong = along;
 		if (!m_armed)
 			return;
-		bool grounded = CharacterComponent(m_rider).Grounded;
+		bool grounded = CharacterComponent::of(m_rider).Grounded;
 		if (!grounded)
 			m_flew = true;
 		if (grounded && (m_flew || along > 2.0f))

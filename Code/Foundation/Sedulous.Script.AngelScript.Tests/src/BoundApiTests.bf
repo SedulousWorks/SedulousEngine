@@ -89,9 +89,10 @@ static class BoundApiTests
 		Test.Assert((entity != null) && HasSignature(entity, "void Poke() const"), "Poke on Entity");
 		Test.Assert(entity.Find("Nudge") == null, "a verb that did not ask is not on Entity");
 
-		// A component constructed from its entity.
+		// A component reached from its entity, a handle: no constructor.
 		let widget = Find(api, "WidgetComponent");
-		Test.Assert((widget != null) && HasSignature(widget, "WidgetComponent(const Entity &in entity)"));
+		Test.Assert((widget != null) && HasSignature(widget, "WidgetComponent@ WidgetComponent::of(const Entity &in entity)"));
+		Test.Assert(widget.Find("WidgetComponent") == null, "no constructor");
 
 		// The global namespace: the language's coroutine verbs and the static block's function.
 		let global = Find(api, "");

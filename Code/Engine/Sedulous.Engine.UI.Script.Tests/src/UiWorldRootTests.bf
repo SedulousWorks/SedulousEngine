@@ -36,7 +36,7 @@ static class UiWorldRootTests
 		let ok = vm.Compile("guard", "guard.as", """
 			bool fill(const Entity &in guard)
 			{
-				ViewGroup views = UIWorldPanelComponent(guard).Root;
+				ViewGroup views = UIWorldPanelComponent::of(guard).Root;
 				views.FindProgressBar("meter").SetValue(0.75f);
 				views.FindLabel("status").SetText("Seen");
 				return views.IsValid;

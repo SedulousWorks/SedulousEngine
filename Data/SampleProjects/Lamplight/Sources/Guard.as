@@ -63,7 +63,7 @@ class Guard
 		if (dt <= 0.0f)
 			return;
 		see(dt);
-		NavAgentComponent agent = NavAgentComponent(self);
+		NavAgentComponent@ agent = NavAgentComponent::of(self);
 		if (m_state == kPatrol)
 		{
 			if (awareness >= 0.5f)
@@ -150,7 +150,7 @@ class Guard
 	{
 		if (!meter.IsValid())
 			return;
-		UIBillboardComponent board = UIBillboardComponent(meter);
+		UIBillboardComponent@ board = UIBillboardComponent::of(meter);
 		bool shown = awareness > 0.02f || m_state == kChase;
 		board.Visible = shown;
 		if (!shown)
@@ -183,7 +183,7 @@ class Guard
 	{
 		awareness = 0.0f;
 		m_calm = grace;
-		NavAgentComponent(self).Stop();
+		NavAgentComponent::of(self).Stop();
 		patrol();
 	}
 
@@ -205,7 +205,7 @@ class Guard
 			Float3 chest = Float3(t.X, t.Y + 0.4f, t.Z);
 			Float3 to = Float3(chest.X - eye.X, chest.Y - eye.Y, chest.Z - eye.Z);
 			float dist = Sqrt(to.X * to.X + to.Y * to.Y + to.Z * to.Z);
-			LightComponent cone = LightComponent(lantern);
+			LightComponent@ cone = LightComponent::of(lantern);
 			Float3 ahead = RotateVector(lantern.GetWorldRotation(), Float3(0.0f, 0.0f, -1.0f));
 			float cosAngle = dist > 0.001f ? (to.X * ahead.X + to.Y * ahead.Y + to.Z * ahead.Z) / dist : 1.0f;
 			uint mask = 0xFFFFFFFF & ~(uint(1) << uint(group));
@@ -253,14 +253,14 @@ class Guard
 	{
 		if (!point.IsValid())
 			return;
-		NavAgentComponent(self).NavigateAt(point.GetWorldPosition(), speed, 0.3f);
+		NavAgentComponent::of(self).NavigateAt(point.GetWorldPosition(), speed, 0.3f);
 	}
 
 	private void search(Float3 at)
 	{
 		m_state = kSearch;
 		m_timer = searchSeconds;
-		NavAgentComponent(self).NavigateAt(at, walkSpeed, 0.6f);
+		NavAgentComponent::of(self).NavigateAt(at, walkSpeed, 0.6f);
 	}
 
 	// The body faces where it goes, or (suspicious) the thief; the graph follows the speed.
@@ -270,7 +270,7 @@ class Guard
 		// The crowd's own velocity for him, not his positions differenced: scripts update before
 		// the crowd, so a position here is last frame's, and dividing its change by this frame's
 		// time swings the speed (and the graph's blend) with every uneven frame.
-		Float3 v = NavAgentComponent(self).DesiredVelocity;
+		Float3 v = NavAgentComponent::of(self).DesiredVelocity;
 		float vx = v.X;
 		float vz = v.Z;
 		float speed = Sqrt(vx * vx + vz * vz);
