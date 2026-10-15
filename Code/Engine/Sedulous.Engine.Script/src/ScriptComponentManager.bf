@@ -7,8 +7,11 @@ namespace Sedulous.Engine.Script;
 
 /// The pool of script components. Entity and component destruction route onDestroy
 /// through the scene's script system, which the system wires when the scene composes.
-class ScriptComponentManager : ResourceBindingComponentManager<ScriptComponent>
+class ScriptComponentManager : ResourceBindingComponentManager<ScriptComponent>, IReplicatedStateSource
 {
+	/// Its behaviours' replicated properties travel with a networked entity (ScriptReplication).
+	public override IReplicatedStateSource AsReplicatedStateSource => this;
+
 	/// BORROWED: the system of the same scene.
 	private ScriptSceneSystem mSystem = null;
 
