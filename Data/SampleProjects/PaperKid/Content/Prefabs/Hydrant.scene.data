@@ -1,1 +1,132 @@
-<root><u32 name="magic">3586350318</u32><u32 name="version">3</u32><string name="name">Hydrant</string><array name="entities" count="2"><string name="id">c2748aa6-64e0-580b-93b2-44c7365c6efd</string><string name="name">Hydrant</string><u8 name="active">1</u8><string name="parent">00000000-0000-0000-0000-000000000000</string><object name="position"><f32 name="x">0.0</f32><f32 name="y">0.0</f32><f32 name="z">0.0</f32></object><object name="rotation"><f32 name="x">0.0</f32><f32 name="y">0.0</f32><f32 name="z">0.0</f32><f32 name="w">1.0</f32></object><object name="scale"><f32 name="x">1.0</f32><f32 name="y">1.0</f32><f32 name="z">1.0</f32></object><string name="id">b8b1a5f7-95e8-58d4-90a9-7e0a007e6aff</string><string name="name">Collider</string><u8 name="active">1</u8><string name="parent">c2748aa6-64e0-580b-93b2-44c7365c6efd</string><object name="position"><f32 name="x">0.0</f32><f32 name="y">0.4</f32><f32 name="z">0.0</f32></object><object name="rotation"><f32 name="x">0.0</f32><f32 name="y">0.0</f32><f32 name="z">0.0</f32><f32 name="w">1.0</f32></object><object name="scale"><f32 name="x">1.0</f32><f32 name="y">1.0</f32><f32 name="z">1.0</f32></object></array><array name="components" count="2"><object><string name="owner">c2748aa6-64e0-580b-93b2-44c7365c6efd</string><string name="type">script</string><object name="data"><array name="dataVersions" count="1"><u64 name="type">12464980982266880842</u64><u32 name="version">1</u32></array><array name="behaviors" count="1"><string name="script">d2ca3802-da98-a348-84dc-7ad1116059ac</string><bool name="enabled">true</bool><f32 name="updateInterval">0</f32><array name="overrides" count="1"><u64 name="nameHash">11714910769601064179</u64><u8 name="kind">1</u8><f64 name="number">0.85</f64></array></array></object></object><object><string name="owner">b8b1a5f7-95e8-58d4-90a9-7e0a007e6aff</string><string name="type">physics.RigidBody</string><object name="data"><array name="dataVersions" count="1"><u64 name="type">4640525255651513063</u64><u32 name="version">1</u32></array><u8 name="motion">0</u8><u8 name="layer">0</u8><u8 name="shape">0</u8><object name="halfExtents"><f32 name="x">0.2</f32><f32 name="y">0.4</f32><f32 name="z">0.2</f32></object><f32 name="radius">0.5</f32><f32 name="halfHeight">0.5</f32><f32 name="planeHalfExtent">1000</f32><f32 name="friction">0.5</f32><f32 name="restitution">0</f32><f32 name="linearDamping">0.05</f32><f32 name="angularDamping">0.05</f32><bool name="isTrigger">false</bool><u8 name="collisionGroup">0</u8><string name="collisionShape">00000000-0000-0000-0000-000000000000</string><string name="material">00000000-0000-0000-0000-000000000000</string><string name="heightfield">00000000-0000-0000-0000-000000000000</string><bool name="continuousCollision">false</bool><f32 name="mass">0</f32></object></object></array><array name="systemSettings" count="0"></array><u8 name="prefabMode">4</u8><array name="prefabInstances" count="1"><string name="prefab">191a0d56-f1b1-bc48-b289-644221f843aa</string><string name="parent">c2748aa6-64e0-580b-93b2-44c7365c6efd</string><object name="position"><f32 name="x">0.0</f32><f32 name="y">0.0</f32><f32 name="z">0.0</f32></object><object name="rotation"><f32 name="x">0.0</f32><f32 name="y">0.0</f32><f32 name="z">0.0</f32><f32 name="w">1.0</f32></object><object name="scale"><f32 name="x">1.0</f32><f32 name="y">1.0</f32><f32 name="z">1.0</f32></object><string name="rootLive">3d14b68d-7178-59be-88f3-762af47359ca</string><string name="owner">00000000-0000-0000-0000-000000000000</string><string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string><string name="nextSibling">00000000-0000-0000-0000-000000000000</string><u8 name="placement">1</u8><array name="members" count="0"/><array name="destroyed" count="0"/><array name="transformOverrides" count="0"/><array name="componentOps" count="0"/></array></root>
+<root>
+	<u32 name="magic">3586350318</u32>
+	<u32 name="version">3</u32>
+	<string name="name">Hydrant</string>
+	<array name="entities" count="2">
+		<string name="id">c2748aa6-64e0-580b-93b2-44c7365c6efd</string>
+		<string name="name">Hydrant</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="id">b8b1a5f7-95e8-58d4-90a9-7e0a007e6aff</string>
+		<string name="name">Collider</string>
+		<u8 name="active">1</u8>
+		<string name="parent">c2748aa6-64e0-580b-93b2-44c7365c6efd</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0.4</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+	</array>
+	<array name="components" count="2">
+		<object>
+			<string name="owner">c2748aa6-64e0-580b-93b2-44c7365c6efd</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="1">
+					<string name="script">d2ca3802-da98-a348-84dc-7ad1116059ac</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="1">
+						<u64 name="nameHash">11714910769601064179</u64>
+						<u8 name="kind">1</u8>
+						<f64 name="number">0.85</f64>
+					</array>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">b8b1a5f7-95e8-58d4-90a9-7e0a007e6aff</string>
+			<string name="type">physics.RigidBody</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">4640525255651513063</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<u8 name="motion">0</u8>
+				<u8 name="layer">0</u8>
+				<u8 name="shape">0</u8>
+				<object name="halfExtents">
+					<f32 name="x">0.2</f32>
+					<f32 name="y">0.4</f32>
+					<f32 name="z">0.2</f32>
+				</object>
+				<f32 name="radius">0.5</f32>
+				<f32 name="halfHeight">0.5</f32>
+				<f32 name="planeHalfExtent">1000</f32>
+				<f32 name="friction">0.5</f32>
+				<f32 name="restitution">0</f32>
+				<f32 name="linearDamping">0.05</f32>
+				<f32 name="angularDamping">0.05</f32>
+				<bool name="isTrigger">false</bool>
+				<u8 name="collisionGroup">0</u8>
+				<string name="collisionShape">00000000-0000-0000-0000-000000000000</string>
+				<string name="material">00000000-0000-0000-0000-000000000000</string>
+				<string name="heightfield">00000000-0000-0000-0000-000000000000</string>
+				<bool name="continuousCollision">false</bool>
+				<f32 name="mass">0</f32>
+			</object>
+		</object>
+	</array>
+	<array name="systemSettings" count="0"/>
+	<u8 name="prefabMode">4</u8>
+	<array name="prefabInstances" count="1">
+		<string name="prefab">191a0d56-f1b1-bc48-b289-644221f843aa</string>
+		<string name="parent">c2748aa6-64e0-580b-93b2-44c7365c6efd</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">3d14b68d-7178-59be-88f3-762af47359ca</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+	</array>
+</root>

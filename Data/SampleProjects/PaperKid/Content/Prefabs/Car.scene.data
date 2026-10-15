@@ -1,1 +1,104 @@
-<root><u32 name="magic">3586350318</u32><u32 name="version">3</u32><string name="name">Car</string><array name="entities" count="1"><string name="id">720e0293-0251-52ed-a022-be1dcd8e549e</string><string name="name">Car</string><u8 name="active">1</u8><string name="parent">00000000-0000-0000-0000-000000000000</string><object name="position"><f32 name="x">0.0</f32><f32 name="y">0.0</f32><f32 name="z">0.0</f32></object><object name="rotation"><f32 name="x">0.0</f32><f32 name="y">0.0</f32><f32 name="z">0.0</f32><f32 name="w">1.0</f32></object><object name="scale"><f32 name="x">1.0</f32><f32 name="y">1.0</f32><f32 name="z">1.0</f32></object></array><array name="components" count="2"><object><string name="owner">720e0293-0251-52ed-a022-be1dcd8e549e</string><string name="type">navigation.Agent</string><object name="data"><array name="dataVersions" count="1"><u64 name="type">17631806423189705212</u64><u32 name="version">2</u32></array><f32 name="radius">1.0</f32><f32 name="height">1.6</f32><f32 name="maxSpeed">12.0</f32><f32 name="maxAcceleration">10.0</f32><bool name="moveEntity">true</bool><f32 name="stopDistance">0</f32></object></object><object><string name="owner">720e0293-0251-52ed-a022-be1dcd8e549e</string><string name="type">script</string><object name="data"><array name="dataVersions" count="1"><u64 name="type">12464980982266880842</u64><u32 name="version">1</u32></array><array name="behaviors" count="2"><string name="script">cb482b3c-60c4-cc45-a9db-9a35dcba15c2</string><bool name="enabled">true</bool><f32 name="updateInterval">0</f32><array name="overrides" count="1"><u64 name="nameHash">15451353252349481386</u64><u8 name="kind">2</u8><f64 name="number">1.0</f64></array><string name="script">d2ca3802-da98-a348-84dc-7ad1116059ac</string><bool name="enabled">true</bool><f32 name="updateInterval">0</f32><array name="overrides" count="1"><u64 name="nameHash">11714910769601064179</u64><u8 name="kind">1</u8><f64 name="number">2.0</f64></array></array></object></object></array><array name="systemSettings" count="0"></array><u8 name="prefabMode">4</u8><array name="prefabInstances" count="1"><string name="prefab">94a27b09-349a-a74b-bc92-af1288bcdf36</string><string name="parent">720e0293-0251-52ed-a022-be1dcd8e549e</string><object name="position"><f32 name="x">0.0</f32><f32 name="y">0.0</f32><f32 name="z">0.0</f32></object><object name="rotation"><f32 name="x">0.0</f32><f32 name="y">0.0</f32><f32 name="z">0.0</f32><f32 name="w">1.0</f32></object><object name="scale"><f32 name="x">1.0</f32><f32 name="y">1.0</f32><f32 name="z">1.0</f32></object><string name="rootLive">3d11b038-8690-58f1-b8fe-9fd814b0c4fb</string><string name="owner">00000000-0000-0000-0000-000000000000</string><string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string><string name="nextSibling">00000000-0000-0000-0000-000000000000</string><u8 name="placement">1</u8><array name="members" count="0"/><array name="destroyed" count="0"/><array name="transformOverrides" count="0"/><array name="componentOps" count="0"/></array></root>
+<root>
+	<u32 name="magic">3586350318</u32>
+	<u32 name="version">3</u32>
+	<string name="name">Car</string>
+	<array name="entities" count="1">
+		<string name="id">720e0293-0251-52ed-a022-be1dcd8e549e</string>
+		<string name="name">Car</string>
+		<u8 name="active">1</u8>
+		<string name="parent">00000000-0000-0000-0000-000000000000</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+	</array>
+	<array name="components" count="2">
+		<object>
+			<string name="owner">720e0293-0251-52ed-a022-be1dcd8e549e</string>
+			<string name="type">script</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">12464980982266880842</u64>
+					<u32 name="version">1</u32>
+				</array>
+				<array name="behaviors" count="2">
+					<string name="script">cb482b3c-60c4-cc45-a9db-9a35dcba15c2</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="1">
+						<u64 name="nameHash">15451353252349481386</u64>
+						<u8 name="kind">2</u8>
+						<f64 name="number">1</f64>
+					</array>
+					<string name="script">d2ca3802-da98-a348-84dc-7ad1116059ac</string>
+					<bool name="enabled">true</bool>
+					<f32 name="updateInterval">0</f32>
+					<array name="overrides" count="1">
+						<u64 name="nameHash">11714910769601064179</u64>
+						<u8 name="kind">1</u8>
+						<f64 name="number">2</f64>
+					</array>
+				</array>
+			</object>
+		</object>
+		<object>
+			<string name="owner">720e0293-0251-52ed-a022-be1dcd8e549e</string>
+			<string name="type">navigation.Agent</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">17631806423189705212</u64>
+					<u32 name="version">2</u32>
+				</array>
+				<f32 name="radius">1</f32>
+				<f32 name="height">1.6</f32>
+				<f32 name="maxSpeed">12</f32>
+				<f32 name="maxAcceleration">10</f32>
+				<bool name="moveEntity">true</bool>
+				<f32 name="stopDistance">0</f32>
+			</object>
+		</object>
+	</array>
+	<array name="systemSettings" count="0"/>
+	<u8 name="prefabMode">4</u8>
+	<array name="prefabInstances" count="1">
+		<string name="prefab">94a27b09-349a-a74b-bc92-af1288bcdf36</string>
+		<string name="parent">720e0293-0251-52ed-a022-be1dcd8e549e</string>
+		<object name="position">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+		</object>
+		<object name="rotation">
+			<f32 name="x">0</f32>
+			<f32 name="y">0</f32>
+			<f32 name="z">0</f32>
+			<f32 name="w">1</f32>
+		</object>
+		<object name="scale">
+			<f32 name="x">1</f32>
+			<f32 name="y">1</f32>
+			<f32 name="z">1</f32>
+		</object>
+		<string name="rootLive">3d11b038-8690-58f1-b8fe-9fd814b0c4fb</string>
+		<string name="owner">00000000-0000-0000-0000-000000000000</string>
+		<string name="nestedSrcRoot">00000000-0000-0000-0000-000000000000</string>
+		<string name="nextSibling">00000000-0000-0000-0000-000000000000</string>
+		<u8 name="placement">1</u8>
+		<array name="members" count="0"/>
+		<array name="destroyed" count="0"/>
+		<array name="transformOverrides" count="0"/>
+		<array name="componentOps" count="0"/>
+	</array>
+</root>

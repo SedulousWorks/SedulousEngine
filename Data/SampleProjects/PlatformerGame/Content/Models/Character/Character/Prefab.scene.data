@@ -711,7 +711,7 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">4838001395392124604</u64>
-					<u32 name="version">4</u32>
+					<u32 name="version">5</u32>
 				</array>
 				<string name="mesh">5fe0880c-fe69-7d48-85cb-f5101f348494</string>
 				<array name="materials" count="2">
@@ -725,6 +725,7 @@
 					<f32 name="a">1</f32>
 				</object>
 				<bool name="visible">true</bool>
+				<f32 name="fade">0</f32>
 				<f32 name="lodBias">0</f32>
 				<i32 name="forceLod">-1</i32>
 			</object>
@@ -735,7 +736,7 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">4838001395392124604</u64>
-					<u32 name="version">4</u32>
+					<u32 name="version">5</u32>
 				</array>
 				<string name="mesh">d6c98395-d9b3-c149-afa6-d60edc234231</string>
 				<array name="materials" count="3">
@@ -750,6 +751,7 @@
 					<f32 name="a">1</f32>
 				</object>
 				<bool name="visible">true</bool>
+				<f32 name="fade">0</f32>
 				<f32 name="lodBias">0</f32>
 				<i32 name="forceLod">-1</i32>
 			</object>
@@ -760,7 +762,7 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">4838001395392124604</u64>
-					<u32 name="version">4</u32>
+					<u32 name="version">5</u32>
 				</array>
 				<string name="mesh">b4a51077-f6b5-ec4f-9900-1ccf773c5c33</string>
 				<array name="materials" count="1">
@@ -773,6 +775,7 @@
 					<f32 name="a">1</f32>
 				</object>
 				<bool name="visible">true</bool>
+				<f32 name="fade">0</f32>
 				<f32 name="lodBias">0</f32>
 				<i32 name="forceLod">-1</i32>
 			</object>
@@ -783,7 +786,7 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">4838001395392124604</u64>
-					<u32 name="version">4</u32>
+					<u32 name="version">5</u32>
 				</array>
 				<string name="mesh">a031f5dc-0c8e-c143-a5f1-fc63395452bf</string>
 				<array name="materials" count="5">
@@ -800,6 +803,7 @@
 					<f32 name="a">1</f32>
 				</object>
 				<bool name="visible">true</bool>
+				<f32 name="fade">0</f32>
 				<f32 name="lodBias">0</f32>
 				<i32 name="forceLod">-1</i32>
 			</object>
@@ -810,7 +814,7 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">3765024947835893819</u64>
-					<u32 name="version">1</u32>
+					<u32 name="version">2</u32>
 				</array>
 				<string name="skeleton">63219612-c2cd-a147-86ed-0806994d2d17</string>
 				<string name="clip">9d570e4d-2821-d043-abc6-bd79566a5dc3</string>
@@ -823,6 +827,8 @@
 					<string>88f54d0a-f4e6-4858-ab09-2342446713ae</string>
 					<string>57836044-efc5-4eee-849d-c68b39fb1e3a</string>
 				</array>
+				<u8 name="rootMotion">0</u8>
+				<string name="rootMotionTarget">00000000-0000-0000-0000-000000000000</string>
 			</object>
 		</object>
 	</array>

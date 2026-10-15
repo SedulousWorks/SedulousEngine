@@ -51,7 +51,7 @@
 			<object name="data">
 				<array name="dataVersions" count="1">
 					<u64 name="type">4838001395392124604</u64>
-					<u32 name="version">4</u32>
+					<u32 name="version">5</u32>
 				</array>
 				<string name="mesh">8183f25d-bd32-4b45-b640-40d6fe6f2a1c</string>
 				<array name="materials" count="7">
@@ -70,6 +70,7 @@
 					<f32 name="a">1</f32>
 				</object>
 				<bool name="visible">true</bool>
+				<f32 name="fade">0</f32>
 				<f32 name="lodBias">0</f32>
 				<i32 name="forceLod">-1</i32>
 			</object>
