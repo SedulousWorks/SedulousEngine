@@ -412,4 +412,54 @@ class NavigationSceneTests
 		Test.Assert(Math.Abs(zone.AgentRadius - 0.6f) < 1e-4f);
 		Test.Assert(trailing == 77, "nothing past the version 1 fields was consumed");
 	}
+
+	/// A warp puts the agent somewhere else at once (a respawn): moving its entity alone is
+	/// undone, as the crowd owns the position. Warped mid walk, it stops where it lands, and
+	/// walks on from there.
+	[Test]
+	public static void AWarpedAgentIsWhereItWasSentAndWalksOnFromThere()
+	{
+		let fixture = scope NavigationSceneFixture("scratch_navwarp_db");
+		let zoneId = fixture.CookGroundZone("zone");
+
+		let scene = scope Scene("nav");
+		NavigationScene.AddNavigationSceneManagers(scene);
+		let zone = scene.GetSystem<NavMeshZoneComponentManager>().Add(scene.CreateEntity("zone"));
+		zone.Extents = .(15, 10, 15);
+		// One slot: the warp gives its slot back before it takes one, so even the agent of a
+		// full crowd warps.
+		zone.MaxAgents = 1;
+		zone.Zone.SetId(zoneId);
+		zone.Zone.Bind(fixture.Manager);
+		let agentEntity = scene.CreateEntity("agent");
+		scene.SetLocalPosition(agentEntity, .(-5, 0, 0));
+		let agent = scene.GetSystem<NavAgentComponentManager>().Add(agentEntity);
+		scene.UpdateTransforms();
+		scene.Start();
+		scene.SetSimulationEnabled(true);
+		Test.Assert(agent.AgentId >= 0);
+
+		// Walking east, it is warped to the far corner: there next tick, stopped.
+		agent.Navigate(.(5, 0, 0));
+		Run(scene, 10);
+		agent.Warp(.(6, 0, 6));
+		scene.Update(cStep);
+		var at = scene.GetWorldPosition(agentEntity);
+		Test.Assert((Math.Abs(at.X - 6.0f) < 0.3f) && (Math.Abs(at.Z - 6.0f) < 0.3f), scope $"warped to ({at.X}, {at.Z})");
+		Test.Assert(agent.Finished);
+		// And it stays there: the crowd holds it where it was sent, not where it was.
+		Run(scene, 15);
+		at = scene.GetWorldPosition(agentEntity);
+		Test.Assert((Math.Abs(at.X - 6.0f) < 0.3f) && (Math.Abs(at.Z - 6.0f) < 0.3f), scope $"held at ({at.X}, {at.Z})");
+
+		// From there it walks on to a new target.
+		agent.Navigate(.(6, 0, -6));
+		Run(scene, cCrossingSteps, agent);
+		at = scene.GetWorldPosition(agentEntity);
+		Test.Assert(agent.Finished);
+		Test.Assert(Math.Abs(at.Z + 6.0f) < 1.5f, scope $"walked on to z {at.Z}");
+
+		scene.SetSimulationEnabled(false);
+		scene.Stop();
+	}
 }

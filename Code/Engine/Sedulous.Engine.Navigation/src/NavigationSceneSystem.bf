@@ -110,9 +110,11 @@ class NavigationSceneSystem : SceneSystem
 			// gets a crowd over the new one, before anything steps the old.
 			RebuildReloadedZones(agents);
 
-			// One: apply the pending requests. The crowd works in ZONE LOCAL space.
+			// One: apply the pending warps and requests. The crowd works in ZONE LOCAL space.
 			agents.ForEach(scope (agent, entity) =>
 				{
+					if (agent.WarpRequested)
+						Warp(agent, entity);
 					ApplyRequests(agent);
 				});
 
@@ -170,6 +172,43 @@ class NavigationSceneSystem : SceneSystem
 		{
 			zone.Crowd.ClearTarget(agent.AgentId);
 			agent.StopRequested = false;
+		}
+	}
+
+	/// A warp: the agent out of its crowd and into the crowd of the zone holding the point (its
+	/// own or another), at the navmesh nearest it, and the entity moved there too (the same
+	/// unparented agent assumption as the read back). Outside every zone it stays out of every
+	/// crowd, said, as an agent placed there at the start is.
+	private void Warp(NavAgentComponent* agent, EntityHandle entity)
+	{
+		agent.WarpRequested = false;
+		if ((agent.ZoneIndex >= 0) && (agent.AgentId >= 0))
+		{
+			let crowd = mZones[agent.ZoneIndex].Crowd;
+			if (crowd != null)
+				crowd.RemoveAgent(agent.AgentId);
+		}
+		agent.AgentId = -1;
+		agent.ZoneIndex = FindZoneContaining(agent.WarpTo);
+		var transform = mScene.GetLocalTransform(entity);
+		transform.Position = agent.WarpTo;
+		mScene.SetLocalTransform(entity, transform);
+		if (agent.ZoneIndex < 0)
+		{
+			GlobalLog(.Warning, "Navigation: agent '{}' warped to ({}, {}, {}), in no navigation zone; it will not move",
+				mScene.GetEntityName(entity), agent.WarpTo.X, agent.WarpTo.Y, agent.WarpTo.Z);
+			return;
+		}
+
+		let zone = mZones[agent.ZoneIndex];
+		if (zone.Crowd == null)
+			return;
+		agent.AgentId = AddToCrowd(zone, agent, agent.WarpTo);
+		if (agent.AgentId >= 0)
+		{
+			// Where the crowd placed it: the navmesh under the point, not the point itself.
+			transform.Position = TransformPoint(zone.Crowd.AgentPosition(agent.AgentId), zone.World);
+			mScene.SetLocalTransform(entity, transform);
 		}
 	}
 

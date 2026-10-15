@@ -61,6 +61,11 @@ struct NavAgentComponent : ISerializable
 	/// A halt the tick has not applied yet.
 	[Hidden]
 	public bool StopRequested = false;
+	/// A warp the tick has not applied yet, and where to.
+	[Hidden]
+	public bool WarpRequested = false;
+	[Hidden]
+	public Float3 WarpTo = .(0, 0, 0);
 	/// Whether the agent has arrived, or has nowhere to go: the tick's to set, a script's to
 	/// read.
 	[Scriptable]
@@ -127,6 +132,21 @@ struct NavAgentComponent : ISerializable
 	{
 		HasTarget = false;
 		StopRequested = true;
+		Finished = true;
+	}
+
+	/// Puts the agent somewhere else at once (a respawn, a door to another room, a late joiner
+	/// placed): the crowd owns an agent's position, so moving its entity is undone next tick.
+	/// Applied next tick: out of its crowd and back in at the navmesh nearest the point, in
+	/// whichever zone holds it, stopped, with the entity there too.
+	[Scriptable]
+	public void Warp(Float3 position) mut
+	{
+		WarpTo = position;
+		WarpRequested = true;
+		HasTarget = false;
+		TargetDirty = false;
+		StopRequested = false;
 		Finished = true;
 	}
 
