@@ -56,4 +56,9 @@ class MultiMeshRenderData : MeshRenderData
 	/// Consumed only under the explicit policy, and borrowed. Null there means the caller's
 	/// array was absent or the wrong size, which falls back to hashing.
 	public uint32* PoseIndices = null;
+	/// A pool of several clips: each instance's clip index, borrowed, InstanceCount entries;
+	/// null puts every instance on clip nought. The clip picks the block, the policy the phase.
+	public uint32* InstanceClips = null;
+	/// Palettes per clip, a block per clip in order; nought is one clip, the whole pool.
+	public uint32 PosesPerClip = 0;
 }

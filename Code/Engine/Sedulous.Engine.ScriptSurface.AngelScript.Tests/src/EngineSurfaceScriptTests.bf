@@ -51,7 +51,7 @@ static class EngineSurfaceScriptTests
 		File.WriteAllText(apiPath, text).IgnoreError();
 		// One bound type per surface type: the facades, the components, the values they pass,
 		// the globals.
-		Test.Assert(api.Count == 111, scope $"{api.Count} bound types");
+		Test.Assert(api.Count == 113, scope $"{api.Count} bound types");
 		// Spot checks of the spelling at the engine's scale.
 		var scene = (ScriptApiType)null;
 		for (let t in api)
@@ -454,6 +454,39 @@ static class EngineSurfaceScriptTests
 		var missing = ScriptValue[1](.FromEntity(bystander, scene));
 		Test.Assert(!vm.Call("game", "float probe(const Entity &in)", missing, ref r), "no character: refused");
 		Test.Assert(!characters.Has(bystander), "reading never adds a character");
+	}
+
+	/// A behaviour sets its member's clip and its crowd's pose policy through their components.
+	[Test]
+	public static void AScriptSetsAMembersClipAndItsCrowdsPosePolicy()
+	{
+		let s = scope ScriptSurface();
+		EngineScriptSurface.Populate(s);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(s);
+		let ok = vm.Compile("game", "game.as", """
+			void dance(const Entity &in self)
+			{
+				InstanceMemberComponent(self).Clip = 3;
+				InstancedMeshComponent(self).PoseAssignment = PoseAssignment::Unison;
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let scene = scope Scene("crowd");
+		defer Sedulous.Script.SceneFacades.Release(scene);
+		let sets = scene.AddSystem<Sedulous.Engine.Render.InstancedMeshComponentManager>();
+		let members = scene.AddSystem<Sedulous.Engine.Render.InstanceMemberComponentManager>();
+		let e = scene.CreateEntity("e");
+		sets.Add(e);
+		members.Add(e).Clip = 0;
+		var args = ScriptValue[1](.FromEntity(e, scene));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("game", "void dance(const Entity &in)", args, ref r), "ran");
+		Test.Assert(members.Get(e).Clip == 3);
+		Test.Assert(sets.Get(e).PoseAssignment == .Unison);
 	}
 
 	/// A board's surface: the motion and the ground under the character read, never written

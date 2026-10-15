@@ -10,21 +10,34 @@ static class PoseSelection
 {
 	/// The pose for one instance of a set. Every branch answers within the palette count, and
 	/// no palettes at all answers the first.
+	///
+	/// A pool of several clips (`posesPerClip` above nought, a block of that many palettes per
+	/// clip): `clip` picks the block (wrapped to the clips the pool holds) and the policy picks
+	/// the phase inside it, so explicit indices are phases within the clip. Unison is phase
+	/// nought for every instance: a clip's instances move in step. One clip (posesPerClip
+	/// nought, or the whole pool) selects as before.
 	public static uint32 SelectPose(PoseAssignment policy, uint32 index, uint32 poseCount,
-		uint32* explicitIndices)
+		uint32* explicitIndices, uint32 clip = 0, uint32 posesPerClip = 0)
 	{
 		if (poseCount == 0)
 			return 0;
 
+		let m = ((posesPerClip > 0) && (posesPerClip <= poseCount)) ? posesPerClip : poseCount;
+		let clips = poseCount / m;
+		let block = ((clips > 0) ? (clip % clips) : 0) * m;
+
 		// A null array means the caller's was absent or mismatched, which degrades to hashing
 		// rather than reading past the end of it.
 		if ((policy == .Explicit) && (explicitIndices != null))
-			return explicitIndices[index] % poseCount;
+			return block + explicitIndices[index] % m;
 
 		if (policy == .Sequential)
-			return index % poseCount;
+			return block + index % m;
 
-		return (uint32)(HashInteger(index) % (uint64)poseCount);
+		if (policy == .Unison)
+			return block;
+
+		return block + (uint32)(HashInteger(index) % (uint64)m);
 	}
 
 	/// A whole column shares a phase, which reads as a formation.

@@ -100,4 +100,33 @@ class PoseSelectionTests
 				Test.Assert(PoseSelection.ClusterPose(column, row, 4, 8) < 8);
 		}
 	}
+
+	/// A clip per instance picks its block of the pool; the policy picks the phase inside it.
+	[Test]
+	public static void AClipPerInstancePicksItsBlockThePolicyThePhaseInsideIt()
+	{
+		// Three clips at four poses each: clip c's poses are 4c to 4c + 3.
+		const uint32 cPerClip = 4;
+		const uint32 cPool = 3 * cPerClip;
+		for (uint32 i < 40)
+		{
+			for (uint32 clip < 3)
+			{
+				let hashed = PoseSelection.SelectPose(.Hashed, i, cPool, null, clip, cPerClip);
+				Test.Assert(hashed / cPerClip == clip, "in its clip's block");
+				Test.Assert(hashed % cPerClip == PoseSelection.SelectPose(.Hashed, i, cPerClip, null), "the same phase");
+				Test.Assert(PoseSelection.SelectPose(.Sequential, i, cPool, null, clip, cPerClip) == clip * cPerClip + i % cPerClip);
+				// Unison: every instance on a clip at that clip's one phase (a crowd in step).
+				Test.Assert(PoseSelection.SelectPose(.Unison, i, cPool, null, clip, cPerClip) == clip * cPerClip);
+			}
+		}
+		// Explicit indices are phases within the clip.
+		uint32[2] phases = .(1, 6);
+		Test.Assert(PoseSelection.SelectPose(.Explicit, 0, cPool, &phases[0], 2, cPerClip) == 2 * cPerClip + 1);
+		Test.Assert(PoseSelection.SelectPose(.Explicit, 1, cPool, &phases[0], 1, cPerClip) == 1 * cPerClip + 2); // 6 % 4
+		// A clip past the pool wraps; one clip (no posesPerClip) selects as before.
+		Test.Assert(PoseSelection.SelectPose(.Unison, 0, cPool, null, 4, cPerClip) == 1 * cPerClip);
+		Test.Assert(PoseSelection.SelectPose(.Sequential, 7, cPool, null) == 7);
+		Test.Assert(PoseSelection.SelectPose(.Unison, 9, 8, null) == 0);
+	}
 }

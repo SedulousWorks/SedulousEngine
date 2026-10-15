@@ -22,7 +22,7 @@ namespace Sedulous.Engine.Render;
 /// renderer re uploads, and extraction recomputes the merged bounds, ONLY when that changes.
 ///
 /// Every list here is BORROWED from the manager, which creates and frees them.
-[SerializableComponent("instanced_mesh")]
+[SerializableComponent("instanced_mesh", 2, 1)]
 [DisplayName("Instanced Mesh")]
 [Category("Rendering")]
 [Scriptable]
@@ -61,16 +61,40 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 	[Hidden]
 	public uint32 BoneCount = 0;
 
-	/// How an instance picks its pose. Hashed scatters each one to an unrelated pose, which
-	/// is what an independent agent crowd wants. Explicit reads the indices below, for a
-	/// layout the renderer cannot derive from a flat index: columns, clusters, gameplay.
-	/// Explicit with a missing or mismatched list falls back to Hashed.
+	/// How an animated instance picks its phase. Hashed scatters each one to an unrelated
+	/// pose, which is what an independent agent crowd wants; Sequential goes by its order;
+	/// Explicit reads the indices below, for a layout the renderer cannot derive from a flat
+	/// index (columns, clusters, gameplay), and falls back to Hashed with a missing or
+	/// mismatched list; Unison puts every instance on a clip in step.
 	///
 	/// NOT a mutator: it is read each frame while filling the offsets rather than uploaded.
-	[Hidden]
+	[Scriptable, Description("How an animated instance picks its phase: Hashed (scattered), Sequential (by its order), Explicit (its pose index), Unison (all in step)")]
 	public PoseAssignment PoseAssignment = .Hashed;
 	[Hidden]
 	public List<uint32> PoseIndices = null;
+	/// A clip per instance, parallel to the instances, when the pose pool holds several clips
+	/// (an instanced skinning with a clip list): the clip picks its block of poses, the policy
+	/// the phase in it. Empty or mismatched puts every instance on clip nought. Read each
+	/// frame, like the pose indices: not a mutator.
+	[Hidden]
+	public List<uint32> InstanceClips = null;
+	/// Palettes per clip in the pose pool, set with the pool. Runtime only.
+	[Hidden]
+	public uint32 PosesPerClip = 0;
+
+	/// Its instance members this frame (their world transforms and clips), gathered by
+	/// extraction and drawn after the authored instances; never saved. The draw lists are the
+	/// authored and member lists together, when there are members. Runtime only.
+	[Hidden]
+	public List<Float4x4> MemberWorld = null;
+	[Hidden]
+	public List<uint32> MemberClips = null;
+	[Hidden]
+	public List<Float4x4> DrawTransforms = null;
+	[Hidden]
+	public List<uint32> DrawClips = null;
+	[Hidden]
+	public List<Color> DrawTints = null;
 
 	/// Bumped by every mutator. Starts at one so the first extract, which has uploaded
 	/// version zero, always uploads.
@@ -163,5 +187,16 @@ struct InstancedMeshComponent : ISerializable, IComponentResources
 		SerializeList(ar, Tints);
 
 		SerializeValue(ar, "visible", ref Visible);
+
+		// Version 1 had no pose policy: an animated set hashed its phases, as a fresh one does.
+		if ((ar.Mode == .Read) && (ar.Version == 1))
+			return;
+		var policy = (uint8)PoseAssignment;
+		SerializeValue(ar, "poseAssignment", ref policy);
+		PoseAssignment = (PoseAssignment)policy;
+		ar.Key("poseIndices");
+		SerializeList(ar, PoseIndices);
+		ar.Key("instanceClips");
+		SerializeList(ar, InstanceClips);
 	}
 }

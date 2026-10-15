@@ -36,6 +36,12 @@ class InstancedMeshRefTests
 			component.SetInstances(.(&authored[0], 2));
 			component.Tints.Add(Color(1, 0, 0, 1));
 			component.Tints.Add(Color(0, 1, 0, 1));
+			// How the animated instances pick their poses is authored too.
+			component.PoseAssignment = .Unison;
+			component.PoseIndices.Add(3);
+			component.PoseIndices.Add(5);
+			component.InstanceClips.Add(0);
+			component.InstanceClips.Add(2);
 
 			let writer = scope BinarySerializer(blob, .Write);
 			SceneSerializer.SerializeScene(writer, scene);
@@ -64,6 +70,9 @@ class InstancedMeshRefTests
 		Test.Assert(Near(component.Instances[1].M[3][1], 2.0f));
 		Test.Assert(component.Tints.Count == 2);
 		Test.Assert(Near(component.Tints[1].G, 1.0f));
+		Test.Assert(component.PoseAssignment == .Unison);
+		Test.Assert((component.PoseIndices.Count == 2) && (component.PoseIndices[1] == 5));
+		Test.Assert((component.InstanceClips.Count == 2) && (component.InstanceClips[1] == 2));
 
 		// The runtime state starts fresh, so the FIRST extract recomposes and re-uploads.
 		Test.Assert(component.Version >= 1);

@@ -237,13 +237,35 @@ static class RenderExtract
 		if (sets == null)
 			return;
 
+		// This frame's members: each active instance member's world transform and clip, on the
+		// instanced mesh it names (drawn after that mesh's authored instances).
+		sets.ForEach(scope (component, entity) =>
+			{
+				component.MemberWorld.Clear();
+				component.MemberClips.Clear();
+			});
+		if (let members = scene.GetSystem<InstanceMemberComponentManager>())
+		{
+			members.ForEach(scope (member, entity) =>
+				{
+					if (!scene.IsEffectivelyActive(entity) || member.InstancedMesh.Id.IsNil)
+						return;
+					let target = scene.FindEntity(member.InstancedMesh.Id);
+					let set = scene.IsValid(target) ? sets.Get(target) : null;
+					if (set == null)
+						return;
+					set.MemberWorld.Add(scene.GetWorldMatrix(entity));
+					set.MemberClips.Add(member.Clip);
+				});
+		}
+
 		sets.ForEach(scope (component, entity) =>
 			{
 				// Gated BEFORE the caches below: an inactive set is simply absent from the
 				// snapshot. The renderer draws from the snapshot, and its buffer is only a
 				// cache that revalidates by version when the set comes back.
 				if (!scene.IsEffectivelyActive(entity) || !component.Visible
-					|| (component.Mesh.Get == null) || (component.Count == 0))
+					|| (component.Mesh.Get == null) || ((component.Count == 0) && component.MemberWorld.IsEmpty))
 					return;
 
 				// The entity relative instances are composed into world space and CACHED,
@@ -266,13 +288,26 @@ static class RenderExtract
 					component.ComposedVersion++;
 				}
 
+				// Members join after the authored instances, every frame (they move): the drawn
+				// list is both, re-uploaded each frame they exist.
+				let hasMembers = !component.MemberWorld.IsEmpty;
+				let drawnCount = component.Count + (uint32)component.MemberWorld.Count;
+				if (hasMembers)
+				{
+					component.DrawTransforms.Clear();
+					component.DrawTransforms.AddRange(component.WorldTransforms);
+					component.DrawTransforms.AddRange(component.MemberWorld);
+					component.ComposedVersion++;
+				}
+				let drawn = hasMembers ? component.DrawTransforms : component.WorldTransforms;
+
 				// The merged bounds are the union of the mesh's local box under every composed
 				// instance, cached the same way and rebuilt only when that set changed.
 				if (component.BoundsVersion != component.ComposedVersion)
 				{
 					let localBounds = component.Mesh.Get.Bounds;
 					var merged = AABB.Empty();
-					for (let transform in component.WorldTransforms)
+					for (let transform in drawn)
 					{
 						let center = TransformPoint(localBounds.Center(), transform);
 						let radius = WorldBoundsRadius(localBounds, transform);
@@ -291,11 +326,19 @@ static class RenderExtract
 				data.MultiMesh = true;
 				data.Key = PackEntity(entity);
 				// BORROWED for the frame, which the snapshot being immutable is what makes safe.
-				data.Transforms = component.WorldTransforms.Ptr;
+				data.Transforms = drawn.Ptr;
 				let tintsMatch = !component.LinearTints.IsEmpty
 					&& (component.LinearTints.Count == component.Instances.Count);
-				data.Tints = tintsMatch ? component.LinearTints.Ptr : null;
-				data.InstanceCount = component.Count;
+				if (tintsMatch && hasMembers)
+				{
+					// The authored tints, then the members untinted.
+					component.DrawTints.Clear();
+					component.DrawTints.AddRange(component.LinearTints);
+					for (int i < component.MemberWorld.Count)
+						component.DrawTints.Add(.(1.0f, 1.0f, 1.0f, 1.0f));
+				}
+				data.Tints = tintsMatch ? (hasMembers ? component.DrawTints.Ptr : component.LinearTints.Ptr) : null;
+				data.InstanceCount = drawnCount;
 				data.Version = component.ComposedVersion;
 				data.Mesh = component.Mesh.Get;
 				data.Material = component.Material.Get;
@@ -320,9 +363,25 @@ static class RenderExtract
 				// The explicit indices are borrowed ONLY when the policy asks for them and the
 				// list is the right length; otherwise null leaves the renderer on its hashed
 				// default rather than reading a mismatched array.
-				let explicitPoses = (component.PoseAssignment == .Explicit)
+				let explicitPoses = (component.PoseAssignment == .Explicit) && !hasMembers
 					&& (component.PoseIndices.Count == component.Instances.Count);
 				data.PoseIndices = explicitPoses ? component.PoseIndices.Ptr : null;
+				// A clip per instance: the authored list when it matches the instances (else clip
+				// nought), then each member's own.
+				let authoredClips = component.InstanceClips.Count == component.Instances.Count;
+				if (hasMembers)
+				{
+					component.DrawClips.Clear();
+					for (int i < component.Instances.Count)
+						component.DrawClips.Add(authoredClips ? component.InstanceClips[i] : 0);
+					component.DrawClips.AddRange(component.MemberClips);
+					data.InstanceClips = component.DrawClips.Ptr;
+				}
+				else
+				{
+					data.InstanceClips = authoredClips ? component.InstanceClips.Ptr : null;
+				}
+				data.PosesPerClip = component.PosesPerClip;
 
 				// The renderer id stays nought, since the mesh renderer draws these too, and
 				// the world matrix stays identity: the per instance transforms ride above.

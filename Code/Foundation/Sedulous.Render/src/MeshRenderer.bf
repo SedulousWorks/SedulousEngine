@@ -1263,7 +1263,8 @@ class MeshRenderer : Renderer
 				// slot is stable per instance across frames, so the previous pose lines up and
 				// the motion vectors stay right.
 				let pose = PoseSelection.SelectPose(multiMesh.PoseAssignment, i, multiMesh.PoseCount,
-					multiMesh.PoseIndices);
+					multiMesh.PoseIndices, (multiMesh.InstanceClips != null) ? multiMesh.InstanceClips[i] : 0,
+					multiMesh.PosesPerClip);
 				let bucket = pose * multiMesh.PoseBoneCount;
 				mapped[regionBase + i] = MeshDataOffsets(i, pool.Base + bucket, pool.PrevBase + bucket, 0);
 			}

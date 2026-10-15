@@ -37,6 +37,12 @@ class InstancedMeshComponentManager : ResourceBindingComponentManager<InstancedM
 		component.Instances = new List<Float4x4>();
 		component.Tints = new List<Color>();
 		component.PoseIndices = new List<uint32>();
+		component.InstanceClips = new List<uint32>();
+		component.MemberWorld = new List<Float4x4>();
+		component.MemberClips = new List<uint32>();
+		component.DrawTransforms = new List<Float4x4>();
+		component.DrawClips = new List<uint32>();
+		component.DrawTints = new List<Color>();
 		component.WorldTransforms = new List<Float4x4>();
 		component.LinearTints = new List<Color>();
 
@@ -52,6 +58,12 @@ class InstancedMeshComponentManager : ResourceBindingComponentManager<InstancedM
 		DeleteAndNullify!(component.Instances);
 		DeleteAndNullify!(component.Tints);
 		DeleteAndNullify!(component.PoseIndices);
+		DeleteAndNullify!(component.InstanceClips);
+		DeleteAndNullify!(component.MemberWorld);
+		DeleteAndNullify!(component.MemberClips);
+		DeleteAndNullify!(component.DrawTransforms);
+		DeleteAndNullify!(component.DrawClips);
+		DeleteAndNullify!(component.DrawTints);
 		DeleteAndNullify!(component.WorldTransforms);
 		DeleteAndNullify!(component.LinearTints);
 	}
