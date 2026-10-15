@@ -16,6 +16,9 @@ struct ProfilerPalette
 	public Color Cpu = .(0.36f, 0.70f, 1.0f, 1.0f);
 	public Color Gpu = .(1.0f, 0.64f, 0.26f, 1.0f);
 	public Color Budget = .(1.0f, 1.0f, 1.0f, 0.28f);
+	public Color Selection = .(0.36f, 0.70f, 1.0f, 0.18f);
+	public Color Highlight = .(1.0f, 1.0f, 1.0f, 0.9f);
+	public Color Grid = .(1.0f, 1.0f, 1.0f, 0.10f);
 
 	public this() {}
 }
@@ -47,6 +50,8 @@ abstract class ProfilerView : View
 
 	protected IProfileSource mSource;
 	protected uint32 mFrameCount = 120;
+	/// Set: exactly these frames.
+	protected FrameRange mRange = .();
 
 	public ProfilerPalette Palette = .();
 
@@ -77,6 +82,14 @@ abstract class ProfilerView : View
 		}
 	}
 
+	/// Looks at exactly these frames (the panel's selection) instead of the newest FrameCount;
+	/// an empty range goes back to the newest.
+	public void SetRange(FrameRange range)
+	{
+		mRange = range;
+		Refresh();
+	}
+
 	/// Recomputes what it shows from the source (a new frame arrived) and asks for a draw.
 	public void Refresh()
 	{
@@ -90,7 +103,15 @@ abstract class ProfilerView : View
 	/// The source, or one with no frames, so a view reads the same either way.
 	protected IProfileSource SourceOrEmpty => (mSource != null) ? mSource : sEmpty;
 
-	protected FrameRange Range => (mSource != null) ? ProfileWindow.LastFrames(mSource, mFrameCount) : FrameRange();
+	protected FrameRange Range
+	{
+		get
+		{
+			if (!mRange.Empty)
+				return mRange;
+			return (mSource != null) ? ProfileWindow.LastFrames(mSource, mFrameCount) : FrameRange();
+		}
+	}
 
 	protected static void DrawLabel(UIDrawContext ctx, StringView text, Rectangle bounds, Color color,
 		TextAlignment align = .Left)

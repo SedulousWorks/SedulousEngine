@@ -45,6 +45,27 @@ struct FrameRange
 	}
 }
 
+/// A name's time over a range of frames: every scope (or GPU pass) by that name, their total
+/// time, their own time (children taken out; a pass's is its total) and their count.
+struct NameTotal
+{
+	public uint32 Name;
+	public bool Gpu;
+	public int64 TotalTicks;
+	public int64 SelfTicks;
+	public uint64 Count;
+}
+
+/// Totals by name over a range, CPU scopes on every thread and GPU passes apart; Frames is how
+/// many frames had a record (for the scopes; GpuFrames counts the frames whose passes landed).
+class RangeTotals
+{
+	public List<NameTotal> Scopes = new .() ~ delete _;
+	public List<NameTotal> Passes = new .() ~ delete _;
+	public uint32 Frames;
+	public uint32 GpuFrames;
+}
+
 /// Which events a top list ranks.
 enum TopLane : uint8
 {
@@ -158,41 +179,37 @@ static class ProfileWindow
 		return stats;
 	}
 
-	/// The `count` names that took longest over `range`, longest first.
-	public static void CollectTop(IProfileSource source, FrameRange range, TopLane lane, uint32 count, List<TopEntry> outTop)
+	public static void CollectTotals(IProfileSource source, FrameRange range, RangeTotals outTotals)
 	{
-		outTop.Clear();
+		outTotals.Scopes.Clear();
+		outTotals.Passes.Clear();
+		outTotals.Frames = 0;
+		outTotals.GpuFrames = 0;
 		if (range.Empty)
 			return;
-		let ticks = scope List<int64>(); // by name id
-		let calls = scope List<uint64>();
+		let scopeAt = scope List<int32>(); // by name id: its index in Scopes, or -1
+		let passAt = scope List<int32>();
 		let childTicks = scope List<int64>(); // per depth: the time the scopes ended below it took
-		uint32 frames = 0;
-		void Add(uint32 name, int64 duration)
+		int Entry(List<NameTotal> list, List<int32> at, uint32 name, bool gpu)
 		{
-			if (name >= (uint32)ticks.Count)
+			while ((uint32)at.Count <= name)
+				at.Add(-1);
+			if (at[(int)name] < 0)
 			{
-				while (ticks.Count <= name)
-				{
-					ticks.Add(0);
-					calls.Add(0);
-				}
+				at[(int)name] = (int32)list.Count;
+				var total = NameTotal();
+				total.Name = name;
+				total.Gpu = gpu;
+				list.Add(total);
 			}
-			ticks[name] += duration;
-			calls[name]++;
+			return at[(int)name];
 		}
 		for (var n = range.First; n <= range.Last; n++)
 		{
 			let frame = source.Frame(n);
-			if ((frame == null) || ((lane == .GpuPasses) && !frame.GpuValid))
+			if (frame == null)
 				continue;
-			frames++;
-			if (lane == .GpuPasses)
-			{
-				for (let pass in frame.Gpu)
-					Add(pass.Name, pass.EndTick - pass.BeginTick);
-				continue;
-			}
+			outTotals.Frames++;
 			// A thread's scopes are in the order they ended, so a scope's children come before
 			// it: what ended one level deeper since the last scope at its depth is its children.
 			for (let thread in frame.Threads)
@@ -200,35 +217,60 @@ static class ProfileWindow
 				childTicks.Clear();
 				for (let scopeEvent in thread.Scopes)
 				{
-					while (childTicks.Count < scopeEvent.Depth + 2)
+					let depth = (int)scopeEvent.Depth;
+					while (childTicks.Count < depth + 2)
 						childTicks.Add(0);
 					let duration = scopeEvent.EndTick - scopeEvent.BeginTick;
-					let children = Math.Min(childTicks[scopeEvent.Depth + 1], duration);
-					childTicks[scopeEvent.Depth + 1] = 0;
-					childTicks[scopeEvent.Depth] += duration;
-					Add(scopeEvent.Name, duration - children);
+					let children = Math.Min(childTicks[depth + 1], duration);
+					childTicks[depth + 1] = 0;
+					childTicks[depth] += duration;
+					let index = Entry(outTotals.Scopes, scopeAt, scopeEvent.Name, false);
+					outTotals.Scopes[index].TotalTicks += duration;
+					outTotals.Scopes[index].SelfTicks += duration - children;
+					outTotals.Scopes[index].Count++;
+				}
+			}
+			if (frame.GpuValid)
+			{
+				outTotals.GpuFrames++;
+				for (let pass in frame.Gpu)
+				{
+					let index = Entry(outTotals.Passes, passAt, pass.Name, true);
+					let duration = pass.EndTick - pass.BeginTick;
+					outTotals.Passes[index].TotalTicks += duration;
+					outTotals.Passes[index].SelfTicks += duration;
+					outTotals.Passes[index].Count++;
 				}
 			}
 		}
+	}
+
+	/// The `count` names that took longest over `range` (scopes by their own time), longest
+	/// first.
+	public static void CollectTop(IProfileSource source, FrameRange range, TopLane lane, uint32 count, List<TopEntry> outTop)
+	{
+		outTop.Clear();
+		let totals = scope RangeTotals();
+		CollectTotals(source, range, totals);
+		let gpu = lane == .GpuPasses;
+		let frames = gpu ? totals.GpuFrames : totals.Frames;
 		if (frames == 0)
 			return;
 		let frequency = source.TickFrequency;
-		for (int id < ticks.Count)
+		for (let total in gpu ? totals.Passes : totals.Scopes)
 		{
-			if (calls[id] == 0)
-				continue;
 			var entry = TopEntry();
-			entry.Name = (uint32)id;
-			entry.MsPerFrame = TicksToMs(ticks[id], frequency) / (float)frames;
-			entry.CallsPerFrame = (float)calls[id] / (float)frames;
-			// Inserted in order, longest first, keeping `count`.
+			entry.Name = total.Name;
+			entry.MsPerFrame = TicksToMs(total.SelfTicks, frequency) / (float)frames;
+			entry.CallsPerFrame = (float)total.Count / (float)frames;
+			// Inserted in order, longest first (the earlier name first on a tie), keeping `count`.
 			var at = outTop.Count;
 			while ((at > 0) && (outTop[at - 1].MsPerFrame < entry.MsPerFrame))
 				at--;
-			if (at >= count)
+			if (at >= (int)count)
 				continue;
 			outTop.Insert(at, entry);
-			if (outTop.Count > count)
+			if (outTop.Count > (int)count)
 				outTop.PopBack();
 		}
 	}
@@ -257,9 +299,9 @@ static class ProfileWindow
 			{
 				if (value.Counter < (uint32)counters)
 				{
-					sums[value.Counter] += value.Value;
-					seen[value.Counter]++;
-					outReadings[value.Counter].Latest = value.Value; // frames run oldest first
+					sums[(int)value.Counter] += value.Value;
+					seen[(int)value.Counter]++;
+					outReadings[(int)value.Counter].Latest = value.Value; // frames run oldest first
 				}
 			}
 		}

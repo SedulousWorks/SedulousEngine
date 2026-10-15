@@ -59,6 +59,33 @@ class KnownSource : IProfileSource
 		frame.Threads[0].Scopes.Add(.(name, depth, frame.BeginTick + begin, frame.BeginTick + end));
 	}
 
+	/// A second thread's table entry; its scopes go in with AddScopeOn.
+	public uint32 Thread(StringView name)
+	{
+		let info = new ThreadInfo();
+		info.Index = (uint32)mThreads.Count;
+		info.Name.Set(name);
+		mThreads.Add(info);
+		return (uint32)(mThreads.Count - 1);
+	}
+
+	public static void AddScopeOn(FrameRecord frame, uint32 thread, uint32 name, uint32 depth, int64 begin, int64 end)
+	{
+		ThreadFrame lane = null;
+		for (let t in frame.Threads)
+		{
+			if (t.Thread == thread)
+				lane = t;
+		}
+		if (lane == null)
+		{
+			lane = new ThreadFrame();
+			lane.Thread = thread;
+			frame.Threads.Add(lane);
+		}
+		lane.Scopes.Add(.(name, depth, frame.BeginTick + begin, frame.BeginTick + end));
+	}
+
 	public static void AddPass(FrameRecord frame, uint32 name, int64 begin, int64 end)
 	{
 		frame.Gpu.Add(.(name, 0, 0, frame.BeginTick + begin, frame.BeginTick + end));

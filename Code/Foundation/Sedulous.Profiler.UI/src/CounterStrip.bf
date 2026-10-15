@@ -32,6 +32,7 @@ class CounterStrip : ProfilerView
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		let column = Width / (float)Columns;
+		ctx.PushClip(.(0, 0, Width, Height)); // given less room, it clips
 		for (int i < mRows.Count)
 		{
 			let cell = CellOf(i);
@@ -40,6 +41,7 @@ class CounterStrip : ProfilerView
 			DrawLabel(ctx, mRows[i].Name, .(x, y, column - 70, LineHeight), Palette.Dim);
 			DrawLabel(ctx, mRows[i].Value, .(x + column - 72, y, 68, LineHeight), Palette.Text, .Right);
 		}
+		ctx.PopClip();
 	}
 
 	/// Where row `index` draws: across the columns, then down a line. Whole numbers of rows: an
@@ -69,7 +71,7 @@ class CounterStrip : ProfilerView
 		{
 			if (!reading.Present || (reading.Counter >= (uint32)infos.Length))
 				continue;
-			let info = infos[reading.Counter];
+			let info = infos[(int)reading.Counter];
 			let row = new Row();
 			row.Name.Set(info.Name);
 			ProfileWindow.FormatCounter((info.Unit == .Bytes) ? reading.Latest : reading.Mean, info.Unit, row.Value);

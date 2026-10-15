@@ -7,7 +7,10 @@ using Sedulous.UI;
 namespace Sedulous.Profiler.UI;
 
 /// The last frames' CPU and GPU times as two lines, the CPU's filled beneath, against the 60
-/// and 30 frames a second budgets; the scale doubles from 20 ms until it holds the highest.
+/// and 30 frames a second budgets; the scale doubles from 20 ms until it holds the highest, so
+/// a hitch neither flattens the rest for long nor makes the graph jitter. In the editor's
+/// panel it is the frame strip: fitted to every frame its source holds, and interactive, a
+/// click selecting a frame and a drag a range, which the panel's timeline and table then show.
 class FrameTimeGraph : ProfilerView
 {
 	public const float GraphHeight = 64.0f;
@@ -17,12 +20,107 @@ class FrameTimeGraph : ProfilerView
 	private List<Float2> mCpuPoints = new .() ~ delete _;
 	private List<Float2> mGpuPoints = new .() ~ delete _;
 	private float mScaleMs = 20.0f;
+	/// View units a frame.
+	private float mStep;
+	private bool mFit;
+	private FrameRange mSelection = .();
+	/// The frame a drag began on.
+	private uint64 mAnchor;
+	private bool mDragging;
+
+	/// Who hears when a click or a drag changes the selection.
+	public Event<delegate void(FrameRange selection)> OnSelectionChanged ~ _.Dispose();
 
 	/// The model: the frames shown, the graph's top in ms, and the lines' points in the view.
 	public Span<FrameTime> Times => mTimes;
 	public float ScaleMs => mScaleMs;
 	public Span<Float2> CpuPoints => mCpuPoints;
 	public Span<Float2> GpuPoints => mGpuPoints;
+
+	/// Shows every frame the source holds across the width (the panel's strip), rather than
+	/// the newest FrameCount.
+	public bool FitToSource
+	{
+		get => mFit;
+		set
+		{
+			mFit = value;
+			Refresh();
+		}
+	}
+
+	/// Takes the pointer: a click selects the frame under it, a drag the frames it spans.
+	public bool Interactive
+	{
+		get => IsHitTestVisible;
+		set => IsHitTestVisible = value;
+	}
+
+	public override bool OwnsPressDrag => IsHitTestVisible;
+
+	/// The frames selected (empty for none).
+	public FrameRange Selection
+	{
+		get => mSelection;
+		set
+		{
+			mSelection = value;
+			InvalidateVisual();
+		}
+	}
+
+	/// The frame drawn nearest `x` in the view (none when it shows no frames).
+	public FrameRange FrameAt(float x)
+	{
+		var at = FrameRange();
+		if (mTimes.IsEmpty)
+			return at;
+		let newest = mTimes.Back.Frame;
+		let back = (mStep > 0.0f) ? ((Width - x) / mStep + 0.5f) : 0.0f;
+		let steps = (back <= 0.0f) ? 0 : (uint64)back;
+		let oldest = mTimes[0].Frame;
+		at.First = (steps > newest - oldest) ? oldest : (newest - steps);
+		at.Last = at.First;
+		at.Empty = false;
+		return at;
+	}
+
+	public override void OnMouseDown(MouseEventArgs e)
+	{
+		let at = FrameAt(e.X);
+		if ((e.Button != .Left) || at.Empty)
+			return;
+		mAnchor = at.First;
+		mDragging = true;
+		Select(at);
+		if (Context != null)
+			Context.GetFocusManager().SetCapture(this);
+		e.Handled = true;
+	}
+
+	public override void OnMouseMove(MouseEventArgs e)
+	{
+		let at = FrameAt(e.X);
+		if (!mDragging || at.Empty)
+			return;
+		var range = FrameRange();
+		range.First = Math.Min(mAnchor, at.First);
+		range.Last = Math.Max(mAnchor, at.First);
+		range.Empty = false;
+		if ((range.First != mSelection.First) || (range.Last != mSelection.Last))
+			Select(range);
+		e.Handled = true;
+	}
+
+	public override void OnMouseUp(MouseEventArgs e)
+	{
+		if (!mDragging)
+			return;
+		mDragging = false;
+		if (Context != null)
+			Context.GetFocusManager().ReleaseCapture();
+		e.Handled = true;
+	}
 
 	/// The scale for a highest time: 20 ms doubled until it holds it.
 	public static float ScaleFor(float highestMs)
@@ -40,6 +138,12 @@ class FrameTimeGraph : ProfilerView
 		let h = Height;
 		let vg = ctx.VG;
 		vg.FillRect(.(0, 0, w, h), Palette.Plot);
+		if (!mSelection.Empty && !mTimes.IsEmpty)
+		{
+			let x0 = XOf(mSelection.First) - mStep * 0.5f;
+			let x1 = XOf(mSelection.Last) + mStep * 0.5f;
+			vg.FillRect(.(x0, 0, Math.Max(x1 - x0, 2.0f), h), Palette.Selection);
+		}
 		let label = scope String();
 		for (let budget in Budgets)
 		{
@@ -78,7 +182,15 @@ class FrameTimeGraph : ProfilerView
 
 	protected override void Compute()
 	{
-		ProfileWindow.CollectFrameTimes(SourceOrEmpty, Range, mTimes);
+		let source = SourceOrEmpty;
+		var range = Range;
+		if (mFit && source.HasFrames)
+		{
+			range.First = source.OldestFrame;
+			range.Last = source.NewestFrame;
+			range.Empty = false;
+		}
+		ProfileWindow.CollectFrameTimes(source, range, mTimes);
 		var highest = 0.0f;
 		for (let t in mTimes)
 			highest = Math.Max(highest, Math.Max(t.CpuMs, t.HasGpu ? t.GpuMs : 0.0f));
@@ -87,16 +199,28 @@ class FrameTimeGraph : ProfilerView
 		// from the right rather than stretching.
 		mCpuPoints.Clear();
 		mGpuPoints.Clear();
-		let w = Width;
-		let step = (mFrameCount > 1) ? (w / (float)(mFrameCount - 1)) : w;
-		let newest = mTimes.IsEmpty ? 0 : mTimes.Back.Frame;
+		let slots = mFit ? (range.Empty ? 1 : (range.Last - range.First + 1)) : (uint64)mFrameCount;
+		mStep = (slots > 1) ? (Width / (float)(slots - 1)) : Width;
 		for (let t in mTimes)
 		{
-			let x = w - (float)(newest - t.Frame) * step;
+			let x = XOf(t.Frame);
 			mCpuPoints.Add(.(x, YOf(t.CpuMs)));
 			if (t.HasGpu)
 				mGpuPoints.Add(.(x, YOf(t.GpuMs)));
 		}
+	}
+
+	private void Select(FrameRange range)
+	{
+		Selection = range;
+		OnSelectionChanged(range);
+	}
+
+	/// Newest at the right edge, a step a frame back from there.
+	private float XOf(uint64 frame)
+	{
+		let newest = mTimes.IsEmpty ? 0 : mTimes.Back.Frame;
+		return Width - (float)(newest - frame) * mStep;
 	}
 
 	private float YOf(float ms) => Height * (1.0f - Math.Min(ms / mScaleMs, 1.0f));
