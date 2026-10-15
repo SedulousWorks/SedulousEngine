@@ -224,18 +224,29 @@ class StateReplication : IReplicationModel
 			replicating.Clear();
 			CollectReplicatingManagers(scene, entity, replicating);
 
-			outWriter.WriteVarU32((uint32)replicating.Count);
+			// Each component's state first, so the count says how many really contribute.
+			let blobs = scope List<List<uint8>>();
+			defer { ClearAndDeleteItems(blobs); }
+			let typeIds = scope List<StringView>();
 			for (let componentManager in replicating)
 			{
-				let fields = scope BitWriter();
-				FieldCodec.WriteState(fields, componentManager.ComponentType,
-					componentManager.GetComponentAddress(entity));
+				let blob = new List<uint8>();
+				if (!CaptureComponentState(componentManager, entity, blob))
+				{
+					delete blob;
+					continue;
+				}
+				blobs.Add(blob);
+				typeIds.Add(componentManager.SerializationTypeId);
+			}
 
+			outWriter.WriteVarU32((uint32)blobs.Count);
+			for (int c < blobs.Count)
+			{
 				// Length prefixed so a peer lacking the type can skip the blob whole.
-				let blob = fields.Data;
-				ReplicationWire.WriteString(outWriter, componentManager.SerializationTypeId);
-				outWriter.WriteVarU32((uint32)blob.Length);
-				outWriter.WriteBytes(blob);
+				ReplicationWire.WriteString(outWriter, typeIds[c]);
+				outWriter.WriteVarU32((uint32)blobs[c].Count);
+				outWriter.WriteBytes(blobs[c]);
 			}
 		}
 	}
@@ -295,12 +306,12 @@ class StateReplication : IReplicationModel
 				let replicating = scope List<ComponentManagerBase>();
 				CollectReplicatingManagers(scene, entity, replicating);
 
+				let state = scope List<uint8>();
 				for (let componentManager in replicating)
 				{
-					let fields = scope BitWriter();
-					FieldCodec.WriteState(fields, componentManager.ComponentType,
-						componentManager.GetComponentAddress(entity));
-					let blob = fields.Data;
+					if (!CaptureComponentState(componentManager, entity, state))
+						continue;
+					let blob = Span<uint8>(state.Ptr, state.Count);
 					let typeId = componentManager.SerializationTypeId;
 					let typeHash = ReplicationWire.HashTypeId(typeId);
 
@@ -464,6 +475,15 @@ class StateReplication : IReplicationModel
 			if (manager == null)
 				continue;
 
+			if (let source = manager.AsReplicatedStateSource)
+			{
+				// Its own state in its own format: only for an entity that has the component
+				// (the prefab spawn brought it; a bare entity has nothing for it to apply to).
+				if (manager.HasComponent(entity))
+					source.ReadReplicatedState(entity, .(blob.Ptr, blob.Count));
+				continue;
+			}
+
 			if (!manager.HasComponent(entity))
 				manager.AddDefaultComponent(entity);
 
@@ -576,10 +596,24 @@ class StateReplication : IReplicationModel
 					return;
 				if (!manager.HasComponent(entity))
 					return;
-				if (ReplicatedLayout.Fields(manager.ComponentType).IsEmpty)
+				if ((manager.AsReplicatedStateSource == null) && ReplicatedLayout.Fields(manager.ComponentType).IsEmpty)
 					return;
 				outManagers.Add(manager);
 			});
+	}
+
+	/// One component's networked state for `entity`, as the bytes the wire carries: what a
+	/// manager with state of its own writes (IReplicatedStateSource), else its reflected
+	/// fields marked replicated. False when it contributes nothing.
+	private static bool CaptureComponentState(ComponentManagerBase manager, EntityHandle entity, List<uint8> outState)
+	{
+		outState.Clear();
+		if (let source = manager.AsReplicatedStateSource)
+			return source.WriteReplicatedState(entity, outState);
+		let fields = scope BitWriter();
+		FieldCodec.WriteState(fields, manager.ComponentType, manager.GetComponentAddress(entity));
+		outState.AddRange(fields.Data);
+		return true;
 	}
 
 	private static bool BlobsEqual(uint8[] a, Span<uint8> b)

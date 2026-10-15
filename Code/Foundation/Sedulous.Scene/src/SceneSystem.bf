@@ -38,6 +38,10 @@ abstract class SceneSystem
 	/// rest.
 	public virtual ISceneSurfaceQuery AsSurfaceQuery => null;
 
+	/// And for a component manager with networked state of its own (IReplicatedStateSource);
+	/// null for the rest.
+	public virtual IReplicatedStateSource AsReplicatedStateSource => null;
+
 	/// The scene this system was added to. BORROWED: the scene outlives its systems. Set
 	/// by the scene before OnSceneCreate, so a system need not keep its own.
 	public Scene Scene { get; private set; } = null;

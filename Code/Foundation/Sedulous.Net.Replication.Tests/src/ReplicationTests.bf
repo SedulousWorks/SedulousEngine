@@ -463,6 +463,80 @@ class ReplicationTests
 		}
 	}
 
+	/// A manager's own state (IReplicatedStateSource) travels in the delta and the late
+	/// joiner's snapshot, sent only when it changes, and applied by the manager on every peer.
+	[Test]
+	public static void AManagersOwnStateTravelsInTheDeltaAndTheSnapshotSentWhenItChanges()
+	{
+		let server = scope Scene("server");
+		server.AddSystem<NetworkComponentManager>();
+		let moods = server.AddSystem<MoodManager>();
+		let replication = scope StateReplication();
+		let guest = server.CreateEntity();
+		moods.Add(guest).Value = 3;
+		let plain = server.CreateEntity(); // networked, no Mood: nothing of it
+		replication.AssignNetworkId(server, guest, MakeGuid(1));
+		replication.AssignNetworkId(server, plain, MakeGuid(2));
+
+		// The prefab brings the component, as a behaviour's prefab does.
+		StateReplication.SpawnHandler Spawner() => new (scene, prefab, id) =>
+			{
+				let entity = scene.CreateEntity();
+				if (prefab == MakeGuid(1))
+					scene.GetSystem<MoodManager>().Add(entity);
+				return entity;
+			};
+
+		let client = scope Scene("client");
+		client.AddSystem<NetworkComponentManager>();
+		let clientMoods = client.AddSystem<MoodManager>();
+		let clientReplication = scope StateReplication();
+		clientReplication.SetSpawnHandler(Spawner());
+		int Send()
+		{
+			let writer = scope BitWriter();
+			let count = replication.CaptureDelta(server, 1, writer);
+			let reader = scope BitReader(writer.Data);
+			clientReplication.ApplyDelta(client, reader);
+			return count;
+		}
+		Mood* ClientMood()
+		{
+			Mood* found = null;
+			clientMoods.ForEach(scope [&](mood, entity) => { found = mood; });
+			return found;
+		}
+
+		Test.Assert(Send() == 2, "both spawn");
+		Test.Assert(ClientMood() != null);
+		Test.Assert(ClientMood().Value == 3);
+		Test.Assert(ClientMood().Reads == 1);
+		Test.Assert(Send() == 0, "nothing changed: nothing sent");
+		moods.Get(guest).Value = 9;
+		Test.Assert(Send() == 1);
+		Test.Assert(ClientMood().Value == 9);
+		Test.Assert(ClientMood().Reads == 2);
+
+		// A late joiner gets it in the snapshot.
+		let late = scope Scene("late");
+		late.AddSystem<NetworkComponentManager>();
+		let lateMoods = late.AddSystem<MoodManager>();
+		let lateReplication = scope StateReplication();
+		lateReplication.SetSpawnHandler(Spawner());
+		let writer = scope BitWriter();
+		replication.CaptureSnapshot(server, writer);
+		let reader = scope BitReader(writer.Data);
+		lateReplication.ApplySnapshot(late, reader);
+		int32 lateMood = -1;
+		lateMoods.ForEach(scope [&](mood, entity) => { lateMood = mood.Value; });
+		Test.Assert(lateMood == 9);
+
+		// A manager with nothing to send for an entity sends nothing of it.
+		moods.Get(guest).Value = -1;
+		Send();
+		Test.Assert(ClientMood().Value == 9, "nothing sent, nothing applied");
+	}
+
 	[Test]
 	public static void LerpSmoothsFloatsAndVectorsAndSnapsDiscreteTypes()
 	{
