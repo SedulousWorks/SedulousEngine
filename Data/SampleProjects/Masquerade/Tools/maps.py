@@ -213,6 +213,9 @@ class Builder:
         d.entity("Players", eid=players)
         crowd = d.stable_id("entity")
         d.entity("Crowd", eid=crowd)
+        # The crowd's talk under the music, everywhere at once (sounds.py's Murmur, a loop).
+        d.add(crowd, "audio.Source", clip=asset("AudioClipAsset", "Murmur"), bus=1, volume=0.35, loop=True,
+              spatial=False, autoPlay=True)
         groups = {}
         for c in COSTUMES:
             groups[c] = d.stable_id("entity")

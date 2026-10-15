@@ -490,15 +490,28 @@ class Ball
 		{
 			if (!m_hunters[h].IsValid())
 				continue;
+			bool on = (flaring & (1 << h)) != 0;
+			glow(m_hunters[h], on);
 			Entity flare = m_hunters[h].FindChildByName("Flare");
 			if (!flare.IsValid())
 				continue;
 			LightComponent@ light = LightComponent::of(flare);
 			if (light !is null)
-			{
-				bool on = (flaring & (1 << h)) != 0;
 				light.Intensity = on ? 6.0f + 4.0f * Sin(m_pulse * 12.0f) : 0.0f;
-			}
+		}
+	}
+
+	// A flaring mask glows (Mask.hlsl: the instance's tint alpha below 1 is the glow; the cloth,
+	// drawn with the same tint, keeps its colour). Every look of the hunter, so the one shown does.
+	private void glow(Entity hunter, bool on)
+	{
+		Entity child = hunter.GetFirstChild();
+		while (child.IsValid())
+		{
+			InstanceMemberComponent@ look = InstanceMemberComponent::of(child);
+			if (look !is null)
+				look.Tint = Color(1.0f, 1.0f, 1.0f, on ? 0.0f : 1.0f);
+			child = child.GetNextSibling();
 		}
 	}
 

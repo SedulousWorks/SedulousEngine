@@ -15424,7 +15424,7 @@
 			<f32 name="z">1</f32>
 		</object>
 	</array>
-	<array name="components" count="1335">
+	<array name="components" count="1336">
 		<object>
 			<string name="owner">3aa44a5e-1d7b-5b9c-8da7-74388b096c03</string>
 			<string name="type">script</string>
@@ -38785,6 +38785,37 @@
 				<bool name="moveEntity">true</bool>
 				<f32 name="stopDistance">0</f32>
 				<bool name="avoidOthers">true</bool>
+			</object>
+		</object>
+		<object>
+			<string name="owner">2af490a6-4bf7-50dc-a3f5-5117c950620f</string>
+			<string name="type">audio.Source</string>
+			<object name="data">
+				<array name="dataVersions" count="1">
+					<u64 name="type">1159506462929919240</u64>
+					<u32 name="version">3</u32>
+				</array>
+				<string name="clip">83447011-86c2-2d4e-b636-b2c63ab56382</string>
+				<u8 name="bus">1</u8>
+				<f32 name="volume">0.35</f32>
+				<f32 name="pitch">1</f32>
+				<bool name="loop">true</bool>
+				<bool name="spatial">false</bool>
+				<bool name="autoPlay">true</bool>
+				<f32 name="distanceLowpassHz">4000</f32>
+				<string name="cue">00000000-0000-0000-0000-000000000000</string>
+				<u8 name="priority">128</u8>
+				<f32 name="minDistance">1</f32>
+				<f32 name="maxDistance">100</f32>
+				<u8 name="attenuationModel">1</u8>
+				<f32 name="rolloff">1</f32>
+				<f32 name="dopplerFactor">1</f32>
+				<f32 name="coneInnerAngleDegrees">360</f32>
+				<f32 name="coneOuterAngleDegrees">360</f32>
+				<f32 name="coneOuterGain">0</f32>
+				<string name="busName"/>
+				<f32 name="reverbSend">0</f32>
+				<u8 name="sourceType">0</u8>
 			</object>
 		</object>
 		<object>

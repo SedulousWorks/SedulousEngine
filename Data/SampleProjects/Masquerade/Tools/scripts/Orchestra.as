@@ -1,12 +1,18 @@
 // Orchestra - on the dais: plays the evening's cues in turn, each for its while, and tells the
 // ball (the "Cue" event: 0 stroll, 1 gather, 2 dance). Guests follow the cue (Guest.as); a
-// player who does not stands out. The cue is replicated, so a joining player hears the same music.
+// player who does not stands out. The cue is replicated, so a joining player hears the same music:
+// each peer plays the cue's piece (sounds.py: a waltz, an air, a dance), crossfading from the last.
 //
 // Its globals carry its name: every behaviour compiles into one module here, and Guest.as and
 // Ball.as name the cues too.
 const int kOrchestraStroll = 0;
 const int kOrchestraGather = 1;
 const int kOrchestraDance = 2;
+const float kOrchestraMusicVolume = 0.55f;
+const float kOrchestraCrossfade = 2.0f;
+Guid kWaltz = Guid::FromString("{{Audio:Waltz}}");
+Guid kAir = Guid::FromString("{{Audio:Air}}");
+Guid kDanceMusic = Guid::FromString("{{Audio:Dance}}");
 
 class Orchestra
 {
@@ -44,6 +50,8 @@ class Orchestra
 		{
 			m_told = cue;
 			scene.Scripts.Emit("Cue", cue);
+			Audio.PlayMusic(cue == kOrchestraGather ? kAir : (cue == kOrchestraDance ? kDanceMusic : kWaltz),
+			                kOrchestraCrossfade, kOrchestraMusicVolume);
 		}
 	}
 }

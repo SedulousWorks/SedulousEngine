@@ -21,6 +21,13 @@ Guid kResultsDoc = Guid::FromString("{{UI:Results}}");
 Guid kPalace = Guid::FromString("{{Scene:Palace}}");
 Guid kCanal = Guid::FromString("{{Scene:Canal}}");
 Guid kGardens = Guid::FromString("{{Scene:Gardens}}");
+// sounds.py's: what the round says to the player, and the buttons.
+Guid kTagSound = Guid::FromString("{{Audio:Tag}}");
+Guid kMissSound = Guid::FromString("{{Audio:Miss}}");
+Guid kFlareSound = Guid::FromString("{{Audio:Flare}}");
+Guid kChimeSound = Guid::FromString("{{Audio:Chime}}");
+Guid kFanfare = Guid::FromString("{{Audio:Fanfare}}");
+Guid kClick = Guid::FromString("{{Audio:Click}}");
 
 // Ball.as's notes.
 const int kGameNoteGotTarget = 1;
@@ -80,6 +87,7 @@ class Game
 
 	private void choose(int map)
 	{
+		sound(kClick);
 		m_map = map;
 		Ui.FindLabel("map-choice").SetText("The map: " + mapTitle(map));
 	}
@@ -91,12 +99,14 @@ class Game
 
 	private void onSolo()
 	{
+		sound(kClick);
 		m_mode = kAlone;
 		startRound();
 	}
 
 	private void onHost()
 	{
+		sound(kClick);
 		if (!Net.StartServer(kPort))
 		{
 			Ui.FindLabel("net-status").SetText("Could not host on port " + kPort);
@@ -108,6 +118,7 @@ class Game
 
 	private void onJoin()
 	{
+		sound(kClick);
 		TextBox box = Ui.FindTextBox("address");
 		m_address = (box.IsValid && box.Text.length() > 0) ? box.Text : "127.0.0.1";
 		m_mode = kJoining;
@@ -123,7 +134,11 @@ class Game
 		return best == -100000 ? "No round played yet" : "Best round: " + best + " points";
 	}
 
-	private void onQuit() { Run.RequestExit(0); }
+	private void onQuit()
+	{
+		sound(kClick);
+		Run.RequestExit(0);
+	}
 
 	// ---- a round ----
 	private void startRound()
@@ -183,7 +198,9 @@ class Game
 	{
 		if (!m_inRound)
 			return;
-		Ui.FindLabel("hud-target").SetText("Your mark wears " + costumeName(int(hud.Z)));
+		Label mark = Ui.FindLabel("hud-target");
+		mark.SetText(costumeName(int(hud.Z)));
+		mark.SetTextColor(costumeColour(int(hud.Z)));
 		Ui.FindLabel("hud-score").SetText("Points " + int(hud.X));
 		Ui.FindLabel("hud-time").SetText(clock(hud.Y));
 		Ui.FindLabel("hud-rank").SetText(place(int(hud.W)) + " of 4");
@@ -194,17 +211,35 @@ class Game
 		if (!m_inRound)
 			return;
 		if (what == kGameNoteGotTarget)
+		{
+			sound(kTagSound);
 			note("Your mark is tagged. They will be back, dressed anew");
+		}
 		else if (what == kGameNoteMissed)
+		{
+			sound(kMissSound);
 			note("Wrong guest! Your mask flares");
+		}
 		else if (what == kGameNoteTagged)
+		{
+			sound(kMissSound);
 			note("Tagged! A new costume, somewhere else");
+		}
 		else if (what == kGameNoteFlare)
+		{
+			sound(kFlareSound);
 			note("A mask flares: a hunter, there");
+		}
 		else if (what == kGameNoteWrongMap)
+		{
+			sound(kChimeSound);
 			note("The host is at another map: choose it and join again");
+		}
 		else if (what == kGameNoteFull)
+		{
+			sound(kChimeSound);
 			note("Every seat is taken: you are watching");
+		}
 	}
 
 	void onRoundOver(Float4 scores)
@@ -213,6 +248,7 @@ class Game
 			return;
 		m_inRound = false;
 		holdStill();
+		sound(kFanfare);
 		int you = int(scores.X);
 		string key = "best." + mapName(m_map);
 		int best = Save.GetInt(key, -100000);
@@ -267,6 +303,7 @@ class Game
 			return;
 		m_paused = false;
 		Ui.Pop();
+		sound(kClick);
 		letGo();
 	}
 
@@ -274,6 +311,7 @@ class Game
 	// with it) and the Ball starts over ("Restart").
 	private void onAgain()
 	{
+		sound(kClick);
 		if (m_mode == kHosting)
 		{
 			enterRound();
@@ -314,6 +352,7 @@ class Game
 
 	private void onTitle()
 	{
+		sound(kClick);
 		if (m_mode != kAlone)
 		{
 			Net.Disconnect();
@@ -321,6 +360,11 @@ class Game
 		}
 		m_connectIn = -1.0f;
 		showTitle();
+	}
+
+	private void sound(Guid clip)
+	{
+		Audio.PlayOneShot(clip, AudioBus::Effects, 0.8f);
 	}
 
 	private void note(string text)
@@ -341,6 +385,18 @@ class Game
 		if (costume == 3) return "a black coat";
 		if (costume == 4) return "a plum coat";
 		return "an ivory coat";
+	}
+
+	// Each costume's colour, lightened enough to read on the HUD's night blue (the black coat as
+	// a silver grey).
+	private Color costumeColour(int costume)
+	{
+		if (costume == 0) return Color(0.95f, 0.45f, 0.55f, 1.0f);
+		if (costume == 1) return Color(0.35f, 0.85f, 0.85f, 1.0f);
+		if (costume == 2) return Color(0.98f, 0.80f, 0.35f, 1.0f);
+		if (costume == 3) return Color(0.78f, 0.80f, 0.86f, 1.0f);
+		if (costume == 4) return Color(0.85f, 0.55f, 0.90f, 1.0f);
+		return Color(1.0f, 0.96f, 0.86f, 1.0f);
 	}
 
 	private string place(int p)

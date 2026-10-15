@@ -24,14 +24,19 @@ own header says what it makes, what it needs first and how to call it. Generated
      `blender/figure.py`, each with the clips Idle, Walk, Talk and Dance, into `generated/Guests`.
    - `importmodels.py`: imports them, the kits into `Models/Palace`, `Models/Canal` and
      `Models/Gardens` and the guests into `Models/Guests`, a group per model.
-2. **Project setup**: `controls.py` (the input map, made the project's default) and `look.py` (the
-   night environment and the post profile every map shares, written when a map is).
+   - `shaders.py`: imports `shaders/Mask.hlsl` and `shaders/Silk.hlsl` and puts every costume's
+     mask, silk and cloth materials on them (after `importmodels.py`, which makes them afresh).
+2. **Project setup**: `controls.py` (the input map, made the project's default), `look.py` (the
+   night environment and the post profile every map shares, written when a map is) and
+   `sounds.py` (the orchestra's three pieces and the round's sounds, generated and imported into
+   `Audio/`; before the scripts, which name them, and the maps, whose crowd plays the murmur).
 3. **Scripts**: `importscripts.py` imports `ui/*.sml` and then `scripts/*.as`, filling each
    script's `{{UI:Hud}}`-style asset ids, and makes `Masquerade.as` (the game: the title, the
    HUD, pause, the results, the best round in the save) the startup script. The rest: a guest
    (`Guest`: wandering, talking and dancing to the cues; a bot is one too), the player (`Player`),
    the round (`Ball`: four hunters in a ring of targets, tagging, the mask's flare, the bots'
-   hunting, the scores), the orchestra and its cues (`Orchestra`), and the camera (`CameraRig`).
+   hunting, the scores), the orchestra, its cues and their music (`Orchestra`), and the camera
+   (`CameraRig`).
 4. **The maps**: `maps.py` writes each map's scene (the Palace, the Canal and the Gardens): the ground, walls and
    props with their colliders, the lights, the places guests go, the orchestra, 150 guests drawn
    as instances of their costumes (grouped by costume under the Crowd), the four hunters with a
