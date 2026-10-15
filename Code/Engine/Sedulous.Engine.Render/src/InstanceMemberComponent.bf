@@ -12,8 +12,9 @@ namespace Sedulous.Engine.Render;
 /// pickups, props, units, the guests of a crowd. Extraction adds the members after the
 /// instanced mesh's own authored instances each frame; nothing of theirs is saved into it.
 ///
-/// Data version 2 adds the tint (a version 1 member reads untinted).
-[SerializableComponent("instance_member", 2)]
+/// Data version 2 adds the tint; version 1 still reads (untinted), since every crowd saved
+/// before it, Masquerade's guests among them, holds it.
+[SerializableComponent("instance_member", 2, 1)]
 [DisplayName("Instance Member")]
 [Category("Rendering")]
 [Scriptable]

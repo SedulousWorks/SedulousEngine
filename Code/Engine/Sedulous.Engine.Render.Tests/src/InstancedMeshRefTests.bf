@@ -138,55 +138,58 @@ class InstancedMeshRefTests
 		Test.Assert(trailing == 77, "nothing past the version 1 fields was consumed");
 	}
 
-	/// A version 1 member record has no tint: it reads untinted, consuming nothing past its
-	/// fields.
+	/// A version 1 member record has no tint: it loads (the manager accepts version 1 as well
+	/// as the current one, a whole crowd being saved at it) and reads untinted, consuming
+	/// nothing past its fields.
 	[Test]
 	public static void AVersionOneMemberRecordReadsUntinted()
 	{
 		let crowdId = Guid(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
 		let stream = scope MemoryStream();
 		{
-			// The version 1 fields, by hand.
+			// A version 1 record, as a scene saved before the tint holds it.
 			let writer = scope BinarySerializer(stream, .Write);
+			BeginVersionedPayload(writer, TypeIdOf("instance_member"), 1);
 			var id = crowdId;
 			SerializeValue(writer, "instancedMesh", ref id);
 			uint32 clip = 2;
 			SerializeValue(writer, "clip", ref clip);
+			EndVersionedPayload(writer);
 			uint32 trailing = 77;
 			SerializeValue(writer, "trailing", ref trailing);
 			Test.Assert(writer.IsOk);
 		}
 
-		var member = InstanceMemberComponent();
-		member.Tint = .(0.2f, 0.2f, 0.2f, 1.0f);
+		let scene = scope Scene();
+		let members = scene.AddSystem<InstanceMemberComponentManager>();
+		let entity = scene.CreateEntity("Guest");
 		stream.Seek(0, .Begin);
 		let reader = scope BinarySerializer(stream, .Read);
-		reader.PushVersionScope(scope SerializedDataVersion[](.(TypeIdOf("instance_member"), 1)));
-		member.Serialize(reader);
+		members.ReadComponent(reader, entity);
 		uint32 trailing = 0;
 		SerializeValue(reader, "trailing", ref trailing);
-		reader.PopVersionScope();
-		Test.Assert(reader.IsOk);
+		Test.Assert(reader.IsOk, "a version 1 record loads");
+		let member = members.Get(entity);
 		Test.Assert((member.InstancedMesh.Id == crowdId) && (member.Clip == 2));
-		Test.Assert(NearlyEqual(member.Tint, .(0.2f, 0.2f, 0.2f, 1.0f), 1e-6f), "no tint read: left as it was");
+		Test.Assert(NearlyEqual(member.Tint, .(1.0f, 1.0f, 1.0f, 1.0f), 1e-6f), "untinted");
 		Test.Assert(trailing == 77, "nothing past the version 1 fields was consumed");
 
-		// The current version writes and reads it back.
+		// The current version writes and reads back through the manager.
 		let current = scope MemoryStream();
 		{
-			let writer = scope BinarySerializer(current, .Write);
-			var tinted = InstanceMemberComponent();
+			let tinted = members.Add(scene.CreateEntity("Tinted"));
 			tinted.Tint = .(1.0f, 0.5f, 0.0f, 1.0f);
-			tinted.Serialize(writer);
+			let writer = scope BinarySerializer(current, .Write);
+			members.WriteComponent(writer, scene.FindEntityByName("Tinted"));
 			Test.Assert(writer.IsOk);
 		}
 		current.Seek(0, .Begin);
-		var back = InstanceMemberComponent();
+		let other = scope Scene();
+		let otherMembers = other.AddSystem<InstanceMemberComponentManager>();
+		let back = other.CreateEntity("Back");
 		let currentReader = scope BinarySerializer(current, .Read);
-		currentReader.PushVersionScope(scope SerializedDataVersion[](.(TypeIdOf("instance_member"), 2)));
-		back.Serialize(currentReader);
-		currentReader.PopVersionScope();
+		otherMembers.ReadComponent(currentReader, back);
 		Test.Assert(currentReader.IsOk);
-		Test.Assert(NearlyEqual(back.Tint, .(1.0f, 0.5f, 0.0f, 1.0f), 1e-6f));
+		Test.Assert(NearlyEqual(otherMembers.Get(back).Tint, .(1.0f, 0.5f, 0.0f, 1.0f), 1e-6f));
 	}
 }
