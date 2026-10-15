@@ -12,7 +12,7 @@ namespace Sedulous.Net.Replication;
 /// primitive that per peer delta, late join and relevancy all build on.
 ///
 /// A snapshot is: VarU32 entityCount, then per entity { U32 networkId, U8 flags, [Guid prefab
-/// if spawn], VarU32 componentCount, then per component { string SerializationTypeId, VarU32
+/// and VarU32 owner if spawn], VarU32 componentCount, then per component { string SerializationTypeId, VarU32
 /// blobBytes, blob } }. The per component length prefix is what lets a peer that lacks a
 /// component type SKIP it rather than desync its reader, which is what makes the format
 /// forward compatible.
@@ -61,14 +61,16 @@ class StateReplication : IReplicationModel
 		public bool Removed;
 		public bool Spawn;
 		public Guid Prefab;
+		public uint32 Owner;
 		public List<DeltaComponent> Components = new .() ~ DeleteContainerAndItems!(_);
 
-		public this(uint32 id, bool removed, bool spawn, Guid prefab)
+		public this(uint32 id, bool removed, bool spawn, Guid prefab, uint32 owner = 0)
 		{
 			Id = id;
 			Removed = removed;
 			Spawn = spawn;
 			Prefab = prefab;
+			Owner = owner;
 		}
 
 		public void Add(StringView typeId, Span<uint8> blob)
@@ -119,8 +121,8 @@ class StateReplication : IReplicationModel
 
 	/// Server: give an entity a NetworkId, adding the NetworkComponent if absent. A re
 	/// registered entity KEEPS its id. `prefab` records the source prefab so a client can
-	/// network spawn it.
-	public NetworkId AssignNetworkId(Scene scene, EntityHandle entity, Guid prefab = default)
+	/// network spawn it; `owner` is whose it is (nought the host, else a client's PeerId).
+	public NetworkId AssignNetworkId(Scene scene, EntityHandle entity, Guid prefab = default, uint32 owner = 0)
 	{
 		let manager = scene.GetSystem<NetworkComponentManager>();
 		if (manager == null)
@@ -134,6 +136,7 @@ class StateReplication : IReplicationModel
 			component.Id = .(++mNextNetworkId);
 		if (prefab.IsSet)
 			component.Prefab = prefab;
+		component.Owner = owner;
 
 		mNetIdToEntity[component.Id.Value] = entity;
 		return component.Id;
@@ -193,6 +196,7 @@ class StateReplication : IReplicationModel
 
 		let ids = scope List<uint32>();
 		let prefabs = scope List<Guid>();
+		let owners = scope List<uint32>();
 		let handles = scope List<EntityHandle>();
 		manager.ForEach(scope [&](component, entity) =>
 			{
@@ -200,6 +204,7 @@ class StateReplication : IReplicationModel
 					return;
 				ids.Add(component.Id.Value);
 				prefabs.Add(component.Prefab);
+				owners.Add(component.Owner);
 				handles.Add(entity);
 			});
 
@@ -214,6 +219,7 @@ class StateReplication : IReplicationModel
 			// each entity from its prefab id, then applies the state on top.
 			outWriter.WriteU8(ReplicationWire.cFlagSpawn);
 			ReplicationWire.WriteGuid(outWriter, prefabs[i]);
+			outWriter.WriteVarU32(owners[i]);
 
 			replicating.Clear();
 			CollectReplicatingManagers(scene, entity, replicating);
@@ -283,7 +289,7 @@ class StateReplication : IReplicationModel
 					return;
 				}
 
-				let entry = new DeltaEntry(networkId, false, previous == null, component.Prefab);
+				let entry = new DeltaEntry(networkId, false, previous == null, component.Prefab, component.Owner);
 				let nextEntity = new EntityBaseline();
 
 				let replicating = scope List<ComponentManagerBase>();
@@ -354,7 +360,10 @@ class StateReplication : IReplicationModel
 			if (entry.Removed)
 				continue;
 			if (entry.Spawn)
+			{
 				ReplicationWire.WriteGuid(outWriter, entry.Prefab);
+				outWriter.WriteVarU32(entry.Owner);
+			}
 
 			outWriter.WriteVarU32((uint32)entry.Components.Count);
 			for (let record in entry.Components)
@@ -421,11 +430,13 @@ class StateReplication : IReplicationModel
 			}
 
 			let spawn = (flags & ReplicationWire.cFlagSpawn) != 0;
+			// The spawn record: the prefab, then the owner.
 			let prefab = spawn ? ReplicationWire.ReadGuid(reader) : Guid();
+			let owner = spawn ? reader.ReadVarU32() : 0;
 			if (!reader.Ok)
 				break;
 
-			let entity = FindOrCreateEntity(scene, networkId, prefab, spawn);
+			let entity = FindOrCreateEntity(scene, networkId, prefab, owner, spawn);
 			let componentCount = reader.ReadVarU32();
 			ApplyComponentRecords(scene, entity, .(networkId), componentCount, reader,
 				interpolation, timestampMs);
@@ -513,12 +524,23 @@ class StateReplication : IReplicationModel
 
 	/// Client: the entity for this id. The first sight of a spawn record carrying a prefab id
 	/// routes through the spawn handler; otherwise a bare tagged entity is created.
-	private EntityHandle FindOrCreateEntity(Scene scene, uint32 networkId, Guid prefab, bool spawn)
+	private EntityHandle FindOrCreateEntity(Scene scene, uint32 networkId, Guid prefab, uint32 owner, bool spawn)
 	{
 		if (mNetIdToEntity.TryGetValue(networkId, let found))
 		{
 			if (scene.IsValid(found))
+			{
+				// A spawn record names whose it is; a later update carries none.
+				if (spawn)
+				{
+					if (let manager = scene.GetSystem<NetworkComponentManager>())
+					{
+						if (let component = manager.Get(found))
+							component.Owner = owner;
+					}
+				}
 				return found;
+			}
 		}
 
 		var entity = EntityHandle.Invalid;
@@ -536,6 +558,7 @@ class StateReplication : IReplicationModel
 			// The client's view: the server owns this entity.
 			component.Authority = .Server;
 			component.Prefab = prefab;
+			component.Owner = owner;
 		}
 
 		mNetIdToEntity[networkId] = entity;

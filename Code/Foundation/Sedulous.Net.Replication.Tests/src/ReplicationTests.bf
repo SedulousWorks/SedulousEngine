@@ -420,6 +420,49 @@ class ReplicationTests
 		Test.Assert(clientReplication.NetworkedCount == 2);
 	}
 
+	/// Whose an entity is reaches a client in the delta and in a late joiner's snapshot.
+	[Test]
+	public static void AnEntitysOwnerReachesAClientInTheDeltaAndALateJoinsSnapshot()
+	{
+		let server = scope Scene("server");
+		AddManagers(server);
+		let replication = scope StateReplication();
+		let hosts = server.CreateEntity();
+		let players = server.CreateEntity();
+		replication.AssignNetworkId(server, hosts, MakeGuid(1)); // the host's: owner nought
+		replication.AssignNetworkId(server, players, MakeGuid(2), 7); // client 7's
+		Test.Assert(server.GetSystem<NetworkComponentManager>().Get(players).Owner == 7);
+
+		void OwnersOn(Scene client, List<uint32> outOwners)
+		{
+			client.GetSystem<NetworkComponentManager>().ForEach(scope [&](component, entity) => outOwners.Add(component.Owner));
+		}
+		{
+			let client = scope Scene("client");
+			AddManagers(client);
+			let clientReplication = scope StateReplication();
+			let writer = scope BitWriter();
+			replication.CaptureDelta(server, 1, writer);
+			let reader = scope BitReader(writer.Data);
+			clientReplication.ApplyDelta(client, reader);
+			let owners = OwnersOn(client, .. scope .());
+			Test.Assert(owners.Count == 2);
+			Test.Assert(owners.Contains(0) && owners.Contains(7), "in the delta");
+		}
+		{
+			let late = scope Scene("late");
+			AddManagers(late);
+			let lateReplication = scope StateReplication();
+			let writer = scope BitWriter();
+			replication.CaptureSnapshot(server, writer);
+			let reader = scope BitReader(writer.Data);
+			lateReplication.ApplySnapshot(late, reader);
+			let owners = OwnersOn(late, .. scope .());
+			Test.Assert(owners.Count == 2);
+			Test.Assert(owners.Contains(0) && owners.Contains(7), "in the snapshot");
+		}
+	}
+
 	[Test]
 	public static void LerpSmoothsFloatsAndVectorsAndSnapsDiscreteTypes()
 	{

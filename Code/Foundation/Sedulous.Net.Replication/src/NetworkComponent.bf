@@ -28,6 +28,11 @@ struct NetworkComponent : ISerializable
 	public NetworkAuthority Authority = .Server;
 	/// The source prefab for a network spawn. Unset means a bare, non prefab networked entity.
 	public Guid Prefab = .();
+	/// The player it belongs to: nought is the host, else the client's PeerId on the server
+	/// (the id the session's welcome tells that client). Set at spawn and sent in the spawn
+	/// record, so every peer knows whose an entity is. Runtime state, not saved with the scene.
+	[Scriptable, ReadOnly]
+	public uint32 Owner = 0;
 
 	public this() {}
 
