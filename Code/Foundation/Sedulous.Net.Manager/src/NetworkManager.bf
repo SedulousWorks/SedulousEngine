@@ -173,6 +173,9 @@ class NetworkManager
 	/// designer marks an entity networked and it just replicates on host. On a client the same
 	/// ids are DERIVED rather than received, so incoming state lands on the client's own
 	/// authored entity instead of minting a duplicate beside it.
+	/// The scene this endpoint replicates; null is none.
+	public Scene ReplicatedScene => mScene;
+
 	public void SetReplicatedScene(Scene scene)
 	{
 		mScene = scene;

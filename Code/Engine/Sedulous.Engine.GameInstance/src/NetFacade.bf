@@ -3,6 +3,8 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Script;
 using Sedulous.Net;
+using Sedulous.Scene;
+using Sedulous.Scene.Resource;
 using Sedulous.Net.Manager;
 
 namespace Sedulous.Engine.GameInstance;
@@ -123,6 +125,27 @@ class NetFacade
 	/// Receives the message `name` with `handler(sender, text)`, its text.
 	[Scriptable, ScriptCallback("void NetTextHandler(int sender, const string &in text)")]
 	public void OnText(StringView name, ScriptDelegate handler) => Register(name, .Text, handler);
+
+	/// Host only: spawns `prefab` at `position` in the replicated scene, as
+	/// `scene.Prefabs.Spawn` does, and gives it a network id with the prefab, so every client
+	/// spawns its own copy and a player who joins later gets it in the snapshot. The prefab's
+	/// root needs a networked transform for its movement to follow. Unassigned on a client,
+	/// offline, or for a prefab the scene cannot spawn.
+	[Scriptable]
+	public EntityHandle Spawn(Guid prefab, Float3 position)
+	{
+		let endpoint = Endpoint;
+		if ((endpoint == null) || !endpoint.Session.IsServer)
+			return .Invalid;
+		let scene = endpoint.ReplicatedScene;
+		let spawner = (scene != null) ? scene.GetSystem<PrefabSpawnSystem>() : null;
+		if (spawner == null)
+			return .Invalid;
+		let entity = spawner.Spawn(prefab, position);
+		if (entity.IsAssigned)
+			endpoint.Replication.AssignNetworkId(scene, entity, prefab);
+		return entity;
+	}
 
 	/// How many message names have a handler.
 	public int HandlerCount => mHandlers.Count;

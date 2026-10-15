@@ -160,7 +160,11 @@ client reach the host, and from the host every client. A script receives one wit
 or `Net.OnText("chat", NetTextHandler(this.onChat))`: the handler gets the sender's id first
 (on the host the client that sent it, on a client the host), then the number or the text.
 Register before hosting or joining too; a later registration of a name replaces it, and a
-message of another kind than its handler takes is dropped. Offline every call does nothing.
+message of another kind than its handler takes is dropped. The host puts a networked prefab
+into the game with `Net.Spawn(prefab, position)`: it spawns in the replicated scene with a
+network id, so every client builds its own copy (a player who joins later too); the prefab's
+root needs a networked transform for its movement to follow. A client's call spawns nothing.
+Offline every call does nothing.
 
 ## Saving
 
