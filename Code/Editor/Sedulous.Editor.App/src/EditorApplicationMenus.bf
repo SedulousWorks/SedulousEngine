@@ -170,6 +170,30 @@ extension EditorApplication
 			actions.Register(d);
 		}
 		{
+			let d = new EditorActionDeclaration("view.profiler", "Profiler", "Show the Profiler tab beside the Console: record the editor process, open a player's capture", "View/Profiler", 210);
+			d.ReadOnly = true; // shows a panel; nothing in the project changes
+			d.Execute = new (page) => { mShell.ShowProfiler(); };
+			actions.Register(d);
+		}
+		{
+			let d = new EditorActionDeclaration("profiler.record", "Profiler Record", "Record the editor process in the Profiler tab (every page, preview and Play-in-editor run), or stop", "View/Profiler Record", 211);
+			d.Kind = .Toggle;
+			d.ReadOnly = true; // the profiler's state, not the project's
+			d.Checked = new (page) => (mShell.Profiler != null) && mShell.Profiler.IsRecording;
+			d.Execute = new (page) =>
+				{
+					if (let profiler = mShell.Profiler)
+					{
+						mShell.ShowProfiler();
+						if (profiler.IsRecording)
+							profiler.Stop();
+						else
+							profiler.Start();
+					}
+				};
+			actions.Register(d);
+		}
+		{
 			let d = new EditorActionDeclaration("view.screenshot", "Screenshot Editor", "Write the editor's main window, as it looks now, to a PNG under <user-data>/screenshots", "View/Screenshot Editor", 300);
 			d.Shortcut = .(.F12);
 			d.ReadOnly = true; // a file outside the project; nothing in it changes

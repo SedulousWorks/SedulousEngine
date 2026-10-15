@@ -1,14 +1,18 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.Settings;
 using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Editor.Core;
+using Sedulous.Profiler;
+using Sedulous.Profiler.Capture;
 
 namespace Sedulous.Editor.App;
 
 /// The editor chrome: a RootView holding the menu bar, the dock manager (grow) and the
-/// status bar. The global panels are Assets and Console only: everything scene-scoped
+/// status bar. The global panels are Assets, Console and Profiler (a tab with the Console)
+/// only: everything scene-scoped
 /// (viewport, hierarchy, inspector, selection, camera) lives inside each editor page,
 /// because several scene pages can be open at once. The dock centre is the document area:
 /// each open page docks there as a closable tab via AddPagePanel; the non-closable Project
@@ -22,6 +26,7 @@ class EditorShell
 	public const String cPanelProject = "welcome";
 	public const String cPanelConsole = "console";
 	public const String cPanelAssets = "assets";
+	public const String cPanelProfiler = "profiler";
 
 	private RootView mRoot = null ~ { if (_ != null) _.ReleaseRef(); };
 	// Borrowed: the tree owns them.
@@ -33,6 +38,11 @@ class EditorShell
 	private DockablePanel mProject = null;
 	private DockablePanel mConsole = null;
 	private DockablePanel mAssets = null;
+	private DockablePanel mProfilerTab = null;
+	/// Borrowed: the tab holds it.
+	private ProfilerPanel mProfilerPanel = null;
+	/// The store the Profiler records when no process profiler is installed (a headless test).
+	private Sedulous.Profiler.Profiler mOwnProfiler = null ~ delete _;
 	/// The Project panel's heading without a project, borrowed (null: the name as text).
 	private Drawable mLogo = null;
 
@@ -99,6 +109,22 @@ class EditorShell
 	/// The Console panel's log view, fed by the app's EditorLogBuffer drain.
 	public LogView Console => mLogView;
 
+	/// The Profiler tab (docked with the Console) and its panel, which the app updates each
+	/// frame.
+	public DockablePanel ProfilerTab => mProfilerTab;
+	public ProfilerPanel Profiler => mProfilerPanel;
+
+	/// Brings the Profiler tab forward (View > Profiler); closed (a tool panel hides on
+	/// close), it docks beside the Console again first.
+	public void ShowProfiler()
+	{
+		if (mProfilerTab == null)
+			return;
+		if (mProfilerTab.Parent == null)
+			DockWithConsole(mProfilerTab);
+		mDock.ActivatePanel(mProfilerTab);
+	}
+
 	// ---- the document area -----------------------------------------------------------------
 
 	/// Docks a page's content view as a closable tab in the centre document area, tabbed
@@ -115,7 +141,16 @@ class EditorShell
 	/// Dock-layout persistence via the per-project settings store; the app owns loading
 	/// and saving the store's file, these only capture and apply the dock section.
 	public Result<void, ErrorCode> SaveLayout(Settings store) => ProjectEditorSettings.CaptureDockLayout(mDock, store);
-	public Result<void, ErrorCode> RestoreLayout(Settings store) => ProjectEditorSettings.ApplyDockLayout(mDock, store);
+	public Result<void, ErrorCode> RestoreLayout(Settings store)
+	{
+		let applied = ProjectEditorSettings.ApplyDockLayout(mDock, store);
+		// A layout saved before the Profiler tab existed does not place it, and the dock floats
+		// what a layout leaves out: put it with the Console instead.
+		let section = store.Find<EditorDockLayoutSettings>();
+		if ((applied case .Ok) && (section != null) && (section.Root != null) && !LayoutPlaces(section.Root, cPanelProfiler))
+			DockWithConsole(mProfilerTab);
+		return applied;
+	}
 
 	/// Rebuilds the default arrangement (View > Reset Layout).
 	public void ResetLayout() => DockDefaults();
@@ -159,6 +194,19 @@ class EditorShell
 		mConsole = mDock.AddPanel("Console", mLogView);
 		mConsole.SetPersistenceId(cPanelConsole);
 
+		let profilerSeams = new ProfilerPanelSeams();
+		if (!HasGlobalProfiler())
+			mOwnProfiler = new Sedulous.Profiler.Profiler();
+		profilerSeams.Store = HasGlobalProfiler() ? GlobalProfiler() : mOwnProfiler;
+		profilerSeams.Recorder = CaptureRecorder.Process;
+		PathJoin(GetUserDataDirectory(.. scope .()), "profiles", profilerSeams.Folder);
+		mProfilerPanel = new ProfilerPanel(profilerSeams);
+		mProfilerTab = mDock.AddPanel("Profiler", mProfilerPanel);
+		mProfilerTab.SetPersistenceId(cPanelProfiler);
+		// Closing the tab stops the recording: nothing records out of sight.
+		let profilerPanel = mProfilerPanel;
+		mProfilerTab.OnCloseRequested.Add(new (panel) => { profilerPanel.Stop(); });
+
 		mAssets = mDock.AddPanel("Assets", new Label("Asset browser"));
 		mAssets.SetPersistenceId(cPanelAssets);
 
@@ -180,9 +228,32 @@ class EditorShell
 		mDock.DockPanel(mProject, .Center);
 		mDock.DockPanel(mAssets, .Bottom);
 		mDock.DockPanelRelativeTo(mConsole, .Right, mAssets.Parent);
+		DockWithConsole(mProfilerTab);
 		if (let split = mDock.RootNode as DockSplit)
 			split.SplitRatio = cDefaultDocumentShare;
 		if (let pane = ((mAssets.Parent != null) ? mAssets.Parent.Parent : null) as DockSplit)
 			pane.SplitRatio = cDefaultAssetsShare;
+	}
+
+	/// `panel` as a tab beside the Console, the Console staying in front.
+	private void DockWithConsole(DockablePanel panel)
+	{
+		if ((panel == null) || (mConsole == null) || (mConsole.Parent == null))
+			return;
+		mDock.DockPanelRelativeTo(panel, .Center, mConsole.Parent);
+		mDock.ActivatePanel(mConsole);
+	}
+
+	/// Whether a saved layout places the panel `id` anywhere in its tree.
+	private static bool LayoutPlaces(DockLayoutNode node, StringView id)
+	{
+		if (node == null)
+			return false;
+		for (let panel in node.PanelIds)
+		{
+			if (panel == id)
+				return true;
+		}
+		return LayoutPlaces(node.First, id) || LayoutPlaces(node.Second, id);
 	}
 }

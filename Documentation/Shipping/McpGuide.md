@@ -264,7 +264,8 @@ and play to the moment, or `viewport_camera_set` on a heavy view), capture, and 
 captures rather than reading one number in isolation. The files stay: `path` is the
 `.aeprofile` profile stream (`<user-data>/profiles/Editor-<ticks>.aeprofile`), `chromeTrace`
 the same frames as Chrome trace JSON for Perfetto or chrome://tracing; hand those to the user
-for a timeline. A debug editor is slower than an exported game, so measure the game's own
+for a timeline. `action_execute` `profiler.record` starts and stops the editor's Profiler
+tab, for the user to read; its Save writes the same two files. A debug editor is slower than an exported game, so measure the game's own
 timing in its player: `<dist>/<player> --profile-capture <seconds>` writes the same two files
 under `<user-data>/profiles` (F9 in any running game does too), and `--profile-overlay` shows
 the profiler overlay (frame times, the longest scopes and passes, the counters) in its window

@@ -45,6 +45,11 @@ static class ShellTests
 		Test.Assert(shell.ProjectPanel.PersistenceId == "welcome");
 		Test.Assert(shell.ConsolePanel.PersistenceId == "console");
 		Test.Assert(shell.AssetsPanel.PersistenceId == "assets");
+		Test.Assert(shell.ProfilerTab != null);
+		Test.Assert(shell.ProfilerTab.PersistenceId == "profiler");
+		Test.Assert(shell.ProfilerTab.Title == "Profiler");
+		Test.Assert(shell.Profiler != null);
+		Test.Assert(!shell.Profiler.IsRecording, "off until Record");
 		Test.Assert(shell.Docks.FindPanelById("assets") === shell.AssetsPanel);
 		Test.Assert(shell.Docks.FindPanelById("viewport") == null, "no global viewport panel");
 
@@ -72,7 +77,11 @@ static class ShellTests
 		Test.Assert((assetsGroup != null) && (consoleGroup != null));
 		Test.Assert(assetsGroup !== consoleGroup);
 		Test.Assert(assetsGroup.PanelCount == 1);
-		Test.Assert(consoleGroup.PanelCount == 1);
+		// The Console's group holds the Profiler tab too, the Console in front.
+		Test.Assert(consoleGroup.PanelCount == 2);
+		Test.Assert(consoleGroup.GetPanel(0) === shell.ConsolePanel);
+		Test.Assert(consoleGroup.GetPanel(1) === shell.ProfilerTab);
+		Test.Assert(consoleGroup.SelectedIndex == 0);
 
 		let pane = assetsGroup.Parent as DockSplit;
 		Test.Assert(pane != null);
@@ -258,5 +267,58 @@ static class ShellTests
 		Test.Assert(loaded.First.Second.ActiveTabIndex == 1);
 		Test.Assert(loaded.Second.PanelIds.Count == 1);
 		Test.Assert(loaded.Second.PanelIds[0] == "d");
+	}
+
+	private static bool Places(DockLayoutNode node, StringView id)
+	{
+		if (node == null)
+			return false;
+		for (let panel in node.PanelIds)
+		{
+			if (panel == id)
+				return true;
+		}
+		return Places(node.First, id) || Places(node.Second, id);
+	}
+
+	/// A layout saved before the Profiler tab existed puts it with the Console rather than
+	/// floating it; View > Profiler brings it forward, and docks it again once closed.
+	[Test]
+	public static void ALayoutSavedBeforeTheProfilerTabPutsItWithTheConsole()
+	{
+		let ctx = scope EditorContext();
+		let shell = scope EditorShell();
+		shell.Build(ctx, null, 1280, 720);
+		EditorAppSerializables.RegisterEditorProjectSettingsTypes();
+
+		// A saved layout that does not name the Profiler: take it out of the tree, then save.
+		shell.Docks.UndockPanel(shell.ProfilerTab);
+		let store = scope Settings();
+		Test.Assert(shell.SaveLayout(store) case .Ok);
+		Test.Assert(!Places(store.Find<EditorDockLayoutSettings>().Root, "profiler"));
+
+		Test.Assert(shell.RestoreLayout(store) case .Ok);
+		Test.Assert(shell.ProfilerTab.Parent === shell.ConsolePanel.Parent, "docked with it");
+		let group = shell.ConsolePanel.Parent as DockTabGroup;
+		Test.Assert(group != null);
+		Test.Assert(group.GetPanel(group.SelectedIndex) === shell.ConsolePanel);
+
+		// View > Profiler brings it forward.
+		shell.ShowProfiler();
+		Test.Assert(group.GetPanel(group.SelectedIndex) === shell.ProfilerTab);
+
+		// Closed (its close button), a tool panel hides, it is not destroyed, and the recording
+		// stops; View > Profiler docks it with the Console again.
+		shell.Profiler.Start();
+		Test.Assert(shell.Profiler.IsRecording);
+		shell.ProfilerTab.RequestClose();
+		Test.Assert(!shell.Profiler.IsRecording);
+		Test.Assert(shell.Docks.FindPanelById("profiler") === shell.ProfilerTab);
+		Test.Assert(shell.ProfilerTab.Parent == null);
+		shell.ShowProfiler();
+		Test.Assert(shell.ProfilerTab.Parent === shell.ConsolePanel.Parent);
+		let again = shell.ProfilerTab.Parent as DockTabGroup;
+		Test.Assert(again != null);
+		Test.Assert(again.GetPanel(again.SelectedIndex) === shell.ProfilerTab);
 	}
 }

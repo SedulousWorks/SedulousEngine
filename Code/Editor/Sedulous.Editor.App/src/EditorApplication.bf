@@ -808,6 +808,8 @@ class EditorApplication : IApplication
 		RunTestHooks(dt);
 
 		DrainLog();
+		if (let profiler = mShell.Profiler)
+			profiler.Update(); // the frames that settled since, while it records
 		SyncPageTitles();
 		// Background-cook progress reaches the status bar; a finished cook refreshes the
 		// Assets badges through OnCookFinished.
