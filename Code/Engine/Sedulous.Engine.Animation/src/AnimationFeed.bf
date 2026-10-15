@@ -16,10 +16,12 @@ namespace Sedulous.Engine.Animation;
 static class AnimationFeed
 {
 	/// The target list, by stable id. The same shape for every animation component, so a
-	/// scene written by one reads the same as a scene written by the other.
-	public static void SerializeTargets(ISerializer ar, List<EntityRef> targets)
+	/// scene written by one reads the same as a scene written by the other; the instanced one
+	/// keys it "targets", as its field is named.
+	public static void SerializeTargets(ISerializer ar, List<EntityRef> targets,
+		String key = "meshEntities")
 	{
-		ar.Key("meshEntities");
+		ar.Key(key);
 		uint32 count = (uint32)targets.Count;
 		ar.BeginArray(ref count);
 		if (ar.Mode == .Read)

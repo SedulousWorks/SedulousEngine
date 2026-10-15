@@ -87,6 +87,12 @@ each, with their floors.
 RenderTextureAsset). The key and the field name need to agree, or the reference a way to map
 them.
 
+### A list of resource references does not cross to scripts
+The script surface carries a `Ref<T>` field as a `Guid` and a `List<EntityRef>` as an
+`array<EntityRef>@`, but not a `List<Ref<T>>`: the element has no surface kind, and writing one
+back would have to set each id and bind it. So `InstancedSkinningComponent.Clips` (and
+`MeshComponent.Materials`) are not `[Scriptable]`, where Raptor's script sees `clips`.
+
 ### Scripts cannot compare two guids
 The script surface gives `Guid` `Nil`, `IsNil` and `FromString`, but no equality: AngelScript
 refuses `a == b` ("No matching operator that takes the types 'Guid' and 'Guid'"), so a script

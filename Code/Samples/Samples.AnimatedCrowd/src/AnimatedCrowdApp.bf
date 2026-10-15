@@ -12,6 +12,7 @@ using Sedulous.Graphics;
 using Sedulous.Materials;
 using Sedulous.Model.Resource;
 using Sedulous.Render;
+using Sedulous.Resource;
 using Sedulous.RHI;
 using Sedulous.Runtime.Client;
 using Sedulous.Scene;
@@ -463,10 +464,15 @@ class AnimatedCrowdApp : DefaultApplication
 
 			let animationEntity = mScene.CreateEntity("crowd_anim");
 			let skinning = animations.Add(animationEntity);
-			skinning.Skeleton = mModel.Resource.Skeleton.Get;
-			skinning.Clip = mModel.Clips[group];
+			// Direct objects: there is no content to reference.
+			skinning.Skeleton.SetDirect(mModel.Resource.Skeleton.Get);
+			var clip = Ref<AnimationClip>(Guid());
+			clip.SetDirect(mModel.Clips[group]);
+			skinning.Clips.Add(clip);
 			skinning.PoseCount = cPoseCount;
-			skinning.Targets.AddRange(targets);
+			// By id, as a scene saves them.
+			for (let target in targets)
+				skinning.Targets.Add(EntityRef(mScene.GetEntityId(target)));
 			mCrowdParts.Add(animationEntity);
 		}
 	}
