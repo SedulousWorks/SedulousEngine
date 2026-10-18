@@ -175,6 +175,9 @@ class ScrollView : ViewGroup
 		SetScrollY(mScrollY + dy);
 	}
 
+	/// A descendant focused by keys, a pad or code comes into view.
+	public override void OnDescendantFocused(View focused) => ScrollToView(focused);
+
 	/// Brings a descendant into view, scrolling the least that will do it.
 	public void ScrollToView(View child)
 	{

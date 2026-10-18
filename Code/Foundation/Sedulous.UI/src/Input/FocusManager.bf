@@ -86,6 +86,13 @@ class FocusManager
 		mFocusSource = source;
 		view.OnFocusGained();
 		view.InvalidateVisual();
+		// Focus a click gave is already where the pointer is; focus by keys, a pad or code may
+		// be out of sight, and the scrollers around it bring it into view.
+		if (source != .Pointer)
+		{
+			for (var ancestor = view.Parent; ancestor != null; ancestor = ancestor.Parent)
+				ancestor.OnDescendantFocused(view);
+		}
 	}
 
 	public void ClearFocus()

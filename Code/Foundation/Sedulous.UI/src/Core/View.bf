@@ -258,6 +258,9 @@ class View : RefCounted, IPropertyOwner
 	public virtual void OnTextInput(TextInputEventArgs e) {}
 	public virtual void OnFocusGained() {}
 	public virtual void OnFocusLost() {}
+	/// Focus moved, by keys, a pad or code, onto a view somewhere below this one: a scroller
+	/// brings it into view. Called on each ancestor, nearest first.
+	public virtual void OnDescendantFocused(View focused) {}
 
 	// ---- Input events, capture phase, root to target before the target sees it -------------
 

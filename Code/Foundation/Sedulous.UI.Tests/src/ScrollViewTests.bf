@@ -294,6 +294,40 @@ class ScrollViewTests
 		Test.Assert(scroll.ScrollY == before);
 	}
 
+	/// Focus by keys or code scrolls the focused child into view; focus a click gave does not
+	/// move the view under the pointer.
+	[Test]
+	public static void AChildFocusedByKeysOrCodeScrollsIntoView()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let scroll = new ScrollView();
+		let column = new FlexLayout();
+		column.Direction = .Vertical;
+		View[10] rows = default;
+		for (int i < rows.Count)
+		{
+			let row = new TestView(200, 50);
+			row.IsFocusable = true;
+			column.AddView(row);
+			rows[i] = row;
+		}
+		scroll.AddView(column);
+		root.AddView(scroll);
+		UITest.LayoutPass(context, root);
+		Test.Assert(scroll.ScrollY == 0);
+
+		let focus = context.GetFocusManager();
+		focus.SetFocus(rows[1], .Pointer); // the pointer is on it
+		Test.Assert(scroll.ScrollY == 0);
+		focus.SetFocus(rows[6], .Keyboard); // y 300 to 350
+		Test.Assert(scroll.ScrollY == 250, scope $"{scroll.ScrollY}: the least that shows it");
+		UITest.LayoutPass(context, root);
+		focus.SetFocus(rows[0], .Programmatic);
+		Test.Assert(scroll.ScrollY == 0, scope $"{scroll.ScrollY}");
+	}
+
 	// ---- MomentumHelper -----------------------------------------------------------------------
 
 	/// A flick decelerates to a stop, having travelled in the direction it was thrown.
