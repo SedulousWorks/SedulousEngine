@@ -12,6 +12,7 @@ namespace Sedulous.Fonts.Tests;
 class StubFont : IFont
 {
 	public override void GetFamilyName(String outName) => outName.Append("Stub");
+	public override Span<uint8> SourceData => .();
 	public override float PixelHeight => 32.0f;
 	public override FontMetrics Metrics => .(24.0f, -8.0f, 4.0f, 32.0f, 1.0f);
 

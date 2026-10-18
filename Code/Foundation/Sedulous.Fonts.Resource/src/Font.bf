@@ -11,10 +11,22 @@ class Font
 {
 	private String mFamily = new .() ~ delete _;
 	private List<FontEntry> mEntries = new .() ~ DeleteContainerAndItems!(_);
+	private List<uint8> mSourceData = new .() ~ delete _;
 
 	public void SetFamily(StringView family) => mFamily.Set(family);
 	public void GetFamily(String outFamily) => outFamily.Append(mFamily);
 	public StringView Family => mFamily;
+
+	/// TAKES the font file's bytes, for a shaper that reads its tables. Set before the entries:
+	/// their fonts borrow them.
+	public void SetSourceData(List<uint8> takenBytes)
+	{
+		delete mSourceData;
+		mSourceData = takenBytes;
+	}
+
+	/// The font file (empty when the cook did not keep it).
+	public Span<uint8> SourceData => mSourceData.IsEmpty ? .() : .(mSourceData.Ptr, mSourceData.Count);
 
 	/// Takes ownership of the entry.
 	public void AddEntry(FontEntry entry) => mEntries.Add(entry);

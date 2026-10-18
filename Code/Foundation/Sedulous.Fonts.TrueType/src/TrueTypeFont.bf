@@ -84,6 +84,8 @@ class TrueTypeFont : IFont
 
 	public override uint32 BackendTypeId => TrueTypeCommon.BackendTypeId;
 	public override void GetFamilyName(String outName) => outName.Append(mFamilyName);
+	/// The bytes it parsed.
+	public override Span<uint8> SourceData => mFontData.IsEmpty ? .() : .(mFontData.Ptr, mFontData.Count);
 	public override FontMetrics Metrics => mMetrics;
 	public override float PixelHeight => mPixelHeight;
 

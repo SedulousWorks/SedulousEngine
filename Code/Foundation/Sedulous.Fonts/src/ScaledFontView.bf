@@ -30,6 +30,7 @@ class ScaledFontView : IFont
 
 	public override uint32 BackendTypeId => mBase.BackendTypeId;
 	public override void GetFamilyName(String outName) => mBase.GetFamilyName(outName);
+	public override Span<uint8> SourceData => mBase.SourceData;
 	public override float PixelHeight => mPixelHeight;
 
 	public override FontMetrics Metrics

@@ -20,6 +20,8 @@ class FontAssetBuilder : IAssetBuilder
 {
 	/// The stream the concatenated atlas pixels travel in.
 	public const String cPixelStreamName = "data";
+	/// The stream the font file travels in, for a shaper that reads its tables in a shipped game.
+	public const String cFontStreamName = "font";
 
 	public Type AssetType => typeof(FontAsset);
 	public Type ProductType => typeof(FontResource);
@@ -29,9 +31,10 @@ class FontAssetBuilder : IAssetBuilder
 	/// bounds. Five: a distance field atlas is sized to its glyphs, so every cooked font
 	/// re-bakes at its new size. Six: FontResource 2, whose atlases key by glyph index so a
 	/// shaper's glyphs can draw, every codepoint the range maps to keeping its glyph row (a
-	/// space's too). A product schema change bumps this in the SAME commit, because the bump IS
-	/// the migration: it forces every stale cooked font to re-cook.
-	public int32 Version => 6;
+	/// space's too). Seven: the font file is kept as the product's "font" stream. A product
+	/// schema change bumps this in the SAME commit, because the bump IS the migration: it forces
+	/// every stale cooked font to re-cook.
+	public int32 Version => 7;
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{
@@ -75,7 +78,9 @@ class FontAssetBuilder : IAssetBuilder
 
 		if (context.Output.WriteObject(record) case .Err(let writeError))
 			return .Err(writeError);
-		return context.Output.WriteData(cPixelStreamName, pixels);
+		if (context.Output.WriteData(cPixelStreamName, pixels) case .Err(let pixelError))
+			return .Err(pixelError);
+		return context.Output.WriteData(cFontStreamName, fontBytes);
 	}
 
 	private static FontLoadOptions OptionsFor(FontAsset asset, float pixelHeight,

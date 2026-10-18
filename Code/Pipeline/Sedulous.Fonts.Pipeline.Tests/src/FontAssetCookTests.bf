@@ -95,6 +95,10 @@ class FontAssetCookTests
 		Test.Assert(font != null);
 		Test.Assert(font.Family == "TestMono");
 		Test.Assert(font.EntryCount == 2);
+		// The font file came along (a shaper reads its tables), and every entry's font lends it.
+		Test.Assert(font.SourceData.Length > 1000);
+		Test.Assert(font.EntryAt(0).Font.SourceData.Ptr == font.SourceData.Ptr);
+		Test.Assert(font.EntryAt(1).Font.SourceData.Length == font.SourceData.Length);
 
 		let entry = font.ClosestEntry(12.0f);
 		Test.Assert(entry != null);

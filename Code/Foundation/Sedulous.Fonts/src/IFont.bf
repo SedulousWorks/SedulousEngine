@@ -17,6 +17,9 @@ abstract class IFont
 	public virtual uint32 BackendTypeId => 0;
 
 	public abstract void GetFamilyName(String outName);
+	/// The font file's bytes (TTF/OTF), for a shaper that reads its tables; empty when the
+	/// font has none (a hand-built table). Borrowed from the font.
+	public abstract Span<uint8> SourceData { get; }
 	public abstract FontMetrics Metrics { get; }
 	public abstract float PixelHeight { get; }
 

@@ -12,6 +12,8 @@ namespace Sedulous.Fonts.Coverage;
 class BakedFont : IFont
 {
 	private String mFamilyName = new .() ~ delete _;
+	/// Borrowed: the cooked product's bytes.
+	private Span<uint8> mSourceData;
 	private float mPixelHeight;
 	private FontMetrics mMetrics = .Default();
 	private Dictionary<int32, GlyphInfo> mGlyphs = new .() ~ delete _;
@@ -34,6 +36,8 @@ class BakedFont : IFont
 	}
 
 	public void SetFamilyName(StringView name) => mFamilyName.Set(name);
+	/// The font file's bytes, BORROWED: whoever sets them keeps them alive as long as this font.
+	public void SetSourceData(Span<uint8> bytes) => mSourceData = bytes;
 	public void SetMetrics(FontMetrics metrics) => mMetrics = metrics;
 	public void SetPixelHeight(float pixelHeight) => mPixelHeight = pixelHeight;
 	public void SetGlyph(int32 codepoint, GlyphInfo info) => mGlyphs[codepoint] = info;
@@ -44,6 +48,7 @@ class BakedFont : IFont
 	// ---- IFont ----
 
 	public override void GetFamilyName(String outName) => outName.Append(mFamilyName);
+	public override Span<uint8> SourceData => mSourceData;
 	public override FontMetrics Metrics => mMetrics;
 	public override float PixelHeight => mPixelHeight;
 

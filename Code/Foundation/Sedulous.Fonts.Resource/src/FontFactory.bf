@@ -49,16 +49,20 @@ class FontFactory : IResourceFactory
 			return null;
 
 		let pixels = scope List<uint8>();
-		ReadPixelStream(instance, pixels);
+		ReadStream(instance, "data", pixels);
 
 		let product = new Font();
 		product.SetFamily(record.Family);
+		// The font file, for a shaper; absent in a font cooked before it was kept.
+		let sourceData = new List<uint8>();
+		ReadStream(instance, "font", sourceData);
+		product.SetSourceData(sourceData);
 
 		let distanceField = record.PixelEncoding == .DistanceField;
 
 		for (int index < record.EntryCount)
 		{
-			let entry = BuildEntry(record, index, pixels, distanceField);
+			let entry = BuildEntry(record, index, pixels, product.SourceData, distanceField);
 			// A corrupt entry is DROPPED rather than added half built: a font size that
 			// exists but has no atlas would draw nothing and look like a missing glyph.
 			if (entry != null)
@@ -73,12 +77,13 @@ class FontFactory : IResourceFactory
 		return product;
 	}
 
-	/// The concatenated atlas payloads. An absent stream is not fatal here: the entry
-	/// builder rejects a slice it cannot satisfy, so a record with no pixels simply
-	/// produces no entries.
-	private void ReadPixelStream(Instance instance, List<uint8> outPixels)
+	/// A data stream whole: "data", the concatenated atlas payloads, or "font", the font file.
+	/// An absent stream is not fatal here: the entry builder rejects an atlas slice it cannot
+	/// satisfy, so a record with no pixels simply produces no entries, and a font without its
+	/// file draws unshaped.
+	private void ReadStream(Instance instance, StringView name, List<uint8> outBytes)
 	{
-		let stream = instance.ReadData("data");
+		let stream = instance.ReadData(name);
 		if (stream == null)
 			return;
 		defer delete stream;
@@ -87,18 +92,19 @@ class FontFactory : IResourceFactory
 		if (size <= 0)
 			return;
 
-		outPixels.Resize((int)size);
-		if (stream.Read(.(outPixels.Ptr, (int)size)) != (int)size)
-			outPixels.Clear();
+		outBytes.Resize((int)size);
+		if (stream.Read(.(outBytes.Ptr, (int)size)) != (int)size)
+			outBytes.Clear();
 	}
 
-	private FontEntry BuildEntry(FontResource record, int index, List<uint8> pixels,
+	private FontEntry BuildEntry(FontResource record, int index, List<uint8> pixels, Span<uint8> sourceData,
 		bool distanceField)
 	{
 		let pixelHeight = record.EntryPixelHeight[index];
 
 		let font = new BakedFont();
 		font.SetFamilyName(record.Family);
+		font.SetSourceData(sourceData);
 		font.SetPixelHeight(pixelHeight);
 		font.SetMetrics(.(record.EntryAscent[index], record.EntryDescent[index],
 			record.EntryLineGap[index], pixelHeight, record.EntryScale[index]));

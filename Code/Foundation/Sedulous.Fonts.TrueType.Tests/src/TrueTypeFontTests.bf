@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.IO;
 using Sedulous.Core;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TrueType;
@@ -243,5 +244,25 @@ class TrueTypeFontTests
 		Test.Assert(inked > 0, "the stems are solid");
 
 		Test.Assert(!font.RasterizeGlyph(Cp(' '), coverage, ?, ?, ?, ?), "a space has nothing to draw");
+	}
+
+	/// The font lends the file it parsed, for a shaper that reads its tables, and a view at
+	/// another size lends the same bytes.
+	[Test]
+	public static void AFontLendsItsFile()
+	{
+		let path = scope String();
+		Test.Assert(TestFont.FindPath(path));
+		let bytes = scope List<uint8>();
+		Test.Assert(File.ReadAll(path, bytes) case .Ok);
+
+		let font = TestFont.Load();
+		Test.Assert(font != null);
+		defer delete font;
+		Test.Assert(font.SourceData.Length == bytes.Count);
+		Test.Assert(font.SourceData[0] == bytes[0]);
+
+		let view = scope ScaledFontView(font, font.PixelHeight * 2.0f); // borrows the font
+		Test.Assert(view.SourceData.Ptr == font.SourceData.Ptr);
 	}
 }
