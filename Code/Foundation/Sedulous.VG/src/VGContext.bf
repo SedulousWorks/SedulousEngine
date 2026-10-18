@@ -417,15 +417,20 @@ class VGContext
 
 	// === layers ===
 
+	/// Layers a batch holds before PushLayer falls back to an opacity push: each costs the
+	/// renderer a pass and a uniform slot, of which it has 256 a frame, one per slice besides.
+	public const int32 MaxLayers = 128;
+
 	/// Draws what follows into an offscreen layer, composited into what is under it once, at
 	/// PopLayer, with `opacity` and `blendMode`: a group fades as one, its overlapping parts never
 	/// showing through each other.
 	///
 	/// Inside, opacity starts again at one and no clip applies; the clips around the layer apply
-	/// to its composite. The transform carries on. Without SetLayers, an opacity push instead.
+	/// to its composite. The transform carries on. Without SetLayers, or past MaxLayers in a
+	/// batch, an opacity push instead.
 	public void PushLayer(float opacity, VGBlendMode blendMode = .Normal)
 	{
-		if (!mLayersEnabled)
+		if (!mLayersEnabled || (mBatch.Layers.Count >= MaxLayers))
 		{
 			PushOpacity(opacity);
 			// Layer -1: PopLayer pops the opacity.

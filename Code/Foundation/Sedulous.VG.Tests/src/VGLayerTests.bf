@@ -168,6 +168,28 @@ class VGLayerTests
 		Test.Assert(Near(batch.Vertices.Back.Color.A, 0.5f), "the layer's opacity popped");
 	}
 
+	/// Past MaxLayers in a batch a layer is an opacity push, so a long list of faded rows still
+	/// draws, each row fading on its own.
+	[Test]
+	public static void PastMaxLayersALayerIsAnOpacityPush()
+	{
+		let context = scope VGContext();
+		context.SetLayers(true);
+		let fill = Square(0, 0, 10, 10);
+		defer delete fill;
+		for (int i < VGContext.MaxLayers + 2)
+		{
+			context.PushLayer(0.5f);
+			context.FillPath(fill, .Red, .NonZero, false);
+			context.PopLayer();
+		}
+
+		let batch = context.GetBatch();
+		Test.Assert(batch.Layers.Count == VGContext.MaxLayers);
+		Test.Assert(batch.Commands.Back.Layer == -1);
+		Test.Assert(Near(batch.Vertices.Back.Color.A, 0.5f), "faded on its own");
+	}
+
 	/// A layer left open when the context is cleared is freed with it, and the next frame starts
 	/// on the target again.
 	[Test]
