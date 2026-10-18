@@ -18,6 +18,10 @@ struct VGLayer
 	public float Blur = 0.0f;
 	/// The sigma of a blurred copy drawn for backdrop composites; the layer itself stays sharp.
 	public float BackdropBlur = 0.0f;
+	/// Colour filters applied at the composite: 0 is grey and 1 unchanged (CSS's saturate(),
+	/// grayscale() its complement), and a factor on the colour (brightness()).
+	public float Saturation = 1.0f;
+	public float Brightness = 1.0f;
 
 	public this() {}
 }

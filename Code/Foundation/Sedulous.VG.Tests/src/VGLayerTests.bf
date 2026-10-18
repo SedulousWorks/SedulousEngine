@@ -63,6 +63,40 @@ class VGLayerTests
 	}
 
 	/// Inside a layer no clip or opacity applies; around it they apply to its composite.
+	/// A layer's colour filters ride its composite's vertices as (1 - saturation,
+	/// brightness - 1), what the layer shader reads; a plain layer's carry zeros.
+	[Test]
+	public static void ALayersColourFiltersRideItsCompositesVertices()
+	{
+		let context = scope VGContext();
+		context.SetLayers(true);
+		let square = Square(10, 10, 30, 30);
+		defer delete square;
+		context.PushLayer(1.0f, .Normal, 0.0f, 0.25f, 1.5f);
+		context.FillPath(square, Color.Red, .NonZero, false);
+		context.PopLayer();
+		context.PushLayer(1.0f);
+		context.FillPath(square, Color.Red, .NonZero, false);
+		context.PopLayer();
+
+		let batch = context.GetBatch();
+		Test.Assert(batch.Layers.Count == 2);
+		Test.Assert(Near(batch.Layers[0].Saturation, 0.25f) && Near(batch.Layers[0].Brightness, 1.5f));
+		var composites = 0;
+		for (let command in batch.Commands)
+		{
+			if (command.DrawMode != .Layer)
+				continue;
+			let vertex = batch.Vertices[batch.Indices[command.StartIndex]];
+			if (command.CompositeLayer == 0)
+				Test.Assert(Near(vertex.Effect.X, 0.75f) && Near(vertex.Effect.Y, 0.5f));
+			else
+				Test.Assert(Near(vertex.Effect.X, 0.0f) && Near(vertex.Effect.Y, 0.0f), "a plain layer: untouched");
+			composites++;
+		}
+		Test.Assert(composites == 2);
+	}
+
 	[Test]
 	public static void InsideALayerNoClipOrOpacityAppliesAroundItTheyApplyToItsComposite()
 	{

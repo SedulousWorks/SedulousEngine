@@ -548,6 +548,55 @@ class VGPixelProbeTests
 		Test.Assert(Math.Abs((int)image.At(60, 50)[0] - outside) <= 2, scope $"{detail}: and symmetric");
 	}
 
+	/// Colour filters at a layer's composite, in an Encoded canvas (byte values as authored): a
+	/// red square greyed by saturation 0 reads its luma, 0.2126 of 255; a white one at brightness
+	/// 0.5 reads half; saturation 2 leaves red red (it cannot be more vivid); a plain layer is
+	/// untouched.
+	[Test]
+	public static void ALayersCompositeFiltersItsColourBySaturationAndBrightness()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+		{
+			LayerFiltersOn(kind, 1);
+			LayerFiltersOn(kind, 4);
+		}
+	}
+
+	private static void LayerFiltersOn(ProbeBackend kind, uint32 sampleCount)
+	{
+		let fixture = scope VGProbeFixture(kind);
+		if (!fixture.Ready)
+			return;
+
+		let image = VGSceneRenderer.RenderScene(fixture, scope (context) =>
+			{
+				context.PushLayer(1.0f, .Normal, 0.0f, 0.0f, 1.0f);
+				context.FillRect(.(8, 8, 20, 20), ByteColor(255, 0, 0));
+				context.PopLayer();
+				context.PushLayer(1.0f, .Normal, 0.0f, 1.0f, 0.5f);
+				context.FillRect(.(40, 8, 20, 20), ByteColor(255, 255, 255));
+				context.PopLayer();
+				context.PushLayer(1.0f, .Normal, 0.0f, 2.0f, 1.0f);
+				context.FillRect(.(72, 8, 20, 20), ByteColor(255, 0, 0));
+				context.PopLayer();
+				context.PushLayer(1.0f);
+				context.FillRect(.(104, 8, 20, 20), ByteColor(0, 128, 255));
+				context.PopLayer();
+			}, sampleCount, .Encoded);
+		defer delete image;
+		Test.Assert((image != null) && image.Valid, "the scene rendered");
+
+		let name = scope $"{kind} x{sampleCount}";
+		let grey = image.At(18, 18);
+		let greyText = scope $"{name}: grey {grey[0]},{grey[1]},{grey[2]}";
+		Test.Assert(Math.Abs((int)grey[0] - 54) <= 2, greyText);
+		Test.Assert(Math.Abs((int)grey[1] - 54) <= 2, greyText);
+		Test.Assert(Math.Abs((int)grey[2] - 54) <= 2, greyText);
+		Test.Assert(Math.Abs((int)image.At(50, 18)[0] - 128) <= 2, scope $"{name}: dimmed to half");
+		Test.Assert((image.At(82, 18)[0] >= 253) && (image.At(82, 18)[1] <= 2), scope $"{name}: vivid red stays red");
+		Test.Assert((Math.Abs((int)image.At(114, 18)[1] - 128) <= 2) && (image.At(114, 18)[2] >= 253), scope $"{name}: a plain layer, untouched");
+	}
+
 	/// A red half and a blue half meet at x = 64; a backdrop blur over the middle of the seam mixes
 	/// them there and leaves the seam sharp above it, and a half faded green layer drawn before it
 	/// (moved under the backdrop's layer) still reads half. Encoded, so a half is byte 128.

@@ -460,8 +460,11 @@ class VGContext
 	/// Inside, opacity starts again at one and no clip applies; the clips around the layer apply
 	/// to its composite. The transform carries on. `blur` blurs the layer before its composite, a
 	/// Gaussian of that sigma in device pixels, up to MaxLayerBlur. Without SetLayers, or past
-	/// MaxLayers in a batch, an opacity push instead, and no blur.
-	public void PushLayer(float opacity, VGBlendMode blendMode = .Normal, float blur = 0.0f)
+	/// MaxLayers in a batch, an opacity push instead, and no blur. `saturation` (0 grey, 1
+	/// unchanged, above 1 more vivid) and `brightness` (a factor on the colour) filter the layer
+	/// at its composite; without layers they are dropped with it.
+	public void PushLayer(float opacity, VGBlendMode blendMode = .Normal, float blur = 0.0f,
+		float saturation = 1.0f, float brightness = 1.0f)
 	{
 		if (!mLayersEnabled || (mBatch.Layers.Count >= MaxLayers))
 		{
@@ -489,6 +492,8 @@ class VGContext
 		layer.Opacity = Clamp(opacity, 0.0f, 1.0f);
 		layer.BlendMode = blendMode;
 		layer.Blur = Clamp(blur, 0.0f, MaxLayerBlur);
+		layer.Saturation = Max(0.0f, saturation);
+		layer.Brightness = Max(0.0f, brightness);
 		save.Layer = (int32)mBatch.Layers.Count;
 		mBatch.Layers.Add(layer);
 		mCurrentLayer = save.Layer;
@@ -606,18 +611,26 @@ class VGContext
 	/// clips apply, as a pushed layer's do; else none, since drawing moved aside keeps its own.
 	private void EmitComposite(int32 index, float alpha, VGBlendMode blendMode, bool clipped)
 	{
-		let bounds = mBatch.Layers[index].Bounds;
+		let layer = mBatch.Layers[index];
+		let bounds = layer.Bounds;
 		let tint = Color(1.0f, 1.0f, 1.0f, alpha);
+		// The colour filters ride the vertices' effect pair, which no blend space touches:
+		// (1 - saturation, brightness - 1), so a plain composite carries zeros.
+		let filters = Float2(1.0f - layer.Saturation, layer.Brightness - 1.0f);
 		let start = (int32)mBatch.Indices.Count;
 		let vertexBase = (uint32)mBatch.Vertices.Count;
 		let x0 = bounds.X;
 		let y0 = bounds.Y;
 		let x1 = bounds.X + bounds.Width;
 		let y1 = bounds.Y + bounds.Height;
-		mBatch.Vertices.Add(.(.(x0, y0), .(0.0f, 0.0f), tint));
-		mBatch.Vertices.Add(.(.(x1, y0), .(1.0f, 0.0f), tint));
-		mBatch.Vertices.Add(.(.(x1, y1), .(1.0f, 1.0f), tint));
-		mBatch.Vertices.Add(.(.(x0, y1), .(0.0f, 1.0f), tint));
+		Float2[4] corners = .(.(x0, y0), .(x1, y0), .(x1, y1), .(x0, y1));
+		Float2[4] uvs = .(.(0.0f, 0.0f), .(1.0f, 0.0f), .(1.0f, 1.0f), .(0.0f, 1.0f));
+		for (int i < 4)
+		{
+			var vertex = VGVertex(corners[i], uvs[i], tint);
+			vertex.Effect = filters;
+			mBatch.Vertices.Add(vertex);
+		}
 		for (let i in scope uint32[](0, 1, 2, 0, 2, 3))
 			mBatch.Indices.Add(vertexBase + i);
 
