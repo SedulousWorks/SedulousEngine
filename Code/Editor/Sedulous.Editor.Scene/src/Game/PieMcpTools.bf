@@ -19,9 +19,6 @@ static class PieMcpTools
 	/// How many tools Register registers; a tripwire like the scene tools'.
 	public const int cPieToolCount = 7;
 
-	/// The primary Game tab's id.
-	public const String cPrimaryId = "game-page";
-
 	private const String cPieArgument = "the PIE instance's id, as pie_list reports it (default: the primary, `game-page`)";
 
 	/// Frames: five minutes at 60 Hz, the cook Play waits on included, then pie_start gives up.
@@ -260,7 +257,7 @@ static class PieMcpTools
 		let newInstance = (arguments != null) && (arguments.Get("newInstance") != null) && arguments.Get("newInstance").AsBool();
 		if (!newInstance)
 		{
-			if (let primary = FindPie(context, cPrimaryId))
+			if (let primary = FindPie(context, GameScenePages.cPrimaryPieId))
 			{
 				let pie = primary as IPieInstancePage;
 				if (pie.IsRunning)
@@ -305,7 +302,7 @@ static class PieMcpTools
 			let pie = page as IPieInstancePage;
 			if (pie == null)
 				continue;
-			if (newInstance ? !before.Contains(page) : (pie.PieId == cPrimaryId))
+			if (newInstance ? !before.Contains(page) : (pie.PieId == GameScenePages.cPrimaryPieId))
 			{
 				target = page;
 				break;
@@ -449,11 +446,11 @@ static class PieMcpTools
 	public static EditorPage ResolvePie(EditorContext context, JsonValue arguments, String outError)
 	{
 		let arg = (arguments != null) ? arguments.Get("pie") : null;
-		let id = ((arg != null) && arg.IsString && !arg.AsString().IsEmpty) ? arg.AsString() : StringView(cPrimaryId);
+		let id = ((arg != null) && arg.IsString && !arg.AsString().IsEmpty) ? arg.AsString() : StringView(GameScenePages.cPrimaryPieId);
 		let page = FindPie(context, id);
 		if (page != null)
 			return page;
-		if (id == cPrimaryId)
+		if (id == GameScenePages.cPrimaryPieId)
 			outError.Append("no Game tab is open (pie_start opens and runs one)");
 		else
 			outError.AppendF("no PIE instance '{}' (pie_list names them)", id);

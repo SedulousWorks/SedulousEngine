@@ -17,23 +17,18 @@ enum PieScriptState
 	Faulted
 }
 
-/// What one play-in-editor instance, a Game tab, lets the PIE tools act through: its id, its
-/// run's start and stop, the state of the run, a capture of what it renders, scripted input in
-/// place of the viewport's, and the resolution it draws at. The Game page
-/// implements it; a module reaches it with `page as IPieInstancePage`.
-interface IPieInstancePage
+/// What one play-in-editor instance, a Game tab, lets the PIE tools act through: beyond what
+/// the scene tools read (IGameScenePage: its id, whether it runs and its scene), its run's start
+/// and stop, the state of the run, a capture of what it renders, scripted input in place of the
+/// viewport's, and the resolution it draws at. The Game page implements it; a module reaches it
+/// with `page as IPieInstancePage`.
+interface IPieInstancePage : IGameScenePage
 {
-	/// The tab's id: `game-page` for the primary, `game-page-1`, `game-page-2`, ... for the
-	/// instances Play New Instance opens. The dock persists the tab under it too.
-	StringView PieId { get; }
-
 	/// Asks for a cook and starts the run once the cook is idle; nothing while running.
 	void Play();
 	/// Stops the run; the tab stays open.
 	void Stop();
 
-	/// A run is going.
-	bool IsRunning { get; }
 	/// Play was asked for and the run waits on the cook.
 	bool IsStarting { get; }
 	/// The scene the run is in, empty when it has none (a script that owns boot, between
@@ -55,8 +50,6 @@ interface IPieInstancePage
 	/// The latest request's state, as it advances frame by frame. BORROWED.
 	ViewportCapture LastViewportCapture { get; }
 
-	/// The scene the run is in now; null when it has none.
-	Sedulous.Scene.Scene RunningScene { get; }
 	/// Reads a property of the running game script into `value`; false without one.
 	bool GetScriptProperty(StringView name, ref ScriptValue value);
 

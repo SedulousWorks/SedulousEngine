@@ -345,6 +345,55 @@ class SceneMcpToolsTests
 		return outText;
 	}
 
+	/// A Game tab as the scene tools see it: its id, whether it runs, its scene, and nothing of
+	/// play in editor.
+	class HeadlessGameScenePage : EditorPage, IGameScenePage
+	{
+		private String mId = new .() ~ delete _;
+		public bool Running = true;
+		public Sedulous.Scene.Scene Level = new .("Level1") ~ delete _;
+
+		public this(StringView id)
+		{
+			mId.Set(id);
+		}
+
+		public override StringView Title => "Game";
+		public override Result<void, ErrorCode> Save() => .Ok;
+		public StringView PieId => mId;
+		public bool IsRunning => Running;
+		public Sedulous.Scene.Scene RunningScene => Running ? Level : null;
+	}
+
+	/// entity_inspect with `pie` reads the scene of the Game tab with that id through
+	/// IGameScenePage alone, so the scene tools need nothing of play in editor; the primary is
+	/// the default, and a tab that is missing or stopped is refused by name.
+	[Test]
+	public static void EntityInspectReadsARunningGamesSceneThroughItsGameScenePage()
+	{
+		let context = scope EditorContext();
+		let primary = (HeadlessGameScenePage)context.AdoptPage(new HeadlessGameScenePage(GameScenePages.cPrimaryPieId));
+		primary.Level.CreateEntity("Player");
+		let other = (HeadlessGameScenePage)context.AdoptPage(new HeadlessGameScenePage("game-page-1"));
+		let server = scope McpServer();
+		SceneMcpTools.Register(server, context);
+
+		let got = Call(server, "entity_inspect", "{\"pie\":\"\",\"entity\":\"Player\"}");
+		defer delete got;
+		Test.Assert(got.Ok, got.Error);
+		Test.Assert(got.Payload.Get("pie").AsString() == "game-page");
+		Test.Assert(got.Payload.Get("scene").AsString() == "Level1");
+		Test.Assert(got.Payload.Get("entity").Get("name").AsString() == "Player");
+
+		other.Running = false;
+		let stopped = Call(server, "entity_inspect", "{\"pie\":\"game-page-1\",\"entity\":\"Player\"}");
+		defer delete stopped;
+		Test.Assert(stopped.Error.StartsWith("PIE instance 'game-page-1' is not running a scene"), stopped.Error);
+		let missing = Call(server, "entity_inspect", "{\"pie\":\"game-page-2\",\"entity\":\"Player\"}");
+		defer delete missing;
+		Test.Assert(missing.Error == "no PIE instance 'game-page-2' (pie_list names them)", missing.Error);
+	}
+
 	/// entity_inspect reads an entity and its components through run time reflection:
 	/// identity, hierarchy, transform, enums by name, references as guids, lists expanded, the
 	/// primary selection as the default, and the refusals.

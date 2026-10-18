@@ -937,10 +937,9 @@ static class SceneMcpTools
 	/// scene that game is in now.
 	private static bool InspectPie(EditorContext context, JsonValue arguments, JsonValue outResult, String outError)
 	{
-		let page = PieMcpTools.ResolvePie(context, arguments, outError);
-		if (page == null)
+		let pie = GameScenePages.Resolve(context, arguments, outError);
+		if (pie == null)
 			return false;
-		let pie = page as IPieInstancePage;
 		let scene = pie.RunningScene;
 		if (!pie.IsRunning || (scene == null))
 		{
