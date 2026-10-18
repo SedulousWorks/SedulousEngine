@@ -6,6 +6,8 @@
 // angular sweep) instead of Gouraud-interpolating it. t is sampled from the baked 256x1 ramp LUT at
 // texel centers. Outputs PREMULTIPLIED-alpha color to pair with the PremultipliedAlpha blend.
 // Resolved via ShaderSystem::GetVariant("vg_grad_conic", Fragment).
+#include "color.hlsli"
+cbuffer VGUniforms : register(b0) { float4x4 Projection; float DistanceFieldPixelRange; float DistanceFieldAtlasWidth; float DistanceFieldAtlasHeight; float BlendSpace; };
 struct PSInput { float4 Position:SV_Position; float2 TexCoord:TEXCOORD0; float4 Color:COLOR0; float Coverage:COVERAGE; };
 Texture2D VGTexture : register(t0);
 SamplerState VGSampler : register(s0);
@@ -15,6 +17,9 @@ float4 main(PSInput input) : SV_Target {
     float t = a - floor(a);                                          // [0, 1), 0 at +x axis
     float u = (0.5 + t * 255.0) / 256.0; // texel center: pads + dodges the Repeat wrap seam
     float4 ramp = VGTexture.Sample(VGSampler, float2(u, 0.5));
+    // Sampled colour arrives in linear light (an sRGB texture decoded, or a linear one); an
+    // Encoded canvas works on encoded values, so it is encoded back (white coverage stays 1).
+    if (BlendSpace > 0.5) { ramp.rgb = LinearToSrgb(ramp.rgb); }
     float4 result = ramp * input.Color;
     result.a *= input.Coverage;
     result.rgb *= result.a; // premultiply

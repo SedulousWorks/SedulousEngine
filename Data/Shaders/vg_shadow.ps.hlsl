@@ -9,7 +9,7 @@
 // rounded box in sigma units; the shadow's alpha is the Gaussian integral across that edge,
 // 1 - Phi(d), via an erf approximation (Abramowitz-Stegun 7.1.26, |error| < 1.5e-7). No texture.
 // Shares VGUniforms (b0) with vg.vs. Resolved via ShaderSystem::GetVariant("vg_shadow", Fragment).
-cbuffer VGUniforms : register(b0) { float4x4 Projection; float DistanceFieldPixelRange; float DistanceFieldAtlasWidth; float DistanceFieldAtlasHeight; float _pad; };
+cbuffer VGUniforms : register(b0) { float4x4 Projection; float DistanceFieldPixelRange; float DistanceFieldAtlasWidth; float DistanceFieldAtlasHeight; float BlendSpace; };
 struct PSInput { float4 Position:SV_Position; float2 TexCoord:TEXCOORD0; float4 Color:COLOR0; float Coverage:COVERAGE; };
 float Erf(float x) {
     float s = sign(x);

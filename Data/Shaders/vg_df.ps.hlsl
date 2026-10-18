@@ -6,7 +6,7 @@
 // crisp at any scale. Shares VGUniforms (b0) for the DF metadata; pairs with vg.vs. Resolved via
 // ShaderSystem::GetVariant("vg_df", Fragment). fwidth is called unconditionally (uniformity-safe
 // for the WGSL/naga+tint cook).
-cbuffer VGUniforms : register(b0) { float4x4 Projection; float DistanceFieldPixelRange; float DistanceFieldAtlasWidth; float DistanceFieldAtlasHeight; float _pad; };
+cbuffer VGUniforms : register(b0) { float4x4 Projection; float DistanceFieldPixelRange; float DistanceFieldAtlasWidth; float DistanceFieldAtlasHeight; float BlendSpace; };
 struct PSInput { float4 Position:SV_Position; float2 TexCoord:TEXCOORD0; float4 Color:COLOR0; float Coverage:COVERAGE; };
 Texture2D VGTexture : register(t0);
 SamplerState VGSampler : register(s0);

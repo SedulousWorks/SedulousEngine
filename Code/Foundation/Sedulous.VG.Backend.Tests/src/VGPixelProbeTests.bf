@@ -221,6 +221,90 @@ class VGPixelProbeTests
 		Test.Assert(Math.Abs((int32)normal[1] - 60) <= 2, "and its green");
 	}
 
+	/// The same scene in a Linear and an Encoded canvas. Linear blends linear light (half black
+	/// over white is 73% grey, byte 188); Encoded blends the encoded values as browsers do (50%
+	/// grey, byte 128). A gradient's ramp is baked from the authored stops, so it runs as
+	/// authored in both (its middle is byte 128) once Encoded re-encodes what it samples, and a
+	/// solid colour reads as authored in both.
+	[Test]
+	public static void AnEncodedCanvasBlendsEncodedValuesALinearOneLinearLight()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+			BlendSpacesOn(kind);
+	}
+
+	private struct BlendSpaceReadings
+	{
+		public int HalfBlack;   // half transparent black over white
+		public int GradientMid; // a black to white gradient's middle
+		public int[3] Solid;
+	}
+
+	private static void BlendSpacesOn(ProbeBackend kind)
+	{
+		let fixture = scope VGProbeFixture(kind);
+		if (!fixture.Ready)
+			return;
+
+		let linear = ReadBlendSpace(fixture, .Linear);
+		let encoded = ReadBlendSpace(fixture, .Encoded);
+		let name = kind.ToString(.. scope .());
+		Test.Assert(Math.Abs(linear.HalfBlack - 188) <= 2, scope $"{name} linear: half black over white read {linear.HalfBlack}");
+		Test.Assert(Math.Abs(encoded.HalfBlack - 128) <= 2, scope $"{name} encoded: half black over white read {encoded.HalfBlack}");
+		Test.Assert(Math.Abs(linear.GradientMid - 128) <= 6, scope $"{name} linear: the gradient's middle read {linear.GradientMid}");
+		Test.Assert(Math.Abs(encoded.GradientMid - 128) <= 6, scope $"{name} encoded: the gradient's middle read {encoded.GradientMid}");
+		int[3] authored = .(180, 60, 40);
+		for (int c < 3)
+		{
+			Test.Assert(Math.Abs(linear.Solid[c] - authored[c]) <= 2, scope $"{name} linear: a solid colour as authored");
+			Test.Assert(Math.Abs(encoded.Solid[c] - authored[c]) <= 2, scope $"{name} encoded: a solid colour as authored");
+		}
+	}
+
+	private static BlendSpaceReadings ReadBlendSpace(VGProbeFixture fixture, VGBlendSpace space)
+	{
+		let image = VGSceneRenderer.RenderScene(fixture, scope (context) =>
+			{
+				let white = Rect(0, 0, 128, 40);
+				defer delete white;
+				context.FillPath(white, ByteColor(255, 255, 255), .NonZero, false);
+				context.FillPath(white, Color(0.0f, 0.0f, 0.0f, 0.5f), .NonZero, false);
+
+				let ramp = scope VGLinearGradientFill(.(0.0f, 0.0f), .(128.0f, 0.0f));
+				ramp.AddStop(0.0f, ByteColor(0, 0, 0));
+				ramp.AddStop(1.0f, ByteColor(255, 255, 255));
+				let band = Rect(0, 44, 128, 84);
+				defer delete band;
+				context.FillPath(band, ramp, .NonZero, false);
+
+				let solid = Rect(0, 88, 128, 128);
+				defer delete solid;
+				context.FillPath(solid, ByteColor(180, 60, 40), .NonZero, false);
+			}, 1, space);
+		defer delete image;
+		Test.Assert((image != null) && image.Valid, "the scene rendered");
+
+		var readings = BlendSpaceReadings();
+		readings.HalfBlack = image.At(64, 20)[0];
+		readings.GradientMid = image.At(64, 64)[0];
+		let solid = image.At(64, 108);
+		for (int c < 3)
+			readings.Solid[c] = solid[c];
+		return readings;
+	}
+
+	/// An axis aligned rectangle path, the caller's to delete.
+	private static Path Rect(float x0, float y0, float x1, float y1)
+	{
+		let builder = scope PathBuilder();
+		builder.MoveTo(x0, y0);
+		builder.LineTo(x1, y0);
+		builder.LineTo(x1, y1);
+		builder.LineTo(x0, y1);
+		builder.Close();
+		return builder.ToPath();
+	}
+
 	[Test]
 	public static void MultisamplingSoftensAHardDiagonal()
 	{

@@ -12,7 +12,9 @@ namespace Sedulous.VG.Backend.Tests;
 ///
 /// Single sampled with a STENCIL attachment, which is what the stencil then cover fills need;
 /// above one sample it renders into a multisampled target that resolves into the readback
-/// texture, the same arrangement the canvas and window hosts use.
+/// texture, the same arrangement the canvas and window hosts use. An Encoded scene draws into the
+/// sRGB target through its UNORM view, as a host does for an Encoded canvas; the readback is the
+/// target's bytes either way.
 static class VGSceneRenderer
 {
 	public const uint32 Size = 128;
@@ -22,9 +24,11 @@ static class VGSceneRenderer
 	public static Color ByteColor(uint8 r, uint8 g, uint8 b) => ToColor(Color32(r, g, b, 255));
 
 	public static CapturedImage RenderScene(VGProbeFixture fixture, delegate void(VGContext) record,
-		uint32 sampleCount = 1)
+		uint32 sampleCount = 1, VGBlendSpace blendSpace = .Linear)
 	{
 		let device = fixture.Device;
+		let encoded = blendSpace == .Encoded;
+		let drawFormat = encoded ? TextureFormat.RGBA8Unorm : cTargetFormat;
 		let shaders = fixture.Host;
 
 		let vertex = shaders.GetVariant("vg", .Vertex, .None);
@@ -39,9 +43,10 @@ static class VGSceneRenderer
 		var targetConfig = VGTargetConfig();
 		targetConfig.SampleCount = sampleCount;
 		targetConfig.DepthStencilFormat = cDepthStencilFormat;
+		targetConfig.BlendSpace = blendSpace;
 
 		let renderer = scope VGRenderer();
-		if (renderer.Initialize(device, vertex, fragment, cTargetFormat, 2, distanceField,
+		if (renderer.Initialize(device, vertex, fragment, drawFormat, 2, distanceField,
 			gradRadial, gradConic, targetConfig) case .Err)
 			return null;
 
@@ -49,11 +54,14 @@ static class VGSceneRenderer
 
 		var colorDesc = TextureDesc.RenderTarget(cTargetFormat, Size, Size);
 		colorDesc.Usage |= .CopySrc;
+		colorDesc.AlternateViewFormat = encoded ? TextureFormat.RGBA8Unorm : .Undefined;
 		if (!(device.CreateTexture(colorDesc) case .Ok(var target)))
 			return null;
 		defer device.DestroyTexture(ref target);
 
-		if (!(device.CreateTextureView(target, .()) case .Ok(var targetView)))
+		var targetViewDesc = TextureViewDesc();
+		targetViewDesc.Format = drawFormat;
+		if (!(device.CreateTextureView(target, targetViewDesc) case .Ok(var targetView)))
 			return null;
 		defer device.DestroyTextureView(ref targetView);
 
@@ -69,7 +77,7 @@ static class VGSceneRenderer
 
 		if (sampleCount > 1)
 		{
-			var msaaDesc = TextureDesc.RenderTarget(cTargetFormat, Size, Size, sampleCount);
+			var msaaDesc = TextureDesc.RenderTarget(drawFormat, Size, Size, sampleCount);
 			msaaDesc.Usage = .RenderTarget;
 			if (!(device.CreateTexture(msaaDesc) case .Ok(let created)))
 				return null;

@@ -15,8 +15,9 @@ struct VGUniforms
 	public float DistanceFieldPixelRange = 4.0f;
 	public float DistanceFieldAtlasWidth = 512.0f;
 	public float DistanceFieldAtlasHeight = 512.0f;
-	/// To a sixteen byte boundary, which every backend's constant buffer rules want.
-	public float Padding = 0.0f;
+	/// 1: VGBlendSpace.Encoded, the shaders keep colours encoded. It also fills the block to a
+	/// sixteen byte boundary, which every backend's constant buffer rules want.
+	public float BlendSpace = 0.0f;
 
 	public this() {}
 }

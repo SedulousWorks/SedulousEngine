@@ -16,5 +16,9 @@ struct VGTargetConfig
 	/// cleared to zero by the host. That is what unlocks the stencil then cover fills.
 	public TextureFormat DepthStencilFormat = .Undefined;
 
+	/// Encoded: the target format given to Initialize is the UNORM twin of an sRGB target (a
+	/// view of it), and the shaders keep colours encoded (VGBlendSpace).
+	public VGBlendSpace BlendSpace = .Linear;
+
 	public this() {}
 }

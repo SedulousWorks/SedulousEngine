@@ -352,6 +352,7 @@ class VGRenderer
 		uniforms.DistanceFieldPixelRange = batch.DistanceFieldPixelRange;
 		uniforms.DistanceFieldAtlasWidth = batch.DistanceFieldAtlasWidth;
 		uniforms.DistanceFieldAtlasHeight = batch.DistanceFieldAtlasHeight;
+		uniforms.BlendSpace = (mTargetConfig.BlendSpace == .Encoded) ? 1.0f : 0.0f;
 
 		let uniformOffset = uniformSlot * (uint32)cUniformSlotSize;
 		WriteBuffer(mUniformBuffers[frameIndex], uniformOffset, &uniforms, sizeof(VGUniforms));
