@@ -1579,7 +1579,7 @@ class VGContext
 		case .Top: offsetY = bounds.Y + metrics.Ascent;
 		case .Middle:
 			offsetY = bounds.Y + ((bounds.Height - metrics.LineHeight) * 0.5f) + metrics.Ascent;
-		case .Bottom: offsetY = bounds.Y + bounds.Height - metrics.Descent;
+		case .Bottom: offsetY = bounds.Y + bounds.Height + metrics.Descent;
 		// The caller has already worked out the baseline, so it is taken as given.
 		case .Baseline: offsetY = bounds.Y;
 		}
@@ -1628,7 +1628,7 @@ class VGContext
 			{
 			case .Top: y = bounds.Y + metrics.Ascent;
 			case .Middle: y = bounds.Y + ((bounds.Height - metrics.LineHeight) * 0.5f) + metrics.Ascent;
-			case .Bottom: y = bounds.Y + bounds.Height - metrics.Descent;
+			case .Bottom: y = bounds.Y + bounds.Height + metrics.Descent;
 			case .Baseline: y = bounds.Y;
 			}
 			DrawPositionedGlyphs(shaped.Glyphs, font, HorizontalOffset(bounds, shaped.Width, horizontal), y, color);

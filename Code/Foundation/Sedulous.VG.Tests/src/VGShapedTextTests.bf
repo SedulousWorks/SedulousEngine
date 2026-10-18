@@ -178,4 +178,29 @@ class VGShapedTextTests
 			minX = Math.Min(minX, vertex.Position.X);
 		Test.Assert(Math.Abs(minX - 44.0f) < 0.01f, scope $"left edge {minX}");
 	}
+
+	/// The test font's ascent is 10 and its descent -3 (below the baseline, as fonts report it),
+	/// and its glyphs stand 8 tall on the baseline: in a 20 tall box the baseline sits at 17,
+	/// the descent above the bottom, not 3 below it.
+	[Test]
+	public static void BottomAlignedTextKeepsItsDescendersInTheBoxShapedOrNot()
+	{
+		for (int pass < 2)
+		{
+			let shaped = pass == 1;
+			let font = scope CachedFont(new LigatureFont(), new LigatureAtlas(), shaped ? new LigatureShaper() : null);
+			let service = scope OneFontService();
+			service.Font = font;
+			let context = scope VGContext();
+			context.SetFontService(service);
+
+			context.DrawText("fi", font, .(0, 0, 100, 20), .Left, .Bottom, .White);
+			let batch = context.GetBatch();
+			Test.Assert(!batch.Vertices.IsEmpty);
+			var lowest = float.MinValue;
+			for (let vertex in batch.Vertices)
+				lowest = Math.Max(lowest, vertex.Position.Y);
+			Test.Assert(Math.Abs(lowest - 17.0f) < 0.01f, scope $"shaped {shaped}: lowest {lowest}");
+		}
+	}
 }
