@@ -84,18 +84,26 @@ static class FontBaker
 		target.SetPixels(width, height, copy);
 	}
 
-	/// Only what actually PACKED is copied. A codepoint the packer had no room for, or the
-	/// typeface has no glyph for, is absent from both tables rather than present and blank,
-	/// which is what lets Contains answer honestly at runtime.
+	/// Every codepoint the range maps to keeps its glyph info and its glyph (a space too: it
+	/// draws nothing but advances), and every glyph that packed its region, by glyph index; a
+	/// mapped glyph with nothing to draw gets an advance-only region. A codepoint the typeface
+	/// has no glyph for is absent from both tables rather than present and blank, which is what
+	/// lets GlyphFor answer honestly at runtime.
 	private static void CopyGlyphs(TrueTypeFont source, TrueTypeFontAtlas rasterized,
 		BakedFont baked, BakedFontAtlas bakedAtlas, FontLoadOptions options)
 	{
-		for (int32 codepoint = options.FirstCodepoint; codepoint <= options.LastCodepoint; codepoint++)
+		for (let pair in rasterized.CodepointGlyphs)
 		{
-			if (!rasterized.TryGetRegion(codepoint, let region))
-				continue;
-			baked.SetGlyph(codepoint, source.GetGlyphInfo(codepoint));
-			bakedAtlas.SetRegion(codepoint, region);
+			let info = source.GetGlyphInfo(pair.key);
+			baked.SetGlyph(pair.key, info);
+			bakedAtlas.SetGlyphFor(pair.key, pair.value);
+			if (!rasterized.TryGetRegion(pair.value, ?))
+				bakedAtlas.SetRegion(pair.value, .(0, 0, 0, 0, 0.0f, 0.0f, info.AdvanceWidth));
+		}
+		for (let glyph in rasterized.Glyphs)
+		{
+			if (rasterized.TryGetRegion(glyph, let region))
+				bakedAtlas.SetRegion(glyph, region);
 		}
 	}
 
@@ -109,11 +117,11 @@ static class FontBaker
 	{
 		for (int32 first = options.FirstCodepoint; first <= options.LastCodepoint; first++)
 		{
-			if (!rasterized.Contains(first))
+			if (!rasterized.Contains(rasterized.GlyphFor(first)))
 				continue;
 			for (int32 second = options.FirstCodepoint; second <= options.LastCodepoint; second++)
 			{
-				if (!rasterized.Contains(second))
+				if (!rasterized.Contains(rasterized.GlyphFor(second)))
 					continue;
 				let adjustment = source.GetKerning(first, second);
 				if (adjustment != 0)

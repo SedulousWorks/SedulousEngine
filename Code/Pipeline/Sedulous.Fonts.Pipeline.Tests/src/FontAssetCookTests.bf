@@ -107,10 +107,10 @@ class FontAssetCookTests
 
 		Test.Assert(entry.Atlas != null);
 		Test.Assert(entry.Atlas.Mode == .Coverage);
-		Test.Assert(entry.Atlas.Contains((int32)'A'));
+		Test.Assert(entry.Atlas.Contains(entry.Atlas.GlyphFor((int32)'A')));
 
 		var cursor = 0.0f;
-		Test.Assert(entry.Atlas.GetGlyphQuad((int32)'A', ref cursor, 0.0f, let quad));
+		Test.Assert(entry.Atlas.GetGlyphQuad(entry.Atlas.GlyphFor((int32)'A'), ref cursor, 0.0f, let quad));
 		Test.Assert(cursor > 0.0f); // the advance moved
 
 		Test.Assert(entry.AtlasImage != null);
@@ -172,7 +172,7 @@ class FontAssetCookTests
 		Test.Assert(entry.Atlas != null);
 		Test.Assert(entry.Atlas.Mode == .DistanceField);
 		Test.Assert(entry.Atlas.DistanceFieldRange > 0.0f);
-		Test.Assert(entry.Atlas.Contains((int32)'Q'));
+		Test.Assert(entry.Atlas.Contains(entry.Atlas.GlyphFor((int32)'Q')));
 		Test.Assert(entry.AtlasImage != null);
 		// A distance field carries DISTANCES, not colour, so decoding it as sRGB would bend
 		// every edge it describes.

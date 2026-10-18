@@ -13,7 +13,10 @@ class BakedFontAtlas : IFontAtlas
 	private float mOversampleX = 1.0f;
 	private float mOversampleY = 1.0f;
 	private List<uint8> mPixels = new .() ~ delete _;
+	/// Glyph index to region.
 	private Dictionary<int32, AtlasRegion> mRegions = new .() ~ delete _;
+	/// Codepoint to glyph index, for unshaped text.
+	private Dictionary<int32, int32> mCodepointGlyphs = new .() ~ delete _;
 	private float mWhitePixelU;
 	private float mWhitePixelV;
 
@@ -37,6 +40,7 @@ class BakedFontAtlas : IFontAtlas
 	public void ClearForReload()
 	{
 		mRegions.Clear();
+		mCodepointGlyphs.Clear();
 		mPixels.Clear();
 		mWidth = 0;
 		mHeight = 0;
@@ -55,7 +59,10 @@ class BakedFontAtlas : IFontAtlas
 		mPixels = takenPixels;
 	}
 
-	public void SetRegion(int32 codepoint, AtlasRegion region) => mRegions[codepoint] = region;
+	/// A glyph's region, by glyph index.
+	public void SetRegion(int32 glyphId, AtlasRegion region) => mRegions[glyphId] = region;
+	/// The glyph a codepoint draws with, for unshaped text.
+	public void SetGlyphFor(int32 codepoint, int32 glyphId) => mCodepointGlyphs[codepoint] = glyphId;
 
 	public void SetWhitePixelUV(float u, float v)
 	{
@@ -69,33 +76,33 @@ class BakedFontAtlas : IFontAtlas
 	public override uint32 Height => mHeight;
 	public override Span<uint8> PixelData => mPixels.IsEmpty ? .() : .(mPixels.Ptr, mPixels.Count);
 
-	public override bool TryGetRegion(int32 codepoint, out AtlasRegion region)
+	public override bool TryGetRegion(int32 glyphId, out AtlasRegion region)
 	{
-		if (mRegions.TryGetValue(codepoint, out region))
+		if (mRegions.TryGetValue(glyphId, out region))
 			return true;
 		region = .();
 		return false;
 	}
 
-	/// Keyed by codepoint for now: a codepoint is its own glyph id.
-	public override int32 GlyphFor(int32 codepoint) => codepoint;
-	public override bool Contains(int32 codepoint) => mRegions.ContainsKey(codepoint);
+	public override int32 GlyphFor(int32 codepoint)
+		=> mCodepointGlyphs.TryGetValue(codepoint, let glyph) ? glyph : -1;
+	public override bool Contains(int32 glyphId) => mRegions.ContainsKey(glyphId);
 
 	public override Float2 WhitePixelUV => .(mWhitePixelU, mWhitePixelV);
 
-	public override bool GetGlyphQuad(int32 codepoint, ref float cursorX, float cursorY,
+	public override bool GetGlyphQuad(int32 glyphId, ref float cursorX, float cursorY,
 		out GlyphQuad quad)
 	{
 		quad = .();
-		if (!mRegions.TryGetValue(codepoint, let region))
+		if (!mRegions.TryGetValue(glyphId, let region))
 			return false;
 		return BuildQuad(region, cursorX, cursorY, true, ref cursorX, out quad);
 	}
 
-	public override bool GetGlyphQuadAt(int32 codepoint, float x, float y, out GlyphQuad quad)
+	public override bool GetGlyphQuadAt(int32 glyphId, float x, float y, out GlyphQuad quad)
 	{
 		quad = .();
-		if (!mRegions.TryGetValue(codepoint, let region))
+		if (!mRegions.TryGetValue(glyphId, let region))
 			return false;
 		// Its own cursor, thrown away: this placement is absolute and must not move the
 		// caller's.
@@ -103,7 +110,9 @@ class BakedFontAtlas : IFontAtlas
 		return BuildQuad(region, x, y, false, ref ignored, out quad);
 	}
 
+	/// By glyph index.
 	public Dictionary<int32, AtlasRegion> Regions => mRegions;
+	public Dictionary<int32, int32> CodepointGlyphs => mCodepointGlyphs;
 
 	private bool BuildQuad(AtlasRegion region, float x, float y, bool advance, ref float cursorX,
 		out GlyphQuad quad)

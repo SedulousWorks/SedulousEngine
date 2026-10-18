@@ -16,8 +16,9 @@ namespace Sedulous.Editor.App;
 /// non-TTF fonts are declined: cheap, or without a stable byte identity here.
 class FontAtlasDiskCache : IFontAtlasCache
 {
-	/// Bump on any layout change: old cache files then miss and rebake.
-	private const uint32 cCacheFormatVersion = 2;
+	/// Bump on any layout change: old cache files then miss and rebake. 3: regions key by glyph
+	/// index, followed by the codepoint to glyph map.
+	private const uint32 cCacheFormatVersion = 3;
 	private const uint32 cCacheMagic = 0x43414644; // 'DFAC'
 
 	[Ordered, Packed]
@@ -32,13 +33,14 @@ class FontAtlasDiskCache : IFontAtlasCache
 		public uint32 Width = 0;
 		public uint32 Height = 0;
 		public uint32 RegionCount = 0;
+		public uint32 GlyphMapCount = 0;
 		public uint32 PixelBytes = 0;
 	}
 
 	[Ordered, Packed]
 	private struct CacheRegion
 	{
-		public int32 Codepoint = 0;
+		public int32 Glyph = 0;
 		public uint16 X = 0;
 		public uint16 Y = 0;
 		public uint16 Width = 0;
@@ -46,6 +48,13 @@ class FontAtlasDiskCache : IFontAtlasCache
 		public float OffsetX = 0.0f;
 		public float OffsetY = 0.0f;
 		public float AdvanceX = 0.0f;
+	}
+
+	[Ordered, Packed]
+	private struct CacheGlyphMapping
+	{
+		public int32 Codepoint = 0;
+		public int32 Glyph = 0;
 	}
 
 	private String mDirectory = new .() ~ delete _;
@@ -85,7 +94,17 @@ class FontAtlasDiskCache : IFontAtlasCache
 				delete atlas;
 				return null;
 			}
-			atlas.SetRegion(r.Codepoint, AtlasRegion(r.X, r.Y, r.Width, r.Height, r.OffsetX, r.OffsetY, r.AdvanceX));
+			atlas.SetRegion(r.Glyph, AtlasRegion(r.X, r.Y, r.Width, r.Height, r.OffsetX, r.OffsetY, r.AdvanceX));
+		}
+		for (uint32 i = 0; i < header.GlyphMapCount; i++)
+		{
+			CacheGlyphMapping m = ?;
+			if (stream.Read(.((uint8*)&m, sizeof(CacheGlyphMapping))) != sizeof(CacheGlyphMapping))
+			{
+				delete atlas;
+				return null;
+			}
+			atlas.SetGlyphFor(m.Codepoint, m.Glyph);
 		}
 		let pixels = new List<uint8>();
 		pixels.Resize((int)header.PixelBytes);
@@ -111,12 +130,13 @@ class FontAtlasDiskCache : IFontAtlasCache
 		if (pixels.IsEmpty)
 			return;
 
-		// Regions sorted by codepoint: cache files are byte-stable for identical bakes.
+		// Regions sorted by glyph and the map by codepoint: cache files are byte-stable for
+		// identical bakes.
 		let regions = scope List<CacheRegion>();
 		for (let pair in df.Regions)
 		{
 			var r = CacheRegion();
-			r.Codepoint = pair.key;
+			r.Glyph = pair.key;
 			r.X = pair.value.X;
 			r.Y = pair.value.Y;
 			r.Width = pair.value.Width;
@@ -126,7 +146,16 @@ class FontAtlasDiskCache : IFontAtlasCache
 			r.AdvanceX = pair.value.AdvanceX;
 			regions.Add(r);
 		}
-		regions.Sort(scope (a, b) => a.Codepoint <=> b.Codepoint);
+		regions.Sort(scope (a, b) => a.Glyph <=> b.Glyph);
+		let mappings = scope List<CacheGlyphMapping>();
+		for (let pair in df.CodepointGlyphs)
+		{
+			var m = CacheGlyphMapping();
+			m.Codepoint = pair.key;
+			m.Glyph = pair.value;
+			mappings.Add(m);
+		}
+		mappings.Sort(scope (a, b) => a.Codepoint <=> b.Codepoint);
 
 		var header = CacheHeader();
 		header.Magic = cCacheMagic;
@@ -139,12 +168,15 @@ class FontAtlasDiskCache : IFontAtlasCache
 		header.Width = df.Width;
 		header.Height = df.Height;
 		header.RegionCount = (uint32)regions.Count;
+		header.GlyphMapCount = (uint32)mappings.Count;
 		header.PixelBytes = (uint32)pixels.Length;
 
 		let blob = scope List<uint8>();
-		blob.Reserve(sizeof(CacheHeader) + regions.Count * sizeof(CacheRegion) + pixels.Length);
+		blob.Reserve(sizeof(CacheHeader) + regions.Count * sizeof(CacheRegion)
+			+ mappings.Count * sizeof(CacheGlyphMapping) + pixels.Length);
 		AppendBytes(blob, &header, sizeof(CacheHeader));
 		AppendBytes(blob, regions.Ptr, regions.Count * sizeof(CacheRegion));
+		AppendBytes(blob, mappings.Ptr, mappings.Count * sizeof(CacheGlyphMapping));
 		AppendBytes(blob, pixels.Ptr, pixels.Length);
 
 		CreateDirectory(mDirectory);

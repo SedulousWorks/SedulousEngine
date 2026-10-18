@@ -15,7 +15,10 @@ namespace Sedulous.Fonts.Resource;
 /// The atlas pixels are NOT here. They live concatenated in the resource's "data" stream
 /// and each entry records its offset and length, so loading one size does not deserialize
 /// every other size's texture.
-[Serializable(1)]
+///
+/// 2: regions key by glyph index (RegionGlyph), the codepoint to glyph map coming from the
+/// glyph rows, so a shaper's glyphs can draw. Re-cooked by the builder's bump.
+[Serializable(2)]
 class FontResource
 {
 	public String Family = new .() ~ delete _;
@@ -71,9 +74,9 @@ class FontResource
 	public List<int32> KerningSecond = new .() ~ delete _;
 	public List<float> KerningAmount = new .() ~ delete _;
 
-	// ---- the flattened region table ----
+	// ---- the flattened region table, by glyph index ----
 
-	public List<int32> RegionCodepoint = new .() ~ delete _;
+	public List<int32> RegionGlyph = new .() ~ delete _;
 	public List<uint16> RegionX = new .() ~ delete _;
 	public List<uint16> RegionY = new .() ~ delete _;
 	public List<uint16> RegionWidth = new .() ~ delete _;
@@ -137,7 +140,7 @@ class FontResource
 			|| (KerningAmount.Count != kerning))
 			return false;
 
-		if ((RegionCodepoint.Count != regions) || (RegionX.Count != regions)
+		if ((RegionGlyph.Count != regions) || (RegionX.Count != regions)
 			|| (RegionY.Count != regions) || (RegionWidth.Count != regions)
 			|| (RegionHeight.Count != regions) || (RegionOffsetX.Count != regions)
 			|| (RegionOffsetY.Count != regions) || (RegionAdvanceX.Count != regions))

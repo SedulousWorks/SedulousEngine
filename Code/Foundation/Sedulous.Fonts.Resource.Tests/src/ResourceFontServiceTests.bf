@@ -211,7 +211,7 @@ class ResourceFontServiceTests
 		// The product still holds its own tables: the service owned only the wrappers.
 		Test.Assert(product.EntryCount == 2);
 		Test.Assert(product.EntryAt(0).Font.HasGlyph(Cp('A')));
-		Test.Assert(product.EntryAt(0).Atlas.Contains(Cp('A')));
+		Test.Assert(product.EntryAt(0).Atlas.Contains(product.EntryAt(0).Atlas.GlyphFor(Cp('A'))));
 
 		// And it can be registered again afterwards.
 		service.AddFont(product);

@@ -10,7 +10,7 @@ struct GlyphPosition
 {
 	/// The first character of the cluster this glyph belongs to.
 	public int32 Cluster;
-	/// What the atlas draws: the codepoint, under the stb shaper.
+	/// What the atlas draws: the font's glyph index (0: none).
 	public int32 GlyphId;
 	/// The pen position: the baseline origin, before the offsets.
 	public float X;

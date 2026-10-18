@@ -96,7 +96,7 @@ class FontFixture
 			record.KerningAmount.Add(-1.5f);
 			record.EntryKerningCount.Add(1);
 
-			record.RegionCodepoint.Add((int32)'A');
+			record.RegionGlyph.Add(1); // by glyph index; the glyph row maps 'A' to it
 			record.RegionX.Add(0);
 			record.RegionY.Add(0);
 			record.RegionWidth.Add(2);

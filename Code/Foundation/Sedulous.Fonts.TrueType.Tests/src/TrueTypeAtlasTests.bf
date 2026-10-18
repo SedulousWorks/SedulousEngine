@@ -62,11 +62,15 @@ class TrueTypeAtlasTests
 		Test.Assert(atlas != null);
 		defer delete atlas;
 
-		Test.Assert(atlas.Contains(Cp('A')));
-		Test.Assert(atlas.Contains(Cp('Z')));
-		Test.Assert(!atlas.Contains(Cp('a')), "outside the range, though the font has it");
+		// The range's codepoints map to their glyphs, by glyph index; the rest to none.
+		Test.Assert(atlas.Contains(atlas.GlyphFor(Cp('A'))));
+		Test.Assert(atlas.Contains(atlas.GlyphFor(Cp('Z'))));
+		Test.Assert(atlas.GlyphFor(Cp('A')) == font.GetGlyphInfo(Cp('A')).GlyphIndex);
+		Test.Assert(atlas.GlyphFor(Cp('A')) != Cp('A'), "a glyph index, not the codepoint");
+		Test.Assert(atlas.GlyphFor(Cp('a')) == -1, "outside the range, though the font has it");
 		Test.Assert(font.HasGlyph(Cp('a')), "which is the point: the font has it, the bake did not");
-		Test.Assert(!atlas.Contains(Cp('@')), "below the range");
+		Test.Assert(atlas.GlyphFor(Cp('@')) == -1, "below the range");
+		Test.Assert(!atlas.Contains(0));
 	}
 
 	[Test]
@@ -81,7 +85,7 @@ class TrueTypeAtlasTests
 		defer delete atlas;
 
 		float cursorX = 100.0f;
-		Test.Assert(atlas.GetGlyphQuad(Cp('A'), ref cursorX, 50.0f, let quad));
+		Test.Assert(atlas.GetGlyphQuad(atlas.GlyphFor(Cp('A')), ref cursorX, 50.0f, let quad));
 
 		Test.Assert(cursorX > 100.0f, "the cursor moved past the glyph");
 		Test.Assert(quad.Width > 0 && quad.Height > 0);
@@ -93,17 +97,15 @@ class TrueTypeAtlasTests
 
 		// The placed form draws the same shape without touching a cursor.
 		float untouched = 100.0f;
-		Test.Assert(atlas.GetGlyphQuadAt(Cp('A'), 10.0f, 20.0f, let placed));
+		Test.Assert(atlas.GetGlyphQuadAt(atlas.GlyphFor(Cp('A')), 10.0f, 20.0f, let placed));
 		Test.Assert(Abs(placed.Width - quad.Width) < 0.001f);
 		Test.Assert(untouched == 100.0f);
 	}
 
-	/// stb packs a space as a ONE BY ONE texel of blank atlas rather than as nothing, so it
-	/// comes back with a quad, unlike a baked atlas where an advance-only region reports
-	/// false. Recorded because the two atlases differ here and a caller that assumes
-	/// otherwise draws a stray quad per space, or skips one it should have drawn.
+	/// A space packs as an advance-only record: mapped to its glyph, with no region and no quad,
+	/// but a cursor stepped by its advance, as a baked atlas's advance-only region is.
 	[Test]
-	public static void ASpaceStillProducesAQuadFromStbsPacker()
+	public static void ASpaceAdvancesWithNothingToDraw()
 	{
 		let font = TestFont.Load();
 		Test.Assert(font != null);
@@ -113,14 +115,42 @@ class TrueTypeAtlasTests
 		Test.Assert(atlas != null);
 		defer delete atlas;
 
-		Test.Assert(atlas.TryGetRegion(Cp(' '), let region));
-		Test.Assert(region.Width == 1 && region.Height == 1, "a degenerate box, not an empty one");
-		Test.Assert(region.AdvanceX > 0, "and a real advance");
+		let space = atlas.GlyphFor(Cp(' '));
+		Test.Assert(space > 0, "a space keeps its glyph");
+		Test.Assert(!atlas.Contains(space), "with no pixels");
+		Test.Assert(!atlas.TryGetRegion(space, ?));
 
 		float cursorX = 100.0f;
-		Test.Assert(atlas.GetGlyphQuad(Cp(' '), ref cursorX, 0.0f, let quad));
-		Test.Assert(cursorX > 100.0f, "the cursor stepped by the advance");
-		Test.Assert(quad.Width < 1.0f, "and what it would draw is a sub pixel of blank atlas");
+		Test.Assert(!atlas.GetGlyphQuad(space, ref cursorX, 0.0f, ?));
+		Test.Assert(Abs(cursorX - (100.0f + font.GetGlyphInfo(Cp(' ')).AdvanceWidth)) < 0.01f,
+			scope $"the cursor stepped by the advance ({cursorX})");
+	}
+
+	/// A glyph no codepoint reaches, such as Roboto's fi ligature (glyph 868, what HarfBuzz shapes
+	/// "fi" to), packs when asked for, drawn by its glyph index.
+	[Test]
+	public static void AGlyphNoCodepointReachesPacksWhenAskedFor()
+	{
+		let font = TestFont.Load();
+		Test.Assert(font != null);
+		defer delete font;
+
+		var options = FontLoadOptions.Default();
+		options.FirstCodepoint = Cp('A');
+		options.LastCodepoint = Cp('Z');
+		let plain = scope TrueTypeFontAtlas();
+		Test.Assert(plain.Create(font, options) == .Success);
+		Test.Assert(!plain.Contains(868));
+
+		let atlas = scope TrueTypeFontAtlas();
+		int32[2] extras = .(868, 1000000);
+		Test.Assert(atlas.Create(font, options, extras) == .Success);
+		Test.Assert(atlas.Contains(868));
+		Test.Assert(!atlas.Contains(1000000), "past the font's glyphs, so not packed");
+		Test.Assert(atlas.Glyphs.Length == plain.Glyphs.Length + 1);
+		float cursorX = 0.0f;
+		Test.Assert(atlas.GetGlyphQuad(868, ref cursorX, 20.0f, let quad));
+		Test.Assert((quad.Width > 0) && (cursorX > 0.0f));
 	}
 
 	[Test]
@@ -138,9 +168,10 @@ class TrueTypeAtlasTests
 		defer delete atlas;
 
 		float cursorX = 100.0f;
-		Test.Assert(!atlas.GetGlyphQuad(Cp('a'), ref cursorX, 0.0f, let quad));
+		Test.Assert(atlas.GlyphFor(Cp('a')) == -1);
+		Test.Assert(!atlas.GetGlyphQuad(atlas.GlyphFor(Cp('a')), ref cursorX, 0.0f, let quad));
 		Test.Assert(cursorX == 100.0f);
-		Test.Assert(!atlas.TryGetRegion(Cp('a'), let region));
+		Test.Assert(!atlas.TryGetRegion(atlas.GlyphFor(Cp('a')), let region));
 	}
 
 	/// The white texel is what lets a caret or an underline come from the SAME texture, and

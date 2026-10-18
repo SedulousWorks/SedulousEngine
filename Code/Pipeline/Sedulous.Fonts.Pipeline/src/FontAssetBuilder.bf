@@ -27,9 +27,11 @@ class FontAssetBuilder : IAssetBuilder
 	/// Four, after a run of record changes: the oversample fields, which a baked screen quad
 	/// has to divide back out; the distance field range's key; and full names for the glyph
 	/// bounds. Five: a distance field atlas is sized to its glyphs, so every cooked font
-	/// re-bakes at its new size. A product schema change bumps this in the SAME commit, because
-	/// the bump IS the migration: it forces every stale cooked font to re-cook.
-	public int32 Version => 5;
+	/// re-bakes at its new size. Six: FontResource 2, whose atlases key by glyph index so a
+	/// shaper's glyphs can draw, every codepoint the range maps to keeping its glyph row (a
+	/// space's too). A product schema change bumps this in the SAME commit, because the bump IS
+	/// the migration: it forces every stale cooked font to re-cook.
+	public int32 Version => 6;
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{
@@ -112,9 +114,9 @@ class FontAssetBuilder : IAssetBuilder
 		record.GlyphHasBitmap.Add(info.HasBitmap);
 	}
 
-	private static void AppendRegion(FontResource record, int32 codepoint, AtlasRegion region)
+	private static void AppendRegion(FontResource record, int32 glyphId, AtlasRegion region)
 	{
-		record.RegionCodepoint.Add(codepoint);
+		record.RegionGlyph.Add(glyphId);
 		record.RegionX.Add(region.X);
 		record.RegionY.Add(region.Y);
 		record.RegionWidth.Add(region.Width);
@@ -203,16 +205,23 @@ class FontAssetBuilder : IAssetBuilder
 		if (record.Family.IsEmpty)
 			font.GetFamilyName(record.Family);
 
+		// Every codepoint the atlas maps keeps its glyph row; every glyph its region, once.
 		uint32 glyphCount = 0;
 		uint32 regionCount = 0;
+		let regionWritten = scope HashSet<int32>();
 		for (int32 codepoint = asset.FirstCodepoint; codepoint <= asset.LastCodepoint; ++codepoint)
 		{
-			if (!atlas.TryGetRegion(codepoint, let region))
+			let glyphId = atlas.GlyphFor(codepoint);
+			if (glyphId < 0)
 				continue;
 			AppendGlyph(record, codepoint, font.GetGlyphInfo(codepoint));
 			glyphCount++;
-			AppendRegion(record, codepoint, region);
-			regionCount++;
+			if (!regionWritten.Contains(glyphId) && atlas.TryGetRegion(glyphId, let region))
+			{
+				regionWritten.Add(glyphId);
+				AppendRegion(record, glyphId, region);
+				regionCount++;
+			}
 		}
 		record.EntryGlyphCount.Add(glyphCount);
 		record.EntryRegionCount.Add(regionCount);
@@ -220,11 +229,11 @@ class FontAssetBuilder : IAssetBuilder
 		uint32 kerningCount = 0;
 		for (int32 first = asset.FirstCodepoint; first <= asset.LastCodepoint; ++first)
 		{
-			if (!atlas.Contains(first))
+			if (!atlas.Contains(atlas.GlyphFor(first)))
 				continue;
 			for (int32 second = asset.FirstCodepoint; second <= asset.LastCodepoint; ++second)
 			{
-				if (!atlas.Contains(second))
+				if (!atlas.Contains(atlas.GlyphFor(second)))
 					continue;
 				let adjustment = font.GetKerning(first, second);
 				if (adjustment == 0.0f)

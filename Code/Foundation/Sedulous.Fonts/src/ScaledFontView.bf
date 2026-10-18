@@ -79,7 +79,7 @@ class ScaledFontView : IFont
 
 			var position = GlyphPosition();
 			position.Cluster = index;
-			position.GlyphId = codepoint;
+			position.GlyphId = info.GlyphIndex;
 			position.X = x;
 			position.Y = 0;
 			position.Advance = info.AdvanceWidth;

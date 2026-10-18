@@ -120,12 +120,12 @@ class DistanceFieldBakerTests
 		Test.Assert(baker.Bake(font, options) case .Ok(let atlas));
 		defer delete atlas;
 
-		Test.Assert(atlas.TryGetRegion(Cp(' '), let space));
+		Test.Assert(atlas.TryGetRegion(atlas.GlyphFor(Cp(' ')), let space));
 		Test.Assert(space.IsEmpty, "nothing to draw");
 		Test.Assert(space.AdvanceX > 0, "but the cursor steps");
 
 		float cursorX = 10.0f;
-		Test.Assert(!atlas.GetGlyphQuad(Cp(' '), ref cursorX, 20.0f, let quad));
+		Test.Assert(!atlas.GetGlyphQuad(atlas.GlyphFor(Cp(' ')), ref cursorX, 20.0f, let quad));
 		Test.Assert(Abs(cursorX - (10.0f + space.AdvanceX)) < 0.001f);
 
 		// The advance is the font's own, rescaled from the size it was parsed at to the size
@@ -157,8 +157,9 @@ class DistanceFieldBakerTests
 		// Every region in the same place.
 		for (int32 codepoint = 32; codepoint <= 126; codepoint++)
 		{
-			let hasFirst = first.TryGetRegion(codepoint, let a);
-			let hasSecond = second.TryGetRegion(codepoint, let b);
+			Test.Assert(first.GlyphFor(codepoint) == second.GlyphFor(codepoint));
+			let hasFirst = first.TryGetRegion(first.GlyphFor(codepoint), let a);
+			let hasSecond = second.TryGetRegion(second.GlyphFor(codepoint), let b);
 			Test.Assert(hasFirst == hasSecond, scope $"codepoint {codepoint} baked in only one run");
 			if (!hasFirst)
 				continue;
@@ -316,7 +317,7 @@ class DistanceFieldBakerTests
 
 		for (let codepoint in int32[](Cp('F'), Cp('o'), Cp('g')))
 		{
-			Test.Assert(atlas.TryGetRegion(codepoint, let region));
+			Test.Assert(atlas.TryGetRegion(atlas.GlyphFor(codepoint), let region));
 			let bounds = font.GetGlyphInfo(codepoint).BoundingBox;
 
 			// The cell's top left is the glyph's own bounding box pushed out by the margin.
@@ -357,7 +358,7 @@ class DistanceFieldBakerTests
 		let regions = scope List<AtlasRegion>();
 		for (int32 codepoint = options.FirstCodepoint; codepoint <= options.LastCodepoint; codepoint++)
 		{
-			if (atlas.TryGetRegion(codepoint, let region) && !region.IsEmpty)
+			if (atlas.TryGetRegion(atlas.GlyphFor(codepoint), let region) && !region.IsEmpty)
 				regions.Add(region);
 		}
 		Test.Assert(regions.Count > 50, scope $"only {regions.Count} cells to compare");
@@ -412,7 +413,7 @@ class DistanceFieldBakerTests
 		let drawn = scope List<AtlasRegion>();
 		for (int32 cp = options.FirstCodepoint; cp <= options.LastCodepoint; cp++)
 		{
-			let has = atlas.TryGetRegion(cp, let r);
+			let has = atlas.TryGetRegion(atlas.GlyphFor(cp), let r);
 			if ((cp >= 33) && (cp <= 126))
 				Test.Assert(has, scope $"codepoint {cp}");
 			if (!has || r.IsEmpty)

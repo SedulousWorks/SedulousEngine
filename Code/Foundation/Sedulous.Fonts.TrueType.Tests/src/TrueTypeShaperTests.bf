@@ -141,9 +141,9 @@ class TrueTypeShaperTests
 		for (let position in positions)
 		{
 			if (position.Y == firstY)
-				firstLine.Append((char8)position.GlyphId);
+				firstLine.Append((char8)position.GlyphInfo.Codepoint);
 			else
-				secondLine.Append((char8)position.GlyphId);
+				secondLine.Append((char8)position.GlyphInfo.Codepoint);
 		}
 
 		Test.Assert(firstLine == "aaaa bbbb ", scope $"first line was '{firstLine}'");
@@ -382,8 +382,8 @@ class TrueTypeShaperTests
 			Test.Assert(positions[i].ClusterLength == 1);
 			Test.Assert(positions[i].XOffset == 0.0f);
 		}
-		Test.Assert(positions[1].GlyphId == 0xE9);
-		Test.Assert(positions[2].GlyphId == 0x20AC);
+		Test.Assert(positions[1].GlyphId == font.GetGlyphInfo(0xE9).GlyphIndex);
+		Test.Assert(positions[2].GlyphId == font.GetGlyphInfo(0x20AC).GlyphIndex);
 
 		// "ab\ncd" wrapped: the break is character 2 and draws nothing.
 		let lines = scope List<GlyphPosition>();

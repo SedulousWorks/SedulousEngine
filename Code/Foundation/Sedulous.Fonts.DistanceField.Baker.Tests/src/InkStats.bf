@@ -28,7 +28,7 @@ struct InkStats
 	public static InkStats Analyze(IFontAtlas atlas, int32 codepoint)
 	{
 		var stats = InkStats();
-		if (!atlas.TryGetRegion(codepoint, let region))
+		if (!atlas.TryGetRegion(atlas.GlyphFor(codepoint), let region))
 			return stats;
 		if (region.IsEmpty)
 			return stats;
@@ -79,7 +79,7 @@ struct InkStats
 	/// range is wrong still has the right interior, so only the width of this band shows it.
 	public static int32 CountTransitionTexels(IFontAtlas atlas, int32 codepoint)
 	{
-		if (!atlas.TryGetRegion(codepoint, let region))
+		if (!atlas.TryGetRegion(atlas.GlyphFor(codepoint), let region))
 			return 0;
 		if (region.IsEmpty)
 			return 0;

@@ -33,8 +33,14 @@ class FontBakerTests
 		for (let codepoint in int32[](Cp('A'), Cp('z'), Cp('0')))
 		{
 			Test.Assert(baked.Font.HasGlyph(codepoint), scope $"font has {codepoint}");
-			Test.Assert(baked.Atlas.Contains(codepoint), scope $"atlas has {codepoint}");
+			Test.Assert(baked.Atlas.Contains(baked.Atlas.GlyphFor(codepoint)), scope $"atlas has {codepoint}");
 		}
+
+		// A space keeps its glyph (it advances) but has nothing to draw.
+		Test.Assert(baked.Font.GetGlyphInfo(Cp(' ')).AdvanceWidth > 0);
+		Test.Assert(baked.Atlas.TryGetRegion(baked.Atlas.GlyphFor(Cp(' ')), let space));
+		Test.Assert(space.IsEmpty);
+		Test.Assert(space.AdvanceX > 0);
 
 		Test.Assert(baked.Font.GetGlyphInfo(Cp('A')).AdvanceWidth > 0);
 	}
@@ -61,9 +67,9 @@ class FontBakerTests
 		Test.Assert(baked.Atlas.PixelData.Length == 256 * 256, "one byte of coverage per texel");
 
 		// And only the requested range was baked.
-		Test.Assert(baked.Atlas.Contains(Cp('A')));
-		Test.Assert(baked.Atlas.Contains(Cp('Z')));
-		Test.Assert(!baked.Atlas.Contains(Cp('a')), "outside the range, so not baked");
+		Test.Assert(baked.Atlas.Contains(baked.Atlas.GlyphFor(Cp('A'))));
+		Test.Assert(baked.Atlas.Contains(baked.Atlas.GlyphFor(Cp('Z'))));
+		Test.Assert(baked.Atlas.GlyphFor(Cp('a')) == -1, "outside the range, so not baked");
 		Test.Assert(!baked.Font.HasGlyph(Cp('a')), "and not in the glyph table either");
 	}
 
@@ -99,7 +105,7 @@ class FontBakerTests
 
 		// Still usable, which is the point: reading through them after the holder is gone.
 		Test.Assert(font.HasGlyph(Cp('A')));
-		Test.Assert(atlas.Contains(Cp('A')));
+		Test.Assert(atlas.Contains(atlas.GlyphFor(Cp('A'))));
 
 		delete font;
 		delete atlas;

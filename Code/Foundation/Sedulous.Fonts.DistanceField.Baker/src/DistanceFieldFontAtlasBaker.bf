@@ -107,7 +107,7 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 		{
 			if (!item.Generated)
 				continue;
-			atlas.SetRegion(item.Codepoint, item.Region);
+			atlas.SetRegion(item.Glyph, item.Region);
 			anyGlyphs = true;
 		}
 
@@ -130,16 +130,25 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 	{
 		let padding = (int32)options.Padding;
 
+		// The glyphs the range maps to, each once, keyed by glyph index; the range's codepoints
+		// map to them for unshaped text.
+		let glyphs = scope List<int32>();
 		for (int32 codepoint = options.FirstCodepoint; codepoint <= options.LastCodepoint; codepoint++)
 		{
 			let glyphIndex = stbtt_FindGlyphIndex(info, codepoint);
 			if (glyphIndex <= 0)
 				continue;
+			atlas.SetGlyphFor(codepoint, glyphIndex);
+			if (!glyphs.Contains(glyphIndex))
+				glyphs.Add(glyphIndex);
+		}
 
+		for (let glyphIndex in glyphs)
+		{
 			int32 boxX0 = 0, boxY0 = 0, boxX1 = 0, boxY1 = 0;
 			if (stbtt_GetGlyphBox(info, glyphIndex, &boxX0, &boxY0, &boxX1, &boxY1) == 0)
 			{
-				AddAdvanceOnly(info, scale, codepoint, glyphIndex, atlas);
+				AddAdvanceOnly(info, scale, glyphIndex, atlas);
 				continue;
 			}
 
@@ -151,7 +160,7 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 			let glyphHeight = pixelY1 - pixelY0;
 			if ((glyphWidth <= 0) || (glyphHeight <= 0))
 			{
-				AddAdvanceOnly(info, scale, codepoint, glyphIndex, atlas);
+				AddAdvanceOnly(info, scale, glyphIndex, atlas);
 				continue;
 			}
 
@@ -166,7 +175,7 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 			let scaleAsDouble = (double)scale;
 
 			var item = GlyphWork();
-			item.Codepoint = codepoint;
+			item.Glyph = glyphIndex;
 			item.CellWidth = cellWidth;
 			item.CellHeight = cellHeight;
 			// Map the glyph's bounding box corner onto the cell's inner corner. msdfgen
@@ -187,15 +196,15 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 	/// A glyph with no outline, a space above all, still carries an advance.
 	///
 	/// Recording an advance-only region is what keeps the cursor-walking draw paths from
-	/// rendering "hello world" as "helloworld". The coverage baker gets this for free from
-	/// stb's packer; here it has to be done by hand, because a shape with no contours simply
+	/// rendering "hello world" as "helloworld". The coverage baker records the same for a
+	/// blank glyph its packer gave only an advance; here a shape with no contours simply
 	/// produces no cell.
-	private void AddAdvanceOnly(stbtt_fontinfo* info, float scale, int32 codepoint,
-		int32 glyphIndex, DistanceFieldFontAtlas atlas)
+	private void AddAdvanceOnly(stbtt_fontinfo* info, float scale, int32 glyphIndex,
+		DistanceFieldFontAtlas atlas)
 	{
 		int32 advanceWidth = 0, leftSideBearing = 0;
 		stbtt_GetGlyphHMetrics(info, glyphIndex, &advanceWidth, &leftSideBearing);
-		atlas.SetRegion(codepoint, .(0, 0, 0, 0, 0, 0, (float)advanceWidth * scale));
+		atlas.SetRegion(glyphIndex, .(0, 0, 0, 0, 0, 0, (float)advanceWidth * scale));
 	}
 
 	/// Parallel: every glyph's field, blitted into its own cell.
@@ -217,7 +226,7 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 			cellPixels.Resize(item.CellWidth * item.CellHeight * 4);
 			Internal.MemSet(cellPixels.Ptr, 0, cellPixels.Count);
 
-			if (GenerateGlyph(rawData, item.Codepoint, item.CellWidth, item.CellHeight,
+			if (GenerateGlyph(rawData, item.Glyph, item.CellWidth, item.CellHeight,
 				(double)scale, item.TranslateX, item.TranslateY, cellPixels))
 			{
 				for (int row < item.CellHeight)
@@ -234,8 +243,9 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 		}, 1);
 	}
 
-	/// One glyph's field, written as RGBA8 into `outPixels`.
-	private static bool GenerateGlyph(uint8* rawData, int32 codepoint, int32 width, int32 height,
+	/// One glyph's field, written as RGBA8 into `outPixels`. `glyphIndex` is the font's glyph
+	/// index, what atlases key by.
+	private static bool GenerateGlyph(uint8* rawData, int32 glyphIndex, int32 width, int32 height,
 		double scale, double translateX, double translateY, List<uint8> outPixels)
 	{
 		// Its own parse per call, so this is stateless and safe to run on any worker.
@@ -243,8 +253,7 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 		if (stbtt_InitFont(&info, rawData, stbtt_GetFontOffsetForIndex(rawData, 0)) == 0)
 			return false;
 
-		let glyphIndex = stbtt_FindGlyphIndex(&info, codepoint);
-		if (glyphIndex <= 0)
+		if ((glyphIndex <= 0) || (glyphIndex >= info.numGlyphs))
 			return false;
 
 		let shape = msdf_shape_create();

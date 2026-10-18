@@ -9,7 +9,8 @@ namespace Sedulous.Fonts.DistanceField.Baker;
 /// generation fan out. The atlas layout never depends on which worker finished first.
 struct GlyphWork
 {
-	public int32 Codepoint;
+	/// The font's glyph index.
+	public int32 Glyph;
 	public int32 CellWidth;
 	public int32 CellHeight;
 	public uint32 PackX;

@@ -146,7 +146,8 @@ class FontFactory : IResourceFactory
 			atlas.SetPixelRange(record.EntryDistanceFieldRange[index]);
 			atlas.SetWhitePixelUV(record.EntryWhitePixelU[index], record.EntryWhitePixelV[index]);
 			for (int i = regionStart; i < regionEnd; i++)
-				atlas.SetRegion(record.RegionCodepoint[i], ReadRegion(record, i));
+				atlas.SetRegion(record.RegionGlyph[i], ReadRegion(record, i));
+			MapCodepoints(record, glyphStart, index, scope => atlas.SetGlyphFor);
 
 			// Already RGBA8, and LINEAR: these are distances, and gamma decoding them would
 			// bend the field.
@@ -161,7 +162,8 @@ class FontFactory : IResourceFactory
 			atlas.SetWhitePixelUV(record.EntryWhitePixelU[index], record.EntryWhitePixelV[index]);
 			atlas.SetOversample(record.EntryOversampleX[index], record.EntryOversampleY[index]);
 			for (int i = regionStart; i < regionEnd; i++)
-				atlas.SetRegion(record.RegionCodepoint[i], ReadRegion(record, i));
+				atlas.SetRegion(record.RegionGlyph[i], ReadRegion(record, i));
+			MapCodepoints(record, glyphStart, index, scope => atlas.SetGlyphFor);
 			atlas.SetPixels(width, height, slice);
 			result.Atlas = atlas;
 
@@ -176,6 +178,18 @@ class FontFactory : IResourceFactory
 			return null;
 		}
 		return result;
+	}
+
+	/// The glyph rows map codepoints to the glyphs the regions key by; a codepoint with no
+	/// glyph in the font maps to none.
+	private static void MapCodepoints(FontResource record, int glyphStart, int index,
+		delegate void(int32 codepoint, int32 glyphId) setGlyphFor)
+	{
+		for (int i = glyphStart; i < (glyphStart + (int)record.EntryGlyphCount[index]); i++)
+		{
+			if (record.GlyphIndex[i] > 0)
+				setGlyphFor(record.GlyphCodepoint[i], record.GlyphIndex[i]);
+		}
 	}
 
 	private static AtlasRegion ReadRegion(FontResource record, int i)

@@ -6,7 +6,9 @@ using Sedulous.Fonts;
 
 namespace Sedulous.Fonts.TrueType;
 
-/// An atlas rasterised by stb_truetype's packer.
+/// An atlas rasterised by stb_truetype's packer, keyed by glyph index: the glyphs a codepoint
+/// range maps to, and any further glyphs asked for (what a shaper's substitutions reach), packed
+/// through TrueTypeGlyphPacker, with the range's codepoint to glyph map for unshaped text.
 ///
 /// Holds stb's own packed-character table rather than converting it to AtlasRegions,
 /// because stb computes the quad itself and its correction for oversampling is the one
@@ -16,19 +18,27 @@ class TrueTypeFontAtlas : IFontAtlas
 	private uint32 mWidth;
 	private uint32 mHeight;
 	private List<uint8> mPixels = new .() ~ delete _;
+	/// Glyph indices, in packing order.
+	private List<int32> mGlyphs = new .() ~ delete _;
+	/// Parallel to mGlyphs.
 	private List<stbtt_packedchar> mPacked = new .() ~ delete _;
+	/// Glyph index to its slot in mGlyphs.
+	private Dictionary<int32, int32> mGlyphSlots = new .() ~ delete _;
+	/// Codepoint to glyph index, the range's.
+	private Dictionary<int32, int32> mCodepointGlyphs = new .() ~ delete _;
 	private int32 mFirstCodepoint;
 	private int32 mLastCodepoint;
 	private float mWhitePixelU;
 	private float mWhitePixelV;
 
-	/// Rasterises the requested codepoint range into a new atlas.
+	/// Rasterises the glyphs of the requested codepoint range, plus `extraGlyphs` (glyph
+	/// indices no codepoint reaches), into a new atlas.
 	///
-	/// The whole range is packed in ONE call: stb's packer places glyphs by shelf, and
-	/// feeding it everything at once is what lets it choose a tight arrangement. A range
-	/// too large for the atlas fails rather than silently dropping the glyphs that did not
-	/// fit, because a page of missing boxes is much harder to diagnose than a refusal.
-	public FontLoadResult Create(TrueTypeFont font, FontLoadOptions options)
+	/// Every glyph is packed in ONE call: stb's packer places glyphs by shelf, and feeding it
+	/// everything at once is what lets it choose a tight arrangement. A set too large for the
+	/// atlas fails rather than silently dropping the glyphs that did not fit, because a page
+	/// of missing boxes is much harder to diagnose than a refusal.
+	public FontLoadResult Create(TrueTypeFont font, FontLoadOptions options, Span<int32> extraGlyphs = default)
 	{
 		if (font.RawData == null)
 			return .InvalidFormat;
@@ -37,14 +47,32 @@ class TrueTypeFontAtlas : IFontAtlas
 		mHeight = options.AtlasHeight;
 		mFirstCodepoint = options.FirstCodepoint;
 		mLastCodepoint = options.LastCodepoint;
-		let characterCount = options.CharacterCount;
-		if ((mWidth == 0) || (mHeight == 0) || (characterCount <= 0))
+		if ((mWidth == 0) || (mHeight == 0) || (options.CharacterCount <= 0))
 			return .AtlasPackingFailed;
 
 		mPixels.Clear();
 		mPixels.Resize((int)mWidth * (int)mHeight);
+		mGlyphs.Clear();
+		mGlyphSlots.Clear();
+		mCodepointGlyphs.Clear();
+
+		// The range's glyphs (a codepoint the font lacks maps to none), then the extras, each once.
+		let info = font.FontInfo;
+		for (int32 codepoint = mFirstCodepoint; codepoint <= mLastCodepoint; codepoint++)
+		{
+			let glyph = stb_truetype.stbtt_FindGlyphIndex(info, codepoint);
+			if (glyph <= 0)
+				continue;
+			mCodepointGlyphs[codepoint] = glyph;
+			AddGlyph(glyph);
+		}
+		for (let glyph in extraGlyphs)
+		{
+			if ((glyph > 0) && (glyph < info.numGlyphs))
+				AddGlyph(glyph);
+		}
 		mPacked.Clear();
-		mPacked.Resize(characterCount);
+		mPacked.Resize(mGlyphs.Count);
 
 		stbtt_pack_context packContext = default;
 		if (stb_truetype.stbtt_PackBegin(&packContext, mPixels.Ptr, (int32)mWidth, (int32)mHeight,
@@ -53,17 +81,25 @@ class TrueTypeFontAtlas : IFontAtlas
 
 		stb_truetype.stbtt_PackSetOversampling(&packContext, options.OversampleX, options.OversampleY);
 
-		let packed = stb_truetype.stbtt_PackFontRange(&packContext, font.RawData, 0,
-			options.PixelHeight, mFirstCodepoint, characterCount, mPacked.Ptr);
+		let packed = TrueTypeGlyphPacker.Pack(&packContext, info, options.PixelHeight,
+			.(mGlyphs.Ptr, mGlyphs.Count), mPacked.Ptr);
 
 		// PackEnd on BOTH paths: it frees the packer's own nodes, and skipping it on the
 		// failure path leaks them exactly when something has already gone wrong.
 		stb_truetype.stbtt_PackEnd(&packContext);
-		if (packed == 0)
+		if (!packed)
 			return .AtlasPackingFailed;
 
 		WriteWhiteTexel();
 		return .Success;
+	}
+
+	private void AddGlyph(int32 glyph)
+	{
+		if (mGlyphSlots.ContainsKey(glyph))
+			return;
+		mGlyphSlots[glyph] = (int32)mGlyphs.Count;
+		mGlyphs.Add(glyph);
 	}
 
 	/// A solid two by two block in the bottom right corner.
@@ -97,6 +133,11 @@ class TrueTypeFontAtlas : IFontAtlas
 	public int32 FirstCodepoint => mFirstCodepoint;
 	public int32 LastCodepoint => mLastCodepoint;
 
+	/// The glyphs packed, in packing order, and the codepoint to glyph map, for bakers that
+	/// copy this atlas into their own.
+	public Span<int32> Glyphs => .(mGlyphs.Ptr, mGlyphs.Count);
+	public Dictionary<int32, int32> CodepointGlyphs => mCodepointGlyphs;
+
 	// ---- IFontAtlas ----
 
 	public override uint32 Width => mWidth;
@@ -104,33 +145,36 @@ class TrueTypeFontAtlas : IFontAtlas
 	public override Span<uint8> PixelData => mPixels.IsEmpty ? .() : .(mPixels.Ptr, mPixels.Count);
 	public override Float2 WhitePixelUV => .(mWhitePixelU, mWhitePixelV);
 
-	/// Keyed by codepoint for now: a codepoint is its own glyph id.
-	public override int32 GlyphFor(int32 codepoint) => codepoint;
+	public override int32 GlyphFor(int32 codepoint)
+		=> mCodepointGlyphs.TryGetValue(codepoint, let glyph) ? glyph : -1;
 
-	/// The atlas holds the RANGE it was baked for and nothing else. A codepoint outside it
-	/// was never rasterised, whatever the font itself has.
-	public override bool Contains(int32 codepoint)
-		=> (codepoint >= mFirstCodepoint) && (codepoint <= mLastCodepoint)
-			&& (IndexOf(codepoint) < mPacked.Count);
+	/// A glyph with pixels. A blank one (a space) packed only its advance, so it is not here.
+	public override bool Contains(int32 glyphId)
+	{
+		if (!mGlyphSlots.TryGetValue(glyphId, let slot))
+			return false;
+		let packed = mPacked[slot];
+		return (packed.x1 > packed.x0) && (packed.y1 > packed.y0);
+	}
 
-	public override bool TryGetRegion(int32 codepoint, out AtlasRegion region)
+	public override bool TryGetRegion(int32 glyphId, out AtlasRegion region)
 	{
 		region = .();
-		if (!Contains(codepoint))
+		if (!Contains(glyphId))
 			return false;
 
-		let packed = mPacked[IndexOf(codepoint)];
+		let packed = mPacked[mGlyphSlots[glyphId]];
 		region = .((uint16)packed.x0, (uint16)packed.y0,
 			(uint16)(packed.x1 - packed.x0), (uint16)(packed.y1 - packed.y0),
 			packed.xoff, packed.yoff, packed.xadvance);
 		return true;
 	}
 
-	public override bool GetGlyphQuad(int32 codepoint, ref float cursorX, float cursorY,
+	public override bool GetGlyphQuad(int32 glyphId, ref float cursorX, float cursorY,
 		out GlyphQuad quad)
 	{
 		quad = .();
-		if (!Contains(codepoint))
+		if (!mGlyphSlots.TryGetValue(glyphId, let slot))
 			return false;
 
 		// stb steps the cursor and applies the oversampling correction itself, which is
@@ -138,13 +182,10 @@ class TrueTypeFontAtlas : IFontAtlas
 		float y = cursorY;
 		stbtt_aligned_quad aligned = default;
 		stb_truetype.stbtt_GetPackedQuad(mPacked.Ptr, (int32)mWidth, (int32)mHeight,
-			IndexOf(codepoint), &cursorX, &y, &aligned, 0);
+			slot, &cursorX, &y, &aligned, 0);
 
-		// A degenerate box has nothing to draw. Note this does NOT catch a space: stb packs
-		// one as a one by one texel of blank atlas rather than as nothing, so a space
-		// returns a quad here, unlike a baked atlas where an advance-only region reports
-		// false. Drawing it is harmless, being blank, and matching stb is what keeps the
-		// cursor arithmetic identical to stbtt_GetPackedQuad's.
+		// A blank glyph (a space) packed as a zero-area record: the cursor has stepped past
+		// its advance and there is nothing to draw.
 		if ((aligned.x1 <= aligned.x0) || (aligned.y1 <= aligned.y0))
 			return false;
 
@@ -153,12 +194,10 @@ class TrueTypeFontAtlas : IFontAtlas
 		return true;
 	}
 
-	public override bool GetGlyphQuadAt(int32 codepoint, float x, float y, out GlyphQuad quad)
+	public override bool GetGlyphQuadAt(int32 glyphId, float x, float y, out GlyphQuad quad)
 	{
 		// Its own cursor, discarded: this placement is absolute.
 		var cursorX = x;
-		return GetGlyphQuad(codepoint, ref cursorX, y, out quad);
+		return GetGlyphQuad(glyphId, ref cursorX, y, out quad);
 	}
-
-	private int32 IndexOf(int32 codepoint) => codepoint - mFirstCodepoint;
 }

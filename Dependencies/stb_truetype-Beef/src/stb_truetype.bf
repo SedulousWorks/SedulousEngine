@@ -684,16 +684,16 @@ static
 	// all the context needed from PackBegin to PackEnd.
 [CRepr] struct stbtt_pack_context
 {
-	void* user_allocator_context;
-	void* pack_info;
-	int32   width;
-	int32   height;
-	int32   stride_in_bytes;
-	int32   padding;
-	int32   skip_missing;
-	uint32   h_oversample, v_oversample;
-	c_uchar* pixels;
-	void  * nodes;
+	public void* user_allocator_context;
+	public void* pack_info;
+	public int32   width;
+	public int32   height;
+	public int32   stride_in_bytes;
+	public int32   padding;
+	public int32   skip_missing;
+	public uint32   h_oversample, v_oversample;
+	public c_uchar* pixels;
+	public void  * nodes;
 }
 
  //////////////////////////////////////////////////////////////////////////////
@@ -726,7 +726,7 @@ static
 	c_uchar* data; // pointer to .ttf file
 	int32              fontstart; // offset of start of font
 
-	int32 numGlyphs; // number of glyphs, needed for range checking
+	public int32 numGlyphs; // number of glyphs, needed for range checking
 
 	int32 loca, head, glyf, hhea, hmtx, kern, gpos, svg; // table locations as offset from start of .ttf
 	int32 index_map; // a cmap mapping for our chosen character encoding
@@ -1232,16 +1232,11 @@ enum STBTT_MAC_LANG : int32
 public typealias stbrp_coord = int32;
 
 
+/// stb_truetype's own fallback rect, which is what the library is compiled with: the stub does not
+/// include stb_rect_pack.h, whose rect orders its fields differently.
+[CRepr]
 struct stbrp_rect
 {
-   // reserved for your use:
-	public int32            id;
-
-   // input:
-	public stbrp_coord    w, h;
-
-   // output:
-	public stbrp_coord    x, y;
-	public int32            was_packed; // non-zero if valid packing
-
+	public stbrp_coord x, y;
+	public int32 id, w, h, was_packed; // was_packed: non-zero if valid packing
 }

@@ -38,7 +38,7 @@ class TrueTypeTextShaper : ITextShaper
 
 			var position = GlyphPosition();
 			position.Cluster = index;
-			position.GlyphId = codepoint;
+			position.GlyphId = info.GlyphIndex;
 			position.X = x;
 			position.Y = startY;
 			position.Advance = info.AdvanceWidth;
@@ -123,7 +123,7 @@ class TrueTypeTextShaper : ITextShaper
 						moved.Y = y;
 						outPositions[j] = moved;
 						reflowX += moved.Advance;
-						lastReflowed = moved.GlyphId;
+						lastReflowed = moved.GlyphInfo.Codepoint;
 					}
 					// Whenever the loop above ran, `lastReflowed` is the glyph that was
 					// already `previous`, so this recomputes the same number. It matters
@@ -147,7 +147,7 @@ class TrueTypeTextShaper : ITextShaper
 
 			var position = GlyphPosition();
 			position.Cluster = index;
-			position.GlyphId = codepoint;
+			position.GlyphId = info.GlyphIndex;
 			position.X = x + kern;
 			position.Y = y;
 			position.Advance = info.AdvanceWidth;

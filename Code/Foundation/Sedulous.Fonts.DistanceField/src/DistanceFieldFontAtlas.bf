@@ -17,7 +17,10 @@ class DistanceFieldFontAtlas : IFontAtlas
 	private uint32 mHeight;
 	private float mPixelRange = 4.0f;
 	private List<uint8> mPixels = new .() ~ delete _;
+	/// Glyph index to region.
 	private Dictionary<int32, AtlasRegion> mRegions = new .() ~ delete _;
+	/// Codepoint to glyph index, for unshaped text.
+	private Dictionary<int32, int32> mCodepointGlyphs = new .() ~ delete _;
 	private float mWhitePixelU;
 	private float mWhitePixelV;
 
@@ -33,7 +36,10 @@ class DistanceFieldFontAtlas : IFontAtlas
 		}
 	}
 
-	public void SetRegion(int32 codepoint, AtlasRegion region) => mRegions[codepoint] = region;
+	/// A glyph's region, by glyph index.
+	public void SetRegion(int32 glyphId, AtlasRegion region) => mRegions[glyphId] = region;
+	/// The glyph a codepoint draws with, for unshaped text.
+	public void SetGlyphFor(int32 codepoint, int32 glyphId) => mCodepointGlyphs[codepoint] = glyphId;
 
 	public void SetWhitePixelUV(float u, float v)
 	{
@@ -53,37 +59,39 @@ class DistanceFieldFontAtlas : IFontAtlas
 	public override AtlasMode Mode => .DistanceField;
 	public override float DistanceFieldRange => mPixelRange;
 
-	/// Keyed by codepoint for now: a codepoint is its own glyph id.
-	public override int32 GlyphFor(int32 codepoint) => codepoint;
-	public override bool Contains(int32 codepoint) => mRegions.ContainsKey(codepoint);
+	public override int32 GlyphFor(int32 codepoint)
+		=> mCodepointGlyphs.TryGetValue(codepoint, let glyph) ? glyph : -1;
+	public override bool Contains(int32 glyphId) => mRegions.ContainsKey(glyphId);
 
-	public override bool TryGetRegion(int32 codepoint, out AtlasRegion region)
+	public override bool TryGetRegion(int32 glyphId, out AtlasRegion region)
 	{
-		if (mRegions.TryGetValue(codepoint, out region))
+		if (mRegions.TryGetValue(glyphId, out region))
 			return true;
 		region = default;
 		return false;
 	}
 
-	public override bool GetGlyphQuad(int32 codepoint, ref float cursorX, float cursorY,
+	public override bool GetGlyphQuad(int32 glyphId, ref float cursorX, float cursorY,
 		out GlyphQuad quad)
 	{
 		quad = default;
-		if (!mRegions.TryGetValue(codepoint, let region))
+		if (!mRegions.TryGetValue(glyphId, let region))
 			return false;
 		return BuildQuad(region, cursorX, cursorY, true, ref cursorX, out quad);
 	}
 
-	public override bool GetGlyphQuadAt(int32 codepoint, float x, float y, out GlyphQuad quad)
+	public override bool GetGlyphQuadAt(int32 glyphId, float x, float y, out GlyphQuad quad)
 	{
 		quad = default;
-		if (!mRegions.TryGetValue(codepoint, let region))
+		if (!mRegions.TryGetValue(glyphId, let region))
 			return false;
 		var ignored = x;
 		return BuildQuad(region, x, y, false, ref ignored, out quad);
 	}
 
+	/// By glyph index.
 	public Dictionary<int32, AtlasRegion> Regions => mRegions;
+	public Dictionary<int32, int32> CodepointGlyphs => mCodepointGlyphs;
 
 	/// No oversampling division here, unlike the coverage atlas: a distance field is
 	/// rendered at one texel per pixel of the cell and read back through its range, so

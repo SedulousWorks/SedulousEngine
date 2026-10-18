@@ -45,7 +45,9 @@ class FontFactoryTests
 
 		Test.Assert(closest.Atlas != null);
 		Test.Assert(closest.Atlas.Mode == .Coverage);
-		Test.Assert(closest.Atlas.TryGetRegion(Cp('A'), let region));
+		Test.Assert(closest.Atlas.GlyphFor(Cp('A')) == 1, "the glyph row's codepoint to glyph");
+		Test.Assert(closest.Atlas.GlyphFor(Cp('B')) == -1);
+		Test.Assert(closest.Atlas.TryGetRegion(closest.Atlas.GlyphFor(Cp('A')), let region));
 		Test.Assert(region.Width == 2);
 		Test.Assert(region.AdvanceX == 6.0f);
 
@@ -100,6 +102,8 @@ class FontFactoryTests
 		Test.Assert(entry.Atlas != null);
 		Test.Assert(entry.Atlas.Mode == .DistanceField);
 		Test.Assert(entry.Atlas.DistanceFieldRange == 3.0f, "the range travelled with the pixels");
+		Test.Assert(entry.Atlas.GlyphFor((int32)'A') == 1, "the glyph rows map codepoints here too");
+		Test.Assert(entry.Atlas.Contains(1));
 
 		// LINEAR: these are distances, and gamma decoding them would bend the field.
 		Test.Assert(entry.AtlasImage != null);
@@ -205,8 +209,8 @@ class FontFactoryTests
 		Test.Assert(font.EntryAt(1).Font.GetGlyphInfo(Cp('A')).AdvanceWidth == 12.0f);
 
 		// And so do the regions, through the advance the cursor steps by.
-		Test.Assert(font.EntryAt(0).Atlas.TryGetRegion(Cp('A'), let first));
-		Test.Assert(font.EntryAt(1).Atlas.TryGetRegion(Cp('A'), let second));
+		Test.Assert(font.EntryAt(0).Atlas.TryGetRegion(font.EntryAt(0).Atlas.GlyphFor(Cp('A')), let first));
+		Test.Assert(font.EntryAt(1).Atlas.TryGetRegion(font.EntryAt(1).Atlas.GlyphFor(Cp('A')), let second));
 		Test.Assert(first.AdvanceX == 6.0f);
 		Test.Assert(second.AdvanceX == 12.0f);
 		Test.Assert(first.OffsetY != second.OffsetY, "and the ascents they hang from differ");
@@ -229,7 +233,7 @@ class FontFactoryTests
 
 		let entry = font.EntryAt(0);
 		float cursorX = 0;
-		Test.Assert(entry.Atlas.GetGlyphQuad(Cp('A'), ref cursorX, 0, let quad));
+		Test.Assert(entry.Atlas.GetGlyphQuad(entry.Atlas.GlyphFor(Cp('A')), ref cursorX, 0, let quad));
 
 		// The region is two texels wide, packed at twice the logical size, so it draws one
 		// pixel wide. Dropping the oversampling would draw it two.

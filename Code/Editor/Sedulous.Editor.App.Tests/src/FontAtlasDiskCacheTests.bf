@@ -49,8 +49,9 @@ static class FontAtlasDiskCacheTests
 
 		for (int32 cp = options.FirstCodepoint; cp <= options.LastCodepoint; cp++)
 		{
-			let ha = atlas.TryGetRegion(cp, let a);
-			let hb = loaded.TryGetRegion(cp, let b);
+			Test.Assert(atlas.GlyphFor(cp) == loaded.GlyphFor(cp), "the codepoint map round-trips too");
+			let ha = atlas.TryGetRegion(atlas.GlyphFor(cp), let a);
+			let hb = loaded.TryGetRegion(loaded.GlyphFor(cp), let b);
 			Test.Assert(ha == hb);
 			if (ha && hb)
 			{
