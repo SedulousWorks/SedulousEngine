@@ -46,6 +46,24 @@ class VGContext
 	private PathBuilder mCurrentPath = new .() ~ delete _;
 	private IFontService mFontService;
 
+	/// Shaped single-line text, kept across frames: drawing a label shapes it once, not every
+	/// frame it redraws. An entry is good while the CachedFont, its font and its atlas are the
+	/// ones it was shaped for; the cache is dropped whole when it grows past cShapedTextLimit.
+	class ShapedTextEntry
+	{
+		public String Text = new .() ~ delete _;
+		/// Identities, compared and never dereferenced.
+		public CachedFont Cached;
+		public IFont Font;
+		public IFontAtlas Atlas;
+		public List<GlyphPosition> Glyphs = new .() ~ delete _;
+		public float Width;
+	}
+	private const int cShapedTextLimit = 4096;
+	private Dictionary<uint64, ShapedTextEntry> mShapedText = new .() ~ DeleteDictionaryAndValues!(_);
+	/// Texts shaped rather than found shaped already, for tests.
+	private uint64 mShapeCount = 0;
+
 	private List<VGState> mStateStack = new .() ~ delete _;
 	private List<ClipRectSave> mClipStack = new .() ~ delete _;
 	/// The stencil clips, outermost first.
@@ -1511,10 +1529,18 @@ class VGContext
 	}
 
 	/// Through a cached font, which needs a font service to resolve its atlas texture.
+	/// Shaped by the font's shaper when it has one (ligatures, joined forms), at a baseline
+	/// position.
 	public void DrawText(StringView text, CachedFont font, Float2 position, Color color)
 	{
 		if ((font == null) || (mFontService == null))
 			return;
+
+		if (let shaped = ShapedText(text, font))
+		{
+			DrawPositionedGlyphs(shaped.Glyphs, font, position.X, position.Y, color);
+			return;
+		}
 
 		let atlasTexture = mFontService.GetAtlasTexture(font);
 		if (atlasTexture == null)
@@ -1533,7 +1559,69 @@ class VGContext
 		if (atlasTexture == null)
 			return;
 
+		if (let shaped = ShapedText(text, font))
+		{
+			// Shaped: aligned by the shaped width, as the unshaped path aligns by the measured one.
+			let metrics = font.Font.Metrics;
+			float y;
+			switch (vertical)
+			{
+			case .Top: y = bounds.Y + metrics.Ascent;
+			case .Middle: y = bounds.Y + ((bounds.Height - metrics.LineHeight) * 0.5f) + metrics.Ascent;
+			case .Bottom: y = bounds.Y + bounds.Height - metrics.Descent;
+			case .Baseline: y = bounds.Y;
+			}
+			DrawPositionedGlyphs(shaped.Glyphs, font, HorizontalOffset(bounds, shaped.Width, horizontal), y, color);
+			return;
+		}
+
 		DrawText(text, font.Font, font.Atlas, atlasTexture, bounds, horizontal, vertical, color);
+	}
+
+	/// How many texts DrawText has shaped rather than found shaped already, for tests.
+	public uint64 ShapedTextCount => mShapeCount;
+
+	/// The glyphs of `text` shaped by `font`'s shaper on one line from 0 (the baseline at y 0),
+	/// cached; null when the font has no shaper, to draw it unshaped. BORROWED: valid until the
+	/// next call.
+	private ShapedTextEntry ShapedText(StringView text, CachedFont font)
+	{
+		if ((font == null) || (font.Shaper == null) || (font.Font == null) || text.IsEmpty)
+			return null;
+
+		let key = HashBytes(text.Ptr, text.Length) ^ HashInteger((uint64)(uint)Internal.UnsafeCastToPtr(font));
+		if (mShapedText.TryGetValue(key, let found))
+		{
+			if ((found.Cached === font) && (found.Font === font.Font) && (found.Atlas === font.Atlas)
+				&& (found.Text == text))
+				return found;
+		}
+		if (mShapedText.Count >= cShapedTextLimit)
+		{
+			for (let value in mShapedText.Values)
+				delete value;
+			mShapedText.Clear();
+		}
+
+		let entry = new ShapedTextEntry();
+		entry.Text.Set(text);
+		entry.Cached = font;
+		entry.Font = font.Font;
+		entry.Atlas = font.Atlas;
+		if (font.Shaper.ShapeText(font.Font, text, 0, 0, entry.Glyphs) case .Ok(let width))
+		{
+			entry.Width = width;
+		}
+		else
+		{
+			delete entry;
+			return null;
+		}
+		mShapeCount++;
+		if (mShapedText.TryGetValue(key, let replaced))
+			delete replaced; // a different text or font at this key
+		mShapedText[key] = entry;
+		return entry;
 	}
 
 	/// The default font at a size, which needs a font service.
