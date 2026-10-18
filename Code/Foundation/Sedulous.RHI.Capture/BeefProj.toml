@@ -1,0 +1,13 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.RHI.Capture"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.RHI.Capture.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Image.IO" = "*"
+"Sedulous.RHI" = "*"

@@ -5,6 +5,7 @@ using Sedulous.Graphics.Gpu;
 using Sedulous.Runtime.SDL3;
 using Sedulous.Shell;
 using Sedulous.Shell.SDL3;
+using Sedulous.RHI.Capture;
 
 namespace Samples.PhysicsPlayground;
 

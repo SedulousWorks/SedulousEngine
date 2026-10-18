@@ -1,0 +1,17 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.RHI.Capture.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.RHI.Capture.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Image.IO" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Capture" = "*"
+"Sedulous.RHI.TestSupport" = "*"
+"Sedulous.RHI.Vulkan" = "*"
+"Sedulous.RHI.WebGPU" = "*"

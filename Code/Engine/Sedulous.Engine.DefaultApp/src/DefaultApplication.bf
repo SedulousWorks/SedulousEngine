@@ -44,6 +44,7 @@ using Sedulous.Shell;
 using Sedulous.RHI;
 using Sedulous.Render;
 using Sedulous.Input;
+using Sedulous.RHI.Capture;
 
 namespace Sedulous.Engine.DefaultApp;
 

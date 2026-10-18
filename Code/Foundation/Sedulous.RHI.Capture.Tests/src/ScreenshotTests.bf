@@ -4,11 +4,12 @@ using Sedulous.Core;
 using Sedulous.Image;
 using Sedulous.Image.IO;
 using Sedulous.RHI;
+using Sedulous.RHI.Capture;
 using Sedulous.RHI.TestSupport;
 using Sedulous.RHI.Vulkan;
 using Sedulous.RHI.WebGPU;
 
-namespace Sedulous.Engine.DefaultApp.Tests;
+namespace Sedulous.RHI.Capture.Tests;
 
 /// ScreenshotCapture: the flags, the row unpack, and the whole path on real GPUs, a texture
 /// cleared to a known colour in RGBA8 and BGRA8, recorded the way FinishFrame records the

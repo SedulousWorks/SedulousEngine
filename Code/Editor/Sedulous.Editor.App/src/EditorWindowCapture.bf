@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.RHI;
 using Sedulous.Engine.DefaultApp;
+using Sedulous.RHI.Capture;
 
 namespace Sedulous.Editor.App;
 

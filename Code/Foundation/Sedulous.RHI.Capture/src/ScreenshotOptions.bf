@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.Engine.DefaultApp;
+namespace Sedulous.RHI.Capture;
 
 /// The --screenshot flags: capture to Path at rendered frame Frame (1 based) or, when
 /// AfterSeconds is set, at the first frame past that many seconds of run time, which is frame

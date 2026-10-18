@@ -13,6 +13,7 @@ using Sedulous.Runtime.SDL3;
 using Sedulous.Shell;
 using Sedulous.Shell.SDL3;
 using Sedulous.VFS;
+using Sedulous.RHI.Capture;
 
 namespace Sedulous.Engine.Player.Desktop;
 

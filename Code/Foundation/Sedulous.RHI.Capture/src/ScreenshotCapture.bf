@@ -6,7 +6,7 @@ using Sedulous.Image;
 using Sedulous.Image.IO;
 using Sedulous.RHI;
 
-namespace Sedulous.Engine.DefaultApp;
+namespace Sedulous.RHI.Capture;
 
 /// The backbuffer to PNG capture behind DefaultApplication.CaptureScreenshot, the F11 hotkey
 /// and the --screenshot flags.
