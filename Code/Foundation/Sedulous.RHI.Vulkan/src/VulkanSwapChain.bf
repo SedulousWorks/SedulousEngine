@@ -32,6 +32,12 @@ class VulkanSwapChain : ISwapChain
 
 	private List<VulkanTexture> mTextures = new List<VulkanTexture>() ~ delete _;
 	private List<VulkanTextureView> mViews = new List<VulkanTextureView>() ~ delete _;
+	/// The views in mAlternate, when it is honoured.
+	private List<VulkanTextureView> mAlternateViews = new List<VulkanTextureView>() ~ delete _;
+	/// VK_KHR_swapchain_mutable_format is enabled on the device.
+	private bool mMutableFormat = false;
+	private TextureFormat mRequestedAlternate = .Undefined;
+	private TextureFormat mAlternate = .Undefined;
 	private List<VkSemaphore> mAcquireSemaphores = new List<VkSemaphore>() ~ delete _;
 	private List<VkSemaphore> mPresentSemaphores = new List<VkSemaphore>() ~ delete _;
 
@@ -44,13 +50,15 @@ class VulkanSwapChain : ISwapChain
 	public VkSwapchainKHR Handle => mSwapChain;
 
 	public Result<void> Initialize(VkDevice device, VkPhysicalDevice physicalDevice,
-		VkSurfaceKHR surface, SwapChainDesc desc, VulkanDevice owner)
+		VkSurfaceKHR surface, SwapChainDesc desc, VulkanDevice owner, bool mutableFormat)
 	{
 		mDevice = device;
 		mPhysicalDevice = physicalDevice;
 		mSurface = surface;
 		mOwner = owner;
 		mPresentMode = desc.PresentMode;
+		mMutableFormat = mutableFormat;
+		mRequestedAlternate = desc.AlternateViewFormat;
 		return Create(desc.Width, desc.Height, desc.Format, desc.BufferCount, .Null);
 	}
 
@@ -71,6 +79,18 @@ class VulkanSwapChain : ISwapChain
 			if (mCurrentImageIndex >= (uint32)mViews.Count)
 				return null;
 			return mViews[(int)mCurrentImageIndex];
+		}
+	}
+
+	public TextureFormat AlternateViewFormat => mAlternate;
+
+	public ITextureView CurrentAlternateTextureView
+	{
+		get
+		{
+			if (mCurrentImageIndex >= (uint32)mAlternateViews.Count)
+				return null;
+			return mAlternateViews[(int)mCurrentImageIndex];
 		}
 	}
 
@@ -222,6 +242,27 @@ class VulkanSwapChain : ISwapChain
 		createInfo.clipped = VulkanNative.VK_TRUE;
 		createInfo.oldSwapchain = old;
 
+		// The images viewable in their sRGB or UNORM twin too, when asked and the device can.
+		mAlternate = (mMutableFormat && (mRequestedAlternate != .Undefined)
+			&& (mRequestedAlternate == TextureFormats.SrgbTwin(mFormat))) ? mRequestedAlternate : .Undefined;
+		if (mRequestedAlternate != .Undefined)
+		{
+			Console.WriteLine("[RHI] swapchain alternate view format {}: {}",
+				VkFormatName(VulkanConversions.ToVkFormat(mRequestedAlternate)),
+				(mAlternate != .Undefined) ? "honoured"
+				: (mMutableFormat ? "not the swapchain format's sRGB or UNORM twin"
+				: "unavailable (no VK_KHR_swapchain_mutable_format)"));
+		}
+		VkFormat[2] viewFormats = .(surfaceFormat.format, VulkanConversions.ToVkFormat(mAlternate));
+		VkImageFormatListCreateInfo formatList = .();
+		if (mAlternate != .Undefined)
+		{
+			formatList.viewFormatCount = 2;
+			formatList.pViewFormats = &viewFormats[0];
+			createInfo.pNext = &formatList;
+			createInfo.flags |= .VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR;
+		}
+
 		if (VulkanNative.vkCreateSwapchainKHR(mDevice, &createInfo, null, &mSwapChain)
 			!= .VK_SUCCESS)
 			return .Err;
@@ -339,6 +380,7 @@ class VulkanSwapChain : ISwapChain
 			textureDesc.MipLevelCount = 1;
 			textureDesc.SampleCount = 1;
 			textureDesc.Usage = .RenderTarget;
+			textureDesc.AlternateViewFormat = mAlternate;
 
 			let texture = new VulkanTexture();
 			texture.InitializeFromExisting(images[(int)i], textureDesc);
@@ -357,6 +399,19 @@ class VulkanSwapChain : ISwapChain
 				return .Err;
 			}
 			mViews.Add(view);
+
+			if (mAlternate != .Undefined)
+			{
+				var alternateDesc = viewDesc;
+				alternateDesc.Format = mAlternate;
+				let alternate = new VulkanTextureView();
+				if (alternate.Initialize(mDevice, texture, alternateDesc) case .Err)
+				{
+					delete alternate;
+					return .Err;
+				}
+				mAlternateViews.Add(alternate);
+			}
 		}
 		return .Ok;
 	}
@@ -387,6 +442,12 @@ class VulkanSwapChain : ISwapChain
 			delete view;
 		}
 		mViews.Clear();
+		for (let view in mAlternateViews)
+		{
+			view.Cleanup(mDevice);
+			delete view;
+		}
+		mAlternateViews.Clear();
 		// The images belong to the chain, so the textures only drop their description.
 		for (let texture in mTextures)
 		{

@@ -13,8 +13,10 @@ class NullSwapChain : ISwapChain
 {
 	private NullTexture mTexture = new .() ~ delete _;
 	private NullTextureView mView = new .() ~ delete _;
+	private NullTextureView mAlternateView = new .() ~ delete _;
 
 	private TextureFormat mFormat = .BGRA8UnormSrgb;
+	private TextureFormat mAlternate = .Undefined;
 	private uint32 mWidth = 0;
 	private uint32 mHeight = 0;
 	private uint32 mBufferCount = 2;
@@ -23,6 +25,9 @@ class NullSwapChain : ISwapChain
 	public void Initialize(SwapChainDesc desc)
 	{
 		mFormat = desc.Format;
+		// Nothing to refuse: a twin request is honoured, as a capable device would.
+		mAlternate = (desc.AlternateViewFormat == TextureFormats.SrgbTwin(desc.Format))
+			? desc.AlternateViewFormat : .Undefined;
 		mWidth = desc.Width;
 		mHeight = desc.Height;
 		// At least one, so AcquireNextImage cannot divide by zero on a descriptor that
@@ -34,11 +39,15 @@ class NullSwapChain : ISwapChain
 		textureDesc.Width = mWidth;
 		textureDesc.Height = mHeight;
 		textureDesc.Usage = .RenderTarget;
+		textureDesc.AlternateViewFormat = mAlternate;
 		mTexture.Initialize(textureDesc);
 
 		var viewDesc = TextureViewDesc();
 		viewDesc.Format = mFormat;
 		mView.Initialize(mTexture, viewDesc);
+		var alternateDesc = viewDesc;
+		alternateDesc.Format = mAlternate;
+		mAlternateView.Initialize(mTexture, alternateDesc);
 	}
 
 	public TextureFormat Format => mFormat;
@@ -55,6 +64,8 @@ class NullSwapChain : ISwapChain
 
 	public ITexture CurrentTexture => mTexture;
 	public ITextureView CurrentTextureView => mView;
+	public TextureFormat AlternateViewFormat => mAlternate;
+	public ITextureView CurrentAlternateTextureView => (mAlternate != .Undefined) ? mAlternateView : null;
 
 	/// The queue the last Present was given.
 	///

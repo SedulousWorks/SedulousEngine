@@ -23,6 +23,8 @@ class VulkanDevice : IDevice
 	private bool mBindlessEnabled = false;
 	private bool mMeshEnabled = false;
 	private bool mRayTracingEnabled = false;
+	/// VK_KHR_swapchain_mutable_format is enabled: a swap chain may honour an alternate view format.
+	private bool mSwapchainMutableFormat = false;
 	private bool mDestroyed = false;
 	private bool mLost = false;
 	private VkSemaphore mPendingAcquire = .Null;
@@ -105,6 +107,11 @@ class VulkanDevice : IDevice
 			extensions.Add(calibration);
 		if (adapter.SupportsMemoryBudget)
 			extensions.Add("VK_EXT_memory_budget");
+		// Swapchain images viewable in their sRGB or UNORM twin (VG's encoded blend space), when
+		// the device has it; a swap chain falls back to its own format otherwise.
+		mSwapchainMutableFormat = adapter.SupportsSwapchainMutableFormat;
+		if (mSwapchainMutableFormat)
+			extensions.Add("VK_KHR_swapchain_mutable_format");
 
 		// The feature chain, built from the tail backwards. Dynamic rendering and
 		// synchronization2 are what the encoders are written against, so they are required
@@ -712,7 +719,7 @@ class VulkanDevice : IDevice
 
 		let swapChain = new VulkanSwapChain();
 		if (swapChain.Initialize(mDevice, mAdapter.PhysicalDevice, vulkanSurface.Handle, desc,
-			this) case .Err)
+			this, mSwapchainMutableFormat) case .Err)
 		{
 			delete swapChain;
 			return .Err;

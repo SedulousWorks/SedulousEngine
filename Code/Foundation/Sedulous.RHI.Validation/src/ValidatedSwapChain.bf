@@ -22,6 +22,8 @@ class ValidatedSwapChain : ISwapChain
 	public uint32 CurrentImageIndex => mInner.CurrentImageIndex;
 	public ITexture CurrentTexture => mInner.CurrentTexture;
 	public ITextureView CurrentTextureView => mInner.CurrentTextureView;
+	public TextureFormat AlternateViewFormat => mInner.AlternateViewFormat;
+	public ITextureView CurrentAlternateTextureView => mInner.CurrentAlternateTextureView;
 
 	/// Acquiring twice without presenting exhausts the chain and blocks, which reads as a
 	/// hang rather than a mistake.

@@ -29,6 +29,7 @@ class VulkanAdapter : IAdapter
 	/// read its timestamps together with the clock the profiler reads.
 	private char8* mCalibratedTimestampsExtension = null;
 	private bool mSupportsMemoryBudget = false;
+	private bool mSupportsSwapchainMutableFormat = false;
 #if BF_PLATFORM_WINDOWS
 	private VkTimeDomainKHR mHostTimeDomain = .VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR;
 #else
@@ -70,6 +71,8 @@ class VulkanAdapter : IAdapter
 	public bool SupportsRayTracing => mSupportsRayTracing;
 	public char8* CalibratedTimestampsExtension => mCalibratedTimestampsExtension;
 	public bool SupportsMemoryBudget => mSupportsMemoryBudget;
+	/// Swapchain images viewable in another format (an sRGB swapchain's UNORM view).
+	public bool SupportsSwapchainMutableFormat => mSupportsSwapchainMutableFormat;
 	/// The profiler's clock as a Vulkan time domain: CLOCK_MONOTONIC on POSIX,
 	/// QueryPerformanceCounter on Windows.
 	public VkTimeDomainKHR HostTimeDomain => mHostTimeDomain;
@@ -297,6 +300,7 @@ class VulkanAdapter : IAdapter
 			case "VK_EXT_mesh_shader": mSupportsMeshShader = true;
 			case "VK_KHR_ray_tracing_pipeline": mSupportsRayTracing = true;
 			case "VK_EXT_memory_budget": mSupportsMemoryBudget = true;
+			case "VK_KHR_swapchain_mutable_format": mSupportsSwapchainMutableFormat = true;
 			case "VK_KHR_calibrated_timestamps": mCalibratedTimestampsExtension = "VK_KHR_calibrated_timestamps";
 			case "VK_EXT_calibrated_timestamps":
 				if (mCalibratedTimestampsExtension == null)

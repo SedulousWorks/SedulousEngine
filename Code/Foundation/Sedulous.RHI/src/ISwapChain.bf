@@ -19,6 +19,15 @@ interface ISwapChain
 	ITexture CurrentTexture { get; }
 	ITextureView CurrentTextureView { get; }
 
+	/// The alternate view format the back buffers were made viewable in
+	/// (SwapChainDesc.AlternateViewFormat, the format's sRGB or UNORM twin), or Undefined when
+	/// none was asked for or this device and surface cannot (Vulkan without
+	/// VK_KHR_swapchain_mutable_format): a host then draws through CurrentTextureView alone.
+	TextureFormat AlternateViewFormat { get; }
+	/// A view of the currently acquired back buffer in AlternateViewFormat; null when that is
+	/// Undefined.
+	ITextureView CurrentAlternateTextureView { get; }
+
 	/// Hands the acquired buffer to the display.
 	Result<void> Present(IQueue queue);
 

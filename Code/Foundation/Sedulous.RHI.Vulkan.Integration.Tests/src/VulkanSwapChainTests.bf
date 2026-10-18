@@ -199,6 +199,82 @@ class VulkanSwapChainTests
 		sDevice.DestroySwapChain(ref swapChain);
 	}
 
+	/// An sRGB chain asked for its UNORM twin honours it exactly when the device has
+	/// VK_KHR_swapchain_mutable_format, and a frame cleared through the twin view presents.
+	///
+	/// The Null backend carries the contract; this is the one place a real surface answers it.
+	[Test]
+	public static void TheTwinViewIsHonouredWhereTheDeviceCanAndPresents()
+	{
+		if (!Ready()) { Console.WriteLine("SKIP: no display or no Vulkan"); return; }
+
+		var desc = SwapChainDesc();
+		desc.Width = sWindow.Width;
+		desc.Height = sWindow.Height;
+		desc.Format = .BGRA8UnormSrgb;
+		desc.BufferCount = 2;
+		desc.AlternateViewFormat = .BGRA8Unorm;
+		Test.Assert(sDevice.CreateSwapChain(sSurface, desc) case .Ok(var swapChain));
+
+		let adapter = sBackend.EnumerateAdapters()[0] as VulkanAdapter;
+		Test.Assert(adapter != null);
+		let twin = TextureFormats.SrgbTwin(swapChain.Format);
+		if (!adapter.SupportsSwapchainMutableFormat || (twin != .BGRA8Unorm))
+		{
+			// No extension, or the surface negotiated another format: nothing is promised.
+			Test.Assert(swapChain.AlternateViewFormat == .Undefined, "not honoured where it cannot be");
+			Console.WriteLine("SKIP: no VK_KHR_swapchain_mutable_format, or no BGRA8 sRGB surface");
+			sDevice.DestroySwapChain(ref swapChain);
+			return;
+		}
+		Test.Assert(swapChain.AlternateViewFormat == .BGRA8Unorm, "honoured where the device can");
+
+		let queue = sDevice.GetQueue(.Graphics);
+		Test.Assert(sDevice.CreateCommandPool(.Graphics) case .Ok(var pool));
+		Test.Assert(sDevice.CreateFence(0) case .Ok(var fence));
+		let frameCount = swapChain.BufferCount * 2;
+		for (uint32 frame = 1; frame <= frameCount; ++frame)
+		{
+			if (!(swapChain.AcquireNextImage() case .Ok))
+			{
+				Console.WriteLine("SKIP: the surface went out of date");
+				break;
+			}
+			let alternate = swapChain.CurrentAlternateTextureView;
+			Test.Assert(alternate != null, "every back buffer has its twin view");
+			Test.Assert(alternate.Desc.Format == .BGRA8Unorm);
+			Test.Assert(alternate.Texture === swapChain.CurrentTexture, "a view of the acquired image");
+			Test.Assert(swapChain.CurrentTexture.Desc.AlternateViewFormat == .BGRA8Unorm);
+
+			Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+			var colorAttachment = ColorAttachment();
+			colorAttachment.View = alternate;
+			colorAttachment.LoadOp = .Clear;
+			colorAttachment.StoreOp = .Store;
+			colorAttachment.ClearValue = .(0.5f, 0.5f, 0.5f, 1.0f);
+			var passDesc = RenderPassDesc();
+			passDesc.ColorAttachments.Add(colorAttachment);
+			encoder.TransitionTexture(swapChain.CurrentTexture, .Undefined, .RenderTarget);
+			let pass = encoder.BeginRenderPass(passDesc);
+			Test.Assert(pass != null, "the render pass opened on the twin view");
+			pass.End();
+			encoder.TransitionTexture(swapChain.CurrentTexture, .RenderTarget, .Present);
+
+			var buffers = ICommandBuffer[1](encoder.Finish());
+			queue.Submit(buffers, fence, (uint64)frame);
+			Test.Assert(fence.Wait((uint64)frame), "the frame's work completed");
+			Test.Assert(swapChain.Present(queue) case .Ok, "the frame was presented");
+
+			pool.DestroyEncoder(ref encoder);
+			pool.Reset();
+		}
+		Test.Assert(!sDevice.IsLost(), "the device survived the run");
+
+		sDevice.DestroyFence(ref fence);
+		sDevice.DestroyCommandPool(ref pool);
+		sDevice.DestroySwapChain(ref swapChain);
+	}
+
 	/// A frame whose ONLY graphics submission is the wait-fences overload still presents.
 	///
 	/// The shape Sample017 has: the graphics work waits on another queue's fence, so the

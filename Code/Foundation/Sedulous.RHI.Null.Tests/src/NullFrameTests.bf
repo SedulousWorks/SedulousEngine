@@ -64,6 +64,43 @@ class NullFrameTests
 		Test.Assert(swapChain == null);
 	}
 
+	/// A swap chain honours an asked-for sRGB or UNORM twin view, and only that: the Null
+	/// backend carries the contract, since no test can make a windowed swap chain.
+	[Test]
+	public static void TheSwapChainHonoursATwinViewAndOnlyThat()
+	{
+		let backend = NullRhi.CreateBackend();
+		defer delete backend;
+		let device = MakeDevice(backend);
+		Test.Assert(backend.CreateSurface(null) case .Ok(let surface));
+
+		var desc = SwapChainDesc();
+		desc.Width = 8;
+		desc.Height = 8;
+		desc.Format = .BGRA8UnormSrgb;
+		Test.Assert(device.CreateSwapChain(surface, desc) case .Ok(var plain));
+		Test.Assert(plain.AlternateViewFormat == .Undefined, "not asked for");
+		Test.Assert(plain.CurrentAlternateTextureView == null);
+		device.DestroySwapChain(ref plain);
+
+		desc.AlternateViewFormat = .BGRA8Unorm;
+		Test.Assert(device.CreateSwapChain(surface, desc) case .Ok(var twin));
+		Test.Assert(twin.AcquireNextImage() case .Ok);
+		Test.Assert(twin.AlternateViewFormat == .BGRA8Unorm);
+		Test.Assert(twin.CurrentAlternateTextureView != null);
+		Test.Assert(twin.CurrentAlternateTextureView.Desc.Format == .BGRA8Unorm);
+		Test.Assert(twin.CurrentAlternateTextureView.Texture === twin.CurrentTexture, "a view of the same back buffer");
+		Test.Assert(twin.CurrentTextureView.Desc.Format == .BGRA8UnormSrgb);
+		Test.Assert(twin.CurrentTexture.Desc.AlternateViewFormat == .BGRA8Unorm);
+		device.DestroySwapChain(ref twin);
+
+		desc.AlternateViewFormat = .RGBA16Float; // not the twin: refused quietly
+		Test.Assert(device.CreateSwapChain(surface, desc) case .Ok(var wrong));
+		Test.Assert(wrong.AlternateViewFormat == .Undefined);
+		Test.Assert(wrong.CurrentAlternateTextureView == null);
+		device.DestroySwapChain(ref wrong);
+	}
+
 	/// The acquired index CYCLES. A caller keying per frame resources on it is exercised
 	/// properly, and one that assumed it never moved is caught here rather than on hardware.
 	[Test]

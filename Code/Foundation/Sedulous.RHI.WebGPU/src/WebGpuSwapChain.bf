@@ -22,6 +22,8 @@ sealed class WebGpuSwapChain : ISwapChain
 	private WebGpuSurface mSurface;
 
 	private TextureFormat mFormat = .BGRA8UnormSrgb;
+	/// SwapChainDesc's AlternateViewFormat.
+	private TextureFormat mRequestedAlternate = .Undefined;
 	private PresentMode mPresentMode = .Fifo;
 	private uint32 mWidth = 0;
 	private uint32 mHeight = 0;
@@ -32,6 +34,8 @@ sealed class WebGpuSwapChain : ISwapChain
 
 	private WebGpuTexture mCurrentTexture;
 	private WebGpuTextureView mCurrentView;
+	/// In AlternateViewFormat, when it is honoured.
+	private WebGpuTextureView mCurrentAlternateView;
 	private WGPUTexture mOwnedHandle = null;
 
 	public TextureFormat Format => mFormat;
@@ -42,6 +46,26 @@ sealed class WebGpuSwapChain : ISwapChain
 
 	public ITexture CurrentTexture => mHaveImage ? mCurrentTexture : null;
 	public ITextureView CurrentTextureView => mHaveImage ? mCurrentView : null;
+
+	/// On the web the canvas is configured in its UNORM base format with the sRGB format as a
+	/// view (Configure), so a UNORM view of it is always allowed: an asked-for twin is honoured.
+	/// Desktop wgpu-native would need surface view formats, which webgpu.h gives no way to ask
+	/// about ahead of configuring, so it says Undefined and the host draws through
+	/// CurrentTextureView alone.
+	public TextureFormat AlternateViewFormat
+	{
+		get
+		{
+#if BF_PLATFORM_WASM
+			return ((mRequestedAlternate != .Undefined) && (mRequestedAlternate == TextureFormats.SrgbTwin(mFormat)))
+				? mRequestedAlternate : .Undefined;
+#else
+			return .Undefined;
+#endif
+		}
+	}
+
+	public ITextureView CurrentAlternateTextureView => mHaveImage ? mCurrentAlternateView : null;
 
 	public ~this()
 	{
@@ -56,6 +80,7 @@ sealed class WebGpuSwapChain : ISwapChain
 		mQueue = queue;
 		mSurface = surface;
 		mFormat = desc.Format;
+		mRequestedAlternate = desc.AlternateViewFormat;
 		mPresentMode = desc.PresentMode;
 		mBufferCount = desc.BufferCount;
 		return Configure(desc.Width, desc.Height);
@@ -96,6 +121,7 @@ sealed class WebGpuSwapChain : ISwapChain
 		textureDesc.Width = mWidth;
 		textureDesc.Height = mHeight;
 		textureDesc.Usage = .RenderTarget;
+		textureDesc.AlternateViewFormat = AlternateViewFormat;
 
 		mCurrentTexture = new WebGpuTexture();
 		mCurrentTexture.WrapExternal(surfaceTexture.texture, textureDesc);
@@ -114,6 +140,20 @@ sealed class WebGpuSwapChain : ISwapChain
 			DeleteAndNullify!(mCurrentTexture);
 			DropCurrent();
 			return .Err;
+		}
+		if (AlternateViewFormat != .Undefined)
+		{
+			TextureViewDesc alternateDesc = .();
+			alternateDesc.Format = AlternateViewFormat;
+			mCurrentAlternateView = new WebGpuTextureView();
+			if (mCurrentAlternateView.Initialize(surfaceTexture.texture, mCurrentTexture, alternateDesc) case .Err)
+			{
+				DeleteAndNullify!(mCurrentAlternateView);
+				DeleteAndNullify!(mCurrentView);
+				DeleteAndNullify!(mCurrentTexture);
+				DropCurrent();
+				return .Err;
+			}
 		}
 
 		mHaveImage = true;
@@ -466,6 +506,8 @@ sealed class WebGpuSwapChain : ISwapChain
 		if (mHaveImage)
 		{
 			DeleteAndNullify!(mCurrentView);
+			if (mCurrentAlternateView != null)
+				DeleteAndNullify!(mCurrentAlternateView);
 			DeleteAndNullify!(mCurrentTexture);
 		}
 

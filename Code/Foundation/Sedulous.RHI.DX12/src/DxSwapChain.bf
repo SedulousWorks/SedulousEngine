@@ -26,6 +26,8 @@ class DxSwapChain : ISwapChain
 	private ID3D12Device* mD3dDevice = null; // NOT owned
 
 	private TextureFormat mFormat = .RGBA8UnormSrgb;
+	/// The honoured alternate view format.
+	private TextureFormat mAlternate = .Undefined;
 	private uint32 mWidth = 0;
 	private uint32 mHeight = 0;
 	private uint32 mBufferCount = 2;
@@ -34,6 +36,7 @@ class DxSwapChain : ISwapChain
 
 	private List<DxTexture> mTextures = new .() ~ DeleteContainerAndItems!(_);
 	private List<DxTextureView> mViews = new .() ~ DeleteContainerAndItems!(_);
+	private List<DxTextureView> mAlternateViews = new .() ~ DeleteContainerAndItems!(_);
 
 	private DxDescriptorHeapAllocator mSrvHeap = null; // none owned, all the device's
 	private DxDescriptorHeapAllocator mRtvHeap = null;
@@ -51,6 +54,11 @@ class DxSwapChain : ISwapChain
 	public ITextureView CurrentTextureView =>
 		((int)mCurrentIndex < mViews.Count) ? mViews[(int)mCurrentIndex] : null;
 
+	public TextureFormat AlternateViewFormat => mAlternate;
+
+	public ITextureView CurrentAlternateTextureView =>
+		((int)mCurrentIndex < mAlternateViews.Count) ? mAlternateViews[(int)mCurrentIndex] : null;
+
 	public Result<void> Initialize(ID3D12Device* device, IDXGIFactory4* factory,
 		ID3D12CommandQueue* gfxQueue, DxSurface surface, SwapChainDesc d,
 		DxDescriptorHeapAllocator srvHeap, DxDescriptorHeapAllocator rtvHeap,
@@ -58,6 +66,10 @@ class DxSwapChain : ISwapChain
 	{
 		mD3dDevice = device;
 		mFormat = d.Format;
+		// Flip-model buffers are created without sRGB (StripSrgb) and viewed with it, so a view
+		// in either twin is always valid: an asked-for twin is honoured.
+		mAlternate = ((d.AlternateViewFormat != .Undefined) && (d.AlternateViewFormat == TextureFormats.SrgbTwin(d.Format)))
+			? d.AlternateViewFormat : .Undefined;
 		mWidth = d.Width;
 		mHeight = d.Height;
 		mBufferCount = d.BufferCount;
@@ -186,6 +198,7 @@ class DxSwapChain : ISwapChain
 			td.MipLevelCount = 1;
 			td.SampleCount = 1;
 			td.Usage = .RenderTarget;
+			td.AlternateViewFormat = mAlternate;
 			tex.InitializeFromExisting(resource, td);
 			// InitializeFromExisting took its own reference, so this one goes.
 			resource.Release();
@@ -199,6 +212,15 @@ class DxSwapChain : ISwapChain
 			vd.ArrayLayerCount = 1;
 			view.Initialize(mD3dDevice, tex, vd, mSrvHeap, mRtvHeap, mDsvHeap).IgnoreError();
 			mViews.Add(view);
+
+			if (mAlternate != .Undefined)
+			{
+				let alternate = new DxTextureView();
+				var ad = vd;
+				ad.Format = mAlternate;
+				alternate.Initialize(mD3dDevice, tex, ad, mSrvHeap, mRtvHeap, mDsvHeap).IgnoreError();
+				mAlternateViews.Add(alternate);
+			}
 		}
 
 		return .Ok;
@@ -210,6 +232,9 @@ class DxSwapChain : ISwapChain
 		for (let v in mViews)
 			v.Cleanup();
 		ClearAndDeleteItems!(mViews);
+		for (let v in mAlternateViews)
+			v.Cleanup();
+		ClearAndDeleteItems!(mAlternateViews);
 
 		for (let t in mTextures)
 			t.Cleanup();
