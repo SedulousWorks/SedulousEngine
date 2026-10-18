@@ -1132,7 +1132,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 	/// is left there, with every registered source drawing into it in order. The HOST calls
 	/// this once per window target, after the scene composed.
 	public void RenderOverlays(ICommandEncoder encoder, ITextureView target,
-		TextureFormat targetFormat, uint32 width, uint32 height, uint32 frameIndex)
+		TextureFormat targetFormat, uint32 width, uint32 height, uint32 frameIndex,
+		ITextureView encodedTarget = null)
 	{
 		if ((target == null) || (width == 0) || (height == 0) || mScreenOverlays.IsEmpty)
 			return;
@@ -1178,9 +1179,11 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			mOverlayDsHeight = height;
 		}
 
+		// Drawn through the target's UNORM view when the host gave one: the overlays blend encoded.
+		let encoded = (encodedTarget != null) && (TextureFormats.SrgbTwin(targetFormat) != .Undefined);
 		var pass = RenderPassDesc();
 		var color = ColorAttachment();
-		color.View = target;
+		color.View = encoded ? encodedTarget : target;
 		color.LoadOp = .Load;
 		color.StoreOp = .Store;
 		pass.ColorAttachments.Add(color);
@@ -1209,7 +1212,8 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			var view = ScreenOverlayView();
 			view.Width = width;
 			view.Height = height;
-			view.TargetFormat = targetFormat;
+			view.TargetFormat = encoded ? TextureFormats.SrgbTwin(targetFormat) : targetFormat;
+			view.EncodedTarget = encoded;
 			view.DepthStencilFormat = haveDs ? mOverlayDsFormat : .Undefined;
 			view.FrameIndex = frameIndex;
 

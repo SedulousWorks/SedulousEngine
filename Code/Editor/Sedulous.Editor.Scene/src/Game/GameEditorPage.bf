@@ -108,6 +108,10 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 
 		mViewport = new ViewportView();
 		mViewport.ClearColor = .(0.248f, 0.248f, 0.272f, 1.0f); // sRGB, like every UI colour
+		// The finished game, as the player draws it into its sRGB window: 8-bit sRGB rather than the
+		// viewports' float default, so the Game tab matches the player and its screen UI can blend
+		// encoded values through the target's UNORM view (RenderOverlays).
+		mViewport.SetFormats(.RGBA8UnormSrgb, mViewport.DepthFormat);
 
 		// THIS instance's exit request stops THIS tab's run, whichever tab it is: the script
 		// asking fires inside the embedded app's update, which runs before the pages, so the
@@ -325,7 +329,9 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			mApp.UI.SetScreenOrientation(mGameInstance, mOrientation);
 			mApp.UI.SetRenderRun(mGameInstance);
 		}
-		mRender.RenderOverlays(frame.Encoder, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, frame.FrameIndex);
+		// Through the viewport's UNORM view: the screen UI blends encoded values, as in the player.
+		mRender.RenderOverlays(frame.Encoder, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, frame.FrameIndex,
+			mViewport.ColorTargetAlternateView);
 		if ((mApp != null) && (mApp.UI != null))
 			mApp.UI.SetRenderRun(null);
 		frame.Encoder.TransitionTexture(mViewport.ColorTexture, .RenderTarget, .ShaderRead);

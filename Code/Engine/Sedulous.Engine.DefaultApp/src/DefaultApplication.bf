@@ -938,9 +938,10 @@ class DefaultApplication : IApplication, ISceneObserver
 		render.EndRendering();
 
 		// And the window space ones composite over the finished frame through the registry,
-		// so the host names no source.
+		// so the host names no source; through the backbuffer's UNORM view when the window has
+		// one, so the screen UI blends encoded values, as browsers do (VG's Encoded blend space).
 		render.RenderOverlays(frame.Encoder, frame.BackbufferView, colorFormat, frame.Width,
-			frame.Height, frame.FrameIndex);
+			frame.Height, frame.FrameIndex, frame.BackbufferAlternateView);
 	}
 
 	public virtual void OnShutdown(IApplicationHost host)

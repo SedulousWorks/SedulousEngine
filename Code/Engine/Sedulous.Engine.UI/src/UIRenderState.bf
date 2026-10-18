@@ -70,13 +70,13 @@ class UIRenderState
 	/// draw would clobber the slices recorded earlier in the same frame, and the scene
 	/// overlay, the screen overlay and any preview all share one renderer per configuration.
 	public VGRenderer RendererFor(TextureFormat format, uint64 frameSerial, int32 frameIndex,
-		bool stencil = false, uint32 sampleCount = 1)
+		bool stencil = false, uint32 sampleCount = 1, bool encoded = false)
 	{
 		UIFormatRenderer found = null;
 		for (let entry in mRenderers)
 		{
 			if ((entry.Format == format) && (entry.Stencil == stencil)
-				&& (entry.SampleCount == sampleCount))
+				&& (entry.SampleCount == sampleCount) && (entry.Encoded == encoded))
 			{
 				found = entry;
 				break;
@@ -90,6 +90,7 @@ class UIRenderState
 
 			var targetConfig = VGTargetConfig();
 			targetConfig.SampleCount = sampleCount;
+			targetConfig.BlendSpace = encoded ? .Encoded : .Linear;
 			if (stencil)
 				targetConfig.DepthStencilFormat = CanvasStencilFormat;
 
@@ -106,6 +107,7 @@ class UIRenderState
 			found.Format = format;
 			found.Stencil = stencil;
 			found.SampleCount = sampleCount;
+			found.Encoded = encoded;
 			found.Renderer = renderer;
 			mRenderers.Add(found);
 		}

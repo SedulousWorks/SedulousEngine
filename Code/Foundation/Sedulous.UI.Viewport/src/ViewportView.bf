@@ -52,6 +52,8 @@ class ViewportView : View
 
 	private ITexture mColorTexture = null;
 	private ITextureView mColorView = null;
+	/// The colour target in its sRGB or UNORM twin; null when its format has none.
+	private ITextureView mColorAlternateView = null;
 	private ITexture mDepthTexture = null;
 	private ITextureView mDepthView = null;
 	private ResourceState mColorState = .Undefined;
@@ -240,6 +242,8 @@ class ViewportView : View
 
 	public bool IsReady => (mColorView != null) && (mDepthView != null);
 	public ITextureView ColorTargetView => mColorView;
+	/// The colour target viewed in its sRGB or UNORM twin; null when its format has none.
+	public ITextureView ColorTargetAlternateView => mColorAlternateView;
 	public ITextureView DepthTargetView => mDepthView;
 	public ITexture ColorTexture => mColorTexture;
 	public uint32 RenderWidth => mTextureWidth;
@@ -540,6 +544,9 @@ class ViewportView : View
 		// viewport_screenshot) copies the finished image out: without CopySrc that copy is
 		// outside the Vulkan spec and a validation error on WebGPU.
 		colorDesc.Usage = .RenderTarget | .Sampled | .CopySrc;
+		// Viewable in its sRGB or UNORM twin too, for a screen UI that blends encoded values over
+		// the game (RenderOverlays' encodedTarget); a format with no twin has none.
+		colorDesc.AlternateViewFormat = TextureFormats.SrgbTwin(mColorFormat);
 		if (mDevice.CreateTexture(colorDesc) case .Ok(let colorTexture))
 			mColorTexture = colorTexture;
 		else
@@ -549,6 +556,15 @@ class ViewportView : View
 			mColorView = colorView;
 		else
 			return false;
+
+		if (colorDesc.AlternateViewFormat != .Undefined)
+		{
+			var alternateDesc = TextureViewDesc();
+			alternateDesc.Format = colorDesc.AlternateViewFormat;
+			// A miss leaves the screen UI blending linear light.
+			if (mDevice.CreateTextureView(mColorTexture, alternateDesc) case .Ok(let alternateView))
+				mColorAlternateView = alternateView;
+		}
 
 		var depthDesc = TextureDesc();
 		depthDesc.Width = width;
@@ -580,6 +596,8 @@ class ViewportView : View
 			mDevice.DestroyTexture(ref mDepthTexture);
 		if (mColorView != null)
 			mDevice.DestroyTextureView(ref mColorView);
+		if (mColorAlternateView != null)
+			mDevice.DestroyTextureView(ref mColorAlternateView);
 		if (mColorTexture != null)
 			mDevice.DestroyTexture(ref mColorTexture);
 	}

@@ -13,6 +13,8 @@ class UIFormatRenderer
 	public TextureFormat Format = .RGBA8Unorm;
 	public bool Stencil = false;
 	public uint32 SampleCount = 1;
+	/// VG's Encoded blend space: a screen pass through a UNORM view.
+	public bool Encoded = false;
 	public VGRenderer Renderer = null ~ delete _;
 
 	/// The last UI frame this renderer's rings were rewound for.

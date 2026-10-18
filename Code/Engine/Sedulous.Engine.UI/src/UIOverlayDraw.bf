@@ -177,11 +177,11 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 			tier.Root.DpiScale = place.DpiScale;
 			DrawRootInPass(tier.Root, encoder, view.TargetFormat, (int32)place.Rect.X, (int32)place.Rect.Y,
 				(uint32)Math.Max(place.Rect.Width, 1.0f), (uint32)Math.Max(place.Rect.Height, 1.0f),
-				(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat), 1, &place);
+				(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat), 1, &place, view.EncodedTarget);
 			return;
 		}
 		DrawRootInPass(tier.Root, encoder, view.TargetFormat, 0, 0, view.Width, view.Height,
-			(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat));
+			(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat), 1, null, view.EncodedTarget);
 	}
 
 	/// Stencil fills only where the pass carries an attachment in the SAME format the
@@ -202,7 +202,8 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 	/// earlier in the same frame are never clobbered by a later one.
 	private void DrawRootInPass(RootView root, IRenderPassEncoder encoder, TextureFormat format,
 		int32 viewportX, int32 viewportY, uint32 width, uint32 height, int32 frameIndex,
-		bool stencilCapable = false, uint32 sampleCount = 1, UIScreenPlacement* placement = null)
+		bool stencilCapable = false, uint32 sampleCount = 1, UIScreenPlacement* placement = null,
+		bool encoded = false)
 	{
 		// A turned tier lays out in its own frame (the rectangle turned back) and draws through the
 		// turn; everything else at the rectangle's size.
@@ -228,7 +229,7 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 			return;
 
 		let renderer = mRenderState.RendererFor(format, mFrameSerial, frameIndex, stencil,
-			sampleCount);
+			sampleCount, encoded);
 		if (renderer == null)
 			return;
 		// The texture images the tree names (resolved as it drew) registered on this renderer.

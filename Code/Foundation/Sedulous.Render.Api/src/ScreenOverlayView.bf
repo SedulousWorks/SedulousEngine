@@ -14,6 +14,10 @@ struct ScreenOverlayView
 	/// The same contract as the scene tier's: set only when the pass carries one.
 	public TextureFormat DepthStencilFormat = .Undefined;
 	public uint32 FrameIndex = 0;
+	/// The pass draws through a UNORM view of an sRGB target (TargetFormat is that view's):
+	/// overlays keep colours encoded and blend them so, as browsers composite UI (VG's Encoded
+	/// blend space). False: the target as it is, linear light.
+	public bool EncodedTarget = false;
 
 	public this() {}
 }

@@ -237,6 +237,30 @@ class ViewportViewTests
 
 	// ---- Formats and fit ----------------------------------------------------------------------
 
+	/// An 8 bit sRGB colour target is viewable in its UNORM twin too, which a screen UI blending
+	/// encoded values over the game draws through; the float default has no twin and no such
+	/// view, and reconfiguring keeps the two in step.
+	[Test]
+	public static void AnSrgbTargetHasItsTwinViewAndAFloatOneHasNone()
+	{
+		let harness = scope Harness();
+
+		let view = new ViewportView();
+		defer view.ReleaseRef();
+		view.Initialize(harness.Device, null, null, 0);
+		view.Layout(0, 0, 80, 60);
+		Test.Assert(view.IsReady);
+		Test.Assert(view.ColorTargetAlternateView == null, "RGBA16Float has no twin");
+
+		view.SetFormats(.RGBA8UnormSrgb, view.DepthFormat);
+		Test.Assert(view.ColorTargetAlternateView != null);
+		Test.Assert(view.ColorTargetAlternateView.Desc.Format == .RGBA8Unorm);
+		Test.Assert(view.ColorTargetAlternateView.Texture === view.ColorTexture);
+
+		view.SetFormats(.RGBA16Float, view.DepthFormat);
+		Test.Assert(view.ColorTargetAlternateView == null, "dropped with the target");
+	}
+
 	/// The view owns the formats, so a render callback building a pipeline from them always
 	/// agrees with the actual attachments. High dynamic range by default.
 	[Test]

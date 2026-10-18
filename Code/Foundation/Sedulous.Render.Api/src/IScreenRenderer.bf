@@ -16,6 +16,9 @@ interface IScreenRenderer
 	/// Opens ONE load op pass against the target, which must be in the render target state
 	/// and is left there, and calls every registered overlay in order with the active
 	/// encoder. Does nothing when nothing is registered or the target is null.
+	///
+	/// `encodedTarget`, when given, is a UNORM view of the same sRGB texture: the pass draws
+	/// through it and the overlays blend encoded values (ScreenOverlayView.EncodedTarget).
 	void RenderOverlays(ICommandEncoder encoder, ITextureView target, TextureFormat targetFormat,
-		uint32 width, uint32 height, uint32 frameIndex);
+		uint32 width, uint32 height, uint32 frameIndex, ITextureView encodedTarget = null);
 }
