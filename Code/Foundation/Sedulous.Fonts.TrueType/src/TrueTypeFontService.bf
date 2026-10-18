@@ -284,7 +284,7 @@ class TrueTypeFontService : IFontService
 	{
 		let fontView = new ScaledFontView(@base.Cached.Font, pixelHeight);
 		let atlasView = new ScaledFontAtlasView(@base.Cached.Atlas, fontView.Scale);
-		let cached = new CachedFont(fontView, atlasView, new TrueTypeTextShaper());
+		let cached = new CachedFont(fontView, atlasView, MakeShaper());
 
 		let entry = new FontEntry();
 		entry.Family.Set(familyName);
@@ -325,7 +325,7 @@ class TrueTypeFontService : IFontService
 		let entry = new FontEntry();
 		entry.Family.Set(familyName);
 		entry.PixelHeight = options.PixelHeight;
-		entry.Cached = new CachedFont(font, atlas, new TrueTypeTextShaper());
+		entry.Cached = new CachedFont(font, atlas, MakeShaper());
 		entry.Texture = texture;
 		mFonts.Add(entry);
 
@@ -385,4 +385,8 @@ class TrueTypeFontService : IFontService
 			return .Err;
 		return .Ok(best);
 	}
+
+	/// The shaper a font gets: the registered backend's (HarfBuzz, when installed), else the
+	/// basic one. Ours to make and ours to free.
+	private static ITextShaper MakeShaper() => TextShaperFactory.Create() ?? new TrueTypeTextShaper();
 }

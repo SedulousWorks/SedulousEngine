@@ -283,4 +283,34 @@ class TrueTypeFontServiceTests
 		service.ReleaseFont(font);
 		Test.Assert(service.GetFont("Roboto", 16.0f) == font);
 	}
+
+	/// A shaper a backend registered, to tell it from the basic one.
+	class RegisteredShaper : TrueTypeTextShaper
+	{
+	}
+
+	/// A font takes the shaper of the backend registered last, when it loads; with none
+	/// registered, the basic shaper.
+	[Test]
+	public static void AFontTakesTheRegisteredShaper()
+	{
+		let path = scope String();
+		if (!FontPath(path))
+			return;
+
+		TextShaperFactory.Creator creator = () => new RegisteredShaper();
+		TextShaperFactory.Register(creator);
+		let service = scope TrueTypeFontService();
+		Test.Assert(service.LoadFont("Roboto", path, Options(16.0f)) == .Success);
+		Test.Assert(service.GetFont("Roboto", 16.0f).Shaper is RegisteredShaper);
+		// Another size, baked when asked for, asks again.
+		Test.Assert(service.GetFont("Roboto", 13.0f).Shaper is RegisteredShaper);
+		TextShaperFactory.Unregister(creator);
+		Test.Assert(TextShaperFactory.Count == 0);
+
+		let plain = scope TrueTypeFontService();
+		Test.Assert(plain.LoadFont("Roboto", path, Options(16.0f)) == .Success);
+		let shaper = plain.GetFont("Roboto", 16.0f).Shaper;
+		Test.Assert((shaper is TrueTypeTextShaper) && !(shaper is RegisteredShaper));
+	}
 }

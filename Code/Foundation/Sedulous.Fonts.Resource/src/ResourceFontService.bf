@@ -62,10 +62,9 @@ class ResourceFontService : IFontService
 			let entry = new ServiceEntry();
 			entry.Family.Set(font.Family);
 			entry.PixelHeight = productEntry.PixelHeight;
-			// The shaper is ours to make and ours to free. It reads only metrics and glyph
-			// info, so the TrueType one serves a baked font perfectly well.
-			entry.Cached = new CachedFont(productEntry.Font, productEntry.Atlas,
-				new TrueTypeTextShaper());
+			// The basic shaper reads only metrics and glyph info, so it serves a baked font
+			// perfectly well; a fuller one reads the file the font lends.
+			entry.Cached = new CachedFont(productEntry.Font, productEntry.Atlas, MakeShaper());
 			entry.Image = productEntry.AtlasImage;
 			mEntries.Add(entry);
 		}
@@ -186,9 +185,13 @@ class ResourceFontService : IFontService
 		entry.PixelHeight = pixelHeight;
 		entry.Image = baseEntry.Image; // the same atlas texture, at a different scale
 		entry.OwnsViews = true;
-		entry.Cached = new CachedFont(fontView, atlasView, new TrueTypeTextShaper());
+		entry.Cached = new CachedFont(fontView, atlasView, MakeShaper());
 
 		mEntries.Add(entry);
 		return entry.Cached;
 	}
+
+	/// The shaper a font gets: the registered backend's (HarfBuzz, when installed), else the
+	/// basic one. Ours to make and ours to free.
+	private static ITextShaper MakeShaper() => TextShaperFactory.Create() ?? new TrueTypeTextShaper();
 }
