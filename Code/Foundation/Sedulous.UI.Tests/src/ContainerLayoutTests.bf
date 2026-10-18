@@ -249,4 +249,48 @@ class ContainerLayoutTests
 			Test.Assert(child.Bounds.Y == 7.0f, scope $"{group.GetType()} y {child.Bounds.Y}: 5 + 2");
 		}
 	}
+
+	/// LocalToScreen and ScreenToLocal follow a view's transform, as drawing and hit testing do.
+	[Test]
+	public static void ScreenAndLocalCoordinatesFollowAViewsTransform()
+	{
+		let context = scope UIContext();
+		let root = new RootView();
+		defer root.ReleaseRef();
+		UITest.Init(context, root, 400, 300);
+
+		let frame = new AbsoluteLayout();
+		let child = new TestView(100, 50);
+		frame.AddView(child);
+		root.AddView(frame);
+		UITest.LayoutPass(context, root);
+
+		child.Transform.Scale = .(2.0f, 2.0f);
+		child.Transform.Origin = .(0.0f, 0.0f);
+		child.Transform.Translation = .(10.0f, 20.0f);
+		let corner = child.LocalToScreen(.(100.0f, 50.0f)); // the drawn bottom right
+		Test.Assert(Math.Abs(corner.X - (child.Bounds.X + 10.0f + 200.0f)) < 0.001f, scope $"{corner.X}");
+		Test.Assert(Math.Abs(corner.Y - (child.Bounds.Y + 20.0f + 100.0f)) < 0.001f, scope $"{corner.Y}");
+		let back = child.ScreenToLocal(corner);
+		Test.Assert((Math.Abs(back.X - 100.0f) < 0.001f) && (Math.Abs(back.Y - 50.0f) < 0.001f));
+		// Inside the drawn (scaled) area but outside the untransformed bounds: a hit.
+		Test.Assert(root.HitTest(.(child.Bounds.X + 150.0f, child.Bounds.Y + 90.0f)) == child);
+
+		// A quarter turn about the top left, then an uneven scale, as DrawChildren draws it:
+		// rotated first, so local (10, 0) turns to (0, 10) and scales to (0, 5).
+		child.Transform = ViewTransform();
+		child.Transform.Origin = .(0.0f, 0.0f);
+		child.Transform.Rotation = Math.PI_f / 2.0f;
+		child.Transform.Scale = .(2.0f, 0.5f);
+		let turned = child.LocalToParent(.(10.0f, 0.0f));
+		Test.Assert(Math.Abs(turned.X - child.Bounds.X) < 0.001f, scope $"{turned.X}");
+		Test.Assert(Math.Abs(turned.Y - (child.Bounds.Y + 5.0f)) < 0.001f, scope $"{turned.Y}");
+
+		// About the centre, the round trip holds, and so does the hit test's inverse.
+		child.Transform.Origin = .(0.5f, 0.5f);
+		let p = child.LocalToScreen(.(10.0f, 5.0f));
+		let q = child.ScreenToLocal(p);
+		Test.Assert((Math.Abs(q.X - 10.0f) < 0.001f) && (Math.Abs(q.Y - 5.0f) < 0.001f), scope $"{q.X} {q.Y}");
+		Test.Assert(root.HitTest(p) == child);
+	}
 }

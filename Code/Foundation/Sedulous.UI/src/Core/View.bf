@@ -119,16 +119,64 @@ class View : RefCounted, IPropertyOwner
 
 	// ---- Coordinates ---------------------------------------------------------------------------
 
+	/// A point of this view in its parent's space: through its Transform as DrawChildren draws
+	/// it (about the origin, rotated, then scaled, then translated) and its Bounds.
+	public Float2 LocalToParent(Float2 local)
+	{
+		var point = local;
+		if (!Transform.IsIdentity)
+		{
+			let originX = Width * Transform.Origin.X;
+			let originY = Height * Transform.Origin.Y;
+			point.X -= originX;
+			point.Y -= originY;
+			if (Transform.Rotation != 0.0f)
+			{
+				let c = Math.Cos(Transform.Rotation);
+				let s = Math.Sin(Transform.Rotation);
+				point = .(point.X * c - point.Y * s, point.X * s + point.Y * c);
+			}
+			point.X = point.X * Transform.Scale.X + originX + Transform.Translation.X;
+			point.Y = point.Y * Transform.Scale.Y + originY + Transform.Translation.Y;
+		}
+		return .(point.X + Bounds.X, point.Y + Bounds.Y);
+	}
+
+	/// The inverse of LocalToParent: a point of the parent's space in this view's.
+	public Float2 ParentToLocal(Float2 parentPoint)
+	{
+		var point = Float2(parentPoint.X - Bounds.X, parentPoint.Y - Bounds.Y);
+		if (!Transform.IsIdentity)
+		{
+			let originX = Width * Transform.Origin.X;
+			let originY = Height * Transform.Origin.Y;
+			point.X -= Transform.Translation.X + originX;
+			point.Y -= Transform.Translation.Y + originY;
+			// A zero scale collapses the view to nothing, and dividing by it would put the
+			// point at infinity rather than reporting a miss.
+			if ((Transform.Scale.X != 0.0f) && (Transform.Scale.Y != 0.0f))
+			{
+				point.X /= Transform.Scale.X;
+				point.Y /= Transform.Scale.Y;
+			}
+			if (Transform.Rotation != 0.0f)
+			{
+				let c = Math.Cos(-Transform.Rotation);
+				let s = Math.Sin(-Transform.Rotation);
+				point = .(point.X * c - point.Y * s, point.X * s + point.Y * c);
+			}
+			point.X += originX;
+			point.Y += originY;
+		}
+		return point;
+	}
+
+	/// A point of this view in its root's space, through every view's bounds and transform.
 	public Float2 LocalToScreen(Float2 local)
 	{
 		var result = local;
-		var view = this;
-		while (view != null)
-		{
-			result.X += view.Bounds.X;
-			result.Y += view.Bounds.Y;
-			view = view.Parent;
-		}
+		for (var view = this; view != null; view = view.Parent)
+			result = view.LocalToParent(result);
 		return result;
 	}
 
@@ -139,18 +187,9 @@ class View : RefCounted, IPropertyOwner
 	/// something to paper over silently everywhere.
 	protected static float RootDpiScale(RootView root) => (root != null) ? root.DpiScale : 1.0f;
 
-	public Float2 ScreenToLocal(Float2 screen)
-	{
-		var result = screen;
-		var view = this;
-		while (view != null)
-		{
-			result.X -= view.Bounds.X;
-			result.Y -= view.Bounds.Y;
-			view = view.Parent;
-		}
-		return result;
-	}
+	/// The inverse of LocalToScreen, applied from the root down.
+	public Float2 ScreenToLocal(Float2 screen) =>
+		ParentToLocal((Parent != null) ? Parent.ScreenToLocal(screen) : screen);
 
 	// ---- Deferred mutation ---------------------------------------------------------------------
 

@@ -267,38 +267,9 @@ class ViewGroup : View
 			if ((child == null) || (child.Visibility != .Visible) || !child.IsInteractionEnabled)
 				continue;
 
-			var childLocal = Float2(localPoint.X - child.Bounds.X, localPoint.Y - child.Bounds.Y);
-			// The INVERSE render transform, so a transformed child is hit where it is drawn.
-			// The draw path applies translate, then origin, scale, rotation, minus origin, so
-			// this undoes them in the opposite order.
-			if (!child.Transform.IsIdentity)
-			{
-				let originX = child.Width * child.Transform.Origin.X;
-				let originY = child.Height * child.Transform.Origin.Y;
-				childLocal.X -= child.Transform.Translation.X;
-				childLocal.Y -= child.Transform.Translation.Y;
-				childLocal.X -= originX;
-				childLocal.Y -= originY;
-
-				if (child.Transform.Rotation != 0.0f)
-				{
-					let c = Cos(-child.Transform.Rotation);
-					let s = Sin(-child.Transform.Rotation);
-					let rotatedX = childLocal.X * c - childLocal.Y * s;
-					let rotatedY = childLocal.X * s + childLocal.Y * c;
-					childLocal.X = rotatedX;
-					childLocal.Y = rotatedY;
-				}
-				// A zero scale collapses the child to nothing, and dividing by it would put
-				// the point at infinity rather than reporting a miss.
-				if ((child.Transform.Scale.X != 0.0f) && (child.Transform.Scale.Y != 0.0f))
-				{
-					childLocal.X /= child.Transform.Scale.X;
-					childLocal.Y /= child.Transform.Scale.Y;
-				}
-				childLocal.X += originX;
-				childLocal.Y += originY;
-			}
+			// Into the child's space through its transform, so a transformed child is hit where
+			// it is drawn.
+			let childLocal = child.ParentToLocal(localPoint);
 
 			if (let hit = child.HitTest(childLocal))
 				return hit;
