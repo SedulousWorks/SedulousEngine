@@ -76,11 +76,12 @@ enum StyleProperty
 	TextOverflow,
 
 	// ---- Filters, drawn through the VG's layers ----
-	/// `filter: blur(<sigma>) | none`: the view and its children blurred, a Gaussian of that sigma
-	/// in dp (a Float, 0 for none).
+	/// `filter: blur(<sigma>) grayscale(<a>) saturate(<a>) brightness(<a>) | none` (a Filter, or a
+	/// plain number as a blur's sigma): the view and its children drawn as one layer, blurred by a
+	/// Gaussian of that sigma in dp and their colour filtered at its composite.
 	Filter,
-	/// `backdrop-filter: blur(<sigma>) | none`: what is drawn behind the view blurred inside its
-	/// corner radius, under its own background (a Float, 0 for none).
+	/// `backdrop-filter: blur(<sigma>) | none` (a Filter, or a plain number): what is drawn behind
+	/// the view blurred inside its corners, under its own background. Only the blur is drawn.
 	BackdropFilter,
 
 	// ---- Text effects, the VG's TextEffects drawn under text ----

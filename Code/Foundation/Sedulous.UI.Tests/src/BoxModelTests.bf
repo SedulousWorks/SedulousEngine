@@ -505,6 +505,41 @@ class BoxModelTests
 		Test.Assert(root.HitTest(.(layoutBox.X - 30.0f, layoutBox.Y + 10.0f)) == child);
 	}
 
+	/// filter greys and dims a view at its layer's composite: grayscale, saturate and
+	/// brightness combine with blur in one list (blurs add, colour factors multiply), an
+	/// unknown function leaves the property unset, and a plain number is a blur's sigma, as code
+	/// sets it. A leaf with a colour filter draws as a layer too.
+	[Test]
+	public static void FilterGreysAndDimsAViewAtItsLayersComposite()
+	{
+		let sheet = LoadSSS(".off { filter: grayscale(100%) brightness(0.8) blur(2); } .half { filter: grayscale(0.5) saturate(1.5); } .odd { filter: sepia(1); }");
+		defer sheet.ReleaseRef();
+		let off = sheet.GetRule(0).GetValue(.Filter).Value.AsFilter.Value;
+		Test.Assert(Near(off.Saturation, 0.0f) && Near(off.Brightness, 0.8f) && Near(off.Blur, 2.0f));
+		Test.Assert(Near(sheet.GetRule(1).GetValue(.Filter).Value.AsFilter.Value.Saturation, 0.75f), "half grey, then half again as vivid");
+		let odd = sheet.GetRule(2).GetValue(.Filter);
+		Test.Assert((odd == null) || odd.Value.IsNone, "an unknown function: unset");
+		Test.Assert(Near(StyleValue.Float(4.0f).AsFilter.Value.Blur, 4.0f));
+
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		context.SetStyleSheet(LoadSSS(".off { filter: grayscale(1) brightness(0.8); }"));
+		let leaf = new RecordingView(40, 30, 1);
+		leaf.AddClass("off");
+		let frame = new FrameLayout();
+		frame.AddView(leaf);
+		root.AddView(frame);
+		UITest.LayoutPass(context, root);
+		let vg = scope VGContext();
+		vg.SetLayers(true);
+		RecordingView.DrawLog.Clear();
+		context.DrawRootView(root, vg);
+		let batch = vg.GetBatch();
+		Test.Assert(batch.Layers.Count == 1);
+		Test.Assert(Near(batch.Layers[0].Saturation, 0.0f) && Near(batch.Layers[0].Brightness, 0.8f));
+		Test.Assert(Near(batch.Layers[0].Blur, 0.0f));
+	}
+
 	/// The indices of the backdrop composite under a `.glass` view styled by `sheetText`: its
 	/// shape, a rounded outline where the background rounds, four corners where nothing does.
 	private static int BackdropIndices(StringView sheetText)

@@ -351,6 +351,17 @@ class TransitionTests
 		Test.Assert(Near(Red(view), 0.3154f, 0.002f), scope $"{Red(view)}");
 	}
 
+	/// A filter interpolates its blur and its colour factors.
+	[Test]
+	public static void AFilterInterpolatesItsBlurAndColourFactors()
+	{
+		StyleFilter to = .();
+		to.Blur = 4.0f;
+		to.Saturation = 0.0f;
+		let mid = StyleValueOps.Lerp(.Filter(.()), .Filter(to), 0.5f).AsFilter.Value;
+		Test.Assert(Near(mid.Blur, 2.0f) && Near(mid.Saturation, 0.5f) && Near(mid.Brightness, 1.0f));
+	}
+
 	/// A transform interpolates its move, turn and scale, and a transition on it only redraws.
 	[Test]
 	public static void ATransformInterpolatesItsMoveTurnAndScale()

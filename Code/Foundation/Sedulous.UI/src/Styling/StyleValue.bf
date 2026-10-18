@@ -30,6 +30,8 @@ enum StyleValue
 	case Shadows(BoxShadowList value);
 	/// A sheet's transform.
 	case Transform(StyleTransform value);
+	/// A sheet's filter.
+	case Filter(StyleFilter value);
 	/// Borrowed.
 	case Animations(AnimationList value);
 	/// Borrowed.
@@ -57,6 +59,7 @@ enum StyleValue
 			case .Length: return .Length;
 			case .Shadow, .Shadows: return .Shadow;
 			case .Transform: return .Transform;
+			case .Filter: return .Filter;
 			case .Animations: return .Animations;
 			case .Transitions: return .Transitions;
 			case .Inherit: return .Inherit;
@@ -138,6 +141,24 @@ enum StyleValue
 		{
 			if (this case .Animations(let value))
 				return value;
+			return null;
+		}
+	}
+
+	/// The filter a value gives: a Filter's, or a plain number as a blur's sigma (what code sets
+	/// with SetStyle(.Filter, sigma)).
+	public StyleFilter? AsFilter
+	{
+		get
+		{
+			if (this case .Filter(let value))
+				return value;
+			if (this case .Float(let sigma))
+			{
+				StyleFilter blurOnly = .();
+				blurOnly.Blur = sigma;
+				return blurOnly;
+			}
 			return null;
 		}
 	}

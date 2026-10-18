@@ -47,6 +47,8 @@ static class StyleValueOps
 			return true;
 		case .Transform(let value):
 			return (b case .Transform(let other)) && (value == other);
+		case .Filter(let value):
+			return (b case .Filter(let other)) && (value == other);
 		case .Animations(let value):
 			return (b case .Animations(let other)) && (value == other);
 		case .Transitions(let value):
@@ -70,7 +72,7 @@ static class StyleValueOps
 		if (ka != kb)
 			return false;
 
-		return (ka == .Color) || (ka == .Thickness) || (ka == .Shadow) || (ka == .Transform) || (ka == .Drawable);
+		return (ka == .Color) || (ka == .Thickness) || (ka == .Shadow) || (ka == .Transform) || (ka == .Filter) || (ka == .Drawable);
 	}
 
 	private static float Mix(float a, float b, float t) => a + (b - a) * t;
@@ -151,6 +153,14 @@ static class StyleValueOps
 			let to = b.AsThickness.Value;
 			return .Thickness(.(Mix(from.Left, to.Left, t), Mix(from.Top, to.Top, t),
 				Mix(from.Right, to.Right, t), Mix(from.Bottom, to.Bottom, t)));
+
+		case .Filter(let from):
+			let to = b.AsFilter.Value;
+			StyleFilter result = .();
+			result.Blur = Mix(from.Blur, to.Blur, t);
+			result.Saturation = Mix(from.Saturation, to.Saturation, t);
+			result.Brightness = Mix(from.Brightness, to.Brightness, t);
+			return .Filter(result);
 
 		case .Transform(let from):
 			let to = b.AsTransform.Value;

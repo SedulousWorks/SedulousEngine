@@ -1118,19 +1118,41 @@ class SSSParser
 	/// A number argument, or `fallback` where none is written.
 	private float NumberArg(float fallback) => (Peek().Kind == .Number) ? ParseFloatValue() : fallback;
 
+	/// `none` or a list of filter functions: blur(<sigma>) in dp, grayscale(<amount>),
+	/// saturate(<amount>) and brightness(<amount>), each amount a number or a percentage
+	/// (grayscale(1) is saturate(0)). They combine: blurs add, the colour factors multiply. A
+	/// backdrop-filter draws only the blur. An unknown function leaves the property unset.
 	private StyleValue ParseFilterValue()
 	{
-		if (Peek().Kind != .Ident)
-			return .None;
-		let name = Consume().Text;
-		if (name == "none")
-			return .Float(0.0f);
-		if (name != "blur")
-			return .None;
-		Expect(.LParen);
-		let sigma = (Peek().Kind == .Number) ? Math.Max(0.0f, ParseFloatValue()) : 0.0f;
-		Expect(.RParen);
-		return .Float(sigma);
+		StyleFilter filter = .();
+		if ((Peek().Kind == .Ident) && (Peek().Text == "none"))
+		{
+			Consume();
+			return .Filter(filter);
+		}
+		var any = false;
+		while (Peek().Kind == .Ident)
+		{
+			let name = Consume().Text;
+			if (Peek().Kind != .LParen)
+				return .None;
+			Consume();
+			let hasAmount = Peek().Kind == .Number;
+			let amount = hasAmount ? Math.Max(0.0f, ParseFloatValue()) : 0.0f;
+			switch (name)
+			{
+			case "blur": filter.Blur += amount;
+			case "grayscale": filter.Saturation *= 1.0f - Math.Min(hasAmount ? amount : 1.0f, 1.0f);
+			case "saturate": filter.Saturation *= hasAmount ? amount : 1.0f;
+			case "brightness": filter.Brightness *= hasAmount ? amount : 1.0f;
+			default: return .None;
+			}
+			if (Peek().Kind != .RParen)
+				return .None;
+			Consume();
+			any = true;
+		}
+		return any ? .Filter(filter) : .None;
 	}
 
 	/// `text-shadow: <x> <y> [blur] [color]`, `text-outline: <width> [color]`, `text-glow: <radius>

@@ -334,11 +334,15 @@ class ViewGroup : View
 
 			// The view's opacity (its field times the sheet's) and filters. A faded view with
 			// children fades as one group, through a layer, so its parts never show through each
-			// other, and a blurred one blurs as one; a faded leaf fades its own drawing.
+			// other, and a blurred or colour filtered one is filtered as one; a faded leaf fades its
+			// own drawing.
 			let opacity = child.Opacity * Clamp(child.ResolveStyleFloat(.Opacity, 1.0f), 0.0f, 1.0f);
 			let deviceScale = DeviceScale(ctx.VG.GetTransform());
-			let blur = Max(0.0f, child.ResolveStyleFloat(.Filter, 0.0f)) * deviceScale;
-			let backdrop = Max(0.0f, child.ResolveStyleFloat(.BackdropFilter, 0.0f)) * deviceScale;
+			let filter = child.ResolveStyle(.Filter).AsFilter;
+			let backdropFilter = child.ResolveStyle(.BackdropFilter).AsFilter;
+			let blur = filter.HasValue ? (Max(0.0f, filter.Value.Blur) * deviceScale) : 0.0f;
+			let tinted = filter.HasValue && filter.Value.FiltersColour;
+			let backdrop = backdropFilter.HasValue ? (Max(0.0f, backdropFilter.Value.Blur) * deviceScale) : 0.0f;
 			if (backdrop > 0.0f)
 			{
 				// What the parent drew behind the view, blurred inside its corners (the ones its
@@ -349,9 +353,12 @@ class ViewGroup : View
 			}
 			let faded = opacity < 1.0f;
 			let group = child as ViewGroup;
-			let fadesAsGroup = (blur > 0.0f) || (faded && (group != null) && (group.VisualChildCount > 0));
+			let fadesAsGroup = (blur > 0.0f) || tinted || (faded && (group != null) && (group.VisualChildCount > 0));
 			if (fadesAsGroup)
-				ctx.VG.PushLayer(opacity, .Normal, blur);
+			{
+				ctx.VG.PushLayer(opacity, .Normal, blur, filter.HasValue ? filter.Value.Saturation : 1.0f,
+					filter.HasValue ? filter.Value.Brightness : 1.0f);
+			}
 			else if (faded)
 				ctx.VG.PushOpacity(opacity);
 

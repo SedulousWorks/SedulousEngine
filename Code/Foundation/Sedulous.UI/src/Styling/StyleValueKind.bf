@@ -18,6 +18,8 @@ enum StyleValueKind
 	Transform,
 	/// An `animation:` list (AnimationList).
 	Animations,
+	/// A StyleFilter (filter, backdrop-filter).
+	Filter,
 	Transitions,
 	/// The `inherit` keyword: take the parent's computed value.
 	Inherit,
