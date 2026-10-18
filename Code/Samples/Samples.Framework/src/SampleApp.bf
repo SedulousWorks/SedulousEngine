@@ -157,6 +157,11 @@ abstract class SampleApp
 		}
 	}
 
+	/// Whether a screenshot waits on frames being drawn: one armed, or a --screenshot run not
+	/// yet done (it counts drawn frames). A sample that skips idle frames draws while it does.
+	protected bool ScreenshotPending => mScreenshot.Armed
+		|| (mScreenshotOptions.Requested && (mScreenshotsTaken < mScreenshotOptions.Count));
+
 	/// A screenshot recorded this frame: once the GPU has run it (a one off, so wait for all),
 	/// map, write, and honour --screenshot-exit.
 	private void FinishScreenshot()
