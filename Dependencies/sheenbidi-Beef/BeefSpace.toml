@@ -1,0 +1,11 @@
+FileVersion = 1
+Projects = {sheenbidi-Beef = {Path = "."}, sheenbidi-Beef-Test = {Path = "sheenbidi-Beef-Test"}}
+
+[Workspace]
+StartupProject = "sheenbidi-Beef-Test"
+
+[Configs.Test.Win32]
+ConfigSelections = {corlib = {Config = "Debug"}}
+
+[Configs.Test.Win64]
+ConfigSelections = {corlib = {Config = "Debug"}}

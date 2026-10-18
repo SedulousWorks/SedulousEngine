@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", sheenbidi-Beef = "*"}
+
+[Project]
+Name = "sheenbidi-Beef-Test"
+StartupObject = "sheenbidi_Beef_Test.Program"
