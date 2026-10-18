@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.VG;
 
 namespace Sedulous.UI;
 
@@ -91,6 +92,14 @@ class StateListDrawable : Drawable
 		if ((flags & (uint32)ControlState.Focused) != 0) weight += 4;
 		if ((flags & (uint32)ControlState.Hover) != 0) weight += 2;
 		return weight;
+	}
+
+	/// The corners of the drawable the state shows.
+	public override CornerRadii? OutlineRadii(ControlState state)
+	{
+		if (let drawable = Get(state))
+			return drawable.OutlineRadii(state);
+		return null;
 	}
 
 	public override void Draw(UIDrawContext ctx, Rectangle bounds)

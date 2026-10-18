@@ -316,6 +316,40 @@ class BoxModelTests
 		Test.Assert(shadowFirst);
 	}
 
+	/// The shadow's corners for `sheetText` over a 100 by 50 view, in sigma units, as every
+	/// shadow vertex's coverage carries them; -1 when nothing drew a shadow.
+	private static float ShadowCoverage(StringView sheetText)
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		context.SetStyleSheet(LoadSSS(sheetText));
+		let child = new RecordingView(100, 50, 1);
+		root.AddView(child);
+		UITest.LayoutPass(context, root);
+		let vg = scope VGContext();
+		RecordingView.DrawLog.Clear();
+		context.DrawRootView(root, vg);
+		for (let vertex in vg.GetBatch().Vertices)
+		{
+			if ((vertex.Color.A > 0.49f) && (vertex.Color.A < 0.51f))
+				return vertex.Coverage;
+		}
+		return -1.0f;
+	}
+
+	/// A card that rounds its background (rounded-rect(..., radius=24), as Sky Hopper's cloud
+	/// and HUD cards do) and sets no corner-radius casts a shadow with those corners, grown by
+	/// its spread; a corner-radius the view sets still decides. Blur 8 is sigma 4.
+	[Test]
+	public static void ABoxShadowFollowsTheCornersItsBackgroundRounds()
+	{
+		Test.Assert(Near(ShadowCoverage("RecordingView { background: rounded-rect(#FFFFFF, radius=12); box-shadow: 0 0 8 #00000080; }"), 12.0f / 4.0f));
+		Test.Assert(Near(ShadowCoverage("RecordingView { background: rounded-rect(#FFFFFF, radius=12); box-shadow: 0 0 8 2 #00000080; }"), 14.0f / 4.0f));
+		Test.Assert(Near(ShadowCoverage("RecordingView { background: rounded-rect(#FFFFFF, radius=12); corner-radius: 3; box-shadow: 0 0 8 #00000080; }"), 3.0f / 4.0f));
+		// A background that rounds nothing leaves the shadow square.
+		Test.Assert(Near(ShadowCoverage("RecordingView { background: #FFFFFF; box-shadow: 0 0 8 #00000080; }"), 0.0f));
+	}
+
 	/// The shorthand takes its parts in any workable order: `inset` may lead or trail, the blur
 	/// and spread are optional, and a missing colour falls back to the default shadow.
 	[Test]

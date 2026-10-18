@@ -33,6 +33,8 @@ class RoundedRectDrawable : Drawable
 		Radii = radii;
 	}
 
+	public override CornerRadii? OutlineRadii(ControlState state) => Radii;
+
 	public override void Draw(UIDrawContext ctx, Rectangle bounds)
 	{
 		if (ctx.VG.AnalyticBoxes)

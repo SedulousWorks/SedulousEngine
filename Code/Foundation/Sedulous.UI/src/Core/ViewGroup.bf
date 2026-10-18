@@ -428,15 +428,26 @@ class ViewGroup : View
 
 	private static void DrawBoxShadow(UIDrawContext ctx, View child, BoxShadow shadow)
 	{
-		let radius = Max(0.0f, child.ResolveStyleFloat(.CornerRadius, 0.0f));
+		// The shadow follows the shape it sits under: the view's corner-radius, or without one
+		// the corners its background rounds (rounded-rect(..., radius=24) sets no
+		// corner-radius, and its shadow was square).
+		var radii = CornerRadii(Max(0.0f, child.ResolveStyleFloat(.CornerRadius, 0.0f)));
+		if (child.ResolveStyle(.CornerRadius).IsNone)
+		{
+			if (let background = child.ResolveStyleDrawable(.Background))
+			{
+				if (let outline = background.OutlineRadii(child.GetControlState()))
+					radii = outline;
+			}
+		}
 		// An inset shadow's spread grows INWARD, so it shrinks the box rather than growing it.
 		let spread = shadow.Inset ? -shadow.Spread : shadow.Spread;
 		let rect = Rectangle(shadow.OffsetX - spread, shadow.OffsetY - spread,
 			child.Width + 2.0f * spread, child.Height + 2.0f * spread);
-		let cornerRadius = Max(0.0f, radius + spread);
+		let grown = CornerRadii(Max(0.0f, radii.TopLeft + spread), Max(0.0f, radii.TopRight + spread),
+			Max(0.0f, radii.BottomRight + spread), Max(0.0f, radii.BottomLeft + spread));
 
-		ctx.VG.FillBoxShadow(rect, CornerRadii(cornerRadius), shadow.Blur, shadow.Color,
-			shadow.Inset);
+		ctx.VG.FillBoxShadow(rect, grown, shadow.Blur, shadow.Color, shadow.Inset);
 	}
 
 	/// The visual children in DRAW order: ascending z index, child order within a level.

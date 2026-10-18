@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.VG;
 
 namespace Sedulous.UI;
 
@@ -80,6 +81,11 @@ abstract class Drawable : RefCounted
 	/// Padding this drawable contributes, such as a nine slice's borders. Layout merges it
 	/// with the explicit padding by taking the larger of the two per edge.
 	public virtual Thickness DrawablePadding => .();
+
+	/// The corners of the box this drawable fills in `state`, when it fills a rounded box: what
+	/// a box shadow under it follows when the view sets no corner-radius. Null for a drawable
+	/// that is no such box (an image, a gradient, a custom shape).
+	public virtual CornerRadii? OutlineRadii(ControlState state) => null;
 
 	/// The state aware body. Override THIS rather than Draw in a drawable that picks by
 	/// state; the default ignores the state entirely.
