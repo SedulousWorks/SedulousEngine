@@ -16,6 +16,8 @@ class VGBatch
 	public List<VGCommand> Commands = new .() ~ delete _;
 	/// Analytic boxes' vertices, six to a box, for Box mode commands (no indices).
 	public List<VGBoxVertex> BoxVertices = new .() ~ delete _;
+	/// Offscreen layers, in the order they were pushed (a child after its parent).
+	public List<VGLayer> Layers = new .() ~ delete _;
 
 	/// The textures commands refer to by index. NOT OWNED: the context manages their
 	/// lifetime. By convention index zero is a one by one white texture, which is what
@@ -62,6 +64,7 @@ class VGBatch
 		Indices.Clear();
 		Commands.Clear();
 		BoxVertices.Clear();
+		Layers.Clear();
 		Textures.Clear();
 		EvictedTextures.Clear();
 	}

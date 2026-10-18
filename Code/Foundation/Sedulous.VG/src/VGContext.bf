@@ -53,6 +53,10 @@ class VGContext
 	/// The scissor fallback's saves, when there is no stencil.
 	private List<ClipRectSave> mClipPathScissors = new .() ~ delete _;
 	private List<float> mOpacityStack = new .() ~ delete _;
+	/// What each open layer set aside; a save with no layer is an opacity push (layers off).
+	private List<LayerSave> mLayerStack = new .() ~ DeleteContainerAndItems!(_);
+	/// The layer draws go into, -1 for the target.
+	private int32 mCurrentLayer = -1;
 	private VGState mCurrentState = .();
 
 	private VGBlendMode mCurrentBlendMode = .Normal;
@@ -63,6 +67,7 @@ class VGContext
 
 	private bool mPerPixelGradients = false;
 	private bool mAnalyticBoxes = false;
+	private bool mLayersEnabled = false;
 	private bool mStencilFills = false;
 	private bool mPixelSnap = true;
 	private float mTolerance = 0.05f;
@@ -104,6 +109,8 @@ class VGContext
 		ClearAndDeleteItems!(mClipPaths);
 		mClipPathScissors.Clear();
 		mOpacityStack.Clear();
+		ClearAndDeleteItems!(mLayerStack);
+		mCurrentLayer = -1;
 		mCurrentState = .();
 		mCurrentBlendMode = .Normal;
 		mCurrentDrawMode = .Default;
@@ -153,6 +160,14 @@ class VGContext
 	/// has no pipeline. Off, DrawBox tessellates its fill and border as FillRoundedRect does.
 	public void SetAnalyticBoxes(bool enabled) => mAnalyticBoxes = enabled;
 	public bool AnalyticBoxes => mAnalyticBoxes;
+
+	/// PushLayer draws into offscreen layers.
+	///
+	/// The HOST opts in, once its renderer was given the layer composite shader and it calls
+	/// VGRenderer.RenderLayers before its pass. Off, a layer is an opacity push: each shape fades
+	/// on its own and overlaps show through.
+	public void SetLayers(bool enabled) => mLayersEnabled = enabled;
+	public bool Layers => mLayersEnabled;
 
 	/// Turns on stencil then cover for COMPLEX fills: holes, self intersection, and the even
 	/// odd rule, which ear clipping gets wrong.
@@ -399,6 +414,134 @@ class VGContext
 	}
 
 	public float Opacity => mCurrentState.Opacity;
+
+	// === layers ===
+
+	/// Draws what follows into an offscreen layer, composited into what is under it once, at
+	/// PopLayer, with `opacity` and `blendMode`: a group fades as one, its overlapping parts never
+	/// showing through each other.
+	///
+	/// Inside, opacity starts again at one and no clip applies; the clips around the layer apply
+	/// to its composite. The transform carries on. Without SetLayers, an opacity push instead.
+	public void PushLayer(float opacity, VGBlendMode blendMode = .Normal)
+	{
+		if (!mLayersEnabled)
+		{
+			PushOpacity(opacity);
+			// Layer -1: PopLayer pops the opacity.
+			mLayerStack.Add(new LayerSave());
+			return;
+		}
+
+		FlushCurrentCommand();
+		let save = new LayerSave();
+		save.State = mCurrentState;
+		Swap!(save.ClipPaths, mClipPaths);
+		Swap!(save.ClipStack, mClipStack);
+		Swap!(save.ClipPathScissors, mClipPathScissors);
+		Swap!(save.OpacityStack, mOpacityStack);
+		save.FirstCommand = (int32)mBatch.Commands.Count;
+		mCurrentState.ClipRect = .();
+		mCurrentState.Scissored = false;
+		mCurrentState.ClipMode = .None;
+		mCurrentState.Opacity = 1.0f;
+
+		var layer = VGLayer();
+		layer.Parent = mCurrentLayer;
+		layer.Opacity = Clamp(opacity, 0.0f, 1.0f);
+		layer.BlendMode = blendMode;
+		save.Layer = (int32)mBatch.Layers.Count;
+		mBatch.Layers.Add(layer);
+		mCurrentLayer = save.Layer;
+		mLayerStack.Add(save);
+	}
+
+	/// Ends the innermost layer: its content's bounds are taken, the state around it comes back,
+	/// and its composite is drawn there.
+	public void PopLayer()
+	{
+		if (mLayerStack.IsEmpty)
+			return;
+		if (mLayerStack.Back.Layer < 0)
+		{
+			delete mLayerStack.PopBack();
+			PopOpacity();
+			return;
+		}
+
+		FlushCurrentCommand();
+		let save = mLayerStack.PopBack();
+		defer delete save;
+		let index = save.Layer;
+		let bounds = LayerContentBounds(index, save.FirstCommand);
+		mBatch.Layers[index].Bounds = bounds;
+		mCurrentState = save.State;
+		// The layer's own (balanced, so empty) stacks go with the save.
+		Swap!(save.ClipPaths, mClipPaths);
+		Swap!(save.ClipStack, mClipStack);
+		Swap!(save.ClipPathScissors, mClipPathScissors);
+		Swap!(save.OpacityStack, mOpacityStack);
+		mCurrentLayer = mBatch.Layers[index].Parent;
+		if (!HasClip(bounds))
+			return; // nothing drawn: nothing to composite
+
+		// The composite: a device quad over the bounds, its alpha the layer's opacity times the
+		// opacity around it, sampling the layer's target edge to edge.
+		let layer = mBatch.Layers[index];
+		let tint = Color(1.0f, 1.0f, 1.0f, layer.Opacity * mCurrentState.Opacity);
+		let start = (int32)mBatch.Indices.Count;
+		let vertexBase = (uint32)mBatch.Vertices.Count;
+		let x0 = bounds.X;
+		let y0 = bounds.Y;
+		let x1 = bounds.X + bounds.Width;
+		let y1 = bounds.Y + bounds.Height;
+		mBatch.Vertices.Add(.(.(x0, y0), .(0.0f, 0.0f), tint));
+		mBatch.Vertices.Add(.(.(x1, y0), .(1.0f, 0.0f), tint));
+		mBatch.Vertices.Add(.(.(x1, y1), .(1.0f, 1.0f), tint));
+		mBatch.Vertices.Add(.(.(x0, y1), .(0.0f, 1.0f), tint));
+		for (let i in scope uint32[](0, 1, 2, 0, 2, 3))
+			mBatch.Indices.Add(vertexBase + i);
+
+		var command = CurrentCommand(start, 6);
+		command.BlendMode = layer.BlendMode;
+		command.DrawMode = .Layer;
+		command.GradientSpread = .Pad;
+		command.CompositeLayer = index;
+		mBatch.Commands.Add(command);
+		mCommandStartIndex = (int32)mBatch.Indices.Count;
+	}
+
+	/// The device bounds of what a layer drew (its commands from `firstCommand` on that draw into
+	/// it, a nested layer's composite among them), on whole pixels with a pixel of margin for the
+	/// edges' antialiasing; empty when it drew nothing.
+	private Rectangle LayerContentBounds(int32 layer, int32 firstCommand)
+	{
+		var min = Float2(FloatMax, FloatMax);
+		var max = Float2(-FloatMax, -FloatMax);
+		for (int c = firstCommand; c < mBatch.Commands.Count; c++)
+		{
+			let command = mBatch.Commands[c];
+			// Only what draws colour counts: winding fans and masks do not.
+			if ((command.Layer != layer) || (command.FillPhase == .StencilWrite)
+				|| (command.FillPhase == .ClipApply) || (command.FillPhase == .ClipClear))
+				continue;
+			for (int i < command.IndexCount)
+			{
+				let at = command.StartIndex + i;
+				let p = (command.DrawMode == .Box) ? mBatch.BoxVertices[at].Position
+					: mBatch.Vertices[(int)mBatch.Indices[at]].Position;
+				min = .(Min(min.X, p.X), Min(min.Y, p.Y));
+				max = .(Max(max.X, p.X), Max(max.Y, p.Y));
+			}
+		}
+		if ((max.X < min.X) || (max.Y < min.Y))
+			return .();
+		let x0 = Floor(min.X) - 1.0f;
+		let y0 = Floor(min.Y) - 1.0f;
+		let x1 = Ceil(max.X) + 1.0f;
+		let y1 = Ceil(max.Y) + 1.0f;
+		return .(x0, y0, x1 - x0, y1 - y0);
+	}
 
 	// === modes ===
 
@@ -660,7 +803,7 @@ class VGContext
 			if ((last.DrawMode == .Box) && (last.StartIndex + last.IndexCount == start)
 				&& (last.BlendMode == command.BlendMode) && (last.ClipMode == command.ClipMode)
 				&& (last.Scissored == command.Scissored) && SameRect(last.ClipRect, command.ClipRect)
-				&& (last.StencilRef == command.StencilRef))
+				&& (last.StencilRef == command.StencilRef) && (last.Layer == command.Layer))
 			{
 				last.IndexCount += 6;
 				return;
@@ -1948,6 +2091,7 @@ class VGContext
 		command.StencilRef = mCurrentState.StencilRef;
 		command.DrawMode = mCurrentDrawMode;
 		command.GradientSpread = mCurrentGradientSpread;
+		command.Layer = mCurrentLayer;
 		return command;
 	}
 
@@ -1961,6 +2105,19 @@ class VGContext
 	/// A rectangle clip's state before it was pushed (PushClipRect, and a path clip's scissor
 	/// fallback).
 	private struct ClipRectSave : this(Rectangle Rect, bool Scissored);
+
+	/// What a layer set aside (PushLayer) and gives back (PopLayer). With no layer (-1) it marks
+	/// an opacity push, which is what a layer is with layers off.
+	private class LayerSave
+	{
+		public VGState State = .();
+		public List<ClipPathLevel> ClipPaths = new .() ~ DeleteContainerAndItems!(_);
+		public List<ClipRectSave> ClipStack = new .() ~ delete _;
+		public List<ClipRectSave> ClipPathScissors = new .() ~ delete _;
+		public List<float> OpacityStack = new .() ~ delete _;
+		public int32 FirstCommand = 0;
+		public int32 Layer = -1;
+	}
 
 	/// One active path clip: its flattened path and the transform it was pushed under (a pop
 	/// replays the clips that remain), and its DEVICE space bounds.

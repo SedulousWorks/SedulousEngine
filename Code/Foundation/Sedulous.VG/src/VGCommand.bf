@@ -30,6 +30,11 @@ struct VGCommand
 	public FillRule FillRule = .NonZero;
 	/// The ramp sampler's address mode for this draw.
 	public VGGradientSpread GradientSpread = .Pad;
+	/// The layer whose offscreen target this command draws into (VGBatch.Layers), -1 for the
+	/// target itself.
+	public int32 Layer = -1;
+	/// A Layer mode composite: the layer whose target the quad samples.
+	public int32 CompositeLayer = -1;
 
 	public this() {}
 }

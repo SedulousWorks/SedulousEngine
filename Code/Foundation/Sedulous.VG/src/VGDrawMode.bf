@@ -22,4 +22,7 @@ enum VGDrawMode
 	/// (StartIndex and IndexCount count them, six to a box), drawn unindexed through the box
 	/// pipeline; fill and border come from one signed distance in the fragment shader.
 	case Box;
+	/// A layer's composite (VGContext.PopLayer): a quad over the layer's bounds sampling its
+	/// offscreen target (VGCommand.CompositeLayer), the layer's opacity in its vertex alpha.
+	case Layer;
 }
