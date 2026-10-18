@@ -60,14 +60,15 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 
 		let scale = stbtt_ScaleForPixelHeight(&info, options.PixelHeight);
 
+		let pixelRange = (options.DistanceFieldRange > 0.0f) ? (double)options.DistanceFieldRange : cDefaultPixelRange;
 		let atlas = new DistanceFieldFontAtlas();
-		atlas.SetPixelRange((float)cDefaultPixelRange);
+		atlas.SetPixelRange((float)pixelRange);
 
 		// What the registered shaper's substitutions reach from the range, baked beside it.
 		let reachable = scope List<int32>();
 		TextShaperFactory.ReachableGlyphs(font, options, reachable);
 		let work = scope List<GlyphWork>();
-		MeasureGlyphs(&info, scale, options, reachable, atlas, work);
+		MeasureGlyphs(&info, scale, options, pixelRange, reachable, atlas, work);
 
 		// Pack the glyph cells and, last, the white block, at the width that needs the least
 		// atlas; the asset's atlas size is the most it may take. A glyph that cannot fit fails
@@ -99,7 +100,7 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 		if (!pixels.IsEmpty)
 			Internal.MemSet(pixels.Ptr, 0, pixels.Count);
 
-		GenerateFields(rawData, source.RawDataSize, scale, atlasWidth, work, pixels);
+		GenerateFields(rawData, source.RawDataSize, scale, pixelRange, atlasWidth, work, pixels);
 
 		// Sequential again: only the cells that actually generated get a region, because a
 		// region pointing at a cell whose field failed would draw blank texels rather than
@@ -129,9 +130,11 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 	/// Sequential: measures every glyph and the cell it needs. Where each cell goes is decided
 	/// after, once every cell is known.
 	private void MeasureGlyphs(stbtt_fontinfo* info, float scale, FontLoadOptions options,
-		List<int32> reachable, DistanceFieldFontAtlas atlas, List<GlyphWork> outWork)
+		double pixelRange, List<int32> reachable, DistanceFieldFontAtlas atlas, List<GlyphWork> outWork)
 	{
-		let padding = (int32)options.Padding;
+		// The cell holds the field's reach past the glyph's box (half the range), so an effect
+		// drawn out to it is not cut at the cell's edge.
+		let padding = Math.Max((int32)options.Padding, (int32)Math.Ceiling(pixelRange * 0.5));
 
 		// The glyphs the range maps to, each once, keyed by glyph index; the range's codepoints
 		// map to them for unshaped text.
@@ -220,7 +223,7 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 	/// Safe to fan out because the packing already happened: the cells were placed with a
 	/// gutter between them, so no two workers write the same byte, and each worker parses
 	/// the font itself rather than sharing one stbtt_fontinfo.
-	private void GenerateFields(uint8* rawData, int rawDataSize, float scale, uint32 atlasWidth,
+	private void GenerateFields(uint8* rawData, int rawDataSize, float scale, double pixelRange, uint32 atlasWidth,
 		List<GlyphWork> work, List<uint8> pixels)
 	{
 		if (work.IsEmpty)
@@ -235,7 +238,7 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 			Internal.MemSet(cellPixels.Ptr, 0, cellPixels.Count);
 
 			if (GenerateGlyph(rawData, item.Glyph, item.CellWidth, item.CellHeight,
-				(double)scale, item.TranslateX, item.TranslateY, cellPixels))
+				(double)scale, pixelRange, item.TranslateX, item.TranslateY, cellPixels))
 			{
 				for (int row < item.CellHeight)
 				{
@@ -254,7 +257,7 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 	/// One glyph's field, written as RGBA8 into `outPixels`. `glyphIndex` is the font's glyph
 	/// index, what atlases key by.
 	private static bool GenerateGlyph(uint8* rawData, int32 glyphIndex, int32 width, int32 height,
-		double scale, double translateX, double translateY, List<uint8> outPixels)
+		double scale, double pixelRange, double translateX, double translateY, List<uint8> outPixels)
 	{
 		// Its own parse per call, so this is stateless and safe to run on any worker.
 		stbtt_fontinfo info = default;
@@ -284,7 +287,7 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 
 		// The range is in SHAPE units, not pixels, so the pixel spread is divided by the
 		// scale that takes shape units to pixels.
-		let shapeRange = cDefaultPixelRange / scale;
+		let shapeRange = pixelRange / scale;
 		var transform = msdf_Transform(scale, scale, translateX, translateY, shapeRange);
 		var config = msdf_Config.Default;
 		if (msdf_generate_mtsdf(bitmap, shape, &transform, &config) == 0)

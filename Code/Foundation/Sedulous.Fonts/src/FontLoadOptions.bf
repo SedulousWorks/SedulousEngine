@@ -23,6 +23,10 @@ struct FontLoadOptions
 	/// its neighbour.
 	public uint8 Padding = 2;
 	public AtlasMode AtlasMode = .Coverage;
+	/// A distance-field atlas's spread, in texels of the bake: the field reads half of it either
+	/// side of an edge, so text effects (VG TextEffects) reach that far out. Wider costs precision
+	/// in the 8-bit field, and atlas space in the padding it takes.
+	public float DistanceFieldRange = 4.0f;
 
 	public this()
 	{

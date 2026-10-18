@@ -191,6 +191,52 @@ class DistanceFieldBakerTests
 		Test.Assert(alphaGrown < medianGrown, scope $"grown: alpha {alphaGrown}, median {medianGrown}");
 	}
 
+	/// An effects font bakes a wider field, so an outline or a glow reaches further past the
+	/// edge; the cells are padded to half the range so the field is not cut at their edge.
+	[Test]
+	public static void AWiderDistanceRangeSpreadsTheFieldFurtherAndPadsTheCellsForIt()
+	{
+		let font = TestFont.Load();
+		Test.Assert(font != null);
+		defer delete font;
+		let baker = scope DistanceFieldFontAtlasBaker();
+
+		var options = BakeOptions();
+		options.DistanceFieldRange = 4.0f;
+		Test.Assert(baker.Bake(font, options) case .Ok(let narrow));
+		defer delete narrow;
+		options.DistanceFieldRange = 12.0f;
+		Test.Assert(baker.Bake(font, options) case .Ok(let wide));
+		defer delete wide;
+		Test.Assert(Abs(narrow.DistanceFieldRange - 4.0f) < 0.001f);
+		Test.Assert(Abs(wide.DistanceFieldRange - 12.0f) < 0.001f);
+
+		Test.Assert(narrow.TryGetRegion(narrow.GlyphFor(Cp('I')), let narrowI));
+		Test.Assert(wide.TryGetRegion(wide.GlyphFor(Cp('I')), let wideI));
+		// Half the range is 6 texels, past the default padding of 4: two more each side.
+		Test.Assert(wideI.Width == narrowI.Width + 4, scope $"widths {narrowI.Width} and {wideI.Width}");
+		Test.Assert(Abs(wideI.OffsetX - (narrowI.OffsetX - 2.0f)) < 0.001f);
+
+		// Along the middle row, from the stem out, alpha falls a third as fast: the texels still
+		// reading above zero past the edge are about three times as many.
+		int Reach(IFontAtlas atlas, AtlasRegion region)
+		{
+			let pixels = atlas.PixelData;
+			let row = (int)region.Y + (int)region.Height / 2;
+			int count = 0;
+			for (int column < region.Width)
+			{
+				let a = pixels[(row * (int)atlas.Width + ((int)region.X + column)) * 4 + 3];
+				if ((a > 0) && (a < 128))
+					count++;
+			}
+			return count;
+		}
+		let narrowReach = Reach(narrow, narrowI);
+		let wideReach = Reach(wide, wideI);
+		Test.Assert(wideReach >= narrowReach * 5 / 2, scope $"outside texels reading the field: {narrowReach} and {wideReach}");
+	}
+
 	/// The generation fans out across workers, so the pack order and every baked byte have
 	/// to be scheduling independent. Two bakes of the same font must agree exactly.
 	[Test]
