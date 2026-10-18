@@ -305,27 +305,29 @@ class ViewGroup : View
 			// Deliberately conservative: only an identity transform, since a transform can
 			// move content back into view, and only under an active clip, unclipped layers
 			// keeping their freedom to draw out of bounds.
-			if (child.Transform.IsIdentity && !ctx.IsRectVisible(child.Bounds))
+			child.RefreshStyleTransform();
+			let transform = child.EffectiveTransform;
+			if (transform.IsIdentity && !ctx.IsRectVisible(child.Bounds))
 				continue;
 
 			ctx.VG.PushState();
 			ctx.VG.Translate(child.Bounds.X, child.Bounds.Y);
 
-			if (!child.Transform.IsIdentity)
+			if (!transform.IsIdentity)
 			{
-				let originX = child.Width * child.Transform.Origin.X;
-				let originY = child.Height * child.Transform.Origin.Y;
-				if ((child.Transform.Translation.X != 0) || (child.Transform.Translation.Y != 0))
-					ctx.VG.Translate(child.Transform.Translation.X, child.Transform.Translation.Y);
+				let originX = child.Width * transform.Origin.X;
+				let originY = child.Height * transform.Origin.Y;
+				if ((transform.Translation.X != 0) || (transform.Translation.Y != 0))
+					ctx.VG.Translate(transform.Translation.X, transform.Translation.Y);
 
-				if ((child.Transform.Rotation != 0) || (child.Transform.Scale.X != 1)
-					|| (child.Transform.Scale.Y != 1))
+				if ((transform.Rotation != 0) || (transform.Scale.X != 1)
+					|| (transform.Scale.Y != 1))
 				{
 					ctx.VG.Translate(originX, originY);
-					if ((child.Transform.Scale.X != 1) || (child.Transform.Scale.Y != 1))
-						ctx.VG.Scale(child.Transform.Scale.X, child.Transform.Scale.Y);
-					if (child.Transform.Rotation != 0)
-						ctx.VG.Rotate(child.Transform.Rotation);
+					if ((transform.Scale.X != 1) || (transform.Scale.Y != 1))
+						ctx.VG.Scale(transform.Scale.X, transform.Scale.Y);
+					if (transform.Rotation != 0)
+						ctx.VG.Rotate(transform.Rotation);
 					ctx.VG.Translate(-originX, -originY);
 				}
 			}

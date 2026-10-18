@@ -922,6 +922,8 @@ class SSSParser
 			return ParseTransitionValue();
 		if ((property == .Filter) || (property == .BackdropFilter))
 			return ParseFilterValue();
+		if (property == .Transform)
+			return ParseTransformValue();
 		if ((property == .TextShadow) || (property == .TextOutline) || (property == .TextGlow))
 			return ParseTextEffectValue(property);
 
@@ -947,6 +949,60 @@ class SSSParser
 
 	/// `blur(<sigma>)` or `none`: the blur's sigma in dp as a Float, nought for none. The other
 	/// filter functions are not drawn yet, so one leaves the property unset.
+	/// `transform: none` or a list of transform functions: translate(x[, y]), translateX,
+	/// translateY (dp), scale(s[, t]), scaleX, scaleY, rotate(<angle>). Moves and turns add,
+	/// scales multiply; an unknown function leaves the property unset.
+	private StyleValue ParseTransformValue()
+	{
+		StyleTransform transform = .();
+		if ((Peek().Kind == .Ident) && (Peek().Text == "none"))
+		{
+			Consume();
+			return .Transform(transform);
+		}
+		var any = false;
+		while (Peek().Kind == .Ident)
+		{
+			let name = Consume().Text;
+			if (Peek().Kind != .LParen)
+				return .None;
+			Consume();
+			switch (name)
+			{
+			case "translate":
+				let x = NumberArg(0.0f);
+				let y = MatchComma() ? NumberArg(0.0f) : 0.0f;
+				transform.Translate.X += x;
+				transform.Translate.Y += y;
+			case "translateX":
+				transform.Translate.X += NumberArg(0.0f);
+			case "translateY":
+				transform.Translate.Y += NumberArg(0.0f);
+			case "scale":
+				let x = NumberArg(1.0f);
+				let y = MatchComma() ? NumberArg(1.0f) : x;
+				transform.Scale.X *= x;
+				transform.Scale.Y *= y;
+			case "scaleX":
+				transform.Scale.X *= NumberArg(1.0f);
+			case "scaleY":
+				transform.Scale.Y *= NumberArg(1.0f);
+			case "rotate":
+				transform.RotateDegrees += PeekIsNumber ? ParseAngleDegrees() : 0.0f;
+			default:
+				return .None;
+			}
+			if (Peek().Kind != .RParen)
+				return .None;
+			Consume();
+			any = true;
+		}
+		return any ? .Transform(transform) : .None;
+	}
+
+	/// A number argument, or `fallback` where none is written.
+	private float NumberArg(float fallback) => (Peek().Kind == .Number) ? ParseFloatValue() : fallback;
+
 	private StyleValue ParseFilterValue()
 	{
 		if (Peek().Kind != .Ident)
@@ -1341,6 +1397,7 @@ class SSSParser
 
 		// Filters.
 		case "filter": return .Filter;
+		case "transform": return .Transform;
 		case "backdrop-filter": return .BackdropFilter;
 		case "text-shadow": return .TextShadow;
 		case "text-outline": return .TextOutline;

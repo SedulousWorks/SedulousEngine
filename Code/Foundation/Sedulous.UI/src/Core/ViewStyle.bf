@@ -305,6 +305,10 @@ extension View
 	// ---- The cascade cache ---------------------------------------------------------------------
 
 	/// Brings the cache up to date and answers it.
+	/// Whether a sheet rule sets `property` for this view (the cascade's winner), a cheap look
+	/// for a property most views never set.
+	private bool HasStyleWinner(StyleProperty property) => EnsureStyleCache().Winners[(int)property] != null;
+
 	private StyleCache EnsureStyleCache()
 	{
 		let state = GetControlState();

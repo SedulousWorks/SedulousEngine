@@ -45,6 +45,8 @@ static class StyleValueOps
 					return false;
 			}
 			return true;
+		case .Transform(let value):
+			return (b case .Transform(let other)) && (value == other);
 		case .Transitions(let value):
 			return (b case .Transitions(let other)) && (value == other);
 		default:
@@ -66,7 +68,7 @@ static class StyleValueOps
 		if (ka != kb)
 			return false;
 
-		return (ka == .Color) || (ka == .Thickness) || (ka == .Shadow) || (ka == .Drawable);
+		return (ka == .Color) || (ka == .Thickness) || (ka == .Shadow) || (ka == .Transform) || (ka == .Drawable);
 	}
 
 	private static float Mix(float a, float b, float t) => a + (b - a) * t;
@@ -147,6 +149,14 @@ static class StyleValueOps
 			let to = b.AsThickness.Value;
 			return .Thickness(.(Mix(from.Left, to.Left, t), Mix(from.Top, to.Top, t),
 				Mix(from.Right, to.Right, t), Mix(from.Bottom, to.Bottom, t)));
+
+		case .Transform(let from):
+			let to = b.AsTransform.Value;
+			StyleTransform result = .();
+			result.Translate = .(Mix(from.Translate.X, to.Translate.X, t), Mix(from.Translate.Y, to.Translate.Y, t));
+			result.RotateDegrees = Mix(from.RotateDegrees, to.RotateDegrees, t);
+			result.Scale = .(Mix(from.Scale.X, to.Scale.X, t), Mix(from.Scale.Y, to.Scale.Y, t));
+			return .Transform(result);
 
 		case .Shadow, .Shadows:
 			let count = Math.Max(a.ShadowCount, b.ShadowCount);

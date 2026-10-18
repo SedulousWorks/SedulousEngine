@@ -93,6 +93,12 @@ enum StyleProperty
 	/// `text-glow: <radius> [color]`: the radius rides as the shadow's blur.
 	TextGlow,
 
+	// ---- Motion ----
+	/// `transform: translate(x[, y]) | translateX(x) | translateY(y) | scale(s[, t]) | scaleX(s)
+	/// | scaleY(t) | rotate(<angle>) ... | none` (a Transform): drawn and hit tested moved,
+	/// turned and scaled about the view's origin, over its own Transform; layout keeps its box.
+	Transform,
+
 	/// How many properties there are, for sizing arrays. Not a property.
 	COUNT
 }

@@ -351,6 +351,23 @@ class TransitionTests
 		Test.Assert(Near(Red(view), 0.3154f, 0.002f), scope $"{Red(view)}");
 	}
 
+	/// A transform interpolates its move, turn and scale, and a transition on it only redraws.
+	[Test]
+	public static void ATransformInterpolatesItsMoveTurnAndScale()
+	{
+		StyleTransform from = .();
+		StyleTransform to = .();
+		to.Translate = .(0.0f, -8.0f);
+		to.RotateDegrees = 90.0f;
+		to.Scale = .(1.5f, 1.5f);
+		let mid = StyleValueOps.Lerp(.Transform(from), .Transform(to), 0.5f).AsTransform.Value;
+		Test.Assert(Near(mid.Translate.Y, -4.0f));
+		Test.Assert(Near(mid.RotateDegrees, 45.0f));
+		Test.Assert(Near(mid.Scale.X, 1.25f));
+		Test.Assert(StylePropertyKinds.IsAnimatable(.Transform));
+		Test.Assert(StylePropertyKinds.IsVisualOnly(.Transform), "a lift never relays the page out");
+	}
+
 	/// The named easings are CSS's curves, as a browser computes them at their midpoints; a
 	/// curve may overshoot, steps hold each level, and sheets write cubic-bezier(), steps(),
 	/// step-start and step-end, a curve's x kept within 0 to 1.

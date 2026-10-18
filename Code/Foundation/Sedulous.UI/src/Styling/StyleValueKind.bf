@@ -14,6 +14,8 @@ enum StyleValueKind
 	/// A length carrying units: percentages, em, and calc sums. A plain number stays a Float.
 	Length,
 	Shadow,
+	/// A StyleTransform (transform).
+	Transform,
 	Transitions,
 	/// The `inherit` keyword: take the parent's computed value.
 	Inherit,

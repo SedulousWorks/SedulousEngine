@@ -66,6 +66,40 @@ class View : RefCounted, IPropertyOwner
 
 	public float Opacity = 1.0f;
 	public ViewTransform Transform = .();
+	/// The sheet's `transform` as the view was last drawn (RefreshStyleTransform), what
+	/// EffectiveTransform puts over the Transform field.
+	private StyleTransform mStyleTransform = .();
+
+	/// The transform the view is drawn and hit tested with: its Transform field, with the
+	/// sheet's `transform` over it (moves and turns added, scales multiplied), as it was last
+	/// drawn.
+	public ViewTransform EffectiveTransform
+	{
+		get
+		{
+			if (mStyleTransform.IsIdentity)
+				return Transform;
+			var transform = Transform;
+			transform.Translation = .(transform.Translation.X + mStyleTransform.Translate.X,
+				transform.Translation.Y + mStyleTransform.Translate.Y);
+			transform.Rotation += mStyleTransform.RotateDegrees * (Math.PI_f / 180.0f);
+			transform.Scale = .(transform.Scale.X * mStyleTransform.Scale.X, transform.Scale.Y * mStyleTransform.Scale.Y);
+			return transform;
+		}
+	}
+
+	/// Reads the sheet's `transform` (a transition's value while one runs) into what
+	/// EffectiveTransform composes; DrawChildren calls it before drawing the view.
+	public void RefreshStyleTransform()
+	{
+		if (!HasStyleWinner(.Transform) && (ActiveTransitionCount == 0))
+		{
+			mStyleTransform = .();
+			return;
+		}
+		let styled = ResolveStyle(.Transform).AsTransform;
+		mStyleTransform = styled.HasValue ? styled.Value : .();
+	}
 	public CursorType Cursor = .Default;
 
 	// ---- Tree ----------------------------------------------------------------------------------
@@ -119,25 +153,26 @@ class View : RefCounted, IPropertyOwner
 
 	// ---- Coordinates ---------------------------------------------------------------------------
 
-	/// A point of this view in its parent's space: through its Transform as DrawChildren draws
+	/// A point of this view in its parent's space: through its EffectiveTransform as DrawChildren draws
 	/// it (about the origin, rotated, then scaled, then translated) and its Bounds.
 	public Float2 LocalToParent(Float2 local)
 	{
+		let transform = EffectiveTransform;
 		var point = local;
-		if (!Transform.IsIdentity)
+		if (!transform.IsIdentity)
 		{
-			let originX = Width * Transform.Origin.X;
-			let originY = Height * Transform.Origin.Y;
+			let originX = Width * transform.Origin.X;
+			let originY = Height * transform.Origin.Y;
 			point.X -= originX;
 			point.Y -= originY;
-			if (Transform.Rotation != 0.0f)
+			if (transform.Rotation != 0.0f)
 			{
-				let c = Math.Cos(Transform.Rotation);
-				let s = Math.Sin(Transform.Rotation);
+				let c = Math.Cos(transform.Rotation);
+				let s = Math.Sin(transform.Rotation);
 				point = .(point.X * c - point.Y * s, point.X * s + point.Y * c);
 			}
-			point.X = point.X * Transform.Scale.X + originX + Transform.Translation.X;
-			point.Y = point.Y * Transform.Scale.Y + originY + Transform.Translation.Y;
+			point.X = point.X * transform.Scale.X + originX + transform.Translation.X;
+			point.Y = point.Y * transform.Scale.Y + originY + transform.Translation.Y;
 		}
 		return .(point.X + Bounds.X, point.Y + Bounds.Y);
 	}
@@ -145,24 +180,25 @@ class View : RefCounted, IPropertyOwner
 	/// The inverse of LocalToParent: a point of the parent's space in this view's.
 	public Float2 ParentToLocal(Float2 parentPoint)
 	{
+		let transform = EffectiveTransform;
 		var point = Float2(parentPoint.X - Bounds.X, parentPoint.Y - Bounds.Y);
-		if (!Transform.IsIdentity)
+		if (!transform.IsIdentity)
 		{
-			let originX = Width * Transform.Origin.X;
-			let originY = Height * Transform.Origin.Y;
-			point.X -= Transform.Translation.X + originX;
-			point.Y -= Transform.Translation.Y + originY;
+			let originX = Width * transform.Origin.X;
+			let originY = Height * transform.Origin.Y;
+			point.X -= transform.Translation.X + originX;
+			point.Y -= transform.Translation.Y + originY;
 			// A zero scale collapses the view to nothing, and dividing by it would put the
 			// point at infinity rather than reporting a miss.
-			if ((Transform.Scale.X != 0.0f) && (Transform.Scale.Y != 0.0f))
+			if ((transform.Scale.X != 0.0f) && (transform.Scale.Y != 0.0f))
 			{
-				point.X /= Transform.Scale.X;
-				point.Y /= Transform.Scale.Y;
+				point.X /= transform.Scale.X;
+				point.Y /= transform.Scale.Y;
 			}
-			if (Transform.Rotation != 0.0f)
+			if (transform.Rotation != 0.0f)
 			{
-				let c = Math.Cos(-Transform.Rotation);
-				let s = Math.Sin(-Transform.Rotation);
+				let c = Math.Cos(-transform.Rotation);
+				let s = Math.Sin(-transform.Rotation);
 				point = .(point.X * c - point.Y * s, point.X * s + point.Y * c);
 			}
 			point.X += originX;
@@ -195,7 +231,7 @@ class View : RefCounted, IPropertyOwner
 		View top = this;
 		for (var above = Parent; above != null; above = above.Parent)
 		{
-			let transform = above.Transform;
+			let transform = above.EffectiveTransform;
 			// A rotation or an uneven scale has no one grid to round to: those keep the DPI's.
 			if ((transform.Rotation == 0.0f) && (transform.Scale.X == transform.Scale.Y) && (transform.Scale.X > 0.0f))
 				scale *= transform.Scale.X;

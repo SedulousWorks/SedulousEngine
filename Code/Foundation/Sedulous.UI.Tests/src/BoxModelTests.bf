@@ -455,6 +455,56 @@ class BoxModelTests
 		Test.Assert(Near(child.Bounds.X, 3.0f));
 	}
 
+	/// A sheet's transform moves, scales and turns a view as it is drawn and hit tested, over
+	/// the view's own Transform field, and layout keeps its box; an unknown function leaves the
+	/// property unset.
+	[Test]
+	public static void ASheetsTransformMovesScalesAndTurnsAViewAsDrawnAndHitTested()
+	{
+		let sheet = LoadSSS(".lift { transform: translate(10, 0) scale(2); } .turn { transform: rotate(0.25turn); } .bad { transform: skew(10deg); }");
+		let lift = sheet.GetRule(0).GetValue(.Transform).Value.AsTransform;
+		Test.Assert(lift.HasValue);
+		Test.Assert(Near(lift.Value.Translate.X, 10.0f) && Near(lift.Value.Scale.Y, 2.0f));
+		Test.Assert(Near(sheet.GetRule(1).GetValue(.Transform).Value.AsTransform.Value.RotateDegrees, 90.0f));
+		let bad = sheet.GetRule(2).GetValue(.Transform);
+		Test.Assert((bad == null) || bad.Value.IsNone, "an unknown function: unset");
+
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		context.SetStyleSheet(sheet);
+		let child = new RecordingView(100, 50, 1);
+		child.AddClass("lift");
+		child.Transform.Translation = .(0.0f, 4.0f); // the code's own transform stays under it
+		let frame = new FrameLayout();
+		frame.Padding = .(150, 100, 0, 0);
+		frame.AddView(child);
+		root.AddView(frame);
+		UITest.LayoutPass(context, root);
+		let layoutBox = child.Bounds;
+		Test.Assert(Near(layoutBox.Width, 100.0f), "layout keeps its box");
+		let vg = scope VGContext();
+		RecordingView.DrawLog.Clear();
+		context.DrawRootView(root, vg);
+
+		// About the centre: (0, 0) is (-50, -25) from it, doubled to (-100, -50), back by
+		// (50, 25), then moved by (10, 0) and the field's (0, 4).
+		let corner = child.LocalToParent(.(0.0f, 0.0f));
+		Test.Assert(Near(corner.X, layoutBox.X - 40.0f) && Near(corner.Y, layoutBox.Y - 21.0f));
+		let back = child.ParentToLocal(corner);
+		Test.Assert(Near(back.X, 0.0f) && Near(back.Y, 0.0f));
+		// The drawn quad spans the scaled box.
+		var minX = float.MaxValue;
+		var maxX = float.MinValue;
+		for (let vertex in vg.GetBatch().Vertices)
+		{
+			minX = Min(minX, vertex.Position.X);
+			maxX = Max(maxX, vertex.Position.X);
+		}
+		Test.Assert(Near(maxX - minX, 200.0f));
+		// Hit testing follows it: a point the scaled view covers outside its layout box.
+		Test.Assert(root.HitTest(.(layoutBox.X - 30.0f, layoutBox.Y + 10.0f)) == child);
+	}
+
 	/// The shorthand takes its parts in any workable order: `inset` may lead or trail, the blur
 	/// and spread are optional, and a missing colour falls back to the default shadow.
 	[Test]

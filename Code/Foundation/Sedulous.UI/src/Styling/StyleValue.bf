@@ -28,6 +28,8 @@ enum StyleValue
 	case Shadow(BoxShadow value);
 	/// A box-shadow of two or more, the first on top. Borrowed.
 	case Shadows(BoxShadowList value);
+	/// A sheet's transform.
+	case Transform(StyleTransform value);
 	/// Borrowed.
 	case Transitions(TransitionList value);
 	/// Take the parent's computed value.
@@ -52,6 +54,7 @@ enum StyleValue
 			case .String: return .String;
 			case .Length: return .Length;
 			case .Shadow, .Shadows: return .Shadow;
+			case .Transform: return .Transform;
 			case .Transitions: return .Transitions;
 			case .Inherit: return .Inherit;
 			case .Initial: return .Initial;
@@ -120,6 +123,16 @@ enum StyleValue
 		get
 		{
 			if (this case .Length(let value))
+				return value;
+			return null;
+		}
+	}
+
+	public StyleTransform? AsTransform
+	{
+		get
+		{
+			if (this case .Transform(let value))
 				return value;
 			return null;
 		}
