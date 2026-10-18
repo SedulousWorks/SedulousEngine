@@ -39,6 +39,16 @@ class FontAsset : Asset
 	[DisplayName("Atlas Height")]
 	public uint32 AtlasHeight = 1024;
 
+	/// Distance field: the field's spread in texels of the bake; text effects reach half of it
+	/// past an edge (FontLoadOptions.DistanceFieldRange). Appended: an asset saved before it
+	/// takes the 4-texel default.
+	[Appended]
+	[DisplayName("Distance-Field Range")]
+	[Description("The field's spread in texels of the bake; outlines and glows reach half of it")]
+	[Range(1.0f, 32.0f, 0.5f)]
+	[VisibleWhen("Mode=1")] // DistanceField only
+	public float DistanceFieldRange = 4.0f;
+
 	public this()
 	{
 		SetupDefaultRamp();

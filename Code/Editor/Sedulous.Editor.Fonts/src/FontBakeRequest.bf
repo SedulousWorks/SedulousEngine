@@ -10,6 +10,8 @@ class FontBakeRequest
 	public String Path = new .() ~ delete _;
 	public bool DistanceField = false;
 	public float Size = 0.0f;
+	/// Distance field only: the field's spread in texels.
+	public float DistanceFieldRange = 4.0f;
 	public int32 FirstCodepoint = 0;
 	public int32 LastCodepoint = 0;
 	public uint32 AtlasWidth = 0;

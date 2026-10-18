@@ -49,6 +49,7 @@ class FontEditorPage : UIEditorPage
 	private EnumEditor mModeRow = null;
 	private StringEditor mSizesRow = null;
 	private FloatEditor mDistanceFieldSizeRow = null;
+	private FloatEditor mDistanceFieldRangeRow = null;
 	private IntEditor mFirstRow = null;
 	private IntEditor mLastRow = null;
 	private IntEditor mAtlasWidthRow = null;
@@ -154,6 +155,7 @@ class FontEditorPage : UIEditorPage
 		PathJoin(mContext.Project.SourcesRoot(.. scope .()), mAsset.FileName.Value, request.Path);
 		request.DistanceField = mAsset.Mode == .DistanceField;
 		request.Size = mAsset.DistanceFieldSize;
+		request.DistanceFieldRange = mAsset.DistanceFieldRange;
 		if (!request.DistanceField)
 		{
 			request.Size = 14.0f;
@@ -271,6 +273,7 @@ class FontEditorPage : UIEditorPage
 		mModeRow = null;
 		mSizesRow = null;
 		mDistanceFieldSizeRow = null;
+		mDistanceFieldRangeRow = null;
 		mFirstRow = null;
 		mLastRow = null;
 		mAtlasWidthRow = null;
@@ -316,6 +319,13 @@ class FontEditorPage : UIEditorPage
 					CommitEdit("df-size");
 				}, "Distance Field");
 			mGrid.AddProperty(mDistanceFieldSizeRow);
+			// The field's spread: what an outline or a glow can reach past the edge (half of it).
+			mDistanceFieldRangeRow = new FloatEditor("Field Range (texels)", mAsset.DistanceFieldRange, 1.0, 32.0, 0.5, 1, new [=this](v) =>
+				{
+					mAsset.DistanceFieldRange = (float)v;
+					CommitEdit("df-range");
+				}, "Distance Field");
+			mGrid.AddProperty(mDistanceFieldRangeRow);
 		}
 		mFirstRow = new IntEditor("First Codepoint", mAsset.FirstCodepoint, 0, 0x10FFFF, new [=this](v) =>
 			{
@@ -394,6 +404,8 @@ class FontEditorPage : UIEditorPage
 			mSizesRow.SetValue(FontSizes.Format(mAsset.Sizes, .. scope .()));
 		if (mDistanceFieldSizeRow != null)
 			mDistanceFieldSizeRow.SetValue(mAsset.DistanceFieldSize);
+		if (mDistanceFieldRangeRow != null)
+			mDistanceFieldRangeRow.SetValue(mAsset.DistanceFieldRange);
 		if (mFirstRow != null)
 			mFirstRow.SetValue(mAsset.FirstCodepoint);
 		if (mLastRow != null)

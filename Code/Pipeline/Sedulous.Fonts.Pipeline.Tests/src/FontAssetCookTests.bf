@@ -11,6 +11,8 @@ using Sedulous.Image;
 using Sedulous.Pipeline.Core;
 using Sedulous.Resource;
 using Sedulous.VFS;
+using Sedulous.Xml;
+using Sedulous.Xml.Serialization;
 
 namespace Sedulous.Fonts.Pipeline.Tests;
 
@@ -153,6 +155,7 @@ class FontAssetCookTests
 			asset.FileName.Set(cSourceName);
 			asset.Mode = .DistanceField;
 			asset.DistanceFieldSize = 32.0f;
+			asset.DistanceFieldRange = 8.0f; // an effects font's wider field
 			asset.FirstCodepoint = (int32)'A';
 			asset.LastCodepoint = (int32)'Z'; // a small range keeps the bake quick
 			asset.AtlasWidth = 256;
@@ -177,7 +180,7 @@ class FontAssetCookTests
 		let entry = font.EntryAt(0);
 		Test.Assert(entry.Atlas != null);
 		Test.Assert(entry.Atlas.Mode == .DistanceField);
-		Test.Assert(entry.Atlas.DistanceFieldRange > 0.0f);
+		Test.Assert(Near(entry.Atlas.DistanceFieldRange, 8.0f), "the asset's range, cooked");
 		Test.Assert(entry.Atlas.Contains(entry.Atlas.GlyphFor((int32)'Q')));
 		Test.Assert(entry.AtlasImage != null);
 		// A distance field carries DISTANCES, not colour, so decoding it as sRGB would bend
@@ -265,6 +268,45 @@ class FontAssetCookTests
 		Test.Assert(HarfBuzzShaping.IsInstalled);
 		HarfBuzzShaping.Uninstall();
 		Test.Assert(builder != null);
+	}
+
+	/// The distance field's range is an appended field: it round trips through the asset's text,
+	/// and an asset saved before it takes the 4-texel default.
+	[Test]
+	public static void TheDistanceFieldRangeRoundTripsAndAnOlderAssetTakesTheDefault()
+	{
+		let asset = scope FontAsset();
+		asset.Mode = .DistanceField;
+		asset.DistanceFieldRange = 8.0f;
+		let text = scope String();
+		{
+			let writer = scope XmlSerializer();
+			((ISerializable)asset).Serialize(writer);
+			writer.GetOutput(text);
+		}
+		{
+			let document = scope XmlDocument();
+			Test.Assert(document.Parse(text) == .Ok, text);
+			let reader = scope XmlSerializer(document);
+			let back = scope FontAsset();
+			((ISerializable)back).Serialize(reader);
+			Test.Assert(reader.IsOk);
+			Test.Assert(Near(back.DistanceFieldRange, 8.0f), text);
+		}
+
+		// Saved before it: the key removed, as every font asset written until now.
+		let older = scope String(text);
+		let key = "<f32 name=\"distanceFieldRange\">8</f32>";
+		Test.Assert(older.Contains(key), text);
+		older.Replace(key, "");
+		let document = scope XmlDocument();
+		Test.Assert(document.Parse(older) == .Ok, older);
+		let reader = scope XmlSerializer(document);
+		let back = scope FontAsset();
+		((ISerializable)back).Serialize(reader);
+		Test.Assert(reader.IsOk);
+		Test.Assert(Near(back.DistanceFieldRange, 4.0f));
+		Test.Assert(back.Mode == .DistanceField, "the fields around it still read");
 	}
 
 	[Test]

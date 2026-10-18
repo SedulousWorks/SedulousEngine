@@ -108,6 +108,8 @@ class FontAssetBuilder : IAssetBuilder
 		options.LastCodepoint = asset.LastCodepoint;
 		options.AtlasWidth = asset.AtlasWidth;
 		options.AtlasHeight = asset.AtlasHeight;
+		if (distanceField)
+			options.DistanceFieldRange = asset.DistanceFieldRange;
 		return options;
 	}
 

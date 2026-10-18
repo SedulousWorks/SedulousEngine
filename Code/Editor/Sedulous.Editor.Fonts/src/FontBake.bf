@@ -30,6 +30,8 @@ static class FontBake
 		options.AtlasWidth = request.AtlasWidth;
 		options.AtlasHeight = request.AtlasHeight;
 		if (request.DistanceField)
+			options.DistanceFieldRange = request.DistanceFieldRange;
+		if (request.DistanceField)
 			BakeDistanceField(bytes, options, outcome);
 		else
 			BakeCoverage(bytes, options, outcome);
