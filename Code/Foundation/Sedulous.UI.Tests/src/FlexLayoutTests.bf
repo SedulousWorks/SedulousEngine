@@ -375,4 +375,64 @@ class FlexLayoutTests
 		Test.Assert(Near(a.Bounds.X, 10));
 		Test.Assert(a.Bounds.Y >= 20);
 	}
+
+	private static LayoutStyle Shrink(float shrink)
+	{
+		var layout = LayoutStyle();
+		layout.FlexShrink = .(shrink, true);
+		return layout;
+	}
+
+	/// A 200 x 50 row holding two 150 wide children, 100 too many, laid out; the widths of
+	/// both and b's x.
+	private static (float a, float b, float bX) OverfullRow(LayoutStyle styleA, LayoutStyle styleB)
+	{
+		let context = scope UIContext();
+		let root = new RootView();
+		defer root.ReleaseRef();
+		UITest.Init(context, root, 400, 300);
+
+		let flex = new FlexLayout();
+		flex.Direction = .Horizontal;
+		let a = new TestView(150, 30);
+		let b = new TestView(150, 30);
+		flex.AddView(a, styleA);
+		flex.AddView(b, styleB);
+		var rowSize = LayoutStyle();
+		rowSize.Width = .(SizeSpec.Fixed(Unit.Px(200)), true);
+		rowSize.Height = .(SizeSpec.Fixed(Unit.Px(50)), true);
+		root.AddView(flex, rowSize);
+		UITest.LayoutPass(context, root);
+		return (a.Width, b.Width, b.Bounds.X);
+	}
+
+	/// An overflowing line takes the excess from its shrinkable children in proportion to
+	/// shrink times base size; an undeclared flex-shrink is nought, so nothing shrinks.
+	[Test]
+	public static void ShrinkSharesTheOverflowByShrinkTimesBase()
+	{
+		let even = OverfullRow(Shrink(1), Shrink(1));
+		Test.Assert(Near(even.a, 100) && Near(even.b, 100), scope $"{even.a} {even.b}");
+		Test.Assert(Near(even.bX, 100));
+
+		let weighted = OverfullRow(Shrink(3), Shrink(1)); // a gives three parts of four
+		Test.Assert(Near(weighted.a, 75) && Near(weighted.b, 125), scope $"{weighted.a} {weighted.b}");
+
+		let one = OverfullRow(Shrink(1), LayoutStyle()); // undeclared: does not shrink
+		Test.Assert(Near(one.a, 50) && Near(one.b, 150), scope $"{one.a} {one.b}");
+
+		let none = OverfullRow(LayoutStyle(), LayoutStyle()); // the row overflows as before
+		Test.Assert(Near(none.a, 150) && Near(none.b, 150), scope $"{none.a} {none.b}");
+	}
+
+	/// A child that cannot go below its minimum freezes there, and the others give the rest.
+	[Test]
+	public static void ShrinkStopsAtTheMinimumAndTheRestGiveMore()
+	{
+		var floor = Shrink(1);
+		floor.MinWidth = .(Unit.Px(120), true);
+		let row = OverfullRow(floor, Shrink(1));
+		Test.Assert(Near(row.a, 120), scope $"{row.a}: its share would take it to 100");
+		Test.Assert(Near(row.b, 80), scope $"{row.b}");
+	}
 }

@@ -68,6 +68,11 @@ class FlexLayout : ViewGroup
 		/// BORROWED: the group owns the child.
 		public View Child = null;
 		public float Grow = 0.0f;
+		public float Shrink = 0.0f;
+		/// The size shrinking starts from: the main size before any shrink.
+		public float Base = 0.0f;
+		/// Shrinking stopped at its minimum.
+		public bool Frozen = false;
 		/// The main axis size at line breaking time: a growing child's basis BEFORE its share,
 		/// or the measured margin box for everything else.
 		public float Main = 0.0f;
@@ -191,6 +196,7 @@ class FlexLayout : ViewGroup
 			var item = FlexItem();
 			item.Child = child;
 			item.Grow = child.Layout.FlexGrow.Value;
+			item.Shrink = Max(0.0f, child.Layout.FlexShrink.Value);
 			item.MatchCross =
 				(horizontal ? child.Layout.Height.Value.kind : child.Layout.Width.Value.kind)
 				== .Match;
@@ -221,11 +227,14 @@ class FlexLayout : ViewGroup
 		// 2. The lines.
 		BreakLines((Wrap && mainDefinite) ? availableMain : FloatMax, gap);
 
-		// 3. Per line: a growing child takes its share of the free space and is measured, and
-		//    the line's cross size is its tallest item.
+		// 3. Per line: an overflowing line shrinks its shrinkable children; a growing child
+		//    takes its share of the free space and is measured; and the line's cross size is
+		//    its tallest item.
 		for (int lineIndex < mLines.Count)
 		{
 			var line = mLines[lineIndex];
+			if (mainDefinite)
+				ShrinkLine(line, availableMain, availableCross, gap, horizontal);
 			var totalGrow = 0.0f;
 			var used = gap * (float)((line.Count > 0) ? (line.Count - 1) : 0);
 			for (int i = line.Start; i < line.Start + line.Count; i++)
@@ -304,6 +313,66 @@ class FlexLayout : ViewGroup
 		let height = horizontal ? totalCross : totalMain;
 		MeasuredSize = .(outer.ConstrainWidth(width + chrome.TotalHorizontal),
 			outer.ConstrainHeight(height + chrome.TotalVertical));
+	}
+
+	/// CSS flex-shrink: when a line's items overflow the main size, each shrinkable item gives
+	/// up a part of the overflow in proportion to its shrink factor times its base size. An
+	/// item measured larger than its target (its minimum held) freezes there, and the rest
+	/// share what it could not give, until none freezes or nothing shrinks.
+	///
+	/// Unlike CSS, an undeclared flex-shrink is nought, so a container's children keep their
+	/// sizes unless the sheet or markup asks.
+	private void ShrinkLine(FlexLine line, float availableMain, float availableCross, float gap,
+		bool horizontal)
+	{
+		for (int i = line.Start; i < line.Start + line.Count; i++)
+		{
+			mItems[i].Base = mItems[i].Main;
+			mItems[i].Frozen = mItems[i].Shrink <= 0.0f;
+		}
+
+		let gaps = gap * (float)((line.Count > 0) ? (line.Count - 1) : 0);
+		for (int round < line.Count)
+		{
+			var fixedMain = gaps;
+			var unfrozenBase = 0.0f;
+			var scaledTotal = 0.0f;
+			for (int i = line.Start; i < line.Start + line.Count; i++)
+			{
+				let item = mItems[i];
+				if (item.Frozen)
+					fixedMain += item.Main;
+				else
+				{
+					unfrozenBase += item.Base;
+					scaledTotal += item.Shrink * item.Base;
+				}
+			}
+
+			let overflow = fixedMain + unfrozenBase - availableMain;
+			if ((overflow <= 0.0f) || (scaledTotal <= 0.0f))
+				return;
+
+			bool froze = false;
+			for (int i = line.Start; i < line.Start + line.Count; i++)
+			{
+				var item = ref mItems[i];
+				if (item.Frozen)
+					continue;
+
+				let target = Max(0.0f, item.Base - overflow * item.Shrink * item.Base / scaledTotal);
+				item.Child.Measure(MainCross(target, target, 0.0f, Max(0.0f, availableCross), horizontal));
+				item.Main = MainOf(item.Child.MarginBoxSize, horizontal);
+				item.Cross = CrossOf(item.Child.MarginBoxSize, horizontal);
+				if (item.Main > target + 0.5f)
+				{
+					item.Frozen = true;
+					froze = true;
+				}
+			}
+			if (!froze)
+				return;
+		}
 	}
 
 	// ---- Arrange ---------------------------------------------------------------------------
