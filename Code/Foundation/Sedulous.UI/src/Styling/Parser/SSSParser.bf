@@ -971,6 +971,8 @@ class SSSParser
 			return ParseFilterValue();
 		if (property == .Transform)
 			return ParseTransformValue();
+		if (property == .TransformOrigin)
+			return ParseTransformOriginValue();
 		if (property == .Animation)
 			return ParseAnimationValue();
 		if ((property == .TextShadow) || (property == .TextOutline) || (property == .TextGlow))
@@ -998,12 +1000,15 @@ class SSSParser
 
 	/// `blur(<sigma>)` or `none`: the blur's sigma in dp as a Float, nought for none. The other
 	/// filter functions are not drawn yet, so one leaves the property unset.
-	/// `transform: none` or a list of transform functions: translate(x[, y]), translateX,
-	/// translateY (dp), scale(s[, t]), scaleX, scaleY, rotate(<angle>). Moves and turns add,
-	/// scales multiply; an unknown function leaves the property unset.
+	/// `transform: none` or a list of transform functions, composed in the order written as CSS
+	/// composes them: translate(x[, y]), translateX, translateY (lengths: dp, px, or a percent of
+	/// the view), scale(s[, t]), scaleX, scaleY, rotate(<angle>), skew(<ax>[, <ay>]), skewX,
+	/// skewY. A list keeps its first TransformList.cMaxFunctions; an unknown function leaves the
+	/// property unset.
 	private StyleValue ParseTransformValue()
 	{
-		StyleTransform transform = .();
+		let transform = new TransformList();
+		mSheet.OwnResource(transform);
 		if ((Peek().Kind == .Ident) && (Peek().Text == "none"))
 		{
 			Consume();
@@ -1016,34 +1021,48 @@ class SSSParser
 			if (Peek().Kind != .LParen)
 				return .None;
 			Consume();
+			TransformFunction f = .();
 			switch (name)
 			{
 			case "translate":
-				let x = NumberArg(0.0f);
-				let y = MatchComma() ? NumberArg(0.0f) : 0.0f;
-				transform.Translate.X += x;
-				transform.Translate.Y += y;
+				f.Kind = .Translate;
+				f.X = ParseLengthTerm();
+				if (MatchComma())
+					f.Y = ParseLengthTerm();
 			case "translateX":
-				transform.Translate.X += NumberArg(0.0f);
+				f.Kind = .Translate;
+				f.X = ParseLengthTerm();
 			case "translateY":
-				transform.Translate.Y += NumberArg(0.0f);
+				f.Kind = .Translate;
+				f.Y = ParseLengthTerm();
 			case "scale":
-				let x = NumberArg(1.0f);
-				let y = MatchComma() ? NumberArg(1.0f) : x;
-				transform.Scale.X *= x;
-				transform.Scale.Y *= y;
-			case "scaleX":
-				transform.Scale.X *= NumberArg(1.0f);
-			case "scaleY":
-				transform.Scale.Y *= NumberArg(1.0f);
+				f.Kind = .Scale;
+				f.A = Factor();
+				f.B = MatchComma() ? Factor() : f.A;
+			case "scaleX", "scaleY":
+				f.Kind = .Scale;
+				let s = Factor();
+				f.A = (name == "scaleX") ? s : 1.0f;
+				f.B = (name == "scaleY") ? s : 1.0f;
 			case "rotate":
-				transform.RotateDegrees += PeekIsNumber ? ParseAngleDegrees() : 0.0f;
+				f.Kind = .Rotate;
+				f.A = Angle();
+			case "skew":
+				f.Kind = .Skew;
+				f.A = Angle();
+				f.B = MatchComma() ? Angle() : 0.0f;
+			case "skewX", "skewY":
+				f.Kind = .Skew;
+				let angle = Angle();
+				f.A = (name == "skewX") ? angle : 0.0f;
+				f.B = (name == "skewY") ? angle : 0.0f;
 			default:
 				return .None;
 			}
 			if (Peek().Kind != .RParen)
 				return .None;
 			Consume();
+			transform.Push(f);
 			any = true;
 		}
 		return any ? .Transform(transform) : .None;
@@ -1115,8 +1134,51 @@ class SSSParser
 		return .Animations(list);
 	}
 
-	/// A number argument, or `fallback` where none is written.
-	private float NumberArg(float fallback) => (Peek().Kind == .Number) ? ParseFloatValue() : fallback;
+	/// A scale factor, one where none is written.
+	private float Factor() => (Peek().Kind == .Number) ? Consume().NumericValue : 1.0f;
+
+	/// An angle in degrees, nought where none is written.
+	private float Angle() => PeekIsNumber ? ParseAngleDegrees() : 0.0f;
+
+	/// `transform-origin: <x> [<y>]`: each left, center, right (top, center, bottom for y), a
+	/// length or a percentage; one keyword of the other axis sets that axis, the rest centred.
+	private StyleValue ParseTransformOriginValue()
+	{
+		let point = new StylePoint();
+		mSheet.OwnResource(point);
+		var xSet = false;
+		for (int part < 2)
+		{
+			if (Peek().Kind == .Ident)
+			{
+				let word = Peek().Text;
+				if ((word == "left") || (word == "right"))
+				{
+					point.X = Unit.Percent((word == "left") ? 0.0f : 100.0f);
+					xSet = true;
+				}
+				else if ((word == "top") || (word == "bottom"))
+					point.Y = Unit.Percent((word == "top") ? 0.0f : 100.0f);
+				else if (word != "center")
+					break;
+				Consume();
+			}
+			else if (Peek().Kind == .Number)
+			{
+				let length = ParseLengthTerm();
+				if ((part == 0) && !xSet)
+					point.X = length;
+				else
+					point.Y = length;
+				xSet = xSet || (part == 0);
+			}
+			else
+			{
+				break;
+			}
+		}
+		return .Point(point);
+	}
 
 	/// `none` or a list of filter functions: blur(<sigma>) in dp, grayscale(<amount>),
 	/// saturate(<amount>) and brightness(<amount>), each amount a number or a percentage
@@ -1535,6 +1597,7 @@ class SSSParser
 		// Filters.
 		case "filter": return .Filter;
 		case "transform": return .Transform;
+		case "transform-origin": return .TransformOrigin;
 		case "animation": return .Animation;
 		case "backdrop-filter": return .BackdropFilter;
 		case "text-shadow": return .TextShadow;

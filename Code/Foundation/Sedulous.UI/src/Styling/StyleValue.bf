@@ -28,8 +28,10 @@ enum StyleValue
 	case Shadow(BoxShadow value);
 	/// A box-shadow of two or more, the first on top. Borrowed.
 	case Shadows(BoxShadowList value);
-	/// A sheet's transform.
-	case Transform(StyleTransform value);
+	/// A sheet's transform. Borrowed.
+	case Transform(TransformList value);
+	/// A point, transform-origin's. Borrowed.
+	case Point(StylePoint value);
 	/// A sheet's filter.
 	case Filter(StyleFilter value);
 	/// Borrowed.
@@ -59,6 +61,7 @@ enum StyleValue
 			case .Length: return .Length;
 			case .Shadow, .Shadows: return .Shadow;
 			case .Transform: return .Transform;
+			case .Point: return .Point;
 			case .Filter: return .Filter;
 			case .Animations: return .Animations;
 			case .Transitions: return .Transitions;
@@ -163,11 +166,23 @@ enum StyleValue
 		}
 	}
 
-	public StyleTransform? AsTransform
+	/// Borrowed, and null when the kind differs.
+	public TransformList AsTransform
 	{
 		get
 		{
 			if (this case .Transform(let value))
+				return value;
+			return null;
+		}
+	}
+
+	/// Borrowed, and null when the kind differs.
+	public StylePoint AsPoint
+	{
+		get
+		{
+			if (this case .Point(let value))
 				return value;
 			return null;
 		}

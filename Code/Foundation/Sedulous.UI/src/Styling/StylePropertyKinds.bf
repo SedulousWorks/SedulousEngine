@@ -17,7 +17,7 @@ static class StylePropertyKinds
 			 .SelectionColor, .AccentColor, .SuccessColor, .WarningColor, .ErrorColor,
 			 .CornerRadius, .Opacity, .BoxShadow, .ZIndex, .Overflow, .Transition,
 			 .TextOverflow, .Filter, .BackdropFilter, .TextShadow, .TextOutline, .TextGlow,
-			 .Transform:
+			 .Transform, .TransformOrigin:
 			return true;
 		default:
 			return false;
@@ -39,7 +39,7 @@ static class StylePropertyKinds
 			 .MinWidth, .MinHeight, .MaxWidth, .MaxHeight,
 			 .Top, .Right, .Bottom, .Left,
 			 .FlexGrow, .FlexShrink, .FlexBasis, .Filter, .BackdropFilter, .TextShadow, .TextOutline, .TextGlow,
-			 .Transform:
+			 .Transform, .TransformOrigin:
 			return true;
 		default:
 			return false;

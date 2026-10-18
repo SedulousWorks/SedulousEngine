@@ -46,7 +46,9 @@ static class StyleValueOps
 			}
 			return true;
 		case .Transform(let value):
-			return (b case .Transform(let other)) && (value == other);
+			return (b case .Transform(let other)) && value.Same(other);
+		case .Point(let value):
+			return (b case .Point(let other)) && value.Same(other);
 		case .Filter(let value):
 			return (b case .Filter(let other)) && (value == other);
 		case .Animations(let value):
@@ -72,13 +74,140 @@ static class StyleValueOps
 		if (ka != kb)
 			return false;
 
-		return (ka == .Color) || (ka == .Thickness) || (ka == .Shadow) || (ka == .Transform) || (ka == .Filter) || (ka == .Drawable);
+		return (ka == .Color) || (ka == .Thickness) || (ka == .Shadow) || (ka == .Transform) || (ka == .Point) || (ka == .Filter) || (ka == .Drawable);
 	}
 
 	private static float Mix(float a, float b, float t) => a + (b - a) * t;
 
 	private static Color MixColor(Color a, Color b, float t) =>
 		.(Mix(a.R, b.R, t), Mix(a.G, b.G, t), Mix(a.B, b.B, t), Mix(a.A, b.A, t));
+
+	/// A length `t` of the way from `a` to `b`, component by component.
+	private static Unit MixUnit(Unit a, Unit b, float t)
+	{
+		var result = b;
+		result.dp = Mix(a.dp, b.dp, t);
+		result.pt = Mix(a.pt, b.pt, t);
+		result.px = Mix(a.px, b.px, t);
+		result.percent = Mix(a.percent, b.percent, t);
+		result.em = Mix(a.em, b.em, t);
+		return result;
+	}
+
+	/// A 2D matrix as translation, rotation, skew and scale: M = T * R(angle) * K(skew) * S, K the
+	/// x-shear (x' = x + skew y), the scale's y taking a reflection's sign (after CSS's
+	/// decomposition).
+	private struct DecomposedTransform
+	{
+		public float Tx = 0.0f;
+		public float Ty = 0.0f;
+		public float Angle = 0.0f;
+		public float Skew = 0.0f;
+		public float Sx = 1.0f;
+		public float Sy = 1.0f;
+
+		public this() {}
+
+		public static DecomposedTransform Of(Transform2D m)
+		{
+			DecomposedTransform d = .();
+			d.Tx = m.Tx;
+			d.Ty = m.Ty;
+			d.Sx = Math.Sqrt(m.A * m.A + m.B * m.B);
+			if (d.Sx <= 1e-12f)
+			{
+				d.Sx = 0.0f;
+				d.Sy = Math.Sqrt(m.C * m.C + m.D * m.D);
+				return d;
+			}
+			d.Angle = Math.Atan2(m.B, m.A);
+			let cs = Math.Cos(d.Angle);
+			let sn = Math.Sin(d.Angle);
+			let skewed = m.C * cs + m.D * sn;
+			d.Sy = -m.C * sn + m.D * cs;
+			d.Skew = (d.Sy != 0.0f) ? (skewed / d.Sy) : 0.0f;
+			return d;
+		}
+
+		public Transform2D Matrix()
+		{
+			var m = Transform2D();
+			m.Translate(Tx, Ty);
+			m.Rotate(Angle);
+			m.Combine(.(1.0f, 0.0f, Skew, 1.0f, 0.0f, 0.0f));
+			m.Scale(Sx, Sy);
+			return m;
+		}
+	}
+
+	/// A transform `t` of the way from `a` to `b` into `outList`, as CSS interpolates them:
+	/// function by function when both lists name the same functions (`none` padded with the
+	/// other's identities, so `none` to rotate(90deg) turns from 0), else through their
+	/// decomposed matrices, turning the short way. A translate's percentages need the view's size
+	/// there, so lists that differ and hold one are resolved at a size of 0 (their percent parts
+	/// drop out).
+	public static void LerpTransforms(TransformList a, TransformList b, float t, TransformList outList)
+	{
+		let from = new TransformList();
+		defer from.ReleaseRef();
+		let to = new TransformList();
+		defer to.ReleaseRef();
+		for (int i < a.Count)
+			from.Push(a[i]);
+		for (int i < b.Count)
+			to.Push(b[i]);
+		if (from.Count == 0)
+		{
+			for (int i < to.Count)
+				from.Push(to[i].Identity);
+		}
+		else if (to.Count == 0)
+		{
+			for (int i < from.Count)
+				to.Push(from[i].Identity);
+		}
+		var sameShape = from.Count == to.Count;
+		for (int i = 0; sameShape && (i < from.Count); i++)
+			sameShape = from[i].Kind == to[i].Kind;
+
+		outList.Clear();
+		if (sameShape)
+		{
+			for (int i < from.Count)
+			{
+				let fa = from[i];
+				let fb = to[i];
+				var f = fa;
+				f.X = MixUnit(fa.X, fb.X, t);
+				f.Y = MixUnit(fa.Y, fb.Y, t);
+				f.A = Mix(fa.A, fb.A, t);
+				f.B = Mix(fa.B, fb.B, t);
+				for (int k < 6)
+					f.M[k] = Mix(fa.M[k], fb.M[k], t);
+				outList.Push(f);
+			}
+			return;
+		}
+		let x = DecomposedTransform.Of(from.Compose(.(0.0f, 0.0f), 1.0f));
+		let y = DecomposedTransform.Of(to.Compose(.(0.0f, 0.0f), 1.0f));
+		var turn = y.Angle - x.Angle; // the short way round
+		while (turn > Math.PI_f)
+			turn -= 2.0f * Math.PI_f;
+		while (turn < -Math.PI_f)
+			turn += 2.0f * Math.PI_f;
+		DecomposedTransform mixed = .();
+		mixed.Tx = Mix(x.Tx, y.Tx, t);
+		mixed.Ty = Mix(x.Ty, y.Ty, t);
+		mixed.Angle = x.Angle + turn * t;
+		mixed.Skew = Mix(x.Skew, y.Skew, t);
+		mixed.Sx = Mix(x.Sx, y.Sx, t);
+		mixed.Sy = Mix(x.Sy, y.Sy, t);
+		let m = mixed.Matrix();
+		TransformFunction f = .();
+		f.Kind = .Matrix;
+		f.M = .(m.A, m.B, m.C, m.D, m.Tx, m.Ty);
+		outList.Push(f);
+	}
 
 	private static BoxShadow MixShadow(BoxShadow from, BoxShadow to, float t)
 	{
@@ -163,12 +292,18 @@ static class StyleValueOps
 			return .Filter(result);
 
 		case .Transform(let from):
-			let to = b.AsTransform.Value;
-			StyleTransform result = .();
-			result.Translate = .(Mix(from.Translate.X, to.Translate.X, t), Mix(from.Translate.Y, to.Translate.Y, t));
-			result.RotateDegrees = Mix(from.RotateDegrees, to.RotateDegrees, t);
-			result.Scale = .(Mix(from.Scale.X, to.Scale.X, t), Mix(from.Scale.Y, to.Scale.Y, t));
-			return .Transform(result);
+			if (scratch == null)
+				return (t < 0.5f) ? a : b;
+			LerpTransforms(from, b.AsTransform, t, scratch.Transform);
+			return .Transform(scratch.Transform);
+
+		case .Point(let from):
+			if (scratch == null)
+				return (t < 0.5f) ? a : b;
+			let to = b.AsPoint;
+			scratch.Point.X = MixUnit(from.X, to.X, t);
+			scratch.Point.Y = MixUnit(from.Y, to.Y, t);
+			return .Point(scratch.Point);
 
 		case .Shadow, .Shadows:
 			let count = Math.Max(a.ShadowCount, b.ShadowCount);

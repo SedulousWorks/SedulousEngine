@@ -14,8 +14,10 @@ enum StyleValueKind
 	/// A length carrying units: percentages, em, and calc sums. A plain number stays a Float.
 	Length,
 	Shadow,
-	/// A StyleTransform (transform).
+	/// A TransformList (transform).
 	Transform,
+	/// A StylePoint (transform-origin).
+	Point,
 	/// An `animation:` list (AnimationList).
 	Animations,
 	/// A StyleFilter (filter, backdrop-filter).

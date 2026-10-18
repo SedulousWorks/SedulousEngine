@@ -66,39 +66,61 @@ class View : RefCounted, IPropertyOwner
 
 	public float Opacity = 1.0f;
 	public ViewTransform Transform = .();
-	/// The sheet's `transform` as the view was last drawn (RefreshStyleTransform), what
-	/// EffectiveTransform puts over the Transform field.
-	private StyleTransform mStyleTransform = .();
+	/// The sheet's `transform` about its transform-origin, as the view was last drawn
+	/// (RefreshStyleTransform): what TransformMatrix puts inside the Transform field's.
+	private Transform2D mStyleMatrix = .();
 
-	/// The transform the view is drawn and hit tested with: its Transform field, with the
-	/// sheet's `transform` over it (moves and turns added, scales multiplied), as it was last
-	/// drawn.
-	public ViewTransform EffectiveTransform
+	/// The transform the view is drawn and hit tested with, from its own space to its box in the
+	/// parent's: its Transform field (about its Origin: rotated, scaled, then moved), with the
+	/// sheet's `transform` about its transform-origin inside it, as the view was last drawn.
+	public Transform2D TransformMatrix
 	{
 		get
 		{
-			if (mStyleTransform.IsIdentity)
-				return Transform;
-			var transform = Transform;
-			transform.Translation = .(transform.Translation.X + mStyleTransform.Translate.X,
-				transform.Translation.Y + mStyleTransform.Translate.Y);
-			transform.Rotation += mStyleTransform.RotateDegrees * (Math.PI_f / 180.0f);
-			transform.Scale = .(transform.Scale.X * mStyleTransform.Scale.X, transform.Scale.Y * mStyleTransform.Scale.Y);
-			return transform;
+			var m = Transform2D();
+			if (!Transform.IsIdentity)
+			{
+				let originX = Width * Transform.Origin.X;
+				let originY = Height * Transform.Origin.Y;
+				m.Translate(Transform.Translation.X + originX, Transform.Translation.Y + originY);
+				m.Scale(Transform.Scale.X, Transform.Scale.Y);
+				m.Rotate(Transform.Rotation);
+				m.Translate(-originX, -originY);
+			}
+			if (!mStyleMatrix.IsIdentity)
+				m.Combine(mStyleMatrix);
+			return m;
 		}
 	}
 
-	/// Reads the sheet's `transform` (a transition's value while one runs) into what
-	/// EffectiveTransform composes; DrawChildren calls it before drawing the view.
+	/// Composes the sheet's `transform` and `transform-origin` (a transition's or an
+	/// animation's values while one runs) for TransformMatrix; DrawChildren calls it before
+	/// drawing the view.
 	public void RefreshStyleTransform()
 	{
 		if (!HasStyleWinner(.Transform) && (ActiveTransitionCount == 0) && !HasAnimations)
 		{
-			mStyleTransform = .();
+			mStyleMatrix = .();
 			return;
 		}
 		let styled = ResolveStyle(.Transform).AsTransform;
-		mStyleTransform = styled.HasValue ? styled.Value : .();
+		if ((styled == null) || styled.IsIdentity)
+		{
+			mStyleMatrix = .();
+			return;
+		}
+		let dpi = Math.Max(RootDpiScale(Root()), 0.01f);
+		let size = Float2(Width, Height);
+		// Composed now, while the list the resolve answered (a scratch's, mid transition) holds.
+		let composed = styled.Compose(size, dpi);
+		let origin = ResolveStyle(.TransformOrigin).AsPoint;
+		let originX = (origin != null) ? origin.X.Resolve(dpi, size.X, 0.0f) : (size.X * 0.5f);
+		let originY = (origin != null) ? origin.Y.Resolve(dpi, size.Y, 0.0f) : (size.Y * 0.5f);
+		var m = Transform2D();
+		m.Translate(originX, originY);
+		m.Combine(composed);
+		m.Translate(-originX, -originY);
+		mStyleMatrix = m;
 	}
 	public CursorType Cursor = .Default;
 
@@ -153,58 +175,21 @@ class View : RefCounted, IPropertyOwner
 
 	// ---- Coordinates ---------------------------------------------------------------------------
 
-	/// A point of this view in its parent's space: through its EffectiveTransform as DrawChildren draws
-	/// it (about the origin, rotated, then scaled, then translated) and its Bounds.
+	/// A point of this view in its parent's space: through its TransformMatrix, as DrawChildren
+	/// draws it, and its Bounds.
 	public Float2 LocalToParent(Float2 local)
 	{
-		let transform = EffectiveTransform;
-		var point = local;
-		if (!transform.IsIdentity)
-		{
-			let originX = Width * transform.Origin.X;
-			let originY = Height * transform.Origin.Y;
-			point.X -= originX;
-			point.Y -= originY;
-			if (transform.Rotation != 0.0f)
-			{
-				let c = Math.Cos(transform.Rotation);
-				let s = Math.Sin(transform.Rotation);
-				point = .(point.X * c - point.Y * s, point.X * s + point.Y * c);
-			}
-			point.X = point.X * transform.Scale.X + originX + transform.Translation.X;
-			point.Y = point.Y * transform.Scale.Y + originY + transform.Translation.Y;
-		}
+		let point = TransformMatrix.Apply(local);
 		return .(point.X + Bounds.X, point.Y + Bounds.Y);
 	}
 
-	/// The inverse of LocalToParent: a point of the parent's space in this view's.
+	/// The inverse of LocalToParent: a point of the parent's space in this view's. A transform
+	/// that flattens the view (a zero scale) maps nothing back; the point stays where it fell.
 	public Float2 ParentToLocal(Float2 parentPoint)
 	{
-		let transform = EffectiveTransform;
-		var point = Float2(parentPoint.X - Bounds.X, parentPoint.Y - Bounds.Y);
-		if (!transform.IsIdentity)
-		{
-			let originX = Width * transform.Origin.X;
-			let originY = Height * transform.Origin.Y;
-			point.X -= transform.Translation.X + originX;
-			point.Y -= transform.Translation.Y + originY;
-			// A zero scale collapses the view to nothing, and dividing by it would put the
-			// point at infinity rather than reporting a miss.
-			if ((transform.Scale.X != 0.0f) && (transform.Scale.Y != 0.0f))
-			{
-				point.X /= transform.Scale.X;
-				point.Y /= transform.Scale.Y;
-			}
-			if (transform.Rotation != 0.0f)
-			{
-				let c = Math.Cos(-transform.Rotation);
-				let s = Math.Sin(-transform.Rotation);
-				point = .(point.X * c - point.Y * s, point.X * s + point.Y * c);
-			}
-			point.X += originX;
-			point.Y += originY;
-		}
-		return point;
+		let point = Float2(parentPoint.X - Bounds.X, parentPoint.Y - Bounds.Y);
+		let m = TransformMatrix;
+		return m.IsIdentity ? point : m.Inverse().Apply(point);
 	}
 
 	/// A point of this view in its root's space, through every view's bounds and transform.
@@ -231,10 +216,9 @@ class View : RefCounted, IPropertyOwner
 		View top = this;
 		for (var above = Parent; above != null; above = above.Parent)
 		{
-			let transform = above.EffectiveTransform;
-			// A rotation or an uneven scale has no one grid to round to: those keep the DPI's.
-			if ((transform.Rotation == 0.0f) && (transform.Scale.X == transform.Scale.Y) && (transform.Scale.X > 0.0f))
-				scale *= transform.Scale.X;
+			// A turn, a skew or an uneven scale has no one grid to round to: those keep the DPI's.
+			if (above.TransformMatrix.UniformScale(let uniform))
+				scale *= uniform;
 			top = above;
 		}
 		return Math.Max(RootDpiScale(top as RootView) * scale, 0.01f);

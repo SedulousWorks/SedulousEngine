@@ -95,10 +95,13 @@ enum StyleProperty
 	TextGlow,
 
 	// ---- Motion ----
-	/// `transform: translate(x[, y]) | translateX(x) | translateY(y) | scale(s[, t]) | scaleX(s)
-	/// | scaleY(t) | rotate(<angle>) ... | none` (a Transform): drawn and hit tested moved,
-	/// turned and scaled about the view's origin, over its own Transform; layout keeps its box.
+	/// `transform: <function> ... | none` (a Transform): translate, scale, rotate and skew, and
+	/// their X and Y forms, composed in written order about the transform-origin; drawn and hit
+	/// tested over the view's own Transform, while layout keeps its box.
 	Transform,
+	/// `transform-origin: <x> [<y>]` (a Point): keywords, lengths or percentages of the view; the
+	/// centre when unset.
+	TransformOrigin,
 	/// `animation: <name> <duration> [timing] [delay] [count | infinite] [direction] [fill], ...
 	/// | none` (Animations): plays the sheet's @keyframes of that name on the view; while one
 	/// runs, the properties it animates take its values over the cascade's.

@@ -361,21 +361,43 @@ class TransitionTests
 		Test.Assert(Near(mid.Blur, 2.0f) && Near(mid.Saturation, 0.5f) && Near(mid.Brightness, 1.0f));
 	}
 
-	/// A transform interpolates its move, turn and scale, and a transition on it only redraws.
-	[Test]
-	public static void ATransformInterpolatesItsMoveTurnAndScale()
+	/// The transform a sheet's `transform: <text>` parses to, kept by `sheets`.
+	private static TransformList ParseTransform(StringView text, System.Collections.List<StyleSheet> sheets)
 	{
-		StyleTransform from = .();
-		StyleTransform to = .();
-		to.Translate = .(0.0f, -8.0f);
-		to.RotateDegrees = 90.0f;
-		to.Scale = .(1.5f, 1.5f);
-		let mid = StyleValueOps.Lerp(.Transform(from), .Transform(to), 0.5f).AsTransform.Value;
-		Test.Assert(Near(mid.Translate.Y, -4.0f));
-		Test.Assert(Near(mid.RotateDegrees, 45.0f));
-		Test.Assert(Near(mid.Scale.X, 1.25f));
+		let sheet = LoadSSS(scope $"TestView {{ transform: {text}; }}");
+		sheets.Add(sheet);
+		return sheet.GetRule(0).GetValue(.Transform).Value.AsTransform;
+	}
+
+	/// A transform interpolates function by function when both lists name the same functions
+	/// (`none` padded with the other's identities), else through the decomposed matrices,
+	/// turning the short way; and a transition on it only redraws.
+	[Test]
+	public static void ATransformInterpolatesFunctionByFunctionOrThroughItsMatrix()
+	{
+		let sheets = scope System.Collections.List<StyleSheet>();
+		defer { for (let sheet in sheets) sheet.ReleaseRef(); }
+		let scratch = scope StyleLerpScratch();
+
+		var mid = StyleValueOps.Lerp(.Transform(ParseTransform("translateY(0) rotate(0deg) scale(1)", sheets)),
+			.Transform(ParseTransform("translateY(-8) rotate(90deg) scale(1.5)", sheets)), 0.5f, scratch).AsTransform;
+		Test.Assert(mid.Count == 3);
+		Test.Assert(Near(mid[0].Y.dp, -4.0f) && Near(mid[1].A, 45.0f) && Near(mid[2].A, 1.25f));
+
+		mid = StyleValueOps.Lerp(.Transform(ParseTransform("none", sheets)), .Transform(ParseTransform("rotate(90deg)", sheets)), 0.5f, scratch).AsTransform;
+		Test.Assert((mid.Count == 1) && Near(mid[0].A, 45.0f), "none turns from 0");
+
+		mid = StyleValueOps.Lerp(.Transform(ParseTransform("rotate(170deg)", sheets)),
+			.Transform(ParseTransform("scale(2) rotate(-170deg)", sheets)), 0.5f, scratch).AsTransform;
+		Test.Assert((mid.Count == 1) && (mid[0].Kind == .Matrix));
+		let m = mid.Compose(.(0.0f, 0.0f), 1.0f);
+		let angle = Math.Atan2(m.B, m.A) * (180.0f / Math.PI_f);
+		Test.Assert(Math.Abs(Math.Abs(angle) - 180.0f) < 0.5f, scope $"through 180, not through 0: {angle}");
+		Test.Assert(Near(Math.Sqrt(m.A * m.A + m.B * m.B), 1.5f), "half way to twice the size");
+
 		Test.Assert(StylePropertyKinds.IsAnimatable(.Transform));
 		Test.Assert(StylePropertyKinds.IsVisualOnly(.Transform), "a lift never relays the page out");
+		Test.Assert(StylePropertyKinds.IsAnimatable(.TransformOrigin));
 	}
 
 	/// The named easings are CSS's curves, as a browser computes them at their midpoints; a
@@ -780,6 +802,6 @@ class TransitionTests
 		Test.Assert(!fixture.Context.NeedsLayout, "a transform never moves the layout");
 		let canvas = scope VGContext();
 		fixture.Context.DrawRootView(fixture.Root, canvas);
-		Test.Assert(Near(view.EffectiveTransform.Translation.Y, -5.0f));
+		Test.Assert(Near(view.TransformMatrix.Ty, -5.0f));
 	}
 }

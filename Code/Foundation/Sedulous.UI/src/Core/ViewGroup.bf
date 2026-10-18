@@ -306,7 +306,7 @@ class ViewGroup : View
 			// move content back into view, and only under an active clip, unclipped layers
 			// keeping their freedom to draw out of bounds.
 			child.RefreshStyleTransform();
-			let transform = child.EffectiveTransform;
+			let transform = child.TransformMatrix;
 			if (transform.IsIdentity && !ctx.IsRectVisible(child.Bounds))
 				continue;
 
@@ -314,23 +314,7 @@ class ViewGroup : View
 			ctx.VG.Translate(child.Bounds.X, child.Bounds.Y);
 
 			if (!transform.IsIdentity)
-			{
-				let originX = child.Width * transform.Origin.X;
-				let originY = child.Height * transform.Origin.Y;
-				if ((transform.Translation.X != 0) || (transform.Translation.Y != 0))
-					ctx.VG.Translate(transform.Translation.X, transform.Translation.Y);
-
-				if ((transform.Rotation != 0) || (transform.Scale.X != 1)
-					|| (transform.Scale.Y != 1))
-				{
-					ctx.VG.Translate(originX, originY);
-					if ((transform.Scale.X != 1) || (transform.Scale.Y != 1))
-						ctx.VG.Scale(transform.Scale.X, transform.Scale.Y);
-					if (transform.Rotation != 0)
-						ctx.VG.Rotate(transform.Rotation);
-					ctx.VG.Translate(-originX, -originY);
-				}
-			}
+				ctx.VG.SetTransform(transform.ToMatrix() * ctx.VG.GetTransform());
 
 			// The view's opacity (its field times the sheet's) and filters. A faded view with
 			// children fades as one group, through a layer, so its parts never show through each

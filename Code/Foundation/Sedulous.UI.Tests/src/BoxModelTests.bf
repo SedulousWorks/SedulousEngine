@@ -461,13 +461,14 @@ class BoxModelTests
 	[Test]
 	public static void ASheetsTransformMovesScalesAndTurnsAViewAsDrawnAndHitTested()
 	{
-		let sheet = LoadSSS(".lift { transform: translate(10, 0) scale(2); } .turn { transform: rotate(0.25turn); } .bad { transform: skew(10deg); }");
+		let sheet = LoadSSS(".lift { transform: translate(10, 0) scale(2); } .turn { transform: rotate(0.25turn); } .bad { transform: perspective(10); }");
 		let lift = sheet.GetRule(0).GetValue(.Transform).Value.AsTransform;
-		Test.Assert(lift.HasValue);
-		Test.Assert(Near(lift.Value.Translate.X, 10.0f) && Near(lift.Value.Scale.Y, 2.0f));
-		Test.Assert(Near(sheet.GetRule(1).GetValue(.Transform).Value.AsTransform.Value.RotateDegrees, 90.0f));
+		Test.Assert((lift != null) && (lift.Count == 2), "in the order written");
+		Test.Assert((lift[0].Kind == .Translate) && Near(lift[0].X.dp, 10.0f));
+		Test.Assert((lift[1].Kind == .Scale) && Near(lift[1].B, 2.0f));
+		Test.Assert(Near(sheet.GetRule(1).GetValue(.Transform).Value.AsTransform[0].A, 90.0f));
 		let bad = sheet.GetRule(2).GetValue(.Transform);
-		Test.Assert((bad == null) || bad.Value.IsNone, "an unknown function: unset");
+		Test.Assert((bad == null) || bad.Value.IsNone, "a 3D function: unset");
 
 		MakeTree(let context, let root);
 		defer { root.ReleaseRef(); delete context; }
@@ -575,6 +576,44 @@ class BoxModelTests
 		let rounded = BackdropIndices(".glass { backdrop-filter: blur(6); background: rounded-rect(#FFFFFF40, radius=10); }");
 		Test.Assert(square > 0);
 		Test.Assert(rounded > square, scope $"{rounded} vs {square}");
+	}
+
+	/// The top-right corner of a 100 by 50 view styled `.t` by `sheetText`, in its box's space
+	/// (its Bounds at the origin here), as it was drawn.
+	private static Float2 TransformedCorner(StringView sheetText)
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		context.SetStyleSheet(LoadSSS(sheetText));
+		let child = new RecordingView(100, 50, 1);
+		child.AddClass("t");
+		let frame = new FrameLayout();
+		frame.AddView(child);
+		root.AddView(frame);
+		UITest.LayoutPass(context, root);
+		let vg = scope VGContext();
+		RecordingView.DrawLog.Clear();
+		context.DrawRootView(root, vg);
+		return child.LocalToParent(.(100.0f, 0.0f));
+	}
+
+	/// A transform composes in the order written, as CSS composes it (the last function written
+	/// applies to the view first), about its transform-origin.
+	[Test]
+	public static void ATransformComposesInTheOrderWrittenAboutItsOrigin()
+	{
+		// Turned a quarter about the top-left, then moved 20 along the turned x (now down).
+		let a = TransformedCorner(".t { transform-origin: left top; transform: rotate(90deg) translateX(20); }");
+		Test.Assert(Near(a.X, 0.0f) && Near(a.Y, 120.0f), scope $"{a.X},{a.Y}");
+		// Moved 20 right first, then turned about the top-left: the move turns with it.
+		let b = TransformedCorner(".t { transform-origin: left top; transform: translateX(20) rotate(90deg); }");
+		Test.Assert(Near(b.X, 20.0f) && Near(b.Y, 100.0f), scope $"{b.X},{b.Y}");
+		// Scaled up from the bottom-right corner: that corner stays, the top-left moves away.
+		let c = TransformedCorner(".t { transform-origin: right bottom; transform: scale(2); }");
+		Test.Assert(Near(c.X, 100.0f) && Near(c.Y, -50.0f), scope $"{c.X},{c.Y}");
+		// A percentage moves by the view's own size; a skew slants x by y.
+		let d = TransformedCorner(".t { transform-origin: 0 0; transform: translate(50%, 10%) skewY(45deg); }");
+		Test.Assert(Near(d.X, 150.0f) && Near(d.Y, 105.0f), scope $"{d.X},{d.Y}");
 	}
 
 	/// The shorthand takes its parts in any workable order: `inset` may lead or trail, the blur
