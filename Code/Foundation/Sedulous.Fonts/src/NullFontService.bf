@@ -16,4 +16,5 @@ class NullFontService : IFontService
 	public override ImageData GetAtlasTexture(StringView familyName, float pixelHeight) => null;
 	public override void ReleaseFont(CachedFont font) {}
 	public override void GetDefaultFontFamily(String outFamily) {}
+	public override bool HasFamily(StringView familyName) => false;
 }

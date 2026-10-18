@@ -194,6 +194,16 @@ class TrueTypeFontService : IFontService
 
 	public override void GetDefaultFontFamily(String outFamily) => outFamily.Set(mDefaultFamily);
 
+	public override bool HasFamily(StringView familyName)
+	{
+		for (let entry in mFonts)
+		{
+			if (FamilyEquals(entry.Family, familyName))
+				return true;
+		}
+		return false;
+	}
+
 	public override CachedFont GetFont(float pixelHeight) => GetFont(mDefaultFamily, pixelHeight);
 
 	public override CachedFont GetFont(StringView familyName, float pixelHeight)

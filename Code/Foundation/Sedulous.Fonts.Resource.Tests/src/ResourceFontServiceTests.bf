@@ -46,6 +46,9 @@ class ResourceFontServiceTests
 		// A family nobody registered falls back to the default rather than returning null,
 		// so a missing font renders in something rather than not at all.
 		Test.Assert(service.GetFont("NoSuchFamily", 12.0f) === at12);
+		// So HasFamily is what tells them apart.
+		Test.Assert(service.HasFamily("TestFamily"));
+		Test.Assert(!service.HasFamily("NoSuchFamily"));
 	}
 
 	[Test]

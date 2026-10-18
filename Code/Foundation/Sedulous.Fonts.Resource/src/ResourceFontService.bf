@@ -124,6 +124,16 @@ class ResourceFontService : IFontService
 
 	public override void GetDefaultFontFamily(String outFamily) => outFamily.Append(mDefaultFamily);
 
+	public override bool HasFamily(StringView familyName)
+	{
+		for (let entry in mEntries)
+		{
+			if (entry.Family == familyName)
+				return true;
+		}
+		return false;
+	}
+
 	public int EntryCount => mEntries.Count;
 
 	private ServiceEntry FindExact(StringView family, float pixelHeight)

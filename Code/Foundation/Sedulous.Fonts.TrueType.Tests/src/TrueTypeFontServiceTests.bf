@@ -109,6 +109,9 @@ class TrueTypeFontServiceTests
 		// An unknown family falls back to the default family's first bake, as before.
 		let fallback = service.GetFont("Nope", 24.0f);
 		Test.Assert((fallback != null) && (Math.Abs(fallback.Font.PixelHeight - 16.0f) < 0.01f));
+		// Which is why HasFamily is asked, not GetFont.
+		Test.Assert(service.HasFamily("Roboto"));
+		Test.Assert(!service.HasFamily("Nope"));
 	}
 
 	/// A family loaded from memory bakes its other sizes from the bytes the service kept.

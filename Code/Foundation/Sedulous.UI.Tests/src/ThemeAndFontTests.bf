@@ -270,6 +270,7 @@ class ThemeAndFontTests
 		public override ImageData GetAtlasTexture(StringView familyName, float pixelHeight) => null;
 		public override void ReleaseFont(CachedFont font) {}
 		public override void GetDefaultFontFamily(String outFamily) => outFamily.Append("StubDefault");
+		public override bool HasFamily(StringView familyName) => false;
 	}
 
 	private static void MakeTree(out UIContext context, out RootView root)

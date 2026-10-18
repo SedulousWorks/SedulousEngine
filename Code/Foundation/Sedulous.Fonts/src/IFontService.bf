@@ -23,4 +23,9 @@ abstract class IFontService
 	public abstract void ReleaseFont(CachedFont font);
 
 	public abstract void GetDefaultFontFamily(String outFamily);
+
+	/// Whether a family by this name is loaded. GetFont falls back to the default family for one
+	/// that is not, and a font's own family name comes from its file, so asking GetFont cannot
+	/// tell: rich text asks this to take a bold or italic face where a project loads one.
+	public abstract bool HasFamily(StringView familyName);
 }
