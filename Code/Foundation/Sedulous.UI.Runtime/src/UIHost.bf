@@ -61,6 +61,9 @@ class UIHost
 	private IShaderModule mBoxFragmentShader = null;
 	/// Layer composites (VGContext.PushLayer).
 	private IShaderModule mLayerFragmentShader = null;
+	/// Layer blurs.
+	private IShaderModule mBlurVertexShader = null;
+	private IShaderModule mBlurFragmentShader = null;
 
 	private List<AttachedWindow> mAttached = new .() ~ delete _;
 
@@ -229,7 +232,7 @@ class UIHost
 		data.Renderer.Initialize(mDevice.Raw, mVertexShader, mFragmentShader, data.DrawFormat,
 			(int32)mDevice.FramesInFlight, mDistanceFieldShader, mGradientRadialShader,
 			mGradientConicShader, targetConfig, mBoxShadowShader, mBoxVertexShader, mBoxFragmentShader,
-			mLayerFragmentShader);
+			mLayerFragmentShader, mBlurVertexShader, mBlurFragmentShader);
 
 		data.VG.SetPerPixelGradients(perPixelGradients);
 		data.VG.SetAnalyticBoxes((mBoxVertexShader != null) && (mBoxFragmentShader != null));
@@ -679,5 +682,8 @@ class UIHost
 		mBoxFragmentShader = mShaderHost.GetVariant("vg_box", .Fragment, .None);
 		// Layer composites; a pack that predates them means layers are opacity pushes.
 		mLayerFragmentShader = mShaderHost.GetVariant("vg_layer", .Fragment, .None);
+		// Layer blurs; a pack that predates them leaves blurred layers sharp.
+		mBlurVertexShader = mShaderHost.GetVariant("vg_blur", .Vertex, .None);
+		mBlurFragmentShader = mShaderHost.GetVariant("vg_blur", .Fragment, .None);
 	}
 }

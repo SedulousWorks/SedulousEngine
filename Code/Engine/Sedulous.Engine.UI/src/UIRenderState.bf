@@ -39,6 +39,9 @@ class UIRenderState
 	public IShaderModule BoxFragmentShader = null;
 	/// Layer composites, for the screen tier's PrepareOverlay.
 	public IShaderModule LayerShader = null;
+	/// Layer blurs.
+	public IShaderModule BlurVertexShader = null;
+	public IShaderModule BlurFragmentShader = null;
 
 	/// The tiers the next screen overlay Render draws, as PrepareOverlay recorded them for
 	/// PreparedView; cleared when drawn.
@@ -106,7 +109,8 @@ class UIRenderState
 			let renderer = new VGRenderer();
 			if (renderer.Initialize(Device, VertexShader, FragmentShader, format, FrameCount,
 				DistanceFieldShader, GradRadialShader, GradConicShader, targetConfig,
-				BoxShadowShader, BoxVertexShader, BoxFragmentShader, LayerShader) case .Err)
+				BoxShadowShader, BoxVertexShader, BoxFragmentShader, LayerShader, BlurVertexShader,
+				BlurFragmentShader) case .Err)
 			{
 				delete renderer;
 				return null;
