@@ -242,6 +242,9 @@ extension EditorApplication
 	private void BuildMenus()
 	{
 		mActionMenus = new ActionMenuBar(mShell.Menus, mContext.Actions);
+		// The application's menus in their places; a domain's menu (Scene) or an extension's
+		// takes the "*" slot, so Help stays last however late they register.
+		mActionMenus.SetMenuOrder(scope StringView[]("File", "Edit", "Project", "Build", "Game", "View", "*", "Help"));
 		// File > New <creator> from the creator registry; categorised creators nest in a
 		// submenu of that name.
 		mActionMenus.AddLeadingItems("File", new (file) =>

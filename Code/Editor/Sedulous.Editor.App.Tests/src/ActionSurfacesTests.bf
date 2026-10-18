@@ -108,6 +108,22 @@ static class ActionSurfacesTests
 		menus.AddLeadingItems("Recent", new (recent) => { recent.AddItem("yesterday.scene", new () => {}); });
 		Test.Assert(bar.MenuCount == 5);
 		Test.Assert(Is(bar.MenuAt(4), "yesterday.scene"));
+
+		// A declared order: the named menus in their places, the rest at "*", in the order they
+		// first appear; a domain's menu registered after Help still lands before it.
+		menus.SetMenuOrder(scope StringView[]("File", "Edit", "*", "Help", "Nowhere"));
+		Test.Assert(bar.MenuCount == 5, "\"Nowhere\" has nothing in it: no menu");
+		Test.Assert(bar.MenuTitle(0) == "File");
+		Test.Assert(bar.MenuTitle(1) == "Edit");
+		Test.Assert(bar.MenuTitle(2) == "Scene");
+		Test.Assert(bar.MenuTitle(3) == "Recent");
+		Test.Assert(bar.MenuTitle(4) == "Help");
+		Test.Assert(actions.Register(Declare("tools.bake", "Bake", "Tools/Bake", 100)), "late");
+		Test.Assert(bar.MenuCount == 6);
+		Test.Assert(bar.MenuTitle(3) == "Tools", "with the action menus, before the leading-only Recent");
+		Test.Assert(bar.MenuTitle(4) == "Recent");
+		Test.Assert(bar.MenuTitle(5) == "Help");
+		Test.Assert(Is(bar.MenuAt(0), "New Scene|New Material|-|Save|Save As...|-|Exit"), "items unchanged");
 	}
 
 	[Test]

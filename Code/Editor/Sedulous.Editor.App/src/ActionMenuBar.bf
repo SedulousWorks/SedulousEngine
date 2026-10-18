@@ -8,9 +8,11 @@ namespace Sedulous.Editor.App;
 
 /// The menu bar GENERATED from the action registry. Every action with a MenuPath ("File/Save",
 /// "Scene/Simulate/Play") lands in the menu its first segment names, the rest as nested
-/// submenus. Menus appear in the order their names first appear among the registrations (the
-/// application registers its set in menu order, domains add later; a menu holding only leading
-/// items comes after them); items order by MenuOrder with a separator between order bands
+/// submenus. The application declares its menus' order (SetMenuOrder: names, and "*" where
+/// every other menu goes), so a domain's menu (Scene), or an extension's, registered later still
+/// lands before Help; without a declaration, and for the menus "*" holds, the order their names
+/// first appear among the registrations (a menu holding only leading items after them); items
+/// order by MenuOrder with a separator between order bands
 /// (hundreds). A menu's items are rebuilt when it opens, so every item's enabled state is the
 /// registry's answer at that moment, and every item executes through the registry, the one
 /// funnel. A menu may carry LEADING items that are not actions, a list-driven set such as File >
@@ -30,6 +32,8 @@ class ActionMenuBar
 	/// Owned by the registry's event while subscribed; removed (and deleted) with this.
 	private delegate void() mOnActionsChanged;
 	private List<Leading> mLeading = new .() ~ DeleteContainerAndItems!(_);
+	/// SetMenuOrder: names, "*" for every other menu.
+	private List<String> mOrder = new .() ~ DeleteContainerAndItems!(_);
 
 	public this(MenuBar bar, EditorActionRegistry actions)
 	{
@@ -58,25 +62,73 @@ class ActionMenuBar
 		Rebuild();
 	}
 
+	/// The top level menus' order: these names in this order, "*" where every menu not named
+	/// goes (in the order it first appears; at the end when there is no "*"). A name with no
+	/// actions and no leading items makes no menu.
+	public void SetMenuOrder(Span<StringView> order)
+	{
+		ClearAndDeleteItems!(mOrder);
+		for (let name in order)
+			mOrder.Add(new .(name));
+		Rebuild();
+	}
+
 	/// The whole bar from the registry: the menus and their current items.
 	public void Rebuild()
 	{
 		mBar.ClearMenus();
-		// Menus in the order their names first appear among the actions; a menu that holds
-		// only leading items comes after them.
+		// The menus there are, in the order their names first appear among the actions; a menu
+		// that holds only leading items comes after them.
+		let present = scope List<StringView>();
 		for (let action in mActions.Actions)
 		{
-			if (!action.MenuPath.IsEmpty)
-				MenuFor(TopLevel(action.MenuPath));
+			if (!action.MenuPath.IsEmpty && !present.Contains(TopLevel(action.MenuPath)))
+				present.Add(TopLevel(action.MenuPath));
 		}
 		for (let leading in mLeading)
-			MenuFor(leading.Menu);
+		{
+			if (!present.Contains(leading.Menu))
+				present.Add(leading.Menu);
+		}
+		// Then laid out by the declared order.
+		bool restPlaced = false;
+		for (let entry in mOrder)
+		{
+			if (entry == "*")
+			{
+				PlaceUndeclared(present);
+				restPlaced = true;
+			}
+			else if (present.Contains(entry))
+				MenuFor(entry);
+		}
+		if (!restPlaced)
+			PlaceUndeclared(present);
 		for (int i < mBar.MenuCount)
 		{
 			let menu = mBar.MenuAt(i);
 			let title = new String(mBar.MenuTitle(i));
 			menu.OnOpening = new [=this, =title](opening) => { Fill(title, opening); } ~ delete title;
 			Fill(title, menu);
+		}
+	}
+
+	/// The present menus the declared order does not name, in the order they first appear.
+	private void PlaceUndeclared(List<StringView> present)
+	{
+		for (let name in present)
+		{
+			bool declared = false;
+			for (let entry in mOrder)
+			{
+				if (entry == name)
+				{
+					declared = true;
+					break;
+				}
+			}
+			if (!declared)
+				MenuFor(name);
 		}
 	}
 
