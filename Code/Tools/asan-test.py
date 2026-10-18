@@ -136,6 +136,12 @@ def main():
     # A caller can override the whole option string, e.g. to cut memory during a sweep.
     env = dict(os.environ, LD_PRELOAD=runtime,
                ASAN_OPTIONS=os.environ.get("ASAN_OPTIONS") or ASAN_OPTIONS)
+    # The binary's folder on the library path: ASan intercepts dlopen, so a library the binary
+    # loads at run time (dxcompiler) is looked up from the sanitizer's runtime, which has no
+    # rpath, rather than through the binary's $ORIGIN. Without this DXC never starts, and every
+    # GPU probe that compiles a shader skips its drawing.
+    exe_dir = os.path.dirname(exe)
+    env["LD_LIBRARY_PATH"] = exe_dir + (":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else "")
     code, failures = run(exe, env, sys.argv[2] if len(sys.argv) == 3 else "")
     # A nonzero exit with no test failure is LeakSanitizer's, and its report is above.
     print("%s: exit %d, %d test failure(s)" % (project, code, len(failures)))
