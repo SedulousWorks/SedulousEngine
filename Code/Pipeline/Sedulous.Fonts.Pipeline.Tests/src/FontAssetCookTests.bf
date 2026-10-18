@@ -1,9 +1,11 @@
 using System;
+using System.Collections;
 using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.Fonts;
+using Sedulous.Fonts.HarfBuzz;
 using Sedulous.Fonts.Resource;
 using Sedulous.Image;
 using Sedulous.Pipeline.Core;
@@ -181,6 +183,75 @@ class FontAssetCookTests
 		// A distance field carries DISTANCES, not colour, so decoding it as sRGB would bend
 		// every edge it describes.
 		Test.Assert(entry.AtlasImage.ColorSpace == .Linear);
+	}
+
+	/// A cooked distance-field font draws everything HarfBuzz shapes from its range: the joined
+	/// Arabic forms no codepoint maps to are baked and their regions kept. A cook that kept only
+	/// the codepoints' own glyphs drew joined Arabic, and every fi ligature, as nothing.
+	[Test]
+	public static void ADistanceFieldCookKeepsTheGlyphsShapingReaches()
+	{
+		MakeRoots();
+		defer { RemoveRoots(); }
+		if (!FontTestFile.StageInto(cSourceRoot, cSourceName, FontTestFile.cDejaVuMono))
+			return;
+
+		FontsPipeline.RegisterAll();
+		FontResources.RegisterAll();
+
+		let sourceMount = scope NativeFileSystem(cSourceRoot);
+		let cookedMount = scope NativeFileSystem(cCookedRoot);
+		SerializerFactory serializers = scope (stream, mode) =>
+			new BinarySerializerContext(stream, mode);
+
+		Guid id;
+		{
+			let database = scope ContentDatabase(cookedMount, serializers, "rasset");
+			let instance = database.RootGroup.CreateInstance("uifont", cProductType);
+			Test.Assert(instance != null);
+			id = instance.Id;
+
+			let asset = scope FontAsset();
+			asset.FileName.Set(cSourceName);
+			asset.Mode = .DistanceField;
+			asset.DistanceFieldSize = 32.0f;
+			asset.FirstCodepoint = 0x0621; // the Arabic letters
+			asset.LastCodepoint = 0x064A;
+			asset.AtlasWidth = 1024;
+			asset.AtlasHeight = 1024;
+
+			let context = scope AssetBuildContext();
+			context.Sources = sourceMount;
+			context.Output = instance;
+			Test.Assert(scope FontAssetBuilder().Build(asset, context) case .Ok);
+		}
+		defer HarfBuzzShaping.Uninstall(); // the cook installed it
+
+		let database = scope ContentDatabase(cookedMount, serializers, "rasset");
+		let manager = scope ResourceManager(database, null);
+		let factory = scope FontFactory();
+		manager.AddFactory(factory);
+		let font = manager.Bind<Font>(id).Get;
+		Test.Assert(font != null);
+		let entry = font.EntryAt(0);
+		Test.Assert((entry.Font != null) && (entry.Atlas != null));
+
+		let shaper = HarfBuzzShaping.CreateShaper();
+		defer delete shaper;
+		let glyphs = scope List<GlyphPosition>();
+		Test.Assert(shaper.ShapeText(entry.Font, "\u{0633}\u{0644}\u{0627}\u{0645}", glyphs) case .Ok);
+		Test.Assert(glyphs.Count == 3, "joined: shaped from the cooked font's own file");
+		int joinedForms = 0;
+		for (let glyph in glyphs)
+		{
+			Test.Assert(entry.Atlas.Contains(glyph.GlyphId), scope $"glyph {glyph.GlyphId} has its place in the atlas");
+			bool nominal = false;
+			for (int32 codepoint = 0x0621; codepoint <= 0x064A; codepoint++)
+				nominal = nominal || (entry.Atlas.GlyphFor(codepoint) == glyph.GlyphId);
+			if (!nominal)
+				joinedForms++;
+		}
+		Test.Assert(joinedForms > 0, "and some are forms no codepoint maps to");
 	}
 
 	[Test]

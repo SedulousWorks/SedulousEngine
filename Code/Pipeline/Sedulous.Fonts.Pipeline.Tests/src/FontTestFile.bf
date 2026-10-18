@@ -11,21 +11,23 @@ namespace Sedulous.Fonts.Pipeline.Tests;
 /// one would only have whatever it was built with.
 static class FontTestFile
 {
+	public const String cRoboto = "Data/Assets/fonts/roboto/Roboto-Regular.ttf";
+	/// Has the Arabic Roboto lacks.
+	public const String cDejaVuMono = "Data/Assets/fonts/dejavu/DejaVuSansMono.ttf";
+
 	/// Walks up from the working directory looking for the asset.
 	///
 	/// The tests run from the project directory and the data sits at the repository root, but
 	/// neither is guaranteed: the runner's working directory has moved before.
-	public static bool FindPath(String outPath)
+	public static bool FindPath(String outPath, StringView relative = cRoboto)
 	{
-		const String cRelative = "Data/Assets/fonts/roboto/Roboto-Regular.ttf";
-
 		let directory = scope String();
 		GetCurrentDirectory(directory);
 
 		for (int depth < 8)
 		{
 			let candidate = scope:: String();
-			PathJoin(directory, cRelative, candidate);
+			PathJoin(directory, relative, candidate);
 			if (File.Exists(candidate))
 			{
 				outPath.Set(candidate);
@@ -45,10 +47,10 @@ static class FontTestFile
 	///
 	/// FALSE rather than a failed assertion when the data is not there, so a checkout without
 	/// it skips these rather than reporting the font code broken.
-	public static bool StageInto(StringView directory, StringView name)
+	public static bool StageInto(StringView directory, StringView name, StringView relative = cRoboto)
 	{
 		let source = scope String();
-		if (!FindPath(source))
+		if (!FindPath(source, relative))
 			return false;
 
 		let bytes = scope List<uint8>();

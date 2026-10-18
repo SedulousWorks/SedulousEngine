@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Fonts;
 using Sedulous.Fonts.Coverage;
 using Sedulous.Fonts.Coverage.Baker;
+using Sedulous.Fonts.DistanceField;
 using Sedulous.Fonts.DistanceField.Baker;
 using Sedulous.Fonts.HarfBuzz;
 using Sedulous.Fonts.Resource;
@@ -35,9 +36,11 @@ class FontAssetBuilder : IAssetBuilder
 	/// space's too). Seven: the font file is kept as the product's "font" stream. Eight: the
 	/// atlas also holds the glyphs HarfBuzz's substitutions reach from the range (ligatures,
 	/// joined forms); the cook installs HarfBuzz itself, so every cook bakes the same glyphs
-	/// whichever host runs it. A product schema change bumps this in the SAME commit, because the
-	/// bump IS the migration: it forces every stale cooked font to re-cook.
-	public int32 Version => 8;
+	/// whichever host runs it. Nine: a distance field cook writes the region of every glyph the
+	/// atlas holds, not only those the range's codepoints map to (eight baked the ligatures and
+	/// dropped them). A product schema change bumps this in the SAME commit, because the bump IS
+	/// the migration: it forces every stale cooked font to re-cook.
+	public int32 Version => 9;
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{
@@ -214,24 +217,24 @@ class FontAssetBuilder : IAssetBuilder
 		if (record.Family.IsEmpty)
 			font.GetFamilyName(record.Family);
 
-		// Every codepoint the atlas maps keeps its glyph row; every glyph its region, once.
+		// Every codepoint the atlas maps keeps its glyph row, and every glyph the atlas holds its
+		// region: those the codepoints map to and those a shaper's substitutions reach (a ligature,
+		// which no codepoint maps to, is drawn from its region alone).
 		uint32 glyphCount = 0;
-		uint32 regionCount = 0;
-		let regionWritten = scope HashSet<int32>();
 		for (int32 codepoint = asset.FirstCodepoint; codepoint <= asset.LastCodepoint; ++codepoint)
 		{
-			let glyphId = atlas.GlyphFor(codepoint);
-			if (glyphId < 0)
+			if (atlas.GlyphFor(codepoint) < 0)
 				continue;
 			AppendGlyph(record, codepoint, font.GetGlyphInfo(codepoint));
 			glyphCount++;
-			if (!regionWritten.Contains(glyphId) && atlas.TryGetRegion(glyphId, let region))
-			{
-				regionWritten.Add(glyphId);
-				AppendRegion(record, glyphId, region);
-				regionCount++;
-			}
 		}
+		// In glyph order, so a cook is byte-stable.
+		let field = (DistanceFieldFontAtlas)atlas; // the distance field baker's
+		let glyphs = scope List<int32>(field.Regions.Keys);
+		glyphs.Sort();
+		for (let glyph in glyphs)
+			AppendRegion(record, glyph, field.Regions[glyph]);
+		let regionCount = (uint32)glyphs.Count;
 		record.EntryGlyphCount.Add(glyphCount);
 		record.EntryRegionCount.Add(regionCount);
 
