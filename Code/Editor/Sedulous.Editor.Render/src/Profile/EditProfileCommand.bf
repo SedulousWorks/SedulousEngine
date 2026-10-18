@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Editor.Core;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Render;
 
 /// One undo step of the profile page: the asset's binary snapshot before and after, coalesced
 /// per row so a slider scrub is one step.

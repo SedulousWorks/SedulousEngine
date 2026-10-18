@@ -19,7 +19,9 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Preview;
 
-namespace Sedulous.Editor.Scene;
+using Sedulous.Editor.Scene;
+
+namespace Sedulous.Editor.Render;
 
 /// Edits a profile asset (an Environment Profile, a Post Process Profile; any
 /// SettingsProfileAsset): a preview on the left rendered with the profile applied, and the
@@ -258,7 +260,7 @@ class SettingsProfilePage : UIEditorPage, IInspectorOwner
 	{
 		let scene = (mPreview != null) ? mPreview.Scene : null;
 		if ((scene != null) && (mAsset != null))
-			SettingsProfiles.PreviewInScene(mAsset, scene, mContext.Resources);
+			ProfilePreview.PreviewInScene(mAsset, scene, mContext.Resources);
 	}
 
 	/// The preview's content: the picked scene, loaded and seen from where its page's camera

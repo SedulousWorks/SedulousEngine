@@ -12,6 +12,7 @@ using Sedulous.Editor.Animation;
 using Sedulous.Editor.Materials;
 using Sedulous.Editor.Geometry;
 using Sedulous.Editor.Particles;
+using Sedulous.Editor.Render;
 using Sedulous.Editor.Input;
 using Sedulous.Editor.Navigation;
 using Sedulous.Editor.PropertyAnimation;

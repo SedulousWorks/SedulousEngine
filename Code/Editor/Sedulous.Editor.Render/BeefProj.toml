@@ -1,0 +1,27 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Render"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Render.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Render.Pipeline" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Toolkit" = "*"
+"Sedulous.UI.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.App" = "*"
+"Sedulous.Editor.Preview" = "*"
+"Sedulous.Editor.Scene" = "*"

@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core.Serialization;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Render;
 
 /// The scene a profile is previewed on (nil: the built-in scene).
 [Serializable(1)]

@@ -1,7 +1,9 @@
 using System;
 using Sedulous.Core;
 
-namespace Sedulous.Editor.Scene;
+using Sedulous.Editor.Scene;
+
+namespace Sedulous.Editor.Render;
 
 /// A profile asset's values, for the rows a scene's settings section shows: every write is one
 /// of the page's snapshot commands. There is no scene block, so a [SceneOnly] field (the

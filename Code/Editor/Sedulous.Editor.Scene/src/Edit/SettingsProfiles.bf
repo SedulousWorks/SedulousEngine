@@ -3,7 +3,6 @@ using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 using Sedulous.Pipeline.Core;
-using Sedulous.Resource;
 using Sedulous.Render.Pipeline;
 using Sedulous.Scene;
 using Sedulous.Editor.Core;
@@ -35,36 +34,6 @@ static class SettingsProfiles
 			}
 		}
 		return null;
-	}
-
-	/// Gives `scene`'s settings block the values of `asset`, the block being the one whose
-	/// settings type is the profile's values type, and binds its references through `resources`
-	/// when given. False when there is no such block.
-	public static bool ApplyToScene(SettingsProfileAsset asset, Sedulous.Scene.Scene scene, ResourceManager resources)
-	{
-		for (let system in scene.Systems)
-		{
-			if ((system.SettingsType == null) || (system.SettingsType != asset.ValuesType))
-				continue;
-			asset.CopyValuesInto(system.SettingsInstance);
-			if (resources != null)
-				system.ResolveResources(resources); // the sky texture, the grading LUT
-			return true;
-		}
-		return false;
-	}
-
-	/// As ApplyToScene, on a scene loaded to preview the profile on: the block first goes back to
-	/// its own values, so a scene that takes this profile (or another) by reference shows the
-	/// values being edited rather than the cooked ones.
-	public static bool PreviewInScene(SettingsProfileAsset asset, Sedulous.Scene.Scene scene, ResourceManager resources)
-	{
-		for (let system in scene.Systems)
-		{
-			if ((system.SettingsType != null) && (system.SettingsType == asset.ValuesType))
-				system.UseSettingsProfile(Guid.Empty);
-		}
-		return ApplyToScene(asset, scene, resources);
 	}
 
 	/// Writes a settings block's `values`, the profile asset's values layout, into the profile

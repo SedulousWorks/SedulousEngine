@@ -5,7 +5,7 @@ using Sedulous.UI.Runtime;
 using Sedulous.Render.Pipeline;
 using Sedulous.Editor.Core;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Render;
 
 /// Opens every profile asset in the profile page: the registry matches along the asset type's
 /// base chain.
@@ -33,7 +33,7 @@ static class SettingsProfileEditor
 	public static void Register(EditorContext context, IApplicationHost host, UIHost uiHost)
 	{
 		RenderPipeline.RegisterAll();
-		SceneEditorSerializables.RegisterAll();
+		RenderEditorSerializables.Register();
 		context.Pages.Register(new SettingsProfilePageFactory(host, uiHost));
 	}
 }
