@@ -27,6 +27,18 @@ static class DrawableFactoryRegistry
 	private static Monitor sLock = new .() ~ delete _;
 
 	/// Registers a factory, replacing any of the same name.
+	/// A gradient's trailing `radius=` (1 or 4 values, as rounded-rect takes them).
+	private static void ParseGradientRadius(SSSParser parser, GradientDrawable gradient)
+	{
+		while (parser.MatchComma() || !parser.PeekKeywordArg().IsEmpty)
+		{
+			if (parser.PeekKeywordArg() != "radius")
+				break;
+			parser.ConsumeKeywordArg();
+			gradient.Radii = parser.ParseCornerRadiiValue();
+		}
+	}
+
 	public static void Register(StringView name, FactoryFn factory)
 	{
 		if (sFactories.TryGetAlt(name, let existingKey, ?))
@@ -139,7 +151,7 @@ static class DrawableFactoryRegistry
 				return drawable;
 			});
 
-		// gradient(direction, color1, color2)
+		// gradient(direction, color1, color2[, radius=r])
 		Register("gradient", (parser, sheet) =>
 			{
 				var direction = GradientDirection.TopToBottom;
@@ -167,7 +179,63 @@ static class DrawableFactoryRegistry
 				let first = parser.ParseColorArg();
 				parser.MatchComma();
 				let second = parser.ParseColorArg();
-				return new GradientDrawable(first, second, direction);
+				let gradient = new GradientDrawable(first, second, direction);
+				ParseGradientRadius(parser, gradient);
+				return gradient;
+			});
+
+		// linear-gradient([<angle> | to <side> [<side>],] <color> [<offset>%], ...[, radius=r]),
+		// as CSS writes it (180deg, down, when no direction is given)
+		Register("linear-gradient", (parser, sheet) =>
+			{
+				let gradient = new GradientDrawable();
+				var angle = 180.0f;
+				if (parser.PeekIsNumber)
+				{
+					angle = parser.ParseAngleDegrees();
+					parser.MatchComma();
+				}
+				else if (parser.PeekIdent() == "to")
+				{
+					parser.ConsumeIdent();
+					// A side, or a corner as two sides in either order.
+					var dx = 0.0f;
+					var dy = 0.0f;
+					for (int word < 2)
+					{
+						let side = parser.PeekIdent();
+						if (side == "top")
+							dy = -1.0f;
+						else if (side == "bottom")
+							dy = 1.0f;
+						else if (side == "left")
+							dx = -1.0f;
+						else if (side == "right")
+							dx = 1.0f;
+						else
+							break;
+						parser.ConsumeIdent();
+					}
+					// A corner points the line at it through a square's diagonal: CSS's corner
+					// follows the box's shape, kept to 45 degrees here.
+					angle = Math.Atan2(dx, -dy) * (180.0f / Math.PI_f);
+					parser.MatchComma();
+				}
+				gradient.AngleDegrees = (angle < 0.0f) ? angle + 360.0f : angle;
+				parser.ParseGradientStops(gradient.Stops);
+				ParseGradientRadius(parser, gradient);
+				return gradient;
+			});
+
+		// radial-gradient(<color> [<offset>%], ...[, radius=r]): from the centre out to the
+		// farthest corner, a circle
+		Register("radial-gradient", (parser, sheet) =>
+			{
+				let gradient = new GradientDrawable();
+				gradient.Radial = true;
+				parser.ParseGradientStops(gradient.Stops);
+				ParseGradientRadius(parser, gradient);
+				return gradient;
 			});
 
 		// state-list(normal=d, hover=d, ...)

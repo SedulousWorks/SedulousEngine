@@ -270,6 +270,64 @@ class SSSParser
 
 	public bool PeekIsNumber => Peek().Kind == .Number;
 
+	/// An angle in degrees: a number with deg (or none), turn or rad.
+	public float ParseAngleDegrees()
+	{
+		let token = Consume();
+		if (token.UnitSuffix == "turn")
+			return token.NumericValue * 360.0f;
+		if (token.UnitSuffix == "rad")
+			return token.NumericValue * (180.0f / Math.PI_f);
+		return token.NumericValue;
+	}
+
+	/// A gradient's colour stops into `outStops`, each `<color> [<offset>%]`, separated by
+	/// commas, up to a keyword argument or the closing parenthesis. Offsets left out are spread
+	/// evenly between their neighbours, the first at 0 and the last at 1, as CSS spreads them.
+	public void ParseGradientStops(List<GradientStop> outStops)
+	{
+		let placed = scope List<bool>();
+		while (!IsAtRParen && PeekKeywordArg().IsEmpty)
+		{
+			GradientStop stop = .();
+			stop.Color = ParseColorValue();
+			let hasOffset = Peek().Kind == .Number;
+			if (hasOffset)
+				stop.Offset = ParseFloatValue();
+			outStops.Add(stop);
+			placed.Add(hasOffset);
+			if (!MatchComma())
+				break;
+		}
+		if (outStops.IsEmpty)
+			return;
+		if (!placed[0])
+		{
+			outStops[0].Offset = 0.0f;
+			placed[0] = true;
+		}
+		if (!placed.Back)
+		{
+			outStops[outStops.Count - 1].Offset = 1.0f;
+			placed[placed.Count - 1] = true;
+		}
+		for (int i = 1; i < outStops.Count; i++)
+		{
+			if (placed[i])
+				continue;
+			var next = i;
+			while (!placed[next])
+				next++;
+			let from = outStops[i - 1].Offset;
+			let step = (outStops[next].Offset - from) / (float)(next - i + 1);
+			for (int j = i; j < next; j++)
+			{
+				outStops[j].Offset = from + step * (float)(j - i + 1);
+				placed[j] = true;
+			}
+		}
+	}
+
 	/// A registered SVG's text, or null.
 	public StringView? ResolveSvg(StringView name)
 	{

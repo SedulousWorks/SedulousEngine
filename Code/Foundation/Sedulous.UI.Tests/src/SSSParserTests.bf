@@ -439,6 +439,78 @@ class SSSParserTests
 		Test.Assert(drawable.Direction == .LeftToRight);
 	}
 
+	/// linear-gradient and radial-gradient take CSS's forms: an angle (deg, turn or rad) or
+	/// `to` a side or corner, then colours whose missing offsets spread evenly between their
+	/// neighbours; radial from the centre. Each, and gradient(), takes radius= and fills the
+	/// rounded box, whose corners a shadow follows.
+	[Test]
+	public static void SheetGradientsTakeCssStopsAnglesAndTheBoxsRounding()
+	{
+		{
+			let fixture = scope Fixture(LoadSSS("View { background: linear-gradient(90deg, #FF0000, #00FF00 30%, #0000FF, #FFFFFF); }"));
+			let gradient = fixture.AddView().ResolveStyleDrawable(.Background) as GradientDrawable;
+			Test.Assert(gradient != null);
+			Test.Assert(Near(gradient.AngleDegrees.Value, 90.0f));
+			Test.Assert(gradient.Stops.Count == 4);
+			// The offsets left out: 0, then 0.3 given, then 0.65 and 1.
+			Test.Assert(Near(gradient.Stops[0].Offset, 0.0f) && Near(gradient.Stops[1].Offset, 0.3f));
+			Test.Assert(Near(gradient.Stops[2].Offset, 0.65f) && Near(gradient.Stops[3].Offset, 1.0f));
+			Test.Assert(Near(gradient.Stops[1].Color.G, 1.0f));
+		}
+		{
+			let fixture = scope Fixture(LoadSSS("View { background: linear-gradient(#000000, #FFFFFF); }"));
+			let gradient = fixture.AddView().ResolveStyleDrawable(.Background) as GradientDrawable;
+			Test.Assert(Near(gradient.AngleDegrees.Value, 180.0f), "down, CSS's default");
+		}
+		{
+			let fixture = scope Fixture(LoadSSS("View { background: linear-gradient(to right, #000000, #FFFFFF, radius=8); }"));
+			let gradient = fixture.AddView().ResolveStyleDrawable(.Background) as GradientDrawable;
+			Test.Assert(Near(gradient.AngleDegrees.Value, 90.0f));
+			Test.Assert(Near(gradient.Radii.TopLeft, 8.0f));
+			Test.Assert(gradient.OutlineRadii(.Normal).HasValue);
+		}
+		{
+			let fixture = scope Fixture(LoadSSS("View { background: linear-gradient(to bottom left, #000000, #FFFFFF); }"));
+			let gradient = fixture.AddView().ResolveStyleDrawable(.Background) as GradientDrawable;
+			Test.Assert(Near(gradient.AngleDegrees.Value, 225.0f));
+		}
+		{
+			let fixture = scope Fixture(LoadSSS("View { background: linear-gradient(0.25turn, #000000, #FFFFFF); }"));
+			let gradient = fixture.AddView().ResolveStyleDrawable(.Background) as GradientDrawable;
+			Test.Assert(Near(gradient.AngleDegrees.Value, 90.0f));
+		}
+		{
+			let fixture = scope Fixture(LoadSSS("View { background: radial-gradient(#FFFFFF, #000000 80%, radius=4 4 0 0); }"));
+			let gradient = fixture.AddView().ResolveStyleDrawable(.Background) as GradientDrawable;
+			Test.Assert(gradient.Radial);
+			Test.Assert((gradient.Stops.Count == 2) && Near(gradient.Stops[1].Offset, 0.8f));
+			Test.Assert(Near(gradient.Radii.BottomLeft, 0.0f) && Near(gradient.Radii.TopRight, 4.0f));
+		}
+		{
+			// The old form takes the rounding too.
+			let fixture = scope Fixture(LoadSSS("View { background: gradient(left-to-right, #000000, #FFFFFF, radius=6); }"));
+			let gradient = fixture.AddView().ResolveStyleDrawable(.Background) as GradientDrawable;
+			Test.Assert(gradient.Direction == .LeftToRight);
+			Test.Assert(Near(gradient.Radii.TopLeft, 6.0f));
+		}
+
+		// Rounded, the fill follows the corners: more of an outline than a rect's four corners.
+		let square = new GradientDrawable(Color(0, 0, 0, 1), Color(1, 1, 1, 1));
+		defer square.ReleaseRef();
+		let rounded = new GradientDrawable(Color(0, 0, 0, 1), Color(1, 1, 1, 1));
+		defer rounded.ReleaseRef();
+		rounded.Radii = CornerRadii(12.0f);
+		Test.Assert(GradientVertices(rounded) > GradientVertices(square) + 8);
+	}
+
+	private static int GradientVertices(GradientDrawable drawable)
+	{
+		let canvas = scope VGContext();
+		let ctx = scope UIDrawContext(canvas, 1.0f, null);
+		drawable.Draw(ctx, .(0, 0, 100, 50));
+		return canvas.GetBatch().Vertices.Count;
+	}
+
 	[Test]
 	public static void AnInsetDrawableKeepsItsInset()
 	{
