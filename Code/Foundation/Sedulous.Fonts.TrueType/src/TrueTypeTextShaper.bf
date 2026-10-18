@@ -37,8 +37,8 @@ class TrueTypeTextShaper : ITextShaper
 				x += font.GetKerning(previous, codepoint);
 
 			var position = GlyphPosition();
-			position.StringIndex = index;
-			position.Codepoint = codepoint;
+			position.Cluster = index;
+			position.GlyphId = codepoint;
 			position.X = x;
 			position.Y = startY;
 			position.Advance = info.AdvanceWidth;
@@ -123,7 +123,7 @@ class TrueTypeTextShaper : ITextShaper
 						moved.Y = y;
 						outPositions[j] = moved;
 						reflowX += moved.Advance;
-						lastReflowed = moved.Codepoint;
+						lastReflowed = moved.GlyphId;
 					}
 					// Whenever the loop above ran, `lastReflowed` is the glyph that was
 					// already `previous`, so this recomputes the same number. It matters
@@ -146,8 +146,8 @@ class TrueTypeTextShaper : ITextShaper
 			}
 
 			var position = GlyphPosition();
-			position.StringIndex = index;
-			position.Codepoint = codepoint;
+			position.Cluster = index;
+			position.GlyphId = codepoint;
 			position.X = x + kern;
 			position.Y = y;
 			position.Advance = info.AdvanceWidth;
@@ -164,7 +164,11 @@ class TrueTypeTextShaper : ITextShaper
 		return .Ok;
 	}
 
-	/// Which character a point landed on, in a single line of text.
+	// === UI support ===
+	// All in characters through clusters (GlyphPosition.Cluster), so they hold for any shaper's
+	// N to M mapping; under this one every cluster is one character and one glyph.
+
+	/// Which cluster a point landed on, in a single line of text.
 	public override HitTestResult HitTest(IFont font, Span<GlyphPosition> positions, float x, float y)
 	{
 		if (positions.IsEmpty)
@@ -172,27 +176,26 @@ class TrueTypeTextShaper : ITextShaper
 
 		// Before the first character: the caret goes at the start, and it is NOT inside.
 		if (x < positions[0].X)
-			return .(0, false, false);
+			return .OnCluster(positions[0], false, false);
 
-		for (int i < positions.Length)
+		for (let position in positions)
 		{
-			let position = positions[i];
 			if ((x >= position.X) && (x < (position.X + position.Advance)))
 			{
-				// Past the middle means the caret belongs after this character, which is
-				// what makes click to place feel like it went where you pointed.
+				// Past the middle means the caret belongs after this cluster, which is what
+				// makes click to place feel like it went where you pointed.
 				let midpoint = position.X + position.Advance * 0.5f;
-				return .((int32)i, x >= midpoint, true);
+				return .OnCluster(position, x >= midpoint, true);
 			}
 		}
 
-		// Past the end: clamped to after the last character rather than reported as a miss
-		// with no position.
-		return .((int32)positions.Length - 1, true, false);
+		// Past the end: clamped to after the last cluster rather than reported as a miss with
+		// no position.
+		return .OnCluster(positions[positions.Length - 1], true, false);
 	}
 
-	/// The same, over text that has been wrapped: the line is chosen first, then the
-	/// character within it.
+	/// The same, over text that has been wrapped: the line is chosen first, then the cluster
+	/// within it.
 	public override HitTestResult HitTestWrapped(IFont font, Span<GlyphPosition> positions,
 		float x, float y, float lineHeight)
 	{
@@ -232,7 +235,7 @@ class TrueTypeTextShaper : ITextShaper
 
 		// A click below the last line lands on no line at all, and answers the very end.
 		if (lineStart < 0)
-			return .((int32)positions.Length - 1, true, false, targetLine);
+			return .OnCluster(positions[positions.Length - 1], true, false, targetLine);
 
 		for (int32 i = lineStart; i <= lineEnd; i++)
 		{
@@ -240,36 +243,50 @@ class TrueTypeTextShaper : ITextShaper
 			if ((x >= position.X) && (x < (position.X + position.Advance)))
 			{
 				let midpoint = position.X + position.Advance * 0.5f;
-				return .(i, x >= midpoint, true, targetLine);
+				return .OnCluster(position, x >= midpoint, true, targetLine);
 			}
 		}
 
 		if (x < positions[lineStart].X)
-			return .(lineStart, false, false, targetLine);
-		return .(lineEnd, true, false, targetLine);
+			return .OnCluster(positions[lineStart], false, false, targetLine);
+		return .OnCluster(positions[lineEnd], true, false, targetLine);
 	}
 
-	/// Where a caret sits for a character index.
-	///
-	/// An index PAST the end answers the far side of the last character, which is where the
-	/// caret goes at the end of a line; clamping to the last character's left edge instead
-	/// would put it one character back.
+	/// Where a caret sits before a character: the start of its cluster's first glyph; inside a
+	/// cluster, the cluster's start; on a character with no glyph (a line break), the end of the
+	/// glyph before it; past the end, the end of the last glyph.
 	public override float GetCursorPosition(IFont font, Span<GlyphPosition> positions,
 		int32 characterIndex)
 	{
 		if (positions.IsEmpty)
 			return 0;
-		if (characterIndex <= 0)
-			return positions[0].X;
-		if (characterIndex >= (int32)positions.Length)
+		for (int i < positions.Length)
 		{
-			let last = positions[positions.Length - 1];
-			return last.X + last.Advance;
+			let position = positions[i];
+			if (position.Cluster < characterIndex)
+				continue;
+			if ((position.Cluster == characterIndex) || (i == 0))
+				return position.X;
+			let previous = positions[i - 1];
+			return (previous.ClusterEnd <= characterIndex) ? (previous.X + previous.Advance)
+				: ClusterStartX(positions, i - 1);
 		}
-		return positions[characterIndex].X;
+		let last = positions[positions.Length - 1];
+		return (characterIndex < last.ClusterEnd) ? ClusterStartX(positions, positions.Length - 1)
+			: (last.X + last.Advance);
 	}
 
-	/// The rectangles to fill for a selection: one per line it spans.
+	/// The x of the first glyph of glyph `index`'s cluster: a mark shares its base's.
+	private static float ClusterStartX(Span<GlyphPosition> positions, int index)
+	{
+		var index;
+		while ((index > 0) && (positions[index - 1].Cluster == positions[index].Cluster))
+			index--;
+		return positions[index].X;
+	}
+
+	/// The rectangles to fill for a selection, one per line it spans, over the glyphs whose
+	/// clusters fall in the character range.
 	public override void GetSelectionRects(IFont font, Span<GlyphPosition> positions,
 		SelectionRange selection, float lineHeight, List<FontRect> outRects)
 	{
@@ -277,32 +294,32 @@ class TrueTypeTextShaper : ITextShaper
 		if (positions.IsEmpty || selection.IsEmpty)
 			return;
 
-		// Clamped to what actually exists: a selection can outlive the text it was made
-		// against, and indexing past the end would read rubbish.
-		let start = (selection.Start > 0) ? selection.Start : 0;
-		let end = (selection.End < (int32)positions.Length) ? selection.End : (int32)positions.Length;
-		if (start >= end)
-			return;
-
-		float lineY = positions[start].Y;
-		float rectStartX = positions[start].X;
-		float rectEndX = rectStartX;
-
-		for (int32 i = start; i < end; i++)
+		let start = Math.Min(selection.Start, selection.End);
+		let end = Math.Max(selection.Start, selection.End);
+		var open = false;
+		float lineY = 0;
+		float rectStartX = 0;
+		float rectEndX = 0;
+		for (let position in positions)
 		{
-			let position = positions[i];
+			if ((position.Cluster < start) || (position.Cluster >= end))
+				continue;
 			// A change of line closes the current rectangle and starts another.
-			if (Abs(position.Y - lineY) > (lineHeight * 0.5f))
+			if (open && (Abs(position.Y - lineY) > (lineHeight * 0.5f)))
 			{
 				if (rectEndX > rectStartX)
 					outRects.Add(.(rectStartX, lineY, rectEndX - rectStartX, lineHeight));
+				open = false;
+			}
+			if (!open)
+			{
+				open = true;
 				lineY = position.Y;
 				rectStartX = position.X;
 			}
 			rectEndX = position.X + position.Advance;
 		}
-
-		if (rectEndX > rectStartX)
+		if (open && (rectEndX > rectStartX))
 			outRects.Add(.(rectStartX, lineY, rectEndX - rectStartX, lineHeight));
 	}
 }

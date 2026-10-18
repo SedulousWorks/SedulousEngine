@@ -557,8 +557,7 @@ class EditText : View, ITextEditHost
 			// A wrapped selection is one box per line, so the shaper hands back several.
 			let rects = scope List<FontRect>();
 			font.Shaper.GetSelectionRects(font.Font, GlyphSpan,
-				SelectionRange(CharToGlyphIndex(mBehavior.SelectionStart),
-					CharToGlyphIndex(mBehavior.SelectionEnd)), lineHeight, rects);
+				SelectionRange(mBehavior.SelectionStart, mBehavior.SelectionEnd), lineHeight, rects);
 
 			for (let rect in rects)
 				ctx.VG.FillRect(.(textX + rect.X, textY + rect.Y, rect.Width, rect.Height), color);
@@ -757,7 +756,8 @@ class EditText : View, ITextEditHost
 			return lineCharStart;
 
 		let result = font.Shaper.HitTestWrapped(font.Font, GlyphSpan, hitX, hitY, lineHeight);
-		return GlyphToCharIndex(result.InsertionIndex, result.IsTrailingHit);
+		// A character index: the shaper hit tests by cluster.
+		return result.InsertionIndex;
 	}
 
 	/// The character index the given line starts at.
@@ -794,10 +794,10 @@ class EditText : View, ITextEditHost
 		for (int i < mGlyphPositions.Count)
 		{
 			let glyph = mGlyphPositions[i];
-			if (glyph.StringIndex == charIndex)
+			if (glyph.Cluster == charIndex)
 				return glyph.X;
 
-			if (glyph.StringIndex > charIndex)
+			if (glyph.Cluster > charIndex)
 			{
 				// Skipped past: the index belongs to the end of the previous line.
 				if (i > 0)
@@ -812,40 +812,6 @@ class EditText : View, ITextEditHost
 
 		let last = mGlyphPositions[mGlyphPositions.Count - 1];
 		return last.X + last.Advance;
-	}
-
-	/// A glyph insertion index back to a character index.
-	///
-	/// The two differ where a line WRAPPED: the break consumed no character, so the glyph
-	/// either side of it can belong to indices that are not adjacent.
-	private int32 GlyphToCharIndex(int32 glyphInsertionIndex, bool isTrailingHit)
-	{
-		if (mGlyphPositions.Count == 0)
-			return 0;
-
-		if (glyphInsertionIndex <= 0)
-			return mGlyphPositions[0].StringIndex;
-
-		if (glyphInsertionIndex >= mGlyphPositions.Count)
-			return mGlyphPositions[mGlyphPositions.Count - 1].StringIndex + 1;
-
-		let previous = mGlyphPositions[glyphInsertionIndex - 1];
-		let next = mGlyphPositions[glyphInsertionIndex];
-
-		if ((next.Y != previous.Y) && (next.StringIndex > previous.StringIndex + 1))
-			return isTrailingHit ? previous.StringIndex + 1 : next.StringIndex;
-
-		return previous.StringIndex + 1;
-	}
-
-	private int32 CharToGlyphIndex(int32 charIndex)
-	{
-		for (int i < mGlyphPositions.Count)
-		{
-			if (mGlyphPositions[i].StringIndex >= charIndex)
-				return (int32)i;
-		}
-		return (int32)mGlyphPositions.Count;
 	}
 
 	private float GetCursorYFromCharIndex(int32 charIndex, float lineHeight)

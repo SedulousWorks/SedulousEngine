@@ -127,8 +127,8 @@ class BakedFontTests
 		Test.Assert(positions.Count == 2);
 		Test.Assert(Near(positions[0].X, 0.0f));
 		Test.Assert(Near(positions[1].X, 7.0f), "the second sits after the advance and the kerning");
-		Test.Assert(positions[0].Codepoint == Cp('A'));
-		Test.Assert(positions[1].Codepoint == Cp('V'));
+		Test.Assert(positions[0].GlyphId == Cp('A'));
+		Test.Assert(positions[1].GlyphId == Cp('V'));
 		Test.Assert(Near(positions[0].Advance, 10.0f));
 		Test.Assert(Near(width, 17.0f), "and the total agrees with the measurement");
 	}
@@ -146,8 +146,8 @@ class BakedFontTests
 		let width = font.MeasureString("\u{20AC}A", positions);
 
 		Test.Assert(positions.Count == 2, "two glyphs, not four bytes' worth");
-		Test.Assert(positions[0].Codepoint == 0x20AC);
-		Test.Assert(positions[1].Codepoint == Cp('A'));
+		Test.Assert(positions[0].GlyphId == 0x20AC);
+		Test.Assert(positions[1].GlyphId == Cp('A'));
 		Test.Assert(Near(width, 18.0f));
 	}
 

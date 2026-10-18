@@ -2,20 +2,33 @@ namespace Sedulous.Fonts;
 
 /// A glyph placed by layout.
 ///
-/// StringIndex is the BYTE offset in the original text, not a glyph counter: hit testing
-/// and cursor placement answer in terms of the caller's string, and one codepoint can be
-/// several bytes.
+/// A shaper maps a string's characters to glyphs N to M: several glyphs may share a cluster (a
+/// base and its mark), one glyph may cover several characters (a ligature), and characters such
+/// as a line break may have no glyph at all. Clusters count characters (codepoints) of the source
+/// string, the unit text editing works in, not bytes. Positions keep logical order.
 struct GlyphPosition
 {
-	public int32 StringIndex;
-	public int32 Codepoint;
+	/// The first character of the cluster this glyph belongs to.
+	public int32 Cluster;
+	/// What the atlas draws: the codepoint, under the stb shaper.
+	public int32 GlyphId;
+	/// The pen position: the baseline origin, before the offsets.
 	public float X;
 	public float Y;
 	public float Advance;
 	public GlyphInfo GlyphInfo;
+	/// The characters its cluster covers.
+	public int32 ClusterLength;
+	/// A shaper's placement deltas: drawn, never advanced.
+	public float XOffset;
+	public float YOffset;
 
 	public this()
 	{
-		StringIndex = 0; Codepoint = 0; X = 0; Y = 0; Advance = 0; GlyphInfo = .();
+		Cluster = 0; GlyphId = 0; X = 0; Y = 0; Advance = 0; GlyphInfo = .();
+		ClusterLength = 1; XOffset = 0; YOffset = 0;
 	}
+
+	/// The character after this glyph's cluster.
+	public int32 ClusterEnd => Cluster + ClusterLength;
 }

@@ -139,8 +139,8 @@ class TrueTypeFontTests
 		let width = font.MeasureString("Hi", positions);
 
 		Test.Assert(positions.Count == 2);
-		Test.Assert(positions[0].Codepoint == Cp('H'));
-		Test.Assert(positions[1].Codepoint == Cp('i'));
+		Test.Assert(positions[0].GlyphId == Cp('H'));
+		Test.Assert(positions[1].GlyphId == Cp('i'));
 		Test.Assert(positions[0].X == 0.0f, "the first sits at the origin");
 		Test.Assert(positions[1].X > positions[0].X, "and the second after it");
 		Test.Assert(width > positions[1].X, "the total reaches past the last glyph's start");

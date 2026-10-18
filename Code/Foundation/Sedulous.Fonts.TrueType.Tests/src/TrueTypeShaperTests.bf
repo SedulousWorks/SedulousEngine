@@ -141,9 +141,9 @@ class TrueTypeShaperTests
 		for (let position in positions)
 		{
 			if (position.Y == firstY)
-				firstLine.Append((char8)position.Codepoint);
+				firstLine.Append((char8)position.GlyphId);
 			else
-				secondLine.Append((char8)position.Codepoint);
+				secondLine.Append((char8)position.GlyphId);
 		}
 
 		Test.Assert(firstLine == "aaaa bbbb ", scope $"first line was '{firstLine}'");
@@ -357,5 +357,118 @@ class TrueTypeShaperTests
 		Test.Assert(rects.Count >= 2, scope $"got {rects.Count} rects for wrapped text");
 		for (int i = 1; i < rects.Count; i++)
 			Test.Assert(rects[i].Y > rects[i - 1].Y, "each rectangle is on a later line");
+	}
+
+	// ---- Clusters: the UI helpers work in characters through GlyphPosition.Cluster, written
+	// down here under the one to one stb shaper before a shaper can map characters to glyphs any
+	// other way.
+
+	/// Clusters count characters, not bytes, and a line break has no glyph.
+	[Test]
+	public static void ClustersCountCharactersNotBytesAndALineBreakHasNoGlyph()
+	{
+		let font = TestFont.Load();
+		Test.Assert(font != null);
+		defer delete font;
+		let shaper = scope TrueTypeTextShaper();
+
+		// a, e acute (2 bytes), the euro sign (3 bytes), b.
+		let positions = scope List<GlyphPosition>();
+		Test.Assert(shaper.ShapeText(font, "a\u{E9}\u{20AC}b", positions) case .Ok);
+		Test.Assert(positions.Count == 4);
+		for (int32 i < 4)
+		{
+			Test.Assert(positions[i].Cluster == i);
+			Test.Assert(positions[i].ClusterLength == 1);
+			Test.Assert(positions[i].XOffset == 0.0f);
+		}
+		Test.Assert(positions[1].GlyphId == 0xE9);
+		Test.Assert(positions[2].GlyphId == 0x20AC);
+
+		// "ab\ncd" wrapped: the break is character 2 and draws nothing.
+		let lines = scope List<GlyphPosition>();
+		Test.Assert(shaper.ShapeTextWrapped(font, "ab\ncd", 1000.0f, lines, let height) case .Ok);
+		Test.Assert(lines.Count == 4);
+		Test.Assert(lines[1].Cluster == 1);
+		Test.Assert(lines[2].Cluster == 3);
+		Test.Assert(lines[2].Y > lines[1].Y);
+	}
+
+	/// Hit tests, carets and selections across a line break go by cluster.
+	[Test]
+	public static void HitTestsCaretsAndSelectionsAcrossALineBreakGoByCluster()
+	{
+		let font = TestFont.Load();
+		Test.Assert(font != null);
+		defer delete font;
+		let shaper = scope TrueTypeTextShaper();
+		let lines = scope List<GlyphPosition>();
+		Test.Assert(shaper.ShapeTextWrapped(font, "ab\ncd", 1000.0f, lines, let height) case .Ok);
+		let lineHeight = font.Metrics.LineHeight;
+		let b = lines[1];
+		let c = lines[2];
+
+		// The trailing half of b puts the caret before the break; the leading half of c after it.
+		Test.Assert(shaper.HitTestWrapped(font, lines, b.X + b.Advance * 0.9f, 0.1f * lineHeight, lineHeight).InsertionIndex == 2);
+		Test.Assert(shaper.HitTestWrapped(font, lines, c.X + c.Advance * 0.1f, 1.1f * lineHeight, lineHeight).InsertionIndex == 3);
+		// Past the end of the first line: before the break.
+		Test.Assert(shaper.HitTestWrapped(font, lines, 900.0f, 0.1f * lineHeight, lineHeight).InsertionIndex == 2);
+
+		// The caret before the break sits at b's end; after it, at c's start.
+		Test.Assert(Abs(shaper.GetCursorPosition(font, lines, 2) - (b.X + b.Advance)) < 0.001f);
+		Test.Assert(Abs(shaper.GetCursorPosition(font, lines, 3) - c.X) < 0.001f);
+
+		// Characters 1 to 4 (b, the break, c): one rectangle on each line.
+		let rects = scope List<FontRect>();
+		shaper.GetSelectionRects(font, lines, .(1, 4), lineHeight, rects);
+		Test.Assert(rects.Count == 2);
+		Test.Assert(Abs(rects[0].X - b.X) < 0.001f);
+		Test.Assert(Abs(rects[0].Width - b.Advance) < 0.001f);
+		Test.Assert(Abs(rects[1].X - c.X) < 0.001f);
+	}
+
+	/// A cluster of several characters, or of several glyphs, is one caret stop: what a real
+	/// shaper may produce for "x", a two character ligature, and a base with its mark.
+	[Test]
+	public static void AClusterOfSeveralCharactersOrGlyphsIsOneCaretStop()
+	{
+		let font = TestFont.Load();
+		Test.Assert(font != null);
+		defer delete font;
+		let shaper = scope TrueTypeTextShaper();
+
+		// Glyph 0 is character 0; glyph 1 covers characters 1 and 2; glyphs 2 and 3 share
+		// characters 3 and 4.
+		let positions = scope List<GlyphPosition>();
+		void Glyph(int32 cluster, int32 length, float x, float advance)
+		{
+			var glyph = GlyphPosition();
+			glyph.Cluster = cluster;
+			glyph.ClusterLength = length;
+			glyph.X = x;
+			glyph.Advance = advance;
+			positions.Add(glyph);
+		}
+		Glyph(0, 1, 0.0f, 10.0f);
+		Glyph(1, 2, 10.0f, 20.0f);
+		Glyph(3, 2, 30.0f, 10.0f);
+		Glyph(3, 2, 40.0f, 0.0f); // the mark: placed by its offsets, no advance
+
+		// The trailing half of the ligature puts the caret after both its characters.
+		Test.Assert(shaper.HitTest(font, positions, 25.0f, 0.0f).InsertionIndex == 3);
+		Test.Assert(shaper.HitTest(font, positions, 12.0f, 0.0f).InsertionIndex == 1);
+		// Past the end: after the last cluster, both its characters.
+		Test.Assert(shaper.HitTest(font, positions, 500.0f, 0.0f).InsertionIndex == 5);
+		// A caret inside a cluster stands at the cluster's start; after the last one, at the end.
+		Test.Assert(shaper.GetCursorPosition(font, positions, 2) == 10.0f);
+		Test.Assert(shaper.GetCursorPosition(font, positions, 3) == 30.0f);
+		Test.Assert(shaper.GetCursorPosition(font, positions, 4) == 30.0f, "the base's, not the mark's");
+		Test.Assert(shaper.GetCursorPosition(font, positions, 5) == 40.0f);
+		// Selecting the ligature's first character selects its glyph.
+		let rects = scope List<FontRect>();
+		shaper.GetSelectionRects(font, positions, .(1, 2), 10.0f, rects);
+		Test.Assert(rects.Count == 1);
+		Test.Assert(rects[0].X == 10.0f);
+		Test.Assert(rects[0].Width == 20.0f);
 	}
 }

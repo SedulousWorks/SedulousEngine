@@ -1572,8 +1572,8 @@ class VGContext
 
 		for (let position in positions)
 		{
-			if (font.Atlas.GetGlyphQuadAt(position.Codepoint, offsetX + position.X,
-				offsetY + position.Y, let quad))
+			if (font.Atlas.GetGlyphQuadAt(position.GlyphId, offsetX + position.X + position.XOffset,
+				offsetY + position.Y + position.YOffset, let quad))
 				EmitGlyphQuad(quad, opaqueColor);
 		}
 

@@ -160,6 +160,13 @@ class FontTypesTests
 	{
 		Test.Assert(HitTestResult(5, false, true).InsertionIndex == 5);
 		Test.Assert(HitTestResult(5, true, true).InsertionIndex == 6);
+		// On a cluster of three characters (a ligature): trailing goes past all three.
+		var ligature = GlyphPosition();
+		ligature.Cluster = 5;
+		ligature.ClusterLength = 3;
+		Test.Assert(ligature.ClusterEnd == 8);
+		Test.Assert(HitTestResult.OnCluster(ligature, false, true).InsertionIndex == 5);
+		Test.Assert(HitTestResult.OnCluster(ligature, true, true).InsertionIndex == 8);
 	}
 
 	[Test]

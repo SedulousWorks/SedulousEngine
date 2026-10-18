@@ -99,8 +99,8 @@ class BakedFont : IFont
 				x += GetKerning(previous, codepoint);
 
 			var position = GlyphPosition();
-			position.StringIndex = index;
-			position.Codepoint = codepoint;
+			position.Cluster = index;
+			position.GlyphId = codepoint;
 			position.X = x;
 			position.Y = 0;
 			position.Advance = info.AdvanceWidth;
