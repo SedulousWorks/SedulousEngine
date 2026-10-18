@@ -341,10 +341,10 @@ class ViewGroup : View
 			let backdrop = Max(0.0f, child.ResolveStyleFloat(.BackdropFilter, 0.0f)) * deviceScale;
 			if (backdrop > 0.0f)
 			{
-				// What the parent drew behind the view, blurred inside its corners, fading with it.
-				let radius = Max(0.0f, child.ResolveStyleFloat(.CornerRadius, 0.0f));
+				// What the parent drew behind the view, blurred inside its corners (the ones its
+				// shadow follows), fading with it.
 				ctx.VG.PushOpacity(opacity);
-				ctx.VG.DrawBackdropBlur(.(0, 0, child.Width, child.Height), .(radius), backdrop);
+				ctx.VG.DrawBackdropBlur(.(0, 0, child.Width, child.Height), child.OutlineRadii(), backdrop);
 				ctx.VG.PopOpacity();
 			}
 			let faded = opacity < 1.0f;

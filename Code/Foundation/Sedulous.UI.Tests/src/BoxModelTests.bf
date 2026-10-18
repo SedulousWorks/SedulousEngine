@@ -505,6 +505,43 @@ class BoxModelTests
 		Test.Assert(root.HitTest(.(layoutBox.X - 30.0f, layoutBox.Y + 10.0f)) == child);
 	}
 
+	/// The indices of the backdrop composite under a `.glass` view styled by `sheetText`: its
+	/// shape, a rounded outline where the background rounds, four corners where nothing does.
+	private static int BackdropIndices(StringView sheetText)
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		context.SetStyleSheet(LoadSSS(sheetText));
+		let glass = new RecordingView(80, 60, 2);
+		glass.AddClass("glass");
+		let frame = new FrameLayout();
+		frame.AddView(new RecordingView(200, 200, 1));
+		frame.AddView(glass);
+		root.AddView(frame);
+		UITest.LayoutPass(context, root);
+		let vg = scope VGContext();
+		vg.SetLayers(true);
+		RecordingView.DrawLog.Clear();
+		context.DrawRootView(root, vg);
+		for (let command in vg.GetBatch().Commands)
+		{
+			if ((command.DrawMode == .Layer) && command.Backdrop)
+				return command.IndexCount;
+		}
+		return 0;
+	}
+
+	/// A frosted card rounded by its background blurs a rounded shape behind it, as its shadow
+	/// and its clip follow those corners.
+	[Test]
+	public static void ABackdropBlurKeepsToTheCornersTheBackgroundRounds()
+	{
+		let square = BackdropIndices(".glass { backdrop-filter: blur(6); background: #FFFFFF40; }");
+		let rounded = BackdropIndices(".glass { backdrop-filter: blur(6); background: rounded-rect(#FFFFFF40, radius=10); }");
+		Test.Assert(square > 0);
+		Test.Assert(rounded > square, scope $"{rounded} vs {square}");
+	}
+
 	/// The shorthand takes its parts in any workable order: `inset` may lead or trail, the blur
 	/// and spread are optional, and a missing colour falls back to the default shadow.
 	[Test]
