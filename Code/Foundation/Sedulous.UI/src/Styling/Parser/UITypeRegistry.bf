@@ -75,6 +75,7 @@ static class UITypeRegistry
 
 		Register("Panel", typeof(Panel));
 		Register("Label", typeof(Label));
+		Register("RichText", typeof(RichText));
 		Register("Button", typeof(Button));
 		Register("IconButton", typeof(IconButton));
 		Register("ButtonBase", typeof(ButtonBase));

@@ -1,10 +1,12 @@
 using System;
+using System.Collections;
 using System.IO;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TrueType;
 using Sedulous.UI;
+using Sedulous.VG;
 
 namespace Sedulous.UI.Tests;
 
@@ -206,5 +208,91 @@ class TextLayoutTests
 		Test.Assert(layout.Underlines[0].Rect.Y > layout.Lines[0].Baseline, "below the baseline");
 		// The underline runs on under the space between the words, and stops at the last letter.
 		Test.Assert(Near(layout.Underlines[0].Rect.X + layout.Underlines[0].Rect.Width, layout.Underlines[1].Rect.X));
+	}
+
+	// ---- The RichText control over the formatter ----
+
+	[Test]
+	public static void ARichTextMeasuresWrappedAtItsWidthAndDrawsEveryRun()
+	{
+		let fonts = MakeRoboto();
+		if (fonts == null)
+			return;
+		defer delete fonts;
+		let context = scope UIContext();
+		context.SetFontService(fonts);
+		let root = new RootView();
+		defer root.ReleaseRef();
+		UITest.Init(context, root, 400, 300);
+		let text = new RichText("The [color=#ff0000]guests in red[/color] dance while [b]the band[/b] plays on into the night and the masks turn");
+		text.FontFamily.Value.Set("Roboto");
+		root.AddView(text);
+		UITest.LayoutPass(context, root);
+		// Measured loosely at a width: wrapped there, as tall as its lines.
+		text.Measure(BoxConstraints.Loose(160.0f, 1000.0f));
+		Test.Assert(text.Layout.Lines.Count >= 3);
+		Test.Assert(text.MeasuredSize.X <= 160.0f + 0.01f);
+		Test.Assert(Near(text.MeasuredSize.Y, text.Layout.Height));
+
+		let canvas = scope VGContext();
+		context.DrawRootView(root, canvas);
+		Test.Assert(canvas.GetBatch().Commands.Count > 0);
+	}
+
+	[Test]
+	public static void AClickOnALinkRaisesOnLinkWithItsIdAndAClickElsewhereDoesNot()
+	{
+		let fonts = MakeRoboto();
+		if (fonts == null)
+			return;
+		defer delete fonts;
+		let context = scope UIContext();
+		context.SetFontService(fonts);
+		let root = new RootView();
+		defer root.ReleaseRef();
+		UITest.Init(context, root, 400, 300);
+		let text = new RichText("go [link=door]open the door[/link] now");
+		text.FontFamily.Value.Set("Roboto");
+		root.AddView(text);
+		UITest.LayoutPass(context, root);
+		let heard = scope String();
+		text.OnLink.Add(new [&](sender, id) => { heard.Set(id); });
+
+		Test.Assert(!text.Layout.Links.IsEmpty);
+		let link = text.Layout.Links[0].Rect;
+		let at = text.LocalToScreen(.(link.X + link.Width * 0.5f, link.Y + link.Height * 0.5f));
+		Test.Assert(text.CursorAt(.(link.X + 1.0f, link.Y + 1.0f)) == .Hand);
+		context.GetInputManager().ProcessMouseDown(.Left, at.X, at.Y, 0);
+		context.GetInputManager().ProcessMouseUp(.Left, at.X, at.Y);
+		Test.Assert(heard == "door");
+
+		heard.Clear();
+		// On "go".
+		let before = text.LocalToScreen(.(2.0f, link.Y + link.Height * 0.5f));
+		context.GetInputManager().ProcessMouseDown(.Left, before.X, before.Y, 0);
+		context.GetInputManager().ProcessMouseUp(.Left, before.X, before.Y);
+		Test.Assert(heard.IsEmpty);
+	}
+
+	[Test]
+	public static void MalformedMarkupIsDrawnAsWrittenAndRunsSetDirectlyReplaceIt()
+	{
+		let text = new RichText("a [blink]b");
+		defer text.ReleaseRef();
+		Test.Assert(text.Document.PlainText(.. scope .()) == "a [blink]b");
+		Test.Assert(text.Document.Diagnostics.Count == 1);
+
+		let runs = scope List<TextRun>();
+		let run = new TextRun();
+		run.Text.Set("set");
+		run.Bold = true;
+		runs.Add(run);
+		text.SetRuns(runs);
+		Test.Assert(runs.IsEmpty, "the control took them");
+		Test.Assert(text.Document.Runs.Count == 1);
+		Test.Assert(text.Document.Runs[0].Bold);
+		text.SetMarkup("[i]again[/i]");
+		Test.Assert(text.Document.Runs.Count == 1);
+		Test.Assert(text.Document.Runs[0].Italic);
 	}
 }

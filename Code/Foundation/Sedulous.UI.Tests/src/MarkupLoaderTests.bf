@@ -111,6 +111,24 @@ class MarkupLoaderTests
 		Test.Assert(image.Source.Value == "{0a1b}");
 	}
 
+	/// A RichText takes its markup, font and alignment.
+	[Test]
+	public static void ARichTextTakesItsMarkupFontAndAlignment()
+	{
+		EnsureInit();
+		let view = MarkupLoader.LoadFromString("<RichText markup=\"Your mark wears [color=#d04060]a rose gown[/color]\" font-size=\"20\" text-align=\"center\" word-wrap=\"false\"/>");
+		Test.Assert(view != null);
+		defer view.ReleaseRef();
+		let text = view as RichText;
+		Test.Assert(text != null);
+		Test.Assert(text.Markup.Value == "Your mark wears [color=#d04060]a rose gown[/color]");
+		Test.Assert(text.FontSize.Value.Value == 20.0f);
+		Test.Assert(text.HAlign.Value == .Center);
+		Test.Assert(!text.IsWordWrapped);
+		Test.Assert(text.Document.Runs.Count == 2);
+		Test.Assert(text.Document.Runs[1].Color.HasValue);
+	}
+
 	// ---- Failure ------------------------------------------------------------------------------
 
 	[Test]

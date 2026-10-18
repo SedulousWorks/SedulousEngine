@@ -216,6 +216,37 @@ extension MarkupRegistry
 					c.Ellipsis.Value = ParseBool(val);
 			});
 
+		// Rich text: its text is markup ([b], [color=], [link=], ...; see TextMarkup).
+		RegisterView("RichText", new () => new RichText());
+		RegisterProperty("RichText", "markup", new (v, val) =>
+			{
+				if (let c = v as RichText)
+					c.SetMarkup(val);
+			});
+		RegisterProperty("RichText", "font-size", new (v, val) =>
+			{
+				if (let c = v as RichText)
+				{
+					if (ParseFloatValue(val) case .Ok(let f))
+						c.FontSize.Value = f;
+				}
+			});
+		RegisterProperty("RichText", "font-family", new (v, val) =>
+			{
+				if (let c = v as RichText)
+					c.FontFamily.Value.Set(val);
+			});
+		RegisterProperty("RichText", "word-wrap", new (v, val) =>
+			{
+				if (let c = v as RichText)
+					c.WordWrap.Value = ParseBool(val);
+			});
+		RegisterProperty("RichText", "text-align", new (v, val) =>
+			{
+				if (let c = v as RichText)
+					c.HAlign.Value = (val == "center") ? .Center : ((val == "right") ? .Right : .Left);
+			});
+
 		RegisterView("Button", new () => new Button(""));
 		RegisterProperty("Button", "text", new (v, val) =>
 			{
