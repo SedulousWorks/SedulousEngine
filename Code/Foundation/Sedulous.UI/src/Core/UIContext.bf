@@ -18,6 +18,10 @@ class UIContext
 	// every Invalidate along the way finds a null context and marks nothing, and a host that
 	// sized its root up front sees no structural change either. Starting clean draws that
 	// first frame unlaid-out, and it stays that way until something resizes the window.
+	/// Debug overlays drawn over every root this context draws (bounds, padding, focus path,
+	/// draw and tab order): all off by default, and free while off.
+	public UIDebugDrawSettings DebugDraw = .();
+
 	private bool mNeedsRedraw = true;
 	/// RequestNextFrame, carried across a draw.
 	private bool mNextFrameRequested = false;
@@ -405,7 +409,7 @@ class UIContext
 		vg.SetFontService(mFontService); // the one source of truth, re-asserted per draw
 		mPhase = .Drawing;
 
-		let ctx = scope UIDrawContext(vg, root.DpiScale, mFontService);
+		let ctx = scope UIDrawContext(vg, root.DpiScale, mFontService, DebugDraw);
 		if (root.DpiScale != 1.0f)
 			vg.Scale(root.DpiScale, root.DpiScale);
 		root.OnDraw(ctx);

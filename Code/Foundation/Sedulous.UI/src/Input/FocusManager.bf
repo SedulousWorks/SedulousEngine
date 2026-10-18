@@ -164,6 +164,14 @@ class FocusManager
 
 	// ---- Tab traversal ------------------------------------------------------------------------
 
+	/// The views Tab visits, in the order it visits them (within the topmost focus taking popup
+	/// when one is open).
+	public void CollectTabStops(List<View> output)
+	{
+		CollectFocusable(FocusRoot, output);
+		SortByTabIndex(output);
+	}
+
 	/// Tab. WRAPS at the end, and a starting index of -1, meaning nothing focused, lands on the
 	/// first entry.
 	public void FocusNext()

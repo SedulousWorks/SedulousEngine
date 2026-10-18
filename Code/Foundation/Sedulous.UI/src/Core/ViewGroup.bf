@@ -372,7 +372,7 @@ class ViewGroup : View
 				DrawBoxShadow(ctx, child, shadow.Value);
 
 			if (ctx.DebugSettings.AnyEnabled)
-				UIDebugOverlay.DrawOverlays(ctx, child);
+				UIDebugOverlay.DrawOverlays(ctx, child, @child.Index);
 
 			if (clips)
 				ctx.PopClip();
