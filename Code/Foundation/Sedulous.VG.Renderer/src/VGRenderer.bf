@@ -56,6 +56,9 @@ class VGRenderer
 	private IShaderModule mGradRadialModule;
 	private IShaderModule mGradConicModule;
 	private IShaderModule mBoxShadowModule;
+	/// Analytic boxes (VGDrawMode.Box): a vertex shader of their own as well.
+	private IShaderModule mBoxVertexModule;
+	private IShaderModule mBoxFragmentModule;
 
 	private IBindGroupLayout mBindGroupLayout;
 	private IPipelineLayout mPipelineLayout;
@@ -67,6 +70,8 @@ class VGRenderer
 	/// Nullable: a host that never supplies the shadow shader draws no box shadows at all,
 	/// rather than drawing the quadrant quads as flat colour.
 	private IRenderPipeline mBoxShadowPipeline;
+	/// Nullable likewise: box vertices are not VG vertices, so no other pipeline can draw them.
+	private IRenderPipeline mBoxPipeline;
 	private IRenderPipeline mStencilWriteNonZero;
 	private IRenderPipeline mStencilWriteEvenOdd;
 	private IRenderPipeline mCoverPipeline;
@@ -161,7 +166,8 @@ class VGRenderer
 		IShaderModule fragmentShader, TextureFormat targetFormat, int32 frameCount,
 		IShaderModule distanceFieldFragmentShader = null, IShaderModule gradRadialFragmentShader = null,
 		IShaderModule gradConicFragmentShader = null, VGTargetConfig targetConfig = .(),
-		IShaderModule boxShadowFragmentShader = null)
+		IShaderModule boxShadowFragmentShader = null, IShaderModule boxVertexShader = null,
+		IShaderModule boxFragmentShader = null)
 	{
 		mDevice = device;
 		mQueue = device.GetQueue(.Graphics, 0);
@@ -175,6 +181,8 @@ class VGRenderer
 		mGradRadialModule = gradRadialFragmentShader;
 		mGradConicModule = gradConicFragmentShader;
 		mBoxShadowModule = boxShadowFragmentShader;
+		mBoxVertexModule = boxVertexShader;
+		mBoxFragmentModule = boxFragmentShader;
 
 		if (CreateSamplers() case .Err)
 			return .Err(.Unknown);
@@ -207,6 +215,13 @@ class VGRenderer
 		{
 			if (!(CreatePipeline(vertexShader, boxShadowFragmentShader, .None)
 				case .Ok(out mBoxShadowPipeline)))
+				return .Err(.Unknown);
+		}
+		// The analytic box family (VGContext.DrawBox): its own vertex layout and shaders.
+		if ((boxVertexShader != null) && (boxFragmentShader != null))
+		{
+			if (!(CreatePipeline(boxVertexShader, boxFragmentShader, .None, .Normal, false, true)
+				case .Ok(out mBoxPipeline)))
 				return .Err(.Unknown);
 		}
 
@@ -308,11 +323,13 @@ class VGRenderer
 		for (let evicted in batch.EvictedTextures)
 			EvictCachedTexture(evicted);
 
-		if (batch.Vertices.IsEmpty || batch.Indices.IsEmpty)
+		if (batch.IsEmpty)
 			return .();
 
 		let vertexBytes = (uint32)(batch.Vertices.Count * VGRenderVertex.SizeInBytes);
 		let indexBytes = (uint32)(batch.Indices.Count * sizeof(uint32));
+		// The slice's boxes follow its ordinary vertices in the same buffer.
+		let boxBytes = (uint32)(batch.BoxVertices.Count * VGBoxVertex.SizeInBytes);
 		let vertexOffset = mFrameVertexOffsets[frameIndex];
 		let indexOffset = mFrameIndexOffsets[frameIndex];
 		let uniformSlot = mFrameUniformSlotCount[frameIndex];
@@ -322,7 +339,7 @@ class VGRenderer
 		if (uniformSlot >= (uint32)cMaxUniformSlots)
 			return .();
 
-		if (!FitsOrGrows(frameIndex, vertexOffset, vertexBytes, indexOffset, indexBytes))
+		if (!FitsOrGrows(frameIndex, vertexOffset, vertexBytes + boxBytes, indexOffset, indexBytes))
 			return .();
 
 		let commandStart = (int32)mDrawCommands.Count;
@@ -333,10 +350,14 @@ class VGRenderer
 		for (let vertex in batch.Vertices)
 			renderVertices.Add(.(vertex));
 
-		WriteBuffer(mVertexBuffers[frameIndex], vertexOffset, renderVertices.Ptr, vertexBytes);
+		if (vertexBytes > 0)
+			WriteBuffer(mVertexBuffers[frameIndex], vertexOffset, renderVertices.Ptr, vertexBytes);
+		if (boxBytes > 0)
+			WriteBuffer(mVertexBuffers[frameIndex], vertexOffset + vertexBytes, batch.BoxVertices.Ptr, boxBytes);
 		// Verbatim: they are relative to the slice's own vertex base, which the vertex
 		// buffer offset supplies.
-		WriteBuffer(mIndexBuffers[frameIndex], indexOffset, batch.Indices.Ptr, indexBytes);
+		if (indexBytes > 0)
+			WriteBuffer(mIndexBuffers[frameIndex], indexOffset, batch.Indices.Ptr, indexBytes);
 
 		// The commands index into a SHARED texture list, so their indices are rebased.
 		mBatchTextures.AddRange(batch.Textures);
@@ -360,13 +381,14 @@ class VGRenderer
 		for (int32 index = textureBase; index < (int32)mBatchTextures.Count; index++)
 			UpdateTextureBindGroup(index, frameIndex, .Pad);
 
-		mFrameVertexOffsets[frameIndex] = vertexOffset + vertexBytes;
+		mFrameVertexOffsets[frameIndex] = vertexOffset + vertexBytes + boxBytes;
 		mFrameIndexOffsets[frameIndex] = indexOffset + indexBytes;
 		mFrameUniformSlotCount[frameIndex] = uniformSlot + 1;
 
 		var slice = VGRenderSlice();
 		slice.VertexByteOffset = vertexOffset;
 		slice.IndexByteOffset = indexOffset;
+		slice.BoxVertexByteOffset = vertexOffset + vertexBytes;
 		slice.UniformByteOffset = uniformOffset;
 		slice.DrawCommandStart = commandStart;
 		slice.DrawCommandCount = (int32)mDrawCommands.Count - commandStart;
@@ -470,6 +492,8 @@ class VGRenderer
 		var currentSpread = VGGradientSpread.Pad;
 		var currentPipeline = mPipeline;
 		var currentStencilRef = -1;
+		// The vertex buffer sits at the slice's boxes.
+		var boxesBound = false;
 
 		if (mCoverPipeline != null)
 		{
@@ -527,7 +551,18 @@ class VGRenderer
 			}
 
 			ApplyScissor(renderPass, command, viewportX, viewportY, width, height);
-			renderPass.DrawIndexed((uint32)command.IndexCount, 1, (uint32)command.StartIndex, 0, 0);
+			// Analytic boxes draw unindexed from their own part of the vertex buffer.
+			let isBox = command.DrawMode == .Box;
+			if (isBox != boxesBound)
+			{
+				renderPass.SetVertexBuffer(0, mVertexBuffers[frameIndex],
+					isBox ? slice.BoxVertexByteOffset : slice.VertexByteOffset);
+				boxesBound = isBox;
+			}
+			if (isBox)
+				renderPass.Draw((uint32)command.IndexCount, 1, (uint32)command.StartIndex, 0);
+			else
+				renderPass.DrawIndexed((uint32)command.IndexCount, 1, (uint32)command.StartIndex, 0, 0);
 			mLastRenderStats.Drawn++;
 		}
 	}
@@ -888,6 +923,14 @@ class VGRenderer
 		case .Direct:
 		}
 
+		if (command.DrawMode == .Box)
+		{
+			// Box vertices are not VG vertices: no other pipeline can read them. SKIP when the
+			// box shaders were not given (a context draws boxes analytically only when told).
+			if (mBoxPipeline == null)
+				return null;
+			return (blended || clipped) ? Variant(.Box, command.BlendMode, clipped) : mBoxPipeline;
+		}
 		if ((command.DrawMode == .DistanceField) && (mDistanceFieldPipeline != null))
 		{
 			return (blended || clipped) ? Variant(.DistanceField, command.BlendMode, clipped)
@@ -950,15 +993,18 @@ class VGRenderer
 			fragment = mGradConicModule;
 			role = .Cover;
 		case .BoxShadow: fragment = mBoxShadowModule;
+		case .Box: fragment = mBoxFragmentModule;
 		}
 
-		let cannotBuild = (mVertexModule == null) || (fragment == null)
+		let isBox = kind == .Box;
+		let vertex = isBox ? mBoxVertexModule : mVertexModule;
+		let cannotBuild = (vertex == null) || (fragment == null)
 			|| (clipped && (mTargetConfig.DepthStencilFormat == .Undefined));
 
 		IRenderPipeline built = null;
 		if (!cannotBuild)
 		{
-			if (!(CreatePipeline(mVertexModule, fragment, role, blendMode, clipped)
+			if (!(CreatePipeline(vertex, fragment, role, blendMode, clipped, isBox)
 				case .Ok(out built)))
 				built = null;
 		}
@@ -972,9 +1018,10 @@ class VGRenderer
 			return built;
 
 		// The default pipeline is a tolerable stand in for a distance field or gradient
-		// variant, which degrade to flat colour, but NEVER for a box shadow: that would paint
-		// the quadrant quads as flat colour over everything around the box. Skip instead.
-		return (clipped || (kind == .BoxShadow)) ? null : mPipeline;
+		// variant, which degrade to flat colour, but NEVER for a box shadow (it would paint the
+		// quadrant quads as flat colour over everything around the box) nor a box (its
+		// vertices are not VG vertices). Skip instead.
+		return (clipped || (kind == .BoxShadow) || isBox) ? null : mPipeline;
 	}
 
 	/// The clipped write pair, built lazily because it needs a stencil attachment.
@@ -999,17 +1046,26 @@ class VGRenderer
 
 	private Result<IRenderPipeline> CreatePipeline(IShaderModule vertexShader,
 		IShaderModule fragmentShader, StencilRole role, VGBlendMode blendMode = .Normal,
-		bool clipped = false)
+		bool clipped = false, bool isBox = false)
 	{
 		let attributes = scope VertexAttribute[4](
 			.(.Float32x2, 0, 0),
 			.(.Float32x2, 8, 1),
 			.(.Float32x4, 16, 2),
 			.(.Float32, 32, 3));
+		// An analytic box's vertex (VGBoxVertex).
+		let boxAttributes = scope VertexAttribute[7](
+			.(.Float32x2, 0, 0), // position
+			.(.Float32x2, 8, 1), // local
+			.(.Float32x2, 16, 2), // half size
+			.(.Float32x4, 24, 3), // radii
+			.(.Float32x4, 40, 4), // borders
+			.(.Float32x4, 56, 5), // fill
+			.(.Float32x4, 72, 6)); // border colour
 
 		var vertexLayout = VertexBufferLayout();
-		vertexLayout.Stride = (uint32)VGRenderVertex.SizeInBytes;
-		vertexLayout.Attributes = attributes;
+		vertexLayout.Stride = isBox ? (uint32)VGBoxVertex.SizeInBytes : (uint32)VGRenderVertex.SizeInBytes;
+		vertexLayout.Attributes = isBox ? boxAttributes : attributes;
 		let vertexBuffers = scope VertexBufferLayout[1](vertexLayout);
 
 		var colorTarget = ColorTargetState();
@@ -1388,6 +1444,7 @@ class VGRenderer
 		DestroyPipeline(ref mGradRadialPipeline);
 		DestroyPipeline(ref mGradConicPipeline);
 		DestroyPipeline(ref mBoxShadowPipeline);
+		DestroyPipeline(ref mBoxPipeline);
 		DestroyPipeline(ref mStencilWriteNonZero);
 		DestroyPipeline(ref mStencilWriteEvenOdd);
 		DestroyPipeline(ref mCoverPipeline);

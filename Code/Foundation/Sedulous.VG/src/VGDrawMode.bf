@@ -18,4 +18,8 @@ enum VGDrawMode
 	/// coordinate and the corner radius in the coverage, and the shader finishes the
 	/// distance and integrates the Gaussian across it.
 	case BoxShadow;
+	/// An analytic box (VGContext.DrawBox): the command's vertices are VGBatch.BoxVertices
+	/// (StartIndex and IndexCount count them, six to a box), drawn unindexed through the box
+	/// pipeline; fill and border come from one signed distance in the fragment shader.
+	case Box;
 }

@@ -357,6 +357,62 @@ class VGPixelProbeTests
 		Test.Assert(Dark(84, 8), scope $"{name}: inside the clip rect, above the outer");
 	}
 
+	/// Analytic boxes: a rounded fill with whole pixel straight edges, a one pixel border with no
+	/// halo, and a border width per side, drawn by the box shader.
+	[Test]
+	public static void AnalyticBoxesFillBorderWithoutAHaloAndTakeAWidthPerSide()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+			BoxesOn(kind);
+	}
+
+	private static void BoxesOn(ProbeBackend kind)
+	{
+		let fixture = scope VGProbeFixture(kind);
+		if (!fixture.Ready)
+			return;
+
+		let image = VGSceneRenderer.RenderScene(fixture, scope (context) =>
+			{
+				// A rounded fill.
+				context.DrawBox(.(16, 16, 48, 48), .(16.0f), ByteColor(220, 40, 40));
+				// A one pixel border, no fill.
+				context.DrawBox(.(80, 16, 32, 32), .(), .(0, 0, 0, 0), .(1.0f), ByteColor(60, 60, 240));
+				// Six pixels of border on the left, none on the right, two above and below.
+				context.DrawBox(.(16, 80, 48, 32), .(), .(0, 0, 0, 0), .(2.0f, 0.0f, 2.0f, 6.0f), ByteColor(40, 200, 40));
+			});
+		defer delete image;
+		Test.Assert((image != null) && image.Valid, "the scene rendered");
+
+		let name = kind.ToString(.. scope .());
+		bool Red(uint32 x, uint32 y) => (image.At(x, y)[0] > 200) && (image.At(x, y)[1] < 80);
+		bool Blue(uint32 x, uint32 y) => (image.At(x, y)[2] > 200) && (image.At(x, y)[0] < 100);
+		bool Green(uint32 x, uint32 y) => (image.At(x, y)[1] > 180) && (image.At(x, y)[0] < 100);
+		bool Dark(uint32 x, uint32 y) => (image.At(x, y)[0] < 12) && (image.At(x, y)[1] < 12) && (image.At(x, y)[2] < 12);
+
+		// The fill: inside, its straight edges on whole pixels (no fringe), and clear outside
+		// its rounded corner.
+		Test.Assert(Red(40, 40), scope $"{name}: the fill");
+		Test.Assert(Red(40, 16), scope $"{name}: the fill's top row");
+		Test.Assert(Dark(40, 15), scope $"{name}: nothing above the fill");
+		Test.Assert(Dark(18, 18), scope $"{name}: outside the corner's arc");
+		// The one pixel border: its row lit, nothing outside it, the inside clear.
+		Test.Assert(Blue(96, 16), scope $"{name}: the border's row");
+		Test.Assert(Dark(96, 15), scope $"{name}: no halo outside the border");
+		Test.Assert(Dark(96, 18), scope $"{name}: no fill inside the border");
+		Test.Assert(Blue(80, 30), scope $"{name}: the border's column");
+		Test.Assert(Dark(79, 30), scope $"{name}: no halo left of the border");
+		// Per side: six on the left, none on the right.
+		var left = 0;
+		for (uint32 x = 14; x < 30; x++)
+			left += Green(x, 96) ? 1 : 0;
+		Test.Assert(left == 6, scope $"{name}: {left} pixels of left border");
+		Test.Assert(Dark(62, 96), scope $"{name}: no right border");
+		Test.Assert(Dark(64, 96), scope $"{name}: nothing right of the box");
+		Test.Assert(Green(40, 80), scope $"{name}: the top border");
+		Test.Assert(Dark(40, 83), scope $"{name}: inside, under the top border");
+	}
+
 	/// An axis aligned rectangle path, the caller's to delete.
 	private static Path Rect(float x0, float y0, float x1, float y1)
 	{

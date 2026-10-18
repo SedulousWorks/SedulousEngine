@@ -8,6 +8,8 @@ struct VGRenderSlice
 {
 	public uint32 VertexByteOffset = 0;
 	public uint32 IndexByteOffset = 0;
+	/// The slice's analytic boxes, after its ordinary vertices in the same buffer.
+	public uint32 BoxVertexByteOffset = 0;
 	public uint32 UniformByteOffset = 0;
 	public int32 DrawCommandStart = 0;
 	public int32 DrawCommandCount = 0;

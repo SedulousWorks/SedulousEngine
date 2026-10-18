@@ -14,6 +14,8 @@ class VGBatch
 	public List<VGVertex> Vertices = new .() ~ delete _;
 	public List<uint32> Indices = new .() ~ delete _;
 	public List<VGCommand> Commands = new .() ~ delete _;
+	/// Analytic boxes' vertices, six to a box, for Box mode commands (no indices).
+	public List<VGBoxVertex> BoxVertices = new .() ~ delete _;
 
 	/// The textures commands refer to by index. NOT OWNED: the context manages their
 	/// lifetime. By convention index zero is a one by one white texture, which is what
@@ -59,6 +61,7 @@ class VGBatch
 		Vertices.Clear();
 		Indices.Clear();
 		Commands.Clear();
+		BoxVertices.Clear();
 		Textures.Clear();
 		EvictedTextures.Clear();
 	}
@@ -70,7 +73,7 @@ class VGBatch
 		Commands.Reserve(commandCount);
 	}
 
-	/// Nothing to draw. All three must be present: geometry with no command is never
-	/// submitted, and a command with no geometry draws nothing.
-	public bool IsEmpty => Vertices.IsEmpty || Indices.IsEmpty || Commands.IsEmpty;
+	/// Nothing to draw: no command, or no geometry of either kind. Geometry with no command is
+	/// never submitted, and a command with no geometry draws nothing.
+	public bool IsEmpty => Commands.IsEmpty || ((Vertices.IsEmpty || Indices.IsEmpty) && BoxVertices.IsEmpty);
 }

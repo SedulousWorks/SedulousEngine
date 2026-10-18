@@ -14,6 +14,8 @@ enum PipelineKind : uint8
 	case CoverRadial;
 	case CoverConic;
 	case BoxShadow;
+	/// Analytic boxes, with their own vertex layout and shaders.
+	case Box;
 
-	public const int Count = 8;
+	public const int Count = 9;
 }

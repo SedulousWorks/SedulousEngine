@@ -39,6 +39,11 @@ static class VGSceneRenderer
 		let distanceField = shaders.GetVariant("vg_df", .Fragment, .None);
 		let gradRadial = shaders.GetVariant("vg_grad_radial", .Fragment, .None);
 		let gradConic = shaders.GetVariant("vg_grad_conic", .Fragment, .None);
+		let boxVertex = shaders.GetVariant("vg_box", .Vertex, .None);
+		let boxFragment = shaders.GetVariant("vg_box", .Fragment, .None);
+		// Else boxes would quietly tessellate, and the box probe prove nothing.
+		if ((boxVertex == null) || (boxFragment == null))
+			return null;
 
 		var targetConfig = VGTargetConfig();
 		targetConfig.SampleCount = sampleCount;
@@ -47,7 +52,7 @@ static class VGSceneRenderer
 
 		let renderer = scope VGRenderer();
 		if (renderer.Initialize(device, vertex, fragment, drawFormat, 2, distanceField,
-			gradRadial, gradConic, targetConfig) case .Err)
+			gradRadial, gradConic, targetConfig, null, boxVertex, boxFragment) case .Err)
 			return null;
 
 		defer renderer.Dispose();
@@ -119,6 +124,7 @@ static class VGSceneRenderer
 		let context = scope VGContext();
 		context.SetStencilFills(true);
 		context.SetPerPixelGradients((gradRadial != null) && (gradConic != null));
+		context.SetAnalyticBoxes(true);
 		record(context);
 
 		renderer.BeginFrame(0);

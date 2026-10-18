@@ -62,6 +62,7 @@ class VGContext
 	private int32 mCommandStartIndex = 0;
 
 	private bool mPerPixelGradients = false;
+	private bool mAnalyticBoxes = false;
 	private bool mStencilFills = false;
 	private bool mPixelSnap = true;
 	private float mTolerance = 0.05f;
@@ -144,6 +145,14 @@ class VGContext
 	/// approximation every renderer can draw. A linear gradient is exact either way.
 	public void SetPerPixelGradients(bool enabled) => mPerPixelGradients = enabled;
 	public bool PerPixelGradients => mPerPixelGradients;
+
+	/// DrawBox draws analytically: one quad, its fill and border from a signed distance in the
+	/// box shader.
+	///
+	/// The HOST opts in, once it gave the renderer the box shaders: without them a Box command
+	/// has no pipeline. Off, DrawBox tessellates its fill and border as FillRoundedRect does.
+	public void SetAnalyticBoxes(bool enabled) => mAnalyticBoxes = enabled;
+	public bool AnalyticBoxes => mAnalyticBoxes;
 
 	/// Turns on stencil then cover for COMPLEX fills: holes, self intersection, and the even
 	/// odd rule, which ear clipping gets wrong.
@@ -545,6 +554,137 @@ class VGContext
 		let path = builder.ToPath();
 		defer delete path;
 		FillPath(path, color);
+	}
+
+	/// A box: `rect` filled with `fill` and rounded by `radii`, with a border of `borders` widths
+	/// (per side) in `borderColor` drawn over the fill inside its edge.
+	///
+	/// Analytic when the host enabled it (SetAnalyticBoxes): one quad whose fill and border come
+	/// from one signed distance, so they cannot disagree, a thin border has no halo and small
+	/// radii are exact; where neighbouring borders differ, the inner corner is a quarter ellipse.
+	/// An axis aligned box snaps to device pixels as FillRect does.
+	public void DrawBox(Rectangle rect, CornerRadii radii, Color fill, BorderWidths borders = .(),
+		Color borderColor = .(0, 0, 0, 0))
+	{
+		if ((rect.Width <= 0.0f) || (rect.Height <= 0.0f))
+			return;
+		if (!mAnalyticBoxes)
+		{
+			TessellateBox(rect, radii, fill, borders, borderColor);
+			return;
+		}
+
+		// Radii no larger than the box allows, as BuildRoundedRect clamps them.
+		let maxRadius = Min(rect.Width, rect.Height) * 0.5f;
+		let clamped = CornerRadii(Min(radii.TopLeft, maxRadius), Min(radii.TopRight, maxRadius),
+			Min(radii.BottomRight, maxRadius), Min(radii.BottomLeft, maxRadius));
+
+		var boxVertex = VGBoxVertex();
+		boxVertex.Fill = ApplyOpacity(fill);
+		boxVertex.BorderColor = ApplyOpacity(borderColor);
+		Float2[4] corner = default;
+		Float2[4] local = default;
+		if (mPixelSnap && TransformIsAxisAligned())
+		{
+			// Device units, the edges on whole pixels.
+			let p0 = TransformPoint(.(rect.X, rect.Y));
+			let p1 = TransformPoint(.(rect.X + rect.Width, rect.Y + rect.Height));
+			let x0 = Round(Min(p0.X, p1.X));
+			let y0 = Round(Min(p0.Y, p1.Y));
+			let x1 = Round(Max(p0.X, p1.X));
+			let y1 = Round(Max(p0.Y, p1.Y));
+			if ((x1 <= x0) || (y1 <= y0))
+				return;
+			let scale = DeviceScale();
+			let r = (scale.X + scale.Y) * 0.5f;
+			boxVertex.HalfSize = .((x1 - x0) * 0.5f, (y1 - y0) * 0.5f);
+			boxVertex.Radii = .(clamped.TopLeft * r, clamped.TopRight * r, clamped.BottomRight * r, clamped.BottomLeft * r);
+			boxVertex.Borders = .(borders.Top * scale.Y, borders.Right * scale.X, borders.Bottom * scale.Y, borders.Left * scale.X);
+			let center = Float2((x0 + x1) * 0.5f, (y0 + y1) * 0.5f);
+			// One device pixel for the antialiasing ramp.
+			let h = Float2(boxVertex.HalfSize.X + 1.0f, boxVertex.HalfSize.Y + 1.0f);
+			local = .(.(-h.X, -h.Y), .(h.X, -h.Y), .(h.X, h.Y), .(-h.X, h.Y));
+			for (int i < 4)
+				corner[i] = .(center.X + local[i].X, center.Y + local[i].Y);
+			EmitBox(boxVertex, corner, local);
+			return;
+		}
+
+		// Box units under the transform: grown by one device pixel's worth for the ramp.
+		let m = mCurrentState.Transform;
+		let sx = Length(Float2(m[0, 0], m[0, 1]));
+		let sy = Length(Float2(m[1, 0], m[1, 1]));
+		let margin = 1.0f / Max(Min(sx, sy), 1.0e-4f);
+		boxVertex.HalfSize = .(rect.Width * 0.5f, rect.Height * 0.5f);
+		boxVertex.Radii = .(clamped.TopLeft, clamped.TopRight, clamped.BottomRight, clamped.BottomLeft);
+		boxVertex.Borders = .(borders.Top, borders.Right, borders.Bottom, borders.Left);
+		let center = Float2(rect.X + boxVertex.HalfSize.X, rect.Y + boxVertex.HalfSize.Y);
+		let h = Float2(boxVertex.HalfSize.X + margin, boxVertex.HalfSize.Y + margin);
+		local = .(.(-h.X, -h.Y), .(h.X, -h.Y), .(h.X, h.Y), .(-h.X, h.Y));
+		for (int i < 4)
+			corner[i] = TransformPoint(.(center.X + local[i].X, center.Y + local[i].Y));
+		EmitBox(boxVertex, corner, local);
+	}
+
+	/// One analytic box: two triangles over its quad, appended to the batch's box vertices and
+	/// to the open Box command when it shares the state, so boxes batch with boxes.
+	private void EmitBox(VGBoxVertex boxVertex, Float2[4] corner, Float2[4] local)
+	{
+		// Any indexed geometry closes first: draw order is kept.
+		FlushCurrentCommand();
+		var boxVertex;
+		let start = (int32)mBatch.BoxVertices.Count;
+		int[6] order = .(0, 1, 2, 0, 2, 3);
+		for (let i in order)
+		{
+			boxVertex.Position = corner[i];
+			boxVertex.Local = local[i];
+			mBatch.BoxVertices.Add(boxVertex);
+		}
+
+		var command = CurrentCommand(start, 6);
+		command.DrawMode = .Box;
+		if (!mBatch.Commands.IsEmpty)
+		{
+			var last = ref mBatch.Commands.Back;
+			if ((last.DrawMode == .Box) && (last.StartIndex + last.IndexCount == start)
+				&& (last.BlendMode == command.BlendMode) && (last.ClipMode == command.ClipMode)
+				&& (last.Scissored == command.Scissored) && SameRect(last.ClipRect, command.ClipRect)
+				&& (last.StencilRef == command.StencilRef))
+			{
+				last.IndexCount += 6;
+				return;
+			}
+		}
+		mBatch.Commands.Add(command);
+	}
+
+	/// DrawBox without the box shader: the fill as FillRoundedRect, and the border as the ring
+	/// between the box and its inset (even odd), each inner corner rounded by what is left of its
+	/// radius past the wider neighbouring border.
+	private void TessellateBox(Rectangle rect, CornerRadii radii, Color fill, BorderWidths borders,
+		Color borderColor)
+	{
+		if (fill.A > 0.0f)
+			FillRoundedRect(rect, radii, fill);
+		if (borders.IsZero || (borderColor.A <= 0.0f))
+			return;
+
+		let inner = Rectangle(rect.X + borders.Left, rect.Y + borders.Top,
+			rect.Width - borders.Left - borders.Right, rect.Height - borders.Top - borders.Bottom);
+		let ring = scope PathBuilder();
+		ShapeBuilder.BuildRoundedRect(rect, radii, ring);
+		if ((inner.Width > 0.0f) && (inner.Height > 0.0f))
+		{
+			let innerRadii = CornerRadii(Max(0.0f, radii.TopLeft - Max(borders.Top, borders.Left)),
+				Max(0.0f, radii.TopRight - Max(borders.Top, borders.Right)),
+				Max(0.0f, radii.BottomRight - Max(borders.Bottom, borders.Right)),
+				Max(0.0f, radii.BottomLeft - Max(borders.Bottom, borders.Left)));
+			ShapeBuilder.BuildRoundedRect(inner, innerRadii, ring);
+		}
+		let path = ring.ToPath();
+		defer delete path;
+		FillPath(path, borderColor, .EvenOdd);
 	}
 
 	/// A Gaussian blurred rounded rectangle, which is the UI's box shadow. `rect` and
@@ -1792,6 +1932,9 @@ class VGContext
 	// === transform helpers ===
 
 	private static bool HasClip(Rectangle rect) => (rect.Width > 0.0f) && (rect.Height > 0.0f);
+
+	private static bool SameRect(Rectangle a, Rectangle b)
+		=> (a.X == b.X) && (a.Y == b.Y) && (a.Width == b.Width) && (a.Height == b.Height);
 
 	/// A rectangle clip's state before it was pushed (PushClipRect, and a path clip's scissor
 	/// fallback).
