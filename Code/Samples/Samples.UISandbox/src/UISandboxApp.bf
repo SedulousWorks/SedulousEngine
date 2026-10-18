@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TrueType;
+using Sedulous.Fonts.DistanceField.Baker;
 using Sedulous.Fonts.HarfBuzz;
 using Sedulous.Fonts.Bidi;
 using Sedulous.Graphics;
@@ -329,6 +330,14 @@ class UISandboxApp : IApplication
 		{
 			for (let size in float[](14.0f, 16.0f, 24.0f))
 				LoadFontSize("Roboto Bold", boldPath, size);
+			// A distance-field face for the text effects (outline, shadow and glow read the field):
+			// one bake at 48 px, drawn at any size, its field 12 texels wide so effects reach 6 past
+			// the edge at the bake size.
+			DistanceFieldFonts.Initialize();
+			var fieldOptions = FontLoadOptions.DistanceField();
+			fieldOptions.PixelHeight = 48.0f;
+			fieldOptions.DistanceFieldRange = 12.0f;
+			mFonts.LoadFont("Roboto Field", boldPath, fieldOptions);
 		}
 
 		// The decorative families the pause menu demonstrates. A missing family falls back to
