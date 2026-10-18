@@ -16,12 +16,19 @@ namespace Sedulous.Fonts.HarfBuzz;
 /// splits across a break it would not have split at.
 class HarfBuzzTextShaper : ClusterTextShaper
 {
+	/// A HarfBuzz font for one font file this shaper has shaped with.
+	struct CachedFont
+	{
+		public hb_font_t* Font;
+		/// Which file it reads, compared and never dereferenced.
+		public uint8* Data;
+		public int Size;
+	}
+
 	/// For a font without its file, which HarfBuzz has nothing to read in.
 	private TrueTypeTextShaper mFallback = new .() ~ delete _;
-	private hb_font_t* mFont = null;
-	/// Which file mFont reads, compared and never dereferenced: a shaper serves one font.
-	private uint8* mData = null;
-	private int mSize = 0;
+	/// Its own font, and any a request falls back to.
+	private List<CachedFont> mFonts = new .() ~ delete _;
 
 	public ~this()
 	{
@@ -37,14 +44,76 @@ class HarfBuzzTextShaper : ClusterTextShaper
 	{
 		if (font == null)
 			return mFallback.ShapeText(font, text, startX, startY, outPositions);
-		let hbFont = FontFor(font);
-		if (hbFont == null)
-			return mFallback.ShapeText(font, text, startX, startY, outPositions);
+		IFont[1] fonts = .(font);
+		var request = ShapeRequest(text, fonts);
+		request.StartX = startX;
+		request.StartY = startY;
+		return Shape(request, outPositions);
+	}
 
+	/// Runs by font, then by script within each (a character of no particular script, a space
+	/// or a digit, joins the run around it), each shaped with its direction, script and language;
+	/// runs are laid one after the other: reordering runs is bidi's.
+	public override Result<float, FontLoadResult> Shape(ShapeRequest request, List<GlyphPosition> outPositions)
+	{
 		outPositions.Clear();
 		let codepoints = scope List<uint32>();
-		Decode(text, codepoints);
-		return .Ok(ShapeCodepoints(font, hbFont, codepoints, 0, startX, startY, outPositions));
+		let bytes = scope List<int>();
+		DecodeWithOffsets(request.Text, codepoints, bytes);
+		let runs = scope List<FontRun>();
+		ItemizeByFont(request.Fonts, codepoints, bytes, runs);
+		let language = request.Language.IsEmpty ? HB_LANGUAGE_INVALID
+			: hb_language_from_string(request.Language.Ptr, (int32)request.Language.Length);
+		let direction = (request.Direction == .LeftToRight) ? hb_direction_t.HB_DIRECTION_LTR
+			: ((request.Direction == .RightToLeft) ? hb_direction_t.HB_DIRECTION_RTL : hb_direction_t.HB_DIRECTION_INVALID);
+
+		var x = request.StartX;
+		let fallback = scope List<GlyphPosition>();
+		let run = scope List<uint32>();
+		for (let fontRun in runs)
+		{
+			let font = request.Fonts[fontRun.Font];
+			if (font == null)
+				continue;
+			let first = outPositions.Count;
+			let hbFont = FontFor(font);
+			if (hbFont == null)
+			{
+				// No file to read: the basic shaper, run by run.
+				let text = request.Text.Substring(fontRun.ByteStart, fontRun.ByteEnd - fontRun.ByteStart);
+				if (mFallback.ShapeText(font, text, x, request.StartY, fallback) case .Ok(let advance))
+				{
+					for (var glyph in fallback)
+					{
+						glyph.Cluster += (int32)fontRun.Start;
+						outPositions.Add(glyph);
+					}
+					x += advance;
+				}
+			}
+			else
+			{
+				var start = fontRun.Start;
+				while (start < fontRun.End)
+				{
+					var script = HB_SCRIPT_INVALID;
+					var end = fontRun.End;
+					if (request.Script != 0)
+						script = hb_script_from_iso15924_tag(request.Script);
+					else
+						end = ScriptRunEnd(codepoints, start, fontRun.End, out script);
+					run.Clear();
+					for (int i = start; i < end; i++)
+						run.Add(codepoints[i]);
+					x += ShapeCodepoints(font, hbFont, run, (int32)start, x, request.StartY, outPositions,
+						script, direction, language);
+					start = end;
+				}
+			}
+			for (int i = first; i < outPositions.Count; i++)
+				outPositions[i].Font = fontRun.Font;
+		}
+		return .Ok(x - request.StartX);
 	}
 
 	public override Result<void, FontLoadResult> ShapeTextWrapped(IFont font, StringView text,
@@ -76,7 +145,8 @@ class HarfBuzzTextShaper : ClusterTextShaper
 				run.Add((codepoints[i] != (uint32)'\r') ? codepoints[i] : (uint32)' '); // a CR keeps its character, as a space
 
 			paragraph.Clear();
-			ShapeCodepoints(font, hbFont, run, (int32)start, 0, 0, paragraph);
+			ShapeCodepoints(font, hbFont, run, (int32)start, 0, 0, paragraph,
+				HB_SCRIPT_INVALID, .HB_DIRECTION_INVALID, HB_LANGUAGE_INVALID);
 			y = WrapParagraph(paragraph, codepoints, maxWidth, lineHeight, y, outPositions);
 			if (end >= codepoints.Count)
 				break;
@@ -134,9 +204,11 @@ class HarfBuzzTextShaper : ClusterTextShaper
 	}
 
 	/// Shapes `codepoints` (the characters from `clusterBase` on) and appends their glyphs at
-	/// (startX, startY). Returns the advance.
+	/// (startX, startY). Returns the advance. A script, direction or language left invalid is
+	/// guessed from the characters.
 	private float ShapeCodepoints(IFont font, hb_font_t* hbFont, List<uint32> codepoints,
-		int32 clusterBase, float startX, float startY, List<GlyphPosition> outPositions)
+		int32 clusterBase, float startX, float startY, List<GlyphPosition> outPositions,
+		hb_script_t script, hb_direction_t direction, hb_language_t language)
 	{
 		if (codepoints.IsEmpty)
 			return 0;
@@ -145,7 +217,16 @@ class HarfBuzzTextShaper : ClusterTextShaper
 		defer hb_buffer_destroy(buffer);
 		hb_buffer_set_cluster_level(buffer, .HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
 		hb_buffer_add_utf32(buffer, codepoints.Ptr, (int32)codepoints.Count, 0, (int32)codepoints.Count);
-		hb_buffer_guess_segment_properties(buffer);
+		if (script != HB_SCRIPT_INVALID)
+			hb_buffer_set_script(buffer, script);
+		var direction;
+		if ((direction == .HB_DIRECTION_INVALID) && (script != HB_SCRIPT_INVALID))
+			direction = hb_script_get_horizontal_direction(script);
+		if (direction != .HB_DIRECTION_INVALID)
+			hb_buffer_set_direction(buffer, direction);
+		if (language != HB_LANGUAGE_INVALID)
+			hb_buffer_set_language(buffer, language);
+		hb_buffer_guess_segment_properties(buffer); // fills only what is still unset
 		hb_shape(hbFont, buffer, null, 0);
 
 		uint32 count = 0;
@@ -239,6 +320,25 @@ class HarfBuzzTextShaper : ClusterTextShaper
 			outCodepoints.Add(DecodeCodepoint(text, ref index));
 	}
 
+	/// The end of the script run starting at `start` (within [start, end)), and its script. A
+	/// character of no particular script (common, inherited) belongs to the run it is in.
+	private static int ScriptRunEnd(List<uint32> codepoints, int start, int end, out hb_script_t outScript)
+	{
+		let unicode = hb_unicode_funcs_get_default();
+		outScript = HB_SCRIPT_INVALID;
+		for (int i = start; i < end; i++)
+		{
+			let script = hb_unicode_script(unicode, codepoints[i]);
+			if ((script == HB_SCRIPT_COMMON) || (script == HB_SCRIPT_INHERITED) || (script == HB_SCRIPT_UNKNOWN))
+				continue;
+			if (outScript == HB_SCRIPT_INVALID)
+				outScript = script;
+			else if (script != outScript)
+				return i; // the new script starts a run; spaces before it stay behind
+		}
+		return end;
+	}
+
 	/// The HarfBuzz font for `font`, made once per font file; null when the font has no file
 	/// to read.
 	private hb_font_t* FontFor(IFont font)
@@ -246,26 +346,28 @@ class HarfBuzzTextShaper : ClusterTextShaper
 		let data = font.SourceData;
 		if (data.IsEmpty)
 			return null;
-		if ((mFont != null) && (mData == data.Ptr) && (mSize == data.Length))
-			return mFont;
+		for (let cached in mFonts)
+		{
+			if ((cached.Data == data.Ptr) && (cached.Size == data.Length))
+				return cached.Font;
+		}
 
-		Release();
 		let blob = hb_blob_create((char8*)data.Ptr, (uint32)data.Length, .HB_MEMORY_MODE_READONLY, null, null);
 		let face = hb_face_create(blob, 0);
 		hb_blob_destroy(blob); // the face holds it
-		mFont = hb_font_create(face); // scale is units per em: positions come in font units
+		var cached = CachedFont();
+		cached.Font = hb_font_create(face); // scale is units per em: positions come in font units
 		hb_face_destroy(face); // the font holds it
-		mData = data.Ptr;
-		mSize = data.Length;
-		return mFont;
+		cached.Data = data.Ptr;
+		cached.Size = data.Length;
+		mFonts.Add(cached);
+		return cached.Font;
 	}
 
 	private void Release()
 	{
-		if (mFont != null)
-			hb_font_destroy(mFont);
-		mFont = null;
-		mData = null;
-		mSize = 0;
+		for (let cached in mFonts)
+			hb_font_destroy(cached.Font);
+		mFonts.Clear();
 	}
 }

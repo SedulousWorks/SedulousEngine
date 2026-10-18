@@ -9,6 +9,98 @@ namespace Sedulous.Fonts;
 /// hold for any N to M mapping a shaper makes; a backend implements only the shaping.
 abstract class ClusterTextShaper : ITextShaper
 {
+	/// Characters [Start, End) shaped in one font of the request's list, and their UTF-8 bytes.
+	protected struct FontRun
+	{
+		public int Start;
+		public int End;
+		public int ByteStart;
+		public int ByteEnd;
+		public uint8 Font;
+	}
+
+	/// The text's codepoints, and each one's byte offset, with one more: the text's length.
+	protected static void DecodeWithOffsets(StringView text, List<uint32> outCodepoints, List<int> outByteOffsets)
+	{
+		outCodepoints.Clear();
+		outByteOffsets.Clear();
+		int index = 0;
+		while (index < text.Length)
+		{
+			outByteOffsets.Add(index);
+			outCodepoints.Add(DecodeCodepoint(text, ref index));
+		}
+		outByteOffsets.Add(text.Length);
+	}
+
+	/// A space, a tab, a no-break space, or ASCII digits and punctuation: a character that stays
+	/// in the run around it when that run's font has it, so runs do not split at spaces.
+	private static bool IsNeutral(uint32 codepoint)
+		=> (codepoint == (uint32)' ') || (codepoint == (uint32)'\t') || (codepoint == 0xA0)
+			|| ((codepoint >= 0x21) && (codepoint <= 0x40)) || ((codepoint >= 0x5B) && (codepoint <= 0x60))
+			|| ((codepoint >= 0x7B) && (codepoint <= 0x7E));
+
+	private static bool FontHas(Span<IFont> fonts, int font, uint32 codepoint)
+		=> (fonts[font] != null) && fonts[font].HasGlyph((int32)codepoint);
+
+	/// Runs by font: a character takes the first font of the list that has its glyph (the list is
+	/// in order of preference); a neutral one stays in the current run's font when that has it,
+	/// so runs do not split at spaces; one no font has stays in the current run.
+	protected static void ItemizeByFont(Span<IFont> fonts, List<uint32> codepoints, List<int> byteOffsets,
+		List<FontRun> outRuns)
+	{
+		outRuns.Clear();
+		if (codepoints.IsEmpty || fonts.IsEmpty)
+			return;
+
+		var run = FontRun();
+		for (int i < codepoints.Count)
+		{
+			int font = run.Font;
+			if ((i == 0) || !IsNeutral(codepoints[i]) || !FontHas(fonts, font, codepoints[i]))
+			{
+				for (int candidate = 0; (candidate < fonts.Length) && (candidate < 256); candidate++)
+				{
+					if (FontHas(fonts, candidate, codepoints[i]))
+					{
+						font = candidate;
+						break;
+					}
+				}
+			}
+			if (i == 0)
+			{
+				run.Font = (uint8)font;
+			}
+			else if (font != run.Font)
+			{
+				run.End = i;
+				run.ByteEnd = byteOffsets[i];
+				outRuns.Add(run);
+				run = FontRun();
+				run.Start = i;
+				run.ByteStart = byteOffsets[i];
+				run.Font = (uint8)font;
+			}
+		}
+		run.End = codepoints.Count;
+		run.ByteEnd = byteOffsets[codepoints.Count];
+		outRuns.Add(run);
+	}
+
+	/// Lays glyphs laid out left to right from `startX` out right to left over the same width,
+	/// in drawing order: a right-to-left request to a shaper that only goes left to right.
+	protected static void MirrorLine(List<GlyphPosition> glyphs, int first, float startX, float width)
+	{
+		for (int i = first; i < glyphs.Count; i++)
+		{
+			var glyph = ref glyphs[i];
+			glyph.X = startX + width - (glyph.X - startX) - glyph.Advance;
+		}
+		for (int a = first, b = glyphs.Count; (a + 1) < b; a++, b--)
+			Swap!(glyphs[a], glyphs[b - 1]);
+	}
+
 	// All in characters through clusters (GlyphPosition.Cluster), so they hold for any shaper's
 	// N to M mapping; under the basic shaper every cluster is one character and one glyph.
 

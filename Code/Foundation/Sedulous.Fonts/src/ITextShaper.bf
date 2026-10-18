@@ -8,6 +8,10 @@ namespace Sedulous.Fonts;
 /// asks of a laid out line.
 abstract class ITextShaper
 {
+	/// Shapes a request on one line: glyphs in drawing order from (StartX, StartY), each with
+	/// its cluster, its glyph id and the font of the list it belongs to. Returns the advance.
+	public abstract Result<float, FontLoadResult> Shape(ShapeRequest request, List<GlyphPosition> outPositions);
+
 	/// Lays out from the origin. Returns the total advance width.
 	public abstract Result<float, FontLoadResult> ShapeText(IFont font, StringView text,
 		List<GlyphPosition> outPositions);

@@ -250,4 +250,105 @@ class HarfBuzzShaperTests
 			Test.Assert(cursor > 0.0f, "and it advances");
 		}
 	}
+
+	// ---- the widened request: a font list with fallback, a direction, a script, a language ----
+
+	[Test]
+	public static void ACharacterNoFontBeforeHasTakesTheNextFontInTheList()
+	{
+		let roboto = TestFonts.Load(TestFonts.cRoboto);
+		let dejavu = TestFonts.Load(TestFonts.cDejaVuMono);
+		Test.Assert((roboto != null) && (dejavu != null));
+		defer delete roboto;
+		defer delete dejavu;
+		IFont[2] fonts = .(roboto, dejavu);
+		let shaper = scope HarfBuzzTextShaper();
+		let request = ShapeRequest("a \u{0633}\u{0644}\u{0627}\u{0645} b", fonts); // Roboto has no Arabic
+		let glyphs = scope List<GlyphPosition>();
+		Test.Assert(shaper.Shape(request, glyphs) case .Ok);
+
+		// a and the space after it in Roboto; the Arabic in DejaVu, with the space after it (a
+		// character keeps the run's font when that font has it); b in Roboto again.
+		int arabic = 0;
+		for (let glyph in glyphs)
+		{
+			let inDejaVu = (glyph.Cluster >= 2) && (glyph.Cluster <= 6);
+			Test.Assert(glyph.Font == (inDejaVu ? 1 : 0), scope $"cluster {glyph.Cluster} in font {glyph.Font}");
+			if ((glyph.Cluster >= 2) && (glyph.Cluster <= 5))
+				arabic++;
+		}
+		Test.Assert(arabic == 3, "joined in DejaVu: three glyphs for four characters");
+		// Runs follow on, left to right; the Arabic run reads right to left inside itself.
+		for (int i = 1; i < glyphs.Count; i++)
+			Test.Assert(glyphs[i].X >= glyphs[i - 1].X);
+		Test.Assert(glyphs.Back.Cluster == 7, "b, last");
+	}
+
+	[Test]
+	public static void ARightToLeftRequestReadsRightToLeftAndALanguagePicksItsForms()
+	{
+		let roboto = TestFonts.Load(TestFonts.cRoboto);
+		let dejavu = TestFonts.Load(TestFonts.cDejaVuMono);
+		Test.Assert((roboto != null) && (dejavu != null));
+		defer delete roboto;
+		defer delete dejavu;
+		let shaper = scope HarfBuzzTextShaper();
+		{
+			IFont[1] fonts = .(roboto);
+			var request = ShapeRequest("abc", fonts);
+			request.Direction = .RightToLeft;
+			let glyphs = scope List<GlyphPosition>();
+			Test.Assert(shaper.Shape(request, glyphs) case .Ok);
+			Test.Assert(glyphs.Count == 3);
+			Test.Assert(glyphs[0].Cluster == 2, "c drawn first, leftmost");
+			Test.Assert(glyphs[2].Cluster == 0);
+		}
+		{
+			// DejaVu draws a Serbian be differently from the Russian one.
+			IFont[1] fonts = .(dejavu);
+			var request = ShapeRequest("\u{0431}", fonts);
+			let plain = scope List<GlyphPosition>();
+			Test.Assert(shaper.Shape(request, plain) case .Ok);
+			request.Language = "sr";
+			let serbian = scope List<GlyphPosition>();
+			Test.Assert(shaper.Shape(request, serbian) case .Ok);
+			Test.Assert((plain.Count == 1) && (serbian.Count == 1));
+			Test.Assert(serbian[0].GlyphId != plain[0].GlyphId);
+			Test.Assert(plain[0].GlyphId == dejavu.GetGlyphInfo(0x0431).GlyphIndex);
+			// A script given outright is used for the whole text.
+			request.Language = default;
+			request.Script = ShapeRequest.ScriptTag("Cyrl");
+			let cyrillic = scope List<GlyphPosition>();
+			Test.Assert(shaper.Shape(request, cyrillic) case .Ok);
+			Test.Assert(cyrillic.Count == 1);
+		}
+	}
+
+	[Test]
+	public static void TheBasicShaperTakesTheSameRequestFallingBackByFontAndMirroring()
+	{
+		let roboto = TestFonts.Load(TestFonts.cRoboto);
+		let dejavu = TestFonts.Load(TestFonts.cDejaVuMono);
+		Test.Assert((roboto != null) && (dejavu != null));
+		defer delete roboto;
+		defer delete dejavu;
+		IFont[2] fonts = .(roboto, dejavu);
+		let basic = scope TrueTypeTextShaper();
+		var request = ShapeRequest("a\u{0633}b", fonts);
+		let glyphs = scope List<GlyphPosition>();
+		Test.Assert(basic.Shape(request, glyphs) case .Ok);
+		Test.Assert(glyphs.Count == 3);
+		Test.Assert(glyphs[0].Font == 0);
+		Test.Assert(glyphs[1].Font == 1);
+		Test.Assert(glyphs[1].Cluster == 1);
+		Test.Assert(glyphs[2].Font == 0);
+
+		request.Direction = .RightToLeft;
+		let mirrored = scope List<GlyphPosition>();
+		Test.Assert(basic.Shape(request, mirrored) case .Ok);
+		Test.Assert(mirrored.Count == 3);
+		Test.Assert(mirrored[0].Cluster == 2, "b leftmost");
+		Test.Assert(Near(mirrored[0].X, 0.0f));
+		Test.Assert(Near(mirrored[2].X + mirrored[2].Advance, glyphs[2].X + glyphs[2].Advance));
+	}
 }

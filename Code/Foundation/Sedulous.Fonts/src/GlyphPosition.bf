@@ -22,11 +22,13 @@ struct GlyphPosition
 	/// A shaper's placement deltas: drawn, never advanced.
 	public float XOffset;
 	public float YOffset;
+	/// Which font of the shape request's list drew it (0: the first, or the only).
+	public uint8 Font;
 
 	public this()
 	{
 		Cluster = 0; GlyphId = 0; X = 0; Y = 0; Advance = 0; GlyphInfo = .();
-		ClusterLength = 1; XOffset = 0; YOffset = 0;
+		ClusterLength = 1; XOffset = 0; YOffset = 0; Font = 0;
 	}
 
 	/// The character after this glyph's cluster.
