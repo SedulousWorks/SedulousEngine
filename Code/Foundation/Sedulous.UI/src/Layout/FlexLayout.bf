@@ -80,6 +80,8 @@ class FlexLayout : ViewGroup
 		/// Whether the child asked to Match on the CROSS axis, which needs a second measure at
 		/// the settled line size.
 		public bool MatchCross = false;
+		/// Baseline aligned in a row: its baseline from the top of its margin box.
+		public float? Baseline = null;
 
 		public this() {}
 	}
@@ -90,6 +92,8 @@ class FlexLayout : ViewGroup
 		public int Count = 0;
 		public float Main = 0.0f;
 		public float Cross = 0.0f;
+		/// From the line's top, where its baseline aligned items line up.
+		public float Baseline = 0.0f;
 
 		public this() {}
 	}
@@ -99,6 +103,14 @@ class FlexLayout : ViewGroup
 	private List<FlexLine> mLines = new .() ~ delete _;
 
 	private static float MainOf(Float2 size, bool horizontal) => horizontal ? size.X : size.Y;
+
+	/// A child's baseline from the top of its margin box: the one it reports (a text view's
+	/// first line), or without one the bottom of its border box, as CSS synthesizes it.
+	private static float BaselineOf(View child)
+	{
+		let own = child.GetBaseline();
+		return child.Layout.Margin.Value.Top + ((own >= 0.0f) ? own : child.MeasuredSize.Y);
+	}
 	private static float CrossOf(Float2 size, bool horizontal) => horizontal ? size.Y : size.X;
 
 	private static BoxConstraints MainCross(float minMain, float maxMain, float minCross,
@@ -409,8 +421,25 @@ class FlexLayout : ViewGroup
 		{
 			var line = mLines[lineIndex];
 			line.Cross = 0.0f;
+			line.Baseline = 0.0f;
+			var belowBaseline = 0.0f;
 			for (int i = line.Start; i < line.Start + line.Count; i++)
-				line.Cross = Max(line.Cross, mItems[i].Cross);
+			{
+				var item = mItems[i];
+				line.Cross = Max(line.Cross, item.Cross);
+				// A row's baseline aligned items share the line's baseline, the deepest ascent
+				// above it and the deepest descent below: the line grows to hold both. A column
+				// has no baselines to line up (CSS): those items sit at the start.
+				let alignSelf = item.Child.Layout.AlignSelf;
+				if (horizontal && (((alignSelf != null) ? alignSelf.Value : AlignItems) == .Baseline))
+				{
+					item.Baseline = BaselineOf(item.Child);
+					line.Baseline = Max(line.Baseline, item.Baseline.Value);
+					belowBaseline = Max(belowBaseline, item.Cross - item.Baseline.Value);
+					mItems[i] = item;
+				}
+			}
+			line.Cross = Max(line.Cross, line.Baseline + belowBaseline);
 			mLines[lineIndex] = line;
 		}
 
@@ -482,9 +511,10 @@ class FlexLayout : ViewGroup
 				var finalCross = item.Cross;
 				switch (align)
 				{
-				case .Start, .Baseline:
-					// Baseline falls back to start: real baseline alignment needs the items'
-					// baselines, which the line model does not carry yet.
+				case .Start:
+				case .Baseline:
+					if (item.Baseline.HasValue)
+						itemCrossPos = crossPos + line.Baseline - item.Baseline.Value;
 				case .End: itemCrossPos = crossPos + line.Cross - item.Cross;
 				case .Center: itemCrossPos = crossPos + (line.Cross - item.Cross) * 0.5f;
 				case .Stretch:

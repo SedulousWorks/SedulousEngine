@@ -121,12 +121,26 @@ class Label : View
 
 	/// The first line's baseline, so a row of labels and controls can align on their text
 	/// rather than on their boxes.
+	/// The first line's baseline from the top, at the measured height (where a baseline aligned
+	/// row places it): a single line sits as OnDraw's VAlign puts it; wrapped or several lines
+	/// hug their text, so the first line's ascent.
 	public override float GetBaseline()
 	{
 		if ((Context != null) && (Context.FontService != null))
 		{
 			if (let font = ResolveFont(Context.FontService))
-				return font.Font.Metrics.Ascent;
+			{
+				let metrics = font.Font.Metrics;
+				if (IsWordWrapped || HasNewlines(Text.Value))
+					return metrics.Ascent;
+				let height = MeasuredSize.Y;
+				switch (VAlign.Value)
+				{
+				case .Middle: return ((height - metrics.LineHeight) * 0.5f) + metrics.Ascent;
+				case .Bottom: return height + metrics.Descent;
+				default: return metrics.Ascent;
+				}
+			}
 		}
 		return -1.0f;
 	}

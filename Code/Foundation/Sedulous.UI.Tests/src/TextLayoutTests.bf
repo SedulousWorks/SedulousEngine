@@ -404,4 +404,65 @@ class TextLayoutTests
 		let none = sheet.GetRule(3).GetValue(.TextOutline).Value.AsShadow.Value;
 		Test.Assert(Near(none.Color.A, 0.0f));
 	}
+
+	/// A row aligned to baselines lines its labels' first lines up, and a view with no text
+	/// sits its border box's bottom on that line, as CSS synthesizes its baseline.
+	[Test]
+	public static void ARowAlignedToBaselinesLinesItsLabelsFirstLinesUp()
+	{
+		let fonts = MakeRoboto();
+		if (fonts == null)
+			return;
+		defer delete fonts;
+		let context = scope UIContext();
+		context.SetFontService(fonts);
+		let root = new RootView();
+		defer root.ReleaseRef();
+		UITest.Init(context, root, 400, 300);
+
+		let row = new FlexLayout();
+		row.AlignItems = .Baseline;
+		let big = new Label("Title");
+		big.FontFamily.Value.Set("Roboto");
+		big.FontSize.Value = 32.0f;
+		// Taller than its line, so the line it centres sits below its ascent.
+		var tall = LayoutStyle();
+		tall.Height = .(SizeSpec.Fixed(Unit.Dp(60)), true);
+		big.SetLayout(tall);
+		let small = new Label("note");
+		small.FontFamily.Value.Set("Roboto");
+		small.FontSize.Value = 12.0f;
+		let square = new View();
+		var boxSize = LayoutStyle();
+		boxSize.Width = .(SizeSpec.Fixed(Unit.Dp(10)), true);
+		boxSize.Height = .(SizeSpec.Fixed(Unit.Dp(10)), true);
+		square.SetLayout(boxSize);
+		row.AddView(big);
+		row.AddView(small);
+		row.AddView(square);
+		root.AddView(row);
+		UITest.LayoutPass(context, root);
+
+		Test.Assert(big.GetBaseline() > small.GetBaseline());
+		let bigLine = big.Bounds.Y + big.GetBaseline();
+		let smallLine = small.Bounds.Y + small.GetBaseline();
+		// Within the half pixel each box's position snaps by.
+		Test.Assert(Near(smallLine, bigLine, 0.5f), scope $"{smallLine} vs {bigLine}");
+		Test.Assert(small.Bounds.Y > big.Bounds.Y);
+		Test.Assert(Near(square.Bounds.Y + square.Bounds.Height, bigLine, 0.5f));
+		// The row holds the deepest ascent and the deepest descent.
+		Test.Assert(row.Bounds.Height >= big.Bounds.Height);
+
+		// And the baseline is where the label draws its line: "Title" has no descenders, so
+		// its glyphs end on it (their quads' padding aside).
+		let canvas = scope VGContext();
+		context.DrawRootView(root, canvas);
+		var glyphsEnd = -1.0f;
+		for (let vertex in canvas.GetBatch().Vertices)
+		{
+			if ((vertex.Position.X >= big.Bounds.X) && (vertex.Position.X <= big.Bounds.X + big.Bounds.Width))
+				glyphsEnd = Math.Max(glyphsEnd, vertex.Position.Y);
+		}
+		Test.Assert(Near(glyphsEnd, bigLine, 1.5f), scope $"glyphs end at {glyphsEnd}, the baseline at {bigLine}");
+	}
 }
