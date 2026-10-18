@@ -169,6 +169,65 @@ class VGRenderDispatchTests
 		}
 	}
 
+	/// One analytic box: six box vertices and the Box command drawing them.
+	private static void FillBoxBatch(VGBatch batch, ImageData white, VGCommand command)
+	{
+		batch.Textures.Add(white);
+		for (int i < 6)
+			batch.BoxVertices.Add(.());
+		var withGeometry = command;
+		withGeometry.DrawMode = .Box;
+		withGeometry.StartIndex = 0;
+		withGeometry.IndexCount = 6;
+		batch.Commands.Add(withGeometry);
+	}
+
+	/// A box with NO box shaders is SKIPPED: its vertices are not VG vertices, so no other
+	/// pipeline can read them.
+	[Test]
+	public static void ABoxWithoutItsShadersIsSkipped()
+	{
+		let fixture = scope RendererFixture();
+		uint8[4] pixel = .(255, 255, 255, 255);
+		let white = White(&pixel);
+		defer delete white;
+
+		let batch = scope VGBatch();
+		FillBoxBatch(batch, white, .());
+		Dispatch(fixture, batch);
+
+		Test.Assert(fixture.Renderer.LastRenderStats.Skipped == 1);
+		Test.Assert(fixture.Renderer.LastRenderStats.Drawn == 0);
+	}
+
+	/// WITH them a box draws in every blend mode, plain and inside a clip path. Boxes are the
+	/// last pipeline kind, so a variant table one kind short shows here.
+	[Test]
+	public static void ABoxDrawsInEveryBlendModePlainAndClipped()
+	{
+		let fixture = scope RendererFixture(true, true);
+		uint8[4] pixel = .(255, 255, 255, 255);
+		let white = White(&pixel);
+		defer delete white;
+
+		for (let blend in scope VGBlendMode[](.Normal, .Additive, .Multiply, .Screen))
+		{
+			for (let clipped in scope bool[](false, true))
+			{
+				var command = VGCommand();
+				command.BlendMode = blend;
+				command.ClipMode = clipped ? .Stencil : .None;
+
+				let batch = scope VGBatch();
+				FillBoxBatch(batch, white, command);
+				Dispatch(fixture, batch);
+
+				Test.Assert(fixture.Renderer.LastRenderStats.Drawn == 1);
+				Test.Assert(fixture.Renderer.LastRenderStats.Skipped == 0);
+			}
+		}
+	}
+
 	/// A stencil phase command with NO stencil pipelines is skipped entirely. A context
 	/// should not emit one, but a stale batch must not draw its winding fans as colour.
 	[Test]

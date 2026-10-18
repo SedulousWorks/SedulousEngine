@@ -21,6 +21,8 @@ class RendererFixture
 	public IShaderModule GradRadialShader;
 	public IShaderModule GradConicShader;
 	public IShaderModule BoxShadowShader;
+	public IShaderModule BoxVertexShader;
+	public IShaderModule BoxFragmentShader;
 	public VGRenderer Renderer = new .() ~ delete _;
 
 	public const int32 FrameCount = 2;
@@ -39,6 +41,8 @@ class RendererFixture
 			GradRadialShader = CreateModule();
 			GradConicShader = CreateModule();
 			BoxShadowShader = CreateModule();
+			BoxVertexShader = CreateModule();
+			BoxFragmentShader = CreateModule();
 		}
 
 		var config = VGTargetConfig();
@@ -47,7 +51,7 @@ class RendererFixture
 
 		Test.Assert(Renderer.Initialize(Device, VertexShader, FragmentShader, .BGRA8Unorm,
 			FrameCount, DistanceFieldShader, GradRadialShader, GradConicShader, config,
-			BoxShadowShader) case .Ok);
+			BoxShadowShader, BoxVertexShader, BoxFragmentShader) case .Ok);
 	}
 
 	private IShaderModule CreateModule()
@@ -66,6 +70,8 @@ class RendererFixture
 		delete Renderer;
 		Renderer = null;
 
+		DestroyModule(ref BoxFragmentShader);
+		DestroyModule(ref BoxVertexShader);
 		DestroyModule(ref BoxShadowShader);
 		DestroyModule(ref GradConicShader);
 		DestroyModule(ref GradRadialShader);
