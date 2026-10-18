@@ -33,6 +33,30 @@ struct InputEvent
 	/// An axis value, or a touch pressure.
 	public float Value;
 	public uint64 TouchId;
-	/// UTF-8, null terminated, for TextInput.
-	public char8[32] Text;
+	/// UTF-8, null terminated and in whole characters, for TextInput and TextEditing.
+	public char8[64] Text;
+	/// TextEditing: the caret within the composition, in characters.
+	public int32 EditCursor;
+	/// TextEditing: the characters selected from the caret, nought for none.
+	public int32 EditLength;
+
+	/// Copies null terminated UTF-8 into an event's text, as much as fits in whole characters.
+	public static void CopyEventText(ref char8[64] outText, char8* source)
+	{
+		int n = 0;
+		if (source != null)
+		{
+			while (((n + 1) < outText.Count) && (source[n] != 0))
+				n++;
+			// Back off a character the buffer would cut in two.
+			if (source[n] != 0)
+			{
+				while ((n > 0) && (((uint8)source[n] & 0xC0) == 0x80))
+					n--;
+			}
+			for (int i < n)
+				outText[i] = source[i];
+		}
+		outText[n] = 0;
+	}
 }

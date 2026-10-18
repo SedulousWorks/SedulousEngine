@@ -25,13 +25,17 @@ struct WindowSettings
 	/// A window drawn on the CPU (IWindow.PresentPixels) rather than by the GPU: a splash
 	/// shown before there is a graphics device. Not for a window a swapchain presents to.
 	public bool SoftwareSurface;
+	/// The application draws an IME's composition text itself (TextEditing events), in place
+	/// in its text field, rather than the platform's own box. Read when the shell starts, from
+	/// the first window's settings; a backend without IMEs ignores it.
+	public bool DrawsTextComposition;
 
 	public this()
 	{
 		Title = "Shell"; Width = 1280; Height = 720;
 		Positioned = false; X = 0; Y = 0;
 		Resizable = true; Borderless = false; Fullscreen = .None;
-		Hidden = false; SoftwareSurface = false;
+		Hidden = false; SoftwareSurface = false; DrawsTextComposition = false;
 	}
 }
 

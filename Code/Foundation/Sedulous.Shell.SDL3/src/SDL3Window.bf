@@ -165,6 +165,14 @@ class SDL3Window : IWindow
 		}
 	}
 
+	public void SetTextInputArea(int32 x, int32 y, int32 width, int32 height, int32 caretX)
+	{
+		if (mWindow == null)
+			return;
+		var area = SDL_Rect() { x = x, y = y, w = width, h = height };
+		SDL3.SDL_SetTextInputArea(mWindow, &area, caretX);
+	}
+
 	public void StopTextInput()
 	{
 		if ((mWindow != null) && mTextInputActive)

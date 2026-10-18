@@ -212,6 +212,12 @@ class NullShellTests
 		Test.Assert(window.IsTextInputActive);
 		window.StopTextInput();
 		Test.Assert(!window.IsTextInputActive);
+
+		// Where text is typed is recorded, as its place is.
+		window.SetTextInputArea(10, 20, 100, 16, 30);
+		let area = (window as NullWindow).LastTextInputArea;
+		Test.Assert((area.x == 10) && (area.y == 20) && (area.width == 100) && (area.height == 16)
+			&& (area.caretX == 30));
 	}
 
 	/// The clipboard round trips in memory, so a headless test of cut, copy and paste
@@ -310,5 +316,37 @@ class NullShellTests
 		let dropped = scope List<DroppedFile>();
 		shell.DrainDroppedFiles(dropped);
 		Test.Assert(dropped.IsEmpty);
+	}
+
+	/// An input event's text keeps whole characters when it is cut to fit.
+	[Test]
+	public static void AnEventsTextIsCutBetweenWholeCharacters()
+	{
+		var e = InputEvent();
+		// 22 three byte characters (66 bytes): 21 fit (63 bytes and the terminator), and the
+		// last is left out whole rather than cut in two.
+		char8[3 * 22 + 1] source = default;
+		for (int i < 22)
+		{
+			source[i * 3] = (char8)0xE6;
+			source[i * 3 + 1] = (char8)0x97;
+			source[i * 3 + 2] = (char8)0xA5;
+		}
+		InputEvent.CopyEventText(ref e.Text, &source[0]);
+		Test.Assert(StringView(&e.Text[0]).Length == 63);
+
+		// One byte ahead puts the cut inside the 21st character, which is left out whole:
+		// 'a' and 20 characters, 61 bytes.
+		char8[1 + 3 * 22 + 1] shifted = default;
+		shifted[0] = 'a';
+		for (int i < 3 * 22)
+			shifted[1 + i] = source[i];
+		InputEvent.CopyEventText(ref e.Text, &shifted[0]);
+		Test.Assert(StringView(&e.Text[0]).Length == 61, scope $"{StringView(&e.Text[0]).Length} bytes");
+
+		InputEvent.CopyEventText(ref e.Text, "short");
+		Test.Assert(StringView(&e.Text[0]) == "short");
+		InputEvent.CopyEventText(ref e.Text, null);
+		Test.Assert(StringView(&e.Text[0]).Length == 0);
 	}
 }

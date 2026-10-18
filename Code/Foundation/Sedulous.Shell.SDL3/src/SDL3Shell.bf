@@ -29,6 +29,10 @@ class SDL3Shell : IShell
 		mDialogs = new SDL3DialogService(mWindows);
 
 		SDL3.SDL_SetMainReady();
+		// An application that draws the IME's composition in its fields asks for its text (SDL
+		// reads the hint as it starts).
+		if (settings.DrawsTextComposition)
+			SDL3.SDL_SetHint(SDL3.SDL_HINT_IME_IMPLEMENTED_UI, "composition");
 		if (!SDL3.SDL_Init(.SDL_INIT_VIDEO | .SDL_INIT_GAMEPAD))
 		{
 			mRunning = false;
@@ -213,18 +217,19 @@ class SDL3Shell : IShell
 				var e = InputEvent();
 				e.Kind = .TextInput;
 				e.Window = (uint32)event.text.windowID;
-				if (event.text.text != null)
-				{
-					var n = 0;
-					// Bounded by the payload, so a long composition is TRUNCATED rather than
-					// written past the end of a fixed array.
-					while (((n + 1) < e.Text.Count) && (event.text.text[n] != 0))
-					{
-						e.Text[n] = (char8)event.text.text[n];
-						n++;
-					}
-					e.Text[n] = 0;
-				}
+				// Bounded by the payload, so a long composition is TRUNCATED, between whole
+				// characters, rather than written past the end of a fixed array.
+				InputEvent.CopyEventText(ref e.Text, event.text.text);
+				mInput.EmitEvent(e);
+
+			case .SDL_EVENT_TEXT_EDITING:
+				// An IME's composition, when the application draws it (DrawsTextComposition).
+				var e = InputEvent();
+				e.Kind = .TextEditing;
+				e.Window = (uint32)event.edit.windowID;
+				InputEvent.CopyEventText(ref e.Text, event.edit.text);
+				e.EditCursor = event.edit.start;
+				e.EditLength = event.edit.length;
 				mInput.EmitEvent(e);
 
 			case .SDL_EVENT_MOUSE_MOTION:

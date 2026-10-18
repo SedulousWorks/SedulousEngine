@@ -34,6 +34,9 @@ interface IWindow
 	void StartTextInput();
 	void StopTextInput();
 	bool IsTextInputActive { get; }
+	/// Where the text being typed is, in window coordinates, and the caret's x within it: an
+	/// IME places its candidate list beside it. A backend without IMEs ignores it.
+	void SetTextInputArea(int32 x, int32 y, int32 width, int32 height, int32 caretX) {}
 
 	/// The window's icon (its title bar, the taskbar, the window switcher): the first image at
 	/// the normal scale, any others the same icon for larger display scales. The images are

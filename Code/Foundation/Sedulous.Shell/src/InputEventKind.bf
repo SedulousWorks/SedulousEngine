@@ -15,4 +15,6 @@ enum InputEventKind : uint8
 	case TouchDown;
 	case TouchMove;
 	case TouchUp;
+	/// An IME's composition so far, empty when it ended (WindowSettings.DrawsTextComposition).
+	case TextEditing;
 }

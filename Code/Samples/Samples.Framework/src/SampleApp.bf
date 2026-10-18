@@ -70,6 +70,9 @@ abstract class SampleApp
 	protected virtual TextureFormat SwapChainFormat => .RGBA8UnormSrgb;
 	protected virtual PresentMode PresentMode => .Fifo;
 	protected virtual uint32 BufferCount => 2;
+	/// Whether the sample draws an IME's composition in its own text fields (the shell then
+	/// sends it the composition, WindowSettings.DrawsTextComposition).
+	protected virtual bool DrawsTextComposition => false;
 
 	/// How many DEDICATED compute queues the sample needs.
 	///
@@ -236,6 +239,7 @@ abstract class SampleApp
 		settings.Title = Title;
 		settings.Width = mWidth;
 		settings.Height = mHeight;
+		settings.DrawsTextComposition = DrawsTextComposition;
 
 		mShell = new SDL3Shell(settings);
 		mWindow = mShell.MainWindow;
