@@ -441,4 +441,50 @@ class VGRendererTests
 		fixture.Device.DestroyTextureView(ref view);
 		fixture.Device.DestroyTexture(ref texture);
 	}
+
+	/// The quality pass's targets: off until configured, then created, resized and described.
+	[Test]
+	public static void PassTargetsConfigureCreateResizeAndDescribeTheQualityPass()
+	{
+		let fixture = scope RendererFixture();
+		let targets = scope VGPassTargets(); // released before the fixture's device
+		Test.Assert(!targets.IsValid);
+		Test.Assert(targets.ConfigFor().SampleCount == 1, "off: a plain pass");
+
+		targets.Configure(fixture.Device);
+		Test.Assert(targets.IsValid);
+		Test.Assert(targets.StencilFormat != .Undefined);
+		let config = targets.ConfigFor(.Encoded);
+		Test.Assert(config.SampleCount == VGPassTargets.DefaultSamples);
+		Test.Assert(config.DepthStencilFormat == targets.StencilFormat);
+		Test.Assert(config.BlendSpace == .Encoded);
+
+		Test.Assert(targets.Create(.BGRA8Unorm, 64, 32));
+		Test.Assert(targets.Matches(64, 32));
+		Test.Assert(!targets.NeedsResize(64, 32));
+		Test.Assert(targets.NeedsResize(80, 32));
+		Test.Assert(!targets.NeedsResize(0, 0), "a minimised window keeps its targets");
+		Test.Assert(targets.Resize(80, 32));
+		Test.Assert(targets.Matches(80, 32));
+
+		// The pass: one colour attachment resolved into the given view, the stencil cleared.
+		var encoderPool = fixture.Device.CreateCommandPool(.Graphics).Value;
+		defer fixture.Device.DestroyCommandPool(ref encoderPool);
+		var encoder = encoderPool.CreateEncoder().Value;
+		defer encoderPool.DestroyEncoder(ref encoder);
+		let pass = targets.BeginPass(encoder, null, ClearColor.Black, "test pass");
+		Test.Assert(pass.ColorAttachments.Count == 1);
+		Test.Assert(pass.ColorAttachments[0].LoadOp == .Clear);
+		Test.Assert(pass.ColorAttachments[0].StoreOp == .DontCare);
+		Test.Assert(pass.DepthStencilAttachment.HasValue);
+		Test.Assert(pass.DepthStencilAttachment.Value.StencilLoadOp == .Clear);
+		Test.Assert(pass.DepthStencilAttachment.Value.StencilClearValue == 0);
+		Test.Assert(pass.Label == "test pass");
+
+		// A zero size creates nothing, and leaves the targets off until the next Create.
+		Test.Assert(!targets.Create(.BGRA8Unorm, 0, 0));
+		Test.Assert(!targets.Matches(80, 32));
+		Test.Assert(!targets.NeedsResize(80, 32));
+		Test.Assert(!targets.Resize(80, 32), "off: a resize does not bring them back");
+	}
 }

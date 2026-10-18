@@ -185,7 +185,6 @@ class UIHost
 
 		let data = new UIWindowData();
 		data.Root = root;
-		data.Device = mDevice.Raw;
 
 		BuildWindowRenderer(data, window);
 		BuildWindowSurface(data, window);
@@ -212,22 +211,16 @@ class UIHost
 
 		// The renderer's pipelines must MATCH the pass, so the target configuration is decided
 		// before the renderer is initialised, and any failure falls back wholesale.
-		data.DepthStencilFormat = VGRenderer.PickStencilCapableFormat(data.Device,
-			UIWindowData.MsaaSamples);
+		data.Targets.Configure(mDevice.Raw);
 
 		// Encoded when asked for and the swap chain offers its UNORM view; else linear.
 		data.Encoded = (mBlendSpace == .Encoded) && (window.Swap.AlternateViewFormat != .Undefined);
 		data.DrawFormat = data.Encoded ? window.Swap.AlternateViewFormat : window.Swap.Format;
-		let targetsOk = data.CreateTargets(data.DrawFormat, window.Window.Width,
+		let targetsOk = data.Targets.Create(data.DrawFormat, window.Window.Width,
 			window.Window.Height);
-
-		var targetConfig = VGTargetConfig();
-		if (targetsOk)
-		{
-			targetConfig.SampleCount = UIWindowData.MsaaSamples;
-			targetConfig.DepthStencilFormat = data.DepthStencilFormat;
-		}
-		targetConfig.BlendSpace = data.Encoded ? .Encoded : .Linear;
+		VGBlendSpace blendSpace = data.Encoded ? .Encoded : .Linear;
+		var targetConfig = targetsOk ? data.Targets.ConfigFor(blendSpace) : VGTargetConfig();
+		targetConfig.BlendSpace = blendSpace;
 
 		data.Renderer.Initialize(mDevice.Raw, mVertexShader, mFragmentShader, data.DrawFormat,
 			(int32)mDevice.FramesInFlight, mDistanceFieldShader, mGradientRadialShader,
@@ -547,10 +540,15 @@ class UIHost
 
 	private void RecreateTargets(AttachedWindow attached, float width, float height)
 	{
+		// Only targets that exist: a window whose first creation failed has a renderer built
+		// for the plain pass, and stays on it.
+		if (!attached.Data.Targets.NeedsResize((uint32)width, (uint32)height))
+			return;
+
 		if (mDevice.Raw != null)
 			mDevice.Raw.WaitIdle();
 
-		attached.Data.CreateTargets(attached.Data.DrawFormat, (uint32)width, (uint32)height);
+		attached.Data.Targets.Resize((uint32)width, (uint32)height);
 	}
 
 	/// Pumps one window at LIVE desktop coordinates mapped into its own space.
@@ -599,7 +597,7 @@ class UIHost
 		if (frame.Encoder != null)
 			data.Renderer.RenderLayers(frame.Encoder, (int32)frame.FrameIndex, slice);
 
-		if (data.TargetsMatch(frame.Width, frame.Height) && (frame.Encoder != null))
+		if (data.Targets.Matches(frame.Width, frame.Height) && (frame.Encoder != null))
 		{
 			RenderQualityPass(ref frame, data, slice);
 			return;
@@ -612,33 +610,11 @@ class UIHost
 	/// stencil cleared.
 	private void RenderQualityPass(ref FrameContext frame, UIWindowData data, VGRenderSlice slice)
 	{
-		// The host transitions only the backbuffer, so the per-window attachments need their
-		// own. From Undefined every frame: both are fully cleared, so the previous contents
-		// are discardable.
-		frame.Encoder.TransitionTexture(data.MsaaColor, .Undefined, .RenderTarget);
-		frame.Encoder.TransitionTexture(data.DepthStencil, .Undefined, .DepthStencilWrite);
-
-		var color = ColorAttachment();
-		color.View = data.MsaaColorView;
-		color.ResolveTarget = data.Encoded ? frame.BackbufferAlternateView : frame.BackbufferView;
-		color.LoadOp = .Clear;
-		// Resolved, so the multisampled texels can be dropped.
-		color.StoreOp = .DontCare;
-		color.ClearValue = data.Encoded ? mClearColorEncoded : mClearColor;
-
-		var depthStencil = DepthStencilAttachment();
-		depthStencil.View = data.DepthStencilView;
-		depthStencil.DepthLoadOp = .Clear;
-		depthStencil.DepthStoreOp = .DontCare;
-		// Stencil-then-cover expects to start from nought.
-		depthStencil.StencilLoadOp = .Clear;
-		depthStencil.StencilStoreOp = .DontCare;
-		depthStencil.StencilClearValue = 0;
-
-		var pass = RenderPassDesc();
-		pass.ColorAttachments.Add(color);
-		pass.DepthStencilAttachment = depthStencil;
-		pass.Label = "UI (msaa+stencil)";
+		// The host transitions only the backbuffer, so the per-window attachments get their
+		// own transitions here.
+		let pass = data.Targets.BeginPass(frame.Encoder,
+			data.Encoded ? frame.BackbufferAlternateView : frame.BackbufferView,
+			data.Encoded ? mClearColorEncoded : mClearColor, "UI (msaa+stencil)");
 
 		if (let renderPass = frame.Encoder.BeginRenderPass(pass))
 		{
