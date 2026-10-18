@@ -1,0 +1,13 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Fonts.HarfBuzz.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Fonts.HarfBuzz.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.TrueType" = "*"
+"Sedulous.Fonts.HarfBuzz" = "*"

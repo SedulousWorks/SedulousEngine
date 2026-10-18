@@ -1,0 +1,13 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Fonts.HarfBuzz"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Fonts.HarfBuzz.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.Fonts.TrueType" = "*"
+"harfbuzz-Beef" = "*"
