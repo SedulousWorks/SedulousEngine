@@ -9,11 +9,21 @@ namespace Sedulous.Engine.Render.Tests;
 /// The screen overlay pass: what it tells the window space overlays about their target.
 class ScreenOverlayTests
 {
-	/// Records the view each pass hands it.
+	/// Records the view each pass hands it, and the one its prepare step had.
 	private class RecordingOverlay : IScreenOverlay
 	{
 		public ScreenOverlayView Last;
+		public ScreenOverlayView Prepared;
 		public int Calls;
+		public int Prepares;
+		public bool PreparedBeforeRender;
+
+		public void PrepareOverlay(ICommandEncoder encoder, ScreenOverlayView view)
+		{
+			Prepared = view;
+			Prepares++;
+			PreparedBeforeRender = Prepares == Calls + 1;
+		}
 
 		public void Render(IRenderPassEncoder encoder, ScreenOverlayView view)
 		{
@@ -61,6 +71,12 @@ class ScreenOverlayTests
 		Test.Assert(overlay.Calls == 2);
 		Test.Assert(overlay.Last.EncodedTarget);
 		Test.Assert(overlay.Last.TargetFormat == .RGBA8Unorm);
+		// Each pass is prepared first, outside it, with the view the pass then hands the overlay.
+		Test.Assert(overlay.Prepares == 2);
+		Test.Assert(overlay.PreparedBeforeRender);
+		Test.Assert(overlay.Prepared.EncodedTarget);
+		Test.Assert(overlay.Prepared.TargetFormat == overlay.Last.TargetFormat);
+		Test.Assert(overlay.Prepared.DepthStencilFormat == overlay.Last.DepthStencilFormat);
 
 		// A target with no twin draws as it is, whatever view is offered.
 		subsystem.RenderOverlays(encoder, view, .RGBA16Float, 8, 8, 0, unorm);
