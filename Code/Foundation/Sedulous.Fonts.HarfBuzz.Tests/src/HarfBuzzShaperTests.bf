@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TrueType;
 using Sedulous.Fonts.HarfBuzz;
+using Sedulous.Fonts.Bidi;
 using Sedulous.Fonts.DistanceField.Baker;
 
 namespace Sedulous.Fonts.HarfBuzz.Tests;
@@ -378,5 +379,118 @@ class HarfBuzzShaperTests
 		Test.Assert(Near(shaper.GetCursorPosition(dejavu, span, 4), glyphs[0].X), "the end, at the left");
 		Test.Assert(shaper.HitTest(dejavu, span, seen.X + seen.Advance * 0.9f, 0.0f).InsertionIndex == 0);
 		Test.Assert(shaper.HitTest(dejavu, span, seen.X + seen.Advance * 0.1f, 0.0f).InsertionIndex == 1);
+	}
+
+	// ---- bidi: a right-to-left paragraph with Latin inside lays out, hit tests and wraps in
+	// visual order ----
+
+	[Test]
+	public static void TheResolverGivesArabicOddLevelsAndFindsAParagraphsDirection()
+	{
+		let resolver = BidiAlgorithm.Resolver;
+		let levels = scope BidiLevels();
+		uint32[7] leftToRight = .((.)'a', (.)'b', (.)' ', 0x0633, 0x0644, (.)' ', (.)'c');
+		resolver.Resolve(leftToRight, .Auto, levels);
+		Test.Assert(levels.Levels.Count == 7);
+		Test.Assert(levels.ParagraphLevel == 0);
+		Test.Assert(levels.Levels[0] == 0);
+		Test.Assert(levels.Levels[3] == 1);
+		Test.Assert(levels.Levels[4] == 1);
+		Test.Assert(levels.Levels[6] == 0);
+		uint32[5] rightToLeft = .(0x0633, (.)' ', (.)'a', (.)'b', 0x0644);
+		resolver.Resolve(rightToLeft, .Auto, levels);
+		Test.Assert(levels.ParagraphLevel == 1, "its first strong character is Arabic");
+		Test.Assert(levels.Levels[2] == 2, "the Latin inside, one level up");
+	}
+
+	[Test]
+	public static void ARightToLeftParagraphWithLatinInsideReadsRightToLeftAndHitTests()
+	{
+		let font = TestFonts.Load(TestFonts.cDejaVuMono);
+		Test.Assert(font != null);
+		defer delete font;
+		BidiAlgorithm.Install();
+		defer BidiAlgorithm.Uninstall();
+		let shaper = scope HarfBuzzTextShaper();
+		let glyphs = scope List<GlyphPosition>();
+		// salaam, a space, then "world": an Arabic paragraph.
+		Test.Assert(shaper.ShapeText(font, "\u{0633}\u{0644}\u{0627}\u{0645} world", glyphs) case .Ok);
+
+		float arabicLeft = 1e9f, latinRight = -1e9f, right = 0;
+		int seen = -1;
+		float wx = 0, dx = 0;
+		for (int i < glyphs.Count)
+		{
+			let glyph = glyphs[i];
+			if (glyph.Cluster <= 3)
+			{
+				arabicLeft = Math.Min(arabicLeft, glyph.X);
+				Test.Assert(glyph.RightToLeft);
+			}
+			if (glyph.Cluster >= 5)
+				latinRight = Math.Max(latinRight, glyph.X + glyph.Advance);
+			if (glyph.Cluster == 0)
+				seen = i;
+			if (glyph.Cluster == 5)
+				wx = glyph.X;
+			if (glyph.Cluster == 9)
+				dx = glyph.X;
+			right = Math.Max(right, glyph.X + glyph.Advance);
+		}
+		Test.Assert(latinRight <= arabicLeft + 0.01f, "the Latin on the left, the Arabic on the right");
+		Test.Assert(seen >= 0);
+		let first = glyphs[seen];
+		Test.Assert(Near(first.X + first.Advance, right), "the first character rightmost");
+		Test.Assert(wx < dx, "world reads left to right inside");
+
+		// The caret before the paragraph is at its right edge; a hit on the right half of its
+		// first character puts the caret before it, on the left half after it.
+		Span<GlyphPosition> span = glyphs;
+		Test.Assert(Near(shaper.GetCursorPosition(font, span, 0), right));
+		Test.Assert(shaper.HitTest(font, span, first.X + first.Advance * 0.9f, 0.0f).InsertionIndex == 0);
+		Test.Assert(shaper.HitTest(font, span, first.X + first.Advance * 0.1f, 0.0f).InsertionIndex == 1);
+	}
+
+	[Test]
+	public static void AWrappedRightToLeftParagraphReordersEachLine()
+	{
+		let font = TestFonts.Load(TestFonts.cDejaVuMono, 20.0f);
+		Test.Assert(font != null);
+		defer delete font;
+		BidiAlgorithm.Install();
+		defer BidiAlgorithm.Uninstall();
+		let shaper = scope HarfBuzzTextShaper();
+
+		// Three Arabic words; a width that holds two.
+		let one = scope List<GlyphPosition>();
+		Test.Assert(shaper.ShapeText(font, "\u{0633}\u{0644}\u{0627}\u{0645} ", one) case .Ok);
+		float word = 0;
+		for (let glyph in one)
+			word += glyph.Advance;
+		let glyphs = scope List<GlyphPosition>();
+		Test.Assert(shaper.ShapeTextWrapped(font,
+			"\u{0633}\u{0644}\u{0627}\u{0645} \u{0633}\u{0644}\u{0627}\u{0645} \u{0633}\u{0644}\u{0627}\u{0645}",
+			word * 2.2f, glyphs, let height) case .Ok);
+		let lineHeight = font.Metrics.LineHeight;
+		Test.Assert(Near(height, lineHeight * 2.0f), scope $"height {height}");
+
+		// The first word (clusters 0 to 3) is on the first line, to the right of the second.
+		float firstLeft = 1e9f, secondRight = -1e9f;
+		for (let glyph in glyphs)
+		{
+			if (glyph.Cluster <= 3)
+			{
+				Test.Assert(Near(glyph.Y, 0.0f));
+				firstLeft = Math.Min(firstLeft, glyph.X);
+			}
+			if ((glyph.Cluster >= 5) && (glyph.Cluster <= 8))
+			{
+				Test.Assert(Near(glyph.Y, 0.0f));
+				secondRight = Math.Max(secondRight, glyph.X + glyph.Advance);
+			}
+			if (glyph.Cluster >= 10)
+				Test.Assert(Near(glyph.Y, lineHeight));
+		}
+		Test.Assert(secondRight <= firstLeft + 0.01f);
 	}
 }

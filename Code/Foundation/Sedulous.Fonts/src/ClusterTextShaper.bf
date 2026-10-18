@@ -69,7 +69,7 @@ abstract class ClusterTextShaper : ITextShaper
 		}
 
 		let runs = scope List<BidiRun>();
-		Bidi.ReorderLine(levels, .(codepoints.Ptr + levelBase, codepoints.Count - levelBase),
+		BidiReorder.ReorderLine(levels, .(codepoints.Ptr + levelBase, codepoints.Count - levelBase),
 			start - levelBase, end - levelBase, runs);
 		var x;
 		let startX = x;

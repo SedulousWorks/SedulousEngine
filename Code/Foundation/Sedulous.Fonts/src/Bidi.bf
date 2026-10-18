@@ -51,7 +51,7 @@ static class BidiResolverFactory
 
 /// Lays a line out in visual runs from its paragraph's levels: rules L1 and L2 of UAX #9,
 /// simple enough to keep here rather than behind the resolver.
-static class Bidi
+static class BidiReorder
 {
 	/// Whitespace for rule L1: a line's trailing whitespace takes the paragraph's level.
 	public static bool IsWhitespace(uint32 codepoint)

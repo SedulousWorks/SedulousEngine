@@ -1,0 +1,11 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Fonts.Bidi"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Fonts.Bidi.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Fonts" = "*"
+"sheenbidi-Beef" = "*"
