@@ -1,0 +1,11 @@
+FileVersion = 1
+Projects = {harfbuzz-Beef = {Path = "."}, harfbuzz-Beef-Test = {Path = "harfbuzz-Beef-Test"}}
+
+[Workspace]
+StartupProject = "harfbuzz-Beef-Test"
+
+[Configs.Test.Win32]
+ConfigSelections = {corlib = {Config = "Debug"}}
+
+[Configs.Test.Win64]
+ConfigSelections = {corlib = {Config = "Debug"}}

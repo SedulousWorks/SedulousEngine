@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", harfbuzz-Beef = "*"}
+
+[Project]
+Name = "harfbuzz-Beef-Test"
+StartupObject = "harfbuzz_Beef_Test.Program"
