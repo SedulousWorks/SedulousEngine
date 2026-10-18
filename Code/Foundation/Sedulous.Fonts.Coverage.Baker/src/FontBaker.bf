@@ -38,8 +38,11 @@ static class FontBaker
 		}
 		defer delete source;
 
+		// The range's glyphs, and what the registered shaper's substitutions reach from them.
+		let reachable = scope List<int32>();
+		TextShaperFactory.ReachableGlyphs(source, options, reachable);
 		let rasterized = scope TrueTypeFontAtlas();
-		let atlasResult = rasterized.Create(source, options);
+		let atlasResult = rasterized.Create(source, options, reachable);
 		if (atlasResult != .Success)
 			return .Err(atlasResult);
 

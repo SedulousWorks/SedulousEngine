@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TrueType;
 using Sedulous.Fonts.HarfBuzz;
+using Sedulous.Fonts.DistanceField.Baker;
 
 namespace Sedulous.Fonts.HarfBuzz.Tests;
 
@@ -173,6 +174,80 @@ class HarfBuzzShaperTests
 			let glyphs = scope List<GlyphPosition>();
 			Test.Assert(font.Shaper.ShapeText(font.Font, "fi", glyphs) case .Ok);
 			Test.Assert(glyphs.Count == 2, "the basic shaper again");
+		}
+	}
+
+	[Test]
+	public static void TheGlyphsSubstitutionsReachAreNamedAndBakersBakeThem()
+	{
+		let font = TestFonts.Load(TestFonts.cRoboto);
+		Test.Assert(font != null);
+		defer delete font;
+		let shaper = scope HarfBuzzTextShaper();
+		let shaped = scope List<GlyphPosition>();
+		Test.Assert(shaper.ShapeText(font, "fi", shaped) case .Ok);
+		Test.Assert(shaped.Count == 1);
+		let ligature = shaped[0].GlyphId;
+
+		// Reachable from f and i: the ligature, which no codepoint maps to.
+		int32[2] range = .((int32)'f', (int32)'i');
+		let reachable = scope List<int32>();
+		shaper.CollectReachableGlyphs(font, range, reachable);
+		Test.Assert(reachable.Contains(ligature));
+		Test.Assert(!reachable.Contains(font.GetGlyphInfo((int32)'f').GlyphIndex), "the codepoints' own glyphs are not repeated");
+
+		// With HarfBuzz installed, a coverage atlas and a distance-field atlas both hold it.
+		TrueTypeFonts.Initialize();
+		DistanceFieldFonts.Initialize();
+		HarfBuzzShaping.Install();
+		var options = FontLoadOptions.Default();
+		options.PixelHeight = 32.0f;
+		{
+			Test.Assert(FontAtlasBakerFactory.Bake(font, options) case .Ok(let coverage));
+			defer delete coverage;
+			Test.Assert(coverage.Contains(ligature));
+			Test.Assert(coverage.GlyphFor((int32)'f') != ligature);
+		}
+		{
+			var distanceField = FontLoadOptions.DistanceField();
+			distanceField.FirstCodepoint = (int32)'a';
+			distanceField.LastCodepoint = (int32)'z';
+			Test.Assert(FontAtlasBakerFactory.Bake(font, distanceField) case .Ok(let field));
+			defer delete field;
+			Test.Assert(field.Contains(ligature));
+		}
+		HarfBuzzShaping.Uninstall();
+
+		// Without it, the basic shaper reaches nothing more, and the atlas holds only the range.
+		Test.Assert(FontAtlasBakerFactory.Bake(font, options) case .Ok(let plain));
+		defer delete plain;
+		Test.Assert(!plain.Contains(ligature));
+	}
+
+	[Test]
+	public static void ThroughAFontServiceEveryGlyphOfShapedTextHasItsPlaceInTheAtlas()
+	{
+		let path = scope String();
+		Test.Assert(TestFonts.FindPath(TestFonts.cRoboto, path));
+		var options = FontLoadOptions.Default();
+		options.PixelHeight = 24.0f;
+
+		HarfBuzzShaping.Install();
+		defer HarfBuzzShaping.Uninstall();
+		let service = scope TrueTypeFontService();
+		Test.Assert(service.LoadFont("Roboto", path, options) == .Success);
+		let font = service.GetFont("Roboto", 24.0f);
+		Test.Assert(font != null);
+		let glyphs = scope List<GlyphPosition>();
+		Test.Assert(font.Shaper.ShapeText(font.Font, "office fluff", glyphs) case .Ok);
+		Test.Assert(glyphs.Count < 12, "the ligatures shaped");
+		for (let glyph in glyphs)
+		{
+			float cursor = 0.0f;
+			let drawn = font.Atlas.GetGlyphQuad(glyph.GlyphId, ref cursor, 0.0f, ?);
+			// A space draws nothing but advances; everything else, the ligatures too, draws.
+			Test.Assert(drawn || (glyph.GlyphInfo.Codepoint == (int32)' '), scope $"glyph {glyph.GlyphId} drawable");
+			Test.Assert(cursor > 0.0f, "and it advances");
 		}
 	}
 }

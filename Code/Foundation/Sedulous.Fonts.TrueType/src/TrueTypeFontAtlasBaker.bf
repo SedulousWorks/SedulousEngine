@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Fonts;
 
@@ -26,8 +27,11 @@ class TrueTypeFontAtlasBaker : IFontAtlasBaker
 		if (!CanBake(font))
 			return .Err(.UnsupportedFormat);
 
+		// The range's glyphs, and what the registered shaper's substitutions reach from them.
+		let reachable = scope List<int32>();
+		TextShaperFactory.ReachableGlyphs(font, options, reachable);
 		let atlas = new TrueTypeFontAtlas();
-		let result = atlas.Create((TrueTypeFont)font, options);
+		let result = atlas.Create((TrueTypeFont)font, options, reachable);
 		if (result != .Success)
 		{
 			delete atlas;

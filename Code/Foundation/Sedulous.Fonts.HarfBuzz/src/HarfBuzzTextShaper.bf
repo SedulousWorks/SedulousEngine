@@ -87,6 +87,52 @@ class HarfBuzzTextShaper : ClusterTextShaper
 		return .Ok;
 	}
 
+	/// The features shaping turns on by default whose substitutions bring in glyphs:
+	/// ligatures, contextual and positional forms, the Indic and Arabic ones.
+	private const String[?] cClosureFeatures = .("ccmp", "locl", "rlig", "liga", "clig", "calt", "rclt",
+		"isol", "init", "medi", "med2", "fina", "fin2", "fin3", "nukt", "akhn", "rphf", "rkrf", "pref",
+		"blwf", "abvf", "half", "pstf", "vatu", "cjct", "pres", "abvs", "blws", "psts", "haln", "ljmo",
+		"vjmo", "tjmo");
+
+	/// The GSUB closure of the codepoints' glyphs under those features, less the glyphs the
+	/// codepoints map to themselves.
+	public override void CollectReachableGlyphs(IFont font, Span<int32> codepoints, List<int32> outGlyphs)
+	{
+		outGlyphs.Clear();
+		let hbFont = FontFor(font);
+		if (hbFont == null)
+			return;
+		let face = hb_font_get_face(hbFont);
+
+		let nominal = hb_set_create();
+		defer hb_set_destroy(nominal);
+		for (let codepoint in codepoints)
+		{
+			hb_codepoint_t glyph = 0;
+			if ((codepoint > 0) && (hb_font_get_nominal_glyph(hbFont, (uint32)codepoint, &glyph) != 0))
+				hb_set_add(nominal, glyph);
+		}
+
+		hb_tag_t[cClosureFeatures.Count + 1] features = default; // ends in HB_TAG_NONE
+		for (int i < cClosureFeatures.Count)
+		{
+			let name = cClosureFeatures[i];
+			features[i] = HB_TAG(name[0], name[1], name[2], name[3]);
+		}
+		let lookups = hb_set_create();
+		defer hb_set_destroy(lookups);
+		hb_ot_layout_collect_lookups(face, HB_OT_TAG_GSUB, null, null, &features[0], lookups);
+
+		let glyphs = hb_set_create();
+		defer hb_set_destroy(glyphs);
+		hb_set_union(glyphs, nominal);
+		hb_ot_layout_lookups_substitute_closure(face, lookups, glyphs);
+		hb_set_subtract(glyphs, nominal);
+		var glyph = HB_SET_VALUE_INVALID;
+		while (hb_set_next(glyphs, &glyph) != 0)
+			outGlyphs.Add((int32)glyph);
+	}
+
 	/// Shapes `codepoints` (the characters from `clusterBase` on) and appends their glyphs at
 	/// (startX, startY). Returns the advance.
 	private float ShapeCodepoints(IFont font, hb_font_t* hbFont, List<uint32> codepoints,

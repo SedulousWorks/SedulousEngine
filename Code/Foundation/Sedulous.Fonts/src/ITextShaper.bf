@@ -33,4 +33,9 @@ abstract class ITextShaper
 	/// box per line and the middle lines run the full width.
 	public abstract void GetSelectionRects(IFont font, Span<GlyphPosition> positions,
 		SelectionRange selection, float lineHeight, List<FontRect> outRects);
+
+	/// The glyphs shaping text of `codepoints` can produce beyond those the codepoints map to
+	/// (ligatures, joined and contextual forms), as glyph indices: what a baker adds to an atlas
+	/// so the shaped text draws. None for a shaper that maps one character to one glyph.
+	public abstract void CollectReachableGlyphs(IFont font, Span<int32> codepoints, List<int32> outGlyphs);
 }

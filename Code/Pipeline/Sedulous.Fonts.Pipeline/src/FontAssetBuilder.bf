@@ -5,6 +5,7 @@ using Sedulous.Fonts;
 using Sedulous.Fonts.Coverage;
 using Sedulous.Fonts.Coverage.Baker;
 using Sedulous.Fonts.DistanceField.Baker;
+using Sedulous.Fonts.HarfBuzz;
 using Sedulous.Fonts.Resource;
 using Sedulous.Fonts.TrueType;
 using Sedulous.Pipeline.Core;
@@ -31,13 +32,16 @@ class FontAssetBuilder : IAssetBuilder
 	/// bounds. Five: a distance field atlas is sized to its glyphs, so every cooked font
 	/// re-bakes at its new size. Six: FontResource 2, whose atlases key by glyph index so a
 	/// shaper's glyphs can draw, every codepoint the range maps to keeping its glyph row (a
-	/// space's too). Seven: the font file is kept as the product's "font" stream. A product
-	/// schema change bumps this in the SAME commit, because the bump IS the migration: it forces
-	/// every stale cooked font to re-cook.
-	public int32 Version => 7;
+	/// space's too). Seven: the font file is kept as the product's "font" stream. Eight: the
+	/// atlas also holds the glyphs HarfBuzz's substitutions reach from the range (ligatures,
+	/// joined forms); the cook installs HarfBuzz itself, so every cook bakes the same glyphs
+	/// whichever host runs it. A product schema change bumps this in the SAME commit, because the
+	/// bump IS the migration: it forces every stale cooked font to re-cook.
+	public int32 Version => 8;
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{
+		HarfBuzzShaping.Install(); // the bakers bake what HarfBuzz's substitutions reach
 		let authored = (FontAsset)asset;
 		if ((context.Output == null) || authored.FileName.IsEmpty)
 			return .Err(.InvalidArgument);

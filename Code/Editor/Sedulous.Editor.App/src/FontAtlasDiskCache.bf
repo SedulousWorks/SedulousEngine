@@ -204,6 +204,12 @@ class FontAtlasDiskCache : IFontAtlasCache
 		Mix!((uint64)options.AtlasWidth);
 		Mix!((uint64)options.AtlasHeight);
 		Mix!((uint64)options.Padding);
+		// The glyphs the shaper's substitutions reach are baked too: a different shaper (or none)
+		// bakes a different atlas.
+		let reachable = scope List<int32>();
+		TextShaperFactory.ReachableGlyphs(font, options, reachable);
+		for (let glyph in reachable)
+			Mix!((uint64)(uint32)glyph);
 		Mix!((uint64)cCacheFormatVersion);
 		outKey = key;
 		return true;

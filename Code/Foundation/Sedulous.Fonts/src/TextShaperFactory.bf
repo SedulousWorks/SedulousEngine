@@ -32,4 +32,20 @@ static class TextShaperFactory
 	}
 
 	public static int Count => sCreators.Count;
+
+	/// The glyphs shaping `options`' codepoint range can reach beyond the range's own, asked of
+	/// the registered shaper (none registered, or a one-to-one shaper: none). What bakers add, so
+	/// a ligature or a joined form the shaper produces has its place in the atlas.
+	public static void ReachableGlyphs(IFont font, FontLoadOptions options, List<int32> outGlyphs)
+	{
+		outGlyphs.Clear();
+		let shaper = Create();
+		if (shaper == null)
+			return;
+		defer delete shaper;
+		let codepoints = scope List<int32>();
+		for (int32 codepoint = options.FirstCodepoint; codepoint <= options.LastCodepoint; codepoint++)
+			codepoints.Add(codepoint);
+		shaper.CollectReachableGlyphs(font, codepoints, outGlyphs);
+	}
 }

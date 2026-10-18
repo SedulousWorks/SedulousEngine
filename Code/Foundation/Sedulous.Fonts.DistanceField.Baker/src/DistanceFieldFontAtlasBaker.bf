@@ -63,8 +63,11 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 		let atlas = new DistanceFieldFontAtlas();
 		atlas.SetPixelRange((float)cDefaultPixelRange);
 
+		// What the registered shaper's substitutions reach from the range, baked beside it.
+		let reachable = scope List<int32>();
+		TextShaperFactory.ReachableGlyphs(font, options, reachable);
 		let work = scope List<GlyphWork>();
-		MeasureGlyphs(&info, scale, options, atlas, work);
+		MeasureGlyphs(&info, scale, options, reachable, atlas, work);
 
 		// Pack the glyph cells and, last, the white block, at the width that needs the least
 		// atlas; the asset's atlas size is the most it may take. A glyph that cannot fit fails
@@ -126,7 +129,7 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 	/// Sequential: measures every glyph and the cell it needs. Where each cell goes is decided
 	/// after, once every cell is known.
 	private void MeasureGlyphs(stbtt_fontinfo* info, float scale, FontLoadOptions options,
-		DistanceFieldFontAtlas atlas, List<GlyphWork> outWork)
+		List<int32> reachable, DistanceFieldFontAtlas atlas, List<GlyphWork> outWork)
 	{
 		let padding = (int32)options.Padding;
 
@@ -140,6 +143,11 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 				continue;
 			atlas.SetGlyphFor(codepoint, glyphIndex);
 			if (!glyphs.Contains(glyphIndex))
+				glyphs.Add(glyphIndex);
+		}
+		for (let glyphIndex in reachable)
+		{
+			if ((glyphIndex > 0) && (glyphIndex < info.numGlyphs) && !glyphs.Contains(glyphIndex))
 				glyphs.Add(glyphIndex);
 		}
 

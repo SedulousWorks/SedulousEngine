@@ -13,6 +13,12 @@ namespace Sedulous.Fonts.TrueType;
 /// instance serves every font in the process.
 class TrueTypeTextShaper : ClusterTextShaper
 {
+	/// One glyph per character: nothing beyond what the codepoints map to.
+	public override void CollectReachableGlyphs(IFont font, Span<int32> codepoints, List<int32> outGlyphs)
+	{
+		outGlyphs.Clear();
+	}
+
 	public override Result<float, FontLoadResult> ShapeText(IFont font, StringView text,
 		List<GlyphPosition> outPositions)
 		=> ShapeText(font, text, 0, 0, outPositions);
