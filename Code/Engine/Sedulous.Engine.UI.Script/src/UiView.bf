@@ -148,6 +148,138 @@ struct UiLabel
 	public void ClearTextColor() { if (let v = Resolve()) v.TextColor.Value = null; }
 }
 
+/// A paragraph of styled text: its markup (`text.SetMarkup("Your mark wears [color=#d04060]a rose
+/// gown[/color]")`; [b] [i] [u] [color=] [size=] [font=] [link=id] [icon=path]), or runs added one
+/// by one. `text.Markup` reads the markup (empty once runs were added), `text.PlainText` the words
+/// without it. `OnLink` runs a handler when a [link=id] span is clicked, through the mutation
+/// queue as a button's click does; the handler reads the id from `text.ClickedLink`.
+[Scriptable, ScriptName("RichText")]
+struct UiRichText
+{
+	public uint32 Id = 0;
+
+	public this() {}
+	public this(RichText text) { Id = UiHandles.IdOf(text); }
+
+	public RichText Resolve() => UiHandles.Resolve<RichText>(Id);
+
+	[Scriptable]
+	public bool IsValid => Resolve() != null;
+	[Scriptable]
+	public StringView Name => Resolve()?.Name ?? "";
+	[Scriptable]
+	public bool Visible => Resolve()?.Visibility == .Visible;
+	[Scriptable]
+	public bool Enabled => Resolve()?.IsEnabled ?? false;
+	[Scriptable]
+	public void SetVisible(bool value) { if (let v = Resolve()) v.Visibility = value ? .Visible : .Hidden; }
+	[Scriptable]
+	public void SetEnabled(bool value) { if (let v = Resolve()) v.IsEnabled = value; }
+	[Scriptable]
+	public float Opacity => Resolve()?.Opacity ?? 0.0f;
+	[Scriptable]
+	public void SetOpacity(float value) { UiHandles.SetOpacity(Resolve(), value); }
+	[Scriptable]
+	public void FadeTo(float opacity, float seconds, Ease ease = .InOut) { UiHandles.FadeTo(Resolve(), opacity, seconds, ease); }
+	/// The offset in pixels from where layout put the view, applied as it draws and hit tests.
+	[Scriptable]
+	public Float2 Translation => UiHandles.Translation(Resolve());
+	[Scriptable]
+	public void SetTranslation(float x, float y) { UiHandles.SetTranslation(Resolve(), x, y); }
+	/// Degrees, clockwise on screen, about the view's centre.
+	[Scriptable]
+	public float Rotation => UiHandles.Rotation(Resolve());
+	[Scriptable]
+	public void SetRotation(float degrees) { UiHandles.SetRotation(Resolve(), degrees); }
+	[Scriptable]
+	public void MoveTo(float x, float y, float seconds, Ease ease = .InOut) { UiHandles.MoveTo(Resolve(), x, y, seconds, ease); }
+	[Scriptable]
+	public float Scale => UiHandles.Scale(Resolve());
+	[Scriptable]
+	public void SetScale(float value) { UiHandles.SetScale(Resolve(), value); }
+	[Scriptable]
+	public void ScaleTo(float scale, float seconds, Ease ease = .InOut) { UiHandles.ScaleTo(Resolve(), scale, seconds, ease); }
+	[Scriptable]
+	public void RotateTo(float degrees, float seconds, Ease ease = .InOut) { UiHandles.RotateTo(Resolve(), degrees, seconds, ease); }
+	[Scriptable]
+	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
+	/// The markup; empty once runs were added.
+	[Scriptable]
+	public StringView Markup => Resolve()?.Markup.Value ?? "";
+	[Scriptable]
+	public void SetMarkup(StringView value) { if (let v = Resolve()) v.SetMarkup(value); }
+	/// The words without the markup.
+	[Scriptable]
+	public StringView PlainText => Resolve()?.PlainText ?? "";
+	/// The id of the link last clicked, for an OnLink handler.
+	[Scriptable]
+	public StringView ClickedLink => Resolve()?.LastLink ?? "";
+	/// No text at all, to add runs to.
+	[Scriptable]
+	public void ClearRuns() { if (let v = Resolve()) v.SetRuns(scope .()); }
+	/// A run in the control's own style.
+	[Scriptable]
+	public void AddRun(StringView text)
+	{
+		if (let v = Resolve())
+		{
+			let run = new TextRun();
+			run.Text.Set(text);
+			v.AppendRun(run);
+		}
+	}
+	/// A run in a colour.
+	[Scriptable]
+	public void AddColoredRun(StringView text, Color color)
+	{
+		if (let v = Resolve())
+		{
+			let run = new TextRun();
+			run.Text.Set(text);
+			run.Color = color;
+			v.AppendRun(run);
+		}
+	}
+	/// A run styled further: a size above nought sets it.
+	[Scriptable]
+	public void AddStyledRun(StringView text, Color color, float size, bool bold, bool italic)
+	{
+		if (let v = Resolve())
+		{
+			let run = new TextRun();
+			run.Text.Set(text);
+			run.Color = color;
+			if (size > 0.0f)
+				run.Size = size;
+			run.Bold = bold;
+			run.Italic = italic;
+			v.AppendRun(run);
+		}
+	}
+
+	/// TAKES the delegate: parked with the control, deleted with it. Null is a no-op. As a
+	/// button's click, the handler runs at the next drain; the id waits in ClickedLink.
+	[Scriptable]
+	public void OnLink(ScriptDelegate handler)
+	{
+		let text = Resolve();
+		if ((text == null) || (handler == null))
+		{
+			delete handler;
+			return;
+		}
+		UiHandles.Own(text, handler);
+		text.OnLink.Add(new (clicked, id) =>
+			{
+				let context = (clicked != null) ? clicked.Context : null;
+				if (context != null)
+					context.MutationQueue.QueueAction(new () => { handler.Invoke(); });
+				else
+					handler.Invoke(); // nothing is dispatching: a headless control
+			});
+	}
+}
+
 /// An image: `image.Source` is the texture asset it shows (a render texture a camera draws
 /// into included); `image.SetSource(id)` swaps it, and a nil id clears it.
 [Scriptable, ScriptName("Image")]

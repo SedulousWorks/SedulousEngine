@@ -158,4 +158,85 @@ static class UiScriptedTests
 		Test.Assert(UiHandles.Count == 0, scope $"{UiHandles.Count} handles left");
 		vm.Release(menu);
 	}
+
+	/// Rich text from a script: the markup set and read back, its words without markup, a link's
+	/// handler (deferred, reading the id it was given), and runs added one by one.
+	[Test]
+	public static void AScriptWritesRichTextByMarkupAndByRunsAndHearsItsLinks()
+	{
+		if (!sRegistered)
+		{
+			AngelScriptBackend.Register();
+			sRegistered = true;
+		}
+		let bed = scope UiScriptBed();
+		bed.Document = new () => UiScriptBed.Screen("menu");
+		let surface = scope ScriptSurface();
+		EngineScriptSurface.Populate(surface);
+		let vm = scope AngelScriptRuntime();
+		vm.Bind(surface);
+		ClearAndDeleteItems!(vm.Problems);
+		vm.SetService(bed.Ui);
+
+		let ok = vm.Compile("story", "story.as", """
+			class Story
+			{
+				string words;
+				string heard;
+				int links = 0;
+				bool wrong = true;
+				void open()
+				{
+					Ui.Push(Guid::FromString("00000000-0000-0000-0000-000000000001"));
+					RichText text = Ui.FindRichText("story");
+					text.SetMarkup("Your mark wears [color=#d04060]a rose gown[/color]");
+					words = text.PlainText;
+					wrong = Ui.FindRichText("title").IsValid;
+					text.OnLink(ScriptCallback(this.onHint));
+					text.ClearRuns();
+					text.AddRun("Find the ");
+					text.AddStyledRun("rose", Color(0.8f, 0.2f, 0.3f, 1.0f), 0.0f, true, false);
+				}
+				void onHint() { links++; heard = Ui.FindRichText("story").ClickedLink; }
+			}
+			""");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		Test.Assert(ok, "compiled against the engine surface");
+
+		let story = vm.Instantiate("story", "Story");
+		Test.Assert(story != null);
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Invoke(story, "open", default, ref r), "open ran");
+		for (let p in vm.Problems)
+			Console.WriteLine("  {}", p);
+		var v = ScriptValue.Nil;
+		vm.GetProperty(story, "words", ref v);
+		Test.Assert(v.AsString == "Your mark wears a rose gown", scope $"read {v.AsString}");
+		vm.GetProperty(story, "wrong", ref v);
+		Test.Assert(!v.AsBool, "a label is no rich text");
+
+		// A click on the link runs the handler at the next drain, which reads the id it was for.
+		let control = bed.Ui.FindRichText("story").Resolve();
+		Test.Assert(control != null);
+		control.ActivateLink("hint");
+		vm.GetProperty(story, "links", ref v);
+		Test.Assert(v.AsInt == 0, "not inline");
+		bed.Context.BeginFrame(0.016f);
+		vm.GetProperty(story, "links", ref v);
+		Test.Assert(v.AsInt == 1, "ran at the drain");
+		vm.GetProperty(story, "heard", ref v);
+		Test.Assert(v.AsString == "hint");
+
+		// The runs added after: the markup is gone, the runs are there.
+		Test.Assert(control.Document.Runs.Count == 2);
+		Test.Assert(control.Document.Runs[1].Bold);
+		Test.Assert(control.Markup.Value.IsEmpty);
+
+		// The delegate parked with the control dies with the screen.
+		bed.Ui.Pop();
+		UiHandles.Sweep();
+		Test.Assert(UiHandles.Count == 0, scope $"{UiHandles.Count} handles left");
+		vm.Release(story);
+	}
 }

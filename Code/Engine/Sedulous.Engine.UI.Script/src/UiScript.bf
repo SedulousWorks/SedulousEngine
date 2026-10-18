@@ -92,6 +92,8 @@ class UiScript
 	[Scriptable]
 	public UiSlider FindSlider(StringView name) => UiFinders.FindSlider(RootGroup, name);
 	[Scriptable]
+	public UiRichText FindRichText(StringView name) => UiFinders.FindRichText(RootGroup, name);
+	[Scriptable]
 	public UiTextBox FindTextBox(StringView name) => UiFinders.FindTextBox(RootGroup, name);
 	[Scriptable]
 	public UiImage FindImage(StringView name) => UiFinders.FindImage(RootGroup, name);

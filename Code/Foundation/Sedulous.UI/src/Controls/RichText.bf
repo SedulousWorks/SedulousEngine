@@ -31,6 +31,9 @@ class RichText : View
 	public Event<delegate void(RichText, StringView)> OnLink ~ _.Dispose();
 
 	private TextDocument mDocument = new .() ~ delete _;
+	private String mLastLink = new .() ~ delete _;
+	private String mPlainText = new .() ~ delete _;
+	private uint64 mPlainVersion;
 	private String mParsedMarkup = new .() ~ delete _;
 	private bool mParsed;
 	private bool mRunsSet;
@@ -93,6 +96,47 @@ class RichText : View
 		mParsedMarkup.Clear();
 		mDocumentVersion++;
 		Invalidate();
+	}
+
+	/// Adds a run after the others, as SetRuns would with it on the end; the control takes it. The
+	/// markup's runs, when there is markup, are kept and the markup cleared.
+	public void AppendRun(TextRun run)
+	{
+		SyncDocument();
+		let runs = scope List<TextRun>();
+		runs.AddRange(mDocument.Runs);
+		mDocument.Runs.Clear(); // moved into the list, not freed
+		runs.Add(run);
+		SetRuns(runs);
+	}
+
+	/// The id of the link last clicked: what an OnLink handler that runs later, a deferred script
+	/// handler, reads.
+	public StringView LastLink => mLastLink;
+
+	/// Raises OnLink as a click on the link `id` does: keyboard activation, tools, tests.
+	public void ActivateLink(StringView id)
+	{
+		// Kept: the handler may change the text.
+		mLastLink.Set(id);
+		let held = scope String(mLastLink);
+		OnLink(this, held);
+	}
+
+	/// The words without the markup, an icon as U+FFFC.
+	public StringView PlainText
+	{
+		get
+		{
+			SyncDocument();
+			if (mPlainVersion != mDocumentVersion)
+			{
+				mPlainText.Clear();
+				mDocument.PlainText(mPlainText);
+				mPlainVersion = mDocumentVersion;
+			}
+			return mPlainText;
+		}
 	}
 
 	/// The runs the control draws: its markup's, or those set directly.
@@ -208,9 +252,7 @@ class RichText : View
 		let link = LinkAt(e.Position);
 		if (link.IsEmpty)
 			return;
-		// A copy: the handler may change the text.
-		let id = scope String(link);
-		OnLink(this, id);
+		ActivateLink(link);
 		e.Handled = true;
 	}
 

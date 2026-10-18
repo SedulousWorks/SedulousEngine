@@ -37,7 +37,7 @@ class UiScriptBed
 		delete Context;
 	}
 
-	/// A screen holding a named label, button, bar, slider, text box and image, plus a nested group with
+	/// A screen holding a named label, button, bar, slider, text box, image and rich text, plus a nested group with
 	/// a second label of the SAME name deeper down.
 	public static UIScreen Screen(StringView name = "screen")
 	{
@@ -75,6 +75,9 @@ class UiScriptBed
 		let image = new ImageView();
 		image.Name.Set("minimap");
 		screen.AddView(image);
+		let story = new RichText();
+		story.Name.Set("story");
+		screen.AddView(story);
 		return screen;
 	}
 }
