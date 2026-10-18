@@ -246,6 +246,36 @@ class VGContextTests
 		Test.Assert(!context.IsRectVisible(.(10, 10, 10, 10)));
 	}
 
+	/// A transformed rect is the bounds of its four corners: two opposite corners alone swap
+	/// under a rotation or a flip, giving a negative size.
+	[Test]
+	public static void VisibilityAndAClipRectHoldUnderARotationOrAFlip()
+	{
+		let context = scope VGContext();
+		context.PushClipRect(.(0, 0, 100, 100));
+
+		// Turned half way round about (50, 50): the box stays where it was, its corners
+		// swapped. The last call applies to points first.
+		context.PushState();
+		context.Translate(50.0f, 50.0f);
+		context.Rotate(Math.PI_f);
+		context.Translate(-50.0f, -50.0f);
+		Test.Assert(context.IsRectVisible(.(40, 40, 20, 20)));
+		Test.Assert(!context.IsRectVisible(.(-300, 40, 20, 20)), "turned to x = 380");
+		Test.Assert(context.IsRectVisible(.(90, 40, 20, 20)), "turned to straddle the left edge");
+		context.PopState();
+
+		// Flipped: a rect clip pushed inside keeps a positive size.
+		context.PushState();
+		context.Translate(100.0f, 0.0f);
+		context.Scale(-1.0f, 1.0f);
+		context.PushClipRect(.(10, 10, 30, 30)); // at x 60 to 90 once flipped
+		Test.Assert(context.IsRectVisible(.(20, 20, 5, 5)));
+		Test.Assert(!context.IsRectVisible(.(70, 20, 5, 5)));
+		context.PopClip();
+		context.PopState();
+	}
+
 	// ---- opacity ----
 
 	[Test]

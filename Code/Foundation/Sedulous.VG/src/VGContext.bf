@@ -2501,14 +2501,25 @@ class VGContext
 				mCurrentState.Transform);
 	}
 
+	/// The bounds of the rect's four corners under the current transform: under a rotation or
+	/// a flip two opposite corners alone can swap, giving a negative size.
 	private Rectangle TransformRect(Rectangle rect)
 	{
 		if (mCurrentState.Transform == Float4x4.Identity())
 			return rect;
 
-		let topLeft = TransformPoint(.(rect.X, rect.Y));
-		let bottomRight = TransformPoint(.(rect.X + rect.Width, rect.Y + rect.Height));
-		return .(topLeft.X, topLeft.Y, bottomRight.X - topLeft.X, bottomRight.Y - topLeft.Y);
+		Float2[4] corners = .(TransformPoint(.(rect.X, rect.Y)),
+			TransformPoint(.(rect.X + rect.Width, rect.Y)),
+			TransformPoint(.(rect.X, rect.Y + rect.Height)),
+			TransformPoint(.(rect.X + rect.Width, rect.Y + rect.Height)));
+		var low = corners[0];
+		var high = corners[0];
+		for (let corner in corners)
+		{
+			low = .(Math.Min(low.X, corner.X), Math.Min(low.Y, corner.Y));
+			high = .(Math.Max(high.X, corner.X), Math.Max(high.Y, corner.Y));
+		}
+		return .(low.X, low.Y, high.X - low.X, high.Y - low.Y);
 	}
 
 	/// Folds the state's opacity into a colour's alpha.
