@@ -410,6 +410,7 @@ extension View
 
 		if (canTransition)
 			BeginTransitions(oldWinners, oldState, state);
+		SyncAnimations();
 
 		return mStyleCache;
 	}
@@ -487,19 +488,26 @@ extension View
 	public StyleValue ResolveStyle(StyleProperty property)
 	{
 		let value = ComputeStyle(property);
-		if (mTransitionState == null)
-			return value;
-
-		for (let transition in mTransitionState.Active)
+		if (mTransitionState != null)
 		{
-			if (transition.Property != property)
-				continue;
-			// A drawable does not interpolate: the DRAW path cross fades it instead.
-			if (transition.To.Kind == .Drawable)
-				return value;
-			return StyleValueOps.Lerp(transition.From, transition.To,
-				TransitionProgress(transition.Elapsed, transition.Duration, transition.Delay,
-					transition.Easing), mTransitionState.ResolvedShadows);
+			for (let transition in mTransitionState.Active)
+			{
+				if (transition.Property != property)
+					continue;
+				// A drawable does not interpolate: the DRAW path cross fades it instead.
+				if (transition.To.Kind == .Drawable)
+					return value;
+				return StyleValueOps.Lerp(transition.From, transition.To,
+					TransitionProgress(transition.Elapsed, transition.Duration, transition.Delay,
+						transition.Easing), mTransitionState.ResolvedShadows);
+			}
+		}
+		// An animation's values over the cascade's (a transition, above, wins over both, as in
+		// CSS).
+		if (HasAnimations && (property != .Animation))
+		{
+			if (let animated = AnimatedValue(property, value))
+				return animated;
 		}
 		return value;
 	}
@@ -741,10 +749,12 @@ extension View
 	/// Advances every running transition. True while any is still going.
 	public bool AdvanceTransitions(float deltaTime)
 	{
+		// The running animations advance on the same tick.
+		let animating = AdvanceAnimations(deltaTime);
 		if (mTransitionState == null)
 		{
-			mTransitionRegistered = false;
-			return false;
+			mTransitionRegistered = animating;
+			return animating;
 		}
 
 		var layoutDamage = false;
@@ -778,7 +788,7 @@ extension View
 
 		if (mTransitionState.Active.IsEmpty)
 			mTransitionState.ReleaseHeldShadows(); // no entry borrows them now
-		let active = !mTransitionState.Active.IsEmpty || mTransitionState.StateBlendActive;
+		let active = !mTransitionState.Active.IsEmpty || mTransitionState.StateBlendActive || animating;
 		if (!active)
 			mTransitionRegistered = false;
 		return active;

@@ -362,8 +362,55 @@ class SSSParser
 		case "@icon": ParseIconDirective();
 		case "@image": ParseImageDirective();
 		case "@import": ParseImportDirective();
+		case "@keyframes": ParseKeyframesDirective();
 		default: SkipUntilSemicolon();
 		}
+	}
+
+	/// `@keyframes name { from { ... } 50% { ... } to { ... } }`: a frame's selector is from
+	/// (0%), to (100%) or a percentage, several separated by commas sharing its block.
+	private void ParseKeyframesDirective()
+	{
+		let keyframes = new KeyframesRule();
+		keyframes.Name.Set(ConsumeIdent());
+		Expect(.LBrace);
+		let offsets = scope List<float>();
+		while (!IsAtEnd && (Peek().Kind != .RBrace))
+		{
+			offsets.Clear();
+			while (true)
+			{
+				if (Peek().Kind == .Ident)
+				{
+					let word = Consume().Text;
+					if (word == "from")
+						offsets.Add(0.0f);
+					else if (word == "to")
+						offsets.Add(1.0f);
+				}
+				else if (Peek().Kind == .Number)
+				{
+					offsets.Add(Math.Clamp(ParseFloatValue(), 0.0f, 1.0f)); // 50% reads as 0.5
+				}
+				else
+				{
+					break;
+				}
+				if (!MatchComma())
+					break;
+			}
+			let declarations = new StyleRule();
+			Expect(.LBrace);
+			while (!IsAtEnd && (Peek().Kind != .RBrace))
+				ParseProperty(declarations);
+			Expect(.RBrace);
+			// A frame with no selector this reads is dropped.
+			for (let offset in offsets)
+				keyframes.AddFrame(offset, declarations);
+			declarations.ReleaseRef();
+		}
+		Expect(.RBrace);
+		mSheet.AddKeyframes(keyframes);
 	}
 
 	private void ParsePaletteDirective()
@@ -924,6 +971,8 @@ class SSSParser
 			return ParseFilterValue();
 		if (property == .Transform)
 			return ParseTransformValue();
+		if (property == .Animation)
+			return ParseAnimationValue();
 		if ((property == .TextShadow) || (property == .TextOutline) || (property == .TextGlow))
 			return ParseTextEffectValue(property);
 
@@ -998,6 +1047,72 @@ class SSSParser
 			any = true;
 		}
 		return any ? .Transform(transform) : .None;
+	}
+
+	/// `animation: none` or a comma list of `<name> <duration> [timing] [delay] [count |
+	/// infinite] [direction] [fill]`, in any order as CSS allows: the first time is the duration
+	/// and the second the delay (each with s or ms), a bare number the iteration count, and the
+	/// first word no keyword claims the @keyframes' name.
+	private StyleValue ParseAnimationValue()
+	{
+		let list = new AnimationList();
+		mSheet.OwnResource(list);
+		if ((Peek().Kind == .Ident) && (Peek().Text == "none"))
+		{
+			Consume();
+			return .Animations(list);
+		}
+		while (!IsAtEnd && (Peek().Kind != .Semicolon) && (Peek().Kind != .RBrace))
+		{
+			AnimationSpec spec = .();
+			StringView name = default;
+			var haveDuration = false;
+			while ((Peek().Kind == .Ident) || (Peek().Kind == .Number))
+			{
+				if (Peek().Kind == .Number)
+				{
+					let unit = Peek().UnitSuffix;
+					if ((unit == "s") || (unit == "ms"))
+					{
+						if (haveDuration)
+							spec.Delay = ParseTimeSeconds();
+						else
+							spec.Duration = ParseTimeSeconds();
+						haveDuration = true;
+					}
+					else
+					{
+						spec.Iterations = Math.Max(0.0f, Consume().NumericValue);
+					}
+					continue;
+				}
+				let word = Peek().Text;
+				switch (word)
+				{
+				case "infinite": spec.Iterations = -1.0f;
+				case "normal": spec.Direction = .Normal;
+				case "reverse": spec.Direction = .Reverse;
+				case "alternate": spec.Direction = .Alternate;
+				case "alternate-reverse": spec.Direction = .AlternateReverse;
+				case "forwards": spec.Fill = .Forwards;
+				case "backwards": spec.Fill = .Backwards;
+				case "both": spec.Fill = .Both;
+				case "linear", "ease", "ease-in", "ease-out", "ease-in-out", "step-start", "step-end",
+					"cubic-bezier", "steps":
+					spec.Easing = ParseTimingFunction();
+					continue;
+				default:
+					if (name.IsEmpty)
+						name = word;
+				}
+				Consume();
+			}
+			if (!name.IsEmpty)
+				list.Add(spec, name);
+			if (!MatchComma())
+				break;
+		}
+		return .Animations(list);
 	}
 
 	/// A number argument, or `fallback` where none is written.
@@ -1398,6 +1513,7 @@ class SSSParser
 		// Filters.
 		case "filter": return .Filter;
 		case "transform": return .Transform;
+		case "animation": return .Animation;
 		case "backdrop-filter": return .BackdropFilter;
 		case "text-shadow": return .TextShadow;
 		case "text-outline": return .TextOutline;

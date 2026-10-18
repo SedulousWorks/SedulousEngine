@@ -17,6 +17,7 @@ class StyleSheet : RefCounted
 	private List<StyleRule> mRules = new .() ~ ReleaseRules(_);
 	private List<Drawable> mOwnedDrawables = new .() ~ ReleaseDrawables(_);
 	private List<RefCounted> mOwnedResources = new .() ~ ReleaseResources(_);
+	private List<KeyframesRule> mKeyframes = new .() ~ ReleaseResources(_);
 	private uint32 mVersion = 1;
 
 	public this() {}
@@ -46,7 +47,7 @@ class StyleSheet : RefCounted
 		delete drawables;
 	}
 
-	private static void ReleaseResources(List<RefCounted> resources)
+	private static void ReleaseResources<T>(List<T> resources) where T : RefCounted
 	{
 		for (let resource in resources)
 			resource.ReleaseRef();
@@ -79,6 +80,35 @@ class StyleSheet : RefCounted
 		mVersion++;
 	}
 
+	/// Adds an @keyframes, replacing one of the same name (the later wins, as in CSS).
+	/// CONSUMES the caller's reference.
+	public void AddKeyframes(KeyframesRule keyframes)
+	{
+		for (int i < mKeyframes.Count)
+		{
+			if (mKeyframes[i].Name == keyframes.Name)
+			{
+				mKeyframes[i].ReleaseRef();
+				mKeyframes[i] = keyframes;
+				mVersion++;
+				return;
+			}
+		}
+		mKeyframes.Add(keyframes);
+		mVersion++;
+	}
+
+	/// The @keyframes of this name, or null. BORROWED.
+	public KeyframesRule FindKeyframes(StringView name)
+	{
+		for (let keyframes in mKeyframes)
+		{
+			if (keyframes.Name == name)
+				return keyframes;
+		}
+		return null;
+	}
+
 	public int RuleCount => mRules.Count;
 	public bool IsEmpty => mRules.IsEmpty;
 	public StyleRule GetRule(int index) => mRules[index];
@@ -103,6 +133,11 @@ class StyleSheet : RefCounted
 		{
 			resource.AddRef();
 			mOwnedResources.Add(resource);
+		}
+		for (let keyframes in other.mKeyframes)
+		{
+			keyframes.AddRef();
+			AddKeyframes(keyframes);
 		}
 		mVersion++;
 	}

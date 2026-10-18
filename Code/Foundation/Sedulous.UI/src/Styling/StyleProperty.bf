@@ -98,6 +98,10 @@ enum StyleProperty
 	/// | scaleY(t) | rotate(<angle>) ... | none` (a Transform): drawn and hit tested moved,
 	/// turned and scaled about the view's origin, over its own Transform; layout keeps its box.
 	Transform,
+	/// `animation: <name> <duration> [timing] [delay] [count | infinite] [direction] [fill], ...
+	/// | none` (Animations): plays the sheet's @keyframes of that name on the view; while one
+	/// runs, the properties it animates take its values over the cascade's.
+	Animation,
 
 	/// How many properties there are, for sizing arrays. Not a property.
 	COUNT

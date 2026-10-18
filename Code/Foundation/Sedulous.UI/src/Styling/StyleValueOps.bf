@@ -47,6 +47,8 @@ static class StyleValueOps
 			return true;
 		case .Transform(let value):
 			return (b case .Transform(let other)) && (value == other);
+		case .Animations(let value):
+			return (b case .Animations(let other)) && (value == other);
 		case .Transitions(let value):
 			return (b case .Transitions(let other)) && (value == other);
 		default:

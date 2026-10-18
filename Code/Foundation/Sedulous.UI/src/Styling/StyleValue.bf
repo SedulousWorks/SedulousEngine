@@ -31,6 +31,8 @@ enum StyleValue
 	/// A sheet's transform.
 	case Transform(StyleTransform value);
 	/// Borrowed.
+	case Animations(AnimationList value);
+	/// Borrowed.
 	case Transitions(TransitionList value);
 	/// Take the parent's computed value.
 	case Inherit;
@@ -55,6 +57,7 @@ enum StyleValue
 			case .Length: return .Length;
 			case .Shadow, .Shadows: return .Shadow;
 			case .Transform: return .Transform;
+			case .Animations: return .Animations;
 			case .Transitions: return .Transitions;
 			case .Inherit: return .Inherit;
 			case .Initial: return .Initial;
@@ -123,6 +126,17 @@ enum StyleValue
 		get
 		{
 			if (this case .Length(let value))
+				return value;
+			return null;
+		}
+	}
+
+	/// Borrowed, and null when the kind differs.
+	public AnimationList AsAnimations
+	{
+		get
+		{
+			if (this case .Animations(let value))
 				return value;
 			return null;
 		}

@@ -92,7 +92,7 @@ class View : RefCounted, IPropertyOwner
 	/// EffectiveTransform composes; DrawChildren calls it before drawing the view.
 	public void RefreshStyleTransform()
 	{
-		if (!HasStyleWinner(.Transform) && (ActiveTransitionCount == 0))
+		if (!HasStyleWinner(.Transform) && (ActiveTransitionCount == 0) && !HasAnimations)
 		{
 			mStyleTransform = .();
 			return;

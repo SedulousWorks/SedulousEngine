@@ -636,4 +636,122 @@ class TransitionTests
 		Test.Assert(transitions.Find(.TextColor) != null);
 		Test.Assert(transitions.Find(.FontSize) == null, "geometry never animates");
 	}
+
+	// ---- Animations (@keyframes) --------------------------------------------------------------
+
+	private static float OpacityOf(View view) => view.ResolveStyleFloat(.Opacity, -1.0f);
+
+	/// @keyframes keep their frames by offset, a shared block under each of its selectors, and
+	/// the animation list reads its parts in any order.
+	[Test]
+	public static void KeyframesAndTheAnimationListParse()
+	{
+		let sheet = LoadSSS("""
+			@keyframes pulse { to { opacity: 1; } from { opacity: 0; } 25%, 75% { opacity: 0.8; } }
+			TestView { animation: pulse 2s cubic-bezier(0.2, 0, 0, 1) 500ms infinite alternate both, spin 300ms 3 reverse forwards; }
+			.none { animation: none; }
+			""");
+		defer sheet.ReleaseRef();
+		let pulse = sheet.FindKeyframes("pulse");
+		Test.Assert(pulse != null);
+		Test.Assert(pulse.Frames.Count == 4);
+		Test.Assert(Near(pulse.Frames[0].Offset, 0.0f) && Near(pulse.Frames[1].Offset, 0.25f));
+		Test.Assert(Near(pulse.Frames[2].Offset, 0.75f) && Near(pulse.Frames[3].Offset, 1.0f));
+		Test.Assert(pulse.Animates(.Opacity));
+		Test.Assert(!pulse.Animates(.TextColor));
+		Test.Assert(sheet.FindKeyframes("spin") == null);
+
+		let list = sheet.GetRule(0).GetValue(.Animation).Value.AsAnimations;
+		Test.Assert((list != null) && (list.Specs.Count == 2));
+		let a = list.Specs[0];
+		Test.Assert(a.Name == "pulse");
+		Test.Assert(Near(a.Duration, 2.0f) && Near(a.Delay, 0.5f));
+		Test.Assert(a.Iterations < 0.0f);
+		Test.Assert((a.Direction == .Alternate) && (a.Fill == .Both));
+		Test.Assert(a.Easing == TimingFunction.CubicBezier(0.2f, 0.0f, 0.0f, 1.0f));
+		let b = list.Specs[1];
+		Test.Assert(Near(b.Duration, 0.3f) && Near(b.Iterations, 3.0f));
+		Test.Assert((b.Direction == .Reverse) && (b.Fill == .Forwards));
+		let none = sheet.GetRule(1).GetValue(.Animation).Value.AsAnimations;
+		Test.Assert((none != null) && none.Specs.IsEmpty);
+	}
+
+	/// Keyframes play over the cascade, a missing frame being the cascade's value, and a
+	/// forwards fill holds the end without starting again.
+	[Test]
+	public static void KeyframesPlayOverTheCascadeAndAFillHoldsTheEnd()
+	{
+		let fixture = scope Fixture(LoadSSS("""
+			@keyframes fade { to { opacity: 1; } }
+			TestView { opacity: 0.2; animation: fade 1s linear forwards; }
+			"""));
+		let view = fixture.Leaf();
+		Test.Assert(Near(OpacityOf(view), 0.2f), "no from frame: the cascade's value");
+		fixture.Context.BeginFrame(0.5f);
+		Test.Assert(Near(OpacityOf(view), 0.6f));
+		fixture.Context.BeginFrame(0.75f);
+		Test.Assert(Near(OpacityOf(view), 1.0f), "forwards holds the last frame");
+		Test.Assert(view.RunningAnimationCount == 0);
+		fixture.Context.BeginFrame(1.0f);
+		Test.Assert(Near(OpacityOf(view), 1.0f), "and it does not start again");
+	}
+
+	/// Without a fill an animation gives the cascade back; a delay waits on the cascade, and a
+	/// backwards fill shows the first frame during it.
+	[Test]
+	public static void WithoutAFillTheCascadeComesBackAndBackwardsShowsTheFirstFrame()
+	{
+		let fixture = scope Fixture(LoadSSS("""
+			@keyframes dim { from { opacity: 0.5; } to { opacity: 0; } }
+			TestView { opacity: 1; animation: dim 1s linear 1s; }
+			.early { animation: dim 1s linear 1s backwards; }
+			"""));
+		let view = fixture.Leaf();
+		Test.Assert(Near(OpacityOf(view), 1.0f), "inside the delay: the cascade");
+		fixture.Context.BeginFrame(1.5f);
+		Test.Assert(Near(OpacityOf(view), 0.25f));
+		fixture.Context.BeginFrame(1.0f);
+		Test.Assert(Near(OpacityOf(view), 1.0f), "ended, no fill: the cascade again");
+
+		let early = fixture.Leaf();
+		early.AddClass("early");
+		Test.Assert(Near(OpacityOf(early), 0.5f), "its delay shows the first frame");
+	}
+
+	/// Alternate runs every other iteration backwards, each segment between frames eased.
+	[Test]
+	public static void AlternateRunsEveryOtherIterationBackwards()
+	{
+		let fixture = scope Fixture(LoadSSS("""
+			@keyframes swing { from { opacity: 0; } 50% { opacity: 1; } to { opacity: 0.5; } }
+			TestView { animation: swing 1s linear infinite alternate; }
+			"""));
+		let view = fixture.Leaf();
+		OpacityOf(view);
+		fixture.Context.BeginFrame(0.25f);
+		Test.Assert(Near(OpacityOf(view), 0.5f), "half way to the 50% frame");
+		fixture.Context.BeginFrame(0.5f);
+		Test.Assert(Near(OpacityOf(view), 0.75f), "75%: half way from 1 to 0.5");
+		fixture.Context.BeginFrame(0.5f);
+		Test.Assert(Near(OpacityOf(view), 0.75f), "the second iteration backwards, at 75% again");
+		Test.Assert(view.RunningAnimationCount == 1);
+	}
+
+	/// A transform keyframe animates the drawn transform and only redraws.
+	[Test]
+	public static void ATransformKeyframeAnimatesTheDrawnTransformAndOnlyRedraws()
+	{
+		let fixture = scope Fixture(LoadSSS("""
+			@keyframes bob { from { transform: translateY(0); } to { transform: translateY(-10); } }
+			TestView { animation: bob 1s linear; }
+			"""));
+		let view = fixture.Leaf();
+		UITest.LayoutPass(fixture.Context, fixture.Root);
+		fixture.Context.ClearLayoutDamage();
+		fixture.Context.BeginFrame(0.5f);
+		Test.Assert(!fixture.Context.NeedsLayout, "a transform never moves the layout");
+		let canvas = scope VGContext();
+		fixture.Context.DrawRootView(fixture.Root, canvas);
+		Test.Assert(Near(view.EffectiveTransform.Translation.Y, -5.0f));
+	}
 }
