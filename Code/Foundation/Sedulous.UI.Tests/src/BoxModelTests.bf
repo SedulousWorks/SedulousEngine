@@ -420,6 +420,77 @@ class BoxModelTests
 		Test.Assert(sawFill && sawComposite);
 	}
 
+	/// The sheet's opacity fades a view, times its own field: it used to be parsed and never
+	/// applied.
+	[Test]
+	public static void TheSheetsOpacityFadesAViewTimesItsOwn()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		context.SetStyleSheet(LoadSSS("RecordingView { opacity: 0.5; }"));
+
+		let view = new RecordingView(50, 30, 1);
+		view.Opacity = 0.5f;
+		root.AddView(view);
+		UITest.LayoutPass(context, root);
+
+		let vg = scope VGContext();
+		RecordingView.DrawLog.Clear();
+		context.DrawRootView(root, vg);
+		let batch = vg.GetBatch();
+		Test.Assert(batch.Vertices.Count >= 4);
+		Test.Assert(Near(batch.Vertices[0].Color.A, 0.25f));
+	}
+
+	/// `filter: blur()` blurs a view through a layer, a leaf too since the filter needs the
+	/// layer; `backdrop-filter: blur()` blurs what is behind it; `filter: none` makes none.
+	[Test]
+	public static void FilterBlursAViewThroughALayerAndBackdropFilterWhatIsBehindIt()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		context.SetStyleSheet(LoadSSS(
+			".soft { filter: blur(4px); } .glass { backdrop-filter: blur(6); corner-radius: 8; } .plain { filter: none; }"));
+
+		let frame = new FrameLayout();
+		frame.AddView(new RecordingView(200, 200, 1)); // something to be behind the glass
+		let soft = new RecordingView(50, 30, 2);
+		soft.AddClass("soft");
+		frame.AddView(soft);
+		let glass = new RecordingView(80, 60, 3);
+		glass.AddClass("glass");
+		frame.AddView(glass);
+		let plain = new RecordingView(20, 20, 4);
+		plain.AddClass("plain");
+		frame.AddView(plain);
+		root.AddView(frame);
+		UITest.LayoutPass(context, root);
+
+		let vg = scope VGContext();
+		vg.SetLayers(true);
+		RecordingView.DrawLog.Clear();
+		context.DrawRootView(root, vg);
+		let batch = vg.GetBatch();
+		var blurred = 0;
+		var backdrops = 0;
+		for (let layer in batch.Layers)
+		{
+			if (layer.Blur > 0.0f)
+			{
+				Test.Assert(Near(layer.Blur, 4.0f));
+				blurred++;
+			}
+			if (layer.BackdropBlur > 0.0f)
+			{
+				Test.Assert(Near(layer.BackdropBlur, 6.0f));
+				backdrops++;
+			}
+		}
+		Test.Assert(blurred == 1);
+		Test.Assert(backdrops == 1);
+		Test.Assert(batch.Layers.Count == 2, "`filter: none` makes none");
+	}
+
 	// ---- The sheet filling LayoutStyle ------------------------------------------------------
 
 	/// The cascade fills the fields the view did NOT declare inline, and an inline field wins

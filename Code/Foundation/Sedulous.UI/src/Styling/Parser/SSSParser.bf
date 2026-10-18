@@ -862,6 +862,8 @@ class SSSParser
 			return ParseBoxShadowValue();
 		if (property == .Transition)
 			return ParseTransitionValue();
+		if ((property == .Filter) || (property == .BackdropFilter))
+			return ParseFilterValue();
 
 		if (IsSizeSpecProperty(property) && (Peek().Kind == .Ident) && (Peek().Text != "calc"))
 		{
@@ -881,6 +883,23 @@ class SSSParser
 		}
 
 		return ParseLengthOrFloat();
+	}
+
+	/// `blur(<sigma>)` or `none`: the blur's sigma in dp as a Float, nought for none. The other
+	/// filter functions are not drawn yet, so one leaves the property unset.
+	private StyleValue ParseFilterValue()
+	{
+		if (Peek().Kind != .Ident)
+			return .None;
+		let name = Consume().Text;
+		if (name == "none")
+			return .Float(0.0f);
+		if (name != "blur")
+			return .None;
+		Expect(.LParen);
+		let sigma = (Peek().Kind == .Number) ? Math.Max(0.0f, ParseFloatValue()) : 0.0f;
+		Expect(.RParen);
+		return .Float(sigma);
 	}
 
 	/// `transition: none | <entry> {, <entry>}`, an entry being a property or `all`, a
@@ -1154,6 +1173,10 @@ class SSSParser
 		// Wrap, gap and ellipsis.
 		case "flex-basis": return .FlexBasis;
 		case "text-overflow": return .TextOverflow;
+
+		// Filters.
+		case "filter": return .Filter;
+		case "backdrop-filter": return .BackdropFilter;
 
 		default: return null;
 		}

@@ -359,15 +359,28 @@ class ViewGroup : View
 				}
 			}
 
-			// A faded view with children fades as one group, through a layer, so its parts never
-			// show through each other; a leaf fades its own drawing.
-			let faded = child.Opacity < 1.0f;
+			// The view's opacity (its field times the sheet's) and filters. A faded view with
+			// children fades as one group, through a layer, so its parts never show through each
+			// other, and a blurred one blurs as one; a faded leaf fades its own drawing.
+			let opacity = child.Opacity * Clamp(child.ResolveStyleFloat(.Opacity, 1.0f), 0.0f, 1.0f);
+			let deviceScale = DeviceScale(ctx.VG.GetTransform());
+			let blur = Max(0.0f, child.ResolveStyleFloat(.Filter, 0.0f)) * deviceScale;
+			let backdrop = Max(0.0f, child.ResolveStyleFloat(.BackdropFilter, 0.0f)) * deviceScale;
+			if (backdrop > 0.0f)
+			{
+				// What the parent drew behind the view, blurred inside its corners, fading with it.
+				let radius = Max(0.0f, child.ResolveStyleFloat(.CornerRadius, 0.0f));
+				ctx.VG.PushOpacity(opacity);
+				ctx.VG.DrawBackdropBlur(.(0, 0, child.Width, child.Height), .(radius), backdrop);
+				ctx.VG.PopOpacity();
+			}
+			let faded = opacity < 1.0f;
 			let group = child as ViewGroup;
-			let fadesAsGroup = faded && (group != null) && (group.VisualChildCount > 0);
+			let fadesAsGroup = (blur > 0.0f) || (faded && (group != null) && (group.VisualChildCount > 0));
 			if (fadesAsGroup)
-				ctx.VG.PushLayer(child.Opacity);
+				ctx.VG.PushLayer(opacity, .Normal, blur);
 			else if (faded)
-				ctx.VG.PushOpacity(child.Opacity);
+				ctx.VG.PushOpacity(opacity);
 
 			// An OUTER box shadow sits under the child's own drawing and outside its clip; an
 			// INSET one is drawn over the child, after OnDraw, inside it.
@@ -402,6 +415,15 @@ class ViewGroup : View
 	/// One box shadow for a child, the context already translated to the child's origin: the
 	/// border box grown by the spread, moved by the offset, blurred, and rounded by the
 	/// child's own corner radius plus the spread, which is what CSS does.
+	/// How many device pixels a unit is under `transform`, the larger axis: filter sigmas are
+	/// written in dp and drawn in device pixels.
+	private static float DeviceScale(Float4x4 transform)
+	{
+		let sx = Length(Float2(transform[0, 0], transform[0, 1]));
+		let sy = Length(Float2(transform[1, 0], transform[1, 1]));
+		return Max(sx, sy);
+	}
+
 	private static void DrawBoxShadow(UIDrawContext ctx, View child, BoxShadow shadow)
 	{
 		let radius = Max(0.0f, child.ResolveStyleFloat(.CornerRadius, 0.0f));

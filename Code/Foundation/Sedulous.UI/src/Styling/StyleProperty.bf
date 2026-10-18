@@ -75,6 +75,14 @@ enum StyleProperty
 	/// `clip` or `ellipsis`.
 	TextOverflow,
 
+	// ---- Filters, drawn through the VG's layers ----
+	/// `filter: blur(<sigma>) | none`: the view and its children blurred, a Gaussian of that sigma
+	/// in dp (a Float, 0 for none).
+	Filter,
+	/// `backdrop-filter: blur(<sigma>) | none`: what is drawn behind the view blurred inside its
+	/// corner radius, under its own background (a Float, 0 for none).
+	BackdropFilter,
+
 	/// How many properties there are, for sizing arrays. Not a property.
 	COUNT
 }
