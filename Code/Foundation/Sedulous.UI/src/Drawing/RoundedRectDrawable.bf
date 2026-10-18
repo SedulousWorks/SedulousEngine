@@ -35,6 +35,16 @@ class RoundedRectDrawable : Drawable
 
 	public override void Draw(UIDrawContext ctx, Rectangle bounds)
 	{
+		if (ctx.VG.AnalyticBoxes)
+		{
+			// Fill and border as ONE box: one signed distance gives both, so they cannot
+			// disagree at the corners, and the border lies inside the bounds (border box).
+			let bordered = (BorderColor.A > 0.0f) && (BorderWidth > 0.0f);
+			if ((FillColor.A > 0.0f) || bordered)
+				ctx.VG.DrawBox(bounds, Radii, FillColor, .(bordered ? BorderWidth : 0.0f), BorderColor);
+			return;
+		}
+
 		// The border stroke is INSET by half its width so the whole border lands INSIDE the
 		// bounds, which is what border box painting means. A vector graphics stroke is centred
 		// on its path, so leaving it un-inset would hang half the border outside the view,

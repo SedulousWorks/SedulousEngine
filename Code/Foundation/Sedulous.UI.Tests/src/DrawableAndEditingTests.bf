@@ -2,6 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.Image;
 using Sedulous.UI;
+using Sedulous.VG;
 
 namespace Sedulous.UI.Tests;
 
@@ -154,6 +155,29 @@ class DrawableAndEditingTests
 		let rounded = new RoundedRectDrawable(Color.Red, 4.0f, Color.Blue, 1.0f);
 		defer rounded.ReleaseRef();
 		Test.Assert(rounded.IntrinsicSize == null);
+	}
+
+	/// Where the context draws analytic boxes, a rounded drawable's fill and border are ONE
+	/// box: one signed distance gives both, so they cannot disagree at the corners, and the
+	/// border lies inside the bounds.
+	[Test]
+	public static void ARoundedDrawablesFillAndBorderAreOneBox()
+	{
+		let vg = scope VGContext();
+		vg.SetAnalyticBoxes(true);
+		let draw = scope UIDrawContext(vg, 1.0f, null);
+
+		let rounded = new RoundedRectDrawable(Color.Red, 4.0f, Color.Blue, 1.0f);
+		defer rounded.ReleaseRef();
+		rounded.Draw(draw, .(0, 0, 40, 20));
+
+		let batch = vg.GetBatch();
+		Test.Assert(batch.BoxVertices.Count == 6, "one box");
+		Test.Assert(batch.Vertices.IsEmpty, "nothing tessellated");
+		let first = batch.BoxVertices[0];
+		Test.Assert((first.HalfSize.X == 20.0f) && (first.HalfSize.Y == 10.0f), "the bounds, not grown");
+		Test.Assert(first.Borders.X == 1.0f);
+		Test.Assert((first.Fill.R == 1.0f) && (first.BorderColor.B == 1.0f));
 	}
 
 	/// A nine slice's padding is its slices LESS whatever it was told to expand into, clamped

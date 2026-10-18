@@ -34,6 +34,8 @@ class UIRenderState
 	public IShaderModule GradRadialShader = null;
 	public IShaderModule GradConicShader = null;
 	public IShaderModule BoxShadowShader = null;
+	public IShaderModule BoxVertexShader = null;
+	public IShaderModule BoxFragmentShader = null;
 
 	public VGContext Context = null ~ delete _;
 
@@ -94,7 +96,7 @@ class UIRenderState
 			let renderer = new VGRenderer();
 			if (renderer.Initialize(Device, VertexShader, FragmentShader, format, FrameCount,
 				DistanceFieldShader, GradRadialShader, GradConicShader, targetConfig,
-				BoxShadowShader) case .Err)
+				BoxShadowShader, BoxVertexShader, BoxFragmentShader) case .Err)
 			{
 				delete renderer;
 				return null;

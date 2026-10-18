@@ -548,6 +548,12 @@ class VGContext
 			FillRect(rect, color);
 			return;
 		}
+		if (mAnalyticBoxes)
+		{
+			// Exact corners, no fringe.
+			DrawBox(rect, radii, color);
+			return;
+		}
 
 		let builder = scope PathBuilder();
 		ShapeBuilder.BuildRoundedRect(rect, radii, builder);
@@ -869,6 +875,18 @@ class VGContext
 	public void StrokeRoundedRect(Rectangle rect, CornerRadii radii, Color color,
 		float width = 1.0f)
 	{
+		if (mAnalyticBoxes && (width > 0.0f))
+		{
+			// A stroke centred on the rect is a border of `width` inside the rect grown by half
+			// of it, each rounded corner grown with it.
+			let h = width * 0.5f;
+			float Grow(float r) => (r > 0.0f) ? (r + h) : 0.0f;
+			DrawBox(.(rect.X - h, rect.Y - h, rect.Width + width, rect.Height + width),
+				.(Grow(radii.TopLeft), Grow(radii.TopRight), Grow(radii.BottomRight), Grow(radii.BottomLeft)),
+				.(0, 0, 0, 0), .(width), color);
+			return;
+		}
+
 		// The corners keep the analytic stroke; only the PLACEMENT and the thickness snap,
 		// so each straight edge's centreline lands where the pixel snapped bars would. That
 		// is the difference between a one pixel border and a two pixel blur.

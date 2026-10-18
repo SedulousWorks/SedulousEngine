@@ -56,6 +56,9 @@ class UIHost
 	private IShaderModule mGradientConicShader = null;
 	private IShaderModule mDistanceFieldShader = null;
 	private IShaderModule mBoxShadowShader = null;
+	/// Analytic boxes (VGContext.DrawBox).
+	private IShaderModule mBoxVertexShader = null;
+	private IShaderModule mBoxFragmentShader = null;
 
 	private List<AttachedWindow> mAttached = new .() ~ delete _;
 
@@ -223,9 +226,10 @@ class UIHost
 
 		data.Renderer.Initialize(mDevice.Raw, mVertexShader, mFragmentShader, data.DrawFormat,
 			(int32)mDevice.FramesInFlight, mDistanceFieldShader, mGradientRadialShader,
-			mGradientConicShader, targetConfig, mBoxShadowShader);
+			mGradientConicShader, targetConfig, mBoxShadowShader, mBoxVertexShader, mBoxFragmentShader);
 
 		data.VG.SetPerPixelGradients(perPixelGradients);
+		data.VG.SetAnalyticBoxes((mBoxVertexShader != null) && (mBoxFragmentShader != null));
 		data.VG.SetStencilFills(data.Renderer.StencilFillsSupported);
 	}
 
@@ -663,5 +667,8 @@ class UIHost
 		// mis-drawn: distance field glyphs use the default sampler, shadows are skipped.
 		mDistanceFieldShader = mShaderHost.GetVariant("vg_df", .Fragment, .None);
 		mBoxShadowShader = mShaderHost.GetVariant("vg_shadow", .Fragment, .None);
+		// Analytic boxes; a pack that predates them means boxes tessellate.
+		mBoxVertexShader = mShaderHost.GetVariant("vg_box", .Vertex, .None);
+		mBoxFragmentShader = mShaderHost.GetVariant("vg_box", .Fragment, .None);
 	}
 }

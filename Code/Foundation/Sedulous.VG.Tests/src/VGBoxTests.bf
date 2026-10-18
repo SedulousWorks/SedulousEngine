@@ -110,4 +110,39 @@ class VGBoxTests
 			Test.Assert(command.DrawMode != .Box);
 		Test.Assert(batch.Vertices.Count > 8, "the rounded fill and the ring");
 	}
+
+	/// With analytic boxes on, a rounded fill is one box, exact at its corners.
+	[Test]
+	public static void ARoundedFillIsABox()
+	{
+		let context = scope VGContext();
+		context.SetAnalyticBoxes(true);
+		context.FillRoundedRect(.(10, 10, 40, 20), 6.0f, .Red);
+
+		let batch = context.GetBatch();
+		Test.Assert(batch.BoxVertices.Count == 6);
+		Test.Assert((batch.Commands.Count == 1) && (batch.Commands[0].DrawMode == .Box));
+		Test.Assert(batch.Vertices.IsEmpty, "nothing tessellated");
+		Test.Assert(Near(batch.BoxVertices[0].Radii.X, 6.0f));
+		Test.Assert(Near(batch.BoxVertices[0].Borders.X, 0.0f), "no border");
+	}
+
+	/// A stroke centred on a rounded rect is a box grown by half its width, its border the
+	/// stroke's width, its corners grown with it, and no fill.
+	[Test]
+	public static void ARoundedStrokeIsABorderOnAGrownBox()
+	{
+		let context = scope VGContext();
+		context.SetAnalyticBoxes(true);
+		context.StrokeRoundedRect(.(10, 10, 40, 20), 6.0f, .Blue, 2.0f);
+
+		let batch = context.GetBatch();
+		Test.Assert(batch.BoxVertices.Count == 6);
+		let v = batch.BoxVertices[0];
+		Test.Assert(Near(v.HalfSize.X, 21.0f) && Near(v.HalfSize.Y, 11.0f), "grown by one on each side");
+		Test.Assert(Near(v.Radii.X, 7.0f), "the corner grown with it");
+		Test.Assert(Near(v.Borders.X, 2.0f) && Near(v.Borders.W, 2.0f));
+		Test.Assert(Near(v.Fill.A, 0.0f), "no fill");
+		Test.Assert(Near(v.BorderColor.B, 1.0f));
+	}
 }

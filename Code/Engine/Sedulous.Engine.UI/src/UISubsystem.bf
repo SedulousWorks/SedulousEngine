@@ -788,6 +788,11 @@ class UISubsystem : Subsystem, ISceneObserver
 		// predate them; otherwise everything falls back to the affine ramp.
 		mRenderState.Context.SetPerPixelGradients((mRenderState.GradRadialShader != null)
 			&& (mRenderState.GradConicShader != null));
+		// Analytic boxes (VGContext.DrawBox) when both box shaders resolved; else they tessellate.
+		mRenderState.BoxVertexShader = mRenderState.ShaderHost.GetVariant("vg_box", .Vertex, .None);
+		mRenderState.BoxFragmentShader = mRenderState.ShaderHost.GetVariant("vg_box", .Fragment, .None);
+		mRenderState.Context.SetAnalyticBoxes((mRenderState.BoxVertexShader != null)
+			&& (mRenderState.BoxFragmentShader != null));
 
 		// Stencil for the CANVAS render to texture passes, which are the only passes this
 		// subsystem OWNS: the scene and screen overlay passes belong to the renderer and the
