@@ -16,6 +16,9 @@ struct VGCommand
 	/// In screen coordinates.
 	public Rectangle ClipRect = .();
 	public VGClipMode ClipMode = .None;
+	/// Stencil clipped AND confined to ClipRect (a rectangle clip inside a path clip); an empty
+	/// ClipRect hides the draw. Scissor mode commands are always confined to ClipRect.
+	public bool Scissored = false;
 	public VGBlendMode BlendMode = .Normal;
 	/// Which stencil value this draw tests or writes.
 	public int32 StencilRef = 0;

@@ -333,4 +333,129 @@ class VGStencilTests
 		Test.Assert(CountPhase(batch, .StencilWrite) == 2);
 		Test.Assert(CountPhase(batch, .StencilCover) == 1);
 	}
+
+	private static Path Square(float x0, float y0, float x1, float y1)
+	{
+		let builder = scope PathBuilder();
+		AppendRect(builder, x0, y0, x1 - x0, y1 - y0);
+		return builder.ToPath();
+	}
+
+	/// The device bounds of a command's vertices.
+	private static Rectangle CommandBounds(VGBatch batch, VGCommand command)
+	{
+		var min = Float2(float.MaxValue, float.MaxValue);
+		var max = Float2(-float.MaxValue, -float.MaxValue);
+		for (int i < command.IndexCount)
+		{
+			let p = batch.Vertices[(int)batch.Indices[command.StartIndex + i]].Position;
+			min = .(Min(min.X, p.X), Min(min.Y, p.Y));
+			max = .(Max(max.X, p.X), Max(max.Y, p.Y));
+		}
+		return .(min.X, min.Y, max.X - min.X, max.Y - min.Y);
+	}
+
+	/// Clips NEST: a clip path inside another writes its winding only inside the outer mask
+	/// and applies over the OUTER's bounds, which zeroes the outer-only pixels; popping it
+	/// clears the mask and rebuilds the outer.
+	[Test]
+	public static void AClipPathInsideAnotherIntersectsItAndPoppingRestoresTheOuter()
+	{
+		let context = scope VGContext();
+		context.SetStencilFills(true);
+		let outer = Square(0, 0, 20, 20);
+		defer delete outer;
+		let inner = Square(10, 10, 30, 30);
+		defer delete inner;
+		let fill = Square(0, 0, 30, 30);
+		defer delete fill;
+
+		context.PushClipPath(outer);
+		context.PushClipPath(inner);
+		context.FillPath(fill, .Red, .NonZero, false);
+		context.PopClipPath();
+		context.FillPath(fill, .Blue, .NonZero, false);
+		context.PopClipPath();
+		context.FillPath(fill, .Green, .NonZero, false);
+
+		let batch = context.GetBatch();
+		// The outer's write and apply; the inner's write (CLIPPED: only inside the outer mask)
+		// and apply over the OUTER's bounds; red; the pop: clear, the outer's write and apply
+		// again; blue; clear; green.
+		Test.Assert(batch.Commands.Count == 11, scope $"{batch.Commands.Count} commands");
+		Test.Assert(batch.Commands[0].FillPhase == .StencilWrite);
+		Test.Assert(batch.Commands[0].ClipMode == .None);
+		Test.Assert(batch.Commands[1].FillPhase == .ClipApply);
+		Test.Assert(batch.Commands[2].FillPhase == .StencilWrite);
+		Test.Assert(batch.Commands[2].ClipMode == .Stencil);
+		Test.Assert(batch.Commands[3].FillPhase == .ClipApply);
+		let apply = CommandBounds(batch, batch.Commands[3]);
+		Test.Assert(Near(apply.X, 0.0f) && Near(apply.Width, 20.0f), "over the outer's bounds");
+		Test.Assert(batch.Commands[4].ClipMode == .Stencil, "red, inside both");
+		Test.Assert(batch.Commands[5].FillPhase == .ClipClear);
+		Test.Assert(batch.Commands[6].FillPhase == .StencilWrite);
+		Test.Assert(batch.Commands[6].ClipMode == .None, "the outer rebuilt");
+		Test.Assert(batch.Commands[7].FillPhase == .ClipApply);
+		Test.Assert(batch.Commands[8].ClipMode == .Stencil, "blue, inside the outer");
+		Test.Assert(batch.Commands[9].FillPhase == .ClipClear);
+		Test.Assert(batch.Commands[10].ClipMode == .None, "green, unclipped");
+	}
+
+	/// A clip rect inside a clip path applies both: the draw is stencil tested AND scissored,
+	/// so a scrolled list inside a rounded panel keeps its corners.
+	[Test]
+	public static void AClipRectInsideAClipPathAppliesBoth()
+	{
+		let context = scope VGContext();
+		context.SetStencilFills(true);
+		let clip = Square(0, 0, 40, 40);
+		defer delete clip;
+
+		context.PushClipPath(clip);
+		context.PushClipRect(.(5, 5, 10, 10));
+		context.FillPath(clip, .Red, .NonZero, false);
+		context.PopClip();
+		context.FillPath(clip, .Blue, .NonZero, false);
+		context.PopClipPath();
+
+		let batch = context.GetBatch();
+		Test.Assert(batch.Commands.Count == 5, scope $"{batch.Commands.Count} commands");
+		let red = batch.Commands[2];
+		Test.Assert(red.ClipMode == .Stencil);
+		Test.Assert(red.Scissored);
+		Test.Assert(Near(red.ClipRect.X, 5.0f) && Near(red.ClipRect.Width, 10.0f));
+		let blue = batch.Commands[3];
+		Test.Assert(blue.ClipMode == .Stencil);
+		Test.Assert(!blue.Scissored);
+	}
+
+	/// Without a stencil, a nested clip path's scissor is the intersection, and popping it goes
+	/// back to the outer's rather than dropping every clip.
+	[Test]
+	public static void WithoutStencilANestedClipPathsScissorPopsBackToTheOuter()
+	{
+		let context = scope VGContext();
+		let outer = Square(0, 0, 20, 20);
+		defer delete outer;
+		let inner = Square(10, 10, 30, 30);
+		defer delete inner;
+		let fill = Square(0, 0, 30, 30);
+		defer delete fill;
+
+		context.PushClipPath(outer);
+		context.PushClipPath(inner);
+		context.FillPath(fill, .Red, .NonZero, false);
+		context.PopClipPath();
+		context.FillPath(fill, .Blue, .NonZero, false);
+		context.PopClipPath();
+		context.FillPath(fill, .Green, .NonZero, false);
+
+		let batch = context.GetBatch();
+		Test.Assert(batch.Commands.Count == 3);
+		Test.Assert(batch.Commands[0].ClipMode == .Scissor);
+		Test.Assert(Near(batch.Commands[0].ClipRect.X, 10.0f) && Near(batch.Commands[0].ClipRect.Width, 10.0f), "the intersection");
+		Test.Assert(batch.Commands[1].ClipMode == .Scissor);
+		Test.Assert(Near(batch.Commands[1].ClipRect.X, 0.0f) && Near(batch.Commands[1].ClipRect.Width, 20.0f), "the outer again");
+		Test.Assert(batch.Commands[2].ClipMode == .None);
+	}
 }

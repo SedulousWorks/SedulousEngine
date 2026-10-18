@@ -47,13 +47,13 @@ class VGContext
 	private IFontService mFontService;
 
 	private List<VGState> mStateStack = new .() ~ delete _;
-	private List<Rectangle> mClipStack = new .() ~ delete _;
+	private List<ClipRectSave> mClipStack = new .() ~ delete _;
+	/// The stencil clips, outermost first.
+	private List<ClipPathLevel> mClipPaths = new .() ~ DeleteContainerAndItems!(_);
+	/// The scissor fallback's saves, when there is no stencil.
+	private List<ClipRectSave> mClipPathScissors = new .() ~ delete _;
 	private List<float> mOpacityStack = new .() ~ delete _;
 	private VGState mCurrentState = .();
-
-	/// The DEVICE space bounds of the active stencil clip, needed to clear it on pop.
-	private Rectangle mClipPathBounds = .();
-	private bool mClipPathActive = false;
 
 	private VGBlendMode mCurrentBlendMode = .Normal;
 	private VGDrawMode mCurrentDrawMode = .Default;
@@ -100,6 +100,8 @@ class VGContext
 		mBatch.Clear();
 		mStateStack.Clear();
 		mClipStack.Clear();
+		ClearAndDeleteItems!(mClipPaths);
+		mClipPathScissors.Clear();
 		mOpacityStack.Clear();
 		mCurrentState = .();
 		mCurrentBlendMode = .Normal;
@@ -107,7 +109,6 @@ class VGContext
 		mCurrentGradientSpread = .Pad;
 		mCurrentTextureIndex = 0;
 		mCommandStartIndex = 0;
-		mClipPathActive = false;
 
 		// Last frame's eviction list has been consumed by now, so the images it named can
 		// finally go.
@@ -189,17 +190,19 @@ class VGContext
 
 	// === scissor clipping ===
 
+	/// Inside a path clip, both apply: the draw is scissored and stencil tested.
 	public void PushClipRect(Rectangle rect)
 	{
 		FlushCurrentCommand();
-		mClipStack.Add(mCurrentState.ClipRect);
+		mClipStack.Add(.(mCurrentState.ClipRect, mCurrentState.Scissored));
 
 		let transformed = TransformRect(rect);
 		// INTERSECTED with whatever is already active, so a nested clip can only ever
 		// shrink the visible region.
-		mCurrentState.ClipRect = HasClip(mCurrentState.ClipRect)
+		mCurrentState.ClipRect = mCurrentState.Scissored
 			? Rectangle.Intersect(mCurrentState.ClipRect, transformed) : transformed;
-		mCurrentState.ClipMode = .Scissor;
+		mCurrentState.Scissored = true;
+		RefreshClipMode();
 	}
 
 	public void PopClip()
@@ -209,12 +212,15 @@ class VGContext
 		if (mClipStack.IsEmpty)
 		{
 			mCurrentState.ClipRect = .();
-			mCurrentState.ClipMode = .None;
-			return;
+			mCurrentState.Scissored = false;
 		}
-
-		mCurrentState.ClipRect = mClipStack.PopBack();
-		mCurrentState.ClipMode = HasClip(mCurrentState.ClipRect) ? .Scissor : .None;
+		else
+		{
+			let saved = mClipStack.PopBack();
+			mCurrentState.ClipRect = saved.Rect;
+			mCurrentState.Scissored = saved.Scissored;
+		}
+		RefreshClipMode();
 	}
 
 	/// Whether a rectangle in CURRENT local coordinates could contribute any pixels.
@@ -224,7 +230,7 @@ class VGContext
 	/// difference between a frame and a frame that exceeds the renderer's vertex ceiling.
 	public bool IsRectVisible(Rectangle rect)
 	{
-		if (mCurrentState.ClipMode != .Scissor)
+		if (!mCurrentState.Scissored)
 			return true;
 		if (!HasClip(mCurrentState.ClipRect))
 			return false;
@@ -233,46 +239,32 @@ class VGContext
 
 	// === path clipping ===
 
-	/// Clips subsequent draws to a path, by the non zero rule.
+	/// Clips subsequent draws to a path, by the non zero rule, within any path clip already
+	/// active.
 	///
-	/// Requires stencil fills. WITHOUT them it degrades to a scissor of the path's
+	/// Clips NEST, each the intersection of its path and the clips around it, so a rounded card
+	/// can hold a list of rounded items; a rectangle clip (PushClipRect) inside or around one
+	/// still applies. Requires stencil fills. WITHOUT them it degrades to a scissor of the path's
 	/// transformed bounds, which is coarse but contained: too much is drawn rather than the
-	/// wrong thing.
-	///
-	/// ONE LEVEL DEEP. A nested push replaces the active clip rather than intersecting with
-	/// it.
+	/// wrong thing. Balance with PopClipPath before Clear or the frame's end.
 	public void PushClipPath(Path path)
 	{
-		let subPaths = scope List<FlattenedSubPath>();
-		defer { ClearAndDeleteItems!(subPaths); }
-		PathFlattener.Flatten(path, GetScaledTolerance(), subPaths);
+		let level = new ClipPathLevel();
+		PathFlattener.Flatten(path, GetScaledTolerance(), level.SubPaths);
 
 		if (!mStencilFills)
 		{
-			PushClipPathAsScissor(subPaths);
+			PushClipPathAsScissor(level.SubPaths);
+			delete level;
 			return;
 		}
 
-		// The clip's OWN geometry must not be clipped by whatever is already active, or the
-		// stencil it writes would be cut by the previous clip.
 		FlushCurrentCommand();
-		let savedMode = mCurrentState.ClipMode;
-		mCurrentState.ClipMode = .None;
-
-		let deviceBounds = EmitWindingFans(subPaths, .NonZero);
-		mClipPathBounds = deviceBounds;
-
-		if ((deviceBounds.Width <= 0.0f) || (deviceBounds.Height <= 0.0f))
-		{
-			mCurrentState.ClipMode = savedMode;
-			return;
-		}
-
-		// One pass converts the accumulated winding into the clip mask bit and zeroes the
-		// winding bits behind itself.
-		EmitDeviceQuad(deviceBounds, .ClipApply);
-		mClipPathActive = true;
-		mCurrentState.ClipMode = .Stencil;
+		level.Transform = mCurrentState.Transform;
+		let outer = mClipPaths.IsEmpty ? Rectangle() : mClipPaths.Back.Bounds;
+		level.Bounds = EmitClipLevel(level, !mClipPaths.IsEmpty, outer);
+		mClipPaths.Add(level);
+		RefreshClipMode();
 	}
 
 	private void PushClipPathAsScissor(List<FlattenedSubPath> subPaths)
@@ -292,29 +284,94 @@ class VGContext
 			}
 		}
 
-		if ((max.X <= min.X) || (max.Y <= min.Y))
-			return;
-
 		FlushCurrentCommand();
-		let deviceRect = Rectangle(min.X, min.Y, max.X - min.X, max.Y - min.Y);
-		mCurrentState.ClipRect = HasClip(mCurrentState.ClipRect)
+		// Saved, so the pop restores the clip around this one rather than dropping it.
+		mClipPathScissors.Add(.(mCurrentState.ClipRect, mCurrentState.Scissored));
+		// An empty path clips everything away.
+		let deviceRect = ((max.X > min.X) && (max.Y > min.Y))
+			? Rectangle(min.X, min.Y, max.X - min.X, max.Y - min.Y) : Rectangle();
+		mCurrentState.ClipRect = mCurrentState.Scissored
 			? Rectangle.Intersect(mCurrentState.ClipRect, deviceRect) : deviceRect;
-		mCurrentState.ClipMode = .Scissor;
+		mCurrentState.Scissored = true;
+		RefreshClipMode();
 	}
 
-	/// Ends the active path clip, zeroing its mask over the bounds it covered.
+	/// Ends the innermost path clip: the clip around it applies again.
 	public void PopClipPath()
 	{
-		if (!mClipPathActive)
+		FlushCurrentCommand();
+		if (!mClipPathScissors.IsEmpty && mClipPaths.IsEmpty)
 		{
-			mCurrentState.ClipMode = .None;
+			let saved = mClipPathScissors.PopBack();
+			mCurrentState.ClipRect = saved.Rect;
+			mCurrentState.Scissored = saved.Scissored;
+			RefreshClipMode();
+			return;
+		}
+		if (mClipPaths.IsEmpty)
+		{
+			RefreshClipMode();
 			return;
 		}
 
-		FlushCurrentCommand();
+		// Every mask bit lies inside the outermost clip's bounds: clear them, then rebuild the
+		// clips that remain from the outermost in. Nesting is shallow, so the replay is cheap.
+		let outermost = mClipPaths[0].Bounds;
+		delete mClipPaths.PopBack();
+		ClearClipMask(outermost);
+		for (int i < mClipPaths.Count)
+		{
+			mClipPaths[i].Bounds = EmitClipLevel(mClipPaths[i], i > 0,
+				(i > 0) ? mClipPaths[i - 1].Bounds : Rectangle());
+		}
+		RefreshClipMode();
+	}
+
+	/// The clip mode the state's clips call for: the stencil while path clips are active (with
+	/// the scissor too when a rectangle clip is), the scissor alone, or none.
+	private void RefreshClipMode()
+	{
+		mCurrentState.ClipMode = !mClipPaths.IsEmpty ? .Stencil
+			: (mCurrentState.Scissored ? .Scissor : .None);
+	}
+
+	/// Writes one path clip into the stencil mask and returns its device bounds.
+	///
+	/// The outermost: its winding over the clear mask, then ClipApply over its bounds. A nested
+	/// one: its winding only where the mask is already set (a clipped write), then ClipApply over
+	/// the OUTER clip's bounds, which keeps the mask where the new winding is and zeroes it
+	/// elsewhere: the intersection, with the pipelines fills already use.
+	private Rectangle EmitClipLevel(ClipPathLevel level, bool nested, Rectangle outer)
+	{
+		let saved = mCurrentState;
+		mCurrentState.Transform = level.Transform;
+		// The clip's own geometry is never scissored.
+		mCurrentState.Scissored = false;
+		mCurrentState.ClipMode = nested ? .Stencil : .None;
+		let bounds = EmitWindingFans(level.SubPaths, .NonZero);
 		mCurrentState.ClipMode = .None;
-		EmitDeviceQuad(mClipPathBounds, .ClipClear);
-		mClipPathActive = false;
+		let apply = nested ? outer : bounds;
+		if (HasClip(apply))
+			EmitDeviceQuad(apply, .ClipApply);
+		mCurrentState.Transform = saved.Transform;
+		mCurrentState.ClipRect = saved.ClipRect;
+		mCurrentState.Scissored = saved.Scissored;
+		mCurrentState.ClipMode = saved.ClipMode;
+		return nested ? Rectangle.Intersect(bounds, outer) : bounds;
+	}
+
+	/// Zeroes the clip mask, and any stray winding, over a device rectangle.
+	private void ClearClipMask(Rectangle rect)
+	{
+		if (!HasClip(rect))
+			return;
+		let savedScissored = mCurrentState.Scissored;
+		let savedMode = mCurrentState.ClipMode;
+		mCurrentState.Scissored = false;
+		mCurrentState.ClipMode = .None;
+		EmitDeviceQuad(rect, .ClipClear);
+		mCurrentState.Scissored = savedScissored;
+		mCurrentState.ClipMode = savedMode;
 	}
 
 	// === opacity ===
@@ -1724,6 +1781,7 @@ class VGContext
 		command.TextureIndex = mCurrentTextureIndex;
 		command.ClipRect = mCurrentState.ClipRect;
 		command.ClipMode = mCurrentState.ClipMode;
+		command.Scissored = mCurrentState.Scissored && (mCurrentState.ClipMode == .Stencil);
 		command.BlendMode = mCurrentBlendMode;
 		command.StencilRef = mCurrentState.StencilRef;
 		command.DrawMode = mCurrentDrawMode;
@@ -1734,6 +1792,19 @@ class VGContext
 	// === transform helpers ===
 
 	private static bool HasClip(Rectangle rect) => (rect.Width > 0.0f) && (rect.Height > 0.0f);
+
+	/// A rectangle clip's state before it was pushed (PushClipRect, and a path clip's scissor
+	/// fallback).
+	private struct ClipRectSave : this(Rectangle Rect, bool Scissored);
+
+	/// One active path clip: its flattened path and the transform it was pushed under (a pop
+	/// replays the clips that remain), and its DEVICE space bounds.
+	private class ClipPathLevel
+	{
+		public List<FlattenedSubPath> SubPaths = new .() ~ DeleteContainerAndItems!(_);
+		public Float4x4 Transform = .Identity();
+		public Rectangle Bounds = .();
+	}
 
 	/// The largest scale the current transform applies, which both the tolerance and the
 	/// fringe divide by.

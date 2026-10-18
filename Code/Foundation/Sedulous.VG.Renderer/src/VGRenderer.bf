@@ -539,7 +539,9 @@ class VGRenderer
 	private static void ApplyScissor(IRenderPassEncoder renderPass, VGCommand command,
 		int32 viewportX, int32 viewportY, uint32 width, uint32 height)
 	{
-		if (command.ClipMode != .Scissor)
+		// Scissored: a rectangle clip alone, or one inside a path clip (with the stencil).
+		let scissored = (command.ClipMode == .Scissor) || ((command.ClipMode == .Stencil) && command.Scissored);
+		if (!scissored)
 		{
 			// Back to the whole viewport: a previous command may have narrowed it, and the
 			// scissor is pass state rather than per draw.

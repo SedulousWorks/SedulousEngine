@@ -293,6 +293,70 @@ class VGPixelProbeTests
 		return readings;
 	}
 
+	/// Clip paths NEST as intersections: two rounded clips, the inner overlapping the outer's top
+	/// left corner, then a clip rect inside the outer. Red fills the canvas under both clips and
+	/// only their intersection shows, the outer's rounded corner included; with the inner popped,
+	/// blue fills the outer alone; inside it, a clip rect confines green to its left part.
+	[Test]
+	public static void ClipPathsNestAsIntersectionsWithAClipRectInsideOne()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+			NestedClipsOn(kind);
+	}
+
+	private static void NestedClipsOn(ProbeBackend kind)
+	{
+		let fixture = scope VGProbeFixture(kind);
+		if (!fixture.Ready)
+			return;
+
+		let image = VGSceneRenderer.RenderScene(fixture, scope (context) =>
+			{
+				let full = Rect(0, 0, 128, 128);
+				defer delete full;
+				let outerBuilder = scope PathBuilder();
+				ShapeBuilder.BuildRoundedRect(.(16, 16, 96, 96), .(24), outerBuilder);
+				let outer = outerBuilder.ToPath();
+				defer delete outer;
+				let innerBuilder = scope PathBuilder();
+				ShapeBuilder.BuildRoundedRect(.(4, 4, 64, 64), .(12), innerBuilder);
+				let inner = innerBuilder.ToPath();
+				defer delete inner;
+
+				context.PushClipPath(outer);
+				context.PushClipPath(inner);
+				context.FillPath(full, ByteColor(255, 0, 0), .NonZero, false);
+				context.PopClipPath();
+				// The outer alone, below the inner's square: blue.
+				let lower = Rect(0, 72, 128, 128);
+				defer delete lower;
+				context.FillPath(lower, ByteColor(0, 0, 255), .NonZero, false);
+				// A clip rect inside the outer: green on its left part of the band x 72..128.
+				context.PushClipRect(.(72, 0, 24, 72));
+				context.FillPath(full, ByteColor(0, 255, 0), .NonZero, false);
+				context.PopClip();
+				context.PopClipPath();
+			});
+		defer delete image;
+		Test.Assert((image != null) && image.Valid, "the scene rendered");
+
+		let name = kind.ToString(.. scope .());
+		bool Red(uint32 x, uint32 y) => (image.At(x, y)[0] > 200) && (image.At(x, y)[2] < 60);
+		bool Blue(uint32 x, uint32 y) => (image.At(x, y)[2] > 200) && (image.At(x, y)[0] < 60);
+		bool Green(uint32 x, uint32 y) => (image.At(x, y)[1] > 200) && (image.At(x, y)[0] < 60);
+		bool Dark(uint32 x, uint32 y) => (image.At(x, y)[0] < 40) && (image.At(x, y)[1] < 40) && (image.At(x, y)[2] < 40);
+		Test.Assert(Red(40, 40), scope $"{name}: inside both");
+		Test.Assert(Dark(19, 19), scope $"{name}: inside the inner, outside the outer's rounded corner");
+		Test.Assert(Dark(10, 40), scope $"{name}: inside the inner, left of the outer");
+		Test.Assert(Dark(70, 40), scope $"{name}: inside the outer, right of the inner, before the clip rect");
+		Test.Assert(Dark(64, 66), scope $"{name}: inside the inner's square, outside its rounded corner");
+		Test.Assert(Blue(60, 100), scope $"{name}: the outer alone after the pop");
+		Test.Assert(Dark(108, 108), scope $"{name}: outside the outer's rounded corner");
+		Test.Assert(Green(84, 40), scope $"{name}: the clip rect inside the outer");
+		Test.Assert(Dark(100, 40), scope $"{name}: inside the outer, right of the clip rect");
+		Test.Assert(Dark(84, 8), scope $"{name}: inside the clip rect, above the outer");
+	}
+
 	/// An axis aligned rectangle path, the caller's to delete.
 	private static Path Rect(float x0, float y0, float x1, float y1)
 	{
