@@ -351,4 +351,32 @@ class HarfBuzzShaperTests
 		Test.Assert(Near(mirrored[0].X, 0.0f));
 		Test.Assert(Near(mirrored[2].X + mirrored[2].Advance, glyphs[2].X + glyphs[2].Advance));
 	}
+
+	/// In a right-to-left run a cluster starts at its right edge: the caret before the first
+	/// character is at the right end, the caret at the end at the left, and a hit on a
+	/// glyph's right half lands before its cluster.
+	[Test]
+	public static void CaretsAndHitsReadARightToLeftRunFromTheRight()
+	{
+		let dejavu = TestFonts.Load(TestFonts.cDejaVuMono);
+		Test.Assert(dejavu != null);
+		defer delete dejavu;
+		IFont[1] fonts = .(dejavu);
+		var request = ShapeRequest("\u{0633}\u{0644}\u{0627}\u{0645}", fonts);
+		request.Direction = .RightToLeft;
+		let shaper = scope HarfBuzzTextShaper();
+		let glyphs = scope List<GlyphPosition>();
+		Test.Assert(shaper.Shape(request, glyphs) case .Ok);
+		Test.Assert(glyphs.Count == 3);
+		for (let glyph in glyphs)
+			Test.Assert(glyph.RightToLeft);
+
+		Span<GlyphPosition> span = glyphs;
+		let seen = glyphs.Back; // the first character, drawn rightmost
+		Test.Assert(seen.Cluster == 0);
+		Test.Assert(Near(shaper.GetCursorPosition(dejavu, span, 0), seen.X + seen.Advance), "the start, at the right");
+		Test.Assert(Near(shaper.GetCursorPosition(dejavu, span, 4), glyphs[0].X), "the end, at the left");
+		Test.Assert(shaper.HitTest(dejavu, span, seen.X + seen.Advance * 0.9f, 0.0f).InsertionIndex == 0);
+		Test.Assert(shaper.HitTest(dejavu, span, seen.X + seen.Advance * 0.1f, 0.0f).InsertionIndex == 1);
+	}
 }

@@ -9,6 +9,81 @@ namespace Sedulous.Fonts;
 /// hold for any N to M mapping a shaper makes; a backend implements only the shaping.
 abstract class ClusterTextShaper : ITextShaper
 {
+	/// One line: the text's paragraph levels from the installed bidi resolver (none: one run in
+	/// the request's direction), its runs placed in visual order, each shaped by ShapeRun.
+	public override Result<float, FontLoadResult> Shape(ShapeRequest request, List<GlyphPosition> outPositions)
+	{
+		outPositions.Clear();
+		let codepoints = scope List<uint32>();
+		let bytes = scope List<int>();
+		DecodeWithOffsets(request.Text, codepoints, bytes);
+		let levels = scope BidiLevels();
+		let resolved = ResolveLevels(request.Direction, codepoints, 0, codepoints.Count, levels);
+		return ShapeLine(request, codepoints, bytes, 0, codepoints.Count, resolved ? levels : null,
+			request.StartX, request.StartY, outPositions);
+	}
+
+	/// How a run reads: from its script (Auto), or as bidi resolved it.
+	protected enum RunDirection : uint8
+	{
+		Auto,
+		LeftToRight,
+		RightToLeft
+	}
+
+	/// Shapes characters [start, end) of the request's text as one run, appending its glyphs
+	/// from (x, y) in drawing order (a right-to-left run's last character first), each glyph
+	/// marked RightToLeft when it reads so. Returns the run's advance.
+	protected abstract Result<float, FontLoadResult> ShapeRun(ShapeRequest request, List<uint32> codepoints,
+		List<int> byteOffsets, int start, int end, RunDirection direction, float x, float y,
+		List<GlyphPosition> outPositions);
+
+	/// The levels of characters [start, end), one paragraph, from the installed resolver,
+	/// indexed from `start`; false with none installed.
+	protected static bool ResolveLevels(TextDirection baseDirection, List<uint32> codepoints, int start, int end,
+		BidiLevels outLevels)
+	{
+		let resolver = BidiResolverFactory.Resolver;
+		if ((resolver == null) || (end <= start))
+			return false;
+		resolver.Resolve(.(codepoints.Ptr + start, end - start), baseDirection, outLevels);
+		return outLevels.Levels.Count == (end - start);
+	}
+
+	/// Characters [start, end) laid out on one line from (x, y): with levels (indexed from
+	/// `levelBase`), in the visual order of their runs; without, as one run in the request's
+	/// direction.
+	protected Result<float, FontLoadResult> ShapeLine(ShapeRequest request, List<uint32> codepoints, List<int> bytes,
+		int start, int end, BidiLevels levels, float x, float y, List<GlyphPosition> outPositions, int levelBase = 0)
+	{
+		if (levels == null)
+		{
+			RunDirection direction;
+			switch (request.Direction)
+			{
+			case .LeftToRight: direction = .LeftToRight;
+			case .RightToLeft: direction = .RightToLeft;
+			case .Auto: direction = .Auto;
+			}
+			return ShapeRun(request, codepoints, bytes, start, end, direction, x, y, outPositions);
+		}
+
+		let runs = scope List<BidiRun>();
+		Bidi.ReorderLine(levels, .(codepoints.Ptr + levelBase, codepoints.Count - levelBase),
+			start - levelBase, end - levelBase, runs);
+		var x;
+		let startX = x;
+		for (let run in runs)
+		{
+			let advance = ShapeRun(request, codepoints, bytes, levelBase + run.Start, levelBase + run.End,
+				run.RightToLeft ? .RightToLeft : .LeftToRight, x, y, outPositions);
+			if (advance case .Err(let error))
+				return .Err(error);
+			x += advance.Value;
+		}
+		return .Ok(x - startX);
+	}
+
 	/// Characters [Start, End) shaped in one font of the request's list, and their UTF-8 bytes.
 	protected struct FontRun
 	{
@@ -120,8 +195,7 @@ abstract class ClusterTextShaper : ITextShaper
 			{
 				// Past the middle means the caret belongs after this cluster, which is what
 				// makes click to place feel like it went where you pointed.
-				let midpoint = position.X + position.Advance * 0.5f;
-				return .OnCluster(position, x >= midpoint, true);
+				return .OnCluster(position, TrailingHalf(position, x), true);
 			}
 		}
 
@@ -178,8 +252,7 @@ abstract class ClusterTextShaper : ITextShaper
 			let position = positions[i];
 			if ((x >= position.X) && (x < (position.X + position.Advance)))
 			{
-				let midpoint = position.X + position.Advance * 0.5f;
-				return .OnCluster(position, x >= midpoint, true, targetLine);
+				return .OnCluster(position, TrailingHalf(position, x), true, targetLine);
 			}
 		}
 
@@ -188,37 +261,51 @@ abstract class ClusterTextShaper : ITextShaper
 		return .OnCluster(positions[lineEnd], true, false, targetLine);
 	}
 
-	/// Where a caret sits before a character: the start of its cluster's first glyph; inside a
-	/// cluster, the cluster's start; on a character with no glyph (a line break), the end of the
-	/// glyph before it; past the end, the end of the last glyph.
+	/// Where a caret sits before a character, whatever order the glyphs are drawn in: at the
+	/// leading edge of its cluster (left, or right in a right-to-left run); inside a cluster, at
+	/// the cluster's; on a character with no glyph (a line break) or past the end, at the
+	/// trailing edge of the glyph logically before it.
 	public override float GetCursorPosition(IFont font, Span<GlyphPosition> positions,
 		int32 characterIndex)
 	{
 		if (positions.IsEmpty)
 			return 0;
+		int exact = -1;
+		int inside = -1;
+		int before = -1;
+		int first = 0;
 		for (int i < positions.Length)
 		{
 			let position = positions[i];
-			if (position.Cluster < characterIndex)
-				continue;
-			if ((position.Cluster == characterIndex) || (i == 0))
-				return position.X;
-			let previous = positions[i - 1];
-			return (previous.ClusterEnd <= characterIndex) ? (previous.X + previous.Advance)
-				: ClusterStartX(positions, i - 1);
+			if ((position.Cluster == characterIndex) && (exact < 0))
+				exact = i;
+			else if ((position.Cluster < characterIndex) && (characterIndex < position.ClusterEnd) && (inside < 0))
+				inside = i;
+			if ((position.ClusterEnd <= characterIndex)
+				&& ((before < 0) || (position.ClusterEnd > positions[before].ClusterEnd)))
+				before = i;
+			if (position.Cluster < positions[first].Cluster)
+				first = i;
 		}
-		let last = positions[positions.Length - 1];
-		return (characterIndex < last.ClusterEnd) ? ClusterStartX(positions, positions.Length - 1)
-			: (last.X + last.Advance);
+		if (exact >= 0)
+			return LeadingEdge(positions[exact]);
+		if (inside >= 0)
+			return LeadingEdge(positions[inside]);
+		if (before >= 0)
+			return TrailingEdge(positions[before]);
+		return LeadingEdge(positions[first]);
 	}
 
-	/// The x of the first glyph of glyph `index`'s cluster: a mark shares its base's.
-	public static float ClusterStartX(Span<GlyphPosition> positions, int index)
+	/// Where a glyph's cluster starts on screen: its left, or its right in a right-to-left run.
+	public static float LeadingEdge(GlyphPosition glyph) => glyph.RightToLeft ? (glyph.X + glyph.Advance) : glyph.X;
+	/// Where a glyph's cluster ends on screen.
+	public static float TrailingEdge(GlyphPosition glyph) => glyph.RightToLeft ? glyph.X : (glyph.X + glyph.Advance);
+
+	/// Whether `x` falls in the half of the glyph its cluster ends in.
+	public static bool TrailingHalf(GlyphPosition glyph, float x)
 	{
-		var index;
-		while ((index > 0) && (positions[index - 1].Cluster == positions[index].Cluster))
-			index--;
-		return positions[index].X;
+		let midpoint = glyph.X + glyph.Advance * 0.5f;
+		return glyph.RightToLeft ? (x < midpoint) : (x >= midpoint);
 	}
 
 	/// The rectangles to fill for a selection, one per line it spans, over the glyphs whose

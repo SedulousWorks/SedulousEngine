@@ -24,11 +24,13 @@ struct GlyphPosition
 	public float YOffset;
 	/// Which font of the shape request's list drew it (0: the first, or the only).
 	public uint8 Font;
+	/// In a right-to-left run: its cluster's start is on its right.
+	public bool RightToLeft;
 
 	public this()
 	{
 		Cluster = 0; GlyphId = 0; X = 0; Y = 0; Advance = 0; GlyphInfo = .();
-		ClusterLength = 1; XOffset = 0; YOffset = 0; Font = 0;
+		ClusterLength = 1; XOffset = 0; YOffset = 0; Font = 0; RightToLeft = false;
 	}
 
 	/// The character after this glyph's cluster.

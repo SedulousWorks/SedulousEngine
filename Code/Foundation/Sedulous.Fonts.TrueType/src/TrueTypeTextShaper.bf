@@ -13,41 +13,6 @@ namespace Sedulous.Fonts.TrueType;
 /// instance serves every font in the process.
 class TrueTypeTextShaper : ClusterTextShaper
 {
-	/// Each font run shaped as ShapeText does; no script or language changes what it draws. A
-	/// right-to-left request lays the line out mirrored: no joining, no reordering of runs.
-	public override Result<float, FontLoadResult> Shape(ShapeRequest request, List<GlyphPosition> outPositions)
-	{
-		outPositions.Clear();
-		let codepoints = scope List<uint32>();
-		let bytes = scope List<int>();
-		DecodeWithOffsets(request.Text, codepoints, bytes);
-		let runs = scope List<FontRun>();
-		ItemizeByFont(request.Fonts, codepoints, bytes, runs);
-
-		var x = request.StartX;
-		let run = scope List<GlyphPosition>();
-		for (let fontRun in runs)
-		{
-			let font = request.Fonts[fontRun.Font];
-			if (font == null)
-				continue;
-			let text = request.Text.Substring(fontRun.ByteStart, fontRun.ByteEnd - fontRun.ByteStart);
-			let advance = ShapeText(font, text, x, request.StartY, run);
-			if (advance case .Err(let error))
-				return .Err(error);
-			for (var glyph in run)
-			{
-				glyph.Cluster += (int32)fontRun.Start;
-				glyph.Font = fontRun.Font;
-				outPositions.Add(glyph);
-			}
-			x += advance.Value;
-		}
-		if (request.Direction == .RightToLeft)
-			MirrorLine(outPositions, 0, request.StartX, x - request.StartX);
-		return .Ok(x - request.StartX);
-	}
-
 	/// One glyph per character: nothing beyond what the codepoints map to.
 	public override void CollectReachableGlyphs(IFont font, Span<int32> codepoints, List<int32> outGlyphs)
 	{
@@ -204,5 +169,49 @@ class TrueTypeTextShaper : ClusterTextShaper
 		// The last line counts too, so the height is one more than the breaks taken.
 		outTotalHeight = y + lineHeight;
 		return .Ok;
+	}
+
+	/// Each font run shaped as ShapeText does (no script or language changes what it draws); a
+	/// right-to-left run is laid out mirrored, with no joining: the basic shaper's limit.
+	protected override Result<float, FontLoadResult> ShapeRun(ShapeRequest request, List<uint32> codepoints,
+		List<int> byteOffsets, int start, int end, RunDirection direction, float x, float y,
+		List<GlyphPosition> outPositions)
+	{
+		let sub = scope List<uint32>();
+		let subBytes = scope List<int>();
+		for (int i = start; i < end; i++)
+		{
+			sub.Add(codepoints[i]);
+			subBytes.Add(byteOffsets[i]);
+		}
+		subBytes.Add(byteOffsets[end]);
+		let runs = scope List<FontRun>();
+		ItemizeByFont(request.Fonts, sub, subBytes, runs);
+
+		let first = outPositions.Count;
+		var x;
+		let startX = x;
+		let run = scope List<GlyphPosition>();
+		for (let fontRun in runs)
+		{
+			let font = request.Fonts[fontRun.Font];
+			if (font == null)
+				continue;
+			let text = request.Text.Substring(fontRun.ByteStart, fontRun.ByteEnd - fontRun.ByteStart);
+			let advance = ShapeText(font, text, x, y, run);
+			if (advance case .Err(let error))
+				return .Err(error);
+			for (var glyph in run)
+			{
+				glyph.Cluster += (int32)(start + fontRun.Start);
+				glyph.Font = fontRun.Font;
+				glyph.RightToLeft = direction == .RightToLeft;
+				outPositions.Add(glyph);
+			}
+			x += advance.Value;
+		}
+		if (direction == .RightToLeft)
+			MirrorLine(outPositions, first, startX, x - startX);
+		return .Ok(x - startX);
 	}
 }

@@ -71,8 +71,10 @@ class VGShapedTextTests
 			return .Ok;
 		}
 
-		public override Result<float, FontLoadResult> Shape(ShapeRequest request, List<GlyphPosition> outPositions)
-			=> ShapeText(request.Fonts[0], request.Text, request.StartX, request.StartY, outPositions);
+		protected override Result<float, FontLoadResult> ShapeRun(ShapeRequest request, List<uint32> codepoints,
+			List<int> byteOffsets, int start, int end, RunDirection direction, float x, float y,
+			List<GlyphPosition> outPositions)
+			=> ShapeText(request.Fonts[0], request.Text, x, y, outPositions);
 
 		public override void CollectReachableGlyphs(IFont font, Span<int32> codepoints, List<int32> outGlyphs)
 		{

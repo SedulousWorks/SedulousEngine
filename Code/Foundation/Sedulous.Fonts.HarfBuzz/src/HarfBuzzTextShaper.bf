@@ -11,9 +11,10 @@ namespace Sedulous.Fonts.HarfBuzz;
 /// Shapes UTF-32 codepoints, so HarfBuzz's clusters come back in characters, the unit
 /// GlyphPosition clusters count, at the monotone-characters cluster level: a ligature is one
 /// cluster over its characters, and a base and its marks share one. Positions arrive in font
-/// units and scale to pixels by the font's Metrics.Scale; y offsets flip to y-down. Wrapping
-/// shapes each paragraph whole and breaks it after spaces, so a ligature or a joined form never
-/// splits across a break it would not have split at.
+/// units and scale to pixels by the font's Metrics.Scale; y offsets flip to y-down. A line's runs
+/// come from the installed bidi resolver and are laid out in visual order. Wrapping measures each
+/// paragraph in logical runs and breaks after spaces, so a ligature or a joined form never splits
+/// across a break it would not have split at, and right-to-left text reorders by line.
 class HarfBuzzTextShaper : ClusterTextShaper
 {
 	/// A HarfBuzz font for one font file this shaper has shaped with.
@@ -51,103 +52,90 @@ class HarfBuzzTextShaper : ClusterTextShaper
 		return Shape(request, outPositions);
 	}
 
-	/// Runs by font, then by script within each (a character of no particular script, a space
-	/// or a digit, joins the run around it), each shaped with its direction, script and language;
-	/// runs are laid one after the other: reordering runs is bidi's.
-	public override Result<float, FontLoadResult> Shape(ShapeRequest request, List<GlyphPosition> outPositions)
-	{
-		outPositions.Clear();
-		let codepoints = scope List<uint32>();
-		let bytes = scope List<int>();
-		DecodeWithOffsets(request.Text, codepoints, bytes);
-		let runs = scope List<FontRun>();
-		ItemizeByFont(request.Fonts, codepoints, bytes, runs);
-		let language = request.Language.IsEmpty ? HB_LANGUAGE_INVALID
-			: hb_language_from_string(request.Language.Ptr, (int32)request.Language.Length);
-		let direction = (request.Direction == .LeftToRight) ? hb_direction_t.HB_DIRECTION_LTR
-			: ((request.Direction == .RightToLeft) ? hb_direction_t.HB_DIRECTION_RTL : hb_direction_t.HB_DIRECTION_INVALID);
-
-		var x = request.StartX;
-		let fallback = scope List<GlyphPosition>();
-		let run = scope List<uint32>();
-		for (let fontRun in runs)
-		{
-			let font = request.Fonts[fontRun.Font];
-			if (font == null)
-				continue;
-			let first = outPositions.Count;
-			let hbFont = FontFor(font);
-			if (hbFont == null)
-			{
-				// No file to read: the basic shaper, run by run.
-				let text = request.Text.Substring(fontRun.ByteStart, fontRun.ByteEnd - fontRun.ByteStart);
-				if (mFallback.ShapeText(font, text, x, request.StartY, fallback) case .Ok(let advance))
-				{
-					for (var glyph in fallback)
-					{
-						glyph.Cluster += (int32)fontRun.Start;
-						outPositions.Add(glyph);
-					}
-					x += advance;
-				}
-			}
-			else
-			{
-				var start = fontRun.Start;
-				while (start < fontRun.End)
-				{
-					var script = HB_SCRIPT_INVALID;
-					var end = fontRun.End;
-					if (request.Script != 0)
-						script = hb_script_from_iso15924_tag(request.Script);
-					else
-						end = ScriptRunEnd(codepoints, start, fontRun.End, out script);
-					run.Clear();
-					for (int i = start; i < end; i++)
-						run.Add(codepoints[i]);
-					x += ShapeCodepoints(font, hbFont, run, (int32)start, x, request.StartY, outPositions,
-						script, direction, language);
-					start = end;
-				}
-			}
-			for (int i = first; i < outPositions.Count; i++)
-				outPositions[i].Font = fontRun.Font;
-		}
-		return .Ok(x - request.StartX);
-	}
-
+	/// Each paragraph (up to a line break, which draws nothing): its levels resolved, its
+	/// characters measured in logical order, lines broken after the last space that fits (or
+	/// before the character that overflows when a word alone is too wide), and each line laid out
+	/// in visual order, so a ligature is never split and right-to-left text reorders by line.
 	public override Result<void, FontLoadResult> ShapeTextWrapped(IFont font, StringView text,
 		float maxWidth, List<GlyphPosition> outPositions, out float outTotalHeight)
 	{
-		if (font == null)
-			return mFallback.ShapeTextWrapped(font, text, maxWidth, outPositions, out outTotalHeight);
-		let hbFont = FontFor(font);
-		if (hbFont == null)
+		if ((font == null) || (FontFor(font) == null))
 			return mFallback.ShapeTextWrapped(font, text, maxWidth, outPositions, out outTotalHeight);
 
 		outPositions.Clear();
 		let lineHeight = font.Metrics.LineHeight;
 		let codepoints = scope List<uint32>();
-		Decode(text, codepoints);
+		let bytes = scope List<int>();
+		DecodeWithOffsets(text, codepoints, bytes);
+		IFont[1] fonts = .(font);
+		let request = ShapeRequest(text, fonts);
 
 		float y = 0;
 		int start = 0;
-		let run = scope List<uint32>();
-		let paragraph = scope List<GlyphPosition>();
+		let measured = scope List<GlyphPosition>();
+		let widths = scope List<float>();
+		let levels = scope BidiLevels();
 		while (start <= codepoints.Count)
 		{
-			// One paragraph: up to the next line break, which draws nothing.
 			var end = start;
 			while ((end < codepoints.Count) && (codepoints[end] != (uint32)'\n'))
 				end++;
-			run.Clear();
-			for (int i = start; i < end; i++)
-				run.Add((codepoints[i] != (uint32)'\r') ? codepoints[i] : (uint32)' '); // a CR keeps its character, as a space
+			if (end > start)
+			{
+				let resolved = ResolveLevels(.Auto, codepoints, start, end, levels);
+				// Each character's share of the advance, shaped in logical runs of one level.
+				widths.Clear();
+				widths.Resize(end - start);
+				for (var width in ref widths)
+					width = 0;
+				var runStart = start;
+				while (runStart < end)
+				{
+					var runEnd = end;
+					var direction = RunDirection.Auto;
+					if (resolved)
+					{
+						let level = levels.Levels[runStart - start];
+						runEnd = runStart + 1;
+						while ((runEnd < end) && (levels.Levels[runEnd - start] == level))
+							runEnd++;
+						direction = ((level & 1) != 0) ? .RightToLeft : .LeftToRight;
+					}
+					measured.Clear();
+					ShapeRun(request, codepoints, bytes, runStart, runEnd, direction, 0, 0, measured);
+					for (let glyph in measured)
+					{
+						if ((glyph.Cluster >= start) && (glyph.Cluster < end))
+							widths[glyph.Cluster - start] += glyph.Advance;
+					}
+					runStart = runEnd;
+				}
 
-			paragraph.Clear();
-			ShapeCodepoints(font, hbFont, run, (int32)start, 0, 0, paragraph,
-				HB_SCRIPT_INVALID, .HB_DIRECTION_INVALID, HB_LANGUAGE_INVALID);
-			y = WrapParagraph(paragraph, codepoints, maxWidth, lineHeight, y, outPositions);
+				var lineStart = start;
+				while (lineStart < end)
+				{
+					float width = 0;
+					var lastSpace = end; // none yet
+					var lineEnd = lineStart;
+					for (; lineEnd < end; lineEnd++)
+					{
+						let space = codepoints[lineEnd] == (uint32)' ';
+						if (((width + widths[lineEnd - start]) > maxWidth) && (lineEnd > lineStart) && !space)
+							break;
+						if (space)
+							lastSpace = lineEnd;
+						width += widths[lineEnd - start];
+					}
+					var next = lineEnd;
+					if ((lineEnd < end) && (lastSpace < end) && (lastSpace >= lineStart))
+						next = lastSpace + 1;
+					ShapeLine(request, codepoints, bytes, lineStart, next, resolved ? levels : null, 0, y,
+						outPositions, start);
+					lineStart = next;
+					if (lineStart < end)
+						y += lineHeight;
+				}
+			}
 			if (end >= codepoints.Count)
 				break;
 			y += lineHeight; // the break starts the next paragraph on a line of its own
@@ -155,6 +143,112 @@ class HarfBuzzTextShaper : ClusterTextShaper
 		}
 		outTotalHeight = y + lineHeight;
 		return .Ok;
+	}
+
+	/// A piece of a run: characters in one font and one script.
+	struct Piece
+	{
+		public int Start;
+		public int End;
+		public uint8 Font;
+		public hb_script_t Script;
+	}
+
+	/// Characters [start, end) as runs by font, then by script; each shaped in the run's
+	/// direction (or its script's), with the request's script and language. In a right-to-left
+	/// run the pieces are laid right to left. A font without its file is shaped by the basic
+	/// shaper.
+	protected override Result<float, FontLoadResult> ShapeRun(ShapeRequest request, List<uint32> codepoints,
+		List<int> byteOffsets, int start, int end, RunDirection direction, float x, float y,
+		List<GlyphPosition> outPositions)
+	{
+		let language = request.Language.IsEmpty ? HB_LANGUAGE_INVALID
+			: hb_language_from_string(request.Language.Ptr, (int32)request.Language.Length);
+
+		// The pieces, in logical order.
+		let sub = scope List<uint32>();
+		let subBytes = scope List<int>();
+		for (int i = start; i < end; i++)
+		{
+			sub.Add(codepoints[i]);
+			subBytes.Add(byteOffsets[i]);
+		}
+		subBytes.Add(byteOffsets[end]);
+		let runs = scope List<FontRun>();
+		ItemizeByFont(request.Fonts, sub, subBytes, runs);
+		let pieces = scope List<Piece>();
+		for (let fontRun in runs)
+		{
+			var at = start + fontRun.Start;
+			let runEnd = start + fontRun.End;
+			while (at < runEnd)
+			{
+				var piece = Piece();
+				piece.Start = at;
+				piece.Font = fontRun.Font;
+				if (request.Script != 0)
+				{
+					piece.End = runEnd;
+					piece.Script = hb_script_from_iso15924_tag(request.Script);
+				}
+				else
+				{
+					piece.End = ScriptRunEnd(codepoints, at, runEnd, out piece.Script);
+				}
+				pieces.Add(piece);
+				at = piece.End;
+			}
+		}
+
+		let reversed = direction == .RightToLeft;
+		hb_direction_t hbDirection;
+		switch (direction)
+		{
+		case .LeftToRight: hbDirection = .HB_DIRECTION_LTR;
+		case .RightToLeft: hbDirection = .HB_DIRECTION_RTL;
+		case .Auto: hbDirection = .HB_DIRECTION_INVALID;
+		}
+		var x;
+		let startX = x;
+		let fallback = scope List<GlyphPosition>();
+		let run = scope List<uint32>();
+		for (int k < pieces.Count)
+		{
+			let piece = pieces[reversed ? (pieces.Count - 1 - k) : k];
+			let font = request.Fonts[piece.Font];
+			if (font == null)
+				continue;
+			let first = outPositions.Count;
+			let hbFont = FontFor(font);
+			if (hbFont == null)
+			{
+				let text = request.Text.Substring(byteOffsets[piece.Start], byteOffsets[piece.End] - byteOffsets[piece.Start]);
+				if (mFallback.ShapeText(font, text, x, y, fallback) case .Ok(let advance))
+				{
+					for (var glyph in fallback)
+					{
+						glyph.Cluster += (int32)piece.Start;
+						outPositions.Add(glyph);
+					}
+					x += advance;
+				}
+			}
+			else
+			{
+				run.Clear();
+				for (int i = piece.Start; i < piece.End; i++)
+					run.Add(codepoints[i]);
+				x += ShapeCodepoints(font, hbFont, run, (int32)piece.Start, x, y, outPositions,
+					piece.Script, hbDirection, language);
+			}
+			for (int i = first; i < outPositions.Count; i++)
+			{
+				outPositions[i].Font = piece.Font;
+				if (reversed)
+					outPositions[i].RightToLeft = true;
+			}
+		}
+		return .Ok(x - startX);
 	}
 
 	/// The features shaping turns on by default whose substitutions bring in glyphs:
@@ -270,54 +364,6 @@ class HarfBuzzTextShaper : ClusterTextShaper
 			x += glyph.Advance;
 		}
 		return x - startX;
-	}
-
-	/// Lays one shaped paragraph into lines no wider than `maxWidth`, breaking after the last
-	/// space that fits, or before an overflowing glyph when a word alone is too wide. Returns
-	/// the y of its last line.
-	private static float WrapParagraph(List<GlyphPosition> glyphs, List<uint32> text, float maxWidth,
-		float lineHeight, float y, List<GlyphPosition> outPositions)
-	{
-		var y;
-		int lineStart = 0;
-		while (lineStart < glyphs.Count)
-		{
-			let origin = glyphs[lineStart].X;
-			var lastBreak = glyphs.Count; // the glyph after which the line may end
-			var end = lineStart;
-			for (; end < glyphs.Count; end++)
-			{
-				let glyph = glyphs[end];
-				let space = (glyph.Cluster >= 0) && (glyph.Cluster < text.Count) && (text[glyph.Cluster] == (uint32)' ');
-				if (((glyph.X + glyph.Advance - origin) > maxWidth) && (end > lineStart) && !space)
-					break;
-				if (space)
-					lastBreak = end;
-			}
-
-			var next = end;
-			if ((end < glyphs.Count) && (lastBreak < glyphs.Count) && (lastBreak >= lineStart))
-				next = lastBreak + 1; // wrap after the space
-			for (int i = lineStart; i < next; i++)
-			{
-				var glyph = glyphs[i];
-				glyph.X -= origin;
-				glyph.Y = y;
-				outPositions.Add(glyph);
-			}
-			lineStart = next;
-			if (lineStart < glyphs.Count)
-				y += lineHeight;
-		}
-		return y;
-	}
-
-	private static void Decode(StringView text, List<uint32> outCodepoints)
-	{
-		outCodepoints.Clear();
-		int index = 0;
-		while (index < text.Length)
-			outCodepoints.Add(DecodeCodepoint(text, ref index));
 	}
 
 	/// The end of the script run starting at `start` (within [start, end)), and its script. A
