@@ -134,6 +134,13 @@ class ValidatedDevice : IDevice
 			ValidationLog.Error("Device.CreateTexture: width or height is zero");
 			return .Err;
 		}
+		// The one alternate view format a backend can honour is the format's sRGB or UNORM twin.
+		if ((desc.AlternateViewFormat != .Undefined)
+			&& (desc.AlternateViewFormat != TextureFormats.SrgbTwin(desc.Format)))
+		{
+			ValidationLog.Error("Device.CreateTexture: AlternateViewFormat must be the format's sRGB or UNORM twin");
+			return .Err;
+		}
 		return TrackCreated(mInner.CreateTexture(desc), mTextures, desc.Label);
 	}
 
@@ -150,6 +157,18 @@ class ValidatedDevice : IDevice
 		}
 		if (!mTextures.Contains(texture))
 			ValidationLog.Error("Device.CreateTextureView: the texture was destroyed, or was not created by this device");
+		// A view in the texture's sRGB or UNORM twin needs the texture to have declared it. Only
+		// a live texture is asked: a destroyed one's description is freed memory.
+		else if (desc.Format != .Undefined)
+		{
+			let own = texture.Desc;
+			if ((desc.Format != own.Format) && (desc.Format == TextureFormats.SrgbTwin(own.Format))
+				&& (own.AlternateViewFormat != desc.Format))
+			{
+				ValidationLog.Error("Device.CreateTextureView: a view in the texture's sRGB or UNORM twin needs TextureDesc.AlternateViewFormat");
+				return .Err;
+			}
+		}
 		// A view is named after its texture, so a leaked view says whose it is.
 		let owner = scope String();
 		if (!mTextures.TryGetLabel(texture, owner))

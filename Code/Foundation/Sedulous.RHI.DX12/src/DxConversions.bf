@@ -406,6 +406,29 @@ static class DxConversions
 		}
 	}
 
+	/// The typeless family of a colour format with an sRGB or UNORM twin, so views of either twin
+	/// can be made over one resource (TextureDesc.AlternateViewFormat).
+	public static DXGI_FORMAT ToTypelessColorFormat(TextureFormat f)
+	{
+		switch (f)
+		{
+		case .RGBA8Unorm, .RGBA8UnormSrgb:
+			return .DXGI_FORMAT_R8G8B8A8_TYPELESS;
+		case .BGRA8Unorm, .BGRA8UnormSrgb:
+			return .DXGI_FORMAT_B8G8R8A8_TYPELESS;
+		case .BC1RGBAUnorm, .BC1RGBAUnormSrgb:
+			return .DXGI_FORMAT_BC1_TYPELESS;
+		case .BC2RGBAUnorm, .BC2RGBAUnormSrgb:
+			return .DXGI_FORMAT_BC2_TYPELESS;
+		case .BC3RGBAUnorm, .BC3RGBAUnormSrgb:
+			return .DXGI_FORMAT_BC3_TYPELESS;
+		case .BC7RGBAUnorm, .BC7RGBAUnormSrgb:
+			return .DXGI_FORMAT_BC7_TYPELESS;
+		default:
+			return ToDxgiFormat(f);
+		}
+	}
+
 	public static DXGI_FORMAT ToDepthSrvFormat(TextureFormat f)
 	{
 		switch (f)

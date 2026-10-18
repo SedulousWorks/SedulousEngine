@@ -35,10 +35,13 @@ class DxTexture : ITexture
 		mDesc = d;
 
 		// A depth texture is created TYPELESS, so a view can read it as depth and another as
-		// stencil. The clear value still names the real format.
+		// stencil; so is a colour texture whose views may take its sRGB or UNORM twin. The clear
+		// value still names the real format.
 		let format = TextureFormats.IsDepthFormat(d.Format)
 			? DxConversions.ToTypelessDepthFormat(d.Format)
-			: DxConversions.ToDxgiFormat(d.Format);
+			: ((d.AlternateViewFormat != .Undefined)
+				? DxConversions.ToTypelessColorFormat(d.Format)
+				: DxConversions.ToDxgiFormat(d.Format));
 
 		D3D12_RESOURCE_DESC rd = .();
 		rd.Dimension = DxConversions.ToResourceDimension(d.Dimension);
@@ -72,7 +75,7 @@ class DxTexture : ITexture
 		}
 		else if (d.Usage.HasFlag(.RenderTarget))
 		{
-			clearVal.Format = format;
+			clearVal.Format = DxConversions.ToDxgiFormat(d.Format); // typed: a typeless resource clears as its format
 			clearVal.Color = .(0, 0, 0, 1);
 			pClearVal = &clearVal;
 			mState = .D3D12_RESOURCE_STATE_RENDER_TARGET;

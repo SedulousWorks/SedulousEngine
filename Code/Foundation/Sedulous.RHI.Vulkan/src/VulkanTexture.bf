@@ -68,6 +68,19 @@ class VulkanTexture : ITexture
 		if ((desc.ArrayLayerCount >= 6) && (desc.Dimension == .Texture2D))
 			createInfo.flags |= .VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
+		// A view may also take the format's sRGB or UNORM twin: mutable, listing exactly the two so
+		// the driver keeps its compression for them (the Vulkan 1.2 core format list).
+		VkFormat[2] viewFormats = .(createInfo.format, .VK_FORMAT_UNDEFINED);
+		VkImageFormatListCreateInfo formatList = .();
+		if (desc.AlternateViewFormat != .Undefined)
+		{
+			viewFormats[1] = VulkanConversions.ToVkFormat(desc.AlternateViewFormat);
+			formatList.viewFormatCount = 2;
+			formatList.pViewFormats = &viewFormats[0];
+			createInfo.pNext = &formatList;
+			createInfo.flags |= .VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+		}
+
 		if (VulkanNative.vkCreateImage(device, &createInfo, null, &mImage) != .VK_SUCCESS)
 			return .Err;
 

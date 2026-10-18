@@ -72,6 +72,13 @@ sealed class WebGpuTexture : ITexture
 		wgpu.format = format;
 		wgpu.mipLevelCount = desc.MipLevelCount;
 		wgpu.sampleCount = desc.SampleCount;
+		// A view may also take the format's sRGB or UNORM twin.
+		var alternate = WebGpuConversions.ToWgpuTextureFormat(desc.AlternateViewFormat);
+		if (desc.AlternateViewFormat != .Undefined)
+		{
+			wgpu.viewFormatCount = 1;
+			wgpu.viewFormats = &alternate;
+		}
 
 		mHandle = wgpuDeviceCreateTexture(device, &wgpu);
 		return (mHandle != null) ? .Ok : .Err;

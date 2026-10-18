@@ -13,6 +13,11 @@ struct TextureDesc
 	public uint32 MipLevelCount = 1;
 	public uint32 SampleCount = 1;
 	public TextureUsage Usage = .None;
+	/// The one other format a view of this texture may take: its sRGB or UNORM twin
+	/// (TextureFormats.SrgbTwin), the only reinterpretation every backend allows. An sRGB
+	/// target with a UNORM view lets a pass blend encoded values, as browsers composite UI;
+	/// Undefined (the default) allows views of Format only.
+	public TextureFormat AlternateViewFormat = .Undefined;
 	public StringView Label = default;
 
 	public this() {}

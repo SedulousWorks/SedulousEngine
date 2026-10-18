@@ -145,6 +145,30 @@ static class TextureFormats
 		}
 	}
 
+	/// The format's sRGB or UNORM twin (RGBA8Unorm and RGBA8UnormSrgb, the BGRA8 and BC pairs
+	/// likewise): the same bytes read with or without the sRGB transfer. Undefined for a format
+	/// that has none. It is the one reinterpretation every backend allows (WebGPU limits a
+	/// texture's view formats to it), so it is what TextureDesc.AlternateViewFormat may name.
+	public static TextureFormat SrgbTwin(TextureFormat f)
+	{
+		switch (f)
+		{
+		case .RGBA8Unorm: return .RGBA8UnormSrgb;
+		case .RGBA8UnormSrgb: return .RGBA8Unorm;
+		case .BGRA8Unorm: return .BGRA8UnormSrgb;
+		case .BGRA8UnormSrgb: return .BGRA8Unorm;
+		case .BC1RGBAUnorm: return .BC1RGBAUnormSrgb;
+		case .BC1RGBAUnormSrgb: return .BC1RGBAUnorm;
+		case .BC2RGBAUnorm: return .BC2RGBAUnormSrgb;
+		case .BC2RGBAUnormSrgb: return .BC2RGBAUnorm;
+		case .BC3RGBAUnorm: return .BC3RGBAUnormSrgb;
+		case .BC3RGBAUnormSrgb: return .BC3RGBAUnorm;
+		case .BC7RGBAUnorm: return .BC7RGBAUnormSrgb;
+		case .BC7RGBAUnormSrgb: return .BC7RGBAUnorm;
+		default: return .Undefined;
+		}
+	}
+
 	/// The floating point colour formats: they store linear values as written, and whatever
 	/// shows them encodes for display.
 	public static bool IsFloat(TextureFormat f)

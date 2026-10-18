@@ -359,4 +359,41 @@ class DeviceValidationTests
 		Test.Assert(fixture.Messages.HasWarning("live TextureView: leak.probe.texture/view"));
 		Test.Assert(!fixture.Messages.HasWarning("freed.texture"));
 	}
+
+	/// A view in a texture's sRGB or UNORM twin is the one reinterpretation every backend allows,
+	/// and only when the texture declared it at creation: Vulkan has to make the image mutable,
+	/// WebGPU has to list the view format, DX12 has to make the resource typeless.
+	[Test]
+	public static void ATwinViewNeedsTheTextureToDeclareIt()
+	{
+		let fixture = scope ValidationFixture();
+
+		// Without the declaration, a UNORM view of an sRGB texture is refused.
+		var plain = TextureDesc.RenderTarget(.RGBA8UnormSrgb, 4, 4);
+		plain.Label = "DeviceValidationTests.ATwinViewNeedsTheTextureToDeclareIt";
+		Test.Assert(fixture.Device.CreateTexture(plain) case .Ok(let undeclared));
+		fixture.Own(undeclared);
+		var unorm = TextureViewDesc();
+		unorm.Format = .RGBA8Unorm;
+		Test.Assert(fixture.Device.CreateTextureView(undeclared, unorm) case .Err);
+		Test.Assert(fixture.Messages.HasError("needs TextureDesc.AlternateViewFormat"));
+
+		// Declared, it is made, and so is a view in the texture's own format.
+		fixture.Messages.Clear();
+		var twin = plain;
+		twin.AlternateViewFormat = .RGBA8Unorm;
+		Test.Assert(fixture.Device.CreateTexture(twin) case .Ok(let declared));
+		fixture.Own(declared);
+		Test.Assert(fixture.Device.CreateTextureView(declared, unorm) case .Ok(let twinView));
+		fixture.Own(twinView);
+		Test.Assert(fixture.Device.CreateTextureView(declared, .()) case .Ok(let ownView));
+		fixture.Own(ownView);
+		Test.Assert(fixture.Messages.Count == 0);
+
+		// An alternate that is not the twin is refused at creation.
+		var wrong = plain;
+		wrong.AlternateViewFormat = .RGBA16Float;
+		Test.Assert(fixture.Device.CreateTexture(wrong) case .Err);
+		Test.Assert(fixture.Messages.HasError("must be the format's sRGB or UNORM twin"));
+	}
 }

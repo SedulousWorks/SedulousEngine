@@ -229,4 +229,19 @@ class TextureFormatTests
 
 		Test.Assert(TextureFormats.CompressedLevelBytes(.RGBA8Unorm, 16, 16) == 0);
 	}
+
+	/// The twin is the same bytes with or without the sRGB transfer, both ways round; a format
+	/// with no such pair has none.
+	[Test]
+	public static void SrgbTwinPairsBothWays()
+	{
+		Test.Assert(TextureFormats.SrgbTwin(.RGBA8UnormSrgb) == .RGBA8Unorm);
+		Test.Assert(TextureFormats.SrgbTwin(.RGBA8Unorm) == .RGBA8UnormSrgb);
+		Test.Assert(TextureFormats.SrgbTwin(.BGRA8Unorm) == .BGRA8UnormSrgb);
+		Test.Assert(TextureFormats.SrgbTwin(.BGRA8UnormSrgb) == .BGRA8Unorm);
+		Test.Assert(TextureFormats.SrgbTwin(.BC1RGBAUnorm) == .BC1RGBAUnormSrgb);
+		Test.Assert(TextureFormats.SrgbTwin(.BC7RGBAUnormSrgb) == .BC7RGBAUnorm);
+		Test.Assert(TextureFormats.SrgbTwin(.RGBA16Float) == .Undefined);
+		Test.Assert(TextureFormats.SrgbTwin(.Depth32Float) == .Undefined);
+	}
 }
