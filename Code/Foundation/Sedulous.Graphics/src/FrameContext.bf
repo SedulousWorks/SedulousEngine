@@ -36,6 +36,9 @@ struct FrameContext
 
 	public ITexture Backbuffer = null;
 	public ITextureView BackbufferView = null;
+	/// The backbuffer viewed in its sRGB or UNORM twin (the window's swap chain asks for it);
+	/// null where the device or surface could not. VG's Encoded blend space draws through it.
+	public ITextureView BackbufferAlternateView = null;
 
 	private IRenderPassEncoder mPass = null;
 
@@ -48,6 +51,12 @@ struct FrameContext
 	/// ignores it and records on Encoder directly.
 	public IRenderPassEncoder BeginBackbufferPass(ClearColor clear) mut
 	{
+		return BeginBackbufferPass(clear, BackbufferView);
+	}
+
+	/// The same through a chosen view of the backbuffer (BackbufferAlternateView).
+	public IRenderPassEncoder BeginBackbufferPass(ClearColor clear, ITextureView view) mut
+	{
 		if (Encoder == null)
 		{
 			mPass = null;
@@ -55,7 +64,7 @@ struct FrameContext
 		}
 
 		var colorAttachment = ColorAttachment();
-		colorAttachment.View = BackbufferView;
+		colorAttachment.View = view;
 		colorAttachment.LoadOp = .Clear;
 		colorAttachment.StoreOp = .Store;
 		colorAttachment.ClearValue = clear;

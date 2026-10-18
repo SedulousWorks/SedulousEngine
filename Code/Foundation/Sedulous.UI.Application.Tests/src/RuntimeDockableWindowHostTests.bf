@@ -73,4 +73,35 @@ class RuntimeDockableWindowHostTests
 		dockHost.CreateDockableWindow(floating, 200, 150, 10, 10);
 		dockHost.DestroyDockableWindow(floating);
 	}
+
+	/// A window's UI blends encoded values by default, drawing in the backbuffer's UNORM twin;
+	/// asked for Linear, a window attached afterwards draws in the backbuffer's own format.
+	[Test]
+	public static void AWindowsUIBlendsEncodedValuesUnlessAskedForLinear()
+	{
+		let shell = scope NullShell();
+		Test.Assert(NullGraphics.CreateDevice(2) case .Ok(let graphics));
+		defer delete graphics;
+
+		Test.Assert(graphics.CreateRenderWindow(shell.MainWindow, .()) case .Ok(let encodedWindow));
+		defer delete encodedWindow;
+		Test.Assert(graphics.CreateRenderWindow(shell.MainWindow, .()) case .Ok(let linearWindow));
+		defer delete linearWindow;
+
+		let uiHost = scope UIHost(graphics, shell, null, null);
+		Test.Assert(uiHost.BlendSpace == .Encoded, "Encoded is the default");
+		uiHost.AttachWindow(encodedWindow, new RootView());
+		let encoded = encodedWindow.Data as UIWindowData;
+		Test.Assert(encoded.Encoded);
+		Test.Assert(encoded.DrawFormat == .BGRA8Unorm, "drawn through the sRGB backbuffer's UNORM twin");
+
+		uiHost.BlendSpace = .Linear;
+		uiHost.AttachWindow(linearWindow, new RootView());
+		let linear = linearWindow.Data as UIWindowData;
+		Test.Assert(!linear.Encoded);
+		Test.Assert(linear.DrawFormat == .BGRA8UnormSrgb, "drawn in the backbuffer's own format");
+
+		uiHost.DetachWindow(encodedWindow);
+		uiHost.DetachWindow(linearWindow);
+	}
 }

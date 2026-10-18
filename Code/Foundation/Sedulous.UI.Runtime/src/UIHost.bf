@@ -76,6 +76,9 @@ class UIHost
 	private float mUiScale = 1.0f;
 	/// Near black, stored LINEAR. See SetClearColor for why.
 	private ClearColor mClearColor = .(0.006f, 0.006f, 0.009f, 1.0f);
+	/// The same, as authored: an Encoded window clears in encoded values.
+	private ClearColor mClearColorEncoded = .(LinearToSrgb(0.006f), LinearToSrgb(0.006f), LinearToSrgb(0.009f), 1.0f);
+	private VGBlendSpace mBlendSpace = .Encoded;
 
 	/// The data mount is BORROWED: the application resolves the data root once, owns the
 	/// mount and outlives this. The vector shaders come from its Shaders folder like every
@@ -120,6 +123,18 @@ class UIHost
 	public void SetClearColor(float r, float g, float b, float a = 1.0f)
 	{
 		mClearColor = .(SrgbToLinear(r), SrgbToLinear(g), SrgbToLinear(b), a);
+		mClearColorEncoded = .(r, g, b, a);
+	}
+
+	/// The values a window's UI blends (VG's blend space), for windows attached after the call.
+	///
+	/// Encoded, the default, blends as browsers and design tools do: half black over white is
+	/// 50% grey. It needs the window's swap chain to offer its UNORM view; a window whose swap
+	/// chain cannot blends linear light as before.
+	public VGBlendSpace BlendSpace
+	{
+		get => mBlendSpace;
+		set => mBlendSpace = value;
 	}
 
 	private static float SrgbToLinear(float channel)
@@ -192,7 +207,10 @@ class UIHost
 		data.DepthStencilFormat = VGRenderer.PickStencilCapableFormat(data.Device,
 			UIWindowData.MsaaSamples);
 
-		let targetsOk = data.CreateTargets(window.Swap.Format, window.Window.Width,
+		// Encoded when asked for and the swap chain offers its UNORM view; else linear.
+		data.Encoded = (mBlendSpace == .Encoded) && (window.Swap.AlternateViewFormat != .Undefined);
+		data.DrawFormat = data.Encoded ? window.Swap.AlternateViewFormat : window.Swap.Format;
+		let targetsOk = data.CreateTargets(data.DrawFormat, window.Window.Width,
 			window.Window.Height);
 
 		var targetConfig = VGTargetConfig();
@@ -201,8 +219,9 @@ class UIHost
 			targetConfig.SampleCount = UIWindowData.MsaaSamples;
 			targetConfig.DepthStencilFormat = data.DepthStencilFormat;
 		}
+		targetConfig.BlendSpace = data.Encoded ? .Encoded : .Linear;
 
-		data.Renderer.Initialize(mDevice.Raw, mVertexShader, mFragmentShader, window.Swap.Format,
+		data.Renderer.Initialize(mDevice.Raw, mVertexShader, mFragmentShader, data.DrawFormat,
 			(int32)mDevice.FramesInFlight, mDistanceFieldShader, mGradientRadialShader,
 			mGradientConicShader, targetConfig, mBoxShadowShader);
 
@@ -520,7 +539,7 @@ class UIHost
 		if (mDevice.Raw != null)
 			mDevice.Raw.WaitIdle();
 
-		attached.Data.CreateTargets(attached.Window.Swap.Format, (uint32)width, (uint32)height);
+		attached.Data.CreateTargets(attached.Data.DrawFormat, (uint32)width, (uint32)height);
 	}
 
 	/// Pumps one window at LIVE desktop coordinates mapped into its own space.
@@ -587,11 +606,11 @@ class UIHost
 
 		var color = ColorAttachment();
 		color.View = data.MsaaColorView;
-		color.ResolveTarget = frame.BackbufferView;
+		color.ResolveTarget = data.Encoded ? frame.BackbufferAlternateView : frame.BackbufferView;
 		color.LoadOp = .Clear;
 		// Resolved, so the multisampled texels can be dropped.
 		color.StoreOp = .DontCare;
-		color.ClearValue = mClearColor;
+		color.ClearValue = data.Encoded ? mClearColorEncoded : mClearColor;
 
 		var depthStencil = DepthStencilAttachment();
 		depthStencil.View = data.DepthStencilView;
@@ -616,7 +635,9 @@ class UIHost
 
 	private void RenderPlainPass(ref FrameContext frame, UIWindowData data, VGRenderSlice slice)
 	{
-		if (let renderPass = frame.BeginBackbufferPass(mClearColor))
+		let renderPass = data.Encoded ? frame.BeginBackbufferPass(mClearColorEncoded, frame.BackbufferAlternateView)
+			: frame.BeginBackbufferPass(mClearColor);
+		if (renderPass != null)
 			data.Renderer.Render(renderPass, frame.Width, frame.Height, (int32)frame.FrameIndex, slice);
 
 		frame.EndBackbufferPass();

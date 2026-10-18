@@ -157,6 +157,9 @@ class GraphicsDevice
 		swapDesc.Format = desc.Format;
 		swapDesc.PresentMode = desc.PresentMode;
 		swapDesc.BufferCount = desc.BufferCount;
+		// Viewable in its sRGB or UNORM twin too, for UI that blends encoded values (VG's Encoded
+		// blend space); the swap chain says whether it could.
+		swapDesc.AlternateViewFormat = TextureFormats.SrgbTwin(desc.Format);
 		swapDesc.Label = "renderwindow";
 		if (!(mDevice.CreateSwapChain(surface, swapDesc) case .Ok(var swapChain)))
 		{

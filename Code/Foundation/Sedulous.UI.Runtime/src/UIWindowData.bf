@@ -42,6 +42,10 @@ class UIWindowData : IRenderWindowData
 	public TextureFormat DepthStencilFormat = .Undefined;
 	public uint32 TargetWidth = 0;
 	public uint32 TargetHeight = 0;
+	/// Encoded: this window's UI blends encoded values, drawing through the backbuffer's UNORM
+	/// view in DrawFormat (its twin); otherwise linear light in the backbuffer's own format.
+	public bool Encoded = false;
+	public TextureFormat DrawFormat = .Undefined;
 
 	public ~this()
 	{

@@ -160,6 +160,7 @@ class RenderWindow
 		frame.Pool = mPools[(int)frameIndex];
 		frame.Backbuffer = mSwapChain.CurrentTexture;
 		frame.BackbufferView = mSwapChain.CurrentTextureView;
+		frame.BackbufferAlternateView = mSwapChain.CurrentAlternateTextureView;
 		return frame;
 	}
 

@@ -78,6 +78,27 @@ class GraphicsHostTests
 		window.EndFrame(ref frame2);
 	}
 
+	/// A window's swap chain asks for its sRGB or UNORM twin, and the frame hands the backbuffer's
+	/// view in it alongside the plain one: that is what a UI blending encoded values draws through.
+	[Test]
+	public static void AFrameCarriesTheBackbuffersTwinView()
+	{
+		let shell = scope NullShell();
+		Test.Assert(NullGraphics.CreateDevice(2) case .Ok(let device));
+		defer delete device;
+
+		Test.Assert(device.CreateRenderWindow(shell.MainWindow, .()) case .Ok(let window));
+		defer delete window;
+		Test.Assert(window.Swap.AlternateViewFormat == TextureFormats.SrgbTwin(window.Swap.Format));
+
+		var frame = window.BeginFrame();
+		Test.Assert(frame.Valid);
+		Test.Assert(frame.BackbufferAlternateView != null);
+		Test.Assert(frame.BackbufferAlternateView.Desc.Format == TextureFormats.SrgbTwin(window.Swap.Format));
+		Test.Assert(frame.BackbufferAlternateView.Texture === frame.Backbuffer, "a view of the same backbuffer");
+		window.EndFrame(ref frame);
+	}
+
 	/// Several windows are UNIFORM: they render in the same application frame at the same
 	/// ring index, and the device advances once for all of them.
 	[Test]
