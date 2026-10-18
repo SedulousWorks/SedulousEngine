@@ -50,6 +50,8 @@ class GridLayout : ViewGroup
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
+		// Padding and border, from the sheet as well as the Padding field.
+		let chrome = ResolveBoxMetrics().Chrome;
 		let columns = ColumnCount;
 		let rows = RowCount;
 		ResolvePlacements(columns, rows);
@@ -68,8 +70,8 @@ class GridLayout : ViewGroup
 			// LOOSE but BOUNDED: an unbounded fill style leaf measured against FloatMax would
 			// blow an auto track out to it. Tracks aggregate MARGIN boxes, so the cell
 			// placement and the base margin inset compose.
-			child.Measure(.(0, Max(0.0f, constraints.MaxWidth - Padding.TotalHorizontal),
-				0, Max(0.0f, constraints.MaxHeight - Padding.TotalVertical)));
+			child.Measure(.(0, Max(0.0f, constraints.MaxWidth - chrome.TotalHorizontal),
+				0, Max(0.0f, constraints.MaxHeight - chrome.TotalVertical)));
 
 			let cell = mCells[i];
 			let marginBox = child.MarginBoxSize;
@@ -81,15 +83,15 @@ class GridLayout : ViewGroup
 				rowHeights[cell.Row] = Max(rowHeights[cell.Row], marginBox.Y);
 		}
 
-		let availableWidth = constraints.MaxWidth - Padding.TotalHorizontal
+		let availableWidth = constraints.MaxWidth - chrome.TotalHorizontal
 			- ColumnSpacing * (float)Max(0, columns - 1);
-		let availableHeight = constraints.MaxHeight - Padding.TotalVertical
+		let availableHeight = constraints.MaxHeight - chrome.TotalVertical
 			- RowSpacing * (float)Max(0, rows - 1);
 		DistributeFlex(Columns, columnWidths, columns, availableWidth);
 		DistributeFlex(Rows, rowHeights, rows, availableHeight);
 
-		var totalWidth = Padding.TotalHorizontal + ColumnSpacing * (float)Max(0, columns - 1);
-		var totalHeight = Padding.TotalVertical + RowSpacing * (float)Max(0, rows - 1);
+		var totalWidth = chrome.TotalHorizontal + ColumnSpacing * (float)Max(0, columns - 1);
+		var totalHeight = chrome.TotalVertical + RowSpacing * (float)Max(0, rows - 1);
 		for (let width in columnWidths)
 			totalWidth += width;
 		for (let height in rowHeights)
@@ -101,6 +103,8 @@ class GridLayout : ViewGroup
 
 	protected override void OnLayout(float left, float top, float width, float height)
 	{
+		// Padding and border, from the sheet as well as the Padding field.
+		let chrome = ResolveBoxMetrics().Chrome;
 		let columns = ColumnCount;
 		let rows = RowCount;
 		// A layout with no measure before it, which a test or a forced arrange can produce.
@@ -126,9 +130,9 @@ class GridLayout : ViewGroup
 				rowHeights[cell.Row] = Max(rowHeights[cell.Row], marginBox.Y);
 		}
 
-		let contentWidth = width - Padding.TotalHorizontal
+		let contentWidth = width - chrome.TotalHorizontal
 			- ColumnSpacing * (float)Max(0, columns - 1);
-		let contentHeight = height - Padding.TotalVertical
+		let contentHeight = height - chrome.TotalVertical
 			- RowSpacing * (float)Max(0, rows - 1);
 		DistributeFlex(Columns, columnWidths, columns, contentWidth);
 		DistributeFlex(Rows, rowHeights, rows, contentHeight);
@@ -136,10 +140,10 @@ class GridLayout : ViewGroup
 		// The running origin of each track, which is every earlier track plus the gaps.
 		let columnX = scope float[columns];
 		let rowY = scope float[rows];
-		columnX[0] = Padding.Left;
+		columnX[0] = chrome.Left;
 		for (int c = 1; c < columns; c++)
 			columnX[c] = columnX[c - 1] + columnWidths[c - 1] + ColumnSpacing;
-		rowY[0] = Padding.Top;
+		rowY[0] = chrome.Top;
 		for (int r = 1; r < rows; r++)
 			rowY[r] = rowY[r - 1] + rowHeights[r - 1] + RowSpacing;
 

@@ -222,4 +222,31 @@ class ContainerLayoutTests
 		Test.Assert(group.MeasuredSize.X == 20);
 		Test.Assert(group.MeasuredSize.Y == 10);
 	}
+
+	/// Flex, Flow, Grid and Absolute inset their children by the sheet's padding and border
+	/// too, not the Padding field alone, as Frame and Dock do.
+	[Test]
+	public static void EveryLayoutInsetsItsChildrenByTheSheetsPaddingAndBorder()
+	{
+		MakeTree(let context, let root, 400, 300);
+		defer { root.ReleaseRef(); delete context; }
+
+		ViewGroup[4] groups = .(new FlexLayout(), new FlowLayout(), new GridLayout(), new AbsoluteLayout());
+		for (let group in groups)
+		{
+			root.AddView(group);
+			group.SetStyle(.Padding, Thickness(7, 5, 7, 5));
+			group.SetStyle(.BorderWidth, 2.0f);
+			let child = new TestView(20.0f, 10.0f);
+			group.AddView(child);
+
+			// Measured LOOSE: the root's tight constraints would stretch the group.
+			group.Measure(BoxConstraints.Loose(400, 300));
+			Test.Assert(group.MeasuredSize.X == 20.0f + 18.0f, scope $"{group.GetType()} width {group.MeasuredSize.X}");
+			Test.Assert(group.MeasuredSize.Y == 10.0f + 14.0f, scope $"{group.GetType()} height {group.MeasuredSize.Y}");
+			group.Layout(0, 0, group.MeasuredSize.X, group.MeasuredSize.Y);
+			Test.Assert(child.Bounds.X == 9.0f, scope $"{group.GetType()} x {child.Bounds.X}: 7 padding + 2 border");
+			Test.Assert(child.Bounds.Y == 7.0f, scope $"{group.GetType()} y {child.Bounds.Y}: 5 + 2");
+		}
+	}
 }

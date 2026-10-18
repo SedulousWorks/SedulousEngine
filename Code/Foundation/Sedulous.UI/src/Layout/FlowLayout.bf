@@ -33,12 +33,14 @@ class FlowLayout : ViewGroup
 
 	private void MeasureHorizontal(BoxConstraints constraints)
 	{
+		// Padding and border, from the sheet as well as the Padding field.
+		let chrome = ResolveBoxMetrics().Chrome;
 		let maxWidth = (constraints.MaxWidth < FloatMax)
-			? (constraints.MaxWidth - Padding.TotalHorizontal) : FloatMax;
+			? (constraints.MaxWidth - chrome.TotalHorizontal) : FloatMax;
 		// Children are measured LOOSE but BOUNDED: an unbounded fill style leaf handed
 		// FloatMax would measure to it and blow the flow apart on the first line.
 		let crossMax = (constraints.MaxHeight < FloatMax)
-			? Max(0.0f, constraints.MaxHeight - Padding.TotalVertical) : FloatMax;
+			? Max(0.0f, constraints.MaxHeight - chrome.TotalVertical) : FloatMax;
 
 		var lineWidth = 0.0f;
 		var lineHeight = 0.0f;
@@ -77,16 +79,18 @@ class FlowLayout : ViewGroup
 		totalWidth = Max(totalWidth, lineWidth);
 		totalHeight += lineHeight;
 
-		MeasuredSize = .(constraints.ConstrainWidth(totalWidth + Padding.TotalHorizontal),
-			constraints.ConstrainHeight(totalHeight + Padding.TotalVertical));
+		MeasuredSize = .(constraints.ConstrainWidth(totalWidth + chrome.TotalHorizontal),
+			constraints.ConstrainHeight(totalHeight + chrome.TotalVertical));
 	}
 
 	private void MeasureVertical(BoxConstraints constraints)
 	{
+		// Padding and border, from the sheet as well as the Padding field.
+		let chrome = ResolveBoxMetrics().Chrome;
 		let maxHeight = (constraints.MaxHeight < FloatMax)
-			? (constraints.MaxHeight - Padding.TotalVertical) : FloatMax;
+			? (constraints.MaxHeight - chrome.TotalVertical) : FloatMax;
 		let crossMax = (constraints.MaxWidth < FloatMax)
-			? Max(0.0f, constraints.MaxWidth - Padding.TotalHorizontal) : FloatMax;
+			? Max(0.0f, constraints.MaxWidth - chrome.TotalHorizontal) : FloatMax;
 
 		var columnWidth = 0.0f;
 		var columnHeight = 0.0f;
@@ -122,15 +126,17 @@ class FlowLayout : ViewGroup
 		totalHeight = Max(totalHeight, columnHeight);
 		totalWidth += columnWidth;
 
-		MeasuredSize = .(constraints.ConstrainWidth(totalWidth + Padding.TotalHorizontal),
-			constraints.ConstrainHeight(totalHeight + Padding.TotalVertical));
+		MeasuredSize = .(constraints.ConstrainWidth(totalWidth + chrome.TotalHorizontal),
+			constraints.ConstrainHeight(totalHeight + chrome.TotalVertical));
 	}
 
 	private void LayoutHorizontal(float width, float height)
 	{
-		let maxWidth = width - Padding.TotalHorizontal;
-		var x = Padding.Left;
-		var y = Padding.Top;
+		// Padding and border, from the sheet as well as the Padding field.
+		let chrome = ResolveBoxMetrics().Chrome;
+		let maxWidth = width - chrome.TotalHorizontal;
+		var x = chrome.Left;
+		var y = chrome.Top;
 		var lineHeight = 0.0f;
 		var firstInLine = true;
 
@@ -143,10 +149,10 @@ class FlowLayout : ViewGroup
 			// Placed as MARGIN boxes: the base Layout insets by the margin itself.
 			let marginBox = child.MarginBoxSize;
 
-			if (!firstInLine && ((x - Padding.Left + HSpacing + marginBox.X) > maxWidth))
+			if (!firstInLine && ((x - chrome.Left + HSpacing + marginBox.X) > maxWidth))
 			{
 				y += lineHeight + VSpacing;
-				x = Padding.Left;
+				x = chrome.Left;
 				lineHeight = 0;
 				firstInLine = true;
 			}
@@ -162,9 +168,11 @@ class FlowLayout : ViewGroup
 
 	private void LayoutVertical(float width, float height)
 	{
-		let maxHeight = height - Padding.TotalVertical;
-		var x = Padding.Left;
-		var y = Padding.Top;
+		// Padding and border, from the sheet as well as the Padding field.
+		let chrome = ResolveBoxMetrics().Chrome;
+		let maxHeight = height - chrome.TotalVertical;
+		var x = chrome.Left;
+		var y = chrome.Top;
 		var columnWidth = 0.0f;
 		var firstInColumn = true;
 
@@ -176,10 +184,10 @@ class FlowLayout : ViewGroup
 
 			let marginBox = child.MarginBoxSize;
 
-			if (!firstInColumn && ((y - Padding.Top + VSpacing + marginBox.Y) > maxHeight))
+			if (!firstInColumn && ((y - chrome.Top + VSpacing + marginBox.Y) > maxHeight))
 			{
 				x += columnWidth + HSpacing;
-				y = Padding.Top;
+				y = chrome.Top;
 				columnWidth = 0;
 				firstInColumn = true;
 			}

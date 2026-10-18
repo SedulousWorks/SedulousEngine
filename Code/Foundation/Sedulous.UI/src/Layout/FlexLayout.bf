@@ -51,7 +51,9 @@ class FlexLayout : ViewGroup
 
 	protected override void OnMeasure(BoxConstraints constraints)
 	{
-		MeasureLines(constraints.Deflate(Padding), constraints, Direction == .Horizontal);
+		// Padding and border, from the sheet as well as the Padding field.
+		let chrome = ResolveBoxMetrics().Chrome;
+		MeasureLines(constraints.Deflate(chrome), constraints, Direction == .Horizontal);
 	}
 
 	protected override void OnLayout(float left, float top, float width, float height)
@@ -167,6 +169,8 @@ class FlexLayout : ViewGroup
 
 	private void MeasureLines(BoxConstraints inner, BoxConstraints outer, bool horizontal)
 	{
+		// Padding and border, from the sheet as well as the Padding field.
+		let chrome = ResolveBoxMetrics().Chrome;
 		let availableMain = horizontal ? inner.MaxWidth : inner.MaxHeight;
 		let availableCross = horizontal ? inner.MaxHeight : inner.MaxWidth;
 		let mainDefinite = BoxConstraints.IsBounded(availableMain);
@@ -298,16 +302,18 @@ class FlexLayout : ViewGroup
 
 		let width = horizontal ? totalMain : totalCross;
 		let height = horizontal ? totalCross : totalMain;
-		MeasuredSize = .(outer.ConstrainWidth(width + Padding.TotalHorizontal),
-			outer.ConstrainHeight(height + Padding.TotalVertical));
+		MeasuredSize = .(outer.ConstrainWidth(width + chrome.TotalHorizontal),
+			outer.ConstrainHeight(height + chrome.TotalVertical));
 	}
 
 	// ---- Arrange ---------------------------------------------------------------------------
 
 	private void LayoutLines(float width, float height, bool horizontal)
 	{
-		let contentWidth = width - Padding.TotalHorizontal;
-		let contentHeight = height - Padding.TotalVertical;
+		// Padding and border, from the sheet as well as the Padding field.
+		let chrome = ResolveBoxMetrics().Chrome;
+		let contentWidth = width - chrome.TotalHorizontal;
+		let contentHeight = height - chrome.TotalVertical;
 		let contentMain = horizontal ? contentWidth : contentHeight;
 		let contentCross = horizontal ? contentHeight : contentWidth;
 		let gap = MainGap;
@@ -378,8 +384,8 @@ class FlexLayout : ViewGroup
 			}
 		}
 
-		let padMain = horizontal ? Padding.Left : Padding.Top;
-		let padCross = horizontal ? Padding.Top : Padding.Left;
+		let padMain = horizontal ? chrome.Left : chrome.Top;
+		let padCross = horizontal ? chrome.Top : chrome.Left;
 		var crossPos = padCross + crossStart;
 
 		for (let line in mLines)
