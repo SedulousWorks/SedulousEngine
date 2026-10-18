@@ -17,8 +17,9 @@ namespace Sedulous.Editor.App;
 class FontAtlasDiskCache : IFontAtlasCache
 {
 	/// Bump on any layout change: old cache files then miss and rebake. 3: regions key by glyph
-	/// index, followed by the codepoint to glyph map.
-	private const uint32 cCacheFormatVersion = 3;
+	/// index, followed by the codepoint to glyph map. 4: a distance field atlas carries the true
+	/// distance in alpha (MTSDF).
+	private const uint32 cCacheFormatVersion = 4;
 	private const uint32 cCacheMagic = 0x43414644; // 'DFAC'
 
 	[Ordered, Packed]

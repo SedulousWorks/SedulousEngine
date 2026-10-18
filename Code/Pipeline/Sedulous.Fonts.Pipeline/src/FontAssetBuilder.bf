@@ -38,9 +38,11 @@ class FontAssetBuilder : IAssetBuilder
 	/// joined forms); the cook installs HarfBuzz itself, so every cook bakes the same glyphs
 	/// whichever host runs it. Nine: a distance field cook writes the region of every glyph the
 	/// atlas holds, not only those the range's codepoints map to (eight baked the ligatures and
-	/// dropped them). A product schema change bumps this in the SAME commit, because the bump IS
-	/// the migration: it forces every stale cooked font to re-cook.
-	public int32 Version => 9;
+	/// dropped them). Ten: a distance field atlas carries the true signed distance in alpha
+	/// (MTSDF), what outlines, glows and soft shadows read. A product schema change bumps this in
+	/// the SAME commit, because the bump IS the migration: it forces every stale cooked font to
+	/// re-cook.
+	public int32 Version => 10;
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{

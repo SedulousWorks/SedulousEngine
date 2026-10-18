@@ -136,6 +136,61 @@ class DistanceFieldBakerTests
 			scope $"space advance {space.AdvanceX}, expected about {expected}");
 	}
 
+	/// Alpha holds the true distance, round where the multi-channel field is square: an outline
+	/// or a glow past the edge reads it, where the median of the three channels keeps a corner
+	/// square.
+	[Test]
+	public static void AlphaHoldsTheTrueDistance()
+	{
+		let font = TestFont.Load();
+		Test.Assert(font != null);
+		defer delete font;
+
+		var options = FontLoadOptions.DistanceField();
+		options.PixelHeight = 48.0f;
+		options.AtlasWidth = 1024;
+		options.AtlasHeight = 1024;
+		let baker = scope DistanceFieldFontAtlasBaker();
+		Test.Assert(baker.Bake(font, options) case .Ok(let atlas));
+		defer delete atlas;
+
+		// 'I' is one rectangle: four outer corners and nothing else.
+		Test.Assert(atlas.TryGetRegion(atlas.GlyphFor(Cp('I')), let region));
+		let pixels = atlas.PixelData;
+		let width = (int)atlas.Width;
+		int medianInside = 0, alphaInside = 0, agree = 0, medianGrown = 0, alphaGrown = 0;
+		// 0.5 is the edge; 0.15 is 1.4 texels out with the baker's four texel range.
+		let grownAt = (uint8)(0.15f * 255.0f);
+		for (int row < region.Height)
+		{
+			for (int column < region.Width)
+			{
+				let at = (((int)region.Y + row) * width + ((int)region.X + column)) * 4;
+				let r = pixels[at];
+				let g = pixels[at + 1];
+				let b = pixels[at + 2];
+				let a = pixels[at + 3];
+				let median = Math.Max(Math.Min(r, g), Math.Min(Math.Max(r, g), b));
+				let inMedian = median > 127;
+				let inAlpha = a > 127;
+				medianInside += inMedian ? 1 : 0;
+				alphaInside += inAlpha ? 1 : 0;
+				agree += (inMedian == inAlpha) ? 1 : 0;
+				medianGrown += (median > grownAt) ? 1 : 0;
+				alphaGrown += (a > grownAt) ? 1 : 0;
+			}
+		}
+		let cells = (int)region.Width * (int)region.Height;
+		Test.Assert(medianInside > 0);
+		// The same glyph: the two edges agree but for antialiasing along the outline.
+		Test.Assert(agree >= cells * 98 / 100, scope $"agree {agree} of {cells}");
+		// Alpha is a field, not the old constant 255: the cell's margin reads outside.
+		Test.Assert(alphaInside < cells / 2, scope $"alpha inside {alphaInside} of {cells}");
+		// Grown past the edge, both cover more than the glyph; the round corners cover less.
+		Test.Assert(alphaGrown > alphaInside);
+		Test.Assert(alphaGrown < medianGrown, scope $"grown: alpha {alphaGrown}, median {medianGrown}");
+	}
+
 	/// The generation fans out across workers, so the pack order and every baked byte have
 	/// to be scheduling independent. Two bakes of the same font must agree exactly.
 	[Test]

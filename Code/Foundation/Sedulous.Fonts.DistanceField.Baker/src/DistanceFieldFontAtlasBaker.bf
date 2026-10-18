@@ -276,7 +276,10 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 		msdf_shape_normalize(shape);
 		msdf_edge_coloring_by_distance(shape, 3.0, 0);
 
-		let bitmap = msdf_bitmap_create(width, height, 3);
+		// MTSDF: the multi-channel field in RGB, sharp corners for the glyph itself, and the true
+		// signed distance in alpha, round off the edge: what outlines, glows and soft shadows
+		// read, where the median of three channels would keep corners square.
+		let bitmap = msdf_bitmap_create(width, height, 4);
 		defer msdf_bitmap_destroy(bitmap);
 
 		// The range is in SHAPE units, not pixels, so the pixel spread is divided by the
@@ -284,7 +287,7 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 		let shapeRange = cDefaultPixelRange / scale;
 		var transform = msdf_Transform(scale, scale, translateX, translateY, shapeRange);
 		var config = msdf_Config.Default;
-		if (msdf_generate_msdf(bitmap, shape, &transform, &config) == 0)
+		if (msdf_generate_mtsdf(bitmap, shape, &transform, &config) == 0)
 			return false;
 
 		let data = msdf_bitmap_data(bitmap);
@@ -299,12 +302,12 @@ class DistanceFieldFontAtlasBaker : IFontAtlasBaker
 			let sourceRow = height - 1 - y;
 			for (int32 x < width)
 			{
-				let source = (sourceRow * width + x) * 3;
+				let source = (sourceRow * width + x) * 4;
 				let target = (y * width + x) * 4;
 				outPixels[target + 0] = ToByte(data[source + 0]);
 				outPixels[target + 1] = ToByte(data[source + 1]);
 				outPixels[target + 2] = ToByte(data[source + 2]);
-				outPixels[target + 3] = 255;
+				outPixels[target + 3] = ToByte(data[source + 3]); // the true distance
 			}
 		}
 		return true;
