@@ -40,7 +40,7 @@ extension View
 		public float Elapsed = 0.0f;
 		public float Duration = 0.0f;
 		public float Delay = 0.0f;
-		public TransitionEasing Easing = .Ease;
+		public TimingFunction Easing = .Ease;
 
 		public this() {}
 	}
@@ -54,7 +54,7 @@ extension View
 		public float BlendElapsed = 0.0f;
 		public float BlendDuration = 0.0f;
 		public float BlendDelay = 0.0f;
-		public TransitionEasing BlendEasing = .Ease;
+		public TimingFunction BlendEasing = .Ease;
 		/// The in-between of a running shadow list's transition, as ResolveStyle answers it:
 		/// rewritten by each resolve, and borrowed by the value it answers.
 		public BoxShadowList ResolvedShadows = new .() ~ _.ReleaseRef();
@@ -699,30 +699,13 @@ extension View
 
 	// ---- Transitions ---------------------------------------------------------------------------
 
-	private static float ApplyTransitionEasing(TransitionEasing easing, float t)
-	{
-		switch (easing)
-		{
-		case .Linear:
-			return t;
-		case .EaseIn:
-			return t * t;
-		case .EaseOut:
-			return 1.0f - (1.0f - t) * (1.0f - t);
-		// Ease and EaseInOut are the same quadratic curve here; these are not CSS's cubic
-		// beziers.
-		case .Ease, .EaseInOut:
-			return (t < 0.5f) ? (2.0f * t * t) : (1.0f - 2.0f * (1.0f - t) * (1.0f - t));
-		}
-	}
-
 	private static float TransitionProgress(float elapsed, float duration, float delay,
-		TransitionEasing easing)
+		TimingFunction easing)
 	{
 		// A zero duration is finished the moment it starts.
 		if (duration <= 0.0f)
 			return 1.0f;
-		return ApplyTransitionEasing(easing, Clamp((elapsed - delay) / duration, 0.0f, 1.0f));
+		return easing.Evaluate(Clamp((elapsed - delay) / duration, 0.0f, 1.0f));
 	}
 
 	public int ActiveTransitionCount =>

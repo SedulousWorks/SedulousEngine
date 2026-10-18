@@ -115,13 +115,13 @@ class TransitionTests
 		Test.Assert(list.Specs[0].Property == .TextColor);
 		Test.Assert(Near(list.Specs[0].Duration, 0.2f));
 		Test.Assert(Near(list.Specs[0].Delay, 0.05f));
-		Test.Assert(list.Specs[0].Easing == .EaseIn);
+		Test.Assert(list.Specs[0].Easing == TimingFunction.EaseIn);
 		Test.Assert(list.Specs[1].Property == .Opacity);
 		Test.Assert(Near(list.Specs[1].Duration, 1.0f));
-		Test.Assert(list.Specs[1].Easing == .Ease, "the default easing");
+		Test.Assert(list.Specs[1].Easing == TimingFunction.Ease, "the default easing");
 		Test.Assert(list.Specs[2].Property == .COUNT, "`all`");
 		Test.Assert(Near(list.Specs[2].Duration, 0.12f), "a bare number is milliseconds");
-		Test.Assert(list.Specs[2].Easing == .EaseOut);
+		Test.Assert(list.Specs[2].Easing == TimingFunction.EaseOut);
 
 		// `all` came last, so it governs text-color too.
 		Test.Assert(list.Find(.TextColor).Value == list.Specs[2]);
@@ -347,7 +347,41 @@ class TransitionTests
 		Test.Assert(Near(Red(view), 0.0f), "still inside the delay");
 
 		fixture.Context.BeginFrame(0.05f);
-		Test.Assert(Near(Red(view), 0.25f), "halfway through, ease-in gives a quarter");
+		// Halfway through, CSS's ease-in, cubic-bezier(0.42, 0, 1, 1), is 0.3154.
+		Test.Assert(Near(Red(view), 0.3154f, 0.002f), scope $"{Red(view)}");
+	}
+
+	/// The named easings are CSS's curves, as a browser computes them at their midpoints; a
+	/// curve may overshoot, steps hold each level, and sheets write cubic-bezier(), steps(),
+	/// step-start and step-end, a curve's x kept within 0 to 1.
+	[Test]
+	public static void TimingFunctionsAreCssCurvesCubicBezierAndSteps()
+	{
+		Test.Assert(Near(TimingFunction.Linear.Evaluate(0.5f), 0.5f));
+		Test.Assert(Near(TimingFunction.Ease.Evaluate(0.5f), 0.8024f, 0.002f));
+		Test.Assert(Near(TimingFunction.EaseIn.Evaluate(0.5f), 0.3154f, 0.002f));
+		Test.Assert(Near(TimingFunction.EaseOut.Evaluate(0.5f), 1.0f - 0.3154f, 0.002f));
+		Test.Assert(Near(TimingFunction.EaseInOut.Evaluate(0.5f), 0.5f));
+		Test.Assert(Near(TimingFunction.Ease.Evaluate(0.0f), 0.0f));
+		Test.Assert(Near(TimingFunction.Ease.Evaluate(1.0f), 1.0f));
+		// A back-out bounce: y past 1 between the ends.
+		let back = TimingFunction.CubicBezier(0.34f, 1.56f, 0.64f, 1.0f);
+		Test.Assert(back.Evaluate(0.6f) > 1.0f);
+		// Steps jump at a step's end, or its start.
+		Test.Assert(Near(TimingFunction.StepsOf(4).Evaluate(0.3f), 0.25f));
+		Test.Assert(Near(TimingFunction.StepsOf(4, true).Evaluate(0.3f), 0.5f));
+		Test.Assert(Near(TimingFunction.StepsOf(4).Evaluate(1.0f), 1.0f));
+
+
+		let sheet = LoadSSS("TestView { transition: opacity 200ms cubic-bezier(0.34, 1.56, 0.64, 1), text-color 1s steps(5, start), background 1s step-end, border-color 1s cubic-bezier(1.5, 0, -1, 1); }");
+		defer sheet.ReleaseRef();
+		let list = sheet.GetRule(0).GetValue(.Transition).Value.AsTransitions;
+		Test.Assert((list != null) && (list.Specs.Count == 4));
+		Test.Assert(list.Specs[0].Easing == back);
+		Test.Assert(Near(list.Specs[0].Duration, 0.2f));
+		Test.Assert(list.Specs[1].Easing == TimingFunction.StepsOf(5, true));
+		Test.Assert(list.Specs[2].Easing == TimingFunction.StepsOf(1, false));
+		Test.Assert(Near(list.Specs[3].Easing.X1, 1.0f) && Near(list.Specs[3].Easing.X2, 0.0f), "x kept within 0 to 1");
 	}
 
 	/// A state change CROSS FADES a state aware background: the old state draws under the new
@@ -452,7 +486,7 @@ class TransitionTests
 		let all = onLeaf.AsTransitions.Find(.TextColor);
 		Test.Assert(all != null);
 		Test.Assert(Near(all.Value.Duration, 0.12f));
-		Test.Assert(all.Value.Easing == .EaseOut);
+		Test.Assert(all.Value.Easing == TimingFunction.EaseOut);
 
 		let onGroup = group.ResolveStyle(.Transition);
 		Test.Assert(onGroup.AsTransitions != null);

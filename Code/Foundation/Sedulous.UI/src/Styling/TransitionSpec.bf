@@ -10,7 +10,7 @@ struct TransitionSpec
 	/// In seconds.
 	public float Duration = 0.0f;
 	public float Delay = 0.0f;
-	public TransitionEasing Easing = .Ease;
+	public TimingFunction Easing = .Ease;
 
 	public this() {}
 

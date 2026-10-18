@@ -1045,7 +1045,7 @@ class SSSParser
 			if (Peek().Kind == .Number)
 				spec.Duration = ParseTimeSeconds();
 			if (Peek().Kind == .Ident)
-				spec.Easing = ParseEasingName(Consume().Text);
+				spec.Easing = ParseTimingFunction();
 			if (Peek().Kind == .Number)
 				spec.Delay = ParseTimeSeconds();
 
@@ -1068,16 +1068,48 @@ class SSSParser
 		return value / 1000.0f;
 	}
 
-	private static TransitionEasing ParseEasingName(StringView name)
+	/// A CSS timing function: linear, ease, ease-in, ease-out, ease-in-out, step-start,
+	/// step-end, cubic-bezier(x1, y1, x2, y2) (x clamped to 0 to 1, as CSS requires) or
+	/// steps(n[, start | jump-start | end | jump-end]). Anything else is ease.
+	private TimingFunction ParseTimingFunction()
 	{
+		let name = Consume().Text;
 		switch (name)
 		{
 		case "linear": return .Linear;
 		case "ease-in": return .EaseIn;
 		case "ease-out": return .EaseOut;
 		case "ease-in-out": return .EaseInOut;
-		default: return .Ease;
+		case "step-start": return .StepsOf(1, true);
+		case "step-end": return .StepsOf(1, false);
+		default:
 		}
+		if ((name == "cubic-bezier") && (Peek().Kind == .LParen))
+		{
+			Consume();
+			float[4] values = .();
+			for (int i < 4)
+			{
+				values[i] = (Peek().Kind == .Number) ? Consume().NumericValue : 0.0f;
+				MatchComma();
+			}
+			Expect(.RParen);
+			return .CubicBezier(Math.Clamp(values[0], 0.0f, 1.0f), values[1], Math.Clamp(values[2], 0.0f, 1.0f), values[3]);
+		}
+		if ((name == "steps") && (Peek().Kind == .LParen))
+		{
+			Consume();
+			let count = (Peek().Kind == .Number) ? Consume().NumericValue : 1.0f;
+			var jumpStart = false;
+			if (MatchComma() && (Peek().Kind == .Ident))
+			{
+				let position = Consume().Text;
+				jumpStart = (position == "start") || (position == "jump-start");
+			}
+			Expect(.RParen);
+			return .StepsOf((uint16)Math.Clamp(count, 1.0f, 1000.0f), jumpStart);
+		}
+		return .Ease;
 	}
 
 	/// `box-shadow: none`, or one or more shadows separated by commas, each `[inset] <x> <y>
