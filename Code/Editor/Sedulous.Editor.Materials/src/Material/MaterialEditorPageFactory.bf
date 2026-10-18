@@ -5,7 +5,7 @@ using Sedulous.UI.Runtime;
 using Sedulous.Materials.Pipeline;
 using Sedulous.Editor.Core;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Materials;
 
 /// Opens a MaterialAsset in the material page.
 class MaterialEditorPageFactory : IEditorPageFactory

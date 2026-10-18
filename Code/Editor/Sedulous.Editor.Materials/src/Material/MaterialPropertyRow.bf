@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Materials;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Materials;
 
 /// The row a material property gets on the material page, by its declared type: a colour
 /// picker only for a declared colour (which shows the sRGB value as entered), a picker plus an

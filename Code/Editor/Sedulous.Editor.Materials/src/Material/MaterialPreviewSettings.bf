@@ -1,7 +1,7 @@
 using System.Collections;
 using Sedulous.Core.Serialization;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Materials;
 
 /// The settings section holding every material's preview choice.
 [Serializable(1)]

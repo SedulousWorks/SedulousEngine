@@ -7,7 +7,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Pipeline.Core;
 
-namespace Sedulous.Editor.Scene.Tests;
+namespace Sedulous.Editor.Materials.Tests;
 
 /// The material creators (Materials.Pipeline) over a real project, run as File > New runs them.
 class MaterialCreatorTests

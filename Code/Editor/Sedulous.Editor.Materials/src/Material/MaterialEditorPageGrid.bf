@@ -6,7 +6,7 @@ using Sedulous.Materials.Resource;
 using Sedulous.UI.Toolkit;
 using Sedulous.Editor.App;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Materials;
 
 /// The grid half: the shader (an asset, or a built-in), the preview shape and mesh rows, the
 /// pipeline presets, then one row per declared property: a slider or a float for scalars, a

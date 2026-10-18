@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Settings;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Materials;
 
 /// Reading and upserting a material's preview choice in a settings store.
 static class MaterialPreviewPrefs

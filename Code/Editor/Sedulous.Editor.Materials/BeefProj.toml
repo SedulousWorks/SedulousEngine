@@ -1,0 +1,31 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Materials"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Materials.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Settings" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Materials.Resource" = "*"
+"Sedulous.Materials.Pipeline" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Shaders.Resource" = "*"
+"Sedulous.Texture.Resource" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Toolkit" = "*"
+"Sedulous.UI.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.App" = "*"
+"Sedulous.Editor.Preview" = "*"

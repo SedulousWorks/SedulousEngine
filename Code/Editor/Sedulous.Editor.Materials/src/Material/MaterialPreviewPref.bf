@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Core.Serialization;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Materials;
 
 /// One material's stored preview choice, keyed by the material asset's guid: a primitive
 /// shape index, or a mesh asset that overrides it.

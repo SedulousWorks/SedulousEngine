@@ -1,0 +1,19 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Materials.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.Materials.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Settings" = "*"
+"Sedulous.Xml" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Materials.Resource" = "*"
+"Sedulous.Materials.Pipeline" = "*"
+"Sedulous.Editor.Project" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Materials" = "*"

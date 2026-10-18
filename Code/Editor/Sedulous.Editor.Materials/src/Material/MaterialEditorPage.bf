@@ -22,7 +22,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Preview;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Materials;
 
 /// The material page: a live preview of the material on a primitive or a mesh asset on
 /// the left, the property grid on the right. Every edit is a whole-source snapshot command

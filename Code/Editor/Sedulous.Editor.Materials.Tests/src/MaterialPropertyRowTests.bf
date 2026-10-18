@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Materials;
 
-namespace Sedulous.Editor.Scene.Tests;
+namespace Sedulous.Editor.Materials.Tests;
 
 /// Which row a material property gets is a pure function of its declared type.
 class MaterialPropertyRowTests

@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Editor.Core;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Materials;
 
 /// One undo step of the material page: the source's binary snapshot before and after,
 /// coalesced per row so a slider scrub is one step.

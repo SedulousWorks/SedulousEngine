@@ -5,7 +5,7 @@ using Sedulous.Materials;
 using Sedulous.Materials.Resource;
 using Sedulous.Materials.Pipeline;
 
-namespace Sedulous.Editor.Scene.Tests;
+namespace Sedulous.Editor.Materials.Tests;
 
 /// The material page's headless edits: named uniforms, the texture slot table, and the
 /// snapshot the undo step carries.

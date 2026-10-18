@@ -11,7 +11,7 @@ using Sedulous.RHI;
 using Sedulous.Shaders;
 using Sedulous.Engine.Render;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Materials;
 
 /// The preview half: the scene, the material rebuilt from the source, the shape or mesh
 /// asset the material draws on, and the per material preview preference.

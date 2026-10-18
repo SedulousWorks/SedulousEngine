@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Geometry;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Materials;
 
 /// The primitive shapes a material previews on, in the order the page's Shape row lists
 /// them. Index zero, the sphere, is the default and what an out of range index builds.

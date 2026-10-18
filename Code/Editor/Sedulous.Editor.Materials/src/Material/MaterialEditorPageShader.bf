@@ -8,7 +8,7 @@ using Sedulous.Shaders;
 using Sedulous.Shaders.Resource;
 using Sedulous.Editor.Core;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Materials;
 
 /// The material's shader: a shader asset, or a built-in (PBR or Unlit) when it has none. A switch
 /// is one undoable edit that re-lays the material by the new shader, keeping every value that

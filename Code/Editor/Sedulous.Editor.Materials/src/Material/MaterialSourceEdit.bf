@@ -5,7 +5,7 @@ using Sedulous.Core.IO;
 using Sedulous.Core.Serialization;
 using Sedulous.Materials.Resource;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Materials;
 
 /// The material page's edits on a MaterialSource, kept off the page so they run headless:
 /// the packed uniform defaults by property name, the texture slot table, and the binary
