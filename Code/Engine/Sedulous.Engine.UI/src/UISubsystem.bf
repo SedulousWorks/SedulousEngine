@@ -793,6 +793,9 @@ class UISubsystem : Subsystem, ISceneObserver
 		mRenderState.BoxFragmentShader = mRenderState.ShaderHost.GetVariant("vg_box", .Fragment, .None);
 		mRenderState.Context.SetAnalyticBoxes((mRenderState.BoxVertexShader != null)
 			&& (mRenderState.BoxFragmentShader != null));
+		// Layer composites; without them a layer is an opacity push. Layers are turned on per
+		// batch, for the screen tier's PrepareOverlay only: the other draws are inside passes.
+		mRenderState.LayerShader = mRenderState.ShaderHost.GetVariant("vg_layer", .Fragment, .None);
 
 		// Stencil for the CANVAS render to texture passes, which are the only passes this
 		// subsystem OWNS: the scene and screen overlay passes belong to the renderer and the

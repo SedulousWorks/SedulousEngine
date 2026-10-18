@@ -150,9 +150,39 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 			StencilAgrees(view.DepthStencilFormat));
 	}
 
+	/// The SCREEN tier, before the host's overlay pass: records the screens and draws their
+	/// offscreen layers (VGContext.PushLayer) on the host's encoder, for Render to composite.
+	public void PrepareOverlay(ICommandEncoder encoder, ScreenOverlayView view)
+	{
+		if ((mRenderState == null) || (mRenderState.Device == null))
+			return;
+		mRenderState.ScreensPrepared = false;
+		mRenderState.PreparedScreens.Clear();
+		if ((mScreen.Root == null) || (view.Width == 0) || (view.Height == 0))
+			return;
+
+		let layers = mRenderState.LayerShader != null;
+		// The same tiers in the same order as Render draws them.
+		if (let runTier = mRunScreens ? FindRunTier(mRenderRun) : null)
+			PrepareScreen(runTier, encoder, view, layers);
+		PrepareScreen(mScreen, encoder, view, layers);
+		mRenderState.PreparedView = view;
+		mRenderState.ScreensPrepared = true;
+	}
+
+	private void PrepareScreen(UIScreenTier tier, ICommandEncoder encoder, ScreenOverlayView view, bool layers)
+	{
+		let root = PrepareTier(tier, view, layers);
+		if (root.Renderer != null)
+			root.Renderer.RenderLayers(encoder, root.FrameIndex, root.Slice);
+		mRenderState.PreparedScreens.Add(root);
+	}
+
 	/// The SCREEN tier, from the host's overlay call per window target, after the scene has
 	/// composed: the render run's own screens (its Game tab), then the shared tier's global
-	/// overlays above them.
+	/// overlays above them. What PrepareOverlay recorded for this very view is drawn as it is;
+	/// otherwise (another host, a changed view) the screens are recorded now, inside the pass,
+	/// and their layers are opacity pushes.
 	public void Render(IRenderPassEncoder encoder, ScreenOverlayView view)
 	{
 		if ((mRenderState == null) || (mRenderState.Device == null))
@@ -160,12 +190,30 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 		if ((mScreen.Root == null) || (view.Width == 0) || (view.Height == 0))
 			return;
 
+		let prepared = mRenderState.ScreensPrepared && SameView(mRenderState.PreparedView, view);
+		mRenderState.ScreensPrepared = false;
+		if (prepared)
+		{
+			for (let root in mRenderState.PreparedScreens)
+				DrawPrepared(root, encoder);
+			mRenderState.PreparedScreens.Clear();
+			return;
+		}
+		mRenderState.PreparedScreens.Clear();
+
 		if (let runTier = mRunScreens ? FindRunTier(mRenderRun) : null)
-			DrawTier(runTier, encoder, view);
-		DrawTier(mScreen, encoder, view);
+			DrawPrepared(PrepareTier(runTier, view, false), encoder);
+		DrawPrepared(PrepareTier(mScreen, view, false), encoder);
 	}
 
-	private void DrawTier(UIScreenTier tier, IRenderPassEncoder encoder, ScreenOverlayView view)
+	private static bool SameView(ScreenOverlayView a, ScreenOverlayView b)
+		=> (a.Width == b.Width) && (a.Height == b.Height) && (a.FrameIndex == b.FrameIndex)
+			&& (a.TargetFormat == b.TargetFormat) && (a.EncodedTarget == b.EncodedTarget)
+			&& (a.DepthStencilFormat == b.DepthStencilFormat);
+
+	/// Records a tier for the view. `layers` lets its views draw offscreen layers, which the
+	/// caller then draws before the pass (VGRenderer.RenderLayers).
+	private UIPreparedRoot PrepareTier(UIScreenTier tier, ScreenOverlayView view, bool layers)
 	{
 		tier.TargetSize = .((float)view.Width, (float)view.Height);
 		var place = PlaceScreen(tier.Resolution, tier.FitMode, tier.Orientation, tier.TargetSize);
@@ -175,13 +223,13 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 			// Laid out at the game's resolution (or shape), drawn crisp at the target's resolution
 			// into the rectangle the game's image was fitted to, turned with it.
 			tier.Root.DpiScale = place.DpiScale;
-			DrawRootInPass(tier.Root, encoder, view.TargetFormat, (int32)place.Rect.X, (int32)place.Rect.Y,
+			return PrepareRoot(tier.Root, view.TargetFormat, (int32)place.Rect.X, (int32)place.Rect.Y,
 				(uint32)Math.Max(place.Rect.Width, 1.0f), (uint32)Math.Max(place.Rect.Height, 1.0f),
-				(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat), 1, &place, view.EncodedTarget);
-			return;
+				(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat), 1, &place, view.EncodedTarget,
+				layers);
 		}
-		DrawRootInPass(tier.Root, encoder, view.TargetFormat, 0, 0, view.Width, view.Height,
-			(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat), 1, null, view.EncodedTarget);
+		return PrepareRoot(tier.Root, view.TargetFormat, 0, 0, view.Width, view.Height,
+			(int32)view.FrameIndex, StencilAgrees(view.DepthStencilFormat), 1, null, view.EncodedTarget, layers);
 	}
 
 	/// Stencil fills only where the pass carries an attachment in the SAME format the
@@ -205,6 +253,26 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 		bool stencilCapable = false, uint32 sampleCount = 1, UIScreenPlacement* placement = null,
 		bool encoded = false)
 	{
+		// Inside a pass there is no drawing a layer first: they stay opacity pushes.
+		DrawPrepared(PrepareRoot(root, format, viewportX, viewportY, width, height, frameIndex,
+			stencilCapable, sampleCount, placement, encoded, false), encoder);
+	}
+
+	/// DrawRootInPass's second half: draws what was prepared into the active pass.
+	private static void DrawPrepared(UIPreparedRoot prepared, IRenderPassEncoder encoder)
+	{
+		if (prepared.Renderer != null)
+		{
+			prepared.Renderer.Render(encoder, prepared.ViewportX, prepared.ViewportY, prepared.Width,
+				prepared.Height, prepared.FrameIndex, prepared.Slice);
+		}
+	}
+
+	/// DrawRootInPass's first half: lays out, records and uploads, which needs no pass.
+	private UIPreparedRoot PrepareRoot(RootView root, TextureFormat format, int32 viewportX, int32 viewportY,
+		uint32 width, uint32 height, int32 frameIndex, bool stencilCapable, uint32 sampleCount,
+		UIScreenPlacement* placement, bool encoded, bool layers)
+	{
 		// A turned tier lays out in its own frame (the rectangle turned back) and draws through the
 		// turn; everything else at the rectangle's size.
 		root.ViewportSize = (placement != null) ? placement.DrawSize : Float2((float)width, (float)height);
@@ -216,6 +284,7 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 		let stencil = stencilCapable && (mRenderState.CanvasStencilFormat != .Undefined);
 
 		mRenderState.Context.SetStencilFills(stencil);
+		mRenderState.Context.SetLayers(layers);
 		mRenderState.Context.Clear();
 		if (placement != null)
 			mRenderState.Context.SetTransform(placement.Transform); // under the root's own DpiScale
@@ -224,18 +293,26 @@ extension UISubsystem : ISceneOverlay, IScreenOverlay
 		let batch = mRenderState.Context.GetBatch();
 		// Reset, because each tier opts in per batch rather than once.
 		mRenderState.Context.SetStencilFills(false);
+		mRenderState.Context.SetLayers(false);
 
+		var prepared = UIPreparedRoot();
 		if (batch.Commands.IsEmpty)
-			return;
+			return prepared;
 
 		let renderer = mRenderState.RendererFor(format, mFrameSerial, frameIndex, stencil,
 			sampleCount, encoded);
 		if (renderer == null)
-			return;
+			return prepared;
 		// The texture images the tree names (resolved as it drew) registered on this renderer.
 		mImages.SyncOn(renderer, mFrameSerial);
 
-		let slice = renderer.Prepare(batch, frameIndex, width, height);
-		renderer.Render(encoder, viewportX, viewportY, width, height, frameIndex, slice);
+		prepared.Renderer = renderer;
+		prepared.Slice = renderer.Prepare(batch, frameIndex, width, height);
+		prepared.ViewportX = viewportX;
+		prepared.ViewportY = viewportY;
+		prepared.Width = width;
+		prepared.Height = height;
+		prepared.FrameIndex = frameIndex;
+		return prepared;
 	}
 }

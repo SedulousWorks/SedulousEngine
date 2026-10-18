@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Image;
+using Sedulous.Render;
 using Sedulous.RHI;
 using Sedulous.Scene;
 using Sedulous.Shaders;
@@ -36,6 +37,14 @@ class UIRenderState
 	public IShaderModule BoxShadowShader = null;
 	public IShaderModule BoxVertexShader = null;
 	public IShaderModule BoxFragmentShader = null;
+	/// Layer composites, for the screen tier's PrepareOverlay.
+	public IShaderModule LayerShader = null;
+
+	/// The tiers the next screen overlay Render draws, as PrepareOverlay recorded them for
+	/// PreparedView; cleared when drawn.
+	public List<UIPreparedRoot> PreparedScreens = new .() ~ delete _;
+	public ScreenOverlayView PreparedView = .();
+	public bool ScreensPrepared = false;
 
 	public VGContext Context = null ~ delete _;
 
@@ -97,7 +106,7 @@ class UIRenderState
 			let renderer = new VGRenderer();
 			if (renderer.Initialize(Device, VertexShader, FragmentShader, format, FrameCount,
 				DistanceFieldShader, GradRadialShader, GradConicShader, targetConfig,
-				BoxShadowShader, BoxVertexShader, BoxFragmentShader) case .Err)
+				BoxShadowShader, BoxVertexShader, BoxFragmentShader, LayerShader) case .Err)
 			{
 				delete renderer;
 				return null;
