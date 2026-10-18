@@ -100,16 +100,23 @@ static class DrawableFactoryRegistry
 		sBuiltinsRegistered = true;
 
 		// color($color)
-		Register("color", (parser, sheet) => new ColorDrawable(parser.ParseColorArg()));
+		Register("color", (parser, sheet) =>
+			{
+				let drawable = new ColorDrawable();
+				drawable.Color = parser.ParseColorArgOrVar(drawable.ColorVariable);
+				return drawable;
+			});
 
 		// rounded-rect($color, radius=6, border=$color, border-width=1). border-width takes 1, 2
 		// or 4 values in CSS's order (top, right, bottom, left), and border-top=, border-right=,
 		// border-bottom= and border-left= colour one side over border=.
 		Register("rounded-rect", (parser, sheet) =>
 			{
-				let fill = parser.ParseColorArg();
+				let fillVariable = scope String();
+				let fill = parser.ParseColorArgOrVar(fillVariable);
 				CornerRadii radii = .();
 				var borderColor = Color.Transparent;
+				let borderVariable = scope String();
 				Thickness widths = .();
 				var sideWidths = false;
 				Color?[4] sides = .(); // top, right, bottom, left
@@ -128,7 +135,7 @@ static class DrawableFactoryRegistry
 							|| (widths.Top != widths.Left);
 					case "border":
 						parser.ConsumeKeywordArg();
-						borderColor = parser.ParseColorArg();
+						borderColor = parser.ParseColorArgOrVar(borderVariable);
 					case "border-top", "border-right", "border-bottom", "border-left":
 						let side = parser.PeekKeywordArg();
 						let index = (side == "border-top") ? 0 : (side == "border-right") ? 1 : (side == "border-bottom") ? 2 : 3;
@@ -141,6 +148,8 @@ static class DrawableFactoryRegistry
 				}
 
 				let drawable = new RoundedRectDrawable(fill, radii, borderColor, widths.Top);
+				drawable.FillVariable.Set(fillVariable);
+				drawable.BorderVariable.Set(borderVariable);
 				if (sideWidths)
 					drawable.SideWidths = BorderWidths(widths.Top, widths.Right, widths.Bottom, widths.Left);
 				if (sides[0].HasValue || sides[1].HasValue || sides[2].HasValue || sides[3].HasValue)
@@ -176,10 +185,14 @@ static class DrawableFactoryRegistry
 					// No direction given: the default stands and the colours follow.
 				}
 
-				let first = parser.ParseColorArg();
+				let firstVariable = scope String();
+				let first = parser.ParseColorArgOrVar(firstVariable);
 				parser.MatchComma();
-				let second = parser.ParseColorArg();
+				let secondVariable = scope String();
+				let second = parser.ParseColorArgOrVar(secondVariable);
 				let gradient = new GradientDrawable(first, second, direction);
+				gradient.StartVariable.Set(firstVariable);
+				gradient.EndVariable.Set(secondVariable);
 				ParseGradientRadius(parser, gradient);
 				return gradient;
 			});
@@ -222,7 +235,7 @@ static class DrawableFactoryRegistry
 					parser.MatchComma();
 				}
 				gradient.AngleDegrees = (angle < 0.0f) ? angle + 360.0f : angle;
-				parser.ParseGradientStops(gradient.Stops);
+				parser.ParseGradientStops(gradient.Stops, gradient.StopVariables);
 				ParseGradientRadius(parser, gradient);
 				return gradient;
 			});
@@ -233,7 +246,7 @@ static class DrawableFactoryRegistry
 			{
 				let gradient = new GradientDrawable();
 				gradient.Radial = true;
-				parser.ParseGradientStops(gradient.Stops);
+				parser.ParseGradientStops(gradient.Stops, gradient.StopVariables);
 				ParseGradientRadius(parser, gradient);
 				return gradient;
 			});

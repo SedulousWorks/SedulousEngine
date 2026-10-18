@@ -171,6 +171,27 @@ class SSSParser
 	/// A colour argument inside a factory call.
 	public Color ParseColorArg() => ParseColorValue();
 
+	/// A drawable's colour argument that may be `var(--name[, fallback])`: the custom property's
+	/// name goes in `outVariable` (left empty for a written colour), resolved where the drawable is
+	/// drawn, and the fallback (transparent without one) or the written colour is returned.
+	public Color ParseColorArgOrVar(String outVariable)
+	{
+		outVariable.Clear();
+		if ((Peek().Kind == .Ident) && (Peek().Text == "var") && (mPos + 1 < (int32)mTokens.Count)
+			&& (mTokens[mPos + 1].Kind == .LParen))
+		{
+			Consume(); // var
+			Consume(); // (
+			outVariable.Set(ConsumeIdent());
+			var fallback = Color.Transparent;
+			if (MatchComma())
+				fallback = ParseColorValue();
+			Expect(.RParen);
+			return fallback;
+		}
+		return ParseColorValue();
+	}
+
 	/// One to four numbers as per corner radii: one is uniform, four are top left, top right,
 	/// bottom right and bottom left, in CSS order.
 	public CornerRadii ParseCornerRadiiValue()
@@ -281,16 +302,23 @@ class SSSParser
 		return token.NumericValue;
 	}
 
-	/// A gradient's colour stops into `outStops`, each `<color> [<offset>%]`, separated by
-	/// commas, up to a keyword argument or the closing parenthesis. Offsets left out are spread
-	/// evenly between their neighbours, the first at 0 and the last at 1, as CSS spreads them.
-	public void ParseGradientStops(List<GradientStop> outStops)
+	/// A gradient's colour stops into `outStops`, each `<color> [<offset>%]` (a colour may be a
+	/// var()), separated by commas, up to a keyword argument or the closing parenthesis;
+	/// `outVariables` gets each stop's custom property name, or nothing when every colour is
+	/// written. Offsets left out are spread evenly between their neighbours, the first at 0 and
+	/// the last at 1, as CSS spreads them.
+	public void ParseGradientStops(List<GradientStop> outStops, List<String> outVariables)
 	{
 		let placed = scope List<bool>();
+		ClearAndDeleteItems!(outVariables);
+		var anyVariable = false;
 		while (!IsAtRParen && PeekKeywordArg().IsEmpty)
 		{
 			GradientStop stop = .();
-			stop.Color = ParseColorValue();
+			let variable = new String();
+			stop.Color = ParseColorArgOrVar(variable);
+			anyVariable = anyVariable || !variable.IsEmpty;
+			outVariables.Add(variable);
 			let hasOffset = Peek().Kind == .Number;
 			if (hasOffset)
 				stop.Offset = ParseFloatValue();
@@ -299,6 +327,8 @@ class SSSParser
 			if (!MatchComma())
 				break;
 		}
+		if (!anyVariable)
+			ClearAndDeleteItems!(outVariables); // written colours only: no names to resolve
 		if (outStops.IsEmpty)
 			return;
 		if (!placed[0])

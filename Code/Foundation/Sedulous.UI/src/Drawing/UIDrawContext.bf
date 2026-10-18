@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 using Sedulous.Fonts;
 using Sedulous.VG;
@@ -29,6 +30,21 @@ class UIDrawContext
 	/// May be null.
 	public IFontService FontService => mFontService;
 	public UIDebugDrawSettings DebugSettings => mDebugSettings;
+
+	/// The view being drawn, whose custom properties a drawable's `var(--name)` colours resolve
+	/// against: DrawChildren sets it around each view's drawing and puts the previous one back.
+	/// BORROWED; null outside a view's drawing.
+	public View ColorSource = null;
+
+	/// A drawable's colour: the custom property `variable` names, if the view being drawn has it
+	/// as a colour, else `value` (the var()'s fallback, or the colour written).
+	public Color ColorOf(Color value, StringView variable)
+	{
+		if (variable.IsEmpty || (ColorSource == null))
+			return value;
+		let found = ColorSource.CustomProperty(variable).AsColor;
+		return found.HasValue ? found.Value : value;
+	}
 
 	/// Pushes a clip rectangle, in the current local coordinates.
 	public void PushClip(Rectangle rect) => mVG.PushClipRect(rect);

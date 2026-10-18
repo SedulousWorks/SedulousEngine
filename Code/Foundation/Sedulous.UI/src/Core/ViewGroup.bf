@@ -368,7 +368,12 @@ class ViewGroup : View
 
 			ApplyTextEffects(ctx, child);
 			let previousBlend = ctx.SetBlend(child.CurrentDrawBlend());
+			// A drawable's var() colours resolve against this child's custom properties while it
+			// draws (its children set their own).
+			let previousSource = ctx.ColorSource;
+			ctx.ColorSource = child;
 			child.OnDraw(ctx);
+			ctx.ColorSource = previousSource;
 			ctx.SetBlend(previousBlend);
 
 			DrawBoxShadows(ctx, child, shadows, true);

@@ -22,6 +22,12 @@ class GradientDrawable : Drawable
 	public bool Radial = false;
 	/// The box's corners: the fill is rounded to them, and a shadow under it follows them.
 	public CornerRadii Radii = .();
+	/// Custom properties (`--name`) the colours come from where the drawn view has them, the
+	/// written colours their fallbacks: StartColor's and EndColor's, and one per stop (empty for a
+	/// written one) when StopVariables is as long as Stops.
+	public String StartVariable = new .() ~ delete _;
+	public String EndVariable = new .() ~ delete _;
+	public List<String> StopVariables = new .() ~ DeleteContainerAndItems!(_);
 
 	public this() {}
 
@@ -61,7 +67,7 @@ class GradientDrawable : Drawable
 		if (Radial)
 		{
 			let fill = scope VGRadialGradientFill(centre, Math.Sqrt(width * width + height * height) * 0.5f);
-			AddStopsTo(fill.Stops);
+			AddStopsTo(ctx, fill.Stops);
 			ctx.VG.FillPath(path, fill);
 			return;
 		}
@@ -96,18 +102,23 @@ class GradientDrawable : Drawable
 		}
 
 		let fill = scope VGLinearGradientFill(from, to);
-		AddStopsTo(fill.Stops);
+		AddStopsTo(ctx, fill.Stops);
 		ctx.VG.FillPath(path, fill);
 	}
 
-	private void AddStopsTo(List<GradientStop> outStops)
+	private void AddStopsTo(UIDrawContext ctx, List<GradientStop> outStops)
 	{
 		if (Stops.IsEmpty)
 		{
-			outStops.Add(.(0.0f, StartColor));
-			outStops.Add(.(1.0f, EndColor));
+			outStops.Add(.(0.0f, ctx.ColorOf(StartColor, StartVariable)));
+			outStops.Add(.(1.0f, ctx.ColorOf(EndColor, EndVariable)));
 			return;
 		}
-		outStops.AddRange(Stops);
+		let named = StopVariables.Count == Stops.Count;
+		for (int i < Stops.Count)
+		{
+			let stop = Stops[i];
+			outStops.Add(.(stop.Offset, named ? ctx.ColorOf(stop.Color, StopVariables[i]) : stop.Color));
+		}
 	}
 }

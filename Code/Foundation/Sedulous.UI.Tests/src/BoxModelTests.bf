@@ -541,6 +541,55 @@ class BoxModelTests
 		Test.Assert(Near(batch.Layers[0].Blur, 0.0f));
 	}
 
+	/// The first colour drawn for a 40 by 20 `.card` panel with `classes` too, under `context`'s
+	/// sheet; transparent black when nothing drew.
+	private static Color CardColour(UIContext context, RootView root, StringView classes)
+	{
+		let frame = new FrameLayout();
+		let card = new Panel();
+		var size = LayoutStyle();
+		size.Width = .(SizeSpec.Fixed(Unit.Dp(40)), true);
+		size.Height = .(SizeSpec.Fixed(Unit.Dp(20)), true);
+		card.SetLayout(size);
+		card.AddClass("card");
+		if (!classes.IsEmpty)
+			card.AddClass(classes);
+		frame.AddView(card);
+		root.AddView(frame);
+		UITest.LayoutPass(context, root);
+		let vg = scope VGContext();
+		context.DrawRootView(root, vg);
+		root.RemoveView(frame);
+		let vertices = vg.GetBatch().Vertices;
+		return vertices.IsEmpty ? Color(0, 0, 0, 0) : vertices[0].Color;
+	}
+
+	/// One rule, several accents: a drawable's var() colours resolve against the view it fills,
+	/// and the var()'s fallback where the view has none; the parse keeps each name beside its
+	/// fallback.
+	[Test]
+	public static void ADrawablesVarColoursResolveAgainstTheViewDrawingIt()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		context.SetStyleSheet(LoadSSS(".card { background: rounded-rect(var(--accent, #0000FF), radius=4, border=var(--edge), border-width=1); } .red { --accent: #FF0000; } .green { --accent: #00FF00; }"));
+		let red = CardColour(context, root, "red");
+		Test.Assert((red.R > 0.99f) && (red.B < 0.01f), scope $"{red}");
+		let green = CardColour(context, root, "green");
+		Test.Assert((green.G > 0.99f) && (green.R < 0.01f), scope $"{green}");
+		let fallback = CardColour(context, root, "");
+		Test.Assert((fallback.B > 0.99f) && (fallback.R < 0.01f), scope $"no --accent, the fallback: {fallback}");
+
+		let sheet = LoadSSS(".x { background: linear-gradient(var(--a), #000000 50%, var(--b, #FFFFFF)); } .y { background: color(var(--c)); }");
+		defer sheet.ReleaseRef();
+		let gradient = sheet.GetRule(0).GetValue(.Background).Value.AsDrawable as GradientDrawable;
+		Test.Assert((gradient != null) && (gradient.StopVariables.Count == 3));
+		Test.Assert((gradient.StopVariables[0] == "--a") && gradient.StopVariables[1].IsEmpty);
+		Test.Assert(Near(gradient.Stops[2].Color.R, 1.0f), "--b's fallback");
+		let solid = sheet.GetRule(1).GetValue(.Background).Value.AsDrawable as ColorDrawable;
+		Test.Assert((solid != null) && (solid.ColorVariable == "--c"));
+	}
+
 	/// The indices of the backdrop composite under a `.glass` view styled by `sheetText`: its
 	/// shape, a rounded outline where the background rounds, four corners where nothing does.
 	private static int BackdropIndices(StringView sheetText)

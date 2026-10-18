@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 using Sedulous.VG;
 
@@ -16,6 +17,11 @@ class RoundedRectDrawable : Drawable
 	/// A colour per side, in place of BorderColor; where two sides meet, the corner splits
 	/// between them as CSS draws it.
 	public BorderColors? SideColors;
+	/// Custom properties (`--name`) the fill and the border colour come from where the drawn view
+	/// has them; FillColor and BorderColor are their fallbacks. A side's own colour (SideColors)
+	/// stays as written.
+	public String FillVariable = new .() ~ delete _;
+	public String BorderVariable = new .() ~ delete _;
 
 	/// The border's width on each side: SideWidths, or BorderWidth on all four.
 	public BorderWidths Widths => SideWidths.HasValue ? SideWidths.Value : .(BorderWidth);
@@ -48,22 +54,24 @@ class RoundedRectDrawable : Drawable
 
 	public override void Draw(UIDrawContext ctx, Rectangle bounds)
 	{
+		let fill = ctx.ColorOf(FillColor, FillVariable);
+		let border = ctx.ColorOf(BorderColor, BorderVariable);
 		if (SideWidths.HasValue || SideColors.HasValue)
 		{
 			// Sides that differ: VG's box draws them, analytically or tessellated.
-			let colors = Colors;
+			BorderColors colors = SideColors.HasValue ? SideColors.Value : .(border);
 			let bordered = !colors.IsTransparent && !Widths.IsZero;
-			if ((FillColor.A > 0.0f) || bordered)
-				ctx.VG.DrawBox(bounds, Radii, FillColor, bordered ? Widths : .(), colors);
+			if ((fill.A > 0.0f) || bordered)
+				ctx.VG.DrawBox(bounds, Radii, fill, bordered ? Widths : .(), colors);
 			return;
 		}
 		if (ctx.VG.AnalyticBoxes)
 		{
 			// Fill and border as ONE box: one signed distance gives both, so they cannot
 			// disagree at the corners, and the border lies inside the bounds (border box).
-			let bordered = (BorderColor.A > 0.0f) && (BorderWidth > 0.0f);
-			if ((FillColor.A > 0.0f) || bordered)
-				ctx.VG.DrawBox(bounds, Radii, FillColor, .(bordered ? BorderWidth : 0.0f), BorderColor);
+			let bordered = (border.A > 0.0f) && (BorderWidth > 0.0f);
+			if ((fill.A > 0.0f) || bordered)
+				ctx.VG.DrawBox(bounds, Radii, fill, .(bordered ? BorderWidth : 0.0f), border);
 			return;
 		}
 
@@ -77,10 +85,10 @@ class RoundedRectDrawable : Drawable
 
 		if (!Radii.IsZero)
 		{
-			if (FillColor.A > 0.0f)
-				ctx.VG.FillRoundedRect(bounds, Radii, FillColor);
+			if (fill.A > 0.0f)
+				ctx.VG.FillRoundedRect(bounds, Radii, fill);
 
-			if ((BorderColor.A > 0.0f) && (BorderWidth > 0.0f))
+			if ((border.A > 0.0f) && (BorderWidth > 0.0f))
 			{
 				// The radii shrink with the inset, so the stroke stays concentric with the
 				// fill rather than bulging at the corners.
@@ -89,15 +97,15 @@ class RoundedRectDrawable : Drawable
 				radii.TopRight = Max(0.0f, radii.TopRight - inset);
 				radii.BottomRight = Max(0.0f, radii.BottomRight - inset);
 				radii.BottomLeft = Max(0.0f, radii.BottomLeft - inset);
-				ctx.VG.StrokeRoundedRect(borderRect, radii, BorderColor, BorderWidth);
+				ctx.VG.StrokeRoundedRect(borderRect, radii, border, BorderWidth);
 			}
 			return;
 		}
 
-		if (FillColor.A > 0.0f)
-			ctx.VG.FillRect(bounds, FillColor);
-		if ((BorderColor.A > 0.0f) && (BorderWidth > 0.0f))
-			ctx.VG.StrokeRect(borderRect, BorderColor, BorderWidth);
+		if (fill.A > 0.0f)
+			ctx.VG.FillRect(bounds, fill);
+		if ((border.A > 0.0f) && (BorderWidth > 0.0f))
+			ctx.VG.StrokeRect(borderRect, border, BorderWidth);
 	}
 
 	/// Border box: the border is chrome the content has to clear, side by side, so it counts as

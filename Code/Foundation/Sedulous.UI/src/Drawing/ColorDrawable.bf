@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 
 namespace Sedulous.UI;
@@ -6,6 +7,9 @@ namespace Sedulous.UI;
 class ColorDrawable : Drawable
 {
 	public Color Color = .();
+	/// A custom property (`--name`) the colour comes from where the drawn view has one; Color is
+	/// its fallback.
+	public String ColorVariable = new .() ~ delete _;
 
 	public this() {}
 
@@ -18,7 +22,8 @@ class ColorDrawable : Drawable
 	{
 		// A fully transparent fill is not merely invisible, it is a wasted draw call, and a
 		// theme leaves plenty of them lying around.
-		if (Color.A > 0.0f)
-			ctx.VG.FillRect(bounds, Color);
+		let color = ctx.ColorOf(Color, ColorVariable);
+		if (color.A > 0.0f)
+			ctx.VG.FillRect(bounds, color);
 	}
 }
