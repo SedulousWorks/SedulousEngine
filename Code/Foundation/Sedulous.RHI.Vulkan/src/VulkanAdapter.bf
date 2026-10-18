@@ -250,13 +250,22 @@ class VulkanAdapter : IAdapter
 		}
 	}
 
-	/// Whether the device can read its own timestamps and the host clock together. The KHR and
-	/// EXT entry points share a signature; the instance answers whichever exists.
+	/// Whether the device can read its own timestamps and the host clock together.
+	///
+	/// Asks for the entry point of the extension THIS DEVICE advertised, never KHR with an EXT
+	/// fallback: vkGetInstanceProcAddr answers for anything the LOADER knows, so the KHR name
+	/// returns a valid trampoline even on a driver that only implements the EXT form, and
+	/// calling it reaches an ICD with no such entry (the loader's "ICD associated with
+	/// VkPhysicalDevice does not support GetPhysicalDeviceCalibrateableTimeDomainsKHR", and the
+	/// process ends). mCalibratedTimestampsExtension says which one the extension list had.
 	private bool HasCalibrationDomains()
 	{
-		var query = (VulkanNative.vkGetPhysicalDeviceCalibrateableTimeDomainsKHRFunction)VulkanNative.vkGetInstanceProcAddr(mInstance, "vkGetPhysicalDeviceCalibrateableTimeDomainsKHR");
-		if (query == null)
-			query = (VulkanNative.vkGetPhysicalDeviceCalibrateableTimeDomainsKHRFunction)VulkanNative.vkGetInstanceProcAddr(mInstance, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
+		if (mCalibratedTimestampsExtension == null)
+			return false;
+		let khr = StringView(mCalibratedTimestampsExtension) == "VK_KHR_calibrated_timestamps";
+		// The KHR and EXT entry points share a signature, so one function type serves both.
+		let query = (VulkanNative.vkGetPhysicalDeviceCalibrateableTimeDomainsKHRFunction)VulkanNative.vkGetInstanceProcAddr(mInstance,
+			khr ? "vkGetPhysicalDeviceCalibrateableTimeDomainsKHR" : "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
 		if (query == null)
 			return false;
 		uint32 count = 0;
