@@ -605,7 +605,11 @@ class VGContext
 			let r = (scale.X + scale.Y) * 0.5f;
 			boxVertex.HalfSize = .((x1 - x0) * 0.5f, (y1 - y0) * 0.5f);
 			boxVertex.Radii = .(clamped.TopLeft * r, clamped.TopRight * r, clamped.BottomRight * r, clamped.BottomLeft * r);
-			boxVertex.Borders = .(borders.Top * scale.Y, borders.Right * scale.X, borders.Bottom * scale.Y, borders.Left * scale.X);
+			// Each border a whole number of device pixels, never thinner than one: a 2 px border
+			// on a canvas scaled to 0.48 is one crisp pixel, not a 0.96 px blur.
+			float SnapWidth(float w, float s) => (w > 0.0f) ? Max(1.0f, Round(w * s)) : 0.0f;
+			boxVertex.Borders = .(SnapWidth(borders.Top, scale.Y), SnapWidth(borders.Right, scale.X),
+				SnapWidth(borders.Bottom, scale.Y), SnapWidth(borders.Left, scale.X));
 			let center = Float2((x0 + x1) * 0.5f, (y0 + y1) * 0.5f);
 			// One device pixel for the antialiasing ramp.
 			let h = Float2(boxVertex.HalfSize.X + 1.0f, boxVertex.HalfSize.Y + 1.0f);

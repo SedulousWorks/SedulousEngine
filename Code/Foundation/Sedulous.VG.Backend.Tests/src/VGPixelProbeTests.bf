@@ -380,6 +380,12 @@ class VGPixelProbeTests
 				context.DrawBox(.(80, 16, 32, 32), .(), .(0, 0, 0, 0), .(1.0f), ByteColor(60, 60, 240));
 				// Six pixels of border on the left, none on the right, two above and below.
 				context.DrawBox(.(16, 80, 48, 32), .(), .(0, 0, 0, 0), .(2.0f, 0.0f, 2.0f, 6.0f), ByteColor(40, 200, 40));
+				// A canvas scaled to 0.48 (a game UI at a reference resolution): a 2 px border,
+				// snapped to one whole device pixel.
+				context.PushState();
+				context.Scale(0.48f, 0.48f);
+				context.DrawBox(.(180, 152, 40, 16), .(), .(0, 0, 0, 0), .(2.0f), ByteColor(40, 200, 40));
+				context.PopState();
 			});
 		defer delete image;
 		Test.Assert((image != null) && image.Valid, "the scene rendered");
@@ -411,6 +417,11 @@ class VGPixelProbeTests
 		Test.Assert(Dark(64, 96), scope $"{name}: nothing right of the box");
 		Test.Assert(Green(40, 80), scope $"{name}: the top border");
 		Test.Assert(Dark(40, 83), scope $"{name}: inside, under the top border");
+		// The scaled box: device 86.4..105.6 x 72.96..80.64, snapped to 86..106 x 73..81; its top
+		// border one full pixel row, nothing above it, nothing under it.
+		Test.Assert(Green(96, 73), scope $"{name}: the scaled box's top border");
+		Test.Assert(Dark(96, 72), scope $"{name}: nothing above the scaled box");
+		Test.Assert(Dark(96, 75), scope $"{name}: one pixel, nothing under it");
 	}
 
 	/// An axis aligned rectangle path, the caller's to delete.

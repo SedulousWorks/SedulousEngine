@@ -95,6 +95,25 @@ class VGBoxTests
 		Test.Assert(Near(v.Borders.X, 2.0f), "a unit border, two device pixels");
 	}
 
+	/// A box's borders on a scaled canvas are whole device pixels, at least one: a game UI at a
+	/// reference resolution keeps crisp borders rather than sub pixel blurs.
+	[Test]
+	public static void ABoxsBordersOnAScaledCanvasAreWholeDevicePixels()
+	{
+		let context = scope VGContext();
+		context.SetAnalyticBoxes(true);
+		context.Scale(0.48f, 0.48f);
+		context.DrawBox(.(100, 100, 200, 100), .(), .Red, .(2.0f, 1.0f, 5.0f, 0.0f), .Blue);
+
+		let batch = context.GetBatch();
+		Test.Assert(batch.BoxVertices.Count == 6);
+		let v = batch.BoxVertices[0];
+		Test.Assert(Near(v.Borders.X, 1.0f), "2 x 0.48 = 0.96: one pixel");
+		Test.Assert(Near(v.Borders.Y, 1.0f), "1 x 0.48: still one, never thinner");
+		Test.Assert(Near(v.Borders.Z, 2.0f), "5 x 0.48 = 2.4: two");
+		Test.Assert(Near(v.Borders.W, 0.0f), "none stays none");
+	}
+
 	/// Without analytic boxes, DrawBox tessellates its fill and border, and makes no box vertices
 	/// a renderer without the box shaders could not draw.
 	[Test]
