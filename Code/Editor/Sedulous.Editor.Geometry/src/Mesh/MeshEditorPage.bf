@@ -16,7 +16,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Preview;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Geometry;
 
 /// The mesh page: the cooked product on a preview entity, following reloads by product
 /// identity, beside a stats column with a preview material picker and, for a LOD chain, a

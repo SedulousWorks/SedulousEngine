@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Geometry;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Geometry;
 
 /// The mesh page's read-only stat lines: counts, bounds, skinning, one row per submesh, and
 /// the LOD chain when there is one.

@@ -4,7 +4,7 @@ using Sedulous.Runtime.Client;
 using Sedulous.UI.Runtime;
 using Sedulous.Editor.Core;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Geometry;
 
 /// Opens a mesh asset, static or skinned (one factory per type), in the mesh page.
 class MeshEditorPageFactory : IEditorPageFactory

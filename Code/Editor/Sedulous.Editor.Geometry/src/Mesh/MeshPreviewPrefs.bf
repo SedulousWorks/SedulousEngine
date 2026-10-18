@@ -1,7 +1,7 @@
 using System;
 using Sedulous.Settings;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Geometry;
 
 /// Reading and upserting a mesh's preview material in a settings store.
 static class MeshPreviewPrefs

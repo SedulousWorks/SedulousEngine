@@ -6,7 +6,7 @@ using Sedulous.Geometry;
 using Sedulous.Settings;
 using Sedulous.Xml.Serialization;
 
-namespace Sedulous.Editor.Scene.Tests;
+namespace Sedulous.Editor.Geometry.Tests;
 
 /// The mesh page's stat lines and its preview material preference.
 class MeshStatsTests
@@ -101,7 +101,7 @@ class MeshStatsTests
 	[Test]
 	public static void ThePreviewMaterialRoundTripsThroughTheSettingsStore()
 	{
-		SceneEditorSerializables.RegisterAll();
+		GeometryEditorSerializables.Register();
 		let meshA = Guid(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2);
 		let meshB = Guid(3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4);
 		let mat = Guid(5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6);
@@ -129,5 +129,41 @@ class MeshStatsTests
 		let loaded = scope Settings();
 		Test.Assert(loaded.Load(buffer, factory) case .Ok);
 		Test.Assert(MeshPreviewPrefs.Load(loaded, meshA) == mat);
+	}
+
+	/// The preview preferences moved from Editor.Scene with the page: a file saved before the
+	/// move, every name and type id the old one, still loads.
+	[Test]
+	public static void APreviewMaterialSavedBeforeThePagesMoveStillLoads()
+	{
+		GeometryEditorSerializables.Register();
+		let mesh = Guid(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2);
+		let material = Guid(5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6);
+		let store = scope Settings();
+		Test.Assert(MeshPreviewPrefs.Save(store, mesh, material));
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		let buffer = scope MemoryStream();
+		Test.Assert(store.Save(buffer, factory) case .Ok);
+
+		// The file as the build before the move wrote it.
+		let text = scope String((char8*)buffer.Bytes.Ptr, buffer.Bytes.Length);
+		for (let name in StringView[?]("MeshPreviewSettings", "MeshPreviewPref"))
+		{
+			let current = scope $"Sedulous.Editor.Geometry.{name}";
+			let former = scope $"Sedulous.Editor.Scene.{name}";
+			let currentId = scope $"{Sedulous.Core.Serialization.TypeIdOf(current)}";
+			Test.Assert(text.Contains(currentId), scope $"{name}'s id is written as {currentId}: {text}");
+			text.Replace(currentId, scope $"{Sedulous.Core.Serialization.TypeIdOf(former)}");
+			text.Replace(current, former);
+		}
+		let old = scope MemoryStream();
+		old.Write(.((uint8*)text.Ptr, text.Length));
+		old.Seek(0, .Begin);
+
+		let loaded = scope Settings();
+		Test.Assert(loaded.Load(old, factory) case .Ok);
+		Test.Assert(loaded.UnknownSectionCount == 0);
+		Test.Assert(MeshPreviewPrefs.Load(loaded, mesh) == material);
 	}
 }

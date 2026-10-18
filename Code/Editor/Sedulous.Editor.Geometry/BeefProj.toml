@@ -1,0 +1,26 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Geometry"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Geometry.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Settings" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Geometry.Pipeline" = "*"
+"Sedulous.Materials" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Toolkit" = "*"
+"Sedulous.UI.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.App" = "*"
+"Sedulous.Editor.Preview" = "*"

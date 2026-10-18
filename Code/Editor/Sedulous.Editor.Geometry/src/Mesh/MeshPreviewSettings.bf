@@ -1,7 +1,7 @@
 using System.Collections;
 using Sedulous.Core.Serialization;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Geometry;
 
 /// The settings section holding every mesh's preview material choice.
 [Serializable(1)]

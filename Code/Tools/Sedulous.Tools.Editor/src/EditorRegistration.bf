@@ -10,6 +10,7 @@ using Sedulous.Editor.App;
 using Sedulous.Editor.Scene;
 using Sedulous.Editor.Animation;
 using Sedulous.Editor.Materials;
+using Sedulous.Editor.Geometry;
 using Sedulous.Editor.Input;
 using Sedulous.Editor.Navigation;
 using Sedulous.Editor.PropertyAnimation;

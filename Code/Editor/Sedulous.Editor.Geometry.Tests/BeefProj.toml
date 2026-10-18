@@ -1,0 +1,14 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Geometry.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.Geometry.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Settings" = "*"
+"Sedulous.Xml" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Editor.Geometry" = "*"
