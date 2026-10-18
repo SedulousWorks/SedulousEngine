@@ -6,7 +6,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Particles;
 using Sedulous.Particles.Resource;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// The particle page's edits on a ParticleEffect, kept off the page so they run headless:
 /// the module catalogue the tree's menus add from, and the binary snapshot the undo step

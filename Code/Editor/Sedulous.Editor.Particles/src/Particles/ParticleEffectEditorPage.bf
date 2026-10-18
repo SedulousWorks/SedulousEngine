@@ -17,7 +17,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Preview;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// The particle effect page: the effect's tree on the left (systems, emitters, module
 /// folders), a simulating preview in the middle (the page toolbar plays it), and an inspector for the

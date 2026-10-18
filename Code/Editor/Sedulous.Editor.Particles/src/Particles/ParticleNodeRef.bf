@@ -1,6 +1,6 @@
 using System;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// A tree row by what it stands for rather than its id, so a selection survives a rebuild.
 struct ParticleNodeRef : IEquatable<ParticleNodeRef>, IHashable

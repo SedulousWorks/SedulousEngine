@@ -2,7 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.UI;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// The tree half: the snapshot rebuilt from the effect, selection by ref, and the row
 /// context menu that adds, moves and deletes systems and modules.

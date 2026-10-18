@@ -9,7 +9,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Pipeline.Core;
 
-namespace Sedulous.Editor.Scene.Tests;
+namespace Sedulous.Editor.Particles.Tests;
 
 /// The particle page's headless halves: the seed, the module catalogue, the tree snapshot,
 /// the undo snapshot and the creator.

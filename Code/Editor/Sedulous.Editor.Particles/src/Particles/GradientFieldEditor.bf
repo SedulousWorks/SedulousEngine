@@ -5,7 +5,7 @@ using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 using Sedulous.Particles;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// A property row editing a module's colour curve in place through a GradientEditor; every
 /// stop change writes the curve back and commits under the row's key. The curve pointer is

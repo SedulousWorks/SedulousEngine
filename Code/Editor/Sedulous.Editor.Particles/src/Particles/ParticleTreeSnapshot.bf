@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Particles;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// The effect as a node table for the tree: the root, a row per system, and under each
 /// its emitter and the two module folders with a row per module.

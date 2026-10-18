@@ -7,7 +7,7 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.Particles;
 using Sedulous.UI;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// The preview half: the simulating scene, the effect attached to its emitter entity with
 /// the page's own resolved resource, the transport and the emission gizmo.

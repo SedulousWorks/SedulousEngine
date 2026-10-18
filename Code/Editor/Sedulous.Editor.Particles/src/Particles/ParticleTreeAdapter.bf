@@ -2,7 +2,7 @@ using System;
 using Sedulous.UI;
 using Sedulous.UI.Toolkit;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// The particle tree's adapter over a snapshot: labelled rows, a system row renamable in
 /// place, and modules draggable within their own folder. The page and the snapshot are

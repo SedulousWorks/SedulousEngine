@@ -4,7 +4,7 @@ using Sedulous.Particles;
 using Sedulous.Particles.Pipeline;
 using Sedulous.Editor.Core;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// The particle editor's composition: the asset and module serializables, its page and the
 /// "Particle Effect" creator.

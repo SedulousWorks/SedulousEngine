@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// One row of the particle effect tree.
 class ParticleTreeNode

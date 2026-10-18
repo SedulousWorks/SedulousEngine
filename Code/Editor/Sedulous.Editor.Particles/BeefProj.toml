@@ -1,0 +1,25 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Particles"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Particles.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Particles" = "*"
+"Sedulous.Particles.Resource" = "*"
+"Sedulous.Particles.Pipeline" = "*"
+"Sedulous.Engine.Particles" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Toolkit" = "*"
+"Sedulous.UI.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.App" = "*"
+"Sedulous.Editor.Preview" = "*"

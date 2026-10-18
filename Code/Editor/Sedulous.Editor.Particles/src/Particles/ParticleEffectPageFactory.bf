@@ -5,7 +5,7 @@ using Sedulous.UI.Runtime;
 using Sedulous.Particles.Pipeline;
 using Sedulous.Editor.Core;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// Opens a ParticleEffectAsset in the particle page.
 class ParticleEffectPageFactory : IEditorPageFactory

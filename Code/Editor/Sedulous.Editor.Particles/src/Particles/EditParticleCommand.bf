@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Editor.Core;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// One undo step of the particle page: the effect's binary snapshot before and after,
 /// coalesced per key so a scrub is one step.

@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Particles.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.Particles.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Particles" = "*"
+"Sedulous.Particles.Pipeline" = "*"
+"Sedulous.Editor.Project" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Particles" = "*"

@@ -6,7 +6,7 @@ using Sedulous.Particles;
 using Sedulous.UI;
 using Sedulous.Editor.App;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// The inspector half: rows for the selected effect, system, emitter or module.
 extension ParticleEffectEditorPage

@@ -1,7 +1,7 @@
 using System;
 using Sedulous.UI;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// A particle tree row: an editable label, renamable only for a system.
 class ParticleTreeRow : EditableLabel

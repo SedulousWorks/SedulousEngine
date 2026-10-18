@@ -5,7 +5,7 @@ using Sedulous.UI.Toolkit;
 using Sedulous.Particles;
 using Sedulous.Editor.App;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// The particle inspector's compound rows over InPlaceRows: a range as two rows, an emission
 /// shape as its enum and fields, and the curve editors. `commit` is BORROWED from the page.

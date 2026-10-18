@@ -1,4 +1,4 @@
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Particles;
 
 /// What a row in the particle effect tree stands for.
 enum ParticleNodeKind : uint8
