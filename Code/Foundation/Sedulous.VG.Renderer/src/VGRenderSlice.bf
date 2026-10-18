@@ -13,6 +13,9 @@ struct VGRenderSlice
 	public uint32 UniformByteOffset = 0;
 	public int32 DrawCommandStart = 0;
 	public int32 DrawCommandCount = 0;
+	/// The slice's offscreen layers (VGBatch.Layers), drawn by RenderLayers.
+	public int32 LayerStart = 0;
+	public int32 LayerCount = 0;
 	public bool IsValid = false;
 
 	public this() {}

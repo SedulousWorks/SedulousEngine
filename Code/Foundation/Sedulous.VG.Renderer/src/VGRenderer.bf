@@ -31,8 +31,14 @@ class VGRenderer
 	/// unbounded memory.
 	private const int32 cMaxVertexCapacity = 131072 * 16;
 
-	/// One slot per SLICE, which in practice means one per surface.
-	private const int32 cMaxUniformSlots = 64;
+	/// One slot per SLICE, which in practice means one per surface, and one per layer.
+	private const int32 cMaxUniformSlots = 256;
+
+	/// Layer targets come in sizes rounded up to a bucket, so a layer that changes size a little
+	/// (an animated panel) keeps its target; the composite samples just the content's part.
+	private const uint32 cLayerTargetBucket = 64;
+	/// The BeginFrames of a frame slot a layer target may go unused before it is freed.
+	private const int32 cLayerTargetIdleFrames = 120;
 
 	/// The dynamic offset alignment, which is larger than the uniforms themselves.
 	private const int32 cUniformSlotSize = 256;
@@ -47,6 +53,7 @@ class VGRenderer
 	private VGTargetConfig mTargetConfig = .();
 	private bool mInitialized = false;
 	private VGRenderStats mLastRenderStats = .();
+	private VGRenderStats mLastLayerStats = .();
 
 	// Borrowed: the shader system owns these and outlives the renderer. Kept so a blend
 	// variant can be built lazily on first use.
@@ -59,6 +66,8 @@ class VGRenderer
 	/// Analytic boxes (VGDrawMode.Box): a vertex shader of their own as well.
 	private IShaderModule mBoxVertexModule;
 	private IShaderModule mBoxFragmentModule;
+	/// Layer composites (VGDrawMode.Layer).
+	private IShaderModule mLayerFragmentModule;
 
 	private IBindGroupLayout mBindGroupLayout;
 	private IPipelineLayout mPipelineLayout;
@@ -72,6 +81,9 @@ class VGRenderer
 	private IRenderPipeline mBoxShadowPipeline;
 	/// Nullable likewise: box vertices are not VG vertices, so no other pipeline can draw them.
 	private IRenderPipeline mBoxPipeline;
+	/// Nullable likewise: a layer target holds premultiplied colour, which the default shader
+	/// would multiply again.
+	private IRenderPipeline mLayerPipeline;
 	private IRenderPipeline mStencilWriteNonZero;
 	private IRenderPipeline mStencilWriteEvenOdd;
 	private IRenderPipeline mCoverPipeline;
@@ -110,6 +122,10 @@ class VGRenderer
 
 	private List<ImageData> mBatchTextures = new .() ~ delete _;
 	private List<VGCommand> mDrawCommands = new .() ~ delete _;
+	/// This frame's slices' layers (VGRenderSlice.LayerStart).
+	private List<PreparedLayer> mLayers = new .() ~ delete _;
+	/// Every frame slot's layer targets, each tagged with its slot.
+	private List<LayerTarget> mLayerTargets = new .() ~ DeleteContainerAndItems!(_);
 
 	private List<uint32> mFrameVertexOffsets = new .() ~ delete _;
 	private List<uint32> mFrameIndexOffsets = new .() ~ delete _;
@@ -167,7 +183,7 @@ class VGRenderer
 		IShaderModule distanceFieldFragmentShader = null, IShaderModule gradRadialFragmentShader = null,
 		IShaderModule gradConicFragmentShader = null, VGTargetConfig targetConfig = .(),
 		IShaderModule boxShadowFragmentShader = null, IShaderModule boxVertexShader = null,
-		IShaderModule boxFragmentShader = null)
+		IShaderModule boxFragmentShader = null, IShaderModule layerFragmentShader = null)
 	{
 		mDevice = device;
 		mQueue = device.GetQueue(.Graphics, 0);
@@ -183,6 +199,7 @@ class VGRenderer
 		mBoxShadowModule = boxShadowFragmentShader;
 		mBoxVertexModule = boxVertexShader;
 		mBoxFragmentModule = boxFragmentShader;
+		mLayerFragmentModule = layerFragmentShader;
 
 		if (CreateSamplers() case .Err)
 			return .Err(.Unknown);
@@ -222,6 +239,12 @@ class VGRenderer
 		{
 			if (!(CreatePipeline(boxVertexShader, boxFragmentShader, .None, .Normal, false, true)
 				case .Ok(out mBoxPipeline)))
+				return .Err(.Unknown);
+		}
+		// The layer composite (VGContext.PushLayer): samples a premultiplied target.
+		if (layerFragmentShader != null)
+		{
+			if (!(CreatePipeline(vertexShader, layerFragmentShader, .None) case .Ok(out mLayerPipeline)))
 				return .Err(.Unknown);
 		}
 
@@ -312,6 +335,8 @@ class VGRenderer
 
 		mDrawCommands.Clear();
 		mBatchTextures.Clear();
+		mLayers.Clear();
+		ReleaseLayerTargets(frameIndex);
 	}
 
 	/// Uploads one batch into the shared frame buffers, returning where it landed.
@@ -350,6 +375,63 @@ class VGRenderer
 		for (let vertex in batch.Vertices)
 			renderVertices.Add(.(vertex));
 
+		// The slice's layers: each kept to its parent (the canvas for the outermost), given a
+		// uniform slot of its own (its projection over its bounds) and a target size; their
+		// composites' quads are fitted to that, since a layer may be clamped and its target is
+		// larger than its content.
+		let layerBase = (int32)mLayers.Count;
+		var nextUniformSlot = uniformSlot + 1;
+		for (let source in batch.Layers)
+		{
+			var layer = PreparedLayer();
+			layer.Parent = (source.Parent >= 0) ? (source.Parent + layerBase) : -1;
+			var outer = Rectangle(0.0f, 0.0f, (float)width, (float)height);
+			var parentValid = true;
+			if (layer.Parent >= 0)
+			{
+				outer = mLayers[layer.Parent].Bounds;
+				parentValid = mLayers[layer.Parent].Valid;
+			}
+			let x0 = Max(source.Bounds.X, outer.X);
+			let y0 = Max(source.Bounds.Y, outer.Y);
+			let x1 = Min(source.Bounds.X + source.Bounds.Width, outer.X + outer.Width);
+			let y1 = Min(source.Bounds.Y + source.Bounds.Height, outer.Y + outer.Height);
+			layer.Bounds = .(x0, y0, Max(0.0f, x1 - x0), Max(0.0f, y1 - y0));
+			layer.Width = (uint32)layer.Bounds.Width;
+			layer.Height = (uint32)layer.Bounds.Height;
+			layer.TargetWidth = RoundUpToBucket(layer.Width);
+			layer.TargetHeight = RoundUpToBucket(layer.Height);
+			layer.Valid = parentValid && (layer.Width > 0) && (layer.Height > 0)
+				&& (nextUniformSlot < (uint32)cMaxUniformSlots);
+			if (layer.Valid)
+			{
+				layer.UniformOffset = nextUniformSlot * (uint32)cUniformSlotSize;
+				nextUniformSlot++;
+			}
+			mLayers.Add(layer);
+		}
+		for (let command in batch.Commands)
+		{
+			if ((command.DrawMode != .Layer) || (command.CompositeLayer < 0) || (command.IndexCount < 6))
+				continue;
+			let layer = mLayers[command.CompositeLayer + layerBase];
+			let vertexBase = (int)batch.Indices[command.StartIndex];
+			if (!layer.Valid || ((vertexBase + 3) >= renderVertices.Count))
+				continue; // the composite is skipped at Render
+			let b = layer.Bounds;
+			let u = (float)layer.Width / (float)layer.TargetWidth;
+			let v = (float)layer.Height / (float)layer.TargetHeight;
+			Float2[4] corners = .(.(b.X, b.Y), .(b.X + b.Width, b.Y), .(b.X + b.Width, b.Y + b.Height),
+				.(b.X, b.Y + b.Height));
+			Float2[4] uvs = .(.(0.0f, 0.0f), .(u, 0.0f), .(u, v), .(0.0f, v));
+			for (int k < 4)
+			{
+				var vertex = ref renderVertices[vertexBase + k];
+				vertex.Position = .(corners[k].X, corners[k].Y);
+				vertex.TexCoord = .(uvs[k].X, uvs[k].Y);
+			}
+		}
+
 		if (vertexBytes > 0)
 			WriteBuffer(mVertexBuffers[frameIndex], vertexOffset, renderVertices.Ptr, vertexBytes);
 		if (boxBytes > 0)
@@ -365,6 +447,10 @@ class VGRenderer
 		{
 			if (command.TextureIndex >= 0)
 				command.TextureIndex += textureBase;
+			if (command.Layer >= 0)
+				command.Layer += layerBase;
+			if (command.CompositeLayer >= 0)
+				command.CompositeLayer += layerBase;
 			mDrawCommands.Add(command);
 		}
 
@@ -377,13 +463,22 @@ class VGRenderer
 
 		let uniformOffset = uniformSlot * (uint32)cUniformSlotSize;
 		WriteBuffer(mUniformBuffers[frameIndex], uniformOffset, &uniforms, sizeof(VGUniforms));
+		for (int l = layerBase; l < mLayers.Count; l++)
+		{
+			let layer = mLayers[l];
+			if (!layer.Valid)
+				continue;
+			uniforms.Projection = OrthoOffCenter(layer.Bounds.X, layer.Bounds.Y, (float)layer.Width,
+				(float)layer.Height);
+			WriteBuffer(mUniformBuffers[frameIndex], layer.UniformOffset, &uniforms, sizeof(VGUniforms));
+		}
 
 		for (int32 index = textureBase; index < (int32)mBatchTextures.Count; index++)
 			UpdateTextureBindGroup(index, frameIndex, .Pad);
 
 		mFrameVertexOffsets[frameIndex] = vertexOffset + vertexBytes + boxBytes;
 		mFrameIndexOffsets[frameIndex] = indexOffset + indexBytes;
-		mFrameUniformSlotCount[frameIndex] = uniformSlot + 1;
+		mFrameUniformSlotCount[frameIndex] = nextUniformSlot;
 
 		var slice = VGRenderSlice();
 		slice.VertexByteOffset = vertexOffset;
@@ -392,6 +487,8 @@ class VGRenderer
 		slice.UniformByteOffset = uniformOffset;
 		slice.DrawCommandStart = commandStart;
 		slice.DrawCommandCount = (int32)mDrawCommands.Count - commandStart;
+		slice.LayerStart = layerBase;
+		slice.LayerCount = (int32)mLayers.Count - layerBase;
 		slice.IsValid = true;
 		return slice;
 	}
@@ -478,15 +575,87 @@ class VGRenderer
 		mLastRenderStats = .();
 		if (!slice.IsValid || (slice.DrawCommandCount == 0))
 			return;
+		DrawCommands(renderPass, frameIndex, slice, -1, viewportX, viewportY, width, height,
+			slice.UniformByteOffset, 0.0f, 0.0f, ref mLastRenderStats);
+	}
 
+	/// Draws the slice's offscreen layers (VGContext.PushLayer) into targets of their own, each
+	/// in a pass of its own, innermost first, so the slice's Render can composite them.
+	///
+	/// Call it after Prepare and before the pass Render draws into, since passes do not nest. A
+	/// layer this does not draw (no target, or no layer composite shader) has its composite
+	/// skipped.
+	public void RenderLayers(ICommandEncoder encoder, int32 frameIndex, VGRenderSlice slice)
+	{
+		mLastLayerStats = .();
+		if (!slice.IsValid || (slice.LayerCount == 0) || (mLayerPipeline == null))
+			return;
+
+		// A child is pushed after its parent and the parent draws the child's composite, so the
+		// layers go in reverse.
+		for (int32 l = slice.LayerStart + slice.LayerCount - 1; l >= slice.LayerStart; l--)
+		{
+			var layer = ref mLayers[l];
+			if (!layer.Valid)
+				continue;
+			let targetIndex = AcquireLayerTarget(frameIndex, layer.TargetWidth, layer.TargetHeight);
+			if (targetIndex < 0)
+				continue;
+			let target = mLayerTargets[targetIndex];
+
+			encoder.TransitionTexture(target.Color, .Undefined, .RenderTarget);
+			if (target.Msaa != null)
+				encoder.TransitionTexture(target.Msaa, .Undefined, .RenderTarget);
+			if (target.DepthStencil != null)
+				encoder.TransitionTexture(target.DepthStencil, .Undefined, .DepthStencilWrite);
+
+			var color = ColorAttachment();
+			color.View = (target.MsaaView != null) ? target.MsaaView : target.ColorView;
+			color.ResolveTarget = (target.MsaaView != null) ? target.ColorView : null;
+			color.LoadOp = .Clear;
+			color.StoreOp = (target.MsaaView != null) ? .DontCare : .Store;
+			color.ClearValue = .(0.0f, 0.0f, 0.0f, 0.0f);
+			var desc = RenderPassDesc();
+			desc.ColorAttachments.Add(color);
+			if (target.DepthStencilView != null)
+			{
+				var depthStencil = DepthStencilAttachment();
+				depthStencil.View = target.DepthStencilView;
+				depthStencil.DepthLoadOp = .Clear;
+				depthStencil.DepthStoreOp = .DontCare;
+				depthStencil.StencilLoadOp = .Clear;
+				depthStencil.StencilStoreOp = .DontCare;
+				depthStencil.StencilClearValue = 0;
+				desc.DepthStencilAttachment = depthStencil;
+			}
+			desc.Label = "VG layer";
+
+			let pass = encoder.BeginRenderPass(desc);
+			if (pass == null)
+				continue;
+			DrawCommands(pass, frameIndex, slice, l, 0, 0, layer.Width, layer.Height, layer.UniformOffset,
+				layer.Bounds.X, layer.Bounds.Y, ref mLastLayerStats);
+			pass.End();
+			encoder.TransitionTexture(target.Color, .RenderTarget, .ShaderRead);
+			layer.Target = targetIndex;
+			mLastLayerStats.Layers++;
+		}
+	}
+
+	/// Dispatches the slice's commands that draw into `layer` (-1: the pass's own target) into
+	/// the active pass: content coordinates offset by the origin (a layer's bounds) map to the
+	/// viewport, through the projection at `uniformOffset`.
+	private void DrawCommands(IRenderPassEncoder renderPass, int32 frameIndex, VGRenderSlice slice,
+		int32 layer, int32 viewportX, int32 viewportY, uint32 width, uint32 height, uint32 uniformOffset,
+		float originX, float originY, ref VGRenderStats stats)
+	{
 		renderPass.SetViewport((float)viewportX, (float)viewportY, (float)width, (float)height,
 			0.0f, 1.0f);
 		renderPass.SetPipeline(mPipeline);
 		renderPass.SetVertexBuffer(0, mVertexBuffers[frameIndex], slice.VertexByteOffset);
 		renderPass.SetIndexBuffer(mIndexBuffers[frameIndex], .UInt32, slice.IndexByteOffset);
 
-		let dynamicOffsets = scope uint32[1](slice.UniformByteOffset);
-
+		let dynamicOffsets = scope uint32[1](uniformOffset);
 		// A sentinel below every valid index, so the first command always binds.
 		var currentTextureIndex = -2;
 		var currentSpread = VGGradientSpread.Pad;
@@ -504,9 +673,23 @@ class VGRenderer
 		let commandEnd = slice.DrawCommandStart + slice.DrawCommandCount;
 		for (int32 i = slice.DrawCommandStart; i < commandEnd; i++)
 		{
-			let command = mDrawCommands[i];
-			if (command.IndexCount == 0)
+			var command = mDrawCommands[i];
+			if ((command.IndexCount == 0) || (command.Layer != layer))
 				continue;
+
+			// A layer's composite samples the target RenderLayers drew it into; none, no draw.
+			IBindGroup compositeGroup = null;
+			if (command.DrawMode == .Layer)
+			{
+				let target = ((command.CompositeLayer >= 0) && (command.CompositeLayer < mLayers.Count))
+					? mLayers[command.CompositeLayer].Target : -1;
+				if ((target < 0) || (mLayerTargets[target].BindGroup == null))
+				{
+					stats.Skipped++;
+					continue;
+				}
+				compositeGroup = mLayerTargets[target].BindGroup;
+			}
 
 			// A stencil phase command with no pipeline is SKIPPED entirely. A context
 			// should not emit one without stencil support, but a stale batch must not draw
@@ -514,7 +697,7 @@ class VGRenderer
 			let pipeline = PipelineFor(command);
 			if (pipeline == null)
 			{
-				mLastRenderStats.Skipped++;
+				stats.Skipped++;
 				continue;
 			}
 
@@ -541,7 +724,13 @@ class VGRenderer
 				}
 			}
 
-			if ((command.TextureIndex != currentTextureIndex) || (command.GradientSpread != currentSpread))
+			if (compositeGroup != null)
+			{
+				renderPass.SetBindGroup(0, compositeGroup, dynamicOffsets);
+				// The next texture draw binds its own again.
+				currentTextureIndex = -2;
+			}
+			else if ((command.TextureIndex != currentTextureIndex) || (command.GradientSpread != currentSpread))
 			{
 				if (let bindGroup = GetBindGroupForTexture(command.TextureIndex, frameIndex,
 					command.GradientSpread))
@@ -550,6 +739,9 @@ class VGRenderer
 				currentSpread = command.GradientSpread;
 			}
 
+			// A layer's clips are in canvas coordinates; its target starts at its bounds.
+			command.ClipRect.X -= originX;
+			command.ClipRect.Y -= originY;
 			ApplyScissor(renderPass, command, viewportX, viewportY, width, height);
 			// Analytic boxes draw unindexed from their own part of the vertex buffer.
 			let isBox = command.DrawMode == .Box;
@@ -563,13 +755,15 @@ class VGRenderer
 				renderPass.Draw((uint32)command.IndexCount, 1, (uint32)command.StartIndex, 0);
 			else
 				renderPass.DrawIndexed((uint32)command.IndexCount, 1, (uint32)command.StartIndex, 0, 0);
-			mLastRenderStats.Drawn++;
+			stats.Drawn++;
 		}
 	}
 
 	/// What the LAST Render did with its commands. Observable headlessly, so the dispatch
 	/// decisions can be checked on the null backend without a pixel probe.
 	public VGRenderStats LastRenderStats => mLastRenderStats;
+	/// What the last RenderLayers did: the layers it drew and their commands.
+	public VGRenderStats LastLayerStats => mLastLayerStats;
 
 	private static void ApplyScissor(IRenderPassEncoder renderPass, VGCommand command,
 		int32 viewportX, int32 viewportY, uint32 width, uint32 height)
@@ -931,6 +1125,14 @@ class VGRenderer
 				return null;
 			return (blended || clipped) ? Variant(.Box, command.BlendMode, clipped) : mBoxPipeline;
 		}
+		if (command.DrawMode == .Layer)
+		{
+			// A layer target holds premultiplied colour; the default shader would multiply it
+			// again. SKIP when the composite shader was not given.
+			if (mLayerPipeline == null)
+				return null;
+			return (blended || clipped) ? Variant(.Layer, command.BlendMode, clipped) : mLayerPipeline;
+		}
 		if ((command.DrawMode == .DistanceField) && (mDistanceFieldPipeline != null))
 		{
 			return (blended || clipped) ? Variant(.DistanceField, command.BlendMode, clipped)
@@ -994,6 +1196,7 @@ class VGRenderer
 			role = .Cover;
 		case .BoxShadow: fragment = mBoxShadowModule;
 		case .Box: fragment = mBoxFragmentModule;
+		case .Layer: fragment = mLayerFragmentModule;
 		}
 
 		let isBox = kind == .Box;
@@ -1019,9 +1222,10 @@ class VGRenderer
 
 		// The default pipeline is a tolerable stand in for a distance field or gradient
 		// variant, which degrade to flat colour, but NEVER for a box shadow (it would paint the
-		// quadrant quads as flat colour over everything around the box) nor a box (its
-		// vertices are not VG vertices). Skip instead.
-		return (clipped || (kind == .BoxShadow) || isBox) ? null : mPipeline;
+		// quadrant quads as flat colour over everything around the box), a box (its vertices are
+		// not VG vertices), nor a layer composite (it would multiply premultiplied colour again).
+		// Skip instead.
+		return (clipped || (kind == .BoxShadow) || isBox || (kind == .Layer)) ? null : mPipeline;
 	}
 
 	/// The clipped write pair, built lazily because it needs a stencil attachment.
@@ -1399,6 +1603,166 @@ class VGRenderer
 		buffer.Unmap();
 	}
 
+	/// The projection of a layer: device content from (x, y) over width by height onto its target.
+	private static Float4x4 OrthoOffCenter(float x, float y, float width, float height)
+	{
+		var m = OrthoOffCenter(width, height);
+		m[3, 0] = -1.0f - (2.0f * x / width);
+		m[3, 1] = 1.0f + (2.0f * y / height);
+		return m;
+	}
+
+	private static uint32 RoundUpToBucket(uint32 size)
+		=> (size + cLayerTargetBucket - 1) / cLayerTargetBucket * cLayerTargetBucket;
+
+	/// A free target of the size in the frame slot's pool, or a new one; -1 when the device
+	/// cannot make it.
+	private int32 AcquireLayerTarget(int32 frameIndex, uint32 width, uint32 height)
+	{
+		for (int i < mLayerTargets.Count)
+		{
+			let target = mLayerTargets[i];
+			if ((target.Frame == frameIndex) && !target.InUse && (target.Width == width) && (target.Height == height))
+			{
+				target.InUse = true;
+				return (int32)i;
+			}
+		}
+
+		let target = new LayerTarget();
+		target.Frame = frameIndex;
+		target.Width = width;
+		target.Height = height;
+		target.InUse = true;
+		var made = (mDevice.CreateTexture(TextureDesc.RenderTarget(mTargetFormat, width, height, 1, "VG layer"))
+			case .Ok(out target.Color))
+			&& (mDevice.CreateTextureView(target.Color, .()) case .Ok(out target.ColorView));
+		if (made && (mTargetConfig.SampleCount > 1))
+		{
+			var msaaDesc = TextureDesc.RenderTarget(mTargetFormat, width, height, mTargetConfig.SampleCount,
+				"VG layer MSAA");
+			msaaDesc.Usage = .RenderTarget;
+			made = (mDevice.CreateTexture(msaaDesc) case .Ok(out target.Msaa))
+				&& (mDevice.CreateTextureView(target.Msaa, .()) case .Ok(out target.MsaaView));
+		}
+		if (made && (mTargetConfig.DepthStencilFormat != .Undefined))
+		{
+			var depthDesc = TextureDesc();
+			depthDesc.Dimension = .Texture2D;
+			depthDesc.Format = mTargetConfig.DepthStencilFormat;
+			depthDesc.Width = width;
+			depthDesc.Height = height;
+			depthDesc.Depth = 1;
+			depthDesc.Usage = .DepthStencil;
+			depthDesc.SampleCount = mTargetConfig.SampleCount;
+			depthDesc.Label = "VG layer stencil";
+			made = (mDevice.CreateTexture(depthDesc) case .Ok(out target.DepthStencil))
+				&& (mDevice.CreateTextureView(target.DepthStencil, .()) case .Ok(out target.DepthStencilView));
+		}
+		if (made)
+		{
+			// The frame's uniforms, the target, and the clamp sampler.
+			let entries = scope BindGroupEntry[3](
+				BindGroupEntry.BufferEntry(mUniformBuffers[frameIndex], 0, sizeof(VGUniforms)),
+				BindGroupEntry.TextureEntry(target.ColorView),
+				BindGroupEntry.SamplerEntry(mSampler));
+			var desc = BindGroupDesc();
+			desc.Layout = mBindGroupLayout;
+			desc.Entries = entries;
+			made = mDevice.CreateBindGroup(desc) case .Ok(out target.BindGroup);
+		}
+		if (!made)
+		{
+			DisposeLayerTarget(target);
+			delete target;
+			return -1;
+		}
+		mLayerTargets.Add(target);
+		return (int32)mLayerTargets.Count - 1;
+	}
+
+	/// The frame slot's work is done: its targets are free again, and those unused for a while
+	/// are freed.
+	private void ReleaseLayerTargets(int32 frameIndex)
+	{
+		for (int i = mLayerTargets.Count - 1; i >= 0; i--)
+		{
+			let target = mLayerTargets[i];
+			if (target.Frame != frameIndex)
+				continue;
+			if (target.InUse)
+			{
+				target.InUse = false;
+				target.IdleFrames = 0;
+			}
+			else if (++target.IdleFrames > cLayerTargetIdleFrames)
+			{
+				DisposeLayerTarget(target);
+				delete target;
+				mLayerTargets.RemoveAt(i);
+			}
+		}
+	}
+
+	private void DisposeLayerTarget(LayerTarget target)
+	{
+		if (target.BindGroup != null)
+			mDevice.DestroyBindGroup(ref target.BindGroup);
+		if (target.DepthStencilView != null)
+			mDevice.DestroyTextureView(ref target.DepthStencilView);
+		if (target.DepthStencil != null)
+			mDevice.DestroyTexture(ref target.DepthStencil);
+		if (target.MsaaView != null)
+			mDevice.DestroyTextureView(ref target.MsaaView);
+		if (target.Msaa != null)
+			mDevice.DestroyTexture(ref target.Msaa);
+		if (target.ColorView != null)
+			mDevice.DestroyTextureView(ref target.ColorView);
+		if (target.Color != null)
+			mDevice.DestroyTexture(ref target.Color);
+	}
+
+	/// A layer as Prepare placed it: kept within its parent, with its projection's uniform slot.
+	private struct PreparedLayer
+	{
+		public int32 Parent = -1;
+		/// Device bounds, on whole pixels.
+		public Rectangle Bounds = .();
+		/// The content's size.
+		public uint32 Width = 0;
+		public uint32 Height = 0;
+		/// The target's, bucketed.
+		public uint32 TargetWidth = 0;
+		public uint32 TargetHeight = 0;
+		public uint32 UniformOffset = 0;
+		/// Into mLayerTargets, set by RenderLayers.
+		public int32 Target = -1;
+		public bool Valid = false;
+
+		public this() {}
+	}
+
+	/// An offscreen target layers draw into, owned by one frame slot and reused once that slot's
+	/// frame has finished on the GPU.
+	private class LayerTarget
+	{
+		/// Single sampled, and what the composite samples.
+		public ITexture Color;
+		public ITextureView ColorView;
+		/// When the renderer draws multisampled, resolved into Color.
+		public ITexture Msaa;
+		public ITextureView MsaaView;
+		/// When the renderer's pipelines carry one.
+		public ITexture DepthStencil;
+		public ITextureView DepthStencilView;
+		public IBindGroup BindGroup;
+		public uint32 Width;
+		public uint32 Height;
+		public int32 Frame;
+		public int32 IdleFrames;
+		public bool InUse;
+	}
+
 	/// An off centre orthographic projection with Y DOWN, which is what screen coordinates
 	/// are: the origin is the top left corner and Y grows downward.
 	private static Float4x4 OrthoOffCenter(float width, float height)
@@ -1419,6 +1783,10 @@ class VGRenderer
 			return;
 
 		ClearTextureCache();
+		for (let target in mLayerTargets)
+			DisposeLayerTarget(target);
+		ClearAndDeleteItems!(mLayerTargets);
+		mLayers.Clear();
 
 		DestroyBuffers(mUniformBuffers);
 		DestroyBuffers(mIndexBuffers);
@@ -1445,6 +1813,7 @@ class VGRenderer
 		DestroyPipeline(ref mGradConicPipeline);
 		DestroyPipeline(ref mBoxShadowPipeline);
 		DestroyPipeline(ref mBoxPipeline);
+		DestroyPipeline(ref mLayerPipeline);
 		DestroyPipeline(ref mStencilWriteNonZero);
 		DestroyPipeline(ref mStencilWriteEvenOdd);
 		DestroyPipeline(ref mCoverPipeline);

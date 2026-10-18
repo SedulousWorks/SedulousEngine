@@ -41,8 +41,10 @@ static class VGSceneRenderer
 		let gradConic = shaders.GetVariant("vg_grad_conic", .Fragment, .None);
 		let boxVertex = shaders.GetVariant("vg_box", .Vertex, .None);
 		let boxFragment = shaders.GetVariant("vg_box", .Fragment, .None);
-		// Else boxes would quietly tessellate, and the box probe prove nothing.
-		if ((boxVertex == null) || (boxFragment == null))
+		let layerFragment = shaders.GetVariant("vg_layer", .Fragment, .None);
+		// Else boxes would quietly tessellate and layers be opacity pushes, and their probes
+		// prove nothing.
+		if ((boxVertex == null) || (boxFragment == null) || (layerFragment == null))
 			return null;
 
 		var targetConfig = VGTargetConfig();
@@ -52,7 +54,7 @@ static class VGSceneRenderer
 
 		let renderer = scope VGRenderer();
 		if (renderer.Initialize(device, vertex, fragment, drawFormat, 2, distanceField,
-			gradRadial, gradConic, targetConfig, null, boxVertex, boxFragment) case .Err)
+			gradRadial, gradConic, targetConfig, null, boxVertex, boxFragment, layerFragment) case .Err)
 			return null;
 
 		defer renderer.Dispose();
@@ -125,6 +127,7 @@ static class VGSceneRenderer
 		context.SetStencilFills(true);
 		context.SetPerPixelGradients((gradRadial != null) && (gradConic != null));
 		context.SetAnalyticBoxes(true);
+		context.SetLayers(true);
 		record(context);
 
 		renderer.BeginFrame(0);
@@ -133,6 +136,9 @@ static class VGSceneRenderer
 		if (!(pool.CreateEncoder() case .Ok(var encoder)))
 			return null;
 		defer pool.DestroyEncoder(ref encoder);
+
+		// The layers in their own passes, before the target's.
+		renderer.RenderLayers(encoder, 0, slice);
 
 		encoder.TransitionTexture(target, .Undefined, .RenderTarget);
 		if (msaa != null)

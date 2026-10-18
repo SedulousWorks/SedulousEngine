@@ -11,6 +11,8 @@ struct VGRenderStats
 {
 	public int32 Drawn = 0;
 	public int32 Skipped = 0;
+	/// Offscreen layers drawn (RenderLayers).
+	public int32 Layers = 0;
 
 	public this() {}
 }

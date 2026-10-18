@@ -424,6 +424,72 @@ class VGPixelProbeTests
 		Test.Assert(Dark(96, 75), scope $"{name}: one pixel, nothing under it");
 	}
 
+	/// A layer fades a group as one, nests, and clips inside. Half of opaque red over black is
+	/// byte 188 linear and 128 encoded, where the overlap of two half red shapes would be 225 and
+	/// 191; a quarter of white (a half layer in a half layer) is 137 and 64. A clip path and a
+	/// clip rect inside a layer clip there, at the right place. Linear, encoded, and multisampled.
+	[Test]
+	public static void ALayerFadesAGroupAsOneNestsAndClipsInside()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+		{
+			LayersOn(kind, .Linear, 1);
+			LayersOn(kind, .Encoded, 1);
+			LayersOn(kind, .Linear, 4);
+		}
+	}
+
+	private static void LayersOn(ProbeBackend kind, VGBlendSpace space, uint32 sampleCount)
+	{
+		let fixture = scope VGProbeFixture(kind);
+		if (!fixture.Ready)
+			return;
+
+		let image = VGSceneRenderer.RenderScene(fixture, scope (context) =>
+			{
+				context.PushLayer(0.5f);
+				context.FillRect(.(8, 4, 40, 20), ByteColor(255, 0, 0));
+				context.FillRect(.(28, 4, 40, 20), ByteColor(255, 0, 0));
+				context.PopLayer();
+
+				context.PushLayer(0.5f);
+				context.PushLayer(0.5f);
+				context.FillRect(.(8, 32, 40, 20), ByteColor(255, 255, 255));
+				context.PopLayer();
+				context.PopLayer();
+
+				context.PushLayer(1.0f);
+				let clip = Rect(70, 60, 95, 100);
+				defer delete clip;
+				context.PushClipPath(clip);
+				context.FillRect(.(70, 60, 50, 40), ByteColor(255, 255, 255));
+				context.PopClipPath();
+				context.PushClipRect(.(8, 60, 20, 40));
+				context.FillRect(.(8, 60, 52, 40), ByteColor(255, 255, 255));
+				context.PopClip();
+				context.PopLayer();
+			}, sampleCount, space);
+		defer delete image;
+		Test.Assert((image != null) && image.Valid, "the scene rendered");
+
+		let name = scope $"{kind} {space} x{sampleCount}";
+		let encoded = space == .Encoded;
+		let half = encoded ? 128 : 188;
+		let quarter = encoded ? 64 : 137;
+		let alone = (int)image.At(18, 14)[0];
+		let overlap = (int)image.At(38, 14)[0];
+		let quartered = (int)image.At(28, 42)[0];
+		Test.Assert(Math.Abs(alone - half) <= 2, scope $"{name}: a half layer's red read {alone}");
+		Test.Assert(Math.Abs(overlap - half) <= 2, scope $"{name}: the overlap read {overlap}, drawn once, not twice");
+		Test.Assert(image.At(38, 14)[1] <= 2, scope $"{name}: no green in the red");
+		Test.Assert(Math.Abs(quartered - quarter) <= 2, scope $"{name}: a half layer in a half layer read {quartered}");
+		Test.Assert(image.At(80, 80)[0] >= 253, scope $"{name}: inside the clip path");
+		Test.Assert(image.At(110, 80)[0] <= 2, scope $"{name}: outside the clip path");
+		Test.Assert(image.At(9, 80)[0] >= 253, scope $"{name}: inside the clip rect, at its edge");
+		Test.Assert(image.At(45, 80)[0] <= 2, scope $"{name}: outside the clip rect");
+		Test.Assert(image.At(6, 80)[0] <= 2, scope $"{name}: left of the content: the layer lands where it was drawn");
+	}
+
 	/// An axis aligned rectangle path, the caller's to delete.
 	private static Path Rect(float x0, float y0, float x1, float y1)
 	{

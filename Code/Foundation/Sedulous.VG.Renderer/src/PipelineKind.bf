@@ -16,6 +16,8 @@ enum PipelineKind : uint8
 	case BoxShadow;
 	/// Analytic boxes, with their own vertex layout and shaders.
 	case Box;
+	/// Layer composites, which sample a premultiplied target. Keep last: Count follows it.
+	case Layer;
 
-	public const int Count = 9;
+	public const int Count = (int)Layer + 1;
 }

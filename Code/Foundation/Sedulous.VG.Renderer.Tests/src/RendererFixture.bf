@@ -23,6 +23,7 @@ class RendererFixture
 	public IShaderModule BoxShadowShader;
 	public IShaderModule BoxVertexShader;
 	public IShaderModule BoxFragmentShader;
+	public IShaderModule LayerFragmentShader;
 	public VGRenderer Renderer = new .() ~ delete _;
 
 	public const int32 FrameCount = 2;
@@ -43,6 +44,7 @@ class RendererFixture
 			BoxShadowShader = CreateModule();
 			BoxVertexShader = CreateModule();
 			BoxFragmentShader = CreateModule();
+			LayerFragmentShader = CreateModule();
 		}
 
 		var config = VGTargetConfig();
@@ -70,6 +72,7 @@ class RendererFixture
 		delete Renderer;
 		Renderer = null;
 
+		DestroyModule(ref LayerFragmentShader);
 		DestroyModule(ref BoxFragmentShader);
 		DestroyModule(ref BoxVertexShader);
 		DestroyModule(ref BoxShadowShader);

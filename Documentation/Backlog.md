@@ -51,6 +51,15 @@ map is [RaptorSync.md](RaptorSync.md).
 
 ## Engine findings
 
+### VG probes draw without a stencil reference under the Vulkan validation layer
+With `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation`, `Sedulous.VG.Backend.Tests`'
+`FillRulesAndStencilClipsHold` and `ClipPathsNestAsIntersectionsWithAClipRectInsideOne` each
+report `VUID-vkCmdDrawIndexed-None-07839` twice: a draw with a stencil-testing pipeline bound "but
+the command buffer never called vkCmdSetStencilReference". `VGRenderer.Render` sets the reference
+before its first draw whenever the cover pipeline exists, and every Vulkan pipeline declares the
+reference dynamic, so which draws these are is not yet known. Seen at 1ae83008, before the
+layers came; Raptor reports its probes clean under the same layer.
+
 ### Script references are invisible to `asset_uses` and `asset_delete`
 `ScriptClassAssetBuilder` reports no dependencies, so an asset a script names
 (`Guid::FromString("...")`, a sound, a scene, a document) has no edge to the script: `asset_uses`
