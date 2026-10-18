@@ -8,6 +8,7 @@ using Sedulous.Graphics;
 using Sedulous.Fonts;
 using Sedulous.Fonts.Resource;
 using Sedulous.Fonts.TrueType;
+using Sedulous.Fonts.HarfBuzz;
 using Sedulous.Fonts.DistanceField.Baker;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
@@ -211,6 +212,8 @@ class EditorApplication : IApplication
 		// Fonts: CPU rasterisation and baking, no device needed. The resolution chain per
 		// family is the Preferences override, the configured path, then the embedded face,
 		// since a relocated editor must never come up textless. Every failure is loud.
+		// Before any font loads: a font takes its shaper and its atlas's glyphs when it loads.
+		HarfBuzzShaping.Install();
 		mFontService = new TrueTypeFontService();
 		// The MSDF bakes hit the per-user disk cache: the first launch bakes and stores,
 		// every launch after loads the atlas instead of re-running msdfgen.

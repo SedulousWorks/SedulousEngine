@@ -13,6 +13,7 @@ using Sedulous.Fonts;
 using Sedulous.Profiler;
 using Sedulous.Fonts.Resource;
 using Sedulous.Fonts.TrueType;
+using Sedulous.Fonts.HarfBuzz;
 using Sedulous.Render;
 using Sedulous.RHI;
 using Sedulous.Runtime;
@@ -448,6 +449,8 @@ class UISubsystem : Subsystem, ISceneObserver
 		// The screen element authored screens are written with.
 		GamekitMarkup.Register();
 
+		// Before any font loads: a font takes its shaper and its atlas's glyphs when it loads.
+		HarfBuzzShaping.Install();
 		mFonts = new TrueTypeFontService();
 
 		// The built in face, read THROUGH THE MOUNT rather than off a path: a dist that
