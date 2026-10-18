@@ -1,8 +1,11 @@
 using System;
 using System.Diagnostics;
 using Sedulous.Core;
+using Sedulous.Core.IO;
+using Sedulous.Image;
 using Sedulous.VFS;
 using Sedulous.RHI;
+using Sedulous.RHI.Capture;
 using Sedulous.RHI.Validation;
 using Sedulous.RHI.Vulkan;
 using Sedulous.RHI.WebGPU;
@@ -97,10 +100,83 @@ abstract class SampleApp
 	private String mDataRoot = new .() ~ delete _;
 	private NativeFileSystem mDataMount = null ~ delete _;
 
+	// ---- screenshots ----
+	// A sample calls CaptureBackbuffer once a frame, after it has drawn and before the
+	// backbuffer goes to present; the framework arms it from F12 (to <user data>/screenshots)
+	// or the --screenshot flags (--screenshot <png> [--screenshot-frame N | --screenshot-after
+	// S] [--screenshot-count N] [--screenshot-exit]), and writes the PNG once the GPU has run
+	// the copy.
+
+	private ScreenshotCapture mScreenshot = new .() ~ delete _;
+	private ScreenshotOptions mScreenshotOptions = new .() ~ delete _;
+	private uint64 mRenderedFrames = 0;
+	private uint32 mScreenshotsTaken = 0;
+	private uint32 mScreenshotSerial = 0;
+	private bool mScreenshotExitPending = false;
+
+	/// Arms a screenshot of the next frame to `path` (empty: a new file under
+	/// <user data>/screenshots).
+	public void RequestScreenshot(StringView path = default)
+	{
+		if (!path.IsEmpty)
+		{
+			mScreenshot.Request(path);
+			return;
+		}
+		let directory = GetUserDataDirectory(.. scope .());
+		directory.Append("/screenshots");
+		if (!CreateDirectory(directory))
+		{
+			Console.Error.WriteLine("SampleApp: could not create the screenshots directory");
+			return;
+		}
+		mScreenshotSerial++;
+		mScreenshot.Request(scope $"{directory}/sample-{DateTime.Now.Ticks}-{mScreenshotSerial}.png");
+	}
+
+	/// Records the armed screenshot's copy of `backbuffer` (the swap chain's current image, in
+	/// RenderTarget) into `encoder`, leaving it as it found it.
+	protected void CaptureBackbuffer(ICommandEncoder encoder, ITexture backbuffer)
+	{
+		mRenderedFrames++;
+		// The --screenshot run: from the due frame, one file a frame until --screenshot-count
+		// are taken, and --screenshot-exit only after the last.
+		if (mScreenshotOptions.Requested && (mScreenshotsTaken < mScreenshotOptions.Count)
+			&& ((mScreenshotsTaken > 0) || mScreenshotOptions.Due(mRenderedFrames, mTotalTime)))
+		{
+			mScreenshot.Request(mScreenshotOptions.PathFor(mScreenshotsTaken, .. scope .()));
+			mScreenshotsTaken++;
+			mScreenshotExitPending = mScreenshotOptions.ExitAfter && (mScreenshotsTaken == mScreenshotOptions.Count);
+		}
+		if (!mScreenshot.Armed || (mSwapChain == null))
+			return;
+		if (!mScreenshot.Record(mDevice, encoder, backbuffer, mSwapChain.Format, mWidth, mHeight) && mScreenshotExitPending)
+		{
+			Console.Error.WriteLine("SampleApp: the screenshot could not be taken (this surface cannot be copied)");
+			Exit();
+		}
+	}
+
+	/// A screenshot recorded this frame: once the GPU has run it (a one off, so wait for all),
+	/// map, write, and honour --screenshot-exit.
+	private void FinishScreenshot()
+	{
+		if (!mScreenshot.Recorded)
+			return;
+		mDevice.WaitIdle();
+		let written = scope Image();
+		if (mScreenshot.Complete(mDevice, written) case .Ok)
+			Console.WriteLine("SampleApp: screenshot written to {}", mScreenshot.Path);
+		if (mScreenshotExitPending)
+			Exit();
+	}
+
 	/// Runs the sample to completion, returning a process exit code.
 	public int Run(String[] args = null)
 	{
 		ParseArguments(args);
+		delete mScreenshotOptions;
+		mScreenshotOptions = ScreenshotOptions.FromArguments((args != null) ? args : Span<String>());
 
 		// These samples have no application above them, so this is where the data root is
 		// resolved: --data-root if it was given, otherwise the discovery walk.
@@ -319,7 +395,11 @@ abstract class SampleApp
 			if (!mWindow.IsMinimized)
 			{
 				CheckAndResize();
+				let keyboard = (mShell.Input != null) ? mShell.Input.Keyboard : null;
+				if ((keyboard != null) && keyboard.IsKeyPressed(.F12))
+					RequestScreenshot();
 				OnRender();
+				FinishScreenshot();
 
 				mFramesRendered++;
 				if ((mFrameLimit > 0) && (mFramesRendered >= mFrameLimit))
@@ -355,6 +435,8 @@ abstract class SampleApp
 			mDevice.WaitIdle();
 
 		OnShutdown();
+		if (mDevice != null)
+			mScreenshot.Release(mDevice);
 
 		if (mSwapChain != null)
 			mDevice.DestroySwapChain(ref mSwapChain);
