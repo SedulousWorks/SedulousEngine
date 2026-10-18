@@ -33,9 +33,9 @@ static class ScriptSurfaceWalkerTests
 	{
 		let s = scope ScriptSurface();
 		FixtureSurface.Populate(s);
-		// Vec2, Thing, Mode, Cooker, the static block, WidgetComponent, its manager, the
-		// system, the Widgets facade.
-		Test.Assert(FixtureSurface.TypeCount == 9, scope $"found {FixtureSurface.TypeCount}");
+		// Vec2, Thing, SpecialThing, Mode, Cooker, the static block, WidgetComponent, its
+		// manager, the system, the Widgets facade.
+		Test.Assert(FixtureSurface.TypeCount == 10, scope $"found {FixtureSurface.TypeCount}");
 		Test.Assert(s.Types.Count == FixtureSurface.TypeCount);
 		Test.Assert(s.Find(scope $"{cFixture}.Unmarked") == null);
 		Test.Assert(s.Find("Sedulous.Script.Fixture.FixtureSurface") == null, "the root itself is off");
@@ -209,7 +209,7 @@ static class ScriptSurfaceWalkerTests
 
 		let text = scope String();
 		vm.Describe(text);
-		Test.Assert(text.StartsWith("script surface: 9 types, "), scope String(text.Substring(0, 80)));
+		Test.Assert(text.StartsWith("script surface: 10 types, "), scope String(text.Substring(0, 80)));
 		Test.Assert(text.Contains(" 0 blocked, domains: Runtime Pipeline"));
 		Test.Assert(text.Contains("== domain Pipeline =="));
 		Test.Assert(text.Contains("struct Vec2 [all public] \"Vector 2\""));

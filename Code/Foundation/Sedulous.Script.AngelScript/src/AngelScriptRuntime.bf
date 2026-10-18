@@ -409,6 +409,66 @@ class AngelScriptRuntime : ScriptRuntime
 			if (m.OnEntity)
 				BindEntityMethod(t, m);
 		}
+		if (t.Kind == .Class)
+			BindInherited(t, statics);
+	}
+
+	/// A class's handle reaches its bases' instance members too, derived first so an override
+	/// (any member of the same name) wins; statics stay on the type that declares them. The
+	/// base's own thunks serve, since a derived object is one of its bases.
+	private void BindInherited(ScriptTypeInfo t, StringView statics)
+	{
+		if (t.BeefType == null)
+			return;
+		let taken = scope HashSet<String>();
+		defer { for (let n in taken) delete n; }
+		void Take(StringView name)
+		{
+			if (!taken.ContainsAlt(name))
+				taken.Add(new String(name));
+		}
+		for (let f in t.Fields)
+			Take(f.ScriptName);
+		for (let m in t.Methods)
+			Take(m.ScriptName);
+
+		var baseType = t.BeefType.BaseType;
+		while (baseType != null)
+		{
+			let based = SurfaceTypeOf(baseType);
+			if (based != null)
+			{
+				for (let f in based.Fields)
+				{
+					if ((f.Get == null) || f.IsStatic || taken.ContainsAlt(f.ScriptName))
+						continue;
+					BindField(based, f, statics, t);
+				}
+				for (let m in based.Methods)
+				{
+					if (!m.IsCallable || m.IsStatic || m.IsConstructor || taken.ContainsAlt(m.ScriptName))
+						continue;
+					BindMethod(based, m, statics, t);
+				}
+				// A member a nearer base declared hides one further up.
+				for (let f in based.Fields)
+					Take(f.ScriptName);
+				for (let m in based.Methods)
+					Take(m.ScriptName);
+			}
+			baseType = baseType.BaseType;
+		}
+	}
+
+	/// The bound surface type for a Beef type, or null when it is not on the surface.
+	private ScriptTypeInfo SurfaceTypeOf(Type type)
+	{
+		for (let t in mByName.Values)
+		{
+			if (t.BeefType == type)
+				return t;
+		}
+		return null;
 	}
 
 	/// A component's handle: its reference count and `X::of(entity)`.
@@ -573,8 +633,11 @@ class AngelScriptRuntime : ScriptRuntime
 	}
 
 	/// A field or property becomes a virtual property: `T get_X() property` and its setter.
-	private void BindField(ScriptTypeInfo t, ScriptFieldInfo f, StringView statics)
+	/// `on` is the type it is registered on when that is not its own: a derived class taking a
+	/// base's member.
+	private void BindField(ScriptTypeInfo t, ScriptFieldInfo f, StringView statics, ScriptTypeInfo on = null)
 	{
+		let target = on ?? t;
 		let typeDecl = scope String();
 		if (!DeclOf(f.Kind, f.TypeName, typeDecl))
 		{
@@ -598,14 +661,14 @@ class AngelScriptRuntime : ScriptRuntime
 		}
 		else
 		{
-			bound = Check(AS.asc_engine_register_object_method(mEngine, scope String(AsName(t)).CStr(), getDecl.CStr(), Internal.UnsafeCastToPtr(get)), t.FullName);
+			bound = Check(AS.asc_engine_register_object_method(mEngine, scope String(AsName(target)).CStr(), getDecl.CStr(), Internal.UnsafeCastToPtr(get)), t.FullName);
 		}
 		if (bound)
 		{
 			// Spelled as a script reads it: `Type::Field` for a static, `Type.Field` on an
 			// instance, a bare name in the global namespace.
-			let api = (t.Kind == .Global) ? GlobalApi : ApiType(AsName(t), t.FullName, false);
-			let spelled = (t.Kind == .Global) ? scope:: $"{f.ScriptName}" : (isGlobal ? scope:: $"{AsName(t)}::{f.ScriptName}" : scope:: $"{ReachedAs(t)}.{f.ScriptName}");
+			let api = (t.Kind == .Global) ? GlobalApi : ApiType(AsName(target), target.FullName, false);
+			let spelled = (t.Kind == .Global) ? scope:: $"{f.ScriptName}" : (isGlobal ? scope:: $"{AsName(t)}::{f.ScriptName}" : scope:: $"{ReachedAs(target)}.{f.ScriptName}");
 			Record(api, f.ScriptName, scope $"{typeDecl} {spelled}{(f.Set != null) ? "" : " (read only)"}", isGlobal, .Property, f.Set == null);
 		}
 
@@ -629,15 +692,17 @@ class AngelScriptRuntime : ScriptRuntime
 			if (isGlobal)
 				Check(AS.asc_engine_register_global_function(mEngine, setDecl.CStr(), Internal.UnsafeCastToPtr(set)), t.FullName);
 			else
-				Check(AS.asc_engine_register_object_method(mEngine, scope String(AsName(t)).CStr(), setDecl.CStr(), Internal.UnsafeCastToPtr(set)), t.FullName);
+				Check(AS.asc_engine_register_object_method(mEngine, scope String(AsName(target)).CStr(), setDecl.CStr(), Internal.UnsafeCastToPtr(set)), t.FullName);
 		}
 		if (isGlobal)
 			AS.asc_engine_set_default_namespace(mEngine, "");
 	}
 
 	/// A method is registered once per arity its defaults allow.
-	private void BindMethod(ScriptTypeInfo t, ScriptMethodInfo m, StringView statics)
+	/// `on` as for BindField: a derived class taking a base's instance method.
+	private void BindMethod(ScriptTypeInfo t, ScriptMethodInfo m, StringView statics, ScriptTypeInfo on = null)
 	{
+		let target = on ?? t;
 		let returnDecl = scope String();
 		if (m.IsConstructor)
 		{
@@ -704,13 +769,13 @@ class AngelScriptRuntime : ScriptRuntime
 			}
 			else
 			{
-				rc = AS.asc_engine_register_object_method(mEngine, scope String(AsName(t)).CStr(), decl.CStr(), Internal.UnsafeCastToPtr(b));
+				rc = AS.asc_engine_register_object_method(mEngine, scope String(AsName(target)).CStr(), decl.CStr(), Internal.UnsafeCastToPtr(b));
 			}
 			if (Check(rc, scope $"{t.FullName}.{m.Name} as {decl}"))
 			{
 				// As a script spells the call: `Type::Name(...)` for a static, `Type(...)`
 				// for a constructor, the bare declaration in the global namespace.
-				let api = (t.Kind == .Global) ? GlobalApi : ApiType(AsName(t), t.FullName, false);
+				let api = (t.Kind == .Global) ? GlobalApi : ApiType(AsName(target), target.FullName, false);
 				let spelled = scope String();
 				if (m.IsConstructor)
 					spelled.AppendF("{}(", AsName(t));
@@ -719,7 +784,7 @@ class AngelScriptRuntime : ScriptRuntime
 				else if (isGlobal)
 					spelled.AppendF("{} {}::{}(", returnDecl, AsName(t), name);
 				else
-					spelled.AppendF("{} {}.{}(", returnDecl, ReachedAs(t), name);
+					spelled.AppendF("{} {}.{}(", returnDecl, ReachedAs(target), name);
 				for (int i = 0; i < arity; i++)
 				{
 					if (i > 0)

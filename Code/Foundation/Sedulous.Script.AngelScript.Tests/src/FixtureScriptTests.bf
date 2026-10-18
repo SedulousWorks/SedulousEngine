@@ -111,6 +111,40 @@ static class FixtureScriptTests
 		Test.Assert(Near(r.AsFloat, 9));
 	}
 
+	/// A derived class's handle reaches its base's instance members as well as its own, and a
+	/// member it declares again wins over the base's.
+	[Test]
+	public static void ADerivedHandleReachesItsBasesMembers()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = Bound(s);
+		defer delete vm;
+
+		let ok = vm.Compile("t", "t.as", """
+			int drive(SpecialThing@ t)
+			{
+				t.Count = 4;  // Thing's field
+				t.Go();       // Thing's method
+				t.Speed = 1.5; // Thing's property
+				return t.Count + t.Extra + t.Twice(5);
+			}
+			string label(SpecialThing@ t) { return t.Label(); }
+			""");
+		Dump(vm);
+		Test.Assert(ok, "compiled");
+
+		let thing = scope SpecialThing();
+		var arg = ScriptValue[1](.FromObject(thing));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("t", "int drive(SpecialThing@)", arg, ref r), "drive");
+		Dump(vm);
+		Test.Assert(r.AsInt == 4 + 11 + 10, scope $"got {r.AsInt}");
+		Test.Assert((thing.Goes == 1) && Near(thing.Speed, 1.5));
+		Test.Assert(vm.Call("t", "string label(SpecialThing@)", arg, ref r));
+		Test.Assert(r.AsString == "special", "its own Label, not Thing's");
+	}
+
 	/// A [ReadOnly] member binds a getter only: a script reads it, and an assignment is
 	/// refused by the compiler, since no setter exists.
 	[Test]
