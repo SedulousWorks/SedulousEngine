@@ -138,6 +138,45 @@ class LeafControlTests
 		Test.Assert(bar.MeasuredSize.X == 200);
 	}
 
+	/// Indeterminate, the bar draws its sliding segment through the themed fill and asks for
+	/// the next frame while it shows; before, it drew nothing and asked for no frames.
+	[Test]
+	public static void AnIndeterminateProgressBarDrawsAndAsksForFrames()
+	{
+		let context = scope UIContext();
+		let root = new RootView();
+		defer root.ReleaseRef();
+		UITest.Init(context, root, 300, 100);
+
+		let sheet = new StyleSheet();
+		context.SetStyleSheet(sheet);
+		let fill = new ProbeDrawable();
+		sheet.OwnDrawable(fill);
+		sheet.ForTypePseudo(typeof(ProgressBar), "fill").Set(.Background, fill);
+
+		let bar = new ProgressBar();
+		root.AddView(bar);
+		UITest.LayoutPass(context, root);
+		let vg = scope VGContext();
+
+		context.DrawRootView(root, vg); // value 0: no fill, and nothing more to draw
+		Test.Assert(fill.Draws == 0);
+		context.BeginFrame(0.016f);
+		Test.Assert(!context.NeedsRedraw);
+
+		bar.IsIndeterminate.Value = true;
+		context.DrawRootView(root, vg);
+		Test.Assert(fill.Draws == 1, "the sliding segment");
+		Test.Assert(!context.NeedsRedraw, "the draw took the damage...");
+		context.BeginFrame(0.016f);
+		Test.Assert(context.NeedsRedraw, "...and the next frame is asked for while it shows");
+
+		bar.IsIndeterminate.Value = false;
+		context.DrawRootView(root, vg);
+		context.BeginFrame(0.016f);
+		Test.Assert(!context.NeedsRedraw);
+	}
+
 	// ---- ImageView ----------------------------------------------------------------------------
 
 	[Test]

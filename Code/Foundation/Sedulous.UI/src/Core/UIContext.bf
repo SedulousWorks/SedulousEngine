@@ -19,6 +19,8 @@ class UIContext
 	// sized its root up front sees no structural change either. Starting clean draws that
 	// first frame unlaid-out, and it stays that way until something resizes the window.
 	private bool mNeedsRedraw = true;
+	/// RequestNextFrame, carried across a draw.
+	private bool mNextFrameRequested = false;
 	private bool mNeedsLayout = true;
 	private uint64 mMeasureGeneration = 1;
 	private float mDeltaTime = 0.0f;
@@ -97,6 +99,11 @@ class UIContext
 	public void ClearLayoutDamage() => mNeedsLayout = false;
 
 	public void MarkNeedsRedraw() => mNeedsRedraw = true;
+
+	/// A view that moves on its own while it shows (an indeterminate progress bar) asks from
+	/// its draw for the next frame: drawing clears the damage, so the request carries to the
+	/// next BeginFrame, which marks it. A view no longer drawn stops asking.
+	public void RequestNextFrame() => mNextFrameRequested = true;
 
 	public void MarkNeedsLayout()
 	{
@@ -349,9 +356,13 @@ class UIContext
 
 		// Continuous damage producers, marked BEFORE the host samples the damage state,
 		// because the redraw gate hands out no free frames. A focused text input needs its
-		// caret blink serviced whether or not anything else moved.
-		if ((mAnimationManager.ActiveCount > 0) || WantsTextInput())
+		// caret blink serviced whether or not anything else moved, and a view may have asked
+		// for this frame (RequestNextFrame).
+		if ((mAnimationManager.ActiveCount > 0) || WantsTextInput() || mNextFrameRequested)
+		{
+			mNextFrameRequested = false;
 			MarkNeedsRedraw();
+		}
 
 		// Ticked under a NON idle phase on purpose: an onComplete callback may mutate the view
 		// tree, a screen transition removing its screen on finish being the usual case, and
