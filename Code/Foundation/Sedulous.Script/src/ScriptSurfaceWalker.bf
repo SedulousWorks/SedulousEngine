@@ -594,7 +594,7 @@ static class ScriptSurfaceWalker
 			sceneExpr.Set("self.Scene");
 		case .Component:
 			// The entity's own scene, else the ambient one.
-			outCode.AppendF("\tlet scene = frame.SceneOf(frame.Self);\n\tlet manager = (scene != null) ? scene.GetSystem<{}>() : null;\n\tlet self = (manager != null) ? manager.Get(frame.Self.AsEntity) : null;\n\tif (self == null) {{ frame.Fail(\"the entity has no {}\"); return; }}\n", ctx.Manager, ctx.Name);
+			outCode.AppendF("\tlet scene = frame.SceneOf(frame.Self);\n\tlet manager = (scene != null) ? scene.GetSystem<{}>() : null;\n\tlet self = (manager != null) ? manager.Get(frame.Self.AsEntity) : null;\n\tif (self == null) {{ frame.Fail(scope $\"{{Sedulous.Script.ScriptErrors.ObjectGone}}: the entity has no {}\"); return; }}\n", ctx.Manager, ctx.Name);
 			sceneExpr.Set("scene");
 		case .Service:
 			outCode.AppendF("\tlet self = frame.Context.FindService(typeof({})) as {};\n\tif (self == null) {{ frame.Fail(\"no {} service\"); return; }}\n", t, t, ctx.Name);

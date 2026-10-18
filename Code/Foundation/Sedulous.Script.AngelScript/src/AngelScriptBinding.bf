@@ -23,6 +23,9 @@ class AngelScriptBinding
 		/// A component handle's reference count, up and down: the backend's own.
 		case ComponentAddRef;
 		case ComponentRelease;
+		/// A component handle's `IsValid`: whether its entity still has the component. Owner.IsOn
+		/// answers; the one use of a gone handle that is not an error.
+		case ComponentIsValid;
 		/// A value type's construct behaviour: Method is the constructor thunk.
 		case Construct;
 		/// `scene.Physics`: Owner.FromScene with the scene as Self.

@@ -51,7 +51,7 @@ static class EngineSurfaceScriptTests
 		File.WriteAllText(apiPath, text).IgnoreError();
 		// One bound type per surface type: the facades, the components, the values they pass,
 		// the globals.
-		Test.Assert(api.Count == 113, scope $"{api.Count} bound types");
+		Test.Assert(api.Count == 114, scope $"{api.Count} bound types");
 		// Spot checks of the spelling at the engine's scale.
 		var scene = (ScriptApiType)null;
 		for (let t in api)
@@ -490,8 +490,8 @@ static class EngineSurfaceScriptTests
 	}
 
 	/// `X::of(entity)` is a handle, null when the entity has no such component, so `is null`
-	/// is the test; a handle kept after its component has gone fails what uses it, never a
-	/// write through nothing.
+	/// is the test; a handle kept after its component has gone answers IsValid false and fails
+	/// any other use with the one gone-object error, never a write through nothing.
 	[Test]
 	public static void OfIsNullWithoutTheComponentAndAGoneOneIsAnError()
 	{
@@ -510,6 +510,7 @@ static class EngineSurfaceScriptTests
 			void take(const Entity &in e) { @held = InstanceMemberComponent::of(e); }
 			int heldClip() { return int(held.Clip); }
 			void setHeld() { held.Clip = 9; }
+			bool heldValid() { return held.IsValid; }
 			""");
 		for (let p in vm.Problems)
 			Console.WriteLine("  {}", p);
@@ -533,8 +534,13 @@ static class EngineSurfaceScriptTests
 		// Kept, then the component goes: reading or writing through the handle is an error.
 		Test.Assert(vm.Call("game", "void take(const Entity &in)", memberArgs, ref r));
 		Test.Assert(vm.Call("game", "int heldClip()", default, ref r) && (r.AsInt == 5), "the kept handle reads");
+		Test.Assert(vm.Call("game", "bool heldValid()", default, ref r) && r.AsBool, "and is valid");
 		members.Remove(member);
+		// IsValid answers; every other use is the one error every backend says.
+		Test.Assert(vm.Call("game", "bool heldValid()", default, ref r) && !r.AsBool, "gone: not valid, and no error");
+		ClearAndDeleteItems!(vm.Problems);
 		Test.Assert(!vm.Call("game", "int heldClip()", default, ref r), "gone: the read fails");
+		Test.Assert(!vm.Problems.IsEmpty && vm.Problems.Back.Contains(ScriptErrors.ObjectGone), "saying the object is gone");
 		Test.Assert(!vm.Call("game", "void setHeld()", default, ref r), "gone: the write fails");
 		Test.Assert(!members.Has(member), "and adds nothing");
 		// A handle still held when the module goes is released with it (ASan checks).

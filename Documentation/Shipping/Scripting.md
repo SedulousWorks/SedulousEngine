@@ -136,8 +136,9 @@ Components are script types too, as data with a few verbs: a script takes a hand
 from an entity, `CharacterComponent@ character = CharacterComponent::of(self);`, then reads
 and sets its fields and calls its verbs (`character.Move(vx, vz)`, `character.Jump(speed)`).
 `of` is null when the entity has no such component, so `if (character !is null)` is the test.
-The handle holds the entity, so it reaches the component the entity has now; used after the
-component has gone, the access fails the handler. An asset field takes the asset's guid (`sprite.TextureAsset`).
+The handle holds the entity, so it reaches the component the entity has now. A handle kept
+after its component has gone answers `IsValid` false; any other use fails the handler with
+"the object is gone". An asset field takes the asset's guid (`sprite.TextureAsset`).
 Components with nothing for gameplay code are not script types: the script component itself
 (use `scene.Scripts`), the networked transform (replication drives it), and a navigation
 zone's bake settings. A network identity is one, read only. A navigation agent reports why it

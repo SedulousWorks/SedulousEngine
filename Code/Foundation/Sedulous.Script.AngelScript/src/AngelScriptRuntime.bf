@@ -429,6 +429,17 @@ class AngelScriptRuntime : ScriptRuntime
 			Problem(scope $"{t.FullName}: a component with no manager to find it by, so no {typeName}::of");
 			return;
 		}
+		// Every handle answers IsValid, unless the type reflects its own: whether its entity still
+		// has the component. Any other use of a gone handle is the script's error.
+		if (!DeclaresMember(t, "IsValid"))
+		{
+			let valid = new AngelScriptBinding();
+			valid.Kind = .ComponentIsValid;
+			valid.Owner = t;
+			mBindings.Add(valid);
+			if (Check(AS.asc_engine_register_object_method(mEngine, typeName.CStr(), "bool get_IsValid() property", Internal.UnsafeCastToPtr(valid)), t.FullName))
+				Record(ApiType(typeName, t.FullName, false), "IsValid", scope $"bool {typeName}.IsValid", false, .Property, true);
+		}
 		let b = new AngelScriptBinding();
 		b.Kind = .ComponentOf;
 		b.Owner = t;
@@ -438,6 +449,22 @@ class AngelScriptRuntime : ScriptRuntime
 		AS.asc_engine_set_default_namespace(mEngine, "");
 		if (Check(rc, scope $"{t.FullName}::of"))
 			Record(ApiType(typeName, t.FullName, false), "of", scope $"{typeName}@ {typeName}::of(const Entity &in entity)", true, .Method);
+	}
+
+	/// Whether a type reflects a field or a method of this name.
+	private static bool DeclaresMember(ScriptTypeInfo t, StringView name)
+	{
+		for (let f in t.Fields)
+		{
+			if (f.Name == name)
+				return true;
+		}
+		for (let m in t.Methods)
+		{
+			if (m.Name == name)
+				return true;
+		}
+		return false;
 	}
 
 	/// The entity side of an entity-first method, on the Entity value: the parameters after
@@ -960,6 +987,15 @@ class AngelScriptRuntime : ScriptRuntime
 			if (--handle.References == 0)
 				Internal.StdFree(handle);
 			return;
+		case .ComponentIsValid:
+		{
+			let handle = (ComponentHandle*)AS.asc_generic_get_object(gen);
+			var frame = ScriptCallFrame(context, default);
+			frame.Self = ReadValue(&handle.Entity, .Entity, "");
+			b.Owner.IsOn(ref frame);
+			AS.asc_generic_set_return_byte(gen, (!frame.Failed && frame.Result.AsBool) ? 1 : 0);
+			return;
+		}
 		case .StartCoroutine:
 			StartCoroutine((AS.Function*)AS.asc_generic_get_arg_address(gen, 0));
 			return;
