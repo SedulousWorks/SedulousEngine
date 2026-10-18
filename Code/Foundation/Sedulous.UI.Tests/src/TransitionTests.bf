@@ -804,4 +804,33 @@ class TransitionTests
 		fixture.Context.DrawRootView(fixture.Root, canvas);
 		Test.Assert(Near(view.TransformMatrix.Ty, -5.0f));
 	}
+
+	/// The view says when an animation iterates and ends, through the mutation queue after the
+	/// frame's tick, never inside it; an ended one says nothing more.
+	[Test]
+	public static void TheViewSaysWhenAnAnimationIteratesAndEnds()
+	{
+		let fixture = scope Fixture(LoadSSS("""
+			@keyframes blink { to { opacity: 0; } }
+			TestView { animation: blink 1s linear 3; }
+			"""));
+		let view = fixture.Leaf();
+		let events = scope System.Collections.List<String>();
+		defer { ClearAndDeleteItems!(events); }
+		view.OnAnimationIteration.Add(new [=events](sender, name) => { events.Add(new $"iteration {name}"); });
+		view.OnAnimationEnd.Add(new [=events](sender, name) => { events.Add(new $"end {name}"); });
+		OpacityOf(view);
+		fixture.Context.BeginFrame(1.25f); // into the second iteration
+		Test.Assert(events.IsEmpty, "queued during the tick, not delivered inside it");
+		fixture.Context.BeginFrame(0.0f);
+		Test.Assert((events.Count == 1) && (events[0] == "iteration blink"));
+		fixture.Context.BeginFrame(1.0f); // the third
+		fixture.Context.BeginFrame(1.0f); // past the last
+		fixture.Context.BeginFrame(0.0f);
+		Test.Assert(events.Count == 3, scope $"{events.Count} events");
+		Test.Assert((events[1] == "iteration blink") && (events[2] == "end blink"));
+		fixture.Context.BeginFrame(1.0f);
+		fixture.Context.BeginFrame(0.0f);
+		Test.Assert(events.Count == 3, "ended: nothing more");
+	}
 }

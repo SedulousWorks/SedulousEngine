@@ -312,6 +312,45 @@ static class UiHandleTests
 		Test.Assert(UiHandles.Count == 0);
 	}
 
+	/// Keeps the name the last call passed.
+	private class Naming : ScriptDelegate
+	{
+		public int Calls = 0;
+		public String Name = new .() ~ delete _;
+		public override bool IsAlive => true;
+		public override bool Invoke(Span<ScriptValue> args, ref ScriptValue result)
+		{
+			Calls++;
+			if (!args.IsEmpty && (args[0].Kind == .String))
+				Name.Set(args[0].Data.String);
+			return true;
+		}
+	}
+
+	/// A view's animation end and iteration reach a script with the @keyframes' name.
+	[Test]
+	public static void AnAnimationsEndAndIterationReachAScriptWithItsName()
+	{
+		let bed = scope UiScriptBed();
+		bed.Stack.Push(UiScriptBed.Screen());
+		let button = bed.Ui.FindButton("retry");
+		let ended = new Naming();
+		let looped = new Naming();
+		button.OnAnimationEnd(ended);
+		button.OnAnimationIteration(looped);
+		let view = button.Resolve();
+		view.OnAnimationEnd(view, "fade-in");
+		view.OnAnimationIteration(view, "spin");
+		Test.Assert((ended.Calls == 1) && (ended.Name == "fade-in"));
+		Test.Assert((looped.Calls == 1) && (looped.Name == "spin"));
+		button.OnAnimationEnd(null); // a null handler is a no-op that takes nothing
+		// The screen pops: the delegates parked with the button are freed by the table's sweep,
+		// which the next resolve performs.
+		bed.Stack.Pop();
+		Test.Assert(!button.IsValid);
+		Test.Assert(UiHandles.Count == 0, "the handlers die with the view");
+	}
+
 	/// A card is a ContentButton (a picture and labels as its content): the Button handle covers
 	/// it, its click runs the script's handler, and a label inside its content is found from the
 	/// screen.

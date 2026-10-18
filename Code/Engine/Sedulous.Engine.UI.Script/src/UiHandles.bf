@@ -194,6 +194,30 @@ static class UiHandles
 		view.Context?.Animations.CancelForView(view, channel);
 	}
 
+	/// A sheet animation's end (or iteration) on `view`, handed to a script with the
+	/// @keyframes' name. The view already delivers it through the mutation queue after the
+	/// frame's tick, so the handler may change the tree. TAKES the delegate: parked with the
+	/// view, deleted with it. Null, or no view, is a no-op.
+	public static void OnAnimation(View view, ScriptDelegate handler, bool ended)
+	{
+		if ((view == null) || (handler == null))
+		{
+			delete handler;
+			return;
+		}
+		Own(view, handler);
+		delegate void(View, StringView) deliver = new (sender, name) =>
+			{
+				var args = ScriptValue[1](.FromString(name));
+				var result = ScriptValue.Nil;
+				handler.Invoke(args, ref result);
+			};
+		if (ended)
+			view.OnAnimationEnd.Add(deliver);
+		else
+			view.OnAnimationIteration.Add(deliver);
+	}
+
 	/// Parks a delegate with the view it is bound to, to die with the view.
 	public static void Own(View view, ScriptDelegate d)
 	{

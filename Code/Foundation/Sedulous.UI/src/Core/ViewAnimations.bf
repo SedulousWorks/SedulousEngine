@@ -28,6 +28,36 @@ extension View
 	/// answers it: rewritten by each resolve, and borrowed by the value it answers.
 	private StyleLerpScratch mAnimationScratch = null ~ delete _;
 
+	/// A sheet's animation on the view ran its last iteration (an infinite one never does), and
+	/// one began another iteration; each with its @keyframes' name. Delivered through the
+	/// context's mutation queue after the frame's tick, never inside it, so a handler may change
+	/// the tree (at once without a context).
+	public Event<delegate void(View, StringView)> OnAnimationEnd ~ _.Dispose();
+	public Event<delegate void(View, StringView)> OnAnimationIteration ~ _.Dispose();
+
+	/// Queues OnAnimationEnd (or OnAnimationIteration) for the named animation, keeping the
+	/// view and the name until it is delivered.
+	private void DeliverAnimationEvent(bool ended, StringView name)
+	{
+		if (Context == null)
+		{
+			if (ended)
+				OnAnimationEnd(this, name);
+			else
+				OnAnimationIteration(this, name);
+			return;
+		}
+		let owned = new String(name);
+		AddRef();
+		Context.MutationQueue.QueueAction(new [=this, =owned, =ended]() =>
+			{
+				if (ended)
+					OnAnimationEnd(this, owned);
+				else
+					OnAnimationIteration(this, owned);
+			} ~ { delete owned; ReleaseRef(); });
+	}
+
 	/// Animations running (not finished) on the view.
 	public int RunningAnimationCount
 	{
@@ -216,10 +246,20 @@ extension View
 			if (running.Finished)
 				continue;
 			animated = true;
+			let before = running.Elapsed;
 			running.Elapsed += deltaTime;
 			let spec = running.Spec;
-			if ((spec.Iterations >= 0.0f) && (running.Elapsed >= spec.Delay + Math.Max(spec.Duration, 0.0f) * spec.Iterations))
+			let duration = Math.Max(spec.Duration, 0.0f);
+			if ((spec.Iterations >= 0.0f) && (running.Elapsed >= spec.Delay + duration * spec.Iterations))
+			{
 				running.Finished = true;
+				DeliverAnimationEvent(true, running.NameText);
+			}
+			else if ((duration > 0.0f) && (running.Elapsed > spec.Delay)
+				&& (Math.Floor(Math.Max(before - spec.Delay, 0.0f) / duration) < Math.Floor((running.Elapsed - spec.Delay) / duration)))
+			{
+				DeliverAnimationEvent(false, running.NameText); // a new iteration began
+			}
 			animating = animating || !running.Finished;
 			for (let frame in running.Keyframes.Frames)
 			{

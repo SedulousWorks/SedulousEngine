@@ -82,6 +82,12 @@ struct UiGroup
 	/// changed.
 	[Scriptable]
 	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
+	/// A sheet's animation on the view (its `animation`) ran its last iteration: the handler
+	/// takes the @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationEnd(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, true); }
+	/// A sheet's animation on the view began another iteration: the handler takes the
+	/// @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationIteration(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, false); }
 	[Scriptable]
 	public int32 ChildCount => UiFinders.ChildCount(Resolve());
 	[Scriptable]
@@ -166,6 +172,12 @@ struct UiScreen
 	/// changed.
 	[Scriptable]
 	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
+	/// A sheet's animation on the view (its `animation`) ran its last iteration: the handler
+	/// takes the @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationEnd(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, true); }
+	/// A sheet's animation on the view began another iteration: the handler takes the
+	/// @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationIteration(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, false); }
 	[Scriptable]
 	public int32 ChildCount => UiFinders.ChildCount(Resolve());
 	[Scriptable]

@@ -74,6 +74,12 @@ struct UiView
 	/// changed.
 	[Scriptable]
 	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
+	/// A sheet's animation on the view (its `animation`) ran its last iteration: the handler
+	/// takes the @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationEnd(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, true); }
+	/// A sheet's animation on the view began another iteration: the handler takes the
+	/// @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationIteration(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, false); }
 }
 
 /// A text label: `label.Text` reads, `label.SetText(...)` writes.
@@ -133,6 +139,12 @@ struct UiLabel
 	/// changed.
 	[Scriptable]
 	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
+	/// A sheet's animation on the view (its `animation`) ran its last iteration: the handler
+	/// takes the @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationEnd(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, true); }
+	/// A sheet's animation on the view began another iteration: the handler takes the
+	/// @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationIteration(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, false); }
 	[Scriptable]
 	public StringView Text => Resolve()?.Text.Value ?? "";
 	[Scriptable]
@@ -203,6 +215,12 @@ struct UiRichText
 	public void RotateTo(float degrees, float seconds, Ease ease = .InOut) { UiHandles.RotateTo(Resolve(), degrees, seconds, ease); }
 	[Scriptable]
 	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
+	/// A sheet's animation on the view (its `animation`) ran its last iteration: the handler
+	/// takes the @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationEnd(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, true); }
+	/// A sheet's animation on the view began another iteration: the handler takes the
+	/// @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationIteration(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, false); }
 	/// The markup; empty once runs were added.
 	[Scriptable]
 	public StringView Markup => Resolve()?.Markup.Value ?? "";
@@ -338,6 +356,12 @@ struct UiImage
 	/// changed.
 	[Scriptable]
 	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
+	/// A sheet's animation on the view (its `animation`) ran its last iteration: the handler
+	/// takes the @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationEnd(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, true); }
+	/// A sheet's animation on the view began another iteration: the handler takes the
+	/// @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationIteration(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, false); }
 	[Scriptable]
 	public Guid Source
 	{
@@ -424,6 +448,12 @@ struct UiButton
 	/// changed.
 	[Scriptable]
 	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
+	/// A sheet's animation on the view (its `animation`) ran its last iteration: the handler
+	/// takes the @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationEnd(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, true); }
+	/// A sheet's animation on the view began another iteration: the handler takes the
+	/// @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationIteration(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, false); }
 	/// A text Button's caption; empty for a button whose face is its content.
 	[Scriptable]
 	public StringView Text => (Resolve() as Button)?.Text.Value ?? "";
@@ -510,6 +540,12 @@ struct UiProgressBar
 	/// changed.
 	[Scriptable]
 	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
+	/// A sheet's animation on the view (its `animation`) ran its last iteration: the handler
+	/// takes the @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationEnd(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, true); }
+	/// A sheet's animation on the view began another iteration: the handler takes the
+	/// @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationIteration(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, false); }
 	[Scriptable]
 	public float Value => Resolve()?.Value.Value ?? 0.0f;
 	[Scriptable]
@@ -574,6 +610,12 @@ struct UiSlider
 	/// changed.
 	[Scriptable]
 	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
+	/// A sheet's animation on the view (its `animation`) ran its last iteration: the handler
+	/// takes the @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationEnd(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, true); }
+	/// A sheet's animation on the view began another iteration: the handler takes the
+	/// @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationIteration(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, false); }
 	[Scriptable]
 	public float Value => Resolve()?.Value.Value ?? 0.0f;
 	/// Clamped and snapped to the range. Like any change it runs the OnChanged handler, so a
@@ -677,6 +719,12 @@ struct UiTextBox
 	/// changed.
 	[Scriptable]
 	public void Pulse(float peak, float seconds) { UiHandles.Pulse(Resolve(), peak, seconds); }
+	/// A sheet's animation on the view (its `animation`) ran its last iteration: the handler
+	/// takes the @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationEnd(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, true); }
+	/// A sheet's animation on the view began another iteration: the handler takes the
+	/// @keyframes' name, after the frame's tick. TAKES the delegate.
+	public void OnAnimationIteration(ScriptDelegate handler) { UiHandles.OnAnimation(Resolve(), handler, false); }
 	[Scriptable]
 	public StringView Text => Resolve()?.Text ?? "";
 	[Scriptable]
