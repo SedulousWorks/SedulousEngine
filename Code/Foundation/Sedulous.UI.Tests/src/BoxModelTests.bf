@@ -375,6 +375,51 @@ class BoxModelTests
 			Test.Assert(Near(vertex.Color.A, 0.25f));
 	}
 
+	/// With layers, a faded view with children fades as one group, like CSS opacity: the frame's
+	/// opacity applies once, at its layer's composite, and the leaf inside fades its own fill.
+	[Test]
+	public static void WithLayersAFadedGroupFadesAsOneAndAFadedLeafAlone()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+
+		let outer = new FrameLayout();
+		outer.Opacity = 0.5f;
+		let inner = new RecordingView(50, 30, 1);
+		inner.Opacity = 0.5f;
+		outer.AddView(inner);
+		root.AddView(outer);
+		UITest.LayoutPass(context, root);
+
+		let vg = scope VGContext();
+		vg.SetLayers(true);
+		RecordingView.DrawLog.Clear();
+		context.DrawRootView(root, vg);
+
+		let batch = vg.GetBatch();
+		Test.Assert(batch.Layers.Count == 1, "the frame's; the leaf fades its own fill");
+		Test.Assert(Near(batch.Layers[0].Opacity, 0.5f));
+		var sawFill = false;
+		var sawComposite = false;
+		for (let command in batch.Commands)
+		{
+			let alpha = batch.Vertices[(int)batch.Indices[command.StartIndex]].Color.A;
+			if (command.DrawMode == .Layer)
+			{
+				sawComposite = true;
+				Test.Assert(command.Layer == -1);
+				Test.Assert(Near(alpha, 0.5f), "the group's opacity, once");
+			}
+			else
+			{
+				sawFill = true;
+				Test.Assert(command.Layer == 0);
+				Test.Assert(Near(alpha, 0.5f), "the leaf's own, inside the layer");
+			}
+		}
+		Test.Assert(sawFill && sawComposite);
+	}
+
 	// ---- The sheet filling LayoutStyle ------------------------------------------------------
 
 	/// The cascade fills the fields the view did NOT declare inline, and an inline field wins

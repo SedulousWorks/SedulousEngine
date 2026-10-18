@@ -318,13 +318,15 @@ class PopupLayer : ViewGroup
 
 			ctx.VG.PushState();
 			ctx.VG.Translate(entry.X, entry.Y);
-			if (popup.Opacity < 1.0f)
-				ctx.VG.PushOpacity(popup.Opacity);
+			// A fading popup fades as one (VGContext.PushLayer), as a faded view does.
+			let faded = popup.Opacity < 1.0f;
+			if (faded)
+				ctx.VG.PushLayer(popup.Opacity);
 
 			popup.OnDraw(ctx);
 
-			if (popup.Opacity < 1.0f)
-				ctx.VG.PopOpacity();
+			if (faded)
+				ctx.VG.PopLayer();
 			ctx.VG.PopState();
 		}
 	}

@@ -359,7 +359,14 @@ class ViewGroup : View
 				}
 			}
 
-			if (child.Opacity < 1.0f)
+			// A faded view with children fades as one group, through a layer, so its parts never
+			// show through each other; a leaf fades its own drawing.
+			let faded = child.Opacity < 1.0f;
+			let group = child as ViewGroup;
+			let fadesAsGroup = faded && (group != null) && (group.VisualChildCount > 0);
+			if (fadesAsGroup)
+				ctx.VG.PushLayer(child.Opacity);
+			else if (faded)
 				ctx.VG.PushOpacity(child.Opacity);
 
 			// An OUTER box shadow sits under the child's own drawing and outside its clip; an
@@ -384,7 +391,9 @@ class ViewGroup : View
 
 			if (clips)
 				ctx.PopClip();
-			if (child.Opacity < 1.0f)
+			if (fadesAsGroup)
+				ctx.VG.PopLayer();
+			else if (faded)
 				ctx.VG.PopOpacity();
 			ctx.VG.PopState();
 		}

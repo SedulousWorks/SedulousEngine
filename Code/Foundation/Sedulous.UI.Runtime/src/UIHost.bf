@@ -59,6 +59,8 @@ class UIHost
 	/// Analytic boxes (VGContext.DrawBox).
 	private IShaderModule mBoxVertexShader = null;
 	private IShaderModule mBoxFragmentShader = null;
+	/// Layer composites (VGContext.PushLayer).
+	private IShaderModule mLayerFragmentShader = null;
 
 	private List<AttachedWindow> mAttached = new .() ~ delete _;
 
@@ -226,10 +228,12 @@ class UIHost
 
 		data.Renderer.Initialize(mDevice.Raw, mVertexShader, mFragmentShader, data.DrawFormat,
 			(int32)mDevice.FramesInFlight, mDistanceFieldShader, mGradientRadialShader,
-			mGradientConicShader, targetConfig, mBoxShadowShader, mBoxVertexShader, mBoxFragmentShader);
+			mGradientConicShader, targetConfig, mBoxShadowShader, mBoxVertexShader, mBoxFragmentShader,
+			mLayerFragmentShader);
 
 		data.VG.SetPerPixelGradients(perPixelGradients);
 		data.VG.SetAnalyticBoxes((mBoxVertexShader != null) && (mBoxFragmentShader != null));
+		data.VG.SetLayers(mLayerFragmentShader != null);
 		data.VG.SetStencilFills(data.Renderer.StencilFillsSupported);
 	}
 
@@ -588,6 +592,9 @@ class UIHost
 		let batch = data.VG.GetBatch();
 		data.Renderer.BeginFrame((int32)frame.FrameIndex);
 		let slice = data.Renderer.Prepare(batch, (int32)frame.FrameIndex, frame.Width, frame.Height);
+		// Layers draw in passes of their own, before the window's.
+		if (frame.Encoder != null)
+			data.Renderer.RenderLayers(frame.Encoder, (int32)frame.FrameIndex, slice);
 
 		if (data.TargetsMatch(frame.Width, frame.Height) && (frame.Encoder != null))
 		{
@@ -670,5 +677,7 @@ class UIHost
 		// Analytic boxes; a pack that predates them means boxes tessellate.
 		mBoxVertexShader = mShaderHost.GetVariant("vg_box", .Vertex, .None);
 		mBoxFragmentShader = mShaderHost.GetVariant("vg_box", .Fragment, .None);
+		// Layer composites; a pack that predates them means layers are opacity pushes.
+		mLayerFragmentShader = mShaderHost.GetVariant("vg_layer", .Fragment, .None);
 	}
 }
