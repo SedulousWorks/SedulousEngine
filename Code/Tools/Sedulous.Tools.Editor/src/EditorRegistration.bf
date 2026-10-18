@@ -8,6 +8,7 @@ using Sedulous.Pipeline.Registration;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Scene;
+using Sedulous.Editor.Animation;
 using Sedulous.Editor.Input;
 using Sedulous.Editor.Navigation;
 using Sedulous.Editor.PropertyAnimation;

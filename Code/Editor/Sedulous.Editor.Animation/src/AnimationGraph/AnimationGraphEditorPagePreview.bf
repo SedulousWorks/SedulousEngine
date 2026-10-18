@@ -1,0 +1,237 @@
+using System;
+using System.Collections;
+using Sedulous.Core;
+using Sedulous.Resource;
+using Sedulous.Scene;
+using Sedulous.Animation;
+using Sedulous.Engine.Render;
+using Sedulous.UI;
+using Sedulous.Editor.App;
+
+namespace Sedulous.Editor.Animation;
+
+/// The preview half: the scene, the transport, the rig pickers with their preference, the
+/// graph built for the player, and the per frame tick that draws the pose and rings the
+/// active state on the canvas.
+extension AnimationGraphEditorPage
+{
+	private void BuildPreviewScene()
+	{
+		let scene = (mPreview != null) ? mPreview.Scene : null;
+		if (scene == null)
+			return;
+		let sun = scene.CreateEntity("Sun");
+		var st = Transform();
+		st.Rotation = Quaternion.FromAxisAngle(.(0, 1, 0), 0.35f) * Quaternion.FromAxisAngle(.(1, 0, 0), -1.05f);
+		scene.SetLocalTransform(sun, st);
+		if (let lights = scene.GetSystem<LightComponentManager>())
+			lights.Add(sun).CastsShadows = false;
+		mMeshEntity = scene.CreateEntity("PreviewMesh");
+		if (let meshes = scene.GetSystem<MeshComponentManager>())
+			meshes.Add(mMeshEntity);
+	}
+
+	private MeshComponent* PreviewComponent()
+	{
+		let scene = (mPreview != null) ? mPreview.Scene : null;
+		let meshes = (scene != null) ? scene.GetSystem<MeshComponentManager>() : null;
+		return ((meshes != null) && mMeshEntity.IsAssigned) ? meshes.Get(mMeshEntity) : null;
+	}
+
+	/// Detaches the page's skinning matrices from the preview entity, ahead of deleting the
+	/// player they point into.
+	private void ClearPreviewOverrides()
+	{
+		if (let mc = PreviewComponent())
+		{
+			mc.Mesh.SetId(.());
+			mc.Mesh.SetDirect(null);
+			mc.BoneMatrices = null;
+			mc.PrevBoneMatrices = null;
+			mc.BoneCount = 0;
+		}
+	}
+
+	private void DeletePlayer()
+	{
+		DeleteAndNullify!(mPlayer);
+		DeleteAndNullify!(mPreviewGraph);
+		mPlayerSkeleton = null;
+	}
+
+	private View BuildTransport()
+	{
+		let transport = new FlexLayout();
+		transport.Direction = .Horizontal;
+		transport.Spacing = 6.0f;
+		transport.Padding = .(6, 4);
+
+		var slotWidth = LayoutStyle();
+		slotWidth.Width = SizeSpec.Fixed(Unit.Dp(220.0f));
+		mSkeletonSlot = new CompactAssetSlot("Skeleton", scope StringView[]("SkeletonAsset"));
+		mSkeletonSlot.Editor.BindAsset(mContext, new [=this]() => mSkeletonGuid, new [=this](picked) =>
+			{
+				mSkeletonGuid = picked;
+				BindSkeleton();
+				RebuildPreviewGraph();
+				SavePreviewPref();
+			});
+		mSkeletonSlot.Build();
+		transport.AddView(mSkeletonSlot, slotWidth);
+		mMeshSlot = new CompactAssetSlot("Mesh", scope StringView[]("SkinnedMeshAsset"));
+		mMeshSlot.Editor.BindAsset(mContext, new [=this]() => mPreviewMeshId, new [=this](picked) =>
+			{
+				mPreviewMeshId = picked;
+				ApplyPreviewMesh();
+				SavePreviewPref();
+			});
+		mMeshSlot.Build();
+		transport.AddView(mMeshSlot, slotWidth);
+		mPreviewStatus = new Label();
+		mPreviewStatus.FontSize.Value = 12.0f;
+		mPreviewStatus.VAlign.Value = .Middle;
+		var grow = LayoutStyle();
+		grow.FlexGrow = 1.0f;
+		transport.AddView(mPreviewStatus, grow);
+		return transport;
+	}
+
+	private void RefreshPickLabels()
+	{
+		if (mSkeletonSlot != null)
+			mSkeletonSlot.Editor.Refresh();
+		if (mMeshSlot != null)
+			mMeshSlot.Editor.Refresh();
+	}
+
+	private void BindSkeleton()
+	{
+		mSkeleton.Forget();
+		mSkeleton = default;
+		if (!mSkeletonGuid.IsNil && (mContext.Resources != null))
+		{
+			mSkeleton = mContext.Resources.Bind<Skeleton>(mSkeletonGuid);
+			mSkeleton.Retain();
+		}
+	}
+
+	/// Points the preview entity at the mesh asset, bound through the manager so a late cook
+	/// or a reload follows; nil clears it and the skinning with it.
+	private void ApplyPreviewMesh()
+	{
+		let mc = PreviewComponent();
+		if (mc == null)
+			return;
+		if (!mPreviewMeshId.IsNil && (mContext.Resources != null))
+		{
+			mc.Mesh.SetDirect(null);
+			mc.Mesh.SetId(mPreviewMeshId);
+			mc.Mesh.Bind(mContext.Resources);
+		}
+		else
+		{
+			mc.Mesh.SetId(.());
+			mc.Mesh.SetDirect(null);
+			mc.BoneMatrices = null;
+			mc.BoneCount = 0;
+		}
+	}
+
+	private void LoadPreviewPref()
+	{
+		if (!GraphPreviewPrefs.Load(mContext.ProjectEditorSettings, InstanceId, ref mSkeletonGuid, ref mPreviewMeshId))
+			return;
+		BindSkeleton();
+		ApplyPreviewMesh();
+		RefreshPickLabels();
+	}
+
+	private void SavePreviewPref()
+	{
+		if (GraphPreviewPrefs.Save(mContext.ProjectEditorSettings, InstanceId, mSkeletonGuid, mPreviewMeshId))
+			mContext.RequestProjectEditorSettingsSave();
+	}
+
+	/// Builds the runtime graph from the stored source and a player for it on the picked
+	/// skeleton; nothing without a skeleton, a cooked one, or a layer.
+	private void RebuildPreviewGraph()
+	{
+		ClearPreviewOverrides();
+		DeletePlayer();
+		mLastHighlightedNode = -1;
+		if ((mAsset == null) || (mContext.Resources == null))
+			return;
+		let skeleton = mSkeleton.Get;
+		if ((skeleton == null) || (skeleton.BoneCount <= 0))
+			return;
+		mDoc.Store(mAsset.Source);
+		mPreviewGraph = new AnimationGraph();
+		mAsset.Source.BuildInto(mContext.Resources, mPreviewGraph);
+		if (mPreviewGraph.Layers.IsEmpty)
+			return;
+		mPlayer = new AnimationGraphPlayer(mPreviewGraph, skeleton);
+		mPlayerSkeleton = skeleton;
+	}
+
+	private void UpdatePreview(float dt)
+	{
+		if (mSkeleton.Get !== mPlayerSkeleton)
+			RebuildPreviewGraph();
+		if (mPlayer == null)
+		{
+			if (mPreviewStatus != null)
+				mPreviewStatus.SetText(mSkeletonGuid.IsNil ? "pick a skeleton to preview" : "(skeleton not cooked yet)");
+			return;
+		}
+		if (mPreviewPlaying)
+			mPlayer.Update(dt);
+		// Root motion: read every frame, so it never piles up, and applied while Travel is on.
+		let moved = mPlayer.ConsumeRootMotion();
+		if (mShowTravel)
+		{
+			mTravelPosition = mTravelPosition + RotateVector(Quaternion.FromAxisAngle(.(0, 1, 0), mTravelYaw), moved.Translation);
+			mTravelYaw += moved.Yaw;
+			if (Length(Float3(mTravelPosition.X, 0, mTravelPosition.Z)) > 6.0f)
+				mTravelPosition = .(0, 0, 0); // back to the middle of the grid
+		}
+		let travelTurn = Quaternion.FromAxisAngle(.(0, 1, 0), mTravelYaw);
+		let travel = Transform(mTravelPosition, travelTurn, .(1, 1, 1)).ToMatrix();
+
+		let layerIndex = Math.Min(mSelectedLayer, (int32)mPreviewGraph.Layers.Count - 1);
+		let current = mPlayer.GetCurrentStateIndex(layerIndex);
+		if (mPreviewStatus != null)
+		{
+			let status = scope String();
+			let layer = CurrentLayer;
+			if ((layer != null) && layer.HasState(current))
+				status.Append(layer.States[current].Name);
+			if (mPlayer.IsTransitioning(layerIndex))
+				status.Append("  (transitioning)");
+			mPreviewStatus.SetText(status);
+		}
+		HighlightNode((current >= 0) ? StateToNode(current) : -1);
+
+		if ((mPreview == null) || !mPreview.IsValid)
+			return;
+		let scene = mPreview.Scene;
+		let mc = PreviewComponent();
+		if (scene != null)
+			scene.SetLocalTransform(mMeshEntity, .(mTravelPosition, travelTurn, .(1, 1, 1)));
+		if ((scene != null) && (mc != null))
+		{
+			let meshVisible = mShowMesh && (mc.Mesh.Get != null);
+			scene.SetActive(mMeshEntity, meshVisible);
+			if (meshVisible)
+			{
+				let mats = mPlayer.GetSkinningMatrices();
+				mc.BoneMatrices = mats.Ptr;
+				mc.BoneCount = (uint32)mats.Length;
+			}
+		}
+
+		let draw = mPreview.SceneDebugDraw;
+		draw.DrawGrid(.(0.0f, 0.0f, 0.0f), 4.0f, 8, .(0.25f, 0.25f, 0.28f, 1.0f));
+		if (mShowSkeleton)
+			SkeletonWireframe.Draw(draw, mPlayerSkeleton, mPlayer.GetLocalPoses(), mWorldScratch, travel);
+	}
+}

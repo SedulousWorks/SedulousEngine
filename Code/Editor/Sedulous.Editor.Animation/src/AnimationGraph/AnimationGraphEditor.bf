@@ -1,0 +1,18 @@
+using Sedulous.Runtime.Client;
+using Sedulous.UI.Runtime;
+using Sedulous.Animation.Pipeline;
+using Sedulous.Editor.Core;
+
+namespace Sedulous.Editor.Animation;
+
+/// The animation graph editor's composition: the asset serializables, the preview
+/// preference section, its page and the "Animation Graph" creator.
+static class AnimationGraphEditor
+{
+	public static void Register(EditorContext context, IApplicationHost host, UIHost uiHost)
+	{
+		AnimationPipeline.RegisterAll();
+		AnimationEditorSerializables.Register();
+		context.Pages.Register(new AnimationGraphPageFactory(host, uiHost));
+	}
+}

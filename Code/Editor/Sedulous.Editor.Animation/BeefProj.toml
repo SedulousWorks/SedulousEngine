@@ -1,0 +1,28 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Animation"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.Animation.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Settings" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Geometry" = "*"
+"Sedulous.Animation" = "*"
+"Sedulous.Animation.Resource" = "*"
+"Sedulous.Animation.Pipeline" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Render" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Engine.Render" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Toolkit" = "*"
+"Sedulous.UI.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.App" = "*"
+"Sedulous.Editor.Preview" = "*"

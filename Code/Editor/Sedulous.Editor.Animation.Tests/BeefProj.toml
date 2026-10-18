@@ -1,0 +1,20 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Animation.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.Animation.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Settings" = "*"
+"Sedulous.Xml" = "*"
+"Sedulous.Render" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Animation" = "*"
+"Sedulous.Animation.Resource" = "*"
+"Sedulous.Animation.Pipeline" = "*"
+"Sedulous.Editor.Project" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Animation" = "*"
