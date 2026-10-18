@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Image;
 using Sedulous.UI;
+using Sedulous.VG;
 
 namespace Sedulous.UI.Tests;
 
@@ -387,6 +388,44 @@ class SSSParserTests
 		Test.Assert(drawable.Radii.TopRight == 2.0f);
 		Test.Assert(drawable.Radii.BottomRight == 3.0f);
 		Test.Assert(drawable.Radii.BottomLeft == 4.0f);
+	}
+
+	/// border-width takes CSS's four sides (top, right, bottom, left) and border-left= colours
+	/// one side over border=; the content clears each side's width, and each side draws in its
+	/// own colour. One width and no side colour stay the uniform border.
+	[Test]
+	public static void RoundedRectTakesABorderWidthAndColourPerSide()
+	{
+		let fixture = scope Fixture(LoadSSS(
+			"View { background: rounded-rect(#336699, radius=6, border=#FF0000, border-width=1 2 3 4, border-left=#00FF00); }"));
+		let drawable = fixture.AddView().ResolveStyleDrawable(.Background) as RoundedRectDrawable;
+		Test.Assert(drawable != null);
+		Test.Assert(drawable.SideWidths.HasValue);
+		Test.Assert(drawable.Widths == BorderWidths(1.0f, 2.0f, 3.0f, 4.0f));
+		Test.Assert(drawable.SideColors.HasValue);
+		Test.Assert(drawable.Colors.Top == Color(1.0f, 0.0f, 0.0f, 1.0f), "border= for the sides not named");
+		Test.Assert(drawable.Colors.Right == Color(1.0f, 0.0f, 0.0f, 1.0f));
+		Test.Assert(drawable.Colors.Left == Color(0.0f, 1.0f, 0.0f, 1.0f));
+		let pad = drawable.DrawablePadding;
+		Test.Assert((pad.Left == 4.0f) && (pad.Top == 1.0f) && (pad.Right == 2.0f) && (pad.Bottom == 3.0f));
+
+		let canvas = scope VGContext();
+		let ctx = scope UIDrawContext(canvas, 1.0f, null);
+		drawable.Draw(ctx, .(0, 0, 40, 30));
+		var red = false;
+		var green = false;
+		for (let vertex in canvas.GetBatch().Vertices)
+		{
+			red = red || ((vertex.Color.R > 0.99f) && (vertex.Color.G < 0.01f));
+			green = green || ((vertex.Color.G > 0.99f) && (vertex.Color.R < 0.01f));
+		}
+		Test.Assert(red && green);
+
+		let plain = scope Fixture(LoadSSS("View { background: rounded-rect(#336699, border=#FF0000, border-width=2 2); }"));
+		let uniform = plain.AddView().ResolveStyleDrawable(.Background) as RoundedRectDrawable;
+		Test.Assert(uniform != null);
+		Test.Assert(!uniform.SideWidths.HasValue && !uniform.SideColors.HasValue);
+		Test.Assert(uniform.BorderWidth == 2.0f);
 	}
 
 	[Test]

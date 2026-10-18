@@ -1144,7 +1144,9 @@ class SSSParser
 		return result;
 	}
 
-	private Thickness ParseThicknessValue()
+	/// One, two or four numbers as CSS writes a box's sides (padding, a drawable's border
+	/// widths).
+	public Thickness ParseThicknessValue()
 	{
 		float[4] values = .();
 		var count = 0;

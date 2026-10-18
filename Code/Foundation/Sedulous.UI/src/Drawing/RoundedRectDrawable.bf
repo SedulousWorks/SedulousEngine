@@ -3,13 +3,24 @@ using Sedulous.VG;
 
 namespace Sedulous.UI;
 
-/// A filled rounded rectangle with an optional border, radii settable per corner.
+/// A filled rounded rectangle with an optional border, radii settable per corner, and a width
+/// and colour per side when SideWidths or SideColors is set.
 class RoundedRectDrawable : Drawable
 {
 	public Color FillColor = .();
 	public Color BorderColor = Color.Transparent;
 	public float BorderWidth = 0.0f;
 	public CornerRadii Radii = .();
+	/// A width per side, in place of BorderWidth (CSS's border-top-width and the rest).
+	public BorderWidths? SideWidths;
+	/// A colour per side, in place of BorderColor; where two sides meet, the corner splits
+	/// between them as CSS draws it.
+	public BorderColors? SideColors;
+
+	/// The border's width on each side: SideWidths, or BorderWidth on all four.
+	public BorderWidths Widths => SideWidths.HasValue ? SideWidths.Value : .(BorderWidth);
+	/// The border's colour on each side: SideColors, or BorderColor on all four.
+	public BorderColors Colors => SideColors.HasValue ? SideColors.Value : .(BorderColor);
 
 	public this() {}
 
@@ -37,6 +48,15 @@ class RoundedRectDrawable : Drawable
 
 	public override void Draw(UIDrawContext ctx, Rectangle bounds)
 	{
+		if (SideWidths.HasValue || SideColors.HasValue)
+		{
+			// Sides that differ: VG's box draws them, analytically or tessellated.
+			let colors = Colors;
+			let bordered = !colors.IsTransparent && !Widths.IsZero;
+			if ((FillColor.A > 0.0f) || bordered)
+				ctx.VG.DrawBox(bounds, Radii, FillColor, bordered ? Widths : .(), colors);
+			return;
+		}
 		if (ctx.VG.AnalyticBoxes)
 		{
 			// Fill and border as ONE box: one signed distance gives both, so they cannot
@@ -80,7 +100,14 @@ class RoundedRectDrawable : Drawable
 			ctx.VG.StrokeRect(borderRect, BorderColor, BorderWidth);
 	}
 
-	/// Border box: the border is chrome the content has to clear, so it counts as padding.
-	public override Thickness DrawablePadding => .(BorderWidth, BorderWidth, BorderWidth,
-		BorderWidth);
+	/// Border box: the border is chrome the content has to clear, side by side, so it counts as
+	/// padding.
+	public override Thickness DrawablePadding
+	{
+		get
+		{
+			let widths = Widths;
+			return .(widths.Left, widths.Top, widths.Right, widths.Bottom);
+		}
+	}
 }

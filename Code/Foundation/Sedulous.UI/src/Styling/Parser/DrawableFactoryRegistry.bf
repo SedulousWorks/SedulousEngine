@@ -90,13 +90,17 @@ static class DrawableFactoryRegistry
 		// color($color)
 		Register("color", (parser, sheet) => new ColorDrawable(parser.ParseColorArg()));
 
-		// rounded-rect($color, radius=6, border=$color, border-width=1)
+		// rounded-rect($color, radius=6, border=$color, border-width=1). border-width takes 1, 2
+		// or 4 values in CSS's order (top, right, bottom, left), and border-top=, border-right=,
+		// border-bottom= and border-left= colour one side over border=.
 		Register("rounded-rect", (parser, sheet) =>
 			{
 				let fill = parser.ParseColorArg();
 				CornerRadii radii = .();
 				var borderColor = Color.Transparent;
-				var borderWidth = 0.0f;
+				Thickness widths = .();
+				var sideWidths = false;
+				Color?[4] sides = .(); // top, right, bottom, left
 
 				while (parser.MatchComma())
 				{
@@ -107,17 +111,32 @@ static class DrawableFactoryRegistry
 						radii = parser.ParseCornerRadiiValue();
 					case "border-width":
 						parser.ConsumeKeywordArg();
-						borderWidth = parser.ParseFloatValue();
+						widths = parser.ParseThicknessValue();
+						sideWidths = (widths.Top != widths.Right) || (widths.Top != widths.Bottom)
+							|| (widths.Top != widths.Left);
 					case "border":
 						parser.ConsumeKeywordArg();
 						borderColor = parser.ParseColorArg();
+					case "border-top", "border-right", "border-bottom", "border-left":
+						let side = parser.PeekKeywordArg();
+						let index = (side == "border-top") ? 0 : (side == "border-right") ? 1 : (side == "border-bottom") ? 2 : 3;
+						parser.ConsumeKeywordArg();
+						sides[index] = parser.ParseColorArg();
 					default:
 						// A bare argument is the radius.
 						radii = parser.ParseCornerRadiiValue();
 					}
 				}
 
-				return new RoundedRectDrawable(fill, radii, borderColor, borderWidth);
+				let drawable = new RoundedRectDrawable(fill, radii, borderColor, widths.Top);
+				if (sideWidths)
+					drawable.SideWidths = BorderWidths(widths.Top, widths.Right, widths.Bottom, widths.Left);
+				if (sides[0].HasValue || sides[1].HasValue || sides[2].HasValue || sides[3].HasValue)
+				{
+					drawable.SideColors = BorderColors(sides[0] ?? borderColor, sides[1] ?? borderColor,
+						sides[2] ?? borderColor, sides[3] ?? borderColor);
+				}
+				return drawable;
 			});
 
 		// gradient(direction, color1, color2)
