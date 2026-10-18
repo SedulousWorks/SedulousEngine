@@ -83,6 +83,16 @@ enum StyleProperty
 	/// corner radius, under its own background (a Float, 0 for none).
 	BackdropFilter,
 
+	// ---- Text effects, the VG's TextEffects drawn under text ----
+	// A Shadow value each. They carry to what the view draws and its children, as CSS's
+	// text-shadow does, through the VG's state rather than the cascade; `none` turns one off.
+	/// `text-shadow: <x> <y> [blur] [color]`.
+	TextShadow,
+	/// `text-outline: <width> [color]`: the width rides as the shadow's spread.
+	TextOutline,
+	/// `text-glow: <radius> [color]`: the radius rides as the shadow's blur.
+	TextGlow,
+
 	/// How many properties there are, for sizing arrays. Not a property.
 	COUNT
 }

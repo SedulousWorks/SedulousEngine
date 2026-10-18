@@ -194,6 +194,28 @@ class RichText : View
 		MeasuredSize = .(constraints.ConstrainWidth(width), constraints.ConstrainHeight(height));
 	}
 
+	/// One run's glyphs, slanted when its italic is synthesized and twice when its bold is.
+	private void DrawRunGlyphs(UIDrawContext ctx, LaidOutGlyphs run, Color color)
+	{
+		let slanted = run.SyntheticItalic;
+		if (slanted)
+		{
+			// Lean the glyphs about their baseline: x moves right by a fifth of the height above
+			// it.
+			ctx.VG.PushState();
+			var lean = Float4x4.Identity();
+			let baseline = mDrawOffset.Y + run.Baseline;
+			lean[1, 0] = -0.2f;
+			lean[3, 0] = 0.2f * baseline;
+			ctx.VG.SetTransform(lean * ctx.VG.GetTransform());
+		}
+		ctx.VG.DrawPositionedGlyphs(run.Glyphs, run.Font, mDrawOffset.X, mDrawOffset.Y, color);
+		if (run.SyntheticBold && !ctx.VG.TextEffectsOnly) // effects once, under both strokes
+			ctx.VG.DrawPositionedGlyphs(run.Glyphs, run.Font, mDrawOffset.X + Max(0.5f, run.Size / 24.0f), mDrawOffset.Y, color);
+		if (slanted)
+			ctx.VG.PopState();
+	}
+
 	public override void OnDraw(UIDrawContext ctx)
 	{
 		if (ctx.FontService == null)
@@ -203,27 +225,25 @@ class RichText : View
 		mDrawOffset = .(0.0f, (v == .Middle) ? (Height - layout.Height) * 0.5f : ((v == .Bottom) ? Height - layout.Height : 0.0f));
 		let dim = !IsEffectivelyEnabled();
 		Color Tone(Color c) => dim ? Palette.ComputeDisabled(c) : c;
+		// Every run's effects (the view's, with what its markup sets in their place) go under every
+		// run's glyphs, so one run's outline or shadow never covers its neighbour.
+		let inherited = ctx.VG.TextEffects;
+		ctx.VG.PushState();
+		ctx.VG.SetTextEffectsOnly(true);
 		for (let run in layout.GlyphRuns)
 		{
-			let slanted = run.SyntheticItalic;
-			if (slanted)
-			{
-				// Lean the glyphs about their baseline: x moves right by a fifth of the height
-				// above it.
-				ctx.VG.PushState();
-				var lean = Float4x4.Identity();
-				let baseline = mDrawOffset.Y + run.Baseline;
-				lean[1, 0] = -0.2f;
-				lean[3, 0] = 0.2f * baseline;
-				ctx.VG.SetTransform(lean * ctx.VG.GetTransform());
-			}
-			ctx.VG.DrawPositionedGlyphs(run.Glyphs, run.Font, mDrawOffset.X, mDrawOffset.Y, Tone(run.Color));
-			if (run.SyntheticBold)
-				ctx.VG.DrawPositionedGlyphs(run.Glyphs, run.Font, mDrawOffset.X + Max(0.5f, run.Size / 24.0f), mDrawOffset.Y,
-					Tone(run.Color));
-			if (slanted)
-				ctx.VG.PopState();
+			let effects = mDocument.Runs[run.Run].EffectsOver(inherited);
+			if (!effects.Any)
+				continue;
+			ctx.VG.SetTextEffects(effects);
+			DrawRunGlyphs(ctx, run, Tone(run.Color));
 		}
+		ctx.VG.PopState();
+		ctx.VG.PushState();
+		ctx.VG.ClearTextEffects();
+		for (let run in layout.GlyphRuns)
+			DrawRunGlyphs(ctx, run, Tone(run.Color));
+		ctx.VG.PopState();
 		for (let underline in layout.Underlines)
 		{
 			let r = underline.Rect;

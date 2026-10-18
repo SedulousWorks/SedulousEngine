@@ -30,4 +30,9 @@ struct TextEffects
 	public bool HasShadow => (ShadowColor.A > 0.0f) && ((ShadowOffset.X != 0.0f) || (ShadowOffset.Y != 0.0f) || (ShadowBlur > 0.0f));
 	public bool HasGlow => (GlowRadius > 0.0f) && (GlowColor.A > 0.0f);
 	public bool Any => HasOutline || HasShadow || HasGlow;
+
+	public static bool operator==(TextEffects a, TextEffects b)
+		=> (a.OutlineWidth == b.OutlineWidth) && (a.OutlineColor == b.OutlineColor) && (a.ShadowOffset == b.ShadowOffset)
+			&& (a.ShadowBlur == b.ShadowBlur) && (a.ShadowColor == b.ShadowColor) && (a.GlowRadius == b.GlowRadius)
+			&& (a.GlowColor == b.GlowColor);
 }

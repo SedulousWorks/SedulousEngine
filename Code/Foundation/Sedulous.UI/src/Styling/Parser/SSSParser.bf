@@ -864,6 +864,8 @@ class SSSParser
 			return ParseTransitionValue();
 		if ((property == .Filter) || (property == .BackdropFilter))
 			return ParseFilterValue();
+		if ((property == .TextShadow) || (property == .TextOutline) || (property == .TextGlow))
+			return ParseTextEffectValue(property);
 
 		if (IsSizeSpecProperty(property) && (Peek().Kind == .Ident) && (Peek().Text != "calc"))
 		{
@@ -900,6 +902,51 @@ class SSSParser
 		let sigma = (Peek().Kind == .Number) ? Math.Max(0.0f, ParseFloatValue()) : 0.0f;
 		Expect(.RParen);
 		return .Float(sigma);
+	}
+
+	/// `text-shadow: <x> <y> [blur] [color]`, `text-outline: <width> [color]`, `text-glow: <radius>
+	/// [color]`, or `none`: a transparent Shadow, so it turns off what a parent set. The outline's
+	/// width is the shadow's spread and the glow's radius its blur.
+	private StyleValue ParseTextEffectValue(StyleProperty property)
+	{
+		BoxShadow effect = .();
+		switch (property)
+		{
+		case .TextGlow: effect.Color = .(1.0f, 1.0f, 1.0f, 1.0f);
+		case .TextOutline: effect.Color = .(0.0f, 0.0f, 0.0f, 1.0f);
+		default: effect.Color = .(0.0f, 0.0f, 0.0f, 0.5f);
+		}
+		if ((Peek().Kind == .Ident) && (Peek().Text == "none"))
+		{
+			Consume();
+			effect.Color = .(0.0f, 0.0f, 0.0f, 0.0f);
+			return .Shadow(effect);
+		}
+
+		float[3] lengths = .();
+		var count = 0;
+		while ((count < 3) && (Peek().Kind == .Number))
+		{
+			lengths[count] = ParseFloatValue();
+			count++;
+		}
+		let wanted = (property == .TextShadow) ? 2 : 1;
+		if ((count < wanted) || ((property != .TextShadow) && (count > 1)))
+			return .None;
+		switch (property)
+		{
+		case .TextShadow:
+			effect.OffsetX = lengths[0];
+			effect.OffsetY = lengths[1];
+			effect.Blur = (count > 2) ? Max(0.0f, lengths[2]) : 0.0f;
+		case .TextOutline:
+			effect.Spread = Max(0.0f, lengths[0]);
+		default:
+			effect.Blur = Max(0.0f, lengths[0]);
+		}
+		if ((Peek().Kind != .Semicolon) && (Peek().Kind != .RBrace))
+			effect.Color = ParseColorValue();
+		return .Shadow(effect);
 	}
 
 	/// `transition: none | <entry> {, <entry>}`, an entry being a property or `all`, a
@@ -1177,6 +1224,9 @@ class SSSParser
 		// Filters.
 		case "filter": return .Filter;
 		case "backdrop-filter": return .BackdropFilter;
+		case "text-shadow": return .TextShadow;
+		case "text-outline": return .TextOutline;
+		case "text-glow": return .TextGlow;
 
 		default: return null;
 		}

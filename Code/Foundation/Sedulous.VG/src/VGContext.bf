@@ -440,6 +440,10 @@ class VGContext
 	public void SetTextEffects(TextEffects effects) => mCurrentState.TextEffects = effects;
 	public void ClearTextEffects() => mCurrentState.TextEffects = .();
 	public TextEffects TextEffects => mCurrentState.TextEffects;
+	/// Text draws only its effects, not its glyphs: a paragraph of runs draws every run's effects
+	/// first and its glyphs after, so no run's outline or shadow covers a neighbour.
+	public void SetTextEffectsOnly(bool only) => mCurrentState.TextEffectsOnly = only;
+	public bool TextEffectsOnly => mCurrentState.TextEffectsOnly;
 
 	// === layers ===
 
@@ -1836,7 +1840,8 @@ class VGContext
 		if (distanceField && effects.HasOutline)
 			EmitGlyphPass(atlas, true, .Zero, ApplyOpacity(effects.OutlineColor), effects.OutlineWidth, 0.0f,
 				forEachQuad);
-		EmitGlyphPass(atlas, distanceField, .Zero, color, 0.0f, 0.0f, forEachQuad);
+		if (!mCurrentState.TextEffectsOnly)
+			EmitGlyphPass(atlas, distanceField, .Zero, color, 0.0f, 0.0f, forEachQuad);
 	}
 
 	private void EmitGlyphPass(IFontAtlas atlas, bool distanceField, Float2 offset, Color color, float shiftPixels,

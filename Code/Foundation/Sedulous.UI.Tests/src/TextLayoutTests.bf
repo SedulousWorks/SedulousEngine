@@ -295,4 +295,113 @@ class TextLayoutTests
 		Test.Assert(text.Document.Runs.Count == 1);
 		Test.Assert(text.Document.Runs[0].Italic);
 	}
+
+	/// How many glyph quads a batch drew in `color` (each quad's first corner).
+	private static int QuadsIn(VGBatch batch, Color color)
+	{
+		int count = 0;
+		for (int i = 0; (i + 3) < batch.Vertices.Count; i += 4)
+		{
+			let c = batch.Vertices[i].Color;
+			if (Near(c.R, color.R) && Near(c.G, color.G) && Near(c.B, color.B) && Near(c.A, color.A))
+				count++;
+		}
+		return count;
+	}
+
+	[Test]
+	public static void AnEffectOnOneRunDrawsUnderThatRunsGlyphsAndNotItsNeighbours()
+	{
+		let fonts = MakeRoboto();
+		if (fonts == null)
+			return;
+		defer delete fonts;
+		let context = scope UIContext();
+		context.SetFontService(fonts);
+		let root = new RootView();
+		defer root.ReleaseRef();
+		UITest.Init(context, root, 400, 300);
+		let text = new RichText("the [shadow=2 2 #0000ff]mask[/shadow] falls");
+		text.FontFamily.Value.Set("Roboto");
+		root.AddView(text);
+		UITest.LayoutPass(context, root);
+
+		let canvas = scope VGContext();
+		context.DrawRootView(root, canvas);
+		let batch = canvas.GetBatch();
+		// A shadow quad for each letter of "mask", none for "the" or "falls".
+		Test.Assert(QuadsIn(batch, .(0.0f, 0.0f, 1.0f, 1.0f)) == 4, scope $"{QuadsIn(batch, .(0.0f, 0.0f, 1.0f, 1.0f))} shadow quads");
+		// The shadows all come before the first glyph: no run's shadow covers a neighbour.
+		int lastShadow = 0;
+		int firstGlyph = batch.Vertices.Count;
+		for (int i = 0; (i + 3) < batch.Vertices.Count; i += 4)
+		{
+			let c = batch.Vertices[i].Color;
+			if ((c.B > 0.99f) && (c.R < 0.01f))
+				lastShadow = i;
+			else if (firstGlyph == batch.Vertices.Count)
+				firstGlyph = i;
+		}
+		Test.Assert(lastShadow < firstGlyph);
+		// And each letter's glyph drawn once: the effects pass draws no glyphs of its own.
+		let quads = batch.Vertices.Count / 4;
+		let glyphs = quads - QuadsIn(batch, .(0.0f, 0.0f, 1.0f, 1.0f));
+		Test.Assert(glyphs == 12, scope $"{glyphs} glyph quads for the 12 letters");
+	}
+
+	[Test]
+	public static void ASheetsTextShadowReachesTheViewsTextAndItsChildrensAndNoneTurnsItOff()
+	{
+		let fonts = MakeRoboto();
+		if (fonts == null)
+			return;
+		defer delete fonts;
+		let context = scope UIContext();
+		context.SetFontService(fonts);
+		StyleSheetLoader.InitializeGlobals();
+		let loader = scope StyleSheetLoader();
+		context.SetStyleSheet(loader.Load(".hud { text-shadow: 3 3 #ff00ff; } .quiet { text-shadow: none; }"));
+		let root = new RootView();
+		defer root.ReleaseRef();
+		UITest.Init(context, root, 400, 300);
+		let hud = new FlowLayout();
+		hud.AddClass("hud");
+		let loud = new Label("Score");
+		let quiet = new Label("Time");
+		quiet.AddClass("quiet");
+		hud.AddView(loud);
+		hud.AddView(quiet);
+		root.AddView(hud);
+		UITest.LayoutPass(context, root);
+
+		let canvas = scope VGContext();
+		context.DrawRootView(root, canvas);
+		// "Score" is shadowed through its parent's rule; "Time" turns it off.
+		let shadowed = QuadsIn(canvas.GetBatch(), .(1.0f, 0.0f, 1.0f, 1.0f));
+		Test.Assert(shadowed == 5, scope $"{shadowed} shadow quads");
+	}
+
+	[Test]
+	public static void TextShadowOutlineAndGlowParseAsShadows()
+	{
+		StyleSheetLoader.InitializeGlobals();
+		let loader = scope StyleSheetLoader();
+		let sheet = loader.Load("a { text-shadow: 1 2 3 #ff0000; } b { text-outline: 2; } c { text-glow: 6 #00ff00; } d { text-outline: none; }");
+		Test.Assert(sheet != null);
+		defer sheet.ReleaseRef();
+		Test.Assert(sheet.RuleCount == 4);
+		let shadow = sheet.GetRule(0).GetValue(.TextShadow).Value.AsShadow.Value;
+		Test.Assert(Near(shadow.OffsetX, 1.0f));
+		Test.Assert(Near(shadow.OffsetY, 2.0f));
+		Test.Assert(Near(shadow.Blur, 3.0f));
+		Test.Assert(Near(shadow.Color.R, 1.0f));
+		let outline = sheet.GetRule(1).GetValue(.TextOutline).Value.AsShadow.Value;
+		Test.Assert(Near(outline.Spread, 2.0f));
+		Test.Assert(Near(outline.Color.A, 1.0f), "opaque black by default");
+		let glow = sheet.GetRule(2).GetValue(.TextGlow).Value.AsShadow.Value;
+		Test.Assert(Near(glow.Blur, 6.0f));
+		Test.Assert(Near(glow.Color.G, 1.0f));
+		let none = sheet.GetRule(3).GetValue(.TextOutline).Value.AsShadow.Value;
+		Test.Assert(Near(none.Color.A, 0.0f));
+	}
 }

@@ -392,6 +392,7 @@ class ViewGroup : View
 			if (clips)
 				ctx.PushClip(.(0, 0, child.Width, child.Height));
 
+			ApplyTextEffects(ctx, child);
 			let previousBlend = ctx.SetBlend(child.CurrentDrawBlend());
 			child.OnDraw(ctx);
 			ctx.SetBlend(previousBlend);
@@ -415,6 +416,36 @@ class ViewGroup : View
 	/// One box shadow for a child, the context already translated to the child's origin: the
 	/// border box grown by the spread, moved by the offset, blurred, and rounded by the
 	/// child's own corner radius plus the spread, which is what CSS does.
+	/// The view's text-shadow, text-outline and text-glow onto the VG's text effects (the state
+	/// the child's draw pushed), so its text and its children's draw them; a property the view
+	/// leaves unset keeps what its parent set.
+	private static void ApplyTextEffects(UIDrawContext ctx, View child)
+	{
+		let shadow = child.ResolveStyle(.TextShadow).AsShadow;
+		let outline = child.ResolveStyle(.TextOutline).AsShadow;
+		let glow = child.ResolveStyle(.TextGlow).AsShadow;
+		if ((shadow == null) && (outline == null) && (glow == null))
+			return;
+		var effects = ctx.VG.TextEffects;
+		if (shadow != null)
+		{
+			effects.ShadowOffset = .(shadow.Value.OffsetX, shadow.Value.OffsetY);
+			effects.ShadowBlur = shadow.Value.Blur;
+			effects.ShadowColor = shadow.Value.Color;
+		}
+		if (outline != null)
+		{
+			effects.OutlineWidth = outline.Value.Spread;
+			effects.OutlineColor = outline.Value.Color;
+		}
+		if (glow != null)
+		{
+			effects.GlowRadius = glow.Value.Blur;
+			effects.GlowColor = glow.Value.Color;
+		}
+		ctx.VG.SetTextEffects(effects);
+	}
+
 	/// How many device pixels a unit is under `transform`, the larger axis: filter sigmas are
 	/// written in dp and drawn in device pixels.
 	private static float DeviceScale(Float4x4 transform)

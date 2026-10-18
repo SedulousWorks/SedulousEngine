@@ -1,8 +1,17 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.VG;
 
 namespace Sedulous.UI;
+
+/// The parts of TextEffects a run may set apart from each other.
+enum TextEffectPart : uint8
+{
+	Outline = 1,
+	Shadow = 2,
+	Glow = 4
+}
 
 /// One styled span of a rich text, or an inline icon.
 ///
@@ -20,8 +29,35 @@ class TextRun
 	public bool Underline;
 	/// A link id the control reports when the run is clicked; empty for none.
 	public String Link = new .() ~ delete _;
+	/// The effects the markup set, those parts named in EffectParts; the parts left out take
+	/// the control's.
+	public TextEffects Effects = .();
+	public TextEffectPart EffectParts;
 
 	public bool IsIcon => !Icon.IsEmpty;
+
+	/// `inherited` (the control's effects) with the parts this run sets in their place.
+	public TextEffects EffectsOver(TextEffects inherited)
+	{
+		var effects = inherited;
+		if (EffectParts.HasFlag(.Outline))
+		{
+			effects.OutlineWidth = Effects.OutlineWidth;
+			effects.OutlineColor = Effects.OutlineColor;
+		}
+		if (EffectParts.HasFlag(.Shadow))
+		{
+			effects.ShadowOffset = Effects.ShadowOffset;
+			effects.ShadowBlur = Effects.ShadowBlur;
+			effects.ShadowColor = Effects.ShadowColor;
+		}
+		if (EffectParts.HasFlag(.Glow))
+		{
+			effects.GlowRadius = Effects.GlowRadius;
+			effects.GlowColor = Effects.GlowColor;
+		}
+		return effects;
+	}
 
 	/// Same style and link, so two runs may merge.
 	public bool SameStyle(TextRun other)
@@ -29,7 +65,7 @@ class TextRun
 		return Icon.IsEmpty && other.Icon.IsEmpty && (StringView(Family) == StringView(other.Family))
 			&& ((Family == null) == (other.Family == null)) && (Size == other.Size) && SameColor(Color, other.Color)
 			&& (Bold == other.Bold) && (Italic == other.Italic) && (Underline == other.Underline)
-			&& (Link == other.Link);
+			&& (Link == other.Link) && (EffectParts == other.EffectParts) && (Effects == other.Effects);
 	}
 
 	/// A copy of the style, with no text or icon.
@@ -44,6 +80,8 @@ class TextRun
 		copy.Italic = Italic;
 		copy.Underline = Underline;
 		copy.Link.Set(Link);
+		copy.Effects = Effects;
+		copy.EffectParts = EffectParts;
 		return copy;
 	}
 
@@ -96,8 +134,10 @@ class TextDocument
 /// `Your mark wears [color=#d04060][b]a rose gown[/b][/color] [icon=Icons/rose.png] [link=hint]?[/link]`
 ///
 /// Tags: [b] bold, [i] italic, [u] underline, [color=#rrggbb | #rrggbbaa | name], [size=<dp>],
-/// [font=<family>], [link=<id>] (a span the control reports when clicked), each closed by [/name]
-/// or [/] (the innermost); [icon=<image path>] stands alone. "[[" is a literal "[". A tag that is
+/// [font=<family>], [link=<id>] (a span the control reports when clicked), [outline=<width>
+/// [colour]], [shadow=<x> <y> [blur] [colour]], [glow=<radius> [colour]] (text effects, drawn under
+/// the span's glyphs; a width or radius of 0 turns one off), each closed by [/name] or [/] (the
+/// innermost); [icon=<image path>] stands alone. "[[" is a literal "[". A tag that is
 /// malformed or unknown, or a close that matches nothing, is kept as text and reported in the
 /// diagnostics, never dropped. Adjacent runs of one style merge.
 static class TextMarkup
@@ -245,6 +285,17 @@ class TextMarkupParser
 				return Reject(at, "[link=] takes an id");
 			}
 			style.Link.Set(value);
+		case "outline", "shadow", "glow":
+			if (!ApplyEffect(name, value, style))
+			{
+				delete style;
+				switch (name)
+				{
+				case "outline": return Reject(at, "[outline=] takes a width and a colour");
+				case "shadow": return Reject(at, "[shadow=] takes x and y offsets, a blur and a colour");
+				default: return Reject(at, "[glow=] takes a radius and a colour");
+				}
+			}
 		case "icon":
 			if (value.IsEmpty)
 			{
@@ -322,6 +373,54 @@ class TextMarkupParser
 			mDocument.Runs.Add(run);
 		}
 		mText.Clear();
+	}
+
+	/// An effect tag's value: numbers then an optional colour, space separated ([outline=2 #000],
+	/// [shadow=2 2 3 black], [glow=6 yellow]).
+	private bool ApplyEffect(StringView name, StringView value, TextRun style)
+	{
+		float[3] numbers = default;
+		int count = 0;
+		Color? color = null;
+		for (let token in value.Split(' ', .RemoveEmptyEntries))
+		{
+			if (color.HasValue)
+				return false; // the colour comes last
+			if (float.Parse(token) case .Ok(let number))
+			{
+				if (count == 3)
+					return false;
+				numbers[count++] = number;
+				continue;
+			}
+			color = ParseColor(token);
+			if (!color.HasValue)
+				return false;
+		}
+
+		switch (name)
+		{
+		case "outline":
+			if ((count != 1) || (numbers[0] < 0.0f))
+				return false;
+			style.Effects.OutlineWidth = numbers[0];
+			style.Effects.OutlineColor = color ?? .(0.0f, 0.0f, 0.0f, 1.0f);
+			style.EffectParts |= .Outline;
+		case "shadow":
+			if ((count < 2) || ((count == 3) && (numbers[2] < 0.0f)))
+				return false;
+			style.Effects.ShadowOffset = .(numbers[0], numbers[1]);
+			style.Effects.ShadowBlur = (count == 3) ? numbers[2] : 0.0f;
+			style.Effects.ShadowColor = color ?? .(0.0f, 0.0f, 0.0f, 0.5f);
+			style.EffectParts |= .Shadow;
+		default:
+			if ((count != 1) || (numbers[0] < 0.0f))
+				return false;
+			style.Effects.GlowRadius = numbers[0];
+			style.Effects.GlowColor = color ?? .(1.0f, 1.0f, 1.0f, 1.0f);
+			style.EffectParts |= .Glow;
+		}
+		return true;
 	}
 
 	private Color? ParseColor(StringView value)

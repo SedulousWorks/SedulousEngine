@@ -1,6 +1,7 @@
 using System;
 using Sedulous.Core;
 using Sedulous.UI;
+using Sedulous.VG;
 
 namespace Sedulous.UI.Tests;
 
@@ -127,5 +128,66 @@ class TextRunsTests
 		Test.Assert(document.Runs[2].Color.HasValue, "a named CSS colour without the resolver's help");
 		Test.Assert(Near(document.Runs[2].Color.Value.R, 1.0f));
 		Test.Assert(document.Diagnostics.Count == 1, "[/color] closing the [b] inside it");
+	}
+
+	[Test]
+	public static void OutlineShadowAndGlowTagsSetTheirPartOfARunsEffects()
+	{
+		let document = TextMarkup.Parse("[outline=2 #102030]Hunt[shadow=1 2 3 red] the[/shadow][/outline] [glow=6]mask[/glow] [shadow=4 5]free[/]");
+		defer delete document;
+		Test.Assert(document.Diagnostics.IsEmpty);
+		Test.Assert(document.Runs.Count == 6, scope $"{document.Runs.Count} runs");
+		// An outline alone, its colour as written.
+		Test.Assert(document.Runs[0].EffectParts == .Outline);
+		Test.Assert(Near(document.Runs[0].Effects.OutlineWidth, 2.0f));
+		Test.Assert(Near(document.Runs[0].Effects.OutlineColor.G, 0x20 / 255.0f));
+		// A shadow inside it: both parts.
+		Test.Assert(document.Runs[1].EffectParts == (.Outline | .Shadow));
+		Test.Assert(Near(document.Runs[1].Effects.ShadowOffset.X, 1.0f));
+		Test.Assert(Near(document.Runs[1].Effects.ShadowOffset.Y, 2.0f));
+		Test.Assert(Near(document.Runs[1].Effects.ShadowBlur, 3.0f));
+		Test.Assert(Near(document.Runs[1].Effects.ShadowColor.R, 1.0f));
+		Test.Assert(document.Runs[2].EffectParts == 0, "the space after both closed");
+		// A glow takes white without a colour, a shadow half black and no blur.
+		Test.Assert(document.Runs[3].EffectParts == .Glow);
+		Test.Assert(Near(document.Runs[3].Effects.GlowRadius, 6.0f));
+		Test.Assert(Near(document.Runs[3].Effects.GlowColor.R, 1.0f));
+		Test.Assert(Near(document.Runs[5].Effects.ShadowBlur, 0.0f));
+		Test.Assert(Near(document.Runs[5].Effects.ShadowColor.A, 0.5f));
+	}
+
+	[Test]
+	public static void ARunsEffectsTakeTheControlsForThePartsItLeavesOut()
+	{
+		let document = TextMarkup.Parse("[outline=0]plain[/] [glow=3 yellow]bright");
+		defer delete document;
+		Test.Assert(document.Runs.Count == 3);
+		var control = TextEffects();
+		control.OutlineWidth = 1.0f;
+		control.ShadowColor = .(0.0f, 0.0f, 0.0f, 1.0f);
+		control.ShadowOffset = .(2.0f, 2.0f);
+		// [outline=0] turns the control's outline off and keeps its shadow.
+		let plain = document.Runs[0].EffectsOver(control);
+		Test.Assert(!plain.HasOutline);
+		Test.Assert(plain.HasShadow);
+		// An unmarked run is the control's.
+		Test.Assert(document.Runs[1].EffectsOver(control) == control);
+		let bright = document.Runs[2].EffectsOver(control);
+		Test.Assert(bright.HasOutline);
+		Test.Assert(bright.HasGlow);
+		Test.Assert(Near(bright.GlowRadius, 3.0f));
+	}
+
+	[Test]
+	public static void MalformedEffectTagsAreReportedAndKeptAsText()
+	{
+		// A width without a number, a shadow with one offset, a glow with two radii, a colour not last.
+		let source = "[outline=red]a [shadow=2]b [glow=1 2]c [outline=#fff 1]d";
+		let document = TextMarkup.Parse(source);
+		defer delete document;
+		Test.Assert(Plain(document, .. scope .()) == source);
+		Test.Assert(document.Diagnostics.Count == 4, scope $"{document.Diagnostics.Count} diagnostics");
+		for (let run in document.Runs)
+			Test.Assert(run.EffectParts == 0);
 	}
 }

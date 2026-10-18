@@ -15,6 +15,8 @@ struct VGState
 	public int32 StencilRef = 0;
 	/// Drawn under every text draw (VGContext.SetTextEffects).
 	public TextEffects TextEffects = .();
+	/// Text draws its effects and not its glyphs (VGContext.SetTextEffectsOnly).
+	public bool TextEffectsOnly = false;
 
 	public this() {}
 }
