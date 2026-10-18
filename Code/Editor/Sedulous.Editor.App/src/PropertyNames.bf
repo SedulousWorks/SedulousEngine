@@ -1,7 +1,9 @@
 using System;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.App;
 
+/// A row's label from its reflected property's name, as the scene inspector and the asset
+/// pages write it.
 static class PropertyNames
 {
 	/// "castsShadows" to "Casts Shadows", "fovYRadians" to "Fov Y Radians", "IBL" stays.

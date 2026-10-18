@@ -4,6 +4,7 @@ using System.Reflection;
 using Sedulous.Core;
 using Sedulous.Resource;
 using Sedulous.Scene;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 
