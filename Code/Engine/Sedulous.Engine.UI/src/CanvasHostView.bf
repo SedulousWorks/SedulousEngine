@@ -60,8 +60,11 @@ class CanvasHostView : ViewGroup
 		{
 			// The standard rule: scaled uniformly to the smaller fit, letterboxed, centred.
 			scale = Math.Min(width / inner.X, height / inner.Y);
-			offsetX = (width - inner.X * scale) * 0.5f;
-			offsetY = (height - inner.Y * scale) * 0.5f;
+			// Centred on a whole device pixel, so the document's own rounding lands its boxes
+			// on the device grid.
+			let device = DeviceUnitScale();
+			offsetX = Math.Round((width - inner.X * scale) * 0.5f * device) / device;
+			offsetY = Math.Round((height - inner.Y * scale) * 0.5f * device) / device;
 		}
 
 		for (int i < ChildCount)
@@ -70,11 +73,12 @@ class CanvasHostView : ViewGroup
 			if (child.Visibility == .Gone)
 				continue;
 
-			child.Layout(offsetX, offsetY, inner.X, inner.Y);
 			// Scaled about the TOP LEFT, so the drawn rectangle is the offset plus the scaled
-			// content, and hit testing undoes exactly the same transform.
+			// content, and hit testing undoes exactly the same transform. Set before the
+			// layout, which rounds the document's boxes to device pixels at that scale.
 			child.Transform.Scale = .(scale, scale);
 			child.Transform.Origin = .(0.0f, 0.0f);
+			child.Layout(offsetX, offsetY, inner.X, inner.Y);
 		}
 	}
 

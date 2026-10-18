@@ -63,6 +63,22 @@ class UICanvasScalerTests
 		let bar = root.HitTest(.(50.0f, 30.0f));
 		Test.Assert((bar == null) || (bar == root));
 
+		// Where the letterbox falls between pixels it is centred on a whole one, so the
+		// document's boxes, rounded at its scale, land on the device grid: at 1000 by 700 the
+		// scale is 0.625 and the bars (700 - 562.5) / 2 = 68.75 high, so the document starts
+		// at 69.
+		root.ViewportSize = .(1000.0f, 700.0f);
+		fixture.UI.UiContext.UpdateRootView(root);
+		Test.Assert(Near(canvas.Root.Transform.Scale.X, 0.625f));
+		Test.Assert(Near(canvas.Root.Bounds.Y, 69.0f));
+		let button = root.FindByName("btn");
+		Test.Assert(button != null);
+		Test.Assert(Near(button.DeviceUnitScale(), 0.625f));
+		let deviceRight = (button.Bounds.X + button.Bounds.Width) * 0.625f;
+		Test.Assert(Near(deviceRight, Math.Round(deviceRight)), scope $"{deviceRight}");
+		root.ViewportSize = .(800.0f, 600.0f);
+		fixture.UI.UiContext.UpdateRootView(root);
+
 		// Switching back to ConstantPixel restores a one to one layout on the next sync.
 		canvas.ScalerMode = .ConstantPixel;
 		fixture.Frame();

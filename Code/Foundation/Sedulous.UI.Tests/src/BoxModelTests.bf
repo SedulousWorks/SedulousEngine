@@ -425,6 +425,36 @@ class BoxModelTests
 		Test.Assert(order == "grcb", order);
 	}
 
+	/// A box under a scaled view rounds to the device pixels it is drawn on: at a scale of 0.5,
+	/// a box at 3 layout units would sit at 1.5 device pixels, so it rounds to 4 (2 device
+	/// pixels) and the top at 5 (2.5) to 6, its far edges too. Unscaled, the DPI's grid alone.
+	[Test]
+	public static void ABoxUnderAScaledViewRoundsToTheDevicePixelsItIsDrawnOn()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		let canvas = new FrameLayout();
+		canvas.Transform.Scale = .(0.5f, 0.5f);
+		canvas.Transform.Origin = .(0.0f, 0.0f);
+		let child = new TestView(21, 11);
+		var placed = LayoutStyle();
+		placed.Margin = .(Thickness(3, 5, 0, 0), true);
+		child.SetLayout(placed);
+		canvas.AddView(child);
+		root.AddView(canvas);
+		UITest.LayoutPass(context, root);
+		Test.Assert(Near(child.Bounds.X, 4.0f) && Near(child.Bounds.Y, 6.0f));
+		// 5 + 11 = 16 is 8 device pixels and 3 + 21 = 24 is 12, so the box keeps its far edges.
+		Test.Assert(Near(child.Bounds.X + child.Bounds.Width, 24.0f));
+		Test.Assert(Near(child.Bounds.Y + child.Bounds.Height, 16.0f));
+		Test.Assert(Near(child.DeviceUnitScale(), 0.5f));
+
+		canvas.Transform.Scale = .(1.0f, 1.0f);
+		child.Invalidate();
+		UITest.LayoutPass(context, root);
+		Test.Assert(Near(child.Bounds.X, 3.0f));
+	}
+
 	/// The shorthand takes its parts in any workable order: `inset` may lead or trail, the blur
 	/// and spread are optional, and a missing colour falls back to the default shadow.
 	[Test]

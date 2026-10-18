@@ -418,8 +418,9 @@ extension View
 	///
 	/// The border box is then ROUNDED to the device grid, EDGE by edge: x and x plus width
 	/// each snap and the width is the difference between the snapped edges. Rounding the
-	/// width directly would leave gaps between adjacent boxes. Rounding on the local grid
-	/// composes to the global one because every ancestor rounds too.
+	/// width directly would leave gaps between adjacent boxes. Rounding on the local grid, at
+	/// the scale the box is drawn at, composes to the global one because every ancestor rounds
+	/// too.
 	public void Layout(float x, float y, float width, float height)
 	{
 		// The parent lays this view out by its last answer; when that came from the measure
@@ -433,8 +434,10 @@ extension View
 		var boxWidth = Max(0.0f, width - margin.TotalHorizontal);
 		var boxHeight = Max(0.0f, height - margin.TotalVertical);
 
-		let root = Root();
-		let dpi = Max(RootDpiScale(root), 0.01f);
+		// Rounded to device pixels at the scale this box is drawn at: the root's DPI, times the
+		// uniform scales of the views above it (a game canvas scaled to its reference
+		// resolution), so a border at a scale of 0.48 lands on whole pixels too.
+		let dpi = DeviceUnitScale();
 
 		let right = Round((left + boxWidth) * dpi) / dpi;
 		let bottom = Round((top + boxHeight) * dpi) / dpi;

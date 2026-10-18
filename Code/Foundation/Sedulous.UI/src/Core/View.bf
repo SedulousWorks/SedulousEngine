@@ -187,6 +187,23 @@ class View : RefCounted, IPropertyOwner
 	/// something to paper over silently everywhere.
 	protected static float RootDpiScale(RootView root) => (root != null) ? root.DpiScale : 1.0f;
 
+	/// Device pixels per layout unit where this view's box is drawn: the root's DPI times the
+	/// uniform scales of the views above it. Layout rounds the box to this grid.
+	public float DeviceUnitScale()
+	{
+		var scale = 1.0f;
+		View top = this;
+		for (var above = Parent; above != null; above = above.Parent)
+		{
+			let transform = above.Transform;
+			// A rotation or an uneven scale has no one grid to round to: those keep the DPI's.
+			if ((transform.Rotation == 0.0f) && (transform.Scale.X == transform.Scale.Y) && (transform.Scale.X > 0.0f))
+				scale *= transform.Scale.X;
+			top = above;
+		}
+		return Math.Max(RootDpiScale(top as RootView) * scale, 0.01f);
+	}
+
 	/// The inverse of LocalToScreen, applied from the root down.
 	public Float2 ScreenToLocal(Float2 screen) =>
 		ParentToLocal((Parent != null) ? Parent.ScreenToLocal(screen) : screen);
