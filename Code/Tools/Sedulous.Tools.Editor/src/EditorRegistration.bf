@@ -13,6 +13,7 @@ using Sedulous.Editor.Materials;
 using Sedulous.Editor.Geometry;
 using Sedulous.Editor.Particles;
 using Sedulous.Editor.Render;
+using Sedulous.Editor.Play;
 using Sedulous.Editor.Input;
 using Sedulous.Editor.Navigation;
 using Sedulous.Editor.PropertyAnimation;
@@ -54,7 +55,8 @@ static class EditorRegistration
 		// backend and its cook, which the script editor's creators enumerate.
 		PipelineRegistration.RegisterPipelineTypes();
 
-		SceneEditor.Register(context, host, uiHost, app.EmbeddedApplication);
+		SceneEditor.Register(context, host, uiHost);
+		PlayInEditor.Register(context, host, uiHost, app.EmbeddedApplication);
 		MaterialEditor.Register(context, host, uiHost);
 		// A custom shader's page; its checks compile against the engine's shader library.
 		ShaderEditor.Register(context, host, uiHost, DataPath(app.DataRoot, "Shaders", .. scope .()));

@@ -11,8 +11,9 @@ using Sedulous.Input;
 using Sedulous.Script;
 using Sedulous.Engine.Script;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Scene;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Play;
 
 /// pie_run, the playtest primitive: one call plays a device-level input timeline into one
 /// running PIE instance for a stretch of run time, and answers what happened: probe samples
@@ -681,7 +682,7 @@ static class PieRunTool
 				outError.AppendF("the game script of PIE instance '{}' has no property '{}' (or no script runs)", pie.PieId, probe.Script);
 				return null;
 			}
-			return ScriptJson(value, pie.RunningScene);
+			return ComponentJson.ScriptJson(value, pie.RunningScene);
 		}
 		let scene = pie.RunningScene;
 		if (scene == null)
@@ -689,24 +690,13 @@ static class PieRunTool
 			outError.AppendF("PIE instance '{}' has no scene", pie.PieId);
 			return null;
 		}
-		let handle = FindEntity(scene, probe.Entity);
+		let handle = ComponentJson.FindEntity(scene, probe.Entity);
 		if (!scene.IsValid(handle))
 		{
 			outError.AppendF("no entity '{}' in PIE instance '{}''s scene '{}'", probe.Entity, pie.PieId, scene.Name);
 			return null;
 		}
 		return FieldValue(scene, handle, probe.Entity, probe.Field, outError);
-	}
-
-	/// An entity by guid, slash path or name; invalid when none.
-	public static EntityHandle FindEntity(Sedulous.Scene.Scene scene, StringView text)
-	{
-		Guid id;
-		if (Guid.Parse(text) case .Ok(out id))
-			return scene.FindEntity(id);
-		if (text.Contains('/'))
-			return scene.FindEntityByPath(text);
-		return scene.FindEntityByName(text);
 	}
 
 	/// A field path's value, OWNED: the transform names, then `<component>.<property>` (the
@@ -828,35 +818,9 @@ static class PieRunTool
 			var value = ScriptValue.Nil;
 			if (!runtime.GetProperty(behavior.Instance, field, ref value))
 				return false;
-			outValue = ScriptJson(value, scene);
+			outValue = ComponentJson.ScriptJson(value, scene);
 			return true;
 		}
 		return false;
-	}
-
-	/// A game script value as JSON, OWNED.
-	public static JsonValue ScriptJson(ScriptValue value, Sedulous.Scene.Scene scene)
-	{
-		switch (value.Kind)
-		{
-		case .Bool: return JsonValue.MakeBool(value.AsBool);
-		case .Int: return JsonValue.MakeNumber((double)value.AsInt);
-		case .Float: return JsonValue.MakeNumber(value.AsFloat);
-		case .String: return JsonValue.MakeString(value.AsString);
-		case .Guid: return ComponentJson.GuidJson(value.AsGuid);
-		case .Float2: var v2 = value.AsFloat2; return ComponentJson.ValueJson(typeof(Float2), &v2);
-		case .Float3: var v3 = value.AsFloat3; return ComponentJson.ValueJson(typeof(Float3), &v3);
-		case .Float4: var v4 = value.AsFloat4; return ComponentJson.ValueJson(typeof(Float4), &v4);
-		case .Quaternion: var q = value.AsQuaternion; return ComponentJson.ValueJson(typeof(Quaternion), &q);
-		case .Color: var c = value.AsColor; return ComponentJson.ValueJson(typeof(Color), &c);
-		case .Entity:
-			let owner = (value.AsEntityScene != null) ? value.AsEntityScene : scene;
-			if ((owner == null) || !owner.IsValid(value.AsEntity))
-				return JsonValue.MakeNull();
-			return ComponentJson.GuidJson(owner.GetEntityId(value.AsEntity));
-		case .Nil: return JsonValue.MakeNull();
-		default:
-			return JsonValue.MakeString(scope $"<{value.Kind}>");
-		}
 	}
 }

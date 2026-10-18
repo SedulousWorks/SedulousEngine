@@ -39,7 +39,7 @@ static class SceneLoading
 		}
 		if ((scene.PendingPrefabInstanceCount > 0) && (context.Project != null))
 		{
-			let resolver = GameEditorPage.ProjectPrefabResolver(context);
+			let resolver = ProjectPrefabResolver(context);
 			defer delete resolver;
 			ScenePrefabs.ResolveScenePrefabs(scene, resolver);
 			if (resources != null)
@@ -66,5 +66,17 @@ static class SceneLoading
 			});
 		outBounds = bounds;
 		return any;
+	}
+
+	/// A prefab payload resolver over the project's source database. The caller owns it.
+	public static ScenePrefabs.PayloadResolver ProjectPrefabResolver(EditorContext context)
+	{
+		return new [=context](prefabId) =>
+		{
+			if (context.Project == null)
+				return null;
+			let prefab = context.Project.SourceDb.GetInstance(prefabId);
+			return (prefab != null) ? prefab.ReadData("scene") : null;
+		};
 	}
 }

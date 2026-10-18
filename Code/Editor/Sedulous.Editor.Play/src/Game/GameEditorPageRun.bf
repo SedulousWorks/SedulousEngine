@@ -14,8 +14,9 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.Project;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Scene;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Play;
 
 /// Starting and stopping a run: the default scene into the instance, the startup script,
 /// the input map and bus layout, and following the scene the script switches to.
@@ -67,7 +68,7 @@ extension GameEditorPage
 				SceneResolve.ResolveSceneResources(startScene, mContext.Resources);
 			if (startScene.PendingPrefabInstanceCount > 0)
 			{
-				let resolver = ProjectPrefabResolver(mContext);
+				let resolver = SceneLoading.ProjectPrefabResolver(mContext);
 				defer delete resolver;
 				ScenePrefabs.ResolveScenePrefabs(startScene, resolver);
 				if (mContext.Resources != null)
@@ -280,17 +281,5 @@ extension GameEditorPage
 		}
 		if ((mGameInstance == null) || !mGameInstance.StartScript(scriptClass))
 			mContext.Notify(.Error, "Game: startup script failed to start (see Console).");
-	}
-
-	/// A prefab payload resolver over the project's source database. The caller owns it.
-	public static ScenePrefabs.PayloadResolver ProjectPrefabResolver(EditorContext context)
-	{
-		return new [=context](prefabId) =>
-		{
-			if (context.Project == null)
-				return null;
-			let prefab = context.Project.SourceDb.GetInstance(prefabId);
-			return (prefab != null) ? prefab.ReadData("scene") : null;
-		};
 	}
 }

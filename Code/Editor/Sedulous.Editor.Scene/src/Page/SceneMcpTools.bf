@@ -788,7 +788,7 @@ static class SceneMcpTools
 						var id = Guid();
 						if (!(Guid.Parse(text) case .Ok(out id)))
 						{
-							let found = PieRunTool.FindEntity(edit.Scene, text);
+							let found = ComponentJson.FindEntity(edit.Scene, text);
 							if (!edit.Scene.IsValid(found))
 							{
 								outError.AppendF("no entity '{}' in page '{}' (a guid, a name or a slash path; scene_read shows the scene's entities)", text, page.Title);
@@ -952,7 +952,7 @@ static class SceneMcpTools
 			outError.Append("pass `entity` (a guid, a name or a slash path): a running game has no selection");
 			return false;
 		}
-		let handle = PieRunTool.FindEntity(scene, entityArg.AsString());
+		let handle = ComponentJson.FindEntity(scene, entityArg.AsString());
 		if (!scene.IsValid(handle))
 		{
 			outError.AppendF("no entity '{}' in PIE instance '{}''s scene '{}'", entityArg.AsString(), pie.PieId, scene.Name);
@@ -974,7 +974,7 @@ static class SceneMcpTools
 			let text = entityArg.AsString();
 			if (!(Guid.Parse(text) case .Ok(out outId)))
 			{
-				let named = PieRunTool.FindEntity(edit.Scene, text);
+				let named = ComponentJson.FindEntity(edit.Scene, text);
 				if (!edit.Scene.IsValid(named))
 				{
 					outError.AppendF("no entity '{}' in page '{}' (a guid, a name or a slash path; scene_read shows the scene's entities)", text, page.Title);
@@ -1102,7 +1102,7 @@ static class SceneMcpTools
 					{
 						var value = Sedulous.Script.ScriptValue.Nil;
 						if (runtime.GetProperty(behavior.Instance, desc.Name, ref value))
-							live.Set(desc.Name, PieRunTool.ScriptJson(value, scene));
+							live.Set(desc.Name, ComponentJson.ScriptJson(value, scene));
 					}
 					json.Set("live", live);
 				}

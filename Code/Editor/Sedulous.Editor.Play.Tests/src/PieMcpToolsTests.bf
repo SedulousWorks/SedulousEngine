@@ -7,8 +7,9 @@ using Sedulous.Editor.Core;
 using Sedulous.Input;
 using Sedulous.Script;
 using Sedulous.Shell;
+using Sedulous.Editor.Scene;
 
-namespace Sedulous.Editor.Scene.Tests;
+namespace Sedulous.Editor.Play.Tests;
 
 /// The PIE tools over a real EditorContext whose Game tabs are headless IPieInstancePage
 /// pages, opened by stand-ins for the editor's game.play and game.playNewInstance actions:

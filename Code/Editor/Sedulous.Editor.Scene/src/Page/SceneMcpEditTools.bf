@@ -436,7 +436,7 @@ static class SceneMcpEditTools
 	private static bool FindEntity(SceneEditContext edit, StringView text, String outError, out Guid outId)
 	{
 		outId = .();
-		let handle = PieRunTool.FindEntity(edit.Scene, text);
+		let handle = ComponentJson.FindEntity(edit.Scene, text);
 		if (!edit.Scene.IsValid(handle))
 		{
 			outError.AppendF("no entity '{}' in scene '{}'", text, edit.Scene.Name);

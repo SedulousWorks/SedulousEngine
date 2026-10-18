@@ -1,6 +1,6 @@
 using Sedulous.Script;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Play;
 
 /// The debugger's state changes, parked until the page drains them on its update.
 class GameDebugListener : IScriptDebuggerListener

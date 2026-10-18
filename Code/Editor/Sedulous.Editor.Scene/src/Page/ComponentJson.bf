@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Json;
 using Sedulous.Resource;
 using Sedulous.Scene;
+using Sedulous.Script;
 
 namespace Sedulous.Editor.Scene;
 
@@ -282,5 +283,42 @@ static class ComponentJson
 			outValues[i] = (float)item.AsNumber();
 		}
 		return true;
+	}
+
+	/// An entity by guid, slash path or name; invalid when none.
+	public static EntityHandle FindEntity(Sedulous.Scene.Scene scene, StringView text)
+	{
+		Guid id;
+		if (Guid.Parse(text) case .Ok(out id))
+			return scene.FindEntity(id);
+		if (text.Contains('/'))
+			return scene.FindEntityByPath(text);
+		return scene.FindEntityByName(text);
+	}
+
+	/// A game script value as JSON, OWNED.
+	public static JsonValue ScriptJson(ScriptValue value, Sedulous.Scene.Scene scene)
+	{
+		switch (value.Kind)
+		{
+		case .Bool: return JsonValue.MakeBool(value.AsBool);
+		case .Int: return JsonValue.MakeNumber((double)value.AsInt);
+		case .Float: return JsonValue.MakeNumber(value.AsFloat);
+		case .String: return JsonValue.MakeString(value.AsString);
+		case .Guid: return ComponentJson.GuidJson(value.AsGuid);
+		case .Float2: var v2 = value.AsFloat2; return ComponentJson.ValueJson(typeof(Float2), &v2);
+		case .Float3: var v3 = value.AsFloat3; return ComponentJson.ValueJson(typeof(Float3), &v3);
+		case .Float4: var v4 = value.AsFloat4; return ComponentJson.ValueJson(typeof(Float4), &v4);
+		case .Quaternion: var q = value.AsQuaternion; return ComponentJson.ValueJson(typeof(Quaternion), &q);
+		case .Color: var c = value.AsColor; return ComponentJson.ValueJson(typeof(Color), &c);
+		case .Entity:
+			let owner = (value.AsEntityScene != null) ? value.AsEntityScene : scene;
+			if ((owner == null) || !owner.IsValid(value.AsEntity))
+				return JsonValue.MakeNull();
+			return ComponentJson.GuidJson(owner.GetEntityId(value.AsEntity));
+		case .Nil: return JsonValue.MakeNull();
+		default:
+			return JsonValue.MakeString(scope $"<{value.Kind}>");
+		}
 	}
 }

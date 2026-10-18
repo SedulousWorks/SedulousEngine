@@ -9,7 +9,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Engine.Project;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Play;
 
 /// The Game tab's resolution choice, per project: a section of the project's editor store.
 [Serializable(1)]

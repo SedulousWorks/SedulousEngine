@@ -5,8 +5,9 @@ using Sedulous.Core.IO;
 using Sedulous.Json;
 using Sedulous.Mcp;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Scene;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Play;
 
 /// The play-in-editor tools the editor's MCP host serves through the scene editor's tool
 /// contribution: pie_start, pie_stop, pie_state, pie_list, pie_resolution, pie_screenshot and

@@ -3,7 +3,7 @@ using Sedulous.Shell;
 using Sedulous.Input;
 using Sedulous.UI.Viewport;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Play;
 
 /// The game's input, read through the viewport's surface so the run only sees the mouse and
 /// keyboard while the viewport has them, and the event stream only while it is focused.

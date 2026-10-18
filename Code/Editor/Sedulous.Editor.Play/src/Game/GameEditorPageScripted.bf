@@ -2,7 +2,7 @@ using System;
 using Sedulous.Input;
 using Sedulous.Script;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Play;
 
 /// Scripted input (pie_run): a timeline source in place of the viewport's, on this tab's game
 /// instance and, while this tab holds it, the input subsystem, so the other tabs keep their

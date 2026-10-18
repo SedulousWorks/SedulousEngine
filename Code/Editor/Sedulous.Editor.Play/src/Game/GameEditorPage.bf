@@ -20,8 +20,9 @@ using Sedulous.UI.Runtime;
 using Sedulous.UI.Viewport;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
+using Sedulous.Editor.Scene;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Play;
 
 /// The Game tab: plays the project's default scene through its OWN game instance, with the
 /// startup script, the default input map and bus layout, a play/pause/stop/restart toolbar,

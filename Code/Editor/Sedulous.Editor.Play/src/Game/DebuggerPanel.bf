@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Script;
 using Sedulous.UI;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Play;
 
 /// The Game tab's script debugger strip: continue, step and break, the state line, the call
 /// stack, and the locals with expandable objects. The debugger is borrowed from the run

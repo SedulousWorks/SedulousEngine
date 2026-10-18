@@ -5,7 +5,7 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Engine.Project;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Play;
 
 /// One entry of the Game tab's resolution dropdown.
 class GameResolutionChoice

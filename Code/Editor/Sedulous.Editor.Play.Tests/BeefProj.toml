@@ -1,0 +1,23 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.Play.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.Play.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Settings" = "*"
+"Sedulous.Xml" = "*"
+"Sedulous.Json" = "*"
+"Sedulous.Mcp" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Input" = "*"
+"Sedulous.Script" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Engine.Project" = "*"
+"Sedulous.Editor.Project" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Scene" = "*"
+"Sedulous.Editor.Play" = "*"

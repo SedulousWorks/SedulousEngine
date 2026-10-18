@@ -4,7 +4,7 @@ using Sedulous.Core;
 using Sedulous.Script;
 using Sedulous.Editor.Core;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Play;
 
 /// The debugger wiring: the run's debugger takes the editor's breakpoints and the listener,
 /// a break freezes the simulation and shows the execution point, and the editor's hover

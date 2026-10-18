@@ -3,8 +3,9 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Input;
 using Sedulous.Script;
+using Sedulous.Editor.Scene;
 
-namespace Sedulous.Editor.Scene;
+namespace Sedulous.Editor.Play;
 
 /// Where a PIE instance's startup script stands.
 enum PieScriptState

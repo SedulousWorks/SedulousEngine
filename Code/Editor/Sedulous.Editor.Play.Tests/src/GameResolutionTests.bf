@@ -1,12 +1,14 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
+using Sedulous.Settings;
+using Sedulous.Xml.Serialization;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
-using Sedulous.Editor.Scene;
 using Sedulous.Engine.Project;
 
-namespace Sedulous.Editor.Scene.Tests;
+namespace Sedulous.Editor.Play.Tests;
 
 /// The Game tab's resolution dropdown and how it puts the game on its target.
 class GameResolutionTests
@@ -93,5 +95,38 @@ class GameResolutionTests
 		Test.Assert(GameResolution.GameFitOn(w, h, 0, 0, .Letterbox, .Any).Rotation == .None);
 		let panel = GameResolution.GameFitOn(1600, 900, 0, 0, .Letterbox, .Landscape);
 		Test.Assert((panel.Rotation == .None) && Near(panel.ContentSize.X, 1600));
+	}
+
+	/// The Game tab's settings moved from Editor.Scene with it: a project store saved before the
+	/// move, its name and type id the old ones, still loads the resolution chosen.
+	[Test]
+	public static void AResolutionChosenBeforeTheTabsMoveStillLoads()
+	{
+		PlayEditorSerializables.Register();
+		let store = scope Settings();
+		store.Section<GamePageSettings>().ResolutionKey.Set("preset:Phone");
+		store.Section<GamePageSettings>().PhonePreview = true;
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		let buffer = scope MemoryStream();
+		Test.Assert(store.Save(buffer, factory) case .Ok);
+
+		// The file as the build before the move wrote it.
+		let text = scope String((char8*)buffer.Bytes.Ptr, buffer.Bytes.Length);
+		let current = "Sedulous.Editor.Play.GamePageSettings";
+		let former = "Sedulous.Editor.Scene.GamePageSettings";
+		let currentId = scope $"{Sedulous.Core.Serialization.TypeIdOf(current)}";
+		Test.Assert(text.Contains(currentId), scope $"the id is written as {currentId}: {text}");
+		text.Replace(currentId, scope $"{Sedulous.Core.Serialization.TypeIdOf(former)}");
+		text.Replace(current, former);
+		let old = scope MemoryStream();
+		old.Write(.((uint8*)text.Ptr, text.Length));
+		old.Seek(0, .Begin);
+
+		let loaded = scope Settings();
+		Test.Assert(loaded.Load(old, factory) case .Ok);
+		Test.Assert(loaded.UnknownSectionCount == 0);
+		let read = loaded.Find<GamePageSettings>();
+		Test.Assert((read != null) && (read.ResolutionKey == "preset:Phone") && read.PhonePreview);
 	}
 }
