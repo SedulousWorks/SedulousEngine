@@ -177,7 +177,7 @@ class DrawableAndEditingTests
 		let first = batch.BoxVertices[0];
 		Test.Assert((first.HalfSize.X == 20.0f) && (first.HalfSize.Y == 10.0f), "the bounds, not grown");
 		Test.Assert(first.Borders.X == 1.0f);
-		Test.Assert((first.Fill.R == 1.0f) && (first.BorderColor.B == 1.0f));
+		Test.Assert((first.Fill.R == 1.0f) && (first.BorderTop.B == 1.0f));
 	}
 
 	/// A nine slice's padding is its slices LESS whatever it was told to expand into, clamped

@@ -1322,14 +1322,17 @@ class VGRenderer
 			.(.Float32, 32, 3),
 			.(.Float32x2, 36, 4)); // effect: distance-field text effects
 		// An analytic box's vertex (VGBoxVertex).
-		let boxAttributes = scope VertexAttribute[7](
+		let boxAttributes = scope VertexAttribute[10](
 			.(.Float32x2, 0, 0), // position
 			.(.Float32x2, 8, 1), // local
 			.(.Float32x2, 16, 2), // half size
 			.(.Float32x4, 24, 3), // radii
 			.(.Float32x4, 40, 4), // borders
 			.(.Float32x4, 56, 5), // fill
-			.(.Float32x4, 72, 6)); // border colour
+			.(.Float32x4, 72, 6), // border top
+			.(.Float32x4, 88, 7), // border right
+			.(.Float32x4, 104, 8), // border bottom
+			.(.Float32x4, 120, 9)); // border left
 
 		var vertexLayout = VertexBufferLayout();
 		vertexLayout.Stride = isBox ? (uint32)VGBoxVertex.SizeInBytes : (uint32)VGRenderVertex.SizeInBytes;

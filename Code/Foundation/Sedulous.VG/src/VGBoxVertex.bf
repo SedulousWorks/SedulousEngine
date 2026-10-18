@@ -24,11 +24,14 @@ struct VGBoxVertex
 	public Float4 Borders = .Zero;
 	/// The fill, authored sRGB with the opacity applied.
 	public Color Fill = .(0, 0, 0, 0);
-	/// The border's colour, drawn over the fill.
-	public Color BorderColor = .(0, 0, 0, 0);
+	// The border's colour on each side, drawn over the fill.
+	public Color BorderTop = .(0, 0, 0, 0);
+	public Color BorderRight = .(0, 0, 0, 0);
+	public Color BorderBottom = .(0, 0, 0, 0);
+	public Color BorderLeft = .(0, 0, 0, 0);
 
-	/// The stride the box pipeline's vertex layout declares: 8 + 8 + 8 + 16 + 16 + 16 + 16.
-	public const int32 SizeInBytes = 88;
+	/// The stride the box pipeline's vertex layout declares: 8 + 8 + 8 + 16 + 16 + 16 + 4 * 16.
+	public const int32 SizeInBytes = 136;
 
 	public this() {}
 }

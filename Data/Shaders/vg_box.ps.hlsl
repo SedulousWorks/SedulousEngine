@@ -12,7 +12,9 @@
 // differ), so fill and border cannot disagree, a thin border has no halo outside it, a zero-width
 // side draws no fringe, and small radii are exact. The border is blended over the fill and the
 // whole faded by the outer edge's half-pixel ramp; output is premultiplied for the
-// PremultipliedAlpha blend. Resolved via ShaderSystem::GetVariant("vg_box", Fragment).
+// PremultipliedAlpha blend. Each side has its own border colour; where two meet, the corner splits
+// along the line from the outer corner to the inner one (CSS's join), blended across a pixel.
+// Resolved via ShaderSystem::GetVariant("vg_box", Fragment).
 struct PSInput
 {
     float4 Position : SV_Position;
@@ -21,7 +23,10 @@ struct PSInput
     nointerpolation float4 Radii : TEXCOORD2;   // top left, top right, bottom right, bottom left
     nointerpolation float4 Borders : TEXCOORD3; // top, right, bottom, left
     nointerpolation float4 Fill : COLOR0;
-    nointerpolation float4 BorderColor : COLOR1;
+    nointerpolation float4 BorderTop : COLOR1;
+    nointerpolation float4 BorderRight : COLOR2;
+    nointerpolation float4 BorderBottom : COLOR3;
+    nointerpolation float4 BorderLeft : COLOR4;
 };
 
 // The corner radius of the quadrant the point is in.
@@ -106,11 +111,20 @@ float4 main(PSInput input) : SV_Target
         innerSdf = QuarterEllipseSdf(cornerCenterToPoint, ellipseRadii) / unitsPerPixel;
     }
 
+    // The border colour here: the side whose edge the point belongs to. In the corner's quadrant
+    // the two candidate sides (left or right, top or bottom) split along the line from the outer
+    // corner to the inner one; the signed distance to that line, in pixels, blends across it.
+    const float4 sideX = centerToPoint.x < 0.0 ? input.BorderLeft : input.BorderRight;
+    const float4 sideY = centerToPoint.y < 0.0 ? input.BorderTop : input.BorderBottom;
+    const float2 joinDir = float2(max(border.x, 1e-4), max(border.y, 1e-4));
+    const float joinDistance = (cornerToPoint.x * joinDir.y - cornerToPoint.y * joinDir.x) / length(joinDir);
+    const float4 borderColor = lerp(sideY, sideX, saturate(0.5 + joinDistance / unitsPerPixel));
+
     float4 color = input.Fill;
     const float borderSdf = max(innerSdf, outerSdf);
     if (borderSdf < aa)
     {
-        const float4 bordered = Over(input.Fill, input.BorderColor);
+        const float4 bordered = Over(input.Fill, borderColor);
         color = lerp(input.Fill, bordered, saturate(aa - innerSdf));
     }
     color.a *= saturate(aa - outerSdf);

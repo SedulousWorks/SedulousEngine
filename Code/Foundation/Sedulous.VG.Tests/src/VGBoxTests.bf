@@ -23,13 +23,14 @@ class VGBoxTests
 
 	/// The stride the box pipeline's vertex layout declares, and the shader's attribute offsets.
 	[Test]
-	public static void ABoxVertexIsEightyEightBytes()
+	public static void ABoxVertexIsAHundredAndThirtySixBytes()
 	{
 		Test.Assert(sizeof(VGBoxVertex) == VGBoxVertex.SizeInBytes);
-		Test.Assert(VGBoxVertex.SizeInBytes == 88);
+		Test.Assert(VGBoxVertex.SizeInBytes == 136);
 		Test.Assert(offsetof(VGBoxVertex, Radii) == 24);
 		Test.Assert(offsetof(VGBoxVertex, Fill) == 56);
-		Test.Assert(offsetof(VGBoxVertex, BorderColor) == 72);
+		Test.Assert(offsetof(VGBoxVertex, BorderTop) == 72);
+		Test.Assert(offsetof(VGBoxVertex, BorderLeft) == 120);
 	}
 
 	/// Six box vertices to a box in a Box command, batched with the next box when nothing came
@@ -64,7 +65,8 @@ class VGBoxTests
 		Test.Assert(Near(v.Radii.X, 6.0f));
 		Test.Assert(Near(v.Borders.W, 2.0f));
 		Test.Assert(Near(v.Fill.R, 1.0f));
-		Test.Assert(Near(v.BorderColor.B, 1.0f));
+		Test.Assert(Near(v.BorderTop.B, 1.0f), "one colour: every side's");
+		Test.Assert(Near(v.BorderLeft.B, 1.0f));
 		var min = Float2(1.0e9f, 1.0e9f);
 		var max = Float2(-1.0e9f, -1.0e9f);
 		for (int i < 6)
@@ -162,6 +164,43 @@ class VGBoxTests
 		Test.Assert(Near(v.Radii.X, 7.0f), "the corner grown with it");
 		Test.Assert(Near(v.Borders.X, 2.0f) && Near(v.Borders.W, 2.0f));
 		Test.Assert(Near(v.Fill.A, 0.0f), "no fill");
-		Test.Assert(Near(v.BorderColor.B, 1.0f));
+		Test.Assert(Near(v.BorderTop.B, 1.0f));
+	}
+
+	/// A colour per side, analytic (four colours in every vertex) or tessellated (the ring
+	/// filled once per side, clipped to that side's wedge).
+	[Test]
+	public static void ABoxTakesABorderColourPerSideAnalyticOrTessellated()
+	{
+		let top = Color(1.0f, 0.0f, 0.0f, 1.0f);
+		let right = Color(0.0f, 1.0f, 0.0f, 1.0f);
+		let bottom = Color(0.0f, 0.0f, 1.0f, 1.0f);
+		let left = Color(1.0f, 1.0f, 0.0f, 1.0f);
+		{
+			let context = scope VGContext();
+			context.SetAnalyticBoxes(true);
+			context.DrawBox(.(0, 0, 40, 40), .(), .(0, 0, 0, 0), .(4.0f), BorderColors(top, right, bottom, left));
+			let batch = context.GetBatch();
+			Test.Assert(batch.BoxVertices.Count == 6);
+			let v = batch.BoxVertices[0];
+			Test.Assert(Near(v.BorderTop.R, 1.0f) && Near(v.BorderTop.G, 0.0f));
+			Test.Assert(Near(v.BorderRight.G, 1.0f) && Near(v.BorderRight.R, 0.0f));
+			Test.Assert(Near(v.BorderBottom.B, 1.0f));
+			Test.Assert(Near(v.BorderLeft.G, 1.0f) && Near(v.BorderLeft.R, 1.0f));
+		}
+		{
+			let context = scope VGContext();
+			context.SetStencilFills(true);
+			context.DrawBox(.(0, 0, 40, 40), .(), .(0, 0, 0, 0), .(4.0f), BorderColors(top, right, bottom, left));
+			bool[4] seen = default;
+			for (let vertex in context.GetBatch().Vertices)
+			{
+				seen[0] |= vertex.Color == top;
+				seen[1] |= vertex.Color == right;
+				seen[2] |= vertex.Color == bottom;
+				seen[3] |= vertex.Color == left;
+			}
+			Test.Assert(seen[0] && seen[1] && seen[2] && seen[3], "every side's colour drawn");
+		}
 	}
 }

@@ -386,6 +386,9 @@ class VGPixelProbeTests
 				context.Scale(0.48f, 0.48f);
 				context.DrawBox(.(180, 152, 40, 16), .(), .(0, 0, 0, 0), .(2.0f), ByteColor(40, 200, 40));
 				context.PopState();
+				// A colour per side, four pixels wide: red above, green right, blue below, white left.
+				context.DrawBox(.(80, 64, 40, 40), .(), .(0, 0, 0, 0), .(4.0f),
+					BorderColors(ByteColor(220, 40, 40), ByteColor(40, 200, 40), ByteColor(60, 60, 240), ByteColor(255, 255, 255)));
 			});
 		defer delete image;
 		Test.Assert((image != null) && image.Valid, "the scene rendered");
@@ -422,6 +425,16 @@ class VGPixelProbeTests
 		Test.Assert(Green(96, 73), scope $"{name}: the scaled box's top border");
 		Test.Assert(Dark(96, 72), scope $"{name}: nothing above the scaled box");
 		Test.Assert(Dark(96, 75), scope $"{name}: one pixel, nothing under it");
+		// Per side colours: each side's middle is its own; the top left corner splits along its
+		// diagonal (nearer the left edge white, nearer the top red); the inside stays clear.
+		bool White(uint32 x, uint32 y) => (image.At(x, y)[0] > 230) && (image.At(x, y)[1] > 230) && (image.At(x, y)[2] > 230);
+		Test.Assert(Red(100, 65), scope $"{name}: the top side");
+		Test.Assert(Green(118, 84), scope $"{name}: the right side");
+		Test.Assert(Blue(100, 102), scope $"{name}: the bottom side");
+		Test.Assert(White(81, 84), scope $"{name}: the left side");
+		Test.Assert(White(81, 67), scope $"{name}: the corner, nearer the left edge");
+		Test.Assert(Red(83, 65), scope $"{name}: the corner, nearer the top");
+		Test.Assert(Dark(100, 84), scope $"{name}: the inside clear");
 	}
 
 	/// A layer fades a group as one, nests, and clips inside. Half of opaque red over black is

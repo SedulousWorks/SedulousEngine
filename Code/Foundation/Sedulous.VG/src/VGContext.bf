@@ -841,11 +841,18 @@ class VGContext
 	public void DrawBox(Rectangle rect, CornerRadii radii, Color fill, BorderWidths borders = .(),
 		Color borderColor = .(0, 0, 0, 0))
 	{
+		DrawBox(rect, radii, fill, borders, BorderColors(borderColor));
+	}
+
+	/// DrawBox with a colour per side (CSS's border-top-color and the rest): where two sides meet,
+	/// the corner splits along the line from its outer corner to its inner one.
+	public void DrawBox(Rectangle rect, CornerRadii radii, Color fill, BorderWidths borders, BorderColors borderColors)
+	{
 		if ((rect.Width <= 0.0f) || (rect.Height <= 0.0f))
 			return;
 		if (!mAnalyticBoxes)
 		{
-			TessellateBox(rect, radii, fill, borders, borderColor);
+			TessellateBox(rect, radii, fill, borders, borderColors);
 			return;
 		}
 
@@ -856,7 +863,10 @@ class VGContext
 
 		var boxVertex = VGBoxVertex();
 		boxVertex.Fill = ApplyOpacity(fill);
-		boxVertex.BorderColor = ApplyOpacity(borderColor);
+		boxVertex.BorderTop = ApplyOpacity(borderColors.Top);
+		boxVertex.BorderRight = ApplyOpacity(borderColors.Right);
+		boxVertex.BorderBottom = ApplyOpacity(borderColors.Bottom);
+		boxVertex.BorderLeft = ApplyOpacity(borderColors.Left);
 		Float2[4] corner = default;
 		Float2[4] local = default;
 		if (mPixelSnap && TransformIsAxisAligned())
@@ -942,11 +952,11 @@ class VGContext
 	/// between the box and its inset (even odd), each inner corner rounded by what is left of its
 	/// radius past the wider neighbouring border.
 	private void TessellateBox(Rectangle rect, CornerRadii radii, Color fill, BorderWidths borders,
-		Color borderColor)
+		BorderColors colors)
 	{
 		if (fill.A > 0.0f)
 			FillRoundedRect(rect, radii, fill);
-		if (borders.IsZero || (borderColor.A <= 0.0f))
+		if (borders.IsZero || colors.IsTransparent)
 			return;
 
 		let inner = Rectangle(rect.X + borders.Left, rect.Y + borders.Top,
@@ -963,7 +973,43 @@ class VGContext
 		}
 		let path = ring.ToPath();
 		defer delete path;
-		FillPath(path, borderColor, .EvenOdd);
+		if (colors.IsUniform)
+		{
+			FillPath(path, colors.Top, .EvenOdd);
+			return;
+		}
+
+		// A colour per side: the ring clipped to each side's wedge, the region between the box's
+		// edge and the inner box's on that side, its corners split along the line from the outer
+		// corner to the inner one.
+		let o0 = Float2(rect.X, rect.Y);
+		let o1 = Float2(rect.X + rect.Width, rect.Y);
+		let o2 = Float2(rect.X + rect.Width, rect.Y + rect.Height);
+		let o3 = Float2(rect.X, rect.Y + rect.Height);
+		let i0 = Float2(rect.X + borders.Left, rect.Y + borders.Top);
+		let i1 = Float2(rect.X + rect.Width - borders.Right, rect.Y + borders.Top);
+		let i2 = Float2(rect.X + rect.Width - borders.Right, rect.Y + rect.Height - borders.Bottom);
+		let i3 = Float2(rect.X + borders.Left, rect.Y + rect.Height - borders.Bottom);
+		void Side(Float2 a, Float2 b, Float2 c, Float2 d, Color color)
+		{
+			if (color.A <= 0.0f)
+				return;
+			let builder = scope PathBuilder();
+			builder.MoveTo(a.X, a.Y);
+			builder.LineTo(b.X, b.Y);
+			builder.LineTo(c.X, c.Y);
+			builder.LineTo(d.X, d.Y);
+			builder.Close();
+			let wedge = builder.ToPath();
+			defer delete wedge;
+			PushClipPath(wedge);
+			FillPath(path, color, .EvenOdd);
+			PopClipPath();
+		}
+		Side(o0, o1, i1, i0, colors.Top);
+		Side(o1, o2, i2, i1, colors.Right);
+		Side(o2, o3, i3, i2, colors.Bottom);
+		Side(o3, o0, i0, i3, colors.Left);
 	}
 
 	/// A Gaussian blurred rounded rectangle, which is the UI's box shadow. `rect` and
