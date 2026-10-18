@@ -33,6 +33,18 @@ class UIDrawContext
 	/// Pushes a clip rectangle, in the current local coordinates.
 	public void PushClip(Rectangle rect) => mVG.PushClipRect(rect);
 	public void PopClip() => mVG.PopClip();
+	/// Clips to `rect` rounded by `radii` (current local coordinates), inside any rounded clip
+	/// already pushed. Balance with PopClipRounded.
+	public void PushClipRounded(Rectangle rect, CornerRadii radii)
+	{
+		let builder = scope PathBuilder();
+		ShapeBuilder.BuildRoundedRect(rect, radii, builder);
+		let path = builder.ToPath();
+		defer delete path;
+		mVG.PushClipPath(path);
+	}
+	/// Pops the last rounded clip.
+	public void PopClipRounded() => mVG.PopClipPath();
 
 	/// Whether a rectangle can contribute any pixels under the active clip, and true when
 	/// there is no clip.

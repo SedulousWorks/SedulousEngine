@@ -359,9 +359,20 @@ class ViewGroup : View
 			if ((shadow != null) && !shadow.Value.Inset)
 				DrawBoxShadow(ctx, child, shadow.Value);
 
+			// A clipping view clips to its box, and a rounded one to its corners too, so a card
+			// holds an image, a header or a scrolled list without its corners leaking; clips
+			// nest, each inside the ones around it.
 			let clips = child.EffectiveClipsContent;
+			var clipsRounded = false;
 			if (clips)
-				ctx.PushClip(.(0, 0, child.Width, child.Height));
+			{
+				let clipBox = Rectangle(0, 0, child.Width, child.Height);
+				ctx.PushClip(clipBox);
+				let radii = child.OutlineRadii();
+				clipsRounded = !radii.IsZero;
+				if (clipsRounded)
+					ctx.PushClipRounded(clipBox, radii);
+			}
 
 			ApplyTextEffects(ctx, child);
 			let previousBlend = ctx.SetBlend(child.CurrentDrawBlend());
@@ -374,6 +385,8 @@ class ViewGroup : View
 			if (ctx.DebugSettings.AnyEnabled)
 				UIDebugOverlay.DrawOverlays(ctx, child, @child.Index);
 
+			if (clipsRounded)
+				ctx.PopClipRounded();
 			if (clips)
 				ctx.PopClip();
 			if (fadesAsGroup)
@@ -428,18 +441,8 @@ class ViewGroup : View
 
 	private static void DrawBoxShadow(UIDrawContext ctx, View child, BoxShadow shadow)
 	{
-		// The shadow follows the shape it sits under: the view's corner-radius, or without one
-		// the corners its background rounds (rounded-rect(..., radius=24) sets no
-		// corner-radius, and its shadow was square).
-		var radii = CornerRadii(Max(0.0f, child.ResolveStyleFloat(.CornerRadius, 0.0f)));
-		if (child.ResolveStyle(.CornerRadius).IsNone)
-		{
-			if (let background = child.ResolveStyleDrawable(.Background))
-			{
-				if (let outline = background.OutlineRadii(child.GetControlState()))
-					radii = outline;
-			}
-		}
+		// The shadow follows the shape it sits under.
+		let radii = child.OutlineRadii();
 		// An inset shadow's spread grows INWARD, so it shrinks the box rather than growing it.
 		let spread = shadow.Inset ? -shadow.Spread : shadow.Spread;
 		let rect = Rectangle(shadow.OffsetX - spread, shadow.OffsetY - spread,

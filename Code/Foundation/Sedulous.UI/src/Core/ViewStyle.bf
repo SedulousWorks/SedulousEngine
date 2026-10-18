@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.VG;
 
 namespace Sedulous.UI;
 
@@ -550,6 +551,22 @@ extension View
 		let root = Root();
 		let dpiScale = Max(RootDpiScale(root), 0.01f);
 		return length.Value.Resolve(dpiScale, referenceSize, fontSize);
+	}
+
+	/// The corners of the view's box, which its shadow and its rounded clip follow: its
+	/// corner-radius, or without one the corners its background rounds
+	/// (rounded-rect(..., radius=24) sets no corner-radius).
+	public CornerRadii OutlineRadii()
+	{
+		if (ResolveStyle(.CornerRadius).IsNone)
+		{
+			if (let background = ResolveStyleDrawable(.Background))
+			{
+				if (let outline = background.OutlineRadii(GetControlState()))
+					return outline;
+			}
+		}
+		return CornerRadii(Max(0.0f, ResolveStyleFloat(.CornerRadius, 0.0f)));
 	}
 
 	/// A Float property, which a Length also satisfies by resolving against this view's font

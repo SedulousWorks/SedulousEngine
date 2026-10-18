@@ -350,6 +350,43 @@ class BoxModelTests
 		Test.Assert(Near(ShadowCoverage("RecordingView { background: #FFFFFF; box-shadow: 0 0 8 #00000080; }"), 0.0f));
 	}
 
+	/// Draws that a stencil clip holds, under a clipping card styled by `sheetText` that holds
+	/// one view.
+	private static int StencilClippedDraws(StringView sheetText)
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		context.SetStyleSheet(LoadSSS(sheetText));
+		let card = new FrameLayout();
+		card.AddClass("card");
+		card.ClipsContent = true;
+		card.AddView(new RecordingView(100, 50, 1));
+		root.AddView(card);
+		UITest.LayoutPass(context, root);
+		let vg = scope VGContext();
+		vg.SetStencilFills(true);
+		RecordingView.DrawLog.Clear();
+		context.DrawRootView(root, vg);
+		var clipped = 0;
+		for (let command in vg.GetBatch().Commands)
+		{
+			if ((command.IndexCount > 0) && (command.ClipMode == .Stencil) && (command.FillPhase == .Direct))
+				clipped++;
+		}
+		return clipped;
+	}
+
+	/// What a clipping card holds draws inside its corners: through a stencil clip of its
+	/// rounded box, over the rectangle clip every clipping view keeps. The corners a background
+	/// rounds clip as they shape the shadow; a square card stays a scissor.
+	[Test]
+	public static void AClippingViewWithRoundedCornersClipsItsChildrenToThem()
+	{
+		Test.Assert(StencilClippedDraws(".card { corner-radius: 8; }") > 0);
+		Test.Assert(StencilClippedDraws(".card { background: rounded-rect(#FFFFFF, radius=12); }") > 0);
+		Test.Assert(StencilClippedDraws(".card { background: #FFFFFF; }") == 0);
+	}
+
 	/// The shorthand takes its parts in any workable order: `inset` may lead or trail, the blur
 	/// and spread are optional, and a missing colour falls back to the default shadow.
 	[Test]
