@@ -60,7 +60,7 @@ class VGRendererTests
 	public static void TheRenderVertexStrideMatchesItsLayout()
 	{
 		Test.Assert(sizeof(VGRenderVertex) == VGRenderVertex.SizeInBytes);
-		Test.Assert(VGRenderVertex.SizeInBytes == 36);
+		Test.Assert(VGRenderVertex.SizeInBytes == 44);
 	}
 
 	[Test]

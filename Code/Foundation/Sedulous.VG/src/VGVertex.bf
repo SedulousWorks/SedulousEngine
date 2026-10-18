@@ -19,9 +19,13 @@ struct VGVertex
 	/// Zero at a transparent fringe, one inside. What makes the edges smooth without
 	/// multisampling.
 	public float Coverage = 1.0f;
+	/// A distance-field glyph's effect pass (TextEffects), in the field's units (0.5 is the
+	/// edge): X moves the edge outward, Y widens it into a soft ramp. Either nonzero reads the
+	/// field's true distance (alpha) instead of the multi-channel median. Zero elsewhere.
+	public Float2 Effect = .Zero;
 
-	/// The stride the renderer's vertex layout declares.
-	public const int32 SizeInBytes = 36;
+	/// The stride the renderer's vertex layout declares: 8 + 8 + 16 + 4 + 8.
+	public const int32 SizeInBytes = 44;
 
 	/// The UV a solid colour vertex uses: the middle of whatever is bound, so a solid draw
 	/// samples one texel of a white texture rather than needing a separate pipeline.

@@ -27,7 +27,7 @@ class BakedFontProbeTests
 	private const uint32 cSize = VGSceneRenderer.Size;
 
 	/// Walks up for the repository's own font, the same way the shader root is found.
-	private static bool FindTestFont(String outPath)
+	internal static bool FindTestFont(String outPath)
 	{
 		let current = scope String();
 		GetCurrentDirectory(current);

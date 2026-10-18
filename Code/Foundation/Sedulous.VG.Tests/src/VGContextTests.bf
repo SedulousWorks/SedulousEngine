@@ -533,6 +533,10 @@ class VGContextTests
 	/// font's own glyph ids are.
 	class GlyphIdAtlas : IFontAtlas
 	{
+		/// A distance-field atlas when asked (effects read its range): 4 texels, one texel a pixel.
+		public AtlasMode AtlasMode = .Coverage;
+		public override AtlasMode Mode => AtlasMode;
+		public override float DistanceFieldRange => (AtlasMode == .DistanceField) ? 4.0f : 0.0f;
 		public override uint32 Width => 64;
 		public override uint32 Height => 64;
 		public override Span<uint8> PixelData => .();
@@ -575,5 +579,100 @@ class VGContextTests
 		for (let command in context.GetBatch().Commands)
 			quads += command.IndexCount / 6;
 		Test.Assert(quads == 2, scope $"{quads} quads");
+	}
+
+	/// The first vertex of each quad of a batch, in draw order.
+	private static void QuadCorners(VGBatch batch, List<VGVertex> outCorners)
+	{
+		outCorners.Clear();
+		for (int i = 0; (i + 3) < batch.Vertices.Count; i += 4)
+			outCorners.Add(batch.Vertices[i]);
+	}
+
+	[Test]
+	public static void TextEffectsDrawAShadowAGlowAndAnOutlineUnderTheGlyphs()
+	{
+		let atlas = scope GlyphIdAtlas();
+		atlas.AtlasMode = .DistanceField;
+		let texture = scope OwnedImageData(64, 64, .RGBA8, .(), .Linear);
+		let context = scope VGContext();
+		var effects = TextEffects();
+		effects.ShadowOffset = .(3.0f, 2.0f);
+		effects.ShadowBlur = 1.0f;
+		effects.ShadowColor = .(0.0f, 0.0f, 1.0f, 1.0f);
+		effects.GlowRadius = 1.0f;
+		effects.GlowColor = .(0.0f, 1.0f, 0.0f, 1.0f);
+		effects.OutlineWidth = 1.0f;
+		effects.OutlineColor = .(1.0f, 0.0f, 0.0f, 1.0f);
+		context.SetTextEffects(effects);
+		context.DrawText("A", atlas, texture, .(10.0f, 20.0f), .White);
+
+		let quads = scope List<VGVertex>();
+		QuadCorners(context.GetBatch(), quads);
+		Test.Assert(quads.Count == 4);
+		// One texel a pixel over a 4-texel range: a pixel is a quarter of the field's unit.
+		// The shadow: offset, blurred over a pixel, its edge where the glyph's is.
+		Test.Assert(Near(quads[0].Position.X, 13.0f));
+		Test.Assert(Near(quads[0].Position.Y, 14.0f));
+		Test.Assert(Near(quads[0].Color.B, 1.0f));
+		Test.Assert(Near(quads[0].Effect.X, 0.0f));
+		Test.Assert(Near(quads[0].Effect.Y, 0.25f));
+		// The glow: full at the edge, gone a pixel past it (centred half a pixel out).
+		Test.Assert(Near(quads[1].Position.X, 10.0f));
+		Test.Assert(Near(quads[1].Color.G, 1.0f));
+		Test.Assert(Near(quads[1].Effect.X, 0.125f));
+		Test.Assert(Near(quads[1].Effect.Y, 0.25f));
+		// The outline: the edge moved a pixel out, sharp.
+		Test.Assert(Near(quads[2].Color.R, 1.0f));
+		Test.Assert(Near(quads[2].Effect.X, 0.25f));
+		Test.Assert(Near(quads[2].Effect.Y, 0.0f));
+		// The glyphs last, as without effects.
+		Test.Assert(Near(quads[3].Position.X, 10.0f));
+		Test.Assert(Near(quads[3].Effect.X, 0.0f));
+		Test.Assert(Near(quads[3].Effect.Y, 0.0f));
+	}
+
+	[Test]
+	public static void ATextEffectWiderThanTheFieldHoldsIsScaledDownToFit()
+	{
+		let atlas = scope GlyphIdAtlas();
+		atlas.AtlasMode = .DistanceField;
+		let texture = scope OwnedImageData(64, 64, .RGBA8, .(), .Linear);
+		let context = scope VGContext();
+		var effects = TextEffects();
+		effects.OutlineWidth = 6.0f; // 1.5 field units; the field ends half a unit past the edge
+		context.SetTextEffects(effects);
+		context.DrawText("A", atlas, texture, .(0.0f, 20.0f), .White);
+		let quads = scope List<VGVertex>();
+		QuadCorners(context.GetBatch(), quads);
+		Test.Assert(quads.Count == 2);
+		Test.Assert(Near(quads[0].Effect.X, 0.49f, 0.001f));
+	}
+
+	[Test]
+	public static void ACoverageFontDrawsOnlyAShadowsOffsetCopyAndEffectsAreState()
+	{
+		let atlas = scope GlyphIdAtlas(); // coverage: no field to grow or soften
+		let texture = scope OwnedImageData(64, 64, .RGBA8, .(), .Linear);
+		let context = scope VGContext();
+		var effects = TextEffects();
+		effects.ShadowOffset = .(2.0f, 2.0f);
+		effects.ShadowBlur = 3.0f;
+		effects.ShadowColor = .(0.0f, 0.0f, 0.0f, 1.0f);
+		effects.OutlineWidth = 1.0f;
+		effects.GlowRadius = 2.0f;
+		context.PushState();
+		context.SetTextEffects(effects);
+		context.DrawText("A", atlas, texture, .(0.0f, 20.0f), .White);
+		let quads = scope List<VGVertex>();
+		QuadCorners(context.GetBatch(), quads);
+		Test.Assert(quads.Count == 2, "the shadow, then the glyph");
+		Test.Assert(Near(quads[0].Position.X, 2.0f));
+		Test.Assert(Near(quads[0].Effect.Y, 0.0f));
+		context.PopState();
+		Test.Assert(!context.TextEffects.Any);
+		context.DrawText("A", atlas, texture, .(0.0f, 40.0f), .White);
+		QuadCorners(context.GetBatch(), quads);
+		Test.Assert(quads.Count == 3, "one more: the glyph alone");
 	}
 }

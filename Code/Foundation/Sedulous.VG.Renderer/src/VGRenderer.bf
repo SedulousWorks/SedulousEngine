@@ -1315,11 +1315,12 @@ class VGRenderer
 		IShaderModule fragmentShader, StencilRole role, VGBlendMode blendMode = .Normal,
 		bool clipped = false, bool isBox = false)
 	{
-		let attributes = scope VertexAttribute[4](
+		let attributes = scope VertexAttribute[5](
 			.(.Float32x2, 0, 0),
 			.(.Float32x2, 8, 1),
 			.(.Float32x4, 16, 2),
-			.(.Float32, 32, 3));
+			.(.Float32, 32, 3),
+			.(.Float32x2, 36, 4)); // effect: distance-field text effects
 		// An analytic box's vertex (VGBoxVertex).
 		let boxAttributes = scope VertexAttribute[7](
 			.(.Float32x2, 0, 0), // position

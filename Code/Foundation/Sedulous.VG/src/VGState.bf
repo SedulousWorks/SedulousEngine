@@ -13,6 +13,8 @@ struct VGState
 	public bool Scissored = false;
 	public float Opacity = 1.0f;
 	public int32 StencilRef = 0;
+	/// Drawn under every text draw (VGContext.SetTextEffects).
+	public TextEffects TextEffects = .();
 
 	public this() {}
 }

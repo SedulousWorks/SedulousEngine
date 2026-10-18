@@ -13,7 +13,7 @@ class VGVertexTests
 	public static void TheStrideMatchesTheDeclaredSize()
 	{
 		Test.Assert(sizeof(VGVertex) == VGVertex.SizeInBytes);
-		Test.Assert(VGVertex.SizeInBytes == 36, "two float2s, a float4 colour, and a coverage");
+		Test.Assert(VGVertex.SizeInBytes == 44, "two float2s, a float4 colour, a coverage and an effect float2");
 	}
 
 	/// The colour stays FLOAT end to end. Packing it to bytes quantised gradients and

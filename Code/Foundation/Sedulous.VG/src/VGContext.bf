@@ -433,6 +433,14 @@ class VGContext
 
 	public float Opacity => mCurrentState.Opacity;
 
+	// === text effects ===
+
+	/// Effects drawn under the text drawn from here (an outline, a shadow, a glow), until
+	/// changed, cleared or a PopState; part of the state PushState saves.
+	public void SetTextEffects(TextEffects effects) => mCurrentState.TextEffects = effects;
+	public void ClearTextEffects() => mCurrentState.TextEffects = .();
+	public TextEffects TextEffects => mCurrentState.TextEffects;
+
 	// === layers ===
 
 	/// Layers a batch holds before PushLayer falls back to an opacity push: each costs the
@@ -1476,17 +1484,19 @@ class VGContext
 		SetupForTextureDraw(textureIndex);
 
 		let startVertex = mBatch.Vertices.Count;
-		let opaqueColor = ApplyOpacity(color);
-
-		var cursorX = position.X;
-		var index = 0;
-		while (index < text.Length)
-		{
-			// Unshaped: each codepoint draws its atlas's glyph for it (none: nothing, no advance).
-			let glyph = atlas.GlyphFor((int32)DecodeCodepoint(text, ref index));
-			if ((glyph >= 0) && atlas.GetGlyphQuad(glyph, ref cursorX, position.Y, let quad))
-				EmitGlyphQuad(quad, opaqueColor);
-		}
+		EmitGlyphPasses(atlas, ApplyOpacity(color), scope [&] (emit) =>
+			{
+				var cursorX = position.X;
+				var index = 0;
+				while (index < text.Length)
+				{
+					// Unshaped: each codepoint draws its atlas's glyph for it (none: nothing, no
+					// advance).
+					let glyph = atlas.GlyphFor((int32)DecodeCodepoint(text, ref index));
+					if ((glyph >= 0) && atlas.GetGlyphQuad(glyph, ref cursorX, position.Y, let quad))
+						emit(quad);
+				}
+			});
 
 		TransformVertices(startVertex);
 		EndDistanceField(isDistanceField);
@@ -1657,14 +1667,15 @@ class VGContext
 		SetupForTextureDraw(textureIndex);
 
 		let startVertex = mBatch.Vertices.Count;
-		let opaqueColor = ApplyOpacity(color);
-
-		for (let position in positions)
-		{
-			if (font.Atlas.GetGlyphQuadAt(position.GlyphId, offsetX + position.X + position.XOffset,
-				offsetY + position.Y + position.YOffset, let quad))
-				EmitGlyphQuad(quad, opaqueColor);
-		}
+		EmitGlyphPasses(font.Atlas, ApplyOpacity(color), scope [&] (emit) =>
+			{
+				for (let position in positions)
+				{
+					if (font.Atlas.GetGlyphQuadAt(position.GlyphId, offsetX + position.X + position.XOffset,
+						offsetY + position.Y + position.YOffset, let quad))
+						emit(quad);
+				}
+			});
 
 		TransformVertices(startVertex);
 		EndDistanceField(isDistanceField);
@@ -1803,14 +1814,73 @@ class VGContext
 
 	// === emission ===
 
-	private void EmitGlyphQuad(GlyphQuad quad, Color color)
+	/// The farthest an effect's ramp may reach past the edge, in field units: the field ends at
+	/// 0.5.
+	private const float cMaxEffectReach = 0.49f;
+
+	/// Emits a run of glyphs under the current text effects: `forEachQuad(emit)` calls
+	/// `emit(quad)` for each glyph's quad, once per pass (shadow, glow, outline, then the glyphs
+	/// themselves in `color`). Effects in pixels become field units per glyph (a quad's atlas
+	/// texels per pixel over the atlas's distance range), so they follow the text's size and the
+	/// transform, and are scaled down to what the field holds (half its range).
+	private void EmitGlyphPasses(IFontAtlas atlas, Color color, delegate void(delegate void(GlyphQuad)) forEachQuad)
+	{
+		let effects = mCurrentState.TextEffects;
+		let distanceField = atlas.Mode == .DistanceField;
+		if (effects.HasShadow)
+			EmitGlyphPass(atlas, distanceField, effects.ShadowOffset, ApplyOpacity(effects.ShadowColor), 0.0f,
+				distanceField ? effects.ShadowBlur : 0.0f, forEachQuad);
+		if (distanceField && effects.HasGlow) // full at the edge, gone GlowRadius past it
+			EmitGlyphPass(atlas, true, .Zero, ApplyOpacity(effects.GlowColor), effects.GlowRadius * 0.5f,
+				effects.GlowRadius, forEachQuad);
+		if (distanceField && effects.HasOutline)
+			EmitGlyphPass(atlas, true, .Zero, ApplyOpacity(effects.OutlineColor), effects.OutlineWidth, 0.0f,
+				forEachQuad);
+		EmitGlyphPass(atlas, distanceField, .Zero, color, 0.0f, 0.0f, forEachQuad);
+	}
+
+	private void EmitGlyphPass(IFontAtlas atlas, bool distanceField, Float2 offset, Color color, float shiftPixels,
+		float softPixels, delegate void(delegate void(GlyphQuad)) forEachQuad)
+	{
+		let range = atlas.DistanceFieldRange;
+		let atlasWidth = (float)atlas.Width;
+		forEachQuad(scope [&] (quad) =>
+			{
+				var quad;
+				var effect = Float2.Zero;
+				if (distanceField && (range > 0.0f) && (quad.X1 > quad.X0) && ((shiftPixels > 0.0f) || (softPixels > 0.0f)))
+				{
+					let unitsPerPixel = (quad.U1 - quad.U0) * atlasWidth / (quad.X1 - quad.X0) / range;
+					effect = .(shiftPixels * unitsPerPixel, softPixels * unitsPerPixel);
+					// The ramp's outer end past the edge, in field units.
+					let reach = effect.X + effect.Y * 0.5f;
+					if (reach > cMaxEffectReach)
+						effect = effect * (cMaxEffectReach / reach);
+				}
+				quad.X0 += offset.X;
+				quad.X1 += offset.X;
+				quad.Y0 += offset.Y;
+				quad.Y1 += offset.Y;
+				EmitGlyphQuad(quad, color, effect);
+			});
+	}
+
+	private void EmitGlyphQuad(GlyphQuad quad, Color color, Float2 effect = .Zero)
 	{
 		let baseIndex = (uint32)mBatch.Vertices.Count;
 
-		mBatch.Vertices.Add(.(Float2(quad.X0, quad.Y0), .(quad.U0, quad.V0), color, 1.0f));
-		mBatch.Vertices.Add(.(Float2(quad.X1, quad.Y0), .(quad.U1, quad.V0), color, 1.0f));
-		mBatch.Vertices.Add(.(Float2(quad.X1, quad.Y1), .(quad.U1, quad.V1), color, 1.0f));
-		mBatch.Vertices.Add(.(Float2(quad.X0, quad.Y1), .(quad.U0, quad.V1), color, 1.0f));
+		var vertex = VGVertex(Float2(quad.X0, quad.Y0), .(quad.U0, quad.V0), color, 1.0f);
+		vertex.Effect = effect;
+		mBatch.Vertices.Add(vertex);
+		vertex.Position = .(quad.X1, quad.Y0);
+		vertex.TexCoord = .(quad.U1, quad.V0);
+		mBatch.Vertices.Add(vertex);
+		vertex.Position = .(quad.X1, quad.Y1);
+		vertex.TexCoord = .(quad.U1, quad.V1);
+		mBatch.Vertices.Add(vertex);
+		vertex.Position = .(quad.X0, quad.Y1);
+		vertex.TexCoord = .(quad.U0, quad.V1);
+		mBatch.Vertices.Add(vertex);
 
 		AddQuadIndices(baseIndex);
 	}
