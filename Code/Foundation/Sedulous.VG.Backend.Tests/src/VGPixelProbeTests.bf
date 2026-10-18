@@ -597,6 +597,30 @@ class VGPixelProbeTests
 		Test.Assert(Math.Abs((int)image.At(18, 110)[1] - 128) <= 3, scope $"{name}: the earlier layer, half green");
 	}
 
+	/// An inset shadow on a rounded box: strong just inside the edge, gone at the middle, and
+	/// nothing in the corners outside the arc (inside the shadow's quads, outside the box).
+	[Test]
+	public static void AnInsetBoxShadowStaysInsideItsRoundedBox()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+		{
+			let fixture = scope VGProbeFixture(kind);
+			if (!fixture.Ready)
+				continue;
+			let image = VGSceneRenderer.RenderScene(fixture, scope (context) =>
+				{
+					context.FillBoxShadow(.(20, 20, 80, 80), .(24.0f), 8.0f, ByteColor(255, 0, 0), true);
+				});
+			defer delete image;
+			Test.Assert((image != null) && image.Valid, "the scene rendered");
+			let detail = scope $"{kind}: corner {image.At(21, 21)[0]}, edge {image.At(21, 60)[0]}, middle {image.At(60, 60)[0]}";
+			Test.Assert(image.At(21, 21)[0] <= 2, detail); // outside the arc: no shadow
+			Test.Assert(image.At(23, 23)[0] <= 2, detail);
+			Test.Assert(image.At(21, 60)[0] >= 120, detail); // just inside the straight edge: strong
+			Test.Assert(image.At(60, 60)[0] <= 4, detail); // the middle, 40 px in at sigma 4: gone
+		}
+	}
+
 	/// An axis aligned rectangle path, the caller's to delete.
 	private static Path Rect(float x0, float y0, float x1, float y1)
 	{

@@ -44,10 +44,11 @@ static class VGSceneRenderer
 		let layerFragment = shaders.GetVariant("vg_layer", .Fragment, .None);
 		let blurVertex = shaders.GetVariant("vg_blur", .Vertex, .None);
 		let blurFragment = shaders.GetVariant("vg_blur", .Fragment, .None);
+		let shadowFragment = shaders.GetVariant("vg_shadow", .Fragment, .None);
 		// Else boxes would quietly tessellate, layers be opacity pushes and blurred layers stay
 		// sharp, and their probes prove nothing.
 		if ((boxVertex == null) || (boxFragment == null) || (layerFragment == null) || (blurVertex == null)
-			|| (blurFragment == null))
+			|| (blurFragment == null) || (shadowFragment == null))
 			return null;
 
 		var targetConfig = VGTargetConfig();
@@ -57,7 +58,7 @@ static class VGSceneRenderer
 
 		let renderer = scope VGRenderer();
 		if (renderer.Initialize(device, vertex, fragment, drawFormat, 2, distanceField,
-			gradRadial, gradConic, targetConfig, null, boxVertex, boxFragment, layerFragment, blurVertex,
+			gradRadial, gradConic, targetConfig, shadowFragment, boxVertex, boxFragment, layerFragment, blurVertex,
 			blurFragment) case .Err)
 			return null;
 
