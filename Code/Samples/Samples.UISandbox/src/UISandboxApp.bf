@@ -387,6 +387,7 @@ class UISandboxApp : IApplication
 		OverlaysTab.Build(this, tabView);
 		DragDropTab.Build(tabView);
 		AnimationsTab.Build(this, tabView);
+		LayersTab.Build(this, tabView);
 		ToolkitTab.Build(this, tabView);
 		PropertyGridTab.Build(tabView);
 		CurveEditorTab.Build(tabView);
