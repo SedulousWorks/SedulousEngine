@@ -4,6 +4,7 @@ using Sedulous.Core;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TrueType;
 using Sedulous.Fonts.HarfBuzz;
+using Sedulous.Fonts.Bidi;
 using Sedulous.Graphics;
 using Sedulous.Image;
 using Sedulous.Runtime.Client;
@@ -309,6 +310,7 @@ class UISandboxApp : IApplication
 		// CPU rasterisation, so no device is needed and this can run before the host has one;
 		// shaped by HarfBuzz, installed before anything loads.
 		HarfBuzzShaping.Install();
+		BidiAlgorithm.Install(); // mixed-direction lines read in visual order
 		mFonts = new TrueTypeFontService();
 
 		let path = scope String();
