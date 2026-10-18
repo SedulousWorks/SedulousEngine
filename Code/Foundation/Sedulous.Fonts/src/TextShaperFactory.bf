@@ -12,9 +12,11 @@ static class TextShaperFactory
 
 	private static List<Creator> sCreators = new .() ~ delete _;
 
+	/// Not thread-safe: register before shaping starts on other threads. Registering the newest
+	/// again changes nothing.
 	public static void Register(Creator creator)
 	{
-		if (creator == null)
+		if ((creator == null) || (!sCreators.IsEmpty && (sCreators.Back == creator)))
 			return;
 		Unregister(creator);
 		sCreators.Add(creator);

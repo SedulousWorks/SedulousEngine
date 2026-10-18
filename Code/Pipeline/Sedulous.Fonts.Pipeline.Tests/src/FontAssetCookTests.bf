@@ -225,7 +225,7 @@ class FontAssetCookTests
 			context.Output = instance;
 			Test.Assert(scope FontAssetBuilder().Build(asset, context) case .Ok);
 		}
-		defer HarfBuzzShaping.Uninstall(); // the cook installed it
+		defer HarfBuzzShaping.Uninstall(); // the builder installed it
 
 		let database = scope ContentDatabase(cookedMount, serializers, "rasset");
 		let manager = scope ResourceManager(database, null);
@@ -252,6 +252,19 @@ class FontAssetCookTests
 				joinedForms++;
 		}
 		Test.Assert(joinedForms > 0, "and some are forms no codepoint maps to");
+	}
+
+	/// Builds run in parallel on job workers; installing HarfBuzz from Build raced another
+	/// worker's shaper lookup, so the builder installs it when it is made.
+	[Test]
+	public static void TheFontBuilderInstallsHarfBuzzWhenMadeNotAsItBuilds()
+	{
+		HarfBuzzShaping.Uninstall();
+		Test.Assert(!HarfBuzzShaping.IsInstalled);
+		let builder = scope FontAssetBuilder();
+		Test.Assert(HarfBuzzShaping.IsInstalled);
+		HarfBuzzShaping.Uninstall();
+		Test.Assert(builder != null);
 	}
 
 	[Test]

@@ -25,6 +25,14 @@ class FontAssetBuilder : IAssetBuilder
 	/// The stream the font file travels in, for a shaper that reads its tables in a shipped game.
 	public const String cFontStreamName = "font";
 
+	/// The bakers bake what HarfBuzz's substitutions reach. Installed here, on the thread that
+	/// registers builders, not in Build: the cook builds items in parallel on job workers, and
+	/// installing from each raced another worker's shaper lookup.
+	public this()
+	{
+		HarfBuzzShaping.Install();
+	}
+
 	public Type AssetType => typeof(FontAsset);
 	public Type ProductType => typeof(FontResource);
 
@@ -46,7 +54,6 @@ class FontAssetBuilder : IAssetBuilder
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{
-		HarfBuzzShaping.Install(); // the bakers bake what HarfBuzz's substitutions reach
 		let authored = (FontAsset)asset;
 		if ((context.Output == null) || authored.FileName.IsEmpty)
 			return .Err(.InvalidArgument);

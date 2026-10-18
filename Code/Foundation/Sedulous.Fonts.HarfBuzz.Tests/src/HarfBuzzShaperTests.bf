@@ -179,6 +179,18 @@ class HarfBuzzShaperTests
 	}
 
 	[Test]
+	public static void InstallingAgainChangesNothing()
+	{
+		HarfBuzzShaping.Uninstall();
+		let before = TextShaperFactory.Count;
+		HarfBuzzShaping.Install();
+		HarfBuzzShaping.Install();
+		Test.Assert(TextShaperFactory.Count == before + 1);
+		HarfBuzzShaping.Uninstall();
+		Test.Assert(TextShaperFactory.Count == before);
+	}
+
+	[Test]
 	public static void TheGlyphsSubstitutionsReachAreNamedAndBakersBakeThem()
 	{
 		let font = TestFonts.Load(TestFonts.cRoboto);
