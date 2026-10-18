@@ -9,6 +9,7 @@ namespace Samples.UISandbox;
 static class SandboxContent
 {
 	public const String cFontFile = "Assets/fonts/roboto/Roboto-Regular.ttf";
+	public const String cBoldFontFile = "Assets/fonts/roboto/Roboto-Bold.ttf";
 	public const String cTitleFontFile =
 		"Assets/fonts/lilita-one/LilitaOne-Regular.ttf";
 	public const String cPlayfulFontFile =

@@ -318,6 +318,14 @@ class UISandboxApp : IApplication
 		for (let size in float[](14.0f, 16.0f, 24.0f))
 			LoadFontSize("Roboto", path, size);
 
+		// The bold face, as its own family: rich text's [b] takes "<family> Bold" when there is one.
+		let boldPath = scope String();
+		if (SandboxContent.FindFile(SandboxContent.cBoldFontFile, boldPath))
+		{
+			for (let size in float[](14.0f, 16.0f, 24.0f))
+				LoadFontSize("Roboto Bold", boldPath, size);
+		}
+
 		// The decorative families the pause menu demonstrates. A missing family falls back to
 		// Roboto, so the demo still renders when a checkout does not carry them.
 		let titleFont = scope String();
@@ -388,6 +396,7 @@ class UISandboxApp : IApplication
 		DragDropTab.Build(tabView);
 		AnimationsTab.Build(this, tabView);
 		LayersTab.Build(this, tabView);
+		RichTextTab.Build(tabView);
 		ToolkitTab.Build(this, tabView);
 		PropertyGridTab.Build(tabView);
 		CurveEditorTab.Build(tabView);
