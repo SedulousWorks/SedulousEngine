@@ -500,10 +500,84 @@ class VGContext
 		if (!HasClip(bounds))
 			return; // nothing drawn: nothing to composite
 
-		// The composite: a device quad over the bounds, its alpha the layer's opacity times the
-		// opacity around it, sampling the layer's target edge to edge.
 		let layer = mBatch.Layers[index];
-		let tint = Color(1.0f, 1.0f, 1.0f, layer.Opacity * mCurrentState.Opacity);
+		EmitComposite(index, layer.Opacity * mCurrentState.Opacity, layer.BlendMode, true);
+	}
+
+	/// Blurs what is already drawn behind `rect` (rounded by `radii`) by a Gaussian of `sigma`
+	/// device pixels, as CSS's backdrop-filter does; a panel's own translucent background then goes
+	/// over it.
+	///
+	/// The backdrop is what this canvas drew before, in the target the call is in (a layer's, or
+	/// the canvas's), not what lies under the canvas. Everything drawn there so far moves into a
+	/// layer of its own, composited as before, whose blurred copy the shape shows. Without layers,
+	/// past MaxLayers, or inside a clip path (whose stencil mask could not follow the move),
+	/// nothing is drawn.
+	public void DrawBackdropBlur(Rectangle rect, CornerRadii radii, float sigma)
+	{
+		if (!mLayersEnabled || (mBatch.Layers.Count >= MaxLayers) || !mClipPaths.IsEmpty || (sigma <= 0.0f)
+			|| (rect.Width <= 0.0f) || (rect.Height <= 0.0f))
+			return;
+
+		FlushCurrentCommand();
+		let first = mLayerStack.IsEmpty ? 0 : mLayerStack.Back.FirstCommand;
+		let index = (int32)mBatch.Layers.Count;
+		// The target's commands so far, and the layers composited into it, move into the new layer.
+		for (int c = first; c < mBatch.Commands.Count; c++)
+		{
+			if (mBatch.Commands[c].Layer == mCurrentLayer)
+				mBatch.Commands[c].Layer = index;
+		}
+		for (int l < mBatch.Layers.Count)
+		{
+			if ((mBatch.Layers[l].Parent == mCurrentLayer) && !IsOpenLayer((int32)l))
+				mBatch.Layers[l].Parent = index;
+		}
+		var behind = VGLayer();
+		behind.Parent = mCurrentLayer;
+		behind.BackdropBlur = Clamp(sigma, 0.0f, MaxLayerBlur);
+		mBatch.Layers.Add(behind);
+		let bounds = LayerContentBounds(index, (int32)first);
+		mBatch.Layers[index].Bounds = bounds;
+		if (!HasClip(bounds))
+			return; // nothing behind it: nothing to blur, and the empty layer is never drawn
+
+		// As drawn: its opacities and clips are its own.
+		EmitComposite(index, 1.0f, .Normal, false);
+		// The shape, tessellated, sampling the blurred copy.
+		let builder = scope PathBuilder();
+		ShapeBuilder.BuildRoundedRect(rect, radii, builder);
+		let shape = builder.ToPath();
+		defer delete shape;
+		let firstShape = mBatch.Commands.Count;
+		FillPath(shape, .(1.0f, 1.0f, 1.0f, 1.0f), .NonZero, true);
+		FlushCurrentCommand();
+		for (int c = firstShape; c < mBatch.Commands.Count; c++)
+		{
+			mBatch.Commands[c].DrawMode = .Layer;
+			mBatch.Commands[c].CompositeLayer = index;
+			mBatch.Commands[c].Backdrop = true;
+		}
+	}
+
+	/// Whether a layer is still being drawn, on the stack.
+	private bool IsOpenLayer(int32 index)
+	{
+		for (let save in mLayerStack)
+		{
+			if (save.Layer == index)
+				return true;
+		}
+		return false;
+	}
+
+	/// A layer's composite in the current target: a device quad over its bounds, `alpha` its
+	/// opacity, sampling its target (the renderer maps positions to texels). `clipped`: the current
+	/// clips apply, as a pushed layer's do; else none, since drawing moved aside keeps its own.
+	private void EmitComposite(int32 index, float alpha, VGBlendMode blendMode, bool clipped)
+	{
+		let bounds = mBatch.Layers[index].Bounds;
+		let tint = Color(1.0f, 1.0f, 1.0f, alpha);
 		let start = (int32)mBatch.Indices.Count;
 		let vertexBase = (uint32)mBatch.Vertices.Count;
 		let x0 = bounds.X;
@@ -518,7 +592,14 @@ class VGContext
 			mBatch.Indices.Add(vertexBase + i);
 
 		var command = CurrentCommand(start, 6);
-		command.BlendMode = layer.BlendMode;
+		if (!clipped)
+		{
+			command.ClipRect = .();
+			command.ClipMode = .None;
+			command.Scissored = false;
+			command.StencilRef = 0;
+		}
+		command.BlendMode = blendMode;
 		command.DrawMode = .Layer;
 		command.GradientSpread = .Pad;
 		command.CompositeLayer = index;

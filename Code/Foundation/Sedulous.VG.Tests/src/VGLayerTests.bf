@@ -192,6 +192,87 @@ class VGLayerTests
 		Test.Assert(Near(batch.Layers[1].Blur, VGContext.MaxLayerBlur));
 	}
 
+	/// A backdrop blur moves what was drawn into a layer, the layers composited before it with it,
+	/// composites that layer unclipped as drawn, and shows its blurred copy in the shape; what is
+	/// drawn after it stays in the target.
+	[Test]
+	public static void ABackdropBlurMovesWhatWasDrawnIntoALayerAndShowsItsBlurredCopy()
+	{
+		let context = scope VGContext();
+		context.SetLayers(true);
+		let red = Square(0, 0, 40, 40);
+		defer delete red;
+		let green = Square(50, 0, 60, 10);
+		defer delete green;
+		let blue = Square(0, 50, 10, 60);
+		defer delete blue;
+
+		context.FillPath(red, .Red, .NonZero, false);
+		context.PushLayer(0.5f); // drawn before the backdrop: becomes a child of the moved layer
+		context.FillPath(green, .Green, .NonZero, false);
+		context.PopLayer();
+		context.DrawBackdropBlur(.(10, 10, 20, 20), .(4.0f), 3.0f);
+		context.FillPath(blue, .Blue, .NonZero, false); // after: the target
+
+		let batch = context.GetBatch();
+		Test.Assert(batch.Layers.Count == 2);
+		let behind = batch.Layers[1];
+		Test.Assert(behind.Parent == -1);
+		Test.Assert(Near(behind.BackdropBlur, 3.0f));
+		Test.Assert(Near(behind.Opacity, 1.0f));
+		Test.Assert(batch.Layers[0].Parent == 1, "the earlier layer now composites into the moved one");
+		Test.Assert(batch.Commands[0].Layer == 1, "the red fill moved");
+		var composites = 0;
+		var backdrops = 0;
+		for (let command in batch.Commands)
+		{
+			if ((command.CompositeLayer == 1) && !command.Backdrop)
+			{
+				Test.Assert(command.Layer == -1);
+				Test.Assert(command.ClipMode == .None);
+				composites++;
+			}
+			if (command.Backdrop)
+			{
+				Test.Assert(command.DrawMode == .Layer);
+				Test.Assert(command.CompositeLayer == 1);
+				Test.Assert(command.Layer == -1);
+				backdrops++;
+			}
+		}
+		Test.Assert(composites == 1);
+		Test.Assert(backdrops >= 1);
+		Test.Assert(batch.Commands.Back.Layer == -1, "the blue fill after it stays in the target");
+		Test.Assert(batch.Commands.Back.DrawMode != .Layer);
+	}
+
+	/// No backdrop blur without layers, or inside a clip path.
+	[Test]
+	public static void NoBackdropBlurWithoutLayersOrInsideAClipPath()
+	{
+		let red = Square(0, 0, 40, 40);
+		defer delete red;
+		{
+			let context = scope VGContext();
+			context.FillPath(red, .Red, .NonZero, false);
+			context.DrawBackdropBlur(.(10, 10, 20, 20), .(4.0f), 3.0f);
+			Test.Assert(context.GetBatch().Layers.IsEmpty);
+			Test.Assert(context.GetBatch().Commands.Count == 1);
+		}
+		{
+			let context = scope VGContext();
+			context.SetLayers(true);
+			context.SetStencilFills(true);
+			let clip = Square(0, 0, 30, 30);
+			defer delete clip;
+			context.FillPath(red, .Red, .NonZero, false);
+			context.PushClipPath(clip);
+			context.DrawBackdropBlur(.(10, 10, 20, 20), .(4.0f), 3.0f);
+			context.PopClipPath();
+			Test.Assert(context.GetBatch().Layers.IsEmpty);
+		}
+	}
+
 	/// Past MaxLayers in a batch a layer is an opacity push, so a long list of faded rows still
 	/// draws, each row fading on its own.
 	[Test]

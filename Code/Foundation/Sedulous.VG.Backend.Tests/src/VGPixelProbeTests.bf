@@ -535,6 +535,55 @@ class VGPixelProbeTests
 		Test.Assert(Math.Abs((int)image.At(60, 50)[0] - outside) <= 2, scope $"{detail}: and symmetric");
 	}
 
+	/// A red half and a blue half meet at x = 64; a backdrop blur over the middle of the seam mixes
+	/// them there and leaves the seam sharp above it, and a half faded green layer drawn before it
+	/// (moved under the backdrop's layer) still reads half. Encoded, so a half is byte 128.
+	[Test]
+	public static void ABackdropBlurBlursWhatTheCanvasDrewBehindAShape()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+		{
+			BackdropBlurOn(kind, 1);
+			BackdropBlurOn(kind, 4);
+		}
+	}
+
+	private static void BackdropBlurOn(ProbeBackend kind, uint32 sampleCount)
+	{
+		let fixture = scope VGProbeFixture(kind);
+		if (!fixture.Ready)
+			return;
+
+		let image = VGSceneRenderer.RenderScene(fixture, scope (context) =>
+			{
+				context.FillRect(.(0, 0, 64, 128), ByteColor(255, 0, 0));
+				context.FillRect(.(64, 0, 64, 128), ByteColor(0, 0, 255));
+				context.PushLayer(0.5f);
+				context.FillRect(.(8, 100, 20, 20), ByteColor(0, 255, 0));
+				context.PopLayer();
+				context.DrawBackdropBlur(.(40, 40, 48, 40), .(6.0f), 4.0f);
+			}, sampleCount, .Encoded);
+		defer delete image;
+		Test.Assert((image != null) && image.Valid, "the scene rendered");
+
+		let name = scope $"{kind} x{sampleCount}";
+		let seamLeft = image.At(63, 60);
+		let seamRight = image.At(64, 60);
+		let detail = scope $"{name}: the seam in the backdrop {seamLeft[0]},{seamLeft[2]} | {seamRight[0]},{seamRight[2]}";
+		Test.Assert(Math.Abs((int)seamLeft[0] + (int)seamRight[0] - 255) <= 12, detail); // mixed
+		Test.Assert(Math.Abs((int)seamLeft[2] + (int)seamRight[2] - 255) <= 12, detail);
+		Test.Assert(seamLeft[0] > 100, detail);
+		Test.Assert(seamRight[2] > 100, detail);
+		// And each side carries the other: a sharp seam also sums to the full value.
+		Test.Assert(seamLeft[2] >= 60, detail);
+		Test.Assert(seamRight[0] >= 60, detail);
+		Test.Assert(image.At(63, 20)[0] >= 253, scope $"{name}: above the backdrop the seam is sharp");
+		Test.Assert(image.At(63, 20)[2] <= 2, scope $"{name}: above the backdrop the seam is sharp");
+		Test.Assert(image.At(64, 20)[2] >= 253, scope $"{name}: above the backdrop the seam is sharp");
+		Test.Assert(image.At(44, 60)[0] >= 245, scope $"{name}: well inside the red, blurred red is red");
+		Test.Assert(Math.Abs((int)image.At(18, 110)[1] - 128) <= 3, scope $"{name}: the earlier layer, half green");
+	}
+
 	/// An axis aligned rectangle path, the caller's to delete.
 	private static Path Rect(float x0, float y0, float x1, float y1)
 	{

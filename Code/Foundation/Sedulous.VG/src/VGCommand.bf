@@ -35,6 +35,9 @@ struct VGCommand
 	public int32 Layer = -1;
 	/// A Layer mode composite: the layer whose target the quad samples.
 	public int32 CompositeLayer = -1;
+	/// A Layer mode composite that samples the layer's blurred copy (VGLayer.BackdropBlur): a
+	/// backdrop blur's shape (VGContext.DrawBackdropBlur).
+	public bool Backdrop = false;
 
 	public this() {}
 }

@@ -16,6 +16,8 @@ struct VGLayer
 	public VGBlendMode BlendMode = .Normal;
 	/// A Gaussian blur's sigma in device pixels, 0 for none; the bounds carry three sigmas.
 	public float Blur = 0.0f;
+	/// The sigma of a blurred copy drawn for backdrop composites; the layer itself stays sharp.
+	public float BackdropBlur = 0.0f;
 
 	public this() {}
 }

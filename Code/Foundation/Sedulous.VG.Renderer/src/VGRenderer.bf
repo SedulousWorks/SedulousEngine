@@ -385,14 +385,30 @@ class VGRenderer
 			renderVertices.Add(.(vertex));
 
 		// The slice's layers: each kept to its parent (the canvas for the outermost), given a
-		// uniform slot of its own (its projection over its bounds) and a target size; their
-		// composites' quads are fitted to that, since a layer may be clamped and its target is
-		// larger than its content.
+		// uniform slot of its own (its projection over its bounds) and a target size. Parents go
+		// first, by nesting depth: a backdrop blur makes a layer the parent of earlier ones.
 		let layerBase = (int32)mLayers.Count;
 		var nextUniformSlot = uniformSlot + 1;
-		for (let source in batch.Layers)
+		let order = scope List<int32>(batch.Layers.Count);
+		for (int l < batch.Layers.Count)
 		{
-			var layer = PreparedLayer();
+			var prepared = PreparedLayer();
+			for (var p = batch.Layers[l].Parent; (p >= 0) && (prepared.Depth <= batch.Layers.Count);
+				p = batch.Layers[p].Parent)
+				prepared.Depth++;
+			mLayers.Add(prepared);
+			order.Add((int32)l);
+		}
+		// A stable insertion sort by depth: layers are few.
+		for (int i = 1; i < order.Count; i++)
+		{
+			for (int j = i; (j > 0) && (mLayers[layerBase + order[j - 1]].Depth > mLayers[layerBase + order[j]].Depth); j--)
+				Swap!(order[j - 1], order[j]);
+		}
+		for (let l in order)
+		{
+			let source = batch.Layers[l];
+			var layer = ref mLayers[layerBase + l];
 			layer.Parent = (source.Parent >= 0) ? (source.Parent + layerBase) : -1;
 			var outer = Rectangle(0.0f, 0.0f, (float)width, (float)height);
 			var parentValid = true;
@@ -410,42 +426,42 @@ class VGRenderer
 			layer.Height = (uint32)layer.Bounds.Height;
 			layer.TargetWidth = RoundUpToBucket(layer.Width);
 			layer.TargetHeight = RoundUpToBucket(layer.Height);
-			// A blur takes two more slots, across then down; without its pipeline, none.
+			// A blur, in place or a backdrop's copy, takes two more slots, across then down;
+			// without its pipeline, none.
 			layer.Blur = (mBlurPipeline != null) ? source.Blur : 0.0f;
-			let slots = (layer.Blur > 0.0f) ? 3u : 1u;
+			layer.BackdropBlur = (mBlurPipeline != null) ? source.BackdropBlur : 0.0f;
+			let blurs = (layer.Blur > 0.0f) || (layer.BackdropBlur > 0.0f);
+			let slots = blurs ? 3u : 1u;
 			layer.Valid = parentValid && (layer.Width > 0) && (layer.Height > 0)
 				&& ((nextUniformSlot + slots) <= (uint32)cMaxUniformSlots);
 			if (layer.Valid)
 			{
 				layer.UniformOffset = nextUniformSlot * (uint32)cUniformSlotSize;
 				nextUniformSlot++;
-				if (layer.Blur > 0.0f)
+				if (blurs)
 				{
 					layer.BlurUniformOffset = nextUniformSlot * (uint32)cUniformSlotSize;
 					nextUniformSlot += 2;
 				}
 			}
-			mLayers.Add(layer);
 		}
+		// A composite samples its layer's target where its geometry lies: texcoords from
+		// positions, over the target's bucketed size.
 		for (let command in batch.Commands)
 		{
-			if ((command.DrawMode != .Layer) || (command.CompositeLayer < 0) || (command.IndexCount < 6))
+			if ((command.DrawMode != .Layer) || (command.CompositeLayer < 0))
 				continue;
 			let layer = mLayers[command.CompositeLayer + layerBase];
-			let vertexBase = (int)batch.Indices[command.StartIndex];
-			if (!layer.Valid || ((vertexBase + 3) >= renderVertices.Count))
+			if (!layer.Valid)
 				continue; // the composite is skipped at Render
-			let b = layer.Bounds;
-			let u = (float)layer.Width / (float)layer.TargetWidth;
-			let v = (float)layer.Height / (float)layer.TargetHeight;
-			Float2[4] corners = .(.(b.X, b.Y), .(b.X + b.Width, b.Y), .(b.X + b.Width, b.Y + b.Height),
-				.(b.X, b.Y + b.Height));
-			Float2[4] uvs = .(.(0.0f, 0.0f), .(u, 0.0f), .(u, v), .(0.0f, v));
-			for (int k < 4)
+			for (int k < command.IndexCount)
 			{
-				var vertex = ref renderVertices[vertexBase + k];
-				vertex.Position = .(corners[k].X, corners[k].Y);
-				vertex.TexCoord = .(uvs[k].X, uvs[k].Y);
+				let at = (int)batch.Indices[command.StartIndex + k];
+				if (at >= renderVertices.Count)
+					continue;
+				var vertex = ref renderVertices[at];
+				vertex.TexCoord = .((vertex.Position[0] - layer.Bounds.X) / (float)layer.TargetWidth,
+					(vertex.Position[1] - layer.Bounds.Y) / (float)layer.TargetHeight);
 			}
 		}
 
@@ -488,13 +504,13 @@ class VGRenderer
 			uniforms.Projection = OrthoOffCenter(layer.Bounds.X, layer.Bounds.Y, (float)layer.Width,
 				(float)layer.Height);
 			WriteBuffer(mUniformBuffers[frameIndex], layer.UniformOffset, &uniforms, sizeof(VGUniforms));
-			if (layer.Blur > 0.0f)
+			if ((layer.Blur > 0.0f) || (layer.BackdropBlur > 0.0f))
 			{
 				var blur = VGBlurUniforms();
 				blur.Region = .((float)layer.Width / (float)layer.TargetWidth,
 					(float)layer.Height / (float)layer.TargetHeight);
-				blur.Sigma = layer.Blur;
-				blur.Radius = Ceil(3.0f * layer.Blur);
+				blur.Sigma = Max(layer.Blur, layer.BackdropBlur);
+				blur.Radius = Ceil(3.0f * blur.Sigma);
 				blur.Step = .(1.0f / (float)layer.TargetWidth, 0.0f); // across
 				WriteBuffer(mUniformBuffers[frameIndex], layer.BlurUniformOffset, &blur, sizeof(VGBlurUniforms));
 				blur.Step = .(0.0f, 1.0f / (float)layer.TargetHeight); // down
@@ -621,9 +637,16 @@ class VGRenderer
 		if (!slice.IsValid || (slice.LayerCount == 0) || (mLayerPipeline == null))
 			return;
 
-		// A child is pushed after its parent and the parent draws the child's composite, so the
-		// layers go in reverse.
-		for (int32 l = slice.LayerStart + slice.LayerCount - 1; l >= slice.LayerStart; l--)
+		// A parent draws its children's composites, so the deepest layers go first.
+		let order = scope List<int32>(slice.LayerCount);
+		for (int32 l = slice.LayerStart; l < slice.LayerStart + slice.LayerCount; l++)
+			order.Add(l);
+		for (int i = 1; i < order.Count; i++)
+		{
+			for (int j = i; (j > 0) && (mLayers[order[j - 1]].Depth < mLayers[order[j]].Depth); j--)
+				Swap!(order[j - 1], order[j]);
+		}
+		for (let l in order)
 		{
 			var layer = ref mLayers[l];
 			if (!layer.Valid)
@@ -668,7 +691,14 @@ class VGRenderer
 			pass.End();
 			encoder.TransitionTexture(target.Color, .RenderTarget, .ShaderRead);
 			if (layer.Blur > 0.0f)
-				BlurLayer(encoder, frameIndex, layer, targetIndex);
+				BlurLayer(encoder, frameIndex, layer, targetIndex, targetIndex);
+			if (layer.BackdropBlur > 0.0f)
+			{
+				// A blurred copy for the backdrop shapes; the layer itself stays sharp.
+				let copy = AcquireLayerTarget(frameIndex, layer.TargetWidth, layer.TargetHeight, true);
+				if ((copy >= 0) && BlurLayer(encoder, frameIndex, layer, targetIndex, copy))
+					layer.BackdropTarget = copy;
+			}
 			layer.Target = targetIndex;
 			mLastLayerStats.Layers++;
 		}
@@ -713,8 +743,9 @@ class VGRenderer
 			IBindGroup compositeGroup = null;
 			if (command.DrawMode == .Layer)
 			{
-				let target = ((command.CompositeLayer >= 0) && (command.CompositeLayer < mLayers.Count))
-					? mLayers[command.CompositeLayer].Target : -1;
+				let known = (command.CompositeLayer >= 0) && (command.CompositeLayer < mLayers.Count);
+				let target = !known ? -1
+					: (command.Backdrop ? mLayers[command.CompositeLayer].BackdropTarget : mLayers[command.CompositeLayer].Target);
 				if ((target < 0) || (mLayerTargets[target].BindGroup == null))
 				{
 					stats.Skipped++;
@@ -1647,22 +1678,26 @@ class VGRenderer
 	private static uint32 RoundUpToBucket(uint32 size)
 		=> (size + cLayerTargetBucket - 1) / cLayerTargetBucket * cLayerTargetBucket;
 
-	/// Blurs a drawn layer in place: across into a scratch target, then down back into its own,
-	/// both single sampled since the content is resolved already. No scratch target: left sharp.
-	private void BlurLayer(ICommandEncoder encoder, int32 frameIndex, PreparedLayer layer, int32 targetIndex)
+	/// Blurs a drawn layer's target into `intoIndex`, itself or a copy: across into a scratch
+	/// target, then down, both single sampled since the content is resolved already. False, with
+	/// nothing done, without a scratch target. Leaves both ends in ShaderRead.
+	private bool BlurLayer(ICommandEncoder encoder, int32 frameIndex, PreparedLayer layer, int32 targetIndex,
+		int32 intoIndex)
 	{
 		let scratchIndex = AcquireLayerTarget(frameIndex, layer.TargetWidth, layer.TargetHeight, true);
 		if (scratchIndex < 0)
-			return;
+			return false;
 		let target = mLayerTargets[targetIndex];
 		let scratch = mLayerTargets[scratchIndex];
+		let into = mLayerTargets[intoIndex];
 
 		encoder.TransitionTexture(scratch.Color, .Undefined, .RenderTarget);
 		BlurPass(encoder, layer, target, scratch, layer.BlurUniformOffset);
 		encoder.TransitionTexture(scratch.Color, .RenderTarget, .ShaderRead);
-		encoder.TransitionTexture(target.Color, .ShaderRead, .RenderTarget);
-		BlurPass(encoder, layer, scratch, target, layer.BlurUniformOffset + (uint32)cUniformSlotSize);
-		encoder.TransitionTexture(target.Color, .RenderTarget, .ShaderRead);
+		encoder.TransitionTexture(into.Color, (intoIndex == targetIndex) ? .ShaderRead : .Undefined, .RenderTarget);
+		BlurPass(encoder, layer, scratch, into, layer.BlurUniformOffset + (uint32)cUniformSlotSize);
+		encoder.TransitionTexture(into.Color, .RenderTarget, .ShaderRead);
+		return true;
 	}
 
 	/// One axis of a layer's blur, `from` sampled into `into`.
@@ -1838,10 +1873,16 @@ class VGRenderer
 		public uint32 UniformOffset = 0;
 		/// The sigma, 0 for none or no blur pipeline.
 		public float Blur = 0.0f;
+		/// A blurred copy's sigma, for backdrop composites.
+		public float BackdropBlur = 0.0f;
 		/// Its two passes' slots, across then down.
 		public uint32 BlurUniformOffset = 0;
+		/// Ancestors: parents draw after their children.
+		public int32 Depth = 0;
 		/// Into mLayerTargets, set by RenderLayers.
 		public int32 Target = -1;
+		/// The blurred copy, set by RenderLayers.
+		public int32 BackdropTarget = -1;
 		public bool Valid = false;
 
 		public this() {}
