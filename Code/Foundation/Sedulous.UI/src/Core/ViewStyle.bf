@@ -55,21 +55,14 @@ extension View
 		public float BlendDuration = 0.0f;
 		public float BlendDelay = 0.0f;
 		public TimingFunction BlendEasing = .Ease;
-		/// The in-between of a running shadow list's transition, as ResolveStyle answers it:
+		/// Where a running transition's in-between list goes, as ResolveStyle answers it:
 		/// rewritten by each resolve, and borrowed by the value it answers.
-		public BoxShadowList ResolvedShadows = new .() ~ _.ReleaseRef();
-		/// The in-between lists a re-triggered transition starts from, held while any
-		/// transition runs, since an entry's From borrows one.
-		public List<BoxShadowList> HeldShadows = new .() ~ { ReleaseHeld(_); delete _; };
+		public StyleLerpScratch Resolved = new .() ~ delete _;
+		/// The in-between lists re-triggered transitions start from, held while any transition
+		/// runs, since an entry's From borrows one.
+		public List<StyleLerpScratch> Held = new .() ~ DeleteContainerAndItems!(_);
 
-		public void ReleaseHeldShadows() => ReleaseHeld(HeldShadows);
-
-		private static void ReleaseHeld(List<BoxShadowList> lists)
-		{
-			for (let list in lists)
-				list.ReleaseRef();
-			lists.Clear();
-		}
+		public void ReleaseHeld() => ClearAndDeleteItems!(Held);
 	}
 
 	private StyleCache mStyleCache = new .() ~ delete _;
@@ -364,7 +357,7 @@ extension View
 			// The rules moved under a running transition, so its targets are stale. It ends
 			// here and the new cascade value applies at once.
 			mTransitionState.Active.Clear();
-			mTransitionState.ReleaseHeldShadows();
+			mTransitionState.ReleaseHeld();
 			mTransitionState.StateBlendActive = false;
 		}
 
@@ -499,7 +492,7 @@ extension View
 					return value;
 				return StyleValueOps.Lerp(transition.From, transition.To,
 					TransitionProgress(transition.Elapsed, transition.Duration, transition.Delay,
-						transition.Easing), mTransitionState.ResolvedShadows);
+						transition.Easing), mTransitionState.Resolved);
 			}
 		}
 		// An animation's values over the cascade's (a transition, above, wins over both, as in
@@ -787,7 +780,7 @@ extension View
 			InvalidateVisual();
 
 		if (mTransitionState.Active.IsEmpty)
-			mTransitionState.ReleaseHeldShadows(); // no entry borrows them now
+			mTransitionState.ReleaseHeld(); // no entry borrows them now
 		let active = !mTransitionState.Active.IsEmpty || mTransitionState.StateBlendActive || animating;
 		if (!active)
 			mTransitionRegistered = false;
@@ -871,14 +864,14 @@ extension View
 			if (entryIndex >= 0)
 			{
 				let entry = mTransitionState.Active[entryIndex];
-				// A shadow list's in-between is held for the new entry to start from.
-				let held = new BoxShadowList();
+				// A list's in-between is held for the new entry to start from.
+				let held = new StyleLerpScratch();
 				from = StyleValueOps.Lerp(entry.From, entry.To,
 					TransitionProgress(entry.Elapsed, entry.Duration, entry.Delay, entry.Easing), held);
-				if ((from case .Shadows(let list)) && (list == held))
-					mTransitionState.HeldShadows.Add(held);
+				if (held.Holds(from))
+					mTransitionState.Held.Add(held);
 				else
-					held.ReleaseRef();
+					delete held;
 			}
 			else if (oldRule != null)
 			{

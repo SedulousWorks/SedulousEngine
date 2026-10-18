@@ -24,6 +24,9 @@ extension View
 
 	/// In the list's order: a later one wins a property both animate.
 	private List<RunningAnimation> mAnimations = null ~ DeleteContainerAndItems!(_);
+	/// Where an animated value's list goes (a shadow list's in-between), as ResolveStyle
+	/// answers it: rewritten by each resolve, and borrowed by the value it answers.
+	private StyleLerpScratch mAnimationScratch = null ~ delete _;
 
 	/// Animations running (not finished) on the view.
 	public int RunningAnimationCount
@@ -192,7 +195,9 @@ extension View
 			let t = spec.Easing.Evaluate((p - fromOffset) / (toOffset - fromOffset));
 			if (from.IsNone || to.IsNone || !StyleValueOps.Interpolable(from, to))
 				return (t < 0.5f) ? from : to;
-			return StyleValueOps.Lerp(from, to, t);
+			if (mAnimationScratch == null)
+				mAnimationScratch = new .();
+			return StyleValueOps.Lerp(from, to, t, mAnimationScratch);
 		}
 		return null;
 	}

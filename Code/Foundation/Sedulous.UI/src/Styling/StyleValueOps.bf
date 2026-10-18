@@ -110,9 +110,9 @@ static class StyleValueOps
 	///
 	/// Shadow lists go shadow by shadow, the shorter padded with clear shadows of the other's,
 	/// as CSS pads them, so one added on hover fades in. An in-between of two or more is
-	/// written into `shadows`, which the CALLER owns and the result borrows; without one such
+	/// written into `scratch`, which the CALLER owns and the result borrows; without one such
 	/// a pair switches at the midpoint.
-	public static StyleValue Lerp(StyleValue a, StyleValue b, float t, BoxShadowList shadows = null)
+	public static StyleValue Lerp(StyleValue a, StyleValue b, float t, StyleLerpScratch scratch = null)
 	{
 		if (t <= 0.0f)
 			return a;
@@ -174,8 +174,9 @@ static class StyleValueOps
 			let count = Math.Max(a.ShadowCount, b.ShadowCount);
 			if (count == 1)
 				return .Shadow(MixShadow(a.ShadowAt(0), b.ShadowAt(0), t));
-			if (shadows == null)
+			if (scratch == null)
 				return (t < 0.5f) ? a : b;
+			let shadows = scratch.Shadows;
 			shadows.Clear();
 			for (int i < count)
 			{

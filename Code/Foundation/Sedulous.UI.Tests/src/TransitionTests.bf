@@ -201,15 +201,14 @@ class TransitionTests
 		two.Add(one);
 		two.Add(added);
 
-		let scratch = new BoxShadowList();
-		defer scratch.ReleaseRef();
+		let scratch = scope StyleLerpScratch();
 		let mid = StyleValueOps.Lerp(.Shadow(one), .Shadows(two), 0.5f, scratch);
 		Test.Assert(mid.ShadowCount == 2);
 		Test.Assert(Near(mid.ShadowAt(0).Blur, 4.0f));
 		Test.Assert(Near(mid.ShadowAt(1).OffsetY, 5.0f));
 		Test.Assert(Near(mid.ShadowAt(1).Color.R, 1.0f), "its own colour");
 		Test.Assert(Near(mid.ShadowAt(1).Color.A, 0.5f), "fading in");
-		Test.Assert((mid case .Shadows(let list)) && (list == scratch));
+		Test.Assert(scratch.Holds(mid));
 
 		Test.Assert(StyleValueOps.Lerp(.Shadow(one), .Shadows(two), 0.4f).ShadowCount == 1, "no list to write: it switches");
 		Test.Assert(!StyleValueOps.Equivalent(.Shadow(one), .Shadows(two)));
@@ -746,6 +745,24 @@ class TransitionTests
 		fixture.Context.BeginFrame(0.5f);
 		Test.Assert(Near(OpacityOf(view), 0.75f), "the second iteration backwards, at 75% again");
 		Test.Assert(view.RunningAnimationCount == 1);
+	}
+
+	/// A keyframed shadow list fades shadow by shadow, as a transition between them does: the
+	/// in-between is the view's to keep, not a switch at the midpoint.
+	[Test]
+	public static void AKeyframedShadowListFadesShadowByShadow()
+	{
+		let fixture = scope Fixture(LoadSSS("""
+			@keyframes glow { from { box-shadow: 0 2 4 #000000; } to { box-shadow: 0 2 4 #000000, 0 0 12 #FF0000; } }
+			TestView { animation: glow 1s linear; }
+			"""));
+		let view = fixture.Leaf();
+		view.ResolveStyle(.BoxShadow);
+		fixture.Context.BeginFrame(0.25f);
+		let early = view.ResolveStyle(.BoxShadow);
+		Test.Assert(early.ShadowCount == 2, "the added shadow is there from the start, clear");
+		Test.Assert(Near(early.ShadowAt(1).Color.A, 0.25f), scope $"{early.ShadowAt(1).Color.A}");
+		Test.Assert(Near(early.ShadowAt(1).Blur, 3.0f));
 	}
 
 	/// A transform keyframe animates the drawn transform and only redraws.
