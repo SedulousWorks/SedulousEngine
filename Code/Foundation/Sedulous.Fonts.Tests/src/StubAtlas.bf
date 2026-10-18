@@ -11,6 +11,8 @@ class StubAtlas : IFontAtlas
 	public override uint32 Width => 128;
 	public override uint32 Height => 128;
 	public override Span<uint8> PixelData => .();
+	/// Keyed by codepoint for now: a codepoint is its own glyph id.
+	public override int32 GlyphFor(int32 codepoint) => codepoint;
 	public override bool Contains(int32 codepoint) => true;
 	public override Float2 WhitePixelUV => .(0.5f, 0.5f);
 	public override AtlasMode Mode => .DistanceField;

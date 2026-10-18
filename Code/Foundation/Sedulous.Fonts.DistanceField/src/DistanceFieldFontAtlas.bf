@@ -53,6 +53,8 @@ class DistanceFieldFontAtlas : IFontAtlas
 	public override AtlasMode Mode => .DistanceField;
 	public override float DistanceFieldRange => mPixelRange;
 
+	/// Keyed by codepoint for now: a codepoint is its own glyph id.
+	public override int32 GlyphFor(int32 codepoint) => codepoint;
 	public override bool Contains(int32 codepoint) => mRegions.ContainsKey(codepoint);
 
 	public override bool TryGetRegion(int32 codepoint, out AtlasRegion region)

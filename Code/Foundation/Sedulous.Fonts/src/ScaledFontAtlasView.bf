@@ -24,6 +24,7 @@ class ScaledFontAtlasView : IFontAtlas
 	public override Float2 WhitePixelUV => mBase.WhitePixelUV;
 	public override AtlasMode Mode => mBase.Mode;
 	public override float DistanceFieldRange => mBase.DistanceFieldRange;
+	public override int32 GlyphFor(int32 codepoint) => mBase.GlyphFor(codepoint);
 	public override bool Contains(int32 codepoint) => mBase.Contains(codepoint);
 
 	public override bool TryGetRegion(int32 codepoint, out AtlasRegion region)

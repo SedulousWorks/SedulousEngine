@@ -78,7 +78,7 @@ static class FontBake
 		int glyphs = 0;
 		for (int32 cp = options.FirstCodepoint; cp <= options.LastCodepoint; cp++)
 		{
-			if (atlas.Contains(cp))
+			if (atlas.Contains(atlas.GlyphFor(cp)))
 				glyphs++;
 		}
 		return glyphs;

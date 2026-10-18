@@ -59,7 +59,7 @@ class FontThumbnailGenerator : IThumbnailGenerator
 		AtlasRegion[2] regions = .(.(), .());
 		for (int i < 2)
 		{
-			if (!data.Atlas.TryGetRegion(sample[i], out regions[i]))
+			if (!data.Atlas.TryGetRegion(data.Atlas.GlyphFor(sample[i]), out regions[i]))
 				return .Err(.NotFound);
 		}
 		var pen = 0.0f;

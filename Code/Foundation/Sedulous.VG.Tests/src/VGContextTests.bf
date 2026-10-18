@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Fonts;
 using Sedulous.Image;
 using Sedulous.VG;
 
@@ -524,5 +525,55 @@ class VGContextTests
 
 		Test.Assert(CornerRadii(3.0f) == CornerRadii(3.0f));
 		Test.Assert(CornerRadii(3.0f) != CornerRadii(3.0f, 3.0f, 3.0f, 4.0f));
+	}
+
+	// ---- text ----
+
+	/// An atlas whose glyphs are not their codepoints: 'A' is glyph 7 and 'B' has none, as a
+	/// font's own glyph ids are.
+	class GlyphIdAtlas : IFontAtlas
+	{
+		public override uint32 Width => 64;
+		public override uint32 Height => 64;
+		public override Span<uint8> PixelData => .();
+		public override Float2 WhitePixelUV => .(0.5f, 0.5f);
+		public override int32 GlyphFor(int32 codepoint) => (codepoint == (int32)'A') ? 7 : -1;
+		public override bool Contains(int32 glyph) => glyph == 7;
+
+		public override bool TryGetRegion(int32 glyph, out AtlasRegion region)
+		{
+			region = (glyph == 7) ? .(0, 0, 8, 8, 0.0f, -8.0f, 10.0f) : .();
+			return glyph == 7;
+		}
+
+		public override bool GetGlyphQuad(int32 glyph, ref float cursorX, float cursorY, out GlyphQuad quad)
+		{
+			quad = .();
+			if (glyph != 7)
+				return false;
+			quad = .(cursorX, cursorY - 8.0f, cursorX + 8.0f, cursorY, 0, 0, 0.125f, 0.125f);
+			cursorX += 10.0f;
+			return true;
+		}
+
+		public override bool GetGlyphQuadAt(int32 glyph, float x, float y, out GlyphQuad quad)
+		{
+			var cursor = x;
+			return GetGlyphQuad(glyph, ref cursor, y, out quad);
+		}
+	}
+
+	[Test]
+	public static void UnshapedTextDrawsEachCodepointsGlyphByTheAtlassGlyphId()
+	{
+		let atlas = scope GlyphIdAtlas();
+		let texture = scope OwnedImageData(64, 64, .RGBA8, .(), .Linear);
+		let context = scope VGContext();
+		context.DrawText("AAB", atlas, texture, .(0.0f, 20.0f), .White);
+		// Two quads (glyph 7 twice); 'B' has no glyph and draws nothing.
+		int quads = 0;
+		for (let command in context.GetBatch().Commands)
+			quads += command.IndexCount / 6;
+		Test.Assert(quads == 2, scope $"{quads} quads");
 	}
 }

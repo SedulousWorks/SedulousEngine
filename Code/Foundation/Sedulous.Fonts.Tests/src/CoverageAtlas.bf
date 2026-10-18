@@ -19,6 +19,8 @@ class CoverageAtlas : IFontAtlas
 	public override uint32 Width => mWidth;
 	public override uint32 Height => mHeight;
 	public override Span<uint8> PixelData => .(mPixels.CArray(), mPixels.Count);
+	/// Keyed by codepoint for now: a codepoint is its own glyph id.
+	public override int32 GlyphFor(int32 codepoint) => codepoint;
 	public override bool Contains(int32 codepoint) => false;
 	public override Float2 WhitePixelUV => .(0, 0);
 

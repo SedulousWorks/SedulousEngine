@@ -1464,8 +1464,9 @@ class VGContext
 		var index = 0;
 		while (index < text.Length)
 		{
-			let codepoint = (int32)DecodeCodepoint(text, ref index);
-			if (atlas.GetGlyphQuad(codepoint, ref cursorX, position.Y, let quad))
+			// Unshaped: each codepoint draws its atlas's glyph for it (none: nothing, no advance).
+			let glyph = atlas.GlyphFor((int32)DecodeCodepoint(text, ref index));
+			if ((glyph >= 0) && atlas.GetGlyphQuad(glyph, ref cursorX, position.Y, let quad))
 				EmitGlyphQuad(quad, opaqueColor);
 		}
 

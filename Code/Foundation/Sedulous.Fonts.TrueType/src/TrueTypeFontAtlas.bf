@@ -104,6 +104,9 @@ class TrueTypeFontAtlas : IFontAtlas
 	public override Span<uint8> PixelData => mPixels.IsEmpty ? .() : .(mPixels.Ptr, mPixels.Count);
 	public override Float2 WhitePixelUV => .(mWhitePixelU, mWhitePixelV);
 
+	/// Keyed by codepoint for now: a codepoint is its own glyph id.
+	public override int32 GlyphFor(int32 codepoint) => codepoint;
+
 	/// The atlas holds the RANGE it was baked for and nothing else. A codepoint outside it
 	/// was never rasterised, whatever the font itself has.
 	public override bool Contains(int32 codepoint)
