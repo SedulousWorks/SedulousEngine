@@ -353,11 +353,10 @@ class ViewGroup : View
 			else if (faded)
 				ctx.VG.PushOpacity(opacity);
 
-			// An OUTER box shadow sits under the child's own drawing and outside its clip; an
-			// INSET one is drawn over the child, after OnDraw, inside it.
-			let shadow = child.ResolveStyle(.BoxShadow).AsShadow;
-			if ((shadow != null) && !shadow.Value.Inset)
-				DrawBoxShadow(ctx, child, shadow.Value);
+			// The OUTER box shadows sit under the child's own drawing and outside its clip; the
+			// INSET ones are drawn over the child, after OnDraw, inside it.
+			let shadows = child.ResolveStyle(.BoxShadow);
+			DrawBoxShadows(ctx, child, shadows, false);
 
 			// A clipping view clips to its box, and a rounded one to its corners too, so a card
 			// holds an image, a header or a scrolled list without its corners leaking; clips
@@ -379,8 +378,7 @@ class ViewGroup : View
 			child.OnDraw(ctx);
 			ctx.SetBlend(previousBlend);
 
-			if ((shadow != null) && shadow.Value.Inset)
-				DrawBoxShadow(ctx, child, shadow.Value);
+			DrawBoxShadows(ctx, child, shadows, true);
 
 			if (ctx.DebugSettings.AnyEnabled)
 				UIDebugOverlay.DrawOverlays(ctx, child, @child.Index);
@@ -397,9 +395,6 @@ class ViewGroup : View
 		}
 	}
 
-	/// One box shadow for a child, the context already translated to the child's origin: the
-	/// border box grown by the spread, moved by the offset, blurred, and rounded by the
-	/// child's own corner radius plus the spread, which is what CSS does.
 	/// The view's text-shadow, text-outline and text-glow onto the VG's text effects (the state
 	/// the child's draw pushed), so its text and its children's draw them; a property the view
 	/// leaves unset keeps what its parent set.
@@ -439,6 +434,21 @@ class ViewGroup : View
 		return Max(sx, sy);
 	}
 
+	/// The outer shadows (or the inset ones) of a box-shadow value, the last first so the first
+	/// is on top.
+	private static void DrawBoxShadows(UIDrawContext ctx, View child, StyleValue shadows, bool inset)
+	{
+		for (int i = shadows.ShadowCount - 1; i >= 0; i--)
+		{
+			let shadow = shadows.ShadowAt(i);
+			if (shadow.Inset == inset)
+				DrawBoxShadow(ctx, child, shadow);
+		}
+	}
+
+	/// One box shadow for a child, the context already translated to the child's origin: the
+	/// border box grown by the spread, moved by the offset, blurred, and rounded by the
+	/// corners it sits under plus the spread, which is what CSS does.
 	private static void DrawBoxShadow(UIDrawContext ctx, View child, BoxShadow shadow)
 	{
 		// The shadow follows the shape it sits under.

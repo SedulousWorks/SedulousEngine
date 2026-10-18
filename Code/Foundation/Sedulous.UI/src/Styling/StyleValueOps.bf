@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Core;
 
 namespace Sedulous.UI;
@@ -33,8 +34,17 @@ static class StyleValueOps
 			return (b case .String(let other)) && (value == other);
 		case .Length(let value):
 			return (b case .Length(let other)) && (value == other);
-		case .Shadow(let value):
-			return (b case .Shadow(let other)) && (value == other);
+		case .Shadow, .Shadows:
+			// Shadow by shadow, whichever case carries them.
+			let count = a.ShadowCount;
+			if (b.ShadowCount != count)
+				return false;
+			for (int i < count)
+			{
+				if (a.ShadowAt(i) != b.ShadowAt(i))
+					return false;
+			}
+			return true;
 		case .Transitions(let value):
 			return (b case .Transitions(let other)) && (value == other);
 		default:
@@ -64,12 +74,39 @@ static class StyleValueOps
 	private static Color MixColor(Color a, Color b, float t) =>
 		.(Mix(a.R, b.R, t), Mix(a.G, b.G, t), Mix(a.B, b.B, t), Mix(a.A, b.A, t));
 
+	private static BoxShadow MixShadow(BoxShadow from, BoxShadow to, float t)
+	{
+		BoxShadow result = .();
+		result.OffsetX = Mix(from.OffsetX, to.OffsetX, t);
+		result.OffsetY = Mix(from.OffsetY, to.OffsetY, t);
+		result.Blur = Mix(from.Blur, to.Blur, t);
+		result.Spread = Mix(from.Spread, to.Spread, t);
+		result.Color = MixColor(from.Color, to.Color, t);
+		// Inset is a yes or no, so it switches rather than blending.
+		result.Inset = (t < 0.5f) ? from.Inset : to.Inset;
+		return result;
+	}
+
+	/// A shadow that casts nothing, standing in for `like` where a list is shorter.
+	private static BoxShadow ClearShadowLike(BoxShadow like)
+	{
+		BoxShadow none = .();
+		none.Color = .(like.Color.R, like.Color.G, like.Color.B, 0.0f);
+		none.Inset = like.Inset;
+		return none;
+	}
+
 	/// The value `t` of the way from `a` to `b`.
 	///
 	/// Colours, floats, thicknesses, lengths and shadows interpolate. Every other kind
 	/// SWITCHES at the midpoint, which is CSS's discrete animation, drawables included: their
 	/// cross fade is the draw path's business, not this one's.
-	public static StyleValue Lerp(StyleValue a, StyleValue b, float t)
+	///
+	/// Shadow lists go shadow by shadow, the shorter padded with clear shadows of the other's,
+	/// as CSS pads them, so one added on hover fades in. An in-between of two or more is
+	/// written into `shadows`, which the CALLER owns and the result borrows; without one such
+	/// a pair switches at the midpoint.
+	public static StyleValue Lerp(StyleValue a, StyleValue b, float t, BoxShadowList shadows = null)
 	{
 		if (t <= 0.0f)
 			return a;
@@ -111,17 +148,20 @@ static class StyleValueOps
 			return .Thickness(.(Mix(from.Left, to.Left, t), Mix(from.Top, to.Top, t),
 				Mix(from.Right, to.Right, t), Mix(from.Bottom, to.Bottom, t)));
 
-		case .Shadow(let from):
-			let to = b.AsShadow.Value;
-			BoxShadow result = .();
-			result.OffsetX = Mix(from.OffsetX, to.OffsetX, t);
-			result.OffsetY = Mix(from.OffsetY, to.OffsetY, t);
-			result.Blur = Mix(from.Blur, to.Blur, t);
-			result.Spread = Mix(from.Spread, to.Spread, t);
-			result.Color = MixColor(from.Color, to.Color, t);
-			// Inset is a yes or no, so it switches rather than blending.
-			result.Inset = (t < 0.5f) ? from.Inset : to.Inset;
-			return .Shadow(result);
+		case .Shadow, .Shadows:
+			let count = Math.Max(a.ShadowCount, b.ShadowCount);
+			if (count == 1)
+				return .Shadow(MixShadow(a.ShadowAt(0), b.ShadowAt(0), t));
+			if (shadows == null)
+				return (t < 0.5f) ? a : b;
+			shadows.Clear();
+			for (int i < count)
+			{
+				let from = (i < a.ShadowCount) ? a.ShadowAt(i) : ClearShadowLike(b.ShadowAt(i));
+				let to = (i < b.ShadowCount) ? b.ShadowAt(i) : ClearShadowLike(a.ShadowAt(i));
+				shadows.Add(MixShadow(from, to, t));
+			}
+			return .Shadows(shadows);
 
 		default:
 			return (t < 0.5f) ? a : b;

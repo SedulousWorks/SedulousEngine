@@ -24,7 +24,10 @@ enum StyleValue
 	/// Borrowed.
 	case String(StringView value);
 	case Length(Unit value);
+	/// One shadow (a box-shadow of one, or a text effect).
 	case Shadow(BoxShadow value);
+	/// A box-shadow of two or more, the first on top. Borrowed.
+	case Shadows(BoxShadowList value);
 	/// Borrowed.
 	case Transitions(TransitionList value);
 	/// Take the parent's computed value.
@@ -48,7 +51,7 @@ enum StyleValue
 			case .Bool: return .Bool;
 			case .String: return .String;
 			case .Length: return .Length;
-			case .Shadow: return .Shadow;
+			case .Shadow, .Shadows: return .Shadow;
 			case .Transitions: return .Transitions;
 			case .Inherit: return .Inherit;
 			case .Initial: return .Initial;
@@ -122,14 +125,38 @@ enum StyleValue
 		}
 	}
 
+	/// The first shadow (a text effect's only one).
 	public BoxShadow? AsShadow
 	{
 		get
 		{
 			if (this case .Shadow(let value))
 				return value;
+			if ((this case .Shadows(let list)) && (list.Count > 0))
+				return list[0];
 			return null;
 		}
+	}
+
+	/// How many shadows the value holds: none for a value that is no shadow.
+	public int ShadowCount
+	{
+		get
+		{
+			if (this case .Shadow)
+				return 1;
+			if (this case .Shadows(let list))
+				return list.Count;
+			return 0;
+		}
+	}
+
+	/// The shadow at `index` (below ShadowCount), the first painted on top.
+	public BoxShadow ShadowAt(int index)
+	{
+		if (this case .Shadows(let list))
+			return list[index];
+		return AsShadow.Value;
 	}
 
 	/// Borrowed, and null when the kind differs.

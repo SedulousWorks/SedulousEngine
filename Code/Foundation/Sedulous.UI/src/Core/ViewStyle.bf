@@ -55,6 +55,21 @@ extension View
 		public float BlendDuration = 0.0f;
 		public float BlendDelay = 0.0f;
 		public TransitionEasing BlendEasing = .Ease;
+		/// The in-between of a running shadow list's transition, as ResolveStyle answers it:
+		/// rewritten by each resolve, and borrowed by the value it answers.
+		public BoxShadowList ResolvedShadows = new .() ~ _.ReleaseRef();
+		/// The in-between lists a re-triggered transition starts from, held while any
+		/// transition runs, since an entry's From borrows one.
+		public List<BoxShadowList> HeldShadows = new .() ~ { ReleaseHeld(_); delete _; };
+
+		public void ReleaseHeldShadows() => ReleaseHeld(HeldShadows);
+
+		private static void ReleaseHeld(List<BoxShadowList> lists)
+		{
+			for (let list in lists)
+				list.ReleaseRef();
+			lists.Clear();
+		}
 	}
 
 	private StyleCache mStyleCache = new .() ~ delete _;
@@ -345,6 +360,7 @@ extension View
 			// The rules moved under a running transition, so its targets are stale. It ends
 			// here and the new cascade value applies at once.
 			mTransitionState.Active.Clear();
+			mTransitionState.ReleaseHeldShadows();
 			mTransitionState.StateBlendActive = false;
 		}
 
@@ -479,7 +495,7 @@ extension View
 				return value;
 			return StyleValueOps.Lerp(transition.From, transition.To,
 				TransitionProgress(transition.Elapsed, transition.Duration, transition.Delay,
-					transition.Easing));
+					transition.Easing), mTransitionState.ResolvedShadows);
 		}
 		return value;
 	}
@@ -773,6 +789,8 @@ extension View
 		else
 			InvalidateVisual();
 
+		if (mTransitionState.Active.IsEmpty)
+			mTransitionState.ReleaseHeldShadows(); // no entry borrows them now
 		let active = !mTransitionState.Active.IsEmpty || mTransitionState.StateBlendActive;
 		if (!active)
 			mTransitionRegistered = false;
@@ -856,8 +874,14 @@ extension View
 			if (entryIndex >= 0)
 			{
 				let entry = mTransitionState.Active[entryIndex];
+				// A shadow list's in-between is held for the new entry to start from.
+				let held = new BoxShadowList();
 				from = StyleValueOps.Lerp(entry.From, entry.To,
-					TransitionProgress(entry.Elapsed, entry.Duration, entry.Delay, entry.Easing));
+					TransitionProgress(entry.Elapsed, entry.Duration, entry.Delay, entry.Easing), held);
+				if ((from case .Shadows(let list)) && (list == held))
+					mTransitionState.HeldShadows.Add(held);
+				else
+					held.ReleaseRef();
 			}
 			else if (oldRule != null)
 			{

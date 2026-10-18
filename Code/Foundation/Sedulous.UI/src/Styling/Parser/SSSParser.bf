@@ -1022,8 +1022,9 @@ class SSSParser
 		}
 	}
 
-	/// `box-shadow: <x> <y> [blur [spread]] <color> [inset]`, or `none`. The `inset` keyword
-	/// may lead or trail.
+	/// `box-shadow: none`, or one or more shadows separated by commas, each `[inset] <x> <y>
+	/// [blur [spread]] [color] [inset]`; the first is painted on top. A list keeps its first
+	/// BoxShadowList.cMaxShadows, and one shadow that does not parse makes the value none.
 	private StyleValue ParseBoxShadowValue()
 	{
 		if ((Peek().Kind == .Ident) && (Peek().Text == "none"))
@@ -1032,7 +1033,33 @@ class SSSParser
 			return .None;
 		}
 
-		BoxShadow shadow = .();
+		BoxShadow[BoxShadowList.cMaxShadows] shadows = .();
+		var count = 0;
+		repeat
+		{
+			if (!ParseOneBoxShadow(var shadow))
+				return .None;
+			if (count < BoxShadowList.cMaxShadows)
+			{
+				shadows[count] = shadow;
+				count++;
+			}
+		}
+		while (MatchComma());
+
+		if (count == 1)
+			return .Shadow(shadows[0]);
+		let list = new BoxShadowList();
+		mSheet.OwnResource(list);
+		for (int i < count)
+			list.Add(shadows[i]);
+		return .Shadows(list);
+	}
+
+	/// One shadow of a box-shadow list; false when it has no offsets.
+	private bool ParseOneBoxShadow(out BoxShadow shadow)
+	{
+		shadow = .();
 		if ((Peek().Kind == .Ident) && (Peek().Text == "inset"))
 		{
 			Consume();
@@ -1049,14 +1076,14 @@ class SSSParser
 
 		// Without both offsets there is no shadow to describe.
 		if (count < 2)
-			return .None;
+			return false;
 
 		shadow.OffsetX = lengths[0];
 		shadow.OffsetY = lengths[1];
 		shadow.Blur = (count > 2) ? Max(0.0f, lengths[2]) : 0.0f;
 		shadow.Spread = (count > 3) ? lengths[3] : 0.0f;
 
-		if ((Peek().Kind != .Semicolon) && (Peek().Kind != .RBrace)
+		if ((Peek().Kind != .Semicolon) && (Peek().Kind != .RBrace) && (Peek().Kind != .Comma)
 			&& !((Peek().Kind == .Ident) && (Peek().Text == "inset")))
 			shadow.Color = ParseColorValue();
 
@@ -1065,8 +1092,7 @@ class SSSParser
 			Consume();
 			shadow.Inset = true;
 		}
-
-		return .Shadow(shadow);
+		return true;
 	}
 
 	private Color ParseRgbFunction()

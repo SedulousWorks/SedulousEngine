@@ -387,6 +387,44 @@ class BoxModelTests
 		Test.Assert(StencilClippedDraws(".card { background: #FFFFFF; }") == 0);
 	}
 
+	/// A list, each shadow drawn, the first on top: the outer ones under the content (the last
+	/// first), the inset ones over it. An rgba()'s commas are its own.
+	[Test]
+	public static void ABoxShadowTakesAListEachDrawnTheFirstOnTop()
+	{
+		let sheet = LoadSSS("RecordingView { box-shadow: 0 2 4 rgba(255, 0, 0, 0.5), inset 1 1 2 #0000FF80, 0 8 16 #00FF0080; }");
+		let value = sheet.GetRule(0).GetValue(.BoxShadow).Value;
+		Test.Assert(value.ShadowCount == 3);
+		Test.Assert(Near(value.ShadowAt(0).Color.R, 1.0f));
+		Test.Assert(value.ShadowAt(1).Inset);
+		Test.Assert(Near(value.ShadowAt(2).Blur, 16.0f));
+
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		context.SetStyleSheet(sheet);
+		root.AddView(new RecordingView(100, 50, 1));
+		UITest.LayoutPass(context, root);
+		let vg = scope VGContext();
+		RecordingView.DrawLog.Clear();
+		context.DrawRootView(root, vg);
+
+		let order = scope String();
+		var contentSeen = false;
+		let vertices = vg.GetBatch().Vertices;
+		for (int i = 0; (i + 3) < vertices.Count; i += 4)
+		{
+			let c = vertices[i].Color;
+			let shadow = (c.A > 0.49f) && (c.A < 0.51f);
+			let tag = !shadow ? 'c' : (c.R > 0.99f) ? 'r' : (c.G > 0.99f) ? 'g' : 'b';
+			if ((tag == 'c') && contentSeen)
+				continue;
+			contentSeen = contentSeen || (tag == 'c');
+			if (order.IsEmpty || (order[order.Length - 1] != tag))
+				order.Append(tag);
+		}
+		Test.Assert(order == "grcb", order);
+	}
+
 	/// The shorthand takes its parts in any workable order: `inset` may lead or trail, the blur
 	/// and spread are optional, and a missing colour falls back to the default shadow.
 	[Test]

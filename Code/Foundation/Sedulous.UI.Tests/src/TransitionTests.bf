@@ -184,6 +184,68 @@ class TransitionTests
 	// ---- Class toggles ----------------------------------------------------------------------
 
 	/// A class toggle animates only the LISTED properties; everything else changes at once.
+	/// Shadow lists go shadow by shadow, the shorter padded with a clear shadow of the other's
+	/// colour, so a shadow added fades in. The in-between list is the caller's; without one, a
+	/// pair of lists switches at the midpoint.
+	[Test]
+	public static void ShadowListsInterpolateShadowByShadowPaddedWithClearOnes()
+	{
+		var one = BoxShadow();
+		one.Blur = 4.0f;
+		one.Color = Color(0, 0, 0, 1);
+		var added = one;
+		added.OffsetY = 10.0f;
+		added.Color = Color(1, 0, 0, 1);
+		let two = new BoxShadowList();
+		defer two.ReleaseRef();
+		two.Add(one);
+		two.Add(added);
+
+		let scratch = new BoxShadowList();
+		defer scratch.ReleaseRef();
+		let mid = StyleValueOps.Lerp(.Shadow(one), .Shadows(two), 0.5f, scratch);
+		Test.Assert(mid.ShadowCount == 2);
+		Test.Assert(Near(mid.ShadowAt(0).Blur, 4.0f));
+		Test.Assert(Near(mid.ShadowAt(1).OffsetY, 5.0f));
+		Test.Assert(Near(mid.ShadowAt(1).Color.R, 1.0f), "its own colour");
+		Test.Assert(Near(mid.ShadowAt(1).Color.A, 0.5f), "fading in");
+		Test.Assert((mid case .Shadows(let list)) && (list == scratch));
+
+		Test.Assert(StyleValueOps.Lerp(.Shadow(one), .Shadows(two), 0.4f).ShadowCount == 1, "no list to write: it switches");
+		Test.Assert(!StyleValueOps.Equivalent(.Shadow(one), .Shadows(two)));
+		Test.Assert(StyleValueOps.Equivalent(.Shadows(two), .Shadows(two)));
+	}
+
+	/// A hover that adds a shadow fades it in, and leaving halfway runs back from the
+	/// in-between list rather than snapping, the view holding it until the transition ends.
+	[Test]
+	public static void AHoverThatAddsAShadowFadesItInAndLeavingHalfwayRunsBack()
+	{
+		let fixture = scope Fixture(LoadSSS("""
+			StatefulView { transition: box-shadow 100ms linear; box-shadow: 0 2 4 #000000; }
+			StatefulView:hover { box-shadow: 0 2 4 #000000, 0 10 4 #FF0000; }
+			"""));
+		let view = fixture.Stateful();
+		Test.Assert(view.ResolveStyle(.BoxShadow).ShadowCount == 1);
+
+		view.State = .Hover;
+		view.ResolveStyle(.BoxShadow);
+		fixture.Context.BeginFrame(0.05f);
+		let mid = view.ResolveStyle(.BoxShadow);
+		Test.Assert(mid.ShadowCount == 2);
+		Test.Assert(Near(mid.ShadowAt(1).Color.A, 0.5f));
+		Test.Assert(Near(mid.ShadowAt(1).OffsetY, 5.0f), "from a clear shadow at rest");
+
+		view.State = .Normal;
+		let back = view.ResolveStyle(.BoxShadow);
+		Test.Assert((back.ShadowCount == 2) && Near(back.ShadowAt(1).Color.A, 0.5f), "no snap");
+		fixture.Context.BeginFrame(0.05f);
+		Test.Assert(Near(view.ResolveStyle(.BoxShadow).ShadowAt(1).Color.A, 0.25f));
+		fixture.Context.BeginFrame(0.06f);
+		Test.Assert(view.ActiveTransitionCount == 0);
+		Test.Assert(view.ResolveStyle(.BoxShadow).ShadowCount == 1);
+	}
+
 	[Test]
 	public static void AClassToggleAnimatesOnlyTheListedProperties()
 	{
