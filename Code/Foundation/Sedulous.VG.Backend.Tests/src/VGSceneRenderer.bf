@@ -42,9 +42,12 @@ static class VGSceneRenderer
 		let boxVertex = shaders.GetVariant("vg_box", .Vertex, .None);
 		let boxFragment = shaders.GetVariant("vg_box", .Fragment, .None);
 		let layerFragment = shaders.GetVariant("vg_layer", .Fragment, .None);
-		// Else boxes would quietly tessellate and layers be opacity pushes, and their probes
-		// prove nothing.
-		if ((boxVertex == null) || (boxFragment == null) || (layerFragment == null))
+		let blurVertex = shaders.GetVariant("vg_blur", .Vertex, .None);
+		let blurFragment = shaders.GetVariant("vg_blur", .Fragment, .None);
+		// Else boxes would quietly tessellate, layers be opacity pushes and blurred layers stay
+		// sharp, and their probes prove nothing.
+		if ((boxVertex == null) || (boxFragment == null) || (layerFragment == null) || (blurVertex == null)
+			|| (blurFragment == null))
 			return null;
 
 		var targetConfig = VGTargetConfig();
@@ -54,7 +57,8 @@ static class VGSceneRenderer
 
 		let renderer = scope VGRenderer();
 		if (renderer.Initialize(device, vertex, fragment, drawFormat, 2, distanceField,
-			gradRadial, gradConic, targetConfig, null, boxVertex, boxFragment, layerFragment) case .Err)
+			gradRadial, gradConic, targetConfig, null, boxVertex, boxFragment, layerFragment, blurVertex,
+			blurFragment) case .Err)
 			return null;
 
 		defer renderer.Dispose();

@@ -14,6 +14,8 @@ struct VGLayer
 	public float Opacity = 1.0f;
 	/// How the composite blends into the parent.
 	public VGBlendMode BlendMode = .Normal;
+	/// A Gaussian blur's sigma in device pixels, 0 for none; the bounds carry three sigmas.
+	public float Blur = 0.0f;
 
 	public this() {}
 }

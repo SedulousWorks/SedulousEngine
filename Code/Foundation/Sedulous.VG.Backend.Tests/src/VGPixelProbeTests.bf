@@ -490,6 +490,51 @@ class VGPixelProbeTests
 		Test.Assert(image.At(6, 80)[0] <= 2, scope $"{name}: left of the content: the layer lands where it was drawn");
 	}
 
+	/// A white square 20 px wide in a layer blurred by a sigma of 4, read across its middle row in
+	/// an Encoded canvas (the blur blends encoded values): the middle nearly white, the pixels
+	/// either side of the edge half each, a sigma out about a fifth, three sigmas out nothing, the
+	/// same down as across. Single and multisampled.
+	[Test]
+	public static void ALayerBlursBeforeItsComposite()
+	{
+		for (let kind in scope ProbeBackend[](.Vulkan, .WebGpu, .Dx12))
+		{
+			LayerBlurOn(kind, 1);
+			LayerBlurOn(kind, 4);
+		}
+	}
+
+	private static void LayerBlurOn(ProbeBackend kind, uint32 sampleCount)
+	{
+		let fixture = scope VGProbeFixture(kind);
+		if (!fixture.Ready)
+			return;
+
+		let image = VGSceneRenderer.RenderScene(fixture, scope (context) =>
+			{
+				context.PushLayer(1.0f, .Normal, 4.0f);
+				context.FillRect(.(40, 40, 20, 20), ByteColor(255, 255, 255));
+				context.PopLayer();
+			}, sampleCount, .Encoded);
+		defer delete image;
+		Test.Assert((image != null) && image.Valid, "the scene rendered");
+
+		let name = scope $"{kind} x{sampleCount}";
+		let middle = (int)image.At(50, 50)[0];
+		let inside = (int)image.At(40, 50)[0];
+		let outside = (int)image.At(39, 50)[0];
+		let sigmaOut = (int)image.At(36, 50)[0];
+		let far = (int)image.At(26, 50)[0];
+		let detail = scope $"{name}: middle {middle}, edge {inside}/{outside}, a sigma out {sigmaOut}, far {far}";
+		Test.Assert(middle >= 240, detail);
+		Test.Assert(Math.Abs(inside + outside - 252) <= 10, detail); // the two halves of the edge
+		Test.Assert(inside > outside, detail);
+		Test.Assert(Math.Abs(sigmaOut - 48) <= 10, detail);
+		Test.Assert(far <= 2, detail);
+		Test.Assert(Math.Abs((int)image.At(50, 39)[0] - outside) <= 2, scope $"{detail}: down as across");
+		Test.Assert(Math.Abs((int)image.At(60, 50)[0] - outside) <= 2, scope $"{detail}: and symmetric");
+	}
+
 	/// An axis aligned rectangle path, the caller's to delete.
 	private static Path Rect(float x0, float y0, float x1, float y1)
 	{

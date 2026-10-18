@@ -84,6 +84,8 @@ class VGRenderer
 	/// Nullable likewise: a layer target holds premultiplied colour, which the default shader
 	/// would multiply again.
 	private IRenderPipeline mLayerPipeline;
+	/// The layer blur (vg_blur), nullable: without it a blurred layer composites sharp.
+	private IRenderPipeline mBlurPipeline;
 	private IRenderPipeline mStencilWriteNonZero;
 	private IRenderPipeline mStencilWriteEvenOdd;
 	private IRenderPipeline mCoverPipeline;
@@ -183,7 +185,8 @@ class VGRenderer
 		IShaderModule distanceFieldFragmentShader = null, IShaderModule gradRadialFragmentShader = null,
 		IShaderModule gradConicFragmentShader = null, VGTargetConfig targetConfig = .(),
 		IShaderModule boxShadowFragmentShader = null, IShaderModule boxVertexShader = null,
-		IShaderModule boxFragmentShader = null, IShaderModule layerFragmentShader = null)
+		IShaderModule boxFragmentShader = null, IShaderModule layerFragmentShader = null,
+		IShaderModule blurVertexShader = null, IShaderModule blurFragmentShader = null)
 	{
 		mDevice = device;
 		mQueue = device.GetQueue(.Graphics, 0);
@@ -245,6 +248,12 @@ class VGRenderer
 		if (layerFragmentShader != null)
 		{
 			if (!(CreatePipeline(vertexShader, layerFragmentShader, .None) case .Ok(out mLayerPipeline)))
+				return .Err(.Unknown);
+		}
+		// The layer blur (a layer's Blur): one axis of a Gaussian over its target.
+		if ((blurVertexShader != null) && (blurFragmentShader != null))
+		{
+			if (!(CreateBlurPipeline(blurVertexShader, blurFragmentShader) case .Ok(out mBlurPipeline)))
 				return .Err(.Unknown);
 		}
 
@@ -401,12 +410,20 @@ class VGRenderer
 			layer.Height = (uint32)layer.Bounds.Height;
 			layer.TargetWidth = RoundUpToBucket(layer.Width);
 			layer.TargetHeight = RoundUpToBucket(layer.Height);
+			// A blur takes two more slots, across then down; without its pipeline, none.
+			layer.Blur = (mBlurPipeline != null) ? source.Blur : 0.0f;
+			let slots = (layer.Blur > 0.0f) ? 3u : 1u;
 			layer.Valid = parentValid && (layer.Width > 0) && (layer.Height > 0)
-				&& (nextUniformSlot < (uint32)cMaxUniformSlots);
+				&& ((nextUniformSlot + slots) <= (uint32)cMaxUniformSlots);
 			if (layer.Valid)
 			{
 				layer.UniformOffset = nextUniformSlot * (uint32)cUniformSlotSize;
 				nextUniformSlot++;
+				if (layer.Blur > 0.0f)
+				{
+					layer.BlurUniformOffset = nextUniformSlot * (uint32)cUniformSlotSize;
+					nextUniformSlot += 2;
+				}
 			}
 			mLayers.Add(layer);
 		}
@@ -471,6 +488,19 @@ class VGRenderer
 			uniforms.Projection = OrthoOffCenter(layer.Bounds.X, layer.Bounds.Y, (float)layer.Width,
 				(float)layer.Height);
 			WriteBuffer(mUniformBuffers[frameIndex], layer.UniformOffset, &uniforms, sizeof(VGUniforms));
+			if (layer.Blur > 0.0f)
+			{
+				var blur = VGBlurUniforms();
+				blur.Region = .((float)layer.Width / (float)layer.TargetWidth,
+					(float)layer.Height / (float)layer.TargetHeight);
+				blur.Sigma = layer.Blur;
+				blur.Radius = Ceil(3.0f * layer.Blur);
+				blur.Step = .(1.0f / (float)layer.TargetWidth, 0.0f); // across
+				WriteBuffer(mUniformBuffers[frameIndex], layer.BlurUniformOffset, &blur, sizeof(VGBlurUniforms));
+				blur.Step = .(0.0f, 1.0f / (float)layer.TargetHeight); // down
+				WriteBuffer(mUniformBuffers[frameIndex], layer.BlurUniformOffset + (uint32)cUniformSlotSize, &blur,
+					sizeof(VGBlurUniforms));
+			}
 		}
 
 		for (int32 index = textureBase; index < (int32)mBatchTextures.Count; index++)
@@ -598,7 +628,7 @@ class VGRenderer
 			var layer = ref mLayers[l];
 			if (!layer.Valid)
 				continue;
-			let targetIndex = AcquireLayerTarget(frameIndex, layer.TargetWidth, layer.TargetHeight);
+			let targetIndex = AcquireLayerTarget(frameIndex, layer.TargetWidth, layer.TargetHeight, false);
 			if (targetIndex < 0)
 				continue;
 			let target = mLayerTargets[targetIndex];
@@ -637,6 +667,8 @@ class VGRenderer
 				layer.Bounds.X, layer.Bounds.Y, ref mLastLayerStats);
 			pass.End();
 			encoder.TransitionTexture(target.Color, .RenderTarget, .ShaderRead);
+			if (layer.Blur > 0.0f)
+				BlurLayer(encoder, frameIndex, layer, targetIndex);
 			layer.Target = targetIndex;
 			mLastLayerStats.Layers++;
 		}
@@ -1615,14 +1647,82 @@ class VGRenderer
 	private static uint32 RoundUpToBucket(uint32 size)
 		=> (size + cLayerTargetBucket - 1) / cLayerTargetBucket * cLayerTargetBucket;
 
+	/// Blurs a drawn layer in place: across into a scratch target, then down back into its own,
+	/// both single sampled since the content is resolved already. No scratch target: left sharp.
+	private void BlurLayer(ICommandEncoder encoder, int32 frameIndex, PreparedLayer layer, int32 targetIndex)
+	{
+		let scratchIndex = AcquireLayerTarget(frameIndex, layer.TargetWidth, layer.TargetHeight, true);
+		if (scratchIndex < 0)
+			return;
+		let target = mLayerTargets[targetIndex];
+		let scratch = mLayerTargets[scratchIndex];
+
+		encoder.TransitionTexture(scratch.Color, .Undefined, .RenderTarget);
+		BlurPass(encoder, layer, target, scratch, layer.BlurUniformOffset);
+		encoder.TransitionTexture(scratch.Color, .RenderTarget, .ShaderRead);
+		encoder.TransitionTexture(target.Color, .ShaderRead, .RenderTarget);
+		BlurPass(encoder, layer, scratch, target, layer.BlurUniformOffset + (uint32)cUniformSlotSize);
+		encoder.TransitionTexture(target.Color, .RenderTarget, .ShaderRead);
+	}
+
+	/// One axis of a layer's blur, `from` sampled into `into`.
+	private void BlurPass(ICommandEncoder encoder, PreparedLayer layer, LayerTarget from, LayerTarget into,
+		uint32 uniformOffset)
+	{
+		var color = ColorAttachment();
+		color.View = into.ColorView;
+		color.LoadOp = .Clear;
+		color.StoreOp = .Store;
+		color.ClearValue = .(0.0f, 0.0f, 0.0f, 0.0f);
+		var desc = RenderPassDesc();
+		desc.ColorAttachments.Add(color);
+		desc.Label = "VG layer blur";
+		let pass = encoder.BeginRenderPass(desc);
+		if (pass == null)
+			return;
+		pass.SetViewport(0.0f, 0.0f, (float)layer.Width, (float)layer.Height, 0.0f, 1.0f);
+		pass.SetScissor(0, 0, layer.Width, layer.Height);
+		pass.SetPipeline(mBlurPipeline);
+		let dynamicOffsets = scope uint32[1](uniformOffset);
+		pass.SetBindGroup(0, from.BindGroup, dynamicOffsets);
+		pass.Draw(3, 1, 0, 0);
+		pass.End();
+		mLastLayerStats.Drawn++;
+	}
+
+	/// The blur pipeline: no vertex buffer (one triangle from the vertex index), single sampled,
+	/// no stencil, writing what it computes, since the target holds only the layer.
+	private Result<IRenderPipeline> CreateBlurPipeline(IShaderModule vertexShader, IShaderModule fragmentShader)
+	{
+		var colorTarget = ColorTargetState();
+		colorTarget.Format = mTargetFormat;
+		let colorTargets = scope ColorTargetState[1](colorTarget);
+
+		var desc = RenderPipelineDesc();
+		desc.Layout = mPipelineLayout;
+		desc.Vertex.Shader = .(vertexShader, Sedulous.RHI.ShaderStage.Vertex);
+		var fragment = FragmentState();
+		fragment.Shader = .(fragmentShader, Sedulous.RHI.ShaderStage.Fragment);
+		fragment.Targets = colorTargets;
+		desc.Fragment = fragment;
+		desc.Primitive.Topology = .TriangleList;
+		desc.Primitive.CullMode = .None;
+		desc.Multisample.Count = 1;
+		if (mDevice.CreateRenderPipeline(desc) case .Ok(let pipeline))
+			return .Ok(pipeline);
+		return .Err;
+	}
+
 	/// A free target of the size in the frame slot's pool, or a new one; -1 when the device
-	/// cannot make it.
-	private int32 AcquireLayerTarget(int32 frameIndex, uint32 width, uint32 height)
+	/// cannot make it. `plain`: colour alone (a blur's scratch), else the renderer's sample count
+	/// and stencil too.
+	private int32 AcquireLayerTarget(int32 frameIndex, uint32 width, uint32 height, bool plain)
 	{
 		for (int i < mLayerTargets.Count)
 		{
 			let target = mLayerTargets[i];
-			if ((target.Frame == frameIndex) && !target.InUse && (target.Width == width) && (target.Height == height))
+			if ((target.Frame == frameIndex) && !target.InUse && (target.Width == width) && (target.Height == height)
+				&& (target.Plain == plain))
 			{
 				target.InUse = true;
 				return (int32)i;
@@ -1634,10 +1734,11 @@ class VGRenderer
 		target.Width = width;
 		target.Height = height;
 		target.InUse = true;
+		target.Plain = plain;
 		var made = (mDevice.CreateTexture(TextureDesc.RenderTarget(mTargetFormat, width, height, 1, "VG layer"))
 			case .Ok(out target.Color))
 			&& (mDevice.CreateTextureView(target.Color, .()) case .Ok(out target.ColorView));
-		if (made && (mTargetConfig.SampleCount > 1))
+		if (made && !plain && (mTargetConfig.SampleCount > 1))
 		{
 			var msaaDesc = TextureDesc.RenderTarget(mTargetFormat, width, height, mTargetConfig.SampleCount,
 				"VG layer MSAA");
@@ -1645,7 +1746,7 @@ class VGRenderer
 			made = (mDevice.CreateTexture(msaaDesc) case .Ok(out target.Msaa))
 				&& (mDevice.CreateTextureView(target.Msaa, .()) case .Ok(out target.MsaaView));
 		}
-		if (made && (mTargetConfig.DepthStencilFormat != .Undefined))
+		if (made && !plain && (mTargetConfig.DepthStencilFormat != .Undefined))
 		{
 			var depthDesc = TextureDesc();
 			depthDesc.Dimension = .Texture2D;
@@ -1735,6 +1836,10 @@ class VGRenderer
 		public uint32 TargetWidth = 0;
 		public uint32 TargetHeight = 0;
 		public uint32 UniformOffset = 0;
+		/// The sigma, 0 for none or no blur pipeline.
+		public float Blur = 0.0f;
+		/// Its two passes' slots, across then down.
+		public uint32 BlurUniformOffset = 0;
 		/// Into mLayerTargets, set by RenderLayers.
 		public int32 Target = -1;
 		public bool Valid = false;
@@ -1761,6 +1866,8 @@ class VGRenderer
 		public int32 Frame;
 		public int32 IdleFrames;
 		public bool InUse;
+		/// Colour alone: a blur's scratch.
+		public bool Plain;
 	}
 
 	/// An off centre orthographic projection with Y DOWN, which is what screen coordinates
@@ -1814,6 +1921,7 @@ class VGRenderer
 		DestroyPipeline(ref mBoxShadowPipeline);
 		DestroyPipeline(ref mBoxPipeline);
 		DestroyPipeline(ref mLayerPipeline);
+		DestroyPipeline(ref mBlurPipeline);
 		DestroyPipeline(ref mStencilWriteNonZero);
 		DestroyPipeline(ref mStencilWriteEvenOdd);
 		DestroyPipeline(ref mCoverPipeline);

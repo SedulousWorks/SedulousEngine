@@ -92,4 +92,48 @@ class VGLayerRenderTests
 		Test.Assert(onTarget.Drawn == 1);
 		Test.Assert(onTarget.Skipped == 2);
 	}
+
+	/// The render passes one RenderLayers records for a single layer blurred by a sigma of 3.
+	private static uint64 LayerPasses(RendererFixture fixture, IShaderModule blurVertex, IShaderModule blurFragment)
+	{
+		let context = scope VGContext();
+		context.SetLayers(true);
+		context.PushLayer(1.0f, .Normal, 3.0f);
+		context.FillRect(.(20, 20, 16, 16), .White);
+		context.PopLayer();
+		let batch = context.GetBatch();
+
+		var config = VGTargetConfig();
+		// The content resolves; the blur passes run single sampled.
+		config.SampleCount = 4;
+		config.DepthStencilFormat = VGRenderer.PickStencilCapableFormat(fixture.Device, 4);
+		let renderer = scope VGRenderer();
+		Test.Assert(renderer.Initialize(fixture.Device, fixture.VertexShader, fixture.FragmentShader,
+			.BGRA8UnormSrgb, 1, null, null, null, config, null, null, null, fixture.LayerFragmentShader,
+			blurVertex, blurFragment) case .Ok);
+		defer renderer.Dispose();
+		renderer.BeginFrame(0);
+		let slice = renderer.Prepare(batch, 0, 64, 64);
+		Test.Assert(slice.IsValid);
+
+		Test.Assert(fixture.Device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		defer fixture.Device.DestroyCommandPool(ref pool);
+		Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+		defer pool.DestroyEncoder(ref encoder);
+		let before = fixture.Device.Counters().RenderPasses;
+		renderer.RenderLayers(encoder, 0, slice);
+		Test.Assert(renderer.LastLayerStats.Layers == 1);
+		return fixture.Device.Counters().RenderPasses - before;
+	}
+
+	/// A blurred layer runs two blur passes, across then down, after its content and before its
+	/// composite; without the blur shaders, none, and the layer composites sharp.
+	[Test]
+	public static void ABlurredLayerRunsTwoBlurPassesOrNoneWithoutTheShader()
+	{
+		let fixture = scope RendererFixture(false, true);
+		Test.Assert(LayerPasses(fixture, fixture.BlurVertexShader, fixture.BlurFragmentShader) == 3,
+			"the content, across, down");
+		Test.Assert(LayerPasses(fixture, null, null) == 1, "the content alone");
+	}
 }

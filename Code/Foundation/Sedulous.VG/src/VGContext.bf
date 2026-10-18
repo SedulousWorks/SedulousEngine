@@ -420,15 +420,18 @@ class VGContext
 	/// Layers a batch holds before PushLayer falls back to an opacity push: each costs the
 	/// renderer a pass and a uniform slot, of which it has 256 a frame, one per slice besides.
 	public const int32 MaxLayers = 128;
+	/// The widest layer blur, a sigma in device pixels: a pass costs six sigmas of taps a pixel.
+	public const float MaxLayerBlur = 32.0f;
 
 	/// Draws what follows into an offscreen layer, composited into what is under it once, at
 	/// PopLayer, with `opacity` and `blendMode`: a group fades as one, its overlapping parts never
 	/// showing through each other.
 	///
 	/// Inside, opacity starts again at one and no clip applies; the clips around the layer apply
-	/// to its composite. The transform carries on. Without SetLayers, or past MaxLayers in a
-	/// batch, an opacity push instead.
-	public void PushLayer(float opacity, VGBlendMode blendMode = .Normal)
+	/// to its composite. The transform carries on. `blur` blurs the layer before its composite, a
+	/// Gaussian of that sigma in device pixels, up to MaxLayerBlur. Without SetLayers, or past
+	/// MaxLayers in a batch, an opacity push instead, and no blur.
+	public void PushLayer(float opacity, VGBlendMode blendMode = .Normal, float blur = 0.0f)
 	{
 		if (!mLayersEnabled || (mBatch.Layers.Count >= MaxLayers))
 		{
@@ -455,6 +458,7 @@ class VGContext
 		layer.Parent = mCurrentLayer;
 		layer.Opacity = Clamp(opacity, 0.0f, 1.0f);
 		layer.BlendMode = blendMode;
+		layer.Blur = Clamp(blur, 0.0f, MaxLayerBlur);
 		save.Layer = (int32)mBatch.Layers.Count;
 		mBatch.Layers.Add(layer);
 		mCurrentLayer = save.Layer;
@@ -478,7 +482,13 @@ class VGContext
 		let save = mLayerStack.PopBack();
 		defer delete save;
 		let index = save.Layer;
-		let bounds = LayerContentBounds(index, save.FirstCommand);
+		let content = LayerContentBounds(index, save.FirstCommand);
+		// A blur spreads three sigmas past what was drawn, and needs that margin transparent.
+		let spread = Ceil(3.0f * mBatch.Layers[index].Blur);
+		let bounds = HasClip(content)
+			? Rectangle(content.X - spread, content.Y - spread, content.Width + 2.0f * spread,
+				content.Height + 2.0f * spread)
+			: content;
 		mBatch.Layers[index].Bounds = bounds;
 		mCurrentState = save.State;
 		// The layer's own (balanced, so empty) stacks go with the save.

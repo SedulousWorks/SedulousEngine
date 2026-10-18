@@ -168,6 +168,30 @@ class VGLayerTests
 		Test.Assert(Near(batch.Vertices.Back.Color.A, 0.5f), "the layer's opacity popped");
 	}
 
+	/// A blurred layer carries its sigma, clamped to the widest, and three sigmas of margin past
+	/// its content's bounds.
+	[Test]
+	public static void ABlurredLayerCarriesItsSigmaAndThreeSigmasOfMargin()
+	{
+		let context = scope VGContext();
+		context.SetLayers(true);
+		let fill = Square(10, 10, 30, 30);
+		defer delete fill;
+		context.PushLayer(1.0f, .Normal, 4.0f);
+		context.FillPath(fill, .Red, .NonZero, false);
+		context.PopLayer();
+		context.PushLayer(1.0f, .Normal, 500.0f); // past the widest
+		context.FillPath(fill, .Red, .NonZero, false);
+		context.PopLayer();
+
+		let batch = context.GetBatch();
+		Test.Assert(batch.Layers.Count == 2);
+		Test.Assert(Near(batch.Layers[0].Blur, 4.0f));
+		Test.Assert(Near(batch.Layers[0].Bounds.X, 9.0f - 12.0f), "the pixel margin, then three sigmas");
+		Test.Assert(Near(batch.Layers[0].Bounds.Width, 22.0f + 24.0f));
+		Test.Assert(Near(batch.Layers[1].Blur, VGContext.MaxLayerBlur));
+	}
+
 	/// Past MaxLayers in a batch a layer is an opacity push, so a long list of faded rows still
 	/// draws, each row fading on its own.
 	[Test]
