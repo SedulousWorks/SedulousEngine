@@ -11,7 +11,10 @@ namespace Sedulous.Script.Resource;
 ///
 /// The harvested properties and handlers are what let the EDITOR render an inspector
 /// without a VM, and the RUNTIME dispatch handlers without probing for them per frame.
-[Serializable]
+///
+/// Data version 1: each property's replicated flag. A record cooked before it is in another
+/// layout; the strict reader refuses it and the script recooks.
+[Serializable(1)]
 class ScriptClassSource
 {
 	/// The backend id, "angelscript".

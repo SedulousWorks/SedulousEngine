@@ -127,6 +127,34 @@ static class ScriptClassResourceTests
 		Test.Assert(ScriptPropertyNames.HashOf("speed") != ScriptPropertyNames.HashOf("Speed"));
 	}
 
+	/// A record cooked before each property carried its replicated flag is in another layout.
+	/// Read as this one it misread its counts (in Raptor it held the editor for minutes opening
+	/// a scene); the data version refuses it, and the script recooks.
+	[Test]
+	public static void ARecordCookedBeforeTheReplicatedFlagIsRefused()
+	{
+		Test.Assert(ScriptClassSource.DataVersion == 1);
+
+		let old = scope UnversionedScriptRecord();
+		old.Language.Set("angelscript");
+		old.ClassName.Set("Mover");
+		old.Properties.Add(Property("speed", .Float, .Float(2)));
+
+		let buffer = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(buffer, .Write);
+			((ISerializable)old).Serialize(writer);
+			Test.Assert(writer.IsOk);
+		}
+		buffer.Seek(0, .Begin);
+
+		let read = scope ScriptClassSource();
+		let reader = scope BinarySerializer(buffer, .Read);
+		((ISerializable)read).Serialize(reader);
+		Test.Assert(!reader.IsOk, "the stale record was refused");
+		Test.Assert(read.Language.IsEmpty && read.Properties.IsEmpty, "and left unread");
+	}
+
 	[Test]
 	public static void TheResourceTypeRegisters()
 	{
