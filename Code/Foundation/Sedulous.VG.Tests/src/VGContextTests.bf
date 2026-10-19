@@ -246,6 +246,42 @@ class VGContextTests
 		Test.Assert(!context.IsRectVisible(.(10, 10, 10, 10)));
 	}
 
+	/// The clip in local space is what a caller that knows where its children are looks them
+	/// up with, rather than asking IsRectVisible of each.
+	[Test]
+	public static void LocalClipBoundsAreTheClipInLocalSpace()
+	{
+		let context = scope VGContext();
+		Test.Assert(!context.GetLocalClipBounds(var local), "no clip: everything can show");
+
+		context.PushClipRect(.(10, 20, 100, 50));
+		Test.Assert(context.GetLocalClipBounds(out local));
+		Test.Assert(Math.Abs(local.X - 10.0f) < 0.001f);
+		Test.Assert(Math.Abs(local.Height - 50.0f) < 0.001f);
+
+		context.PushState();
+		context.Translate(0.0f, 500.0f); // the content moved down: the clip sits above it
+		Test.Assert(context.GetLocalClipBounds(out local));
+		Test.Assert(Math.Abs(local.Y - (-480.0f)) < 0.001f);
+		context.Scale(2.0f, 2.0f); // twice as large: the clip covers half as much of it
+		Test.Assert(context.GetLocalClipBounds(out local));
+		Test.Assert(Math.Abs(local.Width - 50.0f) < 0.001f);
+		Test.Assert(Math.Abs(local.Y - (-240.0f)) < 0.001f);
+		context.PopState();
+
+		context.PushState();
+		context.Translate(60.0f, 45.0f);
+		context.Rotate(Math.PI_f / 4.0f); // a box around the turned clip, never smaller than it
+		Test.Assert(context.GetLocalClipBounds(out local));
+		let side = (100.0f + 50.0f) * 0.70710678f;
+		Test.Assert(Math.Abs(local.Width - side) < side * 0.01f);
+		Test.Assert(Math.Abs(local.Height - side) < side * 0.01f);
+		context.PopState();
+
+		context.PopClip();
+		Test.Assert(!context.GetLocalClipBounds(out local));
+	}
+
 	/// A transformed rect is the bounds of its four corners: two opposite corners alone swap
 	/// under a rotation or a flip, giving a negative size.
 	[Test]

@@ -279,6 +279,27 @@ class VGContext
 		return TransformRect(rect).Intersects(mCurrentState.ClipRect);
 	}
 
+	/// The active scissor clip in CURRENT local coordinates: the bounds of its corners mapped
+	/// back through the transform (a box around it under a rotation, never smaller). False
+	/// when no clip is active, where everything can show. A caller with many children asks
+	/// once which of them can show, rather than asking IsRectVisible of each.
+	public bool GetLocalClipBounds(out Rectangle local)
+	{
+		local = .();
+		if (!mCurrentState.Scissored)
+			return false;
+		let clip = mCurrentState.ClipRect;
+		if (!HasClip(clip))
+			return true; // a degenerate clip: nothing shows
+		if (mCurrentState.Transform == Float4x4.Identity())
+		{
+			local = clip;
+			return true;
+		}
+		local = CornerBounds(clip, Inverse(mCurrentState.Transform));
+		return true;
+	}
+
 	// === path clipping ===
 
 	/// Clips subsequent draws to a path, by the non zero rule, within any path clip already
@@ -2520,11 +2541,16 @@ class VGContext
 	{
 		if (mCurrentState.Transform == Float4x4.Identity())
 			return rect;
+		return CornerBounds(rect, mCurrentState.Transform);
+	}
 
-		Float2[4] corners = .(TransformPoint(.(rect.X, rect.Y)),
-			TransformPoint(.(rect.X + rect.Width, rect.Y)),
-			TransformPoint(.(rect.X, rect.Y + rect.Height)),
-			TransformPoint(.(rect.X + rect.Width, rect.Y + rect.Height)));
+	/// The bounds of the rect's four corners mapped through `transform`.
+	private static Rectangle CornerBounds(Rectangle rect, Float4x4 transform)
+	{
+		Float2[4] corners = .(TransformPoint2D(.(rect.X, rect.Y), transform),
+			TransformPoint2D(.(rect.X + rect.Width, rect.Y), transform),
+			TransformPoint2D(.(rect.X, rect.Y + rect.Height), transform),
+			TransformPoint2D(.(rect.X + rect.Width, rect.Y + rect.Height), transform));
 		var low = corners[0];
 		var high = corners[0];
 		for (let corner in corners)
