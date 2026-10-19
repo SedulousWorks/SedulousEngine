@@ -356,9 +356,20 @@ class StringTable : ISerializable
 			ar.EndObject();
 			if (reading)
 			{
-				// A cell a locale, or the table is not one.
+				// A cell a locale, or the table is not one: the read fails, and the entry keeps a cell
+				// for each locale so that a caller not checking the payload cannot index past them
+				// (a fuzzer's find).
 				if (entry.Cells.Count != mLocales.Count)
+				{
 					ar.FailPayload(.InvalidArgument);
+					while (entry.Cells.Count > mLocales.Count)
+					{
+						delete entry.Cells.Back;
+						entry.Cells.PopBack();
+					}
+					while (entry.Cells.Count < mLocales.Count)
+						entry.Cells.Add(new Cell());
+				}
 				mEntries.Add(entry);
 			}
 		}
