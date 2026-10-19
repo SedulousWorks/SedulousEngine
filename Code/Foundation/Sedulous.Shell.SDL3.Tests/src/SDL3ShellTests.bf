@@ -401,6 +401,27 @@ class SDL3ShellTests
 		Test.Assert(reported);
 	}
 
+	/// On Wayland a window's new state takes effect only with the app's next frame; an app
+	/// that skips idle frames hears that one is wanted.
+	[Test]
+	public static void AnExposedWindowAsksForAFrame()
+	{
+		let fixture = scope ShellFixture();
+		if (!fixture.Usable)
+			return;
+
+		fixture.PushWindowEvent(.SDL_EVENT_WINDOW_EXPOSED);
+		fixture.Shell.ProcessEvents();
+
+		bool exposed = false;
+		for (let e in fixture.Shell.WindowManager.Events)
+		{
+			if ((e.Type == .Exposed) && (e.WindowId == fixture.Shell.MainWindow.Id))
+				exposed = true;
+		}
+		Test.Assert(exposed);
+	}
+
 	/// Focus decides where the keyboard and the pads go, so it has to be tracked and it has
 	/// to be given up.
 	[Test]

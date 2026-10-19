@@ -173,6 +173,9 @@ class SDL3Shell : IShell
 					mWindows.PushEvent(e);
 				}
 
+			case .SDL_EVENT_WINDOW_EXPOSED:
+				mWindows.PushEvent(SimpleEvent(.Exposed, (uint32)event.window.windowID));
+
 			case .SDL_EVENT_WINDOW_FOCUS_GAINED:
 				let focusedId = (uint32)event.window.windowID;
 				// The routing authority for the keyboard and the pads, which are not bound
