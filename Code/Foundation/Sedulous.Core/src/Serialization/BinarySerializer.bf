@@ -41,7 +41,17 @@ class BinarySerializer : Serializer
 			delete frame.Buffer;
 	}
 
-	public override void BeginArray(ref uint32 count) => Scalar(&count, .UInt32);
+	public override void BeginArray(ref uint32 count)
+	{
+		Scalar(&count, .UInt32);
+		// Every element takes at least a byte, so a count the bytes left cannot hold is a
+		// misread: fail here and read none, rather than reserve it and loop to the end.
+		if (IsReading && !mReader.Holds(count))
+		{
+			Fail(.Internal);
+			count = 0;
+		}
+	}
 
 	public override void Scalar(void* value, ScalarKind kind) => RawBytes(value, kind.Size);
 

@@ -223,8 +223,9 @@ class VersionedPayloadTests
 	[Test]
 	public static void AnImplausibleChainLengthFailsThePayload()
 	{
+		// Past the chain limit, though few enough that the reader takes the count unasked.
 		let stream = scope MemoryStream();
-		Test.Assert(stream.WriteValue<uint32>(100000));
+		Test.Assert(stream.WriteValue<uint32>(100));
 		Test.Assert(stream.Seek(0, .Begin) == 0);
 
 		let reader = scope BinarySerializer(stream, .Read);
@@ -233,6 +234,17 @@ class VersionedPayloadTests
 		Test.Assert(reader.Status case .Err(.OutOfRange));
 		Test.Assert(reader.Version == 0, "no version came out of a chain that was not read");
 		EndVersionedPayload(reader);
+
+		// A count the bytes left cannot hold fails sooner, as the array's count.
+		let huge = scope MemoryStream();
+		Test.Assert(huge.WriteValue<uint32>(100000));
+		Test.Assert(huge.Seek(0, .Begin) == 0);
+
+		let hugeReader = scope BinarySerializer(huge, .Read);
+		BeginVersionedPayload(hugeReader, 1, 1);
+		Test.Assert(hugeReader.Status case .Err(.Internal));
+		Test.Assert(hugeReader.Version == 0);
+		EndVersionedPayload(hugeReader);
 	}
 
 	/// A LEGACY READER moves the floor: a stored version at or above it is accepted and the

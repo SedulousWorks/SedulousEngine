@@ -175,6 +175,87 @@ class BinarySerializerTests
 		Test.Assert(!reader.IsOk);
 	}
 
+	/// A record read in another layout than it was written in hands the reader a garbage
+	/// count. It used to reserve it and read past the end once per element (a cooked script
+	/// from before a field was added held the editor for minutes).
+	[Test]
+	public static void ACountLongerThanTheDataLeftFailsAtOnce()
+	{
+		let stream = scope MemoryStream();
+		{
+			let writer = scope BinaryWriter(stream);
+			writer.Write((uint32)0x7FFFFFFF);
+			writer.WriteString("abcdefgh");
+		}
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+
+		let counted = scope CountingStream(stream);
+		let loader = scope BinarySerializer(counted, .Read);
+		let words = scope List<String>();
+		defer { ClearAndDeleteItems!(words); }
+		SerializeList(loader, words);
+		Test.Assert(!loader.IsOk);
+		Test.Assert(words.IsEmpty);
+		Test.Assert(counted.Reads == 1, "the count, and nothing after it");
+
+		// A scalar list's bulk read is refused the same way, before it sizes anything.
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+		let bulk = scope BinarySerializer(stream, .Read);
+		let values = scope List<uint32>();
+		SerializeList(bulk, values);
+		Test.Assert(!bulk.IsOk);
+		Test.Assert(values.IsEmpty);
+	}
+
+	[Test]
+	public static void AStringLongerThanTheDataLeftFailsAtOnce()
+	{
+		let stream = scope MemoryStream();
+		{
+			let writer = scope BinaryWriter(stream);
+			writer.Write((uint32)1000000);
+			writer.WriteBytes(.((uint8*)"abc", 3));
+		}
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+
+		let counted = scope CountingStream(stream);
+		let loader = scope BinarySerializer(counted, .Read);
+		let text = scope String();
+		Serialize(loader, text);
+		Test.Assert(!loader.IsOk);
+		Test.Assert(text.IsEmpty);
+		Test.Assert(counted.Reads == 1);
+	}
+
+	[Test]
+	public static void AListStopsAtItsFirstElementThatFailsToRead()
+	{
+		let stream = scope MemoryStream();
+		{
+			let writer = scope BinaryWriter(stream);
+			writer.Write((uint32)4000); // small enough to pass unasked; only one element follows
+			writer.WriteString("only");
+		}
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+
+		let counted = scope CountingStream(stream);
+		let loader = scope BinarySerializer(counted, .Read);
+		let words = scope List<String>();
+		defer { ClearAndDeleteItems!(words); }
+		SerializeList(loader, words);
+		Test.Assert(!loader.IsOk);
+		Test.Assert(words.Count == 1);
+		Test.Assert(words[0] == "only");
+
+		// A failed reader reads nothing more and hands back zero.
+		let readsAtFailure = counted.Reads;
+		var after = (uint32)7;
+		Serialize(loader, ref after);
+		Test.Assert(after == 0);
+		Test.Assert(counted.Reads == readsAtFailure);
+		Test.Assert(readsAtFailure < 16);
+	}
+
 	/// FailPayload is for the invariant a positional format cannot express, and it lands in
 	/// the same status a short read does.
 	[Test]

@@ -185,6 +185,8 @@ static
 	{
 		uint32 count = (uint32)list.Count;
 		ar.BeginArray(ref count);
+		if ((ar.Mode == .Read) && !ar.IsPayloadOk)
+			count = 0; // the read has failed: the count it read is not data
 
 		// A run of scalars in a backend whose element layout IS the raw run moves as ONE blob.
 		// Byte identical to the per element loop below, each element being a scalar of exactly
@@ -208,6 +210,8 @@ static
 			{
 				T element = default;
 				SerializeValue(ar, ref element);
+				if (!ar.IsPayloadOk)
+					break; // stop at the first failure; the rest would read past it
 				list.Add(element);
 			}
 		}
@@ -238,6 +242,8 @@ static
 	{
 		uint32 count = (uint32)list.Count;
 		ar.BeginArray(ref count);
+		if ((ar.Mode == .Read) && !ar.IsPayloadOk)
+			count = 0; // the read has failed: the count it read is not data
 
 		if (ar.Mode == .Read)
 		{
@@ -247,6 +253,11 @@ static
 			{
 				let element = new String();
 				ar.Text(element);
+				if (!ar.IsPayloadOk)
+				{
+					delete element;
+					break; // stop at the first failure; the rest would read past it
+				}
 				list.Add(element);
 			}
 		}
@@ -269,6 +280,8 @@ static
 	{
 		uint32 count = (uint32)list.Count;
 		ar.BeginArray(ref count);
+		if ((ar.Mode == .Read) && !ar.IsPayloadOk)
+			count = 0; // the read has failed: the count it read is not data
 
 		if (ar.Mode == .Read)
 		{
@@ -278,6 +291,11 @@ static
 			{
 				let element = new T();
 				element.Serialize(ar);
+				if (!ar.IsPayloadOk)
+				{
+					delete element;
+					break; // stop at the first failure; the rest would read past it
+				}
 				list.Add(element);
 			}
 		}
