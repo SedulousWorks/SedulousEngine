@@ -109,6 +109,34 @@ class VersionedPayloadTests
 		Test.Assert(reader.Status case .Err(.NotSupported));
 	}
 
+	/// A generated body refused its version reads none of its fields: the payload is in
+	/// another layout, and reading it as this one overwrote them with what the failed read
+	/// handed back.
+	[Test]
+	public static void AGeneratedBodyLeavesARefusedPayloadUnread()
+	{
+		let old = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(old, .Write);
+			BeginVersionedPayload(writer, VersionedSample.TypeId, 1); // the type is at 3
+			writer.BeginObject();
+			var value = (int32)77;
+			writer.Key("value");
+			Serialize(writer, ref value);
+			writer.EndObject();
+			EndVersionedPayload(writer);
+		}
+
+		Test.Assert(old.Seek(0, .Begin) == 0);
+		let target = scope VersionedSample();
+		target.Value = 5;
+		let reader = scope BinarySerializer(old, .Read);
+		Serialize(reader, (ISerializable)target);
+		Test.Assert(reader.Status case .Err(.NotSupported));
+		Test.Assert(target.Value == 5, "a refused payload leaves the object as it was");
+		Test.Assert(reader.Version == 0, "the version scope was closed");
+	}
+
 	/// A chain carrying MORE entries than the type declares is refused too: it describes a
 	/// type hierarchy this build does not have, so the fields after it are not ours to read.
 	[Test]

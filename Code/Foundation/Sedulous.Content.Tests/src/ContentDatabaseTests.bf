@@ -483,4 +483,43 @@ class ContentDatabaseTests
 		Test.Assert(instance.TypeName == "Some.Other.Build.OnlyType");
 		Test.Assert(instance.ReadObject() == null, "but it cannot be constructed here");
 	}
+
+	/// A payload its version chain refuses is not read as this build's layout: in binary
+	/// that walks the stored bytes as the wrong fields, garbage counts included.
+	[Test]
+	public static void ARefusedPayloadIsLeftUnread()
+	{
+		TestSerializables.RegisterAll();
+		let fixture = scope ContentFixture("scratch_content_refused", false);
+		let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+		let typeName = "Sedulous.Content.Tests.CountedRecord";
+		let instance = database.RootGroup.CreateInstance("old", typeName);
+		let record = scope CountedRecord();
+		record.Value = 5;
+		Test.Assert(instance.WriteObject(record) case .Ok);
+
+		CountedRecord.Reads = 0;
+		let same = instance.ReadObject();
+		Test.Assert(same != null, "an untouched envelope reads");
+		delete same;
+		Test.Assert(CountedRecord.Reads == 1);
+
+		// Point the envelope's version chain at another type: the binary envelope is the guid,
+		// the type name (length then bytes), the chain's count, then its first type id.
+		let bytes = scope List<uint8>();
+		{
+			let stream = instance.OpenEnvelope();
+			defer delete stream;
+			bytes.Count = (int)stream.Size();
+			Test.Assert(stream.Read(.(bytes.Ptr, bytes.Count)) == bytes.Count);
+		}
+		let at = 16 + 4 + typeName.Length + 4;
+		Test.Assert(*(uint64*)&bytes[at] == TypeIdOf(typeName), "the chain is where the layout says");
+		*(uint64*)&bytes[at] = TypeIdOf("Some.Other.Type");
+		Test.Assert(fixture.Mount.Save(instance.EnvelopePath(.. scope String()), bytes) case .Ok);
+
+		CountedRecord.Reads = 0;
+		Test.Assert(instance.ReadObject() == null);
+		Test.Assert(CountedRecord.Reads == 0, "the refused payload was read");
+	}
 }

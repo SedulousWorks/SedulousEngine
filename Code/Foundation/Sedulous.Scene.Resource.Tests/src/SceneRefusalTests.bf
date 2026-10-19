@@ -49,6 +49,34 @@ class SceneRefusalTests
 		Test.Assert(reader.Status case .Err(.NotSupported));
 	}
 
+	/// A component payload of a version the manager refuses is not read into the component:
+	/// it is in another layout, and reading it as this one walked garbage into the fields.
+	[Test]
+	public static void ARefusedComponentPayloadIsLeftUnread()
+	{
+		let buffer = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(buffer, .Write);
+			BeginVersionedPayload(writer, TypeIdOf("test.Health"), 2); // the manager is at 1
+			var value = 5.0f;
+			var armour = (int32)7;
+			SerializeValue(writer, "value", ref value);
+			SerializeValue(writer, "armour", ref armour);
+			EndVersionedPayload(writer);
+		}
+		buffer.Seek(0, .Begin);
+
+		let scene = scope Scene();
+		let manager = scene.AddSystem<HealthManager>();
+		let entity = scene.CreateEntity("A");
+		let reader = scope BinarySerializer(buffer, .Read);
+		manager.ReadComponent(reader, entity);
+
+		Test.Assert(reader.Status case .Err(.NotSupported));
+		Test.Assert(manager.Get(entity) != null);
+		Test.Assert(manager.Get(entity).Value == 100.0f, "the refused payload was read into the component");
+	}
+
 	/// A stream that stops mid record fails the read rather than inventing the rest.
 	[Test]
 	public static void ATruncatedStreamFailsTheRead()

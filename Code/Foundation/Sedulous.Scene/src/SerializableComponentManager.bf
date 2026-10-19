@@ -99,8 +99,11 @@ class SerializableComponentManager<T> : ComponentManager<T>
 		if (component == null)
 			component = Add(entity);
 
+		// A refused payload is not read: it is in another layout, and reading it as this one
+		// only walks garbage into the component.
 		BeginVersionedPayload(ar, TypeIdOf(mTypeId), mDataVersion, mMinReadDataVersion);
-		component.Serialize(ar);
+		if (ar.IsPayloadOk)
+			component.Serialize(ar);
 		EndVersionedPayload(ar);
 	}
 }

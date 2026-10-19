@@ -74,8 +74,13 @@ struct SerializableAttribute : Attribute, IComptimeTypeApply
 
 		// A version envelope costs bytes in every payload, so declaring a version is how
 		// you opt into one. An unversioned type writes exactly its fields.
+		// A refused payload is not read: it is in another layout, and reading it as this one
+		// only walks garbage (and overwrites the fields with it).
 		if (mDataVersion > 0)
+		{
 			body.AppendF("\tSedulous.Core.Serialization.BeginVersionedPayload(ar, TypeId, DataVersion, {});\n", mMinReadVersion);
+			body.Append("\tif (!ar.IsPayloadOk)\n\t{\n\t\tSedulous.Core.Serialization.EndVersionedPayload(ar);\n\t\treturn;\n\t}\n");
+		}
 
 		body.Append("\tar.BeginObject();\n");
 

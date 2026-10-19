@@ -108,12 +108,17 @@ class Instance
 		}
 
 		// Read under the STORED version scope, so a migration branch inside Serialize sees
-		// the version the envelope was written with rather than this build's.
+		// the version the envelope was written with rather than this build's. A refused
+		// payload is not read: it is in another layout, and reading it as this one only
+		// walks garbage.
 		BeginVersionedPayload(archive, TypeIdOf(mTypeName), 0);
-		archive.Key("payload");
-		archive.BeginObject();
-		object.Serialize(archive);
-		archive.EndObject();
+		if (archive.IsOk)
+		{
+			archive.Key("payload");
+			archive.BeginObject();
+			object.Serialize(archive);
+			archive.EndObject();
+		}
 		EndVersionedPayload(archive);
 
 		if (!archive.IsOk)
