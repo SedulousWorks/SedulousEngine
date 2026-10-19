@@ -15,8 +15,7 @@ class SDL3Gamepad : IGamepad
 	private uint32 mId;
 	private int32 mIndex;
 	private String mName = new .() ~ delete _;
-	private bool[(int)GamepadButton.Count] mCurrent;
-	private bool[(int)GamepadButton.Count] mPrevious;
+	private ButtonLatch[(int)GamepadButton.Count] mButtons;
 
 	public this(SDL_Gamepad* pad, uint32 id, int32 index, StringView name)
 	{
@@ -42,9 +41,9 @@ class SDL3Gamepad : IGamepad
 	/// manager sweeps it, so an index a caller is holding does not shift under it mid frame.
 	public bool Connected => mPad != null;
 
-	public bool IsButtonDown(GamepadButton button) => mCurrent[Index_(button)];
-	public bool IsButtonPressed(GamepadButton button) => mCurrent[Index_(button)] && !mPrevious[Index_(button)];
-	public bool IsButtonReleased(GamepadButton button) => !mCurrent[Index_(button)] && mPrevious[Index_(button)];
+	public bool IsButtonDown(GamepadButton button) => mButtons[Index_(button)].Down;
+	public bool IsButtonPressed(GamepadButton button) => mButtons[Index_(button)].Pressed;
+	public bool IsButtonReleased(GamepadButton button) => mButtons[Index_(button)].Released;
 
 	/// Sticks come back in [-1, 1] and triggers in [0, 1], which is what SDL's signed
 	/// sixteen bit range divides down to.
@@ -74,7 +73,7 @@ class SDL3Gamepad : IGamepad
 	}
 
 	public void SetIndex(int32 index) => mIndex = index;
-	public void SetButton(GamepadButton button, bool down) => mCurrent[Index_(button)] = down;
+	public void SetButton(GamepadButton button, bool down) => mButtons[Index_(button)].Set(down);
 
 	/// The device is gone but the object stays, so a caller mid frame reads disconnected
 	/// rather than following a freed handle.
@@ -82,7 +81,8 @@ class SDL3Gamepad : IGamepad
 
 	public void BeginFrame()
 	{
-		mPrevious = mCurrent;
+		for (var button in ref mButtons)
+			button.BeginFrame();
 	}
 
 	private static int Index_(GamepadButton button)

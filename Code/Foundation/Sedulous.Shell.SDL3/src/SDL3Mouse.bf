@@ -4,7 +4,7 @@ using Sedulous.Shell;
 
 namespace Sedulous.Shell.SDL3;
 
-/// Pointer state, double buffered like the keyboard.
+/// Pointer state, its buttons latched like the keyboard's keys.
 ///
 /// Deltas and scroll are per FRAME and reset by BeginFrame: they are "how much since last
 /// time", so a frame with no motion has to read zero rather than the last motion again.
@@ -12,8 +12,7 @@ class SDL3Mouse : IMouse
 {
 	private SDL_Window* mWindow;
 	private float mX, mY, mDeltaX, mDeltaY, mScrollX, mScrollY;
-	private bool[(int)MouseButton.Count] mCurrent;
-	private bool[(int)MouseButton.Count] mPrevious;
+	private ButtonLatch[(int)MouseButton.Count] mButtons;
 	private bool mRelative;
 	private bool mCursorVisible = true;
 	private bool mGlobalCapture;
@@ -51,9 +50,9 @@ class SDL3Mouse : IMouse
 	public float ScrollX => mScrollX;
 	public float ScrollY => mScrollY;
 
-	public bool IsButtonDown(MouseButton button) => mCurrent[Index(button)];
-	public bool IsButtonPressed(MouseButton button) => mCurrent[Index(button)] && !mPrevious[Index(button)];
-	public bool IsButtonReleased(MouseButton button) => !mCurrent[Index(button)] && mPrevious[Index(button)];
+	public bool IsButtonDown(MouseButton button) => mButtons[Index(button)].Down;
+	public bool IsButtonPressed(MouseButton button) => mButtons[Index(button)].Pressed;
+	public bool IsButtonReleased(MouseButton button) => mButtons[Index(button)].Released;
 
 	public bool RelativeMode => mRelative;
 
@@ -129,7 +128,7 @@ class SDL3Mouse : IMouse
 	{
 		let button = SDL3KeyMap.Mouse(sdlButton);
 		if (button != .Count)
-			mCurrent[Index(button)] = down;
+			mButtons[Index(button)].Set(down);
 	}
 
 	public void OnWheel(float x, float y)
@@ -140,7 +139,8 @@ class SDL3Mouse : IMouse
 
 	public void BeginFrame()
 	{
-		mPrevious = mCurrent;
+		for (var button in ref mButtons)
+			button.BeginFrame();
 		mDeltaX = 0; mDeltaY = 0;
 		mScrollX = 0; mScrollY = 0;
 	}

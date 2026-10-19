@@ -180,6 +180,58 @@ class SDL3ShellTests
 		Test.Assert(!mouse.IsButtonPressed(.Left));
 	}
 
+	/// A quick click or tap, down and up before the frame reads them (a slow frame, a fast
+	/// finger), reads as both pressed and released: comparing the frame's two ends alone
+	/// would see neither, and a host polling the edges would lose the click.
+	[Test]
+	public static void APressAndReleaseInOneFrameReadAsBoth()
+	{
+		let fixture = scope ShellFixture();
+		if (!fixture.Usable)
+			return;
+
+		let mouse = fixture.Shell.Input.Mouse;
+		let keyboard = fixture.Shell.Input.Keyboard;
+		Test.Assert((mouse != null) && (keyboard != null));
+
+		fixture.PushMouseButton(1, true); // SDL's left button.
+		fixture.PushMouseButton(1, false);
+		fixture.PushKey(.SDL_SCANCODE_A, true);
+		fixture.PushKey(.SDL_SCANCODE_A, false);
+		fixture.Shell.ProcessEvents();
+		Test.Assert(!mouse.IsButtonDown(.Left));
+		Test.Assert(mouse.IsButtonPressed(.Left), "the click was lost between the frame's ends");
+		Test.Assert(mouse.IsButtonReleased(.Left));
+		Test.Assert(!keyboard.IsKeyDown(.A));
+		Test.Assert(keyboard.IsKeyPressed(.A), "the tap was lost between the frame's ends");
+		Test.Assert(keyboard.IsKeyReleased(.A));
+
+		// The next frame, nothing new.
+		fixture.Shell.ProcessEvents();
+		Test.Assert(!mouse.IsButtonPressed(.Left));
+		Test.Assert(!mouse.IsButtonReleased(.Left));
+		Test.Assert(!keyboard.IsKeyPressed(.A));
+		Test.Assert(!keyboard.IsKeyReleased(.A));
+	}
+
+	/// The latch a pad's buttons use too (no pad to push events at here): a repeat of the
+	/// state is no new edge, and a frame's start clears the edges but not the state.
+	[Test]
+	public static void ButtonLatchKeepsTheFramesEdges()
+	{
+		ButtonLatch latch = .();
+		latch.Set(true);
+		latch.Set(true); // a repeat
+		latch.Set(false);
+		latch.Set(true);
+		Test.Assert(latch.Down && latch.Pressed && latch.Released);
+
+		latch.BeginFrame();
+		Test.Assert(latch.Down && !latch.Pressed && !latch.Released);
+		latch.Set(true);
+		Test.Assert(!latch.Pressed, "held is not pressed again");
+	}
+
 	/// Several motions between pumps are the frame's total movement, not the last one.
 	[Test]
 	public static void MotionWithinAFrameAccumulates()
