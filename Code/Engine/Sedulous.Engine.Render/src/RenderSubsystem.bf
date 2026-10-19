@@ -168,6 +168,13 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		mDataFileSystem = dataFileSystem;
 	}
 
+	/// The overlay pass makes its depth target on first use, initialized or not, so one never
+	/// shut down still holds it.
+	public ~this()
+	{
+		ReleaseOverlayDepth();
+	}
+
 	/// Renders rather than ticks, so it runs after everything that moves has moved.
 	public override int32 UpdateOrder => 1000;
 
@@ -675,6 +682,16 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 			scenes.RegisterObserver(this, .Destroying);
 	}
 
+	/// Destroys the screen overlay attachment outright rather than retiring it: the device is
+	/// idle, or never used it, so nothing is still reading it.
+	private void ReleaseOverlayDepth()
+	{
+		if (mOverlayDsView != null)
+			mDevice.DestroyTextureView(ref mOverlayDsView);
+		if (mOverlayDsTexture != null)
+			mDevice.DestroyTexture(ref mOverlayDsTexture);
+	}
+
 	protected override void OnShutdown()
 	{
 		if (Context != null)
@@ -687,12 +704,7 @@ class RenderSubsystem : Subsystem, ISceneObserver, ISceneRenderer, IScreenRender
 		mDevice.WaitIdle();
 		mRetireQueue.Flush();
 
-		// The screen overlay attachment is not retired but destroyed outright: the device is
-		// idle, so nothing is still reading it.
-		if (mOverlayDsView != null)
-			mDevice.DestroyTextureView(ref mOverlayDsView);
-		if (mOverlayDsTexture != null)
-			mDevice.DestroyTexture(ref mOverlayDsTexture);
+		ReleaseOverlayDepth();
 
 		// EXPLICITLY ORDERED, rather than left to the field destructors.
 		//

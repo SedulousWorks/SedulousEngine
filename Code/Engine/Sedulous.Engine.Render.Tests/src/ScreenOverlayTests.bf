@@ -84,4 +84,32 @@ class ScreenOverlayTests
 		Test.Assert(!overlay.Last.EncodedTarget);
 		Test.Assert(overlay.Last.TargetFormat == .RGBA16Float);
 	}
+
+	/// The overlay pass makes its stencil target on first use, on a subsystem initialized or not,
+	/// so the subsystem lets it go when it is destroyed as well as when it shuts down.
+	[Test]
+	public static void ASubsystemNeverInitializedLetsItsOverlayDepthTargetGo()
+	{
+		let device = scope NullDevice();
+		{
+			let subsystem = scope RenderSubsystem(device, 2, null);
+			let overlay = scope RecordingOverlay();
+			subsystem.RegisterOverlay(overlay);
+			Test.Assert(device.CreateTexture(TextureDesc.RenderTarget(.RGBA8Unorm, 8, 8)) case .Ok(var target));
+			Test.Assert(device.CreateTextureView(target, .()) case .Ok(var view));
+			Test.Assert(device.CreateCommandPool(.Graphics) case .Ok(var pool));
+			Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+
+			subsystem.RenderOverlays(encoder, view, .RGBA8Unorm, 8, 8, 0);
+			Test.Assert(overlay.Calls == 1);
+
+			subsystem.UnregisterOverlay(overlay);
+			pool.DestroyEncoder(ref encoder);
+			device.DestroyCommandPool(ref pool);
+			device.DestroyTextureView(ref view);
+			device.DestroyTexture(ref target);
+			Test.Assert(device.Counters().Textures == 1, "the overlay pass's depth target");
+		}
+		Test.Assert(device.Counters().Textures == 0);
+	}
 }
