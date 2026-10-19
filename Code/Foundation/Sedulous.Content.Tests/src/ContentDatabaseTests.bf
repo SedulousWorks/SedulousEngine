@@ -522,4 +522,35 @@ class ContentDatabaseTests
 		Test.Assert(instance.ReadObject() == null);
 		Test.Assert(CountedRecord.Reads == 0, "the refused payload was read");
 	}
+
+	/// A binary envelope reads field by field; straight off a mount's stream each field
+	/// would be a read of its own.
+	[Test]
+	public static void AnObjectReadsFromItsFileInAFewLargeReads()
+	{
+		TestSerializables.RegisterAll();
+		let fixture = scope ContentFixture("scratch_content_buffered", false);
+		Guid id = default;
+		{
+			let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+			let instance = database.RootGroup.CreateInstance("words", "Sedulous.Content.Tests.WordsRecord");
+			id = instance.Id;
+			let record = scope WordsRecord();
+			for (int i < 500)
+				record.Words.Add(new $"word{i}");
+			Test.Assert(instance.WriteObject(record) case .Ok);
+		}
+
+		let counting = scope CountingMount(fixture.Mount);
+		let database = scope ContentDatabase(counting, fixture.Factory, "asset");
+		let instance = database.GetInstance(id);
+		Test.Assert(instance != null);
+		counting.Reads = 0;
+		let read = instance.ReadObject() as WordsRecord;
+		defer delete read;
+		Test.Assert(read != null);
+		Test.Assert(read.Words.Count == 500);
+		Test.Assert(read.Words[499] == "word499");
+		Test.Assert(counting.Reads < 8, "one read per count, length and string: over a thousand");
+	}
 }

@@ -62,7 +62,10 @@ class Instance
 		if (stream == null)
 			return null;
 		defer delete stream;
-		return ReadEnvelope(stream, false, scope .());
+		// Buffered: a binary envelope reads field by field, and a mount's stream need not
+		// buffer at all (a native file's buffers 4 KB at a time).
+		let buffered = scope BufferedStream(stream, 64 * 1024);
+		return ReadEnvelope(buffered, false, scope .());
 	}
 
 	/// Reads an envelope an AUTHOR supplied (an agent's edit of the stored text) the way
