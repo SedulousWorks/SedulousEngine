@@ -18,6 +18,7 @@ class SDL3Window : IWindow
 	private uint32 mHeight;
 	private bool mOpen = true;
 	private bool mTextInputActive;
+	private TextInputKind mTextInputKind = .Text;
 
 	public this(SDL_Window* window)
 	{
@@ -155,15 +156,24 @@ class SDL3Window : IWindow
 	public void Close() => mOpen = false;
 
 	/// Guarded on the current state, because SDL counts these and an unbalanced stop leaves
-	/// the input method on.
-	public void StartTextInput()
+	/// the input method on. Started again with another kind, it stops and starts as that kind.
+	public void StartTextInput(TextInputKind kind = .Text)
 	{
-		if ((mWindow != null) && !mTextInputActive)
-		{
-			SDL3.SDL_StartTextInput(mWindow);
-			mTextInputActive = true;
-		}
+		if ((mWindow == null) || (mTextInputActive && (kind == mTextInputKind)))
+			return;
+		if (mTextInputActive)
+			SDL3.SDL_StopTextInput(mWindow); // another kind: started again as that
+		// A secret field tells the platform it is a hidden password: its IME composes nothing there.
+		let properties = SDL3.SDL_CreateProperties();
+		SDL3.SDL_SetNumberProperty(properties, SDL3.SDL_PROP_TEXTINPUT_TYPE_NUMBER,
+			(int64)((kind == .Secret) ? SDL3.SDL_TextInputType.SDL_TEXTINPUT_TYPE_TEXT_PASSWORD_HIDDEN : SDL3.SDL_TextInputType.SDL_TEXTINPUT_TYPE_TEXT));
+		SDL3.SDL_StartTextInputWithProperties(mWindow, properties);
+		SDL3.SDL_DestroyProperties(properties);
+		mTextInputActive = true;
+		mTextInputKind = kind;
 	}
+
+	public TextInputKind ActiveTextInputKind => mTextInputKind;
 
 	public void SetTextInputArea(int32 x, int32 y, int32 width, int32 height, int32 caretX)
 	{

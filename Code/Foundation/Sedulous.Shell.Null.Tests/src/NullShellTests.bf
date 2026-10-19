@@ -210,6 +210,9 @@ class NullShellTests
 		Test.Assert(!window.IsTextInputActive, "off by default");
 		window.StartTextInput();
 		Test.Assert(window.IsTextInputActive);
+		Test.Assert(window.ActiveTextInputKind == .Text);
+		window.StartTextInput(.Secret); // a password's: the kind is kept
+		Test.Assert(window.IsTextInputActive && (window.ActiveTextInputKind == .Secret));
 		window.StopTextInput();
 		Test.Assert(!window.IsTextInputActive);
 

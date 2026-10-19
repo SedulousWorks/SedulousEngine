@@ -338,6 +338,13 @@ class UIContext
 		return (focused != null) && focused.WantsTextInput();
 	}
 
+	/// Whether the focused view's text input is secret (a password).
+	public bool IsTextInputSecret()
+	{
+		let focused = mFocusManager.FocusedView;
+		return (focused != null) && focused.IsTextInputSecret();
+	}
+
 	// ---- Frame lifecycle -----------------------------------------------------------------------
 
 	/// Opens a frame: drains the deferred tree changes, advances the clocks, and ticks the

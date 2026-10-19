@@ -17,6 +17,7 @@ class NullWindow : IWindow
 	private bool mOpen = true;
 	private bool mMinimized;
 	private bool mTextInput;
+	private TextInputKind mTextInputKind = .Text;
 	private (int32 x, int32 y, int32 width, int32 height, int32 caretX) mTextInputArea;
 
 	public this(uint32 id, WindowSettings settings)
@@ -45,9 +46,14 @@ class NullWindow : IWindow
 	public bool IsMinimized => mMinimized;
 	public void Close() => mOpen = false;
 
-	public void StartTextInput() => mTextInput = true;
+	public void StartTextInput(TextInputKind kind = .Text)
+	{
+		mTextInput = true;
+		mTextInputKind = kind;
+	}
 	public void StopTextInput() => mTextInput = false;
 	public bool IsTextInputActive => mTextInput;
+	public TextInputKind ActiveTextInputKind => mTextInputKind;
 	/// Headless: just recorded.
 	public void SetTextInputArea(int32 x, int32 y, int32 width, int32 height, int32 caretX) =>
 		mTextInputArea = (x, y, width, height, caretX);

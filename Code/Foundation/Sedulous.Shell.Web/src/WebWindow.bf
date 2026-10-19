@@ -20,6 +20,7 @@ class WebWindow : IWindow
 	private uint32 mHeight;
 	private bool mOpen = true;
 	private bool mTextInput;
+	private TextInputKind mTextInputKind = .Text;
 
 	public this(uint32 id, StringView selector, WindowSettings settings)
 	{
@@ -82,9 +83,14 @@ class WebWindow : IWindow
 	public bool IsMinimized => false;
 	public void Close() => mOpen = false;
 
-	public void StartTextInput() => mTextInput = true;
+	public void StartTextInput(TextInputKind kind = .Text)
+	{
+		mTextInput = true;
+		mTextInputKind = kind;
+	}
 	public void StopTextInput() => mTextInput = false;
 	public bool IsTextInputActive => mTextInput;
+	public TextInputKind ActiveTextInputKind => mTextInputKind;
 
 	public StringView Selector => mSelector;
 

@@ -30,10 +30,12 @@ interface IWindow
 
 	/// Text input and composition. A platform only emits text events for a window while
 	/// this is on, so an interface turns it on when an editable control takes focus. Off
-	/// by default.
-	void StartTextInput();
+	/// by default. Started again with another kind while on, it switches to that kind.
+	void StartTextInput(TextInputKind kind = .Text);
 	void StopTextInput();
 	bool IsTextInputActive { get; }
+	/// The kind text input was last started with.
+	TextInputKind ActiveTextInputKind { get; }
 	/// Where the text being typed is, in window coordinates, and the caret's x within it: an
 	/// IME places its candidate list beside it. A backend without IMEs ignores it.
 	void SetTextInputArea(int32 x, int32 y, int32 width, int32 height, int32 caretX) {}

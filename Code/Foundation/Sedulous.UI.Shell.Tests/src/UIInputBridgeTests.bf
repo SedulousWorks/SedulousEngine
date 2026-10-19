@@ -47,9 +47,15 @@ class UIInputBridgeTests
 		public void SetSize(uint32 width, uint32 height) {}
 		public void Close() {}
 
-		public void StartTextInput() => TextInputRunning = true;
+		public TextInputKind Kind = .Text;
+		public void StartTextInput(TextInputKind kind = .Text)
+		{
+			TextInputRunning = true;
+			Kind = kind;
+		}
 		public void StopTextInput() => TextInputRunning = false;
 		public bool IsTextInputActive => TextInputRunning;
+		public TextInputKind ActiveTextInputKind => Kind;
 	}
 
 	private static void MakeTree(out UIContext context, out RootView root)
@@ -161,6 +167,31 @@ class UIInputBridgeTests
 		context.GetFocusManager().ClearFocus();
 		bridge.SyncTextInput();
 		Test.Assert(!window.TextInputRunning, "nothing focused wants none either");
+	}
+
+	/// A password box starts secret text input, so the platform's IME keeps out of it, and a
+	/// move to an ordinary field switches it back.
+	[Test]
+	public static void APasswordBoxStartsSecretTextInputAndAFieldSwitchesItBack()
+	{
+		MakeTree(let context, let root);
+		defer { root.ReleaseRef(); delete context; }
+		let field = new EditText();
+		root.AddView(field);
+		let password = new PasswordBox();
+		root.AddView(password);
+		LayoutPass(context, root);
+
+		let window = scope MockWindow();
+		let bridge = scope UIInputBridge(context);
+		bridge.SetTextInputTarget(window);
+
+		context.GetFocusManager().SetFocus(password);
+		bridge.SyncTextInput();
+		Test.Assert(window.TextInputRunning && (window.Kind == .Secret), "the IME keeps out");
+		context.GetFocusManager().SetFocus(field);
+		bridge.SyncTextInput();
+		Test.Assert(window.TextInputRunning && (window.Kind == .Text));
 	}
 
 	/// With no target window the sync is simply inert, so a host that never wired one up is

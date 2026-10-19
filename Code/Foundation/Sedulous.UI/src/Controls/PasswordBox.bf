@@ -18,6 +18,9 @@ class PasswordBox : EditText
 		PasswordChar.SetOwner(this, .Visual);
 	}
 
+	/// A password: the platform's IME composes nothing in it, suggests nothing, learns nothing.
+	public override bool IsTextInputSecret() => true;
+
 	/// One mask character per CHARACTER, not per byte, so the mask is as long as the text
 	/// looks rather than as long as it is encoded.
 	public override void GetDisplayText(String outText)

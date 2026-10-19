@@ -509,4 +509,6 @@ class View : RefCounted, IPropertyOwner
 	/// control overrides this to true, and the shell bridge starts and stops the window's
 	/// text input accordingly.
 	public virtual bool WantsTextInput() => false;
+	/// Whether what it takes is secret (a password): the platform's IME keeps out of it.
+	public virtual bool IsTextInputSecret() => false;
 }

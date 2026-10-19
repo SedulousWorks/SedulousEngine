@@ -58,8 +58,10 @@ class UIInputBridge
 			return;
 
 		let wants = mContext.WantsTextInput();
-		if (wants && !mTextInputTarget.IsTextInputActive)
-			mTextInputTarget.StartTextInput();
+		let kind = mContext.IsTextInputSecret() ? TextInputKind.Secret : TextInputKind.Text;
+		// A move between a field and a password switches the kind.
+		if (wants && (!mTextInputTarget.IsTextInputActive || (mTextInputTarget.ActiveTextInputKind != kind)))
+			mTextInputTarget.StartTextInput(kind);
 		else if (!wants && mTextInputTarget.IsTextInputActive)
 			mTextInputTarget.StopTextInput();
 	}
