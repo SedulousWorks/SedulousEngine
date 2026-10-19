@@ -188,4 +188,24 @@ class FramedRegionTests
 		Test.Assert(a == 42);
 		Test.Assert(b == 7);
 	}
+
+	/// A frame length read out of another layout is garbage: it used to be allocated whole (up
+	/// to 4 GB) before the short read failed.
+	[Test]
+	public static void AFrameLongerThanTheDataLeftFailsWithoutReadingIt()
+	{
+		let stream = scope MemoryStream();
+		{
+			let writer = scope BinaryWriter(stream);
+			writer.Write((uint32)0x7FFFFFF0);
+			writer.Write((uint32)123);
+		}
+		Test.Assert(stream.Seek(0, .Begin) == 0);
+
+		let ar = scope BinarySerializer(stream, .Read);
+		ar.BeginFramedRegion();
+		Test.Assert(!ar.IsOk);
+		Test.Assert(stream.Tell() == 4, "the length, and nothing after it");
+		ar.EndFramedRegion();
+	}
 }

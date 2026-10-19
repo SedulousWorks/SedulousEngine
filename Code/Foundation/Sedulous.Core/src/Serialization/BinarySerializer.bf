@@ -89,6 +89,13 @@ class BinarySerializer : Serializer
 				Fail(.Internal);
 				length = 0;
 			}
+			// A length the bytes left cannot hold is a misread, not a frame: fail and read none,
+			// rather than allocate it (up to 4 GB) before the short read says so.
+			if ((length > 0) && !mReader.Holds(length))
+			{
+				Fail(.Internal);
+				length = 0;
+			}
 			if (length > 0)
 			{
 				let bytes = scope List<uint8>();
