@@ -739,9 +739,10 @@ class VGRenderer
 			if ((command.IndexCount == 0) || (command.Layer != layer))
 				continue;
 
-			// A layer's composite samples the target RenderLayers drew it into; none, no draw.
+			// A layer's composite samples the target RenderLayers drew it into; none, no draw. A
+			// Layer mode draw with no layer samples its own texture (a premultiplied image).
 			IBindGroup compositeGroup = null;
-			if (command.DrawMode == .Layer)
+			if ((command.DrawMode == .Layer) && (command.CompositeLayer >= 0))
 			{
 				let known = (command.CompositeLayer >= 0) && (command.CompositeLayer < mLayers.Count);
 				let target = !known ? -1

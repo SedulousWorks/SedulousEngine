@@ -24,5 +24,6 @@ enum VGDrawMode
 	case Box;
 	/// A layer's composite (VGContext.PopLayer): a quad over the layer's bounds sampling its
 	/// offscreen target (VGCommand.CompositeLayer), the layer's opacity in its vertex alpha.
+	/// With no CompositeLayer, the command's texture instead (VGContext.DrawImagePremultiplied).
 	case Layer;
 }

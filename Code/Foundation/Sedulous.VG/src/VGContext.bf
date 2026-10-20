@@ -1463,6 +1463,32 @@ class VGContext
 		TransformVertices(startVertex);
 	}
 
+	/// DrawImage for a texture that already holds PREMULTIPLIED colour in the canvas's blend
+	/// space, as a layer's target does (a picture drawn once into a GPU texture and registered
+	/// with the renderer under `texture`): sampled as a layer's composite is, scaled by
+	/// `opacity`, never premultiplied again. The plain DrawImage takes straight alpha and would
+	/// darken such a texture's edges.
+	public void DrawImagePremultiplied(ImageData texture, Rectangle destRect, Rectangle srcRect,
+		float opacity = 1.0f)
+	{
+		if ((texture == null) || (destRect.Width <= 0.0f) || (destRect.Height <= 0.0f))
+			return;
+
+		FlushCurrentCommand();
+		let start = (int32)mBatch.Indices.Count;
+		let startVertex = mBatch.Vertices.Count;
+		EmitTexturedQuad(destRect, srcRect, texture.Width, texture.Height,
+			ApplyOpacity(Color(1.0f, 1.0f, 1.0f, opacity)));
+		TransformVertices(startVertex);
+
+		var command = CurrentCommand(start, (int32)mBatch.Indices.Count - start);
+		command.TextureIndex = GetOrAddTexture(texture);
+		command.DrawMode = .Layer; // CompositeLayer -1: the texture, not a layer's target
+		command.GradientSpread = .Pad;
+		mBatch.Commands.Add(command);
+		mCommandStartIndex = (int32)mBatch.Indices.Count;
+	}
+
 	/// DrawImage clipped to a rounded rectangle: `srcRect` of the texture maps onto `destRect`,
 	/// and only the part inside `destRect` rounded by `radii` is drawn, with an anti-aliased
 	/// edge (a picture with rounded corners, such as a card's thumbnail).

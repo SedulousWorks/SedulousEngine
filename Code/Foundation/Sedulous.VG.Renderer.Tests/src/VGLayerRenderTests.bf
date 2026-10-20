@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Image;
 using Sedulous.RHI;
 using Sedulous.VG;
 using Sedulous.VG.Renderer;
@@ -135,5 +136,51 @@ class VGLayerRenderTests
 		Test.Assert(LayerPasses(fixture, fixture.BlurVertexShader, fixture.BlurFragmentShader) == 3,
 			"the content, across, down");
 		Test.Assert(LayerPasses(fixture, null, null) == 1, "the content alone");
+	}
+
+	/// What one frame draws on the target for a fill and a premultiplied image, with or without
+	/// the composite shader.
+	private static VGRenderStats DrawPremultiplied(RendererFixture fixture, IShaderModule layerShader, VGBatch batch)
+	{
+		let renderer = scope VGRenderer();
+		Test.Assert(renderer.Initialize(fixture.Device, fixture.VertexShader, fixture.FragmentShader,
+			.BGRA8UnormSrgb, 2, null, null, null, .(), null, null, null, layerShader) case .Ok);
+		defer renderer.Dispose();
+		renderer.BeginFrame(0);
+		let slice = renderer.Prepare(batch, 0, 64, 64);
+		Test.Assert(slice.IsValid);
+		Test.Assert(slice.LayerCount == 0);
+
+		Test.Assert(fixture.Device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		defer fixture.Device.DestroyCommandPool(ref pool);
+		Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+		defer pool.DestroyEncoder(ref encoder);
+		renderer.RenderLayers(encoder, 0, slice);
+		let pass = encoder.BeginRenderPass(.());
+		renderer.Render(pass, 64, 64, 0, slice);
+		pass.End();
+		return renderer.LastRenderStats;
+	}
+
+	/// A premultiplied image draws through the composite shader with its own texture, no layer
+	/// target asked for; without the shader it is skipped, never premultiplied again by the
+	/// default one.
+	[Test]
+	public static void APremultipliedImageDrawsThroughTheCompositeShaderWithItsOwnTextureOrNotAtAll()
+	{
+		let fixture = scope RendererFixture(false, true);
+		uint8[16] pixels = default;
+		let picture = scope OwnedImageData(2, 2, .RGBA8, .(&pixels[0], 16), .Linear);
+		let context = scope VGContext();
+		context.FillRect(.(0, 0, 8, 8), .White);
+		context.DrawImagePremultiplied(picture, .(10, 10, 20, 20), .(0, 0, 2, 2));
+		let batch = context.GetBatch();
+
+		let with = DrawPremultiplied(fixture, fixture.LayerFragmentShader, batch);
+		Test.Assert(with.Drawn == 2, "the fill and the picture");
+		Test.Assert(with.Skipped == 0);
+		let without = DrawPremultiplied(fixture, null, batch);
+		Test.Assert(without.Drawn == 1);
+		Test.Assert(without.Skipped == 1);
 	}
 }

@@ -537,6 +537,37 @@ class VGContextTests
 		Test.Assert(context.IsRectVisible(.(1000, 1000, 1, 1)), "the clip went with it");
 	}
 
+	/// A premultiplied image is a composite of its own texture, not a layer's target, clipped
+	/// and faded as it was drawn, and what follows it starts a command of its own.
+	[Test]
+	public static void APremultipliedImageIsACompositeOfItsOwnTextureClippedAndFadedAsDrawn()
+	{
+		let context = scope VGContext();
+		let texture = scope OwnedImageData(2, 2, .RGBA8, .(), .Linear);
+
+		context.FillRect(.(0, 0, 5, 5), .Red);
+		context.PushClipRect(.(0, 0, 30, 30));
+		context.PushOpacity(0.5f);
+		context.DrawImagePremultiplied(texture, .(10, 10, 20, 20), .(1, 0, 1, 2), 0.8f);
+		context.PopOpacity();
+		context.PopClip();
+		context.FillRect(.(0, 0, 5, 5), .Blue); // a new command after it
+
+		let batch = context.GetBatch();
+		Test.Assert(batch.CommandCount == 3);
+		let picture = batch.GetCommand(1);
+		Test.Assert(picture.DrawMode == .Layer);
+		Test.Assert(picture.CompositeLayer == -1, "its texture, not a layer's target");
+		Test.Assert(picture.TextureIndex >= 0);
+		Test.Assert(batch.Textures[picture.TextureIndex] == texture);
+		Test.Assert(picture.IndexCount == 6);
+		Test.Assert(picture.ClipMode == .Scissor);
+		let corner = batch.Vertices[(int)batch.Indices[picture.StartIndex]];
+		Test.Assert(Near(corner.Color.A, 0.4f), "its opacity under the context's");
+		Test.Assert(Near(corner.TexCoord.X, 0.5f), "the source's half of the texture");
+		Test.Assert(batch.GetCommand(2).DrawMode == .Default);
+	}
+
 	/// A card's thumbnail with rounded corners: the picture is cut to the rounded rect (no
 	/// opaque vertex in a corner's cut-away), each vertex samples the texel of its place in the
 	/// dest rect (worked out before the transform), the fringe clamps to the source, and no
