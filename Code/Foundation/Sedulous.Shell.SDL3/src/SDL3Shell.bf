@@ -268,7 +268,11 @@ class SDL3Shell : IShell
 				mInput.EmitEvent(e);
 				mInput.MouseDevice.OnWheel(event.wheel.x, event.wheel.y);
 
+			// A touchscreen's fingers only: a trackpad's are the mouse already, and its pinch comes
+			// as one gesture (below), so they are not taken for touches on the window.
 			case .SDL_EVENT_FINGER_DOWN, .SDL_EVENT_FINGER_MOTION:
+				if (IsTrackpad(event.tfinger.touchID))
+					break;
 				var e = InputEvent();
 				e.Kind = ((SDL_EventType)event.type == .SDL_EVENT_FINGER_DOWN) ? .TouchDown : .TouchMove;
 				e.Window = (uint32)event.tfinger.windowID;
@@ -285,15 +289,29 @@ class SDL3Shell : IShell
 					SDL3.SDL_GetWindowSize(window, &width, &height);
 				mInput.TouchDevice.AddOrUpdate(.(e.TouchId, e.X, e.Y, e.Value, e.X * (float)width, e.Y * (float)height));
 
-			case .SDL_EVENT_FINGER_UP:
+			case .SDL_EVENT_FINGER_UP, .SDL_EVENT_FINGER_CANCELED:
+				if (IsTrackpad(event.tfinger.touchID))
+					break;
 				var e = InputEvent();
-				e.Kind = .TouchUp;
+				e.Kind = ((SDL_EventType)event.type == .SDL_EVENT_FINGER_UP) ? .TouchUp : .TouchCancel;
 				e.Window = (uint32)event.tfinger.windowID;
 				e.TouchId = (uint64)event.tfinger.fingerID;
 				e.X = event.tfinger.x;
 				e.Y = event.tfinger.y;
 				mInput.EmitEvent(e);
 				mInput.TouchDevice.Remove(e.TouchId);
+
+			case .SDL_EVENT_PINCH_BEGIN, .SDL_EVENT_PINCH_UPDATE, .SDL_EVENT_PINCH_END:
+				var e = InputEvent();
+				switch ((SDL_EventType)event.type)
+				{
+				case .SDL_EVENT_PINCH_BEGIN: e.Kind = .PinchBegin;
+				case .SDL_EVENT_PINCH_UPDATE: e.Kind = .PinchUpdate;
+				default: e.Kind = .PinchEnd;
+				}
+				e.Window = (uint32)event.pinch.windowID;
+				e.Value = event.pinch.scale;
+				mInput.EmitEvent(e);
 
 			case .SDL_EVENT_GAMEPAD_ADDED:
 				mInput.AddGamepad((uint32)event.gdevice.which);
@@ -382,5 +400,13 @@ class SDL3Shell : IShell
 		e.Type = type;
 		e.WindowId = id;
 		return e;
+	}
+
+	/// A trackpad's touch device: SDL reports its fingers as touches too, and its pinch as a
+	/// gesture.
+	private static bool IsTrackpad(SDL_TouchID touch)
+	{
+		let type = SDL3.SDL_GetTouchDeviceType(touch);
+		return (type == .SDL_TOUCH_DEVICE_INDIRECT_ABSOLUTE) || (type == .SDL_TOUCH_DEVICE_INDIRECT_RELATIVE);
 	}
 }

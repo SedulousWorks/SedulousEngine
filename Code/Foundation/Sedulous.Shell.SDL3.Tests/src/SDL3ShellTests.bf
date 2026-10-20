@@ -422,6 +422,55 @@ class SDL3ShellTests
 		Test.Assert(exposed);
 	}
 
+	/// A finger the platform takes back ends without a TouchUp, and a trackpad's pinch is one
+	/// gesture: both reach the input events (a trackpad device cannot be made in a test).
+	[Test]
+	public static void ACancelledFingerAndATrackpadsPinchReachTheInputEvents()
+	{
+		let fixture = scope ShellFixture();
+		if (!fixture.Usable)
+			return;
+
+		SDL_Event down = default;
+		down.type = (uint32)SDL_EventType.SDL_EVENT_FINGER_DOWN;
+		down.tfinger.windowID = fixture.WindowId;
+		down.tfinger.fingerID = 7;
+		down.tfinger.x = 0.5f;
+		down.tfinger.y = 0.5f;
+		SDL3.SDL_PushEvent(&down);
+		var cancel = down;
+		cancel.type = (uint32)SDL_EventType.SDL_EVENT_FINGER_CANCELED;
+		SDL3.SDL_PushEvent(&cancel);
+		for (let type in SDL_EventType[?](.SDL_EVENT_PINCH_BEGIN, .SDL_EVENT_PINCH_UPDATE, .SDL_EVENT_PINCH_END))
+		{
+			SDL_Event pinch = default;
+			pinch.type = (uint32)type;
+			pinch.pinch.windowID = fixture.WindowId;
+			pinch.pinch.scale = 1.25f;
+			SDL3.SDL_PushEvent(&pinch);
+		}
+
+		fixture.Shell.ProcessEvents();
+		bool cancelled = false;
+		int pinchKinds = 0;
+		float scale = 0.0f;
+		for (let e in fixture.Shell.Input.Events)
+		{
+			cancelled |= (e.Kind == .TouchCancel) && (e.TouchId == 7);
+			if ((e.Kind == .PinchBegin) || (e.Kind == .PinchEnd))
+				pinchKinds++;
+			if (e.Kind == .PinchUpdate)
+			{
+				pinchKinds++;
+				scale = e.Value;
+			}
+		}
+		Test.Assert(cancelled);
+		Test.Assert(pinchKinds == 3);
+		Test.Assert(scale == 1.25f);
+		Test.Assert(fixture.Shell.Input.Touch.TouchCount == 0, "the cancelled finger is gone");
+	}
+
 	/// Focus decides where the keyboard and the pads go, so it has to be tracked and it has
 	/// to be given up.
 	[Test]
