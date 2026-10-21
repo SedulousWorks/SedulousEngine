@@ -463,6 +463,11 @@ class SDL3ShellTests
 
 		fixture.Shell.MainWindow.Raise();
 
+		// Any number of windows, placed by the application but on Wayland (the dummy driver here).
+		let can = fixture.Shell.WindowManager.Capabilities;
+		Test.Assert(can.MultipleWindows);
+		Test.Assert(can.PlacesWindows == (StringView(SDL3.SDL_GetCurrentVideoDriver()) != "wayland"));
+
 		let main = (SDL3Window)fixture.Shell.MainWindow;
 		main.SetTitle("Profiler + 2");
 		Test.Assert(StringView(SDL3.SDL_GetWindowTitle(main.Handle)) == "Profiler + 2");

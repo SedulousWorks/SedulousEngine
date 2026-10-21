@@ -360,6 +360,20 @@ class NullShellTests
 		Test.Assert(main.Title == "Profiler + 2");
 	}
 
+	/// Headless windows are as many as are made and keep their places, unless a test says
+	/// otherwise.
+	[Test]
+	public static void ItsWindowsAreAsManyAsAreMadeAndKeepTheirPlacesUnlessATestSaysOtherwise()
+	{
+		let shell = scope NullShell();
+		let windows = (NullWindowManager)shell.WindowManager;
+		Test.Assert(windows.Capabilities.MultipleWindows);
+		Test.Assert(windows.Capabilities.PlacesWindows);
+		windows.SetCapabilities(.(true, false)); // as Wayland is
+		Test.Assert(windows.Capabilities.MultipleWindows);
+		Test.Assert(!windows.Capabilities.PlacesWindows);
+	}
+
 	/// A host's handling of window events is tested here, with no OS to send any: a test
 	/// posts them, and they are kept through pumps until it clears them.
 	[Test]

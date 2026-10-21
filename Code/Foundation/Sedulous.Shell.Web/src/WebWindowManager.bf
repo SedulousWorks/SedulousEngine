@@ -47,6 +47,9 @@ class WebWindowManager : IWindowManager
 	/// One canvas, which opens no other window: no screens to place one on.
 	public Span<Screen> Screens => .();
 
+	/// The page's one canvas, which it neither places nor gets a second of.
+	public WindowCapabilities Capabilities => .(false, false);
+
 	/// Nothing is deferred: the one window lives as long as the manager.
 	public void FlushDestroyed() {}
 

@@ -24,6 +24,8 @@ class NullWindowManager : IWindowManager
 	/// The screens' names, which the screens borrow.
 	private List<String> mScreenNames = new .() ~ DeleteContainerAndItems!(_);
 
+	private WindowCapabilities mCapabilities = .(true, true);
+
 	private uint32 mNextId = 1;
 	private uint32 mMainWindowId;
 
@@ -79,6 +81,11 @@ class NullWindowManager : IWindowManager
 	/// A window event, as a pump would bring it (a test's: kept until ClearEvents).
 	public void PostEvent(WindowEvent event) => mEvents.Add(event);
 	public void ClearEvents() => mEvents.Clear();
+
+	/// Headless windows record where they are put, as many as are made.
+	public WindowCapabilities Capabilities => mCapabilities;
+	/// What it says its windows can do (a test's: one that plays a system that places none).
+	public void SetCapabilities(WindowCapabilities capabilities) => mCapabilities = capabilities;
 
 	/// The screens it reports (a test's). The names are copied.
 	public void SetScreens(Span<Screen> screens)

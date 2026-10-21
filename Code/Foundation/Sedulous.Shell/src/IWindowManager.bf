@@ -35,6 +35,10 @@ interface IWindowManager
 	/// brought back onto a screen that is there. Empty where the system tells none.
 	Span<Screen> Screens { get; }
 
+	/// What its windows can do: a floating panel's own window is opened only where windows
+	/// beside the main one are, and placed by the application only where they hold a place.
+	WindowCapabilities Capabilities { get; }
+
 	/// Frees what DestroyWindow marked. Once a frame, at the end.
 	void FlushDestroyed();
 }
