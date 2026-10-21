@@ -17,7 +17,7 @@ class NullWindowManager : IWindowManager
 	/// interface type.
 	private List<IWindow> mLive = new .() ~ delete _;
 	private List<uint32> mPendingDestroy = new .() ~ delete _;
-	/// Always empty: there is no OS to raise events.
+	/// Empty unless a test posts some: there is no OS to raise events.
 	private List<WindowEvent> mEvents = new .() ~ delete _;
 	/// Empty unless a test gives some: headless, there is nothing to place a window on.
 	private List<Screen> mScreens = new .() ~ delete _;
@@ -75,6 +75,10 @@ class NullWindowManager : IWindowManager
 	public Span<WindowEvent> Events => .(mEvents.Ptr, mEvents.Count);
 
 	public Span<Screen> Screens => .(mScreens.Ptr, mScreens.Count);
+
+	/// A window event, as a pump would bring it (a test's: kept until ClearEvents).
+	public void PostEvent(WindowEvent event) => mEvents.Add(event);
+	public void ClearEvents() => mEvents.Clear();
 
 	/// The screens it reports (a test's). The names are copied.
 	public void SetScreens(Span<Screen> screens)

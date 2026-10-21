@@ -355,6 +355,28 @@ class NullShellTests
 		Test.Assert(main.RaiseCount == 1);
 	}
 
+	/// A host's handling of window events is tested here, with no OS to send any: a test
+	/// posts them, and they are kept through pumps until it clears them.
+	[Test]
+	public static void ATestsPostedWindowEventsAreKeptUntilCleared()
+	{
+		let shell = scope NullShell();
+		let windows = (NullWindowManager)shell.WindowManager;
+		var moved = WindowEvent();
+		moved.Type = .Moved;
+		moved.WindowId = shell.MainWindow.Id;
+		moved.X = 30;
+		moved.Y = 40;
+		windows.PostEvent(moved);
+
+		shell.ProcessEvents();
+		Test.Assert(windows.Events.Length == 1);
+		Test.Assert((windows.Events[0].Type == .Moved) && (windows.Events[0].X == 30) && (windows.Events[0].Y == 40));
+
+		windows.ClearEvents();
+		Test.Assert(windows.Events.Length == 0);
+	}
+
 	/// An input event's text keeps whole characters when it is cut to fit.
 	[Test]
 	public static void AnEventsTextIsCutBetweenWholeCharacters()
