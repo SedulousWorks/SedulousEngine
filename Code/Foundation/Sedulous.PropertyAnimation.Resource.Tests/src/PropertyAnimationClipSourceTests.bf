@@ -116,6 +116,33 @@ class PropertyAnimationClipSourceTests
 		Test.Assert(rebuilt.Tracks[0].Channels[2].Keys[0].Interpolation == .Constant);
 	}
 
+	/// A key's tangent mode survives the wire; a wire from before modes reads every key
+	/// Broken, its tangents as stored.
+	[Test]
+	public static void AKeysTangentModeRoundTripsAndAnOlderWireReadsBroken()
+	{
+		let original = ClipFixture.Make();
+		defer delete original;
+		original.Tracks[0].Channels[0].Keys[0].TangentMode = .Auto;
+		original.Tracks[0].Channels[1].Keys[0].TangentMode = .Flat;
+
+		let source = scope PropertyAnimationClipSource();
+		PropertyAnimationClipSource.FromClip(original, source);
+		Test.Assert(source.KeyTangentMode.Count == source.KeyTime.Count);
+
+		let rebuilt = scope PropertyAnimationClip();
+		source.FillClip(rebuilt);
+		Test.Assert(rebuilt.Tracks[0].Channels[0].Keys[0].TangentMode == .Auto);
+		Test.Assert(rebuilt.Tracks[0].Channels[1].Keys[0].TangentMode == .Flat);
+
+		// A clip saved before modes: every key keeps its tangents as stored.
+		source.KeyTangentMode.Clear();
+		let older = scope PropertyAnimationClip();
+		source.FillClip(older);
+		Test.Assert(older.Tracks[0].Channels[0].Keys[0].TangentMode == .Broken);
+		Test.Assert(Near(older.Tracks[0].Channels[0].Keys[0].TangentOut, 2.0f));
+	}
+
 	/// A malformed record yields a partial but SAFE clip: every index is bounded against the
 	/// pool it reads from, so a claim of ninety nine keys over an empty pool produces none
 	/// rather than reading past the end.

@@ -14,7 +14,8 @@ class PropertyAnimationClipAssetBuilder : IAssetBuilder
 	public Type ProductType => typeof(PropertyAnimationClipSource);
 
 	/// Two, since the dead loop field went: looping is the animator component's business.
-	public int32 Version => 2;
+	/// Three, since each key keeps its tangent mode (KeyTangentMode).
+	public int32 Version => 3;
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{

@@ -220,4 +220,52 @@ class CurveTests
 		Test.Assert(c.Duration == 0.0f);
 		Test.Assert(c.Evaluate(0.5f) == 0.0f);
 	}
+
+	/// EvaluateCurve over a span of keys is the curve's own sampling, so a caller holding
+	/// keys of its own (a particle curve, an editor's canvas) plays what a Curve plays.
+	[Test]
+	public static void EvaluateCurveOverASpanOfKeysIsTheCurvesOwnSampling()
+	{
+		CurveKey[3] keys = .(.(0.0f, 0.0f, .Cubic, 1.0f, 1.0f), .(1.0f, 2.0f, .Constant), .(2.0f, 4.0f));
+		let curve = scope Curve();
+		for (let key in keys)
+			curve.AddKey(key);
+		for (var t = -0.5f; t <= 2.5f; t += 0.25f)
+			Test.Assert(NearlyEqual(EvaluateCurve(keys, t), curve.Evaluate(t)));
+		Test.Assert(EvaluateCurve(Span<CurveKey>(), 1.0f) == 0.0f);
+		Test.Assert(NearlyEqual(HermiteBasis(1.0f, 0.0f, 3.0f, 0.0f, 0.5f), 2.0f));
+	}
+
+	/// Auto takes the slope between its neighbours (to its one neighbour at an end), Smooth
+	/// sets in from out, Flat zeroes both, and Broken keeps what was set, which is also what a
+	/// key read from older data is.
+	[Test]
+	public static void TangentModesSetTheTangentsByKind()
+	{
+		CurveKey[4] keys = .(.(0.0f, 0.0f, .Cubic), .(1.0f, 1.0f, .Cubic), .(3.0f, 5.0f, .Cubic), .(4.0f, 5.0f, .Cubic));
+		for (var key in ref keys)
+			key.TangentMode = .Auto;
+		keys[2].TangentMode = .Smooth;
+		keys[2].TangentIn = 9.0f;
+		keys[2].TangentOut = 0.5f;
+		keys[3].TangentMode = .Broken;
+		keys[3].TangentIn = 7.0f;
+		keys[3].TangentOut = -7.0f;
+		ApplyCurveTangentModes(keys);
+		Test.Assert(NearlyEqual(keys[0].TangentOut, 1.0f));          // an end: the slope to its one neighbour
+		Test.Assert(NearlyEqual(keys[1].TangentIn, 5.0f / 3.0f));    // (5 - 0) / (3 - 0)
+		Test.Assert(NearlyEqual(keys[1].TangentOut, 5.0f / 3.0f));
+		Test.Assert(NearlyEqual(keys[2].TangentIn, 0.5f));           // smooth: in follows out
+		Test.Assert(NearlyEqual(keys[2].TangentOut, 0.5f));
+		Test.Assert(NearlyEqual(keys[3].TangentIn, 7.0f));           // broken: as set
+		Test.Assert(NearlyEqual(keys[3].TangentOut, -7.0f));
+
+		let curve = scope Curve();
+		curve.AddKey(.(0.0f, 0.0f, .Cubic, 3.0f, 3.0f));
+		curve.Keys[0].TangentMode = .Flat;
+		curve.ApplyTangentModes();
+		Test.Assert(curve.Keys[0].TangentIn == 0.0f);
+		Test.Assert(curve.Keys[0].TangentOut == 0.0f);
+		Test.Assert(CurveKey().TangentMode == .Broken);
+	}
 }

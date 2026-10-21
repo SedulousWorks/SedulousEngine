@@ -3,6 +3,92 @@ using System.Collections;
 
 namespace Sedulous.Core;
 
+/// EvaluateCurve is the engine's ONE cubic Hermite over keys: Curve samples with it, the
+/// particles' fixed curves do, and an editor draws with it, so what is edited is what plays.
+/// A key's tangent mode says how its tangents are kept (ApplyCurveTangentModes sets them), so an
+/// editor and an importer agree.
+static
+{
+	/// Cubic Hermite basis: p0 at t = 0, p1 at t = 1, with m0 and m1 the endpoint
+	/// tangents, already scaled.
+	public static float HermiteBasis(float p0, float m0, float p1, float m1, float t)
+	{
+		let t2 = t * t;
+		let t3 = t2 * t;
+		return (2.0f * t3 - 3.0f * t2 + 1.0f) * p0 +
+			(t3 - 2.0f * t2 + t) * m0 +
+			(-2.0f * t3 + 3.0f * t2) * p1 +
+			(t3 - t2) * m1;
+	}
+
+	/// Samples keys sorted by time. None gives zero, one gives its value, and outside the
+	/// keys the nearest end value. Between two keys the LEFT key's interpolation drives the
+	/// segment; coincident keys jump to the later value.
+	public static float EvaluateCurve(Span<CurveKey> keys, float time)
+	{
+		let count = keys.Length;
+		if (count == 0)
+			return 0.0f;
+		if ((count == 1) || (time <= keys[0].Time))
+			return keys[0].Value;
+		if (time >= keys[count - 1].Time)
+			return keys[count - 1].Value;
+
+		// Find the segment containing time. A linear scan, since key counts are small.
+		var i = 0;
+		while ((i + 1 < count) && (keys[i + 1].Time <= time))
+			i++;
+
+		let a = keys[i];
+		let b = keys[i + 1];
+
+		let segment = b.Time - a.Time;
+		if (segment <= 1e-6f)
+			return b.Value;
+
+		let localT = (time - a.Time) / segment;
+
+		switch (a.Interpolation)
+		{
+		case .Constant:
+			return a.Value;
+		case .Linear:
+			return a.Value + (b.Value - a.Value) * localT;
+		case .Cubic:
+			// Tangents are slopes, scaled by the segment length into the [0,1] basis.
+			return HermiteBasis(a.Value, a.TangentOut * segment, b.Value, b.TangentIn * segment, localT);
+		}
+	}
+
+	/// Sets each key's tangents by its mode: Auto from its neighbours, Smooth in from out,
+	/// Flat to zero; Broken keys are left as they are. Keys sorted by time.
+	public static void ApplyCurveTangentModes(Span<CurveKey> keys)
+	{
+		let count = keys.Length;
+		for (int i < count)
+		{
+			ref CurveKey key = ref keys[i];
+			switch (key.TangentMode)
+			{
+			case .Broken:
+				break;
+			case .Flat:
+				key.TangentIn = 0.0f;
+				key.TangentOut = 0.0f;
+			case .Smooth:
+				key.TangentIn = key.TangentOut;
+			case .Auto:
+				let before = keys[(i > 0) ? i - 1 : i];
+				let after = keys[(i + 1 < count) ? i + 1 : i];
+				let span = after.Time - before.Time;
+				let slope = (span > 1e-6f) ? (after.Value - before.Value) / span : 0.0f;
+				key.TangentIn = slope;
+				key.TangentOut = slope;
+			}
+		}
+	}
+}
+
 /// An ordered scalar curve.
 ///
 /// Keys are kept sorted by time, since AddKey inserts in order. Evaluate clamps to the
@@ -35,54 +121,9 @@ class Curve
 
 	public void Clear() => mKeys.Clear();
 
-	/// Samples the curve. Empty gives zero, a single key gives its value, and outside
-	/// the key range the nearest end value. Between two keys the LEFT key's
-	/// interpolation mode drives the segment.
-	public float Evaluate(float time)
-	{
-		let count = mKeys.Count;
-		if (count == 0)
-			return 0.0f;
-		if ((count == 1) || (time <= mKeys[0].Time))
-			return mKeys[0].Value;
-		if (time >= mKeys[count - 1].Time)
-			return mKeys[count - 1].Value;
+	/// Samples the curve: EvaluateCurve over its keys.
+	public float Evaluate(float time) => EvaluateCurve(mKeys, time);
 
-		// Find the segment containing time. A linear scan, since key counts are small.
-		var i = 0;
-		while ((i + 1 < count) && (mKeys[i + 1].Time <= time))
-			i++;
-
-		let a = mKeys[i];
-		let b = mKeys[i + 1];
-
-		let segment = b.Time - a.Time;
-		if (segment <= 1e-6f)
-			return b.Value;   // coincident keys: jump to the later value
-
-		let localT = (time - a.Time) / segment;
-
-		switch (a.Interpolation)
-		{
-		case .Constant:
-			return a.Value;
-		case .Linear:
-			return a.Value + (b.Value - a.Value) * localT;
-		case .Cubic:
-			// Tangents are slopes, scaled by the segment length into the [0,1] basis.
-			return Hermite(a.Value, a.TangentOut * segment, b.Value, b.TangentIn * segment, localT);
-		}
-	}
-
-	/// Cubic Hermite basis: p0 at t = 0, p1 at t = 1, with m0 and m1 the endpoint
-	/// tangents, already scaled.
-	private static float Hermite(float p0, float m0, float p1, float m1, float t)
-	{
-		let t2 = t * t;
-		let t3 = t2 * t;
-		return (2.0f * t3 - 3.0f * t2 + 1.0f) * p0 +
-			(t3 - 2.0f * t2 + t) * m0 +
-			(-2.0f * t3 + 3.0f * t2) * p1 +
-			(t3 - t2) * m1;
-	}
+	/// Sets its keys' tangents by their modes.
+	public void ApplyTangentModes() => ApplyCurveTangentModes(mKeys);
 }

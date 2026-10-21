@@ -42,6 +42,11 @@ class PropertyAnimationClipSource
 	public List<float> QuatTime = new .() ~ delete _;
 	public List<Float4> QuatValue = new .() ~ delete _;
 
+	/// Per scalar key: its CurveTangentMode, what an editor keeps. Appended, so a clip saved
+	/// before modes reads with none, and each key Broken, its tangents as stored.
+	[Appended]
+	public List<uint8> KeyTangentMode = new .() ~ delete _;
+
 	/// Flattens a runtime clip into the wire, which is the cooking half. The channels are
 	/// appended in track then channel order, so the walk back reconstructs them identically.
 	public static void FromClip(PropertyAnimationClip clip, PropertyAnimationClipSource outSource)
@@ -58,6 +63,7 @@ class PropertyAnimationClipSource
 		outSource.KeyTangentIn.Clear();
 		outSource.KeyTangentOut.Clear();
 		outSource.KeyInterp.Clear();
+		outSource.KeyTangentMode.Clear();
 		outSource.TrackQuatStart.Clear();
 		outSource.TrackQuatCount.Clear();
 		outSource.QuatTime.Clear();
@@ -83,6 +89,7 @@ class PropertyAnimationClipSource
 					outSource.KeyTangentIn.Add(key.TangentIn);
 					outSource.KeyTangentOut.Add(key.TangentOut);
 					outSource.KeyInterp.Add((uint8)key.Interpolation);
+					outSource.KeyTangentMode.Add((uint8)key.TangentMode);
 				}
 			}
 
@@ -147,6 +154,10 @@ class PropertyAnimationClipSource
 					if ((index < KeyInterp.Count)
 						&& (KeyInterp[index] <= (uint8)CurveKeyInterpolation.Cubic))
 						key.Interpolation = (CurveKeyInterpolation)KeyInterp[index];
+					// A wire without modes, or a mode out of range: Broken, the tangents as stored.
+					if ((index < KeyTangentMode.Count)
+						&& (KeyTangentMode[index] <= (uint8)CurveTangentMode.Flat))
+						key.TangentMode = (CurveTangentMode)KeyTangentMode[index];
 
 					if (c < PropertyTrack.cMaxChannels)
 						track.Channels[c].AddKey(key);

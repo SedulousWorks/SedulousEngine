@@ -14,6 +14,8 @@ struct CurveKey
 	public float TangentIn = 0.0f;
 	public float TangentOut = 0.0f;
 	public CurveKeyInterpolation Interpolation = .Linear;
+	/// How the tangents are kept. Broken by default, so a key keeps the tangents it was given.
+	public CurveTangentMode TangentMode = .Broken;
 
 	[Inline]
 	public this() { }
