@@ -1,3 +1,4 @@
+using System;
 using Sedulous.Shell;
 
 namespace Sedulous.Shell.Null;
@@ -20,6 +21,7 @@ class NullWindow : IWindow
 	private TextInputKind mTextInputKind = .Text;
 	private (int32 x, int32 y, int32 width, int32 height, int32 caretX) mTextInputArea;
 	private uint32 mRaised;
+	private String mTitle = new .() ~ delete _;
 
 	public this(uint32 id, WindowSettings settings)
 	{
@@ -28,6 +30,7 @@ class NullWindow : IWindow
 		mHeight = settings.Height;
 		mX = settings.Positioned ? settings.X : 0;
 		mY = settings.Positioned ? settings.Y : 0;
+		mTitle.Set(settings.Title);
 	}
 
 	public uint32 Id => mId;
@@ -48,6 +51,8 @@ class NullWindow : IWindow
 	public void Close() => mOpen = false;
 	/// Headless: just counted.
 	public void Raise() => mRaised++;
+	/// Headless: just recorded.
+	public void SetTitle(StringView title) => mTitle.Set(title);
 
 	public void StartTextInput(TextInputKind kind = .Text)
 	{
@@ -68,6 +73,8 @@ class NullWindow : IWindow
 
 	public void Resize(uint32 width, uint32 height) { mWidth = width; mHeight = height; }
 	public void SetMinimized(bool minimized) => mMinimized = minimized;
+	/// What SetTitle was last told (the settings' title until then).
+	public StringView Title => mTitle;
 	/// How many times Raise was called.
 	public uint32 RaiseCount => mRaised;
 }

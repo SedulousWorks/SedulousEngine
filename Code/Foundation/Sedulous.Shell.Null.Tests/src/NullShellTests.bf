@@ -321,9 +321,10 @@ class NullShellTests
 		Test.Assert(dropped.IsEmpty);
 	}
 
-	/// Headless, there are no screens unless a test gives some, and a raise is counted.
+	/// Headless, there are no screens unless a test gives some, a raise is counted, and a
+	/// title is kept.
 	[Test]
-	public static void NoScreensUnlessATestGivesSomeAndARaiseIsCounted()
+	public static void NoScreensUnlessATestGivesSomeARaiseIsCountedAndATitleIsKept()
 	{
 		let shell = scope NullShell();
 		let windows = (NullWindowManager)shell.WindowManager;
@@ -353,6 +354,10 @@ class NullShellTests
 		Test.Assert(main.RaiseCount == 0);
 		main.Raise();
 		Test.Assert(main.RaiseCount == 1);
+
+		Test.Assert(main.Title == "Shell", "the settings' until told otherwise");
+		main.SetTitle("Profiler + 2");
+		Test.Assert(main.Title == "Profiler + 2");
 	}
 
 	/// A host's handling of window events is tested here, with no OS to send any: a test

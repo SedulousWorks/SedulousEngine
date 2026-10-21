@@ -55,6 +55,7 @@ class EditorSplashTests
 		public void SetSize(uint32 width, uint32 height) {}
 		public void Close() {}
 		public void Raise() {}
+		public void SetTitle(StringView title) {}
 		public void StartTextInput(TextInputKind kind = .Text) {}
 		public void StopTextInput() {}
 		public bool IsTextInputActive => false;

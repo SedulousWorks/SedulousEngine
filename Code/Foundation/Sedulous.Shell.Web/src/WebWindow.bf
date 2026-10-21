@@ -84,6 +84,8 @@ class WebWindow : IWindow
 	public void Close() => mOpen = false;
 	/// The page's one canvas: nothing to bring forward.
 	public void Raise() {}
+	/// The page's title is the page's, not the canvas's.
+	public void SetTitle(StringView title) {}
 
 	public void StartTextInput(TextInputKind kind = .Text)
 	{

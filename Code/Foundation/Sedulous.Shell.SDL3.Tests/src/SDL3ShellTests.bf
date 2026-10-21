@@ -422,11 +422,11 @@ class SDL3ShellTests
 		Test.Assert(exposed);
 	}
 
-	/// Floating windows need to know where windows may go and to bring one back in front:
-	/// the screens are read, one of them primary, a moved window is reported, and a raise is
-	/// safe.
+	/// Floating windows need to know where windows may go, to bring one back in front and to
+	/// title one for the panels it holds: the screens are read, one of them primary, a moved
+	/// window is reported, a raise is safe, and a title is set.
 	[Test]
-	public static void TheScreensAreReadAndAMovedWindowIsReported()
+	public static void TheScreensAreReadAMovedWindowIsReportedAndATitleIsSet()
 	{
 		let fixture = scope ShellFixture();
 		if (!fixture.Usable)
@@ -462,6 +462,10 @@ class SDL3ShellTests
 		Test.Assert(moved);
 
 		fixture.Shell.MainWindow.Raise();
+
+		let main = (SDL3Window)fixture.Shell.MainWindow;
+		main.SetTitle("Profiler + 2");
+		Test.Assert(StringView(SDL3.SDL_GetWindowTitle(main.Handle)) == "Profiler + 2");
 	}
 
 	/// A finger the platform takes back ends without a TouchUp, and a trackpad's pinch is one
