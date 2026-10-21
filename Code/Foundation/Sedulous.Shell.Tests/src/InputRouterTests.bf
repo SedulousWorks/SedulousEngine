@@ -133,8 +133,62 @@ class InputRouterTests
 		raw.MouseDevice.Release(.Left);
 		router.Update();
 
-		Test.Assert(!surface.Captured, "released");
+		Test.Assert(router.Captured == null, "released");
+		Test.Assert(surface.Mouse.IsButtonReleased(.Left), "the frame the capture ends, it reads the release");
+
+		raw.MouseDevice.NextFrame();
+		router.Update();
+		Test.Assert(!surface.Captured);
 		Test.Assert(!surface.MouseActive);
+	}
+
+	/// A release outside every surface, or over another window, still reaches the surface the
+	/// press began on: a reader of button edges (a GUI's drag) would otherwise stay pressed.
+	[Test]
+	public static void ASurfacePressedOnReadsTheReleaseWhereverThePointerIsLetGo()
+	{
+		let raw = scope FakeInputManager();
+		let surface = Surface(raw, 1, 100, 100);
+		defer delete surface;
+
+		let router = scope InputRouter(raw);
+		router.AddSurface(surface);
+		raw.Hover = 1;
+
+		// Pressed inside, dragged out: held, the surface keeps the pointer.
+		raw.MouseDevice.PosX = 150; raw.MouseDevice.PosY = 150;
+		raw.MouseDevice.Press(.Left);
+		router.Update();
+		Test.Assert(surface.Mouse.IsButtonPressed(.Left));
+		raw.MouseDevice.NextFrame();
+		raw.MouseDevice.PosX = 40; raw.MouseDevice.PosY = 40;
+		router.Update();
+		Test.Assert(surface.Mouse.IsButtonDown(.Left));
+
+		// Let go outside the surface: it reads the release (the frame the capture ends).
+		raw.MouseDevice.NextFrame();
+		raw.MouseDevice.Release(.Left);
+		router.Update();
+		Test.Assert(surface.Mouse.IsButtonReleased(.Left));
+		Test.Assert(router.Hovered == null);
+
+		// The next frame it is just a surface the pointer is not over.
+		raw.MouseDevice.NextFrame();
+		router.Update();
+		Test.Assert(!surface.Mouse.IsButtonReleased(.Left));
+		Test.Assert(!surface.MouseActive);
+
+		// Let go over another window: the same.
+		raw.MouseDevice.PosX = 150; raw.MouseDevice.PosY = 150;
+		raw.MouseDevice.Press(.Left);
+		router.Update();
+		raw.MouseDevice.NextFrame();
+		raw.Hover = 2;
+		router.Update();
+		raw.MouseDevice.NextFrame();
+		raw.MouseDevice.Release(.Left);
+		router.Update();
+		Test.Assert(surface.Mouse.IsButtonReleased(.Left));
 	}
 
 	/// Only the captured or hovered target gets a delta, so one drag moves one viewport.

@@ -89,11 +89,11 @@ class InputRouter
 		let anyPressed = rawMouse.IsButtonPressed(.Left) || rawMouse.IsButtonPressed(.Right)
 			|| rawMouse.IsButtonPressed(.Middle);
 
-		ResolveCapture(anyDown, anyPressed);
+		let releasing = ResolveCapture(anyDown, anyPressed);
 		ResolveFocus(anyPressed);
 
-		let target = (mCaptured != null) ? mCaptured : mHovered;
-		PushGates(position, delta, hoverWindow, target);
+		let target = (mCaptured != null) ? mCaptured : ((releasing != null) ? releasing : mHovered);
+		PushGates(position, delta, hoverWindow, target, releasing);
 	}
 
 	/// The surface under the pointer. Last match wins, so the most recently added is
@@ -117,12 +117,22 @@ class InputRouter
 
 	/// A held button pins the pointer to the surface the press STARTED on, so a drag that
 	/// leaves the rectangle keeps reporting to it.
-	private void ResolveCapture(bool anyDown, bool anyPressed)
+	///
+	/// Returns the surface whose capture the buttons' release ends this frame: it still takes
+	/// this frame's input, so it reads the release wherever the pointer is (outside every
+	/// surface, over another window). Dropped first, it would never see the release, and a
+	/// reader of button edges (a GUI's press and release) would stay pressed.
+	private InputSurface ResolveCapture(bool anyDown, bool anyPressed)
 	{
 		let before = mCaptured;
+		InputSurface releasing = null;
 
 		if ((mCaptured != null) && (!anyDown || mExternalMouseCapture))
+		{
+			if (!mExternalMouseCapture)
+				releasing = mCaptured;
 			mCaptured = null;
+		}
 
 		if (!mExternalMouseCapture && (mCaptured == null) && (mHovered != null) && anyPressed)
 			mCaptured = mHovered;
@@ -152,6 +162,7 @@ class InputRouter
 		{
 			mCaptureNoButtonFrames = 0;
 		}
+		return releasing;
 	}
 
 	private void ResolveFocus(bool anyPressed)
@@ -175,7 +186,7 @@ class InputRouter
 		}
 	}
 
-	private void PushGates(Float2 position, Float2 delta, uint32 hoverWindow, InputSurface target)
+	private void PushGates(Float2 position, Float2 delta, uint32 hoverWindow, InputSurface target, InputSurface releasing)
 	{
 		for (let surface in mSurfaces)
 		{
@@ -196,7 +207,7 @@ class InputRouter
 				contentDelta = surface.Fit.ToContentDelta(delta); // turned with a turned fit, then scaled
 			}
 
-			surface.ApplyGate(surface === mHovered, surface === mFocused, surface === mCaptured,
+			surface.ApplyGate(surface === mHovered, surface === mFocused, (surface === mCaptured) || (surface === releasing),
 				content, contentDelta);
 		}
 	}
