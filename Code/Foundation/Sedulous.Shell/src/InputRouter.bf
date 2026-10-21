@@ -26,6 +26,8 @@ class InputRouter
 	private InputSurface mHovered;
 	private InputSurface mFocused;
 	private InputSurface mCaptured;
+	/// The surface this router locked the pointer for.
+	private InputSurface mLockedBy;
 
 	private bool mFocusFollowsHover;
 	private bool mExternalMouseCapture;
@@ -35,6 +37,11 @@ class InputRouter
 	private bool mCaptureLeakLogged;
 
 	public this(IInputManager raw) { mRaw = raw; }
+
+	public ~this()
+	{
+		Unlock();
+	}
 
 	public void AddSurface(InputSurface surface)
 	{
@@ -54,7 +61,12 @@ class InputRouter
 			mCaptured = null;
 		if (mHovered === surface)
 			mHovered = null;
+		if (mLockedBy === surface)
+			Unlock(); // a lock never outlives its surface
 	}
+
+	/// The surface the pointer is locked for, or null.
+	public InputSurface PointerLockedBy => mLockedBy;
 
 	/// When on, hovering a surface also focuses it, so the keyboard follows the pointer.
 	/// Off by default, where focus changes on a click.
@@ -94,6 +106,41 @@ class InputRouter
 
 		let target = (mCaptured != null) ? mCaptured : ((releasing != null) ? releasing : mHovered);
 		PushGates(position, delta, hoverWindow, target, releasing);
+		ResolvePointerLock(rawMouse);
+	}
+
+	/// Only for the surface the pointer is pinned to, while it asks. This router changes the
+	/// mouse's relative mode only when it locked it itself, so another router's surfaces
+	/// (another page's viewport) and whatever else locks the window's mouse (a game's
+	/// mouselook) are never undone from here.
+	private void ResolvePointerLock(IMouse rawMouse)
+	{
+		let locker = ((mCaptured != null) && mCaptured.WantsPointerLock) ? mCaptured : null;
+		if (locker === mLockedBy)
+			return;
+		if (locker == null)
+		{
+			Unlock();
+			return;
+		}
+		if (mLockedBy == null)
+		{
+			rawMouse.SetRelativeMode(true);
+			rawMouse.SetCursorVisible(false);
+		}
+		mLockedBy = locker;
+	}
+
+	private void Unlock()
+	{
+		if (mLockedBy == null)
+			return;
+		mLockedBy = null;
+		if (let mouse = (mRaw != null) ? mRaw.Mouse : null)
+		{
+			mouse.SetRelativeMode(false);
+			mouse.SetCursorVisible(true);
+		}
 	}
 
 	/// The surface under the pointer. Last match wins, so the most recently added is
@@ -136,6 +183,11 @@ class InputRouter
 
 		if (!mExternalMouseCapture && (mCaptured == null) && (mHovered != null) && anyPressed)
 			mCaptured = mHovered;
+		// A drag that began elsewhere (another router's surface, as two pages' viewports side by
+		// side, or the UI around them) only passes over this router's surfaces: none is hovered
+		// until its buttons are let go, so none reads the held buttons as its own.
+		if (anyDown && (mCaptured == null))
+			mHovered = null;
 
 		if (mCaptured !== before)
 		{

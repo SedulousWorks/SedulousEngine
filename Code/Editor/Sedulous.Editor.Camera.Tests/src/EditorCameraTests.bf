@@ -322,4 +322,39 @@ static class EditorCameraTests
 		manual.SnapToAxis(0.0f, 0.0f);
 		Test.Assert(!manual.Orthographic);
 	}
+
+	/// It asks for the pointer locked while its mouse drags it, and never locks the mouse
+	/// itself: the viewport's router does that, for that surface alone.
+	[Test]
+	public static void ItAsksForThePointerLockedWhileItsMouseDragsItAndNeverLocksItItself()
+	{
+		let cam = scope EditorCamera();
+		let keyboard = scope StubKeyboard();
+		let mouse = scope StubMouse();
+		cam.Update(keyboard, mouse, 0.016f);
+		Test.Assert(!cam.WantsPointerLock);
+
+		mouse.Rmb = true; // a look drag
+		cam.Update(keyboard, mouse, 0.016f);
+		Test.Assert(cam.WantsPointerLock);
+		cam.Update(keyboard, mouse, 0.016f);
+		Test.Assert(cam.WantsPointerLock);
+		Test.Assert(mouse.RelativeCalls == 0, "the viewport's router locks it");
+
+		mouse.Rmb = false; // let go
+		cam.Update(keyboard, mouse, 0.016f);
+		Test.Assert(!cam.WantsPointerLock);
+
+		// Held by Tab, the mouse is locked already: no ask for a drag.
+		cam.MouseCaptured = true;
+		mouse.Rmb = true;
+		cam.Update(keyboard, mouse, 0.016f);
+		Test.Assert(!cam.WantsPointerLock);
+		// No input this frame (the keyboard gone): no ask left over.
+		cam.MouseCaptured = false;
+		cam.Update(keyboard, mouse, 0.016f);
+		Test.Assert(cam.WantsPointerLock);
+		cam.Update(null, mouse, 0.016f);
+		Test.Assert(!cam.WantsPointerLock);
+	}
 }

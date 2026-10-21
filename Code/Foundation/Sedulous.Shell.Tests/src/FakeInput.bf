@@ -22,6 +22,8 @@ class FakeMouse : IMouse
 	public bool[5] Released;
 
 	public bool Relative;
+	/// SetRelativeMode calls that changed it.
+	public int RelativeChanges;
 	public bool Visible = true;
 	public CursorType LastCursor = .Default;
 	public bool GlobalCapture;
@@ -40,7 +42,12 @@ class FakeMouse : IMouse
 	public bool IsButtonReleased(MouseButton button) => Released[(int)button];
 
 	public bool RelativeMode => Relative;
-	public void SetRelativeMode(bool enabled) => Relative = enabled;
+	public void SetRelativeMode(bool enabled)
+	{
+		if (enabled != Relative)
+			RelativeChanges++;
+		Relative = enabled;
+	}
 	public bool CursorVisible => Visible;
 	public void SetCursorVisible(bool visible) => Visible = visible;
 	public void SetCursor(CursorType cursor) => LastCursor = cursor;

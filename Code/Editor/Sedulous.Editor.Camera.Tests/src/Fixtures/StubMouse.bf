@@ -8,6 +8,8 @@ class StubMouse : IMouse
 	public float Dx = 0.0f;
 	public float Dy = 0.0f;
 	public float Scroll = 0.0f;
+	/// The camera never sets the window's mouse for a drag itself.
+	public int RelativeCalls;
 
 	public float X => 0.0f;
 	public float Y => 0.0f;
@@ -21,7 +23,7 @@ class StubMouse : IMouse
 	public bool IsButtonPressed(MouseButton button) => false;
 	public bool IsButtonReleased(MouseButton button) => false;
 	public bool RelativeMode => false;
-	public void SetRelativeMode(bool enabled) {}
+	public void SetRelativeMode(bool enabled) => RelativeCalls++;
 	public bool CursorVisible => true;
 	public void SetCursorVisible(bool visible) {}
 	public void SetCursor(CursorType cursor) {}

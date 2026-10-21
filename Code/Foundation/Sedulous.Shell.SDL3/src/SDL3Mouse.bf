@@ -14,6 +14,12 @@ class SDL3Mouse : IMouse
 	private float mX, mY, mDeltaX, mDeltaY, mScrollX, mScrollY;
 	private ButtonLatch[(int)MouseButton.Count] mButtons;
 	private bool mRelative;
+	/// Where relative mode began (the window the pointer was in, by id since the window may
+	/// close while locked, and its place there), to put the cursor back when it ends: SDL
+	/// leaves it wherever the hidden movement carried it.
+	private uint32 mRelativeWindow;
+	private float mRelativeX;
+	private float mRelativeY;
 	private bool mCursorVisible = true;
 	private bool mGlobalCapture;
 	private CursorType mCursor = .Default;
@@ -57,11 +63,35 @@ class SDL3Mouse : IMouse
 	public bool RelativeMode => mRelative;
 
 	/// What a first person camera uses: the pointer stops moving and only deltas arrive.
+	///
+	/// SDL is told only of a change. It locks the window the pointer is in (a float's, not only
+	/// the main one), and unlocking puts the cursor back where the lock began.
 	public void SetRelativeMode(bool enabled)
 	{
+		if (enabled == mRelative)
+			return;
+		if (enabled)
+		{
+			var window = SDL3.SDL_GetMouseFocus();
+			if (window == null)
+				window = mWindow;
+			SDL3.SDL_GetMouseState(&mRelativeX, &mRelativeY);
+			mRelativeWindow = (window != null) ? (uint32)SDL3.SDL_GetWindowID(window) : 0;
+			if (window != null)
+				SDL3.SDL_SetWindowRelativeMouseMode(window, true);
+		}
+		else
+		{
+			let window = (mRelativeWindow != 0) ? SDL3.SDL_GetWindowFromID((SDL_WindowID)mRelativeWindow) : null;
+			if (window != null)
+			{
+				SDL3.SDL_SetWindowRelativeMouseMode(window, false);
+				// Back where the lock began, as the hand left it, not where the hidden motion went.
+				SDL3.SDL_WarpMouseInWindow(window, mRelativeX, mRelativeY);
+			}
+			mRelativeWindow = 0;
+		}
 		mRelative = enabled;
-		if (mWindow != null)
-			SDL3.SDL_SetWindowRelativeMouseMode(mWindow, enabled);
 	}
 
 	public bool CursorVisible => mCursorVisible;

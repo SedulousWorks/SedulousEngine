@@ -131,8 +131,17 @@ class PreviewViewport
 			mRouter.SetExternalCapture(false, mViewport.HostKeyboardFocusElsewhere);
 			mRouter.Update();
 		}
-		if (mViewport.IsHovered() || mViewport.IsFocused())
+		let surface = mViewport.Surface;
+		if (mViewport.IsHovered() || mViewport.IsFocused() || ((surface != null) && surface.Captured))
+		{
 			mCamera.Update(mViewport.Keyboard, mViewport.Mouse, dt);
+			if (surface != null)
+				surface.SetPointerLock(mCamera.WantsPointerLock); // an orbit, look or pan drag
+		}
+		else if (surface != null)
+		{
+			surface.SetPointerLock(false);
+		}
 	}
 
 	/// Renders the preview scene into the viewport, from the page's OnRenderWindow.

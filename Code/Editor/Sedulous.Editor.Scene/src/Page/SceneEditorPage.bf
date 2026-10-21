@@ -494,7 +494,10 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		mViewport.SyncInputRegion();
 		mRouter.SetExternalCapture(false, mViewport.HostKeyboardFocusElsewhere);
 		mRouter.Update();
-		let viewportActive = mViewport.IsHovered() || mViewport.IsFocused();
+		// A press held on the viewport keeps it the input owner wherever the pointer goes: a look
+		// drag, its pointer locked and hidden, may drift off it.
+		let viewportActive = mViewport.IsHovered() || mViewport.IsFocused()
+			|| ((mViewport.Surface != null) && mViewport.Surface.Captured);
 		// A frame glides on whether or not the viewport has the input: a hierarchy double-click
 		// frames while the mouse is over the hierarchy.
 		mCamera.Advance(dt);
@@ -508,12 +511,18 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			let shiftDown = (keyboard != null)
 				&& (keyboard.IsKeyDown(.LeftShift) || keyboard.IsKeyDown(.RightShift));
 			mCamera.Update(keyboard, mViewport.Mouse, dt, !(modalToolActive && shiftDown));
+			// An orbit, look or pan drag: the pointer locked meanwhile, granted by the router to
+			// this surface alone and ended with the press.
+			if (let surface = mViewport.Surface)
+				surface.SetPointerLock(mCamera.WantsPointerLock);
 			if (mCamera.ZoomedThisUpdate)
 				mZoomReadout.Zoomed();
 		}
 		else
 		{
 			mCamera.ReleaseCapture(mViewport.Mouse);
+			if (let surface = mViewport.Surface)
+				surface.SetPointerLock(false);
 		}
 		UpdateViewportTools(viewportActive, dt); // picking lives inside the select tool
 		if (mToolPanelHost != null)

@@ -460,4 +460,83 @@ class InputRouterTests
 		Test.Assert(first.Captured, "the original capture holds");
 		Test.Assert(!second.Captured);
 	}
+
+	/// A router locks the pointer for the surface it is pinned to, while that surface asks,
+	/// and only ever undoes a lock it took itself: every open page shares the window's mouse,
+	/// so one page must not undo another's lock or a game's mouselook. And a drag from another
+	/// router's surface only passes over this one's.
+	[Test]
+	public static void ARouterLocksThePointerForItsPinnedSurfaceAndUndoesOnlyItsOwnLock()
+	{
+		let raw = scope FakeInputManager();
+		raw.Hover = 1;
+		// Two pages, each its router and its viewport, side by side in one window.
+		let left = Surface(raw, 1, 0, 0);
+		let right = Surface(raw, 1, 300, 0);
+		defer { delete left; delete right; }
+		let leftRouter = scope InputRouter(raw);
+		leftRouter.AddSurface(left);
+		let rightRouter = scope InputRouter(raw);
+		rightRouter.AddSurface(right);
+		let mouse = raw.MouseDevice;
+		mouse.PosY = 50;
+		void Frame(float x)
+		{
+			mouse.PosX = x;
+			leftRouter.Update();
+			rightRouter.Update();
+			mouse.NextFrame();
+		}
+
+		// Asking with no press: nothing.
+		left.SetPointerLock(true);
+		Frame(50);
+		Test.Assert(!mouse.Relative);
+		Test.Assert(leftRouter.PointerLockedBy == null);
+
+		// Pressed on the left viewport, which asks: locked once, hidden.
+		mouse.Press(.Right);
+		Frame(50);
+		Test.Assert(mouse.Relative);
+		Test.Assert(!mouse.Visible);
+		Test.Assert(leftRouter.PointerLockedBy === left);
+		Test.Assert(mouse.RelativeChanges == 1);
+		// The drag carries the pointer over the other page: neither router changes it.
+		Frame(350);
+		Frame(350);
+		Test.Assert(mouse.Relative);
+		Test.Assert(mouse.RelativeChanges == 1);
+		Test.Assert(rightRouter.PointerLockedBy == null);
+		// Nor does the other page take the drag passing over it as its own.
+		Test.Assert(!right.Hovered);
+		Test.Assert(!right.MouseActive);
+		Test.Assert(!right.Mouse.IsButtonDown(.Right));
+		Test.Assert(left.Mouse.IsButtonDown(.Right));
+
+		// Let go: unlocked, shown; the page under the pointer is hovered again.
+		mouse.Release(.Right);
+		Frame(350);
+		Test.Assert(right.Hovered);
+		Test.Assert(!mouse.Relative);
+		Test.Assert(mouse.Visible);
+		Test.Assert(mouse.RelativeChanges == 2);
+
+		// A lock it did not take (a game's mouselook) it never undoes.
+		mouse.Relative = true;
+		Frame(50);
+		mouse.Press(.Right);
+		Frame(350);
+		mouse.Release(.Right);
+		Frame(350);
+		Test.Assert(mouse.Relative);
+
+		// A surface taken out while it holds the lock takes the lock with it.
+		mouse.Relative = false;
+		mouse.Press(.Right);
+		Frame(50);
+		Test.Assert(leftRouter.PointerLockedBy === left);
+		leftRouter.RemoveSurface(left);
+		Test.Assert(!mouse.Relative);
+		Test.Assert(leftRouter.PointerLockedBy == null);
+	}
 }

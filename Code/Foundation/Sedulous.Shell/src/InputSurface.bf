@@ -27,6 +27,7 @@ class InputSurface
 	private bool mCaptured;
 	private Float2 mContentMouse;
 	private Float2 mContentDelta;
+	private bool mWantsLock;
 
 	private SurfaceMouse mMouse ~ delete _;
 	private SurfaceKeyboard mKeyboard ~ delete _;
@@ -88,6 +89,15 @@ class InputSurface
 	/// Hovered OR captured. The mouse stays live through a drag that leaves the rect,
 	/// because the press pinned it here.
 	public bool MouseActive => mHovered || mCaptured;
+
+	// ---- pointer lock, asked by the surface's user and granted by the router ----
+
+	/// Asks for the pointer locked (hidden, held in place, only its movement read) while this
+	/// surface holds a press: a camera's look or orbit, which would otherwise stop at the
+	/// screen's edge. The router grants it only to the surface its pointer is pinned to, and
+	/// takes it back when the press ends, the ask is withdrawn or the surface goes.
+	public void SetPointerLock(bool lock) => mWantsLock = lock;
+	public bool WantsPointerLock => mWantsLock;
 
 	public Float2 ContentMouse => mContentMouse;
 	public Float2 ContentDelta => mContentDelta;

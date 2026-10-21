@@ -49,6 +49,8 @@ class EditorCamera
 
 	private bool mOrthographicFromSnap = false;
 	private bool mGliding = false;
+	/// The last Update's mouse drags the camera.
+	private bool mWantsLock;
 	private float mGlideElapsed = 0.0f;
 	private Float3 mGlideFrom = .Zero;
 	private Float3 mGlideTo = .Zero;
@@ -180,6 +182,12 @@ class EditorCamera
 
 	public bool IsGliding => mGliding;
 
+	/// Whether the last Update's mouse drags the camera (an Alt+LMB orbit, an RMB look, an MMB
+	/// pan): its viewport asks for the pointer locked meanwhile (InputSurface.SetPointerLock),
+	/// so the drag never stops at the screen's edge. Not while Tab holds the mouse, which
+	/// locks it already.
+	public bool WantsPointerLock => mWantsLock;
+
 	/// Turns to `newYaw` and `newPitch` about the orbit pivot: what the camera looks at stays
 	/// put and the camera swings round it. Stops a glide. A pitch may reach straight up or down
 	/// (a top view), past the mouse look's limit.
@@ -235,6 +243,7 @@ class EditorCamera
 	public void Update(IKeyboard keyboard, IMouse mouse, float dt, bool allowZoom = true)
 	{
 		ZoomedThisUpdate = false;
+		mWantsLock = false;
 		if (keyboard == null)
 			return;
 		if (mouse != null)
@@ -248,6 +257,8 @@ class EditorCamera
 			if (MouseCaptured && keyboard.IsKeyPressed(.Escape))
 				ReleaseCapture(mouse);
 			let alt = keyboard.IsKeyDown(.LeftAlt) || keyboard.IsKeyDown(.RightAlt);
+			mWantsLock = !MouseCaptured && ((alt && mouse.IsButtonDown(.Left)) || mouse.IsButtonDown(.Right)
+				|| mouse.IsButtonDown(.Middle));
 			if (alt && mouse.IsButtonDown(.Left))
 			{
 				// The turntable: orbit the pivot ahead.
