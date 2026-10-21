@@ -18,6 +18,9 @@ class SDL3WindowManager : IWindowManager
 	private List<IWindow> mLive = new .() ~ delete _;
 	private List<uint32> mPendingDestroy = new .() ~ delete _;
 	private List<WindowEvent> mEvents = new .() ~ delete _;
+	private List<Screen> mScreens = new .() ~ delete _;
+	/// The screens' names, which the screens borrow.
+	private List<String> mScreenNames = new .() ~ DeleteContainerAndItems!(_);
 	/// The first window created. Zero means none.
 	private uint32 mMainWindowId;
 
@@ -67,6 +70,49 @@ class SDL3WindowManager : IWindowManager
 	}
 
 	public Span<WindowEvent> Events => .(mEvents.Ptr, mEvents.Count);
+
+	public Span<Screen> Screens => .(mScreens.Ptr, mScreens.Count);
+
+	/// Reads the screens again: at start, and when the pump sees a display event.
+	public void ReadScreens()
+	{
+		mScreens.Clear();
+		ClearAndDeleteItems!(mScreenNames);
+		int32 count = 0;
+		let displays = SDL3.SDL_GetDisplays(&count);
+		if (displays == null)
+			return;
+		defer SDL3.SDL_free(displays);
+		let primary = SDL3.SDL_GetPrimaryDisplay();
+		for (int i < count)
+		{
+			SDL_Rect bounds = default;
+			if (!SDL3.SDL_GetDisplayBounds(displays[i], &bounds))
+				continue;
+			var usable = bounds;
+			SDL3.SDL_GetDisplayUsableBounds(displays[i], &usable);
+
+			var screen = Screen();
+			screen.Id = (uint32)displays[i];
+			let name = new String();
+			if (let text = SDL3.SDL_GetDisplayName(displays[i]))
+				name.Append(text);
+			mScreenNames.Add(name);
+			screen.Name = name;
+			screen.X = bounds.x;
+			screen.Y = bounds.y;
+			screen.Width = (uint32)bounds.w;
+			screen.Height = (uint32)bounds.h;
+			screen.UsableX = usable.x;
+			screen.UsableY = usable.y;
+			screen.UsableWidth = (uint32)usable.w;
+			screen.UsableHeight = (uint32)usable.h;
+			let scale = SDL3.SDL_GetDisplayContentScale(displays[i]);
+			screen.Scale = (scale > 0.0f) ? scale : 1.0f; // 0 when the system does not say
+			screen.Primary = displays[i] == primary;
+			mScreens.Add(screen);
+		}
+	}
 
 	/// Frees what was queued. Called by the host at a point it knows no frame is still
 	/// referencing the window.

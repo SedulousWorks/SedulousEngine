@@ -30,6 +30,11 @@ interface IWindowManager
 	/// Events from the last pump, valid until the next one.
 	Span<WindowEvent> Events { get; }
 
+	/// The screens there are, as of the last pump (a screen connected, removed, moved or
+	/// rescaled is read again then): where floating windows may go, and how a saved place is
+	/// brought back onto a screen that is there. Empty where the system tells none.
+	Span<Screen> Screens { get; }
+
 	/// Frees what DestroyWindow marked. Once a frame, at the end.
 	void FlushDestroyed();
 }

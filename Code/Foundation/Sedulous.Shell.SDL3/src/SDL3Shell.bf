@@ -39,6 +39,7 @@ class SDL3Shell : IShell
 			return;
 		}
 		mInitialized = true;
+		mWindows.ReadScreens();
 
 		if (mWindows.CreateWindow(settings) case .Ok(let main))
 		{
@@ -172,6 +173,17 @@ class SDL3Shell : IShell
 					e.Height = height;
 					mWindows.PushEvent(e);
 				}
+
+			case .SDL_EVENT_WINDOW_MOVED:
+				var moved = SimpleEvent(.Moved, (uint32)event.window.windowID);
+				moved.X = event.window.data1;
+				moved.Y = event.window.data2;
+				mWindows.PushEvent(moved);
+
+			case .SDL_EVENT_DISPLAY_ORIENTATION, .SDL_EVENT_DISPLAY_ADDED, .SDL_EVENT_DISPLAY_REMOVED,
+				.SDL_EVENT_DISPLAY_MOVED, .SDL_EVENT_DISPLAY_DESKTOP_MODE_CHANGED,
+				.SDL_EVENT_DISPLAY_CONTENT_SCALE_CHANGED, .SDL_EVENT_DISPLAY_USABLE_BOUNDS_CHANGED:
+				mWindows.ReadScreens(); // a screen came, went, moved or was rescaled
 
 			case .SDL_EVENT_WINDOW_EXPOSED:
 				mWindows.PushEvent(SimpleEvent(.Exposed, (uint32)event.window.windowID));

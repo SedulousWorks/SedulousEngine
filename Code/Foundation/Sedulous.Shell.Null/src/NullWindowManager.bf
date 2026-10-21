@@ -19,6 +19,10 @@ class NullWindowManager : IWindowManager
 	private List<uint32> mPendingDestroy = new .() ~ delete _;
 	/// Always empty: there is no OS to raise events.
 	private List<WindowEvent> mEvents = new .() ~ delete _;
+	/// Empty unless a test gives some: headless, there is nothing to place a window on.
+	private List<Screen> mScreens = new .() ~ delete _;
+	/// The screens' names, which the screens borrow.
+	private List<String> mScreenNames = new .() ~ DeleteContainerAndItems!(_);
 
 	private uint32 mNextId = 1;
 	private uint32 mMainWindowId;
@@ -69,6 +73,22 @@ class NullWindowManager : IWindowManager
 	}
 
 	public Span<WindowEvent> Events => .(mEvents.Ptr, mEvents.Count);
+
+	public Span<Screen> Screens => .(mScreens.Ptr, mScreens.Count);
+
+	/// The screens it reports (a test's). The names are copied.
+	public void SetScreens(Span<Screen> screens)
+	{
+		mScreens.Clear();
+		ClearAndDeleteItems!(mScreenNames);
+		for (var screen in screens)
+		{
+			let name = new String(screen.Name);
+			mScreenNames.Add(name);
+			screen.Name = name;
+			mScreens.Add(screen);
+		}
+	}
 
 	public void FlushDestroyed()
 	{

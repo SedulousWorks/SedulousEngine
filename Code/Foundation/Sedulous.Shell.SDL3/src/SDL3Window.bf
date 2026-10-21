@@ -200,6 +200,12 @@ class SDL3Window : IWindow
 			SDL3.SDL_ShowWindow(mWindow);
 	}
 
+	public void Raise()
+	{
+		if (mWindow != null)
+			SDL3.SDL_RaiseWindow(mWindow);
+	}
+
 	public bool PresentPixels(Span<uint8> rgba, uint32 width, uint32 height)
 	{
 		if ((mWindow == null) || (rgba.Length < (int)width * (int)height * 4))

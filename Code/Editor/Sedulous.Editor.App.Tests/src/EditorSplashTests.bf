@@ -54,6 +54,7 @@ class EditorSplashTests
 		public void SetPosition(int32 x, int32 y) {}
 		public void SetSize(uint32 width, uint32 height) {}
 		public void Close() {}
+		public void Raise() {}
 		public void StartTextInput(TextInputKind kind = .Text) {}
 		public void StopTextInput() {}
 		public bool IsTextInputActive => false;

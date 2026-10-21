@@ -19,6 +19,7 @@ class NullWindow : IWindow
 	private bool mTextInput;
 	private TextInputKind mTextInputKind = .Text;
 	private (int32 x, int32 y, int32 width, int32 height, int32 caretX) mTextInputArea;
+	private uint32 mRaised;
 
 	public this(uint32 id, WindowSettings settings)
 	{
@@ -45,6 +46,8 @@ class NullWindow : IWindow
 	public bool IsOpen => mOpen;
 	public bool IsMinimized => mMinimized;
 	public void Close() => mOpen = false;
+	/// Headless: just counted.
+	public void Raise() => mRaised++;
 
 	public void StartTextInput(TextInputKind kind = .Text)
 	{
@@ -65,4 +68,6 @@ class NullWindow : IWindow
 
 	public void Resize(uint32 width, uint32 height) { mWidth = width; mHeight = height; }
 	public void SetMinimized(bool minimized) => mMinimized = minimized;
+	/// How many times Raise was called.
+	public uint32 RaiseCount => mRaised;
 }

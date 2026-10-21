@@ -321,6 +321,40 @@ class NullShellTests
 		Test.Assert(dropped.IsEmpty);
 	}
 
+	/// Headless, there are no screens unless a test gives some, and a raise is counted.
+	[Test]
+	public static void NoScreensUnlessATestGivesSomeAndARaiseIsCounted()
+	{
+		let shell = scope NullShell();
+		let windows = (NullWindowManager)shell.WindowManager;
+		Test.Assert(windows.Screens.Length == 0);
+
+		var left = Screen();
+		left.Id = 1;
+		left.Name = "left";
+		left.Width = 1920;
+		left.Height = 1080;
+		left.Primary = true;
+		var right = left;
+		right.Id = 2;
+		let rightName = scope String("right");
+		right.Name = rightName;
+		right.X = 1920;
+		right.Scale = 2.0f;
+		right.Primary = false;
+		windows.SetScreens(scope Screen[](left, right));
+		rightName.Set("gone"); // the names were copied
+		Test.Assert(windows.Screens.Length == 2);
+		Test.Assert(windows.Screens[1].X == 1920);
+		Test.Assert(windows.Screens[1].Scale == 2.0f);
+		Test.Assert(windows.Screens[1].Name == "right");
+
+		let main = (NullWindow)shell.MainWindow;
+		Test.Assert(main.RaiseCount == 0);
+		main.Raise();
+		Test.Assert(main.RaiseCount == 1);
+	}
+
 	/// An input event's text keeps whole characters when it is cut to fit.
 	[Test]
 	public static void AnEventsTextIsCutBetweenWholeCharacters()

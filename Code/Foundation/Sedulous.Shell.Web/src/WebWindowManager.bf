@@ -44,6 +44,9 @@ class WebWindowManager : IWindowManager
 
 	public Span<WindowEvent> Events => .(mEvents.Ptr, mEvents.Count);
 
+	/// One canvas, which opens no other window: no screens to place one on.
+	public Span<Screen> Screens => .();
+
 	/// Nothing is deferred: the one window lives as long as the manager.
 	public void FlushDestroyed() {}
 

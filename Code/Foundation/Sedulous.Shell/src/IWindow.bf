@@ -48,6 +48,11 @@ interface IWindow
 	/// Shows a window created hidden (WindowSettings.Hidden). Nothing when shown already.
 	void Show() {}
 
+	/// Brings the window in front of the others and asks for the keyboard: a floating panel's
+	/// window gone behind the main one, come back. A system may only flag it for attention
+	/// (Wayland gives the keyboard away only on the user's own action).
+	void Raise();
+
 	/// Puts an image on a software window (WindowSettings.SoftwareSurface): tightly packed 8
 	/// bit RGBA rows, `width` x `height`, scaled to the window when the sizes differ. False
 	/// when the backend has no software windows or the window is not one.

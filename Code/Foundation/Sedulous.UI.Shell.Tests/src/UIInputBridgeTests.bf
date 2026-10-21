@@ -46,6 +46,7 @@ class UIInputBridgeTests
 		public void SetPosition(int32 x, int32 y) {}
 		public void SetSize(uint32 width, uint32 height) {}
 		public void Close() {}
+		public void Raise() {}
 
 		public TextInputKind Kind = .Text;
 		public void StartTextInput(TextInputKind kind = .Text)

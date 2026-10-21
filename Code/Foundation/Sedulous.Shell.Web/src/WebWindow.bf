@@ -82,6 +82,8 @@ class WebWindow : IWindow
 	/// callback sees as simply not being called.
 	public bool IsMinimized => false;
 	public void Close() => mOpen = false;
+	/// The page's one canvas: nothing to bring forward.
+	public void Raise() {}
 
 	public void StartTextInput(TextInputKind kind = .Text)
 	{

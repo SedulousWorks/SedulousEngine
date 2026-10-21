@@ -422,6 +422,48 @@ class SDL3ShellTests
 		Test.Assert(exposed);
 	}
 
+	/// Floating windows need to know where windows may go and to bring one back in front:
+	/// the screens are read, one of them primary, a moved window is reported, and a raise is
+	/// safe.
+	[Test]
+	public static void TheScreensAreReadAndAMovedWindowIsReported()
+	{
+		let fixture = scope ShellFixture();
+		if (!fixture.Usable)
+			return;
+
+		let screens = fixture.Shell.WindowManager.Screens;
+		Test.Assert(screens.Length > 0, "the dummy driver has a display of its own");
+		int primaries = 0;
+		for (let screen in screens)
+		{
+			Test.Assert(screen.Id != 0);
+			Test.Assert((screen.Width > 0) && (screen.Height > 0));
+			Test.Assert(screen.Scale > 0.0f);
+			// The usable room lies within the bounds.
+			Test.Assert((screen.UsableX >= screen.X) && (screen.UsableY >= screen.Y));
+			Test.Assert((screen.UsableWidth <= screen.Width) && (screen.UsableHeight <= screen.Height));
+			if (screen.Primary)
+				primaries++;
+		}
+		Test.Assert(primaries == 1);
+
+		fixture.PushWindowEvent(.SDL_EVENT_WINDOW_MOVED, 210, 140);
+		fixture.Shell.ProcessEvents();
+		bool moved = false;
+		for (let e in fixture.Shell.WindowManager.Events)
+		{
+			if ((e.Type == .Moved) && (e.WindowId == fixture.Shell.MainWindow.Id))
+			{
+				moved = true;
+				Test.Assert((e.X == 210) && (e.Y == 140));
+			}
+		}
+		Test.Assert(moved);
+
+		fixture.Shell.MainWindow.Raise();
+	}
+
 	/// A finger the platform takes back ends without a TouchUp, and a trackpad's pinch is one
 	/// gesture: both reach the input events (a trackpad device cannot be made in a test).
 	[Test]

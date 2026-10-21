@@ -3,6 +3,7 @@ namespace Sedulous.Shell;
 enum WindowEventType : uint8
 {
 	case Resized;
+	/// By the user or the system: X, Y the new top left in screen coordinates.
 	case Moved;
 	case FocusGained;
 	case FocusLost;
