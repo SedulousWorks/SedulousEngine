@@ -522,6 +522,32 @@ class SDL3ShellTests
 		Test.Assert(fixture.Shell.Input.Touch.TouchCount == 0, "the cancelled finger is gone");
 	}
 
+	/// SDL's mouse events carry no modifiers: the shell gives each the ones held, so a
+	/// Shift+click, a Shift drag and a Ctrl+wheel reach a GUI as such.
+	[Test]
+	public static void AMouseEventCarriesTheModifiersHeld()
+	{
+		let fixture = scope ShellFixture();
+		if (!fixture.Usable)
+			return;
+
+		SDL3.SDL_SetModState(.SDL_KMOD_LSHIFT | .SDL_KMOD_LCTRL);
+		defer SDL3.SDL_SetModState(.SDL_KMOD_NONE);
+		fixture.PushMouseButton(1, true);
+		fixture.PushMouseMotion(10, 10, 1, 1);
+		fixture.PushWheel(0, 1);
+		fixture.Shell.ProcessEvents();
+
+		int carried = 0;
+		for (let e in fixture.Shell.Input.Events)
+		{
+			let mouse = (e.Kind == .MouseButtonDown) || (e.Kind == .MouseMove) || (e.Kind == .MouseWheel);
+			if (mouse && e.Modifiers.HasFlag(.LeftShift) && e.Modifiers.HasFlag(.LeftCtrl))
+				carried++;
+		}
+		Test.Assert(carried == 3);
+	}
+
 	/// Focus decides where the keyboard and the pads go, so it has to be tracked and it has
 	/// to be given up.
 	[Test]

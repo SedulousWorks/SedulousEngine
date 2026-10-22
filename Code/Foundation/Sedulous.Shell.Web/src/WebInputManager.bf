@@ -190,6 +190,7 @@ class WebInputManager : IInputManager
 			move.Y = y;
 			move.DX = dx;
 			move.DY = dy;
+			move.Modifiers = raw.Modifiers;
 			mEvents.Add(move);
 
 		case .MouseButton:
@@ -199,6 +200,7 @@ class WebInputManager : IInputManager
 			button.Kind = raw.Down ? .MouseButtonDown : .MouseButtonUp;
 			button.Window = mMainWindow;
 			button.Button = raw.Button;
+			button.Modifiers = raw.Modifiers;
 			mEvents.Add(button);
 
 		case .Wheel:
@@ -209,6 +211,7 @@ class WebInputManager : IInputManager
 			wheel.Window = mMainWindow;
 			wheel.X = raw.ScrollX;
 			wheel.Y = raw.ScrollY;
+			wheel.Modifiers = raw.Modifiers;
 			mEvents.Add(wheel);
 
 		case .Touch:
@@ -316,6 +319,10 @@ class WebInputManager : IInputManager
 		return false;
 	}
 
+	/// The modifiers a DOM mouse or wheel event says were held: a Shift+click, a Ctrl+wheel.
+	private static KeyModifiers MouseModifiers(EmscriptenMouseEvent* event)
+		=> WebKeyMap.Modifiers(event.CtrlKey, event.ShiftKey, event.AltKey, event.MetaKey);
+
 	private static bool OnMouseMove(int32 eventType, EmscriptenMouseEvent* event, void* userData)
 	{
 		let self = FromUserData(userData);
@@ -326,6 +333,7 @@ class WebInputManager : IInputManager
 		raw.Y = (float)event.TargetY;
 		raw.DX = (float)event.MovementX;
 		raw.DY = (float)event.MovementY;
+		raw.Modifiers = MouseModifiers(event);
 		self.mQueue.Add(raw);
 		return false;
 	}
@@ -338,6 +346,7 @@ class WebInputManager : IInputManager
 		raw.Type = .MouseButton;
 		raw.Button = FromDomButton(event.Button);
 		raw.Down = eventType == EmscriptenEventType.MouseDown;
+		raw.Modifiers = MouseModifiers(event);
 		self.mQueue.Add(raw);
 		return false;
 	}
@@ -363,6 +372,7 @@ class WebInputManager : IInputManager
 		// reports a scroll away from the user as positive.
 		raw.ScrollX = (float)(-event.DeltaX * scale);
 		raw.ScrollY = (float)(-event.DeltaY * scale);
+		raw.Modifiers = MouseModifiers(&event.Mouse);
 		self.mQueue.Add(raw);
 		return false;
 	}

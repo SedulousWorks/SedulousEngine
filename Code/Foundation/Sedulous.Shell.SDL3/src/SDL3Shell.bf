@@ -256,6 +256,7 @@ class SDL3Shell : IShell
 				e.Y = event.motion.y;
 				e.DX = event.motion.xrel;
 				e.DY = event.motion.yrel;
+				e.Modifiers = SDL3KeyMap.Modifiers(SDL3.SDL_GetModState()); // a Shift drag: SDL's mouse events carry none
 				mInput.EmitEvent(e);
 				mInput.MouseDevice.OnMotion(event.motion.x, event.motion.y,
 					event.motion.xrel, event.motion.yrel);
@@ -268,6 +269,7 @@ class SDL3Shell : IShell
 				e.Button = SDL3KeyMap.Mouse((uint32)event.button.button);
 				e.X = event.button.x;
 				e.Y = event.button.y;
+				e.Modifiers = SDL3KeyMap.Modifiers(SDL3.SDL_GetModState()); // a Shift+click
 				mInput.EmitEvent(e);
 				mInput.MouseDevice.OnButton((uint32)event.button.button, down);
 
@@ -277,6 +279,7 @@ class SDL3Shell : IShell
 				e.Window = (uint32)event.wheel.windowID;
 				e.X = event.wheel.x;
 				e.Y = event.wheel.y;
+				e.Modifiers = SDL3KeyMap.Modifiers(SDL3.SDL_GetModState()); // a Ctrl+wheel
 				mInput.EmitEvent(e);
 				mInput.MouseDevice.OnWheel(event.wheel.x, event.wheel.y);
 

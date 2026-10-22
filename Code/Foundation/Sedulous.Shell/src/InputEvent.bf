@@ -17,6 +17,7 @@ struct InputEvent
 	public uint32 Window;
 
 	public KeyCode Key;
+	/// A key's, or for a mouse event those held (a Shift+click, a Ctrl+wheel).
 	public KeyModifiers Modifiers;
 	public MouseButton Button;
 	public GamepadButton PadButton;
