@@ -124,19 +124,8 @@ struct ParticleCurveFloat
 	/// In an object of its own, so two curves of one module keep apart, and COUNT BOUND: only
 	/// the live keys are written, each in an object, and a record claiming more than the cap
 	/// is clamped rather than allowed to run off the fixed array.
-	///
-	/// LEGACY (removed once the samples are re-saved): text written before Core's keys has the
-	/// curve's fields loose in the module's object, a keyCount and no key objects, and each key
-	/// cubic with its tangents as stored. Only text can be old: a binary reader says it has
-	/// every key, and a binary product is cooked again (the builder's version moved).
 	public void Serialize(ISerializer ar) mut
 	{
-		if ((ar.Mode == .Read) && ar.HasKey("keyCount") && !ar.HasKey("key"))
-		{
-			ReadLegacy(ar);
-			return;
-		}
-
 		ar.BeginObject();
 		SerializeValue(ar, "keyCount", ref KeyCount);
 		KeyCount = Clamp(KeyCount, 0, (int32)ParticleCurve.MaxKeys);
@@ -153,24 +142,5 @@ struct ParticleCurveFloat
 			ar.EndObject();
 		}
 		ar.EndObject();
-	}
-
-	private void ReadLegacy(ISerializer ar) mut
-	{
-		int32 count = 0;
-		SerializeValue(ar, "keyCount", ref count);
-		this = .();
-		for (int32 i = 0; i < Clamp(count, 0, (int32)ParticleCurve.MaxKeys); i++)
-		{
-			var time = 0.0f;
-			var value = 0.0f;
-			var tangentIn = 0.0f;
-			var tangentOut = 0.0f;
-			SerializeValue(ar, "time", ref time);
-			SerializeValue(ar, "value", ref value);
-			SerializeValue(ar, "tangentIn", ref tangentIn);
-			SerializeValue(ar, "tangentOut", ref tangentOut);
-			AddKey(time, value, tangentIn, tangentOut);
-		}
 	}
 }

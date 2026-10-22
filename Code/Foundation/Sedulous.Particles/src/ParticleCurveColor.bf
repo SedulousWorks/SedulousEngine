@@ -103,18 +103,8 @@ struct ParticleCurveColor
 	}
 
 	/// In an object of its own and COUNT BOUND, see ParticleCurveFloat.
-	///
-	/// LEGACY (removed once the samples are re-saved): text written before gradients has the
-	/// curve's fields loose in the module's object, a keyCount of an sRGB rgba each and no
-	/// interpolation; each becomes a colour stop and an alpha stop at its time.
 	public void Serialize(ISerializer ar) mut
 	{
-		if ((ar.Mode == .Read) && ar.HasKey("keyCount") && !ar.HasKey("interpolation"))
-		{
-			ReadLegacy(ar);
-			return;
-		}
-
 		ar.BeginObject();
 		SerializeValue(ar, "interpolation", ref Interpolation);
 		SerializeValue(ar, "colorCount", ref ColorCount);
@@ -138,20 +128,5 @@ struct ParticleCurveColor
 			ar.EndObject();
 		}
 		ar.EndObject();
-	}
-
-	private void ReadLegacy(ISerializer ar) mut
-	{
-		int32 count = 0;
-		SerializeValue(ar, "keyCount", ref count);
-		this = .();
-		for (int32 i = 0; i < Clamp(count, 0, (int32)ParticleCurve.MaxKeys); i++)
-		{
-			var time = 0.0f;
-			var color = Float4(1, 1, 1, 1);
-			SerializeValue(ar, "time", ref time);
-			SerializeValue(ar, "color", ref color);
-			AddKey(time, color);
-		}
 	}
 }

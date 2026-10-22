@@ -9,9 +9,7 @@ using Sedulous.Xml.Serialization;
 namespace Sedulous.Particles.Tests;
 
 /// Particle curves on Core's types: float curves of CurveKeys sampled by EvaluateCurve, colour
-/// curves as gradients, size over lifetime as Size with SeparateAxes and SizeY; and the
-/// legacy reader of text written before them (old float keys, old colour keys, the old Float2
-/// size curve).
+/// curves as gradients, size over lifetime as Size with SeparateAxes and SizeY.
 class ParticleCurveTests
 {
 	private static bool Near(float a, float b, float epsilon = 0.001f) => Abs(a - b) <= epsilon;
@@ -136,55 +134,9 @@ class ParticleCurveTests
 		Test.Assert(Near(alphaBack.Curve.Evaluate(0.75f), 0.5f));
 	}
 
-	/// The layouts the samples were saved in, the curve's fields loose in the module's object.
+	/// A cooked product is binary, so the layout round-trips there too.
 	[Test]
-	public static void TextWrittenBeforeCoresTypesReadsOn()
-	{
-		// An old alpha curve: keys always Hermite, their tangents as stored.
-		let alpha = scope AlphaOverLifetimeBehavior();
-		Test.Assert(ReadText("""
-			<root><object><i32 name="keyCount">2</i32>
-			<f32 name="time">0</f32><f32 name="value">1</f32><f32 name="tangentIn">0</f32><f32 name="tangentOut">0</f32>
-			<f32 name="time">1</f32><f32 name="value">0</f32><f32 name="tangentIn">0</f32><f32 name="tangentOut">0</f32>
-			</object></root>
-			""", alpha));
-		Test.Assert(alpha.Curve.KeyCount == 2);
-		Test.Assert(alpha.Curve.Keys[0].Interpolation == .Cubic);
-		Test.Assert(Near(alpha.Curve.Evaluate(0.25f), 1.0f - 0.15625f));   // eased, as it played
-
-		// An old colour curve: keys of an rgba each.
-		let color = scope ColorOverLifetimeBehavior();
-		Test.Assert(ReadText("""
-			<root><object><i32 name="keyCount">2</i32>
-			<f32 name="time">0</f32><object name="color"><f32 name="x">1</f32><f32 name="y">0.5</f32><f32 name="z">0</f32><f32 name="w">1</f32></object>
-			<f32 name="time">1</f32><object name="color"><f32 name="x">0</f32><f32 name="y">0</f32><f32 name="z">0</f32><f32 name="w">0</f32></object>
-			</object></root>
-			""", color));
-		Test.Assert(color.Curve.ColorCount == 2);
-		Test.Assert(color.Curve.AlphaCount == 2);
-		Test.Assert(Near(color.Curve.Evaluate(0.5f).X, 0.5f));
-		Test.Assert(Near(color.Curve.Evaluate(0.5f).W, 0.5f));
-
-		// An old size curve of Float2 keys, X equal to Y: one curve, both axes.
-		let size = scope SizeOverLifetimeBehavior();
-		Test.Assert(ReadText("""
-			<root><object><i32 name="keyCount">2</i32>
-			<f32 name="time">0</f32><object name="value"><f32 name="x">0.6</f32><f32 name="y">0.6</f32></object>
-			<object name="tangentIn"><f32 name="x">0</f32><f32 name="y">0</f32></object><object name="tangentOut"><f32 name="x">0</f32><f32 name="y">0</f32></object>
-			<f32 name="time">1</f32><object name="value"><f32 name="x">1.4</f32><f32 name="y">1.4</f32></object>
-			<object name="tangentIn"><f32 name="x">0</f32><f32 name="y">0</f32></object><object name="tangentOut"><f32 name="x">0</f32><f32 name="y">0</f32></object>
-			</object></root>
-			""", size));
-		Test.Assert(!size.SeparateAxes);
-		Test.Assert(size.Size.KeyCount == 2);
-		Test.Assert(Near(size.Size.Keys[1].Value, 1.4f));
-		Test.Assert(Near(size.Size.Evaluate(0.5f), 1.0f));
-		Test.Assert(!size.SizeY.IsActive);
-	}
-
-	/// A binary reader says it has every key, so a binary payload always reads the new layout.
-	[Test]
-	public static void BinaryAlwaysReadsTheNewLayout()
+	public static void TheNewLayoutRoundTripsThroughBinary()
 	{
 		let size = scope SizeOverLifetimeBehavior();
 		size.Size = ParticleCurveFloat.Ease(0.5f, 2.0f);
