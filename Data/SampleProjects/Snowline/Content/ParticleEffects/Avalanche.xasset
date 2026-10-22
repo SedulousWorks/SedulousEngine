@@ -160,51 +160,61 @@
 						<object>
 							<string name="type">Sedulous.Particles.SizeOverLifetimeBehavior</string>
 							<object>
-								<i32 name="keyCount">2</i32>
-								<f32 name="time">0</f32>
-								<object name="value">
-									<f32 name="x">0.7</f32>
-									<f32 name="y">0.7</f32>
+								<object name="size">
+									<i32 name="keyCount">2</i32>
+									<object name="key">
+										<f32 name="time">0</f32>
+										<f32 name="value">0.7</f32>
+										<f32 name="tangentIn">0</f32>
+										<f32 name="tangentOut">0</f32>
+										<u8 name="interpolation">2</u8>
+										<u8 name="tangentMode">0</u8>
+									</object>
+									<object name="key">
+										<f32 name="time">1</f32>
+										<f32 name="value">2.6</f32>
+										<f32 name="tangentIn">0</f32>
+										<f32 name="tangentOut">0</f32>
+										<u8 name="interpolation">2</u8>
+										<u8 name="tangentMode">0</u8>
+									</object>
 								</object>
-								<object name="tangentIn">
-									<f32 name="x">0</f32>
-									<f32 name="y">0</f32>
-								</object>
-								<object name="tangentOut">
-									<f32 name="x">0</f32>
-									<f32 name="y">0</f32>
-								</object>
-								<f32 name="time">1</f32>
-								<object name="value">
-									<f32 name="x">2.6</f32>
-									<f32 name="y">2.6</f32>
-								</object>
-								<object name="tangentIn">
-									<f32 name="x">0</f32>
-									<f32 name="y">0</f32>
-								</object>
-								<object name="tangentOut">
-									<f32 name="x">0</f32>
-									<f32 name="y">0</f32>
+								<bool name="separateAxes">false</bool>
+								<object name="sizeY">
+									<i32 name="keyCount">0</i32>
 								</object>
 							</object>
 						</object>
 						<object>
 							<string name="type">Sedulous.Particles.AlphaOverLifetimeBehavior</string>
 							<object>
-								<i32 name="keyCount">3</i32>
-								<f32 name="time">0</f32>
-								<f32 name="value">0</f32>
-								<f32 name="tangentIn">0</f32>
-								<f32 name="tangentOut">0</f32>
-								<f32 name="time">0.15</f32>
-								<f32 name="value">0.95</f32>
-								<f32 name="tangentIn">0</f32>
-								<f32 name="tangentOut">0</f32>
-								<f32 name="time">1</f32>
-								<f32 name="value">0</f32>
-								<f32 name="tangentIn">0</f32>
-								<f32 name="tangentOut">0</f32>
+								<object name="curve">
+									<i32 name="keyCount">3</i32>
+									<object name="key">
+										<f32 name="time">0</f32>
+										<f32 name="value">0</f32>
+										<f32 name="tangentIn">0</f32>
+										<f32 name="tangentOut">0</f32>
+										<u8 name="interpolation">2</u8>
+										<u8 name="tangentMode">0</u8>
+									</object>
+									<object name="key">
+										<f32 name="time">0.15</f32>
+										<f32 name="value">0.95</f32>
+										<f32 name="tangentIn">0</f32>
+										<f32 name="tangentOut">0</f32>
+										<u8 name="interpolation">2</u8>
+										<u8 name="tangentMode">0</u8>
+									</object>
+									<object name="key">
+										<f32 name="time">1</f32>
+										<f32 name="value">0</f32>
+										<f32 name="tangentIn">0</f32>
+										<f32 name="tangentOut">0</f32>
+										<u8 name="interpolation">2</u8>
+										<u8 name="tangentMode">0</u8>
+									</object>
+								</object>
 							</object>
 						</object>
 					</array>
@@ -361,47 +371,53 @@
 						<object>
 							<string name="type">Sedulous.Particles.SizeOverLifetimeBehavior</string>
 							<object>
-								<i32 name="keyCount">2</i32>
-								<f32 name="time">0</f32>
-								<object name="value">
-									<f32 name="x">0.8</f32>
-									<f32 name="y">0.8</f32>
+								<object name="size">
+									<i32 name="keyCount">2</i32>
+									<object name="key">
+										<f32 name="time">0</f32>
+										<f32 name="value">0.8</f32>
+										<f32 name="tangentIn">0</f32>
+										<f32 name="tangentOut">0</f32>
+										<u8 name="interpolation">2</u8>
+										<u8 name="tangentMode">0</u8>
+									</object>
+									<object name="key">
+										<f32 name="time">1</f32>
+										<f32 name="value">1.6</f32>
+										<f32 name="tangentIn">0</f32>
+										<f32 name="tangentOut">0</f32>
+										<u8 name="interpolation">2</u8>
+										<u8 name="tangentMode">0</u8>
+									</object>
 								</object>
-								<object name="tangentIn">
-									<f32 name="x">0</f32>
-									<f32 name="y">0</f32>
-								</object>
-								<object name="tangentOut">
-									<f32 name="x">0</f32>
-									<f32 name="y">0</f32>
-								</object>
-								<f32 name="time">1</f32>
-								<object name="value">
-									<f32 name="x">1.6</f32>
-									<f32 name="y">1.6</f32>
-								</object>
-								<object name="tangentIn">
-									<f32 name="x">0</f32>
-									<f32 name="y">0</f32>
-								</object>
-								<object name="tangentOut">
-									<f32 name="x">0</f32>
-									<f32 name="y">0</f32>
+								<bool name="separateAxes">false</bool>
+								<object name="sizeY">
+									<i32 name="keyCount">0</i32>
 								</object>
 							</object>
 						</object>
 						<object>
 							<string name="type">Sedulous.Particles.AlphaOverLifetimeBehavior</string>
 							<object>
-								<i32 name="keyCount">2</i32>
-								<f32 name="time">0</f32>
-								<f32 name="value">1</f32>
-								<f32 name="tangentIn">0</f32>
-								<f32 name="tangentOut">0</f32>
-								<f32 name="time">1</f32>
-								<f32 name="value">0</f32>
-								<f32 name="tangentIn">0</f32>
-								<f32 name="tangentOut">0</f32>
+								<object name="curve">
+									<i32 name="keyCount">2</i32>
+									<object name="key">
+										<f32 name="time">0</f32>
+										<f32 name="value">1</f32>
+										<f32 name="tangentIn">0</f32>
+										<f32 name="tangentOut">0</f32>
+										<u8 name="interpolation">2</u8>
+										<u8 name="tangentMode">0</u8>
+									</object>
+									<object name="key">
+										<f32 name="time">1</f32>
+										<f32 name="value">0</f32>
+										<f32 name="tangentIn">0</f32>
+										<f32 name="tangentOut">0</f32>
+										<u8 name="interpolation">2</u8>
+										<u8 name="tangentMode">0</u8>
+									</object>
+								</object>
 							</object>
 						</object>
 					</array>
