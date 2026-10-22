@@ -357,7 +357,7 @@ class HarfBuzzTextShaper : ClusterTextShaper
 			glyph.Advance = (float)positions[i].x_advance * scale;
 			glyph.XOffset = (float)positions[i].x_offset * scale;
 			glyph.YOffset = -(float)positions[i].y_offset * scale; // y-up to y-down
-			glyph.GlyphInfo.Codepoint = (int32)codepoints[cluster];
+			glyph.GlyphInfo.Codepoint = (int32)codepoints[(int)cluster];
 			glyph.GlyphInfo.GlyphIndex = glyph.GlyphId;
 			glyph.GlyphInfo.AdvanceWidth = glyph.Advance;
 			outPositions.Add(glyph);

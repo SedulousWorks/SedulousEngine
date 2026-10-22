@@ -103,14 +103,14 @@ class InstancedSkinningComponentManager : ResourceBindingComponentManager<Instan
 		let scratch = Span<BoneTransform>(component.Scratch.Ptr, component.Scratch.Count);
 		for (uint32 k < clipCount)
 		{
-			let clip = component.Clips[k].Get;
+			let clip = component.Clips[(int)k].Get;
 			let duration = ((clip != null) && (clip.Duration > 0.0f)) ? clip.Duration : 1.0f;
-			var time = component.Times[k] + deltaTime * component.Speed;
+			var time = component.Times[(int)k] + deltaTime * component.Speed;
 			while (time >= duration)
 				time -= duration;
 			while (time < 0.0f)
 				time += duration;
-			component.Times[k] = time;
+			component.Times[(int)k] = time;
 
 			for (uint32 index < component.PoseCount)
 			{
