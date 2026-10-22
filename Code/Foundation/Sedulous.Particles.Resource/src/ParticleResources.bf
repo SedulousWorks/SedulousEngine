@@ -35,7 +35,7 @@ static class ParticleResources
 			ParticleModules.RegisterModules(GlobalSerializableRegistry);
 		// The resource describes itself rather than carrying [Serializable], so it is named
 		// here for the same reason CollisionBehavior is.
-		target.Register(TypeIdOf("Sedulous.Particles.Resource.ParticleEffectResource"),
+		target.Register(ParticleEffectResource.TypeId,
 			() => new ParticleEffectResource());
 	}
 

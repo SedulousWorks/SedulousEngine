@@ -619,8 +619,7 @@ class SandboxApp : DefaultApplication
 				.(1.0f, 0.8f, 0.35f, 1.0f));
 			system.AddBehavior<ColorOverLifetimeBehavior>().Curve =
 				.FadeAlpha(.(1.0f, 0.45f, 0.1f, 1.0f), 0.3f);
-			system.AddBehavior<SizeOverLifetimeBehavior>().Curve =
-				.Linear(.(0.55f, 0.55f), .(0.08f, 0.08f));
+			system.AddBehavior<SizeOverLifetimeBehavior>().Size = .Ease(0.55f, 0.08f); // an eased size, both axes
 		}
 
 		{

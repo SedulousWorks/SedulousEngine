@@ -64,7 +64,7 @@ class ParticleEffectCookTests
 			system.AddInitializer<LifetimeInitializer>().Lifetime = .(2.0f, 3.0f);
 			system.AddInitializer<SizeInitializer>().Size = .Constant(.(1.0f, 1.0f));
 			system.AddBehavior<DragBehavior>().Drag = 0.3f;
-			system.AddBehavior<SizeOverLifetimeBehavior>().Curve = .Linear(.(1, 1), .(3, 3));
+			system.AddBehavior<SizeOverLifetimeBehavior>().Size = .Ease(1, 3); // an eased size, both axes
 
 			let builder = scope ParticleEffectAssetBuilder();
 			Test.Assert(builder.AssetType == typeof(ParticleEffectAsset));

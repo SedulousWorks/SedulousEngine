@@ -35,7 +35,6 @@ class ParticleValueTests
 	{
 		Test.Assert(!ParticleCurveFloat().IsActive);
 		Test.Assert(!ParticleCurveColor().IsActive);
-		Test.Assert(!ParticleCurveFloat2().IsActive);
 	}
 
 	[Test]

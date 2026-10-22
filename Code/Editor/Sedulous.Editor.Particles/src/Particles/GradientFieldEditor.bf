@@ -7,9 +7,12 @@ using Sedulous.Particles;
 
 namespace Sedulous.Editor.Particles;
 
-/// A property row editing a module's colour curve in place through a GradientEditor; every
-/// stop change writes the curve back and commits under the row's key. The curve pointer is
-/// into a module the page owns, valid until the next inspector rebuild.
+/// A property row editing a module's colour curve in place through a GradientEditor, which
+/// pairs a colour with its alpha at each stop: the curve's colour and alpha stops go to it at
+/// every time either has one (sampled from the gradient), and come back as a colour stop and
+/// an alpha stop at each, its interpolation kept. Every stop change writes the curve back and
+/// commits under the row's key. The curve pointer is into a module the page owns, valid until
+/// the next inspector rebuild.
 class GradientFieldEditor : PropertyEditor
 {
 	private ParticleCurveColor* mCurve;
@@ -34,9 +37,14 @@ class GradientFieldEditor : PropertyEditor
 		gradient.MaxStops = ParticleCurve.MaxKeys;
 		mGradient = gradient;
 
+		let times = scope List<float>();
+		for (int32 i < Math.Min(mCurve.ColorCount, ParticleCurve.MaxKeys))
+			AddTime(times, mCurve.Colors[i].Time);
+		for (int32 i < Math.Min(mCurve.AlphaCount, ParticleCurve.MaxKeys))
+			AddTime(times, mCurve.Alphas[i].Time);
 		let stops = scope List<GradientStop>();
-		for (int32 i < mCurve.KeyCount)
-			stops.Add(.(mCurve.Keys[i].Time, mCurve.Keys[i].Color));
+		for (int i = 0; (i < times.Count) && (stops.Count < ParticleCurve.MaxKeys); i++)
+			stops.Add(.(times[i], mCurve.Evaluate(times[i])));
 		if (stops.IsEmpty)
 		{
 			stops.Add(.(0.0f, .(1.0f, 1.0f, 1.0f, 1.0f)));
@@ -58,16 +66,32 @@ class GradientFieldEditor : PropertyEditor
 		return wrap;
 	}
 
+	/// A sorted insert of a time not already there.
+	private static void AddTime(List<float> times, float time)
+	{
+		for (let known in times)
+		{
+			if (Math.Abs(known - time) < 1e-5f)
+				return;
+		}
+		var at = times.Count;
+		while ((at > 0) && (times[at - 1] > time))
+			at--;
+		times.Insert(at, time);
+	}
+
 	private void WriteBack()
 	{
 		if (mGradient == null)
 			return;
+		let interpolation = mCurve.Interpolation;
+		*mCurve = .();
+		mCurve.Interpolation = interpolation;
 		let n = Math.Min(mGradient.StopCount, ParticleCurve.MaxKeys);
-		mCurve.KeyCount = n;
 		for (int32 i < n)
 		{
 			let s = mGradient.GetStop(i);
-			mCurve.Keys[i] = .() { Time = s.Time, Color = s.Color };
+			mCurve.AddKey(s.Time, s.Color);
 		}
 		mPage.CommitEdit(mKey);
 	}

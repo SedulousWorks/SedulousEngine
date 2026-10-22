@@ -1,61 +1,78 @@
+using System;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
 
 namespace Sedulous.Particles;
 
-/// A colour curve over normalised lifetime, which doubles as the colour gradient.
+/// A colour curve over normalised lifetime: a gradient of Core's, sampled by
+/// EvaluateGradient, its colour stops and its alpha stops apart, blended in a chosen space.
 ///
-/// LINEAR between its keys rather than cubic, unlike the scalar curve: a cubic through
-/// colours overshoots, and an overshoot in a colour channel is a colour that was never
-/// authored. Its values are authored sRGB, decoded to linear only when the particle is drawn.
+/// Its colours are authored sRGB, decoded to linear only when the particle is drawn. The
+/// default blend is the sRGB values straight, which is what the curve always did.
 [Scriptable]
 struct ParticleCurveColor
 {
-	public CurveKeyColor[ParticleCurve.MaxKeys] Keys = .();
+	public GradientColorStop[ParticleCurve.MaxKeys] Colors = .();
 	[Scriptable]
-	public int32 KeyCount = 0;
+	public int32 ColorCount = 0;
+	public GradientAlphaStop[ParticleCurve.MaxKeys] Alphas = .();
+	[Scriptable]
+	public int32 AlphaCount = 0;
+	[Scriptable]
+	public GradientInterpolation Interpolation = .Srgb;
 
 	public this() {}
 
-	public bool IsActive => KeyCount > 0;
+	public bool IsActive => (ColorCount > 0) || (AlphaCount > 0);
 
+	/// The sRGB colour and alpha at t: white and opaque where it has no stops, so an unset
+	/// gradient leaves a particle its own colour.
 	public Float4 Evaluate(float t)
 	{
-		// White rather than nothing, so an unset gradient leaves a particle its own colour.
-		if (KeyCount <= 0)
-			return .(1, 1, 1, 1);
-		if (KeyCount == 1)
-			return Keys[0].Color;
-		if (t <= Keys[0].Time)
-			return Keys[0].Color;
-		if (t >= Keys[KeyCount - 1].Time)
-			return Keys[KeyCount - 1].Color;
-
-		var i = 0;
-		while ((i < (KeyCount - 1)) && (t > Keys[i + 1].Time))
-			i++;
-
-		let k0 = Keys[i];
-		let k1 = Keys[i + 1];
-		let segment = k1.Time - k0.Time;
-		let localT = (segment > ParticleCurve.MinSegment) ? ((t - k0.Time) / segment) : 0.0f;
-		return k0.Color + (k1.Color - k0.Color) * localT;
+		// Copies: a struct method may not take its own fields' addresses, and eight stops are cheap.
+		var colors = Colors;
+		var alphas = Alphas;
+		let c = EvaluateGradient(.(&colors[0], Clamp(ColorCount, 0, (int32)ParticleCurve.MaxKeys)),
+			.(&alphas[0], Clamp(AlphaCount, 0, (int32)ParticleCurve.MaxKeys)), Interpolation, t);
+		return .(c.R, c.G, c.B, c.A);
 	}
 
-	public bool AddKey(float time, Float4 color) mut
+	/// Sorted inserts, refused once full.
+	public bool AddColor(float time, Color color) mut
 	{
-		if (KeyCount >= ParticleCurve.MaxKeys)
+		if (ColorCount >= ParticleCurve.MaxKeys)
 			return false;
-
-		var index = KeyCount;
-		while ((index > 0) && (Keys[index - 1].Time > time))
+		var index = ColorCount;
+		while ((index > 0) && (Colors[index - 1].Time > time))
 		{
-			Keys[index] = Keys[index - 1];
+			Colors[index] = Colors[index - 1];
 			index--;
 		}
-		Keys[index] = .(time, color);
-		KeyCount++;
+		Colors[index] = .(time, color);
+		ColorCount++;
 		return true;
+	}
+
+	public bool AddAlpha(float time, float alpha) mut
+	{
+		if (AlphaCount >= ParticleCurve.MaxKeys)
+			return false;
+		var index = AlphaCount;
+		while ((index > 0) && (Alphas[index - 1].Time > time))
+		{
+			Alphas[index] = Alphas[index - 1];
+			index--;
+		}
+		Alphas[index] = .(time, alpha);
+		AlphaCount++;
+		return true;
+	}
+
+	/// A colour stop and an alpha stop at one time, from an sRGB rgba.
+	public bool AddKey(float time, Float4 color) mut
+	{
+		let added = AddColor(time, .(color.X, color.Y, color.Z));
+		return AddAlpha(time, color.W) && added;
 	}
 
 	public static ParticleCurveColor Constant(Float4 color)
@@ -78,21 +95,63 @@ struct ParticleCurveColor
 	public static ParticleCurveColor FadeAlpha(Float4 color, float fadeStart = 0.75f)
 	{
 		var curve = ParticleCurveColor();
-		curve.AddKey(0.0f, color);
-		curve.AddKey(fadeStart, color);
-		curve.AddKey(1.0f, .(color.X, color.Y, color.Z, 0.0f));
+		curve.AddColor(0.0f, .(color.X, color.Y, color.Z));
+		curve.AddAlpha(0.0f, color.W);
+		curve.AddAlpha(fadeStart, color.W);
+		curve.AddAlpha(1.0f, 0.0f);
 		return curve;
 	}
 
-	/// COUNT BOUND, see ParticleCurveFloat.
+	/// In an object of its own and COUNT BOUND, see ParticleCurveFloat.
+	///
+	/// LEGACY (removed once the samples are re-saved): text written before gradients has the
+	/// curve's fields loose in the module's object, a keyCount of an sRGB rgba each and no
+	/// interpolation; each becomes a colour stop and an alpha stop at its time.
 	public void Serialize(ISerializer ar) mut
 	{
-		SerializeValue(ar, "keyCount", ref KeyCount);
-		KeyCount = Clamp(KeyCount, 0, (int32)ParticleCurve.MaxKeys);
-		for (int32 i = 0; i < KeyCount; i++)
+		if ((ar.Mode == .Read) && ar.HasKey("keyCount") && !ar.HasKey("interpolation"))
 		{
-			SerializeValue(ar, "time", ref Keys[i].Time);
-			SerializeValue(ar, "color", ref Keys[i].Color);
+			ReadLegacy(ar);
+			return;
+		}
+
+		ar.BeginObject();
+		SerializeValue(ar, "interpolation", ref Interpolation);
+		SerializeValue(ar, "colorCount", ref ColorCount);
+		ColorCount = Clamp(ColorCount, 0, (int32)ParticleCurve.MaxKeys);
+		for (int32 i = 0; i < ColorCount; i++)
+		{
+			ar.Key("color");
+			ar.BeginObject();
+			SerializeValue(ar, "time", ref Colors[i].Time);
+			SerializeValue(ar, "color", ref Colors[i].Color);
+			ar.EndObject();
+		}
+		SerializeValue(ar, "alphaCount", ref AlphaCount);
+		AlphaCount = Clamp(AlphaCount, 0, (int32)ParticleCurve.MaxKeys);
+		for (int32 i = 0; i < AlphaCount; i++)
+		{
+			ar.Key("alpha");
+			ar.BeginObject();
+			SerializeValue(ar, "time", ref Alphas[i].Time);
+			SerializeValue(ar, "alpha", ref Alphas[i].Alpha);
+			ar.EndObject();
+		}
+		ar.EndObject();
+	}
+
+	private void ReadLegacy(ISerializer ar) mut
+	{
+		int32 count = 0;
+		SerializeValue(ar, "keyCount", ref count);
+		this = .();
+		for (int32 i = 0; i < Clamp(count, 0, (int32)ParticleCurve.MaxKeys); i++)
+		{
+			var time = 0.0f;
+			var color = Float4(1, 1, 1, 1);
+			SerializeValue(ar, "time", ref time);
+			SerializeValue(ar, "color", ref color);
+			AddKey(time, color);
 		}
 	}
 }

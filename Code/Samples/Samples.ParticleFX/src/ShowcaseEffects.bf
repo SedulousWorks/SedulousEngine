@@ -38,8 +38,7 @@ static class ShowcaseEffects
 		system.AddBehavior<DragBehavior>().Drag = 0.25f;
 		system.AddBehavior<ColorOverLifetimeBehavior>().Curve =
 			.FadeAlpha(.(1.0f, 0.5f, 0.12f, 1.0f), 0.35f);
-		system.AddBehavior<SizeOverLifetimeBehavior>().Curve =
-			.Linear(.(0.4f, 0.4f), .(0.04f, 0.04f));
+		system.AddBehavior<SizeOverLifetimeBehavior>().Size = .Ease(0.4f, 0.04f); // an eased size, both axes
 	}
 
 	/// Light mode: each ember contributes a point light, so they paint moving pools on the
@@ -176,8 +175,7 @@ static class ShowcaseEffects
 		system.AddInitializer<SizeInitializer>().Size = .Constant(.(1.0f * scale, 1.0f * scale));
 		system.AddInitializer<ColorInitializer>().Color = .Constant(.(1.0f, 0.9f, 0.5f, 1.0f));
 		system.AddBehavior<TurbulenceBehavior>().Strength = 1.5f; // the flicker
-		system.AddBehavior<SizeOverLifetimeBehavior>().Curve =
-			.Linear(.(1.0f * scale, 1.0f * scale), .(0.15f * scale, 0.15f * scale));
+		system.AddBehavior<SizeOverLifetimeBehavior>().Size = .Ease(1.0f * scale, 0.15f * scale); // an eased size, both axes
 
 		ParticleCurveColor ramp = .();
 		ramp.AddKey(0.0f, .(1.0f, 0.95f, 0.7f, 1.0f));
@@ -207,8 +205,7 @@ static class ShowcaseEffects
 		system.AddInitializer<ColorInitializer>().Color = .Constant(.(0.78f, 0.78f, 0.82f, 1.0f));
 		system.AddBehavior<TurbulenceBehavior>().Strength = 0.8f;
 		system.AddBehavior<DragBehavior>().Drag = 0.12f; // light, so the column keeps climbing
-		system.AddBehavior<SizeOverLifetimeBehavior>().Curve =
-			.Linear(.(1.0f * scale, 1.0f * scale), .(3.5f * scale, 3.5f * scale));
+		system.AddBehavior<SizeOverLifetimeBehavior>().Size = .Ease(1.0f * scale, 3.5f * scale); // an eased size, both axes
 
 		ParticleCurveFloat alpha = .();
 		alpha.AddKey(0.0f, 0.0f);
@@ -390,7 +387,7 @@ static class ShowcaseEffects
 		ring.AddInitializer<LifetimeInitializer>().Lifetime = .(0.6f, 0.6f);
 		ring.AddInitializer<SizeInitializer>().Size = .Constant(.(1.0f, 1.0f));
 		ring.AddInitializer<ColorInitializer>().Color = .Constant(.(1.0f, 0.7f, 0.3f, 1.0f));
-		ring.AddBehavior<SizeOverLifetimeBehavior>().Curve = .Linear(.(1.0f, 1.0f), .(9.0f, 9.0f));
+		ring.AddBehavior<SizeOverLifetimeBehavior>().Size = .Ease(1.0f, 9.0f); // an eased size, both axes
 		ring.AddBehavior<AlphaOverLifetimeBehavior>().Curve = .FadeOut(1.0f, 0.0f);
 	}
 

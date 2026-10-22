@@ -52,11 +52,6 @@ static class ParticleRows
 		g.AddProperty(new CurveFieldEditor(name, curve, page, scope String(category)..Append(name), category));
 	}
 
-	public static void CurveFloat2(PropertyGrid g, StringView name, ParticleCurveFloat2* curve, StringView category, ParticleEffectEditorPage page)
-	{
-		g.AddProperty(new CurveFieldEditor(name, curve, page, scope String(category)..Append(name), category));
-	}
-
 	public static void CurveColor(PropertyGrid g, StringView name, ParticleCurveColor* curve, StringView category, ParticleEffectEditorPage page)
 	{
 		g.AddProperty(new GradientFieldEditor(name, curve, page, scope String(category)..Append(name), category));

@@ -27,6 +27,12 @@ class ParticleEffectResource : ISerializable
 	private List<Proxy<StaticMesh>> mSystemMeshes = new .() ~ delete _;
 	private List<List<Proxy<Material>>> mSystemMaterials = new .() ~ DeleteContainerAndItems!(_);
 
+	public static readonly uint64 TypeId = TypeIdOf("Sedulous.Particles.Resource.ParticleEffectResource");
+	/// One: curves of Core's keys and gradients, and size over lifetime as size, separateAxes
+	/// and sizeY. A product from before is refused rather than misread, and cooked again (the
+	/// builder's version moved).
+	public const uint32 DataVersion = 1;
+
 	public ParticleEffect Effect => mEffect;
 
 	public void Serialize(ISerializer ar)
@@ -34,7 +40,10 @@ class ParticleEffectResource : ISerializable
 		// A read APPENDS, so a reused resource is emptied first.
 		if (ar.Mode == .Read)
 			mEffect.Clear();
-		ParticleEffectSerialization.SerializeEffect(ar, mEffect);
+		BeginVersionedPayload(ar, TypeId, DataVersion);
+		if (ar.IsPayloadOk)
+			ParticleEffectSerialization.SerializeEffect(ar, mEffect);
+		EndVersionedPayload(ar);
 	}
 
 	/// The texture a system draws its billboards with, or an unbound proxy when it has none.

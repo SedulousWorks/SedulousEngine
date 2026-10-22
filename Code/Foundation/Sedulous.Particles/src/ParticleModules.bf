@@ -19,9 +19,12 @@ static class ParticleModules
 		RegisterAll(target);
 
 		// CollisionBehavior describes ITSELF rather than carrying [Serializable] (its fixed
-		// shape arrays are not something the generated body can write), so the generated
-		// RegisterAll cannot see it and it is named here.
+		// shape arrays are not something the generated body can write), as does
+		// SizeOverLifetimeBehavior (for its legacy reader), so the generated RegisterAll cannot
+		// see them and they are named here.
 		target.Register(TypeIdOf("Sedulous.Particles.CollisionBehavior"),
 			() => new CollisionBehavior());
+		target.Register(TypeIdOf("Sedulous.Particles.SizeOverLifetimeBehavior"),
+			() => new SizeOverLifetimeBehavior());
 	}
 }

@@ -386,7 +386,12 @@ extension ParticleEffectEditorPage
 		else if (let alphaCurve = module as AlphaOverLifetimeBehavior)
 			ParticleRows.CurveFloat(g, "Alpha", &alphaCurve.Curve, cat, this);
 		else if (let sizeCurve = module as SizeOverLifetimeBehavior)
-			ParticleRows.CurveFloat2(g, "Size", &sizeCurve.Curve, cat, this);
+		{
+			// One curve for both axes; with Separate Axes, Size sets X and Size Y sets Y.
+			ParticleRows.CurveFloat(g, "Size", &sizeCurve.Size, cat, this);
+			InPlaceRows.Bool(g, "Separate Axes", &sizeCurve.SeparateAxes, cat, mCommit);
+			ParticleRows.CurveFloat(g, "Size Y (separate axes)", &sizeCurve.SizeY, cat, this);
+		}
 		else if (let rotCurve = module as RotationOverLifetimeBehavior)
 			ParticleRows.CurveFloat(g, "Rotation", &rotCurve.Curve, cat, this);
 		else if (let speedCurve = module as SpeedOverLifetimeBehavior)

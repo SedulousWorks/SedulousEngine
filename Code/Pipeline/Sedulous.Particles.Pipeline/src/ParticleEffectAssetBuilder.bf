@@ -15,8 +15,9 @@ class ParticleEffectAssetBuilder : IAssetBuilder
 	/// Four, the last of a run of format changes: per system mesh and scale for the mesh render
 	/// mode, then a material for it, then that material becoming a list, one per submesh with
 	/// slot nought the whole mesh. The strict reader needs the new keys, so stale products have
-	/// to re-cook.
-	public int32 Version => 4;
+	/// to re-cook. Five: curves of Core's keys and gradients, and size over lifetime as size,
+	/// separateAxes and sizeY (the product's data version 1).
+	public int32 Version => 5;
 
 	public Result<void, ErrorCode> Build(Asset asset, AssetBuildContext context)
 	{
