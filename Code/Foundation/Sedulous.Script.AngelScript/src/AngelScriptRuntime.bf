@@ -1545,6 +1545,35 @@ class AngelScriptRuntime : ScriptRuntime
 		return AS.asc_builder_build(builder) >= 0;
 	}
 
+	/// Through a builder of its own, so `[metadata]` checks as it compiles, into a module
+	/// discarded before any of it could be called.
+	public override bool Check(StringView sectionName, StringView source)
+	{
+		let builder = AS.asc_builder_create();
+		if (builder == null)
+			return false;
+		defer AS.asc_builder_destroy(builder);
+		if (AS.asc_builder_start_module(builder, mEngine, cCheckModule) < 0)
+			return false;
+		defer
+		{
+			let module = AS.asc_engine_get_module(mEngine, cCheckModule, AS.asGM_ONLY_IF_EXISTS);
+			if (module != null)
+				AS.asc_module_discard(module);
+		}
+		if (AS.asc_builder_add_section(builder, scope String(sectionName).CStr(), source.Ptr, (uint)source.Length) < 0)
+			return false;
+
+		// A build runs the global initializers once it compiles: off for this one build, and
+		// back on, the library's default, which nothing here changes, for every other.
+		AS.asc_engine_set_property(mEngine, AS.asEP_INIT_GLOBAL_VARS_AFTER_BUILD, 0);
+		let built = AS.asc_builder_build(builder);
+		AS.asc_engine_set_property(mEngine, AS.asEP_INIT_GLOBAL_VARS_AFTER_BUILD, 1);
+		return built >= 0;
+	}
+
+	private const String cCheckModule = "__check";
+
 	public override void DiscardModule(StringView moduleName)
 	{
 		let module = AS.asc_engine_get_module(mEngine, scope String(moduleName).CStr(), AS.asGM_ONLY_IF_EXISTS);

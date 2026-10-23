@@ -488,4 +488,46 @@ static class FixtureScriptTests
 		all.Bind(s);
 		Test.Assert(all.Compile("t", "t.as", "void f() { Cooker@ c; }"));
 	}
+
+	[Test]
+	public static void ACheckReportsACompileErrorWithItsLineAndColumn()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = Bound(s);
+		defer delete vm;
+		Test.Assert(!vm.Check("typed.as", "int a = 1;\nint b = ;\n"));
+		// After the compiler's "Compiling int b" info, which names the declaration.
+		bool found = false;
+		for (let p in vm.Problems)
+			found |= p.StartsWith("typed.as(2,9): error");
+		Dump(vm);
+		Test.Assert(found, "the error at its line and column");
+
+		ClearAndDeleteItems!(vm.Problems);
+		Test.Assert(vm.Check("typed.as", "class Follow { [null, \"The target\"] Entity target; Thing@ t; }"), "metadata and the surface check");
+		Dump(vm);
+		Test.Assert(vm.Problems.IsEmpty);
+	}
+
+	[Test]
+	public static void ACheckRunsNoGlobalInitializer()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = Bound(s);
+		defer delete vm;
+		// A compile runs this initializer and faults; a check that ran it would too.
+		let faulting = "int Zero() { return 0; }\nint boom = 10 / Zero();\n";
+		Test.Assert(vm.Check("typed.as", faulting));
+		Test.Assert(vm.Problems.IsEmpty);
+		Test.Assert(!vm.Compile("t", "t.as", faulting));
+
+		// An ordinary compile still initializes its globals afterwards.
+		ClearAndDeleteItems!(vm.Problems);
+		Test.Assert(vm.Compile("t", "t.as", "int Answer = 42;\nint answer() { return Answer; }\n"));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("t", "int answer()", default, ref r));
+		Test.Assert(r.AsInt == 42);
+	}
 }

@@ -67,6 +67,12 @@ abstract class ScriptRuntime
 	/// Drops a module and everything compiled into it.
 	public virtual void DiscardModule(StringView moduleName) {}
 
+	/// Compiles `source` against the bound surface WITHOUT running any of it: no global
+	/// initializer runs, and no module is kept. For checking code as it is typed, where a
+	/// compile that ran it would run whatever is half written. False on a compile error,
+	/// with the messages in Problems.
+	public virtual bool Check(StringView sectionName, StringView source) => false;
+
 	/// Calls a global function of a module by its declaration, `float f(int, int)` say.
 	/// False when it is not there, or the call failed; the reason is in Problems.
 	public virtual bool Call(StringView moduleName, StringView declaration, Span<ScriptValue> args, ref ScriptValue result) => false;
