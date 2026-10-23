@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 
 namespace Dxc_Beef;
 
@@ -25,6 +26,10 @@ static class DxcLibrary
 
 	private static void* sHandle = null;
 	private static bool sAttempted = false;
+	/// Guards the resolve: a cook builds assets on worker threads, each starting its own
+	/// compiler, and one that saw sAttempted set before the entry point was would fail as if
+	/// the machine had no dxcompiler.
+	private static Monitor sLock = new .() ~ delete _;
 
 	public function HRESULT CreateInstanceFn(in Guid rclsid, in Guid riid, out void* ppv);
 
@@ -36,23 +41,35 @@ static class DxcLibrary
 	{
 		get
 		{
-			if (sAttempted)
-				return sCreateInstance;
-			sAttempted = true;
+			using (sLock.Enter())
+			{
+				if (sAttempted)
+					return sCreateInstance;
 
 #if BF_PLATFORM_MACOS
-			let name = "libdxcompiler.dylib";
+				let name = "libdxcompiler.dylib";
 #else
-			let name = "libdxcompiler.so";
+				let name = "libdxcompiler.so";
 #endif
-			// Unqualified, so the usual search runs: the loader looks beside the executable
-			// through the rpath the build sets, which is where the build copies it.
-			sHandle = dlopen(name, cRtldNow);
-			if (sHandle == null)
-				return null;
+				// Unqualified, so the usual search runs: the loader looks beside the executable
+				// through the rpath the build sets, which is where the build copies it.
+				sHandle = dlopen(name, cRtldNow);
+				if (sHandle != null)
+					sCreateInstance = (CreateInstanceFn)dlsym(sHandle, "DxcCreateInstance");
+				sAttempted = true;
+				return sCreateInstance;
+			}
+		}
+	}
 
-			sCreateInstance = (CreateInstanceFn)dlsym(sHandle, "DxcCreateInstance");
-			return sCreateInstance;
+	/// Forgets the resolve, so the next CreateInstance resolves again (the library stays
+	/// loaded). For a test that races the first resolve.
+	internal static void Forget()
+	{
+		using (sLock.Enter())
+		{
+			sAttempted = false;
+			sCreateInstance = null;
 		}
 	}
 #endif
