@@ -38,10 +38,10 @@ static class EngineCompositionTests
 		}
 		Test.Assert(sawInput);
 
-		// Twenty one resource modules (the render profiles the last), each id once.
+		// Twenty two resource modules (the render profiles the last), each id once.
 		let resources = scope List<ResourceModule>();
 		EngineComposition.ResourceModules(resources);
-		Test.Assert(resources.Count == 21, scope $"{resources.Count} resource modules");
+		Test.Assert(resources.Count == 22, scope $"{resources.Count} resource modules");
 		for (int i < resources.Count)
 		{
 			for (int j = i + 1; j < resources.Count; j++)

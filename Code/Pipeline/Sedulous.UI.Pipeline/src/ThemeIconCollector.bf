@@ -4,7 +4,7 @@ using Sedulous.Content;
 using Sedulous.Core;
 using Sedulous.Image;
 using Sedulous.Pipeline.Core;
-using Sedulous.UI.Resource;
+using Sedulous.VG.Pipeline;
 
 namespace Sedulous.UI.Pipeline;
 
@@ -47,7 +47,7 @@ class ThemeIconCollector : IResourceProvider
 		}
 		References.Add(id);
 		let svg = scope String();
-		if ((mContext == null) || (ReadVectorImage(mContext, id, svg) case .Err) || svg.IsEmpty)
+		if ((mContext == null) || (VGPipeline.ReadVectorImage(mContext, id, svg) case .Err) || svg.IsEmpty)
 		{
 			Missing.Add(new .(path));
 			return false;
@@ -59,35 +59,4 @@ class ThemeIconCollector : IResourceProvider
 	}
 
 	public ImageData LoadImage(StringView path) => null;
-
-	/// The SVG a vector image asset carries: its cooked product when the cook has made it,
-	/// else its linked source file (a headless or source database cook). NotFound when `id`
-	/// names no vector image.
-	public static Result<void, ErrorCode> ReadVectorImage(AssetBuildContext context, Guid id, String outSvg)
-	{
-		if (context.Database != null)
-		{
-			if (let instance = context.Database.GetInstance(id))
-			{
-				let object = instance.ReadObject();
-				defer delete object;
-				if (let cooked = object as UIVectorImageResource)
-				{
-					outSvg.Set(cooked.Svg);
-					return .Ok;
-				}
-			}
-		}
-		if (context.SourceDatabase != null)
-		{
-			if (let instance = context.SourceDatabase.GetInstance(id))
-			{
-				let object = instance.ReadObject();
-				defer delete object;
-				if (let asset = object as UIVectorImageAsset)
-					return AssetSource.ReadText(context, asset.FileName.Value, outSvg);
-			}
-		}
-		return .Err(.NotFound);
-	}
 }

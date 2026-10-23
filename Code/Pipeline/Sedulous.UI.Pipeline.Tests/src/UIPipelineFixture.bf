@@ -6,6 +6,8 @@ using Sedulous.Core.Serialization;
 using Sedulous.Pipeline.Core;
 using Sedulous.UI.Pipeline;
 using Sedulous.UI.Resource;
+using Sedulous.VG.Pipeline;
+using Sedulous.VG.Resource;
 using Sedulous.VFS;
 
 namespace Sedulous.UI.Pipeline.Tests;
@@ -47,6 +49,8 @@ class UIPipelineFixture
 
 		UIResources.RegisterAll();
 		UIPipeline.RegisterAll();
+		VGResources.RegisterAll();
+		VGPipeline.RegisterAll();
 	}
 
 	public ~this()

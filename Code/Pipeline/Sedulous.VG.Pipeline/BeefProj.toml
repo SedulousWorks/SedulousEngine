@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.VG.Pipeline"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.VG.Pipeline.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Importer" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.VG.Resource" = "*"
+"Sedulous.VG.SVG" = "*"

@@ -7,6 +7,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Resource;
 using Sedulous.UI;
 using Sedulous.UI.Resource;
+using Sedulous.VG.Resource;
 using Sedulous.VFS;
 using Sedulous.UI.Toolkit;
 using Sedulous.UI.Pipeline;
@@ -66,6 +67,7 @@ class GameUIEditorTests
 	public static void TheThemePreviewReadsAnIconsVectorImageThroughTheResources()
 	{
 		UIResources.RegisterAll();
+		VGResources.RegisterAll();
 		let dir = "scratch_theme_preview_db";
 		RemoveDirectoryRecursive(dir);
 		CreateDirectory(dir);
@@ -75,12 +77,12 @@ class GameUIEditorTests
 			SerializerFactory serializers = new (stream, mode) => new BinarySerializerContext(stream, mode);
 			defer delete serializers;
 			let db = scope ContentDatabase(mount, serializers, "rasset");
-			let instance = db.RootGroup.CreateInstance("heart", "Sedulous.UI.Resource.UIVectorImageResource");
-			let source = scope UIVectorImageResource();
+			let instance = db.RootGroup.CreateInstance("heart", "Sedulous.VG.Resource.VectorImageResource");
+			let source = scope VectorImageResource();
 			source.Svg.Set("<svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"#E53935\"/></svg>");
 			Test.Assert(instance.WriteObject(source) case .Ok);
 
-			let factory = scope UIVectorImageFactory();
+			let factory = scope VectorImageFactory();
 			let manager = scope ResourceManager(db);
 			manager.AddFactory(factory);
 			let resources = scope ThemePreviewResources(manager, null);

@@ -25,6 +25,7 @@ using Sedulous.Shaders.Resource;
 using Sedulous.Terrain.Resource;
 using Sedulous.Texture.Resource;
 using Sedulous.UI.Resource;
+using Sedulous.VG.Resource;
 using Sedulous.Animation.Pipeline;
 using Sedulous.Audio.Pipeline;
 using Sedulous.Fonts.Pipeline;
@@ -51,6 +52,7 @@ using Sedulous.Vegetation.Pipeline;
 using Sedulous.Vegetation.Resource;
 using Sedulous.Texture.Pipeline;
 using Sedulous.UI.Pipeline;
+using Sedulous.VG.Pipeline;
 
 namespace Sedulous.Pipeline.Registration;
 
@@ -69,7 +71,7 @@ namespace Sedulous.Pipeline.Registration;
 static class PipelineRegistration
 {
 	public const int cBuilderCount = 31;
-	public const int cImporterCount = 11;
+	public const int cImporterCount = 12;
 	/// The creators every build has; the scripts add three per language with a cook on top
 	/// (ScriptCreators.CountFor).
 	public const int cCreatorCount = 31;
@@ -113,6 +115,7 @@ static class PipelineRegistration
 		VegetationResources.RegisterAll();
 		TextureResources.RegisterAll();
 		UIResources.RegisterAll();
+		VGResources.RegisterAll();
 
 		// The pipeline tier: every asset a source file is.
 		AnimationPipeline.RegisterAll();
@@ -134,6 +137,7 @@ static class PipelineRegistration
 		TerrainPipeline.RegisterAll();
 		TexturePipeline.RegisterAll();
 		UIPipeline.RegisterAll();
+		VGPipeline.RegisterAll();
 
 		// The script languages and their cooks, against the pipeline surface.
 		AngelScriptBackend.Register();
@@ -185,7 +189,7 @@ static class PipelineRegistration
 		registry.Register(new NavigationZoneAssetBuilder());
 		registry.Register(new UIDocumentAssetBuilder());
 		registry.Register(new UIThemeAssetBuilder());
-		registry.Register(new UIVectorImageAssetBuilder());
+		registry.Register(new VectorImageAssetBuilder());
 		registry.Register(new AudioClipAssetBuilder());
 		registry.Register(new AudioBusLayoutAssetBuilder());
 		registry.Register(new SoundCueAssetBuilder());
@@ -234,6 +238,7 @@ static class PipelineRegistration
 		registry.Register(new TextureFileImporter());
 		registry.Register(new ModelFileImporter());
 		registry.Register(new UIFileImporter());
+		registry.Register(new VectorImageFileImporter());
 		registry.Register(new ShaderFileImporter());
 		registry.Register(new AudioFileImporter());
 		registry.Register(new ScriptFileImporter());

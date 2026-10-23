@@ -2,7 +2,7 @@ using System;
 using Sedulous.Image;
 using Sedulous.Resource;
 using Sedulous.UI;
-using Sedulous.UI.Resource;
+using Sedulous.VG.Resource;
 
 namespace Sedulous.Editor.GameUI;
 
@@ -29,7 +29,7 @@ class ThemePreviewResources : IResourceProvider
 		// "{guid}" or the bare guid, as an image source is written.
 		if (!(Guid.Parse(path) case .Ok(let id)) || id.IsNil)
 			return false;
-		let image = mResources.Bind<UIVectorImage>(id).Get;
+		let image = mResources.Bind<VectorImage>(id).Get;
 		if ((image == null) || image.Svg.IsEmpty)
 			return false;
 		outText.Set(image.Svg);

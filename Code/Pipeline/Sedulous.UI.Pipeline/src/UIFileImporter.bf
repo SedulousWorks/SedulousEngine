@@ -7,7 +7,7 @@ using Sedulous.Pipeline.Importer;
 
 namespace Sedulous.UI.Pipeline;
 
-/// Imports a markup, stylesheet or vector image file.
+/// Imports a markup or stylesheet file (an `.svg` is VG.Pipeline's vector image).
 ///
 /// The dropped file is STAGED into the project's sources tree and the asset LINKS it; the
 /// authored text is never embedded, so the file on disk stays the one true copy and the cook
@@ -16,11 +16,10 @@ class UIFileImporter : IFileImporter
 {
 	private const String cDocumentType = "Sedulous.UI.Pipeline.UIDocumentAsset";
 	private const String cThemeType = "Sedulous.UI.Pipeline.UIThemeAsset";
-	private const String cVectorImageType = "Sedulous.UI.Pipeline.UIVectorImageAsset";
 
 	public StringView Label => "UI";
 
-	public bool Accepts(StringView @extension) => (@extension == "sml") || (@extension == "sss") || (@extension == "svg");
+	public bool Accepts(StringView @extension) => (@extension == "sml") || (@extension == "sss");
 
 	public void DescribeImport(StringView sourcePath, ImportOptions options, Object prepared,
 		ImportPlan outPlan) => ImportPaths.SingleAssetPlan(sourcePath, outPlan);
@@ -50,12 +49,6 @@ class UIFileImporter : IFileImporter
 			asset.FileName.Set(fileName);
 			written = instance.WriteObject(asset);
 		}
-		else if (typeName == cVectorImageType)
-		{
-			let asset = scope UIVectorImageAsset();
-			asset.FileName.Set(fileName);
-			written = instance.WriteObject(asset);
-		}
 		else
 		{
 			let asset = scope UIDocumentAsset();
@@ -75,8 +68,6 @@ class UIFileImporter : IFileImporter
 		ImportPaths.ExtensionLower(sourcePath, suffix);
 		if (suffix == "sss")
 			return cThemeType;
-		if (suffix == "svg")
-			return cVectorImageType;
 		return cDocumentType;
 	}
 }

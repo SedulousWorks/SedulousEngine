@@ -3,6 +3,7 @@ using Sedulous.Engine.Domain;
 using Sedulous.Fonts.Resource;
 using Sedulous.Resource;
 using Sedulous.UI.Resource;
+using Sedulous.VG.Resource;
 
 namespace Sedulous.Engine.UI;
 
@@ -13,6 +14,8 @@ static class UIDomain
 	public static DomainModule Module => sModule ?? (sModule = new .("ui", => UIScene.AddUISceneManagers,
 		new .(
 			UIResources.Module,
+			// Vector images: what a theme's icons are cooked from.
+			VGResources.Module,
 			FontResources.Module)));
 	private static DomainModule sModule ~ delete _;
 }

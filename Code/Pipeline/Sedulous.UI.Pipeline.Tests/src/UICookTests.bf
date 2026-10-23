@@ -6,6 +6,7 @@ using Sedulous.Pipeline.Core;
 using Sedulous.Resource;
 using Sedulous.UI;
 using Sedulous.UI.Pipeline;
+using Sedulous.VG.Pipeline;
 using Sedulous.UI.Resource;
 
 namespace Sedulous.UI.Pipeline.Tests;
@@ -164,44 +165,21 @@ class UICookTests
 		}
 	}
 
-	// ---- vector images: an SVG asset, and a theme that draws it as an icon ----
+	// ---- vector images: a theme that draws one as an icon ----
 
-	private const String cVectorImageType = "Sedulous.UI.Resource.UIVectorImageResource";
+	private const String cVectorImageType = "Sedulous.VG.Resource.VectorImageResource";
 	private const String cHeartSvg = """
 		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 21 L3 12 A5 5 0 0 1 12 5 A5 5 0 0 1 21 12 Z" fill="#E53935"/></svg>
 		""";
 
+	/// An `.svg` is VG.Pipeline's to import, as a vector image.
 	[Test]
-	public static void AVectorImageCooksWhenItIsAnSvgTheEngineReadsAndFailsWhenNot()
+	public static void TheUIImporterTakesDocumentsAndThemesButNotAnSvg()
 	{
-		let fixture = scope UIPipelineFixture("svg");
-		fixture.StageSource("heart.svg", cHeartSvg);
-		fixture.StageSource("broken.svg", "<html>not a vector image</html>");
-
-		let builder = scope UIVectorImageAssetBuilder();
-		let heart = fixture.CreateOutput("heart", cVectorImageType);
-		{
-			let asset = scope UIVectorImageAsset();
-			asset.FileName.Set("heart.svg");
-			fixture.Context.Output = heart;
-			Test.Assert(builder.Build(asset, fixture.Context) case .Ok);
-		}
-		{
-			let asset = scope UIVectorImageAsset();
-			asset.FileName.Set("broken.svg");
-			fixture.Context.Output = fixture.CreateOutput("broken", cVectorImageType);
-			Test.Assert(builder.Build(asset, fixture.Context) case .Err);
-		}
-
-		let images = scope UIVectorImageFactory();
-		let manager = scope ResourceManager(fixture.Cooked);
-		manager.AddFactory(images);
-		let image = manager.Bind<UIVectorImage>(heart.Id);
-		Test.Assert(image.Get != null);
-		Test.Assert(image.Get.Svg == cHeartSvg);
-
-		// The importer takes an .svg as a vector image.
-		Test.Assert(scope UIFileImporter().Accepts("svg"));
+		let importer = scope UIFileImporter();
+		Test.Assert(importer.Accepts("sml"));
+		Test.Assert(importer.Accepts("sss"));
+		Test.Assert(!importer.Accepts("svg"));
 	}
 
 	[Test]
@@ -213,10 +191,10 @@ class UICookTests
 		// The vector image, cooked first (the theme's Reads edge orders it so in a real cook).
 		let heart = fixture.CreateOutput("heart", cVectorImageType);
 		{
-			let asset = scope UIVectorImageAsset();
+			let asset = scope VectorImageAsset();
 			asset.FileName.Set("heart.svg");
 			fixture.Context.Output = heart;
-			Test.Assert(scope UIVectorImageAssetBuilder().Build(asset, fixture.Context) case .Ok);
+			Test.Assert(scope VectorImageAssetBuilder().Build(asset, fixture.Context) case .Ok);
 		}
 		let reference = scope String()..Append('{');
 		heart.Id.ToString(reference);
