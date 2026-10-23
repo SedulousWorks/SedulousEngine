@@ -59,8 +59,10 @@ class ScriptSourceDocument
 		return written;
 	}
 
-	/// Compile checks the source through the language's cook; false with the errors filled
-	/// when it does not compile, or no cook is registered for the language.
+	/// Compile checks the source through the language's cook, which compiles as the cook
+	/// does but runs none of it: a half written initializer is not run on every edit. False
+	/// with the errors filled when it does not compile, or no cook is registered for the
+	/// language.
 	public bool Validate()
 	{
 		ClearAndDeleteItems!(mErrors);
@@ -76,12 +78,12 @@ class ScriptSourceDocument
 		}
 		let problems = scope List<String>();
 		defer { ClearAndDeleteItems!(problems); }
-		let record = scope ScriptClassSource();
-		let ok = cook.Cook(mSource, mFileName, "", record, problems);
+		let className = scope String();
+		let ok = cook.Check(mSource, mFileName, className, problems);
 		for (let problem in problems)
 			mErrors.Add(ScriptCompileError.Parse(problem));
 		if (ok)
-			mClassName.Set(record.ClassName);
+			mClassName.Set(className);
 		mLastCompileOk = ok;
 		return ok;
 	}

@@ -10,6 +10,8 @@ class ScriptCompileError
 	public String Module = new .() ~ delete _;
 	/// One based; zero when the problem has no line.
 	public int32 Line = 0;
+	/// One based on the line; zero when the problem does not say.
+	public int32 Column = 0;
 	public String Message = new .() ~ delete _;
 
 	/// Parses a runtime's "section(row,col): kind: message"; anything else lands whole in
@@ -28,6 +30,8 @@ class ScriptCompileError
 			{
 				error.Module.Set(problem.Substring(0, open));
 				error.Line = row;
+				if ((comma >= 0) && (int32.Parse(inside.Substring(comma + 1)) case .Ok(let column)) && (column > 0))
+					error.Column = column;
 				var rest = problem.Substring(close + 2);
 				rest.Trim();
 				error.Message.Set(rest);

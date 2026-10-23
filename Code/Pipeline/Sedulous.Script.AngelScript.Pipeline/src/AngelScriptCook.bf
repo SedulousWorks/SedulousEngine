@@ -118,6 +118,22 @@ class AngelScriptCook : IScriptLanguageCook
 		return harvested;
 	}
 
+	/// Through the runtime's Check, so unlike Cook no global initializer runs.
+	public bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems)
+	{
+		let runtime = scope AngelScriptRuntime();
+		runtime.Bind(mSurface);
+		ClearAndDeleteItems!(runtime.Problems);
+
+		let ok = runtime.Check(sourceName, source);
+		for (let p in runtime.Problems)
+			problems.Add(new String(p));
+		outClassName.Clear();
+		if (ok)
+			FirstClass(source, outClassName);
+		return ok;
+	}
+
 	/// The first top level `class Name` in the source, comments aside.
 	private static bool FirstClass(StringView source, String outName)
 	{

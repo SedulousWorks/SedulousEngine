@@ -21,4 +21,9 @@ interface IScriptLanguageCook
 	/// reporting anything wrong into `problems`. False when the source does not compile or
 	/// the class is not in it.
 	bool Cook(StringView source, StringView sourceName, StringView className, ScriptClassSource outRecord, List<String> problems);
+
+	/// Compile checks `source` as Cook would, WITHOUT running any of it and without the
+	/// harvest: the problems into `problems`, the first class (empty when none) into
+	/// `outClassName`. For checking a script as it is typed. False when it does not compile.
+	bool Check(StringView source, StringView sourceName, String outClassName, List<String> problems);
 }

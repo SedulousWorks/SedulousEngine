@@ -133,6 +133,38 @@ static class ScriptClassCookTests
 		Test.Assert(problems.Back.Contains("'clip'"), problems.Back);
 	}
 
+	/// What the editor checks as a script is typed: a compile as the cook's, with nothing in
+	/// the source run and nothing harvested.
+	[Test]
+	public static void ACheckCompilesWithoutRunningTheScript()
+	{
+		Registered();
+		let cook = ScriptLanguageCooks.Find("angelscript");
+		let problems = scope List<String>();
+		defer { ClearAndDeleteItems(problems); }
+		// The cook runs this initializer and faults; the check never runs it.
+		let faulting = """
+			int Zero() { return 0; }
+			int boom = 10 / Zero();
+			class Mover
+			{
+				[4.5] float speed;
+			}
+			""";
+		let className = scope String();
+		Test.Assert(cook.Check(faulting, "Mover.as", className, problems), problems.IsEmpty ? "" : problems[0]);
+		Test.Assert(className == "Mover");
+		Test.Assert(problems.IsEmpty);
+		let record = scope ScriptClassSource();
+		Test.Assert(!cook.Cook(faulting, "Mover.as", "", record, problems));
+
+		// A compile error still fails it, where it is.
+		ClearAndDeleteItems(problems);
+		Test.Assert(!cook.Check("class Broken { void onStart() { Nope(); } }", "Broken.as", className, problems));
+		Test.Assert(className.IsEmpty);
+		Test.Assert(!problems.IsEmpty && problems.Back.StartsWith("Broken.as(1,"), problems.IsEmpty ? "" : problems.Back);
+	}
+
 	[Test]
 	public static void AUtilityModuleCooksWithNoClass()
 	{

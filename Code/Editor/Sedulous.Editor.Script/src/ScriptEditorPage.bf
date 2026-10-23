@@ -215,6 +215,8 @@ class ScriptEditorPage : UIEditorPage
 			detail.Append(e.Module.IsEmpty ? mDoc.FileName : StringView(e.Module));
 			if (e.Line > 0)
 				detail.AppendF(":{}", e.Line);
+			if ((e.Line > 0) && (e.Column > 0))
+				detail.AppendF(":{}", e.Column);
 			detail.AppendF(": {}", e.Message);
 		}
 		mErrorView.SetText(detail);
