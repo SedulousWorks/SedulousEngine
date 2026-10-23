@@ -14,6 +14,7 @@ namespace Sedulous.Xml;
 abstract class XmlNode
 {
 	private XmlNodeType mNodeType;
+	private uint32 mLine = 0;
 	private XmlNode mParent;
 	private XmlNode mFirstChild;
 	private XmlNode mLastChild;
@@ -37,6 +38,16 @@ abstract class XmlNode
 	}
 
 	public XmlNodeType NodeType => mNodeType;
+
+	/// The line it began on in the text it was parsed from (1-based: an element's "<", an
+	/// attribute's name), so what reads a document can say where something is; 0 when it was
+	/// made in code.
+	public uint32 Line
+	{
+		get => mLine;
+		set => mLine = value;
+	}
+
 	public XmlNode Parent => mParent;
 	public XmlNode FirstChild => mFirstChild;
 	public XmlNode LastChild => mLastChild;

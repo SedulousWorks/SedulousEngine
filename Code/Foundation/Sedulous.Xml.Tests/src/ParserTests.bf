@@ -272,4 +272,35 @@ class ParserTests
 		document.GetElementsByTagName("", all);
 		Test.Assert(all.Count == 5, scope $"saw {all.Count} elements");
 	}
+
+	/// What reads a document (a GUI's markup loader, its cook) says where an element it drops
+	/// is: each element and attribute knows the line it began on, and one made in code none.
+	[Test]
+	public static void EachElementAndAttributeKnowsTheLineItBeganOn()
+	{
+		let document = scope XmlDocument();
+		Test.Assert(document.Parse("<?xml version=\"1.0\"?>\n<root>\n  <a x=\"1\"\n     y=\"2\"/>\n\n  <b><c/></b>\n</root>") == .Ok);
+		let root = document.RootElement;
+		Test.Assert(root.Line == 2);
+		let a = root.GetFirstChildElement("a");
+		Test.Assert(a.Line == 3);
+		Test.Assert(a.GetAttributeNode("x").Line == 3);
+		Test.Assert(a.GetAttributeNode("y").Line == 4, "an attribute on a line of its own");
+		let b = root.GetFirstChildElement("b");
+		Test.Assert(b.Line == 6);
+		Test.Assert(b.GetFirstChildElement("c").Line == 6);
+
+		// Counted as an error's line is: CRLF is one ending, a lone CR one too.
+		Test.Assert(document.Parse("<root>\r\n<a/>\r<b/></root>") == .Ok);
+		Test.Assert(document.RootElement.GetFirstChildElement("a").Line == 2);
+		Test.Assert(document.RootElement.GetFirstChildElement("b").Line == 3);
+
+		// Parsed again: counted afresh.
+		Test.Assert(document.Parse("<only/>") == .Ok);
+		Test.Assert(document.RootElement.Line == 1);
+
+		let made = document.CreateElement("made");
+		Test.Assert(made.Line == 0);
+		document.RootElement.AppendChild(made);
+	}
 }

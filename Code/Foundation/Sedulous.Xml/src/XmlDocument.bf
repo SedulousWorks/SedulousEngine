@@ -14,6 +14,11 @@ class XmlDocument : XmlNode
 	private int32 mErrorLine = 1;
 	private int32 mErrorColumn = 1;
 	private XmlParseSettings mParseSettings = .Default;
+	/// The text being parsed, and how far into it the nodes' lines have been counted: the
+	/// parse only moves forward, so the text is counted once however many nodes ask.
+	private StringView mLineText;
+	private int mLineFrom = 0;
+	private uint32 mLineAt = 1;
 
 	public this() : base(.Document)
 	{
@@ -49,9 +54,13 @@ class XmlDocument : XmlNode
 		mParseSettings = settings;
 		mErrorLine = 1;
 		mErrorColumn = 1;
+		mLineText = text;
+		mLineFrom = 0;
+		mLineAt = 1;
 
 		var remaining = text;
 		let result = ParseDocument(ref remaining);
+		mLineText = default; // the caller's text: not held past the parse
 		if (result != .Ok)
 		{
 			// The parser threads the remaining view down by reference, so whatever is left
@@ -121,6 +130,27 @@ class XmlDocument : XmlNode
 
 		mErrorLine = line;
 		mErrorColumn = column;
+	}
+
+	/// The 1-based line `remaining` starts on, in the text being parsed. Endings count as
+	/// LocateOffset counts them (CRLF, CR or LF), so a node's line and an error's agree.
+	private uint32 LineOf(StringView remaining)
+	{
+		let at = mLineText.Length - remaining.Length;
+		for (; mLineFrom < at; mLineFrom++)
+		{
+			let c = mLineText[mLineFrom];
+			if (c == '\r')
+			{
+				mLineAt++;
+				// A following newline belongs to this same ending.
+				if (((mLineFrom + 1) < at) && (mLineText[mLineFrom + 1] == '\n'))
+					mLineFrom++;
+			}
+			else if (c == '\n')
+				mLineAt++;
+		}
+		return mLineAt;
 	}
 
 	// ---- writing ----
@@ -374,6 +404,7 @@ class XmlDocument : XmlNode
 	{
 		if (!text.StartsWith("<"))
 			return .SyntaxError;
+		let line = LineOf(text); // its "<"
 		Advance(ref text, 1);
 
 		let tagName = scope String();
@@ -382,6 +413,7 @@ class XmlDocument : XmlNode
 		Advance(ref text, nameLength);
 
 		let element = new XmlElement(tagName);
+		element.Line = line;
 
 		let attributeResult = ParseAttributes(ref text, element);
 		if (attributeResult != .Ok)
@@ -449,6 +481,7 @@ class XmlDocument : XmlNode
 			if ((text[0] == '>') || text.StartsWith("/>"))
 				return .Ok;
 
+			let line = LineOf(text); // its name
 			if (XmlLexer.ReadName(text, let nameLength, name) != .Ok)
 				return .AttributeInvalid;
 			Advance(ref text, nameLength);
@@ -468,6 +501,8 @@ class XmlDocument : XmlNode
 			Advance(ref text, valueLength);
 
 			element.SetAttribute(name, value);
+			if (let attribute = element.GetAttributeNode(name))
+				attribute.Line = line;
 		}
 	}
 
