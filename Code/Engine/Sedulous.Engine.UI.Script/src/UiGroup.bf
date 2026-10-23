@@ -26,7 +26,7 @@ static class UiFinders
 }
 
 /// A container: the search surface. Every finder searches this group's subtree.
-[Scriptable, ScriptName("ViewGroup")]
+[Scriptable, ScriptName("UIViewGroup")]
 struct UiGroup
 {
 	public uint32 Id = 0;
@@ -116,7 +116,7 @@ struct UiGroup
 
 /// A screen on the stack: a container with the same finders, scoped to one screen so a
 /// lookup can be narrowed, `Ui.Top.FindLabel(...)`.
-[Scriptable, ScriptName("Screen")]
+[Scriptable, ScriptName("UIScreen")]
 struct UiScreen
 {
 	public uint32 Id = 0;

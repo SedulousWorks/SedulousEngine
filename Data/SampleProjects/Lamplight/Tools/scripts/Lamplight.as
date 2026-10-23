@@ -100,7 +100,7 @@ class Game
 		m_paused = false;
 		Run.TimeScale = 0.0f; // whatever is behind the title holds still
 		Ui.Clear();
-		Screen s = Ui.Push(kTitleDoc);
+		UIScreen s = Ui.Push(kTitleDoc);
 		s.FindButton("level-0").OnClick(ScriptCallback(this.onLevel0));
 		s.FindButton("level-1").OnClick(ScriptCallback(this.onLevel1));
 		s.FindButton("level-2").OnClick(ScriptCallback(this.onLevel2));
@@ -137,7 +137,7 @@ class Game
 		Ui.Push(kHudDoc);
 		showHud();
 		// The controls, keyboard and pad, for the first seconds of the level (the pause menu has them too).
-		View controls = Ui.Find("hud-controls");
+		UIView controls = Ui.Find("hud-controls");
 		controls.SetVisible(true);
 		controls.SetOpacity(0.0f);
 		controls.FadeTo(1.0f, 0.3f);
@@ -197,7 +197,7 @@ class Game
 
 	private void note(string text)
 	{
-		Label label = Ui.FindLabel("hud-note");
+		UILabel label = Ui.FindLabel("hud-note");
 		label.SetText(text);
 		label.SetOpacity(1.0f);
 		label.SetVisible(true);
@@ -256,7 +256,7 @@ class Game
 		Run.TimeScale = 0.0f;
 		m_controlsShow = 0.0f;
 		Ui.Find("hud-controls").SetVisible(false); // the menu shows them itself
-		Screen s = Ui.Push(kPauseDoc);
+		UIScreen s = Ui.Push(kPauseDoc);
 		s.FindButton("resume-btn").OnClick(ScriptCallback(this.onResume));
 		s.FindButton("restart-btn").OnClick(ScriptCallback(this.onRestart));
 		s.FindButton("title-btn").OnClick(ScriptCallback(this.onTitle));
@@ -299,7 +299,7 @@ class Game
 		}
 		Save.Flush();
 
-		Screen s = Ui.Push(kResultsDoc);
+		UIScreen s = Ui.Push(kResultsDoc);
 		bool last = m_level + 1 >= kLevelCount;
 		string title = ghost ? "Away like a ghost" : (m_caught == 0 ? "Away clean" : "Away");
 		s.FindLabel("res-title").SetText(last ? "The jewels are yours. " + title : title);

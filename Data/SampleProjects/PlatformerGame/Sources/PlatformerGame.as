@@ -139,7 +139,7 @@ class Game
 	private int m_nextLevel = 0;
 	/// The phase a fade in reveals.
 	private Phase m_afterFade = Phase::Intro;
-	private View m_fade;
+	private UIView m_fade;
 	/// The track playing: 0 none, 1 the menu's, 2 + n level n's. A track asked for again keeps
 	/// playing rather than restarting.
 	private int m_track = 0;
@@ -204,7 +204,7 @@ class Game
 				if (m_afterFade == Phase::Intro)
 				{
 					// The level's card drops in from above and settles with a bounce.
-					View card = Ui.Find("intro-card");
+					UIView card = Ui.Find("intro-card");
 					card.MoveTo(0.0f, 0.0f, 0.55f, Ease::OutBack);
 					card.FadeTo(1.0f, 0.25f);
 				}
@@ -306,7 +306,7 @@ class Game
 		}
 		m_gem = true;
 		popup("+" + kGemPoints);
-		View gem = Ui.Find("hud-gem");
+		UIView gem = Ui.Find("hud-gem");
 		gem.SetVisible(true);
 		gem.SetScale(0.0f);
 		gem.ScaleTo(1.0f, 0.45f, Ease::OutBack);
@@ -330,7 +330,7 @@ class Game
 		}
 		m_falls += 1;
 		m_lives -= 1;
-		View heart = Ui.Find("hud-heart");
+		UIView heart = Ui.Find("hud-heart");
 		heart.Pulse(0.6f, 0.35f); // the heart shrinks and comes back: a life gone
 		refreshHud();
 		if (m_lives <= 0)
@@ -375,7 +375,7 @@ class Game
 		m_allFalls += m_falls;
 		m_allTime += m_time;
 		Audio.PlayOneShot(kClearJingle);
-		Screen s = Ui.Push(kClearDoc);
+		UIScreen s = Ui.Push(kClearDoc);
 		s.FindLabel("star-3-caption").SetText("Under " + clock(par));
 		s.FindLabel("tally-total").SetText("0");
 		s.FindLabel("clear-best").SetText("");
@@ -397,7 +397,7 @@ class Game
 	void onSettings()
 	{
 		click();
-		Screen s = Ui.Push(kSettingsDoc);
+		UIScreen s = Ui.Push(kSettingsDoc);
 		bindVolume(s, "master", AudioBus::Master, ScriptCallback(this.onMasterChanged));
 		bindVolume(s, "music", AudioBus::Music, ScriptCallback(this.onMusicChanged));
 		bindVolume(s, "effects", AudioBus::Effects, ScriptCallback(this.onEffectsChanged));
@@ -484,9 +484,9 @@ class Game
 	}
 
 	/// A bound volume row: its slider at the bus's level, its readout, and the handler.
-	private void bindVolume(Screen s, string row, AudioBus bus, ScriptCallback@ handler)
+	private void bindVolume(UIScreen s, string row, AudioBus bus, ScriptCallback@ handler)
 	{
-		Slider slider = s.FindSlider(row + "-slider");
+		UISlider slider = s.FindSlider(row + "-slider");
 		slider.SetValue(Audio.BusVolume(bus));
 		showVolume(row, slider.Value);
 		slider.OnChanged(handler);
@@ -508,7 +508,7 @@ class Game
 	{
 		music(1);
 		Ui.Clear();
-		Screen s = Ui.Push(kTitleDoc);
+		UIScreen s = Ui.Push(kTitleDoc);
 		s.FindButton("play-btn").OnClick(ScriptCallback(this.onPlay));
 		s.FindButton("settings-btn").OnClick(ScriptCallback(this.onSettings));
 		s.FindButton("quit-btn").OnClick(ScriptCallback(this.onQuit));
@@ -521,7 +521,7 @@ class Game
 	private void pause()
 	{
 		Run.TimeScale = 0.0f;
-		Screen s = Ui.Push(kPauseDoc);
+		UIScreen s = Ui.Push(kPauseDoc);
 		s.FindButton("resume-btn").OnClick(ScriptCallback(this.onResume));
 		s.FindButton("restart-btn").OnClick(ScriptCallback(this.onRestart));
 		s.FindButton("title-btn").OnClick(ScriptCallback(this.onQuitToTitle));
@@ -533,7 +533,7 @@ class Game
 		Run.TimeScale = 0.0f;
 		int total = m_score + levelPoints();
 		bool best = saveRun(total);
-		Screen s = Ui.Push(kGameOverDoc);
+		UIScreen s = Ui.Push(kGameOverDoc);
 		s.FindLabel("gameover-reached").SetText("Reached level " + (m_level + 1) + ", " + levelName(m_level));
 		s.FindLabel("gameover-score").SetText(points(total));
 		s.FindLabel("gameover-best").SetText(best ? "New best run!" : "Best " + points(Save.GetInt("best.run", 0)));
@@ -547,7 +547,7 @@ class Game
 		Ui.Pop(); // the clear card
 		Audio.PlayOneShot(kVictoryJingle);
 		bool best = saveRun(m_score);
-		Screen s = Ui.Push(kVictoryDoc);
+		UIScreen s = Ui.Push(kVictoryDoc);
 		s.FindLabel("victory-summary").SetText("Coins " + m_allCoins + " / " + m_allCoinTotal + "    Falls "
 			+ m_allFalls + "    Time " + clock(m_allTime));
 		s.FindLabel("victory-score").SetText(points(m_score));
@@ -577,7 +577,7 @@ class Game
 		{
 			return;
 		}
-		Screen s = Ui.Push(kFadeDoc);
+		UIScreen s = Ui.Push(kFadeDoc);
 		m_fade = s.Find("fade");
 		m_fade.FadeTo(1.0f, kFadeSeconds);
 		enter(Phase::FadingOut);
@@ -609,15 +609,15 @@ class Game
 			Ui.Push(kHudDoc);
 			m_shownScore = float(m_score);
 			refreshHud();
-			Screen intro = Ui.Push(kIntroDoc);
+			UIScreen intro = Ui.Push(kIntroDoc);
 			intro.FindLabel("intro-number").SetText("Level " + (m_level + 1));
 			intro.FindLabel("intro-name").SetText(levelName(m_level));
-			View card = intro.Find("intro-card"); // above, waiting for the fade to clear
+			UIView card = intro.Find("intro-card"); // above, waiting for the fade to clear
 			card.SetTranslation(0.0f, -260.0f);
 			card.SetOpacity(0.0f);
 			m_afterFade = Phase::Intro;
 		}
-		Screen s = Ui.Push(kFadeDoc);
+		UIScreen s = Ui.Push(kFadeDoc);
 		m_fade = s.Find("fade");
 		m_fade.SetOpacity(1.0f);
 		m_fade.FadeTo(0.0f, kFadeSeconds);
@@ -701,9 +701,9 @@ class Game
 				key = "flawless";
 				value = (m_flawless > 0) ? "+" + points(m_flawless) : "-";
 			}
-			View row = Ui.Find("tally-" + key + "-row");
+			UIView row = Ui.Find("tally-" + key + "-row");
 			row.SetVisible(true);
-			Label label = Ui.FindLabel("tally-" + key);
+			UILabel label = Ui.FindLabel("tally-" + key);
 			label.SetText(value);
 			if (!quiet)
 			{
@@ -717,7 +717,7 @@ class Game
 		}
 		if (step == 5)
 		{
-			Label total = Ui.FindLabel("tally-total");
+			UILabel total = Ui.FindLabel("tally-total");
 			total.SetText(points(m_levelScore));
 			if (!quiet)
 			{
@@ -730,7 +730,7 @@ class Game
 		{
 			return;
 		}
-		View filled = Ui.Find("star-" + star);
+		UIView filled = Ui.Find("star-" + star);
 		filled.SetVisible(true);
 		if (!quiet)
 		{
@@ -746,7 +746,7 @@ class Game
 	private void finishTally()
 	{
 		m_tallyDone = true;
-		Label best = Ui.FindLabel("clear-best");
+		UILabel best = Ui.FindLabel("clear-best");
 		if (m_newBest)
 		{
 			best.SetText("New best!");
@@ -851,7 +851,7 @@ class Game
 		{
 			m_lives += 1;
 		}
-		Label up = Ui.FindLabel("hud-life-popup");
+		UILabel up = Ui.FindLabel("hud-life-popup");
 		up.SetVisible(true);
 		up.SetOpacity(1.0f);
 		up.SetTranslation(0.0f, 0.0f);
@@ -870,7 +870,7 @@ class Game
 	/// A gain floating up from the score.
 	private void popup(string text)
 	{
-		Label pop = Ui.FindLabel("hud-popup");
+		UILabel pop = Ui.FindLabel("hud-popup");
 		pop.SetText(text);
 		pop.SetVisible(true);
 		pop.SetOpacity(1.0f);
@@ -889,7 +889,7 @@ class Game
 		}
 		float step = (target - m_shownScore) * 8.0f * real + 40.0f * real;
 		m_shownScore = (m_shownScore + step > target) ? target : m_shownScore + step;
-		Label score = Ui.FindLabel("hud-score");
+		UILabel score = Ui.FindLabel("hud-score");
 		score.SetText(points(int(m_shownScore)));
 		if (m_shownScore >= target)
 		{

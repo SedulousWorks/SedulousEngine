@@ -59,6 +59,11 @@ Engine verbs live on facades, in script shape: `scene.Physics.RayCast(...)`,
 `Save`, `Ui`, `Run`, `Random`; and the globals `Print`, `PrintWarning`, `PrintError` with the math
 free functions. `script_api` lists exactly what each one binds.
 
+`Ui` finds a control by its authored `id` and hands back a typed handle: `UIView`, `UIViewGroup`,
+`UIScreen`, `UILabel`, `UIButton`, `UISlider`, `UIProgressBar`, `UITextBox`, `UIRichText` and
+`UIImage` (`UILabel title = Ui.FindLabel("title");`). The `UI` prefix leaves the plain names to
+the GUI library's own script types, which will live beside these while games move across.
+
 `Input.Rumble(low, high, seconds)` runs the gamepad's two motors, `low` the heavy one and
 `high` the light one, each 0 to 1 (a crash 0.8, 0.4, 0.25; a footstep 0, 0.2, 0.05);
 `Input.Rumble(gamepad, low, high, seconds)` picks the pad, and `Input.StopRumble()` stops them
@@ -87,7 +92,7 @@ invalid entity); `GetLocalTransform()` is its own. A lantern on a guard aims alo
 
 A world-space UI component (`UICanvasComponent`, `UIBillboardComponent`,
 `UIWorldPanelComponent`) hands a script its instantiated tree as `Root`, the same
-`ViewGroup` handle `Ui.Root` gives the screen tier, so the same finders reach inside it: a meter
+`UIViewGroup` handle `Ui.Root` gives the screen tier, so the same finders reach inside it: a meter
 over a guard's head is `UIBillboardComponent::of(guard).Root.FindProgressBar("meter")`. Before
 the tree is built the handle is null but valid, and every finder misses quietly.
 

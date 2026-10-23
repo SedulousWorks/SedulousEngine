@@ -40,12 +40,12 @@ static class UiScriptedTests
 				bool bound = false;
 				void open()
 				{
-					Screen s = Ui.Push(Guid::FromString("00000000-0000-0000-0000-000000000001"));
+					UIScreen s = Ui.Push(Guid::FromString("00000000-0000-0000-0000-000000000001"));
 					if (!s.IsValid) return;
-					Label title = s.FindLabel("title");
+					UILabel title = s.FindLabel("title");
 					seen = title.Text;
 					title.SetText("Welcome");
-					Button retry = Ui.FindButton("retry");
+					UIButton retry = Ui.FindButton("retry");
 					retry.OnClick(ScriptCallback(this.onRetry));
 					bound = retry.IsValid;
 					Ui.FindProgressBar("health").SetValue(0.25f);
@@ -62,13 +62,13 @@ static class UiScriptedTests
 				bool shown = false;
 				void showMap()
 				{
-					Image map = Ui.FindImage("minimap");
+					UIImage map = Ui.FindImage("minimap");
 					map.SetSource(Guid::FromString("00000000-0000-0000-0000-000000000042"));
 					shown = map.IsValid && !map.Source.IsNil;
 				}
 				void move()
 				{
-					Label marker = Ui.FindLabel("title");
+					UILabel marker = Ui.FindLabel("title");
 					marker.SetTranslation(64.0f, 32.0f);
 					marker.SetRotation(180.0f);
 					moved = (marker.Translation.X == 64.0f) && (marker.Rotation > 179.0f);
@@ -78,7 +78,7 @@ static class UiScriptedTests
 				{
 					// Zero seconds lands at once, so the ends read back; the eased and the plain
 					// calls both bind, and a pulse starts without a frame to run it.
-					Image marker = Ui.FindImage("minimap");
+					UIImage marker = Ui.FindImage("minimap");
 					marker.MoveTo(10.0f, 20.0f, 0.0f, Ease::OutBack);
 					marker.ScaleTo(2.0f, 0.0f);
 					marker.RotateTo(30.0f, 0.0f, Ease::Linear);
@@ -188,7 +188,7 @@ static class UiScriptedTests
 				void open()
 				{
 					Ui.Push(Guid::FromString("00000000-0000-0000-0000-000000000001"));
-					RichText text = Ui.FindRichText("story");
+					UIRichText text = Ui.FindRichText("story");
 					text.SetMarkup("Your mark wears [color=#d04060]a rose gown[/color]");
 					words = text.PlainText;
 					wrong = Ui.FindRichText("title").IsValid;

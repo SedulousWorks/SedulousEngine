@@ -17,8 +17,8 @@ class LightMeter
 	[7, "How many material slots the figure has"] int slots;
 
 	private float m_shown = 0.0f;
-	private ProgressBar m_bar;
-	private Label m_label;
+	private UIProgressBar m_bar;
+	private UILabel m_label;
 	private Entity m_figure;
 	private float m_glow = -1.0f; // the glow last set
 

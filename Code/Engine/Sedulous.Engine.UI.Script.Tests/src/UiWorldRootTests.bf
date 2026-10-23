@@ -11,7 +11,7 @@ using Sedulous.Engine.UI.Script;
 namespace Sedulous.Engine.UI.Script.Tests;
 
 /// A world space UI component hands a script its instantiated tree as Root, the same
-/// ViewGroup handle `Ui.Root` gives the screen tier, so the same finders fill a bar or set a
+/// UIViewGroup handle `Ui.Root` gives the screen tier, so the same finders fill a bar or set a
 /// label inside it: a meter over a guard's head.
 static class UiWorldRootTests
 {
@@ -36,7 +36,7 @@ static class UiWorldRootTests
 		let ok = vm.Compile("guard", "guard.as", """
 			bool fill(const Entity &in guard)
 			{
-				ViewGroup views = UIWorldPanelComponent::of(guard).Root;
+				UIViewGroup views = UIWorldPanelComponent::of(guard).Root;
 				views.FindProgressBar("meter").SetValue(0.75f);
 				views.FindLabel("status").SetText("Seen");
 				return views.IsValid;

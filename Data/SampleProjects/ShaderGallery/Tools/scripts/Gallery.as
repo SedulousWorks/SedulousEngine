@@ -49,7 +49,7 @@ class Gallery
 	{
 		m_yaw = startYaw;
 		m_pitch = startPitch;
-		Screen s = Ui.Push(kGalleryDoc);
+		UIScreen s = Ui.Push(kGalleryDoc);
 		s.FindButton("lesson-1").OnClick(ScriptCallback(this.onLesson1));
 		s.FindButton("lesson-2").OnClick(ScriptCallback(this.onLesson2));
 		s.FindButton("lesson-3").OnClick(ScriptCallback(this.onLesson3));

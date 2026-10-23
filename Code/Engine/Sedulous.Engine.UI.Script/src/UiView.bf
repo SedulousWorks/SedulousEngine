@@ -10,7 +10,7 @@ namespace Sedulous.Engine.UI.Script;
 /// and its setters do nothing, so a script never dereferences a dead view.
 ///
 /// The handles are plain values a script copies freely; UiHandles resolves them.
-[Scriptable, ScriptName("View")]
+[Scriptable, ScriptName("UIView")]
 struct UiView
 {
 	public uint32 Id = 0;
@@ -83,7 +83,7 @@ struct UiView
 }
 
 /// A text label: `label.Text` reads, `label.SetText(...)` writes.
-[Scriptable, ScriptName("Label")]
+[Scriptable, ScriptName("UILabel")]
 struct UiLabel
 {
 	public uint32 Id = 0;
@@ -165,7 +165,7 @@ struct UiLabel
 /// by one. `text.Markup` reads the markup (empty once runs were added), `text.PlainText` the words
 /// without it. `OnLink` runs a handler when a [link=id] span is clicked, through the mutation
 /// queue as a button's click does; the handler reads the id from `text.ClickedLink`.
-[Scriptable, ScriptName("RichText")]
+[Scriptable, ScriptName("UIRichText")]
 struct UiRichText
 {
 	public uint32 Id = 0;
@@ -300,7 +300,7 @@ struct UiRichText
 
 /// An image: `image.Source` is the texture asset it shows (a render texture a camera draws
 /// into included); `image.SetSource(id)` swaps it, and a nil id clears it.
-[Scriptable, ScriptName("Image")]
+[Scriptable, ScriptName("UIImage")]
 struct UiImage
 {
 	public uint32 Id = 0;
@@ -392,7 +392,7 @@ struct UiImage
 /// inline in click dispatch: it goes through the context's mutation queue and runs at the next
 /// drain, a quiescent point where any structural mutation, a screen push or an entity despawn,
 /// is safe, which is also where the screen stack's own mutations run.
-[Scriptable, ScriptName("Button")]
+[Scriptable, ScriptName("UIButton")]
 struct UiButton
 {
 	public uint32 Id = 0;
@@ -484,7 +484,7 @@ struct UiButton
 }
 
 /// A progress or fill bar: `bar.Value` in 0..1.
-[Scriptable, ScriptName("ProgressBar")]
+[Scriptable, ScriptName("UIProgressBar")]
 struct UiProgressBar
 {
 	public uint32 Id = 0;
@@ -554,7 +554,7 @@ struct UiProgressBar
 
 /// A slider: `slider.Value` within `Min`..`Max`, and `OnChanged` for a drag, a click, an arrow
 /// or a pad's left and right. A volume control, say.
-[Scriptable, ScriptName("Slider")]
+[Scriptable, ScriptName("UISlider")]
 struct UiSlider
 {
 	public uint32 Id = 0;
@@ -663,7 +663,7 @@ struct UiSlider
 }
 
 /// A text input: `box.Text` reads, `box.SetText(...)` writes the edited text.
-[Scriptable, ScriptName("TextBox")]
+[Scriptable, ScriptName("UITextBox")]
 struct UiTextBox
 {
 	public uint32 Id = 0;

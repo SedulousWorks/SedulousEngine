@@ -127,7 +127,7 @@ class Game
 		music(kMusicTitle);
 		Run.TimeScale = 0.0f; // the scene behind the title holds still
 		Ui.Clear();
-		Screen s = Ui.Push(kTitleDoc);
+		UIScreen s = Ui.Push(kTitleDoc);
 		s.FindButton("course-0").OnClick(ScriptCallback(this.onMeadow));
 		s.FindButton("course-1").OnClick(ScriptCallback(this.onForest));
 		s.FindButton("course-2").OnClick(ScriptCallback(this.onRidge));
@@ -149,7 +149,7 @@ class Game
 		m_controlsShow = 0.0f;
 		Ui.Find("hud-controls").SetVisible(false); // the menu shows them itself
 		Run.TimeScale = 0.0f;
-		Screen s = Ui.Push(kPauseDoc);
+		UIScreen s = Ui.Push(kPauseDoc);
 		s.FindButton("resume-btn").OnClick(ScriptCallback(this.onResume));
 		s.FindButton("restart-btn").OnClick(ScriptCallback(this.onRestartRun));
 		s.FindButton("courses-btn").OnClick(ScriptCallback(this.onCourses));
@@ -230,7 +230,7 @@ class Game
 		resetRun();
 		// The controls, keyboard and pad, along the bottom for the first seconds of the course
 		// (and always in the pause menu).
-		View controls = Ui.Find("hud-controls");
+		UIView controls = Ui.Find("hud-controls");
 		controls.SetVisible(true);
 		controls.SetOpacity(0.0f);
 		controls.FadeTo(1.0f, 0.3f);
@@ -332,7 +332,7 @@ class Game
 		m_missed += 1;
 		m_penalty += kMissPenalty;
 		m_flash = 1.2f;
-		View penalty = Ui.Find("hud-penalty");
+		UIView penalty = Ui.Find("hud-penalty");
 		penalty.SetVisible(true);
 		showGates();
 	}
@@ -401,7 +401,7 @@ class Game
 		{
 			return;
 		}
-		Label gap = Ui.FindLabel("hud-avalanche");
+		UILabel gap = Ui.FindLabel("hud-avalanche");
 		gap.SetText("" + metres + " m");
 		if (metres < 15)
 		{
@@ -461,7 +461,7 @@ class Game
 		{
 			m_combo += 1;
 		}
-		View combo = Ui.Find("hud-combo");
+		UIView combo = Ui.Find("hud-combo");
 		Ui.FindLabel("hud-combo").SetText("Combo x" + m_combo);
 		combo.SetVisible(true);
 	}
@@ -479,7 +479,7 @@ class Game
 
 	private void showTrick(string name, string points)
 	{
-		Label trick = Ui.FindLabel("hud-trick");
+		UILabel trick = Ui.FindLabel("hud-trick");
 		trick.SetText(points == "" ? name : name + "   " + points);
 		trick.SetVisible(true);
 		trick.SetOpacity(0.0f);
@@ -673,7 +673,7 @@ class Game
 				key = "bonus";
 				value = "+" + timeBonus(total);
 			}
-			View row = Ui.Find("row-" + key);
+			UIView row = Ui.Find("row-" + key);
 			row.SetVisible(true);
 			Ui.FindLabel("value-" + key).SetText(value);
 			if (!quiet)
@@ -701,7 +701,7 @@ class Game
 			}
 			else
 			{
-				View disc = Ui.Find("medal-" + medal);
+				UIView disc = Ui.Find("medal-" + medal);
 				disc.SetVisible(true);
 				if (!quiet)
 				{

@@ -155,7 +155,7 @@ class Guard
 		board.Visible = shown;
 		if (!shown)
 			return;
-		ViewGroup panel = board.Root;
+		UIViewGroup panel = board.Root;
 		panel.FindProgressBar("meter").SetValue(m_state == kChase ? 1.0f : awareness);
 		panel.FindLabel("mark").SetText(m_state == kChase ? "!" : "?");
 	}

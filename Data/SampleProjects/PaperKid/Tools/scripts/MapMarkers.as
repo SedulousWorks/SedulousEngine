@@ -29,7 +29,7 @@ class MapMarkers
 		}
 		for (uint i = 0; i < m_zones.length(); i++)
 		{
-			View dot = Ui.Find("map-sub-" + i);
+			UIView dot = Ui.Find("map-sub-" + i);
 			if (!dot.IsValid)
 			{
 				continue;
@@ -42,7 +42,7 @@ class MapMarkers
 		{
 			return;
 		}
-		View arrow = Ui.Find("map-bike");
+		UIView arrow = Ui.Find("map-bike");
 		if (!arrow.IsValid)
 		{
 			return;
@@ -68,7 +68,7 @@ class MapMarkers
 		for (uint i = 0; i < zones.length() && i < kDots; i++)
 		{
 			m_zones.insertLast(zones[i]);
-			View dot = Ui.Find("map-sub-" + i);
+			UIView dot = Ui.Find("map-sub-" + i);
 			if (dot.IsValid)
 			{
 				place(dot, zones[i].GetWorldPosition(), 12.0f, 12.0f);
@@ -78,7 +78,7 @@ class MapMarkers
 	}
 
 	// Centre a marker of the given pixel size on a world position.
-	private void place(View marker, Float3 world, float width, float height)
+	private void place(UIView marker, Float3 world, float width, float height)
 	{
 		Float3 c = self.GetLocalTransform().Position;
 		float u = ((world.X - c.X) / span + 0.5f) * mapSize;

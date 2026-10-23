@@ -351,7 +351,7 @@ static class UiHandleTests
 		Test.Assert(UiHandles.Count == 0, "the handlers die with the view");
 	}
 
-	/// A card is a ContentButton (a picture and labels as its content): the Button handle covers
+	/// A card is a ContentButton (a picture and labels as its content): the UIButton handle covers
 	/// it, its click runs the script's handler, and a label inside its content is found from the
 	/// screen.
 	[Test]

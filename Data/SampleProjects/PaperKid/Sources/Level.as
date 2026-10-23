@@ -135,7 +135,7 @@ class Level
 			Audio.PlayOneShot(kHurrySound, AudioBus::Effects);
 			Audio.SetVoicePitch(Audio.MusicVoice(), kHurryMusicRate, kHurryMusicEase);
 		}
-		Label time = Ui.FindLabel("hud-time");
+		UILabel time = Ui.FindLabel("hud-time");
 		if (m_timeLeft > kTicksFrom)
 		{
 			time.SetOpacity(1.0f);

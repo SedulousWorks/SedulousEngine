@@ -141,7 +141,7 @@ class Game
 		m_delivered += 1;
 		m_score += points;
 		Ui.FindLabel("hud-score").SetText("" + m_score);
-		Label pop = Ui.FindLabel("hud-pop");
+		UILabel pop = Ui.FindLabel("hud-pop");
 		pop.SetText("+" + points);
 		pop.SetOpacity(1.0f);
 		pop.SetTranslation(kPopX, kPopY);
@@ -161,7 +161,7 @@ class Game
 		Input.Rumble(0.3f, 0.6f, 0.45f); // the cheer of a cleared block
 		Audio.StopMusic(1.2f);
 		Audio.PlayOneShot(kClearedFanfare, AudioBus::Music);
-		Label banner = Ui.FindLabel("hud-banner");
+		UILabel banner = Ui.FindLabel("hud-banner");
 		banner.SetOpacity(0.0f);
 		banner.SetVisible(true);
 	}
@@ -178,7 +178,7 @@ class Game
 		eased = 1.0f - (1.0f - eased) * (1.0f - eased);
 		Run.TimeScale = 1.0f + (kCelebrateSlowest - 1.0f) * eased;
 
-		Label banner = Ui.FindLabel("hud-banner");
+		UILabel banner = Ui.FindLabel("hud-banner");
 		float drop = m_celebrated / kBannerDrop;
 		if (drop > 1.0f)
 		{
@@ -203,10 +203,10 @@ class Game
 		m_score += bonus;
 		m_banked = m_score;
 		Ui.FindLabel("hud-score").SetText("" + m_score);
-		Screen s = Ui.Push(kClearedDoc);
+		UIScreen s = Ui.Push(kClearedDoc);
 		s.FindLabel("cleared-summary").SetText("" + m_delivered + " delivered, " + earned + " points + "
 											   + bonus + " time bonus");
-		Button next = s.FindButton("continue-btn");
+		UIButton next = s.FindButton("continue-btn");
 		if (m_level + 1 >= int(m_levels.length()))
 		{
 			next.SetText("Finish");
@@ -232,7 +232,7 @@ class Game
 			showGameOver(false);
 			return;
 		}
-		Screen s = Ui.Push(kFailedDoc);
+		UIScreen s = Ui.Push(kFailedDoc);
 		s.FindLabel("failed-reason").SetText(reason == 0 ? "Out of time" : "Out of papers");
 		s.FindLabel("failed-lives").SetText(m_lives == 1 ? "1 life left" : "" + m_lives + " lives left");
 		s.FindButton("retry-btn").OnClick(ScriptCallback(this.onRetry));
@@ -283,7 +283,7 @@ class Game
 	{
 		click();
 		m_settingsFrom = m_phase;
-		Screen s = Ui.Push(kSettingsDoc);
+		UIScreen s = Ui.Push(kSettingsDoc);
 		bindVolume(s, "master", AudioBus::Master, ScriptCallback(this.onMasterChanged));
 		bindVolume(s, "music", AudioBus::Music, ScriptCallback(this.onMusicChanged));
 		bindVolume(s, "effects", AudioBus::Effects, ScriptCallback(this.onEffectsChanged));
@@ -349,7 +349,7 @@ class Game
 	private void pause()
 	{
 		Run.TimeScale = 0.0f;
-		Screen s = Ui.Push(kPauseDoc);
+		UIScreen s = Ui.Push(kPauseDoc);
 		s.FindButton("resume-btn").OnClick(ScriptCallback(this.onResume));
 		s.FindButton("restart-btn").OnClick(ScriptCallback(this.onRetry));
 		s.FindButton("settings-btn").OnClick(ScriptCallback(this.onSettings));
@@ -370,7 +370,7 @@ class Game
 			return;
 		}
 		m_pop -= dt;
-		Label pop = Ui.FindLabel("hud-pop");
+		UILabel pop = Ui.FindLabel("hud-pop");
 		if (!pop.IsValid)
 		{
 			m_pop = 0.0f;
@@ -387,9 +387,9 @@ class Game
 	}
 
 	// A volume row: its slider at the bus's level, its readout, and the handler.
-	private void bindVolume(Screen s, string row, AudioBus bus, ScriptCallback@ handler)
+	private void bindVolume(UIScreen s, string row, AudioBus bus, ScriptCallback@ handler)
 	{
-		Slider slider = s.FindSlider(row + "-slider");
+		UISlider slider = s.FindSlider(row + "-slider");
 		slider.SetValue(Audio.BusVolume(bus));
 		showVolume(row, slider.Value);
 		slider.OnChanged(handler);
@@ -422,7 +422,7 @@ class Game
 			Audio.PlayOneShot(kGameOverVoice, AudioBus::Effects);
 		}
 		m_endingIn = won ? 4.2f : 2.0f; // the ending's music once the fanfare or the voice is done
-		Screen s = Ui.Push(kGameOverDoc);
+		UIScreen s = Ui.Push(kGameOverDoc);
 		s.FindLabel("over-title").SetText(won ? "Route complete!" : "Game over");
 		s.FindLabel("over-score").SetText("Score " + m_score);
 		s.FindLabel("over-reached").SetText(won ? "Every block delivered"
@@ -437,7 +437,7 @@ class Game
 		m_endingIn = -1.0f;
 		Audio.PlayMusic(kTitleMusic, 0.8f, kMusicVolume);
 		Ui.Clear();
-		Screen s = Ui.Push(kTitleDoc);
+		UIScreen s = Ui.Push(kTitleDoc);
 		s.FindButton("play-btn").OnClick(ScriptCallback(this.onNewGame));
 		s.FindButton("settings-btn").OnClick(ScriptCallback(this.onSettings));
 		s.FindButton("quit-btn").OnClick(ScriptCallback(this.onQuit));

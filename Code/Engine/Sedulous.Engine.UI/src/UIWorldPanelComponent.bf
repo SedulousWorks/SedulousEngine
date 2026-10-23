@@ -59,7 +59,7 @@ struct UIWorldPanelComponent : ISerializable, IComponentResources
 
 	public this() {}
 
-	/// The instantiated tree as a script container, `Root` in a script: the same ViewGroup
+	/// The instantiated tree as a script container, `Root` in a script: the same UIViewGroup
 	/// handle `Ui.Root` gives the screen tier, so the same finders reach inside, and a meter
 	/// over a guard's head is `UIBillboardComponent::of(guard).Root.FindProgressBar("meter")`. A
 	/// null but valid handle until the tree is built, or when its root is a single control

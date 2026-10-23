@@ -64,7 +64,7 @@ class Game
 		m_paused = false;
 		Run.TimeScale = 0.0f; // whatever is behind the title holds still
 		Ui.Clear();
-		Screen s = Ui.Push(kTitleDoc);
+		UIScreen s = Ui.Push(kTitleDoc);
 		s.FindButton("play-btn").OnClick(ScriptCallback(this.onPalace));
 		s.FindButton("canal-btn").OnClick(ScriptCallback(this.onCanal));
 		s.FindButton("solo-btn").OnClick(ScriptCallback(this.onSolo));
@@ -119,7 +119,7 @@ class Game
 	private void onJoin()
 	{
 		sound(kClick);
-		TextBox box = Ui.FindTextBox("address");
+		UITextBox box = Ui.FindTextBox("address");
 		m_address = (box.IsValid && box.Text.length() > 0) ? box.Text : "127.0.0.1";
 		m_mode = kJoining;
 		startRound();
@@ -150,7 +150,7 @@ class Game
 		Ui.Push(kHudDoc);
 		Ui.FindLabel("hud-target").SetText("");
 		Ui.FindLabel("hud-score").SetText("Points 0");
-		View controls = Ui.Find("hud-controls");
+		UIView controls = Ui.Find("hud-controls");
 		controls.SetVisible(true);
 		controls.SetOpacity(0.0f);
 		controls.FadeTo(1.0f, 0.3f);
@@ -198,7 +198,7 @@ class Game
 	{
 		if (!m_inRound)
 			return;
-		Label mark = Ui.FindLabel("hud-target");
+		UILabel mark = Ui.FindLabel("hud-target");
 		mark.SetText(costumeName(int(hud.Z)));
 		mark.SetTextColor(costumeColour(int(hud.Z)));
 		Ui.FindLabel("hud-score").SetText("Points " + int(hud.X));
@@ -262,7 +262,7 @@ class Game
 		if (scores.Y > scores.X) ++rank;
 		if (scores.Z > scores.X) ++rank;
 		if (scores.W > scores.X) ++rank;
-		Screen s = Ui.Push(kResultsDoc);
+		UIScreen s = Ui.Push(kResultsDoc);
 		s.FindLabel("res-title").SetText(rank == 1 ? "The ball is yours" : "The music stops");
 		s.FindLabel("res-you").SetText("You came " + place(rank) + " with " + you + " points");
 		s.FindLabel("res-0").SetText("You        " + you);
@@ -290,7 +290,7 @@ class Game
 		holdStill();
 		m_controlsShow = 0.0f;
 		Ui.Find("hud-controls").SetVisible(false); // the menu shows them itself
-		Screen s = Ui.Push(kPauseDoc);
+		UIScreen s = Ui.Push(kPauseDoc);
 		s.FindButton("resume-btn").OnClick(ScriptCallback(this.onResume));
 		s.FindButton("restart-btn").OnClick(ScriptCallback(this.onAgain));
 		s.FindButton("restart-btn").SetVisible(m_mode != kJoining); // the host's to start over
@@ -369,7 +369,7 @@ class Game
 
 	private void note(string text)
 	{
-		Label label = Ui.FindLabel("hud-note");
+		UILabel label = Ui.FindLabel("hud-note");
 		label.SetText(text);
 		label.SetOpacity(1.0f);
 		label.SetVisible(true);

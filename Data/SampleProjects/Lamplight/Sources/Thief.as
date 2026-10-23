@@ -98,7 +98,7 @@ class Thief
 	void onCheckpoint(Float3 at)
 	{
 		m_checkpoint = at;
-		Label note = Ui.FindLabel("hud-note");
+		UILabel note = Ui.FindLabel("hud-note");
 		if (note.IsValid)
 		{
 			note.SetText("Checkpoint");

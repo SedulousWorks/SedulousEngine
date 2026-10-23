@@ -110,14 +110,14 @@ class Door
 	{
 		if (show)
 		{
-			Label text = Ui.FindLabel("hud-prompt");
+			UILabel text = Ui.FindLabel("hud-prompt");
 			if (text.IsValid)
 			{
 				text.SetText(locked ? (m_picking ? "Picking the lock..." : "Hold Interact: pick the lock")
 				                    : (m_target != 0.0f ? "Interact: close the door" : "Interact: open the door"));
 			}
 			Ui.Find("hud-prompt-panel").SetVisible(true);
-			ProgressBar bar = Ui.FindProgressBar("hud-pick");
+			UIProgressBar bar = Ui.FindProgressBar("hud-pick");
 			if (bar.IsValid)
 			{
 				bar.SetVisible(m_picking);

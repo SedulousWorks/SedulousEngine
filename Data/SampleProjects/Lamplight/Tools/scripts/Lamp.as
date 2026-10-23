@@ -59,7 +59,7 @@ class Lamp
 	{
 		if (near)
 		{
-			Label text = Ui.FindLabel("hud-prompt");
+			UILabel text = Ui.FindLabel("hud-prompt");
 			if (text.IsValid)
 				text.SetText(lit ? "Interact: put out the lamp" : "Interact: light the lamp");
 			Ui.Find("hud-prompt-panel").SetVisible(true);
