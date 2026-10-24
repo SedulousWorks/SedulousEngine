@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
@@ -114,5 +115,29 @@ class DataModelTests
 		Test.Assert(model.TweenOwnerOf("x") == 0);
 		model.ClaimTween("x", 7);
 		Test.Assert(model.TweenOwnerOf("x") == 7);
+	}
+
+	/// A copy of a borrowed view (what Get hands out) holds the value, not where it was.
+	[Test]
+	public static void ACopyOfAReadHoldsTheValueItself()
+	{
+		let model = new DataModel();
+		defer model.ReleaseRef();
+		model.Set("volume", System.Variant.Create(0.5));
+		var four = System.Variant.Create(Float4(1.0f, 2.0f, 3.0f, 4.0f));
+		defer four.Dispose(); // the caller keeps what it gives the model
+		model.Set("big", four);
+		var small = CopyVariant(model.Get("volume"));
+		defer small.Dispose();
+		Test.Assert(small.Get<double>() == 0.5);
+		var wide = CopyVariant(model.Get("big"));
+		defer wide.Dispose();
+		var zero = System.Variant.Create(Float4(0.0f, 0.0f, 0.0f, 0.0f));
+		defer zero.Dispose();
+		model.Set("big", zero);
+		Test.Assert(wide.Get<Float4>().W == 4.0f, "its own copy, not a view of the model's");
+		var converted = ConvertVariant(model.Get("volume"), typeof(double));
+		defer converted.Dispose();
+		Test.Assert(converted.Get<double>() == 0.5);
 	}
 }

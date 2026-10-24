@@ -57,60 +57,6 @@ REFLECT_MEMBERS(Impostor, "rtti::gui::tests")
     builder.Creator();
 }
 
-TEST_CASE("elements: the registry takes a library's widgets and refuses what is not an element")
-{
-    RegisterGuiElements();
-    CHECK(ElementTypes::Find(u8"Button") == &Button::StaticType());
-    CHECK(ElementTypes::Find(u8"Panel") == &Panel::StaticType());
-
-    // A library's widget under its namespaced tag.
-    REQUIRE(ElementTypes::Register(HealthBar::StaticType()));
-    CHECK(ElementTypes::TagOf(HealthBar::StaticType()) == core::StringView(u8"game:HealthBar"));
-    CHECK(ElementTypes::Find(u8"game:HealthBar") == &HealthBar::StaticType());
-    CHECK(ElementTypes::Register(HealthBar::StaticType())); // again: already there, fine
-
-    // No creator, or another type's tag: refused, and the tag keeps its type.
-    CHECK_FALSE(ElementTypes::Register(Uncreatable::StaticType()));
-    CHECK(ElementTypes::Find(u8"Uncreatable") == nullptr);
-    CHECK_FALSE(ElementTypes::Register(Impostor::StaticType()));
-    CHECK(ElementTypes::Find(u8"Label") == &Label::StaticType());
-
-    // A library unloading takes its widgets out.
-    ElementTypes::Unregister(HealthBar::StaticType());
-    CHECK(ElementTypes::Find(u8"game:HealthBar") == nullptr);
-}
-
-TEST_CASE("elements: a GUI's element set decides what its markup may create")
-{
-    RegisterGuiElements();
-    REQUIRE(ElementTypes::Register(HealthBar::StaticType()));
-    const char8_t* markup = u8R"(<Panel><Label text="hp"/><game:HealthBar/><Hp/></Panel>)";
-
-    // Everything registered, a library's widget included; an unknown tag is left out.
-    {
-        const ElementSet all = ElementSet::All();
-        MarkupLoader loader(all, core::DefaultAllocator());
-        core::RefPtr<Node> root = loader.LoadFromString(core::StringView(markup));
-        REQUIRE(root);
-        REQUIRE(root->ChildCount() == 2u);
-        CHECK(core::Cast<HealthBar>(root->GetChildAt(1)) != nullptr);
-    }
-    // Only what the set allows, under its own aliases.
-    {
-        ElementSet limited = ElementSet::None();
-        limited.Allow(u8"Panel");
-        limited.Allow(u8"game:HealthBar");
-        limited.Alias(u8"Hp", u8"game:HealthBar");
-        MarkupLoader loader(limited, core::DefaultAllocator());
-        core::RefPtr<Node> root = loader.LoadFromString(core::StringView(markup));
-        REQUIRE(root);
-        REQUIRE(root->ChildCount() == 2u); // the Label is not allowed; Hp is a HealthBar
-        CHECK(core::Cast<HealthBar>(root->GetChildAt(0)) != nullptr);
-        CHECK(core::Cast<HealthBar>(root->GetChildAt(1)) != nullptr);
-    }
-    ElementTypes::Unregister(HealthBar::StaticType());
-}
-
 TEST_CASE("elements: a node adds children by tag through its GUI's set, from its own allocator")
 {
     core::RefPtr<SceneRoot> gui = MakeGui();

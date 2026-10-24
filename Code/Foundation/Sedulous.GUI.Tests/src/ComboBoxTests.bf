@@ -166,4 +166,37 @@ class ComboBoxTests
 		Test.Assert(Near(d.TopPopup.Position.X, 10.0f));
 		Test.Assert(Near(d.TopPopup.Position.Y, 46.0f)); // the box's bottom, in root units
 	}
+
+	[Test]
+	public static void NewItemsDropTheOldSelectionsTextTheSelectionBindsAndAPickReportsAChange()
+	{
+		let cb = new ComboBox();
+		defer cb.ReleaseRef();
+		cb.ItemsText = "Low|High";
+		cb.SelectedIndex = 1;
+		Test.Assert(cb.SelectedText == "High");
+		cb.ItemsText = "A|B|C";
+		Test.Assert(cb.SelectedIndex == -1);
+		Test.Assert(cb.SelectedText.Length == 0);
+
+		let root = SceneFixtures.NewScene(400.0f, 300.0f);
+		defer root.ReleaseRef();
+		let combo = MakeCombo(root);
+		defer combo.ReleaseRef();
+		let data = root.Context.Data;
+		data.Set("pick", System.Variant.Create((int32)1));
+		Test.Assert(combo.BindData("selected", root.Context.Data, "pick"));
+		root.Context.Update(SceneFixtures.Seconds(1.0 / 60.0));
+		Test.Assert(combo.SelectedIndex == 1); // the data's
+		int changes = 0;
+		combo.AddEventListener(.Changed, new [&] (e) => { ++changes; });
+		combo.SelectByUser(2);
+		root.Context.Update(SceneFixtures.Seconds(1.0 / 60.0));
+		Test.Assert(changes == 1);
+		let back = data.Get("pick");
+		Test.Assert(back.VariantType == typeof(int32));
+		Test.Assert(back.Get<int32>() == 2); // written back
+		combo.SelectedIndex = 0;
+		Test.Assert(changes == 1); // code's change is no user's
+	}
 }

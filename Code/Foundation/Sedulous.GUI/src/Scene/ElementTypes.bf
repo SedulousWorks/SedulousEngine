@@ -74,6 +74,35 @@ static class ElementTypes
 	}
 }
 
+static
+{
+	private static bool sGuiElementsRegistered = false;
+
+	/// Registers the GUI's own widgets as element types, once (again: nothing), so markup and
+	/// scripts can make them. A library registers its own beside this, at start-up.
+	public static void RegisterGuiElements()
+	{
+		if (sGuiElementsRegistered)
+			return;
+		sGuiElementsRegistered = true;
+		GuiTypeInfo[?] elements = .(
+			Label.StaticGuiType, Button.StaticGuiType, CheckBox.StaticGuiType,
+			RadioButton.StaticGuiType, Slider.StaticGuiType, ProgressBar.StaticGuiType,
+			TextField.StaticGuiType, Panel.StaticGuiType, ScrollView.StaticGuiType,
+			Sedulous.GUI.Image.StaticGuiType, ListBox.StaticGuiType, Window.StaticGuiType,
+			ComboBox.StaticGuiType, RichText.StaticGuiType, TextArea.StaticGuiType,
+			ToggleSwitch.StaticGuiType, Separator.StaticGuiType, Spacer.StaticGuiType,
+			NumberField.StaticGuiType, EditableLabel.StaticGuiType, Expander.StaticGuiType,
+			Tab.StaticGuiType, TabBar.StaticGuiType, TabPage.StaticGuiType,
+			TabView.StaticGuiType, Menu.StaticGuiType, MenuItem.StaticGuiType,
+			MenuSeparator.StaticGuiType, MenuBar.StaticGuiType, ScrollBar.StaticGuiType,
+			MessageBox.StaticGuiType, Splitter.StaticGuiType, ColorSwatch.StaticGuiType,
+			ColorPicker.StaticGuiType, ToastHost.StaticGuiType);
+		for (let type in elements)
+			ElementTypes.Register(type);
+	}
+}
+
 /// What one GUI may create: every registered element type, or only the tags it allows, under
 /// aliases of its own. A class: it owns its lists; Set copies another deeply.
 class ElementSet

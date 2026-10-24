@@ -987,4 +987,40 @@ class TabTests
 		Test.Assert(view.SelectedIndex == 0);
 		Test.Assert(changes == 2);
 	}
+
+	[Test]
+	public static void MarkupsPagesAreItsChildrenWithTitleIconAndClosableItsBarsSettingsAreAttributes()
+	{
+		RegisterGuiElements();
+		let elements = scope ElementSet();
+		let loader = scope MarkupLoader(elements);
+		let tree = loader.LoadFromString(
+			"<TabView close-display=\"hover\" reorderable=\"true\" selected=\"1\" list-display=\"always\" close-all=\"true\">\n" +
+			"    <TabPage title=\"General\"><Label text=\"one\"/></TabPage>\n" +
+			"    <TabPage title=\"Advanced\" closable=\"false\" icon=\"ui/icons/gear.png\"/>\n" +
+			"</TabView>");
+		Test.Assert(tree != null);
+		defer tree.ReleaseRef();
+		let view = tree as TabView;
+		Test.Assert(view != null);
+		Test.Assert(view.PageCount == 2);
+		Test.Assert(view.Bar.GetTab(0).Text == "General");
+		Test.Assert(!view.Bar.GetTab(1).Closable);
+		Test.Assert(view.Bar.GetTab(1).Icon == "ui/icons/gear.png");
+		Test.Assert(view.Bar.CloseDisplay == .Hover);
+		Test.Assert(view.Reorderable);
+		Test.Assert(view.SelectedIndex == 1);
+		Test.Assert(view.Bar.ListDisplay == .Always);
+		Test.Assert(view.ShowsCloseAll);
+
+		// A bar alone: markup's children are its tabs.
+		let barTree = loader.LoadFromString("<TabBar><Tab text=\"One\"/><Tab text=\"Two\" icon=\"a.png\"/></TabBar>");
+		Test.Assert(barTree != null);
+		defer barTree.ReleaseRef();
+		let bar = barTree as TabBar;
+		Test.Assert(bar != null);
+		Test.Assert(bar.TabCount == 2);
+		Test.Assert(bar.SelectedIndex == 0);
+		Test.Assert(bar.GetTab(1).Icon == "a.png");
+	}
 }

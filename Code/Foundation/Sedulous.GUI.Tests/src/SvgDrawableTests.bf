@@ -233,4 +233,56 @@ class SvgDrawableTests
 		Test.Assert(item.Icon != null);
 		Test.Assert(item.Icon is SvgDrawable);
 	}
+
+	[Test]
+	public static void AnInlineSvgAsASheetsBackgroundAnImagesSrcAndARichTextsIcon()
+	{
+		let pictures = scope SvgPictures();
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		root.EditLayoutStyle(scope (s) => { s.AlignItems = .Start; });
+		root.Context.ResourceProvider = pictures;
+		let panel = new Panel();
+		defer panel.ReleaseRef();
+		panel.AddClass("card");
+		root.AddChild(panel);
+		let styles = scope StyleManager();
+		styles.ResourceProvider = pictures;
+		WidgetFixtures.UseSheet(styles,
+			".card { background-image: url(\"data:image/svg+xml,<svg width='24' height='12'><rect width='24' height='12'" +
+			" fill='%23ff0000'/></svg>\"); }");
+		styles.ApplyTree(root);
+		Test.Assert(panel.Box.Layers.Count == 1);
+		Test.Assert(panel.Box.Layers[0].Svg != null);
+		Test.Assert(NodeFixtures.Near(panel.Box.Layers[0].Svg.Width, 24.0f));
+
+		let markup = scope String("<Image src=\"");
+		markup.Append(cBarPercent);
+		markup.Append("\"/>");
+		let image = MarkupFixtures.Load(markup);
+		Test.Assert(image != null);
+		defer image.ReleaseRef();
+		root.AddChild(image);
+		root.UpdateLayout();
+		Test.Assert(NodeFixtures.Near(image.Size.X, 24.0f));
+		Test.Assert(NodeFixtures.Near(image.Size.Y, 12.0f));
+		Test.Assert(pictures.Svgs == 0); // neither asked the provider for a file
+
+		let service = scope TrueTypeFontService();
+		TextFixtures.Load(service, "Roboto", TextFixtures.cRoboto);
+		let text = scope Text();
+		text.FontService = service;
+		text.Font = service.GetFont("Roboto", 16.0f);
+		text.SetResourceProvider(pictures);
+		let rich = scope String("[icon=");
+		rich.Append(cBarPercent);
+		rich.Append("]");
+		text.SetMarkup(rich);
+		let ctx = scope VGContext();
+		let dc = scope DrawContext(ctx);
+		text.Draw(dc, Float2(0.0f, 0.0f));
+		Test.Assert(ctx.GetBatch().Vertices.Count > 0);
+		Test.Assert(AllRed(ctx));
+		Test.Assert(pictures.Svgs == 0);
+	}
 }

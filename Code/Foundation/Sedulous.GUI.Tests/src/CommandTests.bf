@@ -223,4 +223,25 @@ class CommandTests
 		Test.Assert(check.Checked);
 		Test.Assert(item.Checked); // the menu item follows the same command
 	}
+
+	[Test]
+	public static void MarkupBindsAControlToACommandByIdBeforeItIsAttached()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		root.OnCommand("play", new (command) => { });
+		root.Context.DefineCommand("play").Enabled = false;
+		let tree = MarkupFixtures.Load("<Button command=\"play\" text=\"Play\"/>");
+		Test.Assert(tree != null);
+		defer tree.ReleaseRef();
+		let play = tree as Button;
+		Test.Assert(play != null);
+		Test.Assert(play.Command == "play");
+		root.AddChild(tree); // joining the GUI reaches its binding
+		root.Context.Update(SceneFixtures.Frame);
+		Test.Assert(!play.Enabled);
+		root.Context.DefineCommand("play").Enabled = true;
+		root.Context.Update(SceneFixtures.Frame);
+		Test.Assert(play.Enabled);
+	}
 }

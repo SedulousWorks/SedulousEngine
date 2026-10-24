@@ -146,4 +146,27 @@ class ContextTests
 		Test.Assert(gui.RootCount == 1);
 		Test.Assert(gui.ActiveRoot == menu);
 	}
+
+	[Test]
+	public static void TwoRootsShareDataOneFlushAFrameRunsABindingInEither()
+	{
+		let gui = new GUIContext();
+		defer gui.ReleaseRef();
+		let hud = new SceneRoot(gui);
+		defer hud.ReleaseRef();
+		let menu = new SceneRoot(gui);
+		defer menu.ReleaseRef();
+		hud.Size = .(200.0f, 200.0f);
+		menu.Size = .(200.0f, 200.0f);
+		Test.Assert(gui.RootCount == 2);
+		Test.Assert(hud.Context == menu.Context);
+		let score = new Label();
+		defer score.ReleaseRef();
+		hud.AddChild(score);
+		Test.Assert(score.BindProperty("text", new () => { return gui.Data.Get("score"); }));
+		menu.Context.Data.Set("score", System.Variant.Create((int32)7)); // written from the other root
+		gui.Update(SceneFixtures.Frame);
+		Test.Assert(score.Text == "7");
+		Test.Assert(gui.LastBindingCount == 1);
+	}
 }

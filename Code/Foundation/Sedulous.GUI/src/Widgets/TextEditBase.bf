@@ -573,11 +573,11 @@ abstract class TextEditBase : UIWidget
 		{
 			mEditMenu = new Menu();
 			mEditMenu.SetAutoWidth(true);
-			AddEditItem("Cut", .Cut);
-			AddEditItem("Copy", .Copy);
-			AddEditItem("Paste", .Paste);
+			AddEditItem("Cut", "gui.cut", .Cut);
+			AddEditItem("Copy", "gui.copy", .Copy);
+			AddEditItem("Paste", "gui.paste", .Paste);
 			mEditMenu.AddSeparator();
-			AddEditItem("Select all", .SelectAll);
+			AddEditItem("Select all", "gui.select-all", .SelectAll);
 		}
 		let selected = HasSelection && mModel.CopyAllowed;
 		let clipboard = Clipboard;
@@ -812,9 +812,12 @@ abstract class TextEditBase : UIWidget
 
 	// === The model's changes ===
 
-	private void AddEditItem(StringView label, TextEditCommand command)
+	// An edit item, its label translated (`key`: gui.cut, ...) where the GUI's tables have it, else
+	// `label`, English.
+	private void AddEditItem(StringView label, StringView key, TextEditCommand command)
 	{
 		let item = mEditMenu.AddItem(label, new () => { RunEdit(command); });
+		item.BindTranslation("text", key, null, null, Span<Node.TranslationArgument>(), label);
 		mContextItems.Add(item);
 	}
 

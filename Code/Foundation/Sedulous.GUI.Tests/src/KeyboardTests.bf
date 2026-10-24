@@ -426,4 +426,23 @@ class KeyboardTests
 		Test.Assert(taken[3] == ParseKeystroke("pad-north").Value);
 		Test.Assert(cancels == 0);
 	}
+
+	[Test]
+	public static void TabIndexComesFromASheetAndFromMarkup()
+	{
+		let bed = scope KeyBed();
+		let a = bed.Add("a");
+		let b = bed.Add("b");
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, "#a { tab-index: -1; } #b { tab-index: 3; }");
+		styles.ApplyTree(bed.Root);
+		Test.Assert(a.TabIndex == -1);
+		Test.Assert(b.TabIndex == 3);
+
+		let tree = MarkupFixtures.Load("<Panel><Button id=\"x\" tab-index=\"5\"/></Panel>");
+		Test.Assert(tree != null);
+		defer tree.ReleaseRef();
+		Test.Assert(tree.ChildCount == 1);
+		Test.Assert(tree.GetChildAt(0).TabIndex == 5);
+	}
 }

@@ -290,4 +290,28 @@ class MessageBoxTests
 		Test.Assert(dialog.ResultName == "discard");
 		Test.Assert(!standard); // no standard result
 	}
+
+	[Test]
+	public static void ItsButtonsLabelsFollowTheGUIsLanguageWhereATableHasThemElseEnglish()
+	{
+		let table = scope Sedulous.I18N.StringTable();
+		Test.Assert(table.Set("gui.ok", "pt", "Confirmar"));
+		let loc = scope Sedulous.I18N.Localization();
+		loc.AddTable(table);
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		root.Context.Localization = loc;
+		defer { root.Context.Localization = null; }
+		let @box = new MessageBox();
+		defer @box.ReleaseRef();
+		root.AddChild(@box);
+		@box.Configure("?", "Proceed?", .OkCancel);
+		root.Context.Update(SceneFixtures.Seconds(1.0 / 60.0));
+		Test.Assert(@box.ButtonAt(1).Text == "OK"); // English: no table has it in English
+		Test.Assert(@box.ButtonAt(0).Text == "Cancel");
+		loc.SetLanguage("pt");
+		root.Context.Update(SceneFixtures.Seconds(1.0 / 60.0));
+		Test.Assert(@box.ButtonAt(1).Text == "Confirmar");
+		Test.Assert(@box.ButtonAt(0).Text == "Cancel"); // no table names it: English
+	}
 }

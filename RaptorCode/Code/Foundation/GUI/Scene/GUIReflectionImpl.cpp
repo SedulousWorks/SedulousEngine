@@ -268,115 +268,6 @@ namespace foundation::gui
 
     // === Bindings ===
 
-    namespace
-    {
-        // The reflected property named `name` on `type` or a base, by its own name or the CSS name
-        // markup writes it by (`aria-label` for `ariaLabel`), or null.
-        const PropertyInfo* FindReflectedProperty(const TypeInfo* type, StringView name)
-        {
-            for (; type != nullptr; type = type->base)
-                for (usize i = 0; i < PropertyCount(*type); ++i)
-                {
-                    const PropertyInfo& property = PropertyAt(*type, i);
-                    if (StringView(reinterpret_cast<const utf8char*>(property.name)) == name)
-                        return &property;
-                    if (const Attribute* css = FindAttribute(property, u8"css"))
-                        if (const core::String* cssName = css->value.TryGet<core::String>(); cssName != nullptr && cssName->AsView() == name)
-                            return &property;
-                }
-            return nullptr;
-        }
-    }
-
-    bool Node::BindProperty(StringView name, core::Function<core::Variant()> expression)
-    {
-        const PropertyInfo* property = FindReflectedProperty(GetType(), name);
-        if (property == nullptr || property->type == nullptr ||
-            (static_cast<u32>(property->flags) & static_cast<u32>(PropertyFlags::ReadOnly)) != 0)
-            return false;
-        // Bound again, a translation of it ends (BindTranslation records its own after this).
-        for (usize i = 0; i < m_translations.Size(); ++i)
-            if (FindReflectedProperty(GetType(), m_translations[i].Property.AsView()) == property)
-            {
-                m_translations.RemoveAt(i);
-                break;
-            }
-        BindFor(property, false, [this, property, expression = core::Move(expression)]() mutable
-             {
-                 const core::Variant value = ConvertVariant(expression(), *property->type);
-                 // The write is not a read: setting a property must not make this binding follow it.
-                 if (!value.IsEmpty())
-                     Untracked([&] { (void)SetProperty(*property, Instance::From(this), value); });
-             });
-        return true;
-    }
-
-    bool Node::BindTranslation(StringView property, StringView key, RefPtr<DataModel> data, Optional<TranslationArgument> count,
-                               Array<TranslationArgument> args, StringView fallback)
-    {
-        const PropertyInfo* info = FindReflectedProperty(GetType(), property);
-        if (info == nullptr || FindAttribute(*info, u8"translatable") == nullptr)
-            return false;
-        const core::String keyText(key);
-        const core::String fallbackText(fallback);
-        const bool bound = BindProperty(property,
-                            [this, keyText, fallbackText, data = core::Move(data), count = core::Move(count), args = core::Move(args)]() -> core::Variant
-                            {
-                                // The GUI it is in (a binding made before it joins one reruns when it does).
-                                SceneRoot* root = ObserveSceneRoot();
-                                foundation::i18n::Localization* loc = root != nullptr ? root->GetContext().GetLocalization() : nullptr;
-                                if (root != nullptr)
-                                    root->GetContext().TrackLanguage();
-                                if (loc == nullptr || !IsAutoTranslating())
-                                    return core::Variant::From<core::String>(fallbackText.Size() != 0 ? fallbackText : keyText);
-                                if (fallbackText.Size() != 0 && !loc->Has(keyText.AsView()))
-                                    return core::Variant::From<core::String>(fallbackText); // no table names it: the widget's own
-                                // Arguments as text, a named one read from the GUI's data (followed).
-                                const auto value = [&data](const TranslationArgument& a) -> core::Variant
-                                {
-                                    if (a.IsName && data)
-                                        return data->Get(a.Text.AsView());
-                                    return core::Variant::From<core::String>(a.Text);
-                                };
-                                Array<core::Variant> values;
-                                i64 n = 0;
-                                if (count.HasValue())
-                                {
-                                    const core::Variant c = ConvertVariant(value(count.Value()), TypeOf<i64>());
-                                    if (const i64* v = c.TryGet<i64>())
-                                        n = *v;
-                                    values.PushBack(core::Variant::From<i64>(n));
-                                }
-                                for (const TranslationArgument& a : args)
-                                    values.PushBack(core::Variant::From<core::String>(FormatVariant(value(a))));
-                                const Span<const core::Variant> span(values.Data(), values.Size());
-                                if (count.HasValue())
-                                    return core::Variant::From<core::String>(loc->FormatPlural(keyText.AsView(), n, span));
-                                if (!args.IsEmpty())
-                                    return core::Variant::From<core::String>(loc->Format(keyText.AsView(), span));
-                                return core::Variant::From<core::String>(core::String(loc->Text(keyText.AsView())));
-                            });
-        if (!bound)
-            return false;
-        // Recorded by the property's own name (the inspector asks by it), after the binding, which
-        // ends any translation the property had.
-        m_translations.PushBack(TranslatedProperty{core::String(StringView(reinterpret_cast<const utf8char*>(info->name))), keyText});
-        return true;
-    }
-
-    bool Node::BindPropertyBack(StringView name, core::Function<void(const core::Variant&)> write)
-    {
-        const PropertyInfo* property = FindReflectedProperty(GetType(), name);
-        if (property == nullptr || FindAttribute(*property, u8"twoWay") == nullptr)
-            return false;
-        BindFor(property, true, [this, property, write = core::Move(write)]() mutable
-             {
-                 const core::Variant value = GetProperty(*property, Instance::From(this)); // followed
-                 Untracked([&] { write(value); });
-             });
-        return true;
-    }
-
     bool Node::BindScript(StringView property, RefPtr<foundation::script::IScriptDelegate> expression)
     {
         if (!expression)
@@ -612,21 +503,10 @@ namespace foundation::gui
     {
         static const bool once = []()
         {
+            // The rest: RegisterGuiElements in Code/Foundation/Sedulous.GUI/src/Scene/ElementTypes.bf.
             const TypeInfo* const kLabElements[] = {
-                &Label::StaticType(),        &Button::StaticType(),       &CheckBox::StaticType(),
-                &RadioButton::StaticType(),  &Slider::StaticType(),       &ProgressBar::StaticType(),
-                &TextField::StaticType(),    &Panel::StaticType(),        &ScrollView::StaticType(),
-                &Image::StaticType(),        &ListBox::StaticType(),      &Window::StaticType(),
-                &ComboBox::StaticType(),     &RichText::StaticType(),     &TextArea::StaticType(),
-                &ToggleSwitch::StaticType(),   &Separator::StaticType(),    &Spacer::StaticType(),
-                &NumberField::StaticType(),    &EditableLabel::StaticType(), &Expander::StaticType(),
-                &Tab::StaticType(),            &TabBar::StaticType(),        &TabPage::StaticType(),
-                &TabView::StaticType(),        &ListView::StaticType(),      &Menu::StaticType(),
-                &MenuItem::StaticType(),       &MenuSeparator::StaticType(), &MenuBar::StaticType(),
-                &TreeView::StaticType(),       &TreeItem::StaticType(),      &TableView::StaticType(),
-                &TableItem::StaticType(),      &ScrollBar::StaticType(),     &MessageBox::StaticType(),
-                &Splitter::StaticType(),       &ColorSwatch::StaticType(),   &ColorPicker::StaticType(),
-                &ToastHost::StaticType(),
+                &ListView::StaticType(),       &TreeView::StaticType(),      &TreeItem::StaticType(),
+                &TableView::StaticType(),      &TableItem::StaticType(),
             };
             for (const TypeInfo* type : kLabElements)
                 (void)ElementTypes::Register(*type);

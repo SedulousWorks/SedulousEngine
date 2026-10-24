@@ -622,4 +622,141 @@ class MenuTests
 		Test.Assert(!root.HasLayoutDirtyDescendant);
 		Test.Assert(!bar.IsLayoutDirty);
 	}
+
+	[Test]
+	public static void InMarkupItemsSeparatorsAndNestedMenusAnItemReportsActivate()
+	{
+		RegisterGuiElements();
+		let root = SceneFixtures.NewScene(600.0f, 400.0f);
+		defer root.ReleaseRef();
+		let loader = scope MarkupLoader(root.ElementSet);
+		let page = loader.LoadFromString(
+			"<Panel width=\"600\" height=\"400\">\n" +
+			"    <Label id=\"target\" text=\"Right-click me\" width=\"200\" height=\"40\" context-menu=\"ctx\"/>\n" +
+			"    <Menu id=\"ctx\">\n" +
+			"        <MenuItem id=\"cut\" text=\"Cut\" shortcut=\"Ctrl+X\"/>\n" +
+			"        <MenuItem id=\"grid\" text=\"Show grid\" checkable=\"true\" checked=\"true\"/>\n" +
+			"        <MenuSeparator/>\n" +
+			"        <Menu text=\"More\">\n" +
+			"            <MenuItem id=\"rename\" text=\"Rename\"/>\n" +
+			"        </Menu>\n" +
+			"    </Menu>\n" +
+			"</Panel>");
+		Test.Assert(page != null);
+		defer page.ReleaseRef();
+		root.AddChild(page);
+		root.UpdateLayout();
+
+		let menu = page.GetChildAt(1) as Menu;
+		Test.Assert(menu != null);
+		Test.Assert(!menu.Displayed); // waits in the page, unseen
+		Test.Assert(menu.RowCount == 4); // cut, grid, the separator, More
+		Test.Assert(menu.ItemCount == 3);
+		let cut = menu.GetChildAt(0) as MenuItem;
+		Test.Assert(cut != null);
+		Test.Assert(cut.Text == "Cut");
+		Test.Assert(cut.Shortcut == "Ctrl+X");
+		let grid = menu.GetChildAt(1) as MenuItem;
+		Test.Assert(grid != null);
+		Test.Assert(grid.Checkable);
+		Test.Assert(grid.Checked);
+
+		// A context menu asked for over the label opens it at the pointer.
+		int activations = 0;
+		cut.AddEventListener(.ItemActivate, new [&] (e) => { ++activations; });
+		// It bubbles through the menu to what opened it, and on up: one listener hears every item.
+		Node heardFrom = null;
+		page.AddEventListener(.ItemActivate, new [&] (e) => { heardFrom = e.Target; });
+		let d = root.EventDispatcher;
+		d.InjectMouseDown(.(50.0f, 20.0f), .Right);
+		d.InjectMouseUp(.(50.0f, 20.0f), .Right);
+		Test.Assert(menu.IsOpen);
+		Test.Assert(menu.Displayed);
+		root.UpdateLayout();
+		let at = cut.ScreenBounds;
+		d.InjectMouseMove(.(at.X + 10.0f, at.Y + at.Height * 0.5f));
+		d.InjectMouseDown(.(at.X + 10.0f, at.Y + at.Height * 0.5f), .Left);
+		d.InjectMouseUp(.(at.X + 10.0f, at.Y + at.Height * 0.5f), .Left);
+		Test.Assert(activations == 1);
+		Test.Assert(heardFrom == cut);
+		Test.Assert(!menu.IsOpen);
+		// Closed, it left the page; the label keeps it, and it opens again.
+		d.InjectMouseDown(.(50.0f, 20.0f), .Right);
+		d.InjectMouseUp(.(50.0f, 20.0f), .Right);
+		Test.Assert(menu.IsOpen);
+	}
+
+	[Test]
+	public static void AMenuBarInMarkupHasItsMenusForChildrenEachAButton()
+	{
+		let tree = MarkupFixtures.Load(
+			"<MenuBar>\n" +
+			"    <Menu text=\"File\"><MenuItem text=\"Open\"/><MenuItem text=\"Save\"/></Menu>\n" +
+			"    <Menu text=\"Edit\"><MenuItem text=\"Undo\"/></Menu>\n" +
+			"</MenuBar>");
+		Test.Assert(tree != null);
+		defer tree.ReleaseRef();
+		let bar = tree as MenuBar;
+		Test.Assert(bar != null);
+		Test.Assert(bar.MenuCount == 2);
+		Test.Assert(bar.ButtonAt(0).Text == "File");
+		Test.Assert(bar.ButtonAt(1).Text == "Edit");
+		Test.Assert(bar.MenuAt(0).ItemCount == 2);
+	}
+
+	[Test]
+	public static void AMarkupContextMenuOpensAgainAfterAnItemIsPickedAndAfterAPressOutside()
+	{
+		RegisterGuiElements();
+		let root = SceneFixtures.NewScene(600.0f, 400.0f);
+		defer root.ReleaseRef();
+		let loader = scope MarkupLoader(root.ElementSet);
+		let page = loader.LoadFromString(
+			"<Panel width=\"600\" height=\"400\">\n" +
+			"    <Panel width=\"400\" height=\"90\" context-menu=\"ctx\" display=\"stack\"><Label text=\"Right-click\" width=\"400\" height=\"90\"/></Panel>\n" +
+			"    <Menu id=\"ctx\"><MenuItem text=\"Copy\"/><MenuItem text=\"Paste\"/></Menu>\n" +
+			"</Panel>");
+		Test.Assert(page != null);
+		defer page.ReleaseRef();
+		root.AddChild(page);
+		root.UpdateLayout();
+		let menu = page.GetChildAt(1) as Menu;
+		Test.Assert(menu != null);
+		// As the sandbox's script does: a listener up the page takes the bubbling activate.
+		page.AddEventListener(.ItemActivate, new (e) => { e.Handled = true; });
+		let d = root.EventDispatcher;
+		void RightClick(Float2 at)
+		{
+			d.InjectMouseMove(at);
+			d.InjectMouseDown(at, .Right);
+			d.InjectMouseUp(at, .Right);
+			root.Context.Update(SceneFixtures.Frame);
+		}
+		void Click(Float2 at)
+		{
+			d.InjectMouseMove(at);
+			d.InjectMouseDown(at, .Left);
+			d.InjectMouseUp(at, .Left);
+			root.Context.Update(SceneFixtures.Frame);
+		}
+		RightClick(.(100.0f, 40.0f));
+		Test.Assert(menu.IsOpen);
+		let copy = menu.GetChildAt(0).ScreenBounds;
+		Click(.(copy.X + 10.0f, copy.Y + copy.Height * 0.5f));
+		Test.Assert(!menu.IsOpen);
+		// The style pass writes the attribute again at every restyle (as the sandbox's does).
+		(page.GetChildAt(0) as UIWidget).ContextMenuId = "ctx";
+		RightClick(.(200.0f, 40.0f));
+		Test.Assert(menu.IsOpen);
+		root.UpdateLayout();
+		Test.Assert(menu.Displayed);
+		Test.Assert(menu.Visible);
+		Test.Assert(menu.Size.X > 20.0f);
+		Test.Assert(menu.Size.Y > 20.0f);
+		Test.Assert(menu.ScreenBounds.Contains(Float2(210.0f, 50.0f)));
+		Click(.(500.0f, 300.0f)); // a press outside closes it
+		Test.Assert(!menu.IsOpen);
+		RightClick(.(150.0f, 50.0f));
+		Test.Assert(menu.IsOpen);
+	}
 }

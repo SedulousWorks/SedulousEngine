@@ -96,4 +96,15 @@ class SeparatorTests
 		column.Root.UpdateLayout();
 		Test.Assert(Near(tall.Size.Y, 30.0f));
 	}
+
+	[Test]
+	public static void MarkupAndSheetsSetASeparatorsThicknessAndASpacersSize()
+	{
+		let tree = MarkupFixtures.Load("<Panel flex-direction=\"row\"><Separator thickness=\"3\"/><Spacer size=\"8\"/></Panel>");
+		Test.Assert(tree != null);
+		defer tree.ReleaseRef();
+		Test.Assert(tree.ChildCount == 2);
+		Test.Assert(Near((tree.GetChildAt(0) as Separator).Thickness, 3.0f));
+		Test.Assert(Near((tree.GetChildAt(1) as Spacer).Space, 8.0f));
+	}
 }

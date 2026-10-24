@@ -251,4 +251,17 @@ class NumberFieldTests
 		Test.Assert(Near(b.Field.Value, 0.0));
 		Test.Assert(b.Changes == 0);
 	}
+
+	[Test]
+	public static void MarkupSetsItsRangeItsFormAndItsValue()
+	{
+		let tree = MarkupFixtures.Load("<NumberField min=\"-10\" max=\"10\" step=\"0.1\" value=\"2.25\" suffix=\" m\"/>");
+		Test.Assert(tree != null);
+		defer tree.ReleaseRef();
+		let f = tree as NumberField;
+		Test.Assert(f != null);
+		Test.Assert(Math.Abs(f.Min - -10.0) < 1e-9);
+		Test.Assert(Math.Abs(f.Value - 2.3) < 1e-9); // to the step
+		Test.Assert(f.Text == "2.3 m");
+	}
 }

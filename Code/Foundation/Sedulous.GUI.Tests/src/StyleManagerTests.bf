@@ -605,4 +605,48 @@ class StyleManagerTests
 		styles.ApplyTree(root);
 		Test.Assert(field.Placeholder == "code's");
 	}
+
+	[Test]
+	public static void MarkupsInlinePropertiesOutrankEverySheetsNormalOnesNotImportant()
+	{
+		let markup = MarkupFixtures.Load("<Panel><Label class=\"chip\" opacity=\"0.4\"/><Label class=\"hard\" opacity=\"0.4\"/></Panel>");
+		Test.Assert(markup != null);
+		defer markup.ReleaseRef();
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		root.AddChild(markup);
+		let chip = markup.GetChildAt(0) as UIWidget;
+		let hard = markup.GetChildAt(1) as UIWidget;
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, ".chip { opacity: 0.9; } .hard { opacity: 0.8 !important; }");
+		styles.ApplyTree(root);
+		Test.Assert(Near(chip.Alpha, 0.4f));
+		Test.Assert(Near(hard.Alpha, 0.8f));
+		// A script or code may set inline style too.
+		chip.SetInlineStyle("opacity", "0.6");
+		styles.ApplyTree(root);
+		Test.Assert(Near(chip.Alpha, 0.6f));
+	}
+
+	[Test]
+	public static void AMarkupPropertyARestyleMeetsAgainIsNotWrittenAgainTheTreeSettles()
+	{
+		let markup = MarkupFixtures.Load("<Panel><ListBox items=\"One|Two|Three\"/></Panel>");
+		Test.Assert(markup != null);
+		defer markup.ReleaseRef();
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		root.AddChild(markup);
+		let list = markup.GetChildAt(0) as ListBox;
+		Test.Assert(list != null);
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, "listbox { opacity: 1; }");
+		styles.ApplyTree(root);
+		Test.Assert(list.ItemCount == 3);
+		let firstRow = list.GetChildAt(0);
+		styles.ApplyTree(root);
+		styles.ApplyTree(root);
+		Test.Assert(styles.LastRestyleCount == 0); // a list rebuilding its rows restyled itself every frame
+		Test.Assert(list.GetChildAt(0) == firstRow); // its rows were not made again
+	}
 }

@@ -421,4 +421,14 @@ class ToastTests
 		Frame(0.0);
 		Test.Assert(quietCard.Parent == null);
 	}
+
+	[Test]
+	public static void AHostMarkupPlaces()
+	{
+		let made = MarkupFixtures.Load("<Panel><ToastHost/></Panel>");
+		Test.Assert(made != null);
+		defer made.ReleaseRef();
+		Test.Assert(made.ChildCount == 1);
+		Test.Assert(made.GetChildAt(0) is ToastHost);
+	}
 }

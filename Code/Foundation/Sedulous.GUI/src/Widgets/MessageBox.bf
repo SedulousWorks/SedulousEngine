@@ -241,12 +241,14 @@ class MessageBox : Window
 		}
 	}
 
-	// A standard button, its label in English.
+	// A standard button: its label translated (gui.ok, ...) where the GUI's tables have it, else
+	// English.
 	private void AddStandard(Result result)
 	{
 		let i = (int)result;
 		let button = MakeButton(MessageBoxDetail.sNames[i]);
 		button.Text = MessageBoxDetail.sEnglish[i];
+		button.BindTranslation("text", MessageBoxDetail.sKeys[i], null, null, Span<Node.TranslationArgument>(), MessageBoxDetail.sEnglish[i]);
 	}
 
 	private Button MakeButton(StringView resultName)
@@ -321,4 +323,5 @@ internal static class MessageBoxDetail
 {
 	public static String[4] sNames = .("ok", "cancel", "yes", "no");
 	public static String[4] sEnglish = .("OK", "Cancel", "Yes", "No");
+	public static String[4] sKeys = .("gui.ok", "gui.cancel", "gui.yes", "gui.no");
 }

@@ -63,7 +63,14 @@ static
 	{
 		if (IsText(value))
 			return TextVariant(TextOf(value));
-		return System.Variant.CreateFromVariant(value);
+		if (!value.HasValue)
+			return default;
+		if (value.IsObject)
+			return System.Variant.CreateFromVariant(value);
+		// A value type by its bytes, wherever they are: corlib's CreateFromVariant keeps a borrowed
+		// view's POINTER as the value of a small struct (a view of a double came out as its address).
+		var source = value;
+		return System.Variant.Create(value.VariantType, source.DataPtr);
 	}
 
 	/// Appends `value` as text: a string as it is, a whole number without a fraction, another

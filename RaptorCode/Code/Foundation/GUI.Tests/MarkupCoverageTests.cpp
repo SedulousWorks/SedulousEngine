@@ -27,13 +27,9 @@ namespace
 
 TEST_CASE("markup: every control is an element")
 {
+    // The rest: EveryControlIsAnElement in Code/Foundation/Sedulous.GUI.Tests/src/MarkupCoverageTests.bf.
     const char8_t* controls[] = {
-        u8"<Label/>", u8"<Button/>", u8"<CheckBox/>", u8"<RadioButton/>", u8"<ToggleSwitch/>", u8"<Slider/>",
-        u8"<ScrollBar/>", u8"<ProgressBar/>", u8"<NumberField/>", u8"<TextField/>", u8"<TextArea/>",
-        u8"<EditableLabel/>", u8"<RichText/>", u8"<Image/>", u8"<Separator/>", u8"<Spacer/>", u8"<Panel/>",
-        u8"<ScrollView/>", u8"<Expander/>", u8"<ComboBox/>", u8"<ListBox/>", u8"<ListView/>", u8"<TreeView/>",
-        u8"<TableView/>", u8"<TabBar/>", u8"<TabView/>", u8"<Menu/>", u8"<MenuBar/>", u8"<Window/>",
-        u8"<MessageBox/>",
+        u8"<ListView/>", u8"<TreeView/>", u8"<TableView/>",
     };
     for (const char8_t* markup : controls)
     {
@@ -93,47 +89,3 @@ TEST_CASE("markup: a table view's columns and rows become a model behind a sorti
     CHECK(model->Data(MakeModelIndex(2, 1)).AsInt() == 100);
 }
 
-TEST_CASE("markup: a scroll bar is a range with an orientation and a page")
-{
-    auto tree = Load(SV(u8R"(<ScrollBar orientation="vertical" min="0" max="100" page="25" value="40"/>)"));
-    auto* bar = core::Cast<ScrollBar>(tree.Get());
-    REQUIRE(bar != nullptr);
-    CHECK(bar->GetOrientation() == Orientation::Vertical);
-    CHECK(bar->GetPage() == doctest::Approx(25.0));
-    CHECK(bar->GetValue() == doctest::Approx(40.0));
-}
-
-TEST_CASE("markup: a message box waits unseen in its page, is shown modal, and goes back answered")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    root->SetSize(core::Float2{800.0f, 600.0f});
-    auto page = Load(SV(u8R"(<Panel><Label text="before"/><MessageBox id="ask" title="Delete?" text="It cannot be undone." buttons="ok-cancel"/><Label text="after"/></Panel>)"));
-    REQUIRE(page.Get() != nullptr);
-    root->AddChild(page.Get());
-    (void)root->UpdateLayout();
-    auto* box = core::Cast<MessageBox>(page->GetChildAt(1));
-    REQUIRE(box != nullptr);
-    CHECK_FALSE(box->IsDisplayed());
-    CHECK(box->GetMessage() == SV(u8"It cannot be undone."));
-    CHECK(box->ButtonCount() == 2);
-
-    int changes = 0;
-    (void)box->AddEventListener(EventType::Changed, [&](const Event&) { ++changes; });
-    box->Show();
-    CHECK(box->IsOpen());
-    CHECK(box->IsModal());
-    CHECK(box->IsDisplayed());
-    CHECK(box->GetParent() != page.Get());
-
-    // Escape answers with the leftmost button (Cancel).
-    root->GetEventDispatcher()->InjectKeyDown(static_cast<core::u32>(KeyCode::Escape));
-    CHECK_FALSE(box->IsOpen());
-    CHECK(box->GetResultName() == SV(u8"cancel"));
-    CHECK(changes == 1);
-    // Back in its place, unseen, ready to be shown again.
-    CHECK(box->GetParent() == page.Get());
-    CHECK(page->GetChildIndex(box) == 1);
-    CHECK_FALSE(box->IsDisplayed());
-    box->Show();
-    CHECK(box->IsOpen());
-}

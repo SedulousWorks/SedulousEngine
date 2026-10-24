@@ -131,4 +131,19 @@ class ExpanderTests
 		root.UpdateLayout();
 		Test.Assert(Near(e.Size.Y, closed));
 	}
+
+	[Test]
+	public static void MarkupsChildrenAreItsContentOpenNameTitleAndAnimateAreAttributes()
+	{
+		let tree = MarkupFixtures.Load("<Expander title=\"More\" open=\"true\" name=\"g\" animate=\"true\"><Label text=\"inside\"/></Expander>");
+		Test.Assert(tree != null);
+		defer tree.ReleaseRef();
+		let e = tree as Expander;
+		Test.Assert(e != null);
+		Test.Assert(e.Open);
+		Test.Assert(e.Animated);
+		Test.Assert(e.Name == "g");
+		Test.Assert(e.Title == "More");
+		Test.Assert(e.Content.ChildCount == 1);
+	}
 }

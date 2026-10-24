@@ -192,4 +192,34 @@ class ImageWidgetTests
 		Test.Assert(probe.Tinted == 1);
 		Test.Assert(probe.Tint == Color.Red);
 	}
+
+	[Test]
+	public static void SrcLoadsThroughTheGUIsResourcesWhenFirstNeededMarkupAndSheetsSetThemAll()
+	{
+		let resources = scope OnePicture();
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		root.EditLayoutStyle(scope (s) => { s.AlignItems = .Start; });
+		root.Context.ResourceProvider = resources;
+		let w = new Sedulous.GUI.Image();
+		defer w.ReleaseRef();
+		w.Source = "pic.png";
+		Test.Assert(resources.Loads == 0); // not yet in a GUI
+		root.AddChild(w);
+		root.UpdateLayout();
+		Test.Assert(resources.Loads == 1);
+		Test.Assert(Near(w.Size.X, 4.0f));
+		root.UpdateLayout();
+		Test.Assert(resources.Loads == 1); // once
+
+		let m = MarkupFixtures.Load("<Image src=\"pic.png\" object-fit=\"cover\" object-position=\"right top\" image-color=\"#ff000080\"/>");
+		Test.Assert(m != null);
+		defer m.ReleaseRef();
+		let img = m as Sedulous.GUI.Image;
+		Test.Assert(img != null);
+		Test.Assert(img.Source == "pic.png");
+		Test.Assert(img.Fit == .Cover);
+		Test.Assert(img.ObjectPositionName == "100% 0%");
+		Test.Assert(Near(img.ImageColor.A, 128.0f / 255.0f));
+	}
 }

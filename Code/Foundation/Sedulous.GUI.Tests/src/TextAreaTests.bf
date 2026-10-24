@@ -119,4 +119,12 @@ class TextAreaTests
 		Test.Assert(Near(@box.ScrollOffset.Y, 0.0f));
 		area.Font = null;
 	}
+
+	[Test]
+	public static void MarkupAndScriptsMakeOneByItsElementName()
+	{
+		RegisterGuiElements();
+		Test.Assert(ElementTypes.Find("TextArea") == TextArea.StaticGuiType);
+		Test.Assert(ElementTypes.Find("RichText") == RichText.StaticGuiType);
+	}
 }

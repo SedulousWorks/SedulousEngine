@@ -669,4 +669,83 @@ class DragDropTests
 		Test.Assert(s.Ends == 2);
 		Test.Assert(!s.Ended.Outside);
 	}
+
+	[Test]
+	public static void ADragRestingOnAClosedExpandersHeaderOpensIt()
+	{
+		let s = scope Scene();
+		let expander = new Expander();
+		defer expander.ReleaseRef();
+		expander.Title = "More";
+		expander.EditLayoutStyle(scope (st) =>
+			{
+				st.Placement = .Absolute;
+				st.Left = LayoutLength.Px(10.0f);
+				st.Top = LayoutLength.Px(150.0f);
+				st.Width = LayoutLength.Px(150.0f);
+			});
+		s.Root.AddChild(expander);
+		s.Root.UpdateLayout();
+		let header = expander.Header.ScreenBounds;
+		s.DragTo(.(header.X + 40.0f, header.Y + header.Height * 0.5f));
+		s.D.Tick(0.7f);
+		Test.Assert(expander.Open);
+		s.D.CancelDrag();
+		s.D.InjectMouseUp(.(header.X + 40.0f, header.Y + 5.0f), .Left);
+	}
+
+	[Test]
+	public static void InMarkupDragTypeDragValueAndDragLabelMakeASourceDropTypesAndDropReasonATarget()
+	{
+		RegisterGuiElements();
+		let root = SceneFixtures.NewScene(400.0f, 300.0f);
+		defer root.ReleaseRef();
+		let loader = scope MarkupLoader(root.ElementSet);
+		let page = loader.LoadFromString(
+			"<Panel width=\"400\" height=\"300\" flex-direction=\"row\" align-items=\"start\">\n" +
+			"    <Panel id=\"swatch\" width=\"80\" height=\"40\" drag-type=\"color\" drag-value=\"red\" drag-label=\"Red\">\n" +
+			"        <Label id=\"grip\" text=\"grip\" width=\"30\" height=\"20\" drag=\"block\"/>\n" +
+			"        <Label id=\"quiet\" text=\"quiet\" width=\"30\" height=\"20\" drag=\"none\" drag-type=\"other\"/>\n" +
+			"    </Panel>\n" +
+			"    <Panel id=\"canvas\" width=\"200\" height=\"200\" drop-types=\"color\" drop-reason=\"Paint it\"/>\n" +
+			"</Panel>");
+		Test.Assert(page != null);
+		defer page.ReleaseRef();
+		root.AddChild(page);
+		root.UpdateLayout();
+		let swatch = page.GetChildAt(0);
+		let canvas = page.GetChildAt(1);
+		let grip = swatch.GetChildAt(0);
+		let quiet = swatch.GetChildAt(1);
+		let painted = scope String();
+		canvas.AddEventListener(.Drop, new [&] (e) =>
+			{
+				painted.Set(TextOf(((DragEvent)e).Payload.Value));
+			});
+		let d = root.EventDispatcher;
+		void Drag(Node from, Float2 to)
+		{
+			let r = from.ScreenBounds;
+			let at = Float2(r.X + 5.0f, r.Y + 5.0f);
+			d.InjectMouseDown(at, .Left);
+			d.InjectMouseMove(.(at.X + 10.0f, at.Y));
+			d.InjectMouseMove(to);
+		}
+		let c = canvas.ScreenBounds;
+		let onCanvas = Float2(c.X + 50.0f, c.Y + 50.0f);
+
+		// A press on the block child: the walk ends there, nothing drags.
+		Drag(grip, onCanvas);
+		Test.Assert(!d.IsDragging);
+		d.InjectMouseUp(onCanvas, .Left);
+		// A press on the none child (with a type of its own): it passes the press up to the swatch.
+		Drag(quiet, onCanvas);
+		Test.Assert(d.IsDragging);
+		Test.Assert(d.DragPayload.Type == "color");
+		Test.Assert(d.DragPayload.Label == "Red");
+		Test.Assert(d.DropTarget == canvas);
+		Test.Assert(d.DropReason == "Paint it");
+		d.InjectMouseUp(onCanvas, .Left);
+		Test.Assert(painted == "red");
+	}
 }

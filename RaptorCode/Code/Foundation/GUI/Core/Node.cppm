@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026-Present Robert Campbell
 
-// GUI - :node partition, what is left of it after slice S13: the members whose bodies or types
+// GUI - :node partition, what is left of it after slice S17: the members whose bodies or types
 // belong to a later slice (S19, the script surface). The rest is
 // Code/Foundation/Sedulous.GUI/src/Core/Node.bf (ElementTable, Node; layout in
 // Layout/LayoutImpl.bf; the GUI a node is in in Scene/GUIClusterImpl.bf; Element<T> and
-// ElementSet in Scene/ElementTypes.bf; the tweens in Styling/TweenImpl.bf).
+// ElementSet in Scene/ElementTypes.bf; the tweens in Styling/TweenImpl.bf; BindProperty,
+// BindPropertyBack, BindData and BindTranslation in Scene/Bindings.bf).
 
 export namespace foundation::gui
 {
@@ -49,35 +50,5 @@ export namespace foundation::gui
         /// Handles command `id` with a script function, in the bubble phase; the function returning
         /// true lets the command go on up the focus path.
         i32 OnCommandScript(core::StringView id, RefPtr<foundation::script::IScriptDelegate> handler);
-        /// Binds reflected property `property` (one marked `translatable`) to the text of `key` in
-        /// the GUI's Localization: resolved now and again when the language changes, the node joins
-        /// a GUI, or a named argument changes. With a count, the key's plural form for it, `{0}`
-        /// the count and `args` from `{1}`; else `args` from `{0}`. A key shows as written while no
-        /// Localization is set or auto-translation is off. False when the property is none such.
-        /// `fallback` shows where no table has the key, or the GUI has no Localization (a widget's own
-        /// label, "OK", over "gui.ok"); empty: the key shows, as for markup's @key.
-        bool BindTranslation(core::StringView property, core::StringView key, RefPtr<DataModel> data = {},
-                             Optional<TranslationArgument> count = {}, Array<TranslationArgument> args = {},
-                             core::StringView fallback = {}); // GUIReflectionImpl.cpp
-        /// Binds the reflected property named `name` (this node's type's or a base's) to
-        /// `expression`'s value, converted to the property's type: native code, markup and scripts
-        /// bind any widget's properties this way, a library's included. False when the node has no
-        /// such writable property.
-        bool BindProperty(core::StringView name, core::Function<Variant()> expression);
-        /// The reverse: `write` takes the property's value now and whenever it changes (the user
-        /// moved a slider, typed). Only for the properties a widget's user changes (the `twoWay`
-        /// property attribute); false for any other.
-        bool BindPropertyBack(core::StringView name, core::Function<void(const Variant&)> write);
-        /// Binds `property` to `model`'s value `key`, as markup's `{{key}}` does: it follows the
-        /// value, and writes it back when the property is one the user changes. False when the node
-        /// has no such writable property.
-        bool BindData(core::StringView property, RefPtr<DataModel> model, core::StringView key)
-        {
-            const core::String name(key);
-            if (!BindProperty(property, [model, name] { return model->Get(name.AsView()); }))
-                return false;
-            (void)BindPropertyBack(property, [model, name](const Variant& v) { model->Set(name.AsView(), v); });
-            return true;
-        }
     };
 }
