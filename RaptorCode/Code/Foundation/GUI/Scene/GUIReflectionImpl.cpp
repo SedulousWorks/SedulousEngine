@@ -499,22 +499,6 @@ namespace foundation::gui
         return root != nullptr ? root->HandleAs(Node::StaticType()) : core::Variant{};
     }
 
-    void RegisterGuiElements()
-    {
-        static const bool once = []()
-        {
-            // The rest: RegisterGuiElements in Code/Foundation/Sedulous.GUI/src/Scene/ElementTypes.bf.
-            const TypeInfo* const kLabElements[] = {
-                &ListView::StaticType(),       &TreeView::StaticType(),      &TreeItem::StaticType(),
-                &TableView::StaticType(),      &TableItem::StaticType(),
-            };
-            for (const TypeInfo* type : kLabElements)
-                (void)ElementTypes::Register(*type);
-            return true;
-        }();
-        (void)once;
-    }
-
     void RttiRegisterValue_GuiEvent(); // REFLECT_VALUE below
     void RttiRegisterEnum_ToastSeverity();
     void RttiRegisterValue_ToastRequest();
@@ -691,7 +675,6 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(ButtonBase, "rtti::gui")
     {
-        builder.Attribute("accessActivate", true); // a screen reader may press it
         builder.Method<&ElementOf<ButtonBase>, ButtonBase, Node>("of");
     }
 
@@ -716,7 +699,6 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(ColorSwatch, "rtti::gui")
     {
-        builder.Attribute("accessActivate", true);
         builder.Method<&ElementOf<ColorSwatch>, ColorSwatch, Node>("of");
     }
 
@@ -932,35 +914,22 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(TreeItem, "rtti::gui")
     {
-        builder.AccessorProperty<&TreeItem::GetText, &TreeItem::SetText>("text");
-        builder.AccessorProperty<&TreeItem::IsExpanded, &TreeItem::SetExpanded>("expanded").PropAttribute("css", core::String(u8"expanded"));
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(TreeView, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"tree")); // what a screen reader takes it for (E9d)
         builder.Method<&TreeView::ExpandItem>("expandItem");
         builder.Method<&TreeView::CollapseItem>("collapseItem");
         builder.Method<&ElementOf<TreeView>, TreeView, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(TableItem, "rtti::gui")
     {
-        builder.AccessorProperty<&TableItem::GetCells, &TableItem::SetCells>("cells");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(TableView, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"table")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&TableView::GetColumnsText, &TableView::SetColumnsText>("columns").PropAttribute("css", core::String(u8"columns"));
-        builder.AccessorProperty<&TableView::GetColumnWidthsText, &TableView::SetColumnWidthsText>("columnWidths")
-            .PropAttribute("css", core::String(u8"column-widths"));
-        builder.AccessorProperty<&TableView::IsEditable, &TableView::SetEditable>("editable").PropAttribute("css", core::String(u8"editable"));
         builder.Method<&ElementOf<TableView>, TableView, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(ScrollBar, "rtti::gui")
@@ -980,7 +949,6 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(MenuItem, "rtti::gui")
     {
-        builder.Attribute("accessActivate", true); // a screen reader may press it
         builder.Method<&ElementOf<MenuItem>, MenuItem, Node>("of");
     }
 
@@ -1000,21 +968,7 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(ItemView, "rtti::gui")
     {
-        builder.AccessorProperty<&ItemView::GetItemsText, &ItemView::SetItemsText>("items").PropAttribute("css", core::String(u8"items"));
         builder.Method<&ItemView::SetListModel>("setModel"); // a script's ListModel (E16)
-        builder.AccessorProperty<&ItemView::GetRowHeight, &ItemView::SetRowHeight>("rowHeight").PropAttribute("css", core::String(u8"row-height"));
-        builder.AccessorProperty<&ItemView::GetEstimatedRowHeight, &ItemView::SetEstimatedRowHeight>("estimatedRowHeight")
-            .PropAttribute("css", core::String(u8"estimated-row-height"));
-        builder.AccessorProperty<&ItemView::GetSelectedItem, &ItemView::SetSelectedItem>("selected")
-            .PropAttribute("css", core::String(u8"selected"))
-            .PropAttribute("twoWay", true); // the user selects: a binding may write it back
-        builder.AccessorProperty<&ItemView::GetSelectionModeName, &ItemView::SetSelectionModeName>("selectionMode")
-            .PropAttribute("css", core::String(u8"selection-mode"));
-        builder.AccessorProperty<&ItemView::GetRowTypeColumn, &ItemView::SetRowTypeColumn>("rowTypeColumn")
-            .PropAttribute("css", core::String(u8"row-type-column"));
-        builder.AccessorProperty<&ItemView::GetLayoutModeName, &ItemView::SetLayoutModeName>("layout").PropAttribute("css", core::String(u8"layout"));
-        builder.AccessorProperty<&ItemView::GetCellWidth, &ItemView::SetCellWidth>("cellWidth").PropAttribute("css", core::String(u8"cell-width"));
-        builder.AccessorProperty<&ItemView::GetCellHeight, &ItemView::SetCellHeight>("cellHeight").PropAttribute("css", core::String(u8"cell-height"));
         builder.Method<&ItemView::BeginEdit>("beginEdit");
         builder.Method<&ItemView::SelectAll>("selectAll");
         builder.Method<&ItemView::ClearSelection>("clearSelection");
@@ -1023,9 +977,7 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(ListView, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"list")); // what a screen reader takes it for (E9d)
         builder.Method<&ElementOf<ListView>, ListView, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(ListBox, "rtti::gui")
@@ -1035,7 +987,6 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(ComboBox, "rtti::gui")
     {
-        builder.Attribute("accessActivate", true); // a screen reader may press it
         builder.Method<&ElementOf<ComboBox>, ComboBox, Node>("of");
     }
 

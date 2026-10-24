@@ -131,6 +131,9 @@ class MenuItem : MenuRow
 		mShortcut.SetAlignment(.End, .Middle);
 	}
 
+	/// A screen reader may press it.
+	public override bool AccessActivates => true;
+
 	// === Content ===
 
 	/// Its text as it shows (the `&` taken out); set, an `&` marks its access key (`&Open`: O),

@@ -155,6 +155,9 @@ class ColorSwatch : UIWidget
 		TabFocusable = true;
 	}
 
+	/// A screen reader may press it.
+	public override bool AccessActivates => true;
+
 	/// Its colour (markup's and a sheet's `color-value`: `color` is its text's).
 	[GuiProperty("color-value")]
 	public Color ColorValue

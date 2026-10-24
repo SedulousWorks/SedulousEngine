@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
@@ -7,9 +8,48 @@ namespace Sedulous.GUI.Tests;
 // HasChildren), and a TreeView that flattens visible nodes, expands/collapses (arrow click +
 // keyboard), and remaps selection by node id across re-flattening.
 
-/// A tree model's navigation (the view's tests wait for TreeView).
+/// A tree model's navigation, and the TreeView over it.
 class TreeViewTests
 {
+	/// Tree:  A [A1 [A1x], A2],  B; and a tree view 260 by 300 over it (tall enough to realise
+	/// every visible row) in a root 400 by 400. The model outlives the view.
+	private class Bed
+	{
+		public TreeModel Model = new .() ~ delete _;
+		public SceneRoot Root;
+		public TreeView Tree;
+		public int32 A;
+		public int32 B;
+		public int32 A1;
+		public int32 A2;
+		public int32 A1x;
+
+		public this()
+		{
+			A = Model.AddNode(TreeModel.Root, "A");
+			B = Model.AddNode(TreeModel.Root, "B");
+			A1 = Model.AddNode(A, "A1");
+			A2 = Model.AddNode(A, "A2");
+			A1x = Model.AddNode(A1, "A1x");
+			Root = SceneFixtures.NewScene(400.0f, 400.0f);
+			Tree = new TreeView();
+			Tree.Size = .(260.0f, 300.0f);
+			Tree.RowHeight = 20.0f;
+			Tree.IndentWidth = 16.0f;
+			Root.AddChild(Tree);
+			Tree.ReleaseRef(); // the tree holds it
+			Tree.Model = Model;
+			Root.UpdateLayout();
+		}
+
+		public ~this()
+		{
+			Root.ReleaseRef(); // before the model the view listens to
+		}
+
+		public EventDispatcher D => Root.EventDispatcher;
+	}
+
 	[Test]
 	public static void TreeModelHierarchyNavigation()
 	{
@@ -35,5 +75,77 @@ class TreeViewTests
 		let ib = model.Index(1, 0, ModelIndex()); // B
 		Test.Assert(!model.HasChildren(ib));
 		Test.Assert(!model.ParentIndex(ia).IsValid); // A is a root
+	}
+
+	[Test]
+	public static void CollapsedShowsOnlyRootsExpandingRevealsChildren()
+	{
+		let b = scope Bed();
+		Test.Assert(b.Tree.VisibleRowCount == 2); // A, B (collapsed)
+
+		b.Tree.ExpandItem(0); // expand A -> A, A1, A2, B
+		Test.Assert(b.Tree.VisibleRowCount == 4);
+		Test.Assert(b.Tree.IsItemExpanded(0));
+		Test.Assert(b.Tree.ItemDepth(1) == 1); // A1 is a child
+
+		b.Tree.ExpandItem(1); // expand A1 -> A, A1, A1x, A2, B
+		Test.Assert(b.Tree.VisibleRowCount == 5);
+		Test.Assert(b.Tree.ItemDepth(2) == 2); // A1x is a grandchild
+
+		b.Tree.CollapseItem(0); // collapse A -> A, B
+		Test.Assert(b.Tree.VisibleRowCount == 2);
+	}
+
+	[Test]
+	public static void ClickingTheArrowTogglesExpansion()
+	{
+		let b = scope Bed();
+		// Root A's arrow: row 0 (y in [0,20]), depth 0 -> arrow at x in [0,16].
+		SceneFixtures.Click(b.D, .(8.0f, 10.0f));
+		Test.Assert(b.Tree.VisibleRowCount == 4); // expanded
+		Test.Assert(b.Tree.IsItemExpanded(0));
+
+		SceneFixtures.Click(b.D, .(8.0f, 10.0f));
+		Test.Assert(b.Tree.VisibleRowCount == 2); // collapsed again
+	}
+
+	[Test]
+	public static void SelectionIsRemappedByNodeIdAcrossExpandCollapse()
+	{
+		let b = scope Bed();
+		b.Tree.ExpandItem(0); // flat: A(0), A1(1), A2(2), B(3)
+		b.Tree.SelectedItem = 3; // select B
+		let selId = b.Tree.SelectedIndex.InternalId;
+
+		b.Tree.CollapseItem(0); // flat: A(0), B(1) - B moved
+		Test.Assert(b.Tree.SelectedItem == 1); // remapped to B's new row
+		Test.Assert(b.Tree.SelectedIndex.InternalId == selId); // same node
+	}
+
+	[Test]
+	public static void KeyboardRightExpandsAndLeftCollapsesTheSelection()
+	{
+		let b = scope Bed();
+		b.Tree.RequestFocus();
+		b.Tree.SelectedItem = 0; // select A
+		b.D.InjectKeyDown((uint32)KeyCode.Right); // expand A
+		Test.Assert(b.Tree.VisibleRowCount == 4);
+		Test.Assert(b.Tree.IsItemExpanded(0));
+		b.D.InjectKeyDown((uint32)KeyCode.Left); // collapse A
+		Test.Assert(b.Tree.VisibleRowCount == 2);
+		Test.Assert(!b.Tree.IsItemExpanded(0));
+	}
+
+	[Test]
+	public static void InRightToLeftLeftExpandsAndRightCollapsesTowardTheWayItIsIndented()
+	{
+		let b = scope Bed();
+		b.Root.SetLayoutDirection(.RightToLeft);
+		b.Tree.RequestFocus();
+		b.Tree.SelectedItem = 0;
+		b.D.InjectKeyDown((uint32)KeyCode.Left); // toward the inline end: expand
+		Test.Assert(b.Tree.IsItemExpanded(0));
+		b.D.InjectKeyDown((uint32)KeyCode.Right); // toward the start: collapse
+		Test.Assert(!b.Tree.IsItemExpanded(0));
 	}
 }

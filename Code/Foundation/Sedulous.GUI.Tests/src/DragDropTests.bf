@@ -561,6 +561,268 @@ class DragDropTests
 		Test.Assert(s.Ended.Effect == .Move);
 	}
 
+	[Test]
+	public static void ADragRestingAMomentOpensAClosedTreeNodeAndSelectsATab()
+	{
+		let model = scope TreeModel(); // outlives the scene, whose tree is its client
+		let s = scope Scene();
+		let a = model.AddNode(TreeModel.Root, "A");
+		model.AddNode(a, "A1");
+		let tree = new TreeView();
+		tree.EditLayoutStyle(scope (st) =>
+			{
+				st.Placement = .Absolute;
+				st.Left = LayoutLength.Px(200.0f);
+				st.Top = LayoutLength.Px(150.0f);
+				st.Width = LayoutLength.Px(150.0f);
+				st.Height = LayoutLength.Px(100.0f);
+			});
+		tree.RowHeight = 20.0f;
+		s.Root.AddChild(tree);
+		tree.ReleaseRef();
+		tree.Model = model;
+		s.Root.UpdateLayout();
+
+		s.DragTo(.(260.0f, 160.0f)); // over row 0, A (closed)
+		s.D.Tick(0.3f);
+		Test.Assert(!tree.IsItemExpanded(0));
+		s.D.Tick(0.4f);
+		Test.Assert(tree.IsItemExpanded(0));
+		s.D.CancelDrag();
+		s.D.InjectMouseUp(.(260.0f, 160.0f), .Left);
+
+		let bar = new TabBar();
+		bar.EditLayoutStyle(scope (st) =>
+			{
+				st.Placement = .Absolute;
+				st.Left = LayoutLength.Px(10.0f);
+				st.Top = LayoutLength.Px(250.0f);
+			});
+		s.Root.AddChild(bar);
+		bar.ReleaseRef();
+		StringView[2] names = .("One", "Two");
+		for (let name in names)
+		{
+			bar.AddTab(name).EditLayoutStyle(scope (st) =>
+				{
+					st.Width = LayoutLength.Px(60.0f);
+					st.Height = LayoutLength.Px(24.0f);
+				});
+		}
+		s.Root.UpdateLayout();
+		let two = bar.GetTab(1).ScreenBounds;
+		s.DragTo(.(two.X + 20.0f, two.Y + 10.0f));
+		s.D.Tick(0.7f);
+		Test.Assert(bar.SelectedIndex == 1);
+		s.D.CancelDrag();
+		s.D.InjectMouseUp(.(two.X + 20.0f, two.Y + 10.0f), .Left);
+	}
+
+	/// Two lists side by side in a root 500 by 300, their rows dragging as `row`: A to E on the
+	/// left, X on the right. The models outlive the views.
+	private class Lists
+	{
+		public StringListModel Left = new .() ~ delete _;
+		public StringListModel Right = new .() ~ delete _;
+		public SceneRoot Root = SceneFixtures.NewScene(500.0f, 300.0f);
+		public ListView A;
+		public ListView B;
+
+		public this()
+		{
+			StringView[5] letters = .("A", "B", "C", "D", "E");
+			for (let l in letters)
+				Left.AddItem(l);
+			Right.AddItem("X");
+			A = View(10.0f, Left);
+			B = View(250.0f, Right);
+			Root.UpdateLayout();
+		}
+
+		public ~this()
+		{
+			Root.ReleaseRef(); // the views first: they listen to the models
+		}
+
+		private ListView View(float x, StringListModel model)
+		{
+			let view = new ListView();
+			view.EditLayoutStyle(scope (st) =>
+				{
+					st.Placement = .Absolute;
+					st.Left = LayoutLength.Px(x);
+					st.Top = LayoutLength.Px(10.0f);
+					st.Width = LayoutLength.Px(200.0f);
+					st.Height = LayoutLength.Px(200.0f);
+				});
+			view.RowHeight = 20.0f;
+			view.DragType = "row";
+			Root.AddChild(view);
+			view.ReleaseRef(); // the tree holds it
+			view.Model = model;
+			return view;
+		}
+
+		public EventDispatcher D => Root.EventDispatcher;
+
+		/// A point `frac` down row `item` of view `v`.
+		public static Float2 Row(ListView v, int item, float frac = 0.5f)
+		{
+			let r = v.ScreenBounds;
+			return .(r.X + 50.0f, r.Y + 20.0f * ((float)item + frac));
+		}
+
+		public void Drag(ListView from, int item, Float2 to, uint32 modifiers = 0)
+		{
+			let at = Row(from, item);
+			D.InjectMouseDown(at, .Left, modifiers);
+			D.InjectMouseMove(.(at.X + 10.0f, at.Y), modifiers);
+			D.InjectMouseMove(to, modifiers);
+		}
+
+		/// A model's rows run together.
+		public static bool Items(StringListModel m, StringView expected)
+		{
+			let text = scope String();
+			ItemViewFixtures.Items(m, text);
+			return text == expected;
+		}
+	}
+
+	[Test]
+	public static void AListsRowsDragADropBetweenRowsReordersThemTheLineShowingWhere()
+	{
+		let l = scope Lists();
+		l.Drag(l.A, 0, Lists.Row(l.A, 2, 0.9f)); // A, past C's middle: after C
+		Test.Assert(l.D.DropTarget == l.A);
+		Test.Assert(l.A.IsDropOver);
+		Test.Assert(l.A.DropItem == 2);
+		Test.Assert(l.A.DropPlace == .After);
+		Test.Assert(l.D.DragPayload.Label == "A");
+		// The middle of a row: a list takes nothing onto a row, so the halves decide.
+		l.D.InjectMouseMove(Lists.Row(l.A, 3, 0.4f));
+		Test.Assert(l.A.DropItem == 3);
+		Test.Assert(l.A.DropPlace == .Before);
+		l.D.InjectMouseUp(Lists.Row(l.A, 3, 0.4f), .Left);
+		Test.Assert(Lists.Items(l.Left, "BCADE"));
+		Test.Assert(!l.A.IsDropOver);
+		Test.Assert(l.A.SelectedItem == 2); // the moved row keeps its id, and its selection
+	}
+
+	[Test]
+	public static void AMultiSelectionDragsAsOneInOrderAPlainPressOnItAloneSelectsItOnTheClick()
+	{
+		let l = scope Lists();
+		l.A.SelectionMode = .Multi;
+		SceneFixtures.Click(l.D, Lists.Row(l.A, 0));
+		l.D.InjectMouseDown(Lists.Row(l.A, 2), .Left, KeyModCtrl);
+		l.D.InjectMouseUp(Lists.Row(l.A, 2), .Left, KeyModCtrl);
+		Test.Assert(l.A.SelectionCount == 2);
+		l.Drag(l.A, 2, Lists.Row(l.A, 4, 0.9f)); // A and C, after E
+		Test.Assert(l.A.SelectionCount == 2); // the press kept them
+		Test.Assert(l.D.DragPayload.Label == "2 items");
+		l.D.InjectMouseUp(Lists.Row(l.A, 4, 0.9f), .Left);
+		Test.Assert(Lists.Items(l.Left, "BDEAC"));
+
+		// A plain click on one of a multi-selection: that row alone.
+		SceneFixtures.Click(l.D, Lists.Row(l.A, 3));
+		Test.Assert(l.A.SelectionCount == 1);
+		Test.Assert(l.A.SelectedItem == 3);
+	}
+
+	[Test]
+	public static void RowsMovedToAnotherListLeaveTheSourceCopiedCtrlTheyStay()
+	{
+		let l = scope Lists();
+		l.Drag(l.A, 1, Lists.Row(l.B, 0, 0.9f)); // B after X
+		Test.Assert(l.D.DropTarget == l.B);
+		Test.Assert(l.D.DropEffect == .Move);
+		l.D.InjectMouseUp(Lists.Row(l.B, 0, 0.9f), .Left);
+		Test.Assert(Lists.Items(l.Right, "XB"));
+		Test.Assert(Lists.Items(l.Left, "ACDE"));
+
+		l.Drag(l.A, 0, Lists.Row(l.B, 0, 0.1f), KeyModCtrl); // A before X, copied
+		Test.Assert(l.D.DropEffect == .Copy);
+		l.D.InjectMouseUp(Lists.Row(l.B, 0, 0.1f), .Left, KeyModCtrl); // released with Ctrl held
+		Test.Assert(Lists.Items(l.Right, "AXB"));
+		Test.Assert(Lists.Items(l.Left, "ACDE"));
+
+		// Below the last row: the end.
+		l.Drag(l.A, 3, .(300.0f, 180.0f));
+		Test.Assert(l.B.DropItem == -1);
+		l.D.InjectMouseUp(.(300.0f, 180.0f), .Left);
+		Test.Assert(Lists.Items(l.Right, "AXBE"));
+	}
+
+	[Test]
+	public static void ATreeTakesANodeOntoAnotherItsChildOrBesideItAndRefusesOneInsideItself()
+	{
+		let model = scope TreeModel();
+		let a = model.AddNode(TreeModel.Root, "A");
+		let a1 = model.AddNode(a, "A1");
+		let b = model.AddNode(TreeModel.Root, "B");
+		let root = SceneFixtures.NewScene(400.0f, 300.0f);
+		defer root.ReleaseRef();
+		let tree = new TreeView();
+		tree.Size = .(300.0f, 200.0f);
+		tree.RowHeight = 20.0f;
+		tree.DragType = "node";
+		root.AddChild(tree);
+		tree.ReleaseRef();
+		tree.Model = model;
+		tree.ExpandItem(0); // A, A1, B
+		root.UpdateLayout();
+		let d = root.EventDispatcher;
+		Float2 Row(int item, float frac) => .(100.0f, 20.0f * ((float)item + frac));
+
+		// A onto A1 (its own child): refused, with the reason.
+		d.InjectMouseDown(Row(0, 0.5f), .Left);
+		d.InjectMouseMove(Row(0, 0.8f));
+		d.InjectMouseMove(Row(1, 0.5f));
+		Test.Assert(d.DropTarget == null);
+		Test.Assert(d.DropReason == "A node cannot go inside itself");
+		d.CancelDrag();
+		d.InjectMouseUp(Row(1, 0.5f), .Left);
+
+		// B onto A: B becomes A's last child.
+		d.InjectMouseDown(Row(2, 0.5f), .Left);
+		d.InjectMouseMove(Row(2, 0.2f));
+		d.InjectMouseMove(Row(0, 0.5f));
+		Test.Assert(tree.DropPlace == .On);
+		d.InjectMouseUp(Row(0, 0.5f), .Left);
+		Test.Assert(model.RowCount() == 1); // A alone at the top
+		Test.Assert(model.RowCount(model.IndexOfNode(a)) == 2);
+		Test.Assert(model.IdOf(model.Index(1, 0, model.IndexOfNode(a))) == (ItemId)b);
+
+		// A1 before A: back to the top level, first.
+		root.UpdateLayout();
+		d.InjectMouseDown(Row(1, 0.5f), .Left);
+		d.InjectMouseMove(Row(1, 0.8f));
+		d.InjectMouseMove(Row(0, 0.1f));
+		Test.Assert(tree.DropPlace == .Before);
+		d.InjectMouseUp(Row(0, 0.1f), .Left);
+		Test.Assert(model.RowCount() == 2);
+		Test.Assert(model.IdOf(model.Index(0)) == (ItemId)a1);
+	}
+
+	[Test]
+	public static void FromTheKeysAListsRowsMoveTheArrowsMoveTheKeyboardsRowNotTheSelection()
+	{
+		let l = scope Lists();
+		l.A.RequestFocus();
+		l.A.SelectedItem = 0; // A
+		Test.Assert(l.D.PickDrag());
+		Test.Assert(l.D.DragPayload.Label == "A");
+		l.D.InjectKeyDown((uint32)KeyCode.Down);
+		l.D.InjectKeyDown((uint32)KeyCode.Down); // the keyboard on C
+		Test.Assert(l.A.SelectedItem == -1); // the keyboard moved; A stays selected, not current
+		Test.Assert(l.A.IsItemSelected(0));
+		Test.Assert(l.A.DropItem == 2);
+		Test.Assert(l.A.DropPlace == .After); // a list takes nothing onto a row
+		l.D.InjectKeyDown((uint32)KeyCode.Return);
+		Test.Assert(Lists.Items(l.Left, "BCADE"));
+	}
+
 	/// Two roots of one GUI side by side on a screen: the scene's at 0,0 (400 by 300) and another at
 	/// 500,0 (300 by 300), as a host that places its windows would tell.
 	private class TwoPlaces : IRootPlaces

@@ -232,4 +232,41 @@ class SplitterTests
 		bed.Lay();
 		Test.Assert(Near(bed.W(0), 147.0f));
 	}
+
+	[Test]
+	public static void FromMarkupAndEachHandleReadAsASeparatorWithWhereItStands()
+	{
+		let loaded = MarkupFixtures.Load("<Splitter axis=\"vertical\" weights=\"1 3\"><Panel/><Panel/></Splitter>");
+		Test.Assert(loaded != null);
+		defer loaded.ReleaseRef();
+		let splitter = loaded as Sedulous.GUI.Splitter;
+		Test.Assert(splitter != null);
+		Test.Assert(splitter.Axis == .Vertical);
+		Test.Assert(splitter.PaneCount == 2);
+		let weights = scope List<float>();
+		splitter.GetWeights(weights);
+		Test.Assert(Near(weights[1], 0.75f));
+
+		let root = SceneFixtures.NewScene(400.0f, 406.0f);
+		defer root.ReleaseRef();
+		splitter.EditLayoutStyle(scope (s) =>
+			{
+				s.Width = LayoutLength.Px(400.0f);
+				s.Height = LayoutLength.Px(406.0f); // 400 for the panes, a quarter above the handle
+			});
+		root.AddChild(loaded);
+		root.UpdateLayout();
+		let tree = root.Context.BuildAccessTree(root);
+		defer delete tree;
+		AccessNode separator = null;
+		for (let n in tree.Nodes)
+		{
+			if (n.Role == .Separator)
+				separator = n;
+		}
+		Test.Assert(separator != null);
+		Test.Assert(Math.Abs(separator.Max - 100.0) < 1e-5);
+		Test.Assert(separator.Value == "25");
+		Test.Assert((separator.States & AccessFocusable) != 0);
+	}
 }

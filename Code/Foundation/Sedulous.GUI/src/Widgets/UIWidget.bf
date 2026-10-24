@@ -262,6 +262,10 @@ class UIWidget : UINode
 		}
 	}
 
+	/// Whether a screen reader may press it (Activate, run as a press of Return is): a button's
+	/// kind of widget says so, for its type and every type derived from it.
+	public virtual bool AccessActivates => false;
+
 	/// Hidden from screen readers, with what it holds (`aria-hidden`): a decoration.
 	[GuiProperty("aria-hidden")]
 	public bool AccessHidden

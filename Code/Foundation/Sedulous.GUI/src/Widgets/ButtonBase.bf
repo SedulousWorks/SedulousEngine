@@ -165,6 +165,9 @@ class ButtonBase : UIWidget
 		}
 	}
 
+	/// A screen reader may press it.
+	public override bool AccessActivates => true;
+
 	public ~this()
 	{
 		if (mGroup != null)

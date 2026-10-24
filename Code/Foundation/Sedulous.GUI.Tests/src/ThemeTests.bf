@@ -359,4 +359,68 @@ class ThemeTests
 		Test.Assert(Near(field.Box.Radii.BottomRight, 4.0f));
 		Test.Assert(Near(combo.Box.Radii.TopLeft, 4.0f)); // a combo box follows the fields
 	}
+
+	// The first widget in `node`'s subtree (`node` first) tagged `tag`, or null.
+	private static UIWidget FindTagged(Node node, StringView tag)
+	{
+		if (let widget = node as UIWidget)
+		{
+			if (widget.Tag == tag)
+				return widget;
+		}
+		for (int i = 0; i < node.ChildCount; ++i)
+		{
+			let found = FindTagged(node.GetChildAt(i), tag);
+			if (found != null)
+				return found;
+		}
+		return null;
+	}
+
+	[Test]
+	public static void AListsRowsShowThePointerOverThemAComboBoxsPopupIsAListBox()
+	{
+		// The model first: the view unregisters from it when the tree lets the view go.
+		StringView[2] rows = .("a", "b");
+		let model = scope StringListModel(rows);
+		let root = SceneFixtures.NewScene(300.0f, 300.0f);
+		defer root.ReleaseRef();
+		let @box = new ListBox();
+		@box.AddItem("one");
+		@box.AddItem("two");
+		let view = new ListView();
+		view.Size = .(200.0f, 100.0f);
+		view.RowHeight = 20.0f;
+		root.AddChild(@box);
+		root.AddChild(view);
+		@box.ReleaseRef();
+		view.ReleaseRef();
+		view.Model = model;
+		root.UpdateLayout();
+
+		let mgr = scope StyleManager();
+		WidgetFixtures.UseSheet(mgr, Theme.DefaultThemeCSS);
+		mgr.ApplyTree(root);
+		let item = FindTagged(@box, "listboxitem");
+		Test.Assert(item != null);
+		let row = FindTagged(view, "listviewrow");
+		Test.Assert(row != null);
+		Test.Assert(Near(item.Box.BackgroundColor.A, 0.0f));
+		Test.Assert(Near(row.Box.BackgroundColor.A, 0.0f));
+
+		item.Hovered = true;
+		row.Hovered = true;
+		mgr.ApplyTree(root);
+		Test.Assert(item.Box.BackgroundColor.A > 0.0f);
+		Test.Assert(row.Box.BackgroundColor.A > 0.0f);
+		Test.Assert(item.TextColor.A > 0.0f); // still the label's text colour
+
+		// A sheet retints the hover with one token.
+		WidgetFixtures.UseSheet(mgr, ":root { --list-hover: #ff0000; }");
+		let theme = scope StyleSheet();
+		CSSParser.Parse(Theme.DefaultThemeCSS, theme);
+		mgr.UserAgentSheet = theme;
+		mgr.ApplyTree(root);
+		Test.Assert(Near(item.Box.BackgroundColor.R, 1.0f));
+	}
 }

@@ -5,6 +5,7 @@ namespace Sedulous.GUI.Tests;
 
 /// SortingProxyModel: reorder a source model's rows by a column (numeric by value, strings
 /// lexically), toggle asc/desc, map proxy rows to source, and re-sort + notify on source changes.
+/// Also the TableView header-click -> ToggleSort wiring.
 class SortingProxyModelTests
 {
 	// Rows: (name, value) = (b,2) (a,10) (c,1).
@@ -155,5 +156,29 @@ class SortingProxyModelTests
 		source.AddRow(row);
 		Test.Assert(client.Updates == 1);
 		Test.Assert(source.RowCount() == 4);
+	}
+
+	[Test]
+	public static void ATableViewsHeaderClickWiredToToggleSortResortsTheView()
+	{
+		let source = scope TableModel();
+		FillBAC(source);
+		let proxy = scope SortingProxyModel(source);
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let table = new TableView();
+		table.Size = .(300.0f, 200.0f);
+		table.HeaderHeight = 26.0f;
+		root.AddChild(table);
+		table.ReleaseRef();
+		table.Model = proxy;
+		root.UpdateLayout();
+		table.SetOnColumnHeaderClicked(new [&] (column) => { proxy.ToggleSort(column); });
+
+		// Click the "Value" header (column 1, x in [150, 300)).
+		SceneFixtures.Click(root.EventDispatcher, .(200.0f, 13.0f));
+		Test.Assert(proxy.SortColumn == 1);
+		Test.Assert(proxy.SortOrder == .Ascending);
+		Test.Assert(proxy.Data(MakeModelIndex(0, 1)).AsInt == 1); // ascending: smallest first
 	}
 }

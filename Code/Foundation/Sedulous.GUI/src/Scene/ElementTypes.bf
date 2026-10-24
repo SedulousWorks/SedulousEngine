@@ -97,7 +97,9 @@ static
 			TabView.StaticGuiType, Menu.StaticGuiType, MenuItem.StaticGuiType,
 			MenuSeparator.StaticGuiType, MenuBar.StaticGuiType, ScrollBar.StaticGuiType,
 			MessageBox.StaticGuiType, Splitter.StaticGuiType, ColorSwatch.StaticGuiType,
-			ColorPicker.StaticGuiType, ToastHost.StaticGuiType);
+			ColorPicker.StaticGuiType, ToastHost.StaticGuiType, ListView.StaticGuiType,
+			TreeView.StaticGuiType, TreeItem.StaticGuiType, TableView.StaticGuiType,
+			TableItem.StaticGuiType);
 		for (let type in elements)
 			ElementTypes.Register(type);
 	}

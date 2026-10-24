@@ -62,13 +62,13 @@ class GUIContext : RefCounted
 		mElements.Close();
 	}
 
-	/// Advances every root by `elapsed`, once a frame: the clock (each root's actions at its own
-	/// time scale), each root's input repeat and per-frame hook, the bindings whose values
-	/// changed, the deferred tree edits, then each root's layout.
+	/// Advances every root by `elapsed`, once a frame: what a platform's screen reader asked, the
+	/// clock (each root's actions at its own time scale), each root's input repeat and per-frame
+	/// hook, the bindings whose values changed, the deferred tree edits, each root's layout, then
+	/// what changed to the accessibility bridge.
 	public void Update(TimeSpan elapsed)
 	{
-		// What a platform asked since runs first, so this frame shows it: waits for the
-		// accessibility pass (RunAccessRequests).
+		RunAccessRequests(); // what a platform asked since: this frame shows it
 		let seconds = (float)elapsed.TotalSeconds;
 		// The motion's clock steps at most so far: a hitch slows it rather than skipping it. By
 		// ticks: TimeSpan.FromSeconds would round to whole milliseconds.
@@ -104,8 +104,7 @@ class GUIContext : RefCounted
 		mMutationQueue.Drain();
 		for (let root in mRoots)
 			root.UpdateLayout();
-		// Each root's changes go to the accessibility bridge last: waits for the accessibility
-		// pass (FlushAccessibility).
+		FlushAccessibility(); // each root's changes to the accessibility bridge, last
 	}
 
 	public Sedulous.GUI.ActionManager ActionManager => mActionManager;

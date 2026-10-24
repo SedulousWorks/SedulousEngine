@@ -513,4 +513,47 @@ class IncrementalFrameTests
 		still.Visible = false; // what drew it must draw again
 		Test.Assert(root.NeedsFrame());
 	}
+
+	[Test]
+	public static void AListsInsertAboveAndAClicksSelectionEachAskForAFrame()
+	{
+		let model = scope StringListModel(); // outlives the scene, whose list is its client
+		let root = SceneFixtures.NewScene(300.0f, 300.0f);
+		defer root.ReleaseRef();
+		let text = scope String();
+		for (int i = 0; i < 50; ++i)
+		{
+			text.Clear();
+			text.AppendF("row {}", i);
+			model.AddItem(text);
+		}
+		let list = new ListView();
+		list.Size = .(200.0f, 100.0f);
+		list.RowHeight = 20.0f;
+		root.AddChild(list);
+		list.ReleaseRef();
+		list.Model = model;
+		let styles = scope StyleManager();
+		UseSheet(styles, "listview { opacity: 1; }");
+		Frame(root, styles);
+		list.ScrollTo(.(0.0f, 400.0f), .Instant);
+		Frame(root, styles);
+		list.ScrollTo(.(0.0f, 0.0f), .Instant); // rows released and taken again
+		Frame(root, styles);
+		Frame(root, styles);
+		Test.Assert(!root.NeedsFrame());
+
+		model.InsertItem(0, "inserted");
+		root.Context.Update(SceneFixtures.Frame);
+		root.UpdateLayout();
+		Test.Assert(root.NeedsFrame());
+		Frame(root, styles);
+		Frame(root, styles);
+		Test.Assert(!root.NeedsFrame());
+
+		SceneFixtures.Click(root.EventDispatcher, .(50.0f, 30.0f));
+		styles.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(root.NeedsFrame());
+	}
 }

@@ -233,4 +233,16 @@ class MirrorTests
 				return field;
 			}, .(120.0f, 24.0f));
 	}
+
+	[Test]
+	public static void ATreeRowIsIndentedFromTheInlineStartItsArrowBeforeItsText()
+	{
+		CheckMirrored(scope () =>
+			{
+				let row = new TreeRowContent();
+				row.Label.Text = "Node";
+				row.Configure(32.0f, 16.0f, true, false);
+				return row;
+			}, .(200.0f, 20.0f));
+	}
 }

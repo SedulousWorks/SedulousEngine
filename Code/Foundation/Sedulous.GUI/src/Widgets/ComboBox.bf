@@ -49,6 +49,9 @@ class ComboBox : UIWidget
 		mText.SetAlignment(.Start, .Middle);
 	}
 
+	/// A screen reader may press it.
+	public override bool AccessActivates => true;
+
 	public void AddItem(StringView text)
 	{
 		mItems.Add(new String(text));
