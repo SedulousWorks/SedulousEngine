@@ -31,31 +31,6 @@ namespace
     }
 }
 
-TEST_CASE("selector: pseudo-classes track control state")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    root->SetSize(core::Float2{200.0f, 200.0f});
-    auto w = Widget(u8"button");
-    w->SetSize(core::Float2{100.0f, 100.0f});
-    w->SetTabFocusable(true); // a click focuses what takes focus
-    root->AddChild(w.Get());
-    EventDispatcher* d = root->GetEventDispatcher();
-
-    CHECK_FALSE(Sel(u8"button:hover").Select(*w.Get()));                  // not hovered yet
-    CHECK(Sel(u8"button:hover").Select(*w.Get(), /*applyPseudo*/ false)); // pseudo ignored
-
-    d->InjectMouseMove(core::Float2{50.0f, 50.0f}); // hover w
-    CHECK(Sel(u8"button:hover").Select(*w.Get()));
-
-    d->InjectMouseDown(core::Float2{50.0f, 50.0f}, MouseButton::Left); // press + focus
-    CHECK(Sel(u8"button:active").Select(*w.Get()));
-    CHECK(Sel(u8"button:focus").Select(*w.Get()));
-
-    w->SetEnabled(false);
-    CHECK(Sel(u8":disabled").Select(*w.Get()));
-    CHECK(Sel(u8"button:disabled").Select(*w.Get()));
-}
-
 // ===================== E3: the selector forms =====================
 
 namespace

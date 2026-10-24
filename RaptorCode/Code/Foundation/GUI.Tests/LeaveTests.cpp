@@ -96,25 +96,6 @@ TEST_CASE("leave: with no exit in the sheet, it goes at the next update")
     CHECK_FALSE(bed.Attached());
 }
 
-TEST_CASE("leave: in a GUI no style pass runs over it goes at the next update, never inside the event that sent it; detached, at once")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    auto widget = core::MakeRef<UIWidget>(core::DefaultAllocator());
-    root->AddChild(widget.Get());
-    widget->Leave();
-    CHECK(widget->GetParent() == root.Get()); // a click handler that closed it still finds it there
-    CHECK(widget->IsLeaving());
-    root->GetContext().Update(core::Duration{});
-    CHECK(widget->GetParent() == nullptr);
-    CHECK_FALSE(widget->IsLeaving());
-
-    auto parent = core::MakeRef<UIWidget>(core::DefaultAllocator());
-    auto child = core::MakeRef<UIWidget>(core::DefaultAllocator());
-    parent->AddChild(child.Get());
-    child->Leave();
-    CHECK(child->GetParent() == nullptr);
-}
-
 TEST_CASE("leave: a keyframe exit is told once as animationend, and a forwards fill still lets it go")
 {
     LeaveBed bed(u8"@keyframes out { from { opacity: 1; } to { opacity: 0; } }"

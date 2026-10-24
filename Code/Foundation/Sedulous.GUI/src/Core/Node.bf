@@ -1649,6 +1649,10 @@ class Node : Transformable, IRefCounted
 	/// What the last frame of the GUI this node is in cost (its SceneRoot's), or null when
 	/// detached: the phases write it as they run.
 	public virtual Sedulous.GUI.FrameStats FrameStats => (mParent != null) ? mParent.FrameStats : null;
+	/// The GUI this node is in (its root's context), or null outside one.
+	public virtual Sedulous.GUI.GUIContext GUIContext => (mParent != null) ? mParent.GUIContext : null;
+	/// The dispatcher of the GUI this node is in (its SceneRoot's), or null outside one.
+	public virtual Sedulous.GUI.EventDispatcher EventDispatcher => (mParent != null) ? mParent.EventDispatcher : null;
 
 	/// A short name for diagnostics: its type (a widget adds its id), appended to `outText`.
 	public virtual void DebugName(String outText)
@@ -2150,6 +2154,15 @@ class Node : Transformable, IRefCounted
 			return false;
 		}
 	}
+
+	/// The preview a drag shows when its source gives none, and the hint beside the pointer with a
+	/// target's reason: none here (a widget's label of the payload's label, a tooltip of the
+	/// reason, where the widgets are). The caller holds the reference to what comes back.
+	public virtual Node CreateDragPreview(Sedulous.GUI.DragPayload payload) => null;
+	public virtual Node CreateDropHint(StringView reason, bool refused) => null;
+	/// What its tooltip shows for `text`: none here (a Tooltip label, where the widgets are); any
+	/// node, for a richer one. Null: no tooltip. The caller holds the reference to what comes back.
+	public virtual Node CreateTooltipContent(StringView text) => null;
 
 	/// Optional hover-tooltip text: the dispatcher shows the nearest one up the parent chain from
 	/// the hovered node, after a delay. Empty (the default) means none here.
@@ -2826,6 +2839,18 @@ class Node : Transformable, IRefCounted
 		return false;
 	}
 
+	/// The command this control is bound to (empty: none): it is enabled while the command is
+	/// available and shows its checked state (OnBoundCommandState), and runs it when used
+	/// (RunBoundCommand, from the widget's click). Markup and sheets set it too.
+	[GuiProperty("command")]
+	public StringView Command
+	{
+		get => mCommand.Peek();
+		set => BindCommand(value);
+	}
+
+	public bool HasCommand => mCommand.Peek().Length != 0;
+
 	/// The bound command's state reached the control: enabled by availability; a checkable control
 	/// shows its checked state too, and one with a tooltip the reason.
 	public virtual void OnBoundCommandState(BoundCommandState state)
@@ -3215,12 +3240,18 @@ class Node : Transformable, IRefCounted
 	// in no GUI has no dispatcher to tell.
 	protected void NotifyRemovingChild(Node child)
 	{
+		let dispatcher = EventDispatcher;
+		if (dispatcher != null)
+			dispatcher.NotifySubtreeRemoved(child);
 	}
 
 	// Tells this GUI's commands that what decides availability changed. A node in no GUI has no
 	// commands to tell.
 	private void NotifyCommandsChanged()
 	{
+		let root = SceneRoot;
+		if (root != null)
+			root.Context.Commands.NotifyChanged();
 	}
 
 	// Something changed under `child`: its reach is read again at the next check (all of them,
@@ -3546,6 +3577,8 @@ class Node : Transformable, IRefCounted
 	private LengthValue mTransformOriginX = .(50.0f, .Percent);
 	private LengthValue mTransformOriginY = .(50.0f, .Percent);
 	private bool mTransformFromStyle = false;
+	private StringProperty mCommand = new .() ~ delete _; // the bound command's id (Command)
+	private bool mCommandBound = false; // its bindings made (once)
 	private Sedulous.GUI.ElementTable mElementTable = null; // the table it took a slot in (null: none yet); one reference held
 	private uint32 mElementSlot = 0;
 

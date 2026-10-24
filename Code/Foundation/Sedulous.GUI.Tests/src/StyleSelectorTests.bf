@@ -266,4 +266,31 @@ class StyleSelectorTests
 		Test.Assert(Spec("slider::thumb:hover") == 1024 + 1 + 1);
 		Test.Assert(Spec("slider:hover::thumb:hover") == 2 * 1024 + 1 + 1);
 	}
+
+	[Test]
+	public static void PseudoClassesTrackControlState()
+	{
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		let w = StyleFixtures.Widget("button");
+		defer w.ReleaseRef();
+		w.Size = .(100.0f, 100.0f);
+		w.TabFocusable = true; // a click focuses what takes focus
+		root.AddChild(w);
+		let d = root.EventDispatcher;
+
+		Test.Assert(!Sel("button:hover", w)); // not hovered yet
+		Test.Assert(StyleFixtures.Selects("button:hover", w, false)); // pseudo ignored
+
+		d.InjectMouseMove(.(50.0f, 50.0f)); // hover w
+		Test.Assert(Sel("button:hover", w));
+
+		d.InjectMouseDown(.(50.0f, 50.0f), .Left); // press and focus
+		Test.Assert(Sel("button:active", w));
+		Test.Assert(Sel("button:focus", w));
+
+		w.Enabled = false;
+		Test.Assert(Sel(":disabled", w));
+		Test.Assert(Sel("button:disabled", w));
+	}
 }

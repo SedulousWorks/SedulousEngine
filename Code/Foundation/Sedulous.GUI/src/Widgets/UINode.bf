@@ -452,6 +452,16 @@ class UINode : Node
 		Invalidate();
 	}
 
+	/// A part's style as the sheet set it: its GetPartStyle (an empty one when the sheet styles it
+	/// not).
+	public override PartStyle FindPartStyle(StringView part) => GetPartStyle(part);
+
+	/// A modal popup's dim: its `::backdrop` part over the default one.
+	public override void DrawBackdrop(DrawContext ctx, Rect bounds)
+	{
+		GetPartStyle("backdrop").Draw(ctx, bounds, FilledBox(.(0.0f, 0.0f, 0.0f, 0.45f), scope NodeBox()));
+	}
+
 	/// The way it runs may have changed: what shows text takes it in OnTextStyleChange.
 	public override void OnDirectionChange()
 	{

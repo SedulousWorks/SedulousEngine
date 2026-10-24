@@ -200,32 +200,3 @@ namespace
     };
 }
 
-TEST_CASE("command: a bound control hears why its command is disabled, and only while it is")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    auto probe = Make<StateProbe>();
-    root->AddChild(probe.Get());
-    (void)root->OnCommand(SV(u8"save"), [](CommandEvent&) {});
-    Command& save = root->GetContext().DefineCommand(SV(u8"save"));
-    save.SetDisabledReason(SV(u8"Nothing to save"));
-    probe->SetCommand(SV(u8"save"));
-    Frame(*root.Get());
-    CHECK(probe->Available);
-    CHECK(probe->Reason.Size() == 0u); // enabled: the reason is not said
-
-    save.SetEnabled(false);
-    Frame(*root.Get());
-    CHECK_FALSE(probe->Available);
-    CHECK(probe->Reason == core::String(u8"Nothing to save"));
-
-    save.SetDisabledReason(SV(u8"Read only")); // followed as it changes
-    Frame(*root.Get());
-    CHECK(probe->Reason == core::String(u8"Read only"));
-
-    // Unavailable for want of a handler where the focus is: no reason.
-    save.SetEnabled(true);
-    probe->SetCommand(SV(u8"unhandled"));
-    Frame(*root.Get());
-    CHECK_FALSE(probe->Available);
-    CHECK(probe->Reason.Size() == 0u);
-}

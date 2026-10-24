@@ -751,7 +751,6 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(Node, "rtti::gui")
     {
-        builder.AccessorProperty<&Node::GetCommand, &Node::SetCommand>("command").PropAttribute("css", core::String(u8"command"));
         builder.Method<&Node::AddElement, Node>("add");
         builder.Method<&Node::FindElement, Node>("find");
         builder.Method<&Node::ParentElement, Node>("parent");

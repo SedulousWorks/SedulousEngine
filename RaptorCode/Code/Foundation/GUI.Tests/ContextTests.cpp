@@ -36,17 +36,6 @@ namespace
     };
 }
 
-TEST_CASE("context: a GUI of one root is a context with one")
-{
-    auto gui = Make<GUIContext>();
-    CHECK(gui->RootCount() == 0u);
-    CHECK(gui->GetActiveRoot() == nullptr);
-    auto root = Make<SceneRoot>(gui);
-    CHECK(gui->RootCount() == 1u);
-    CHECK(gui->GetActiveRoot() == root.Get()); // the first, until input picks another
-    CHECK(&root->GetContext() == gui.Get());
-}
-
 TEST_CASE("context: two roots share data, one flush a frame runs a binding in either")
 {
     TwoRoots t;
@@ -59,40 +48,6 @@ TEST_CASE("context: two roots share data, one flush a frame runs a binding in ei
     t.gui->Update(Frame());
     CHECK(score->GetText() == SV(u8"7"));
     CHECK(t.gui->LastBindingCount() == 1u);
-}
-
-TEST_CASE("context: one update advances every root, and drains their deferred edits")
-{
-    struct Counting : SceneRoot
-    {
-        explicit Counting(core::RefPtr<GUIContext> gui) : SceneRoot(core::Move(gui)) {}
-        int ticks = 0;
-        void OnUpdate(core::Duration) override { ++ticks; }
-    };
-    auto gui = Make<GUIContext>();
-    auto a = Make<Counting>(gui);
-    auto b = Make<Counting>(gui);
-    auto doomed = Make<Node>();
-    b->AddChild(doomed.Get());
-    doomed->Close();
-    gui->Update(Frame()); // the GUI's one update
-    CHECK(a->ticks == 1);
-    CHECK(b->ticks == 1);
-    CHECK(b->ChildCount() == 0u);
-}
-
-TEST_CASE("context: a handle survives its node moving between roots")
-{
-    TwoRoots t;
-    auto panel = Make<UIWidget>();
-    t.hud->AddChild(panel.Get());
-    const Node::ElementRef before = panel->TakeElementRef();
-    t.hud->RemoveChild(panel.Get());
-    t.menu->AddChild(panel.Get()); // docked into the other window
-    const Node::ElementRef after = panel->TakeElementRef();
-    CHECK(before.table == after.table);
-    CHECK(before.slot == after.slot);
-    CHECK(after.table->Resolve(after.slot, after.generation) == panel.Get());
 }
 
 TEST_CASE("context: a root's animations pause or slow on the shared clock")

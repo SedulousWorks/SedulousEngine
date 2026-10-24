@@ -1,114 +1,19 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026-Present Robert Campbell
 
-// GUI - :node partition, what is left of it after slice S8: the members whose bodies or types
-// belong to later slices (S11 the GUI a node is in, S12 tweens, S19 the script surface). The rest
-// is Code/Foundation/Sedulous.GUI/src/Core/Node.bf (ElementTable, Node; layout in
-// Layout/LayoutImpl.bf; Element<T> and ElementSet in Scene/ElementTypes.bf).
+// GUI - :node partition, what is left of it after slice S11: the members whose bodies or types
+// belong to later slices (S12 tweens, S19 the script surface). The rest is
+// Code/Foundation/Sedulous.GUI/src/Core/Node.bf (ElementTable, Node; layout in
+// Layout/LayoutImpl.bf; the GUI a node is in in Scene/GUIClusterImpl.bf; Element<T> and
+// ElementSet in Scene/ElementTypes.bf).
 
 export namespace foundation::gui
 {
-    class EventDispatcher; // owned by the SceneRoot; reached via GetEventDispatcher()
     class Tween;           // a property moving on the GUI's clock (:tween, E14)
     class TweenGroup;      // tweens run as one (:tween)
-    class SceneRoot;       // the root of a GUI (:scene_root)
-    class GUIContext;      // the GUI a root is part of (:scene_root)
 
     class Node
     {
-
-        // --- S11: the GUI a node is in (Scene/GUIClusterImpl.cpp; SceneRoot, GUIContext, EventDispatcher) ---
-        /// The root of the GUI this node is in, or null when it is in none (a detached subtree:
-        /// GetRootNode gives its topmost node).
-        [[nodiscard]] SceneRoot* GetSceneRoot();
-        /// Whether access keys are underlined now (while Alt is held, or always as its GUI says).
-        [[nodiscard]] bool AreMnemonicsShown();
-        /// The GUI this node is in, read as a binding's dependency: the binding reruns when the node
-        /// joins or leaves one (a control bound to a command, made by markup before it is attached).
-        [[nodiscard]] SceneRoot* ObserveSceneRoot()
-        {
-            m_sceneRootChanged.Track();
-            return GetSceneRoot();
-        }
-        /// The GUI this node is in (its root's context), or null outside one.
-        [[nodiscard]] virtual GUIContext* GetGUIContext() { return m_parent ? m_parent->GetGUIContext() : nullptr; }
-        [[nodiscard]] virtual EventDispatcher* GetEventDispatcher()
-        {
-            return m_parent ? m_parent->GetEventDispatcher() : nullptr;
-        }
-        [[nodiscard]] const EventDispatcher* GetEventDispatcher() const
-        {
-            return const_cast<Node*>(this)->GetEventDispatcher(); // a read: which dispatcher, not a change
-        }
-        // Programmatic focus (routes through the dispatcher; defined in the impl unit).
-        void RequestFocus();
-        void ReleaseFocus();
-        // === Input routing === (the EventDispatcher starts a route; RouteEvent walks it)
-        /// Sends an input event (pointer, wheel, key, text) along its route to this node: down
-        /// from the root through the capture listeners, at this node, and back up through each
-        /// node's own handler (OnMouseDown and the rest) and its bubble listeners; a handler
-        /// marking it Handled ends the route once that node is done. The path is held for the
-        /// walk, so a handler may remove nodes on it (one that left the tree is skipped). True
-        /// when it was handled.
-        bool RouteEvent(Event& event);
-        // === Leaving (K0 of Specs/gui-lab-evolution-3.md) ===
-        // A node that goes plays its way out first: Leave puts it in `:leaving`, where the sheet's
-        // exit transition or animation runs, takes it out of the pointer, focus and navigation at
-        // once, and the style pass removes it from its parent when what the sheet started on it
-        // has ended (the next frame when nothing moves it; an infinite or paused animation is not
-        // waited for). Leaving ends when it leaves its parent, by this or any other removal, so a
-        // node taken back is whole again. Defined in Scene/GUIClusterImpl.cpp.
-
-        /// Leaves its parent after its exit plays: at the GUI's next update when nothing plays one (no
-        /// style pass, or a node no sheet styles), at once in no GUI.
-        void Leave();
-        // === Inert (K4 of Specs/gui-lab-evolution-3.md, HTML's `inert`) ===
-        /// An inert node and what it holds take no pointer, focus, navigation, keys or commands,
-        /// and still draw (a game's screen under a blocking one). Made inert, what the dispatcher
-        /// held in it lets go, as of a removed subtree: a press held, the hover, the focus, its
-        /// popups. Defined in Scene/GUIClusterImpl.cpp.
-        void SetInert(bool inert);
-        /// The style pass's: what moves it has ended, so it goes (at the next safe point, once).
-        void FinishLeaving();
-        // === Entering (K5 of Specs/gui-lab-evolution-3.md) ===
-        // A node that arrives plays its way in: Enter puts it in `:entering`, where the sheet's
-        // entrance runs (a keyframe animation, or values it starts from, as CSS's @starting-style),
-        // until what that started has ended; then `:entering` goes, the node moves to its own style
-        // (through its transitions), and once that has settled it hears `entered`. Leave cuts an
-        // entrance short, leaving from where it is. In no GUI, in one no style pass runs over, or
-        // not styled, it has no entrance and hears `entered` at once. Defined in Scene/GUIClusterImpl.cpp.
-
-        void Enter();
-        /// The style pass's: nothing the sheet started on it waits now. A leaving node goes; an
-        /// arriving one takes its entrance's next step (at the GUI's next drain).
-        void MotionSettled();
-        /// Binds this control to command `id` (empty: none): it is enabled while the command is
-        /// available and shows its checked state (OnBoundCommandState), and runs it when used
-        /// (RunBoundCommand, from the widget's click). Reflected as `command`, so markup and sheets
-        /// set it too.
-        void SetCommand(core::StringView id);
-        [[nodiscard]] core::StringView GetCommand() const noexcept { return m_command.Peek().AsView(); }
-        [[nodiscard]] bool HasCommand() const noexcept { return m_command.Peek().Size() != 0; }
-        /// Runs the bound command along the focus path; false with none, or none ran.
-        bool RunBoundCommand();
-        // A click at the centre, as activation delivers it (listeners see a click, as with a mouse).
-        bool ActivateAsClick()
-        {
-            MouseEvent click(EventType::MouseClick, this, ConvertToWorldSpace(core::Float2{m_size.x * 0.5f, m_size.y * 0.5f}));
-            (void)RouteEvent(click);
-            return true;
-        }
-
-        // --- S11: declared in Node.bf with empty bodies (their callers are ported); S11 fills them with these ---
-        // Tells this GUI's dispatcher a child's subtree is leaving (GUIClusterImpl.cpp, which
-        // sees :event_dispatcher).
-        void NotifyRemovingChild(Node& child);
-        // Tells this GUI's commands that what decides availability changed (GUIClusterImpl.cpp).
-        void NotifyCommandsChanged();
-
-        // --- S11: the bound command's state (fields) ---
-        Property<core::String> m_command; // the bound command's id (SetCommand)
-        bool m_commandBound = false;      // its binding made (once)
 
         // --- S12: tweens (Styling/TweenImpl.cpp) ---
         /// Moves `property` to `to` over `seconds` on the GUI's clock (E14), eased as `easing` names
@@ -132,6 +37,16 @@ export namespace foundation::gui
         /// Stops what moves `property` and gives it back to the sheet (a tween that ended holds
         /// its end until this); false when nothing moved it.
         bool StopAnimation(core::StringView property);
+
+        // --- declared in Node.bf returning null (the dispatcher calls them); the slice with Tooltip and
+        // DragPreview fills them in place with these (their bodies are in Scene/GUIReflectionImpl.cpp) ---
+        /// The preview a drag shows when its source gives none (GUIClusterImpl.cpp: a label of
+        /// the payload's label), and the hint beside the pointer with a target's reason.
+        [[nodiscard]] virtual core::RefPtr<Node> CreateDragPreview(const DragPayload& payload);
+        [[nodiscard]] virtual core::RefPtr<Node> CreateDropHint(core::StringView reason, bool refused);
+        /// What its tooltip shows for `text` (E5): a Tooltip label by default (defined where the
+        /// widgets are); any node, for a richer one. Null: no tooltip.
+        [[nodiscard]] virtual core::RefPtr<Node> CreateTooltipContent(core::StringView text);
 
         // --- S19: the script surface (Scene/GUIReflectionImpl.cpp) ---
         /// A handle to this node typed as `type` (this node's type or a base of it); empty when the
@@ -170,13 +85,6 @@ export namespace foundation::gui
         /// Handles command `id` with a script function, in the bubble phase; the function returning
         /// true lets the command go on up the focus path.
         i32 OnCommandScript(core::StringView id, RefPtr<foundation::script::IScriptDelegate> handler);
-        /// The preview a drag shows when its source gives none (GUIClusterImpl.cpp: a label of
-        /// the payload's label), and the hint beside the pointer with a target's reason.
-        [[nodiscard]] virtual core::RefPtr<Node> CreateDragPreview(const DragPayload& payload);
-        [[nodiscard]] virtual core::RefPtr<Node> CreateDropHint(core::StringView reason, bool refused);
-        /// What its tooltip shows for `text` (E5): a Tooltip label by default (defined where the
-        /// widgets are); any node, for a richer one. Null: no tooltip.
-        [[nodiscard]] virtual core::RefPtr<Node> CreateTooltipContent(core::StringView text);
         /// Binds reflected property `property` (one marked `translatable`) to the text of `key` in
         /// the GUI's Localization: resolved now and again when the language changes, the node joins
         /// a GUI, or a named argument changes. With a count, the key's plural form for it, `{0}`

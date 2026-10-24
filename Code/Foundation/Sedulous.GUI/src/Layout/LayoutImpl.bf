@@ -1157,6 +1157,7 @@ extension Node
 	public void SetScrollExtent(Float2 extent)
 	{
 		let latched = IsLatchedToEnd; // as it was before the content changed
+		let before = mContentExtent;
 		mContentExtent = extent;
 		ApplyScrollOffset(mScrollOffset); // kept within the new range, a smooth scroll going on
 		if (latched && !mSmoothScrolling && !mFlinging)
@@ -1167,6 +1168,23 @@ extension Node
 		}
 		if (mSmoothScrolling)
 			mScrollTarget = ClampScroll(mScrollTarget);
+		// The focused widget inside keeps its focus area in view (a caret on a line just typed,
+		// which the old range could not reach).
+		if (extent == before)
+			return;
+		let dispatcher = EventDispatcher;
+		let focused = (dispatcher != null) ? dispatcher.FocusNode : null;
+		Rect area = .();
+		if ((focused == null) || (focused == this) || !focused.GetFocusArea(out area))
+			return;
+		for (var up = focused.Parent; up != null; up = up.Parent)
+		{
+			if (up == this)
+			{
+				ScrollIntoView(focused, area, .Nearest, .Instant);
+				return;
+			}
+		}
 	}
 
 	/// This node's content or children changed: it measures and lays out again, and so do the
@@ -1564,6 +1582,9 @@ extension Node
 						mScrollDragAxis = axis;
 						MarkStyleStateDirty(StateHover | StateActive); // ::scrollbar-thumb:active
 						mScrollDragGrab = (axis == 1) ? p.Y - thumb.Y : p.X - thumb.X;
+						let dispatcher = EventDispatcher;
+						if (dispatcher != null)
+							dispatcher.CapturePointer(this);
 					}
 					else // a press on the track pages toward it
 					{

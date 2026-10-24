@@ -627,7 +627,8 @@ class TextLayout
 			else
 				outRanges[kept++] = outRanges[i];
 		}
-		outRanges.RemoveRange(kept, outRanges.Count - kept);
+		if (kept < outRanges.Count) // RemoveRange asserts its index is inside, even for nothing
+			outRanges.RemoveRange(kept, outRanges.Count - kept);
 	}
 }
 

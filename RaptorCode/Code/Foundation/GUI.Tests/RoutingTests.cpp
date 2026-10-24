@@ -81,26 +81,6 @@ namespace
     };
 }
 
-TEST_CASE("routing: a press goes down through capture, reaches its target, and comes back up")
-{
-    auto root = MakeRoot();
-    auto card = Box(*root.Get(), 0, 0, 200, 200, u8"card");
-    auto inner = Box(*card.Get(), 10, 10, 100, 100, u8"inner");
-    Trace trace;
-    trace.Watch(*card.Get(), EventType::MouseDown);
-    trace.Watch(*inner.Get(), EventType::MouseDown);
-    EventDispatcher* d = root->GetEventDispatcher();
-    d->InjectMouseDown(core::Float2{20.0f, 20.0f}, MouseButton::Left);
-    CHECK(trace.Is({u8"card capture", u8"inner target", u8"inner target", u8"card bubble"}));
-    d->InjectMouseUp(core::Float2{20.0f, 20.0f}, MouseButton::Left);
-
-    // A parent handling the press in capture keeps it from its child (a list taking a drag).
-    trace.calls.Clear();
-    (void)card->AddEventListener(EventType::MouseDown, [](const Event& e) { e.Handled = true; }, true);
-    d->InjectMouseDown(core::Float2{20.0f, 20.0f}, MouseButton::Left);
-    CHECK(trace.Is({u8"card capture"}));
-}
-
 TEST_CASE("routing: a handled event ends after its node; the node's own listeners still run")
 {
     auto root = MakeRoot();
@@ -120,19 +100,6 @@ TEST_CASE("routing: a handled event ends after its node; the node's own listener
     d->InjectMouseDown(core::Float2{150.0f, 150.0f}, MouseButton::Left);
     d->InjectMouseUp(core::Float2{150.0f, 150.0f}, MouseButton::Left);
     CHECK(cardClicks == 1);
-}
-
-TEST_CASE("routing: a handler removing the nodes above it does not break the walk")
-{
-    auto root = MakeRoot();
-    auto card = Box(*root.Get(), 0, 0, 200, 200, u8"card");
-    auto inner = Box(*card.Get(), 10, 10, 100, 100, u8"inner");
-    int cardSaw = 0;
-    (void)card->AddEventListener(EventType::MouseDown, [&](const Event&) { ++cardSaw; });
-    (void)inner->AddEventListener(EventType::MouseDown, [&](const Event&) { root->RemoveChild(card.Get()); });
-    root->GetEventDispatcher()->InjectMouseDown(core::Float2{20.0f, 20.0f}, MouseButton::Left);
-    CHECK(card->GetParent() == nullptr);
-    CHECK(cardSaw == 0); // it left the tree before the press came back up
 }
 
 TEST_CASE("routing: keys bubble from the focus; a scroller scrolls only when it is focused")
@@ -185,51 +152,6 @@ TEST_CASE("routing: the wheel goes up from the pointer; a scroller at its end le
     CHECK(outer->GetScrollOffset().y > 0.0f);
 }
 
-TEST_CASE("routing: every node under the pointer is hovered, and told as it joins or leaves")
-{
-    auto root = MakeRoot();
-    auto card = Box(*root.Get(), 0, 0, 200, 200, u8"card");
-    auto a = Box(*card.Get(), 10, 10, 50, 50, u8"a");
-    auto b = Box(*card.Get(), 100, 10, 50, 50, u8"b");
-    int cardEnters = 0, cardLeaves = 0, aLeaves = 0, bEnters = 0;
-    (void)card->AddEventListener(EventType::MouseEnter, [&](const Event&) { ++cardEnters; });
-    (void)card->AddEventListener(EventType::MouseLeave, [&](const Event&) { ++cardLeaves; });
-    (void)a->AddEventListener(EventType::MouseLeave, [&](const Event&) { ++aLeaves; });
-    (void)b->AddEventListener(EventType::MouseEnter, [&](const Event&) { ++bEnters; });
-    EventDispatcher* d = root->GetEventDispatcher();
-    d->InjectMouseMove(core::Float2{20.0f, 20.0f});
-    CHECK(a->IsHovered());
-    CHECK(card->IsHovered()); // :hover holds for the card while a is under the pointer
-    CHECK(cardEnters == 1);
-    d->InjectMouseMove(core::Float2{110.0f, 20.0f}); // a to b, inside the card
-    CHECK_FALSE(a->IsHovered());
-    CHECK(b->IsHovered());
-    CHECK(aLeaves == 1);
-    CHECK(bEnters == 1);
-    CHECK(cardEnters == 1); // never left
-    CHECK(cardLeaves == 0);
-    d->InjectMouseMove(core::Float2{300.0f, 300.0f});
-    CHECK_FALSE(card->IsHovered());
-    CHECK(cardLeaves == 1);
-    CHECK(d->GetOverNode() == root.Get());
-}
-
-TEST_CASE("routing: the pressed node and the nodes holding it are pressed until the release")
-{
-    auto root = MakeRoot();
-    auto card = Box(*root.Get(), 0, 0, 200, 200, u8"card");
-    auto a = Box(*card.Get(), 10, 10, 50, 50, u8"a");
-    auto other = Box(*root.Get(), 250, 0, 50, 50, u8"other");
-    EventDispatcher* d = root->GetEventDispatcher();
-    d->InjectMouseDown(core::Float2{20.0f, 20.0f}, MouseButton::Left);
-    CHECK(a->IsPressed());
-    CHECK(card->IsPressed());
-    CHECK_FALSE(other->IsPressed());
-    d->InjectMouseUp(core::Float2{20.0f, 20.0f}, MouseButton::Left);
-    CHECK_FALSE(a->IsPressed());
-    CHECK_FALSE(card->IsPressed());
-}
-
 TEST_CASE("routing: a click goes to the nearest node holding both the press and the release")
 {
     auto root = MakeRoot();
@@ -262,64 +184,6 @@ TEST_CASE("routing: a click goes to the nearest node holding both the press and 
     d->InjectMouseDown(core::Float2{10.0f, 105.0f}, MouseButton::Left);
     d->InjectMouseUp(core::Float2{10.0f, 105.0f}, MouseButton::Left);
     CHECK(presses == 1);
-}
-
-TEST_CASE("routing: pointer capture holds the moves and the release, and is lost when it ends")
-{
-    auto root = MakeRoot();
-    auto knob = Box(*root.Get(), 0, 0, 50, 50, u8"knob");
-    auto other = Box(*root.Get(), 200, 0, 50, 50, u8"other");
-    int knobMoves = 0, otherMoves = 0, lost = 0;
-    (void)knob->AddEventListener(EventType::MouseMove, [&](const Event&) { ++knobMoves; });
-    (void)other->AddEventListener(EventType::MouseMove, [&](const Event&) { ++otherMoves; });
-    (void)knob->AddEventListener(EventType::PointerCaptureLost, [&](const Event&) { ++lost; });
-    EventDispatcher* d = root->GetEventDispatcher();
-    d->CapturePointer(*knob.Get());
-    d->InjectMouseMove(core::Float2{210.0f, 10.0f}); // over the other node
-    CHECK(knobMoves == 1);
-    CHECK(otherMoves == 0);
-    CHECK(other->IsHovered()); // hover still follows the pointer
-    d->InjectMouseUp(core::Float2{210.0f, 10.0f}, MouseButton::Left);
-    CHECK(lost == 1); // the press ended it
-    CHECK(d->GetPointerCapture() == nullptr);
-
-    d->CapturePointer(*knob.Get());
-    d->CapturePointer(*other.Get()); // taken by another
-    CHECK(lost == 2);
-    int otherLost = 0;
-    (void)other->AddEventListener(EventType::PointerCaptureLost, [&](const Event&) { ++otherLost; });
-    d->CapturePointer(*knob.Get()); // taken back
-    CHECK(otherLost == 1);
-    root->RemoveChild(knob.Get()); // leaving the tree
-    CHECK(lost == 3);
-    CHECK(d->GetPointerCapture() == nullptr);
-}
-
-TEST_CASE("routing: presses near in time and place count up; a pause or a move starts again")
-{
-    auto root = MakeRoot();
-    auto box = Box(*root.Get(), 0, 0, 100, 100, u8"box");
-    core::Array<core::u32> counts;
-    (void)box->AddEventListener(EventType::MouseDown, [&](const Event& e) {
-        counts.PushBack(static_cast<const MouseEvent&>(e).ClickCount);
-    });
-    EventDispatcher* d = root->GetEventDispatcher();
-    auto press = [d](f32 x) {
-        d->InjectMouseDown(core::Float2{x, 10.0f}, MouseButton::Left);
-        d->InjectMouseUp(core::Float2{x, 10.0f}, MouseButton::Left);
-    };
-    press(10.0f);
-    press(12.0f);
-    press(11.0f);
-    d->Tick(1.0f); // a pause
-    press(11.0f);
-    press(60.0f); // far away
-    REQUIRE(counts.Size() == 5u);
-    CHECK(counts[0] == 1u);
-    CHECK(counts[1] == 2u);
-    CHECK(counts[2] == 3u);
-    CHECK(counts[3] == 1u);
-    CHECK(counts[4] == 1u);
 }
 
 TEST_CASE("routing: the Inject calls tell a host whether the GUI used the input")
@@ -401,72 +265,6 @@ TEST_CASE("routing: a tap is a press, a release and a click marked as touch, wit
     CHECK(seen[2] == core::String(u8"click"));
     CHECK_FALSE(button->IsHovered()); // the finger lifted: nothing under it
     CHECK(d->GetOverNode() == nullptr);
-}
-
-TEST_CASE("routing: the first finger drives the pointer; moves follow it and a second finger is ignored")
-{
-    auto root = MakeRoot();
-    auto a = Box(*root.Get(), 0, 0, 50, 50, u8"a");
-    auto b = Box(*root.Get(), 100, 0, 50, 50, u8"b");
-    int downs = 0, moves = 0;
-    (void)root->AddEventListener(EventType::MouseDown, [&](const Event&) { ++downs; });
-    (void)a->AddEventListener(EventType::MouseMove, [&](const Event&) { ++moves; });
-    EventDispatcher* d = root->GetEventDispatcher();
-    d->InjectTouchDown(1u, core::Float2{10.0f, 10.0f});
-    CHECK_FALSE(d->InjectTouchDown(2u, core::Float2{110.0f, 10.0f})); // a second finger
-    CHECK_FALSE(d->InjectTouchMove(2u, core::Float2{120.0f, 10.0f}));
-    CHECK(downs == 1);
-    d->InjectTouchMove(1u, core::Float2{110.0f, 10.0f}); // the press holds the moves for a
-    CHECK(moves == 1);
-    CHECK(b->IsHovered()); // and hover follows the finger
-    CHECK_FALSE(d->InjectTouchUp(2u, core::Float2{120.0f, 10.0f}));
-    CHECK(d->IsTouchActive());
-    d->InjectTouchUp(1u, core::Float2{110.0f, 10.0f});
-    CHECK_FALSE(d->IsTouchActive());
-}
-
-TEST_CASE("routing: every finger down is followed, where it went down and where it is, until it lifts")
-{
-    auto root = MakeRoot();
-    EventDispatcher* d = root->GetEventDispatcher();
-    CHECK(d->GetFingers().Size() == 0u);
-    d->InjectTouchDown(1u, core::Float2{10.0f, 10.0f});
-    (void)d->InjectTouchDown(2u, core::Float2{110.0f, 10.0f});
-    (void)d->InjectTouchMove(2u, core::Float2{120.0f, 30.0f});
-    REQUIRE(d->GetFingers().Size() == 2u);
-    CHECK(d->GetFingers()[1].Id == 2u);
-    CHECK(d->GetFingers()[1].Start.x == doctest::Approx(110.0f));
-    CHECK(d->GetFingers()[1].Now.x == doctest::Approx(120.0f));
-    CHECK(d->GetFingers()[1].Now.y == doctest::Approx(30.0f));
-    // The first lifting leaves the second followed, and the pointer free.
-    d->InjectTouchUp(1u, core::Float2{10.0f, 10.0f});
-    REQUIRE(d->GetFingers().Size() == 1u);
-    CHECK(d->GetFingers()[0].Id == 2u);
-    CHECK_FALSE(d->IsTouchActive());
-    (void)d->InjectTouchUp(2u, core::Float2{120.0f, 30.0f});
-    CHECK(d->GetFingers().Size() == 0u);
-}
-
-TEST_CASE("routing: taps count as a double tap over a wider distance than clicks")
-{
-    auto root = MakeRoot();
-    auto box = Box(*root.Get(), 0, 0, 200, 200, u8"box");
-    core::Array<core::u32> counts;
-    (void)box->AddEventListener(EventType::MouseDown, [&](const Event& e) {
-        counts.PushBack(static_cast<const MouseEvent&>(e).ClickCount);
-    });
-    EventDispatcher* d = root->GetEventDispatcher();
-    d->InjectTouchDown(1u, core::Float2{50.0f, 50.0f});
-    d->InjectTouchUp(1u, core::Float2{50.0f, 50.0f});
-    d->InjectTouchDown(2u, core::Float2{68.0f, 50.0f}); // 18 apart: a finger's wobble
-    d->InjectTouchUp(2u, core::Float2{68.0f, 50.0f});
-    d->Tick(1.0f);
-    d->InjectMouseDown(core::Float2{50.0f, 50.0f}, MouseButton::Left);
-    d->InjectMouseUp(core::Float2{50.0f, 50.0f}, MouseButton::Left);
-    d->InjectMouseDown(core::Float2{68.0f, 50.0f}, MouseButton::Left); // too far for a mouse
-    REQUIRE(counts.Size() == 4u);
-    CHECK(counts[1] == 2u);
-    CHECK(counts[3] == 1u);
 }
 
 TEST_CASE("routing: CancelPointer ends a press with no click, and a slider drops its drag")
