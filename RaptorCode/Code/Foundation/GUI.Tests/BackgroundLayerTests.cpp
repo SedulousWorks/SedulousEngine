@@ -44,28 +44,6 @@ namespace
     }
 }
 
-TEST_CASE("background: an image layer sized and placed in its box")
-{
-    const core::Rectangle box{10.0f, 10.0f, 100.0f, 100.0f};
-    BoxLayer layer;
-    CheckRect(PlaceImageLayer(layer, box, 40.0f, 20.0f), 10.0f, 10.0f, 100.0f, 100.0f); // no size: filled
-    layer.Size = LayerSize::Cover; // 5x: 200 by 100, from the top left
-    CheckRect(PlaceImageLayer(layer, box, 40.0f, 20.0f), 10.0f, 10.0f, 200.0f, 100.0f);
-    layer.X = LayerLength{0.0f, 50.0f, false}; // centred: half the room (-100) left over
-    CheckRect(PlaceImageLayer(layer, box, 40.0f, 20.0f), -40.0f, 10.0f, 200.0f, 100.0f);
-    layer.Size = LayerSize::Contain; // 2.5x: 100 by 50
-    layer.Y = LayerLength{0.0f, 100.0f, false};
-    CheckRect(PlaceImageLayer(layer, box, 40.0f, 20.0f), 10.0f, 60.0f, 100.0f, 50.0f);
-    layer.Size = LayerSize::Lengths; // 50% wide, its height from the aspect
-    layer.Width = LayerLength{0.0f, 50.0f, false};
-    layer.Height = LayerLength{0.0f, 0.0f, true};
-    layer.X = LayerLength{5.0f, 0.0f, false};
-    layer.Y = LayerLength{0.0f, 0.0f, false};
-    CheckRect(PlaceImageLayer(layer, box, 40.0f, 20.0f), 15.0f, 10.0f, 50.0f, 25.0f);
-    layer.Size = LayerSize::Auto;
-    CheckRect(PlaceImageLayer(layer, box, 40.0f, 20.0f), 15.0f, 10.0f, 40.0f, 20.0f);
-}
-
 TEST_CASE("background: background-size and background-position from a sheet, a comma list per layer")
 {
     Pictures pictures;

@@ -8,4 +8,6 @@ StartupObject = "Sedulous.GUI.Program"
 [Dependencies]
 corlib = "*"
 "Sedulous.Core" = "*"
+"Sedulous.Image" = "*"
 "Sedulous.VG" = "*"
+"Sedulous.VG.SVG" = "*"

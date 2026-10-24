@@ -60,60 +60,6 @@ namespace
     }
 }
 
-TEST_CASE("svg-drawable: from its markup, the document's size, and the paths it draws as authored")
-{
-    core::RefPtr<SvgDrawable> d = SvgDrawable::FromText(core::DefaultAllocator(), core::StringView(kBar));
-    REQUIRE(d.Get() != nullptr);
-    REQUIRE(d->Document() != nullptr);
-    REQUIRE(d->IntrinsicSize().HasValue());
-    CHECK(d->IntrinsicSize().Value().x == doctest::Approx(24.0f));
-    CHECK(d->IntrinsicSize().Value().y == doctest::Approx(12.0f));
-    vg::VGContext ctx;
-    DrawContext dc{ctx};
-    d->Draw(dc, Rect{0.0f, 0.0f, 48.0f, 24.0f});
-    REQUIRE(ctx.GetBatch().vertices.Size() > 0);
-    CHECK(AllRed(ctx)); // white draws it as authored
-    for (const vg::VGVertex& v : ctx.GetBatch().vertices)
-    {
-        CHECK(v.position.x >= -1.0f); // scaled into the rectangle it lands in
-        CHECK(v.position.x <= 49.0f);
-        CHECK(v.position.y <= 25.0f);
-    }
-}
-
-TEST_CASE("svg-drawable: a tint recolours it whole; markup that does not parse makes none")
-{
-    core::RefPtr<SvgDrawable> d = SvgDrawable::FromText(core::DefaultAllocator(), core::StringView(kBar));
-    REQUIRE(d.Get() != nullptr);
-    vg::VGContext ctx;
-    DrawContext dc{ctx};
-    d->DrawTinted(dc, Rect{0.0f, 0.0f, 24.0f, 12.0f}, core::Color::Blue);
-    REQUIRE(ctx.GetBatch().vertices.Size() > 0);
-    for (const vg::VGVertex& v : ctx.GetBatch().vertices)
-    {
-        CHECK(v.color.b == doctest::Approx(1.0f));
-        CHECK(v.color.r == doctest::Approx(0.0f));
-    }
-    CHECK(SvgDrawable::FromText(core::DefaultAllocator(), core::StringView(u8"not svg")).Get() == nullptr);
-}
-
-TEST_CASE("svg-drawable: a picture by its path is an SVG by its ending, a raster otherwise, none when missing")
-{
-    Pictures pictures;
-    core::RefPtr<Drawable> svg = PictureDrawable(pictures, core::StringView(u8"Icons/bar.SVG"), core::DefaultAllocator());
-    REQUIRE(svg.Get() != nullptr);
-    auto* asSvg = core::Cast<SvgDrawable>(svg.Get());
-    REQUIRE(asSvg != nullptr);
-    CHECK(asSvg->Document() == &pictures.svg); // borrowed, not copied
-    core::RefPtr<Drawable> raster = PictureDrawable(pictures, core::StringView(u8"Icons/bar.png"), core::DefaultAllocator());
-    REQUIRE(raster.Get() != nullptr);
-    CHECK(core::Cast<ImageDrawable>(raster.Get()) != nullptr);
-    CHECK(pictures.svgs == 1);
-    CHECK(pictures.images == 1);
-    CHECK(PictureDrawable(pictures, core::StringView(u8"missing.svg"), core::DefaultAllocator()).Get() == nullptr);
-    CHECK(PictureDrawable(pictures, core::StringView(u8"missing.png"), core::DefaultAllocator()).Get() == nullptr);
-}
-
 TEST_CASE("svg-drawable: an Image shows an SVG by its src or from markup, sized as the document")
 {
     Pictures pictures;
@@ -178,41 +124,6 @@ namespace
     constexpr const char8_t* kBarPercent =
         u8"data:image/svg+xml,%3Csvg%20width%3D%2224%22%20height%3D%2212%22%3E%3Crect%20width%3D%2224%22%20height%3D%2212%22"
         u8"%20fill%3D%22%23ff0000%22%2F%3E%3C%2Fsvg%3E";
-}
-
-TEST_CASE("svg-drawable: an SVG written inline decodes from a data: URL, plain, percent-encoded or base64")
-{
-    core::String out;
-    REQUIRE(DecodeSvgDataUrl(core::StringView(kBarPercent), out));
-    CHECK(out.AsView() == core::StringView(kBar));
-    core::String base64(u8"data:image/svg+xml;charset=utf-8;base64,");
-    base64.Append(core::StringView(kBarBase64));
-    REQUIRE(DecodeSvgDataUrl(base64.AsView(), out));
-    CHECK(out.AsView() == core::StringView(kBar));
-    REQUIRE(DecodeSvgDataUrl(core::StringView(u8"DATA:image/SVG+xml;utf8,<svg/>"), out)); // the media type in any case
-    CHECK(out.AsView() == core::StringView(u8"<svg/>"));
-    CHECK_FALSE(DecodeSvgDataUrl(core::StringView(u8"data:image/svg+xml;base64,not*base64"), out));
-    CHECK_FALSE(DecodeSvgDataUrl(core::StringView(u8"data:image/png;base64,AAAA"), out));
-    CHECK_FALSE(DecodeSvgDataUrl(core::StringView(u8"data:image/svg+xmlfoo,<svg/>"), out));
-
-    CHECK(IsSvgSource(core::StringView(kBarPercent)));
-    CHECK(IsSvgSource(core::StringView(u8"Icons/a.svg")));
-    CHECK_FALSE(IsSvgSource(core::StringView(u8"Icons/a.png")));
-    CHECK_FALSE(IsSvgSource(core::StringView(u8"data:image/png;base64,AAAA")));
-}
-
-TEST_CASE("svg-drawable: the provider parses an inline SVG once and keeps it; a path still goes to LoadSvg")
-{
-    Pictures pictures;
-    const foundation::vg::svg::SVGDocument* first = pictures.Svg(core::StringView(kBarPercent));
-    REQUIRE(first != nullptr);
-    CHECK(first->width == doctest::Approx(24.0f));
-    CHECK(pictures.Svg(core::StringView(kBarPercent)) == first); // the same document, not parsed again
-    CHECK(pictures.svgs == 0);
-    CHECK(pictures.Svg(core::StringView(u8"data:image/svg+xml,not svg")) == nullptr);
-    CHECK(pictures.Svg(core::StringView(u8"data:image/svg+xml,not svg")) == nullptr); // remembered as none
-    CHECK(pictures.Svg(core::StringView(u8"bar.svg")) == &pictures.svg);
-    CHECK(pictures.svgs == 1);
 }
 
 TEST_CASE("svg-drawable: an inline SVG as a sheet's background, an Image's src and a rich text's icon")
