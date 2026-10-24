@@ -43,10 +43,12 @@ class UnattendedDialogs
 
 	public ~this()
 	{
-		if (mUi == null)
-			return;
-		delete mUi.DialogInterceptor;
-		mUi.DialogInterceptor = mPrevious;
+		// No early return: in Beef it would skip the fields' own deletes after this body.
+		if (mUi != null)
+		{
+			delete mUi.DialogInterceptor;
+			mUi.DialogInterceptor = mPrevious;
+		}
 	}
 }
 

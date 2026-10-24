@@ -396,4 +396,14 @@ class DeviceValidationTests
 		Test.Assert(fixture.Device.CreateTexture(wrong) case .Err);
 		Test.Assert(fixture.Messages.HasError("must be the format's sRGB or UNORM twin"));
 	}
+
+	/// A fixture without a device still frees its backends and lists: its destructor once
+	/// returned early there, which in Beef skips the fields' deletes (asan-test.py shows it).
+	[Test]
+	public static void AFixtureWithoutADeviceFreesWhatItHolds()
+	{
+		let fixture = scope ValidationFixture(false);
+		Test.Assert(fixture.Device == null);
+		Test.Assert(fixture.Backend != null);
+	}
 }

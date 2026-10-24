@@ -777,4 +777,12 @@ class TerrainSplatProbeTests
 		Test.Assert(other.Valid, "WebGpu: the array PBR frame rendered");
 		Parity("aligned array normal total", other.Total, alignedSun.Total);
 	}
+
+	/// Probe textures never given a device still free their lists: the destructor once
+	/// returned early there, which in Beef skips the fields' deletes (asan-test.py shows it).
+	[Test]
+	public static void ProbeTexturesNeverUsedFreeTheirLists()
+	{
+		let owned = scope ProbeTextures();
+	}
 }

@@ -56,9 +56,13 @@ class ValidationFixture
 	/// each test body.
 	public ~this()
 	{
-		if (Device == null)
-			return;
+		// No early return: in Beef it would skip the fields' own deletes after this body.
+		if (Device != null)
+			ReleaseDevice();
+	}
 
+	private void ReleaseDevice()
+	{
 		// A test that destroyed the device on purpose leaves the wrapper refusing every
 		// operation, so the tidy-up goes to the INNER device there. Freeing through the
 		// wrapper otherwise is what keeps a resource the test already destroyed from being

@@ -51,6 +51,29 @@ map is [RaptorSync.md](RaptorSync.md).
 
 ## Engine findings
 
+### Beef: an early `return` in a destructor skips the fields' cleanups
+A `return` inside `~this` also skips every field's `~ delete _` (or other `~` cleanup), which
+run after the body; C++ runs member destructors however the body exits. Verified on the fork's
+`working` (2026-10-24) with:
+
+```beef
+class Tracked { public static int Live; public this() { Live++; } public ~this() { Live--; } }
+class Holder
+{
+	Tracked mA = new .() ~ delete _;
+	bool mEarly;
+	public this(bool early) { mEarly = early; }
+	public ~this() { if (mEarly) return; }
+}
+// delete new Holder(false): Live 0. delete new Holder(true): Live 1, mA leaked.
+```
+
+GUI.Hosting's pass renderer leaked this way under ASan; it and the three other destructors
+that returned early (ValidationFixture, ProbeTextures, UnattendedDialogs) now release through
+an `if` instead. Still to do: a compiler fix on a `fix/` branch of the fork (the cleanups
+belong on the destructor's exit path), with a test in `IDEHelper/Tests`. Until then, never
+`return` from a destructor.
+
 ### VG probes draw without a stencil reference under the Vulkan validation layer
 With `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation`, `Sedulous.VG.Backend.Tests`'
 `FillRulesAndStencilClipsHold` and `ClipPathsNestAsIntersectionsWithAClipRectInsideOne` each

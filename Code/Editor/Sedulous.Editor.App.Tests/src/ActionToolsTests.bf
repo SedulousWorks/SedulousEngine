@@ -180,4 +180,14 @@ class ActionToolsTests
 		}
 		ui.MutationQueue.Drain();
 	}
+
+	/// An unattended scope over no context records nothing and still frees its list: the
+	/// destructor once returned early there, which in Beef skips the fields' deletes
+	/// (asan-test.py shows it).
+	[Test]
+	public static void AnUnattendedScopeWithoutAContextFreesItsList()
+	{
+		let unattended = scope UnattendedDialogs(null);
+		Test.Assert(unattended.Suppressed.IsEmpty);
+	}
 }

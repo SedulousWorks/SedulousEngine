@@ -126,13 +126,14 @@ class ProbeTextures
 
 	public ~this()
 	{
-		if (mDevice == null)
-			return;
-
-		for (var view in ref mViews)
-			mDevice.DestroyTextureView(ref view);
-		for (var texture in ref mTextures)
-			mDevice.DestroyTexture(ref texture);
+		// No early return: in Beef it would skip the fields' own deletes after this body.
+		if (mDevice != null)
+		{
+			for (var view in ref mViews)
+				mDevice.DestroyTextureView(ref view);
+			for (var texture in ref mTextures)
+				mDevice.DestroyTexture(ref texture);
+		}
 	}
 
 	/// An RGBA8 texture uploaded from `pixels`, which must be width times height times four
