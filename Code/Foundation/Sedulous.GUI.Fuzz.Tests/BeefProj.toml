@@ -1,0 +1,17 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.Fuzz.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.GUI.Fuzz.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Testing" = "*"
+"Sedulous.I18N" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.VG" = "*"
+"Sedulous.Xml" = "*"
+"Sedulous.Xml.Serialization" = "*"
