@@ -826,22 +826,7 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(ButtonBase, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"button")); // what a screen reader takes it for (E9d)
         builder.Attribute("accessActivate", true); // a screen reader may press it
-        builder.AccessorProperty<&ButtonBase::GetText, &ButtonBase::SetText>("text").PropAttribute("access", core::String(u8"name")).PropAttribute("translatable", true);
-        builder.AccessorProperty<&ButtonBase::IsToggle, &ButtonBase::SetToggle>("toggle").PropAttribute("css", core::String(u8"toggle"));
-        builder.AccessorProperty<&ButtonBase::IsChecked, &ButtonBase::SetChecked>("checked")
-            .PropAttribute("css", core::String(u8"checked"))
-            .PropAttribute("twoWay", true); // the user changes it: a binding may write it back
-        builder.AccessorProperty<&ButtonBase::GetName, &ButtonBase::SetName>("name").PropAttribute("css", core::String(u8"name"));
-        builder.AccessorProperty<&ButtonBase::GetActionOnName, &ButtonBase::SetActionOnName>("actionOn")
-            .PropAttribute("css", core::String(u8"action-on"));
-        builder.AccessorProperty<&ButtonBase::IsRepeat, &ButtonBase::SetRepeat>("repeat").PropAttribute("css", core::String(u8"repeat"));
-        builder.AccessorProperty<&ButtonBase::GetRepeatDelay, &ButtonBase::SetRepeatDelay>("repeatDelay")
-            .PropAttribute("css", core::String(u8"repeat-delay"));
-        builder.AccessorProperty<&ButtonBase::GetRepeatInterval, &ButtonBase::SetRepeatInterval>("repeatInterval")
-            .PropAttribute("css", core::String(u8"repeat-interval"));
-        builder.AccessorProperty<&ButtonBase::GetIconSource, &ButtonBase::SetIconSource>("icon").PropAttribute("css", core::String(u8"icon"));
         builder.Method<&ElementOf<ButtonBase>, ButtonBase, Node>("of");
     }
 
@@ -852,23 +837,16 @@ namespace foundation::gui
     REFLECT_MEMBERS(Button, "rtti::gui")
     {
         builder.Method<&ElementOf<Button>, Button, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(CheckBox, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"checkbox")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&CheckBox::IsIndeterminate, &CheckBox::SetIndeterminate>("indeterminate")
-            .PropAttribute("css", core::String(u8"indeterminate"));
         builder.Method<&ElementOf<CheckBox>, CheckBox, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(RadioButton, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"radio")); // what a screen reader takes it for (E9d)
         builder.Method<&ElementOf<RadioButton>, RadioButton, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(ColorSwatch, "rtti::gui")
@@ -951,9 +929,7 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(ToggleSwitch, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"switch")); // what a screen reader takes it for (E9d)
         builder.Method<&ElementOf<ToggleSwitch>, ToggleSwitch, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(RangeWidget, "rtti::gui")
@@ -1027,16 +1003,8 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(Expander, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"group")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&Expander::GetTitleString, &Expander::SetTitleString>("title").PropAttribute("access", core::String(u8"name")).PropAttribute("css", core::String(u8"title"));
-        builder.AccessorProperty<&Expander::IsOpen, &Expander::SetOpen>("open").PropAttribute("access", core::String(u8"expanded"))
-            .PropAttribute("css", core::String(u8"open"))
-            .PropAttribute("twoWay", true); // the user opens it: a binding may write it back
-        builder.AccessorProperty<&Expander::GetName, &Expander::SetName>("name").PropAttribute("css", core::String(u8"name"));
-        builder.AccessorProperty<&Expander::IsAnimated, &Expander::SetAnimated>("animate").PropAttribute("css", core::String(u8"animate"));
         builder.Method<&Expander::Toggle>("toggle");
         builder.Method<&ElementOf<Expander>, Expander, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(TabCloseButton, "rtti::gui")

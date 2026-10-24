@@ -200,4 +200,36 @@ class ThemeTests
 		Test.Assert(NodeFixtures.Near(thumb.TextColor.G, 0x80 / 255.0f, 0.01f));
 		Test.Assert(!slider.GetPartStyle("fill").HasColor);
 	}
+
+	[Test]
+	public static void TokensRetintEverythingASubtreeOverridesThemAndAWidgetTokenChangesOneControl()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let page = new Panel();
+		defer page.ReleaseRef();
+		let inside = new Button();
+		defer inside.ReleaseRef();
+		let outside = new Button();
+		defer outside.ReleaseRef();
+		let slider = new Slider();
+		defer slider.ReleaseRef();
+		root.AddChild(page);
+		root.AddChild(outside);
+		root.AddChild(slider);
+		page.AddChild(inside);
+		page.AddClass("special");
+		let mgr = scope StyleManager();
+		let theme = scope StyleSheet();
+		CSSParser.Parse(Theme.DefaultThemeCSS, theme);
+		mgr.UserAgentSheet = theme;
+		// A game's sheet: the base accent retinted, a subtree's own accent, and one widget token.
+		WidgetFixtures.UseSheet(mgr, ":root { --accent: #ff0000; --slider-fill: #00ff00; } .special { --accent: #0000ff; }");
+		mgr.ApplyTree(root);
+		Test.Assert(NodeFixtures.Near(outside.Box.BackgroundColor.R, 1.0f));
+		Test.Assert(NodeFixtures.Near(inside.Box.BackgroundColor.B, 1.0f)); // the subtree's
+		Test.Assert(NodeFixtures.Near(slider.GetPartStyle("fill").Box.BackgroundColor.G, 1.0f)); // one control's token
+		// A part with no override reads its widget token through to the base one.
+		Test.Assert(slider.GetPartStyle("track").HasBackground);
+	}
 }

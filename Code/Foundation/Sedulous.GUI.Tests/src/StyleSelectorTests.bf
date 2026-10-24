@@ -293,4 +293,37 @@ class StyleSelectorTests
 		Test.Assert(Sel(":disabled", w));
 		Test.Assert(Sel("button:disabled", w));
 	}
+
+	[Test]
+	public static void WhatChangesAStructuralOrStateMatchRestylesTheWidgetsItTouches()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let list = StyleFixtures.Widget("list");
+		defer list.ReleaseRef();
+		root.AddChild(list);
+		let first = StyleFixtures.Widget("item");
+		defer first.ReleaseRef();
+		list.AddChild(first);
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, "item:last-child { opacity: 0.5; } checkbox:checked { opacity: 0.25; }");
+		styles.ApplyTree(root);
+		Test.Assert(NodeFixtures.Near(first.Alpha, 0.5f));
+
+		// A new last child: the old one is no longer last.
+		let second = StyleFixtures.Widget("item");
+		defer second.ReleaseRef();
+		list.AddChild(second);
+		styles.ApplyTree(root);
+		Test.Assert(NodeFixtures.Near(second.Alpha, 0.5f));
+
+		let area = new CheckBox();
+		defer area.ReleaseRef();
+		root.AddChild(area);
+		styles.ApplyTree(root);
+		Test.Assert(NodeFixtures.Near(area.Alpha, 1.0f));
+		area.Checked = true;
+		styles.ApplyTree(root);
+		Test.Assert(NodeFixtures.Near(area.Alpha, 0.25f));
+	}
 }

@@ -145,6 +145,18 @@ class MirrorTests
 	}
 
 	[Test]
+	public static void ASwitchIsOnAtItsInlineEndAClosedChevronPointsTowardIt()
+	{
+		CheckMirrored(scope () =>
+			{
+				let toggle = new ToggleSwitch();
+				toggle.Checked = true;
+				return toggle;
+			}, .(120.0f, 24.0f));
+		CheckMirrored(scope () => new Expander(), .(200.0f, 24.0f));
+	}
+
+	[Test]
 	public static void AHorizontalScrollbarPressedNearItsRightEndInRightToLeftGoesTowardItsStart()
 	{
 		let root = SceneFixtures.NewScene(200.0f, 100.0f);

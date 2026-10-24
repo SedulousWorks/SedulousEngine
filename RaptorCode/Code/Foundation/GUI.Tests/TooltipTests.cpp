@@ -57,56 +57,6 @@ namespace
     };
 }
 
-TEST_CASE("context menu: a right release asks the node there and up; Shift+F10 asks the focused one")
-{
-    Bed bed;
-    auto button = Make<Button>();
-    button->SetSize(core::Float2{30.0f, 20.0f});
-    bed.child->AddChild(button.Get());
-    int asked = 0;
-    core::Float2 at{};
-    (void)bed.panel->AddEventListener(EventType::ContextMenu, [&](const Event& e)
-                                      {
-                                          ++asked;
-                                          at = static_cast<const MouseEvent&>(e).Position;
-                                          e.Handled = true;
-                                      });
-    bed.d().InjectMouseDown(core::Float2{10.0f, 10.0f}, MouseButton::Right);
-    CHECK(asked == 0);
-    bed.d().InjectMouseUp(core::Float2{10.0f, 10.0f}, MouseButton::Right);
-    CHECK(asked == 1);
-    CHECK(at.x == doctest::Approx(10.0f));
-    button->RequestFocus();
-    bed.d().InjectKeyDown(static_cast<core::u32>(KeyCode::F10), KeyModShift);
-    CHECK(asked == 2);
-    CHECK(at.y == doctest::Approx(20.0f)); // the focused node's bottom-left
-}
-
-TEST_CASE("context menu: a long press asks for one; untaken, it shows the tooltip; and no click follows")
-{
-    Bed bed;
-    auto button = Make<Button>();
-    button->SetSize(core::Float2{30.0f, 20.0f});
-    bed.child->AddChild(button.Get());
-    int clicks = 0;
-    button->SetOnClick([&] { ++clicks; });
-    bed.d().InjectTouchDown(1, core::Float2{10.0f, 10.0f});
-    bed.Frames(3); // 0.3 s
-    CHECK(bed.d().GetShownTooltip() == nullptr);
-    bed.Frames(3);
-    REQUIRE(bed.d().GetShownTooltip() != nullptr); // nobody opened a menu: the tooltip
-    CHECK(bed.Shown() == SV(u8"The panel"));
-    bed.d().InjectTouchUp(1, core::Float2{10.0f, 10.0f});
-    CHECK(clicks == 0);
-
-    // A finger that moves is a drag, not a long press.
-    bed.d().InjectTouchDown(1, core::Float2{10.0f, 10.0f});
-    bed.d().InjectTouchMove(1, core::Float2{60.0f, 60.0f});
-    bed.Frames(8);
-    CHECK(bed.d().GetShownTooltip() == nullptr);
-    bed.d().InjectTouchUp(1, core::Float2{60.0f, 60.0f});
-}
-
 TEST_CASE("context menu: a text field offers cut, copy, paste and select all, lit where they do something")
 {
     Bed bed;

@@ -54,32 +54,6 @@ namespace
     };
 }
 
-TEST_CASE("back: Escape and the pad's East run it, and the screen on the focus path hears it")
-{
-    BackBed bed;
-    bed.Escape();
-    CHECK(bed.backs == 1);
-    bed.d().InjectPadButton(PadButton::East);
-    CHECK(bed.backs == 2);
-    CHECK(bed.root->IsCommandAvailable(core::StringView(kBackCommand)));
-}
-
-TEST_CASE("back: the topmost auto popup closes first, one at a time, whether or not it holds the focus")
-{
-    BackBed bed;
-    auto outer = bed.OpenAuto(*bed.button);
-    auto inner = bed.OpenAuto(*outer); // a submenu
-    REQUIRE(bed.d().PopupCount() == 2u);
-    bed.Escape();
-    CHECK_FALSE(bed.d().IsPopupOpen(*inner));
-    CHECK(bed.d().IsPopupOpen(*outer));
-    bed.d().InjectPadButton(PadButton::East);
-    CHECK_FALSE(bed.d().IsPopupOpen(*outer));
-    CHECK(bed.backs == 0); // the screen under them heard neither
-    bed.Escape();
-    CHECK(bed.backs == 1);
-}
-
 TEST_CASE("back: a modal dialog answers it as its close button does, and only while open")
 {
     BackBed bed;
@@ -126,26 +100,4 @@ TEST_CASE("back: a message box picks its cancel result; a popup opened in it clo
     CHECK_FALSE(box->IsOpen());
     CHECK(got == MessageBox::Result::Cancel);
     CHECK(bed.backs == 0);
-}
-
-TEST_CASE("back: a game unbinds Escape from it, and Escape closes nothing")
-{
-    BackBed bed;
-    (void)bed.root->GetContext().GetKeymap().Bind(core::StringView(u8"escape"), core::StringView{});
-    auto popup = bed.OpenAuto(*bed.button);
-    bed.Escape();
-    CHECK(bed.d().IsPopupOpen(*popup));
-    CHECK(bed.backs == 0);
-    bed.d().InjectPadButton(PadButton::East); // the pad's binding stands
-    CHECK_FALSE(bed.d().IsPopupOpen(*popup));
-}
-
-TEST_CASE("back: a focused widget's own Escape still comes first")
-{
-    BackBed bed;
-    (void)bed.button->AddEventListener(EventType::KeyDown, [](const Event& e) { e.Handled = true; });
-    bed.Escape();
-    CHECK(bed.backs == 0);
-    bed.d().InjectPadButton(PadButton::East); // the pad's East is `back` first, by its binding
-    CHECK(bed.backs == 1);
 }

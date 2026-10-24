@@ -114,29 +114,3 @@ TEST_CASE("selector: the widgets' own states, and :focus-within and :enabled")
     input->ReleaseFocus();
     CHECK_FALSE(Sel(u8"panel:focus-within").Select(*panel.Get()));
 }
-
-TEST_CASE("selector: what changes a structural or state match restyles the widgets it touches")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    auto list = Widget(u8"list");
-    root->AddChild(list.Get());
-    auto first = Widget(u8"item");
-    list->AddChild(first.Get());
-    StyleManager styles(CSSParser::Parse(core::StringView(u8"item:last-child { opacity: 0.5; } checkbox:checked { opacity: 0.25; }")));
-    styles.ApplyTree(*root.Get());
-    CHECK(first->GetAlpha() == doctest::Approx(0.5f));
-
-    // A new last child: the old one is no longer last.
-    auto second = Widget(u8"item");
-    list->AddChild(second.Get());
-    styles.ApplyTree(*root.Get());
-    CHECK(second->GetAlpha() == doctest::Approx(0.5f));
-
-    auto box = Make<CheckBox>();
-    root->AddChild(box.Get());
-    styles.ApplyTree(*root.Get());
-    CHECK(box->GetAlpha() == doctest::Approx(1.0f));
-    box->SetChecked(true);
-    styles.ApplyTree(*root.Get());
-    CHECK(box->GetAlpha() == doctest::Approx(0.25f));
-}

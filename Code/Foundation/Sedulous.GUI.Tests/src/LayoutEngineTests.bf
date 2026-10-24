@@ -1011,4 +1011,92 @@ class LayoutEngineTests
 			Test.Assert(Math.Abs(b.Min.X) < 0.02f);
 		}
 	}
+
+	[Test]
+	public static void ALabelAndAButtonSizeToTheirTextAndFollowIt()
+	{
+		let font = scope CachedFont(new MockFont(), null); // 6px a byte, 12px a line
+		let bed = scope Bed();
+		let row = PanelBox(bed.Root, scope (s) =>
+			{
+				s.Direction = .Row;
+				s.AlignItems = .Start;
+				s.ColumnGap = 10.0f;
+			});
+		let label = new Label();
+		defer label.ReleaseRef();
+		label.Font = font;
+		label.Text = "Score";
+		label.Padding = Thickness(4.0f);
+		row.AddChild(label);
+		let button = new Button();
+		defer button.ReleaseRef();
+		button.Font = font;
+		button.Text = "Play";
+		button.Padding = Thickness(10.0f, 6.0f);
+		row.AddChild(button);
+		let area = new CheckBox();
+		defer area.ReleaseRef();
+		row.AddChild(area);
+		bed.Layout();
+		NodeFixtures.CheckRect(label, 0, 0, 5 * 6 + 8, 12 + 8);
+		NodeFixtures.CheckRect(button, 38 + 10, 0, 4 * 6 + 20, 12 + 12);
+		Test.Assert(Near(area.Size.X, 20.0f));
+		label.Text = "Score: 120";
+		bed.Layout();
+		Test.Assert(Near(label.Size.X, 10 * 6 + 8));
+		Test.Assert(Near(button.Position.X, 68.0f + 10.0f)); // moved along with it
+	}
+
+	[Test]
+	public static void ARowAlignedByBaselineLinesUpItsItemsTextAndGrowsToHoldThem()
+	{
+		// The mock font's ascent is 10 on a 12 line. A label's baseline is its padding plus the
+		// ascent (its line fills its content box); a button's the same; a plain box's the bottom of
+		// its content box.
+		let font = scope CachedFont(new MockFont(), null);
+		let bed = scope Bed();
+		let row = PanelBox(bed.Root, scope (s) =>
+			{
+				s.Direction = .Row;
+				s.AlignItems = .Baseline;
+			});
+		let label = new Label();
+		defer label.ReleaseRef();
+		label.Font = font;
+		label.Text = "Name";
+		label.Padding = Thickness(4.0f); // 20 tall, baseline 14
+		row.AddChild(label);
+		let button = new Button();
+		defer button.ReleaseRef();
+		button.Font = font;
+		button.Text = "Go";
+		button.Padding = Thickness(10.0f, 6.0f); // 24 tall, baseline 16
+		row.AddChild(button);
+		let area = PanelFixed(row, 40.0f, 30.0f); // baseline 30
+		let pushed = new Label();
+		defer pushed.ReleaseRef();
+		pushed.Font = font;
+		pushed.Text = "x";
+		pushed.Padding = Thickness(4.0f);
+		pushed.Margin = Thickness(0.0f, 6.0f, 0.0f, 0.0f); // its margin box's baseline at 20
+		row.AddChild(pushed);
+		bed.Layout();
+
+		// The baselines meet at 30, the deepest above it; each item sits so its baseline is there.
+		Test.Assert(Near(label.Position.Y, 16.0f));
+		Test.Assert(Near(button.Position.Y, 14.0f));
+		Test.Assert(Near(area.Position.Y, 0.0f));
+		Test.Assert(Near(pushed.Position.Y, 16.0f)); // 10 down, then its margin
+		Test.Assert(Near(label.Position.Y + label.Baseline, 30.0f));
+		Test.Assert(Near(button.Position.Y + button.Baseline, 30.0f));
+		// The row holds what reaches furthest below the baseline too: the button's 8.
+		Test.Assert(Near(row.Size.Y, 38.0f));
+
+		// In a column, baseline places as start.
+		row.EditLayoutStyle(scope (s) => { s.Direction = .Column; });
+		bed.Layout();
+		Test.Assert(Near(label.Position.X, 0.0f));
+		Test.Assert(Near(area.Position.X, 0.0f));
+	}
 }

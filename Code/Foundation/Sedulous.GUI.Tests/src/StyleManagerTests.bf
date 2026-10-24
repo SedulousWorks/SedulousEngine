@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.VG;
 using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
@@ -550,5 +551,28 @@ class StyleManagerTests
 		styles.ApplyTree(root);
 		Test.Assert(Near(half.Alpha, 0.5f)); // not 50
 		Test.Assert(Near(junk.Alpha, 1.0f)); // not a number: its own value
+	}
+
+	[Test]
+	public static void APartsBorderColorAloneRecoloursItsOwnOutline()
+	{
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		let area = new CheckBox();
+		defer area.ReleaseRef();
+		area.Size = .(20.0f, 20.0f);
+		root.AddChild(area);
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, "checkbox::box { border-color: #ff00ff; }");
+		styles.ApplyTree(root);
+		let part = area.GetPartStyle("box");
+		Test.Assert(part.HasBorderColor);
+		Test.Assert(!part.HasBorderWidth);
+		Test.Assert(!part.HasBackground);
+		let drawn = OutlinedBox(Color.White, 2.0f, scope NodeBox());
+		part.Over(drawn);
+		Test.Assert(Near(drawn.BorderWidths.Top, 2.0f)); // its own width
+		Test.Assert(Near(drawn.BorderColors.Top.G, 0.0f)); // the sheet's colour
+		Test.Assert(Near(drawn.BackgroundColor.A, 0.0f)); // no fill
 	}
 }

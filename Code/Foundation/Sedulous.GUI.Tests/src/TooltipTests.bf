@@ -8,7 +8,9 @@ namespace Sedulous.GUI.Tests;
 /// a delay on its own clock, by the pointer, as a hint popup (a Tooltip, Node's default content);
 /// just after one hid the next shows at once; a press or a key hides it until the pointer moves on;
 /// the keys moving the focus show the focused control's; an interactive one holds while the pointer
-/// crosses into it. (Raptor's context menu tests here come with the button and the text field.)
+/// crosses into it. A right release, Shift+F10 or a long press asks for a context menu (a
+/// `contextmenu` event); a long press nobody takes shows the tooltip. (Raptor's text field's
+/// context menu test here comes with the text field.)
 class TooltipTests
 {
 	private static bool Near(float a, float b) => NodeFixtures.Near(a, b);
@@ -207,5 +209,59 @@ class TooltipTests
 		Test.Assert(bed.D.ShownTooltip == tip);
 		bed.Frames(2);
 		Test.Assert(bed.D.ShownTooltip == null);
+	}
+
+	[Test]
+	public static void ARightReleaseAsksTheNodeThereAndUpShiftF10AsksTheFocusedOne()
+	{
+		let bed = scope Bed();
+		let button = new Button();
+		defer button.ReleaseRef();
+		button.Size = .(30.0f, 20.0f);
+		bed.Child.AddChild(button);
+		int asked = 0;
+		Float2 at = .(0.0f, 0.0f);
+		bed.Panel.AddEventListener(.ContextMenu, new [&] (e) =>
+			{
+				++asked;
+				at = ((MouseEvent)e).Position;
+				e.Handled = true;
+			});
+		bed.D.InjectMouseDown(.(10.0f, 10.0f), .Right);
+		Test.Assert(asked == 0);
+		bed.D.InjectMouseUp(.(10.0f, 10.0f), .Right);
+		Test.Assert(asked == 1);
+		Test.Assert(Near(at.X, 10.0f));
+		button.RequestFocus();
+		bed.D.InjectKeyDown((uint32)KeyCode.F10, KeyModShift);
+		Test.Assert(asked == 2);
+		Test.Assert(Near(at.Y, 20.0f)); // the focused node's bottom-left
+	}
+
+	[Test]
+	public static void ALongPressAsksForOneUntakenItShowsTheTooltipAndNoClickFollows()
+	{
+		let bed = scope Bed();
+		let button = new Button();
+		defer button.ReleaseRef();
+		button.Size = .(30.0f, 20.0f);
+		bed.Child.AddChild(button);
+		int clicks = 0;
+		button.SetOnClick(new [&] () => { ++clicks; });
+		bed.D.InjectTouchDown(1, .(10.0f, 10.0f));
+		bed.Frames(3); // 0.3 s
+		Test.Assert(bed.D.ShownTooltip == null);
+		bed.Frames(3);
+		Test.Assert(bed.D.ShownTooltip != null); // nobody opened a menu: the tooltip
+		Test.Assert(bed.Shown == "The panel");
+		bed.D.InjectTouchUp(1, .(10.0f, 10.0f));
+		Test.Assert(clicks == 0);
+
+		// A finger that moves is a drag, not a long press.
+		bed.D.InjectTouchDown(1, .(10.0f, 10.0f));
+		bed.D.InjectTouchMove(1, .(60.0f, 60.0f));
+		bed.Frames(8);
+		Test.Assert(bed.D.ShownTooltip == null);
+		bed.D.InjectTouchUp(1, .(60.0f, 60.0f));
 	}
 }

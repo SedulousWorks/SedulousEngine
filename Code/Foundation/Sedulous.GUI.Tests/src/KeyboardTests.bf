@@ -4,10 +4,189 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
 
-/// The keyboard: a captured key and its cancel, access keys in a label's text, and type-ahead's
-/// matching across cases and scripts.
+/// A GUI of buttons, each with an id, 40 by 20. The root and the buttons go with it.
+class KeyBed
+{
+	public SceneRoot Root = SceneFixtures.NewScene() ~ _.ReleaseRef();
+	public List<Button> Buttons = new .() ~ { for (let b in _) b.ReleaseRef(); delete _; };
+
+	public EventDispatcher D => Root.EventDispatcher;
+
+	/// A new button `id`, the last child of `parent` (the root when null); the bed holds it.
+	public Button Add(StringView id, Node parent = null)
+	{
+		let b = new Button();
+		b.Id = id;
+		b.Size = .(40.0f, 20.0f);
+		((parent != null) ? parent : Root).AddChild(b);
+		Buttons.Add(b);
+		return b;
+	}
+
+	public static StringView IdOf(Node n)
+	{
+		let w = n as UIWidget;
+		return (w != null) ? w.Id : default;
+	}
+
+	/// The focused widget's id (empty: none, or not a widget).
+	public StringView Focused => IdOf(D.FocusNode);
+
+	public void Tab(bool back = false)
+	{
+		D.InjectKeyDown((uint32)KeyCode.Tab, back ? KeyModShift : 0);
+	}
+}
+
+/// The keyboard: tab-index, focus groups, the next key captured, access keys and type-ahead from
+/// text input; a focused widget hidden gives the focus up.
 class KeyboardTests
 {
+	[Test]
+	public static void TabIndexOrdersTabPositiveFirstLowestFirstThenTreeOrderNegativeIsSkipped()
+	{
+		let bed = scope KeyBed();
+		bed.Add("a").TabIndex = 2;
+		bed.Add("b");
+		bed.Add("c").TabIndex = 1;
+		bed.Add("d").TabIndex = -1;
+		bed.Add("e");
+		let stops = scope List<Node>();
+		bed.D.TabStops(stops);
+		Test.Assert(stops.Count == 4);
+		Test.Assert(KeyBed.IdOf(stops[0]) == "c");
+		Test.Assert(KeyBed.IdOf(stops[1]) == "a");
+		Test.Assert(KeyBed.IdOf(stops[2]) == "b");
+		Test.Assert(KeyBed.IdOf(stops[3]) == "e");
+		bed.Tab();
+		Test.Assert(bed.Focused == "c");
+		bed.Tab();
+		Test.Assert(bed.Focused == "a");
+		bed.Tab(true);
+		Test.Assert(bed.Focused == "c");
+		// Skipped by Tab, but still focusable another way; Tab from there goes on in the order.
+		bed.D.FocusNode = bed.Buttons[3];
+		Test.Assert(bed.Focused == "d");
+		bed.Tab();
+		Test.Assert(bed.Focused == "c"); // not among the stops: Tab starts over
+	}
+
+	[Test]
+	public static void AFocusGroupIsOneTabStopItsCheckedMemberFirstThenTheOneFocusedLastArrowsWrapInside()
+	{
+		let bed = scope KeyBed();
+		bed.Add("x").Position = .(0.0f, 0.0f);
+		let group = new Panel();
+		defer group.ReleaseRef();
+		group.FocusGroup = true;
+		group.Position = .(0.0f, 40.0f);
+		group.Size = .(200.0f, 20.0f);
+		bed.Root.AddChild(group);
+		String[3] ids = .("r0", "r1", "r2");
+		RadioButton[3] radios = default;
+		defer { for (let r in radios) r.ReleaseRef(); }
+		for (int i = 0; i < 3; ++i)
+		{
+			radios[i] = new RadioButton();
+			radios[i].Id = ids[i];
+			radios[i].Position = .(60.0f * (float)i, 0.0f);
+			radios[i].Size = .(50.0f, 20.0f);
+			group.AddChild(radios[i]);
+		}
+		radios[1].Checked = true;
+		bed.Add("y").Position = .(0.0f, 80.0f);
+
+		let stops = scope List<Node>();
+		bed.D.TabStops(stops);
+		Test.Assert(stops.Count == 3);
+		bed.Tab();
+		Test.Assert(bed.Focused == "x");
+		bed.Tab();
+		Test.Assert(bed.Focused == "r1"); // the checked one
+		bed.D.InjectKeyDown((uint32)KeyCode.Right, 0);
+		Test.Assert(bed.Focused == "r2");
+		bed.D.InjectKeyDown((uint32)KeyCode.Right, 0);
+		Test.Assert(bed.Focused == "r0"); // wrapped inside the group
+		bed.Tab();
+		Test.Assert(bed.Focused == "y"); // out of the group in one step
+		bed.Tab(true);
+		Test.Assert(bed.Focused == "r0"); // back to the one focused there last
+	}
+
+	[Test]
+	public static void ABindingWhoseCommandNothingOnTheFocusPathHandlesLetsTheKeyGoOn()
+	{
+		let bed = scope KeyBed();
+		bed.Add("a").Position = .(0.0f, 0.0f);
+		bed.Add("b").Position = .(0.0f, 40.0f);
+		Test.Assert(bed.Root.Context.Keymap.Bind("down", "nobody.handles"));
+		bed.D.FocusNode = bed.Buttons[0];
+		bed.D.InjectKeyDown((uint32)KeyCode.Down, 0);
+		Test.Assert(bed.Focused == "b"); // navigation had it
+	}
+
+	[Test]
+	public static void AFocusedWidgetHiddenGivesUpTheFocusReturnDoesNotPressItTheScopesCommandsRun()
+	{
+		let bed = scope KeyBed();
+		let screen = new Panel();
+		defer screen.ReleaseRef();
+		bed.Root.AddChild(screen);
+		let back = bed.Add("back", screen);
+		int pressed = 0;
+		back.SetOnClick(new [&] () => { pressed++; });
+		int ran = 0;
+		bed.Root.Context.DefineCommand("test.back");
+		Test.Assert(bed.Root.Context.Keymap.Bind("escape", "test.back"));
+		bed.Root.OnCommand("test.back", new [&] (command) => { ran++; });
+		back.RequestFocus();
+		Test.Assert(bed.Focused == "back");
+
+		screen.Displayed = false; // the screen hides with its button focused
+		bed.D.InjectKeyDown((uint32)KeyCode.Return);
+		Test.Assert(pressed == 0);
+		Test.Assert(bed.D.FocusNode == null);
+		bed.D.InjectKeyDown((uint32)KeyCode.Escape);
+		Test.Assert(ran == 1);
+
+		// Hidden by `visibility` too, and found out by the tick as well as by a key.
+		screen.Displayed = true;
+		back.RequestFocus();
+		Test.Assert(bed.Focused == "back");
+		back.Visible = false;
+		bed.D.Tick(0.016f);
+		Test.Assert(bed.D.FocusNode == null);
+	}
+
+	[Test]
+	public static void AltAndAButtonsAccessKeyFocusAndPressItItsLetterIsUnderlinedWhileAltIsHeld()
+	{
+		let bed = scope KeyBed();
+		let other = bed.Add("other");
+		let apply = bed.Add("apply");
+		apply.Text = "&Apply";
+		other.Text = "Other";
+		int clicks = 0;
+		apply.SetOnClick(new [&] () => { clicks++; });
+		Test.Assert(apply.Text == "Apply");
+		Test.Assert(apply.Mnemonic == 'a');
+		bed.D.FocusNode = other;
+		bed.D.InjectKeyDown((uint32)KeyCode.A, KeyModAlt);
+		Test.Assert(clicks == 1);
+		Test.Assert(bed.Focused == "apply");
+		bed.D.InjectKeyDown((uint32)KeyCode.Q, KeyModAlt); // nothing marked Q
+		Test.Assert(clicks == 1);
+
+		Test.Assert(apply.TextPart != null);
+		Test.Assert(!bed.D.AreMnemonicsShown);
+		bed.D.InjectKeyDown((uint32)KeyCode.LeftAlt, KeyModAlt);
+		Test.Assert(bed.D.AreMnemonicsShown);
+		bed.D.InjectKeyUp((uint32)KeyCode.LeftAlt, 0);
+		Test.Assert(!bed.D.AreMnemonicsShown);
+		bed.D.MnemonicsAlwaysShown = true;
+		Test.Assert(bed.D.AreMnemonicsShown);
+	}
+
 	[Test]
 	public static void EscapeCancelsACaptureUnlessTheCallerTakesIt()
 	{

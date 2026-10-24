@@ -1,11 +1,46 @@
 using System;
+using System.Collections;
+using Sedulous.Core;
 using Sedulous.GUI;
 using internal Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
 
-/// Bindings: keystrokes and gamepad buttons parsed and named, context predicates over a key
-/// context layer, and a command's keys as a menu shows them.
+/// A screen in the key context "menu mode=main" holding a focused button, and the commands that
+/// ran, by id. The root and the tree go with it.
+class KeymapBed
+{
+	public SceneRoot Root = SceneFixtures.NewScene() ~ _.ReleaseRef();
+	public UIWidget Screen = new .() ~ _.ReleaseRef();
+	public Button Item = new .() ~ _.ReleaseRef();
+	public List<String> Ran = new .() ~ DeleteContainerAndItems!(_);
+
+	public this()
+	{
+		Root.AddChild(Screen);
+		Screen.AddChild(Item);
+		Screen.KeyContext = "menu mode=main";
+		Item.TabFocusable = true;
+		Item.Size = .(40.0f, 20.0f);
+		Root.EventDispatcher.FocusNode = Item;
+	}
+
+	/// The root handles `id`, noting each run.
+	public void Handle(String id)
+	{
+		Root.OnCommand(id, new (command) => { Ran.Add(new String(id)); });
+	}
+
+	public void Key(KeyCode key, uint32 mods = 0)
+	{
+		Root.EventDispatcher.InjectKeyDown((uint32)key, mods);
+	}
+}
+
+/// Bindings: keystrokes and gamepad buttons bound to commands, scoped by context predicates over
+/// the focus path (the deepest match winning, then the later binding), unbinding, chords, and the
+/// order keys take (the widget, then bindings, then navigation); keystrokes and gamepad buttons
+/// parsed and named, and a command's keys as a menu shows them.
 class KeymapTests
 {
 	private static bool ShortcutIs(Keymap keymap, StringView command, StringView expected)
@@ -104,5 +139,182 @@ class KeymapTests
 		let unknown = scope String();
 		KeystrokeName(Keystroke((uint32)KeyCode.Unknown, 0, false), unknown);
 		Test.Assert(unknown.IsEmpty);
+	}
+
+	[Test]
+	public static void TheDeepestMatchingContextWinsThenTheLaterBinding()
+	{
+		let bed = scope KeymapBed();
+		bed.Handle("quit");
+		bed.Handle("back");
+		bed.Handle("close");
+		let keys = bed.Root.Context.Keymap;
+		Test.Assert(keys.Bind("escape", "quit")); // everywhere
+		Test.Assert(keys.Bind("escape", "back", "menu")); // in the menu: deeper
+		bed.Key(.Escape);
+		Test.Assert(bed.Ran.Count == 1);
+		Test.Assert(bed.Ran[0] == "back");
+
+		Test.Assert(keys.Bind("escape", "close", "mode == main")); // as deep, later: wins
+		bed.Key(.Escape);
+		Test.Assert(bed.Ran[1] == "close");
+
+		// Focus outside the menu: only the context-free binding holds.
+		let outside = new Button();
+		defer outside.ReleaseRef();
+		outside.TabFocusable = true;
+		bed.Root.AddChild(outside);
+		bed.Root.EventDispatcher.FocusNode = outside;
+		bed.Key(.Escape);
+		Test.Assert(bed.Ran[2] == "quit");
+	}
+
+	[Test]
+	public static void AnOuterNodesContextDoesNotOutrankTheFocusedOnes()
+	{
+		// The game screen declares "game"; the menu inside it declares "menu". Escape pauses in the
+		// game and closes in the menu, whichever was bound later.
+		let bed = scope KeymapBed();
+		bed.Handle("pause");
+		bed.Handle("close");
+		let game = new UIWidget();
+		defer game.ReleaseRef();
+		bed.Root.RemoveChild(bed.Screen);
+		bed.Root.AddChild(game);
+		game.AddChild(bed.Screen);
+		game.KeyContext = "game";
+		bed.Root.EventDispatcher.FocusNode = bed.Item;
+		let keys = bed.Root.Context.Keymap;
+		Test.Assert(keys.Bind("escape", "close", "menu"));
+		Test.Assert(keys.Bind("escape", "pause", "game")); // later, but outer
+		bed.Key(.Escape);
+		Test.Assert(bed.Ran.Count == 1);
+		Test.Assert(bed.Ran[0] == "close");
+
+		// "not in a menu" holds only outside it.
+		Test.Assert(keys.Bind("f1", "pause", "game && !menu"));
+		bed.Key(.F1);
+		Test.Assert(bed.Ran.Count == 1);
+		let hud = new Button();
+		defer hud.ReleaseRef();
+		hud.TabFocusable = true;
+		game.AddChild(hud);
+		bed.Root.EventDispatcher.FocusNode = hud;
+		bed.Key(.F1);
+		Test.Assert(bed.Ran.Count == 2);
+		Test.Assert(bed.Ran[1] == "pause");
+		bed.Key(.Escape); // outside the menu: the game's binding
+		Test.Assert(bed.Ran.Count == 3);
+		Test.Assert(bed.Ran[2] == "pause");
+	}
+
+	[Test]
+	public static void ABindingToNothingUnbindsAKeyThere()
+	{
+		let bed = scope KeymapBed();
+		bed.Handle("quit");
+		let keys = bed.Root.Context.Keymap;
+		Test.Assert(keys.Bind("escape", "quit"));
+		Test.Assert(keys.Bind("escape", "", "menu")); // not in the menu
+		bed.Key(.Escape);
+		Test.Assert(bed.Ran.IsEmpty);
+	}
+
+	[Test]
+	public static void AChordWaitsForItsNextKeystrokeAndLapses()
+	{
+		let bed = scope KeymapBed();
+		bed.Handle("comment");
+		bed.Handle("select-all");
+		let keys = bed.Root.Context.Keymap;
+		Test.Assert(keys.Bind("ctrl-x ctrl-c", "comment"));
+		Test.Assert(keys.Bind("ctrl-a", "select-all"));
+		bed.Key(.X, KeyModCtrl); // waits
+		Test.Assert(bed.Ran.IsEmpty);
+		bed.Key(.C, KeyModCtrl);
+		Test.Assert(bed.Ran.Count == 1);
+		Test.Assert(bed.Ran[0] == "comment");
+
+		bed.Key(.X, KeyModCtrl);
+		bed.Root.Context.Update(SceneFixtures.Seconds(1.5)); // too slow: dropped
+		bed.Key(.C, KeyModCtrl);
+		Test.Assert(bed.Ran.Count == 1);
+
+		bed.Key(.X, KeyModCtrl);
+		bed.Key(.A, KeyModCtrl); // broken off: the keystroke alone
+		Test.Assert(bed.Ran.Count == 2);
+		Test.Assert(bed.Ran[1] == "select-all");
+	}
+
+	[Test]
+	public static void AGamepadsButtonsBindTooSouthActivatesWhenUnbound()
+	{
+		let bed = scope KeymapBed();
+		bed.Handle("back");
+		Test.Assert(bed.Root.Context.Keymap.Bind("pad-east", "back"));
+		int clicks = 0;
+		bed.Item.AddEventListener(.MouseClick, new [&] (e) => { clicks++; });
+		let d = bed.Root.EventDispatcher;
+		d.InjectPadButton(.East);
+		Test.Assert(bed.Ran.Count == 1);
+		d.InjectPadButton(.South);
+		Test.Assert(clicks == 1);
+	}
+
+	[Test]
+	public static void AChordCutShortRunsWhatItsFirstKeyBindsAloneTimedOutOrBrokenOff()
+	{
+		let bed = scope KeymapBed();
+		bed.Handle("kill");
+		bed.Handle("kill-all");
+		bed.Handle("select-all");
+		let keys = bed.Root.Context.Keymap;
+		Test.Assert(keys.Bind("ctrl-k", "kill"));
+		Test.Assert(keys.Bind("ctrl-k ctrl-a", "kill-all"));
+		Test.Assert(keys.Bind("ctrl-a", "select-all"));
+		bed.Key(.K, KeyModCtrl); // waits: a chord may follow
+		Test.Assert(bed.Ran.IsEmpty);
+		bed.Root.Context.Update(SceneFixtures.Seconds(1.5)); // none did
+		Test.Assert(bed.Ran.Count == 1);
+		Test.Assert(bed.Ran[0] == "kill");
+
+		bed.Key(.K, KeyModCtrl);
+		bed.Key(.Z, KeyModCtrl); // continues no binding: ctrl-k alone, then ctrl-z (unbound)
+		Test.Assert(bed.Ran.Count == 2);
+		Test.Assert(bed.Ran[1] == "kill");
+	}
+
+	[Test]
+	public static void ACommandsKeysAsTextAreThoseBoundWhereTheControlIs()
+	{
+		let bed = scope KeymapBed();
+		let keys = bed.Root.Context.Keymap;
+		Test.Assert(keys.Bind("ctrl-s", "save", "menu"));
+		Test.Assert(keys.Bind("ctrl-shift-s", "save", "editor")); // later, but elsewhere
+		let here = scope List<KeyContextLayer>();
+		defer { ClearAndDeleteItems!(here); }
+		bed.Root.KeyContextsAt(bed.Item, here);
+		let text = scope String();
+		keys.ShortcutText("save", (Span<KeyContextLayer>)here, text);
+		Test.Assert(text == "Ctrl+S");
+	}
+
+	[Test]
+	public static void AModifierKeyBindsAloneThoughPressingItSetsItsOwnModifier()
+	{
+		let bed = scope KeymapBed();
+		bed.Handle("sprint");
+		bed.Handle("zoom");
+		let keys = bed.Root.Context.Keymap;
+		Test.Assert(keys.Bind("leftshift", "sprint"));
+		Test.Assert(keys.Bind("ctrl-rightshift", "zoom"));
+		bed.Key(.LeftShift, KeyModShift); // the platform reports Shift held as the key goes down
+		Test.Assert(bed.Ran.Count == 1);
+		Test.Assert(bed.Ran[0] == "sprint");
+		bed.Key(.RightShift, KeyModShift | KeyModCtrl);
+		Test.Assert(bed.Ran.Count == 2);
+		Test.Assert(bed.Ran[1] == "zoom");
+		bed.Key(.Keypad5);
+		Test.Assert(bed.Ran.Count == 2); // unbound: Numpad 5 is not 5
 	}
 }

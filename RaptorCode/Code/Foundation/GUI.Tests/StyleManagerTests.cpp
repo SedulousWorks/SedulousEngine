@@ -126,21 +126,3 @@ TEST_CASE("style-manager: a reflected property the sheet set returns to its own 
 
 // ===================== E3: parts take the box properties =====================
 
-
-TEST_CASE("style-manager: a part's border-color alone recolours its own outline")
-{
-    auto root = NewRoot();
-    auto box = Make<CheckBox>();
-    box->SetSize(core::Float2{20.0f, 20.0f});
-    root->AddChild(box.Get());
-    StyleManager styles(CSSParser::Parse(SV(u8"checkbox::box { border-color: #ff00ff; }")));
-    styles.ApplyTree(*root.Get());
-    const PartStyle& part = box->GetPartStyle(u8"box");
-    CHECK(part.HasBorderColor);
-    CHECK_FALSE(part.HasBorderWidth);
-    CHECK_FALSE(part.HasBackground);
-    const NodeBox drawn = part.Over(OutlinedBox(core::Color::White, 2.0f));
-    CHECK(drawn.BorderWidths.top == doctest::Approx(2.0f)); // its own width
-    CHECK(drawn.BorderColors.top.g == doctest::Approx(0.0f)); // the sheet's colour
-    CHECK(drawn.BackgroundColor.a == doctest::Approx(0.0f)); // no fill
-}

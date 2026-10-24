@@ -8,18 +8,18 @@ namespace Sedulous.GUI.Tests;
 // input off it, and removes it once that ends; `transitionend` and `animationend` tell a node a
 // sheet's motion on it ended.
 
-/// A GUI with a sheet and one widget of class "card" under its root, sized 400 x 300. The root,
+/// A GUI with a sheet and one button of class "card" under its root, sized 400 x 300. The root,
 /// the card and the styles go with it.
 class LeaveBed
 {
 	public SceneRoot Root ~ _.ReleaseRef();
-	public UIWidget Card ~ _.ReleaseRef();
+	public Button Card ~ _.ReleaseRef();
 	public StyleManager Styles = new .() ~ delete _;
 
 	public this(StringView css)
 	{
 		Root = SceneFixtures.NewScene(400.0f, 300.0f);
-		Card = new UIWidget();
+		Card = new Button();
 		Card.AddClass("card");
 		Card.Size = .(100.0f, 40.0f);
 		Root.AddChild(Card);
@@ -88,8 +88,31 @@ class LeaveTests
 		Test.Assert(child.Parent == null);
 	}
 
-	// Raptor's card is a Button; nothing here reads a button's own behaviour, so a plain widget
-	// stands in for it.
+	[Test]
+	public static void ALeavingNodeTakesNoPointerFocusOrNavigation()
+	{
+		let bed = scope LeaveBed(".card { opacity: 1; transition: opacity 1s linear; } .card:leaving { opacity: 0; }");
+		bed.Root.UpdateLayout();
+		let dispatcher = bed.Root.EventDispatcher;
+		bed.Card.RequestFocus();
+		Test.Assert(dispatcher.FocusNode == bed.Card);
+		let over = Float2(10.0f, 10.0f);
+		Test.Assert(bed.Root.OverFind(over) == bed.Card);
+
+		bed.Card.Leave();
+		Test.Assert(dispatcher.FocusNode == null); // dropped, as from a removed subtree
+		Test.Assert(bed.Root.OverFind(over) != bed.Card);
+		bed.Card.RequestFocus();
+		Test.Assert(dispatcher.FocusNode == null); // refused while it leaves
+		int clicks = 0;
+		bed.Card.SetOnClick(new [&] () => { clicks++; });
+		dispatcher.InjectMouseDown(over, .Left);
+		dispatcher.InjectMouseUp(over, .Left);
+		Test.Assert(clicks == 0);
+		dispatcher.MoveFocus(.Down); // nothing else to reach, and not it
+		Test.Assert(dispatcher.FocusNode == null);
+	}
+
 	[Test]
 	public static void TheSheetsExitTransitionPlaysThenTheNodeGoes()
 	{

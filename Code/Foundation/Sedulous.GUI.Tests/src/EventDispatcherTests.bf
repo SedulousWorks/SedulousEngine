@@ -378,4 +378,58 @@ class EventDispatcherTests
 		d.InjectMouseMove(.(12.0f, 10.0f));
 		Test.Assert(seen == 0);
 	}
+
+	[Test]
+	public static void ADisabledWidgetOrOneInsideADisabledPanelTakesNoPointerInput()
+	{
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		let backdrop = SceneFixtures.NewNode(0.0f, 0.0f, 200.0f, 200.0f);
+		defer backdrop.ReleaseRef();
+		let panel = SceneFixtures.NewNode(100.0f, 0.0f, 100.0f, 100.0f);
+		defer panel.ReleaseRef();
+		let button = new Button();
+		defer button.ReleaseRef();
+		let inner = new Button();
+		defer inner.ReleaseRef();
+		button.Size = .(50.0f, 20.0f);
+		inner.Size = .(50.0f, 20.0f);
+		root.AddChild(backdrop);
+		root.AddChild(button);
+		root.AddChild(panel);
+		panel.AddChild(inner);
+		int clicks = 0;
+		int innerClicks = 0;
+		int behind = 0;
+		int enters = 0;
+		button.SetOnClick(new [&] () => { clicks++; });
+		inner.SetOnClick(new [&] () => { innerClicks++; });
+		backdrop.AddEventListener(.MouseDown, new [&] (e) => { behind++; });
+		button.AddEventListener(.MouseEnter, new [&] (e) => { enters++; });
+		let d = root.EventDispatcher;
+		void Click(Float2 at)
+		{
+			d.InjectMouseMove(at);
+			d.InjectMouseDown(at, .Left);
+			d.InjectMouseUp(at, .Left);
+		}
+
+		button.Enabled = false;
+		Click(.(10.0f, 10.0f));
+		Test.Assert(clicks == 0);
+		Test.Assert(behind == 0); // it still covers what lies behind it
+		Test.Assert(enters == 1); // and is still hovered (a tooltip says why it is disabled)
+		Test.Assert(d.FocusNode == null);
+		button.Enabled = true;
+		Click(.(10.0f, 10.0f));
+		Test.Assert(clicks == 1);
+
+		panel.Enabled = false;
+		Test.Assert(!inner.IsTreeEnabled);
+		Click(.(110.0f, 10.0f));
+		Test.Assert(innerClicks == 0);
+		d.FocusNode = inner;
+		Test.Assert(!d.Activate()); // nor by the keyboard
+		Test.Assert(innerClicks == 0);
+	}
 }

@@ -41,8 +41,9 @@ class RouteTrace
 /// Routing: an input event goes down from the root through the capture listeners, reaches its
 /// target, and comes back up, each node's own handler running in the bubble phase and a handled
 /// event ending the route after its node; the hover and press paths (every node under the pointer
-/// is hovered, every node holding the pressed one is pressed); pointer capture and its loss; click
-/// counts; and the fingers.
+/// is hovered, every node holding the pressed one is pressed); pointer capture and its loss; a
+/// click on the nearest node holding the press and the release; click counts; the fingers; and what
+/// the Inject calls tell a host.
 class RoutingTests
 {
 	public static void Name(Node node, String outText)
@@ -385,5 +386,179 @@ class RoutingTests
 			d.InjectMouseWheel(.(50.0f, 50.0f), .(0.0f, -10.0f));
 		Test.Assert(NodeFixtures.Near(inner.ScrollOffset.Y, inner.ScrollRange.Y));
 		Test.Assert(outer.ScrollOffset.Y > 0.0f);
+	}
+
+	[Test]
+	public static void AHandledEventEndsAfterItsNodeTheNodesOwnListenersStillRun()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let card = SceneFixtures.NewWidget(root, 0, 0, 200, 200, "card");
+		defer card.ReleaseRef();
+		let button = new Button();
+		defer button.ReleaseRef();
+		button.Size = .(80.0f, 30.0f);
+		card.AddChild(button);
+		int buttonClicks = 0;
+		int cardClicks = 0;
+		button.SetOnClick(new [&] () => { buttonClicks++; });
+		button.AddEventListener(.MouseClick, new [&] (e) => { buttonClicks++; });
+		card.AddEventListener(.MouseClick, new [&] (e) => { cardClicks++; });
+		let d = root.EventDispatcher;
+		d.InjectMouseDown(.(10.0f, 10.0f), .Left);
+		d.InjectMouseUp(.(10.0f, 10.0f), .Left);
+		Test.Assert(buttonClicks == 2); // its handler and its listener
+		Test.Assert(cardClicks == 0); // the button took the click
+		d.InjectMouseDown(.(150.0f, 150.0f), .Left);
+		d.InjectMouseUp(.(150.0f, 150.0f), .Left);
+		Test.Assert(cardClicks == 1);
+	}
+
+	[Test]
+	public static void AClickGoesToTheNearestNodeHoldingBothThePressAndTheRelease()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let row = SceneFixtures.NewWidget(root, 0, 0, 300, 50, "row");
+		defer row.ReleaseRef();
+		let a = SceneFixtures.NewWidget(row, 0, 0, 50, 50, "a");
+		defer a.ReleaseRef();
+		let b = SceneFixtures.NewWidget(row, 100, 0, 50, 50, "b");
+		defer b.ReleaseRef();
+		let clicked = scope List<String>();
+		defer { ClearAndDeleteItems!(clicked); }
+		Node[3] watched = .(row, a, b);
+		for (let node in watched)
+		{
+			node.AddEventListener(.MouseClick, new (e) =>
+				{
+					if (e.Phase == .Target)
+					{
+						let name = new String();
+						Name(node, name);
+						clicked.Add(name);
+					}
+				});
+		}
+		let d = root.EventDispatcher;
+		d.InjectMouseDown(.(10.0f, 10.0f), .Left); // on a
+		d.InjectMouseUp(.(110.0f, 10.0f), .Left); // released on b
+		Test.Assert(clicked.Count == 1);
+		Test.Assert(clicked[0] == "row");
+
+		// A button holding a label: a click on the label is the button's.
+		let button = new Button();
+		defer button.ReleaseRef();
+		button.Position = .(0.0f, 100.0f);
+		button.Size = .(100.0f, 40.0f);
+		root.AddChild(button);
+		let caption = new Label();
+		defer caption.ReleaseRef();
+		caption.Size = .(60.0f, 20.0f);
+		button.AddChild(caption);
+		int presses = 0;
+		button.SetOnClick(new [&] () => { presses++; });
+		d.InjectMouseDown(.(10.0f, 105.0f), .Left);
+		d.InjectMouseUp(.(10.0f, 105.0f), .Left);
+		Test.Assert(presses == 1);
+	}
+
+	[Test]
+	public static void TheInjectCallsTellAHostWhetherTheGUIUsedTheInput()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let layer = SceneFixtures.NewWidget(root, 0, 0, 400, 400, "layer"); // a full-window layout container
+		defer layer.ReleaseRef();
+		let button = new Button();
+		defer button.ReleaseRef();
+		button.Position = .(10.0f, 10.0f);
+		button.Size = .(80.0f, 30.0f);
+		button.TabFocusable = true;
+		layer.AddChild(button);
+		let d = root.EventDispatcher;
+		Test.Assert(d.InjectMouseDown(.(20.0f, 20.0f), .Left));
+		Test.Assert(d.InjectMouseUp(.(20.0f, 20.0f), .Left));
+		Test.Assert(!d.InjectMouseDown(.(300.0f, 300.0f), .Left)); // the game's
+		Test.Assert(!d.InjectMouseUp(.(300.0f, 300.0f), .Left));
+		Test.Assert(d.IsPointerOver(.(20.0f, 20.0f)));
+		Test.Assert(!d.IsPointerOver(.(300.0f, 300.0f)));
+		let backdrop = scope NodeBox();
+		backdrop.BackgroundColor = .(0.0f, 0.0f, 0.0f, 0.5f);
+		layer.SetBox(backdrop, false); // a backdrop that paints
+		Test.Assert(d.IsPointerOver(.(300.0f, 300.0f)));
+
+		d.FocusNode = button;
+		Test.Assert(d.InjectKeyDown((uint32)KeyCode.Return)); // activated
+		Test.Assert(!d.InjectKeyDown((uint32)KeyCode.F7));
+	}
+
+	[Test]
+	public static void ATapIsAPressAReleaseAndAClickMarkedAsTouchWithNoHoverLeftBehind()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let button = new Button();
+		defer button.ReleaseRef();
+		button.Position = .(10.0f, 10.0f);
+		button.Size = .(80.0f, 30.0f);
+		root.AddChild(button);
+		let seen = scope List<String>();
+		defer { ClearAndDeleteItems!(seen); }
+		EventType[3] kinds = .(.MouseDown, .MouseUp, .MouseClick);
+		for (let type in kinds)
+		{
+			button.AddEventListener(type, new (e) =>
+				{
+					let m = (MouseEvent)e;
+					if ((m.Pointer == .Touch) && (m.PointerId == 7))
+						seen.Add(new String((e.Type == .MouseDown) ? "down" : (e.Type == .MouseUp) ? "up" : "click"));
+				});
+		}
+		let d = root.EventDispatcher;
+		Test.Assert(d.InjectTouchDown(7, .(20.0f, 20.0f)));
+		Test.Assert(button.Hovered); // while the finger is down
+		Test.Assert(button.Pressed);
+		Test.Assert(d.InjectTouchUp(7, .(20.0f, 20.0f)));
+		Test.Assert(seen.Count == 3);
+		Test.Assert(seen[0] == "down");
+		Test.Assert(seen[1] == "up");
+		Test.Assert(seen[2] == "click");
+		Test.Assert(!button.Hovered); // the finger lifted: nothing under it
+		Test.Assert(d.OverNode == null);
+	}
+
+	[Test]
+	public static void CancelPointerEndsAPressWithNoClickAndASliderDropsItsDrag()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let button = new Button();
+		defer button.ReleaseRef();
+		button.Size = .(80.0f, 30.0f);
+		root.AddChild(button);
+		int clicks = 0;
+		int cancels = 0;
+		button.SetOnClick(new [&] () => { clicks++; });
+		button.AddEventListener(.PointerCancel, new [&] (e) => { cancels++; });
+		let d = root.EventDispatcher;
+		d.InjectTouchDown(1, .(10.0f, 10.0f));
+		d.CancelPointer(); // a scroller began panning under the finger
+		Test.Assert(cancels == 1);
+		Test.Assert(!button.Pressed);
+		d.InjectTouchUp(1, .(10.0f, 10.0f));
+		Test.Assert(clicks == 0);
+
+		let slider = new Slider();
+		defer slider.ReleaseRef();
+		slider.Position = .(0.0f, 100.0f);
+		slider.Size = .(200.0f, 20.0f);
+		root.AddChild(slider);
+		d.InjectMouseDown(.(100.0f, 110.0f), .Left);
+		let before = (float)slider.Value;
+		d.CancelPointer();
+		d.InjectMouseMove(.(190.0f, 110.0f));
+		Test.Assert(NodeFixtures.Near((float)slider.Value, before)); // the drag ended with the press
+		d.InjectMouseUp(.(190.0f, 110.0f), .Left);
 	}
 }

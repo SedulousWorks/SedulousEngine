@@ -45,33 +45,6 @@ namespace
     };
 }
 
-TEST_CASE("keyboard: tab-index orders Tab: positive first, lowest first, then tree order; negative is skipped")
-{
-    Bed bed;
-    bed.Add(u8"a").SetTabIndex(2);
-    bed.Add(u8"b");
-    bed.Add(u8"c").SetTabIndex(1);
-    bed.Add(u8"d").SetTabIndex(-1);
-    bed.Add(u8"e");
-    const core::Array<Node*> stops = bed.D().TabStops();
-    REQUIRE(stops.Size() == 4u);
-    CHECK(Bed::IdOf(stops[0]) == SV(u8"c"));
-    CHECK(Bed::IdOf(stops[1]) == SV(u8"a"));
-    CHECK(Bed::IdOf(stops[2]) == SV(u8"b"));
-    CHECK(Bed::IdOf(stops[3]) == SV(u8"e"));
-    bed.Tab();
-    CHECK(bed.Focused() == SV(u8"c"));
-    bed.Tab();
-    CHECK(bed.Focused() == SV(u8"a"));
-    bed.Tab(true);
-    CHECK(bed.Focused() == SV(u8"c"));
-    // Skipped by Tab, but still focusable another way; Tab from there goes on in the order.
-    bed.D().SetFocusNode(bed.buttons[3].Get());
-    CHECK(bed.Focused() == SV(u8"d"));
-    bed.Tab();
-    CHECK(bed.Focused() == SV(u8"c")); // not among the stops: Tab starts over
-}
-
 TEST_CASE("keyboard: tab-index comes from a sheet and from markup")
 {
     Bed bed;
@@ -90,42 +63,6 @@ TEST_CASE("keyboard: tab-index comes from a sheet and from markup")
     REQUIRE(tree);
     REQUIRE(tree->ChildCount() == 1u);
     CHECK(tree->GetChildAt(0)->GetTabIndex() == 5);
-}
-
-TEST_CASE("keyboard: a focus group is one Tab stop: its checked member first, then the one focused last; arrows wrap inside")
-{
-    Bed bed;
-    bed.Add(u8"x").SetPosition(core::Float2{0.0f, 0.0f});
-    core::RefPtr<Panel> group = Make<Panel>();
-    group->SetFocusGroup(true);
-    group->SetPosition(core::Float2{0.0f, 40.0f});
-    group->SetSize(core::Float2{200.0f, 20.0f});
-    bed.root->AddChild(group.Get());
-    core::RefPtr<RadioButton> radios[3];
-    for (int i = 0; i < 3; ++i)
-    {
-        radios[i] = Make<RadioButton>();
-        radios[i]->SetId(core::StringView(i == 0 ? u8"r0" : i == 1 ? u8"r1" : u8"r2"));
-        radios[i]->SetPosition(core::Float2{60.0f * static_cast<float>(i), 0.0f});
-        radios[i]->SetSize(core::Float2{50.0f, 20.0f});
-        group->AddChild(radios[i].Get());
-    }
-    radios[1]->SetChecked(true);
-    bed.Add(u8"y").SetPosition(core::Float2{0.0f, 80.0f});
-
-    CHECK(bed.D().TabStops().Size() == 3u);
-    bed.Tab();
-    CHECK(bed.Focused() == SV(u8"x"));
-    bed.Tab();
-    CHECK(bed.Focused() == SV(u8"r1")); // the checked one
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::Right), 0);
-    CHECK(bed.Focused() == SV(u8"r2"));
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::Right), 0);
-    CHECK(bed.Focused() == SV(u8"r0")); // wrapped inside the group
-    bed.Tab();
-    CHECK(bed.Focused() == SV(u8"y")); // out of the group in one step
-    bed.Tab(true);
-    CHECK(bed.Focused() == SV(u8"r0")); // back to the one focused there last
 }
 
 TEST_CASE("keyboard: a tab strip is a focus group: one stop, the selected tab")
@@ -207,48 +144,6 @@ TEST_CASE("keyboard: a menu's moves are bindings in the menu key context, reboun
     CHECK(file->IsOpen());
 }
 
-TEST_CASE("keyboard: a binding whose command nothing on the focus path handles lets the key go on")
-{
-    Bed bed;
-    bed.Add(u8"a").SetPosition(core::Float2{0.0f, 0.0f});
-    bed.Add(u8"b").SetPosition(core::Float2{0.0f, 40.0f});
-    REQUIRE(bed.root->GetContext().GetKeymap().Bind(SV(u8"down"), SV(u8"nobody.handles")));
-    bed.D().SetFocusNode(bed.buttons[0].Get());
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::Down), 0);
-    CHECK(bed.Focused() == SV(u8"b")); // navigation had it
-}
-
-TEST_CASE("keyboard: a focused widget hidden gives up the focus: Return does not press it, the scope's commands run")
-{
-    Bed bed;
-    core::RefPtr<Panel> screen = Make<Panel>();
-    bed.root->AddChild(screen.Get());
-    Button& back = bed.Add(u8"back", screen.Get());
-    int pressed = 0;
-    back.SetOnClick([&pressed]() { ++pressed; });
-    int ran = 0;
-    (void)bed.root->GetContext().DefineCommand(SV(u8"test.back"));
-    REQUIRE(bed.root->GetContext().GetKeymap().Bind(SV(u8"escape"), SV(u8"test.back")));
-    (void)bed.root->OnCommand(SV(u8"test.back"), [&ran](CommandEvent&) { ++ran; });
-    back.RequestFocus();
-    REQUIRE(bed.Focused() == SV(u8"back"));
-
-    screen->SetDisplayed(false); // the screen hides with its button focused
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::Return));
-    CHECK(pressed == 0);
-    CHECK(bed.D().GetFocusNode() == nullptr);
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::Escape));
-    CHECK(ran == 1);
-
-    // Hidden by `visibility` too, and found out by the tick as well as by a key.
-    screen->SetDisplayed(true);
-    back.RequestFocus();
-    REQUIRE(bed.Focused() == SV(u8"back"));
-    back.SetVisible(false);
-    bed.D().Tick(0.016f);
-    CHECK(bed.D().GetFocusNode() == nullptr);
-}
-
 TEST_CASE("keyboard: CaptureNextKey takes the next key before bindings and widgets, with its modifiers, and drops its text")
 {
     Bed bed;
@@ -295,34 +190,6 @@ TEST_CASE("keyboard: CaptureNextKey takes the next key before bindings and widge
     REQUIRE(taken.Size() == 4u);
     CHECK(taken[3] == ParseKeystroke(SV(u8"pad-north")).Value());
     CHECK(cancels == 0);
-}
-
-TEST_CASE("keyboard: Alt and a button's access key focus and press it; its letter is underlined while Alt is held")
-{
-    Bed bed;
-    Button& other = bed.Add(u8"other");
-    Button& apply = bed.Add(u8"apply");
-    apply.SetText(SV(u8"&Apply"));
-    other.SetText(SV(u8"Other"));
-    int clicks = 0;
-    apply.SetOnClick([&] { ++clicks; });
-    CHECK(apply.GetText() == SV(u8"Apply"));
-    CHECK(apply.GetMnemonic() == U'a');
-    bed.D().SetFocusNode(&other);
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::A), KeyModAlt);
-    CHECK(clicks == 1);
-    CHECK(bed.Focused() == SV(u8"apply"));
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::Q), KeyModAlt); // nothing marked Q
-    CHECK(clicks == 1);
-
-    REQUIRE(apply.GetTextPart() != nullptr);
-    CHECK_FALSE(bed.D().AreMnemonicsShown());
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::LeftAlt), KeyModAlt);
-    CHECK(bed.D().AreMnemonicsShown());
-    bed.D().InjectKeyUp(static_cast<core::u32>(KeyCode::LeftAlt), 0);
-    CHECK_FALSE(bed.D().AreMnemonicsShown());
-    bed.D().SetMnemonicsAlwaysShown(true);
-    CHECK(bed.D().AreMnemonicsShown());
 }
 
 TEST_CASE("keyboard: Alt and a key open a menu bar's menu, and run an item of the open menu")

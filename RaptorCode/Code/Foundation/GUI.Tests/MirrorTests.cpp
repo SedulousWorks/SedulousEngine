@@ -130,19 +130,6 @@ TEST_CASE("mirror: a combo box's arrow at its inline end")
     CheckMirrored([]() -> core::RefPtr<UIWidget> { return Make<ComboBox>(); }, core::Float2{160.0f, 24.0f});
 }
 
-TEST_CASE("mirror: a switch is on at its inline end; a closed chevron points toward it")
-{
-    CheckMirrored(
-        []() -> core::RefPtr<UIWidget>
-        {
-            auto toggle = Make<ToggleSwitch>();
-            toggle->SetChecked(true);
-            return toggle;
-        },
-        core::Float2{120.0f, 24.0f});
-    CheckMirrored([]() -> core::RefPtr<UIWidget> { return Make<Expander>(); }, core::Float2{200.0f, 24.0f});
-}
-
 TEST_CASE("mirror: a number field's arrows and its text room are at its inline end")
 {
     CheckMirrored(

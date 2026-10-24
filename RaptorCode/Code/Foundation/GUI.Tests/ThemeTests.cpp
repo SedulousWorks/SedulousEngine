@@ -175,30 +175,6 @@ TEST_CASE("theme: the built-in default theme restyles the standard widgets")
     CHECK(button->GetBox().BackgroundColor.r == doctest::Approx(0xcd / 255.0f).epsilon(0.01));
 }
 
-TEST_CASE("theme: tokens retint everything, a subtree overrides them, and a widget token changes one control")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    auto page = Make<Panel>();
-    auto inside = Make<Button>();
-    auto outside = Make<Button>();
-    auto slider = Make<Slider>();
-    root->AddChild(page.Get());
-    root->AddChild(outside.Get());
-    root->AddChild(slider.Get());
-    page->AddChild(inside.Get());
-    page->AddClass(core::StringView(u8"special"));
-    StyleManager mgr;
-    mgr.SetUserAgentSheet(CSSParser::Parse(DefaultThemeCSS()));
-    // A game's sheet: the base accent retinted, a subtree's own accent, and one widget token.
-    mgr.SetStyleSheet(CSSParser::Parse(core::StringView(u8":root { --accent: #ff0000; --slider-fill: #00ff00; } .special { --accent: #0000ff; }")));
-    mgr.ApplyTree(*root.Get());
-    CHECK(outside->GetBox().BackgroundColor.r == doctest::Approx(1.0f));
-    CHECK(inside->GetBox().BackgroundColor.b == doctest::Approx(1.0f)); // the subtree's
-    CHECK(slider->GetPartStyle(core::StringView(u8"fill")).Box.BackgroundColor.g == doctest::Approx(1.0f)); // one control's token
-    // A part with no override reads its widget token through to the base one.
-    CHECK(slider->GetPartStyle(core::StringView(u8"track")).HasBackground);
-}
-
 TEST_CASE("theme: a skin's radius token rounds its control, so the focus ring follows the art")
 {
     auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));

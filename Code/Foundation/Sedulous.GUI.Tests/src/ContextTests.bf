@@ -6,7 +6,8 @@ namespace Sedulous.GUI.Tests;
 
 /// GUIContext: one GUI of several roots (windows, render targets). Its roots share the clock, the
 /// deferred edits, one bindings flush a frame, the data, the commands and keymap, and the element
-/// table; every root is made in one.
+/// table; the active root (the one last given input) takes keystrokes and decides command
+/// availability; every root is made in one.
 class ContextTests
 {
 	[Test]
@@ -94,5 +95,55 @@ class ContextTests
 		menu.TimeScale = 0.5f;
 		gui.Update(SceneFixtures.Seconds(0.5));
 		Test.Assert(NodeFixtures.Near(b.Position.X, 25.0f)); // half speed
+	}
+
+	[Test]
+	public static void TheActiveRootFollowsInputAndTakesCommandsAndKeystrokes()
+	{
+		let gui = new GUIContext();
+		defer gui.ReleaseRef();
+		var hud = new SceneRoot(gui);
+		defer { hud?.ReleaseRef(); }
+		let menu = new SceneRoot(gui);
+		defer menu.ReleaseRef();
+		hud.Size = .(200.0f, 200.0f);
+		menu.Size = .(200.0f, 200.0f);
+		let inHud = new Button();
+		defer inHud.ReleaseRef();
+		let inMenu = new Button();
+		defer inMenu.ReleaseRef();
+		inHud.Size = .(40.0f, 20.0f);
+		inMenu.Size = .(40.0f, 20.0f);
+		hud.AddChild(inHud);
+		menu.AddChild(inMenu);
+		hud.EventDispatcher.FocusNode = inHud;
+		menu.EventDispatcher.FocusNode = inMenu;
+		int menuBacks = 0;
+		int hudBacks = 0;
+		inMenu.OnCommand("back", new [&] (command) => { menuBacks++; });
+		inHud.OnCommand("back", new [&] (command) => { hudBacks++; });
+		Test.Assert(gui.Keymap.Bind("escape", "back"));
+
+		// A toolbar button in the HUD bound to "back" follows the active root's focus path.
+		let toolbar = new Button();
+		defer toolbar.ReleaseRef();
+		hud.AddChild(toolbar);
+		toolbar.Command = "back";
+		menu.EventDispatcher.InjectKeyDown((uint32)KeyCode.Escape); // input in the menu
+		Test.Assert(gui.ActiveRoot == menu);
+		Test.Assert(menuBacks == 1);
+		Test.Assert(hudBacks == 0);
+		Test.Assert(gui.RunCommand("back"));
+		Test.Assert(menuBacks == 2);
+
+		hud.EventDispatcher.InjectKeyDown((uint32)KeyCode.Escape);
+		Test.Assert(gui.ActiveRoot == hud);
+		Test.Assert(hudBacks == 1);
+
+		// A root going away leaves the context; the active root falls back to the first.
+		hud.ReleaseRef();
+		hud = null;
+		Test.Assert(gui.RootCount == 1);
+		Test.Assert(gui.ActiveRoot == menu);
 	}
 }
