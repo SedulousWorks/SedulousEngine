@@ -1,0 +1,18 @@
+<Panel id="page-viewport" class="page" gap="18">
+    <Label class="page-title" text="Viewport"/>
+    <Label class="page-lead" white-space="normal"
+           text="A widget showing a scene drawn into targets of its own, which the host binds to the window the widget is in, sizes to it in device pixels and draws before the GUI. Its input is gated to it: hover it or click it, then fly."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="A spinning cube"/>
+        <Panel id="viewport-host" class="viewport-host" display="stack" justify-items="start" align-items="start">
+            <Label class="viewport-note" white-space="normal"
+                   text="W A S D and Q E fly, the right button held looks around, Shift goes faster"/>
+        </Panel>
+        <Panel flex-direction="row" gap="10">
+            <Button id="viewport-reset" class="viewport-button" text="Reset the camera" command="viewport.reset"/>
+            <Button id="viewport-fit" class="viewport-button" text="Letterbox at 16:9" command="viewport.fit"/>
+        </Panel>
+        <Label class="caption" text="Viewport (GUI.Viewport): OnRender records into its targets; GUI controls over it and beside it."/>
+    </Panel>
+</Panel>

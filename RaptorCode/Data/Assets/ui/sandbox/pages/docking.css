@@ -1,0 +1,10 @@
+.docking-host { width: 590px; height: 400px; }
+.docking-host dockarea { width: 590px; height: 400px; }
+.docking-host.torn-close dockspace { torn-tab: close; }
+.docking-host window.dock-float { font-family: Roboto; font-size: 13px; }
+.docking-button { height: 34px; padding: 0 14px; font-family: Roboto; font-size: 14px; }
+.docking-keys { width: 590px; font-family: Roboto; font-size: 13px; color: var(--muted); }
+.dock-content { padding: 10px; gap: 6px; }
+.dock-content label { font-family: Roboto; font-size: 13px; white-space: normal; }
+tabview.dock-stack > tabbar { font-family: Roboto; font-size: 13px; } /* its tabs and its tab list share it */
+.docking-buttons { width: 590px; flex-wrap: wrap; }

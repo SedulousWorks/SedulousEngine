@@ -1,0 +1,14 @@
+/* Language and direction (E9e): its own rules; the shell's .page, .section and .text apply too. */
+#page-language button { height: 34px; padding-left: 14px; padding-right: 14px; font-family: Roboto; font-size: 15px; border-radius: 8; }
+#page-language textfield { font-family: Roboto; font-size: 15px; }
+.choices { width: 590px; height: 40px; }
+.form-row { width: 590px; height: 40px; }
+.field-label { width: 120px; height: 24px; }
+.slider { width: 240px; height: 24px; }
+.count { width: 200px; height: 24px; text-align: center; }
+.mixed-lead { width: 590px; height: 44px; color: var(--muted); }
+.mixed { width: 590px; height: 28px; }
+/* Roboto has no Arabic: a character it lacks is drawn in DejaVu Sans Mono, the family after it
+   (E11), so Latin stays in Roboto and Arabic joins in DejaVu, in English and in Arabic alike. */
+#page-language label, #page-language button, #page-language textfield,
+#page-language checkbox { font-family: Roboto, DejaVu; }

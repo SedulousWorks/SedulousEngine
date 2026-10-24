@@ -1,0 +1,50 @@
+diff --git a/Code/Editor/Editor.Play/GamePageImpl.cpp b/Code/Editor/Editor.Play/GamePageImpl.cpp
+index 532fb7be9..f1900e79f 100644
+--- a/Code/Editor/Editor.Play/GamePageImpl.cpp
++++ b/Code/Editor/Editor.Play/GamePageImpl.cpp
+@@ -483,6 +483,10 @@ namespace editor
+         {
+             m_app->UI()->EndRunScreens(m_gameInstance);
+         }
++        if (m_app != nullptr && m_app->GUI() != nullptr && m_gameInstance != nullptr)
++        {
++            m_app->GUI()->EndRunScreens(m_gameInstance);
++        }
+         m_running = false;
+         RefreshToolbar();
+     }
+@@ -730,6 +734,10 @@ namespace editor
+         {
+             m_app->UI()->RenderCanvasTextures(*frame.encoder, static_cast<i32>(frame.frameIndex));
+         }
++        if (m_app != nullptr && m_app->GUI() != nullptr)
++        {
++            m_app->GUI()->RenderTextures(*frame.encoder, frame.frameIndex); // and the engine GUI's
++        }
+ 
+         // No camera override: the SCENE's primary camera drives the view (its clear
+         // color included) - the player's presentation, not the editor's.
+@@ -813,6 +821,12 @@ namespace editor
+             m_app->UI()->SetScreenOrientation(m_gameInstance, m_orientation);
+             m_app->UI()->SetRenderRun(m_gameInstance);
+         }
++        if (m_app != nullptr && m_app->GUI() != nullptr)
++        {
++            m_app->GUI()->SetScreenResolution(m_gameInstance, m_renderWidth, m_renderHeight, m_renderFit);
++            m_app->GUI()->SetScreenOrientation(m_gameInstance, m_orientation);
++            m_app->GUI()->SetRenderRun(m_gameInstance);
++        }
+         render->RenderOverlays(*frame.encoder, m_viewport->ColorTargetView(),
+                                m_viewport->ColorFormat(), w, h, frame.frameIndex,
+                                m_viewport->ColorTargetAlternateView()); // the screen UI blends encoded
+@@ -820,6 +834,10 @@ namespace editor
+         {
+             m_app->UI()->SetRenderRun(nullptr);
+         }
++        if (m_app != nullptr && m_app->GUI() != nullptr)
++        {
++            m_app->GUI()->SetRenderRun(nullptr);
++        }
+         frame.encoder->TransitionTexture(m_viewport->ColorTexture(),
+                                          rhi::ResourceState::RenderTarget,
+                                          rhi::ResourceState::ShaderRead);

@@ -1,0 +1,20 @@
+<!-- The Code page (C8 of Specs/gui-lab-evolution-3.md): GUI.Code's editor as a host uses it. The
+     host (GUISandbox's CodePage) fills both editors, checks the script and serves completion. -->
+<Panel id="page-code" class="page" gap="18">
+    <Label class="page-title" text="Code"/>
+    <Label class="page-lead" white-space="normal"
+           text="The code editor from GUI.Code. The script is checked by the engine's AngelScript compiler a moment after each edit, without running it, and its errors are marked where the compiler puts them. Click in the gutter for a breakpoint; Ctrl+Space or a dot for completion; point at a name for what it is."/>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="A script, checked as it is typed"/>
+        <CodeEditor id="code-script" class="code-editor script"/>
+        <Label id="code-status" class="code-status" text="Not checked yet"/>
+        <Label class="code-note" white-space="normal"
+               text="Folds: Ctrl+Shift+[ and ], or the gutter's chevrons. Soft wrap: Alt+Z. Find: Ctrl+F; go to a line: Ctrl+G."/>
+    </Panel>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="A shader"/>
+        <CodeEditor id="code-shader" class="code-editor shader"/>
+    </Panel>
+</Panel>

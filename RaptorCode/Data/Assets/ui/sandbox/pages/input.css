@@ -1,0 +1,40 @@
+.input-card { width: 590px; height: 64px; padding: 14px; background-color: var(--shell-surface-2); border-radius: 10;
+              transition: background-color 120ms, box-shadow 120ms; }
+.input-card:hover { background-color: #2f3746; box-shadow: 0 0 0 2px var(--shell-accent); }
+.input-card:active { background-color: #3a4456; }
+.shell.light .input-card:hover { background-color: #dde6f3; }
+.shell.light .input-card:active { background-color: #ccd9ec; }
+.clickable { cursor: pointer; }
+.input-pad { width: 590px; height: 90px; background-color: var(--shell-surface-2); border-radius: 10; cursor: crosshair; }
+.glass-stage { width: 120px; height: 36px; }
+.input-glass { width: 120px; height: 36px; background-color: rgba(79, 156, 255, 0.25); border: 1px solid var(--shell-accent);
+               border-radius: 8; pointer-events: none; }
+.cursor-pointer { cursor: pointer; }
+.cursor-move { cursor: move; }
+.cursor-not-allowed { width: 110px; cursor: not-allowed; background-color: var(--bad); }
+.cursor-crosshair { width: 100px; cursor: crosshair; }
+.dnd-cards { width: 170px; }
+.dnd-card { width: 160px; height: 30px; padding-inline-start: 10px; border-radius: 6; background-color: var(--shell-surface-2); color: var(--ink); font-family: Roboto; font-size: 14px; vertical-align: middle; cursor: grab; }
+.dnd-card:drag-source { opacity: 0.45; }
+.chip-card { color: var(--muted); }
+.dnd-bin { width: 190px; height: 110px; padding: 8px; gap: 4px; border: 1px dashed var(--line); border-radius: 8; }
+.dnd-bin:drop-target { border-color: var(--shell-accent); background-color: rgba(47, 125, 225, 0.12); }
+.dnd-bin-title { width: 170px; height: 20px; color: var(--muted); font-family: Roboto; font-size: 13px; }
+.dnd-row { width: 590px; }
+.dnd-long { width: 260px; height: 110px; padding: 6px; border: 1px dashed var(--line); border-radius: 8; }
+.dnd-long:drop-target { border-color: var(--shell-accent); }
+.dnd-line { width: 240px; height: 24px; color: var(--muted); font-family: Roboto; font-size: 13px; }
+.dnd-more { width: 300px; }
+.dnd-more > expanderheader { height: 28px; font-family: Roboto; font-size: 14px; color: var(--ink); }
+.dnd-files { width: 590px; height: 50px; }
+.dnd-files > .dnd-bin-title { width: 570px; }
+.dnd-card:focus-visible, .dnd-bin:focus-visible { border: 2px solid var(--shell-accent); }
+.swatch { width: 120px; height: 28px; padding-inline-start: 10px; border-radius: 6; color: #ffffff; font-family: Roboto; font-size: 14px; vertical-align: middle; cursor: grab; }
+.swatch-red { background-color: #c0392b; }
+.swatch-green { background-color: #27ae60; }
+.swatch-blue { background-color: #2f7de1; }
+.canvas { width: 300px; }
+.viewer { width: 590px; height: 260px; overflow: hidden; border-radius: 8; background-color: var(--shell-surface-2); }
+.photo { width: 200px; height: 200px; }
+.viewer-reset { width: 100px; height: 32px; font-family: Roboto; font-size: 15px; border-radius: 6; }
+.viewer-said { width: 470px; height: 24px; font-family: Roboto; font-size: 14px; color: var(--muted); vertical-align: middle; }

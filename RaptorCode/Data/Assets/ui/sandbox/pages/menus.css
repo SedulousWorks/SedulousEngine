@@ -1,0 +1,11 @@
+.bar-host { width: 590px; height: 30px; }
+.context-area { width: 590px; height: 90px; background-color: var(--shell-surface-2); border: 1px dashed var(--line); border-radius: 8; }
+.context-hint { width: 590px; height: 90px; font-family: Roboto; font-size: 15px; color: var(--muted); text-align: center; vertical-align: middle; }
+.wide { width: 190px; }
+.tall { height: 42px; }
+.field { width: 300px; height: 32px; font-family: Roboto; font-size: 15px; padding-inline-start: 8px; border-radius: 6; }
+.combo { width: 150px; height: 32px; font-family: Roboto; font-size: 15px; }
+.tip-card { width: 590px; padding: 10px; gap: 2px; background-color: var(--shell-surface-2); border-radius: 8; }
+menubar, menu { font-family: Roboto; font-size: 15px; }
+.toast-note { height: auto; }
+.toast-buttons { width: 590px; }

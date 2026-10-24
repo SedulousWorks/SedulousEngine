@@ -1,0 +1,33 @@
+<Panel id="page-navigation" class="page" gap="18">
+    <Label class="page-title" text="Navigation and commands"/>
+    <Label class="page-lead" white-space="normal"
+           text="The arrows, Tab, a gamepad's d-pad move focus by geometry; Return or South activates. Scopes keep focus in a grid or a dialog; commands light the controls bound to them only while a handler is on the focus path."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="A wrapping grid (nav-scope: wrap)"/>
+        <Panel class="nav-grid" nav-scope="wrap" display="grid" grid-template-columns="repeat(4, 1fr)" justify-items="start" align-items="start" gap="8">
+            <Button class="nav-cell" text="1"/><Button class="nav-cell" text="2"/><Button class="nav-cell" text="3"/><Button class="nav-cell" text="4"/>
+            <Button class="nav-cell" text="5"/><Button class="nav-cell" text="6"/><Button class="nav-cell" text="7"/><Button class="nav-cell" text="8"/>
+        </Panel>
+        <Label class="caption" text="Focus a cell with the keyboard, then go past an edge: it comes back on the other side."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="A command available in one place"/>
+        <Panel class="row" flex-direction="row" align-items="start" gap="12">
+            <Button class="btn nav-wide" text="Cut (Ctrl+X)" command="demo.cut"/>
+            <Label class="caption" width="380" text="Cut {{cuts}} times. Lit only while focus is in the editor below."/>
+        </Panel>
+        <Panel id="navigation-editor" class="editor" key-context="editor" flex-direction="row" align-items="start" gap="10">
+            <Button class="btn" text="Paragraph 1"/>
+            <Button class="btn" text="Paragraph 2"/>
+            <Label class="caption" width="260" height="36" text="the editor (key-context: editor)"/>
+        </Panel>
+    </Panel>
+
+    <Panel class="section" gap="6">
+        <Label class="section-title" text="Keys"/>
+        <Label class="caption" text="Arrows / d-pad: move focus.   Tab, Shift+Tab: the tab order.   Return, Space, South: activate."/>
+        <Label class="caption" text="Escape, East: back (in the game menu).   Ctrl+X in the editor: the cut command."/>
+    </Panel>
+</Panel>

@@ -1,0 +1,833 @@
+<root>
+	<array name="dataVersions" count="1">
+		<u64 name="type">3813553235085573468</u64>
+		<u32 name="version">1</u32>
+	</array>
+	<array name="locales" count="2">
+		<object>
+			<string name="id">en</string>
+			<bool name="hasRule">true</bool>
+			<string name="rule">one: n = 1</string>
+			<string name="direction">ltr</string>
+		</object>
+		<object>
+			<string name="id">ar</string>
+			<bool name="hasRule">true</bool>
+			<string name="rule">zero: n = 0; one: n = 1; two: n = 2; few: n % 100 = 3..10; many: n % 100 = 11..99</string>
+			<string name="direction">rtl</string>
+		</object>
+	</array>
+	<array name="entries" count="29">
+		<object>
+			<string name="key">lang.title</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Language and direction</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">اللغة والاتجاه</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">lang.lead</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Every text on this page is a key in a string table, resolved through the GUI's localization. Choose a language and the page follows it; Arabic turns the whole GUI right to left.</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">كل نص في هذه الصفحة مفتاح في جدول نصوص تترجمه الواجهة. اختر لغة فتتبعها الصفحة، والعربية تجعل الواجهة كلها من اليمين إلى اليسار.</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">lang.choose</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Language</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">اللغة</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">lang.changed</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Language: English</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">اللغة: العربية</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">dir.title</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Direction</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">الاتجاه</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">dir.language</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">As the language</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+			ring name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">mixed.lead</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Arabic and Latin in one line, and a field to edit them in: the arrows move as the text shows.</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">عربي ولاتيني في سطر واحد، وحقل لتحريرهما: تتحرك الأسهم كما يظهر النص.</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.ok</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">OK</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">موافق</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.cancel</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="1">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Cancel</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">إلغاء</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.yes</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Yes</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">نعم</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.no</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">No</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			<object>
+					<bool name="present">true</bool>
+					<string name="text">لا</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.cut</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Cut</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">قص</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.copy</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Copy</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">نسخ</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+		name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">form.save</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Save</string>
+					<u8 name="forms">1</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">حفظ</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">form.cancel</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Cancel</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">إلغاء</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">files.title</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Counting</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">العدّ</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">files.more</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">More</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">أكثر</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">files.fewer</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Fewer</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">أقل</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">mixed.title</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Mixed directions</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">اتجاهات مختلطة</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">mixed.lead</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Arabic and Latin in one line, and a field to edit them in: the arrows move as the text shows.</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">عربي ولاتيني في سطر واحد، وحقل لتحريرهما: تتحرك الأسهم كما يظهر النص.</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.ok</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="1">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">OK</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">موافق</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.cancel</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="1">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Cancel</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">إلغاء</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.yes</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="1">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Yes</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">نعم</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.no</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">No</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">لا</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.cut</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Cut</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">قص</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.copy</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Copy</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">نسخ</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.paste</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Paste</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">لصق</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">gui.select-all</string>
+			<bool name="plural">false</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">Select all</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+				<object>
+					<bool name="present">true</bool>
+					<string name="text">تحديد الكل</string>
+					<u8 name="forms">0</u8>
+					<string name="zero"/>
+					<string name="one"/>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other"/>
+				</object>
+			</array>
+		</object>
+		<object>
+			<string name="key">files.count</string>
+			<bool name="plural">true</bool>
+			<array name="cells" count="2">
+				<object>
+					<bool name="present">false</bool>
+					<string name="text"/>
+					<u8 name="forms">34</u8>
+					<string name="zero"/>
+					<string name="one">{0} file</string>
+					<string name="two"/>
+					<string name="few"/>
+					<string name="many"/>
+					<string name="other">{0} files</string>
+				</object>
+				<object>
+					<bool name="present">false</bool>
+					<string name="text"/>
+					<u8 name="forms">63</u8>
+					<string name="zero">لا توجد ملفات</string>
+					<string name="one">ملف واحد</string>
+					<string name="two">ملفان</string>
+					<string name="few">{0} ملفات</string>
+					<string name="many">{0} ملفًا</string>
+					<string name="other">{0} ملف</string>
+				</object>
+			</array>
+		</object>
+	</array>
+</root>

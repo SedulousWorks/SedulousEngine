@@ -1,0 +1,71 @@
+diff --git a/Code/Editor/Editor.App/ApplicationImpl.cpp b/Code/Editor/Editor.App/ApplicationImpl.cpp
+index c60cf33ef..7a90c4e45 100644
+--- a/Code/Editor/Editor.App/ApplicationImpl.cpp
++++ b/Code/Editor/Editor.App/ApplicationImpl.cpp
+@@ -409,6 +409,10 @@ namespace editor::app
+         {
+             m_embeddedApp->UI()->SetRunScreens(true);
+         }
++        if (m_embeddedApp->GUI() != nullptr)
++        {
++            m_embeddedApp->GUI()->SetRunScreens(true); // and the engine GUI's
++        }
+         m_runtimeContext.Startup();
+         m_embeddedApp->OnStartup(*m_embeddedHost);
+ 
+@@ -649,7 +653,7 @@ namespace editor::app
+         // bound, and Set* with the same product is a no-op-equivalent swap. A bind that
+         // MISSES (fresh checkout, products not cooked yet) simply skips - the next
+         // cook-finished callback lands here again and heals it.
+-        if (!m_project || !m_resources || !m_embeddedApp || m_embeddedApp->UI() == nullptr)
++        if (!m_project || !m_resources || !m_embeddedApp)
+         {
+             return;
+         }
+@@ -658,7 +662,7 @@ namespace editor::app
+         foundation::content::ContentDatabase& cooked = m_project->CookedDb();
+         const auto ready = [&cooked](const Guid& id) { return !id.IsNil() && cooked.GetInstance(id) != nullptr; };
+         const Guid themeId = m_project->Settings().defaultUiThemeId;
+-        if (ready(themeId))
++        if (ready(themeId) && m_embeddedApp->UI() != nullptr)
+         {
+             if (auto themeProxy = m_resources->Bind<foundation::ui::UITheme>(themeId))
+             {
+@@ -666,11 +670,16 @@ namespace editor::app
+             }
+         }
+         const Guid fontId = m_project->Settings().defaultUiFontId;
++        const foundation::fonts::Font* defaultFont = nullptr;
+         if (ready(fontId))
+         {
+             if (auto fontProxy = m_resources->Bind<foundation::fonts::Font>(fontId))
+             {
+-                m_embeddedApp->UI()->SetDefaultFont(fontProxy.Get());
++                defaultFont = fontProxy.Get();
++                if (m_embeddedApp->UI() != nullptr)
++                {
++                    m_embeddedApp->UI()->SetDefaultFont(defaultFont);
++                }
+             }
+         }
+         // The other UI fonts, each a family beside the default one; always set, so a font
+@@ -687,7 +696,18 @@ namespace editor::app
+                 extras.PushBack(extra.Get());
+             }
+         }
+-        m_embeddedApp->UI()->SetExtraFonts(Span<const foundation::fonts::Font* const>(extras.Data(), extras.Size()));
++        if (m_embeddedApp->UI() != nullptr)
++        {
++            m_embeddedApp->UI()->SetExtraFonts(Span<const foundation::fonts::Font* const>(extras.Data(), extras.Size()));
++        }
++        // The engine GUI shares the fonts, and takes the project's sheets in order (a sheet not
++        // cooked yet resolves once it is: the cook-finished callback lands here again).
++        if (m_embeddedApp->GUI() != nullptr)
++        {
++            m_embeddedApp->GUI()->SetFonts(defaultFont, Span<const foundation::fonts::Font* const>(extras.Data(), extras.Size()));
++            const Array<Guid>& sheets = m_project->Settings().guiStyleSheetIds;
++            m_embeddedApp->GUI()->SetStyleSheets(Span<const Guid>(sheets.Data(), sheets.Size()));
++        }
+     }
+ 
+     void EditorApplication::ShowToast(editor::NoticeKind kind, StringView message)

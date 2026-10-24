@@ -1,0 +1,104 @@
+<Panel id="page-menus" class="page" gap="18">
+    <Label class="page-title" text="Menus and windows"/>
+    <Label class="page-lead" white-space="normal"
+           text="A menu bar with submenus and a checkable item, a context menu, popups that flip at the window's edges and work from the keyboard and the pad, a floating window with tabs, a modal message box, and tooltips."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Menu bar"/>
+        <Panel id="menus-bar" class="bar-host" display="stack" justify-items="start" align-items="start"/>
+        <Label id="menus-said" class="caption" text="Menus: {{menu}}"/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Context menu"/>
+        <Panel id="menus-context" class="context-area" display="stack" justify-items="start" align-items="start">
+            <Label class="context-hint" text="Right-click anywhere in this box"/>
+        </Panel>
+    </Panel>
+
+    <Panel id="menus-markup" class="section" gap="12">
+        <Label class="section-title" text="Menus written in markup"/>
+        <MenuBar class="bar-host">
+            <Menu text="Shapes">
+                <MenuItem id="Circle" text="Circle" shortcut="C"/>
+                <MenuItem id="Square" text="Square" shortcut="S"/>
+                <MenuSeparator/>
+                <Menu text="More">
+                    <MenuItem id="Star" text="Star"/>
+                </Menu>
+            </Menu>
+            <Menu text="View">
+                <MenuItem id="Snap to grid" text="Snap to grid" checkable="true" checked="true"/>
+            </Menu>
+        </MenuBar>
+        <Panel class="context-area" display="stack" justify-items="start" align-items="start" context-menu="menus-markup-context">
+            <Label class="context-hint" text="Right-click here for a menu written in markup"/>
+        </Panel>
+        <Menu id="menus-markup-context">
+            <MenuItem id="Copy" text="Copy" shortcut="Ctrl+C"/>
+            <MenuItem id="Paste" text="Paste" shortcut="Ctrl+V"/>
+        </Menu>
+        <Label id="menus-markup-said" class="caption" text="Picked from markup: nothing yet"/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Popups and the keyboard"/>
+        <Label class="caption tall" white-space="normal"
+               text="F10 enters the menu bar; the arrows walk it and its menus, Right and Left go in and out of a submenu, Return runs an item, Escape (or a pad's East) backs out. Shift+F10, a right click or a long press opens a context menu: the field below has one."/>
+        <Panel class="row" flex-direction="row" align-items="start" gap="12">
+            <TextField class="field" placeholder="Right-click for cut, copy, paste"/>
+            <ComboBox class="combo edge" items="One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten"
+                      tooltip="Closed: Up and Down step it, a letter jumps. Open: Return picks."/>
+        </Panel>
+        <Panel class="tip-card" tooltip="One tooltip for the whole card: its children have none of their own">
+            <Label class="caption" text="Hover anywhere on this card, its labels too"/>
+            <Label class="caption" text="(the text is the card's, found up the parent chain)"/>
+        </Panel>
+    </Panel>
+
+    <Panel id="toasts-section" class="section" gap="12">
+        <Label class="section-title" text="Toasts"/>
+        <Label class="caption toast-note" white-space="normal"
+               text="Notices at the window's bottom end (the bottom left, right to left): info and success leave after 5 s, a warning after 8, an error stays until closed; the pointer on a toast holds them all. Repeat posts one key again (counted); Progress updates one toast by its key; Widget and Achievement show a widget, in a card and bare; Thread posts from a worker thread."/>
+        <Panel class="toast-buttons" flex-direction="row" gap="8" align-items="center" flex-wrap="wrap">
+            <Button id="toast-info" class="btn" text="Info"/>
+            <Button id="toast-success" class="btn" text="Success"/>
+            <Button id="toast-warning" class="btn" text="Warning"/>
+            <Button id="toast-error" class="btn" text="Error"/>
+            <Button id="toast-repeat" class="btn" text="Repeat"/>
+            <Button id="toast-progress" class="btn" text="Progress"/>
+            <Button id="toast-widget" class="btn" text="Widget"/>
+            <Button id="toast-bare" class="btn" text="Achievement"/>
+            <Button id="toast-thread" class="btn" text="Thread"/>
+            <Button id="toast-clear" class="btn" text="Clear"/>
+            <Button id="toast-script" class="btn" text="From the script"/>
+        </Panel>
+        <Label id="toast-said" class="caption" text="No toasts yet."/>
+        <Label class="caption toast-note" white-space="normal" text="ToastHost (the core GUI: one host for a game and an editor) over the whole window, in the shell."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Windows and dialogs"/>
+        <Panel class="row" flex-direction="row" align-items="start" gap="12">
+            <Button class="btn wide" text="Open a window" command="demo.window"
+                    tooltip="A window you can drag by its title and resize from its corner"/>
+            <Button class="btn wide" text="Show a message box" command="demo.message"
+                    tooltip="A modal dialog: the page behind takes no clicks until it is answered"/>
+        </Panel>
+        <Label class="caption" text="Hover the buttons for their tooltips."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Built by the page's script"/>
+        <Label class="caption tall" white-space="normal"
+               text="menus.as builds a menu of sixty items, longer than the window, which scrolls between its arrows (rest on one, turn the wheel, or walk it with the keys), and a window of its own. Tab to a button and its tooltip shows below it; the last button's tooltip holds while you move into it."/>
+        <Panel class="row" flex-direction="row" align-items="start" gap="12">
+            <Button id="menus-long" class="btn wide" text="A long menu" tooltip="Sixty items: more than the window holds"/>
+            <Button id="menus-script-window" class="btn wide" text="A window from the script"
+                    tooltip="Built, titled and filled by menus.as"/>
+            <Button class="btn wide" text="A tooltip to enter" tooltip-interactive="true"
+                    tooltip="This one waits for you: move the pointer into it, or press inside it"/>
+        </Panel>
+        <Label id="menus-long-said" class="caption" text="Picked from the long menu: nothing yet"/>
+    </Panel>
+</Panel>

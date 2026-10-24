@@ -1,0 +1,26 @@
+<!--
+  The GUI lab's showcase (G6 of Documentation/Specs/vg-and-gui-lab.md, on the gamekit since K7 of
+  gui-lab-evolution-3.md): a game's main menu, its HUD and its pause menu, played by mouse,
+  keyboard or gamepad. This is its frame: the backdrop, the title over the menu's pages, and the
+  gamekit's screen stack, where menu.as pushes each screen as a document of screens/ (title,
+  settings, controls, loading, hud, pause, quit), fresh each time. menu.css styles them, their
+  entrances and exits the stack's :entering and :leaving. The host sizes the frame's layers to the
+  window, binds {{name}} values to the GUI's data, and runs the script.
+-->
+<Panel id="showcase" class="showcase" display="stack" justify-items="start" align-items="start">
+    <!-- The backdrop: soft orbs drifting behind everything (placed by percentages of it, drifting by transforms). -->
+    <Panel id="backdrop" class="backdrop" display="stack" justify-items="start" align-items="start">
+        <Label class="orb orb-a"/>
+        <Label class="orb orb-b"/>
+        <Label class="orb orb-c"/>
+    </Panel>
+
+    <!-- The title, fixed in the upper third over the menu's pages (hidden while loading and in the game). -->
+    <Panel id="stage" class="stage" flex-direction="column" align-items="center" gap="18">
+        <Label id="title" class="title" text="AURORA"/>
+        <Label id="subtitle" class="subtitle" text="@menu.welcome" text-args="{{name}}"/>
+    </Panel>
+
+    <!-- The game's screens, on the gamekit's stack. -->
+    <Screens id="screens"/>
+</Panel>

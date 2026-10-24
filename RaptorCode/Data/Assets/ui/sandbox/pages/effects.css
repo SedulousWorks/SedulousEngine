@@ -1,0 +1,13 @@
+.fx-stage { width: 590px; height: 112px; padding: 16px;
+            background: repeating-linear-gradient(90deg, #2b3a55 0%, #2b3a55 2%, #c8d2e0 2%, #c8d2e0 4%); border-radius: 12; }
+.fx-card { width: 96px; height: 80px; font-family: Roboto; font-size: 15px; color: #f4f7fb; text-align: center; vertical-align: middle; border-radius: 10; }
+.fx-glass { background-color: rgba(255, 255, 255, 0.18); backdrop-filter: blur(6px); border: 1px solid rgba(255, 255, 255, 0.45); }
+.fx-group { width: 96px; height: 80px; opacity: 0.5; }
+.fx-red { width: 60px; height: 60px; background-color: #e0607a; border-radius: 8; }
+.fx-blue { width: 66px; height: 60px; background-color: #60c0f0; transform: translate(30px, 20px); }
+.fx-soft { background: linear-gradient(135deg, #e0607a, #f0b040); transition: filter 0.3s ease-out; }
+.fx-soft:hover { filter: blur(3px); }
+.fx-multiply { background-color: #f0b040; mix-blend-mode: multiply; color: #202020; }
+.fx-clip { width: 96px; height: 80px; overflow: hidden; border-radius: 24; background-color: #1e2530; }
+.fx-clip-inner { width: 136px; height: 120px; transform: translate(-20px, -20px);
+                 background: conic-gradient(from 0deg, #e0607a, #f0b040, #60c0f0, #e0607a); }

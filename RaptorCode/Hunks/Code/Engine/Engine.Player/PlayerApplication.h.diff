@@ -1,0 +1,98 @@
+diff --git a/Code/Engine/Engine.Player/PlayerApplication.h b/Code/Engine/Engine.Player/PlayerApplication.h
+index 47ea73147..b656fc6b7 100644
+--- a/Code/Engine/Engine.Player/PlayerApplication.h
++++ b/Code/Engine/Engine.Player/PlayerApplication.h
+@@ -132,6 +132,10 @@ namespace engine::player
+             {
+                 UI()->SetTextInputTarget(host.Shell()->MainWindow());
+             }
++            if (GUI() != nullptr && host.Shell() != nullptr)
++            {
++                GUI()->SetTextInputTarget(host.Shell()->MainWindow()); // the GUI's text fields too
++            }
+ 
+             // Native game plugin (game-native-code.md N2). Placed AFTER the base startup so
+             // OnLoad can resolve engine subsystems from Ctx(), and BEFORE the initial scene
+@@ -351,6 +355,21 @@ namespace engine::player
+                 }
+             }
+ 
++            // The engine GUI: the project's fonts (the UI's, shared) and its sheets, in order.
++            if (GUI() != nullptr && Resources() != nullptr)
++            {
++                const foundation::fonts::Font* defaultFont = nullptr;
++                if (!m_settings.defaultUiFontId.IsNil())
++                    if (auto font = Resources()->Bind<foundation::fonts::Font>(m_settings.defaultUiFontId))
++                        defaultFont = font.Get();
++                Array<const foundation::fonts::Font*> others;
++                for (const Guid& id : m_settings.uiFontIds)
++                    if (auto font = Resources()->Bind<foundation::fonts::Font>(id))
++                        others.PushBack(font.Get());
++                GUI()->SetFonts(defaultFont, Span<const foundation::fonts::Font* const>(others.Data(), others.Size()));
++                GUI()->SetStyleSheets(Span<const Guid>(m_settings.guiStyleSheetIds.Data(), m_settings.guiStyleSheetIds.Size()));
++            }
++
+             // The resolution the game draws at, fitted into whatever window it got.
+             SetRenderResolution(m_settings.renderWidth, m_settings.renderHeight, m_settings.renderFit);
+             SetOrientation(m_settings.orientation); // presented turned on a window of the other shape
+@@ -563,8 +582,32 @@ namespace engine::player
+             LOG_INFO(u8"Player", u8"running scene '{}'", m_bootScenePath);
+         }
+ 
++        // The engine GUI's splash, when the project names one (guiLoadingDocumentId): on the GUI's
++        // overlay layer, its progress the GUI's data value `bootProgress`. False when there is none
++        // or it does not resolve (the UI's splash shows instead).
++        bool PushGuiSplash()
++        {
++            if (GUI() == nullptr || m_settings.guiLoadingDocumentId.IsNil() || Resources() == nullptr)
++            {
++                return false;
++            }
++            auto proxy = Resources()->Bind<foundation::gui::GuiDocument>(m_settings.guiLoadingDocumentId);
++            if (proxy.Get() == nullptr)
++            {
++                LOG_WARNING(u8"Player", u8"the GUI loading screen did not resolve; the UI's shows");
++                return false;
++            }
++            GUI()->Context().GetData().Set(StringView(u8"bootProgress"), Variant::From<f64>(0.0));
++            m_guiSplash = GUI()->PushOverlay(*proxy.Get());
++            return static_cast<bool>(m_guiSplash);
++        }
++
+         [[nodiscard]] RefPtr<foundation::ui::View> PushSplash()
+         {
++            if (PushGuiSplash())
++            {
++                return {};
++            }
+             if (UI() == nullptr)
+             {
+                 return {};
+@@ -598,10 +641,19 @@ namespace engine::player
+                 UI()->RemoveScreenOverlay(m_splashView.Get());
+             }
+             m_splashView = nullptr;
++            if (m_guiSplash && GUI() != nullptr)
++            {
++                GUI()->RemoveOverlay(*m_guiSplash);
++            }
++            m_guiSplash = nullptr;
+         }
+ 
+         void DriveSplash(f32 progress)
+         {
++            if (m_guiSplash && GUI() != nullptr)
++            {
++                GUI()->Context().GetData().Set(StringView(u8"bootProgress"), Variant::From<f64>(static_cast<f64>(progress)));
++            }
+             foundation::ui::ViewGroup* root = Cast<foundation::ui::ViewGroup>(m_splashView.Get());
+             if (root == nullptr)
+             {
+@@ -629,6 +681,7 @@ namespace engine::player
+         // Boot splash + async default-scene load (task #123 step 4).
+         engine::runtime::SceneLoadHandle m_bootLoad;     // the in-flight async boot load
+         RefPtr<foundation::ui::View> m_splashView; // the pushed splash overlay (null = none)
++        RefPtr<foundation::gui::Node> m_guiSplash; // the GUI's splash, when the project names one
+         String m_bootScenePath;
+         bool m_booting = false;
+     };

@@ -1,0 +1,58 @@
+<Panel id="page-data-views" class="page" gap="18">
+    <Label class="page-title" text="Data views"/>
+    <Label class="page-lead" white-space="normal"
+           text="Views over models: they realise only the rows on screen, and follow the model when it changes. The models are native (a list, a table behind a sorting proxy, a tree)."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="ListView: 500 rows, virtualised"/>
+        <Panel flex-direction="row" gap="12" align-items="start">
+            <Panel id="views-list" class="view-host" display="stack" justify-items="start" align-items="start"/>
+            <Panel gap="8">
+                <Button id="views-insert" class="btn" text="Insert at the top"/>
+                <Label class="caption" white-space="normal" width="240" height="96"
+                       text="Inserted rows land above what you see, which stays put. F2 renames a row; a double-click or Return activates it; drag a row to move it."/>
+            </Panel>
+        </Panel>
+        <Label id="views-picked" class="caption" text="Click a row, or focus the list and use the arrows."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Rows from a markup template, each its own height"/>
+        <ListView class="template-list" row-height="0" estimated-row-height="40" selection-mode="multi" drag-type="row"
+                  items="A short row|A row with rather more to say, so that it wraps onto a second line in a list this narrow|Short again|Rows are measured as they come into view: the scroll bar settles as you go, and what is on screen never jumps|One more|And a last row, long enough to wrap onto a second line as well">
+            <template>
+                <Panel class="template-row" flex-direction="row" gap="10" align-items="start">
+                    <Label class="template-index" text="{{index}}"/>
+                    <Label class="template-text" white-space="normal" text="{{item}}"/>
+                </Panel>
+            </template>
+        </ListView>
+        <Label class="caption" white-space="normal" height="40"
+               text="A ListView in markup: each row is a template filled from its item and its index. Ctrl and Shift select several; Ctrl+A all; drag them to reorder."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="A grid: the same view, laid out in cells"/>
+        <ListView class="tile-grid" layout="grid" cell-width="110" cell-height="64"
+                  items="Ash|Birch|Cedar|Douglas fir|Elm|Fir|Ginkgo|Hazel|Holly|Juniper|Larch|Lime|Maple|Oak|Pine|Poplar|Rowan|Spruce|Sycamore|Walnut|Willow|Yew|Alder|Beech">
+            <template>
+                <Panel class="tile" align-items="center" justify-content="center">
+                    <Label class="tile-name" text="{{item}}"/>
+                </Panel>
+            </template>
+        </ListView>
+        <Label class="caption" text="The arrows move across and down; type a letter to jump to a tree."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="TableView: click a header to sort"/>
+        <Panel id="views-table" class="view-host" display="stack" justify-items="start" align-items="start"/>
+        <Label class="caption" white-space="normal" height="40"
+               text="Drag a header's right edge to resize its column; the selection follows its row when it sorts. F2 edits a name."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="TreeView: click the arrows, or use the arrow keys; drag nodes onto or beside others"/>
+        <Panel id="views-tree" class="view-host" display="stack" justify-items="start" align-items="start"/>
+    </Panel>
+</Panel>

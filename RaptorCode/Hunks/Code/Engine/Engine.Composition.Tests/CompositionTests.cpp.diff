@@ -1,0 +1,69 @@
+diff --git a/Code/Engine/Engine.Composition.Tests/CompositionTests.cpp b/Code/Engine/Engine.Composition.Tests/CompositionTests.cpp
+index 6f092b6d0..4acbd7c81 100644
+--- a/Code/Engine/Engine.Composition.Tests/CompositionTests.cpp
++++ b/Code/Engine/Engine.Composition.Tests/CompositionTests.cpp
+@@ -31,12 +31,23 @@ using namespace foundation::core;
+ namespace scene = foundation::scene;
+ namespace resource = foundation::resource;
+ 
++namespace
++{
++    // The GUI domain (gui-lab-evolution-3.md, section E), there when the GUI is built: one domain,
++    // one resource module of its own (its vector images and fonts are the UI domain's too), two
++    // factories.
++    constexpr usize kGuiDomains = 1;
++    constexpr usize kGuiResourceModules = 1;
++    constexpr usize kGuiFactories = 2;
++}
++
+ TEST_CASE("engine.composition: the one list covers every domain, and the scene facet every manager")
+ {
+     const engine::EngineComposition& composition = engine::FullComposition();
+-    // Thirteen scene domains (the old scene list) + input + the two facade-only libraries.
+-    CHECK(composition.Modules().Size() == 16u);
+-    CHECK(composition.Scene().ModuleCount() == 13u);
++    // Thirteen scene domains (the old scene list) + input + the two facade-only libraries, and the
++    // GUI's when the GUI is built.
++    CHECK(composition.Modules().Size() == 16u + kGuiDomains);
++    CHECK(composition.Scene().ModuleCount() == 13u + kGuiDomains);
+     CHECK(&engine::FullSceneComposition() == &composition.Scene());
+ 
+     scene::Scene scratch(DefaultAllocator());
+@@ -87,7 +98,7 @@ TEST_CASE("engine.composition: the resource facet - every domain's resource modu
+ {
+     const engine::EngineComposition& composition = engine::FullComposition();
+     // The twenty resource libraries + the scene documents + the render profiles.
+-    CHECK(composition.ResourceModules().Size() == 22u);
++    CHECK(composition.ResourceModules().Size() == 22u + kGuiResourceModules);
+     for (const resource::ResourceModule* module : composition.ResourceModules())
+     {
+         usize same = 0;
+@@ -99,8 +110,8 @@ TEST_CASE("engine.composition: the resource facet - every domain's resource modu
+     }
+     // 30 = the standard headless set (24) + the texture factory + the image and shader factories
+     // no host registered before the composition brought them + the two render profiles + the UI
+-    // vector image.
+-    CHECK(composition.FactoryDescriptionCount() == 30u);
++    // vector image, and the GUI's documents and sheets when the GUI is built.
++    CHECK(composition.FactoryDescriptionCount() == 30u + kGuiFactories);
+ 
+     engine::RegisterAllResourceTypes();
+     usize described = 0;
+@@ -126,7 +137,7 @@ TEST_CASE("engine.composition: a headless host creates every factory but the two
+     resource::ResourceFactorySet set;
+     resource::NoResourceServices none;
+     composition.CreateFactories(set, DefaultAllocator(), none);
+-    CHECK(set.Count() == 28u);
++    CHECK(set.Count() == 28u + kGuiFactories);
+     REQUIRE(set.Skipped().Size() == 2u);
+     bool wantsDevice = false;
+     bool wantsShaders = false;
+@@ -156,7 +167,7 @@ TEST_CASE("engine.composition: a headless host creates every factory but the two
+         });
+     // Idempotent: a second headless pass adds nothing.
+     composition.CreateFactories(set, DefaultAllocator(), none);
+-    CHECK(set.Count() == 28u);
++    CHECK(set.Count() == 28u + kGuiFactories);
+ }
+ 
+ TEST_CASE("engine.composition: RegisterAllScriptFacades installs exactly the domain facades, "

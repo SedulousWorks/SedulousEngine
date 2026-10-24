@@ -1,0 +1,61 @@
+<!--
+  Language and direction (E9e of Documentation/Specs/gui-lab-evolution.md): every text a key in
+  i18n/sandbox.strings.xml (English and Arabic), resolved through the GUI's localization. The
+  language buttons switch it (Pseudo English is English pseudolocalized), and Arabic turns the GUI
+  right to left; the direction buttons set this page's own. A plural from the GUI's data, a form
+  that mirrors, and mixed-direction text with a field to edit it in.
+-->
+<Panel id="page-language" class="page" gap="18">
+    <Label class="page-title" text="@lang.title"/>
+    <Label class="page-lead" white-space="normal" text="@lang.lead"/>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="@lang.choose"/>
+        <Panel class="choices" flex-direction="row" gap="8">
+            <Button id="lang-en" text="English" command="lang.en"/>
+            <Button id="lang-pseudo" text="Pseudo English" command="lang.pseudo"/>
+            <Button id="lang-ar" class="arabic" text="العربية" command="lang.ar"/>
+        </Panel>
+    </Panel>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="@dir.title"/>
+        <Panel class="choices" flex-direction="row" gap="8">
+            <Button id="dir-language" text="@dir.language" command="dir.language"/>
+            <Button id="dir-ltr" text="@dir.ltr" command="dir.ltr"/>
+            <Button id="dir-rtl" text="@dir.rtl" command="dir.rtl"/>
+        </Panel>
+    </Panel>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="@files.title"/>
+        <Panel class="choices" flex-direction="row" gap="12" align-items="center">
+            <Button id="fewer" text="@files.fewer" command="files.fewer"/>
+            <Label id="files" class="text count" text="@files.count" text-count="{{files}}" text-args="{{files}}"/>
+            <Button id="more" text="@files.more" command="files.more"/>
+        </Panel>
+    </Panel>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="@mixed.title"/>
+        <Label class="text mixed-lead" white-space="normal" text="@mixed.lead"/>
+        <Label id="mixed" class="text arabic mixed" text="مرحبا بك في GUI Lab، الإصدار 0.1"/>
+        <TextField id="mixed-field" class="field arabic" text="اكتب hello world هنا"/>
+    </Panel>
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="@form.title"/>
+        <Panel class="form-row" flex-direction="row" gap="12" align-items="center">
+            <Label id="name-label" class="text field-label" text="@form.name"/>
+            <TextField id="name" class="field" placeholder="@form.name.hint" aria-labelledby="name-label"/>
+        </Panel>
+        <Panel class="form-row" flex-direction="row" gap="12" align-items="center">
+            <Label id="volume-label" class="text field-label" text="@form.volume"/>
+            <Slider id="volume" class="slider" min="0" max="10" step="1" value="6" aria-labelledby="volume-label"/>
+        </Panel>
+        <CheckBox id="music" class="text" text="@form.music" checked="true"/>
+        <Panel class="choices" flex-direction="row" gap="8">
+            <Button id="save" text="@form.save"/>
+            <Button id="cancel" text="@form.cancel"/>
+        </Panel>
+    </Panel>
+</Panel>

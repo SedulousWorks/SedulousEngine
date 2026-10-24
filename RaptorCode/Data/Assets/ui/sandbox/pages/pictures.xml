@@ -1,0 +1,74 @@
+<Panel id="page-pictures" class="page" gap="18">
+    <Label class="page-title" text="Pictures"/>
+    <Label class="page-lead" white-space="normal"
+           text="SVG drawn as paths at the size it lands: from a file or written inline as a data: URL, as an Image, a rich text's icon, a background and a nine-slice skin. The tiles below are a load for --bench pictures."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="As content"/>
+        <Panel flex-direction="row" align-items="center" gap="16">
+            <Image class="emblem" src="Assets/ui/sandbox/pictures/emblem.svg" tooltip="An SVG file as an Image's src"/>
+            <Image class="emblem large" src="Assets/ui/sandbox/pictures/emblem.svg" tooltip="The same file twice the size, still crisp"/>
+            <Image class="inline-dot" tooltip="An SVG written inline in the markup"
+                   src="data:image/svg+xml,&lt;svg width='32' height='32'&gt;&lt;circle cx='16' cy='16' r='14' fill='%2360c0f0' stroke='%23f4f7fb' stroke-width='3'/&gt;&lt;/svg&gt;"/>
+            <RichText class="rich" white-space="normal"
+                      text="Rated [icon=Assets/ui/sandbox/pictures/star.svg][icon=Assets/ui/sandbox/pictures/star.svg][icon=Assets/ui/sandbox/pictures/star.svg] by [b]rich text[/b] icons"/>
+        </Panel>
+        <Label class="caption" text="Image src from a .svg file and from a data: URL; [icon=] in rich text."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="As backgrounds and skins"/>
+        <Panel flex-direction="row" align-items="center" gap="16">
+            <Label class="badge" text="background"/>
+            <Button class="svg-button" text="Skinned button"/>
+            <Label class="framed" text="border-image: an SVG frame sliced 16"/>
+        </Panel>
+        <Label class="caption" text="background-image and border-image from inline SVG and from a file."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Load"/>
+        <Panel class="tiles" flex-direction="row" flex-wrap="wrap" gap="8">
+            <Label class="tile" text="1"/>
+            <Label class="tile" text="2"/>
+            <Label class="tile" text="3"/>
+            <Label class="tile" text="4"/>
+            <Label class="tile" text="5"/>
+            <Label class="tile" text="6"/>
+            <Label class="tile" text="7"/>
+            <Label class="tile" text="8"/>
+            <Label class="tile" text="9"/>
+            <Label class="tile" text="10"/>
+            <Label class="tile" text="11"/>
+            <Label class="tile" text="12"/>
+            <Label class="tile" text="13"/>
+            <Label class="tile" text="14"/>
+            <Label class="tile" text="15"/>
+            <Label class="tile" text="16"/>
+            <Label class="tile" text="17"/>
+            <Label class="tile" text="18"/>
+            <Label class="tile" text="19"/>
+            <Label class="tile" text="20"/>
+            <Label class="tile" text="21"/>
+            <Label class="tile" text="22"/>
+            <Label class="tile" text="23"/>
+            <Label class="tile" text="24"/>
+            <Label class="tile" text="25"/>
+            <Label class="tile" text="26"/>
+            <Label class="tile" text="27"/>
+            <Label class="tile" text="28"/>
+            <Label class="tile" text="29"/>
+            <Label class="tile" text="30"/>
+            <Label class="tile" text="31"/>
+            <Label class="tile" text="32"/>
+            <Label class="tile" text="33"/>
+            <Label class="tile" text="34"/>
+            <Label class="tile" text="35"/>
+            <Label class="tile" text="36"/>
+            <Label class="tile" text="37"/>
+            <Label class="tile" text="38"/>
+            <Label class="tile" text="39"/>
+            <Label class="tile" text="40"/>
+        </Panel>
+    </Panel>
+</Panel>

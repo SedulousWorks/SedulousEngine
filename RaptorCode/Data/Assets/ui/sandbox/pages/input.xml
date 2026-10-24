@@ -1,0 +1,102 @@
+<Panel id="page-input" class="page" gap="18">
+    <Label class="page-title" text="Input"/>
+    <Label class="page-lead" white-space="normal"
+           text="An event goes down from the root and back up to it: a container hears what its children leave, :hover and :active hold for every node under the pointer, and a script handler is given the event."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Hover and press reach the containers"/>
+        <Panel class="input-card" flex-direction="row" align-items="start" gap="12">
+            <Button class="btn" text="Inside"/>
+            <Button class="btn" text="Also inside"/>
+        </Panel>
+        <Label class="caption" text="The card lights while a button in it is under the pointer, and dips while one is pressed."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="A clickable card with a button in it"/>
+        <Panel id="input-click-card" class="input-card clickable" flex-direction="row" align-items="start" gap="12">
+            <Button id="input-card-button" class="btn" text="The button"/>
+            <Label class="caption" width="300" height="36" text="the card (click anywhere else on it)"/>
+        </Panel>
+        <Label class="caption" text="Card clicks: {{cardClicks}}.   Button clicks: {{buttonClicks}} (a click the button takes stops there)."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Events reach scripts"/>
+        <Panel id="input-pad" class="input-pad"/>
+        <Label class="caption" text="Pressed at {{padX}}, {{padY}} in the pad, press {{padClicks}} of a run (double, triple)."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="pointer-events and cursor"/>
+        <Panel class="row" flex-direction="row" align-items="start" gap="12">
+            <Panel class="glass-stage" display="stack" justify-items="start" align-items="start">
+                <Button id="input-under-glass" class="btn" text="Under glass"/>
+                <Label class="input-glass" text=""/>
+            </Panel>
+            <Label class="chip cursor-pointer" text="pointer"/>
+            <Label class="chip cursor-move" text="move"/>
+            <Label class="chip cursor-not-allowed" text="not-allowed"/>
+            <Label class="chip cursor-crosshair" text="crosshair"/>
+        </Panel>
+        <Label class="caption" text="Glass clicks reached the button: {{glassClicks}}.   Hover the chips for their cursors."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Drag and drop"/>
+        <Panel class="dnd-row" flex-direction="row" align-items="start" gap="12">
+            <Panel class="dnd-cards" gap="6">
+                <Label id="dnd-ace" class="dnd-card" text="Ace of spades"/>
+                <Label id="dnd-king" class="dnd-card" text="King of hearts"/>
+                <Label id="dnd-chip" class="dnd-card chip-card" text="A poker chip"/>
+            </Panel>
+            <Panel id="dnd-hand" class="dnd-bin"><Label class="dnd-bin-title" text="Hand: takes cards (Ctrl copies)"/></Panel>
+            <Panel id="dnd-discard" class="dnd-bin"><Label class="dnd-bin-title" text="Discard: no aces"/></Panel>
+        </Panel>
+        <Panel class="dnd-row" flex-direction="row" align-items="start" gap="12">
+            <Panel id="dnd-files" class="dnd-bin dnd-files"><Label class="dnd-bin-title" text="Drop files from your desktop here"/></Panel>
+        </Panel>
+        <Panel class="dnd-row" flex-direction="row" align-items="start" gap="12">
+            <ScrollView id="dnd-long" class="dnd-long">
+                <Label class="dnd-line" text="A long hand: rest a card near"/>
+                <Label class="dnd-line" text="an edge and it scrolls."/>
+                <Label class="dnd-line" text="Slot 3"/><Label class="dnd-line" text="Slot 4"/><Label class="dnd-line" text="Slot 5"/>
+                <Label class="dnd-line" text="Slot 6"/><Label class="dnd-line" text="Slot 7"/><Label class="dnd-line" text="Slot 8"/>
+                <Label class="dnd-line" text="Slot 9"/><Label class="dnd-line" text="Slot 10"/><Label class="dnd-line" text="The bottom"/>
+            </ScrollView>
+            <Expander class="dnd-more" title="More piles (rest a card here)">
+                <Panel id="dnd-hidden" class="dnd-bin"><Label class="dnd-bin-title" text="A pile behind an expander"/></Panel>
+            </Expander>
+        </Panel>
+        <Label id="dnd-said" class="caption" white-space="normal" height="40" text="Drag a card past a few pixels; Escape or a right click cancels. From the keys: focus a card, Ctrl+Shift+D (the pad's North), Tab to a pile, Return (South)."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Drag and drop in markup and script"/>
+        <Panel class="dnd-row" flex-direction="row" align-items="start" gap="12">
+            <Panel gap="6">
+                <Label class="swatch swatch-red" text="Red" drag-type="color" drag-value="red"/>
+                <Label class="swatch swatch-green" text="Green" drag-type="color" drag-value="green"/>
+                <Label class="swatch swatch-blue" text="Blue" drag-type="color" drag-value="blue"/>
+            </Panel>
+            <Panel id="input-canvas" class="dnd-bin canvas" drop-types="color" drop-reason="Paint the canvas">
+                <Label class="dnd-bin-title" text="Painted: {{paint}}"/>
+            </Panel>
+        </Panel>
+        <Label class="caption" white-space="normal" height="40" text="The swatches are sources in markup (drag-type, drag-value), the canvas a target (drop-types, drop-reason); its script hears the drop."/>
+    </Panel>
+
+    <!-- Multi-touch (E17c of Documentation/Specs/gui-lab-evolution-2.md): the frame's touch-action is
+         none, so its fingers are its own; its script turns each gesture into the picture's transform. -->
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Pinch, turn and pan"/>
+        <Panel id="input-viewer" class="viewer" touch-action="none" display="stack" justify-items="center" align-items="center">
+            <Image id="input-photo" class="photo" src="Assets/images/logo.png" object-fit="contain"/>
+        </Panel>
+        <Panel flex-direction="row" align-items="center" gap="12">
+            <Button id="input-viewer-reset" class="viewer-reset" text="Reset"/>
+            <Label class="viewer-said" text="{{viewer}}"/>
+        </Panel>
+        <Label class="caption" white-space="normal" height="40" text="Two fingers on the frame pinch, turn and pan the picture at once; a trackpad's pinch over it scales it. Its touch-action is none: the lab leaves its fingers to it."/>
+    </Panel>
+</Panel>

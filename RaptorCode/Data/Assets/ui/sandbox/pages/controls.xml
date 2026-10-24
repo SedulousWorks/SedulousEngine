@@ -1,0 +1,152 @@
+<Panel id="page-controls" class="page" gap="18">
+    <Label class="page-title" text="Controls"/>
+    <Label class="page-lead" white-space="normal"
+           text="The lab's widgets as markup makes them, themed by the built-in sheet. Each keeps its own state here; the Data binding page binds the same widgets to data."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Buttons"/>
+        <Panel class="row" flex-direction="row" align-items="start" gap="12">
+            <Button id="controls-add" class="btn" text="Add +1" tooltip="Counts a click"/>
+            <Button id="controls-add5" class="btn accent" text="Add +5"/>
+            <Button id="controls-reset" class="btn danger" text="Reset"/>
+            <Button class="btn" text="Disabled" enabled="false"/>
+        </Panel>
+        <Panel class="row" flex-direction="row" align-items="start" gap="12">
+            <Button id="controls-repeat" class="btn" text="Hold to add" repeat="true" tooltip="Repeats while held"/>
+            <Button class="btn" text="Toggle" toggle="true"/>
+            <Separator/>
+            <Button id="controls-press" class="btn" text="On press" action-on="press"/>
+            <Spacer/>
+            <Label class="caption" width="90" height="36" vertical-align="middle" text="(a spacer)"/>
+        </Panel>
+        <Label class="caption" text="Clicks: {{clicks}}  (a label bound to the GUI's data; the script only counts)"/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Toggles and choices"/>
+        <Panel class="row" flex-direction="row" align-items="center" gap="24">
+            <CheckBox id="controls-check" class="choice" text="A checkbox" checked="true"/>
+            <CheckBox class="choice" text="Mixed" indeterminate="true" tooltip="Indeterminate until clicked"/>
+            <ToggleSwitch class="choice" text="A switch" checked="true"/>
+        </Panel>
+        <Panel class="row" flex-direction="row" align-items="center" gap="24">
+            <RadioButton class="choice" name="quality" text="Low"/>
+            <RadioButton class="choice" name="quality" text="Medium" checked="true"/>
+            <RadioButton class="choice" name="quality" text="High"/>
+        </Panel>
+        <Label class="caption" text="One group by its name: the arrows move round it. Each control is one button core."/>
+        <Panel class="row" flex-direction="row" align-items="start" gap="12">
+            <ComboBox id="controls-combo" class="combo" items="Apple|Banana|Cherry|Date|Elderberry" tooltip="A combo box"/>
+        </Panel>
+    </Panel>
+
+    <Panel class="section" gap="6">
+        <Label class="section-title" text="Expanders"/>
+        <Expander class="exp" title="Open from markup" open="true">
+            <Label class="caption" white-space="normal" height="40" text="An expander is a header that shows or hides what is inside it, as HTML's details does; its header is a button, so the keyboard and the pad open it too."/>
+        </Expander>
+        <Expander class="exp" title="One of a group (animated)" name="faq" animate="true">
+            <Label class="caption" text="Expanders of one name open one at a time."/>
+            <Label class="caption" text="This one eases its height open and closed."/>
+        </Expander>
+        <Expander class="exp" title="The other of the group" name="faq" animate="true">
+            <Label class="caption" text="Opening this one closed the one above."/>
+        </Expander>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Tabs"/>
+        <TabView id="controls-tabs" class="tabs" close-display="hover" reorderable="true" group="docs">
+            <TabPage title="Overview" closable="false">
+                <Label class="caption" white-space="normal" height="60" text="A tab view pairs a bar of tabs with their pages. Drag a tab across its neighbour to reorder; hover one to close it, or middle-click it. This first tab is not closable."/>
+            </TabPage>
+            <TabPage title="Settings" icon="Assets/images/logo.png">
+                <CheckBox class="choice" text="A page keeps its state while hidden"/>
+            </TabPage>
+            <TabPage title="Notes">
+                <TextField class="field" placeholder="Type, switch tabs, come back"/>
+            </TabPage>
+        </TabView>
+        <TabView class="tabs tabs-small" close-display="hover" reorderable="true" group="docs">
+            <TabPage title="A second view">
+                <Label class="caption" white-space="normal" height="40" text="Drag a tab out of either strip, down past its edge, and drop it on the other: its page comes with it."/>
+            </TabPage>
+        </TabView>
+        <Panel flex-direction="row" gap="12" align-items="center">
+            <Button id="controls-tab-add" class="btn" text="Add a tab"/>
+            <Label class="caption" text="Ctrl+Tab and Ctrl+Shift+Tab cycle; the arrows, Home and End move along a focused strip."/>
+        </Panel>
+        <TabBar class="tabstrip-demo" close-display="always" reorderable="true">
+            <Tab text="main.cpp"/><Tab text="Node.cppm"/><Tab text="LayoutImpl.cpp"/><Tab text="TabBar.cppm"/>
+            <Tab text="TabView.cppm"/><Tab text="Theme.cppm"/><Tab text="controls.xml"/><Tab text="controls.css"/>
+            <Tab text="sandbox.css"/><Tab text="README.md"/>
+        </TabBar>
+        <Label class="caption" text="A strip too narrow for its tabs scrolls (the wheel turns it) and lists every tab at its end."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Values"/>
+        <Panel class="row" flex-direction="row" align-items="start" gap="12">
+            <Slider id="controls-slider" class="slider" value="0.35"/>
+            <Label id="controls-slider-value" class="text" width="60" height="26" vertical-align="middle"/>
+        </Panel>
+        <ProgressBar id="controls-progress" class="progress"/>
+        <Label class="caption" text="The bar and the number follow the slider through script bindings."/>
+        <Panel class="row" flex-direction="row" align-items="center" gap="12">
+            <NumberField class="number" min="0" max="100" value="42" suffix=" %" tooltip="Type an expression, drag across to scrub, or use the arrows"/>
+            <NumberField class="number" min="0" max="10" step="0.25" value="1.5" prefix="$"/>
+            <NumberField class="number" min="-50" max="50" integer="true" value="-7" suffix=" px"/>
+        </Panel>
+        <Panel class="ranges-row" flex-direction="row" align-items="center" gap="20">
+            <Slider id="controls-vertical" class="vslider" orientation="vertical" min="0" max="100" step="5" value="40"/>
+            <Panel gap="10">
+                <Slider id="controls-stepped" class="slider" min="0" max="10" step="1" ticks="11" value="3"/>
+                <Slider id="controls-freq" class="slider" min="20" max="20000" exponential="true" value="440"/>
+                <ProgressBar class="progress" indeterminate="true"/>
+            </Panel>
+            <Label id="controls-ranges" class="caption ranges" white-space="normal"/>
+        </Panel>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Scrolling"/>
+        <Panel class="scroll-row" flex-direction="row" align-items="start" gap="16">
+            <ScrollView id="controls-smooth" class="scroll-demo smooth">
+            <Label class="scroll-line" text="Line 1 of a smooth list"/>
+            <Label class="scroll-line" text="Line 2 of a smooth list"/>
+            <Label class="scroll-line" text="Line 3 of a smooth list"/>
+            <Label class="scroll-line" text="Line 4 of a smooth list"/>
+            <Label class="scroll-line" text="Line 5 of a smooth list"/>
+            <Label class="scroll-line" text="Line 6 of a smooth list"/>
+            <Label class="scroll-line" text="Line 7 of a smooth list"/>
+            <Label class="scroll-line" text="Line 8 of a smooth list"/>
+            <Label class="scroll-line" text="Line 9 of a smooth list"/>
+            <Label class="scroll-line" text="Line 10 of a smooth list"/>
+            <Label class="scroll-line" text="Line 11 of a smooth list"/>
+            <Label class="scroll-line" text="Line 12 of a smooth list"/>
+            </ScrollView>
+            <ScrollView id="controls-log" class="scroll-demo" stick-to-end="true">
+                <Label class="scroll-line" text="The log keeps to its newest line"/>
+            </ScrollView>
+            <Button id="controls-log-add" class="btn" text="Add a line" repeat="true"/>
+        </Panel>
+        <Label class="caption" white-space="normal" height="40"
+               text="Left: the wheel eases (scroll-behavior: smooth) and thin bars show while it scrolls or is hovered. Right: a log that follows its end until you scroll up, and again once you are back."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Text input"/>
+        <TextField id="controls-field" class="field" placeholder="Type here: select, Ctrl+C/V..." max-length="32"/>
+        <Label id="controls-echo" class="caption"/>
+        <EditableLabel class="text editable" text="Double-click or F2 to rename me" tooltip="Return or leaving commits, Escape cancels"/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="A list and images"/>
+        <Panel width="590" height="170" flex-direction="row" align-items="start" gap="16">
+            <ListBox id="controls-list" class="list" items="Item 1|Item 2|Item 3|Item 4|Item 5|Item 6|Item 7|Item 8|Item 9|Item 10|Item 11|Item 12"/>
+            <Panel id="controls-image" class="image-host" display="stack" justify-items="start" align-items="start"/>
+            <Image class="logo" src="Assets/images/logo.png" object-fit="contain" tooltip="An Image from markup: src, object-fit: contain"/>
+        </Panel>
+    </Panel>
+</Panel>

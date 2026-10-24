@@ -1,0 +1,133 @@
+# Foundation::GUI - `foundation.gui`, a fresh eepp-derived retained-mode UI framework
+# on the VG/Fonts stack.
+# Platform- and renderer-agnostic core; VG/Fonts/Image/Xml are linked in,
+# and the gui.shell input bridge is a separate library. Built bottom-up.
+util_add_engine_library(GUI ALIAS Foundation::GUI)
+target_link_libraries(GUI
+    PUBLIC Foundation::Core Foundation::Profiler Foundation::Script Foundation::VG Foundation::VG.SVG Foundation::Image Foundation::Fonts Foundation::Xml Foundation::I18N Foundation::Policy)
+
+target_sources(GUI
+    PUBLIC
+        FILE_SET gui_modules TYPE CXX_MODULES FILES
+            Core/Rect.cppm
+            Core/Diagnostic.cppm
+            Core/Transform2D.cppm
+            Core/Thickness.cppm
+            Core/Transformable.cppm
+            Core/Event.cppm
+            Core/Clipboard.cppm
+            Core/MutationQueue.cppm
+            Core/Reactive.cppm
+            Layout/LayoutStyle.cppm
+            Core/FrameStats.cppm
+            Core/DebugOverlay.cppm
+            Core/Node.cppm
+            Scene/Action.cppm
+            Scene/ActionManager.cppm
+            Scene/Actions.cppm
+            Scene/Keymap.cppm
+            Text/TextSegmentation.cppm
+            Editing/UndoStack.cppm
+            Editing/InputFilter.cppm
+            Editing/TextEditModel.cppm
+            Editing/TextEditingKeys.cppm
+            Scene/Navigation.cppm
+            Scene/PopupPlacement.cppm
+            Scene/EventDispatcher.cppm
+            Scene/ElementTypes.cppm
+            Scene/Commands.cppm
+            Scene/DataModel.cppm
+            Scene/Accessibility.cppm
+            Scene/SceneRoot.cppm
+            Scene/GuiScript.cppm
+            Drawing/DrawContext.cppm
+            Drawing/Drawable.cppm
+            Drawing/ImageDrawable.cppm
+            Drawing/SvgDrawable.cppm
+    Drawing/PictureBaker.cppm
+            Drawing/NodeBox.cppm
+            Text/Text.cppm
+            Text/TextRuns.cppm
+            Text/TextLayout.cppm
+            Model/Variant.cppm
+            Model/ModelIndex.cppm
+            Model/Model.cppm
+            Model/StringListModel.cppm
+            Model/TableModel.cppm
+            Model/TreeModel.cppm
+            Model/SortingProxyModel.cppm
+            Widgets/UINode.cppm
+            Widgets/UIWidget.cppm
+            Widgets/Label.cppm
+            Widgets/ButtonBase.cppm
+            Widgets/Button.cppm
+            Widgets/CheckBox.cppm
+            Widgets/Radio.cppm
+            Widgets/ToggleSwitch.cppm
+            Widgets/ColorPicker.cppm
+            Widgets/RangeValue.cppm
+            Widgets/RangeWidget.cppm
+            Widgets/Slider.cppm
+            Widgets/ProgressBar.cppm
+            Widgets/Panel.cppm
+            Widgets/Separator.cppm
+    Widgets/Splitter.cppm
+            Widgets/TextEditBase.cppm
+            Widgets/TextField.cppm
+            Widgets/TextArea.cppm
+            Widgets/NumberField.cppm
+            Widgets/EditableLabel.cppm
+            Widgets/Disclosure.cppm
+            Widgets/Expander.cppm
+            Widgets/DragPreview.cppm
+            Widgets/ScrollBar.cppm
+            Widgets/ScrollView.cppm
+            Widgets/Image.cppm
+            Widgets/ListBox.cppm
+            Widgets/ItemView.cppm
+            Widgets/ListView.cppm
+            Widgets/TableView.cppm
+            Widgets/TreeView.cppm
+            Widgets/TabBar.cppm
+            Widgets/TabView.cppm
+            Widgets/Window.cppm
+            Widgets/MessageBox.cppm
+            Widgets/ComboBox.cppm
+            Widgets/Menu.cppm
+            Widgets/MenuBar.cppm
+            Widgets/Tooltip.cppm
+            Widgets/Toast.cppm
+            Styling/ResourceProvider.cppm
+            Styling/ParseUtil.cppm
+            Styling/StyleSelector.cppm
+            Styling/MediaQuery.cppm
+            Styling/StyleRule.cppm
+            Styling/StyleSheet.cppm
+            Styling/CSSParser.cppm
+            Styling/CSSValues.cppm
+            Styling/StyleValue.cppm
+            Styling/StyleProperties.cppm
+            Styling/StyleApplier.cppm
+            Styling/Easing.cppm
+            Styling/Motion.cppm
+            Styling/StyleInterpolation.cppm
+            Styling/StyleAnimation.cppm
+            Styling/Tween.cppm
+            Model/ListModel.cppm
+            Styling/StyleManager.cppm
+            Styling/Theme.cppm
+            Markup/MarkupLoader.cppm
+            Markup/StyleCheck.cppm
+            GUIModule.cppm
+    PRIVATE
+        # Module implementation unit: Node method bodies that call the EventDispatcher
+        # (kept out of :node to avoid a :node <-> :event_dispatcher partition cycle).
+        Scene/GUIClusterImpl.cpp
+        Layout/LayoutImpl.cpp
+        Scene/ActionManagerImpl.cpp
+        Scene/AccessibilityImpl.cpp
+        Scene/DebugOverlayImpl.cpp
+        Scene/GUIReflectionImpl.cpp
+        Core/ReactiveImpl.cpp
+        Styling/TweenImpl.cpp)
+

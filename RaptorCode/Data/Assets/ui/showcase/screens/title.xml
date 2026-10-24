@@ -1,0 +1,9 @@
+<!-- The main menu: the bottom of the stack; Back does nothing here (Quit asks). -->
+<Screen class="menu-page" back="none" nav-default="play" flex-direction="column" align-items="center">
+    <Panel id="main" class="panel menu" flex-direction="column" align-items="center" gap="12" nav-scope="wrap">
+        <Button id="play" class="menu-btn primary" text="@menu.play"/>
+        <Button id="settings-btn" class="menu-btn" text="@menu.settings"/>
+        <Button id="controls-btn" class="menu-btn" text="@menu.controls"/>
+        <Button id="quit" class="menu-btn" text="@menu.quit"/>
+    </Panel>
+</Screen>

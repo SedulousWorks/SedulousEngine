@@ -1,0 +1,197 @@
+<!-- The sandbox's XML markup definition for its code editor (GUI.Code, C2 of Specs/gui-lab-evolution-3.md): a language's definition is its owners', read through the engine's XML serialization. -->
+<root>
+	<object>
+		<string name="id">xml</string>
+		<string name="name">XML markup</string>
+		<array name="extensions" count="2">
+			<string>xml</string>
+			<string>sml</string>
+		</array>
+		<bool name="identifierDashes">true</bool>
+		<array name="words" count="0">
+		</array>
+		<array name="contexts" count="8">
+			<object>
+				<string name="name">text</string>
+				<string name="token">text</string>
+				<array name="rules" count="5">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">&lt;!--</string>
+						<string name="token">comment</string>
+						<string name="enter">comment</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">&lt;?</string>
+						<string name="token">preprocessor</string>
+						<string name="enter">instruction</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">&lt;/</string>
+						<string name="token">punctuation</string>
+						<string name="enter">tag-name</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">&lt;</string>
+						<string name="token">punctuation</string>
+						<string name="enter">tag-name</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">&amp;</string>
+						<string name="token">escape</string>
+						<string name="enter">entity</string>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">comment</string>
+				<string name="token">comment</string>
+				<array name="rules" count="1">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">--&gt;</string>
+						<string name="token">comment</string>
+						<u8 name="leave">1</u8>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">instruction</string>
+				<string name="token">preprocessor</string>
+				<array name="rules" count="1">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">?&gt;</string>
+						<string name="token">preprocessor</string>
+						<u8 name="leave">1</u8>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">tag-name</string>
+				<string name="token">text</string>
+				<array name="rules" count="3">
+					<object>
+						<string name="match">identifier</string>
+						<string name="token">tag</string>
+						<string name="enter">tag</string>
+						<u8 name="leave">1</u8>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">/&gt;</string>
+						<string name="token">punctuation</string>
+						<u8 name="leave">1</u8>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">&gt;</string>
+						<string name="token">punctuation</string>
+						<u8 name="leave">1</u8>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">tag</string>
+				<string name="token">text</string>
+				<array name="rules" count="6">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">/&gt;</string>
+						<string name="token">punctuation</string>
+						<u8 name="leave">1</u8>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">&gt;</string>
+						<string name="token">punctuation</string>
+						<u8 name="leave">1</u8>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">"</string>
+						<string name="token">string</string>
+						<string name="enter">double-quoted</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">'</string>
+						<string name="token">string</string>
+						<string name="enter">single-quoted</string>
+					</object>
+					<object>
+						<string name="match">identifier</string>
+						<string name="token">attribute</string>
+					</object>
+					<object>
+						<string name="match">any-of</string>
+						<string name="text">=:</string>
+						<string name="token">punctuation</string>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">double-quoted</string>
+				<string name="token">string</string>
+				<array name="rules" count="1">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">"</string>
+						<string name="token">string</string>
+						<u8 name="leave">1</u8>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">single-quoted</string>
+				<string name="token">string</string>
+				<array name="rules" count="1">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">'</string>
+						<string name="token">string</string>
+						<u8 name="leave">1</u8>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">entity</string>
+				<string name="token">escape</string>
+				<bool name="endsAtLineEnd">true</bool>
+				<array name="rules" count="1">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">;</string>
+						<string name="token">escape</string>
+						<u8 name="leave">1</u8>
+					</object>
+				</array>
+			</object>
+		</array>
+		<object name="blockComment">
+			<string name="open">&lt;!--</string>
+			<string name="close">--&gt;</string>
+		</object>
+		<array name="brackets" count="1">
+			<object>
+				<string name="open">&lt;</string>
+				<string name="close">&gt;</string>
+			</object>
+		</array>
+		<array name="autoClose" count="2">
+			<object>
+				<string name="open">"</string>
+				<string name="close">"</string>
+			</object>
+			<object>
+				<string name="open">'</string>
+				<string name="close">'</string>
+			</object>
+		</array>
+		<bool name="foldByIndent">true</bool>
+	</object>
+</root>

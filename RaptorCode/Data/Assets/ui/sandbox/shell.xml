@@ -1,0 +1,44 @@
+<!--
+  The GUI sandbox's shell (Documentation/Specs/vg-and-gui-lab.md): a header, a sidebar of pages
+  and the page on show. Each sidebar button runs the command page.<id>; the host finds the pages
+  from them and loads pages/<id>.xml (with pages/<id>.css and pages/<id>.as when there are), so a
+  new page is a button and its files. The game menu is a second root of the same GUI.
+-->
+<Panel id="shell" class="shell">
+    <Panel id="header" class="header" flex-direction="row" align-items="center" gap="16">
+        <Label class="app-title" text="GUI Sandbox"/>
+        <Label class="app-subtitle" text="experimental.gui: the lab's widgets, styles, motion and input"/>
+        <Button id="theme-toggle" class="header-btn" text="Light theme" command="theme.toggle"
+                tooltip="Switch the built-in theme and the sandbox's colours"/>
+    </Panel>
+    <Panel id="body" flex-direction="row" align-items="start">
+        <Panel id="sidebar" class="sidebar" flex-direction="column" gap="2" nav-scope="pass" nav-default="nav-controls">
+            <Label class="nav-heading" text="WIDGETS"/>
+            <Button id="nav-controls" class="nav" text="Controls" command="page.controls"/>
+            <Button id="nav-text" class="nav" text="Text" command="page.text"/>
+            <Button id="nav-layout" class="nav" text="Layout" command="page.layout"/>
+            <Button id="nav-data-views" class="nav" text="Data views" command="page.data-views"/>
+            <Button id="nav-menus" class="nav" text="Menus and windows" command="page.menus"/>
+            <Button id="nav-viewport" class="nav" text="Viewport" command="page.viewport"/>
+            <Button id="nav-docking" class="nav" text="Docking" command="page.docking"/>
+            <Button id="nav-toolkit" class="nav" text="Toolkit" command="page.toolkit"/>
+            <Button id="nav-code" class="nav" text="Code" command="page.code"/>
+            <Label class="nav-heading" text="LOOKS"/>
+            <Button id="nav-styling" class="nav" text="Styling" command="page.styling"/>
+            <Button id="nav-effects" class="nav" text="Effects" command="page.effects"/>
+            <Button id="nav-pictures" class="nav" text="Pictures" command="page.pictures"/>
+            <Button id="nav-motion" class="nav" text="Motion" command="page.motion"/>
+            <Button id="nav-themes" class="nav" text="Themes" command="page.themes"/>
+            <Label class="nav-heading" text="BEHAVIOUR"/>
+            <Button id="nav-binding" class="nav" text="Data binding" command="page.binding"/>
+            <Button id="nav-input" class="nav" text="Input" command="page.input"/>
+            <Button id="nav-navigation" class="nav" text="Navigation and commands" command="page.navigation"/>
+            <Button id="nav-language" class="nav" text="Language and direction" command="page.language"/>
+            <Label class="nav-heading" text="MEASURE"/>
+            <Button id="nav-stress" class="nav" text="Stress" command="page.stress"/>
+            <Label class="nav-heading" text="DEMO"/>
+            <Button id="nav-game-menu" class="nav" text="Game menu" command="page.game-menu"/>
+        </Panel>
+        <ScrollView id="content" class="content"/>
+    </Panel>
+</Panel>

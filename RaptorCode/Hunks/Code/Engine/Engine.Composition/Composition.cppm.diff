@@ -1,0 +1,13 @@
+diff --git a/Code/Engine/Engine.Composition/Composition.cppm b/Code/Engine/Engine.Composition/Composition.cppm
+index 04ace6c79..7e9afdf2c 100644
+--- a/Code/Engine/Engine.Composition/Composition.cppm
++++ b/Code/Engine/Engine.Composition/Composition.cppm
+@@ -93,5 +93,7 @@ export namespace engine
+     // 41 = + FootIkComponent.
+     // 42 = + PathFollowComponent: PathFollowComponent.of(entity), a script drives its follower.
+     // 43 = + InstanceMemberComponent: an entity drawn as an instance of an instanced mesh, its clip.
+-    inline constexpr usize kSubsystemFacadeNameCount = 43;
++    // 47 = + `gui` and its three components (GuiCanvasComponent, GuiBillboardComponent,
++    // GuiWorldPanelComponent), the GUI domain's.
++    inline constexpr usize kSubsystemFacadeNameCount = 47;
+ }

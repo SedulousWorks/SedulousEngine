@@ -1,0 +1,175 @@
+/* The GUI lab's showcase (G6 of Documentation/Specs/vg-and-gui-lab.md): every look here comes
+   from the lab's sheet: gradients, shadows, borders, transforms, blur filters, a frosted backdrop,
+   text glow, transitions and keyframes. No colour or position is set in code. Its screens come and
+   go on the gamekit's stack (K7 of gui-lab-evolution-3.md): each plays its entrance while
+   :entering and its exit while :leaving, and the stack waits for them. */
+
+/* The sandbox's built-in theme styles its widgets beneath this sheet (one root); its tokens say
+   what the menu keeps for itself: its panels have no surface of their own. */
+.showcase { --panel-background: rgba(0, 0, 0, 0);
+            --ink: #fff4e2; --muted: #b9b2d0; --accent: #f3a047; --accent-deep: #c4552c; --glow: rgba(255, 176, 86, 0.55);
+             background: radial-gradient(#2a1f4d, #120d24 70%, #07050f); }
+
+/* Lilita and Roboto have no Arabic: what they lack is drawn in DejaVu, the family after them (E11),
+   so the menu reads in Arabic too (E17a). */
+
+/* The backdrop's orbs: big soft gradients, blurred, drifting slowly. Placed by percentages of the
+   backdrop, so all three show at any window size, and drifting by small translations from there.
+   Their places are the picture's, not the text's: the backdrop runs left to right in any language. */
+.backdrop { direction: ltr; }
+.orb { position: absolute; width: 340px; height: 340px; border-radius: 170; filter: blur(14px); }
+.orb-a { left: -6%; top: 51%; background: radial-gradient(rgba(243, 160, 71, 0.55), rgba(243, 160, 71, 0) 70%);
+         animation: drift-a 9s ease-in-out infinite alternate; }
+.orb-b { left: 58%; top: -5%; background: radial-gradient(rgba(120, 110, 255, 0.5), rgba(120, 110, 255, 0) 70%);
+         animation: drift-b 11s ease-in-out infinite alternate; }
+.orb-c { left: 65%; top: 68%; background: radial-gradient(rgba(80, 210, 230, 0.35), rgba(80, 210, 230, 0) 70%);
+         animation: drift-c 13s ease-in-out infinite alternate; }
+@keyframes drift-a { from { transform: translate(0px, 0px) scale(1); } to { transform: translate(100px, -90px) scale(1.15); } }
+@keyframes drift-b { from { transform: translate(0px, 0px) scale(1.1); } to { transform: translate(-90px, 80px) scale(0.95); } }
+@keyframes drift-c { from { transform: translate(0px, 0px) scale(0.9); } to { transform: translate(-80px, -90px) scale(1.1); } }
+
+/* The title glows, breathing. */
+.title { width: 520px; height: 96px; font-family: Lilita, DejaVu; font-size: 84px; color: var(--ink);
+         text-align: center; vertical-align: middle; text-shadow: 0 4px 6px rgba(0, 0, 0, 0.6);
+         animation: breathe 2.6s ease-in-out infinite alternate; }
+@keyframes breathe { from { text-glow: 5px rgba(255, 176, 86, 0.45); } to { text-glow: 16px rgba(255, 176, 86, 0.9); } }
+.subtitle { width: 520px; height: 28px; font-family: Roboto, DejaVu; font-size: 18px; color: var(--muted);
+            text-align: center; vertical-align: middle; }
+
+/* The title sits a fixed way down; a page of the menu puts its panel under it, top-aligned, so a
+   taller page (settings) never moves the title. */
+.stage { padding-top: 110px; }
+.menu-page { padding-top: 270px; } /* the stage's padding, the title, the subtitle and their gaps */
+
+/* Pages rise into place as they enter and sink out as they leave. */
+.panel { width: 440px; }
+.menu { height: 260px; }
+.menu-page:entering { animation: rise 0.42s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.menu-page:leaving { animation: sink 0.2s ease-in forwards; }
+@keyframes rise { from { opacity: 0; transform: translate(0, 26px) scale(0.97); } to { opacity: 1; transform: translate(0, 0) scale(1); } }
+
+/* Frosted glass over the backdrop. */
+.glass { height: 300px; padding: 22px; background-color: rgba(255, 255, 255, 0.08); backdrop-filter: blur(12px);
+         border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 22;
+         box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+#confirm { height: 160px; }
+
+/* Loading: a screen of its own, its status and bar low and centred. Whole screens fade in and out. */
+.loading-screen { padding-bottom: 90px; }
+.loading-status { width: 420px; height: 44px; font-family: Lilita, DejaVu; font-size: 34px; color: var(--ink);
+                  text-align: center; vertical-align: middle; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6); }
+.screen:entering { animation: fade-in 0.4s ease-out; }
+.screen:leaving { animation: fade-out 0.25s ease-in forwards; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* A modal screen: the screen behind dims and blurs, and its panel rises in over it. The blur and the
+   dim grow in (not the modal's opacity: a faded modal draws through a layer of its own, where its
+   backdrop blur sees nothing behind it, so the blur would snap on only as the fade ended). Its
+   panel's rise lasts as long as the dim: the stack waits for the screen's own entrance. */
+.modal { background-color: rgba(6, 4, 14, 0.55); backdrop-filter: blur(6px); }
+.modal:entering { animation: dim-in 0.35s ease-out; }
+.modal:entering .panel { animation: rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes dim-in { from { background-color: rgba(6, 4, 14, 0); backdrop-filter: blur(0px); }
+                    to { background-color: rgba(6, 4, 14, 0.55); backdrop-filter: blur(6px); } }
+/* Leaving: the dim and blur shrink away and the panel sinks out, then the stack takes the screen off. */
+.modal:leaving { animation: dim-out 0.25s ease-in forwards; }
+.modal:leaving .panel { animation: sink 0.2s ease-in forwards; }
+@keyframes dim-out { from { background-color: rgba(6, 4, 14, 0.55); backdrop-filter: blur(6px); }
+                     to { background-color: rgba(6, 4, 14, 0); backdrop-filter: blur(0px); } }
+@keyframes sink { from { opacity: 1; transform: translate(0, 0) scale(1); }
+                  to { opacity: 0; transform: translate(0, 14px) scale(0.98); } }
+.panel-title { width: 380px; height: 40px; font-family: Lilita, DejaVu; font-size: 32px; color: var(--ink);
+               text-align: center; vertical-align: middle; text-shadow: 0 2px 3px rgba(0, 0, 0, 0.5); }
+
+/* The menu's buttons: a gradient card that grows in place on hover and gives on a press. */
+.menu-btn { width: 280px; height: 52px; font-family: Lilita, DejaVu; font-size: 26px; color: var(--ink);
+            text-align: center; vertical-align: middle;
+            background: linear-gradient(180deg, #3d2f63, #251b40); border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 14; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45); text-shadow: 0 2px 2px rgba(0, 0, 0, 0.6);
+            transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.24s ease-out; }
+.menu-btn:hover { transform: scale(1.05);
+                  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5), 0 0 24px 3px var(--glow); }
+.menu-btn:active { transform: scale(0.97); }
+/* The focus ring: shown for the keyboard and a gamepad, not after a click (:focus-visible). */
+.menu-btn:focus-visible { transform: scale(1.05);
+                          box-shadow: 0 0 0 2px #fff4e2, 0 10px 20px rgba(0, 0, 0, 0.5), 0 0 26px 4px var(--glow); }
+.row-check:focus-visible, .row-field:focus-visible { box-shadow: 0 0 0 2px #fff4e2, 0 0 16px 2px var(--glow); }
+.row-slider, .row-check { border-radius: 8; }
+
+.primary { background: linear-gradient(180deg, var(--accent), var(--accent-deep)); }
+.danger { background: linear-gradient(180deg, #e0607a, #9c2f4a); }
+.small { width: 160px; height: 44px; font-size: 22px; }
+/* A small button sits in a row or alone under a panel: it grows a little less on hover and focus,
+   so in a row it does not push into its neighbour. */
+.small:hover { transform: scale(1.04); }
+.small:focus-visible { transform: scale(1.04); }
+.small:active { transform: scale(0.97); }
+
+/* Settings rows. */
+.row { width: 400px; height: 36px; }
+.confirm-row { width: 334px; height: 52px; }
+.row-label { width: 90px; height: 34px; font-family: Roboto, DejaVu; font-size: 18px; color: var(--muted); vertical-align: middle; }
+.row-value { width: 70px; height: 34px; font-family: Roboto, DejaVu; font-size: 18px; color: var(--ink); vertical-align: middle; }
+.row-slider { width: 200px; height: 34px; }
+.row-check { width: 26px; height: 26px; }
+.row-field { width: 260px; height: 34px; font-family: Roboto, DejaVu; font-size: 18px; color: var(--ink); padding: 0 10px;
+             background-color: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8; }
+slider::track { background-color: rgba(255, 255, 255, 0.15); }
+slider::fill { background-color: #f3a047; }
+slider::thumb { background-color: #fff4e2; }
+slider::focus { border-color: #f3a047; } /* the thumb's ring when focused: the slider's own mark */
+checkbox::box { border-color: rgba(255, 255, 255, 0.15); }
+checkbox::mark { background-color: #f3a047; }
+progressbar::track { background-color: rgba(255, 255, 255, 0.12); }
+progressbar::fill { background-color: #f3a047; }
+.loading-bar { width: 420px; height: 14px; }
+
+/* The HUD: cards in the top corners with the objective and clock between them, the prompt low on
+   the right; all of it over the backdrop, which keeps drifting. */
+.hud { padding: 28px 34px; }
+.hud-top, .hud-bottom { width: 100%; }
+.hud-card { padding: 12px 16px; background-color: rgba(10, 6, 24, 0.45); backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 14; box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4); }
+.hud-caption { width: 160px; height: 18px; font-family: Roboto, DejaVu; font-size: 13px; color: var(--muted); }
+.hud-right .hud-caption { width: 220px; text-align: end; } /* as wide as the health card: the objective centred */
+.hud-health { width: 220px; height: 14px; border-radius: 7; }
+#hud-health::fill { background-color: #6fd38a; }
+#hud-health.hp-low::fill { background-color: #e0607a; }
+.hud-health.hp-low { animation: warn 0.6s ease-in-out infinite alternate; }
+@keyframes warn { from { box-shadow: 0 0 0 rgba(224, 96, 122, 0); } to { box-shadow: 0 0 18px 3px rgba(224, 96, 122, 0.8); } }
+.hud-score { width: 220px; height: 46px; font-family: Lilita, DejaVu; font-size: 40px; color: var(--ink); text-align: end;
+             vertical-align: middle; text-shadow: 0 2px 3px rgba(0, 0, 0, 0.6); transform-origin: center; } /* pops in place, either way the text runs */
+/* A point scored: the number pops; two classes taking turns so each score replays it. */
+.pop-a { animation: pop-a 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.pop-b { animation: pop-b 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes pop-a { from { transform: scale(1.35); text-glow: 14px var(--glow); } to { transform: scale(1); text-glow: 0px var(--glow); } }
+@keyframes pop-b { from { transform: scale(1.35); text-glow: 14px var(--glow); } to { transform: scale(1); text-glow: 0px var(--glow); } }
+.hud-middle { padding-top: 8px; flex: 1 1 0; } /* what the two cards leave: a narrow window never pushes a card off the edge */
+.hud-objective { width: 100%; height: 30px; font-family: Lilita, DejaVu; font-size: 26px; color: var(--ink); text-align: center;
+                 vertical-align: middle; text-shadow: 0 2px 3px rgba(0, 0, 0, 0.6); }
+.hud-clock { width: 200px; height: 24px; font-family: Roboto, DejaVu; font-size: 18px; color: var(--muted); text-align: center;
+             vertical-align: middle; }
+.hud-key { height: 26px; padding: 0 10px; font-family: Roboto, DejaVu; font-size: 14px; color: var(--ink);
+           vertical-align: middle; background-color: rgba(10, 6, 24, 0.55); border: 1px solid rgba(255, 255, 255, 0.24);
+           border-radius: 8; } /* the control for the device in hand: a key's or a pad button's name */
+.hud-key[kind="pad"] { border-radius: 13; } /* a pad's button a round cap (a game draws its glyphs here) */
+.hud-prompt { height: 26px; font-family: Roboto, DejaVu; font-size: 15px; color: var(--muted); text-align: start;
+              vertical-align: middle; }
+#pause-panel { height: 230px; }
+
+/* Controls: an action and its key in a row; the key a pill that, while it listens, breathes. */
+.controls { height: 350px; }
+.row-label.wide { width: 150px; }
+.bind-btn { width: 200px; height: 34px; font-family: Roboto, DejaVu; font-size: 17px; color: var(--ink); text-align: center;
+            vertical-align: middle; background-color: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 17; transition: box-shadow 0.2s ease-out; }
+.bind-btn:hover { box-shadow: 0 0 14px 2px var(--glow); }
+.bind-btn:focus-visible { box-shadow: 0 0 0 2px #fff4e2, 0 0 16px 2px var(--glow); }
+.bind-btn.listening { color: var(--accent); border-color: var(--accent); animation: listen 0.7s ease-in-out infinite alternate; }
+@keyframes listen { from { box-shadow: 0 0 0 rgba(243, 160, 71, 0); } to { box-shadow: 0 0 18px 3px rgba(243, 160, 71, 0.75); } }
+.controls-hint { width: 380px; height: 22px; font-family: Roboto, DejaVu; font-size: 14px; color: var(--muted); text-align: center;
+                 vertical-align: middle; }
+
+/* Closing: the whole menu fades to black before the sandbox comes back. */
+.closing { animation: fade-out 0.6s ease-in forwards; }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }

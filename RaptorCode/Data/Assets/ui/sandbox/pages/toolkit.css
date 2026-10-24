@@ -1,0 +1,22 @@
+.toolkit-frame { width: 590px; border: 1px solid var(--border); font-family: Roboto; font-size: 13px; }
+.toolkit-frame.narrow toolbar#toolkit-bar { width: 250px; }
+.toolkit-middle { height: 180px; }
+.toolkit-canvas { flex-grow: 1; padding: 16px; background-color: var(--surface-sunken); }
+.toolkit-canvas:focus { box-shadow: inset 0 0 0 1px var(--focus-ring); }
+.toolkit-note { font-family: Roboto; font-size: 13px; color: var(--muted); }
+.toolkit-button { height: 34px; padding: 0 14px; font-family: Roboto; font-size: 14px; }
+statusbar { height: 24px; font-family: Roboto; font-size: 12px; }
+.props-bar { width: 590px; }
+.props-search { width: 220px; height: 30px; font-family: Roboto; font-size: 14px; }
+.props-objects { width: 140px; height: 30px; font-family: Roboto; font-size: 14px; }
+.props-grid { width: 590px; height: 420px; border: 1px solid var(--border); font-family: Roboto; font-size: 13px; }
+.clip-frame { width: 590px; border: 1px solid var(--border); font-family: Roboto; font-size: 12px; }
+.clip-ruler { margin-inline-start: 160px; height: 22px; }
+.clip-sheet { height: 150px; }
+.clip-curves { margin-inline-start: 160px; height: 180px; border-top: 1px solid var(--border); }
+.graph-view { width: 590px; height: 300px; border: 1px solid var(--border); font-family: Roboto; font-size: 12px; }
+.graph-view.states { height: 240px; }
+.crumbs { width: 520px; font-family: Roboto; font-size: 13px; border: 1px solid var(--border); border-radius: 4px; }
+.crumbs.narrow { width: 220px; }
+.crumbs-chip { padding: 4px 10px; font-family: Roboto; font-size: 13px; color: var(--ink); background-color: var(--shell-surface-2);
+               border-radius: 4px; cursor: grab; }

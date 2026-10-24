@@ -1,0 +1,20 @@
+<Panel id="page-docking" class="page" gap="18">
+    <Label class="page-title" text="Docking"/>
+    <Label class="page-lead" white-space="normal"
+           text="Panels in stacks of tabs and splits, the layout plain data that every move goes through. Drag a tab out of its strip and drop it into a stack, beside one, or along an edge; the preview stands where it would go, and a move the layout refuses says why. A torn tab dims in place meanwhile (the last button switches it to its strip closing up). With Shift held a tab floats instead, and a floating window dragged by its title docks whole wherever it is let go; with Shift it only moves."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="A dock area"/>
+        <Panel id="docking-host" class="docking-host"/>
+        <Panel class="docking-buttons" flex-direction="row" gap="10">
+            <Button id="docking-reset" class="docking-button" text="Reset the layout" command="docking.reset"/>
+            <Button id="docking-closed" class="docking-button" text="Show the closed panels" command="docking.show-closed"/>
+            <Button id="docking-register" class="docking-button" text="Register the profiler" command="docking.register"/>
+            <Button id="docking-torn" class="docking-button" text="A torn tab dims" command="docking.torn-tab"/>
+            <Button id="docking-windows" class="docking-button" text="Floats in the window" command="docking.os-windows"/>
+        </Panel>
+        <Label class="docking-keys" white-space="normal"
+               text="Docking is the pointer's: drag a tab, with Shift to float it; close one by its cross or a middle click. The arrow at a strip's end lists its tabs, and dragged, carries the whole stack; the cross past it closes them all. From the keyboard, a focused tab's context menu (Shift+F10) is Move to and Close, and Ctrl+Shift+D picks a tab up. The last button puts the floats in OS windows of their own: a tab let go outside every window then floats there."/>
+        <Label class="caption docking-keys" white-space="normal" text="DockArea (GUI.Docking) over a DockController: a DockSpace for the main surface and a window for each float; splits are Splitters, stacks TabViews, the panels' contents kept as they move."/>
+    </Panel>
+</Panel>

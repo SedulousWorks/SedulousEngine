@@ -1,0 +1,254 @@
+<!-- The sandbox's Style sheet definition for its code editor (GUI.Code, C2 of Specs/gui-lab-evolution-3.md): a language's definition is its owners', read through the engine's XML serialization. -->
+<root>
+	<object>
+		<string name="id">css</string>
+		<string name="name">Style sheet</string>
+		<array name="extensions" count="2">
+			<string>css</string>
+			<string>sss</string>
+		</array>
+		<bool name="identifierDashes">true</bool>
+		<array name="words" count="2">
+			<object>
+				<string name="token">builtin</string>
+				<string name="list">var calc min max clamp rgb rgba hsl hsla url linear-gradient radial-gradient translate scale rotate skew matrix cubic-bezier steps</string>
+			</object>
+			<object>
+				<string name="token">constant</string>
+				<string name="list">auto none inherit initial unset normal bold italic solid dashed dotted transparent center start end row column wrap nowrap hidden visible scroll absolute relative flex grid block inline</string>
+			</object>
+		</array>
+		<array name="contexts" count="7">
+			<object>
+				<string name="name">selectors</string>
+				<string name="token">text</string>
+				<array name="rules" count="6">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">/*</string>
+						<string name="token">comment</string>
+						<string name="enter">comment</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">@</string>
+						<string name="token">keyword</string>
+						<string name="enter">at-rule</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">{</string>
+						<string name="token">punctuation</string>
+						<string name="enter">block</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">"</string>
+						<string name="token">string</string>
+						<string name="enter">double-quoted</string>
+					</object>
+					<object>
+						<string name="match">identifier</string>
+						<string name="token">selector</string>
+					</object>
+					<object>
+						<string name="match">any-of</string>
+						<string name="text">.#:&gt;+~*[]=(),</string>
+						<string name="token">punctuation</string>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">at-rule</string>
+				<string name="token">keyword</string>
+				<array name="rules" count="1">
+					<object>
+						<string name="match">identifier</string>
+						<string name="token">keyword</string>
+						<u8 name="leave">1</u8>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">comment</string>
+				<string name="token">comment</string>
+				<array name="rules" count="1">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">*/</string>
+						<string name="token">comment</string>
+						<u8 name="leave">1</u8>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">block</string>
+				<string name="token">text</string>
+				<array name="rules" count="6">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">/*</string>
+						<string name="token">comment</string>
+						<string name="enter">comment</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">}</string>
+						<string name="token">punctuation</string>
+						<u8 name="leave">1</u8>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">{</string>
+						<string name="token">punctuation</string>
+						<string name="enter">block</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">:</string>
+						<string name="token">punctuation</string>
+						<string name="enter">value</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">;</string>
+						<string name="token">punctuation</string>
+					</object>
+					<object>
+						<string name="match">identifier</string>
+						<string name="token">property</string>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">value</string>
+				<string name="token">text</string>
+				<array name="rules" count="10">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">/*</string>
+						<string name="token">comment</string>
+						<string name="enter">comment</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">;</string>
+						<string name="token">punctuation</string>
+						<u8 name="leave">1</u8>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">}</string>
+						<string name="token">punctuation</string>
+						<u8 name="leave">2</u8>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">!important</string>
+						<string name="token">keyword</string>
+					</object>
+					<object>
+						<string name="match">number</string>
+						<string name="token">number</string>
+					</object>
+					<object>
+						<string name="match">identifier</string>
+						<string name="token">text</string>
+					</object>
+					<object>
+						<string name="match">run</string>
+						<string name="text">#0123456789abcdefABCDEF</string>
+						<string name="token">constant</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">"</string>
+						<string name="token">string</string>
+						<string name="enter">double-quoted</string>
+					</object>
+					<object>
+						<string name="match">literal</string>
+						<string name="text">'</string>
+						<string name="token">string</string>
+						<string name="enter">single-quoted</string>
+					</object>
+					<object>
+						<string name="match">any-of</string>
+						<string name="text">,()/%+*</string>
+						<string name="token">punctuation</string>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">double-quoted</string>
+				<string name="token">string</string>
+				<string name="escape">\</string>
+				<bool name="endsAtLineEnd">true</bool>
+				<array name="rules" count="1">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">"</string>
+						<string name="token">string</string>
+						<u8 name="leave">1</u8>
+					</object>
+				</array>
+			</object>
+			<object>
+				<string name="name">single-quoted</string>
+				<string name="token">string</string>
+				<string name="escape">\</string>
+				<bool name="endsAtLineEnd">true</bool>
+				<array name="rules" count="1">
+					<object>
+						<string name="match">literal</string>
+						<string name="text">'</string>
+						<string name="token">string</string>
+						<u8 name="leave">1</u8>
+					</object>
+				</array>
+			</object>
+		</array>
+		<object name="blockComment">
+			<string name="open">/*</string>
+			<string name="close">*/</string>
+		</object>
+		<array name="brackets" count="3">
+			<object>
+				<string name="open">(</string>
+				<string name="close">)</string>
+			</object>
+			<object>
+				<string name="open">[</string>
+				<string name="close">]</string>
+			</object>
+			<object>
+				<string name="open">{</string>
+				<string name="close">}</string>
+			</object>
+		</array>
+		<array name="autoClose" count="5">
+			<object>
+				<string name="open">(</string>
+				<string name="close">)</string>
+			</object>
+			<object>
+				<string name="open">[</string>
+				<string name="close">]</string>
+			</object>
+			<object>
+				<string name="open">{</string>
+				<string name="close">}</string>
+			</object>
+			<object>
+				<string name="open">"</string>
+				<string name="close">"</string>
+			</object>
+			<object>
+				<string name="open">'</string>
+				<string name="close">'</string>
+			</object>
+		</array>
+		<string name="indentAfter">{ (</string>
+		<string name="outdentFirst">} )</string>
+	</object>
+</root>

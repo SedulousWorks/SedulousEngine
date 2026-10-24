@@ -1,0 +1,20 @@
+diff --git a/Code/Tools/Tools.Editor/Main.cpp b/Code/Tools/Tools.Editor/Main.cpp
+index 5f098fe99..854a35765 100644
+--- a/Code/Tools/Tools.Editor/Main.cpp
++++ b/Code/Tools/Tools.Editor/Main.cpp
+@@ -91,6 +91,7 @@ import editor.navigation; // RegisterNavigationEditorSettings* (domain-contribut
+ import foundation.ui.resource;
+ import ui.pipeline;
+ import editor.gameui;
++import editor.gui; // the engine GUI's asset pages
+ import editor.audio;
+ import editor.texture;
+ import editor.image;
+@@ -333,6 +334,7 @@ int main(int argc, char** argv)
+         editor::RegisterGameAudioEditorSettings(app.Context());
+         editor::RegisterPropertyAnimationEditor(app.Context(), host);
+         editor::RegisterGameUIEditor(app.Context(), host, uiHost);
++        editor::RegisterGuiEditor(app.Context(), host, uiHost); // the engine GUI's .gml and .css pages
+         editor::RegisterAudioClipEditor(app.Context(), host);
+         editor::RegisterBusLayoutEditor(app.Context(), host);
+         editor::RegisterTextureEditor(app.Context());

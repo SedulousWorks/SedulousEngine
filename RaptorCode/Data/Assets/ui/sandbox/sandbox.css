@@ -1,0 +1,62 @@
+/* The GUI sandbox's shell and the look its pages share. Colours are variables on the shell, so the
+   light theme swaps them in one place (.shell.light); widgets take the built-in theme beneath. */
+
+.shell { --bg: #14161c; --shell-surface: #1b1f27; --shell-surface-2: #252b36; --line: #2f3643; --ink: #e8ecf3;
+         --muted: #97a2b4; --shell-accent: #4f9cff; --shell-accent-ink: #ffffff; --good: #3fa06a; --bad: #c4524a;
+         --glow: rgba(120, 200, 255, 0.55);
+         background-color: var(--bg); }
+.shell.light { --bg: #eef1f6; --shell-surface: #ffffff; --shell-surface-2: #e9edf4; --line: #d4dae4; --ink: #1b2230;
+               --muted: #5b6678; --shell-accent: #2f7de1; --glow: rgba(47, 125, 225, 0.35); }
+
+/* Roboto's bold face (E11): a [b] run and font-weight: bold draw in it, not emboldened. */
+@font-face { font-family: Roboto; src: url(Assets/fonts/roboto/Roboto-Bold.ttf); font-weight: bold; }
+
+/* Header */
+.header { height: 60px; padding-left: 20px; padding-right: 20px; background-color: var(--shell-surface);
+          border-bottom: 1px solid var(--line); }
+.app-title { width: 200px; height: 58px; font-family: Lilita; font-size: 30px; color: var(--ink); vertical-align: middle; }
+.app-subtitle { width: 470px; height: 58px; font-family: Roboto; font-size: 15px; color: var(--muted); vertical-align: middle; }
+.header-btn { width: 130px; height: 34px; font-family: Roboto; font-size: 15px; border-radius: 8; }
+
+/* Sidebar */
+.sidebar { width: 210px; padding: 14px; background-color: var(--shell-surface); border-right: 1px solid var(--line); }
+.nav-heading { width: 180px; height: 22px; font-family: Roboto; font-size: 12px; color: var(--muted); vertical-align: bottom;
+               padding-inline-start: 12px; }
+.nav { width: 182px; height: 30px; font-family: Roboto; font-size: 15px; text-align: start; padding-inline-start: 12px;
+       color: var(--muted); background-color: rgba(0, 0, 0, 0); border-radius: 8;
+       transition: background-color 0.15s ease-out, color 0.15s ease-out; }
+.nav:hover { background-color: var(--shell-surface-2); color: var(--ink); }
+.nav:focus-visible { box-shadow: 0 0 0 2px var(--shell-accent); }
+.nav.current { background-color: var(--shell-accent); color: var(--shell-accent-ink); }
+
+/* The page on show */
+.content { background-color: var(--bg); }
+.page { width: 680px; padding: 28px; }
+.page-title { width: 600px; height: 42px; font-family: Lilita; font-size: 30px; color: var(--ink); }
+.page-lead { width: 620px; height: 46px; font-family: Roboto; font-size: 15px; color: var(--muted); }
+.section { width: 624px; padding: 16px; background-color: var(--shell-surface); border: 1px solid var(--line); border-radius: 12; }
+.section-title { width: 580px; height: 26px; font-family: Roboto; font-size: 18px; color: var(--ink); }
+.caption { width: 580px; height: 22px; font-family: Roboto; font-size: 14px; color: var(--muted); }
+.text { font-family: Roboto; font-size: 16px; color: var(--ink); }
+.row { width: 590px; height: 40px; }
+.chip { width: 90px; height: 32px; font-family: Roboto; font-size: 15px; color: #ffffff; text-align: center; vertical-align: middle;
+        background-color: var(--shell-accent); border-radius: 8; }
+
+/* Buttons the pages share */
+.btn { width: 120px; height: 36px; font-family: Roboto; font-size: 15px; border-radius: 8; }
+.accent { background-color: var(--good); }
+.danger { background-color: var(--bad); }
+.btn:focus-visible { box-shadow: 0 0 0 2px var(--shell-accent); }
+.btn:disabled { opacity: 0.4; }
+tooltip { font-family: Roboto; font-size: 13px; color: var(--ink); }
+window, messagebox { font-family: Roboto; font-size: 16px; } /* a script's too (native code sets Roboto 16 on its own) */
+
+/* The page's bars as parts (E6): a quiet thumb that lights under the pointer and while held. */
+.content::scrollbar-thumb { background-color: rgba(151, 162, 180, 0.35); border-radius: 4; }
+.content::scrollbar-thumb:hover { background-color: rgba(151, 162, 180, 0.6); }
+.content::scrollbar-thumb:active { background-color: var(--shell-accent); }
+dragpreview { font-family: Roboto; font-size: 14px; } /* the top layer: the shell's sheet reaches it, a page's does not */
+toasthost { font-family: Roboto; font-size: 13px; } /* over the window, outside any page: the shell's sheet styles it */
+.achievement { padding: 12px 18px; font-family: Lilita; font-size: 20px; color: #2b1a00; border-radius: 10px;
+               background: linear-gradient(135deg, #f7d774, #e8a33a); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
+.toast-progress { width: 220px; height: 6px; }

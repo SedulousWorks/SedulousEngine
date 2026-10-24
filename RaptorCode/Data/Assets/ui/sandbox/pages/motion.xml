@@ -1,0 +1,70 @@
+<Panel id="page-motion" class="page" gap="18">
+    <Label class="page-title" text="Motion"/>
+    <Label class="page-lead" white-space="normal"
+           text="Every property transitions and animates, with real easings: transitions on hover, keyframes of opacity, colour and transforms, the easing functions side by side, and a level's end a script plays with tweens and springs."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="A level's end, from a script: tweens, a spring, a sequence"/>
+        <Panel class="card-row" flex-direction="row" align-items="start" gap="16">
+            <Panel id="motion-card" class="reward-card" gap="10" align-items="center">
+                <Label class="reward-title" text="Level complete"/>
+                <Panel class="gem-row" flex-direction="row" gap="22" justify-content="center">
+                    <Label id="motion-gem-1" class="gem"/><Label id="motion-gem-2" class="gem"/><Label id="motion-gem-3" class="gem"/>
+                </Panel>
+                <ProgressBar id="motion-score-bar" class="score-bar" max="100" value="100"/>
+                <Label id="motion-score" class="score" text="Score 12500"/>
+            </Panel>
+            <Panel gap="10">
+                <Button id="motion-replay" class="btn" text="Play it again"
+                        tooltip="The card springs in, the gems pop one after another, the score counts up, a toast slides in and out"/>
+                <Label id="motion-toast" class="toast" text="New best time!"/>
+            </Panel>
+        </Panel>
+        <Label class="caption" white-space="normal"
+               text="motion.as: the card fades in and springs from small to its size; a sequence waits, pops each gem (a fade beside an ease-out-back scale), fills the score bar while a bound label counts, then slides a toast in, waits and slides it out."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Transitions: hover the cards"/>
+        <Panel class="card-row" flex-direction="row" align-items="start" gap="16">
+            <Label class="lift lift-back" text="overshoot"/>
+            <Label class="lift lift-ease" text="ease"/>
+            <Label class="lift lift-steps" text="steps(4)"/>
+        </Panel>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Keyframes"/>
+        <Panel class="row" flex-direction="row" align-items="center" gap="12">
+            <Label class="dot pulse-fast"/><Label class="dot pulse"/><Label class="dot pulse-slow"/><Label class="dot blink"/>
+            <Label class="swatch colorcycle"/>
+            <Label class="sway" text="sway"/>
+        </Panel>
+        <Label class="caption" text="Opacity at three rates and a blink, a background colour cycling, a transform swaying back and forth."/>
+    </Panel>
+
+    <Panel class="section" gap="8">
+        <Label class="section-title" text="Easing functions"/>
+        <Panel class="ease-row" flex-direction="row" align-items="start" gap="12">
+            <Label class="ease-name" text="linear"/><Panel class="track" display="stack" justify-items="start" align-items="start"><Label class="ball e-linear"/></Panel>
+        </Panel>
+        <Panel class="ease-row" flex-direction="row" align-items="start" gap="12">
+            <Label class="ease-name" text="ease-in-out"/><Panel class="track" display="stack" justify-items="start" align-items="start"><Label class="ball e-inout"/></Panel>
+        </Panel>
+        <Panel class="ease-row" flex-direction="row" align-items="start" gap="12">
+            <Label class="ease-name" text="cubic-bezier"/><Panel class="track" display="stack" justify-items="start" align-items="start"><Label class="ball e-back"/></Panel>
+        </Panel>
+        <Panel class="ease-row" flex-direction="row" align-items="start" gap="12">
+            <Label class="ease-name" text="steps(6)"/><Panel class="track" display="stack" justify-items="start" align-items="start"><Label class="ball e-steps"/></Panel>
+        </Panel>
+        <Panel class="ease-row" flex-direction="row" align-items="start" gap="12">
+            <Label class="ease-name" text="ease-out-back"/><Panel class="track" display="stack" justify-items="start" align-items="start"><Label class="ball e-out-back"/></Panel>
+        </Panel>
+        <Panel class="ease-row" flex-direction="row" align-items="start" gap="12">
+            <Label class="ease-name" text="ease-out-elastic"/><Panel class="track" display="stack" justify-items="start" align-items="start"><Label class="ball e-out-elastic"/></Panel>
+        </Panel>
+        <Panel class="ease-row" flex-direction="row" align-items="start" gap="12">
+            <Label class="ease-name" text="ease-out-bounce"/><Panel class="track" display="stack" justify-items="start" align-items="start"><Label class="ball e-out-bounce"/></Panel>
+        </Panel>
+    </Panel>
+</Panel>

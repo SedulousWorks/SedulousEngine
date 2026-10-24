@@ -1,0 +1,21 @@
+<!-- Settings: a page over the main menu, frosted, bound to the GUI's data both ways. -->
+<Screen class="menu-page" covers="true" flex-direction="column" align-items="center">
+    <Panel class="panel glass" flex-direction="column" align-items="center" gap="14">
+        <Label class="panel-title" text="@menu.settings"/>
+        <Panel class="row" flex-direction="row" align-items="start" gap="14">
+            <Label class="row-label" text="@settings.volume"/>
+            <Slider value="{{volume}}" class="row-slider"/>
+            <Label id="volume-text" class="row-value"/>
+        </Panel>
+        <Panel class="row" flex-direction="row" align-items="start" gap="14">
+            <Label class="row-label" text="@settings.music"/>
+            <CheckBox checked="{{music}}" class="row-check"/>
+            <Label id="music-text" class="row-value"/>
+        </Panel>
+        <Panel class="row" flex-direction="row" align-items="start" gap="14">
+            <Label class="row-label" text="@settings.name"/>
+            <TextField text="{{name}}" class="row-field"/>
+        </Panel>
+        <Button id="settings-back" class="menu-btn small" text="@menu.back"/>
+    </Panel>
+</Screen>

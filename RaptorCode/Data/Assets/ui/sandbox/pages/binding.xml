@@ -1,0 +1,26 @@
+<Panel id="page-binding" class="page" gap="18">
+    <Label class="page-title" text="Data binding"/>
+    <Label class="page-lead" white-space="normal"
+           text="Markup bound to the GUI's data by name, in double braces: the slider, the checkbox and the field write their values back, and everything reading them follows. No handler is wired. The game menu reads the same values."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Bound both ways"/>
+        <Panel class="row" flex-direction="row" align-items="center" gap="12">
+            <Label class="text label-col" text="Volume" vertical-align="middle"/>
+            <Slider class="bind-slider" value="{{volume}}"/>
+            <ProgressBar class="bind-bar" value="{{volume}}"/>
+            <Label id="binding-percent" class="text value-col" vertical-align="middle"/>
+        </Panel>
+        <Panel class="row" flex-direction="row" align-items="center" gap="12">
+            <Label class="text label-col" text="Music" vertical-align="middle"/>
+            <CheckBox class="bind-check" checked="{{music}}"/>
+            <Label class="text" width="300" height="30" vertical-align="middle" text="music is {{music}}"/>
+        </Panel>
+        <Panel class="row" flex-direction="row" align-items="center" gap="12">
+            <Label class="text label-col" text="Name" vertical-align="middle"/>
+            <TextField class="bind-field" text="{{name}}"/>
+            <Label class="text" width="220" height="30" vertical-align="middle" text="Hello, {{name}}!"/>
+        </Panel>
+        <Label class="caption" text="The percentage is a script binding: a function of the volume, run again when it changes."/>
+    </Panel>
+</Panel>

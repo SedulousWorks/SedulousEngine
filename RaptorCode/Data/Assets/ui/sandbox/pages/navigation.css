@@ -1,0 +1,5 @@
+.nav-grid { width: 420px; height: 88px; }
+.nav-cell { width: 96px; height: 40px; font-family: Roboto; font-size: 15px; border-radius: 8; }
+.nav-cell:focus-visible { box-shadow: 0 0 0 2px var(--shell-accent); }
+.editor { width: 590px; height: 56px; padding: 10px; background-color: var(--shell-surface-2); border-radius: 8; }
+.nav-wide { width: 170px; }

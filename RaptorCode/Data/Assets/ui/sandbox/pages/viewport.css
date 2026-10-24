@@ -1,0 +1,5 @@
+.viewport-host { width: 590px; height: 332px; }
+.viewport-scene { width: 590px; height: 332px; }
+.viewport-note { width: 260px; margin: 12px; padding: 8px 10px; border-radius: 6; font-family: Roboto; font-size: 13px;
+                 color: #f4f7fb; background-color: rgba(10, 12, 18, 0.65); }
+.viewport-button { height: 34px; padding: 0 14px; font-family: Roboto; font-size: 14px; }

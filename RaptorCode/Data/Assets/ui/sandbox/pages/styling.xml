@@ -1,0 +1,58 @@
+<Panel id="page-styling" class="page" gap="18">
+    <Label class="page-title" text="Styling"/>
+    <Label class="page-lead" white-space="normal"
+           text="Box properties from the sheet: gradients, several shadows, a border per side, radii, transforms about an origin, and var() inside any of them. Each card is styled by its classes alone."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Backgrounds"/>
+        <Panel class="card-row" flex-direction="row" align-items="start" gap="16">
+            <Label class="card bg-linear" text="linear"/>
+            <Label class="card bg-radial" text="radial"/>
+            <Label class="card bg-conic" text="conic"/>
+            <Label class="card bg-stripes" text="repeating"/>
+        </Panel>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Borders, radii and shadows"/>
+        <Panel class="card-row" flex-direction="row" align-items="start" gap="16">
+            <Label class="card sides" text="per side"/>
+            <Label class="card rounded" text="radii"/>
+            <Label class="card shadows" text="shadows"/>
+            <Label class="card inset" text="inset"/>
+        </Panel>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Transforms"/>
+        <Panel class="card-row" flex-direction="row" align-items="start" gap="16">
+            <Label class="card bg-linear tf-rotate" text="rotate"/>
+            <Label class="card bg-radial tf-scale" text="scale"/>
+            <Label class="card bg-conic tf-skew" text="skew"/>
+            <Label class="card bg-linear tf-origin" text="origin"/>
+        </Panel>
+        <Label class="caption" text="The header's theme button swaps the built-in theme and these variables."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Selectors, inheritance and parts"/>
+        <Panel class="pick-row" flex-direction="row" align-items="start" gap="16">
+            <Panel class="zebra">
+                <Label text="Ada"/><Label text="Bo"/><Label text="Cara"/><Label text="Dan"/><Label text="Eve"/>
+            </Panel>
+            <Panel class="warm" gap="4">
+                <Label text="This card sets a colour,"/>
+                <Label text="a family and a size;"/>
+                <Label text="its labels set none."/>
+                <Label class="cool" text="This one sets its own."/>
+            </Panel>
+            <Panel class="choices" gap="8">
+                <Panel class="choice" flex-direction="row" align-items="center" gap="8"><CheckBox/><Label text="Lit when checked"/></Panel>
+                <Panel class="choice" flex-direction="row" align-items="center" gap="8"><CheckBox checked="true"/><Label text="Lit when checked"/></Panel>
+                <TextField class="quiet" placeholder="dim until typed in"/>
+                <Slider class="fancy" value="0.6"/>
+            </Panel>
+        </Panel>
+        <Label class="caption" text="Zebra rows by :nth-child(odd); a label after a :checked box (+); a field while :placeholder-shown; a thumb styled as a box."/>
+    </Panel>
+</Panel>

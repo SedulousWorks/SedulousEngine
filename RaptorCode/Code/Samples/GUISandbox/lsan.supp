@@ -1,0 +1,12 @@
+# LeakSanitizer suppressions for the sandbox's tests: what the desktop's own libraries keep until
+# exit. SDL's Wayland windows load libdecor's GTK plugin, and GTK, pango and fontconfig hold their
+# caches for the life of the process, as does SDL's D-Bus connection. Only system libraries belong
+# here, never our code.
+leak:libgtk-3.so
+leak:libgdk-3.so
+leak:libdecor
+leak:libpango
+leak:libfontconfig.so
+leak:libglib-2.0.so
+leak:libgobject-2.0.so
+leak:libdbus-1.so

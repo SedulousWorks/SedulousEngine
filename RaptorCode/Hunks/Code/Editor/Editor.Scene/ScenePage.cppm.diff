@@ -1,0 +1,28 @@
+diff --git a/Code/Editor/Editor.Scene/ScenePage.cppm b/Code/Editor/Editor.Scene/ScenePage.cppm
+index 941b32b65..39149f71f 100644
+--- a/Code/Editor/Editor.Scene/ScenePage.cppm
++++ b/Code/Editor/Editor.Scene/ScenePage.cppm
+@@ -41,6 +41,7 @@ import foundation.ui;
+ import foundation.ui.toolkit;
+ import foundation.ui.runtime;
+ import engine.ui; // game-UI RenderTexture canvases (live in editing viewports)
++import engine.gui; // and the engine GUI's textures
+ import foundation.ui.viewport;
+ import foundation.vg.renderer;
+ import editor.core;
+@@ -104,6 +105,7 @@ export namespace editor
+             m_scenes = host.Ctx().GetSubsystem<engine::scene::SceneSubsystem>();
+             m_render = host.Ctx().GetSubsystem<engine::render::RenderSubsystem>();
+             m_gameUI = host.Ctx().GetSubsystem<engine::ui::UISubsystem>();
++            m_gameGui = host.Ctx().GetSubsystem<engine::gui::GuiSubsystem>();
+ 
+             // Own live Scene per page in this page's OWN SceneManager (registered with the subsystem
+             // so it ticks on the Context lane; there is no shared default manager).
+@@ -621,6 +623,7 @@ export namespace editor
+         foundation::messaging::EventBus m_pageEvents; // the page's run-scope bus (edit-mode Simulate)
+         engine::render::RenderSubsystem* m_render = nullptr;
+         engine::ui::UISubsystem* m_gameUI = nullptr; // RT-canvas host seam (borrowed)
++        engine::gui::GuiSubsystem* m_gameGui = nullptr; // the engine GUI's textures seam (borrowed)
+ 
+         String m_title;
+         scene::Scene* m_scene = nullptr;           // owned by the SceneSubsystem

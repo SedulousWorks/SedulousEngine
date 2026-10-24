@@ -1,0 +1,11 @@
+<!-- Quit: a question over the menu, which dims and blurs behind it and takes nothing until it is
+     answered; Stay (or Back) is the safe answer. -->
+<Screen class="modal" nav-default="confirm-no" flex-direction="column" justify-content="center" align-items="center">
+    <Panel id="confirm" class="panel glass" flex-direction="column" align-items="center" gap="14">
+        <Label class="panel-title" text="@leave.title"/>
+        <Panel class="confirm-row" flex-direction="row" align-items="start" gap="14">
+            <Button id="confirm-yes" class="menu-btn small danger" text="@leave.yes"/>
+            <Button id="confirm-no" class="menu-btn small" text="@leave.no"/>
+        </Panel>
+    </Panel>
+</Screen>

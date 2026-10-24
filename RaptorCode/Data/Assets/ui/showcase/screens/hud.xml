@@ -1,0 +1,22 @@
+<!-- In the game: the HUD over the backdrop (health, the objective and the run's clock, the score
+     along the top; the pause prompt low on the right, the control shown for the device in hand). -->
+<Screen class="screen hud" covers="true" flex-direction="column" justify-content="space-between">
+    <Panel class="hud-top" flex-direction="row" justify-content="space-between" align-items="start">
+        <Panel class="hud-card" flex-direction="column" gap="6">
+            <Label class="hud-caption" text="@hud.health"/>
+            <ProgressBar id="hud-health" value="{{health}}" class="hud-health"/>
+        </Panel>
+        <Panel class="hud-middle" flex-direction="column" align-items="center" gap="4">
+            <Label class="hud-objective" text="@hud.objective"/>
+            <Label class="hud-clock" text="{{clock}}"/>
+        </Panel>
+        <Panel class="hud-card hud-right" flex-direction="column" align-items="end" gap="2">
+            <Label class="hud-caption" text="@hud.score"/>
+            <Label id="hud-score" class="hud-score" text="{{score}}"/>
+        </Panel>
+    </Panel>
+    <Panel class="hud-bottom" flex-direction="row" justify-content="end" align-items="center" gap="10">
+        <Prompt class="hud-key" action="pause"/>
+        <Label class="hud-prompt" text="@hud.pause"/>
+    </Panel>
+</Screen>

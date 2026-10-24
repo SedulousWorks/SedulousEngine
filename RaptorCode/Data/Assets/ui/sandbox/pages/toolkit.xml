@@ -1,0 +1,141 @@
+<Panel id="page-toolkit" class="page" gap="18">
+    <Label class="page-title" text="Toolkit"/>
+    <Label class="page-lead" white-space="normal"
+           text="Editor widgets from GUI.Toolkit. A tool bar's buttons name commands, as menu items and shortcuts do: one command greys its button, its row in a menu and its keys together, and a tooltip says the keys and why a command is disabled. What does not fit goes into the menu at the bar's end. A status bar holds items in a start and an end zone and a message; right-click it to hide or show the items with a title."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Tool bars and a status bar"/>
+        <Panel id="toolkit-frame" class="toolkit-frame" key-context="toolkit">
+            <ToolBar id="toolkit-bar">
+                <ToolButton command="toolkit.new" icon="Assets/ui/sandbox/icons/new.svg"/>
+                <ToolButton command="toolkit.open" icon="Assets/ui/sandbox/icons/open.svg"/>
+                <ToolButton command="toolkit.save" icon="Assets/ui/sandbox/icons/save.svg"/>
+                <Separator/>
+                <ToolButton command="toolkit.undo" icon="Assets/ui/sandbox/icons/undo.svg"/>
+                <ToolButton command="toolkit.redo" icon="Assets/ui/sandbox/icons/redo.svg"/>
+                <Separator/>
+                <ToolButton command="toolkit.grid" toggle="true" icon="Assets/ui/sandbox/icons/grid.svg" overflow-priority="1"/>
+                <ToolButton command="toolkit.snap" toggle="true" icon="Assets/ui/sandbox/icons/snap.svg"/>
+                <Separator/>
+                <ToolMenuButton command="toolkit.play" split="true" shows-text="true" icon="Assets/ui/sandbox/icons/play.svg" overflow-priority="2">
+                    <MenuItem command="toolkit.play-here"/>
+                    <MenuItem command="toolkit.play-window"/>
+                </ToolMenuButton>
+                <ToolMenuButton text="Add" shows-text="true" icon="Assets/ui/sandbox/icons/add.svg">
+                    <MenuItem command="toolkit.add-cube"/>
+                    <MenuItem command="toolkit.add-sphere"/>
+                    <MenuItem command="toolkit.add-light"/>
+                </ToolMenuButton>
+                <Spacer/>
+                <ToolButton command="toolkit.settings" icon="Assets/ui/sandbox/icons/settings.svg" overflow-priority="3"/>
+            </ToolBar>
+            <Panel class="toolkit-middle" flex-direction="row">
+                <ToolBar id="toolkit-tools" orientation="vertical">
+                    <ToolButton name="toolkit-tool" toggle="true" checked="true" icon="Assets/ui/sandbox/icons/select.svg" tooltip="Select"/>
+                    <ToolButton name="toolkit-tool" toggle="true" icon="Assets/ui/sandbox/icons/move.svg" tooltip="Move"/>
+                    <ToolButton name="toolkit-tool" toggle="true" icon="Assets/ui/sandbox/icons/rotate.svg" tooltip="Rotate"/>
+                    <ToolButton name="toolkit-tool" toggle="true" icon="Assets/ui/sandbox/icons/scale.svg" tooltip="Scale"/>
+                </ToolBar>
+                <Panel id="toolkit-canvas" class="toolkit-canvas">
+                    <Label class="toolkit-note" white-space="normal"
+                           text="Save, Undo and Redo start disabled: hover them for why. Make a change to enable them. Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Z and Ctrl+Y run them while the focus is in this frame."/>
+                </Panel>
+            </Panel>
+            <StatusBar id="toolkit-status">
+                <StatusItem id="toolkit-branch" title="Branch"><Label text="main"/></StatusItem>
+                <StatusItem id="toolkit-cursor" zone="end" title="Cursor"><Label text="Ln 4, Col 12"/></StatusItem>
+                <StatusItem id="toolkit-grid" zone="end" title="Grid"><Label id="toolkit-grid-state" text="Grid on"/></StatusItem>
+            </StatusBar>
+        </Panel>
+        <Panel class="toolkit-buttons" flex-direction="row" gap="10">
+            <Button id="toolkit-change" class="toolkit-button" text="Make a change" command="toolkit.change"/>
+            <Button id="toolkit-narrow" class="toolkit-button" text="Narrow the tool bar" command="toolkit.narrow"/>
+        </Panel>
+        <Label class="caption" white-space="normal" text="ToolBar, ToolButton, ToolMenuButton (a drop-down, or split) and StatusBar (GUI.Toolkit) over the core's commands and keymap; the default sheet styles them through the theme's tokens."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="A property grid"/>
+        <Label class="toolkit-note" white-space="normal"
+               text="Three lamps, an application's own objects: edit one, or all three, where values that differ show as mixed (each part of a Float3 on its own). Drag across a number to scrub it (Escape gives the scrub up), drag the line between the names and the values, fold the categories, and search by name or path. Each edit is one step of Undo, however long its drag. Tags and Effects are lists: Add (a menu of types for Effects), drag an element's grip, or right-click it. A bar and a bold name mark what differs from how the lamp started; right-click to revert it, or to copy a value and paste it onto another of its shape. The cone shows only when every lamp edited is a spot; the falloff asks for an editor that does not exist yet."/>
+        <Panel class="props-bar" flex-direction="row" gap="8" align-items="center">
+            <TextField id="props-search" class="props-search" placeholder="Search properties"/>
+            <ComboBox id="props-objects" class="props-objects" items="Lamp A|Lamp B|Lamp C|All three" selected="0"/>
+            <Button id="props-undo" class="toolkit-button" text="Undo"/>
+            <Button id="props-redo" class="toolkit-button" text="Redo"/>
+        </Panel>
+        <PropertyGrid id="props-grid" class="props-grid"/>
+        <Label id="props-said" class="caption" text="No edits yet."/>
+        <Label class="caption" white-space="normal" text="PropertyGrid (GUI.Toolkit) over an IPropertySource the page keeps, which copies with the engine's XmlSerializer; its editors are the core's check box, number field, text field and combo box, a list of check boxes for flags, a number field per part for Float2 and Float3, and a list's count and Add."/>
+    </Panel>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="A reflected object"/>
+        <Label class="toolkit-note" white-space="normal"
+               text="Two camera rigs declared with core reflection and nothing written for the grid: ReflectedPropertySource reads their properties and attributes. The field of view shows for a perspective projection, the orthographic size for an orthographic one; the layers are flags by an attribute; the rotation is a Quaternion shown in Euler degrees; the background is a Color (click the swatch for the picker: a drag previews, closing commits, Escape gives it up); the glow is an HDR colour, its intensity in exposure stops. Effects add by type. Changed values are marked against the type's defaults; copying uses the engine's XmlSerializer, and Undo steps back through the source's changes."/>
+        <Panel class="props-bar" flex-direction="row" gap="8" align-items="center">
+            <TextField id="reflected-search" class="props-search" placeholder="Search properties"/>
+            <ComboBox id="reflected-objects" class="props-objects" items="Camera A|Camera B|Both" selected="0"/>
+            <Button id="reflected-undo" class="toolkit-button" text="Undo"/>
+            <Button id="reflected-redo" class="toolkit-button" text="Redo"/>
+        </Panel>
+        <PropertyGrid id="reflected-grid" class="props-grid"/>
+        <Label id="reflected-said" class="caption" text="No edits yet."/>
+        <Label class="caption" white-space="normal" text="ReflectedPropertySource (GUI.Toolkit) over sandbox::CameraRig, its text format the engine's XmlSerializer, its changes kept by the page for Undo."/>
+    </Panel>
+
+    <Panel id="clip-section" class="section" gap="12">
+        <Label class="section-title" text="Curves, a gradient and a clip"/>
+        <Label class="toolkit-note" white-space="normal"
+               text="Each lamp's Flicker above is a curve and each camera's Sky a gradient: click the row's picture for its view, where every edit shows on the objects, closing it is one step of Undo and Escape gives it all up. In a curve view, click or box-select keys, drag them (Shift keeps to one axis), drag a selected key's handles, double-click the curve to add a key, right-click a key for its interpolation, tangent mode or Delete. In a gradient, click above the bar for an alpha stop and below it for a colour stop, drag one along or off the bar, double-click a colour stop for the picker. Below, a clip of the lamps' values: drag on the ruler to scrub (the lamps above follow), click a lamp's name to fold its tracks, select keys in the dopesheet or the curve view and drag them; the wheel over the names scrolls the rows, over the keys it zooms about the pointer, and a middle drag pans."/>
+        <Panel class="props-bar" flex-direction="row" gap="8" align-items="center">
+            <Button id="clip-undo" class="toolkit-button" text="Undo"/>
+            <Button id="clip-redo" class="toolkit-button" text="Redo"/>
+            <Button id="clip-frame" class="toolkit-button" text="Frame the curves"/>
+        </Panel>
+        <Panel class="clip-frame" flex-direction="column">
+            <TimeRuler id="clip-ruler" class="clip-ruler"/>
+            <Dopesheet id="clip-sheet" class="clip-sheet" label-width="160"/>
+            <CurveView id="clip-curves" class="clip-curves"/>
+        </Panel>
+        <Label id="clip-said" class="caption" text="Scrub the ruler to play the clip into the lamps."/>
+        <Label class="caption" white-space="normal" text="TimeRuler, Dopesheet and CurveView (GUI.Toolkit) on one TimeAxis over a CurveSet, Core's keys drawn with Core's EvaluateCurve; the grid's Flicker and Sky rows are its CurvePropertyEditor and GradientPropertyEditor, the sky a type the page registers with the reflected source."/>
+    </Panel>
+
+    <Panel id="graph-section" class="section" gap="12">
+        <Label class="section-title" text="Node graphs"/>
+        <Label class="toolkit-note" white-space="normal"
+               text="Two graphs, each with its own Undo. Click or box-select nodes and drag them (they land on the grid); the wheel zooms about the pointer and a middle drag pans. Drag from an output pin to an input: the pins that fit light up, the rest dim, and a refused pin says why beside the pointer. Drag a link's end off its input to rewire it, or drop it on nothing to let it go; drop a new link on nothing for a menu of the nodes it can reach. Right-click for menus: add a node (by category, with a search), a frame or a comment; copy, duplicate or delete. Delete, Escape, Ctrl+C and Ctrl+V work as in the property grid. Drag a frame by its title to move it with what is inside, or by an edge to resize it; double-click its title to rename it. In the state machine, drag from just outside a state's edge to another state for a transition (out and back onto the same state for one to itself), or use the state's menu; double-click a state to make it the lamp's."/>
+        <Panel class="props-bar" flex-direction="row" gap="8" align-items="center">
+            <Button id="flow-undo" class="toolkit-button" text="Undo"/>
+            <Button id="flow-redo" class="toolkit-button" text="Redo"/>
+            <Button id="flow-frame" class="toolkit-button" text="Frame all"/>
+        </Panel>
+        <GraphView id="flow-graph" class="graph-view"/>
+        <Label id="flow-said" class="caption" text="A lamp's intensity and colour, worked out from numbers and a colour."/>
+        <Panel class="props-bar" flex-direction="row" gap="8" align-items="center">
+            <Button id="states-undo" class="toolkit-button" text="Undo"/>
+            <Button id="states-redo" class="toolkit-button" text="Redo"/>
+            <Button id="states-frame" class="toolkit-button" text="Frame all"/>
+        </Panel>
+        <GraphView id="states-graph" class="graph-view states"/>
+        <Label id="states-said" class="caption" text="The lamp is On."/>
+        <Label class="caption" white-space="normal" text="GraphView (GUI.Toolkit) over a GraphSet each: nodes are widgets made while in view, links are drawn, and every edit is one change the page keeps for Undo; copies use the engine's XmlSerializer."/>
+    </Panel>
+
+    <Panel id="crumbs-section" class="section" gap="12">
+        <Label class="section-title" text="Breadcrumbs"/>
+        <Label class="toolkit-note" white-space="normal"
+               text="An invented asset tree. Click a folder in the path to go there; the chevron after a folder lists what is inside it (Down on a focused folder too). The narrow bar folds the folders that do not fit into its overflow menu. Click the wide bar's empty end to type a path (Return goes there, Escape gives up). Drag the fox.glb chip onto a folder to move it there. Tab reaches the bar once; Left and Right move along it."/>
+        <Panel class="props-bar" flex-direction="row" gap="8" align-items="center">
+            <Button id="crumbs-up" class="toolkit-button" text="Up"/>
+            <BreadcrumbBar id="crumbs-bar" class="crumbs"/>
+        </Panel>
+        <Panel class="props-bar" flex-direction="row" gap="8" align-items="center">
+            <BreadcrumbBar id="crumbs-narrow" class="crumbs narrow"/>
+            <Label id="crumbs-chip" class="crumbs-chip" text="fox.glb"/>
+        </Panel>
+        <Label id="crumbs-said" class="caption" text="In Content/Models/Characters/Fox."/>
+        <Label class="caption" white-space="normal" text="BreadcrumbBar (GUI.Toolkit): segments carrying their ids, chevron menus from a children callback, drops of the page's types, the path editable. A path not in the tree is answered by a toast (Menus and windows shows them)."/>
+    </Panel>
+</Panel>

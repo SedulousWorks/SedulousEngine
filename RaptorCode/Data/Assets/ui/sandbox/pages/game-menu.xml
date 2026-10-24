@@ -1,0 +1,10 @@
+<Panel id="page-game-menu" class="page" gap="18">
+    <Label class="page-title" text="Game menu"/>
+    <Label class="page-lead" white-space="normal"
+           text="A game's main menu built from markup, a sheet and AngelScript, with nothing native but its host. It is a screen of this GUI, a modal layer over the sandbox in the same root: it shares the data (your name, the volume) and returns here when you leave it."/>
+    <Panel class="section" gap="14">
+        <Label class="section-title" text="AURORA"/>
+        <Label class="caption" text="Mouse, keyboard or gamepad. Escape or East goes back; Quit, then Leave, returns here."/>
+        <Button class="btn launch" text="Open the game menu" command="showcase.open"/>
+    </Panel>
+</Panel>

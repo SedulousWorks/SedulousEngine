@@ -1,0 +1,29 @@
+diff --git a/Code/Engine/Engine.DefaultApp/DefaultApplication.cppm b/Code/Engine/Engine.DefaultApp/DefaultApplication.cppm
+index 70b698b7e..028e84cfe 100644
+--- a/Code/Engine/Engine.DefaultApp/DefaultApplication.cppm
++++ b/Code/Engine/Engine.DefaultApp/DefaultApplication.cppm
+@@ -55,6 +55,7 @@ import foundation.content;             // IContentDatabase (preset by the entry
+ import foundation.scene.resource;      // SceneDocument (product-type registration)
+ import engine.ui;        // the game screen tier (canvases + overlay + consumption)
+ import engine.ui.script;   // the `ui` script facade + its per-context service binding
++import engine.gui; // the engine's GUI on foundation.gui, beside the UI while both live (gui-lab-evolution-3.md, E9)
+ import foundation.ui.gamekit; // ScreenStack (the binding points at UISubsystem::Screens())
+ import engine.composition; // FullSceneComposition (the single source of truth for scene assembly)
+ import foundation.audio;               // AudioEngine (owned by the audio subsystem)
+@@ -135,6 +136,8 @@ export namespace engine::runtime
+         /// voice pool sizes). Defaults suit a single-listener game.
+         void SetAudioEngineSettings(const foundation::audio::AudioEngineSettings& settings);
+         [[nodiscard]] engine::ui::UISubsystem* UI() const noexcept { return m_ui; }
++        /// The engine's GUI (the GUI's), there whenever the GUI is built.
++        [[nodiscard]] engine::gui::GuiSubsystem* GUI() const noexcept { return m_gui; }
+ 
+         /// The game draws at `width` x `height`, fitted into the window by `fit` (the bars black),
+         /// and its screen UI lays out at that size and draws crisp at the window's; its pointer
+@@ -286,6 +289,7 @@ export namespace engine::runtime
+         core::UniquePtr<foundation::resource::ResourceManager> m_ownedResources;
+         engine::input::InputSubsystem* m_input = nullptr;
+         engine::ui::UISubsystem* m_ui = nullptr;
++        engine::gui::GuiSubsystem* m_gui = nullptr;
+         // The resolution the game draws at, fitted into the window by m_renderFit; nought draws at
+         // the window's size. With it, the pointer the game and its screen UI read is in render
+         // pixels (m_fittedInput).

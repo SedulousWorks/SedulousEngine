@@ -1,0 +1,17 @@
+diff --git a/Code/Engine/Engine.Project/ProjectSettingsImpl.cpp b/Code/Engine/Engine.Project/ProjectSettingsImpl.cpp
+index f5d24cb78..912360c05 100644
+--- a/Code/Engine/Engine.Project/ProjectSettingsImpl.cpp
++++ b/Code/Engine/Engine.Project/ProjectSettingsImpl.cpp
+@@ -75,6 +75,12 @@ namespace engine::project
+         RegisterArrayType<Guid>(); // the list container (the dialog's list, the MCP tools)
+         builder.Property<&ProjectSettings::uiFontIds>("uiFontIds");
+         asset(u8"Other UI fonts", u8"FontAsset", u8"(none)", u8"UI");
++        // The engine GUI's sheets, in order over its theme (its fonts are the UI's above).
++        builder.Property<&ProjectSettings::guiStyleSheetIds>("guiStyleSheetIds");
++        asset(u8"GUI sheets", u8"GuiStyleSheetAsset", u8"(none)", u8"UI");
++        // The engine GUI's boot splash (its document binds `bootProgress`); nil = the UI's.
++        builder.Property<&ProjectSettings::guiLoadingDocumentId>("guiLoadingDocumentId");
++        asset(u8"GUI loading screen", u8"GuiDocumentAsset", u8"(the UI's)", u8"Startup");
+         // The display: the render resolution (0 x 0 is the output's size) and its fit, then the
+         // player's window. An export preset may override either per platform.
+         const Float4 renderSize{0.0f, 16384.0f, 1.0f, 0.0f};

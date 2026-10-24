@@ -1,0 +1,27 @@
+/* The Layout page: wells and lanes to lay things out in, and the pieces they hold. */
+.lay-lane { height: 40px; padding: 0 8px; align-items: center; background-color: var(--shell-surface-2); border-radius: 8; }
+.lay-well { padding: 8px; background-color: var(--shell-surface-2); border-radius: 8; }
+.lay-tall { width: 138px; height: 86px; }
+.lay-stage { height: 120px; padding: 8px; background-color: var(--shell-surface-2); border-radius: 8; }
+.lay-stage.lay-placed { padding: 8px 24px; }
+
+.lay-bar { height: 28px; padding: 0 10px; font-family: Roboto; font-size: 14px; color: #ffffff; text-align: center;
+       vertical-align: middle; background: linear-gradient(90deg, #3a6ea5, #6a4fb3); border-radius: 6; }
+.chip.lay-short { height: 22px; font-size: 12px; }
+.chip.lay-free { height: auto; width: 60px; font-size: 12px; }
+.chip.lay-wide { width: 110px; height: 28px; }
+.lay-say { font-family: Roboto; color: var(--ink); }
+.lay-say.lay-small { font-size: 13px; }
+.lay-say.lay-big { font-size: 22px; }
+.lay-say.lay-huge { font-family: Lilita; font-size: 40px; }
+.lay-field { width: 140px; height: 34px; padding: 0 8px; font-family: Roboto; font-size: 15px; }
+
+.lay-grid { height: 170px; padding: 8px; overflow-y: auto; background-color: var(--shell-surface-2); border-radius: 8; }
+.lay-cell { height: 40px; font-family: Roboto; font-size: 15px; color: #ffffff; text-align: center; vertical-align: middle;
+        background: linear-gradient(135deg, #3a6ea5, #6a4fb3); border-radius: 6; }
+
+.lay-slot { font-family: Roboto; font-size: 13px; color: #ffffff; text-align: center; vertical-align: middle;
+        background-color: #3a6ea5; border: 1px solid var(--shell-surface); }
+.lay-slot.lay-fill { background-color: #6a4fb3; }
+.lay-badge { width: 26px; height: 26px; font-family: Roboto; font-size: 13px; color: #ffffff; text-align: center;
+         vertical-align: middle; background-color: var(--bad); border-radius: 13; }

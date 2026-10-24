@@ -1,0 +1,72 @@
+<Panel id="page-text" class="page" gap="18">
+    <Label class="page-title" text="Text"/>
+    <Label class="page-lead" white-space="normal"
+           text="Faces, sizes, alignment and wrapping, CSS's white-space, line-height, letter-spacing, text-overflow and line-clamp, rich text, the editing fields, and the effects a distance-field face draws: a shadow, an outline and a glow."/>
+
+    <Panel class="section" gap="8">
+        <Label class="section-title" text="Faces and sizes"/>
+        <Label class="text t14" text="Roboto at 14: the quick brown fox jumps over the lazy dog"/>
+        <Label class="text t18" text="Roboto at 18: the quick brown fox jumps over the lazy dog"/>
+        <Label class="text t24" text="Roboto at 24: the quick brown fox"/>
+        <Label class="display" text="Lilita One, a distance-field face at 40"/>
+    </Panel>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="Alignment"/>
+        <Label class="text aligned" text="left, top" text-align="left" vertical-align="top"/>
+        <Label class="text aligned" text="centre, middle" text-align="center" vertical-align="middle"/>
+        <Label class="text aligned" text="right, bottom" text-align="right" vertical-align="bottom"/>
+    </Panel>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="Wrapping"/>
+        <Label class="text paragraph" white-space="normal"
+               text="A single label with white-space: normal breaks its text at spaces to fit its width, greedily, line by line. Narrow the box and the words flow onto more lines."/>
+    </Panel>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="White space, line height and spacing"/>
+        <Label class="text ws-box ws-pre" text="pre keeps   its spaces&#10;and its line breaks,&#10;    as typed"/>
+        <Label class="text ws-box ws-normal" text="normal   collapses   them&#10;and wraps"/>
+        <Label class="text paragraph tall-lines" white-space="normal"
+               text="line-height: 1.7 spaces these lines apart, each one centred in its own height, as CSS's half-leading does."/>
+        <Label class="text spaced" text="LETTER-SPACING: 4PX"/>
+    </Panel>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="Overflow and clamp"/>
+        <Label class="text cut cut-clip" text="/home/player/saves/slot-three/profile.dat, clipped"/>
+        <Label class="text cut cut-end" text="/home/player/saves/slot-three/profile.dat"/>
+        <Label class="text cut cut-start" text="/home/player/saves/slot-three/profile.dat"/>
+        <Label class="text cut cut-middle" text="/home/player/saves/slot-three/profile.dat"/>
+        <Label class="text clamped" white-space="normal"
+               text="line-clamp: 2 keeps the first two lines of a paragraph that runs on and on past them, and ends the second with an ellipsis, since its text-overflow has one."/>
+    </Panel>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="Rich text"/>
+        <RichText id="text-rich" class="text rich" white-space="normal"
+                  text="Your mark wears [color=#e0607e][b]a rose gown[/b][/color] and [i]a silver mask[/i]; [u]find her[/u] before the [size=22]last dance[/size]. [color=#7fb2ff][u][link=hint]Ask for a hint[/link][/u][/color] or [color=#7fb2ff][u][link=map]open the map[/link][/u][/color]."/>
+        <Label class="caption" text="{{linkText}}"/>
+    </Panel>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="Editing"/>
+        <TextField id="text-field" class="field" placeholder="Type, then Return: Ctrl+arrows by word, Ctrl+Z undoes"/>
+        <Label class="caption" text="{{fieldEvents}}"/>
+        <TextField class="field" password="true" placeholder="A password: a bullet a character, nothing copies out"/>
+        <TextField class="field" read-only="true" text="Read-only: select and copy, no edits"/>
+        <TextField class="field" input-filter="digits" max-length="6" placeholder="Digits only, six at most"/>
+        <TextArea class="area" rows="5" placeholder="A text area: Return breaks a line, up and down keep their column, Page Up and Down move a page, and it scrolls to keep the caret in view."/>
+    </Panel>
+
+    <Panel class="section" gap="10">
+        <Label class="section-title" text="Effects (text-shadow, text-outline, text-glow)"/>
+        <Panel class="effects-row" flex-direction="row" align-items="start" gap="24">
+            <Label class="fx-text fx-shadow" text="Shadow"/>
+            <Label class="fx-text fx-outline" text="Outline"/>
+            <Label class="fx-text fx-glow" text="Glow"/>
+        </Panel>
+        <Label class="caption" text="The glow breathes: text-glow is animatable, as the game menu's title shows."/>
+    </Panel>
+</Panel>

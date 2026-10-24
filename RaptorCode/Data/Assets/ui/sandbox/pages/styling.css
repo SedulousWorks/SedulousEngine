@@ -1,0 +1,34 @@
+.card-row { width: 590px; height: 100px; padding-top: 8px; }
+.card { width: 126px; height: 76px; font-family: Roboto; font-size: 15px; color: #f4f7fb; text-align: center; vertical-align: middle; border-radius: 10; }
+.bg-linear { background: linear-gradient(135deg, #e0607a, #f0b040 60%, #60c0f0); }
+.bg-radial { background: radial-gradient(#ffd27a, #e0607a 60%, #5a2a6a); }
+.bg-conic { background: conic-gradient(from 0deg, #e0607a, #f0b040, #60c0f0, #e0607a); }
+.bg-stripes { background: repeating-linear-gradient(45deg, #2b3a55 0%, #2b3a55 6%, #3d5a88 6%, #3d5a88 12%); }
+.sides { background-color: var(--shell-surface-2); color: var(--ink); border-radius: 0;
+         border-top: 4px solid #e0607a; border-right: 4px solid #f0b040; border-bottom: 4px solid #60c0f0; border-left: 4px solid #7fe0a8; }
+.rounded { background-color: #3a6ea5; border-radius: 4px 28px 4px 28px; }
+.shadows { background-color: var(--shell-surface-2); color: var(--ink); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55), 0 0 18px 2px var(--glow); }
+.inset { background-color: #3d4656; box-shadow: inset 0 0 12px #000000, inset 0 0 0 2px var(--shell-accent); }
+.tf-rotate { transform: rotate(-8deg); }
+.tf-scale { transform: scale(0.85, 1.05); }
+.tf-skew { transform: skew(-12deg, 0deg); }
+.tf-origin { transform-origin: 0% 100%; transform: rotate(6deg); }
+
+/* Selectors, inheritance and parts (E3). */
+.pick-row { width: 590px; padding-top: 8px; }
+.zebra { width: 140px; padding: 6px 0; background-color: var(--shell-surface-2); border-radius: 10; font-family: Roboto; font-size: 14px; color: var(--ink); }
+.zebra > label { height: 26px; padding: 0 12px; vertical-align: middle; }
+.zebra > label:nth-child(odd) { background-color: rgba(255, 255, 255, 0.06); }
+.zebra > label:first-child { color: var(--shell-accent); }
+.warm { width: 200px; padding: 12px; background-color: var(--shell-surface-2); border-radius: 10;
+        color: #f0b040; font-family: Lilita; font-size: 17px; }
+.warm > label { height: 22px; }
+.warm > .cool { color: #60c0f0; font-family: Roboto; font-size: 14px; }
+.choices { width: 220px; }
+.choice > label { height: 24px; font-family: Roboto; font-size: 14px; color: var(--muted); }
+.choice > checkbox:checked + label { color: var(--shell-accent); }
+.quiet { width: 200px; height: 30px; padding: 0 8px; font-family: Roboto; font-size: 14px; border-radius: 6; }
+.quiet:placeholder-shown { opacity: 0.6; }
+.fancy { width: 200px; height: 24px; }
+.fancy::thumb { background: linear-gradient(180deg, #ffd27a, #e0607a); border: 2px solid #ffffff; border-radius: 6px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
+.fancy::fill { background-color: #e0607a; }

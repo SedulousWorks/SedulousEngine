@@ -1,0 +1,17 @@
+<!-- Stress (E8a of Specs/gui-lab-evolution.md): the worst case the lab is measured on. Native code
+     (GUI.Sandbox/StressPage.cppm) builds its sections into #stress-root at the load chosen here or
+     by the stress option. Measure in RelWithDebInfo: Debug runs far slower on Vulkan. -->
+<Panel id="page-stress" class="page" gap="18">
+    <Label class="page-title" text="Stress"/>
+    <Label class="page-lead" white-space="normal"
+           text="The worst case every performance change is measured on: a long column of rows, text in several faces and sizes, every box effect at once, hundreds of running animations, a list and a table of 100,000 rows, deep nesting, and a sheet of many rules. The load scales each section. Measure in RelWithDebInfo; --frame-stats prints what a frame cost each second."/>
+    <Panel class="section stress-controls" flex-direction="row" align-items="center" gap="12">
+        <Label class="text" vertical-align="middle" text="Load"/>
+        <NumberField id="stress-load" class="stress-number" min="1" max="20" integer="true" value="1"/>
+        <Button id="stress-build" class="btn" text="Build" tooltip="Build the sections again at this load"/>
+        <Button id="stress-restyle" class="btn" text="Restyle all" tooltip="Toggle a class at the top, so every node restyles"/>
+        <CheckBox id="stress-animate" class="stress-check" text="Animate" checked="true"/>
+    </Panel>
+    <Label id="stress-stats" class="caption stress-stats" white-space="normal" text="Last frame: not measured yet."/>
+    <Panel id="stress-root" class="stress-root" gap="18"/>
+</Panel>

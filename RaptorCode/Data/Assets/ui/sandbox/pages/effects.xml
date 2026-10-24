@@ -1,0 +1,22 @@
+<Panel id="page-effects" class="page" gap="18">
+    <Label class="page-title" text="Effects"/>
+    <Label class="page-lead" white-space="normal"
+           text="What VG's layers and clip paths draw: frosted glass blurring what is behind it, a group that fades as one picture, a blur filter on hover, a blend, and children clipped to rounded corners."/>
+
+    <Panel class="section" gap="12">
+        <Label class="section-title" text="Over stripes"/>
+        <Panel class="fx-stage" flex-direction="row" align-items="start" gap="14">
+            <Label class="fx-card fx-glass" text="glass"/>
+            <Panel class="fx-group" display="stack" justify-items="start" align-items="start">
+                <Label class="fx-red"/>
+                <Label class="fx-card fx-blue" text="group"/>
+            </Panel>
+            <Label class="fx-card fx-soft" text="hover me"/>
+            <Label class="fx-card fx-multiply" text="multiply"/>
+            <Panel class="fx-clip" display="stack" justify-items="start" align-items="start">
+                <Label class="fx-card fx-clip-inner" text="clipped"/>
+            </Panel>
+        </Panel>
+        <Label class="caption" text="backdrop-filter, opacity on a group, filter: blur() with a transition, mix-blend-mode, overflow: hidden."/>
+    </Panel>
+</Panel>

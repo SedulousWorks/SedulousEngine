@@ -1,0 +1,25 @@
+.t14 { width: 590px; height: 22px; font-size: 14px; }
+.t18 { width: 590px; height: 26px; font-size: 18px; }
+.t24 { width: 590px; height: 34px; font-size: 24px; }
+.display { width: 590px; height: 52px; font-family: Lilita; font-size: 40px; color: var(--ink); }
+.aligned { width: 420px; height: 56px; background-color: var(--shell-surface-2); border-radius: 8; padding: 6px; }
+.paragraph { width: 420px; height: 96px; }
+.effects-row { width: 590px; height: 70px; }
+.fx-text { width: 170px; height: 64px; font-family: Lilita; font-size: 40px; color: #fff4e2; text-align: center; vertical-align: middle; }
+.fx-shadow { text-shadow: 3px 4px 4px rgba(0, 0, 0, 0.7); }
+.fx-outline { color: #f3a047; text-outline: 2px #2a1408; }
+.fx-glow { animation: text-breathe 2.2s ease-in-out infinite alternate; }
+@keyframes text-breathe { from { text-glow: 4px rgba(90, 170, 255, 0.5); } to { text-glow: 14px rgba(90, 170, 255, 0.95); } }
+.ws-box { width: 420px; height: 72px; background-color: var(--shell-surface-2); border-radius: 8; padding: 6px; vertical-align: top; }
+.ws-pre { white-space: pre; }
+.ws-normal { white-space: normal; }
+.tall-lines { line-height: 1.7; height: 100px; }
+.spaced { width: 420px; height: 24px; letter-spacing: 4px; }
+.cut { overflow: hidden; width: 220px; height: 26px; background-color: var(--shell-surface-2); border-radius: 6; padding-left: 6px; padding-right: 6px; }
+.cut-end { text-overflow: ellipsis; }
+.cut-start { text-overflow: ellipsis-start; }
+.cut-middle { text-overflow: ellipsis-middle; }
+.clamped { width: 300px; height: 48px; line-clamp: 2; text-overflow: ellipsis; vertical-align: top; }
+.rich { width: 520px; height: 64px; font-size: 16px; vertical-align: top; }
+.field { width: 420px; height: 34px; font-family: Roboto; font-size: 15px; padding-left: 8px; padding-right: 8px; border-radius: 6; }
+.area { width: 420px; font-family: Roboto; font-size: 15px; padding: 8px; border-radius: 6; }

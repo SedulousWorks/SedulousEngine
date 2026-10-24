@@ -1,0 +1,6 @@
+/* The Code page's look: the editors in the sandbox's monospaced face, the status under the script. */
+.code-editor { width: 590px; font-family: DejaVu; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; }
+.code-editor.script { height: 380px; }
+.code-editor.shader { height: 300px; }
+.code-status { width: 590px; height: 20px; font-family: Roboto; font-size: 13px; color: var(--ink); }
+.code-note { width: 590px; font-family: Roboto; font-size: 13px; color: var(--muted); }

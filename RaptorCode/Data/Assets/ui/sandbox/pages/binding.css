@@ -1,0 +1,6 @@
+.label-col { width: 80px; height: 30px; }
+.value-col { width: 60px; height: 30px; }
+.bind-slider { width: 220px; height: 26px; }
+.bind-bar { width: 140px; height: 12px; }
+.bind-check { width: 22px; height: 22px; }
+.bind-field { width: 220px; height: 32px; font-family: Roboto; font-size: 15px; padding-inline-start: 8px; border-radius: 6; }

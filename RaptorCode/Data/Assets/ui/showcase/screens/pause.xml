@@ -1,0 +1,8 @@
+<!-- Paused: over the HUD, which dims and blurs; the game stops while it is on the stack. -->
+<Screen class="modal" pauses="true" nav-default="resume" flex-direction="column" justify-content="center" align-items="center">
+    <Panel id="pause-panel" class="panel glass" flex-direction="column" align-items="center" gap="14">
+        <Label class="panel-title" text="@pause.title"/>
+        <Button id="resume" class="menu-btn primary" text="@pause.resume"/>
+        <Button id="to-menu" class="menu-btn" text="@pause.to-menu"/>
+    </Panel>
+</Screen>

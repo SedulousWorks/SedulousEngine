@@ -1,0 +1,67 @@
+<Panel id="page-themes" class="page" gap="18">
+    <Label class="page-title" text="Themes"/>
+    <Label class="page-lead" white-space="normal"
+           text="The built-in theme is tokens on :root: a palette and metrics, states mixed from them, and a token for each control's part. The same settings twice: in the built-in theme, and in a subtree that sets a few base tokens and skins its controls with nine-slice art, tokens too."/>
+    <Panel class="theme-row" flex-direction="row" align-items="start" gap="16">
+        <Panel class="theme-card" flex-direction="column" gap="10">
+            <Label class="theme-title" text="Built-in"/>
+            <Panel class="setting" flex-direction="row" align-items="center" gap="10">
+                <Label class="setting-label" text="Volume"/>
+                <Slider class="setting-slider" value="0.6"/>
+            </Panel>
+            <Panel class="setting" flex-direction="row" align-items="center" gap="10">
+                <Label class="setting-label" text="Subtitles"/>
+                <CheckBox class="setting-check" checked="true"/>
+            </Panel>
+            <Panel class="setting" flex-direction="row" align-items="center" gap="10">
+                <Label class="setting-label" text="Quality"/>
+                <ComboBox class="setting-combo" items="Low|Medium|High|Ultra" selected="2"/>
+            </Panel>
+            <Panel class="setting" flex-direction="row" align-items="center" gap="10">
+                <Label class="setting-label" text="Name"/>
+                <TextField class="setting-field" text="Ada"/>
+            </Panel>
+            <Panel class="setting-buttons" flex-direction="row" justify-content="end" gap="10">
+                <Button class="setting-button" text="Cancel"/>
+                <Button class="setting-button" text="Apply"/>
+            </Panel>
+        </Panel>
+        <Panel class="theme-card ember" flex-direction="column" gap="10">
+            <Label class="theme-title" text="Ember"/>
+            <Panel class="setting" flex-direction="row" align-items="center" gap="10">
+                <Label class="setting-label" text="Volume"/>
+                <Slider class="setting-slider" value="0.6"/>
+            </Panel>
+            <Panel class="setting" flex-direction="row" align-items="center" gap="10">
+                <Label class="setting-label" text="Subtitles"/>
+                <CheckBox class="setting-check" checked="true"/>
+            </Panel>
+            <Panel class="setting" flex-direction="row" align-items="center" gap="10">
+                <Label class="setting-label" text="Quality"/>
+                <ComboBox class="setting-combo" items="Low|Medium|High|Ultra" selected="2"/>
+            </Panel>
+            <Panel class="setting" flex-direction="row" align-items="center" gap="10">
+                <Label class="setting-label" text="Name"/>
+                <TextField class="setting-field" text="Ada"/>
+            </Panel>
+            <Panel class="setting-buttons" flex-direction="row" justify-content="end" gap="10">
+                <Button class="setting-button" text="Cancel"/>
+                <Button class="setting-button" text="Apply"/>
+            </Panel>
+        </Panel>
+    </Panel>
+    <Panel class="border-row" flex-direction="row" align-items="center" gap="16">
+        <Label class="border-sample solid" text="Solid"/>
+        <Label class="border-sample dotted" text="Dotted"/>
+        <Label class="border-sample dashed" text="Dashed"/>
+        <Label class="border-sample mixed" white-space="normal" text="Mixed: dashed top, dotted sides, solid bottom"/>
+    </Panel>
+    <Panel class="border-row" flex-direction="row" align-items="center" gap="16">
+        <Label class="border-sample solid rounded" text="Solid"/>
+        <Label class="border-sample dotted rounded" text="Dotted"/>
+        <Label class="border-sample dashed rounded" text="Dashed"/>
+        <Label class="border-sample mixed rounded" white-space="normal" text="Mixed: dashed top, dotted sides, solid bottom"/>
+    </Panel>
+    <Label class="caption" white-space="normal" height="40"
+           text="The Light theme button above switches the built-in tokens by the colour scheme the GUI is told; the Ember card keeps its own, a subtree's override winning."/>
+</Panel>

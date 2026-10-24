@@ -1,0 +1,10 @@
+.view-host { width: 320px; height: 180px; }
+.template-list { width: 420px; height: 200px; font-family: Roboto; font-size: 15px; color: var(--ink); border-radius: 6; }
+.template-row { padding: 6px 10px; }
+.template-index { width: 22px; color: var(--muted); }
+.template-text { width: 340px; }
+itemrow:selected .template-index { color: var(--ink); }
+.tile-grid { width: 590px; height: 200px; font-family: Roboto; font-size: 14px; color: var(--ink); border-radius: 6; }
+.tile { margin: 4px; border-radius: 6; background-color: rgba(255, 255, 255, 0.05); }
+itemrow:selected > templaterow .tile { background-color: var(--shell-accent); }
+.tile-name { color: var(--ink); }
