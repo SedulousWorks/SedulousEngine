@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.Gamekit.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.GUI.Gamekit.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Gamekit" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Input" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.VG.SVG" = "*"
