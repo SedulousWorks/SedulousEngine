@@ -120,46 +120,6 @@ namespace
     }
 }
 
-TEST_CASE("theme: color styles a label's text color")
-{
-    auto label = ApplyCSS(u8"label { color: #ff8800; }");
-    CHECK(label->GetTextColor().r == doctest::Approx(1.0f));
-    CHECK(label->GetTextColor().g == doctest::Approx(0x88 / 255.0f));
-    CHECK(label->GetTextColor().b == doctest::Approx(0.0f));
-}
-
-TEST_CASE("theme: background-image loads via the provider into a box layer")
-{
-    MockResources res;
-    auto label = core::MakeRef<Label>(core::DefaultAllocator());
-    StyleManager mgr;
-    mgr.SetStyleSheet(
-        CSSParser::Parse(core::StringView(u8"label { background-image: url(panel); }")));
-    mgr.SetResourceProvider(&res);
-    mgr.ApplyTo(*label.Get());
-
-    CHECK(res.lastPath.AsView() == core::StringView(u8"panel"));
-    // The provider's raw image becomes a layer of the label's box.
-    REQUIRE(label->GetBox().Layers.Size() == 1u);
-    CHECK(label->GetBox().Layers[0].IsImage);
-    CHECK(label->GetBox().Layers[0].Image == &res.img);
-}
-
-TEST_CASE("theme: font-family + font-size resolve a font via the font service")
-{
-    MockFontService fs;
-    auto label = core::MakeRef<Label>(core::DefaultAllocator());
-    StyleManager mgr;
-    mgr.SetStyleSheet(
-        CSSParser::Parse(core::StringView(u8"label { font-family: Roboto; font-size: 18; }")));
-    mgr.SetFontService(&fs);
-    mgr.ApplyTo(*label.Get());
-
-    CHECK(fs.lastFamily.AsView() == core::StringView(u8"Roboto"));
-    CHECK(fs.lastSize == doctest::Approx(18.0f));
-    CHECK(label->GetFont() == &fs.font);
-}
-
 TEST_CASE("theme: every widget with text takes the sheet's font")
 {
     // A widget that keeps its text in parts (rows, a title, tab buttons) still takes font-family:
@@ -186,14 +146,6 @@ TEST_CASE("theme: every widget with text takes the sheet's font")
     CHECK(window->GetFont() == &fs.font);
     CHECK(box->GetFont() == &fs.font);
     CHECK(tip->GetFont() == &fs.font);
-}
-
-TEST_CASE("theme: without providers, resource props are skipped (no crash)")
-{
-    auto label =
-        ApplyCSS(u8"label { background-image: url(panel); font-family: Roboto; color: #ffffff; }");
-    CHECK(label->GetBox().Layers.IsEmpty()); // no provider -> background-image ignored
-    CHECK(label->GetTextColor().r == doctest::Approx(1.0f)); // color still applied
 }
 
 TEST_CASE("theme: the built-in default theme restyles the standard widgets")
@@ -245,21 +197,6 @@ TEST_CASE("theme: tokens retint everything, a subtree overrides them, and a widg
     CHECK(slider->GetPartStyle(core::StringView(u8"fill")).Box.BackgroundColor.g == doctest::Approx(1.0f)); // one control's token
     // A part with no override reads its widget token through to the base one.
     CHECK(slider->GetPartStyle(core::StringView(u8"track")).HasBackground);
-}
-
-TEST_CASE("theme: a part takes a colour, for a part that is text (a code editor's keyword)")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    auto slider = Make<Slider>();
-    root->AddChild(slider.Get());
-    StyleManager mgr;
-    mgr.SetStyleSheet(CSSParser::Parse(core::StringView(u8"slider::thumb { color: #ff8000; }")));
-    mgr.ApplyTree(*root.Get());
-    const PartStyle& thumb = slider->GetPartStyle(core::StringView(u8"thumb"));
-    CHECK(thumb.HasColor);
-    CHECK(thumb.TextColor.r == doctest::Approx(1.0f));
-    CHECK(thumb.TextColor.g == doctest::Approx(0x80 / 255.0f).epsilon(0.01));
-    CHECK_FALSE(slider->GetPartStyle(core::StringView(u8"fill")).HasColor);
 }
 
 TEST_CASE("theme: a skin's radius token rounds its control, so the focus ring follows the art")

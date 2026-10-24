@@ -190,4 +190,31 @@ class SvgDrawableTests
 		Test.Assert(ctx.GetBatch().Vertices.Count > 0);
 		Test.Assert(AllRed(ctx)); // the icon alone, as authored
 	}
+
+	[Test]
+	public static void AnImageShowsAnSvgByItsSrcOrFromItsTextSizedAsTheDocument()
+	{
+		let pictures = scope SvgPictures();
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		root.EditLayoutStyle(scope (s) => { s.AlignItems = .Start; });
+		root.Context.ResourceProvider = pictures;
+		let bySource = new Sedulous.GUI.Image();
+		defer bySource.ReleaseRef();
+		bySource.Source = "bar.svg";
+		let fromText = new Sedulous.GUI.Image();
+		defer fromText.ReleaseRef();
+		let drawable = SvgDrawable.FromText(cBar);
+		fromText.SetDrawable(drawable);
+		drawable.ReleaseRef(); // the image's reference keeps it
+		root.AddChild(bySource);
+		root.AddChild(fromText);
+		root.UpdateLayout();
+		Test.Assert(pictures.Svgs == 1);
+		Test.Assert(pictures.Images == 0);
+		Test.Assert(NodeFixtures.Near(bySource.Size.X, 24.0f));
+		Test.Assert(NodeFixtures.Near(bySource.Size.Y, 12.0f));
+		Test.Assert(NodeFixtures.Near(fromText.Size.X, 24.0f));
+		Test.Assert(NodeFixtures.Near(fromText.Size.Y, 12.0f));
+	}
 }

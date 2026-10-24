@@ -88,4 +88,29 @@ class OverflowWrapTests
 		Test.Assert(marks.Lines[1].Start == 1);
 		Test.Assert(marks.Lines[1].End == 4);
 	}
+
+	[Test]
+	public static void ItInheritsFromASheetAndNormalTurnsItOff()
+	{
+		let font = DejaVu(scope .());
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let panel = new Panel();
+		defer panel.ReleaseRef();
+		let label = new Label();
+		defer label.ReleaseRef();
+		root.AddChild(panel);
+		panel.AddChild(label);
+		panel.AddClass("page");
+		label.Font = font.GetFont("DejaVu", 16.0f);
+		label.AddClass("text");
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, ".page { overflow-wrap: break-word; }");
+		styles.ApplyTree(root);
+		Test.Assert(label.GetTextStyle().BreakWords);
+		Test.Assert(label.GetTextLayout().BreakWords);
+		WidgetFixtures.UseSheet(styles, ".page { overflow-wrap: anywhere; } .text { overflow-wrap: normal; }");
+		styles.ApplyTree(root);
+		Test.Assert(!label.GetTextStyle().BreakWords);
+	}
 }

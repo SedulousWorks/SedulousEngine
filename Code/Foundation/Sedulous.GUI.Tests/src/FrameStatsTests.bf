@@ -73,4 +73,40 @@ class FrameStatsTests
 		Frame(root, styles, canvas);
 		Test.Assert(root.LastFrameStats.NodesDrawn == 3);
 	}
+
+	[Test]
+	public static void AnAnimationThatKeepsAGUIDrawingIsNamedAChangeSaysRedraw()
+	{
+		let root = SceneFixtures.NewScene(300.0f, 300.0f);
+		defer root.ReleaseRef();
+		let bar = new ProgressBar();
+		defer bar.ReleaseRef();
+		bar.Id = "busy";
+		bar.Size = .(100.0f, 10.0f);
+		root.AddChild(bar);
+		let sheet = scope StyleSheet();
+		CSSParser.Parse("progressbar { opacity: 1; }", sheet);
+		let styles = scope StyleManager(sheet);
+		let canvas = scope VGContext();
+		bar.Indeterminate = true;
+		Frame(root, styles, canvas);
+		Frame(root, styles, canvas);
+		Test.Assert(Frame(root, styles, canvas));
+		let stats = root.LastFrameStats;
+		Test.Assert(stats.Reasons.Animation);
+		Test.Assert(stats.AnimatedNode == "ProgressBar #busy");
+		let text = scope String();
+		stats.Describe(text);
+		Test.Assert(text.Contains("animation (ProgressBar #busy)", true));
+
+		bar.Indeterminate = false;
+		Frame(root, styles, canvas);
+		Frame(root, styles, canvas);
+		Test.Assert(!Frame(root, styles, canvas));
+		bar.Value = 0.5;
+		root.UpdateLayout();
+		Test.Assert(root.NeedsFrame());
+		Test.Assert(stats.Reasons.Redraw);
+		Test.Assert(!stats.Reasons.Animation);
+	}
 }

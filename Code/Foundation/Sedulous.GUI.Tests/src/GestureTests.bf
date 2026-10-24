@@ -219,4 +219,37 @@ class GestureTests
 		styles.ApplyTree(root);
 		Test.Assert(outer.TouchActions == cTouchAuto);
 	}
+
+	[Test]
+	public static void AFingerMovingAlongAnAxisItsNodeKeepsDoesNotPanAndGoesOnAsThePointer()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let view = new Panel();
+		defer view.ReleaseRef();
+		view.Size = .(200.0f, 200.0f);
+		view.EditLayoutStyle(scope (s) => { s.OverflowY = .Scroll; });
+		root.AddChild(view);
+		let slider = new UIWidget(); // a horizontal drag of its own: pans up and down only
+		defer slider.ReleaseRef();
+		slider.Size = .(200.0f, 600.0f);
+		slider.TouchActions = cTouchPanY;
+		view.AddChild(slider);
+		root.UpdateLayout();
+		int moves = 0;
+		slider.AddEventListener(.MouseMove, new [&] (e) => { ++moves; });
+		let d = root.EventDispatcher;
+
+		d.InjectTouchDown(1, .(50.0f, 100.0f));
+		d.InjectTouchMove(1, .(80.0f, 102.0f)); // across, which it keeps
+		Test.Assert(!d.IsPanning);
+		Test.Assert(moves >= 1); // the node's own drag
+		d.InjectTouchUp(1, .(80.0f, 102.0f));
+
+		d.InjectTouchDown(1, .(50.0f, 150.0f));
+		d.InjectTouchMove(1, .(50.0f, 100.0f)); // up and down, which it leaves to the GUI
+		Test.Assert(d.IsPanning);
+		Test.Assert(view.ScrollOffset.Y > 0.0f);
+		d.InjectTouchUp(1, .(50.0f, 100.0f));
+	}
 }

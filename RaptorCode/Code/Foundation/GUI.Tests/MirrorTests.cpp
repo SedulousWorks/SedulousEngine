@@ -130,29 +130,6 @@ TEST_CASE("mirror: a combo box's arrow at its inline end")
     CheckMirrored([]() -> core::RefPtr<UIWidget> { return Make<ComboBox>(); }, core::Float2{160.0f, 24.0f});
 }
 
-TEST_CASE("mirror: a progress bar fills and a horizontal scrollbar's thumb runs from the inline start")
-{
-    CheckMirrored(
-        []() -> core::RefPtr<UIWidget>
-        {
-            auto bar = Make<ProgressBar>();
-            bar->SetValue(0.3);
-            return bar;
-        },
-        core::Float2{200.0f, 10.0f});
-    CheckMirrored(
-        []() -> core::RefPtr<UIWidget>
-        {
-            auto bar = Make<ScrollBar>();
-            bar->SetOrientation(Orientation::Horizontal);
-            bar->SetMax(100.0);
-            bar->SetPage(20.0);
-            bar->SetValue(10.0);
-            return bar;
-        },
-        core::Float2{200.0f, 12.0f});
-}
-
 TEST_CASE("mirror: a switch is on at its inline end; a closed chevron points toward it")
 {
     CheckMirrored(
@@ -176,26 +153,6 @@ TEST_CASE("mirror: a number field's arrows and its text room are at its inline e
             return field;
         },
         core::Float2{120.0f, 24.0f});
-}
-
-TEST_CASE("mirror: a horizontal scrollbar pressed near its right end in right to left goes toward its start")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    root->SetSize(core::Float2{200.0f, 100.0f});
-    root->SetLayoutDirection(Node::LayoutDirection::RightToLeft);
-    auto bar = Make<ScrollBar>();
-    bar->SetOrientation(Orientation::Horizontal);
-    bar->SetMax(100.0);
-    bar->SetPage(10.0);
-    bar->SetValue(50.0);
-    bar->SetSize(core::Float2{200.0f, 12.0f});
-    root->AddChild(bar.Get());
-    (void)root->UpdateLayout();
-    const core::Float2 at = bar->ConvertToRootSpace(core::Float2{195.0f, 6.0f});
-    EventDispatcher& d = *root->GetEventDispatcher();
-    d.InjectMouseDown(at, MouseButton::Left);
-    d.InjectMouseUp(at, MouseButton::Left);
-    CHECK(bar->GetValue() < 50.0); // the right end is its start
 }
 
 TEST_CASE("mirror: a tree row is indented from the inline start, its arrow before its text")

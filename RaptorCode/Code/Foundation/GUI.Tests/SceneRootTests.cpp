@@ -63,24 +63,3 @@ TEST_CASE("scene: each root has its own display scale; its tree lays out in logi
     REQUIRE(canvas.GetBatch().boxVertices.Size() == 6u);
     CHECK(canvas.GetBatch().boxVertices[0].halfSize.x == doctest::Approx(40.0f)); // 40 logical -> 80 device, halved
 }
-
-TEST_CASE("scene: media queries see the root's logical size and its density")
-{
-    StyleSheet sheet = CSSParser::Parse(core::StringView(
-        u8"@media (min-resolution: 2dppx) { label { opacity: 0.5; } } "
-        u8"@media (max-width: 500) { label { color: red; } }"));
-    auto dense = MakeScene();
-    dense->SetViewportSize(core::Float2{800.0f, 600.0f});
-    dense->SetDisplayScale(2.0f);
-    auto label = core::MakeRef<Label>(core::DefaultAllocator());
-    dense->AddChild(label.Get());
-    const ResolvedStyle atDense = sheet.Resolve(*label.Get(), dense->GetMediaContext());
-    CHECK(atDense.Has(core::StringView(u8"opacity"))); // 192 dpi >= 2dppx
-    CHECK(atDense.Has(core::StringView(u8"color")));   // 400 logical <= 500
-
-    auto standard = MakeScene();
-    standard->SetViewportSize(core::Float2{800.0f, 600.0f});
-    const ResolvedStyle atStandard = sheet.Resolve(*label.Get(), standard->GetMediaContext());
-    CHECK_FALSE(atStandard.Has(core::StringView(u8"opacity")));
-    CHECK_FALSE(atStandard.Has(core::StringView(u8"color"))); // 800 logical
-}

@@ -5,6 +5,22 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
 
+/// A root that says when it goes.
+class WatchedScene : SceneRoot
+{
+	public bool* Gone = null;
+
+	public this(Sedulous.GUI.GUIContext gui) : base(gui)
+	{
+	}
+
+	public ~this()
+	{
+		if (Gone != null)
+			*Gone = true;
+	}
+}
+
 /// Popups, the top layer: a popup stays in its owner's subtree yet draws and takes the pointer
 /// above everything, unclipped; nesting comes from the tree; placement flips, shrinks and clamps;
 /// a hint takes no pointer; input in another root closes this one's light popups.
@@ -212,5 +228,84 @@ class PopupTests
 		Test.Assert(!a.EventDispatcher.IsPopupOpen(menu2)); // above the dialog: closed
 		Test.Assert(a.EventDispatcher.IsPopupOpen(dialog));
 		Test.Assert(a.EventDispatcher.IsPopupOpen(menu)); // below the dialog: kept
+	}
+
+	[Test]
+	public static void APopupWhoseOldParentHeldTheOnlyReferenceToItSurvivesTheMoveToItsOwner()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 300.0f);
+		defer root.ReleaseRef();
+		let page = new Panel();
+		defer page.ReleaseRef();
+		root.AddChild(page);
+		Node popup = null;
+		{
+			let made = new Panel();
+			made.Size = .(80.0f, 40.0f);
+			page.AddChild(made);
+			popup = made;
+			made.ReleaseRef(); // the page holds the only reference now
+		}
+		let owner = new Panel();
+		defer owner.ReleaseRef();
+		root.AddChild(owner);
+		let d = root.EventDispatcher;
+		d.OpenPopup(owner, popup, new PopupOptions());
+		Test.Assert(d.IsPopupOpen(popup));
+		Test.Assert(popup.Parent == owner);
+		Test.Assert(page.ChildCount == 0);
+	}
+
+	[Test]
+	public static void OneSizedByItsContentGrowsWhenItsContentDoesATooltipWhoseFontArrivesLate()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 300.0f);
+		defer root.ReleaseRef();
+		let popup = new Panel();
+		defer popup.ReleaseRef();
+		let content = new Panel();
+		defer content.ReleaseRef();
+		content.EditLayoutStyle(scope (s) =>
+			{
+				s.Width = LayoutLength.Px(20.0f);
+				s.Height = LayoutLength.Px(10.0f);
+			});
+		popup.AddChild(content);
+		let d = root.EventDispatcher;
+		let options = new PopupOptions();
+		options.Kind = .Hint;
+		options.AnchorRect = .(50.0f, 50.0f, 0.0f, 0.0f);
+		options.HasAnchorRect = true;
+		options.FitContent = true;
+		d.OpenPopup(root, popup, options);
+		root.UpdateLayout();
+		Test.Assert(NodeFixtures.Near(popup.Size.X, 20.0f));
+		content.EditLayoutStyle(scope (s) => { s.Width = LayoutLength.Px(150.0f); }); // what it shows grew
+		root.UpdateLayout();
+		Test.Assert(NodeFixtures.Near(popup.Size.X, 150.0f));
+	}
+
+	[Test]
+	public static void OneOpenThatGoesBackHomeOnCloseDoesNotKeepItsRootAlive()
+	{
+		// Its home is the root itself, which owns the dispatcher holding the entry: a strong
+		// reference there would make a cycle, and a GUI closed with the popup open would never be
+		// freed.
+		bool gone = false;
+		let context = new GUIContext();
+		let root = new WatchedScene(context);
+		context.ReleaseRef(); // the root's keeps it
+		root.Gone = &gone;
+		let screen = new Panel();
+		defer screen.ReleaseRef();
+		root.AddChild(screen);
+		let options = new PopupOptions();
+		options.Kind = .Manual;
+		options.Modal = true;
+		options.ReturnHome = true;
+		root.EventDispatcher.OpenPopup(root, screen, options);
+		Test.Assert(root.EventDispatcher.IsPopupOpen(screen));
+		root.ReleaseRef();
+		Test.Assert(gone);
 	}
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Fonts;
 using Sedulous.VG;
 using Sedulous.GUI;
 
@@ -14,11 +15,11 @@ class LayoutEngineTests
 {
 	private static bool Near(float a, float b) => NodeFixtures.Near(a, b);
 
-	/// A panel (a widget tagged so) styled by `style`, the last child of `parent`, which holds it:
-	/// it comes back borrowed.
-	private static UIWidget PanelBox(Node parent, delegate void(LayoutStyle style) style)
+	/// A panel styled by `style`, the last child of `parent`, which holds it: it comes back
+	/// borrowed.
+	private static Panel PanelBox(Node parent, delegate void(LayoutStyle style) style)
 	{
-		let panel = StyleFixtures.Widget("panel");
+		let panel = new Panel();
 		panel.EditLayoutStyle(style);
 		parent.AddChild(panel);
 		panel.ReleaseRef(); // the tree's reference keeps it
@@ -26,7 +27,7 @@ class LayoutEngineTests
 	}
 
 	/// A panel `w` by `h` pixels, the last child of `parent` (borrowed).
-	private static UIWidget PanelFixed(Node parent, float w, float h) => PanelBox(parent, scope (s) =>
+	private static Panel PanelFixed(Node parent, float w, float h) => PanelBox(parent, scope (s) =>
 		{
 			s.Width = LayoutLength.Px(w);
 			s.Height = LayoutLength.Px(h);
@@ -754,11 +755,11 @@ class LayoutEngineTests
 	{
 		let root = SceneFixtures.NewScene(400.0f, 300.0f);
 		defer root.ReleaseRef();
-		let grid = StyleFixtures.Widget("panel");
+		let grid = new Panel();
 		defer grid.ReleaseRef();
 		grid.AddClass("cards");
 		root.AddChild(grid);
-		let cards = scope List<UIWidget>();
+		let cards = scope List<Panel>();
 		defer
 		{
 			for (let c in cards)
@@ -766,7 +767,7 @@ class LayoutEngineTests
 		}
 		for (int i = 0; i < 4; i++)
 		{
-			let card = StyleFixtures.Widget("panel");
+			let card = new Panel();
 			card.AddClass("card");
 			grid.AddChild(card);
 			cards.Add(card);
@@ -851,5 +852,163 @@ class LayoutEngineTests
 		Test.Assert(b.LayoutStyle.Width.Kind == .Px); // no percent part: plain pixels
 		Test.Assert(Near(b.Size.X, 20.0f)); // 1em of 16, and 4
 		Test.Assert(Near(b.Position.X, 41.0f + 170.0f + 29.0f)); // the gap: 10 and 5% of 380
+	}
+
+	[Test]
+	public static void AWrappingLabelWrapsToTheWidthItIsGivenAndShrinksNoNarrowerThanItsLongestWord()
+	{
+		let font = scope CachedFont(new MockFont(), null); // owns and deletes the mock
+		let root = SceneFixtures.NewScene(400.0f, 300.0f);
+		defer root.ReleaseRef();
+		let column = PanelBox(root, scope (s) => { s.Width = LayoutLength.Px(100.0f); });
+		let text = new Label();
+		defer text.ReleaseRef();
+		text.Font = font;
+		text.WhiteSpace = .Normal;
+		text.Text = "aaaa bbbb cccc dddd"; // words of 24, a space 6: four words take 114
+		column.AddChild(text);
+		root.UpdateLayout();
+		Test.Assert(Near(text.Size.X, 100.0f)); // stretched across
+		Test.Assert(Near(text.Size.Y, 24.0f)); // two lines at 100 wide
+
+		let row = PanelBox(root, scope (s) =>
+			{
+				s.Direction = .Row;
+				s.Width = LayoutLength.Px(60.0f);
+				s.AlignItems = .Start;
+			});
+		let squeezed = new Label();
+		defer squeezed.ReleaseRef();
+		squeezed.Font = font;
+		squeezed.WhiteSpace = .Normal;
+		squeezed.Text = "aaaaaaaa bb";
+		row.AddChild(squeezed);
+		PanelFixed(row, 50.0f, 10.0f);
+		root.UpdateLayout();
+		Test.Assert(Near(squeezed.Size.X, 48.0f)); // its longest word: the sibling overflows
+		Test.Assert(Near(squeezed.Size.Y, 24.0f));
+	}
+
+	[Test]
+	public static void ALabelsBaselineFollowsItsVerticalAlignmentAndItsWrapping()
+	{
+		let font = scope CachedFont(new MockFont(), null);
+		let label = new Label();
+		defer label.ReleaseRef();
+		label.Font = font;
+		label.Text = "aaaa bbbb";
+		label.Padding = Thickness(2.0f);
+		let size = Float2(100.0f, 40.0f); // a 36 tall content box from 2
+		label.SetTextAlignment(.Left, .Top);
+		Test.Assert(Near(label.BaselineAt(size), 2.0f + 10.0f));
+		label.SetTextAlignment(.Left, .Middle);
+		Test.Assert(Near(label.BaselineAt(size), 2.0f + 12.0f + 10.0f));
+		label.SetTextAlignment(.Left, .Bottom);
+		Test.Assert(Near(label.BaselineAt(size), 38.0f - 2.0f)); // the descent above the bottom
+		// Wrapped to two lines in 30 wide, centred: the block of 24 starts 6 down, its first line's
+		// baseline 10 below that.
+		label.WhiteSpace = .Normal;
+		label.SetTextAlignment(.Left, .Middle);
+		Test.Assert(Near(label.BaselineAt(.(34.0f, 40.0f)), 2.0f + 6.0f + 10.0f));
+		// Any other node: the bottom of its content box.
+		let panel = new Panel();
+		defer panel.ReleaseRef();
+		panel.Padding = Thickness(0.0f, 0.0f, 0.0f, 5.0f);
+		Test.Assert(Near(panel.BaselineAt(.(50.0f, 30.0f)), 25.0f));
+	}
+
+	/// The box the vertices of one colour cover (by its red, green and blue), and how many.
+	private struct Extent
+	{
+		public int Count = 0;
+		public Float2 Min = .(1.0e9f, 1.0e9f);
+		public Float2 Max = .(-1.0e9f, -1.0e9f);
+
+		public this() { }
+	}
+
+	private static Extent ExtentOf(VGContext vg, Color color)
+	{
+		var e = Extent();
+		for (let v in vg.GetBatch().Vertices)
+		{
+			if ((Math.Abs(v.Color.R - color.R) < 0.01f) && (Math.Abs(v.Color.G - color.G) < 0.01f) && (Math.Abs(v.Color.B - color.B) < 0.01f))
+			{
+				++e.Count;
+				e.Min = .(Math.Min(e.Min.X, v.Position.X), Math.Min(e.Min.Y, v.Position.Y));
+				e.Max = .(Math.Max(e.Max.X, v.Position.X), Math.Max(e.Max.Y, v.Position.Y));
+			}
+		}
+		return e;
+	}
+
+	/// `root` drawn with `overlay` into `vg`.
+	private static void DrawWith(SceneRoot root, DebugOverlay overlay, VGContext vg)
+	{
+		root.DebugOverlay = overlay;
+		let dc = scope DrawContext(vg);
+		root.Draw(dc);
+	}
+
+	[Test]
+	public static void TheOverlayDrawsMarginsPaddingBoundsAndTextBaselinesWhereLayoutPutThem()
+	{
+		let font = scope CachedFont(new MockFont(), null);
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		let column = PanelBox(root, scope (s) => { s.AlignItems = .Start; });
+		let framed = PanelFixed(column, 100.0f, 40.0f);
+		framed.Margin = Thickness(10.0f);
+		framed.Padding = Thickness(5.0f);
+		let label = new Label();
+		defer label.ReleaseRef();
+		label.Font = font;
+		label.Text = "Hi";
+		column.AddChild(label); // at y 60, 12 tall, baseline 10 down
+		root.UpdateLayout();
+
+		let margin = Color(1.0f, 0.6f, 0.2f, 1.0f);
+		let padding = Color(0.3f, 0.85f, 0.4f, 1.0f);
+		let baseline = Color(1.0f, 0.2f, 0.9f, 1.0f);
+		{
+			let vg = scope VGContext();
+			DrawWith(root, DebugOverlay(), vg);
+			Test.Assert(ExtentOf(vg, margin).Count == 0);
+			Test.Assert(ExtentOf(vg, baseline).Count == 0);
+		}
+		{
+			let vg = scope VGContext();
+			var overlay = DebugOverlay();
+			overlay.Margin = true;
+			DrawWith(root, overlay, vg);
+			let m = ExtentOf(vg, margin); // the box's margin box: 0,0 to 120,60
+			Test.Assert(m.Count > 0);
+			Test.Assert(Near(m.Min.X, 0.0f));
+			Test.Assert(Near(m.Min.Y, 0.0f));
+			Test.Assert(Near(m.Max.X, 120.0f));
+			Test.Assert(Near(m.Max.Y, 60.0f));
+			Test.Assert(ExtentOf(vg, padding).Count == 0);
+		}
+		{
+			let vg = scope VGContext();
+			var overlay = DebugOverlay();
+			overlay.Padding = true;
+			DrawWith(root, overlay, vg);
+			let p = ExtentOf(vg, padding); // within its border box: 10,10 to 110,50
+			Test.Assert(p.Count > 0);
+			Test.Assert(Near(p.Min.X, 10.0f));
+			Test.Assert(Near(p.Max.Y, 50.0f));
+		}
+		{
+			let vg = scope VGContext();
+			var overlay = DebugOverlay();
+			overlay.Baselines = true;
+			DrawWith(root, overlay, vg);
+			let b = ExtentOf(vg, baseline); // the label's alone, about y 70
+			Test.Assert(b.Count > 0);
+			Test.Assert(b.Min.Y > 68.5f); // a hairline, with its edge fringe
+			Test.Assert(b.Max.Y < 71.5f);
+			Test.Assert(Math.Abs(b.Min.X) < 0.02f);
+		}
 	}
 }

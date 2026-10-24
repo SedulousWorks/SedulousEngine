@@ -77,66 +77,6 @@ TEST_CASE("direction: a node runs as the first ancestor that says, else as the G
     CHECK(fixedLtr->GetDirectionName() == core::String(u8"rtl"));
 }
 
-TEST_CASE("direction: CSS's direction sets it; text-align start and end follow it")
-{
-    Bed bed;
-    auto page = core::MakeRef<Panel>(core::DefaultAllocator());
-    page->AddClass(SV(u8"page"));
-    bed.root->AddChild(page.Get());
-    auto label = core::MakeRef<Label>(core::DefaultAllocator());
-    label->AddClass(SV(u8"start"));
-    page->AddChild(label.Get());
-    auto other = core::MakeRef<Label>(core::DefaultAllocator());
-    other->AddClass(SV(u8"end"));
-    page->AddChild(other.Get());
-    StyleManager styles(CSSParser::Parse(SV(u8".start { text-align: start; } .end { text-align: end; }")));
-    styles.ApplyTree(*bed.root.Get());
-    CHECK(label->GetTextAlignH() == TextHAlign::Start); // the paragraph's direction places them (E9c)
-    CHECK(other->GetTextAlignH() == TextHAlign::End);
-    CHECK(label->GetTextLayout().GetDirection().Direction == foundation::fonts::TextDirection::LeftToRight);
-    styles.SetStyleSheet(CSSParser::Parse(SV(u8".page { direction: rtl; } .start { text-align: start; } .end { text-align: end; }")));
-    styles.ApplyTree(*bed.root.Get());
-    CHECK(page->GetLayoutDirection() == Node::LayoutDirection::RightToLeft);
-    CHECK(label->GetTextLayout().GetDirection().Direction == foundation::fonts::TextDirection::RightToLeft); // its text runs as it does
-    styles.SetStyleSheet(CSSParser::Parse(SV(u8".start { text-align: start; }")));
-    styles.ApplyTree(*bed.root.Get());
-    CHECK(page->GetLayoutDirection() == Node::LayoutDirection::Inherit); // the sheet no longer says
-    CHECK(label->GetTextLayout().GetDirection().Direction == foundation::fonts::TextDirection::LeftToRight);
-}
-
-TEST_CASE("direction: a scroller's vertical bar goes to the inline end; a slider runs from it, by pointer and keys")
-{
-    Bed bed;
-    bed.root->SetSize(core::Float2{300.0f, 300.0f});
-    auto view = core::MakeRef<ScrollView>(core::DefaultAllocator());
-    view->SetSize(core::Float2{100.0f, 100.0f});
-    bed.root->AddChild(view.Get());
-    for (int i = 0; i < 4; ++i)
-        Fixed(*view.Get(), 80.0f, 50.0f);
-    bed.Layout();
-    CHECK(view->ScrollBarTrack(1).x == doctest::Approx(92.0f));
-    view->SetLayoutDirection(Node::LayoutDirection::RightToLeft);
-    bed.Layout();
-    CHECK(view->ScrollBarTrack(1).x == doctest::Approx(0.0f));
-
-    auto slider = core::MakeRef<Slider>(core::DefaultAllocator());
-    slider->SetSize(core::Float2{100.0f, 20.0f}); // the thumb's centre within x 10 to 90
-    slider->SetLayoutDirection(Node::LayoutDirection::RightToLeft);
-    bed.root->AddChild(slider.Get());
-    bed.Layout();
-    slider->SetStep(0.05);
-    EventDispatcher& d = *bed.root->GetEventDispatcher();
-    const core::Float2 at{slider->GetScreenBounds().x + 30.0f, slider->GetScreenBounds().y + 10.0f};
-    d.InjectMouseDown(at, MouseButton::Left);
-    d.InjectMouseUp(at, MouseButton::Left);
-    CHECK(slider->GetValue() == doctest::Approx(0.75)); // a quarter in from the right end, its start
-    slider->RequestFocus();
-    d.InjectKeyDown(static_cast<core::u32>(KeyCode::Left));
-    CHECK(slider->GetValue() == doctest::Approx(0.8)); // Left goes on, towards the end
-    d.InjectKeyDown(static_cast<core::u32>(KeyCode::Right));
-    CHECK(slider->GetValue() == doctest::Approx(0.75));
-}
-
 TEST_CASE("direction: a right-to-left tab strip runs from the right; Left goes on to the next tab")
 {
     Bed bed;

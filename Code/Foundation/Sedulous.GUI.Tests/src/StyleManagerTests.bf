@@ -470,4 +470,85 @@ class StyleManagerTests
 		let stranger = scope StyleRule("button");
 		Test.Assert(!mgr.EditDeclaration(stranger, "opacity", "1"));
 	}
+
+	[Test]
+	public static void AWidgetsOwnDefaultsAreWhatARuleGivesBackTo()
+	{
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		let tip = new Tooltip(); // 6 by 3 padding of its own
+		defer tip.ReleaseRef();
+		root.AddChild(tip);
+		let own = tip.Padding;
+		let styles = scope StyleManager(Sheet("tooltip.big { padding: 20px; }", scope StyleSheet()));
+		styles.ApplyTree(root);
+		Test.Assert(tip.Padding == own); // no rule: its own, not CSS's initial 0
+		tip.AddClass("big");
+		styles.ApplyTree(root);
+		Test.Assert(Near(tip.Padding.Left, 20.0f));
+		tip.RemoveClass("big");
+		styles.ApplyTree(root);
+		Test.Assert(tip.Padding == own);
+	}
+
+	[Test]
+	public static void APartTakesABoxBackgroundBorderRadiiShadowAndOpacity()
+	{
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		let slider = new Slider();
+		defer slider.ReleaseRef();
+		slider.Size = .(160.0f, 24.0f);
+		root.AddChild(slider);
+		let styles = scope StyleManager(Sheet(
+			"slider::thumb { background-color: #ff0000; border: 2px solid #0000ff; border-radius: 3px; box-shadow: 0 2px 4px #00ff00; opacity: 0.5; }",
+			scope StyleSheet()));
+		styles.ApplyTree(root);
+		let thumb = slider.GetPartStyle("thumb");
+		Test.Assert(thumb.HasBackground);
+		Test.Assert(thumb.HasBorderWidth);
+		Test.Assert(thumb.HasRadii);
+		Test.Assert(thumb.HasShadows);
+		Test.Assert(Near(thumb.Opacity, 0.5f));
+		Test.Assert(Near(thumb.Box.Radii.TopLeft, 3.0f));
+		Test.Assert(!slider.GetPartStyle("track").HasBackground); // the track keeps its own
+	}
+
+	[Test]
+	public static void EmMeasuresByTheElementsOwnFontSizeWhichTakesEmAndPercentagesOfItsParents()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let big = new Panel();
+		defer big.ReleaseRef();
+		big.AddClass("big");
+		root.AddChild(big);
+		let pct = new Panel();
+		defer pct.ReleaseRef();
+		pct.AddClass("pct");
+		root.AddChild(pct);
+		let styles = scope StyleManager(Sheet(".big { font-size: 2em; padding-left: 1em; } .pct { font-size: 150%; padding-left: 1em; }", scope StyleSheet()));
+		styles.ApplyTree(root);
+		Test.Assert(Near(big.Padding.Left, 32.0f)); // 2em of the root's 16, then 1em of that
+		Test.Assert(Near(pct.Padding.Left, 24.0f));
+	}
+
+	[Test]
+	public static void ANumberPropertyTakesAPercentageAsAFractionAndRefusesAUnit()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let half = new Panel();
+		defer half.ReleaseRef();
+		half.AddClass("half");
+		root.AddChild(half);
+		let junk = new Panel();
+		defer junk.ReleaseRef();
+		junk.AddClass("junk");
+		root.AddChild(junk);
+		let styles = scope StyleManager(Sheet(".half { opacity: 50%; } .junk { opacity: 0.3px; }", scope StyleSheet()));
+		styles.ApplyTree(root);
+		Test.Assert(Near(half.Alpha, 0.5f)); // not 50
+		Test.Assert(Near(junk.Alpha, 1.0f)); // not a number: its own value
+	}
 }

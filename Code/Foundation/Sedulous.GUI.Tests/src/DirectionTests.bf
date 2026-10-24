@@ -12,11 +12,11 @@ class DirectionTests
 {
 	private static bool Near(float a, float b) => NodeFixtures.Near(a, b);
 
-	/// A panel (a widget tagged so) styled by `style`, the last child of `parent`, which holds it:
-	/// it comes back borrowed.
-	private static UIWidget PanelBox(Node parent, delegate void(LayoutStyle style) style)
+	/// A panel styled by `style`, the last child of `parent`, which holds it: it comes back
+	/// borrowed.
+	private static Panel PanelBox(Node parent, delegate void(LayoutStyle style) style)
 	{
-		let panel = StyleFixtures.Widget("panel");
+		let panel = new Panel();
 		panel.EditLayoutStyle(style);
 		parent.AddChild(panel);
 		panel.ReleaseRef(); // the tree's reference keeps it
@@ -210,15 +210,15 @@ class DirectionTests
 	{
 		let root = SceneFixtures.NewScene(100.0f, 100.0f);
 		defer root.ReleaseRef();
-		let page = StyleFixtures.Widget("panel");
+		let page = new Panel();
 		defer page.ReleaseRef();
 		page.AddClass("page");
 		root.AddChild(page);
-		let item = StyleFixtures.Widget("panel");
+		let item = new Panel();
 		defer item.ReleaseRef();
 		item.AddClass("item");
 		page.AddChild(item);
-		let pinned = StyleFixtures.Widget("panel");
+		let pinned = new Panel();
 		defer pinned.ReleaseRef();
 		pinned.AddClass("pinned");
 		page.AddChild(pinned);
@@ -259,7 +259,7 @@ class DirectionTests
 				s.Width = LayoutLength.Px(100.0f);
 				s.Height = LayoutLength.Px(60.0f);
 			});
-		UIWidget[4] cells = default;
+		Panel[4] cells = default;
 		for (int i = 0; i < 4; i++)
 		{
 			cells[i] = PanelBox(strip, scope (s) =>
@@ -311,5 +311,81 @@ class DirectionTests
 		Test.Assert(Near(strip.ScrollOffset.X, 0.0f));
 		Test.Assert(Near(strip.ScrollMin.X, -300.0f));
 		Test.Assert(Near(cells[0].Position.X + 80.0f, area.X + area.Width));
+	}
+
+	[Test]
+	public static void CSSsDirectionSetsItTextAlignStartAndEndFollowIt()
+	{
+		let root = SceneFixtures.NewScene(100.0f, 100.0f);
+		defer root.ReleaseRef();
+		let page = new Panel();
+		defer page.ReleaseRef();
+		page.AddClass("page");
+		root.AddChild(page);
+		let label = new Label();
+		defer label.ReleaseRef();
+		label.AddClass("start");
+		page.AddChild(label);
+		let other = new Label();
+		defer other.ReleaseRef();
+		other.AddClass("end");
+		page.AddChild(other);
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, ".start { text-align: start; } .end { text-align: end; }");
+		styles.ApplyTree(root);
+		Test.Assert(label.TextAlignH == .Start); // the paragraph's direction places them
+		Test.Assert(other.TextAlignH == .End);
+		Test.Assert(label.GetTextLayout().Direction.Direction == .LeftToRight);
+		WidgetFixtures.UseSheet(styles, ".page { direction: rtl; } .start { text-align: start; } .end { text-align: end; }");
+		styles.ApplyTree(root);
+		Test.Assert(page.GetLayoutDirection() == .RightToLeft);
+		Test.Assert(label.GetTextLayout().Direction.Direction == .RightToLeft); // its text runs as it does
+		WidgetFixtures.UseSheet(styles, ".start { text-align: start; }");
+		styles.ApplyTree(root);
+		Test.Assert(page.GetLayoutDirection() == .Inherit); // the sheet no longer says
+		Test.Assert(label.GetTextLayout().Direction.Direction == .LeftToRight);
+	}
+
+	[Test]
+	public static void AScrollersVerticalBarGoesToTheInlineEndASliderRunsFromItByPointerAndKeys()
+	{
+		bool Approx(double a, double b) => Math.Abs(a - b) < 1.2e-5 * (1.0 + Math.Max(Math.Abs(a), Math.Abs(b)));
+		let root = SceneFixtures.NewScene(300.0f, 300.0f);
+		defer root.ReleaseRef();
+		let view = new ScrollView();
+		defer view.ReleaseRef();
+		view.Size = .(100.0f, 100.0f);
+		root.AddChild(view);
+		for (int i = 0; i < 4; ++i)
+		{
+			PanelBox(view, scope (s) =>
+				{
+					s.Width = LayoutLength.Px(80.0f);
+					s.Height = LayoutLength.Px(50.0f);
+				});
+		}
+		root.UpdateLayout();
+		Test.Assert(Near(view.ScrollBarTrack(1).X, 92.0f));
+		view.SetLayoutDirection(.RightToLeft);
+		root.UpdateLayout();
+		Test.Assert(Near(view.ScrollBarTrack(1).X, 0.0f));
+
+		let slider = new Slider();
+		defer slider.ReleaseRef();
+		slider.Size = .(100.0f, 20.0f); // the thumb's centre within x 10 to 90
+		slider.SetLayoutDirection(.RightToLeft);
+		root.AddChild(slider);
+		root.UpdateLayout();
+		slider.Step = 0.05;
+		let d = root.EventDispatcher;
+		let at = Float2(slider.ScreenBounds.X + 30.0f, slider.ScreenBounds.Y + 10.0f);
+		d.InjectMouseDown(at, .Left);
+		d.InjectMouseUp(at, .Left);
+		Test.Assert(Approx(slider.Value, 0.75)); // a quarter in from the right end, its start
+		slider.RequestFocus();
+		d.InjectKeyDown((uint32)KeyCode.Left);
+		Test.Assert(Approx(slider.Value, 0.8)); // Left goes on, towards the end
+		d.InjectKeyDown((uint32)KeyCode.Right);
+		Test.Assert(Approx(slider.Value, 0.75));
 	}
 }

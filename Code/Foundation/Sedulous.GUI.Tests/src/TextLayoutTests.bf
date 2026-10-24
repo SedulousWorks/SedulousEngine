@@ -334,4 +334,76 @@ class TextLayoutTests
 		Test.Assert(ellipsisGlyphs == 3);
 		Test.Assert(layout.Width <= 60.0f + 0.01f);
 	}
+
+	[Test]
+	public static void ALabelMeasuresShapedTextAndARichLabelReportsAClickedLink()
+	{
+		let fonts = Roboto(scope .());
+		let root = SceneFixtures.NewScene(400.0f, 200.0f);
+		defer root.ReleaseRef();
+		root.Context.FontService = fonts;
+		let roboto = fonts.GetFont("Roboto", 16.0f);
+
+		let label = new Label();
+		defer label.ReleaseRef();
+		label.Font = roboto;
+		label.Text = "Shaped width";
+		Test.Assert(Near(label.MeasureContent(.(cUnbounded, cUnbounded)).X,
+			LayOutText(TextDocument.Plain("Shaped width", scope .()), Style(fonts, scope .()), scope .()).Width));
+
+		let rich = new RichText();
+		defer rich.ReleaseRef();
+		rich.Font = roboto;
+		rich.Text = "go [link=door]open the door[/link] now";
+		rich.Position = .(0.0f, 0.0f);
+		rich.Size = .(400.0f, 40.0f);
+		root.AddChild(rich);
+		let heard = scope String();
+		rich.AddEventListener(.Link, new [&] (e) => { heard.Set(((LinkEvent)e).Link); });
+		let bounds = rich.ContentBounds;
+		let layout = rich.GetTextLayout().LayoutFor(bounds);
+		Test.Assert(!layout.Links.IsEmpty);
+		let origin = rich.GetTextLayout().Origin(bounds);
+		let onLink = Float2(origin.X + layout.Links[0].Rect.X + 2.0f, origin.Y + layout.Links[0].Rect.Y + layout.Links[0].Rect.Height * 0.5f);
+		let d = root.EventDispatcher;
+		d.InjectMouseDown(onLink, .Left);
+		d.InjectMouseUp(onLink, .Left);
+		Test.Assert(heard == "door");
+		heard.Clear();
+		d.InjectMouseDown(.(origin.X + 1.0f, onLink.Y), .Left); // on "go"
+		d.InjectMouseUp(.(origin.X + 1.0f, onLink.Y), .Left);
+		Test.Assert(heard.IsEmpty);
+	}
+
+	[Test]
+	public static void ThePointerShowsTheHandOverARichTextsLinkAndOnlyThere()
+	{
+		let fonts = Roboto(scope .());
+		let root = SceneFixtures.NewScene(400.0f, 200.0f);
+		defer root.ReleaseRef();
+		root.Context.FontService = fonts;
+		let rich = new RichText();
+		defer rich.ReleaseRef();
+		rich.Font = fonts.GetFont("Roboto", 16.0f);
+		rich.Text = "go [link=door]open the door[/link] now";
+		rich.Size = .(400.0f, 40.0f);
+		root.AddChild(rich);
+		let bounds = rich.ContentBounds;
+		let layout = rich.GetTextLayout().LayoutFor(bounds);
+		Test.Assert(!layout.Links.IsEmpty);
+		let origin = rich.GetTextLayout().Origin(bounds);
+		let onLink = Float2(origin.X + layout.Links[0].Rect.X + 2.0f, origin.Y + layout.Links[0].Rect.Y + layout.Links[0].Rect.Height * 0.5f);
+		let d = root.EventDispatcher;
+		d.InjectMouseMove(.(origin.X + 1.0f, onLink.Y)); // on "go"
+		Test.Assert(d.Cursor == .Default);
+		d.InjectMouseMove(onLink);
+		Test.Assert(d.Cursor == .Pointer);
+		d.InjectMouseMove(.(390.0f, 190.0f)); // off the label
+		Test.Assert(d.Cursor == .Default);
+		rich.Cursor = .Text; // its own look elsewhere; the hand still over the link
+		d.InjectMouseMove(.(origin.X + 1.0f, onLink.Y));
+		Test.Assert(d.Cursor == .Text);
+		d.InjectMouseMove(onLink);
+		Test.Assert(d.Cursor == .Pointer);
+	}
 }

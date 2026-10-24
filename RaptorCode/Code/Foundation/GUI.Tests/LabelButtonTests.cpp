@@ -23,29 +23,6 @@ namespace
     core::StringView SV(const char8_t* s) { return core::StringView(s); }
 }
 
-TEST_CASE("label: text properties")
-{
-    auto label = Make<Label>();
-    label->SetText(SV(u8"Hello"));
-    CHECK(label->GetText() == SV(u8"Hello"));
-    label->SetTextColor(core::Color::Red);
-    CHECK(label->GetTextColor().r == doctest::Approx(1.0f));
-    CHECK(label->MeasureText().x == 0.0f); // no font yet -> zero measure
-}
-
-TEST_CASE("label: draws its box (text is a no-op without a font)")
-{
-    auto label = Make<Label>();
-    label->SetSize(core::Float2{100.0f, 40.0f});
-    label->SetText(SV(u8"Hi"));
-    label->SetBox(FilledBox(core::Color::Blue));
-
-    vg::VGContext ctx;
-    DrawContext dc{ctx};
-    label->Draw(dc);
-    CHECK(ctx.GetBatch().vertices.Size() + ctx.GetBatch().boxVertices.Size() > 0); // its fill
-}
-
 TEST_CASE("button: defaults - tag and centered text")
 {
     auto btn = Make<Button>();

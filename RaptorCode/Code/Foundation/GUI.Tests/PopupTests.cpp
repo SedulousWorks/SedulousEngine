@@ -331,54 +331,6 @@ TEST_CASE("popups: opening and closing are toggle events at the popup, which rea
     CHECK(heard[1] == SV(u8"outside-press"));
 }
 
-TEST_CASE("popups: a popup whose old parent held the only reference to it survives the move to its owner")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    root->SetSize(core::Float2{400.0f, 300.0f});
-    auto page = core::MakeRef<Panel>(core::DefaultAllocator());
-    root->AddChild(page.Get());
-    Node* popup = nullptr;
-    {
-        auto made = core::MakeRef<Panel>(core::DefaultAllocator());
-        made->SetSize(core::Float2{80.0f, 40.0f});
-        page->AddChild(made.Get());
-        popup = made.Get(); // the page holds the only reference now
-    }
-    auto owner = core::MakeRef<Panel>(core::DefaultAllocator());
-    root->AddChild(owner.Get());
-    EventDispatcher& d = *root->GetEventDispatcher();
-    d.OpenPopup(*owner, *popup, PopupOptions{});
-    CHECK(d.IsPopupOpen(*popup));
-    CHECK(popup->GetParent() == owner.Get());
-    CHECK(page->ChildCount() == 0);
-}
-
-TEST_CASE("popups: one sized by its content grows when its content does (a tooltip whose font arrives late)")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    root->SetSize(core::Float2{400.0f, 300.0f});
-    auto popup = core::MakeRef<Panel>(core::DefaultAllocator());
-    auto content = core::MakeRef<Panel>(core::DefaultAllocator());
-    content->EditLayoutStyle([](LayoutStyle& s)
-    {
-        s.Width = LayoutLength::Px(20.0f);
-        s.Height = LayoutLength::Px(10.0f);
-    });
-    popup->AddChild(content.Get());
-    EventDispatcher& d = *root->GetEventDispatcher();
-    PopupOptions options;
-    options.Kind = PopupKind::Hint;
-    options.AnchorRect = Rect{50.0f, 50.0f, 0.0f, 0.0f};
-    options.HasAnchorRect = true;
-    options.FitContent = true;
-    d.OpenPopup(*root, *popup, core::Move(options));
-    (void)root->UpdateLayout();
-    CHECK(popup->GetSize().x == doctest::Approx(20.0f));
-    content->EditLayoutStyle([](LayoutStyle& s) { s.Width = LayoutLength::Px(150.0f); }); // what it shows grew
-    (void)root->UpdateLayout();
-    CHECK(popup->GetSize().x == doctest::Approx(150.0f));
-}
-
 TEST_CASE("popups: one placed against a rectangle follows it when its owner moves it")
 {
     Bed bed;
@@ -393,22 +345,4 @@ TEST_CASE("popups: one placed against a rectangle follows it when its owner move
     CHECK(popup->GetPosition().y == doctest::Approx(96.0f)); // below it
     (void)bed.d().ClosePopup(*popup);
     CHECK_FALSE(bed.d().SetPopupAnchorRect(*popup, Rect{0.0f, 0.0f, 0.0f, 0.0f})); // not open
-}
-
-TEST_CASE("popups: one open that goes back home on close does not keep its root alive")
-{
-    // Its home is the root itself, which owns the dispatcher holding the entry: a strong reference
-    // there would make a cycle, and a GUI closed with the popup open would never be freed.
-    auto root = Make<SceneRoot>(Make<GUIContext>());
-    const core::WeakRefPtr<SceneRoot> weak(root);
-    auto screen = Make<Panel>();
-    root->AddChild(screen.Get());
-    PopupOptions options;
-    options.Kind = PopupKind::Manual;
-    options.Modal = true;
-    options.ReturnHome = true;
-    root->GetEventDispatcher()->OpenPopup(*root, *screen, core::Move(options));
-    REQUIRE(root->GetEventDispatcher()->IsPopupOpen(*screen));
-    root = core::RefPtr<SceneRoot>{};
-    CHECK(weak.Expired());
 }

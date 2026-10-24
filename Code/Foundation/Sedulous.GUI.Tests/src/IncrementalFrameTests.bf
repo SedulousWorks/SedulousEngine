@@ -9,7 +9,24 @@ namespace Sedulous.GUI.Tests;
 // Incremental frames: a frame restyles only the widgets that changed and their subtrees, lays out
 // only the containers that asked, once per frame, and an idle GUI needs no frame at all.
 
-/// Incremental frames: what an unchanged, a hovered, a reclassed or an animating GUI redoes.
+/// A node whose drawing marks another node (one drawn before it) dirty, once.
+class Toucher : Node
+{
+	public Node Touches = null;
+	public bool Done = false;
+
+	public override void OnDraw(DrawContext ctx, Rect localBounds)
+	{
+		if ((Touches != null) && !Done)
+		{
+			Done = true;
+			Touches.Invalidate();
+		}
+	}
+}
+
+/// Incremental frames: what an unchanged, a hovered, a reclassed or an animating GUI redoes, and
+/// what a deferred layout, a hidden subtree and an animation out of view ask for.
 class IncrementalFrameTests
 {
 	private static bool Near(float a, float b) => NodeFixtures.Near(a, b);
@@ -288,6 +305,212 @@ class IncrementalFrameTests
 		Test.Assert(!root.NeedsFrame());
 
 		a.Position = .(7.0f, 6.0f);
+		Test.Assert(root.NeedsFrame());
+	}
+
+	[Test]
+	public static void ManyAddsToALayoutInASceneLayItOutOnceAtTheFrame()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let column = new Panel();
+		defer column.ReleaseRef();
+		column.Size = .(100.0f, 400.0f);
+		root.AddChild(column);
+		root.UpdateLayout();
+
+		let rows = scope List<UIWidget>();
+		defer
+		{
+			for (let r in rows)
+				r.ReleaseRef();
+		}
+		for (int i = 0; i < 10; ++i)
+		{
+			let row = Widget("row");
+			column.AddChild(row);
+			rows.Add(row);
+		}
+		Test.Assert(Near(rows[9].Position.Y, 0.0f)); // deferred: not yet placed
+		Test.Assert(root.NeedsFrame());
+
+		root.UpdateLayout();
+		Test.Assert(root.LastLayoutCount == 1);
+		Test.Assert(Near(rows[9].Position.Y, 180.0f)); // nine 20-high rows above
+		root.UpdateLayout();
+		Test.Assert(root.LastLayoutCount == 0);
+	}
+
+	[Test]
+	public static void ALayoutOutsideASceneLaysOutWhenAsked()
+	{
+		let column = new Panel();
+		defer column.ReleaseRef();
+		column.Size = .(100.0f, 400.0f);
+		let a = Widget("row");
+		defer a.ReleaseRef();
+		let b = Widget("row");
+		defer b.ReleaseRef();
+		column.AddChild(a);
+		column.AddChild(b);
+		Test.Assert(column.UpdateLayout() == 1);
+		Test.Assert(Near(b.Position.Y, 20.0f));
+	}
+
+	[Test]
+	public static void AChildResizedAfterALayoutLaysItsContainerOutAgainOnce()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let column = new Panel();
+		defer column.ReleaseRef();
+		column.EditLayoutStyle(scope (s) => { s.AlignItems = .Start; });
+		column.Size = .(200.0f, 400.0f);
+		root.AddChild(column);
+		let a = new UIWidget(); // unsized when the layout first meets them
+		defer a.ReleaseRef();
+		let b = new UIWidget();
+		defer b.ReleaseRef();
+		a.Tag = "item";
+		b.Tag = "item";
+		column.AddChild(a);
+		column.AddChild(b);
+		root.UpdateLayout();
+		Test.Assert(Near(b.Position.Y, 0.0f)); // both empty, stacked at the top
+
+		// The sheet sizes them afterwards (a frame's restyle): the flex takes the new basis.
+		let styles = scope StyleManager();
+		UseSheet(styles, "item { width: 100px; height: 40px; }");
+		styles.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(Near(b.Position.Y, 40.0f));
+		Test.Assert(Near(b.Size.Y, 40.0f));
+
+		root.UpdateLayout(); // its own writes asked for nothing more
+		Test.Assert(root.LastLayoutCount == 0);
+	}
+
+	[Test]
+	public static void AChildDisplayedOrNotLaysItsContainerOutAgain()
+	{
+		// The showcase's panels: one shown in place of another after the first layout lands in the
+		// slot the other had, not wherever it was left.
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let column = new Panel();
+		defer column.ReleaseRef();
+		column.Size = .(200.0f, 400.0f);
+		root.AddChild(column);
+		AddWidget(column, "title");
+		let menu = AddWidget(column, "menu");
+		let settings = AddWidget(column, "settings");
+		settings.Displayed = false;
+		root.UpdateLayout();
+		Test.Assert(Near(menu.Position.Y, 20.0f));
+
+		menu.Displayed = false;
+		settings.Displayed = true;
+		root.UpdateLayout();
+		Test.Assert(root.LastLayoutCount >= 1);
+		Test.Assert(Near(settings.Position.Y, 20.0f)); // under the title, where the menu was
+		root.UpdateLayout();
+		Test.Assert(root.LastLayoutCount == 0);
+	}
+
+	[Test]
+	public static void AChangeUnderANodeThatWasHiddenThroughAFrameStillAsksForAFrame()
+	{
+		// A hidden node is not drawn, so it keeps its invalidation: a change under it later must
+		// still reach the root (pooled item rows are hidden and shown again; their changes went
+		// unseen).
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		let row = AddWidget(root, "panel");
+		let label = new Label();
+		defer label.ReleaseRef();
+		row.AddChild(label);
+		let styles = scope StyleManager();
+		UseSheet(styles, "panel { opacity: 1; }");
+		row.Displayed = false;
+		Frame(root, styles);
+		Test.Assert(!root.NeedsFrame());
+		row.Displayed = true;
+		Frame(root, styles);
+		Test.Assert(!root.NeedsFrame());
+		row.Displayed = false;
+		Frame(root, styles);
+		label.Text = "changed while hidden";
+		Frame(root, styles);
+		row.Displayed = true;
+		label.Text = "changed again, shown";
+		styles.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(root.NeedsFrame());
+	}
+
+	[Test]
+	public static void ANodeMarkedDuringTheFramesDrawingDoesNotStopLaterChangesUnderItAskingForAFrame()
+	{
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		let a = AddWidget(root, "panel");
+		let label = new Label();
+		defer label.ReleaseRef();
+		a.AddChild(label);
+		let toucher = new Toucher();
+		defer toucher.ReleaseRef();
+		toucher.Size = .(10.0f, 10.0f);
+		toucher.Touches = a; // drawn after `a`, it marks `a` again
+		root.AddChild(toucher);
+		let styles = scope StyleManager();
+		UseSheet(styles, "panel { opacity: 1; }");
+		Frame(root, styles); // `a` is marked again after it was drawn
+		// A host skips a frame the root does not need, so `a` stays marked; a change under it must
+		// still reach the root.
+		label.Text = "a change under it";
+		styles.ApplyTree(root);
+		root.UpdateLayout(); // as a host does before it asks
+		Test.Assert(root.NeedsFrame());
+	}
+
+	[Test]
+	public static void AnAnimationOnAPageOutOfViewAsksForNoFramesOneInViewDoesHidingAsksForOne()
+	{
+		let root = SceneFixtures.NewScene(300.0f, 300.0f);
+		defer root.ReleaseRef();
+		let page = AddWidget(root, "panel");
+		let bar = new ProgressBar();
+		defer bar.ReleaseRef();
+		bar.Size = .(100.0f, 10.0f);
+		page.AddChild(bar);
+		bar.Indeterminate = true; // sweeps on the GUI's clock
+		let styles = scope StyleManager();
+		UseSheet(styles, "panel { opacity: 1; }");
+		Frame(root, styles);
+		Frame(root, styles);
+		root.UpdateLayout();
+		Test.Assert(root.NeedsFrame()); // shown: its sweep moves
+
+		page.Displayed = false;
+		root.UpdateLayout();
+		Frame(root, styles);
+		Frame(root, styles);
+		root.UpdateLayout();
+		Test.Assert(!root.NeedsFrame()); // out of view: nothing on screen moves
+
+		page.Displayed = true;
+		root.UpdateLayout();
+		Frame(root, styles);
+		root.UpdateLayout();
+		Test.Assert(root.NeedsFrame()); // back in view, sweeping again
+
+		let still = AddWidget(root, "panel");
+		bar.Indeterminate = false;
+		Frame(root, styles);
+		Frame(root, styles);
+		root.UpdateLayout();
+		Test.Assert(!root.NeedsFrame());
+		still.Visible = false; // what drew it must draw again
 		Test.Assert(root.NeedsFrame());
 	}
 }

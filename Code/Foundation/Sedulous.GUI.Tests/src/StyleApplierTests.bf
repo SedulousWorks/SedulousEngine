@@ -264,4 +264,18 @@ class StyleApplierTests
 		Test.Assert(Near(w.Size.X, 20.0f));
 		Test.Assert(Near(w.Size.Y, 100.0f));
 	}
+
+	[Test]
+	public static void TextAlignAndVerticalAlignReachALabel()
+	{
+		let l = new Label(); // Label's constructor tags it "label"
+		defer l.ReleaseRef();
+		ApplyStyle(l, ResolveFor("label { text-align: center; vertical-align: bottom; }", l, scope .(), false));
+		Test.Assert(l.TextAlignH == .Center);
+		Test.Assert(l.TextAlignV == .Bottom);
+
+		ApplyStyle(l, ResolveFor("label { text-align: right; }", l, scope .(), false));
+		Test.Assert(l.TextAlignH == .Right);
+		Test.Assert(l.TextAlignV == .Middle); // no longer set: the label's own again
+	}
 }

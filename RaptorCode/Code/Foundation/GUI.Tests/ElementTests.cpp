@@ -74,47 +74,6 @@ TEST_CASE("elements: a weak reference resolves while the element lives and not a
     CHECK_FALSE(weak.IsValid()); // destroyed: gone, not freed memory
 }
 
-TEST_CASE("elements: a freed slot taken by a new element does not answer to the old reference")
-{
-    core::RefPtr<SceneRoot> gui = MakeGui();
-    core::RefPtr<Label> first = core::MakeRef<Label>(core::DefaultAllocator());
-    gui->AddChild(first.Get());
-    Element<Label> old(*first);
-    const Node::ElementRef firstRef = first->TakeElementRef();
-    gui->RemoveChild(first.Get());
-    first = core::RefPtr<Label>{};
-
-    core::RefPtr<Label> second = core::MakeRef<Label>(core::DefaultAllocator());
-    gui->AddChild(second.Get());
-    Element<Label> fresh(*second);
-    const Node::ElementRef secondRef = second->TakeElementRef();
-    CHECK(secondRef.slot == firstRef.slot);             // the slot is reused...
-    CHECK(secondRef.generation != firstRef.generation); // ...under a new generation
-    CHECK_FALSE(old.IsValid());
-    CHECK(fresh.Get() == second.Get());
-}
-
-TEST_CASE("elements: two GUIs keep their own tables, and a GUI going leaves its references gone")
-{
-    core::RefPtr<SceneRoot> a = MakeGui();
-    core::RefPtr<SceneRoot> b = MakeGui();
-    CHECK(a->GetElementTable() != b->GetElementTable());
-    core::RefPtr<Label> inA = core::MakeRef<Label>(core::DefaultAllocator());
-    core::RefPtr<Label> inB = core::MakeRef<Label>(core::DefaultAllocator());
-    a->AddChild(inA.Get());
-    b->AddChild(inB.Get());
-    Element<Label> weakA(*inA);
-    Element<Label> weakB(*inB);
-    CHECK(inA->TakeElementRef().table == a->GetElementTable());
-    CHECK(inB->TakeElementRef().table == b->GetElementTable());
-
-    // A's GUI goes while its label lives on elsewhere and a reference to it is held: the table
-    // closes (held alive by the reference), so the reference reads as gone; B is untouched.
-    a = core::RefPtr<SceneRoot>{};
-    CHECK_FALSE(weakA.IsValid());
-    CHECK(weakB.Get() == inB.Get());
-}
-
 TEST_CASE("elements: the registry takes a library's widgets and refuses what is not an element")
 {
     RegisterGuiElements();

@@ -67,4 +67,36 @@ class AutoDirectionTests
 		Test.Assert(Lay(font, cArabicFirst, false, scope .()).Lines[0].RightToLeft);
 		Test.Assert(!Lay(font, cLatinFirst, true, scope .()).Lines[0].RightToLeft);
 	}
+
+	[Test]
+	public static void ASheetsDirectionAutoSetsALabelsParagraphsByItsTextItsBoxesByItsParent()
+	{
+		let font = DejaVu(scope .());
+		BidiAlgorithm.Install();
+		defer BidiAlgorithm.Uninstall();
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let panel = new Panel();
+		defer panel.ReleaseRef();
+		let label = new Label();
+		defer label.ReleaseRef();
+		root.AddChild(panel);
+		panel.AddChild(label);
+		panel.AddClass("page");
+		label.AddClass("field");
+		label.Font = font.GetFont("DejaVu", 16.0f);
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, ".page { direction: rtl; } .field { direction: auto; }");
+		styles.ApplyTree(root);
+
+		Test.Assert(label.GetLayoutDirection() == .Auto);
+		Test.Assert(label.IsRightToLeft); // its boxes: as the page's
+		Test.Assert(label.GetTextLayout().Direction.Direction == .Auto);
+		Test.Assert(label.GetTextLayout().Direction.AutoRightToLeft);
+		label.Text = cLatinFirst;
+		Test.Assert(!label.GetTextLayout().LayoutFor(Rect(0.0f, 0.0f, 400.0f, 40.0f)).Lines[0].RightToLeft);
+		label.Text = cArabicFirst;
+		Test.Assert(label.GetTextLayout().LayoutFor(Rect(0.0f, 0.0f, 400.0f, 40.0f)).Lines[0].RightToLeft);
+		Test.Assert(label.Direction == "auto");
+	}
 }

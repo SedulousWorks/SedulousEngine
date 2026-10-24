@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026-Present Robert Campbell
 
-// GUI - :node partition, what is left of it after slice S12: the members whose bodies or types
-// belong to later slices (S19 the script surface, the drag and tooltip widgets). The rest is
+// GUI - :node partition, what is left of it after slice S13: the members whose bodies or types
+// belong to a later slice (S19, the script surface). The rest is
 // Code/Foundation/Sedulous.GUI/src/Core/Node.bf (ElementTable, Node; layout in
 // Layout/LayoutImpl.bf; the GUI a node is in in Scene/GUIClusterImpl.bf; Element<T> and
 // ElementSet in Scene/ElementTypes.bf; the tweens in Styling/TweenImpl.bf).
@@ -11,16 +11,6 @@ export namespace foundation::gui
 {
     class Node
     {
-
-        // --- declared in Node.bf returning null (the dispatcher calls them); the slice with Tooltip and
-        // DragPreview fills them in place with these (their bodies are in Scene/GUIReflectionImpl.cpp) ---
-        /// The preview a drag shows when its source gives none (GUIClusterImpl.cpp: a label of
-        /// the payload's label), and the hint beside the pointer with a target's reason.
-        [[nodiscard]] virtual core::RefPtr<Node> CreateDragPreview(const DragPayload& payload);
-        [[nodiscard]] virtual core::RefPtr<Node> CreateDropHint(core::StringView reason, bool refused);
-        /// What its tooltip shows for `text` (E5): a Tooltip label by default (defined where the
-        /// widgets are); any node, for a richer one. Null: no tooltip.
-        [[nodiscard]] virtual core::RefPtr<Node> CreateTooltipContent(core::StringView text);
 
         // --- S19: the script surface (Scene/GUIReflectionImpl.cpp) ---
         /// A handle to this node typed as `type` (this node's type or a base of it); empty when the

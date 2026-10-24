@@ -2155,14 +2155,39 @@ class Node : Transformable, IRefCounted
 		}
 	}
 
-	/// The preview a drag shows when its source gives none, and the hint beside the pointer with a
-	/// target's reason: none here (a widget's label of the payload's label, a tooltip of the
-	/// reason, where the widgets are). The caller holds the reference to what comes back.
-	public virtual Node CreateDragPreview(Sedulous.GUI.DragPayload payload) => null;
-	public virtual Node CreateDropHint(StringView reason, bool refused) => null;
-	/// What its tooltip shows for `text`: none here (a Tooltip label, where the widgets are); any
-	/// node, for a richer one. Null: no tooltip. The caller holds the reference to what comes back.
-	public virtual Node CreateTooltipContent(StringView text) => null;
+	/// The preview a drag shows when its source gives none: the payload's label, in the source's
+	/// font until a sheet says otherwise. The caller holds the reference to what comes back.
+	public virtual Node CreateDragPreview(Sedulous.GUI.DragPayload payload)
+	{
+		let preview = new Sedulous.GUI.DragPreview();
+		preview.Text = payload.Label;
+		if (let source = this as UINode)
+			source.ShareTextStyle(preview, false);
+		return preview;
+	}
+
+	/// The hint beside a drag's pointer: a target's reason, a tooltip marked `drophint` (and
+	/// `refused` when nothing takes the drop). The caller holds the reference to what comes back.
+	public virtual Node CreateDropHint(StringView reason, bool refused)
+	{
+		let hint = new Sedulous.GUI.Tooltip();
+		hint.Text = reason;
+		hint.AddClass("drophint");
+		if (refused)
+			hint.AddClass("refused");
+		if (let source = this as UINode)
+			source.ShareTextStyle(hint, false);
+		return hint;
+	}
+
+	/// What its tooltip shows for `text`: a Tooltip with its text by default; any node, for a
+	/// richer one. Null: no tooltip. The caller holds the reference to what comes back.
+	public virtual Node CreateTooltipContent(StringView text)
+	{
+		let tip = new Sedulous.GUI.Tooltip();
+		tip.Text = text;
+		return tip;
+	}
 
 	/// Optional hover-tooltip text: the dispatcher shows the nearest one up the parent chain from
 	/// the hovered node, after a delay. Empty (the default) means none here.

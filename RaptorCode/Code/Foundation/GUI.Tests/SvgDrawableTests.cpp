@@ -60,28 +60,6 @@ namespace
     }
 }
 
-TEST_CASE("svg-drawable: an Image shows an SVG by its src or from markup, sized as the document")
-{
-    Pictures pictures;
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    root->SetSize(core::Float2{200.0f, 200.0f});
-    root->EditLayoutStyle([](LayoutStyle& s) { s.AlignItems = Align::Start; });
-    root->GetContext().SetResourceProvider(&pictures);
-    auto bySource = core::MakeRef<Image>(core::DefaultAllocator());
-    bySource->SetSource(core::String(u8"bar.svg"));
-    auto fromText = core::MakeRef<Image>(core::DefaultAllocator());
-    fromText->SetDrawable(SvgDrawable::FromText(core::DefaultAllocator(), core::StringView(kBar)));
-    root->AddChild(bySource.Get());
-    root->AddChild(fromText.Get());
-    (void)root->UpdateLayout();
-    CHECK(pictures.svgs == 1);
-    CHECK(pictures.images == 0);
-    CHECK(bySource->GetSize().x == doctest::Approx(24.0f));
-    CHECK(bySource->GetSize().y == doctest::Approx(12.0f));
-    CHECK(fromText->GetSize().x == doctest::Approx(24.0f));
-    CHECK(fromText->GetSize().y == doctest::Approx(12.0f));
-}
-
 TEST_CASE("svg-drawable: a menu command's icon by an .svg path")
 {
     Pictures pictures;

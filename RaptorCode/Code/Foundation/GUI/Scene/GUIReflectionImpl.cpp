@@ -623,38 +623,6 @@ namespace foundation::gui
         return root != nullptr ? root->HandleAs(Node::StaticType()) : core::Variant{};
     }
 
-    // A node's tooltip by default: a Tooltip with its text (here, where the widgets are seen).
-    core::RefPtr<Node> Node::CreateTooltipContent(core::StringView text)
-    {
-        auto tip = core::MakeRef<Tooltip>(MemoryAllocator());
-        tip->SetText(text);
-        return tip;
-    }
-
-    // A drag's default preview: the payload's label (E7).
-    core::RefPtr<Node> Node::CreateDragPreview(const DragPayload& payload)
-    {
-        auto preview = core::MakeRef<DragPreview>(MemoryAllocator());
-        preview->SetText(payload.Label.AsView());
-        if (const UINode* source = Cast<UINode>(this))
-            source->ShareTextStyle(*preview, false); // in the source's font until a sheet says otherwise
-        return preview;
-    }
-
-    // The hint beside a drag's pointer: a target's reason, a tooltip marked `drophint` (and
-    // `refused` when nothing takes the drop).
-    core::RefPtr<Node> Node::CreateDropHint(core::StringView reason, bool refused)
-    {
-        auto hint = core::MakeRef<Tooltip>(MemoryAllocator());
-        hint->SetText(reason);
-        hint->AddClass(core::StringView(u8"drophint"));
-        if (refused)
-            hint->AddClass(core::StringView(u8"refused"));
-        if (const UINode* source = Cast<UINode>(this))
-            source->ShareTextStyle(*hint, false);
-        return hint;
-    }
-
     void RegisterGuiElements()
     {
         static const bool once = []()
@@ -848,21 +816,12 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(Label, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"label")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&Label::GetText, &Label::SetText>("text").PropAttribute("access", core::String(u8"name")).PropAttribute("translatable", true);
-        builder.AccessorProperty<&Label::GetTextColor, &Label::SetTextColor>("textColor");
-        builder.AccessorProperty<&Label::IsRich, &Label::SetRich>("rich");
-        builder.AccessorProperty<&Label::GetTextOverflowName, &Label::SetTextOverflowName>("textOverflow")
-            .PropAttribute("css", core::String(u8"text-overflow"));
-        builder.AccessorProperty<&Label::GetLineClamp, &Label::SetLineClamp>("lineClamp").PropAttribute("css", core::String(u8"line-clamp"));
         builder.Method<&ElementOf<Label>, Label, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(RichText, "rtti::gui")
     {
         builder.Method<&ElementOf<RichText>, RichText, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(ButtonBase, "rtti::gui")
@@ -999,39 +958,17 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(RangeWidget, "rtti::gui")
     {
-        builder.AccessorProperty<&RangeWidget::GetValue, &RangeWidget::SetValue>("value").PropAttribute("access", core::String(u8"value"))
-            .PropAttribute("css", core::String(u8"value"))
-            .PropAttribute("twoWay", true); // the user changes it: a binding may write it back
-        builder.AccessorProperty<&RangeWidget::GetMin, &RangeWidget::SetMin>("min").PropAttribute("access", core::String(u8"min")).PropAttribute("css", core::String(u8"min"));
-        builder.AccessorProperty<&RangeWidget::GetMax, &RangeWidget::SetMax>("max").PropAttribute("access", core::String(u8"max")).PropAttribute("css", core::String(u8"max"));
-        builder.AccessorProperty<&RangeWidget::GetStep, &RangeWidget::SetStep>("step").PropAttribute("access", core::String(u8"step")).PropAttribute("css", core::String(u8"step"));
-        builder.AccessorProperty<&RangeWidget::IsExponential, &RangeWidget::SetExponential>("exponential")
-            .PropAttribute("css", core::String(u8"exponential"));
-        builder.AccessorProperty<&RangeWidget::AllowsGreater, &RangeWidget::SetAllowGreater>("allowGreater")
-            .PropAttribute("css", core::String(u8"allow-greater"));
-        builder.AccessorProperty<&RangeWidget::AllowsLesser, &RangeWidget::SetAllowLesser>("allowLesser")
-            .PropAttribute("css", core::String(u8"allow-lesser"));
         builder.Method<&ElementOf<RangeWidget>, RangeWidget, Node>("of");
     }
 
     REFLECT_MEMBERS(Slider, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"slider")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&Slider::GetPage, &Slider::SetPage>("page").PropAttribute("css", core::String(u8"page"));
-        builder.AccessorProperty<&Slider::GetOrientationName, &Slider::SetOrientationName>("orientation")
-            .PropAttribute("css", core::String(u8"orientation"));
-        builder.AccessorProperty<&Slider::GetTicks, &Slider::SetTicks>("ticks").PropAttribute("css", core::String(u8"ticks"));
         builder.Method<&ElementOf<Slider>, Slider, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(ProgressBar, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"progress")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&ProgressBar::IsIndeterminate, &ProgressBar::SetIndeterminate>("indeterminate")
-            .PropAttribute("css", core::String(u8"indeterminate"));
         builder.Method<&ElementOf<ProgressBar>, ProgressBar, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(TextEditBase, "rtti::gui")
@@ -1070,14 +1007,11 @@ namespace foundation::gui
     REFLECT_MEMBERS(Panel, "rtti::gui")
     {
         builder.Method<&ElementOf<Panel>, Panel, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(ScrollView, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"scrollview")); // what a screen reader takes it for (E9d)
         builder.Method<&ElementOf<ScrollView>, ScrollView, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(EditableLabel, "rtti::gui")
@@ -1210,49 +1144,28 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(Separator, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"separator")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&Separator::GetThickness, &Separator::SetThickness>("thickness").PropAttribute("css", core::String(u8"thickness"));
         builder.Method<&ElementOf<Separator>, Separator, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(Splitter, "rtti::gui")
     {
-        builder.AccessorProperty<&Splitter::GetAxisName, &Splitter::SetAxisName>("axis").PropAttribute("css", core::String(u8"axis"));
-        builder.AccessorProperty<&Splitter::GetWeightsText, &Splitter::SetWeightsText>("weights").PropAttribute("css", core::String(u8"weights"));
         builder.Method<&Splitter::ResetWeights>("resetWeights");
         builder.Method<&ElementOf<Splitter>, Splitter, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(SplitterHandle, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"separator")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&SplitterHandle::GetValue, &SplitterHandle::SetValue>("value").PropAttribute("access", core::String(u8"value"));
-        builder.ComputedProperty<&SplitterHandle::GetMin>("min").PropAttribute("access", core::String(u8"min"));
-        builder.ComputedProperty<&SplitterHandle::GetMax>("max").PropAttribute("access", core::String(u8"max"));
-        builder.AccessorProperty<&SplitterHandle::GetThickness, &SplitterHandle::SetThickness>("thickness")
-            .PropAttribute("css", core::String(u8"thickness"));
         builder.Method<&ElementOf<SplitterHandle>, SplitterHandle, Node>("of");
     }
 
     REFLECT_MEMBERS(Spacer, "rtti::gui")
     {
-        builder.AccessorProperty<&Spacer::GetSpace, &Spacer::SetSpace>("size").PropAttribute("css", core::String(u8"size"));
         builder.Method<&ElementOf<Spacer>, Spacer, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(Image, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"image")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&Image::GetSource, &Image::SetSource>("src").PropAttribute("css", core::String(u8"src"));
-        builder.AccessorProperty<&Image::GetFitName, &Image::SetFitName>("objectFit").PropAttribute("css", core::String(u8"object-fit"));
-        builder.AccessorProperty<&Image::GetObjectPositionName, &Image::SetObjectPositionName>("objectPosition")
-            .PropAttribute("css", core::String(u8"object-position"));
-        builder.AccessorProperty<&Image::GetImageColor, &Image::SetImageColor>("imageColor").PropAttribute("css", core::String(u8"image-color"));
         builder.Method<&ElementOf<Image>, Image, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(DragLayer, "rtti::gui")
@@ -1302,12 +1215,7 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(ScrollBar, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"scrollbar")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&ScrollBar::GetPage, &ScrollBar::SetPage>("page").PropAttribute("css", core::String(u8"page"));
-        builder.AccessorProperty<&ScrollBar::GetOrientationName, &ScrollBar::SetOrientationName>("orientation")
-            .PropAttribute("css", core::String(u8"orientation"));
         builder.Method<&ElementOf<ScrollBar>, ScrollBar, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(MessageBox, "rtti::gui")
@@ -1388,10 +1296,7 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(ListBox, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"list")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&ListBox::GetItemsText, &ListBox::SetItemsText>("items").PropAttribute("css", core::String(u8"items"));
         builder.Method<&ElementOf<ListBox>, ListBox, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(ComboBox, "rtti::gui")

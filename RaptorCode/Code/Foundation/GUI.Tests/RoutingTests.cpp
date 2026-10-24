@@ -102,56 +102,6 @@ TEST_CASE("routing: a handled event ends after its node; the node's own listener
     CHECK(cardClicks == 1);
 }
 
-TEST_CASE("routing: keys bubble from the focus; a scroller scrolls only when it is focused")
-{
-    auto root = MakeRoot();
-    auto page = Box(*root.Get(), 0, 0, 300, 300, u8"page");
-    auto field = Box(*page.Get(), 10, 10, 100, 30, u8"field");
-    field->SetTabFocusable(true);
-    int pageKeys = 0;
-    (void)page->AddEventListener(EventType::KeyDown, [&](const Event&) { ++pageKeys; });
-    EventDispatcher* d = root->GetEventDispatcher();
-    d->SetFocusNode(field.Get());
-    CHECK_FALSE(d->InjectKeyDown(static_cast<core::u32>(KeyCode::F5))); // nobody used it
-    CHECK(pageKeys == 1);
-
-    auto scroller = Make<ScrollView>();
-    scroller->SetSize(core::Float2{100.0f, 100.0f});
-    root->AddChild(scroller.Get());
-    (void)Box(*scroller.Get(), 0, 0, 10, 400, u8"tall"); // what it scrolls over
-    auto inside = Box(*scroller.Get(), 0, 0, 50, 20, u8"inside");
-    root->UpdateLayout();
-    inside->SetTabFocusable(true);
-    d->SetFocusNode(inside.Get());
-    d->InjectKeyDown(static_cast<core::u32>(KeyCode::PageDown));
-    CHECK(scroller->GetScrollOffset().y == doctest::Approx(0.0f)); // the key was the widget's to leave
-    d->SetFocusNode(scroller.Get());
-    CHECK(d->InjectKeyDown(static_cast<core::u32>(KeyCode::PageDown)));
-    CHECK(scroller->GetScrollOffset().y > 0.0f);
-}
-
-TEST_CASE("routing: the wheel goes up from the pointer; a scroller at its end leaves it to the one around it")
-{
-    auto root = MakeRoot();
-    auto outer = Make<ScrollView>();
-    outer->SetSize(core::Float2{200.0f, 200.0f});
-    root->AddChild(outer.Get());
-    (void)Box(*outer.Get(), 150, 0, 10, 800, u8"outer-tall");
-    auto inner = Make<ScrollView>();
-    inner->SetSize(core::Float2{100.0f, 100.0f});
-    outer->AddChild(inner.Get());
-    (void)Box(*inner.Get(), 0, 0, 10, 150, u8"inner-tall");
-    root->UpdateLayout();
-    EventDispatcher* d = root->GetEventDispatcher();
-    CHECK(d->InjectMouseWheel(core::Float2{50.0f, 50.0f}, core::Float2{0.0f, -10.0f}));
-    CHECK(inner->GetScrollOffset().y > 0.0f);
-    CHECK(outer->GetScrollOffset().y == doctest::Approx(0.0f));
-    for (int i = 0; i < 20; ++i) // to the inner one's end, and on
-        d->InjectMouseWheel(core::Float2{50.0f, 50.0f}, core::Float2{0.0f, -10.0f});
-    CHECK(inner->GetScrollOffset().y == doctest::Approx(inner->GetScrollRange().y));
-    CHECK(outer->GetScrollOffset().y > 0.0f);
-}
-
 TEST_CASE("routing: a click goes to the nearest node holding both the press and the release")
 {
     auto root = MakeRoot();

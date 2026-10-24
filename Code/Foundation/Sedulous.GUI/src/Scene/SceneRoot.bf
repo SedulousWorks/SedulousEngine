@@ -910,10 +910,10 @@ class SceneRoot : Node
 	// The frame's style and layout are done: the last frame starts from them, undrawn.
 	private void PublishFrame()
 	{
-		delete mLastFrame;
-		mLastFrame = mFrameStats;
+		// Copied into, not replaced: what LastFrameStats handed out stays the last frame's.
+		mLastFrame.Set(mFrameStats);
 		mLastFrame.FramesDrawn = mFramesDrawn;
-		mFrameStats = new .();
+		mFrameStats.Reset();
 		mFramePublished = true;
 	}
 

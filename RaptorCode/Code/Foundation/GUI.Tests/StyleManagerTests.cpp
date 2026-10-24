@@ -97,23 +97,6 @@ TEST_CASE("style-manager: a markup property a restyle meets again is not written
 
 // ===================== E3: computed style =====================
 
-TEST_CASE("style-manager: a widget's own defaults are what a rule gives back to")
-{
-    auto root = NewRoot();
-    auto tip = Make<Tooltip>(); // 6 by 3 padding of its own
-    root->AddChild(tip.Get());
-    const Thickness own = tip->GetPadding();
-    StyleManager styles(CSSParser::Parse(SV(u8"tooltip.big { padding: 20px; }")));
-    styles.ApplyTree(*root.Get());
-    CHECK(tip->GetPadding() == own); // no rule: its own, not CSS's initial 0
-    tip->AddClass(SV(u8"big"));
-    styles.ApplyTree(*root.Get());
-    CHECK(tip->GetPadding().Left == doctest::Approx(20.0f));
-    tip->RemoveClass(SV(u8"big"));
-    styles.ApplyTree(*root.Get());
-    CHECK(tip->GetPadding() == own);
-}
-
 TEST_CASE("style-manager: a reflected property the sheet set returns to its own value, unless code took it")
 {
     RegisterGuiElements();
@@ -144,25 +127,6 @@ TEST_CASE("style-manager: a reflected property the sheet set returns to its own 
 // ===================== E3: parts take the box properties =====================
 
 
-TEST_CASE("style-manager: a part takes a box: background, border, radii, shadow and opacity")
-{
-    auto root = NewRoot();
-    auto slider = Make<Slider>();
-    slider->SetSize(core::Float2{160.0f, 24.0f});
-    root->AddChild(slider.Get());
-    StyleManager styles(CSSParser::Parse(SV(
-        u8"slider::thumb { background-color: #ff0000; border: 2px solid #0000ff; border-radius: 3px; box-shadow: 0 2px 4px #00ff00; opacity: 0.5; }")));
-    styles.ApplyTree(*root.Get());
-    const PartStyle& thumb = slider->GetPartStyle(u8"thumb");
-    CHECK(thumb.HasBackground);
-    CHECK(thumb.HasBorderWidth);
-    CHECK(thumb.HasRadii);
-    CHECK(thumb.HasShadows);
-    CHECK(thumb.Opacity == doctest::Approx(0.5f));
-    CHECK(thumb.Box.Radii.topLeft == doctest::Approx(3.0f));
-    CHECK_FALSE(slider->GetPartStyle(u8"track").HasBackground); // the track keeps its own
-}
-
 TEST_CASE("style-manager: a part's border-color alone recolours its own outline")
 {
     auto root = NewRoot();
@@ -179,34 +143,4 @@ TEST_CASE("style-manager: a part's border-color alone recolours its own outline"
     CHECK(drawn.BorderWidths.top == doctest::Approx(2.0f)); // its own width
     CHECK(drawn.BorderColors.top.g == doctest::Approx(0.0f)); // the sheet's colour
     CHECK(drawn.BackgroundColor.a == doctest::Approx(0.0f)); // no fill
-}
-
-TEST_CASE("style: em measures by the element's own font size, which takes em and percentages of its parent's")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    auto box = core::MakeRef<Panel>(core::DefaultAllocator());
-    box->AddClass(core::StringView(u8"big"));
-    root->AddChild(box.Get());
-    auto pct = core::MakeRef<Panel>(core::DefaultAllocator());
-    pct->AddClass(core::StringView(u8"pct"));
-    root->AddChild(pct.Get());
-    StyleManager styles(CSSParser::Parse(core::StringView(u8".big { font-size: 2em; padding-left: 1em; } .pct { font-size: 150%; padding-left: 1em; }")));
-    styles.ApplyTree(*root.Get());
-    CHECK(box->GetPadding().Left == doctest::Approx(32.0f)); // 2em of the root's 16, then 1em of that
-    CHECK(pct->GetPadding().Left == doctest::Approx(24.0f));
-}
-
-TEST_CASE("style: a number property takes a percentage as a fraction and refuses a unit")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    auto half = core::MakeRef<Panel>(core::DefaultAllocator());
-    half->AddClass(core::StringView(u8"half"));
-    root->AddChild(half.Get());
-    auto junk = core::MakeRef<Panel>(core::DefaultAllocator());
-    junk->AddClass(core::StringView(u8"junk"));
-    root->AddChild(junk.Get());
-    StyleManager styles(CSSParser::Parse(core::StringView(u8".half { opacity: 50%; } .junk { opacity: 0.3px; }")));
-    styles.ApplyTree(*root.Get());
-    CHECK(half->GetAlpha() == doctest::Approx(0.5f)); // not 50
-    CHECK(junk->GetAlpha() == doctest::Approx(1.0f)); // not a number: its own value
 }

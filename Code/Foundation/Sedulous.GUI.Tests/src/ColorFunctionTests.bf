@@ -41,4 +41,41 @@ class ColorFunctionTests
 		CheckColor(ParseColor("color-mix(in srgb, hsl(120, 100%, 50%), #000)"), 0.0f, 0.5f, 0.0f, 1.0f);
 		Test.Assert(!ParseColor("color-mix(red, blue)").HasValue);
 	}
+
+	[Test]
+	public static void CurrentColorIsTheNearestDeclaredColourADescendantsTooOnColorTheParents()
+	{
+		bool Near(float a, float b) => NodeFixtures.Near(a, b);
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let outer = new Panel();
+		defer outer.ReleaseRef();
+		let inner = new Panel();
+		defer inner.ReleaseRef();
+		let text = new Label();
+		defer text.ReleaseRef();
+		root.AddChild(outer);
+		outer.AddChild(inner);
+		inner.AddChild(text);
+		outer.AddClass("outer");
+		inner.AddClass("inner");
+		text.AddClass("text");
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, ".outer { border-color: currentColor; border-width: 1px; color: #ff0000; }" +
+			".inner { background-color: color-mix(in srgb, currentColor 50%, transparent); }" +
+			".text { color: currentColor; background-color: currentColor; }");
+		styles.ApplyTree(root);
+		// Declared after it in the rule, the colour still applies to the border (the cascade's winner).
+		Test.Assert(Near(outer.Box.BorderColors.Top.R, 1.0f));
+		Test.Assert(Near(outer.Box.BorderColors.Top.G, 0.0f));
+		// A descendant that declares none reads its ancestor's.
+		Test.Assert(Near(inner.Box.BackgroundColor.R, 1.0f));
+		Test.Assert(Near(inner.Box.BackgroundColor.A, 0.5f));
+		Test.Assert(Near(text.TextColor.R, 1.0f)); // color: currentColor is the inherited one
+		Test.Assert(Near(text.Box.BackgroundColor.R, 1.0f));
+		// A theme's retint reaches every currentColor.
+		WidgetFixtures.UseSheet(styles, ".outer { color: hsl(240, 100%, 50%); } .inner { background-color: currentColor; }");
+		styles.ApplyTree(root);
+		Test.Assert(Near(inner.Box.BackgroundColor.B, 1.0f));
+	}
 }

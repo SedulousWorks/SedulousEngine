@@ -323,4 +323,67 @@ class RoutingTests
 		d.InjectMouseUp(.(300.0f, 300.0f), .Left);
 		Test.Assert(d.Cursor == .Default);
 	}
+
+	[Test]
+	public static void KeysBubbleFromTheFocusAScrollerScrollsOnlyWhenItIsFocused()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let page = SceneFixtures.NewWidget(root, 0, 0, 300, 300, "page");
+		defer page.ReleaseRef();
+		let field = SceneFixtures.NewWidget(page, 10, 10, 100, 30, "field");
+		defer field.ReleaseRef();
+		field.TabFocusable = true;
+		int pageKeys = 0;
+		page.AddEventListener(.KeyDown, new [&] (e) => { pageKeys++; });
+		let d = root.EventDispatcher;
+		d.FocusNode = field;
+		Test.Assert(!d.InjectKeyDown((uint32)KeyCode.F5)); // nobody used it
+		Test.Assert(pageKeys == 1);
+
+		let scroller = new ScrollView();
+		defer scroller.ReleaseRef();
+		scroller.Size = .(100.0f, 100.0f);
+		root.AddChild(scroller);
+		let tall = SceneFixtures.NewWidget(scroller, 0, 0, 10, 400, "tall"); // what it scrolls over
+		defer tall.ReleaseRef();
+		let inside = SceneFixtures.NewWidget(scroller, 0, 0, 50, 20, "inside");
+		defer inside.ReleaseRef();
+		root.UpdateLayout();
+		inside.TabFocusable = true;
+		d.FocusNode = inside;
+		d.InjectKeyDown((uint32)KeyCode.PageDown);
+		Test.Assert(NodeFixtures.Near(scroller.ScrollOffset.Y, 0.0f)); // the key was the widget's to leave
+		d.FocusNode = scroller;
+		Test.Assert(d.InjectKeyDown((uint32)KeyCode.PageDown));
+		Test.Assert(scroller.ScrollOffset.Y > 0.0f);
+	}
+
+	[Test]
+	public static void TheWheelGoesUpFromThePointerAScrollerAtItsEndLeavesItToTheOneAroundIt()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let outer = new ScrollView();
+		defer outer.ReleaseRef();
+		outer.Size = .(200.0f, 200.0f);
+		root.AddChild(outer);
+		let outerTall = SceneFixtures.NewWidget(outer, 150, 0, 10, 800, "outer-tall");
+		defer outerTall.ReleaseRef();
+		let inner = new ScrollView();
+		defer inner.ReleaseRef();
+		inner.Size = .(100.0f, 100.0f);
+		outer.AddChild(inner);
+		let innerTall = SceneFixtures.NewWidget(inner, 0, 0, 10, 150, "inner-tall");
+		defer innerTall.ReleaseRef();
+		root.UpdateLayout();
+		let d = root.EventDispatcher;
+		Test.Assert(d.InjectMouseWheel(.(50.0f, 50.0f), .(0.0f, -10.0f)));
+		Test.Assert(inner.ScrollOffset.Y > 0.0f);
+		Test.Assert(NodeFixtures.Near(outer.ScrollOffset.Y, 0.0f));
+		for (int i = 0; i < 20; ++i) // to the inner one's end, and on
+			d.InjectMouseWheel(.(50.0f, 50.0f), .(0.0f, -10.0f));
+		Test.Assert(NodeFixtures.Near(inner.ScrollOffset.Y, inner.ScrollRange.Y));
+		Test.Assert(outer.ScrollOffset.Y > 0.0f);
+	}
 }

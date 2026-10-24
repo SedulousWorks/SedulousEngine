@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using Sedulous.Fonts.TrueType;
+using Sedulous.VFS;
 using Sedulous.GUI;
+using internal Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
 
@@ -62,5 +64,48 @@ class FontFaceTests
 		Test.Assert(asked[2] == "Brand=r.ttf");
 		styles.ApplyTree(root);
 		Test.Assert(asked.Count == 3); // not again for the same sheet
+	}
+
+	[Test]
+	public static void AFaceLoadedThroughTheHostDrawsTheLabelThatAsksForItsWeight()
+	{
+		let service = scope TrueTypeFontService();
+		TextFixtures.Load(service, "Brand", TextFixtures.cRoboto);
+		let dataRoot = FindDataRoot(.. scope String());
+		int loads = 0;
+		let styles = scope StyleManager();
+		styles.FontService = service;
+		styles.SetFontFaceLoader(new [&] (face, source) =>
+			{
+				++loads;
+				let path = DataPath(dataRoot, source, .. scope String());
+				return service.LoadFont(face, path) == .Success;
+			});
+		// The regular face the service has already is not asked for.
+		WidgetFixtures.UseSheet(styles, "@font-face { font-family: Brand; src: url(Assets/fonts/roboto/Roboto-Regular.ttf); }" +
+			"@font-face { font-family: Brand; src: url(Assets/fonts/roboto/Roboto-Bold.ttf); font-weight: bold; }" +
+			".text { font-family: Brand; font-size: 16px; font-weight: 700; }");
+		let scene = SceneFixtures.NewScene();
+		defer scene.ReleaseRef();
+		scene.Context.FontService = service;
+		let label = new Label();
+		defer label.ReleaseRef();
+		scene.AddChild(label);
+		label.AddClass("text");
+		label.Text = "Bold";
+		styles.ApplyTree(scene);
+
+		Test.Assert(loads == 1);
+		Test.Assert(label.GetTextStyle().Selection.Weight == 700);
+		Test.Assert(label.GetTextLayout().Font === service.GetFont("Brand", 16.0f));
+		Test.Assert(service.HasFamily("Brand Bold"));
+		let face = scope TextLayoutDetail.FaceChoice();
+		TextLayoutDetail.ChooseFace(service, "Brand", 700, false, face);
+		Test.Assert(face.Face == "Brand Bold");
+		Test.Assert(label.GetTextLayout().FontService === service);
+		let layout = label.GetTextLayout().LayoutFor(Rect(0.0f, 0.0f, 400.0f, 40.0f));
+		Test.Assert(!layout.GlyphRuns.IsEmpty);
+		Test.Assert(layout.GlyphRuns[0].Font === service.GetFont("Brand Bold", 16.0f));
+		Test.Assert(!layout.GlyphRuns[0].SyntheticBold);
 	}
 }

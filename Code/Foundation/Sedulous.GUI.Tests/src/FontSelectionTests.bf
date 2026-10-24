@@ -65,4 +65,93 @@ class FontSelectionTests
 		Test.Assert(face.SyntheticBold);
 		Test.Assert(face.SyntheticItalic);
 	}
+
+	/// Roboto's regular and bold faces, loaded under the names a family's faces take.
+	private static TrueTypeFontService LoadRoboto(TrueTypeFontService service)
+	{
+		TextFixtures.Load(service, "Roboto", TextFixtures.cRoboto);
+		TextFixtures.Load(service, "Roboto Bold", TextFixtures.cRobotoBold);
+		return service;
+	}
+
+	/// A label of class `text` in a panel of class `outer`, in a GUI over `faces`, styled by `css`.
+	/// The root (and the tree) go with the scene.
+	private class Scene
+	{
+		public SceneRoot Root = SceneFixtures.NewScene() ~ _.ReleaseRef();
+		public Sedulous.GUI.Panel Panel = new .() ~ _.ReleaseRef();
+		public Sedulous.GUI.Label Label = new .() ~ _.ReleaseRef();
+		public StyleManager Styles = new .() ~ delete _;
+
+		public this(TrueTypeFontService faces, StringView css)
+		{
+			Root.Context.FontService = faces;
+			Root.AddChild(Panel);
+			Panel.AddChild(Label);
+			Panel.AddClass("outer");
+			Label.AddClass("text");
+			Label.Text = "Words";
+			Styles.FontService = faces;
+			WidgetFixtures.UseSheet(Styles, css);
+			Styles.ApplyTree(Root);
+		}
+
+		public LaidOutGlyphs FirstRun
+		{
+			get
+			{
+				let layout = Label.GetTextLayout().LayoutFor(Rect(0.0f, 0.0f, 400.0f, 40.0f));
+				Test.Assert(!layout.GlyphRuns.IsEmpty);
+				return layout.GlyphRuns[0];
+			}
+		}
+	}
+
+	[Test]
+	public static void FontWeightInASheetDrawsALabelInTheFamilysBoldFace()
+	{
+		let faces = LoadRoboto(scope .());
+		let scene = scope Scene(faces, ".text { font-family: Roboto; font-size: 16px; font-weight: bold; }");
+		Test.Assert(scene.Label.GetTextStyle().Selection.Weight == 700);
+		let run = scene.FirstRun;
+		Test.Assert(run.Font === faces.GetFont("Roboto Bold", 16.0f));
+		Test.Assert(!run.SyntheticBold);
+		Test.Assert(!run.SyntheticItalic);
+	}
+
+	[Test]
+	public static void ALightWeightRobotoLacksFallsToTheRegularItalicItLacksIsSlanted()
+	{
+		let faces = LoadRoboto(scope .());
+		let scene = scope Scene(faces, ".text { font-family: Roboto; font-size: 16px; font-weight: 300; font-style: italic; }");
+		let run = scene.FirstRun;
+		Test.Assert(run.Font === faces.GetFont("Roboto", 16.0f));
+		Test.Assert(!run.SyntheticBold);
+		Test.Assert(run.SyntheticItalic);
+	}
+
+	[Test]
+	public static void WeightAndStyleInheritBolderAndLighterAreOfTheParents()
+	{
+		let faces = LoadRoboto(scope .());
+		let scene = scope Scene(faces, ".outer { font-family: Roboto; font-size: 16px; font-weight: 700; font-style: italic; }" +
+			".text { font-weight: bolder; }");
+		Test.Assert(scene.Label.GetTextStyle().Selection.Weight == 900);
+		Test.Assert(scene.Label.GetTextStyle().Selection.Italic);
+		WidgetFixtures.UseSheet(scene.Styles, ".outer { font-weight: 700; } .text { font-weight: lighter; }");
+		scene.Styles.ApplyTree(scene.Root);
+		Test.Assert(scene.Label.GetTextStyle().Selection.Weight == 400);
+		Test.Assert(!scene.Label.GetTextStyle().Selection.Italic);
+	}
+
+	[Test]
+	public static void CodesWeightIsPinnedOverTheSheets()
+	{
+		let faces = LoadRoboto(scope .());
+		let scene = scope Scene(faces, ".text { font-family: Roboto; font-size: 16px; font-weight: 300; }");
+		scene.Label.SetFontWeight(700);
+		scene.Styles.ApplyTree(scene.Root);
+		Test.Assert(scene.Label.GetTextStyle().Selection.Weight == 700);
+		Test.Assert(scene.FirstRun.Font === faces.GetFont("Roboto Bold", 16.0f));
+	}
 }

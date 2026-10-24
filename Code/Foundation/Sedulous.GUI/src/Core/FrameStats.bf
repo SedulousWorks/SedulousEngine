@@ -47,6 +47,40 @@ class FrameStats
 	/// How many frames this root has drawn through DrawFrame.
 	public uint64 FramesDrawn = 0;
 
+	/// Becomes a copy of `other`.
+	public void Set(FrameStats other)
+	{
+		Reasons = other.Reasons;
+		AnimatedNode.Set(other.AnimatedNode);
+		StyleMs = other.StyleMs;
+		Restyled = other.Restyled;
+		LayoutMs = other.LayoutMs;
+		LaidOut = other.LaidOut;
+		DrawMs = other.DrawMs;
+		NodesDrawn = other.NodesDrawn;
+		NodesCulled = other.NodesCulled;
+		Vertices = other.Vertices;
+		Commands = other.Commands;
+		FramesDrawn = other.FramesDrawn;
+	}
+
+	/// Back to a frame that has cost nothing yet.
+	public void Reset()
+	{
+		Reasons = .();
+		AnimatedNode.Clear();
+		StyleMs = 0.0;
+		Restyled = 0;
+		LayoutMs = 0.0;
+		LaidOut = 0;
+		DrawMs = 0.0;
+		NodesDrawn = 0;
+		NodesCulled = 0;
+		Vertices = 0;
+		Commands = 0;
+		FramesDrawn = 0;
+	}
+
 	/// One line: the phases' times and counts, then the reasons. In microseconds, which read
 	/// better than milliseconds here.
 	public void Describe(String outText)

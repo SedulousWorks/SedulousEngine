@@ -121,4 +121,31 @@ class FontFallbackTests
 			Test.Assert(run.Font === faces.GetFont("Roboto", 16.0f));
 		Test.Assert(TextFixtures.Near(layout.Lines[0].Baseline, faces.GetFont("Roboto", 16.0f).Font.Metrics.Ascent));
 	}
+
+	[Test]
+	public static void ASheetsFontFamilyListGivesALabelItsFontItsFallbacksAndDrawsArabic()
+	{
+		let faces = Faces(scope .());
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		root.Context.FontService = faces;
+		let label = new Label();
+		defer label.ReleaseRef();
+		root.AddChild(label);
+		label.AddClass("mixed");
+		label.Text = cMixed;
+		let styles = scope StyleManager();
+		styles.FontService = faces;
+		WidgetFixtures.UseSheet(styles, ".mixed { font-family: \"Nope\", Roboto, 'DejaVu'; font-size: 16px; }");
+		styles.ApplyTree(root);
+
+		Test.Assert(label.GetTextStyle().FontFamily == "Roboto");
+		Test.Assert(label.GetTextStyle().Selection.FallbackFamilies == "DejaVu");
+		Test.Assert(label.Font === faces.GetFont("Roboto", 16.0f));
+		let layout = label.GetTextLayout().LayoutFor(Rect(0.0f, 0.0f, 400.0f, 40.0f));
+		let arabic = RunOf(layout, 3, 11);
+		Test.Assert(arabic != null);
+		Test.Assert(arabic.Font === faces.GetFont("DejaVu", 16.0f));
+		Test.Assert(AllDrawn(arabic));
+	}
 }

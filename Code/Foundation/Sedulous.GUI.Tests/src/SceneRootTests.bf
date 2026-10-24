@@ -111,4 +111,31 @@ class SceneRootTests
 		Test.Assert(leaf.SceneRoot == null); // in no GUI now
 		Test.Assert(leaf.RootNode == mid); // the detached subtree's top
 	}
+
+	[Test]
+	public static void MediaQueriesSeeTheRootsLogicalSizeAndItsDensity()
+	{
+		let sheet = scope StyleSheet();
+		CSSParser.Parse("@media (min-resolution: 2dppx) { label { opacity: 0.5; } } " +
+			"@media (max-width: 500) { label { color: red; } }", sheet);
+		let dense = SceneFixtures.NewScene();
+		defer dense.ReleaseRef();
+		dense.ViewportSize = .(800.0f, 600.0f);
+		dense.DisplayScale = 2.0f;
+		let label = new Label();
+		defer label.ReleaseRef();
+		dense.AddChild(label);
+		let atDense = scope ResolvedStyle();
+		sheet.Resolve(label, dense.MediaContext, atDense);
+		Test.Assert(atDense.Has("opacity")); // 192 dpi >= 2dppx
+		Test.Assert(atDense.Has("color")); // 400 logical <= 500
+
+		let standard = SceneFixtures.NewScene();
+		defer standard.ReleaseRef();
+		standard.ViewportSize = .(800.0f, 600.0f);
+		let atStandard = scope ResolvedStyle();
+		sheet.Resolve(label, standard.MediaContext, atStandard);
+		Test.Assert(!atStandard.Has("opacity"));
+		Test.Assert(!atStandard.Has("color")); // 800 logical
+	}
 }

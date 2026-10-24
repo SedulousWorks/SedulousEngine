@@ -52,52 +52,6 @@ namespace
     };
 }
 
-TEST_CASE("separator: in a column it lies across the column; in a row it stands the row's height")
-{
-    Bed column(FlexDirection::Column);
-    Fixed(*column.line, 50.0f, 20.0f);
-    auto across = Make<Separator>();
-    column.line->AddChild(across.Get());
-    (void)column.root->UpdateLayout();
-    CHECK_FALSE(across->IsVertical());
-    CHECK(across->GetSize().x == doctest::Approx(200.0f));
-    CHECK(across->GetSize().y == doctest::Approx(1.0f));
-
-    Bed row(FlexDirection::Row);
-    Fixed(*row.line, 50.0f, 20.0f);
-    auto up = Make<Separator>();
-    up->SetThickness(2.0f);
-    row.line->AddChild(up.Get());
-    (void)row.root->UpdateLayout();
-    CHECK(up->IsVertical());
-    CHECK(up->GetSize().x == doctest::Approx(2.0f));
-    CHECK(up->GetSize().y == doctest::Approx(100.0f)); // stretched, though the row centres its items
-}
-
-TEST_CASE("spacer: flexible it takes the room left; sized it holds its length")
-{
-    Bed row(FlexDirection::Row);
-    Fixed(*row.line, 40.0f, 20.0f);
-    auto gap = Make<Spacer>();
-    row.line->AddChild(gap.Get());
-    auto last = Fixed(*row.line, 40.0f, 20.0f);
-    (void)row.root->UpdateLayout();
-    CHECK(gap->GetSize().x == doctest::Approx(120.0f));
-    CHECK(last->GetPosition().x == doctest::Approx(160.0f)); // pushed to the end
-
-    gap->SetSpace(12.0f);
-    (void)row.root->UpdateLayout();
-    CHECK(gap->GetSize().x == doctest::Approx(12.0f));
-    CHECK(last->GetPosition().x == doctest::Approx(52.0f));
-
-    Bed column(FlexDirection::Column);
-    auto tall = Make<Spacer>();
-    tall->SetSpace(30.0f);
-    column.line->AddChild(tall.Get());
-    (void)column.root->UpdateLayout();
-    CHECK(tall->GetSize().y == doctest::Approx(30.0f));
-}
-
 TEST_CASE("separator and spacer: markup and sheets set thickness and size")
 {
     RegisterGuiElements();

@@ -6,7 +6,7 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
 
-/// A widget with a tooltip whose content is a probe (Node's own default makes none).
+/// A widget with a tooltip whose content is a probe, in place of the Tooltip Node makes by default.
 class TipWidget : UIWidget
 {
 	public override Node CreateTooltipContent(StringView text)

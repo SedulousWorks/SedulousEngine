@@ -44,16 +44,24 @@ class TweenBed
 	public float Red => Widget.Box.BackgroundColor.R;
 }
 
-/// A GUI whose data holds `score` (0, a whole number), and a widget to run a group on. (Raptor's
-/// bed binds a label to the score; the tests here read the data itself.) The root goes with it.
+/// A GUI whose data holds `score` (0, a whole number), and a label bound to it. The root goes with
+/// it.
 class TweenDataBed
 {
 	public SceneRoot Root = SceneFixtures.NewScene() ~ _.ReleaseRef();
-	public UIWidget Holder = new .() ~ _.ReleaseRef();
+	public Sedulous.GUI.Label Label = new .() ~ _.ReleaseRef();
 
 	public this()
 	{
-		Root.AddChild(Holder);
+		Root.AddChild(Label);
+		let shown = Label;
+		let gui = Root.Context;
+		Label.Bind(new () =>
+			{
+				let text = scope String();
+				FormatVariant(gui.Data.Get("score"), text);
+				shown.Text = text;
+			});
 		Data.Set("score", System.Variant.Create((int32)0));
 		Frame(0.0);
 	}
@@ -465,7 +473,7 @@ class TweenTests
 		let count = bed.Root.Context.CreateDataTween("score", 10.0, 0.5f, "linear");
 		defer count.ReleaseRef();
 		sequence.Wait(0.5f).Add(count);
-		bed.Holder.Play(sequence);
+		bed.Label.Play(sequence);
 		bed.Frame(0.5);
 		Test.Assert(bed.Score == 0);
 		bed.Frame(0.25);
@@ -493,5 +501,82 @@ class TweenTests
 			Test.Assert(now == (double)(int64)now); // never a fraction
 		}
 		Test.Assert(NodeFixtures.Near((float)gui.Data.Peek("points").Get<double>(), 100.0f));
+	}
+
+	[Test]
+	public static void AReflectedPropertyMovesThroughItsAccessorsAsCodes()
+	{
+		let bed = scope TweenBed("box { }");
+		let slider = new Slider();
+		defer slider.ReleaseRef();
+		slider.Max = 100.0f;
+		let label = new Label();
+		defer label.ReleaseRef();
+		bed.Root.AddChild(slider);
+		bed.Root.AddChild(label);
+		let value = slider.Animate("value", "80", 1.0f, "linear");
+		defer value.ReleaseRef();
+		slider.Value = 20.0f; // the start is the value it has at its first frame
+		let colour = label.Animate("textColor", "#ffffff", 1.0f, "linear");
+		defer colour.ReleaseRef();
+		colour.From("#000000");
+		let x = label.Animate("x", "40", 1.0f, "linear");
+		defer x.ReleaseRef();
+		bed.Frame(0.5);
+		Test.Assert(!value.MovesStyle);
+		Test.Assert(Near((float)slider.Value, 50.0f));
+		Test.Assert(Near(label.TextColor.R, 0.5f));
+		Test.Assert(Near(label.X, 20.0f));
+		bed.Frame(0.5);
+		Test.Assert(Near((float)slider.Value, 80.0f));
+		// A name nothing has: the tween ends at once, touching nothing.
+		let nothing = label.Animate("no-such-thing", "1", 1.0f);
+		defer nothing.ReleaseRef();
+		bed.Frame(0.1);
+		Test.Assert(nothing.IsDone);
+	}
+
+	[Test]
+	public static void ASpringMovesAReflectedPropertyAndRunsAsAGroupsStep()
+	{
+		let bed = scope TweenBed("box { }");
+		let slider = new Slider();
+		defer slider.ReleaseRef();
+		slider.Max = 100.0f;
+		bed.Root.AddChild(slider);
+		let spring = slider.SpringTo("value", "60");
+		defer spring.ReleaseRef();
+		for (int i = 0; (i < 600) && !spring.IsDone; ++i)
+			bed.Frame(1.0 / 60.0);
+		Test.Assert(Math.Abs(slider.Value - 60.0) < 1.2e-5 * 61.0);
+
+		let sequence = new TweenSequence();
+		defer sequence.ReleaseRef();
+		let step = bed.Widget.CreateTween("opacity", "0", 0.0f);
+		defer step.ReleaseRef();
+		step.Spring(400.0f, 40.0f);
+		bool after = false;
+		sequence.Add(step).Call(new [&] () => { after = true; });
+		bed.Widget.RunAction(sequence);
+		for (int i = 0; (i < 600) && !sequence.IsDone; ++i)
+			bed.Frame(1.0 / 60.0);
+		Test.Assert(after);
+		Test.Assert(Near(bed.Widget.Alpha, 0.0f));
+	}
+
+	[Test]
+	public static void ADataValueCountsUpWithNoWidgetToDriveItInItsOwnTypeAndABoundLabelFollows()
+	{
+		let bed = scope TweenDataBed();
+		let tween = bed.Root.Context.AnimateData("score", 1500.0, 1.0f, "linear");
+		defer tween.ReleaseRef();
+		Test.Assert(tween.MovesData);
+		bed.Frame(0.25);
+		Test.Assert(bed.Score == 375); // a whole number stays one
+		Test.Assert(bed.Label.Text == "375");
+		bed.Frame(0.75);
+		Test.Assert(bed.Score == 1500);
+		Test.Assert(bed.Label.Text == "1500");
+		Test.Assert(tween.IsDone);
 	}
 }
