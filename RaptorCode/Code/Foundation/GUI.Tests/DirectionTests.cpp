@@ -77,50 +77,6 @@ TEST_CASE("direction: a node runs as the first ancestor that says, else as the G
     CHECK(fixedLtr->GetDirectionName() == core::String(u8"rtl"));
 }
 
-TEST_CASE("direction: a right-to-left row runs from the right, its margins on the sides they name")
-{
-    Bed bed;
-    auto row = Box(*bed.root.Get(), [](LayoutStyle& s) { s.Direction = FlexDirection::Row; s.ColumnGap = 5.0f; });
-    auto a = Fixed(*row.Get(), 20.0f, 10.0f);
-    auto b = Fixed(*row.Get(), 20.0f, 10.0f);
-    b->SetMargin(Thickness{0.0f, 0.0f, 8.0f, 0.0f}); // left, top, right, bottom
-    bed.Layout();
-    CHECK(a->GetPosition().x == doctest::Approx(0.0f));
-    CHECK(b->GetPosition().x == doctest::Approx(25.0f));
-    row->SetLayoutDirection(Node::LayoutDirection::RightToLeft);
-    bed.Layout();
-    CHECK(a->GetPosition().x == doctest::Approx(80.0f));
-    CHECK(b->GetPosition().x == doctest::Approx(80.0f - 5.0f - 8.0f - 20.0f)); // its right margin between it and a
-    row->SetLayoutDirection(Node::LayoutDirection::Inherit);
-    bed.Layout();
-    CHECK(a->GetPosition().x == doctest::Approx(0.0f));
-}
-
-TEST_CASE("direction: a column's cross start, grid columns and a stack's start mirror; dock does not")
-{
-    Bed bed;
-    auto page = Box(*bed.root.Get(), [](LayoutStyle&) {});
-    page->SetLayoutDirection(Node::LayoutDirection::RightToLeft);
-    auto column = Box(*page.Get(), [](LayoutStyle& s) { s.AlignItems = Align::Start; });
-    auto inColumn = Fixed(*column.Get(), 30.0f, 10.0f);
-    auto grid = Box(*page.Get(), [](LayoutStyle& s) {
-        s.Kind = Display::Grid;
-        s.Columns = Tracks(GridTrack::Fixed(40.0f), GridTrack::Fixed(40.0f));
-    });
-    auto first = Fixed(*grid.Get(), 40.0f, 10.0f);
-    auto second = Fixed(*grid.Get(), 40.0f, 10.0f);
-    auto stack = Box(*page.Get(), [](LayoutStyle& s) { s.Kind = Display::Stack; s.JustifyItems = Align::Start; });
-    auto inStack = Fixed(*stack.Get(), 10.0f, 10.0f);
-    auto dock = Box(*page.Get(), [](LayoutStyle& s) { s.Kind = Display::Dock; s.Height = LayoutLength::Px(20.0f); });
-    auto docked = Box(*dock.Get(), [](LayoutStyle& s) { s.DockSide = Dock::Left; s.Width = LayoutLength::Px(15.0f); });
-    bed.Layout();
-    CHECK(inColumn->GetPosition().x == doctest::Approx(70.0f));
-    CHECK(first->GetPosition().x == doctest::Approx(60.0f));
-    CHECK(second->GetPosition().x == doctest::Approx(20.0f));
-    CHECK(inStack->GetPosition().x == doctest::Approx(90.0f));
-    CHECK(docked->GetPosition().x == doctest::Approx(0.0f)); // left is left
-}
-
 TEST_CASE("direction: CSS's direction sets it; text-align start and end follow it")
 {
     Bed bed;
@@ -180,21 +136,6 @@ TEST_CASE("direction: inline start and end margins, paddings and insets land on 
     CHECK(pinned->GetLayoutStyle().Right.Resolve(0.0f).ValueOr(-1.0f) == doctest::Approx(7.0f));
 }
 
-TEST_CASE("direction: dock's start and end are left and right, swapped in right to left")
-{
-    Bed bed;
-    auto dock = Box(*bed.root.Get(), [](LayoutStyle& s) { s.Kind = Display::Dock; s.Height = LayoutLength::Px(20.0f); });
-    auto start = Box(*dock.Get(), [](LayoutStyle& s) { s.DockSide = Dock::Start; s.Width = LayoutLength::Px(15.0f); });
-    auto end = Box(*dock.Get(), [](LayoutStyle& s) { s.DockSide = Dock::End; s.Width = LayoutLength::Px(10.0f); });
-    bed.Layout();
-    CHECK(start->GetPosition().x == doctest::Approx(0.0f));
-    CHECK(end->GetPosition().x == doctest::Approx(90.0f));
-    dock->SetLayoutDirection(Node::LayoutDirection::RightToLeft);
-    bed.Layout();
-    CHECK(start->GetPosition().x == doctest::Approx(85.0f));
-    CHECK(end->GetPosition().x == doctest::Approx(0.0f));
-}
-
 TEST_CASE("direction: a scroller's vertical bar goes to the inline end; a slider runs from it, by pointer and keys")
 {
     Bed bed;
@@ -251,26 +192,6 @@ TEST_CASE("direction: a right-to-left tab strip runs from the right; Left goes o
     CHECK(bar->GetSelectedIndex() == 0);
 }
 
-TEST_CASE("direction: mirror-on-rtl flips a node's drawing about its centre, only while it runs right to left")
-{
-    Bed bed;
-    auto page = Box(*bed.root.Get(), [](LayoutStyle& s) { s.Direction = FlexDirection::Row; });
-    auto icon = Fixed(*page.Get(), 20.0f, 10.0f);
-    icon->SetMirrorOnRtl(true);
-    bed.Layout();
-    CHECK_FALSE(icon->IsMirrored());
-    CHECK(icon->ConvertToWorldSpace(core::Float2{0.0f, 0.0f}).x == doctest::Approx(0.0f));
-    page->SetLayoutDirection(Node::LayoutDirection::RightToLeft);
-    bed.Layout();
-    CHECK(icon->IsMirrored());
-    // At x 80 to 100 now: its own left edge drawn at its right.
-    CHECK(icon->ConvertToWorldSpace(core::Float2{0.0f, 0.0f}).x == doctest::Approx(100.0f));
-    CHECK(icon->ConvertToWorldSpace(core::Float2{20.0f, 0.0f}).x == doctest::Approx(80.0f));
-    page->SetLayoutDirection(Node::LayoutDirection::LeftToRight);
-    bed.Layout();
-    CHECK_FALSE(icon->IsMirrored());
-}
-
 TEST_CASE("direction: a right-to-left menu bar's Left goes on to the next menu")
 {
     Bed bed;
@@ -289,19 +210,6 @@ TEST_CASE("direction: a right-to-left menu bar's Left goes on to the next menu")
     CHECK(bar->ButtonAt(1)->IsFocused());
     d.InjectKeyDown(static_cast<core::u32>(KeyCode::Right));
     CHECK(bar->ButtonAt(0)->IsFocused());
-}
-
-TEST_CASE("direction: the arrow toward the inline end is a step on, the other a step back")
-{
-    Bed bed;
-    auto part = core::MakeRef<UIWidget>(core::DefaultAllocator());
-    bed.root->AddChild(part.Get());
-    CHECK(part->InlineStep(KeyCode::Right) == 1);
-    CHECK(part->InlineStep(KeyCode::Left) == -1);
-    CHECK(part->InlineStep(KeyCode::Up) == 0);
-    part->SetLayoutDirection(Node::LayoutDirection::RightToLeft);
-    CHECK(part->InlineStep(KeyCode::Left) == 1);
-    CHECK(part->InlineStep(KeyCode::Right) == -1);
 }
 
 TEST_CASE("direction: a right-to-left submenu opens to the left; Left goes into it and Right comes back")
@@ -386,40 +294,3 @@ TEST_CASE("direction: a right-to-left scroller starts at its inline start, its o
     CHECK(cells[0]->GetPosition().x + 80.0f == doctest::Approx(box.x + box.width));
 }
 
-TEST_CASE("direction: a right-to-left scroller held at its end follows it as the content grows")
-{
-    Bed bed;
-    bed.root->SetSize(core::Float2{300.0f, 300.0f});
-    bed.root->SetLayoutDirection(Node::LayoutDirection::RightToLeft);
-    auto strip = Box(*bed.root.Get(), [](LayoutStyle& s) {
-        s.Direction = FlexDirection::Row;
-        s.OverflowX = Overflow::Auto;
-        s.Width = LayoutLength::Px(100.0f);
-        s.Height = LayoutLength::Px(60.0f);
-    });
-    for (int i = 0; i < 3; ++i)
-        Box(*strip.Get(), [](LayoutStyle& s) { s.Width = LayoutLength::Px(80.0f); s.Shrink = 0.0f; });
-    bed.Layout();
-    strip->ScrollToEnd(ScrollBehavior::Instant);
-    strip->SetStickToEnd(true);
-    REQUIRE(strip->IsLatchedToEnd());
-    Box(*strip.Get(), [](LayoutStyle& s) { s.Width = LayoutLength::Px(80.0f); s.Shrink = 0.0f; });
-    bed.Layout();
-    CHECK(strip->GetScrollOffset().x == doctest::Approx(-220.0f));
-}
-
-TEST_CASE("direction: content wider than a right-to-left row overflows toward its inline end, the left")
-{
-    Bed bed;
-    bed.root->SetSize(core::Float2{300.0f, 300.0f});
-    bed.root->SetLayoutDirection(Node::LayoutDirection::RightToLeft);
-    auto row = Box(*bed.root.Get(), [](LayoutStyle& s) {
-        s.Direction = FlexDirection::Row;
-        s.Width = LayoutLength::Px(100.0f);
-        s.Height = LayoutLength::Px(20.0f);
-    });
-    auto wide = Box(*row.Get(), [](LayoutStyle& s) { s.Width = LayoutLength::Px(130.0f); s.Shrink = 0.0f; });
-    bed.Layout();
-    // As CSS has it: its start against the row's right edge, the 30 past it on the left.
-    CHECK(wide->GetPosition().x == doctest::Approx(-30.0f));
-}

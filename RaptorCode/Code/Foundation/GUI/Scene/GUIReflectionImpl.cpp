@@ -191,92 +191,9 @@ namespace foundation::gui
                     return found;
             return nullptr;
         }
-
-        // The element registry: type knowledge, one per process (an implementation unit's static,
-        // the shared-library rendezvous rule).
-        struct RegisteredElement
-        {
-            String tag;
-            const TypeInfo* type = nullptr;
-        };
-        Array<RegisteredElement>& RegisteredElements()
-        {
-            static Array<RegisteredElement> elements;
-            return elements;
-        }
-    }
-
-    // === The element registry ===
-
-    StringView ElementTypes::TagOf(const TypeInfo& type)
-    {
-        return TypeAttrString(type, "element", StringView(reinterpret_cast<const char8_t*>(type.name)));
-    }
-
-    bool ElementTypes::Register(const TypeInfo& type)
-    {
-        const StringView tag = TagOf(type);
-        if (!DerivesFrom(&type, Node::StaticType()) || type.creator == nullptr)
-        {
-            LOG_ERROR(u8"GUI", u8"'{}' is not an element type: a reflected Node type with a creator", tag);
-            return false;
-        }
-        for (const RegisteredElement& element : RegisteredElements())
-        {
-            if (element.tag.AsView() != tag)
-                continue;
-            if (element.type == &type)
-                return true; // registered already
-            LOG_ERROR(u8"GUI", u8"the element tag '{}' is taken by another type ({}); not registered", tag,
-                      StringView(reinterpret_cast<const char8_t*>(element.type->namespaceName)));
-            return false;
-        }
-        RegisteredElements().PushBack(RegisteredElement{String(tag), &type});
-        GlobalTypeRegistry().Register(type); // scripts reach what markup creates
-        return true;
-    }
-
-    void ElementTypes::Unregister(const TypeInfo& type)
-    {
-        Array<RegisteredElement>& elements = RegisteredElements();
-        for (usize i = 0; i < elements.Size(); ++i)
-        {
-            if (elements[i].type == &type)
-            {
-                elements.RemoveAt(i);
-                return;
-            }
-        }
-    }
-
-    const TypeInfo* ElementTypes::Find(StringView tag)
-    {
-        for (const RegisteredElement& element : RegisteredElements())
-            if (element.tag.AsView() == tag)
-                return element.type;
-        return nullptr;
-    }
-
-    void ElementTypes::ForEach(const Function<void(StringView, const TypeInfo&)>& visit)
-    {
-        for (const RegisteredElement& element : RegisteredElements())
-            visit(element.tag.AsView(), *element.type);
     }
 
     // === Weak references ===
-
-    Node::ElementRef Node::TakeElementRef()
-    {
-        if (!m_elementTable)
-        {
-            ElementTable* table = GetElementTable();
-            if (table == nullptr)
-                return ElementRef{};
-            m_elementTable = RefPtr<ElementTable>(table);
-            m_elementSlot = table->Take(*this);
-        }
-        return ElementRef{m_elementTable.Get(), m_elementSlot, m_elementTable->Generation(m_elementSlot)};
-    }
 
     core::Variant Node::HandleAs(const TypeInfo& type)
     {
@@ -834,39 +751,7 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(Node, "rtti::gui")
     {
-        builder.AccessorProperty<&Node::GetX, &Node::SetX>("x");
-        builder.AccessorProperty<&Node::GetY, &Node::SetY>("y");
-        builder.AccessorProperty<&Node::GetWidth, &Node::SetWidth>("width");
-        builder.AccessorProperty<&Node::GetHeight, &Node::SetHeight>("height");
-        builder.AccessorProperty<&Node::IsVisible, &Node::SetVisible>("visible"); // hidden keeps its place
-        builder.AccessorProperty<&Node::GetDropTypes, &Node::SetDropTypes>("dropTypes").PropAttribute("css", core::String(u8"drop-types"));
-        builder.AccessorProperty<&Node::IsDisplayed, &Node::SetDisplayed>("displayed"); // out of the layout when false
-        builder.AccessorProperty<&Node::IsEnabled, &Node::SetEnabled>("enabled");
-        builder.AccessorProperty<&Node::GetAlpha, &Node::SetAlpha>("opacity");
-        builder.AccessorProperty<&Node::IsStickToEnd, &Node::SetStickToEnd>("stickToEnd").PropAttribute("css", core::String(u8"stick-to-end"));
-        // Navigation (G7): reflected with their CSS names, so a sheet, markup and a script set them.
-        builder.AccessorProperty<&Node::GetNavUp, &Node::SetNavUp>("navUp").PropAttribute("css", core::String(u8"nav-up"));
-        builder.AccessorProperty<&Node::GetNavDown, &Node::SetNavDown>("navDown").PropAttribute("css", core::String(u8"nav-down"));
-        builder.AccessorProperty<&Node::GetNavLeft, &Node::SetNavLeft>("navLeft").PropAttribute("css", core::String(u8"nav-left"));
-        builder.AccessorProperty<&Node::GetNavRight, &Node::SetNavRight>("navRight").PropAttribute("css", core::String(u8"nav-right"));
-        builder.AccessorProperty<&Node::GetNavNext, &Node::SetNavNext>("navNext").PropAttribute("css", core::String(u8"nav-next"));
-        builder.AccessorProperty<&Node::GetNavPrevious, &Node::SetNavPrevious>("navPrev").PropAttribute("css", core::String(u8"nav-prev"));
-        builder.AccessorProperty<&Node::GetNavScopeName, &Node::SetNavScopeName>("navScope").PropAttribute("css", core::String(u8"nav-scope"));
-        builder.AccessorProperty<&Node::GetDefaultFocusId, &Node::SetDefaultFocusId>("navDefault").PropAttribute("css", core::String(u8"nav-default"));
-        builder.AccessorProperty<&Node::GetTabIndex, &Node::SetTabIndex>("tabIndex").PropAttribute("css", core::String(u8"tab-index"));
-        builder.AccessorProperty<&Node::IsFocusGroup, &Node::SetFocusGroup>("focusGroup").PropAttribute("css", core::String(u8"focus-group"));
-        builder.AccessorProperty<&Node::GetTabCaptures, &Node::SetTabCaptures>("tabCaptures").PropAttribute("css", core::String(u8"tab-captures"));
         builder.AccessorProperty<&Node::GetCommand, &Node::SetCommand>("command").PropAttribute("css", core::String(u8"command"));
-        builder.AccessorProperty<&Node::GetKeyContext, &Node::SetKeyContext>("keyContext").PropAttribute("css", core::String(u8"key-context"));
-        builder.AccessorProperty<&Node::GetPointerEvents, &Node::SetPointerEvents>("pointerEvents").PropAttribute("css", core::String(u8"pointer-events"));
-        builder.AccessorProperty<&Node::GetCursorName, &Node::SetCursorName>("cursor").PropAttribute("css", core::String(u8"cursor"));
-        builder.AccessorProperty<&Node::GetTouchActionName, &Node::SetTouchActionName>("touchAction").PropAttribute("css", core::String(u8"touch-action"));
-        builder.AccessorProperty<&Node::GetAutoTranslateName, &Node::SetAutoTranslateName>("autoTranslate")
-            .PropAttribute("css", core::String(u8"auto-translate"));
-        builder.AccessorProperty<&Node::GetLang, &Node::SetLang>("lang").PropAttribute("css", core::String(u8"lang"));
-        builder.AccessorProperty<&Node::GetDirectionName, &Node::SetDirectionName>("direction");
-        builder.AccessorProperty<&Node::GetMirrorOnRtl, &Node::SetMirrorOnRtl>("mirrorOnRtl")
-            .PropAttribute("css", core::String(u8"mirror-on-rtl"));
         builder.Method<&Node::AddElement, Node>("add");
         builder.Method<&Node::FindElement, Node>("find");
         builder.Method<&Node::ParentElement, Node>("parent");

@@ -4,9 +4,10 @@ namespace Sedulous.GUI;
 
 // Action: the base of what runs on a GUI's clock (the tweens, a widget's TickAction). Ported from
 // eepp's Scene::Action (include/eepp/scene/action.hpp): an abstract lifecycle (Start/Stop/Update/
-// IsDone) driven by the ActionManager, with a tag, an id and an OnDone callback. Reference
-// counted: the manager holds a reference to each action it runs, and whoever made one releases
-// its own.
+// IsDone) driven by the ActionManager, with a target, a tag, an id and an OnDone callback.
+// Reference counted: the manager holds a reference to each action it runs, and whoever made one
+// releases its own. The target is not owned: a node destroyed mid-animation takes its actions
+// with it through the weak hold Node.RunAction gives them.
 
 enum ActionType
 {
@@ -20,9 +21,31 @@ abstract class Action : RefCounted
 {
 	public typealias Callback = delegate void(Sedulous.GUI.Action action);
 
+	/// A weak hold on the target, resolved through its GUI's element table (Node.RunAction sets
+	/// it): an action whose target is gone is dropped rather than run on freed memory.
+	public struct WeakTarget
+	{
+		public ElementTable Table = null;
+		public uint32 Slot = 0;
+		public uint32 Generation = 0;
+		public function Node(WeakTarget weak) Resolve = null;
+
+		public this() { }
+
+		public this(ElementTable table, uint32 slot, uint32 generation, function Node(WeakTarget weak) resolve)
+		{
+			Table = table;
+			Slot = slot;
+			Generation = generation;
+			Resolve = resolve;
+		}
+	}
+
 	private Callback mOnDone ~ delete _;
 	private uint64 mId = 0;
 	private uint64 mTag = 0;
+	private Node mTarget = null; // not owned; read through ResolveTarget when held weakly
+	private WeakTarget mWeak = .();
 
 	public abstract void Start();
 	public abstract void Stop();
@@ -52,6 +75,25 @@ abstract class Action : RefCounted
 		get => mTag;
 		set => mTag = value;
 	}
+
+	/// The node it acts on (not owned).
+	public Node Target
+	{
+		get => mTarget;
+		set
+		{
+			mTarget = value;
+			OnTargetChange();
+		}
+	}
+
+	public void SetWeakTarget(WeakTarget weak)
+	{
+		mWeak = weak;
+	}
+
+	/// The target when it is alive (or when none was held weakly), null once it is gone.
+	public Node ResolveTarget() => (mWeak.Resolve != null) ? mWeak.Resolve(mWeak) : mTarget;
 
 	/// OWNERSHIP of `callback` transfers (one set before is deleted).
 	public void SetOnDone(Callback callback)

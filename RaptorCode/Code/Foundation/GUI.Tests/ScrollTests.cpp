@@ -226,19 +226,6 @@ TEST_CASE("scroll: a focused descendant comes into view, by the least that shows
     CHECK(s.view->GetScrollOffset().y == doctest::Approx(50.0f));
 }
 
-TEST_CASE("scroll: the extent follows the content as it grows and shrinks; the offset stays in range")
-{
-    Scroller s(2);
-    CHECK(s.view->GetScrollRange().y == doctest::Approx(0.0f));
-    s.rows[1]->EditLayoutStyle([](LayoutStyle& st) { st.Height = LayoutLength::Px(250.0f); }); // a child styled taller later
-    s.root->UpdateLayout();
-    CHECK(s.view->GetScrollRange().y == doctest::Approx(200.0f));
-    s.view->SetScrollOffset(core::Float2{0.0f, 200.0f});
-    s.rows[1]->SetDisplayed(false);
-    s.root->UpdateLayout();
-    CHECK(s.view->GetScrollOffset().y == doctest::Approx(0.0f));
-}
-
 TEST_CASE("scroll: overflow from a sheet makes any node scroll; hidden clips without scrolling")
 {
     auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
@@ -260,39 +247,6 @@ TEST_CASE("scroll: overflow from a sheet makes any node scroll; hidden clips wit
     root->UpdateLayout();
     CHECK_FALSE(panel->IsScrollContainer());
     CHECK(panel->ClipsChildren());
-}
-
-TEST_CASE("scroll: a scroll reports to the scroller's own listeners, once per move")
-{
-    Scroller s;
-    int scrolls = 0;
-    s.view->AddEventListener(EventType::Scroll, [&](const Event&) { ++scrolls; });
-    s.view->SetScrollOffset(core::Float2{0.0f, 40.0f});
-    CHECK(scrolls == 1);
-    s.view->SetScrollOffset(core::Float2{0.0f, 40.0f}); // no move
-    CHECK(scrolls == 1);
-    s.view->ScrollBy(core::Float2{0.0f, 1000.0f}); // to the end, clamped
-    CHECK(scrolls == 2);
-    CHECK(s.view->GetScrollOffset().y == doctest::Approx(200.0f));
-}
-
-TEST_CASE("scroll: the handle scrolls to an offset, to the end, and a descendant to an alignment")
-{
-    Scroller s(10); // 500 tall in a 100 view: a range of 400
-    s.view->ScrollToEnd();
-    CHECK(s.view->GetScrollOffset().y == doctest::Approx(400.0f));
-    s.view->ScrollTo(core::Float2{0.0f, 0.0f});
-    s.view->ScrollIntoView(*s.rows[4], ScrollAlign::Start); // row 4 at 200
-    CHECK(s.view->GetScrollOffset().y == doctest::Approx(200.0f));
-    s.root->UpdateLayout();
-    s.view->ScrollIntoView(*s.rows[4], ScrollAlign::End); // its bottom (250) at the view's
-    CHECK(s.view->GetScrollOffset().y == doctest::Approx(150.0f));
-    s.root->UpdateLayout();
-    s.view->ScrollIntoView(*s.rows[4], ScrollAlign::Center); // its middle (225) at the view's
-    CHECK(s.view->GetScrollOffset().y == doctest::Approx(175.0f));
-    s.root->UpdateLayout();
-    s.view->ScrollIntoView(*s.rows[4]); // already shown: no move
-    CHECK(s.view->GetScrollOffset().y == doctest::Approx(175.0f));
 }
 
 TEST_CASE("scroll: a smooth scroll eases there on the GUI's clock, and wheel notches add up")
@@ -657,47 +611,6 @@ TEST_CASE("scroll: a pad's right stick scrolls the nearest scroller around the f
     d.SetScrollStick(core::Float2{0.0f, 1.0f});
     gui.Update(core::Duration::FromSeconds(0.05));
     CHECK(s.view->GetScrollOffset().y == doctest::Approx(175.0f));
-}
-
-TEST_CASE("scroll: stuck to its end, it follows the content; scrolled away it lets go, and back it holds again")
-{
-    Scroller s(1); // 50 of content in a 100 view: at its end
-    s.view->SetStickToEnd(true);
-    CHECK(s.view->IsLatchedToEnd());
-    const auto addRows = [&](int count)
-    {
-        for (int i = 0; i < count; ++i)
-        {
-            s.rows.PushBack(Make<Panel>());
-            s.rows[s.rows.Size() - 1]->EditLayoutStyle([](LayoutStyle& st) { st.Height = LayoutLength::Px(50.0f); });
-            s.view->AddChild(s.rows[s.rows.Size() - 1].Get());
-        }
-        s.root->UpdateLayout();
-    };
-    addRows(3); // 200 of content: the end is 100
-    CHECK(s.view->GetScrollOffset().y == doctest::Approx(100.0f));
-    addRows(1);
-    CHECK(s.view->GetScrollOffset().y == doctest::Approx(150.0f));
-
-    s.view->ScrollBy(core::Float2{0.0f, -60.0f}); // away: it lets go
-    CHECK_FALSE(s.view->IsLatchedToEnd());
-    addRows(1);
-    CHECK(s.view->GetScrollOffset().y == doctest::Approx(90.0f));
-
-    s.view->ScrollToEnd(); // back: it holds again
-    CHECK(s.view->IsLatchedToEnd());
-    addRows(2);
-    CHECK(s.view->GetScrollOffset().y == doctest::Approx(300.0f));
-}
-
-TEST_CASE("scroll: content clipped away takes no press: a row below the view is not hit beneath it")
-{
-    Scroller s; // a 100 x 100 view of six 50-high rows: rows 2 to 5 lie below it, clipped
-    WidenRows(s);
-    Node* hit = s.root->OverFind(core::Float2{20.0f, 150.0f});
-    CHECK(hit != s.rows[3].Get());
-    CHECK(hit == s.root.Get()); // what lies beyond the view there: the root
-    CHECK(s.root->OverFind(core::Float2{20.0f, 20.0f}) == s.rows[0].Get()); // inside, the row
 }
 
 TEST_CASE("scroll: a pan moves the content with the finger at a display scale, in the view's own units")

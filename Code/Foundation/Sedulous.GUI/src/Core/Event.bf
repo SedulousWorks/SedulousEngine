@@ -436,10 +436,16 @@ class Event
 	/// Set by a handler that used the event: its route ends there. A key a widget leaves
 	/// unhandled goes on to the keymap and navigation.
 	public bool Handled = false;
+	/// The node the event is for (the hovered or pressed node, the focus). Not owned.
+	public Node Target = null;
+	/// The node whose handlers are running now, on the event's route. Not owned.
+	public Node CurrentTarget = null;
 
-	public this(EventType type)
+	public this(EventType type, Node target = null)
 	{
 		Type = type;
+		Target = target;
+		CurrentTarget = target;
 	}
 }
 
@@ -455,7 +461,7 @@ class MouseEvent : Event
 	/// The finger, for touch.
 	public uint64 PointerId = 0;
 
-	public this(EventType type, Float2 position, MouseButton button = .Left, uint32 modifiers = 0) : base(type)
+	public this(EventType type, Node target, Float2 position, MouseButton button = .Left, uint32 modifiers = 0) : base(type, target)
 	{
 		Position = position;
 		Button = button;
@@ -470,7 +476,7 @@ class WheelEvent : Event
 	/// Shift turns a vertical wheel to the other axis.
 	public uint32 Modifiers = 0;
 
-	public this(Float2 position, Float2 delta, uint32 modifiers = 0) : base(.MouseWheel)
+	public this(Node target, Float2 position, Float2 delta, uint32 modifiers = 0) : base(.MouseWheel, target)
 	{
 		Position = position;
 		Delta = delta;
@@ -497,7 +503,7 @@ class GestureEvent : Event
 	/// Touch, or the mouse's trackpad.
 	public PointerType Pointer = .Touch;
 
-	public this(EventType type) : base(type)
+	public this(EventType type, Node target) : base(type, target)
 	{
 	}
 }
@@ -507,7 +513,7 @@ class KeyEvent : Event
 	public uint32 KeyCode;
 	public uint32 Modifiers;
 
-	public this(EventType type, uint32 keyCode, uint32 modifiers = 0) : base(type)
+	public this(EventType type, Node target, uint32 keyCode, uint32 modifiers = 0) : base(type, target)
 	{
 		KeyCode = keyCode;
 		Modifiers = modifiers;
@@ -518,7 +524,7 @@ class TextInputEvent : Event
 {
 	public StringView Text;
 
-	public this(StringView text) : base(.TextInput)
+	public this(Node target, StringView text) : base(.TextInput, target)
 	{
 		Text = text;
 	}
@@ -557,7 +563,7 @@ class ToggleEvent : Event
 	/// When closed.
 	public PopupCloseReason Reason = .Code;
 
-	public this(bool open, PopupCloseReason reason) : base(.Toggle)
+	public this(Node target, bool open, PopupCloseReason reason) : base(.Toggle, target)
 	{
 		Open = open;
 		Reason = reason;
@@ -569,7 +575,7 @@ class TabEvent : Event
 {
 	public int32 Index = -1;
 
-	public this(EventType type, int32 index) : base(type)
+	public this(EventType type, Node target, int32 index) : base(type, target)
 	{
 		Index = index;
 	}
@@ -581,7 +587,7 @@ class ItemEvent : Event
 	public int32 Item = -1;
 	public ModelIndex Index;
 
-	public this(EventType type, int32 item, ModelIndex index) : base(type)
+	public this(EventType type, Node target, int32 item, ModelIndex index) : base(type, target)
 	{
 		Item = item;
 		Index = index;
@@ -595,7 +601,7 @@ class CompositionEvent : Event
 	public StringView Text;
 	public int32 Cursor = 0;
 
-	public this(StringView text, int32 cursor) : base(.Composition)
+	public this(Node target, StringView text, int32 cursor) : base(.Composition, target)
 	{
 		Text = text;
 		Cursor = cursor;
@@ -607,7 +613,7 @@ class LinkEvent : Event
 {
 	public StringView Link;
 
-	public this(StringView link) : base(.Link)
+	public this(Node target, StringView link) : base(.Link, target)
 	{
 		Link = link;
 	}
@@ -620,7 +626,7 @@ class MotionEndEvent : Event
 	public StringView Name;
 	public float Elapsed = 0.0f;
 
-	public this(EventType type, StringView name, float elapsed) : base(type)
+	public this(EventType type, Node target, StringView name, float elapsed) : base(type, target)
 	{
 		Name = name;
 		Elapsed = elapsed;
@@ -634,7 +640,7 @@ class NamedEvent : Event
 	public StringView Name;
 	public StringView Detail;
 
-	public this(StringView name, StringView detail = default) : base(.Named)
+	public this(Node target, StringView name, StringView detail = default) : base(.Named, target)
 	{
 		Name = name;
 		Detail = detail;
@@ -653,7 +659,7 @@ class DragEvent : Event
 	/// Where in the target, as the target said (an index, a side).
 	public int32 Place = 0;
 
-	public this(EventType type, DragPayload payload) : base(type)
+	public this(EventType type, Node target, DragPayload payload) : base(type, target)
 	{
 		Payload = payload;
 	}
@@ -676,6 +682,23 @@ class DragRequest
 	/// is made, and each move of the drag calls this with the pointer in the root's space, before
 	/// the drop is asked about (the source keeps itself out of hit tests). Owned: set it once.
 	public delegate void(Float2 pointer) Follow ~ delete _;
+
+	private Node mPreview ~ _?.ReleaseRef();
+
+	/// What the drag shows under the pointer (null: a default one). It holds a reference to the
+	/// node it is given, letting go of the one before.
+	public Node Preview
+	{
+		get => mPreview;
+		set
+		{
+			if (value != null)
+				value.AddRef();
+			if (mPreview != null)
+				mPreview.ReleaseRef();
+			mPreview = value;
+		}
+	}
 }
 
 /// What a drop here would do, asked of the node under the pointer and up its ancestors every
@@ -730,6 +753,8 @@ struct DragResult
 	public bool ScreenKnown = false;
 	/// Where on the screen the pointer was when it ended.
 	public Float2 Screen = .();
+	/// The node that took it (not owned).
+	public Node Target = null;
 
 	public this() { }
 }
