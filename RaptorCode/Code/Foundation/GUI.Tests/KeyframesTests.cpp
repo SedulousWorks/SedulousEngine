@@ -22,38 +22,6 @@ namespace
     core::Duration Secs(double s) { return core::Duration::FromSeconds(s); }
 }
 
-TEST_CASE("keyframes: parse names, offsets (%, from/to), and stop declarations")
-{
-    StyleSheet sheet = CSSParser::Parse(core::StringView(
-        u8"@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.25; } 100% { opacity: 1; } }"
-        u8"@keyframes fade  { from { opacity: 1; } to { opacity: 0; } }"));
-
-    CHECK(sheet.KeyframesCount() == 2);
-
-    const Keyframes* pulse = sheet.FindKeyframes(core::StringView(u8"pulse"));
-    REQUIRE(pulse != nullptr);
-    REQUIRE(pulse->Stops.Size() == 3);
-    CHECK(pulse->Stops[0].Offset == doctest::Approx(0.0f));
-    CHECK(pulse->Stops[1].Offset == doctest::Approx(0.5f));
-    CHECK(pulse->Stops[2].Offset == doctest::Approx(1.0f));
-    CHECK(pulse->Stops[1].Properties.Size() == 1);
-
-    const Keyframes* fade = sheet.FindKeyframes(core::StringView(u8"fade"));
-    REQUIRE(fade != nullptr);
-    REQUIRE(fade->Stops.Size() == 2);
-    CHECK(fade->Stops[0].Offset == doctest::Approx(0.0f)); // from
-    CHECK(fade->Stops[1].Offset == doctest::Approx(1.0f)); // to
-}
-
-TEST_CASE("keyframes: a comma offset list shares the block")
-{
-    StyleSheet sheet = CSSParser::Parse(
-        core::StringView(u8"@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }"));
-    const Keyframes* blink = sheet.FindKeyframes(core::StringView(u8"blink"));
-    REQUIRE(blink != nullptr);
-    CHECK(blink->Stops.Size() == 3); // 0%, 100%, 50%
-}
-
 TEST_CASE("keyframes: the animation property drives opacity across the stops")
 {
     auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));

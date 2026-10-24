@@ -4,7 +4,8 @@ using Sedulous.GUI;
 namespace Sedulous.GUI.Tests;
 
 /// @media conditions evaluated against a MediaContext: one feature, a conjunction, height, the
-/// empty query, orientation, `not`, comma lists and media types.
+/// empty query, orientation, `not`, comma lists and media types; and @media blocks parsed and
+/// gating resolution.
 class MediaQueryTests
 {
 	private static bool Matches(StringView query, MediaContext context)
@@ -64,5 +65,58 @@ class MediaQueryTests
 		Test.Assert(!Matches("print", wide));
 		Test.Assert(!Matches("not (hover: hover)", wide)); // a feature it cannot test: not either
 		Test.Assert(Matches("(hover: hover), (min-width: 1px)", wide)); // another in the list still can
+	}
+
+	/// The `color` `sheet` resolves to on a button under `context`; empty when it sets none.
+	private static void ButtonColor(StyleSheet sheet, MediaContext context, String outText)
+	{
+		let w = StyleFixtures.Widget("button");
+		defer w.ReleaseRef();
+		let rs = scope ResolvedStyle();
+		sheet.Resolve(w, context, rs);
+		outText.Append(rs.Get("color"));
+	}
+
+	[Test]
+	public static void AtMediaBlockParsesAndGatesResolution()
+	{
+		let sheet = scope StyleSheet();
+		CSSParser.Parse("button { color: black; } @media (min-width: 600px) { button { color: red; } }", sheet);
+		Test.Assert(sheet.RuleCount == 2);
+
+		// Wide viewport: the @media rule is active and (later source) wins.
+		Test.Assert(ButtonColor(sheet, .(800.0f, 600.0f, 96.0f), .. scope String()) == "red");
+		// Narrow viewport: the @media rule is inactive; the base rule stands.
+		Test.Assert(ButtonColor(sheet, .(400.0f, 600.0f, 96.0f), .. scope String()) == "black");
+	}
+
+	[Test]
+	public static void MultipleRulesInsideOneAtMediaBlock()
+	{
+		let sheet = scope StyleSheet();
+		CSSParser.Parse("@media (min-width: 600px) { button { color: red; } .box { padding: 8; } }", sheet);
+		Test.Assert(sheet.RuleCount == 2);
+
+		let btn = StyleFixtures.Widget("button");
+		defer btn.ReleaseRef();
+		let wide = scope ResolvedStyle();
+		sheet.Resolve(btn, .(800.0f, 0.0f, 96.0f), wide);
+		Test.Assert(wide.Get("color") == "red");
+		let narrow = scope ResolvedStyle();
+		sheet.Resolve(btn, .(400.0f, 0.0f, 96.0f), narrow);
+		Test.Assert(!narrow.Has("color"));
+	}
+
+	[Test]
+	public static void AFeatureItDoesNotKnowMatchesNothingRatherThanEverything()
+	{
+		let wide = MediaContext(800.0f, 600.0f, 96.0f);
+		Test.Assert(!Matches("(aspect-ratio: 16/9)", wide));
+		Test.Assert(!Matches("(prefers-reduced-motion)", wide)); // known now: the context does not ask for it
+		Test.Assert(!Matches("(min-width: 600px) and (hover: hover)", wide));
+		Test.Assert(Matches("(min-width: 600px)", wide));
+		let sheet = scope StyleSheet();
+		CSSParser.Parse("button { color: black; } @media (pointer: coarse) { button { color: red; } }", sheet);
+		Test.Assert(ButtonColor(sheet, wide, .. scope String()) == "black");
 	}
 }

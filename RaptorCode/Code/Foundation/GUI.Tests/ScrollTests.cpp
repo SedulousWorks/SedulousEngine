@@ -359,20 +359,6 @@ TEST_CASE("scroll: a sheet sets scroll-behavior and overscroll-behavior")
     CHECK(s.view->GetLayoutStyle().Overscroll == OverscrollBehavior::Contain);
 }
 
-TEST_CASE("scroll: a selector may ask for a part's own state after it")
-{
-    const StyleSelector plain(core::StringView(u8"scrollview::scrollbar-thumb"));
-    const StyleSelector hovered(core::StringView(u8"scrollview::scrollbar-thumb:hover"));
-    const StyleSelector held(core::StringView(u8"::scrollbar-thumb:active"));
-    CHECK(hovered.PseudoElement() == core::StringView(u8"scrollbar-thumb"));
-    CHECK(hovered.PartPseudoClasses() == PseudoHover);
-    CHECK(held.PartPseudoClasses() == PseudoActive);
-    CHECK(plain.PartPseudoClasses() == 0u);
-    CHECK(hovered.Specificity() > plain.Specificity());
-    // A state a part does not have matches nothing.
-    CHECK(StyleSelector(core::StringView(u8"::scrollbar-thumb:focus")).RuleAt(0).IsNever());
-}
-
 TEST_CASE("scroll: the bars are ::scrollbar and ::scrollbar-thumb, styled per their own hover and drag")
 {
     Scroller s;

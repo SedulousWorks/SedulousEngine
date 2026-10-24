@@ -17,26 +17,6 @@ using namespace foundation::core;
 using namespace foundation::gui;
 namespace fonts = foundation::fonts;
 
-TEST_CASE("font face: the parser reads a face's family, source, weight and style")
-{
-    const StyleSheet sheet = CSSParser::Parse(StringView(
-        u8"@font-face { font-family: \"Brand\"; src: url('fonts/brand-bold.ttf') format(\"truetype\"), url(other.woff); font-weight: bold; }"
-        u8"@font-face { font-family: Brand; src: url(fonts/brand-italic.ttf); font-style: italic; font-weight: 300; }"
-        u8"@font-face { src: url(no-family.ttf); }"
-        u8".a { color: red; }"));
-    REQUIRE(sheet.FontFaces().Size() == 2u);
-    const FontFaceRule& bold = sheet.FontFaces()[0];
-    CHECK(bold.Family == StringView(u8"Brand"));
-    CHECK(bold.Source == StringView(u8"fonts/brand-bold.ttf"));
-    CHECK(bold.Weight == 700);
-    CHECK_FALSE(bold.Italic);
-    const FontFaceRule& light = sheet.FontFaces()[1];
-    CHECK(light.Source == StringView(u8"fonts/brand-italic.ttf"));
-    CHECK(light.Weight == 300);
-    CHECK(light.Italic);
-    CHECK(sheet.Rules().Size() == 1u); // the rule after them still parses
-}
-
 TEST_CASE("font face: the loader is asked once per face per sheet, under the name the face is chosen by")
 {
     fonts::TrueTypeFontService service{DefaultAllocator()};

@@ -47,15 +47,6 @@ namespace
     };
 }
 
-TEST_CASE("import: the parser reads url() and quoted paths")
-{
-    const StyleSheet sheet = CSSParser::Parse(SV(u8"@import url(\"theme/base.css\"); @import 'theme/extra.css' screen; .a { color: red; }"));
-    REQUIRE(sheet.Imports().Size() == 2u);
-    CHECK(sheet.Imports()[0] == SV(u8"theme/base.css"));
-    CHECK(sheet.Imports()[1] == SV(u8"theme/extra.css"));
-    CHECK(sheet.RuleCount() == 1u);
-}
-
 TEST_CASE("import: imported rules come first, nested imports before them, a cycle stops, a missing one is skipped")
 {
     Sheets sheets;

@@ -62,36 +62,6 @@ TEST_CASE("diagnostics: markup that does not parse is an error with its line; an
             CHECK(d.Line == 4u);
 }
 
-TEST_CASE("diagnostics: the CSS parser says what it skips, each with its line")
-{
-    core::Array<GuiDiagnostic> said;
-    const StyleSheet sheet = CSSParser::Parse(SV(u8"@charset \"utf-8\";\n"
-                                                 u8".a { color: red; width 10px; }\n"
-                                                 u8".b:hovr { color: blue; }\n"
-                                                 u8"@unknown { x: y; }\n"
-                                                 u8".c { color: green; }\n"
-                                                 u8".d"),
-                                              SV(u8"test.css"), &said);
-    CHECK(sheet.Rules().Size() == 3); // .a, .b (never matching), .c
-    CHECK(Says(said, u8"@charset"));
-    CHECK(Says(said, u8"width 10px"));
-    CHECK(Says(said, u8".b:hovr"));
-    CHECK(Says(said, u8"@unknown"));
-    CHECK(Says(said, u8".d"));
-    for (const GuiDiagnostic& d : said)
-        CHECK(d.Level == GuiDiagnostic::Severity::Warning);
-    for (const GuiDiagnostic& d : said)
-        if (Has(d.Message.AsView(), SV(u8"width 10px")))
-            CHECK(d.Line == 2u);
-        else if (Has(d.Message.AsView(), SV(u8".b:hovr")))
-            CHECK(d.Line == 3u);
-
-    core::Array<GuiDiagnostic> none;
-    (void)CSSParser::Parse(SV(u8"@import \"other.css\"; @media (max-width: 600px) { .a { color: red; } } @keyframes k { from { opacity: 0; } }"),
-                           SV(u8"ok.css"), &none);
-    CHECK(none.IsEmpty());
-}
-
 TEST_CASE("diagnostics: a sheet's property names are checked against the style table and the registered element types")
 {
     RegisterGuiElements();

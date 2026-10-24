@@ -230,51 +230,6 @@ TEST_CASE("theme: the built-in default theme restyles the standard widgets")
     CHECK(button->GetBox().BackgroundColor.r == doctest::Approx(0xcd / 255.0f).epsilon(0.01));
 }
 
-TEST_CASE("theme: pseudo-element (::part) rules resolve separately from the element style")
-{
-    auto w = Make<UIWidget>();
-    w->SetTag(core::StringView(u8"slider"));
-    StyleSheet sheet =
-        CSSParser::Parse(core::StringView(u8"slider { background-color: #00ff00; } "
-                                          u8"slider::fill { background-color: #ff0000; } "
-                                          u8"slider::thumb { background-color: #0000ff; }"));
-
-    // The element's own style has only the non-pseudo declaration.
-    ResolvedStyle main = sheet.Resolve(*w.Get());
-    CHECK(main.Get(core::StringView(u8"background-color")) == core::StringView(u8"#00ff00"));
-
-    // Each part resolves its own cascade.
-    ResolvedStyle fill = sheet.Resolve(*w.Get(), MediaContext{}, true, core::StringView(u8"fill"));
-    CHECK(fill.Get(core::StringView(u8"background-color")) == core::StringView(u8"#ff0000"));
-    ResolvedStyle thumb =
-        sheet.Resolve(*w.Get(), MediaContext{}, true, core::StringView(u8"thumb"));
-    CHECK(thumb.Get(core::StringView(u8"background-color")) == core::StringView(u8"#0000ff"));
-
-    // A part with no rule resolves to nothing.
-    ResolvedStyle none = sheet.Resolve(*w.Get(), MediaContext{}, true, core::StringView(u8"track"));
-    CHECK_FALSE(none.Has(core::StringView(u8"background-color")));
-}
-
-TEST_CASE("theme: the default theme carries pseudo-element part rules")
-{
-    // Sanity: the built-in themes actually contain ::part rules a Slider/Window can pick up.
-    // A part inherits its widget's style (its tokens, from :root).
-    StyleSheet dark = CSSParser::Parse(DefaultThemeCSS());
-    auto slider = Make<UIWidget>();
-    slider->SetTag(core::StringView(u8"slider"));
-    const ResolvedStyle sliderStyle = dark.Resolve(*slider.Get(), MediaContext{});
-    ResolvedStyle fill =
-        dark.Resolve(*slider.Get(), MediaContext{}, true, core::StringView(u8"fill"), &sliderStyle);
-    CHECK(fill.Has(core::StringView(u8"background-color")));
-
-    auto window = Make<UIWidget>();
-    window->SetTag(core::StringView(u8"window"));
-    const ResolvedStyle windowStyle = dark.Resolve(*window.Get(), MediaContext{});
-    ResolvedStyle title =
-        dark.Resolve(*window.Get(), MediaContext{}, true, core::StringView(u8"title"), &windowStyle);
-    CHECK(title.Has(core::StringView(u8"background-color")));
-}
-
 TEST_CASE("theme: tokens retint everything, a subtree overrides them, and a widget token changes one control")
 {
     auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));

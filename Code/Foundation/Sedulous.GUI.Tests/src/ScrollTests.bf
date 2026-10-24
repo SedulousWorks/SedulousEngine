@@ -139,4 +139,20 @@ class ScrollTests
 		Test.Assert(hit == s.Root); // what lies beyond the view there: the root
 		Test.Assert(s.Root.OverFind(.(20.0f, 20.0f)) == s.Rows[0]); // inside, the row
 	}
+
+	[Test]
+	public static void ASelectorMayAskForAPartsOwnStateAfterIt()
+	{
+		let plain = scope StyleSelector("scrollview::scrollbar-thumb");
+		let hovered = scope StyleSelector("scrollview::scrollbar-thumb:hover");
+		let held = scope StyleSelector("::scrollbar-thumb:active");
+		Test.Assert(hovered.PseudoElement == "scrollbar-thumb");
+		Test.Assert(hovered.PartPseudoClasses == PseudoHover);
+		Test.Assert(held.PartPseudoClasses == PseudoActive);
+		Test.Assert(plain.PartPseudoClasses == 0);
+		Test.Assert(hovered.Specificity > plain.Specificity);
+		// A state a part does not have matches nothing.
+		let focused = scope StyleSelector("::scrollbar-thumb:focus");
+		Test.Assert(focused.RuleAt(0).IsNever);
+	}
 }
