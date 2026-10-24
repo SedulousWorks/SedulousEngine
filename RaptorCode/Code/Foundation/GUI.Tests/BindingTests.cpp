@@ -94,15 +94,6 @@ TEST_CASE("binding: a widget the user changes writes back, both ways without a l
     CHECK(slider->GetValue() == doctest::Approx(0.1f));
 }
 
-TEST_CASE("binding: a text field written back keeps its caret")
-{
-    auto field = Make<TextField>();
-    field->SetText(SV(u8"hello"));
-    field->SetCaret(2);
-    field->SetText(SV(u8"hello")); // a binding writing back what was typed
-    CHECK(field->GetCaret() == 2u);
-}
-
 TEST_CASE("binding: outside a scene a binding runs at once; it ends with its node")
 {
     auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));

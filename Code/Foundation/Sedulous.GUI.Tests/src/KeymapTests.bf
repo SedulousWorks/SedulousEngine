@@ -39,8 +39,9 @@ class KeymapBed
 
 /// Bindings: keystrokes and gamepad buttons bound to commands, scoped by context predicates over
 /// the focus path (the deepest match winning, then the later binding), unbinding, chords, and the
-/// order keys take (the widget, then bindings, then navigation); keystrokes and gamepad buttons
-/// parsed and named, and a command's keys as a menu shows them.
+/// order keys take (the widget, then bindings, then navigation; a text field keeping its own);
+/// `>` for a context inside another; keystrokes and gamepad buttons parsed and named, and a
+/// command's keys as a menu shows them (a text field's context menu among them).
 class KeymapTests
 {
 	private static bool ShortcutIs(Keymap keymap, StringView command, StringView expected)
@@ -354,5 +355,75 @@ class KeymapTests
 		own.Command = "save";
 		bed.Root.Context.Update(SceneFixtures.Frame);
 		Test.Assert(own.Text == "Keep");
+	}
+
+	[Test]
+	public static void ATextFieldKeepsItsKeysAndLeavesAShortcutToTheBindings()
+	{
+		let bed = scope KeymapBed();
+		bed.Handle("save");
+		Test.Assert(bed.Root.Context.Keymap.Bind("ctrl-s", "save"));
+		Test.Assert(bed.Root.Context.Keymap.Bind("ctrl-a", "save")); // the field's own: it keeps it
+		let field = new TextField();
+		defer field.ReleaseRef();
+		bed.Screen.AddChild(field);
+		bed.Root.EventDispatcher.FocusNode = field;
+		field.Text = "hello";
+		bed.Key(.A, KeyModCtrl);
+		Test.Assert(bed.Ran.IsEmpty); // select-all in the field
+		bed.Root.EventDispatcher.InjectKeyDown((uint32)KeyCode.Unknown, KeyModCtrl);
+		Test.Assert(bed.Ran.IsEmpty);
+	}
+
+	[Test]
+	public static void AGreaterThanHoldsForAContextInsideAnother()
+	{
+		let outer = scope KeyContextLayer();
+		outer.Declare("menu");
+		let inner = scope KeyContextLayer();
+		inner.Set(outer);
+		inner.Declare("textinput");
+		let elsewhere = scope KeyContextLayer();
+		elsewhere.Declare("textinput");
+		KeyContextLayer[2] nested = .(outer, inner);
+		KeyContextLayer[1] alone = .(elsewhere);
+		let p = scope ContextPredicate();
+		Test.Assert(p.Parse("menu > textinput"));
+		Test.Assert(p.Eval(Span<KeyContextLayer>(&nested[0], 2), 1));
+		Test.Assert(!p.Eval(Span<KeyContextLayer>(&nested[0], 2), 0)); // the menu itself
+		Test.Assert(!p.Eval(Span<KeyContextLayer>(&alone[0], 1), 0)); // a field in no menu
+		Test.Assert(p.Parse("menu > textinput && !multiline || game")); // `>` binds loosest
+		Test.Assert(p.Eval(Span<KeyContextLayer>(&nested[0], 2), 1));
+		Test.Assert(!p.Parse("menu >"));
+
+		// A binding for fields inside a menu beats the fields' own.
+		let bed = scope KeymapBed();
+		bed.Handle("menu.field-escape");
+		let field = new TextField();
+		defer field.ReleaseRef();
+		field.Size = .(100.0f, 20.0f);
+		bed.Screen.AddChild(field);
+		Test.Assert(bed.Root.Context.Keymap.Bind("ctrl-a", "menu.field-escape", "menu > textinput"));
+		field.RequestFocus();
+		bed.Key(.A, KeyModCtrl);
+		Test.Assert(bed.Ran.Count == 1);
+		Test.Assert(bed.Ran[0] == "menu.field-escape");
+	}
+
+	[Test]
+	public static void ATextFieldsContextMenuShowsTheKeysBoundToItsCommands()
+	{
+		let bed = scope KeymapBed();
+		let field = new TextField();
+		defer field.ReleaseRef();
+		field.Size = .(100.0f, 20.0f);
+		bed.Screen.AddChild(field);
+		field.RequestFocus();
+		bed.Root.EventDispatcher.InjectContextMenu();
+		let menu = field.ContextMenu;
+		Test.Assert(menu != null);
+		let cut = menu.GetChildAt(0) as MenuItem;
+		Test.Assert(cut != null);
+		Test.Assert(cut.Shortcut == "Ctrl+X");
 	}
 }

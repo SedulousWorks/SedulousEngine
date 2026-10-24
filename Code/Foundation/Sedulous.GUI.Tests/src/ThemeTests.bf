@@ -54,9 +54,10 @@ class ThemeFontService : IFontService
 	public override bool HasFamily(StringView familyName) => false;
 }
 
-/// The theme's sheets: a widget part's (::part) rules resolved apart from the widget's own, and a
+/// The theme's sheets: a widget part's (::part) rules resolved apart from the widget's own, a
 /// sheet's colours, pictures and fonts reaching a label, every widget with text, and the faces
-/// widgets draw for themselves.
+/// widgets draw for themselves; the default theme restyling the standard widgets, its tokens
+/// following the user's scheme, and a skin's radius token rounding its control.
 class ThemeTests
 {
 	private static bool Near(float a, float b) => NodeFixtures.Near(a, b);
@@ -297,5 +298,65 @@ class ThemeTests
 			Test.Assert(Near(w.Box.BackgroundColor.R, 1.0f), scope String(w.Tag));
 			Test.Assert(Near(w.Box.BackgroundColor.G, 0.0f), scope String(w.Tag));
 		}
+	}
+
+	[Test]
+	public static void TheBuiltInDefaultThemeRestylesTheStandardWidgets()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let button = new Button();
+		defer button.ReleaseRef();
+		let textfield = new TextField();
+		defer textfield.ReleaseRef();
+		root.AddChild(button);
+		root.AddChild(textfield);
+
+		let mgr = scope StyleManager();
+		WidgetFixtures.UseSheet(mgr, Theme.DefaultThemeCSS);
+		mgr.ApplyTree(root);
+
+		// The theme gives the button a background and padding, and the field padding.
+		Test.Assert(button.Box.BackgroundColor.A > 0.0f);
+		Test.Assert(Near(button.Padding.Left, 9.0f));
+		Test.Assert(textfield.Box.BackgroundColor.A > 0.0f);
+		Test.Assert(Near(textfield.Padding.Left, 6.0f));
+
+		// Its tokens: the dark accent, then (the user's scheme light) the light one, from the same sheet.
+		Test.Assert(NodeFixtures.Near(button.Box.BackgroundColor.R, 0x33 / 255.0f, 0.01f));
+		var light = MediaContext();
+		light.DarkScheme = false;
+		mgr.MediaContext = light;
+		mgr.ApplyTree(root);
+		Test.Assert(NodeFixtures.Near(button.Box.BackgroundColor.R, 0xcd / 255.0f, 0.01f));
+	}
+
+	[Test]
+	public static void ASkinsRadiusTokenRoundsItsControlSoTheFocusRingFollowsTheArt()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let button = new Button();
+		defer button.ReleaseRef();
+		let field = new TextField();
+		defer field.ReleaseRef();
+		let combo = new ComboBox();
+		defer combo.ReleaseRef();
+		root.AddChild(button);
+		root.AddChild(field);
+		root.AddChild(combo);
+		let mgr = scope StyleManager();
+		let theme = scope StyleSheet();
+		CSSParser.Parse(Theme.DefaultThemeCSS, theme);
+		mgr.UserAgentSheet = theme;
+		mgr.ApplyTree(root);
+		Test.Assert(button.Box.Radii.IsZero); // square by default
+		Test.Assert(field.Box.Radii.IsZero);
+
+		WidgetFixtures.UseSheet(mgr, ":root { --button-radius: 6px; --field-radius: 4px; }");
+		mgr.ApplyTree(root);
+		Test.Assert(Near(button.Box.Radii.TopLeft, 6.0f));
+		Test.Assert(Near(field.Box.Radii.BottomRight, 4.0f));
+		Test.Assert(Near(combo.Box.Radii.TopLeft, 4.0f)); // a combo box follows the fields
 	}
 }

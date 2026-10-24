@@ -120,55 +120,6 @@ namespace
     }
 }
 
-TEST_CASE("theme: the built-in default theme restyles the standard widgets")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    auto button = Make<Button>();
-    auto textfield = Make<TextField>();
-    root->AddChild(button.Get());
-    root->AddChild(textfield.Get());
-
-    StyleManager mgr;
-    mgr.SetStyleSheet(CSSParser::Parse(DefaultThemeCSS()));
-    mgr.ApplyTree(*root.Get());
-
-    // The theme gives the button a background + padding and the textfield padding.
-    CHECK(button->GetBox().BackgroundColor.a > 0.0f);
-    CHECK(button->GetPadding().Left == doctest::Approx(9.0f));
-    CHECK(textfield->GetBox().BackgroundColor.a > 0.0f);
-    CHECK(textfield->GetPadding().Left == doctest::Approx(6.0f));
-
-    // Its tokens: the dark accent, then (the user's scheme light) the light one, from the same sheet.
-    CHECK(button->GetBox().BackgroundColor.r == doctest::Approx(0x33 / 255.0f).epsilon(0.01));
-    MediaContext light;
-    light.DarkScheme = false;
-    mgr.SetMediaContext(light);
-    mgr.ApplyTree(*root.Get());
-    CHECK(button->GetBox().BackgroundColor.r == doctest::Approx(0xcd / 255.0f).epsilon(0.01));
-}
-
-TEST_CASE("theme: a skin's radius token rounds its control, so the focus ring follows the art")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    auto button = Make<Button>();
-    auto field = Make<TextField>();
-    auto combo = Make<ComboBox>();
-    root->AddChild(button.Get());
-    root->AddChild(field.Get());
-    root->AddChild(combo.Get());
-    StyleManager mgr;
-    mgr.SetUserAgentSheet(CSSParser::Parse(DefaultThemeCSS()));
-    mgr.ApplyTree(*root.Get());
-    CHECK(button->GetBox().Radii.IsZero()); // square by default
-    CHECK(field->GetBox().Radii.IsZero());
-
-    mgr.SetStyleSheet(CSSParser::Parse(core::StringView(u8":root { --button-radius: 6px; --field-radius: 4px; }")));
-    mgr.ApplyTree(*root.Get());
-    CHECK(button->GetBox().Radii.topLeft == doctest::Approx(6.0f));
-    CHECK(field->GetBox().Radii.bottomRight == doctest::Approx(4.0f));
-    CHECK(combo->GetBox().Radii.topLeft == doctest::Approx(4.0f)); // a combo box follows the fields
-}
-
 namespace
 {
     UIWidget* FindTagged(Node& node, core::StringView tag)

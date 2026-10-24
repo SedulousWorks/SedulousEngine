@@ -9,8 +9,8 @@ namespace Sedulous.GUI.Tests;
 /// just after one hid the next shows at once; a press or a key hides it until the pointer moves on;
 /// the keys moving the focus show the focused control's; an interactive one holds while the pointer
 /// crosses into it. A right release, Shift+F10 or a long press asks for a context menu (a
-/// `contextmenu` event); a long press nobody takes shows the tooltip. (Raptor's text field's
-/// context menu test here comes with the text field.)
+/// `contextmenu` event); a long press nobody takes shows the tooltip. A text field's offers cut,
+/// copy, paste and select all.
 class TooltipTests
 {
 	private static bool Near(float a, float b) => NodeFixtures.Near(a, b);
@@ -263,5 +263,39 @@ class TooltipTests
 		bed.Frames(8);
 		Test.Assert(bed.D.ShownTooltip == null);
 		bed.D.InjectTouchUp(1, .(60.0f, 60.0f));
+	}
+
+	[Test]
+	public static void ATextFieldsContextMenuOffersCutCopyPasteAndSelectAllLitWhereTheyDoSomething()
+	{
+		let bed = scope Bed();
+		let field = new TextField();
+		defer field.ReleaseRef();
+		field.Position = .(0.0f, 150.0f);
+		field.Size = .(200.0f, 24.0f);
+		bed.Root.AddChild(field);
+		field.Text = "hello";
+		bed.D.InjectMouseDown(.(20.0f, 160.0f), .Right);
+		bed.D.InjectMouseUp(.(20.0f, 160.0f), .Right);
+		let menu = field.ContextMenu;
+		Test.Assert(menu != null);
+		Test.Assert(menu.IsOpen);
+		Test.Assert(menu.Parent == field);
+		Test.Assert(menu.ItemCount == 4);
+		// Nothing selected, no clipboard: only select all is lit.
+		menu.Close();
+		field.SelectAll();
+		bed.D.InjectMouseDown(.(20.0f, 160.0f), .Right);
+		bed.D.InjectMouseUp(.(20.0f, 160.0f), .Right);
+		Test.Assert(menu.IsOpen);
+		// Its Cut runs the field's command, and the menu closes, focus back on the field.
+		let cut = menu.GetChildAt(0) as MenuItem;
+		Test.Assert(cut != null);
+		Test.Assert(cut.Text == "Cut");
+		Test.Assert(cut.Enabled);
+		cut.HandleActivate();
+		Test.Assert(field.Text.Length == 0);
+		Test.Assert(!menu.IsOpen);
+		Test.Assert(field.IsFocused);
 	}
 }

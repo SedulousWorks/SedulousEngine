@@ -222,4 +222,15 @@ class MirrorTests
 		// The right edge stays where it was.
 		Test.Assert(Near(window.ConvertToRootSpace(.(window.Size.X, 0.0f)).X, at.X + 300.0f));
 	}
+
+	[Test]
+	public static void ANumberFieldsArrowsAndItsTextRoomAreAtItsInlineEnd()
+	{
+		CheckMirrored(scope () =>
+			{
+				let field = new NumberField();
+				field.Value = 42.0;
+				return field;
+			}, .(120.0f, 24.0f));
+	}
 }

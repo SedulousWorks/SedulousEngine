@@ -836,24 +836,14 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(ColorSwatch, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"button")); // a screen reader may press it
         builder.Attribute("accessActivate", true);
-        builder.AccessorProperty<&ColorSwatch::GetColor, &ColorSwatch::SetColor>("color").PropAttribute("css", core::String(u8"color-value"));
         builder.Method<&ElementOf<ColorSwatch>, ColorSwatch, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(ColorPicker, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"group"));
-        builder.AccessorProperty<&ColorPicker::GetColor, &ColorPicker::SetColor>("color").PropAttribute("css", core::String(u8"color-value"))
-            .PropAttribute("twoWay", true);
-        builder.AccessorProperty<&ColorPicker::ShowsAlpha, &ColorPicker::SetShowsAlpha>("showsAlpha").PropAttribute("css", core::String(u8"shows-alpha"));
         builder.Method<&ElementOf<ColorPicker>, ColorPicker, Node>("of");
-        builder.Creator();
     }
-
-    RTTI_DEFINE_OBJECT(ColorPickerArea, "rtti::gui")
 
     // Toasts (T7 of round three): a host markup places; a request a script fills in and posts.
     REFLECT_ENUM(ToastSeverity, "rtti::gui")
@@ -929,35 +919,17 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(TextEditBase, "rtti::gui")
     {
-        builder.AccessorProperty<&TextEditBase::GetPlaceholder, &TextEditBase::SetPlaceholder>("placeholder").PropAttribute("access", core::String(u8"description"))
-            .PropAttribute("css", core::String(u8"placeholder"))
-            .PropAttribute("translatable", true);
-        builder.AccessorProperty<&TextEditBase::GetMaxLength, &TextEditBase::SetMaxLength>("maxLength").PropAttribute("css", core::String(u8"max-length"));
-        builder.AccessorProperty<&TextEditBase::IsReadOnly, &TextEditBase::SetReadOnly>("readOnly").PropAttribute("css", core::String(u8"read-only"));
-        builder.AccessorProperty<&TextEditBase::GetInputFilterName, &TextEditBase::SetInputFilterName>("inputFilter")
-            .PropAttribute("css", core::String(u8"input-filter"));
-        builder.AccessorProperty<&TextEditBase::GetText, &TextEditBase::SetText>("text").PropAttribute("access", core::String(u8"value"))
-            .PropAttribute("css", core::String(u8"text"))
-            .PropAttribute("twoWay", true); // the user changes it: a binding may write it back
         builder.Method<&ElementOf<TextEditBase>, TextEditBase, Node>("of");
     }
 
     REFLECT_MEMBERS(TextField, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"textbox")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&TextField::IsPassword, &TextField::SetPassword>("password")
-            .PropAttribute("css", core::String(u8"password"))
-            .PropAttribute("access", core::String(u8"secret")); // its value is not read out (E9d)
         builder.Method<&ElementOf<TextField>, TextField, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(TextArea, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"textarea")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&TextArea::GetRows, &TextArea::SetRows>("rows").PropAttribute("css", core::String(u8"rows"));
         builder.Method<&ElementOf<TextArea>, TextArea, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(Panel, "rtti::gui")
@@ -974,7 +946,6 @@ namespace foundation::gui
     {
         builder.Method<&EditableLabel::BeginEdit>("beginEdit");
         builder.Method<&ElementOf<EditableLabel>, EditableLabel, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(ExpanderHeader, "rtti::gui")
@@ -1038,23 +1009,7 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(NumberField, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"spinbutton")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&NumberField::GetValue, &NumberField::SetValue>("value").PropAttribute("access", core::String(u8"value"))
-            .PropAttribute("css", core::String(u8"value"))
-            .PropAttribute("twoWay", true); // the user changes it: a binding may write it back
-        builder.AccessorProperty<&NumberField::GetMin, &NumberField::SetMin>("min").PropAttribute("access", core::String(u8"min")).PropAttribute("css", core::String(u8"min"));
-        builder.AccessorProperty<&NumberField::GetMax, &NumberField::SetMax>("max").PropAttribute("access", core::String(u8"max")).PropAttribute("css", core::String(u8"max"));
-        builder.AccessorProperty<&NumberField::GetStep, &NumberField::SetStep>("step").PropAttribute("access", core::String(u8"step")).PropAttribute("css", core::String(u8"step"));
-        builder.AccessorProperty<&NumberField::GetPage, &NumberField::SetPage>("page").PropAttribute("css", core::String(u8"page"));
-        builder.AccessorProperty<&NumberField::IsInteger, &NumberField::SetInteger>("integer").PropAttribute("css", core::String(u8"integer"));
-        builder.AccessorProperty<&NumberField::GetPrefix, &NumberField::SetPrefix>("prefix").PropAttribute("css", core::String(u8"prefix"));
-        builder.AccessorProperty<&NumberField::GetSuffix, &NumberField::SetSuffix>("suffix").PropAttribute("css", core::String(u8"suffix"));
-        builder.AccessorProperty<&NumberField::AllowsGreater, &NumberField::SetAllowGreater>("allowGreater")
-            .PropAttribute("css", core::String(u8"allow-greater"));
-        builder.AccessorProperty<&NumberField::AllowsLesser, &NumberField::SetAllowLesser>("allowLesser")
-            .PropAttribute("css", core::String(u8"allow-lesser"));
         builder.Method<&ElementOf<NumberField>, NumberField, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(Separator, "rtti::gui")

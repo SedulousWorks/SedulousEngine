@@ -110,18 +110,6 @@ namespace
     }
 }
 
-TEST_CASE("mirror: a number field's arrows and its text room are at its inline end")
-{
-    CheckMirrored(
-        []() -> core::RefPtr<UIWidget>
-        {
-            auto field = Make<NumberField>();
-            field->SetValue(42.0);
-            return field;
-        },
-        core::Float2{120.0f, 24.0f});
-}
-
 TEST_CASE("mirror: a tree row is indented from the inline start, its arrow before its text")
 {
     CheckMirrored(

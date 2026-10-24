@@ -54,51 +54,6 @@ namespace
     }
 }
 
-TEST_CASE("tabview: pages pair with tabs; only the selected one shows; hidden ones stay alive; Ctrl+Tab from inside a page")
-{
-    auto root = MakeRoot();
-    auto view = Make<TabView>();
-    view->EditLayoutStyle([](LayoutStyle& s) { s.Height = LayoutLength::Px(200.0f); });
-    root->AddChild(view.Get());
-    TabPage* first = view->AddPage(core::StringView(u8"First"));
-    TabPage* second = view->AddPage(core::StringView(u8"Second"));
-    auto field = Make<TextField>();
-    second->AddChild(field.Get());
-    for (core::i32 i = 0; i < 2; ++i)
-        view->GetBar()->GetTab(i)->EditLayoutStyle([](LayoutStyle& s)
-        {
-            s.Width = LayoutLength::Px(80.0f);
-            s.Height = LayoutLength::Px(24.0f);
-        });
-    (void)root->UpdateLayout();
-
-    CHECK(view->GetPageCount() == 2);
-    CHECK(view->GetBar()->GetTab(1)->GetText() == core::StringView(u8"Second"));
-    CHECK(first->GetTab() == view->GetBar()->GetTab(0));
-    CHECK(first->IsDisplayed());
-    CHECK_FALSE(second->IsDisplayed());
-    CHECK(first->GetSize().y > 100.0f); // a page fills what the bar leaves
-
-    second->SetTitle(core::StringView(u8"Renamed")); // its tab follows it
-    CHECK(view->GetBar()->GetTab(1)->GetText() == core::StringView(u8"Renamed"));
-
-    int changes = 0;
-    (void)view->AddEventListener(EventType::Changed, [&](const Event&) { ++changes; });
-    EventDispatcher& d = *root->GetEventDispatcher();
-    Press(d, CentreOf(*view->GetBar()->GetTab(1)));
-    CHECK(view->GetSelectedIndex() == 1);
-    CHECK(changes == 1);
-    CHECK_FALSE(first->IsDisplayed());
-    CHECK(second->IsDisplayed());
-    CHECK(first->GetParent() != nullptr); // kept alive
-
-    // Ctrl+Tab with the focus in a page.
-    field->RequestFocus();
-    d.InjectKeyDown(static_cast<core::u32>(KeyCode::Tab), KeyModCtrl);
-    CHECK(view->GetSelectedIndex() == 0);
-    CHECK(changes == 2);
-}
-
 TEST_CASE("tabview: markup's pages are its children, with title, icon and closable; its bar's settings are attributes")
 {
     RegisterGuiElements();

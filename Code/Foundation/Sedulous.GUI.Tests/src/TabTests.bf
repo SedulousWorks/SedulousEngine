@@ -943,4 +943,48 @@ class TabTests
 		Test.Assert(movedTo == 0);
 		Test.Assert(view.GetPage(0) == second);
 	}
+
+	[Test]
+	public static void PagesPairWithTabsOnlyTheSelectedOneShowsHiddenOnesStayAliveCtrlTabFromInsideAPage()
+	{
+		let root = MakeRoot();
+		defer root.ReleaseRef();
+		let view = new TabView();
+		defer view.ReleaseRef();
+		view.EditLayoutStyle(scope (s) => { s.Height = LayoutLength.Px(200.0f); });
+		root.AddChild(view);
+		let first = view.AddPage("First");
+		let second = view.AddPage("Second");
+		let field = new TextField();
+		defer field.ReleaseRef();
+		second.AddChild(field);
+		SizeTabs(view);
+		root.UpdateLayout();
+
+		Test.Assert(view.PageCount == 2);
+		Test.Assert(view.Bar.GetTab(1).Text == "Second");
+		Test.Assert(first.Tab == view.Bar.GetTab(0));
+		Test.Assert(first.Displayed);
+		Test.Assert(!second.Displayed);
+		Test.Assert(first.Size.Y > 100.0f); // a page fills what the bar leaves
+
+		second.Title = "Renamed"; // its tab follows it
+		Test.Assert(view.Bar.GetTab(1).Text == "Renamed");
+
+		int changes = 0;
+		view.AddEventListener(.Changed, new [&] (e) => { ++changes; });
+		let d = root.EventDispatcher;
+		Press(d, CentreOf(view.Bar.GetTab(1)));
+		Test.Assert(view.SelectedIndex == 1);
+		Test.Assert(changes == 1);
+		Test.Assert(!first.Displayed);
+		Test.Assert(second.Displayed);
+		Test.Assert(first.Parent != null); // kept alive
+
+		// Ctrl+Tab with the focus in a page.
+		field.RequestFocus();
+		d.InjectKeyDown((uint32)KeyCode.Tab, KeyModCtrl);
+		Test.Assert(view.SelectedIndex == 0);
+		Test.Assert(changes == 2);
+	}
 }

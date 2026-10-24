@@ -38,9 +38,9 @@ class KeyBed
 	}
 }
 
-/// The keyboard: tab-index, focus groups (a tab strip's one stop), the next key captured, access
-/// keys (a menu bar's) and type-ahead from text input (a combo box's); a menu's moves rebound; a
-/// focused widget hidden gives the focus up.
+/// The keyboard: tab-index, focus groups (a tab strip's one stop), Tab captured by a widget, the
+/// next key captured, access keys (a menu bar's) and type-ahead from text input (a combo box's); a
+/// menu's moves rebound; a focused widget hidden gives the focus up.
 class KeyboardTests
 {
 	[Test]
@@ -344,5 +344,86 @@ class KeyboardTests
 		bed.D.InjectText("а");
 		Test.Assert(ran == 0);
 		Test.Assert(combo.SelectedIndex == 2);
+	}
+
+	[Test]
+	public static void AWidgetThatCapturesTabTakesTabAndShiftTabAsKeysCtrlTabMovesFocusFromIt()
+	{
+		let bed = scope KeyBed();
+		bed.Add("a");
+		let editor = new TextArea();
+		defer editor.ReleaseRef();
+		editor.Id = "editor";
+		editor.Size = .(200.0f, 80.0f);
+		editor.TabCaptures = true;
+		bed.Root.AddChild(editor);
+		bed.Add("b");
+		bed.D.FocusNode = editor;
+		bed.Tab();
+		Test.Assert(bed.Focused == "editor");
+		Test.Assert(editor.Text == "\t"); // it typed a tab
+		bed.Tab(true);
+		Test.Assert(bed.Focused == "editor"); // its key, though it does nothing with it
+		bed.D.InjectKeyDown((uint32)KeyCode.Tab, KeyModCtrl);
+		Test.Assert(bed.Focused == "b");
+		bed.D.FocusNode = editor;
+		bed.D.InjectKeyDown((uint32)KeyCode.Tab, KeyModCtrl | KeyModShift);
+		Test.Assert(bed.Focused == "a");
+		// Without it, Tab moves on as ever.
+		editor.TabCaptures = false;
+		bed.D.FocusNode = editor;
+		bed.Tab();
+		Test.Assert(bed.Focused == "b");
+		Test.Assert(editor.Text == "\t");
+	}
+
+	[Test]
+	public static void CaptureNextKeyTakesTheNextKeyBeforeBindingsAndWidgetsWithItsModifiersAndDropsItsText()
+	{
+		let bed = scope KeyBed();
+		let field = new TextField();
+		defer field.ReleaseRef();
+		field.Size = .(200.0f, 24.0f);
+		bed.Root.AddChild(field);
+		bed.D.FocusNode = field;
+		int quits = 0;
+		bed.Root.OnCommand("quit", new [&] (command) => { ++quits; });
+		Test.Assert(bed.Root.Context.Keymap.Bind("ctrl-q", "quit"));
+
+		let taken = scope List<Keystroke>();
+		int cancels = 0;
+		bed.D.CaptureNextKey(new [&] (stroke) => { taken.Add(stroke); }, new [&] () => { ++cancels; });
+		Test.Assert(bed.D.IsCapturingKey);
+		bed.D.InjectKeyDown((uint32)KeyCode.LeftCtrl, KeyModCtrl); // waits: maybe Ctrl and something
+		Test.Assert(taken.IsEmpty);
+		bed.D.InjectKeyDown((uint32)KeyCode.Q, KeyModCtrl);
+		Test.Assert(taken.Count == 1);
+		Test.Assert(taken[0] == ParseKeystroke("ctrl-q").Value);
+		Test.Assert(quits == 0); // the binding never saw it
+		Test.Assert(!bed.D.IsCapturingKey);
+
+		// A plain key's text is dropped; the field gets nothing.
+		bed.D.CaptureNextKey(new [&] (stroke) => { taken.Add(stroke); });
+		bed.D.InjectKeyDown((uint32)KeyCode.W, 0);
+		bed.D.InjectText("w");
+		Test.Assert(taken.Count == 2);
+		Test.Assert(field.Text.IsEmpty);
+		bed.D.InjectKeyDown((uint32)KeyCode.E, 0); // the capture over: as ever
+		bed.D.InjectText("e");
+		Test.Assert(field.Text == "e");
+
+		// A modifier alone, taken as it is released.
+		bed.D.CaptureNextKey(new [&] (stroke) => { taken.Add(stroke); });
+		bed.D.InjectKeyDown((uint32)KeyCode.LeftShift, KeyModShift);
+		bed.D.InjectKeyUp((uint32)KeyCode.LeftShift, 0);
+		Test.Assert(taken.Count == 3);
+		Test.Assert(taken[2] == ParseKeystroke("leftshift").Value);
+
+		// A pad button.
+		bed.D.CaptureNextKey(new [&] (stroke) => { taken.Add(stroke); });
+		bed.D.InjectPadButton(.North);
+		Test.Assert(taken.Count == 4);
+		Test.Assert(taken[3] == ParseKeystroke("pad-north").Value);
+		Test.Assert(cancels == 0);
 	}
 }

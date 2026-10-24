@@ -97,32 +97,4 @@ TEST_CASE("style-manager: a markup property a restyle meets again is not written
 
 // ===================== E3: computed style =====================
 
-TEST_CASE("style-manager: a reflected property the sheet set returns to its own value, unless code took it")
-{
-    RegisterGuiElements();
-    auto root = NewRoot();
-    auto field = Make<TextField>();
-    field->SetPlaceholder(SV(u8"own"));
-    root->AddChild(field.Get());
-    StyleManager styles(CSSParser::Parse(SV(u8"textfield.hint { placeholder: from the sheet; }")));
-    styles.ApplyTree(*root.Get());
-    field->AddClass(SV(u8"hint"));
-    styles.ApplyTree(*root.Get());
-    CHECK(field->GetPlaceholder() == SV(u8"from the sheet"));
-    field->RemoveClass(SV(u8"hint"));
-    styles.ApplyTree(*root.Get());
-    CHECK(field->GetPlaceholder() == SV(u8"own"));
-
-    field->AddClass(SV(u8"hint"));
-    styles.ApplyTree(*root.Get());
-    field->SetPlaceholder(SV(u8"code's")); // code takes it
-    field->RemoveClass(SV(u8"hint"));
-    styles.ApplyTree(*root.Get());
-    CHECK(field->GetPlaceholder() == SV(u8"code's"));
-    field->AddClass(SV(u8"hint"));
-    styles.ApplyTree(*root.Get());
-    CHECK(field->GetPlaceholder() == SV(u8"code's"));
-}
-
 // ===================== E3: parts take the box properties =====================
-

@@ -575,4 +575,34 @@ class StyleManagerTests
 		Test.Assert(Near(drawn.BorderColors.Top.G, 0.0f)); // the sheet's colour
 		Test.Assert(Near(drawn.BackgroundColor.A, 0.0f)); // no fill
 	}
+
+	[Test]
+	public static void AReflectedPropertyTheSheetSetReturnsToItsOwnValueUnlessCodeTookIt()
+	{
+		let root = SceneFixtures.NewScene(200.0f, 200.0f);
+		defer root.ReleaseRef();
+		let field = new TextField();
+		defer field.ReleaseRef();
+		field.Placeholder = "own";
+		root.AddChild(field);
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, "textfield.hint { placeholder: from the sheet; }");
+		styles.ApplyTree(root);
+		field.AddClass("hint");
+		styles.ApplyTree(root);
+		Test.Assert(field.Placeholder == "from the sheet");
+		field.RemoveClass("hint");
+		styles.ApplyTree(root);
+		Test.Assert(field.Placeholder == "own");
+
+		field.AddClass("hint");
+		styles.ApplyTree(root);
+		field.Placeholder = "code's"; // code takes it
+		field.RemoveClass("hint");
+		styles.ApplyTree(root);
+		Test.Assert(field.Placeholder == "code's");
+		field.AddClass("hint");
+		styles.ApplyTree(root);
+		Test.Assert(field.Placeholder == "code's");
+	}
 }

@@ -7,7 +7,8 @@ namespace Sedulous.GUI.Tests;
 // binds by name, converted to its type; a widget's user-set state writes back; the GUI's data model
 // holds named values; nothing subscribes by hand.
 
-/// The conversions bindings make between values and properties' types.
+/// The conversions bindings make between values and properties' types, and a text field written
+/// back.
 class BindingTests
 {
 	[Test]
@@ -47,5 +48,16 @@ class BindingTests
 		var two = TextVariant("2");
 		defer two.Dispose();
 		Test.Assert(!VariantsEqual(System.Variant.Create((int32)2), two));
+	}
+
+	[Test]
+	public static void ATextFieldWrittenBackKeepsItsCaret()
+	{
+		let field = new TextField();
+		defer field.ReleaseRef();
+		field.Text = "hello";
+		field.Caret = 2;
+		field.Text = "hello"; // a binding writing back what was typed
+		Test.Assert(field.Caret == 2);
 	}
 }

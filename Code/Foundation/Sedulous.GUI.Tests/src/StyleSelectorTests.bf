@@ -5,7 +5,8 @@ using Sedulous.GUI;
 namespace Sedulous.GUI.Tests;
 
 /// StyleSelector: parsing, specificity, and matching against the UIWidget identity
-/// (tag/#id/.class), the structural pseudo-classes, :not/:is/:where, and the combinators.
+/// (tag/#id/.class), attributes (reflected properties by their CSS names), the widgets' own states,
+/// the structural pseudo-classes, :not/:is/:where, and the combinators.
 /// Derived from eepp's css selector semantics (common subset).
 class StyleSelectorTests
 {
@@ -325,5 +326,77 @@ class StyleSelectorTests
 		area.Checked = true;
 		styles.ApplyTree(root);
 		Test.Assert(NodeFixtures.Near(area.Alpha, 0.25f));
+	}
+
+	[Test]
+	public static void AttributesReadTheIdClassesAndReflectedPropertiesByTheirCssNames()
+	{
+		let @box = new CheckBox();
+		defer @box.ReleaseRef();
+		let field = new TextField();
+		defer field.ReleaseRef();
+		field.Placeholder = "search the list";
+		field.Id = "q";
+		field.AddClass("wide");
+		field.AddClass("dark-mode");
+		Test.Assert(Sel("[placeholder]", field));
+		Test.Assert(!Sel("[placeholder]", @box));
+		Test.Assert(Sel("[placeholder=\"search the list\"]", field));
+		Test.Assert(Sel("[placeholder^=search]", field));
+		Test.Assert(Sel("[placeholder$='list']", field));
+		Test.Assert(Sel("[placeholder*=the]", field));
+		Test.Assert(Sel("[placeholder~=the]", field));
+		Test.Assert(!Sel("[placeholder~=th]", field));
+		Test.Assert(!Sel("[class|=dark]", field)); // "wide dark-mode" is not dark or dark-...
+		Test.Assert(Sel("[class~=wide]", field));
+		Test.Assert(Sel("[id=q]", field));
+		Test.Assert(Sel("checkbox[checked=false]", @box));
+		@box.Checked = true;
+		Test.Assert(Sel("checkbox[checked=true]", @box));
+		Test.Assert(Spec("[placeholder=\"a, b\"]") == 1024); // an attribute counts as a class
+	}
+
+	[Test]
+	public static void TheWidgetsOwnStatesAndFocusWithinAndEnabled()
+	{
+		let @box = new CheckBox();
+		defer @box.ReleaseRef();
+		Test.Assert(!Sel(":checked", @box));
+		@box.Checked = true;
+		Test.Assert(Sel("checkbox:checked", @box));
+		@box.Indeterminate = true;
+		Test.Assert(Sel(":indeterminate", @box));
+		@box.Toggle(); // a choice settles it
+		Test.Assert(!Sel(":indeterminate", @box));
+
+		let field = new TextField();
+		defer field.ReleaseRef();
+		Test.Assert(Sel(":read-write", field));
+		let label = StyleFixtures.Widget("label");
+		defer label.ReleaseRef();
+		Test.Assert(Sel("label:read-only", label)); // what the user cannot edit
+		field.IsReadOnly = true;
+		Test.Assert(Sel("textfield:read-only", field));
+		Test.Assert(!Sel(":placeholder-shown", field));
+		field.Placeholder = "name";
+		Test.Assert(Sel(":placeholder-shown", field));
+		field.Text = "Ada";
+		Test.Assert(!Sel(":placeholder-shown", field));
+
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let panel = StyleFixtures.Widget("panel");
+		defer panel.ReleaseRef();
+		let input = new TextField();
+		defer input.ReleaseRef();
+		panel.AddChild(input);
+		root.AddChild(panel);
+		Test.Assert(Sel(":enabled", panel));
+		Test.Assert(!Sel("panel:focus-within", panel));
+		input.RequestFocus();
+		Test.Assert(Sel("panel:focus-within", panel));
+		Test.Assert(Sel("textfield:focus-within", input));
+		input.ReleaseFocus();
+		Test.Assert(!Sel("panel:focus-within", panel));
 	}
 }
