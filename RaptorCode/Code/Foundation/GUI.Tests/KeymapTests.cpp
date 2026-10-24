@@ -44,30 +44,6 @@ namespace
     };
 }
 
-TEST_CASE("keymap: keystrokes, chords and predicates parse")
-{
-    const auto s = ParseKeystroke(SV(u8"ctrl-shift-a"));
-    REQUIRE(s.HasValue());
-    CHECK(s.Value().Code == static_cast<core::u32>(KeyCode::A));
-    CHECK(s.Value().Modifiers == (KeyModCtrl | KeyModShift));
-    CHECK(ParseKeystroke(SV(u8"pad-east")).Value().Pad);
-    CHECK_FALSE(ParseKeystroke(SV(u8"hyper-a")).HasValue());
-    CHECK_FALSE(ParseKeystroke(SV(u8"pad-turbo")).HasValue());
-
-    ContextPredicate p;
-    REQUIRE(p.Parse(SV(u8"menu && (mode == main || !modal)")));
-    KeyContextLayer layer;
-    layer.Declare(SV(u8"menu mode=main"));
-    CHECK(p.Eval(layer));
-    layer.Declare(SV(u8"mode=settings modal"));
-    CHECK_FALSE(p.Eval(layer));
-    CHECK_FALSE(p.Parse(SV(u8"menu &&")));
-    CHECK_FALSE(p.Eval(layer)); // malformed matches nothing
-    Keymap keymap;
-    CHECK_FALSE(keymap.Bind(SV(u8"ctrl-nonesuch"), SV(u8"x")));
-    CHECK_FALSE(keymap.Bind(SV(u8"escape"), SV(u8"x"), SV(u8"(menu")));
-}
-
 TEST_CASE("keymap: the deepest matching context wins, then the later binding")
 {
     Bed bed;
@@ -228,21 +204,6 @@ TEST_CASE("keymap: `>` holds for a context inside another")
     CHECK(bed.ran[0] == SV(u8"menu.field-escape"));
 }
 
-TEST_CASE("keymap: a command's keys as text, the latest binding's, following a rebinding")
-{
-    Keymap keymap;
-    CHECK(keymap.ShortcutText(SV(u8"save")).Size() == 0u);
-    REQUIRE(keymap.Bind(SV(u8"ctrl-s"), SV(u8"save")));
-    CHECK(keymap.ShortcutText(SV(u8"save")) == SV(u8"Ctrl+S"));
-    REQUIRE(keymap.Bind(SV(u8"ctrl-k ctrl-shift-s"), SV(u8"save")));
-    CHECK(keymap.ShortcutText(SV(u8"save")) == SV(u8"Ctrl+K Ctrl+Shift+S"));
-    REQUIRE(keymap.Bind(SV(u8"f12"), SV(u8"shot")));
-    CHECK(keymap.ShortcutText(SV(u8"shot")) == SV(u8"F12"));
-    REQUIRE(keymap.Bind(SV(u8"pad-east"), SV(u8"back")));
-    CHECK(keymap.ShortcutText(SV(u8"back")) == SV(u8"Pad East"));
-    CHECK(KeystrokeText(ParseKeystroke(SV(u8"alt-enter")).Value()) == SV(u8"Alt+Enter"));
-}
-
 TEST_CASE("keymap: a control bound to a command shows its label and keys, and follows them")
 {
     Bed bed;
@@ -324,27 +285,6 @@ TEST_CASE("keymap: a command's keys as text are those bound where the control is
     CHECK(keys.ShortcutText(SV(u8"save"), here.AsSpan()) == core::String(u8"Ctrl+S"));
 }
 
-TEST_CASE("keymap: the whole keyboard has names, the keypad apart from the digits, each shown as a menu writes it")
-{
-    CHECK(ParseKeystroke(SV(u8"numpad5")).Value().Code == static_cast<core::u32>(KeyCode::Keypad5));
-    CHECK(ParseKeystroke(SV(u8"5")).Value().Code == static_cast<core::u32>(KeyCode::Num5));
-    CHECK(ParseKeystroke(SV(u8"f24")).Value().Code == static_cast<core::u32>(KeyCode::F24));
-    CHECK(ParseKeystroke(SV(u8"f13")).Value().Code == static_cast<core::u32>(KeyCode::F13));
-    CHECK_FALSE(ParseKeystroke(SV(u8"f25")).HasValue());
-    CHECK(ParseKeystroke(SV(u8"ctrl-slash")).Value().Code == static_cast<core::u32>(KeyCode::Slash));
-    CHECK(KeystrokeText(ParseKeystroke(SV(u8"ctrl-minus")).Value()) == SV(u8"Ctrl+-"));
-    CHECK(KeystrokeText(ParseKeystroke(SV(u8"numpadenter")).Value()) == SV(u8"Numpad Enter"));
-    CHECK(KeystrokeText(ParseKeystroke(SV(u8"f17")).Value()) == SV(u8"F17"));
-    CHECK(KeystrokeText(ParseKeystroke(SV(u8"backslash")).Value()) == SV(u8"\\"));
-    // Every named key reads back from its own name.
-    for (const detail::NamedKey& key : detail::kKeyNames)
-    {
-        const auto stroke = ParseKeystroke(SV(key.Name));
-        REQUIRE(stroke.HasValue());
-        CHECK(stroke.Value().Code == static_cast<core::u32>(key.Code));
-    }
-}
-
 TEST_CASE("keymap: a modifier key binds alone, though pressing it sets its own modifier")
 {
     Bed bed;
@@ -361,18 +301,4 @@ TEST_CASE("keymap: a modifier key binds alone, though pressing it sets its own m
     CHECK(bed.ran[1] == SV(u8"zoom"));
     bed.Key(KeyCode::Keypad5);
     CHECK(bed.ran.Size() == 2u); // unbound: Numpad 5 is not 5
-}
-
-TEST_CASE("keymap: a keystroke's name reads back as the same keystroke")
-{
-    const char8_t* const names[] = {u8"ctrl-shift-s", u8"numpad5", u8"pad-north", u8"f24", u8"alt-f4", u8"leftshift",
-                                    u8"ctrl-minus", u8"enter", u8"super-space", u8"7", u8"grave"};
-    for (const char8_t* name : names)
-    {
-        const auto stroke = ParseKeystroke(SV(name));
-        REQUIRE(stroke.HasValue());
-        CHECK(KeystrokeName(stroke.Value()) == SV(name));
-        CHECK(ParseKeystroke(KeystrokeName(stroke.Value()).AsView()).Value() == stroke.Value());
-    }
-    CHECK(KeystrokeName(Keystroke{static_cast<core::u32>(KeyCode::Unknown), 0, false}).IsEmpty());
 }

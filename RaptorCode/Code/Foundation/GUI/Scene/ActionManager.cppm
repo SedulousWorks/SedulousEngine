@@ -1,39 +1,15 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026-Present Robert Campbell
 
-// GUI - :action_manager partition
-//
-// ActionManager: owns and ticks running Actions. Ported from eepp's Scene::ActionManager
-// (include/eepp/scene/actionmanager.hpp). Owned by the SceneRoot; Node::RunAction forwards
-// here. Actions are RefPtr-owned; a finished action is dropped after Update.
-
-module;
-#include "Core/Prelude.h"
-
-export module foundation.gui:action_manager;
-
-import foundation.core; // RefPtr, Array, Duration, Move
-import :action;
-
-using namespace foundation::core;
-namespace core = foundation::core;
+// GUI - :action_manager partition, what is left of it after slice S4: what reads an action's
+// target, ported with Node (S8); Update's body is ActionManagerImpl.cpp. The rest is
+// Code/Foundation/Sedulous.GUI/src/Scene/ActionManager.bf.
 
 export namespace foundation::gui
 {
-    class Node;
-
     class ActionManager
     {
     public:
-        // Adds and starts an action.
-        void AddAction(RefPtr<Action> action)
-        {
-            if (!action)
-                return;
-            action->Start();
-            m_actions.PushBack(core::Move(action));
-        }
-
         /// How fast an action's time runs (its target's root may be paused, 0, or slowed).
         using TimeScale = core::Function<f32(Node& target)>;
 
@@ -53,14 +29,6 @@ export namespace foundation::gui
             return false;
         }
 
-        /// Calls `f(action)` for each running action.
-        template <typename F>
-        void ForEachAction(F&& f)
-        {
-            for (const RefPtr<Action>& a : m_actions)
-                f(*a);
-        }
-
         bool RemoveAllActionsFromTarget(Node* target)
         {
             bool removed = false;
@@ -76,20 +44,5 @@ export namespace foundation::gui
             }
             return removed;
         }
-
-        [[nodiscard]] Action* GetActionByTag(u64 tag) const
-        {
-            for (const RefPtr<Action>& a : m_actions)
-                if (a->GetTag() == tag)
-                    return a.Get();
-            return nullptr;
-        }
-
-        [[nodiscard]] usize Count() const noexcept { return m_actions.Size(); }
-        [[nodiscard]] bool IsEmpty() const noexcept { return m_actions.Size() == 0; }
-        void Clear() { m_actions.Clear(); }
-
-    private:
-        Array<RefPtr<Action>> m_actions;
     };
 }

@@ -93,14 +93,6 @@ TEST_CASE("variant: a curve's keys and a gradient are one value each, equal only
     CHECK(gradient.Evaluate(0.5f).a == doctest::Approx(0.5f));
 }
 
-TEST_CASE("model-index: validity + equality")
-{
-    CHECK_FALSE(ModelIndex{}.IsValid()); // default row -1
-    CHECK(MakeModelIndex(0, 0).IsValid());
-    CHECK(MakeModelIndex(3, 1) == MakeModelIndex(3, 1));
-    CHECK_FALSE(MakeModelIndex(3, 1) == MakeModelIndex(3, 2));
-}
-
 TEST_CASE("string-list-model: rows/columns/data")
 {
     core::Array<core::String> items;

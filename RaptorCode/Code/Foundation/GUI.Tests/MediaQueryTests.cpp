@@ -28,38 +28,6 @@ namespace
     }
 }
 
-TEST_CASE("media-query: single feature")
-{
-    MediaQuery mq(SV(u8"(min-width: 600px)"));
-    CHECK(mq.FeatureCount() == 1);
-    CHECK(mq.Evaluate(MediaContext{800.0f, 0.0f, 96.0f}));
-    CHECK_FALSE(mq.Evaluate(MediaContext{400.0f, 0.0f, 96.0f}));
-    CHECK(mq.Evaluate(MediaContext{600.0f, 0.0f, 96.0f})); // inclusive
-}
-
-TEST_CASE("media-query: conjunction (and)")
-{
-    MediaQuery mq(SV(u8"(min-width: 600px) and (max-width: 900px)"));
-    CHECK(mq.FeatureCount() == 2);
-    CHECK(mq.Evaluate(MediaContext{800.0f, 0.0f, 96.0f}));
-    CHECK_FALSE(mq.Evaluate(MediaContext{1000.0f, 0.0f, 96.0f})); // over max
-    CHECK_FALSE(mq.Evaluate(MediaContext{500.0f, 0.0f, 96.0f}));  // under min
-}
-
-TEST_CASE("media-query: height features")
-{
-    MediaQuery mq(SV(u8"(max-height: 480px)"));
-    CHECK(mq.Evaluate(MediaContext{0.0f, 400.0f, 96.0f}));
-    CHECK_FALSE(mq.Evaluate(MediaContext{0.0f, 600.0f, 96.0f}));
-}
-
-TEST_CASE("media-query: empty always matches")
-{
-    MediaQuery empty;
-    CHECK(empty.IsEmpty());
-    CHECK(empty.Evaluate(MediaContext{0.0f, 0.0f, 0.0f}));
-}
-
 TEST_CASE("media-query: @media block parses and gates resolution")
 {
     StyleSheet sheet = CSSParser::Parse(
@@ -96,22 +64,6 @@ TEST_CASE("media-query: a feature it does not know matches nothing, rather than 
     CHECK(MediaQuery(SV(u8"(min-width: 600px)")).Evaluate(wide));
     StyleSheet sheet = CSSParser::Parse(SV(u8"button { color: black; } @media (pointer: coarse) { button { color: red; } }"));
     CHECK(sheet.Resolve(*Widget(u8"button").Get(), wide).Get(SV(u8"color")) == SV(u8"black"));
-}
-
-TEST_CASE("media-query: orientation, not, comma lists and media types (E13)")
-{
-    const MediaContext wide{800.0f, 600.0f, 96.0f};
-    const MediaContext tall{600.0f, 800.0f, 96.0f};
-    CHECK(MediaQuery(SV(u8"(orientation: landscape)")).Evaluate(wide));
-    CHECK_FALSE(MediaQuery(SV(u8"(orientation: landscape)")).Evaluate(tall));
-    CHECK(MediaQuery(SV(u8"(orientation: portrait)")).Evaluate(tall));
-    CHECK(MediaQuery(SV(u8"not (orientation: portrait)")).Evaluate(wide));
-    CHECK_FALSE(MediaQuery(SV(u8"not all and (min-width: 700px)")).Evaluate(wide));
-    CHECK(MediaQuery(SV(u8"screen and (max-width: 500px), (orientation: portrait)")).Evaluate(tall)); // the second
-    CHECK_FALSE(MediaQuery(SV(u8"screen and (max-width: 500px), (orientation: portrait)")).Evaluate(wide));
-    CHECK_FALSE(MediaQuery(SV(u8"print")).Evaluate(wide));
-    CHECK_FALSE(MediaQuery(SV(u8"not (hover: hover)")).Evaluate(wide)); // a feature it cannot test: not either
-    CHECK(MediaQuery(SV(u8"(hover: hover), (min-width: 1px)")).Evaluate(wide)); // another in the list still can
 }
 
 TEST_CASE("media-query: the host's preferences: colour scheme, contrast, reduced motion")
