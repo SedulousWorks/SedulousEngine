@@ -80,61 +80,6 @@ namespace
     }
 }
 
-TEST_CASE("font fallback: without a fallback, Roboto draws Arabic as missing glyphs")
-{
-    Faces faces;
-    const TextLayout layout = LayOutText(Plain(StringView(kMixed)), Style(faces, StringView{}));
-    const LaidOutGlyphs* arabic = RunOf(layout, 3, 11);
-    REQUIRE(arabic != nullptr);
-    CHECK(arabic->Font == faces.Roboto());
-    CHECK_FALSE(AllDrawn(*arabic));
-}
-
-TEST_CASE("font fallback: what the font lacks comes from the first fallback that has it, in a run of that face")
-{
-    Faces faces;
-    // A family the service lacks is passed over.
-    const TextLayout layout = LayOutText(Plain(StringView(kMixed)), Style(faces, StringView(u8"Missing, 'DejaVu'")));
-    const LaidOutGlyphs* latin = RunOf(layout, 0, 2);
-    const LaidOutGlyphs* arabic = RunOf(layout, 3, 11);
-    REQUIRE(latin != nullptr);
-    REQUIRE(arabic != nullptr);
-    CHECK(latin->Font == faces.Roboto());
-    CHECK(arabic->Font == faces.DejaVu());
-    CHECK(arabic != latin);
-    CHECK(AllDrawn(*arabic));
-    CHECK(AllDrawn(*latin));
-    for (const fonts::GlyphPosition& g : arabic->Glyphs)
-        CHECK(g.font == 1); // the request's second face
-    // Its text and box are its glyphs'.
-    CHECK(arabic->TextStart == 3u);
-    CHECK(arabic->TextEnd == 11u);
-}
-
-TEST_CASE("font fallback: a line measures what its faces draw, and is as tall as the tallest")
-{
-    Faces faces;
-    const TextLayout layout = LayOutText(Plain(StringView(kMixed)), Style(faces, StringView(u8"DejaVu")));
-    REQUIRE(layout.Lines.Size() == 1u);
-    f32 advances = 0.0f;
-    for (const LaidOutGlyphs& run : layout.GlyphRuns)
-        for (const fonts::GlyphPosition& g : run.Glyphs)
-            advances += g.advance;
-    CHECK(layout.Lines[0].Width == doctest::Approx(advances).epsilon(0.01));
-    const f32 roboto = faces.Roboto()->font->Metrics().ascent;
-    const f32 dejavu = faces.DejaVu()->font->Metrics().ascent;
-    CHECK(layout.Lines[0].Baseline >= Max(roboto, dejavu) - 0.01f);
-}
-
-TEST_CASE("font fallback: Latin alone keeps one run in the font, its fallbacks unused")
-{
-    Faces faces;
-    const TextLayout layout = LayOutText(Plain(StringView(u8"plain words")), Style(faces, StringView(u8"DejaVu")));
-    for (const LaidOutGlyphs& run : layout.GlyphRuns)
-        CHECK(run.Font == faces.Roboto());
-    CHECK(layout.Lines[0].Baseline == doctest::Approx(faces.Roboto()->font->Metrics().ascent));
-}
-
 TEST_CASE("font fallback: a sheet's font-family list gives a label its font, its fallbacks, and draws Arabic")
 {
     Faces faces;

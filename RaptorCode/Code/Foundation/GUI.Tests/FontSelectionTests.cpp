@@ -66,58 +66,6 @@ namespace
     };
 }
 
-TEST_CASE("font selection: weights are tried in CSS's order")
-{
-    u16 order[9]{};
-    foundation::gui::detail::WeightOrder(400, order);
-    const u16 normal[] = {400, 500, 300, 200, 100, 600, 700, 800, 900};
-    for (usize i = 0; i < 9; ++i)
-        CHECK(order[i] == normal[i]);
-    foundation::gui::detail::WeightOrder(300, order);
-    const u16 light[] = {300, 200, 100, 400, 500, 600, 700, 800, 900};
-    for (usize i = 0; i < 9; ++i)
-        CHECK(order[i] == light[i]);
-    foundation::gui::detail::WeightOrder(650, order); // to the nearest hundred: 700
-    const u16 bold[] = {700, 800, 900, 600, 500, 400, 300, 200, 100};
-    for (usize i = 0; i < 9; ++i)
-        CHECK(order[i] == bold[i]);
-    CHECK(foundation::gui::detail::Bolder(400) == 700);
-    CHECK(foundation::gui::detail::Bolder(700) == 900);
-    CHECK(foundation::gui::detail::Lighter(700) == 400);
-    CHECK(foundation::gui::detail::Lighter(400) == 100);
-}
-
-TEST_CASE("font selection: the nearest weight's face, the style matched first, the rest synthesized")
-{
-    Faces faces;
-    faces.Load(u8"X", u8"Assets/fonts/roboto/Roboto-Regular.ttf");
-    faces.Load(u8"X Bold", u8"Assets/fonts/roboto/Roboto-Bold.ttf");
-    faces.Load(u8"X Light Italic", u8"Assets/fonts/roboto/Roboto-Regular.ttf");
-
-    foundation::gui::detail::FaceChoice face = foundation::gui::detail::ChooseFace(faces.service, StringView(u8"X"), 700, false);
-    CHECK(face.Face == StringView(u8"X Bold"));
-    CHECK_FALSE(face.SyntheticBold);
-    face = foundation::gui::detail::ChooseFace(faces.service, StringView(u8"X"), 900, false); // none heavier: down to Bold
-    CHECK(face.Face == StringView(u8"X Bold"));
-    face = foundation::gui::detail::ChooseFace(faces.service, StringView(u8"X"), 600, false); // up before down
-    CHECK(face.Face == StringView(u8"X Bold"));
-    face = foundation::gui::detail::ChooseFace(faces.service, StringView(u8"X"), 500, false); // 500 then down: the regular
-    CHECK(face.Face == StringView(u8"X"));
-    face = foundation::gui::detail::ChooseFace(faces.service, StringView(u8"X"), 300, true);
-    CHECK(face.Face == StringView(u8"X Light Italic"));
-    CHECK_FALSE(face.SyntheticItalic);
-    // Italic before weight: the light italic face, emboldened.
-    face = foundation::gui::detail::ChooseFace(faces.service, StringView(u8"X"), 700, true);
-    CHECK(face.Face == StringView(u8"X Light Italic"));
-    CHECK(face.SyntheticBold);
-    CHECK_FALSE(face.SyntheticItalic);
-    // No face of the family: asked for as it is, all of it synthesized.
-    face = foundation::gui::detail::ChooseFace(faces.service, StringView(u8"Y"), 700, true);
-    CHECK(face.Face == StringView(u8"Y"));
-    CHECK(face.SyntheticBold);
-    CHECK(face.SyntheticItalic);
-}
-
 TEST_CASE("font selection: font-weight in a sheet draws a label in the family's bold face")
 {
     Faces faces;

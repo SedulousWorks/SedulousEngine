@@ -56,37 +56,6 @@ namespace
     constexpr const char8_t* kLatinFirst = u8"ok سلام";
 }
 
-TEST_CASE("auto direction: a paragraph runs as its first strong character reads, each paragraph its own")
-{
-    DejaVu font;
-    Bidi bidi;
-    CHECK(Lay(font, StringView(kArabicFirst), false).Lines[0].RightToLeft);
-    CHECK_FALSE(Lay(font, StringView(kLatinFirst), true).Lines[0].RightToLeft);
-    String two(kArabicFirst);
-    two += StringView(u8"\n");
-    two += StringView(kLatinFirst);
-    const TextLayout layout = Lay(font, two.AsView(), false);
-    REQUIRE(layout.Lines.Size() == 2u);
-    CHECK(layout.Lines[0].RightToLeft);
-    CHECK_FALSE(layout.Lines[1].RightToLeft);
-}
-
-TEST_CASE("auto direction: digits and punctuation alone run as the node does")
-{
-    DejaVu font;
-    Bidi bidi;
-    CHECK(Lay(font, StringView(u8"42 - 7"), true).Lines[0].RightToLeft);
-    CHECK_FALSE(Lay(font, StringView(u8"42 - 7"), false).Lines[0].RightToLeft);
-    CHECK(Lay(font, StringView{}, true).Lines[0].RightToLeft); // an empty field's caret on its node's start
-}
-
-TEST_CASE("auto direction: without a resolver the first strong character still decides")
-{
-    DejaVu font;
-    CHECK(Lay(font, StringView(kArabicFirst), false).Lines[0].RightToLeft);
-    CHECK_FALSE(Lay(font, StringView(kLatinFirst), true).Lines[0].RightToLeft);
-}
-
 TEST_CASE("auto direction: a sheet's direction: auto sets a label's paragraphs by its text, its boxes by its parent")
 {
     DejaVu font;

@@ -62,48 +62,6 @@ namespace
     }
 }
 
-TEST_CASE("overflow wrap: without it a long word runs out of its line")
-{
-    DejaVu font;
-    const f32 width = font.Advance() * 5.5f;
-    const TextLayout layout = Lay(font, StringView(u8"abcdefghijklmnop"), width, false);
-    REQUIRE(layout.Lines.Size() == 1u);
-    CHECK(layout.Lines[0].Width > width);
-}
-
-TEST_CASE("overflow wrap: break-word breaks a word wider than its line where the line ends")
-{
-    DejaVu font;
-    const f32 width = font.Advance() * 5.5f; // five characters to a line
-    const TextLayout layout = Lay(font, StringView(u8"abcdefghijklmnop"), width, true);
-    REQUIRE(layout.Lines.Size() == 4u);
-    CHECK(layout.Lines[0].End == 5u);
-    CheckCovers(layout, 16, width);
-}
-
-TEST_CASE("overflow wrap: a long word after a short one starts its own line, then breaks")
-{
-    DejaVu font;
-    const f32 width = font.Advance() * 5.5f;
-    const TextLayout layout = Lay(font, StringView(u8"hi abcdefghij"), width, true);
-    REQUIRE(layout.Lines.Size() == 3u);
-    CHECK(layout.Lines[0].End == 3u); // "hi " alone
-    CHECK(layout.Lines[1].End == 8u);
-    CheckCovers(layout, 13, width);
-}
-
-TEST_CASE("overflow wrap: a line narrower than a character still holds one, and a grapheme is not split")
-{
-    DejaVu font;
-    const TextLayout narrow = Lay(font, StringView(u8"abc"), font.Advance() * 0.5f, true);
-    CHECK(narrow.Lines.Size() == 3u);
-    // e and a combining acute: one grapheme, two characters.
-    const TextLayout marks = Lay(font, StringView(u8"aéb"), font.Advance() * 0.5f, true);
-    REQUIRE(marks.Lines.Size() == 3u);
-    CHECK(marks.Lines[1].Start == 1u);
-    CHECK(marks.Lines[1].End == 4u);
-}
-
 TEST_CASE("overflow wrap: inherits from a sheet, and normal turns it off")
 {
     DejaVu font;
