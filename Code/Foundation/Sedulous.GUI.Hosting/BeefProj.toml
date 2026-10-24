@@ -1,0 +1,25 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.Hosting"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.GUI.Hosting.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Fonts" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Shell" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.Input" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Capture" = "*"
+"Sedulous.Shaders" = "*"
+"Sedulous.Shaders.System" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.VG" = "*"
+"Sedulous.VG.Renderer" = "*"
+"Sedulous.VG.SVG" = "*"

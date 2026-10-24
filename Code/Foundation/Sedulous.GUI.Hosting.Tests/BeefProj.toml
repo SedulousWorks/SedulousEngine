@@ -1,0 +1,22 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.Hosting.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.GUI.Hosting.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Hosting" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Null" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Null" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.Null" = "*"
+"Sedulous.VG" = "*"
+"Sedulous.VG.Renderer" = "*"
+"Sedulous.VG.SVG" = "*"
