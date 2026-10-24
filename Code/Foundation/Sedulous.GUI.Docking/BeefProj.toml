@@ -1,0 +1,14 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.Docking"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.GUI.Docking.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Hosting" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Shell" = "*"

@@ -1,0 +1,21 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.Docking.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.GUI.Docking.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Docking" = "*"
+"Sedulous.GUI.Hosting" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Null" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Null" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.Null" = "*"
+"Sedulous.Xml" = "*"
+"Sedulous.Xml.Serialization" = "*"
