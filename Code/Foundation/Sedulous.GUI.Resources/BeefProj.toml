@@ -1,0 +1,12 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.Resources"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.GUI.Resources.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Resource" = "*"
