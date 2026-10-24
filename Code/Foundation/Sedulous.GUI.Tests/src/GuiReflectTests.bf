@@ -87,20 +87,20 @@ class GuiReflectTests
 	{
 		let knob = scope ReflectedKnob();
 		let info = knob.GuiType;
-		Test.Assert(info.Find("page").Set(knob, Variant.Create(4)), "an int for a float");
+		Test.Assert(info.Find("page").Set(knob, System.Variant.Create(4)), "an int for a float");
 		Test.Assert(knob.Page == 4.0f);
 
-		var text = Variant.Create(StringView(" 2.5 "));
+		var text = System.Variant.Create(StringView(" 2.5 "));
 		defer text.Dispose();
 		Test.Assert(info.Find("page").Set(knob, text), "text that reads as a number");
 		Test.Assert(knob.Page == 2.5f);
 
-		var word = Variant.Create(StringView("many"));
+		var word = System.Variant.Create(StringView("many"));
 		defer word.Dispose();
 		Test.Assert(!info.Find("page").Set(knob, word));
 		Test.Assert(knob.Page == 2.5f, "a value that does not convert changes nothing");
 
-		Test.Assert(info.Find("label").Set(knob, Variant.Create(7)));
+		Test.Assert(info.Find("label").Set(knob, System.Variant.Create(7)));
 		Test.Assert(knob.Label == "7", "anything formats to text");
 
 		var read = info.Find("label").Get(knob);
@@ -110,7 +110,7 @@ class GuiReflectTests
 
 		var page = info.Find("page").Get(knob);
 		Test.Assert(page.Get<float>() == 2.5f);
-		Test.Assert(!info.Find("turns").Set(knob, Variant.Create(9)), "read only");
+		Test.Assert(!info.Find("turns").Set(knob, System.Variant.Create(9)), "read only");
 	}
 
 	[Test]
@@ -128,7 +128,7 @@ class GuiReflectTests
 		Test.Assert(info.FindCss("page") != null, "its base's properties are found through it");
 		Test.Assert(info.Find("clicks") != null, "by their own names too");
 
-		Test.Assert(info.FindCss("tint-strength").Set(fancy, Variant.Create(0.75f)));
+		Test.Assert(info.FindCss("tint-strength").Set(fancy, System.Variant.Create(0.75f)));
 		Test.Assert(fancy.TintStrength == 0.75);
 	}
 

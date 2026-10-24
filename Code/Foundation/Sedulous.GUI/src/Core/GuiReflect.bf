@@ -184,8 +184,8 @@ class GuiPropertyInfo
 	private String mAccess = new .() ~ delete _;
 	private Type mValueType;
 	private GuiPropertyFlags mFlags;
-	private function Variant(Object) mGet;
-	private function bool(Object, Variant) mSet;
+	private function System.Variant(Object) mGet;
+	private function bool(Object, System.Variant) mSet;
 
 	/// Its Beef name (`Page`).
 	public StringView Name => mName;
@@ -206,11 +206,11 @@ class GuiPropertyInfo
 
 	/// Its value on `target` (an instance of the type it belongs to, or one derived). The caller
 	/// disposes the result.
-	public Variant Get(Object target) => mGet(target);
+	public System.Variant Get(Object target) => mGet(target);
 
 	/// Writes `value`, converted to its type first; false when it cannot be (read only, or a value
 	/// that does not convert). The caller keeps `value`.
-	public bool Set(Object target, Variant value) => (mSet != null) && mSet(target, value);
+	public bool Set(Object target, System.Variant value) => (mSet != null) && mSet(target, value);
 }
 
 /// A reflected type's table: its own properties, then its base's.
@@ -283,7 +283,7 @@ class GuiTypeInfo
 	}
 
 	private void Add(StringView name, StringView css, Type valueType, GuiPropertyFlags flags, StringView access,
-		function Variant(Object) get, function bool(Object, Variant) set)
+		function System.Variant(Object) get, function bool(Object, System.Variant) set)
 	{
 		let property = new GuiPropertyInfo();
 		property.[Friend]mName.Set(name);

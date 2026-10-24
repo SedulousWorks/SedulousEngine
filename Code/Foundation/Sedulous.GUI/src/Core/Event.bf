@@ -47,7 +47,7 @@ static
 class DragPayload
 {
 	public String Type = new .() ~ delete _;
-	public Variant Value ~ _.Dispose();
+	public System.Variant Value ~ _.Dispose();
 	public String Label = new .() ~ delete _;
 	public uint8 Allowed = DropEffectsAll;
 
@@ -69,9 +69,9 @@ static
 	/// the caller owns the strings added.
 	public static void DroppedPaths(DragPayload payload, List<String> outPaths)
 	{
-		if (!payload.Value.HasValue || (payload.Value.VariantType != typeof(List<Variant>)))
+		if (!payload.Value.HasValue || (payload.Value.VariantType != typeof(List<System.Variant>)))
 			return;
-		let list = payload.Value.Get<List<Variant>>();
+		let list = payload.Value.Get<List<System.Variant>>();
 		if (list == null)
 			return;
 		for (let item in list)

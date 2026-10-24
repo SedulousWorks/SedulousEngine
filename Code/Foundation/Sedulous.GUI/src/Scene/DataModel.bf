@@ -12,16 +12,16 @@ namespace Sedulous.GUI;
 // script's number for a slider's float, a count for a label's text), and two values compare
 // across numeric types, so writing back what was just read is no change.
 //
-// corlib's Variant is a bitwise value: a copy shares an object or an owned buffer with the one it
-// came from. So text is COPIED where Raptor copies a String (the data model keeps its own), a
-// read hands out a borrowed view, and a conversion returns a Variant the caller disposes. A
-// value wider than a pointer (a StringView) is a buffer the Variant allocates: whoever creates
-// one disposes it.
+// These are corlib's Variants (System.Variant; Sedulous.GUI.Variant is a model's cell value). One
+// is a bitwise value: a copy shares an object or an owned buffer with the one it came from. So
+// text is COPIED where Raptor copies a String (the data model keeps its own), a read hands out a
+// borrowed view, and a conversion returns a Variant the caller disposes. A value wider than a
+// pointer (a StringView) is a buffer the Variant allocates: whoever creates one disposes it.
 
 static
 {
 	/// A numeric Variant's value as double (bool counts as 0 or 1); false when it holds no number.
-	public static bool NumberOf(Variant v, out double outValue)
+	public static bool NumberOf(System.Variant v, out double outValue)
 	{
 		outValue = 0.0;
 		let type = v.VariantType;
@@ -39,10 +39,10 @@ static
 	}
 
 	/// Whether the Variant holds text: a String or a StringView.
-	public static bool IsText(Variant v) => (v.VariantType == typeof(String)) || (v.VariantType == typeof(StringView));
+	public static bool IsText(System.Variant v) => (v.VariantType == typeof(String)) || (v.VariantType == typeof(StringView));
 
 	/// The text a Variant holds (empty when it holds none), a view of it.
-	public static StringView TextOf(Variant v)
+	public static StringView TextOf(System.Variant v)
 	{
 		if (v.VariantType == typeof(String))
 		{
@@ -55,20 +55,20 @@ static
 	}
 
 	/// A Variant that holds `value` and owns its own copy of the text.
-	public static Variant TextVariant(StringView value) => Variant.Create(new String(value), true);
+	public static System.Variant TextVariant(StringView value) => System.Variant.Create(new String(value), true);
 
 	/// A copy of `value` that owns what it holds: text copied, a value type copied, an object
 	/// (other than text) shared, as Raptor shares a reference.
-	public static Variant CopyVariant(Variant value)
+	public static System.Variant CopyVariant(System.Variant value)
 	{
 		if (IsText(value))
 			return TextVariant(TextOf(value));
-		return Variant.CreateFromVariant(value);
+		return System.Variant.CreateFromVariant(value);
 	}
 
 	/// Appends `value` as text: a string as it is, a whole number without a fraction, another
 	/// number in its shortest form, a boolean as true or false; nothing otherwise.
-	public static void FormatVariant(Variant value, String outText)
+	public static void FormatVariant(System.Variant value, String outText)
 	{
 		if (IsText(value))
 		{
@@ -102,7 +102,7 @@ static
 	/// `value` as a Variant of `target`'s type: numbers convert among numeric types and from text,
 	/// anything formats to text, and numbers or "true"/"false" to bool. Empty when it cannot. The
 	/// caller disposes the result (it owns its text).
-	public static Variant ConvertVariant(Variant value, Type target)
+	public static System.Variant ConvertVariant(System.Variant value, Type target)
 	{
 		if (!value.HasValue)
 			return default;
@@ -110,7 +110,7 @@ static
 		{
 			let text = new String();
 			FormatVariant(value, text);
-			return Variant.Create(text, true);
+			return System.Variant.Create(text, true);
 		}
 		if (value.VariantType == target)
 			return CopyVariant(value);
@@ -119,7 +119,7 @@ static
 		{
 			let text = TextOf(value)..Trim();
 			if ((target == typeof(bool)) && ((text == "true") || (text == "false")))
-				return Variant.Create(text == "true");
+				return System.Variant.Create(text == "true");
 			if (double.Parse(text) case .Ok(let parsed))
 			{
 				n = parsed;
@@ -129,21 +129,21 @@ static
 		if (!numeric)
 			return default;
 		let whole = (int64)((n < 0.0) ? n - 0.5 : n + 0.5); // to the nearest
-		if (target == typeof(float)) return Variant.Create((float)n);
-		if (target == typeof(double)) return Variant.Create(n);
-		if (target == typeof(int32)) return Variant.Create((int32)whole);
-		if (target == typeof(int64)) return Variant.Create(whole);
-		if (target == typeof(uint32)) return Variant.Create((uint32)((whole < 0) ? 0 : whole));
-		if (target == typeof(uint64)) return Variant.Create((uint64)((whole < 0) ? 0 : whole));
-		if (target == typeof(int)) return Variant.Create((int)whole);
-		if (target == typeof(uint)) return Variant.Create((uint)((whole < 0) ? 0 : whole));
-		if (target == typeof(bool)) return Variant.Create(n != 0.0);
+		if (target == typeof(float)) return System.Variant.Create((float)n);
+		if (target == typeof(double)) return System.Variant.Create(n);
+		if (target == typeof(int32)) return System.Variant.Create((int32)whole);
+		if (target == typeof(int64)) return System.Variant.Create(whole);
+		if (target == typeof(uint32)) return System.Variant.Create((uint32)((whole < 0) ? 0 : whole));
+		if (target == typeof(uint64)) return System.Variant.Create((uint64)((whole < 0) ? 0 : whole));
+		if (target == typeof(int)) return System.Variant.Create((int)whole);
+		if (target == typeof(uint)) return System.Variant.Create((uint)((whole < 0) ? 0 : whole));
+		if (target == typeof(bool)) return System.Variant.Create(n != 0.0);
 		return default;
 	}
 
 	/// Whether two values are the same value: numbers across numeric types, text by its bytes, two
 	/// empties; other types only when both are empty (they cannot be compared generically).
-	public static bool VariantsEqual(Variant a, Variant b)
+	public static bool VariantsEqual(System.Variant a, System.Variant b)
 	{
 		if (!a.HasValue || !b.HasValue)
 			return !a.HasValue && !b.HasValue;
@@ -162,7 +162,7 @@ class DataModel : RefCounted
 	private class Entry
 	{
 		public String Name = new .() ~ delete _;
-		public Variant Value ~ _.Dispose();
+		public System.Variant Value ~ _.Dispose();
 		public bool HasValue = false;
 		/// The tween moving it.
 		public uint64 TweenOwner = 0;
@@ -173,16 +173,16 @@ class DataModel : RefCounted
 
 	/// The value named `name` (empty when unset); a read a binding records, set or not. A view
 	/// of the model's own value: valid until the name is set again.
-	public Variant Get(StringView name)
+	public System.Variant Get(StringView name)
 	{
 		let entry = EntryFor(name);
 		entry.Changed.Track();
-		return Variant.CreateFromVariantRef(ref entry.Value);
+		return System.Variant.CreateFromVariantRef(ref entry.Value);
 	}
 
 	/// Sets `name` (whatever reads it follows); false when it already held that value. The model
 	/// keeps its own copy: the caller keeps what it passed.
-	public bool Set(StringView name, Variant value)
+	public bool Set(StringView name, System.Variant value)
 	{
 		let entry = EntryFor(name);
 		if (entry.HasValue && VariantsEqual(entry.Value, value))
@@ -196,12 +196,12 @@ class DataModel : RefCounted
 
 	/// The value named `name`, read without a binding following it (a tween reading where it
 	/// starts). A view, as Get's is.
-	public Variant Peek(StringView name)
+	public System.Variant Peek(StringView name)
 	{
 		for (let entry in mEntries)
 		{
 			if (entry.Name == name)
-				return Variant.CreateFromVariantRef(ref entry.Value);
+				return System.Variant.CreateFromVariantRef(ref entry.Value);
 		}
 		return default;
 	}

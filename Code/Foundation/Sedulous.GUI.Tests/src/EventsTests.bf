@@ -103,20 +103,20 @@ class EventsTests
 	[Test]
 	public static void AFilesPayloadsPathsAreItsTextItemsAndACopyOwnsItsText()
 	{
-		let list = scope List<Variant>();
+		let list = scope List<System.Variant>();
 		defer
 		{
 			for (var item in list)
 				item.Dispose();
 		}
 		list.Add(TextVariant("a.png"));
-		list.Add(Variant.Create(3));
+		list.Add(System.Variant.Create(3));
 		list.Add(TextVariant("b.txt"));
 
 		let payload = scope DragPayload();
 		payload.Type.Set("files");
 		payload.Label.Set("2 files");
-		payload.Value = Variant.Create(list);
+		payload.Value = System.Variant.Create(list);
 		let paths = scope List<String>();
 		defer { ClearAndDeleteItems!(paths); }
 		DroppedPaths(payload, paths);

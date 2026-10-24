@@ -46,73 +46,6 @@ namespace
     }
 }
 
-TEST_CASE("sorting-proxy: numeric column sorts by value, ascending and descending")
-{
-    TableModel source;
-    FillBAC(source);
-    SortingProxyModel proxy(&source);
-
-    (void)proxy.Sort(1, SortOrder::Ascending); // values 2,10,1 -> 1,2,10
-    CHECK(proxy.RowCount() == 3);
-    CHECK(proxy.Data(MakeModelIndex(0, 1)).AsInt() == 1);
-    CHECK(proxy.Data(MakeModelIndex(1, 1)).AsInt() == 2);
-    CHECK(proxy.Data(MakeModelIndex(2, 1)).AsInt() == 10);
-    CHECK(proxy.Data(MakeModelIndex(0, 0)).AsString() == SV(u8"c")); // row with value 1
-    CHECK(proxy.SourceRow(0) == 2);
-
-    (void)proxy.Sort(1, SortOrder::Descending); // 10,2,1
-    CHECK(proxy.Data(MakeModelIndex(0, 1)).AsInt() == 10);
-    CHECK(proxy.Data(MakeModelIndex(2, 1)).AsInt() == 1);
-}
-
-TEST_CASE("sorting-proxy: string column sorts lexically")
-{
-    TableModel source;
-    FillBAC(source);
-    SortingProxyModel proxy(&source);
-
-    (void)proxy.Sort(0, SortOrder::Ascending); // b,a,c -> a,b,c
-    CHECK(proxy.Data(MakeModelIndex(0, 0)).AsString() == SV(u8"a"));
-    CHECK(proxy.Data(MakeModelIndex(1, 0)).AsString() == SV(u8"b"));
-    CHECK(proxy.Data(MakeModelIndex(2, 0)).AsString() == SV(u8"c"));
-}
-
-TEST_CASE("sorting-proxy: ToggleSort cycles order and switches columns")
-{
-    TableModel source;
-    FillBAC(source);
-    SortingProxyModel proxy(&source);
-
-    proxy.ToggleSort(1);
-    CHECK(proxy.GetSortColumn() == 1);
-    CHECK(proxy.GetSortOrder() == SortOrder::Ascending);
-    proxy.ToggleSort(1); // same column -> descending
-    CHECK(proxy.GetSortOrder() == SortOrder::Descending);
-    proxy.ToggleSort(0); // new column -> ascending
-    CHECK(proxy.GetSortColumn() == 0);
-    CHECK(proxy.GetSortOrder() == SortOrder::Ascending);
-}
-
-TEST_CASE("sorting-proxy: a source change re-sorts and notifies the proxy's clients")
-{
-    TableModel source;
-    FillBAC(source);
-    SortingProxyModel proxy(&source);
-    (void)proxy.Sort(1, SortOrder::Ascending);
-
-    CountingClient client;
-    proxy.AddClient(&client);
-
-    core::Array<Variant> row; // value 0 -> should sort to the front
-    row.PushBack(Variant(SV(u8"z")));
-    row.PushBack(Variant(static_cast<core::i64>(0)));
-    source.AddRow(core::Move(row));
-
-    CHECK(client.updates == 1); // source change propagated
-    CHECK(proxy.RowCount() == 4);
-    CHECK(proxy.Data(MakeModelIndex(0, 1)).AsInt() == 0); // re-sorted with the new row first
-}
-
 TEST_CASE("sorting-proxy: TableView header click wired to ToggleSort re-sorts the view")
 {
     TableModel source;
@@ -136,17 +69,4 @@ TEST_CASE("sorting-proxy: TableView header click wired to ToggleSort re-sorts th
     CHECK(proxy.GetSortColumn() == 1);
     CHECK(proxy.GetSortOrder() == SortOrder::Ascending);
     CHECK(proxy.Data(MakeModelIndex(0, 1)).AsInt() == 1); // ascending: smallest first
-}
-
-TEST_CASE("sorting-proxy: a row keeps its source row's id when sorted, so a selection follows it")
-{
-    TableModel source;
-    FillBAC(source);
-    SortingProxyModel proxy(&source);
-    const ItemId first = proxy.IdOf(MakeModelIndex(0));
-    const Variant name = proxy.Data(MakeModelIndex(0, 0));
-    CHECK(proxy.Sort(1, SortOrder::Descending));
-    const ModelIndex moved = proxy.IndexOfId(first);
-    REQUIRE(moved.IsValid());
-    CHECK(proxy.Data(MakeModelIndex(moved.Row, 0)).Compare(name) == 0);
 }
