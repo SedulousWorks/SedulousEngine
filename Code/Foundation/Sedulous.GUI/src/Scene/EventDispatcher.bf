@@ -2459,9 +2459,11 @@ class EventDispatcher
 			if (source != null)
 				source.ReleaseRef();
 		}
-		let payload = mDragPayload; // the drag's, told to the source, then gone
-		mDragPayload = new .();
-		defer delete payload;
+		// The drag's, told to the source, then gone. Moved out as Raptor's is, the dispatcher's own
+		// left empty and alive: a drag ended by one of a drop's listeners leaves the rest reading it.
+		let payload = scope DragPayload();
+		payload.Set(mDragPayload);
+		mDragPayload.Reset();
 		let left = mDropTarget;
 		if (left != null)
 		{

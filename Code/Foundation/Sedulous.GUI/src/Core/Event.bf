@@ -61,6 +61,16 @@ class DragPayload
 		Label.Set(other.Label);
 		Allowed = other.Allowed;
 	}
+
+	/// Empty again, as a fresh payload is.
+	public void Reset()
+	{
+		Type.Clear();
+		Value.Dispose();
+		Value = default;
+		Label.Clear();
+		Allowed = DropEffectsAll;
+	}
 }
 
 static

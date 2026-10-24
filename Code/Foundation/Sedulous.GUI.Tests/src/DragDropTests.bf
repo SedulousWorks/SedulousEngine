@@ -504,6 +504,36 @@ class DragDropTests
 		Test.Assert(!s.Target.IsDropTarget);
 	}
 
+	/// A drop listener that ends the drag (as a dock moving the dragged tab does) leaves the
+	/// payload the later listeners read alive, emptied, as Raptor's moved-from payload is.
+	[Test]
+	public static void ADragEndedByOneDropListenerLeavesThePayloadTheNextReadsAlive()
+	{
+		let s = scope Scene();
+		s.Source.TabFocusable = true;
+		s.Target.TabFocusable = true;
+		s.Target.DropTypes = "card";
+		bool firstSawCard = false;
+		bool laterRead = false;
+		s.Target.AddEventListener(.Drop, new [&] (e) =>
+			{
+				firstSawCard = ((DragEvent)e).Payload.Type == "card";
+				s.D.CancelDrag();
+			});
+		s.Target.AddEventListener(.Drop, new [&] (e) =>
+			{
+				laterRead = ((DragEvent)e).Payload.Type.IsEmpty;
+			});
+		s.Source.RequestFocus();
+		Test.Assert(s.D.PickDrag());
+		s.D.InjectKeyDown((uint32)KeyCode.Tab);
+		Test.Assert(s.D.DropTarget == s.Target);
+		s.D.InjectKeyDown((uint32)KeyCode.Return);
+		Test.Assert(firstSawCard);
+		Test.Assert(laterRead);
+		Test.Assert(!s.D.IsDragging);
+	}
+
 	[Test]
 	public static void FromTheKeysDragPickPicksUpAtTheFocusTheFocusMovingIsAskedReturnDropsEscapeCancels()
 	{
