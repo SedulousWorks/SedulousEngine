@@ -51,38 +51,6 @@ namespace
     }
 }
 
-TEST_CASE("frame-stats: a frame says what it restyled, laid out and drew, and an idle one what asked: nothing")
-{
-    auto root = NewRoot();
-    auto panel = Box(*root.Get(), u8"panel");
-    panel->EditLayoutStyle([](LayoutStyle& s) { s.Direction = FlexDirection::Column; });
-    auto a = Box(*panel.Get(), u8"a");
-    auto b = Box(*panel.Get(), u8"b");
-    StyleManager styles(CSSParser::Parse(SV(u8"box { background-color: #336699; }")));
-    vg::VGContext canvas;
-
-    CHECK(Frame(*root.Get(), styles, canvas));
-    const FrameStats& stats = root->GetLastFrameStats();
-    CHECK(stats.Restyled == 3u); // the three boxes (the root is no widget)
-    CHECK(stats.LaidOut >= 1u);
-    CHECK(stats.NodesDrawn == 4u); // the root and the boxes
-    CHECK(stats.Vertices > 0u);    // their backgrounds
-    CHECK(stats.Commands > 0u);
-    CHECK(stats.FramesDrawn == 1u);
-
-    (void)Frame(*root.Get(), styles, canvas); // what the first frame left settles
-    CHECK_FALSE(Frame(*root.Get(), styles, canvas));
-    CHECK(stats.Restyled == 0u);
-    CHECK(stats.LaidOut == 0u);
-    CHECK_FALSE(stats.Reasons.Any());
-    CHECK(stats.Describe().AsView().ContainsIgnoreCase(SV(u8"asked by: nothing")));
-
-    b->SetDisplayed(false); // not drawn, not counted
-    (void)Frame(*root.Get(), styles, canvas);
-    CHECK(stats.NodesDrawn == 3u);
-    (void)a;
-}
-
 TEST_CASE("frame-stats: an animation that keeps a GUI drawing is named; a change says redraw")
 {
     auto root = NewRoot();

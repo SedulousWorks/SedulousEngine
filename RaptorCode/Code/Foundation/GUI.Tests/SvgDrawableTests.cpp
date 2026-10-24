@@ -82,28 +82,6 @@ TEST_CASE("svg-drawable: an Image shows an SVG by its src or from markup, sized 
     CHECK(fromText->GetSize().y == doctest::Approx(12.0f));
 }
 
-TEST_CASE("svg-drawable: a rich text's inline icon by an .svg path is drawn as its paths")
-{
-    fonts::TrueTypeFonts::Initialize();
-    fonts::TrueTypeFontService service{core::DefaultAllocator()};
-    const core::String data = foundation::vfs::FindDataRoot();
-    REQUIRE(service.LoadFont(u8"Roboto", foundation::vfs::DataPath(data.AsView(), u8"Assets/fonts/roboto/Roboto-Regular.ttf").AsView())
-            == fonts::FontLoadResult::Success);
-    Pictures pictures;
-    Text text;
-    text.SetFontService(&service);
-    text.SetFont(service.GetFont(u8"Roboto", 16.0f));
-    text.SetResourceProvider(&pictures);
-    text.SetMarkup(core::StringView(u8"[icon=bar.svg]"));
-    vg::VGContext ctx;
-    DrawContext dc{ctx};
-    text.Draw(dc, core::Float2{0.0f, 0.0f});
-    CHECK(pictures.svgs == 1);
-    CHECK(pictures.images == 0);
-    REQUIRE(ctx.GetBatch().vertices.Size() > 0);
-    CHECK(AllRed(ctx)); // the icon alone, as authored
-}
-
 TEST_CASE("svg-drawable: a menu command's icon by an .svg path")
 {
     Pictures pictures;

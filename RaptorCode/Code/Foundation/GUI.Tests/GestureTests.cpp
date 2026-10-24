@@ -65,35 +65,6 @@ namespace
     };
 }
 
-TEST_CASE("gestures: touch-action from a sheet, a list of its keywords, narrowed by every ancestor")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    auto outer = Make<UIWidget>();
-    outer->AddClass(SV(u8"outer"));
-    auto inner = Make<UIWidget>();
-    inner->AddClass(SV(u8"inner"));
-    auto plain = Make<UIWidget>();
-    root->AddChild(outer.Get());
-    outer->AddChild(inner.Get());
-    outer->AddChild(plain.Get());
-    StyleManager styles;
-    styles.SetStyleSheet(CSSParser::Parse(SV(u8".outer { touch-action: pan-y pinch-zoom; } .inner { touch-action: pan-x pan-y; }")));
-    styles.ApplyTree(*root.Get());
-    CHECK(outer->GetTouchActions() == (kTouchPanY | kTouchPinchZoom));
-    CHECK(inner->GetTouchActions() == (kTouchPanX | kTouchPanY));
-    CHECK(inner->EffectiveTouchActions() == kTouchPanY); // the outer keeps pan-x, the inner pinch-zoom
-    CHECK(plain->GetTouchActions() == kTouchAuto);       // not inherited
-    CHECK(plain->EffectiveTouchActions() == (kTouchPanY | kTouchPinchZoom));
-
-    styles.SetStyleSheet(CSSParser::Parse(SV(u8".outer { touch-action: none; } .inner { touch-action: pan-x sideways; }")));
-    styles.ApplyTree(*root.Get());
-    CHECK(outer->GetTouchActions() == 0);
-    CHECK(inner->GetTouchActions() == kTouchAuto); // a word it does not know: the declaration dropped
-    styles.SetStyleSheet(CSSParser::Parse(SV(u8".outer { touch-action: manipulation; }")));
-    styles.ApplyTree(*root.Get());
-    CHECK(outer->GetTouchActions() == kTouchAuto);
-}
-
 TEST_CASE("gestures: a finger moving along an axis its node keeps does not pan, and goes on as the pointer")
 {
     auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));

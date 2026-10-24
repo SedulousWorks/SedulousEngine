@@ -50,25 +50,6 @@ TEST_CASE("context: two roots share data, one flush a frame runs a binding in ei
     CHECK(t.gui->LastBindingCount() == 1u);
 }
 
-TEST_CASE("context: a root's animations pause or slow on the shared clock")
-{
-    TwoRoots t;
-    auto a = Make<Node>();
-    auto b = Make<Node>();
-    t.hud->AddChild(a.Get());
-    t.menu->AddChild(b.Get());
-    a->Animate(core::StringView(u8"x"), core::StringView(u8"100"), 1.0f, core::StringView(u8"linear"));
-    b->Animate(core::StringView(u8"x"), core::StringView(u8"100"), 1.0f, core::StringView(u8"linear"));
-    t.menu->SetPaused(true); // the game paused under its menu: the menu's own root keeps going
-    t.gui->Update(core::Duration::FromSeconds(0.5));
-    CHECK(a->GetPosition().x == doctest::Approx(50.0f));
-    CHECK(b->GetPosition().x == doctest::Approx(0.0f));
-    t.menu->SetPaused(false);
-    t.menu->SetTimeScale(0.5f);
-    t.gui->Update(core::Duration::FromSeconds(0.5));
-    CHECK(b->GetPosition().x == doctest::Approx(25.0f)); // half speed
-}
-
 TEST_CASE("context: the active root follows input, and takes commands and keystrokes")
 {
     TwoRoots t;

@@ -58,40 +58,6 @@ namespace
     }
 }
 
-TEST_CASE("layout: a sheet's display, flex, grid and size properties reach the layout")
-{
-    Bed bed;
-    auto grid = core::MakeRef<Panel>(core::DefaultAllocator());
-    grid->AddClass(SV(u8"cards"));
-    bed.root->AddChild(grid.Get());
-    core::Array<core::RefPtr<Panel>> cards;
-    for (int i = 0; i < 4; ++i)
-    {
-        cards.PushBack(core::MakeRef<Panel>(core::DefaultAllocator()));
-        cards[cards.Size() - 1]->AddClass(SV(u8"card"));
-        grid->AddChild(cards[cards.Size() - 1].Get());
-    }
-    StyleManager styles(CSSParser::Parse(SV(
-        u8".cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 20px; padding: 10px; }"
-        u8".card { height: 40px; }")));
-    styles.ApplyTree(*bed.root.Get());
-    bed.Layout();
-    CHECK(grid->GetLayoutStyle().Kind == Display::Grid);
-    CHECK(grid->GetLayoutStyle().Columns.Size() == 2u);
-    CHECK(cards[1]->GetPosition().x == doctest::Approx(10.0f + 180.0f + 20.0f)); // (380 - 20) / 2 a column
-    CHECK(cards[1]->GetPosition().y == doctest::Approx(10.0f));
-    CHECK(cards[2]->GetPosition().x == doctest::Approx(10.0f));
-    CHECK(cards[2]->GetPosition().y == doctest::Approx(10.0f + 40.0f + 10.0f));
-
-    StyleManager flex(CSSParser::Parse(SV(u8".cards { display: flex; flex-flow: row wrap; } .card { flex: 1; width: 25%; min-width: 50px; }")));
-    flex.ApplyTree(*bed.root.Get());
-    bed.Layout();
-    CHECK(grid->GetLayoutStyle().Direction == FlexDirection::Row);
-    CHECK(grid->GetLayoutStyle().Wrap == FlexWrap::Wrap);
-    CHECK(cards[0]->GetLayoutStyle().Grow == doctest::Approx(1.0f));
-    CHECK(cards[0]->GetLayoutStyle().Width.Kind == LayoutLengthKind::Percent);
-}
-
 namespace
 {
     // 6px a byte, 12px a line.
@@ -345,47 +311,5 @@ namespace
         }
         int Measures = 0;
     };
-}
-
-TEST_CASE("layout: percentage margins, padding and gaps are of the container's content size, as CSS's")
-{
-    Bed bed; // 400 wide
-    auto row = Box(*bed.root.Get(), [](LayoutStyle& s) { s.Direction = FlexDirection::Row; s.AlignItems = Align::Start; });
-    auto a = Fixed(*row.Get(), 50.0f, 20.0f);
-    auto b = Fixed(*row.Get(), 50.0f, 20.0f);
-    StyleManager styles(CSSParser::Parse(SV(u8".row { column-gap: 10%; padding-left: 5%; } .a { margin-left: 25%; }")));
-    row->AddClass(SV(u8"row"));
-    a->AddClass(SV(u8"a"));
-    styles.ApplyTree(*bed.root.Get());
-    bed.Layout();
-    CHECK(row->GetPadding().Left == doctest::Approx(20.0f)); // 5% of the root's 400
-    // a starts after the padding (20) and its margin (25% of the row's content width, 380: 95).
-    CHECK(a->GetPosition().x == doctest::Approx(20.0f + 95.0f));
-    CHECK(b->GetPosition().x == doctest::Approx(20.0f + 95.0f + 50.0f + 38.0f)); // the gap: 10% of 380
-}
-
-TEST_CASE("layout: calc() mixes pixels and percentages where percentages resolve")
-{
-    Bed bed; // 400 wide
-    auto row = Box(*bed.root.Get(), [](LayoutStyle& s) { s.Direction = FlexDirection::Row; s.AlignItems = Align::Start; });
-    // Their heights from code; their widths the sheet's.
-    auto a = Box(*row.Get(), [](LayoutStyle& s) { s.Height = LayoutLength::Px(20.0f); });
-    auto b = Box(*row.Get(), [](LayoutStyle& s) { s.Height = LayoutLength::Px(20.0f); });
-    row->AddClass(SV(u8"row"));
-    a->AddClass(SV(u8"a"));
-    b->AddClass(SV(u8"b"));
-    StyleManager styles(CSSParser::Parse(SV(u8".row { padding-left: calc(10% - 20px); column-gap: calc(10px + 5%); }"
-                                             u8".a { width: calc(50% - 2 * 10px); margin-left: calc((10% + 4px) / 2); }"
-                                             u8".b { width: calc(1em + 4px); }")));
-    styles.ApplyTree(*bed.root.Get());
-    bed.Layout();
-    CHECK(a->GetLayoutStyle().Width.Kind == LayoutLengthKind::Calc);
-    CHECK(row->GetPadding().Left == doctest::Approx(20.0f)); // 10% of 400, less 20
-    // The row's content is 380 wide: a is half of it less 20, after its margin (5% of 380, and 2).
-    CHECK(a->GetSize().x == doctest::Approx(170.0f));
-    CHECK(a->GetPosition().x == doctest::Approx(20.0f + 21.0f));
-    CHECK(b->GetLayoutStyle().Width.Kind == LayoutLengthKind::Px); // no percent part: plain pixels
-    CHECK(b->GetSize().x == doctest::Approx(20.0f));                // 1em of 16, and 4
-    CHECK(b->GetPosition().x == doctest::Approx(41.0f + 170.0f + 29.0f)); // the gap: 10 and 5% of 380
 }
 

@@ -110,17 +110,6 @@ namespace
     }
 }
 
-TEST_CASE("mirror: the helpers place a part as far from the right as it was from the left")
-{
-    const Rect box{10.0f, 0.0f, 100.0f, 20.0f};
-    CHECK(MirroredX(15.0f, box, true) == doctest::Approx(105.0f));
-    CHECK(MirroredX(15.0f, box, false) == doctest::Approx(15.0f));
-    const Rect part = MirroredIn(Rect{12.0f, 2.0f, 20.0f, 10.0f}, box, true);
-    CHECK(part.x == doctest::Approx(88.0f));
-    CHECK(part.y == doctest::Approx(2.0f));
-    CHECK(part.width == doctest::Approx(20.0f));
-}
-
 TEST_CASE("mirror: a menu item's check, label and shortcut, and a submenu's arrow")
 {
     CheckMirrored(

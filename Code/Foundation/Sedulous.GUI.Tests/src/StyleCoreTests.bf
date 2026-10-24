@@ -1,7 +1,30 @@
 using System;
+using Sedulous.Core;
 using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
+
+/// A library's widget with a property of its own, styled by the name it declares.
+[GuiReflect]
+class StyleCoreGauge : UIWidget
+{
+	private Color mNeedle = .();
+	private float mNeedleWidth = 1.0f;
+
+	[GuiProperty("needle-color")]
+	public Color NeedleColor
+	{
+		get => mNeedle;
+		set => mNeedle = value;
+	}
+
+	[GuiProperty("needle-width")]
+	public float NeedleWidth
+	{
+		get => mNeedleWidth;
+		set => mNeedleWidth = value;
+	}
+}
 
 /// The cascade's core: var() anywhere in a value, custom properties inherited, shorthands
 /// cascading as their longhands, and a declaration parsed once.
@@ -108,5 +131,73 @@ class StyleCoreTests
 		let third = scope ResolvedStyle();
 		withVar.Resolve(w, third);
 		Test.Assert(!withVar.Rules[0].Properties[1].CacheValid);
+	}
+
+	[Test]
+	public static void AWidgetsReflectedPropertyTakesTheCssNameItDeclares()
+	{
+		let sheet = scope StyleSheet();
+		CSSParser.Parse("gauge { needle-color: #ff8000; needle-width: 0.5rem; }", sheet);
+		let gauge = new StyleCoreGauge();
+		defer gauge.ReleaseRef();
+		gauge.Tag = "gauge";
+		var lengths = LengthContext();
+		lengths.RootFontSize = 16.0f;
+		let rs = scope ResolvedStyle();
+		sheet.Resolve(gauge, rs);
+		ApplyStyle(gauge, rs, null, null, lengths);
+		Test.Assert(Near(gauge.NeedleColor.R, 1.0f));
+		Test.Assert(Near(gauge.NeedleColor.G, 128.0f / 255.0f));
+		Test.Assert(Near(gauge.NeedleWidth, 8.0f)); // a length, resolved
+	}
+
+	[Test]
+	public static void TheBoxBelongsToTheSheetARestyleWithoutBoxPropertiesClearsIt()
+	{
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(".card { background-color: red; box-shadow: 0 2px 4px black; }", sheet);
+		let w = StyleFixtures.Widget("box");
+		defer w.ReleaseRef();
+		w.AddClass("card");
+		let rs = scope ResolvedStyle();
+		sheet.Resolve(w, rs);
+		ApplyStyle(w, rs);
+		Test.Assert(Near(w.Box.BackgroundColor.R, 1.0f));
+		Test.Assert(w.Box.Shadows.Count == 1);
+		w.RemoveClass("card");
+		sheet.Resolve(w, rs);
+		ApplyStyle(w, rs);
+		Test.Assert(w.Box.IsEmpty);
+
+		// A box set natively is the node's own: a sheet with no box properties leaves it.
+		let native = StyleFixtures.Widget("box");
+		defer native.ReleaseRef();
+		let nativeBox = scope NodeBox();
+		nativeBox.BackgroundColor = Color(0.0f, 0.0f, 1.0f, 1.0f);
+		native.SetBox(nativeBox);
+		sheet.Resolve(native, rs);
+		ApplyStyle(native, rs);
+		Test.Assert(Near(native.Box.BackgroundColor.B, 1.0f));
+	}
+
+	[Test]
+	public static void TheStyleManagerGivesEachWidgetItsAncestorsCustomProperties()
+	{
+		// A var() set on a row reaches its children through ApplyTree (it was dropped when the
+		// manager resolved each widget alone).
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let row = StyleFixtures.Widget("row");
+		defer row.ReleaseRef();
+		let card = StyleFixtures.Widget("card");
+		defer card.ReleaseRef();
+		root.AddChild(row);
+		row.AddChild(card);
+		let sheet = scope StyleSheet();
+		CSSParser.Parse("row { --glow: #00ff00; } card { box-shadow: 0 0 4px var(--glow); }", sheet);
+		let styles = scope StyleManager(sheet);
+		styles.ApplyTree(root);
+		Test.Assert(card.Box.Shadows.Count == 1);
+		Test.Assert(Near(card.Box.Shadows[0].ShadowColor.G, 1.0f));
 	}
 }

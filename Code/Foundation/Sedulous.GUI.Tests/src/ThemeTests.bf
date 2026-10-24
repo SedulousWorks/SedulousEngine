@@ -61,4 +61,12 @@ class ThemeTests
 		dark.Resolve(window, MediaContext(), true, "title", windowStyle, title);
 		Test.Assert(title.Has("background-color"));
 	}
+
+	[Test]
+	public static void ParseUrlStripsTheUrlWrapperAndQuotes()
+	{
+		Test.Assert(ParseUrl("url(panel)") == "panel");
+		Test.Assert(ParseUrl("url('a/b.png')") == "a/b.png");
+		Test.Assert(ParseUrl("plain") == "plain");
+	}
 }

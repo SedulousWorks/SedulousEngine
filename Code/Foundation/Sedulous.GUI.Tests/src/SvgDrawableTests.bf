@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Fonts.TrueType;
 using Sedulous.Image;
 using Sedulous.VG;
 using Sedulous.VG.SVG;
@@ -168,5 +169,25 @@ class SvgDrawableTests
 		Test.Assert(pictures.Svg("data:image/svg+xml,not svg") == null); // remembered as none
 		Test.Assert(pictures.Svg("bar.svg") === pictures.Doc);
 		Test.Assert(pictures.Svgs == 1);
+	}
+
+	[Test]
+	public static void ARichTextsInlineIconByAnSvgPathIsDrawnAsItsPaths()
+	{
+		let service = scope TrueTypeFontService();
+		TextFixtures.Load(service, "Roboto", TextFixtures.cRoboto);
+		let pictures = scope SvgPictures();
+		let text = scope Text();
+		text.FontService = service;
+		text.Font = service.GetFont("Roboto", 16.0f);
+		text.SetResourceProvider(pictures);
+		text.SetMarkup("[icon=bar.svg]");
+		let ctx = scope VGContext();
+		let dc = scope DrawContext(ctx);
+		text.Draw(dc, Float2(0.0f, 0.0f));
+		Test.Assert(pictures.Svgs == 1);
+		Test.Assert(pictures.Images == 0);
+		Test.Assert(ctx.GetBatch().Vertices.Count > 0);
+		Test.Assert(AllRed(ctx)); // the icon alone, as authored
 	}
 }

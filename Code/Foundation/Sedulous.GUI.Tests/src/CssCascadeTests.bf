@@ -66,4 +66,18 @@ class CssCascadeTests
 		// .primary overrides --accent; color: var(--accent) should pick the cascaded value.
 		Test.Assert(ColorOf("button { --accent: red; color: var(--accent); } .primary { --accent: blue; }", "primary", .. scope String()) == "blue");
 	}
+
+	[Test]
+	public static void VarEndToEndThroughTheApplier()
+	{
+		let w = StyleFixtures.Widget("button");
+		defer w.ReleaseRef();
+		let sheet = scope StyleSheet();
+		CSSParser.Parse("button { --bg: #0000ff; background-color: var(--bg); }", sheet);
+		let rs = scope ResolvedStyle();
+		sheet.Resolve(w, rs);
+		ApplyStyle(w, rs);
+
+		Test.Assert(NodeFixtures.Near(w.Box.BackgroundColor.B, 1.0f)); // var(--bg) -> #0000ff -> blue
+	}
 }

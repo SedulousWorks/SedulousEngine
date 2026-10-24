@@ -64,4 +64,35 @@ class ContextTests
 		Test.Assert(before.Slot == after.Slot);
 		Test.Assert(after.Table.Resolve(after.Slot, after.Generation) == panel);
 	}
+
+	[Test]
+	public static void ARootsAnimationsPauseOrSlowOnTheSharedClock()
+	{
+		let gui = new GUIContext();
+		defer gui.ReleaseRef();
+		let hud = new SceneRoot(gui);
+		defer hud.ReleaseRef();
+		let menu = new SceneRoot(gui);
+		defer menu.ReleaseRef();
+		hud.Size = .(200.0f, 200.0f);
+		menu.Size = .(200.0f, 200.0f);
+		let a = new Node();
+		defer a.ReleaseRef();
+		let b = new Node();
+		defer b.ReleaseRef();
+		hud.AddChild(a);
+		menu.AddChild(b);
+		let aMoves = a.Animate("x", "100", 1.0f, "linear");
+		defer aMoves.ReleaseRef();
+		let bMoves = b.Animate("x", "100", 1.0f, "linear");
+		defer bMoves.ReleaseRef();
+		menu.Paused = true; // the game paused under its menu: the menu's own root keeps going
+		gui.Update(SceneFixtures.Seconds(0.5));
+		Test.Assert(NodeFixtures.Near(a.Position.X, 50.0f));
+		Test.Assert(NodeFixtures.Near(b.Position.X, 0.0f));
+		menu.Paused = false;
+		menu.TimeScale = 0.5f;
+		gui.Update(SceneFixtures.Seconds(0.5));
+		Test.Assert(NodeFixtures.Near(b.Position.X, 25.0f)); // half speed
+	}
 }

@@ -297,43 +297,6 @@ TEST_CASE("keyboard: CaptureNextKey takes the next key before bindings and widge
     CHECK(cancels == 0);
 }
 
-TEST_CASE("keyboard: Escape cancels a capture, unless the caller takes it")
-{
-    Bed bed;
-    core::Array<Keystroke> taken;
-    int cancels = 0;
-    bed.D().CaptureNextKey([&](const Keystroke& k) { taken.PushBack(k); }, [&] { ++cancels; });
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::Escape), 0);
-    CHECK(cancels == 1);
-    CHECK(taken.IsEmpty());
-    CHECK_FALSE(bed.D().IsCapturingKey());
-    bed.D().CaptureNextKey([&](const Keystroke& k) { taken.PushBack(k); }, [&] { ++cancels; }, true);
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::Escape), 0);
-    REQUIRE(taken.Size() == 1u);
-    CHECK(taken[0].Code == static_cast<core::u32>(KeyCode::Escape));
-    CHECK(cancels == 1);
-    // A second capture replaces a waiting one, which is cancelled.
-    bed.D().CaptureNextKey([&](const Keystroke& k) { taken.PushBack(k); }, [&] { ++cancels; });
-    bed.D().CaptureNextKey([&](const Keystroke& k) { taken.PushBack(k); });
-    CHECK(cancels == 2);
-}
-
-TEST_CASE("keyboard: an & marks an access key; && is an ampersand")
-{
-    Mnemonic m = ParseMnemonic(SV(u8"&File"));
-    CHECK(m.Shown == SV(u8"File"));
-    CHECK(m.Key == U'f');
-    CHECK(m.Start == 0u);
-    CHECK(m.End == 1u);
-    m = ParseMnemonic(SV(u8"E&xit"));
-    CHECK(m.Shown == SV(u8"Exit"));
-    CHECK(m.Key == U'x');
-    CHECK(m.Start == 1u);
-    m = ParseMnemonic(SV(u8"Save && Quit"));
-    CHECK(m.Shown == SV(u8"Save & Quit"));
-    CHECK(m.Key == 0);
-}
-
 TEST_CASE("keyboard: Alt and a button's access key focus and press it; its letter is underlined while Alt is held")
 {
     Bed bed;
@@ -403,16 +366,4 @@ TEST_CASE("keyboard: type-ahead reads typed text, so it follows the layout and a
     bed.D().InjectText(SV(u8"а"));
     CHECK(ran == 0);
     CHECK(combo->GetSelectedIndex() == 2);
-}
-
-TEST_CASE("keyboard: type-ahead matches letters in either case in Latin, Greek and Cyrillic")
-{
-    CHECK(StartsWithIgnoringCase(SV(u8"Banana"), SV(u8"ba")));
-    CHECK(StartsWithIgnoringCase(SV(u8"Éclair"), SV(u8"é")));       // É, é
-    CHECK(StartsWithIgnoringCase(SV(u8"Łódź"), SV(u8"ł"))); // Ł, ł
-    CHECK(StartsWithIgnoringCase(SV(u8"Δέλτα"), SV(u8"δ"))); // Δ, δ
-    CHECK(StartsWithIgnoringCase(SV(u8"Груша"), SV(u8"гр"))); // Гр, гр
-    CHECK(StartsWithIgnoringCase(SV(u8"Ёлка"), SV(u8"ё"))); // Ё, ё
-    CHECK_FALSE(StartsWithIgnoringCase(SV(u8"Apple"), SV(u8"b")));
-    CHECK_FALSE(StartsWithIgnoringCase(SV(u8"A"), SV(u8"ab")));
 }

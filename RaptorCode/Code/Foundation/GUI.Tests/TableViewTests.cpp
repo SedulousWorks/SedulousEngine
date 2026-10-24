@@ -51,21 +51,6 @@ namespace
     }
 }
 
-TEST_CASE("table-model: columns, rows, and typed cells")
-{
-    TableModel model;
-    FillPeople(model, 3);
-
-    CHECK(model.ColumnCount() == 2);
-    CHECK(model.RowCount() == 3);
-    CHECK(model.ColumnName(0) == SV(u8"Name"));
-    CHECK(model.ColumnName(1) == SV(u8"Age"));
-    CHECK(model.Data(MakeModelIndex(0, 0)).AsString() == SV(u8"Person"));
-    CHECK(model.Data(MakeModelIndex(1, 1)).AsInt() == 21);
-    CHECK(model.Data(MakeModelIndex(1, 1)).ToString() == SV(u8"21"));
-    CHECK(model.Data(MakeModelIndex(9, 0)).IsEmpty()); // out of range
-}
-
 TEST_CASE("table-view: virtualizes rows over the body viewport")
 {
     TableModel model;

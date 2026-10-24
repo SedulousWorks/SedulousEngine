@@ -51,25 +51,6 @@ namespace
     }
 }
 
-TEST_CASE("tree-model: hierarchy navigation")
-{
-    Tree t;
-    CHECK(t.model.RowCount() == 2);                          // two roots
-    const ModelIndex ia = t.model.Index(0, 0, ModelIndex{}); // A
-    CHECK(t.model.Data(ia).AsString() == SV(u8"A"));
-    CHECK(t.model.HasChildren(ia));
-    CHECK(t.model.RowCount(ia) == 2); // A1, A2
-
-    const ModelIndex ia1 = t.model.Index(0, 0, ia); // A1
-    CHECK(t.model.Data(ia1).AsString() == SV(u8"A1"));
-    CHECK(t.model.RowCount(ia1) == 1);     // A1x
-    CHECK(t.model.ParentIndex(ia1) == ia); // A1's parent is A
-
-    const ModelIndex ib = t.model.Index(1, 0, ModelIndex{}); // B
-    CHECK_FALSE(t.model.HasChildren(ib));
-    CHECK_FALSE(t.model.ParentIndex(ia).IsValid()); // A is a root
-}
-
 TEST_CASE("tree-view: collapsed shows only roots; expanding reveals children")
 {
     Tree t;

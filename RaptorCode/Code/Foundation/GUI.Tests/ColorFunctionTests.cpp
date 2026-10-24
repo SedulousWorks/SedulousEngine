@@ -24,27 +24,6 @@ namespace
     }
 }
 
-TEST_CASE("colours: hsl() and hsla(), commas or spaces, an alpha as a number or a percentage")
-{
-    CheckColor(ParseColor(SV(u8"hsl(120, 100%, 50%)")), 0.0f, 1.0f, 0.0f, 1.0f);
-    CheckColor(ParseColor(SV(u8"hsl(0 100% 50% / 0.5)")), 1.0f, 0.0f, 0.0f, 0.5f);
-    CheckColor(ParseColor(SV(u8"hsla(240deg, 100%, 25%, 25%)")), 0.0f, 0.0f, 0.5f, 0.25f);
-    CheckColor(ParseColor(SV(u8"hsl(-120, 100%, 50%)")), 0.0f, 0.0f, 1.0f, 1.0f); // a hue round the circle
-    CheckColor(ParseColor(SV(u8"hsl(30, 0%, 40%)")), 0.4f, 0.4f, 0.4f, 1.0f);    // no saturation: grey
-    CHECK_FALSE(ParseColor(SV(u8"hsl(10, 20%)")).HasValue());
-}
-
-TEST_CASE("colours: color-mix() in srgb, premultiplied, its percentages normalized")
-{
-    CheckColor(ParseColor(SV(u8"color-mix(in srgb, red 25%, blue)")), 0.25f, 0.0f, 0.75f, 1.0f);
-    CheckColor(ParseColor(SV(u8"color-mix(in srgb, red, blue 75%)")), 0.25f, 0.0f, 0.75f, 1.0f);
-    CheckColor(ParseColor(SV(u8"color-mix(in srgb, red 60%, blue 60%)")), 0.5f, 0.0f, 0.5f, 1.0f); // over 100: scaled down
-    CheckColor(ParseColor(SV(u8"color-mix(in srgb, red 20%, blue 20%)")), 0.5f, 0.0f, 0.5f, 0.4f); // under: the alpha
-    CheckColor(ParseColor(SV(u8"color-mix(in srgb, red, transparent)")), 1.0f, 0.0f, 0.0f, 0.5f);  // premultiplied
-    CheckColor(ParseColor(SV(u8"color-mix(in srgb, hsl(120, 100%, 50%), #000)")), 0.0f, 0.5f, 0.0f, 1.0f);
-    CHECK_FALSE(ParseColor(SV(u8"color-mix(red, blue)")).HasValue());
-}
-
 TEST_CASE("colours: currentColor is the nearest declared colour, a descendant's too; on color, the parent's")
 {
     core::RefPtr<SceneRoot> root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));

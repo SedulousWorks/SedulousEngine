@@ -289,4 +289,38 @@ class RoutingTests
 		Test.Assert(counts[1] == 2);
 		Test.Assert(counts[3] == 1);
 	}
+
+	[Test]
+	public static void PointerEventsAndCursorComeFromASheetTheCursorIsTheNearestSetOne()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let card = SceneFixtures.NewWidget(root, 0, 0, 200, 200, "card");
+		defer card.ReleaseRef();
+		card.AddClass("card");
+		let glass = SceneFixtures.NewWidget(root, 0, 0, 200, 200, "glass"); // over the card
+		defer glass.ReleaseRef();
+		glass.AddClass("glass");
+		let inner = SceneFixtures.NewWidget(card, 10, 10, 50, 50, "inner");
+		defer inner.ReleaseRef();
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(".glass { pointer-events: none; } .card { cursor: pointer; }", sheet);
+		let styles = scope StyleManager(sheet);
+		styles.ApplyTree(root);
+		let d = root.EventDispatcher;
+		d.InjectMouseMove(.(20.0f, 20.0f));
+		Test.Assert(d.OverNode == inner); // through the glass
+		Test.Assert(d.Cursor == .Pointer); // the card's, inherited by the inner box
+		inner.Cursor = .Text;
+		Test.Assert(d.Cursor == .Text);
+		d.InjectMouseMove(.(300.0f, 300.0f));
+		Test.Assert(d.Cursor == .Default);
+
+		// While a press holds the pointer, the pressed node's look stays (a drag keeps its cursor).
+		d.InjectMouseDown(.(20.0f, 20.0f), .Left);
+		d.InjectMouseMove(.(300.0f, 300.0f));
+		Test.Assert(d.Cursor == .Text);
+		d.InjectMouseUp(.(300.0f, 300.0f), .Left);
+		Test.Assert(d.Cursor == .Default);
+	}
 }

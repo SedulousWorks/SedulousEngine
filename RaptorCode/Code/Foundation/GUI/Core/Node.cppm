@@ -1,42 +1,16 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026-Present Robert Campbell
 
-// GUI - :node partition, what is left of it after slice S11: the members whose bodies or types
-// belong to later slices (S12 tweens, S19 the script surface). The rest is
+// GUI - :node partition, what is left of it after slice S12: the members whose bodies or types
+// belong to later slices (S19 the script surface, the drag and tooltip widgets). The rest is
 // Code/Foundation/Sedulous.GUI/src/Core/Node.bf (ElementTable, Node; layout in
 // Layout/LayoutImpl.bf; the GUI a node is in in Scene/GUIClusterImpl.bf; Element<T> and
-// ElementSet in Scene/ElementTypes.bf).
+// ElementSet in Scene/ElementTypes.bf; the tweens in Styling/TweenImpl.bf).
 
 export namespace foundation::gui
 {
-    class Tween;           // a property moving on the GUI's clock (:tween, E14)
-    class TweenGroup;      // tweens run as one (:tween)
-
     class Node
     {
-
-        // --- S12: tweens (Styling/TweenImpl.cpp) ---
-        /// Moves `property` to `to` over `seconds` on the GUI's clock (E14), eased as `easing` names
-        /// (a CSS easing or a named curve). The property is named as a sheet names it, and composes
-        /// over the cascade, holding its end until stopped; a name no sheet knows is a reflected
-        /// property (`value`, `x`, `textColor`). A tween of the same property replaces the running
-        /// one, from the value showing. The tween, to shape further (a start value, a delay,
-        /// repeats); inert on a node in no GUI. Defined in Styling/TweenImpl.cpp.
-        RefPtr<Tween> Animate(core::StringView property, core::StringView to, f32 seconds,
-                              core::StringView easing = core::StringView(u8"ease"));
-        /// Moves `property` toward `to` as a damped spring (E14, Tween::Spring): a spring already
-        /// moving it turns toward the new end from where it is, at the speed it has, rather than
-        /// starting again. The spring, running.
-        RefPtr<Tween> SpringTo(core::StringView property, core::StringView to, f32 stiffness = 170.0f, f32 damping = 26.0f,
-                               f32 mass = 1.0f);
-        /// Runs `group` on this node's GUI clock (a script's RunAction for a group, E14).
-        void Play(RefPtr<TweenGroup> group);
-        /// A tween of this node as Animate makes one, not yet running: a step for a group (E14).
-        RefPtr<Tween> CreateTween(core::StringView property, core::StringView to, f32 seconds,
-                                  core::StringView easing = core::StringView(u8"ease"));
-        /// Stops what moves `property` and gives it back to the sheet (a tween that ended holds
-        /// its end until this); false when nothing moved it.
-        bool StopAnimation(core::StringView property);
 
         // --- declared in Node.bf returning null (the dispatcher calls them); the slice with Tooltip and
         // DragPreview fills them in place with these (their bodies are in Scene/GUIReflectionImpl.cpp) ---

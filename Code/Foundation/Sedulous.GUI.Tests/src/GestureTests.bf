@@ -179,4 +179,44 @@ class GestureTests
 			Test.Assert(bed.Seen.Count == before); // gone: it hears nothing more
 		}
 	}
+
+	[Test]
+	public static void TouchActionFromASheetAListOfItsKeywordsNarrowedByEveryAncestor()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let outer = new UIWidget();
+		defer outer.ReleaseRef();
+		outer.AddClass("outer");
+		let inner = new UIWidget();
+		defer inner.ReleaseRef();
+		inner.AddClass("inner");
+		let plain = new UIWidget();
+		defer plain.ReleaseRef();
+		root.AddChild(outer);
+		outer.AddChild(inner);
+		outer.AddChild(plain);
+		let styles = scope StyleManager();
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(".outer { touch-action: pan-y pinch-zoom; } .inner { touch-action: pan-x pan-y; }", sheet);
+		styles.StyleSheet = sheet;
+		styles.ApplyTree(root);
+		Test.Assert(outer.TouchActions == (cTouchPanY | cTouchPinchZoom));
+		Test.Assert(inner.TouchActions == (cTouchPanX | cTouchPanY));
+		Test.Assert(inner.EffectiveTouchActions == cTouchPanY); // the outer keeps pan-x, the inner pinch-zoom
+		Test.Assert(plain.TouchActions == cTouchAuto); // not inherited
+		Test.Assert(plain.EffectiveTouchActions == (cTouchPanY | cTouchPinchZoom));
+
+		let none = scope StyleSheet();
+		CSSParser.Parse(".outer { touch-action: none; } .inner { touch-action: pan-x sideways; }", none);
+		styles.StyleSheet = none;
+		styles.ApplyTree(root);
+		Test.Assert(outer.TouchActions == 0);
+		Test.Assert(inner.TouchActions == cTouchAuto); // a word it does not know: the declaration dropped
+		let manipulation = scope StyleSheet();
+		CSSParser.Parse(".outer { touch-action: manipulation; }", manipulation);
+		styles.StyleSheet = manipulation;
+		styles.ApplyTree(root);
+		Test.Assert(outer.TouchActions == cTouchAuto);
+	}
 }

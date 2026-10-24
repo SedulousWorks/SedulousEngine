@@ -14,6 +14,24 @@ class LayoutEngineTests
 {
 	private static bool Near(float a, float b) => NodeFixtures.Near(a, b);
 
+	/// A panel (a widget tagged so) styled by `style`, the last child of `parent`, which holds it:
+	/// it comes back borrowed.
+	private static UIWidget PanelBox(Node parent, delegate void(LayoutStyle style) style)
+	{
+		let panel = StyleFixtures.Widget("panel");
+		panel.EditLayoutStyle(style);
+		parent.AddChild(panel);
+		panel.ReleaseRef(); // the tree's reference keeps it
+		return panel;
+	}
+
+	/// A panel `w` by `h` pixels, the last child of `parent` (borrowed).
+	private static UIWidget PanelFixed(Node parent, float w, float h) => PanelBox(parent, scope (s) =>
+		{
+			s.Width = LayoutLength.Px(w);
+			s.Height = LayoutLength.Px(h);
+		});
+
 	/// A leaf that counts how often layout asks what it holds.
 	private class CountingLeaf : Node
 	{
@@ -729,5 +747,109 @@ class LayoutEngineTests
 		stack.ChildrenInPaintOrder(order);
 		Test.Assert(order.Count == 2);
 		Test.Assert(order[1] == under); // drawn last
+	}
+
+	[Test]
+	public static void ASheetsDisplayFlexGridAndSizePropertiesReachTheLayout()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 300.0f);
+		defer root.ReleaseRef();
+		let grid = StyleFixtures.Widget("panel");
+		defer grid.ReleaseRef();
+		grid.AddClass("cards");
+		root.AddChild(grid);
+		let cards = scope List<UIWidget>();
+		defer
+		{
+			for (let c in cards)
+				c.ReleaseRef();
+		}
+		for (int i = 0; i < 4; i++)
+		{
+			let card = StyleFixtures.Widget("panel");
+			card.AddClass("card");
+			grid.AddChild(card);
+			cards.Add(card);
+		}
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(".cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 20px; padding: 10px; }" +
+			".card { height: 40px; }", sheet);
+		let styles = scope StyleManager(sheet);
+		styles.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(grid.LayoutStyle.Kind == .Grid);
+		Test.Assert(grid.LayoutStyle.Columns.Count == 2);
+		Test.Assert(Near(cards[1].Position.X, 10.0f + 180.0f + 20.0f)); // (380 - 20) / 2 a column
+		Test.Assert(Near(cards[1].Position.Y, 10.0f));
+		Test.Assert(Near(cards[2].Position.X, 10.0f));
+		Test.Assert(Near(cards[2].Position.Y, 10.0f + 40.0f + 10.0f));
+
+		let flexSheet = scope StyleSheet();
+		CSSParser.Parse(".cards { display: flex; flex-flow: row wrap; } .card { flex: 1; width: 25%; min-width: 50px; }", flexSheet);
+		let flex = scope StyleManager(flexSheet);
+		flex.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(grid.LayoutStyle.Direction == .Row);
+		Test.Assert(grid.LayoutStyle.Wrap == .Wrap);
+		Test.Assert(Near(cards[0].LayoutStyle.Grow, 1.0f));
+		Test.Assert(cards[0].LayoutStyle.Width.Kind == .Percent);
+	}
+
+	[Test]
+	public static void PercentageMarginsPaddingAndGapsAreOfTheContainersContentSizeAsCSSs()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 300.0f); // 400 wide
+		defer root.ReleaseRef();
+		let row = PanelBox(root, scope (s) =>
+			{
+				s.Direction = .Row;
+				s.AlignItems = .Start;
+			});
+		let a = PanelFixed(row, 50.0f, 20.0f);
+		let b = PanelFixed(row, 50.0f, 20.0f);
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(".row { column-gap: 10%; padding-left: 5%; } .a { margin-left: 25%; }", sheet);
+		let styles = scope StyleManager(sheet);
+		row.AddClass("row");
+		a.AddClass("a");
+		styles.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(Near(row.Padding.Left, 20.0f)); // 5% of the root's 400
+		// a starts after the padding (20) and its margin (25% of the row's content width, 380: 95).
+		Test.Assert(Near(a.Position.X, 20.0f + 95.0f));
+		Test.Assert(Near(b.Position.X, 20.0f + 95.0f + 50.0f + 38.0f)); // the gap: 10% of 380
+	}
+
+	[Test]
+	public static void CalcMixesPixelsAndPercentagesWherePercentagesResolve()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 300.0f); // 400 wide
+		defer root.ReleaseRef();
+		let row = PanelBox(root, scope (s) =>
+			{
+				s.Direction = .Row;
+				s.AlignItems = .Start;
+			});
+		// Their heights from code; their widths the sheet's.
+		let a = PanelBox(row, scope (s) => { s.Height = LayoutLength.Px(20.0f); });
+		let b = PanelBox(row, scope (s) => { s.Height = LayoutLength.Px(20.0f); });
+		row.AddClass("row");
+		a.AddClass("a");
+		b.AddClass("b");
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(".row { padding-left: calc(10% - 20px); column-gap: calc(10px + 5%); }" +
+			".a { width: calc(50% - 2 * 10px); margin-left: calc((10% + 4px) / 2); }" +
+			".b { width: calc(1em + 4px); }", sheet);
+		let styles = scope StyleManager(sheet);
+		styles.ApplyTree(root);
+		root.UpdateLayout();
+		Test.Assert(a.LayoutStyle.Width.Kind == .Calc);
+		Test.Assert(Near(row.Padding.Left, 20.0f)); // 10% of 400, less 20
+		// The row's content is 380 wide: a is half of it less 20, after its margin (5% of 380, and 2).
+		Test.Assert(Near(a.Size.X, 170.0f));
+		Test.Assert(Near(a.Position.X, 20.0f + 21.0f));
+		Test.Assert(b.LayoutStyle.Width.Kind == .Px); // no percent part: plain pixels
+		Test.Assert(Near(b.Size.X, 20.0f)); // 1em of 16, and 4
+		Test.Assert(Near(b.Position.X, 41.0f + 170.0f + 29.0f)); // the gap: 10 and 5% of 380
 	}
 }

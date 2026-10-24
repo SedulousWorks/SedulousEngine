@@ -1,27 +1,17 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026-Present Robert Campbell
 
-// GUI - :scene_root partition, what is left of it after slice S11: GUIContext's members whose
-// bodies belong to later slices (S12 the data tweens, S18 accessibility), and the two calls of
-// GUIContext::Update into accessibility. The rest is
-// Code/Foundation/Sedulous.GUI/src/Scene/SceneRoot.bf (GUIContext, SceneRoot; the debug overlay's
-// input half in Scene/DebugOverlayImpl.bf).
+// GUI - :scene_root partition, what is left of it after slice S12: GUIContext's members whose
+// bodies belong to a later slice (S18 accessibility), and the two calls of GUIContext::Update
+// into accessibility. The rest is Code/Foundation/Sedulous.GUI/src/Scene/SceneRoot.bf
+// (GUIContext, SceneRoot; the debug overlay's input half in Scene/DebugOverlayImpl.bf; the data
+// tweens in Styling/TweenImpl.bf).
 
 export namespace foundation::gui
 {
     class GUIContext : public RefCounted
     {
     public:
-        // --- S12: data tweens (Styling/TweenImpl.cpp) ---
-        /// Moves data value `name` to `to` over `seconds` on the GUI's clock (K3), eased as `easing`
-        /// names: whatever is bound to it follows each frame (a score counting up with no widget to
-        /// drive it), in the value's own type (a whole number counts in whole numbers). A tween of
-        /// the same name replaces the running one, from the value showing; a GUI root's pause does not
-        /// hold it. The tween, to shape further. Defined in Styling/TweenImpl.cpp.
-        RefPtr<Tween> AnimateData(core::StringView name, f64 to, f32 seconds, core::StringView easing = core::StringView(u8"ease"));
-        /// A data value's tween as AnimateData makes one, not yet running: a step for a group.
-        RefPtr<Tween> CreateDataTween(core::StringView name, f64 to, f32 seconds, core::StringView easing = core::StringView(u8"ease"));
-
         // --- S18: accessibility (Scene/AccessibilityImpl.cpp; SceneRoot.bf has the fields) ---
         /// Runs an action now; false when its node is gone or does not take it. AccessibilityImpl.cpp.
         bool RunAccessAction(const AccessActionRequest& request);

@@ -196,13 +196,6 @@ TEST_CASE("theme: without providers, resource props are skipped (no crash)")
     CHECK(label->GetTextColor().r == doctest::Approx(1.0f)); // color still applied
 }
 
-TEST_CASE("theme: ParseUrl strips the url() wrapper and quotes")
-{
-    CHECK(ParseUrl(core::StringView(u8"url(panel)")) == core::StringView(u8"panel"));
-    CHECK(ParseUrl(core::StringView(u8"url('a/b.png')")) == core::StringView(u8"a/b.png"));
-    CHECK(ParseUrl(core::StringView(u8"plain")) == core::StringView(u8"plain"));
-}
-
 TEST_CASE("theme: the built-in default theme restyles the standard widgets")
 {
     auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));

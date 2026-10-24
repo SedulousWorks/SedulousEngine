@@ -212,33 +212,6 @@ TEST_CASE("routing: the Inject calls tell a host whether the GUI used the input"
     CHECK_FALSE(d->InjectKeyDown(static_cast<core::u32>(KeyCode::F7)));
 }
 
-TEST_CASE("routing: pointer-events and cursor come from a sheet; the cursor is the nearest set one")
-{
-    auto root = MakeRoot();
-    auto card = Box(*root.Get(), 0, 0, 200, 200, u8"card");
-    card->AddClass(SV(u8"card"));
-    auto glass = Box(*root.Get(), 0, 0, 200, 200, u8"glass"); // over the card
-    glass->AddClass(SV(u8"glass"));
-    auto inner = Box(*card.Get(), 10, 10, 50, 50, u8"inner");
-    StyleManager styles(CSSParser::Parse(SV(u8".glass { pointer-events: none; } .card { cursor: pointer; }")));
-    styles.ApplyTree(*root.Get());
-    EventDispatcher* d = root->GetEventDispatcher();
-    d->InjectMouseMove(core::Float2{20.0f, 20.0f});
-    CHECK(d->GetOverNode() == inner.Get()); // through the glass
-    CHECK(d->GetCursor() == Cursor::Pointer); // the card's, inherited by the inner box
-    inner->SetCursor(Cursor::Text);
-    CHECK(d->GetCursor() == Cursor::Text);
-    d->InjectMouseMove(core::Float2{300.0f, 300.0f});
-    CHECK(d->GetCursor() == Cursor::Default);
-
-    // While a press holds the pointer, the pressed node's look stays (a drag keeps its cursor).
-    d->InjectMouseDown(core::Float2{20.0f, 20.0f}, MouseButton::Left);
-    d->InjectMouseMove(core::Float2{300.0f, 300.0f});
-    CHECK(d->GetCursor() == Cursor::Text);
-    d->InjectMouseUp(core::Float2{300.0f, 300.0f}, MouseButton::Left);
-    CHECK(d->GetCursor() == Cursor::Default);
-}
-
 TEST_CASE("routing: a tap is a press, a release and a click marked as touch, with no hover left behind")
 {
     auto root = MakeRoot();

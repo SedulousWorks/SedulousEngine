@@ -26,24 +26,6 @@ namespace
     core::Duration Frame() { return core::Duration::FromSeconds(0.016); }
 }
 
-TEST_CASE("binding: values convert to the property's type, and compare across numbers")
-{
-    CHECK(FormatVariant(core::Variant::From<f64>(3.0)) == core::String(u8"3"));
-    CHECK(FormatVariant(core::Variant::From<f32>(0.25f)) == core::String(u8"0.25"));
-    CHECK(FormatVariant(core::Variant::From<f32>(0.4f)) == core::String(u8"0.4")); // not 0.4000000059604645
-    CHECK(FormatVariant(core::Variant::From<f32>(2.0f)) == core::String(u8"2"));
-    CHECK(FormatVariant(core::Variant::From<bool>(true)) == core::String(u8"true"));
-    const core::Variant f = ConvertVariant(core::Variant::From<f64>(0.5), core::TypeOf<f32>());
-    REQUIRE(f.TryGet<f32>() != nullptr);
-    CHECK(*f.TryGet<f32>() == doctest::Approx(0.5f));
-    const core::Variant i = ConvertVariant(core::Variant::From<core::String>(core::String(u8" 42 ")), core::TypeOf<i32>());
-    REQUIRE(i.TryGet<i32>() != nullptr);
-    CHECK(*i.TryGet<i32>() == 42);
-    CHECK(ConvertVariant(core::Variant::From<core::String>(core::String(u8"abc")), core::TypeOf<f32>()).IsEmpty());
-    CHECK(VariantsEqual(core::Variant::From<i32>(2), core::Variant::From<f64>(2.0)));
-    CHECK_FALSE(VariantsEqual(core::Variant::From<i32>(2), core::Variant::From<core::String>(core::String(u8"2"))));
-}
-
 TEST_CASE("binding: a bound label follows its source on the GUI's frame")
 {
     auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));

@@ -17,34 +17,6 @@ using namespace foundation::core;
 using namespace foundation::gui;
 namespace fonts = foundation::fonts;
 
-TEST_CASE("font face: the loader is asked once per face per sheet, under the name the face is chosen by")
-{
-    fonts::TrueTypeFontService service{DefaultAllocator()};
-    Array<String> asked;
-    StyleManager styles;
-    styles.SetFontService(&service);
-    styles.SetFontFaceLoader(
-        [&](StringView face, StringView source)
-        {
-            String line(face);
-            line += StringView(u8"=");
-            line += source;
-            asked.PushBack(Move(line));
-            return false;
-        });
-    styles.SetStyleSheet(CSSParser::Parse(StringView(u8"@font-face { font-family: Brand; src: url(b.ttf); font-weight: 700; }"
-                                                     u8"@font-face { font-family: Brand; src: url(li.ttf); font-weight: 300; font-style: italic; }"
-                                                     u8"@font-face { font-family: Brand; src: url(r.ttf); }")));
-    RefPtr<SceneRoot> root = MakeRef<SceneRoot>(DefaultAllocator(), MakeRef<GUIContext>(DefaultAllocator()));
-    styles.ApplyTree(*root.Get());
-    REQUIRE(asked.Size() == 3u);
-    CHECK(asked[0] == StringView(u8"Brand Bold=b.ttf"));
-    CHECK(asked[1] == StringView(u8"Brand Light Italic=li.ttf"));
-    CHECK(asked[2] == StringView(u8"Brand=r.ttf"));
-    styles.ApplyTree(*root.Get());
-    CHECK(asked.Size() == 3u); // not again for the same sheet
-}
-
 TEST_CASE("font face: a face loaded through the host draws the label that asks for its weight")
 {
     fonts::TrueTypeFontService service{DefaultAllocator()};
