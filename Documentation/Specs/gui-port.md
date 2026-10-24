@@ -50,7 +50,7 @@ to do or left out on purpose, with the reason written in `RaptorCode/README.md`.
 | Raptor | Sedulous | Namespace |
 |---|---|---|
 | `Foundation/GUI` (`foundation.gui`) | `Foundation/Sedulous.GUI` | `Sedulous.GUI` |
-| `Foundation/GUI.<Name>` | `Foundation/Sedulous.GUI.<Name>` | `Sedulous.GUI.<Name>` |
+| `Foundation/GUI.<Name>` | `Foundation/Sedulous.GUI.<Name>` | Raptor's: `Sedulous.GUI` for the satellites in `foundation::gui`, `Sedulous.GUI.VFS` and `Sedulous.GUI.Inspector` for `gui::vfs` and `gui::inspector` |
 | `Engine/Engine.GUI` | `Engine/Sedulous.Engine.GUI` | `Sedulous.Engine.GUI` |
 | `Pipeline/GUI.Pipeline` | `Pipeline/Sedulous.GUI.Pipeline` | `Sedulous.GUI.Pipeline` |
 | `Editor/Editor.GUI` | `Editor/Sedulous.Editor.GUI` | `Sedulous.Editor.GUI` |
