@@ -57,23 +57,6 @@ REFLECT_MEMBERS(Impostor, "rtti::gui::tests")
     builder.Creator();
 }
 
-TEST_CASE("elements: a weak reference resolves while the element lives and not after")
-{
-    core::RefPtr<SceneRoot> gui = MakeGui();
-    core::RefPtr<Button> button = core::MakeRef<Button>(core::DefaultAllocator());
-    // Detached, an element has no GUI a reference could resolve through.
-    CHECK_FALSE(Element<Button>(*button).IsValid());
-    gui->AddChild(button.Get());
-    Element<Button> weak(*button);
-    REQUIRE(weak.IsValid());
-    CHECK(weak.Get() == button.Get());
-
-    button->RemoveFromParent();
-    CHECK(weak.IsValid()); // still alive (the test holds it), so still itself
-    button = core::RefPtr<Button>{};
-    CHECK_FALSE(weak.IsValid()); // destroyed: gone, not freed memory
-}
-
 TEST_CASE("elements: the registry takes a library's widgets and refuses what is not an element")
 {
     RegisterGuiElements();

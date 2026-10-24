@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using internal Sedulous.GUI;
 
 namespace Sedulous.GUI;
 
@@ -345,6 +346,32 @@ class UIWidget : UINode
 				mContextMenu = null;
 			}
 		}
+	}
+
+	protected override void OnContextMenu(MouseEvent e)
+	{
+		if (!mContextMenuId.IsEmpty && OpenContextMenu(e))
+			e.Handled = true;
+	}
+
+	// Finds the menu (kept once found: open, it leaves the page for the top layer, and closed,
+	// the tree) and opens it at the event's position.
+	private bool OpenContextMenu(MouseEvent e)
+	{
+		var menu = mContextMenu as Menu;
+		let root = RootNode;
+		if (menu == null)
+		{
+			menu = NavigationDetail.FindWidgetById(root, mContextMenuId) as Menu;
+			if (menu == null)
+				return false;
+			menu.AddRef(); // open, it leaves the page; kept here
+			if (mContextMenu != null)
+				mContextMenu.ReleaseRef();
+			mContextMenu = menu;
+		}
+		menu.Open(this, root.ConvertToNodeSpace(e.Position));
+		return true;
 	}
 
 	protected override bool OnDragRequested(DragRequest request)

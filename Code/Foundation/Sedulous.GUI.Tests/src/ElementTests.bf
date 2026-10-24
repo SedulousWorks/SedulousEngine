@@ -3,9 +3,10 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
 
-/// Elements by weak reference: a freed slot taken again answers under a new generation only, and
-/// each GUI keeps a table of its own, its references gone with it. (Raptor's registry and markup
-/// tests here come with the script surface and markup.)
+/// Elements by weak reference: one resolves while its element lives and not after, a freed slot
+/// taken again answers under a new generation only, and each GUI keeps a table of its own, its
+/// references gone with it. (Raptor's registry and markup tests here come with the script surface
+/// and markup.)
 class ElementTests
 {
 	[Test]
@@ -55,5 +56,25 @@ class ElementTests
 		a = null;
 		Test.Assert(!weakA.IsValid);
 		Test.Assert(weakB.Get() == inB);
+	}
+
+	[Test]
+	public static void AWeakReferenceResolvesWhileTheElementLivesAndNotAfter()
+	{
+		let gui = SceneFixtures.NewScene();
+		defer gui.ReleaseRef();
+		var button = new Button();
+		// Detached, an element has no GUI a reference could resolve through.
+		Test.Assert(!scope Element<Button>(button).IsValid);
+		gui.AddChild(button);
+		let weak = scope Element<Button>(button);
+		Test.Assert(weak.IsValid);
+		Test.Assert(weak.Get() == button);
+
+		button.RemoveFromParent();
+		Test.Assert(weak.IsValid); // still alive (the test holds it), so still itself
+		button.ReleaseRef();
+		button = null;
+		Test.Assert(!weak.IsValid); // destroyed: gone, not freed memory
 	}
 }

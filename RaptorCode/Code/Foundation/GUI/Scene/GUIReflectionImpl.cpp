@@ -223,21 +223,6 @@ namespace foundation::gui
         return element->HandleAs(Node::StaticType());
     }
 
-    bool UIWidget::OpenContextMenu(const MouseEvent& event)
-    {
-        Menu* menu = Cast<Menu>(m_contextMenu.Get());
-        Node* root = GetRootNode();
-        if (menu == nullptr)
-        {
-            menu = Cast<Menu>(FindById(*root, m_contextMenuId.AsView()));
-            if (menu == nullptr)
-                return false;
-            m_contextMenu = RefPtr<Node>(menu); // open, it leaves the page; kept here
-        }
-        menu->Open(*this, root->ConvertToNodeSpace(event.Position));
-        return true;
-    }
-
     core::Variant Node::FindElement(StringView id)
     {
         Node* found = FindById(*this, id);
@@ -871,7 +856,6 @@ namespace foundation::gui
     RTTI_DEFINE_OBJECT(ColorPickerArea, "rtti::gui")
 
     // Toasts (T7 of round three): a host markup places; a request a script fills in and posts.
-    RTTI_DEFINE_OBJECT(ToastCard, "rtti::gui")
     REFLECT_ENUM(ToastSeverity, "rtti::gui")
     {
         builder.Value("Info", ToastSeverity::Info);
@@ -919,12 +903,8 @@ namespace foundation::gui
         builder.Method<&ToastHost::PostContentScript, ToastId, Node>("postContent");
         builder.Method<static_cast<bool (ToastHost::*)(ToastId)>(&ToastHost::Dismiss)>("dismiss");
         builder.Method<&ToastHost::DismissAll>("dismissAll");
-        builder.ComputedProperty<&ToastHost::GetShownCountScript>("shownCount");
-        builder.ComputedProperty<&ToastHost::GetWaitingCountScript>("waitingCount");
-        builder.AccessorProperty<&ToastHost::GetMaxShownScript, &ToastHost::SetMaxShownScript>("maxShown");
         builder.Method<&FindToastHost, ToastHost, Node>("nearest"); // not `find`: a node's find(id) has the name
         builder.Method<&ElementOf<ToastHost>, ToastHost, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(ToggleSwitch, "rtti::gui")
@@ -1021,45 +1001,24 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(TabStrip, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"tablist")); // what a screen reader takes it for (E9d)
     }
 
     REFLECT_MEMBERS(Tab, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"tab")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&Tab::IsClosable, &Tab::SetClosable>("closable").PropAttribute("css", core::String(u8"closable"));
         builder.Method<&ElementOf<Tab>, Tab, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(TabBar, "rtti::gui")
     {
-        builder.AccessorProperty<&TabBar::GetSelectedIndex, &TabBar::SetSelectedIndex>("selected")
-            .PropAttribute("css", core::String(u8"selected"))
-            .PropAttribute("twoWay", true); // the user selects: a binding may write it back
-        builder.AccessorProperty<&TabBar::GetCloseDisplayName, &TabBar::SetCloseDisplayName>("closeDisplay")
-            .PropAttribute("css", core::String(u8"close-display"));
-        builder.AccessorProperty<&TabBar::GetListDisplayName, &TabBar::SetListDisplayName>("listDisplay")
-            .PropAttribute("css", core::String(u8"list-display"));
-        builder.AccessorProperty<&TabBar::HasCloseAll, &TabBar::SetCloseAll>("closeAll").PropAttribute("css", core::String(u8"close-all"));
-        builder.AccessorProperty<&TabBar::IsReorderable, &TabBar::SetReorderable>("reorderable")
-            .PropAttribute("css", core::String(u8"reorderable"));
-        builder.AccessorProperty<&TabBar::GetGroup, &TabBar::SetGroup>("group").PropAttribute("css", core::String(u8"group"));
         builder.Method<&TabBar::GetTabCount>("tabCount");
         builder.Method<&TabBar::RemoveTab>("removeTab");
         builder.Method<&TabBar::MoveTab>("moveTab");
         builder.Method<&ElementOf<TabBar>, TabBar, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(TabPage, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"tabpanel")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&TabPage::GetTitleString, &TabPage::SetTitleString>("title").PropAttribute("access", core::String(u8"name")).PropAttribute("css", core::String(u8"title"));
-        builder.AccessorProperty<&TabPage::GetIconSource, &TabPage::SetIconSource>("icon").PropAttribute("css", core::String(u8"icon"));
-        builder.AccessorProperty<&TabPage::IsClosable, &TabPage::SetClosable>("closable").PropAttribute("css", core::String(u8"closable"));
         builder.Method<&ElementOf<TabPage>, TabPage, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(TabPageHost, "rtti::gui")
@@ -1068,21 +1027,9 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(TabView, "rtti::gui")
     {
-        builder.AccessorProperty<&TabView::GetSelectedIndex, &TabView::SetSelectedIndex>("selected")
-            .PropAttribute("css", core::String(u8"selected"))
-            .PropAttribute("twoWay", true);
-        builder.AccessorProperty<&TabView::GetCloseDisplayName, &TabView::SetCloseDisplayName>("closeDisplay")
-            .PropAttribute("css", core::String(u8"close-display"));
-        builder.AccessorProperty<&TabView::GetListDisplayName, &TabView::SetListDisplayName>("listDisplay")
-            .PropAttribute("css", core::String(u8"list-display"));
-        builder.AccessorProperty<&TabView::HasCloseAll, &TabView::SetCloseAll>("closeAll").PropAttribute("css", core::String(u8"close-all"));
-        builder.AccessorProperty<&TabView::IsReorderable, &TabView::SetReorderable>("reorderable")
-            .PropAttribute("css", core::String(u8"reorderable"));
-        builder.AccessorProperty<&TabView::GetGroup, &TabView::SetGroup>("group").PropAttribute("css", core::String(u8"group"));
         builder.Method<&TabView::GetPageCount>("pageCount");
         builder.Method<&TabView::RemovePage>("removePage");
         builder.Method<&ElementOf<TabView>, TabView, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(SpinButton, "rtti::gui")
@@ -1188,48 +1135,32 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(MessageBox, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"dialog")); // what a screen reader takes it for (E9d)
-        builder.ComputedProperty<&MessageBox::GetResultName>("result");
         builder.Method<&MessageBox::Show>("show");
         builder.Method<&ElementOf<MessageBox>, MessageBox, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(MenuSeparator, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"separator")); // what a screen reader takes it for (E9d)
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(MenuItem, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"menuitem")); // what a screen reader takes it for (E9d)
         builder.Attribute("accessActivate", true); // a screen reader may press it
-        builder.AccessorProperty<&MenuItem::GetTextString, &MenuItem::SetTextString>("text")
-            .PropAttribute("access", core::String(u8"name"))
-            .PropAttribute("translatable", true);
-        builder.AccessorProperty<&MenuItem::IsCheckable, &MenuItem::SetCheckable>("checkable").PropAttribute("css", core::String(u8"checkable"));
-        builder.AccessorProperty<&MenuItem::IsChecked, &MenuItem::SetChecked>("checked").PropAttribute("css", core::String(u8"checked"));
         builder.Method<&ElementOf<MenuItem>, MenuItem, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(Menu, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"menu")); // what a screen reader takes it for (E9d)
         builder.Method<&Menu::Close>("close");
         builder.Method<&Menu::OpenAtPoint>("openAt"); // a script's own menus (E16)
         builder.Method<&Menu::OpenBelowNode, bool, Node>("openBelow");
         builder.Method<&Menu::IsOpen>("isOpen");
         builder.Method<&ElementOf<Menu>, Menu, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(MenuBar, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"menubar")); // what a screen reader takes it for (E9d)
         builder.Method<&ElementOf<MenuBar>, MenuBar, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(ItemView, "rtti::gui")
@@ -1269,32 +1200,18 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(ComboBox, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"combobox")); // what a screen reader takes it for (E9d)
         builder.Attribute("accessActivate", true); // a screen reader may press it
-        builder.AccessorProperty<&ComboBox::GetItemsText, &ComboBox::SetItemsText>("items").PropAttribute("css", core::String(u8"items"));
-        builder.AccessorProperty<&ComboBox::GetSelectedIndex, &ComboBox::SetSelectedIndex>("selected")
-            .PropAttribute("css", core::String(u8"selected"))
-            .PropAttribute("twoWay", true); // the user picks: a binding may write it back
-        builder.AccessorProperty<&ComboBox::GetPlaceholder, &ComboBox::SetPlaceholder>("placeholder")
-            .PropAttribute("css", core::String(u8"placeholder"))
-            .PropAttribute("translatable", true);
         builder.Method<&ElementOf<ComboBox>, ComboBox, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(Window, "rtti::gui")
     {
-        builder.Attribute("accessRole", core::String(u8"window")); // what a screen reader takes it for (E9d)
-        builder.AccessorProperty<&Window::GetTitle, &Window::SetTitle>("title").PropAttribute("access", core::String(u8"name")).PropAttribute("css", core::String(u8"title"));
         // A script's own windows (E16): opened where they are or modal, closed, listened to (`close`).
-        builder.AccessorProperty<&Window::IsClosable, &Window::SetClosable>("closable").PropAttribute("css", core::String(u8"closable"));
-        builder.AccessorProperty<&Window::IsResizable, &Window::SetResizable>("resizable").PropAttribute("css", core::String(u8"resizable"));
         builder.Method<&Window::OpenInPlace>("open");
         builder.Method<&Window::OpenModalOver>("openModal");
         builder.Method<&Window::Close>("close");
         builder.Method<&Window::IsOpen>("isOpen");
         builder.Method<&ElementOf<Window>, Window, Node>("of");
-        builder.Creator();
     }
 
     REFLECT_MEMBERS(Gui, "rtti::gui")

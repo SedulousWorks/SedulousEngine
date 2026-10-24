@@ -55,7 +55,8 @@ class ThemeFontService : IFontService
 }
 
 /// The theme's sheets: a widget part's (::part) rules resolved apart from the widget's own, and a
-/// sheet's colours, pictures and fonts reaching a label.
+/// sheet's colours, pictures and fonts reaching a label, every widget with text, and the faces
+/// widgets draw for themselves.
 class ThemeTests
 {
 	private static bool Near(float a, float b) => NodeFixtures.Near(a, b);
@@ -231,5 +232,70 @@ class ThemeTests
 		Test.Assert(NodeFixtures.Near(slider.GetPartStyle("fill").Box.BackgroundColor.G, 1.0f)); // one control's token
 		// A part with no override reads its widget token through to the base one.
 		Test.Assert(slider.GetPartStyle("track").HasBackground);
+	}
+
+	[Test]
+	public static void EveryWidgetWithTextTakesTheSheetsFont()
+	{
+		// A widget that keeps its text in parts (rows, a title, tab buttons) still takes font-family:
+		// the sandbox's list showed empty rows when its ListBox did not.
+		let fs = scope ThemeFontService();
+		let mgr = scope StyleManager();
+		WidgetFixtures.UseSheet(mgr, "listbox, menubar, tabview, window, messagebox, tooltip { font-family: Roboto; font-size: 15; }");
+		mgr.FontService = fs;
+		let list = new ListBox();
+		defer list.ReleaseRef();
+		let bar = new MenuBar();
+		defer bar.ReleaseRef();
+		let tabs = new TabView();
+		defer tabs.ReleaseRef();
+		tabs.AddPage("One");
+		let window = new Window();
+		defer window.ReleaseRef();
+		let dialog = new MessageBox();
+		defer dialog.ReleaseRef();
+		let tip = new Tooltip();
+		defer tip.ReleaseRef();
+		UIWidget[6] widgets = .(list, bar, tabs, window, dialog, tip);
+		for (let widget in widgets)
+			mgr.ApplyTo(widget);
+		Test.Assert(list.Font === fs.Font);
+		Test.Assert(bar.Font === fs.Font);
+		Test.Assert(tabs.Font === fs.Font);
+		Test.Assert(tabs.Bar.GetTab(0).Font === fs.Font); // its tabs take it
+		Test.Assert(window.Font === fs.Font);
+		Test.Assert(dialog.Font === fs.Font);
+		Test.Assert(tip.Font === fs.Font);
+	}
+
+	[Test]
+	public static void AWidgetsOwnFaceGivesWayToASheetsMenusTheirBarTooltipsScrollbars()
+	{
+		// Their faces were drawings over the box, so a theme's colour (the light theme's) lay beneath
+		// them unseen; each is now its own box, which a sheet's replaces.
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let menu = new Menu();
+		defer menu.ReleaseRef();
+		let bar = new MenuBar();
+		defer bar.ReleaseRef();
+		let tooltip = new Tooltip();
+		defer tooltip.ReleaseRef();
+		let scrollbar = new ScrollBar();
+		defer scrollbar.ReleaseRef();
+		UIWidget[4] widgets = .(menu, bar, tooltip, scrollbar);
+		for (let w in widgets)
+		{
+			root.AddChild(w);
+			Test.Assert(w.BoxFills); // its own face, unstyled
+		}
+		let mgr = scope StyleManager();
+		WidgetFixtures.UseSheet(mgr, "menu, menubar, tooltip, scrollbar { background-color: #ff0000; }");
+		mgr.ApplyTree(root);
+		for (let w in widgets)
+		{
+			Test.Assert(Near(w.Box.BackgroundColor.R, 1.0f), scope String(w.Tag));
+			Test.Assert(Near(w.Box.BackgroundColor.G, 0.0f), scope String(w.Tag));
+		}
 	}
 }

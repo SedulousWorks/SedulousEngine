@@ -21,8 +21,8 @@ class StateProbe : UIWidget
 
 /// Commands: one model controls bind to by id; running walks the focus path (capture down, bubble
 /// up, a bubble handler stopping it unless it propagates); a command is available when enabled with
-/// a handler on the focus path, and its state reaches a bound button with no bookkeeping; a handler
-/// may end the nodes on its path.
+/// a handler on the focus path, and its state reaches a bound button or menu item with no
+/// bookkeeping; a handler may end the nodes on its path.
 class CommandTests
 {
 	[Test]
@@ -194,5 +194,33 @@ class CommandTests
 		root.Context.Update(SceneFixtures.Frame);
 		Test.Assert(!probe.Available);
 		Test.Assert(probe.Reason.Length == 0);
+	}
+
+	[Test]
+	public static void ACheckBoxAndAMenuItemShowTheCommandsCheckedStateAndRunIt()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let music = root.Context.DefineCommand("music");
+		root.OnCommand("music", new (command) => { music.Checked = !music.Checked; });
+		let check = new CheckBox();
+		defer check.ReleaseRef();
+		check.Size = .(20.0f, 20.0f);
+		let item = new MenuItem();
+		defer item.ReleaseRef();
+		item.Checkable = true;
+		root.AddChild(check);
+		root.AddChild(item);
+		check.Command = "music";
+		item.Command = "music";
+		root.Context.Update(SceneFixtures.Frame);
+		Test.Assert(check.Enabled);
+		Test.Assert(!check.Checked);
+
+		Test.Assert(check.HandleActivate()); // the box asks the command; the handler toggles it
+		root.Context.Update(SceneFixtures.Frame);
+		Test.Assert(music.Checked);
+		Test.Assert(check.Checked);
+		Test.Assert(item.Checked); // the menu item follows the same command
 	}
 }

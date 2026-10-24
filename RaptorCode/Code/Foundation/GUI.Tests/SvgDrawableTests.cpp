@@ -60,19 +60,6 @@ namespace
     }
 }
 
-TEST_CASE("svg-drawable: a menu command's icon by an .svg path")
-{
-    Pictures pictures;
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    root->GetContext().SetResourceProvider(&pictures);
-    auto item = core::MakeRef<MenuItem>(core::DefaultAllocator());
-    root->AddChild(item.Get());
-    item->OnBoundCommandText(core::StringView(u8"Bar"), core::StringView(u8"bar.svg"), core::StringView());
-    CHECK(pictures.svgs == 1);
-    REQUIRE(item->GetIcon() != nullptr);
-    CHECK(core::Cast<SvgDrawable>(item->GetIcon()) != nullptr);
-}
-
 namespace
 {
     constexpr const char8_t* kBarBase64 =

@@ -177,4 +177,49 @@ class MirrorTests
 		d.InjectMouseUp(at, .Left);
 		Test.Assert(bar.Value < 50.0); // the right end is its start
 	}
+
+	[Test]
+	public static void AMenuItemsCheckLabelAndShortcutAndASubmenusArrow()
+	{
+		CheckMirrored(scope () =>
+			{
+				let item = new MenuItem();
+				item.Checkable = true;
+				item.Checked = true;
+				item.Shortcut = "Ctrl+S";
+				return item;
+			}, .(200.0f, 24.0f));
+		CheckMirrored(scope () => new MenuSubItem(), .(200.0f, 24.0f));
+	}
+
+	[Test]
+	public static void AComboBoxsArrowAtItsInlineEnd()
+	{
+		CheckMirrored(scope () => new ComboBox(), .(160.0f, 24.0f));
+	}
+
+	[Test]
+	public static void AWindowsGripIsAtItsBottomLeftInRightToLeftAndPullingItMovesTheLeftEdge()
+	{
+		let root = SceneFixtures.NewScene(800.0f, 600.0f);
+		defer root.ReleaseRef();
+		root.SetLayoutDirection(.RightToLeft);
+		let window = new Window();
+		defer window.ReleaseRef();
+		window.Position = .(300.0f, 100.0f);
+		window.Size = .(300.0f, 200.0f);
+		root.AddChild(window);
+		root.UpdateLayout();
+		let at = window.ConvertToRootSpace(.(0.0f, 0.0f));
+		let grip = window.ConvertToRootSpace(.(4.0f, 196.0f)); // in its bottom-left corner
+		let d = root.EventDispatcher;
+		d.InjectMouseDown(grip, .Left);
+		d.InjectMouseMove(.(grip.X - 40.0f, grip.Y + 20.0f));
+		d.InjectMouseUp(.(grip.X - 40.0f, grip.Y + 20.0f), .Left);
+		root.UpdateLayout();
+		Test.Assert(Near(window.Size.X, 340.0f));
+		Test.Assert(Near(window.Size.Y, 220.0f));
+		// The right edge stays where it was.
+		Test.Assert(Near(window.ConvertToRootSpace(.(window.Size.X, 0.0f)).X, at.X + 300.0f));
+	}
 }

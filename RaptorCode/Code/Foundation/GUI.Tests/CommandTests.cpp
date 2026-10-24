@@ -24,30 +24,6 @@ namespace
     void Frame(SceneRoot& root) { root.GetContext().Update(core::Duration::FromSeconds(0.016)); }
 }
 
-TEST_CASE("command: a checkbox and a menu item show the command's checked state, and run it")
-{
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    Command& music = root->GetContext().DefineCommand(SV(u8"music"));
-    (void)root->OnCommand(SV(u8"music"), [&music](CommandEvent&) { music.SetChecked(!music.IsChecked()); });
-    auto box = Make<CheckBox>();
-    box->SetSize(core::Float2{20.0f, 20.0f});
-    auto item = Make<MenuItem>();
-    item->SetCheckable(true);
-    root->AddChild(box.Get());
-    root->AddChild(item.Get());
-    box->SetCommand(SV(u8"music"));
-    item->SetCommand(SV(u8"music"));
-    Frame(*root.Get());
-    CHECK(box->IsEnabled());
-    CHECK_FALSE(box->IsChecked());
-
-    CHECK(box->HandleActivate()); // the box asks the command; the handler toggles it
-    Frame(*root.Get());
-    CHECK(music.IsChecked());
-    CHECK(box->IsChecked());
-    CHECK(item->IsChecked()); // the menu item follows the same command
-}
-
 TEST_CASE("command: markup binds a control to a command by id, before it is attached")
 {
     RegisterGuiElements();

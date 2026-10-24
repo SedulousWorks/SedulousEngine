@@ -38,8 +38,9 @@ class KeyBed
 	}
 }
 
-/// The keyboard: tab-index, focus groups, the next key captured, access keys and type-ahead from
-/// text input; a focused widget hidden gives the focus up.
+/// The keyboard: tab-index, focus groups (a tab strip's one stop), the next key captured, access
+/// keys (a menu bar's) and type-ahead from text input (a combo box's); a menu's moves rebound; a
+/// focused widget hidden gives the focus up.
 class KeyboardTests
 {
 	[Test]
@@ -240,5 +241,108 @@ class KeyboardTests
 		Test.Assert(StartsWithIgnoringCase("Ёлка", "ё")); // Ё, ё
 		Test.Assert(!StartsWithIgnoringCase("Apple", "b"));
 		Test.Assert(!StartsWithIgnoringCase("A", "ab"));
+	}
+
+	[Test]
+	public static void ATabStripIsAFocusGroupOneStopTheSelectedTab()
+	{
+		let bed = scope KeyBed();
+		bed.Add("before");
+		let bar = new TabBar();
+		defer bar.ReleaseRef();
+		bed.Root.AddChild(bar);
+		bar.InsertTab(0, "One");
+		bar.InsertTab(1, "Two");
+		bar.InsertTab(2, "Three");
+		bar.SelectedIndex = 2;
+		let stops = scope List<Node>();
+		bed.D.TabStops(stops);
+		Test.Assert(stops.Count == 2);
+		Test.Assert(stops[1].IsCurrentInGroup); // the selected tab
+	}
+
+	[Test]
+	public static void AMenusMovesAreBindingsInTheMenuKeyContextReboundLikeAnyKey()
+	{
+		let bed = scope KeyBed();
+		bed.Root.Size = .(600.0f, 400.0f);
+		let bar = new MenuBar();
+		defer bar.ReleaseRef();
+		bed.Root.AddChild(bar);
+		let file = bar.AddMenu("File");
+		file.AddItem("Open", new () => { });
+		file.AddItem("Save", new () => { });
+		let edit = bar.AddMenu("Edit");
+		edit.AddItem("Undo", new () => { });
+		bed.Root.UpdateLayout();
+		let keys = bed.Root.Context.Keymap;
+		String[4] wasd = .("w", "s", "a", "d");
+		String[4] moves = .("menu.up", "menu.down", "menu.left", "menu.right");
+		for (int i = 0; i < 4; ++i)
+			Test.Assert(keys.Bind(wasd[i], moves[i], cMenuKeyContext));
+
+		StringView Item()
+		{
+			let it = bed.D.FocusNode as MenuItem;
+			return (it != null) ? it.Text : default;
+		}
+		bar.ButtonAt(0).RequestFocus();
+		bed.D.InjectKeyDown((uint32)KeyCode.S, 0); // opens File
+		Test.Assert(file.IsOpen);
+		Test.Assert(Item() == "Open");
+		bed.D.InjectKeyDown((uint32)KeyCode.S, 0);
+		Test.Assert(Item() == "Save");
+		bed.D.InjectKeyDown((uint32)KeyCode.D, 0); // along the bar
+		Test.Assert(edit.IsOpen);
+		Test.Assert(Item() == "Undo");
+		bed.D.InjectKeyDown((uint32)KeyCode.A, 0);
+		Test.Assert(file.IsOpen);
+	}
+
+	[Test]
+	public static void AltAndAKeyOpenAMenuBarsMenuAndRunAnItemOfTheOpenMenu()
+	{
+		let bed = scope KeyBed();
+		bed.Root.Size = .(600.0f, 400.0f);
+		let bar = new MenuBar();
+		defer bar.ReleaseRef();
+		bed.Root.AddChild(bar);
+		int opened = 0;
+		let file = bar.AddMenu("&File");
+		file.AddItem("&Open", new [&] () => { ++opened; });
+		file.AddItem("E&xit", new () => { });
+		bar.AddMenu("&Edit");
+		bed.Root.UpdateLayout();
+		bed.D.InjectKeyDown((uint32)KeyCode.F, KeyModAlt);
+		Test.Assert(file.IsOpen);
+		bed.D.InjectKeyDown((uint32)KeyCode.O, KeyModAlt);
+		Test.Assert(opened == 1);
+		Test.Assert(!file.IsOpen);
+	}
+
+	[Test]
+	public static void TypeAheadReadsTypedTextSoItFollowsTheLayoutAndAnIMEACyrillicListTypesAhead()
+	{
+		let bed = scope KeyBed();
+		let combo = new ComboBox();
+		defer combo.ReleaseRef();
+		combo.Size = .(140.0f, 26.0f);
+		combo.ItemsText = "Яблоко|Груша|Арбуз";
+		combo.SelectedIndex = 0;
+		bed.Root.AddChild(combo);
+		combo.RequestFocus();
+		Test.Assert(bed.D.WantsTextInput); // it asks for typed text
+		// A Russian layout's key types a Cyrillic letter; its key code is a Latin letter's.
+		bed.D.InjectKeyDown((uint32)KeyCode.U, 0);
+		bed.D.InjectText("г");
+		Test.Assert(combo.SelectedIndex == 1);
+		// A binding of a bare letter does not take it from under the type-ahead.
+		int ran = 0;
+		bed.Root.OnCommand("jump", new [&] (command) => { ++ran; });
+		Test.Assert(bed.Root.Context.Keymap.Bind("f", "jump"));
+		bed.D.InjectKeyDown((uint32)KeyCode.F, 0);
+		bed.D.InjectText("а");
+		Test.Assert(ran == 0);
+		Test.Assert(combo.SelectedIndex == 2);
 	}
 }

@@ -85,7 +85,7 @@ static class Theme
 		            scrollbar::thumb { background-color: var(--scrollbar-thumb, var(--thumb)); }
 		            window, messagebox { background-color: var(--window-background, var(--surface-raised)); color: var(--window-text, var(--text));
 		                                 border: var(--border-width) solid var(--window-border, var(--border)); border-radius: var(--radius-large);
-		                                 area-shadow: 0 14px 36px var(--shadow-color); }
+		                                 box-shadow: 0 14px 36px var(--shadow-color); }
 		            window::title, messagebox::title { background-color: var(--window-title-background, var(--surface-header)); }
 		            window::grip  { background-color: var(--window-grip, var(--grip)); }
 		            titlebar > label { color: var(--window-title-text, var(--text-title)); }
@@ -121,14 +121,14 @@ static class Theme
 		            /* Toasts: a card per notice, its mark the severity's colour; in and out by transitions. */
 		            toast { background-color: var(--toast-background, var(--surface-raised)); color: var(--text);
 		                    border-radius: var(--radius); padding: var(--space-m) var(--space-l); width: var(--toast-width, 320px);
-		                    area-shadow: 0 4px 14px var(--shadow-color);
+		                    box-shadow: 0 4px 14px var(--shadow-color);
 		                    transition: opacity var(--motion-fast), transform var(--motion-fast); }
 		            /* How it comes and goes (the core's :entering and :leaving), a request's class choosing: a slide
 		               up (the default), `pop` (scaled in), `still` (no motion); a game's own classes add their own. */
 		            toast:entering, toast:leaving { opacity: 0; transform: translate(0, 8px); }
 		            toast.pop:entering, toast.pop:leaving { transform: scale(0.9); }
 		            toast.still { transition: none; }
-		            toast.bare { background-color: transparent; padding: 0; area-shadow: none; width: auto; }
+		            toast.bare { background-color: transparent; padding: 0; box-shadow: none; width: auto; }
 		            toastmark { width: 4px; height: 100%; min-height: 16px; border-radius: 2px; background-color: var(--toast-info, var(--accent)); }
 		            toast.success toastmark { background-color: var(--toast-success, var(--success)); }
 		            toast.warning toastmark { background-color: var(--toast-warning, var(--warning)); }
@@ -144,16 +144,16 @@ static class Theme
 		            button:focus-visible, combobox:focus-visible, checkbox:focus-visible, radio:focus-visible,
 		            switch:focus-visible, tab:focus-visible, expanderheader:focus-visible, listbox:focus-visible,
 		            listview:focus-visible, treeview:focus-visible, tableview:focus-visible, editablelabel:focus-visible,
-		            menubar:focus-within { area-shadow: 0 0 0 var(--focus-width) var(--focus-ring); }
-		            textfield:focus, textarea:focus, numberfield:focus { area-shadow: 0 0 0 var(--focus-width) var(--focus-ring); }
-		            checkbox::area  { border-color: var(--checkbox-area, var(--outline)); }
+		            menubar:focus-within { box-shadow: 0 0 0 var(--focus-width) var(--focus-ring); }
+		            textfield:focus, textarea:focus, numberfield:focus { box-shadow: 0 0 0 var(--focus-width) var(--focus-ring); }
+		            checkbox::box  { border-color: var(--checkbox-box, var(--outline)); }
 		            checkbox::mark { background-color: var(--checkbox-mark, var(--accent-strong)); }
 		            radio::ring { border-color: var(--radio-ring, var(--outline)); }
 		            radio::dot  { background-color: var(--radio-dot, var(--accent-strong)); }
 		            progressbar::track { background-color: var(--progress-track, var(--track)); }
 		            progressbar::fill  { background-color: var(--progress-fill, var(--accent-strong)); }
 		            /* Skins are tokens too: a theme's art for a control (a border-image), none by default, and
-		               a radius beside each, so a area as round as its art keeps its focus ring to it. */
+		               a radius beside each, so a box as round as its art keeps its focus ring to it. */
 		            button { border-image: var(--button-skin, none); border-radius: var(--button-radius, 0); }
 		            button:hover { border-image: var(--button-hover-skin, var(--button-skin, none)); }
 		            button:active { border-image: var(--button-pressed-skin, var(--button-hover-skin, var(--button-skin, none))); }

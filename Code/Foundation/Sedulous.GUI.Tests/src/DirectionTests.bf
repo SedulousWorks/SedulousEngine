@@ -7,7 +7,8 @@ namespace Sedulous.GUI.Tests;
 /// Direction: right to left mirrors flex rows, a column's cross start, grid columns and a stack's
 /// start, margins staying on the sides their style names; dock stays physical, its start and end
 /// sides following the direction; mirror-on-rtl flips a node's drawing; a right-to-left scroller
-/// runs from its right.
+/// runs from its right; a node runs as the first ancestor that says, else as the GUI's language is
+/// written; a tab strip, a menu bar and a submenu take Left and Right along the way they run.
 class DirectionTests
 {
 	private static bool Near(float a, float b) => NodeFixtures.Near(a, b);
@@ -387,5 +388,112 @@ class DirectionTests
 		Test.Assert(Approx(slider.Value, 0.8)); // Left goes on, towards the end
 		d.InjectKeyDown((uint32)KeyCode.Right);
 		Test.Assert(Approx(slider.Value, 0.75));
+	}
+
+	[Test]
+	public static void ANodeRunsAsTheFirstAncestorThatSaysElseAsTheGUIsLanguageIsWritten()
+	{
+		let table = scope Sedulous.I18N.StringTable();
+		Test.Assert(table.AddLocale("en"));
+		Test.Assert(table.AddLocale("ar"));
+		table.SetDirection("ar", .RightToLeft);
+		let loc = scope Sedulous.I18N.Localization();
+		loc.AddTable(table);
+		let root = SceneFixtures.NewScene(100.0f, 100.0f);
+		defer root.ReleaseRef();
+		root.Context.Localization = loc;
+		defer { root.Context.Localization = null; }
+		let page = PanelBox(root, scope (s) => { });
+		let ltr = PanelBox(page, scope (s) => { });
+		ltr.SetLayoutDirection(.LeftToRight);
+		let inside = PanelBox(ltr, scope (s) => { });
+		Test.Assert(!page.IsRightToLeft);
+		loc.SetLanguage("ar-EG");
+		Test.Assert(page.IsRightToLeft);
+		Test.Assert(!inside.IsRightToLeft); // its ancestor says
+		ltr.SetLayoutDirection(.RightToLeft);
+		Test.Assert(inside.IsRightToLeft);
+		Test.Assert(ltr.Direction == "rtl");
+	}
+
+	[Test]
+	public static void ARightToLeftTabStripRunsFromTheRightLeftGoesOnToTheNextTab()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 300.0f);
+		defer root.ReleaseRef();
+		let bar = new TabBar();
+		defer bar.ReleaseRef();
+		bar.SetLayoutDirection(.RightToLeft);
+		root.AddChild(bar);
+		String[3] names = .("A", "B", "C");
+		for (let t in names)
+		{
+			let tab = bar.AddTab(t);
+			tab.EditLayoutStyle(scope (s) =>
+				{
+					s.Width = LayoutLength.Px(60.0f);
+					s.Height = LayoutLength.Px(24.0f);
+				});
+		}
+		root.UpdateLayout();
+		Test.Assert(bar.GetTab(0).ScreenBounds.X > bar.GetTab(1).ScreenBounds.X);
+		bar.GetTab(0).RequestFocus();
+		let d = root.EventDispatcher;
+		d.InjectKeyDown((uint32)KeyCode.Left);
+		Test.Assert(bar.SelectedIndex == 1);
+		d.InjectKeyDown((uint32)KeyCode.Right);
+		Test.Assert(bar.SelectedIndex == 0);
+	}
+
+	[Test]
+	public static void ARightToLeftMenuBarsLeftGoesOnToTheNextMenu()
+	{
+		let root = SceneFixtures.NewScene(600.0f, 400.0f);
+		defer root.ReleaseRef();
+		let bar = new MenuBar();
+		defer bar.ReleaseRef();
+		bar.SetLayoutDirection(.RightToLeft);
+		root.AddChild(bar);
+		String[3] names = .("File", "Edit", "View");
+		for (let name in names)
+			bar.AddMenu(name).AddItem("Item", new () => { });
+		root.UpdateLayout();
+		Test.Assert(bar.ButtonAt(0).ScreenBounds.X > bar.ButtonAt(1).ScreenBounds.X);
+		bar.ButtonAt(0).RequestFocus();
+		let d = root.EventDispatcher;
+		d.InjectKeyDown((uint32)KeyCode.Left);
+		Test.Assert(bar.ButtonAt(1).IsFocused);
+		d.InjectKeyDown((uint32)KeyCode.Right);
+		Test.Assert(bar.ButtonAt(0).IsFocused);
+	}
+
+	[Test]
+	public static void ARightToLeftSubmenuOpensToTheLeftLeftGoesIntoItAndRightComesBack()
+	{
+		let root = SceneFixtures.NewScene(600.0f, 400.0f);
+		defer root.ReleaseRef();
+		root.SetLayoutDirection(.RightToLeft);
+		let anchor = new UIWidget();
+		defer anchor.ReleaseRef();
+		root.AddChild(anchor);
+		let menu = new Menu();
+		defer menu.ReleaseRef();
+		menu.SetWidth(160.0f);
+		menu.SetItemHeight(26.0f);
+		let sub = menu.AddSubMenu("More");
+		sub.AddItem("Deep", new () => { });
+		menu.Open(anchor, .(400.0f, 50.0f));
+		root.UpdateLayout();
+		// A context menu at a point opens toward the left of it.
+		Test.Assert(Near(menu.ConvertToRootSpace(.(0.0f, 0.0f)).X, 240.0f));
+		let d = root.EventDispatcher;
+		menu.FocusFirstItem();
+		d.InjectKeyDown((uint32)KeyCode.Left);
+		Test.Assert(sub.IsOpen);
+		root.UpdateLayout();
+		// At its item's inline end: the menu's left edge.
+		Test.Assert(Near(sub.ConvertToRootSpace(.(sub.Size.X, 0.0f)).X, 240.0f));
+		d.InjectKeyDown((uint32)KeyCode.Right);
+		Test.Assert(!sub.IsOpen);
 	}
 }

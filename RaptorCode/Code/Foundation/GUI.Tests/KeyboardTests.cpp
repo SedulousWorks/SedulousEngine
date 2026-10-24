@@ -65,21 +65,6 @@ TEST_CASE("keyboard: tab-index comes from a sheet and from markup")
     CHECK(tree->GetChildAt(0)->GetTabIndex() == 5);
 }
 
-TEST_CASE("keyboard: a tab strip is a focus group: one stop, the selected tab")
-{
-    Bed bed;
-    bed.Add(u8"before");
-    core::RefPtr<TabBar> bar = Make<TabBar>();
-    bed.root->AddChild(bar.Get());
-    (void)bar->InsertTab(0, SV(u8"One"));
-    (void)bar->InsertTab(1, SV(u8"Two"));
-    (void)bar->InsertTab(2, SV(u8"Three"));
-    bar->SetSelectedIndex(2);
-    const core::Array<Node*> stops = bed.D().TabStops();
-    REQUIRE(stops.Size() == 2u);
-    CHECK(stops[1]->IsCurrentInGroup()); // the selected tab
-}
-
 TEST_CASE("keyboard: a widget that captures Tab takes Tab and Shift+Tab as keys; Ctrl+Tab moves focus from it")
 {
     Bed bed;
@@ -107,41 +92,6 @@ TEST_CASE("keyboard: a widget that captures Tab takes Tab and Shift+Tab as keys;
     bed.Tab();
     CHECK(bed.Focused() == SV(u8"b"));
     CHECK(editor->GetText() == SV(u8"\t"));
-}
-
-TEST_CASE("keyboard: a menu's moves are bindings in the menu key context, rebound like any key")
-{
-    Bed bed;
-    bed.root->SetSize(core::Float2{600.0f, 400.0f});
-    core::RefPtr<MenuBar> bar = Make<MenuBar>();
-    bed.root->AddChild(bar.Get());
-    Menu* file = bar->AddMenu(SV(u8"File"));
-    file->AddItem(SV(u8"Open"), [] {});
-    file->AddItem(SV(u8"Save"), [] {});
-    Menu* edit = bar->AddMenu(SV(u8"Edit"));
-    edit->AddItem(SV(u8"Undo"), [] {});
-    bed.root->UpdateLayout();
-    Keymap& keys = bed.root->GetContext().GetKeymap();
-    const char8_t* const wasd[][2] = {{u8"w", u8"menu.up"}, {u8"s", u8"menu.down"}, {u8"a", u8"menu.left"}, {u8"d", u8"menu.right"}};
-    for (const auto& b : wasd)
-        REQUIRE(keys.Bind(SV(b[0]), SV(b[1]), SV(kMenuKeyContext)));
-
-    const auto item = [&]() -> core::StringView
-    {
-        const MenuItem* it = core::Cast<MenuItem>(bed.D().GetFocusNode());
-        return it != nullptr ? it->GetText() : core::StringView{};
-    };
-    bar->ButtonAt(0)->RequestFocus();
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::S), 0); // opens File
-    CHECK(file->IsOpen());
-    CHECK(item() == SV(u8"Open"));
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::S), 0);
-    CHECK(item() == SV(u8"Save"));
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::D), 0); // along the bar
-    CHECK(edit->IsOpen());
-    CHECK(item() == SV(u8"Undo"));
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::A), 0);
-    CHECK(file->IsOpen());
 }
 
 TEST_CASE("keyboard: CaptureNextKey takes the next key before bindings and widgets, with its modifiers, and drops its text")
@@ -190,47 +140,4 @@ TEST_CASE("keyboard: CaptureNextKey takes the next key before bindings and widge
     REQUIRE(taken.Size() == 4u);
     CHECK(taken[3] == ParseKeystroke(SV(u8"pad-north")).Value());
     CHECK(cancels == 0);
-}
-
-TEST_CASE("keyboard: Alt and a key open a menu bar's menu, and run an item of the open menu")
-{
-    Bed bed;
-    bed.root->SetSize(core::Float2{600.0f, 400.0f});
-    core::RefPtr<MenuBar> bar = Make<MenuBar>();
-    bed.root->AddChild(bar.Get());
-    int opened = 0;
-    Menu* file = bar->AddMenu(SV(u8"&File"));
-    file->AddItem(SV(u8"&Open"), [&] { ++opened; });
-    file->AddItem(SV(u8"E&xit"), [] {});
-    (void)bar->AddMenu(SV(u8"&Edit"));
-    bed.root->UpdateLayout();
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::F), KeyModAlt);
-    CHECK(file->IsOpen());
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::O), KeyModAlt);
-    CHECK(opened == 1);
-    CHECK_FALSE(file->IsOpen());
-}
-
-TEST_CASE("keyboard: type-ahead reads typed text, so it follows the layout and an IME: a Cyrillic list types ahead")
-{
-    Bed bed;
-    core::RefPtr<ComboBox> combo = Make<ComboBox>();
-    combo->SetSize(core::Float2{140.0f, 26.0f});
-    combo->SetItemsText(core::String(SV(u8"Яблоко|Груша|Арбуз")));
-    combo->SetSelectedIndex(0);
-    bed.root->AddChild(combo.Get());
-    combo->RequestFocus();
-    CHECK(bed.D().WantsTextInput()); // it asks for typed text
-    // A Russian layout's key types a Cyrillic letter; its key code is a Latin letter's.
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::U), 0);
-    bed.D().InjectText(SV(u8"г"));
-    CHECK(combo->GetSelectedIndex() == 1);
-    // A binding of a bare letter does not take it from under the type-ahead.
-    int ran = 0;
-    (void)bed.root->OnCommand(SV(u8"jump"), [&](CommandEvent&) { ++ran; });
-    REQUIRE(bed.root->GetContext().GetKeymap().Bind(SV(u8"f"), SV(u8"jump")));
-    bed.D().InjectKeyDown(static_cast<core::u32>(KeyCode::F), 0);
-    bed.D().InjectText(SV(u8"а"));
-    CHECK(ran == 0);
-    CHECK(combo->GetSelectedIndex() == 2);
 }

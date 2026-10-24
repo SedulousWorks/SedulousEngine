@@ -317,4 +317,42 @@ class KeymapTests
 		bed.Key(.Keypad5);
 		Test.Assert(bed.Ran.Count == 2); // unbound: Numpad 5 is not 5
 	}
+
+	[Test]
+	public static void AControlBoundToACommandShowsItsLabelAndKeysAndFollowsThem()
+	{
+		let bed = scope KeymapBed();
+		let save = bed.Root.Context.DefineCommand("save");
+		save.Label = "Save";
+		bed.Handle("save");
+		let button = new Button();
+		defer button.ReleaseRef();
+		bed.Screen.AddChild(button);
+		button.Command = "save";
+		let menu = new Menu();
+		defer menu.ReleaseRef();
+		let item = menu.AddItem("", new () => { });
+		bed.Screen.AddChild(menu); // in the tree, so its binding runs
+		item.Command = "save";
+		Test.Assert(bed.Root.Context.Keymap.Bind("ctrl-s", "save"));
+		bed.Root.Context.Update(SceneFixtures.Frame); // bindings run once a frame
+		Test.Assert(button.Text == "Save");
+		Test.Assert(item.Text == "Save");
+		Test.Assert(item.Shortcut == "Ctrl+S");
+
+		save.Label = "Save all";
+		Test.Assert(bed.Root.Context.Keymap.Bind("ctrl-shift-s", "save"));
+		bed.Root.Context.Update(SceneFixtures.Frame);
+		Test.Assert(button.Text == "Save all");
+		Test.Assert(item.Shortcut == "Ctrl+Shift+S");
+
+		// A control with its own text keeps it.
+		let own = new Button();
+		defer own.ReleaseRef();
+		own.Text = "Keep";
+		bed.Screen.AddChild(own);
+		own.Command = "save";
+		bed.Root.Context.Update(SceneFixtures.Frame);
+		Test.Assert(own.Text == "Keep");
+	}
 }

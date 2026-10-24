@@ -92,40 +92,6 @@ TEST_CASE("keymap: `>` holds for a context inside another")
     CHECK(bed.ran[0] == SV(u8"menu.field-escape"));
 }
 
-TEST_CASE("keymap: a control bound to a command shows its label and keys, and follows them")
-{
-    Bed bed;
-    Command& save = bed.root->GetContext().DefineCommand(SV(u8"save"));
-    save.SetLabel(SV(u8"Save"));
-    bed.Handle(u8"save");
-    auto button = Make<Button>();
-    bed.screen->AddChild(button.Get());
-    button->SetCommand(SV(u8"save"));
-    auto menu = Make<Menu>();
-    MenuItem* item = menu->AddItem(SV(u8""), [] {});
-    bed.screen->AddChild(menu.Get()); // in the tree, so its binding runs
-    item->SetCommand(SV(u8"save"));
-    REQUIRE(bed.root->GetContext().GetKeymap().Bind(SV(u8"ctrl-s"), SV(u8"save")));
-    bed.root->GetContext().Update(core::Duration::FromSeconds(0.016)); // bindings run once a frame
-    CHECK(button->GetText() == SV(u8"Save"));
-    CHECK(item->GetText() == SV(u8"Save"));
-    CHECK(item->GetShortcut() == SV(u8"Ctrl+S"));
-
-    save.SetLabel(SV(u8"Save all"));
-    REQUIRE(bed.root->GetContext().GetKeymap().Bind(SV(u8"ctrl-shift-s"), SV(u8"save")));
-    bed.root->GetContext().Update(core::Duration::FromSeconds(0.016));
-    CHECK(button->GetText() == SV(u8"Save all"));
-    CHECK(item->GetShortcut() == SV(u8"Ctrl+Shift+S"));
-
-    // A control with its own text keeps it.
-    auto own = Make<Button>();
-    own->SetText(SV(u8"Keep"));
-    bed.screen->AddChild(own.Get());
-    own->SetCommand(SV(u8"save"));
-    bed.root->GetContext().Update(core::Duration::FromSeconds(0.016));
-    CHECK(own->GetText() == SV(u8"Keep"));
-}
-
 TEST_CASE("keymap: a text field's context menu shows the keys bound to its commands")
 {
     Bed bed;

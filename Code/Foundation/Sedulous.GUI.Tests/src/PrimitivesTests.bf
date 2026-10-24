@@ -117,5 +117,9 @@ class PrimitivesTests
 		Test.Assert(css.Contains("--accent: #33507a;"));
 		Test.Assert(css.Contains("@media (prefers-color-scheme: light)"));
 		Test.Assert(css.Contains("@media (prefers-reduced-motion: reduce)"));
+		// The names CSS spells with `box`, which Beef keeps as a keyword: intact in the sheet.
+		Test.Assert(css.Contains("box-shadow: 0 14px 36px var(--shadow-color);"));
+		Test.Assert(css.Contains("checkbox::box  { border-color: var(--checkbox-box, var(--outline)); }"));
+		Test.Assert(!css.Contains("area-shadow") && !css.Contains("::area"));
 	}
 }

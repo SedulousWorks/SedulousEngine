@@ -120,34 +120,6 @@ namespace
     }
 }
 
-TEST_CASE("theme: every widget with text takes the sheet's font")
-{
-    // A widget that keeps its text in parts (rows, a title, tab buttons) still takes font-family:
-    // the sandbox's list showed empty rows when its ListBox did not.
-    MockFontService fs;
-    StyleManager mgr;
-    mgr.SetStyleSheet(CSSParser::Parse(core::StringView(
-        u8"listbox, menubar, tabview, window, messagebox, tooltip { font-family: Roboto; font-size: 15; }")));
-    mgr.SetFontService(&fs);
-    auto list = core::MakeRef<ListBox>(core::DefaultAllocator());
-    auto bar = core::MakeRef<MenuBar>(core::DefaultAllocator());
-    auto tabs = core::MakeRef<TabView>(core::DefaultAllocator());
-    (void)tabs->AddPage(core::StringView(u8"One"));
-    auto window = core::MakeRef<Window>(core::DefaultAllocator());
-    auto box = core::MakeRef<MessageBox>(core::DefaultAllocator());
-    auto tip = core::MakeRef<Tooltip>(core::DefaultAllocator());
-    UIWidget* widgets[] = {list.Get(), bar.Get(), tabs.Get(), window.Get(), box.Get(), tip.Get()};
-    for (UIWidget* widget : widgets)
-        mgr.ApplyTo(*widget);
-    CHECK(list->GetFont() == &fs.font);
-    CHECK(bar->GetFont() == &fs.font);
-    CHECK(tabs->GetFont() == &fs.font);
-    CHECK(tabs->GetBar()->GetTab(0)->GetFont() == &fs.font); // its tabs take it
-    CHECK(window->GetFont() == &fs.font);
-    CHECK(box->GetFont() == &fs.font);
-    CHECK(tip->GetFont() == &fs.font);
-}
-
 TEST_CASE("theme: the built-in default theme restyles the standard widgets")
 {
     auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
@@ -252,31 +224,4 @@ TEST_CASE("theme: a list's rows show the pointer over them (a combo box's popup 
     mgr.SetUserAgentSheet(CSSParser::Parse(DefaultThemeCSS()));
     mgr.ApplyTree(*root.Get());
     CHECK(item->GetBox().BackgroundColor.r == doctest::Approx(1.0f));
-}
-
-TEST_CASE("theme: a widget's own face gives way to a sheet's: menus, their bar, tooltips, scrollbars, a table's header")
-{
-    // Their faces were drawings over the box, so a theme's colour (the light theme's) lay beneath
-    // them unseen; each is now its own box, which a sheet's replaces.
-    auto root = core::MakeRef<SceneRoot>(core::DefaultAllocator(), core::MakeRef<GUIContext>(core::DefaultAllocator()));
-    root->SetSize(core::Float2{400.0f, 400.0f});
-    auto menu = Make<Menu>();
-    auto bar = Make<MenuBar>();
-    auto tooltip = Make<Tooltip>();
-    auto scrollbar = Make<ScrollBar>();
-    UIWidget* const widgets[] = {menu.Get(), bar.Get(), tooltip.Get(), scrollbar.Get()};
-    for (UIWidget* w : widgets)
-    {
-        root->AddChild(w);
-        CHECK(w->BoxFills()); // its own face, unstyled
-    }
-    StyleManager mgr;
-    mgr.SetStyleSheet(CSSParser::Parse(core::StringView(u8"menu, menubar, tooltip, scrollbar { background-color: #ff0000; }")));
-    mgr.ApplyTree(*root.Get());
-    for (UIWidget* w : widgets)
-    {
-        CAPTURE(w->GetTag());
-        CHECK(w->GetBox().BackgroundColor.r == doctest::Approx(1.0f));
-        CHECK(w->GetBox().BackgroundColor.g == doctest::Approx(0.0f));
-    }
 }

@@ -217,4 +217,20 @@ class SvgDrawableTests
 		Test.Assert(NodeFixtures.Near(fromText.Size.X, 24.0f));
 		Test.Assert(NodeFixtures.Near(fromText.Size.Y, 12.0f));
 	}
+
+	[Test]
+	public static void AMenuCommandsIconByAnSvgPath()
+	{
+		let pictures = scope SvgPictures();
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		root.Context.ResourceProvider = pictures;
+		let item = new MenuItem();
+		defer item.ReleaseRef();
+		root.AddChild(item);
+		item.OnBoundCommandText("Bar", "bar.svg", "");
+		Test.Assert(pictures.Svgs == 1);
+		Test.Assert(item.Icon != null);
+		Test.Assert(item.Icon is SvgDrawable);
+	}
 }
