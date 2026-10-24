@@ -647,6 +647,16 @@ class GuiHost
 			data.NeedsFrame = needs;
 		}
 		PlaceContents();
+		// Placing can change what a node shows after the panes were asked (a viewport made again at
+		// a new size frees the image the last batch drew): such a window draws again, never reuses.
+		for (let attached in mAttached)
+		{
+			for (let pane in attached.Data.Panes)
+			{
+				if (pane.Root.NeedsRedraw)
+					attached.Data.NeedsFrame = true;
+			}
+		}
 		mBakesRecorded = false;
 	}
 

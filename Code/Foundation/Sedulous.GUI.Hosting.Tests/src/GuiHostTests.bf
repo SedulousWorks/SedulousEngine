@@ -148,6 +148,8 @@ class RecordingContent : IHostedContent
 	public int Records = 0;
 	public Rectangle Placed = .();
 	public Float2 PlacedWindow = .();
+	/// Placing changes what its node shows (as a viewport made again at a new size does).
+	public bool ChangesWhenPlaced = false;
 
 	public Node HostedNode => Shown;
 
@@ -162,6 +164,8 @@ class RecordingContent : IHostedContent
 	{
 		Placed = windowPixels;
 		PlacedWindow = windowSize;
+		if (ChangesWhenPlaced)
+			Shown.Invalidate();
 	}
 
 	public void Record(ICommandEncoder encoder, int32 frameIndex)
@@ -638,6 +642,35 @@ class GuiHostTests
 		Test.Assert(content.BoundWindow == 0);
 		bed.Host.RemoveContent(content);
 		Test.Assert(content.Binds == 2); // already let go: told nothing more
+	}
+
+	/// Added in the port: what changes as content is placed (after the panes were asked whether
+	/// they need a frame) is drawn that frame, never left to a reused batch that may show what
+	/// the content just freed.
+	[Test]
+	public static void ContentThatChangesAsItIsPlacedIsDrawnThatFrameNotReused()
+	{
+		let bed = scope HostBed();
+		let root = bed.MakeRoot();
+		defer root.ReleaseRef();
+		let panel = new Panel();
+		defer panel.ReleaseRef();
+		root.AddChild(panel);
+		let content = scope RecordingContent();
+		content.Shown = panel;
+		bed.Host.AddContent(content);
+		bed.Host.AttachWindow(bed.Main, root);
+		bed.Frame(bed.Main);
+		bed.Frame(bed.Main);
+		let drawn = bed.Host.FramesDrawn;
+		let reused = bed.Host.FramesReused;
+		Test.Assert(reused > 0); // idle: the last batch again
+		content.ChangesWhenPlaced = true;
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Host.FramesDrawn == drawn + 1);
+		Test.Assert(bed.Host.FramesReused == reused);
+		content.ChangesWhenPlaced = false;
+		bed.Host.RemoveContent(content);
 	}
 
 	[Test]
