@@ -691,9 +691,9 @@ class NodeTreeTests
 		defer node.ReleaseRef();
 		node.Alpha = 0.5f;
 		Test.Assert(node.IsStylePinned(.SlotOpacity));
+		using (Node.StyleWriteScope(node))
 		{
-			let writing = scope Node.StyleWriteScope(node);
-			Test.Assert((writing != null) && node.IsStyleWriting);
+			Test.Assert(node.IsStyleWriting);
 			node.Padding = Thickness(4.0f);
 		}
 		Test.Assert(!node.IsStyleWriting);

@@ -840,32 +840,6 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(UIWidget, "rtti::gui")
     {
-        builder.AccessorProperty<&UIWidget::GetId, &UIWidget::SetId>("id");
-        builder.AccessorProperty<&UIWidget::GetTooltipText, &UIWidget::SetTooltip>("tooltip")
-            .PropAttribute("css", core::String(u8"tooltip"))
-            .PropAttribute("translatable", true);
-        builder.AccessorProperty<&UIWidget::IsTooltipInteractive, &UIWidget::SetTooltipInteractive>("tooltipInteractive")
-            .PropAttribute("css", core::String(u8"tooltip-interactive")); // E16
-        // Accessibility in markup (E9d): over what its type and its properties say.
-        builder.AccessorProperty<&UIWidget::GetAccessRoleName, &UIWidget::SetAccessRoleName>("role").PropAttribute("css", core::String(u8"role"));
-        builder.AccessorProperty<&UIWidget::GetAccessLabel, &UIWidget::SetAccessLabel>("ariaLabel")
-            .PropAttribute("css", core::String(u8"aria-label"))
-            .PropAttribute("translatable", true);
-        builder.AccessorProperty<&UIWidget::GetAccessLabelledBy, &UIWidget::SetAccessLabelledBy>("ariaLabelledBy")
-            .PropAttribute("css", core::String(u8"aria-labelledby"));
-        builder.AccessorProperty<&UIWidget::GetAccessDescribedBy, &UIWidget::SetAccessDescribedBy>("ariaDescribedBy")
-            .PropAttribute("css", core::String(u8"aria-describedby"));
-        builder.AccessorProperty<&UIWidget::GetAccessControls, &UIWidget::SetAccessControls>("ariaControls")
-            .PropAttribute("css", core::String(u8"aria-controls"));
-        builder.AccessorProperty<&UIWidget::IsAccessHidden, &UIWidget::SetAccessHidden>("ariaHidden")
-            .PropAttribute("css", core::String(u8"aria-hidden"));
-        builder.AccessorProperty<&UIWidget::GetContextMenuId, &UIWidget::SetContextMenuId>("contextMenu")
-            .PropAttribute("css", core::String(u8"context-menu"));
-        builder.AccessorProperty<&UIWidget::GetDragType, &UIWidget::SetDragType>("dragType").PropAttribute("css", core::String(u8"drag-type"));
-        builder.AccessorProperty<&UIWidget::GetDragValue, &UIWidget::SetDragValue>("dragValue").PropAttribute("css", core::String(u8"drag-value"));
-        builder.AccessorProperty<&UIWidget::GetDragLabel, &UIWidget::SetDragLabel>("dragLabel").PropAttribute("css", core::String(u8"drag-label"));
-        builder.AccessorProperty<&UIWidget::GetDragModeName, &UIWidget::SetDragModeName>("drag").PropAttribute("css", core::String(u8"drag"));
-        builder.AccessorProperty<&UIWidget::GetDropReason, &UIWidget::SetDropReason>("dropReason").PropAttribute("css", core::String(u8"drop-reason"));
         builder.Method<&UIWidget::AddClass>("addClass");
         builder.Method<&UIWidget::RemoveClass>("removeClass");
         builder.Method<&UIWidget::HasClass>("hasClass");

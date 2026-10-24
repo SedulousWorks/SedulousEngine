@@ -204,10 +204,10 @@ class Node : Transformable, IRefCounted
 		public bool ClipChildren = false;
 	}
 
-	/// While one lives, the node's setters write without pinning: what a sheet applies, and a
-	/// widget's defaults (set in its constructor, the values a sheet returns to). Made with
-	/// `scope`, so it ends with the block.
-	public class StyleWriteScope
+	/// While one is open, the node's setters write without pinning: what a sheet applies, and a
+	/// widget's defaults (set in its constructor, the values a sheet returns to). Held by `using`,
+	/// so it ends with its block.
+	public struct StyleWriteScope : IDisposable
 	{
 		private Node mNode;
 		private bool mWas;
@@ -219,7 +219,7 @@ class Node : Transformable, IRefCounted
 			node.mStyleWriting = true;
 		}
 
-		public ~this()
+		public void Dispose()
 		{
 			mNode.mStyleWriting = mWas;
 		}
