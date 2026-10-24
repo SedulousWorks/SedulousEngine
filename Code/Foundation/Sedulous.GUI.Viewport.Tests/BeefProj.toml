@@ -1,0 +1,21 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.Viewport.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.GUI.Viewport.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Hosting" = "*"
+"Sedulous.GUI.Viewport" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Graphics.Null" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Null" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.Shell.Null" = "*"
+"Sedulous.VG" = "*"
+"Sedulous.VG.Renderer" = "*"
