@@ -1,0 +1,13 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.Testing.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.GUI.Testing.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Testing" = "*"
+"Sedulous.Image" = "*"
