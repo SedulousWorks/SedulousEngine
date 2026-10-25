@@ -249,7 +249,32 @@ static class ScriptSurfaceWalker
 		body.AppendF("}}\n\n/// The count the walk found, a tripwire for the tests.\npublic const int TypeCount = {};\n\n", entries.Count);
 		for (let e in entries)
 			body.Append(e.Thunks);
+		// The emitted code's entity, component, scene system and facade parts are members of
+		// Sedulous.Script.Scene; a root that walks scene types without it would otherwise fail
+		// on each of them, far from the cause.
+		if (UsesSceneLayer(body) && !SceneLayerInClosure())
+			Runtime.FatalError(scope $"ScriptSurface: {rootName} walks scene types (entities, components, scene systems or facades); its project must depend on Sedulous.Script.Scene");
 		Compiler.EmitTypeBody(root, body);
+	}
+
+	/// Whether emitted code names a member only Sedulous.Script.Scene provides.
+	[Comptime]
+	private static bool UsesSceneLayer(StringView code)
+	{
+		return code.Contains("frame.SceneOf(") || code.Contains("frame.Context.Scene") || code.Contains("SceneFacades.")
+			|| code.Contains(".FromEntity(") || code.Contains("Sedulous.Scene.");
+	}
+
+	/// Whether the root's closure holds the scene layer (its SceneFacades, the type it declares).
+	[Comptime]
+	private static bool SceneLayerInClosure()
+	{
+		for (let decl in Type.TypeDeclarations)
+		{
+			if (InClosure(decl) && (decl.GetFullName(.. scope .()) == "Sedulous.Script.SceneFacades"))
+				return true;
+		}
+		return false;
 	}
 
 	// ---- the facade closure ----
