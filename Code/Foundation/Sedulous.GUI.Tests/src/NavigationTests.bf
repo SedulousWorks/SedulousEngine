@@ -459,4 +459,31 @@ class NavigationTests
 		bed.Key(.Right);
 		Test.Assert(bed.Focused == "beside");
 	}
+
+	[Test]
+	public static void FocusingAPageLandsOnItsEntryAndTabStaysInADialog()
+	{
+		let bed = scope NavBed();
+		let page = new UIWidget();
+		defer page.ReleaseRef();
+		page.NavScope = .Pass;
+		page.DefaultFocusId = "second";
+		bed.Root.AddChild(page);
+		let first = NavBed.Cell(page, "first", 10.0f, 10.0f);
+		let second = NavBed.Cell(page, "second", 10.0f, 40.0f);
+		Test.Assert(page.FocusElement());
+		Test.Assert(bed.Focused == "second"); // its default
+		bed.D.FocusNode = first;
+		let elsewhere = NavBed.Cell(bed.Root, "elsewhere", 200.0f, 10.0f);
+		bed.D.FocusNode = elsewhere;
+		Test.Assert(page.FocusElement());
+		Test.Assert(bed.Focused == "first"); // what was last focused there
+
+		page.NavScope = .Contain;
+		bed.D.FocusNode = second;
+		bed.Key(.Tab); // wraps inside the dialog, never reaching `elsewhere`
+		Test.Assert(bed.Focused == "first");
+		bed.Key(.Tab);
+		Test.Assert(bed.Focused == "second");
+	}
 }

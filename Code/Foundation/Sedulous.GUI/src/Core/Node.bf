@@ -31,7 +31,7 @@ enum NavScope : uint8
 /// hold a reference to the table: when its GUI goes, the table is closed and every handle into it
 /// reads as gone, never as freed memory. A slot does not hold its node: a node frees its slot as
 /// it is destroyed.
-class ElementTable : RefCounted
+class ElementTable : RefCounted, IScriptWeakTable
 {
 	private struct Slot
 	{
@@ -80,6 +80,8 @@ class ElementTable : RefCounted
 		return (entry.Generation == generation) ? entry.Node : null;
 	}
 
+	public Object ResolveWeak(uint32 slot, uint32 generation) => Resolve(slot, generation);
+
 	public uint32 Generation(uint32 slot) => ((slot != 0) && ((int)slot <= mSlots.Count)) ? mSlots[(int)slot - 1].Generation : 0;
 
 	/// The owning GUI is going: every handle into this table reads as gone from now on.
@@ -99,9 +101,10 @@ class ElementTable : RefCounted
 /// or the parent goes, so a child held elsewhere outlives its parent and points at none. Anything
 /// else that must not keep a node alive holds it weakly, through its GUI's ElementTable (a slot
 /// and a generation, which the node frees as it is destroyed): Element<T>, an action's target, a
-/// scope's remembered focus. The node holds a reference to the table it took a slot in.
+/// scope's remembered focus, a script's handle. The node holds a reference to the table it took a
+/// slot in.
 [GuiReflect]
-class Node : Transformable, IRefCounted
+class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 {
 	/// Not a child's place: what GetChildIndex gives for a node that is not one.
 	public const int cInvalidIndex = -1;
@@ -1710,6 +1713,45 @@ class Node : Transformable, IRefCounted
 			mElementSlot = table.Take(this);
 		}
 		return .(mElementTable, mElementSlot, mElementTable.Generation(mElementSlot));
+	}
+
+	/// A script's handle to this node: its element ref, empty (a null table) in no GUI.
+	public ScriptWeakRef TakeScriptWeak()
+	{
+		let elementRef = TakeElementRef();
+		return .(elementRef.Table, elementRef.Slot, elementRef.Generation);
+	}
+
+	// === The tree by name ===
+
+	/// Creates the element `tag` names in this GUI's element set as the last child of where this
+	/// node's children go (its ChildHost); the new node, held by the tree, or null when the node is
+	/// in no GUI or the set does not allow `tag`.
+	public Node AddElement(StringView tag)
+	{
+		let elements = ElementSet;
+		let element = (elements != null) ? elements.Create(tag) : null;
+		if (element == null)
+			return null;
+		ChildHost.AddChild(element);
+		element.ReleaseRef(); // the tree's reference keeps it
+		return element;
+	}
+
+	/// The first widget in this subtree (depth first, this node first) whose id is `id`, or null.
+	public Node FindElement(StringView id) => NavigationDetail.FindWidgetById(this, id);
+
+	/// Focuses this widget, or, for a container (a page, a dialog), its entry: what was last
+	/// focused in it, else its default focus (nav-default), else its first focusable widget.
+	/// False when there is nothing to focus, or the node is in no GUI.
+	public bool FocusElement()
+	{
+		let dispatcher = EventDispatcher;
+		let target = (dispatcher != null) ? FocusTargetOf(this) : null;
+		if (target == null)
+			return false;
+		dispatcher.FocusNode = target;
+		return true;
 	}
 
 	public int32 ElementChildCount => (int32)mChildren.Count;

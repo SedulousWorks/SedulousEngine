@@ -26,37 +26,6 @@ namespace foundation::gui
 {
     namespace
     {
-        // A script handle's context: plain bytes in the Variant; the table is its retained anchor.
-        struct ElementHandleCtx
-        {
-            ElementTable* table;
-            u32 slot;
-            u32 generation;
-        };
-
-        void* ResolveElement(const core::Variant& handle)
-        {
-            const auto* ctx = static_cast<const ElementHandleCtx*>(handle.ResolveContext());
-            return ctx->table->Resolve(ctx->slot, ctx->generation);
-        }
-
-        [[nodiscard]] bool DerivesFrom(const TypeInfo* type, const TypeInfo& base) noexcept
-        {
-            for (const TypeInfo* t = type; t != nullptr; t = t->base)
-                if (t == &base)
-                    return true;
-            return false;
-        }
-
-        // `X.of(node)`: the same node's handle typed as X, or null when it is not an X (or gone).
-        template <typename T>
-        [[nodiscard]] core::Variant ElementOf(core::Variant handle)
-        {
-            Node* node = Node::FromHandle(handle);
-            T* typed = node != nullptr ? Cast<T>(node) : nullptr;
-            return typed != nullptr ? typed->HandleAs(T::StaticType()) : core::Variant{};
-        }
-
         // An event as a script handler sees it: positions in the GUI's units (from device pixels
         // through the root's display scale).
         [[nodiscard]] GuiEvent ScriptEventOf(const Event& event, StringView name)
@@ -181,52 +150,6 @@ namespace foundation::gui
             }
             return out;
         }
-
-        [[nodiscard]] Node* FindById(Node& node, StringView id)
-        {
-            if (const UIWidget* widget = Cast<UIWidget>(&node); widget != nullptr && widget->GetId() == id)
-                return &node;
-            for (usize i = 0; i < node.ChildCount(); ++i)
-                if (Node* found = FindById(*node.GetChildAt(i), id))
-                    return found;
-            return nullptr;
-        }
-    }
-
-    // === Weak references ===
-
-    core::Variant Node::HandleAs(const TypeInfo& type)
-    {
-        const ElementRef ref = TakeElementRef();
-        if (ref.table == nullptr)
-            return core::Variant{};
-        return core::Variant::Resolving(&type, &ResolveElement, ElementHandleCtx{ref.table, ref.slot, ref.generation},
-                                  ref.table);
-    }
-
-    Node* Node::FromHandle(const core::Variant& handle)
-    {
-        if (!handle.IsResolving() || !DerivesFrom(handle.Type(), Node::StaticType()))
-            return nullptr;
-        return static_cast<Node*>(handle.Resolve());
-    }
-
-    // === The tree by name ===
-
-    core::Variant Node::AddElement(StringView tag)
-    {
-        const ElementSet* elements = GetElementSet();
-        RefPtr<Node> element = elements != nullptr ? elements->Create(tag, MemoryAllocator()) : RefPtr<Node>{};
-        if (!element)
-            return core::Variant{};
-        GetChildHost()->AddChild(element.Get());
-        return element->HandleAs(Node::StaticType());
-    }
-
-    core::Variant Node::FindElement(StringView id)
-    {
-        Node* found = FindById(*this, id);
-        return found != nullptr ? found->HandleAs(Node::StaticType()) : core::Variant{};
     }
 
     core::Variant Node::ParentElement()
@@ -362,16 +285,6 @@ namespace foundation::gui
     {
         SceneRoot* root = ScriptRoot();
         return root != nullptr && root->RunCommand(id);
-    }
-
-    bool Node::FocusElement()
-    {
-        EventDispatcher* dispatcher = GetEventDispatcher();
-        Node* target = dispatcher != nullptr ? FocusTargetOf(*this) : nullptr;
-        if (target == nullptr)
-            return false;
-        dispatcher->SetFocusNode(target);
-        return true;
     }
 
     bool Gui::BindKey(StringView keys, StringView command, StringView context)

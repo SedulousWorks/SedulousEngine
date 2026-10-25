@@ -8,7 +8,7 @@ namespace Sedulous.GUI;
 // inserted, removed or changed, not a reset).
 
 [GuiReflect(true)]
-class ListModel : RefCounted
+class ListModel : RefCounted, Sedulous.Core.IScriptCounted
 {
 	private StringListModel mModel = new .() ~ delete _;
 

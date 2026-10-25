@@ -9,8 +9,8 @@ namespace Sedulous.GUI.Tests;
 // underneath or a given start, through the same typed values a transition moves (a number, a
 // length, a colour, box shadows, a transform), and holds its end until stopped, a sheet's later
 // change leaving it be; a tween of the same property replaces the running one from where it shows;
-// delays, repeats, ping-pong and the callback at the end; a paused GUI's tweens stand still, and a
-// destroyed node takes its tweens with it.
+// delays, repeats, ping-pong and the callback at the end; a paused GUI's tweens stand still, a
+// destroyed node takes its tweens with it, and a tween kept past its GUI finds no target.
 
 /// A widget in a GUI styled by a sheet; a frame runs the clock, then the style pass, as a host does.
 /// The root, the widget and the manager go with it.
@@ -577,6 +577,38 @@ class TweenTests
 		bed.Frame(0.75);
 		Test.Assert(bed.Score == 1500);
 		Test.Assert(bed.Label.Text == "1500");
+		Test.Assert(tween.IsDone);
+	}
+
+	[Test]
+	public static void ATweenKeptPastItsGUIFindsNoTargetAndTouchesNoFreedTable()
+	{
+		var root = SceneFixtures.NewScene();
+		let widget = new UIWidget();
+		widget.Tag = "box";
+		root.AddChild(widget);
+		widget.ReleaseRef(); // the tree's reference keeps it
+		let styles = scope StyleManager();
+		let sheet = scope StyleSheet();
+		CSSParser.Parse("box { opacity: 1; }", sheet);
+		styles.StyleSheet = sheet;
+		styles.ApplyTree(root);
+		let tween = widget.Animate("opacity", "0", 1.0f, "linear");
+		defer tween.ReleaseRef();
+		root.Context.Update(SceneFixtures.Seconds(0.25));
+		styles.ApplyTree(root);
+		Test.Assert(Near(widget.Alpha, 0.75f));
+		Test.Assert(tween.ResolveTarget() == widget);
+
+		// The GUI goes, its widget and its manager with it; the tween is held here, as a script
+		// holds one. Its weak target's table is kept by it, closed: no target, no freed memory.
+		styles.Forget(widget);
+		root.ReleaseRef();
+		root = null;
+		Test.Assert(tween.ResolveTarget() == null);
+		tween.Retarget("1");
+		tween.Cancel();
+		Test.Assert(tween.ResolveTarget() == null);
 		Test.Assert(tween.IsDone);
 	}
 }

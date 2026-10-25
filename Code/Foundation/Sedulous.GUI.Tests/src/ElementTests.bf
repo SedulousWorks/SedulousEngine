@@ -25,8 +25,9 @@ class Impostor : UIWidget
 
 /// Elements: weak references through a GUI's own element table (one resolves while its element
 /// lives and not after, a freed slot taken again answers under a new generation only, and each GUI
-/// keeps a table of its own, its references gone with it), the element registry any library adds
-/// to, and the element set one GUI may create from.
+/// keeps a table of its own, its references gone with it), a script's handle through the same
+/// table, the element registry any library adds to, and the element set one GUI may create from,
+/// a node adding children by tag through it.
 class ElementTests
 {
 	[Test]
@@ -155,5 +156,87 @@ class ElementTests
 		button.ReleaseRef();
 		button = null;
 		Test.Assert(!weak.IsValid); // destroyed: gone, not freed memory
+	}
+
+	[Test]
+	public static void ANodeAddsChildrenByTagThroughItsGUIsSet()
+	{
+		RegisterGuiElements();
+		let gui = SceneFixtures.NewScene();
+		defer gui.ReleaseRef();
+		let buttonsOnly = ElementSet.None();
+		defer delete buttonsOnly;
+		buttonsOnly.Allow("Button");
+		gui.Context.ElementSet = buttonsOnly;
+
+		Test.Assert(gui.AddElement("Label") == null); // not in this GUI's set
+		Test.Assert(gui.ChildCount == 0);
+		let added = gui.AddElement("Button");
+		Test.Assert(added is Button);
+		Test.Assert(added.Parent == gui);
+
+		// A detached node has no GUI and no set: nothing is created.
+		let loose = new Label();
+		defer loose.ReleaseRef();
+		Test.Assert(loose.AddElement("Button") == null);
+		Test.Assert(loose.ChildCount == 0);
+	}
+
+	[Test]
+	public static void AWidgetBuiltOfPartsAddsByTagIntoItsContentAndTheChildLivesInTheTree()
+	{
+		RegisterGuiElements();
+		let gui = SceneFixtures.NewScene();
+		defer gui.ReleaseRef();
+		let expander = new Expander();
+		defer expander.ReleaseRef();
+		gui.AddChild(expander);
+
+		let added = expander.AddElement("Button");
+		Test.Assert(added is Button);
+		Test.Assert(added.Parent == expander.Content); // where markup's children go
+		Test.Assert(added.RefCount == 1); // the tree's: the maker's was let go
+		let handle = added.TakeScriptWeak();
+		Test.Assert(handle.Resolve() === added);
+
+		// Found by id from anywhere above it, the node itself included.
+		((Button)added).Id = "ok";
+		Test.Assert(gui.FindElement("ok") == added);
+		Test.Assert(added.FindElement("ok") == added);
+		Test.Assert(gui.FindElement("missing") == null);
+	}
+
+	[Test]
+	public static void AScriptsHandleResolvesToItsNodeAndReadsNullOnceItOrItsGUIIsGone()
+	{
+		var gui = SceneFixtures.NewScene();
+		let detached = new Label();
+		defer detached.ReleaseRef();
+		Test.Assert(detached.TakeScriptWeak().IsEmpty); // in no GUI: no table to resolve through
+
+		let label = new Label();
+		gui.AddChild(label);
+		let handle = label.TakeScriptWeak();
+		Test.Assert(!handle.IsEmpty);
+		Test.Assert(handle.Resolve() === label);
+		Test.Assert(handle.SameAs(label.TakeScriptWeak())); // one slot, taken once
+
+		// Destroyed: null, not freed memory.
+		gui.RemoveChild(label);
+		label.ReleaseRef();
+		Test.Assert(handle.Resolve() == null);
+
+		// A handle into a GUI that goes: the reference a script's handle keeps holds the table,
+		// closed, so the handle reads null though its node lives on elsewhere.
+		let other = new Label();
+		defer other.ReleaseRef();
+		gui.AddChild(other);
+		let otherHandle = other.TakeScriptWeak();
+		otherHandle.Table.AddRef();
+		defer otherHandle.Table.ReleaseRef();
+		Test.Assert(otherHandle.Resolve() === other);
+		gui.ReleaseRef();
+		gui = null;
+		Test.Assert(otherHandle.Resolve() == null);
 	}
 }

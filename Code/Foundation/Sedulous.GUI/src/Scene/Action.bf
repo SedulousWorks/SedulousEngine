@@ -7,7 +7,9 @@ namespace Sedulous.GUI;
 // IsDone) driven by the ActionManager, with a target, a tag, an id and an OnDone callback.
 // Reference counted: the manager holds a reference to each action it runs, and whoever made one
 // releases its own. The target is not owned: a node destroyed mid-animation takes its actions
-// with it through the weak hold Node.RunAction gives them.
+// with it through the weak hold Node.RunAction gives them. The action keeps a reference on that
+// hold's table, so one kept past its GUI (by a script, or native code) reads its target as gone
+// rather than reading a freed table.
 
 enum ActionType
 {
@@ -17,7 +19,7 @@ enum ActionType
 	OnDone
 }
 
-abstract class Action : RefCounted
+abstract class Action : RefCounted, Sedulous.Core.IScriptCounted
 {
 	public typealias Callback = delegate void(Sedulous.GUI.Action action);
 
@@ -45,7 +47,7 @@ abstract class Action : RefCounted
 	private uint64 mId = 0;
 	private uint64 mTag = 0;
 	private Node mTarget = null; // not owned; read through ResolveTarget when held weakly
-	private WeakTarget mWeak = .();
+	private WeakTarget mWeak = .() ~ { if (_.Table != null) _.Table.ReleaseRef(); };
 
 	public abstract void Start();
 	public abstract void Stop();
@@ -87,8 +89,13 @@ abstract class Action : RefCounted
 		}
 	}
 
+	/// Holds `weak` instead of the hold it had, with a reference on its table.
 	public void SetWeakTarget(WeakTarget weak)
 	{
+		if (weak.Table != null)
+			weak.Table.AddRef();
+		if (mWeak.Table != null)
+			mWeak.Table.ReleaseRef();
 		mWeak = weak;
 	}
 
