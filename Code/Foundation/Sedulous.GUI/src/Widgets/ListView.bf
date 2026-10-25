@@ -7,7 +7,7 @@ namespace Sedulous.GUI;
 // default row lives in ItemView; its default row is one label (`listcell`) showing the item's
 // display text. A row factory (native or a markup template) replaces it.
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class ListView : ItemView
 {
 	public this()

@@ -11,7 +11,7 @@ namespace Sedulous.GUI;
 // validator may refuse what was typed: Return then keeps it editing (the field marked
 // `.invalid`), and focus leaving puts the old text back. A committed change reports `change`.
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class EditableLabel : Label
 {
 	// The field it edits in (its child); a reference held.
@@ -54,6 +54,7 @@ class EditableLabel : Label
 	}
 
 	/// Starts editing (as a double-click or F2 does).
+	[Scriptable]
 	public void BeginEdit()
 	{
 		if (mEditing || !IsTreeEnabled)

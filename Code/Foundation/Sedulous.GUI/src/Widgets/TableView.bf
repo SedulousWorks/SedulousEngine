@@ -236,7 +236,7 @@ class TableItem : UIWidget
 	}
 }
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class TableView : ItemView
 {
 	private UIWidget mHeader ~ _.ReleaseRef();
@@ -304,7 +304,7 @@ class TableView : ItemView
 
 	/// Every column's width as text, one per column (`120px 30% auto`; a bare number is pixels):
 	/// markup's `column-widths`.
-	[GuiProperty("column-widths")]
+	[GuiProperty("column-widths"), Scriptable]
 	public StringView ColumnWidthsText
 	{
 		get
@@ -392,7 +392,7 @@ class TableView : ItemView
 	// === Markup: a model of its own ===
 
 	/// Its columns' names, '|' between them (markup's `columns`).
-	[GuiProperty("columns")]
+	[GuiProperty("columns"), Scriptable]
 	public StringView ColumnsText
 	{
 		get
@@ -420,7 +420,7 @@ class TableView : ItemView
 	}
 
 	/// Its own model's cells may be edited in place (F2).
-	[GuiProperty("editable")]
+	[GuiProperty("editable"), Scriptable]
 	public bool Editable
 	{
 		get => mEditable;

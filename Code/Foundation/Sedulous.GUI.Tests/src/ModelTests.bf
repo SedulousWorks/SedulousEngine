@@ -531,16 +531,10 @@ class ModelTests
 		list.Insert(-3, "a"); // before the first
 		list.Add("c");
 		Test.Assert(list.Count == 3);
-		let text = scope String();
-		list.Get(0, text);
-		Test.Assert(text == "a");
+		Test.Assert(list.Get(0) == "a");
 		list.Set(2, "C");
-		text.Clear();
-		list.Get(2, text);
-		Test.Assert(text == "C");
-		text.Clear();
-		list.Get(5, text);
-		Test.Assert(text.IsEmpty);
+		Test.Assert(list.Get(2) == "C");
+		Test.Assert(list.Get(5).IsEmpty);
 		list.Remove(-1); // nothing
 		list.Remove(1);
 		Test.Assert(list.Count == 2);

@@ -155,7 +155,7 @@ class TreeItem : UIWidget
 	}
 }
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class TreeView : ItemView
 {
 	private struct FlatEntry
@@ -211,11 +211,13 @@ class TreeView : ItemView
 	}
 
 	// Expansion by item (a visible row).
+	[Scriptable]
 	public void ExpandItem(int32 item)
 	{
 		SetExpanded(item, true);
 	}
 
+	[Scriptable]
 	public void CollapseItem(int32 item)
 	{
 		SetExpanded(item, false);

@@ -14,7 +14,8 @@ namespace Sedulous.GUI.ScriptSurface.Tests;
 /// narrows a handle, and is told a gone node is gone, a handle outliving its GUI included; a script
 /// narrows to each widget and sets its properties, and calls their verbs; a script opens windows,
 /// menus and popups of its own, fills in a toast request and posts it and hears its action, and
-/// works its tabs and a message box; a script tweens, springs and plays a sequence, and a tween it
+/// works its tabs and a message box; a script fills a list model a list view shows, and works
+/// the text, colour and item views; a script tweens, springs and plays a sequence, and a tween it
 /// keeps past its GUI is harmless.
 static class GuiScriptSurfaceTests
 {
@@ -47,6 +48,12 @@ static class GuiScriptSurfaceTests
 		"Sedulous.GUI.TabPage", "Sedulous.GUI.TabView", "Sedulous.GUI.Window", "Sedulous.GUI.MessageBox",
 		"Sedulous.GUI.MenuItem", "Sedulous.GUI.Menu", "Sedulous.GUI.MenuBar");
 
+	/// The text, colour and item views on the surface, held weakly.
+	private static StringView[12] sViews = .("Sedulous.GUI.TextEditBase", "Sedulous.GUI.TextField",
+		"Sedulous.GUI.TextArea", "Sedulous.GUI.EditableLabel", "Sedulous.GUI.NumberField", "Sedulous.GUI.ColorSwatch",
+		"Sedulous.GUI.ColorPicker", "Sedulous.GUI.ItemView", "Sedulous.GUI.ListView", "Sedulous.GUI.TreeView",
+		"Sedulous.GUI.TableView", "Sedulous.GUI.ComboBox");
+
 	[Test]
 	public static void TheCountIsATripwire()
 	{
@@ -64,13 +71,16 @@ static class GuiScriptSurfaceTests
 		// their own. The menus, windows, tabs and toasts, ten weakly held: ToastHost, Tab, TabBar,
 		// TabPage, TabView, Window, MessageBox, MenuItem, Menu and MenuBar; and the toast's two
 		// a script fills in, ToastRequest (counted, with a marked constructor) and ToastSeverity.
+		// The text, colour and item views, twelve weakly held: TextEditBase, TextField,
+		// TextArea, EditableLabel, NumberField, ColorSwatch, ColorPicker, ItemView, ListView,
+		// TreeView, TableView and ComboBox; and ListModel, counted, with a marked constructor.
 		// Then Core's static block and the fifteen of its types the block's free
 		// functions name: AABB, BoundingFrustum, BoundingSphere, Color, Color32, ContainmentType,
 		// Float2, Float3, Float3x3, Float4, Float4x4, Plane, PlaneIntersectionType, Quaternion and
 		// Ray. The tweens' verbs name no Core type of their own (text, numbers, a script
 		// function). Core's other marked types (Transform, Rectangle, the IO and log enums)
 		// nothing here reaches, nor Action, the tweens' unmarked base.
-		Test.Assert(GuiScriptSurface.TypeCount == 57, scope $"the GUI surface has {GuiScriptSurface.TypeCount} types");
+		Test.Assert(GuiScriptSurface.TypeCount == 70, scope $"the GUI surface has {GuiScriptSurface.TypeCount} types");
 		Test.Assert(s.Find("Sedulous.GUI.Node").Role == .Weak);
 		Test.Assert(s.Find("Sedulous.GUI.SceneRoot").Role == .Weak);
 		Test.Assert(s.Find("Sedulous.GUI.UINode").Role == .Weak);
@@ -92,6 +102,12 @@ static class GuiScriptSurfaceTests
 			let t = s.Find(widget);
 			Test.Assert((t != null) && (t.Role == .Weak) && (t.WeakRootTypeName == "Sedulous.GUI.Node"), scope $"{widget}, held weakly");
 		}
+		for (let widget in sViews)
+		{
+			let t = s.Find(widget);
+			Test.Assert((t != null) && (t.Role == .Weak) && (t.WeakRootTypeName == "Sedulous.GUI.Node"), scope $"{widget}, held weakly");
+		}
+		Test.Assert(s.Find("Sedulous.GUI.ListModel").Role == .Counted);
 		Test.Assert(s.Find("Sedulous.GUI.ToastRequest").Role == .Counted);
 		Test.Assert(s.Find("Sedulous.GUI.ToastSeverity") != null);
 		// Raptor's parts with no script members of their own stay off, and the rest of the
@@ -105,7 +121,12 @@ static class GuiScriptSurfaceTests
 		Test.Assert(s.Find("Sedulous.GUI.TabPageHost") == null);
 		Test.Assert(s.Find("Sedulous.GUI.MenuSeparator") == null);
 		Test.Assert(s.Find("Sedulous.GUI.ToastCard") == null, "a toast's card is the host's");
-		Test.Assert(s.Find("Sedulous.GUI.TextField") == null, "the text widgets come later");
+		Test.Assert(s.Find("Sedulous.GUI.SpinButton") == null);
+		Test.Assert(s.Find("Sedulous.GUI.DragLayer") == null);
+		Test.Assert(s.Find("Sedulous.GUI.DragPreview") == null);
+		Test.Assert(s.Find("Sedulous.GUI.MarkupChildHost") == null);
+		Test.Assert(s.Find("Sedulous.GUI.TreeItem") == null);
+		Test.Assert(s.Find("Sedulous.GUI.TableItem") == null);
 	}
 
 	/// Every property the GUI reflects on the marked types is a script's to read, and to write
@@ -148,6 +169,18 @@ static class GuiScriptSurfaceTests
 		CheckProperties(s, "Sedulous.GUI.MenuItem", MenuItem.StaticGuiType);
 		CheckProperties(s, "Sedulous.GUI.Menu", Menu.StaticGuiType);
 		CheckProperties(s, "Sedulous.GUI.MenuBar", MenuBar.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.TextEditBase", TextEditBase.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.TextField", TextField.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.TextArea", TextArea.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.EditableLabel", EditableLabel.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.NumberField", NumberField.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.ColorSwatch", ColorSwatch.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.ColorPicker", ColorPicker.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.ItemView", ItemView.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.ListView", ListView.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.TreeView", TreeView.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.TableView", TableView.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.ComboBox", ComboBox.StaticGuiType);
 		// The tables chain as the types do, so the walk above covers each one's bases.
 		Test.Assert(UIWidget.StaticGuiType.Base == UINode.StaticGuiType);
 		Test.Assert(UINode.StaticGuiType.Base == Node.StaticGuiType);
@@ -192,6 +225,7 @@ static class GuiScriptSurfaceTests
 		Test.Assert(text.Contains("class Tween [Counted]"), "the tween, counted");
 		Test.Assert(text.Contains("class Label [Weak]") && text.Contains("class Expander [Weak]"), "the widgets, held weakly");
 		Test.Assert(text.Contains("class ToastRequest [Counted]"), "the toast request, counted");
+		Test.Assert(text.Contains("class ListModel [Counted]"), "the list model, counted");
 	}
 
 	[Test]
@@ -915,5 +949,147 @@ static class GuiScriptSurfaceTests
 
 		root.ReleaseRef();
 		vm.DiscardModule("tabs");
+	}
+
+	// Raptor's list model from a script (E16): the script makes a ListModel of three rows, shown by
+	// a ListView it puts first under the root, and keeps it to change it.
+	private const String cModel = """
+		ListModel@ model;
+		void build(Node@ root)
+		{
+			@model = ListModel();
+			model.Add("one"); model.Add("two"); model.Add("three");
+			ListView::Of(root.Add("ListView")).SetModel(model);
+		}
+		void edit() { model.Insert(1, "new"); model.Remove(model.Count - 1); model.Set(0, "alpha"); }
+		bool firstIsAlpha() { return model.Get(0) == "alpha"; }
+		bool secondIsNew() { return model.Get(1) == "new"; }
+		bool pastTheEnd() { return model.Get(9) == ""; }
+		int cleared() { model.Clear(); return model.Count; }
+		void drop() { @model = null; }
+		""";
+
+	[Test]
+	public static void AScriptFillsAListModelAListViewShows()
+	{
+		RegisterGuiElements();
+		let s = scope ScriptSurface();
+		GuiScriptSurface.Populate(s);
+		let vm = new AngelScriptRuntime();
+		defer delete vm;
+		vm.Bind(s);
+		let ok = vm.Compile("model", "model.as", cModel);
+		Dump(vm);
+		Test.Assert(ok && vm.Problems.IsEmpty, "compiled, with nothing to say");
+
+		let root = NewScene();
+		var rootArg = ScriptValue[1](.FromWeak(root));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("model", "void build(Node@)", rootArg, ref r), "built");
+		Dump(vm);
+		let list = root.GetChildAt(0) as ListView;
+		Test.Assert((list != null) && (list.Model != null) && (list.Model.RowCount() == 3), "the view shows the script's three rows");
+		Test.Assert(Run(vm, "model", "void edit()", ref r), "edited"); // insert at 1, remove the last, rename the first
+		Test.Assert(list.Model.RowCount() == 3);
+		Test.Assert(Run(vm, "model", "bool firstIsAlpha()", ref r) && r.AsBool);
+		Test.Assert(Run(vm, "model", "bool secondIsNew()", ref r) && r.AsBool);
+		Test.Assert(Run(vm, "model", "bool pastTheEnd()", ref r) && r.AsBool, "empty past the end");
+		// The view keeps the model alive once the script lets go of it.
+		Test.Assert(Run(vm, "model", "void drop()", ref r));
+		Test.Assert(list.Model.RowCount() == 3, "kept by the view");
+		Test.Assert(vm.Problems.IsEmpty);
+
+		root.ReleaseRef();
+		vm.DiscardModule("model");
+	}
+
+	// The text, colour and item views from a script: each made by its tag, narrowed, a property
+	// set and read back, and the views' verbs called; the first check that fails is the answer
+	// (0: none).
+	private const String cViews = """
+		int failed = 0;
+		int step = 0;
+		void check(bool ok) { step += 1; if (!ok && (failed == 0)) failed = step; }
+		int roundTrip(Node@ root)
+		{
+			TextField@ field = TextField::Of(root.Add("TextField"));
+			field.Text = "hello"; check(field.Text == "hello");
+			field.IsPassword = true; check(field.IsPassword);
+			check(TextEditBase::Of(field) !is null);
+			TextArea@ area = TextArea::Of(root.Add("TextArea"));
+			area.Rows = 4; check(area.Rows == 4);
+			NumberField@ number = NumberField::Of(root.Add("NumberField"));
+			number.Max = 10; number.Value = 3; check(number.Value == 3);
+			check(TextField::Of(number) !is null);
+			ColorPicker@ picker = ColorPicker::Of(root.Add("ColorPicker"));
+			picker.ShowsAlpha = false; check(!picker.ShowsAlpha);
+			ColorSwatch@ swatch = ColorSwatch::Of(root.Add("ColorSwatch"));
+			check(swatch !is null);
+			ComboBox@ combo = ComboBox::Of(root.Add("ComboBox"));
+			combo.ItemsText = "a|b|c"; combo.SelectedIndex = 2; check(combo.SelectedIndex == 2);
+			TableView@ table = TableView::Of(root.Add("TableView"));
+			table.ColumnsText = "Name|Size"; check(table.ColumnsText == "Name|Size");
+			check(ItemView::Of(table) !is null);
+			check(ListView::Of(table) is null);
+			return failed;
+		}
+		ListView@ list;
+		TreeView@ tree;
+		EditableLabel@ label;
+		void build(Node@ root)
+		{
+			@list = ListView::Of(root.Add("ListView"));
+			list.ItemsText = "a|b|c";
+			list.SelectionModeName = "multi";
+			@tree = TreeView::Of(root.Add("TreeView"));
+			@label = EditableLabel::Of(root.Add("EditableLabel"));
+			label.Text = "name";
+		}
+		void selectAll() { list.SelectAll(); }
+		void clearSelection() { list.ClearSelection(); }
+		void beginEdit() { label.BeginEdit(); }
+		void expand(int item) { tree.ExpandItem(item); }
+		void collapse(int item) { tree.CollapseItem(item); }
+		""";
+
+	[Test]
+	public static void AScriptWorksTheTextColourAndItemViews()
+	{
+		RegisterGuiElements();
+		let s = scope ScriptSurface();
+		GuiScriptSurface.Populate(s);
+		let vm = new AngelScriptRuntime();
+		defer delete vm;
+		vm.Bind(s);
+		let ok = vm.Compile("views", "views.as", cViews);
+		Dump(vm);
+		Test.Assert(ok && vm.Problems.IsEmpty, "compiled, with nothing to say");
+
+		let root = NewScene();
+		var rootArg = ScriptValue[1](.FromWeak(root));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("views", "int roundTrip(Node@)", rootArg, ref r), "ran");
+		Dump(vm);
+		Test.Assert(r.AsInt == 0, scope $"check {r.AsInt} failed");
+		let field = root.GetChildAt(0) as TextField;
+		Test.Assert((field != null) && (field.Text == "hello") && field.IsPassword, "the field's own");
+		root.ReleaseRef();
+
+		let views = NewScene();
+		var viewsArg = ScriptValue[1](.FromWeak(views));
+		Test.Assert(vm.Call("views", "void build(Node@)", viewsArg, ref r), "built");
+		Dump(vm);
+		views.UpdateLayout();
+		let list = views.GetChildAt(0) as ListView;
+		let tree = views.GetChildAt(1) as TreeView;
+		let label = views.GetChildAt(2) as EditableLabel;
+		Test.Assert((list != null) && (tree != null) && (label != null));
+		Test.Assert(Run(vm, "views", "void selectAll()", ref r) && (list.SelectionCount == 3), "all selected");
+		Test.Assert(Run(vm, "views", "void clearSelection()", ref r) && (list.SelectionCount == 0), "none selected");
+		Test.Assert(Run(vm, "views", "void beginEdit()", ref r) && label.IsEditing, "editing");
+		Test.Assert(vm.Problems.IsEmpty);
+
+		views.ReleaseRef();
+		vm.DiscardModule("views");
 	}
 }

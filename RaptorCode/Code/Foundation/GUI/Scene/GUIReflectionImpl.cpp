@@ -214,51 +214,8 @@ namespace foundation::gui
 
     // === Reflection ===
 
-    REFLECT_MEMBERS(ListModel, "rtti::gui")
-    {
-        builder.Method<&ListModel::Add>("add");
-        builder.Method<&ListModel::Insert>("insert");
-        builder.Method<&ListModel::Remove>("remove");
-        builder.Method<&ListModel::Set>("set");
-        builder.Method<&ListModel::Get>("get");
-        builder.Method<&ListModel::Count>("count");
-        builder.Method<&ListModel::Clear>("clear");
-        builder.Constructor<>(); // ListModel() / ListModel.new()
-    }
-
     REFLECT_MEMBERS(ButtonIndicator, "rtti::gui")
     {
-    }
-
-    REFLECT_MEMBERS(ColorSwatch, "rtti::gui")
-    {
-        builder.Method<&ElementOf<ColorSwatch>, ColorSwatch, Node>("of");
-    }
-
-    REFLECT_MEMBERS(ColorPicker, "rtti::gui")
-    {
-        builder.Method<&ElementOf<ColorPicker>, ColorPicker, Node>("of");
-    }
-
-    REFLECT_MEMBERS(TextEditBase, "rtti::gui")
-    {
-        builder.Method<&ElementOf<TextEditBase>, TextEditBase, Node>("of");
-    }
-
-    REFLECT_MEMBERS(TextField, "rtti::gui")
-    {
-        builder.Method<&ElementOf<TextField>, TextField, Node>("of");
-    }
-
-    REFLECT_MEMBERS(TextArea, "rtti::gui")
-    {
-        builder.Method<&ElementOf<TextArea>, TextArea, Node>("of");
-    }
-
-    REFLECT_MEMBERS(EditableLabel, "rtti::gui")
-    {
-        builder.Method<&EditableLabel::BeginEdit>("beginEdit");
-        builder.Method<&ElementOf<EditableLabel>, EditableLabel, Node>("of");
     }
 
     REFLECT_MEMBERS(ExpanderHeader, "rtti::gui")
@@ -289,11 +246,6 @@ namespace foundation::gui
     {
     }
 
-    REFLECT_MEMBERS(NumberField, "rtti::gui")
-    {
-        builder.Method<&ElementOf<NumberField>, NumberField, Node>("of");
-    }
-
     REFLECT_MEMBERS(DragLayer, "rtti::gui")
     {
     }
@@ -310,43 +262,12 @@ namespace foundation::gui
     {
     }
 
-    REFLECT_MEMBERS(TreeView, "rtti::gui")
-    {
-        builder.Method<&TreeView::ExpandItem>("expandItem");
-        builder.Method<&TreeView::CollapseItem>("collapseItem");
-        builder.Method<&ElementOf<TreeView>, TreeView, Node>("of");
-    }
-
     REFLECT_MEMBERS(TableItem, "rtti::gui")
     {
     }
 
-    REFLECT_MEMBERS(TableView, "rtti::gui")
-    {
-        builder.Method<&ElementOf<TableView>, TableView, Node>("of");
-    }
-
     REFLECT_MEMBERS(MenuSeparator, "rtti::gui")
     {
-    }
-
-    REFLECT_MEMBERS(ItemView, "rtti::gui")
-    {
-        builder.Method<&ItemView::SetListModel>("setModel"); // a script's ListModel (E16)
-        builder.Method<&ItemView::BeginEdit>("beginEdit");
-        builder.Method<&ItemView::SelectAll>("selectAll");
-        builder.Method<&ItemView::ClearSelection>("clearSelection");
-        builder.Method<&ElementOf<ItemView>, ItemView, Node>("of");
-    }
-
-    REFLECT_MEMBERS(ListView, "rtti::gui")
-    {
-        builder.Method<&ElementOf<ListView>, ListView, Node>("of");
-    }
-
-    REFLECT_MEMBERS(ComboBox, "rtti::gui")
-    {
-        builder.Method<&ElementOf<ComboBox>, ComboBox, Node>("of");
     }
 
     REFLECT_MEMBERS(Gui, "rtti::gui")

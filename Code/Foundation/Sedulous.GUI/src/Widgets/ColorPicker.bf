@@ -140,7 +140,7 @@ internal static class ColorPickerDetail
 }
 
 /// A colour shown: over a checkerboard, or hatched when mixed. Clicked, it says so.
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class ColorSwatch : UIWidget
 {
 	private Color mColor = .(1.0f, 1.0f, 1.0f, 1.0f);
@@ -159,7 +159,7 @@ class ColorSwatch : UIWidget
 	public override bool AccessActivates => true;
 
 	/// Its colour (markup's and a sheet's `color-value`: `color` is its text's).
-	[GuiProperty("color-value")]
+	[GuiProperty("color-value"), Scriptable]
 	public Color ColorValue
 	{
 		get => mColor;
@@ -384,7 +384,7 @@ class ColorPickerArea : UIWidget
 	}
 }
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class ColorPicker : UIWidget
 {
 	private ColorHsv mHsv = .(0.0f, 0.0f, 1.0f, 1.0f);
@@ -476,7 +476,7 @@ class ColorPicker : UIWidget
 
 	/// The colour. Set from code: shown, nothing reported (markup's and a sheet's `color-value`:
 	/// `color` is its text's).
-	[GuiProperty("color-value", .TwoWay)]
+	[GuiProperty("color-value", .TwoWay), Scriptable]
 	public Color ColorValue
 	{
 		get => FromHsv(mHsv);
@@ -491,7 +491,7 @@ class ColorPicker : UIWidget
 	public ColorHsv Hsv => mHsv;
 
 	/// Whether it edits alpha (its strip and field show).
-	[GuiProperty("shows-alpha")]
+	[GuiProperty("shows-alpha"), Scriptable]
 	public bool ShowsAlpha
 	{
 		get => mShowsAlpha;

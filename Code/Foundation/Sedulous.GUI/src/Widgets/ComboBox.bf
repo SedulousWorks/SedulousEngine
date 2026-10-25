@@ -20,7 +20,7 @@ namespace Sedulous.GUI;
 // With nothing selected (-1: none yet, or the values it stands for differ, a property grid's
 // mixed state) it shows its placeholder in the placeholder's colour.
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class ComboBox : UIWidget
 {
 	private List<String> mItems = new .() ~ DeleteContainerAndItems!(_);
@@ -63,7 +63,7 @@ class ComboBox : UIWidget
 	public int ItemCount => mItems.Count;
 
 	/// The items as one text, '|' between them (markup's and a sheet's `items`).
-	[GuiProperty("items")]
+	[GuiProperty("items"), Scriptable]
 	public StringView ItemsText
 	{
 		get
@@ -95,7 +95,7 @@ class ComboBox : UIWidget
 
 	/// The selected item's index, or -1 (markup's and a sheet's `selected`; a read a binding
 	/// follows). Set, it selects `index`, or none with -1.
-	[GuiProperty("selected", .TwoWay)]
+	[GuiProperty("selected", .TwoWay), Scriptable]
 	public int32 SelectedIndex
 	{
 		get
@@ -155,7 +155,7 @@ class ComboBox : UIWidget
 	}
 
 	/// What shows while nothing is selected (`placeholder`).
-	[GuiProperty("placeholder", .Translatable)]
+	[GuiProperty("placeholder", .Translatable), Scriptable]
 	public StringView Placeholder
 	{
 		get => mPlaceholder;
