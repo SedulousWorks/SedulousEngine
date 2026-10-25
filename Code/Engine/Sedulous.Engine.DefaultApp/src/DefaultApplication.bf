@@ -545,11 +545,11 @@ class DefaultApplication : IApplication, ISceneObserver
 		if (at < 0)
 			return;
 
+		// Destroy whatever scenes are left, with the aware subsystems notified: before the manager
+		// is unregistered, which takes away the uninstaller that tells them.
+		instance.Scenes.Clear();
 		if (mScenes != null)
 			mScenes.UnregisterManager(instance.Scenes);
-
-		// Destroy whatever scenes are left, with the aware subsystems notified.
-		instance.Scenes.Clear();
 		// Its sound and its screens end with it.
 		if (mAudio != null)
 			mAudio.EndRun(instance);
@@ -964,17 +964,18 @@ class DefaultApplication : IApplication, ISceneObserver
 		UiHandles.Clear();
 		DebugFacade.Renderer = null;
 
+		// Each manager's scenes go before it is unregistered, so the aware subsystems hear of them.
 		for (let instance in mExtraInstances)
 		{
+			instance.Scenes.Clear();
 			if (mScenes != null)
 				mScenes.UnregisterManager(instance.Scenes);
-			instance.Scenes.Clear();
 		}
 		ClearAndDeleteItems!(mExtraInstances);
 
+		mInstance.Scenes.Clear();
 		if (mScenes != null)
 			mScenes.UnregisterManager(mInstance.Scenes);
-		mInstance.Scenes.Clear();
 
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null))

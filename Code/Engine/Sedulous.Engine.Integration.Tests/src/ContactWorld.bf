@@ -73,10 +73,11 @@ class ContactWorld
 	public ~this()
 	{
 		// The bridge before the physics subsystem goes; the scenes before the host they
-		// script on.
+		// script on, and before their manager is unregistered (which takes the uninstaller that
+		// tells the script subsystem they are gone).
 		Bridge.Uninstall();
-		Scenes.UnregisterManager(Manager);
 		Manager.Clear();
+		Scenes.UnregisterManager(Manager);
 		Context.Shutdown();
 		delete Bridge;
 		delete Manager;
