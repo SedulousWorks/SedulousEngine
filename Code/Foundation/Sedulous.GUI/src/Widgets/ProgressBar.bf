@@ -10,7 +10,7 @@ namespace Sedulous.GUI;
 // sweeps a segment along the track on the GUI's clock instead. Modeled on eepp's UIProgressBar
 // (role only).
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class ProgressBar : RangeWidget
 {
 	private const float cSweepSeconds = 1.4f;
@@ -28,7 +28,7 @@ class ProgressBar : RangeWidget
 	}
 
 	/// Work of unknown length: a segment sweeps along the track.
-	[GuiProperty("indeterminate")]
+	[GuiProperty("indeterminate"), Scriptable]
 	public bool Indeterminate
 	{
 		get => mIndeterminate;

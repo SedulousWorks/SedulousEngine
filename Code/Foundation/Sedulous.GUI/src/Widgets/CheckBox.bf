@@ -10,7 +10,7 @@ namespace Sedulous.GUI;
 // :indeterminate), drawn as a dash until it is set or clicked; a click on an indeterminate box
 // checks it. Its parts: checkbox::box (the outline) and ::mark (the dash, or the tick's colour).
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class CheckBox : ButtonBase
 {
 	private Color mBoxColor = .(0.60f, 0.65f, 0.72f, 1.0f);
@@ -34,7 +34,7 @@ class CheckBox : ButtonBase
 	}
 
 	/// Neither checked nor unchecked, until it is set or clicked.
-	[GuiProperty("indeterminate")]
+	[GuiProperty("indeterminate"), Scriptable]
 	public bool Indeterminate
 	{
 		get => IndeterminateState;

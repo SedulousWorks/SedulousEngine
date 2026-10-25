@@ -38,7 +38,7 @@ static
 	}
 }
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class Label : UIWidget
 {
 	protected Sedulous.GUI.Text mText = new .() ~ delete _;
@@ -74,7 +74,7 @@ class Label : UIWidget
 
 	/// Its text: plain, or a rich text's markup when it is rich (Rich). Read, it is a read a
 	/// binding records.
-	[GuiProperty("", .Translatable, "name")]
+	[GuiProperty("", .Translatable, "name"), Scriptable]
 	public StringView Text
 	{
 		get
@@ -97,7 +97,7 @@ class Label : UIWidget
 	}
 
 	/// Its text's colour, as markup, bindings and tweens name it.
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public new Color TextColor
 	{
 		get => base.TextColor;
@@ -107,7 +107,7 @@ class Label : UIWidget
 	/// A rich label's text is markup: runs in their own colours, sizes, faces and effects,
 	/// underlines, inline icons and links (TextRuns), a click on a link reported as a `link` event
 	/// with its id. Markup's `rich="true"`, or the RichText element.
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public bool Rich
 	{
 		get => mRich;
@@ -155,7 +155,7 @@ class Label : UIWidget
 	}
 
 	/// TextOverflow by its keyword (a sheet's `text-overflow`).
-	[GuiProperty("text-overflow")]
+	[GuiProperty("text-overflow"), Scriptable]
 	public StringView TextOverflowName
 	{
 		get => LabelDetail.OverflowName(TextOverflow);
@@ -164,7 +164,7 @@ class Label : UIWidget
 
 	/// CSS's line-clamp: the most lines it shows, the last ending in an ellipsis when its
 	/// text-overflow has one (0: all). Not inherited.
-	[GuiProperty("line-clamp")]
+	[GuiProperty("line-clamp"), Scriptable]
 	public int32 LineClamp
 	{
 		get => (int32)mText.MaxLines;
@@ -287,7 +287,7 @@ class Label : UIWidget
 }
 
 /// A label whose text is markup (Label with rich on), for markup's <RichText text="...">.
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class RichText : Label
 {
 	public this()

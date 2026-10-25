@@ -7,12 +7,13 @@ using Sedulous.GUI;
 
 namespace Sedulous.GUI.ScriptSurface.Tests;
 
-/// The GUI's script surface: the node, the widget base, what a handler is given and the tweens,
-/// every property the GUI reflects on them, nothing blocked, bound by AngelScript without a word;
-/// and Raptor's script stories, in their AngelScript halves, over a root handed in as an argument:
-/// a script builds and styles a widget, listens and is called, narrows a handle, and is told a gone
-/// node is gone, a handle outliving its GUI included; a script tweens, springs and plays a
-/// sequence, and a tween it keeps past its GUI is harmless.
+/// The GUI's script surface: the node, the widget base, the simple widgets and the buttons, what a
+/// handler is given and the tweens, every property the GUI reflects on them, nothing blocked, bound
+/// by AngelScript without a word; and Raptor's script stories, in their AngelScript halves, over a
+/// root handed in as an argument: a script builds and styles a widget, listens and is called,
+/// narrows a handle, and is told a gone node is gone, a handle outliving its GUI included; a script
+/// narrows to each widget and sets its properties, and calls their verbs; a script tweens, springs
+/// and plays a sequence, and a tween it keeps past its GUI is harmless.
 static class GuiScriptSurfaceTests
 {
 	private static void Dump(AngelScriptRuntime vm)
@@ -31,6 +32,14 @@ static class GuiScriptSurfaceTests
 		return root;
 	}
 
+	/// The simple widgets and the buttons on the surface, as the walker names them.
+	private static StringView[20] sWidgets = .("Sedulous.GUI.Label", "Sedulous.GUI.RichText", "Sedulous.GUI.Image",
+		"Sedulous.GUI.Panel", "Sedulous.GUI.Separator", "Sedulous.GUI.Spacer", "Sedulous.GUI.Splitter",
+		"Sedulous.GUI.SplitterHandle", "Sedulous.GUI.ScrollView", "Sedulous.GUI.RangeWidget", "Sedulous.GUI.Slider",
+		"Sedulous.GUI.ProgressBar", "Sedulous.GUI.ScrollBar", "Sedulous.GUI.ListBox", "Sedulous.GUI.ButtonBase",
+		"Sedulous.GUI.Button", "Sedulous.GUI.CheckBox", "Sedulous.GUI.RadioButton", "Sedulous.GUI.ToggleSwitch",
+		"Sedulous.GUI.Expander");
+
 	[Test]
 	public static void TheCountIsATripwire()
 	{
@@ -40,14 +49,18 @@ static class GuiScriptSurfaceTests
 		// Bump deliberately when a type is marked or unmarked: the GUI's Node, SceneRoot, UINode
 		// and UIWidget (weakly held, each a seed), GuiEvent (counted, with a marked constructor),
 		// and the tweens, counted: Tween and TweenGroup (what Node's tween verbs give and take)
-		// and TweenSequence and TweenParallel (each a seed by its marked constructor). Then Core's
-		// static block and the fifteen of its types the block's free functions name: AABB,
-		// BoundingFrustum, BoundingSphere, Color, Color32, ContainmentType, Float2, Float3,
-		// Float3x3, Float4, Float4x4, Plane, PlaneIntersectionType, Quaternion and Ray. The tweens'
-		// verbs name no Core type of their own (text, numbers, a script function). Core's other
-		// marked types (Transform, Rectangle, the IO and log enums) nothing here reaches, nor
-		// Action, the tweens' unmarked base.
-		Test.Assert(GuiScriptSurface.TypeCount == 25, scope $"the GUI surface has {GuiScriptSurface.TypeCount} types");
+		// and TweenSequence and TweenParallel (each a seed by its marked constructor). The simple
+		// widgets and the buttons, twenty, each weakly held and so a seed: Label, RichText, Image,
+		// Panel, Separator, Spacer, Splitter, SplitterHandle, ScrollView, RangeWidget, Slider,
+		// ProgressBar, ScrollBar, ListBox, ButtonBase, Button, CheckBox, RadioButton, ToggleSwitch
+		// and Expander; their properties name text, numbers, flags and Color, so no Core type of
+		// their own. Then Core's static block and the fifteen of its types the block's free
+		// functions name: AABB, BoundingFrustum, BoundingSphere, Color, Color32, ContainmentType,
+		// Float2, Float3, Float3x3, Float4, Float4x4, Plane, PlaneIntersectionType, Quaternion and
+		// Ray. The tweens' verbs name no Core type of their own (text, numbers, a script
+		// function). Core's other marked types (Transform, Rectangle, the IO and log enums)
+		// nothing here reaches, nor Action, the tweens' unmarked base.
+		Test.Assert(GuiScriptSurface.TypeCount == 45, scope $"the GUI surface has {GuiScriptSurface.TypeCount} types");
 		Test.Assert(s.Find("Sedulous.GUI.Node").Role == .Weak);
 		Test.Assert(s.Find("Sedulous.GUI.SceneRoot").Role == .Weak);
 		Test.Assert(s.Find("Sedulous.GUI.UINode").Role == .Weak);
@@ -59,7 +72,16 @@ static class GuiScriptSurfaceTests
 		Test.Assert(s.Find("Sedulous.GUI.TweenSequence").Role == .Counted);
 		Test.Assert(s.Find("Sedulous.GUI.TweenParallel").Role == .Counted);
 		Test.Assert(s.Find("Sedulous.GUI.Action") == null, "the tweens' base is not a script's");
-		Test.Assert(s.Find("Sedulous.GUI.Button") == null, "the widget families come later");
+		for (let widget in sWidgets)
+		{
+			let t = s.Find(widget);
+			Test.Assert((t != null) && (t.Role == .Weak) && (t.WeakRootTypeName == "Sedulous.GUI.Node"), scope $"{widget}, held weakly");
+		}
+		// Raptor's parts with no script members of their own stay off, and the rest of the
+		// widget families come later.
+		Test.Assert(s.Find("Sedulous.GUI.ButtonIndicator") == null);
+		Test.Assert(s.Find("Sedulous.GUI.ExpanderHeader") == null);
+		Test.Assert(s.Find("Sedulous.GUI.TextField") == null, "the text widgets come later");
 	}
 
 	/// Every property the GUI reflects on the marked types is a script's to read, and to write
@@ -72,11 +94,35 @@ static class GuiScriptSurfaceTests
 		CheckProperties(s, "Sedulous.GUI.Node", Node.StaticGuiType);
 		CheckProperties(s, "Sedulous.GUI.UINode", UINode.StaticGuiType);
 		CheckProperties(s, "Sedulous.GUI.UIWidget", UIWidget.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.Label", Sedulous.GUI.Label.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.RichText", RichText.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.Image", Sedulous.GUI.Image.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.Panel", Panel.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.Separator", Separator.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.Spacer", Spacer.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.Splitter", Sedulous.GUI.Splitter.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.SplitterHandle", SplitterHandle.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.ScrollView", ScrollView.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.RangeWidget", RangeWidget.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.Slider", Slider.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.ProgressBar", ProgressBar.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.ScrollBar", ScrollBar.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.ListBox", ListBox.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.ButtonBase", ButtonBase.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.Button", Button.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.CheckBox", CheckBox.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.RadioButton", RadioButton.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.ToggleSwitch", ToggleSwitch.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.Expander", Expander.StaticGuiType);
 		// The tables chain as the types do, so the walk above covers each one's bases.
 		Test.Assert(UIWidget.StaticGuiType.Base == UINode.StaticGuiType);
 		Test.Assert(UINode.StaticGuiType.Base == Node.StaticGuiType);
 		Test.Assert(Node.StaticGuiType.Base == null);
 		Test.Assert(!UIWidget.StaticGuiType.OwnProperties.IsEmpty && !Node.StaticGuiType.OwnProperties.IsEmpty);
+		Test.Assert(Slider.StaticGuiType.Base == RangeWidget.StaticGuiType);
+		Test.Assert(RangeWidget.StaticGuiType.Base == UIWidget.StaticGuiType);
+		Test.Assert(CheckBox.StaticGuiType.Base == ButtonBase.StaticGuiType);
+		Test.Assert(RichText.StaticGuiType.Base == Sedulous.GUI.Label.StaticGuiType);
 	}
 
 	private static void CheckProperties(ScriptSurface s, StringView typeName, GuiTypeInfo info)
@@ -110,6 +156,7 @@ static class GuiScriptSurfaceTests
 		Test.Assert(text.Contains("class Node [Weak]"), "the node, held weakly");
 		Test.Assert(text.Contains("class GuiEvent [Counted]"), "the event, counted");
 		Test.Assert(text.Contains("class Tween [Counted]"), "the tween, counted");
+		Test.Assert(text.Contains("class Label [Weak]") && text.Contains("class Expander [Weak]"), "the widgets, held weakly");
 	}
 
 	[Test]
@@ -413,5 +460,165 @@ static class GuiScriptSurfaceTests
 		Dump(vm);
 		Test.Assert(vm.Problems.IsEmpty, "and that is no error");
 		vm.DiscardModule("kept");
+	}
+
+	// Each simple widget and button made by its tag, narrowed with X::Of and one of its properties
+	// set and read back; the first check that fails is the answer (0: none). Each narrowing to the
+	// wrong widget is null, and the bases narrow a derived widget.
+	private const String cWidgets = """
+		int failed = 0;
+		int step = 0;
+		void check(bool ok) { step += 1; if (!ok && (failed == 0)) failed = step; }
+		int roundTrip(Node@ root)
+		{
+			Node@ labelNode = root.Add("Label");
+			Label@ label = Label::Of(labelNode);
+			label.Text = "hello"; check(label.Text == "hello");
+			check(Slider::Of(labelNode) is null);
+			RichText@ rich = RichText::Of(root.Add("RichText"));
+			rich.LineClamp = 2; check(rich.LineClamp == 2 && rich.Rich);
+			Image@ image = Image::Of(root.Add("Image"));
+			image.FitName = "contain"; check(image.FitName == "contain");
+			Panel@ panel = Panel::Of(root.Add("Panel"));
+			panel.Id = "box"; check(panel.Id == "box");
+			Separator@ separator = Separator::Of(root.Add("Separator"));
+			separator.Thickness = 3; check(separator.Thickness == 3);
+			Spacer@ spacer = Spacer::Of(root.Add("Spacer"));
+			spacer.Space = 12; check(spacer.Space == 12);
+			Node@ splitNode = root.Add("Splitter");
+			Splitter@ splitter = Splitter::Of(splitNode);
+			splitter.AxisName = "vertical"; check(splitter.AxisName == "vertical");
+			splitNode.Add("Panel");
+			splitNode.Add("Panel");
+			SplitterHandle@ handle = SplitterHandle::Of(splitNode.ChildAt(1));
+			check(handle !is null && SplitterHandle::Of(splitNode.ChildAt(0)) is null);
+			handle.Thickness = 4; check(handle.Thickness == 4 && handle.Max == 100);
+			ScrollView@ scroll = ScrollView::Of(root.Add("ScrollView"));
+			scroll.StickToEnd = true; check(scroll.StickToEnd);
+			RangeWidget@ range = RangeWidget::Of(root.Add("ProgressBar"));
+			range.Max = 10; check(range.Max == 10);
+			Slider@ slider = Slider::Of(root.Add("Slider"));
+			slider.Value = 0.25; check(slider.Value == 0.25);
+			ProgressBar@ progress = ProgressBar::Of(root.Add("ProgressBar"));
+			progress.Indeterminate = true; check(progress.Indeterminate);
+			ScrollBar@ bar = ScrollBar::Of(root.Add("ScrollBar"));
+			bar.OrientationName = "vertical"; check(bar.OrientationName == "vertical");
+			ListBox@ list = ListBox::Of(root.Add("ListBox"));
+			list.ItemsText = "one|two"; check(list.ItemsText == "one|two");
+			ButtonBase@ core = ButtonBase::Of(root.Add("Button"));
+			core.Text = "Go"; check(core.Text == "Go");
+			Button@ button = Button::Of(root.Add("Button"));
+			button.Repeat = true; check(button.Repeat);
+			Node@ boxNode = root.Add("CheckBox");
+			CheckBox@ checkBox = CheckBox::Of(boxNode);
+			checkBox.Checked = true; check(checkBox.Checked);
+			check(ButtonBase::Of(boxNode) !is null && Button::Of(boxNode) is null);
+			RadioButton@ radio = RadioButton::Of(root.Add("RadioButton"));
+			radio.Name = "pick"; check(radio.Name == "pick");
+			ToggleSwitch@ toggle = ToggleSwitch::Of(root.Add("ToggleSwitch"));
+			toggle.Checked = true; check(toggle.Checked);
+			Expander@ expander = Expander::Of(root.Add("Expander"));
+			expander.Title = "More"; check(expander.Title == "More");
+			return failed;
+		}
+		""";
+
+	[Test]
+	public static void AScriptNarrowsToEachWidgetAndRoundTripsItsProperties()
+	{
+		RegisterGuiElements();
+		let s = scope ScriptSurface();
+		GuiScriptSurface.Populate(s);
+		let vm = new AngelScriptRuntime();
+		defer delete vm;
+		vm.Bind(s);
+		let ok = vm.Compile("widgets", "widgets.as", cWidgets);
+		Dump(vm);
+		Test.Assert(ok && vm.Problems.IsEmpty, "compiled, with nothing to say");
+
+		let root = NewScene();
+		var rootArg = ScriptValue[1](.FromWeak(root));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("widgets", "int roundTrip(Node@)", rootArg, ref r), "ran");
+		Dump(vm);
+		Test.Assert(r.AsInt == 0, scope $"check {r.AsInt} failed");
+		Test.Assert(vm.Problems.IsEmpty);
+
+		// What the script wrote is the widgets' own.
+		let label = root.GetChildAt(0) as Sedulous.GUI.Label;
+		Test.Assert((label != null) && (label.Text == "hello"));
+		let image = root.GetChildAt(2) as Sedulous.GUI.Image;
+		Test.Assert((image != null) && (image.Fit == .Contain));
+		let splitter = root.GetChildAt(6) as Sedulous.GUI.Splitter;
+		Test.Assert((splitter != null) && (splitter.Axis == .Vertical) && (splitter.PaneCount == 2));
+		let slider = root.GetChildAt(9) as Slider;
+		Test.Assert((slider != null) && (Math.Abs(slider.Value - 0.25) < 1e-9));
+		let checkBox = root.GetChildAt(15) as CheckBox;
+		Test.Assert((checkBox != null) && checkBox.Checked);
+
+		root.ReleaseRef();
+		vm.DiscardModule("widgets");
+	}
+
+	// Raptor's widget verbs: a splitter's shares given back, an expander toggled.
+	private const String cVerbs = """
+		Splitter@ splitter;
+		Expander@ expander;
+		void build(Node@ root)
+		{
+			Node@ split = root.Add("Splitter");
+			split.Width = 300; split.Height = 100;
+			split.Add("Panel");
+			split.Add("Panel");
+			@splitter = Splitter::Of(split);
+			@expander = Expander::Of(root.Add("Expander"));
+		}
+		void move() { SplitterHandle::Of(splitter.ChildAt(1)).Value = 25; }
+		void reset() { splitter.ResetWeights(); }
+		bool toggle() { expander.Toggle(); return expander.Open; }
+		""";
+
+	[Test]
+	public static void AScriptResetsASplittersSharesAndTogglesAnExpander()
+	{
+		RegisterGuiElements();
+		let s = scope ScriptSurface();
+		GuiScriptSurface.Populate(s);
+		let vm = new AngelScriptRuntime();
+		defer delete vm;
+		vm.Bind(s);
+		let ok = vm.Compile("verbs", "verbs.as", cVerbs);
+		Dump(vm);
+		Test.Assert(ok && vm.Problems.IsEmpty, "compiled, with nothing to say");
+
+		let root = NewScene();
+		var rootArg = ScriptValue[1](.FromWeak(root));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("verbs", "void build(Node@)", rootArg, ref r), "built");
+		Dump(vm);
+		let splitter = root.GetChildAt(0) as Sedulous.GUI.Splitter;
+		let expander = root.GetChildAt(1) as Expander;
+		Test.Assert((splitter != null) && (splitter.PaneCount == 2) && (expander != null));
+		root.UpdateLayout(); // a handle moves over the sizes last laid out
+
+		let weights = scope List<float>();
+		splitter.GetWeights(weights);
+		Test.Assert(Math.Abs(weights[0] - 0.5f) < 1e-4f, scope $"an even share first: {weights[0]}");
+		Test.Assert(vm.Call("verbs", "void move()", default, ref r), "moved");
+		weights.Clear();
+		splitter.GetWeights(weights);
+		Test.Assert(weights[0] < 0.4f, scope $"the handle moved the shares: {weights[0]}");
+		Test.Assert(vm.Call("verbs", "void reset()", default, ref r), "reset");
+		weights.Clear();
+		splitter.GetWeights(weights);
+		Test.Assert(Math.Abs(weights[0] - 0.5f) < 1e-4f, scope $"the shares given back: {weights[0]}");
+
+		Test.Assert(!expander.Open);
+		Test.Assert(vm.Call("verbs", "bool toggle()", default, ref r) && r.AsBool && expander.Open, "toggled open");
+		Test.Assert(vm.Call("verbs", "bool toggle()", default, ref r) && !r.AsBool && !expander.Open, "and closed");
+		Test.Assert(vm.Problems.IsEmpty);
+
+		root.ReleaseRef();
+		vm.DiscardModule("verbs");
 	}
 }

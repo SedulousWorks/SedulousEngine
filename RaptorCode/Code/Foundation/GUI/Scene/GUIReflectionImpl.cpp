@@ -226,38 +226,8 @@ namespace foundation::gui
         builder.Constructor<>(); // ListModel() / ListModel.new()
     }
 
-    REFLECT_MEMBERS(Label, "rtti::gui")
-    {
-        builder.Method<&ElementOf<Label>, Label, Node>("of");
-    }
-
-    REFLECT_MEMBERS(RichText, "rtti::gui")
-    {
-        builder.Method<&ElementOf<RichText>, RichText, Node>("of");
-    }
-
-    REFLECT_MEMBERS(ButtonBase, "rtti::gui")
-    {
-        builder.Method<&ElementOf<ButtonBase>, ButtonBase, Node>("of");
-    }
-
     REFLECT_MEMBERS(ButtonIndicator, "rtti::gui")
     {
-    }
-
-    REFLECT_MEMBERS(Button, "rtti::gui")
-    {
-        builder.Method<&ElementOf<Button>, Button, Node>("of");
-    }
-
-    REFLECT_MEMBERS(CheckBox, "rtti::gui")
-    {
-        builder.Method<&ElementOf<CheckBox>, CheckBox, Node>("of");
-    }
-
-    REFLECT_MEMBERS(RadioButton, "rtti::gui")
-    {
-        builder.Method<&ElementOf<RadioButton>, RadioButton, Node>("of");
     }
 
     REFLECT_MEMBERS(ColorSwatch, "rtti::gui")
@@ -322,26 +292,6 @@ namespace foundation::gui
         builder.Method<&ElementOf<ToastHost>, ToastHost, Node>("of");
     }
 
-    REFLECT_MEMBERS(ToggleSwitch, "rtti::gui")
-    {
-        builder.Method<&ElementOf<ToggleSwitch>, ToggleSwitch, Node>("of");
-    }
-
-    REFLECT_MEMBERS(RangeWidget, "rtti::gui")
-    {
-        builder.Method<&ElementOf<RangeWidget>, RangeWidget, Node>("of");
-    }
-
-    REFLECT_MEMBERS(Slider, "rtti::gui")
-    {
-        builder.Method<&ElementOf<Slider>, Slider, Node>("of");
-    }
-
-    REFLECT_MEMBERS(ProgressBar, "rtti::gui")
-    {
-        builder.Method<&ElementOf<ProgressBar>, ProgressBar, Node>("of");
-    }
-
     REFLECT_MEMBERS(TextEditBase, "rtti::gui")
     {
         builder.Method<&ElementOf<TextEditBase>, TextEditBase, Node>("of");
@@ -357,16 +307,6 @@ namespace foundation::gui
         builder.Method<&ElementOf<TextArea>, TextArea, Node>("of");
     }
 
-    REFLECT_MEMBERS(Panel, "rtti::gui")
-    {
-        builder.Method<&ElementOf<Panel>, Panel, Node>("of");
-    }
-
-    REFLECT_MEMBERS(ScrollView, "rtti::gui")
-    {
-        builder.Method<&ElementOf<ScrollView>, ScrollView, Node>("of");
-    }
-
     REFLECT_MEMBERS(EditableLabel, "rtti::gui")
     {
         builder.Method<&EditableLabel::BeginEdit>("beginEdit");
@@ -375,12 +315,6 @@ namespace foundation::gui
 
     REFLECT_MEMBERS(ExpanderHeader, "rtti::gui")
     {
-    }
-
-    REFLECT_MEMBERS(Expander, "rtti::gui")
-    {
-        builder.Method<&Expander::Toggle>("toggle");
-        builder.Method<&ElementOf<Expander>, Expander, Node>("of");
     }
 
     REFLECT_MEMBERS(TabCloseButton, "rtti::gui")
@@ -437,32 +371,6 @@ namespace foundation::gui
         builder.Method<&ElementOf<NumberField>, NumberField, Node>("of");
     }
 
-    REFLECT_MEMBERS(Separator, "rtti::gui")
-    {
-        builder.Method<&ElementOf<Separator>, Separator, Node>("of");
-    }
-
-    REFLECT_MEMBERS(Splitter, "rtti::gui")
-    {
-        builder.Method<&Splitter::ResetWeights>("resetWeights");
-        builder.Method<&ElementOf<Splitter>, Splitter, Node>("of");
-    }
-
-    REFLECT_MEMBERS(SplitterHandle, "rtti::gui")
-    {
-        builder.Method<&ElementOf<SplitterHandle>, SplitterHandle, Node>("of");
-    }
-
-    REFLECT_MEMBERS(Spacer, "rtti::gui")
-    {
-        builder.Method<&ElementOf<Spacer>, Spacer, Node>("of");
-    }
-
-    REFLECT_MEMBERS(Image, "rtti::gui")
-    {
-        builder.Method<&ElementOf<Image>, Image, Node>("of");
-    }
-
     REFLECT_MEMBERS(DragLayer, "rtti::gui")
     {
     }
@@ -493,11 +401,6 @@ namespace foundation::gui
     REFLECT_MEMBERS(TableView, "rtti::gui")
     {
         builder.Method<&ElementOf<TableView>, TableView, Node>("of");
-    }
-
-    REFLECT_MEMBERS(ScrollBar, "rtti::gui")
-    {
-        builder.Method<&ElementOf<ScrollBar>, ScrollBar, Node>("of");
     }
 
     REFLECT_MEMBERS(MessageBox, "rtti::gui")
@@ -541,11 +444,6 @@ namespace foundation::gui
     REFLECT_MEMBERS(ListView, "rtti::gui")
     {
         builder.Method<&ElementOf<ListView>, ListView, Node>("of");
-    }
-
-    REFLECT_MEMBERS(ListBox, "rtti::gui")
-    {
-        builder.Method<&ElementOf<ListBox>, ListBox, Node>("of");
     }
 
     REFLECT_MEMBERS(ComboBox, "rtti::gui")

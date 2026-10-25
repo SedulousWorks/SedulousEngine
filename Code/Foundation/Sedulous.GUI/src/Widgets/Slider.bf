@@ -14,7 +14,7 @@ namespace Sedulous.GUI;
 // or focused. Ticks, when asked for, mark the track at even steps. Modeled on eepp's UISlider
 // (role only).
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class Slider : RangeWidget
 {
 	private Sedulous.GUI.Orientation mOrientation = .Horizontal;
@@ -33,7 +33,7 @@ class Slider : RangeWidget
 	}
 
 	/// A page key's step (0: a tenth of the range).
-	[GuiProperty("page")]
+	[GuiProperty("page"), Scriptable]
 	public double Page
 	{
 		get => PageSize;
@@ -54,7 +54,7 @@ class Slider : RangeWidget
 	}
 
 	/// "horizontal" or "vertical" (markup's and a sheet's `orientation`).
-	[GuiProperty("orientation")]
+	[GuiProperty("orientation"), Scriptable]
 	public StringView OrientationName
 	{
 		get => (mOrientation == .Vertical) ? "vertical" : "horizontal";
@@ -62,7 +62,7 @@ class Slider : RangeWidget
 	}
 
 	/// How many marks along the track (its ends included; 0 or 1: none).
-	[GuiProperty("ticks")]
+	[GuiProperty("ticks"), Scriptable]
 	public int32 Ticks
 	{
 		get => mTicks;

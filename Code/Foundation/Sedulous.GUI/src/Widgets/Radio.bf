@@ -10,7 +10,7 @@ namespace Sedulous.GUI;
 // ButtonGroup from code) are exclusive, and the arrows move round them. Its parts: radio::ring
 // (the outline) and ::dot (the choice).
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class RadioButton : ButtonBase
 {
 	private Color mRingColor = .(0.60f, 0.65f, 0.72f, 1.0f);

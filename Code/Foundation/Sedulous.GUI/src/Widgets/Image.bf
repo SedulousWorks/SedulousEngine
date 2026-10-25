@@ -48,7 +48,7 @@ struct ObjectPositionAxis : IEquatable<ObjectPositionAxis>
 	public static bool operator==(ObjectPositionAxis a, ObjectPositionAxis b) => (a.Share == b.Share) && (a.Pixels == b.Pixels);
 }
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class Image : UIWidget
 {
 	private Sedulous.GUI.Drawable mDrawable = null ~ _?.ReleaseRef();
@@ -86,7 +86,7 @@ class Image : UIWidget
 	public Sedulous.GUI.Drawable Drawable => mDrawable;
 
 	/// Its picture by path, loaded through the GUI's resource provider when first needed.
-	[GuiProperty("src")]
+	[GuiProperty("src"), Scriptable]
 	public StringView Source
 	{
 		get => mSource;
@@ -117,7 +117,7 @@ class Image : UIWidget
 	}
 
 	/// CSS's keywords (markup's and a sheet's `object-fit`); one it does not know is fill.
-	[GuiProperty("object-fit")]
+	[GuiProperty("object-fit"), Scriptable]
 	public StringView FitName
 	{
 		get => ImageDetail.sFitNames[(int)mFit];
@@ -147,7 +147,7 @@ class Image : UIWidget
 	/// CSS's object-position: one or two of left, center, right, top, bottom, a percentage or
 	/// pixels ("right 8px" reads as right then pixels from the left). Read, shares as percentages,
 	/// pixels added (`50% 0%`, `0% 8px`).
-	[GuiProperty("object-position")]
+	[GuiProperty("object-position"), Scriptable]
 	public StringView ObjectPositionName
 	{
 		get
@@ -220,7 +220,7 @@ class Image : UIWidget
 	}
 
 	/// The picture multiplied by this (`image-color`); white leaves it as it is.
-	[GuiProperty("image-color")]
+	[GuiProperty("image-color"), Scriptable]
 	public Color ImageColor
 	{
 		get => mImageColor;

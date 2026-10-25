@@ -12,7 +12,7 @@ namespace Sedulous.GUI;
 // pointer and reports `input` as it goes and `change` on release; a press on the track pages
 // toward it.
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class ScrollBar : RangeWidget
 {
 	private const float cMinThumb = 16.0f;
@@ -43,7 +43,7 @@ class ScrollBar : RangeWidget
 	}
 
 	/// "horizontal" or "vertical" (markup's `orientation`).
-	[GuiProperty("orientation")]
+	[GuiProperty("orientation"), Scriptable]
 	public StringView OrientationName
 	{
 		get => (mOrientation == .Vertical) ? "vertical" : "horizontal";
@@ -51,7 +51,7 @@ class ScrollBar : RangeWidget
 	}
 
 	/// The visible part: the thumb's share of the range, and a track press's step.
-	[GuiProperty("page")]
+	[GuiProperty("page"), Scriptable]
 	public double Page
 	{
 		get => PageSize;

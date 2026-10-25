@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 
 namespace Sedulous.GUI;
 
@@ -7,7 +8,7 @@ namespace Sedulous.GUI;
 // or `auto`: the wheel, the keys while focused, its bars, a focused descendant brought into view.
 // Its children are its content.
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class ScrollView : UIWidget
 {
 	public this()

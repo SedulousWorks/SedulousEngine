@@ -9,7 +9,7 @@ namespace Sedulous.GUI;
 // beside it: a check box for a setting that takes effect at once. Its parts: switch::track (filled
 // when it is on) and ::knob.
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class ToggleSwitch : ButtonBase
 {
 	private Color mTrackOff = .(0.32f, 0.35f, 0.40f, 1.0f);

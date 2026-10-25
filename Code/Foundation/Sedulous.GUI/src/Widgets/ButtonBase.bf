@@ -117,7 +117,7 @@ class ButtonIndicator : UIWidget
 	}
 }
 
-[GuiReflect]
+[GuiReflect, Scriptable]
 class ButtonBase : UIWidget
 {
 	private delegate void() mOnClick ~ delete _;
@@ -196,7 +196,7 @@ class ButtonBase : UIWidget
 	}
 
 	/// "release" or "press" (markup's and a sheet's `action-on`).
-	[GuiProperty("action-on")]
+	[GuiProperty("action-on"), Scriptable]
 	public StringView ActionOnName
 	{
 		get => (mActionOn == .Press) ? "press" : "release";
@@ -204,21 +204,21 @@ class ButtonBase : UIWidget
 	}
 
 	/// Activates again while held: on the press, then after the delay at the interval.
-	[GuiProperty("repeat")]
+	[GuiProperty("repeat"), Scriptable]
 	public bool Repeat
 	{
 		get => mRepeat;
 		set => mRepeat = value;
 	}
 
-	[GuiProperty("repeat-delay")]
+	[GuiProperty("repeat-delay"), Scriptable]
 	public float RepeatDelay
 	{
 		get => mRepeatDelay;
 		set => mRepeatDelay = Math.Max(0.0f, value);
 	}
 
-	[GuiProperty("repeat-interval")]
+	[GuiProperty("repeat-interval"), Scriptable]
 	public float RepeatInterval
 	{
 		get => mRepeatInterval;
@@ -228,7 +228,7 @@ class ButtonBase : UIWidget
 	// === Toggle ===
 
 	/// Whether it holds a checked state (`toggle`): a click checks and unchecks it.
-	[GuiProperty("toggle")]
+	[GuiProperty("toggle"), Scriptable]
 	public bool IsToggle
 	{
 		get => mToggle;
@@ -250,7 +250,7 @@ class ButtonBase : UIWidget
 
 	/// Whether it is checked (a read a binding records). Set from code: an exclusive group's others
 	/// clear; no events.
-	[GuiProperty("checked", .TwoWay)]
+	[GuiProperty("checked", .TwoWay), Scriptable]
 	public bool Checked
 	{
 		get
@@ -299,7 +299,7 @@ class ButtonBase : UIWidget
 	}
 
 	/// Its group's name in markup (buttons of one name in one GUI are a group).
-	[GuiProperty("name")]
+	[GuiProperty("name"), Scriptable]
 	public StringView Name
 	{
 		get => mName;
@@ -323,7 +323,7 @@ class ButtonBase : UIWidget
 	// === Content ===
 
 	/// Its text (a part it makes, after its icon; empty: none).
-	[GuiProperty("", .Translatable, "name")]
+	[GuiProperty("", .Translatable, "name"), Scriptable]
 	public StringView Text
 	{
 		get
@@ -357,7 +357,7 @@ class ButtonBase : UIWidget
 	}
 
 	/// Its icon by path (markup's `icon`), loaded through the GUI's resource provider; empty: none.
-	[GuiProperty("icon")]
+	[GuiProperty("icon"), Scriptable]
 	public StringView Icon
 	{
 		get => (mIconPart != null) ? mIconPart.Source : default;

@@ -1,4 +1,5 @@
 using System;
+using Sedulous.Core;
 
 namespace Sedulous.GUI;
 
@@ -10,7 +11,7 @@ namespace Sedulous.GUI;
 // as they go and `change` when committed (a drag's release, a key, a typed value's commit), as a
 // text field's do.
 
-[GuiReflect]
+[GuiReflect, Scriptable]
 class RangeWidget : UIWidget
 {
 	private RangeValue mRange = .();
@@ -26,7 +27,7 @@ class RangeWidget : UIWidget
 
 	/// The value (a read a binding records). Set from code: constrained, reported to bindings, no
 	/// events.
-	[GuiProperty("value", .TwoWay, "value")]
+	[GuiProperty("value", .TwoWay, "value"), Scriptable]
 	public double Value
 	{
 		get
@@ -41,7 +42,7 @@ class RangeWidget : UIWidget
 		}
 	}
 
-	[GuiProperty("min", .None, "min")]
+	[GuiProperty("min", .None, "min"), Scriptable]
 	public double Min
 	{
 		get => mRange.Min;
@@ -53,7 +54,7 @@ class RangeWidget : UIWidget
 		}
 	}
 
-	[GuiProperty("max", .None, "max")]
+	[GuiProperty("max", .None, "max"), Scriptable]
 	public double Max
 	{
 		get => mRange.Max;
@@ -65,7 +66,7 @@ class RangeWidget : UIWidget
 		}
 	}
 
-	[GuiProperty("step", .None, "step")]
+	[GuiProperty("step", .None, "step"), Scriptable]
 	public double Step
 	{
 		get => mRange.Step;
@@ -77,7 +78,7 @@ class RangeWidget : UIWidget
 		}
 	}
 
-	[GuiProperty("exponential")]
+	[GuiProperty("exponential"), Scriptable]
 	public bool Exponential
 	{
 		get => mRange.Exponential;
@@ -89,7 +90,7 @@ class RangeWidget : UIWidget
 		}
 	}
 
-	[GuiProperty("allow-greater")]
+	[GuiProperty("allow-greater"), Scriptable]
 	public bool AllowGreater
 	{
 		get => mRange.AllowGreater;
@@ -101,7 +102,7 @@ class RangeWidget : UIWidget
 		}
 	}
 
-	[GuiProperty("allow-lesser")]
+	[GuiProperty("allow-lesser"), Scriptable]
 	public bool AllowLesser
 	{
 		get => mRange.AllowLesser;

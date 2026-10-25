@@ -25,7 +25,7 @@ internal static class SeparatorDetail
 	}
 }
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class Separator : UIWidget
 {
 	private float mThickness = 1.0f;
@@ -47,7 +47,7 @@ class Separator : UIWidget
 	}
 
 	/// How thick its line is (the sheet's `thickness`).
-	[GuiProperty("thickness")]
+	[GuiProperty("thickness"), Scriptable]
 	public float Thickness
 	{
 		get => mThickness;
@@ -75,7 +75,7 @@ class Separator : UIWidget
 	}
 }
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class Spacer : UIWidget
 {
 	private float mSpace = 0.0f;
@@ -92,7 +92,7 @@ class Spacer : UIWidget
 
 	/// A fixed length along the line (0: it takes the room left). Markup's and a sheet's `size`
 	/// (Size is the node's own).
-	[GuiProperty("size")]
+	[GuiProperty("size"), Scriptable]
 	public float Space
 	{
 		get => mSpace;

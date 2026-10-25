@@ -119,7 +119,7 @@ class ListBoxItem : Label
 	}
 }
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class ListBox : UIWidget
 {
 	// Non-owning (its children).
@@ -191,7 +191,7 @@ class ListBox : UIWidget
 	public int ItemCount => mItems.Count;
 
 	/// The items as one text, '|' between them (markup's and a sheet's `items`).
-	[GuiProperty("items")]
+	[GuiProperty("items"), Scriptable]
 	public StringView ItemsText
 	{
 		get
