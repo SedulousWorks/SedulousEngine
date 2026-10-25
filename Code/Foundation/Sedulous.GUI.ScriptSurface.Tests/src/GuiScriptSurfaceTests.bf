@@ -74,13 +74,14 @@ static class GuiScriptSurfaceTests
 		// The text, colour and item views, twelve weakly held: TextEditBase, TextField,
 		// TextArea, EditableLabel, NumberField, ColorSwatch, ColorPicker, ItemView, ListView,
 		// TreeView, TableView and ComboBox; and ListModel, counted, with a marked constructor.
+		// GuiFacade, the `Gui` service a host sets.
 		// Then Core's static block and the fifteen of its types the block's free
 		// functions name: AABB, BoundingFrustum, BoundingSphere, Color, Color32, ContainmentType,
 		// Float2, Float3, Float3x3, Float4, Float4x4, Plane, PlaneIntersectionType, Quaternion and
 		// Ray. The tweens' verbs name no Core type of their own (text, numbers, a script
 		// function). Core's other marked types (Transform, Rectangle, the IO and log enums)
 		// nothing here reaches, nor Action, the tweens' unmarked base.
-		Test.Assert(GuiScriptSurface.TypeCount == 70, scope $"the GUI surface has {GuiScriptSurface.TypeCount} types");
+		Test.Assert(GuiScriptSurface.TypeCount == 71, scope $"the GUI surface has {GuiScriptSurface.TypeCount} types");
 		Test.Assert(s.Find("Sedulous.GUI.Node").Role == .Weak);
 		Test.Assert(s.Find("Sedulous.GUI.SceneRoot").Role == .Weak);
 		Test.Assert(s.Find("Sedulous.GUI.UINode").Role == .Weak);

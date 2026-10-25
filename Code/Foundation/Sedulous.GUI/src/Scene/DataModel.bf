@@ -17,6 +17,11 @@ namespace Sedulous.GUI;
 // text is COPIED where Raptor copies a String (the data model keeps its own), a read hands out a
 // borrowed view, and a conversion returns a Variant the caller disposes. A value wider than a
 // pointer (a StringView) is a buffer the Variant allocates: whoever creates one disposes it.
+//
+// A node is a value too (a script's Gui.SetNode): held weakly, as a script holds one, by its
+// Node.ElementRef, so the value reads as no node once the node is gone. The model keeps a reference
+// on the element table while it holds one, as a node does, since the model can outlive its GUI
+// (a binding or a tween holds it).
 
 static
 {
@@ -36,6 +41,16 @@ static
 		if (type == typeof(uint64)) { outValue = (double)v.Get<uint64>(); return true; }
 		if (type == typeof(bool)) { outValue = v.Get<bool>() ? 1.0 : 0.0; return true; }
 		return false;
+	}
+
+	/// The node a Variant holds (a Node.ElementRef, as Gui.SetNode stores one), or null: when it
+	/// holds none, or the node is gone.
+	public static Node NodeOf(System.Variant v)
+	{
+		if (v.VariantType != typeof(Node.ElementRef))
+			return null;
+		let held = v.Get<Node.ElementRef>();
+		return (held.Table != null) ? held.Table.Resolve(held.Slot, held.Generation) : null;
 	}
 
 	/// Whether the Variant holds text: a String or a StringView.
@@ -158,6 +173,12 @@ static
 			return x == y;
 		if (IsText(a) && IsText(b))
 			return TextOf(a) == TextOf(b);
+		if ((a.VariantType == typeof(Node.ElementRef)) && (b.VariantType == typeof(Node.ElementRef)))
+		{
+			let x = a.Get<Node.ElementRef>();
+			let y = b.Get<Node.ElementRef>();
+			return (x.Table === y.Table) && (x.Slot == y.Slot) && (x.Generation == y.Generation);
+		}
 		return false;
 	}
 }
@@ -169,7 +190,7 @@ class DataModel : RefCounted
 	private class Entry
 	{
 		public String Name = new .() ~ delete _;
-		public System.Variant Value ~ _.Dispose();
+		public System.Variant Value ~ { DataModel.LetGoOf(_); _.Dispose(); };
 		public bool HasValue = false;
 		/// The tween moving it.
 		public uint64 TweenOwner = 0;
@@ -194,8 +215,11 @@ class DataModel : RefCounted
 		let entry = EntryFor(name);
 		if (entry.HasValue && VariantsEqual(entry.Value, value))
 			return false;
+		LetGoOf(entry.Value);
 		entry.Value.Dispose();
 		entry.Value = CopyVariant(value);
+		if (entry.Value.VariantType == typeof(Node.ElementRef))
+			entry.Value.Get<Node.ElementRef>().Table?.AddRef(); // let go of in LetGoOf
 		entry.HasValue = true;
 		entry.Changed.Notify();
 		return true;
@@ -235,6 +259,13 @@ class DataModel : RefCounted
 				return entry.HasValue;
 		}
 		return false;
+	}
+
+	/// Lets go of the table reference a node value holds (taken in Set).
+	private static void LetGoOf(System.Variant value)
+	{
+		if (value.VariantType == typeof(Node.ElementRef))
+			value.Get<Node.ElementRef>().Table?.ReleaseRef();
 	}
 
 	private Entry EntryFor(StringView name)
