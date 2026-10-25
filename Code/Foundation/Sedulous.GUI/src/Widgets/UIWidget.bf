@@ -24,7 +24,7 @@ static
 	public const uint32 WidgetStateSelected = 1 << 4;
 }
 
-[GuiReflect]
+[GuiReflect, Scriptable]
 class UIWidget : UINode
 {
 	private String mTag = new .() ~ delete _;
@@ -72,7 +72,7 @@ class UIWidget : UINode
 		}
 	}
 
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public StringView Id
 	{
 		get => mId;
@@ -95,6 +95,7 @@ class UIWidget : UINode
 		}
 	}
 
+	[Scriptable]
 	public void AddClass(StringView cls)
 	{
 		if ((cls.Length != 0) && !HasClass(cls))
@@ -105,6 +106,7 @@ class UIWidget : UINode
 		}
 	}
 
+	[Scriptable]
 	public void RemoveClass(StringView cls)
 	{
 		for (int i = 0; i < mClasses.Count; i++)
@@ -120,6 +122,7 @@ class UIWidget : UINode
 		}
 	}
 
+	[Scriptable]
 	public bool HasClass(StringView cls)
 	{
 		for (let c in mClasses)
@@ -130,6 +133,7 @@ class UIWidget : UINode
 		return false;
 	}
 
+	[Scriptable]
 	public void ToggleClass(StringView cls)
 	{
 		if (HasClass(cls))
@@ -182,7 +186,7 @@ class UIWidget : UINode
 
 	// === Hover tooltip ===
 
-	[GuiProperty("tooltip", .Translatable)]
+	[GuiProperty("tooltip", .Translatable), Scriptable]
 	public StringView Tooltip
 	{
 		get => mTooltip;
@@ -191,7 +195,7 @@ class UIWidget : UINode
 
 	public override StringView TooltipText => mTooltip;
 
-	[GuiProperty("tooltip-interactive")]
+	[GuiProperty("tooltip-interactive"), Scriptable]
 	public bool TooltipInteractive
 	{
 		get => mTooltipInteractive;
@@ -204,7 +208,7 @@ class UIWidget : UINode
 	// Over what its type and its properties say.
 
 	/// What a screen reader takes it for, over its type's (markup's `role`; empty: its type's).
-	[GuiProperty("role")]
+	[GuiProperty("role"), Scriptable]
 	public StringView AccessRoleName
 	{
 		get => mAccessRole;
@@ -216,7 +220,7 @@ class UIWidget : UINode
 	}
 
 	/// Its name over what it shows (`aria-label`).
-	[GuiProperty("aria-label", .Translatable)]
+	[GuiProperty("aria-label", .Translatable), Scriptable]
 	public StringView AccessLabel
 	{
 		get => mAccessLabel;
@@ -229,7 +233,7 @@ class UIWidget : UINode
 
 	/// The ids of the widgets that name it and describe it (`aria-labelledby`, `aria-describedby`;
 	/// space-separated), and of those it controls (`aria-controls`).
-	[GuiProperty("aria-labelledby")]
+	[GuiProperty("aria-labelledby"), Scriptable]
 	public StringView AccessLabelledBy
 	{
 		get => mAccessLabelledBy;
@@ -240,7 +244,7 @@ class UIWidget : UINode
 		}
 	}
 
-	[GuiProperty("aria-describedby")]
+	[GuiProperty("aria-describedby"), Scriptable]
 	public StringView AccessDescribedBy
 	{
 		get => mAccessDescribedBy;
@@ -251,7 +255,7 @@ class UIWidget : UINode
 		}
 	}
 
-	[GuiProperty("aria-controls")]
+	[GuiProperty("aria-controls"), Scriptable]
 	public StringView AccessControls
 	{
 		get => mAccessControls;
@@ -267,7 +271,7 @@ class UIWidget : UINode
 	public virtual bool AccessActivates => false;
 
 	/// Hidden from screen readers, with what it holds (`aria-hidden`): a decoration.
-	[GuiProperty("aria-hidden")]
+	[GuiProperty("aria-hidden"), Scriptable]
 	public bool AccessHidden
 	{
 		get => mAccessHidden;
@@ -281,7 +285,7 @@ class UIWidget : UINode
 	// === Drag and drop in markup ===
 
 	/// Drags as this payload type (markup's `drag-type`; empty: it does not drag).
-	[GuiProperty("drag-type")]
+	[GuiProperty("drag-type"), Scriptable]
 	public StringView DragType
 	{
 		get => mDragType;
@@ -290,14 +294,14 @@ class UIWidget : UINode
 
 	/// The payload's value and label (`drag-value`, which may be a `{{name}}`; `drag-label`, else
 	/// the value).
-	[GuiProperty("drag-value")]
+	[GuiProperty("drag-value"), Scriptable]
 	public StringView DragValue
 	{
 		get => mDragValue;
 		set => mDragValue.Set(value);
 	}
 
-	[GuiProperty("drag-label")]
+	[GuiProperty("drag-label"), Scriptable]
 	public StringView DragLabel
 	{
 		get => mDragLabel;
@@ -307,7 +311,7 @@ class UIWidget : UINode
 	/// `drag`: "auto" (it drags when it has a type, else passes the press up), "none" (it never
 	/// drags; the press passes up), "block" (the walk ends here: nothing above drags from a press
 	/// on it; RmlUi's property).
-	[GuiProperty("drag")]
+	[GuiProperty("drag"), Scriptable]
 	public StringView DragModeName
 	{
 		get => (mDragMode == 1) ? "none" : (mDragMode == 2) ? "block" : "auto";
@@ -320,7 +324,7 @@ class UIWidget : UINode
 
 	/// What a drop here says it would do (`drop-reason`), shown by the pointer while it would take
 	/// one.
-	[GuiProperty("drop-reason")]
+	[GuiProperty("drop-reason"), Scriptable]
 	public StringView DropReason
 	{
 		get => mDropReason;
@@ -333,7 +337,7 @@ class UIWidget : UINode
 
 	/// The id of a Menu in its GUI (markup's `<Menu id="...">`) that a context menu asked for over
 	/// it opens, at the pointer (markup's `context-menu`).
-	[GuiProperty("context-menu")]
+	[GuiProperty("context-menu"), Scriptable]
 	public StringView ContextMenuId
 	{
 		get => mContextMenuId;

@@ -103,7 +103,7 @@ class ElementTable : RefCounted, IScriptWeakTable
 /// and a generation, which the node frees as it is destroyed): Element<T>, an action's target, a
 /// scope's remembered focus, a script's handle. The node holds a reference to the table it took a
 /// slot in.
-[GuiReflect]
+[GuiReflect, Scriptable]
 class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 {
 	/// Not a child's place: what GetChildIndex gives for a node that is not one.
@@ -553,7 +553,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	/// Hidden (CSS `visibility: hidden`): not drawn and takes no input, but keeps its place in the
 	/// layout. Displayed = false takes it out.
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public bool Visible
 	{
 		get => mVisible;
@@ -571,7 +571,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	/// In the layout, or out of it with its subtree (CSS `display: none`): a page switched away, a
 	/// panel collapsed. Shown again, it takes back the display kind it had.
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public bool Displayed
 	{
 		get => mLayoutStyle.Kind != .None;
@@ -592,7 +592,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 		}
 	}
 
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public bool Enabled
 	{
 		get => mEnabled;
@@ -621,7 +621,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	}
 
 	/// Alpha, as markup, bindings and scripts name it.
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public float Opacity
 	{
 		get => mAlpha;
@@ -640,7 +640,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	}
 
 	/// CSS `pointer-events`: `none` is HitTestVisible = false, `auto` the default.
-	[GuiProperty("pointer-events")]
+	[GuiProperty("pointer-events"), Scriptable]
 	public StringView PointerEvents
 	{
 		get => mHitTestVisible ? "auto" : "none";
@@ -658,7 +658,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	/// otherwise (a rich text's link shows the pointer hand).
 	public virtual Sedulous.GUI.Cursor CursorNow => mCursor;
 
-	[GuiProperty("cursor")]
+	[GuiProperty("cursor"), Scriptable]
 	public StringView CursorName
 	{
 		get => sCursorNames[(int)mCursor];
@@ -686,7 +686,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	}
 
 	/// A text it does not know is `auto`, its initial value, as a dropped declaration leaves it.
-	[GuiProperty("touch-action")]
+	[GuiProperty("touch-action"), Scriptable]
 	public StringView TouchActionName
 	{
 		get => NodeDetail.sTouchActionNames[(int)(mTouchActions & cTouchAuto)];
@@ -1466,7 +1466,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	/// Keeps it at the end of its content as the content grows (a log, a chat), while it is at the
 	/// end: scrolled away it lets go, and back at the end it holds again (AUI's way).
-	[GuiProperty("stick-to-end")]
+	[GuiProperty("stick-to-end"), Scriptable]
 	public bool StickToEnd
 	{
 		get => mStickToEnd;
@@ -1727,6 +1727,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	/// Creates the element `tag` names in this GUI's element set as the last child of where this
 	/// node's children go (its ChildHost); the new node, held by the tree, or null when the node is
 	/// in no GUI or the set does not allow `tag`.
+	[Scriptable, ScriptName("Add")]
 	public Node AddElement(StringView tag)
 	{
 		let elements = ElementSet;
@@ -1739,11 +1740,13 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	}
 
 	/// The first widget in this subtree (depth first, this node first) whose id is `id`, or null.
+	[Scriptable, ScriptName("Find")]
 	public Node FindElement(StringView id) => NavigationDetail.FindWidgetById(this, id);
 
 	/// Focuses this widget, or, for a container (a page, a dialog), its entry: what was last
 	/// focused in it, else its default focus (nav-default), else its first focusable widget.
 	/// False when there is nothing to focus, or the node is in no GUI.
+	[Scriptable, ScriptName("Focus")]
 	public bool FocusElement()
 	{
 		let dispatcher = EventDispatcher;
@@ -1754,10 +1757,13 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 		return true;
 	}
 
+	/// Its children: `ChildCount` to a script.
+	[Scriptable, ScriptName("ChildCount")]
 	public int32 ElementChildCount => (int32)mChildren.Count;
 
 	/// Stops what On or OnCommandScript started, from inside that handler too; false when the
 	/// token is none of this node's.
+	[Scriptable]
 	public bool Off(int32 token)
 	{
 		let id = (uint32)token;
@@ -1766,33 +1772,34 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	/// Removes this node from its tree at the end of the UI's update (Close): never under a running
 	/// handler.
+	[Scriptable]
 	public void Destroy()
 	{
 		Close();
 	}
 
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public float Width
 	{
 		get => mSize.X;
 		set => Size = .(value, mSize.Y);
 	}
 
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public float Height
 	{
 		get => mSize.Y;
 		set => Size = .(mSize.X, value);
 	}
 
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public float X
 	{
 		get => mPosition.X;
 		set => Position = .(value, mPosition.Y);
 	}
 
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public float Y
 	{
 		get => mPosition.Y;
@@ -1957,7 +1964,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	/// Takes drops of these types (markup's `drop-types`, space-separated) with the source's
 	/// preferred effect; an alternative to overriding OnDragQuery or SetOnDragQuery.
-	[GuiProperty("drop-types")]
+	[GuiProperty("drop-types"), Scriptable]
 	public StringView DropTypes
 	{
 		get => NodeDetail.ViewOf(mDropTypes);
@@ -2086,6 +2093,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	// whole again.
 
 	/// Whether it is leaving (`:leaving`).
+	[Scriptable]
 	public bool IsLeaving => mLeaving;
 
 	/// Whether it or an ancestor is leaving.
@@ -2129,7 +2137,9 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	/// In `:entering`, its entrance's first half.
 	public bool IsEntering => mEnterPhase == 1;
-	/// Entering, or moving to its own style after: `entered` is still to come.
+	/// Entering, or moving to its own style after: `entered` is still to come. `IsEntering` to a
+	/// script, as Raptor names it.
+	[Scriptable, ScriptName("IsEntering")]
 	public bool IsArriving => mEnterPhase != 0;
 	/// Whether the style pass tells it when what moves it settles (MotionSettled): leaving or
 	/// arriving.
@@ -2250,7 +2260,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	/// Where Tab reaches it (CSS's and HTML's `tab-index`): a positive index before the rest,
 	/// lowest first (a tie in tree order); 0, in tree order (the default); below 0, never by Tab,
 	/// though a click, an arrow or code still focuses it.
-	[GuiProperty("tab-index")]
+	[GuiProperty("tab-index"), Scriptable]
 	public int32 TabIndex
 	{
 		get => mTabIndex;
@@ -2259,7 +2269,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	/// Tab and Shift+Tab reach it as keys rather than moving focus (CSS-like `tab-captures`: a code
 	/// editor, a terminal); Ctrl+Tab and Ctrl+Shift+Tab move focus from it instead.
-	[GuiProperty("tab-captures")]
+	[GuiProperty("tab-captures"), Scriptable]
 	public bool TabCaptures
 	{
 		get => mTabCaptures;
@@ -2291,7 +2301,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	/// A focus group (a radio group, a tab strip, a toolbar): one Tab stop however many it holds,
 	/// the member focused there last (else its `nav-default`, else its current one, else the
 	/// first); the arrows move inside it, wrapping unless its `nav-scope` says otherwise.
-	[GuiProperty("focus-group")]
+	[GuiProperty("focus-group"), Scriptable]
 	public bool FocusGroup
 	{
 		get => mFocusGroup;
@@ -2302,7 +2312,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	/// enters a focus group no one has focused in yet.
 	public virtual bool IsCurrentInGroup => false;
 
-	[GuiProperty("nav-default")]
+	[GuiProperty("nav-default"), Scriptable]
 	public StringView DefaultFocusId
 	{
 		get => NodeDetail.ViewOf(mDefaultFocusId);
@@ -2324,49 +2334,49 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 		NodeDetail.SetText(ref mNavOverrides[(int)which], target);
 	}
 
-	[GuiProperty("nav-up")]
+	[GuiProperty("nav-up"), Scriptable]
 	public StringView NavUp
 	{
 		get => GetNavOverride(.NavOverrideUp);
 		set => SetNavOverride(.NavOverrideUp, value);
 	}
 
-	[GuiProperty("nav-down")]
+	[GuiProperty("nav-down"), Scriptable]
 	public StringView NavDown
 	{
 		get => GetNavOverride(.NavOverrideDown);
 		set => SetNavOverride(.NavOverrideDown, value);
 	}
 
-	[GuiProperty("nav-left")]
+	[GuiProperty("nav-left"), Scriptable]
 	public StringView NavLeft
 	{
 		get => GetNavOverride(.NavOverrideLeft);
 		set => SetNavOverride(.NavOverrideLeft, value);
 	}
 
-	[GuiProperty("nav-right")]
+	[GuiProperty("nav-right"), Scriptable]
 	public StringView NavRight
 	{
 		get => GetNavOverride(.NavOverrideRight);
 		set => SetNavOverride(.NavOverrideRight, value);
 	}
 
-	[GuiProperty("nav-next")]
+	[GuiProperty("nav-next"), Scriptable]
 	public StringView NavNext
 	{
 		get => GetNavOverride(.NavOverrideNext);
 		set => SetNavOverride(.NavOverrideNext, value);
 	}
 
-	[GuiProperty("nav-prev")]
+	[GuiProperty("nav-prev"), Scriptable]
 	public StringView NavPrevious
 	{
 		get => GetNavOverride(.NavOverridePrevious);
 		set => SetNavOverride(.NavOverridePrevious, value);
 	}
 
-	[GuiProperty("nav-scope")]
+	[GuiProperty("nav-scope"), Scriptable]
 	public StringView NavScopeName
 	{
 		get
@@ -2388,7 +2398,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	/// The key context this node declares for bindings ("menu", "editor mode=insert"): a binding's
 	/// context predicate is matched against these along the focus path.
-	[GuiProperty("key-context")]
+	[GuiProperty("key-context"), Scriptable]
 	public StringView KeyContext
 	{
 		get => NodeDetail.ViewOf(mKeyContext);
@@ -2567,7 +2577,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	}
 
 	/// Its direction as CSS's `direction` names it: rtl, ltr, auto or inherit (any other text).
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public StringView Direction
 	{
 		get
@@ -2615,7 +2625,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	/// Whether its drawing (with what it holds) flips left for right in right to left: an arrow or
 	/// icon that points along the line (CSS has none; the GUI's `mirror-on-rtl`).
-	[GuiProperty("mirror-on-rtl")]
+	[GuiProperty("mirror-on-rtl"), Scriptable]
 	public bool MirrorOnRtl
 	{
 		get => mMirrorOnRtl;
@@ -2708,7 +2718,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 		mTranslationChanged.Notify();
 	}
 
-	[GuiProperty("auto-translate")]
+	[GuiProperty("auto-translate"), Scriptable]
 	public StringView AutoTranslateName
 	{
 		get => (mAutoTranslate == .Always) ? "always" : (mAutoTranslate == .Off) ? "off" : "inherit";
@@ -2733,7 +2743,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 
 	/// The language it speaks (`lang`, as markup's attribute; inherited: empty takes what holds it
 	/// speaks, the top of a GUI its Localization's). `:lang()` matches it.
-	[GuiProperty("lang")]
+	[GuiProperty("lang"), Scriptable]
 	public StringView Lang
 	{
 		get => NodeDetail.ViewOf(mLang);
@@ -2909,7 +2919,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	/// The command this control is bound to (empty: none): it is enabled while the command is
 	/// available and shows its checked state (OnBoundCommandState), and runs it when used
 	/// (RunBoundCommand, from the widget's click). Markup and sheets set it too.
-	[GuiProperty("command")]
+	[GuiProperty("command"), Scriptable]
 	public StringView Command
 	{
 		get => mCommand.Peek();

@@ -64,7 +64,7 @@ class MotionValue
 	}
 }
 
-[GuiReflect]
+[GuiReflect, Scriptable]
 class UINode : Node
 {
 	// === Text style ===

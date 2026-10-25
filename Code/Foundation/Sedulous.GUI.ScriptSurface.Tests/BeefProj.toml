@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.ScriptSurface.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.GUI.ScriptSurface.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"AngelScript-Beef" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.ScriptSurface" = "*"
+"Sedulous.Script" = "*"
+"Sedulous.Script.AngelScript" = "*"
+"Sedulous.Script.Null" = "*"

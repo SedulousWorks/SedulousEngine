@@ -24,192 +24,6 @@ namespace core = foundation::core;
 
 namespace foundation::gui
 {
-    namespace
-    {
-        // An event as a script handler sees it: positions in the GUI's units (from device pixels
-        // through the root's display scale).
-        [[nodiscard]] GuiEvent ScriptEventOf(const Event& event, StringView name)
-        {
-            GuiEvent out;
-            out.type = core::String(name);
-            if (const UIWidget* target = Cast<UIWidget>(event.Target))
-                out.id = core::String(target->GetId());
-            out.phase = core::String(event.Phase == EventPhase::Capture ? u8"capture" : event.Phase == EventPhase::Target ? u8"target" : u8"bubble");
-            const auto place = [&](core::Float2 world)
-            {
-                if (Node* current = event.CurrentTarget; current != nullptr)
-                {
-                    const core::Float2 inRoot = current->GetRootNode()->ConvertToNodeSpace(world);
-                    const core::Float2 local = current->ConvertToNodeSpace(world);
-                    out.x = inRoot.x;
-                    out.y = inRoot.y;
-                    out.localX = local.x;
-                    out.localY = local.y;
-                }
-            };
-            switch (event.Type)
-            {
-            case EventType::MouseDown:
-            case EventType::MouseUp:
-            case EventType::MouseMove:
-            case EventType::MouseClick:
-            case EventType::MouseEnter:
-            case EventType::MouseLeave:
-            case EventType::PointerCancel:
-            case EventType::ContextMenu:
-            {
-                const MouseEvent& mouse = static_cast<const MouseEvent&>(event);
-                // Over an item view's row: which (a context menu for it).
-                for (Node* n = event.Target; n != nullptr; n = n->GetParent())
-                    if (const ItemRow* row = Cast<ItemRow>(n))
-                    {
-                        out.index = row->GetItemIndex();
-                        break;
-                    }
-                place(mouse.Position);
-                out.pointer = core::String(mouse.Pointer == PointerType::Touch ? u8"touch" : u8"mouse");
-                out.button = static_cast<i32>(mouse.Button);
-                out.clickCount = static_cast<i32>(mouse.ClickCount);
-                out.modifiers = static_cast<i32>(mouse.Modifiers);
-                break;
-            }
-            case EventType::MouseWheel:
-            {
-                const WheelEvent& wheel = static_cast<const WheelEvent&>(event);
-                place(wheel.Position);
-                out.deltaX = wheel.Delta.x;
-                out.deltaY = wheel.Delta.y;
-                break;
-            }
-            case EventType::GestureStart:
-            case EventType::GestureChange:
-            case EventType::GestureEnd:
-            case EventType::GestureCancel:
-            {
-                const GestureEvent& gesture = static_cast<const GestureEvent&>(event);
-                place(gesture.Focus);
-                out.pointer = core::String(gesture.Pointer == PointerType::Touch ? u8"touch" : u8"mouse");
-                out.scale = gesture.Scale;
-                out.rotation = gesture.Rotation;
-                out.translationX = gesture.Translation.x;
-                out.translationY = gesture.Translation.y;
-                out.scaleDelta = gesture.ScaleDelta;
-                out.rotationDelta = gesture.RotationDelta;
-                out.deltaX = gesture.TranslationDelta.x;
-                out.deltaY = gesture.TranslationDelta.y;
-                break;
-            }
-            case EventType::KeyDown:
-            case EventType::KeyUp:
-            {
-                const KeyEvent& key = static_cast<const KeyEvent&>(event);
-                out.key = static_cast<i32>(key.KeyCode);
-                out.modifiers = static_cast<i32>(key.Modifiers);
-                break;
-            }
-            case EventType::TextInput: out.text = core::String(static_cast<const TextInputEvent&>(event).Text); break;
-            case EventType::Link: out.text = core::String(static_cast<const LinkEvent&>(event).Link); break; // the link's id
-            case EventType::Composition: out.text = core::String(static_cast<const CompositionEvent&>(event).Text); break;
-            case EventType::Toggle: // "open", or why it closed
-            {
-                const ToggleEvent& toggle = static_cast<const ToggleEvent&>(event);
-                out.text = core::String(toggle.Open ? core::StringView(u8"open") : PopupCloseReasonName(toggle.Reason));
-                break;
-            }
-            case EventType::TabClose: out.index = static_cast<const TabEvent&>(event).Index; break;
-            case EventType::DragStart:
-            case EventType::DragEnd:
-            case EventType::DragEnter:
-            case EventType::DragOver:
-            case EventType::DragLeave:
-            case EventType::Drop:
-            case EventType::DragQuery:
-            {
-                const DragEvent& drag = static_cast<const DragEvent&>(event);
-                place(drag.Position); // the root's space: as a pointer's
-                static constexpr const char8_t* kEffects[] = {u8"none", u8"copy", u8"move", u8"link"};
-                out.dragType = drag.Payload.Type;
-                out.effect = core::String(kEffects[static_cast<usize>(drag.Effect)]);
-                const core::String* value = drag.Payload.Value.TryGet<core::String>();
-                out.text = value != nullptr ? *value : drag.Payload.Label;
-                out.index = drag.Place;
-                out.modifiers = static_cast<i32>(drag.Modifiers);
-                break;
-            }
-            case EventType::ItemActivate: out.index = static_cast<const ItemEvent&>(event).Item; break;
-            case EventType::Named: out.text = core::String(static_cast<const NamedEvent&>(event).Detail); break;
-            case EventType::TransitionEnd:
-            case EventType::AnimationEnd:
-            {
-                const MotionEndEvent& motion = static_cast<const MotionEndEvent&>(event);
-                out.text = core::String(motion.Name);
-                out.elapsed = motion.Elapsed;
-                break;
-            }
-            default: break;
-            }
-            return out;
-        }
-    }
-
-    core::Variant Node::ParentElement()
-    {
-        return m_parent != nullptr ? m_parent->HandleAs(Node::StaticType()) : core::Variant{};
-    }
-
-    core::Variant Node::ChildElement(i32 index)
-    {
-        Node* child = index >= 0 ? GetChildAt(static_cast<usize>(index)) : nullptr;
-        return child != nullptr ? child->HandleAs(Node::StaticType()) : core::Variant{};
-    }
-
-    i32 Node::On(StringView eventName, RefPtr<foundation::script::IScriptDelegate> handler)
-    {
-        EventType type = EventType::MouseClick;
-        if (!handler || eventName.IsEmpty())
-            return 0;
-        // A name the core does not know is one a library sends (a gamekit screen's `screenenter`).
-        const bool named = !EventTypeNamed(eventName, type);
-        if (named)
-            type = EventType::Named;
-        // The node holds the handler (and with it the script function); the script holds the node
-        // only weakly, so neither keeps the other alive.
-        // The handler gets the event's data (one ignoring it may take no parameter), and takes the
-        // event by returning true.
-        return static_cast<i32>(AddEventListener(type,
-                               [handler, named, name = core::String(eventName)](const Event& event)
-                               {
-                                   if (named && static_cast<const NamedEvent&>(event).Name != name.AsView())
-                                       return;
-                                   core::Variant args[1] = {core::Variant::From<GuiEvent>(ScriptEventOf(event, name.AsView()))};
-                                   Result<core::Variant> result = handler->Invoke(Span<core::Variant>(args, 1));
-                                   const bool* took = result.HasValue() ? result.Value().TryGet<bool>() : nullptr;
-                                   if (took != nullptr && *took)
-                                       event.Handled = true;
-                               }));
-    }
-
-    // === Bindings ===
-
-    bool Node::BindScript(StringView property, RefPtr<foundation::script::IScriptDelegate> expression)
-    {
-        if (!expression)
-            return false;
-        // The node holds the function (as it holds an event handler); a failed call binds nothing.
-        return BindProperty(property,
-                            [expression]
-                            {
-                                Result<core::Variant> result = expression->Invoke(Span<core::Variant>{});
-                                return result.HasValue() ? result.Value() : core::Variant{};
-                            });
-    }
-
-    bool Node::BindSceneData(StringView property, StringView key)
-    {
-        SceneRoot* root = GetSceneRoot();
-        return root != nullptr && BindData(property, root->GetContext().GetDataRef(), key);
-    }
-
     // === The facade and registration ===
 
     namespace
@@ -313,42 +127,6 @@ namespace foundation::gui
         return stroke.HasValue() ? KeystrokeText(stroke.Value()) : core::String{};
     }
 
-    core::Variant Node::OpenPopupScript(core::Variant content)
-    {
-        Node* node = FromHandle(content);
-        EventDispatcher* dispatcher = GetEventDispatcher();
-        if (node == nullptr || node == this || dispatcher == nullptr)
-            return core::Variant::From<bool>(false);
-        node->SetDisplayed(true);
-        PopupOptions options;
-        options.Anchor = this;
-        options.Placement = PopupPlacement{PopupSide::Below, PopupAlign::Start, 0.0f, true};
-        options.TakesFocus = true;
-        options.FitContent = true;
-        options.ReturnHome = true; // a script's popup: back where it stood, to open again
-        dispatcher->OpenPopup(*this, *node, core::Move(options));
-        return core::Variant::From<bool>(dispatcher->IsPopupOpen(*node));
-    }
-
-    bool Node::ClosePopupScript()
-    {
-        EventDispatcher* dispatcher = GetEventDispatcher();
-        return dispatcher != nullptr && dispatcher->IsPopupOpen(*this) && dispatcher->ClosePopup(*this);
-    }
-
-    i32 Node::OnCommandScript(StringView id, RefPtr<foundation::script::IScriptDelegate> handler)
-    {
-        if (!handler)
-            return 0;
-        return static_cast<i32>(OnCommand(id,
-                        [handler](CommandEvent& event)
-                        {
-                            Result<core::Variant> result = handler->Invoke(Span<core::Variant>{});
-                            const bool* goOn = result.HasValue() ? result.Value().TryGet<bool>() : nullptr;
-                            event.Propagate = goOn != nullptr && *goOn;
-                        }));
-    }
-
     namespace
     {
         foundation::i18n::Localization* ScriptLocalization()
@@ -412,7 +190,6 @@ namespace foundation::gui
         return root != nullptr ? root->HandleAs(Node::StaticType()) : core::Variant{};
     }
 
-    void RttiRegisterValue_GuiEvent(); // REFLECT_VALUE below
     void RttiRegisterEnum_ToastSeverity();
     void RttiRegisterValue_ToastRequest();
 
@@ -421,13 +198,7 @@ namespace foundation::gui
         static const bool once = []()
         {
             RegisterGuiElements();
-            RttiRegisterValue_GuiEvent();
             TypeRegistry& registry = GlobalTypeRegistry();
-            registry.Register(TypeOf<GuiEvent>()); // what a handler is given
-            registry.Register(Node::StaticType()); // the bases a script names (Node.of, UIWidget.of)
-            registry.Register(SceneRoot::StaticType());
-            registry.Register(UINode::StaticType());
-            registry.Register(UIWidget::StaticType());
             registry.Register(Gui::StaticType()); // binds as `gui` (its scriptName)
             registry.Register(Tween::StaticType()); // what node.animate gives (E14)
             registry.Register(TweenGroup::StaticType());
@@ -447,65 +218,14 @@ namespace foundation::gui
 
     // === Reflection ===
 
-    REFLECT_VALUE(GuiEvent, "rtti::gui")
-    {
-        builder.Property<&GuiEvent::type>("type")
-            .Property<&GuiEvent::phase>("phase")
-            .Property<&GuiEvent::pointer>("pointer")
-            .Property<&GuiEvent::x>("x")
-            .Property<&GuiEvent::y>("y")
-            .Property<&GuiEvent::localX>("localX")
-            .Property<&GuiEvent::localY>("localY")
-            .Property<&GuiEvent::button>("button")
-            .Property<&GuiEvent::clickCount>("clickCount")
-            .Property<&GuiEvent::key>("key")
-            .Property<&GuiEvent::modifiers>("modifiers")
-            .Property<&GuiEvent::text>("text")
-            .Property<&GuiEvent::deltaX>("deltaX")
-            .Property<&GuiEvent::deltaY>("deltaY")
-            .Property<&GuiEvent::scale>("scale")
-            .Property<&GuiEvent::rotation>("rotation")
-            .Property<&GuiEvent::translationX>("translationX")
-            .Property<&GuiEvent::translationY>("translationY")
-            .Property<&GuiEvent::scaleDelta>("scaleDelta")
-            .Property<&GuiEvent::rotationDelta>("rotationDelta")
-            .Property<&GuiEvent::index>("index")
-            .Property<&GuiEvent::id>("id")
-            .Property<&GuiEvent::dragType>("dragType")
-            .Property<&GuiEvent::effect>("effect")
-            .Property<&GuiEvent::elapsed>("elapsed")
-            // Constructible, so both languages take it by value and Luau binds it (a type a script
-            // can make is one it can be handed).
-            .Constructor<>();
-    }
-
     REFLECT_MEMBERS(Node, "rtti::gui")
     {
-        builder.Method<&Node::AddElement, Node>("add");
-        builder.Method<&Node::FindElement, Node>("find");
-        builder.Method<&Node::ParentElement, Node>("parent");
-        builder.Method<&Node::ChildElement, Node>("childAt");
-        builder.Method<&Node::ElementChildCount>("childCount");
-        builder.Method<&Node::On>("on");
-        builder.Method<&Node::Off>("off"); // what on and onCommand gave (E16)
-        builder.Method<&Node::OpenPopupScript, bool, Node>("popup");
-        builder.Method<&Node::ClosePopupScript>("closePopup");
-        builder.Method<&Node::BindScript>("bind");
-        builder.Method<&Node::BindSceneData>("bindData");
-        builder.Method<&Node::OnCommandScript>("onCommand");
-        builder.Method<&Node::FocusElement>("focus");
-        builder.Method<&Node::Destroy>("destroy");
-        builder.Method<&Node::Leave>("leave"); // goes after its exit plays (K0)
-        builder.Method<&Node::IsLeaving>("isLeaving");
-        builder.Method<&Node::Enter>("enter"); // plays its entrance (K5)
-        builder.Method<&Node::IsArriving>("isEntering");
         // Motion (E14): a tween, a spring, a group's run, and the property given back.
         builder.Method<&Node::Animate>("tween"); // `animate` is an expander's property
         builder.Method<&Node::CreateTween>("createTween");
         builder.Method<&Node::SpringTo>("springTo");
         builder.Method<&Node::StopAnimation>("stopAnimation");
         builder.Method<&Node::Play>("play");
-        builder.Method<&ElementOf<Node>, Node, Node>("of");
     }
 
     // Motion (E14): `repeats`, as `repeat` is a word of Luau's.
@@ -555,25 +275,6 @@ namespace foundation::gui
     REFLECT_MEMBERS(TweenParallel, "rtti::gui")
     {
         builder.Constructor<>();
-    }
-
-    REFLECT_MEMBERS(SceneRoot, "rtti::gui")
-    {
-        builder.Method<&ElementOf<SceneRoot>, SceneRoot, Node>("of");
-    }
-
-    REFLECT_MEMBERS(UINode, "rtti::gui")
-    {
-        builder.Method<&ElementOf<UINode>, UINode, Node>("of");
-    }
-
-    REFLECT_MEMBERS(UIWidget, "rtti::gui")
-    {
-        builder.Method<&UIWidget::AddClass>("addClass");
-        builder.Method<&UIWidget::RemoveClass>("removeClass");
-        builder.Method<&UIWidget::HasClass>("hasClass");
-        builder.Method<&UIWidget::ToggleClass>("toggleClass");
-        builder.Method<&ElementOf<UIWidget>, UIWidget, Node>("of");
     }
 
     REFLECT_MEMBERS(Label, "rtti::gui")

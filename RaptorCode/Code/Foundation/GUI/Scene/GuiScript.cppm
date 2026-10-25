@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026-Present Robert Campbell
 
-// GUI - :gui_script partition
+// GUI - :gui_script partition, what is left of it after S19's node verbs: the `gui` facade, the
+// binding a host installs per script context, and the registrations. GuiEvent, what a handler is
+// given, is Code/Foundation/Sedulous.GUI/src/Scene/GuiScript.bf.
 //
 // The GUI's script surface (G1 of Specs/vg-and-gui-lab.md). There is no separate UI-script layer:
 // the widgets and their properties are reflected through our RTTI (GUIReflectionImpl.cpp), so the
@@ -93,39 +95,6 @@ export namespace foundation::gui
         static void CaptureKey(RefPtr<foundation::script::IScriptDelegate> handler);
         /// A binding's keys as a menu shows them ("ctrl-s": "Ctrl+S"); empty when they do not parse.
         [[nodiscard]] static core::String KeyText(core::StringView keys);
-    };
-
-    /// What a script handler (`node.on(name, fn)`) is given: the event's data, positions in the
-    /// GUI's own units (`x`, `y` from the root, `localX`, `localY` from the node the handler is
-    /// on). A handler returning true takes the event: it goes no further on its route.
-    struct GuiEvent
-    {
-        core::String type;  ///< the name it was listened for: "click", "mousedown", "keydown", ...
-        core::String phase; ///< "capture", "target" or "bubble"
-        core::String id;    ///< the id of the node it is for (empty: none)
-        core::String pointer; ///< "mouse" or "touch", for pointer events
-        f32 x = 0.0f;
-        f32 y = 0.0f;
-        f32 localX = 0.0f;
-        f32 localY = 0.0f;
-        i32 button = 0; ///< 0 left, 1 right, 2 middle, 3 and 4 the extra buttons
-        i32 clickCount = 0;
-        i32 key = 0; ///< a KeyCode value for keys
-        i32 modifiers = 0; ///< shift 1, ctrl 2, alt 4, super 8
-        core::String text; ///< typed text; a link's id; the property or @keyframes a transitionend or animationend is of
-        f32 deltaX = 0.0f; ///< the wheel; a gesture's translation since the last event
-        f32 deltaY = 0.0f;
-        // A gesture (E17c), x and y its fingers' middle: totals since it began, and this event's change.
-        f32 scale = 1.0f;
-        f32 rotation = 0.0f; ///< radians, clockwise
-        f32 translationX = 0.0f;
-        f32 translationY = 0.0f;
-        f32 scaleDelta = 1.0f;
-        f32 rotationDelta = 0.0f;
-        core::String dragType; ///< a drag's payload type (its value as `text`, its place as `index`)
-        core::String effect;   ///< a drag's effect: "none", "copy", "move" or "link"
-        i32 index = -1; ///< the tab for `tabclose`; the row for `activate`, and for a pointer event over a row
-        f32 elapsed = 0.0f; ///< the seconds a transitionend's or animationend's motion ran
     };
 
     /// Registers the GUI's own element types (ElementTypes::Register: Label, Button, the layouts,

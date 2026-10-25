@@ -101,6 +101,7 @@ extension Node
 
 	/// Leaves its parent after its exit plays: at the GUI's next update when nothing plays one (no
 	/// style pass, or a node no sheet styles), at once in no GUI.
+	[Scriptable]
 	public void Leave()
 	{
 		if (mLeaving || (mParent == null))
@@ -178,6 +179,7 @@ extension Node
 	/// has settled it hears `entered`. Leave cuts an entrance short, leaving from where it is. In
 	/// no GUI, in one no style pass runs over, or not styled, it has no entrance and hears
 	/// `entered` at once.
+	[Scriptable]
 	public void Enter()
 	{
 		if (mLeaving || (mParent == null))
