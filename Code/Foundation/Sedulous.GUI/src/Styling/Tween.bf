@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Script;
 using internal Sedulous.GUI;
 
 namespace Sedulous.GUI;
@@ -20,7 +21,13 @@ namespace Sedulous.GUI;
 // Tweens and groups are reference counted, as every action is: whoever makes one (or is handed
 // one by Animate, CreateTween and the rest) releases its reference; a manager or a group running
 // it holds one of its own.
+//
+// To a script they are counted handles (Raptor's names, in PascalCase): a handle is a reference
+// of the script's own, so a tween a script keeps outlives the manager's (a kept tween's IsDone
+// reads after it ended), and one kept past its GUI finds no target. The shaping verbs give back
+// the tween or group itself, lent, so a script chains them as native code does.
 
+[Scriptable]
 class Tween : Sedulous.GUI.Action
 {
 	private enum Route : uint8
@@ -87,6 +94,7 @@ class Tween : Sedulous.GUI.Action
 	// === Shaping (before its first frame) ===
 
 	/// Where it starts, as a value of its property (else the value showing).
+	[Scriptable]
 	public Tween From(StringView text)
 	{
 		mFromText.Set(text);
@@ -95,13 +103,16 @@ class Tween : Sedulous.GUI.Action
 	}
 
 	/// How long it waits first, in seconds.
+	[Scriptable]
 	public Tween Delay(float seconds)
 	{
 		mDelay = Math.Max(0.0f, seconds);
 		return this;
 	}
 
-	/// How many times it runs (1 by default; a negative count runs until stopped).
+	/// How many times it runs (1 by default; a negative count runs until stopped). `Repeats` to a
+	/// script, as Raptor names it (`repeat` is a word of Luau's).
+	[Scriptable, ScriptName("Repeats")]
 	public Tween Repeat(int32 count)
 	{
 		mIterations = count;
@@ -109,6 +120,7 @@ class Tween : Sedulous.GUI.Action
 	}
 
 	/// Every other run goes back from the end to the start.
+	[Scriptable]
 	public Tween PingPong(bool on = true)
 	{
 		mPingPong = on;
@@ -121,8 +133,14 @@ class Tween : Sedulous.GUI.Action
 		return this;
 	}
 
+	/// Ease for a script: the easing as a sheet names it (a CSS easing or a named curve), `ease`
+	/// when the text is none. `Ease` to a script.
+	[Scriptable, ScriptName("Ease")]
+	public Tween EaseScript(StringView easing) => Ease(ParseEasing(easing).GetValueOrDefault(Easing.Ease()));
+
 	/// A data value's tween counts in whole numbers: each value it writes rounded to the nearest (a
 	/// score; a script's numbers all arrive as fractions, so its type cannot say).
+	[Scriptable]
 	public Tween Whole(bool on = true)
 	{
 		mWhole = on;
@@ -132,6 +150,7 @@ class Tween : Sedulous.GUI.Action
 	/// Moves as a damped spring toward its end rather than over a time (GPUI's and react-spring's
 	/// springs): `stiffness` pulls, `damping` slows, `mass` resists; little damping overshoots and
 	/// rings. Its duration, easing, repeats and ping-pong no longer apply; it ends once settled.
+	[Scriptable]
 	public Tween Spring(float stiffness = 170.0f, float damping = 26.0f, float mass = 1.0f)
 	{
 		mSpring = true;
@@ -152,6 +171,21 @@ class Tween : Sedulous.GUI.Action
 		return this;
 	}
 
+	/// OnFinished with a script function. OWNERSHIP of `handler` transfers: the callback holds it,
+	/// and it goes with the tween (or the next one set); none set leaves the one before. A dead
+	/// function is not called. `OnFinished` to a script.
+	[Scriptable, ScriptName("OnFinished")]
+	public Tween OnFinishedScript(ScriptDelegate handler)
+	{
+		if (handler == null)
+			return this;
+		return OnFinished(new [=handler] () =>
+			{
+				var result = ScriptValue.Nil;
+				GuiScriptDetail.Call(handler, default, ref result);
+			} ~ { delete handler; });
+	}
+
 	public StringView Property => mProperty;
 
 	/// Whether it composes over the cascade (a property a sheet names) rather than through a
@@ -160,6 +194,7 @@ class Tween : Sedulous.GUI.Action
 
 	/// Sends it toward another end from where it is now, its speed carried over: a drag that
 	/// settles, a menu that follows the pointer, without a jolt.
+	[Scriptable]
 	public void Retarget(StringView to)
 	{
 		mToText.Set(to);
@@ -218,6 +253,7 @@ class Tween : Sedulous.GUI.Action
 
 	/// Stops it and gives its property back to the sheet (a reflected property keeps the value it
 	/// has).
+	[Scriptable]
 	public void Cancel()
 	{
 		if ((mData != null) && (mData.TweenOwnerOf(mProperty) == mOwner))
@@ -356,6 +392,8 @@ class Tween : Sedulous.GUI.Action
 		}
 	}
 
+	/// Marked here, as an override carries none of the base's attributes.
+	[Scriptable]
 	public override bool IsDone => mDone;
 	public override float CurrentProgress => mProgress;
 	public override TimeSpan TotalTime => TweenDetail.SecondsSpan((double)(mDelay + mSeconds * (float)Math.Max(mIterations, 1)));
@@ -672,7 +710,9 @@ class TweenCall : Sedulous.GUI.Action
 /// Steps run as one (Zero's action groups, Godot's chained and parallel tweens, foundation.ui's
 /// storyboards): tweens of any nodes, waits, calls and other groups, one after another
 /// (TweenSequence) or together (TweenParallel), repeated as a whole, calling back at the end. Run
-/// it on a node (RunAction): the node's GUI keeps its time; each step keeps its own target.
+/// it on a node (RunAction): the node's GUI keeps its time; each step keeps its own target. A
+/// script makes a TweenSequence or TweenParallel, and plays it with Node.Play.
+[Scriptable]
 abstract class TweenGroup : Sedulous.GUI.Action
 {
 	/// Each holds a reference of the group's.
@@ -696,6 +736,17 @@ abstract class TweenGroup : Sedulous.GUI.Action
 		return this;
 	}
 
+	/// Adds a tween as a step: Add for a script, whose handle keeps its own reference. `Add` to a
+	/// script.
+	[Scriptable, ScriptName("Add")]
+	public TweenGroup AddScript(Tween tween) => Add(tween);
+
+	/// Adds a group as a step (a sequence in a parallel group, or the other way). `AddGroup` to a
+	/// script.
+	[Scriptable, ScriptName("AddGroup")]
+	public TweenGroup AddGroupScript(TweenGroup group) => Add(group);
+
+	[Scriptable]
 	public TweenGroup Wait(float seconds)
 	{
 		let wait = new TweenWait(seconds);
@@ -713,7 +764,24 @@ abstract class TweenGroup : Sedulous.GUI.Action
 		return this;
 	}
 
-	/// How many times it runs (1 by default; a negative count runs until stopped).
+	/// A step that calls a script function. OWNERSHIP of `handler` transfers: the step holds it,
+	/// and it goes with the group; a dead function, or none, is a step that calls nothing. `Call`
+	/// to a script.
+	[Scriptable, ScriptName("Call")]
+	public TweenGroup CallScript(ScriptDelegate handler)
+	{
+		return Call(new [=handler] () =>
+			{
+				if (handler == null)
+					return;
+				var result = ScriptValue.Nil;
+				GuiScriptDetail.Call(handler, default, ref result);
+			} ~ { delete handler; });
+	}
+
+	/// How many times it runs (1 by default; a negative count runs until stopped). `Repeats` to a
+	/// script, as Raptor names it.
+	[Scriptable, ScriptName("Repeats")]
 	public TweenGroup Repeat(int32 count)
 	{
 		mIterations = count;
@@ -726,6 +794,20 @@ abstract class TweenGroup : Sedulous.GUI.Action
 		delete mOnFinished;
 		mOnFinished = callback;
 		return this;
+	}
+
+	/// OnFinished with a script function, as Tween.OnFinishedScript takes one. `OnFinished` to a
+	/// script.
+	[Scriptable, ScriptName("OnFinished")]
+	public TweenGroup OnFinishedScript(ScriptDelegate handler)
+	{
+		if (handler == null)
+			return this;
+		return OnFinished(new [=handler] () =>
+			{
+				var result = ScriptValue.Nil;
+				GuiScriptDetail.Call(handler, default, ref result);
+			} ~ { delete handler; });
 	}
 
 	public int StepCount => mSteps.Count;
@@ -780,6 +862,8 @@ abstract class TweenGroup : Sedulous.GUI.Action
 		}
 	}
 
+	/// Marked here, as an override carries none of the base's attributes.
+	[Scriptable]
 	public override bool IsDone => mDone;
 	public override float CurrentProgress => 0.0f;
 	public override TimeSpan TotalTime => default;
@@ -806,9 +890,17 @@ abstract class TweenGroup : Sedulous.GUI.Action
 }
 
 /// Steps one after another: each starts as the last ends, with the time it left.
+[Scriptable]
 class TweenSequence : TweenGroup
 {
 	private int mIndex = 0;
+
+	/// A script makes one (`TweenSequence()`): counted, so the reference it is made with is handed
+	/// over to the script's handle.
+	[Scriptable]
+	public this()
+	{
+	}
 
 	protected override void StartRun()
 	{
@@ -838,8 +930,15 @@ class TweenSequence : TweenGroup
 }
 
 /// Steps together: the run ends with the last of them.
+[Scriptable]
 class TweenParallel : TweenGroup
 {
+	/// A script makes one (`TweenParallel()`), as it makes a sequence.
+	[Scriptable]
+	public this()
+	{
+	}
+
 	protected override void StartRun()
 	{
 		for (let step in mSteps)
