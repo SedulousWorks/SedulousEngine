@@ -7,9 +7,17 @@ namespace Sedulous.Script;
 /// storage for what it hands back by pointer.
 abstract class ScriptCallContext
 {
-	/// The scene a call is in when nothing names one: an entity value with no scene of its
-	/// own, or a system reached with no object. Null outside any scene.
-	public Scene Scene = null;
+	/// The owner an entity naming none resolves in, and the one a call is in when nothing
+	/// names one: an entity value with no owner of its own, or a system reached with no
+	/// object. Null outside any.
+	public Object AmbientOwner = null;
+
+	/// The ambient owner as a scene, null when it is none.
+	public Scene Scene
+	{
+		get => AmbientOwner as Scene;
+		set => AmbientOwner = value;
+	}
 
 	/// The last failure a frame reported, for a host with no exception to raise.
 	public String LastError = new .() ~ delete _;

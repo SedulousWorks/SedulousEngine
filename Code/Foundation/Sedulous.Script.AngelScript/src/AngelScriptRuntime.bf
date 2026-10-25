@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using AngelScript;
 using Sedulous.Core;
-using Sedulous.Scene;
 using Sedulous.Script;
 
 namespace Sedulous.Script.AngelScript;
@@ -355,7 +354,7 @@ class AngelScriptRuntime : ScriptRuntime
 	/// The AngelScript name of a surface type: its bare name, except the entity handle,
 	/// which is `Entity` to a script.
 	private static StringView AsName(ScriptTypeInfo t)
-		=> (t.FullName == "Sedulous.Scene.EntityHandle") ? "Entity" : t.Name;
+		=> (t.FullName == ScriptSceneNames.cEntityHandle) ? "Entity" : t.Name;
 
 	private void DeclareType(ScriptTypeInfo t)
 	{
@@ -700,7 +699,7 @@ class AngelScriptRuntime : ScriptRuntime
 			// Const: the entity value is only read, so a `const Entity &in` may call it.
 			decl.Append(") const");
 			if (Check(AS.asc_engine_register_object_method(mEngine, "Entity", decl.CStr(), Internal.UnsafeCastToPtr(b)), scope $"{t.FullName}.{m.Name} on Entity as {decl}"))
-				Record(ApiType("Entity", "Sedulous.Scene.EntityHandle", false), m.EntityName, decl, false, .Method);
+				Record(ApiType("Entity", ScriptSceneNames.cEntityHandle, false), m.EntityName, decl, false, .Method);
 		}
 	}
 
@@ -741,7 +740,7 @@ class AngelScriptRuntime : ScriptRuntime
 		if (Check(AS.asc_engine_register_object_method(mEngine, "Scene", scope $"{AsName(t)}@ get_{name}() property".CStr(), Internal.UnsafeCastToPtr(b)), t.FullName))
 		{
 			mSceneProperties.Add(new String(name));
-			Record(ApiType("Scene", "Sedulous.Scene.Scene", false), name, scope $"{AsName(t)}@ Scene.{name}", false, .Property);
+			Record(ApiType("Scene", ScriptSceneNames.cScene, false), name, scope $"{AsName(t)}@ Scene.{name}", false, .Property);
 		}
 	}
 
@@ -1590,9 +1589,7 @@ class AngelScriptRuntime : ScriptRuntime
 		switch (kind)
 		{
 		case .Guid: return .FromGuid(*(Guid*)memory);
-		case .Entity:
-			let e = *(ScriptEntity*)memory;
-			return .FromEntity(e.Handle, e.Scene);
+		case .Entity: return .FromEntityRef(*(ScriptEntity*)memory);
 		case .Float2: return .FromFloat2(*(Float2*)memory);
 		case .Float3: return .FromFloat3(*(Float3*)memory);
 		case .Float4: return .FromFloat4(*(Float4*)memory);
@@ -1625,7 +1622,7 @@ class AngelScriptRuntime : ScriptRuntime
 		switch (kind)
 		{
 		case .Guid: *(Guid*)memory = value.AsGuid;
-		case .Entity: *(ScriptEntity*)memory = .(value.AsEntity, value.AsEntityScene);
+		case .Entity: *(ScriptEntity*)memory = value.AsEntityRef;
 		case .Float2: *(Float2*)memory = value.AsFloat2;
 		case .Float3: *(Float3*)memory = value.AsFloat3;
 		case .Float4: *(Float4*)memory = value.AsFloat4;
@@ -1924,7 +1921,7 @@ class AngelScriptRuntime : ScriptRuntime
 		case .Float: outText.AppendF("{}", value.AsFloat);
 		case .String: outText.AppendF("\"{}\"", value.AsString);
 		case .Guid: value.AsGuid.ToString(outText);
-		case .Entity: outText.AppendF("entity {}", value.AsEntity.Index);
+		case .Entity: outText.AppendF("entity {}", value.AsEntityRef.Index);
 		case .Float2: outText.AppendF("({}, {})", value.AsFloat2.X, value.AsFloat2.Y);
 		case .Float3: outText.AppendF("({}, {}, {})", value.AsFloat3.X, value.AsFloat3.Y, value.AsFloat3.Z);
 		case .Float4: outText.AppendF("({}, {}, {}, {})", value.AsFloat4.X, value.AsFloat4.Y, value.AsFloat4.Z, value.AsFloat4.W);

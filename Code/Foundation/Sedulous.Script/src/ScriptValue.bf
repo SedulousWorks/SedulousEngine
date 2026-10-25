@@ -9,18 +9,42 @@ namespace Sedulous.Script;
 /// A flat union with a kind: no allocation for the kinds a frame sees every tick. The
 /// accessors assume the kind; the surface says what each slot is, and the VM checks
 /// against it before calling.
-/// A script's entity: the handle AND the scene it lives in, so a call resolves it there and
-/// never in whichever scene happens to be ambient. Null scene means "the context's".
+/// A script's entity: the handle AND the owner it lives in, so a call resolves it there and
+/// never in whichever owner happens to be ambient. Null owner means "the context's".
+///
+/// Opaque to the core: an index and generation laid out as the scene's EntityHandle, and
+/// the owner as an object, so the core carries an entity without knowing what a scene is.
 [CRepr]
 struct ScriptEntity
 {
-	public EntityHandle Handle;
-	public Scene Scene;
+	/// The same value as EntityHandle's: an unassigned entity reads the same through both.
+	public const uint32 cInvalidIndex = 0xFFFFFFFF;
 
-	public this(EntityHandle handle, Scene scene)
+	public uint32 Index;
+	public uint32 Generation;
+	public Object Owner;
+
+	public this(uint32 index, uint32 generation, Object owner)
 	{
-		Handle = handle;
-		Scene = scene;
+		Index = index;
+		Generation = generation;
+		Owner = owner;
+	}
+
+	public this(EntityHandle handle, Scene scene) : this(handle.Index, handle.Generation, scene) {}
+
+	public static ScriptEntity Invalid => .(cInvalidIndex, 0, null);
+
+	public EntityHandle Handle
+	{
+		get => .(Index, Generation);
+		set mut { Index = value.Index; Generation = value.Generation; }
+	}
+
+	public Scene Scene
+	{
+		get => Owner as Scene;
+		set mut { Owner = value; }
 	}
 }
 
@@ -63,7 +87,8 @@ struct ScriptValue
 	public static ScriptValue FromFloat(double v) { var r = ScriptValue(); r.Kind = .Float; r.Data.Float = v; return r; }
 	public static ScriptValue FromString(StringView v) { var r = ScriptValue(); r.Kind = .String; r.Data.String = v; return r; }
 	public static ScriptValue FromGuid(Guid v) { var r = ScriptValue(); r.Kind = .Guid; r.Data.Guid = v; return r; }
-	public static ScriptValue FromEntity(EntityHandle v, Scene scene = null) { var r = ScriptValue(); r.Kind = .Entity; r.Data.Entity = .(v, scene); return r; }
+	public static ScriptValue FromEntityRef(ScriptEntity v) { var r = ScriptValue(); r.Kind = .Entity; r.Data.Entity = v; return r; }
+	public static ScriptValue FromEntity(EntityHandle v, Scene scene = null) => FromEntityRef(.(v.Index, v.Generation, scene));
 	public static ScriptValue FromFloat2(Float2 v) { var r = ScriptValue(); r.Kind = .Float2; r.Data.Float2 = v; return r; }
 	public static ScriptValue FromFloat3(Float3 v) { var r = ScriptValue(); r.Kind = .Float3; r.Data.Float3 = v; return r; }
 	public static ScriptValue FromFloat4(Float4 v) { var r = ScriptValue(); r.Kind = .Float4; r.Data.Float4 = v; return r; }
@@ -84,9 +109,14 @@ struct ScriptValue
 	public double AsFloat => Data.Float;
 	public StringView AsString => Data.String;
 	public Guid AsGuid => Data.Guid;
-	public EntityHandle AsEntity => Data.Entity.Handle;
+	/// The index and generation read whatever the kind, as AsEntity; the owner only from an
+	/// entity value.
+	public ScriptEntity AsEntityRef => .(Data.Entity.Index, Data.Entity.Generation, AsEntityOwner);
+	/// The owner an entity value names, null when it names none.
+	public Object AsEntityOwner => (Kind == .Entity) ? Data.Entity.Owner : null;
+	public EntityHandle AsEntity => .(Data.Entity.Index, Data.Entity.Generation);
 	/// The scene an entity value names, null when it names none.
-	public Scene AsEntityScene => (Kind == .Entity) ? Data.Entity.Scene : null;
+	public Scene AsEntityScene => AsEntityOwner as Scene;
 	public Float2 AsFloat2 => Data.Float2;
 	public Float3 AsFloat3 => Data.Float3;
 	public Float4 AsFloat4 => Data.Float4;

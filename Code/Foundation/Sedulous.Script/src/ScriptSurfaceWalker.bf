@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Reflection;
 using Sedulous.Core;
-using Sedulous.Scene;
 
 namespace Sedulous.Script;
 
@@ -157,7 +156,7 @@ static class ScriptSurfaceWalker
 				continue;
 			let component = PooledComponent(type, .. scope .());
 			if (!component.IsEmpty && (managers.IndexOf(component) < 0))
-				managers.Add(component, fullName, HasBase(type, "Sedulous.Scene.ResourceBindingComponentManager<"));
+				managers.Add(component, fullName, HasBase(type, ScriptSceneNames.cResourceBindingComponentManagerPrefix));
 		}
 
 		// Every marked declaration first, so the emitter knows the whole surface before it
@@ -273,7 +272,7 @@ static class ScriptSurfaceWalker
 			let type = decl.ResolvedType;
 			let fullName = decl.GetFullName(.. scope .());
 			let isStaticBlock = decl.GetName(.. scope .()) == cStaticBlockName;
-			var seed = isStaticBlock || (fullName == "Sedulous.Scene.Scene")
+			var seed = isStaticBlock || (fullName == ScriptSceneNames.cScene)
 				|| ((type != null) && (type.HasCustomAttribute<SceneFacadeAttribute>()
 					|| type.HasCustomAttribute<ServiceFacadeAttribute>() || type.HasCustomAttribute<ScriptServiceAttribute>()))
 				|| (managers.IndexOf(fullName) >= 0) || ((type != null) && ScriptValueMap.IsWeak(type));
@@ -483,8 +482,8 @@ static class ScriptSurfaceWalker
 		{
 			// Component data: a struct the scene pools. Either attribute makes it one.
 			let typeId = scope String();
-			bool isComponent = type.HasCustomAttribute<ComponentAttribute>();
-			if (type.GetCustomAttribute<SerializableComponentAttribute>() case .Ok(let sc))
+			bool isComponent = type.HasCustomAttribute<Sedulous.Scene.ComponentAttribute>();
+			if (type.GetCustomAttribute<Sedulous.Scene.SerializableComponentAttribute>() case .Ok(let sc))
 			{
 				isComponent = true;
 				typeId.Set(sc.TypeId);
@@ -556,7 +555,7 @@ static class ScriptSurfaceWalker
 		while (t != null)
 		{
 			let n = t.GetFullName(.. scope .());
-			if (n == "Sedulous.Scene.SceneSystem")
+			if (n == ScriptSceneNames.cSceneSystem)
 				return .SceneSystem;
 			if (n == "Sedulous.Runtime.Subsystem")
 				return .Service;
@@ -579,12 +578,31 @@ static class ScriptSurfaceWalker
 		return false;
 	}
 
+	/// Whether the type, or a base of it, implements the interface of this full name. By name,
+	/// so the core need not see the interface's project; it reads the same interface table
+	/// ImplementsInterface does.
+	[Comptime]
+	private static bool ImplementsByName(Type type, StringView fullName)
+	{
+		var t = type;
+		while (t != null)
+		{
+			for (let iface in t.Interfaces)
+			{
+				if (iface.GetFullName(.. scope .()) == fullName)
+					return true;
+			}
+			t = t.BaseType;
+		}
+		return false;
+	}
+
 	/// The component type a manager pools, from a ComponentManager<T> in its bases. Empty
 	/// when it is not one. Read off the base's full name: `Sedulous.Scene.ComponentManager<X>`.
 	[Comptime]
 	private static void PooledComponent(Type type, String outComponent)
 	{
-		const String cPrefix = "Sedulous.Scene.ComponentManager<";
+		const String cPrefix = ScriptSceneNames.cComponentManagerPrefix;
 		var t = type;
 		while (t != null)
 		{
@@ -632,7 +650,7 @@ static class ScriptSurfaceWalker
 			if (ctx.Kind == .Class)
 			{
 				outCode.AppendF("\tlet self = frame.Self.AsObject as {};\n\tif (self == null) {{ frame.Fail(\"self is not a {}\"); return; }}\n", t, ctx.Name);
-				if (t == "Sedulous.Scene.Scene")
+				if (t == ScriptSceneNames.cScene)
 					sceneExpr.Set("self");
 			}
 			else if (ctx.IsInlineStruct)
@@ -908,7 +926,7 @@ static class ScriptSurfaceWalker
 	{
 		if (m.IsStatic || m.IsConstructor || (m.ParamCount < 1))
 			return false;
-		let onScene = (ctx.Role == .Plain) && (ctx.FullName == "Sedulous.Scene.Scene");
+		let onScene = (ctx.Role == .Plain) && (ctx.FullName == ScriptSceneNames.cScene);
 		if (!onScene)
 		{
 			if ((ctx.Role != .SceneSystem) && (ctx.Role != .ComponentManager) && (ctx.Role != .SceneFacade))
@@ -919,7 +937,7 @@ static class ScriptSurfaceWalker
 		let pt = m.GetParamType(0);
 		if (pt is RefType)
 			return false;
-		return pt.GetFullName(.. scope .()) == "Sedulous.Scene.EntityHandle";
+		return pt.GetFullName(.. scope .()) == ScriptSceneNames.cEntityHandle;
 	}
 
 	/// The entity side's name: the script name with the word Entity dropped, so
@@ -1108,7 +1126,7 @@ static class ScriptSurfaceWalker
 			}
 
 			ScriptValueMap.ExpectFor(pt, slotIndex, body);
-			if (!sceneExpr.IsEmpty && (ptn == "Sedulous.Scene.EntityHandle"))
+			if (!sceneExpr.IsEmpty && (ptn == ScriptSceneNames.cEntityHandle))
 				body.AppendF("\tif (!frame.ExpectEntityIn({}, {})) return;\n", slotIndex, sceneExpr);
 			// An optional argument is read only when the script passed it; when it did not,
 			// the call below is the shorter arity and the COMPILER supplies the default, in
@@ -1268,10 +1286,10 @@ static class ScriptSurfaceWalker
 		case .Service:
 			// A service that knows its entities' scene tags the ones it answers with it, and
 			// checks the ones it takes against it.
-			if (ctx.Type.ImplementsInterface(typeof(IScriptEntityScene)))
+			if (ImplementsByName(ctx.Type, ScriptSceneNames.cEntitySceneInterface))
 				outExpr.Set("self.EntityScene");
 		case .Plain:
-			if ((ctx.Kind == .Class) && (ctx.FullName == "Sedulous.Scene.Scene"))
+			if ((ctx.Kind == .Class) && (ctx.FullName == ScriptSceneNames.cScene))
 				outExpr.Set("self");
 		default:
 		}
@@ -1313,7 +1331,7 @@ static class ScriptSurfaceWalker
 			outCode.Append("\tif (scene == null) { frame.Fail(\"the entity has no scene\"); return; }\n");
 		else
 			outCode.AppendF("\tif (scene == null) {{ frame.Result = {}; return; }}\n", noScene);
-		if (ctx.FullName == "Sedulous.Scene.Scene")
+		if (ctx.FullName == ScriptSceneNames.cScene)
 			outCode.Append("\tlet self = scene;\n");
 		else if (ctx.Role == .SceneFacade)
 			outCode.AppendF("\tlet self = SceneFacades.Resolve<{}>(scene);\n", ctx.FullName);

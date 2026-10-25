@@ -242,6 +242,32 @@ static class FixtureScriptTests
 		Test.Assert(vm.Problems.Back.Contains("another scene"), vm.Problems.Back);
 	}
 
+	/// Two entities are the same only in the same scene: one handle in two scenes is two entities.
+	[Test]
+	public static void AnEntityEqualsOnlyItselfInItsOwnScene()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let vm = Bound(s);
+		defer delete vm;
+		let ok = vm.Compile("t", "t.as", """
+			bool same(const Entity &in x, const Entity &in y) { return x == y; }
+			""");
+		Dump(vm);
+		Test.Assert(ok, "compiled");
+
+		let a = scope Scene("a");
+		let b = scope Scene("b");
+		let entity = a.CreateEntity("e");
+		var r = ScriptValue.Nil;
+		var args = ScriptValue[2](.FromEntity(entity, a), .FromEntity(entity, a));
+		Test.Assert(vm.Call("t", "bool same(const Entity &in, const Entity &in)", args, ref r));
+		Test.Assert(r.AsBool, "itself");
+		args[1] = .FromEntity(entity, b);
+		Test.Assert(vm.Call("t", "bool same(const Entity &in, const Entity &in)", args, ref r));
+		Test.Assert(!r.AsBool, "the same handle in another scene");
+	}
+
 	/// Lists as the add-on's arrays: an array in, an array the callee fills, an array of
 	/// handles back, and a list field read and replaced.
 	[Test]

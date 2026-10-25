@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using AngelScript;
 using Sedulous.Core;
-using Sedulous.Scene;
 using Sedulous.Script;
 
 namespace Sedulous.Script.AngelScript;
@@ -132,7 +131,7 @@ extension AngelScriptRuntime
 		case .Quaternion: typeof(Quaternion).GetFullName(outName);
 		case .Color: typeof(Color).GetFullName(outName);
 		case .Guid: typeof(Guid).GetFullName(outName);
-		case .Entity: typeof(EntityHandle).GetFullName(outName);
+		case .Entity: outName.Append(ScriptSceneNames.cEntityHandle);
 		}
 	}
 
@@ -257,12 +256,12 @@ extension AngelScriptRuntime
 				ReturnBool(gen, *(Guid*)self == *Arg<Guid>(gen));
 		case .Entity:
 			if (b.Operator == .Construct)
-				*(ScriptEntity*)self = .(.Invalid, null);
+				*(ScriptEntity*)self = ScriptEntity.Invalid;
 			else if (b.Operator == .Equals)
 			{
 				let a = (ScriptEntity*)self;
 				let other = Arg<ScriptEntity>(gen);
-				ReturnBool(gen, (a.Handle == other.Handle) && (a.Scene === other.Scene));
+				ReturnBool(gen, (a.Index == other.Index) && (a.Generation == other.Generation) && (a.Owner === other.Owner));
 			}
 		}
 	}
