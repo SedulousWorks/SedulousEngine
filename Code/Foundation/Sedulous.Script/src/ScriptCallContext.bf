@@ -1,5 +1,4 @@
 using System;
-using Sedulous.Scene;
 
 namespace Sedulous.Script;
 
@@ -11,13 +10,6 @@ abstract class ScriptCallContext
 	/// names one: an entity value with no owner of its own, or a system reached with no
 	/// object. Null outside any.
 	public Object AmbientOwner = null;
-
-	/// The ambient owner as a scene, null when it is none.
-	public Scene Scene
-	{
-		get => AmbientOwner as Scene;
-		set => AmbientOwner = value;
-	}
 
 	/// The last failure a frame reported, for a host with no exception to raise.
 	public String LastError = new .() ~ delete _;

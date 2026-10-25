@@ -1,5 +1,4 @@
 using System;
-using Sedulous.Scene;
 
 namespace Sedulous.Script;
 
@@ -60,9 +59,6 @@ struct ScriptCallFrame
 		Fail(scope $"argument {i}: expected {kind}{(typeName.IsEmpty ? "" : " ")}{typeName}, got {Args[i].Kind}");
 		return false;
 	}
-
-	/// The scene an entity value resolves in: its own, else the context's.
-	public Scene SceneOf(ScriptValue entity) => entity.AsEntityScene ?? Context.Scene;
 
 	/// Argument `i`, an entity, belongs to `owner`, or a failure. An entity that names no
 	/// owner is taken to be in it, and a call in none (a service with no scene now) takes any.

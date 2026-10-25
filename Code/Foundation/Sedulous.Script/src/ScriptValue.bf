@@ -1,6 +1,5 @@
 using System;
 using Sedulous.Core;
-using Sedulous.Scene;
 
 namespace Sedulous.Script;
 
@@ -31,21 +30,7 @@ struct ScriptEntity
 		Owner = owner;
 	}
 
-	public this(EntityHandle handle, Scene scene) : this(handle.Index, handle.Generation, scene) {}
-
 	public static ScriptEntity Invalid => .(cInvalidIndex, 0, null);
-
-	public EntityHandle Handle
-	{
-		get => .(Index, Generation);
-		set mut { Index = value.Index; Generation = value.Generation; }
-	}
-
-	public Scene Scene
-	{
-		get => Owner as Scene;
-		set mut { Owner = value; }
-	}
 }
 
 [Union]
@@ -88,7 +73,6 @@ struct ScriptValue
 	public static ScriptValue FromString(StringView v) { var r = ScriptValue(); r.Kind = .String; r.Data.String = v; return r; }
 	public static ScriptValue FromGuid(Guid v) { var r = ScriptValue(); r.Kind = .Guid; r.Data.Guid = v; return r; }
 	public static ScriptValue FromEntityRef(ScriptEntity v) { var r = ScriptValue(); r.Kind = .Entity; r.Data.Entity = v; return r; }
-	public static ScriptValue FromEntity(EntityHandle v, Scene scene = null) => FromEntityRef(.(v.Index, v.Generation, scene));
 	public static ScriptValue FromFloat2(Float2 v) { var r = ScriptValue(); r.Kind = .Float2; r.Data.Float2 = v; return r; }
 	public static ScriptValue FromFloat3(Float3 v) { var r = ScriptValue(); r.Kind = .Float3; r.Data.Float3 = v; return r; }
 	public static ScriptValue FromFloat4(Float4 v) { var r = ScriptValue(); r.Kind = .Float4; r.Data.Float4 = v; return r; }
@@ -114,9 +98,6 @@ struct ScriptValue
 	public ScriptEntity AsEntityRef => .(Data.Entity.Index, Data.Entity.Generation, AsEntityOwner);
 	/// The owner an entity value names, null when it names none.
 	public Object AsEntityOwner => (Kind == .Entity) ? Data.Entity.Owner : null;
-	public EntityHandle AsEntity => .(Data.Entity.Index, Data.Entity.Generation);
-	/// The scene an entity value names, null when it names none.
-	public Scene AsEntityScene => AsEntityOwner as Scene;
 	public Float2 AsFloat2 => Data.Float2;
 	public Float3 AsFloat3 => Data.Float3;
 	public Float4 AsFloat4 => Data.Float4;
