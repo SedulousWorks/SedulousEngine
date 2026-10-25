@@ -1,0 +1,13 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.Gamekit.ScriptSurface"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.GUI.Gamekit.ScriptSurface.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Gamekit" = "*"
+"Sedulous.Script" = "*"
