@@ -38,6 +38,12 @@ class AngelScriptBinding
 		case WeakEquals;
 		/// A weak handle as a handle to one of its bases: the same box, one more reference.
 		case WeakUpcast;
+		/// A counted object's reference count, up and down: IScriptCounted's own.
+		case CountedAddRef;
+		case CountedRelease;
+		/// A counted handle as a handle to one of its counted bases: the same object, one more
+		/// reference.
+		case CountedUpcast;
 		/// A value type's construct behaviour: Method is the constructor thunk.
 		case Construct;
 		/// `scene.Physics`: Owner.FromScene with the scene as Self.

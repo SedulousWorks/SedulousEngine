@@ -34,9 +34,9 @@ static class ScriptSurfaceWalkerTests
 		let s = scope ScriptSurface();
 		FixtureSurface.Populate(s);
 		// Vec2, Thing, SpecialThing, Mode, Cooker, the static block, WidgetComponent, its
-		// manager, the system, the Widgets facade, and the weakly held Gadget, Sprocket and
-		// Gizmo.
-		Test.Assert(FixtureSurface.TypeCount == 13, scope $"found {FixtureSurface.TypeCount}");
+		// manager, the system, the Widgets facade, the weakly held Gadget, Sprocket and Gizmo,
+		// and the counted Spool and Bobbin.
+		Test.Assert(FixtureSurface.TypeCount == 15, scope $"found {FixtureSurface.TypeCount}");
 		Test.Assert(s.Types.Count == FixtureSurface.TypeCount);
 		Test.Assert(s.Find(scope $"{cFixture}.Unmarked") == null);
 		Test.Assert(s.Find("Sedulous.Script.Fixture.FixtureSurface") == null, "the root itself is off");
@@ -226,6 +226,30 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(s.Find(scope $"{cFixture}.Gizmo").WeakRootTypeName == gadgetName);
 	}
 
+	/// A class that is IScriptCounted, and every class derived from it, is Counted: its handles
+	/// cross as Counted, and a script may make one.
+	[Test]
+	public static void ACountedClassIsCountedAndMadeByScripts()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let spoolName = scope $"{cFixture}.Spool";
+
+		let spool = s.Find(spoolName);
+		Test.Assert((spool != null) && (spool.Kind == .Class) && (spool.Role == .Counted));
+		let ctor = Method(spool, "this");
+		Test.Assert((ctor != null) && ctor.IsConstructor && (ctor.ReturnKind == .Counted) && ctor.IsCallable, "a constructor");
+		let next = Field(spool, "Next");
+		Test.Assert((next != null) && (next.Kind == .Counted) && (next.TypeName == spoolName) && (next.Set != null), "a member naming it crosses as Counted");
+		let holds = Method(spool, "Holds");
+		Test.Assert((holds != null) && (holds.Params[0].Kind == .Counted) && holds.IsCallable);
+		Test.Assert(Method(spool, "Make").ReturnKind == .Counted);
+
+		let bobbin = s.Find(scope $"{cFixture}.Bobbin");
+		Test.Assert((bobbin != null) && (bobbin.Role == .Counted), "derived, and counted too");
+		Test.Assert(Method(bobbin, "this") != null);
+	}
+
 	[Test]
 	public static void TheNullRuntimeDescribesWhatItBound()
 	{
@@ -237,7 +261,7 @@ static class ScriptSurfaceWalkerTests
 
 		let text = scope String();
 		vm.Describe(text);
-		Test.Assert(text.StartsWith("script surface: 13 types, "), scope String(text.Substring(0, 80)));
+		Test.Assert(text.StartsWith("script surface: 15 types, "), scope String(text.Substring(0, 80)));
 		Test.Assert(text.Contains(" 0 blocked, domains: Runtime Pipeline"));
 		Test.Assert(text.Contains("== domain Pipeline =="));
 		Test.Assert(text.Contains("struct Vec2 [all public] \"Vector 2\""));
@@ -256,6 +280,7 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(text.Contains("class WidgetsFacade [SceneFacade] \"Widgets\""), "the facade role, reached as Widgets");
 		Test.Assert(text.Contains("class Sprocket [Weak]\n"), "the weak role");
 		Test.Assert(text.Contains("    Other: Gadget\n"), "a weak member, not blocked");
+		Test.Assert(text.Contains("class Bobbin [Counted]\n"), "the counted role");
 		Test.Assert(text.Contains("    PokeAndTick(entity: EntityHandle) -> int [on entity: PokeAndTick]"));
 		Test.Assert(text.Contains("    Nudge(entity: EntityHandle, amount: float = ...)\n"), "not on the entity");
 		Test.Assert(!text.Contains("Scratch") && !text.Contains("Unmarked") && !text.Contains("NotExposed"));
@@ -271,21 +296,24 @@ static class ScriptSurfaceWalkerTests
 	}
 
 	/// The facade closure keeps what a script reaches from the facades, the globals, the
-	/// marked components (a component bringing its marked manager) and the weakly held
-	/// classes, transitively through their members, and cuts the rest however marked.
+	/// marked components (a component bringing its marked manager), the weakly held classes
+	/// and the counted classes a script can make, transitively through their members, and cuts
+	/// the rest however marked.
 	[Test]
 	public static void TheFacadeClosureIsWhatTheFacadesReach()
 	{
 		let s = scope ScriptSurface();
 		FixtureFacadeSurface.Populate(s);
-		// The Widgets facade, the static block, WidgetComponent and its manager, and the weakly
-		// held Gadget, Sprocket and Gizmo, each a seed of its own.
-		Test.Assert(FixtureFacadeSurface.TypeCount == 7, scope $"found {FixtureFacadeSurface.TypeCount}");
+		// The Widgets facade, the static block, WidgetComponent and its manager, the weakly
+		// held Gadget, Sprocket and Gizmo, and the counted Spool and Bobbin, each a seed of its
+		// own by its marked constructor.
+		Test.Assert(FixtureFacadeSurface.TypeCount == 9, scope $"found {FixtureFacadeSurface.TypeCount}");
 		Test.Assert(s.Find(scope $"{cFixture}.WidgetsFacade") != null, "the facade");
 		Test.Assert(s.Find(scope $"{cFixture}.Thing") == null, "a marked class nothing reaches");
 		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponent").Role == .Component, "a marked component");
 		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponentManager") != null, "and its marked manager");
 		Test.Assert(s.Find(scope $"{cFixture}.Gizmo").Role == .Weak, "a weakly held class, though nothing names it");
+		Test.Assert(s.Find(scope $"{cFixture}.Bobbin").Role == .Counted, "a counted class a script can make, though nothing names it");
 		let text = scope String();
 		let vm = scope Sedulous.Script.Null.NullScriptRuntime();
 		vm.Bind(s);
@@ -301,8 +329,8 @@ static class ScriptSurfaceWalkerTests
 	{
 		let s = scope ScriptSurface();
 		FixtureDomainsSurface.Populate(s);
-		// The runtime closure's seven, and the Pipeline domain's Cooker.
-		Test.Assert(FixtureDomainsSurface.TypeCount == 8, scope $"found {FixtureDomainsSurface.TypeCount}");
+		// The runtime closure's nine, and the Pipeline domain's Cooker.
+		Test.Assert(FixtureDomainsSurface.TypeCount == 10, scope $"found {FixtureDomainsSurface.TypeCount}");
 		Test.Assert(s.Find(scope $"{cFixture}.WidgetsFacade") != null, "the facade");
 		Test.Assert(s.Find(scope $"{cFixture}.Cooker") != null, "the Pipeline domain type");
 		Test.Assert(s.Find(scope $"{cFixture}.Thing") == null, "a marked class nothing reaches");

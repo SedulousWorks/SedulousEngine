@@ -12,12 +12,18 @@ namespace Sedulous.Script;
 /// A class, struct or enum crosses only when it is itself on the surface (`known`): a
 /// script cannot hold, size or name a type the surface does not describe. Ref<T> crosses as
 /// the Guid it holds, whatever T. A class that is IScriptWeaklyHeld crosses as a Weak handle,
-/// resolved to the object (or null, when it is gone) as it is read.
+/// resolved to the object (or null, when it is gone) as it is read; one that is IScriptCounted
+/// crosses as a Counted reference, borrowed.
 static class ScriptValueMap
 {
 	/// Whether a class is held by scripts only weakly.
 	[Comptime]
 	public static bool IsWeak(Type type) => type.IsObject && type.ImplementsInterface(typeof(IScriptWeaklyHeld));
+
+	/// Whether a class is held by scripts through a counted reference. A weakly held class
+	/// never is: the walk refuses one that is both.
+	[Comptime]
+	public static bool IsCounted(Type type) => type.IsObject && !IsWeak(type) && type.ImplementsInterface(typeof(IScriptCounted));
 
 	/// Whether a named type is on the surface.
 	[Comptime]
@@ -61,6 +67,8 @@ static class ScriptValueMap
 			outKind.Append("List");
 		else if (IsWeak(type))
 			outKind.Append("Weak");
+		else if (IsCounted(type))
+			outKind.Append("Counted");
 		else if (type.IsObject)
 			outKind.Append("Object");
 		else if (type.IsStruct && !type.IsPointer && !name.EndsWith("]"))
@@ -92,7 +100,7 @@ static class ScriptValueMap
 	public static void ExpectFor(Type type, int i, String outCode)
 	{
 		let kind = KindOf(type, .. scope .());
-		if ((kind == "Object") || (kind == "Struct") || (kind == "Weak"))
+		if ((kind == "Object") || (kind == "Struct") || (kind == "Weak") || (kind == "Counted"))
 			outCode.AppendF("\tif (!frame.Expect({}, .{}, \"{}\")) return;\n", i, kind, type.GetFullName(.. scope .()));
 		else if (kind == "List")
 			outCode.AppendF("\tif (!frame.Expect({}, .List, \"{}\")) return;\n", i, ElementOf(type).GetFullName(.. scope .()));
@@ -129,6 +137,8 @@ static class ScriptValueMap
 			outKey.AppendF("List<{}>", KindKey(element, .. scope .()));
 		else if (IsWeak(type))
 			outKey.AppendF("Weak:{}", name);
+		else if (IsCounted(type))
+			outKey.AppendF("Counted:{}", name);
 		else if (type.IsObject)
 			outKey.AppendF("Object:{}", name);
 		else
@@ -194,6 +204,8 @@ static class ScriptValueMap
 			outCode.AppendF("({}){}.AsInt", name, value);
 		else if (IsWeak(type))
 			outCode.AppendF("({}.ResolveWeak() as {})", value, name);
+		else if (IsCounted(type))
+			outCode.AppendF("({}.AsCounted as {})", value, name);
 		else if (type.IsObject)
 			outCode.AppendF("({}){}.AsObject", name, value);
 		else
@@ -307,6 +319,10 @@ static class ScriptValueMap
 		else if (IsWeak(type))
 		{
 			outCode.AppendF("{} = .FromWeak({});", slot, expr);
+		}
+		else if (IsCounted(type))
+		{
+			outCode.AppendF("{} = .FromCounted({});", slot, expr);
 		}
 		else if (type.IsObject)
 		{

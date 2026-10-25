@@ -16,6 +16,10 @@ namespace Sedulous.Script.AngelScript;
 ///    and the rest) the same, so a script holds them by value and passes them `const &in`;
 ///  - a class is a reference type without a count (the engine owns its objects), held by
 ///    handle; an object a factory creates is kept by the runtime and freed with it;
+///  - a counted class (IScriptCounted) is a counted reference type whose handle is the object
+///    itself: each handle a script keeps is one reference, so the object lives while a script
+///    or a native holder does, and a script-made one is freed by its last release; a handle
+///    converts to its counted bases';
 ///  - an entity is a value carrying its handle AND its scene, so a call on it resolves in
 ///    that scene however many scenes there are; a component is a counted handle holding the
 ///    entity, null when the entity has none: `MeshComponent::of(entity).Visible`, and a use
@@ -99,7 +103,8 @@ class AngelScriptRuntime : ScriptRuntime
 	private List<AngelScriptObject> mObjects = new .() ~ DeleteContainerAndItems!(_);
 	private AngelScriptCallContext mCallContext = new .() ~ delete _;
 	private List<AngelScriptBinding> mBindings = new .() ~ DeleteContainerAndItems!(_);
-	/// Objects factories made for scripts, freed with the runtime.
+	/// Objects factories made for scripts, freed with the runtime. Never a counted one, which
+	/// its last handle frees.
 	private List<Object> mOwned = new .() ~ DeleteContainerAndItems!(_);
 	/// The per role-type handle a global property points at: a non-null token, since the
 	/// thunk resolves the real system from the context.
@@ -400,9 +405,10 @@ class AngelScriptRuntime : ScriptRuntime
 				ApiType(AsName(t), t.FullName, false);
 			}
 		case .Class:
-			// A weakly held class is a counted handle of the backend's own (WeakHandle); any
-			// other is the engine's object itself, uncounted.
-			let classFlags = (t.Role == .Weak) ? AS.asOBJ_REF : (AS.asOBJ_REF | AS.asOBJ_NOCOUNT);
+			// A weakly held class is a counted handle of the backend's own (WeakHandle), a
+			// counted class the object itself, counted; any other is the engine's object
+			// itself, uncounted.
+			let classFlags = ((t.Role == .Weak) || (t.Role == .Counted)) ? AS.asOBJ_REF : (AS.asOBJ_REF | AS.asOBJ_NOCOUNT);
 			if (Check(AS.asc_engine_register_object_type(mEngine, scope String(AsName(t)).CStr(), 0, classFlags), t.FullName))
 			{
 				mByName[new String(AsName(t))] = t;
@@ -431,6 +437,9 @@ class AngelScriptRuntime : ScriptRuntime
 		// `==`, its bases' conversions and `X::Of(node)`.
 		if (t.Role == .Weak)
 			BindWeakHandle(t);
+		// A counted class: its count, and its counted bases' conversions.
+		if (t.Role == .Counted)
+			BindCountedHandle(t);
 
 		let statics = scope String();
 		if (t.Kind != .Global)
@@ -643,6 +652,63 @@ class AngelScriptRuntime : ScriptRuntime
 		if (Check(rc, scope $"{t.FullName}::Of"))
 			Record(api, "Of", scope $"{typeName}@ {typeName}::Of({rootName}@ node)", true, .Method);
 	}
+
+	/// A counted handle's count, IScriptCounted's own, and a conversion to each counted base:
+	/// the same object, one more reference.
+	private void BindCountedHandle(ScriptTypeInfo t)
+	{
+		let typeName = scope String(AsName(t));
+		let api = ApiType(typeName, t.FullName, false);
+		for (let kind in AngelScriptBinding.Role[2](.CountedAddRef, .CountedRelease))
+		{
+			let b = new AngelScriptBinding();
+			b.Kind = kind;
+			b.Owner = t;
+			mBindings.Add(b);
+			let behaviour = (kind == .CountedAddRef) ? AS.asBEHAVE_ADDREF : AS.asBEHAVE_RELEASE;
+			Check(AS.asc_engine_register_object_behaviour(mEngine, typeName.CStr(), behaviour, "void f()", Internal.UnsafeCastToPtr(b)), t.FullName);
+		}
+
+		// A base that is not counted is an uncounted handle, which would drop the count on the
+		// floor, so it gets no conversion.
+		var baseType = (t.BeefType != null) ? t.BeefType.BaseType : null;
+		while (baseType != null)
+		{
+			let based = SurfaceTypeOf(baseType);
+			if ((based != null) && (based.Role == .Counted))
+			{
+				let baseName = scope String(AsName(based));
+				for (int constant < 2)
+				{
+					let up = new AngelScriptBinding();
+					up.Kind = .CountedUpcast;
+					up.Owner = t;
+					mBindings.Add(up);
+					let decl = scope String();
+					let spelled = scope String();
+					if (constant == 0)
+					{
+						decl.AppendF("{}@ opImplCast()", baseName);
+						spelled.AppendF("{}@ {}.opImplCast()", baseName, typeName);
+					}
+					else
+					{
+						decl.AppendF("const {}@ opImplCast() const", baseName);
+						spelled.AppendF("const {}@ {}.opImplCast() const", baseName, typeName);
+					}
+					if (Check(AS.asc_engine_register_object_method(mEngine, typeName.CStr(), decl.CStr(), Internal.UnsafeCastToPtr(up)), scope $"{t.FullName} to {based.FullName}"))
+						Record(api, "opImplCast", spelled, false, .Method);
+				}
+			}
+			baseType = baseType.BaseType;
+		}
+	}
+
+	/// The counted object behind a handle's pointer: a Beef object, cast to its counting.
+	private static IScriptCounted CountedAt(void* object) => Internal.UnsafeCastToObject(object) as IScriptCounted;
+
+	/// The pointer a counted handle holds: the object itself.
+	private static void* PointerOf(IScriptCounted counted) => (counted != null) ? Internal.UnsafeCastToPtr((Object)counted) : null;
 
 	/// Whether a type reflects a field or a method of this name.
 	private static bool DeclaresMember(ScriptTypeInfo t, StringView name)
@@ -1001,6 +1067,12 @@ class AngelScriptRuntime : ScriptRuntime
 				return false;
 			outDecl.AppendF("{}@", AsName(w));
 			return true;
+		case .Counted:
+			let counted = mSurface.Find(typeName);
+			if ((counted == null) || !mByName.ContainsKey(scope String(AsName(counted))))
+				return false;
+			outDecl.AppendF("{}@", AsName(counted));
+			return true;
 		case .List:
 			// A List<X> is the add-on's array<X>, by handle: the script's own array, filled
 			// from the list and read back into it.
@@ -1051,7 +1123,7 @@ class AngelScriptRuntime : ScriptRuntime
 			if (t.Kind == .Enum)
 				return .Int;
 			if (t.Kind == .Class)
-				return (t.Role == .Weak) ? .Weak : .Object;
+				return (t.Role == .Weak) ? .Weak : ((t.Role == .Counted) ? .Counted : .Object);
 			return .Struct;
 		}
 		return .Nil;
@@ -1132,7 +1204,7 @@ class AngelScriptRuntime : ScriptRuntime
 		{
 		case .String, .Guid, .Entity, .Float2, .Float3, .Float4, .Quaternion, .Color, .Struct:
 			return true;
-		case .List, .Delegate, .Weak:
+		case .List, .Delegate, .Weak, .Counted:
 			return false;
 		case .Object:
 			return typeName == "System.String";
@@ -1158,7 +1230,14 @@ class AngelScriptRuntime : ScriptRuntime
 		// Everything the call packs into scratch, lists and struct elements, is consumed
 		// by the time it returns; a nested call releases only its own.
 		let mark = context.ScratchMark;
-		defer { context.ReleaseScratch(mark); }
+		// The references the call handed over likewise, once WriteReturn has taken the
+		// script's own.
+		let pendingMark = context.PendingMark;
+		defer
+		{
+			context.ReleaseScratch(mark);
+			context.ReleasePending(pendingMark);
+		}
 		switch (b.Kind)
 		{
 		case .ComponentOf:
@@ -1247,6 +1326,20 @@ class AngelScriptRuntime : ScriptRuntime
 			AS.asc_generic_set_return_address(gen, @box);
 			return;
 		}
+		case .CountedAddRef:
+			CountedAt(AS.asc_generic_get_object(gen)).AddRef();
+			return;
+		case .CountedRelease:
+			CountedAt(AS.asc_generic_get_object(gen)).ReleaseRef();
+			return;
+		case .CountedUpcast:
+		{
+			// The returned handle is a reference of its own.
+			let object = AS.asc_generic_get_object(gen);
+			CountedAt(object).AddRef();
+			AS.asc_generic_set_return_address(gen, object);
+			return;
+		}
 		case .StartCoroutine:
 			StartCoroutine((AS.Function*)AS.asc_generic_get_arg_address(gen, 0));
 			return;
@@ -1326,7 +1419,7 @@ class AngelScriptRuntime : ScriptRuntime
 		if (b.Kind == .Construct)
 		{
 			target = AS.asc_generic_get_object(gen);
-			resultKind = (owner.Role == .Component) ? .Entity : owner.Kind == .Struct ? KindOfStruct(owner) : .Object;
+			resultKind = (owner.Role == .Component) ? .Entity : owner.Kind == .Struct ? KindOfStruct(owner) : ((owner.Role == .Counted) ? .Counted : .Object);
 		}
 		else if (b.Kind == .Get)
 		{
@@ -1352,6 +1445,13 @@ class AngelScriptRuntime : ScriptRuntime
 
 		if (frame.Failed)
 		{
+			// A thunk fails only before its callee runs, so no callee took the delegates
+			// ReadArg made for it: they go here, or nothing would.
+			for (int i = 0; i < count; i++)
+			{
+				if (kinds[i] == .Delegate)
+					delete args[i].AsDelegate;
+			}
 			AS.asc_set_active_exception(scope String(frame.Error).CStr());
 			return;
 		}
@@ -1378,7 +1478,15 @@ class AngelScriptRuntime : ScriptRuntime
 		// The result.
 		if (b.Kind == .Construct)
 		{
-			if (owner.Kind == .Class)
+			if (owner.Role == .Counted)
+			{
+				// A counted factory: the script's handle is a reference of its own, and the
+				// one the constructor made is released with the call's, leaving the script's.
+				let made = frame.Result.AsCounted;
+				made?.AddRef();
+				AS.asc_generic_set_return_address(gen, PointerOf(made));
+			}
+			else if (owner.Kind == .Class)
 			{
 				// A factory: the object is the script's to use and the runtime's to free.
 				let made = frame.Result.AsObject;
@@ -1438,6 +1546,8 @@ class AngelScriptRuntime : ScriptRuntime
 			return .Entity;
 		if (owner.Role == .Weak)
 			return .Weak;
+		if (owner.Role == .Counted)
+			return .Counted;
 		if (owner.Kind == .Class)
 			return .Object;
 		return KindOfStruct(owner);
@@ -1449,6 +1559,7 @@ class AngelScriptRuntime : ScriptRuntime
 		{
 		case .Object: return .FromObject(Internal.UnsafeCastToObject(memory));
 		case .Weak: return .FromWeakRef(((WeakHandle*)memory).Ref);
+		case .Counted: return .FromCounted(CountedAt(memory));
 		case .Struct: return .FromStruct(memory, owner.BeefType);
 		default: return ReadValue(memory, kind, "");
 		}
@@ -1512,6 +1623,10 @@ class AngelScriptRuntime : ScriptRuntime
 			// The box stays the engine's, released after the call; the value borrows its table.
 			let @box = (WeakHandle*)AS.asc_generic_get_arg_object(gen, arg);
 			return (@box != null) ? .FromWeakRef(@box.Ref) : .Nil;
+		case .Counted:
+			// Borrowed: the engine releases its handle after the call, and a callee that keeps
+			// the object takes a reference of its own.
+			return .FromCounted(CountedAt(AS.asc_generic_get_arg_object(gen, arg)));
 		default:
 			return ReadValue(AS.asc_generic_get_arg_address(gen, arg), kind, typeName);
 		}
@@ -1692,6 +1807,12 @@ class AngelScriptRuntime : ScriptRuntime
 		case .Weak:
 			// A box of its own, its one reference passing to the script with the handle.
 			AS.asc_generic_set_return_address(gen, (value.Kind == .Weak) ? NewWeakBox(value.Data.Weak) : null);
+		case .Counted:
+			// The script's handle is a reference of its own, lent or handed over alike: a
+			// handed one is released after the call.
+			let counted = value.AsCounted;
+			counted?.AddRef();
+			AS.asc_generic_set_return_address(gen, PointerOf(counted));
 		case .Struct:
 			// Built in place at the return location through ResultTarget; nothing to do,
 			// unless the thunk answered nothing.
@@ -1934,6 +2055,9 @@ class AngelScriptRuntime : ScriptRuntime
 		case .Weak:
 			let resolved = value.ResolveWeak();
 			outText.Append((resolved != null) ? resolved.GetType().GetName(.. scope .()) : "gone");
+		case .Counted:
+			let counted = value.AsCounted;
+			outText.Append((counted != null) ? ((Object)counted).GetType().GetName(.. scope .()) : "null");
 		}
 	}
 
@@ -2078,7 +2202,9 @@ class AngelScriptRuntime : ScriptRuntime
 			{
 				if ((typeId & AS.asTYPEID_SCRIPTOBJECT) != 0)
 					return .Nil;
-				return (WeakTypeOfId(typeId) != null) ? .Weak : .Object;
+				if (WeakTypeOfId(typeId) != null)
+					return .Weak;
+				return (CountedTypeOfId(typeId) != null) ? .Counted : .Object;
 			}
 			let name = StringView(AS.asc_typeinfo_get_name(AS.asc_engine_get_type_info_by_id(mEngine, typeId)));
 			if (name == "string")
@@ -2092,14 +2218,20 @@ class AngelScriptRuntime : ScriptRuntime
 
 	/// The surface type of an AngelScript type id when it is a weak handle's, else null: what
 	/// tells a box apart from a Beef object behind a handle slot.
-	private ScriptTypeInfo WeakTypeOfId(int32 typeId)
+	private ScriptTypeInfo WeakTypeOfId(int32 typeId) => ClassTypeOfId(typeId, .Weak);
+
+	/// The surface type of an AngelScript type id when it is a counted class's, else null: a
+	/// handle slot whose object has its count kept.
+	private ScriptTypeInfo CountedTypeOfId(int32 typeId) => ClassTypeOfId(typeId, .Counted);
+
+	private ScriptTypeInfo ClassTypeOfId(int32 typeId, ScriptTypeRole role)
 	{
 		if (((typeId & AS.asTYPEID_MASK_OBJECT) == 0) || ((typeId & AS.asTYPEID_SCRIPTOBJECT) != 0))
 			return null;
 		let info = AS.asc_engine_get_type_info_by_id(mEngine, typeId & ~AS.asTYPEID_OBJHANDLE);
 		if (info == null)
 			return null;
-		if (mByName.TryGetValue(scope String(StringView(AS.asc_typeinfo_get_name(info))), let t) && (t.Kind == .Class) && (t.Role == .Weak))
+		if (mByName.TryGetValue(scope String(StringView(AS.asc_typeinfo_get_name(info))), let t) && (t.Kind == .Class) && (t.Role == role))
 			return t;
 		return null;
 	}
@@ -2165,6 +2297,8 @@ class AngelScriptRuntime : ScriptRuntime
 			{
 				if (WeakTypeOfId(typeId) != null)
 					return (value.Kind == .Weak) || value.IsNil;
+				if (CountedTypeOfId(typeId) != null)
+					return (value.Kind == .Counted) || value.IsNil;
 				return (value.Kind == .Object) || value.IsNil;
 			}
 			let name = StringView(AS.asc_typeinfo_get_name(AS.asc_engine_get_type_info_by_id(mEngine, typeId)));
@@ -2247,6 +2381,9 @@ class AngelScriptRuntime : ScriptRuntime
 				// A weak handle is the backend's box, not a Beef object.
 				if (WeakTypeOfId(typeId) != null)
 					return .FromWeakRef(((WeakHandle*)target).Ref);
+				// A counted object, borrowed from the slot that holds its reference.
+				if (CountedTypeOfId(typeId) != null)
+					return .FromCounted(CountedAt(target));
 				return .FromObject(Internal.UnsafeCastToObject(target));
 			}
 			let name = StringView(AS.asc_typeinfo_get_name(AS.asc_engine_get_type_info_by_id(mEngine, typeId)));
@@ -2287,6 +2424,18 @@ class AngelScriptRuntime : ScriptRuntime
 					*(void**)address = (value.Kind == .Weak) ? NewWeakBox(value.Data.Weak) : null;
 					if (old != null)
 						ReleaseWeakBox(old);
+					return;
+				}
+				// A counted handle: the new object's reference taken before the old one's is
+				// dropped, so writing a slot its own object again never frees it.
+				if (CountedTypeOfId(typeId) != null)
+				{
+					let previous = *(void**)address;
+					let counted = value.AsCounted;
+					counted?.AddRef();
+					*(void**)address = PointerOf(counted);
+					if (previous != null)
+						CountedAt(previous).ReleaseRef();
 					return;
 				}
 				// Only uncounted engine handles are written; a script object handle would
@@ -2445,6 +2594,16 @@ class AngelScriptRuntime : ScriptRuntime
 						AS.asc_context_set_arg_address(mContext, i, null);
 					}
 				}
+				else if (CountedTypeOfId(typeId) != null)
+				{
+					// SetArgObject takes the context's own reference, as for a weak box, which
+					// the call releases; the value stays borrowed.
+					let counted = value.AsCounted;
+					if (counted != null)
+						AS.asc_context_set_arg_object(mContext, i, PointerOf(counted));
+					else
+						AS.asc_context_set_arg_address(mContext, i, null);
+				}
 				else
 				{
 					AS.asc_context_set_arg_address(mContext, i, (value.AsObject != null) ? Internal.UnsafeCastToPtr(value.AsObject) : null);
@@ -2497,6 +2656,19 @@ class AngelScriptRuntime : ScriptRuntime
 				// A weak handle's box dies with Unprepare; the value only borrows its table.
 				if (WeakTypeOfId(typeId) != null)
 					return (returned != null) ? .FromWeakRef(((WeakHandle*)returned).Ref) : .Nil;
+				// A counted object's context reference dies with Unprepare too: one taken here
+				// keeps it for the caller, released with the call that consumes the result, or
+				// with the context.
+				if (CountedTypeOfId(typeId) != null)
+				{
+					let counted = CountedAt(returned);
+					if (counted != null)
+					{
+						counted.AddRef();
+						mCallContext.ReleaseAfterCall(counted);
+					}
+					return .FromCounted(counted);
+				}
 				return .FromObject(Internal.UnsafeCastToObject(returned));
 			}
 			// A value type: known by its name.

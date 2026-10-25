@@ -23,4 +23,7 @@ enum ScriptTypeRole
 	/// resolves on every use: a member called through a gone one fails with ObjectGone.
 	/// WeakRootTypeName names the topmost weakly held base; Cast checks a handle's type.
 	case Weak;
+	/// A class held by a counted reference (IScriptCounted): a script's handle keeps it
+	/// alive, and the last release frees it. Self is the object, as for Plain.
+	case Counted;
 }

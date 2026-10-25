@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using Sedulous.Core;
 
 namespace Sedulous.Script;
 
@@ -14,6 +16,15 @@ abstract class ScriptCallContext
 	/// The last failure a frame reported, for a host with no exception to raise.
 	public String LastError = new .() ~ delete _;
 
+	/// The references calls handed over and the VM has yet to drop: one each, released once
+	/// the VM has taken its own (ReleasePending), or with the context.
+	private List<IScriptCounted> mPending = new .() ~ delete _;
+
+	public ~this()
+	{
+		ReleasePending(0);
+	}
+
 	/// The host's service of `type`, for a Service role call, or null when the run has none.
 	public abstract Object FindService(Type type);
 
@@ -27,6 +38,26 @@ abstract class ScriptCallContext
 
 	/// Where a struct result goes: scratch, unless the VM has a place of its own for it.
 	public virtual void* AllocStruct(Type type, int size, int align) => AllocScratch(size, align);
+
+	/// The reference a counted result carries, a constructor's or a [ScriptReturnsReference]
+	/// method's: released after the call, by when the VM has taken one of its own if it keeps
+	/// the object. Null is nothing to release.
+	public void ReleaseAfterCall(IScriptCounted counted)
+	{
+		if (counted != null)
+			mPending.Add(counted);
+	}
+
+	/// The pending high water mark before a call, and the release back to it once the call's
+	/// result is consumed, as for scratch: nested calls stack.
+	public int PendingMark => mPending.Count;
+
+	public void ReleasePending(int mark)
+	{
+		// One at a time: a release may free an object whose teardown calls back in.
+		while (mPending.Count > mark)
+			mPending.PopBack().ReleaseRef();
+	}
 
 	/// A list of `count` Nil values of `elementKind`, in scratch, for the thunk to fill.
 	public ScriptList* AllocList(int count, ScriptValueKind elementKind, StringView elementType)

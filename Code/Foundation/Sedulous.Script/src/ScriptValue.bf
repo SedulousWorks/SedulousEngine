@@ -85,6 +85,8 @@ struct ScriptValue
 	/// The weak handle to `held`; Nil when there is none, or it is in no table.
 	public static ScriptValue FromWeak(IScriptWeaklyHeld held) => (held != null) ? FromWeakRef(held.TakeScriptWeak()) : .Nil;
 	public static ScriptValue FromWeakRef(ScriptWeakRef v) { var r = ScriptValue(); r.Kind = v.IsEmpty ? .Nil : .Weak; r.Data.Weak = v; return r; }
+	/// A counted object, borrowed: no reference is taken. Nil for null.
+	public static ScriptValue FromCounted(IScriptCounted v) { var r = ScriptValue(); r.Kind = (v != null) ? .Counted : .Nil; r.Data.Object = (Object)v; return r; }
 
 	// ---- out ----
 
@@ -108,6 +110,7 @@ struct ScriptValue
 	public ScriptList* AsList => (Kind == .List) ? Data.List : null;
 	public ScriptDelegate AsDelegate => (Kind == .Delegate) ? (ScriptDelegate)Data.Object : null;
 	public ScriptWeakRef AsWeak => (Kind == .Weak) ? Data.Weak : default;
+	public IScriptCounted AsCounted => (Kind == .Counted) ? (Data.Object as IScriptCounted) : null;
 
 	/// What a weak handle names now: null when this is not one, or its object is gone.
 	public Object ResolveWeak() => (Kind == .Weak) ? Data.Weak.Resolve() : null;
@@ -129,8 +132,8 @@ struct ScriptValue
 	public double AsNumber => (Kind == .Int) ? (double)Data.Int : Data.Float;
 
 	/// Whether this value can fill a slot of `kind`, with `typeName` naming the class or
-	/// struct for the Object, Struct and Weak kinds. Exact is a kind match; a promotion is Int
-	/// into Float, or Nil into Object or Weak.
+	/// struct for the Object, Struct, Weak and Counted kinds. Exact is a kind match; a promotion
+	/// is Int into Float, or Nil into Object, Weak or Counted.
 	public bool Matches(ScriptValueKind kind, StringView typeName, out bool exact)
 	{
 		exact = Kind == kind;
@@ -170,6 +173,20 @@ struct ScriptValue
 				if (w.GetFullName(.. scope .()) == typeName)
 					return true;
 				w = w.BaseType;
+			}
+			return false;
+		case .Counted:
+			if (Kind == .Nil)
+				return true;
+			if (Kind != .Counted)
+				return false;
+			// The runtime type, or a base of it, as for an Object.
+			var c = Data.Object.GetType();
+			while (c != null)
+			{
+				if (c.GetFullName(.. scope .()) == typeName)
+					return true;
+				c = c.BaseType;
 			}
 			return false;
 		case .Delegate:

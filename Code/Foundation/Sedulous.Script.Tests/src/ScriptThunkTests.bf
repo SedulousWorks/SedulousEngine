@@ -678,4 +678,82 @@ static class ScriptThunkTests
 		Test.Assert(reuserHandle.ResolveWeak() == null, "a closed table answers nothing");
 		Test.Assert(reuserHandle.SameWeak(.FromWeak(reuser)));
 	}
+
+	/// A counted class crosses as a borrowed reference. A constructor's result and a
+	/// [ScriptReturnsReference] method's carry a reference, released after the call (by when a
+	/// VM keeping the object holds its own); a lent result is left alone; a derived object
+	/// fills its base's slot.
+	[Test]
+	public static void ACountedResultsReferenceIsReleasedAfterTheCall()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+		let spoolName = scope $"{cFixture}.Spool";
+		let bobbinName = scope $"{cFixture}.Bobbin";
+		let live = Spool.Live;
+
+		// The constructor: its one reference pending, released back to the mark.
+		let mark = ctx.PendingMark;
+		var frame = ScriptCallFrame(ctx, default);
+		Method(s, spoolName, "this").Invoke(ref frame);
+		Test.Assert(!frame.Failed && (frame.Result.Kind == .Counted));
+		let made = frame.Result.AsCounted as Spool;
+		Test.Assert((made != null) && (made.RefCount == 1) && (Spool.Live == live + 1));
+		Test.Assert(ctx.PendingMark == mark + 1, "the constructor's reference is pending");
+		made.AddRef(); // what a VM keeping it does
+		ctx.ReleasePending(mark);
+		Test.Assert((made.RefCount == 1) && (ctx.PendingMark == mark), "released after the call, the keeper's left");
+
+		// A method that hands its reference over: the same.
+		frame = ScriptCallFrame(ctx, default);
+		Method(s, spoolName, "Make").Invoke(ref frame);
+		let handed = frame.Result.AsCounted as Spool;
+		Test.Assert((handed != null) && (handed.Turns == 1) && (ctx.PendingMark == mark + 1));
+		ctx.ReleasePending(mark);
+		Test.Assert(Spool.Live == live + 1, "nothing kept it, so the release freed it");
+
+		// A lent result: nothing pending, the count untouched.
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromCounted(made);
+		Method(s, spoolName, "Itself").Invoke(ref frame);
+		Test.Assert(!frame.Failed && ((frame.Result.AsCounted as Spool) === made) && (made.RefCount == 1) && (ctx.PendingMark == mark));
+
+		// A field through Self, and the property that holds a reference.
+		var turns = ScriptValue[1](.FromInt(6));
+		frame = ScriptCallFrame(ctx, turns);
+		frame.Self = .FromCounted(made);
+		Field(s, spoolName, "Turns").Set(ref frame);
+		Test.Assert(!frame.Failed && (made.Turns == 6));
+		let bobbin = new Bobbin();
+		var next = ScriptValue[1](.FromCounted(bobbin));
+		frame = ScriptCallFrame(ctx, next);
+		frame.Self = .FromCounted(made);
+		Field(s, spoolName, "Next").Set(ref frame);
+		Test.Assert(!frame.Failed && (made.Next === bobbin) && (bobbin.RefCount == 2), "a derived one into its base's slot, held");
+		frame = ScriptCallFrame(ctx, next);
+		frame.Self = .FromCounted(made);
+		Method(s, spoolName, "Holds").Invoke(ref frame);
+		Test.Assert(!frame.Failed && frame.Result.AsBool);
+
+		// Matches: Nil passes, the type and a base pass, a base into a derived slot does not.
+		bool exact = false;
+		Test.Assert(ScriptValue.Nil.Matches(.Counted, spoolName, out exact) && !exact);
+		Test.Assert(ScriptValue.FromCounted(bobbin).Matches(.Counted, spoolName, out exact) && exact, "a bobbin is a spool");
+		Test.Assert(!ScriptValue.FromCounted(made).Matches(.Counted, bobbinName, out exact), "a spool is no bobbin");
+		Test.Assert(!ScriptValue.FromInt(1).Matches(.Counted, spoolName, out exact), "the wrong kind");
+		Test.Assert(!ScriptValue.FromObject(made).Matches(.Counted, spoolName, out exact), "an Object value is another kind");
+		Test.Assert(ScriptValue.FromCounted(null).IsNil);
+
+		// The wrong self fails, and says so.
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = .FromObject(made);
+		Method(s, spoolName, "Itself").Invoke(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains("self is not a Spool"));
+
+		// Every reference back: the bobbin's to the spool and to this test.
+		bobbin.ReleaseRef();
+		made.ReleaseRef();
+		Test.Assert(Spool.Live == live, scope $"{Spool.Live - live} spools left");
+	}
 }

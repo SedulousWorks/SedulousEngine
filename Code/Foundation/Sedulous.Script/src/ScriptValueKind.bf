@@ -34,4 +34,8 @@ enum ScriptValueKind : uint8
 	/// BORROWS its table, as a String borrows its text, so a VM that keeps one keeps its own
 	/// reference on the table. Resolved on every use; a gone one resolves to null.
 	case Weak;
+	/// A class held by a counted reference (IScriptCounted), in Data.Object. BORROWED, as a
+	/// String borrows its text: a VM that keeps one takes its own reference, and a callee
+	/// that hands one over has it released after the call (ScriptCallContext.ReleaseAfterCall).
+	case Counted;
 }

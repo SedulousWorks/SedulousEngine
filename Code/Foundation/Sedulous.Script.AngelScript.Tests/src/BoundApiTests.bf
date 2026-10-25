@@ -105,6 +105,16 @@ static class BoundApiTests
 		Test.Assert((sprocket != null) && HasSignature(sprocket, "Sprocket@ Sprocket::Of(Gadget@ node)"));
 		Test.Assert(HasSignature(sprocket, "Gadget@ Sprocket.opImplCast()") && HasSignature(sprocket, "const Gadget@ Sprocket.opImplCast() const"), "a handle to its base");
 
+		// A counted class: a script makes one, a factory hands one over, and a derived one's
+		// handle converts to its base's.
+		let spool = Find(api, "Spool");
+		Print(spool);
+		Test.Assert((spool != null) && HasSignature(spool, "Spool()") && HasSignature(spool, "Spool@ Spool::Make()"));
+		Test.Assert(HasSignature(spool, "Spool@ Spool.Next") && HasSignature(spool, "bool Spool.Holds(Spool@ s)"));
+		let bobbin = Find(api, "Bobbin");
+		Test.Assert((bobbin != null) && HasSignature(bobbin, "Bobbin()"));
+		Test.Assert(HasSignature(bobbin, "Spool@ Bobbin.opImplCast()") && HasSignature(bobbin, "const Spool@ Bobbin.opImplCast() const"), "a handle to its base");
+
 		// The global namespace: the language's coroutine verbs and the static block's function.
 		let global = Find(api, "");
 		Print(global);

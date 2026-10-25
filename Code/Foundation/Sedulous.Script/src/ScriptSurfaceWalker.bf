@@ -35,7 +35,7 @@ namespace Sedulous.Script;
 /// object in Self, else the context's scene; a component through its manager in the ENTITY'S
 /// scene (an entity value carries the scene it lives in) and the entity in Self; a service
 /// through the context; a weakly held class by resolving the handle in Self, a gone one
-/// failing with ObjectGone; a class or struct from Self itself. A scene system also gets a
+/// failing with ObjectGone; a counted class or a plain class or struct from Self itself. A scene system also gets a
 /// resolver, the scene's instance from a Scene self, which is how a script reaches
 /// `scene.Physics`. An entity a scene bound call answers is tagged with that scene, and an
 /// entity it takes is checked to be in it. A member whose types cannot cross the
@@ -282,7 +282,8 @@ static class ScriptSurfaceWalker
 	/// Keeps of the marked candidates only what a script can reach: the seeds are the scene
 	/// and service facades, the global static blocks, the Scene, every marked component
 	/// that has a manager (a script takes one from an entity, `CharacterComponent::of(self)`),
-	/// and every weakly held class (a script narrows one handle to another, `Button::Of(node)`);
+	/// every weakly held class (a script narrows one handle to another, `Button::Of(node)`), and
+/// every counted class with a marked constructor (a script makes one, `Tween()`);
 	/// then every type a kept type's members name, transitively, a component bringing its
 	/// manager. `known` is cut to the same set, so the closure check speaks of this surface.
 	/// `withTooling` seeds every candidate outside the Runtime domain as well.
@@ -300,7 +301,8 @@ static class ScriptSurfaceWalker
 			var seed = isStaticBlock || (fullName == ScriptSceneNames.cScene)
 				|| ((type != null) && (type.HasCustomAttribute<SceneFacadeAttribute>()
 					|| type.HasCustomAttribute<ServiceFacadeAttribute>() || type.HasCustomAttribute<ScriptServiceAttribute>()))
-				|| (managers.IndexOf(fullName) >= 0) || ((type != null) && ScriptValueMap.IsWeak(type));
+				|| (managers.IndexOf(fullName) >= 0) || ((type != null) && ScriptValueMap.IsWeak(type))
+				|| ((type != null) && ScriptValueMap.IsCounted(type) && HasMarkedConstructor(type));
 			if (!seed && withTooling && (type != null))
 				seed = !IsRuntimeDomain(type);
 			if (!seed)
@@ -356,6 +358,18 @@ static class ScriptSurfaceWalker
 
 	[Comptime]
 	private static bool IsKnown(StringView name, List<String> names) => ScriptValueMap.IsKnown(name, names);
+
+	/// Whether the type itself declares a [Scriptable] constructor.
+	[Comptime]
+	private static bool HasMarkedConstructor(Type type)
+	{
+		for (let m in type.GetMethods(.Public | .Instance | .Static | .DeclaredOnly))
+		{
+			if (m.IsConstructor && m.IsPublic && m.HasCustomAttribute<ScriptableAttribute>())
+				return true;
+		}
+		return false;
+	}
 
 	/// An unmarked type is Runtime, the same default EmitType applies.
 	[Comptime]
@@ -532,12 +546,25 @@ static class ScriptSurfaceWalker
 		if (!type.IsObject)
 			return;
 
+		// A handle is weak or counted, never both: a weak one does not keep its object, and a
+		// counted one has no owner to destroy it.
+		if (ScriptValueMap.IsWeak(type) && type.ImplementsInterface(typeof(IScriptCounted)))
+			Runtime.FatalError(scope $"ScriptSurface: {ctx.FullName} is both weakly held and IScriptCounted; a script holds a type one way, so drop one of them");
+
 		// Held weakly: its owner destroys it, so a script's handle resolves on every use.
 		if (ScriptValueMap.IsWeak(type))
 		{
 			ctx.Role = .Weak;
 			ctx.Code.AppendF("\t\tt.As(.Weak);\n\t\tt.WeakRoot({});\n", Quote(WeakRootOf(ctx, .. scope .()), .. scope .()));
 			EmitCast(ctx);
+			return;
+		}
+
+		// Held by a counted reference: a script's handle keeps it, the last release frees it.
+		if (ScriptValueMap.IsCounted(type))
+		{
+			ctx.Role = .Counted;
+			ctx.Code.Append("\t\tt.As(.Counted);\n");
 			return;
 		}
 
@@ -671,6 +698,9 @@ static class ScriptSurfaceWalker
 		case .Weak:
 			// The handle resolved now: a gone one is the script's error, said the one way.
 			outCode.AppendF("\tlet resolved = frame.Self.ResolveWeak();\n\tif (resolved == null) {{ frame.Fail((frame.Self.Kind == .Weak) ? Sedulous.Script.ScriptErrors.ObjectGone : \"self is not a {}\"); return; }}\n\tlet self = resolved as {};\n\tif (self == null) {{ frame.Fail(\"self is not a {}\"); return; }}\n", ctx.Name, t, ctx.Name);
+		case .Counted:
+			// Borrowed from the handle the call is on.
+			outCode.AppendF("\tlet self = frame.Self.AsCounted as {};\n\tif (self == null) {{ frame.Fail(\"self is not a {}\"); return; }}\n", t, ctx.Name);
 		case .Plain:
 			if (ctx.Kind == .Class)
 			{
@@ -920,6 +950,10 @@ static class ScriptSurfaceWalker
 			let code = ctx.Code;
 			if (m.IsConstructor && (ctx.Role == .Weak))
 				Runtime.FatalError(scope $"ScriptSurface: {ctx.FullName} is weakly held, and a weakly held type is made by its owner; unmark its constructor");
+			// A script-made object of any other class is the runtime's to delete, which a
+			// reference counted one asserts against: it has to be counted by its handles.
+			if (m.IsConstructor && (ctx.Kind == .Class) && (ctx.Role != .Counted) && ctx.Type.ImplementsInterface(typeof(IRefCounted)))
+				Runtime.FatalError(scope $"ScriptSurface: {ctx.FullName} is reference counted, and a script would make one its runtime deletes under its count; implement IScriptCounted, or unmark its constructor");
 			if (m.IsConstructor)
 			{
 				code.AppendF("\t\tt.AddConstructor().Returns(.{})", ScriptValueMap.KindOf(ctx.Type, .. scope .()));
@@ -1084,6 +1118,11 @@ static class ScriptSurfaceWalker
 	private static bool EmitCallBody(TypeCtx ctx, MethodInfo m, bool isGlobal, int selfParams, String body, String outReason)
 	{
 		let isStatic = m.IsStatic || m.IsConstructor || isGlobal;
+		// A counted result that carries a reference: the constructor's, or a method's that says
+		// so. The thunk has it released after the call, by when the VM holds its own.
+		let handsReference = m.IsConstructor ? ScriptValueMap.IsCounted(ctx.Type) : m.HasCustomAttribute<ScriptReturnsReferenceAttribute>();
+		if (handsReference && !m.IsConstructor && !ScriptValueMap.IsCounted(m.ReturnType))
+			Runtime.FatalError(scope $"ScriptSurface: {ctx.FullName}.{m.Name} is [ScriptReturnsReference], but its result is not IScriptCounted; there is no reference to hand over");
 		let args = scope String();
 		let after = scope String();
 		let sceneExpr = scope String();
@@ -1223,6 +1262,8 @@ static class ScriptSurfaceWalker
 			}
 			body.Append("\t}\n");
 		}
+		if (handsReference)
+			body.Append("\tframe.Context.ReleaseAfterCall(frame.Result.AsCounted);\n");
 		body.Append(after);
 		return true;
 	}

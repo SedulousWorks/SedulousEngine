@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Script;
 
 namespace Sedulous.Script.Fixture;
 
@@ -23,6 +24,9 @@ class Gadget : IScriptWeaklyHeld
 
 	/// Observed by the tests: whether the last Holds was handed null.
 	public bool SawNull;
+
+	/// A script function to call with a spool: OWNED, replaced by the next, null clears.
+	public ScriptDelegate SpoolHandler = null ~ delete _;
 
 	public this(FakeWeakTable table)
 	{
@@ -48,6 +52,15 @@ class Gadget : IScriptWeaklyHeld
 	{
 		SawNull = g == null;
 		return (g != null) && (g === Other);
+	}
+
+	/// A callback taken through a weak self: a call through a gone one fails before it gets
+	/// here, and must still drop the callback it was handed.
+	[Scriptable, ScriptCallback("void SpoolHandler(Spool@ spool)")]
+	public void OnSpool(ScriptDelegate handler)
+	{
+		delete SpoolHandler;
+		SpoolHandler = handler;
 	}
 
 	public ScriptWeakRef TakeScriptWeak() => (mTable != null) ? ScriptWeakRef(mTable, mSlot, mGeneration) : default;
