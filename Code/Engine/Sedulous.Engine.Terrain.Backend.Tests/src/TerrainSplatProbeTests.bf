@@ -784,5 +784,6 @@ class TerrainSplatProbeTests
 	public static void ProbeTexturesNeverUsedFreeTheirLists()
 	{
 		let owned = scope ProbeTextures();
+		Test.Assert(owned != null); // made and freed, nothing more
 	}
 }
