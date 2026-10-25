@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Reflection;
+using Sedulous.Core;
 
 namespace Sedulous.Script;
 
@@ -10,9 +11,14 @@ namespace Sedulous.Script;
 ///
 /// A class, struct or enum crosses only when it is itself on the surface (`known`): a
 /// script cannot hold, size or name a type the surface does not describe. Ref<T> crosses as
-/// the Guid it holds, whatever T.
+/// the Guid it holds, whatever T. A class that is IScriptWeaklyHeld crosses as a Weak handle,
+/// resolved to the object (or null, when it is gone) as it is read.
 static class ScriptValueMap
 {
+	/// Whether a class is held by scripts only weakly.
+	[Comptime]
+	public static bool IsWeak(Type type) => type.IsObject && type.ImplementsInterface(typeof(IScriptWeaklyHeld));
+
 	/// Whether a named type is on the surface.
 	[Comptime]
 	public static bool IsKnown(StringView fullName, List<String> known)
@@ -53,6 +59,8 @@ static class ScriptValueMap
 			outKind.Append("Guid");
 		else if (IsList(name))
 			outKind.Append("List");
+		else if (IsWeak(type))
+			outKind.Append("Weak");
 		else if (type.IsObject)
 			outKind.Append("Object");
 		else if (type.IsStruct && !type.IsPointer && !name.EndsWith("]"))
@@ -84,7 +92,7 @@ static class ScriptValueMap
 	public static void ExpectFor(Type type, int i, String outCode)
 	{
 		let kind = KindOf(type, .. scope .());
-		if ((kind == "Object") || (kind == "Struct"))
+		if ((kind == "Object") || (kind == "Struct") || (kind == "Weak"))
 			outCode.AppendF("\tif (!frame.Expect({}, .{}, \"{}\")) return;\n", i, kind, type.GetFullName(.. scope .()));
 		else if (kind == "List")
 			outCode.AppendF("\tif (!frame.Expect({}, .List, \"{}\")) return;\n", i, ElementOf(type).GetFullName(.. scope .()));
@@ -119,6 +127,8 @@ static class ScriptValueMap
 			outKey.Append("Guid");
 		else if (let element = ElementOf(type))
 			outKey.AppendF("List<{}>", KindKey(element, .. scope .()));
+		else if (IsWeak(type))
+			outKey.AppendF("Weak:{}", name);
 		else if (type.IsObject)
 			outKey.AppendF("Object:{}", name);
 		else
@@ -182,6 +192,8 @@ static class ScriptValueMap
 			return false;
 		if (type.IsEnum)
 			outCode.AppendF("({}){}.AsInt", name, value);
+		else if (IsWeak(type))
+			outCode.AppendF("({}.ResolveWeak() as {})", value, name);
 		else if (type.IsObject)
 			outCode.AppendF("({}){}.AsObject", name, value);
 		else
@@ -291,6 +303,10 @@ static class ScriptValueMap
 		if (type.IsEnum)
 		{
 			outCode.AppendF("{} = .FromInt((int64){});", slot, expr);
+		}
+		else if (IsWeak(type))
+		{
+			outCode.AppendF("{} = .FromWeak({});", slot, expr);
 		}
 		else if (type.IsObject)
 		{

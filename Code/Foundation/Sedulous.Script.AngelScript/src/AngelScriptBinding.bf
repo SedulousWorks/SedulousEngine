@@ -26,6 +26,18 @@ class AngelScriptBinding
 		/// A component handle's `IsValid`: whether its entity still has the component. Owner.IsOn
 		/// answers; the one use of a gone handle that is not an error.
 		case ComponentIsValid;
+		/// `X::Of(node)`: the handle narrowed to X, null when it names no X or nothing. Owner.Cast
+		/// answers; the box is the backend's own.
+		case WeakOf;
+		/// A weak handle box's reference count, up and down: the backend's own.
+		case WeakAddRef;
+		case WeakRelease;
+		/// A weak handle's `IsValid`: whether its object is still there. Never an error.
+		case WeakIsValid;
+		/// `a == b` on weak handles: the same handle, by identity, never resolving.
+		case WeakEquals;
+		/// A weak handle as a handle to one of its bases: the same box, one more reference.
+		case WeakUpcast;
 		/// A value type's construct behaviour: Method is the constructor thunk.
 		case Construct;
 		/// `scene.Physics`: Owner.FromScene with the scene as Self.

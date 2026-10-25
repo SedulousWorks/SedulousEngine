@@ -35,7 +35,8 @@ namespace Sedulous.Script;
 /// A thunk resolves what it is called on from the type's role: a scene system from the
 /// object in Self, else the context's scene; a component through its manager in the ENTITY'S
 /// scene (an entity value carries the scene it lives in) and the entity in Self; a service
-/// through the context; a class or struct from Self itself. A scene system also gets a
+/// through the context; a weakly held class by resolving the handle in Self, a gone one
+/// failing with ObjectGone; a class or struct from Self itself. A scene system also gets a
 /// resolver, the scene's instance from a Scene self, which is how a script reaches
 /// `scene.Physics`. An entity a scene bound call answers is tagged with that scene, and an
 /// entity it takes is checked to be in it. A member whose types cannot cross the
@@ -255,8 +256,9 @@ static class ScriptSurfaceWalker
 	// ---- the facade closure ----
 
 	/// Keeps of the marked candidates only what a script can reach: the seeds are the scene
-	/// and service facades, the global static blocks, the Scene, and every marked component
-	/// that has a manager (a script takes one from an entity, `CharacterComponent::of(self)`);
+	/// and service facades, the global static blocks, the Scene, every marked component
+	/// that has a manager (a script takes one from an entity, `CharacterComponent::of(self)`),
+	/// and every weakly held class (a script narrows one handle to another, `Button::Of(node)`);
 	/// then every type a kept type's members name, transitively, a component bringing its
 	/// manager. `known` is cut to the same set, so the closure check speaks of this surface.
 	/// `withTooling` seeds every candidate outside the Runtime domain as well.
@@ -274,7 +276,7 @@ static class ScriptSurfaceWalker
 			var seed = isStaticBlock || (fullName == "Sedulous.Scene.Scene")
 				|| ((type != null) && (type.HasCustomAttribute<SceneFacadeAttribute>()
 					|| type.HasCustomAttribute<ServiceFacadeAttribute>() || type.HasCustomAttribute<ScriptServiceAttribute>()))
-				|| (managers.IndexOf(fullName) >= 0);
+				|| (managers.IndexOf(fullName) >= 0) || ((type != null) && ScriptValueMap.IsWeak(type));
 			if (!seed && withTooling && (type != null))
 				seed = !IsRuntimeDomain(type);
 			if (!seed)
@@ -506,6 +508,15 @@ static class ScriptSurfaceWalker
 		if (!type.IsObject)
 			return;
 
+		// Held weakly: its owner destroys it, so a script's handle resolves on every use.
+		if (ScriptValueMap.IsWeak(type))
+		{
+			ctx.Role = .Weak;
+			ctx.Code.AppendF("\t\tt.As(.Weak);\n\t\tt.WeakRoot({});\n", Quote(WeakRootOf(ctx, .. scope .()), .. scope .()));
+			EmitCast(ctx);
+			return;
+		}
+
 		if (!PooledComponent(type, .. scope .()).IsEmpty)
 			ctx.Role = .ComponentManager;
 		else
@@ -514,6 +525,22 @@ static class ScriptSurfaceWalker
 			ctx.Code.AppendF("\t\tt.As(.{});\n", ctx.Role);
 		if ((ctx.Role == .SceneSystem) || (ctx.Role == .ComponentManager) || (ctx.Role == .SceneFacade))
 			EmitResolver(ctx);
+	}
+
+	/// The topmost base of a weakly held type that is weakly held and on the surface: what
+	/// every handle in its family narrows from. The type itself when no base is.
+	[Comptime]
+	private static void WeakRootOf(TypeCtx ctx, String outRoot)
+	{
+		outRoot.Set(ctx.FullName);
+		var t = ctx.Type.BaseType;
+		while (t != null)
+		{
+			let n = t.GetFullName(.. scope .());
+			if (ScriptValueMap.IsWeak(t) && IsKnown(n, ctx.Known))
+				outRoot.Set(n);
+			t = t.BaseType;
+		}
 	}
 
 	/// The role a class's bases give it, a scene system or an engine service, or the one it
@@ -598,6 +625,9 @@ static class ScriptSurfaceWalker
 			sceneExpr.Set("scene");
 		case .Service:
 			outCode.AppendF("\tlet self = frame.Context.FindService(typeof({})) as {};\n\tif (self == null) {{ frame.Fail(\"no {} service\"); return; }}\n", t, t, ctx.Name);
+		case .Weak:
+			// The handle resolved now: a gone one is the script's error, said the one way.
+			outCode.AppendF("\tlet resolved = frame.Self.ResolveWeak();\n\tif (resolved == null) {{ frame.Fail((frame.Self.Kind == .Weak) ? Sedulous.Script.ScriptErrors.ObjectGone : \"self is not a {}\"); return; }}\n\tlet self = resolved as {};\n\tif (self == null) {{ frame.Fail(\"self is not a {}\"); return; }}\n", ctx.Name, t, ctx.Name);
 		case .Plain:
 			if (ctx.Kind == .Class)
 			{
@@ -845,6 +875,8 @@ static class ScriptSurfaceWalker
 				continue;
 
 			let code = ctx.Code;
+			if (m.IsConstructor && (ctx.Role == .Weak))
+				Runtime.FatalError(scope $"ScriptSurface: {ctx.FullName} is weakly held, and a weakly held type is made by its owner; unmark its constructor");
 			if (m.IsConstructor)
 			{
 				code.AppendF("\t\tt.AddConstructor().Returns(.{})", ScriptValueMap.KindOf(ctx.Type, .. scope .()));
@@ -1297,6 +1329,16 @@ static class ScriptSurfaceWalker
 		let name = ctx.NextThunk(.. scope .());
 		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n\tframe.Begin();\n\tif (frame.Self.Kind != .Entity) {{ frame.Fail(\"self is not an entity\"); return; }}\n\tlet scene = frame.SceneOf(frame.Self);\n\tlet manager = (scene != null) ? scene.GetSystem<{}>() : null;\n\tframe.Result = .FromBool((manager != null) && (manager.Get(frame.Self.AsEntity) != null));\n}}\n\n", name, ctx.Manager);
 		ctx.Code.AppendF("\t\tt.PresentBy(=> {});\n", name);
+	}
+
+	/// A weakly held type's cast: Self again when the handle names one of this type, else Nil,
+	/// a gone handle included. Never a failure, so `X::Of(node)` is null for all three.
+	[Comptime]
+	private static void EmitCast(TypeCtx ctx)
+	{
+		let name = ctx.NextThunk(.. scope .());
+		ctx.Thunks.AppendF("static void {}(ref ScriptCallFrame frame)\n{{\n\tframe.Begin();\n\tframe.Result = (frame.Self.ResolveWeak() is {}) ? frame.Self : .Nil;\n}}\n\n", name, ctx.FullName);
+		ctx.Code.AppendF("\t\tt.CastBy(=> {});\n", name);
 	}
 
 	/// The resolver a scene system or manager gets: the scene's instance, Self the scene.

@@ -572,4 +572,110 @@ static class ScriptThunkTests
 		SceneFacades.Release(a);
 		Test.Assert(SceneFacades.CountFor(a) == 0);
 	}
+
+	/// A weakly held class is reached through the handle in Self, resolved on every use: a live
+	/// one answers, a gone one fails every member with the one gone-object error, a gone
+	/// argument reaches the callee as null, and the cast and the comparison never fail.
+	[Test]
+	public static void AWeakHandleResolvesOnEveryUse()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let ctx = scope ScratchCallContext();
+		let gadgetName = scope $"{cFixture}.Gadget";
+		let gizmoName = scope $"{cFixture}.Gizmo";
+		// Released last, after every gadget in it is gone.
+		let table = new FakeWeakTable();
+		defer table.ReleaseLastRef();
+
+		let gadget = new Gadget(table);
+		gadget.Charge = 4;
+		let handle = ScriptValue.FromWeak(gadget);
+		let sameAgain = ScriptValue.FromWeak(gadget);
+		Test.Assert(handle.Kind == .Weak);
+		Test.Assert(ScriptValue.FromWeak(null).IsNil && ScriptValue.FromWeak(scope Gadget(null)).IsNil, "no object, or one in no table, is Nil");
+
+		// A get answers.
+		var frame = ScriptCallFrame(ctx, default);
+		frame.Self = handle;
+		Field(s, gadgetName, "Charge").Get(ref frame);
+		Test.Assert(!frame.Failed && (frame.Result.AsInt == 4));
+		frame.Self = .Nil;
+		Field(s, gadgetName, "Charge").Get(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains("self is not a Gadget"), "no handle at all is not a gone one");
+
+		// The cast: Self again for the right type, Nil for another, never a failure.
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = handle;
+		s.Find(gadgetName).Cast(ref frame);
+		Test.Assert(!frame.Failed && (frame.Result.Kind == .Weak) && frame.Result.SameWeak(handle));
+		s.Find(gizmoName).Cast(ref frame);
+		Test.Assert(!frame.Failed && frame.Result.IsNil, "a gadget is no gizmo");
+
+		// Matches: Nil passes, the type and a base pass, another type and another kind do not.
+		bool exact = false;
+		Test.Assert(ScriptValue.Nil.Matches(.Weak, gadgetName, out exact) && !exact);
+		Test.Assert(handle.Matches(.Weak, gadgetName, out exact) && exact);
+		Test.Assert(!handle.Matches(.Weak, gizmoName, out exact), "the wrong type");
+		Test.Assert(!ScriptValue.FromInt(1).Matches(.Weak, gadgetName, out exact), "the wrong kind");
+		let sprocket = new Sprocket(table);
+		Test.Assert(ScriptValue.FromWeak(sprocket).Matches(.Weak, gadgetName, out exact), "a derived one fills its base's slot");
+		delete sprocket;
+
+		// An argument: the object while it lives, null to the callee once it is gone.
+		let other = new Gadget(table);
+		let otherSlot = other.Slot;
+		let otherHandle = ScriptValue.FromWeak(other);
+		gadget.Other = other;
+		var holdsArgs = ScriptValue[1](otherHandle);
+		frame = ScriptCallFrame(ctx, holdsArgs);
+		frame.Self = handle;
+		Method(s, gadgetName, "Holds").Invoke(ref frame);
+		Test.Assert(!frame.Failed && frame.Result.AsBool && !gadget.SawNull);
+		gadget.Other = null;
+		delete other;
+		Test.Assert(otherHandle.Matches(.Weak, gizmoName, out exact), "a gone handle passes any slot: the callee reads null");
+		frame = ScriptCallFrame(ctx, holdsArgs);
+		frame.Self = handle;
+		Method(s, gadgetName, "Holds").Invoke(ref frame);
+		Test.Assert(!frame.Failed && !frame.Result.AsBool && gadget.SawNull, "the gone argument arrived as null");
+
+		// The comparison, by identity: the same gadget, a different one, a reused slot.
+		Test.Assert(handle.SameWeak(sameAgain), "two handles to one gadget");
+		Test.Assert(!handle.SameWeak(otherHandle), "two gadgets");
+		let reuser = new Gadget(table);
+		defer delete reuser;
+		Test.Assert(reuser.Slot == otherSlot, "the freed slot is reused");
+		Test.Assert(!otherHandle.SameWeak(.FromWeak(reuser)), "a reused slot is another handle");
+		Test.Assert(otherHandle.ResolveWeak() == null, "and the old one does not answer");
+
+		// Destroyed: a get, a set and a method each fail, saying the object is gone.
+		delete gadget;
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = handle;
+		Field(s, gadgetName, "Charge").Get(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains(ScriptErrors.ObjectGone), "the get");
+		var nine = ScriptValue[1](.FromInt(9));
+		frame = ScriptCallFrame(ctx, nine);
+		frame.Self = handle;
+		Field(s, gadgetName, "Charge").Set(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains(ScriptErrors.ObjectGone), "the set");
+		frame = ScriptCallFrame(ctx, holdsArgs);
+		frame.Self = handle;
+		Method(s, gadgetName, "Holds").Invoke(ref frame);
+		Test.Assert(frame.Failed && frame.Error.Contains(ScriptErrors.ObjectGone), "the method");
+		// The cast of a gone handle is Nil, not a failure, and a gone handle still compares.
+		frame = ScriptCallFrame(ctx, default);
+		frame.Self = handle;
+		s.Find(gadgetName).Cast(ref frame);
+		Test.Assert(!frame.Failed && frame.Result.IsNil);
+		Test.Assert(handle.SameWeak(sameAgain), "gone, and still the same handle");
+
+		// Closed: nothing in the table resolves, and its handles still compare.
+		let reuserHandle = ScriptValue.FromWeak(reuser);
+		Test.Assert(reuserHandle.ResolveWeak() === reuser);
+		table.Close();
+		Test.Assert(reuserHandle.ResolveWeak() == null, "a closed table answers nothing");
+		Test.Assert(reuserHandle.SameWeak(.FromWeak(reuser)));
+	}
 }

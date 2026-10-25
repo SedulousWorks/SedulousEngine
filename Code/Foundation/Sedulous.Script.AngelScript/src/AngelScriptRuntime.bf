@@ -21,6 +21,11 @@ namespace Sedulous.Script.AngelScript;
 ///    that scene however many scenes there are; a component is a counted handle holding the
 ///    entity, null when the entity has none: `MeshComponent::of(entity).Visible`, and a use
 ///    through a handle whose component has gone since is the script's error;
+///  - a weakly held class (IScriptWeaklyHeld) is a counted handle holding a ScriptWeakRef
+///    (WeakHandle), resolved on every use: IsValid answers whether its object is still there,
+///    any other use of a gone one is the script's error, `==` compares handles without
+///    resolving, a handle converts to its bases' and `X::Of(node)` narrows it, null when the
+///    node is no X or is gone;
 ///  - a scene system or component manager is a read only property on Scene named for it
 ///    (its display name, else its type name without the role suffix): `scene.Physics.RayCast(...)`;
 ///    the handle is the scene's own instance, and a script may keep it;
@@ -43,6 +48,36 @@ class AngelScriptRuntime : ScriptRuntime
 	{
 		public ScriptEntity Entity;
 		public int32 References;
+	}
+
+	/// What a script's weak handle points at: the reference FIRST, so a member reads its self
+	/// exactly as from the box, then the count. Each box keeps one reference on the table, so
+	/// a handle a script keeps never outlives what it resolves through. Allocated by
+	/// NewWeakBox, freed by the last release.
+	[CRepr]
+	private struct WeakHandle
+	{
+		public ScriptWeakRef Ref;
+		public int32 References;
+	}
+
+	/// A box for a weak value, its one reference the caller's.
+	private static WeakHandle* NewWeakBox(ScriptWeakRef r)
+	{
+		let @box = (WeakHandle*)Internal.StdMalloc(sizeof(WeakHandle));
+		@box.Ref = r;
+		@box.References = 1;
+		r.Table?.AddRef();
+		return @box;
+	}
+
+	private static void ReleaseWeakBox(WeakHandle* @box)
+	{
+		if (--@box.References > 0)
+			return;
+		let table = @box.Ref.Table;
+		Internal.StdFree(@box);
+		table?.ReleaseRef();
 	}
 
 	private AS.Engine* mEngine = null;
@@ -366,7 +401,10 @@ class AngelScriptRuntime : ScriptRuntime
 				ApiType(AsName(t), t.FullName, false);
 			}
 		case .Class:
-			if (Check(AS.asc_engine_register_object_type(mEngine, scope String(AsName(t)).CStr(), 0, AS.asOBJ_REF | AS.asOBJ_NOCOUNT), t.FullName))
+			// A weakly held class is a counted handle of the backend's own (WeakHandle); any
+			// other is the engine's object itself, uncounted.
+			let classFlags = (t.Role == .Weak) ? AS.asOBJ_REF : (AS.asOBJ_REF | AS.asOBJ_NOCOUNT);
+			if (Check(AS.asc_engine_register_object_type(mEngine, scope String(AsName(t)).CStr(), 0, classFlags), t.FullName))
 			{
 				mByName[new String(AsName(t))] = t;
 				ApiType(AsName(t), t.FullName, false);
@@ -390,6 +428,10 @@ class AngelScriptRuntime : ScriptRuntime
 		// handle, null when the entity has none.
 		if (t.Role == .Component)
 			BindComponentHandle(t);
+		// A weakly held class is a handle that resolves on every use: its count, IsValid,
+		// `==`, its bases' conversions and `X::Of(node)`.
+		if (t.Role == .Weak)
+			BindWeakHandle(t);
 
 		let statics = scope String();
 		if (t.Kind != .Global)
@@ -509,6 +551,98 @@ class AngelScriptRuntime : ScriptRuntime
 		AS.asc_engine_set_default_namespace(mEngine, "");
 		if (Check(rc, scope $"{t.FullName}::of"))
 			Record(ApiType(typeName, t.FullName, false), "of", scope $"{typeName}@ {typeName}::of(const Entity &in entity)", true, .Method);
+	}
+
+	/// A weak handle's count, `IsValid`, `==`, a conversion to each weakly held base and
+	/// `X::Of(node)`, which narrows a handle of the family's root to X.
+	private void BindWeakHandle(ScriptTypeInfo t)
+	{
+		let typeName = scope String(AsName(t));
+		let api = ApiType(typeName, t.FullName, false);
+		for (let kind in AngelScriptBinding.Role[2](.WeakAddRef, .WeakRelease))
+		{
+			let b = new AngelScriptBinding();
+			b.Kind = kind;
+			b.Owner = t;
+			mBindings.Add(b);
+			let behaviour = (kind == .WeakAddRef) ? AS.asBEHAVE_ADDREF : AS.asBEHAVE_RELEASE;
+			Check(AS.asc_engine_register_object_behaviour(mEngine, typeName.CStr(), behaviour, "void f()", Internal.UnsafeCastToPtr(b)), t.FullName);
+		}
+
+		// Every handle answers IsValid, unless the type reflects its own: whether its object is
+		// still there. Any other use of a gone handle is the script's error.
+		if (!DeclaresMember(t, "IsValid"))
+		{
+			let valid = new AngelScriptBinding();
+			valid.Kind = .WeakIsValid;
+			valid.Owner = t;
+			mBindings.Add(valid);
+			if (Check(AS.asc_engine_register_object_method(mEngine, typeName.CStr(), "bool get_IsValid() property", Internal.UnsafeCastToPtr(valid)), t.FullName))
+				Record(api, "IsValid", scope $"bool {typeName}.IsValid (read only)", false, .Property, true);
+		}
+
+		let root = (!t.WeakRootTypeName.IsEmpty) ? mSurface.Find(t.WeakRootTypeName) : null;
+		let rootName = scope String(AsName(root ?? t));
+		if (!mByName.ContainsKey(rootName))
+			rootName.Set(typeName);
+
+		// `a == b`: the same handle, never resolving, so it answers for a gone one too.
+		let equals = new AngelScriptBinding();
+		equals.Kind = .WeakEquals;
+		equals.Owner = t;
+		mBindings.Add(equals);
+		let equalsDecl = scope $"bool opEquals(const {rootName}@ other) const";
+		if (Check(AS.asc_engine_register_object_method(mEngine, typeName.CStr(), equalsDecl.CStr(), Internal.UnsafeCastToPtr(equals)), scope $"{t.FullName}.opEquals"))
+			Record(api, "opEquals", scope $"bool {typeName}.opEquals(const {rootName}@ other) const", false, .Method);
+
+		// A handle converts to a handle of each weakly held base: the same box. A base that is
+		// not weakly held is an uncounted handle of another shape, so it gets no conversion.
+		var baseType = (t.BeefType != null) ? t.BeefType.BaseType : null;
+		while (baseType != null)
+		{
+			let based = SurfaceTypeOf(baseType);
+			if ((based != null) && (based.Role == .Weak))
+			{
+				let baseName = scope String(AsName(based));
+				for (int constant < 2)
+				{
+					let up = new AngelScriptBinding();
+					up.Kind = .WeakUpcast;
+					up.Owner = t;
+					mBindings.Add(up);
+					let decl = scope String();
+					let spelled = scope String();
+					if (constant == 0)
+					{
+						decl.AppendF("{}@ opImplCast()", baseName);
+						spelled.AppendF("{}@ {}.opImplCast()", baseName, typeName);
+					}
+					else
+					{
+						decl.AppendF("const {}@ opImplCast() const", baseName);
+						spelled.AppendF("const {}@ {}.opImplCast() const", baseName, typeName);
+					}
+					if (Check(AS.asc_engine_register_object_method(mEngine, typeName.CStr(), decl.CStr(), Internal.UnsafeCastToPtr(up)), scope $"{t.FullName} to {based.FullName}"))
+						Record(api, "opImplCast", spelled, false, .Method);
+				}
+			}
+			baseType = baseType.BaseType;
+		}
+
+		if (t.Cast == null)
+		{
+			Problem(scope $"{t.FullName}: a weakly held type with no cast, so no {typeName}::Of");
+			return;
+		}
+		let of = new AngelScriptBinding();
+		of.Kind = .WeakOf;
+		of.Owner = t;
+		mBindings.Add(of);
+		AS.asc_engine_set_default_namespace(mEngine, typeName.CStr());
+		let rc = AS.asc_engine_register_global_function(mEngine, scope $"{typeName}@ Of({rootName}@ node)", Internal.UnsafeCastToPtr(of));
+		AS.asc_engine_set_default_namespace(mEngine, "");
+		if (Check(rc, scope $"{t.FullName}::Of"))
+			Record(api, "Of", scope $"{typeName}@ {typeName}::Of({rootName}@ node)", true, .Method);
 	}
 
 	/// Whether a type reflects a field or a method of this name.
@@ -862,6 +996,12 @@ class AngelScriptRuntime : ScriptRuntime
 		case .Delegate:
 			outDecl.Append("ScriptCallback@");
 			return true;
+		case .Weak:
+			let w = mSurface.Find(typeName);
+			if ((w == null) || !mByName.ContainsKey(scope String(AsName(w))))
+				return false;
+			outDecl.AppendF("{}@", AsName(w));
+			return true;
 		case .List:
 			// A List<X> is the add-on's array<X>, by handle: the script's own array, filled
 			// from the list and read back into it.
@@ -912,7 +1052,7 @@ class AngelScriptRuntime : ScriptRuntime
 			if (t.Kind == .Enum)
 				return .Int;
 			if (t.Kind == .Class)
-				return .Object;
+				return (t.Role == .Weak) ? .Weak : .Object;
 			return .Struct;
 		}
 		return .Nil;
@@ -993,7 +1133,7 @@ class AngelScriptRuntime : ScriptRuntime
 		{
 		case .String, .Guid, .Entity, .Float2, .Float3, .Float4, .Quaternion, .Color, .Struct:
 			return true;
-		case .List, .Delegate:
+		case .List, .Delegate, .Weak:
 			return false;
 		case .Object:
 			return typeName == "System.String";
@@ -1059,6 +1199,53 @@ class AngelScriptRuntime : ScriptRuntime
 			frame.Self = ReadValue(&handle.Entity, .Entity, "");
 			b.Owner.IsOn(ref frame);
 			AS.asc_generic_set_return_byte(gen, (!frame.Failed && frame.Result.AsBool) ? 1 : 0);
+			return;
+		}
+		case .WeakOf:
+		{
+			// The node narrowed by the type's cast: the same box, one more reference, or null
+			// for a node of another type, a gone one, or none. Never an error.
+			let node = (WeakHandle*)AS.asc_generic_get_arg_object(gen, 0);
+			WeakHandle* narrowed = null;
+			if ((node != null) && (b.Owner.Cast != null))
+			{
+				var frame = ScriptCallFrame(context, default);
+				frame.Self = .FromWeakRef(node.Ref);
+				b.Owner.Cast(ref frame);
+				if (!frame.Failed && (frame.Result.Kind == .Weak))
+				{
+					node.References++;
+					narrowed = node;
+				}
+			}
+			AS.asc_generic_set_return_address(gen, narrowed);
+			return;
+		}
+		case .WeakAddRef:
+			((WeakHandle*)AS.asc_generic_get_object(gen)).References++;
+			return;
+		case .WeakRelease:
+			ReleaseWeakBox((WeakHandle*)AS.asc_generic_get_object(gen));
+			return;
+		case .WeakIsValid:
+		{
+			let @box = (WeakHandle*)AS.asc_generic_get_object(gen);
+			AS.asc_generic_set_return_byte(gen, (@box.Ref.Resolve() != null) ? 1 : 0);
+			return;
+		}
+		case .WeakEquals:
+		{
+			let @box = (WeakHandle*)AS.asc_generic_get_object(gen);
+			let other = (WeakHandle*)AS.asc_generic_get_arg_object(gen, 0);
+			AS.asc_generic_set_return_byte(gen, ((other != null) && @box.Ref.SameAs(other.Ref)) ? 1 : 0);
+			return;
+		}
+		case .WeakUpcast:
+		{
+			// The returned handle is a reference of its own.
+			let @box = (WeakHandle*)AS.asc_generic_get_object(gen);
+			@box.References++;
+			AS.asc_generic_set_return_address(gen, @box);
 			return;
 		}
 		case .StartCoroutine:
@@ -1250,6 +1437,8 @@ class AngelScriptRuntime : ScriptRuntime
 	{
 		if (owner.Role == .Component)
 			return .Entity;
+		if (owner.Role == .Weak)
+			return .Weak;
 		if (owner.Kind == .Class)
 			return .Object;
 		return KindOfStruct(owner);
@@ -1260,6 +1449,7 @@ class AngelScriptRuntime : ScriptRuntime
 		switch (kind)
 		{
 		case .Object: return .FromObject(Internal.UnsafeCastToObject(memory));
+		case .Weak: return .FromWeakRef(((WeakHandle*)memory).Ref);
 		case .Struct: return .FromStruct(memory, owner.BeefType);
 		default: return ReadValue(memory, kind, "");
 		}
@@ -1319,6 +1509,10 @@ class AngelScriptRuntime : ScriptRuntime
 			// callee takes the delegate.
 			let fn = (AS.Function*)AS.asc_generic_get_arg_object(gen, arg);
 			return (fn != null) ? .FromDelegate(new AngelScriptDelegate(this, fn)) : .Nil;
+		case .Weak:
+			// The box stays the engine's, released after the call; the value borrows its table.
+			let @box = (WeakHandle*)AS.asc_generic_get_arg_object(gen, arg);
+			return (@box != null) ? .FromWeakRef(@box.Ref) : .Nil;
 		default:
 			return ReadValue(AS.asc_generic_get_arg_address(gen, arg), kind, typeName);
 		}
@@ -1498,6 +1692,9 @@ class AngelScriptRuntime : ScriptRuntime
 			{
 				AS.asc_generic_set_return_address(gen, (value.AsObject != null) ? Internal.UnsafeCastToPtr(value.AsObject) : null);
 			}
+		case .Weak:
+			// A box of its own, its one reference passing to the script with the handle.
+			AS.asc_generic_set_return_address(gen, (value.Kind == .Weak) ? NewWeakBox(value.Data.Weak) : null);
 		case .Struct:
 			// Built in place at the return location through ResultTarget; nothing to do,
 			// unless the thunk answered nothing.
@@ -1737,6 +1934,9 @@ class AngelScriptRuntime : ScriptRuntime
 		case .Struct: outText.Append((value.StructType != null) ? value.StructType.GetName(.. scope .()) : "struct");
 		case .List: outText.AppendF("list[{}]", (value.AsList != null) ? value.AsList.Count : 0);
 		case .Delegate: outText.Append("callback");
+		case .Weak:
+			let resolved = value.ResolveWeak();
+			outText.Append((resolved != null) ? resolved.GetType().GetName(.. scope .()) : "gone");
 		}
 	}
 
@@ -1878,7 +2078,11 @@ class AngelScriptRuntime : ScriptRuntime
 			if ((typeId & AS.asTYPEID_MASK_OBJECT) == 0)
 				return .Int; // an enum
 			if ((typeId & AS.asTYPEID_OBJHANDLE) != 0)
-				return ((typeId & AS.asTYPEID_SCRIPTOBJECT) != 0) ? .Nil : .Object;
+			{
+				if ((typeId & AS.asTYPEID_SCRIPTOBJECT) != 0)
+					return .Nil;
+				return (WeakTypeOfId(typeId) != null) ? .Weak : .Object;
+			}
 			let name = StringView(AS.asc_typeinfo_get_name(AS.asc_engine_get_type_info_by_id(mEngine, typeId)));
 			if (name == "string")
 				return .String;
@@ -1887,6 +2091,20 @@ class AngelScriptRuntime : ScriptRuntime
 				return inlineKind;
 			return mByName.ContainsKey(scope String(name)) ? .Struct : .Nil;
 		}
+	}
+
+	/// The surface type of an AngelScript type id when it is a weak handle's, else null: what
+	/// tells a box apart from a Beef object behind a handle slot.
+	private ScriptTypeInfo WeakTypeOfId(int32 typeId)
+	{
+		if (((typeId & AS.asTYPEID_MASK_OBJECT) == 0) || ((typeId & AS.asTYPEID_SCRIPTOBJECT) != 0))
+			return null;
+		let info = AS.asc_engine_get_type_info_by_id(mEngine, typeId & ~AS.asTYPEID_OBJHANDLE);
+		if (info == null)
+			return null;
+		if (mByName.TryGetValue(scope String(StringView(AS.asc_typeinfo_get_name(info))), let t) && (t.Kind == .Class) && (t.Role == .Weak))
+			return t;
+		return null;
 	}
 
 	public override bool HasMethod(ScriptObject object, StringView name, int arity)
@@ -1947,7 +2165,11 @@ class AngelScriptRuntime : ScriptRuntime
 			if ((typeId & AS.asTYPEID_MASK_OBJECT) == 0)
 				return value.Kind == .Int; // an enum
 			if ((typeId & AS.asTYPEID_OBJHANDLE) != 0)
+			{
+				if (WeakTypeOfId(typeId) != null)
+					return (value.Kind == .Weak) || value.IsNil;
 				return (value.Kind == .Object) || value.IsNil;
+			}
 			let name = StringView(AS.asc_typeinfo_get_name(AS.asc_engine_get_type_info_by_id(mEngine, typeId)));
 			if (name == "string")
 				return value.Kind == .String;
@@ -2025,6 +2247,9 @@ class AngelScriptRuntime : ScriptRuntime
 				let target = *(void**)address;
 				if ((target == null) || ((typeId & AS.asTYPEID_SCRIPTOBJECT) != 0))
 					return .Nil;
+				// A weak handle is the backend's box, not a Beef object.
+				if (WeakTypeOfId(typeId) != null)
+					return .FromWeakRef(((WeakHandle*)target).Ref);
 				return .FromObject(Internal.UnsafeCastToObject(target));
 			}
 			let name = StringView(AS.asc_typeinfo_get_name(AS.asc_engine_get_type_info_by_id(mEngine, typeId)));
@@ -2058,6 +2283,15 @@ class AngelScriptRuntime : ScriptRuntime
 			}
 			if ((typeId & AS.asTYPEID_OBJHANDLE) != 0)
 			{
+				// A weak handle is a counted box: a new one in, the old one's reference dropped.
+				if (WeakTypeOfId(typeId) != null)
+				{
+					let old = (WeakHandle*)*(void**)address;
+					*(void**)address = (value.Kind == .Weak) ? NewWeakBox(value.Data.Weak) : null;
+					if (old != null)
+						ReleaseWeakBox(old);
+					return;
+				}
 				// Only uncounted engine handles are written; a script object handle would
 				// need its count kept.
 				if ((typeId & AS.asTYPEID_SCRIPTOBJECT) == 0)
@@ -2197,7 +2431,27 @@ class AngelScriptRuntime : ScriptRuntime
 			}
 			else if ((typeId & AS.asTYPEID_OBJHANDLE) != 0)
 			{
-				AS.asc_context_set_arg_address(mContext, i, (value.AsObject != null) ? Internal.UnsafeCastToPtr(value.AsObject) : null);
+				if (WeakTypeOfId(typeId) != null)
+				{
+					// SetArgObject takes the context's own reference on a handle argument, which
+					// the call releases when it is done with it (as_context.cpp, SetArgObject;
+					// SetArgAddress takes none). The new box's reference is dropped at once, so
+					// the context's is the only one.
+					if (value.Kind == .Weak)
+					{
+						let @box = NewWeakBox(value.Data.Weak);
+						AS.asc_context_set_arg_object(mContext, i, @box);
+						ReleaseWeakBox(@box);
+					}
+					else
+					{
+						AS.asc_context_set_arg_address(mContext, i, null);
+					}
+				}
+				else
+				{
+					AS.asc_context_set_arg_address(mContext, i, (value.AsObject != null) ? Internal.UnsafeCastToPtr(value.AsObject) : null);
+				}
 			}
 			else if (value.Kind == .Struct)
 			{
@@ -2241,7 +2495,13 @@ class AngelScriptRuntime : ScriptRuntime
 			if ((typeId & AS.asTYPEID_MASK_OBJECT) == 0)
 				return .FromInt((int32)AS.asc_context_get_return_dword(mContext));
 			if ((typeId & AS.asTYPEID_OBJHANDLE) != 0)
-				return .FromObject(Internal.UnsafeCastToObject(AS.asc_context_get_return_address(mContext)));
+			{
+				let returned = AS.asc_context_get_return_address(mContext);
+				// A weak handle's box dies with Unprepare; the value only borrows its table.
+				if (WeakTypeOfId(typeId) != null)
+					return (returned != null) ? .FromWeakRef(((WeakHandle*)returned).Ref) : .Nil;
+				return .FromObject(Internal.UnsafeCastToObject(returned));
+			}
 			// A value type: known by its name.
 			let name = StringView(AS.asc_typeinfo_get_name(AS.asc_engine_get_type_info_by_id(mEngine, typeId)));
 			let memory = AS.asc_context_get_return_object(mContext);

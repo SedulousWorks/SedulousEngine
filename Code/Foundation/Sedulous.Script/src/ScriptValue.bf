@@ -41,6 +41,8 @@ struct ScriptValueData
 	public Object Object;
 	public void* Struct;
 	public ScriptList* List;
+	/// Sixteen bytes, as the widest of the rest: the union does not grow for it.
+	public ScriptWeakRef Weak;
 }
 
 struct ScriptValue
@@ -71,6 +73,9 @@ struct ScriptValue
 	public static ScriptValue FromStruct(void* p, Type type) { var r = ScriptValue(); r.Kind = .Struct; r.Data.Struct = p; r.StructType = type; return r; }
 	public static ScriptValue FromList(ScriptList* list) { var r = ScriptValue(); r.Kind = (list != null) ? .List : .Nil; r.Data.List = list; return r; }
 	public static ScriptValue FromDelegate(ScriptDelegate d) { var r = ScriptValue(); r.Kind = (d != null) ? .Delegate : .Nil; r.Data.Object = d; return r; }
+	/// The weak handle to `held`; Nil when there is none, or it is in no table.
+	public static ScriptValue FromWeak(IScriptWeaklyHeld held) => (held != null) ? FromWeakRef(held.TakeScriptWeak()) : .Nil;
+	public static ScriptValue FromWeakRef(ScriptWeakRef v) { var r = ScriptValue(); r.Kind = v.IsEmpty ? .Nil : .Weak; r.Data.Weak = v; return r; }
 
 	// ---- out ----
 
@@ -91,6 +96,19 @@ struct ScriptValue
 	public void* AsStruct => (Kind == .Struct) ? Data.Struct : null;
 	public ScriptList* AsList => (Kind == .List) ? Data.List : null;
 	public ScriptDelegate AsDelegate => (Kind == .Delegate) ? (ScriptDelegate)Data.Object : null;
+	public ScriptWeakRef AsWeak => (Kind == .Weak) ? Data.Weak : default;
+
+	/// What a weak handle names now: null when this is not one, or its object is gone.
+	public Object ResolveWeak() => (Kind == .Weak) ? Data.Weak.Resolve() : null;
+
+	/// Whether two values are the same weak handle, by identity and never resolving, so two
+	/// gone handles to one object still compare equal. Nil is the same as Nil only.
+	public bool SameWeak(ScriptValue other)
+	{
+		if ((Kind != .Weak) || (other.Kind != .Weak))
+			return (Kind == .Nil) && (other.Kind == .Nil);
+		return Data.Weak.SameAs(other.Data.Weak);
+	}
 
 	public bool IsNil => Kind == .Nil;
 
@@ -100,8 +118,8 @@ struct ScriptValue
 	public double AsNumber => (Kind == .Int) ? (double)Data.Int : Data.Float;
 
 	/// Whether this value can fill a slot of `kind`, with `typeName` naming the class or
-	/// struct for the Object and Struct kinds. Exact is a kind match; a promotion is Int
-	/// into Float, or Nil into Object.
+	/// struct for the Object, Struct and Weak kinds. Exact is a kind match; a promotion is Int
+	/// into Float, or Nil into Object or Weak.
 	public bool Matches(ScriptValueKind kind, StringView typeName, out bool exact)
 	{
 		exact = Kind == kind;
@@ -126,6 +144,23 @@ struct ScriptValue
 		case .Struct:
 			return (Kind == .Struct) && (Data.Struct != null) && (StructType != null)
 				&& (StructType.GetFullName(.. scope .()) == typeName);
+		case .Weak:
+			if (Kind == .Nil)
+				return true;
+			if (Kind != .Weak)
+				return false;
+			// A gone handle passes: the callee reads null, as for a Nil.
+			let resolved = Data.Weak.Resolve();
+			if (resolved == null)
+				return true;
+			var w = resolved.GetType();
+			while (w != null)
+			{
+				if (w.GetFullName(.. scope .()) == typeName)
+					return true;
+				w = w.BaseType;
+			}
+			return false;
 		case .Delegate:
 			// Nil clears a binding.
 			return (Kind == .Nil) || (Kind == .Delegate);

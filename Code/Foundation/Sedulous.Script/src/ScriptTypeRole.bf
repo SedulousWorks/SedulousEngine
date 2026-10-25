@@ -19,4 +19,8 @@ enum ScriptTypeRole
 	/// A SceneFacade: reached through the scene as `scene.<Name>`, one per scene, made on
 	/// first use by SceneFacades.
 	case SceneFacade;
+	/// A class its owner makes and destroys (IScriptWeaklyHeld), held by a weak handle that
+	/// resolves on every use: a member called through a gone one fails with ObjectGone.
+	/// WeakRootTypeName names the topmost weakly held base; Cast checks a handle's type.
+	case Weak;
 }

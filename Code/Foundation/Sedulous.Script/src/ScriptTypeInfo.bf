@@ -38,6 +38,12 @@ class ScriptTypeInfo
 	/// A component's: whether the entity in Self carries one, a Bool result. What a backend's
 	/// `X.of(entity)` asks before it hands out a handle, so a missing component is null.
 	public ScriptThunk IsOn = null;
+	/// For a Weak type: the topmost weakly held base on the surface (the type itself when it
+	/// has none), which a backend's `X::Of(node)` takes.
+	public String WeakRootTypeName = new .() ~ delete _;
+	/// A Weak type's: whether the handle in Self names one of this type, Self again as the
+	/// result when it does and Nil when not, a gone handle included. Never a failure.
+	public ScriptThunk Cast = null;
 
 	public List<ScriptFieldInfo> Fields = new .() ~ DeleteContainerAndItems!(_);
 	public List<ScriptMethodInfo> Methods = new .() ~ DeleteContainerAndItems!(_);
@@ -135,6 +141,18 @@ class ScriptTypeInfo
 	public ScriptTypeInfo PresentBy(ScriptThunk isOn)
 	{
 		IsOn = isOn;
+		return this;
+	}
+
+	public ScriptTypeInfo WeakRoot(StringView rootTypeName)
+	{
+		WeakRootTypeName.Set(rootTypeName);
+		return this;
+	}
+
+	public ScriptTypeInfo CastBy(ScriptThunk cast)
+	{
+		Cast = cast;
 		return this;
 	}
 

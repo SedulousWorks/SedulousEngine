@@ -94,6 +94,17 @@ static class BoundApiTests
 		Test.Assert((widget != null) && HasSignature(widget, "WidgetComponent@ WidgetComponent::of(const Entity &in entity)"));
 		Test.Assert(widget.Find("WidgetComponent") == null, "no constructor");
 
+		// A weakly held class: narrowed from its family's root, valid while its object lives,
+		// and made only by its owner.
+		let gadget = Find(api, "Gadget");
+		Test.Assert((gadget != null) && HasSignature(gadget, "bool Gadget.IsValid (read only)") && gadget.Find("IsValid").ReadOnly);
+		Test.Assert(HasSignature(gadget, "Gadget@ Gadget::Of(Gadget@ node)") && HasSignature(gadget, "bool Gadget.opEquals(const Gadget@ other) const"));
+		Test.Assert(gadget.Find("Gadget") == null, "no constructor");
+		let sprocket = Find(api, "Sprocket");
+		Print(sprocket);
+		Test.Assert((sprocket != null) && HasSignature(sprocket, "Sprocket@ Sprocket::Of(Gadget@ node)"));
+		Test.Assert(HasSignature(sprocket, "Gadget@ Sprocket.opImplCast()") && HasSignature(sprocket, "const Gadget@ Sprocket.opImplCast() const"), "a handle to its base");
+
 		// The global namespace: the language's coroutine verbs and the static block's function.
 		let global = Find(api, "");
 		Print(global);

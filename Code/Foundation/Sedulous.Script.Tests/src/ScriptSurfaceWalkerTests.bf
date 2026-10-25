@@ -34,8 +34,9 @@ static class ScriptSurfaceWalkerTests
 		let s = scope ScriptSurface();
 		FixtureSurface.Populate(s);
 		// Vec2, Thing, SpecialThing, Mode, Cooker, the static block, WidgetComponent, its
-		// manager, the system, the Widgets facade.
-		Test.Assert(FixtureSurface.TypeCount == 10, scope $"found {FixtureSurface.TypeCount}");
+		// manager, the system, the Widgets facade, and the weakly held Gadget, Sprocket and
+		// Gizmo.
+		Test.Assert(FixtureSurface.TypeCount == 13, scope $"found {FixtureSurface.TypeCount}");
 		Test.Assert(s.Types.Count == FixtureSurface.TypeCount);
 		Test.Assert(s.Find(scope $"{cFixture}.Unmarked") == null);
 		Test.Assert(s.Find("Sedulous.Script.Fixture.FixtureSurface") == null, "the root itself is off");
@@ -198,6 +199,33 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(Field(system, "Ticks").IsProperty);
 	}
 
+	/// A class that is IScriptWeaklyHeld, and every class derived from it, is Weak: its family
+	/// narrows from the topmost weakly held base, it has a cast, its handles cross as Weak, and
+	/// nothing makes one but its owner.
+	[Test]
+	public static void AWeaklyHeldClassIsWeakWithItsFamilysRoot()
+	{
+		let s = scope ScriptSurface();
+		FixtureSurface.Populate(s);
+		let gadgetName = scope $"{cFixture}.Gadget";
+
+		let gadget = s.Find(gadgetName);
+		Test.Assert((gadget != null) && (gadget.Kind == .Class) && (gadget.Role == .Weak));
+		Test.Assert(gadget.WeakRootTypeName == gadgetName, "the root of its own family");
+		Test.Assert(gadget.Cast != null, "a cast");
+		let other = Field(gadget, "Other");
+		Test.Assert((other != null) && (other.Kind == .Weak) && (other.TypeName == gadgetName), "a member naming it crosses as Weak");
+		let holds = Method(gadget, "Holds");
+		Test.Assert((holds != null) && (holds.Params[0].Kind == .Weak) && holds.IsCallable);
+		Test.Assert(Method(gadget, "this") == null, "no constructor");
+
+		let sprocket = s.Find(scope $"{cFixture}.Sprocket");
+		Test.Assert((sprocket != null) && (sprocket.Role == .Weak), "derived, and weak too");
+		Test.Assert(sprocket.WeakRootTypeName == gadgetName, "narrowed from its base");
+		Test.Assert((sprocket.Cast != null) && (Field(sprocket, "Teeth") != null));
+		Test.Assert(s.Find(scope $"{cFixture}.Gizmo").WeakRootTypeName == gadgetName);
+	}
+
 	[Test]
 	public static void TheNullRuntimeDescribesWhatItBound()
 	{
@@ -209,7 +237,7 @@ static class ScriptSurfaceWalkerTests
 
 		let text = scope String();
 		vm.Describe(text);
-		Test.Assert(text.StartsWith("script surface: 10 types, "), scope String(text.Substring(0, 80)));
+		Test.Assert(text.StartsWith("script surface: 13 types, "), scope String(text.Substring(0, 80)));
 		Test.Assert(text.Contains(" 0 blocked, domains: Runtime Pipeline"));
 		Test.Assert(text.Contains("== domain Pipeline =="));
 		Test.Assert(text.Contains("struct Vec2 [all public] \"Vector 2\""));
@@ -226,6 +254,8 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(text.Contains("    On = 5"));
 		Test.Assert(text.Contains("    Poke(entity: EntityHandle) [on entity: Poke]"));
 		Test.Assert(text.Contains("class WidgetsFacade [SceneFacade] \"Widgets\""), "the facade role, reached as Widgets");
+		Test.Assert(text.Contains("class Sprocket [Weak]\n"), "the weak role");
+		Test.Assert(text.Contains("    Other: Gadget\n"), "a weak member, not blocked");
 		Test.Assert(text.Contains("    PokeAndTick(entity: EntityHandle) -> int [on entity: PokeAndTick]"));
 		Test.Assert(text.Contains("    Nudge(entity: EntityHandle, amount: float = ...)\n"), "not on the entity");
 		Test.Assert(!text.Contains("Scratch") && !text.Contains("Unmarked") && !text.Contains("NotExposed"));
@@ -240,19 +270,22 @@ static class ScriptSurfaceWalkerTests
 		Test.Assert(NullScriptRuntime.Short("float", .. scope .()) == "float");
 	}
 
-	/// The facade closure keeps what a script reaches from the facades, the globals and the
-	/// marked components (a component bringing its marked manager), transitively through their
-	/// members, and cuts the rest however marked.
+	/// The facade closure keeps what a script reaches from the facades, the globals, the
+	/// marked components (a component bringing its marked manager) and the weakly held
+	/// classes, transitively through their members, and cuts the rest however marked.
 	[Test]
 	public static void TheFacadeClosureIsWhatTheFacadesReach()
 	{
 		let s = scope ScriptSurface();
 		FixtureFacadeSurface.Populate(s);
-		Test.Assert(FixtureFacadeSurface.TypeCount == 4, scope $"found {FixtureFacadeSurface.TypeCount}");
+		// The Widgets facade, the static block, WidgetComponent and its manager, and the weakly
+		// held Gadget, Sprocket and Gizmo, each a seed of its own.
+		Test.Assert(FixtureFacadeSurface.TypeCount == 7, scope $"found {FixtureFacadeSurface.TypeCount}");
 		Test.Assert(s.Find(scope $"{cFixture}.WidgetsFacade") != null, "the facade");
 		Test.Assert(s.Find(scope $"{cFixture}.Thing") == null, "a marked class nothing reaches");
 		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponent").Role == .Component, "a marked component");
 		Test.Assert(s.Find(scope $"{cFixture}.WidgetComponentManager") != null, "and its marked manager");
+		Test.Assert(s.Find(scope $"{cFixture}.Gizmo").Role == .Weak, "a weakly held class, though nothing names it");
 		let text = scope String();
 		let vm = scope Sedulous.Script.Null.NullScriptRuntime();
 		vm.Bind(s);
@@ -268,7 +301,8 @@ static class ScriptSurfaceWalkerTests
 	{
 		let s = scope ScriptSurface();
 		FixtureDomainsSurface.Populate(s);
-		Test.Assert(FixtureDomainsSurface.TypeCount == 5, scope $"found {FixtureDomainsSurface.TypeCount}");
+		// The runtime closure's seven, and the Pipeline domain's Cooker.
+		Test.Assert(FixtureDomainsSurface.TypeCount == 8, scope $"found {FixtureDomainsSurface.TypeCount}");
 		Test.Assert(s.Find(scope $"{cFixture}.WidgetsFacade") != null, "the facade");
 		Test.Assert(s.Find(scope $"{cFixture}.Cooker") != null, "the Pipeline domain type");
 		Test.Assert(s.Find(scope $"{cFixture}.Thing") == null, "a marked class nothing reaches");

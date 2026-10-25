@@ -30,4 +30,8 @@ enum ScriptValueKind : uint8
 	case List;
 	/// A script function as a ScriptDelegate the callee takes ownership of.
 	case Delegate;
+	/// A weak handle to a class its owner destroys (IScriptWeaklyHeld): a ScriptWeakRef that
+	/// BORROWS its table, as a String borrows its text, so a VM that keeps one keeps its own
+	/// reference on the table. Resolved on every use; a gone one resolves to null.
+	case Weak;
 }
