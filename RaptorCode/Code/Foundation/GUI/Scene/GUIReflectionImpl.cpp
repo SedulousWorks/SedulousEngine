@@ -240,58 +240,6 @@ namespace foundation::gui
         builder.Method<&ElementOf<ColorPicker>, ColorPicker, Node>("of");
     }
 
-    // Toasts (T7 of round three): a host markup places; a request a script fills in and posts.
-    REFLECT_ENUM(ToastSeverity, "rtti::gui")
-    {
-        builder.Value("Info", ToastSeverity::Info);
-        builder.Value("Success", ToastSeverity::Success);
-        builder.Value("Warning", ToastSeverity::Warning);
-        builder.Value("Error", ToastSeverity::Error);
-    }
-    REFLECT_VALUE(ToastRequest, "rtti::gui")
-    {
-        builder.Property<&ToastRequest::Title>("title")
-            .Property<&ToastRequest::Message>("message")
-            .Property<&ToastRequest::Rich>("rich")
-            .Property<&ToastRequest::Bare>("bare")
-            .Property<&ToastRequest::Announcement>("announcement")
-            .Property<&ToastRequest::Severity>("severity")
-            .Property<&ToastRequest::Duration>("duration")
-            .Property<&ToastRequest::Key>("key")
-            .Property<&ToastRequest::Classes>("classes"); // `class` is a script's keyword
-        builder.Method<&ToastRequest::AddAction>("addAction");
-        builder.Constructor();
-    }
-    namespace
-    {
-        // `ToastHost.nearest(node)`: the toast host in that node's GUI (its root's subtree), else null.
-        [[nodiscard]] ToastHost* FindToastHostUnder(Node& node)
-        {
-            if (ToastHost* host = Cast<ToastHost>(&node))
-                return host;
-            for (usize i = 0; i < node.ChildCount(); ++i)
-                if (ToastHost* host = FindToastHostUnder(*node.GetChildAt(i)))
-                    return host;
-            return nullptr;
-        }
-        [[nodiscard]] core::Variant FindToastHost(core::Variant handle)
-        {
-            Node* node = Node::FromHandle(handle);
-            Node* root = node != nullptr ? node->GetRootNode() : nullptr;
-            ToastHost* host = root != nullptr ? FindToastHostUnder(*root) : nullptr;
-            return host != nullptr ? host->HandleAs(ToastHost::StaticType()) : core::Variant{};
-        }
-    }
-    REFLECT_MEMBERS(ToastHost, "rtti::gui")
-    {
-        builder.Method<&ToastHost::PostScript>("post");
-        builder.Method<&ToastHost::PostContentScript, ToastId, Node>("postContent");
-        builder.Method<static_cast<bool (ToastHost::*)(ToastId)>(&ToastHost::Dismiss)>("dismiss");
-        builder.Method<&ToastHost::DismissAll>("dismissAll");
-        builder.Method<&FindToastHost, ToastHost, Node>("nearest"); // not `find`: a node's find(id) has the name
-        builder.Method<&ElementOf<ToastHost>, ToastHost, Node>("of");
-    }
-
     REFLECT_MEMBERS(TextEditBase, "rtti::gui")
     {
         builder.Method<&ElementOf<TextEditBase>, TextEditBase, Node>("of");
@@ -333,33 +281,8 @@ namespace foundation::gui
     {
     }
 
-    REFLECT_MEMBERS(Tab, "rtti::gui")
-    {
-        builder.Method<&ElementOf<Tab>, Tab, Node>("of");
-    }
-
-    REFLECT_MEMBERS(TabBar, "rtti::gui")
-    {
-        builder.Method<&TabBar::GetTabCount>("tabCount");
-        builder.Method<&TabBar::RemoveTab>("removeTab");
-        builder.Method<&TabBar::MoveTab>("moveTab");
-        builder.Method<&ElementOf<TabBar>, TabBar, Node>("of");
-    }
-
-    REFLECT_MEMBERS(TabPage, "rtti::gui")
-    {
-        builder.Method<&ElementOf<TabPage>, TabPage, Node>("of");
-    }
-
     REFLECT_MEMBERS(TabPageHost, "rtti::gui")
     {
-    }
-
-    REFLECT_MEMBERS(TabView, "rtti::gui")
-    {
-        builder.Method<&TabView::GetPageCount>("pageCount");
-        builder.Method<&TabView::RemovePage>("removePage");
-        builder.Method<&ElementOf<TabView>, TabView, Node>("of");
     }
 
     REFLECT_MEMBERS(SpinButton, "rtti::gui")
@@ -403,33 +326,8 @@ namespace foundation::gui
         builder.Method<&ElementOf<TableView>, TableView, Node>("of");
     }
 
-    REFLECT_MEMBERS(MessageBox, "rtti::gui")
-    {
-        builder.Method<&MessageBox::Show>("show");
-        builder.Method<&ElementOf<MessageBox>, MessageBox, Node>("of");
-    }
-
     REFLECT_MEMBERS(MenuSeparator, "rtti::gui")
     {
-    }
-
-    REFLECT_MEMBERS(MenuItem, "rtti::gui")
-    {
-        builder.Method<&ElementOf<MenuItem>, MenuItem, Node>("of");
-    }
-
-    REFLECT_MEMBERS(Menu, "rtti::gui")
-    {
-        builder.Method<&Menu::Close>("close");
-        builder.Method<&Menu::OpenAtPoint>("openAt"); // a script's own menus (E16)
-        builder.Method<&Menu::OpenBelowNode, bool, Node>("openBelow");
-        builder.Method<&Menu::IsOpen>("isOpen");
-        builder.Method<&ElementOf<Menu>, Menu, Node>("of");
-    }
-
-    REFLECT_MEMBERS(MenuBar, "rtti::gui")
-    {
-        builder.Method<&ElementOf<MenuBar>, MenuBar, Node>("of");
     }
 
     REFLECT_MEMBERS(ItemView, "rtti::gui")
@@ -449,16 +347,6 @@ namespace foundation::gui
     REFLECT_MEMBERS(ComboBox, "rtti::gui")
     {
         builder.Method<&ElementOf<ComboBox>, ComboBox, Node>("of");
-    }
-
-    REFLECT_MEMBERS(Window, "rtti::gui")
-    {
-        // A script's own windows (E16): opened where they are or modal, closed, listened to (`close`).
-        builder.Method<&Window::OpenInPlace>("open");
-        builder.Method<&Window::OpenModalOver>("openModal");
-        builder.Method<&Window::Close>("close");
-        builder.Method<&Window::IsOpen>("isOpen");
-        builder.Method<&ElementOf<Window>, Window, Node>("of");
     }
 
     REFLECT_MEMBERS(Gui, "rtti::gui")

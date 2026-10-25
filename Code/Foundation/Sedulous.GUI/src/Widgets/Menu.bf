@@ -94,7 +94,7 @@ class MenuSeparator : MenuRow
 }
 
 // === Activatable item ======================================================
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class MenuItem : MenuRow
 {
 	/// The inline-start column (check / icon).
@@ -138,7 +138,7 @@ class MenuItem : MenuRow
 
 	/// Its text as it shows (the `&` taken out); set, an `&` marks its access key (`&Open`: O),
 	/// `&&` an ampersand.
-	[GuiProperty("", .Translatable, "name")]
+	[GuiProperty("", .Translatable, "name"), Scriptable]
 	public StringView Text
 	{
 		get => mText.GetString();
@@ -191,7 +191,7 @@ class MenuItem : MenuRow
 	}
 
 	// Checkable state (a leading check mark).
-	[GuiProperty("checkable")]
+	[GuiProperty("checkable"), Scriptable]
 	public bool Checkable
 	{
 		get => mCheckable;
@@ -203,7 +203,7 @@ class MenuItem : MenuRow
 	}
 
 	/// Set, it calls the toggle callback when it changes.
-	[GuiProperty("checked")]
+	[GuiProperty("checked"), Scriptable]
 	public bool Checked
 	{
 		get => mChecked;
@@ -611,7 +611,7 @@ class MenuScrollArrow : UIWidget
 }
 
 // === Menu ==================================================================
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class Menu : UIWidget
 {
 	/// Seconds a resting pointer waits before switching.
@@ -881,6 +881,7 @@ class Menu : UIWidget
 
 	public int RowCount => mRows.Count;
 
+	[Scriptable]
 	public bool IsOpen
 	{
 		get
@@ -914,6 +915,7 @@ class Menu : UIWidget
 	}
 
 	/// Closes this menu (and the submenus it holds) if it is open.
+	[Scriptable]
 	public new void Close()
 	{
 		let d = EventDispatcher;
@@ -934,7 +936,8 @@ class Menu : UIWidget
 	}
 
 	/// Opens it at a point in the root's space, as a popup of what holds it (a menu a script
-	/// added); whether it opened.
+	/// added); whether it opened. `OpenAt` to a script.
+	[Scriptable, ScriptName("OpenAt")]
 	public bool OpenAtPoint(float x, float y)
 	{
 		let owner = (Parent != null) ? Parent : RootNode;
@@ -963,6 +966,25 @@ class Menu : UIWidget
 		options.Placement.Side = .Below;
 		options.TakesFocus = true;
 		OpenAs(owner, options);
+	}
+
+	/// Opens it below `anchor`, as that node's popup (a script's menu: back where it waits once
+	/// closed, to open again); whether it opened. `OpenBelow` to a script.
+	[Scriptable, ScriptName("OpenBelow")]
+	public bool OpenBelowNode(Node anchor)
+	{
+		if (anchor == null)
+			return false;
+		let options = new PopupOptions();
+		options.Anchor = anchor;
+		options.Placement.Side = .Below;
+		options.Placement.Align = .Start;
+		options.Placement.Gap = 0.0f;
+		options.Placement.Shrink = true;
+		options.TakesFocus = true;
+		options.ReturnHome = true;
+		OpenAs(anchor, options);
+		return IsOpen;
 	}
 
 	// Its items take its font and colour.

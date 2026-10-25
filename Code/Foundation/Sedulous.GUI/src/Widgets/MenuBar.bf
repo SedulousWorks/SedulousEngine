@@ -18,7 +18,7 @@ namespace Sedulous.GUI;
 //
 // In markup its children are its menus, each `<Menu text="File">` a button.
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class MenuBar : UIWidget
 {
 	private struct BarEntry

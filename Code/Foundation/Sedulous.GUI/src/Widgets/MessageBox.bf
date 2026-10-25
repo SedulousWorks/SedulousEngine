@@ -14,7 +14,7 @@ namespace Sedulous.GUI;
 // (Cancel, No, or OK when it is the only one), as its close button does. Its message wraps and
 // its height fits it; it is not resizable unless asked.
 
-[GuiReflect(true)]
+[GuiReflect(true), Scriptable]
 class MessageBox : Window
 {
 	public enum Buttons
@@ -161,6 +161,7 @@ class MessageBox : Window
 
 	/// Opens it, modal, in the GUI it is in (it comes back to where it was); false when it is in
 	/// none (a box shows over a tree: one with no parent has nothing to show over).
+	[Scriptable]
 	public bool Show()
 	{
 		if (IsOpen)
@@ -183,7 +184,7 @@ class MessageBox : Window
 	}
 
 	/// The last answer: "ok", "cancel", "yes" or "no" (empty: none yet).
-	[GuiProperty]
+	[GuiProperty, Scriptable]
 	public StringView ResultName
 	{
 		get => mResultName;

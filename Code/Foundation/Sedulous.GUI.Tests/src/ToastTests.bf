@@ -57,8 +57,8 @@ class ToastBed
 	/// `request` as a text toast of `severity` (its title `title`).
 	public static ToastRequest Text(ToastRequest request, StringView message, ToastSeverity severity = .Info, StringView title = "")
 	{
-		request.Message.Set(message);
-		request.Title.Set(title);
+		request.Message = message;
+		request.Title = title;
 		request.Severity = severity;
 		return request;
 	}
@@ -169,11 +169,11 @@ class ToastTests
 	{
 		let bed = scope ToastBed();
 		let first = ToastBed.Text(scope ToastRequest(), "Cooking 10%");
-		first.Key.Set("cook");
+		first.Key = "cook";
 		let id = bed.Host.Post(first);
 		bed.Frame(4.0f);
 		let again = ToastBed.Text(scope ToastRequest(), "Cooking 60%");
-		again.Key.Set("cook");
+		again.Key = "cook";
 		let second = bed.Host.Post(again);
 		Test.Assert(second != id);
 		bed.Frame();
@@ -196,10 +196,10 @@ class ToastTests
 		let a = bed.Host.Post(ToastBed.Text(scope ToastRequest(), "a", .Error));
 		let b = bed.Host.Post(ToastBed.Text(scope ToastRequest(), "b", .Error));
 		let c1 = ToastBed.Text(scope ToastRequest(), "c1", .Error);
-		c1.Key.Set("c");
+		c1.Key = "c";
 		let c = bed.Host.Post(c1);
 		let c2 = ToastBed.Text(scope ToastRequest(), "c2", .Error);
-		c2.Key.Set("c");
+		c2.Key = "c";
 		bed.Host.Post(c2);
 		Test.Assert(bed.Host.ShownCount == 2);
 		Test.Assert(bed.Host.WaitingCount == 1);
@@ -243,7 +243,7 @@ class ToastTests
 		let bare = scope ToastRequest();
 		bare.Content = banner;
 		bare.Bare = true;
-		bare.Announcement.Set("Achievement: first steps");
+		bare.Announcement = "Achievement: first steps";
 		let bareId = bed.Host.Post(bare);
 		card = bed.Host.GetCard(bareId);
 		Test.Assert(card != null);
@@ -294,7 +294,7 @@ class ToastTests
 			{
 				let request = scope ToastRequest();
 				request.Severity = .Warning;
-				request.Announcement.Set("Cook finished with warnings");
+				request.Announcement = "Cook finished with warnings";
 				id = bed.Host.PostFromAnyThread(request, new [&] () =>
 					{
 						madeOn = Thread.CurrentThreadId;
@@ -345,8 +345,8 @@ class ToastTests
 		WidgetFixtures.UseSheet(styles, Theme.DefaultThemeCSS);
 		styles.ApplyTree(bed.Root); // a style pass runs over this GUI: a toast plays its entrance
 		let request = ToastBed.Text(scope ToastRequest(), "Hello");
-		request.Classes.Set("pop celebrate");
-		request.Key.Set("hello");
+		request.Classes = "pop celebrate";
+		request.Key = "hello";
 		let id = bed.Host.Post(request);
 		let card = bed.Host.GetCard(id);
 		Test.Assert(card != null);
@@ -369,8 +369,8 @@ class ToastTests
 
 		// Replaced by its key with another class: the old ones go.
 		let again = ToastBed.Text(scope ToastRequest(), "Hello again");
-		again.Key.Set("hello");
-		again.Classes.Set("still");
+		again.Key = "hello";
+		again.Classes = "still";
 		bed.Host.Post(again);
 		Test.Assert(card.HasClass("still"));
 		Test.Assert(!card.HasClass("pop"));
@@ -408,7 +408,7 @@ class ToastTests
 		Test.Assert(card.Parent == null);
 
 		let still = ToastBed.Text(scope ToastRequest(), "Still");
-		still.Classes.Set("still");
+		still.Classes = "still";
 		let quiet = bed.Host.Post(still);
 		let quietCard = bed.Host.GetCard(quiet);
 		Test.Assert(quietCard != null);

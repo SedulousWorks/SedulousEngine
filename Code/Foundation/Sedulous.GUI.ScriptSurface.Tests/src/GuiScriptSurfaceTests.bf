@@ -12,8 +12,10 @@ namespace Sedulous.GUI.ScriptSurface.Tests;
 /// by AngelScript without a word; and Raptor's script stories, in their AngelScript halves, over a
 /// root handed in as an argument: a script builds and styles a widget, listens and is called,
 /// narrows a handle, and is told a gone node is gone, a handle outliving its GUI included; a script
-/// narrows to each widget and sets its properties, and calls their verbs; a script tweens, springs
-/// and plays a sequence, and a tween it keeps past its GUI is harmless.
+/// narrows to each widget and sets its properties, and calls their verbs; a script opens windows,
+/// menus and popups of its own, fills in a toast request and posts it and hears its action, and
+/// works its tabs and a message box; a script tweens, springs and plays a sequence, and a tween it
+/// keeps past its GUI is harmless.
 static class GuiScriptSurfaceTests
 {
 	private static void Dump(AngelScriptRuntime vm)
@@ -40,6 +42,11 @@ static class GuiScriptSurfaceTests
 		"Sedulous.GUI.Button", "Sedulous.GUI.CheckBox", "Sedulous.GUI.RadioButton", "Sedulous.GUI.ToggleSwitch",
 		"Sedulous.GUI.Expander");
 
+	/// The menus, windows, tabs and toasts on the surface, held weakly.
+	private static StringView[10] sOverlays = .("Sedulous.GUI.ToastHost", "Sedulous.GUI.Tab", "Sedulous.GUI.TabBar",
+		"Sedulous.GUI.TabPage", "Sedulous.GUI.TabView", "Sedulous.GUI.Window", "Sedulous.GUI.MessageBox",
+		"Sedulous.GUI.MenuItem", "Sedulous.GUI.Menu", "Sedulous.GUI.MenuBar");
+
 	[Test]
 	public static void TheCountIsATripwire()
 	{
@@ -54,13 +61,16 @@ static class GuiScriptSurfaceTests
 		// Panel, Separator, Spacer, Splitter, SplitterHandle, ScrollView, RangeWidget, Slider,
 		// ProgressBar, ScrollBar, ListBox, ButtonBase, Button, CheckBox, RadioButton, ToggleSwitch
 		// and Expander; their properties name text, numbers, flags and Color, so no Core type of
-		// their own. Then Core's static block and the fifteen of its types the block's free
+		// their own. The menus, windows, tabs and toasts, ten weakly held: ToastHost, Tab, TabBar,
+		// TabPage, TabView, Window, MessageBox, MenuItem, Menu and MenuBar; and the toast's two
+		// a script fills in, ToastRequest (counted, with a marked constructor) and ToastSeverity.
+		// Then Core's static block and the fifteen of its types the block's free
 		// functions name: AABB, BoundingFrustum, BoundingSphere, Color, Color32, ContainmentType,
 		// Float2, Float3, Float3x3, Float4, Float4x4, Plane, PlaneIntersectionType, Quaternion and
 		// Ray. The tweens' verbs name no Core type of their own (text, numbers, a script
 		// function). Core's other marked types (Transform, Rectangle, the IO and log enums)
 		// nothing here reaches, nor Action, the tweens' unmarked base.
-		Test.Assert(GuiScriptSurface.TypeCount == 45, scope $"the GUI surface has {GuiScriptSurface.TypeCount} types");
+		Test.Assert(GuiScriptSurface.TypeCount == 57, scope $"the GUI surface has {GuiScriptSurface.TypeCount} types");
 		Test.Assert(s.Find("Sedulous.GUI.Node").Role == .Weak);
 		Test.Assert(s.Find("Sedulous.GUI.SceneRoot").Role == .Weak);
 		Test.Assert(s.Find("Sedulous.GUI.UINode").Role == .Weak);
@@ -77,10 +87,24 @@ static class GuiScriptSurfaceTests
 			let t = s.Find(widget);
 			Test.Assert((t != null) && (t.Role == .Weak) && (t.WeakRootTypeName == "Sedulous.GUI.Node"), scope $"{widget}, held weakly");
 		}
+		for (let widget in sOverlays)
+		{
+			let t = s.Find(widget);
+			Test.Assert((t != null) && (t.Role == .Weak) && (t.WeakRootTypeName == "Sedulous.GUI.Node"), scope $"{widget}, held weakly");
+		}
+		Test.Assert(s.Find("Sedulous.GUI.ToastRequest").Role == .Counted);
+		Test.Assert(s.Find("Sedulous.GUI.ToastSeverity") != null);
 		// Raptor's parts with no script members of their own stay off, and the rest of the
 		// widget families come later.
 		Test.Assert(s.Find("Sedulous.GUI.ButtonIndicator") == null);
 		Test.Assert(s.Find("Sedulous.GUI.ExpanderHeader") == null);
+		Test.Assert(s.Find("Sedulous.GUI.TabCloseButton") == null);
+		Test.Assert(s.Find("Sedulous.GUI.TabListButton") == null);
+		Test.Assert(s.Find("Sedulous.GUI.TabCloseAllButton") == null);
+		Test.Assert(s.Find("Sedulous.GUI.TabStrip") == null);
+		Test.Assert(s.Find("Sedulous.GUI.TabPageHost") == null);
+		Test.Assert(s.Find("Sedulous.GUI.MenuSeparator") == null);
+		Test.Assert(s.Find("Sedulous.GUI.ToastCard") == null, "a toast's card is the host's");
 		Test.Assert(s.Find("Sedulous.GUI.TextField") == null, "the text widgets come later");
 	}
 
@@ -114,6 +138,16 @@ static class GuiScriptSurfaceTests
 		CheckProperties(s, "Sedulous.GUI.RadioButton", RadioButton.StaticGuiType);
 		CheckProperties(s, "Sedulous.GUI.ToggleSwitch", ToggleSwitch.StaticGuiType);
 		CheckProperties(s, "Sedulous.GUI.Expander", Expander.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.ToastHost", ToastHost.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.Tab", Tab.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.TabBar", TabBar.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.TabPage", TabPage.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.TabView", TabView.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.Window", Sedulous.GUI.Window.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.MessageBox", MessageBox.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.MenuItem", MenuItem.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.Menu", Menu.StaticGuiType);
+		CheckProperties(s, "Sedulous.GUI.MenuBar", MenuBar.StaticGuiType);
 		// The tables chain as the types do, so the walk above covers each one's bases.
 		Test.Assert(UIWidget.StaticGuiType.Base == UINode.StaticGuiType);
 		Test.Assert(UINode.StaticGuiType.Base == Node.StaticGuiType);
@@ -157,6 +191,7 @@ static class GuiScriptSurfaceTests
 		Test.Assert(text.Contains("class GuiEvent [Counted]"), "the event, counted");
 		Test.Assert(text.Contains("class Tween [Counted]"), "the tween, counted");
 		Test.Assert(text.Contains("class Label [Weak]") && text.Contains("class Expander [Weak]"), "the widgets, held weakly");
+		Test.Assert(text.Contains("class ToastRequest [Counted]"), "the toast request, counted");
 	}
 
 	[Test]
@@ -620,5 +655,265 @@ static class GuiScriptSurfaceTests
 
 		root.ReleaseRef();
 		vm.DiscardModule("verbs");
+	}
+
+	// Raptor's windows, menus and popups of a script's own (E16): under the root, a Window opened
+	// in place (listened to for `close`), a Menu with one item "open" (its `activate` listened
+	// to), a Button and a Panel; `openMenu` opens the menu at (20, 20), `openPanel` the panel as
+	// the button's popup.
+	private const String cOverlays = """
+		int closes = 0;
+		bool picked = false;
+		bool onClose(GuiEvent@ e) { closes++; return false; }
+		bool onActivate(GuiEvent@ e) { picked = e.Id == "open"; return true; }
+		Node@ win;
+		Node@ panel;
+		Node@ menu;
+		Node@ anchor;
+		void build(Node@ root)
+		{
+			@win = root.Add("Window"); win.Width = 200; win.Height = 150;
+			Window::Of(win).Title = "Settings";
+			win.On("close", EventHandler(onClose));
+			Window::Of(win).Open();
+			@menu = root.Add("Menu");
+			Node@ item = menu.Add("MenuItem");
+			MenuItem::Of(item).Text = "Open";
+			UIWidget::Of(item).Id = "open";
+			menu.On("activate", EventHandler(onActivate));
+			@anchor = root.Add("Button"); anchor.Width = 80; anchor.Height = 30;
+			@panel = root.Add("Panel"); panel.Width = 100; panel.Height = 60;
+		}
+		void openMenu() { Menu::Of(menu).OpenAt(20, 20); }
+		bool menuOpen() { return Menu::Of(menu).IsOpen; }
+		bool openBelow() { return Menu::Of(menu).OpenBelow(anchor); }
+		void closeMenu() { Menu::Of(menu).Close(); }
+		void openPanel() { anchor.Popup(panel); }
+		void closeWindow() { Window::Of(win).Close(); }
+		bool windowOpen() { return Window::Of(win).IsOpen; }
+		void closePanel() { panel.ClosePopup(); }
+		int closeCount() { return closes; }
+		bool pickedOpen() { return picked; }
+		""";
+
+	/// The first node of `type` in the subtree (depth first, `node` first), or null.
+	private static Node FindIn(Node node, Type type)
+	{
+		if (node.GetType().IsSubtypeOf(type))
+			return node;
+		for (int i = 0; i < node.ChildCount; ++i)
+		{
+			if (let found = FindIn(node.GetChildAt(i), type))
+				return found;
+		}
+		return null;
+	}
+
+	private static bool Run(AngelScriptRuntime vm, StringView module, StringView decl, ref ScriptValue r)
+	{
+		let ok = vm.Call(module, decl, default, ref r);
+		Dump(vm);
+		return ok;
+	}
+
+	[Test]
+	public static void AScriptOpensWindowsMenusAndPopupsOfItsOwn()
+	{
+		RegisterGuiElements();
+		let s = scope ScriptSurface();
+		GuiScriptSurface.Populate(s);
+		let vm = new AngelScriptRuntime();
+		defer delete vm;
+		vm.Bind(s);
+		let ok = vm.Compile("overlays", "overlays.as", cOverlays);
+		Dump(vm);
+		Test.Assert(ok && vm.Problems.IsEmpty, "compiled, with nothing to say");
+
+		let root = NewScene();
+		var rootArg = ScriptValue[1](.FromWeak(root));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("overlays", "void build(Node@)", rootArg, ref r), "built");
+		Dump(vm);
+		root.UpdateLayout();
+		let d = root.EventDispatcher;
+		let window = FindIn(root, typeof(Sedulous.GUI.Window)) as Sedulous.GUI.Window;
+		let menu = FindIn(root, typeof(Menu)) as Menu;
+		let panel = FindIn(root, typeof(Panel)) as Panel;
+		Test.Assert((window != null) && (menu != null) && (panel != null));
+		Test.Assert(window.IsOpen && (window.Title == "Settings"));
+
+		Test.Assert(Run(vm, "overlays", "void openMenu()", ref r) && menu.IsOpen, "the menu opened at a point");
+		Test.Assert(Run(vm, "overlays", "bool menuOpen()", ref r) && r.AsBool, "and the script sees it open");
+		root.UpdateLayout();
+		let item = menu.GetChildAt(0);
+		Test.Assert(item != null);
+		let at = item.ConvertToWorldSpace(.(item.Size.X * 0.5f, item.Size.Y * 0.5f));
+		d.InjectMouseDown(at, .Left);
+		d.InjectMouseUp(at, .Left);
+		Test.Assert(Run(vm, "overlays", "bool pickedOpen()", ref r) && r.AsBool, "the item's activate heard");
+		Test.Assert(!menu.IsOpen);
+		// Closed, the script's menu went back where it waits, unseen there, and opens again.
+		Test.Assert((menu.Parent != null) && !menu.Displayed);
+		Test.Assert(Run(vm, "overlays", "bool openBelow()", ref r) && r.AsBool && menu.IsOpen, "opened below the button");
+		Test.Assert(Run(vm, "overlays", "void closeMenu()", ref r) && !menu.IsOpen, "and closed by the script");
+		Test.Assert(Run(vm, "overlays", "void openMenu()", ref r) && menu.IsOpen);
+		d.InjectKeyDown((uint32)KeyCode.Escape);
+		Test.Assert(!menu.IsOpen, "Escape closes it");
+
+		Test.Assert(Run(vm, "overlays", "void openPanel()", ref r) && d.IsPopupOpen(panel));
+		Test.Assert(Run(vm, "overlays", "void closePanel()", ref r) && !d.IsPopupOpen(panel));
+		Test.Assert(panel.Parent == root, "back where it stood");
+
+		window.AddRef(); // closing takes the window off the page, its only other owner
+		Test.Assert(Run(vm, "overlays", "void closeWindow()", ref r) && !window.IsOpen);
+		Test.Assert(Run(vm, "overlays", "bool windowOpen()", ref r) && !r.AsBool);
+		Test.Assert(Run(vm, "overlays", "int closeCount()", ref r) && (r.AsInt == 1), "close heard once");
+		window.ReleaseRef();
+		Test.Assert(vm.Problems.IsEmpty);
+
+		root.ReleaseRef();
+		vm.DiscardModule("overlays");
+	}
+
+	// Raptor's toasts from a script: the script finds the host the test placed, fills in a request
+	// (a title, a message, success, staying, the class `pop`, an action "reveal") and posts it,
+	// posts a widget's toast, and listens for `activate` on the host, keeping the pressed action's
+	// id.
+	private const String cToasts = """
+		string pressed = "";
+		bool onAction(GuiEvent@ e) { pressed = e.Id; return true; }
+		void post(Node@ root)
+		{
+			ToastHost@ host = ToastHost::Nearest(root);
+			ToastRequest@ r = ToastRequest();
+			r.Title = "Exported";
+			r.Message = "Town is in Dist/Town.";
+			r.Severity = ToastSeverity::Success;
+			r.Duration = 0;
+			r.Classes = "pop";
+			r.AddAction("reveal", "Reveal", "");
+			host.Post(r);
+			host.On("activate", EventHandler(onAction));
+			Node@ label = root.Add("Label");
+			ToastRequest@ w = ToastRequest();
+			w.Announcement = "From a widget";
+			host.PostContent(w, label);
+		}
+		int shown(Node@ root) { return ToastHost::Nearest(root).ShownCount; }
+		// From a node away from the host: the host is found from the node's root, not its subtree.
+		int shownFromDeep(Node@ root) { Node@ deep = root.Add("Panel").Add("Panel"); return ToastHost::Nearest(deep).ShownCount; }
+		string pressedId() { return pressed; }
+		bool dismissAll(Node@ root) { ToastHost@ host = ToastHost::Nearest(root); host.DismissAll(); return host.ShownCount == 0; }
+		""";
+
+	[Test]
+	public static void AScriptFillsInAToastRequestPostsItAndHearsItsAction()
+	{
+		RegisterGuiElements();
+		let s = scope ScriptSurface();
+		GuiScriptSurface.Populate(s);
+		let vm = new AngelScriptRuntime();
+		defer delete vm;
+		vm.Bind(s);
+		let ok = vm.Compile("toasts", "toasts.as", cToasts);
+		Dump(vm);
+		Test.Assert(ok && vm.Problems.IsEmpty, "compiled, with nothing to say");
+
+		let root = NewScene();
+		let host = new ToastHost();
+		root.AddChild(host);
+		host.ReleaseRef(); // the root's keeps it
+		var rootArg = ScriptValue[1](.FromWeak(root));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("toasts", "void post(Node@)", rootArg, ref r), "posted");
+		Dump(vm);
+		Test.Assert(host.ShownCount == 2);
+		Test.Assert(vm.Call("toasts", "int shown(Node@)", rootArg, ref r) && (r.AsInt == 2), "the script counts them");
+		Test.Assert(vm.Call("toasts", "int shownFromDeep(Node@)", rootArg, ref r) && (r.AsInt == 2), "found from a node deep in the GUI");
+		Dump(vm);
+		let card = host.GetChildAt(0) as ToastCard;
+		Test.Assert((card != null) && (card.TitlePart != null));
+		Test.Assert(card.TitlePart.Text == "Exported");
+		Test.Assert(card.MessagePart.Text == "Town is in Dist/Town.");
+		Test.Assert(card.HasClass("success") && card.HasClass("pop"));
+		Test.Assert(card.Remaining < 0.0f, "duration 0: until closed");
+		Test.Assert((card.ActionCount == 1) && (card.ActionAt(0).Text == "Reveal"));
+		let widget = host.GetChildAt(1) as ToastCard;
+		Test.Assert((widget != null) && (widget.Content is Sedulous.GUI.Label));
+		Test.Assert(widget.Announcement == "From a widget");
+
+		card.ActionAt(0).HandleActivate();
+		Test.Assert(vm.Call("toasts", "string pressedId()", default, ref r) && (r.AsString == "reveal"), "the action heard");
+		Test.Assert(host.ShownCount == 1);
+		Test.Assert(vm.Call("toasts", "bool dismissAll(Node@)", rootArg, ref r) && r.AsBool, "all dismissed");
+		Test.Assert(vm.Problems.IsEmpty);
+
+		root.ReleaseRef();
+		vm.DiscardModule("toasts");
+	}
+
+	// A script's tabs and a message box: pages counted and removed, a bar's tabs counted, moved and
+	// removed, a box shown over the GUI.
+	private const String cTabs = """
+		TabView@ view;
+		TabBar@ bar;
+		void build(Node@ root)
+		{
+			@view = TabView::Of(root.Add("TabView"));
+			Node@ first = view.Add("TabPage");
+			TabPage::Of(first).Title = "One";
+			Node@ second = view.Add("TabPage");
+			TabPage::Of(second).Title = "Two";
+			@bar = TabBar::Of(root.Add("TabBar"));
+			Tab::Of(bar.Add("Tab")).Text = "a";
+			bar.Add("Tab");
+		}
+		int pages() { return view.PageCount; }
+		void removeFirstPage() { view.RemovePage(0); }
+		int tabs() { return bar.TabCount; }
+		void swap() { bar.MoveTab(0, 1); }
+		void removeTab() { bar.RemoveTab(0); }
+		bool show(Node@ root) { MessageBox@ box = MessageBox::Of(root.Add("MessageBox")); box.Title = "Sure?"; return box.Show(); }
+		""";
+
+	[Test]
+	public static void AScriptWorksItsTabsAndShowsAMessageBox()
+	{
+		RegisterGuiElements();
+		let s = scope ScriptSurface();
+		GuiScriptSurface.Populate(s);
+		let vm = new AngelScriptRuntime();
+		defer delete vm;
+		vm.Bind(s);
+		let ok = vm.Compile("tabs", "tabs.as", cTabs);
+		Dump(vm);
+		Test.Assert(ok && vm.Problems.IsEmpty, "compiled, with nothing to say");
+
+		let root = NewScene();
+		var rootArg = ScriptValue[1](.FromWeak(root));
+		var r = ScriptValue.Nil;
+		Test.Assert(vm.Call("tabs", "void build(Node@)", rootArg, ref r), "built");
+		Dump(vm);
+		root.UpdateLayout();
+		let view = root.GetChildAt(0) as TabView;
+		let bar = root.GetChildAt(1) as TabBar;
+		Test.Assert((view != null) && (bar != null));
+		Test.Assert(Run(vm, "tabs", "int pages()", ref r) && (r.AsInt == 2) && (view.PageCount == 2), "two pages");
+		Test.Assert(Run(vm, "tabs", "void removeFirstPage()", ref r) && (view.PageCount == 1));
+		Test.Assert(Run(vm, "tabs", "int tabs()", ref r) && (r.AsInt == bar.TabCount));
+		let tabCount = bar.TabCount;
+		Test.Assert(tabCount == 2, scope $"the bar's two tabs: {tabCount}");
+		let first = bar.GetTab(0);
+		Test.Assert(Run(vm, "tabs", "void swap()", ref r) && (bar.GetTab(1) == first), "moved");
+		Test.Assert(Run(vm, "tabs", "void removeTab()", ref r) && (bar.TabCount == 1) && (bar.GetTab(0) == first), "removed");
+		Test.Assert(vm.Call("tabs", "bool show(Node@)", rootArg, ref r) && r.AsBool, "the box shown");
+		Dump(vm);
+		let shown = FindIn(root, typeof(MessageBox)) as MessageBox;
+		Test.Assert((shown != null) && shown.IsOpen && (shown.Title == "Sure?"));
+		shown.Close();
+		Test.Assert(vm.Problems.IsEmpty);
+
+		root.ReleaseRef();
+		vm.DiscardModule("tabs");
 	}
 }
