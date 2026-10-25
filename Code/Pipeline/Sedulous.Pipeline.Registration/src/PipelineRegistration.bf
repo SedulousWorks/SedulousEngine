@@ -25,6 +25,7 @@ using Sedulous.Shaders.Resource;
 using Sedulous.Terrain.Resource;
 using Sedulous.Texture.Resource;
 using Sedulous.UI.Resource;
+using Sedulous.GUI.Resources;
 using Sedulous.VG.Resource;
 using Sedulous.Animation.Pipeline;
 using Sedulous.Audio.Pipeline;
@@ -52,6 +53,7 @@ using Sedulous.Vegetation.Pipeline;
 using Sedulous.Vegetation.Resource;
 using Sedulous.Texture.Pipeline;
 using Sedulous.UI.Pipeline;
+using Sedulous.GUI.Pipeline;
 using Sedulous.VG.Pipeline;
 
 namespace Sedulous.Pipeline.Registration;
@@ -70,11 +72,13 @@ namespace Sedulous.Pipeline.Registration;
 /// matching constant DELIBERATELY, and a lost registration then fails the test loudly.
 static class PipelineRegistration
 {
-	public const int cBuilderCount = 31;
-	public const int cImporterCount = 12;
+	/// The GUI's asset kinds: a document and a style sheet (Sedulous.GUI.Pipeline).
+	public const int cGuiAssetKinds = 2;
+	public const int cBuilderCount = 31 + cGuiAssetKinds;
+	public const int cImporterCount = 13;
 	/// The creators every build has; the scripts add three per language with a cook on top
 	/// (ScriptCreators.CountFor).
-	public const int cCreatorCount = 31;
+	public const int cCreatorCount = 31 + cGuiAssetKinds;
 
 	/// The pipeline surface the script cooks compile against, made by the type registration
 	/// and released by Teardown.
@@ -116,6 +120,7 @@ static class PipelineRegistration
 		TextureResources.RegisterAll();
 		UIResources.RegisterAll();
 		VGResources.RegisterAll();
+		GuiResources.RegisterAll();
 
 		// The pipeline tier: every asset a source file is.
 		AnimationPipeline.RegisterAll();
@@ -138,6 +143,7 @@ static class PipelineRegistration
 		TexturePipeline.RegisterAll();
 		UIPipeline.RegisterAll();
 		VGPipeline.RegisterAll();
+		GuiPipeline.RegisterAll();
 
 		// The script languages and their cooks, against the pipeline surface.
 		AngelScriptBackend.Register();
@@ -190,6 +196,8 @@ static class PipelineRegistration
 		registry.Register(new UIDocumentAssetBuilder());
 		registry.Register(new UIThemeAssetBuilder());
 		registry.Register(new VectorImageAssetBuilder());
+		registry.Register(new GuiDocumentAssetBuilder());
+		registry.Register(new GuiStyleSheetAssetBuilder());
 		registry.Register(new AudioClipAssetBuilder());
 		registry.Register(new AudioBusLayoutAssetBuilder());
 		registry.Register(new SoundCueAssetBuilder());
@@ -223,6 +231,7 @@ static class PipelineRegistration
 		RenderCreators.Register(registry);
 		AudioCreators.Register(registry);
 		UICreators.Register(registry);
+		GuiCreators.Register(registry);
 		ShaderCreators.Register(registry);
 		HeightfieldCreators.Register(registry);
 		TerrainCreators.Register(registry);
@@ -239,6 +248,7 @@ static class PipelineRegistration
 		registry.Register(new ModelFileImporter());
 		registry.Register(new UIFileImporter());
 		registry.Register(new VectorImageFileImporter());
+		registry.Register(new GuiFileImporter());
 		registry.Register(new ShaderFileImporter());
 		registry.Register(new AudioFileImporter());
 		registry.Register(new ScriptFileImporter());

@@ -1,0 +1,19 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.Pipeline"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.GUI.Pipeline.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Code" = "*"
+"Sedulous.GUI.Gamekit" = "*"
+"Sedulous.GUI.Resources" = "*"
+"Sedulous.GUI.Toolkit" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Importer" = "*"
+"Sedulous.VFS" = "*"

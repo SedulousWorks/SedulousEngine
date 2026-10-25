@@ -26,11 +26,8 @@ index b77f61ebc..3f786cbcf 100644
  `asset_data_read` gives the XML, and `asset_data_write` takes the edited whole back, loading it
  exactly as the engine would and refusing it, unchanged, when it does not load. Enum fields are
  numbers there; `type_info` on the field's type names the cases.
-+The engine GUI's assets are linked text, as scripts are:
-+`asset_create` with `GUI Document` (`.gml` markup) or `GUI Style Sheet` (`.css`), or
-+`asset_import` of such a file, each validated by its cook (what the loader or parser dropped is a
-+warning, markup that does not build an error); they reference images, vector images, fonts, sheets
-+and documents by asset guid (`{guid}`), each a dependency of the cook. A scene shows them with
++(Ported with GUI.Pipeline: the assets' sentence. Still to port, after its first sentence:)
++A scene shows them with
 +`gui.Canvas`, `gui.Billboard` and `gui.WorldPanel`; the editor's page for each is its text beside a
 +live preview.
  

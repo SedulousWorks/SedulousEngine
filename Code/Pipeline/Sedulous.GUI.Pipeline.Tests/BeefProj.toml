@@ -1,0 +1,18 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.GUI.Pipeline.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.GUI.Pipeline.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Core" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Pipeline" = "*"
+"Sedulous.GUI.Resources" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Pipeline.Importer" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.VFS" = "*"
