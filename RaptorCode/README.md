@@ -41,3 +41,10 @@ The paths are Raptor's.
 - The root and directory CMakeLists, the READMEs, and the specs and plans
   (`Documentation/Specs/gui-lab-evolution*.md`, `vg-and-gui-lab.md`, `Systems/gui-port.md`,
   `Plans/backlog-0.2.md`): read them in Raptor.
+- Struck while porting, with no Beef counterpart:
+  - `GUI.Tests/TestsMain.cpp`: the doctest main, whose one job was to install HarfBuzz before
+    any test; Sedulous.GUI.Tests' text fixtures install it.
+  - `GUI.Fuzz.Tests/LibFuzzer.cpp`: the optional libFuzzer entry, which the spec leaves out
+    (Beef has no libFuzzer); the targets are FuzzTargets.FuzzOne.
+  - `GUISandbox/lsan.supp`: asan-test.py runs only test projects.
+  - The Luau half of every Integration.GuiScript story: Sedulous has AngelScript only.
