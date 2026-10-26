@@ -30,7 +30,7 @@ class CompositionPipelineTests
 
 		let descriptions = scope List<ResourceFactoryDesc*>();
 		EngineComposition.FactoryDescriptions(descriptions);
-		Test.Assert(descriptions.Count == 30);
+		Test.Assert(descriptions.Count == 32); // with the GUI's documents and sheets
 		int forms = 0;
 		for (let desc in descriptions)
 		{
@@ -48,6 +48,6 @@ class CompositionPipelineTests
 					Test.Assert(produced, scope $"no builder produces {name}");
 				});
 		}
-		Test.Assert(forms == 31, scope $"{forms} cooked forms");
+		Test.Assert(forms == 33, scope $"{forms} cooked forms");
 	}
 }

@@ -1,6 +1,9 @@
+using Sedulous.Core;
+
 namespace Sedulous.Engine.GUI;
 
 /// What frame a billboard's offset is measured in.
+[Scriptable(.AllPublic)]
 enum GuiBillboardOrientation : uint8
 {
 	/// The entity's own space, so the offset turns with the entity.

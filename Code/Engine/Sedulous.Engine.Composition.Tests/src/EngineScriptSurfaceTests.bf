@@ -39,8 +39,13 @@ static class EngineScriptSurfaceTests
 		EngineScriptSurface.Populate(s);
 		Test.Assert(s.Types.Count == EngineScriptSurface.TypeCount);
 		// Bump deliberately when a type is marked or unmarked; a surprise here is a lost or
-		// stray dependency of the root.
-		Test.Assert(EngineScriptSurface.TypeCount == 115, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
+		// stray dependency of the root. 180 = 115 + the engine's GUI (65): Sedulous.GUI's own
+		// 55 (its 71 as Sedulous.GUI.ScriptSurface counts them, less Core's static block and
+		// fifteen types already here), the gamekit's Screen, ScreenStack and Prompt, and
+		// Engine.GUI's three components (GuiCanvasComponent, GuiBillboardComponent,
+		// GuiWorldPanelComponent) and the four enums their fields name (GuiScalerMode,
+		// GuiCanvasRenderMode, GuiBillboardOrientation, GuiBillboardScale).
+		Test.Assert(EngineScriptSurface.TypeCount == 180, scope $"the runtime surface has {EngineScriptSurface.TypeCount} types");
 	}
 
 	[Test]
@@ -83,6 +88,10 @@ static class EngineScriptSurfaceTests
 		let save = s.Find("Sedulous.Engine.GameInstance.SaveFacade");
 		Test.Assert((save != null) && (save.Role == .Service) && (save.DisplayName == "Save"));
 		Test.Assert(s.Find("Sedulous.Engine.UI.Script.UiScript").Role == .Service, "Ui");
+		let gui = s.Find("Sedulous.GUI.GuiFacade");
+		Test.Assert((gui != null) && (gui.Role == .Service) && (gui.DisplayName == "Gui"));
+		Test.Assert(s.Find("Sedulous.GUI.Node").Role == .Weak, "what Gui.Root() gives");
+		Test.Assert(s.Find("Sedulous.GUI.ScreenStack").Role == .Weak, "the gamekit's stack");
 
 		// What the facades reach: the values they pass.
 		let hit = s.Find("Sedulous.Engine.Physics.PhysicsHit");
@@ -99,6 +108,16 @@ static class EngineScriptSurfaceTests
 		Test.Assert((character != null) && (character.Role == .Component));
 		Test.Assert(Method(character, "Move") != null);
 		Test.Assert(s.Find("Sedulous.Engine.Animation.SkeletalAnimationComponent").Role == .Component);
+		// The GUI's components reach their trees as nodes: `GuiCanvasComponent::of(hud).Root()`.
+		for (let name in StringView[?]("Sedulous.Engine.GUI.GuiCanvasComponent", "Sedulous.Engine.GUI.GuiBillboardComponent",
+			"Sedulous.Engine.GUI.GuiWorldPanelComponent"))
+		{
+			let component = s.Find(name);
+			Test.Assert((component != null) && (component.Role == .Component), scope String(name));
+			let root = Method(component, "Root");
+			Test.Assert((root != null) && (root.ReturnTypeName == "Sedulous.GUI.Node"), scope String(name));
+			Test.Assert(Field(component, "Document") != null, scope String(name));
+		}
 		// An asset field is what a script sets, never the runtime object behind it.
 		let sprite = s.Find("Sedulous.Engine.Render.SpriteComponent");
 		Test.Assert(Field(sprite, "TextureAsset") != null);

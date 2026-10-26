@@ -32,7 +32,8 @@ static class UiScriptedTests
 		vm.SetService(bed.Ui);
 
 		let ok = vm.Compile("ui", "ui.as", """
-			class Menu
+			// Not `Menu`: that is the GUI's menu widget, on the engine surface beside the UI.
+			class MainMenu
 			{
 				int retries = 0;
 				float volume = -1.0f;
@@ -92,7 +93,7 @@ static class UiScriptedTests
 			Console.WriteLine("  {}", p);
 		Test.Assert(ok, "compiled against the engine surface");
 
-		let menu = vm.Instantiate("ui", "Menu");
+		let menu = vm.Instantiate("ui", "MainMenu");
 		Test.Assert(menu != null);
 		var r = ScriptValue.Nil;
 		Test.Assert(vm.Invoke(menu, "open", default, ref r), "open ran");

@@ -3,6 +3,7 @@ using System.Collections;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.Domain;
+using Sedulous.Engine.GUI;
 using Sedulous.Engine.Input;
 using Sedulous.Engine.Navigation;
 using Sedulous.Engine.Net;
@@ -61,7 +62,9 @@ static class EngineComposition
 						UIDomain.Module,
 						NetDomain.Module,
 						SplineDomain.Module,
-						InputDomain.Module
+						InputDomain.Module,
+						// The engine's GUI on Sedulous.GUI, beside the UI domain while both live.
+						GuiDomain.Module
 					};
 			}
 			return sModules;

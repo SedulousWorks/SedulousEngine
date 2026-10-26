@@ -19,6 +19,7 @@ using Sedulous.Render;
 using Sedulous.Resource;
 using Sedulous.Runtime;
 using Sedulous.Scene;
+using Sedulous.Script;
 using Sedulous.VFS;
 
 namespace Sedulous.Engine.GUI;
@@ -47,7 +48,8 @@ namespace Sedulous.Engine.GUI;
 /// The input (GuiInputPump.bf): the engine's active input source into one root a frame through
 /// GUI.Shell's bridge, the action layer told what the GUI took.
 ///
-/// Still to come: the script surface (E5); it has its hook where Raptor's runs it.
+/// The scripts: `Gui` to a run's scripts is a GuiFacade whose root is that run's screen tier
+/// (ExposeToScript, ScriptFacadeFor); the components reach their trees as nodes (`Root()`).
 class GuiSubsystem : Subsystem, ISceneObserver
 {
 	/// After Engine.UI's (-650), so a game's GUI sees the same frame; all work in BeginFrame.
@@ -77,7 +79,12 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	private Object mRenderRun = null;
 	/// The shared tier's overlay layer. A HELD reference.
 	private UIWidget mOverlay = null;
-	// E5: the script binding (what each script context is given) goes here.
+	/// `Gui` to every run's scripts, its root the shared tier's (ExposeToScript). OWNED: each
+	/// runtime it is set on borrows it, so it lives as long as the subsystem.
+	private GuiFacade mScriptFacade ~ delete _;
+	/// `Gui` to one run's scripts, its root that run's tier (ScriptFacadeFor), each OWNED; a run
+	/// is a key only.
+	private List<(Object run, GuiFacade facade)> mRunFacades = new .() ~ { for (let entry in _) delete entry.facade; delete _; };
 	private List<GuiSceneTier> mSceneTiers = new .() ~ DeleteContainerAndItems!(_);
 	/// The roots of their own a render-texture canvas and a world panel draw in, OWNED.
 	private List<GuiTextureRoot> mTextureRoots = new .() ~ DeleteContainerAndItems!(_);
@@ -111,6 +118,10 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		mDataFileSystem = dataFileSystem;
 		mContext.ResourceProvider = mResources;
 		mStyles.ResourceProvider = mResources; // the sheets' @import, url() and fonts
+		// A script's root is its run's screen tier, the shared one with no run (the player's),
+		// asked at each call: none before OnInit makes it, nor after shutdown drops it, so a
+		// script still running then finds no root rather than a freed one.
+		mScriptFacade = new .(new [=this] () => ScreenRootFor(null));
 	}
 
 	public ~this()
@@ -384,6 +395,61 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		return (tier != null) ? tier.Root : null;
 	}
 
+	// ==================== scripts ====================
+
+	/// `runtime`'s scripts given `Gui`, its root the shared screen tier's (`Gui.Root()`, its
+	/// stack `ScreenStack::Of(Gui.Root().Find("screens"))`): what a host does for every run's
+	/// runtime as it configures one. BORROWED by the runtime, which must not outlive the
+	/// subsystem.
+	public void ExposeToScript(ScriptRuntime runtime)
+	{
+		if (runtime != null)
+			runtime.SetService(mScriptFacade);
+	}
+
+	/// The same for one run: `Gui.Root()` is `run`'s screen tier (ScreenRootFor), its own with run
+	/// screens on, the shared one without.
+	public void ExposeToScript(ScriptRuntime runtime, Object run)
+	{
+		if (runtime != null)
+			runtime.SetService(ScriptFacadeFor(run));
+	}
+
+	/// The `Gui` a run's scripts are given, made on first use, for a host that installs a run's
+	/// services on its run host (`instance.RunHost.SetService(gui.ScriptFacadeFor(instance))`),
+	/// which applies them to each runtime the run makes. Its root is asked at each call, so a run
+	/// whose screens ended (EndRunScreens) and plays again gets its tier back. The shared one
+	/// with no run. The subsystem's until EndRunScripts or its own end; BORROWED by the runtime.
+	public GuiFacade ScriptFacadeFor(Object run)
+	{
+		if (run == null)
+			return mScriptFacade;
+		for (let entry in mRunFacades)
+		{
+			if (entry.run === run)
+				return entry.facade;
+		}
+		let facade = new GuiFacade(new [=this, =run] () => ScreenRootFor(run));
+		mRunFacades.Add((run, facade));
+		return facade;
+	}
+
+	/// The run is gone for good: its `Gui` goes. After every runtime the run made, which borrow
+	/// it, is gone.
+	public void EndRunScripts(Object run)
+	{
+		for (int i < mRunFacades.Count)
+		{
+			if (mRunFacades[i].run !== run)
+				continue;
+			delete mRunFacades[i].facade;
+			mRunFacades.RemoveAt(i);
+			return;
+		}
+	}
+
+	public int RunScriptFacadeCount => mRunFacades.Count;
+
 	// ==================== lifecycle ====================
 
 	protected override void OnInit()
@@ -413,8 +479,8 @@ class GuiSubsystem : Subsystem, ISceneObserver
 			mOverlay.EditLayoutStyle(scope (s) => { s.Kind = .Stack; });
 		}
 		mScreen.Root.AddChild(mOverlay);
-		// E5: a script's root is its run's screen tier (the shared one in the player): the script
-		// binding's resolve is set here, ScreenRootFor(the script's current run).
+		// The scripts' facades resolve their roots from here (made with the subsystem: a host may
+		// install them before it starts).
 	}
 
 	protected override void OnReady()
@@ -479,7 +545,8 @@ class GuiSubsystem : Subsystem, ISceneObserver
 			mOverlay.ReleaseRef();
 			mOverlay = null;
 		}
-		// E5: the script binding's resolve cleared, so a script still running finds no root.
+		// The script facades resolve through the shared root, gone below: a script still running
+		// finds no root, not a freed one.
 		if (mScreen.Screens != null)
 		{
 			mScreen.Screens.ReleaseRef();
