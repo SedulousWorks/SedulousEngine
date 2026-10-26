@@ -44,8 +44,10 @@ static class EditorCookServiceTests
 	/// Pumps until the cook is idle; bounded so a hang fails.
 	private static void PumpUntilIdle(EditorCookService cook, List<String> lines)
 	{
-		int guard = 0;
-		while (!cook.IsIdle && (guard++ < 4000000))
+		// By time, not by a count of spins: a script's cook compiles it against the whole script
+		// surface, which took 0.86 s on a machine where four million spins took less.
+		let watch = scope System.Diagnostics.Stopwatch(true);
+		while (!cook.IsIdle && (watch.ElapsedMilliseconds < 60000))
 			cook.Update(scope [&](line) => { lines.Add(new String(line)); });
 		cook.Update(scope [&](line) => { lines.Add(new String(line)); });
 	}
