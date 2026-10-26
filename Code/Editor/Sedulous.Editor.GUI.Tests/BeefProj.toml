@@ -1,0 +1,24 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.GUI.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Editor.GUI.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.Shell" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Toolkit" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Pipeline" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Engine.GUI" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.GUI" = "*"

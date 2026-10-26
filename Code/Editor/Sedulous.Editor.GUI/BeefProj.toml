@@ -1,0 +1,26 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Editor.GUI"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Editor.GUI.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Graphics" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.VG.Renderer" = "*"
+"Sedulous.UI" = "*"
+"Sedulous.UI.Toolkit" = "*"
+"Sedulous.UI.Runtime" = "*"
+"Sedulous.UI.Viewport" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Pipeline" = "*"
+"Sedulous.Pipeline.Core" = "*"
+"Sedulous.Engine.GUI" = "*"
+"Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.App" = "*"

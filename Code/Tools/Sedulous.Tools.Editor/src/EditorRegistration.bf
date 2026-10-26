@@ -18,6 +18,7 @@ using Sedulous.Editor.Input;
 using Sedulous.Editor.Navigation;
 using Sedulous.Editor.PropertyAnimation;
 using Sedulous.Editor.GameUI;
+using Sedulous.Editor.GUI;
 using Sedulous.Editor.Audio;
 using Sedulous.Editor.Texture;
 using Sedulous.Editor.Image;
@@ -71,6 +72,7 @@ static class EditorRegistration
 		GameAudioEditorSettings.Register(context);
 		PropertyAnimationEditor.Register(context, host);
 		GameUIEditor.Register(context, host, uiHost);
+		GuiEditor.Register(context, host, uiHost); // the engine GUI's .gml and .css pages
 		AudioEditor.Register(context, host);
 		TextureEditor.Register(context);
 		ImageEditor.Register(context);
