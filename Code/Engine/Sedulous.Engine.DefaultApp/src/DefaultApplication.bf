@@ -9,6 +9,7 @@ using Sedulous.VFS;
 using Sedulous.Engine.Animation;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.GUI;
 using Sedulous.Engine.Input;
 using Sedulous.Engine.Integration;
 using Sedulous.Engine.Navigation;
@@ -73,6 +74,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	/// OWNED, like the other REGISTERED subsystems: the context drives one it did not create
 	/// and never frees it.
 	private UISubsystem mUI = null ~ delete _;
+	/// The engine's GUI, beside the UI while both live. OWNED and REGISTERED, as the UI is.
+	private GuiSubsystem mGui = null ~ delete _;
 
 	/// OWNED: the network subsystem borrows this visitor and only clears its reference.
 	private delegate void(delegate void(NetworkManager)) mEndpointSource = null ~ delete _;
@@ -161,6 +164,8 @@ class DefaultApplication : IApplication, ISceneObserver
 	public PhysicsSubsystem Physics => mPhysics;
 	public AudioSubsystem Audio => mAudio;
 	public UISubsystem UI => mUI;
+	/// The engine's GUI: its screen tier, its components, `Gui` in scripts.
+	public GuiSubsystem Gui => mGui;
 	public NetworkManager Net => mInstance.NetEndpoint;
 
 	public ResourceManager Resources =>
@@ -237,6 +242,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		mBorrowedResources = borrowed;
 		if (mUI != null)
 			mUI.SetResourceManager(Resources); // the game UI's images bind through it
+		if (mGui != null)
+			mGui.SetResourceManager(Resources); // the GUI's documents, sheets and images by guid
 		PointSpawnersAtContent();
 	}
 
@@ -273,6 +280,8 @@ class DefaultApplication : IApplication, ISceneObserver
 			RegisterStandardFactories(borrowed, host);
 		if (mUI != null)
 			mUI.SetResourceManager(Resources); // the game UI's images bind through it
+		if (mGui != null)
+			mGui.SetResourceManager(Resources);
 		PointSpawnersAtContent();
 	}
 
@@ -354,6 +363,8 @@ class DefaultApplication : IApplication, ISceneObserver
 				// app's resources, the screen tier. Input is per instance, installed below.
 				runtime.SetService(mAudioFacade);
 				runtime.SetService(mUiScript);
+				if (mGui != null)
+					mGui.ExposeToScript(runtime); // `Gui`: the shared screen tier
 				runtime.SetService(mIdleInput);
 				runtime.SetService(mIdleSave);
 			};
@@ -401,6 +412,11 @@ class DefaultApplication : IApplication, ISceneObserver
 		// The screen tier to scripts: Ui.Push(document) instantiates the cooked document
 		// through the resource manager, on the subsystem's context.
 		mUiScript.Attach(mUI.Screens, new (documentId) => InstantiateDocument(documentId));
+		// The engine's GUI beside it while both live: every game has it (its screen tier, its
+		// components, `Gui` in its scripts).
+		mGui = new GuiSubsystem(mDataMount);
+		host.Context.RegisterSubsystem<GuiSubsystem>(mGui);
+		InstallRunGui(mInstance);
 
 		// Each instance owns its OWN endpoint and goes online at runtime through the facade,
 		// so there is no application owned socket. The primary carries the prefab spawn
@@ -479,6 +495,7 @@ class DefaultApplication : IApplication, ISceneObserver
 		instance.SetSceneActivationPolicy(new (scene) => ApplyLoadedSceneActivation(scene));
 		InstallRunAudio(instance);
 		InstallRunUi(instance);
+		InstallRunGui(instance);
 	}
 
 	/// A cooked UI document, instantiated through the resource manager on the UI subsystem's
@@ -504,6 +521,14 @@ class DefaultApplication : IApplication, ISceneObserver
 			new (documentId) => InstantiateDocument(documentId));
 		mRunUi[instance] = ui;
 		instance.RunHost.SetService(ui);
+	}
+
+	/// The instance's own Gui: its run's screen tier, as the GUI keeps them (each run its own with
+	/// run screens on; the shared one otherwise). The GUI owns it until the run ends.
+	private void InstallRunGui(GameInstance instance)
+	{
+		if (mGui != null)
+			instance.RunHost.SetService(mGui.ScriptFacadeFor(instance));
 	}
 
 	/// The instance's own Audio facade, carrying the instance as its run: what its scripts play
@@ -555,6 +580,8 @@ class DefaultApplication : IApplication, ISceneObserver
 			mAudio.EndRun(instance);
 		if (mUI != null)
 			mUI.EndRunScreens(instance);
+		if (mGui != null)
+			mGui.EndRunScreens(instance);
 
 		mExtraInstances.RemoveAt(at);
 		// Its services after its run host is gone, found while the instance is still a key.
@@ -567,6 +594,9 @@ class DefaultApplication : IApplication, ISceneObserver
 		delete instance;
 		delete runAudio;
 		delete runUi;
+		// Its Gui after every runtime it made, which borrow it.
+		if (mGui != null)
+			mGui.EndRunScripts(instance);
 	}
 
 	/// The primary first, then every extra.
@@ -603,6 +633,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		let graphics = host.Graphics;
 		if ((graphics != null) && (graphics.Raw != null) && (mUI != null))
 			mUI.EnsureRenderReady(graphics.Raw, (int32)graphics.FramesInFlight);
+		if ((graphics != null) && (graphics.Raw != null) && (mGui != null))
+			mGui.EnsureRenderReady(graphics.Raw, (int32)graphics.FramesInFlight);
 
 		if ((mBorrowedResources == null) && (mContentDatabase != null))
 		{
@@ -620,6 +652,8 @@ class DefaultApplication : IApplication, ISceneObserver
 			if (mProfilerOverlayAtStart)
 				ProfilerOverlay.Show(mUI);
 		}
+		if (mGui != null)
+			mGui.SetResourceManager(resources); // the GUI's documents, sheets and images by guid
 		// A headless or content free application attaches one later, or never.
 		if (resources == null)
 			return;
@@ -813,6 +847,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		mRenderFit = fit;
 		if (mUI != null)
 			mUI.SetScreenResolution(mRenderWidth, mRenderHeight, fit);
+		if (mGui != null)
+			mGui.SetScreenResolution(mRenderWidth, mRenderHeight, fit); // the GUI's screen tier too
 		UpdateFittedInput();
 	}
 
@@ -825,6 +861,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		mOrientation = orientation;
 		if (mUI != null)
 			mUI.SetScreenOrientation(orientation); // the screen tier turns with the game's image
+		if (mGui != null)
+			mGui.SetScreenOrientation(orientation);
 		UpdateFittedInput();
 	}
 
@@ -920,6 +958,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		// frame's interface.
 		if (mUI != null)
 			mUI.RenderCanvasTextures(frame.Encoder, (int32)frame.FrameIndex);
+		if (mGui != null)
+			mGui.RenderTextures(frame.Encoder, (uint32)frame.FrameIndex); // its canvases' and panels' textures
 
 		render.BeginRendering(frame.Encoder, frame.FrameIndex);
 
@@ -986,6 +1026,8 @@ class DefaultApplication : IApplication, ISceneObserver
 		// forgets them first.
 		if (mUI != null)
 			mUI.SetResourceManager(null);
+		if (mGui != null)
+			mGui.SetResourceManager(null);
 		DeleteAndNullify!(mOwnedResources);
 		if (mBorrowedResources != null)
 			mFactories.Unregister(mBorrowedResources);

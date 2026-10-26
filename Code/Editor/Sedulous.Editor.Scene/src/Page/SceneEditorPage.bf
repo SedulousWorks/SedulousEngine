@@ -50,6 +50,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private EventBus mPageEvents = new .() ~ delete _;
 	private RenderSubsystem mRender = null;
 	private UISubsystem mGameUI = null;
+	/// The engine GUI's textures seam. BORROWED.
+	private Sedulous.Engine.GUI.GuiSubsystem mGameGui = null;
 
 	private String mTitle = new .() ~ delete _;
 	/// Owned by the page's scene manager.
@@ -193,6 +195,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		mScenes = host.Context.GetSubsystem<SceneSubsystem>();
 		mRender = host.Context.GetSubsystem<RenderSubsystem>();
 		mGameUI = host.Context.GetSubsystem<UISubsystem>();
+		mGameGui = host.Context.GetSubsystem<Sedulous.Engine.GUI.GuiSubsystem>();
 
 		if (mScenes != null)
 		{
@@ -576,6 +579,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 		if (mGameUI != null)
 			mGameUI.RenderCanvasTextures(frame.Encoder, (int32)frame.FrameIndex);
+		if (mGameGui != null)
+			mGameGui.RenderTextures(frame.Encoder, (uint32)frame.FrameIndex); // and the engine GUI's
 
 		var camera = ViewCamera();
 		// From the draw eye (behind the eye under orthographic); Position stays the eye, for what

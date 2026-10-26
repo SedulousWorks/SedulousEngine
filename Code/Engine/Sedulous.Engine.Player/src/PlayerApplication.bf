@@ -10,6 +10,7 @@ using Sedulous.Core.Serialization;
 using Sedulous.Engine.Audio;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Engine.GameInstance;
+using Sedulous.Engine.GUI;
 using Sedulous.Engine.Project;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Scene;
@@ -65,6 +66,8 @@ class PlayerApplication : DefaultApplication
 	// The boot splash and the asynchronous load behind it.
 	private SceneLoadHandle mBootLoad = .();
 	private View mSplashView = null;
+	/// The GUI's splash, when the project names one, with the reference its push handed over.
+	private Sedulous.GUI.Node mGuiSplash = null;
 	/// The SedulousEngine logo the default loading screen shows, built into the player so a
 	/// game needs no file of it.
 	private const String cEngineLogo = Compiler.ReadText("../../../Data/Assets/branding/sedulous-logo.svg");
@@ -104,6 +107,8 @@ class PlayerApplication : DefaultApplication
 		// game focus moves. An editor leaves this null, its own bridge owning that there.
 		if ((UI != null) && (host.Shell != null))
 			UI.SetTextInputTarget(host.Shell.MainWindow);
+		if ((Gui != null) && (host.Shell != null))
+			Gui.SetTextInputTarget(host.Shell.MainWindow); // the GUI's text fields too
 
 		LoadNativeGame(host);
 	}
@@ -316,6 +321,7 @@ class PlayerApplication : DefaultApplication
 		BindUserAudioSettings();
 		BindUIFont();
 		BindUITheme();
+		BindGuiFontsAndSheets();
 		// The resolution the game draws at, fitted into whatever window it got.
 		SetRenderResolution(mSettings.RenderWidth, mSettings.RenderHeight, mSettings.RenderFit);
 		SetOrientation(mSettings.Orientation); // presented turned on a window of the other shape
@@ -439,6 +445,26 @@ class PlayerApplication : DefaultApplication
 				GlobalLog(.Warning, "Player: UI font {} did not resolve", id);
 		}
 		UI.SetExtraFonts(extras);
+	}
+
+	/// The engine GUI's fonts, the UI's (the default and the others, each a family), and the
+	/// project's sheets in order. An unset default leaves the GUI's built in font.
+	private void BindGuiFontsAndSheets()
+	{
+		if ((Gui == null) || (Resources == null))
+			return;
+
+		Font defaultFont = null;
+		if (mSettings.DefaultUiFontId != Guid())
+			defaultFont = Resources.Bind<Font>(mSettings.DefaultUiFontId).Get;
+		let others = scope List<Font>();
+		for (let id in mSettings.UiFontIds)
+		{
+			if (let font = Resources.Bind<Font>(id).Get)
+				others.Add(font);
+		}
+		Gui.SetFonts(defaultFont, others);
+		Gui.SetStyleSheets(mSettings.GuiStyleSheetIds);
 	}
 
 	/// The project's theme. Unset or unresolved leaves the built in one.
@@ -606,9 +632,33 @@ class PlayerApplication : DefaultApplication
 
 	// ==================== the boot splash ====================
 
+	/// The engine GUI's splash, when the project names one (GuiLoadingDocumentId): on the GUI's
+	/// overlay layer, its progress the GUI's data value `bootProgress`. False when there is none
+	/// or it does not resolve, and the UI's splash shows instead.
+	private bool PushGuiSplash()
+	{
+		if ((Gui == null) || (mSettings.GuiLoadingDocumentId == Guid()) || (Resources == null))
+			return false;
+
+		let document = Resources.Bind<Sedulous.GUI.Resources.GuiDocument>(mSettings.GuiLoadingDocumentId).Get;
+		if (document == null)
+		{
+			GlobalLog(.Warning, "Player: the GUI loading screen did not resolve; the UI's shows");
+			return false;
+		}
+		SetBootProgress(0.0f);
+		mGuiSplash = Gui.PushOverlay(document);
+		return mGuiSplash != null;
+	}
+
+	private void SetBootProgress(float progress)
+	{
+		Gui.GuiContext.Data.Set("bootProgress", Variant.Create((double)progress));
+	}
+
 	private View PushSplash()
 	{
-		if (UI == null)
+		if (PushGuiSplash() || (UI == null))
 			return null;
 
 		UIDocument document = null;
@@ -630,10 +680,19 @@ class PlayerApplication : DefaultApplication
 			UI.RemoveScreenOverlay(mSplashView);
 
 		mSplashView = null;
+		if (mGuiSplash != null)
+		{
+			if (Gui != null)
+				Gui.RemoveOverlay(mGuiSplash);
+			mGuiSplash.ReleaseRef();
+			mGuiSplash = null;
+		}
 	}
 
 	private void DriveSplash(float progress)
 	{
+		if ((mGuiSplash != null) && (Gui != null))
+			SetBootProgress(progress);
 		let root = mSplashView as ViewGroup;
 		if (root == null)
 			return;

@@ -280,6 +280,8 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 
 		if ((mApp != null) && (mApp.UI != null))
 			mApp.UI.RenderCanvasTextures(frame.Encoder, (int32)frame.FrameIndex);
+		if ((mApp != null) && (mApp.Gui != null))
+			mApp.Gui.RenderTextures(frame.Encoder, (uint32)frame.FrameIndex); // and the engine GUI's
 
 		let targetState = TargetState(mViewport.ColorTexture, mViewport.ColorState, .ShaderRead);
 		mCaptureX = 0;
@@ -330,11 +332,19 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			mApp.UI.SetScreenOrientation(mGameInstance, mOrientation);
 			mApp.UI.SetRenderRun(mGameInstance);
 		}
+		if ((mApp != null) && (mApp.Gui != null))
+		{
+			mApp.Gui.SetScreenResolution(mGameInstance, mRenderWidth, mRenderHeight, mRenderFit);
+			mApp.Gui.SetScreenOrientation(mGameInstance, mOrientation);
+			mApp.Gui.SetRenderRun(mGameInstance);
+		}
 		// Through the viewport's UNORM view: the screen UI blends encoded values, as in the player.
 		mRender.RenderOverlays(frame.Encoder, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, frame.FrameIndex,
 			mViewport.ColorTargetAlternateView);
 		if ((mApp != null) && (mApp.UI != null))
 			mApp.UI.SetRenderRun(null);
+		if ((mApp != null) && (mApp.Gui != null))
+			mApp.Gui.SetRenderRun(null);
 		frame.Encoder.TransitionTexture(mViewport.ColorTexture, .RenderTarget, .ShaderRead);
 		mViewport.ColorState = .ShaderRead;
 		// The capture, once the frame is whole: the scene, then the game's overlays over it.

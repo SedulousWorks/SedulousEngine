@@ -376,6 +376,8 @@ class EditorApplication : IApplication
 		// screen tier (menus, HUD, pause), so tabs never draw or drive each other's screens.
 		if (mEmbeddedApp.UI != null)
 			mEmbeddedApp.UI.RunScreens = true;
+		if (mEmbeddedApp.Gui != null)
+			mEmbeddedApp.Gui.RunScreens = true; // and the engine GUI's
 		mRuntimeContext.Startup();
 		mEmbeddedApp.OnStartup(mEmbeddedHost);
 
@@ -612,30 +614,32 @@ class EditorApplication : IApplication
 		return uiPage;
 	}
 
-	/// Binds the project's default UI theme and fonts (the default and its others) onto the embedded app's game UI.
+	/// Binds the project's default UI theme and fonts (the default and its others) onto the embedded app's game UI,
+	/// and the fonts and the project's sheets onto its engine GUI.
 	/// Idempotent: at project open, after every finished cook (a fresh checkout's first cook
 	/// creates the products the open-time bind missed), and on settings save.
 	public void ApplyProjectUiDefaults()
 	{
-		if ((mProject == null) || (mResources == null) || (mEmbeddedApp == null) || (mEmbeddedApp.UI == null))
+		if ((mProject == null) || (mResources == null) || (mEmbeddedApp == null))
 			return;
 		// Bound only once cooked: a new project's first open asks before its first cook has
 		// made them, and a bind of a product that is not there warns of a broken reference.
 		let cooked = mProject.CookedDb;
 		bool Ready(Guid id) => id.IsSet && (cooked.GetInstance(id) != null);
 		let themeId = mProject.Settings.DefaultUiThemeId;
-		if (Ready(themeId))
+		if (Ready(themeId) && (mEmbeddedApp.UI != null))
 		{
 			let theme = mResources.Bind<Sedulous.UI.Resource.UITheme>(themeId).Get;
 			if (theme != null)
 				mEmbeddedApp.UI.SetDefaultTheme(theme);
 		}
 		let fontId = mProject.Settings.DefaultUiFontId;
+		Font defaultFont = null;
 		if (Ready(fontId))
 		{
-			let font = mResources.Bind<Font>(fontId).Get;
-			if (font != null)
-				mEmbeddedApp.UI.SetDefaultFont(font);
+			defaultFont = mResources.Bind<Font>(fontId).Get;
+			if ((defaultFont != null) && (mEmbeddedApp.UI != null))
+				mEmbeddedApp.UI.SetDefaultFont(defaultFont);
 		}
 		let extras = scope List<Font>();
 		for (let id in mProject.Settings.UiFontIds)
@@ -645,7 +649,15 @@ class EditorApplication : IApplication
 			if (let font = mResources.Bind<Font>(id).Get)
 				extras.Add(font);
 		}
-		mEmbeddedApp.UI.SetExtraFonts(extras);
+		if (mEmbeddedApp.UI != null)
+			mEmbeddedApp.UI.SetExtraFonts(extras);
+		// The engine GUI shares the fonts, and takes the project's sheets in order (a sheet not
+		// cooked yet resolves once it is: the cook finished callback lands here again).
+		if (mEmbeddedApp.Gui != null)
+		{
+			mEmbeddedApp.Gui.SetFonts(defaultFont, extras);
+			mEmbeddedApp.Gui.SetStyleSheets(mProject.Settings.GuiStyleSheetIds);
+		}
 	}
 
 	/// A context notice as a toast: errors stick until closed, the rest self-expire.
