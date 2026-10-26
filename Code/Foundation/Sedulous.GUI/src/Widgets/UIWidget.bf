@@ -133,6 +133,32 @@ class UIWidget : UINode
 		return false;
 	}
 
+	/// Each class of a space-separated list added (markup's `class`), or removed.
+	public void AddClasses(StringView classes)
+	{
+		ForEachClass(classes, scope (cls) => { AddClass(cls); });
+	}
+
+	public void RemoveClasses(StringView classes)
+	{
+		ForEachClass(classes, scope (cls) => { RemoveClass(cls); });
+	}
+
+	/// Calls `each` with every class of a space-separated list.
+	public static void ForEachClass(StringView classes, delegate void(StringView cls) each)
+	{
+		int start = 0;
+		for (int i = 0; i <= classes.Length; i++)
+		{
+			if ((i == classes.Length) || ParseUtil.IsWhiteSpace(classes[i]))
+			{
+				if (i > start)
+					each(classes.Substring(start, i - start));
+				start = i + 1;
+			}
+		}
+	}
+
 	[Scriptable]
 	public void ToggleClass(StringView cls)
 	{

@@ -64,7 +64,9 @@ class SpaceBed
 /// is first shown and kept by the controller; closing by the panel's policy; a placeholder for a
 /// panel not registered, filled when it is; a maximized stack alone; and what the user does in the
 /// widgets (a separator dragged, a tab chosen, dragged or closed, by its close part or a middle
-/// click) noted back; a panel wider than its stack moves no separator, the stack clipping it.
+/// click) noted back; a panel wider than its stack moves no separator, the stack clipping it; a
+/// panel that asks before it closes, and one unregistered; a title and tab classes changed while
+/// docked; the active panel following the focus.
 class DockSpaceTests
 {
 	[Test]
@@ -339,5 +341,184 @@ class DockSpaceTests
 		}
 		Test.Assert(named);
 		menu.Close();
+	}
+
+	[Test]
+	public static void APanelAsksBeforeItClosesByItsTabOrTheControllerCloseNowClosesItWithoutAsking()
+	{
+		int asked = 0;
+		bool agrees = false;
+		let bed = scope SpaceBed();
+		let document = PanelNamed("document");
+		document.CanClose = new [&] () =>
+			{
+				++asked;
+				return agrees;
+			};
+		Test.Assert(bed.Controller.Register(document));
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertTab("document", bed.Central)).Ok);
+		bed.Lay();
+
+		Test.Assert(!bed.Controller.Close("document").Ok);
+		Test.Assert(asked == 1);
+		Test.Assert(bed.StackOf("document") != cNoDock);
+
+		// Its tab's close part asks the same.
+		let bar = (bed.Space.WidgetOf(bed.Central) as TabView).Bar;
+		Test.Assert(bar.TabCount == 1);
+		let close = bar.GetTab(0).ClosePart.ScreenBounds;
+		let at = Float2(close.X + close.Width * 0.5f, close.Y + close.Height * 0.5f);
+		let d = bed.Root.EventDispatcher;
+		d.InjectMouseMove(at);
+		d.InjectMouseDown(at, .Left);
+		d.InjectMouseUp(at, .Left);
+		Test.Assert(asked == 2);
+		Test.Assert(bed.StackOf("document") != cNoDock);
+
+		Test.Assert(bed.Controller.CloseNow("document").Ok); // the user agreed elsewhere
+		Test.Assert(asked == 2);
+		Test.Assert(bed.StackOf("document") == cNoDock);
+
+		Test.Assert(bed.Controller.Show("document").Ok);
+		agrees = true;
+		Test.Assert(bed.Controller.Close("document").Ok);
+		Test.Assert(asked == 3);
+		Test.Assert(bed.StackOf("document") == cNoDock);
+	}
+
+	[Test]
+	public static void APanelUnregisteredLeavesTheLayoutWithoutAskingItsContentPlaceAndDescriptionGone()
+	{
+		int asked = 0;
+		let bed = scope SpaceBed();
+		let document = PanelNamed("document");
+		document.CanClose = new [&] () =>
+			{
+				++asked;
+				return false;
+			};
+		let before = bed.Controller.Panels.Length;
+		Test.Assert(bed.Controller.Register(document));
+		Test.Assert(bed.Controller.Panels.Length == before + 1);
+		Test.Assert(bed.Controller.Panels[before].Id == "document"); // in the order they came
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertTab("document", bed.Central)).Ok);
+		bed.Lay();
+		let content = bed.Controller.Content("document");
+		Test.Assert(content != null);
+		content.AddRef(); // held, to see it let go
+		defer content.ReleaseRef();
+		Test.Assert(content.Parent != null);
+
+		Test.Assert(bed.Controller.Unregister("document"));
+		Test.Assert(asked == 0);
+		Test.Assert(bed.StackOf("document") == cNoDock);
+		Test.Assert(bed.Controller.Layout.FindHidden("document") == null); // no place kept
+		Test.Assert(bed.Controller.Describe("document") == null);
+		Test.Assert(bed.Controller.Panels.Length == before);
+		Test.Assert(!bed.Controller.HasContent("document"));
+		Test.Assert(content.Parent == null);
+		Test.Assert(!bed.Controller.Show("document").Ok);
+		Test.Assert(!bed.Controller.Unregister("document"));
+		bed.Lay();
+		Test.Assert(bed.Space.PageOf("document") == null);
+	}
+
+	[Test]
+	public static void ADockedPanelsTitleAndTabClassesChangeWhereItShowsAPanelNotRegisteredHasNoneToChange()
+	{
+		let bed = scope SpaceBed();
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertTab("scene", bed.Central)).Ok);
+		bed.Lay();
+		let page = bed.Space.PageOf("scene");
+		Test.Assert(page != null);
+		Test.Assert(page.Tab != null);
+		Test.Assert(page.Tab.Text == "Scene");
+
+		Test.Assert(bed.Controller.SetTitle("scene", "Scene*"));
+		Test.Assert(bed.Controller.SetTabClasses("scene", "dirty active"));
+		Test.Assert(bed.Space.PageOf("scene") == page); // the same page, told
+		Test.Assert(page.Tab.Text == "Scene*");
+		Test.Assert(page.Tab.HasClass("dirty"));
+		Test.Assert(page.Tab.HasClass("active"));
+		Test.Assert(bed.Controller.SetTabClasses("scene", "active"));
+		Test.Assert(!page.Tab.HasClass("dirty"));
+		Test.Assert(bed.Controller.Describe("scene").Title == "Scene*");
+
+		Test.Assert(!bed.Controller.SetTitle("nowhere", "Nowhere"));
+		Test.Assert(!bed.Controller.SetTabClasses("nowhere", "dirty"));
+
+		// Shown again elsewhere, it keeps them.
+		Test.Assert(bed.Controller.Close("scene").Ok);
+		Test.Assert(bed.Controller.Show("scene").Ok);
+		bed.Lay();
+		let again = bed.Space.PageOf("scene");
+		Test.Assert(again != null);
+		Test.Assert(again.Tab != null);
+		Test.Assert(again.Tab.Text == "Scene*");
+		Test.Assert(again.Tab.HasClass("active"));
+	}
+
+	[Test]
+	public static void TheActivePanelIsTheChosenOneOfTheStackTheFocusWentIntoItFollowsATabChosenThereAndAClose()
+	{
+		// Before the bed, so the handler's list outlives the controller that holds the handler.
+		let heard = scope List<String>();
+		defer { ClearAndDeleteItems!(heard); }
+		let bed = scope SpaceBed();
+		// Contents that take the focus.
+		String[3] ids = .("first", "second", "side");
+		for (let id in ids)
+		{
+			let description = new DockPanelDescription();
+			description.Id.Set(id);
+			description.Factory = new () => new Button();
+			Test.Assert(bed.Controller.Register(description));
+		}
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertTab("first", bed.Central)).Ok);
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertTab("second", bed.Central)).Ok);
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertBeside("side", bed.Central, .Start, 0.25f)).Ok);
+		bed.Lay();
+		bed.Controller.SetOnActiveChanged(new [&] (panel) => { heard.Add(new String(panel)); });
+		Test.Assert(bed.Controller.ActivePanel.IsEmpty); // the focus was in no stack yet
+
+		let central = bed.Space.WidgetOf(bed.Central) as TabView;
+		TabPage Chosen(TabView view)
+		{
+			return view.GetPage(view.SelectedIndex) as TabPage;
+		}
+		void FocusIn(StringView panel)
+		{
+			let page = bed.Space.PageOf(panel);
+			Test.Assert(page != null);
+			Test.Assert(page.ChildCount == 1);
+			page.GetChildAt(0).RequestFocus();
+		}
+		Test.Assert(Chosen(central) == bed.Space.PageOf("second"));
+		FocusIn("second");
+		Test.Assert(bed.Controller.ActivePanel == "second");
+		Test.Assert(heard.Count == 1);
+
+		central.Bar.SelectByUser(0); // a tab chosen in the active stack
+		bed.Lay();
+		Test.Assert(bed.Controller.ActivePanel == "first");
+
+		FocusIn("side"); // into another stack
+		Test.Assert(bed.Controller.ActivePanel == "side");
+		central.Bar.SelectByUser(1); // a tab chosen in a stack the focus is not in: no change
+		bed.Lay();
+		Test.Assert(bed.Controller.ActivePanel == "side");
+		Test.Assert(heard.Count == 3);
+
+		Test.Assert(bed.Controller.Close("side").Ok); // its stack went with it: none is active
+		Test.Assert(bed.Controller.ActivePanel.IsEmpty);
+		Test.Assert(heard.Count == 4);
+		Test.Assert(heard[3].IsEmpty);
+
+		bed.Lay();
+		FocusIn("second");
+		Test.Assert(bed.Controller.ActivePanel == "second");
+		Test.Assert(bed.Controller.Close("second").Ok); // its stack's next chosen panel
+		Test.Assert(bed.Controller.ActivePanel == "first");
+		Test.Assert(heard.Back == "first");
 	}
 }

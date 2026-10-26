@@ -18,6 +18,7 @@ class TabPage : Panel
 {
 	private String mTitle = new .() ~ delete _;
 	private String mIcon = new .() ~ delete _;
+	private String mTabClasses = new .() ~ delete _;
 	private bool mClosable = true;
 	// Owned by the view's bar.
 	private Sedulous.GUI.Tab mTab = null;
@@ -74,6 +75,24 @@ class TabPage : Panel
 		}
 	}
 
+	/// The classes its tab carries, space-separated (a document's unsaved mark, say): the tab's
+	/// own, replacing the ones set before.
+	[GuiProperty("tab-class"), Scriptable]
+	public StringView TabClasses
+	{
+		get => mTabClasses;
+		set
+		{
+			let classes = scope String(value);
+			if (mTab != null)
+			{
+				mTab.RemoveClasses(mTabClasses);
+				mTab.AddClasses(classes);
+			}
+			mTabClasses.Set(classes);
+		}
+	}
+
 	/// Builds what it holds the first time it is shown (a heavy page left unbuilt until wanted).
 	/// OWNERSHIP of `factory` transfers.
 	public void SetContentFactory(delegate void(TabPage page) factory)
@@ -85,7 +104,7 @@ class TabPage : Panel
 	/// Its tab (null while it is in no view).
 	public Sedulous.GUI.Tab Tab => mTab;
 
-	// Its tab, which then takes its title, icon and closable.
+	// Its tab, which then takes its title, icon, closable and classes.
 	internal void Attach(Sedulous.GUI.Tab tab)
 	{
 		mTab = tab;
@@ -95,6 +114,7 @@ class TabPage : Panel
 		if (!mIcon.IsEmpty)
 			tab.Icon = mIcon;
 		tab.Closable = mClosable;
+		tab.AddClasses(mTabClasses);
 	}
 
 	internal void Realize()

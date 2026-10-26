@@ -296,6 +296,25 @@ class DockDropTests
 			Test.Assert(split.Axis == .Vertical);
 			Test.Assert(split.Children[0] == bed.StackOf("hierarchy"));
 			Test.Assert(split.Children[1] == console);
+			Test.Assert(!bed.Space.WidgetOf(console).HasClass("dock-torn")); // shown again, not dimmed
+		}
+		{
+			// Along the whole area's bottom edge (the surface's own band): moved there, not dimmed.
+			let bed = scope DockBed();
+			let console = bed.StackOf("console");
+			GrabStack(bed, "console");
+			let area = Bounds(bed.Space);
+			let bottom = Float2(area.X + area.Width * 0.5f, area.Y + area.Height - 4.0f);
+			bed.Over(bottom);
+			bed.Release(bottom);
+			Test.Assert(bed.Space.WidgetOf(bed.StackOf("console")) != null);
+			DockNodeId[2] stacks = .(bed.StackOf("console"), console);
+			for (let stack in stacks)
+			{
+				let widget = bed.Space.WidgetOf(stack);
+				if (widget != null)
+					Test.Assert(!widget.HasClass("dock-torn"));
+			}
 		}
 	}
 

@@ -141,6 +141,13 @@ class DockStack : TabView
 		mSpace.TakeOffer(this);
 	}
 
+	// The focus came into it: its chosen panel is the active one.
+	public override void OnDescendantFocused(Node focused)
+	{
+		base.OnDescendantFocused(focused);
+		mSpace.NoteFocused(mNode);
+	}
+
 	// A tab's context menu: where its panel may go.
 	protected override void OnContextMenu(MouseEvent e)
 	{
@@ -895,6 +902,22 @@ class DockSpace : UIWidget, IDockView
 		HidePreview();
 		if (valid && (mController != null))
 			mController.Edit(scope (layout) => ApplyDrop(layout, dragged, drop));
+		// A stack carried by its grip is dimmed while it goes; dropped, it is shown again where the
+		// drop left it. Moved, its widgets left the tree and came back, and its grip may never hear
+		// the drag end.
+		if (dragged.IsStack)
+		{
+			let stack = WidgetOf(dragged.Stack);
+			if (stack != null)
+				stack.RemoveClass("dock-torn");
+		}
+	}
+
+	// The focus went into a stack this space shows.
+	internal void NoteFocused(DockNodeId stack)
+	{
+		if (mController != null)
+			mController.NoteFocused(stack);
 	}
 
 	// A tab of `stack` torn out (`torn`) or its drag over: closed up or dimmed meanwhile, then
@@ -1182,7 +1205,10 @@ class DockSpace : UIWidget, IDockView
 					page = had.Widget;
 			}
 			if (page != null)
+			{
+				ShowDescription(page, panel); // its title or tab classes may have changed
 				pages.Add(new Page(panel, page, registered));
+			}
 			else
 			{
 				page = MakePage(panel);
@@ -1219,11 +1245,7 @@ class DockSpace : UIWidget, IDockView
 	private TabPage MakePage(StringView panel)
 	{
 		let page = new TabPage();
-		let description = mController.Describe(panel);
-		page.Title = ((description != null) && !description.Title.IsEmpty) ? (StringView)description.Title : panel;
-		if ((description != null) && !description.Icon.IsEmpty)
-			page.Icon = description.Icon;
-		page.Closable = (description == null) || description.Closable;
+		ShowDescription(page, panel);
 		let controller = mController;
 		let id = new String(panel);
 		page.SetContentFactory(new (into) =>
@@ -1245,6 +1267,21 @@ class DockSpace : UIWidget, IDockView
 					content.ReleaseRef(); // the page's reference keeps it
 			} ~ { delete id; });
 		return page;
+	}
+
+	// A page's tab as its panel's description has it now.
+	private void ShowDescription(TabPage page, StringView panel)
+	{
+		let description = mController.Describe(panel);
+		let title = ((description != null) && !description.Title.IsEmpty) ? (StringView)description.Title : panel;
+		if (page.Title != title)
+			page.Title = title;
+		if ((description != null) && (page.Icon != description.Icon))
+			page.Icon = description.Icon;
+		page.Closable = (description == null) || description.Closable;
+		let classes = (description != null) ? (StringView)description.TabClasses : "";
+		if (page.TabClasses != classes)
+			page.TabClasses = classes;
 	}
 
 	// The panel of a stack's page at `index` (its Page's string); null when none.

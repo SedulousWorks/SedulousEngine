@@ -197,7 +197,8 @@ class MarkupLoader
 			}
 			if (name == "class")
 			{
-				AddClasses(uiwidget, value);
+				if (uiwidget != null)
+					uiwidget.AddClasses(value);
 				continue;
 			}
 			if ((mItemBindings != null) && IsItemTemplate(value))
@@ -425,23 +426,6 @@ class MarkupLoader
 				}
 				return System.Variant.Create(text, true);
 			} ~ { model.ReleaseRef(); DeleteContainerAndItems!(parts); });
-	}
-
-	public static void AddClasses(UIWidget widget, StringView classes)
-	{
-		if (widget == null)
-			return;
-		int start = 0;
-		for (int i = 0; i <= classes.Length; i++)
-		{
-			let boundary = (i == classes.Length) || ParseUtil.IsWhiteSpace(classes[i]);
-			if (boundary)
-			{
-				if (i > start)
-					widget.AddClass(classes.Substring(start, i - start));
-				start = i + 1;
-			}
-		}
 	}
 
 	public static XmlElement FirstElementChild(XmlNode node)

@@ -440,6 +440,41 @@ class TabTests
 	}
 
 	[Test]
+	public static void APagesClassesForItsTabReachTheTabSetBeforeItHasOneOrAfterEachSetReplacingTheLast()
+	{
+		let root = MakeRoot();
+		defer root.ReleaseRef();
+		let view = new TabView();
+		defer view.ReleaseRef();
+		root.AddChild(view);
+		let early = new TabPage();
+		defer early.ReleaseRef();
+		early.Title = "Early";
+		early.TabClasses = "dirty  pinned";
+		view.AddPage(early);
+		let tab = early.Tab;
+		Test.Assert(tab != null);
+		Test.Assert(tab.HasClass("dirty"));
+		Test.Assert(tab.HasClass("pinned"));
+		Test.Assert(!early.HasClass("dirty")); // the tab's, not the page's
+
+		early.TabClasses = "pinned";
+		Test.Assert(!tab.HasClass("dirty"));
+		Test.Assert(tab.HasClass("pinned"));
+		early.TabClasses = "";
+		Test.Assert(!tab.HasClass("pinned"));
+
+		RegisterGuiElements();
+		let loader = scope MarkupLoader(root.ElementSet);
+		let tree = loader.LoadFromString("<TabView><TabPage title=\"Scene\" tab-class=\"dirty\"/></TabView>");
+		Test.Assert(tree != null);
+		defer tree.ReleaseRef();
+		let marked = tree as TabView;
+		Test.Assert(marked != null);
+		Test.Assert(marked.Bar.GetTab(0).HasClass("dirty"));
+	}
+
+	[Test]
 	public static void InRightToLeftATabDraggedTowardTheLeftPassesTheNextOne()
 	{
 		let root = MakeRoot();

@@ -12,7 +12,11 @@ namespace Sedulous.GUI;
 // panel moved to another stack or window, or hidden, keeps it (foundation.ui's port destroyed a
 // panel that had no id on close and crashed reaching it after). Closing a panel follows its policy:
 // Hide keeps its content and its place, Rebuild lets its content go and keeps its place (the
-// factory makes it again when shown), Destroy lets both go.
+// factory makes it again when shown), Destroy lets both go. A panel may ask before it closes (a
+// document with unsaved changes), and its title and tab classes change while it is docked.
+//
+// The active panel is the one the user works in: the chosen panel of the stack the focus was last
+// in. An application follows it (its active document, say) through SetOnActiveChanged.
 //
 // The layout changes through the controller, which tells every DockSpace showing it to show it
 // again. What the user already did in the widgets (a separator dragged, a tab chosen or dragged to
@@ -35,10 +39,16 @@ class DockPanelDescription
 	public String Title = new .() ~ delete _;
 	/// Its tab's icon, by path.
 	public String Icon = new .() ~ delete _;
+	/// Its tab's classes, space-separated (a document's unsaved mark).
+	public String TabClasses = new .() ~ delete _;
 	/// Makes its content: a node with a reference the controller takes.
 	public delegate Node() Factory = null ~ delete _;
 	public DockClosePolicy Close = .Hide;
 	public bool Closable = true;
+	/// Asked before it closes, by its tab, a menu, a key or its window: false keeps it open (a
+	/// document with unsaved changes asks the user first, and closes with CloseNow after). It
+	/// registers no panel while it asks.
+	public delegate bool() CanClose = null ~ delete _;
 	/// Where it goes when a restored layout does not place it (its Panel: the id, set when it
 	/// registers).
 	public DockDefault Default = .();
@@ -227,6 +237,11 @@ class DockController
 	private bool mShowAgain = false;
 	// The view it is at.
 	private int mShowAt = 0;
+	// The active panel (empty: none).
+	private String mActive = new .() ~ delete _;
+	// The stack it is in, or was in when it closed.
+	private DockNodeId mActiveStack = cNoDock;
+	private delegate void(StringView panel) mOnActiveChanged ~ delete _;
 
 	/// A panel the layout may place; false when its id is empty or taken. OWNERSHIP of
 	/// `description` transfers (one refused is deleted).
@@ -242,6 +257,32 @@ class DockController
 		ShowEverywhere(); // a placeholder for it may show it now
 		return true;
 	}
+
+	/// A panel let go for good (a document closed): out of the layout without asking, its
+	/// content and its place forgotten, its description gone. False for one not registered.
+	public bool Unregister(StringView panel)
+	{
+		int index = -1;
+		for (int i < mPanels.Count)
+		{
+			if (mPanels[i].Id == panel)
+				index = i;
+		}
+		if (index < 0)
+			return false;
+		let id = scope String(panel); // `panel` may be the description's own id
+		ForgetContent(id);
+		if (mLayout.StackOf(id) != cNoDock)
+			mLayout.Close(id);
+		mLayout.Forget(id);
+		delete mPanels[index];
+		mPanels.RemoveAt(index);
+		ShowEverywhere();
+		return true;
+	}
+
+	/// The registered panels, in the order they registered.
+	public Span<DockPanelDescription> Panels => mPanels;
 
 	public DockPanelDescription Describe(StringView panel)
 	{
@@ -265,8 +306,20 @@ class DockController
 		return outcome;
 	}
 
-	/// Closes a docked panel as its description says.
+	/// Closes a docked panel as its description says, once it agrees (its CanClose).
 	public DockOutcome Close(StringView panel)
+	{
+		let description = Describe(panel);
+		if ((description != null) && !description.Closable)
+			return DockOutcome.Refuse("it cannot be closed");
+		if ((description != null) && (description.CanClose != null) && !description.CanClose())
+			return DockOutcome.Refuse("it asked to stay open");
+		return CloseNow(panel);
+	}
+
+	/// Closes a docked panel as its description says without asking it (what a panel that asked
+	/// the user calls once they agreed).
+	public DockOutcome CloseNow(StringView panel)
 	{
 		let description = Describe(panel);
 		if ((description != null) && !description.Closable)
@@ -316,6 +369,51 @@ class DockController
 		return outcome;
 	}
 
+	/// A registered panel's tab text, shown at once wherever it is docked; false for a panel not
+	/// registered.
+	public bool SetTitle(StringView panel, StringView title)
+	{
+		let description = Describe(panel);
+		if (description == null)
+			return false;
+		if (description.Title != title)
+		{
+			description.Title.Set(title);
+			ShowEverywhere();
+		}
+		return true;
+	}
+
+	/// A registered panel's tab classes (space-separated), replacing the ones before, shown at
+	/// once wherever it is docked; false for a panel not registered.
+	public bool SetTabClasses(StringView panel, StringView classes)
+	{
+		let description = Describe(panel);
+		if (description == null)
+			return false;
+		if (description.TabClasses != classes)
+		{
+			description.TabClasses.Set(classes);
+			ShowEverywhere();
+		}
+		return true;
+	}
+
+	// === The active panel ===
+
+	/// The panel the user works in: the chosen one of the stack the focus was last in (empty
+	/// before the focus was in any). It follows a tab chosen in that stack, the focus going into
+	/// another stack, and a close: the stack's next chosen panel, or none when the stack went.
+	public StringView ActivePanel => mActive;
+
+	/// Told each time the active panel changes (its id, empty when none is). OWNERSHIP of
+	/// `handler` transfers.
+	public void SetOnActiveChanged(delegate void(StringView panel) handler)
+	{
+		delete mOnActiveChanged;
+		mOnActiveChanged = handler;
+	}
+
 	/// A registered panel's content: made by its factory the first time it is asked for, kept
 	/// after; null for a panel not registered (or one whose factory makes none). The controller
 	/// keeps it: a caller that holds on to it takes a reference of its own.
@@ -354,7 +452,24 @@ class DockController
 	// === What the widgets already show, noted quietly ===
 
 	public void NoteWeights(DockNodeId split, Span<float> weights) { mLayout.SetWeights(split, weights); }
-	public void NoteActive(StringView panel) { mLayout.Activate(panel); }
+	public void NoteActive(StringView panel)
+	{
+		mLayout.Activate(panel);
+		let stack = mLayout.StackOf(panel);
+		if ((stack != cNoDock) && (stack == mActiveStack))
+			SetActive(panel, stack);
+	}
+
+	/// The focus went into a stack: its chosen panel is the active one.
+	public void NoteFocused(DockNodeId stack)
+	{
+		let node = mLayout.FindNode(stack);
+		if ((node == null) || !node.IsStack || node.Panels.IsEmpty)
+			return;
+		let panel = scope String(node.Panels[Math.Min((int)node.Active, node.Panels.Count - 1)]);
+		SetActive(panel, stack);
+	}
+
 	public void NoteTabPlace(StringView panel, DockNodeId stack, int32 index) { mLayout.MoveToTab(panel, stack, index); }
 
 	public void NoteSurfaceBounds(DockSurfaceId surface, Rectangle bounds)
@@ -402,6 +517,41 @@ class DockController
 		}
 	}
 
+	private void SetActive(StringView panel, DockNodeId stack)
+	{
+		mActiveStack = stack;
+		if (mActive == panel)
+			return;
+		mActive.Set(panel);
+		if (mOnActiveChanged != null)
+			mOnActiveChanged(mActive); // a handler may change the layout: nothing after
+	}
+
+	// After a change: the active panel moved stays active (in its new stack); one closed gives
+	// way to its stack's chosen panel, or to none when its stack went.
+	private void KeepActive()
+	{
+		if (mActive.IsEmpty)
+			return;
+		let stack = mLayout.StackOf(mActive);
+		if (stack != cNoDock)
+		{
+			mActiveStack = stack;
+			return;
+		}
+		let node = mLayout.FindNode(mActiveStack);
+		if ((node != null) && node.IsStack && !node.Panels.IsEmpty)
+		{
+			let next = scope String(node.Panels[Math.Min((int)node.Active, node.Panels.Count - 1)]);
+			SetActive(next, mActiveStack);
+			return;
+		}
+		mActiveStack = cNoDock;
+		mActive.Clear();
+		if (mOnActiveChanged != null)
+			mOnActiveChanged("");
+	}
+
 	private void ForgetContent(StringView panel)
 	{
 		for (int i < mContents.Count)
@@ -435,5 +585,6 @@ class DockController
 		}
 		while (mShowAgain);
 		mShowing = false;
+		KeepActive();
 	}
 }
