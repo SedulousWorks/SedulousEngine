@@ -16,9 +16,8 @@ using Sedulous.Engine.Navigation;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.Particles;
 using Sedulous.Engine.Scene;
-using Sedulous.Engine.UI;
-using Sedulous.UI;
-using Sedulous.UI.Resource;
+using Sedulous.Engine.GUI;
+using Sedulous.GUI.Resources;
 using Samples.Common;
 
 namespace Samples.WebScene;
@@ -38,9 +37,9 @@ namespace Samples.WebScene;
 ///     procedural texture
 ///   - a particle fountain of additive billboards, and spark trails, the ribbon path
 ///   - debug draw: grid, axes, wire volumes and 3D text, plus an FPS readout on the screen pass
-///   - game UI in all three tiers: a scene HUD canvas whose button counts its own clicks and
-///     so proves pointer routing is CONSUMED there, a billboard nameplate riding the cube,
-///     and a screen tier badge
+///   - game UI on the engine's GUI in all three tiers: a scene HUD canvas whose button counts
+///     its own clicks and so proves pointer routing is CONSUMED there, a billboard nameplate
+///     riding the cube, and a passive screen tier badge on the overlay layer
 ///   - navigation: an inline baked navmesh with six crowd agents crossing and avoiding
 ///
 /// Not exercised: skinning, which needs a skinned asset, and split screen, which Sandbox
@@ -82,9 +81,11 @@ class WebSceneApp : DefaultApplication
 	private float mFloorMetallic = 0.0f;
 	private float mFloorRoughness = 0.12f;
 
-	private UIDocument mHudDocument = null;
-	private UIDocument mPlateDocument = null;
-	private UIDocument mBadgeDocument = null;
+	private GuiDocument mHudDocument = null;
+	private GuiDocument mPlateDocument = null;
+	private GuiDocument mBadgeDocument = null;
+	/// The badge's tree on the overlay layer, with the reference its push handed over.
+	private Sedulous.GUI.Node mBadge = null;
 	private uint32 mHudClicks = 0;
 	private bool mHudBound = false;
 
@@ -100,8 +101,8 @@ class WebSceneApp : DefaultApplication
 
 	public override void OnStartup(IApplicationHost host)
 	{
-		// The base wires resource type registration AND the game UI render bring up. Skip it
-		// and the UI silently never draws.
+		// The base wires resource type registration AND the GUI's render bring up. Skip it and
+		// the GUI silently never draws.
 		base.OnStartup(host);
 
 		Console.WriteLine("WebScene: building the full renderer scene...");
@@ -196,6 +197,13 @@ class WebSceneApp : DefaultApplication
 				device.DestroyTexture(ref mTexture);
 		}
 
+		if (mBadge != null)
+		{
+			if (let gameGui = host.Context.GetSubsystem<GuiSubsystem>())
+				gameGui.RemoveOverlay(mBadge);
+			mBadge.ReleaseRef();
+			mBadge = null;
+		}
 		DeleteAndNullify!(mHudDocument);
 		DeleteAndNullify!(mPlateDocument);
 		DeleteAndNullify!(mBadgeDocument);
@@ -205,15 +213,15 @@ class WebSceneApp : DefaultApplication
 
 	// ---- per frame ----
 
-	/// Binds the HUD button once the UI subsystem has instantiated the canvas tree, which is
-	/// not until a frame or two in. The click counter is the point: it proves the browser's
-	/// pointer path reaches game UI and is consumed there rather than falling through.
+	/// Binds the HUD button once the GUI has built the canvas's tree, which is not until a frame
+	/// in. The click counter is the point: it proves the browser's pointer path reaches the
+	/// game's GUI and is consumed there rather than falling through.
 	private void BindHudButton()
 	{
 		if (mHudBound)
 			return;
 
-		let canvases = mScene.GetSystem<UICanvasComponentManager>();
+		let canvases = mScene.GetSystem<GuiCanvasComponentManager>();
 		if (canvases == null)
 			return;
 
@@ -221,18 +229,14 @@ class WebSceneApp : DefaultApplication
 		if ((canvas == null) || (canvas.Root == null))
 			return;
 
-		let group = canvas.Root as ViewGroup;
-		if (group == null)
-			return;
-
-		let button = group.FindByName<Button>("ws-btn");
+		let button = canvas.Root.FindElement("ws-btn") as Sedulous.GUI.Button;
 		if (button == null)
 			return;
 
-		button.OnClick.Add(new (sender) =>
+		button.SetOnClick(new () =>
 			{
 				mHudClicks++;
-				button.SetText(scope $"Clicks: {mHudClicks}");
+				button.Text = scope $"Clicks: {mHudClicks}";
 				Console.WriteLine("WebScene: HUD button clicked");
 			});
 		mHudBound = true;
@@ -610,40 +614,39 @@ class WebSceneApp : DefaultApplication
 		mScene.SetLocalTransform(mCamera, transform);
 	}
 
-	/// All three tiers of game UI, which is three separate overlay paths:
+	/// All three tiers of game UI on the engine's GUI, which is three separate overlay paths,
+	/// each a document made in code and styled through its markup's inline CSS:
 	///   scene      a HUD canvas whose button counts clicks, so consumption is visible
 	///   billboard  a nameplate riding the spinning cube, distance scaled
-	///   screen     a badge on the scene-less overlay layer
+	///   screen     a passive badge on the overlay layer
 	private void BuildGameUI(IApplicationHost host)
 	{
-		mHudDocument = new UIDocument();
+		mHudDocument = new GuiDocument();
 		mHudDocument.Markup.Set("""
-			<Flex direction="vertical" align="start" padding="12" spacing="8">
-			  <Panel padding="12" width="240"
-			         style="background: rounded-rect(rgb(28, 32, 40), radius=8);">
-			    <Flex direction="vertical" spacing="8">
-			      <Label text="WebScene" font-size="18"/>
-			      <Label text="WASD/QE move - RMB look" font-size="12"/>
-			      <Button id="ws-btn" text="Clicks: 0" width="200" height="36"/>
-			    </Flex>
+			<Panel flex-direction="column" align-items="start" padding="12">
+			  <Panel flex-direction="column" gap="8" padding="12" width="240"
+			         background-color="rgb(28, 32, 40)" border-radius="8">
+			    <Label text="WebScene" font-size="18"/>
+			    <Label text="WASD/QE move - RMB look" font-size="12"/>
+			    <Button id="ws-btn" text="Clicks: 0" width="200" height="36"/>
 			  </Panel>
-			</Flex>
+			</Panel>
 			""");
 
 		mHudEntity = mScene.CreateEntity("hud");
-		if (let canvases = mScene.GetSystem<UICanvasComponentManager>())
+		if (let canvases = mScene.GetSystem<GuiCanvasComponentManager>())
 			canvases.Add(mHudEntity).Document.SetDirect(mHudDocument);
 
 		// The nameplate rides the CUBE, which is the thing that moves, so world tracking is
 		// obvious rather than something you have to take on trust.
-		mPlateDocument = new UIDocument();
+		mPlateDocument = new GuiDocument();
 		mPlateDocument.Markup.Set("""
-			<Panel padding="4" style="background: rounded-rect(rgb(20, 24, 30), radius=4);">
+			<Panel padding="4" background-color="rgb(20, 24, 30)" border-radius="4">
 			  <Label text="cube" font-size="13"/>
 			</Panel>
 			""");
 
-		if (let billboards = mScene.GetSystem<UIBillboardComponentManager>())
+		if (let billboards = mScene.GetSystem<GuiBillboardComponentManager>())
 		{
 			let plate = billboards.Add(mCube);
 			plate.Document.SetDirect(mPlateDocument);
@@ -652,26 +655,21 @@ class WebSceneApp : DefaultApplication
 			plate.ReferenceDistance = 12.0f;
 		}
 
-		// The screen tier badge sits OUTSIDE any scene, so it survives a scene swap.
-		if (let gameUi = host.Context.GetSubsystem<UISubsystem>())
+		// The screen tier badge sits OUTSIDE any scene, so it survives a scene swap, in the
+		// bottom right corner. PASSIVE (pointer-events none on its root): an overlay that takes
+		// the pointer is modal, which is right for a menu and would shield the HUD from every
+		// click.
+		if (let gameGui = host.Context.GetSubsystem<GuiSubsystem>())
 		{
-			mBadgeDocument = new UIDocument();
+			mBadgeDocument = new GuiDocument();
 			mBadgeDocument.Markup.Set("""
-				<Panel padding="6" style="background: rounded-rect(rgb(20, 24, 30), radius=6);">
-				  <Label text="screen tier" font-size="11"/>
+				<Panel pointer-events="none" justify-content="end" align-items="end" padding="12">
+				  <Panel padding="6" background-color="rgb(20, 24, 30)" border-radius="6">
+				    <Label text="screen tier" font-size="11"/>
+				  </Panel>
 				</Panel>
 				""");
-
-			let badge = gameUi.PushScreenOverlay(mBadgeDocument);
-			if (badge != null)
-			{
-				LayoutStyle layout = .();
-				layout.Gravity = .Right | .Bottom;
-				badge.SetLayout(layout);
-				// A PASSIVE watermark. A hit testable screen overlay makes the global layer
-				// modal, which is right for a menu and would shield the HUD from every click.
-				badge.IsHitTestVisible = false;
-			}
+			mBadge = gameGui.PushOverlay(mBadgeDocument);
 		}
 	}
 
