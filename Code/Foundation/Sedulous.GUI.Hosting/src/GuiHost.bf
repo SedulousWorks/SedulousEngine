@@ -120,11 +120,13 @@ class GuiHost
 	{
 		public IHostedContent Content;
 		public Sedulous.Graphics.RenderWindow Window; // the window it is bound to
+		public bool Routed; // its surface in the router: bound and its node shown
 
 		public this(IHostedContent content)
 		{
 			Content = content;
 			Window = null;
+			Routed = false;
 		}
 	}
 
@@ -310,6 +312,16 @@ class GuiHost
 				return;
 		}
 		mContents.Add(.(content));
+	}
+	/// Whether `content`'s input surface is routed now (bound, and its node shown).
+	public bool Routes(IHostedContent content)
+	{
+		for (let hosted in mContents)
+		{
+			if (hosted.Content == content)
+				return hosted.Routed;
+		}
+		return false;
 	}
 	public void RemoveContent(IHostedContent content)
 	{
@@ -964,7 +976,10 @@ class GuiHost
 	}
 
 	// Each content bound to the window its node is in (again when that changes), and placed over
-	// its node; then their router, so the application reads what it gates this frame.
+	// its node; then their router, so the application reads what it gates this frame. A content
+	// whose node is not shown (a page behind another tab) leaves the router until it is: it keeps
+	// the place it had, the shown one's, and the router's last match would give it the pointer
+	// meant for what is in front.
 	private void PlaceContents()
 	{
 		for (var hosted in ref mContents)
@@ -978,14 +993,15 @@ class GuiHost
 				if (window != null)
 				{
 					hosted.Content.Bind(mDevice.Raw, RendererFor(window), mShell.Input, window.Window.Id);
-					let surface = hosted.Content.HostedSurface;
-					if (surface != null)
-						mContentRouter.AddSurface(surface);
 					hosted.Window = window;
 				}
 			}
 			if (window == null)
 				continue;
+			let shown = node.IsTreeVisible;
+			Route(ref hosted, shown);
+			if (!shown)
+				continue; // its targets kept for when it shows again
 			let pane = PaneArea(root);
 			let bounds = node.ScreenBounds; // the root's device pixels
 			hosted.Content.Place(.(pane.X + bounds.X, pane.Y + bounds.Y, bounds.Width, bounds.Height),
@@ -994,13 +1010,24 @@ class GuiHost
 		mContentRouter.Update();
 	}
 
+	// Its surface in the content router (`on`) or out of it.
+	private void Route(ref Hosted hosted, bool on)
+	{
+		let surface = hosted.Content.HostedSurface;
+		if ((surface == null) || (hosted.Routed == on))
+			return;
+		if (on)
+			mContentRouter.AddSurface(surface);
+		else
+			mContentRouter.RemoveSurface(surface);
+		hosted.Routed = on;
+	}
+
 	private void Unbind(ref Hosted hosted)
 	{
 		if (hosted.Window == null)
 			return;
-		let surface = hosted.Content.HostedSurface;
-		if (surface != null)
-			mContentRouter.RemoveSurface(surface);
+		Route(ref hosted, false);
 		hosted.Content.Bind(mDevice.Raw, null, mShell.Input, 0);
 		hosted.Window = null;
 	}

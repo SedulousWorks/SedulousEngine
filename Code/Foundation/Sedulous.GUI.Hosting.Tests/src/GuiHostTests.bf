@@ -176,6 +176,38 @@ class RecordingContent : IHostedContent
 	public Sedulous.Shell.InputSurface HostedSurface => null;
 }
 
+/// Hosted content with an input surface of its own, as a viewport has: made on each bind to a
+/// window, gone when let go.
+class SurfaceContent : IHostedContent
+{
+	private Node mNode; // borrowed
+	private Sedulous.Shell.InputSurface mSurface = null ~ delete _;
+
+	public this(Node node)
+	{
+		mNode = node;
+	}
+
+	public Node HostedNode => mNode;
+
+	public void Bind(IDevice device, VGRenderer renderer, Sedulous.Shell.IInputManager input, uint32 windowId)
+	{
+		DeleteAndNullify!(mSurface);
+		if ((input != null) && (windowId != 0))
+			mSurface = new .(input, windowId, ContentFit());
+	}
+
+	public void Place(Rectangle windowPixels, Float2 windowSize)
+	{
+	}
+
+	public void Record(ICommandEncoder encoder, int32 frameIndex)
+	{
+	}
+
+	public Sedulous.Shell.InputSurface HostedSurface => mSurface;
+}
+
 /// GuiHost on the Null RHI backend and the null shell: a window's root gets the window's size and
 /// its own renderer; a root is drawn when it needs a frame and its last batch encoded again when
 /// not; the baker serves every window's renderer and a detached window's forgets its bakes; a
@@ -684,5 +716,40 @@ class GuiHostTests
 		Test.Assert(bed.Host.UiScale == 3.0f);
 		bed.Host.UiScale = 0.1f;
 		Test.Assert(bed.Host.UiScale == 0.5f);
+	}
+
+	[Test]
+	public static void ContentWhoseNodeIsNotShownLeavesTheInputRouterUntilItIs()
+	{
+		// Two pages' viewports in one place: the one behind kept that place, and the router's last
+		// match gave it the pointer meant for the one in front.
+		let bed = scope HostBed();
+		let root = bed.MakeRoot();
+		defer root.ReleaseRef();
+		let front = new Panel();
+		defer front.ReleaseRef();
+		let behind = new Panel();
+		defer behind.ReleaseRef();
+		root.AddChild(front);
+		root.AddChild(behind);
+		let first = scope SurfaceContent(front);
+		let second = scope SurfaceContent(behind);
+		bed.Host.AttachWindow(bed.Main, root);
+		bed.Host.AddContent(first);
+		bed.Host.AddContent(second);
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Host.Routes(first));
+		Test.Assert(bed.Host.Routes(second));
+
+		behind.Displayed = false; // its tab goes behind
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Host.Routes(first));
+		Test.Assert(!bed.Host.Routes(second));
+		behind.Displayed = true; // and comes to the front again
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Host.Routes(second));
+
+		bed.Host.RemoveContent(second);
+		bed.Host.RemoveContent(first);
 	}
 }

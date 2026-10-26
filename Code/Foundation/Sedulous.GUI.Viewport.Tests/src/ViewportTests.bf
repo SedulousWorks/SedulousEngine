@@ -98,7 +98,9 @@ class ViewportBed
 /// The Viewport widget hosted on GuiHost, on the Null RHI backend and the null shell: bound to the
 /// renderer of the window its node is in, its targets at the node's device pixels and its colour
 /// target registered with that renderer, its drawing recorded on that window's frame (a clear when
-/// it has none), bound again when its node moves to another window, and let go when it leaves.
+/// it has none), bound again when its node moves to another window, and let go when it leaves;
+/// what a game in a panel needs: a clear once outside drawing stops, the colour target's twin view,
+/// hosted text input, and the pointer mapped into the content's own resolution.
 class ViewportHostingTests
 {
 	[Test]
@@ -139,6 +141,30 @@ class ViewportHostingTests
 		bed.Viewport.Visible = false;
 		bed.Frame(bed.Main);
 		Test.Assert(renders == 0);
+	}
+
+	[Test]
+	public static void DrawnOutsideOnRenderItsPictureIsKeptMadeAgainItClearsUntilItIsDrawn()
+	{
+		let bed = scope ViewportBed();
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Viewport.IsReady);
+		Test.Assert(bed.Viewport.ClearCount == 1); // nothing defined yet: cleared, ready to sample
+		Test.Assert(bed.Viewport.ColorState == .ShaderRead);
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Viewport.ClearCount == 1); // what it holds is kept
+
+		// A renderer with its own frame draws it, from the state it was in, and leaves it to sample.
+		bed.Viewport.ColorState = .RenderTarget;
+		bed.Viewport.ColorState = .ShaderRead;
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Viewport.ClearCount == 1); // not cleared over
+
+		// Made again at another size: undefined until something draws it.
+		bed.Viewport.EditLayoutStyle(scope (s) => { s.Width = LayoutLength.Px(400.0f); });
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Viewport.RenderWidth == 400);
+		Test.Assert(bed.Viewport.ClearCount == 2);
 	}
 
 	[Test]
@@ -289,4 +315,61 @@ class ViewportHostingTests
 		bed.Frame(bed.Main);
 		Test.Assert(surface.Fit.Mode == .Letterbox);
 	}
+
+	[Test]
+	public static void ContentDrawnOutsideThatStoppedIsClearedOnceOnRequestThenKept()
+	{
+		let bed = scope ViewportBed();
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Viewport.ClearCount == 1);
+		bed.Viewport.ColorState = .ShaderRead; // drawn outside
+		bed.Viewport.ClearPicture();
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Viewport.ClearCount == 2);
+		Test.Assert(bed.Viewport.ColorState == .ShaderRead);
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Viewport.ClearCount == 2); // kept
+	}
+
+	[Test]
+	public static void AnSrgbTargetHasItsTwinViewAFloatOneHasNone()
+	{
+		let bed = scope ViewportBed();
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Viewport.ColorAlternateView == null); // RGBA16Float: no twin
+		bed.Viewport.SetFormats(.RGBA8UnormSrgb, bed.Viewport.DepthFormat);
+		bed.Frame(bed.Main);
+		Test.Assert(bed.Viewport.ColorAlternateView != null);
+	}
+
+	[Test]
+	public static void TheHostedContentsTextInputIsTheNodesThePointerMapsIntoTheContentsOwnResolution()
+	{
+		let bed = scope ViewportBed();
+		Test.Assert(!bed.Viewport.WantsTextInput);
+		bed.Viewport.SetHostedTextInputWanted(true);
+		Test.Assert(bed.Viewport.WantsTextInput);
+
+		bed.Frame(bed.Main);
+		let surface = bed.Viewport.HostedSurface;
+		Test.Assert(surface != null);
+		Test.Assert(Near(surface.Fit.ContentSize.X, 320.0f)); // the targets' own
+		bed.Viewport.SetContentResolution(1920, 1080, .Letterbox);
+		bed.Frame(bed.Main);
+		Test.Assert(Near(surface.Fit.ContentSize.X, 1920.0f));
+		Test.Assert(Near(surface.Fit.ContentSize.Y, 1080.0f));
+		Test.Assert(surface.Fit.Mode == .Letterbox);
+
+		// At a fixed resolution too: the region is the content's rectangle inside the drawn targets.
+		bed.Viewport.SetFixedResolution(160, 200); // a tall screen in a wide node
+		bed.Viewport.FitMode = .Letterbox;
+		bed.Frame(bed.Main);
+		let region = surface.Fit.Region;
+		Test.Assert(surface.Fit.Mode == .Stretch);
+		Test.Assert(Near(region.Width, 160.0f)); // the 160 by 200 targets drawn at 160 by 200, centred
+		Test.Assert(Near(region.Height, 90.0f)); // a 16:9 picture letterboxed across their width
+		Test.Assert(Near(region.X, 80.0f));
+	}
+
+	private static bool Near(float a, float b) => Math.Abs(a - b) < 1e-3f;
 }

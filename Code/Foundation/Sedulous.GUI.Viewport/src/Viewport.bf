@@ -19,10 +19,20 @@ namespace Sedulous.GUI;
 // content's keyboard and mouse (Mouse, Keyboard, Touch) are gated to it: a camera reads them while
 // the node is hovered or focused (IsActive), and a drag begun in it keeps them past its edge.
 //
+// Content can also be drawn outside OnRender, by a renderer with a frame of its own that runs
+// before the GUI's (an editor's scene renderer, one bracket for every page): it imports the colour
+// target in ColorState, leaves it ready to sample and says so by setting ColorState to ShaderRead;
+// the widget then keeps what it drew.
+//
 // From foundation.ui's ViewportView (UI.Viewport): its fit (ContentFit, for the picture and the
 // pointer alike), its formats (RGBA16Float and Depth32Float by default), a fixed resolution, a clear
-// when there is nothing to draw. Not carried: the editor's game-in-a-panel keyboard capture and
-// hosted text input, which wait for an embedded GUI to need them.
+// while there is nothing defined to show, the colour target's state for a renderer that owns its
+// transitions. For a game in a panel (the editor's Game tab) it also carries: the colour target's
+// sRGB or UNORM twin view (the game's screen UI blends encoded values through it), the resolution
+// the content draws at inside the targets (the pointer maps into that), hosted text input (the
+// game's own text field asks for the window's text input through the focused node), and a clear
+// once content drawn outside stops. Not carried: the editor's game-in-a-panel keyboard capture,
+// which waits for the GUI's nodes to capture every key.
 
 class Viewport : UIWidget, IHostedContent
 {
@@ -43,6 +53,7 @@ class Viewport : UIWidget, IHostedContent
 	private Sedulous.Image.ImageDataRef mKey = null ~ delete _;
 	private ITexture mColorTexture = null;
 	private ITextureView mColorView = null;
+	private ITextureView mColorAlternateView = null; // in its sRGB or UNORM twin, if it has one
 	private ITexture mDepthTexture = null;
 	private ITextureView mDepthView = null;
 	private ResourceState mColorState = .Undefined;
@@ -56,7 +67,14 @@ class Viewport : UIWidget, IHostedContent
 	private uint32 mFixedWidth = 0;
 	private uint32 mFixedHeight = 0;
 	private uint32 mWindowId = 0;
+	private uint32 mClears = 0;
+	private uint32 mContentWidth = 0; // the content's own resolution inside the targets (0: theirs)
+	private uint32 mContentHeight = 0;
+	private FitMode mContentFit = .Stretch;
+	private ContentRotation mContentRotation = .None;
 	private bool mRegistered = false;
+	private bool mHostedTextInput = false;
+	private bool mClearPending = false;
 
 	public this()
 	{
@@ -147,11 +165,45 @@ class Viewport : UIWidget, IHostedContent
 			Resize(width, height);
 	}
 
+	/// The resolution the content draws at INSIDE the targets, fitted by `fit` (and turned by
+	/// `rotation`), when it draws its own fitted picture (a game at its render resolution,
+	/// letterboxed in a target the node's size): the pointer then maps into that resolution.
+	/// 0 by 0: the targets' own.
+	public void SetContentResolution(uint32 width, uint32 height, FitMode fit, ContentRotation rotation = .None)
+	{
+		mContentWidth = width;
+		mContentHeight = height;
+		mContentFit = fit;
+		mContentRotation = rotation;
+	}
+
+	/// Whether the content it hosts has a text field taking text (a game's UI): the window's text
+	/// input then follows, this node being the GUI's focused one. Set each frame by the content's
+	/// owner.
+	public void SetHostedTextInputWanted(bool wanted) => mHostedTextInput = wanted;
+	public override bool WantsTextInput => mHostedTextInput;
+
+	/// Content drawn outside stopped (a game ended): the picture is cleared to ClearColor on the
+	/// next frame rather than keeping its last one.
+	public void ClearPicture() => mClearPending = true;
+
 	public bool IsReady => (mColorView != null) && (mDepthView != null);
+	/// The colour target in its sRGB or UNORM twin format (null: its format has none): what draws
+	/// encoded values into an sRGB target without the hardware encoding them again.
+	public ITextureView ColorAlternateView => mColorAlternateView;
 	/// The targets, this one's: null until it is bound and placed.
 	public ITextureView ColorView => mColorView;
 	public ITextureView DepthView => mDepthView;
 	public ITexture ColorTexture => mColorTexture;
+	/// The colour target's state: what a renderer drawing it outside OnRender imports it from
+	/// (Undefined once it is made again), and tells the widget it left it in.
+	public ResourceState ColorState
+	{
+		get => mColorState;
+		set => mColorState = value;
+	}
+	/// How many frames it cleared for want of anything to show.
+	public uint32 ClearCount => mClears;
 	public uint32 RenderWidth => mWidth;
 	public uint32 RenderHeight => mHeight;
 	/// The window it is bound to (0: none).
@@ -203,20 +255,24 @@ class Viewport : UIWidget, IHostedContent
 			Resize(width, height);
 		if (mSurface == null)
 			return;
-		mSurface.SetRegion(windowPixels);
 		mSurface.SetWindowSize(windowSize);
-		mSurface.SetContentSize(.((float)mWidth, (float)mHeight));
-		mSurface.SetFitMode(mFit);
+		PlaceSurface(windowPixels);
 	}
 
 	public void Record(ICommandEncoder encoder, int32 frameIndex)
 	{
 		if (!IsReady)
 			return;
+		// No content of its own: drawn outside (or cleared before), it is ready to sample, unless
+		// that content stopped and asked for a clear.
+		if ((mOnRender == null) && (mColorState == .ShaderRead) && !mClearPending)
+			return;
+		mClearPending = false;
 		encoder.TransitionTexture(mColorTexture, mColorState, .RenderTarget);
 		if (mOnRender == null)
 		{
 			// Nothing to draw: the colour target still holds something defined to sample.
+			mClears++;
 			var pass = RenderPassDesc();
 			var color = ColorAttachment();
 			color.View = mColorView;
@@ -263,6 +319,39 @@ class Viewport : UIWidget, IHostedContent
 		ctx.VG.DrawImage(mKey, at, fit.SrcRect(), Color.White);
 	}
 
+	// The surface over the node, the pointer mapped into the targets, or into the content's own
+	// resolution through its fit; with a fixed resolution too (a phone's screen), in two steps: the
+	// targets fitted into the node, the content into the targets.
+	private void PlaceSurface(Rectangle region)
+	{
+		mSurface.SetRegion(region);
+		mSurface.SetRotation(.None);
+		let targets = Float2((float)mWidth, (float)mHeight);
+		if ((mContentWidth == 0) || (mContentHeight == 0))
+		{
+			mSurface.SetContentSize(targets);
+			mSurface.SetFitMode(mFit);
+			return;
+		}
+		let content = Float2((float)mContentWidth, (float)mContentHeight);
+		mSurface.SetContentSize(content);
+		mSurface.SetFitMode(mContentFit);
+		mSurface.SetRotation(mContentRotation);
+		if ((mFixedWidth == 0) || (mFixedHeight == 0) || (targets.X <= 0.0f) || (targets.Y <= 0.0f))
+			return;
+		let drawn = ContentFit(region, targets, mFit).DstRect();
+		if (mContentFit == .Crop)
+		{
+			mSurface.SetRegion(drawn); // no bars, a slice: the fit scales evenly
+			return;
+		}
+		let inside = ContentFit(.(0.0f, 0.0f, targets.X, targets.Y), content, mContentFit, mContentRotation).DstRect();
+		let sx = drawn.Width / targets.X;
+		let sy = drawn.Height / targets.Y;
+		mSurface.SetRegion(.(drawn.X + inside.X * sx, drawn.Y + inside.Y * sy, inside.Width * sx, inside.Height * sy));
+		mSurface.SetFitMode(.Stretch); // the region is the content's rectangle
+	}
+
 	private void Resize(uint32 width, uint32 height)
 	{
 		if (mDevice == null)
@@ -287,6 +376,7 @@ class Viewport : UIWidget, IHostedContent
 		mKey = new .(width, height); // what the renderer knows it by
 		var colorDesc = TextureDesc.RenderTarget(mColorFormat, width, height, 1, "ViewportColor");
 		colorDesc.Usage = colorDesc.Usage | .CopySrc; // a capture copies it out
+		colorDesc.AlternateViewFormat = TextureFormats.SrgbTwin(mColorFormat);
 		if (mDevice.CreateTexture(colorDesc) case .Ok(let colorTexture))
 			mColorTexture = colorTexture;
 		if ((mColorTexture != null) && (mDevice.CreateTextureView(mColorTexture, .()) case .Ok(let colorView)))
@@ -295,6 +385,14 @@ class Viewport : UIWidget, IHostedContent
 		{
 			DestroyTargets();
 			return;
+		}
+		if (colorDesc.AlternateViewFormat != .Undefined)
+		{
+			var alternate = TextureViewDesc();
+			alternate.Format = colorDesc.AlternateViewFormat;
+			// A miss leaves it null: what draws through it draws linear light instead.
+			if (mDevice.CreateTextureView(mColorTexture, alternate) case .Ok(let alternateView))
+				mColorAlternateView = alternateView;
 		}
 		let depthDesc = TextureDesc.DepthBuffer(mDepthFormat, width, height, 1, "ViewportDepth");
 		if (mDevice.CreateTexture(depthDesc) case .Ok(let depthTexture))
@@ -325,6 +423,8 @@ class Viewport : UIWidget, IHostedContent
 			mDevice.DestroyTextureView(ref mDepthView);
 		if (mDepthTexture != null)
 			mDevice.DestroyTexture(ref mDepthTexture);
+		if (mColorAlternateView != null)
+			mDevice.DestroyTextureView(ref mColorAlternateView);
 		if (mColorView != null)
 			mDevice.DestroyTextureView(ref mColorView);
 		if (mColorTexture != null)
