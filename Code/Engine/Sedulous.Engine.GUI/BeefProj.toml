@@ -1,0 +1,23 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.GUI"
+TargetType = "BeefLib"
+StartupObject = "Sedulous.Engine.GUI.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.Render.Api" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.VG.SVG" = "*"
+"Sedulous.VG.Resource" = "*"
+"Sedulous.Texture.Resource" = "*"
+"Sedulous.Fonts.Resource" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Resources" = "*"
+"Sedulous.Engine.Domain" = "*"

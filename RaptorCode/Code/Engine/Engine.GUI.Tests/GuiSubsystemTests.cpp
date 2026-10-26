@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026-Present Robert Campbell
 
-// Engine.GUI (E5 of Specs/gui-lab-evolution-3.md): the resource provider answering asset guids
-// (documents, sheets, vector images, textures) and following re-cooks; the subsystem's screen tier
-// (the screen stack under the overlay layer) and scene tier (a root per scene); the game's sheets
-// in order over the theme, restyled when one is cooked again; a document pushed by its guid; both
-// tiers drawn into the engine's overlay passes (the Null device, the shaders from the data mount);
-// the domain.
+// Engine.GUI (E5 of Specs/gui-lab-evolution-3.md), what is left of its tests after the Engine.GUI
+// port's first slice: the subsystem's screen tier (the screen stack under the overlay layer) and
+// scene tier (a root per scene); the game's sheets in order over the theme, restyled when one is
+// cooked again; a document pushed by its guid; both tiers drawn into the engine's overlay passes
+// (the Null device, the shaders from the data mount); the components as the subsystem runs them.
+// The provider's (documents, sheets, vector images and textures by guid; a re-cook at the next
+// poll), the domain's, the canvas's round trip and the billboard and panel math are in
+// Code/Engine/Sedulous.Engine.GUI.Tests/src (GuiResourceProviderTests.bf, GuiDomainTests.bf,
+// GuiComponentTests.bf, GuiWorldMathTests.bf).
 #include <doctest/doctest.h>
 #include "Core/Prelude.h"
 
@@ -42,7 +45,6 @@ namespace scene = foundation::scene;
 namespace runtime = foundation::runtime;
 namespace rhi = foundation::rhi;
 using namespace foundation::gui;
-using engine::gui::GuiResourceProvider;
 using engine::gui::GuiSubsystem;
 
 namespace
@@ -137,23 +139,6 @@ namespace
             source.css = String(css);
             REQUIRE(db->GetInstance(id)->WriteObject(source).IsOk());
             (void)resources->Reload(id);
-        }
-        Guid Vector(StringView name, StringView svg)
-        {
-            auto* instance = db->RootGroup()->CreateInstance(name, foundation::vg::VectorImageSource::StaticType());
-            foundation::vg::VectorImageSource source;
-            source.svg = String(svg);
-            REQUIRE(instance->WriteObject(source).IsOk());
-            return instance->Id();
-        }
-        Guid Texture(StringView name, u32 width, u32 height)
-        {
-            auto* instance = db->RootGroup()->CreateInstance(name, foundation::texture::RenderTextureResource::StaticType());
-            foundation::texture::RenderTextureResource record;
-            record.width = width;
-            record.height = height;
-            REQUIRE(instance->WriteObject(record).IsOk());
-            return instance->Id();
         }
     };
 
@@ -282,66 +267,6 @@ namespace
         button->SetSize(Float2{100.0f, 40.0f});
         return button;
     }
-}
-
-TEST_CASE("engine.gui: the provider answers documents, sheets, vector images and textures by guid, and only as what they are")
-{
-    Project project(u8"scratch_engine_gui_provider");
-    const Guid menu = project.Document(u8"menu", u8"<Panel id=\"menu\"/>");
-    const Guid sheet = project.Sheet(u8"game", u8"#menu { width: 10px; }");
-    const Guid icon = project.Vector(u8"icon", u8"<svg width='8' height='8'><rect width='8' height='8'/></svg>");
-    const Guid map = project.Texture(u8"map", 128, 64);
-
-    GuiResourceProvider provider(DefaultAllocator());
-    String text;
-    CHECK_FALSE(provider.LoadText(Braced(menu).AsView(), text)); // no resource manager yet
-    provider.SetResourceManager(project.resources.Get());
-    Array<const foundation::image::ImageData*> told;
-    provider.SetTextureSink([&](const foundation::image::ImageData* key, rhi::TextureView* view) { told.PushBack(view != nullptr ? key : nullptr); });
-
-    REQUIRE(provider.LoadText(Braced(menu).AsView(), text));
-    CHECK(text.AsView() == StringView(u8"<Panel id=\"menu\"/>"));
-    REQUIRE(provider.LoadText(Format(u8"{}", sheet).AsView(), text)); // the bare guid too
-    CHECK(text.AsView() == StringView(u8"#menu { width: 10px; }"));
-    CHECK_FALSE(provider.LoadText(u8"menu.gml", text)); // a path is not a guid
-    CHECK_FALSE(provider.LoadText(Braced(icon).AsView(), text)); // a vector image is no text
-
-    const foundation::vg::svg::SVGDocument* picture = provider.LoadSvg(Braced(icon).AsView());
-    REQUIRE(picture != nullptr);
-    CHECK(provider.LoadSvg(Braced(icon).AsView()) == picture); // parsed once
-    CHECK(provider.LoadSvg(Braced(sheet).AsView()) == nullptr);
-
-    const foundation::image::ImageData* image = provider.LoadImage(Braced(map).AsView());
-    REQUIRE(image != nullptr);
-    CHECK(image->Width() == 128u);
-    CHECK(image->Height() == 64u);
-    CHECK(provider.LoadImage(Braced(map).AsView()) == image); // one key per texture
-    REQUIRE(told.Size() == 1u);
-    CHECK(told[0] == image); // the renderers learn it
-    CHECK(provider.LoadImage(Braced(menu).AsView()) == nullptr);
-
-    // Another project: what was bound goes, the renderers let the key go.
-    provider.SetResourceManager(nullptr);
-    REQUIRE(told.Size() == 2u);
-    CHECK(told[1] == nullptr);
-    CHECK_FALSE(provider.LoadText(Braced(menu).AsView(), text));
-    CHECK(provider.LoadImage(Braced(map).AsView()) == nullptr);
-}
-
-TEST_CASE("engine.gui: a sheet cooked again is seen at the next poll, once")
-{
-    Project project(u8"scratch_engine_gui_poll");
-    const Guid sheet = project.Sheet(u8"game", u8"#a { width: 1px; }");
-    GuiResourceProvider provider(DefaultAllocator());
-    provider.SetResourceManager(project.resources.Get());
-    String text;
-    REQUIRE(provider.LoadText(Braced(sheet).AsView(), text));
-    CHECK_FALSE(provider.Poll());
-    project.RewriteSheet(sheet, u8"#a { width: 2px; }");
-    CHECK(provider.Poll());
-    REQUIRE(provider.LoadText(Braced(sheet).AsView(), text));
-    CHECK(text.AsView() == StringView(u8"#a { width: 2px; }"));
-    CHECK_FALSE(provider.Poll());
 }
 
 TEST_CASE("engine.gui: the screen tier holds the screen stack under the overlay layer, and each scene a root of its own")
@@ -479,17 +404,6 @@ TEST_CASE("engine.gui: both tiers draw into the engine's overlay passes, the scr
     CHECK(encoder.counters->Snapshot().draws == drawsOther);
     pass->End();
     engine.scenes.DestroyScene(level);
-}
-
-TEST_CASE("engine.gui: the domain brings the documents' and sheets' resource module")
-{
-    const engine::DomainModule& domain = engine::gui::GuiDomain();
-    CHECK(domain.id == StringView(u8"gui"));
-    bool documents = false;
-    for (const foundation::resource::ResourceModule* module : domain.resources)
-        documents = documents || module == &kGuiResourceModule;
-    CHECK(documents);
-    CHECK(domain.HasScene()); // its components
 }
 
 TEST_CASE("engine.gui: input goes to the root whose GUI is under the pointer, a click lands, and the action layer hears what the GUI took")
@@ -740,41 +654,6 @@ TEST_CASE("engine.gui: a canvas's own sheet styles its document alone, over the 
     engine.scenes.DestroyScene(level);
 }
 
-TEST_CASE("engine.gui: a canvas component round-trips through the scene format")
-{
-    engine::gui::RegisterGuiComponentReflection(); // versioned payloads read the type's data version
-    engine::gui::GuiCanvasComponent a;
-    a.document.SetId(Guid{1, 2});
-    a.sheet.SetId(Guid{3, 4});
-    a.order = 7;
-    a.visible = false;
-    a.interactive = false;
-    a.scalerMode = engine::gui::GuiScalerMode::ReferenceResolution;
-    a.referenceResolution = Float2{1280.0f, 800.0f};
-    MemoryStream buffer;
-    {
-        BinarySerializer writer(buffer, SerializeMode::Write);
-        BeginVersionedPayload(writer, TypeOf<engine::gui::GuiCanvasComponent>());
-        Serialize(writer, a);
-        EndVersionedPayload(writer);
-    }
-    (void)buffer.Seek(0, SeekOrigin::Begin);
-    engine::gui::GuiCanvasComponent b;
-    {
-        BinarySerializer reader(buffer, SerializeMode::Read);
-        BeginVersionedPayload(reader, TypeOf<engine::gui::GuiCanvasComponent>());
-        Serialize(reader, b);
-        EndVersionedPayload(reader);
-    }
-    CHECK(b.document.id == a.document.id);
-    CHECK(b.sheet.id == a.sheet.id);
-    CHECK(b.order == 7);
-    CHECK_FALSE(b.visible);
-    CHECK_FALSE(b.interactive);
-    CHECK(b.scalerMode == engine::gui::GuiScalerMode::ReferenceResolution);
-    CHECK(b.referenceResolution.x == doctest::Approx(1280.0f));
-}
-
 namespace
 {
     // A projection a test reads at a glance: clip = (x, y, z, z), so a point's place on screen is
@@ -794,40 +673,6 @@ namespace
         m.m[3][2] = position.z;
         return m;
     }
-}
-
-TEST_CASE("engine.gui: a billboard hangs from its entity's projected point, lifted by its offset, hidden behind the camera, scaled with distance")
-{
-    engine::gui::GuiBillboardComponent billboard;
-    const Float4x4 projection = SimpleProjection();
-    const Float2 viewport{200.0f, 100.0f};
-
-    engine::gui::GuiBillboardPlacement placed = engine::gui::PlaceBillboard(billboard, At(Float3{0.0f, 0.0f, 1.0f}), projection, Float3{}, viewport);
-    REQUIRE(placed.Shown);
-    CHECK(placed.Anchor.x == doctest::Approx(100.0f)); // the view's centre
-    CHECK(placed.Anchor.y == doctest::Approx(50.0f));
-    CHECK(placed.Scale == doctest::Approx(1.0f));
-
-    billboard.offset = Float3{0.0f, 0.5f, 0.0f}; // lifted half the view's height at that distance
-    placed = engine::gui::PlaceBillboard(billboard, At(Float3{0.0f, 0.0f, 1.0f}), projection, Float3{}, viewport);
-    CHECK(placed.Anchor.y == doctest::Approx(25.0f));
-
-    // Screen orientation: the offset turns with the entity (a half turn about z flips the lift).
-    billboard.orientation = engine::gui::GuiBillboardOrientation::Screen;
-    Float4x4 turned = At(Float3{0.0f, 0.0f, 1.0f});
-    turned.m[0][0] = -1.0f;
-    turned.m[1][1] = -1.0f;
-    placed = engine::gui::PlaceBillboard(billboard, turned, projection, Float3{}, viewport);
-    CHECK(placed.Anchor.y == doctest::Approx(75.0f));
-
-    CHECK_FALSE(engine::gui::PlaceBillboard(billboard, At(Float3{0.0f, 0.0f, -1.0f}), projection, Float3{}, viewport).Shown);
-
-    billboard.offset = Float3{};
-    billboard.scaleMode = engine::gui::GuiBillboardScale::Distance;
-    billboard.referenceDistance = 10.0f;
-    CHECK(engine::gui::PlaceBillboard(billboard, At(Float3{0.0f, 0.0f, 20.0f}), projection, Float3{}, viewport).Scale == doctest::Approx(0.5f));
-    CHECK(engine::gui::PlaceBillboard(billboard, At(Float3{0.0f, 0.0f, 1.0f}), projection, Float3{}, viewport).Scale == doctest::Approx(2.0f)); // at most maxScale
-    CHECK(engine::gui::PlaceBillboard(billboard, At(Float3{0.0f, 0.0f, 100.0f}), projection, Float3{}, viewport).Scale == doctest::Approx(0.3f)); // at least minScale
 }
 
 TEST_CASE("engine.gui: billboards live in a layer under the canvases, placed as each view draws, and go when despawned")
@@ -878,23 +723,6 @@ TEST_CASE("engine.gui: billboards live in a layer under the canvases, placed as 
     engine.Frame();
     CHECK(layer->ChildCount() == 0u);
     engine.scenes.DestroyScene(level);
-}
-
-TEST_CASE("engine.gui: a ray crosses a world panel where it should, from either face, and misses past its edges")
-{
-    const Float4x4 panel = At(Float3{0.0f, 0.0f, 0.0f}); // in the xy plane, 2 by 1
-    engine::gui::GuiPanelHit hit = engine::gui::RayHitGuiPanel(Float3{0.0f, 0.0f, 5.0f}, Float3{0.0f, 0.0f, -1.0f}, panel, Float2{2.0f, 1.0f});
-    REQUIRE(hit.Hit);
-    CHECK(hit.Distance == doctest::Approx(5.0f));
-    CHECK(hit.Uv.x == doctest::Approx(0.5f));
-    CHECK(hit.Uv.y == doctest::Approx(0.5f));
-    hit = engine::gui::RayHitGuiPanel(Float3{0.5f, 0.25f, -5.0f}, Float3{0.0f, 0.0f, 1.0f}, panel, Float2{2.0f, 1.0f}); // from behind
-    REQUIRE(hit.Hit);
-    CHECK(hit.Uv.x == doctest::Approx(0.75f));
-    CHECK(hit.Uv.y == doctest::Approx(0.25f)); // v down
-    CHECK_FALSE(engine::gui::RayHitGuiPanel(Float3{1.5f, 0.0f, 5.0f}, Float3{0.0f, 0.0f, -1.0f}, panel, Float2{2.0f, 1.0f}).Hit); // past the edge
-    CHECK_FALSE(engine::gui::RayHitGuiPanel(Float3{0.0f, 0.0f, 5.0f}, Float3{1.0f, 0.0f, 0.0f}, panel, Float2{2.0f, 1.0f}).Hit);  // along the plane
-    CHECK_FALSE(engine::gui::RayHitGuiPanel(Float3{0.0f, 0.0f, 5.0f}, Float3{0.0f, 0.0f, 1.0f}, panel, Float2{2.0f, 1.0f}).Hit);  // away from it
 }
 
 TEST_CASE("engine.gui: a render-texture canvas draws into a texture of its own, its entity's sprite shows it, and it goes with the canvas")

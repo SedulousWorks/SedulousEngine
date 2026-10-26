@@ -1,0 +1,25 @@
+FileVersion = 1
+
+[Project]
+Name = "Sedulous.Engine.GUI.Tests"
+TargetType = "BeefTest"
+StartupObject = "Sedulous.Engine.GUI.Tests.Program"
+
+[Dependencies]
+corlib = "*"
+"Sedulous.Core" = "*"
+"Sedulous.Content" = "*"
+"Sedulous.Resource" = "*"
+"Sedulous.Scene" = "*"
+"Sedulous.Scene.Resource" = "*"
+"Sedulous.RHI" = "*"
+"Sedulous.RHI.Null" = "*"
+"Sedulous.Render.Api" = "*"
+"Sedulous.Image" = "*"
+"Sedulous.VG.SVG" = "*"
+"Sedulous.VG.Resource" = "*"
+"Sedulous.Texture.Resource" = "*"
+"Sedulous.VFS" = "*"
+"Sedulous.GUI.Resources" = "*"
+"Sedulous.Engine.Domain" = "*"
+"Sedulous.Engine.GUI" = "*"

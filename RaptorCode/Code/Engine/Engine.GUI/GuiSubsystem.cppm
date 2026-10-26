@@ -2,7 +2,13 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 // Engine::GUI - the `engine.gui` module: the engine's GUI on foundation.gui (E5 of
-// Specs/gui-lab-evolution-3.md), Engine.UI's counterpart, beside it while both live.
+// Specs/gui-lab-evolution-3.md), Engine.UI's counterpart, beside it while both live; what is left
+// of it after the Engine.GUI port's first slice: the subsystem, the screen placement, and the
+// components' script reflection (`of`, `root()`). The components (GuiCanvasComponent,
+// GuiBillboardComponent, GuiWorldPanelComponent, their enums and managers, AddGuiSceneManagers),
+// the world math (WorldPanelPixels, GuiPointerRay, RayHitGuiPanel, PlaceBillboard), the resource
+// provider and the domain are Code/Engine/Sedulous.Engine.GUI/src (the components' reflection is
+// their attributes there; the domain is GuiDomain.Module).
 //
 // GuiResourceProvider answers the GUI's resource requests by asset guid ("{guid}" or the bare
 // guid), as every other reference in the engine: a document's markup and a sheet's CSS from their
@@ -90,234 +96,12 @@ export namespace engine::gui
     namespace resource = foundation::resource;
     namespace image = foundation::image;
 
-    // ---- components ----
-
-    enum class GuiScalerMode : u8
-    {
-        ConstantPixel = 0,   ///< one GUI pixel a target pixel
-        ReferenceResolution, ///< laid out at the reference resolution, scaled uniformly to fit, centred
-    };
-
-    enum class GuiCanvasRenderMode : u8
-    {
-        ScreenOverlay = 0, ///< in its scene's GUI, over the view
-        RenderTexture,     ///< into a texture of its own (its entity's sprite or decal shows it)
-    };
-
-    /// A document shown in its scene's GUI: a menu, a HUD. Spawned it opens, despawned it closes.
-    struct GuiCanvasComponent
-    {
-        // Authored:
-        resource::Ref<GuiDocument> document;
-        resource::Ref<GuiStyleSheet> sheet; ///< over the game's sheets, for this canvas alone (optional)
-        i32 order = 0;                           ///< among the scene's canvases: higher on top
-        bool visible = true;
-        bool interactive = true;
-        GuiScalerMode scalerMode = GuiScalerMode::ConstantPixel;
-        Float2 referenceResolution{1920.0f, 1080.0f};
-        GuiCanvasRenderMode renderMode = GuiCanvasRenderMode::ScreenOverlay;
-        u32 renderTextureWidth = 512; ///< RenderTexture: the texture's size, in pixels
-        u32 renderTextureHeight = 512;
-
-        // Runtime:
-        RefPtr<Node> root;       ///< the tree built from the document
-        RefPtr<UIWidget> host;   ///< its place in the scene's root (order, scaler)
-        RefPtr<Object> builtFrom;     ///< the document product it was built from (held: a new one never takes its address)
-        RefPtr<Object> sheetFrom;     ///< the sheet product applied
-        RefPtr<SceneRoot> renderRoot;     ///< RenderTexture: its own root, never in a scene's GUI
-        rhi::Texture* renderTexture = nullptr; ///< RenderTexture: the texture (the subsystem's), once drawn
-        rhi::TextureView* renderTextureView = nullptr;
-
-        /// Its tree as a script's node handle (`root()`); null before it is built.
-        [[nodiscard]] foundation::core::Variant rootNode() const;
-    };
-
-    inline void Serialize(ISerializer& ar, GuiCanvasComponent& c)
-    {
-        foundation::core::Serialize(ar, "document", c.document);
-        foundation::core::Serialize(ar, "sheet", c.sheet);
-        foundation::core::Serialize(ar, "order", c.order);
-        foundation::core::Serialize(ar, "visible", c.visible);
-        foundation::core::Serialize(ar, "interactive", c.interactive);
-        u8 scaler = static_cast<u8>(c.scalerMode);
-        foundation::core::Serialize(ar, "scalerMode", scaler);
-        c.scalerMode = static_cast<GuiScalerMode>(scaler);
-        foundation::core::Serialize(ar, "referenceResolution", c.referenceResolution);
-        u8 render = static_cast<u8>(c.renderMode);
-        foundation::core::Serialize(ar, "renderMode", render);
-        c.renderMode = static_cast<GuiCanvasRenderMode>(render);
-        foundation::core::Serialize(ar, "renderTextureWidth", c.renderTextureWidth);
-        foundation::core::Serialize(ar, "renderTextureHeight", c.renderTextureHeight);
-    }
-
-    inline void ResolveResources(resource::ResourceManager& manager, GuiCanvasComponent& c)
-    {
-        c.document.Bind(manager);
-        c.sheet.Bind(manager);
-    }
-
-    class GuiCanvasComponentManager final : public scene::SerializableComponentManager<GuiCanvasComponent>
-    {
-    public:
-        GuiCanvasComponentManager() : SerializableComponentManager<GuiCanvasComponent>(u8"gui.Canvas") {}
-    };
-
-    enum class GuiBillboardOrientation : u8
-    {
-        Screen = 0,  ///< the offset in the entity's own space (it turns with the entity)
-        Cylindrical, ///< the offset in world space (a fixed lift above the entity)
-    };
-    enum class GuiBillboardScale : u8
-    {
-        Fixed = 0, ///< the same size at any distance
-        Distance,  ///< referenceDistance / distance, within minScale and maxScale
-    };
-
-    /// A document over its entity, facing the view: a nameplate, a health bar.
-    struct GuiBillboardComponent
-    {
-        // Authored:
-        resource::Ref<GuiDocument> document;
-        resource::Ref<GuiStyleSheet> sheet; ///< over the game's sheets, for this billboard alone (optional)
-        Float3 offset{0.0f, 0.0f, 0.0f};
-        GuiBillboardOrientation orientation = GuiBillboardOrientation::Cylindrical;
-        GuiBillboardScale scaleMode = GuiBillboardScale::Fixed;
-        f32 referenceDistance = 10.0f;
-        f32 minScale = 0.3f;
-        f32 maxScale = 2.0f;
-        bool visible = true;
-
-        // Runtime:
-        RefPtr<Node> root;
-        RefPtr<Object> builtFrom;
-        RefPtr<Object> sheetFrom;
-
-        /// Its tree as a script's node handle (`root()`); null before it is built.
-        [[nodiscard]] foundation::core::Variant rootNode() const;
-    };
-
-    inline void Serialize(ISerializer& ar, GuiBillboardComponent& c)
-    {
-        foundation::core::Serialize(ar, "document", c.document);
-        foundation::core::Serialize(ar, "sheet", c.sheet);
-        foundation::core::Serialize(ar, "offset", c.offset);
-        u8 orientation = static_cast<u8>(c.orientation);
-        foundation::core::Serialize(ar, "orientation", orientation);
-        c.orientation = static_cast<GuiBillboardOrientation>(orientation);
-        u8 scale = static_cast<u8>(c.scaleMode);
-        foundation::core::Serialize(ar, "scaleMode", scale);
-        c.scaleMode = static_cast<GuiBillboardScale>(scale);
-        foundation::core::Serialize(ar, "referenceDistance", c.referenceDistance);
-        foundation::core::Serialize(ar, "minScale", c.minScale);
-        foundation::core::Serialize(ar, "maxScale", c.maxScale);
-        foundation::core::Serialize(ar, "visible", c.visible);
-    }
-
-    inline void ResolveResources(resource::ResourceManager& manager, GuiBillboardComponent& c)
-    {
-        c.document.Bind(manager);
-        c.sheet.Bind(manager);
-    }
-
-    class GuiBillboardComponentManager final : public scene::SerializableComponentManager<GuiBillboardComponent>
-    {
-    public:
-        GuiBillboardComponentManager() : SerializableComponentManager<GuiBillboardComponent>(u8"gui.Billboard") {}
-    };
-
-    /// A document on a quad in the world, in its entity's plane (a sign, a terminal): drawn into a
-    /// texture at a density of its own, its entity's sprite driven to show it (added when missing),
-    /// so it sits in the scene with its depth; the pointer reaches it by a ray when interactive.
-    struct GuiWorldPanelComponent
-    {
-        // Authored:
-        resource::Ref<GuiDocument> document;
-        resource::Ref<GuiStyleSheet> sheet; ///< over the game's sheets, for this panel alone (optional)
-        Float2 sizeMeters{1.6f, 0.9f};           ///< the quad's extent in the world
-        f32 pixelsPerMeter = 200.0f;             ///< the texture's density
-        bool interactive = true;
-        bool visible = true;
-
-        // Runtime:
-        RefPtr<Node> root;
-        RefPtr<SceneRoot> renderRoot; ///< its own root, never in a scene's GUI
-        RefPtr<Object> builtFrom;
-        RefPtr<Object> sheetFrom;
-        rhi::Texture* renderTexture = nullptr; ///< the subsystem's, once drawn
-        rhi::TextureView* renderTextureView = nullptr;
-
-        /// Its tree as a script's node handle (`root()`); null before it is built.
-        [[nodiscard]] foundation::core::Variant rootNode() const;
-    };
-
-    inline void Serialize(ISerializer& ar, GuiWorldPanelComponent& c)
-    {
-        foundation::core::Serialize(ar, "document", c.document);
-        foundation::core::Serialize(ar, "sheet", c.sheet);
-        foundation::core::Serialize(ar, "sizeMeters", c.sizeMeters);
-        foundation::core::Serialize(ar, "pixelsPerMeter", c.pixelsPerMeter);
-        foundation::core::Serialize(ar, "interactive", c.interactive);
-        foundation::core::Serialize(ar, "visible", c.visible);
-    }
-
-    inline void ResolveResources(resource::ResourceManager& manager, GuiWorldPanelComponent& c)
-    {
-        c.document.Bind(manager);
-        c.sheet.Bind(manager);
-    }
-
-    class GuiWorldPanelComponentManager final : public scene::SerializableComponentManager<GuiWorldPanelComponent>
-    {
-    public:
-        GuiWorldPanelComponentManager() : SerializableComponentManager<GuiWorldPanelComponent>(u8"gui.WorldPanel") {}
-    };
-
-    /// A world panel's texture in pixels (its content, at its density, within GPU-friendly limits).
-    [[nodiscard]] Float2 WorldPanelPixels(const GuiWorldPanelComponent& panel) noexcept;
-
-    /// The world ray under `pointer` (pixels) on a view of `viewSize` through `camera` (unjittered),
-    /// from the near plane, between the engine's NDC depths. (Engine.UI keeps the same math for its
-    /// panels while it lives.)
-    void GuiPointerRay(const render::ViewCamera& camera, Float2 pointer, Float2 viewSize, Float3& origin, Float3& direction) noexcept;
-
-    struct GuiPanelHit
-    {
-        bool Hit = false;
-        f32 Distance = 0.0f; ///< along the ray
-        Float2 Uv{0.0f, 0.0f}; ///< 0 to 1 across the panel, v down as a GUI's pixels
-    };
-    /// The ray against a panel of `sizeMeters` in the plane of `panelWorld` (its right and up span
-    /// it; either face is hit).
-    [[nodiscard]] GuiPanelHit RayHitGuiPanel(Float3 origin, Float3 direction, const Float4x4& panelWorld, Float2 sizeMeters) noexcept;
-
-    /// Where a billboard shows in a view: the point it hangs from (its bottom centre), in the
-    /// view's pixels, and its scale; not shown when the point is behind the camera.
-    struct GuiBillboardPlacement
-    {
-        bool Shown = false;
-        Float2 Anchor{0.0f, 0.0f};
-        f32 Scale = 1.0f;
-    };
-    /// `billboard` on an entity at `entityWorld`, seen through `viewProjection` (unjittered) from
-    /// `cameraPosition` in a view of `viewport` pixels.
-    [[nodiscard]] GuiBillboardPlacement PlaceBillboard(const GuiBillboardComponent& billboard, const Float4x4& entityWorld,
-                                                       const Float4x4& viewProjection, Float3 cameraPosition, Float2 viewport) noexcept;
-
-    /// The components' reflection (the inspector, the scene format). Idempotent.
+    /// The components' script reflection (`of`, `root`). Idempotent.
     void RegisterGuiComponentReflection();
     /// The GUI's script surface: the GUI's (`gui`, the widgets, the gamekit's) and each component's
     /// `.of(entity)`, with their names in the behaviour prelude. Idempotent; before a script
     /// manager binds the registry.
     void RegisterGuiScriptFacades();
-
-    /// The GUI's managers for a scene: the subsystem's scenes and headless scene consumers alike
-    /// (Engine.Composition).
-    inline void AddGuiSceneManagers(scene::Scene& scene)
-    {
-        scene.AddSystem<GuiCanvasComponentManager>();
-        scene.AddSystem<GuiBillboardComponentManager>();
-        scene.AddSystem<GuiWorldPanelComponentManager>();
-    }
 
     /// Where a screen tier draws on its target (Engine.UI's ScreenPlacement): not fitted, the plain
     /// draw at the target's own size over all of it; fitted, the root lays out at `DrawSize` over
@@ -331,46 +115,6 @@ export namespace engine::gui
         Float2 DrawSize{0.0f, 0.0f};
         f32 DpiScale = 1.0f;
         Float4x4 Transform = Float4x4::Identity();
-    };
-
-    /// The GUI's resources by asset guid, through the application's resource manager.
-    class GuiResourceProvider final : public IResourceProvider
-    {
-    public:
-        /// Told when an image key starts or stops standing for a texture (`view` null: it stops):
-        /// the renderers that draw the GUI.
-        using TextureSink = Function<void(const image::ImageData* key, rhi::TextureView* view)>;
-
-        explicit GuiResourceProvider(IAllocator& allocator);
-        ~GuiResourceProvider() override;
-        GuiResourceProvider(const GuiResourceProvider&) = delete;
-        GuiResourceProvider& operator=(const GuiResourceProvider&) = delete;
-
-        /// Where the guids resolve; null (between projects) resolves nothing. Another manager lets
-        /// go of what was bound: an image key stays valid for what holds it and stops showing.
-        /// Borrowed.
-        void SetResourceManager(resource::ResourceManager* resources);
-        [[nodiscard]] resource::ResourceManager* GetResourceManager() const noexcept;
-        /// The renderers' sink; told at once of every key that stands for a texture now.
-        void SetTextureSink(TextureSink sink);
-
-        /// A texture's image: one key per texture, its natural size the texture's.
-        [[nodiscard]] const image::ImageData* LoadImage(StringView path) override;
-        /// A document's markup or a sheet's CSS.
-        [[nodiscard]] bool LoadText(StringView path, String& out) override;
-        /// A vector image's picture, parsed once per product.
-        [[nodiscard]] const foundation::vg::svg::SVGDocument* LoadSvg(StringView path) override;
-
-        /// Brings what was read in line with the current products (a re-cook, a failed load): true
-        /// when a document or sheet read before has changed since the last poll.
-        bool Poll();
-
-        /// The guid `path` names ("{guid}" or bare); false when it names none.
-        [[nodiscard]] static bool ParseGuid(StringView path, Guid& out) noexcept;
-
-    private:
-        struct State;
-        UniquePtr<State> m_state;
     };
 
     class GuiSubsystem final : public foundation::runtime::Subsystem,
@@ -625,8 +369,4 @@ export namespace engine::gui
         bool m_pressTaken = false;              // that press began over GUI that takes the pointer
         bool m_pointerTaken = false;
     };
-
-    /// The GUI's domain (engine-composition.md): its resource modules (documents and sheets, the
-    /// vector images, the fonts) beside the UI domain's while both live.
-    [[nodiscard]] const engine::DomainModule& GuiDomain() noexcept;
 }

@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026-Present Robert Campbell
 
-// Engine::GUI - implementation unit: the resource provider's bindings, the subsystem's lifecycle,
-// its overlays through GuiPassRenderer, and the domain.
+// Engine::GUI - implementation unit, what is left of it after the Engine.GUI port's first slice:
+// the canvases' host, the components' script reflection (`of`, `root()`), the script facades, the
+// subsystem's lifecycle and its overlays through GuiPassRenderer. The resource provider's bindings,
+// the components' reflection (their attributes now), the billboard placement, the world panel's
+// pixels, the pointer ray, the ray against a panel and the domain are
+// Code/Engine/Sedulous.Engine.GUI/src (GuiResourceProvider.bf, GuiCanvasComponent.bf,
+// GuiBillboardComponent.bf, GuiWorldPanelComponent.bf, GuiWorldMath.bf, GuiDomain.bf).
 
 module;
 #include "Core/Prelude.h"
@@ -51,259 +56,6 @@ using namespace foundation::gui;
 
 namespace engine::gui
 {
-    namespace
-    {
-        // Whether `instance` was cooked as `cooked`: a guid is bound only as what it is, since a
-        // handle bound as another product caches its failure.
-        [[nodiscard]] bool IsCookedAs(const foundation::content::Instance& instance, const TypeInfo& cooked) noexcept
-        {
-            return instance.TypeName() == StringView(reinterpret_cast<const utf8char*>(cooked.name)) &&
-                   instance.TypeNamespace() == StringView(reinterpret_cast<const utf8char*>(cooked.namespaceName));
-        }
-    }
-
-    // ===================================================================================
-    // GuiResourceProvider
-    // ===================================================================================
-
-    struct GuiResourceProvider::State
-    {
-        explicit State(IAllocator& allocator) noexcept : Allocator(&allocator), Texts(allocator), Pictures(allocator), Images(allocator), Retired(allocator), RetiredPictures(allocator) {}
-
-        // A document or sheet read: its handle, and the product it last answered with (held, so
-        // a new product never takes its address).
-        struct Text
-        {
-            Guid Id;
-            RefPtr<resource::ResourceHandle> Handle;
-            RefPtr<Object> Seen;
-        };
-        // A vector image's picture, parsed from the product it last saw.
-        struct Picture
-        {
-            Guid Id;
-            resource::Proxy<foundation::vg::VectorImage> Image;
-            RefPtr<Object> Seen;
-            UniquePtr<foundation::vg::svg::SVGDocument> Document;
-        };
-        // A texture's image key.
-        struct Image
-        {
-            Guid Id;
-            resource::Proxy<foundation::texture::Texture> Texture;
-            UniquePtr<image::ImageDataRef> Key;
-            u64 Uid = 0; // the texture product the key stands for; 0: none (yet)
-        };
-
-        IAllocator* Allocator;
-        resource::ResourceManager* Resources = nullptr;
-        Array<Text> Texts;
-        Array<UniquePtr<Picture>> Pictures;
-        Array<UniquePtr<Image>> Images;
-        Array<UniquePtr<image::ImageDataRef>> Retired; // keys no texture backs now (views may hold them)
-        Array<UniquePtr<foundation::vg::svg::SVGDocument>> RetiredPictures; // pictures replaced (widgets may hold them)
-        TextureSink Sink;
-
-        [[nodiscard]] const foundation::content::Instance* InstanceOf(const Guid& id) const
-        {
-            return Resources != nullptr ? Resources->Database().GetInstance(id) : nullptr;
-        }
-
-        void Tell(const image::ImageData* key, rhi::TextureView* view) const
-        {
-            if (Sink && key != nullptr)
-                Sink(key, view);
-        }
-
-        // An image's key in line with its texture's current product.
-        void Refresh(Image& entry)
-        {
-            foundation::texture::Texture* texture = entry.Texture.Get();
-            const u64 uid = texture != nullptr && texture->View() != nullptr ? texture->Uid() : 0;
-            if (uid == entry.Uid)
-                return;
-            if (uid != 0 && (!entry.Key || entry.Key->Width() != texture->Width() || entry.Key->Height() != texture->Height()))
-            {
-                // A key's size is the image's natural size: another size takes a new key, the old one
-                // kept for the views that hold it.
-                if (entry.Key)
-                {
-                    Tell(entry.Key.Get(), nullptr);
-                    Retired.PushBack(Move(entry.Key));
-                }
-                entry.Key = MakeUnique<image::ImageDataRef>(*Allocator, texture->Width(), texture->Height());
-            }
-            entry.Uid = uid;
-            Tell(entry.Key.Get(), uid != 0 ? texture->View() : nullptr);
-        }
-
-        // A picture parsed again when its vector image's product changed.
-        void Refresh(Picture& entry)
-        {
-            foundation::vg::VectorImage* product = entry.Image.Get();
-            if (product == entry.Seen.Get())
-                return;
-            entry.Seen = RefPtr<Object>(product);
-            if (entry.Document)
-                RetiredPictures.PushBack(Move(entry.Document));
-            if (product == nullptr)
-                return;
-            Result<foundation::vg::svg::SVGDocument> parsed = foundation::vg::svg::SVGLoader::Load(product->svg.AsView());
-            if (parsed.HasValue())
-                entry.Document = MakeUnique<foundation::vg::svg::SVGDocument>(*Allocator, Move(parsed.Value()));
-            else
-                LOG_WARNING(u8"GUI", u8"vector image {} does not parse", entry.Id);
-        }
-    };
-
-    GuiResourceProvider::GuiResourceProvider(IAllocator& allocator)
-        : IResourceProvider(allocator), m_state(MakeUnique<State>(allocator, allocator))
-    {
-    }
-    GuiResourceProvider::~GuiResourceProvider() = default;
-
-    bool GuiResourceProvider::ParseGuid(StringView path, Guid& out) noexcept
-    {
-        if (path.Size() == 38 && path[0] == utf8char('{') && path[37] == utf8char('}'))
-            path = path.SubStr(1, 36);
-        return Guid::TryParse(path, out) && !out.IsNil();
-    }
-
-    void GuiResourceProvider::SetResourceManager(resource::ResourceManager* resources)
-    {
-        State& state = *m_state;
-        if (resources == state.Resources)
-            return;
-        state.Resources = resources;
-        for (UniquePtr<State::Image>& entry : state.Images)
-            if (entry->Key)
-            {
-                state.Tell(entry->Key.Get(), nullptr);
-                state.Retired.PushBack(Move(entry->Key));
-            }
-        state.Images.Clear();
-        for (UniquePtr<State::Picture>& entry : state.Pictures)
-            if (entry->Document)
-                state.RetiredPictures.PushBack(Move(entry->Document));
-        state.Pictures.Clear();
-        state.Texts.Clear();
-    }
-
-    resource::ResourceManager* GuiResourceProvider::GetResourceManager() const noexcept { return m_state->Resources; }
-
-    void GuiResourceProvider::SetTextureSink(TextureSink sink)
-    {
-        State& state = *m_state;
-        state.Sink = Move(sink);
-        for (const UniquePtr<State::Image>& entry : state.Images)
-            if (entry->Key && entry->Uid != 0)
-                state.Tell(entry->Key.Get(), entry->Texture.Get() != nullptr ? entry->Texture->View() : nullptr);
-    }
-
-    const image::ImageData* GuiResourceProvider::LoadImage(StringView path)
-    {
-        State& state = *m_state;
-        Guid id;
-        if (!ParseGuid(path, id))
-            return nullptr;
-        State::Image* entry = nullptr;
-        for (const UniquePtr<State::Image>& known : state.Images)
-            if (known->Id == id)
-                entry = known.Get();
-        if (entry == nullptr)
-        {
-            const foundation::content::Instance* instance = state.InstanceOf(id);
-            if (instance == nullptr || IsCookedAs(*instance, foundation::vg::VectorImageSource::StaticType()) ||
-                IsCookedAs(*instance, GuiDocumentSource::StaticType()) || IsCookedAs(*instance, GuiStyleSheetSource::StaticType()))
-                return nullptr; // not a texture (the texture records are several cooked types)
-            UniquePtr<State::Image> made = MakeUnique<State::Image>(*state.Allocator);
-            made->Id = id;
-            made->Texture = state.Resources->Bind<foundation::texture::Texture>(id);
-            entry = made.Get();
-            state.Images.PushBack(Move(made));
-        }
-        state.Refresh(*entry);
-        return entry->Uid != 0 ? entry->Key.Get() : nullptr;
-    }
-
-    bool GuiResourceProvider::LoadText(StringView path, String& out)
-    {
-        State& state = *m_state;
-        Guid id;
-        if (!ParseGuid(path, id))
-            return false;
-        State::Text* entry = nullptr;
-        for (State::Text& known : state.Texts)
-            if (known.Id == id)
-                entry = &known;
-        if (entry == nullptr)
-        {
-            const foundation::content::Instance* instance = state.InstanceOf(id);
-            if (instance == nullptr)
-                return false;
-            RefPtr<resource::ResourceHandle> handle;
-            if (IsCookedAs(*instance, GuiDocumentSource::StaticType()))
-                handle = state.Resources->Bind(GuiDocument::StaticType(), id);
-            else if (IsCookedAs(*instance, GuiStyleSheetSource::StaticType()))
-                handle = state.Resources->Bind(GuiStyleSheet::StaticType(), id);
-            else
-                return false;
-            state.Texts.PushBack(State::Text{id, Move(handle), {}});
-            entry = &state.Texts.Back();
-        }
-        Object* product = entry->Handle->Get();
-        entry->Seen = RefPtr<Object>(product);
-        if (const GuiDocument* document = Cast<GuiDocument>(product))
-        {
-            out = document->markup;
-            return true;
-        }
-        if (const GuiStyleSheet* sheet = Cast<GuiStyleSheet>(product))
-        {
-            out = sheet->css;
-            return true;
-        }
-        return false;
-    }
-
-    const foundation::vg::svg::SVGDocument* GuiResourceProvider::LoadSvg(StringView path)
-    {
-        State& state = *m_state;
-        Guid id;
-        if (!ParseGuid(path, id))
-            return nullptr;
-        State::Picture* entry = nullptr;
-        for (const UniquePtr<State::Picture>& known : state.Pictures)
-            if (known->Id == id)
-                entry = known.Get();
-        if (entry == nullptr)
-        {
-            const foundation::content::Instance* instance = state.InstanceOf(id);
-            if (instance == nullptr || !IsCookedAs(*instance, foundation::vg::VectorImageSource::StaticType()))
-                return nullptr;
-            UniquePtr<State::Picture> made = MakeUnique<State::Picture>(*state.Allocator);
-            made->Id = id;
-            made->Image = state.Resources->Bind<foundation::vg::VectorImage>(id);
-            entry = made.Get();
-            state.Pictures.PushBack(Move(made));
-        }
-        state.Refresh(*entry);
-        return entry->Document.Get();
-    }
-
-    bool GuiResourceProvider::Poll()
-    {
-        State& state = *m_state;
-        for (const UniquePtr<State::Image>& entry : state.Images)
-            state.Refresh(*entry);
-        for (const UniquePtr<State::Picture>& entry : state.Pictures)
-            state.Refresh(*entry);
-        bool changed = false;
-        for (const State::Text& entry : state.Texts)
-            changed = changed || entry.Handle->Get() != entry.Seen.Get();
-        return changed;
-    }
-
     // ===================================================================================
     // Components
     // ===================================================================================
@@ -359,121 +111,30 @@ namespace engine::gui
         };
     }
 
-    REFLECT_ENUM(GuiScalerMode, "rtti::engine::gui")
-    {
-        builder.Value("ConstantPixel", GuiScalerMode::ConstantPixel);
-        builder.Value("ReferenceResolution", GuiScalerMode::ReferenceResolution);
-    }
-
     REFLECT_VALUE(GuiCanvasComponent, "rtti::engine::gui")
     {
-        builder.Attribute("displayName", String(u8"GUI Canvas"))
-            .Attribute("category", String(u8"GUI"))
-            .Attribute("description", String(u8"Shows a GUI document in its scene, as a menu or a HUD, or draws it into a texture."))
-            .DataVersion(1);
         builder.Method<&foundation::script::ComponentOf<GuiCanvasComponent>, GuiCanvasComponent>("of");
         builder.Method<&GuiCanvasComponent::rootNode>("root");
-        builder.Property<&GuiCanvasComponent::document>("document");
-        builder.Property<&GuiCanvasComponent::sheet>("sheet");
-        builder.Property<&GuiCanvasComponent::order>("order");
-        builder.Property<&GuiCanvasComponent::visible>("visible");
-        builder.Property<&GuiCanvasComponent::interactive>("interactive");
-        builder.Property<&GuiCanvasComponent::scalerMode>("scalerMode");
-        builder.Property<&GuiCanvasComponent::referenceResolution>("referenceResolution");
-        builder.Property<&GuiCanvasComponent::renderMode>("renderMode");
-        builder.Property<&GuiCanvasComponent::renderTextureWidth>("renderTextureWidth");
-        builder.Property<&GuiCanvasComponent::renderTextureHeight>("renderTextureHeight");
-    }
-
-    REFLECT_ENUM(GuiBillboardOrientation, "rtti::engine::gui")
-    {
-        builder.Value("Screen", GuiBillboardOrientation::Screen);
-        builder.Value("Cylindrical", GuiBillboardOrientation::Cylindrical);
-    }
-
-    REFLECT_ENUM(GuiBillboardScale, "rtti::engine::gui")
-    {
-        builder.Value("Fixed", GuiBillboardScale::Fixed);
-        builder.Value("Distance", GuiBillboardScale::Distance);
     }
 
     REFLECT_VALUE(GuiBillboardComponent, "rtti::engine::gui")
     {
-        builder.Attribute("displayName", String(u8"GUI Billboard"))
-            .Attribute("category", String(u8"GUI"))
-            .Attribute("description", String(u8"Shows a GUI document over the entity, such as a nameplate or a health bar."))
-            .DataVersion(1);
         builder.Method<&foundation::script::ComponentOf<GuiBillboardComponent>, GuiBillboardComponent>("of");
         builder.Method<&GuiBillboardComponent::rootNode>("root");
-        builder.Property<&GuiBillboardComponent::document>("document");
-        builder.Property<&GuiBillboardComponent::sheet>("sheet");
-        builder.Property<&GuiBillboardComponent::offset>("offset");
-        builder.Property<&GuiBillboardComponent::orientation>("orientation");
-        builder.Property<&GuiBillboardComponent::scaleMode>("scaleMode");
-        builder.Property<&GuiBillboardComponent::referenceDistance>("referenceDistance");
-        builder.Property<&GuiBillboardComponent::minScale>("minScale");
-        builder.Property<&GuiBillboardComponent::maxScale>("maxScale");
-        builder.Property<&GuiBillboardComponent::visible>("visible");
-    }
-
-    GuiBillboardPlacement PlaceBillboard(const GuiBillboardComponent& billboard, const Float4x4& entityWorld, const Float4x4& viewProjection,
-                                         Float3 cameraPosition, Float2 viewport) noexcept
-    {
-        GuiBillboardPlacement placement;
-        Float3 point;
-        if (billboard.orientation == GuiBillboardOrientation::Cylindrical)
-        {
-            const Float3 anchor = TransformPoint(Float3{0.0f, 0.0f, 0.0f}, entityWorld);
-            point = Float3{anchor.x + billboard.offset.x, anchor.y + billboard.offset.y, anchor.z + billboard.offset.z};
-        }
-        else
-            point = TransformPoint(billboard.offset, entityWorld);
-        const Float4 clip = Float4{point.x, point.y, point.z, 1.0f} * viewProjection;
-        if (clip.w <= 0.0f)
-            return placement; // behind the camera
-        placement.Shown = true;
-        placement.Anchor = Float2{(clip.x / clip.w * 0.5f + 0.5f) * viewport.x, (0.5f - clip.y / clip.w * 0.5f) * viewport.y};
-        if (billboard.scaleMode == GuiBillboardScale::Distance)
-        {
-            const f32 distance = Max(Length(Float3{point.x - cameraPosition.x, point.y - cameraPosition.y, point.z - cameraPosition.z}), 0.001f);
-            placement.Scale = Clamp(billboard.referenceDistance / distance, billboard.minScale, billboard.maxScale);
-        }
-        return placement;
-    }
-
-
-    REFLECT_ENUM(GuiCanvasRenderMode, "rtti::engine::gui")
-    {
-        builder.Value("ScreenOverlay", GuiCanvasRenderMode::ScreenOverlay);
-        builder.Value("RenderTexture", GuiCanvasRenderMode::RenderTexture);
     }
 
     REFLECT_VALUE(GuiWorldPanelComponent, "rtti::engine::gui")
     {
-        builder.Attribute("displayName", String(u8"GUI World Panel"))
-            .Attribute("category", String(u8"GUI"))
-            .Attribute("description", String(u8"Shows a GUI document on a panel in the world, in the entity's plane, optionally taking the pointer."))
-            .DataVersion(1);
         builder.Method<&foundation::script::ComponentOf<GuiWorldPanelComponent>, GuiWorldPanelComponent>("of");
         builder.Method<&GuiWorldPanelComponent::rootNode>("root");
-        builder.Property<&GuiWorldPanelComponent::document>("document");
-        builder.Property<&GuiWorldPanelComponent::sheet>("sheet");
-        builder.Property<&GuiWorldPanelComponent::sizeMeters>("sizeMeters");
-        builder.Property<&GuiWorldPanelComponent::pixelsPerMeter>("pixelsPerMeter");
-        builder.Property<&GuiWorldPanelComponent::interactive>("interactive");
-        builder.Property<&GuiWorldPanelComponent::visible>("visible");
     }
 
     void RegisterGuiComponentReflection()
     {
         static const bool once = []()
         {
-            RttiRegisterEnum_GuiScalerMode();
             RttiRegisterValue_GuiCanvasComponent();
-            RttiRegisterEnum_GuiBillboardOrientation();
-            RttiRegisterEnum_GuiBillboardScale();
             RttiRegisterValue_GuiBillboardComponent();
-            RttiRegisterEnum_GuiCanvasRenderMode();
             RttiRegisterValue_GuiWorldPanelComponent();
             return true;
         }();
@@ -510,54 +171,6 @@ namespace engine::gui
             return true;
         }();
         (void)once;
-    }
-
-    Float2 WorldPanelPixels(const GuiWorldPanelComponent& panel) noexcept
-    {
-        const f32 density = Max(panel.pixelsPerMeter, 1.0f);
-        const u32 width = Clamp<u32>(static_cast<u32>(panel.sizeMeters.x * density + 0.5f), 16u, 2044u);
-        const u32 height = Clamp<u32>(static_cast<u32>(panel.sizeMeters.y * density + 0.5f), 16u, 2044u);
-        return Float2{static_cast<f32>(width), static_cast<f32>(height)};
-    }
-
-    void GuiPointerRay(const render::ViewCamera& camera, Float2 pointer, Float2 viewSize, Float3& origin, Float3& direction) noexcept
-    {
-        const Float4x4 inverse = Inverse(camera.ViewProjection());
-        const f32 ndcX = (pointer.x / viewSize.x) * 2.0f - 1.0f;
-        const f32 ndcY = 1.0f - (pointer.y / viewSize.y) * 2.0f;
-        const auto unproject = [&](f32 z)
-        {
-            const Float4 clip = Float4{ndcX, ndcY, z, 1.0f} * inverse;
-            const f32 w = clip.w != 0.0f ? clip.w : 1.0f;
-            return Float3{clip.x / w, clip.y / w, clip.z / w};
-        };
-        origin = unproject(projection::kNdcDepthNear);
-        const Float3 far = unproject(projection::kNdcDepthFar);
-        direction = Normalized(Float3{far.x - origin.x, far.y - origin.y, far.z - origin.z});
-    }
-
-    GuiPanelHit RayHitGuiPanel(Float3 origin, Float3 direction, const Float4x4& panelWorld, Float2 sizeMeters) noexcept
-    {
-        GuiPanelHit result;
-        const Float3 centre{panelWorld.m[3][0], panelWorld.m[3][1], panelWorld.m[3][2]};
-        const Float3 right = Normalized(Float3{panelWorld.m[0][0], panelWorld.m[0][1], panelWorld.m[0][2]});
-        const Float3 up = Normalized(Float3{panelWorld.m[1][0], panelWorld.m[1][1], panelWorld.m[1][2]});
-        const Float3 normal = Cross(right, up);
-        const f32 facing = Dot(direction, normal);
-        if (Abs(facing) < 1.0e-6f)
-            return result; // along the plane
-        const f32 t = Dot(Float3{centre.x - origin.x, centre.y - origin.y, centre.z - origin.z}, normal) / facing;
-        if (t <= 0.0f)
-            return result; // behind the pointer
-        const Float3 local{origin.x + direction.x * t - centre.x, origin.y + direction.y * t - centre.y, origin.z + direction.z * t - centre.z};
-        const f32 x = Dot(local, right);
-        const f32 y = Dot(local, up);
-        if (Abs(x) > sizeMeters.x * 0.5f || Abs(y) > sizeMeters.y * 0.5f)
-            return result;
-        result.Hit = true;
-        result.Distance = t;
-        result.Uv = Float2{x / sizeMeters.x + 0.5f, 0.5f - y / sizeMeters.y};
-        return result;
     }
 
     namespace
@@ -2004,18 +1617,5 @@ namespace engine::gui
             m_render->Release(target);
             m_render->Targets.RemoveAt(i);
         }
-    }
-
-    const engine::DomainModule& GuiDomain() noexcept
-    {
-        static const resource::ResourceModule* const kResources[] = {
-            &kGuiResourceModule, &foundation::vg::kVGResourceModule, &foundation::fonts::kFontsResourceModule};
-        static const engine::DomainModule kModule{
-            .id = u8"gui",
-            .installScene = &AddGuiSceneManagers,
-            .registerReflection = &RegisterGuiComponentReflection,
-            .registerScriptFacade = &RegisterGuiScriptFacades,
-            .resources = Span<const resource::ResourceModule* const>{kResources, sizeof(kResources) / sizeof(kResources[0])}};
-        return kModule;
     }
 }
