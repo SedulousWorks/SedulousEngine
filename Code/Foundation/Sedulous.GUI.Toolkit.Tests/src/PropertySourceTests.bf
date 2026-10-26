@@ -151,7 +151,7 @@ class PropertySourceTests
 	}
 
 	[Test]
-	public static void AListsElementsAreItsChildrenByIndexChangedInEachObjectByOneCall()
+	public static void AListsElementsAreItsChildrenByIndexSayingWhatTheListGivesThemChangedInEachObjectByOneCall()
 	{
 		let bag = scope Sedulous.GUI.PropertyBag(2);
 		let info = bag.AddList("tags", .String, Sedulous.GUI.Variant("new"), 2);
@@ -165,6 +165,15 @@ class PropertySourceTests
 		Test.Assert(elements.Count == 2);
 		Test.Assert(elements[1].Name == "1");
 		Test.Assert(elements[1].Kind == .String);
+		// What each element says beyond its name and kind is the list's to give.
+		Test.Assert(bag.FindElementInfo("tags") != null);
+		bag.FindElementInfo("tags").Description.Set("A tag");
+		bag.FindElementInfo("tags").Name.Set("ignored"); // an element is named by its index
+		ClearAndDeleteItems!(elements);
+		bag.GetProperties("tags", elements);
+		Test.Assert(elements[0].Description == "A tag");
+		Test.Assert(elements[0].Name == "0");
+		Test.Assert(bag.FindElementInfo("tags.0") == null); // no list
 
 		// An element edits as any property does.
 		bag.BeginEdit("tags.1");

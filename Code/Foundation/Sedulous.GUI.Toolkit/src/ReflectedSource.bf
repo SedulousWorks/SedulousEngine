@@ -1104,7 +1104,9 @@ class ReflectedPropertySource : IPropertySource
 		StringView[4] floats = .("x", "y", "z", "w");
 		StringView[4] shownFloats = .("X", "Y", "Z", "W");
 		StringView[3] angles = .("pitch", "yaw", "roll");
-		StringView[3] shownAngles = .("Pitch", "Yaw", "Roll");
+		// Shown as the axes they turn about (pitch about X, yaw about Y, roll about Z), so a
+		// rotation reads like the position and scale beside it.
+		StringView[3] shownAngles = .("X", "Y", "Z");
 		let count = (shape == .Float2) ? 2 : ((shape == .Float4) ? 4 : 3);
 		for (int i = 0; i < count; ++i)
 		{

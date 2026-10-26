@@ -542,20 +542,26 @@ class ToolBar : UIWidget
 
 		let reverse = !column && IsRightToLeft;
 		float at = 0.0f;
+		// An item's slot takes its margins (its natural size has them); its box sits inside them.
+		// Across, it stretches only when it has no size of its own there (a separator a sheet
+		// makes shorter than the bar), and is centred otherwise.
 		void Place(Node node, Float2 size, float extent)
 		{
 			let s = node.LayoutStyle;
-			let crossRoom = column ? content.Width : content.Height;
-			let stretch = s.AlignSelf == .Stretch;
-			let cross = stretch ? crossRoom : Math.Min(column ? size.X : size.Y, crossRoom);
-			let crossAt = (crossRoom - cross) * 0.5f;
+			let m = s.Margin;
+			let crossBefore = column ? m.Left : m.Top;
+			let crossMargins = column ? m.TotalHorizontal : m.TotalVertical;
+			let crossRoom = Math.Max(0.0f, (column ? content.Width : content.Height) - crossMargins);
+			let stretch = (s.AlignSelf == .Stretch) && (column ? s.Width : s.Height).IsAuto;
+			let cross = stretch ? crossRoom : Math.Min(Math.Max(0.0f, (column ? size.X : size.Y) - crossMargins), crossRoom);
+			let crossAt = crossBefore + (crossRoom - cross) * 0.5f;
 			Rect r;
 			if (column)
-				r = .(content.X + crossAt, content.Y + at, cross, extent);
+				r = .(content.X + crossAt, content.Y + at + m.Top, cross, Math.Max(0.0f, extent - m.TotalVertical));
 			else
 			{
-				let x = reverse ? content.X + content.Width - at - extent : content.X + at;
-				r = .(x, content.Y + crossAt, extent, cross);
+				let slot = reverse ? content.X + content.Width - at - extent : content.X + at;
+				r = .(slot + m.Left, content.Y + crossAt, Math.Max(0.0f, extent - m.TotalHorizontal), cross);
 			}
 			node.Arrange(r);
 			at += extent + gap;

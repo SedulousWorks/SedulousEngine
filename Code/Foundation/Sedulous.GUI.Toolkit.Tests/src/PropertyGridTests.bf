@@ -151,6 +151,20 @@ class PropertyGridTests
 	}
 
 	[Test]
+	public static void ACategoryWhoseRowsAreAllHiddenHasNoHeaderAndHasOneAgainWhenOneShows()
+	{
+		let bed = scope GridBed();
+		bed.Add("name", .String, Sedulous.GUI.Variant("Lamp"));
+		bed.Add("warning", .String, Sedulous.GUI.Variant(""), "Check").Visible = false;
+		bed.Add("intensity", .Float, Sedulous.GUI.Variant(1.0), "Light");
+		bed.Show();
+		Test.Assert(bed.PathsAre("name #Light intensity"));
+		bed.Bag.FindInfo("warning").Visible = true;
+		bed.Bag.PropertiesChanged();
+		Test.Assert(bed.PathsAre("name #Check warning #Light intensity"));
+	}
+
+	[Test]
 	public static void TheChevronAHeadersClickAndLeftAndRightFoldAndUnfold()
 	{
 		let bed = scope GridBed();
@@ -226,6 +240,33 @@ class PropertyGridTests
 	}
 
 	[Test]
+	public static void ABagsOwnerIsToldOfEachPreviewAndOfAGestureGivenUp()
+	{
+		let bag = scope Sedulous.GUI.PropertyBag();
+		bag.Add("rough", .Float, Sedulous.GUI.Variant(0.25));
+		let told = scope List<String>();
+		defer { ClearAndDeleteItems!(told); }
+		bag.SetOnPreview(new [&] (path) =>
+			{
+				var value = bag.GetValue(path, 0);
+				defer value.Dispose();
+				told.Add(new String()..AppendF("preview {}=", path)..Append(value.ToString(.. scope String())));
+			});
+		bag.SetOnCancel(new [&] (path) =>
+			{
+				var value = bag.GetValue(path, 0);
+				defer value.Dispose();
+				told.Add(new String()..AppendF("cancel {}=", path)..Append(value.ToString(.. scope String())));
+			});
+		bag.BeginEdit("rough");
+		bag.PreviewEdit("rough", PropertyWrite(Sedulous.GUI.Variant(0.5)));
+		bag.CancelEdit("rough");
+		Test.Assert(told.Count == 2);
+		Test.Assert(told[0] == "preview rough=0.5");
+		Test.Assert(told[1] == "cancel rough=0.25"); // the value back by then
+	}
+
+	[Test]
 	public static void AnEditIsOneGestureOfTheSourceItsRowKeepsItsEditorWhileItPreviews()
 	{
 		let bed = scope GridBed(2);
@@ -235,6 +276,8 @@ class PropertyGridTests
 		let kept = scope KeptCommits();
 		bed.Bag.SetOnCommit(new (commit) => { kept.Keep(commit); });
 		let commits = kept.Commits;
+		let previews = scope List<double>(); // what an owner showing them live reads
+		bed.Bag.SetOnPreview(new [&] (path) => { previews.Add(FloatOf(bed.Bag, path, 0)); });
 		bed.Show();
 
 		let editor = bed.Grid.FindEditor("speed") as NumberPropertyEditor;
@@ -259,6 +302,9 @@ class PropertyGridTests
 		CheckNear(commits[0].Before[0].AsFloat, 2.0);
 		CheckNear(commits[0].Before[1].AsFloat, 5.0);
 		CheckNear(commits[0].After[1].AsFloat, 6.0);
+		Test.Assert(previews.Count == 2); // told of each preview as it went
+		CheckNear(previews[0], 4.0);
+		CheckNear(previews[1], 6.0);
 		Test.Assert(!field.IsMixed);
 
 		// A value changed elsewhere (an undo) shows.
@@ -637,6 +683,132 @@ class PropertyGridTests
 		CheckNear(FloatOf(bed.Bag, "speed", 0), 2.5);
 		Test.Assert(said == "\"Lamp\" is no number");
 		Test.Assert(commits == 1);
+	}
+
+	[Test]
+	public static void TheToolkitsSheetGivesTheRowBeingEditedTheQuietRowToneNotTheViewsFallbackBlue()
+	{
+		let bed = scope GridBed();
+		bed.Add("speed", .Float, Sedulous.GUI.Variant(1.0));
+		bed.Show();
+		let styles = scope StyleManager();
+		let sheet = scope StyleSheet();
+		let theme = scope String()..AppendF("{}\n{}\n:root {{ --row-hover: #102030; }}", Theme.DefaultThemeCSS, ToolkitSheetCSS());
+		CSSParser.Parse(theme, sheet);
+		styles.UserAgentSheet = sheet;
+		styles.ApplyTree(bed.Root);
+		let current = bed.Grid.GetPartStyle("selection");
+		Test.Assert(current.HasBackground);
+		CheckNear(current.Box.BackgroundColor.R, 0x10 / 255.0f, 0.01);
+		CheckNear(current.Box.BackgroundColor.G, 0x20 / 255.0f, 0.01);
+		CheckNear(current.Box.BackgroundColor.B, 0x30 / 255.0f, 0.01);
+	}
+
+	[Test]
+	public static void TheRowWhoseEditorTakesTheFocusIsTheCurrentOneWhateverTheEditor()
+	{
+		let bed = scope GridBed();
+		bed.Add("name", .String, Sedulous.GUI.Variant("Crate"));
+		bed.Add("speed", .Float, Sedulous.GUI.Variant(1.0));
+		bed.Show();
+		// A text field's editor, a number field's: both are text fields underneath.
+		Node Field(StringView path)
+		{
+			let editor = bed.Grid.FindEditor(path);
+			Test.Assert(editor != null);
+			for (int i = 0; i < editor.ChildCount; ++i)
+			{
+				if (let field = editor.GetChildAt(i) as TextField)
+					return field;
+			}
+			Test.FatalError("no text field");
+			return null;
+		}
+		int32 RowOf(StringView path)
+		{
+			for (int32 i = 0; i < (int32)bed.Grid.RowCount; ++i)
+			{
+				if (bed.Grid.GetRow(i).Path == path)
+					return i;
+			}
+			return -1;
+		}
+		Test.Assert(!bed.Grid.IsItemSelected(RowOf("name")));
+		Field("name").RequestFocus();
+		Test.Assert(bed.Grid.IsItemSelected(RowOf("name")));
+		Field("speed").RequestFocus();
+		Test.Assert(bed.Grid.IsItemSelected(RowOf("speed")));
+		Test.Assert(!bed.Grid.IsItemSelected(RowOf("name")));
+	}
+
+	[Test]
+	public static void TheApplicationAddsToARowsMenuAfterTheGridsItemsAHeadersMenuIsItsAlone()
+	{
+		let bed = scope GridBed();
+		bed.Add("intensity", .Float, Sedulous.GUI.Variant(1.0), "Light");
+		bed.Show();
+		let header = bed.Grid.FindRow("#Light");
+		Test.Assert(header >= 0);
+		Test.Assert(!bed.Grid.OpenRowMenu(header, .(20.0f, 20.0f))); // a header has no menu of its own
+
+		let asked = scope String();
+		bed.Grid.SetOnRowMenu(new [&] (menu, row) =>
+			{
+				let path = new String(row.Path);
+				if (row.Category)
+					menu.AddItem("Remove Component", new [=asked, =path] () => { asked.Set(path); } ~ delete path);
+				else
+					menu.AddItem("Inspect", new [=asked, =path] () => { asked.Set(path); } ~ delete path);
+			});
+		Test.Assert(bed.Grid.OpenRowMenu(header, .(20.0f, 20.0f)));
+		GridBed.Activate(bed.Grid.RowMenu, "Remove Component");
+		Test.Assert(asked == "#Light");
+
+		Test.Assert(bed.Grid.OpenRowMenu(bed.Grid.FindRow("intensity"), .(20.0f, 20.0f)));
+		let rowMenu = bed.Grid.RowMenu;
+		MenuItem last = null;
+		for (int i = 0; i < rowMenu.ChildCount; ++i)
+		{
+			if (let item = rowMenu.GetChildAt(i) as MenuItem)
+				last = item;
+		}
+		Test.Assert(last != null);
+		Test.Assert(last.Text == "Inspect"); // after Copy, Paste and Revert
+		GridBed.Activate(rowMenu, "Inspect");
+		Test.Assert(asked == "intensity");
+	}
+
+	[Test]
+	public static void AValueBeingTypedIsKeptAsTheSourcesValuesRefreshAndReturnCommitsIt()
+	{
+		let bed = scope GridBed();
+		bed.Add("speed", .Float, Sedulous.GUI.Variant(1.0));
+		bed.Show();
+		let row = bed.Grid.RowForItem(0);
+		Test.Assert(row != null);
+		NumberField field = null;
+		let stack = scope List<Node>();
+		stack.Add(row);
+		while ((stack.Count != 0) && (field == null))
+		{
+			let node = stack.PopBack();
+			field = node as NumberField;
+			for (int i = 0; (node != null) && (i < node.ChildCount); ++i)
+				stack.Add(node.GetChildAt(i));
+		}
+		Test.Assert(field != null);
+		bed.D.InjectMouseDown(GridBed.Centre(field), .Left);
+		bed.D.InjectMouseUp(GridBed.Centre(field), .Left);
+		bed.D.InjectKeyDown((uint32)KeyCode.A, KeyModCtrl);
+		bed.D.InjectText("7.5");
+		Test.Assert(field.IsEditing);
+		// A refresh mid-typing (an inspector re-reads its values each frame): the text stays.
+		bed.Bag.SetValue("speed", 0, Sedulous.GUI.Variant(1.0)); // the stored value, told again
+		bed.Frame();
+		Test.Assert(field.Text == "7.5");
+		bed.D.InjectKeyDown((uint32)KeyCode.Return);
+		bed.Frame();
+		CheckNear(FloatOf(bed.Bag, "speed", 0), 7.5);
 	}
 
 	// What no Raptor test covers: a category's row is a header with no editor, the folded state reads

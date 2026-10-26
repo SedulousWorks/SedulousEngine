@@ -44,6 +44,8 @@ internal static class ToolkitSheetDetail
 		            propertycategory { background-color: var(--propertygrid-category, var(--surface-header)); color: var(--text-strong);
 		                               font-weight: bold; }
 		            propertyrow:hover { background-color: var(--propertygrid-row-hover, var(--row-hover)); }
+		            /* The row being edited: quiet, as its focused editor already shows where the keys go. */
+		            propertygrid::selection { background-color: var(--propertygrid-current, var(--row-hover)); }
 		            propertyname { color: var(--propertygrid-name, var(--text-dim)); }
 		            propertyrowcontent.changed > propertyname { color: var(--propertygrid-changed-name, var(--text-strong)); font-weight: bold; }
 		            propertyrowcontent::marker { background-color: var(--propertygrid-changed, var(--accent)); }

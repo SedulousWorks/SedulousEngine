@@ -540,6 +540,10 @@ class ReflectedSourceTests
 		bed.Source.GetProperties("Rotation", parts);
 		Test.Assert(parts.Count == 3);
 		Test.Assert(parts[0].Name == "pitch");
+		// Shown as their axes, as a position's parts are.
+		Test.Assert(parts[0].DisplayName == "X");
+		Test.Assert(parts[1].DisplayName == "Y");
+		Test.Assert(parts[2].DisplayName == "Z");
 		ClearAndDeleteItems!(parts);
 		bed.Source.GetProperties("Shape", parts);
 		Test.Assert(parts.Count == 2);

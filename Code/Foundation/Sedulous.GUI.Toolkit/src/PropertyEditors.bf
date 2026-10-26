@@ -92,6 +92,8 @@ class NumberPropertyEditor : SingleControlEditor
 	// A gesture under way (a scrub's previews).
 	private bool mBegun = false;
 
+	public override bool IsTyping => mField.IsEditing;
+
 	public this()
 	{
 		AddClass("number");
@@ -156,6 +158,8 @@ class StringPropertyEditor : SingleControlEditor
 {
 	private TextField mField ~ _.ReleaseRef();
 	private String mShown = new .() ~ delete _;
+
+	public override bool IsTyping => mField.IsFocused;
 
 	public this()
 	{
@@ -409,6 +413,19 @@ class FloatsPropertyEditor : PropertyEditor
 	private List<NumberPropertyEditor> mFields = new .() ~ { for (let f in _) f.ReleaseRef(); delete _; };
 	private int mShown = 0;
 
+	public override bool IsTyping
+	{
+		get
+		{
+			for (int i = 0; (i < mShown) && (i < mFields.Count); ++i)
+			{
+				if (mFields[i].IsTyping)
+					return true;
+			}
+			return false;
+		}
+	}
+
 	public this()
 	{
 		AddClass("floats");
@@ -522,6 +539,8 @@ class ColorPropertyEditor : PropertyEditor
 	private bool mShowsAlpha = true;
 	// A gesture under way in the open picker.
 	private bool mPicking = false;
+
+	public override bool IsTyping => mHex.IsFocused;
 
 	public this()
 	{
@@ -667,6 +686,8 @@ class StopsPropertyEditor : SingleControlEditor
 	private NumberField mField ~ _.ReleaseRef();
 	private bool mBegun = false;
 
+	public override bool IsTyping => mField.IsEditing;
+
 	public this()
 	{
 		AddClass("stops");
@@ -724,6 +745,8 @@ class HdrColorPropertyEditor : PropertyEditor
 {
 	private ColorPropertyEditor mColor ~ _.ReleaseRef();
 	private StopsPropertyEditor mStops ~ _.ReleaseRef();
+
+	public override bool IsTyping => mColor.IsTyping || mStops.IsTyping;
 
 	public this()
 	{

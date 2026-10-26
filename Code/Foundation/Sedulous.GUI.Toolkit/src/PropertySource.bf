@@ -379,6 +379,8 @@ class PropertyBag : IPropertySource
 		public List<List<Sedulous.GUI.Variant>> Elements = new .() ~ { for (let e in _) PropertyBagDetail.DisposeAll(e); delete _; };
 		public PropertyKind ElementKind = .Float;
 		public Sedulous.GUI.Variant ElementDefault = .() ~ _.Dispose();
+		// A list's: what each element says beyond its name and kind.
+		public PropertyInfo ElementInfo = new .() ~ delete _;
 	}
 
 	private class Original
@@ -399,6 +401,8 @@ class PropertyBag : IPropertySource
 	private List<Default> mDefaults = new .() ~ DeleteContainerAndItems!(_);
 	private int mObjects;
 	private delegate void(Commit commit) mOnCommit ~ delete _;
+	private delegate void(StringView path) mOnPreview ~ delete _;
+	private delegate void(StringView path) mOnCancel ~ delete _;
 	private delegate void(StringView path, ListEdit edit) mOnListEdited ~ delete _;
 	private delegate void(StringView path) mOnReverted ~ delete _;
 
@@ -454,6 +458,14 @@ class PropertyBag : IPropertySource
 	{
 		let entry = Find(path);
 		return (entry != null) ? entry.Info : null;
+	}
+
+	/// What every element of the list `path` says beyond its name, kind and read-only state (a
+	/// range, a reference's type), to fill in; null when `path` is no list.
+	public PropertyInfo FindElementInfo(StringView path)
+	{
+		let entry = Find(path);
+		return ((entry != null) && (entry.Info.Kind == .List)) ? entry.ElementInfo : null;
 	}
 
 	/// Tells the grid what FindInfo's changes were.
@@ -537,6 +549,23 @@ class PropertyBag : IPropertySource
 		mOnCommit = onCommit;
 	}
 
+	/// Told of each preview of a gesture (a drag, a scrub, a picker open) as it goes, the values
+	/// in the bag by then: an owner that shows them live (a preview) reads them; the gesture ends
+	/// in a commit or a cancel. OWNERSHIP of `onPreview` transfers.
+	public void SetOnPreview(delegate void(StringView path) onPreview)
+	{
+		delete mOnPreview;
+		mOnPreview = onPreview;
+	}
+
+	/// Told of a gesture given up (Escape): the values are back as they were before it.
+	/// OWNERSHIP of `onCancel` transfers.
+	public void SetOnCancel(delegate void(StringView path) onCancel)
+	{
+		delete mOnCancel;
+		mOnCancel = onCancel;
+	}
+
 	/// Told each list change made. OWNERSHIP of `onEdited` transfers.
 	public void SetOnListEdited(delegate void(StringView path, ListEdit edit) onEdited)
 	{
@@ -561,6 +590,8 @@ class PropertyBag : IPropertySource
 			for (int i = 0; (i < count) && (count != int.MaxValue); ++i)
 			{
 				let info = new PropertyInfo();
+				info.Set(list.ElementInfo);
+				info.Name.Clear();
 				i.ToString(info.Name);
 				info.Kind = list.ElementKind;
 				info.ReadOnly = list.Info.ReadOnly;
@@ -609,6 +640,8 @@ class PropertyBag : IPropertySource
 				PropertyBagDetail.Store(slot, ApplyPropertyWrite(*slot, write));
 		}
 		NotifyValuesChanged();
+		if (mOnPreview != null)
+			mOnPreview(path);
 	}
 
 	public override void CommitEdit(StringView path, PropertyWrite write)
@@ -648,6 +681,8 @@ class PropertyBag : IPropertySource
 		}
 		EndEdit(path);
 		NotifyValuesChanged();
+		if (mOnCancel != null)
+			mOnCancel(path);
 	}
 
 	public override Sedulous.GUI.Variant GetDefault(StringView path, int object)

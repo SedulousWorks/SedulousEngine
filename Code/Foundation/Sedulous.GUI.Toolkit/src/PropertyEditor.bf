@@ -53,6 +53,9 @@ abstract class PropertyEditor : UIWidget
 
 	public StringView Path => mPath;
 	public bool IsReadOnly => mReadOnly;
+	/// Being typed into: the grid then leaves what it shows alone as the values refresh (a
+	/// value typed is the edit's until Return or the focus leaving commits it).
+	public virtual bool IsTyping => false;
 
 	protected IPropertyEditHost Host => mHost;
 

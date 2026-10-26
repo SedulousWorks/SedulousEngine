@@ -366,6 +366,35 @@ class ToolBarTests
 		Test.Assert(!lines[0].IsVertical); // it lies across a column
 	}
 
+	[Test]
+	public static void AnItemsBoxSitsInsideItsMarginsASeparatorASheetMakesShorterIsCentredNotStretched()
+	{
+		let bed = scope ToolBed(400.0f);
+		let a = bed.Button();
+		let line = bed.Line();
+		let b = bed.Button();
+		line.EditLayoutStyle(scope (s) =>
+			{
+				s.Margin = Thickness(4.0f, 0.0f, 4.0f, 0.0f);
+				s.Width = LayoutLength.Px(1.0f);
+				s.Height = LayoutLength.Px(12.0f);
+			});
+		bed.Lay();
+		Test.Assert(line.Visible);
+		let aEnd = a.Position.X + a.Size.X;
+		CheckNear(line.Size.X, 1.0f); // its own width, not its slot with its margins
+		CheckNear(line.Position.X, aEnd + 2.0f + 4.0f); // past the gap and its margin
+		CheckNear(b.Position.X, aEnd + 2.0f + 9.0f + 2.0f); // its slot: 4 + 1 + 4
+		CheckNear(line.Size.Y, 12.0f); // its height, not the bar's
+		let content = 28.0f - bed.Bar.Padding.TotalVertical;
+		CheckNear(line.Position.Y, bed.Bar.Padding.Top + (content - 12.0f) * 0.5f);
+
+		// With no height of its own it stands across the whole bar, inside its margins.
+		line.EditLayoutStyle(scope (s) => { s.Height = LayoutLength(); });
+		bed.Lay();
+		CheckNear(line.Size.Y, content);
+	}
+
 	// What no Raptor test covers: the orientation's name either way, and a disabled reason's line with
 	// no keys.
 	[Test]

@@ -436,6 +436,7 @@ class PropertyGrid : ItemView, IPropertySourceClient, IPropertyEditHost
 	private String mEditPath = new .() ~ delete _;
 	private Sedulous.GUI.Menu mMenu ~ _?.ReleaseRef();
 	private delegate void(StringView message) mOnMessage ~ delete _;
+	private delegate void(Sedulous.GUI.Menu menu, PropertyRow row) mOnRowMenu ~ delete _;
 	// A grip's drag: the list, the element's index, where it would go, and the line's row.
 	private String mReorderList = new .() ~ delete _;
 	private int32 mReorderFrom = -1;
@@ -594,6 +595,15 @@ class PropertyGrid : ItemView, IPropertySourceClient, IPropertyEditHost
 	public int32 ReorderTarget => mReorderTo;
 	/// The row's menu, while it is open.
 	public Sedulous.GUI.Menu RowMenu => ((mMenu != null) && mMenu.IsOpen) ? mMenu : null;
+	/// What the application adds to a row's menu, after the grid's own items: a header's menu is
+	/// the application's alone (a component's verbs on its section), and shows only when it adds
+	/// something. `row` is the row the menu is for (a header's path is `#` and its name), a copy
+	/// alive for the call only. OWNERSHIP of `extend` transfers.
+	public void SetOnRowMenu(delegate void(Sedulous.GUI.Menu menu, PropertyRow row) extend)
+	{
+		delete mOnRowMenu;
+		mOnRowMenu = extend;
+	}
 
 	// === The rows ===
 
@@ -814,7 +824,7 @@ class PropertyGrid : ItemView, IPropertySourceClient, IPropertyEditHost
 	public bool OpenRowMenu(int32 item, Float2 position)
 	{
 		let found = GetRow(item);
-		if ((found == null) || found.Category)
+		if ((found == null) || (found.Category && (mOnRowMenu == null)))
 			return false;
 		let row = scope PropertyRow(); // the rows change under the menu's actions
 		row.Set(found);
@@ -824,6 +834,14 @@ class PropertyGrid : ItemView, IPropertySourceClient, IPropertyEditHost
 		ShareTextStyle(mMenu, false);
 		mMenu.SetAutoWidth(true);
 		bool any = false;
+		if (row.Category)
+		{
+			mOnRowMenu(mMenu, row);
+			if (mMenu.ChildCount == 0)
+				return false;
+			mMenu.Open(this, position);
+			return true;
+		}
 		if (row.Element)
 		{
 			let index = row.Index;
@@ -860,10 +878,32 @@ class PropertyGrid : ItemView, IPropertySourceClient, IPropertyEditHost
 			revert.Enabled = (row.Node >= 0) && (row.Node < mNodes.Count) && IsChanged(row.Node);
 			any = true;
 		}
+		if (mOnRowMenu != null)
+		{
+			let before = mMenu.ChildCount;
+			mOnRowMenu(mMenu, row);
+			any = any || (mMenu.ChildCount != before);
+		}
 		if (!any)
 			return false;
 		mMenu.Open(this, position);
 		return true;
+	}
+
+	/// The row whose editor took the focus is the current one, however it took it (a click, Tab,
+	/// code): every editor alike, quietly marked, and where the arrow keys go on from.
+	public override void OnDescendantFocused(Node focused)
+	{
+		base.OnDescendantFocused(focused);
+		for (var node = focused; (node != null) && (node != this); node = node.Parent)
+		{
+			if (let row = node as ItemRow)
+			{
+				if ((row.ItemIndex >= 0) && !IsItemSelected(row.ItemIndex))
+					SelectedItem = row.ItemIndex;
+				return;
+			}
+		}
 	}
 
 	protected override Node CreateContent(uint32 type) => null;
@@ -976,8 +1016,10 @@ class PropertyGrid : ItemView, IPropertySourceClient, IPropertyEditHost
 		if (property == null)
 			return;
 		// The row an edit is open on keeps what its editor shows: the source's values are its
-		// previews, and the editor is mid-gesture.
-		let editing = IsUnderEdit(row.Path) && (property.Path == row.Path);
+		// previews, and the editor is mid-gesture. So does one being typed into: the text is the
+		// edit's until it commits (the values refresh each frame; typed text went back at once).
+		let same = property.Path == row.Path;
+		let editing = same && (IsUnderEdit(row.Path) || ((property.Editor != null) && property.Editor.IsTyping));
 		property.Show(row);
 		property.IsChanged = (row.Node >= 0) && (row.Node < mNodes.Count) && IsChanged(row.Node);
 		let editor = property.Editor;
@@ -1150,14 +1192,12 @@ class PropertyGrid : ItemView, IPropertySourceClient, IPropertyEditHost
 			header.Category = true;
 			header.Type = cCategoryRow;
 			header.Id = HashBytes(header.Path.Ptr, header.Path.Length);
-			bool any = !filtered;
-			if (filtered)
+			// A header over nothing shown (each of its rows hidden, or none matching) is left out.
+			bool any = false;
+			for (let top in mTop)
 			{
-				for (let top in mTop)
-				{
-					if ((mNodes[top].Info.Category == category) && SubtreeMatches(top))
-						any = true;
-				}
+				if ((mNodes[top].Info.Category == category) && (filtered ? SubtreeMatches(top) : mNodes[top].Info.Visible))
+					any = true;
 			}
 			if (!any)
 			{
