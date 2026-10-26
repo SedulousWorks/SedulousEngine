@@ -178,6 +178,8 @@ class TreeView : ItemView
 	private HashSet<Sedulous.GUI.ItemId> mExpanded = new .() ~ delete _; // the open nodes' ids
 	private Dictionary<Sedulous.GUI.ItemId, int32> mItemOfId = new .() ~ delete _; // an id's flat item
 	private float mIndentWidth = 16.0f;
+	private float mWidest = 0.0f; // the widest row bound (NoteRowWidth)
+	private IModel mWidestOf = null; // the model it was measured over: compared, never read through
 	private float mArrowSize = 16.0f;
 	private TreeModel mOwnTree = null; // markup's items; let go in the destructor
 	private Node mMarkupHost = null ~ _?.ReleaseRef(); // where markup's items land, then taken in
@@ -297,7 +299,12 @@ class TreeView : ItemView
 		Model.Data(index).ToString(text);
 		row.Label.Text = text;
 		row.Configure((float)entry.Depth * mIndentWidth, mArrowSize, entry.HasChildren, mExpanded.Contains(entry.Id));
+		NoteRowWidth(content);
 	}
+
+	// Rows as wide as the widest one bound, or the view when it is wider: a deep level or a long
+	// name scrolls sideways, where it had been cut at the view's edge.
+	protected override float RowWidth(float width) => Math.Max(width, mWidest);
 
 	// The arrow toward the inline end (Right, Left in right to left) opens a node, or on an open
 	// one goes to its first child; toward the start closes an open one, or goes to its parent.
@@ -417,6 +424,24 @@ class TreeView : ItemView
 				return i;
 		}
 		return -1;
+	}
+
+	// The widest row bound so far, kept while the model is the same one (a model built again on
+	// each change, the hierarchy's, would else snap the sideways scroll back as rows rebind).
+	private void NoteRowWidth(Node content)
+	{
+		if (Model !== mWidestOf)
+		{
+			mWidestOf = Model;
+			mWidest = 0.0f;
+		}
+		let row = (content.Parent != null) ? content.Parent : content; // the row's own padding too
+		let width = row.Measure(LayoutConstraints()).X;
+		if (width > mWidest + 0.5f)
+		{
+			mWidest = width;
+			RequestLayout();
+		}
 	}
 
 	private void Reflatten()

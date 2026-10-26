@@ -148,4 +148,35 @@ class TreeViewTests
 		b.D.InjectKeyDown((uint32)KeyCode.Right); // toward the start: collapse
 		Test.Assert(!b.Tree.IsItemExpanded(0));
 	}
+
+	/// A chain twenty levels deep at 32 px a level: the rows in view (about fifteen of 20 px in
+	/// 300) pass the view's 260 px by their indent alone, so the rows grow that wide and the view
+	/// scrolls sideways.
+	[Test]
+	public static void ARowDeeperThanTheViewIsWideMakesTheRowsThatWide()
+	{
+		let model = scope TreeModel();
+		var parent = TreeModel.Root;
+		for (int depth < 20)
+			parent = model.AddNode(parent, "Level");
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef(); // before the model the view listens to
+		let tree = new TreeView();
+		tree.Size = .(260.0f, 300.0f);
+		tree.RowHeight = 20.0f;
+		tree.IndentWidth = 32.0f;
+		root.AddChild(tree);
+		tree.ReleaseRef(); // the root holds it
+		tree.Model = model;
+		root.UpdateLayout();
+		Test.Assert(tree.ContentExtent.X <= 260.0f + 0.5f, "collapsed: nothing passes the edge");
+		for (int32 item < 20)
+			tree.ExpandItem(item);
+		root.UpdateLayout();
+		root.UpdateLayout(); // the widest row measured as it binds; the rows take it next
+		Test.Assert(tree.ContentExtent.X > 10.0f * 32.0f, scope $"{tree.ContentExtent.X}");
+		let row = tree.RowForItem(10);
+		Test.Assert(row != null);
+		Test.Assert(Math.Abs(row.Size.X - tree.ContentExtent.X) < 0.01f);
+	}
 }
