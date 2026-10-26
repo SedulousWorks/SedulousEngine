@@ -3,26 +3,19 @@
 
 // Engine::GUI - the `engine.gui` module: the engine's GUI on foundation.gui (E5 of
 // Specs/gui-lab-evolution-3.md), Engine.UI's counterpart, beside it while both live; what is left
-// of it after the Engine.GUI port's first slice: the subsystem, the screen placement, and the
-// components' script reflection (`of`, `root()`). The components (GuiCanvasComponent,
-// GuiBillboardComponent, GuiWorldPanelComponent, their enums and managers, AddGuiSceneManagers),
-// the world math (WorldPanelPixels, GuiPointerRay, RayHitGuiPanel, PlaceBillboard), the resource
-// provider and the domain are Code/Engine/Sedulous.Engine.GUI/src (the components' reflection is
-// their attributes there; the domain is GuiDomain.Module).
+// of it after the Engine.GUI port's second slice: the subsystem's input (E6 below, the port's E4),
+// the components' live trees (E7 below, the port's E3) and the script surface (E8 below, the port's
+// E5), with the components' script reflection (`of`, `root()`).
 //
-// GuiResourceProvider answers the GUI's resource requests by asset guid ("{guid}" or the bare
-// guid), as every other reference in the engine: a document's markup and a sheet's CSS from their
-// cooked products, an SVG from a vector image, an image from a texture (a render texture a camera
-// draws into among them). The markup, the sheets and the gamekit need no change: they ask by string
-// as they do in the sandbox.
-//
-// GuiSubsystem: one GUIContext and style manager for the application, the GUI's built-in theme
-// under the game's sheets (a list, in order, each an @import of its guid), the fonts; a screen tier
-// (a root holding the gamekit's screen stack and an overlay layer above it, outside any scene, so
-// it survives a scene swap) and a scene tier (a root per scene, drawn wherever the scene renders);
-// both drawn into the engine's overlay passes through GUI.Hosting's GuiPassRenderer, above
-// Engine.UI's. A sheet or document whose cooked product changes restyles the GUI (hot reload). The
-// GUI ticks on unscaled time (menus move while the game is paused), so its work is in BeginFrame.
+// Code/Engine/Sedulous.Engine.GUI/src has the rest. The first slice: the components, their enums
+// and managers (AddGuiSceneManagers is GuiScene.bf), the world math, the resource provider and the
+// domain. The second, the subsystem's core: GuiSubsystem.bf (the context, the style manager, the
+// theme under the game's sheets, the fonts, the screen tier with its stack and overlay layer, the
+// scene tier, the game's screen, a screen tier per run, the lifecycle), GuiOverlayDraw.bf (both
+// tiers drawn into the engine's overlay passes through GuiPassRenderer, the GPU bring-up, an
+// editor's preview), GuiScreenTier.bf, GuiSceneTier.bf, GuiRenderState.bf and
+// GuiScreenPlacement.bf. Where the rest joins it, a comment there names the slice ("E3", "E4",
+// "E5").
 //
 // Input (E6): the engine's active input source (the player's window, an editor Game tab's view)
 // into one root a frame, through GUI.Shell's bridge (one per root, each root its own dispatcher): an
@@ -31,7 +24,8 @@
 // press stays with its root until every button is up. Which scenes input may reach follows the input
 // subsystem's binding, as Engine.UI's does. The action layer is told what the GUI took (the pointer
 // over GUI that takes it, or a press that began there; the keys while text is being edited), added
-// to what Engine.UI claims; the GUI tracks the input kind from the same source.
+// to what Engine.UI claims; the GUI tracks the input kind from the same source. A fitted screen
+// tier's pointer arrives in render space and is taken to its pixels (ScreenPointerPoint, ported).
 //
 // Components (E7): `gui.Canvas` shows a document (with a sheet of its own over the game's) in its
 // scene's root, ordered among the scene's canvases, at the target's pixels or scaled from a
@@ -48,14 +42,7 @@
 // stack), installed per script context with the screen tier's root (ExposeToScript): `gui::root()`
 // is the screen root and `ScreenStack::of(gui::root().find("screens"))` its stack, which pushes a
 // document by its guid ("{guid}") through the provider. Each component's `.of(entity)` reaches its
-// tree as a node (`root()`).
-//
-// The game's screen (E9c): the screen tier lays out at the game's render resolution and draws, at
-// the target's own, into the rectangle that size is fitted into, turned when the game's orientation
-// is not the target's, as the game's image is (Engine.UI's placement); its pointer arrives in render
-// space and is taken to its pixels. With run screens on (the editor), each run (a Game tab's game)
-// has a screen tier of its own: drawn for its tab (SetRenderRun), the input of the scene it is
-// bound to, the `gui` root of its scripts; the overlay layer stays on the shared tier above it.
+// tree as a node (`root()`). With run screens on, the `gui` root of a run's scripts is its tier's.
 // GCC modules hygiene: the renderer, the shaders and the textures live in GuiSubsystemImpl.cpp.
 
 module;
@@ -103,110 +90,17 @@ export namespace engine::gui
     /// manager binds the registry.
     void RegisterGuiScriptFacades();
 
-    /// Where a screen tier draws on its target (Engine.UI's ScreenPlacement): not fitted, the plain
-    /// draw at the target's own size over all of it; fitted, the root lays out at `DrawSize` over
-    /// its display scale `DpiScale` and draws into `Rect` of the target through `Transform`, which
-    /// turns the root's pixels onto the rectangle's (identity unless the orientation turns it).
-    struct GuiScreenPlacement
-    {
-        bool Fitted = false;
-        ContentRotation Turn = ContentRotation::None;
-        Rectangle Rect{0.0f, 0.0f, 0.0f, 0.0f};
-        Float2 DrawSize{0.0f, 0.0f};
-        f32 DpiScale = 1.0f;
-        Float4x4 Transform = Float4x4::Identity();
-    };
+    // GuiScreenPlacement is Code/Engine/Sedulous.Engine.GUI/src/GuiScreenPlacement.bf.
 
+    // The class head (Subsystem, ISceneObserver, ISceneOverlay, IScreenOverlay) and every member
+    // not named below are Code/Engine/Sedulous.Engine.GUI/src (GuiSubsystem.bf, GuiOverlayDraw.bf):
+    // what is left is the scripts (E5), the input (E4) and the components' live trees (E3).
     class GuiSubsystem final : public foundation::runtime::Subsystem,
                                public scene::ISceneObserver,
                                public render::ISceneOverlay,
                                public render::IScreenOverlay
     {
     public:
-        /// `dataFileSystem` is the application's data mount (borrowed for the subsystem's life):
-        /// the VG shaders and the built-in font come from it.
-        GuiSubsystem(IAllocator& allocator, foundation::vfs::IFileSystem& dataFileSystem);
-        ~GuiSubsystem() override;
-
-        /// After Engine.UI's (-650), so a game's GUI sees the same frame; all work in BeginFrame.
-        [[nodiscard]] i32 UpdateOrder() const noexcept override { return -640; }
-
-        [[nodiscard]] GUIContext& Context() noexcept { return *m_context; }
-        [[nodiscard]] const RefPtr<GUIContext>& ContextRef() const noexcept { return m_context; }
-        /// The style manager every root is styled through: the built-in theme, the game's sheets.
-        [[nodiscard]] StyleManager& Styles() noexcept { return m_styles; }
-        [[nodiscard]] GuiResourceProvider& Resources() noexcept { return *m_resources; }
-        /// The fonts the GUI's text draws with.
-        [[nodiscard]] foundation::fonts::IFontService* Fonts() const noexcept;
-
-        /// The project's fonts, which it shares with Engine.UI (defaultUiFontId, uiFontIds): the
-        /// default and the others, each a family a label picks by `font-family`. Without a default
-        /// the built-in font serves (the others wait for one). The products are held.
-        void SetFonts(const foundation::fonts::Font* defaultFont, Span<const foundation::fonts::Font* const> others);
-
-        /// Where asset guids resolve (the application's resource manager); null resolves nothing.
-        void SetResourceManager(resource::ResourceManager* resources);
-        /// The game's sheets, over the built-in theme, each over the ones before it (a game's own
-        /// over a shared one). Re-read when one's cooked product changes.
-        void SetStyleSheets(Span<const Guid> sheets);
-        [[nodiscard]] Span<const Guid> StyleSheets() const noexcept { return Span<const Guid>(m_sheets.Data(), m_sheets.Size()); }
-        /// How many times the game's sheets were applied (set, or a cooked product changed).
-        [[nodiscard]] u64 SheetGeneration() const noexcept { return m_sheetGeneration; }
-
-        /// The screen tier, outside any scene: its root, the gamekit's screen stack in it, and the
-        /// overlay layer above the stack (a loading screen, a system menu).
-        [[nodiscard]] SceneRoot* ScreenRoot() noexcept { return m_screen.Root.Get(); }
-        [[nodiscard]] ScreenStack* Screens() noexcept { return m_screen.Screens.Get(); }
-
-        // ---- the game's screen ----
-        /// The screen tier at the game's render resolution, fitted into its target by `fit`, its
-        /// text crisp at the target's resolution; nought on either axis: the target's own size.
-        void SetScreenResolution(u32 width, u32 height, FitMode fit);
-        [[nodiscard]] bool HasScreenResolution() const noexcept { return m_screen.HasResolution(); }
-        /// The game's orientation: on a target of the other shape the screen tier lays out at the
-        /// game's shape and draws turned a quarter. Any: never turned.
-        void SetScreenOrientation(ScreenOrientation orientation) noexcept { m_screen.Orientation = orientation; }
-        /// Where a tier at `resolution` (none: 0 x 0), fitted by `fit` and held to `orientation`,
-        /// draws on a `target`-sized target.
-        [[nodiscard]] static GuiScreenPlacement PlaceScreen(Float2 resolution, FitMode fit, ScreenOrientation orientation, Float2 target) noexcept;
-
-        // ---- a screen tier per run (the editor's Game tabs) ----
-        /// On: each run its own screen tier (the editor sets it once). Off (the player's): one.
-        void SetRunScreens(bool enabled) noexcept { m_runScreens = enabled; }
-        [[nodiscard]] bool RunScreens() const noexcept { return m_runScreens; }
-        /// `run`'s screen stack and root, made on first use; the shared tier's with run screens off
-        /// or no run.
-        [[nodiscard]] ScreenStack* ScreensFor(const void* run);
-        [[nodiscard]] SceneRoot* ScreenRootFor(const void* run);
-        void SetScreenResolution(const void* run, u32 width, u32 height, FitMode fit);
-        void SetScreenOrientation(const void* run, ScreenOrientation orientation);
-        /// The run whose screen tier the next screen overlay draws under the shared one's overlays
-        /// (null: none), set by a host around its overlays for that run's view.
-        void SetRenderRun(const void* run) noexcept { m_renderRun = run; }
-        /// The run ended: its screen tier and every screen on it go.
-        void EndRunScreens(const void* run);
-        [[nodiscard]] usize RunScreenCount() const noexcept { return m_runTiers.Size(); }
-        [[nodiscard]] Node* OverlayLayer() noexcept { return m_overlay.Get(); }
-        /// `document` built and shown on the overlay layer, above every screen (a loading screen, a
-        /// system menu), modal while it shows, unless it takes no pointer (`pointer-events: none`
-        /// on its root: a watermark); the tree, to take off again, or null when it does not build.
-        RefPtr<Node> PushOverlay(const GuiDocument& document);
-        /// A tree made in code shown on the overlay layer.
-        void PushOverlay(Node& overlay);
-        void RemoveOverlay(Node& overlay);
-        [[nodiscard]] usize OverlayCount() const noexcept { return m_overlay ? m_overlay->ChildCount() : 0; }
-        /// The scene tier's root for `scene`; null when the scene is unknown.
-        [[nodiscard]] SceneRoot* SceneRootFor(const scene::Scene& scene) noexcept;
-
-        // ---- lifecycle ----
-        void OnInit() override;
-        void OnReady() override;
-        void OnShutdown() override;
-        void BeginFrame(f32 deltaTime) override;
-        /// The action layer's pointer and keyboard claims cleared after the frame read them: the
-        /// next frame's BeginFrame lane republishes them (Engine.UI's, then the GUI's added).
-        void EndFrame() override;
-
         // ---- scripts ----
         /// `context`'s scripts given the screen tier's root (`gui::root()`).
         void ExposeToScript(foundation::script::IScriptContext& context);
@@ -222,36 +116,6 @@ export namespace engine::gui
         /// The input kind, from the active source each frame (the pointer, the keys, a pad).
         [[nodiscard]] foundation::input::InputKindTracker& GetInputKindTracker() noexcept { return m_inputKind; }
 
-        // ---- the scene tier ----
-        void OnSystemsReady(scene::Scene& scene) override;
-        void OnDestroying(scene::Scene& scene) override;
-
-        // ---- the overlay roles ----
-        /// Above Engine.UI's (0) while both draw.
-        [[nodiscard]] i32 OverlayOrder() const noexcept override { return 10; }
-        /// The scene tier: the view's scene root, laid out at the view's viewport and drawn there.
-        void Render(rhi::RenderPassEncoder& encoder, const render::SceneOverlayView& view) override;
-        /// The screen tier, before the pass: the frame's bakes, then the screen root recorded with
-        /// its offscreen layers on the host's encoder.
-        void PrepareOverlay(rhi::CommandEncoder& encoder, const render::ScreenOverlayView& view) override;
-        /// The screen tier: what PrepareOverlay recorded for this view, else recorded now.
-        void Render(rhi::RenderPassEncoder& encoder, const render::ScreenOverlayView& view) override;
-
-        // ---- an editor's preview ----
-        /// `markup` built for an editor's page in the GUI's own context (the game's fonts, theme and
-        /// sheets), in a root of its own that is never in a tier and takes no input; `css`, when
-        /// given, a sheet over it alone (a sheet's page). What the loader dropped goes to
-        /// `diagnostics`. Null when the markup does not build.
-        [[nodiscard]] RefPtr<SceneRoot> CreatePreview(StringView markup, StringView css = {},
-                                                           Array<GuiDiagnostic>* diagnostics = nullptr);
-        /// `root` laid out at `width` x `height` and drawn into `target` (in RenderTarget state, and
-        /// left so) in a pass of its own on `encoder`, over what is there.
-        void RenderPreview(SceneRoot& root, rhi::CommandEncoder& encoder, rhi::TextureView* target, rhi::TextureFormat format,
-                           u32 width, u32 height, u32 frameIndex);
-
-        /// The GPU side, by whoever owns graphics (the application's startup): the VG shaders from
-        /// the data mount, the renderer. Idempotent; without it the overlays draw nothing.
-        void EnsureRenderReady(rhi::Device& device, i32 frameCount);
         /// The textures: the frame's bakes, then every render-texture canvas and world panel drawn
         /// into its texture, made or resized as it asks and left ready to sample; their entities'
         /// sprites (and a canvas's decal) shown them. By the host on its encoder before the scene
@@ -259,30 +123,26 @@ export namespace engine::gui
         void RenderTextures(rhi::CommandEncoder& encoder, u32 frameIndex);
         /// How many textures canvases and panels draw into now.
         [[nodiscard]] usize TextureCount() const noexcept;
-        [[nodiscard]] bool IsRenderReady() const noexcept;
 
     private:
-        struct RenderState; // the renderer and the shaders (impl unit)
+        // The render state's textures (the impl unit); its device, shaders, renderer and the screen's
+        // prepared draws are GuiRenderState.bf.
+        struct RenderState;
+        // The scene tier's (GuiSceneTier.bf: its scene, root and billboard layer): what is left of it.
         struct SceneTier
         {
-            scene::Scene* Scene = nullptr;
-            RefPtr<SceneRoot> Root;
             UniquePtr<GuiInputBridge> Bridge;
             Array<RefPtr<UIWidget>> Canvases; ///< its canvases' hosts, in the root
-            RefPtr<UIWidget> Billboards;      ///< the layer under them its billboards are in
         };
 
-        void ApplySheets();
-        void ApplyUserAgentSheet();
         void PumpInput();
         void SyncCanvases(SceneTier& tier);
         void SyncBillboards(SceneTier& tier);
         void PlaceBillboards(SceneTier& tier, const render::SceneOverlayView& view);
         [[nodiscard]] static bool HasContent(const SceneTier& tier) noexcept;
         void SyncPanels(SceneTier& tier);
-        // A document's tree (null when it does not build), and a component's tree in line with its
-        // document and sheet: rebuilt when the document's product changes.
-        [[nodiscard]] RefPtr<Node> BuildDocument(const GuiDocument& document);
+        // A component's tree in line with its document and sheet: rebuilt when the document's
+        // product changes (BuildDocument, a document's tree, is GuiSubsystem.bf).
         template <typename Component>
         bool RebuildIfChanged(Component& c);
         template <typename Component>
@@ -305,63 +165,24 @@ export namespace engine::gui
             bool Mapped = false;      ///< the point is not the pointer's own (a panel's, a fitted tier's)
             bool Panel = false;
         };
-        // A screen tier: a root holding a screen stack (the shared one the overlay layer above it
-        // too), its input, and the game's screen it lays out for.
+        // The screen tier's (GuiScreenTier.bf): what is left of it.
         struct ScreenTier
         {
-            const void* Run = nullptr; ///< null: the shared tier
-            RefPtr<SceneRoot> Root;
-            RefPtr<ScreenStack> Screens;
             UniquePtr<GuiInputBridge> Bridge;
-            Float2 Resolution{0.0f, 0.0f};
-            FitMode Fit = FitMode::Letterbox;
-            ScreenOrientation Orientation = ScreenOrientation::Any;
-            Float2 TargetSize{0.0f, 0.0f}; ///< the target it last drew into
-            ContentRotation Turn = ContentRotation::None;
-            [[nodiscard]] bool HasResolution() const noexcept { return Resolution.x > 0.0f && Resolution.y > 0.0f; }
         };
-        void MakeScreenTier(ScreenTier& tier);
-        static void ApplyResolution(ScreenTier& tier, u32 width, u32 height, FitMode fit);
-        [[nodiscard]] ScreenTier* FindRunTier(const void* run) noexcept;
-        [[nodiscard]] ScreenTier* TierOfRoot(const SceneRoot* root) noexcept;
         // The tier input reaches: the run of the scene the input is bound to, when it has a tier.
         [[nodiscard]] ScreenTier& InputTier() noexcept;
-        // A render-space point in the tier's root pixels (the crop's offset off, at its scale).
-        [[nodiscard]] static Float2 ScreenPointerPoint(const ScreenTier& tier, Float2 point) noexcept;
         [[nodiscard]] InputTarget PanelUnderPointer(Float2 point, bool centreAim);
         [[nodiscard]] InputTarget PickInputRoot(bool pointer, Float2 point, bool centreAim);
         [[nodiscard]] bool InputReaches(const SceneTier& tier) const noexcept;
         [[nodiscard]] GuiInputBridge* BridgeOf(const SceneRoot* root) noexcept;
         [[nodiscard]] UniquePtr<GuiInputBridge> MakeBridge(SceneRoot& root);
-        void StyleAndLayOut(SceneRoot& root, Float2 size);
-        [[nodiscard]] bool ReadDataFile(StringView path, Array<u8>& out) const;
 
-        TaggedAllocator m_allocator;
-        foundation::vfs::IFileSystem* m_dataFileSystem; // borrowed
-        RefPtr<GUIContext> m_context;
-        StyleManager m_styles;
-        UniquePtr<GuiResourceProvider> m_resources;
-        UniquePtr<foundation::fonts::IFontService> m_fonts;        // the built-in font
-        UniquePtr<foundation::fonts::IFontService> m_projectFonts; // the project's, when it names a default
-        RefPtr<foundation::fonts::Font> m_defaultFont;
-        Array<RefPtr<foundation::fonts::Font>> m_otherFonts;
-        Array<Guid> m_sheets;
-        u64 m_sheetGeneration = 0;
-        ScreenTier m_screen;                     // the shared tier
-        Array<UniquePtr<ScreenTier>> m_runTiers; // a tier per run, with run screens on
-        bool m_runScreens = false;
-        const void* m_renderRun = nullptr;
-        RefPtr<UIWidget> m_overlay;
+        TaggedAllocator m_allocator; // none in Beef: its objects are new'd
         GuiScriptBinding m_scriptBinding; // what each script context is given
-        Array<SceneTier> m_sceneTiers;
         Array<UniquePtr<TextureRoot>> m_textureRoots;
-        u64 m_frameSerial = 0;
-        u64 m_texturesSerial = ~0ull; // the frame RenderTextures last ran in
+        u64 m_texturesSerial = ~0ull; // the frame RenderTextures last ran in (m_frameSerial is mFrameSerial)
         Float2 m_panelPoint{0.0f, 0.0f}; // where a held press on a panel last was, in its pixels
-        UniquePtr<RenderState> m_render;
-        render::ISceneRenderer* m_sceneRenderer = nullptr; // the overlays' registration
-        render::IScreenRenderer* m_screenRenderer = nullptr;
-        engine::input::InputSubsystem* m_input = nullptr;
         foundation::input::InputKindTracker m_inputKind;
         foundation::shell::IWindow* m_textInputTarget = nullptr;
         SceneRoot* m_activeRoot = nullptr; // the root input went to last

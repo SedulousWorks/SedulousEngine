@@ -2,14 +2,16 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 // Engine.GUI (E5 of Specs/gui-lab-evolution-3.md), what is left of its tests after the Engine.GUI
-// port's first slice: the subsystem's screen tier (the screen stack under the overlay layer) and
-// scene tier (a root per scene); the game's sheets in order over the theme, restyled when one is
-// cooked again; a document pushed by its guid; both tiers drawn into the engine's overlay passes
-// (the Null device, the shaders from the data mount); the components as the subsystem runs them.
-// The provider's (documents, sheets, vector images and textures by guid; a re-cook at the next
-// poll), the domain's, the canvas's round trip and the billboard and panel math are in
+// port's second slice: the input (where it goes, what the action layer hears, the bound source,
+// the keys and Back, a fitted tier's pointer, the overlay layer modal: the port's E4), the
+// components as the subsystem runs them (canvases, billboards, render textures, world panels, and
+// the scene half of the overlay draw: E3) and the script surface (E5). The provider's, the domain's,
+// the canvas's round trip and the billboard and panel math are in
 // Code/Engine/Sedulous.Engine.GUI.Tests/src (GuiResourceProviderTests.bf, GuiDomainTests.bf,
-// GuiComponentTests.bf, GuiWorldMathTests.bf).
+// GuiComponentTests.bf, GuiWorldMathTests.bf), as are the subsystem core's (GuiSubsystemTests.bf:
+// the screen and scene tiers, the game's sheets over the theme and their hot reload, the screen
+// tier drawn into the overlay pass, the fonts, the screen's placement, a render resolution, a tier
+// per run, the overlay layer, an editor's preview, the default family), on GuiTestEngine.bf.
 #include <doctest/doctest.h>
 #include "Core/Prelude.h"
 
@@ -66,81 +68,7 @@ namespace
         return nullptr;
     }
 
-    String Braced(const Guid& id)
-    {
-        String braced(u8"{");
-        braced.Append(Format(u8"{}", id).AsView());
-        braced.Append(StringView(u8"}"));
-        return braced;
-    }
-
-    // A content database of cooked GUI assets in a scratch folder, and a resource manager over it
-    // with their factories.
-    struct Project
-    {
-        rhi::null::NullDevice device{DefaultAllocator()};
-        String folder;
-        UniquePtr<foundation::vfs::NativeFileSystem> mount;
-        UniquePtr<foundation::content::ContentDatabase> db;
-        GuiDocumentFactory documents{DefaultAllocator()};
-        GuiStyleSheetFactory sheets{DefaultAllocator()};
-        foundation::vg::VectorImageFactory vectors{DefaultAllocator()};
-        UniquePtr<foundation::texture::TextureFactory> textures;
-        UniquePtr<foundation::resource::ResourceManager> resources;
-
-        explicit Project(StringView name) : folder(name)
-        {
-            RegisterGuiResource();
-            foundation::vg::RegisterVGResource();
-            foundation::texture::RegisterTextureResource();
-            Clean();
-            mount = MakeUnique<foundation::vfs::NativeFileSystem>(DefaultAllocator(), folder.AsView(), DefaultAllocator());
-            db = MakeUnique<foundation::content::ContentDatabase>(DefaultAllocator(), DefaultAllocator(), *mount, BinarySerializerFactory(), u8".rasset");
-            textures = MakeUnique<foundation::texture::TextureFactory>(DefaultAllocator(), DefaultAllocator(), device);
-            resources = MakeUnique<foundation::resource::ResourceManager>(DefaultAllocator(), DefaultAllocator(), *db);
-            resources->AddFactory(&documents);
-            resources->AddFactory(&sheets);
-            resources->AddFactory(&vectors);
-            resources->AddFactory(textures.Get());
-        }
-        ~Project()
-        {
-            resources.Reset();
-            textures.Reset();
-            db.Reset();
-            mount.Reset();
-            Clean();
-        }
-        void Clean()
-        {
-            const StringView files[] = {u8"menu", u8"base", u8"game", u8"icon", u8"map"};
-            for (const StringView file : files)
-                FileDelete(PathJoin(folder.AsView(), Format(u8"{}.rasset", file).AsView()).AsView());
-            RemoveDirectory(folder.AsView());
-        }
-        Guid Document(StringView name, StringView markup)
-        {
-            auto* instance = db->RootGroup()->CreateInstance(name, GuiDocumentSource::StaticType());
-            GuiDocumentSource source;
-            source.markup = String(markup);
-            REQUIRE(instance->WriteObject(source).IsOk());
-            return instance->Id();
-        }
-        Guid Sheet(StringView name, StringView css)
-        {
-            auto* instance = db->RootGroup()->CreateInstance(name, GuiStyleSheetSource::StaticType());
-            RewriteSheet(instance->Id(), css);
-            return instance->Id();
-        }
-        // The sheet cooked again with `css`, and reloaded as the editor's re-cook does.
-        void RewriteSheet(const Guid& id, StringView css)
-        {
-            GuiStyleSheetSource source;
-            source.css = String(css);
-            REQUIRE(db->GetInstance(id)->WriteObject(source).IsOk());
-            (void)resources->Reload(id);
-        }
-    };
+    // Braced and the cooked project (Project) are GuiTestProject.bf.
 
     // A mouse the test moves and presses; a press or release shows as an edge for one frame.
     struct FakeMouse final : foundation::shell::IMouse
@@ -269,101 +197,18 @@ namespace
     }
 }
 
-TEST_CASE("engine.gui: the screen tier holds the screen stack under the overlay layer, and each scene a root of its own")
-{
-    Engine engine;
-    SceneRoot* screen = engine.gui->ScreenRoot();
-    REQUIRE(screen != nullptr);
-    REQUIRE(screen->ChildCount() == 2u);
-    CHECK(screen->GetChildAt(0) == engine.gui->Screens());
-    CHECK(screen->GetChildAt(1) == engine.gui->OverlayLayer());
-    CHECK(engine.gui->Context().GetResourceProvider() == &engine.gui->Resources());
-    CHECK(engine.gui->Fonts() != nullptr);
-
-    scene::Scene* level = engine.scenes.CreateScene(u8"level");
-    SceneRoot* root = engine.gui->SceneRootFor(*level);
-    REQUIRE(root != nullptr);
-    CHECK(root != screen);
-    engine.scenes.DestroyScene(level);
-    CHECK(engine.gui->SceneRootFor(*level) == nullptr);
-    CHECK(engine.gui->ScreenRoot() == screen); // the screen tier outlives a scene
-}
-
-TEST_CASE("engine.gui: the game's sheets apply in order over the theme, restyle when one is cooked again, and a document pushes by its guid")
-{
-    Project project(u8"scratch_engine_gui_sheets");
-    const Guid base = project.Sheet(u8"base", u8"#box { width: 120px; height: 10px; }");
-    const Guid game = project.Sheet(u8"game", u8"#box { width: 200px; }");
-    const Guid menu = project.Document(u8"menu", u8"<Screen><Panel id=\"box\"/></Screen>");
-    Engine engine;
-    engine.gui->SetResourceManager(project.resources.Get());
-    const Guid sheets[] = {base, game};
-    engine.gui->SetStyleSheets(Span<const Guid>(sheets, 2));
-    CHECK(engine.gui->StyleSheets().Size() == 2u);
-
-    Screen* pushed = engine.gui->Screens()->PushDocument(Braced(menu).AsView());
-    REQUIRE(pushed != nullptr);
-    engine.gui->ScreenRoot()->SetViewportSize(Float2{800.0f, 600.0f});
-    engine.Frame();
-    Node* box = FindById(*engine.gui->ScreenRoot(), u8"box");
-    REQUIRE(box != nullptr);
-    CHECK(box->GetSize().x == doctest::Approx(200.0f)); // the game's over the shared one
-    CHECK(box->GetSize().y == doctest::Approx(10.0f));  // what it leaves is the shared one's
-
-    const u64 generation = engine.gui->SheetGeneration();
-    engine.Frame();
-    CHECK(engine.gui->SheetGeneration() == generation); // nothing changed: nothing re-applied
-    project.RewriteSheet(game, u8"#box { width: 150px; }");
-    engine.Frame();
-    CHECK(engine.gui->SheetGeneration() == generation + 1);
-    CHECK(box->GetSize().x == doctest::Approx(150.0f));
-
-    engine.gui->SetResourceManager(nullptr); // before the project goes
-}
-
+// Partly ported: its screen half (a faded group's layer drawn before the screen's pass, prepared
+// and unprepared draws) is TheScreenTierDrawsIntoTheEnginesOverlayPassItsLayersBeforeItsPass in
+// GuiSubsystemTests.bf; what is left is the scene half, which needs a canvas's live tree (E3).
 TEST_CASE("engine.gui: both tiers draw into the engine's overlay passes, the screen's layers before its pass")
 {
     rhi::null::NullDevice device{DefaultAllocator()}; // outlives the GUI that draws on it
     Engine engine;
     engine.gui->EnsureRenderReady(device, 2);
     REQUIRE(engine.gui->IsRenderReady());
-    CHECK(engine.gui->Context().GetPictureBaker() != nullptr);
-
-    // A faded group on a screen: its layer is drawn before the screen's pass.
-    RefPtr<Panel> group = MakeRef<Panel>(DefaultAllocator());
-    group->SetSize(Float2{60.0f, 40.0f});
-    NodeBox look;
-    look.BackgroundColor = Color{1.0f, 0.0f, 0.0f, 1.0f};
-    group->SetBox(Move(look));
-    group->SetAlpha(0.5f);
-    RefPtr<Panel> inner = MakeRef<Panel>(DefaultAllocator());
-    inner->SetSize(Float2{20.0f, 20.0f});
-    NodeBox innerLook;
-    innerLook.BackgroundColor = Color{0.0f, 0.0f, 1.0f, 1.0f};
-    inner->SetBox(Move(innerLook));
-    group->AddChild(inner.Get());
-    REQUIRE(engine.gui->Screens()->Push(*group) != nullptr);
-    engine.Frame();
-
-    foundation::render::ScreenOverlayView view;
-    view.width = 320;
-    view.height = 180;
-    view.targetFormat = rhi::TextureFormat::RGBA8UnormSrgb;
     rhi::null::NullCommandEncoder encoder;
-    engine.gui->PrepareOverlay(encoder, view);
-    const u64 layerPasses = encoder.counters->Snapshot().renderPasses;
-    CHECK(layerPasses == 1u); // the faded group's layer, before the overlay pass opens
-    CHECK(engine.gui->ScreenRoot()->GetViewportSize().x == doctest::Approx(320.0f));
     rhi::RenderPassEncoder* pass = encoder.BeginRenderPass(rhi::RenderPassDesc{});
     REQUIRE(pass != nullptr);
-    const u64 drawsBefore = encoder.counters->Snapshot().draws;
-    engine.gui->Render(*pass, view);
-    CHECK(encoder.counters->Snapshot().draws > drawsBefore);
-    CHECK(encoder.counters->Snapshot().renderPasses == layerPasses + 1); // Render opened none
-    // Unprepared (another view): drawn in the pass all the same.
-    const u64 drawsUnprepared = encoder.counters->Snapshot().draws;
-    engine.gui->Render(*pass, view);
-    CHECK(encoder.counters->Snapshot().draws > drawsUnprepared);
 
     // The scene tier: the view's scene root, laid out at its viewport.
     scene::Scene* level = engine.scenes.CreateScene(u8"level");
@@ -866,80 +711,15 @@ TEST_CASE("engine.gui: the script surface names gui and the components, and a co
     engine.scenes.DestroyScene(level);
 }
 
-namespace
-{
-    RefPtr<foundation::fonts::Font> MakeFontProduct(StringView family)
-    {
-        RefPtr<foundation::fonts::Font> font = MakeRef<foundation::fonts::Font>(DefaultAllocator());
-        font->SetFamily(family);
-        foundation::fonts::Font::Entry entry;
-        entry.pixelHeight = 24.0f;
-        font->AddEntry(Move(entry));
-        return font;
-    }
-}
-
-TEST_CASE("engine.gui: the project's fonts, a default and others each a family, else the built-in font")
-{
-    Engine engine;
-    foundation::fonts::IFontService* builtIn = engine.gui->Fonts();
-    REQUIRE(builtIn != nullptr);
-    RefPtr<foundation::fonts::Font> body = MakeFontProduct(u8"Body");
-    RefPtr<foundation::fonts::Font> title = MakeFontProduct(u8"Title");
-    const foundation::fonts::Font* others[] = {title.Get()};
-
-    engine.gui->SetFonts(nullptr, Span<const foundation::fonts::Font* const>(others, 1)); // others wait for a default
-    CHECK(engine.gui->Fonts() == builtIn);
-
-    engine.gui->SetFonts(body.Get(), Span<const foundation::fonts::Font* const>(others, 1));
-    foundation::fonts::IFontService* project = engine.gui->Fonts();
-    REQUIRE(project != builtIn);
-    CHECK(engine.gui->Context().GetFontService() == project); // what text measures and draws with
-    CHECK(project->DefaultFontFamily() == StringView(u8"Body"));
-    foundation::fonts::CachedFont* bodyFont = project->GetFont(u8"Body", 24.0f);
-    foundation::fonts::CachedFont* titleFont = project->GetFont(u8"Title", 24.0f);
-    REQUIRE(bodyFont != nullptr);
-    REQUIRE(titleFont != nullptr);
-    CHECK(titleFont != bodyFont); // a label naming the title family gets the title face
-
-    engine.gui->SetFonts(nullptr, {});
-    CHECK(engine.gui->Fonts() == builtIn);
-    CHECK(engine.gui->Context().GetFontService() == builtIn);
-}
-
-TEST_CASE("engine.gui: the screen is placed as the game's image is: fitted at its resolution, turned for its orientation")
-{
-    using engine::gui::GuiSubsystem;
-    // No resolution, any orientation: the plain draw.
-    CHECK_FALSE(GuiSubsystem::PlaceScreen(Float2{}, FitMode::Letterbox, ScreenOrientation::Any, Float2{1280.0f, 720.0f}).Fitted);
-
-    // 320 by 180 fitted into 1280 by 800: letterboxed, laid out at 320 by 180 four times over.
-    engine::gui::GuiScreenPlacement place =
-        GuiSubsystem::PlaceScreen(Float2{320.0f, 180.0f}, FitMode::Letterbox, ScreenOrientation::Any, Float2{1280.0f, 800.0f});
-    REQUIRE(place.Fitted);
-    CHECK(place.Rect.x == doctest::Approx(0.0f));
-    CHECK(place.Rect.y == doctest::Approx(40.0f));
-    CHECK(place.Rect.width == doctest::Approx(1280.0f));
-    CHECK(place.Rect.height == doctest::Approx(720.0f));
-    CHECK(place.DrawSize.x == doctest::Approx(1280.0f));
-    CHECK(place.DpiScale == doctest::Approx(4.0f)); // 1280 / 4 = 320 laid out
-
-    // A landscape game on a portrait target: turned a quarter, laid out at its own shape.
-    place = GuiSubsystem::PlaceScreen(Float2{}, FitMode::Letterbox, ScreenOrientation::Landscape, Float2{720.0f, 1280.0f});
-    REQUIRE(place.Fitted);
-    CHECK(place.Turn != ContentRotation::None);
-    CHECK(place.DrawSize.x == doctest::Approx(1280.0f)); // the target's sides swapped
-    CHECK(place.DrawSize.y == doctest::Approx(720.0f));
-    CHECK(place.Transform.m[0][0] == doctest::Approx(0.0f)); // x runs down the target
-}
-
+// Partly ported: its layout at the game's resolution, its fitted draw and its return to the
+// target's own size are AtARenderResolutionTheScreenTierLaysOutAtItAndDrawsFitted in
+// GuiSubsystemTests.bf; what is left is the pointer taken to the tier's pixels (E4).
 TEST_CASE("engine.gui: at a render resolution the screen tier lays out at it, draws fitted, and takes the pointer in render space")
 {
     rhi::null::NullDevice device{DefaultAllocator()}; // outlives the GUI that draws on it
     Engine engine;
     engine.gui->EnsureRenderReady(device, 2);
     engine.gui->SetScreenResolution(400, 300, FitMode::Letterbox);
-    CHECK(engine.gui->HasScreenResolution());
     RefPtr<UIWidget> menu = MakeRef<UIWidget>(DefaultAllocator());
     menu->AddChild(MakeButton(u8"play", Float2{20.0f, 20.0f}).Get());
     REQUIRE(engine.gui->Screens()->Push(*menu) != nullptr);
@@ -949,16 +729,8 @@ TEST_CASE("engine.gui: at a render resolution the screen tier lays out at it, dr
     view.height = 600;
     view.targetFormat = rhi::TextureFormat::RGBA8UnormSrgb;
     rhi::null::NullCommandEncoder encoder;
-    engine.gui->PrepareOverlay(encoder, view);
+    engine.gui->PrepareOverlay(encoder, view); // the tier's target, which the pointer maps against
     SceneRoot* root = engine.gui->ScreenRoot();
-    CHECK(root->GetSize().x == doctest::Approx(400.0f)); // laid out at the game's resolution
-    CHECK(root->GetSize().y == doctest::Approx(300.0f));
-    CHECK(root->GetDisplayScale() == doctest::Approx(2.0f)); // drawn crisp at the target's
-    rhi::RenderPassEncoder* pass = encoder.BeginRenderPass(rhi::RenderPassDesc{});
-    const u64 draws = encoder.counters->Snapshot().draws;
-    engine.gui->Render(*pass, view);
-    CHECK(encoder.counters->Snapshot().draws > draws);
-    pass->End();
 
     // The pointer arrives in render space (the game's fitted source): the tier takes it to its pixels.
     engine.devices.mouse.x = 50.0f;
@@ -967,60 +739,11 @@ TEST_CASE("engine.gui: at a render resolution the screen tier lays out at it, dr
     CHECK(engine.gui->ActiveInputRoot() == root);
     CHECK(root->GetEventDispatcher()->GetMousePosition().x == doctest::Approx(100.0f));
     CHECK(root->GetEventDispatcher()->GetMousePosition().y == doctest::Approx(60.0f));
-
-    engine.gui->SetScreenResolution(0, 0, FitMode::Letterbox); // back to the target's own size
-    CHECK_FALSE(engine.gui->HasScreenResolution());
-    engine.gui->PrepareOverlay(encoder, view);
-    CHECK(root->GetSize().x == doctest::Approx(800.0f));
-    CHECK(root->GetDisplayScale() == doctest::Approx(1.0f));
 }
 
-TEST_CASE("engine.gui: with run screens on each run has its own screen tier, drawn for its tab and gone with its run")
-{
-    rhi::null::NullDevice device{DefaultAllocator()}; // outlives the GUI that draws on it
-    Engine engine;
-    engine.gui->EnsureRenderReady(device, 2);
-    int runA = 0;
-    int runB = 0;
-    CHECK(engine.gui->ScreensFor(&runA) == engine.gui->Screens()); // off: one tier for every run
-    engine.gui->SetRunScreens(true);
-    ScreenStack* a = engine.gui->ScreensFor(&runA);
-    ScreenStack* b = engine.gui->ScreensFor(&runB);
-    REQUIRE(a != nullptr);
-    CHECK(a != b);
-    CHECK(a != engine.gui->Screens());
-    CHECK(engine.gui->ScreensFor(&runA) == a); // made once
-    CHECK(engine.gui->ScreensFor(nullptr) == engine.gui->Screens());
-    CHECK(engine.gui->RunScreenCount() == 2u);
-    CHECK(a->GetId() == StringView(u8"screens")); // what its scripts find under their root
-
-    // A's tab draws A's screens under the shared tier; a run's resolution is its own.
-    RefPtr<UIWidget> menu = MakeRef<UIWidget>(DefaultAllocator());
-    menu->AddChild(MakeButton(u8"play", Float2{20.0f, 20.0f}).Get());
-    REQUIRE(a->Push(*menu) != nullptr);
-    engine.gui->SetScreenResolution(&runA, 320, 180, FitMode::Letterbox);
-    CHECK_FALSE(engine.gui->HasScreenResolution()); // the shared tier's untouched
-    foundation::render::ScreenOverlayView view;
-    view.width = 640;
-    view.height = 360;
-    view.targetFormat = rhi::TextureFormat::RGBA8UnormSrgb;
-    rhi::null::NullCommandEncoder encoder;
-    engine.gui->SetRenderRun(&runA);
-    engine.gui->PrepareOverlay(encoder, view);
-    CHECK(engine.gui->ScreenRootFor(&runA)->GetSize().x == doctest::Approx(320.0f));
-    rhi::RenderPassEncoder* pass = encoder.BeginRenderPass(rhi::RenderPassDesc{});
-    const u64 draws = encoder.counters->Snapshot().draws;
-    engine.gui->Render(*pass, view);
-    CHECK(encoder.counters->Snapshot().draws > draws);
-    pass->End();
-    engine.gui->SetRenderRun(nullptr);
-
-    engine.gui->EndRunScreens(&runA);
-    CHECK(engine.gui->RunScreenCount() == 1u);
-    engine.gui->EndRunScreens(&runB);
-    CHECK(engine.gui->RunScreenCount() == 0u);
-}
-
+// Partly ported: a document pushed and taken off, a passive one's pointer-events, an empty one
+// building nothing are ADocumentOnTheOverlayLayerShowsAboveEveryScreenUntilItIsTakenOff in
+// GuiSubsystemTests.bf; what is left is where input goes while each shows (E4).
 TEST_CASE("engine.gui: a document on the overlay layer shows above every screen, modal, until it is taken off")
 {
     Engine engine;
@@ -1038,83 +761,18 @@ TEST_CASE("engine.gui: a document on the overlay layer shows above every screen,
     RefPtr<GuiDocument> loading = MakeDocument(u8"<Panel id=\"loading\"/>");
     RefPtr<Node> splash = engine.gui->PushOverlay(*loading);
     REQUIRE(splash);
-    CHECK(engine.gui->OverlayCount() == 1u);
-    CHECK(FindById(*engine.gui->OverlayLayer(), u8"loading") != nullptr);
     engine.Frame();
     CHECK(engine.gui->ActiveInputRoot() == engine.gui->ScreenRoot()); // modal while it shows
 
     engine.gui->RemoveOverlay(*splash);
-    CHECK(engine.gui->OverlayCount() == 0u);
     engine.Frame();
     CHECK(engine.gui->ActiveInputRoot() == hud);
 
     // A passive overlay (a watermark: pointer-events none on its root) takes nothing.
     RefPtr<Node> badge = engine.gui->PushOverlay(*MakeDocument(u8"<Panel pointer-events=\"none\"><Label text=\"badge\"/></Panel>"));
     REQUIRE(badge);
-    CHECK_FALSE(badge->IsHitTestVisible());
     engine.Frame();
     CHECK(engine.gui->ActiveInputRoot() == hud);
     engine.gui->RemoveOverlay(*badge);
-
-    RefPtr<GuiDocument> empty = MakeDocument(u8"");
-    CHECK_FALSE(engine.gui->PushOverlay(*empty)); // nothing to build
     engine.scenes.DestroyScene(level);
-}
-
-TEST_CASE("engine.gui: an editor's preview builds in the GUI's context, a sheet over it alone, and draws into the editor's target")
-{
-    rhi::null::NullDevice device{DefaultAllocator()}; // outlives the GUI that draws on it
-    Engine engine;
-    engine.gui->EnsureRenderReady(device, 2);
-    Array<GuiDiagnostic> found;
-    CHECK_FALSE(engine.gui->CreatePreview(u8"<NoSuchElement/>", {}, &found)); // nothing builds
-    CHECK_FALSE(found.IsEmpty());
-
-    RefPtr<SceneRoot> preview =
-        engine.gui->CreatePreview(u8"<Panel><Panel class=\"title\" id=\"t\"/></Panel>", u8".title { width: 66px; height: 4px; }");
-    REQUIRE(preview);
-    CHECK(engine.gui->ScreenRoot()->ChildCount() == 2u); // not in a tier: the screen's stack and overlays alone
-
-    rhi::Texture* texture = nullptr;
-    rhi::TextureView* target = nullptr;
-    REQUIRE(device.CreateTexture(rhi::TextureDesc::RenderTarget(rhi::TextureFormat::RGBA8UnormSrgb, 320, 200), texture).IsOk());
-    REQUIRE(device.CreateTextureView(texture, rhi::TextureViewDesc{}, target).IsOk());
-    rhi::null::NullCommandEncoder encoder;
-    const u64 passes = encoder.counters->Snapshot().renderPasses;
-    engine.gui->RenderPreview(*preview, encoder, target, rhi::TextureFormat::RGBA8UnormSrgb, 320, 200, 0);
-    CHECK(encoder.counters->Snapshot().renderPasses == passes + 1); // its own pass
-    CHECK(preview->GetViewportSize().x == doctest::Approx(320.0f));
-    Node* title = FindById(*preview, u8"t");
-    REQUIRE(title != nullptr);
-    CHECK(title->GetSize().x == doctest::Approx(66.0f)); // the sheet styled it
-
-    preview = nullptr;
-    device.DestroyTextureView(target);
-    device.DestroyTexture(texture);
-}
-
-TEST_CASE("engine.gui: a game's text draws in the default family with no sheet naming one, and a sheet still chooses its own")
-{
-    // The style applier gives text a font only where a family is declared: the GUI's own sheet
-    // declares the default family on every tree's top elements (the editor showed text missing
-    // from a document's preview before it did).
-    Engine engine;
-    REQUIRE(engine.gui->Fonts() != nullptr);
-    REQUIRE_FALSE(engine.gui->Fonts()->DefaultFontFamily().IsEmpty()); // the built-in font loaded
-    RefPtr<SceneRoot> preview = engine.gui->CreatePreview(
-        u8"<Panel flex-direction=\"column\" align-items=\"center\" padding=\"24\">"
-        u8"<Label id=\"title\" text=\"New document\"/><Button id=\"ok\" text=\"OK\"/></Panel>");
-    REQUIRE(preview);
-    preview->SetViewportSize(Float2{800.0f, 500.0f});
-    engine.gui->Styles().SetMediaContext(preview->GetMediaContext());
-    engine.gui->Styles().ApplyTree(*preview);
-    preview->UpdateLayout();
-    Node* title = FindById(*preview, u8"title");
-    Node* ok = FindById(*preview, u8"ok");
-    REQUIRE(title != nullptr);
-    REQUIRE(ok != nullptr); // (a button with no width fills its line: the GUI's Button, not this)
-    CHECK(title->GetSize().x > 0.0f); // its text measured
-    CHECK(title->GetSize().y > 0.0f);
-    CHECK(ok->GetSize().y > 0.0f);
-    CHECK(Cast<UINode>(title)->GetTextStyle().FontFamily.AsView() == engine.gui->Fonts()->DefaultFontFamily());
 }
