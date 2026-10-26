@@ -113,31 +113,4 @@ export namespace sandbox
     /// Registers the camera's reflection (once); an effect added by type is made from `allocator`
     /// (the sandbox's own).
     void RegisterCameraTypes(IAllocator& allocator);
-
-    /// The engine's XmlSerializer as the reflected source's text format.
-    class XmlTextFormat : public gui::IPropertyTextFormat
-    {
-    public:
-        explicit XmlTextFormat(IAllocator& allocator) : m_allocator(allocator) {}
-        String Write(Function<void(ISerializer&)> write) override
-        {
-            xml::XmlSerializer ar(m_allocator);
-            write(ar);
-            String text;
-            ar.GetOutput(text);
-            return ar.IsOk() ? text : String{};
-        }
-        bool Read(StringView text, Function<void(ISerializer&)> read) override
-        {
-            xml::XmlDocument doc(m_allocator);
-            if (doc.Parse(text) != xml::XmlResult::Ok)
-                return false;
-            xml::XmlSerializer ar(doc);
-            read(ar);
-            return ar.IsOk();
-        }
-
-    private:
-        IAllocator& m_allocator;
-    };
 }
