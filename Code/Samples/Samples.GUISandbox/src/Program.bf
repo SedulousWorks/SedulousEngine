@@ -104,7 +104,12 @@ class Program
 			else if (arg == "--narrate")
 				app.SetNarrate(true);
 			else if ((arg == "--stress") && hasNext)
-				app.SetStress((int32.Parse(args[++i]) case .Ok(let stress)) ? stress : 1);
+			{
+				int32 load = 1; // a load that does not parse builds the first
+				if (int32.Parse(args[++i]) case .Ok(let parsed))
+					load = parsed;
+				app.SetStress(load);
+			}
 			else if ((arg == "--scroll") && hasNext)
 				app.SetScroll(float.Parse(args[++i]).GetValueOrDefault());
 		}

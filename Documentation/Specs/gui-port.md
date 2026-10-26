@@ -180,6 +180,16 @@ The value conversion Raptor does at run time with `ConvertVariant` (a string fro
 attribute to the property's type) becomes a thunk generated per value type, built on the style
 value parsers.
 
+The toolkit's reflected property source reads more of a member than its name (Raptor's property
+attributes, enumerators, containers and value structs, all from Core's run time reflection). The
+same generator carries it: Core's `[DisplayName]`, `[Description]`, `[Range]` and `[VisibleWhen]`
+beside `[GuiProperty]`, and the GUI's own flags on it (`BitFlags`, `NoAlpha`, `HdrColor`); an
+enum's cases, walked at compile time; a value struct (one whose public fields carry
+`[GuiProperty]`) as its fields, each a typed get and set over a pointer to a copy the source
+writes back through the property's setter; and a `List<T>` as typed count, element and change
+thunks, with `[GuiList]` giving its most (Raptor's BoundedArray) and, for a list of objects, the
+`[GuiReflect]` types an add makes (Raptor enumerates a base's derived types; here they are named).
+
 ## Scripts
 
 - **AngelScript only.** Sedulous has no Luau. Each Integration.GuiScript story runs once in

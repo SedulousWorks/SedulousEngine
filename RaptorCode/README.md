@@ -15,7 +15,8 @@ already ported is ported as a normal sync commit.
 
 ## Layout
 
-The paths are Raptor's.
+The port is complete: every file below has been struck, and this README is all that is left.
+The paths were Raptor's.
 
 - `Code/Foundation/GUI*`: the GUI libraries and their tests (the core, Code, Docking, Gamekit,
   Hosting, Inspector, Resources, Shell, Testing, Toolkit, VFS, Viewport, Fuzz). In Sedulous they

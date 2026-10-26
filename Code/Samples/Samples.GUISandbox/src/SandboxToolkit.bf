@@ -293,14 +293,14 @@ extension GUISandboxApp
 		var position = mCameras[1].Position;
 		position.X = 3.0f;
 		mCameras[1].Position = position;
-		// Still in RaptorCode: the second camera's Bloom effect (a reflected list of effects).
+		mCameras[1].Effects.Add(new BloomEffect());
 		mCameraFormat = new XmlTextFormat();
 		mCameraUndo = new .();
 		mCameraRedo = new .();
 		mReflected = new ReflectedPropertySource();
 		mReflected.TextFormat = mCameraFormat;
-		// The sky is the GUI's ColorGradient, which the source shows as a gradient by its type: no
-		// registration, as Raptor's RegisterGradientType makes for Core's fixed arrays.
+		// The sky is a gradient: its stops and blend, as the application says (T5).
+		mReflected.RegisterGradientType("SkyGradient", .("Colors", "Alphas", "Interpolation"));
 		SelectCameras(0);
 		grid.Source = mReflected;
 
