@@ -43,6 +43,13 @@ struct PopupPlacement
 	public float Gap = 0.0f;
 	/// Made smaller to fit the room on its side, rather than covering the anchor.
 	public bool Shrink = true;
+	/// Along its side's line, from where its alignment puts it, toward the line's end (down
+	/// beside a side, toward the inline end below or above).
+	public float Shift = 0.0f;
+	/// Lined up by its content's edge rather than its box's: moved back along the line by its
+	/// own padding and border as they are when it is placed (a submenu's first row level with
+	/// the row that opened it).
+	public bool AlignContent = false;
 
 	public this() { }
 }
@@ -173,10 +180,10 @@ static
 			PopupAlign align = placement.Align;
 			if (rightToLeft && (align != .Center))
 				align = (align == .Start) ? .End : .Start;
-			result.Position.X = PopupPlacementDetail.Aligned(align, anchor.X, anchor.Width, size.X);
+			result.Position.X = PopupPlacementDetail.Aligned(align, anchor.X, anchor.Width, size.X) + (rightToLeft ? -placement.Shift : placement.Shift);
 		}
 		else
-			result.Position.Y = PopupPlacementDetail.Aligned(placement.Align, anchor.Y, anchor.Height, size.Y);
+			result.Position.Y = PopupPlacementDetail.Aligned(placement.Align, anchor.Y, anchor.Height, size.Y) + placement.Shift;
 		result.Position.X = PopupPlacementDetail.Clamped(result.Position.X, size.X, bounds.X, bounds.Width);
 		result.Position.Y = PopupPlacementDetail.Clamped(result.Position.Y, size.Y, bounds.Y, bounds.Height);
 		return result;

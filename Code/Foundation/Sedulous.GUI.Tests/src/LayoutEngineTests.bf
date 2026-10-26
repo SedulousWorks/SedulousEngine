@@ -1099,4 +1099,108 @@ class LayoutEngineTests
 		Test.Assert(Near(label.Position.X, 0.0f));
 		Test.Assert(Near(area.Position.X, 0.0f));
 	}
+
+	/// A leaf whose content is off the device grid, as shaped text is.
+	private class FractionalLeaf : Node
+	{
+		public override Float2 MeasureContent(Float2 available) => .(29.06f, 15.2f);
+	}
+
+	[Test]
+	public static void AContentSizeRoundsUpToTheDeviceGridSoABoxKeepsAllOfItsContent()
+	{
+		// Each edge rounds to the grid on its own: a label 29.06 wide placed off the grid was 29
+		// wide, and its text ended in an ellipsis. Measured up to the grid, it is 30 wherever it lands.
+		float[2] scales = .(1.0f, 2.0f);
+		for (let scale in scales)
+		{
+			let bed = scope Bed();
+			bed.Root.SetDisplayScale(scale);
+			let row = NodeFixtures.Box(bed.Root, scope (s) =>
+				{
+					s.Direction = .Row;
+					s.AlignItems = .Start;
+				});
+			row.Padding = Thickness(7.3f, 0.0f, 7.3f, 0.0f); // the leaf lands off the grid
+			let leaf = new FractionalLeaf();
+			leaf.EditLayoutStyle(scope (s) =>
+				{
+					s.Shrink = 1.0f;
+					s.MinWidth = LayoutLength.Px(0.0f);
+				});
+			row.AddChild(leaf);
+			leaf.ReleaseRef(); // the tree's reference keeps it
+			bed.Layout();
+			let wide = Ceil(29.06f * scale) / scale;
+			let tall = Ceil(15.2f * scale) / scale;
+			Test.Assert(Near(leaf.Size.X, wide));
+			Test.Assert(Near(leaf.Size.Y, tall));
+			Test.Assert(leaf.Size.X >= 29.06f);
+		}
+	}
+
+	[Test]
+	public static void ARowWhoseItemsGrowIsAsWideAsItsItemsWhenMeasuredNotTheSpaceOffered()
+	{
+		// A button's text grows to fill the button. Centred in a column 300 wide, the button was
+		// measured 300 wide (its text grown into all of it), so it filled the column; as in CSS, a
+		// row's content is its items before they grow, and they grow in the size it is given.
+		let bed = scope Bed();
+		let column = NodeFixtures.Box(bed.Root, scope (s) =>
+			{
+				s.Direction = .Column;
+				s.Width = LayoutLength.Px(300.0f);
+				s.AlignItems = .Center;
+			});
+		let button = NodeFixtures.Box(column, scope (s) => { s.Direction = .Row; });
+		NodeFixtures.Fixed(button, 16.0f, 16.0f); // its icon
+		let text = NodeFixtures.Box(button, scope (s) =>
+			{
+				s.Grow = 1.0f;
+				s.Width = LayoutLength.Px(40.0f);
+				s.Height = LayoutLength.Px(16.0f);
+			});
+		bed.Layout();
+		Test.Assert(Near(button.Size.X, 56.0f));
+		Test.Assert(Near(button.Position.X, (300.0f - 56.0f) * 0.5f));
+		Test.Assert(Near(text.Size.X, 40.0f));
+
+		// Stretched across the column, it is the column's width and its text grows into it.
+		column.EditLayoutStyle(scope (s) => { s.AlignItems = .Stretch; });
+		bed.Layout();
+		Test.Assert(Near(button.Size.X, 300.0f));
+		Test.Assert(Near(text.Size.X, 284.0f));
+	}
+
+	[Test]
+	public static void AScrollerInAColumnHasNoAutomaticMinimumOnTheAxisItScrollsItsContentScrollsInsideIt()
+	{
+		// The model first: the view unregisters from it when the tree lets the view go.
+		StringView[200] rows = .();
+		for (int i = 0; i < rows.Count; ++i)
+			rows[i] = "row";
+		let model = scope StringListModel(rows);
+		let bed = scope Bed();
+		let column = NodeFixtures.Box(bed.Root, scope (s) =>
+			{
+				s.Direction = .Column;
+				s.Width = LayoutLength.Px(200.0f);
+				s.Height = LayoutLength.Px(200.0f);
+			});
+		// A virtualised list whose rows are all one height: it realises the rows its height shows.
+		let list = new ListView();
+		list.EditLayoutStyle(scope (s) => { s.Grow = 1.0f; });
+		list.RowHeight = 20.0f;
+		column.AddChild(list);
+		list.ReleaseRef(); // the tree's reference keeps it
+		list.Model = model;
+		for (int pass = 0; pass < 5; ++pass)
+		{
+			bed.Layout();
+			list.RequestLayout(); // again, as a frame's new line does
+		}
+		bed.Layout();
+		Test.Assert(Near(list.Size.Y, 200.0f)); // not the rows it realised, nor all of them
+		Test.Assert(Near(list.ScrollRange.Y, 200.0f * 20.0f - 200.0f));
+	}
 }

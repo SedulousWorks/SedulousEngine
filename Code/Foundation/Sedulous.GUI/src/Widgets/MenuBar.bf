@@ -72,16 +72,28 @@ class MenuBar : UIWidget
 		return true;
 	}
 
-	public void SetBarHeight(float height)
+	/// Its height: a sheet sets it as `bar-height` (an editor's compact bar, a game's large one).
+	[GuiProperty("bar-height"), Scriptable]
+	public float BarHeight
 	{
-		mBarHeight = Math.Max(1.0f, height);
-		Relayout();
+		get => mBarHeight;
+		set
+		{
+			mBarHeight = Math.Max(1.0f, value);
+			Relayout();
+		}
 	}
 
-	public void SetItemPadding(float padding)
+	/// Each button's padding either side of its text: a sheet sets it as `item-padding`.
+	[GuiProperty("item-padding"), Scriptable]
+	public float ItemPadding
 	{
-		mHPad = Math.Max(0.0f, padding);
-		Relayout();
+		get => mHPad;
+		set
+		{
+			mHPad = Math.Max(0.0f, value);
+			Relayout();
+		}
 	}
 
 	/// Adds a top-level menu with its button label; returns the (empty) Menu to populate.

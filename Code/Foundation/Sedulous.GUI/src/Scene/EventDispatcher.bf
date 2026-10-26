@@ -523,11 +523,14 @@ class EventDispatcher
 
 	public bool InjectMouseWheel(Float2 position, Float2 delta, uint32 modifiers = 0)
 	{
-		let hit = HitTest(position);
+		var hit = HitTest(position);
 		// Up from the node under the pointer: a scroller takes it, one at its end leaves it to the
-		// one around it.
+		// one around it. A disabled control takes no wheel but does not stop it: it starts at the
+		// nearest enabled node up from it (a list of cards, some disabled, scrolls).
+		while ((hit != null) && !hit.IsTreeEnabled)
+			hit = hit.Parent;
 		bool used = false;
-		if ((hit != null) && hit.IsTreeEnabled)
+		if (hit != null)
 		{
 			let e = scope WheelEvent(hit, position, delta, modifiers);
 			used = hit.RouteEvent(e);
@@ -1306,12 +1309,22 @@ class EventDispatcher
 				e.Size = popup.Measure(LayoutConstraints());
 			// Its sides and alignment in the anchor's direction, else its own (its owner's).
 			let rightToLeft = (e.Options.Anchor != null) ? e.Options.Anchor.IsRightToLeft : popup.IsRightToLeft;
-			var placed = PlacePopup(anchor, e.Size, bounds, e.Options.Placement, rightToLeft);
-			// On the device grid, as its arrange puts it, so the two agree.
+			var placement = e.Options.Placement;
+			if (placement.AlignContent)
+			{
+				// By its content's edge, its padding and border as styled now (not when it opened).
+				let chrome = popup.Chrome;
+				let along = (placement.Side == .Below) || (placement.Side == .Above);
+				placement.Shift -= along ? (rightToLeft ? chrome.Right : chrome.Left) : chrome.Top;
+			}
+			var placed = PlacePopup(anchor, e.Size, bounds, placement, rightToLeft);
+			// On the device grid, as its arrange puts it, so the two agree: its near edge down and
+			// its far edge up, so the grid never makes it smaller than it measured (a menu a
+			// fraction short of its rows would scroll).
 			let scale = Math.Max(popup.PixelScale, 0.01f);
-			placed.Size = .(EventDispatcherDetail.Snap(placed.Position.X + placed.Size.X, scale) - EventDispatcherDetail.Snap(placed.Position.X, scale),
-				EventDispatcherDetail.Snap(placed.Position.Y + placed.Size.Y, scale) - EventDispatcherDetail.Snap(placed.Position.Y, scale));
-			placed.Position = .(EventDispatcherDetail.Snap(placed.Position.X, scale), EventDispatcherDetail.Snap(placed.Position.Y, scale));
+			placed.Size = .(EventDispatcherDetail.SnapFar(placed.Position.X + placed.Size.X, scale) - EventDispatcherDetail.SnapNear(placed.Position.X, scale),
+				EventDispatcherDetail.SnapFar(placed.Position.Y + placed.Size.Y, scale) - EventDispatcherDetail.SnapNear(placed.Position.Y, scale));
+			placed.Position = .(EventDispatcherDetail.SnapNear(placed.Position.X, scale), EventDispatcherDetail.SnapNear(placed.Position.Y, scale));
 			if (e.Options.FitContent)
 			{
 				// Sized by what it holds: arranged, its style left auto, so the next measure follows
@@ -2521,7 +2534,9 @@ class EventDispatcher
 	}
 
 	// A drag's tick: the scroller under the pointer near its edge scrolls (the innermost that can
-	// move that way), and a drag resting on a node a moment opens it.
+	// move that way, and only one the drag can land in: the drop target is it or inside it, so a
+	// panel dragged to dock past a list does not scroll the list), and a drag resting on a node a
+	// moment opens it.
 	private void TickDrag(float seconds)
 	{
 		if ((mDragOver != this) || mDragOutside)
@@ -2530,7 +2545,7 @@ class EventDispatcher
 		bool moved = false;
 		for (var n = hit; (n != null) && !moved; n = n.Parent)
 		{
-			if (!n.IsScrollContainer)
+			if (!n.IsScrollContainer || !IsInSubtree(mDropTarget, n))
 				continue;
 			let p = n.ConvertToNodeSpace(mMousePos);
 			let size = n.Size;
@@ -3276,8 +3291,12 @@ internal static class EventDispatcherDetail
 		return (x > 0) && ((y == 0) || (x < y));
 	}
 
-	/// `v` on the device grid `scale` makes.
-	public static float Snap(float v, float scale) => Round(v * scale) / scale;
+	/// `v` on the device grid `scale` makes, rounded down: a popup's near edge (the 0.001 keeps
+	/// a value a hair under a grid line on it).
+	public static float SnapNear(float v, float scale) => Floor(v * scale + 0.001f) / scale;
+
+	/// `v` on the device grid `scale` makes, rounded up: a popup's far edge.
+	public static float SnapFar(float v, float scale) => Ceil(v * scale - 0.001f) / scale;
 
 	public static PopupPlacement Placement(PopupSide side, PopupAlign align, float gap, bool shrink)
 	{

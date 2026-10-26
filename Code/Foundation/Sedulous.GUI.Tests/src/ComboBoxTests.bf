@@ -199,4 +199,27 @@ class ComboBoxTests
 		combo.SelectedIndex = 0;
 		Test.Assert(changes == 1); // code's change is no user's
 	}
+
+	[Test]
+	public static void TheDropdownIsAsTallAsItsRowsWithItsOwnPaddingAndBorderSoItDoesNotScroll()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let cb = MakeCombo(root);
+		defer cb.ReleaseRef();
+		root.UpdateLayout();
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, "combobox > listbox { padding: 4px; border: 1px solid #888888; }");
+		let d = root.EventDispatcher;
+		d.InjectMouseDown(.(10.0f, 10.0f), .Left);
+		d.InjectMouseUp(.(10.0f, 10.0f), .Left);
+		Test.Assert(cb.IsOpen);
+		styles.ApplyTree(root);
+		root.UpdateLayout();
+		let list = cb.Dropdown;
+		Test.Assert(list != null);
+		let rows = 3.0f * list.ItemHeight;
+		Test.Assert(Near(list.Size.X, 120.0f));
+		Test.Assert(Near(list.Size.Y, rows + 10.0f)); // its rows, 4 + 1 above and below
+	}
 }

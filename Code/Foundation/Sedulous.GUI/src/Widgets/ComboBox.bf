@@ -328,14 +328,23 @@ class ComboBox : UIWidget
 		if ((dispatcher == null) || mItems.IsEmpty)
 			return;
 		BuildDropdown();
-		let h = Math.Min((float)mItems.Count * mItemHeight, mDropdownMaxHeight);
-		mDropdown.Size = .(Size.X, h);
+		// As wide as the combo box; as tall as its rows with its own padding and border (a sheet's
+		// popup surface), measured by the layout rather than pinned, up to the most it shows.
+		let width = Size.X;
+		let most = mDropdownMaxHeight;
+		mDropdown.EditLayoutStyle(scope (s) =>
+			{
+				s.Width = LayoutLength.Px(width);
+				s.Height = LayoutLength();
+				s.MaxHeight = LayoutLength.Px(most);
+			});
 		if (mSelected >= 0)
 			mDropdown.SelectedIndex = mSelected; // the current item lit, in view
 		let options = new PopupOptions();
 		options.Anchor = this;
 		options.Placement.Side = .Below;
 		options.TakesFocus = true; // the list: the arrows move, Return picks; focus back on close
+		options.FitContent = true; // measured each pass: its rows, its padding and border
 		dispatcher.OpenPopup(this, mDropdown, options);
 	}
 

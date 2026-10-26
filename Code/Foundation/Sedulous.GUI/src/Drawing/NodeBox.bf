@@ -317,6 +317,21 @@ class NodeBox
 		{
 			if (shadow.Inset)
 				continue;
+			// A sharp ring round the box (a focus ring: spread, no blur, no offset) is only the band
+			// outside the box, as CSS clips an outer shadow to it: a box with no background (a field
+			// inside a frame) shows what is behind it, not the ring's colour. Stroked along the
+			// band's middle, so nothing is painted inside.
+			if ((shadow.Blur <= 0.0f) && (shadow.Offset.X == 0.0f) && (shadow.Offset.Y == 0.0f) && (shadow.Spread > 0.0f))
+			{
+				let half = shadow.Spread * 0.5f;
+				let middle = Rectangle(rect.X - half, rect.Y - half, rect.Width + shadow.Spread, rect.Height + shadow.Spread);
+				let band = scope PathBuilder();
+				ShapeBuilder.BuildRoundedRect(middle, Grown(Radii, half), band);
+				let path = band.ToPath();
+				canvas.StrokePath(path, shadow.ShadowColor, StrokeStyle(shadow.Spread, .Butt, .Round));
+				delete path;
+				continue;
+			}
 			let grown = Rectangle(rect.X + shadow.Offset.X - shadow.Spread, rect.Y + shadow.Offset.Y - shadow.Spread,
 				rect.Width + 2.0f * shadow.Spread, rect.Height + 2.0f * shadow.Spread);
 			canvas.FillBoxShadow(grown, Grown(Radii, shadow.Spread), shadow.Blur, shadow.ShadowColor, false);

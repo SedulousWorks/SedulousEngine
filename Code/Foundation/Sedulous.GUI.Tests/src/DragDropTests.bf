@@ -469,6 +469,35 @@ class DragDropTests
 	}
 
 	[Test]
+	public static void ADragThatCannotLandInAScrollerPassesItsEdgeWithoutScrollingIt()
+	{
+		// A panel dragged to dock: the list under the way takes nothing of it.
+		let s = scope Scene();
+		let list = Box(s.Root, 200.0f, 120.0f, 150.0f, 100.0f);
+		list.EditLayoutStyle(scope (st) => { st.OverflowY = .Auto; });
+		for (int i = 0; i < 20; ++i)
+		{
+			let row = new Panel();
+			row.EditLayoutStyle(scope (st) =>
+				{
+					st.Height = LayoutLength.Px(30.0f);
+					st.Shrink = 0.0f;
+				});
+			list.AddChild(row);
+			row.ReleaseRef();
+		}
+		s.Root.UpdateLayout();
+		s.DragTo(.(270.0f, 170.0f));
+		s.D.InjectMouseMove(.(270.0f, 219.0f)); // at its bottom edge
+		s.D.Tick(0.1f);
+		s.D.Tick(0.1f);
+		Test.Assert(s.D.DropTarget == null);
+		Test.Assert(Near(list.ScrollOffset.Y, 0.0f));
+		s.D.CancelDrag();
+		s.D.InjectMouseUp(.(270.0f, 219.0f), .Left);
+	}
+
+	[Test]
 	public static void FilesTheOSDropsGoThroughTheSamePathAsACopyOfTheirPathsNoneTakingThemTheGUIsHandlerHasThem()
 	{
 		let s = scope Scene();

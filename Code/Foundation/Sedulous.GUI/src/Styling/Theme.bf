@@ -51,6 +51,9 @@ static class Theme
 		                        padding: var(--button-padding, var(--space-l)); text-align: center; transition: opacity var(--motion-fast); }
 		            button:hover  { opacity: 0.9; }
 		            button:active { opacity: 0.78; }
+		            /* What cannot be used says so: a disabled control fades, as a disabled menu item does. */
+		            button:disabled, checkbox:disabled, radio:disabled, switch:disabled, textfield:disabled, textarea:disabled,
+		            numberfield:disabled, combobox:disabled, slider:disabled { opacity: var(--disabled-opacity); }
 		            tab           { background-color: var(--tab-background, var(--control-raised)); color: var(--tab-text, var(--text-dim));
 		                            padding: var(--space-m) 10; column-gap: var(--space-m); text-align: start; }
 		            tab:hover     { background-color: var(--tab-hover-background, var(--control-hover)); }
@@ -97,6 +100,7 @@ static class Theme
 		            .dialogbutton:hover { opacity: 0.9; }
 		            menu       { background-color: var(--menu-background, var(--chrome)); }
 		            menuitem::highlight, menusubmenu::highlight { background-color: var(--menu-highlight, var(--selection)); }
+		            menuitem:disabled, menusubmenu:disabled { opacity: var(--disabled-opacity); } /* what cannot run says so */
 		            menuseparator::line { background-color: var(--menu-separator, var(--separator)); }
 		            splitter-handle { background-color: var(--splitter-handle, var(--separator)); }
 		            splitter-handle:hover, splitter-handle:active, splitter-handle:focus-visible
@@ -143,8 +147,10 @@ static class Theme
 		            /* The focus ring: where the keyboard is (a field shows it while it has the caret). */
 		            button:focus-visible, combobox:focus-visible, checkbox:focus-visible, radio:focus-visible,
 		            switch:focus-visible, tab:focus-visible, expanderheader:focus-visible, listbox:focus-visible,
-		            listview:focus-visible, treeview:focus-visible, tableview:focus-visible, editablelabel:focus-visible,
-		            menubar:focus-within { box-shadow: 0 0 0 var(--focus-width) var(--focus-ring); }
+		            listview:focus-visible, treeview:focus-visible, tableview:focus-visible, editablelabel:focus-visible
+		                { box-shadow: 0 0 0 var(--focus-width) var(--focus-ring); }
+		            /* A menu bar has no ring of its own: its focused button shows one when the keyboard got
+		               there (F10), and a click opening a menu shows none. */
 		            textfield:focus, textarea:focus, numberfield:focus { box-shadow: 0 0 0 var(--focus-width) var(--focus-ring); }
 		            checkbox::box  { border-color: var(--checkbox-box, var(--outline)); }
 		            checkbox::mark { background-color: var(--checkbox-mark, var(--accent-strong)); }

@@ -759,4 +759,147 @@ class MenuTests
 		RightClick(.(150.0f, 50.0f));
 		Test.Assert(menu.IsOpen);
 	}
+
+	[Test]
+	public static void ItsPaddingInsetsItsRowsAndItsSizeTakesThePaddingIn()
+	{
+		let menu = new Menu();
+		defer menu.ReleaseRef();
+		menu.SetWidth(140.0f);
+		menu.SetItemHeight(25.0f);
+		menu.Padding = .(4.0f, 6.0f, 4.0f, 6.0f);
+		let cut = menu.AddItem("Cut", new () => { });
+		let copy = menu.AddItem("Copy", new () => { });
+		Test.Assert(Near(menu.Size.X, 148.0f));
+		Test.Assert(Near(menu.Size.Y, 62.0f)); // 2 * 25 + 12
+		Test.Assert(Near(cut.Position.X, 4.0f));
+		Test.Assert(Near(cut.Position.Y, 6.0f));
+		Test.Assert(Near(cut.Size.X, 140.0f)); // a lit row inset from the edge
+		Test.Assert(Near(copy.Position.Y, 31.0f));
+	}
+
+	[Test]
+	public static void TheBuiltInThemeDimsAnItemThatCannotRun()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let menu = new Menu();
+		defer menu.ReleaseRef();
+		let undo = menu.AddItem("Undo", new () => { });
+		let redo = menu.AddItem("Redo", new () => { });
+		root.AddChild(menu);
+		redo.Enabled = false;
+		let styles = scope StyleManager();
+		let theme = scope StyleSheet();
+		CSSParser.Parse(Theme.DefaultThemeCSS, theme);
+		styles.UserAgentSheet = theme;
+		styles.ApplyTree(root);
+		Test.Assert(Near(undo.Alpha, 1.0f));
+		Test.Assert(Near(redo.Alpha, 0.45f));
+	}
+
+	[Test]
+	public static void APaddedMenusSubmenuOpensJustOutsideItItsFirstRowLevelWithItsItem()
+	{
+		let root = SceneFixtures.NewScene(600.0f, 600.0f);
+		defer root.ReleaseRef();
+		let anchor = new UIWidget();
+		defer anchor.ReleaseRef();
+		root.AddChild(anchor);
+		let d = root.EventDispatcher;
+
+		let menu = new Menu();
+		defer menu.ReleaseRef();
+		menu.SetWidth(160.0f);
+		menu.SetItemHeight(26.0f);
+		menu.Padding = .(5.0f);
+		menu.AddItem("Top", new () => { });
+		let sub = menu.AddSubMenu("More");
+		sub.Padding = .(5.0f);
+		sub.AddItem("Deep", new () => { });
+		menu.Open(anchor, .(50.0f, 50.0f));
+		// The "More" row: inside the padding, at y 50 + 5 + 26.
+		d.InjectMouseMove(.(60.0f, 50.0f + 5.0f + 26.0f + 13.0f));
+		Test.Assert(sub.IsOpen);
+		let at = sub.ConvertToRootSpace(.(0.0f, 0.0f));
+		Test.Assert(Near(at.X, 50.0f + 170.0f)); // the menu's outer edge (160 + 5 + 5), not inside it
+		Test.Assert(Near(at.Y, 50.0f + 5.0f + 26.0f - 5.0f)); // up by its own padding
+		// So its first row is level with the row that opened it.
+		Test.Assert(sub.ChildCount > 0);
+		Test.Assert(Near(at.Y + 5.0f, 50.0f + 5.0f + 26.0f));
+		// Its padding styled only after it opened (a sheet's first pass): placed by it then.
+		sub.Padding = .(8.0f);
+		root.UpdateLayout();
+		Test.Assert(Near(sub.ConvertToRootSpace(.(0.0f, 0.0f)).Y, 50.0f + 5.0f + 26.0f - 8.0f));
+		Test.Assert(!sub.Scrolls); // its rows all show: placed at its whole height
+		Test.Assert(Near(sub.Size.Y, 26.0f + 16.0f));
+	}
+
+	[Test]
+	public static void ASubmenuStyledByASheetAfterItOpensShowsAllItsRows()
+	{
+		let root = SceneFixtures.NewScene(600.0f, 600.0f);
+		defer root.ReleaseRef();
+		let anchor = new UIWidget();
+		defer anchor.ReleaseRef();
+		root.AddChild(anchor);
+		let d = root.EventDispatcher;
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, "menu { padding: 4px; border: 1px solid #808080; }");
+
+		let menu = new Menu();
+		defer menu.ReleaseRef();
+		menu.SetWidth(160.0f);
+		menu.SetItemHeight(26.0f);
+		menu.AddItem("Top", new () => { });
+		let sub = menu.AddSubMenu("More");
+		sub.AddItem("One", new () => { });
+		sub.AddItem("Two", new () => { });
+		sub.AddItem("Three", new () => { });
+		menu.Open(anchor, .(50.0f, 50.0f));
+		styles.ApplyTree(root);
+		root.UpdateLayout();
+		d.InjectMouseMove(.(60.0f, 50.0f + 5.0f + 26.0f + 13.0f));
+		Test.Assert(sub.IsOpen);
+		for (int pass = 0; pass < 3; ++pass)
+		{
+			styles.ApplyTree(root);
+			root.UpdateLayout();
+		}
+		Test.Assert(Near(sub.Padding.Top, 4.0f));
+		Test.Assert(!sub.Scrolls);
+		Test.Assert(Near(sub.Size.Y, 3.0f * 26.0f + 10.0f));
+	}
+
+	[Test]
+	public static void ASubmenuWithAFractionalPaddingLinedUpByItsContentStillShowsAllItsRows()
+	{
+		// A compact density's padding (3.4 + a 1 px border) moves it a fraction up; the device grid
+		// must not take that fraction off its height.
+		let root = SceneFixtures.NewScene(600.0f, 600.0f);
+		defer root.ReleaseRef();
+		let anchor = new UIWidget();
+		defer anchor.ReleaseRef();
+		root.AddChild(anchor);
+		let d = root.EventDispatcher;
+		let menu = new Menu();
+		defer menu.ReleaseRef();
+		menu.SetWidth(160.0f);
+		menu.SetItemHeight(26.0f);
+		menu.Padding = .(4.4f);
+		menu.AddItem("Top", new () => { });
+		let sub = menu.AddSubMenu("More");
+		sub.Padding = .(4.4f);
+		StringView[4] names = .("One", "Two", "Three", "Four");
+		for (let name in names)
+			sub.AddItem(name, new () => { });
+		menu.Open(anchor, .(50.0f, 50.0f));
+		root.UpdateLayout();
+		d.InjectMouseMove(.(60.0f, 50.0f + 4.4f + 26.0f + 13.0f));
+		Test.Assert(sub.IsOpen);
+		for (int pass = 0; pass < 3; ++pass)
+			root.UpdateLayout();
+		Test.Assert(!sub.Scrolls);
+		Test.Assert(sub.Size.Y >= 4.0f * 26.0f + 8.8f - 0.001f);
+	}
 }

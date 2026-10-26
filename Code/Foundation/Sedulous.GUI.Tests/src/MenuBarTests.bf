@@ -16,8 +16,8 @@ class MenuBarBed
 
 	public this()
 	{
-		Bar.SetBarHeight(28.0f);
-		Bar.SetItemPadding(12.0f); // each button is 24px wide with no font
+		Bar.BarHeight = 28.0f;
+		Bar.ItemPadding = 12.0f; // each button is 24px wide with no font
 		Root.AddChild(Bar);
 		FileMenu = Bar.AddMenu("File");
 		FileMenu.AddItem("Open", new () => { });
@@ -122,5 +122,35 @@ class MenuBarTests
 		Test.Assert(bed.Bar.CurrentMenu == null);
 		Test.Assert(!bed.FileMenu.IsOpen);
 		Test.Assert(bed.FileMenu.Parent == null);
+	}
+
+	[Test]
+	public static void ASheetSetsItsHeightAndItsButtonsPadding()
+	{
+		let bed = scope MenuBarBed();
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, "menubar { bar-height: calc(20px + 2px); item-padding: 8px; }");
+		styles.ApplyTree(bed.Root);
+		Test.Assert(Near(bed.Bar.BarHeight, 22.0f));
+		Test.Assert(Near(bed.Bar.Size.Y, 22.0f));
+		Test.Assert(Near(bed.Bar.ButtonAt(0).Size.Y, 22.0f));
+		Test.Assert(Near(bed.Bar.ButtonAt(0).Size.X, 16.0f)); // 2 * padding, no font
+	}
+
+	[Test]
+	public static void TheBuiltInThemeRingsNoMenuBarAClickOpeningAMenuShowsNoRing()
+	{
+		let bed = scope MenuBarBed();
+		let styles = scope StyleManager();
+		let theme = scope StyleSheet();
+		CSSParser.Parse(Theme.DefaultThemeCSS, theme);
+		styles.UserAgentSheet = theme;
+		// A click on the first button: it takes the focus and opens its menu.
+		bed.D.InjectMouseDown(.(12.0f, 14.0f), .Left);
+		bed.D.InjectMouseUp(.(12.0f, 14.0f), .Left);
+		Test.Assert(bed.FileMenu.IsOpen);
+		Test.Assert(bed.Bar.IsFocusWithin); // what the old ring keyed on
+		styles.ApplyTree(bed.Root);
+		Test.Assert(bed.Bar.Box.Shadows.IsEmpty);
 	}
 }

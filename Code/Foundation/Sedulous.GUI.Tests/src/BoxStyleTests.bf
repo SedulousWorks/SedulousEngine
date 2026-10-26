@@ -240,4 +240,33 @@ class BoxStyleTests
 			maxU = Math.Max(maxU, v.TexCoord.X);
 		Test.Assert(Math.Abs(maxU - 4.0f) < 0.05f * (1.0f + 4.0f)); // Approx(4).epsilon(0.05)
 	}
+
+	[Test]
+	public static void ASharpOuterRingPaintsOnlyOutsideTheBoxSoABoxWithNoBackgroundShowsWhatIsBehindIt()
+	{
+		// A focus ring on a field with no background (a search field inside its frame).
+		let w = Styled("box { box-shadow: 0 0 0 2px #ff00ff; }");
+		defer w.ReleaseRef();
+		let canvas = scope VGContext();
+		let dc = scope DrawContext(canvas);
+		w.Draw(dc);
+		let batch = canvas.GetBatch();
+		int ringTriangles = 0;
+		int inside = 0;
+		for (int i = 0; i + 2 < batch.Indices.Count; i += 3)
+		{
+			let a = batch.Vertices[(int)batch.Indices[i]];
+			let b = batch.Vertices[(int)batch.Indices[i + 1]];
+			let c = batch.Vertices[(int)batch.Indices[i + 2]];
+			if ((a.Color.R != 1.0f) || (a.Color.G != 0.0f) || (a.Color.B != 1.0f))
+				continue;
+			ringTriangles++;
+			let centre = Float2((a.Position.X + b.Position.X + c.Position.X) / 3.0f, (a.Position.Y + b.Position.Y + c.Position.Y) / 3.0f);
+			// Inside the 100 x 50 box by more than the anti-aliasing fringe.
+			if ((centre.X > 1.0f) && (centre.X < 99.0f) && (centre.Y > 1.0f) && (centre.Y < 49.0f))
+				inside++;
+		}
+		Test.Assert(ringTriangles > 0);
+		Test.Assert(inside == 0);
+	}
 }

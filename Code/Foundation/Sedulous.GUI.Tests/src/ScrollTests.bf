@@ -315,6 +315,19 @@ class ScrollTests
 	}
 
 	[Test]
+	public static void TheWheelOverADisabledControlInsideScrollsItsScrollerStepAfterStep()
+	{
+		let s = scope Scroller();
+		s.WidenRows(); // under the pointer, so the wheel starts at a disabled row
+		for (let row in s.Rows)
+			row.Enabled = false; // a list of cards, these disabled
+		Test.Assert(s.D.InjectMouseWheel(.(20.0f, 20.0f), .(0.0f, -1.0f)));
+		Test.Assert(Near(s.View.ScrollOffset.Y, s.View.ScrollStep));
+		Test.Assert(s.D.InjectMouseWheel(.(20.0f, 20.0f), .(0.0f, -1.0f)));
+		Test.Assert(Near(s.View.ScrollOffset.Y, 2.0f * s.View.ScrollStep));
+	}
+
+	[Test]
 	public static void OneWhoseKeysAreItsOwnDoesNotScrollByThemTheWheelStillDoes()
 	{
 		let s = scope Scroller();

@@ -423,4 +423,36 @@ class ThemeTests
 		mgr.ApplyTree(root);
 		Test.Assert(Near(item.Box.BackgroundColor.R, 1.0f));
 	}
+
+	[Test]
+	public static void ADisabledControlFadesAnEnabledOneBesideItDoesNot()
+	{
+		// Only menu items and tool buttons faded: a disabled button, check or field looked usable.
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let button = new Button();
+		defer button.ReleaseRef();
+		let check = new CheckBox();
+		defer check.ReleaseRef();
+		let field = new TextField();
+		defer field.ReleaseRef();
+		let enabled = new Button();
+		defer enabled.ReleaseRef();
+		button.Enabled = false;
+		check.Enabled = false;
+		field.Enabled = false;
+		root.AddChild(button);
+		root.AddChild(check);
+		root.AddChild(field);
+		root.AddChild(enabled);
+
+		let mgr = scope StyleManager();
+		WidgetFixtures.UseSheet(mgr, Theme.DefaultThemeCSS);
+		mgr.ApplyTree(root);
+
+		Test.Assert(Near(button.Alpha, 0.45f));
+		Test.Assert(Near(check.Alpha, 0.45f));
+		Test.Assert(Near(field.Alpha, 0.45f));
+		Test.Assert(Near(enabled.Alpha, 1.0f));
+	}
 }

@@ -308,6 +308,7 @@ internal static class LayoutImplDetail
 				items[i].Frozen = false;
 				used += items[i].Base + items[i].MarginMain;
 			}
+			float grown = 0.0f; // the free space the line's items grew into
 			if (mainDefinite)
 			{
 				let free = mainAvail - used;
@@ -320,6 +321,7 @@ internal static class LayoutImplDetail
 					{
 						for (int i = line.Start; i < line.Start + line.Count; i++)
 							items[i].Main += free * items[i].Node.LayoutStyle.Grow / grow;
+						grown = free;
 					}
 				}
 				else if (free < 0.0f)
@@ -352,10 +354,15 @@ internal static class LayoutImplDetail
 							{
 								let n = items[i].Node;
 								let chrome = n.Chrome;
-								let content = n.MeasureContent(row ? Float2(0.0f, Less(crossAvail, items[i].MarginCross + chrome.TotalVertical))
+								let content = n.MeasureContentOnGrid(row ? Float2(0.0f, Less(crossAvail, items[i].MarginCross + chrome.TotalVertical))
 									: Float2(Less(crossAvail, items[i].MarginCross + chrome.TotalHorizontal), 0.0f));
 								var minContent = row ? content.X + chrome.TotalHorizontal : content.Y + chrome.TotalVertical;
 								let ns = n.LayoutStyle;
+								// A scroll container's on an axis it scrolls is none (as CSS's): its
+								// content scrolls inside it rather than sizing it, or a virtualised
+								// list grows with the rows it realises.
+								if (Scrolls(row ? ns.OverflowX : ns.OverflowY))
+									minContent = row ? chrome.TotalHorizontal : chrome.TotalVertical;
 								let specified = (row ? ns.Width : ns.Height).Resolve(BaseOf(mainAvail));
 								if (specified.HasValue)
 									minContent = Min(minContent, specified.Value);
@@ -409,7 +416,12 @@ internal static class LayoutImplDetail
 			}
 			line.Baseline = aboveBaseline;
 			line.Cross = Max(line.Cross, aboveBaseline + belowBaseline);
-			contentMain = Max(contentMain, lineMain);
+			// Measuring, the space along is a limit, not a size: the content is as long as its items
+			// before they grow (a button's text grows to fill the button, yet a button asked its size
+			// in a wide column is as wide as its text, not the column). Placing, it is the size the
+			// items were given. The items' depth is at their grown size either way, the size they
+			// get when the container fills the space.
+			contentMain = Max(contentMain, (f.Arrange || (grown <= 0.0f)) ? lineMain : Max(lineMain - grown, Min(used, lineMain)));
 			lines[li] = line;
 		}
 		// One line is as deep as the container, once it is laid out at its size. Measuring, the
@@ -971,7 +983,7 @@ extension Node
 					availH = cUnbounded;
 				else if (s.Height.Kind == .MinContent)
 					availH = cv;
-				let content = MeasureContent(.(LayoutImplDetail.Less(availW, ch), LayoutImplDetail.Less(availH, cv)));
+				let content = MeasureContentOnGrid(.(LayoutImplDetail.Less(availW, ch), LayoutImplDetail.Less(availH, cv)));
 				size.X = w.HasValue ? w.Value : content.X + ch;
 				size.Y = h.HasValue ? h.Value : content.Y + cv;
 			}
@@ -1000,6 +1012,22 @@ extension Node
 		}
 		mMeasures[slot] = .(constraints, size);
 		return size;
+	}
+
+	/// MeasureContent rounded up to the device grid its tree lays out on. A box's edges round to the
+	/// grid on their own (Arrange), so a content size off it can lose up to a device pixel there:
+	/// text measured 29.06 wide, laid out in 29, would end in an ellipsis. Up on the grid, a box
+	/// placed on it keeps all of its content.
+	public Float2 MeasureContentOnGrid(Float2 available)
+	{
+		let content = MeasureContent(available);
+		var top = this;
+		while (top.mParent != null)
+			top = top.mParent;
+		let s = top.TopPixelScale;
+		// A hair over the grid is float noise, not a pixel more.
+		float Up(float v) => (v < cUnbounded) ? Ceil(v * s - 1.0e-3f) / s : v;
+		return .(Up(content.X), Up(content.Y));
 	}
 
 	/// The size of what is inside the chrome, given the space `available` there (cUnbounded on an

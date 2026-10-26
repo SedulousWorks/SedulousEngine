@@ -1094,7 +1094,9 @@ class Menu : UIWidget
 		for (let row in mRows)
 			e.Content += row.RowHeight;
 		let root = RootNode;
-		let room = ((root != null) && (root != this) && (root.Size.Y > 0.0f)) ? root.Size.Y - 2.0f * cScreenMargin : 0.0f;
+		let room = ((root != null) && (root != this) && (root.Size.Y > 0.0f))
+			? root.Size.Y - 2.0f * cScreenMargin - Chrome.TotalVertical
+			: 0.0f;
 		e.Scrolls = (room > 2.0f * cArrowHeight + mItemHeight) && (e.Content > room);
 		e.Height = e.Scrolls ? room : e.Content;
 		return e;
@@ -1103,21 +1105,24 @@ class Menu : UIWidget
 	private void Relayout()
 	{
 		let extent = MeasureItems();
+		// Its padding and border (its chrome): its rows and arrows inside them, its size theirs
+		// added (a sheet's padding insets a lit row from the menu's rounded edge).
+		let inset = Chrome;
 		// Being placed (a popup shrunk to the room beside its anchor), it keeps the height it was
 		// given and scrolls within it; else the height it measures.
 		let placed = IsBeingPlaced && (Size.Y > 0.0f);
 		let width = extent.Width;
 		let content = extent.Content;
-		let height = placed ? Math.Min(Size.Y, extent.Content) : extent.Height;
+		let height = placed ? Math.Min(Math.Max(0.0f, Size.Y - inset.TotalVertical), extent.Content) : extent.Height;
 		mScrolls = placed ? ((content > height + 0.5f) && (height > 2.0f * cArrowHeight + mItemHeight)) : extent.Scrolls;
 		let top = mScrolls ? cArrowHeight : 0.0f;
 		let view = height - 2.0f * top;
 		mScroll = mScrolls ? Math.Clamp(mScroll, 0.0f, Math.Max(0.0f, content - view)) : 0.0f;
-		var y = top - mScroll;
+		var y = inset.Top + top - mScroll;
 		for (let row in mRows)
 		{
 			let h = row.RowHeight;
-			row.Position = .(0.0f, y);
+			row.Position = .(inset.Left, y);
 			row.Size = .(width, h);
 			y += h;
 		}
@@ -1138,18 +1143,20 @@ class Menu : UIWidget
 				arrow.Displayed = mScrolls;
 				arrow.SetColors(mPanelColor, TextColor);
 			}
-			mScrollUp.Position = .(0.0f, 0.0f);
+			mScrollUp.Position = .(inset.Left, inset.Top);
 			mScrollUp.Size = .(width, cArrowHeight);
 			mScrollUp.Live = mScroll > 0.0f;
-			mScrollDown.Position = .(0.0f, height - cArrowHeight);
+			mScrollDown.Position = .(inset.Left, inset.Top + height - cArrowHeight);
 			mScrollDown.Size = .(width, cArrowHeight);
 			mScrollDown.Live = mScroll < content - view;
 		}
 		ClipChildren = mScrolls;
 		// Sized by its items without pinning the size (as Size's setter does): a popup that fits
 		// its content measures it again each pass, and a pinned size would hold a stale height.
-		if ((Size.X != width) || (Size.Y != height))
-			Arrange(.(Position.X, Position.Y, width, height));
+		let outerWidth = width + inset.TotalHorizontal;
+		let outerHeight = height + inset.TotalVertical;
+		if ((Size.X != outerWidth) || (Size.Y != outerHeight))
+			Arrange(.(Position.X, Position.Y, outerWidth, outerHeight));
 	}
 
 	// Scrolls so `row` shows whole between the arrows (a key moved to it).
@@ -1164,7 +1171,7 @@ class Menu : UIWidget
 				break;
 			y += r.RowHeight;
 		}
-		let view = Size.Y - 2.0f * cArrowHeight;
+		let view = Size.Y - Chrome.TotalVertical - 2.0f * cArrowHeight;
 		if (y < mScroll)
 			mScroll = y;
 		else if (y + row.RowHeight > mScroll + view)
@@ -1211,9 +1218,14 @@ class Menu : UIWidget
 				sub.FocusFirstItem();
 			return;
 		}
+		// Just outside this menu (past its padding and border on that side, which hold the row
+		// in), its first row level with the row (lined up by its content).
+		let inset = Chrome;
 		let options = new PopupOptions();
 		options.Anchor = item;
 		options.Placement.Side = .InlineEnd;
+		options.Placement.Gap = item.IsRightToLeft ? inset.Left : inset.Right;
+		options.Placement.AlignContent = true;
 		options.TakesFocus = true;
 		sub.OpenAs(item, options);
 		if (fromKeys)
