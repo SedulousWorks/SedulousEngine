@@ -15,8 +15,9 @@ namespace Sedulous.Engine.GUI.Tests;
 /// The subsystem's core: the screen tier (the screen stack under the overlay layer) and the scene
 /// tier (a root per scene); the game's sheets in order over the theme, restyled when one is cooked
 /// again; the fonts; both tiers drawn into the engine's overlay passes (the Null device, the
-/// shaders from the data root), the screen's placed at the game's resolution and orientation, a
-/// tier per run; the overlay layer; an editor's preview.
+/// shaders from the data root), the screen's placed at the game's resolution and orientation (its
+/// pointer taken to the tier's pixels), a tier per run; the overlay layer, modal while it shows;
+/// an editor's preview.
 class GuiSubsystemTests
 {
 	private static bool Near(float actual, float expected, float tolerance = 0.001f) =>
@@ -262,10 +263,8 @@ class GuiSubsystemTests
 		Test.Assert(Near(place.Transform.M[0][0], 0.0f), "x runs down the target");
 	}
 
-	/// Raptor's case also takes the pointer in render space to the tier's pixels; that part waits
-	/// for the input pump (E4).
 	[Test]
-	public static void AtARenderResolutionTheScreenTierLaysOutAtItAndDrawsFitted()
+	public static void AtARenderResolutionTheScreenTierLaysOutAtItDrawsFittedAndTakesThePointerInRenderSpace()
 	{
 		let device = scope NullDevice();
 		let engine = scope GuiTestEngine();
@@ -296,6 +295,15 @@ class GuiSubsystemTests
 		engine.Gui.Render(pass, view);
 		Test.Assert(device.Counters().Draws > draws);
 		pass.End();
+
+		// The pointer arrives in render space (the game's fitted source): the tier takes it to its
+		// pixels, against the target it last drew into.
+		engine.Devices.FakeMouse.X = 50.0f;
+		engine.Devices.FakeMouse.Y = 30.0f;
+		engine.Frame();
+		Test.Assert(engine.Gui.ActiveInputRoot === root);
+		Test.Assert(Near(root.EventDispatcher.MousePosition.X, 100.0f));
+		Test.Assert(Near(root.EventDispatcher.MousePosition.Y, 60.0f));
 
 		engine.Gui.SetScreenResolution(0, 0, .Letterbox); // back to the target's own size
 		Test.Assert(!engine.Gui.HasScreenResolution);
@@ -356,14 +364,22 @@ class GuiSubsystemTests
 		Test.Assert(engine.Gui.RunScreenCount == 0);
 	}
 
-	/// Raptor's case also checks the layer is modal while a document shows (input goes to the
-	/// screen tier, not the scene's GUI under the pointer) and that a passive one is not; that part
-	/// waits for the input pump (E4).
 	[Test]
-	public static void ADocumentOnTheOverlayLayerShowsAboveEveryScreenUntilItIsTakenOff()
+	public static void ADocumentOnTheOverlayLayerShowsAboveEveryScreenModalUntilItIsTakenOff()
 	{
 		let engine = scope GuiTestEngine();
 		engine.Gui.ScreenRoot.ViewportSize = .(800.0f, 600.0f);
+		let level = engine.Scenes.CreateScene("level");
+		let hud = engine.Gui.SceneRootFor(level);
+		Test.Assert(hud != null);
+		hud.ViewportSize = .(800.0f, 600.0f);
+		let fire = GuiTestEngine.MakeButton("fire", .(20.0f, 20.0f));
+		hud.AddChild(fire);
+		fire.ReleaseRef(); // the scene's GUI holds it
+		engine.Devices.FakeMouse.X = 50.0f;
+		engine.Devices.FakeMouse.Y = 30.0f;
+		engine.Frame();
+		Test.Assert(engine.Gui.ActiveInputRoot === hud);
 
 		let loading = GuiTestEngine.MakeDocument("<Panel id=\"loading\"/>");
 		defer delete loading;
@@ -373,12 +389,14 @@ class GuiSubsystemTests
 		Test.Assert(engine.Gui.OverlayCount == 1);
 		Test.Assert(engine.Gui.OverlayLayer.FindElement("loading") != null);
 		engine.Frame();
+		Test.Assert(engine.Gui.ActiveInputRoot === engine.Gui.ScreenRoot, "modal while it shows");
 
 		engine.Gui.RemoveOverlay(splash);
 		Test.Assert(engine.Gui.OverlayCount == 0);
 		engine.Frame();
+		Test.Assert(engine.Gui.ActiveInputRoot === hud);
 
-		// A passive overlay (a watermark: pointer-events none on its root).
+		// A passive overlay (a watermark: pointer-events none on its root) takes nothing.
 		let badgeDocument = GuiTestEngine.MakeDocument("<Panel pointer-events=\"none\"><Label text=\"badge\"/></Panel>");
 		defer delete badgeDocument;
 		let badge = engine.Gui.PushOverlay(badgeDocument);
@@ -386,11 +404,13 @@ class GuiSubsystemTests
 		defer { if (badge != null) badge.ReleaseRef(); }
 		Test.Assert(!badge.HitTestVisible);
 		engine.Frame();
+		Test.Assert(engine.Gui.ActiveInputRoot === hud);
 		engine.Gui.RemoveOverlay(badge);
 
 		let empty = GuiTestEngine.MakeDocument("");
 		defer delete empty;
 		Test.Assert(engine.Gui.PushOverlay(empty) == null, "nothing to build");
+		engine.Scenes.DestroyScene(level);
 	}
 
 	[Test]

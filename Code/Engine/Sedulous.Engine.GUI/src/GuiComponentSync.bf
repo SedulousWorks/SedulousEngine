@@ -88,7 +88,7 @@ extension GuiSubsystem
 			{
 				found.Root.EditLayoutStyle(scope (s) => { s.Kind = .Stack; }); // the content fills it
 			}
-			// E4: the root's bridge made here (MakeBridge).
+			found.Bridge = MakeBridge(found.Root);
 			mTextureRoots.Add(found);
 		}
 		found.Seen = true;
@@ -121,7 +121,7 @@ extension GuiSubsystem
 		{
 			if (mTextureRoots[i].Seen)
 				continue;
-			// E4: the active and press roots forgotten when they are this one's.
+			ForgetInputRoot(mTextureRoots[i].Root);
 			delete mTextureRoots[i];
 			mTextureRoots.RemoveAt(i);
 		}
@@ -254,7 +254,7 @@ extension GuiSubsystem
 	}
 
 	/// Each world panel's tree in line with its component, in a root of its own for its texture.
-	/// Its pointer (the ray, hover, click) is the input pump's (E4).
+	/// Its pointer (the ray, hover, click) is the input pump's (PanelUnderPointer).
 	private void SyncPanels(GuiSceneTier tier)
 	{
 		let panels = tier.Scene.GetSystem<GuiWorldPanelComponentManager>();
@@ -306,7 +306,7 @@ extension GuiSubsystem
 			});
 	}
 
-	/// Whether a scene's GUI shows anything: a canvas, or a billboard. Its draw (and E4's input
+	/// Whether a scene's GUI shows anything: a canvas, or a billboard. Its draw (and the input
 	/// with nothing under the pointer) passes it by otherwise.
 	private static bool HasContent(GuiSceneTier tier) =>
 		!tier.Canvases.IsEmpty || ((tier.Billboards != null) && (tier.Billboards.ChildCount > 0));

@@ -16,5 +16,6 @@ class GuiTextureRoot
 	public SceneRoot Root = null ~ _?.ReleaseRef();
 	/// Claimed this frame; an unclaimed root goes at the end of the sync.
 	public bool Seen = false;
-	// E4: its GuiInputBridge goes here (MakeBridge), owned.
+	/// Its input, into the root's dispatcher (MakeBridge). OWNED; declared last, so it goes first.
+	public GuiInputBridge Bridge = null ~ delete _;
 }

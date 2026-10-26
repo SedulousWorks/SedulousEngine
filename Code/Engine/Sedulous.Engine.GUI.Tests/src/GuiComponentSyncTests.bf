@@ -12,7 +12,8 @@ namespace Sedulous.Engine.GUI.Tests;
 
 /// The components as the subsystem runs them: a canvas's tree in its scene's root (ordered,
 /// shown, inert, rebuilt, swept, scaled, its own sheet), billboards placed as each view draws, a
-/// render-texture canvas's texture shown on its entity's sprite, and a world panel's sprite.
+/// render-texture canvas's texture shown on its entity's sprite, and a world panel's sprite and
+/// the pointer reaching it by a ray.
 class GuiComponentSyncTests
 {
 	private static bool Near(float actual, float expected, float tolerance = 0.001f) =>
@@ -38,7 +39,7 @@ class GuiComponentSyncTests
 	}
 
 	/// Raptor's case names input too: what a canvas takes is its tree's inertness, checked here;
-	/// the pointer reaching it is the input pump's (E4), with its own cases.
+	/// the pointer reaching it is the input pump's, with its own cases (GuiInputTests.bf).
 	[Test]
 	public static void ACanvasShowsItsDocumentInItsScenesGuiOrderedShownAndTakingInputAsItSaysRebuiltWhenItsDocumentChangesGoneWhenDespawned()
 	{
@@ -299,10 +300,8 @@ class GuiComponentSyncTests
 		engine.Scenes.DestroyScene(level);
 	}
 
-	/// Raptor's case goes on to the pointer reaching the panel by a ray through the scene's
-	/// camera (hovered, clicked, the action layer told); that part waits for the input pump (E4).
 	[Test]
-	public static void AWorldPanelDrivesItsSprite()
+	public static void AWorldPanelDrivesItsSpriteAndThePointerReachesItByARayHoveredClickedTheGameTold()
 	{
 		let device = scope NullDevice();
 		let engine = scope GuiTestEngine();
@@ -310,7 +309,11 @@ class GuiComponentSyncTests
 		Test.Assert(engine.Gui.IsRenderReady);
 		let level = engine.Scenes.CreateScene("level");
 		level.AddSystem<SpriteComponentManager>();
+		level.AddSystem<CameraComponentManager>();
 		let sprites = level.GetSystem<SpriteComponentManager>();
+		let camera = level.CreateEntity("camera");
+		level.SetLocalPosition(camera, .(0.0f, 2.0f, 10.0f));
+		level.GetSystem<CameraComponentManager>().Add(camera);
 		let kiosk = level.CreateEntity("kiosk");
 		level.SetLocalPosition(kiosk, .(0.0f, 2.0f, 0.0f));
 		level.UpdateTransforms();
@@ -342,6 +345,33 @@ class GuiComponentSyncTests
 		Test.Assert(sprite.Visible);
 		Test.Assert(Near(sprite.Size.X, 2.0f * 204.0f / 200.0f), "the transparent edge's share");
 		Test.Assert(Near(c.RenderRoot.ViewportSize.X, 200.0f));
+
+		// The scene's GUI drew at 800 by 600: its camera's ray through the middle meets the panel,
+		// at its pixels' middle (the root laid out there by the textures' draw above).
+		int clicks = 0;
+		c.Root.AddEventListener(.MouseClick, new [&] (e) => { clicks++; });
+		engine.Gui.SceneRootFor(level).ViewportSize = .(800.0f, 600.0f);
+		let mouse = engine.Devices.FakeMouse;
+		mouse.X = 400.0f;
+		mouse.Y = 300.0f;
+		engine.Frame();
+		Test.Assert(engine.Gui.ActiveInputRoot === c.RenderRoot);
+		Test.Assert(engine.Gui.PointerOverGui);
+		Test.Assert(engine.PointerClaimed);
+		Test.Assert(Near(c.RenderRoot.EventDispatcher.MousePosition.X, 100.0f), "the hit's uv in its pixels");
+		Test.Assert(Near(c.RenderRoot.EventDispatcher.MousePosition.Y, 50.0f));
+		mouse.Down = true;
+		engine.Frame();
+		mouse.Down = false;
+		engine.Frame();
+		Test.Assert(clicks == 1);
+
+		// Off the panel: the game's.
+		mouse.X = 10.0f;
+		mouse.Y = 10.0f;
+		engine.Frame();
+		Test.Assert(engine.Gui.ActiveInputRoot !== c.RenderRoot);
+		Test.Assert(!engine.Gui.PointerOverGui);
 		engine.Scenes.DestroyScene(level);
 	}
 }

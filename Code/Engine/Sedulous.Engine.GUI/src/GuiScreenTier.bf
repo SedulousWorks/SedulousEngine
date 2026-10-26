@@ -15,7 +15,9 @@ class GuiScreenTier
 	/// finds). Released in reverse, the stack before the root.
 	public SceneRoot Root = null ~ _?.ReleaseRef();
 	public ScreenStack Screens = null ~ _?.ReleaseRef();
-	// E4: its GuiInputBridge goes here (MakeBridge), owned.
+	/// Its input, into the root's dispatcher (MakeBridge). OWNED; declared after the root, so it goes
+	/// first.
+	public GuiInputBridge Bridge = null ~ delete _;
 	/// The game's render resolution (nought: none) and how it fits its target.
 	public Float2 Resolution = .Zero;
 	public FitMode Fit = .Letterbox;

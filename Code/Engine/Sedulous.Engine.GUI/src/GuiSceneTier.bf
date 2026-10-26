@@ -18,5 +18,6 @@ class GuiSceneTier
 	/// Its canvases' hosts, in the root, in no order: a HELD reference each, beside the root's
 	/// and the component's own.
 	public List<GuiCanvasHost> Canvases = new .() ~ { for (let host in _) host.ReleaseRef(); delete _; };
-	// E4: its GuiInputBridge goes here (MakeBridge), owned.
+	/// Its input, into the root's dispatcher (MakeBridge). OWNED; declared last, so it goes first.
+	public GuiInputBridge Bridge = null ~ delete _;
 }

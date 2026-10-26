@@ -44,8 +44,10 @@ namespace Sedulous.Engine.GUI;
 /// scene's root or a texture of its own, a billboard over its entity, a world panel on its
 /// entity's sprite, each in line with its component every frame.
 ///
-/// Still to come: input through GUI.Shell's bridge (E4) and the script surface (E5); each has its
-/// hook where Raptor's runs it.
+/// The input (GuiInputPump.bf): the engine's active input source into one root a frame through
+/// GUI.Shell's bridge, the action layer told what the GUI took.
+///
+/// Still to come: the script surface (E5); it has its hook where Raptor's runs it.
 class GuiSubsystem : Subsystem, ISceneObserver
 {
 	/// After Engine.UI's (-650), so a game's GUI sees the same frame; all work in BeginFrame.
@@ -87,8 +89,20 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	/// BORROWED peers; null in a headless context.
 	private RenderSubsystem mRender = null;
 	private InputSubsystem mInput = null;
-	// E4: the input kind tracker, the text input target, the active and press roots and what the
-	// GUI took of the pointer go here.
+	/// The input kind, from the active source each frame; every bridge borrows it.
+	private Sedulous.Input.InputKindTracker mInputKind = new .() ~ delete _;
+	/// BORROWED: the window whose platform text input follows the GUI's focus; null leaves it alone.
+	private Sedulous.Shell.IWindow mTextInputTarget = null;
+	/// The root input went to last, and the root a held press began in: BORROWED, each forgotten
+	/// as its root goes (ForgetInputRoot).
+	private SceneRoot mActiveRoot = null;
+	private SceneRoot mPressRoot = null;
+	/// That press began over GUI that takes the pointer.
+	private bool mPressTaken = false;
+	/// The GUI took the pointer this frame.
+	private bool mPointerTaken = false;
+	/// Where a held press on a panel last was, in its pixels.
+	private Float2 mPanelPoint = .(0.0f, 0.0f);
 
 	/// The data mount is BORROWED for the subsystem's life: the VG shaders and the built-in font
 	/// come from it.
@@ -254,7 +268,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 
 	/// A render-space point in the tier's root pixels: the part of the resolution a crop leaves out
 	/// offsets it, and the root's scale takes it to its pixels, as PlaceScreen fitted it on the last
-	/// draw. E4's input maps the pointer through it.
+	/// draw. The input pump maps the pointer through it.
 	private static Float2 ScreenPointerPoint(GuiScreenTier tier, Float2 point)
 	{
 		if (!tier.HasResolution)
@@ -320,8 +334,8 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		{
 			if (mRunTiers[i].Run !== run)
 				continue;
-			// E4: the active and press roots forgotten when they are this tier's.
 			let tier = mRunTiers[i];
+			ForgetInputRoot(tier.Root);
 			mRunTiers.RemoveAt(i);
 			tier.Screens.Clear();
 			delete tier;
@@ -435,7 +449,8 @@ class GuiSubsystem : Subsystem, ISceneObserver
 			if (let scenes = Context.GetSubsystem<SceneSubsystem>())
 				scenes.UnregisterObserver(this);
 		}
-		// E4: the active and press roots forgotten.
+		mActiveRoot = null;
+		mPressRoot = null;
 		mInput = null;
 		DropTiers();
 		mResources.SetTextureSink(null);
@@ -454,6 +469,9 @@ class GuiSubsystem : Subsystem, ISceneObserver
 			tier.Screens.Clear();
 		ClearAndDeleteItems!(mRunTiers);
 		mRenderRun = null;
+		// The shared tier's bridge borrows its root's dispatcher: it goes before the root.
+		delete mScreen.Bridge;
+		mScreen.Bridge = null;
 		if (mScreen.Screens != null)
 			mScreen.Screens.Clear();
 		if (mOverlay != null)
@@ -485,7 +503,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 			if (mResources.Poll())
 				ApplySheets(); // a sheet (or a document) was cooked again: the GUI restyles
 			SyncComponents(); // each scene's billboards, canvases and world panels in line
-			// E4: PumpInput() here, before the clock, as Raptor's.
+			PumpInput(); // before the clock, as Raptor's
 			// By ticks: TimeSpan.FromSeconds would round to whole milliseconds.
 			mContext.Update(TimeSpan((int64)((double)deltaTime * (double)TimeSpan.TicksPerSecond)));
 			if (mScreen.Root != null)
@@ -496,7 +514,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	}
 
 	/// The action layer's pointer and keyboard claims cleared after the frame read them: the next
-	/// frame's BeginFrame lane republishes them (Engine.UI's, then the GUI's added by E4's pump).
+	/// frame's BeginFrame lane republishes them (Engine.UI's, then the GUI's added by PumpInput).
 	public override void EndFrame()
 	{
 		if (mInput == null)
@@ -521,7 +539,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		tier.Billboards = new UIWidget();
 		tier.Billboards.Tag = "billboards";
 		tier.Root.AddChild(tier.Billboards);
-		// E4: the tier's bridge made here (MakeBridge).
+		tier.Bridge = MakeBridge(tier.Root);
 		mSceneTiers.Add(tier);
 	}
 
@@ -532,7 +550,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		{
 			if (mTextureRoots[i].Scene !== scene)
 				continue;
-			// E4: the active and press roots forgotten when they are this one's.
+			ForgetInputRoot(mTextureRoots[i].Root);
 			delete mTextureRoots[i];
 			mTextureRoots.RemoveAt(i);
 		}
@@ -540,8 +558,8 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		{
 			if (mSceneTiers[i].Scene !== scene)
 				continue;
-			// E4: the active and press roots forgotten when they are this tier's.
 			let tier = mSceneTiers[i];
+			ForgetInputRoot(tier.Root);
 			mSceneTiers.RemoveAt(i);
 			delete tier;
 			return;
@@ -571,7 +589,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 		tier.Screens = new ScreenStack();
 		tier.Screens.Id = "screens"; // a script's ScreenStack::of(gui::root().find("screens"))
 		tier.Root.AddChild(tier.Screens);
-		// E4: the tier's bridge made here (MakeBridge).
+		tier.Bridge = MakeBridge(tier.Root);
 	}
 
 	/// `run`'s own tier, or null when none was made.
