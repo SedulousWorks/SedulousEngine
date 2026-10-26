@@ -168,8 +168,12 @@ settings play reads, keyed by their names: the asset settings (`defaultSceneId`,
 `startupScriptId`, `defaultInputMapId`, `defaultBusLayoutId`, `defaultUiThemeId`,
 `loadingDocumentId`, `defaultUiFontId`, each {guid, path} or null), `uiFontIds`, the other fonts
 the game UI loads beside the default, each a family a label picks with
-`font-family="<family>"`, a title face say; the display: `renderWidth`/`renderHeight`, the
-resolution the game draws at, 0 for its output's size, `renderFit`, and the player's
+`font-family="<family>"`, a title face say; `guiStyleSheetIds`, the engine GUI's `.css` sheets in
+order over its built-in theme, each over those before it (its fonts are the UI's), and
+`guiLoadingDocumentId`, a `.gml` document the player's boot splash shows through the engine GUI
+instead of the UI's (its load progress the GUI's data value `bootProgress`, 0 to 1); the
+display: `renderWidth`/`renderHeight`, the resolution the game draws at, 0 for its output's
+size, `renderFit`, and the player's
 `windowWidth`, `windowHeight`, `windowMode` and `windowResizable`; `orientation` (`Any`,
 `Landscape` or `Portrait`: the shape the game is made for, presented turned a quarter on a
 window of the other shape, a landscape game on a phone held upright); and `renderMsaaSamples`.
@@ -177,8 +181,9 @@ Beside them, `settingCategories` says how they group: the Project Settings dialo
 order (General, Startup, Audio, UI, Display), each with the names of its settings.
 `project_settings_set` changes them by the names `project_info` reports (a name that is no
 setting is refused with the list): each asset setting must name an asset of its type, `""`
-clears it, `uiFontIds` takes the whole list, a choice takes one of its values by name
-(`Borderless`, `IntegerScale`), and nothing changes when any of it is refused. `project_health` is
+clears it, `uiFontIds` and `guiStyleSheetIds` take the whole list, a choice takes one of its
+values by name (`Borderless`, `IntegerScale`), and nothing changes when any of it is refused.
+`project_health` is
 the one call soundness sweep (dangling refs, broken sources, cook state); a dirty count
 alone is normal, clear it with `asset_cook`.
 

@@ -31,6 +31,8 @@ static class ProjectSettingsDialogTests
 		settings.WindowResizable = false;
 		settings.RenderMsaaSamples = 4;
 		settings.UiFontIds.Add(font);
+		let sheet = Guid.Create();
+		settings.GuiStyleSheetIds.Add(sheet);
 
 		let context = scope EditorContext();
 		context.SetProject(project);
@@ -44,8 +46,8 @@ static class ProjectSettingsDialogTests
 		let assets = dialog.[Friend]mAssets;
 		let lists = dialog.[Friend]mAssetLists;
 		let values = dialog.[Friend]mValues;
-		Test.Assert(assets.Count == 7);
-		Test.Assert(lists.Count == 1);
+		Test.Assert(assets.Count == 8); // + the GUI's loading screen
+		Test.Assert(lists.Count == 2); // the other UI fonts, the GUI's sheets
 		Test.Assert(assets.Count + lists.Count + values.Count + 1 == fields.Count);
 
 		// Saved untouched, every setting is what it was.
@@ -57,6 +59,7 @@ static class ProjectSettingsDialogTests
 		Test.Assert(!settings.WindowResizable);
 		Test.Assert(settings.RenderMsaaSamples == 4);
 		Test.Assert((settings.UiFontIds.Count == 1) && (settings.UiFontIds[0] == font));
+		Test.Assert((settings.GuiStyleSheetIds.Count == 1) && (settings.GuiStyleSheetIds[0] == sheet));
 
 		// A choice changed in its row is what Save writes.
 		for (let value in values)

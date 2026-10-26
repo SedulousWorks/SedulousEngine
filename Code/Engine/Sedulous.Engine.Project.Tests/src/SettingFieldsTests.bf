@@ -40,6 +40,10 @@ class SettingFieldsTests
 				Test.Assert(category == "Startup");
 			if (field.Name == "UiFontIds")
 				Test.Assert(category == "UI");
+			if (field.Name == "GuiStyleSheetIds")
+				Test.Assert(category == "UI");
+			if (field.Name == "GuiLoadingDocumentId")
+				Test.Assert(category == "Startup");
 		}
 		Test.Assert(order == "General,Startup,Audio,UI,Display", order);
 
@@ -68,7 +72,7 @@ class SettingFieldsTests
 			SettingFields.Key(field, keys);
 		}
 		// The engine stamp and the path mirrors are not settings.
-		Test.Assert(keys == "name,defaultSceneId,nativeModule,defaultInputMapId,defaultBusLayoutId,defaultUiThemeId,startupScriptId,defaultUiFontId,loadingDocumentId,renderMsaaSamples,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation", keys);
+		Test.Assert(keys == "name,defaultSceneId,nativeModule,defaultInputMapId,defaultBusLayoutId,defaultUiThemeId,startupScriptId,defaultUiFontId,loadingDocumentId,renderMsaaSamples,uiFontIds,renderWidth,renderHeight,renderFit,windowWidth,windowHeight,windowMode,windowResizable,orientation,guiStyleSheetIds,guiLoadingDocumentId", keys);
 
 		SettingKind Kind(StringView name)
 		{
@@ -86,6 +90,8 @@ class SettingFieldsTests
 		Test.Assert(Kind("Name") == .Text);
 		Test.Assert(Kind("DefaultSceneId") == .Asset);
 		Test.Assert(Kind("UiFontIds") == .AssetList);
+		Test.Assert(Kind("GuiStyleSheetIds") == .AssetList);
+		Test.Assert(Kind("GuiLoadingDocumentId") == .Asset);
 		Test.Assert(Kind("RenderMsaaSamples") == .Count);
 		Test.Assert(Kind("RenderFit") == .Choice);
 		Test.Assert(Kind("WindowResizable") == .Flag);
@@ -101,6 +107,10 @@ class SettingFieldsTests
 				Test.Assert(setting.AssetType == "UIDocumentAsset");
 				Test.Assert(setting.EmptyText == "(built-in)");
 			}
+			if (field.Name == "GuiStyleSheetIds")
+				Test.Assert((setting.AssetType == "GuiStyleSheetAsset") && (setting.EmptyText == "(none)"));
+			if (field.Name == "GuiLoadingDocumentId")
+				Test.Assert((setting.AssetType == "GuiDocumentAsset") && (setting.EmptyText == "(the UI's)"));
 			if (field.Name == "WindowWidth")
 			{
 				SettingFields.CountRange(field, let least, let most);

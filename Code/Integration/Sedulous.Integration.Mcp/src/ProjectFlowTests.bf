@@ -566,6 +566,25 @@ static class ProjectFlowTests
 			let info = CallOk(server, "project_info", Obj());
 			defer delete info;
 			Test.Assert(info.Get("settings").Get("defaultSceneId").IsNull, "nothing changed");
+			Test.Assert(info.Get("settings").Get("guiStyleSheetIds").Count == 0, "the GUI's sheets: none until set");
+		}
+		// The engine GUI's sheets take the whole list, in order.
+		{
+			let shared = CallOk(server, "asset_create", With(With(Obj(), "creator", "GUI Style Sheet"), "name", "Shared"));
+			defer delete shared;
+			let game = CallOk(server, "asset_create", With(With(Obj(), "creator", "GUI Style Sheet"), "name", "Game"));
+			defer delete game;
+			let sheets = JsonValue.MakeArray();
+			sheets.Add(JsonValue.MakeString(shared.Get("guid").AsString()));
+			sheets.Add(JsonValue.MakeString(game.Get("guid").AsString()));
+			let arguments = Obj();
+			arguments.Set("guiStyleSheetIds", sheets);
+			let set = CallOk(server, "project_settings_set", arguments);
+			defer delete set;
+			let listed = set.Get("settings").Get("guiStyleSheetIds");
+			Test.Assert((listed.Count == 2) && (listed.At(0).Get("path").AsString() == "GUI/Shared") && (listed.At(1).Get("path").AsString() == "GUI/Game"));
+			Test.Assert((session.Project.Settings.GuiStyleSheetIds.Count == 2) && (changed == 1));
+			changed = 0;
 		}
 		// A name that is no setting is refused with the list, not ignored: the server's refusal of
 		// an argument the schema does not declare.

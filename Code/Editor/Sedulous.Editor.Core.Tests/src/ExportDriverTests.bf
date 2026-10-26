@@ -42,6 +42,10 @@ static class ExportDriverTests
 		fx.Project.Settings.LoadingDocumentId = loadingId;
 		fx.Project.Settings.RenderMsaaSamples = 4;
 		fx.Project.Settings.UiFontIds.Add(titleFontId);
+		let sheetId = Guid.Create();
+		let guiSplashId = Guid.Create();
+		fx.Project.Settings.GuiStyleSheetIds.Add(sheetId);
+		fx.Project.Settings.GuiLoadingDocumentId = guiSplashId;
 		fx.Project.Settings.RenderWidth = 640;
 		fx.Project.Settings.RenderHeight = 360;
 		fx.Project.Settings.RenderFit = .IntegerScale;
@@ -80,6 +84,8 @@ static class ExportDriverTests
 		Test.Assert(manifest.LoadingDocumentId == loadingId, "the loading screen");
 		Test.Assert(manifest.RenderMsaaSamples == 4, "the MSAA");
 		Test.Assert((manifest.UiFontIds.Count == 1) && (manifest.UiFontIds[0] == titleFontId), "the other UI fonts");
+		Test.Assert((manifest.GuiStyleSheetIds.Count == 1) && (manifest.GuiStyleSheetIds[0] == sheetId), "the GUI's sheets");
+		Test.Assert(manifest.GuiLoadingDocumentId == guiSplashId, "the GUI's loading screen");
 		Test.Assert((manifest.RenderWidth == 640) && (manifest.RenderHeight == 360) && (manifest.RenderFit == .IntegerScale), "the render resolution");
 		Test.Assert((manifest.WindowWidth == 1920) && (manifest.WindowHeight == 1080) && (manifest.WindowMode == .Borderless), "the window");
 
@@ -229,6 +235,22 @@ static class ExportDriverTests
 		members.Clear();
 		ExportRootsFile.CollectGroupInstances(fx.Project.SourceDb, "NoSuchGroup", members);
 		Test.Assert(members.IsEmpty);
+	}
+
+	/// The engine GUI's sheets and its loading screen are the manifest's too: an export carries
+	/// what they name, as it does the UI's fonts and loading screen.
+	[Test]
+	public static void CollectExportRootsSeedsTheGuisSheetsAndItsLoadingScreen()
+	{
+		let fx = scope ExportProjectFixture("scratch_export_gui_roots");
+		fx.Project.Settings.GuiStyleSheetIds.Add(fx.UnreferencedMeshId);
+		fx.Project.Settings.GuiLoadingDocumentId = fx.ReferencedMeshId;
+		let roots = scope List<ExportRoot>();
+		defer { ClearAndDeleteItems(roots); }
+		ExportDriver.CollectExportRoots(fx.Project, roots);
+		Test.Assert(roots.Count == 3, scope $"{roots.Count} roots");
+		Test.Assert((roots[1].Id == fx.UnreferencedMeshId) && (roots[1].Reason == .ManifestDefault), "a sheet");
+		Test.Assert((roots[2].Id == fx.ReferencedMeshId) && (roots[2].Reason == .ManifestDefault), "the GUI's loading screen");
 	}
 
 	[Test]

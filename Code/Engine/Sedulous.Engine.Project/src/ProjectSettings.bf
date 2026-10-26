@@ -98,6 +98,17 @@ class ProjectSettings
 	[Appended, Setting("Orientation", "Display")]
 	public ScreenOrientation Orientation = .Any;
 
+	/// The engine GUI's cooked sheets, in order over its built in theme, each over those before
+	/// it (a game's own over a shared one). Its fonts are the UI's. [Appended], so a manifest
+	/// saved before it reads as none.
+	[Appended, Setting("GUI sheets", "GuiStyleSheetAsset", "(none)", "UI")]
+	public List<Guid> GuiStyleSheetIds = new .() ~ delete _;
+	/// The cooked GUI document the player's boot splash shows through the engine GUI while the
+	/// default scene loads, its progress the GUI's data value `bootProgress` (0 to 1). Nil for
+	/// the UI's loading screen (LoadingDocumentId). [Appended].
+	[Appended, Setting("GUI loading screen", "GuiDocumentAsset", "(the UI's)", "Startup")]
+	public Guid GuiLoadingDocumentId;
+
 	/// Whether the game draws at a fixed resolution rather than at its output's size.
 	public bool HasRenderResolution => (RenderWidth > 0) && (RenderHeight > 0);
 

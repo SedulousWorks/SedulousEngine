@@ -133,6 +133,51 @@ class ProjectManifestTests
 		}
 	}
 
+	/// The engine GUI's sheets round trip in their order (the game's over the shared) with its
+	/// loading screen, and a manifest saved before either existed still loads, with none.
+	[Test]
+	public static void TheGuiSheetsKeepTheirOrderWithTheGuiLoadingScreenAndAnOlderManifestStillLoads()
+	{
+		FreshScratch();
+		let fs = scope NativeFileSystem(kScratch);
+
+		let written = scope ProjectSettings();
+		written.Name.Set("Sheets");
+		let shared = Guid.Create();
+		let game = Guid.Create();
+		let splash = Guid.Create();
+		written.GuiStyleSheetIds.Add(shared);
+		written.GuiStyleSheetIds.Add(game);
+		written.GuiLoadingDocumentId = splash;
+		Test.Assert(ProjectManifest.Save(fs, written) case .Ok);
+		{
+			let read = scope ProjectSettings();
+			Test.Assert(ProjectManifest.Load(fs, read) case .Ok);
+			Test.Assert((read.GuiStyleSheetIds.Count == 2) && (read.GuiStyleSheetIds[0] == shared) && (read.GuiStyleSheetIds[1] == game));
+			Test.Assert(read.GuiLoadingDocumentId == splash);
+		}
+
+		// The same manifest as an older engine wrote it: neither element.
+		let path = scope $"{kScratch}/{ProjectLayout.ManifestFile}";
+		let text = scope String();
+		Test.Assert(File.ReadAllText(path, text) case .Ok);
+		void Cut(StringView open, StringView close)
+		{
+			let start = text.IndexOf(open);
+			Test.Assert(start >= 0, text);
+			let end = text.IndexOf(close, start) + close.Length;
+			text.Remove(start, end - start);
+		}
+		Cut("<array name=\"guiStyleSheetIds\"", "</array>");
+		Cut("<string name=\"guiLoadingDocumentId\"", "</string>");
+		Test.Assert(File.WriteAllText(path, text) case .Ok);
+		{
+			let read = scope ProjectSettings();
+			Test.Assert(ProjectManifest.Load(fs, read) case .Ok, "an older manifest loads");
+			Test.Assert((read.Name == "Sheets") && read.GuiStyleSheetIds.IsEmpty && !read.GuiLoadingDocumentId.IsSet);
+		}
+	}
+
 	/// The orientation is appended: a manifest an older engine wrote, without it, reads Any (the
 	/// game takes the window's shape, as before), and one that says Landscape keeps it.
 	[Test]

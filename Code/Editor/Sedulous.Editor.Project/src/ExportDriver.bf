@@ -80,6 +80,9 @@ static class ExportDriver
 		for (let id in settings.UiFontIds)
 			Add(id, .ManifestDefault);
 		Add(settings.LoadingDocumentId, .ManifestDefault);
+		for (let id in settings.GuiStyleSheetIds)
+			Add(id, .ManifestDefault);
+		Add(settings.GuiLoadingDocumentId, .ManifestDefault);
 		for (let id in project.ExportRoots.Instances)
 			Add(id, .Flag);
 		for (let groupPath in project.ExportRoots.Groups)
