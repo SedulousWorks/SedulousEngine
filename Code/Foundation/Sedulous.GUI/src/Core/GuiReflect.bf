@@ -21,7 +21,8 @@ namespace Sedulous.GUI;
 //     get and set over a pointer to the struct, so a source reads one, changes a copy and writes it
 //     back through the property's own setter;
 //   - a List<T> as typed count, element and change thunks, its most and, for a list of objects,
-//     the types an add makes ([GuiList]).
+//     the types an add makes ([GuiList]);
+//   - what a Guid member names ([GuiReference]): the type it points at, for a slot that picks.
 
 /// What a reflected property is to the GUI beyond its name.
 enum GuiPropertyFlags : uint8
@@ -74,6 +75,20 @@ struct GuiListAttribute : Attribute
 	{
 		MaxCount = maxCount;
 		Types = types;
+	}
+}
+
+/// What a Guid member is the id of, beside [GuiProperty]: the type it points at, by name
+/// (`[GuiReference("Mesh")]`), resolved where the reflected type that holds it is declared, so a
+/// name no type has fails the build. An inspector offers what can fill it.
+[AttributeUsage(.Property | .Field, .ReflectAttribute)]
+struct GuiReferenceAttribute : Attribute
+{
+	public String TypeName;
+
+	public this(String typeName)
+	{
+		TypeName = typeName;
 	}
 }
 
@@ -206,10 +221,13 @@ struct GuiReflectAttribute : Attribute, IComptimeTypeApply
 				max = r.Max;
 				step = r.Step;
 			}
+			let referenceType = scope String();
+			if ((m.GetCustomAttribute<GuiReferenceAttribute>() case .Ok(let reference)) && (reference.TypeName != null))
+				referenceType.Set(reference.TypeName);
 			// What follows the Add reads it as `p`; a property with nothing more is the Add alone (an
 			// unread `p` would warn in every reflected type).
 			let tail = scope String();
-			EmitMarks("p", displayName, description, visibleWhen, hasRange, min, max, step, tail, "\t\t");
+			EmitMarks("p", displayName, description, visibleWhen, hasRange, min, max, step, referenceType, tail, "\t\t");
 
 			int32 maxCount = 0;
 			let types = scope String();
@@ -271,7 +289,7 @@ struct GuiReflectAttribute : Attribute, IComptimeTypeApply
 	// What an inspector reads of `member` (a local of the generated code), when it carries any.
 	[Comptime]
 	private static void EmitMarks(StringView member, StringView displayName, StringView description, StringView visibleWhen,
-		bool hasRange, float min, float max, float step, String body, StringView indent)
+		bool hasRange, float min, float max, float step, StringView referenceType, String body, StringView indent)
 	{
 		if (!displayName.IsEmpty || !description.IsEmpty || !visibleWhen.IsEmpty)
 		{
@@ -280,6 +298,8 @@ struct GuiReflectAttribute : Attribute, IComptimeTypeApply
 		}
 		if (hasRange)
 			body.AppendF("{}{}.[System.Friend]SetRange((float)({}), (float)({}), (float)({}));\n", indent, member, min, max, step);
+		if (!referenceType.IsEmpty)
+			body.AppendF("{}{}.[System.Friend]mReferenceType = typeof({});\n", indent, member, referenceType);
 	}
 
 	// What a value of `type` is beyond its type, made by `make` (an expression of the generated
@@ -362,10 +382,13 @@ struct GuiReflectAttribute : Attribute, IComptimeTypeApply
 				max = r.Max;
 				step = r.Step;
 			}
+			let referenceType = scope String();
+			if ((f.GetCustomAttribute<GuiReferenceAttribute>() case .Ok(let reference)) && (reference.TypeName != null))
+				referenceType.Set(reference.TypeName);
 			// As a property's: the field is named only when something follows reads it.
 			let tail = scope String();
 			let member = scope String()..AppendF("f{}", depth);
-			EmitMarks(member, displayName, description, visibleWhen, hasRange, min, max, step, tail, inner);
+			EmitMarks(member, displayName, description, visibleWhen, hasRange, min, max, step, referenceType, tail, inner);
 
 			int32 maxCount = 0;
 			let types = scope String();
@@ -516,6 +539,7 @@ abstract class GuiMemberInfo
 	protected float mMin;
 	protected float mMax;
 	protected float mStep;
+	protected Type mReferenceType;
 	protected GuiValueInfo mValue ~ delete _;
 
 	/// Its Beef name (`Page`).
@@ -535,6 +559,8 @@ abstract class GuiMemberInfo
 	public float Min => mMin;
 	public float Max => mMax;
 	public float Step => mStep;
+	/// What a Guid member is the id of ([GuiReference]); null when it says not.
+	public Type ReferenceType => mReferenceType;
 	/// What its value is beyond its type; null when it is only its type.
 	public GuiValueInfo Value => mValue;
 

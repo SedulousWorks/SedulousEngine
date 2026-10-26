@@ -50,6 +50,9 @@ enum PropertyKind : uint8
 	Curve,
 	/// A ColorGradient, one value; MaxCount its most stops of each kind.
 	Gradient,
+	/// What something kept elsewhere is known by (an asset, an entity): its Guid as text, empty for
+	/// none; ReferenceType is what it points at.
+	Reference,
 }
 
 static
@@ -116,6 +119,9 @@ class PropertyInfo
 	public uint32 MaxCount = 0;
 	/// A list's types an add chooses from; empty: its one.
 	public List<String> ElementTypes = new .() ~ DeleteContainerAndItems!(_);
+	/// A reference's: the type it points at (an application finds what may fill it); null when it
+	/// says not.
+	public System.Type ReferenceType = null;
 
 	public StringView ShownName => (DisplayName.Length != 0) ? (StringView)DisplayName : (StringView)Name;
 
@@ -155,6 +161,7 @@ class PropertyInfo
 		ClearAndDeleteItems!(ElementTypes);
 		for (let type in other.ElementTypes)
 			ElementTypes.Add(new String(type));
+		ReferenceType = other.ReferenceType;
 	}
 }
 
@@ -353,9 +360,10 @@ static
 }
 
 /// A source of its own values in memory: properties declared by path, each object's values kept
-/// here, and lists of values (each object's elements its own). A commit is told (path, each
-/// object's value before, each after) to whoever keeps the undo, which puts values back with
-/// SetValue; a list's change is told as it was asked.
+/// here, and lists of values (each object's elements its own), or of groups whose fields a list
+/// declares (AddElementField). A commit is told (path, each object's value before, each after) to
+/// whoever keeps the undo, which puts values back with SetValue; a list's change is told as it was
+/// asked.
 class PropertyBag : IPropertySource
 {
 	/// One commit: the path, and each object's value before and after (owned).
@@ -369,18 +377,39 @@ class PropertyBag : IPropertySource
 	/// Every object's default (SetDefault).
 	public const int cAllObjects = -1;
 
+	// A group element's field: its info (name, kind, what else it says) and a new element's value.
+	private class ElementField
+	{
+		public PropertyInfo Info = new .() ~ delete _;
+		public Sedulous.GUI.Variant Value = .() ~ _.Dispose();
+	}
+
 	private class Entry
 	{
 		public String Path = new .() ~ delete _;
 		public PropertyInfo Info = new .() ~ delete _;
 		// Each object's.
 		public List<Sedulous.GUI.Variant> Values = new .() ~ PropertyBagDetail.DisposeAll(_);
-		// A list's: each object's elements.
+		// A list's: each object's elements, a group's fields one after another.
 		public List<List<Sedulous.GUI.Variant>> Elements = new .() ~ { for (let e in _) PropertyBagDetail.DisposeAll(e); delete _; };
 		public PropertyKind ElementKind = .Float;
 		public Sedulous.GUI.Variant ElementDefault = .() ~ _.Dispose();
 		// A list's: what each element says beyond its name and kind.
 		public PropertyInfo ElementInfo = new .() ~ delete _;
+		// A list of groups: each element's fields, in order.
+		public List<ElementField> Fields = new .() ~ DeleteContainerAndItems!(_);
+
+		/// How many values an element is: one, or its group's fields.
+		public int Stride => Fields.IsEmpty ? 1 : Fields.Count;
+
+		/// A new element's values onto `elements`, copies they own.
+		public void AppendElement(List<Sedulous.GUI.Variant> elements)
+		{
+			if (Fields.IsEmpty)
+				elements.Add(ElementDefault.Copy());
+			for (let field in Fields)
+				elements.Add(field.Value.Copy());
+		}
 	}
 
 	private class Original
@@ -468,6 +497,28 @@ class PropertyBag : IPropertySource
 		return ((entry != null) && (entry.Info.Kind == .List)) ? entry.ElementInfo : null;
 	}
 
+	/// Gives every element of the list `path` a field `name` of `kind` (new elements `value`, the bag
+	/// keeping its own copy): its elements are groups of their fields from then on (`path.N.name`),
+	/// as a reflected list's struct elements are. Declared before the list has elements; returns the
+	/// field's info to fill in (a range, a reference's type), null when `path` is no list.
+	public PropertyInfo AddElementField(StringView path, StringView name, PropertyKind kind, Sedulous.GUI.Variant value)
+	{
+		let list = Find(path);
+		if ((list == null) || (list.Info.Kind != .List))
+			return null;
+		list.ElementKind = .Group;
+		let field = new ElementField();
+		field.Info.Name.Set(name);
+		field.Info.Kind = kind;
+		field.Value = value.Copy();
+		list.Fields.Add(field);
+		NotifyPropertiesChanged();
+		return field.Info;
+	}
+
+	/// A field with no value of its own for new elements.
+	public PropertyInfo AddElementField(StringView path, StringView name, PropertyKind kind) => AddElementField(path, name, kind, .());
+
 	/// Tells the grid what FindInfo's changes were.
 	public void PropertiesChanged() => NotifyPropertiesChanged();
 
@@ -489,13 +540,13 @@ class PropertyBag : IPropertySource
 		if ((list == null) || (list.Info.Kind != .List) || (object < 0) || (object >= list.Elements.Count))
 			return;
 		let elements = list.Elements[object];
-		while (elements.Count > count)
+		while (elements.Count > count * list.Stride)
 		{
 			elements.Back.Dispose();
 			elements.PopBack();
 		}
-		while (elements.Count < count)
-			elements.Add(list.ElementDefault.Copy());
+		while (elements.Count < count * list.Stride)
+			list.AppendElement(elements);
 		NotifyPropertiesChanged();
 	}
 
@@ -503,7 +554,7 @@ class PropertyBag : IPropertySource
 	public int ElementCount(StringView path, int object)
 	{
 		let entry = Find(path);
-		return ((entry != null) && (object >= 0) && (object < entry.Elements.Count)) ? entry.Elements[object].Count : 0;
+		return ((entry != null) && (object >= 0) && (object < entry.Elements.Count)) ? entry.Elements[object].Count / entry.Stride : 0;
 	}
 
 	/// Object `object`'s default at `path` (a property's or an element's); every object's with
@@ -586,7 +637,7 @@ class PropertyBag : IPropertySource
 		{
 			int count = int.MaxValue;
 			for (let elements in list.Elements)
-				count = Math.Min(count, elements.Count);
+				count = Math.Min(count, elements.Count / list.Stride);
 			for (int i = 0; (i < count) && (count != int.MaxValue); ++i)
 			{
 				let info = new PropertyInfo();
@@ -595,6 +646,19 @@ class PropertyBag : IPropertySource
 				i.ToString(info.Name);
 				info.Kind = list.ElementKind;
 				info.ReadOnly = list.Info.ReadOnly;
+				outInfos.Add(info);
+			}
+			return;
+		}
+		// A group element's fields ("variants.2": its clip, its weight).
+		let outer = Find(ParentPropertyPath(parent));
+		if ((outer != null) && (outer.Info.Kind == .List) && !outer.Fields.IsEmpty)
+		{
+			for (let field in outer.Fields)
+			{
+				let info = new PropertyInfo();
+				info.Set(field.Info);
+				info.ReadOnly = info.ReadOnly || outer.Info.ReadOnly;
 				outInfos.Add(info);
 			}
 			return;
@@ -614,7 +678,7 @@ class PropertyBag : IPropertySource
 	{
 		let list = Find(path);
 		if ((list != null) && (list.Info.Kind == .List))
-			return ((object >= 0) && (object < list.Elements.Count)) ? Sedulous.GUI.Variant((int64)list.Elements[object].Count) : Sedulous.GUI.Variant();
+			return ((object >= 0) && (object < list.Elements.Count)) ? Sedulous.GUI.Variant((int64)(list.Elements[object].Count / list.Stride)) : Sedulous.GUI.Variant();
 		let slot = Slot(path, object);
 		return (slot != null) ? slot.Copy() : Sedulous.GUI.Variant();
 	}
@@ -747,6 +811,11 @@ class PropertyBag : IPropertySource
 				value = Sedulous.GUI.Variant(real);
 		case .String:
 			value = Sedulous.GUI.Variant(text);
+		case .Reference:
+			// A Guid's text, or nothing (cleared).
+			let trimmed = ParseUtil.Trim(text);
+			if (trimmed.IsEmpty || (Guid.Parse(trimmed) case .Ok))
+				value = Sedulous.GUI.Variant(trimmed);
 		case .Color:
 			let color = ParseColor(ParseUtil.Trim(text));
 			if (color.HasValue)
@@ -773,29 +842,43 @@ class PropertyBag : IPropertySource
 		if ((list.Info.ListOps & needs) == 0)
 			return false;
 		bool changed = false;
+		// An element's values: one, or a group's fields, added, removed and moved whole.
+		let stride = list.Stride;
 		for (let elements in list.Elements)
 		{
+			let count = elements.Count / stride;
 			switch (edit.Kind)
 			{
 			case .Insert:
-				if ((list.Info.MaxCount == 0) || (elements.Count < (int)list.Info.MaxCount))
+				if ((list.Info.MaxCount == 0) || (count < (int)list.Info.MaxCount))
 				{
-					elements.Insert(Math.Min(edit.Index, elements.Count), list.ElementDefault.Copy());
+					let element = scope List<Sedulous.GUI.Variant>();
+					list.AppendElement(element); // the copies move into the list
+					let at = Math.Min(edit.Index, count) * stride;
+					for (int f = 0; f < stride; ++f)
+						elements.Insert(at + f, element[f]);
 					changed = true;
 				}
 			case .Remove:
-				if ((edit.Index >= 0) && (edit.Index < elements.Count))
+				if ((edit.Index >= 0) && (edit.Index < count))
 				{
-					elements[edit.Index].Dispose();
-					elements.RemoveAt(edit.Index);
+					for (int f = 0; f < stride; ++f)
+					{
+						elements[edit.Index * stride].Dispose();
+						elements.RemoveAt(edit.Index * stride);
+					}
 					changed = true;
 				}
 			case .Move:
-				if ((edit.Index >= 0) && (edit.Index < elements.Count) && (edit.To >= 0) && (edit.To < elements.Count) && (edit.Index != edit.To))
+				if ((edit.Index >= 0) && (edit.Index < count) && (edit.To >= 0) && (edit.To < count) && (edit.Index != edit.To))
 				{
-					let moved = elements[edit.Index];
-					elements.RemoveAt(edit.Index);
-					elements.Insert(edit.To, moved);
+					let moved = scope List<Sedulous.GUI.Variant>();
+					for (int f = 0; f < stride; ++f)
+						moved.Add(elements[edit.Index * stride + f]);
+					for (int f = 0; f < stride; ++f)
+						elements.RemoveAt(edit.Index * stride);
+					for (int f = 0; f < stride; ++f)
+						elements.Insert(edit.To * stride + f, moved[f]);
 					changed = true;
 				}
 			}
@@ -818,7 +901,8 @@ class PropertyBag : IPropertySource
 		return null;
 	}
 
-	// Object `object`'s value at `path`: a property's, or an element of a list ("tags.2").
+	// Object `object`'s value at `path`: a property's, an element of a list ("tags.2"), or a field of
+	// a group element ("variants.2.weight").
 	private Sedulous.GUI.Variant* Slot(StringView path, int object)
 	{
 		if ((object < 0) || (object >= mObjects))
@@ -826,15 +910,40 @@ class PropertyBag : IPropertySource
 		if (let entry = Find(path))
 			return (entry.Info.Kind == .List) ? null : &entry.Values[object];
 		let parent = ParentPropertyPath(path);
-		let list = (parent.Length != 0) ? Find(parent) : null;
-		if ((list == null) || (list.Info.Kind != .List))
-			return null;
-		let index = int64.Parse(path.Substring(parent.Length + 1, path.Length - parent.Length - 1));
-		let elements = list.Elements[object];
-		if (index case .Ok(let i))
+		var list = (parent.Length != 0) ? Find(parent) : null;
+		if ((list != null) && (list.Info.Kind == .List))
 		{
-			if ((i >= 0) && (i < elements.Count))
-				return &elements[(int)i];
+			if (!list.Fields.IsEmpty)
+				return null; // a group element has no value of its own: its fields do
+			let index = int64.Parse(path.Substring(parent.Length + 1, path.Length - parent.Length - 1));
+			let elements = list.Elements[object];
+			if (index case .Ok(let i))
+			{
+				if ((i >= 0) && (i < elements.Count))
+					return &elements[(int)i];
+			}
+			return null;
+		}
+		// A group element's field.
+		let element = parent;
+		let listPath = ParentPropertyPath(element);
+		list = (listPath.Length != 0) ? Find(listPath) : null;
+		if ((list == null) || (list.Info.Kind != .List) || list.Fields.IsEmpty)
+			return null;
+		let number = int64.Parse(element.Substring(listPath.Length + 1, element.Length - listPath.Length - 1));
+		let name = path.Substring(element.Length + 1, path.Length - element.Length - 1);
+		for (int f = 0; f < list.Fields.Count; ++f)
+		{
+			if (list.Fields[f].Info.Name != name)
+				continue;
+			let values = list.Elements[object];
+			if (number case .Ok(let n))
+			{
+				let at = (n >= 0) ? (int)n * list.Stride + f : values.Count;
+				if (at < values.Count)
+					return &values[at];
+			}
+			return null;
 		}
 		return null;
 	}
@@ -844,7 +953,21 @@ class PropertyBag : IPropertySource
 		if (let entry = Find(path))
 			return entry.Info.Kind;
 		let list = Find(ParentPropertyPath(path));
-		return ((list != null) && (list.Info.Kind == .List)) ? list.ElementKind : .Group;
+		if ((list != null) && (list.Info.Kind == .List))
+			return list.ElementKind;
+		// A group element's field: its own kind.
+		let element = ParentPropertyPath(path);
+		let outer = (element.Length != 0) ? Find(ParentPropertyPath(element)) : null;
+		if ((outer != null) && (outer.Info.Kind == .List))
+		{
+			let name = path.Substring(element.Length + 1, path.Length - element.Length - 1);
+			for (let field in outer.Fields)
+			{
+				if (field.Info.Name == name)
+					return field.Info.Kind;
+			}
+		}
+		return .Group;
 	}
 
 	private static StringView PropertyKindLabel(PropertyKind kind)
@@ -861,6 +984,8 @@ class PropertyBag : IPropertySource
 			return "text";
 		case .Color:
 			return "colour";
+		case .Reference:
+			return "guid";
 		default:
 			return "value it can take";
 		}
@@ -871,7 +996,10 @@ class PropertyBag : IPropertySource
 		if (let entry = Find(path))
 			return entry.Info.ReadOnly;
 		let list = Find(ParentPropertyPath(path));
-		return (list != null) && list.Info.ReadOnly;
+		if (list != null)
+			return list.Info.ReadOnly;
+		let outer = Find(ParentPropertyPath(ParentPropertyPath(path))); // a group element's field
+		return (outer != null) && (outer.Info.Kind == .List) && outer.Info.ReadOnly;
 	}
 
 	private Original FindOriginal(StringView path)

@@ -114,6 +114,7 @@ static
 		case .Color: return "colour";
 		case .Curve: return "curve";
 		case .Gradient: return "gradient";
+		case .Reference: return "reference";
 		}
 	}
 }

@@ -65,6 +65,9 @@ struct KnobDetent
 	public float At = 0.5f;
 	[GuiProperty("", .NoAlpha)]
 	public Color Mark = .(1.0f, 1.0f, 1.0f, 1.0f);
+	/// The id of the knob it belongs to, naming the type by name.
+	[GuiProperty, GuiReference("PlainKnob")]
+	public Guid Owner = .();
 	/// Not reflected: no [GuiProperty].
 	public float Unmarked = 0.0f;
 }
@@ -103,6 +106,10 @@ class AnnotatedKnob
 	/// Nothing beyond its type.
 	[GuiProperty]
 	public float Plain { get; set; }
+
+	/// The id of a knob kept elsewhere: what it points at, by its type's name.
+	[GuiProperty, GuiReference("FancyKnob")]
+	public Guid Twin { get; set; }
 }
 
 /// The compile-time GUI table: a property written down once serves sheets, markup and bindings.
@@ -288,7 +295,7 @@ class GuiReflectTests
 	{
 		let detent = AnnotatedKnob.StaticGuiType.Find("Detent").Value;
 		Test.Assert(detent.IsStruct);
-		Test.Assert(detent.Fields.Length == 2, "the unmarked one is left out");
+		Test.Assert(detent.Fields.Length == 3, "the unmarked one is left out");
 		let at = detent.FindField("at");
 		Test.Assert(at != null, "by its name in any case");
 		Test.Assert(at.ValueType == typeof(float));
@@ -311,5 +318,18 @@ class GuiReflectTests
 		Test.Assert(detents.Element.IsStruct, "a list's struct elements carry their fields");
 		Test.Assert(detents.Insert(knob.Detents, 0));
 		Test.Assert(knob.Detents[0].At == 0.5f, "a new element is made by its constructor, its initializers run");
+	}
+
+	[Test]
+	public static void AGuidMembersReferenceTypeRidesInItsRecordResolvedWhereItIsDeclared()
+	{
+		let info = AnnotatedKnob.StaticGuiType;
+		let twin = info.Find("Twin");
+		Test.Assert(twin.ValueType == typeof(Guid));
+		Test.Assert(twin.ReferenceType == typeof(FancyKnob));
+		Test.Assert(info.Find("Plain").ReferenceType == null, "a member that names nothing");
+		let owner = info.Find("Detent").Value.FindField("Owner");
+		Test.Assert(owner.ValueType == typeof(Guid));
+		Test.Assert(owner.ReferenceType == typeof(PlainKnob), "a value struct's field carries it too");
 	}
 }

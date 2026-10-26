@@ -142,16 +142,21 @@ class PropertyEditorTests
 		Test.Assert(made is NumberPropertyEditor);
 		made.ReleaseRef();
 
-		info.Hint.Set("slider"); // no editor takes the hint: the kind's does
+		info.Hint.Set("slider"); // a number over its range
+		let sliderMade = registry.Create(registry.Choose(info));
+		Test.Assert(sliderMade is SliderPropertyEditor);
+		sliderMade.ReleaseRef();
+
+		info.Hint.Set("dial"); // no editor takes the hint: the kind's does
 		Test.Assert(registry.Choose(info) == number);
 		let before = registry.Generation;
-		registry.RegisterHint("slider", new () => new BoolPropertyEditor());
+		registry.RegisterHint("dial", new () => new BoolPropertyEditor());
 		Test.Assert(registry.Generation != before);
-		let slider = registry.Choose(info);
-		Test.Assert(slider != number);
-		let sliderMade = registry.Create(slider);
-		Test.Assert(sliderMade is BoolPropertyEditor);
-		sliderMade.ReleaseRef();
+		let dial = registry.Choose(info);
+		Test.Assert(dial != number);
+		let dialMade = registry.Create(dial);
+		Test.Assert(dialMade is BoolPropertyEditor);
+		dialMade.ReleaseRef();
 
 		info.Kind = .Group;
 		info.Hint.Set("curve");
@@ -215,6 +220,51 @@ class PropertyEditorTests
 		Test.Assert(bed.Host.Calls.Count == 3);
 		Test.Assert(bed.Host.Last == "cancel speed");
 		CheckNear(field.Value, 20.0);
+	}
+
+	[Test]
+	public static void ASlidersDragPreviewsAndCommitsOnReleaseTheFieldFollowingEscapePutsItBack()
+	{
+		let bed = scope EditorBed();
+		let info = bed.Info(.Float);
+		info.Hint.Set("slider");
+		info.HasRange = true;
+		info.Min = 0.0;
+		info.Max = 1.0;
+		info.Step = 0.01;
+		let editor = bed.Editor<SliderPropertyEditor>(info, EditorBed.Value(Sedulous.GUI.Variant(0.25)), "rough");
+		let slider = editor.Slider;
+		let field = editor.Field;
+		CheckNear(slider.Value, 0.25);
+		CheckNear(field.Value, 0.25);
+		Test.Assert(!slider.StepsOnWheel); // the grid scrolls
+		Test.Assert(!field.StepsOnWheel);
+		let track = slider.ScreenBounds;
+		Test.Assert(track.Width > 40.0f); // the slider takes the room
+		Test.Assert(field.ScreenBounds.X >= track.X + track.Width - 0.5f); // its value after it
+
+		let y = track.Y + track.Height * 0.5f;
+		let start = Float2(track.X + track.Width * 0.5f, y);
+		let end = Float2(track.X + track.Width + 50.0f, y); // past its end: the top
+		slider.RequestFocus();
+		bed.D.InjectMouseDown(start, .Left);
+		bed.D.InjectMouseMove(end);
+		CheckNear(field.Value, 1.0); // the field follows the drag
+		bed.D.InjectMouseUp(end, .Left);
+		Test.Assert(bed.Host.Calls.Count == 4);
+		Test.Assert(bed.Host.Calls[0] == "begin rough");
+		Test.Assert(bed.Host.Calls[1] == "preview rough=0.5");
+		Test.Assert(bed.Host.Calls[2] == "preview rough=1");
+		Test.Assert(bed.Host.Calls[3] == "commit rough=1");
+
+		bed.Host.Clear();
+		bed.D.InjectMouseDown(start, .Left);
+		bed.D.InjectKeyDown(EditorBed.K(.Escape));
+		bed.D.InjectMouseUp(start, .Left);
+		Test.Assert(bed.Host.Calls.Count == 3);
+		Test.Assert(bed.Host.Last == "cancel rough");
+		CheckNear(slider.Value, 1.0); // back, both
+		CheckNear(field.Value, 1.0);
 	}
 
 	[Test]

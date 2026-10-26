@@ -386,6 +386,138 @@ class TestModule
 	}
 }
 
+/// What a reference of the tests' own points at (as the resource types a Ref<T> names).
+class TestTarget
+{
+	public int32 Payload = 0;
+}
+
+class TestOther
+{
+	public int32 Payload = 0;
+}
+
+/// A reference of the tests' own (as Ref<T> is): a Guid naming a TestTarget or a TestOther, and a
+/// binding a write drops.
+struct TestRef<T>
+{
+	public Guid Id;
+	public int32 Bound;
+}
+
+/// The tests' references told to the source, as an application tells it Resource's Ref<T> through
+/// ReferenceShape: by their types, their Guid read and written through the copy's address.
+class TestReferenceShape : IPropertyReferenceShape
+{
+	public bool Is(Type type) => (type == typeof(TestRef<TestTarget>)) || (type == typeof(TestRef<TestOther>));
+
+	public Type Target(Type type)
+	{
+		if (type == typeof(TestRef<TestTarget>))
+			return typeof(TestTarget);
+		return (type == typeof(TestRef<TestOther>)) ? typeof(TestOther) : null;
+	}
+
+	// The two are laid out alike: T is only what the Guid names.
+	public Result<Guid> Id(Type type, void* value)
+	{
+		if (!Is(type))
+			return .Err;
+		return .Ok(((TestRef<TestTarget>*)value).Id);
+	}
+
+	public bool Assign(Type type, void* value, Guid id)
+	{
+		if (!Is(type))
+			return false;
+		let reference = (TestRef<TestTarget>*)value;
+		reference.Id = id;
+		reference.Bound = 0; // the next resolve binds the new id
+		return true;
+	}
+}
+
+/// Something holding three references: two to a TestTarget, one to a TestOther.
+[GuiReflect(true)]
+class TestSocket
+{
+	private TestRef<TestTarget> mPlug;
+	private TestRef<TestTarget> mSpare;
+	private TestRef<TestOther> mOther;
+
+	[GuiProperty]
+	public TestRef<TestTarget> Plug
+	{
+		get => mPlug;
+		set => mPlug = value;
+	}
+
+	[GuiProperty]
+	public TestRef<TestTarget> Spare
+	{
+		get => mSpare;
+		set => mSpare = value;
+	}
+
+	[GuiProperty]
+	public TestRef<TestOther> Other
+	{
+		get => mOther;
+		set => mOther = value;
+	}
+}
+
+/// Bare Guids: one naming what it points at by its type's name, one naming nothing.
+[GuiReflect(true)]
+class TestIds
+{
+	private Guid mMesh;
+	private Guid mAnything;
+
+	[GuiProperty, GuiReference("TestTarget")]
+	public Guid Mesh
+	{
+		get => mMesh;
+		set => mMesh = value;
+	}
+
+	[GuiProperty]
+	public Guid Anything
+	{
+		get => mAnything;
+		set => mAnything = value;
+	}
+}
+
+/// A struct an application takes as a reference by its Guid (an editor's entity reference).
+struct TestLink
+{
+	[GuiProperty]
+	public Guid Id;
+}
+
+/// Something holding two links.
+[GuiReflect(true)]
+class TestLinks
+{
+	private TestLink mTarget;
+	private TestLink mUp;
+
+	[GuiProperty]
+	public TestLink Target
+	{
+		get => mTarget;
+		set => mTarget = value;
+	}
+
+	[GuiProperty]
+	public TestLink Up
+	{
+		get => mUp;
+		set => mUp = value;
+	}
+}
+
 /// Two lamps, the source over the first (or both), its changes kept.
 class ReflectedBed
 {
@@ -485,7 +617,8 @@ class ModuleBed
 /// groups, lists of values and of objects, an HDR colour, other types hinted with their names) with
 /// what an inspector reads of each, writes through its table's setters, and each commit told as one
 /// change the text format writes and Restore reads back; Core's curve and the GUI's gradient one
-/// value each, and an application's own registered by their parts.
+/// value each, and an application's own registered by their parts; references as their Guids naming
+/// what they point at.
 class ReflectedSourceTests
 {
 	[Test]
@@ -507,6 +640,8 @@ class ReflectedSourceTests
 		Test.Assert(intensity.HasRange);
 		CheckNear(intensity.Max, 100.0);
 		CheckNear(intensity.Step, 0.5);
+		Test.Assert(intensity.Hint == "slider"); // a ranged float slides over its range
+		Test.Assert(Find(rows, "Range").Hint.IsEmpty); // an unranged one keeps its field
 		Test.Assert(Find(rows, "Range").Kind == .Float); // a double
 		Test.Assert(Find(rows, "Range").DisplayName == "Reach");
 		let kind = Find(rows, "Kind");
@@ -1153,6 +1288,122 @@ class ReflectedSourceTests
 		CheckNear(bed.B.Size.Keys[1].Value, 2.5);
 		Test.Assert(!bed.Source.PasteValue("Shade", copied, reason));
 		Test.Assert(reason == "A TestCurve does not paste onto a TestGradient");
+	}
+
+	[Test]
+	public static void AReferenceIsItsGuidAsTextNamingWhatItPointsAtAWriteDropsItsBindingEmptyClearsIt()
+	{
+		let socket = scope TestSocket();
+		let shape = scope TestReferenceShape();
+		let source = scope ReflectedPropertySource();
+		source.ReferenceShape = shape;
+		Object[1] objects = .(socket);
+		source.SetObjects(objects, TestSocket.StaticGuiType);
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		source.GetProperties("", rows);
+		Test.Assert(rows.Count == 3);
+		Test.Assert(rows[0].Kind == .Reference);
+		Test.Assert(rows[0].ReferenceType == typeof(TestTarget));
+		Test.Assert(rows[2].ReferenceType == typeof(TestOther));
+		Test.Assert(TextIs(source, "Plug", 0, "")); // nothing referenced
+
+		let wood = Guid(0x1234, 0, 0, 0, 0, 0, 0, 0, 0, 0x56, 0x78);
+		let woodText = wood.ToString(.. scope String());
+		var plug = socket.Plug;
+		plug.Bound = 1;
+		socket.Plug = plug;
+		source.BeginEdit("Plug");
+		source.CommitEdit("Plug", PropertyWrite(Sedulous.GUI.Variant(woodText)));
+		Test.Assert(socket.Plug.Id == wood);
+		Test.Assert(socket.Plug.Bound == 0); // the next resolve binds the new id
+		Test.Assert(TextIs(source, "Plug", 0, woodText));
+
+		// Not a Guid: refused, the reference kept.
+		source.BeginEdit("Plug");
+		source.CommitEdit("Plug", PropertyWrite(Sedulous.GUI.Variant("wood")));
+		Test.Assert(socket.Plug.Id == wood);
+
+		// Copied onto a reference to its like, refused onto another's.
+		let format = scope BlobFormat();
+		source.TextFormat = format;
+		let copied = source.CopyValue("Plug", .. scope String());
+		let reason = scope String();
+		Test.Assert(source.PasteValue("Spare", copied, reason));
+		Test.Assert(socket.Spare.Id == wood);
+		Test.Assert(!source.PasteValue("Other", copied, reason));
+		Test.Assert(socket.Other.Id.IsNil);
+
+		// Empty clears it.
+		source.BeginEdit("Plug");
+		source.CommitEdit("Plug", PropertyWrite(Sedulous.GUI.Variant(StringView())));
+		Test.Assert(socket.Plug.Id.IsNil);
+	}
+
+	[Test]
+	public static void ABareGuidIsAReferenceToWhatItsMembersGuiReferenceNamesElseToNothingInParticular()
+	{
+		let ids = scope TestIds();
+		let source = scope ReflectedPropertySource();
+		Object[1] objects = .(ids);
+		source.SetObjects(objects, TestIds.StaticGuiType);
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		source.GetProperties("", rows);
+		Test.Assert(rows.Count == 2);
+		Test.Assert(rows[0].Kind == .Reference);
+		Test.Assert(rows[0].ReferenceType == typeof(TestTarget));
+		Test.Assert(rows[0].Hint.IsEmpty);
+		Test.Assert(rows[1].Kind == .Reference);
+		Test.Assert(rows[1].ReferenceType == null);
+		Test.Assert(TextIs(source, "Mesh", 0, ""));
+
+		let crate = Guid(0x42, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x7);
+		let crateText = crate.ToString(.. scope String());
+		source.BeginEdit("Mesh");
+		source.CommitEdit("Mesh", PropertyWrite(Sedulous.GUI.Variant(crateText)));
+		Test.Assert(ids.Mesh == crate);
+		Test.Assert(TextIs(source, "Mesh", 0, crateText));
+		source.BeginEdit("Mesh");
+		source.CommitEdit("Mesh", PropertyWrite(Sedulous.GUI.Variant("crate"))); // not a Guid: refused
+		Test.Assert(ids.Mesh == crate);
+		source.BeginEdit("Mesh");
+		source.CommitEdit("Mesh", PropertyWrite(Sedulous.GUI.Variant(StringView())));
+		Test.Assert(ids.Mesh.IsNil);
+	}
+
+	[Test]
+	public static void AStructTheApplicationRegistersAsAReferenceIsOneByItsGuidNamingItself()
+	{
+		let links = scope TestLinks();
+		let source = scope ReflectedPropertySource();
+		Object[1] objects = .(links);
+		source.SetObjects(objects, TestLinks.StaticGuiType);
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		source.GetProperties("", rows);
+		Test.Assert(rows.Count == 2);
+		Test.Assert(rows[0].Kind == .Group); // not registered: its own rows
+
+		source.RegisterReferenceType("TestLink", .("Id"));
+		ClearAndDeleteItems!(rows);
+		source.GetProperties("", rows);
+		Test.Assert(rows.Count == 2);
+		Test.Assert(rows[0].Kind == .Reference);
+		Test.Assert(rows[0].ReferenceType == typeof(TestLink));
+		Test.Assert(rows[0].Hint == "TestLink"); // its own editor, before the asset references'
+		Test.Assert(TextIs(source, "Target", 0, ""));
+
+		let lamp = Guid(0x42, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x7);
+		let lampText = lamp.ToString(.. scope String());
+		source.BeginEdit("Target");
+		source.CommitEdit("Target", PropertyWrite(Sedulous.GUI.Variant(lampText)));
+		Test.Assert(links.Target.Id == lamp);
+		Test.Assert(TextIs(source, "Target", 0, lampText));
+		Test.Assert(links.Up.Id.IsNil);
+		source.BeginEdit("Target");
+		source.CommitEdit("Target", PropertyWrite(Sedulous.GUI.Variant(StringView()))); // empty clears it
+		Test.Assert(links.Target.Id.IsNil);
 	}
 
 	// What no Raptor test covers: a name as a row says it, and a source without objects.

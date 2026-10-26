@@ -11,6 +11,9 @@ namespace Sedulous.GUI;
 //   - integer and float: a number field, scrubbed (the scrub previewed, committed on release,
 //     cancelled by Escape), its range and step the property's (unbounded when it has no range; a
 //     float's step 0.01 when it has none), and the wheel left to the grid;
+//   - a number on a slider (hint "slider"): a slider over its range beside its number field, each
+//     the same gesture (a drag previewed, committed on release, Escape putting it back), the wheel
+//     left to the grid;
 //   - string: a one-line field, committed on Return or on leaving it; Escape puts back what it had;
 //   - enum: a combo box of its choices;
 //   - flags: a button naming the flags set, opening a list of check boxes, a flag that differs
@@ -150,6 +153,135 @@ class NumberPropertyEditor : SingleControlEditor
 			return;
 		mBegun = true;
 		BeginEdit();
+	}
+}
+
+/// A number over its range: a slider beside its field. Either is one gesture: previewed as it goes,
+/// committed on release (the field: on Return or leaving it), Escape putting it back.
+[GuiReflect]
+class SliderPropertyEditor : PropertyEditor
+{
+	private Sedulous.GUI.Slider mSlider ~ _.ReleaseRef();
+	private NumberField mField ~ _.ReleaseRef();
+	private bool mInteger = false;
+	// A gesture under way (a drag's or a scrub's previews).
+	private bool mBegun = false;
+
+	public override bool IsTyping => mField.IsEditing;
+
+	public this()
+	{
+		AddClass("slider-field");
+		EditLayoutStyle(scope (s) =>
+			{
+				s.Direction = .Row;
+				s.AlignItems = .Center;
+				s.ColumnGap = 8.0f;
+			});
+		mSlider = new Sedulous.GUI.Slider();
+		mSlider.StepsOnWheel = false; // the wheel scrolls the grid
+		mSlider.EditLayoutStyle(scope (s) =>
+			{
+				s.Grow = 1.0f;
+				s.Basis = LayoutLength.Px(0.0f);
+				s.MinWidth = LayoutLength.Px(0.0f);
+			});
+		mSlider.SetOnValueChanging(new (value) =>
+			{
+				Begin();
+				mField.Value = value;
+				PreviewEdit(PropertyWrite(ValueOf(value)));
+			});
+		mSlider.SetOnValueChanged(new (value) => { Commit(value); });
+		mSlider.SetOnValueCancelled(new () =>
+			{
+				mField.Value = mSlider.Range.Value; // back with it
+				Cancel();
+			});
+		AddChild(mSlider);
+		mField = new NumberField();
+		mField.StepsOnWheel = false;
+		mField.Placeholder = MixedValueText();
+		mField.EditLayoutStyle(scope (s) =>
+			{
+				s.Width = LayoutLength.Px(64.0f);
+				s.Shrink = 0.0f;
+			});
+		mField.SetOnValueChanging(new (value) =>
+			{
+				Begin();
+				mSlider.Value = value;
+				PreviewEdit(PropertyWrite(ValueOf(value)));
+			});
+		mField.SetOnValueChanged(new (value) => { Commit(value); });
+		mField.SetOnValueCancelled(new () =>
+			{
+				mSlider.Value = mField.Range.Value; // back with it
+				Cancel();
+			});
+		AddChild(mField);
+	}
+
+	public Sedulous.GUI.Slider Slider => mSlider;
+	public NumberField Field => mField;
+
+	protected override void OnBind(PropertyInfo info, PropertyValue value)
+	{
+		mBegun = false;
+		mInteger = info.Kind == .Integer;
+		// A slider needs both ends: without a range it runs 0 to 1.
+		let lo = info.HasRange ? info.Min : 0.0;
+		let hi = info.HasRange ? info.Max : 1.0;
+		let step = (info.Step > 0.0) ? info.Step : (mInteger ? 1.0 : 0.01);
+		mSlider.Min = lo;
+		mSlider.Max = hi;
+		mSlider.Step = step;
+		mField.IsInteger = mInteger;
+		mField.Min = lo;
+		mField.Max = hi;
+		mField.AllowLesser = false;
+		mField.AllowGreater = false;
+		mField.Step = step;
+		mSlider.Value = value.Value.AsFloat;
+		mField.Value = value.Value.AsFloat;
+		mField.IsMixed = value.Mixed;
+		mSlider.Enabled = !IsReadOnly;
+		mField.Enabled = !IsReadOnly;
+	}
+
+	protected override void OnTextStyleChange()
+	{
+		ShareTextStyle(mField);
+	}
+
+	private Sedulous.GUI.Variant ValueOf(double value)
+	{
+		return mInteger ? Sedulous.GUI.Variant((int64)((value < 0.0) ? value - 0.5 : value + 0.5)) : Sedulous.GUI.Variant(value);
+	}
+
+	private void Begin()
+	{
+		if (mBegun)
+			return;
+		mBegun = true;
+		BeginEdit();
+	}
+
+	private void Commit(double value)
+	{
+		Begin();
+		mBegun = false;
+		mSlider.Value = value;
+		mField.Value = value;
+		CommitEdit(PropertyWrite(ValueOf(value)));
+	}
+
+	private void Cancel()
+	{
+		if (!mBegun)
+			return;
+		mBegun = false;
+		CancelEdit();
 	}
 }
 

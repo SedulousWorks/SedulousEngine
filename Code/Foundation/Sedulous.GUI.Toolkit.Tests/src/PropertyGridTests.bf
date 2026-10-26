@@ -504,6 +504,64 @@ class PropertyGridTests
 	}
 
 	[Test]
+	public static void ABagsListOfGroupsEachElementItsFieldsAddedEditedMovedAndRemovedWhole()
+	{
+		let bed = scope GridBed(1);
+		let info = bed.Bag.AddList("variants", .Group, .());
+		info.MaxCount = 3;
+		let clip = bed.Bag.AddElementField("variants", "clip", .String, Sedulous.GUI.Variant(""));
+		let weight = bed.Bag.AddElementField("variants", "weight", .Float, Sedulous.GUI.Variant(1.0));
+		Test.Assert(clip != null);
+		Test.Assert(weight != null);
+		weight.HasRange = true;
+		weight.Max = 100.0;
+		Test.Assert(bed.Bag.AddElementField("nothing", "x", .Float) == null); // no such list
+		bed.Bag.ResizeList("variants", 0, 2);
+		Test.Assert(bed.Bag.ElementCount("variants", 0) == 2);
+		Test.Assert(IntOf(bed.Bag, "variants", 0) == 2);
+		bed.Bag.SetValue("variants.0.clip", 0, Sedulous.GUI.Variant("step"));
+		bed.Bag.SetValue("variants.1.clip", 0, Sedulous.GUI.Variant("scuff"));
+		bed.Bag.SetValue("variants.1.weight", 0, Sedulous.GUI.Variant(3.0));
+
+		// An element is a group; its fields are its rows, each with what it says.
+		let elements = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(elements); }
+		bed.Bag.GetProperties("variants", elements);
+		Test.Assert(elements.Count == 2);
+		Test.Assert(elements[1].Kind == .Group);
+		let fields = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(fields); }
+		bed.Bag.GetProperties("variants.1", fields);
+		Test.Assert(fields.Count == 2);
+		Test.Assert(fields[0].Name == "clip");
+		Test.Assert(fields[1].HasRange);
+		CheckNear(FloatOf(bed.Bag, "variants.1.weight", 0), 3.0);
+
+		// The grid shows it as any list: the count with Add, an element a group of its rows.
+		bed.Show();
+		Test.Assert(bed.Grid.FindEditor("variants") is ListPropertyEditor);
+
+		// A field edited as the grid commits one.
+		bed.Bag.BeginEdit("variants.0.weight");
+		bed.Bag.CommitEdit("variants.0.weight", PropertyWrite(Sedulous.GUI.Variant(5.0)));
+		CheckNear(FloatOf(bed.Bag, "variants.0.weight", 0), 5.0);
+
+		// Added with its fields' new values; moved and removed whole.
+		Test.Assert(bed.Bag.EditList("variants", scope ListEdit(.Insert, 2)));
+		Test.Assert(bed.Bag.ElementCount("variants", 0) == 3);
+		CheckNear(FloatOf(bed.Bag, "variants.2.weight", 0), 1.0);
+		Test.Assert(!bed.Bag.EditList("variants", scope ListEdit(.Insert, 3))); // its most
+		Test.Assert(bed.Bag.EditList("variants", scope ListEdit(.Move, 1, 0)));
+		Test.Assert(TextIs(bed.Bag, "variants.0.clip", 0, "scuff"));
+		CheckNear(FloatOf(bed.Bag, "variants.0.weight", 0), 3.0);
+		Test.Assert(TextIs(bed.Bag, "variants.1.clip", 0, "step"));
+		Test.Assert(bed.Bag.EditList("variants", scope ListEdit(.Remove, 0)));
+		Test.Assert(bed.Bag.ElementCount("variants", 0) == 2);
+		Test.Assert(TextIs(bed.Bag, "variants.0.clip", 0, "step"));
+		CheckNear(FloatOf(bed.Bag, "variants.0.weight", 0), 5.0);
+	}
+
+	[Test]
 	public static void AListOfSeveralTypesAddsTheOnePickedFromAMenu()
 	{
 		let bed = scope GridBed();
@@ -739,6 +797,22 @@ class PropertyGridTests
 		Field("speed").RequestFocus();
 		Test.Assert(bed.Grid.IsItemSelected(RowOf("speed")));
 		Test.Assert(!bed.Grid.IsItemSelected(RowOf("name")));
+	}
+
+	[Test]
+	public static void AReferenceIsItsGuidsTextByDefaultAPasteTakesAGuidOrNothing()
+	{
+		let bed = scope GridBed();
+		bed.Add("mesh", .Reference, Sedulous.GUI.Variant(""));
+		bed.Show();
+		Test.Assert(bed.Grid.FindEditor("mesh") is StringPropertyEditor); // an application registers its slot
+		let reason = scope String();
+		Test.Assert(bed.Bag.PasteValue("mesh", " 00001234-0000-0000-0000-000000005678 ", reason));
+		Test.Assert(TextIs(bed.Bag, "mesh", 0, "00001234-0000-0000-0000-000000005678"));
+		Test.Assert(!bed.Bag.PasteValue("mesh", "wood", reason));
+		Test.Assert(reason == "\"wood\" is no guid");
+		Test.Assert(bed.Bag.PasteValue("mesh", "", reason)); // nothing: cleared
+		Test.Assert(TextIs(bed.Bag, "mesh", 0, ""));
 	}
 
 	[Test]

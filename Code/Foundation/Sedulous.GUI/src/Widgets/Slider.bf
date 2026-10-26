@@ -11,8 +11,9 @@ namespace Sedulous.GUI;
 // it; a drag reports `input` as it goes and `change` on release. The arrows along it step it (and
 // stay its own at its ends: holding the d-pad to reach an end must not throw focus off it), Page
 // Up and Down step a page, Home and End go to the ends, and the wheel steps it while it is hovered
-// or focused. Ticks, when asked for, mark the track at even steps. Modeled on eepp's UISlider
-// (role only).
+// or focused (unless told not to: in a scrolling list the wheel is the list's). Escape during a drag
+// puts the value back as it was before it, and reports the drag cancelled. Ticks, when asked for,
+// mark the track at even steps. Modeled on eepp's UISlider (role only).
 
 [GuiReflect(true), Scriptable]
 class Slider : RangeWidget
@@ -20,6 +21,10 @@ class Slider : RangeWidget
 	private Sedulous.GUI.Orientation mOrientation = .Horizontal;
 	private int32 mTicks = 0;
 	private bool mDragging = false;
+	// The value before the drag, what Escape puts back.
+	private double mDragStart = 0.0;
+	private bool mStepsOnWheel = true;
+	private delegate void() mOnCancelled ~ delete _;
 	private Color mTrackColor = .(0.28f, 0.30f, 0.35f, 1.0f);
 	private Color mFillColor = .(0.31f, 0.63f, 0.85f, 1.0f);
 	private Color mHandleColor = .(0.86f, 0.89f, 0.93f, 1.0f);
@@ -31,6 +36,23 @@ class Slider : RangeWidget
 		AccessRoleName = "slider"; // what a screen reader takes it for
 		TabFocusable = true;
 	}
+
+	/// Whether the wheel steps it (on); off, the wheel goes on to what holds it.
+	public bool StepsOnWheel
+	{
+		get => mStepsOnWheel;
+		set => mStepsOnWheel = value;
+	}
+
+	/// A drag given up with Escape: the value is back as it was before it. OWNERSHIP of `callback`
+	/// transfers.
+	public void SetOnValueCancelled(delegate void() callback)
+	{
+		delete mOnCancelled;
+		mOnCancelled = callback;
+	}
+
+	public bool IsDragging => mDragging;
 
 	/// A page key's step (0: a tenth of the range).
 	[GuiProperty("page"), Scriptable]
@@ -135,6 +157,18 @@ class Slider : RangeWidget
 		if (e.Modifiers != 0)
 			return;
 		let key = (KeyCode)e.KeyCode;
+		if (mDragging)
+		{
+			if (key == .Escape)
+			{
+				mDragging = false;
+				Value = mDragStart; // back, and nothing to commit
+				if (mOnCancelled != null)
+					mOnCancelled();
+				e.Handled = true;
+			}
+			return; // a drag's keys are its own
+		}
 		let vertical = mOrientation == .Vertical;
 		let step = Range.KeyStep;
 		let v = Range.Value;
@@ -158,11 +192,12 @@ class Slider : RangeWidget
 		e.Handled = true;
 	}
 
-	// The wheel steps it while it is hovered or focused; at an end it goes on to what holds it.
+	// The wheel steps it while it is hovered or focused; at an end, or told not to step, it goes on
+	// to what holds it.
 	protected override void OnMouseWheel(WheelEvent e)
 	{
 		let notches = (e.Delta.Y != 0.0f) ? e.Delta.Y : e.Delta.X;
-		if (notches == 0.0f)
+		if ((notches == 0.0f) || !mStepsOnWheel)
 			return;
 		let before = Range.Value;
 		ChangeByUser(before + Range.KeyStep * (double)notches, true);
@@ -177,6 +212,7 @@ class Slider : RangeWidget
 		if (e.Button != .Left)
 			return;
 		mDragging = true;
+		mDragStart = Range.Value;
 		UpdateFromEvent(e);
 		e.Handled = true;
 	}

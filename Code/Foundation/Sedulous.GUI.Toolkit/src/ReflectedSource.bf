@@ -28,11 +28,20 @@ namespace Sedulous.GUI;
 //     or a gradient (its lists of stops and its blend) is one value of that kind too: the toolkit
 //     names no runtime type, the application says which of its types these are and where their
 //     parts are.
+//   - A reference is one value of kind Reference, its Guid as text (empty: none), naming the type
+//     it points at: a type the application's reference shape takes (an engine's Ref<T>), a write
+//     dropping its binding so the next resolve binds the new id; a value struct the application
+//     registers as a reference (its Guid field, by name), naming itself and hinted with its name,
+//     so the application's editor for it (an editor's entity reference) is chosen before the one
+//     for asset references; and a bare Guid, naming the type its member's [GuiReference] names,
+//     else nothing in particular. The toolkit has no slot: by default a reference shows as its
+//     Guid's text, and the application registers its editor for the kind.
 //   - Any other type is a group hinted with its type's name, for an application's editor; with no
 //     editor, the grid's row saying no editor fits.
 //   - A row says its [DisplayName], else its property's name made readable; its [Description], its
-//     [Range] (min, max, step) and its [VisibleWhen] ("Kind", or "Kind=1,2" of its raw integer, a
-//     sibling's; shown when it holds for every object).
+//     [Range] (min, max, step; a ranged float hinted "slider", as the old inspector showed it) and
+//     its [VisibleWhen] ("Kind", or "Kind=1,2" of its raw integer, a sibling's; shown when it holds
+//     for every object).
 // Defaults: the type's, read from an instance its creator makes, under any an application stacks
 // over it (a prefab's, by path and object); a revert puts each object's own back, a list whole from
 // the type's instance.
@@ -50,6 +59,23 @@ interface IPropertyTextFormat
 	void Write(delegate void(ISerializer ar) write, String outText);
 	/// Reads `text` with `read`; false when it is not the format's or the read failed.
 	bool Read(StringView text, delegate void(ISerializer ar) read);
+}
+
+/// What the application gives a reflected source to know its references by (an engine's Ref<T>,
+/// read through Resource's ReferenceShape), so the toolkit names no runtime type and depends on
+/// no engine module. Each call takes the value's type and the address of a copy of it the source
+/// writes back whole through what holds it.
+interface IPropertyReferenceShape
+{
+	/// Whether a value of `type` is a reference.
+	bool Is(System.Type type);
+	/// The type a reference of `type` points at (what may fill it); null when it says not.
+	System.Type Target(System.Type type);
+	/// The Guid inside the reference of `type` at `value`.
+	Result<Guid> Id(System.Type type, void* value);
+	/// Points the reference of `type` at `value` at `id` and drops its binding, so the next resolve
+	/// binds the new id; false when it cannot.
+	bool Assign(System.Type type, void* value, Guid id);
 }
 
 /// A change a reflected source made: what (in words), where, and each object's value there before
@@ -72,6 +98,18 @@ class ReflectedChange
 		ClearAndDeleteItems!(After);
 		for (let text in other.After)
 			After.Add(new String(text));
+	}
+}
+
+/// Where a value struct registered as a reference keeps what it is known by: its Guid field, by
+/// name.
+struct ReflectedReferenceParts
+{
+	public StringView Id;
+
+	public this(StringView id)
+	{
+		Id = id;
 	}
 }
 
@@ -155,6 +193,9 @@ class ReflectedPropertySource : IPropertySource
 		Curve,
 		/// The GUI's ColorGradient, or a value struct registered as a gradient.
 		Gradient,
+		/// A type the reference shape takes, a value struct registered as a reference, or a bare
+		/// Guid: its Guid.
+		Reference,
 		/// An object with a table of its own (the root, a node a property holds, an object in a
 		/// list), or a value struct.
 		Group,
@@ -235,6 +276,12 @@ class ReflectedPropertySource : IPropertySource
 		public String Keys = new .() ~ delete _;
 	}
 
+	private class ReferenceType
+	{
+		public String Name = new .() ~ delete _;
+		public String Id = new .() ~ delete _;
+	}
+
 	private class GradientType
 	{
 		public String Name = new .() ~ delete _;
@@ -253,6 +300,9 @@ class ReflectedPropertySource : IPropertySource
 	// The type's defaults, made by its creator.
 	private Object mTypeDefault = null;
 	private List<CurveType> mCurveTypes = new .() ~ DeleteContainerAndItems!(_);
+	private List<ReferenceType> mReferenceTypes = new .() ~ DeleteContainerAndItems!(_);
+	// Not owned.
+	private IPropertyReferenceShape mReferenceShape = null;
 	private List<GradientType> mGradientTypes = new .() ~ DeleteContainerAndItems!(_);
 	private delegate void(ReflectedChange change) mOnChange ~ delete _;
 
@@ -288,6 +338,18 @@ class ReflectedPropertySource : IPropertySource
 	{
 		get => mFormat;
 		set => mFormat = value;
+	}
+
+	/// What tells the application's references (not owned; null: none, only a value struct
+	/// registered as one and a bare Guid are references).
+	public IPropertyReferenceShape ReferenceShape
+	{
+		get => mReferenceShape;
+		set
+		{
+			mReferenceShape = value;
+			NotifyPropertiesChanged();
+		}
 	}
 
 	/// Told each change made, to keep for undo. OWNERSHIP of `onChange` transfers.
@@ -330,6 +392,17 @@ class ReflectedPropertySource : IPropertySource
 
 	/// Tells the grid the objects changed from outside it (an undo the application made).
 	public void Refresh() => NotifyPropertiesChanged();
+
+	/// Takes the value struct named `typeName` as a reference: one value, its Guid at `parts.Id`, the
+	/// struct itself what it points at.
+	public void RegisterReferenceType(StringView typeName, ReflectedReferenceParts parts)
+	{
+		let entry = new ReferenceType();
+		entry.Name.Set(typeName);
+		entry.Id.Set(parts.Id);
+		mReferenceTypes.Add(entry);
+		NotifyPropertiesChanged();
+	}
 
 	/// Takes the value struct named `typeName` as a curve: one value, its keys at `parts.Keys`.
 	public void RegisterCurveType(StringView typeName, ReflectedCurveParts parts)
@@ -592,6 +665,8 @@ class ReflectedPropertySource : IPropertySource
 			return .Curve;
 		if (FindGradientType(type) != null)
 			return .Gradient;
+		if ((FindReferenceType(type) != null) || ((mReferenceShape != null) && mReferenceShape.Is(type)))
+			return .Reference;
 		let shape = BaseShapeOf(type);
 		if (shape != .Other)
 			return shape;
@@ -625,6 +700,8 @@ class ReflectedPropertySource : IPropertySource
 			return .Quaternion;
 		if (type == typeof(Color))
 			return .Color;
+		if (type == typeof(Guid))
+			return .Reference; // what something is known by, as a Ref<T>'s id is
 		if (type.IsEnum)
 			return .Enum;
 		if (type.IsSubtypeOf(typeof(Sedulous.Core.Curve)))
@@ -901,7 +978,13 @@ class ReflectedPropertySource : IPropertySource
 			info.Min = member.Min;
 			info.Max = member.Max;
 			info.Step = member.Step;
+			// A ranged float slides over its range (an integer's range only bounds its field).
+			if ((info.Kind == .Float) && (info.Hint.Length == 0))
+				info.Hint.Set("slider");
 		}
+		// A bare Guid's member may name what it points at ([GuiReference]).
+		if ((info.Kind == .Reference) && (info.ReferenceType == null))
+			info.ReferenceType = member.ReferenceType;
 		if (member.VisibleWhen.Length != 0)
 			info.Visible = Holds(path, member.VisibleWhen);
 	}
@@ -955,6 +1038,15 @@ class ReflectedPropertySource : IPropertySource
 				let colors = PartCapacity(value, parts.Colors);
 				let alphas = PartCapacity(value, parts.Alphas);
 				info.MaxCount = (colors == 0) ? alphas : (((alphas == 0) || (colors < alphas)) ? colors : alphas); // one most for both kinds
+			}
+		case .Reference:
+			info.Kind = .Reference;
+			info.ReferenceType = ReferenceTargetOf(type);
+			if (FindReferenceType(type) != null)
+			{
+				// A registered one: its type's name, for the application's editor.
+				info.Hint.Clear();
+				type.GetName(info.Hint);
 			}
 		case .List:
 			info.Kind = .List;
@@ -1198,6 +1290,8 @@ class ReflectedPropertySource : IPropertySource
 		case .Gradient:
 			if (FindGradientType(type) != null)
 				return ReadGradient(target);
+		case .Reference:
+			return ReadReference(target);
 		default:
 		}
 		var value = ReadLink(target, target.Depth);
@@ -1271,6 +1365,8 @@ class ReflectedPropertySource : IPropertySource
 					return true;
 				}
 			}
+		case .Reference:
+			return (value.Kind == .String) && WriteReference(target, value.AsString);
 		case .List, .Group, .Other:
 			return false; // through its elements, fields or rows
 		default:
@@ -1521,7 +1617,7 @@ class ReflectedPropertySource : IPropertySource
 				if (reading)
 					WriteTarget(target, Sedulous.GUI.Variant(value));
 			}
-		case .String:
+		case .String, .Reference: // a reference as its Guid's text
 			{
 				var read = Read(target);
 				defer read.Dispose();
@@ -1817,6 +1913,13 @@ class ReflectedPropertySource : IPropertySource
 		case .Float3, .Quaternion: outText.Append("Float3");
 		case .Float4: outText.Append("Float4");
 		case .Color: outText.Append("Color");
+		case .Reference:
+			// Only a reference to its like.
+			outText.Append("reference to ");
+			if (let to = ReferenceTargetOf(TypeOf(target)))
+				to.GetName(outText);
+			else
+				outText.Append("?");
 		case .Curve, .Gradient, .Group:
 			TypeOf(target).GetName(outText);
 		case .List:
@@ -1884,6 +1987,113 @@ class ReflectedPropertySource : IPropertySource
 		case .Remove: outText.AppendF("Removed from {}", path);
 		case .Move: outText.AppendF("Moved in {}", path);
 		}
+	}
+
+	// === References: a Guid's text, through the shape, a registered struct's field or the Guid itself ===
+
+	private ReferenceType FindReferenceType(System.Type type)
+	{
+		if (mReferenceTypes.IsEmpty || (type == null))
+			return null;
+		let name = type.GetName(.. scope String());
+		for (let entry in mReferenceTypes)
+		{
+			if (entry.Name == name)
+				return entry;
+		}
+		return null;
+	}
+
+	// What a reference of `type` points at: a registered struct itself, nothing for a bare Guid (its
+	// member may say), else what the application's shape says.
+	protected System.Type ReferenceTargetOf(System.Type type)
+	{
+		if (FindReferenceType(type) != null)
+			return type;
+		if (type == typeof(Guid))
+			return null;
+		return (mReferenceShape != null) ? mReferenceShape.Target(type) : null;
+	}
+
+	// The Guid in `value`, the reference at `target` as read (a bare Guid, a registered struct's
+	// field, or through the shape); false when it has none.
+	protected bool ReferenceIdOf(Target target, System.Variant value, out Guid outId)
+	{
+		outId = .();
+		if (!value.HasValue || value.IsObject)
+			return false;
+		let type = TypeOf(target);
+		var held = value;
+		if (type == typeof(Guid))
+		{
+			outId = held.Get<Guid>();
+			return true;
+		}
+		if (let parts = FindReferenceType(type))
+		{
+			let field = ValueInfoOf(target)?.FindField(parts.Id);
+			if ((field == null) || (field.ValueType != typeof(Guid)))
+				return false;
+			var read = field.Get(held.DataPtr);
+			defer read.Dispose();
+			if (!read.HasValue)
+				return false;
+			outId = read.Get<Guid>();
+			return true;
+		}
+		if ((mReferenceShape == null) || !mReferenceShape.Is(type))
+			return false;
+		if (mReferenceShape.Id(type, held.DataPtr) case .Ok(let id))
+		{
+			outId = id;
+			return true;
+		}
+		return false;
+	}
+
+	// A reference's Guid as text; empty when it names nothing (or has no Guid to read).
+	protected Sedulous.GUI.Variant ReadReference(Target target)
+	{
+		var value = ReadLink(target, target.Depth);
+		defer value.Dispose();
+		Guid id = .();
+		if (!ReferenceIdOf(target, value, out id) || id.IsNil)
+			return Sedulous.GUI.Variant(StringView());
+		return Sedulous.GUI.Variant(id.ToString(.. scope String())).Copy();
+	}
+
+	// Writes the Guid `text` names (empty: none) to the reference at `target`: a bare Guid through
+	// its setter; a registered struct's field, or the shape's Assign (which drops the binding, so the
+	// next resolve binds the new id), into a copy written back whole. False for text that is no Guid.
+	protected bool WriteReference(Target target, StringView text)
+	{
+		var trimmed = text;
+		trimmed.Trim();
+		Guid id = .();
+		if ((trimmed.Length != 0) && !(Guid.Parse(trimmed) case .Ok(out id)))
+			return false;
+		let type = TypeOf(target);
+		if (type == typeof(Guid))
+		{
+			var boxed = System.Variant.Create(id);
+			defer boxed.Dispose();
+			return WriteLink(target, target.Depth, boxed);
+		}
+		var whole = ReadLink(target, target.Depth);
+		defer whole.Dispose();
+		if (!whole.HasValue || whole.IsObject)
+			return false;
+		if (let parts = FindReferenceType(type))
+		{
+			let field = ValueInfoOf(target)?.FindField(parts.Id);
+			if ((field == null) || (field.ValueType != typeof(Guid)))
+				return false;
+			var boxed = System.Variant.Create(id);
+			defer boxed.Dispose();
+			return field.Set(whole.DataPtr, boxed) && WriteLink(target, target.Depth, whole);
+		}
+		return (mReferenceShape != null) && mReferenceShape.Is(type) && mReferenceShape.Assign(type, whole.DataPtr, id)
+			&& WriteLink(target, target.Depth, whole);
 	}
 
 	// === Registered curves and gradients: the parts the application named, read and written whole ===

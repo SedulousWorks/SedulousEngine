@@ -6,7 +6,8 @@ using Sedulous.GUI;
 namespace Sedulous.GUI.Tests;
 
 /// Slider tests: value clamping and the change callbacks, drag-to-set, and pointer capture (a drag
-/// keeps tracking after the cursor leaves the slider), keys and the wheel, vertical and exponential.
+/// keeps tracking after the cursor leaves the slider), keys and the wheel, Escape putting a drag
+/// back, the wheel's switch, vertical and exponential.
 class SliderTests
 {
 	private static bool Near(double a, double b, double epsilon = 1.2e-5) =>
@@ -215,6 +216,44 @@ class SliderTests
 		Test.Assert(wheelsAbove == 1); // it could not move: the wheel went on up
 		d.InjectMouseWheel(.(50.0f, 10.0f), .(0.0f, -2.0f));
 		Test.Assert(Near(s.Value, 98.0));
+		Test.Assert(wheelsAbove == 1);
+	}
+
+	[Test]
+	public static void EscapeDuringADragPutsTheValueBackAndReportsItCancelledTheWheelMayBeLeftToWhatHoldsIt()
+	{
+		let root = SceneFixtures.NewScene(300.0f, 300.0f);
+		defer root.ReleaseRef();
+		let s = NewSlider(null, 100.0f, 20.0f); // usable x in [10, 90]
+		defer s.ReleaseRef();
+		s.Max = 100.0;
+		s.Step = 1.0;
+		s.Value = 40.0;
+		root.AddChild(s);
+		let d = root.EventDispatcher;
+		int changes = 0;
+		int cancels = 0;
+		s.SetOnValueChanged(new [&] (value) => { changes++; });
+		s.SetOnValueCancelled(new [&] () => { cancels++; });
+		s.RequestFocus();
+		d.InjectMouseDown(.(70.0f, 10.0f), .Left); // 75
+		Test.Assert(s.IsDragging);
+		Test.Assert(Near(s.Value, 75.0));
+		d.InjectKeyDown((uint32)KeyCode.Escape);
+		Test.Assert(!s.IsDragging);
+		Test.Assert(Near(s.Value, 40.0)); // as before the drag
+		Test.Assert(cancels == 1);
+		d.InjectMouseMove(.(30.0f, 10.0f));
+		d.InjectMouseUp(.(30.0f, 10.0f), .Left);
+		Test.Assert(Near(s.Value, 40.0)); // the release after it changes nothing
+		Test.Assert(changes == 0);
+
+		// Told not to step on the wheel (in a scrolling list), the wheel goes on to what holds it.
+		s.StepsOnWheel = false;
+		int wheelsAbove = 0;
+		root.AddEventListener(.MouseWheel, new [&] (e) => { wheelsAbove++; });
+		d.InjectMouseWheel(.(50.0f, 10.0f), .(0.0f, 1.0f));
+		Test.Assert(Near(s.Value, 40.0));
 		Test.Assert(wheelsAbove == 1);
 	}
 

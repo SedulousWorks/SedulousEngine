@@ -462,8 +462,9 @@ class GradientPropertyEditor : PropertyEditor
 static
 {
 	/// Registers the default editors with `registry`: bool, integer, float, string, enum and flags
-	/// by kind; lists by kind, Float2, Float3 and Float4 by hint; colours by kind, stops and HDR
-	/// colours by hint; curves and gradients by kind.
+	/// by kind, a number on a slider by hint; lists by kind, Float2, Float3 and Float4 by hint;
+	/// colours by kind, stops and HDR colours by hint; curves and gradients by kind; a reference as
+	/// its Guid's text.
 	public static void RegisterDefaultPropertyEditors(PropertyEditorRegistry registry)
 	{
 		StringView[3] floats = .("Float2", "Float3", "Float4");
@@ -475,11 +476,14 @@ static
 		registry.RegisterKind(.String, new () => new StringPropertyEditor());
 		registry.RegisterKind(.Enum, new () => new EnumPropertyEditor());
 		registry.RegisterKind(.Color, new () => new ColorPropertyEditor());
+		registry.RegisterHint("slider", new () => new SliderPropertyEditor());
 		registry.RegisterHint("stops", new () => new StopsPropertyEditor());
 		registry.RegisterHint("ColorHdr", new () => new HdrColorPropertyEditor(), true);
 		registry.RegisterKind(.List, new () => new ListPropertyEditor());
 		registry.RegisterKind(.Flags, new () => new FlagsPropertyEditor());
 		registry.RegisterKind(.Curve, new () => new CurvePropertyEditor());
 		registry.RegisterKind(.Gradient, new () => new GradientPropertyEditor());
+		// A reference as its Guid's text: an application registers its own (a slot that picks).
+		registry.RegisterKind(.Reference, new () => new StringPropertyEditor());
 	}
 }
