@@ -627,4 +627,58 @@ class SVGLoaderTests
 		Test.Assert(document.Elements[1].IsGroup);
 		Test.Assert(document.Elements[1].Children[0].Type == .Circle);
 	}
+
+	/// An icon written once on its root: every shape strokes white, with no fill, round ends.
+	/// The paint cascades from the svg element and each group, a shape's own attribute winning.
+	[Test]
+	public static void PaintIsInheritedFromTheSvgElementAndGroups()
+	{
+		let document = Load("""
+			<svg viewBox="0 0 16 16" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M3 8h10"/>
+				<g stroke="#ff0000" stroke-linecap="square">
+					<circle cx="8" cy="8" r="4"/>
+					<rect x="1" y="1" width="2" height="2" fill="blue" stroke-linejoin="bevel"/>
+				</g>
+			</svg>
+			""");
+		defer delete document;
+		Test.Assert(document.Elements.Count == 2);
+
+		let line = document.Elements[0];
+		Test.Assert(line.FillColor == null);
+		Test.Assert(line.StrokeColor != null);
+		Test.Assert(line.StrokeColor.Value == Color.White);
+		Test.Assert(Near(line.StrokeWidth, 1.5f));
+		Test.Assert(line.StrokeCap == .Round);
+		Test.Assert(line.StrokeJoin == .Round);
+
+		Test.Assert(document.Elements[1].Children.Count == 2);
+		let circle = document.Elements[1].Children[0];
+		Test.Assert(circle.FillColor == null);
+		Test.Assert(circle.StrokeColor != null);
+		Test.Assert(circle.StrokeColor.Value == Color.Red, "the group's");
+		Test.Assert(Near(circle.StrokeWidth, 1.5f), "the root's, through the group");
+		Test.Assert(circle.StrokeCap == .Square);
+		Test.Assert(circle.StrokeJoin == .Round);
+
+		let rect = document.Elements[1].Children[1];
+		Test.Assert(rect.FillColor != null);
+		Test.Assert(rect.FillColor.Value == Color.Blue, "its own");
+		Test.Assert(rect.StrokeJoin == .Bevel);
+	}
+
+	[Test]
+	public static void AShapeWithNoPaintOfItsOwnKeepsSvgDefaults()
+	{
+		let document = Load("<svg viewBox=\"0 0 8 8\"><path d=\"M0 0h8v8z\"/></svg>");
+		defer delete document;
+
+		let shape = document.Elements[0];
+		Test.Assert(shape.FillColor != null);
+		Test.Assert(shape.FillColor.Value == Color.Black);
+		Test.Assert(shape.StrokeColor == null);
+		Test.Assert(shape.StrokeCap == .Butt);
+		Test.Assert(shape.StrokeJoin == .Miter);
+	}
 }

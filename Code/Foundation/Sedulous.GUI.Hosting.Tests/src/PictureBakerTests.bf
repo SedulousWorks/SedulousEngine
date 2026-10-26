@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.GUI;
 using Sedulous.Image;
@@ -11,7 +12,9 @@ namespace Sedulous.GUI.Hosting.Tests;
 /// The GPU picture baker on the Null RHI backend: a picture asked for is queued, baked when the
 /// frame records, and registered with every target renderer under its key; asked again it is that
 /// key; a size of its own is a bake of its own; one no draw asks for goes in time; a target added
-/// late learns the bakes, and one taken out forgets them.
+/// late learns the bakes, and one taken out forgets them. Small pictures go into an atlas: queued,
+/// drawn on their page when the frame records, then their region; one too large is not taken, one
+/// no draw asks for goes, and a full atlas is packed anew from the pictures asked for lately.
 class PictureBakerTests
 {
 	/// A Null device, the GUI's renderer, a baker on it, and an encoder a frame records on.
@@ -144,5 +147,79 @@ class PictureBakerTests
 		Test.Assert(baker.Generation == 0);
 		Test.Assert(baker.BakeCount == 1);
 		Test.Assert(baker.Baked(document, 16, 16) == null); // still waiting
+	}
+
+	[Test]
+	public static void AnIconAskedForInTheAtlasIsQueuedBakedOnItsPageWhenTheFrameRecordsThenItsRegion()
+	{
+		let bed = scope Bed();
+		Test.Assert(!bed.Baker.AtlasRegion(bed.Document, 24, 12, true).HasValue); // queued
+		Test.Assert(bed.Baker.AtlasPictureCount == 1);
+		Test.Assert(bed.Frame(0));
+		Test.Assert(bed.Baker.Generation == 1);
+		let region = bed.Baker.AtlasRegion(bed.Document, 24, 12, true);
+		Test.Assert(region.HasValue);
+		Test.Assert(region.Value.Page != null);
+		Test.Assert(region.Value.Page.Width == GpuPictureBaker.cAtlasPageSize);
+		Test.Assert(HostingFixtures.Near(region.Value.Source.Width, 24.0f));
+		Test.Assert(HostingFixtures.Near(region.Value.Source.Height, 12.0f));
+		Test.Assert(region.Value.Source.X >= (float)GpuPictureBaker.cAtlasGutter); // inside its gutter
+		Test.Assert(bed.Target.IsExternalTextureRegistered(region.Value.Page));
+
+		// The same picture as authored is a bake of its own, on the same page, beside it.
+		Test.Assert(!bed.Baker.AtlasRegion(bed.Document, 24, 12, false).HasValue);
+		Test.Assert(bed.Frame(1));
+		let coloured = bed.Baker.AtlasRegion(bed.Document, 24, 12, false);
+		Test.Assert(coloured.HasValue);
+		Test.Assert(coloured.Value.Page == region.Value.Page);
+		Test.Assert(!HostingFixtures.Near(coloured.Value.Source.X, region.Value.Source.X));
+		Test.Assert(bed.Baker.AtlasPageCount == 1);
+		Test.Assert(!bed.Frame(0)); // nothing new
+	}
+
+	[Test]
+	public static void APictureLargerThanAnAtlasKeepsIsNotTakenOneNoDrawAsksForGoes()
+	{
+		let bed = scope Bed();
+		Test.Assert(!bed.Baker.AtlasRegion(bed.Document, PictureRegion.cLargestAtlasPicture + 1, 12, true).HasValue);
+		Test.Assert(bed.Baker.AtlasPictureCount == 0);
+		bed.Baker.AtlasRegion(bed.Document, 24, 12, true);
+		bed.Frame(0);
+		for (uint64 frame = 0; frame <= GpuPictureBaker.cKeepFrames + 1; frame++)
+			bed.Frame((int32)(frame % 2));
+		Test.Assert(bed.Baker.AtlasPictureCount == 0);
+	}
+
+	[Test]
+	public static void AFullAtlasIsPackedAnewFromThePicturesAskedForLately()
+	{
+		let bed = scope Bed();
+		// Pictures of the largest size an atlas keeps, each its own document: every page full.
+		let side = PictureRegion.cLargestAtlasPicture;
+		let perRow = (int)(GpuPictureBaker.cAtlasPageSize / (side + 2 * GpuPictureBaker.cAtlasGutter));
+		let fit = perRow * perRow * GpuPictureBaker.cMostAtlasPages;
+		let documents = scope List<SVGDocument>();
+		defer { ClearAndDeleteItems!(documents); }
+		for (int i = 0; i <= fit; i++)
+		{
+			let document = HostingFixtures.LoadPicture(HostingFixtures.cSquarePicture);
+			Test.Assert(document != null);
+			documents.Add(document);
+		}
+		for (int i = 0; i < fit; i++)
+			bed.Baker.AtlasRegion(documents[i], side, side, true);
+		Test.Assert(bed.Baker.AtlasPictureCount == fit);
+		Test.Assert(bed.Baker.AtlasPageCount == GpuPictureBaker.cMostAtlasPages);
+		// Long after, only the first asked for still; then one more than fits: packed anew round it.
+		for (uint64 frame = 0; frame <= GpuPictureBaker.cRecentFrames + 1; frame++)
+		{
+			bed.Baker.AtlasRegion(documents[0], side, side, true);
+			bed.Frame((int32)(frame % 2));
+		}
+		bed.Baker.AtlasRegion(documents[fit], side, side, true);
+		Test.Assert(bed.Baker.AtlasPictureCount == 2);
+		bed.Frame(0);
+		Test.Assert(bed.Baker.AtlasRegion(documents[0], side, side, true).HasValue); // drawn again
+		Test.Assert(bed.Baker.AtlasRegion(documents[fit], side, side, true).HasValue);
 	}
 }

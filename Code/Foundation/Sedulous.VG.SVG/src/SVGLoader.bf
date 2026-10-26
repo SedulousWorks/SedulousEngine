@@ -10,8 +10,31 @@ namespace Sedulous.VG.SVG;
 /// A hand written reader over the SUBSET an icon or a piece of interface art uses, rather
 /// than a general XML parse: it recognises the shape and paint tags and SKIPS anything
 /// else, which is what lets it survive the editor metadata real files are full of.
+///
+/// The paint attributes (fill, stroke, stroke-width, stroke-linecap, stroke-linejoin) are
+/// inherited as SVG's are: from the <svg> element and each <g> down to the shapes in them, a
+/// shape's own attribute winning. An icon set written once on its root (fill="none" stroke=...)
+/// draws as written.
 static class SVGLoader
 {
+	/// The paint a shape inherits from the elements around it (SVG's initial values at the top).
+	///
+	/// The gradient id is a VIEW into the attributes of the element that set it, which stay
+	/// alive for as long as anything inside that element is being parsed.
+	private struct PaintStyle
+	{
+		/// Null: fill="none".
+		public Color? FillColor = Color.Black;
+		public StringView FillGradientId = default;
+		/// Null: no stroke.
+		public Color? StrokeColor = null;
+		public float StrokeWidth = 1.0f;
+		public VGLineCap Cap = .Butt;
+		public VGLineJoin Join = .Miter;
+
+		public this() {}
+	}
+
 	/// THE CALLER OWNS what comes back.
 	public static Result<SVGDocument, ErrorCode> Load(StringView content)
 	{
@@ -32,7 +55,8 @@ static class SVGLoader
 		if ((document.Width == 0.0f) && (document.Height == 0.0f))
 			ReadViewBoxSize(attributes, document);
 
-		ParseChildren(content, ref pos, document.Elements, document);
+		let rootPaint = Cascade(PaintStyle(), attributes);
+		ParseChildren(content, ref pos, document.Elements, document, rootPaint);
 		return document;
 	}
 
@@ -54,8 +78,62 @@ static class SVGLoader
 			document.Height = height;
 	}
 
+	/// `inherited` with the paint attributes `attributes` sets over it.
+	private static PaintStyle Cascade(PaintStyle inherited, SVGAttributes attributes)
+	{
+		var style = inherited;
+		if (attributes.TryGet("fill", let fill))
+		{
+			if (SVGScan.EqualsIgnoreCase(fill, "none"))
+			{
+				// Explicitly nothing, which is DIFFERENT from absent: an element with
+				// fill="none" draws no fill at all.
+				style.FillColor = null;
+				style.FillGradientId = default;
+			}
+			else if (ParseUrlReference(fill, let id))
+			{
+				// Black stands in until the reference resolves, so an element pointing at
+				// a gradient that is missing still draws something.
+				style.FillGradientId = id;
+				style.FillColor = Color.Black;
+			}
+			else if (SVGColorParser.Parse(fill) case .Ok(let color))
+			{
+				style.FillColor = color;
+				style.FillGradientId = default;
+			}
+		}
+
+		if (attributes.TryGet("stroke", let stroke))
+		{
+			if (SVGScan.EqualsIgnoreCase(stroke, "none"))
+				style.StrokeColor = null;
+			else if (SVGColorParser.Parse(stroke) case .Ok(let color))
+				style.StrokeColor = color;
+		}
+
+		style.StrokeWidth = attributes.Number("stroke-width", style.StrokeWidth);
+
+		if (attributes.EqualsIgnoreCase("stroke-linecap", "round"))
+			style.Cap = .Round;
+		else if (attributes.EqualsIgnoreCase("stroke-linecap", "square"))
+			style.Cap = .Square;
+		else if (attributes.EqualsIgnoreCase("stroke-linecap", "butt"))
+			style.Cap = .Butt;
+
+		if (attributes.EqualsIgnoreCase("stroke-linejoin", "round"))
+			style.Join = .Round;
+		else if (attributes.EqualsIgnoreCase("stroke-linejoin", "bevel"))
+			style.Join = .Bevel;
+		else if (attributes.EqualsIgnoreCase("stroke-linejoin", "miter"))
+			style.Join = .Miter;
+
+		return style;
+	}
+
 	private static void ParseChildren(StringView content, ref int pos, List<SVGElement> elements,
-		SVGDocument document)
+		SVGDocument document, PaintStyle inherited)
 	{
 		while (pos < content.Length)
 		{
@@ -74,7 +152,7 @@ static class SVGLoader
 			}
 
 			let saved = pos;
-			if (TryParseElement(content, ref pos, elements, document) case .Err)
+			if (TryParseElement(content, ref pos, elements, document, inherited) case .Err)
 			{
 				// An unrecognised tag is SKIPPED rather than failing the document: real
 				// files carry editor metadata and namespaced elements that no renderer
@@ -86,7 +164,7 @@ static class SVGLoader
 	}
 
 	private static Result<void, ErrorCode> TryParseElement(StringView content, ref int pos,
-		List<SVGElement> elements, SVGDocument document)
+		List<SVGElement> elements, SVGDocument document, PaintStyle inherited)
 	{
 		if ((pos >= content.Length) || (content[pos] != '<'))
 			return .Err(.InvalidArgument);
@@ -109,6 +187,7 @@ static class SVGLoader
 
 		if ((pos < content.Length) && (content[pos] == '>'))
 			pos++;
+		let paint = Cascade(inherited, attributes);
 
 		// A gradient or a defs block registers on the DOCUMENT rather than becoming an
 		// element, so it is parsed and then not emitted.
@@ -118,7 +197,8 @@ static class SVGLoader
 			{
 				let discarded = scope List<SVGElement>();
 				defer { ClearAndDeleteItems!(discarded); }
-				ParseChildren(content, ref pos, discarded, document);
+				// Nothing in a defs block is drawn from here, so it inherits nothing.
+				ParseChildren(content, ref pos, discarded, document, PaintStyle());
 			}
 			SkipClosingTag(content, ref pos);
 			return .Ok;
@@ -132,13 +212,13 @@ static class SVGLoader
 		}
 
 		let element = new SVGElement();
-		if (!BuildGeometry(content, ref pos, tag, attributes, selfClosing, element, document))
+		if (!BuildGeometry(content, ref pos, tag, attributes, paint, selfClosing, element, document))
 		{
 			delete element;
 			return .Err(.InvalidArgument);
 		}
 
-		ApplyStyle(attributes, element);
+		ApplyStyle(attributes, paint, element);
 		elements.Add(element);
 		return .Ok;
 	}
@@ -146,7 +226,8 @@ static class SVGLoader
 	/// Fills in the element's type and geometry. False means the tag is not one this
 	/// reader draws.
 	private static bool BuildGeometry(StringView content, ref int pos, StringView tag,
-		SVGAttributes attributes, bool selfClosing, SVGElement element, SVGDocument document)
+		SVGAttributes attributes, PaintStyle paint, bool selfClosing, SVGElement element,
+		SVGDocument document)
 	{
 		if (SVGScan.EqualsIgnoreCase(tag, "path"))
 		{
@@ -211,7 +292,7 @@ static class SVGLoader
 		{
 			element.Type = .Group;
 			if (!selfClosing)
-				ParseChildren(content, ref pos, element.Children, document);
+				ParseChildren(content, ref pos, element.Children, document, paint);
 			SkipClosingTag(content, ref pos);
 			return true;
 		}
@@ -321,40 +402,16 @@ static class SVGLoader
 	}
 
 	/// The style attributes every element kind shares.
-	private static void ApplyStyle(SVGAttributes attributes, SVGElement element)
+	private static void ApplyStyle(SVGAttributes attributes, PaintStyle paint, SVGElement element)
 	{
-		if (attributes.TryGet("fill", let fill))
-		{
-			if (SVGScan.EqualsIgnoreCase(fill, "none"))
-			{
-				// Explicitly nothing, which is DIFFERENT from absent: an element with
-				// fill="none" draws no fill at all.
-				element.FillColor = null;
-			}
-			else if (ParseUrlReference(fill, element.FillGradientId))
-			{
-				// Black stands in until the reference resolves, so an element pointing at
-				// a gradient that is missing still draws something.
-				element.FillColor = Color.Black;
-			}
-			else if (SVGColorParser.Parse(fill) case .Ok(let color))
-			{
-				element.FillColor = color;
-			}
-		}
-		else
-		{
-			// The SVG default fill is black, not nothing.
-			element.FillColor = Color.Black;
-		}
+		// The paint: inherited, with the element's own attributes over it.
+		element.FillColor = paint.FillColor;
+		element.FillGradientId.Set(paint.FillGradientId);
+		element.StrokeColor = paint.StrokeColor;
+		element.StrokeWidth = paint.StrokeWidth;
+		element.StrokeCap = paint.Cap;
+		element.StrokeJoin = paint.Join;
 
-		if (attributes.TryGet("stroke", let stroke) && !SVGScan.EqualsIgnoreCase(stroke, "none"))
-		{
-			if (SVGColorParser.Parse(stroke) case .Ok(let color))
-				element.StrokeColor = color;
-		}
-
-		element.StrokeWidth = attributes.Number("stroke-width", 1.0f);
 		element.Opacity = attributes.Number("opacity", 1.0f);
 
 		if (attributes.TryGet("transform", let transform))
@@ -367,8 +424,9 @@ static class SVGLoader
 	}
 
 	/// The id out of a paint reference of the form url(#id).
-	private static bool ParseUrlReference(StringView text, String outId)
+	private static bool ParseUrlReference(StringView text, out StringView id)
 	{
+		id = default;
 		var pos = 0;
 		SVGScan.SkipWhitespace(text, ref pos);
 
@@ -388,7 +446,7 @@ static class SVGLoader
 		if (pos == start)
 			return false;
 
-		outId.Set(text.Substring(start, pos - start));
+		id = text.Substring(start, pos - start);
 		return true;
 	}
 

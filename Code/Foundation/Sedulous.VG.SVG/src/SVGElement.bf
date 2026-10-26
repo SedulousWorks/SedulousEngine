@@ -28,6 +28,10 @@ class SVGElement
 
 	public Color? StrokeColor;
 	public float StrokeWidth = 1.0f;
+	/// stroke-linecap.
+	public VGLineCap StrokeCap = .Butt;
+	/// stroke-linejoin.
+	public VGLineJoin StrokeJoin = .Miter;
 	public float Opacity = 1.0f;
 
 	public List<SVGElement> Children = new .() ~ DeleteContainerAndItems!(_);

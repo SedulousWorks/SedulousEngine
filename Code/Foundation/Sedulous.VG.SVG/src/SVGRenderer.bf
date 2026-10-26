@@ -90,7 +90,7 @@ static class SVGRenderer
 		{
 			vg.StrokePath(element.Path,
 				(tint != null) ? tint.Value : element.StrokeColor.Value,
-				StrokeStyle(element.StrokeWidth));
+				StrokeStyle(element.StrokeWidth, element.StrokeCap, element.StrokeJoin));
 		}
 	}
 

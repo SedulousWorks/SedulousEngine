@@ -285,4 +285,77 @@ class SvgDrawableTests
 		Test.Assert(AllRed(ctx));
 		Test.Assert(pictures.Svgs == 0);
 	}
+
+	/// `icon` drawn 12 by 6 under a scale of two device pixels a unit, through `baker`.
+	private static void DrawThroughAtlas(SvgDrawable icon, AtlasBaker baker, VGContext ctx, Color tint)
+	{
+		let dc = scope DrawContext(ctx);
+		dc.PictureBaker = baker;
+		ctx.Scale(2.0f, 2.0f); // two device pixels a unit
+		icon.DrawTinted(dc, Rect(0.0f, 0.0f, 12.0f, 6.0f), tint);
+	}
+
+	/// With a baker an icon is asked for in its atlas at its size in device pixels, drawn as
+	/// paths until it is there, then as one quad carrying its tint. A tinted icon is baked white
+	/// (a mask), an untinted one as authored.
+	[Test]
+	public static void WithABakerItIsAskedForInItsAtlasAtItsDeviceSizeDrawnAsPathsUntilItIsThereThenAsOneQuad()
+	{
+		let icon = SvgDrawable.FromText(cBar);
+		Test.Assert(icon != null);
+		defer icon.ReleaseRef();
+		let baker = scope AtlasBaker();
+		let tint = Color(0.2f, 0.4f, 1.0f, 1.0f);
+		{
+			let ctx = scope VGContext();
+			DrawThroughAtlas(icon, baker, ctx, tint);
+			Test.Assert(baker.Asked == 1);
+			Test.Assert(baker.Width == 24); // its size on the device
+			Test.Assert(baker.Height == 12);
+			Test.Assert(baker.Mask); // tinted: baked white, to take the tint
+			for (let command in ctx.GetBatch().Commands)
+				Test.Assert(command.DrawMode != .Layer); // paths meanwhile
+		}
+		{
+			let ctx = scope VGContext();
+			DrawThroughAtlas(icon, baker, ctx, tint);
+			let batch = ctx.GetBatch();
+			Test.Assert(batch.CommandCount == 1);
+			Test.Assert(batch.GetCommand(0).DrawMode == .Layer);
+			Test.Assert(batch.Textures[batch.GetCommand(0).TextureIndex] === baker.Page);
+			Test.Assert(batch.GetCommand(0).IndexCount == 6); // one quad
+			Test.Assert(NodeFixtures.Near(batch.Vertices[0].Color.B, 1.0f)); // the tint, on the quad
+			Test.Assert(NodeFixtures.Near(batch.Vertices[0].Color.R, 0.2f));
+		}
+		{
+			let ctx = scope VGContext();
+			DrawThroughAtlas(icon, baker, ctx, .White);
+			Test.Assert(!baker.Mask); // white: as authored
+		}
+	}
+}
+
+/// An atlas that has a picture the second time it is asked for it, and says what it was asked.
+class AtlasBaker : IPictureBaker
+{
+	public ImageDataRef Page = new .(512, 512) ~ delete _;
+	public int Asked = 0;
+	public uint32 Width = 0;
+	public uint32 Height = 0;
+	public bool Mask = false;
+
+	public ImageData Baked(SVGDocument document, uint32 width, uint32 height) => null;
+
+	public PictureRegion? AtlasRegion(SVGDocument document, uint32 width, uint32 height, bool mask)
+	{
+		Asked++;
+		Width = width;
+		Height = height;
+		Mask = mask;
+		if (Asked == 1)
+			return null;
+		return PictureRegion(Page, .(100.0f, 40.0f, (float)width, (float)height));
+	}
+
+	public uint64 Generation => 0;
 }

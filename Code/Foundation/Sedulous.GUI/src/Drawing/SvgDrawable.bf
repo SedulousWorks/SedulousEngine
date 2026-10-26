@@ -6,9 +6,12 @@ using Sedulous.VG.SVG;
 namespace Sedulous.GUI;
 
 // SvgDrawable: an SVG picture as image content (an Image widget's picture, a menu item's or a
-// button's icon), drawn as VG paths at the size it lands, crisp at any size, as an SVG background
-// layer is (NodeBox). Its intrinsic size is the document's. A tint other than white recolours it
-// whole, as VG's SVG renderer does (an icon taking its colour); white draws it as authored.
+// button's icon), at the size it lands in device pixels, crisp at any size. Its intrinsic size is
+// the document's. A tint other than white recolours it whole, as VG's SVG renderer does (an icon
+// taking its colour); white draws it as authored. With a picture baker it is baked once per size
+// into the baker's atlas (white, when tinted: one bake for every tint) and drawn as one textured
+// quad, pictures one after another one draw; as VG paths without one, until the bake lands, or
+// when it is larger than an atlas keeps.
 // It owns its document when made from SVG text (FromText: an icon set compiled into the binary,
 // as the editor's are) and borrows the resource provider's for a source (PictureDrawable, which
 // picks the kind by the source: an SVG by a .svg ending or a data:image/svg+xml URL, a raster
@@ -54,6 +57,23 @@ class SvgDrawable : Drawable
 		if ((mDocument == null) || (dest.Width <= 0.0f) || (dest.Height <= 0.0f))
 			return;
 		let white = (tint.R >= 1.0f) && (tint.G >= 1.0f) && (tint.B >= 1.0f) && (tint.A >= 1.0f);
+		if (let baker = ctx.PictureBaker)
+		{
+			let scale = ctx.DeviceScale;
+			let width = Round(dest.Width * scale);
+			let height = Round(dest.Height * scale);
+			let largest = (float)PictureRegion.cLargestAtlasPicture;
+			if ((width >= 1.0f) && (height >= 1.0f) && (width <= largest) && (height <= largest))
+			{
+				let region = baker.AtlasRegion(mDocument, (uint32)width, (uint32)height, !white);
+				if (region.HasValue)
+				{
+					ctx.VG.DrawImagePremultiplied(region.Value.Page, dest.ToRectangle(), region.Value.Source,
+						white ? Sedulous.Core.Color.White : tint);
+					return;
+				}
+			}
+		}
 		Sedulous.Core.Color? recolour = null;
 		if (!white)
 			recolour = tint;

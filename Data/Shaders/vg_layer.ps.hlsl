@@ -4,7 +4,8 @@
 // VG layer composite fragment shader (the Layer draw mode, VGContext::PopLayer): samples the
 // offscreen target a layer was drawn into, which already holds PREMULTIPLIED colour in the
 // canvas's own blend space (an Encoded canvas's layer is a UNORM target, so its samples are
-// encoded values, never decoded), and scales it by the quad's alpha, the layer's opacity. No
+// encoded values, never decoded), and scales it by the quad's alpha, the layer's opacity, and its colour by the quad's (a picture baked
+// white, an atlas's icon, takes its tint; a layer's quad is white). No
 // premultiply and no re-encode, unlike vg.ps. The layer's colour filters ride Effect, which the
 // vertex stage passes through untouched: (1 - saturation, brightness - 1), zeros for a plain
 // layer. Saturation mixes towards the colour's luma (Rec. 709 weights, as CSS's grayscale()
@@ -23,5 +24,7 @@ float4 main(PSInput input) : SV_Target {
     // Kept within 0 and the alpha: a premultiplied colour past it would be one past 1, and
     // saturation above 1 pushes a channel the colour lacks below 0.
     c.rgb = clamp(lerp(float3(luma, luma, luma), c.rgb, saturation) * brightness, 0.0, c.aaa);
+    // Its colour scaled by the quad's (white for a layer; an icon baked white takes its tint).
+    c.rgb *= input.Color.rgb;
     return c * (input.Color.a * input.Coverage);
 }

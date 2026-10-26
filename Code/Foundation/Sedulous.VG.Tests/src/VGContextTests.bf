@@ -568,6 +568,39 @@ class VGContextTests
 		Test.Assert(batch.GetCommand(2).DrawMode == .Default);
 	}
 
+	/// Premultiplied pictures from one texture, one after another, are one command, each its
+	/// tint: an atlas's icons in a bar are one draw. Another texture, anything drawn between, or
+	/// a different clip starts a command of its own.
+	[Test]
+	public static void PremultipliedPicturesFromOneTextureInARunAreOneCommandEachItsTint()
+	{
+		let context = scope VGContext();
+		let atlas = scope OwnedImageData(2, 2, .RGBA8, .(), .Linear);
+		let other = scope OwnedImageData(2, 2, .RGBA8, .(), .Linear);
+		let red = Color(1.0f, 0.0f, 0.0f, 1.0f);
+		let green = Color(0.0f, 1.0f, 0.0f, 0.5f);
+
+		context.DrawImagePremultiplied(atlas, .(0, 0, 16, 16), .(0, 0, 1, 1), red);
+		context.DrawImagePremultiplied(atlas, .(20, 0, 16, 16), .(1, 0, 1, 1), green);
+		let batch = context.GetBatch();
+		Test.Assert(batch.CommandCount == 1, "two icons of one atlas: one draw");
+		Test.Assert(batch.GetCommand(0).IndexCount == 12);
+		Test.Assert(Near(batch.Vertices[0].Color.R, 1.0f));
+		Test.Assert(Near(batch.Vertices[0].Color.G, 0.0f));
+		Test.Assert(Near(batch.Vertices[4].Color.G, 1.0f));
+		Test.Assert(Near(batch.Vertices[4].Color.A, 0.5f));
+
+		context.DrawImagePremultiplied(other, .(40, 0, 16, 16), .(0, 0, 1, 1), red);
+		Test.Assert(batch.CommandCount == 2);
+		context.FillRect(.(0, 0, 5, 5), .Blue);
+		context.DrawImagePremultiplied(other, .(60, 0, 16, 16), .(0, 0, 1, 1), red);
+		Test.Assert(batch.CommandCount == 4);
+		context.PushClipRect(.(0, 0, 30, 30));
+		context.DrawImagePremultiplied(other, .(80, 0, 16, 16), .(0, 0, 1, 1), red);
+		context.PopClip();
+		Test.Assert(batch.CommandCount == 5);
+	}
+
 	/// A card's thumbnail with rounded corners: the picture is cut to the rounded rect (no
 	/// opaque vertex in a corner's cut-away), each vertex samples the texel of its place in the
 	/// dest rect (worked out before the transform), the fringe clamps to the source, and no

@@ -30,6 +30,9 @@ class FakeBaker : IPictureBaker
 		return Key;
 	}
 
+	/// A skin bakes alone, never in an atlas.
+	public PictureRegion? AtlasRegion(SVGDocument document, uint32 width, uint32 height, bool mask) => null;
+
 	public uint64 Generation => Gen;
 }
 
@@ -452,16 +455,20 @@ class DrawingTests
 			dc.PictureBaker = baker;
 			ctx.Scale(1.5f, 1.5f);
 			area.DrawUnder(dc, Rect(0.0f, 0.0f, 100.0f, 60.0f));
-			int pieces = 0;
+			int draws = 0;
+			int indices = 0;
 			for (let command in ctx.GetBatch().Commands)
 			{
 				if (command.DrawMode != .Layer)
 					continue;
-				pieces++;
+				draws++;
+				indices += command.IndexCount;
 				Test.Assert(command.CompositeLayer == -1);
 				Test.Assert(ctx.GetBatch().Textures[command.TextureIndex] === baker.Key);
 			}
-			Test.Assert(pieces == 9); // a premultiplied quad a piece, the middle filled
+			// A premultiplied quad a piece, the middle filled: nine quads of one texture, one draw.
+			Test.Assert(draws == 1);
+			Test.Assert(indices == 9 * 6);
 			Test.Assert(ctx.GetBatch().Vertices.Count == 36);
 		}
 		{

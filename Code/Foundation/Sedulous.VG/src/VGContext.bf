@@ -1471,22 +1471,46 @@ class VGContext
 	public void DrawImagePremultiplied(ImageData texture, Rectangle destRect, Rectangle srcRect,
 		float opacity = 1.0f)
 	{
+		DrawImagePremultiplied(texture, destRect, srcRect, Color(1.0f, 1.0f, 1.0f, opacity));
+	}
+
+	/// The same, its colour scaled by `tint` (its alpha the opacity): a picture baked white (an
+	/// icon in an atlas) takes the tint's colour, one baked in colour stays as drawn under
+	/// white. Pictures drawn one after another from one texture, under one clip and blend, are
+	/// one command (an atlas's icons in a tool bar, a skin's nine pieces).
+	public void DrawImagePremultiplied(ImageData texture, Rectangle destRect, Rectangle srcRect, Color tint)
+	{
 		if ((texture == null) || (destRect.Width <= 0.0f) || (destRect.Height <= 0.0f))
 			return;
 
 		FlushCurrentCommand();
 		let start = (int32)mBatch.Indices.Count;
 		let startVertex = mBatch.Vertices.Count;
-		EmitTexturedQuad(destRect, srcRect, texture.Width, texture.Height,
-			ApplyOpacity(Color(1.0f, 1.0f, 1.0f, opacity)));
+		EmitTexturedQuad(destRect, srcRect, texture.Width, texture.Height, ApplyOpacity(tint));
 		TransformVertices(startVertex);
 
 		var command = CurrentCommand(start, (int32)mBatch.Indices.Count - start);
 		command.TextureIndex = GetOrAddTexture(texture);
 		command.DrawMode = .Layer; // CompositeLayer -1: the texture, not a layer's target
 		command.GradientSpread = .Pad;
-		mBatch.Commands.Add(command);
 		mCommandStartIndex = (int32)mBatch.Indices.Count;
+
+		// Joined to the command before it when that one is the same texture's picture, right
+		// before it, under the same state: the indices run on, so one draw covers both.
+		if (!mBatch.Commands.IsEmpty)
+		{
+			var last = ref mBatch.Commands.Back;
+			if (((last.StartIndex + last.IndexCount) == start) && (last.DrawMode == .Layer)
+				&& (last.CompositeLayer < 0) && !last.Backdrop && (last.TextureIndex == command.TextureIndex)
+				&& (last.ClipMode == command.ClipMode) && SameRect(last.ClipRect, command.ClipRect)
+				&& (last.Scissored == command.Scissored) && (last.StencilRef == command.StencilRef)
+				&& (last.BlendMode == command.BlendMode) && (last.Layer == command.Layer))
+			{
+				last.IndexCount += command.IndexCount;
+				return;
+			}
+		}
+		mBatch.Commands.Add(command);
 	}
 
 	/// DrawImage clipped to a rounded rectangle: `srcRect` of the texture maps onto `destRect`,
