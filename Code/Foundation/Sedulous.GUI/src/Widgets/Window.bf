@@ -378,6 +378,7 @@ class Window : UIWidget
 		AddRef(); // the tree may hold its only reference (a script's window)
 		RemoveFromParent();
 		Closed();
+		OnWindowGone();
 		ReleaseRef();
 	}
 
@@ -425,8 +426,23 @@ class Window : UIWidget
 			RefreshPartNodes();
 	}
 
-	/// It closed (a dialog written in a page goes back there).
+	/// It closed: IsOpen is false, though a modal one may still be playing its exit.
 	protected virtual void OnWindowClosed()
+	{
+	}
+
+	/// It was to open modal and its dispatcher refused it (SetModalInterceptor): it answers as
+	/// closing it would, without having shown. A dialog answers as its cancel.
+	protected virtual void OnModalRefused()
+	{
+		if (mOnClose != null)
+			mOnClose();
+		SendEvent(scope Event(.Close, this));
+	}
+
+	/// It has gone: out of the top layer, after its exit (a dialog written in a page goes back
+	/// there now). Not when it opens again before its exit ends.
+	protected virtual void OnWindowGone()
 	{
 	}
 
@@ -481,6 +497,11 @@ class Window : UIWidget
 		let dispatcher = owner.EventDispatcher;
 		if (modal && (dispatcher != null))
 		{
+			if (!dispatcher.AllowsModal(this))
+			{
+				OnModalRefused(); // never shown: answered as its cancel would answer
+				return;
+			}
 			mModal = true;
 			mOpen = true;
 			CenterIn(owner.RootNode); // in the root's space
@@ -489,6 +510,9 @@ class Window : UIWidget
 			options.Modal = true;
 			options.TakesFocus = true;
 			options.OnClosed = new (reason) => { Closed(); };
+			// Closed, it plays the sheet's exit (a dialog fades out) before it goes.
+			options.LeavesOnClose = true;
+			options.OnGone = new () => { OnWindowGone(); };
 			// Back asks it to close, while it is open (under it is inert, so nothing else would
 			// hear it).
 			if (AnswersBack)

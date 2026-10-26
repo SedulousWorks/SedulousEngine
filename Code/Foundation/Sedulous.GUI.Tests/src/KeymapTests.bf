@@ -426,4 +426,51 @@ class KeymapTests
 		Test.Assert(cut != null);
 		Test.Assert(cut.Shortcut == "Ctrl+X");
 	}
+
+	// The command `keys` run with no context held, into `outCommand` (empty: none).
+	private static void Runs(Keymap keymap, StringView keys, String outCommand)
+	{
+		outCommand.Clear();
+		var stroke = ParseKeystroke(keys).Value;
+		let command = scope String();
+		if (keymap.Match(Span<Keystroke>(&stroke, 1), Span<KeyContextLayer>(), command) == .Matched)
+			outCommand.Set(command);
+	}
+
+	[Test]
+	public static void ARebindingReplacesTheCommandsKeysWhereItWasBoundABindAdds()
+	{
+		let keymap = scope Keymap();
+		let ran = scope String();
+		Test.Assert(keymap.Bind("ctrl-s", "save"));
+		Test.Assert(keymap.Bind("ctrl-shift-s", "save-all"));
+		Test.Assert(keymap.Bind("ctrl-s", "menu.save", "menu")); // another context's
+
+		// Rebound, the old key is free: it no longer saves, and the new one does.
+		Test.Assert(keymap.Rebind("f2", "save"));
+		Runs(keymap, "f2", ran);
+		Test.Assert(ran == "save");
+		Runs(keymap, "ctrl-s", ran);
+		Test.Assert(ran.IsEmpty);
+		Test.Assert(ShortcutIs(keymap, "save", "F2"));
+		Runs(keymap, "ctrl-shift-s", ran);
+		Test.Assert(ran == "save-all"); // another command keeps its keys
+		Test.Assert(ShortcutIs(keymap, "menu.save", "Ctrl+S")); // and another context its own
+
+		// A bind adds: both keys work. Keys that do not parse change nothing.
+		Test.Assert(keymap.Bind("ctrl-s", "save"));
+		Runs(keymap, "f2", ran);
+		Test.Assert(ran == "save");
+		Runs(keymap, "ctrl-s", ran);
+		Test.Assert(ran == "save");
+		Test.Assert(!keymap.Rebind("ctrl-nokey", "save"));
+		Runs(keymap, "ctrl-s", ran);
+		Test.Assert(ran == "save");
+
+		// Unbound, it has no keys there.
+		Test.Assert(keymap.UnbindCommand("save") == 2);
+		Runs(keymap, "f2", ran);
+		Test.Assert(ran.IsEmpty);
+		Test.Assert(ShortcutIs(keymap, "save", ""));
+	}
 }

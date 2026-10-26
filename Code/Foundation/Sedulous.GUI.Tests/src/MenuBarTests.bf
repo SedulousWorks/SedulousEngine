@@ -30,7 +30,8 @@ class MenuBarBed
 
 /// The menu bar: a horizontal strip of buttons, each opening a Menu below it. Clicking a button
 /// toggles its menu; while one is open, hovering another button switches to it; an outside click
-/// dismisses and clears the bar's state.
+/// dismisses and clears the bar's state; its menus cleared (an open one closed) and a menu told as
+/// it opens, its submenus too.
 class MenuBarTests
 {
 	private static bool Near(float a, float b) => NodeFixtures.Near(a, b);
@@ -152,5 +153,77 @@ class MenuBarTests
 		Test.Assert(bed.Bar.IsFocusWithin); // what the old ring keyed on
 		styles.ApplyTree(bed.Root);
 		Test.Assert(bed.Bar.Box.Shadows.IsEmpty);
+	}
+
+	[Test]
+	public static void AMenuIsToldEachTimeJustBeforeItOpensItsItemsAsTheyAreThenASubmenuToo()
+	{
+		let bed = scope MenuBarBed();
+		let d = bed.D;
+		int opening = 0;
+		MenuItem open = null;
+		for (int i = 0; i < bed.FileMenu.ChildCount; i++)
+		{
+			if (let item = bed.FileMenu.GetChildAt(i) as MenuItem)
+				open = item;
+		}
+		Test.Assert(open != null);
+		bed.FileMenu.SetOnOpening(new [&] (menu) =>
+			{
+				Test.Assert(menu == bed.FileMenu);
+				Test.Assert(!menu.IsOpen); // before, not after
+				++opening;
+				open.Enabled = (opening % 2) == 0; // what the owner knows now
+			});
+		d.InjectMouseDown(.(12.0f, 14.0f), .Left);
+		d.InjectMouseUp(.(12.0f, 14.0f), .Left);
+		Test.Assert(opening == 1);
+		Test.Assert(bed.FileMenu.IsOpen);
+		Test.Assert(!open.Enabled);
+		bed.FileMenu.Close();
+		d.InjectMouseDown(.(12.0f, 14.0f), .Left);
+		d.InjectMouseUp(.(12.0f, 14.0f), .Left);
+		Test.Assert(opening == 2);
+		Test.Assert(open.Enabled);
+
+		let recent = bed.FileMenu.AddSubMenu("Recent");
+		int subOpening = 0;
+		recent.SetOnOpening(new [&] (menu) => { ++subOpening; });
+		recent.AddItem("a.scene", new () => { });
+		bed.FileMenu.Close();
+		d.InjectMouseDown(.(12.0f, 14.0f), .Left);
+		d.InjectMouseUp(.(12.0f, 14.0f), .Left);
+		MenuSubItem recentItem = null;
+		for (int i = 0; i < bed.FileMenu.ChildCount; i++)
+		{
+			if (let item = bed.FileMenu.GetChildAt(i) as MenuSubItem)
+				recentItem = item;
+		}
+		Test.Assert(recentItem != null);
+		Test.Assert(recentItem.HandleActivate()); // as Return or a click on it opens its submenu
+		Test.Assert(recent.IsOpen);
+		Test.Assert(subOpening == 1);
+	}
+
+	[Test]
+	public static void ItsMenusClearedAnOpenOneClosedFirstMenusAddedAfterAreItsOnlyOnes()
+	{
+		let bed = scope MenuBarBed();
+		let d = bed.D;
+		d.InjectMouseDown(.(12.0f, 14.0f), .Left);
+		d.InjectMouseUp(.(12.0f, 14.0f), .Left);
+		Test.Assert(bed.FileMenu.IsOpen);
+		let held = bed.FileMenu; // the test looks at it after the bar lets it go
+		held.AddRef();
+		defer held.ReleaseRef();
+		bed.Bar.ClearMenus();
+		Test.Assert(!held.IsOpen);
+		Test.Assert(bed.Bar.MenuCount == 0);
+		Test.Assert(bed.Bar.CurrentMenu == null);
+		Test.Assert(bed.Bar.ChildCount == 0);
+
+		let view = bed.Bar.AddMenu("View");
+		Test.Assert(bed.Bar.MenuCount == 1);
+		Test.Assert(bed.Bar.MenuAt(0) == view);
 	}
 }

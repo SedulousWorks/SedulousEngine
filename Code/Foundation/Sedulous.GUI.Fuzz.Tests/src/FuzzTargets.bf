@@ -56,11 +56,12 @@ static class FuzzTargets
 		"var(--a)", "var(--a, var(--b))", "calc(1px + 50%)", "::thumb", ":hover", ":not(", ">", "+", "~", "*",
 		"#id", ".cls", "[attr=v]", "!important", "url(", "rgba(1,2,3", "#ff00ff", "1e999", "-0.5px", "100%",
 		"transition: all 1s;", "animation: x 1s infinite;", "--a: ", "\\", "\n", "\t", "\xF0\x9F", "\xC3");
-	/// The element tags are the GUI's own (Raptor's list had `<button`, `<panel>`, `<label`, which
-	/// name no element: tags are case sensitive).
+	/// The element tags are the GUI's own (tags are case sensitive), and one lowercase `<button`
+	/// that names no element, as Raptor's list keeps it.
 	public static String[?] cMarkupTokens = .(
 		"<", ">", "</", "/>", "=\"", "\"", "'", "&amp;", "&#x1F600;", "&bogus;", "<!--", "-->", "<![CDATA[",
-		"]]>", "<?xml ?>", "<Button", "<Panel>", "</Panel>", "<Label text=\"", "style=\"", "class=\"", "id=\"",
+		"]]>", "<?xml ?>", "<Button", "<Panel>", "</Panel>", "<Label text=\"", "<ScrollView>", "</ScrollView>",
+		"<TextField", "<button", "style=\"", "class=\"", "id=\"",
 		"{{name}}", "{{", "}}", "data-x=\"", "-count=\"", "-args=\"", "\xEF\xBB\xBF", "\0", "\xE2\x80\xAE");
 	/// Raptor's tokens, then the keystroke syntax the parser reads ("ctrl-shift-s", "pad-south"):
 	/// Raptor's are written "Ctrl+S", which parses as no keystroke.

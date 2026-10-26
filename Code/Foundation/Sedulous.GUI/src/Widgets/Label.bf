@@ -50,6 +50,11 @@ class Label : UIWidget
 	protected int mMnemonicEnd = 0;
 	// What bindings reading the text follow.
 	protected Observable mTextChanged = new .() ~ delete _;
+	// Its text as written (a field's label shows it without its `&`).
+	private String mWritten = new .() ~ delete _;
+	// The field it labels, by id.
+	private String mFor = new .() ~ delete _;
+	private char32 mMnemonic = '\0';
 
 	public this()
 	{
@@ -84,6 +89,23 @@ class Label : UIWidget
 		}
 		set
 		{
+			if (!mFor.IsEmpty && !mRich)
+			{
+				// A field's label (`for`): its `&` marks its access key, taken out of what shows.
+				mWritten.Set(value);
+				let mnemonic = scope Sedulous.GUI.Mnemonic();
+				ParseMnemonic(value, mnemonic);
+				mMnemonic = mnemonic.Key;
+				SetMnemonicRange(mnemonic.Start, mnemonic.End);
+				if (mnemonic.Shown == mText.GetString())
+					return;
+				mText.SetString(mnemonic.Shown);
+				RequestLayout();
+				Invalidate();
+				mTextChanged.Notify();
+				return;
+			}
+			mWritten.Set(value);
 			if (value == mText.GetString())
 				return;
 			if (mRich)
@@ -126,7 +148,28 @@ class Label : UIWidget
 		}
 	}
 
-	// Markup: <Label text="Hello" rich="true">.
+	/// The field it labels, by id (HTML's `for`): its text's `&` marks an access key, and Alt with
+	/// it (or the key alone in an open menu's scope) focuses that field. Empty: none, its text
+	/// shown as written.
+	public StringView For
+	{
+		get => mFor;
+		set
+		{
+			if (value == mFor)
+				return;
+			mFor.Set(value);
+			mMnemonic = '\0';
+			SetMnemonicRange(0, 0);
+			let written = scope String(mWritten);
+			mText.SetString(""); // shown again from what was written
+			Text = written;
+		}
+	}
+
+	public override char32 Mnemonic => !mFor.IsEmpty ? mMnemonic : '\0';
+
+	// Markup: <Label text="Hello" rich="true" for="name">.
 	public override bool SetMarkupAttribute(StringView name, StringView value)
 	{
 		if (name == "text")
@@ -137,6 +180,11 @@ class Label : UIWidget
 		if (name == "rich")
 		{
 			Rich = value == "true";
+			return true;
+		}
+		if (name == "for")
+		{
+			For = value;
 			return true;
 		}
 		return base.SetMarkupAttribute(name, value);
@@ -274,6 +322,36 @@ class Label : UIWidget
 		e.Handled = true;
 		let id = scope String(link); // the event outlives no relayout
 		SendEvent(scope LinkEvent(this, id));
+	}
+
+	// Its access key focuses the field it labels (a label is not a stop of its own).
+	protected override bool OnActivate()
+	{
+		if (mFor.IsEmpty)
+			return false;
+		Node top = this;
+		while (top.Parent != null)
+			top = top.Parent;
+		let field = FindLabelled(top);
+		if ((field == null) || !field.IsTreeEnabled || !field.TabFocusable)
+			return false;
+		field.RequestFocus();
+		return true;
+	}
+
+	// The widget under `node` whose id is the one it labels (not itself).
+	private Node FindLabelled(Node node)
+	{
+		let w = node as UIWidget;
+		if ((w != null) && (w != this) && (w.Id == mFor))
+			return node;
+		for (int i = 0; i < node.ChildCount; i++)
+		{
+			let found = FindLabelled(node.GetChildAt(i));
+			if (found != null)
+				return found;
+		}
+		return null;
 	}
 
 	// The GUI's fonts and resources, which a rich text's own faces and icons need.

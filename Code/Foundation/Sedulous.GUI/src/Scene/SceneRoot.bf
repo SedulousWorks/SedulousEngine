@@ -47,6 +47,8 @@ class GUIContext : RefCounted
 		mKeymap.Bind("down", cMenuDownCommand, cMenuKeyContext);
 		mKeymap.Bind("left", cMenuLeftCommand, cMenuKeyContext);
 		mKeymap.Bind("right", cMenuRightCommand, cMenuKeyContext);
+		mKeymap.Bind("return", cMenuActivateCommand, cMenuKeyContext);
+		mKeymap.Bind("space", cMenuActivateCommand, cMenuKeyContext);
 		// A drag from the keys and the pad: picked up at the focus, dropped with Return or South
 		// (the dispatcher's while it drags).
 		mKeymap.Bind("ctrl-shift-d", "drag.pick");

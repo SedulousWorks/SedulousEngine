@@ -98,6 +98,9 @@ static class Theme
 		            .dialogbutton { background-color: var(--button-background, var(--accent)); color: var(--button-text, var(--on-accent));
 		                            border-radius: var(--radius); padding: var(--space-m) var(--space-xl); transition: opacity var(--motion-fast); }
 		            .dialogbutton:hover { opacity: 0.9; }
+		            /* The default one in the accent; a destructive one says so in the danger colour. */
+		            .dialogbutton.primary { background-color: var(--accent); color: var(--on-accent); }
+		            .dialogbutton.destructive { background-color: var(--danger); color: #ffffff; }
 		            menu       { background-color: var(--menu-background, var(--chrome)); }
 		            menuitem::highlight, menusubmenu::highlight { background-color: var(--menu-highlight, var(--selection)); }
 		            menuitem:disabled, menusubmenu:disabled { opacity: var(--disabled-opacity); } /* what cannot run says so */

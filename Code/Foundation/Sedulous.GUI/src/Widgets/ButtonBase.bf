@@ -128,6 +128,10 @@ class ButtonBase : UIWidget
 	// Its access key, from an `&` in its text.
 	private char32 mMnemonic = '\0';
 	private Sedulous.GUI.Image mIconPart = null ~ _?.ReleaseRef();
+	// `icon`.
+	private String mIconSource = new .() ~ delete _;
+	// `checked-icon`: shown while checked.
+	private String mCheckedIconSource = new .() ~ delete _;
 	private ButtonIndicator mIndicator = null ~ _?.ReleaseRef();
 	// What bindings reading the state follow.
 	private Observable mCheckedChanged = new .() ~ delete _;
@@ -360,16 +364,26 @@ class ButtonBase : UIWidget
 	[GuiProperty("icon"), Scriptable]
 	public StringView Icon
 	{
-		get => (mIconPart != null) ? mIconPart.Source : default;
+		get => mIconSource;
 		set
 		{
-			if (value.IsEmpty)
-			{
-				SetIcon(null);
-				return;
-			}
-			EnsureIconPart();
-			mIconPart.Source = value;
+			if (value != mIconSource)
+				mIconSource.Set(value);
+			ShowIconSource();
+		}
+	}
+
+	/// A toggle's icon while it is checked (markup's `checked-icon`: a play button showing pause
+	/// while it plays, as what a click does then); empty: its icon either way.
+	[GuiProperty("checked-icon"), Scriptable]
+	public StringView CheckedIcon
+	{
+		get => mCheckedIconSource;
+		set
+		{
+			if (value != mCheckedIconSource)
+				mCheckedIconSource.Set(value);
+			ShowIconSource();
 		}
 	}
 
@@ -615,6 +629,19 @@ class ButtonBase : UIWidget
 		}
 	}
 
+	// The icon its state shows: the checked one while checked (where it has one), else its own.
+	private void ShowIconSource()
+	{
+		let path = (mChecked && !mCheckedIconSource.IsEmpty) ? mCheckedIconSource : mIconSource;
+		if (path.IsEmpty)
+		{
+			SetIcon(null);
+			return;
+		}
+		EnsureIconPart();
+		mIconPart.Source = path;
+	}
+
 	private void ApplyChecked(bool check)
 	{
 		let settled = mIndeterminate;
@@ -627,6 +654,8 @@ class ButtonBase : UIWidget
 		RedrawIndicator();
 		if (changed)
 		{
+			if (!mCheckedIconSource.IsEmpty)
+				ShowIconSource(); // its checked icon, or its own again
 			mCheckedChanged.Notify();
 			OnCheckedChange();
 		}

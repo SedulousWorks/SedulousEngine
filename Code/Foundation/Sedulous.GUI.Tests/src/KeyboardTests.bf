@@ -445,4 +445,134 @@ class KeyboardTests
 		Test.Assert(tree.ChildCount == 1);
 		Test.Assert(tree.GetChildAt(0).TabIndex == 5);
 	}
+
+	[Test]
+	public static void AnOpenMenuTypesAheadRunsALetterThatIsOneItemsAccessKeyAndRunsTheFocusByMenuActivate()
+	{
+		let bed = scope KeyBed();
+		bed.Root.Size = .(600.0f, 400.0f);
+		let bar = new MenuBar();
+		defer bar.ReleaseRef();
+		bed.Root.AddChild(bar);
+		let file = bar.AddMenu("File");
+		int saved = 0;
+		int deleted = 0;
+		file.AddItem("Open", new () => { });
+		file.AddItem("Save", new [&] () => { ++saved; });
+		file.AddItem("Save All", new () => { });
+		file.AddItem("Settings", new () => { });
+		file.AddItem("&Delete", new [&] () => { ++deleted; });
+		bed.Root.UpdateLayout();
+		StringView Item()
+		{
+			let it = bed.D.FocusNode as MenuItem;
+			return (it != null) ? it.Text : default;
+		}
+		bar.ButtonAt(0).RequestFocus();
+		bed.D.InjectKeyDown((uint32)KeyCode.Down, 0); // opens File at Open
+		Test.Assert(file.IsOpen);
+		Test.Assert(Item() == "Open");
+		Test.Assert(bed.D.WantsTextInput); // its item asks for typed text
+
+		// One letter again and again goes round the items starting with it; more letters narrow.
+		bed.D.InjectText("s");
+		Test.Assert(Item() == "Save");
+		bed.D.InjectText("s");
+		Test.Assert(Item() == "Save All");
+		bed.D.InjectText("s");
+		Test.Assert(Item() == "Settings");
+		bed.Root.Context.Update(SceneFixtures.Seconds(1.5)); // a pause: a new prefix
+		bed.D.InjectText("o");
+		Test.Assert(Item() == "Open");
+		Test.Assert(saved == 0); // type-ahead only moves
+
+		// Return runs the focus: menu.activate, a binding in the menu context a game rebinds.
+		Test.Assert(bed.Root.Context.Keymap.Bind("e", cMenuActivateCommand, cMenuKeyContext));
+		bed.Root.Context.Update(SceneFixtures.Seconds(1.5));
+		bed.D.InjectText("sa");
+		Test.Assert(Item() == "Save");
+		bed.D.InjectKeyDown((uint32)KeyCode.E, 0);
+		Test.Assert(saved == 1);
+		Test.Assert(!file.IsOpen);
+
+		// A letter that is one item's access key runs it, without Alt.
+		bar.ButtonAt(0).RequestFocus();
+		bed.D.InjectKeyDown((uint32)KeyCode.Down, 0);
+		Test.Assert(file.IsOpen);
+		bed.D.InjectText("d");
+		Test.Assert(deleted == 1);
+		Test.Assert(!file.IsOpen);
+	}
+
+	[Test]
+	public static void AFocusThatCapturesEveryKeyTakesTabEscapeAndBoundKeysItsReleaseChordFreesIt()
+	{
+		// A game in an editor's panel: while focused and capturing, the GUI acts on no key.
+		let bed = scope KeyBed();
+		let game = bed.Add("game");
+		bed.Add("next").Position = .(0.0f, 40.0f);
+		int keys = 0;
+		int saves = 0;
+		int backs = 0;
+		int released = 0;
+		game.AddEventListener(.KeyDown, new [&] (e) => { keys++; });
+		game.AddEventListener(.Named, new [&] (e) =>
+			{
+				if (((NamedEvent)e).Name == "keysreleased")
+					released++;
+			});
+		bed.Root.Context.DefineCommand("save");
+		Test.Assert(bed.Root.Context.Keymap.Bind("ctrl-s", "save"));
+		bed.Root.OnCommand("save", new [&] (command) => { saves++; });
+		bed.Root.OnCommand(cBackCommand, new [&] (command) => { backs++; });
+		game.CapturesAllKeys = true;
+		game.RequestFocus();
+
+		bed.Tab();
+		Test.Assert(bed.Focused == "game");
+		bed.D.InjectKeyDown((uint32)KeyCode.Escape);
+		bed.D.InjectKeyDown((uint32)KeyCode.S, KeyModCtrl);
+		bed.D.InjectKeyDown((uint32)KeyCode.Down);
+		Test.Assert(bed.Focused == "game");
+		Test.Assert(saves == 0);
+		Test.Assert(backs == 0);
+		Test.Assert(keys == 4); // Tab, Escape, Ctrl+S and Down all reached it
+
+		// Shift+F1 releases it: the keys are the GUI's again.
+		bed.D.InjectKeyDown((uint32)KeyCode.F1, KeyModShift);
+		Test.Assert(released == 1);
+		Test.Assert(!game.CapturesAllKeys);
+		bed.D.InjectKeyDown((uint32)KeyCode.S, KeyModCtrl);
+		Test.Assert(saves == 1);
+		bed.Tab();
+		Test.Assert(bed.Focused == "next");
+	}
+
+	[Test]
+	public static void AFieldsLabelForMarksAnAccessKeyAndAltWithItFocusesTheField()
+	{
+		let bed = scope KeyBed();
+		let label = new Label();
+		defer label.ReleaseRef();
+		label.Text = "&Name";
+		Test.Assert(label.Text == "&Name"); // a label for nothing shows its text as written
+		label.For = "name";
+		Test.Assert(label.Text == "Name");
+		Test.Assert(label.Mnemonic == 'n');
+		bed.Root.AddChild(label);
+		let field = new TextField();
+		defer field.ReleaseRef();
+		field.Id = "name";
+		field.Size = .(120.0f, 20.0f);
+		bed.Root.AddChild(field);
+		bed.Add("other").RequestFocus();
+
+		bed.D.InjectKeyDown((uint32)KeyCode.N, KeyModAlt);
+		Test.Assert(bed.D.FocusNode == field);
+
+		// Its text set again keeps its key; && is an ampersand.
+		label.Text = "Size && &Weight";
+		Test.Assert(label.Text == "Size & Weight");
+		Test.Assert(label.Mnemonic == 'w');
+	}
 }

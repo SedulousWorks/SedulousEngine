@@ -31,8 +31,8 @@ namespace Sedulous.GUI;
 // sRGB or UNORM twin view (the game's screen UI blends encoded values through it), the resolution
 // the content draws at inside the targets (the pointer maps into that), hosted text input (the
 // game's own text field asks for the window's text input through the focused node), and a clear
-// once content drawn outside stops. Not carried: the editor's game-in-a-panel keyboard capture,
-// which waits for the GUI's nodes to capture every key.
+// once content drawn outside stops. A game in a panel takes every key while focused through the
+// node's CapturesAllKeys (its release chord, Shift+F1 by default, frees it).
 
 class Viewport : UIWidget, IHostedContent
 {

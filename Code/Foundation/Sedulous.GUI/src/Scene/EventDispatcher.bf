@@ -39,6 +39,9 @@ class PopupOptions
 	public Node Anchor = null;
 	public Rect AnchorRect = .();
 	public bool HasAnchorRect = false;
+	/// In the middle of the root, again every layout pass, by its size (a picker over the window);
+	/// its anchor is then not asked.
+	public bool Centered = false;
 	public PopupPlacement Placement = .();
 	/// Sized by what it holds, measured again every layout pass (a tooltip, whose font a sheet
 	/// gives it after it opens); else its own size when it opened.
@@ -50,6 +53,13 @@ class PopupOptions
 	public bool ReturnHome = false;
 	/// Told when it closes, and why (after the `toggle` event). Owned.
 	public delegate void(PopupCloseReason reason) OnClosed ~ delete _;
+	/// Closed, it plays the sheet's exit (`:leaving`) before it goes: out of the popups at once
+	/// (input, focus and OnClosed move on), still drawn on top, taking no input, until what the
+	/// sheet started has ended (a dialog fading out). Else it goes at once (a menu).
+	public bool LeavesOnClose = false;
+	/// Told when it has gone: out of the top layer and the tree (or back home), after its exit
+	/// when it plays one; not when it opens again first. Owned.
+	public delegate void() OnGone ~ delete _;
 }
 
 /// A drag's layer in the top layer: the root's size, passing the pointer through, its children
@@ -186,6 +196,29 @@ class EventDispatcher
 		get => mClipboard;
 		set => mClipboard = value;
 	}
+
+	// === Modal windows refused (an unattended run) ===
+
+	/// Asked before a modal window opens here (Window.OpenModal): false keeps it from opening and
+	/// it answers as cancelled, so nothing waits for a person no one is there to be (an agent
+	/// running an action). Unset: every one opens. Take the one there to restore it after (scopes
+	/// nest). OWNERSHIP of `interceptor` transfers; one there already is deleted.
+	public void SetModalInterceptor(delegate bool(Node window) interceptor)
+	{
+		delete mModalInterceptor;
+		mModalInterceptor = interceptor;
+	}
+
+	/// The interceptor there, taken out (none there now). OWNERSHIP passes to the caller.
+	public delegate bool(Node window) TakeModalInterceptor()
+	{
+		let interceptor = mModalInterceptor;
+		mModalInterceptor = null;
+		return interceptor;
+	}
+
+	/// Whether a modal window may open here now.
+	public bool AllowsModal(Node window) => (mModalInterceptor == null) || mModalInterceptor(window);
 
 	public Node OverNode => mOverNode;
 	/// Whether the keyboard or the pad drives it now (the last input was a key, a pad button or a
@@ -596,6 +629,14 @@ class EventDispatcher
 
 	public bool InjectKeyDown(uint32 keyCode, uint32 modifiers = 0) => KeyDownFrom(.Keyboard, keyCode, modifiers);
 
+	/// The chord that frees a focus capturing every key (Node.CapturesAllKeys): Shift+F1 by
+	/// default, as a game in an editor's panel offers it.
+	public Keystroke CaptureRelease
+	{
+		get => mCaptureRelease;
+		set => mCaptureRelease = value;
+	}
+
 	/// A key down, from the keyboard or standing in for a pad's button (its East as Escape).
 	public bool KeyDownFrom(Sedulous.GUI.InputKind from, uint32 keyCode, uint32 modifiers)
 	{
@@ -648,6 +689,21 @@ class EventDispatcher
 				mDragModifiers = modifiers;
 				QueryDrop(mMousePos);
 			}
+			return true;
+		}
+		// A focus that captures every key (a game in a panel) takes this one, whatever it is, and
+		// the GUI acts on none; its release chord alone frees it.
+		if ((mFocusNode != null) && mFocusNode.CapturesAllKeys)
+		{
+			let strokeModifiers = modifiers & ~ModifierOfKey((KeyCode)keyCode);
+			if (Keystroke(keyCode, strokeModifiers, false) == mCaptureRelease)
+			{
+				let released = mFocusNode;
+				released.CapturesAllKeys = false;
+				released.SendEvent(scope NamedEvent(released, "keysreleased"));
+				return true;
+			}
+			RouteKey(.KeyDown, keyCode, modifiers);
 			return true;
 		}
 		// A key hides a tooltip, and keeps it hidden until the pointer moves on (as a press does).
@@ -1157,9 +1213,10 @@ class EventDispatcher
 	// === Popups: the top layer ===
 	// A popup stays in its owner's subtree (its styles, its events' route) and is promoted into
 	// this root's top layer while open: drawn after the whole tree in opening order, unclipped,
-	// hit-tested first, placed against its anchor every layout pass. Opening an auto popup closes
-	// the open ones that do not hold its owner (nesting comes from the tree); closing one closes
-	// those it holds. A closed popup leaves the tree (its owner keeps it).
+	// hit-tested first, placed against its anchor every layout pass, entering (`:entering`) each
+	// time it opens. Opening an auto popup closes the open ones that do not hold its owner (nesting
+	// comes from the tree); closing one closes those it holds. A closed popup leaves the tree (its
+	// owner keeps it).
 
 	/// Opens `popup` as a child of `owner` (attached there if it is not yet). OWNERSHIP of
 	/// `options` transfers (deleted at once when the popup is open already).
@@ -1169,6 +1226,28 @@ class EventDispatcher
 		{
 			delete options;
 			return;
+		}
+		// Opened again while its exit plays: whole again, its exit and going forgotten. Held to the
+		// end: the tree and the leaving entry may have held its only references.
+		Node held = null;
+		defer { if (held != null) held.ReleaseRef(); }
+		for (int i = mLeaving.Count - 1; i >= 0; i--)
+		{
+			let leaving = mLeaving[i];
+			if (leaving.Popup != popup)
+				continue;
+			if (held == null)
+			{
+				popup.AddRef();
+				held = popup;
+			}
+			popup.InTopLayer = false;
+			popup.RemoveFromParent(); // ends its leaving
+			let home = (leaving.Home.Table != null) ? leaving.Home.Table.Resolve(leaving.Home.Slot, leaving.Home.Generation) : null;
+			if (home != null)
+				home.AddChildAt(popup, Math.Min(leaving.HomeIndex, home.ChildCount));
+			mLeaving.RemoveAt(i);
+			delete leaving;
 		}
 		if (options.Kind != .Manual)
 		{
@@ -1219,6 +1298,7 @@ class EventDispatcher
 		popup.RouteStop = options.Modal;
 		mPopups.Add(entry);
 		PlacePopups();
+		popup.Enter(); // the sheet's entrance plays (`:entering`), each time it opens
 		if (focusing)
 		{
 			let stops = scope List<Node>();
@@ -1282,8 +1362,8 @@ class EventDispatcher
 	public Node TopPopup => mPopups.IsEmpty ? null : mPopups.Back.Popup;
 
 	/// Places every anchored popup against its anchor within the root: on its side, flipped,
-	/// shrunk and clamped (PlacePopup). Run every layout pass and before drawing, so a popup
-	/// follows its anchor.
+	/// shrunk and clamped (PlacePopup), a centred one in the root's middle. Run every layout pass
+	/// and before drawing, so a popup follows its anchor.
 	public void PlacePopups()
 	{
 		if (mRoot == null)
@@ -1293,7 +1373,20 @@ class EventDispatcher
 		{
 			let e = mPopups[i];
 			Rect anchor = .();
-			if (e.Options.Anchor != null)
+			var placement = e.Options.Placement;
+			if (e.Options.Centered)
+			{
+				// Below a line across the root as far down as half the room it leaves, centred
+				// along it: in the middle both ways.
+				if (e.Options.FitContent)
+					e.Size = e.Popup.Measure(LayoutConstraints());
+				anchor = .(0.0f, Math.Max(0.0f, (bounds.Height - e.Size.Y) * 0.5f), bounds.Width, 0.0f);
+				placement.Side = .Below;
+				placement.Align = .Center;
+				placement.Gap = 0.0f;
+				placement.Shift = 0.0f;
+			}
+			else if (e.Options.Anchor != null)
 			{
 				let a = e.Options.Anchor;
 				let p0 = a.ConvertToRootSpace(.(0.0f, 0.0f));
@@ -1305,11 +1398,10 @@ class EventDispatcher
 			else
 				continue;
 			let popup = e.Popup;
-			if (e.Options.FitContent)
+			if (e.Options.FitContent && !e.Options.Centered)
 				e.Size = popup.Measure(LayoutConstraints());
 			// Its sides and alignment in the anchor's direction, else its own (its owner's).
-			let rightToLeft = (e.Options.Anchor != null) ? e.Options.Anchor.IsRightToLeft : popup.IsRightToLeft;
-			var placement = e.Options.Placement;
+			let rightToLeft = ((e.Options.Anchor != null) && !e.Options.Centered) ? e.Options.Anchor.IsRightToLeft : popup.IsRightToLeft;
 			if (placement.AlignContent)
 			{
 				// By its content's edge, its padding and border as styled now (not when it opened).
@@ -1376,6 +1468,17 @@ class EventDispatcher
 	public void DrawPopups(DrawContext ctx)
 	{
 		PlacePopups();
+		// Those playing their exit first, under the open ones (a dialog fading out, a menu opened
+		// since over it).
+		for (let leaving in mLeaving)
+		{
+			let popup = leaving.Popup;
+			if (popup.Parent == null)
+				continue;
+			if (leaving.Modal && (mRoot != null))
+				popup.DrawBackdrop(ctx, Rect(0.0f, 0.0f, mRoot.Size.X, mRoot.Size.Y));
+			popup.Draw(ctx);
+		}
 		for (int i = 0; i < mPopups.Count; i++)
 		{
 			let popup = mPopups[i].Popup; // held: drawing changes nothing, but be sure
@@ -1480,6 +1583,7 @@ class EventDispatcher
 	public void Tick(float seconds)
 	{
 		mTime += seconds; // the clock click counting, tooltips and long presses read
+		SettleLeavingPopups();
 		DropHiddenFocus();
 		if (mDragActive)
 			TickDrag(seconds);
@@ -2911,16 +3015,64 @@ class EventDispatcher
 		mPopups.RemoveAt(still);
 		defer delete entry;
 		let focusInside = (mFocusNode == null) || IsInSubtree(mFocusNode, popup);
+		// One that plays an exit stays drawn on top, taking no input, until it has played it.
+		let leaves = entry.Options.LeavesOnClose && (popup.Parent != null) && popup.RootNode.HasStylePass;
 		Demote(popup, entry);
-		popup.RemoveFromParent(); // a closed popup leaves the tree; its owner keeps it
-		// Or it goes back where it stood (ReturnHome), while that is still there.
-		let home = (entry.Home.Table != null) ? entry.Home.Table.Resolve(entry.Home.Slot, entry.Home.Generation) : null;
-		if (home != null)
-			home.AddChildAt(popup, Math.Min(entry.HomeIndex, home.ChildCount));
+		if (leaves)
+		{
+			popup.InTopLayer = true; // drawn over the tree while it leaves
+			let leaving = new LeavingPopup();
+			popup.AddRef();
+			leaving.Popup = popup;
+			leaving.Home = entry.Home;
+			leaving.HomeIndex = entry.HomeIndex;
+			leaving.Modal = entry.Options.Modal;
+			leaving.OnGone = entry.Options.OnGone; // the delegate moves to it
+			entry.Options.OnGone = null;
+			mLeaving.Add(leaving);
+			popup.Leave();
+		}
+		else
+		{
+			popup.RemoveFromParent(); // a closed popup leaves the tree; its owner keeps it
+			// Or it goes back where it stood (ReturnHome), while that is still there.
+			let home = (entry.Home.Table != null) ? entry.Home.Table.Resolve(entry.Home.Slot, entry.Home.Generation) : null;
+			if (home != null)
+				home.AddChildAt(popup, Math.Min(entry.HomeIndex, home.ChildCount));
+		}
 		if (focusInside && !entry.SavedFocus.IsEmpty)
 			RestoreFocus(entry, null);
 		if (entry.Options.OnClosed != null)
 			entry.Options.OnClosed(reason);
+		if (!leaves && (entry.Options.OnGone != null))
+			entry.Options.OnGone();
+	}
+
+	// The popups whose exit has ended (they left their parent): out of the top layer, back home
+	// where they came from, told they are gone.
+	private void SettleLeavingPopups()
+	{
+		for (int i = 0; i < mLeaving.Count;)
+		{
+			let popup = mLeaving[i].Popup;
+			if ((popup.Parent != null) && popup.IsLeaving)
+			{
+				i++;
+				continue;
+			}
+			let gone = mLeaving[i];
+			mLeaving.RemoveAt(i);
+			defer delete gone;
+			popup.InTopLayer = false;
+			if (popup.Parent == null)
+			{
+				let home = (gone.Home.Table != null) ? gone.Home.Table.Resolve(gone.Home.Slot, gone.Home.Generation) : null;
+				if (home != null)
+					home.AddChildAt(popup, Math.Min(gone.HomeIndex, home.ChildCount));
+			}
+			if (gone.OnGone != null)
+				gone.OnGone();
+		}
 	}
 
 	// A popup leaving with a subtree: out of the stack, told, focus given back when it can be.
@@ -3150,6 +3302,18 @@ class EventDispatcher
 		public int HomeIndex = 0;
 	}
 
+	// A closed popup playing its exit (LeavesOnClose).
+	private class LeavingPopup
+	{
+		/// A reference held.
+		public Node Popup ~ _?.ReleaseRef();
+		/// Where it goes back to once gone (weak, as PopupEntry's).
+		public Node.ElementRef Home = .();
+		public int HomeIndex = 0;
+		public bool Modal = false;
+		public delegate void() OnGone ~ delete _;
+	}
+
 	// CaptureNextKey's wait.
 	private class KeyCapture
 	{
@@ -3191,6 +3355,7 @@ class EventDispatcher
 	private float mGestureRotation = 0.0f;
 	private Float2 mGestureTranslation = .(0.0f, 0.0f);
 	private IClipboard mClipboard = null; // borrowed system-clipboard adapter (optional)
+	private delegate bool(Node window) mModalInterceptor ~ delete _; // SetModalInterceptor
 	private Node mOverNode = null; // the deepest node of the hover path
 	private NavTrace mLastNavigation = new .() ~ delete _; // what the last directional move weighed
 	private List<Node> mHoverPath = new .() ~ delete _; // root first: every node under the pointer
@@ -3213,6 +3378,8 @@ class EventDispatcher
 	private bool mClickSuppressed = false; // the press activated already (SuppressClick)
 	private Node mFocusNode = null;
 	private List<PopupEntry> mPopups = new .() ~ DeleteContainerAndItems!(_); // the top layer, bottom first
+	private Keystroke mCaptureRelease = .((uint32)KeyCode.F1, KeyModShift, false);
+	private List<LeavingPopup> mLeaving = new .() ~ DeleteContainerAndItems!(_); // closed popups playing their exit: drawn under the open ones, no input
 	private bool mSwallowing = false; // a press that closed a popup: its release is consumed too
 	// Tooltips: the node whose text shows or waits, the content shown, the clock.
 	private Node mTipProvider = null;

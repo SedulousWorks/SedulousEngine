@@ -206,8 +206,10 @@ class PopupWidgetsTests
 		let d = root.EventDispatcher;
 		let menu = Make(Menu.StaticGuiType) as Menu;
 		defer menu.ReleaseRef();
+		menu.SetWidth(160.0f); // widths of their own: with no font here they would measure narrow
 		menu.SetItemHeight(26.0f);
 		let sub = menu.AddSubMenu("More");
+		sub.SetWidth(160.0f);
 		sub.AddItem("A", new () => { });
 		sub.AddItem("B", new () => { });
 		sub.AddItem("C", new () => { });

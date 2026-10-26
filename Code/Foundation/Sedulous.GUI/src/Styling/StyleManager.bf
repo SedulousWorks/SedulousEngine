@@ -794,8 +794,10 @@ class StyleManager
 		}
 
 		// Transitions: each property that changed since the last apply and a `transition` entry
-		// covers, from what shows now.
-		let previous = CachedStyle(widget);
+		// covers, from what shows now. An entrance's first style moves from nothing: it is where
+		// the entrance starts.
+		let entranceStart = widget.TakeEntranceStart();
+		ResolvedStyle previous = entranceStart ? null : CachedStyle(widget);
 		if (previous != null)
 		{
 			let transitions = scope List<TransitionSpec>();

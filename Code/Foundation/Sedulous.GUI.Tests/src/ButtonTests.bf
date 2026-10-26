@@ -383,4 +383,36 @@ class ButtonTests
 		check.Text = "Music";
 		Test.Assert(check.TextPart.TextAlignH == .Start);
 	}
+
+	[Test]
+	public static void AToggleShowsItsCheckedIconWhileCheckedItsOwnIconOtherwise()
+	{
+		// A play button showing pause while it plays: what a click does then.
+		let root = NewRoot();
+		defer root.ReleaseRef();
+		let b = Place<Button>(root, .(0.0f, 0.0f));
+		defer b.ReleaseRef();
+		b.IsToggle = true;
+		b.Icon = "icons/play.svg";
+		b.CheckedIcon = "icons/pause.svg";
+		Test.Assert(b.IconPart != null);
+		Test.Assert(b.IconPart.Source == "icons/play.svg");
+		b.Checked = true; // from code (a bound action checked)
+		Test.Assert(b.IconPart.Source == "icons/pause.svg");
+		Test.Assert(b.Icon == "icons/play.svg"); // its own icon is still its own
+		Click(root.EventDispatcher, .(10.0f, 10.0f)); // by the user
+		Test.Assert(!b.Checked);
+		Test.Assert(b.IconPart.Source == "icons/play.svg");
+
+		// From markup.
+		let loaded = MarkupFixtures.Load("<Button toggle=\"true\" icon=\"icons/play.svg\" checked-icon=\"icons/pause.svg\"/>");
+		Test.Assert(loaded != null);
+		defer loaded.ReleaseRef();
+		let marked = loaded as Button;
+		Test.Assert(marked != null);
+		Test.Assert(marked.CheckedIcon == "icons/pause.svg");
+		marked.Checked = true;
+		Test.Assert(marked.IconPart != null);
+		Test.Assert(marked.IconPart.Source == "icons/pause.svg");
+	}
 }

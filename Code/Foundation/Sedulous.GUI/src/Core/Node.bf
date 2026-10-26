@@ -2144,6 +2144,15 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	/// Whether the style pass tells it when what moves it settles (MotionSettled): leaving or
 	/// arriving.
 	public bool WatchesMotion => mLeaving || (mEnterPhase != 0);
+	/// The style pass's: whether this is its entrance's first style (told once). That style
+	/// starts from `:entering`'s values, as CSS's @starting-style, not from where an earlier visit
+	/// left it (a popup opened again), so nothing transitions from before.
+	public bool TakeEntranceStart()
+	{
+		let start = mEntranceStart;
+		mEntranceStart = false;
+		return start;
+	}
 
 	/// A style pass ran over the tree this node tops (StyleManager.ApplyTree says so): a node
 	/// leaving it waits for the sheet's exit.
@@ -2274,6 +2283,16 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	{
 		get => mTabCaptures;
 		set => mTabCaptures = value;
+	}
+
+	/// While it has focus, every key is its own (a game in an editor's panel): the GUI runs no
+	/// binding, moves no focus (Tab, the arrows), backs out of nothing (Escape) and takes no access
+	/// key. One chord releases it (the dispatcher's CaptureRelease, Shift+F1 by default): it stops
+	/// capturing and hears the named event `keysreleased`.
+	public bool CapturesAllKeys
+	{
+		get => mCapturesAllKeys;
+		set => mCapturesAllKeys = value;
 	}
 
 	/// A press in it leaves the focus where it is, rather than moving it to what was pressed or
@@ -3563,6 +3582,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	private bool mInert = false; // takes no input
 	private bool mLeaveQueued = false; // its removal waits in the mutation queue
 	private uint8 mEnterPhase = 0; // 1 in :entering, 2 moving to its own style, 0 arrived
+	private bool mEntranceStart = false; // its entrance's first style is still to come (TakeEntranceStart)
 	private bool mEnterQueued = false; // its entrance's next step waits in the mutation queue
 	private bool mStyledTree = false; // the top of a tree a style pass ran over
 	private Float2 mSize = .(0.0f, 0.0f);
@@ -3646,6 +3666,7 @@ class Node : Transformable, IRefCounted, IScriptWeaklyHeld
 	private bool mKeepsFocus = false; // a press in it leaves the focus where it is
 	private int32 mTabIndex = 0; // where Tab reaches it: positive first, 0 in tree order, below 0 never
 	private bool mTabCaptures = false; // Tab is its key, not focus's
+	private bool mCapturesAllKeys = false; // every key is its own while focused (a game in a panel)
 	private bool mHitTestVisible = true;
 	private uint32 mNextListenerId = 0;
 	private NodeBox mBox = new .() ~ delete _;

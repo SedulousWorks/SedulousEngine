@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Fonts;
 using Sedulous.VG;
 using internal Sedulous.GUI;
 
@@ -101,6 +102,8 @@ class MenuItem : MenuRow
 	protected const float cGutter = 22.0f;
 	/// The inline-end column (shortcut end / submenu arrow).
 	protected const float cRightPad = 14.0f;
+	/// Between a label and its shortcut.
+	protected const float cShortcutGap = 24.0f;
 
 	private Sedulous.GUI.Text mText = new .() ~ delete _;
 	// Its access key.
@@ -117,7 +120,7 @@ class MenuItem : MenuRow
 	private delegate void() mOnPicked ~ delete _;
 	private delegate void() mOnActivated ~ delete _;
 	private delegate void(bool on) mOnToggled ~ delete _;
-	private delegate void() mOnTextStyleChanged ~ delete _;
+	private delegate void() mOnWidthChanged ~ delete _;
 	// Its text, its shortcut: its command's (OnBoundCommandText).
 	private bool mTextFromCommand = false;
 	private bool mShortcutFromCommand = false;
@@ -151,10 +154,13 @@ class MenuItem : MenuRow
 			mMnemonicEnd = mnemonic.End;
 			mText.SetString(mnemonic.Shown);
 			Invalidate();
+			WidthMayHaveChanged();
 		}
 	}
 
 	public override char32 Mnemonic => mMnemonic;
+	// Focused, it takes typed text for its menu (type-ahead and access keys, Menu.OnTextInput).
+	public override bool WantsTextInput => IsTreeEnabled;
 
 	public StringView Shortcut
 	{
@@ -163,6 +169,7 @@ class MenuItem : MenuRow
 		{
 			mShortcut.SetString(value);
 			Invalidate();
+			WidthMayHaveChanged();
 		}
 	}
 
@@ -292,12 +299,13 @@ class MenuItem : MenuRow
 		mOnPicked = callback;
 	}
 
-	/// The menu installs this: its text style changed (its width may have). OWNERSHIP of
-	/// `callback` transfers.
-	public void SetOnTextStyleChanged(delegate void() callback)
+	/// The menu installs this: its text, shortcut or text style changed, so its width may have (a
+	/// shortcut an action menu fills in as it opens, a font that arrives). OWNERSHIP of `callback`
+	/// transfers.
+	public void SetOnWidthChanged(delegate void() callback)
 	{
-		delete mOnTextStyleChanged;
-		mOnTextStyleChanged = callback;
+		delete mOnWidthChanged;
+		mOnWidthChanged = callback;
 	}
 
 	/// The menu installs this to close the whole chain after activation. OWNERSHIP of `callback`
@@ -317,7 +325,7 @@ class MenuItem : MenuRow
 		get
 		{
 			let textW = mText.Measure().X;
-			let shortcutW = (mShortcut.GetString().Length > 0) ? mShortcut.Measure().X + 24.0f : 0.0f;
+			let shortcutW = (mShortcut.GetString().Length > 0) ? mShortcut.Measure().X + cShortcutGap : 0.0f;
 			return cGutter + textW + shortcutW + cRightPad;
 		}
 	}
@@ -345,8 +353,14 @@ class MenuItem : MenuRow
 		mShortcut.Direction = TextDirectionFor();
 		mText.Color = TextColor;
 		mShortcut.Color = TextColor;
-		if (mOnTextStyleChanged != null)
-			mOnTextStyleChanged(); // its menu measures again (a font that arrives widens it)
+		WidthMayHaveChanged(); // a font that arrives widens it
+	}
+
+	// Its menu measures again.
+	protected void WidthMayHaveChanged()
+	{
+		if (mOnWidthChanged != null)
+			mOnWidthChanged();
 	}
 
 	protected override void OnMouseClick(MouseEvent e)
@@ -417,7 +431,17 @@ class MenuItem : MenuRow
 			let shown = AreMnemonicsShown;
 			mText.SetUnderline(shown ? mMnemonicStart : 0, shown ? mMnemonicEnd : 0);
 		}
-		mText.Draw(ctx, inner);
+		// The label keeps out of the shortcut's column: squeezed, it ends in an ellipsis before the
+		// shortcut rather than running under it.
+		var label = inner;
+		if (mShortcut.GetString().Length > 0)
+		{
+			let column = Math.Min(inner.Width, mShortcut.Measure().X + cShortcutGap);
+			label.Width = Math.Max(0.0f, inner.Width - column);
+			if (rtl)
+				label.X = inner.X + column;
+		}
+		mText.Draw(ctx, label);
 		if (mShortcut.GetString().Length > 0)
 			mShortcut.Draw(ctx, inner);
 	}
@@ -646,7 +670,9 @@ class Menu : UIWidget
 	private List<MenuRow> mRows = new .() ~ delete _;
 	// Keeps submenus alive (their items' children only while open): a reference each.
 	private List<Menu> mOwnedSubMenus = new .() ~ { for (let m in _) m.ReleaseRef(); delete _; };
-	private bool mAutoWidth = false;
+	// Typed text.
+	private TypeAheadSearch mTypeAhead = new .() ~ delete _;
+	private bool mAutoWidth = true; // a fixed default cut long items and ran labels under shortcuts
 	// The safe area toward an open submenu: the pointer's last two places, a hover deferred.
 	private Float2 mPointerAt = .(0.0f, 0.0f);
 	private bool mPointerKnown = false;
@@ -654,7 +680,7 @@ class Menu : UIWidget
 	private MenuRow mDeferredRow = null;
 	private double mDeferredFor = 0.0;
 	private bool mDeferring = false;
-	private float mWidth = 160.0f;
+	private float mWidth = 160.0f; // SetWidth's
 	private float mItemHeight = 26.0f;
 	private bool mScrolls = false;
 	private float mScroll = 0.0f;
@@ -662,6 +688,7 @@ class Menu : UIWidget
 	private MenuScrollArrow mScrollDown = null ~ _?.ReleaseRef();
 	private Color mPanelColor = .(0.16f, 0.17f, 0.21f, 1.0f);
 	private delegate void(PopupCloseReason reason) mOnClosed ~ delete _;
+	private delegate void(Menu menu) mOnOpening ~ delete _;
 
 	public this()
 	{
@@ -676,6 +703,14 @@ class Menu : UIWidget
 		KeyContext = cMenuKeyContext;
 		OnCommand(cMenuDownCommand, new (command) => { Step(1); });
 		OnCommand(cMenuUpCommand, new (command) => { Step(-1); });
+		// Return and Space by default: the focused item runs (or its submenu opens).
+		OnCommand(cMenuActivateCommand, new (command) =>
+			{
+				let d = EventDispatcher;
+				let focus = (d != null) ? d.FocusNode : null;
+				if ((focus == null) || !HoldsRow(focus) || !focus.IsTreeEnabled || !focus.HandleActivate())
+					command.Propagate = true;
+			});
 		// The arrow toward the inline start (Left, Right in right to left) in a submenu closes it,
 		// focus going back to its item; in a menu of a bar, either goes on to the bar (which
 		// moves along it).
@@ -724,7 +759,8 @@ class Menu : UIWidget
 		Relayout();
 	}
 
-	/// Auto-sizes the menu width to its widest item (default off; SetWidth turns it off).
+	/// Sizes the menu to its widest item, its label and its shortcut both (the default; SetWidth
+	/// gives it a width of its own instead).
 	public void SetAutoWidth(bool enabled)
 	{
 		mAutoWidth = enabled;
@@ -914,6 +950,15 @@ class Menu : UIWidget
 		mOnClosed = callback;
 	}
 
+	/// Told each time just before it opens (a submenu too): an owner refreshes its items then, so
+	/// what they show (enabled, checked) is true as the user sees them. OWNERSHIP of `callback`
+	/// transfers.
+	public void SetOnOpening(delegate void(Menu menu) callback)
+	{
+		delete mOnOpening;
+		mOnOpening = callback;
+	}
+
 	/// Closes this menu (and the submenus it holds) if it is open.
 	[Scriptable]
 	public new void Close()
@@ -1002,12 +1047,67 @@ class Menu : UIWidget
 		Relayout();
 	}
 
+	// Typed text in it (its items ask for it while focused): a character that is one item's
+	// access key runs that item, as a desktop's menus do; else the focus goes to the next item
+	// whose text starts with what was typed (TypeAheadSearch).
+	protected override void OnTextInput(TextInputEvent e)
+	{
+		if (!HoldsRow(e.Target) || (e.Text.Length == 0))
+			return;
+		e.Handled = true;
+		int end = 0;
+		let typed = SimpleLowerCase((char32)DecodeCodepoint(e.Text, ref end));
+		MenuItem keyed = null;
+		int keys = 0;
+		for (let row in mRows)
+		{
+			let it = row as MenuItem;
+			if ((it != null) && it.IsTreeEnabled && (it.Mnemonic == typed))
+			{
+				keyed = it;
+				keys++;
+			}
+		}
+		if ((keys == 1) && (end == e.Text.Length))
+		{
+			keyed.RequestFocus();
+			keyed.HandleActivate();
+			return;
+		}
+		let d = EventDispatcher;
+		int32 current = -1;
+		for (int i = 0; i < mRows.Count; i++)
+		{
+			if (mRows[i].IsFocusWithin)
+				current = (int32)i;
+		}
+		let found = mTypeAhead.Find(e.Text, (d != null) ? d.Time : 0.0f, (int32)mRows.Count, current, scope (i, outText) =>
+			{
+				let it = mRows[i] as MenuItem;
+				if ((it != null) && it.IsSelectable && it.IsTreeEnabled)
+					outText.Append(it.Text);
+			});
+		if (found >= 0)
+			FocusItem(found, 1);
+	}
+
 	// Measured as it lays itself out: its rows' width, and the height it keeps (a popup fitting
 	// its content asks this, so a menu that scrolls is placed at the height it shows).
 	public override Float2 MeasureContent(Float2 available)
 	{
 		let extent = MeasureItems();
 		return .(extent.Width, extent.Height);
+	}
+
+	// Whether `node` is one of its rows.
+	private bool HoldsRow(Node node)
+	{
+		for (let row in mRows)
+		{
+			if (row == node)
+				return true;
+		}
+		return false;
 	}
 
 	// Up and down go round the items (from the menu itself: the first or the last).
@@ -1057,7 +1157,7 @@ class Menu : UIWidget
 			ShareTextStyle(it);
 			it.SetRowHeight(mItemHeight);
 			it.SetOnActivated(new () => { RootMenu().Close(); });
-			it.SetOnTextStyleChanged(new () => { Relayout(); });
+			it.SetOnWidthChanged(new () => { Relayout(); });
 		}
 		row.SetOnHovered(new () => { OnRowHovered(row); });
 		if (mScrollUp != null) // before the scroll arrows, which stay over the items
@@ -1191,6 +1291,8 @@ class Menu : UIWidget
 			delete options;
 			return;
 		}
+		if (mOnOpening != null)
+			mOnOpening(this);
 		Displayed = true;
 		Relayout();
 		options.FitContent = true; // sized as it measures, again when a font arrives

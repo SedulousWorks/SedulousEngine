@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Fonts;
 using Sedulous.GUI;
@@ -7,7 +8,8 @@ namespace Sedulous.GUI.Tests;
 
 /// The modal window and the message box: OpenModal confines input to the dialog (background
 /// clicks are swallowed by the dispatcher's modal popup); the message box shows the right buttons
-/// and reports the pressed result, then closes.
+/// and reports the pressed result, then closes; one a dispatcher's modal interceptor refuses never
+/// shows and answers as its cancel (a window as its close).
 class MessageBoxTests
 {
 	private static bool Near(float a, float b) => NodeFixtures.Near(a, b);
@@ -313,5 +315,119 @@ class MessageBoxTests
 		root.Context.Update(SceneFixtures.Seconds(1.0 / 60.0));
 		Test.Assert(@box.ButtonAt(1).Text == "Confirmar");
 		Test.Assert(@box.ButtonAt(0).Text == "Cancel"); // no table names it: English
+	}
+
+	[Test]
+	public static void EachButtonHasARoleThePrimaryIsFocusedTheCancelAnswersBack()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let @box = new MessageBox();
+		defer @box.ReleaseRef();
+		root.AddChild(@box);
+		@box.Configure("Save?", "Unsaved changes.", .OkCancel);
+		Test.Assert(@box.ButtonCount == 2);
+		Test.Assert(@box.GetButtonRole(0) == .Cancel);
+		Test.Assert(@box.ButtonAt(0).HasClass("cancel"));
+		Test.Assert(@box.GetButtonRole(1) == .Primary);
+		Test.Assert(@box.ButtonAt(1).HasClass("primary"));
+
+		// A verb of the caller's own after them is not the default: the primary still is.
+		@box.AddButton("Discard", "discard", .Destructive);
+		Test.Assert(@box.ButtonAt(2).HasClass("destructive"));
+		Test.Assert(@box.Show());
+		Test.Assert(root.EventDispatcher.FocusNode == @box.ButtonAt(1));
+		@box.RequestClose(); // as Escape would
+		Test.Assert(@box.ResultName == "cancel");
+	}
+
+	[Test]
+	public static void VerbsFromMarkupWithNoPrimaryADestructiveButtonIsNeverTheDefault()
+	{
+		let root = SceneFixtures.NewScene();
+		defer root.ReleaseRef();
+		let @box = new MessageBox();
+		defer @box.ReleaseRef();
+		root.AddChild(@box);
+		Test.Assert(@box.SetMarkupAttribute("buttons", "Cancel:cancel:cancel | Delete:delete:destructive"));
+		Test.Assert(@box.ButtonCount == 2);
+		Test.Assert(@box.ButtonAt(0).Text == "Cancel");
+		Test.Assert(@box.ButtonAt(1).Text == "Delete");
+		Test.Assert(@box.GetButtonRole(1) == .Destructive);
+		// Return alone cannot destroy: the focus goes to the last button that destroys nothing.
+		Test.Assert(@box.DefaultButton == @box.ButtonAt(0));
+		Test.Assert(@box.Show());
+		Test.Assert(root.EventDispatcher.FocusNode == @box.ButtonAt(0));
+		Test.Assert(@box.ButtonAt(1).HandleActivate());
+		Test.Assert(@box.ResultName == "delete");
+
+		// A verb with no result answers with its text in lower case; with no role it is normal.
+		Test.Assert(@box.SetMarkupAttribute("buttons", "Keep|Create:create:primary"));
+		Test.Assert(@box.ButtonCount == 2);
+		Test.Assert(@box.GetButtonRole(0) == .Normal);
+		Test.Assert(@box.DefaultButton == @box.ButtonAt(1));
+		Test.Assert(@box.ButtonAt(0).HandleActivate());
+		Test.Assert(@box.ResultName == "keep");
+
+		// Back answers as the cancel button wherever it sits, not as the first one.
+		Test.Assert(@box.SetMarkupAttribute("buttons", "Delete:delete:destructive | Keep:keep | Cancel:cancel:cancel"));
+		@box.RequestClose(); // as Escape would
+		Test.Assert(@box.ResultName == "cancel");
+	}
+
+	[Test]
+	public static void RefusedByItsDispatchersModalInterceptorItNeverShowsAnsweringAsItsCancelAWindowAsItsClose()
+	{
+		let root = SceneFixtures.NewScene(500.0f, 500.0f);
+		defer root.ReleaseRef();
+		let d = root.EventDispatcher;
+		let asked = scope List<String>();
+		defer { ClearAndDeleteItems!(asked); }
+		d.SetModalInterceptor(new [&] (window) =>
+			{
+				if (let w = window as Window)
+					asked.Add(new String(w.Title));
+				return false;
+			});
+
+		let @box = new MessageBox();
+		defer @box.ReleaseRef();
+		@box.Configure("Unsaved changes", "Save?", .OkCancel);
+		@box.AddButton("Discard", "discard", .Destructive);
+		MessageBox.Result got = .Ok;
+		int answers = 0;
+		@box.SetOnResult(new [&] (result) =>
+			{
+				got = result;
+				answers++;
+			});
+		int changed = 0;
+		@box.AddEventListener(.Changed, new [&] (e) => { changed++; });
+		@box.OpenModal(root);
+		Test.Assert(!@box.IsOpen);
+		Test.Assert(d.PopupCount == 0);
+		Test.Assert(asked.Count == 1);
+		Test.Assert(asked[0] == "Unsaved changes");
+		Test.Assert(@box.ResultName == "cancel");
+		Test.Assert(answers == 1);
+		Test.Assert(got == .Cancel);
+		Test.Assert(changed == 1);
+
+		// A plain window answers as its close.
+		let window = new Window();
+		defer window.ReleaseRef();
+		window.Title = "Preferences";
+		int closes = 0;
+		window.SetOnClose(new [&] () => { closes++; });
+		window.OpenModal(root);
+		Test.Assert(!window.IsOpen);
+		Test.Assert(closes == 1);
+		Test.Assert(asked.Count == 2);
+
+		// The interceptor taken back: windows open again.
+		delete d.TakeModalInterceptor();
+		window.OpenModal(root);
+		Test.Assert(window.IsOpen);
+		window.Close();
 	}
 }

@@ -191,6 +191,7 @@ extension Node
 			return;
 		}
 		mEnterPhase = 1;
+		mEntranceStart = true;
 		MarkStyleStateDirty(StateEntering);
 		Invalidate();
 	}

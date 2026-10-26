@@ -144,4 +144,107 @@ class EnterTests
 		Test.Assert(Near(bed.Card.Alpha, 0.8f));
 		Test.Assert(Near(bed.Root.Context.MaxClockStep, 0.1f));
 	}
+
+	[Test]
+	public static void APopupEntersEachTimeItOpens()
+	{
+		// A menu, a combo box's list, a tooltip or a dialog plays the sheet's entrance when it
+		// opens, and again when it opens the next time (it left the tree between).
+		let bed = scope EnterBed(".card { opacity: 1; transition: opacity 0.2s linear; } .card:entering { opacity: 0; }");
+		let d = bed.Root.EventDispatcher;
+		for (int open = 0; open < 2; open++)
+		{
+			let options = new PopupOptions();
+			options.AnchorRect = .(20.0f, 20.0f, 0.0f, 0.0f);
+			options.HasAnchorRect = true;
+			d.OpenPopup(bed.Root, bed.Card, options);
+			Test.Assert(bed.Card.IsEntering);
+			bed.Frame(0.0);
+			Test.Assert(Near(bed.Card.Alpha, 0.0f));
+			bed.Frame(0.0);
+			bed.Frame(0.1);
+			Test.Assert(Near(bed.Card.Alpha, 0.5f));
+			bed.Frame(0.1);
+			Test.Assert(Near(bed.Card.Alpha, 1.0f));
+			Test.Assert(d.ClosePopup(bed.Card));
+			bed.Frame(0.0);
+		}
+		Test.Assert(bed.Entered == 2);
+	}
+
+	[Test]
+	public static void ADialogClosedPlaysItsExitOnTopThenGoesOpenedAgainMeanwhileItIsWhole()
+	{
+		// Closed, a modal window is out of the popups at once (input and IsOpen move on) and fades
+		// on top, taking no input, until its exit ends; then it goes and hears it has. Menus close
+		// at once.
+		let bed = scope EnterBed(".card { opacity: 1; transition: opacity 0.2s linear; } .card:leaving { opacity: 0; }");
+		let dialog = new Window();
+		defer dialog.ReleaseRef();
+		dialog.AddClass("card");
+		dialog.Size = .(120.0f, 80.0f);
+		int closed = 0;
+		dialog.SetOnClose(new [&] () => { closed++; });
+		let d = bed.Root.EventDispatcher;
+
+		dialog.OpenModal(bed.Root);
+		bed.Frame(0.0);
+		bed.Frame(0.0);
+		Test.Assert(dialog.IsOpen);
+		dialog.Close();
+		Test.Assert(!dialog.IsOpen);
+		Test.Assert(closed == 1);
+		Test.Assert(d.PopupCount == 0);
+		Test.Assert(dialog.Parent == bed.Root); // still there, fading
+		Test.Assert(dialog.InTopLayer);
+		Test.Assert(dialog.IsTreeInert);
+		bed.Frame(0.0);
+		bed.Frame(0.1);
+		Test.Assert(Near(dialog.Alpha, 0.5f));
+		bed.Frame(0.1);
+		bed.Frame(0.0); // the exit ended: it goes at the next drain
+		bed.Frame(0.0);
+		Test.Assert(dialog.Parent == null);
+		Test.Assert(!dialog.InTopLayer);
+
+		// Opened again halfway through its exit: whole and open, and it does not go.
+		dialog.OpenModal(bed.Root);
+		bed.Frame(0.0);
+		bed.Frame(0.0);
+		dialog.Close();
+		bed.Frame(0.0);
+		bed.Frame(0.1);
+		dialog.OpenModal(bed.Root);
+		Test.Assert(dialog.IsOpen);
+		Test.Assert(!dialog.IsLeaving);
+		Test.Assert(d.PopupCount == 1);
+		for (int i = 0; i < 4; i++)
+			bed.Frame(0.1);
+		Test.Assert(dialog.Parent == bed.Root);
+		Test.Assert(dialog.IsOpen);
+		Test.Assert(Near(dialog.Alpha, 1.0f));
+	}
+
+	[Test]
+	public static void AMessageBoxShownFromAPageGoesBackThereOnceItsExitHasPlayed()
+	{
+		let bed = scope EnterBed("messagebox { opacity: 1; transition: opacity 0.2s linear; } messagebox:leaving { opacity: 0; }");
+		let page = new Panel();
+		defer page.ReleaseRef();
+		bed.Root.AddChild(page);
+		let @box = new MessageBox();
+		defer @box.ReleaseRef();
+		page.AddChild(@box);
+		@box.Configure("Delete?", "It goes to the trash.", .OkCancel);
+		Test.Assert(@box.Show());
+		bed.Frame(0.0);
+		bed.Frame(0.0);
+		@box.RequestClose(); // as Escape would
+		Test.Assert(@box.ResultName == "cancel");
+		Test.Assert(@box.Parent == bed.Root); // fading over the root
+		for (int i = 0; i < 5; i++)
+			bed.Frame(0.1);
+		Test.Assert(@box.Parent == page); // home, unseen
+		Test.Assert(!@box.Displayed);
+	}
 }

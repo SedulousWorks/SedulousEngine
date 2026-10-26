@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Fonts.TrueType;
 using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
@@ -328,6 +329,7 @@ class MenuTests
 		menu.SetItemHeight(26.0f);
 		menu.AddItem("Top", new () => { });
 		let sub = menu.AddSubMenu("More");
+		sub.SetWidth(160.0f); // a width of its own: with no font here it would measure narrow
 		sub.AddItem("Deep", new [&] () => { ++deep; });
 		menu.Open(anchor, .(50.0f, 50.0f));
 
@@ -385,8 +387,10 @@ class MenuTests
 		let d = root.EventDispatcher;
 		let menu = new Menu();
 		defer menu.ReleaseRef();
+		menu.SetWidth(160.0f); // widths of their own: with no font here they would measure narrow
 		menu.SetItemHeight(26.0f);
 		let sub = menu.AddSubMenu("More");
+		sub.SetWidth(160.0f);
 		sub.AddItem("A", new () => { });
 		sub.AddItem("B", new () => { });
 		sub.AddItem("C", new () => { });
@@ -494,6 +498,7 @@ class MenuTests
 		let d = root.EventDispatcher;
 		let menu = new Menu();
 		defer menu.ReleaseRef();
+		menu.SetWidth(160.0f); // a width of its own: the test points 50 in, and with no font here it measures narrow
 		menu.SetItemHeight(25.0f);
 		for (int i = 0; i < 40; ++i)
 			menu.AddItem("Item", new () => { });
@@ -901,5 +906,24 @@ class MenuTests
 			root.UpdateLayout();
 		Test.Assert(!sub.Scrolls);
 		Test.Assert(sub.Size.Y >= 4.0f * 26.0f + 8.8f - 0.001f);
+	}
+
+	[Test]
+	public static void AShortcutOrTextAnItemTakesAfterTheMenuMeasuredWidensItToFitBoth()
+	{
+		let service = scope TrueTypeFontService();
+		TextFixtures.Load(service, "DejaVu", TextFixtures.cDejaVuMono);
+		let menu = new Menu();
+		defer menu.ReleaseRef();
+		let item = menu.AddItem("Command Palette", new () => { });
+		item.Font = service.GetFont("DejaVu", 13.0f);
+		let narrow = menu.Size.X;
+		Test.Assert(narrow >= item.PreferredWidth - 0.5f);
+		// An action menu fills in the keys as it opens: the menu takes the room for them.
+		item.Shortcut = "Ctrl+Shift+Alt+P";
+		Test.Assert(menu.Size.X >= item.PreferredWidth - 0.5f);
+		Test.Assert(menu.Size.X > narrow);
+		item.Text = "Command Palette and a great deal more";
+		Test.Assert(menu.Size.X >= item.PreferredWidth - 0.5f);
 	}
 }

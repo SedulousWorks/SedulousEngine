@@ -27,6 +27,49 @@ class Mnemonic
 	public int End = 0;
 }
 
+/// Type-ahead: what a list, a tree or an open menu matches as text is typed. The text typed within
+/// a second of the last is one prefix; one character typed again cycles through the items starting
+/// with it. Typed text, so it follows the keyboard layout and an IME.
+class TypeAheadSearch
+{
+	private String mTyped = new .() ~ delete _;
+	private float mTypedAt = -10.0f;
+
+	/// Takes `typed` at `now` (seconds) and finds the item it matches among `count`, from
+	/// `current` (-1: none), each item's text appended by `textOf`: the item, or -1 when none
+	/// matches. A new prefix of one character starts past the current item, so typing it again
+	/// moves on; a longer one may stay on the current item.
+	public int32 Find(StringView typed, float now, int32 count, int32 current, delegate void(int32 item, String outText) textOf)
+	{
+		if ((typed.Length == 0) || (count <= 0))
+			return -1;
+		if (now - mTypedAt > 1.0f)
+			mTyped.Clear();
+		mTypedAt = now;
+		mTyped.Append(typed);
+		StringView prefix = mTyped;
+		int firstEnd = 0;
+		DecodeCodepoint(prefix, ref firstEnd);
+		let first = prefix.Substring(0, firstEnd);
+		bool repeated = prefix.Length > firstEnd;
+		for (int at = firstEnd; (at < prefix.Length) && repeated; at += firstEnd)
+			repeated = (prefix.Length - at >= firstEnd) && (prefix.Substring(at, firstEnd) == first);
+		if (repeated)
+			prefix = first;
+		let start = ((prefix.Length == firstEnd) || (current < 0)) ? current + 1 : current;
+		let text = scope String();
+		for (int32 n = 0; n < count; ++n)
+		{
+			let item = ((start + n) % count + count) % count;
+			text.Clear();
+			textOf(item, text);
+			if (StartsWithIgnoringCase(text, prefix))
+				return item;
+		}
+		return -1;
+	}
+}
+
 static
 {
 	/// A character in lower case, for the scripts type-ahead matches by case: Latin (ASCII, Latin-1

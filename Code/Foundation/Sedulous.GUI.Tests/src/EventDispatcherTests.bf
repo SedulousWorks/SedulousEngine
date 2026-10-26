@@ -432,4 +432,32 @@ class EventDispatcherTests
 		Test.Assert(!d.Activate()); // nor by the keyboard
 		Test.Assert(innerClicks == 0);
 	}
+
+	[Test]
+	public static void ACentredPopupSitsInTheRootsMiddleByItsSizeAgainAsTheRootResizes()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 300.0f);
+		defer root.ReleaseRef();
+		let opener = new Panel(); // at the root's edge
+		defer opener.ReleaseRef();
+		opener.Position = .(350.0f, 10.0f);
+		opener.Size = .(40.0f, 20.0f);
+		let popup = new Panel();
+		defer popup.ReleaseRef();
+		popup.Size = .(100.0f, 60.0f);
+		root.AddChild(opener);
+		let d = root.EventDispatcher;
+		let options = new PopupOptions();
+		options.Centered = true;
+		options.Anchor = opener; // not asked: centred
+		d.OpenPopup(opener, popup, options);
+		root.UpdateLayout();
+		Test.Assert(NodeFixtures.Near(popup.ConvertToRootSpace(.(0.0f, 0.0f)).X, 150.0f));
+		Test.Assert(NodeFixtures.Near(popup.ConvertToRootSpace(.(0.0f, 0.0f)).Y, 120.0f));
+		root.Size = .(600.0f, 500.0f);
+		root.UpdateLayout();
+		Test.Assert(NodeFixtures.Near(popup.ConvertToRootSpace(.(0.0f, 0.0f)).X, 250.0f));
+		Test.Assert(NodeFixtures.Near(popup.ConvertToRootSpace(.(0.0f, 0.0f)).Y, 220.0f));
+		d.ClosePopup(popup);
+	}
 }

@@ -151,6 +151,24 @@ class MenuBar : UIWidget
 		}
 	}
 
+	/// Its menus, none (an owner that builds the bar from a registry builds it again): an open one
+	/// closes first.
+	public void ClearMenus()
+	{
+		if (mCurrent != null)
+			mCurrent.Close();
+		for (let e in mEntries)
+		{
+			e.BarButton.RemoveFromParent();
+			e.BarMenu.SetOnClosed(null); // it may outlive the bar: it tells it nothing now
+			e.BarMenu.ReleaseRef();
+		}
+		mEntries.Clear();
+		mCurrent = null;
+		mCurrentButton = null;
+		Relayout();
+	}
+
 	public int MenuCount => mEntries.Count;
 	public Menu CurrentMenu => mCurrent;
 

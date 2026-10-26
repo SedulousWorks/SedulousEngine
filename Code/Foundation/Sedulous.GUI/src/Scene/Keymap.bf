@@ -43,6 +43,8 @@ static
 	public const String cMenuDownCommand = "menu.down";
 	public const String cMenuLeftCommand = "menu.left";
 	public const String cMenuRightCommand = "menu.right";
+	/// Runs the focused item of an open menu (Return and Space by default).
+	public const String cMenuActivateCommand = "menu.activate";
 	/// Back out of where one is: Escape and the pad's East by default. The topmost auto popup
 	/// answers it by closing, a modal dialog as its close button does, then whatever handles it on
 	/// the focus path (a game's screen).
@@ -690,6 +692,8 @@ class Keymap
 		public List<Keystroke> Sequence = new .() ~ delete _;
 		public String Command = new .() ~ delete _;
 		public ContextPredicate Context = new .() ~ delete _;
+		/// As written, so a Rebind finds the bindings it replaces.
+		public String ContextText = new .() ~ delete _;
 	}
 
 	private List<KeyBinding> mBindings = new .() ~ DeleteContainerAndItems!(_);
@@ -720,9 +724,50 @@ class Keymap
 			return false;
 		}
 		binding.Command.Set(command);
+		binding.ContextText.Set(ParseUtil.Trim(context));
 		mBindings.Add(binding);
 		mChanged.Notify();
 		return true;
+	}
+
+	/// Binds `keys` to `command` where `context` holds in place of the keys bound to it there
+	/// before (by a Bind or Rebind with the same context): those keys no longer run it, as a user's
+	/// shortcut setting does (a Bind adds, the old key still working). False when the keys or the
+	/// context do not parse; nothing changes then.
+	public bool Rebind(StringView keys, StringView command, StringView context = default)
+	{
+		let check = scope ContextPredicate();
+		if (!check.Parse(context))
+			return false;
+		let parts = scope List<StringView>();
+		SplitTopLevel(keys, ' ', parts);
+		for (let part in parts)
+		{
+			if (!ParseKeystroke(part).HasValue)
+				return false;
+		}
+		UnbindCommand(command, context);
+		return Bind(keys, command, context);
+	}
+
+	/// Takes away the keys bound to `command` where `context` holds (by a Bind with the same
+	/// context): how many bindings went. Other commands on those keys keep them.
+	public int UnbindCommand(StringView command, StringView context = default)
+	{
+		let contextText = ParseUtil.Trim(context);
+		int removed = 0;
+		for (int i = mBindings.Count - 1; i >= 0; i--)
+		{
+			if ((mBindings[i].Command == command) && (mBindings[i].ContextText == contextText))
+			{
+				delete mBindings[i];
+				mBindings.RemoveAt(i);
+				removed++;
+			}
+		}
+		if (removed != 0)
+			mChanged.Notify();
+		return removed;
 	}
 
 	/// Binds one keystroke (made, not parsed: from an input map) to `command` where `context`
@@ -737,6 +782,7 @@ class Keymap
 			return false;
 		}
 		binding.Command.Set(command);
+		binding.ContextText.Set(ParseUtil.Trim(context));
 		mBindings.Add(binding);
 		mChanged.Notify();
 		return true;
