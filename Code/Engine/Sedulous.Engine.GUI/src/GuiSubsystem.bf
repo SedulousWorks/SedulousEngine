@@ -40,8 +40,12 @@ namespace Sedulous.Engine.GUI;
 /// tab's game) has a screen tier of its own, drawn for its tab (SetRenderRun); the overlay layer
 /// stays on the shared tier above it.
 ///
-/// Still to come: the components' live trees (E3), input through GUI.Shell's bridge (E4) and the
-/// script surface (E5); each has its hook where Raptor's runs it.
+/// The components live (GuiComponentSync.bf, GuiRenderTextures.bf): a canvas's document in its
+/// scene's root or a texture of its own, a billboard over its entity, a world panel on its
+/// entity's sprite, each in line with its component every frame.
+///
+/// Still to come: input through GUI.Shell's bridge (E4) and the script surface (E5); each has its
+/// hook where Raptor's runs it.
 class GuiSubsystem : Subsystem, ISceneObserver
 {
 	/// After Engine.UI's (-650), so a game's GUI sees the same frame; all work in BeginFrame.
@@ -73,9 +77,12 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	private UIWidget mOverlay = null;
 	// E5: the script binding (what each script context is given) goes here.
 	private List<GuiSceneTier> mSceneTiers = new .() ~ DeleteContainerAndItems!(_);
-	// E3: the texture roots (a render-texture canvas's, a world panel's) go here.
-	/// Counts BeginFrames; E3's RenderTextures runs once a frame by it.
+	/// The roots of their own a render-texture canvas and a world panel draw in, OWNED.
+	private List<GuiTextureRoot> mTextureRoots = new .() ~ DeleteContainerAndItems!(_);
+	/// Counts BeginFrames; RenderTextures runs once a frame by it.
 	private uint64 mFrameSerial = 0;
+	/// The frame RenderTextures last ran in.
+	private uint64 mTexturesSerial = uint64.MaxValue;
 	private GuiRenderState mRenderState = null;
 	/// BORROWED peers; null in a headless context.
 	private RenderSubsystem mRender = null;
@@ -157,7 +164,8 @@ class GuiSubsystem : Subsystem, ISceneObserver
 			tier.Root.RequestLayoutTree();
 		for (let tier in mSceneTiers)
 			tier.Root.RequestLayoutTree();
-		// E3: each texture root lays out again too.
+		for (let root in mTextureRoots)
+			root.Root.RequestLayoutTree();
 	}
 
 	/// Where asset guids resolve (the application's resource manager); null resolves nothing.
@@ -440,8 +448,8 @@ class GuiSubsystem : Subsystem, ISceneObserver
 	/// one's with its overlay layer. Idempotent.
 	private void DropTiers()
 	{
+		ClearAndDeleteItems!(mTextureRoots);
 		ClearAndDeleteItems!(mSceneTiers);
-		// E3: the texture roots go here too.
 		for (let tier in mRunTiers)
 			tier.Screens.Clear();
 		ClearAndDeleteItems!(mRunTiers);
@@ -476,8 +484,7 @@ class GuiSubsystem : Subsystem, ISceneObserver
 				mRenderState.Renderer.BeginFrame();
 			if (mResources.Poll())
 				ApplySheets(); // a sheet (or a document) was cooked again: the GUI restyles
-			// E3: the components' trees in line here: the texture roots marked unseen, each scene
-			// tier's billboards, canvases and world panels synced, the unseen texture roots swept.
+			SyncComponents(); // each scene's billboards, canvases and world panels in line
 			// E4: PumpInput() here, before the clock, as Raptor's.
 			// By ticks: TimeSpan.FromSeconds would round to whole milliseconds.
 			mContext.Update(TimeSpan((int64)((double)deltaTime * (double)TimeSpan.TicksPerSecond)));
@@ -520,7 +527,15 @@ class GuiSubsystem : Subsystem, ISceneObserver
 
 	public void OnDestroying(Scene scene)
 	{
-		// E3: the scene's canvases' and panels' texture roots go first.
+		// The scene's canvases' and panels' own roots go first.
+		for (int i = mTextureRoots.Count - 1; i >= 0; i--)
+		{
+			if (mTextureRoots[i].Scene !== scene)
+				continue;
+			// E4: the active and press roots forgotten when they are this one's.
+			delete mTextureRoots[i];
+			mTextureRoots.RemoveAt(i);
+		}
 		for (int i < mSceneTiers.Count)
 		{
 			if (mSceneTiers[i].Scene !== scene)

@@ -14,9 +14,9 @@ namespace Sedulous.Engine.GUI.Tests;
 
 /// The subsystem's core: the screen tier (the screen stack under the overlay layer) and the scene
 /// tier (a root per scene); the game's sheets in order over the theme, restyled when one is cooked
-/// again; the fonts; the screen tier drawn into the engine's overlay pass (the Null device, the
-/// shaders from the data root), placed at the game's resolution and orientation, a tier per run;
-/// the overlay layer; an editor's preview.
+/// again; the fonts; both tiers drawn into the engine's overlay passes (the Null device, the
+/// shaders from the data root), the screen's placed at the game's resolution and orientation, a
+/// tier per run; the overlay layer; an editor's preview.
 class GuiSubsystemTests
 {
 	private static bool Near(float actual, float expected, float tolerance = 0.001f) =>
@@ -75,8 +75,7 @@ class GuiSubsystemTests
 		Test.Assert(Near(@box.Size.X, 150.0f));
 	}
 
-	/// Raptor's case draws both tiers; its scene half (a canvas's tree drawn in its scene's view,
-	/// another scene's view drawing nothing of it) waits for the components' live sync (E3).
+	/// Raptor's case draws both tiers: this is its screen half, the scene half the case after.
 	[Test]
 	public static void TheScreenTierDrawsIntoTheEnginesOverlayPassItsLayersBeforeItsPass()
 	{
@@ -130,6 +129,71 @@ class GuiSubsystemTests
 		engine.Gui.Render(pass, view);
 		Test.Assert(device.Counters().Draws > drawsUnprepared);
 		pass.End();
+	}
+
+	/// Raptor's case's scene half: the view's scene root, laid out at its viewport, drawn while a
+	/// canvas shows something; another scene's view draws nothing of it.
+	[Test]
+	public static void TheSceneTierDrawsIntoTheEnginesOverlayPassForItsOwnScenesViewAlone()
+	{
+		let device = scope NullDevice();
+		let engine = scope GuiTestEngine();
+		engine.Gui.EnsureRenderReady(device, 2);
+		Test.Assert(engine.Gui.IsRenderReady);
+
+		let level = engine.Scenes.CreateScene("level");
+		let root = engine.Gui.SceneRootFor(level);
+		Test.Assert(root != null);
+		let badge = new Panel();
+		badge.Size = .(30.0f, 30.0f);
+		let badgeLook = scope NodeBox();
+		badgeLook.BackgroundColor = .(0.0f, 1.0f, 0.0f, 1.0f);
+		badge.SetBox(badgeLook);
+		// A canvas holds it: a scene's GUI draws while it shows something.
+		let canvases = level.GetSystem<GuiCanvasComponentManager>();
+		let hudEntity = level.CreateEntity("hud");
+		let document = GuiTestEngine.MakeDocument("<Panel/>");
+		defer delete document;
+		canvases.Add(hudEntity).Document.SetDirect(document);
+		engine.Frame();
+		Test.Assert(canvases.Get(hudEntity).Root != null);
+		canvases.Get(hudEntity).Root.AddChild(badge);
+		badge.ReleaseRef(); // the canvas's tree holds it
+
+		Test.Assert(device.CreateCommandPool(.Graphics) case .Ok(var pool));
+		defer device.DestroyCommandPool(ref pool);
+		Test.Assert(pool.CreateEncoder() case .Ok(var encoder));
+		defer pool.DestroyEncoder(ref encoder);
+		let pass = encoder.BeginRenderPass(.());
+		Test.Assert(pass != null);
+		var sceneView = SceneOverlayView();
+		sceneView.SceneKey = Internal.UnsafeCastToPtr(level);
+		sceneView.ViewportX = 160;
+		sceneView.ViewportWidth = 160;
+		sceneView.ViewportHeight = 180;
+		sceneView.TargetWidth = 320;
+		sceneView.TargetHeight = 180;
+		sceneView.TargetFormat = .RGBA8Unorm;
+		let drawsScene = device.Counters().Draws;
+		engine.Gui.Render(pass, sceneView);
+		Test.Assert(device.Counters().Draws > drawsScene);
+		Test.Assert(Near(root.ViewportSize.X, 160.0f));
+		// Another scene's view draws nothing of this one.
+		sceneView.SceneKey = Internal.UnsafeCastToPtr(engine);
+		let drawsOther = device.Counters().Draws;
+		engine.Gui.Render(pass, sceneView);
+		Test.Assert(device.Counters().Draws == drawsOther);
+		// A scene showing nothing is not even laid out for the view.
+		let empty = engine.Scenes.CreateScene("empty");
+		let emptyRoot = engine.Gui.SceneRootFor(empty);
+		Test.Assert(emptyRoot != null);
+		let before = emptyRoot.ViewportSize;
+		sceneView.SceneKey = Internal.UnsafeCastToPtr(empty);
+		engine.Gui.Render(pass, sceneView);
+		Test.Assert(emptyRoot.ViewportSize == before, "no canvas, no billboard: nothing done");
+		pass.End();
+		engine.Scenes.DestroyScene(empty);
+		engine.Scenes.DestroyScene(level);
 	}
 
 	/// A font product of `family` baked at 24 pixels, with no tables: a family to resolve by name.

@@ -3,9 +3,9 @@
 
 // Engine::GUI - the `engine.gui` module: the engine's GUI on foundation.gui (E5 of
 // Specs/gui-lab-evolution-3.md), Engine.UI's counterpart, beside it while both live; what is left
-// of it after the Engine.GUI port's second slice: the subsystem's input (E6 below, the port's E4),
-// the components' live trees (E7 below, the port's E3) and the script surface (E8 below, the port's
-// E5), with the components' script reflection (`of`, `root()`).
+// of it after the Engine.GUI port's third slice: the subsystem's input (E6 below, the port's E4)
+// and the script surface (E8 below, the port's E5), with the components' script reflection (`of`,
+// `root()`).
 //
 // Code/Engine/Sedulous.Engine.GUI/src has the rest. The first slice: the components, their enums
 // and managers (AddGuiSceneManagers is GuiScene.bf), the world math, the resource provider and the
@@ -14,7 +14,13 @@
 // scene tier, the game's screen, a screen tier per run, the lifecycle), GuiOverlayDraw.bf (both
 // tiers drawn into the engine's overlay passes through GuiPassRenderer, the GPU bring-up, an
 // editor's preview), GuiScreenTier.bf, GuiSceneTier.bf, GuiRenderState.bf and
-// GuiScreenPlacement.bf. Where the rest joins it, a comment there names the slice ("E3", "E4",
+// GuiScreenPlacement.bf. The third, the components live (E7 of the spec): GuiComponentSync.bf (a
+// canvas's tree in its scene's root or a texture root of its own, its host and scaler
+// (GuiCanvasHost.bf), a component's own sheet, the billboards' layer and their placement as each
+// view draws, a world panel's tree, the scene draw's gate), GuiRenderTextures.bf (RenderTextures,
+// TextureCount: the textures drawn before the scene, each shown on its entity's sprite or decal,
+// a world panel's sprite driven), GuiTextureRoot.bf and GuiTextureTarget.bf, with the render state's
+// textures in GuiRenderState.bf. Where the rest joins it, a comment there names the slice ("E4",
 // "E5").
 //
 // Input (E6): the engine's active input source (the player's window, an editor Game tab's view)
@@ -27,23 +33,15 @@
 // to what Engine.UI claims; the GUI tracks the input kind from the same source. A fitted screen
 // tier's pointer arrives in render space and is taken to its pixels (ScreenPointerPoint, ported).
 //
-// Components (E7): `gui.Canvas` shows a document (with a sheet of its own over the game's) in its
-// scene's root, ordered among the scene's canvases, at the target's pixels or scaled from a
-// reference resolution to fit; despawned, its tree goes; a re-cooked document rebuilds it.
-// `gui.Billboard` shows a document over its entity (a nameplate, a health bar), in a layer under
-// the scene's canvases, placed through each view's camera as it draws: hung by its bottom centre on
-// the projected point, hidden behind the camera, scaled with distance when asked. A canvas may
-// draw into a texture instead (a screen in the world, its entity's sprite or decal showing it), and
-// `gui.WorldPanel` shows a document on a quad in its entity's plane, its sprite driven, the pointer
-// reaching it by a ray through the scene's camera. Both draw in RenderTextures, which the host calls
-// before the scene, after the frame's bakes.
+// Components (E7): ported but for a world panel's pointer, which is the input's: the ray through
+// the scene's camera (PanelUnderPointer below).
 //
 // The script surface (E8): the GUI's own (the `gui` facade, every widget reflected, the gamekit's
 // stack), installed per script context with the screen tier's root (ExposeToScript): `gui::root()`
 // is the screen root and `ScreenStack::of(gui::root().find("screens"))` its stack, which pushes a
 // document by its guid ("{guid}") through the provider. Each component's `.of(entity)` reaches its
 // tree as a node (`root()`). With run screens on, the `gui` root of a run's scripts is its tier's.
-// GCC modules hygiene: the renderer, the shaders and the textures live in GuiSubsystemImpl.cpp.
+// GCC modules hygiene: the renderer and the shaders lived in GuiSubsystemImpl.cpp.
 
 module;
 #include "Core/Prelude.h"
@@ -93,8 +91,8 @@ export namespace engine::gui
     // GuiScreenPlacement is Code/Engine/Sedulous.Engine.GUI/src/GuiScreenPlacement.bf.
 
     // The class head (Subsystem, ISceneObserver, ISceneOverlay, IScreenOverlay) and every member
-    // not named below are Code/Engine/Sedulous.Engine.GUI/src (GuiSubsystem.bf, GuiOverlayDraw.bf):
-    // what is left is the scripts (E5), the input (E4) and the components' live trees (E3).
+    // not named below are Code/Engine/Sedulous.Engine.GUI/src (GuiSubsystem.bf, GuiOverlayDraw.bf,
+    // GuiComponentSync.bf, GuiRenderTextures.bf): what is left is the scripts (E5) and the input (E4).
     class GuiSubsystem final : public foundation::runtime::Subsystem,
                                public scene::ISceneObserver,
                                public render::ISceneOverlay,
@@ -116,47 +114,20 @@ export namespace engine::gui
         /// The input kind, from the active source each frame (the pointer, the keys, a pad).
         [[nodiscard]] foundation::input::InputKindTracker& GetInputKindTracker() noexcept { return m_inputKind; }
 
-        /// The textures: the frame's bakes, then every render-texture canvas and world panel drawn
-        /// into its texture, made or resized as it asks and left ready to sample; their entities'
-        /// sprites (and a canvas's decal) shown them. By the host on its encoder before the scene
-        /// draws, so the scene samples this frame's. Once a frame: a second call does nothing.
-        void RenderTextures(rhi::CommandEncoder& encoder, u32 frameIndex);
-        /// How many textures canvases and panels draw into now.
-        [[nodiscard]] usize TextureCount() const noexcept;
-
     private:
-        // The render state's textures (the impl unit); its device, shaders, renderer and the screen's
-        // prepared draws are GuiRenderState.bf.
-        struct RenderState;
-        // The scene tier's (GuiSceneTier.bf: its scene, root and billboard layer): what is left of it.
+        // The scene tier's (GuiSceneTier.bf: its scene, root, billboard layer and canvases' hosts):
+        // what is left of it.
         struct SceneTier
         {
             UniquePtr<GuiInputBridge> Bridge;
-            Array<RefPtr<UIWidget>> Canvases; ///< its canvases' hosts, in the root
         };
 
         void PumpInput();
-        void SyncCanvases(SceneTier& tier);
-        void SyncBillboards(SceneTier& tier);
-        void PlaceBillboards(SceneTier& tier, const render::SceneOverlayView& view);
-        [[nodiscard]] static bool HasContent(const SceneTier& tier) noexcept;
-        void SyncPanels(SceneTier& tier);
-        // A component's tree in line with its document and sheet: rebuilt when the document's
-        // product changes (BuildDocument, a document's tree, is GuiSubsystem.bf).
-        template <typename Component>
-        bool RebuildIfChanged(Component& c);
-        template <typename Component>
-        void ApplySheet(Component& c, StringView name);
-        // A root of its own for a texture (a render-texture canvas, a world panel), with its input.
+        // A texture root's (GuiTextureRoot.bf: its scene, entity, root and Seen): what is left of it.
         struct TextureRoot
         {
-            scene::Scene* Scene = nullptr;
-            scene::EntityHandle Entity{};
-            RefPtr<SceneRoot> Root;
             UniquePtr<GuiInputBridge> Bridge;
-            bool Seen = false;
         };
-        RefPtr<SceneRoot> TextureRootFor(scene::Scene& scene, scene::EntityHandle entity, Node& content);
         // Where the pointer goes this frame: a root, and the point in it (a panel's in its pixels).
         struct InputTarget
         {
@@ -180,8 +151,7 @@ export namespace engine::gui
 
         TaggedAllocator m_allocator; // none in Beef: its objects are new'd
         GuiScriptBinding m_scriptBinding; // what each script context is given
-        Array<UniquePtr<TextureRoot>> m_textureRoots;
-        u64 m_texturesSerial = ~0ull; // the frame RenderTextures last ran in (m_frameSerial is mFrameSerial)
+        // m_textureRoots is GuiSubsystem.bf's mTextureRoots (List<GuiTextureRoot>).
         Float2 m_panelPoint{0.0f, 0.0f}; // where a held press on a panel last was, in its pixels
         foundation::input::InputKindTracker m_inputKind;
         foundation::shell::IWindow* m_textInputTarget = nullptr;

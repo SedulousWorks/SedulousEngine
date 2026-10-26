@@ -2,16 +2,17 @@
 // Copyright (c) 2026-Present Robert Campbell
 
 // Engine.GUI (E5 of Specs/gui-lab-evolution-3.md), what is left of its tests after the Engine.GUI
-// port's second slice: the input (where it goes, what the action layer hears, the bound source,
-// the keys and Back, a fitted tier's pointer, the overlay layer modal: the port's E4), the
-// components as the subsystem runs them (canvases, billboards, render textures, world panels, and
-// the scene half of the overlay draw: E3) and the script surface (E5). The provider's, the domain's,
-// the canvas's round trip and the billboard and panel math are in
-// Code/Engine/Sedulous.Engine.GUI.Tests/src (GuiResourceProviderTests.bf, GuiDomainTests.bf,
-// GuiComponentTests.bf, GuiWorldMathTests.bf), as are the subsystem core's (GuiSubsystemTests.bf:
-// the screen and scene tiers, the game's sheets over the theme and their hot reload, the screen
-// tier drawn into the overlay pass, the fonts, the screen's placement, a render resolution, a tier
-// per run, the overlay layer, an editor's preview, the default family), on GuiTestEngine.bf.
+// port's third slice: the input (where it goes, what the action layer hears, the bound source,
+// the keys and Back, a fitted tier's pointer, the overlay layer modal, a world panel's pointer: the
+// port's E4) and the script surface (E5). The provider's, the domain's, the canvas's round trip and
+// the billboard and panel math are in Code/Engine/Sedulous.Engine.GUI.Tests/src
+// (GuiResourceProviderTests.bf, GuiDomainTests.bf, GuiComponentTests.bf, GuiWorldMathTests.bf), as
+// are the subsystem core's (GuiSubsystemTests.bf: the screen and scene tiers, the game's sheets over
+// the theme and their hot reload, both tiers drawn into the overlay passes, the fonts, the screen's
+// placement, a render resolution, a tier per run, the overlay layer, an editor's preview, the
+// default family) and the components' as the subsystem runs them (GuiComponentSyncTests.bf:
+// canvases, their scaler and sheet, billboards, render textures, a world panel's sprite), on
+// GuiTestEngine.bf.
 #include <doctest/doctest.h>
 #include "Core/Prelude.h"
 
@@ -56,16 +57,6 @@ namespace
     {
         static foundation::vfs::NativeFileSystem fs(foundation::vfs::FindDataRoot(), DefaultAllocator());
         return fs;
-    }
-
-    Node* FindById(Node& node, StringView id)
-    {
-        if (const UIWidget* widget = Cast<UIWidget>(&node); widget != nullptr && widget->GetId() == id)
-            return &node;
-        for (usize i = 0; i < node.ChildCount(); ++i)
-            if (Node* found = FindById(*node.GetChildAt(i), id))
-                return found;
-        return nullptr;
     }
 
     // Braced and the cooked project (Project) are GuiTestProject.bf.
@@ -197,60 +188,6 @@ namespace
     }
 }
 
-// Partly ported: its screen half (a faded group's layer drawn before the screen's pass, prepared
-// and unprepared draws) is TheScreenTierDrawsIntoTheEnginesOverlayPassItsLayersBeforeItsPass in
-// GuiSubsystemTests.bf; what is left is the scene half, which needs a canvas's live tree (E3).
-TEST_CASE("engine.gui: both tiers draw into the engine's overlay passes, the screen's layers before its pass")
-{
-    rhi::null::NullDevice device{DefaultAllocator()}; // outlives the GUI that draws on it
-    Engine engine;
-    engine.gui->EnsureRenderReady(device, 2);
-    REQUIRE(engine.gui->IsRenderReady());
-    rhi::null::NullCommandEncoder encoder;
-    rhi::RenderPassEncoder* pass = encoder.BeginRenderPass(rhi::RenderPassDesc{});
-    REQUIRE(pass != nullptr);
-
-    // The scene tier: the view's scene root, laid out at its viewport.
-    scene::Scene* level = engine.scenes.CreateScene(u8"level");
-    SceneRoot* root = engine.gui->SceneRootFor(*level);
-    REQUIRE(root != nullptr);
-    RefPtr<Panel> badge = MakeRef<Panel>(DefaultAllocator());
-    badge->SetSize(Float2{30.0f, 30.0f});
-    NodeBox badgeLook;
-    badgeLook.BackgroundColor = Color{0.0f, 1.0f, 0.0f, 1.0f};
-    badge->SetBox(Move(badgeLook));
-    {
-        // A canvas holds it: a scene's GUI draws while it shows something.
-        auto* canvases = level->GetSystem<engine::gui::GuiCanvasComponentManager>();
-        const scene::EntityHandle hudEntity = level->CreateEntity(u8"hud");
-        RefPtr<GuiDocument> document = MakeRef<GuiDocument>(DefaultAllocator());
-        document->markup = String(u8"<Panel/>");
-        canvases->Add(hudEntity).document = document;
-        engine.Frame();
-        REQUIRE(canvases->Get(hudEntity)->root);
-        canvases->Get(hudEntity)->root->AddChild(badge.Get());
-    }
-    foundation::render::SceneOverlayView sceneView;
-    sceneView.sceneKey = level;
-    sceneView.viewportX = 160;
-    sceneView.viewportWidth = 160;
-    sceneView.viewportHeight = 180;
-    sceneView.targetWidth = 320;
-    sceneView.targetHeight = 180;
-    sceneView.targetFormat = rhi::TextureFormat::RGBA8Unorm;
-    const u64 drawsScene = encoder.counters->Snapshot().draws;
-    engine.gui->Render(*pass, sceneView);
-    CHECK(encoder.counters->Snapshot().draws > drawsScene);
-    CHECK(root->GetViewportSize().x == doctest::Approx(160.0f));
-    // Another scene's view draws nothing of this one.
-    sceneView.sceneKey = &engine;
-    const u64 drawsOther = encoder.counters->Snapshot().draws;
-    engine.gui->Render(*pass, sceneView);
-    CHECK(encoder.counters->Snapshot().draws == drawsOther);
-    pass->End();
-    engine.scenes.DestroyScene(level);
-}
-
 TEST_CASE("engine.gui: input goes to the root whose GUI is under the pointer, a click lands, and the action layer hears what the GUI took")
 {
     Engine engine;
@@ -369,261 +306,12 @@ namespace
         document->markup = String(markup);
         return document;
     }
-    // The scene's GUI styled and laid out at `size`, as a frame's draw does.
-    void LayOut(GuiSubsystem& gui, SceneRoot& root, Float2 size)
-    {
-        root.SetViewportSize(size);
-        gui.Styles().SetMediaContext(root.GetMediaContext());
-        gui.Styles().ApplyTree(root);
-        root.UpdateLayout();
-    }
 }
 
-TEST_CASE("engine.gui: a canvas shows its document in its scene's GUI, ordered, shown and taking input as it says, rebuilt when its document changes, gone when despawned")
-{
-    Engine engine;
-    scene::Scene* level = engine.scenes.CreateScene(u8"level");
-    auto* canvases = level->GetSystem<engine::gui::GuiCanvasComponentManager>();
-    REQUIRE(canvases != nullptr); // installed by the scene composition
-    const scene::EntityHandle hud = level->CreateEntity(u8"hud");
-    const scene::EntityHandle pause = level->CreateEntity(u8"pause");
-    {
-        engine::gui::GuiCanvasComponent& c = canvases->Add(pause);
-        c.document = MakeDocument(u8"<Panel id=\"pause-menu\"/>");
-        c.order = 5;
-    }
-    {
-        engine::gui::GuiCanvasComponent& c = canvases->Add(hud);
-        c.document = MakeDocument(u8"<Panel id=\"score\"/>");
-        c.order = 1;
-    }
-    engine.Frame();
-    SceneRoot* root = engine.gui->SceneRootFor(*level);
-    REQUIRE(root != nullptr);
-    REQUIRE(root->ChildCount() == 3u); // the billboards' layer, then the canvases
-    CHECK(Cast<UIWidget>(root->GetChildAt(0))->GetTag() == StringView(u8"billboards"));
-    CHECK(FindById(*root->GetChildAt(1), u8"score") != nullptr); // order 1 under order 5
-    CHECK(FindById(*root->GetChildAt(2), u8"pause-menu") != nullptr);
-    CHECK(Cast<UIWidget>(root->GetChildAt(1))->GetTag() == StringView(u8"canvas"));
-
-    // Reordered.
-    canvases->Get(hud)->order = 9;
-    engine.Frame();
-    CHECK(FindById(*root->GetChildAt(2), u8"score") != nullptr);
-
-    // Hidden, then its entity inactive; not interactive.
-    engine::gui::GuiCanvasComponent* c = canvases->Get(hud);
-    Node* tree = c->root.Get();
-    REQUIRE(tree != nullptr);
-    c->visible = false;
-    engine.Frame();
-    CHECK_FALSE(tree->IsDisplayed());
-    c->visible = true;
-    level->SetActive(hud, false);
-    engine.Frame();
-    CHECK_FALSE(tree->IsDisplayed());
-    level->SetActive(hud, true);
-    c->interactive = false;
-    engine.Frame();
-    CHECK(tree->IsDisplayed());
-    CHECK(tree->IsTreeInert());
-
-    // A new document product rebuilds the tree.
-    c->document = MakeDocument(u8"<Panel id=\"lives\"/>");
-    engine.Frame();
-    CHECK(FindById(*root, u8"lives") != nullptr);
-    CHECK(FindById(*root, u8"score") == nullptr);
-
-    // Despawned: its host goes.
-    level->DestroyEntity(hud);
-    engine.Frame();
-    CHECK(root->ChildCount() == 2u);
-    CHECK(FindById(*root, u8"lives") == nullptr);
-    engine.scenes.DestroyScene(level);
-}
-
-TEST_CASE("engine.gui: a canvas scaled from a reference resolution fits the view, centred; at constant pixels it fills it")
-{
-    Engine engine;
-    scene::Scene* level = engine.scenes.CreateScene(u8"level");
-    auto* canvases = level->GetSystem<engine::gui::GuiCanvasComponentManager>();
-    const scene::EntityHandle hud = level->CreateEntity(u8"hud");
-    engine::gui::GuiCanvasComponent& added = canvases->Add(hud);
-    added.document = MakeDocument(u8"<Panel id=\"frame\"/>");
-    added.scalerMode = engine::gui::GuiScalerMode::ReferenceResolution;
-    added.referenceResolution = Float2{400.0f, 300.0f};
-    engine.Frame();
-    SceneRoot* root = engine.gui->SceneRootFor(*level);
-    Node* tree = canvases->Get(hud)->root.Get();
-    REQUIRE(tree != nullptr);
-
-    LayOut(*engine.gui, *root, Float2{1000.0f, 600.0f});
-    CHECK(tree->GetSize().x == doctest::Approx(400.0f)); // laid out at the reference
-    CHECK(tree->GetSize().y == doctest::Approx(300.0f));
-    CHECK(tree->GetScale().x == doctest::Approx(2.0f));  // scaled to fit the height
-    CHECK(tree->GetPosition().x == doctest::Approx(100.0f)); // centred across
-    CHECK(tree->GetPosition().y == doctest::Approx(0.0f));
-
-    canvases->Get(hud)->scalerMode = engine::gui::GuiScalerMode::ConstantPixel;
-    engine.Frame();
-    LayOut(*engine.gui, *root, Float2{1000.0f, 600.0f});
-    CHECK(tree->GetSize().x == doctest::Approx(1000.0f));
-    CHECK(tree->GetScale().x == doctest::Approx(1.0f));
-    engine.scenes.DestroyScene(level);
-}
-
-TEST_CASE("engine.gui: a canvas's own sheet styles its document alone, over the game's")
-{
-    Engine engine;
-    scene::Scene* level = engine.scenes.CreateScene(u8"level");
-    auto* canvases = level->GetSystem<engine::gui::GuiCanvasComponentManager>();
-    const scene::EntityHandle styled = level->CreateEntity(u8"styled");
-    const scene::EntityHandle plain = level->CreateEntity(u8"plain");
-    RefPtr<GuiStyleSheet> sheet = MakeRef<GuiStyleSheet>(DefaultAllocator());
-    sheet->css = String(u8".title { width: 77px; height: 5px; }");
-    {
-        engine::gui::GuiCanvasComponent& c = canvases->Add(styled);
-        c.document = MakeDocument(u8"<Panel><Panel class=\"title\" id=\"a\"/></Panel>"); // the root is the canvas's area
-        c.sheet = sheet;
-    }
-    canvases->Add(plain).document = MakeDocument(u8"<Panel><Panel class=\"title\" id=\"b\"/></Panel>");
-    engine.Frame();
-    SceneRoot* root = engine.gui->SceneRootFor(*level);
-    LayOut(*engine.gui, *root, Float2{800.0f, 600.0f});
-    Node* a = FindById(*root, u8"a");
-    Node* b = FindById(*root, u8"b");
-    REQUIRE(a != nullptr);
-    REQUIRE(b != nullptr);
-    CHECK(a->GetSize().x == doctest::Approx(77.0f));
-    CHECK(b->GetSize().x != doctest::Approx(77.0f));
-    engine.scenes.DestroyScene(level);
-}
-
-namespace
-{
-    // A projection a test reads at a glance: clip = (x, y, z, z), so a point's place on screen is
-    // (x / z, y / z) and it is behind the camera when z <= 0.
-    Float4x4 SimpleProjection()
-    {
-        Float4x4 m = Float4x4::Identity();
-        m.m[2][3] = 1.0f;
-        m.m[3][3] = 0.0f;
-        return m;
-    }
-    Float4x4 At(Float3 position)
-    {
-        Float4x4 m = Float4x4::Identity();
-        m.m[3][0] = position.x;
-        m.m[3][1] = position.y;
-        m.m[3][2] = position.z;
-        return m;
-    }
-}
-
-TEST_CASE("engine.gui: billboards live in a layer under the canvases, placed as each view draws, and go when despawned")
-{
-    rhi::null::NullDevice device{DefaultAllocator()}; // outlives the GUI that draws on it
-    Engine engine;
-    engine.gui->EnsureRenderReady(device, 2);
-    REQUIRE(engine.gui->IsRenderReady());
-    scene::Scene* level = engine.scenes.CreateScene(u8"level");
-    auto* billboards = level->GetSystem<engine::gui::GuiBillboardComponentManager>();
-    REQUIRE(billboards != nullptr);
-    const scene::EntityHandle guard = level->CreateEntity(u8"guard");
-    level->SetLocalPosition(guard, Float3{0.0f, 0.0f, 1.0f});
-    level->UpdateTransforms();
-    billboards->Add(guard).document = MakeDocument(u8"<Panel width=\"40\" height=\"20\" id=\"plate\"/>");
-    engine.Frame();
-    SceneRoot* root = engine.gui->SceneRootFor(*level);
-    Node* layer = root->GetChildAt(0);
-    REQUIRE(layer->ChildCount() == 1u);
-    Node* plate = billboards->Get(guard)->root.Get();
-    REQUIRE(plate == layer->GetChildAt(0));
-
-    foundation::render::SceneOverlayView view;
-    view.sceneKey = level;
-    view.viewProjection = SimpleProjection();
-    view.viewportWidth = 200;
-    view.viewportHeight = 100;
-    view.targetWidth = 200;
-    view.targetHeight = 100;
-    view.targetFormat = rhi::TextureFormat::RGBA8Unorm;
-    rhi::null::NullCommandEncoder encoder;
-    rhi::RenderPassEncoder* pass = encoder.BeginRenderPass(rhi::RenderPassDesc{});
-    REQUIRE(pass != nullptr);
-    engine.gui->Render(*pass, view); // its size is known after this layout
-    engine.gui->Render(*pass, view);
-    CHECK(plate->GetSize().x == doctest::Approx(40.0f));
-    CHECK(plate->GetPosition().x == doctest::Approx(80.0f)); // centred on 100
-    CHECK(plate->GetPosition().y == doctest::Approx(30.0f)); // its bottom on 50
-    CHECK(plate->IsVisible());
-
-    level->SetLocalPosition(guard, Float3{0.0f, 0.0f, -1.0f}); // behind the camera
-    level->UpdateTransforms();
-    engine.gui->Render(*pass, view);
-    CHECK_FALSE(plate->IsVisible());
-    pass->End();
-
-    level->DestroyEntity(guard);
-    engine.Frame();
-    CHECK(layer->ChildCount() == 0u);
-    engine.scenes.DestroyScene(level);
-}
-
-TEST_CASE("engine.gui: a render-texture canvas draws into a texture of its own, its entity's sprite shows it, and it goes with the canvas")
-{
-    rhi::null::NullDevice device{DefaultAllocator()}; // outlives the GUI that draws on it
-    Engine engine;
-    engine.gui->EnsureRenderReady(device, 2);
-    REQUIRE(engine.gui->IsRenderReady());
-    scene::Scene* level = engine.scenes.CreateScene(u8"level");
-    level->AddSystem<engine::render::SpriteComponentManager>();
-    auto* canvases = level->GetSystem<engine::gui::GuiCanvasComponentManager>();
-    const scene::EntityHandle screen = level->CreateEntity(u8"screen");
-    engine::render::SpriteComponent& sprite = level->GetSystem<engine::render::SpriteComponentManager>()->Add(screen);
-    engine::gui::GuiCanvasComponent& added = canvases->Add(screen);
-    added.document = MakeDocument(u8"<Panel id=\"monitor\"/>");
-    added.renderMode = engine::gui::GuiCanvasRenderMode::RenderTexture;
-    added.renderTextureWidth = 128;
-    added.renderTextureHeight = 64;
-    engine.Frame();
-    engine::gui::GuiCanvasComponent* c = canvases->Get(screen);
-    REQUIRE(c->renderRoot);
-    SceneRoot* root = engine.gui->SceneRootFor(*level);
-    CHECK(root->ChildCount() == 1u); // the billboards' layer alone: not in the scene's GUI
-    CHECK(FindById(*c->renderRoot, u8"monitor") != nullptr);
-
-    rhi::null::NullCommandEncoder encoder;
-    engine.gui->RenderTextures(encoder, 0);
-    CHECK(engine.gui->TextureCount() == 1u);
-    REQUIRE(c->renderTextureView != nullptr);
-    CHECK(sprite.texture == c->renderTextureView);
-    CHECK(c->renderRoot->GetViewportSize().x == doctest::Approx(128.0f));
-    const u64 passes = encoder.counters->Snapshot().renderPasses;
-    CHECK(passes >= 1u);
-    engine.gui->RenderTextures(encoder, 0); // once a frame
-    CHECK(encoder.counters->Snapshot().renderPasses == passes);
-
-    // Back over the view: in the scene's GUI again, the texture let go next time.
-    c->renderMode = engine::gui::GuiCanvasRenderMode::ScreenOverlay;
-    engine.Frame();
-    CHECK(FindById(*root, u8"monitor") != nullptr);
-    engine.gui->RenderTextures(encoder, 1);
-    CHECK(engine.gui->TextureCount() == 0u);
-    CHECK(sprite.texture == nullptr);
-
-    // Into a texture again, then despawned: the texture goes.
-    c->renderMode = engine::gui::GuiCanvasRenderMode::RenderTexture;
-    engine.Frame();
-    engine.gui->RenderTextures(encoder, 0);
-    CHECK(engine.gui->TextureCount() == 1u);
-    level->DestroyEntity(screen);
-    engine.Frame();
-    engine.gui->RenderTextures(encoder, 1);
-    CHECK(engine.gui->TextureCount() == 0u);
-    engine.scenes.DestroyScene(level);
-}
-
+// Partly ported: its sprite (added for it, showing its texture, entity-oriented, after the tone
+// mapping, grown by the transparent edge, its root laid out at its pixels) is
+// AWorldPanelDrivesItsSprite in GuiComponentSyncTests.bf; what is left is the pointer reaching it by
+// a ray (E4).
 TEST_CASE("engine.gui: a world panel drives its sprite, and the pointer reaches it by a ray: hovered, clicked, the game told")
 {
     rhi::null::NullDevice device{DefaultAllocator()}; // outlives the GUI that draws on it
@@ -648,16 +336,6 @@ TEST_CASE("engine.gui: a world panel drives its sprite, and the pointer reaches 
     REQUIRE(c->renderRoot);
     i32 clicks = 0;
     (void)c->root->AddEventListener(EventType::MouseClick, [&](const Event&) { ++clicks; });
-
-    rhi::null::NullCommandEncoder encoder;
-    engine.gui->RenderTextures(encoder, 0);
-    engine::render::SpriteComponent* sprite = level->GetSystem<engine::render::SpriteComponentManager>()->Get(kiosk);
-    REQUIRE(sprite != nullptr); // added for it
-    CHECK(sprite->texture == c->renderTextureView);
-    CHECK(sprite->orientation == engine::render::SpriteOrientation::EntityOriented);
-    CHECK(sprite->postTonemap);
-    CHECK(sprite->size.x == doctest::Approx(2.0f * 204.0f / 200.0f)); // the transparent edge's share
-    CHECK(c->renderRoot->GetViewportSize().x == doctest::Approx(200.0f));
 
     // The scene's GUI drew at 800 by 600: its camera's ray through the middle meets the panel.
     engine.gui->SceneRootFor(*level)->SetViewportSize(Float2{800.0f, 600.0f});

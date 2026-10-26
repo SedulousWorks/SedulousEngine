@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.GUI;
 using Sedulous.Scene;
 
@@ -14,6 +15,8 @@ class GuiSceneTier
 	public SceneRoot Root = null ~ _?.ReleaseRef();
 	/// Under every canvas; it paints nothing, so it takes no pointer.
 	public UIWidget Billboards = null ~ _?.ReleaseRef();
-	// E3: its canvases' hosts, in the root, go here.
+	/// Its canvases' hosts, in the root, in no order: a HELD reference each, beside the root's
+	/// and the component's own.
+	public List<GuiCanvasHost> Canvases = new .() ~ { for (let host in _) host.ReleaseRef(); delete _; };
 	// E4: its GuiInputBridge goes here (MakeBridge), owned.
 }

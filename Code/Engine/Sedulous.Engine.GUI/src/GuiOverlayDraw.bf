@@ -62,10 +62,11 @@ extension GuiSubsystem : ISceneOverlay, IScreenOverlay
 			if ((void*)Internal.UnsafeCastToPtr(known.Scene) == view.SceneKey)
 				tier = known;
 		}
-		if (tier == null)
+		// A scene's GUI draws while it shows a canvas or a billboard; its billboards placed
+		// through this view's camera before the layout.
+		if ((tier == null) || !HasContent(tier))
 			return;
-		// E3: the HasContent gate (a scene's GUI draws while it shows a canvas or a billboard) and
-		// PlaceBillboards(tier, view) go here, before the layout.
+		PlaceBillboards(tier, view);
 		// Laid out at the viewport's size (a split screen's half lays out its own) and drawn there.
 		StyleAndLayOut(tier.Root, .((float)view.ViewportWidth, (float)view.ViewportHeight));
 		var pass = GuiPassView();
