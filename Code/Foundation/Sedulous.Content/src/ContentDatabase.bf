@@ -32,6 +32,7 @@ class ContentDatabase : IContentDatabase
 	private List<Instance> mAllInstances = new .() ~ DeleteContainerAndItems!(_);
 	private Dictionary<Guid, Instance> mByGuid = new .() ~ delete _;
 	private ScanStats mScanStats;
+	private uint64 mRevision;
 
 	/// Scans the mount on construction. The extension is given without a dot.
 	///
@@ -58,6 +59,15 @@ class ContentDatabase : IContentDatabase
 	public ScanStats LastScanStats => mScanStats;
 
 	public Group RootGroup => mRoot;
+
+	/// Counts the changes to the tree's shape: a group or an instance added, removed, renamed
+	/// or moved. A view of the tree (the asset browser) builds again when it moves, however
+	/// the change came (a page, an import, an agent's write). An instance's content being
+	/// written does not move it.
+	public uint64 Revision => mRevision;
+
+	/// The shape changed: what the groups' own edits call.
+	private void Touch() => mRevision++;
 
 	public Instance GetInstance(Guid id)
 	{
@@ -187,6 +197,68 @@ class ContentDatabase : IContentDatabase
 		return .Ok;
 	}
 
+	/// Moves an instance to another group, keeping its name and identity: its envelope and
+	/// every data-stream sidecar move to that group's folder, which is made when it has none
+	/// yet. It is re-filed in the group's name order.
+	///
+	/// References by identity are untouched, as with a rename. InvalidArgument when it is
+	/// in that group already, AlreadyExists when the group has an instance of its name.
+	public Result<void, ErrorCode> MoveInstance(Guid id, Group to)
+	{
+		let instance = GetInstance(id);
+		if (instance == null)
+			return .Err(.NotFound);
+
+		let from = instance.OwningGroup;
+		if (from == to)
+			return .Err(.InvalidArgument);
+		if (to.GetInstance(instance.Name) != null)
+			return .Err(.AlreadyExists);
+
+		let writable = mMount as IWritableFileSystem;
+		if (writable == null)
+			return .Err(.NotSupported);
+
+		// Every path is derived from the group, so the old ones have to be taken before it
+		// changes and the new ones after.
+		let oldEnvelope = instance.EnvelopePath(.. scope String());
+		let oldSidecars = scope List<String>();
+		defer { ClearAndDeleteItems!(oldSidecars); }
+		CollectSidecars(instance, oldSidecars);
+
+		let toFolder = to.GetPath(.. scope String());
+		if (!toFolder.IsEmpty && !mMount.Exists(toFolder))
+			writable.CreateDirectory(toFolder).IgnoreError();
+
+		from.[Friend]RemoveInstance(instance);
+		instance.[Friend]SetGroup(to);
+		to.[Friend]AddInstanceNode(instance);
+
+		// The envelope may not exist yet: an instance created and never written.
+		if (mMount.Exists(oldEnvelope))
+		{
+			if (writable.Move(oldEnvelope, instance.EnvelopePath(.. scope String())) case .Err(let error))
+			{
+				// The move failed, so the files are still in the old folder and the node has
+				// to go back to matching them.
+				to.[Friend]RemoveInstance(instance);
+				instance.[Friend]SetGroup(from);
+				from.[Friend]AddInstanceNode(instance);
+				return .Err(error);
+			}
+		}
+
+		for (let oldPath in oldSidecars)
+		{
+			let suffix = SidecarSuffix(oldPath, oldEnvelope);
+			let newPath = scope String();
+			instance.GetPath(newPath);
+			newPath.Append(suffix);
+			writable.Move(oldPath, newPath).IgnoreError();
+		}
+		return .Ok;
+	}
+
 	/// Renames a group, which is a directory move. Descendant paths are derived, so
 	/// nothing beneath it needs fixing up.
 	public Result<void, ErrorCode> RenameGroup(Group group, StringView newName)
@@ -244,6 +316,7 @@ class ContentDatabase : IContentDatabase
 		let path = group.GetPath(.. scope String());
 		writable.DeleteDirectory(path).IgnoreError();
 
+		Touch();
 		let parent = group.Parent;
 		if (parent != null)
 			parent.[Friend]RemoveGroup(group);
@@ -305,6 +378,7 @@ class ContentDatabase : IContentDatabase
 	private Group RegisterGroup(Group parent, StringView name)
 	{
 		let group = new Group(this, parent, name);
+		Touch();
 		mAllGroups.Add(group);
 		return group;
 	}
@@ -312,6 +386,7 @@ class ContentDatabase : IContentDatabase
 	private Instance RegisterInstance(Group group, Guid id, StringView name, StringView typeName)
 	{
 		let instance = new Instance(this, group, id, name, typeName);
+		Touch();
 		mAllInstances.Add(instance);
 		group.[Friend]AddInstanceNode(instance);
 		// A duplicate identity means two envelopes claim the same guid; the first one

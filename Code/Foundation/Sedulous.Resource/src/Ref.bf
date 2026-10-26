@@ -57,11 +57,19 @@ struct Ref<T> where T : class
 		Id = id;
 	}
 
-	/// Attaches the runtime binding for the current identity.
+	/// Attaches the runtime binding for the current identity, or lets the one it had go when
+	/// the identity is nil: a reference cleared (an inspector's None) and bound again must stop
+	/// drawing what it named before. A direct override, code's own, stays. Without a manager
+	/// it does nothing.
 	public void Bind(ResourceManager manager) mut
 	{
-		if ((manager == null) || (Id == Guid.Empty))
+		if (manager == null)
 			return;
+		if (Id == Guid.Empty)
+		{
+			mProxy = default;
+			return;
+		}
 		// Through the async path while the manager is in that mode, which a scene load
 		// turns on around resolving its resources. The proxy is null until Pump finalizes
 		// it, which Proxy already tolerates.

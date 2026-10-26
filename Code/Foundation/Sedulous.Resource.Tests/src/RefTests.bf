@@ -164,6 +164,31 @@ class RefTests
 		Test.Assert(reference.Get.Area == 4, "the override went and the identity resolved");
 	}
 
+	/// A reference cleared in place (an inspector's None) and bound again lets go of what it
+	/// named, while a direct override, which is code's own, stays.
+	[Test]
+	public static void BindingAClearedReferenceLetsItsBindingGoAndKeepsTheOverride()
+	{
+		let fixture = scope ResourceFixture("scratch_ref_cleared");
+		let factory = scope TestProductFactory();
+		fixture.Manager.AddFactory(factory);
+
+		var reference = Ref<TestProduct>(fixture.Author("a", 2, 2));
+		reference.Bind(fixture.Manager);
+		Test.Assert(reference.Get.Area == 4);
+
+		reference.SetId(Guid.Empty);
+		reference.Bind(fixture.Manager);
+		Test.Assert(!reference.IsBound, "the binding went");
+		Test.Assert(reference.Get == null);
+
+		let procedural = scope TestProduct();
+		procedural.Area = 999;
+		reference.SetDirect(procedural);
+		reference.Bind(fixture.Manager);
+		Test.Assert(reference.Get.Area == 999, "the override stays");
+	}
+
 	/// A reference that names nothing is inert rather than dangerous.
 	[Test]
 	public static void AnUnsetReferenceIsHarmless()

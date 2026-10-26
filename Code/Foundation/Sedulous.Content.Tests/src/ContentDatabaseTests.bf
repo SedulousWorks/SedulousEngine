@@ -553,4 +553,84 @@ class ContentDatabaseTests
 		Test.Assert(read.Words[499] == "word499");
 		Test.Assert(counting.Reads < 8, "one read per count, length and string: over a thousand");
 	}
+
+	/// A view of the tree builds again when the revision moves, so it has to move with
+	/// every change to the shape, and not with an instance's content being written.
+	[Test]
+	public static void TheRevisionMovesWithTheShapeAndNotWithContent()
+	{
+		TestSerializables.RegisterAll();
+		let fixture = scope ContentFixture("scratch_content_revision", false);
+		let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+
+		var seen = database.Revision;
+		bool Moved()
+		{
+			let changed = database.Revision != seen;
+			seen = database.Revision;
+			return changed;
+		}
+
+		let materials = database.RootGroup.CreateGroup("materials");
+		Test.Assert(Moved(), "a group added");
+		let steel = materials.CreateInstance("steel", "Sedulous.Content.Tests.TestAsset");
+		Test.Assert(steel != null);
+		Test.Assert(Moved(), "an instance added");
+		let asset = scope TestAsset();
+		Test.Assert(steel.WriteObject(asset) case .Ok);
+		Test.Assert(!Moved(), "its content: not the shape");
+		Test.Assert(database.RenameInstance(steel.Id, "bronze") case .Ok);
+		Test.Assert(Moved(), "an instance renamed");
+		Test.Assert(database.RenameGroup(materials, "metals") case .Ok);
+		Test.Assert(Moved(), "a group renamed");
+		Test.Assert(database.DeleteInstance(steel.Id) case .Ok);
+		Test.Assert(Moved(), "an instance removed");
+		Test.Assert(database.DeleteGroup(materials) case .Ok);
+		Test.Assert(Moved(), "a group removed");
+	}
+
+	[Test]
+	public static void MoveInstanceMovesItsFilesToAnotherGroup()
+	{
+		TestSerializables.RegisterAll();
+		let fixture = scope ContentFixture("scratch_content_move", false);
+		let database = scope ContentDatabase(fixture.Mount, fixture.Factory, "asset");
+
+		let materials = database.RootGroup.CreateGroup("materials");
+		let metals = database.RootGroup.CreateGroup("metals"); // no folder yet: the move makes it
+		let steel = materials.CreateInstance("steel", "Sedulous.Content.Tests.TestAsset");
+		Test.Assert(steel != null);
+		let id = steel.Id;
+		let asset = scope TestAsset();
+		Fill(asset);
+		Test.Assert(steel.WriteObject(asset) case .Ok);
+		uint8[2] extra = .(1, 2);
+		Test.Assert(steel.WriteData("extra", .(&extra[0], 2)) case .Ok);
+
+		let before = database.Revision;
+		Test.Assert(database.MoveInstance(id, metals) case .Ok);
+		Test.Assert(database.Revision != before);
+		Test.Assert(steel.OwningGroup == metals);
+		Test.Assert(materials.GetInstance("steel") == null);
+		Test.Assert(metals.GetInstance("steel") == steel);
+		Test.Assert(database.GetInstance(id) == steel, "its identity kept");
+		Test.Assert(steel.GetPath(.. scope String()) == "metals/steel");
+		Test.Assert(!fixture.Mount.Exists("materials/steel.asset"));
+		Test.Assert(fixture.Mount.Exists("metals/steel.asset"));
+		Test.Assert(!fixture.Mount.Exists("materials/steel.extra.bin"));
+		Test.Assert(fixture.Mount.Exists("metals/steel.extra.bin"), "the sidecar moved too");
+		{
+			let loaded = steel.ReadObject();
+			Test.Assert(loaded != null);
+			defer delete loaded;
+			CheckFilled((TestAsset)loaded);
+		}
+
+		// Already there, and a name taken there: refused, nothing moved.
+		Test.Assert(database.MoveInstance(id, metals) case .Err(.InvalidArgument));
+		let other = materials.CreateInstance("steel", "Sedulous.Content.Tests.TestAsset");
+		Test.Assert(other != null);
+		Test.Assert(database.MoveInstance(other.Id, metals) case .Err(.AlreadyExists));
+		Test.Assert(other.OwningGroup == materials);
+	}
 }

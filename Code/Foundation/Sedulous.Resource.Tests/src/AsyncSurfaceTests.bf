@@ -177,7 +177,12 @@ class AsyncSurfaceTests
 		Test.Assert(manager.PendingCount == 0);
 		Test.Assert(reference.Get != null, "and the same proxy now resolves");
 		Test.Assert(reference.Get.Area == 5);
-		reference.ClearBinding();
+
+		// Cleared (an inspector's None): bound again, it lets what it named go.
+		reference.SetId(Guid.Empty);
+		reference.Bind(manager);
+		Test.Assert(reference.Get == null, "a cleared reference let its binding go");
+		Test.Assert(!reference.IsBound);
 	}
 
 	/// The mode is RESTORED rather than turned off, so a nested scope cannot switch it off

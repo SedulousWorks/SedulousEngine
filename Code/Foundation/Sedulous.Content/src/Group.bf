@@ -155,6 +155,7 @@ class Group
 	/// Unlinks without destroying: the database owns every node and frees them together.
 	internal void RemoveInstance(Instance instance)
 	{
+		mDatabase.[Friend]Touch();
 		mInstances.Remove(instance);
 	}
 
@@ -166,6 +167,7 @@ class Group
 	/// Re-establishes the order after a child was renamed under it.
 	internal void ResortChildren()
 	{
+		mDatabase.[Friend]Touch(); // a child renamed
 		mGroups.Sort(scope (a, b) => NameLess(a.Name, b.Name) ? -1 : (NameLess(b.Name, a.Name) ? 1 : 0));
 		mInstances.Sort(scope (a, b) => NameLess(a.Name, b.Name) ? -1 : (NameLess(b.Name, a.Name) ? 1 : 0));
 	}
