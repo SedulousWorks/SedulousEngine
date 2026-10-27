@@ -23,11 +23,12 @@ namespace Sedulous.Editor.App;
 
 /// The editor as a runtime IApplication. It keeps the lifecycle alone (Raptor's editor-gui spec,
 /// 5.1, layer 3): it configures the engine, starts its parts in order, hands each frame to them
-/// and shuts them down. The parts are their own files: the window and its GUI (EditorWindow), the
-/// open project (EditorSession), export (EditorExport), asset creation (EditorAssetCreation), the
-/// MCP host (EditorMcpService) and the editor-wide actions (EditorAppActions). Underneath are the
-/// EditorContext and the services from Editor.Core and Editor.Project, and the EMBEDDED runtime
-/// every scene, preview and Game tab is hosted in: the same DefaultApplication the player runs.
+/// and shuts them down. The parts are their own files: the window and its GUI (EditorWindow), its
+/// dock (EditorDock), the open project (EditorSession), export (EditorExport), asset creation
+/// (EditorAssetCreation), the MCP host (EditorMcpService) and the editor-wide actions
+/// (EditorAppActions). Underneath are the EditorContext and the services from Editor.Core and
+/// Editor.Project, and the EMBEDDED runtime every scene, preview and Game tab is hosted in: the
+/// same DefaultApplication the player runs.
 ///
 /// Raptor's native module is not a part here: Sedulous's editor does not handle a project's
 /// native code (RaptorSync.md, "Standing differences").
@@ -72,6 +73,7 @@ class EditorApplication : IApplication
 	// The parts, in the order they start; they go in reverse (a later field's cleanup runs
 	// first), the session before the parts its hooks reach.
 	private EditorWindow mWindow = new .() ~ delete _;
+	private EditorDock mDock = new .() ~ delete _;
 	private EditorExport mExport = null ~ delete _;
 	private EditorAssetCreation mCreation ~ delete _;
 	private EditorMcpService mMcp = null ~ delete _;
@@ -116,6 +118,7 @@ class EditorApplication : IApplication
 	/// Valid after OnStartup; the Game page drives its play bracket through it.
 	public DefaultApplication EmbeddedApplication => mEmbeddedApp;
 	public EditorWindow Window => mWindow;
+	public EditorDock Dock => mDock;
 	public EditorAssetCreation AssetCreation => mCreation;
 	public EditorSession Session => mSession;
 	/// Null until StartParts.
@@ -242,7 +245,8 @@ class EditorApplication : IApplication
 		let look = scope EditorLook();
 		if (let ui = mEditorSettings.Find<EditorUiSettings>())
 			look.UiScale = Math.Clamp(ui.UiScale, EditorUiSettings.MinUiScale, EditorUiSettings.MaxUiScale);
-		mWindow.Open(host, mConfig.DataRoot, look);
+		if (mWindow.Open(host, mConfig.DataRoot, look))
+			OpenDock();
 		delete mContext.OnNotice;
 		mContext.OnNotice = new (kind, message) =>
 			{
@@ -375,7 +379,37 @@ class EditorApplication : IApplication
 		mEmbeddedApp.OnStartup(mEmbeddedHost);
 	}
 
-	/// The editor-wide actions this lifecycle can run. What a later layer brings (Save, the
+	/// The dock in the frame: the shared panels, their contents the window's markup (Assets and
+	/// Console a line each until their contents port, X4).
+	private void OpenDock()
+	{
+		let into = mWindow.FindById("frame-dock");
+		if (into == null)
+		{
+			GlobalLog(.Error, "Editor: the frame has no frame-dock: the editor runs without its dock");
+			return;
+		}
+		let contents = new EditorDockContents();
+		contents.Welcome = new () => mWindow.LoadMarkup("Editor/Welcome.gml");
+		contents.Assets = Placeholder("The asset browser is not on the new interface yet.");
+		contents.Console = Placeholder("The console is not on the new interface yet.");
+		mDock.Open(into, mWindow.Host, contents);
+	}
+
+	/// A panel's content until its own ports: a line saying so. The caller owns the hook.
+	private static delegate Sedulous.GUI.Node() Placeholder(StringView text)
+	{
+		let line = new String(text);
+		return new () =>
+			{
+				let label = new Sedulous.GUI.Label();
+				label.AddClass("panel-placeholder");
+				label.Text = line;
+				return label; // its one reference, the dock's
+			} ~ delete line;
+	}
+
+	/// The editor-wide actions this lifecycle can run. What a later layer brings (Save, saving the
 	/// layout, Close Project, Preferences, the dialogs, the Game page, the profiler, the palette)
 	/// is given no hook here, so its action stays out until it can run.
 	private void RegisterActions()
@@ -400,6 +434,7 @@ class EditorApplication : IApplication
 
 		let view = new ViewActions();
 		view.Context = mContext;
+		view.ResetLayout = new () => { mDock.ResetLayout(); };
 		view.Screenshot = new () => { TakeEditorScreenshot(); };
 		EditorAppActions.RegisterViewActions(actions, view);
 
@@ -603,7 +638,8 @@ class EditorApplication : IApplication
 			mEmbeddedApp.OnShutdown(mEmbeddedHost);
 			mRuntimeContext.Shutdown();
 		}
-		mWindow.Close(); // the GUI before the device goes
+		mDock.Close(); // its floats' windows, then the GUI before the device goes
+		mWindow.Close();
 		if (mStarted)
 		{
 			FontAtlasBakerFactory.SetAtlasCache(null); // ours goes with this application

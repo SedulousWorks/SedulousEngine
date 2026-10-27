@@ -26,6 +26,15 @@ menubar { bar-height: var(--menubar); item-padding: var(--space-m); flex-shrink:
 .frame-dock > dockarea { flex-grow: 1; flex-basis: 0; min-height: 0; min-width: 0; }
 statusbar { height: var(--statusbar); flex-shrink: 0; padding: 0 var(--space-m); }
 
+/* === The shared panels === */
+.project-panel { flex-grow: 1; flex-direction: column; }
+/* The Project panel without a project: the logo (its aspect 885 by 200) over a quiet line. */
+.welcome { flex-grow: 1; flex-direction: column; justify-content: center; align-items: center; gap: var(--space-l); }
+.welcome-logo { width: 319px; height: 72px; opacity: 0.9; }
+.welcome-hint { color: var(--text-dim); font-size: var(--font-small); }
+/* A panel whose contents come with a later phase. */
+.panel-placeholder { flex-grow: 1; text-align: center; color: var(--text-placeholder); }
+
 /* === Tabs: a compact strip, its text centred === */
 /* A tab view's strip is on top: a tab rounds its top corners and meets its page square. */
 tab { height: var(--tab); padding: 0 var(--space-l); align-items: center;
