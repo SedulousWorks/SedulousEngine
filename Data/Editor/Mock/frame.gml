@@ -53,6 +53,9 @@
             <MenuItem command="look.motion" checkable="true"/>
         </Menu>
         <Menu text="Help">
+            <MenuItem command="mock.toast"/>
+            <MenuItem command="mock.dialog"/>
+            <MenuSeparator/>
             <MenuItem command="mock.about"/>
         </Menu>
     </MenuBar>

@@ -52,6 +52,10 @@ class EditorMock
 	private DockArea mDockArea = null;
 	/// The kit page's content, once the dock has made it: our reference, let go by ReleaseTree.
 	private Node mKit = null;
+	/// Its toasts' host and the dialog it shows: our references, let go by ReleaseTree.
+	private ToastHost mToasts = null;
+	private MessageBox mDialog = null;
+	private int mToastsShown = 0;
 	/// What each page's inspector shows, and the sources over them.
 	private List<Object> mShown = new .();
 	private List<ReflectedPropertySource> mSources = new .();
@@ -84,6 +88,16 @@ class EditorMock
 	/// Our references to what the tree holds, let go of before the root goes.
 	public void ReleaseTree()
 	{
+		if (mDialog != null)
+		{
+			mDialog.ReleaseRef();
+			mDialog = null;
+		}
+		if (mToasts != null)
+		{
+			mToasts.ReleaseRef();
+			mToasts = null;
+		}
 		if (mKit != null)
 		{
 			mKit.ReleaseRef();
@@ -109,6 +123,8 @@ class EditorMock
 		if (mFrame == null)
 			return false;
 		mRoot.AddChild(mFrame);
+		mToasts = new ToastHost();
+		mFrame.AddChild(mToasts);
 		DefineCommands();
 		BuildDock();
 		ApplyLook();
@@ -188,6 +204,8 @@ class EditorMock
 		Define("mock.view-unlit", "Unlit");
 		Define("mock.view-wire", "Wireframe");
 		Define("mock.about", "About AssiduousEngine");
+		Define("mock.toast", "Show a Toast");
+		Define("mock.dialog", "Show a Dialog");
 		mContext.DefineCommand("mock.grid").Checked = true;
 		mContext.DefineCommand("mock.space").Checked = true;
 		let pause = mContext.DefineCommand("mock.pause");
@@ -198,6 +216,10 @@ class EditorMock
 		stop.DisabledReason = "Nothing is playing";
 
 		// The Look menu: Preferences' appearance inputs, here to compare.
+		// What moves, to judge with less motion on and off: a toast of each severity in turn, and
+		// a dialog.
+		mRoot.OnCommand("mock.toast", new (e) => { ShowToast(); });
+		mRoot.OnCommand("mock.dialog", new (e) => { ShowDialog(); });
 		mRoot.OnCommand("mock.side-by-side", new (e) => { SetSideBySide(!mSideBySide); });
 		Define("look.dark", "Dark");
 		Define("look.light", "Light");
@@ -237,6 +259,33 @@ class EditorMock
 				mReduceMotion = !mReduceMotion;
 				ApplyLook();
 			});
+	}
+
+	// A toast of each severity in turn.
+	private void ShowToast()
+	{
+		(ToastSeverity severity, StringView title, StringView message, StringView action)[4] samples = .(
+			(.Success, "Exported Sky Hopper", "Linux, 48 MB, in 12 s", "Open Folder"),
+			(.Warning, "3 textures have no mipmaps", "They were generated for this cook.", default),
+			(.Error, "Player.as failed to compile", "'speed' is not a member of Player", "Show in Console"),
+			(.Info, "Agent connected", "On 127.0.0.1:7405", default));
+		let sample = samples[mToastsShown++ % samples.Count];
+		let request = scope ToastRequest();
+		request.Severity = sample.severity;
+		request.Title = sample.title;
+		request.Message = sample.message;
+		if (!sample.action.IsEmpty)
+			request.AddAction("action", sample.action, "");
+		mToasts.Post(request); // copied
+	}
+
+	// A dialog, as the editor confirms a destructive verb.
+	private void ShowDialog()
+	{
+		if (mDialog == null)
+			mDialog = new MessageBox();
+		mDialog.Configure("Delete 3 assets?", "These go to the project's trash. 2 scenes still use Wood.", .OkCancel);
+		mDialog.OpenModal(mRoot);
 	}
 
 	// The editor's sheet, the density's after it, then the inputs; the scheme and motion through
@@ -374,6 +423,9 @@ class EditorMock
 		{
 			shown = new MockEntity();
 			type = MockEntity.StaticGuiType;
+			// A tool's panel shows on the second page only, so the first keeps a clear view.
+			if (let tool = content.FindElement("tool-panel"))
+				tool.Displayed = false;
 		}
 		mShown.Add(shown);
 		let source = new ReflectedPropertySource();
