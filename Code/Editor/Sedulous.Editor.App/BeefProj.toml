@@ -33,6 +33,7 @@ corlib = "*"
 "Sedulous.UI.Resource" = "*"
 "Sedulous.Engine.UI" = "*"
 "Sedulous.Engine.GUI" = "*"
+"Sedulous.GUI" = "*"
 "Sedulous.Input" = "*"
 "Sedulous.Engine.Input" = "*"
 "Sedulous.Settings" = "*"
@@ -312,10 +313,6 @@ Name = "ToolPanelPlacement.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "ToolPanelWidgets.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "UIEditorPage.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"

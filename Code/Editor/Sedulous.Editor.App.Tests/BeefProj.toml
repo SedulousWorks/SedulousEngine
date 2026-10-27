@@ -22,6 +22,7 @@ corlib = "*"
 "Sedulous.VFS" = "*"
 "Sedulous.Pipeline.Importer" = "*"
 "Sedulous.Editor.App" = "*"
+"Sedulous.GUI" = "*"
 # The MCP host over loopback.
 "Sedulous.Net" = "*"
 "Sedulous.Http" = "*"

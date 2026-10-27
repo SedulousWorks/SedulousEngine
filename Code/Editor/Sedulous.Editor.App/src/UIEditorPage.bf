@@ -1,19 +1,20 @@
 using Sedulous.Graphics;
 using Sedulous.Runtime.Client;
-using Sedulous.UI;
+using Sedulous.GUI; // Node (a page's content)
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-/// The UI-side extension of the headless EditorPage: a page that owns a content view, docked
+/// The UI-side extension of the headless EditorPage: a page that holds a GUI node, its content, docked
 /// as a closable centre tab by EditorApplication, and receives the app's frame hooks so it can
 /// drive per-page work (viewport binding, camera, offscreen rendering). Every page factory
 /// registered into this app's context must produce UIEditorPages; the headless EditorPage
 /// stays UI-free for core tests, and this is the one seam where pages meet the UI and runtime.
 abstract class UIEditorPage : EditorPage
 {
-	/// The view docked into the centre document area, owned by the page.
-	public abstract View ContentView { get; }
+	/// Its content, docked into the centre document area: the page holds it, and gives the same
+	/// node each time it is asked (the dock asks again when it shows the panel anew). BORROWED.
+	public abstract Node Content { get; }
 
 	/// Per frame, after the UI laid out (viewport rects are current).
 	public virtual void OnUpdate(IApplicationHost host, float dt) {}
