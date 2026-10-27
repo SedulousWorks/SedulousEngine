@@ -91,8 +91,9 @@ button, toolbutton, toolmenubutton, tab, .menubutton {
     transition: background-color var(--motion-fast) var(--easing), color var(--motion-fast) var(--easing);
 }
 /* A popup enters as it opens: menus, lists and tooltips slide 4 px from their anchor and fade in
-   (a submenu from its parent's side); a dialog grows from 98% and fades in, slower. Less motion
-   makes every duration nothing, so each lands at once. */
+   (a submenu from its parent's side) and close at once (ruling 14); a dialog grows from 98% and
+   fades in, slower, and shrinks back and fades out as it closes. Less motion makes every duration
+   nothing, so each lands at once. */
 menu, combobox > listbox, propertyflagslist, propertycolorpopup, tooltip {
     transition: opacity var(--motion-fast) var(--easing-out), transform var(--motion-fast) var(--easing-out);
 }
@@ -101,7 +102,7 @@ menu:entering, combobox > listbox:entering, propertyflagslist:entering, property
 }
 menu menu:entering { transform: translate(-4px, 0); }
 window { transition: opacity var(--motion-slow) var(--easing-out), transform var(--motion-slow) var(--easing-out); }
-window:entering { opacity: 0; transform: scale(0.98); }
+window:entering, window:leaving { opacity: 0; transform: scale(0.98); }
 
 /* === A panel's bar: its search and its actions, under the dock tab === */
 .panel { flex-grow: 1; flex-direction: column; background-color: var(--surface); }
