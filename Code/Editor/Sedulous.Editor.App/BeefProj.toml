@@ -149,26 +149,6 @@ Name = "EditorActionTools.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "EditorAppConfig.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "EditorApplication.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "EditorApplicationExport.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "EditorApplicationMenus.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "EditorApplicationProject.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "EditorIcons.bf"
 
 [[ProjectFolder.Items]]
@@ -242,10 +222,6 @@ Name = "PageToolbar.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "PathPickerDialog.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "PendingExport.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"

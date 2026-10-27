@@ -6,185 +6,185 @@ using Sedulous.Core.Logging;
 using Sedulous.Shell;
 using Sedulous.Graphics;
 using Sedulous.Fonts;
-using Sedulous.Fonts.Resource;
-using Sedulous.Fonts.TrueType;
-using Sedulous.Fonts.HarfBuzz;
-using Sedulous.Fonts.Bidi;
 using Sedulous.Fonts.DistanceField.Baker;
 using Sedulous.Runtime;
 using Sedulous.Runtime.Client;
 using Sedulous.Engine.DefaultApp;
 using Sedulous.Render;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
-using Sedulous.UI.Runtime;
-using Sedulous.UI.Application;
 using Sedulous.Content;
-using Sedulous.VFS;
 using Sedulous.Resource;
 using Sedulous.Settings;
 using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
-using Sedulous.Editor.Mcp;
-using Sedulous.Editor.Preview;
 using Sedulous.Profiler;
 
 namespace Sedulous.Editor.App;
 
-/// The editor as a runtime IApplication: the TrueType font service, UIHost and
-/// RuntimeDockableWindowHost (floating panels as borderless OS windows), the EditorShell chrome
-/// on the main window, with the EditorContext and EditorProject underneath, and a second,
-/// embedded runtime context populated by the same DefaultApplication the player runs, where
-/// every scene is hosted. Opens or scaffolds the project on startup, or starts on the project
-/// manager; restores the per-project dock layout and saves it on shutdown.
+/// The editor as a runtime IApplication. It keeps the lifecycle alone (Raptor's editor-gui spec,
+/// 5.1, layer 3): it configures the engine, starts its parts in order, hands each frame to them
+/// and shuts them down. The parts are their own files: the window and its GUI (EditorWindow), the
+/// open project (EditorSession), export (EditorExport), asset creation (EditorAssetCreation), the
+/// MCP host (EditorMcpService) and the editor-wide actions (EditorAppActions). Underneath are the
+/// EditorContext and the services from Editor.Core and Editor.Project, and the EMBEDDED runtime
+/// every scene, preview and Game tab is hosted in: the same DefaultApplication the player runs.
+///
+/// Raptor's native module is not a part here: Sedulous's editor does not handle a project's
+/// native code (RaptorSync.md, "Standing differences").
 class EditorApplication : IApplication
 {
-	/// False is the classic per-size raster ramp; true is MSDF distance-field atlases, one
-	/// 48px bake per family served at every requested size.
-	private const bool cUseDistanceFieldFonts = true;
-
 	private EditorAppConfig mConfig ~ delete _;
 	/// Borrowed.
 	private IApplicationHost mHost = null;
-	/// Borrowed; the exe injects it.
+	/// Borrowed; the executable injects it.
 	private ISceneRenderer mSceneRenderer = null;
+	/// OnStartup got past its window check: what it set up, OnShutdown takes down.
+	private bool mStarted = false;
 
-	/// The disk cache for the startup MSDF font bake.
+	/// The per-user disk cache for distance-field font bakes: a font cook in this process bakes
+	/// through it (FontAtlasBakerFactory.Bake), so an unchanged font's atlas loads instead of
+	/// running msdfgen again.
 	private FontAtlasDiskCache mFontAtlasCache = null ~ delete _;
-	private TrueTypeFontService mFontService = null ~ delete _;
-	private ToolkitThemeExtension mToolkitTheme = new .() ~ delete _;
-	private StyleSheet mStyleSheet = null ~ { if (_ != null) _.ReleaseRef(); };
 
-	// The embedded runtime: gameplay subsystems and all scene hosting live here. The app
-	// registers subsystems it OWNS (render, audio, input, UI) into the context, so the
-	// context is declared after the app and disposes first, unregistering them while they
-	// are alive; the page holders below are declared later still, so every page's
-	// preview scene leaves the context before it goes.
+	// The embedded runtime: gameplay subsystems and all scene hosting live here. The application
+	// registers subsystems it OWNS (render, audio, input, UI) into the context, so the context is
+	// declared after the application and goes first, unregistering them while they are alive.
 	private EmbeddedApplicationHost mEmbeddedHost = null ~ delete _;
 	private DefaultApplication mEmbeddedApp = null ~ delete _;
 	private Context mRuntimeContext = new .() ~ delete _;
 	/// The host borrows it for as long as it is installed.
 	private delegate void(int) mEmbeddedExitHandler = null ~ delete _;
 
-	// The log drain state.
-	private List<EditorLogEntry> mPendingLog = new .() ~ DeleteContainerAndItems!(_);
-	private uint64 mLogSequence = 0;
-
-	private EditorProject mProject = null ~ delete _;
-	/// Exe-assembled through RegisterEditors.
+	// The services the parts share. Declared before the parts, so they outlive them.
+	private EditorContext mContext = new .() ~ delete _;
+	/// Exe-assembled (RegisterEditors).
 	private BuilderRegistry mBuilders = new .() ~ delete _;
 	private EditorCookService mCookService = new .() ~ delete _;
-	/// The MCP host and what it serves through, per project: the session points at the open
-	/// project, the operations run the cook, import and export on this application's services
-	/// (the cook service, the job service: the paths the menus take), the host last.
-	private ProjectSession mMcpSession = new .() ~ delete _;
-	private EditorProjectOperations mMcpOperations = null ~ delete _;
-	/// Started after the services are up, gone before they go.
-	private EditorMcpHost mMcpHost = null ~ delete _;
-	private ThumbnailService mThumbnailService = new .() ~ delete _;
-	/// The GPU half, per project.
-	private ThumbnailStage mThumbnailStage = null ~ delete _;
-	/// Background jobs: export, imports, native builds.
+	/// Background jobs: export, imports.
 	private EditorJobService mJobService = new .() ~ delete _;
+	/// Per project (the session configures it).
+	private ThumbnailService mThumbnailService = new .() ~ delete _;
 	/// The per-user editor preferences, <user-data>/editor.settings.xml.
 	private Settings mEditorSettings = new .() ~ delete _;
+	/// The user's registry of projects.
 	private ProjectManagerController mProjectManager ~ delete _;
-	/// The per-project editor state: one store, typed sections.
-	private Settings mProjectEditorSettings = null ~ delete _;
-	private PendingExport mPendingExport = new .() ~ delete _;
-	private ExportPresetsController mPresetsController = new .() ~ delete _;
-	/// The export's pre-transcoded scene wires.
-	private Dictionary<Guid, List<uint8>> mExportSceneStreams = new .() ~ { for (let e in _) delete e.value; delete _; };
-	/// The main-thread loaded presets for the running job.
-	private ExportPresetSet mExportPresets = new .() ~ delete _;
-	/// The main-thread pre-scan: the reachable closure roots.
-	private List<Guid> mExportReachableRoots = new .() ~ delete _;
-	/// True when the pre-scan ran; otherwise no pruning this run.
-	private bool mExportReachableValid = false;
-	/// The primary game tab, the focus target; extras go untracked.
-	private UIEditorPage mGamePage = null;
-	/// The unique persistence id for "Play New Instance" tabs.
-	private uint32 mGamePageCounter = 0;
-	/// The auto-exit, auto-rebuild and screenshot accumulator.
-	private float mElapsed = 0.0f;
-	/// The --screenshot capture; the request is one shot.
+
+	// The parts, in the order they start; they go in reverse (a later field's cleanup runs
+	// first), the session before the parts its hooks reach.
+	private EditorWindow mWindow = new .() ~ delete _;
+	private EditorExport mExport = null ~ delete _;
+	private EditorAssetCreation mCreation ~ delete _;
+	private EditorMcpService mMcp = null ~ delete _;
+	/// The open project: after the parts its hooks reach, so it closes first.
+	private EditorSession mSession ~ delete _;
+
 	/// Screenshots of the editor's windows: --screenshot, editor_screenshot, View > Screenshot.
 	private EditorWindowCapture mWindowCapture = new .() ~ delete _;
+	/// The auto-exit, auto-rebuild and screenshot accumulator.
+	private float mElapsed = 0.0f;
 	/// The --screenshot one shot is armed.
 	private bool mScreenshotFired = false;
 	/// View > Screenshot: tell the user when it is written.
 	private bool mAnnounceScreenshot = false;
+	private bool mAutoRebuilt = false;
 	/// OnStartup is running: its steps go to the splash.
 	private bool mStarting = false;
-	/// The SedulousEngine logo (EditorSplash.LoadLogo) for the Project panel without a project
-	/// and the launcher; null when it did not load. One reference, the page's view taking its own.
-	private SVGDrawable mLogo = null ~ _?.ReleaseRef();
-	private float mTestOpenElapsed = 0.0f;
-	private uint32 mTestOpenStage = 0;
-	private bool mAutoRebuilt = false;
-	private List<DroppedFile> mDroppedFiles = new .() ~ DeleteContainerAndItems!(_);
-	private ResourceManager mResources = null ~ delete _;
 
-	// TEARDOWN ORDER: the UIHost owns the UIContext and input manager, so it is declared
-	// before every view-holding member below and destructs after them; a view's teardown
-	// detaches from its context.
-	/// The data mount.
-	private NativeFileSystem mDataFileSystem = null ~ delete _;
-	private UIHost mUiHost = null ~ delete _;
-	/// Owns the pages, and a page owns its content view: a NumericField in a closed scene
-	/// page's inspector detaches its decorations from its context on the way out, so the
-	/// context has to still be there.
-	private EditorContext mContext = new .() ~ delete _;
-	/// The content scale the icon set was last baked for.
-	private float mIconBakeScale = 0.0f;
-	/// Built on the first EnterManagerMode.
-	private ProjectManagerView mManagerView = null ~ delete _;
-	/// The starter-content request from CreateFromManager.
-	private bool mSeedAfterOpen = false;
-	private bool mInManagerMode = false;
-	/// References the UI host; dies first.
-	private RuntimeDockableWindowHost mDockHost = null ~ delete _;
-	private EditorShell mShell = new .() ~ delete _;
-	/// The menu bar and the global shortcuts, generated from the action registry. Declared
-	/// after the shell and the context, so they go first: they unsubscribe from the registry
-	/// and clear the bar they built.
-	private ActionMenuBar mActionMenus = null ~ delete _;
-	private ActionShortcuts mActionShortcuts = null ~ delete _;
-	private AssetsView mAssetsView = null ~ { if (_ != null) _.ReleaseRef(); };
-	/// The Project panel's page while a project is open.
-	private ProjectHomeView mProjectHome = null ~ delete _;
-	/// Borrowed; the shell root owns it.
-	private ToastHost mToastHost = null;
-	private List<PagePanel> mPagePanels = new .() ~ delete _;
-
-	/// Takes ownership of the config.
+	/// TAKES OWNERSHIP of the config.
 	public this(EditorAppConfig config)
 	{
 		mConfig = config;
 		mProjectManager = new ProjectManagerController(mEditorSettings);
-		// Thumbnails are reachable from the constructor on: the registration block, where
-		// each domain folds its thumbnail generator in, runs before the UI boot phase.
+		// Thumbnails are reachable from the constructor on: the registration block, where each
+		// domain folds its thumbnail generator in, runs before the project opens.
 		mContext.Thumbnails = mThumbnailService;
+		mCreation = new EditorAssetCreation(CreationServices());
+		mSession = new EditorSession(SessionServices());
 	}
 
 	public EditorContext Context => mContext;
-	public EditorProject Project => mProject;
-	public EditorShell Shell => mShell;
-	/// The exe registers every engine builder here, mirroring the cook CLI's set; the cook
-	/// service routes through it.
+	/// Null with no project open.
+	public EditorProject Project => mSession.Project;
+	/// The executable registers every engine builder here, the cook CLI's set; the cook service
+	/// routes through it.
 	public BuilderRegistry Builders => mBuilders;
 	/// The engine data root this editor runs from (its config's, resolved at launch).
 	public StringView DataRoot => mConfig.DataRoot;
 	public EditorCookService CookService => mCookService;
-	public ResourceManager Resources => mResources;
+	/// The resources over the open project's cooked database; null with no project.
+	public ResourceManager Resources => mSession.Resources;
 	/// Valid after OnStartup; the Game page drives its play bracket through it.
 	public DefaultApplication EmbeddedApplication => mEmbeddedApp;
+	public EditorWindow Window => mWindow;
+	public EditorAssetCreation AssetCreation => mCreation;
+	public EditorSession Session => mSession;
+	/// Null until StartParts.
+	public EditorExport Export => mExport;
+	/// Null until StartParts.
+	public EditorMcpService McpService => mMcp;
 
-
-	/// The renderer interface the app drives its per-frame scene bracket through; null means
-	/// no scene rendering. Borrowed.
+	/// The renderer interface the application drives its per-frame scene bracket through; null
+	/// means no scene rendering. Borrowed.
 	public void SetSceneRenderer(ISceneRenderer renderer) => mSceneRenderer = renderer;
+
+	/// A toast, as every notice and job result is said.
+	public void ShowToast(NoticeKind kind, StringView message) => mWindow.ShowToast(kind, message);
+
+	private EditorAssetCreationServices CreationServices()
+	{
+		let services = new EditorAssetCreationServices();
+		services.Context = mContext;
+		services.Cook = mCookService;
+		services.Builders = mBuilders;
+		// A new asset's page opens once pages are on the dock (layer 6); the assets view shows
+		// its row once it is on the GUI.
+		return services;
+	}
+
+	private EditorSessionServices SessionServices()
+	{
+		let services = new EditorSessionServices();
+		services.Context = mContext;
+		services.Cook = mCookService;
+		services.Jobs = mJobService;
+		services.Builders = mBuilders;
+		services.Thumbnails = mThumbnailService;
+		services.UserSettings = mEditorSettings;
+		services.Projects = mProjectManager;
+		services.SeedNewProject = new (context, project) =>
+			{
+				if (mConfig.SeedNewProject != null)
+					mConfig.SeedNewProject(context, project);
+			};
+		services.OnOpened = new (project) =>
+			{
+				if (mExport != null)
+					mExport.SetProject(project);
+				mCreation.SetProject(project);
+				if (mMcp != null)
+					mMcp.Start(project); // the agent surface over this project, if enabled
+			};
+		services.OnClosing = new () =>
+			{
+				if (mMcp != null)
+					mMcp.Stop(); // no agent call may run against services that are going away
+				if (mExport != null)
+					mExport.SetProject(null);
+				mCreation.SetProject(null);
+			};
+		services.OnCookFinished = new () =>
+			{
+				// Failures stay until dismissed (the Console has the log); a cook of nothing says
+				// nothing, since the watcher fires those constantly.
+				let failed = mCookService.LastCookSummary.Failed;
+				let cooked = mCookService.LastCookSummary.Cooked;
+				if (failed > 0)
+					ShowToast(.Error, scope $"Cook: {failed} failed, {cooked} cooked (see Console).");
+				else if (cooked > 0)
+					ShowToast(.Success, scope $"Cook finished: {cooked} asset(s).");
+			};
+		return services;
+	}
 
 	public void Configure(IApplicationHost host)
 	{
@@ -192,222 +192,94 @@ class EditorApplication : IApplication
 			mConfig.ConfigureEngine(host);
 	}
 
+	/// Tells the splash what startup is doing (EditorAppConfig.StartupProgress), while it is
+	/// starting; a project opened later reports nothing.
+	private void ReportStartup(StringView status, float progress)
+	{
+		if (mStarting && (mConfig.StartupProgress != null))
+			mConfig.StartupProgress(status, progress);
+	}
+
+	/// Loads the per-user editor settings from <user-data>/editor.settings.xml, registering the
+	/// section types first (the per-project store's among them). Absent on a first run, the store
+	/// stays empty and the sections read as defaults.
+	private void LoadEditorSettings()
+	{
+		EditorSerializables.RegisterAll();
+		EditorAppSerializables.RegisterEditorProjectSettingsTypes();
+		if (EditorSettingsStore.LoadFromUserData(mEditorSettings) case .Err(let error))
+		{
+			// NotFound (a first run) is fine; anything else is a partial load, since Settings
+			// aborts at the first section it cannot make, which a later save would write back
+			// without the sections it dropped (the project registry most painfully).
+			if (error != .NotFound)
+				GlobalLog(.Error, "Editor: editor.settings.xml load FAILED (partial store), check for unregistered section types; later saves may drop sections");
+		}
+	}
+
 	public void OnStartup(IApplicationHost host)
 	{
 		mHost = host;
+		if (host.MainRenderWindow == null)
+			return;
+		mStarted = true;
 		// The editor's own profiler, which a Play-in-editor game shares (one process): what
 		// profiler_capture records.
 		if (!HasGlobalProfiler())
 			InitGlobalProfiler(new Sedulous.Profiler.Profiler(), true);
-		let mainRw = host.MainRenderWindow;
-		if (mainRw == null)
-			return;
+		// A font cook's distance-field bakes hit the per-user disk cache: the first bakes and
+		// stores, every one after loads the atlas instead.
+		mFontAtlasCache = new FontAtlasDiskCache(PathJoin(GetUserDataDirectory(.. scope .()), "font-atlas-cache", .. scope .()));
+		FontAtlasBakerFactory.SetAtlasCache(mFontAtlasCache);
 
 		mStarting = true; // the splash hears startup's steps until the editor is ready
 		ReportStartup("Loading settings", 0.12f);
-		LoadEditorSettings(); // the per-user prefs first: the font paths honour them
+		LoadEditorSettings();
 		// Domains reach their own sections through the context.
 		mContext.UserEditorSettings = mEditorSettings;
 
-		ReportStartup("Loading fonts", 0.18f);
-		// Fonts: CPU rasterisation and baking, no device needed. The resolution chain per
-		// family is the Preferences override, the configured path, then the embedded face,
-		// since a relocated editor must never come up textless. Every failure is loud.
-		// Before any font loads: a font takes its shaper and its atlas's glyphs when it loads.
-		HarfBuzzShaping.Install();
-		BidiAlgorithm.Install(); // mixed-direction lines read in visual order
-		mFontService = new TrueTypeFontService();
-		// The MSDF bakes hit the per-user disk cache: the first launch bakes and stores,
-		// every launch after loads the atlas instead of re-running msdfgen.
-		mFontAtlasCache = new FontAtlasDiskCache(PathJoin(GetUserDataDirectory(.. scope .()), "font-atlas-cache", .. scope .()));
-		FontAtlasBakerFactory.SetAtlasCache(mFontAtlasCache);
-		let fontPath = scope String(mConfig.FontPath);
-		let monoFontPath = scope String(mConfig.MonoFontPath);
-		if (let fontPrefs = mEditorSettings.Find<EditorFontSettings>())
-		{
-			if (!fontPrefs.FontPath.IsEmpty)
-				fontPath.Set(fontPrefs.FontPath);
-			if (!fontPrefs.MonoFontPath.IsEmpty)
-				monoFontPath.Set(fontPrefs.MonoFontPath);
-		}
-
-		if (cUseDistanceFieldFonts)
-		{
-			// One atlas per family, baked at 48px, sampled crisp at every size the styles
-			// request; the VG renderer switches to the distance-field pipeline per glyph run.
-			DistanceFieldFonts.Initialize();
-			var options = FontLoadOptions.DistanceField();
-			options.FirstCodepoint = 32;
-			options.LastCodepoint = 255;
-			options.AtlasWidth = 1024;
-			options.AtlasHeight = 1024;
-			LoadFamily("Roboto", fontPath, scope float[](48.0f), options, mConfig.EmbeddedFont);
-			LoadFamily("Mono", monoFontPath, scope float[](48.0f), options, .()); // no embedded twin
-		}
-		else
-		{
-			// A full ramp, so styles pick small, regular and heading sizes without a
-			// mismatched rasterisation; the mono ramp only spans the code text range.
-			LoadFamily("Roboto", fontPath, scope float[](10, 11, 12, 13, 14, 16, 18, 20, 24, 32), FontLoadOptions.ExtendedLatin(), mConfig.EmbeddedFont);
-			LoadFamily("Mono", monoFontPath, scope float[](10, 11, 12, 13, 14, 16), FontLoadOptions.ExtendedLatin(), .());
-		}
-		EditorIcons.Initialize();
-		// The editor's mount over the data root: the UI host reads its VG shaders through it.
-		mDataFileSystem = new NativeFileSystem(mConfig.DataRoot);
 		ReportStartup("Preparing the interface", 0.30f);
-		mUiHost = new UIHost(host.Graphics, host.Shell, mFontService, mDataFileSystem);
-		mDockHost = new RuntimeDockableWindowHost(host, mUiHost);
-
-		// The theme: the toolkit extension registers before the stylesheet is created, since
-		// extensions only apply to themes built afterward. The warm Graphite and Orange
-		// palette on the rounded theme.
-		ThemeRegistry.RegisterExtension(mToolkitTheme);
-		let palette = ThemePalette.GraphiteOrange();
-		mStyleSheet = RoundedDarkTheme.Create(palette);
-		// The window clear colour comes from the same palette: any surface the chrome does
-		// not cover, the project manager screen most of all, reads as the theme's background.
-		mUiHost.SetClearColor(palette.Background.R, palette.Background.G, palette.Background.B, 1.0f);
-		// Editor overrides on the stock theme: property-grid fields read better smaller and
-		// tighter than the theme's control chrome.
-		mStyleSheet.ForClass("property-field")
-			.Set(.FontSize, 12.0f)
-			.Set(.Padding, Thickness(5, 2));
-
-		// The icon bake: every editor SVG rasterised once, supersampled, into a shared atlas at
-		// the chrome sizes the UI uses, so instances draw pixel-snapped quads with no
-		// per-tab subpixel shimmer. The close X becomes a themed drawable for the dock chrome.
-		{
-			float uiScale = 1.0f;
-			if (let uiPrefs = mEditorSettings.Find<EditorUiSettings>())
-				uiScale = Math.Clamp(uiPrefs.UiScale, EditorUiSettings.MinUiScale, EditorUiSettings.MaxUiScale);
-			mUiHost.SetUiScale(uiScale);
-			BakeEditorIcons(mainRw.Window.ContentScale * uiScale);
-			if (EditorIcons.Close != null)
-			{
-				EditorIcons.Close.TintColor = Color(palette.Text.R, palette.Text.G, palette.Text.B, 190.0f / 255.0f);
-				// The rules borrow; the sheet holds the one reference for them both.
-				mStyleSheet.OwnDrawable(Retained(EditorIcons.Close));
-				mStyleSheet.ForTypePseudo(typeof(DockablePanel), "close-button").Set(.Background, EditorIcons.Close);
-				mStyleSheet.ForTypePseudo(typeof(DockTabGroup), "close-button").Set(.Background, EditorIcons.Close);
-			}
-		}
-		mStyleSheet.AddRef();
-		mUiHost.Context.SetStyleSheet(mStyleSheet);
-
-		// Exit goes through the dirty check: the shell consults this before honouring the
-		// main window's close button; File > Exit routes through the same helper.
-		host.Shell.SetMainWindowCloseHandler(new () => ConfirmExitAllowed());
-
-		// The logo heads the Project panel (without a project) and the launcher.
-		mLogo = EditorSplash.LoadLogo(mConfig.DataRoot);
-		mShell.Build(mContext, mDockHost, mainRw.Window.Width, mainRw.Window.Height, mLogo);
-		// The active page follows dock-tab activation, not just open and close: with
-		// side-by-side tab groups Save was hitting whichever page opened last. Non-page
-		// panels leave the active page alone.
-		mShell.Docks.OnPanelActivated.Add(new (panel) =>
-			{
-				if (panel == null)
-					return;
-				for (let entry in mPagePanels)
-				{
-					if (entry.Panel === panel)
-					{
-						mContext.SetActivePage(entry.Page);
-						return;
-					}
-				}
-			});
-		// The active page's panel carries the dock's ActiveMark (the ring): the page a command
-		// goes to, visible when two pages sit side by side. A tool panel never takes it: the
-		// mark follows the context's active page, not the dock's clicked panel.
-		mContext.OnPagesChanged = new () => { RefreshActivePageMark(); };
-		// And the other way: a page revealed through the context (an agent's viewport_screenshot)
-		// brings its tab to front, since a background tab's viewport never renders.
-		mContext.OnRevealPage = new (page) =>
-			{
-				for (let entry in mPagePanels)
-				{
-					if (entry.Page === page)
-					{
-						mShell.Docks.ActivatePanel(entry.Panel);
-						return;
-					}
-				}
-			};
-		mShell.Root.AddRef();
-		mUiHost.AttachWindow(mainRw, mShell.Root);
-
-		// The toast overlay on the main window root; Notify routes here and mirrors to the
-		// status bar.
-		mToastHost = new ToastHost();
-		mShell.Root.AddView(mToastHost);
+		let look = scope EditorLook();
+		if (let ui = mEditorSettings.Find<EditorUiSettings>())
+			look.UiScale = Math.Clamp(ui.UiScale, EditorUiSettings.MinUiScale, EditorUiSettings.MaxUiScale);
+		mWindow.Open(host, mConfig.DataRoot, look);
+		delete mContext.OnNotice;
 		mContext.OnNotice = new (kind, message) =>
 			{
 				ShowToast(kind, message);
 				mContext.SetStatus(message);
 			};
-		// The console's copy says so, like every other copy.
-		if (mShell.Console != null)
-			mShell.Console.OnCopied = new (lines) => { mContext.Notify(.Success, (lines == 1) ? "Copied 1 log line" : scope $"Copied {lines} log lines"); };
+		delete mContext.OnStatus;
+		mContext.OnStatus = new (message) => { mWindow.SetStatus(message); };
 
-		// ---- the embedded runtime ----
-		// A second, persistent runtime context populated by the same DefaultApplication the
-		// player runs: gameplay subsystems live there and every scene is hosted there. It
-		// starts without a resource manager: the per-project manager late-attaches in
-		// OpenProjectAt and detaches in CloseProject.
-		mEmbeddedHost = new EmbeddedApplicationHost(host, mRuntimeContext);
-		delete mEmbeddedExitHandler;
-		mEmbeddedExitHandler = new (code) =>
-			{
-				// A Game tab routes its own instance's exit to its own run; what reaches here
-				// is an instance no tab is playing, which has no run to stop.
-				GlobalLog(.Information, "Editor: embedded app requested exit({}) with no Game tab playing it", code);
-			};
-		mEmbeddedHost.SetExitHandler(mEmbeddedExitHandler);
 		ReportStartup("Starting the renderer", 0.45f);
-		mEmbeddedApp = new DefaultApplication();
-		mEmbeddedApp.SetDataRoot(mConfig.DataRoot); // the editor's root, not a re-walk
-		mEmbeddedApp.Configure(mEmbeddedHost);
-		// Un-bound input must never reach scene-tier game UI here: editing and Simulate HUDs
-		// render WYSIWYG but are not interactive; the Game tab binds its scene on Play.
-		if (mEmbeddedApp.Input != null)
-			mEmbeddedApp.Input.UnboundScenePolicy = .ScreenTierOnly;
-		// Each Game tab runs its own game inside this one application: each run gets its own
-		// screen tier (menus, HUD, pause), so tabs never draw or drive each other's screens.
-		if (mEmbeddedApp.UI != null)
-			mEmbeddedApp.UI.RunScreens = true;
-		if (mEmbeddedApp.Gui != null)
-			mEmbeddedApp.Gui.RunScreens = true; // and the engine GUI's
-		mRuntimeContext.Startup();
-		mEmbeddedApp.OnStartup(mEmbeddedHost);
+		StartEmbeddedRuntime(host);
+		mSession.SetEmbedded(mEmbeddedHost, mEmbeddedApp);
 
 		ReportStartup("Loading the editors", 0.62f);
-		// The editor-wide actions first: the menu bar follows registration order.
-		RegisterActions();
-
-		// The per-subsystem editor plugins register here, receiving the embedded host so
-		// every page's context resolves to the runtime context. Once per run: the factories
-		// capture the embedded host and app, which stay alive across project close and open.
+		StartParts();
+		// The per-subsystem editor plugins register here with the EMBEDDED host (every page's
+		// scenes live there); once per run, since what they register outlives a project.
 		if (mConfig.RegisterEditors != null)
-			mConfig.RegisterEditors(this, mEmbeddedHost, mUiHost);
-
-		// The user's shortcut overrides, once every domain has declared its actions (an
-		// override names an id; a domain not loaded keeps its entry for a later run).
+			mConfig.RegisterEditors(this, mEmbeddedHost);
+		// The user's shortcut overrides, once every domain has declared its actions (an override
+		// names an id; a domain not loaded keeps its entry for a later run).
 		if (let shortcuts = mEditorSettings.Find<EditorShortcutSettings>())
 			shortcuts.ApplyTo(mContext.Actions);
 
-		// Menus after registration: File > New builds from the creator registry.
-		BuildMenus();
-
 		if (mConfig.StartInProjectManager)
 		{
-			ReportStartup("Opening the project manager", 0.80f);
-			EnterManagerMode();
+			// The project manager comes back with its port (layer 13).
+			mContext.SetStatus("No project: pass one on the command line (the project manager is not on the GUI yet).");
 		}
 		else
 		{
 			ReportStartup(scope $"Opening {PathFilename(mConfig.ProjectDirectory, .. scope .())}", 0.70f);
-			OpenProjectAt(mConfig.ProjectDirectory);
+			var options = EditorSessionOpenOptions();
+			options.Scaffold = true; // a command line's bare folder becomes a project
+			options.ScaffoldName = mConfig.ProjectName;
+			options.Seed = mConfig.SeedOnScaffold;
+			mSession.Open(mConfig.ProjectDirectory, options);
 		}
 
 		// Ready: the splash goes and the main window (created hidden) comes up.
@@ -417,349 +289,145 @@ class EditorApplication : IApplication
 			mConfig.StartupFinished();
 	}
 
-	/// Tells the splash what startup is doing (EditorAppConfig.StartupProgress), while it is
-	/// starting; a project opened later reports nothing.
-	public void ReportStartup(StringView status, float progress)
+	/// The parts that need no window, in order: export, the MCP host, then the editor-wide
+	/// actions (before the domains register theirs: the menu bar follows registration order).
+	/// OnStartup calls it once the window and the embedded runtime are up; a headless run (the
+	/// tests) calls it alone. Once: a second call does nothing.
+	public void StartParts()
 	{
-		if (mStarting && (mConfig.StartupProgress != null))
-			mConfig.StartupProgress(status, progress);
-	}
-
-	/// Loads one family across the sizes; falls back to the embedded face when the path
-	/// fails outright. Loud on total failure.
-	private bool LoadFamily(StringView family, StringView path, Span<float> sizes, FontLoadOptions options, Span<uint8> embedded)
-	{
-		var options;
-		bool anyLoaded = false;
-		for (let size in sizes)
-		{
-			options.PixelHeight = size;
-			if (!path.IsEmpty && (mFontService.LoadFont(family, path, options) == .Success))
-			{
-				anyLoaded = true;
-				continue;
-			}
-			if (!embedded.IsEmpty && (mFontService.LoadFontFromMemory(family, embedded, options) == .Success))
-				anyLoaded = true;
-		}
-		if (!anyLoaded)
-		{
-			GlobalLog(.Error, "Editor: font family '{}' failed to load (path '{}', embedded fallback {}), its text will not render",
-				family, path, embedded.IsEmpty ? "absent" : "failed");
-		}
-		return anyLoaded;
-	}
-
-	private static Drawable Retained(Drawable drawable)
-	{
-		if (drawable != null)
-			drawable.AddRef();
-		return drawable;
-	}
-
-	/// The page keeps its content view; the dock takes a reference of its own.
-	private static View RetainedView(View view)
-	{
-		if (view != null)
-			view.AddRef();
-		return view;
-	}
-
-	/// Opening a page over uncooked content queues a scoped cook: every resource id that was
-	/// requested during the page's resolve but has no product (product guid equals source
-	/// guid, so the misses are the exact missing-dependency roots), plus the page's own asset
-	/// when its cook is missing or failed. Fully cooked pages request nothing.
-	public void CookMissingForPage(Instance instance)
-	{
-		if (mProject == null)
+		if (mExport != null)
 			return;
-		let unresolved = scope List<Guid>();
-		if (mResources != null)
-			mResources.CollectUnresolved(unresolved);
-		// Only ids with a live source instance can cook: a stale ref to a deleted asset stays
-		// unresolved forever and must not re-request a cook on every open.
-		let roots = scope List<Guid>();
-		for (let id in unresolved)
-		{
-			if (mProject.SourceDb.GetInstance(id) != null)
-				roots.Add(id);
-		}
-		let badge = mCookService.BadgeFor(instance);
-		if ((badge == .Missing) || (badge == .Failed))
-			roots.Add(instance.Id);
-		if (roots.IsEmpty)
-			return;
-		mCookService.RequestCookFor(roots, false);
+		let exportServices = new EditorExportServices();
+		exportServices.Context = mContext;
+		exportServices.Cook = mCookService;
+		exportServices.Jobs = mJobService;
+		exportServices.Builders = mBuilders;
+		exportServices.UserSettings = mEditorSettings;
+		exportServices.DataRoot.Set(mConfig.DataRoot);
+		exportServices.OnExported = new (folder) => { ShowToast(.Success, scope $"Exported to {folder}"); };
+		mExport = new EditorExport(exportServices);
+
+		let mcpServices = new EditorMcpServiceServices();
+		mcpServices.Context = mContext;
+		mcpServices.Cook = mCookService;
+		mcpServices.Jobs = mJobService;
+		mcpServices.Builders = mBuilders;
+		mcpServices.UserSettings = mEditorSettings;
+		mcpServices.Log = mConfig.LogBuffer;
+		mcpServices.DataRoot.Set(mConfig.DataRoot);
+		mcpServices.ForceEnabled = mConfig.McpEnabled;
+		mcpServices.Port = mConfig.McpPort;
+		mcpServices.TemplatesRoot = new (outPath) => { mExport.TemplatesRoot(outPath); };
+		mcpServices.OnCreated = new (creator, instance) => { mCreation.AfterCreate(creator, instance); };
+		// The windows' screenshots, over the same capture as View > Screenshot. The pages, the
+		// dock's layout tools, the action bridge and the import notice come back with their
+		// layers; an agent's delete takes the database's own until the assets view is on the GUI.
+		mcpServices.Windows = new (outWindows) => { CapturableWindows(outWindows); };
+		mcpServices.RequestShots = new (requests) => { mWindowCapture.Request(requests); };
+		mcpServices.Shots = new (outShots) => { mWindowCapture.Shots(outShots); };
+		mMcp = new EditorMcpService(mcpServices);
+
+		RegisterActions();
 	}
 
-	/// Puts the dock's ActiveMark on the active page's panel and takes it off every other.
-	private void RefreshActivePageMark()
+	/// The parts stopped in the order shutdown needs: the project closed (its hook stops the MCP
+	/// host first, then the cook, the thumbnails and the resources go), the MCP host released,
+	/// the cook joined, and the jobs joined before the export whose data a running one reads.
+	/// OnShutdown calls it; a headless run (the tests) calls it alone. Again: nothing left to do.
+	public void StopParts()
 	{
-		let active = mContext.ActivePage;
-		for (let entry in mPagePanels)
-		{
-			let mark = entry.Page === active;
-			if ((entry.Panel != null) && (entry.Panel.ActiveMark != mark))
-			{
-				entry.Panel.ActiveMark = mark;
-				if (entry.Panel.Parent != null)
-					entry.Panel.Parent.InvalidateVisual(); // the group draws the ring
-			}
-		}
+		mSession.Close();
+		DeleteAndNullify!(mMcp);
+		mCookService.Shutdown(); // joins a cook in flight
+		mJobService.Shutdown(); // joins a job in flight (an export reading EditorExport's copies)
 	}
 
-	/// Opens or focuses the Game tab: play-in-editor, the page's own toolbar running Play and
-	/// Stop, created through the scene plugin's factory seam. `newInstance` opens an
-	/// additional tab driving its own game instance.
-	public void OpenGamePage(bool newInstance = false)
+	/// The editor owns a second, persistent runtime context populated by the SAME
+	/// DefaultApplication the player runs: gameplay subsystems live there, and every scene
+	/// (editing pages, Simulate, previews, the Game tab) is hosted there. It starts with no
+	/// resource manager: projects open and close at runtime, so each project's manager attaches
+	/// and detaches (EditorSession).
+	private void StartEmbeddedRuntime(IApplicationHost host)
 	{
-		if (!newInstance && (mGamePage != null))
-		{
-			for (let entry in mPagePanels)
+		mEmbeddedHost = new EmbeddedApplicationHost(host, mRuntimeContext);
+		delete mEmbeddedExitHandler;
+		mEmbeddedExitHandler = new (code) =>
 			{
-				if (entry.Page === mGamePage)
-				{
-					mContext.RevealPage(mGamePage);
-					return;
-				}
-			}
-		}
-		if (mContext.GamePageFactory == null)
-		{
-			mContext.Notify(.Info, "No game page registered in this build.");
-			return;
-		}
-		// A unique id per tab, so a docking restore cannot collide; the page answers to it too.
-		let pieId = newInstance ? scope:: $"game-page-{mGamePageCounter + 1}" : "game-page";
-		let page = mContext.GamePageFactory(newInstance, pieId);
-		if (page == null)
-			return;
-		if (newInstance)
-			mGamePageCounter++;
-		// Every page in this app is a UIEditorPage, the Game page too.
-		let uiPage = mContext.AdoptPage(page) as UIEditorPage;
-		if (uiPage == null)
-			return;
-		if (!newInstance)
-			mGamePage = uiPage; // only the primary tab is the focus target
-
-		let panel = mShell.AddPagePanel(uiPage.Title, RetainedView(uiPage.ContentView));
-		panel.SetPersistenceId(pieId);
-		panel.DestroyOnClose = true; // the page's views die with it, as for any page
-		panel.OnCloseRequested.Add(new [=uiPage, =this](p) =>
-			{
-				mUiHost.Context.MutationQueue.QueueAction(new [=uiPage, =this]() => { ClosePage(uiPage); });
-			});
-		mPagePanels.Add(.(uiPage, panel));
-		RefreshActivePageMark(); // the panel exists now; the page may already be the active one
-	}
-
-	/// Opens or focuses a page for the instance and docks its content as a centre tab.
-	public UIEditorPage OpenInstancePage(Instance instance)
-	{
-		let before = mContext.OpenPages.Count;
-		let page = mContext.OpenPage(instance);
-		if (page == null)
-		{
-			// The toast stays short; the log carries the identifying details, since an
-			// unresolvable type is a retired or unregistered identity and the spelling is
-			// the clue.
-			GlobalLog(.Warning, "Editor: no editor page for asset '{}', stored type '{}', guid {} (unknown type name, or no page factory registered)",
-				instance.Name, instance.TypeName, instance.Id);
-			mContext.Notify(.Warning, "No editor registered for this asset type.");
-			return null;
-		}
-		let uiPage = page as UIEditorPage;
-		if (uiPage == null)
-			return null;
-		if (mContext.OpenPages.Count == before)
-		{
-			// An existing page was focused: its tab selects.
-			for (let entry in mPagePanels)
-			{
-				if (entry.Page === uiPage)
-				{
-					mShell.Docks.ActivatePanel(entry.Panel);
-					break;
-				}
-			}
-			return uiPage;
-		}
-
-		let panel = mShell.AddPagePanel(uiPage.Title, RetainedView(uiPage.ContentView));
-		// A guid-keyed persistence id: the saved dock layout re-places this page's panel when
-		// the page reopens on the next launch.
-		panel.SetPersistenceId(uiPage.InstanceId.ToString(.. scope .(), 'D'));
-		// The page's views die with the page: its close destroys the panel, or a later layout
-		// restore would find the stale one by this id and float it holding freed content.
-		panel.DestroyOnClose = true;
-		// The DockManager's own close handling destroys the panel through its deferred queue;
-		// the page tears down too, deferred through the mutation queue.
-		panel.OnCloseRequested.Add(new [=uiPage, =this](p) =>
-			{
-				mUiHost.Context.MutationQueue.QueueAction(new [=uiPage, =this]() => { ClosePage(uiPage); });
-			});
-		// Dirty pages do not close silently: the gesture is vetoed and Save, Discard or Cancel
-		// prompted. The dialog's buttons raise OnCloseRequested directly, bypassing the veto.
-		panel.OnCloseInterceptor = new [=uiPage, =this](p) =>
-			{
-				if (!uiPage.IsDirty)
-					return true;
-				ShowDirtyCloseDialog(uiPage, p);
-				return false;
+				// A Game tab routes its own instance's exit to its own run; what reaches here is
+				// an instance no tab is playing, which has no run to stop.
+				GlobalLog(.Information, "Editor: embedded app requested exit({}) with no Game tab playing it", code);
 			};
-		mPagePanels.Add(.(uiPage, panel));
-		RefreshActivePageMark(); // the panel exists now; the page may already be the active one
-		CookMissingForPage(instance); // uncooked dependencies cook without a manual step
-		return uiPage;
-	}
-
-	/// Binds the project's default UI theme and fonts (the default and its others) onto the embedded app's game UI,
-	/// and the fonts and the project's sheets onto its engine GUI.
-	/// Idempotent: at project open, after every finished cook (a fresh checkout's first cook
-	/// creates the products the open-time bind missed), and on settings save.
-	public void ApplyProjectUiDefaults()
-	{
-		if ((mProject == null) || (mResources == null) || (mEmbeddedApp == null))
-			return;
-		// Bound only once cooked: a new project's first open asks before its first cook has
-		// made them, and a bind of a product that is not there warns of a broken reference.
-		let cooked = mProject.CookedDb;
-		bool Ready(Guid id) => id.IsSet && (cooked.GetInstance(id) != null);
-		let themeId = mProject.Settings.DefaultUiThemeId;
-		if (Ready(themeId) && (mEmbeddedApp.UI != null))
-		{
-			let theme = mResources.Bind<Sedulous.UI.Resource.UITheme>(themeId).Get;
-			if (theme != null)
-				mEmbeddedApp.UI.SetDefaultTheme(theme);
-		}
-		let fontId = mProject.Settings.DefaultUiFontId;
-		Font defaultFont = null;
-		if (Ready(fontId))
-		{
-			defaultFont = mResources.Bind<Font>(fontId).Get;
-			if ((defaultFont != null) && (mEmbeddedApp.UI != null))
-				mEmbeddedApp.UI.SetDefaultFont(defaultFont);
-		}
-		let extras = scope List<Font>();
-		for (let id in mProject.Settings.UiFontIds)
-		{
-			if (!Ready(id))
-				continue;
-			if (let font = mResources.Bind<Font>(id).Get)
-				extras.Add(font);
-		}
+		mEmbeddedHost.SetExitHandler(mEmbeddedExitHandler);
+		mEmbeddedApp = new DefaultApplication();
+		mEmbeddedApp.SetDataRoot(mConfig.DataRoot); // the editor's root, not a re-walk
+		mEmbeddedApp.Configure(mEmbeddedHost);
+		// Un-bound input never reaches scene-tier game UI here: editing and Simulate HUDs render
+		// as they will but do not take input; the Game tab is the interactive surface.
+		if (mEmbeddedApp.Input != null)
+			mEmbeddedApp.Input.UnboundScenePolicy = .ScreenTierOnly;
+		// Each Game tab runs its own game inside this one application, with screens of its own
+		// (menus, HUD, pause), so tabs never draw or drive each other's screens.
 		if (mEmbeddedApp.UI != null)
-			mEmbeddedApp.UI.SetExtraFonts(extras);
-		// The engine GUI shares the fonts, and takes the project's sheets in order (a sheet not
-		// cooked yet resolves once it is: the cook finished callback lands here again).
+			mEmbeddedApp.UI.RunScreens = true;
 		if (mEmbeddedApp.Gui != null)
-		{
-			mEmbeddedApp.Gui.SetFonts(defaultFont, extras);
-			mEmbeddedApp.Gui.SetStyleSheets(mProject.Settings.GuiStyleSheetIds);
-		}
+			mEmbeddedApp.Gui.RunScreens = true; // and the engine GUI's
+		mRuntimeContext.Startup();
+		mEmbeddedApp.OnStartup(mEmbeddedHost);
 	}
 
-	/// A context notice as a toast: errors stick until closed, the rest self-expire.
-	public void ShowToast(NoticeKind kind, StringView message)
+	/// The editor-wide actions this lifecycle can run. What a later layer brings (Save, the
+	/// layout, Close Project, Preferences, the dialogs, the Game page, the profiler, the palette)
+	/// is given no hook here, so its action stays out until it can run.
+	private void RegisterActions()
 	{
-		if (mToastHost == null)
-			return;
-		var request = ToastRequest(message);
-		switch (kind)
-		{
-		case .Success: request.Severity = .Success;
-		case .Warning: request.Severity = .Warning;
-		case .Error: request.Severity = .Error;
-		default: request.Severity = .Info;
-		}
-		request.DurationSeconds = (kind == .Error) ? 0.0f : 5.0f;
-		mToastHost.Show(request);
-	}
-
-	/// Saves `page` (the action file.save over its subject page) and flushes the pending asset
-	/// edits; the outcome as a notice.
-	public void SavePage(EditorPage page)
-	{
-		if (page.Save() case .Ok)
-			mContext.Notify(.Success, scope $"Saved '{page.Title}'.");
-		else
-			mContext.Notify(.Error, "Save FAILED (see Console).");
-		FlushPendingAssetEdits();
-	}
-
-	/// Live edits to cooked products (terrain sculpt writes the runtime heightfield in place)
-	/// are registered on the context by their viewport tool; a save writes them back to their
-	/// source assets and recooks. Context-wide: any Save flushes whatever a tool queued.
-	public void FlushPendingAssetEdits()
-	{
-		if ((mProject == null) || !mContext.HasPendingAssetEdits)
-			return;
-		if (mContext.DrainAssetEdits(mProject.SourceDb) case .Ok)
-			mContext.Notify(.Success, "Persisted live asset edits.");
-		else
-			mContext.Notify(.Error, "Asset-edit persist FAILED (see Console).");
-	}
-
-	/// Tears down a page whose panel is closing or closed; the DockManager owns the panel.
-	/// Closes a page and its panel together, synchronously: the code paths (Close Project, an
-	/// open asset deleted, page_close), where the tab close runs the same pair deferred.
-	///
-	/// The page's views borrow what the page owns (its scene, its edit context, its images),
-	/// so they must die while the page lives. The panel's deletion is deferred, so the panel
-	/// lets go of the content FIRST; the page then holds the last reference and frees its
-	/// views in its own teardown, in the order it was written for.
-	private void ClosePanelAndPage(PagePanel entry)
-	{
-		if (entry.Panel != null)
-		{
-			entry.Panel.SetContent(null);
-			if (mShell.Docks != null)
-				mShell.Docks.ClosePanel(entry.Panel);
-		}
-		ClosePage(entry.Page);
-	}
-
-	public void ClosePage(UIEditorPage page)
-	{
-		if (page === mGamePage)
-			mGamePage = null;
-		for (int i < mPagePanels.Count)
-		{
-			if (mPagePanels[i].Page === page)
+		let actions = mContext.Actions;
+		let file = new FileActions();
+		file.Context = mContext;
+		file.Exit = new () =>
 			{
-				if (page.IsDirty)
-					mContext.SetStatus("Closed page had unsaved changes."); // no save prompt here
-				page.OnClose(); // GPU and scene resources release while the device lives
-				mPagePanels.RemoveAt(i);
-				mContext.ClosePage(page); // destroys the page
-				return;
-			}
-		}
+				if (mHost != null)
+					mHost.RequestExit();
+			};
+		EditorAppActions.RegisterFileActions(actions, file);
+		EditorAppActions.RegisterEditActions(actions, new EditActions());
+
+		let project = new ProjectActions();
+		project.Context = mContext; // Report Resource Memory reads the session's resources through it
+		EditorAppActions.RegisterProjectActions(actions, project);
+
+		EditorAppActions.RegisterBuildActions(actions, mContext);
+		// Game's Play and Play New Instance come back with the Game page.
+
+		let view = new ViewActions();
+		view.Context = mContext;
+		view.Screenshot = new () => { TakeEditorScreenshot(); };
+		EditorAppActions.RegisterViewActions(actions, view);
+
+		let help = new HelpActions();
+		help.About = new () => { ShowAbout(); };
+		EditorAppActions.RegisterHelpActions(actions, help);
+	}
+
+	/// The version, in a message box over the editor. Nothing with no interface.
+	private void ShowAbout()
+	{
+		let root = mWindow.Root;
+		if (root == null)
+			return;
+		let about = new Sedulous.GUI.MessageBox();
+		defer about.ReleaseRef(); // the popup and the tree hold it while it is open
+		about.Configure("About SedulousEngine", scope $"Version {EditorMcpService.BuildStamp(.. scope .())}", .Ok);
+		about.OpenModal(root);
 	}
 
 	public void OnUpdate(IApplicationHost host, float dt)
 	{
-		if (mThumbnailStage != null)
-			mThumbnailStage.Update(); // the next queued GPU thumbnail job
-		if (mMcpHost != null)
-			mMcpHost.Pump(); // answers a waiting agent call HERE: tools touch main-thread state
-		// DPI drift: the window moved to a monitor with a different content scale, so the
-		// icon set re-bakes at the new device sizes and stays texel crisp.
-		if (mUiHost != null)
-		{
-			if (let mainRw = host.MainRenderWindow)
-			{
-				let scale = mainRw.Window.ContentScale * mUiHost.UiScale;
-				if ((scale > 0.1f) && (Math.Abs(scale - mIconBakeScale) > 0.01f))
-					BakeEditorIcons(scale);
-			}
-		}
-
-		// The embedded runtime's frame lanes run first: per-scene fixed stepping in
-		// BeginFrame, physics interpolation in Update, so pages read fresh state. EndFrame
-		// closes in OnRenderWindow after the scene bracket. The embedded app's own OnUpdate
-		// ticks every game instance's script once per frame.
+		if (mMcp != null)
+			mMcp.Pump(); // a waiting agent call is answered here: tools touch main-thread state
+		// The embedded runtime's frame first (per-scene fixed steps in BeginFrame, physics
+		// interpolation in Update), so pages read fresh state; EndFrame closes in OnRenderWindow
+		// after the scene bracket. The embedded app's own OnUpdate ticks every game instance's
+		// script once a frame, however many Game tabs.
 		if (mEmbeddedApp != null)
 		{
 			let scaled = dt * mRuntimeContext.TimeScale;
@@ -768,9 +436,45 @@ class EditorApplication : IApplication
 			mRuntimeContext.PostUpdate(scaled);
 			mEmbeddedApp.OnUpdate(mEmbeddedHost, dt);
 		}
+		UpdateCaptures(host, dt);
+		LeakProbe.Update(dt);
+		// The cook's and the jobs' progress to the status line; an export waiting on its cook
+		// starts.
+		mCookService.Update(scope (line) => { mContext.SetStatus(line); });
+		mJobService.Update(scope (line) => { mContext.SetStatus(line); });
+		if (mExport != null)
+			mExport.Pump();
+		UpdateJobStatus();
+		if (let resources = mSession.Resources)
+		{
+			resources.Pump(); // async loads finish
+			resources.CollectGarbage(); // products a hot reload replaced go
+		}
+		mWindow.Update(dt);
+	}
 
-		// Window screenshots recorded last frame: written once the GPU has run the copies; a
-		// window closed before it drew fails its capture rather than leaving it waiting.
+	/// A running job's step and percent on the status line.
+	private void UpdateJobStatus()
+	{
+		if (!mJobService.IsBusy)
+			return;
+		let progress = scope JobProgress();
+		mJobService.Progress(progress);
+		if (!progress.Active)
+			return;
+		let line = scope String(progress.Title);
+		if (!progress.Step.IsEmpty)
+			line.AppendF(": {}", progress.Step);
+		line.AppendF(" ({}%)", (int)(progress.Fraction * 100.0f + 0.5f));
+		mContext.SetStatus(line);
+	}
+
+	/// Window screenshots: last frame's written, missing windows failed, the user told, and the
+	/// command line's timed shot, rebuild and exit.
+	private void UpdateCaptures(IApplicationHost host, float dt)
+	{
+		// Recorded last frame: written once the GPU has run the copies; a window closed before it
+		// drew fails its capture rather than leaving it waiting.
 		if ((host.Graphics != null) && (host.Graphics.Raw != null))
 			mWindowCapture.Complete(host.Graphics.Raw);
 		if (mWindowCapture.Busy)
@@ -797,11 +501,20 @@ class EditorApplication : IApplication
 				mContext.Notify(.Error, "The screenshot failed (the Console, category Screenshot, says why)");
 		}
 
+		let screenshotRequested = !mConfig.ScreenshotPath.IsEmpty;
+		if ((mConfig.AutoExitSeconds <= 0.0f) && (mConfig.AutoRebuildSeconds <= 0.0f) && !screenshotRequested)
+			return;
 		mElapsed += dt;
-		LeakProbe.Update(dt);
-		if (!mConfig.ScreenshotPath.IsEmpty && !mScreenshotFired && (mElapsed >= mConfig.ScreenshotAfterSeconds))
+		if ((mConfig.AutoExitSeconds > 0.0f) && (mElapsed >= mConfig.AutoExitSeconds))
+			host.RequestExit();
+		if ((mConfig.AutoRebuildSeconds > 0.0f) && !mAutoRebuilt && (mElapsed >= mConfig.AutoRebuildSeconds))
 		{
-			mScreenshotFired = true;
+			mAutoRebuilt = true;
+			mCookService.RequestCook(true);
+		}
+		if (screenshotRequested && !mScreenshotFired && (mElapsed >= mConfig.ScreenshotAfterSeconds))
+		{
+			mScreenshotFired = true; // one shot: the next main-window frame records it
 			if (let main = host.MainRenderWindow)
 			{
 				var request = WindowShotRequest(main.Window.Id, true, mConfig.ScreenshotPath);
@@ -810,210 +523,35 @@ class EditorApplication : IApplication
 		}
 		// The capture settles a frame or two after it fires (record, then map and write); Busy
 		// clears whether the file was written or the capture failed.
-		if (!mConfig.ScreenshotPath.IsEmpty && mConfig.ScreenshotExit && mScreenshotFired && !mWindowCapture.Busy)
+		if (screenshotRequested && mConfig.ScreenshotExit && mScreenshotFired && !mWindowCapture.Busy)
 			host.RequestExit();
-		if ((mConfig.AutoExitSeconds > 0.0f) || (mConfig.AutoRebuildSeconds > 0.0f))
-		{
-			if ((mConfig.AutoExitSeconds > 0.0f) && (mElapsed >= mConfig.AutoExitSeconds))
-				host.RequestExit();
-			if ((mConfig.AutoRebuildSeconds > 0.0f) && !mAutoRebuilt && (mElapsed >= mConfig.AutoRebuildSeconds))
-			{
-				mAutoRebuilt = true;
-				mCookService.RequestCook(true);
-			}
-		}
-		RunTestHooks(dt);
-
-		DrainLog();
-		if (let profiler = mShell.Profiler)
-			profiler.Update(); // the frames that settled since, while it records
-		SyncPageTitles();
-		// Background-cook progress reaches the status bar; a finished cook refreshes the
-		// Assets badges through OnCookFinished.
-		mCookService.Update(scope (line) => { mContext.SetStatus(line); });
-
-		// Background jobs: pump, drain job logs, and once an export's pre-cook has finished,
-		// submit the export's pack and stage job. The running job's step and percent show in
-		// the status bar.
-		mJobService.Update(scope (line) => { mContext.SetStatus(line); });
-		if (mPendingExport.Active && mPendingExport.WaitingCook && !mCookService.IsCooking)
-		{
-			mPendingExport.WaitingCook = false;
-			SubmitExportJob(mPendingExport.PresetName, mPendingExport.All);
-			mPendingExport.Active = false; // the job owns it now
-		}
-		if (mJobService.IsBusy)
-		{
-			let p = scope JobProgress();
-			mJobService.Progress(p);
-			if (p.Active)
-			{
-				let s = scope String(p.Title);
-				if (!p.Step.IsEmpty)
-					s.AppendF(": {}", p.Step);
-				s.AppendF(" ({}%)", (int)(p.Fraction * 100.0f + 0.5f));
-				mContext.SetStatus(s);
-			}
-		}
-
-		if (mAssetsView != null)
-			mAssetsView.Refresh();
-		if (mProjectHome != null)
-			mProjectHome.Refresh();
-		if (mResources != null)
-		{
-			mResources.Pump(); // async resource loads finalise
-			mResources.CollectGarbage(); // hot-reloaded-away products release
-		}
-
-		// OS file drops, from any editor window, land in the Assets panel's selected group
-		// through one review session for the whole drop.
-		if ((mAssetsView != null) && (host.Shell != null))
-		{
-			ClearAndDeleteItems(mDroppedFiles);
-			host.Shell.DrainDroppedFiles(mDroppedFiles);
-			if (!mDroppedFiles.IsEmpty)
-			{
-				let paths = scope List<StringView>();
-				for (let drop in mDroppedFiles)
-					paths.Add(drop.Path);
-				mAssetsView.ImportFiles(paths);
-			}
-		}
-		if (mUiHost != null)
-			mUiHost.Update(dt);
-		if (mToastHost != null)
-			mToastHost.Update(dt);
-		if (mDockHost != null)
-			mDockHost.Tick(); // the drag-follow for floating OS windows
-
-		// The page hooks after the UI laid out, so viewport rects are current for input gating.
-		for (let entry in mPagePanels)
-			entry.Page.OnUpdate(host, dt);
-	}
-
-	/// The headless-debug hooks: ENV_TEST_OPEN=<guid> opens that instance's page ~2s in and
-	/// again ~4s in, reproducing the browser's double-click paths in unattended runs;
-	/// ENV_TEST_REIMPORT="<group>;<file>" deletes the group ~2s in and reimports the file
-	/// ~4s in, scripting the delete-then-reimport repro. One hook per run.
-	private void RunTestHooks(float dt)
-	{
-		if (mProject == null)
-			return;
-		let testOpen = scope String();
-		if (GetEnvironmentVariable("ENV_TEST_OPEN", testOpen) case .Ok)
-		{
-			mTestOpenElapsed += dt;
-			let first = (mTestOpenStage == 0) && (mTestOpenElapsed >= 2.0f);
-			let second = (mTestOpenStage == 1) && (mTestOpenElapsed >= 4.0f);
-			if (first || second)
-			{
-				mTestOpenStage++;
-				if (Guid.Parse(testOpen) case .Ok(let id))
-				{
-					if (let instance = mProject.SourceDb.GetInstance(id))
-						OpenInstancePage(instance);
-				}
-			}
-		}
-		let reimport = scope String();
-		if (GetEnvironmentVariable("ENV_TEST_REIMPORT", reimport) case .Ok)
-		{
-			mTestOpenElapsed += dt;
-			let semi = reimport.IndexOf(';');
-			if (semi >= 0)
-			{
-				if ((mTestOpenStage == 0) && (mTestOpenElapsed >= 2.0f))
-				{
-					mTestOpenStage++;
-					let groupName = StringView(reimport, 0, semi);
-					if (let group = mProject.SourceDb.RootGroup.GetGroup(groupName))
-					{
-						mCookService.RunWhenIdle(new [=group, =this]() =>
-							{
-								mProject.SourceDb.DeleteGroup(group).IgnoreError();
-								mContext.SetStatus("[test] deleted group");
-								// Every source-database group mutation rebuilds the assets
-								// tree before the next layout binds stale pointers.
-								if (mAssetsView != null)
-									mAssetsView.Rebuild();
-							});
-					}
-				}
-				else if ((mTestOpenStage == 1) && (mTestOpenElapsed >= 4.0f))
-				{
-					mTestOpenStage++;
-					mContext.SetStatus("[test] reimporting");
-					if (mAssetsView != null)
-						mAssetsView.ImportFile(StringView(reimport, semi + 1));
-				}
-			}
-		}
 	}
 
 	public void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
 	{
-		// Every page's viewport content renders during the main window's frame, inside one
-		// scene-renderer bracket, before any UI draws: offscreen targets are window-agnostic,
-		// so floated panels' windows sample the textures this pass produced. Secondary-window
-		// frames are UI-only.
+		// Every page's viewport content renders in the MAIN window's frame, inside one
+		// scene-renderer bracket, before the GUI draws: offscreen targets are window-agnostic, so
+		// floats' windows sample what it made. Secondary-window frames are GUI only.
 		if (frame.Valid && (frame.Window === host.MainRenderWindow))
 		{
-			// Through the ISceneRenderer interface; the bracket self-guards while the renderer
-			// is not ready.
+			// The bracket self-guards while the renderer is not ready.
 			if (mSceneRenderer != null)
+			{
 				mSceneRenderer.BeginRendering(frame.Encoder, frame.FrameIndex);
-			for (let entry in mPagePanels)
-				entry.Page.OnRenderWindow(host, ref frame);
-			if (mThumbnailStage != null)
-				mThumbnailStage.Render(ref frame); // the offscreen thumbnail job, same bracket
-			if (mSceneRenderer != null)
 				mSceneRenderer.EndRendering();
-			// The post-compose overlays: the Game tab's screen-tier UI onto its viewport.
-			for (let entry in mPagePanels)
-				entry.Page.OnAfterSceneRender(host, ref frame);
+			}
 			if (mEmbeddedApp != null)
 				mRuntimeContext.EndFrame();
 		}
-		if (mUiHost != null)
-			mUiHost.RenderWindow(ref frame);
-		// A window screenshot: this window's finished backbuffer, UI included, when one of it is
-		// armed. The copy sits in this frame's command stream; OnUpdate writes it next frame.
+		mWindow.Render(ref frame);
+		// A window screenshot: this window's finished backbuffer, the GUI included, when one of it
+		// is armed. The copy sits in this frame's command stream; OnUpdate writes it next frame.
 		if (frame.Valid && (frame.Window != null) && (frame.Encoder != null)
 			&& (host.Graphics != null) && (host.Graphics.Raw != null))
 		{
 			mWindowCapture.Record(host.Graphics.Raw, frame.Encoder, frame.Window.Window.Id,
 				frame.Backbuffer, frame.Window.Swap.Format, frame.Width, frame.Height);
 		}
-	}
-
-	public void OnShutdown(IApplicationHost host)
-	{
-		FontAtlasBakerFactory.SetAtlasCache(null); // ours dies with this app
-		StopMcpHost();
-		mCookService.Shutdown(); // joins any in-flight cook before the databases go away
-		// Page resources release while the device and windows are alive; pages destroy their
-		// scenes in the runtime context, so it outlives them.
-		for (let entry in mPagePanels)
-			entry.Page.OnClose();
-		SaveLayout();
-		if (mEmbeddedApp != null)
-		{
-			mEmbeddedApp.OnShutdown(mEmbeddedHost);
-			mRuntimeContext.Shutdown();
-		}
-		// The project's resources go now: after the runtime context, whose subsystems and scenes
-		// let go of the products they hold through the manager as it shuts down, and before this
-		// returns, since the manager drains its in-flight decodes through the global job system,
-		// which the host deletes next. Left to this app's field destructors, a decode still
-		// pending at quit (a terrain project's) was waited on through the deleted pool.
-		mContext.Resources = null;
-		DeleteAndNullify!(mResources);
-		EditorIcons.Shutdown();
-		if (cUseDistanceFieldFonts)
-			DistanceFieldFonts.Shutdown();
-		if ((host.Graphics != null) && (host.Graphics.Raw != null))
-			mWindowCapture.Release(host.Graphics.Raw); // the readback buffers, while the device lives
 	}
 
 	/// The ids of the windows that can draw a frame now, the main window first; empty while the
@@ -1037,7 +575,7 @@ class EditorApplication : IApplication
 	}
 
 	/// View > Screenshot Editor (F12): the main window to a new PNG under
-	/// <user-data>/screenshots, the path or the failure toasted once written.
+	/// <user-data>/screenshots, the path or the failure said once written.
 	private void TakeEditorScreenshot()
 	{
 		let windows = scope List<uint32>();
@@ -1055,75 +593,23 @@ class EditorApplication : IApplication
 		mAnnounceScreenshot = true;
 	}
 
-	/// The tab titles mirror the dirty state with a " *" suffix, polled per frame; the name
-	/// comes from the live instance, since a browser rename would leave the tab stale.
-	private void SyncPageTitles()
+	public void OnShutdown(IApplicationHost host)
 	{
-		for (let entry in mPagePanels)
+		if ((host.Graphics != null) && (host.Graphics.Raw != null))
+			mWindowCapture.Release(host.Graphics.Raw); // the readback buffers, while the device lives
+		StopParts();
+		if (mEmbeddedApp != null)
 		{
-			let title = scope String();
-			let instance = (mProject != null) ? mProject.SourceDb.GetInstance(entry.Page.InstanceId) : null;
-			title.Set((instance != null) ? instance.Name : entry.Page.Title);
-			if (entry.Page.IsDirty)
-				title.Append(" *");
-			if (entry.Panel.Title != title)
-				entry.Panel.SetTitle(title);
+			mEmbeddedApp.OnShutdown(mEmbeddedHost);
+			mRuntimeContext.Shutdown();
 		}
-	}
-
-	/// Buffered engine logs reach the Console panel once per frame on the main thread.
-	private void DrainLog()
-	{
-		if ((mConfig.LogBuffer == null) || (mShell.Console == null))
-			return;
-		ClearAndDeleteItems(mPendingLog);
-		mLogSequence = mConfig.LogBuffer.CollectSince(mLogSequence, mPendingLog);
-		for (let entry in mPendingLog)
-			mShell.Console.AddEntry(entry.Level, entry.Category, entry.Message);
-	}
-
-	/// Bakes, or re-bakes on a DPI change, the editor icon set at chrome sizes scaled to device
-	/// pixels. Old atlases stay owned by the UIHost until shutdown: re-bakes are rare, the
-	/// atlases small, and in-flight frames may still sample the previous one.
-	private void BakeEditorIcons(float contentScale)
-	{
-		let scale = (contentScale > 0.1f) ? contentScale : 1.0f;
-		let sizes = scope List<uint32>();
-		for (let baseSize in scope uint32[](10, 12, 14, 16, 20, 24, 32))
+		mWindow.Close(); // the GUI before the device goes
+		if (mStarted)
 		{
-			let scaled = (uint32)((float)baseSize * scale + 0.5f);
-			if (sizes.IsEmpty || (sizes.Back != scaled))
-				sizes.Add(scaled);
+			FontAtlasBakerFactory.SetAtlasCache(null); // ours goes with this application
+			// A font cook registered the distance-field baker (FontAssetBuilder); it goes with the
+			// editor, the cooks having stopped.
+			DistanceFieldFonts.Shutdown();
 		}
-		let bakeable = scope List<BakedSVGDrawable>();
-		EditorIcons.Bakeable(bakeable);
-		mUiHost.BakeSvgDrawables(bakeable, sizes);
-		// The shared theme chrome glyphs bake at the same scale; they are framework-owned.
-		mUiHost.BakeThemeIcons(scale);
-		mIconBakeScale = scale;
-	}
-
-	/// Logs the resource manager's live-product report: counts by type, unreferenced being
-	/// the cache-only purge candidates.
-	private void ReportResourceMemory()
-	{
-		if (mResources == null)
-		{
-			GlobalLog(.Information, "Editor: resource report: no resource manager (no project open)");
-			return;
-		}
-		let rows = scope List<LiveProductRow>();
-		mResources.ReportLiveProducts(rows);
-		int totalLive = 0;
-		int totalUnreferenced = 0;
-		for (let row in rows)
-		{
-			GlobalLog(.Information, "Editor: resource report: type {:X}: live {}, pending {}, failed {}, unreferenced {}",
-				row.ProductTypeId, row.Live, row.Pending, row.Failed, row.Unreferenced);
-			totalLive += row.Live;
-			totalUnreferenced += row.Unreferenced;
-		}
-		GlobalLog(.Information, "Editor: resource report: {} live products total, {} unreferenced (cache-only, what a purge would release)",
-			totalLive, totalUnreferenced);
 	}
 }

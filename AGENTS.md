@@ -13,10 +13,13 @@ BeefBuild -proddir=. -config=Debug -platform=Linux64 -project=Sedulous.Tools.Edi
 BeefBuild -proddir=. -platform=Linux64 -test -project=Sedulous.Core.Tests
 ```
 
-The editor is PARKED while it moves onto the GUI, as Raptor's editor-gui series moves it: the
-editor libraries still on Sedulous.UI and `Sedulous.Tools.Editor` are out of the workspace, their
-sources untouched, and each comes back with its port. Until then, the editor builds at e293ee1f;
-`Sedulous.Tools.Mcp` is the MCP host, and `Samples.GUISandbox --editor-mock` shows the design.
+The editor is moving onto the GUI, as Raptor's editor-gui series moves it. `Sedulous.Tools.Editor`
+builds again: the application's lifecycle on the GUI (its window, the open project, export, the
+MCP host over `--mcp`, the editor-wide actions), with no pages, dock, menus or project manager
+yet. The editor libraries still on Sedulous.UI are out of the workspace, as are Editor.App's files
+still on it (`IgnoreSource` in its BeefProj.toml), their sources untouched, and each comes back
+with its port. Until then, the full editor builds at e293ee1f; `Sedulous.Tools.Mcp` is the
+headless MCP host, and `Samples.GUISandbox --editor-mock` shows the design.
 
 - Outputs land in `Code/build/<Config>_<Platform>/<Project>/`.
 - Configs: Debug, Test, Release (optimised, the profiler compiled in) and ShippingRelease

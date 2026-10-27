@@ -1,109 +1,44 @@
 using System;
-using System.Diagnostics;
 using Sedulous.Core;
 using Sedulous.Runtime.Client;
-using Sedulous.UI.Runtime;
 using Sedulous.Engine.Render;
 using Sedulous.Pipeline.Registration;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
-using Sedulous.Editor.Scene;
-using Sedulous.Editor.Animation;
-using Sedulous.Editor.Materials;
-using Sedulous.Editor.Geometry;
-using Sedulous.Editor.Particles;
-using Sedulous.Editor.Render;
-using Sedulous.Editor.Play;
-using Sedulous.Editor.Input;
 using Sedulous.Editor.Navigation;
-using Sedulous.Editor.PropertyAnimation;
-using Sedulous.Editor.GameUI;
-using Sedulous.Editor.GUI;
-using Sedulous.Editor.Audio;
-using Sedulous.Editor.Texture;
-using Sedulous.Editor.Image;
-using Sedulous.Editor.Heightfield;
-using Sedulous.Editor.Terrain;
-using Sedulous.Editor.Vegetation;
-using Sedulous.Editor.Spline;
-using Sedulous.Editor.Fonts;
-using Sedulous.Editor.Physics;
-using Sedulous.Editor.Generic;
-using Sedulous.Editor.Script;
-using Sedulous.Editor.Script.AngelScript;
-using Sedulous.Editor.Shaders;
-using Sedulous.VFS;
 
 namespace Sedulous.Tools.Editor;
 
-/// The ASSEMBLY point: every per subsystem editor module is linked here and registered on
-/// the app's context, since the editor core and app libraries never link the engine
-/// subsystems. Runs once at the end of the app's startup, against the embedded host so
-/// every page resolves to the runtime context.
+/// The ASSEMBLY point: every per subsystem editor module is linked here and registered on the
+/// app's context, since the editor core and app libraries never link the engine subsystems.
+/// Runs once during the app's startup, against the embedded host so every page resolves to the
+/// runtime context.
+///
+/// The pages are parked while the editor moves onto the GUI (Raptor's editor-gui spec, 4.1):
+/// each one's Register comes back here with its port, and with them the thumbnail generators
+/// they fold in, the viewport tools and their panels (terrain, vegetation, spline), and the code
+/// pages' language services (AngelScriptEditorUI, HlslEditorUI).
 static class EditorRegistration
 {
-	/// The thumbnail generators the modules fold in: heightfield, texture, font, splatmap
-	/// and audio clip; and the scene backed ones.
-	private const int cThumbnailGenerators = 5;
-	private const int cSceneThumbnailGenerators = 8;
-
-	public static void RegisterEditors(EditorApplication app, IApplicationHost host, UIHost uiHost)
+	public static void RegisterEditors(EditorApplication app, IApplicationHost host)
 	{
 		let context = app.Context;
 		app.SetSceneRenderer(host.Context.GetSubsystem<RenderSubsystem>());
 
 		// The pipeline's composition root first: every asset and product type, the script
-		// backend and its cook, which the script editor's creators enumerate.
+		// backend and its cook, which the creators below enumerate.
 		PipelineRegistration.RegisterPipelineTypes();
 
-		SceneEditor.Register(context, host, uiHost);
-		PlayInEditor.Register(context, host, uiHost, app.EmbeddedApplication);
-		MaterialEditor.Register(context, host, uiHost);
-		// A custom shader's page; its checks compile against the engine's shader library.
-		ShaderEditor.Register(context, host, uiHost, DataPath(app.DataRoot, "Shaders", .. scope .()));
-		SettingsProfileEditor.Register(context, host, uiHost);
-		MeshEditor.Register(context, host, uiHost);
-		ParticleEditor.Register(context, host, uiHost);
-		AnimationGraphEditor.Register(context, host, uiHost);
-		AnimationClipEditor.Register(context, host, uiHost);
-		SkeletonEditor.Register(context, host, uiHost);
-		InputEditor.Register(context);
+		// The domains' Preferences contributions that live outside the parked pages.
 		NavigationEditorPreferences.Register(context);
 		GameAudioEditorSettings.Register(context);
-		PropertyAnimationEditor.Register(context, host);
-		GameUIEditor.Register(context, host, uiHost);
-		GuiEditor.Register(context, host, uiHost); // the engine GUI's .gml and .css pages
-		AudioEditor.Register(context, host);
-		TextureEditor.Register(context);
-		ImageEditor.Register(context);
-		HeightfieldEditor.Register(context);
-		TerrainEditor.Register(context, host, uiHost);
-		// Palette order is registration order: the Terrain dropdown, the Vegetation
-		// dropdown, then the lone Spline tool.
-		TerrainEditor.RegisterViewportTools(); // the scene viewport sculpt and splat brushes
-		TerrainEditor.RegisterToolPanels(); // the brushes' settings panels
 
-		VegetationEditor.Register(context, host, uiHost);
-		VegetationEditor.RegisterViewportTools(); // the scene viewport vegetation brushes
-		VegetationEditor.RegisterToolPanels(); // the brushes' settings panels
-
-		SplineEditor.RegisterViewportTools(); // the scene viewport spline control point editor
-		FontEditor.Register(context);
-		CollisionShapeEditor.Register(context, host, uiHost);
-		GenericAssetPageFactory.Register(context);
-		Debug.Assert((context.Thumbnails != null) && (context.Thumbnails.GeneratorCount == cThumbnailGenerators));
-		Debug.Assert(context.Thumbnails.SceneGeneratorCount == cSceneThumbnailGenerators);
-
-		// The script page browses the engine facade surface the embedded runtime binds.
-		AngelScriptEditorUI.Register();
-		HlslEditorUI.Register(); // a custom shader's syntax
-		ScriptEditor.Register(context, app.EmbeddedApplication.ScriptSurface);
-
-		// File > New: every pipeline domain's creators, the scripts' among them.
+		// File > New: every pipeline domain's creators, the scripts' among them. The script page
+		// comes back with its port.
 		PipelineRegistration.RegisterAllCreators(context.Creators);
 
-		// The cook service routes through the same builder and importer sets the cook CLI
-		// has.
+		// The cook service routes through the same builder and importer sets the cook CLI has;
+		// the importers are what a drop onto the editor and the MCP asset_import use.
 		PipelineRegistration.RegisterAllBuilders(app.Builders, app.DataRoot);
 		PipelineRegistration.RegisterAllImporters(context.Importers);
 	}

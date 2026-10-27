@@ -20,7 +20,8 @@ namespace Sedulous.Tools.Editor;
 
 /// The editor executable: creates the OS shell and the graphics device and runs
 /// EditorApplication, with every per subsystem editor module assembled through
-/// EditorRegistration.
+/// EditorRegistration. The pages are parked while the editor moves onto the GUI (Raptor's
+/// editor-gui spec, 4.1); each comes back with its port.
 ///
 /// Usage: Sedulous.Tools.Editor [projectDirectory] [--project <dir>] [--data-root <dir>]
 ///   [--exit-after <s>] [--rebuild-after <s>] [--screenshot <png> [--screenshot-after <s>]
@@ -32,12 +33,12 @@ namespace Sedulous.Tools.Editor;
 ///   (validation defaults on for a dev build, off for an optimized one).
 ///   With a project (positional or --project): opens it directly, scaffolding the manifest
 ///   and the content tree on first run; the single project lifecycle.
-///   With NO project: starts on the built in PROJECT MANAGER (recent projects from the per
-///   user registry, open, create, remove); File > Close Project returns to it.
+///   With NO project: the PROJECT MANAGER, which is not on the GUI yet (layer 13): the status
+///   line says to pass a project.
 class Program
 {
-	/// The last resort face, baked into the executable, so a relocated editor never comes
-	/// up textless.
+	/// The splash's last resort face, baked into the executable, so a relocated editor's splash
+	/// never comes up textless (the editor's own faces are its sheet's, through its resources).
 	private const uint8[?] cEmbeddedFont = Compiler.ReadBinary("../../../Data/Assets/fonts/roboto/Roboto-Regular.ttf");
 
 	public static int Main(String[] args)
@@ -76,12 +77,11 @@ class Program
 		config.DataRoot.Set(dataRoot);
 		ReadCommandLine(args, config);
 		config.StartInProjectManager = config.ProjectDirectory.IsEmpty;
-		DataPath(dataRoot, "Assets/fonts/roboto/Roboto-Regular.ttf", config.FontPath);
-		DataPath(dataRoot, "Assets/fonts/dejavu/DejaVuSansMono.ttf", config.MonoFontPath);
-		config.EmbeddedFont = cEmbeddedFont;
+		// The splash's face, from the data root, with the embedded twin as the last resort.
+		let splashFontPath = DataPath(dataRoot, "Assets/fonts/roboto/Roboto-Regular.ttf", .. scope .());
 		config.LogBuffer = logBuffer;
 		config.SeedNewProject = new (ctx, project) => EditorSeed.SeedNewProject(ctx, project);
-		config.RegisterEditors = new (app, host, uiHost) => EditorRegistration.RegisterEditors(app, host, uiHost);
+		config.RegisterEditors = new (app, host) => EditorRegistration.RegisterEditors(app, host);
 
 		// The domain contributed settings sections exist before the app loads the per user
 		// store, which happens before the editor modules register.
@@ -106,9 +106,9 @@ class Program
 		EditorSplash.ApplyWindowIcon(mainWindow, dataRoot);
 
 		// The splash, from now until the editor is ready: startup holds the main thread with
-		// nothing drawn (the device, the shader compiles, the fonts, the project and its
-		// pages). Declared before the app, so it outlives the app's calls into it.
-		let splash = EditorSplash.Open(shell, dataRoot, config.FontPath, config.EmbeddedFont, scope $"Version {EngineVersion.String}");
+		// nothing drawn (the device, the shader compiles, the fonts, the project). Declared
+		// before the app, so it outlives the app's calls into it.
+		let splash = EditorSplash.Open(shell, dataRoot, splashFontPath, cEmbeddedFont, scope $"Version {EngineVersion.String}");
 		defer delete splash;
 		if (splash != null)
 			splash.Step("Starting the graphics device", 0.05f);
@@ -136,7 +136,7 @@ class Program
 			return 1;
 		}
 		defer delete graphics;
-		// After the app, whose pages borrow the cooks, and before the device it drew with.
+		// After the app, whose cook service borrows the cooks, and before the device it drew with.
 		defer PipelineRegistration.Teardown();
 
 		let app = scope EditorApplication(config);
