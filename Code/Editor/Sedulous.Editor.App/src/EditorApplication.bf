@@ -425,12 +425,14 @@ class EditorApplication : IApplication
 		// The pages, over the paths the tabs take (a close at the next frame).
 		mcpServices.OpenPage = new (id) => mPages.Open(id);
 		mcpServices.ClosePage = new (page) => { mPages.Close(page); };
-		// The windows' screenshots, over the same capture as View > Screenshot. The dock's
-		// layout tools, the action bridge and the import notice come back with their layers; an
-		// agent's delete takes the database's own until the assets view is on the GUI.
+		// The windows' screenshots, over the same capture as View > Screenshot. The action bridge
+		// and the import notice come back with their layers; an agent's delete takes the
+		// database's own until the assets view is on the GUI.
 		mcpServices.Windows = new (outWindows) => { CapturableWindows(outWindows); };
 		mcpServices.RequestShots = new (requests) => { mWindowCapture.Request(requests); };
 		mcpServices.Shots = new (outShots) => { mWindowCapture.Shots(outShots); };
+		// The dock's layout tools, over its controller (it outlives the host).
+		mcpServices.AddTools = new (server) => { EditorLayoutTools.Register(server, mDock.Controller); };
 		mMcp = new EditorMcpService(mcpServices);
 
 		RegisterActions();

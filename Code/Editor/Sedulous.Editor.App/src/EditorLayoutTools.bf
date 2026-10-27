@@ -1,18 +1,19 @@
 using System;
+using Sedulous.Core;
 using Sedulous.Json;
 using Sedulous.Mcp;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
+using Sedulous.GUI; // GUI.Docking's controller and layout
 
 namespace Sedulous.Editor.App;
 
-/// The MCP tools over the editor's dock layout, what only the editor host can serve:
-/// layout_get (the tree of splits and tab groups, every panel by its persistence id and title,
-/// the floating and hidden ones) and panel_dock (a panel moved beside another, into its tabs,
-/// or floating), so an agent can put two Game tabs side by side for a networked playtest as a
-/// drag would. A panel is named by its persistence id: a page's asset guid, a Game tab's PIE id
-/// (`game-page`, `game-page-1`, ...), or a tool panel's fixed one (`welcome` for Project,
-/// `assets`, `console`, `profiler`).
+/// The MCP tools over the editor's dock layout (GUI.Docking's; Raptor's editor-gui spec, 5.1,
+/// layer 14), what only the editor host can serve: layout_get (the tree of splits, each with any
+/// number of children and their weights (ruling 16), and stacks of tabs, every panel by its id
+/// and title, the floating and hidden ones) and panel_dock (a panel moved beside another, into
+/// its tabs, along the window's edge, or floating), so an agent can put two Game tabs side by
+/// side for a networked playtest as a drag would. A panel is named by its id: a page's asset
+/// guid, a Game tab's PIE id (`game-page`, `game-page-1`, ...), or a shared panel's (`welcome`
+/// for Project, `assets`, `console`, `profiler`).
 static class EditorLayoutTools
 {
 	/// How many tools Register registers; a tripwire like EditorPageTools.cPageToolCount.
@@ -20,11 +21,24 @@ static class EditorLayoutTools
 
 	private static StringView[6] cPositions = .("left", "right", "top", "bottom", "center", "float");
 
-	/// `dock` is the editor's dock manager, BORROWED: it outlives the server.
-	public static void Register(McpServer server, DockManager dock)
+	/// A float's bounds when the tool makes one: where a drag out of the window would put it.
+	private static readonly Rectangle cFloatBounds = .(120.0f, 120.0f, 640.0f, 420.0f);
+
+	/// What a position names: beside a stack (or along the window's edge) on a side, into a stack
+	/// as a tab, or a window of its own.
+	private enum Placement : uint8
+	{
+		case Side;
+		case Center;
+		case Float;
+	}
+
+	/// `dock` is the editor's dock controller, BORROWED: it outlives the server. Its edits go
+	/// through it, so every view of the layout shows them.
+	public static void Register(McpServer server, DockController dock)
 	{
 		server.RegisterTool("layout_get",
-			"The editor's dock layout: `root`, a tree whose nodes are splits ({split: horizontal (first left, second right) or vertical (first above), share: the first side's fraction, first, second}) or tab groups ({tabs: [{panel, title}], active}), and the `floating` and `hidden` (closed tool) panels. A panel is named by its id: a page's asset guid, a Game tab's PIE id (game-page, game-page-1, ...), or a tool panel's (welcome is Project; assets, console, profiler). panel_dock moves them.",
+			"The editor's dock layout: `root`, a tree whose nodes are splits ({split: horizontal (children left to right) or vertical (top to bottom), children: [nodes], weights: [each child's share, summing to one]}) or stacks of tabs ({tabs: [{panel, title}], active}), and the `floating` and `hidden` (closed) panels. A panel is named by its id: a page's asset guid, a Game tab's PIE id (game-page, game-page-1, ...), or a shared panel's (welcome is Project; assets, console, profiler). panel_dock moves them.",
 			scope SchemaBuilder().Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
@@ -35,83 +49,93 @@ static class EditorLayoutTools
 		let dockSchema = scope SchemaBuilder();
 		dockSchema.Str("panel", "the panel to move, by its id", true);
 		dockSchema.Enum("position", cPositions, "where it goes", true);
-		dockSchema.Str("relativeTo", "the panel whose tab group it goes beside or into (default: the window)");
-		dockSchema.Number("share", "the moved panel's fraction of the split (side positions; default 0.5)");
+		dockSchema.Str("relativeTo", "the panel whose stack it goes beside or into (default: the window)");
+		dockSchema.Number("share", "the moved panel's fraction of the room (side positions; default 0.5)");
 		server.RegisterTool("panel_dock",
-			"Move a panel, as dragging its tab does: to the `left`, `right`, `top` or `bottom` of another panel's tab group (`relativeTo`; default: the whole window), into that group as a tab (`center`), or into a window of its own (`float`). A hidden tool panel docks again the same way. `share` (0.05 to 0.95, default 0.5) is the moved panel's fraction of the split a side position makes. Two Game tabs side by side for a networked playtest: {panel: game-page-1, position: right, relativeTo: game-page}. Returns the layout as layout_get gives it. Ids come from layout_get.",
+			"Move a panel, as dragging its tab does: to the `left`, `right`, `top` or `bottom` of another panel's stack (`relativeTo`; default: along the whole window's edge), into that stack as a tab (`center`; default: the documents' stack), or into a window of its own (`float`). A hidden panel docks again the same way. `share` (0.05 to 0.95, default 0.5) is the moved panel's fraction of the room a side position splits. Two Game tabs side by side for a networked playtest: {panel: game-page-1, position: right, relativeTo: game-page}. Returns the layout as layout_get gives it. Ids come from layout_get.",
 			dockSchema.Build(), .Adjusts,
 			new (arguments, outResult, outError) => Dock(dock, arguments, outResult, outError));
 	}
 
-	private static bool Dock(DockManager dock, JsonValue arguments, JsonValue outResult, String outError)
+	private static bool Dock(DockController dock, JsonValue arguments, JsonValue outResult, String outError)
 	{
 		let id = arguments.Get("panel")?.AsString() ?? StringView();
-		let panel = FindLivePanel(dock, id);
-		if (panel == null)
+		if (!Known(dock, id))
 		{
 			outError.AppendF("no panel '{}' (layout_get lists them)", id);
 			return false;
 		}
-		DockPosition position;
-		if (!ParsePosition(arguments.Get("position")?.AsString() ?? StringView(), out position, outError))
+		Placement placement;
+		DockSide side;
+		if (!ParsePosition(arguments.Get("position")?.AsString() ?? StringView(), out placement, out side, outError))
 			return false;
-		let side = (position != .Center) && (position != .Float);
 		let shareArg = arguments.Get("share");
 		let hasShare = (shareArg != null) && shareArg.IsNumber;
 		let share = hasShare ? (float)shareArg.AsNumber() : 0.5f;
-		if (hasShare && (!side || (share < 0.05f) || (share > 0.95f)))
+		if (hasShare && ((placement != .Side) || (share < 0.05f) || (share > 0.95f)))
 		{
 			outError.Set("share is a side position's fraction, 0.05 to 0.95");
 			return false;
 		}
+		let layout = dock.Layout;
 		let relativeId = arguments.Get("relativeTo")?.AsString() ?? StringView();
-		DockablePanel relativeTo = null;
+		DockNodeId target = cNoDock;
 		if (!relativeId.IsEmpty)
 		{
-			relativeTo = FindLivePanel(dock, relativeId);
-			if (relativeTo == null)
+			if (!Known(dock, relativeId))
 			{
 				outError.AppendF("no panel '{}' (layout_get lists them)", relativeId);
 				return false;
 			}
-			if (relativeTo == panel)
+			if (relativeId == id)
 			{
 				outError.Set("a panel cannot go beside or into itself");
 				return false;
 			}
-			if (!IsDocked(dock, relativeTo))
+			target = layout.StackOf(relativeId);
+			if (target == cNoDock)
 			{
-				outError.AppendF("panel '{}' is not docked (it floats or is hidden); dock it first", relativeId);
+				outError.AppendF("panel '{}' is not docked (it is hidden); dock it first", relativeId);
 				return false;
 			}
 		}
-		if (relativeTo != null)
-			dock.DockPanelRelativeTo(panel, position, relativeTo);
-		else
-			dock.DockPanel(panel, position);
-		if (side)
+		// A docked panel (floating included) moves; a hidden or never-placed one is inserted.
+		let docked = layout.StackOf(id) != cNoDock;
+		let done = dock.Edit(scope (edit) =>
+			{
+				if (placement == .Float)
+					return edit.Float(id, cFloatBounds);
+				if (placement == .Center)
+				{
+					let stack = (target != cNoDock) ? target : edit.CentralStack;
+					return docked ? edit.MoveToTab(id, stack) : edit.InsertTab(id, stack);
+				}
+				if (target != cNoDock)
+					return docked ? edit.MoveBeside(id, target, side, share) : edit.InsertBeside(id, target, side, share);
+				return docked ? edit.MoveToEdge(id, edit.MainSurface, side, share) : edit.InsertAtEdge(id, edit.MainSurface, side, share);
+			});
+		if (!done.Ok)
 		{
-			// The new split holds the panel's own group on one side.
-			let group = panel.Parent;
-			if (let split = (group != null) ? group.Parent as DockSplit : null)
-				split.SplitRatio = (split.First === group) ? share : 1.0f - share;
+			outError.AppendF("'{}' cannot go there: {}", id, done.Refused);
+			return false;
 		}
-		dock.ActivatePanel(panel);
+		dock.Edit(scope (edit) => edit.Activate(id));
 		WriteLayout(dock, outResult);
 		return true;
 	}
 
-	private static bool ParsePosition(StringView text, out DockPosition outPosition, String outError)
+	private static bool ParsePosition(StringView text, out Placement outPlacement, out DockSide outSide, String outError)
 	{
-		outPosition = .Center;
+		outPlacement = .Side;
+		outSide = .End;
 		switch (text)
 		{
-		case "left": outPosition = .Left;
-		case "right": outPosition = .Right;
-		case "top": outPosition = .Top;
-		case "bottom": outPosition = .Bottom;
-		case "center": outPosition = .Center;
-		case "float": outPosition = .Float;
+		case "left": outSide = .Start;
+		case "right": outSide = .End;
+		case "top": outSide = .Top;
+		case "bottom": outSide = .Bottom;
+		case "center": outPlacement = .Center;
+		case "float": outPlacement = .Float;
 		default:
 			outError.AppendF("unknown position '{}' (left, right, top, bottom, center or float)", text);
 			return false;
@@ -119,80 +143,92 @@ static class EditorLayoutTools
 		return true;
 	}
 
-	/// A registered panel by id, or null for none or one on its way out.
-	private static DockablePanel FindLivePanel(DockManager dock, StringView id)
+	/// A panel the tools may name: registered, or placed by the layout.
+	private static bool Known(DockController dock, StringView id)
 	{
-		let panel = id.IsEmpty ? null : dock.FindPanelById(id);
-		return ((panel != null) && !panel.IsPendingDeletion) ? panel : null;
+		return !id.IsEmpty && ((dock.Describe(id) != null) || (dock.Layout.StackOf(id) != cNoDock));
 	}
 
-	/// In the tree: in a tab group, in a split, or the tree's root itself.
-	private static bool IsDocked(DockManager dock, DockablePanel panel)
+	private static void WriteLayout(DockController dock, JsonValue outResult)
 	{
-		return (panel.Parent is DockTabGroup) || (panel.Parent is DockSplit)
-			|| ((panel.Parent === dock) && (dock.RootNode === panel));
-	}
-
-	private static void WriteLayout(DockManager dock, JsonValue outResult)
-	{
+		let layout = dock.Layout;
 		let floating = JsonValue.MakeArray();
-		let hidden = JsonValue.MakeArray();
-		for (int i < dock.PanelCount)
+		for (let surface in layout.Surfaces)
 		{
-			let panel = dock.GetPanelAt(i);
-			if ((panel == null) || panel.IsPendingDeletion || IsDocked(dock, panel))
-				continue;
-			if (panel.Parent is DockableWindow)
-				floating.Add(PanelJson(panel));
-			else
-				hidden.Add(PanelJson(panel)); // a tool panel closed for now
+			if (surface.Kind == .Floating)
+				CollectPanels(dock, surface.Root, floating);
 		}
-		outResult.Set("root", NodeJson(dock.RootNode));
+		// Hidden: closed with their place kept, and registered panels the layout never placed.
+		let hidden = JsonValue.MakeArray();
+		for (let closed in layout.Hidden)
+			hidden.Add(PanelJson(dock, closed.Panel));
+		for (let description in dock.Panels)
+		{
+			if ((layout.StackOf(description.Id) == cNoDock) && (layout.FindHidden(description.Id) == null))
+				hidden.Add(PanelJson(dock, description.Id));
+		}
+		let main = layout.FindSurface(layout.MainSurface);
+		outResult.Set("root", (main != null) ? NodeJson(dock, main.Root) : JsonValue.MakeNull());
 		outResult.Set("floating", floating);
 		outResult.Set("hidden", hidden);
 	}
 
-	private static JsonValue PanelJson(DockablePanel panel)
+	/// {panel, title}: the registered title, else the id (a panel the layout places unregistered).
+	private static JsonValue PanelJson(DockController dock, StringView panel)
 	{
+		let description = dock.Describe(panel);
+		StringView title = panel;
+		if ((description != null) && !description.Title.IsEmpty)
+			title = description.Title;
 		let json = JsonValue.MakeObject();
-		json.Set("panel", JsonValue.MakeString(panel.PersistenceId));
-		json.Set("title", JsonValue.MakeString(panel.Title));
+		json.Set("panel", JsonValue.MakeString(panel));
+		json.Set("title", JsonValue.MakeString(title));
 		return json;
 	}
 
-	/// A node of the dock tree: a split with its two sides, or a tab group with its panels (a
-	/// lone panel at the root reads as a group of one).
-	private static JsonValue NodeJson(View node)
+	/// A node of the dock tree: a split with its children and their weights, or a stack of tabs.
+	private static JsonValue NodeJson(DockController dock, DockNodeId id)
 	{
-		if (let split = node as DockSplit)
-		{
-			let json = JsonValue.MakeObject();
-			json.Set("split", JsonValue.MakeString((split.Orientation == .Horizontal) ? "horizontal" : "vertical"));
-			json.Set("share", JsonValue.MakeNumber(split.SplitRatio));
-			json.Set("first", NodeJson(split.First));
-			json.Set("second", NodeJson(split.Second));
-			return json;
-		}
-		if (let group = node as DockTabGroup)
+		let node = dock.Layout.FindNode(id);
+		if (node == null)
+			return JsonValue.MakeNull();
+		let json = JsonValue.MakeObject();
+		if (node.IsStack)
 		{
 			let tabs = JsonValue.MakeArray();
-			for (int32 i < group.PanelCount)
-				tabs.Add(PanelJson(group.GetPanel(i)));
-			let json = JsonValue.MakeObject();
+			for (let panel in node.Panels)
+				tabs.Add(PanelJson(dock, panel));
 			json.Set("tabs", tabs);
-			if (let active = group.SelectedPanel)
-				json.Set("active", JsonValue.MakeString(active.PersistenceId));
+			if (!node.Panels.IsEmpty)
+				json.Set("active", JsonValue.MakeString(node.Panels[Math.Min((int)node.Active, node.Panels.Count - 1)]));
 			return json;
 		}
-		if (let panel = node as DockablePanel)
+		json.Set("split", JsonValue.MakeString((node.Axis == .Horizontal) ? "horizontal" : "vertical"));
+		let children = JsonValue.MakeArray();
+		let weights = JsonValue.MakeArray();
+		for (int i < node.Children.Count)
 		{
-			let tabs = JsonValue.MakeArray();
-			tabs.Add(PanelJson(panel));
-			let json = JsonValue.MakeObject();
-			json.Set("tabs", tabs);
-			json.Set("active", JsonValue.MakeString(panel.PersistenceId));
-			return json;
+			children.Add(NodeJson(dock, node.Children[i]));
+			weights.Add(JsonValue.MakeNumber((i < node.Weights.Count) ? node.Weights[i] : 0.0f));
 		}
-		return JsonValue.MakeNull();
+		json.Set("children", children);
+		json.Set("weights", weights);
+		return json;
+	}
+
+	/// Every panel under `id`, in the tree's order, into `into`.
+	private static void CollectPanels(DockController dock, DockNodeId id, JsonValue into)
+	{
+		let node = dock.Layout.FindNode(id);
+		if (node == null)
+			return;
+		if (node.IsStack)
+		{
+			for (let panel in node.Panels)
+				into.Add(PanelJson(dock, panel));
+			return;
+		}
+		for (let child in node.Children)
+			CollectPanels(dock, child, into);
 	}
 }

@@ -16,10 +16,12 @@ one writer), so an agent can work on what the user is looking at. Tell them apar
 long tools (a cook) keep the call open until the editor's own background service finishes:
 give the client a generous timeout rather than polling. The editor adds the page tools
 (`page_list`, `page_open`, `page_reload`, `page_close`), the layout tools (`layout_get`, the
-dock's tree of splits and tab groups with every panel by id: a page's asset guid, a Game tab's PIE
-id, `welcome` for Project, `assets`, `console`, `profiler`; `panel_dock`, which moves a panel
-beside another, into its tabs or floating, as dragging its tab does, `share` setting its part of
-the split), the whole-window capture
+dock's tree: a split is `{split, children, weights}` with any number of children, each weight its
+child's share, and a stack is `{tabs, active}`, every panel by id: a page's asset guid, a Game
+tab's PIE id, `welcome` for Project, `assets`, `console`, `profiler`, with the `floating` and
+`hidden` panels listed apart; `panel_dock`, which moves a panel beside another, into its tabs,
+along the window's edge or floating, as dragging its tab does, `share` setting its part of the
+room it splits), the whole-window capture
 (`editor_screenshot`), the action bridge (`action_list`,
 `action_state`, `action_execute`: everything a user can do by menu, chord, toolbar or context
 menu, over the active page, executed unattended; a dialog an action would open is closed as
