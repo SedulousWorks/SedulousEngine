@@ -80,4 +80,38 @@ class CssCascadeTests
 
 		Test.Assert(NodeFixtures.Near(w.Box.BackgroundColor.B, 1.0f)); // var(--bg) -> #0000ff -> blue
 	}
+
+	[Test]
+	public static void AChildWithNoVariablesOfItsOwnSharesItsParentsAndAWriteCopiesThem()
+	{
+		let parent = scope ResolvedStyle();
+		parent.Set("--accent", "red");
+		parent.Set("--space", "4px");
+		parent.Set("opacity", "0.5");
+
+		// Nothing of its own: the same set, not a copy (a theme's hundreds of tokens per node).
+		let child = scope ResolvedStyle();
+		child.Set("opacity", "1");
+		child.InheritCustomProperties(parent);
+		Test.Assert(child.Customs === parent.Customs);
+		Test.Assert(child.Count == 3); // opacity and the two variables
+		Test.Assert(child.Get("--accent") == "red");
+		Test.Assert(ResolvedStyle.SameCustomProperties(child, parent));
+
+		// A write of its own copies first: the parent keeps its value.
+		child.Set("--accent", "blue");
+		Test.Assert(child.Customs !== parent.Customs);
+		Test.Assert(child.Get("--accent") == "blue");
+		Test.Assert(child.Get("--space") == "4px");
+		Test.Assert(parent.Get("--accent") == "red");
+		Test.Assert(!ResolvedStyle.SameCustomProperties(child, parent));
+
+		// A child with variables of its own takes the parent's it lacks, its own winning.
+		let own = scope ResolvedStyle();
+		own.Set("--accent", "green");
+		own.InheritCustomProperties(parent);
+		Test.Assert(own.Get("--accent") == "green");
+		Test.Assert(own.Get("--space") == "4px");
+		Test.Assert(parent.Customs.Count == 2);
+	}
 }

@@ -597,21 +597,7 @@ class StyleManager
 		return false;
 	}
 
-	private static bool SameCustomProperties(ResolvedStyle a, ResolvedStyle b)
-	{
-		bool Contains(ResolvedStyle within, ResolvedProperty p) => (within.Get(p.Name) == p.Value) && within.Has(p.Name);
-		for (let p in a.Properties)
-		{
-			if (ResolvedStyle.IsCustomProperty(p.Name) && !Contains(b, p))
-				return false;
-		}
-		for (let p in b.Properties)
-		{
-			if (ResolvedStyle.IsCustomProperty(p.Name) && !Contains(a, p))
-				return false;
-		}
-		return true;
-	}
+	private static bool SameCustomProperties(ResolvedStyle a, ResolvedStyle b) => ResolvedStyle.SameCustomProperties(a, b);
 
 	// What applying `resolved` to `widget` needs: the length-resolution context (the viewport from
 	// the media context, the root font size configurable, the element's font size from its

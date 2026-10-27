@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using internal Sedulous.GUI;
 
 namespace Sedulous.GUI;
 
@@ -32,6 +33,137 @@ class ResolvedProperty
 	}
 }
 
+/// The custom properties an element sees (they inherit). One set is shared, unchanged, by an
+/// element and every element below it that sets none of its own, so a sheet's hundreds of tokens
+/// on :root are not copied into every element; an element that sets some gets a set of its own
+/// (its parent's with its own over them). Kept by name hash, so a var() finds its property
+/// without walking the list. A style holds a reference (ReleaseRef, never delete).
+class CustomProperties : RefCounted
+{
+	private struct Entry
+	{
+		public uint64 Hash;
+		public ResolvedProperty Property;
+
+		public this(uint64 hash, ResolvedProperty property)
+		{
+			Hash = hash;
+			Property = property;
+		}
+	}
+
+	private List<Entry> mEntries = new .() ~ DeleteEntries(_); // by hash
+
+	public this()
+	{
+	}
+
+	/// A copy of `from`, its own properties (what a write to a shared set starts from).
+	public this(CustomProperties from)
+	{
+		mEntries.Reserve(from.mEntries.Count);
+		for (let e in from.mEntries)
+		{
+			let copy = new ResolvedProperty();
+			copy.Set(e.Property);
+			mEntries.Add(.(e.Hash, copy));
+		}
+	}
+
+	/// `name`'s property, or null. Borrowed.
+	public ResolvedProperty Find(StringView name)
+	{
+		let hash = HashText(name);
+		for (int i = LowerBound(hash); (i < mEntries.Count) && (mEntries[i].Hash == hash); i++)
+		{
+			if (mEntries[i].Property.Name == name)
+				return mEntries[i].Property;
+		}
+		return null;
+	}
+
+	/// Sets `name` (an !important value resists a later normal one). Internal: a set handed out
+	/// may be shared, so only its style writes it, copying first.
+	internal void Put(StringView name, StringView value, bool important)
+	{
+		let hash = HashText(name);
+		let at = LowerBound(hash);
+		for (int k = at; (k < mEntries.Count) && (mEntries[k].Hash == hash); k++)
+		{
+			let p = mEntries[k].Property;
+			if (p.Name != name)
+				continue;
+			if (p.Important && !important)
+				return;
+			p.Value.Set(value);
+			p.Important = important;
+			return;
+		}
+		let added = new ResolvedProperty();
+		added.Name.Set(name);
+		added.Value.Set(value);
+		added.Important = important;
+		mEntries.Insert(at, Entry(hash, added));
+	}
+
+	/// Removes `name`. Internal, as Put is.
+	internal void Remove(StringView name)
+	{
+		let hash = HashText(name);
+		for (int i = LowerBound(hash); (i < mEntries.Count) && (mEntries[i].Hash == hash); i++)
+		{
+			if (mEntries[i].Property.Name == name)
+			{
+				delete mEntries[i].Property;
+				mEntries.RemoveAt(i);
+				return;
+			}
+		}
+	}
+
+	public int Count => mEntries.Count;
+
+	/// The property at `index` (in hash order). Borrowed.
+	public ResolvedProperty this[int index] => mEntries[index].Property;
+
+	/// The same names with the same values.
+	public bool SameAs(CustomProperties other)
+	{
+		if (mEntries.Count != other.mEntries.Count)
+			return false;
+		for (int i = 0; i < mEntries.Count; i++)
+		{
+			let a = mEntries[i];
+			let b = other.mEntries[i];
+			if ((a.Hash != b.Hash) || (a.Property.Name != b.Property.Name) || (a.Property.Value != b.Property.Value))
+				return false;
+		}
+		return true;
+	}
+
+	private int LowerBound(uint64 hash)
+	{
+		int lo = 0;
+		int hi = mEntries.Count;
+		while (lo < hi)
+		{
+			let mid = lo + (hi - lo) / 2;
+			if (mEntries[mid].Hash < hash)
+				lo = mid + 1;
+			else
+				hi = mid;
+		}
+		return lo;
+	}
+
+	private static void DeleteEntries(List<Entry> entries)
+	{
+		for (let e in entries)
+			delete e.Property;
+		delete entries;
+	}
+}
+
 /// The cascaded properties of one element: longhands, var() substituted and parsed.
 class ResolvedStyle
 {
@@ -41,7 +173,10 @@ class ResolvedStyle
 	// What a value that did not parse (or was not parsed) is set from.
 	private static StyleValue sNoValue = new .() ~ delete _;
 
-	private List<ResolvedProperty> mProps = new .() ~ DeleteContainerAndItems!(_);
+	private List<ResolvedProperty> mProps = new .() ~ DeleteContainerAndItems!(_); // but the custom ones
+	private CustomProperties mCustoms = null ~ _?.ReleaseRef(); // shared down the tree (copy on write)
+	private ResolvedProperty mCurrentColor = new .() ~ delete _; // currentColor's colour, which inherits
+	private bool mHasCurrentColor = false;
 	private bool mFinalized = true; // an empty style is settled
 
 	public void Set(ResolvedStyle other)
@@ -55,6 +190,9 @@ class ResolvedStyle
 			copy.Set(p);
 			mProps.Add(copy);
 		}
+		ShareCustoms(other.mCustoms); // shared, as the C++ copy shares its pointer
+		mCurrentColor.Set(other.mCurrentColor);
+		mHasCurrentColor = other.mHasCurrentColor;
 		mFinalized = other.mFinalized;
 	}
 
@@ -62,6 +200,8 @@ class ResolvedStyle
 	public void Clear()
 	{
 		ClearAndDeleteItems!(mProps);
+		ShareCustoms(null);
+		mHasCurrentColor = false;
 		mFinalized = true;
 	}
 
@@ -101,6 +241,14 @@ class ResolvedStyle
 
 	public void Remove(StringView name)
 	{
+		if (IsCustomProperty(name))
+		{
+			if (name == cCurrentColorProperty)
+				mHasCurrentColor = false;
+			else if ((mCustoms != null) && (mCustoms.Find(name) != null))
+				OwnCustoms().Remove(name);
+			return;
+		}
 		for (int i = 0; i < mProps.Count; i++)
 		{
 			if (mProps[i].Name == name)
@@ -185,8 +333,29 @@ class ResolvedStyle
 		return ((p != null) && (p.Typed.Kind != .None)) ? p.Typed : null;
 	}
 
-	public int Count => mProps.Count;
+	/// Every property it holds, its custom properties counted.
+	public int Count => mProps.Count + ((mCustoms != null) ? mCustoms.Count : 0) + (mHasCurrentColor ? 1 : 0);
+	/// Its properties but the custom ones (Customs has those).
 	public Span<ResolvedProperty> Properties => mProps;
+	/// Its custom properties (shared with the elements that set none of their own), or null.
+	/// Borrowed, and read only: a write goes through the style, which copies a shared set first.
+	public CustomProperties Customs => mCustoms;
+
+	/// The same custom properties as `other` (the same set shared: at once), and the same colour
+	/// for currentColor: what an element's children inherit from it.
+	public static bool SameCustomProperties(ResolvedStyle a, ResolvedStyle b)
+	{
+		if ((a.mHasCurrentColor != b.mHasCurrentColor) || (a.mHasCurrentColor && (a.mCurrentColor.Value != b.mCurrentColor.Value)))
+			return false;
+		if (a.mCustoms === b.mCustoms)
+			return true;
+		let sa = (a.mCustoms != null) ? a.mCustoms.Count : 0;
+		let sb = (b.mCustoms != null) ? b.mCustoms.Count : 0;
+		if (sa != sb)
+			return false;
+		return (sa == 0) || a.mCustoms.SameAs(b.mCustoms);
+	}
+
 	public bool IsFinalized => mFinalized;
 
 	/// Settles what Set left as written: substitutes var() anywhere in a value (its own custom
@@ -298,7 +467,7 @@ class ResolvedStyle
 	{
 		let resolved = scope String();
 		if (ResolveText("color", colorText, inherited, resolved))
-			Put(cCurrentColorProperty, resolved, null, false);
+			PutCurrentColor(resolved, null, false);
 	}
 
 	public static bool HasCurrentColor(StringView value)
@@ -343,17 +512,29 @@ class ResolvedStyle
 		return true;
 	}
 
-	/// This style's custom properties and `parent`'s it does not set (custom properties inherit).
+	/// This style's custom properties and `parent`'s it does not set (custom properties inherit):
+	/// sharing its set when it sets none of its own; else adding the parent's it does not set.
 	public void InheritCustomProperties(ResolvedStyle parent)
 	{
-		for (let p in parent.mProps)
+		if (!mHasCurrentColor && parent.mHasCurrentColor)
 		{
-			if (IsCustomProperty(p.Name) && (Find(p.Name) == null))
-			{
-				let copy = new ResolvedProperty();
-				copy.Set(p);
-				mProps.Add(copy);
-			}
+			mCurrentColor.Set(parent.mCurrentColor);
+			mHasCurrentColor = true;
+		}
+		if ((parent.mCustoms == null) || (parent.mCustoms.Count == 0))
+			return;
+		if ((mCustoms == null) || (mCustoms.Count == 0))
+		{
+			ShareCustoms(parent.mCustoms); // shared: nothing of its own
+			return;
+		}
+		let own = OwnCustoms();
+		let from = parent.mCustoms;
+		for (int i = 0; i < from.Count; i++)
+		{
+			let p = from[i];
+			if (own.Find(p.Name) == null)
+				own.Put(p.Name, p.Value, p.Important);
 		}
 	}
 
@@ -361,6 +542,12 @@ class ResolvedStyle
 
 	private ResolvedProperty Find(StringView name)
 	{
+		if (IsCustomProperty(name))
+		{
+			if (name == cCurrentColorProperty)
+				return mHasCurrentColor ? mCurrentColor : null;
+			return (mCustoms != null) ? mCustoms.Find(name) : null;
+		}
 		for (let p in mProps)
 		{
 			if (p.Name == name)
@@ -375,8 +562,50 @@ class ResolvedStyle
 		mProps.RemoveAt(i);
 	}
 
+	// Its own set to change: made, or copied when shared (copy on write).
+	private CustomProperties OwnCustoms()
+	{
+		if (mCustoms == null)
+			mCustoms = new .();
+		else if (mCustoms.RefCount > 1)
+		{
+			let copy = new CustomProperties(mCustoms);
+			mCustoms.ReleaseRef(); // still held by whoever shares it
+			mCustoms = copy;
+		}
+		return mCustoms;
+	}
+
+	// Holds `customs` (null: none) in place of its own set, the reference counted.
+	private void ShareCustoms(CustomProperties customs)
+	{
+		if (customs === mCustoms)
+			return;
+		customs?.AddRef();
+		mCustoms?.ReleaseRef();
+		mCustoms = customs;
+	}
+
+	// currentColor's colour, copied into the property Find hands out (a borrowed one stays alive).
+	private void PutCurrentColor(StringView value, StyleValue typed, bool important)
+	{
+		mCurrentColor.Name.Set(cCurrentColorProperty);
+		mCurrentColor.Value.Set(value);
+		mCurrentColor.Typed.Set(typed ?? sNoValue);
+		mCurrentColor.Important = important;
+		mHasCurrentColor = true;
+	}
+
 	private void Put(StringView name, StringView value, StyleValue typed, bool important)
 	{
+		if (IsCustomProperty(name))
+		{
+			if (name == cCurrentColorProperty)
+				PutCurrentColor(value, typed, important);
+			else
+				OwnCustoms().Put(name, value, important);
+			return;
+		}
 		for (let p in mProps)
 		{
 			if (p.Name != name)
