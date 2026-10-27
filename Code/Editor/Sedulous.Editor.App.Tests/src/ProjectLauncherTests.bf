@@ -2,21 +2,84 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
-using Sedulous.Image;
 using Sedulous.Image.IO;
 using Sedulous.Settings;
-using Sedulous.UI;
+using Sedulous.Shell;
+using Sedulous.GUI;
 using Sedulous.Xml.Serialization;
+using Sedulous.Engine.Project;
 using Sedulous.Editor.Project;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// The project launcher: the recent projects as a list or a grid (remembered), each by its
-/// picture (the thumbnail in its editor folder, an image chosen for it, or a placeholder with
-/// its initial), and each project's menu.
+/// The shell's dialogs as a test drives them: what Show in Folder was asked to show, and the one
+/// path a file or folder dialog answers (none: cancelled), at once as the null shell does.
+class LauncherDialogs : IDialogService
+{
+	public List<String> Shown = new .() ~ DeleteContainerAndItems!(_);
+	/// What the next file or folder dialog answers; empty cancels.
+	public String Answer = new .() ~ delete _;
+	public int Asked = 0;
+
+	public void ShowOpenFile(delegate void(Span<String>) callback, Span<FileFilter> filters, StringView defaultPath, bool allowMultiple,
+		uint32 parentWindowId) => Reply(callback);
+
+	public void ShowSaveFile(delegate void(Span<String>) callback, Span<FileFilter> filters, StringView defaultPath,
+		uint32 parentWindowId) => Reply(callback);
+
+	public void ShowOpenFolder(delegate void(Span<String>) callback, StringView defaultPath, bool allowMultiple,
+		uint32 parentWindowId) => Reply(callback);
+
+	public void OpenPath(StringView path)
+	{
+		Shown.Add(new String(path));
+	}
+
+	/// CONSUMES the callback, as the services do.
+	private void Reply(delegate void(Span<String>) callback)
+	{
+		Asked++;
+		defer delete callback;
+		if (Answer.IsEmpty)
+		{
+			callback(.());
+			return;
+		}
+		var answer = Answer;
+		callback(.(&answer, 1));
+	}
+}
+
+/// A clipboard of a string.
+class LauncherClipboard : IClipboard
+{
+	public String Held = new .() ~ delete _;
+
+	public bool HasText => !Held.IsEmpty;
+
+	public void GetText(String outText)
+	{
+		outText.Append(Held);
+	}
+
+	public void SetText(StringView text)
+	{
+		Held.Set(text);
+	}
+}
+
+/// The project manager over its markup (Data/Editor/ProjectManager.gml): the recent projects as a
+/// list or a grid (remembered), each by its picture (the thumbnail in its editor folder, an image
+/// chosen for it, or its initial), a missing one with no Open, each project's menu and what it
+/// runs, and New Project's dialog. Then what Sedulous adds so each behaviour has a test: a newer
+/// engine's project named in the warning colour, each menu item's action (Show in Folder, Copy
+/// Path, a thumbnail chosen and cleared), the menu a project's "more" button opens, the list taken
+/// back from the grid, and New Project's Browse and Cancel.
 class ProjectLauncherTests
 {
-	/// Two projects and one whose folder is gone, most recent first: First, Second, Gone.
+	/// Two projects and one whose folder is gone, most recent first: First, Second, Gone; the
+	/// manager in a GUI of its own, 1280 by 800.
 	private class Launcher
 	{
 		public String Root = new .() ~ delete _;
@@ -25,8 +88,13 @@ class ProjectLauncherTests
 		public String Gone = new .() ~ delete _;
 		public Settings Store = new .() ~ delete _;
 		public ProjectManagerController Controller ~ delete _;
-		public ProjectManagerView View ~ delete _;
+		public LauncherDialogs Dialogs = new .() ~ delete _;
+		public LauncherClipboard Clipboard = new .() ~ delete _;
+		public SceneRoot Scene;
+		public ProjectManagerView View;
 		public int Saves = 0;
+		public List<String> Opened = new .() ~ DeleteContainerAndItems!(_);
+		public List<String> Created = new .() ~ DeleteContainerAndItems!(_);
 
 		public this()
 		{
@@ -43,37 +111,132 @@ class ProjectLauncherTests
 			ProjectRegistry.TouchRecentProject(Store, Second, "Second", "0.1.0");
 			ProjectRegistry.TouchRecentProject(Store, First, "First", "0.1.0");
 			Controller = new .(Store);
-			View = new .();
-			View.OnStoreChanged = new () => { Saves++; };
-			View.Build(Controller, null, null, 1280, 800);
+
+			let context = new GUIContext();
+			Scene = new SceneRoot(context);
+			context.ReleaseRef(); // the root's keeps it
+			Scene.Size = .(1280.0f, 800.0f);
+			Scene.EventDispatcher.Clipboard = Clipboard;
+			let services = new ProjectManagerServices();
+			services.Controller = Controller;
+			services.Dialogs = Dialogs;
+			let launcher = this;
+			services.Open = new [=launcher] (path) => { launcher.Opened.Add(new String(path)); };
+			services.Create = new [=launcher] (directory, name) => { launcher.Created.Add(new String(directory)); };
+			services.StoreChanged = new [=launcher] () => { launcher.Saves++; };
+			services.LoadMarkup = new (path) => PagesBed.LoadMarkup(path);
+			View = new .(services, PagesBed.LoadMarkup(ProjectManagerView.cMarkupPath));
+			Test.Assert(View.Content != null);
+			Scene.AddChild(View.Content);
 		}
 
 		public ~this()
 		{
 			DeleteAndNullify!(View);
+			Scene.EventDispatcher.Clipboard = null;
+			Scene.ReleaseRef();
 			RemoveDirectoryRecursive(Root);
 		}
+
+		/// The GUI's next drain: what a click asked to happen later happens.
+		public void Drain() => Scene.MutationQueue.Drain();
+
+		/// The list the projects show in.
+		public Node Projects => View.Content.FindElement("manager-projects");
 
 		/// A small RGBA picture written as `name` under the scratch root.
 		public void WritePicture(StringView name, String outPath)
 		{
-			let picture = scope Image(16, 9, .RGBA8);
+			let picture = scope Sedulous.Image.Image(16, 9, .RGBA8);
 			PathJoin(Root, name, outPath);
 			Test.Assert(ImageIO.SaveImage(picture, outPath, .PNG) case .Ok);
 		}
 	}
 
+	/// The first button in `node`'s subtree showing `text`; null when none does.
+	public static Sedulous.GUI.Button ButtonText(Node node, StringView text)
+	{
+		if (let button = node as Sedulous.GUI.Button)
+		{
+			if (button.Text == text)
+				return button;
+		}
+		for (int i < node.ChildCount)
+		{
+			if (let found = ButtonText(node.GetChildAt(i), text))
+				return found;
+		}
+		return null;
+	}
+
+	/// The first widget in `node`'s subtree with the sheet's class `cls`; null when none has.
+	public static UIWidget WithClass(Node node, StringView cls)
+	{
+		if (let widget = node as UIWidget)
+		{
+			if (widget.HasClass(cls))
+				return widget;
+		}
+		for (int i < node.ChildCount)
+		{
+			if (let found = WithClass(node.GetChildAt(i), cls))
+				return found;
+		}
+		return null;
+	}
+
+	/// The text of the label with the sheet's class `cls` in `node`'s subtree.
+	public static StringView TextOf(Node node, StringView cls)
+	{
+		let label = WithClass(node, cls) as Sedulous.GUI.Label;
+		Test.Assert(label != null);
+		return label.Text;
+	}
+
+	/// The project manifest in `directory` stamped as saved by engine `version`: by a raw text
+	/// edit, since a save stamps this engine.
+	public static void Stamp(StringView directory, StringView version)
+	{
+		let probed = scope ProjectSettings();
+		Test.Assert(ProjectRegistry.ProbeProject(directory, probed) case .Ok);
+		Test.Assert(!probed.EngineVersion.IsEmpty);
+		let manifest = PathJoin(directory, ProjectLayout.ManifestFile, .. scope .());
+		let bytes = scope List<uint8>();
+		Test.Assert(ReadFile(manifest, bytes) case .Ok);
+		let text = scope String(StringView((char8*)bytes.Ptr, bytes.Count));
+		text.Replace(probed.EngineVersion, version);
+		Test.Assert(WriteFile(manifest, .((uint8*)text.Ptr, text.Length)) case .Ok);
+	}
+
 	[Test]
-	public static void TheProjectsShowAsAListOrAGridAndTheChoiceIsRemembered()
+	public static void TheProjectsShowAsAListOrAGridTheChoiceRememberedAMissingOneHasNoOpen()
 	{
 		let l = scope Launcher();
 		Test.Assert(!l.View.IsGridView);
-		Test.Assert(l.View.CardCount == 3);
-		Test.Assert(l.View.ThumbnailCount == 0, "no pictures yet: placeholders");
+		Test.Assert(l.View.ShownCount == 3);
+		Test.Assert(l.View.ThumbnailCount == 0, "no pictures yet: initials");
+		let list = l.Projects;
+		Test.Assert((list != null) && (list.ChildCount == 3));
+		// First, then Second, then Gone (most recent first); Gone missing: dimmed, no Open.
+		Test.Assert(ButtonText(list.GetChildAt(0), "Open") != null);
+		Test.Assert(ButtonText(list.GetChildAt(2), "Open") == null);
+		Test.Assert((list.GetChildAt(2) as UIWidget).HasClass("missing"));
+		Test.Assert(!(list.GetChildAt(0) as UIWidget).HasClass("missing"));
+		Test.Assert(TextOf(list.GetChildAt(2), "manager-name") == "Gone (missing)");
+		Test.Assert(TextOf(list.GetChildAt(0), "manager-name") == "First");
+		Test.Assert(ButtonText(list.GetChildAt(0), "Open").HandleActivate());
+		Test.Assert((l.Opened.Count == 1) && (l.Opened[0] == l.First));
 
-		l.View.SetGridView(true);
+		Test.Assert((l.View.Content.FindElement("manager-grid") as Sedulous.GUI.Button).HandleActivate());
+		l.Drain();
 		Test.Assert(l.View.IsGridView);
-		Test.Assert(l.View.CardCount == 3);
+		Test.Assert(l.View.ShownCount == 3);
+		Test.Assert((list as UIWidget).HasClass("grid"));
+		Test.Assert((list.GetChildAt(0) as UIWidget).HasClass("manager-tile"));
+		// A missing project's tile: dimmed, its picture opening nothing.
+		Test.Assert((list.GetChildAt(2) as UIWidget).HasClass("missing"));
+		Test.Assert(!(WithClass(list.GetChildAt(2), "link") as Sedulous.GUI.Button).Enabled);
+		Test.Assert((WithClass(list.GetChildAt(0), "link") as Sedulous.GUI.Button).Enabled);
 		Test.Assert(l.Saves == 1);
 		Test.Assert(l.Controller.Entries.GridView, "kept with the recent projects");
 		l.View.SetGridView(true);
@@ -89,17 +252,25 @@ class ProjectLauncherTests
 		Test.Assert(loaded.Load(buffer, factory) case .Ok);
 		Test.Assert(loaded.Find<RecentProjectsSettings>().GridView);
 		Test.Assert(loaded.Find<RecentProjectsSettings>().Entries.Count == 3);
+
+		// And back to the list.
+		Test.Assert((l.View.Content.FindElement("manager-list") as Sedulous.GUI.Button).HandleActivate());
+		l.Drain();
+		Test.Assert(!l.View.IsGridView);
+		Test.Assert(!(list as UIWidget).HasClass("grid"));
+		Test.Assert((list.GetChildAt(0) as UIWidget).HasClass("manager-row"));
+		Test.Assert(l.Saves == 2);
 	}
 
 	[Test]
-	public static void AProjectsPictureIsItsThumbnailAnImageChosenForItOrNone()
+	public static void AProjectsPictureIsItsThumbnailAnImageChosenForItOrItsInitial()
 	{
 		let l = scope Launcher();
 		// A captured thumbnail in the project's editor folder shows.
 		let captured = l.WritePicture("captured.png", .. scope .());
 		let thumbnail = EditorProject.ThumbnailPath(l.First, .. scope .());
 		CreateDirectory(PathParent(thumbnail, .. scope .()));
-		let picture = scope Image();
+		let picture = scope Sedulous.Image.Image();
 		Test.Assert(ImageIO.LoadImage(captured, picture) case .Ok);
 		Test.Assert(ImageIO.SaveImage(picture, thumbnail, .PNG) case .Ok);
 		l.View.Rebuild();
@@ -108,17 +279,19 @@ class ProjectLauncherTests
 		// An image chosen for the second project becomes its thumbnail.
 		let chosen = l.WritePicture("chosen.png", .. scope .());
 		Test.Assert(l.View.SetThumbnailFromImage(l.Second, chosen));
+		l.Drain();
 		Test.Assert(FileExists(EditorProject.ThumbnailPath(l.Second, .. scope .())));
 		Test.Assert(l.View.ThumbnailCount == 2);
 		Test.Assert(!l.View.SetThumbnailFromImage(l.Second, "/nowhere/at/all.png"));
+		Test.Assert(l.View.Status == "That image could not be read.");
 	}
 
 	[Test]
-	public static void EachProjectsMenuHoldsWhatAppliesToIt()
+	public static void EachProjectsMenuHoldsWhatAppliesToItRemoveFromListTakesItOffAndSaves()
 	{
 		let l = scope Launcher();
 		let items = scope List<StringView>();
-		l.View.MenuItemsFor(l.First, items);
+		ProjectManagerView.MenuItemsFor(l.First, items);
 		Test.Assert(items.Count == 5);
 		Test.Assert((items[0] == "Open") && (items[1] == "Show in Folder") && (items[2] == "Copy Path"));
 		Test.Assert((items[3] == "Choose Thumbnail Image...") && (items[4] == "Remove from List"));
@@ -126,58 +299,125 @@ class ProjectLauncherTests
 		// With a thumbnail, it can be cleared.
 		Test.Assert(l.View.SetThumbnailFromImage(l.First, l.WritePicture("p.png", .. scope .())));
 		items.Clear();
-		l.View.MenuItemsFor(l.First, items);
+		ProjectManagerView.MenuItemsFor(l.First, items);
 		Test.Assert(items[4] == "Clear Thumbnail");
 
 		// A missing project: only what still makes sense.
 		items.Clear();
-		l.View.MenuItemsFor(l.Gone, items);
+		ProjectManagerView.MenuItemsFor(l.Gone, items);
 		Test.Assert(items.Count == 3);
 		Test.Assert((items[0] == "Show in Folder") && (items[2] == "Remove from List"));
-	}
 
-	/// The tooltip's texts: its labels (name, detail, path), then its row of buttons.
-	private static void CollectTexts(View tip, List<String> outLabels, List<String> outButtons)
-	{
-		let group = tip as ViewGroup;
-		Test.Assert((group != null) && (group.ChildCount == 4));
-		for (int i < 3)
-			outLabels.Add(new String((group.GetChildAt(i) as Label).Text.Value));
-		let row = group.GetChildAt(3) as ViewGroup;
-		for (int i < row.ChildCount)
-			outButtons.Add(new String((row.GetChildAt(i) as Button).Text.Value));
+		l.Drain();
+		let before = l.Saves;
+		l.View.Run(l.Gone, "Remove from List");
+		l.Drain();
+		Test.Assert(l.Saves == before + 1);
+		Test.Assert(l.View.ShownCount == 2);
+		Test.Assert(l.Controller.Entries.Entries.Count == 2);
 	}
 
 	[Test]
-	public static void ATilesTooltipNamesTheProjectItsEngineAndItsPathWithItsActions()
+	public static void AProjectsMoreButtonOpensItsMenuAndEachItemDoesWhatItSays()
 	{
 		let l = scope Launcher();
+		l.Scene.UpdateLayout();
+		let list = l.Projects;
+		// The first row's "more": its five items; the missing one's: three.
+		Test.Assert((WithClass(list.GetChildAt(0), "slot-button") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert(l.View.OpenMenu != null);
+		Test.Assert(l.View.OpenMenu.ItemCount == 5);
+		Test.Assert((WithClass(list.GetChildAt(2), "slot-button") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert((l.View.OpenMenu != null) && (l.View.OpenMenu.ItemCount == 3));
+
+		l.View.Run(l.Second, "Open");
+		Test.Assert((l.Opened.Count == 1) && (l.Opened[0] == l.Second));
+		l.View.Run(l.Second, "Show in Folder");
+		Test.Assert((l.Dialogs.Shown.Count == 1) && (l.Dialogs.Shown[0] == l.Second));
+		l.View.Run(l.Second, "Copy Path");
+		Test.Assert(l.Clipboard.Held == l.Second);
+		Test.Assert(l.View.Status == "Copied the project's path.");
+
+		// A thumbnail chosen in the file dialog; cancelled, none.
+		l.View.Run(l.First, "Choose Thumbnail Image...");
+		Test.Assert(l.Dialogs.Asked == 1);
+		Test.Assert(!FileExists(EditorProject.ThumbnailPath(l.First, .. scope .())), "cancelled");
+		l.WritePicture("chosen.png", l.Dialogs.Answer);
+		l.View.Run(l.Second, "Choose Thumbnail Image...");
+		Test.Assert(FileExists(EditorProject.ThumbnailPath(l.Second, .. scope .())));
+		l.Drain();
+		Test.Assert(l.View.ThumbnailCount == 1);
+		l.View.Run(l.Second, "Clear Thumbnail");
+		Test.Assert(!FileExists(EditorProject.ThumbnailPath(l.Second, .. scope .())));
+		l.Drain();
+		Test.Assert(l.View.ThumbnailCount == 0);
+		Test.Assert(l.Saves == 0, "none of these changes the list");
+	}
+
+	[Test]
+	public static void AProjectANewerEngineSavedIsNamedSoInTheWarningColour()
+	{
+		let l = scope Launcher();
+		Stamp(l.First, scope $"{EngineVersion.Major + 1}.0.0");
+		l.View.Rebuild();
+		let list = l.Projects;
+		Test.Assert((list.GetChildAt(0) as UIWidget).HasClass("newer"));
+		Test.Assert(TextOf(list.GetChildAt(0), "manager-name") == "First (newer engine)");
+		Test.Assert(ButtonText(list.GetChildAt(0), "Open") != null, "it still opens (the application asks first)");
+		Test.Assert(!(list.GetChildAt(1) as UIWidget).HasClass("newer"));
+		Test.Assert(!(list.GetChildAt(2) as UIWidget).HasClass("newer"), "a missing one is not probed newer");
+
 		l.View.SetGridView(true);
-		let labels = scope List<String>();
-		let buttons = scope List<String>();
-		defer { ClearAndDeleteItems(labels); ClearAndDeleteItems(buttons); }
-		var tip = l.View.TileTooltipFor(l.First);
-		Test.Assert(tip != null);
-		CollectTexts(tip, labels, buttons);
-		tip.ReleaseRef();
-		Test.Assert(labels.Count == 3);
-		Test.Assert(labels[0] == "First");
-		Test.Assert(labels[1].StartsWith("Engine "));
-		Test.Assert(labels[2] == l.First);
-		Test.Assert(buttons.Count == 3);
-		Test.Assert((buttons[0] == "Open") && (buttons[1] == "Show in Folder") && (buttons[2] == "Copy Path"));
+		l.Drain();
+		Test.Assert((list.GetChildAt(0) as UIWidget).HasClass("newer"));
+		Test.Assert(TextOf(list.GetChildAt(0), "manager-path") == scope $"{EngineVersion.Major + 1}.0.0, newer engine");
+		Test.Assert(TextOf(list.GetChildAt(2), "manager-path") == "0.1.0, missing");
+	}
 
-		// A missing project: no Open, and the tooltip says why.
-		ClearAndDeleteItems(labels);
-		ClearAndDeleteItems(buttons);
-		tip = l.View.TileTooltipFor(l.Gone);
-		Test.Assert(tip != null);
-		CollectTexts(tip, labels, buttons);
-		tip.ReleaseRef();
-		Test.Assert(labels[1].StartsWith("Missing"));
-		Test.Assert((buttons.Count == 2) && (buttons[0] == "Show in Folder"));
+	[Test]
+	public static void NewProjectWaitsForANameAndAFolderThenMakesItInAFolderOfItsName()
+	{
+		let l = scope Launcher();
+		l.View.ShowCreateDialog();
+		l.Scene.UpdateLayout();
+		var dialog = l.View.CreateDialog;
+		Test.Assert(dialog != null);
+		var name = dialog.FindElement("new-project-name") as Sedulous.GUI.TextField;
+		var parent = dialog.FindElement("new-project-parent") as Sedulous.GUI.TextField;
+		var create = dialog.FindElement("new-project-create") as Sedulous.GUI.Button;
+		var target = dialog.FindElement("new-project-where") as Sedulous.GUI.Label;
+		Test.Assert((name != null) && (parent != null) && (create != null) && (target != null));
+		Test.Assert(!create.Enabled);
+		let d = l.Scene.EventDispatcher;
+		name.RequestFocus();
+		d.InjectText("Harbour");
+		Test.Assert(!create.Enabled, "no folder yet");
+		Test.Assert(target.Text.IsEmpty);
+		parent.RequestFocus();
+		d.InjectText(l.Root);
+		Test.Assert(create.Enabled);
+		let expected = PathJoin(l.Root, "Harbour", .. scope .());
+		Test.Assert(target.Text == expected);
+		Test.Assert(create.HandleActivate());
+		Test.Assert(l.View.CreateDialog == null);
+		Test.Assert((l.Created.Count == 1) && (l.Created[0] == expected));
 
-		// Not a project the launcher shows: no tooltip.
-		Test.Assert(l.View.TileTooltipFor("/nowhere") == null);
+		// Browse fills the folder; Cancel makes nothing.
+		l.View.ShowCreateDialog();
+		l.Scene.UpdateLayout();
+		dialog = l.View.CreateDialog;
+		Test.Assert(dialog != null);
+		name = dialog.FindElement("new-project-name") as Sedulous.GUI.TextField;
+		parent = dialog.FindElement("new-project-parent") as Sedulous.GUI.TextField;
+		create = dialog.FindElement("new-project-create") as Sedulous.GUI.Button;
+		name.RequestFocus();
+		d.InjectText("Quay");
+		l.Dialogs.Answer.Set(l.Second);
+		Test.Assert((dialog.FindElement("new-project-browse") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert(parent.Text == l.Second);
+		Test.Assert(create.Enabled);
+		Test.Assert((dialog.FindElement("new-project-cancel") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert(l.View.CreateDialog == null);
+		Test.Assert(l.Created.Count == 1, "Cancel makes nothing");
 	}
 }

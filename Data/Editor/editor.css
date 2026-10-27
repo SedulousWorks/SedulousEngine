@@ -64,6 +64,37 @@ button.link:hover { background-color: var(--ghost-hover); }
 .project-initial > label { color: var(--text-dim); font-size: 40px; }
 .home-picture { width: 192px; height: 108px; }
 
+/* The project manager: a centred column over the whole window. */
+.manager { flex-grow: 1; flex-direction: column; align-items: center; background-color: var(--surface); }
+.manager-column { flex-direction: column; row-gap: var(--space-l); width: 720px; flex-grow: 1; min-height: 0;
+                  padding: calc(2 * var(--space-xl)) 0 var(--space-xl); }
+.manager-header { flex-direction: row; align-items: end; column-gap: var(--space-l); }
+.manager-logo { height: 44px; }
+.manager-actions { flex-direction: row; column-gap: var(--space-m); }
+.manager-list-head { flex-direction: row; align-items: center; }
+.manager-status { color: var(--warning); }
+.manager-scroll { flex-grow: 1; min-height: 0; }
+.manager-projects { flex-direction: column; row-gap: var(--space-s); width: 704px; } /* the column less the scroll bar: a scroller's content takes its own width */
+.manager-projects.grid { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-m); row-gap: var(--space-m); }
+.manager-row { flex-direction: row; align-items: center; column-gap: var(--space-l); padding: var(--space-s) var(--space-m);
+               background-color: var(--element); border-radius: var(--radius); }
+.manager-row.missing > .manager-text { opacity: 0.5; }
+.manager-text { flex-direction: column; row-gap: var(--space-xs); flex-grow: 1; flex-basis: 0; min-width: 0; }
+.manager-name { color: var(--text-strong); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.manager-row.newer .manager-name, .manager-tile.newer .manager-name { color: var(--warning); }
+.manager-path { color: var(--text-dim); font-size: var(--font-small); text-overflow: ellipsis; white-space: nowrap; }
+.manager-version { color: var(--text-dim); font-size: var(--font-small); width: 56px; text-align: end; flex-shrink: 0; }
+.manager-row-picture { width: 76px; height: 43px; }
+.manager-tile { flex-direction: column; row-gap: var(--space-xs); width: 220px; padding: var(--space-s); background-color: var(--element);
+                border-radius: var(--radius); }
+.manager-tile.missing { opacity: 0.6; }
+.manager-tile-picture { width: 204px; height: 115px; }
+.manager-tile-foot { flex-direction: row; align-items: center; }
+.manager-empty { color: var(--text-dim); padding: var(--space-l) var(--space-xs); white-space: normal; }
+.new-project { flex-direction: column; row-gap: var(--space-m); }
+.new-project-folder { flex-direction: row; column-gap: var(--space-s); }
+.new-project-folder > textfield { flex-grow: 1; min-width: 0; }
+
 /* === Tabs: a compact strip, its text centred === */
 /* A tab view's strip is on top: a tab rounds its top corners and meets its page square. */
 tab { height: var(--tab); padding: 0 var(--space-l); align-items: center;

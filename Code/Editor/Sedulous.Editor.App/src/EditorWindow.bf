@@ -139,6 +139,9 @@ class EditorWindow
 	private SceneRoot mRoot = null ~ _?.ReleaseRef();
 	private Node mFrame = null ~ _?.ReleaseRef();
 	private ToastHost mToasts = null ~ _?.ReleaseRef();
+	/// Over the window in place of the frame while shown (the project manager): a reference of
+	/// ours, the tree holding its own.
+	private Node mScreen = null ~ _?.ReleaseRef();
 	/// Over the frame's items: it goes before the frame.
 	private EditorStatusBar mStatus = null ~ delete _;
 	/// The sheet again when the editor's files change.
@@ -301,6 +304,28 @@ class EditorWindow
 	/// window's.
 	public EditorStatusBar StatusBar => mStatus;
 
+	/// A screen over the whole window in place of the frame (the project manager); null puts the
+	/// frame back. The window takes a reference of its own. Nothing with no interface.
+	public void ShowScreen(Node screen)
+	{
+		if ((mRoot == null) || (mFrame == null))
+			return;
+		if (screen != null)
+			screen.AddRef(); // first: the screen shown again is not let go below
+		if (mScreen != null)
+		{
+			mScreen.RemoveFromParent();
+			mScreen.ReleaseRef();
+		}
+		mScreen = screen;
+		mFrame.Displayed = mScreen == null;
+		if (mScreen != null)
+			mRoot.AddChild(mScreen);
+	}
+
+	/// A screen shows in place of the frame.
+	public bool ShowsScreen => mScreen != null;
+
 	/// A frame's node by its id (the dock's host, the status bar's items); null when none is.
 	/// The tree's.
 	public Node FindById(StringView id) => (mFrame != null) ? mFrame.FindElement(id) : null;
@@ -335,6 +360,11 @@ class EditorWindow
 		DeleteAndNullify!(mReload);
 		if ((mHost != null) && (mWindow != null))
 			mHost.DetachWindow(mWindow);
+		if (mScreen != null)
+		{
+			mScreen.ReleaseRef();
+			mScreen = null;
+		}
 		if (mToasts != null)
 		{
 			mToasts.ReleaseRef();

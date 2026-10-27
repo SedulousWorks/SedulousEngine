@@ -15,6 +15,8 @@ namespace Sedulous.Editor.App.Tests;
 /// (export, the MCP host, the editor-wide actions), once however often asked: the actions
 /// registered are the ones this lifecycle can run, Exit reaching the host, Reset Layout the dock
 /// and the cooks, the Game tab and Save off with no project; they stop in the order shutdown needs, leaving no project and no MCP host.
+/// Close Project is offered only when the project manager launched the editor, and with no window
+/// the manager never shows.
 ///
 /// Not here: a project opened through the application, since the session then saves the user's
 /// editor.settings.xml (EditorSessionTests drive the session over services of their own); the
@@ -41,7 +43,8 @@ static class EditorApplicationTests
 	private static StringView[16] sRegistered = .("file.save", "file.saveAs", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
 		"edit.preferences", "project.reportResourceMemory", "build.cookAll", "build.rebuildAll", "game.play",
 		"game.playNewInstance", "view.resetLayout", "view.screenshot", "view.commandPalette", "help.about");
-	/// The ones a later layer brings: no hook yet, so not registered.
+	/// The ones a later layer brings: no hook yet, so not registered. Close Project is here because
+	/// a project given on the command line keeps its one project.
 	private static StringView[7] sLeftOut = .("file.saveLayout", "file.closeProject",
 		"edit.exportTemplates", "project.settings", "project.export", "view.profiler", "profiler.record");
 
@@ -122,6 +125,28 @@ static class EditorApplicationTests
 		Test.Assert(layout.StackOf(EditorDock.cPanelProject) == layout.CentralStack);
 		Test.Assert(layout.StackOf(EditorDock.cPanelConsole) != cNoDock);
 		app.OnShutdown(host);
+	}
+
+	[Test]
+	public static void CloseProjectIsOfferedOnlyWhenTheManagerLaunchedTheEditor()
+	{
+		let host = scope HeadlessHost();
+		let config = new EditorAppConfig();
+		config.StartInProjectManager = true;
+		let app = scope EditorApplication(config);
+		app.OnStartup(host); // no window: the manager never shows
+		app.StartParts();
+		Test.Assert(app.ManagerMode != null);
+		Test.Assert(app.ManagerMode.View == null);
+		let actions = app.Context.Actions;
+		Test.Assert(actions.Find("file.closeProject") != null);
+		// With no project it closes nothing and asks nothing.
+		Test.Assert(actions.Execute("file.closeProject") case .Ok);
+		Test.Assert(app.Project == null);
+		Test.Assert(app.ManagerMode.View == null);
+		app.OnShutdown(host);
+		Test.Assert(app.ManagerMode == null, "it goes with the window");
+		Test.Assert(actions.Execute("file.closeProject") case .Ok, "shut down: nothing to reach");
 	}
 
 	[Test]

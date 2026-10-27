@@ -25,7 +25,8 @@ namespace Sedulous.Editor.App;
 /// 5.1, layer 3): it configures the engine, starts its parts in order, hands each frame to them
 /// and shuts them down. The parts are their own files: the window and its GUI (EditorWindow), its
 /// dock (EditorDock), the pages in it (EditorPages), its menu bar (ActionMenuBar) and keys (ActionShortcuts), the open project (EditorSession), export
-/// (EditorExport), asset creation (EditorAssetCreation), the MCP host (EditorMcpService) and the
+/// (EditorExport), asset creation (EditorAssetCreation), the MCP host (EditorMcpService), the
+/// project manager over the window while no project is open (ProjectManagerMode) and the
 /// editor-wide actions (EditorAppActions). Underneath are the EditorContext and the services from Editor.Core and
 /// Editor.Project, and the EMBEDDED runtime every scene, preview and Game tab is hosted in: the
 /// same DefaultApplication the player runs.
@@ -91,6 +92,9 @@ class EditorApplication : IApplication
 	private EditorMcpService mMcp = null ~ delete _;
 	/// The open project: after the parts its hooks reach, so it closes first.
 	private EditorSession mSession ~ delete _;
+	/// The project manager while no project is open: after the session and the pages it reaches,
+	/// so it goes first.
+	private ProjectManagerMode mManagerMode ~ delete _;
 
 	/// Screenshots of the editor's windows: --screenshot, editor_screenshot, View > Screenshot.
 	private EditorWindowCapture mWindowCapture = new .() ~ delete _;
@@ -115,6 +119,7 @@ class EditorApplication : IApplication
 		mPages = new EditorPages(PagesServices());
 		mCreation = new EditorAssetCreation(CreationServices());
 		mSession = new EditorSession(SessionServices());
+		mManagerMode = new ProjectManagerMode(ManagerModeServices());
 	}
 
 	public EditorContext Context => mContext;
@@ -135,6 +140,8 @@ class EditorApplication : IApplication
 	public EditorPages Pages => mPages;
 	public EditorAssetCreation AssetCreation => mCreation;
 	public EditorSession Session => mSession;
+	/// The project manager's part; null once shut down.
+	public ProjectManagerMode ManagerMode => mManagerMode;
 	/// Null until StartParts.
 	public EditorExport Export => mExport;
 	/// Null until StartParts.
@@ -262,6 +269,22 @@ class EditorApplication : IApplication
 		return services;
 	}
 
+	/// The project manager over the main window: its dialogs the shell's, the user's settings saved
+	/// as its list changes.
+	private ProjectManagerModeServices ManagerModeServices()
+	{
+		let services = new ProjectManagerModeServices();
+		services.Projects = mProjectManager;
+		services.Session = mSession;
+		services.Pages = mPages;
+		services.Root = new () => mWindow.Root;
+		services.Dialogs = new () => ((mHost != null) && (mHost.Shell != null)) ? mHost.Shell.Dialogs : null;
+		services.ShowScreen = new (screen) => { mWindow.ShowScreen(screen); };
+		services.LoadMarkup = new (path) => mWindow.LoadMarkup(path);
+		services.StoreChanged = new () => { EditorSettingsStore.SaveToUserData(mEditorSettings).IgnoreError(); };
+		return services;
+	}
+
 	public void Configure(IApplicationHost host)
 	{
 		if (mConfig.ConfigureEngine != null)
@@ -349,8 +372,8 @@ class EditorApplication : IApplication
 
 		if (mConfig.StartInProjectManager)
 		{
-			// The project manager comes back with its port (layer 13).
-			mContext.SetStatus("No project: pass one on the command line (the project manager is not on the GUI yet).");
+			ReportStartup("Opening the project manager", 0.80f);
+			mManagerMode.Enter();
 		}
 		else
 		{
@@ -566,8 +589,8 @@ class EditorApplication : IApplication
 	}
 
 	/// The editor-wide actions this lifecycle can run. What a later layer brings (saving the
-	/// layout, Close Project, the dialogs, the profiler) is given no hook here, so its action stays
-	/// out until it can run.
+	/// layout, the dialogs, the profiler) is given no hook here, so its action stays out until it
+	/// can run.
 	private void RegisterActions()
 	{
 		let actions = mContext.Actions;
@@ -576,6 +599,16 @@ class EditorApplication : IApplication
 		file.Save = new (page) => { mPages.Save(page); };
 		file.SaveAs = new (page) => { mPages.SaveAs(page); };
 		file.Exit = new () => { ConfirmExit(); };
+		// Back to the project manager: only when it launched the editor (a project given on the
+		// command line keeps its one project; Exit is the way out).
+		if (mConfig.StartInProjectManager)
+		{
+			file.CloseProject = new () =>
+				{
+					if (mManagerMode != null)
+						mManagerMode.CloseProject();
+				};
+		}
 		EditorAppActions.RegisterFileActions(actions, file);
 		let edit = new EditActions();
 		edit.Preferences = new () => { OpenPreferences(); };
@@ -813,6 +846,7 @@ class EditorApplication : IApplication
 			mRuntimeContext.Shutdown();
 		}
 		DeleteAndNullify!(mPreferences); // closed (the look back, unsaved), while the window is there
+		DeleteAndNullify!(mManagerMode); // its dialogs closed, while the window is there
 		DeleteAndNullify!(mPalette); // closed, while the window's root is there
 		DeleteAndNullify!(mMenus); // the bar left empty while the window's tree holds it
 		DeleteAndNullify!(mShortcuts); // its keys and the root's handlers, while both are there
