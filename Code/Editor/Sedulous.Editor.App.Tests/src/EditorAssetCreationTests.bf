@@ -30,7 +30,8 @@ class CreatedThingBuilder : IAssetBuilder
 /// EditorAssetCreation: a create with no project, or one its creator cannot write, says so
 /// and opens nothing; one that writes its asset opens its page, says the row exists, and a
 /// scene becomes the project's default (saved) when it has none; a create during a cook waits
-/// for it; a type a builder cooks is cooked at once.
+/// for it; a type a builder cooks is cooked at once. File > New lists the creators, a category
+/// a submenu.
 class EditorAssetCreationTests
 {
 	/// The services a creation runs on, over the real cook service; the notices land in Said,
@@ -263,5 +264,42 @@ class EditorAssetCreationTests
 		Test.Assert(!bench.Cook.IsIdle);
 		bench.PumpUntilIdle();
 		Test.Assert(bench.Cook.Revision == 1);
+	}
+
+	/// File > New, which leads the menu bar's File menu: an item per creator with no category,
+	/// "New <label>" in registration order, then a submenu per category, by name, holding its
+	/// creators in registration order; each item creates with its own creator.
+	[Test]
+	public static void FileNewHasAnItemPerCreatorAndASubmenuPerCategoryByName()
+	{
+		let bench = scope Bench();
+		bench.OpenProject("scratch_editor_asset_creation_file_new");
+		// None writes, so each create says which creator ran.
+		let creators = bench.Context.Creators;
+		creators.Register(new AssetCreator("Scene", "", typeof(CreatedThing), new (at) => null, true));
+		creators.Register(new AssetCreator("Cube", "Primitives", typeof(CreatedThing), new (at) => null));
+		creators.Register(new AssetCreator("Material", "", typeof(CreatedThing), new (at) => null));
+		creators.Register(new AssetCreator("Sphere", "Primitives", typeof(CreatedThing), new (at) => null));
+		creators.Register(new AssetCreator("Box", "Colliders", typeof(CreatedThing), new (at) => null));
+		let creation = scope EditorAssetCreation(bench.Services());
+		creation.SetProject(bench.Project);
+
+		let file = new Sedulous.GUI.Menu();
+		defer file.ReleaseRef();
+		creation.AddNewItems(file);
+		Test.Assert(MenuRows.Is(file, "New Scene|New Material|Colliders>|Primitives>"));
+		let primitives = MenuRows.SubMenuNamed(file, "Primitives");
+		Test.Assert(primitives != null);
+		Test.Assert(MenuRows.Is(primitives, "Cube|Sphere"));
+		let colliders = MenuRows.SubMenuNamed(file, "Colliders");
+		Test.Assert(colliders != null);
+		Test.Assert(MenuRows.Is(colliders, "Box"));
+
+		Test.Assert(MenuRows.ItemNamed(file, "New Material").HandleActivate());
+		Test.Assert(bench.Last == "Create failed: the Material could not be written.");
+		Test.Assert(MenuRows.ItemNamed(primitives, "Sphere").HandleActivate());
+		Test.Assert(bench.Last == "Create failed: the Sphere could not be written.");
+		Test.Assert(bench.Said.Count == 2);
+		Test.Assert(bench.Opened.IsEmpty);
 	}
 }

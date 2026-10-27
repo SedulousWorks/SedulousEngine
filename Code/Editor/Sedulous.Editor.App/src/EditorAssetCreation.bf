@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Sedulous.Core;
 using Sedulous.Content;
 using Sedulous.Pipeline.Core;
@@ -76,6 +77,35 @@ class EditorAssetCreation
 		AfterCreate(creator, instance);
 		if (mServices.OnOpenPage != null)
 			mServices.OnOpenPage(instance);
+	}
+
+	/// File > New <creator>: an item per creator of the context's registry, in registration
+	/// order, each creating and opening; a creator with a category goes in a submenu of that name
+	/// (the categories after the plain items, by name). The menu bar's File menu leads with these.
+	public void AddNewItems(Sedulous.GUI.Menu file)
+	{
+		let creators = mServices.Context.Creators;
+		let categories = scope List<StringView>();
+		for (let creator in creators)
+		{
+			if (creator.Category.IsEmpty)
+			{
+				file.AddItem(scope $"New {creator.Label}", new [=creator, =this]() => { CreateAndOpen(creator); });
+				continue;
+			}
+			if (!categories.Contains(creator.Category))
+				categories.Add(creator.Category);
+		}
+		categories.Sort(scope (a, b) => a <=> b);
+		for (let category in categories)
+		{
+			let submenu = file.AddSubMenu(category);
+			for (let creator in creators)
+			{
+				if (creator.Category == category)
+					submenu.AddItem(creator.Label, new [=creator, =this]() => { CreateAndOpen(creator); });
+			}
+		}
 	}
 
 	/// What follows every creation, File > New's and asset_create's alike: a first scene

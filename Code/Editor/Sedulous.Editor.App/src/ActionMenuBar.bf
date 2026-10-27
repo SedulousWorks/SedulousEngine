@@ -1,62 +1,109 @@
 using System;
 using System.Collections;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-/// The menu bar GENERATED from the action registry. Every action with a MenuPath ("File/Save",
-/// "Scene/Simulate/Play") lands in the menu its first segment names, the rest as nested
-/// submenus. The application declares its menus' order (SetMenuOrder: names, and "*" where
-/// every other menu goes), so a domain's menu (Scene), or an extension's, registered later still
-/// lands before Help; without a declaration, and for the menus "*" holds, the order their names
-/// first appear among the registrations (a menu holding only leading items after them); items
-/// order by MenuOrder with a separator between order bands
-/// (hundreds). A menu's items are rebuilt when it opens, so every item's enabled state is the
-/// registry's answer at that moment, and every item executes through the registry, the one
-/// funnel. A menu may carry LEADING items that are not actions, a list-driven set such as File >
-/// New <creator>, through AddLeadingItems; they come first, then a separator.
+/// The menu bar GENERATED from the action registry (Raptor's editor-gui spec, 5.1, layer 7).
+/// Every action with a MenuPath ("File/Save", "Scene/Simulate/Play") lands in the menu its first
+/// segment names, the rest as nested submenus. The application declares its menus' order
+/// (SetMenuOrder: names, and "*" where every other menu goes), so a domain's menu (Scene), or an
+/// extension's, registered later still lands before Help; without a declaration, and for the
+/// menus "*" holds, the order their names first appear among the registrations (a menu holding
+/// only leading items after them). Items order by MenuOrder, registration order breaking ties,
+/// with a separator between order bands (hundreds), each showing its effective chord. The bar is
+/// built again when the registry changes (a registration, a rebind); as a menu opens, its items'
+/// enabled and checked states are asked of the registry, so they are its answer at that moment;
+/// every item executes through the registry, the one funnel. A menu may carry LEADING items that
+/// are not actions, a list-driven set such as File > New <creator>, through AddLeadingItems; they
+/// come first, then a separator.
 class ActionMenuBar
 {
 	private class Leading
 	{
-		public String Menu = new .() ~ delete _;
+		/// The menu's title.
+		public String Title = new .() ~ delete _;
 		/// OWNED.
-		public delegate void(ContextMenu menu) Items ~ delete _;
+		public delegate void(Menu menu) Items ~ delete _;
 	}
 
-	/// BORROWED: the shell owns the bar, the context the registry; both outlive this.
+	/// An action's item, and the menu (or submenu) it is in. Borrowed: the bar's menus hold them.
+	private struct ActionItem
+	{
+		public Menu Holder;
+		public MenuItem Row;
+		/// The registry's.
+		public EditorActionDeclaration Action;
+
+		public this(Menu holder, MenuItem row, EditorActionDeclaration action)
+		{
+			Holder = holder;
+			Row = row;
+			Action = action;
+		}
+	}
+
+	/// A submenu made from a path segment, so the actions after it under the same segment find
+	/// it. Its title is a view of the declaration's MenuPath, which the registry keeps; the list
+	/// is made again with the bar.
+	private struct KnownSubMenu
+	{
+		public Menu Parent;
+		public StringView Title;
+		public Menu SubMenu;
+
+		public this(Menu parent, StringView title, Menu subMenu)
+		{
+			Parent = parent;
+			Title = title;
+			SubMenu = subMenu;
+		}
+	}
+
+	/// BORROWED: the window owns the bar, the context the registry; both outlive this.
 	private MenuBar mBar;
 	private EditorActionRegistry mActions;
-	/// Owned by the registry's event while subscribed; removed (and deleted) with this.
-	private delegate void() mOnActionsChanged;
 	private List<Leading> mLeading = new .() ~ DeleteContainerAndItems!(_);
 	/// SetMenuOrder: names, "*" for every other menu.
 	private List<String> mOrder = new .() ~ DeleteContainerAndItems!(_);
+	/// The action items of the bar as built.
+	private List<ActionItem> mItems = new .() ~ delete _;
+	private List<KnownSubMenu> mSubMenus = new .() ~ delete _;
+	/// The bar again when the registry changes.
+	private Effect mChanged = null ~ delete _;
 
 	public this(MenuBar bar, EditorActionRegistry actions)
 	{
 		mBar = bar;
 		mActions = actions;
-		mOnActionsChanged = new => Rebuild;
-		mActions.OnActionsChanged.Add(mOnActionsChanged);
-		Rebuild();
+		mChanged = new Effect(new () =>
+			{
+				mActions.TrackChanges();
+				// The registry is all it follows: what building the bar reads (its buttons' text)
+				// is not recorded, so only a registration or a rebind builds it again.
+				Observer.Untracked(scope () => { Rebuild(); });
+			});
 	}
 
+	/// The bar is left empty and the registry no longer reaches this.
 	public ~this()
 	{
-		mActions.OnActionsChanged.Remove(mOnActionsChanged, true);
-		// The menus' opening hooks capture this.
+		DeleteAndNullify!(mChanged);
+		// The menus' opening hooks capture this, and a menu may outlive the bar's reference.
+		for (int i < mBar.MenuCount)
+			mBar.MenuAt(i).SetOnOpening(null);
+		for (let known in mSubMenus)
+			known.SubMenu.SetOnOpening(null);
 		mBar.ClearMenus();
 	}
 
-	/// Items that are not actions, at the top of `menu` (created when absent): the list-driven
-	/// sets. TAKES OWNERSHIP of the delegate. Rebuilt with the menu.
-	public void AddLeadingItems(StringView menu, delegate void(ContextMenu menu) items)
+	/// Items that are not actions, at the top of `menu` (made when absent): the list-driven
+	/// sets. TAKES OWNERSHIP of the delegate. Made again with the bar.
+	public void AddLeadingItems(StringView menu, delegate void(Menu menu) items)
 	{
 		let entry = new Leading();
-		entry.Menu.Set(menu);
+		entry.Title.Set(menu);
 		entry.Items = items;
 		mLeading.Add(entry);
 		Rebuild();
@@ -73,10 +120,12 @@ class ActionMenuBar
 		Rebuild();
 	}
 
-	/// The whole bar from the registry: the menus and their current items.
+	/// The whole bar from the registry: the menus and their items.
 	public void Rebuild()
 	{
 		mBar.ClearMenus();
+		mItems.Clear();
+		mSubMenus.Clear();
 		// The menus there are, in the order their names first appear among the actions; a menu
 		// that holds only leading items comes after them.
 		let present = scope List<StringView>();
@@ -87,34 +136,44 @@ class ActionMenuBar
 		}
 		for (let leading in mLeading)
 		{
-			if (!present.Contains(leading.Menu))
-				present.Add(leading.Menu);
+			if (!present.Contains(leading.Title))
+				present.Add(leading.Title);
 		}
-		// Then laid out by the declared order.
+		// Then laid out by the declared order; a name declared twice is one menu.
+		let titles = scope List<StringView>();
 		bool restPlaced = false;
 		for (let entry in mOrder)
 		{
 			if (entry == "*")
 			{
-				PlaceUndeclared(present);
+				PlaceUndeclared(present, titles);
 				restPlaced = true;
 			}
-			else if (present.Contains(entry))
-				MenuFor(entry);
+			else if (present.Contains(entry) && !titles.Contains(entry))
+				titles.Add(entry);
 		}
 		if (!restPlaced)
-			PlaceUndeclared(present);
-		for (int i < mBar.MenuCount)
+			PlaceUndeclared(present, titles);
+		for (let title in titles)
+			Fill(title, mBar.AddMenu(title));
+	}
+
+	/// What each action item of `menu` shows that the registry answers at the moment: enabled,
+	/// and checked for a checkable one.
+	public void Refresh(Menu menu)
+	{
+		for (let item in mItems)
 		{
-			let menu = mBar.MenuAt(i);
-			let title = new String(mBar.MenuTitle(i));
-			menu.OnOpening = new [=this, =title](opening) => { Fill(title, opening); } ~ delete title;
-			Fill(title, menu);
+			if (item.Holder != menu)
+				continue;
+			item.Row.Enabled = mActions.IsEnabled(item.Action.Id);
+			if (item.Row.Checkable)
+				item.Row.SetCheckedSilently(mActions.IsChecked(item.Action.Id));
 		}
 	}
 
 	/// The present menus the declared order does not name, in the order they first appear.
-	private void PlaceUndeclared(List<StringView> present)
+	private void PlaceUndeclared(List<StringView> present, List<StringView> titles)
 	{
 		for (let name in present)
 		{
@@ -127,19 +186,18 @@ class ActionMenuBar
 					break;
 				}
 			}
-			if (!declared)
-				MenuFor(name);
+			if (!declared && !titles.Contains(name))
+				titles.Add(name);
 		}
 	}
 
-	/// The items of one top level menu, as the registry answers now.
-	public void Fill(StringView title, ContextMenu menu)
+	/// The items of one top level menu.
+	private void Fill(StringView title, Menu menu)
 	{
-		menu.ClearItems();
 		bool any = false;
 		for (let leading in mLeading)
 		{
-			if (leading.Menu == title)
+			if (leading.Title == title)
 			{
 				leading.Items(menu);
 				any = menu.ItemCount > 0;
@@ -167,6 +225,13 @@ class ActionMenuBar
 			first = false;
 			AddItem(menu, Rest(entry.action.MenuPath), entry.action);
 		}
+		Watch(menu);
+	}
+
+	/// As it opens, its items' states are the registry's answer.
+	private void Watch(Menu menu)
+	{
+		menu.SetOnOpening(new (opening) => { Refresh(opening); });
 	}
 
 	private static StringView TopLevel(StringView path)
@@ -181,41 +246,42 @@ class ActionMenuBar
 		return (slash >= 0) ? path.Substring(slash + 1) : StringView();
 	}
 
-	private ContextMenu MenuFor(StringView title)
-	{
-		for (int i < mBar.MenuCount)
-		{
-			if (mBar.MenuTitle(i) == title)
-				return mBar.MenuAt(i);
-		}
-		return mBar.AddMenu(title);
-	}
-
 	/// `path` is the part after the top level menu: "Save", or "Simulate/Play" (a submenu
-	/// "Simulate" holding "Play", found when present, created when not).
-	private void AddItem(ContextMenu menu, StringView path, EditorActionDeclaration action)
+	/// "Simulate" holding "Play", found when present, made when not).
+	private void AddItem(Menu menu, StringView path, EditorActionDeclaration action)
 	{
 		let head = TopLevel(path);
 		let tail = Rest(path);
 		if (tail.IsEmpty)
 		{
-			// Captures the registry, not this: the item outlives nothing it needs.
+			// Captures the registry, not this: the item needs nothing of the bar to run.
 			let registry = mActions;
-			menu.AddItem(head, new [=registry, =action]() => { registry.Execute(action.Id).IgnoreError(); }, mActions.IsEnabled(action.Id));
+			let item = menu.AddItem(head, new [=registry, =action]() => { registry.Execute(action.Id).IgnoreError(); });
+			item.Shortcut = mActions.Shortcut(action.Id).ToString(.. scope .());
+			if (action.Checked != null)
+			{
+				item.Checkable = true;
+				item.SetCheckedSilently(mActions.IsChecked(action.Id));
+			}
+			item.Enabled = mActions.IsEnabled(action.Id);
+			mItems.Add(.(menu, item, action));
 			return;
 		}
-		ContextMenu submenu = null;
-		for (int i < menu.ItemCount)
+		Menu submenu = null;
+		for (let known in mSubMenus)
 		{
-			let item = menu.ItemAt(i);
-			if ((item.Submenu != null) && (item.Label == head))
+			if ((known.Parent == menu) && (known.Title == head))
 			{
-				submenu = item.Submenu;
+				submenu = known.SubMenu;
 				break;
 			}
 		}
 		if (submenu == null)
-			submenu = menu.AddSubmenu(head).Submenu;
+		{
+			submenu = menu.AddSubMenu(head);
+			mSubMenus.Add(.(menu, head, submenu));
+			Watch(submenu);
+		}
 		AddItem(submenu, tail, action);
 	}
 }
