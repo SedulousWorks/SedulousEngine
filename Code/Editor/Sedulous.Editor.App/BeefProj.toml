@@ -181,10 +181,6 @@ Name = "PageToolbar.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "PathPickerDialog.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "ProfilerPanel.bf"
 
 [[ProjectFolder.Items]]

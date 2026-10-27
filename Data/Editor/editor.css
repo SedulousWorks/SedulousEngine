@@ -562,6 +562,9 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
                border-top-width: 1px; border-top-style: solid; border-top-color: var(--separator); }
 .picker-hint { font-size: var(--font-small); color: var(--text-placeholder); }
 .picker-empty { padding: var(--space-xl) var(--space-l); }
+/* The picker's own window: its rows a list of a fixed size, the empty state in the same room. */
+.picker-list { width: 400px; height: 300px; background-color: transparent; padding: 0 var(--space-s); }
+.picker > .state-box { width: 400px; height: 300px; }
 .save-as-error { color: var(--danger); }
 .preferences { flex-direction: column; flex-grow: 1; }
 .pref-tabs { flex-grow: 1; }

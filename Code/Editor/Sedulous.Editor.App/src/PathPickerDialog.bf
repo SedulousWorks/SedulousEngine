@@ -2,142 +2,67 @@ using System;
 using System.Collections;
 using Sedulous.Core.IO;
 using Sedulous.VFS;
-using Sedulous.UI;
 
 namespace Sedulous.Editor.App;
 
-/// The AssetPickerDialog's sibling for source files: a modal picker over the files under a
-/// project directory (typically the Sources root), constrained to a set of extensions.
-/// Bespoke pages whose assets reference a raw file (FontAsset.FileName) use this instead of
-/// a hand-typed string: the user can only pick paths that exist inside the project, so cooked
-/// references never dangle. The walk is recursive from the root and rows show root-relative
-/// paths; the ext filter is case-insensitive and empty means every file; the filter box
-/// matches a substring of the relative path; double-click or Select confirms, Cancel and
-/// Escape dismiss. The result is delivered through OnPicked before the dialog closes; Cancel
-/// fires nothing.
-class PathPickerDialog : Dialog
+// The path picker (Raptor's editor-gui spec, 5.2, layer 5): the picker over the files under a
+// folder whose extension is one of those asked (ignoring case; none asked: every file), so a field
+// that names a file can only name one that is there (a font's source, a profiler capture), and a
+// cooked reference never dangles. Each file is a row by its name, under its folder (root-relative),
+// sorted by path; its key is its root-relative path, with forward slashes. With none there it says
+// so, naming the extensions and the folder.
+
+/// The path picker's request: Picker opens it.
+static class PathPicker
 {
-	/// The pick result, a root-relative path. Fired once, before close. Owned.
-	public delegate void(StringView path) OnPicked ~ delete _;
-
-	private class RowAdapter : ListAdapterBase
+	/// The picker's request over the files under `root` with one of `extensions` (".ttf");
+	/// `current` the root-relative path the field names now. The caller's (Picker.Open takes it).
+	public static PickerRequest Request(StringView root, Span<StringView> extensions, StringView current = default)
 	{
-		private PathPickerDialog mOwner;
-
-		public this(PathPickerDialog owner) { mOwner = owner; }
-
-		public override int32 ItemCount => (int32)mOwner.mRows.Count;
-
-		public override View CreateView(int32 viewType)
+		let files = scope List<String>();
+		defer { ClearAndDeleteItems!(files); }
+		Files(root, extensions, files);
+		files.Sort(scope (a, b) => a.CompareTo(b));
+		let request = new PickerRequest();
+		request.Placeholder.Set("Search files");
+		request.Current.Set(current);
+		for (let file in files)
 		{
-			let row = new FlexLayout();
-			row.Padding = .(6, 2);
-			let label = new Label();
-			label.FontSize.Value = 12.0f;
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			row.AddView(label, grow);
-			return row;
+			let slash = file.LastIndexOf('/');
+			let nested = slash >= 0;
+			let item = request.Add(file,
+				nested ? StringView(file, slash + 1) : (StringView)file,
+				nested ? StringView(file, 0, slash) : default);
+			item.Glyph.Set("Editor/Icons/file.svg");
 		}
-
-		public override void BindView(View view, int32 position)
-		{
-			let row = view as FlexLayout;
-			if ((row == null) || (row.ChildCount == 0) || (position < 0) || (position >= mOwner.mRows.Count))
-				return;
-			let label = row.GetChildAt(0) as Label;
-			if (label == null)
-				return;
-			label.SetText(mOwner.mRows[position]);
-		}
-	}
-
-	// Borrowed: the content owns them.
-	private ListView mList;
-	private EditText mFilterEdit;
-	private RowAdapter mAdapter ~ delete _;
-	private List<String> mExtensions = new .() ~ DeleteContainerAndItems!(_);
-	/// Every match under the root, root-relative.
-	private List<String> mFiles = new .() ~ DeleteContainerAndItems!(_);
-	/// The filtered view of mFiles.
-	private List<String> mRows = new .() ~ DeleteContainerAndItems!(_);
-	private String mFilter = new .() ~ delete _;
-
-	public this(StringView title, StringView rootPath, Span<StringView> extensions) : base(title)
-	{
+		let kinds = scope String();
 		for (let ext in extensions)
-			mExtensions.Add(new String(ext));
-		MinWidth.Value = 460.0f;
-		MinHeight.Value = 340.0f;
-		MaxWidth.Value = 560.0f;
-		MaxHeight.Value = 420.0f;
-
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 6;
-
-		mFilterEdit = new EditText();
-		mFilterEdit.Placeholder.Value.Set("Filter...");
-		mFilterEdit.OnTextChanged.Add(new (edit) =>
-			{
-				mFilter.Set(edit.Text);
-				RebuildRows();
-			});
-		var match = LayoutStyle();
-		match.Width = SizeSpec.Match();
-		column.AddView(mFilterEdit, match);
-
-		mAdapter = new RowAdapter(this);
-		mList = new ListView();
-		mList.ItemHeight.Value = 20.0f;
-		mList.SetAdapter(mAdapter);
-		mList.OnItemClicked.Add(new (position, clickCount, x, y) =>
-			{
-				if (clickCount >= 2)
-					ConfirmAt(position);
-			});
-		var grow = LayoutStyle();
-		grow.Width = SizeSpec.Match();
-		grow.FlexGrow = 1.0f;
-		column.AddView(mList, grow);
-		SetContent(column);
-
-		let select = AddButton("Select", .None);
-		select.OnClick.Add(new (b) => { ConfirmAt(mList.Selection.FirstSelected()); });
-		AddButton("Cancel", .Cancel);
-
-		CollectFiles(rootPath);
-		RebuildRows();
-	}
-
-	public ~this()
-	{
-		mList.SetAdapter(null);
-	}
-
-	private bool ExtensionMatches(StringView name)
-	{
-		if (mExtensions.IsEmpty)
-			return true;
-		for (let ext in mExtensions)
 		{
-			if (name.EndsWith(ext, .OrdinalIgnoreCase))
-				return true;
+			if (!kinds.IsEmpty)
+				kinds.Append(" or ");
+			kinds.Append(ext);
 		}
-		return false;
+		if (kinds.IsEmpty)
+			request.EmptyTitle.Set("No files here");
+		else
+			request.EmptyTitle.AppendF("No {} files here", kinds);
+		request.EmptyText.AppendF("Nothing under {}.", root);
+		return request;
 	}
 
-	/// The recursive walk from the root; mFiles keeps root-relative paths.
-	private void CollectFiles(StringView rootPath)
+	/// Every file under `root` with one of `extensions`, root-relative, in the walk's order, added
+	/// to `outFiles` (the caller's).
+	public static void Files(StringView root, Span<StringView> extensions, List<String> outFiles)
 	{
-		let fs = scope NativeFileSystem(rootPath);
+		let fs = scope NativeFileSystem(root);
 		let pending = scope List<String>();
-		pending.Add(new String(""));
+		defer { ClearAndDeleteItems!(pending); }
+		pending.Add(new String());
 		while (!pending.IsEmpty)
 		{
 			let folder = pending.PopBack();
 			defer delete folder;
-			let entries = scope:: List<DirEntry>();
+			let entries = scope List<DirEntry>();
 			defer { for (var e in entries) e.Dispose(); }
 			if (fs.Enumerate(folder, entries) case .Err)
 				continue;
@@ -150,32 +75,24 @@ class PathPickerDialog : Dialog
 					PathJoin(folder, entry.Name, path);
 				if (entry.IsDirectory)
 					pending.Add(path);
-				else if (ExtensionMatches(path))
-					mFiles.Add(path);
+				else if (Takes(path, extensions))
+					outFiles.Add(path);
 				else
 					delete path;
 			}
 		}
 	}
 
-	private void RebuildRows()
+	/// Whether `name` ends with one of `extensions`, ignoring case; none: any.
+	public static bool Takes(StringView name, Span<StringView> extensions)
 	{
-		ClearAndDeleteItems(mRows);
-		for (let file in mFiles)
+		if (extensions.IsEmpty)
+			return true;
+		for (let ext in extensions)
 		{
-			if (mFilter.IsEmpty || (file.IndexOf(mFilter, true) >= 0))
-				mRows.Add(new String(file));
+			if (name.EndsWith(ext, .OrdinalIgnoreCase))
+				return true;
 		}
-		mList.Selection.ClearSelection();
-		mList.NotifyDataChanged();
-	}
-
-	private void ConfirmAt(int32 position)
-	{
-		if ((position < 0) || (position >= mRows.Count))
-			return;
-		if (OnPicked != null)
-			OnPicked(mRows[position]);
-		Close(.OK);
+		return false;
 	}
 }
