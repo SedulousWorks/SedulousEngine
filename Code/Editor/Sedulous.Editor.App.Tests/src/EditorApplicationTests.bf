@@ -14,7 +14,7 @@ namespace Sedulous.Editor.App.Tests;
 /// OnShutdown has nothing to stop, however often. The parts that need no window start in order
 /// (export, the MCP host, the editor-wide actions), once however often asked: the actions
 /// registered are the ones this lifecycle can run, Exit reaching the host, Reset Layout the dock
-/// and the cooks off with no project; they stop in the order shutdown needs, leaving no project and no MCP host.
+/// and the cooks, the Game tab and Save off with no project; they stop in the order shutdown needs, leaving no project and no MCP host.
 ///
 /// Not here: a project opened through the application, since the session then saves the user's
 /// editor.settings.xml (EditorSessionTests drive the session over services of their own); the
@@ -38,13 +38,13 @@ static class EditorApplicationTests
 	}
 
 	/// The editor-wide actions the lifecycle gives a hook to.
-	private static StringView[10] sRegistered = .("file.exit", "edit.undo", "edit.redo", "page.discardChanges",
-		"project.reportResourceMemory", "build.cookAll", "build.rebuildAll", "view.resetLayout", "view.screenshot",
-		"help.about");
+	private static StringView[13] sRegistered = .("file.save", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
+		"project.reportResourceMemory", "build.cookAll", "build.rebuildAll", "game.play", "game.playNewInstance",
+		"view.resetLayout", "view.screenshot", "help.about");
 	/// The ones a later layer brings: no hook yet, so not registered.
-	private static StringView[13] sLeftOut = .("file.save", "file.saveAs", "file.saveLayout", "file.closeProject",
-		"edit.preferences", "edit.exportTemplates", "project.settings", "project.export", "game.play",
-		"game.playNewInstance", "view.profiler", "profiler.record", "view.commandPalette");
+	private static StringView[10] sLeftOut = .("file.saveAs", "file.saveLayout", "file.closeProject",
+		"edit.preferences", "edit.exportTemplates", "project.settings", "project.export", "view.profiler",
+		"profiler.record", "view.commandPalette");
 
 	/// The registry refused `id` as not enabled (over no subject).
 	private static bool Refused(EditorActionRegistry actions, StringView id)
@@ -99,12 +99,16 @@ static class EditorApplicationTests
 		Test.Assert((app.Export === exportBefore) && (app.McpService === mcpBefore));
 		Test.Assert(actions.Count == count);
 
-		// Exit asks the host; the cooks need a project; About and the screenshot do nothing with
-		// no interface and no window.
+		// Exit asks the host; the cooks and the Game tab need a project, Save a page; About and
+		// the screenshot do nothing with no interface and no window.
 		Test.Assert(actions.Execute("file.exit") case .Ok);
 		Test.Assert(host.Exits == 1);
 		Test.Assert(Refused(actions, "build.cookAll"));
 		Test.Assert(Refused(actions, "build.rebuildAll"));
+		Test.Assert(Refused(actions, "game.play"));
+		Test.Assert(Refused(actions, "game.playNewInstance"));
+		Test.Assert(Refused(actions, "file.save"));
+		Test.Assert(app.Pages.Count == 0);
 		Test.Assert(actions.Execute("help.about") case .Ok);
 		Test.Assert(actions.Execute("view.screenshot") case .Ok);
 		// Reset Layout reaches the dock: unopened, its controller takes the default layout all the

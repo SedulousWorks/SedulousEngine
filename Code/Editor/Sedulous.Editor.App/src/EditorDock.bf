@@ -20,7 +20,7 @@ class EditorDockContents
 /// opens them (else over the main window), and the panels every project shares: the Project panel
 /// (the open project's page, or the welcome without one), Assets and Console. Their ids are the
 /// ones saved layouts and the MCP layout tools name: `welcome` (the Project panel kept the id it
-/// had as the Welcome panel), `assets`, `console`. Pages come through it in layer 6.
+/// had as the Welcome panel), `assets`, `console`. Pages come through it (EditorPages).
 class EditorDock
 {
 	public const String cPanelProject = "welcome";

@@ -24,9 +24,9 @@ namespace Sedulous.Editor.App;
 /// The editor as a runtime IApplication. It keeps the lifecycle alone (Raptor's editor-gui spec,
 /// 5.1, layer 3): it configures the engine, starts its parts in order, hands each frame to them
 /// and shuts them down. The parts are their own files: the window and its GUI (EditorWindow), its
-/// dock (EditorDock), the open project (EditorSession), export (EditorExport), asset creation
-/// (EditorAssetCreation), the MCP host (EditorMcpService) and the editor-wide actions
-/// (EditorAppActions). Underneath are the EditorContext and the services from Editor.Core and
+/// dock (EditorDock), the pages in it (EditorPages), the open project (EditorSession), export
+/// (EditorExport), asset creation (EditorAssetCreation), the MCP host (EditorMcpService) and the
+/// editor-wide actions (EditorAppActions). Underneath are the EditorContext and the services from Editor.Core and
 /// Editor.Project, and the EMBEDDED runtime every scene, preview and Game tab is hosted in: the
 /// same DefaultApplication the player runs.
 ///
@@ -74,6 +74,8 @@ class EditorApplication : IApplication
 	// first), the session before the parts its hooks reach.
 	private EditorWindow mWindow = new .() ~ delete _;
 	private EditorDock mDock = new .() ~ delete _;
+	/// Made with the application: every frame hands them its hooks, a window or not.
+	private EditorPages mPages ~ delete _;
 	private EditorExport mExport = null ~ delete _;
 	private EditorAssetCreation mCreation ~ delete _;
 	private EditorMcpService mMcp = null ~ delete _;
@@ -100,6 +102,7 @@ class EditorApplication : IApplication
 		// Thumbnails are reachable from the constructor on: the registration block, where each
 		// domain folds its thumbnail generator in, runs before the project opens.
 		mContext.Thumbnails = mThumbnailService;
+		mPages = new EditorPages(PagesServices());
 		mCreation = new EditorAssetCreation(CreationServices());
 		mSession = new EditorSession(SessionServices());
 	}
@@ -119,6 +122,7 @@ class EditorApplication : IApplication
 	public DefaultApplication EmbeddedApplication => mEmbeddedApp;
 	public EditorWindow Window => mWindow;
 	public EditorDock Dock => mDock;
+	public EditorPages Pages => mPages;
 	public EditorAssetCreation AssetCreation => mCreation;
 	public EditorSession Session => mSession;
 	/// Null until StartParts.
@@ -139,9 +143,35 @@ class EditorApplication : IApplication
 		services.Context = mContext;
 		services.Cook = mCookService;
 		services.Builders = mBuilders;
-		// A new asset's page opens once pages are on the dock (layer 6); the assets view shows
-		// its row once it is on the GUI.
+		services.OnOpenPage = new (instance) => { mPages.Open(instance); };
+		// The assets view shows the new row once it is on the GUI.
 		return services;
+	}
+
+	/// The pages in the dock; their dialogs over the main window.
+	private EditorPagesServices PagesServices()
+	{
+		let services = new EditorPagesServices();
+		services.Context = mContext;
+		services.Dock = mDock;
+		services.Cook = mCookService;
+		services.Project = new () => mSession.Project;
+		services.Resources = new () => mSession.Resources;
+		services.DialogRoot = new () => mWindow.Root;
+		return services;
+	}
+
+	/// A project's first open: its default scene, by guid (else by path, for a manifest without
+	/// one).
+	private void OpenDefaultScene(EditorProject project)
+	{
+		Instance instance = null;
+		if (project.Settings.DefaultSceneId.IsSet)
+			instance = project.SourceDb.GetInstance(project.Settings.DefaultSceneId);
+		if ((instance == null) && !project.Settings.DefaultScene.IsEmpty)
+			instance = project.SourceDb.GetInstanceByPath(project.Settings.DefaultScene);
+		if (instance != null)
+			mPages.Open(instance);
 	}
 
 	private EditorSessionServices SessionServices()
@@ -162,7 +192,16 @@ class EditorApplication : IApplication
 		services.OnOpened = new (project) =>
 			{
 				// The project's layout, else the default (the one before was another project's).
-				mDock.TakeLayout(mSession.Store);
+				let store = mSession.Store;
+				mDock.TakeLayout(store);
+				// The pages from the last session (a restored layout kept their places), else the
+				// project's default scene.
+				delegate void(StringView name, float done) progress = scope (name, done) =>
+					{
+						ReportStartup(scope $"Opening {name}", 0.72f + 0.26f * done);
+					};
+				if ((store == null) || !mPages.Restore(store, progress))
+					OpenDefaultScene(project);
 				if (mExport != null)
 					mExport.SetProject(project);
 				mCreation.SetProject(project);
@@ -171,13 +210,18 @@ class EditorApplication : IApplication
 			};
 		services.OnClosing = new () =>
 			{
+				mPages.CloseAll(); // their resources while the project's services live
 				if (mMcp != null)
 					mMcp.Stop(); // no agent call may run against services that are going away
 				if (mExport != null)
 					mExport.SetProject(null);
 				mCreation.SetProject(null);
 			};
-		services.CaptureState = new (store) => { mDock.CaptureLayout(store); };
+		services.CaptureState = new (store) =>
+			{
+				mDock.CaptureLayout(store);
+				mPages.Capture(store);
+			};
 		services.OnCookFinished = new () =>
 			{
 				// Failures stay until dismissed (the Console has the log); a cook of nothing says
@@ -326,9 +370,12 @@ class EditorApplication : IApplication
 		mcpServices.Port = mConfig.McpPort;
 		mcpServices.TemplatesRoot = new (outPath) => { mExport.TemplatesRoot(outPath); };
 		mcpServices.OnCreated = new (creator, instance) => { mCreation.AfterCreate(creator, instance); };
-		// The windows' screenshots, over the same capture as View > Screenshot. The pages, the
-		// dock's layout tools, the action bridge and the import notice come back with their
-		// layers; an agent's delete takes the database's own until the assets view is on the GUI.
+		// The pages, over the paths the tabs take (a close at the next frame).
+		mcpServices.OpenPage = new (id) => mPages.Open(id);
+		mcpServices.ClosePage = new (page) => { mPages.Close(page); };
+		// The windows' screenshots, over the same capture as View > Screenshot. The dock's
+		// layout tools, the action bridge and the import notice come back with their layers; an
+		// agent's delete takes the database's own until the assets view is on the GUI.
 		mcpServices.Windows = new (outWindows) => { CapturableWindows(outWindows); };
 		mcpServices.RequestShots = new (requests) => { mWindowCapture.Request(requests); };
 		mcpServices.Shots = new (outShots) => { mWindowCapture.Shots(outShots); };
@@ -412,14 +459,15 @@ class EditorApplication : IApplication
 			} ~ delete line;
 	}
 
-	/// The editor-wide actions this lifecycle can run. What a later layer brings (Save, saving the
-	/// layout, Close Project, Preferences, the dialogs, the Game page, the profiler, the palette)
-	/// is given no hook here, so its action stays out until it can run.
+	/// The editor-wide actions this lifecycle can run. What a later layer brings (Save As, saving
+	/// the layout, Close Project, Preferences, the dialogs, the profiler, the palette) is given no
+	/// hook here, so its action stays out until it can run.
 	private void RegisterActions()
 	{
 		let actions = mContext.Actions;
 		let file = new FileActions();
 		file.Context = mContext;
+		file.Save = new (page) => { mPages.Save(page); };
 		file.Exit = new () =>
 			{
 				if (mHost != null)
@@ -433,7 +481,14 @@ class EditorApplication : IApplication
 		EditorAppActions.RegisterProjectActions(actions, project);
 
 		EditorAppActions.RegisterBuildActions(actions, mContext);
-		// Game's Play and Play New Instance come back with the Game page.
+
+		// The Game tab through the context's GamePageFactory: unset until the play library
+		// registers it, Play says so.
+		let game = new GameActions();
+		game.Context = mContext;
+		game.Play = new () => { mPages.OpenGame(false); };
+		game.PlayNewInstance = new () => { mPages.OpenGame(true); };
+		EditorAppActions.RegisterGameActions(actions, game);
 
 		let view = new ViewActions();
 		view.Context = mContext;
@@ -489,6 +544,7 @@ class EditorApplication : IApplication
 			resources.CollectGarbage(); // products a hot reload replaced go
 		}
 		mWindow.Update(dt);
+		mPages.Update(host, dt); // after the GUI laid out: viewport rects are current
 	}
 
 	/// A running job's step and percent on the status line.
@@ -574,10 +630,11 @@ class EditorApplication : IApplication
 		{
 			// The bracket self-guards while the renderer is not ready.
 			if (mSceneRenderer != null)
-			{
 				mSceneRenderer.BeginRendering(frame.Encoder, frame.FrameIndex);
+			mPages.Render(host, ref frame);
+			if (mSceneRenderer != null)
 				mSceneRenderer.EndRendering();
-			}
+			mPages.AfterSceneRender(host, ref frame); // overlays on the composed targets (the Game tab's UI)
 			if (mEmbeddedApp != null)
 				mRuntimeContext.EndFrame();
 		}
