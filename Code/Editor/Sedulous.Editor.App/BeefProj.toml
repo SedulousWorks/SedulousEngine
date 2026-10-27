@@ -61,10 +61,6 @@ corlib = "*"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "ActionShortcuts.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "AssetCell.bf"
 
 [[ProjectFolder.Items]]

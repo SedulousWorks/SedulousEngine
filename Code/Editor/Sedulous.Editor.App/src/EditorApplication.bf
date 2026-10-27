@@ -24,7 +24,7 @@ namespace Sedulous.Editor.App;
 /// The editor as a runtime IApplication. It keeps the lifecycle alone (Raptor's editor-gui spec,
 /// 5.1, layer 3): it configures the engine, starts its parts in order, hands each frame to them
 /// and shuts them down. The parts are their own files: the window and its GUI (EditorWindow), its
-/// dock (EditorDock), the pages in it (EditorPages), its menu bar (ActionMenuBar), the open project (EditorSession), export
+/// dock (EditorDock), the pages in it (EditorPages), its menu bar (ActionMenuBar) and keys (ActionShortcuts), the open project (EditorSession), export
 /// (EditorExport), asset creation (EditorAssetCreation), the MCP host (EditorMcpService) and the
 /// editor-wide actions (EditorAppActions). Underneath are the EditorContext and the services from Editor.Core and
 /// Editor.Project, and the EMBEDDED runtime every scene, preview and Game tab is hosted in: the
@@ -78,6 +78,8 @@ class EditorApplication : IApplication
 	private EditorPages mPages ~ delete _;
 	/// The frame's menu bar, from the actions: made in OnStartup once they are all declared.
 	private ActionMenuBar mMenus = null ~ delete _;
+	/// The actions' keys in the GUI's keymap, made with the menu bar.
+	private ActionShortcuts mShortcuts = null ~ delete _;
 	private EditorExport mExport = null ~ delete _;
 	private EditorAssetCreation mCreation ~ delete _;
 	private EditorMcpService mMcp = null ~ delete _;
@@ -462,13 +464,14 @@ class EditorApplication : IApplication
 			} ~ delete line;
 	}
 
-	/// The frame's menu bar from the action registry, File > New <creator> leading the File menu
-	/// (a creator with a category in a submenu of that name). Nothing with no interface.
+	/// The frame's menu bar and keys from the action registry, File > New <creator> leading the
+	/// File menu (a creator with a category in a submenu of that name). Nothing with no interface.
 	private void BuildMenus()
 	{
 		let bar = mWindow.FindById("menubar") as Sedulous.GUI.MenuBar;
 		if ((bar == null) || (mWindow.Root == null))
 			return; // no interface
+		mShortcuts = new ActionShortcuts(mWindow.Host.Context.Keymap, mWindow.Root, mContext.Actions);
 		mMenus = new ActionMenuBar(bar, mContext.Actions);
 		// The application's menus in their places; a domain's menu (Scene) or an extension's takes
 		// the "*" slot, so Help stays last however late they register.
@@ -716,6 +719,7 @@ class EditorApplication : IApplication
 			mRuntimeContext.Shutdown();
 		}
 		DeleteAndNullify!(mMenus); // the bar left empty while the window's tree holds it
+		DeleteAndNullify!(mShortcuts); // its keys and the root's handlers, while both are there
 		mDock.Close(); // its floats' windows, then the GUI before the device goes
 		mWindow.Close();
 		if (mStarted)

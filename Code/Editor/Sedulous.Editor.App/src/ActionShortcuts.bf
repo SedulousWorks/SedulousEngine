@@ -1,40 +1,66 @@
 using System;
 using System.Collections;
-using Sedulous.UI;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-/// The global shortcuts GENERATED from the action registry. Every action's effective chord
-/// (the user's override or the declaration's default) and every alternate chord becomes one
-/// global shortcut on the UI ShortcutManager whose callback is the registry's Execute, the one
-/// funnel, so a chord and a menu click are the same thing. Globals dispatch AFTER the focused
-/// view, and text controls mark their key-downs handled, so a focused textbox keeps Ctrl+Z for
-/// its own undo. Rebuilt on every registry change (a registration, a rebind), the previous
-/// bindings removed first.
+/// The editor's keys GENERATED from the action registry (Raptor's editor-gui spec, 5.1, layer 8).
+/// Every action's effective chord (the user's override or the declaration's default) and every
+/// alternate chord is bound in the GUI's keymap to a command named by the action's id, and the
+/// window's root handles each such command by the registry's Execute: the one funnel, so a chord
+/// and a menu click are the same thing. The keymap runs a binding of a focused widget's own
+/// context before one with none, so a focused text field keeps Ctrl+Z for its own undo. Bound
+/// again on every registry change (a registration, a rebind), the bindings and handlers before
+/// taken away first.
 class ActionShortcuts
 {
-	/// BORROWED: the UI context owns the manager, the editor context the registry; both
-	/// outlive this.
-	private ShortcutManager mShortcuts;
-	private EditorActionRegistry mActions;
-	/// Owned by the registry's event while subscribed; removed (and deleted) with this.
-	private delegate void() mOnActionsChanged;
-	/// BORROWED: the manager owns them.
-	private List<Shortcut> mBound = new .() ~ delete _;
-
-	public this(ShortcutManager shortcuts, EditorActionRegistry actions)
+	/// An action with a key bound, and its handler's token on the root.
+	private struct Handled
 	{
-		mShortcuts = shortcuts;
-		mActions = actions;
-		mOnActionsChanged = new => Rebind;
-		mActions.OnActionsChanged.Add(mOnActionsChanged);
-		Rebind();
+		/// The registry's.
+		public EditorActionDeclaration Action;
+		public uint32 Token;
+
+		public this(EditorActionDeclaration action, uint32 token)
+		{
+			Action = action;
+			Token = token;
+		}
 	}
 
+	/// BORROWED: the GUI's context owns the keymap, the window the root, the editor context the
+	/// registry; all outlive this.
+	private Keymap mKeymap;
+	private Node mHandler;
+	private EditorActionRegistry mActions;
+	/// Each action with a key bound, its handler on the root.
+	private List<Handled> mHandled = new .() ~ delete _;
+	/// How many keys are bound (a chord and an alternate are two).
+	private int mBoundCount = 0;
+	/// The bindings again when the registry changes.
+	private Effect mChanged = null ~ delete _;
+
+	/// The bindings go in `keymap`; `handler` (the window's root, on every focus path) runs them.
+	public this(Keymap keymap, Node handler, EditorActionRegistry actions)
+	{
+		mKeymap = keymap;
+		mHandler = handler;
+		mActions = actions;
+		mChanged = new Effect(new () =>
+			{
+				mActions.TrackChanges();
+				// The registry is all it follows: what binding reads is not recorded, so only a
+				// registration or a rebind binds again.
+				Observer.Untracked(scope () => { Rebind(); });
+			});
+	}
+
+	/// The commands run through this object, so its bindings and handlers go with it, and the
+	/// registry no longer reaches it.
 	public ~this()
 	{
-		mActions.OnActionsChanged.Remove(mOnActionsChanged, true);
+		DeleteAndNullify!(mChanged);
 		Unbind();
 	}
 
@@ -44,25 +70,37 @@ class ActionShortcuts
 		Unbind();
 		for (let action in mActions.Actions)
 		{
-			Bind(action, mActions.Shortcut(action.Id));
-			Bind(action, action.AlternateShortcut);
+			let main = Bind(action, mActions.Shortcut(action.Id));
+			let alternate = Bind(action, action.AlternateShortcut);
+			if (!main && !alternate)
+				continue;
+			// Captures the registry, not this: the command needs nothing of this set to run.
+			let registry = mActions;
+			let token = mHandler.OnCommand(action.Id, new [=registry, =action](command) => { registry.Execute(action.Id).IgnoreError(); });
+			mHandled.Add(.(action, token));
 		}
 	}
 
-	public int BoundCount => mBound.Count;
+	/// How many keys are bound (a chord and an alternate are two).
+	public int BoundCount => mBoundCount;
 
-	private void Bind(EditorActionDeclaration action, EditorShortcut chord)
+	private bool Bind(EditorActionDeclaration action, EditorShortcut chord)
 	{
-		if (!chord.IsSet)
-			return;
-		let registry = mActions;
-		mBound.Add(mShortcuts.AddGlobal(chord.Key, chord.Modifiers, new [=registry, =action]() => { registry.Execute(action.Id).IgnoreError(); }));
+		if (!chord.IsSet || !mKeymap.Bind(chord.Stroke, action.Id))
+			return false;
+		mBoundCount++;
+		return true;
 	}
 
 	private void Unbind()
 	{
-		for (let shortcut in mBound)
-			mShortcuts.Remove(shortcut);
-		mBound.Clear();
+		// One entry per action: UnbindCommand takes all its keys.
+		for (let handled in mHandled)
+		{
+			mKeymap.UnbindCommand(handled.Action.Id);
+			mHandler.RemoveCommandHandler(handled.Token);
+		}
+		mHandled.Clear();
+		mBoundCount = 0;
 	}
 }
