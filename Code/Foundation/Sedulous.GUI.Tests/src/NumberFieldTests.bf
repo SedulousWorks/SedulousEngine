@@ -50,7 +50,7 @@ class NumberBed
 }
 
 /// NumberField: expressions, its form, typed values committed, stepped by its arrows, keys and the
-/// wheel, scrubbed, a scrub cancelled, and its mixed state.
+/// wheel, scrubbed, a scrub cancelled, and its mixed state; its arrows hidden when too narrow.
 class NumberFieldTests
 {
 	private static bool Near(double a, double b) => Math.Abs(a - b) < 1.2e-5 * (1.0 + Math.Max(Math.Abs(a), Math.Abs(b)));
@@ -263,5 +263,24 @@ class NumberFieldTests
 		Test.Assert(Math.Abs(f.Min - -10.0) < 1e-9);
 		Test.Assert(Math.Abs(f.Value - 2.3) < 1e-9); // to the step
 		Test.Assert(f.Text == "2.3 m");
+	}
+
+	[Test]
+	public static void AFieldTooNarrowForItsNumberAndItsArrowsGivesTheArrowsRoomToTheNumber()
+	{
+		let b = scope NumberBed();
+		Test.Assert(b.Field.ShowsArrows); // 120 wide: both fit
+		Test.Assert(b.Field.UpButton.Visible);
+		b.Field.EditLayoutStyle(scope (s) => { s.Width = LayoutLength.Px(40.0f); });
+		b.Root.UpdateLayout();
+		Test.Assert(!b.Field.ShowsArrows);
+		Test.Assert(!b.Field.UpButton.Visible);
+		Test.Assert(!b.Field.DownButton.Visible);
+		// Its keys still step it.
+		b.Field.Step = 1.0;
+		b.Field.Value = 5.0;
+		b.Field.RequestFocus();
+		b.D.InjectKeyDown(NumberBed.K(.Up));
+		Test.Assert(Near(b.Field.Value, 6.0));
 	}
 }

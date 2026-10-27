@@ -66,7 +66,8 @@ class SpaceBed
 /// widgets (a separator dragged, a tab chosen, dragged or closed, by its close part or a middle
 /// click) noted back; a panel wider than its stack moves no separator, the stack clipping it; a
 /// panel that asks before it closes, and one unregistered; a title and tab classes changed while
-/// docked; the active panel following the focus.
+/// docked; the active panel following the focus; content taller than the space clipped, the split
+/// keeping the space's size and every strip its height.
 class DockSpaceTests
 {
 	[Test]
@@ -520,5 +521,38 @@ class DockSpaceTests
 		Test.Assert(bed.Controller.Close("second").Ok); // its stack's next chosen panel
 		Test.Assert(bed.Controller.ActivePanel == "first");
 		Test.Assert(heard.Back == "first");
+	}
+
+	[Test]
+	public static void ContentTallerThanTheSpaceIsClippedTheSplitKeepingTheSpacesSizeAndEveryStripItsHeight()
+	{
+		let bed = scope SpaceBed();
+		// A panel far taller than the space (a long tree, a page with a large picture).
+		let tall = new DockPanelDescription();
+		tall.Id.Set("tall");
+		tall.Title.Set("Tall");
+		tall.Factory = new () =>
+			{
+				let content = new Panel();
+				content.EditLayoutStyle(scope (s) => { s.Height = LayoutLength.Px(3000.0f); });
+				return content;
+			};
+		Test.Assert(bed.Controller.Register(tall));
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertTab("tall", bed.Central)).Ok);
+		Test.Assert(bed.Controller.Edit(scope (l) => l.InsertBeside("console", bed.Central, .Bottom, 0.3f)).Ok);
+		bed.Lay();
+		Test.Assert(bed.Space.ChildCount >= 1);
+		let splitter = bed.Space.GetChildAt(0) as Splitter;
+		Test.Assert(splitter != null);
+		Test.Assert(Near(splitter.Size.Y, 600.0f)); // the space's, not 3000 and more
+		let central = bed.Space.WidgetOf(bed.Central) as TabView;
+		let bottom = bed.Space.WidgetOf(bed.StackOf("console")) as TabView;
+		Test.Assert(central != null);
+		Test.Assert(bottom != null);
+		let bottomEnd = bottom.Position.Y + bottom.Size.Y;
+		Test.Assert((bottomEnd <= 600.0f) || Near(bottomEnd, 600.0f)); // in the space
+		// The tall page's strip keeps the height of the short one's: the page shrinks, not the strip.
+		Test.Assert(bottom.Bar.Size.Y > 0.0f);
+		Test.Assert(Near(central.Bar.Size.Y, bottom.Bar.Size.Y));
 	}
 }

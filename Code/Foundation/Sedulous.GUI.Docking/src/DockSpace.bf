@@ -784,7 +784,14 @@ class DockSpace : UIWidget, IDockView
 				RemoveChild(shownNow);
 			if (top != null)
 			{
-				top.EditLayoutStyle(scope (s) => { s.Grow = 1.0f; });
+				// The space's size, never its content's: a stack holding a long tree or a tall page
+				// clips it rather than growing the split past the space.
+				top.EditLayoutStyle(scope (s) =>
+					{
+						s.Grow = 1.0f;
+						s.MinWidth = LayoutLength.Px(0.0f);
+						s.MinHeight = LayoutLength.Px(0.0f);
+					});
 				if (top.Parent != null)
 					top.RemoveFromParent();
 				AddChildAt(top, 0); // under the preview

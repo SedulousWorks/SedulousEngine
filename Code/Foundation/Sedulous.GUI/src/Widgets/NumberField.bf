@@ -185,6 +185,8 @@ class NumberField : TextField
 	private const float cSpinWidth = 16.0f;
 	/// Between its text and its arrows.
 	private const float cSpinGap = 2.0f;
+	/// The least room its number keeps beside its arrows.
+	private const float cNumberRoom = 32.0f;
 	/// Pixels a press moves before it scrubs.
 	private const float cScrubThreshold = 4.0f;
 	private const float cPixelsPerStep = 4.0f;
@@ -419,6 +421,20 @@ class NumberField : TextField
 
 	/// Being edited as text (typed into, or a press let go on it); otherwise a press scrubs.
 	public bool IsEditing => mEditing;
+	/// Whether its arrows show: only while its number keeps room beside them. A field too narrow
+	/// for both (a vector's part in a narrow inspector) gives the arrows' room to the number; a drag
+	/// still scrubs it and the arrow keys still step it.
+	public bool ShowsArrows
+	{
+		get
+		{
+			let b = BorderThickness;
+			let p = Padding;
+			let text = Size.X - b.TotalHorizontal - p.TotalHorizontal - cSpinWidth - cSpinGap;
+			return text >= cNumberRoom;
+		}
+	}
+
 	public SpinButton UpButton => mUp;
 	public SpinButton DownButton => mDown;
 
@@ -584,6 +600,8 @@ class NumberField : TextField
 	{
 		let content = ContentBounds;
 		let b = BorderThickness;
+		if (!ShowsArrows)
+			return content;
 		if (IsRightToLeft)
 		{
 			let left = Math.Max(content.X, b.Left + cSpinWidth + cSpinGap);
@@ -600,6 +618,9 @@ class NumberField : TextField
 		let size = Size;
 		let h = Math.Max(0.0f, size.Y - b.TotalVertical);
 		let x = IsRightToLeft ? b.Left : size.X - b.Right - cSpinWidth;
+		let arrows = ShowsArrows;
+		mUp.Visible = arrows;
+		mDown.Visible = arrows;
 		mUp.Arrange(.(x, b.Top, cSpinWidth, h * 0.5f));
 		mDown.Arrange(.(x, b.Top + h * 0.5f, cSpinWidth, h - h * 0.5f));
 	}

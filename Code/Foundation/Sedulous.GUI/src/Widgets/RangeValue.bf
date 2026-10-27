@@ -34,7 +34,16 @@ struct RangeValue : IEquatable<RangeValue>
 	{
 		var v;
 		if (Step > 0.0)
+		{
+			// Snapped, then rounded to the step's decimals: a step that came from a float (0.1f is
+			// 0.100000001) would otherwise leave its error in the value (12 snapped to it is
+			// 12.0000001788).
 			v = Min + RoundHalfAway((v - Min) / Step) * Step;
+			var scale = 1.0;
+			for (var d = Decimals; d > 0; d--)
+				scale *= 10.0;
+			v = RoundHalfAway(v * scale) / scale;
+		}
 		if (!AllowGreater)
 			v = Math.Min(v, Upper);
 		if (!AllowLesser)
@@ -90,9 +99,11 @@ struct RangeValue : IEquatable<RangeValue>
 		{
 			if (Step <= 0.0)
 				return 3;
+			// Whole once within a float's precision of a whole number: a step read from a float (0.1f
+			// is 0.100000001) shows its own decimals, not eight.
 			int32 decimals = 0;
 			var s = Step;
-			while ((decimals < 8) && (Math.Abs(s - RoundHalfAway(s)) > 1e-9))
+			while ((decimals < 8) && (Math.Abs(s - RoundHalfAway(s)) > 1e-6 * Math.Max(1.0, Math.Abs(s))))
 			{
 				s *= 10.0;
 				decimals++;

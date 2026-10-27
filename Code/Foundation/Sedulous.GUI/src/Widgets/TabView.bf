@@ -176,6 +176,12 @@ class TabView : UIWidget
 				});
 		}
 		mBar = new TabBar();
+		using (StyleWriteScope(mBar))
+		{
+			// The strip keeps its height over pages taller than the view: a flex item shrinks in
+			// proportion to its basis, so a tall page would otherwise take the strip with it.
+			mBar.EditLayoutStyle(scope (s) => { s.Shrink = 0.0f; });
+		}
 		AddChild(mBar);
 		mHost = new TabPageHost(this);
 		AddChild(mHost);

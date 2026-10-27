@@ -689,6 +689,7 @@ abstract class TextEditBase : UIWidget
 			Synced();
 		}
 		Commit();
+		KeepCaretInView(); // unfocused: back to the start of its line
 		Invalidate();
 	}
 

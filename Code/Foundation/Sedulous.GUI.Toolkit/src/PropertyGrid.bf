@@ -317,6 +317,12 @@ class PropertyRowContent : UIWidget
 		mLabel = new Sedulous.GUI.Label();
 		mLabel.Tag = "propertyname";
 		mLabel.SetTextAlignment(.Start, .Middle);
+		using (StyleWriteScope(mLabel))
+		{
+			// A name longer than its column ends in an ellipsis rather than running under the
+			// editor (a default: a sheet's text-overflow wins).
+			mLabel.TextOverflow = .Ellipsis;
+		}
 		mLabel.HitTestVisible = false;
 		AddChild(mLabel);
 		if (mEditor != null)

@@ -80,9 +80,20 @@ class TextField : TextEditBase
 		return .(origin.X - ScrollFromLeft(layout, view), origin.Y);
 	}
 
-	// Scrolls by the least that shows the caret, and no further than the text needs.
+	// Scrolls by the least that shows the caret, and no further than the text needs. Not focused,
+	// a line too long for the field rests on its start: a value shows its beginning (-9.81, not
+	// 81), wherever its caret was left.
 	protected override void KeepCaretInView()
 	{
+		if (!IsFocused)
+		{
+			if (mScrollX != 0.0f)
+			{
+				mScrollX = 0.0f;
+				Invalidate();
+			}
+			return;
+		}
 		let layout = EditLayout();
 		let view = View(EditBounds());
 		let caret = layout.CaretX(DisplayCaret());

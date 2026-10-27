@@ -7,7 +7,7 @@ namespace Sedulous.GUI.Tests;
 
 /// Slider tests: value clamping and the change callbacks, drag-to-set, and pointer capture (a drag
 /// keeps tracking after the cursor leaves the slider), keys and the wheel, Escape putting a drag
-/// back, the wheel's switch, vertical and exponential.
+/// back, the wheel's switch, vertical and exponential; a step read from a float.
 class SliderTests
 {
 	private static bool Near(double a, double b, double epsilon = 1.2e-5) =>
@@ -285,5 +285,26 @@ class SliderTests
 		var steps = RangeValue();
 		steps.Step = 0.25;
 		Test.Assert(steps.Decimals == 2);
+	}
+
+	[Test]
+	public static void AStepReadFromAFloatShowsItsOwnDecimalsAndLeavesNoErrorInTheValue()
+	{
+		var range = RangeValue();
+		range.Min = 0.0;
+		range.Max = 1000.0;
+		range.Step = (double)0.1f; // 0.100000001: a reflected range's step
+		Test.Assert(range.Decimals == 1);
+		Test.Assert(range.Constrain(12.0) == 12.0); // not 12.0000001788
+		Test.Assert(Near(range.Constrain(0.6), 0.6, 1e-12));
+		range.Min = -8.0;
+		range.Max = 8.0;
+		Test.Assert(range.Constrain(0.0) == 0.0); // not 1.2e-07
+		range.Step = (double)0.05f;
+		Test.Assert(range.Decimals == 2);
+		range.Step = 0.25;
+		Test.Assert(range.Decimals == 2);
+		range.Step = 1.0;
+		Test.Assert(range.Decimals == 0);
 	}
 }

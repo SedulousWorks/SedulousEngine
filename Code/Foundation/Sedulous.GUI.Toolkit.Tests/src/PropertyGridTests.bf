@@ -961,4 +961,21 @@ class PropertyGridTests
 		// The name after the 10 px column and its 2 px gap.
 		CheckNear(name.ScreenBounds.X - content.ScreenBounds.X - content.Padding.Left, 12.0f);
 	}
+
+	[Test]
+	public static void ANameLongerThanItsColumnEndsInAnEllipsisInsideTheColumn()
+	{
+		let bed = scope GridBed();
+		bed.Add("aVeryLongPropertyNameThatCannotFitItsColumn", .Float, Sedulous.GUI.Variant(1.0));
+		bed.Show();
+		let editor = bed.Grid.FindEditor("aVeryLongPropertyNameThatCannotFitItsColumn");
+		Test.Assert(editor != null);
+		let content = editor.Parent as PropertyRowContent;
+		Test.Assert(content != null);
+		let name = content.Label;
+		Test.Assert(name.Tag == "propertyname");
+		Test.Assert(name.TextOverflow == .Ellipsis);
+		// Its box ends before the editor starts.
+		Test.Assert(name.ScreenBounds.X + name.ScreenBounds.Width <= editor.ScreenBounds.X);
+	}
 }

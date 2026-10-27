@@ -735,4 +735,23 @@ class TextFieldTests
 		fx.Field.ReleaseFocus();
 		Test.Assert(fx.Field.Text == "ab XYcd");
 	}
+
+	[Test]
+	public static void NotFocusedALineTooLongForTheFieldRestsOnItsStart()
+	{
+		let fx = scope FieldBed();
+		fx.D.InjectText("0123456789012345678901234567890123456789"); // 240px in 200
+		Test.Assert(fx.Field.ScrollX > 0.0f); // focused: the caret, at the end, in view
+		fx.Field.ReleaseFocus();
+		Test.Assert(Near(fx.Field.ScrollX, 0.0f)); // left: its start shows
+		// Set while not focused (a value shown by code): its start too.
+		let other = new TextField();
+		defer other.ReleaseRef();
+		other.Size = .(60.0f, 24.0f);
+		other.Font = fx.Font;
+		fx.Root.AddChild(other);
+		other.Text = "-9.81234567";
+		fx.Root.UpdateLayout();
+		Test.Assert(Near(other.ScrollX, 0.0f));
+	}
 }
