@@ -1,0 +1,27 @@
+/* The kit page's own layout (the mock's, not the editor's): sections, rows of cells, captions. */
+.kit-page { background-color: var(--surface); }
+.kit-scroll { flex-grow: 1; flex-basis: 0; min-height: 0; }
+.kit { flex-direction: column; padding: var(--space-xl) 24px 48px; row-gap: var(--space-m); }
+.kit-title { font-size: var(--font-heading); font-weight: 600; color: var(--text-strong); margin-top: 20px; }
+.kit-note { color: var(--text-dim); white-space: normal; max-width: 820px; margin-bottom: var(--space-s); }
+.kit-row { flex-direction: row; flex-wrap: wrap; column-gap: 28px; row-gap: 20px; align-items: start; }
+.kit-cell { flex-direction: column; row-gap: var(--space-s); align-items: start; }
+.kit-field { width: 200px; align-items: stretch; }
+.kit-list { width: 300px; align-items: stretch; }
+.kit-inspector { width: 380px; align-items: stretch; }
+.kit-wide { flex-grow: 1; align-items: stretch; max-width: 900px; }
+.kit-caption { font-size: var(--font-small); color: var(--text-placeholder); white-space: nowrap; }
+/* A cell with a width of its own wraps its caption to it. */
+.kit-field > .kit-caption, .kit-list > .kit-caption, .kit-inspector > .kit-caption { white-space: normal; }
+.kit-inline { flex-direction: row; align-items: center; column-gap: var(--space-m); flex-wrap: wrap; }
+.kit-rows, .kit-grid { flex-direction: column; background-color: var(--surface); border: 1px solid var(--separator);
+                       border-radius: var(--radius); padding: var(--space-xs) 0; }
+.kit-rows { padding: var(--space-xs); }
+.kit-tiles { flex-direction: row; column-gap: var(--space-s); padding: var(--space-m); background-color: var(--surface);
+             border: 1px solid var(--separator); border-radius: var(--radius); }
+.kit-toasts { flex-direction: column; row-gap: var(--space-m); }
+.kit .state-box { width: 220px; min-height: 170px; background-color: var(--surface-sunken); border: 1px dashed var(--border);
+                  border-radius: var(--radius); }
+.kit .dialog.picker .state-box { border-width: 0; background-color: transparent; min-height: 0; width: auto; }
+.kit-wide > toolbar { border: 1px solid var(--separator); border-radius: var(--radius); background-color: var(--toolbar-background); }
+.kit .state-box { align-items: center; }

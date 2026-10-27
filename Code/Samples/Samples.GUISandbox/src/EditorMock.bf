@@ -50,6 +50,8 @@ class EditorMock
 	private DockController mDock = null;
 	/// Our reference to the dock space, besides the frame's.
 	private DockArea mDockArea = null;
+	/// The kit page's content, once the dock has made it: our reference, let go by ReleaseTree.
+	private Node mKit = null;
 	/// What each page's inspector shows, and the sources over them.
 	private List<Object> mShown = new .();
 	private List<ReflectedPropertySource> mSources = new .();
@@ -82,6 +84,11 @@ class EditorMock
 	/// Our references to what the tree holds, let go of before the root goes.
 	public void ReleaseTree()
 	{
+		if (mKit != null)
+		{
+			mKit.ReleaseRef();
+			mKit = null;
+		}
 		if (mDockArea != null)
 		{
 			mDockArea.ReleaseRef();
@@ -106,6 +113,22 @@ class EditorMock
 		BuildDock();
 		ApplyLook();
 		return true;
+	}
+
+	/// The kit page in front (--mock-kit): every shared piece in its states.
+	public void ShowKit()
+	{
+		if (mDock != null)
+			Said(mDock.Edit(scope (layout) => layout.Activate("kit")));
+	}
+
+	/// The kit page scrolled down this far (--scroll, for a screenshot further down).
+	public void ScrollKit(float pixels)
+	{
+		if (mKit == null)
+			return;
+		if (let scroll = mKit.FindElement("kit-scroll"))
+			scroll.ScrollOffset = .(0.0f, pixels);
 	}
 
 	/// The two scene pages side by side, or tabbed in one stack (the default).
@@ -224,6 +247,8 @@ class EditorMock
 		mHost.Read("Editor/editor.css", text);
 		text.Append("\n");
 		mHost.Read(sDensities[mDensity].Sheet, text);
+		text.Append("\n");
+		mHost.Read("Editor/Mock/kit.css", text); // the kit page's own layout
 		text.AppendF("\n:root {{ --accent-input: {}; }}\n", sAccents[mAccent].Fill);
 		let sheet = scope StyleSheet();
 		CSSParser.Parse(text, "Editor/editor.css", sheet);
@@ -250,6 +275,7 @@ class EditorMock
 		mDock = new DockController();
 		Register("scene", "Level 1", "Editor/Mock/scene.gml");
 		Register("scene-2", "Level 2", "Editor/Mock/scene.gml");
+		Register("kit", "Kit", "Editor/Mock/kit.gml");
 		Register("assets", "Assets", "Editor/Mock/assets.gml");
 		Register("console", "Console", "Editor/Mock/console.gml");
 		{
@@ -281,6 +307,7 @@ class EditorMock
 			Said(layout.InsertBeside("scene-2", central, .End, 0.5f));
 		else
 			Said(layout.InsertTab("scene-2", central));
+		Said(layout.InsertTab("kit", central));
 		Said(layout.Activate("scene"));
 		Said(layout.InsertBeside("assets", central, .Bottom, 0.28f));
 		Said(layout.InsertTab("console", layout.StackOf("assets")));
@@ -295,12 +322,17 @@ class EditorMock
 		description.Title.Set(title);
 		description.Close = .Hide;
 		description.Closable = true;
-		description.Default.Central = id.StartsWith("scene");
+		description.Default.Central = id.StartsWith("scene") || (id == "kit");
 		let path = new String(markup);
 		let panel = new String(id);
 		description.Factory = new () =>
 			{
 				let content = mHost.Load(path);
+				if ((content != null) && (panel == "kit"))
+				{
+					content.AddRef(); // ours, for ScrollKit
+					mKit = content;
+				}
 				if ((content != null) && panel.StartsWith("scene"))
 					FillScenePage(content, panel == "scene-2");
 				if ((content != null) && (panel == "assets"))

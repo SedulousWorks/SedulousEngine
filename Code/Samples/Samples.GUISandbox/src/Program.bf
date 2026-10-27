@@ -36,7 +36,7 @@ namespace Samples.GUISandbox;
 /// start in that language (en, ar, or pseudo: English pseudolocalized). --narrate: print what a
 /// screen reader would say. --stress <n>: start on the Stress page, built at load n (1 to 20;
 /// measure in Release). --editor-mock: the editor's mock (EditorMock.bf) instead of the sandbox,
-/// its window full HD; with --mock-side-by-side its two scene pages side by side, --mock-size
+/// its window full HD; with --mock-side-by-side its two scene pages side by side, --mock-kit its kit page in front, --mock-size
 /// <w>x<h> its window at that size, and --light the light scheme. The backend: --vulkan (the default), --webgpu, --dx12. With the
 /// framework's --screenshot flags, a picture of any of it.
 class Program
@@ -56,6 +56,8 @@ class Program
 				app.SetEditorMock(true);
 			else if (arg == "--mock-side-by-side")
 				app.SetMockSideBySide(true);
+			else if (arg == "--mock-kit")
+				app.SetMockKit(true);
 			else if ((arg == "--mock-size") && hasNext)
 			{
 				// <w>x<h>, both above nothing; anything else leaves the size as it was.

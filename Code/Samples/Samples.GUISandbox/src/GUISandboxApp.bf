@@ -77,6 +77,8 @@ class GUISandboxApp : IApplication
 	private bool mEditorMockMode = false;
 	/// --mock-side-by-side: its two scene pages side by side.
 	private bool mMockSideBySide = false;
+	/// --mock-kit: the kit page in front.
+	private bool mMockKit = false;
 	/// --mock-size <w>x<h>: its window; a full HD display's by default, the user's (2026-10-24).
 	private uint32 mMockWidth = 1920;
 	private uint32 mMockHeight = 1080;
@@ -232,6 +234,7 @@ class GUISandboxApp : IApplication
 	public void SetEditorMock(bool on) => mEditorMockMode = on;
 	public bool IsEditorMock => mEditorMockMode;
 	public void SetMockSideBySide(bool on) => mMockSideBySide = on;
+	public void SetMockKit(bool on) => mMockKit = on;
 	/// --mock-size <w>x<h>: the mock's window at another size (a large monitor, a laptop).
 	public void SetMockSize(uint32 width, uint32 height)
 	{
@@ -669,6 +672,8 @@ class GUISandboxApp : IApplication
 			mEditorMock.SetDark(false);
 		if (mMockSideBySide)
 			mEditorMock.SetSideBySide(true);
+		if (mMockKit)
+			mEditorMock.ShowKit();
 		mRoot.OnCommand("inspector.toggle", new (e) => { ToggleInspector(); });
 		mGui.Keymap.Bind("ctrl-shift-i", "inspector.toggle");
 		mRoot.DebugFont = mFont;
@@ -1152,7 +1157,9 @@ class GUISandboxApp : IApplication
 		RouteInput();
 		TypeKeys(mRoot);
 		// --scroll: once the GUI is up (held a few frames while the page settles).
-		if ((mScroll > 0.0f) && (mFrames >= 10) && (mFrames <= 20) && (mContent != null))
+		if ((mScroll > 0.0f) && (mFrames >= 10) && (mFrames <= 20) && (mEditorMock != null))
+			mEditorMock.ScrollKit(mScroll);
+		else if ((mScroll > 0.0f) && (mFrames >= 10) && (mFrames <= 20) && (mContent != null))
 			mContent.ScrollOffset = .(0.0f, mScroll);
 		if (mSweep)
 		{
