@@ -13,8 +13,10 @@ namespace Sedulous.Editor.App.Tests;
 /// The per-project store: the dock's layout through the file and back into a dock with the same
 /// panels in the same places; with none captured the dock keeps its default; a capture is a copy,
 /// adopted into a dock with a panel the layout names unregistered, which keeps its place; a layout
-/// the dock refuses leaves it as it was; the old dock's tree (section version 1) reads and is set
-/// aside, read through to its end, the open pages kept, and saves again as version 2.
+/// the dock refuses leaves it as it was; the old dock's tree (section version 1) reads into the new
+/// layout (its splits each splitting their own region at their shares, its groups' tabs in order
+/// with their chosen ones, a panel named twice placed once), read through to its end, the
+/// open pages kept, and saves again as version 2.
 class LayoutStoreTests
 {
 	private const String cSectionName = "Sedulous.Editor.App.EditorDockLayoutSettings";
@@ -157,7 +159,9 @@ class LayoutStoreTests
 	}
 
 	/// The store as the old dock wrote it (a sample project's, cut down): its open pages, then
-	/// its dock tree, a split of the welcome page beside a split of the assets over the console.
+	/// its dock tree, a split (type 0) one over the other (direction 1, Sedulous.UI's
+	/// Orientation.Vertical) of the welcome page (70%) and a split side by side (0, Horizontal) of
+	/// the assets (65%) and the console, each a tab group (type 1).
 	private const String cVersionOneStore = """
 		<root>
 			<array name="sections" count="2">
@@ -243,8 +247,38 @@ class LayoutStoreTests
 		</root>
 		""";
 
+	/// The split holding `node` in `layout`; null for a surface's root.
+	private static DockNode ParentOf(DockLayout layout, DockNodeId node)
+	{
+		let found = layout.FindNode(node);
+		return (found != null) ? layout.FindNode(found.Parent) : null;
+	}
+
+	/// The first child's share of a split of two.
+	private static float FirstShare(DockNode split)
+	{
+		Test.Assert(split.Weights.Count == 2);
+		return split.Weights[0] / (split.Weights[0] + split.Weights[1]);
+	}
+
+	private static bool Near(float a, float b) => Math.Abs(a - b) < 0.01f;
+
+	/// The panels of `stack` are `expected`, in tab order.
+	private static bool TabsAre(DockLayout layout, DockNodeId stack, params StringView[] expected)
+	{
+		let node = layout.FindNode(stack);
+		if ((node == null) || (node.Panels.Count != expected.Count))
+			return false;
+		for (int i < expected.Count)
+		{
+			if (node.Panels[i] != expected[i])
+				return false;
+		}
+		return true;
+	}
+
 	[Test]
-	public static void TheOldDocksTreeReadsAndIsSetAside()
+	public static void TheOldDocksTreeReadsIntoTheNewLayout()
 	{
 		EditorAppSerializables.RegisterEditorProjectSettingsTypes();
 		let dir = Scratch("scratch_layout_store_v1", .. scope .());
@@ -256,7 +290,7 @@ class LayoutStoreTests
 		Test.Assert(ProjectEditorSettings.Load(loaded, dir) case .Ok); // the store reads whole
 		let section = loaded.Find<EditorDockLayoutSettings>();
 		Test.Assert(section != null);
-		Test.Assert(!section.Captured);
+		Test.Assert(section.Captured);
 		// The open pages still reopen.
 		let pages = scope List<Guid>();
 		let reopened = ProjectEditorSettings.ApplyOpenPages(loaded, pages, let active);
@@ -265,15 +299,39 @@ class LayoutStoreTests
 		Test.Assert(active != .Empty);
 		Test.Assert(active == pages[0]);
 
-		// Set aside: the default stands.
+		// Into a dock arranged otherwise: the old tree's places.
 		let dock = scope DockController();
+		Register(dock, "welcome");
 		Register(dock, "assets");
+		Register(dock, "console");
 		Arrange(dock);
-		let before = LayoutText(dock.Layout, .. scope .());
-		Test.Assert(ProjectEditorSettings.ApplyDockLayout(dock, loaded) case .Err(.NotFound));
-		Test.Assert(LayoutText(dock.Layout, .. scope .()) == before);
+		Test.Assert(ProjectEditorSettings.ApplyDockLayout(dock, loaded) case .Ok);
+		let l = dock.Layout;
+		Test.Assert(l.CheckInvariants());
+		let documents = l.CentralStack;
+		Test.Assert(TabsAre(l, documents, "welcome")); // the first group, top
+		let assets = l.StackOf("assets");
+		let console = l.StackOf("console");
+		Test.Assert(TabsAre(l, assets, "assets"));
+		Test.Assert(TabsAre(l, console, "console"));
+		Test.Assert((assets != documents) && (console != documents) && (assets != console));
+		// The welcome over the pane (70% of the height), the pane's two side by side (the assets
+		// 65% of it, first).
+		let down = ParentOf(l, documents);
+		Test.Assert(down != null);
+		Test.Assert(down.Axis == .Vertical);
+		Test.Assert(down.Children[0] == documents);
+		Test.Assert(Near(FirstShare(down), 0.7f));
+		let across = ParentOf(l, assets);
+		Test.Assert(across != null);
+		Test.Assert(ParentOf(l, console) == across);
+		Test.Assert(across.Id == down.Children[1]);
+		Test.Assert(across.Axis == .Horizontal);
+		Test.Assert((across.Children[0] == assets) && (across.Children[1] == console));
+		Test.Assert(Near(FirstShare(across), 0.65f));
 
 		// Saved again, the section is the new one, the pages with it.
+		let before = LayoutText(l, .. scope .());
 		ProjectEditorSettings.CaptureDockLayout(dock, loaded);
 		Test.Assert(ProjectEditorSettings.Save(loaded, dir) case .Ok);
 		let saved = ReadText(path, .. scope .());
@@ -283,7 +341,154 @@ class LayoutStoreTests
 		Test.Assert(saved.Contains("7914f166-d579-454d-95d8-aba44565f196"));
 		let again = scope Settings();
 		Test.Assert(ProjectEditorSettings.Load(again, dir) case .Ok);
-		Test.Assert(again.Find<EditorDockLayoutSettings>().Captured);
+		let read = again.Find<EditorDockLayoutSettings>();
+		Test.Assert(read.Captured);
+		Test.Assert(LayoutText(read.Document.Layout, .. scope .()) == before);
+	}
+
+	/// A tab group of the old tree, its chosen tab `active`. The caller owns it.
+	private static LegacyDockNode Group(int32 active, params StringView[] panels)
+	{
+		let node = new LegacyDockNode();
+		node.ActiveTab = active;
+		for (let panel in panels)
+			node.Panels.Add(new String(panel));
+		return node;
+	}
+
+	/// A split of the old tree, `ratio` the first's share, side by side (`direction` 0) or one
+	/// over the other (1). TAKES OWNERSHIP of the halves; the caller owns it.
+	private static LegacyDockNode Split(uint8 direction, float ratio, LegacyDockNode first, LegacyDockNode second)
+	{
+		let node = new LegacyDockNode();
+		node.Direction = direction;
+		node.Ratio = ratio;
+		node.First = first;
+		node.Second = second;
+		return node;
+	}
+
+	/// A split as the second half: the documents (70%) over a pane of the assets (65%) beside the
+	/// console's group. Each stack keeps its tabs in order, the chosen one where the old group
+	/// had it (not the last placed).
+	[Test]
+	public static void AnOldTreesNestedSplitsEachSplitTheirOwnRegionWithTheirShares()
+	{
+		let root = Split(1, 0.7f, Group(0, "welcome", "page-a"),
+			Split(0, 0.65f, Group(0, "assets"), Group(1, "console", "profiler", "log")));
+		defer delete root;
+		let layout = scope DockLayout();
+		Test.Assert(layout.InsertTab("stale", layout.CentralStack).Ok);
+		EditorDockLayoutSettings.LayoutFromLegacy(root, layout);
+		Test.Assert(layout.CheckInvariants());
+		Test.Assert(layout.StackOf("stale") == cNoDock, "what the layout held before goes");
+		Test.Assert(layout.FindHidden("stale") == null);
+
+		let documents = layout.CentralStack;
+		Test.Assert(TabsAre(layout, documents, "welcome", "page-a"));
+		Test.Assert(layout.FindNode(documents).Active == 0);
+		let assets = layout.StackOf("assets");
+		let console = layout.StackOf("console");
+		Test.Assert(TabsAre(layout, assets, "assets"));
+		Test.Assert(TabsAre(layout, console, "console", "profiler", "log"));
+		Test.Assert(layout.FindNode(console).Active == 1);
+
+		let down = ParentOf(layout, documents);
+		Test.Assert(down != null);
+		Test.Assert(down.Axis == .Vertical);
+		Test.Assert(down.Children.Count == 2);
+		Test.Assert(down.Children[0] == documents);
+		Test.Assert(Near(FirstShare(down), 0.7f));
+		let across = ParentOf(layout, assets);
+		Test.Assert(across != null);
+		Test.Assert(across.Id == down.Children[1]);
+		Test.Assert(ParentOf(layout, console) == across);
+		Test.Assert(across.Axis == .Horizontal);
+		Test.Assert((across.Children[0] == assets) && (across.Children[1] == console));
+		Test.Assert(Near(FirstShare(across), 0.65f));
+	}
+
+	/// A split as the first half: the assets and console (one over the other, the assets 60%)
+	/// beside the welcome, the pair a quarter of the width. The second half is placed first, so
+	/// the first half splits only the stack left to it, not the whole.
+	[Test]
+	public static void AnOldSplitsFirstHalfSplitsOnlyItsOwnRegion()
+	{
+		let root = Split(0, 0.25f, Split(1, 0.6f, Group(0, "assets"), Group(0, "console")), Group(0, "welcome"));
+		defer delete root;
+		let layout = scope DockLayout();
+		EditorDockLayoutSettings.LayoutFromLegacy(root, layout);
+		Test.Assert(layout.CheckInvariants());
+
+		let assets = layout.StackOf("assets");
+		let console = layout.StackOf("console");
+		let welcome = layout.StackOf("welcome");
+		Test.Assert(assets == layout.CentralStack, "the first panel's group is the central stack");
+		Test.Assert((console != cNoDock) && (welcome != cNoDock));
+		Test.Assert((assets != console) && (assets != welcome) && (console != welcome));
+		let across = ParentOf(layout, welcome);
+		Test.Assert(across != null);
+		Test.Assert(across.Axis == .Horizontal);
+		Test.Assert(across.Children.Count == 2);
+		Test.Assert(across.Children[1] == welcome);
+		Test.Assert(Near(FirstShare(across), 0.25f));
+		let down = ParentOf(layout, assets);
+		Test.Assert(down != null);
+		Test.Assert(down.Id == across.Children[0]);
+		Test.Assert(ParentOf(layout, console) == down);
+		Test.Assert(down.Axis == .Vertical);
+		Test.Assert((down.Children[0] == assets) && (down.Children[1] == console));
+		Test.Assert(Near(FirstShare(down), 0.6f));
+	}
+
+	/// A panel the old tree names twice (a file edited by hand) is placed once, the layout
+	/// holding together: chosen only in the stack it went to, so another group naming it leaves
+	/// that stack's choice as it was; a split whose second half begins with a panel placed
+	/// already is its first half alone; a half with no panels gives way to the other.
+	[Test]
+	public static void APanelNamedTwiceIsPlacedOnce()
+	{
+		{
+			// The console in both halves, the second half's chosen tab: the first's choice stands.
+			let root = Split(0, 0.5f, Group(0, "assets", "console"), Group(1, "log", "console"));
+			defer delete root;
+			let layout = scope DockLayout();
+			EditorDockLayoutSettings.LayoutFromLegacy(root, layout);
+			Test.Assert(layout.CheckInvariants());
+			let central = layout.CentralStack;
+			Test.Assert(TabsAre(layout, central, "assets", "console"));
+			Test.Assert(layout.FindNode(central).Active == 0);
+			let log = layout.StackOf("log");
+			Test.Assert((log != cNoDock) && (log != central));
+			Test.Assert(TabsAre(layout, log, "log"));
+		}
+		{
+			// The outer split puts the log beside the assets first; the inner split, whose second
+			// half begins with it, is then the assets alone.
+			let root = Split(0, 0.5f, Split(1, 0.5f, Group(0, "assets"), Group(0, "log")), Group(0, "log", "console"));
+			defer delete root;
+			let layout = scope DockLayout();
+			EditorDockLayoutSettings.LayoutFromLegacy(root, layout);
+			Test.Assert(layout.CheckInvariants());
+			let central = layout.CentralStack;
+			Test.Assert(TabsAre(layout, central, "assets"));
+			let log = layout.StackOf("log");
+			Test.Assert(TabsAre(layout, log, "log", "console"));
+			let across = ParentOf(layout, central);
+			Test.Assert(across != null);
+			Test.Assert(across.Axis == .Horizontal);
+			Test.Assert(ParentOf(layout, log) == across);
+			Test.Assert(layout.Nodes.Count == 3, "one split of two stacks: nothing split down");
+		}
+		{
+			// A half with nothing in it: the other is the whole.
+			let root = Split(0, 0.3f, Group(0), Group(0, "assets"));
+			defer delete root;
+			let layout = scope DockLayout();
+			EditorDockLayoutSettings.LayoutFromLegacy(root, layout);
+			Test.Assert(TabsAre(layout, layout.CentralStack, "assets"));
+			Test.Assert(layout.Nodes.Count == 1, "the central stack alone");
+		}
 	}
 
 	/// A version 1 node as the old dock wrote it, up to its children: `type` 0 a split, 1 a tab
@@ -356,12 +561,49 @@ class LayoutStoreTests
 		buffer.Seek(0, .Begin);
 		let reader = scope BinarySerializer(buffer, .Read);
 		let section = scope EditorDockLayoutSettings();
-		section.Captured = true; // a reused section: version 1 leaves none captured
+		// A reused section: version 1 replaces what it held.
+		Test.Assert(section.Document.Layout.InsertTab("stale", section.Document.Layout.CentralStack).Ok);
 		section.Serialize(reader);
 		uint32 after = 0;
 		Serialize(reader, ref after);
 		Test.Assert(reader.IsOk);
-		Test.Assert(!section.Captured);
 		Test.Assert(after == cAfter);
+		Test.Assert(section.Captured);
+		let layout = section.Document.Layout;
+		Test.Assert(layout.StackOf("stale") == cNoDock);
+		Test.Assert(layout.StackOf("welcome") == layout.CentralStack);
+		Test.Assert(TabsAre(layout, layout.StackOf("assets"), "assets"));
+		Test.Assert(TabsAre(layout, layout.StackOf("console"), "console"));
+		Test.Assert(layout.StackOf("assets") != layout.StackOf("console"));
+	}
+
+	/// A version 1 tree that names no panel places none: the section reads as none captured (so
+	/// ApplyDockLayout says NotFound and the dock keeps its default).
+	[Test]
+	public static void AnOldTreeNamingNoPanelLeavesNoneCaptured()
+	{
+		let buffer = scope MemoryStream();
+		{
+			let writer = scope BinarySerializer(buffer, .Write);
+			BeginVersionedPayload(writer, EditorDockLayoutSettings.TypeId, 1);
+			writer.BeginObject();
+			var hasRoot = true;
+			writer.Key("hasRoot");
+			Serialize(writer, ref hasRoot);
+			writer.Key("root");
+			BeginLegacyNode(writer, 1, "", false);
+			writer.EndObject();
+			writer.EndObject();
+			EndVersionedPayload(writer);
+			Test.Assert(writer.IsOk);
+		}
+
+		buffer.Seek(0, .Begin);
+		let reader = scope BinarySerializer(buffer, .Read);
+		let section = scope EditorDockLayoutSettings();
+		section.Captured = true; // a reused section
+		section.Serialize(reader);
+		Test.Assert(reader.IsOk);
+		Test.Assert(!section.Captured);
 	}
 }

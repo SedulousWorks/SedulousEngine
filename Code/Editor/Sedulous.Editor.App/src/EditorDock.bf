@@ -1,5 +1,6 @@
 using System;
 using Sedulous.GUI; // with GUI.Docking's controller and area, and GUI.Hosting's host
+using Sedulous.Settings;
 
 namespace Sedulous.Editor.App;
 
@@ -114,6 +115,20 @@ class EditorDock
 		let layout = DefaultLayout();
 		defer delete layout;
 		mController.Adopt(layout);
+	}
+
+	/// The layout a project opens with: the one saved in its store, else the default (the dock
+	/// may be showing another project's). `store` null: the default.
+	public void TakeLayout(Settings store)
+	{
+		if ((store == null) || !(ProjectEditorSettings.ApplyDockLayout(mController, store) case .Ok))
+			ResetLayout();
+	}
+
+	/// The layout into a project's store, a copy (each time the store is written).
+	public void CaptureLayout(Settings store)
+	{
+		ProjectEditorSettings.CaptureDockLayout(mController, store);
 	}
 
 	/// The Project panel's content: the open project's page, or the welcome when null. The panel's

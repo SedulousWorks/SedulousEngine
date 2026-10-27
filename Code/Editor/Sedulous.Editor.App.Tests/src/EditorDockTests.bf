@@ -6,6 +6,7 @@ using Sedulous.Graphics.Null;
 using Sedulous.RHI;
 using Sedulous.Shell.Null;
 using Sedulous.GUI;
+using Sedulous.Settings;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
@@ -163,7 +164,8 @@ class DockWindowsBed
 /// Assets and Console under it side by side, at their shares); a layout that places none puts each
 /// at its default place; the Project panel's content the open project's page or the welcome
 /// wherever the panel shows; Assets' and Console's what their contents make, else an empty panel;
-/// Reset Layout; closed, the area gone and the panels kept for an Open after; and with a host that
+/// Reset Layout; a project's layout taken from its store, else the default, and captured into it;
+/// closed, the area gone and the panels kept for an Open after; and with a host that
 /// opens windows, the floats in windows of their own, closed with the dock.
 static class EditorDockTests
 {
@@ -304,6 +306,46 @@ static class EditorDockTests
 		Test.Assert(assets != console);
 		Test.Assert(bed.ParentOf(console) == bed.ParentOf(assets), "beside Assets again");
 		Test.Assert(bed.ParentOf(assets).Axis == .Horizontal);
+	}
+
+	/// The layout a project opens with: its store's, over whatever the dock showed; a store with
+	/// none captured, or none, the default. A capture is the dock's layout, a copy.
+	[Test]
+	public static void TakeLayoutTakesTheStoresLayoutElseTheDefault()
+	{
+		EditorAppSerializables.RegisterEditorProjectSettingsTypes();
+		let bed = scope DockBed();
+		let controller = bed.Dock.Controller;
+		let layout = bed.Layout;
+		// The console tabbed in with the assets: an arrangement the default does not make.
+		Test.Assert(controller.Edit(scope (l) => l.MoveToTab(EditorDock.cPanelConsole, l.StackOf(EditorDock.cPanelAssets))).Ok);
+		let store = scope Settings();
+		bed.Dock.CaptureLayout(store);
+		let section = store.Find<EditorDockLayoutSettings>();
+		Test.Assert((section != null) && section.Captured);
+		Test.Assert(section.Document.Layout != layout, "a copy");
+		Test.Assert(section.Document.Layout.StackOf(EditorDock.cPanelConsole) == section.Document.Layout.StackOf(EditorDock.cPanelAssets));
+
+		// Shown otherwise, then taken from the store: the store's.
+		bed.Dock.ResetLayout();
+		Test.Assert(layout.StackOf(EditorDock.cPanelConsole) != layout.StackOf(EditorDock.cPanelAssets));
+		bed.Dock.TakeLayout(store);
+		Test.Assert(layout.StackOf(EditorDock.cPanelConsole) != cNoDock);
+		Test.Assert(layout.StackOf(EditorDock.cPanelConsole) == layout.StackOf(EditorDock.cPanelAssets));
+
+		// A store with none captured: the default, over the store's.
+		bed.Dock.TakeLayout(scope Settings());
+		let assets = layout.StackOf(EditorDock.cPanelAssets);
+		let console = layout.StackOf(EditorDock.cPanelConsole);
+		Test.Assert((console != cNoDock) && (console != assets));
+		Test.Assert(bed.ParentOf(console) == bed.ParentOf(assets), "beside the assets, as the default has it");
+
+		// No store: the default too.
+		bed.Dock.TakeLayout(store);
+		Test.Assert(layout.StackOf(EditorDock.cPanelConsole) == layout.StackOf(EditorDock.cPanelAssets));
+		bed.Dock.TakeLayout(null);
+		Test.Assert(layout.StackOf(EditorDock.cPanelConsole) != layout.StackOf(EditorDock.cPanelAssets));
+		Test.Assert(layout.StackOf(EditorDock.cPanelProject) == layout.CentralStack);
 	}
 
 	[Test]

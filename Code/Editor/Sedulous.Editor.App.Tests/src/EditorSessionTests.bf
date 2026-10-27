@@ -5,6 +5,7 @@ using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Settings;
+using Sedulous.GUI; // the dock's layout
 using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -19,7 +20,9 @@ namespace Sedulous.Editor.App.Tests;
 /// the context holds the project's services from before the opened hook until after the
 /// closing one; a cook's finish reaches the views after the thumbnails drop; the per-project
 /// store loads with the project, saves on a favourite's change and on close, what the views
-/// captured into it included; a close is idempotent and runs in the destructor.
+/// captured into it included; the dock's layout is captured into it each time it is written and
+/// before the views close, and a project that opens takes its saved layout, else the default; a
+/// close is idempotent and runs in the destructor.
 class EditorSessionTests
 {
 	/// The services a session runs on; the status lines land in Said, the hooks in Events.
@@ -39,6 +42,14 @@ class EditorSessionTests
 		public EditorSession Session = null;
 		/// What the views capture into the store as the project closes; none when empty.
 		public List<Guid> PagesToCapture = new .() ~ delete _;
+		/// A dock the hooks drive as the application's do (the layout captured, taken on open);
+		/// none when null.
+		public DockBed DockBed = null ~ delete _;
+		/// The closing hook closes the console, as views going might change the dock.
+		public bool CloseConsoleOnClosing = false;
+		/// How often the views' state was captured, and whether the closing hook had run by then.
+		public int Captures = 0;
+		public bool CapturedAfterClosing = false;
 		/// The services' state each hook saw.
 		public bool OpenedSawServicesUp = false;
 		public bool ClosingSawServicesUp = false;
@@ -97,6 +108,8 @@ class EditorSessionTests
 				};
 			services.OnOpened = new [=bench](project) =>
 				{
+					if (bench.DockBed != null)
+						bench.DockBed.Dock.TakeLayout(bench.Session.Store);
 					let context = bench.Context;
 					bench.OpenedSawServicesUp = (bench.Session.Project == project) && (context.Project == project)
 						&& (context.Resources != null) && (context.Resources == bench.Session.Resources)
@@ -111,7 +124,17 @@ class EditorSessionTests
 						&& (context.Resources != null) && (context.ProjectEditorSettings == bench.Session.Store) && bench.Cook.IsReady;
 					if (!bench.PagesToCapture.IsEmpty)
 						ProjectEditorSettings.CaptureOpenPages(bench.Session.Store, bench.PagesToCapture, bench.PagesToCapture[0]);
+					if (bench.CloseConsoleOnClosing && (bench.DockBed != null))
+						Test.Assert(bench.DockBed.Dock.Controller.Close(EditorDock.cPanelConsole).Ok);
 					bench.Events.Add(new .("closing"));
+				};
+			services.CaptureState = new [=bench](store) =>
+				{
+					Test.Assert(store == bench.Session.Store);
+					bench.Captures++;
+					bench.CapturedAfterClosing = bench.CapturedAfterClosing || bench.HasEvent("closing");
+					if (bench.DockBed != null)
+						bench.DockBed.Dock.CaptureLayout(store);
 				};
 			services.OnCookFinished = new [=bench]() =>
 				{
@@ -459,5 +482,124 @@ class EditorSessionTests
 			Test.Assert(ProjectEditorSettings.ApplyOpenPages(read, pages, let active) case .Ok);
 			Test.Assert((pages.Count == 1) && (pages[0] == page));
 		}
+	}
+
+	/// The saved layout's section in the store on disk under `dir`; null when none was written.
+	static void ReadLayout(StringView dir, Settings outStore, out DockLayout outLayout)
+	{
+		ReadStore(dir, outStore);
+		let section = outStore.Find<EditorDockLayoutSettings>();
+		outLayout = ((section != null) && section.Captured) ? section.Document.Layout : null;
+	}
+
+	/// The console tabbed in with the assets: an arrangement the default does not make.
+	static void TabConsoleWithAssets(DockBed bed)
+	{
+		Test.Assert(bed.Dock.Controller.Edit(scope (l) => l.MoveToTab(EditorDock.cPanelConsole, l.StackOf(EditorDock.cPanelAssets))).Ok);
+		Test.Assert(bed.Layout.StackOf(EditorDock.cPanelConsole) == bed.Layout.StackOf(EditorDock.cPanelAssets));
+	}
+
+	/// Each write of the store captures the views' state into it first: a favourite's change
+	/// writes the dock as it is then, a later write as it is by then.
+	[Test]
+	public static void TheViewsStateIsCapturedIntoTheStoreEachTimeItIsWritten()
+	{
+		let bench = scope Bench();
+		bench.DockBed = new DockBed();
+		let dir = bench.MadeProject("scratch_editor_session_capture", "Captured");
+		let session = scope EditorSession(bench.Services());
+		bench.Session = session;
+		Test.Assert(session.Open(dir));
+
+		TabConsoleWithAssets(bench.DockBed);
+		bench.Context.ToggleFavorite(Guid.Create());
+		Test.Assert(bench.Captures == 1);
+		{
+			let read = scope Settings();
+			ReadLayout(dir, read, let layout);
+			Test.Assert(layout != null);
+			Test.Assert(layout.StackOf(EditorDock.cPanelConsole) != cNoDock);
+			Test.Assert(layout.StackOf(EditorDock.cPanelConsole) == layout.StackOf(EditorDock.cPanelAssets));
+		}
+
+		// The console closed, the store written again: the dock as it is now.
+		Test.Assert(bench.DockBed.Dock.Controller.Close(EditorDock.cPanelConsole).Ok);
+		session.SaveStore();
+		Test.Assert(bench.Captures == 2);
+		{
+			let read = scope Settings();
+			ReadLayout(dir, read, let layout);
+			Test.Assert(layout != null);
+			Test.Assert(layout.StackOf(EditorDock.cPanelConsole) == cNoDock);
+			Test.Assert(layout.StackOf(EditorDock.cPanelAssets) != cNoDock);
+		}
+		Test.Assert(!bench.CapturedAfterClosing);
+	}
+
+	/// A close captures the views' state while they are up, before the closing hook: what the
+	/// views change as they go is not what is saved, and the write after the hook (what the
+	/// views add, the open pages) captures nothing again.
+	[Test]
+	public static void TheViewsStateIsCapturedBeforeTheProjectCloses()
+	{
+		let bench = scope Bench();
+		bench.DockBed = new DockBed();
+		let dir = bench.MadeProject("scratch_editor_session_capture_close", "Closing");
+		let page = Guid.Create();
+		let session = scope EditorSession(bench.Services());
+		bench.Session = session;
+		Test.Assert(session.Open(dir));
+
+		TabConsoleWithAssets(bench.DockBed);
+		bench.CloseConsoleOnClosing = true;
+		bench.PagesToCapture.Add(page);
+		session.Close();
+		Test.Assert(bench.EventsAre("opened", "closing"));
+		Test.Assert(bench.Captures == 1, "once, as the close began");
+		Test.Assert(!bench.CapturedAfterClosing);
+		Test.Assert(bench.DockBed.Layout.StackOf(EditorDock.cPanelConsole) == cNoDock, "the views closed it as they went");
+		{
+			let read = scope Settings();
+			ReadLayout(dir, read, let layout);
+			Test.Assert(layout != null);
+			// The dock as it was while the views were up.
+			Test.Assert(layout.StackOf(EditorDock.cPanelConsole) != cNoDock);
+			Test.Assert(layout.StackOf(EditorDock.cPanelConsole) == layout.StackOf(EditorDock.cPanelAssets));
+			// What the closing views captured, written after them.
+			let pages = scope List<Guid>();
+			Test.Assert(ProjectEditorSettings.ApplyOpenPages(read, pages, let active) case .Ok);
+			Test.Assert((pages.Count == 1) && (pages[0] == page) && (active == page));
+		}
+	}
+
+	/// A project that opens takes the layout saved with it; one with none saved takes the
+	/// default, not what the dock showed for the project before.
+	[Test]
+	public static void AnOpeningProjectTakesItsSavedLayoutElseTheDefault()
+	{
+		let bench = scope Bench();
+		bench.DockBed = new DockBed();
+		let first = bench.MadeProject("scratch_editor_session_layout_first", "First");
+		let second = bench.MadeProject("scratch_editor_session_layout_second", "Second");
+		let session = scope EditorSession(bench.Services());
+		bench.Session = session;
+		let layout = bench.DockBed.Layout;
+
+		Test.Assert(session.Open(first));
+		TabConsoleWithAssets(bench.DockBed);
+
+		// The second has none saved: the default, over the first's arrangement.
+		Test.Assert(session.Open(second));
+		let assets = layout.StackOf(EditorDock.cPanelAssets);
+		let console = layout.StackOf(EditorDock.cPanelConsole);
+		Test.Assert((assets != cNoDock) && (console != cNoDock));
+		Test.Assert(assets != console);
+		Test.Assert(bench.DockBed.ParentOf(console) == bench.DockBed.ParentOf(assets), "beside the assets, as the default has it");
+		Test.Assert(layout.StackOf(EditorDock.cPanelProject) == layout.CentralStack);
+
+		// The first again: its own, saved as it closed.
+		Test.Assert(session.Open(first));
+		Test.Assert(layout.StackOf(EditorDock.cPanelConsole) != cNoDock);
+		Test.Assert(layout.StackOf(EditorDock.cPanelConsole) == layout.StackOf(EditorDock.cPanelAssets));
 	}
 }

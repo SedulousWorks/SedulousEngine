@@ -161,6 +161,8 @@ class EditorApplication : IApplication
 			};
 		services.OnOpened = new (project) =>
 			{
+				// The project's layout, else the default (the one before was another project's).
+				mDock.TakeLayout(mSession.Store);
 				if (mExport != null)
 					mExport.SetProject(project);
 				mCreation.SetProject(project);
@@ -175,6 +177,7 @@ class EditorApplication : IApplication
 					mExport.SetProject(null);
 				mCreation.SetProject(null);
 			};
+		services.CaptureState = new (store) => { mDock.CaptureLayout(store); };
 		services.OnCookFinished = new () =>
 			{
 				// Failures stay until dismissed (the Console has the log); a cook of nothing says

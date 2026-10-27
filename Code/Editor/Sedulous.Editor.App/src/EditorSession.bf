@@ -38,11 +38,15 @@ class EditorSessionServices
 	/// Seeds a new project's starter content (the executable composes it); null: none. Owned.
 	public delegate void(EditorContext context, EditorProject project) SeedNewProject ~ delete _;
 	/// The project opened, its services up: the application brings its views up (the MCP host,
-	/// the pages, the layout). Owned.
+	/// the pages, the project's layout, else the default). Owned.
 	public delegate void(EditorProject project) OnOpened ~ delete _;
-	/// The project is about to close, its services still up: the views go first, the pages and
-	/// the layout captured into the store, which the close then saves. Owned.
+	/// The project is about to close, its services still up, its views' state already saved
+	/// (CaptureState): the views go first, what they add as they go written by the close after.
+	/// Owned.
 	public delegate void() OnClosing ~ delete _;
+	/// The views' state into the store, each time it is written and before the project closes
+	/// (the dock's layout). Owned.
+	public delegate void(Settings store) CaptureState ~ delete _;
 	/// A cook finished (its summary on the cook service), the products reloaded and the game
 	/// UI bound again: the views refresh, the user hears. Owned.
 	public delegate void() OnCookFinished ~ delete _;
@@ -74,7 +78,8 @@ struct EditorSessionOpenOptions
 /// thumbnails, and the game UI's defaults; it records the open in the user's project registry
 /// and seeds a new project's starter content. Closing takes them down in the reverse order and
 /// saves the store. What the views do at those moments (the pages, the layout, the MCP host)
-/// goes through the hooks the application gives it.
+/// goes through the hooks the application gives it, and their state goes into the store each
+/// time it is written.
 ///
 /// The store's section types must be registered (EditorAppSerializables) before an open:
 /// a section it cannot make aborts the load, and a later save would drop what was left out.
@@ -178,19 +183,23 @@ class EditorSession
 		return true;
 	}
 
-	/// Closes the project: the views first (the hook), then the cook, the thumbnails, the store
-	/// saved, the resources, the store, the project last. Nothing when none is open.
+	/// Closes the project: the views' state saved while they are up, the views (the hook), then
+	/// the cook, the thumbnails, the store written again, the resources, the store, the project
+	/// last. Nothing when none is open.
 	public void Close()
 	{
 		if (mProject == null)
 			return;
 		let context = mServices.Context;
+		SaveStore(); // the views' state, while they are up
 		if (mServices.OnClosing != null)
 			mServices.OnClosing();
 		mServices.Cook.Shutdown(); // joins a cook in flight before the databases go
 		DeleteAndNullify!(mServices.Cook.OnCookFinished); // it reaches this session
 		mServices.Thumbnails.Reset(); // in-flight slots outlive harmlessly; the entries drop
-		SaveStore(); // what the views captured into it, the layout and the open pages
+		// What the views put in it as they closed (the open pages), the views not captured again:
+		// what they were is in it already, and what they are now is closing.
+		WriteStore();
 		DeleteAndNullify!(context.OnCookRequested);
 		DeleteAndNullify!(context.CookBusy);
 		DeleteAndNullify!(context.OnFavoritesChanged);
@@ -230,9 +239,18 @@ class EditorSession
 	/// The resources over the project's cooked database; null with no project.
 	public ResourceManager Resources => mResources;
 
-	/// Writes the per-project store (the views capture the layout and the open pages into it
-	/// first).
+	/// Writes the per-project store, the views' state captured into it first.
 	public void SaveStore()
+	{
+		if ((mProject == null) || (mStore == null))
+			return;
+		if (mServices.CaptureState != null)
+			mServices.CaptureState(mStore);
+		WriteStore();
+	}
+
+	/// Writes the per-project store as it is.
+	private void WriteStore()
 	{
 		if ((mProject != null) && (mStore != null))
 			ProjectEditorSettings.Save(mStore, mProject.EditorStateRoot(.. scope .())).IgnoreError();
