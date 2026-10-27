@@ -425,14 +425,23 @@ class EditorApplication : IApplication
 		// The pages, over the paths the tabs take (a close at the next frame).
 		mcpServices.OpenPage = new (id) => mPages.Open(id);
 		mcpServices.ClosePage = new (page) => { mPages.Close(page); };
-		// The windows' screenshots, over the same capture as View > Screenshot. The action bridge
-		// and the import notice come back with their layers; an agent's delete takes the
-		// database's own until the assets view is on the GUI.
+		// The windows' screenshots, over the same capture as View > Screenshot. The import notice
+		// comes back with its layer; an agent's delete takes the database's own until the assets
+		// view is on the GUI.
 		mcpServices.Windows = new (outWindows) => { CapturableWindows(outWindows); };
 		mcpServices.RequestShots = new (requests) => { mWindowCapture.Request(requests); };
 		mcpServices.Shots = new (outShots) => { mWindowCapture.Shots(outShots); };
-		// The dock's layout tools, over its controller (it outlives the host).
-		mcpServices.AddTools = new (server) => { EditorLayoutTools.Register(server, mDock.Controller); };
+		// The dock's layout tools, over its controller, and the action bridge, its unattended
+		// calls refusing the window root's modal windows (both outlive the host, which stops
+		// first; a headless run has no root, so nothing to refuse).
+		mcpServices.AddTools = new (server) =>
+			{
+				EditorLayoutTools.Register(server, mDock.Controller);
+				let actionSeams = new ActionToolSeams();
+				actionSeams.Context = mContext;
+				actionSeams.Dialogs = (mWindow.Root != null) ? mWindow.Root.EventDispatcher : null;
+				EditorActionTools.Register(server, actionSeams);
+			};
 		mMcp = new EditorMcpService(mcpServices);
 
 		RegisterActions();

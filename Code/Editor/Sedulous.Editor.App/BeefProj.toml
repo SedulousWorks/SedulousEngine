@@ -133,10 +133,6 @@ Name = "ContainerListEditor.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "EditorActionTools.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "EditorIcons.bf"
 
 [[ProjectFolder.Items]]

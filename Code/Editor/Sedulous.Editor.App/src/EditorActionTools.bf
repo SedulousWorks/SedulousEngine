@@ -3,62 +3,63 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Json;
 using Sedulous.Mcp;
-using Sedulous.UI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Mcp;
 
 namespace Sedulous.Editor.App;
 
-/// The live editor the action tools see: the registry through the context, and the UI context
-/// whose dialogs an unattended call suppresses (null is nothing to suppress, a headless test).
+/// The live editor the action tools see: the registry through the context, and the GUI's
+/// dispatcher whose modal windows an unattended call refuses (null is nothing to refuse, a
+/// headless test).
 class ActionToolSeams
 {
 	public EditorContext Context = null;
-	public UIContext Ui = null;
+	/// BORROWED: the editor's window root's, which outlives the host (the host stops first).
+	public Sedulous.GUI.EventDispatcher Dialogs = null;
 }
 
-/// The unattended scope: while alive, every dialog shown through `ui` is suppressed and
-/// recorded by title. Installs the context's DialogInterceptor and puts back what was there,
-/// so scopes nest.
+/// The unattended scope: while alive, every modal window opened through `dialogs` is refused
+/// (answered as cancelled: a message box as its cancel, a window as its close) and recorded by
+/// its title. Installs the dispatcher's modal interceptor and puts back what was there, so
+/// scopes nest.
 class UnattendedDialogs
 {
 	/// BORROWED.
-	private UIContext mUi;
-	/// OWNED while this scope holds the context's slot; handed back when it ends.
-	private delegate bool(Dialog dialog) mPrevious = null;
+	private Sedulous.GUI.EventDispatcher mDialogs;
+	/// OWNED while this scope holds the dispatcher's slot; handed back when it ends.
+	private delegate bool(Sedulous.GUI.Node window) mPrevious = null;
 	public List<String> Suppressed = new .() ~ DeleteContainerAndItems!(_);
 
-	public this(UIContext ui)
+	public this(Sedulous.GUI.EventDispatcher dialogs)
 	{
-		mUi = ui;
-		if (mUi == null)
+		mDialogs = dialogs;
+		if (mDialogs == null)
 			return;
-		mPrevious = mUi.DialogInterceptor;
-		mUi.DialogInterceptor = new [=this](dialog) =>
+		mPrevious = mDialogs.TakeModalInterceptor();
+		mDialogs.SetModalInterceptor(new [=this](window) =>
 			{
-				Suppressed.Add(new String(dialog.Title));
+				let titled = window as Sedulous.GUI.Window;
+				Suppressed.Add(new String((titled != null) ? titled.Title : "(untitled)"));
 				return false;
-			};
+			});
 	}
 
 	public ~this()
 	{
 		// No early return: in Beef it would skip the fields' own deletes after this body.
-		if (mUi != null)
-		{
-			delete mUi.DialogInterceptor;
-			mUi.DialogInterceptor = mPrevious;
-		}
+		// Setting deletes ours and hands the one taken back its slot.
+		if (mDialogs != null)
+			mDialogs.SetModalInterceptor(mPrevious);
 	}
 }
 
 /// The MCP bridge over the editor's ACTIONS, one generic surface for everything a user can do
 /// by command: action_list (every declaration with its state over the active page),
 /// action_state (one) and action_execute (through the registry, the one funnel). An agent never
-/// waits for a human: action_execute runs UNATTENDED, every dialog the action would open kept
-/// off the screen and closed as cancelled (the accident-preventing answer), and the result
-/// names what was suppressed, with the note that the action then most likely did nothing and a
-/// dedicated tool or the user is the way forward.
+/// waits for a human: action_execute runs UNATTENDED, every modal window the action would open
+/// refused by the GUI's dispatcher and answered as cancelled (the accident-preventing answer),
+/// and the result names what was suppressed, with the note that the action then most likely did
+/// nothing and a dedicated tool or the user is the way forward.
 static class EditorActionTools
 {
 	/// How many tools Register registers; a tripwire like the page tools'.
@@ -117,7 +118,7 @@ static class EditorActionTools
 				}
 				let dialogs = JsonValue.MakeArray();
 				{
-					let unattended = scope UnattendedDialogs(seams.Ui);
+					let unattended = scope UnattendedDialogs(seams.Dialogs);
 					if (actions.Execute(action.Id) case .Err(let code))
 					{
 						delete dialogs;
