@@ -23,6 +23,10 @@ corlib = "*"
 "Sedulous.Pipeline.Importer" = "*"
 "Sedulous.Editor.App" = "*"
 "Sedulous.GUI" = "*"
+# A headless runtime host for EditorWindow.
+"Sedulous.Runtime" = "*"
+"Sedulous.Runtime.Client" = "*"
+"Sedulous.Graphics" = "*"
 # The MCP host over loopback.
 "Sedulous.Net" = "*"
 "Sedulous.Http" = "*"

@@ -1,0 +1,320 @@
+using System;
+using Sedulous.Core.IO;
+using Sedulous.Core.Logging;
+using Sedulous.Fonts;
+using Sedulous.Fonts.TrueType;
+using Sedulous.Fonts.HarfBuzz; // the shaper the editor's fonts get
+using Sedulous.Fonts.Bidi; // mixed-direction lines in visual order
+using Sedulous.Graphics;
+using Sedulous.Runtime.Client; // IApplicationHost
+using Sedulous.VFS;
+using Sedulous.GUI; // with GUI.Hosting's host, GUI.Docking's, GUI.Toolkit's and GUI.Code's sheets and elements
+using Sedulous.Editor.Core;
+
+namespace Sedulous.Editor.App;
+
+// EditorWindow: the editor's GUI on its main window (Raptor's editor-gui spec, 5.1, layer 3). It
+// owns the GUI host (the window's input, frames, renderer and picture baker), the fonts the
+// editor's sheet names, the editor's own files (EditorResources) and the frame read from
+// Data/Editor/Shell.gml, with the toast host over it. Its look is the editor's sheet
+// (Editor/editor.css over its tokens), the chosen density's sheet after it and a `:root` block of
+// the user's inputs (the accent), the scheme and less motion through the GUI's media; a change to
+// those files on disk (the editor's development loop) applies at once.
+
+/// The user's appearance inputs (Preferences): the scheme, the accent, the density, less motion
+/// and the UI scale. The defaults are the editor's (rulings 6, 7, 13). A class: it owns its text;
+/// Set copies another.
+class EditorLook
+{
+	public bool Dark = true;
+	public String Accent = new .("#2f6fdf") ~ delete _; // azure
+	/// compact, default or comfortable: Editor/density-<name>.css.
+	public String Density = new .("compact") ~ delete _;
+	public bool ReduceMotion = false;
+	public float UiScale = 1.0f;
+
+	public void Set(EditorLook other)
+	{
+		if (other === this)
+			return;
+		Dark = other.Dark;
+		Accent.Set(other.Accent);
+		Density.Set(other.Density);
+		ReduceMotion = other.ReduceMotion;
+		UiScale = other.UiScale;
+	}
+}
+
+class EditorWindow
+{
+	/// The frame's markup and the editor's sheet, under the data root.
+	public const String cFramePath = "Editor/Shell.gml";
+	public const String cSheetPath = "Editor/editor.css";
+
+	/// About once a second: a sweep is a walk of the editor's folder.
+	private const float cSweepSeconds = 1.0f;
+
+	// Close lets each go, in the order the GUI needs (the trees, the host, then what it
+	// borrowed); the field cleanups find them gone.
+	private String mDataRoot = new .() ~ delete _;
+	private EditorLook mLook = new .() ~ delete _;
+	/// Borrowed (the runtime host's).
+	private GraphicsDevice mDevice = null;
+	/// Borrowed (the runtime host's).
+	private Sedulous.Graphics.RenderWindow mWindow = null;
+	/// The shaders' mount.
+	private NativeFileSystem mData = null ~ delete _;
+	private VgShaderLibrary mShaders = null ~ delete _;
+	private TrueTypeFontService mFonts = null ~ delete _;
+	private EditorResources mResources = null ~ delete _;
+	private GuiHost mHost = null ~ delete _;
+	/// References of ours (the tree holds its own).
+	private SceneRoot mRoot = null ~ _?.ReleaseRef();
+	private Node mFrame = null ~ _?.ReleaseRef();
+	private ToastHost mToasts = null ~ _?.ReleaseRef();
+	/// The sheet again when the editor's files change.
+	private Effect mReload = null ~ delete _;
+	private float mSinceSweep = 0.0f;
+
+	public ~this()
+	{
+		Close();
+	}
+
+	/// Opens the GUI on the host's main window over the data root: the shaders, the fonts, the
+	/// frame and the sheet. `look` is copied. False (logged, and nothing kept) when the window, the
+	/// device, the shaders or the frame are missing; the editor then runs with no interface.
+	public bool Open(IApplicationHost host, StringView dataRoot, EditorLook look)
+	{
+		Close(); // opened again: the last GUI goes first
+		let window = host.MainRenderWindow;
+		if ((window == null) || (host.Graphics == null) || (host.Graphics.Raw == null) || (host.Shell == null))
+		{
+			GlobalLog(.Error, "Editor: no window or device: the editor runs without its interface");
+			return false;
+		}
+		mWindow = window;
+		mDevice = host.Graphics;
+		mDataRoot.Set(dataRoot);
+		mData = new NativeFileSystem(dataRoot);
+		mShaders = new VgShaderLibrary();
+		if (!mShaders.Load(mDevice.Raw, mData))
+		{
+			GlobalLog(.Error, "Editor: the GUI's shaders did not load from '{}'", dataRoot);
+			Close();
+			return false;
+		}
+		RegisterGuiElements();
+		RegisterToolkitElements();
+		RegisterCodeElements();
+		// Shaped by HarfBuzz and reordered by the bidirectional algorithm, installed before a font
+		// loads so its atlas takes what shaping reaches.
+		HarfBuzzShaping.Install();
+		BidiAlgorithm.Install();
+		mFonts = new TrueTypeFontService();
+		mResources = new EditorResources(dataRoot);
+
+		mHost = new GuiHost(mDevice, host.Shell, mFonts, mShaders.Set);
+		{
+			// A float in an OS window of its own: the runtime host's.
+			let opener = new GuiHost.WindowOpener();
+			opener.Open = new (settings) => host.OpenWindow(settings, RenderWindowDesc());
+			opener.Close = new (opened) => host.CloseWindow(opened);
+			mHost.SetWindowOpener(opener);
+		}
+		let styles = mHost.Styles;
+		styles.ResourceProvider = mResources;
+		mHost.Context.ResourceProvider = mResources;
+		styles.SetFontFaceLoader(new (face, source) => LoadFontFace(face, source));
+		// The satellites' sheets over the widgets'.
+		let theme = scope $"{Sedulous.GUI.Theme.DefaultThemeCSS}\n{DockingSheetCSS()}\n{ToolkitSheetCSS()}\n{CodeSheetCSS()}";
+		let userAgent = scope StyleSheet();
+		CSSParser.Parse(theme, "theme", userAgent);
+		styles.UserAgentSheet = userAgent; // copied
+
+		mRoot = new SceneRoot(mHost.Context);
+		mFrame = LoadMarkup(cFramePath);
+		if (mFrame == null)
+		{
+			GlobalLog(.Error, "Editor: the editor's frame ({}) did not load", cFramePath);
+			Close();
+			return false;
+		}
+		mRoot.AddChild(mFrame);
+		mToasts = new ToastHost();
+		mFrame.AddChild(mToasts);
+		SetLook(look);
+		// The editor's own files changed on disk: its sheet applies again.
+		mReload = new Effect(new () =>
+			{
+				mResources.TrackChanges();
+				if (mFrame != null)
+					ApplySheet();
+			});
+		mHost.AttachWindow(mWindow, mRoot);
+		return true;
+	}
+
+	/// The look (copied): the sheets for the density, the accent as an input, the scheme and
+	/// motion through the media, the UI scale through the host.
+	public void SetLook(EditorLook look)
+	{
+		mLook.Set(look);
+		if (mHost == null)
+			return;
+		mHost.UiScale = mLook.UiScale;
+		mHost.Context.DarkScheme = mLook.Dark;
+		mHost.Context.ReducedMotion = mLook.ReduceMotion;
+		ApplySheet();
+	}
+
+	/// The look in effect. The window's.
+	public EditorLook Look => mLook;
+
+	/// A page's or a panel's markup by its path under the data root (Editor/...): a node with one
+	/// reference, the caller's, or null (logged) when it does not load.
+	public Node LoadMarkup(StringView path)
+	{
+		let text = scope String();
+		if ((mHost == null) || !mResources.LoadText(path, text))
+		{
+			GlobalLog(.Error, "Editor: markup '{}' is not there", path);
+			return null;
+		}
+		let loader = scope MarkupLoader(mHost.Context.ElementSet, null, mFonts);
+		loader.SetDataModel(mHost.Context.Data);
+		return loader.LoadFromString(text);
+	}
+
+	/// A toast over the frame, its severity the notice's: errors stick until closed, the rest go
+	/// after five seconds.
+	public void ShowToast(NoticeKind kind, StringView message)
+	{
+		if (mToasts == null)
+			return;
+		let request = scope ToastRequest();
+		switch (kind)
+		{
+		case .Success: request.Severity = .Success;
+		case .Warning: request.Severity = .Warning;
+		case .Error: request.Severity = .Error;
+		default: request.Severity = .Info;
+		}
+		request.Title = message;
+		request.Duration = (kind == .Error) ? 0.0f : 5.0f;
+		mToasts.Post(request); // copied
+	}
+
+	/// The status bar's message (the frame's `status-message` label).
+	public void SetStatus(StringView message)
+	{
+		if (let label = FindById("status-message") as Sedulous.GUI.Label)
+			label.Text = message;
+	}
+
+	/// A frame's node by its id (the dock's host, the status bar's items); null when none is.
+	/// The tree's.
+	public Node FindById(StringView id) => (mFrame != null) ? mFrame.FindElement(id) : null;
+
+	/// One frame: the editor's files swept for changes (about once a second), then the GUI.
+	public void Update(float deltaTime)
+	{
+		if (mHost == null)
+			return;
+		mSinceSweep += deltaTime;
+		if (mSinceSweep >= cSweepSeconds)
+		{
+			mSinceSweep = 0.0f;
+			mResources.Poll();
+		}
+		mHost.Update(deltaTime);
+	}
+
+	/// Draws the GUI into `frame`'s window (the main window and any float's).
+	public void Render(ref FrameContext frame)
+	{
+		if (mHost != null)
+			mHost.RenderWindow(ref frame);
+	}
+
+	/// Takes the GUI down, before the device goes: the frames in flight finish first, since the
+	/// host's renderer and the shaders it draws with go.
+	public void Close()
+	{
+		if ((mHost != null) && (mDevice != null) && (mDevice.Raw != null))
+			mDevice.Raw.WaitIdle();
+		DeleteAndNullify!(mReload);
+		if ((mHost != null) && (mWindow != null))
+			mHost.DetachWindow(mWindow);
+		if (mToasts != null)
+		{
+			mToasts.ReleaseRef();
+			mToasts = null;
+		}
+		if (mFrame != null)
+		{
+			mFrame.ReleaseRef();
+			mFrame = null;
+		}
+		if (mRoot != null)
+		{
+			mRoot.ReleaseRef();
+			mRoot = null;
+		}
+		if (mHost != null)
+		{
+			// The GUI lets go of what it borrows from the window before it goes.
+			mHost.Context.ResourceProvider = null;
+			mHost.Styles.ResourceProvider = null;
+		}
+		DeleteAndNullify!(mHost);
+		DeleteAndNullify!(mResources);
+		DeleteAndNullify!(mFonts);
+		DeleteAndNullify!(mShaders);
+		DeleteAndNullify!(mData);
+		mWindow = null;
+		mDevice = null;
+		mSinceSweep = 0.0f;
+	}
+
+	public bool IsOpen => mHost != null;
+	/// The window's, as are the rest; null while closed.
+	public GuiHost Host => mHost;
+	public SceneRoot Root => mRoot;
+	public EditorResources Resources => mResources;
+	public TrueTypeFontService Fonts => mFonts;
+
+	/// The sheet `look` makes from the editor's files, appended to `outSheet`: the editor's sheet,
+	/// the density's after it (its sizes win), then a `:root` block of the inputs (the accent).
+	public static void SheetFor(IResourceProvider resources, EditorLook look, String outSheet)
+	{
+		resources.LoadText(cSheetPath, outSheet);
+		let density = scope String();
+		if (resources.LoadText(scope $"Editor/density-{look.Density}.css", density))
+		{
+			outSheet.Append('\n');
+			outSheet.Append(density);
+		}
+		outSheet.AppendF("\n:root {{ --accent-input: {}; }}\n", look.Accent);
+	}
+
+	private void ApplySheet()
+	{
+		let text = SheetFor(mResources, mLook, .. scope String());
+		let sheet = scope StyleSheet();
+		CSSParser.Parse(text, cSheetPath, sheet);
+		mHost.Styles.StyleSheet = sheet; // copied
+	}
+
+	/// A face a sheet's @font-face names, from its file under the data root.
+	private bool LoadFontFace(StringView face, StringView source)
+	{
+		var options = FontLoadOptions.ExtendedLatin();
+		options.PixelHeight = 16.0f;
+		options.LastCodepoint = 0x17F;
+		if (mFonts.LoadFont(face, PathJoin(mDataRoot, source, .. scope String()), options) == .Success)
+			return true;
+		GlobalLog(.Error, "Editor: the @font-face {} ({}) did not load", face, source);
+		return false;
+	}
+}
