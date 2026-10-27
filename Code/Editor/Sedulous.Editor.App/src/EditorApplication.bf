@@ -164,6 +164,7 @@ class EditorApplication : IApplication
 		services.Project = new () => mSession.Project;
 		services.Resources = new () => mSession.Resources;
 		services.DialogRoot = new () => mWindow.Root;
+		services.LoadMarkup = new (path) => mWindow.LoadMarkup(path);
 		return services;
 	}
 
@@ -300,6 +301,9 @@ class EditorApplication : IApplication
 			look.UiScale = Math.Clamp(ui.UiScale, EditorUiSettings.MinUiScale, EditorUiSettings.MaxUiScale);
 		if (mWindow.Open(host, mConfig.DataRoot, look))
 			OpenDock();
+		// The window's close button asks about unsaved pages first, as File > Exit does.
+		if (host.Shell != null)
+			host.Shell.SetMainWindowCloseHandler(new () => ConfirmExit());
 		delete mContext.OnNotice;
 		mContext.OnNotice = new (kind, message) =>
 			{
@@ -493,20 +497,28 @@ class EditorApplication : IApplication
 		mPalette.Open(root);
 	}
 
-	/// The editor-wide actions this lifecycle can run. What a later layer brings (Save As, saving
-	/// the layout, Close Project, Preferences, the dialogs, the profiler) is given no hook here,
-	/// so its action stays out until it can run.
+	/// Exits once the unsaved pages are saved or let go; true when nothing needed asking (the
+	/// shell's close handler: false keeps the window while the user is asked).
+	private bool ConfirmExit()
+	{
+		return mPages.ConfirmUnsavedThen("Save All and Exit", "Exit Without Saving", new () =>
+			{
+				if (mHost != null)
+					mHost.RequestExit();
+			});
+	}
+
+	/// The editor-wide actions this lifecycle can run. What a later layer brings (saving the
+	/// layout, Close Project, Preferences, the dialogs, the profiler) is given no hook here, so its
+	/// action stays out until it can run.
 	private void RegisterActions()
 	{
 		let actions = mContext.Actions;
 		let file = new FileActions();
 		file.Context = mContext;
 		file.Save = new (page) => { mPages.Save(page); };
-		file.Exit = new () =>
-			{
-				if (mHost != null)
-					mHost.RequestExit();
-			};
+		file.SaveAs = new (page) => { mPages.SaveAs(page); };
+		file.Exit = new () => { ConfirmExit(); };
 		EditorAppActions.RegisterFileActions(actions, file);
 		EditorAppActions.RegisterEditActions(actions, new EditActions());
 
@@ -730,6 +742,9 @@ class EditorApplication : IApplication
 	{
 		if ((host.Graphics != null) && (host.Graphics.Raw != null))
 			mWindowCapture.Release(host.Graphics.Raw); // the readback buffers, while the device lives
+		// The shell outlives the application: its close handler reaches this no more.
+		if (mStarted && (host.Shell != null))
+			host.Shell.SetMainWindowCloseHandler(null);
 		StopParts();
 		if (mEmbeddedApp != null)
 		{

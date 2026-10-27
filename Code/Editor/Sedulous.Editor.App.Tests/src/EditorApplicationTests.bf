@@ -38,11 +38,11 @@ static class EditorApplicationTests
 	}
 
 	/// The editor-wide actions the lifecycle gives a hook to.
-	private static StringView[14] sRegistered = .("file.save", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
+	private static StringView[15] sRegistered = .("file.save", "file.saveAs", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
 		"project.reportResourceMemory", "build.cookAll", "build.rebuildAll", "game.play", "game.playNewInstance",
 		"view.resetLayout", "view.screenshot", "view.commandPalette", "help.about");
 	/// The ones a later layer brings: no hook yet, so not registered.
-	private static StringView[9] sLeftOut = .("file.saveAs", "file.saveLayout", "file.closeProject",
+	private static StringView[8] sLeftOut = .("file.saveLayout", "file.closeProject",
 		"edit.preferences", "edit.exportTemplates", "project.settings", "project.export", "view.profiler",
 		"profiler.record");
 
@@ -99,10 +99,12 @@ static class EditorApplicationTests
 		Test.Assert((app.Export === exportBefore) && (app.McpService === mcpBefore));
 		Test.Assert(actions.Count == count);
 
-		// Exit asks the host; the cooks and the Game tab need a project, Save a page; About, the
-		// screenshot and the palette do nothing with no interface and no window.
+		// Exit asks the host at once with no page unsaved; the cooks and the Game tab need a
+		// project, Save and Save As a page; About, the screenshot and the palette do nothing with
+		// no interface and no window.
 		Test.Assert(actions.Execute("file.exit") case .Ok);
 		Test.Assert(host.Exits == 1);
+		Test.Assert(Refused(actions, "file.saveAs"));
 		Test.Assert(Refused(actions, "build.cookAll"));
 		Test.Assert(Refused(actions, "build.rebuildAll"));
 		Test.Assert(Refused(actions, "game.play"));

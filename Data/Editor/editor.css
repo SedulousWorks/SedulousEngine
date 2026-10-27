@@ -496,6 +496,8 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
                border-top-width: 1px; border-top-style: solid; border-top-color: var(--separator); }
 .picker-hint { font-size: var(--font-small); color: var(--text-placeholder); }
 .picker-empty { padding: var(--space-xl) var(--space-l); }
+.save-as-error { color: var(--danger); }
+.save-as > .dialog-buttons { padding: var(--space-l) 0 0; }
 
 /* The command palette: the picker's frame, a row per action (its name, where it is in the menus, its
    chord), the lit one as a picker's current, a disabled one dimmed. */

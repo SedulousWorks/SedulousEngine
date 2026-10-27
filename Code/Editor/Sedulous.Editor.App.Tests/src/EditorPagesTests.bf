@@ -61,6 +61,8 @@ class PagesTestPage : UIEditorPage
 	/// Borrowed; null counts nothing.
 	private PagesTestCounts mCounts;
 	public int Saves = 0;
+	/// The asset its last save went into: its InstanceId then.
+	public Guid SavedInto = .Empty;
 	/// Its next saves fail.
 	public bool FailSave = false;
 
@@ -77,6 +79,7 @@ class PagesTestPage : UIEditorPage
 		if (FailSave)
 			return .Err(.Unknown);
 		Saves++;
+		SavedInto = InstanceId;
 		ClearDirty();
 		return .Ok;
 	}
@@ -173,6 +176,8 @@ class PagesBed
 	public bool NoProject = false;
 	/// The pages are given no dialog root.
 	public bool NoDialogs = false;
+	/// How often the unsaved-pages gate went on (Gate).
+	public int Proceeded = 0;
 	public EditorPages Pages;
 
 	public this(StringView dir, bool withCook = false)
@@ -222,6 +227,7 @@ class PagesBed
 		services.Project = new [=bed] () => bed.NoProject ? null : bed.Project;
 		services.Resources = new [=bed] () => bed.Resources;
 		services.DialogRoot = new [=bed] () => bed.NoDialogs ? null : bed.Root;
+		services.LoadMarkup = new (path) => LoadMarkup(path);
 		Pages = new EditorPages(services);
 	}
 
@@ -302,6 +308,68 @@ class PagesBed
 		return null;
 	}
 
+	/// A dialog's markup read from the repository's Data with the GUI's elements, as the editor's
+	/// window reads it; its one reference the caller's.
+	public static Node LoadMarkup(StringView path)
+	{
+		let data = scope String();
+		Test.Assert(EditorSplashTests.DataRoot(data));
+		let text = scope String();
+		Test.Assert(System.IO.File.ReadAllText(PathJoin(data, path, .. scope .()), text) case .Ok);
+		RegisterGuiElements();
+		let elements = ElementSet.All();
+		defer delete elements;
+		let loader = scope MarkupLoader(elements);
+		return loader.LoadFromString(text);
+	}
+
+	/// The open window in the tree that is not a message box (Save As's); null with none.
+	public static Sedulous.GUI.Window FindWindow(Node node)
+	{
+		if (let window = node as Sedulous.GUI.Window)
+		{
+			if (window.IsOpen && !(window is MessageBox))
+				return window;
+		}
+		for (int i < node.ChildCount)
+		{
+			if (let found = FindWindow(node.GetChildAt(i)))
+				return found;
+		}
+		return null;
+	}
+
+	/// How many windows that are not message boxes are open in the tree.
+	public static int OpenWindows(Node node)
+	{
+		int count = 0;
+		if (let window = node as Sedulous.GUI.Window)
+		{
+			if (window.IsOpen && !(window is MessageBox))
+				count++;
+		}
+		for (int i < node.ChildCount)
+			count += OpenWindows(node.GetChildAt(i));
+		return count;
+	}
+
+	/// The unsaved-pages gate as an exit asks it; its going on counts in Proceeded.
+	public bool Gate()
+	{
+		let bed = this;
+		return Pages.ConfirmUnsavedThen("Save All and Exit", "Exit Without Saving", new [=bed] () => { bed.Proceeded++; });
+	}
+
+	/// Asks the gate with pages unsaved (asserted that it asks), and the question it shows.
+	public MessageBox AskGate()
+	{
+		Test.Assert(!Gate(), "it asks: nothing goes on yet");
+		Root.UpdateLayout();
+		let question = FindBox(Root);
+		Test.Assert(question != null, "the question shows");
+		return question;
+	}
+
 	/// Asks to close `page` as its tab would, and the question it shows (asserted).
 	public MessageBox Ask(EditorPage page)
 	{
@@ -316,11 +384,14 @@ class PagesBed
 /// EditorPages: a page docked by its asset's guid in the central stack (and brought forward when
 /// opened again), its tab's name, unsaved mark and active mark; a close run at the next frame, a
 /// page with unsaved changes asking first (Save, Discard, Cancel); the active page following the
-/// dock; the Game tabs; the open pages through the store and back. Then what Sedulous adds to
+/// dock; the Game tabs; the open pages through the store and back; the unsaved-pages gate before an
+/// exit; Save As. Then what Sedulous adds to
 /// Raptor's suite so each behaviour has a test: an asset no page edits, the save and its asset
 /// edits, the frame hooks, closing everything, a dirty page with nowhere to ask, a failed save in
 /// the question, the restore's progress and a restored place, the cook of what a page lacks, and
-/// the hooks and the question let go with the pages.
+/// the hooks and the question let go with the pages; the gate's message, its one question at a
+/// time, a failed save and nowhere to ask; Save As's suggestion, its cancel, Enter, a page with no
+/// asset or closed under the dialog.
 class EditorPagesTests
 {
 	[Test]
@@ -743,5 +814,175 @@ class EditorPagesTests
 		bed.Dock.Controller.NoteFocused(bed.Layout.CentralStack);
 		bed.Context.RevealPage(one);
 		Test.Assert(bed.Context.ActivePage === one);
+	}
+
+	[Test]
+	public static void TheUnsavedPagesGateGoesOnAtOnceWithNoneWithSomeItAsksCancelStaysTheOtherTwoGoOnSavingFirst()
+	{
+		let bed = scope PagesBed("scratch_editor_pages_gate");
+		Test.Assert(bed.Gate(), "nothing unsaved: it went on now");
+		Test.Assert(bed.Proceeded == 1);
+		Test.Assert(PagesBed.FindBox(bed.Root) == null, "nothing asked");
+
+		let one = (PagesTestPage)bed.Pages.Open(bed.One);
+		let two = (PagesTestPage)bed.Pages.Open(bed.Two);
+		Test.Assert((one != null) && (two != null));
+		one.MarkDirty();
+		two.MarkDirty();
+		var question = bed.AskGate();
+		Test.Assert(question.Title == "Unsaved changes");
+		Test.Assert(question.Message == "2 pages have unsaved changes.");
+		Test.Assert(question.ButtonCount == 3);
+		Test.Assert(question.GetButtonRole(0) == .Destructive); // the caller's discard verb
+		Test.Assert(question.GetButtonRole(1) == .Cancel);
+		Test.Assert(question.GetButtonRole(2) == .Primary); // the caller's save verb
+		Test.Assert(PagesBed.ButtonNamed(question, "Exit Without Saving") != null);
+		Test.Assert(PagesBed.ButtonNamed(question, "Save All and Exit") != null);
+		// Asked again while it shows (the window's close button under a modal): one question.
+		Test.Assert(!bed.Gate());
+		Test.Assert(PagesBed.OpenBoxes(bed.Root) == 1);
+		Test.Assert(PagesBed.ButtonNamed(question, "Cancel").HandleActivate());
+		Test.Assert(bed.Proceeded == 1, "Cancel stays");
+		Test.Assert((one.Saves == 0) && (two.Saves == 0) && one.IsDirty && two.IsDirty);
+
+		question = bed.AskGate();
+		Test.Assert(PagesBed.ButtonNamed(question, "Save All and Exit").HandleActivate());
+		Test.Assert((one.Saves == 1) && (two.Saves == 1), "every unsaved page saved first");
+		Test.Assert(bed.Proceeded == 2);
+
+		one.MarkDirty();
+		question = bed.AskGate();
+		Test.Assert(question.Message == "1 page has unsaved changes.");
+		Test.Assert(PagesBed.ButtonNamed(question, "Exit Without Saving").HandleActivate());
+		Test.Assert(one.Saves == 1, "not saved");
+		Test.Assert(one.IsDirty);
+		Test.Assert(bed.Proceeded == 3);
+
+		// A save that fails stops it, the rest still tried.
+		one.FailSave = true;
+		two.MarkDirty();
+		question = bed.AskGate();
+		Test.Assert(PagesBed.ButtonNamed(question, "Save All and Exit").HandleActivate());
+		Test.Assert(two.Saves == 2);
+		Test.Assert(bed.Proceeded == 3, "a failed save: nothing goes on");
+		Test.Assert(bed.LastSaid == "Save FAILED (see Console) - nothing closed.");
+
+		// Nowhere to ask: the unsaved work stays, nothing goes on.
+		bed.NoDialogs = true;
+		Test.Assert(!bed.Gate());
+		Test.Assert(PagesBed.FindBox(bed.Root) == null);
+		Test.Assert(bed.Proceeded == 3);
+	}
+
+	[Test]
+	public static void SaveAsNamesANewAssetBesideThePagesAnEmptyOrTakenNameKeepsTheDialogOpenThePageAndItsPanelFollowTheNewAsset()
+	{
+		let bed = scope PagesBed("scratch_editor_pages_saveas");
+		let page = (PagesTestPage)bed.Pages.Open(bed.One);
+		Test.Assert(page != null);
+		let original = bed.One.Id;
+		let originalPanel = PagesBed.PanelId(bed.One, .. scope .());
+		bed.Pages.SaveAs(page);
+		bed.Root.UpdateLayout();
+		let window = PagesBed.FindWindow(bed.Root);
+		Test.Assert(window != null);
+		Test.Assert(window.Title == "Save As");
+		let prompt = window.FindElement("save-as-prompt") as Sedulous.GUI.Label;
+		let name = window.FindElement("save-as-name") as TextField;
+		let error = window.FindElement("save-as-error") as Sedulous.GUI.Label;
+		let save = window.FindElement("save-as-save") as Sedulous.GUI.Button;
+		Test.Assert((prompt != null) && (name != null) && (error != null) && (save != null));
+		Test.Assert(prompt.Text == "A new asset beside 'One', named:");
+		Test.Assert(name.Text == "One Copy");
+
+		name.Text = default;
+		Test.Assert(save.HandleActivate());
+		Test.Assert(window.IsOpen);
+		Test.Assert(error.Text == "Enter a name.");
+		name.Text = "Two"; // taken
+		Test.Assert(save.HandleActivate());
+		Test.Assert(window.IsOpen);
+		Test.Assert(error.Text == "That name is taken in this group.");
+		Test.Assert((page.Saves == 0) && (page.InstanceId == original), "refused: nothing saved");
+
+		name.Text = "One Again";
+		Test.Assert(save.HandleActivate());
+		Test.Assert(!window.IsOpen);
+		let made = bed.Project.SourceDb.RootGroup.GetInstance("One Again");
+		Test.Assert(made != null);
+		Test.Assert(made.Id != original);
+		Test.Assert(made.TypeName == bed.One.TypeName, "the original's type");
+		Test.Assert(page.InstanceId == made.Id);
+		Test.Assert(page.Saves == 1);
+		Test.Assert(page.SavedInto == made.Id, "the save landed in the new asset");
+		Test.Assert(bed.LastSaid == "Saved as 'One Again'.");
+		Test.Assert(bed.Project.SourceDb.GetInstance(original) != null, "the original stays");
+
+		// Its panel by the new guid, the old one gone, the page's content in it.
+		let madePanel = PagesBed.PanelId(made, .. scope .());
+		Test.Assert(bed.Layout.StackOf(madePanel) != cNoDock);
+		Test.Assert(bed.Layout.StackOf(originalPanel) == cNoDock);
+		Test.Assert(bed.Dock.Controller.Describe(originalPanel) == null);
+		Test.Assert(bed.Pages.PanelOf(page) == madePanel);
+		Test.Assert(bed.Dock.Controller.Content(madePanel) === page.Content);
+		Test.Assert(bed.Pages.Count == 1);
+		Test.Assert(bed.Context.ActivePage === page);
+		bed.Frame();
+		Test.Assert(bed.Dock.Controller.Describe(madePanel).Title == "One Again", "its tab the new asset's name");
+	}
+
+	[Test]
+	public static void SaveAsSuggestsAFreeNameCancelMakesNothingEnterCommitsAndAPageWithNoAssetOrClosedUnderItSavesNothing()
+	{
+		let bed = scope PagesBed("scratch_editor_pages_saveas_edges");
+		let type = typeof(PagesTestAsset).GetFullName(.. scope .());
+		Test.Assert(bed.Project.SourceDb.RootGroup.CreateInstance("One Copy", type) != null);
+		let page = (PagesTestPage)bed.Pages.Open(bed.One);
+		Test.Assert(page != null);
+		bed.Pages.SaveAs(page);
+		bed.Root.UpdateLayout();
+		var window = PagesBed.FindWindow(bed.Root);
+		Test.Assert(window != null);
+		Test.Assert((window.FindElement("save-as-name") as TextField).Text == "One Copy Copy", "a free name");
+		bed.Pages.SaveAs(page); // asked again while it shows: one dialog
+		Test.Assert(PagesBed.OpenWindows(bed.Root) == 1);
+		Test.Assert((window.FindElement("save-as-cancel") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert(!window.IsOpen);
+		Test.Assert(bed.Project.SourceDb.RootGroup.GetInstance("One Copy Copy") == null, "Cancel makes nothing");
+		Test.Assert((page.Saves == 0) && (page.InstanceId == bed.One.Id));
+
+		// Enter in the name commits as Save does.
+		bed.Pages.SaveAs(page);
+		bed.Root.UpdateLayout();
+		window = PagesBed.FindWindow(bed.Root);
+		Test.Assert(window != null);
+		let name = window.FindElement("save-as-name") as TextField;
+		Test.Assert(bed.Root.EventDispatcher.FocusNode === name, "the name focused");
+		name.Text = "By Enter";
+		bed.Root.EventDispatcher.InjectKeyDown((uint32)KeyCode.Return, 0);
+		Test.Assert(!window.IsOpen);
+		let byEnter = bed.Project.SourceDb.RootGroup.GetInstance("By Enter");
+		Test.Assert((byEnter != null) && (page.InstanceId == byEnter.Id) && (page.Saves == 1));
+
+		// The page closed while the dialog shows: the dialog goes, nothing made.
+		bed.Pages.SaveAs(page);
+		bed.Root.UpdateLayout();
+		window = PagesBed.FindWindow(bed.Root);
+		Test.Assert(window != null);
+		bed.Pages.CloseAll();
+		(window.FindElement("save-as-name") as TextField).Text = "Too Late";
+		Test.Assert((window.FindElement("save-as-save") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert(!window.IsOpen);
+		Test.Assert(bed.Project.SourceDb.RootGroup.GetInstance("Too Late") == null);
+
+		// A page with no source asset says so; with nowhere to show it, no dialog.
+		let loose = scope PagesTestPage("Loose", null);
+		bed.Pages.SaveAs(loose);
+		Test.Assert(bed.LastSaid == "This page has no source asset to copy.");
+		Test.Assert(PagesBed.FindWindow(bed.Root) == null);
+		let two = bed.Pages.Open(bed.Two);
+		bed.NoDialogs = true;
+		bed.Pages.SaveAs(two);
+		Test.Assert(PagesBed.FindWindow(bed.Root) == null);
 	}
 }

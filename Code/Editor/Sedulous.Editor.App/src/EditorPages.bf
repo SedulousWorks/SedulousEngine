@@ -28,6 +28,9 @@ class EditorPagesServices
 	public delegate ResourceManager() Resources ~ delete _;
 	/// Where its dialogs show; unset or null: none shows (a dirty page then stays open). Owned.
 	public delegate SceneRoot() DialogRoot ~ delete _;
+	/// A dialog's markup by its path under the data root (Save As's), its one reference the
+	/// caller's; unset, or null back: no dialog. Owned.
+	public delegate Node(StringView path) LoadMarkup ~ delete _;
 }
 
 /// The open pages in the dock (Raptor's editor-gui spec, 5.1, layer 6). A page is a panel of
@@ -38,9 +41,17 @@ class EditorPagesServices
 /// the inspector): the chosen tab of the stack the focus was last in. Closing a page with unsaved
 /// changes asks first (Save, Discard, Cancel); a close always runs at the next frame, never
 /// inside the event that asked for it, and takes the page's panel with it. The open pages and
-/// the active one are saved with the project and reopen with it.
+/// the active one are saved with the project and reopen with it. Before an exit (layer 11; a
+/// project's close in layer 13) the unsaved pages are asked about as one: save them all, cancel,
+/// or go on without saving. Save As writes a page into a new asset beside its own, named in a
+/// dialog of its own markup (Data/Editor/SaveAs.gml); the page edits the new asset after.
 class EditorPages
 {
+	/// Save As's dialog, under the data root.
+	public const String cSaveAsPath = "Editor/SaveAs.gml";
+	private const float cSaveAsWidth = 420.0f;
+	private const float cSaveAsHeight = 200.0f;
+
 	private struct OpenPage
 	{
 		/// The context owns it.
@@ -67,6 +78,9 @@ class EditorPages
 	/// question after its close, which may have let the tree's reference go. One at a time: it is
 	/// modal, so only code could ask a second while it is open.
 	private MessageBox mAsking = null ~ _?.ReleaseRef();
+	/// The last Save As dialog, a reference of ours: its buttons close it from inside their own
+	/// click, which may let the tree's reference go. One at a time, as the questions.
+	private Sedulous.GUI.Window mSavingAs = null ~ _?.ReleaseRef();
 
 	/// TAKES OWNERSHIP of the services; the dock's active panel and the context's reveal come to
 	/// it until it goes.
@@ -85,6 +99,9 @@ class EditorPages
 		// An open question would answer into a gone EditorPages: it goes unanswered.
 		if ((mAsking != null) && mAsking.IsOpen)
 			mAsking.Close();
+		// And an open Save As saves into nothing.
+		if ((mSavingAs != null) && mSavingAs.IsOpen)
+			mSavingAs.Close();
 	}
 
 	/// Opens (or brings forward) the page for `instance`; null, said to the user, when no page
@@ -203,6 +220,113 @@ class EditorPages
 			else
 				context.Notify(.Error, "Asset-edit persist FAILED (see Console).");
 		}
+	}
+
+	/// The unsaved pages, before `proceed` (an exit; a project's close, layer 13): with none it
+	/// runs now; else the user is asked to save them all, keep working, or go on without saving,
+	/// the verbs the caller's (`saveVerb` "Save All and Exit", `discardVerb` "Exit Without
+	/// Saving"), and it runs only when they chose to go on and every page saved. With nowhere to
+	/// ask, or a question showing already, the unsaved work stays and nothing runs. Answers
+	/// whether it ran now. TAKES OWNERSHIP of `proceed`.
+	public bool ConfirmUnsavedThen(StringView saveVerb, StringView discardVerb, delegate void() proceed)
+	{
+		let dirty = DirtyCount;
+		if (dirty == 0)
+		{
+			defer delete proceed;
+			proceed();
+			return true;
+		}
+		let root = (mServices.DialogRoot != null) ? mServices.DialogRoot() : null;
+		if ((root == null) || ((mAsking != null) && mAsking.IsOpen))
+		{
+			delete proceed; // nothing to ask over, or asking already: the unsaved work stays
+			return false;
+		}
+		if (mAsking != null)
+			mAsking.ReleaseRef();
+		let question = new MessageBox();
+		mAsking = question;
+		let message = scope String();
+		if (dirty == 1)
+			message.Set("1 page has unsaved changes.");
+		else
+			message.AppendF("{} pages have unsaved changes.", dirty);
+		question.Configure("Unsaved changes", message, .Ok);
+		question.ClearButtons();
+		question.AddButton(discardVerb, "discard", .Destructive);
+		question.AddButton("Cancel", "cancel", .Cancel);
+		question.AddButton(saveVerb, "save", .Primary);
+		question.AddEventListener(.Changed, new [=question, =proceed, =this] (e) => { AnsweredUnsaved(question.ResultName, proceed); } ~ delete proceed);
+		question.OpenModal(root);
+		return false;
+	}
+
+	/// Saves every page with unsaved changes; false when one failed (the rest still tried).
+	public bool SaveAll()
+	{
+		bool all = true;
+		for (let open in mOpen)
+		{
+			if (open.Page.IsDirty && !(open.Page.Save() case .Ok))
+				all = false;
+		}
+		return all;
+	}
+
+	/// Save As: the page's content into a new asset beside its own, named in a dialog (a name
+	/// empty or taken keeps the dialog open, saying why under the field); the page edits the new
+	/// asset after, its panel by the new guid. Nothing with nowhere to show the dialog, or with
+	/// one open already.
+	public void SaveAs(EditorPage page)
+	{
+		let sources = Sources;
+		let original = ((sources != null) && page.InstanceId.IsSet) ? sources.GetInstance(page.InstanceId) : null;
+		if (original == null)
+		{
+			mServices.Context.Notify(.Warning, "This page has no source asset to copy.");
+			return;
+		}
+		let root = (mServices.DialogRoot != null) ? mServices.DialogRoot() : null;
+		if ((root == null) || ((mSavingAs != null) && mSavingAs.IsOpen))
+			return;
+		let body = (mServices.LoadMarkup != null) ? mServices.LoadMarkup(cSaveAsPath) : null;
+		if (body == null)
+			return;
+		defer body.ReleaseRef(); // the window holds its own
+		let prompt = body.FindElement("save-as-prompt") as Sedulous.GUI.Label;
+		let name = body.FindElement("save-as-name") as Sedulous.GUI.TextField;
+		let error = body.FindElement("save-as-error") as Sedulous.GUI.Label;
+		let save = body.FindElement("save-as-save") as Sedulous.GUI.Button;
+		let cancel = body.FindElement("save-as-cancel") as Sedulous.GUI.Button;
+		if ((name == null) || (save == null))
+			return;
+
+		let group = original.OwningGroup;
+		let suggested = scope String()..AppendF("{} Copy", original.Name);
+		while (group.GetInstance(suggested) != null)
+			suggested.Append(" Copy");
+		if (prompt != null)
+			prompt.Text = scope $"A new asset beside '{original.Name}', named:";
+		name.Text = suggested;
+
+		if (mSavingAs != null)
+			mSavingAs.ReleaseRef();
+		let window = new Sedulous.GUI.Window();
+		mSavingAs = window;
+		window.Title = "Save As";
+		window.AddClass("save-as-window");
+		window.Size = .(cSaveAsWidth, cSaveAsHeight);
+		window.Content.AddChild(body);
+		// The page by its asset's guid: it may close, or its asset go, while the dialog shows.
+		let pageId = page.InstanceId;
+		save.SetOnClick(new [=pageId, =name, =error, =this] () => { CommitSaveAs(pageId, name, error); });
+		name.SetOnSubmit(new [=pageId, =name, =error, =this] (text) => { CommitSaveAs(pageId, name, error); });
+		if (cancel != null)
+			cancel.SetOnClick(new [=window] () => { window.Close(); });
+		window.OpenModal(root);
+		name.FocusElement();
+		name.SelectAll();
 	}
 
 	/// One frame, after the GUI laid out (viewport rects are current): Tick, then each page's
@@ -398,6 +522,85 @@ class EditorPages
 		}
 		else if (answer == "discard")
 			Close(page);
+	}
+
+	/// The unsaved-pages question answered: discard goes on, save goes on once every page saved,
+	/// cancel (or the box closed) stays.
+	private void AnsweredUnsaved(StringView answer, delegate void() proceed)
+	{
+		if (answer == "discard")
+			proceed();
+		else if (answer == "save")
+		{
+			if (SaveAll())
+				proceed();
+			else
+				mServices.Context.Notify(.Error, "Save FAILED (see Console) - nothing closed.");
+		}
+	}
+
+	/// Save As's Save (or Enter in the name): an empty or taken name is refused under the field,
+	/// the dialog kept for the retry; else the page saves into the new asset and the dialog goes.
+	private void CommitSaveAs(Guid pageId, Sedulous.GUI.TextField name, Sedulous.GUI.Label error)
+	{
+		let sources = Sources;
+		let original = (sources != null) ? sources.GetInstance(pageId) : null;
+		if (original == null)
+		{
+			mSavingAs.Close(); // its asset gone meanwhile: nothing to save beside
+			return;
+		}
+		let group = original.OwningGroup;
+		let newName = scope String(name.Text);
+		StringView refused = default;
+		if (newName.IsEmpty)
+			refused = "Enter a name.";
+		else if (group.GetInstance(newName) != null)
+			refused = "That name is taken in this group.";
+		if (!refused.IsEmpty)
+		{
+			if (error != null)
+				error.Text = refused;
+			return; // the dialog stays for the retry
+		}
+		SaveAsNamed(pageId, group, newName);
+		mSavingAs.Close();
+	}
+
+	/// The page `pageId` (if still open) saved into a new asset `newName` in `group`, as Sedulous's
+	/// pages write one: the instance made by the original's stored type name, the page rebound to
+	/// it (OnSavedAs), its panel by the new guid, then its Save.
+	private void SaveAsNamed(Guid pageId, Group group, StringView newName)
+	{
+		let context = mServices.Context;
+		let sources = Sources;
+		let original = (sources != null) ? sources.GetInstance(pageId) : null;
+		int index = -1;
+		for (int i < mOpen.Count)
+		{
+			if (mOpen[i].Page.InstanceId == pageId)
+				index = i;
+		}
+		if ((index < 0) || (original == null))
+			return; // closed meanwhile
+		let target = mOpen[index].Page;
+		let fresh = group.CreateInstance(newName, original.TypeName);
+		if (fresh == null)
+		{
+			context.Notify(.Error, "Not saved: the new asset could not be made.");
+			return;
+		}
+		target.OnSavedAs(fresh);
+		// The page's panel follows its new asset: the old one goes, one by the new guid comes.
+		let oldPanel = mOpen[index].Panel;
+		mOpen.RemoveAt(index);
+		mServices.Dock.Controller.Unregister(oldPanel);
+		delete oldPanel;
+		Dock(target, PanelIdOf(fresh.Id, .. new .()));
+		if (target.Save() case .Ok)
+			context.Notify(.Success, scope $"Saved as '{fresh.Name}'.");
+		else
+			context.Notify(.Error, "Save As FAILED (see Console).");
 	}
 
 	private void RunCloses()
