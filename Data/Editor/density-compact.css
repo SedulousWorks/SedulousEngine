@@ -1,0 +1,24 @@
+/*
+  The editor's Compact density, the editor's default: its spacing and sizes in whole pixels, so every edge lands on
+  a pixel. The editor adds the chosen density's sheet after its own (tokens.css imports Compact).
+  The Default density's sizes times 0.85, each rounded.
+*/
+:root {
+    --space-xs: 2px; /* spacing, smallest to largest */
+    --space-s: 3px;
+    --space-m: 7px;
+    --space-l: 10px;
+    --space-xl: 14px;
+    --row: 22px; /* list, tree, property and menu rows */
+    --control-height: 22px; /* fields, buttons, combos */
+    --bar: 29px; /* tool bars and panel headers */
+    --tab: 22px; /* tabs */
+    --menubar: 20px; /* the menu bar */
+    --statusbar: 20px; /* the status bar */
+    --glyph-box: 14px; /* a small glyph's square: a tab's close cross, the strip's list arrow */
+    --glyph-inset: 3px; /* the glyph inside it */
+    --strip-button: 20px; /* a tab strip's list and close-all buttons */
+    --arrow: 14px; /* a tree's or grid's arrow column */
+    --tree-indent: 14px; /* a tree level's indent */
+    --grid-indent: 10px; /* a property grid level's indent */
+}

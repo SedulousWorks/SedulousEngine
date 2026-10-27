@@ -1,0 +1,300 @@
+/*
+  The editor's design tokens (Documentation/Specs/editor-gui.md, 3.1), in three layers:
+
+  1. Inputs: the few a user sets in Preferences. The editor writes its own `:root` block of them
+     after this sheet (the accent, the radius); the defaults are here. The density is a sheet of
+     its own (density-*.css), its sizes in whole pixels, which the editor adds after this one.
+  2. Semantic tokens, derived from the inputs: surfaces, elements, text and icons, status, regions,
+     metrics, motion. Dark by default; the light block under prefers-color-scheme sets the same
+     names. Nothing below the editor reads a colour literal: only these.
+  3. The GUI's own tokens (the widgets', the satellites'), set from the semantic ones, so the core
+     widgets, docking, the toolkit and the code editor follow with no rules of their own.
+
+  Contrast notes are WCAG ratios against the surface the pair sits on.
+*/
+
+@import "Editor/density-compact.css"; /* the spacing and sizes: compact by default (ruling) */
+
+/* === 1. Inputs === */
+:root {
+    --accent-input: #2f6fdf;   /* azure (ruling): the fill behind on-accent text: buttons, menu highlight, checks */
+    --radius-input: 5px;
+    --ui-font: "Inter";
+    --mono-font: "JetBrains Mono";
+}
+
+/* === 2. Semantic tokens: dark === */
+:root {
+    /* Surfaces, darkest to lightest. The chrome frames the window (menu bar, tab strips, status
+       bar); panels sit on surface; headers and bars on raised; popups and dialogs on overlay. */
+    --chrome: #15171b;
+    --surface-sunken: #111316;
+    --surface: #1b1e23;
+    --surface-raised: #22252b;
+    --surface-overlay: #282c33;
+
+    /* Elements: the fill of anything you press or type into. Ghost elements (bar buttons) have
+       no fill at rest. */
+    --element: #2a2e36;
+    --element-hover: #333842;
+    --element-active: #3c424d;
+    --element-disabled: #23262c;
+    --ghost-hover: rgba(255, 255, 255, 0.07);
+    --ghost-active: rgba(255, 255, 255, 0.12);
+
+    --border: #30343c;          /* fields, cards, popups */
+    --border-strong: #454b56;   /* a hovered field */
+    --separator: #282b31;       /* between rows and panels */
+
+    /* Text: 13px on --surface. text 12.6:1, text-dim 6.4:1, text-placeholder 4.6:1. */
+    --text: #d9dde4;
+    --text-strong: #f3f5f8;
+    --text-dim: #9aa1ad;
+    --text-placeholder: #7f8693;
+    --text-disabled: #5f6570;
+
+    --icon: #b8bec9;
+    --icon-dim: #858c98;
+
+    /* The accent: the input as the fill, a lighter tone for strokes, text and icons on dark, and
+       a quiet tone for selection behind normal text. */
+    --accent-fill: var(--accent-input);
+    --accent-fill-hover: color-mix(in srgb, var(--accent-input) 88%, white);
+    --accent-strong: color-mix(in srgb, var(--accent-input) 62%, white);
+    --accent-subtle: color-mix(in srgb, var(--accent-input) 30%, #1b1e23);
+    --on-accent: #ffffff;
+
+    /* Status, each a colour for text and icons, a background and a border. */
+    --danger: #f06b63;    --danger-background: #3a1d1e;  --danger-border: #6e2f2d;
+    --warning: #e3b14f;   --warning-background: #3a2f17; --warning-border: #6b5321;
+    --success: #4fbd85;   --success-background: #173326; --success-border: #25583d;
+    --info: #63a4ff;      --info-background: #172a44;    --info-border: #24497a;
+
+    --shadow-color: rgba(0, 0, 0, 0.45);
+    --scrim: rgba(0, 0, 0, 0.4); /* behind a modal dialog */
+}
+
+/* === 2. Semantic tokens: light === */
+@media (prefers-color-scheme: light) {
+    :root {
+        --chrome: #e4e7ec;
+        --surface-sunken: #ffffff;
+        --surface: #f3f4f6;
+        --surface-raised: #eceef1;
+        --surface-overlay: #ffffff;
+
+        --element: #ffffff;
+        --element-hover: #e6e9ee;
+        --element-active: #d9dde4;
+        --element-disabled: #eef0f3;
+        --ghost-hover: rgba(0, 0, 0, 0.06);
+        --ghost-active: rgba(0, 0, 0, 0.11);
+
+        --border: #cfd4db;
+        --border-strong: #aab1bc;
+        --separator: #dfe2e7;
+
+        /* On --surface: text 14.9:1, text-dim 5.9:1, text-placeholder 4.5:1. */
+        --text: #1e2228;
+        --text-strong: #0b0d10;
+        --text-dim: #5b626e;
+        --text-placeholder: #6f7682;
+        --text-disabled: #a2a8b2;
+
+        --icon: #3f4550;
+        --icon-dim: #6c7380;
+
+        --accent-strong: color-mix(in srgb, var(--accent-input) 80%, black);
+        --accent-subtle: color-mix(in srgb, var(--accent-input) 20%, #f3f4f6);
+
+        --danger: #c8372d;    --danger-background: #fbe7e5;  --danger-border: #f0b7b1;
+        --warning: #9a6a00;   --warning-background: #fbf1d9; --warning-border: #ead08c;
+        --success: #1e8a55;   --success-background: #e1f4ea; --success-border: #a6dcbf;
+        --info: #1f6fd6;      --info-background: #e3eefc;    --info-border: #a9c8f3;
+
+        --shadow-color: rgba(20, 24, 32, 0.18);
+        --scrim: rgba(20, 24, 32, 0.25);
+    }
+}
+
+/* === 2. Semantic tokens: metrics, type and motion (both schemes) === */
+:root {
+    /* The spacing (--space-xs to --space-xl) and the heights of the repeated things (--row,
+       --control-height, --bar, --tab, --menubar, --statusbar) are the density's (density-*.css). */
+    --icon-size: 16px;                           /* icons stay on their grid */
+
+    --radius-small: calc(var(--radius-input) - 2px);
+    --radius: var(--radius-input);
+    --radius-large: calc(var(--radius-input) + 3px);
+
+    /* Type: Inter for the interface, JetBrains Mono for code and numbers that line up. */
+    --font-small: 12px;
+    --font-body: 13px;
+    --font-title: 13px;      /* section and panel titles, semibold */
+    --font-heading: 16px;    /* page and dialog headings, semibold */
+    --font-code: 13px;
+
+    --border-width: 1px;
+    --focus-width: 2px;
+
+    /* Motion: instant for feedback, fast for state and small popups, slow for dialogs. */
+    --motion-instant: 0.05s;
+    --motion-fast: 0.15s;
+    --motion-slow: 0.3s;
+    --easing: ease;
+    --easing-out: ease-out-quint;
+}
+
+/* Less motion: every duration nothing, so every transition and animation lands at once. */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --motion-instant: 0s;
+        --motion-fast: 0s;
+        --motion-slow: 0s;
+    }
+}
+
+/* === 3. The GUI's tokens, from the semantic ones === */
+:root {
+    /* The core theme's base tokens. */
+    --accent: var(--accent-fill);
+    --selection: var(--accent-subtle);
+    --focus-ring: var(--accent-strong);
+    --control: var(--element);
+    --control-raised: var(--element);
+    --control-hover: var(--element-hover);
+    --chrome-raised: var(--surface-raised);
+    --chrome-hover: var(--element-hover);
+    --surface-header: var(--surface-raised);
+    --track: var(--element-active);
+    --scrollbar: transparent;
+    --thumb: var(--element-active);
+    --text-title: var(--text-strong);
+    --outline: var(--border-strong);
+    --grip: var(--border-strong);
+    --overlay-hover: var(--ghost-hover);
+    --row-hover: var(--ghost-hover);
+    --disabled-opacity: 0.45;
+    --window-close-text: var(--icon-dim);
+
+    /* Widgets: neutral buttons by default (an editor is mostly secondary actions); the primary
+       one asks for the accent with a class. */
+    --button-background: var(--element);
+    --button-text: var(--text);
+    --button-padding: var(--space-xs) var(--space-l);
+    --button-radius: var(--radius);
+    --field-background: var(--surface-sunken);
+    --field-text: var(--text-strong);
+    --field-radius: var(--radius-small);
+    --combobox-background: var(--element);
+    --combobox-text: var(--text);
+    --combobox-radius: var(--radius-small);
+    --list-background: var(--surface);
+    --list-selection: var(--accent-subtle);
+    --list-hover: var(--ghost-hover);
+    --list-text: var(--text);
+    --menu-background: var(--surface-overlay);
+    --menu-highlight: var(--accent-fill);
+    --menu-separator: var(--separator);
+    --menu-radius: var(--radius);
+    --menubar-background: var(--chrome);
+    --menubar-hover: var(--ghost-hover);
+    --menubar-selected: var(--ghost-active);
+    --menubar-selected-text: var(--text-strong);
+    --tabbar-background: var(--chrome);
+    --tabpages-background: var(--surface);
+    --tab-background: transparent;
+    --tab-text: var(--text-dim);
+    --tab-hover-background: var(--ghost-hover);
+    --tab-checked-background: var(--surface);
+    --tab-checked-text: var(--text-strong);
+    --tab-dragging-background: var(--surface-overlay);
+    --tab-dragging-text: var(--text-strong);
+    --splitter-handle: var(--separator);
+    --splitter-handle-active: var(--accent-fill);
+    --slider-track: var(--element-active);
+    --slider-fill: var(--accent-fill);
+    --slider-thumb: var(--text-strong);
+    --progress-track: var(--element);
+    --progress-fill: var(--accent-fill);
+    --checkbox-box: var(--border-strong);   /* the box's border */
+    --radio-ring: var(--border-strong);
+    --radio-dot: var(--accent-fill);
+    --scrollview-background: transparent;
+    --scrollbar-background: transparent;
+    --scrollbar-thumb: var(--element-active);
+    --window-background: var(--surface-overlay);
+    --window-title-background: var(--surface-overlay);
+    --window-border: var(--border);
+    --window-radius: var(--radius-large);
+    --dragpreview-background: var(--surface-overlay);
+    --dragpreview-effect: var(--accent-strong);
+    --drop-refused: var(--danger);
+    --table-header-background: var(--surface-raised);
+    --table-header-text: var(--text-dim);
+    --toast-background: var(--surface-overlay);
+    --toast-info: var(--info);
+    --toast-success: var(--success);
+    --toast-warning: var(--warning);
+    --toast-error: var(--danger);
+    --toast-width: 340px;
+
+    /* Docking. */
+    --dock-background: var(--chrome);
+    --dock-stack-background: var(--surface);
+    --dock-central-background: var(--surface);
+    --dock-preview: color-mix(in srgb, var(--accent-fill) 22%, transparent);
+    --dock-preview-border: var(--accent-strong);
+
+    /* The toolkit: bars, the property grid, the curve, graph and time views. */
+    --toolbar-background: var(--surface-raised);
+    --toolbar-text: var(--text);
+    --toolbar-separator: var(--separator);
+    --toolbar-button-radius: var(--radius-small);
+    --toolbar-button-padding: var(--space-s);
+    --toolbar-button-hover: var(--ghost-hover);
+    --toolbar-button-pressed: var(--ghost-active);
+    --toolbar-button-checked: var(--accent-subtle);
+    --statusbar-background: var(--chrome);
+    --statusbar-text: var(--text-dim);
+    --statusbar-message: var(--text);
+    --breadcrumb-text: var(--text-dim);
+    --breadcrumb-current: var(--text-strong);
+    --breadcrumb-hover: var(--ghost-hover);
+    --breadcrumb-pressed: var(--ghost-active);
+    --breadcrumb-separator: var(--icon-dim);
+    --propertygrid-background: var(--surface);
+    --propertygrid-name: var(--text-dim);
+    --propertygrid-category: var(--surface-raised); /* the category row's fill */
+    --propertygrid-component: var(--text-dim);      /* X, Y, Z beside a vector's fields */
+    --propertygrid-changed: var(--accent-strong);
+    --propertygrid-changed-name: var(--text-strong);
+    --propertygrid-row-hover: var(--ghost-hover);
+    --propertygrid-popup: var(--surface-overlay);
+    --timeline-playhead: var(--accent-strong);
+    --curveview-background: var(--surface-sunken);
+    --curveview-grid: var(--separator);
+    --curveview-selected: var(--accent-strong);
+    --graphview-background: var(--surface-sunken);
+    --graphview-grid: var(--separator);
+    --graphview-grid-major: var(--border);
+    --graphnode-background: var(--surface-raised);
+    --graphnode-border: var(--border);
+    --graphnode-selected: var(--accent-strong);
+    --graphnode-radius: var(--radius);
+    --dopesheet-background: var(--surface-sunken);
+    --dopesheet-selected: var(--accent-strong);
+
+    /* The code editor. */
+    --code-background: var(--surface-sunken);
+    --code-text: var(--text);
+    --code-gutter: var(--surface-sunken);
+    --code-line-number: var(--text-disabled);
+    --code-current-line-number: var(--text-dim);
+    --code-current-line: var(--ghost-hover);
+    --code-selection: var(--accent-subtle);
+    --code-caret: var(--text-strong);
+    --code-error: var(--danger);
+    --code-warning: var(--warning);
+    --code-info: var(--info);
+}

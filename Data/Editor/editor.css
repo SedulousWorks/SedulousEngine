@@ -1,0 +1,188 @@
+/*
+  The editor's sheet (Documentation/Specs/editor-gui.md, 3.1): the one place the editor's look is
+  written. Over the GUI's built-in theme and its satellites' sheets, which follow the tokens alone;
+  the rules here are the editor's own regions, written only in semantic tokens.
+*/
+@import "Editor/tokens.css";
+
+/* The faces (OFL, their licences beside them): Inter for the interface, JetBrains Mono for code. */
+@font-face { font-family: Inter; src: url(Assets/fonts/inter/Inter-Regular.ttf); }
+@font-face { font-family: Inter; src: url(Assets/fonts/inter/Inter-Italic.ttf); font-style: italic; }
+@font-face { font-family: Inter; src: url(Assets/fonts/inter/Inter-Medium.ttf); font-weight: 500; }
+@font-face { font-family: Inter; src: url(Assets/fonts/inter/Inter-SemiBold.ttf); font-weight: 600; }
+@font-face { font-family: Inter; src: url(Assets/fonts/inter/Inter-Bold.ttf); font-weight: bold; }
+@font-face { font-family: "JetBrains Mono"; src: url(Assets/fonts/jetbrains-mono/JetBrainsMono-Regular.ttf); }
+@font-face { font-family: "JetBrains Mono"; src: url(Assets/fonts/jetbrains-mono/JetBrainsMono-Italic.ttf); font-style: italic; }
+@font-face { font-family: "JetBrains Mono"; src: url(Assets/fonts/jetbrains-mono/JetBrainsMono-Bold.ttf); font-weight: bold; }
+
+:root { font-family: var(--ui-font); font-size: var(--font-body); color: var(--text); }
+
+/* === The frame === */
+.frame { background-color: var(--chrome); flex-direction: column; width: 100%; height: 100%; }
+menubar { bar-height: var(--menubar); item-padding: var(--space-m); flex-shrink: 0; padding: 0 var(--space-s); }
+.menubutton { padding: 0 var(--space-m); border-radius: var(--radius-small); }
+.frame-main { flex-grow: 1; flex-direction: column; }
+.frame-dock { flex-grow: 1; flex-basis: 0; min-height: 0; }
+.frame-dock > dockarea { flex-grow: 1; flex-basis: 0; min-height: 0; min-width: 0; }
+statusbar { height: var(--statusbar); flex-shrink: 0; padding: 0 var(--space-m); }
+
+/* === Tabs: a compact strip, its text centred === */
+/* A tab view's strip is on top: a tab rounds its top corners and meets its page square. */
+tab { height: var(--tab); padding: 0 var(--space-l); align-items: center;
+      border-radius: var(--radius) var(--radius) 0 0; }
+/* The strip's list arrow and close-all cross: a small glyph in a button as tall as a tab, the
+   density's sizes. */
+tablist, closeall { height: var(--tab); width: var(--strip-button);
+                    padding: calc((var(--tab) - var(--glyph-box) + 2 * var(--glyph-inset)) / 2) calc((var(--strip-button) - var(--glyph-box) + 2 * var(--glyph-inset)) / 2); }
+/* A tab's close part: a cross in a small square, the density's sizes, quiet until
+   the pointer is on it. */
+tab > close { width: var(--glyph-box); height: var(--glyph-box); padding: var(--glyph-inset);
+              border-radius: var(--radius-small); color: var(--icon-dim); }
+tab > close:hover { color: var(--text-strong); background-color: var(--ghost-hover); }
+
+/* === Bars === */
+toolbar { height: var(--bar); padding: 0 var(--space-s); column-gap: var(--space-xs); align-items: center; }
+toolbutton > icon, toolmenubutton > icon { image-color: var(--icon); }
+toolbutton:checked > icon, toolmenubutton:checked > icon { image-color: var(--accent-strong); }
+toolbar separator { width: 1px; height: calc(var(--bar) - 2 * var(--space-m)); margin: 0 var(--space-s);
+                    background-color: var(--separator); }
+
+/* === Panels === */
+.panel-header { height: var(--bar); padding: 0 var(--space-m); column-gap: var(--space-s); align-items: center;
+                flex-direction: row; background-color: var(--surface);
+                border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); }
+.panel-title { font-weight: 600; color: var(--text-strong); }
+.panel-body { flex-grow: 1; background-color: var(--surface); }
+
+/* === Text roles === */
+.dim { color: var(--text-dim); }
+.small { font-size: var(--font-small); }
+.heading { font-size: var(--font-heading); font-weight: 600; color: var(--text-strong); }
+.mono { font-family: var(--mono-font); font-size: var(--font-code); }
+
+/* === Buttons: neutral by default; one primary per surface; destructive says so === */
+/* Buttons in bars and dialogs stand at the control height; a button inside a row (the property
+   grid's Add) keeps its own, so rows of them do not touch. */
+.panel-toolbar button, .dialog-buttons button { height: var(--control-height); }
+button.primary { background-color: var(--accent-fill); color: var(--on-accent); }
+button.primary:hover { background-color: var(--accent-fill-hover); opacity: 1; }
+button.danger { background-color: var(--danger-background); color: var(--danger); border: 1px solid var(--danger-border); }
+button.ghost { background-color: transparent; }
+button.ghost:hover { background-color: var(--ghost-hover); opacity: 1; }
+button:hover { background-color: var(--element-hover); opacity: 1; }
+button:active { background-color: var(--element-active); opacity: 1; }
+
+/* === Fields === */
+textfield, numberfield, combobox { height: var(--control-height); border: 1px solid var(--border); padding: 0 var(--space-m); }
+textfield:hover, numberfield:hover, combobox:hover { border-color: var(--border-strong); }
+textfield:focus, numberfield:focus { border-color: var(--accent-strong); }
+
+/* === Rows === */
+treerow, listviewrow, propertyrow, menuitem, menusubmenu { min-height: var(--row); }
+
+/* === Motion: what moves (3.3) === */
+button, toolbutton, toolmenubutton, tab, .menubutton {
+    transition: background-color var(--motion-fast) var(--easing), color var(--motion-fast) var(--easing);
+}
+
+/* === A panel's bar: its search and its actions, under the dock tab === */
+.panel { flex-grow: 1; flex-direction: column; background-color: var(--surface); }
+.panel-toolbar { height: var(--bar); padding: 0 var(--space-m); column-gap: var(--space-s); align-items: center;
+                 flex-direction: row; border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); }
+
+/* === The search field: one look everywhere (2.3) === */
+/* It fills its bar up to the bar's buttons, which stay at the end however wide the pane grows;
+   beside a breadcrumb (the assets bar) it keeps a width of its own, at the end with its buttons,
+   giving way when the bar is narrow. */
+.search { flex-direction: row; align-items: center; flex-grow: 1; flex-shrink: 1; min-width: 0; height: var(--control-height);
+          background-color: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-small);
+          padding: 0 var(--space-s); column-gap: var(--space-s); }
+.search.beside-crumbs { flex-grow: 0; flex-basis: 320px; }  /* the spacer before it takes the room: it and its buttons sit at the end */
+.search:hover { border-color: var(--border-strong); }
+.search:focus-within { border-color: var(--accent-strong); }
+.search-field:focus { box-shadow: none; } /* the frame shows the focus, not the field inside it */
+.search-icon { width: var(--icon-size); height: var(--icon-size); image-color: var(--icon-dim); }
+.search-field { flex-grow: 1; min-width: 0; border-width: 0; background-color: transparent; padding: 0; height: auto; }
+
+/* === Icon buttons: ghost, square, the icon tinted === */
+/* A bar's buttons keep their size; its search field gives way first. */
+.panel-toolbar > button { flex-shrink: 0; }
+button.icon-button { width: var(--control-height); height: var(--control-height); padding: 0; background-color: transparent;
+                     border-radius: var(--radius-small); }
+button.icon-button:hover { background-color: var(--ghost-hover); }
+button.icon-button.checked { background-color: var(--accent-subtle); }
+button > icon { width: var(--icon-size); height: var(--icon-size); image-color: var(--icon); }
+
+/* === Chips: a filter that is on or off === */
+button.chip { height: calc(var(--control-height) - 4px); padding: 0 var(--space-m); border-radius: 999px;
+              background-color: transparent; border: 1px solid var(--border); color: var(--text-dim); font-size: var(--font-small); }
+button.chip.checked { background-color: var(--element); color: var(--text); }
+button.chip.warning.checked { color: var(--warning); border-color: var(--warning-border); }
+button.chip.error.checked { color: var(--danger); border-color: var(--danger-border); }
+
+/* === A page and its viewport. A page carries its own panes (a scene page its hierarchy and
+       inspector) in splits of its own, so pages can stand side by side. === */
+.page-body { flex-grow: 1; flex-basis: 0; min-height: 0; min-width: 0; }
+.page-pane { min-width: 160px; }
+.page { flex-grow: 1; flex-direction: column; min-height: 0; min-width: 0; background-color: var(--surface); }
+.viewport { flex-grow: 1; flex-basis: 0; min-height: 0; min-width: 0; background-color: var(--surface-sunken); display: stack; }
+/* The mock's still of a scene, standing in for the renderer. */
+.scene-page .viewport { background-image: url(Editor/Mock/viewport.png); background-size: cover; background-position: center; }
+.viewport-hud { padding: var(--space-m); justify-self: start; align-self: start; }
+.viewport-hud-end { justify-self: end; }
+.hud-text { font-size: var(--font-small); color: var(--text-strong); background-color: rgba(0, 0, 0, 0.45);
+            padding: var(--space-xs) var(--space-m); border-radius: var(--radius-small); }
+
+/* === The inspector's head: the selection's type and name === */
+.inspector-head { flex-direction: row; align-items: center; column-gap: var(--space-m); padding: var(--space-m);
+                  border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); }
+.type-icon { width: var(--icon-size); height: var(--icon-size); image-color: var(--icon); }
+.name-field { flex-grow: 1; flex-shrink: 1; min-width: 0; font-weight: 600; }
+.inspector-head > image, .inspector-head > label, .inspector-head > button { flex-shrink: 0; }
+.inspector-kind { font-size: var(--font-small); color: var(--text-dim); }
+
+/* === Assets: groups beside tiles === */
+.assets-body { flex-grow: 1; flex-direction: row; }
+.assets-groups { width: 200px; border-right-width: 1px; border-right-style: solid; border-right-color: var(--separator); }
+.asset-tiles { flex-grow: 1; background-color: var(--surface); padding: var(--space-m); }
+.asset-tile { flex-direction: column; align-items: center; row-gap: var(--space-xs); padding: var(--space-s);
+              border-radius: var(--radius); }
+.asset-thumb { width: 64px; height: 56px; border-radius: var(--radius-small); background-color: var(--surface-sunken);
+               align-items: center; justify-content: center; }
+.asset-glyph { width: 24px; height: 24px; image-color: var(--icon-dim); }
+.asset-name { font-size: var(--font-small); color: var(--text); }
+
+/* A tile's hover and its selection are the cell, one shape. */
+.asset-tiles listviewrow { border-radius: var(--radius); }
+.asset-tiles::selection { border-radius: var(--radius); }
+
+/* === Selections: rounded, as everything else is === */
+listview::selection, treeview::selection, tableview::selection { border-radius: var(--radius-small); }
+
+/* === The console's rows === */
+.log { flex-grow: 1; background-color: var(--surface); }
+.log-row { flex-direction: row; column-gap: var(--space-m); padding: 0 var(--space-m); align-items: center; }
+.log-time { color: var(--text-disabled); font-size: var(--font-small); }
+
+/* === The property grid === */
+/* The rows inset from the right as the panel's bars are, so an editor's edge lines up with the
+   search field above it (the left keeps the grid's own column for a section's arrow). */
+propertyrowcontent { padding-right: var(--space-m); }
+/* Arrows and indents follow the density, in trees and the grid alike. */
+treeview { arrow-size: var(--arrow); indent-width: var(--tree-indent); }
+propertygrid { arrow-size: var(--arrow); indent-width: var(--grid-indent); }
+/* A vector's parts keep their room for their numbers: a small inset, not a field's full one. */
+propertyeditor.floats numberfield { padding: 0 var(--space-xs); }
+
+/* === Popups: one surface for everything that opens over the editor (menus, a combo box's
+       list, the property grid's flags and colour popups, tooltips): raised above the panels,
+       bordered and shadowed, so it reads apart from what it covers; its rows inset from its
+       rounded edge and rounded to match. === */
+menu, combobox > listbox, propertyflagslist, propertycolorpopup, tooltip {
+    background-color: var(--surface-overlay); border: 1px solid var(--border-strong); border-radius: var(--radius);
+    box-shadow: 0 6px 18px var(--shadow-color);
+}
+menu, combobox > listbox, propertyflagslist { padding: var(--space-s); }
+menuitem::highlight, menusubmenu::highlight { border-radius: var(--radius-small); }
+combobox > listbox listboxitem { border-radius: var(--radius-small); }
+combobox > listbox::selection { border-radius: var(--radius-small); }
