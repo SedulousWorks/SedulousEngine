@@ -509,6 +509,8 @@ class EditorApplication : IApplication
 		{
 			let services = new EditorPreferencesServices();
 			services.User = mEditorSettings;
+			services.Actions = mContext.Actions;
+			services.Warn = new (text) => { mContext.Notify(.Warning, text); };
 			services.ShowLook = new (look) => { mWindow.SetLook(look); };
 			// Said on the status line, or as an error, as the Sedulous.UI dialog said it.
 			services.Persist = new () =>

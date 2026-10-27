@@ -12,15 +12,20 @@ namespace Sedulous.Editor.App.Tests;
 /// Preferences over its own markup (Data/Editor/Preferences.gml): its controls as the user's store
 /// has the look (what the store names wrongly, the defaults); each change of each input shown at
 /// once; Save into the store, marked changed and persisted; Cancel, Escape, its close button, or
-/// the dialog going while open, putting the look back as it was with the store unchanged.
+/// the dialog going while open, putting the look back as it was with the store unchanged; the
+/// Shortcuts tab's edits staged, applied on Save (a chord another action holds refused, named),
+/// forgotten on Cancel, Reset going back to the declaration's.
 static class PreferencesDialogTests
 {
-	/// A GUI scene for the dialog to open over, the user's store (violet), the looks it showed and
-	/// the persists it asked for.
+	/// A GUI scene for the dialog to open over, the user's store (violet), two actions (Save on
+	/// Ctrl+S, Open on Ctrl+O), the looks it showed, the warnings it said and the persists it asked
+	/// for.
 	private class Bed
 	{
 		public SceneRoot Root;
 		public Settings Store = new .() ~ delete _;
+		public EditorActionRegistry Actions = new .() ~ delete _;
+		public List<String> Warnings = new .() ~ DeleteContainerAndItems!(_);
 		public List<EditorLook> Shown = new .() ~ DeleteContainerAndItems!(_);
 		public int Persisted = 0;
 		/// What a persist answers.
@@ -35,8 +40,12 @@ static class PreferencesDialogTests
 			Root.Size = .(1000.0f, 700.0f);
 			Store.Section<EditorUiSettings>().Accent.Set(accent);
 			Store.Section<EditorUiSettings>().Density.Set(density);
+			Declare("file.save", "Save", "ctrl-s");
+			Declare("file.open", "Open", "ctrl-o");
 			let services = new EditorPreferencesServices();
 			services.User = Store;
+			services.Actions = Actions;
+			services.Warn = new (text) => { Warnings.Add(new String(text)); };
 			services.ShowLook = new (look) => { Shown.Add(new EditorLook()..Set(look)); };
 			services.Persist = new () =>
 				{
@@ -52,12 +61,20 @@ static class PreferencesDialogTests
 			Root.ReleaseRef();
 		}
 
+		private void Declare(StringView id, StringView label, StringView keys)
+		{
+			let d = new EditorActionDeclaration(id, label, "", scope $"File/{label}");
+			d.Shortcut = EditorShortcut.Of(keys);
+			d.Execute = new (page) => {};
+			Test.Assert(Actions.Register(d));
+		}
+
 		public Sedulous.GUI.EventDispatcher Dispatcher => Root.EventDispatcher;
 		public Sedulous.GUI.Window Window => Dialog.Window;
 		public EditorLook Last => Shown.Back;
 		public EditorUiSettings Ui => Store.Find<EditorUiSettings>();
 
-		public bool Press(KeyCode key) => Root.EventDispatcher.InjectKeyDown((uint32)key, 0);
+		public bool Press(KeyCode key, uint32 modifiers = 0) => Root.EventDispatcher.InjectKeyDown((uint32)key, modifiers);
 	}
 
 	/// The dialog's body, read from the repository's Data with the GUI's elements; its one
@@ -95,6 +112,26 @@ static class PreferencesDialogTests
 	}
 
 	private static bool Near(float a, float b) => Math.Abs(a - b) < 1e-4f;
+
+	/// The chord capture buttons under `node`, in the tree's order (a row per action).
+	private static void Captures(Node node, List<ShortcutCaptureButton> outCaptures)
+	{
+		if (let capture = node as ShortcutCaptureButton)
+			outCaptures.Add(capture);
+		for (int i < node.ChildCount)
+			Captures(node.GetChildAt(i), outCaptures);
+	}
+
+	/// The Shortcuts tab shown, its capture buttons in `outCaptures`.
+	private static void ShowShortcutsTab(Bed bed, List<ShortcutCaptureButton> outCaptures)
+	{
+		let tabs = Find<TabView>(bed.Window, "pref-tabs");
+		Test.Assert(tabs != null);
+		tabs.SelectedIndex = 1; // Shortcuts
+		bed.Root.UpdateLayout();
+		outCaptures.Clear();
+		Captures(bed.Window, outCaptures);
+	}
 
 	[Test]
 	public static void ItsControlsAreTheStoresLookEachChangeShowsAtOnceAndSaveKeepsItPersisted()
@@ -304,5 +341,114 @@ static class PreferencesDialogTests
 		Test.Assert(none.Window == null);
 		Test.Assert(!none.Open(bed.Root));
 		Test.Assert(!none.IsOpen);
+	}
+
+	[Test]
+	public static void ShortcutsListsEveryActionAnEditIsStagedAndAppliedOnSaveOneAnotherHoldsRefusedResetGoesBack()
+	{
+		let bed = scope Bed();
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		let captures = scope List<ShortcutCaptureButton>();
+		ShowShortcutsTab(bed, captures);
+		Test.Assert(captures.Count == 2, "Save, Open");
+		Test.Assert(captures[0].Chord == EditorShortcut.Of("ctrl-s"));
+		Test.Assert(captures[1].Chord == EditorShortcut.Of("ctrl-o"));
+		// Each row names its action and where it is in the menus.
+		let row = captures[0].Parent;
+		Test.Assert((row != null) && (row.ChildCount == 4));
+		Test.Assert((row.GetChildAt(0) as Sedulous.GUI.Label).Text == "Save");
+		Test.Assert((row.GetChildAt(1) as Sedulous.GUI.Label).Text == "File/Save");
+		let resetSave = row.GetChildAt(3) as Sedulous.GUI.Button;
+		Test.Assert((resetSave != null) && (resetSave.Text == "Reset"));
+		Test.Assert(!resetSave.Enabled, "no override yet");
+
+		Test.Assert(captures[0].HandleActivate());
+		Test.Assert(bed.Press(.F2));
+		Test.Assert(captures[0].Chord == EditorShortcut.Of("f2"));
+		Test.Assert(resetSave.Enabled, "chosen: there is something to reset");
+		Test.Assert(captures[1].HandleActivate());
+		Test.Assert(bed.Press(.F2)); // the one Save now holds
+		Test.Assert(captures[1].Chord == EditorShortcut.Of("f2"), "shown as chosen; refused on Save");
+		Test.Assert(bed.Actions.Shortcut("file.save") == EditorShortcut.Of("ctrl-s"), "staged, not yet");
+		Test.Assert(bed.Actions.Shortcut("file.open") == EditorShortcut.Of("ctrl-o"));
+		Test.Assert(bed.Store.Find<EditorShortcutSettings>() == null);
+
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(bed.Persisted == 1);
+		Test.Assert(bed.Actions.Shortcut("file.save") == EditorShortcut.Of("f2"));
+		Test.Assert(bed.Actions.Shortcut("file.open") == EditorShortcut.Of("ctrl-o"), "refused");
+		Test.Assert(!bed.Actions.HasOverride("file.open"));
+		Test.Assert(bed.Warnings.Count == 1);
+		Test.Assert(bed.Warnings[0].StartsWith("Shortcut kept: ") && bed.Warnings[0].Contains("'Save'"), "the holder named");
+		let section = bed.Store.Find<EditorShortcutSettings>();
+		Test.Assert(section != null);
+		Test.Assert((section.Overrides.Count == 1) && (section.Find("file.save").Keys == "f2"));
+
+		// Opened again: as the registry has it now; Reset puts Save back to its declared chord, shown
+		// at once, kept on Save.
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		ShowShortcutsTab(bed, captures);
+		Test.Assert(captures.Count == 2, "the rows made again, not added to");
+		Test.Assert(captures[0].Chord == EditorShortcut.Of("f2"));
+		Test.Assert(captures[1].Chord == EditorShortcut.Of("ctrl-o"));
+		let reset = ButtonText(bed.Window, "Reset");
+		Test.Assert(reset != null);
+		Test.Assert(reset.Enabled, "Save has an override");
+		Test.Assert(reset.HandleActivate());
+		Test.Assert(captures[0].Chord == EditorShortcut.Of("ctrl-s"));
+		Test.Assert(!reset.Enabled);
+		Test.Assert(bed.Actions.Shortcut("file.save") == EditorShortcut.Of("f2"), "staged, not yet");
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(bed.Actions.Shortcut("file.save") == EditorShortcut.Of("ctrl-s"));
+		Test.Assert(!bed.Actions.HasOverride("file.save"));
+		Test.Assert(bed.Store.Find<EditorShortcutSettings>().Overrides.IsEmpty);
+		Test.Assert(bed.Warnings.Count == 1, "nothing refused");
+	}
+
+	[Test]
+	public static void AShortcutsEditIsForgottenOnCancelAndACaptureTakesEscapeBeforeTheDialog()
+	{
+		let bed = scope Bed();
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		let captures = scope List<ShortcutCaptureButton>();
+		ShowShortcutsTab(bed, captures);
+		Test.Assert(captures.Count == 2);
+
+		// Escape while a capture waits is the capture's: it cancels, the dialog stays.
+		Test.Assert(captures[1].HandleActivate());
+		Test.Assert(captures[1].IsCapturing);
+		bed.Press(.Escape);
+		Test.Assert(!captures[1].IsCapturing);
+		Test.Assert(bed.Dialog.IsOpen);
+		Test.Assert(captures[1].Chord == EditorShortcut.Of("ctrl-o"));
+
+		// Chosen, then Cancel: the registry and the store as they were.
+		Test.Assert(captures[1].HandleActivate());
+		Test.Assert(bed.Press(.O, KeyModCtrl | KeyModShift));
+		Test.Assert(captures[1].Chord == EditorShortcut.Of("ctrl-shift-o"));
+		bed.Dialog.Cancel();
+		Test.Assert(!bed.Dialog.IsOpen);
+		Test.Assert(bed.Actions.Shortcut("file.open") == EditorShortcut.Of("ctrl-o"));
+		Test.Assert(bed.Store.Find<EditorShortcutSettings>() == null);
+		Test.Assert(bed.Persisted == 0);
+
+		// Opened again and saved: the cancelled edit is gone, not applied late.
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		ShowShortcutsTab(bed, captures);
+		Test.Assert(captures[1].Chord == EditorShortcut.Of("ctrl-o"));
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(bed.Actions.Shortcut("file.open") == EditorShortcut.Of("ctrl-o"));
+		Test.Assert(!bed.Actions.HasOverride("file.open"));
+		Test.Assert(bed.Warnings.IsEmpty);
+
+		// Delete chooses none: kept on Save as "no shortcut", not as the default.
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		ShowShortcutsTab(bed, captures);
+		Test.Assert(captures[1].HandleActivate());
+		Test.Assert(bed.Press(.Delete));
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(bed.Actions.HasOverride("file.open"));
+		Test.Assert(!bed.Actions.Shortcut("file.open").IsSet);
+		Test.Assert(bed.Store.Find<EditorShortcutSettings>().Find("file.open").Keys.IsEmpty);
 	}
 }

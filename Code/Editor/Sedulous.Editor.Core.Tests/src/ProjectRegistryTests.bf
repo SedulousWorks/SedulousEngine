@@ -171,7 +171,7 @@ static class ProjectRegistryTests
 			Test.Assert(made != null, scope $"type id {id}");
 			delete made;
 		}
-		// Export, font, ui, mcp, shortcuts (and its entry), recent projects (and its entry), at least.
+		// Export, ui, mcp, shortcuts (and its entry), recent projects (and its entry), at least.
 		Test.Assert(ids.Count >= 8);
 		for (let type in scope Type[](typeof(EditorShortcutSettings), typeof(ShortcutOverrideEntry), typeof(RecentProjectsSettings)))
 			Test.Assert(registry.IsRegistered(TypeIdOf(type.GetFullName(.. scope .()))));
@@ -241,7 +241,6 @@ static class ProjectRegistryTests
 		store.Section<EditorUiSettings>().Accent.Set("#0f8a7e");
 		store.Section<EditorUiSettings>().Density.Set("comfortable");
 		store.Section<EditorUiSettings>().ReduceMotion = true;
-		store.Section<EditorFontSettings>().FontPath.Set("/fonts/ui.ttf");
 		ProjectRegistry.TouchRecentProject(store, "/proj/a", "A", "0.1.0");
 		let buffer = scope Sedulous.Core.IO.MemoryStream();
 		let factory = XmlSerializerFactory();
@@ -258,7 +257,94 @@ static class ProjectRegistryTests
 		Test.Assert(ui.Accent == "#0f8a7e");
 		Test.Assert(ui.Density == "comfortable");
 		Test.Assert(ui.ReduceMotion);
-		Test.Assert(loaded.Find<EditorFontSettings>().FontPath == "/fonts/ui.ttf");
+	}
+
+	/// The font section the editor kept before its fonts became its sheet's (the type is gone):
+	/// its paths, under its old identity and version.
+	private class LegacyFontSection : ISerializable
+	{
+		public const String cTypeName = "Sedulous.Editor.Core.EditorFontSettings";
+		public String FontPath = new .() ~ delete _;
+		public String MonoFontPath = new .() ~ delete _;
+
+		public void Serialize(ISerializer ar)
+		{
+			BeginVersionedPayload(ar, TypeIdOf(cTypeName), 1);
+			ar.BeginObject();
+			Sedulous.Core.Serialization.Serialize(ar, "fontPath", FontPath);
+			Sedulous.Core.Serialization.Serialize(ar, "monoFontPath", MonoFontPath);
+			ar.EndObject();
+			EndVersionedPayload(ar);
+		}
+	}
+
+	/// A store still holding the font section loads: the section no type reads is kept aside (and
+	/// written back, so an older build keeps its paths), and the sections after it read as ever.
+	[Test]
+	public static void AStoreStillHoldingTheFontSectionLoadsTheSectionsAfterIt()
+	{
+		EditorSerializables.RegisterAll();
+		Test.Assert(GlobalSerializableRegistry.Create(TypeIdOf(LegacyFontSection.cTypeName)) == null, "no type reads it now");
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		let buffer = scope Sedulous.Core.IO.MemoryStream();
+		{
+			let fonts = scope LegacyFontSection();
+			fonts.FontPath.Set("/fonts/ui.ttf");
+			let ui = scope EditorUiSettings();
+			ui.UiScale = 1.25f;
+			ui.Scheme.Set("light");
+			let writing = factory(buffer, .Write);
+			defer delete writing;
+			let archive = writing.Serializer;
+			uint32 count = 2;
+			archive.Key("sections");
+			archive.BeginArray(ref count);
+			// The font section first, so a load that stopped at it would lose the UI's.
+			archive.BeginObject();
+			archive.Key("typeName");
+			archive.Text(LegacyFontSection.cTypeName);
+			archive.BeginFramedRegion();
+			archive.Key("payload");
+			archive.BeginObject();
+			fonts.Serialize(archive);
+			archive.EndObject();
+			archive.EndFramedRegion();
+			archive.EndObject();
+			archive.BeginObject();
+			archive.Key("typeName");
+			archive.Text(typeof(EditorUiSettings).GetFullName(.. scope .()));
+			archive.BeginFramedRegion();
+			archive.Key("payload");
+			archive.BeginObject();
+			(ui as ISerializable).Serialize(archive);
+			archive.EndObject();
+			archive.EndFramedRegion();
+			archive.EndObject();
+			archive.EndArray();
+			Test.Assert(archive.IsOk);
+			writing.Flush(buffer);
+		}
+
+		buffer.Seek(0, .Begin);
+		let loaded = scope Settings();
+		Test.Assert(loaded.Load(buffer, factory) case .Ok);
+		Test.Assert(loaded.UnknownSectionCount == 1, "kept aside, not refused");
+		Test.Assert(loaded.SectionCount == 1);
+		let ui = loaded.Find<EditorUiSettings>();
+		Test.Assert(ui != null, "the section after it read");
+		Test.Assert(Math.Abs(ui.UiScale - 1.25f) < 1e-5f);
+		Test.Assert(ui.Scheme == "light");
+
+		// Saved again, the kept section goes back out with its paths.
+		let again = scope Sedulous.Core.IO.MemoryStream();
+		Test.Assert(loaded.Save(again, factory) case .Ok);
+		let text = scope String((char8*)again.Bytes.Ptr, again.Bytes.Length);
+		Test.Assert(text.Contains(LegacyFontSection.cTypeName) && text.Contains("/fonts/ui.ttf"));
+		again.Seek(0, .Begin);
+		let reloaded = scope Settings();
+		Test.Assert(reloaded.Load(again, factory) case .Ok);
+		Test.Assert((reloaded.UnknownSectionCount == 1) && (reloaded.Find<EditorUiSettings>() != null));
 	}
 
 	/// The UI section as the editor saved it before the look's inputs: the scale and axis views

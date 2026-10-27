@@ -121,10 +121,6 @@ Name = "ShellTests.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "ShortcutCaptureTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "TemplatesDialogTests.bf"
 
 [[ProjectFolder.Items]]

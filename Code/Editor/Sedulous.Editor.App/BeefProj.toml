@@ -241,10 +241,6 @@ Name = "SegmentedToggle.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "ShortcutCaptureButton.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "TemplatesDialog.bf"
 
 [[ProjectFolder.Items]]

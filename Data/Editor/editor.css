@@ -503,6 +503,14 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .pref-scale { flex-direction: row; align-items: center; column-gap: var(--space-m); }
 .pref-scale > slider { width: 200px; }
 .pref-scale-value { color: var(--text-dim); font-size: var(--font-small); }
+.pref-shortcuts-page { flex-direction: column; flex-grow: 1; min-height: 0; }
+.pref-shortcuts { flex-direction: column; flex-grow: 1; min-height: 0; overflow-y: auto; }
+.pref-shortcut { flex-direction: row; align-items: center; column-gap: var(--space-m); min-height: var(--row); padding: 0 var(--space-s); }
+.pref-shortcut > .row-name { width: 180px; flex-shrink: 0; }
+.pref-shortcut > .pref-where { flex-grow: 1; flex-shrink: 1; min-width: 0; color: var(--text-dim); font-size: var(--font-small);
+                               text-overflow: ellipsis; white-space: nowrap; }
+button.shortcut-capture { width: 150px; }
+button.shortcut-capture.capturing { color: var(--accent-strong); }
 .save-as > .dialog-buttons { padding: var(--space-l) 0 0; }
 
 /* The command palette: the picker's frame, a row per action (its name, where it is in the menus, its

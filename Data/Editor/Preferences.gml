@@ -1,7 +1,8 @@
 <!--
   Preferences (Documentation/Specs/editor-gui.md, 5.1, layer 12): the user's own settings, a tab per
   category. Appearance previews as it changes; Save keeps it, Cancel (or closing) puts it back.
-  The accents' segments are made by code from the editor's list.
+  The accents' segments and the shortcuts' rows are made by code (the editor's accents, the
+  registry's actions).
 -->
 <Panel class="preferences">
     <TabView id="pref-tabs" class="pref-tabs">
@@ -27,6 +28,12 @@
                 <Panel class="form-field">
                     <Panel class="pref-scale"><Slider id="pref-scale" min="0.5" max="2" step="0.05"/><Label id="pref-scale-value" class="pref-scale-value"/></Panel>
                 </Panel>
+            </Panel>
+        </TabPage>
+        <TabPage title="Shortcuts">
+            <Panel class="dialog-body pref-shortcuts-page">
+                <Label class="form-help" text="Click a shortcut and press the new keys (Esc cancels, Del clears). One another action holds is refused on Save, naming it."/>
+                <Panel id="pref-shortcuts" class="pref-shortcuts"/>
             </Panel>
         </TabPage>
     </TabView>

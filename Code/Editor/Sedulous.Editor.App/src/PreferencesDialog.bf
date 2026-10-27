@@ -12,16 +12,22 @@ namespace Sedulous.Editor.App;
 // (Raptor's editor-gui spec, 5.1, layer 12). A modal window of the editor's markup
 // (Data/Editor/Preferences.gml), a tab per category. Appearance holds the look's inputs: the
 // scheme, the accent (one of the editor's or any #rrggbb), the density, less motion and the UI
-// scale; each change shows at once. Save writes them into the store and persists it; Cancel, its
-// close button or Escape put the look back as it was. The other tabs (Shortcuts, Export, Agent
-// access, Game preview, the domains' categories) come in the layer's later parts; until then they
-// are in the parked Sedulous.UI dialog (EditorPreferencesDialog.bf).
+// scale; each change shows at once. Shortcuts lists every action with its chord: a click captures
+// the next keys, Reset goes back to the declaration's. Save writes everything into the store (a
+// chord another action holds refused, named in a warning) and persists it; Cancel, its close
+// button or Escape put the look back as it was and forget the shortcuts' edits. The other tabs
+// (Export, Agent access, Game preview, the domains' categories) come in the layer's last part;
+// until then they are in the parked Sedulous.UI dialog (EditorPreferencesDialog.bf).
 
 /// What an EditorPreferencesDialog works over. The store is borrowed; the delegates are its own.
 class EditorPreferencesServices
 {
 	/// The user's store; null: the defaults show and Save keeps nothing.
 	public Settings User = null;
+	/// The actions the Shortcuts tab lists and Save rebinds; null: the tab is empty. Borrowed.
+	public EditorActionRegistry Actions = null;
+	/// Says a warning to the user (a chord another action holds); unset: said nowhere. Owned.
+	public delegate void(StringView text) Warn ~ delete _;
 	/// Shows a look (the window's SetLook); unset: shown nowhere. Owned.
 	public delegate void(EditorLook look) ShowLook ~ delete _;
 	/// Persists the user's store, false when it could not be written; unset: nothing to write.
@@ -49,6 +55,8 @@ class EditorPreferencesDialog
 	private EditorLook mOriginal = new .() ~ delete _;
 	/// As the controls have it.
 	private EditorLook mLook = new .() ~ delete _;
+	/// The Shortcuts tab's edits, staged; applied and persisted on Save, forgotten at the next open.
+	private ShortcutEdits mShortcutEdits = new .() ~ delete _;
 	private bool mSaved = false;
 
 	/// The dialog over `services`, its body `body` (the markup's controls by id). TAKES OWNERSHIP
@@ -86,21 +94,37 @@ class EditorPreferencesDialog
 		mOriginal.ReadFrom((mServices.User != null) ? mServices.User.Find<EditorUiSettings>() : null);
 		mLook.Set(mOriginal);
 		mSaved = false;
+		delete mShortcutEdits;
+		mShortcutEdits = new .();
 		ShowControls();
+		ShowShortcuts();
 		mWindow.OpenModal(root);
 		return mWindow.IsOpen;
 	}
 
 	public bool IsOpen => (mWindow != null) && mWindow.IsOpen;
 
-	/// Keeps the look: into the store, persisted, the window closed. False when the store could
-	/// not be written (the look is kept all the same).
+	/// Keeps the look and the shortcuts' edits: into the store, persisted, the window closed. A
+	/// chord another action holds is refused, that action keeping it, and named in a warning. False
+	/// when the store could not be written (the look is kept all the same).
 	public bool Save()
 	{
 		if (mServices.User != null)
 		{
 			mLook.StoreInto(mServices.User.Section<EditorUiSettings>());
 			mServices.User.MarkChanged<EditorUiSettings>();
+			if (!mShortcutEdits.IsEmpty && (mServices.Actions != null))
+			{
+				let collisions = scope List<String>();
+				defer { ClearAndDeleteItems!(collisions); }
+				mShortcutEdits.Apply(mServices.Actions, mServices.User.Section<EditorShortcutSettings>(), collisions);
+				mServices.User.MarkChanged<EditorShortcutSettings>();
+				if (mServices.Warn != null)
+				{
+					for (let collision in collisions)
+						mServices.Warn(scope $"Shortcut kept: {collision}");
+				}
+			}
 		}
 		let persisted = (mServices.Persist == null) || mServices.Persist();
 		mSaved = true;
@@ -190,6 +214,58 @@ class EditorPreferencesDialog
 		ShowControls();
 		if (mServices.ShowLook != null)
 			mServices.ShowLook(mLook);
+	}
+
+	// The Shortcuts tab: a row per action (its name, where it is in the menus, its chord as a capture
+	// button, Reset), the chord as the registry has it now. A chosen chord or a reset is staged.
+	private void ShowShortcuts()
+	{
+		let list = Find<Node>("pref-shortcuts");
+		if ((list == null) || (mServices.Actions == null))
+			return;
+		list.RemoveAllChildren();
+		let actions = mServices.Actions;
+		for (let action in actions.Actions)
+		{
+			let row = new Sedulous.GUI.Panel();
+			row.AddClass("pref-shortcut");
+			let name = new Sedulous.GUI.Label();
+			name.AddClass("row-name");
+			name.Text = action.Label;
+			let @where = new Sedulous.GUI.Label();
+			@where.AddClass("pref-where");
+			@where.Text = action.MenuPath;
+			let capture = new ShortcutCaptureButton();
+			capture.SetChord(actions.Shortcut(action.Id));
+			let reset = new Sedulous.GUI.Button();
+			reset.AddClass("ghost");
+			reset.Text = "Reset";
+			reset.Enabled = actions.HasOverride(action.Id);
+			// The row's: its own buttons reach each other, and the declaration outlives the dialog's
+			// rows (the registry keeps it until the editor goes).
+			capture.SetOnChordChosen(new [=this, =action, =reset] (chord) =>
+				{
+					mShortcutEdits.Set(action.Id, chord);
+					reset.Enabled = true;
+				});
+			reset.SetOnClick(new [=this, =action, =capture, =reset] () =>
+				{
+					mShortcutEdits.Reset(action.Id);
+					capture.SetChord(action.Shortcut); // the default, shown at once
+					reset.Enabled = false;
+				});
+			row.AddChild(name);
+			row.AddChild(@where);
+			row.AddChild(capture);
+			row.AddChild(reset);
+			list.AddChild(row);
+			// The tree's references keep them.
+			name.ReleaseRef();
+			@where.ReleaseRef();
+			capture.ReleaseRef();
+			reset.ReleaseRef();
+			row.ReleaseRef();
+		}
 	}
 
 	// The controls as mLook has it.
