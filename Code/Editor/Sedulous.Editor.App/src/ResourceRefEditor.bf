@@ -10,8 +10,9 @@ namespace Sedulous.Editor.App;
 // editor for GUI.Toolkit's Reference kind, an asset slot. What may fill it is asked of the builders,
 // never listed here (ruling 19): the source asset types whose builder makes the type the reference
 // points at (EditorContext.SourceAssetTypesOf). Pick, drop and clear are one write, the grid's, so
-// one undo step; open and reveal show the asset. What it asks of the editor is a table of its own
-// (ResourceRefServices), so a test gives its own and the application fills it from its context.
+// one undo step; a pick opens the asset picker below the slot. Open and reveal show the asset. What
+// it asks of the editor is a table of its own (ResourceRefServices), so a test gives its own and the
+// application fills it from its context.
 //
 // An entity reference is not this editor's: an EntityRef is no reference to an asset, and only a
 // scene names its entities, so it comes with the scene page's inspector.
@@ -36,18 +37,44 @@ class ResourceRefServices
 	/// What `id` names, into `outShown`; false when the project has no such asset (a dangling
 	/// reference).
 	public delegate bool(Guid id, ResourceRefShown outShown) Describe ~ delete _;
-	/// Opens a picker over `types` (empty: any); `chosen` assigns what it picks. OWNERSHIP of
-	/// `chosen` transfers: the picker deletes it once it has answered, or given up.
-	public delegate void(Span<String> types, delegate void(Guid id) chosen) Pick ~ delete _;
+	/// Opens a picker over `types` (empty: any) below `anchor`, `current` checked; `chosen`
+	/// assigns what it picks (nil: None). OWNERSHIP of `chosen` transfers: the picker deletes it
+	/// once it has answered, or given up.
+	public delegate void(Span<String> types, Guid current, Node anchor, delegate void(Guid id) chosen) Pick ~ delete _;
 	public delegate void(Guid id) Open ~ delete _;
 	public delegate void(Guid id) Reveal ~ delete _;
 
 	/// A table filled from the editor's context: the builders' types (SourceAssetTypesOf), the
-	/// project's names, the type icons, the context's open and reveal. The picker comes with the
-	/// small dialogs (layer 5). `context` and `icons` outlive it; the caller deletes it.
-	public static ResourceRefServices From(EditorContext context, EditorIcons icons)
+	/// project's names, the type icons, the asset picker over the project's sources and the
+	/// context's favourites (`open` shows a picker's request below its anchor, taking the request;
+	/// null: no pick), the context's open and reveal. `context` and `icons` outlive it; OWNERSHIP
+	/// of `open` transfers. The caller deletes it.
+	public static ResourceRefServices From(EditorContext context, EditorIcons icons,
+		delegate void(PickerRequest request, Node anchor) open)
 	{
 		let services = new ResourceRefServices();
+		if (open != null)
+		{
+			services.Pick = new [=context, =icons, =open] (types, current, anchor, chosen) =>
+				{
+					let project = context.Project;
+					if (project == null)
+					{
+						delete chosen; // given up: no project, nothing to pick
+						return;
+					}
+					let request = AssetPicker.Request(project.SourceDb, icons, context.Pages, context.Favorites, types, current);
+					// The request's: it goes with the request, once the picker has answered or closed.
+					request.OnPicked = new [=chosen] (key) =>
+						{
+							if (key.IsEmpty)
+								chosen(.Empty); // None
+							else if (Guid.Parse(key) case .Ok(let id))
+								chosen(id);
+						} ~ { delete chosen; };
+					open(request, anchor);
+				} ~ { delete open; };
+		}
 		services.AcceptedTypes = new [=context] (target, outTypes) =>
 			{
 				if (context.SourceAssetTypesOf == null)
@@ -198,15 +225,15 @@ class ResourceRefEditor : SingleControlEditor
 		}
 	}
 
-	/// The picker answers later, when the row may show another property (rows are pooled): its
-	/// choice lands only on the property it was opened for. The row is held until the picker lets
-	/// its answer go.
+	/// The picker opens below the slot, the current value checked. It answers later, when the row
+	/// may show another property (rows are pooled): its choice lands only on the property it was
+	/// opened for. The row is held until the picker lets its answer go.
 	private void Pick()
 	{
 		let self = this;
 		let path = new String(Path);
 		AddRef();
-		mServices.Pick(mTypes, new [=self, =path] (id) =>
+		mServices.Pick(mTypes, mCurrent, mSlot, new [=self, =path] (id) =>
 			{
 				if (self.Path == path)
 					self.Assign(id);

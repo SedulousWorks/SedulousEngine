@@ -1,8 +1,10 @@
 using System;
 using System.Collections;
 using Sedulous.Core;
+using Sedulous.Core.IO;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
@@ -18,13 +20,28 @@ class RefTestMeshAsset
 {
 }
 
+/// The source assets a project of the tests holds. AlwaysInclude, so the registry finds their
+/// type data by name.
+[AlwaysInclude]
+class RefMeshAsset
+{
+}
+
+[AlwaysInclude]
+class RefSoundAsset
+{
+}
+
 /// The inspector's asset reference on the property grid: a Reference row is an asset slot taking
 /// the types its services name for what the reference points at, showing the asset's name and
 /// glyph (None for nothing, "(missing)" for a dangling id, Mixed over objects that differ); a pick,
 /// a drop and a clear are one write each; open and reveal name the asset; a read-only one only
-/// opens; and the context's table asks the builders' join and routes open and reveal. Then what
-/// Sedulous adds so each behaviour has a test: a pick answered after the row was rebound to another
-/// property is dropped, and a read-only row is no drop target.
+/// opens; the context's table asks the builders' join and routes open and reveal; and the context's
+/// pick opens the asset picker over the project's assets of the types, below the slot with the
+/// current value, a pick or None answering. Then what Sedulous adds so each behaviour has a test: a
+/// pick answered after the row was rebound to another property is dropped, a read-only row is no
+/// drop target, a pick over a referenced asset opens with it checked, the context's pick sits below
+/// its anchor once the picker opens it, and with no project it gives up.
 class ResourceRefEditorTests
 {
 	private static readonly Guid sWood = Guid(0x1234, 0x5678, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -44,6 +61,9 @@ class ResourceRefEditorTests
 		/// The picker's answer, held until the test gives it (the picker owns it).
 		public delegate void(Guid id) Chosen;
 		public List<String> PickedFrom = new .();
+		/// What the last pick was opened over, and below.
+		public Guid PickedOver = .Empty;
+		public Node PickedBelow = null;
 		public int Commits = 0;
 
 		public this(int objects = 1)
@@ -82,8 +102,10 @@ class ResourceRefEditorTests
 					outShown.GlyphClass.Set("cat-rendering");
 					return true;
 				};
-			Services.Pick = new [=this] (types, answer) =>
+			Services.Pick = new [=this] (types, current, anchor, answer) =>
 				{
+					PickedOver = current;
+					PickedBelow = anchor;
 					ClearAndDeleteItems!(PickedFrom);
 					for (let type in types)
 						PickedFrom.Add(new String(type));
@@ -177,6 +199,8 @@ class ResourceRefEditorTests
 		Test.Assert(bed.Chosen != null);
 		Test.Assert(bed.PickedFrom.Count == 2);
 		Test.Assert(bed.PickedFrom[0] == "ModelAsset");
+		Test.Assert(bed.PickedOver.IsNil);
+		Test.Assert(bed.PickedBelow == slot, "below what it picks for");
 		Test.Assert(bed.Commits == 0, "a pick opened is no write");
 		bed.Chosen(sWood);
 		bed.Root.UpdateLayout();
@@ -187,6 +211,11 @@ class ResourceRefEditorTests
 		Test.Assert(slot.GlyphImage.Source == "Editor/Icons/Types/MeshAsset.svg");
 		Test.Assert(slot.GlyphImage.HasClass("cat-rendering"));
 		Test.Assert(slot.GlyphImage.Displayed);
+		// Picked again, it opens over what the row references now.
+		slot.Pick();
+		Test.Assert(bed.PickedOver == sWood, "the current value checked");
+		Test.Assert(bed.PickedBelow == slot);
+		Test.Assert(bed.Commits == 1, "a pick opened is no write");
 
 		// Open and reveal name it; a clear is one write to nothing.
 		Test.Assert(slot.OpenButton.Displayed);
@@ -306,7 +335,7 @@ class ResourceRefEditorTests
 		let revealed = scope List<Guid>();
 		context.OpenAsset = new [=opened] (id) => { opened.Add(id); };
 		context.RevealAsset = new [=revealed] (id) => { revealed.Add(id); };
-		let services = ResourceRefServices.From(context, icons);
+		let services = ResourceRefServices.From(context, icons, null);
 		defer delete services;
 
 		let types = scope List<String>();
@@ -320,7 +349,7 @@ class ResourceRefEditorTests
 
 		let shown = scope ResourceRefShown();
 		Test.Assert(!services.Describe(Guid(1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0), shown), "no project: nothing is there");
-		Test.Assert(services.Pick == null, "the picker comes with the small dialogs");
+		Test.Assert(services.Pick == null, "no picker to open: no pick");
 		services.Open(Guid(1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0));
 		services.Reveal(Guid(3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0));
 		Test.Assert(opened.Count == 1);
@@ -334,5 +363,104 @@ class ResourceRefEditorTests
 		ClearAndDeleteItems!(types);
 		services.AcceptedTypes(typeof(RefTestMesh), types);
 		Test.Assert(types.IsEmpty);
+	}
+
+	[Test]
+	public static void TheContextsPickOpensTheAssetPickerOverTheProjectsAssetsOfTheTypesFavouritesFirstAPickOrNoneAnswers()
+	{
+		let dir = "scratch_resource_ref_project";
+		RemoveDirectoryRecursive(dir);
+		Test.Assert(EditorProject.Create(dir, "Refs") case .Ok);
+		let project = EditorProject.Open(dir);
+		Test.Assert(project != null);
+		defer
+		{
+			delete project;
+			RemoveDirectoryRecursive(dir);
+		}
+		let meshName = typeof(RefMeshAsset).GetFullName(.. scope .());
+		let top = project.SourceDb.RootGroup;
+		let crate = top.CreateInstance("Crate", meshName);
+		let town = top.CreateGroup("Town");
+		Test.Assert(town != null);
+		let barrel = town.CreateInstance("Barrel", meshName);
+		Test.Assert(town.CreateInstance("Bell", typeof(RefSoundAsset).GetFullName(.. scope .())) != null);
+		Test.Assert(crate != null);
+		Test.Assert(barrel != null);
+
+		let context = scope EditorContext();
+		context.SetProject(project);
+		context.ToggleFavorite(barrel.Id);
+		let icons = scope EditorIcons(new (path) => false);
+		PickerRequest opened = null;
+		Node below = null;
+		let services = ResourceRefServices.From(context, icons, new [&] (shown, under) =>
+			{
+				delete opened;
+				opened = shown;
+				below = under;
+			});
+		defer delete services;
+		defer { delete opened; } // the last request, its answer with it
+		Test.Assert(services.Pick != null);
+		let chosen = scope List<Guid>();
+		let anchor = new Panel();
+		defer anchor.ReleaseRef();
+		// The slot's types are the builders' short names; the instances name theirs in full.
+		String[1] meshes = .("RefMeshAsset");
+		services.Pick(meshes, crate.Id, anchor, new [=chosen] (id) => { chosen.Add(id); });
+		Test.Assert(below == anchor);
+		Test.Assert(opened != null);
+		Test.Assert(opened.Items.Count == 2, "the sound is not one it takes");
+		Test.Assert(opened.Items[0].Name == "Crate");
+		Test.Assert(opened.Items[0].Section == "Content");
+		Test.Assert(opened.Items[1].Name == "Barrel");
+		Test.Assert(opened.Items[1].Section == "Town");
+		Test.Assert(opened.Items[1].Favourite);
+		Test.Assert(opened.Current == AssetPicker.KeyOf(crate.Id, .. scope .()));
+		Test.Assert(opened.AllowNone);
+
+		opened.OnPicked(opened.Items[1].Key);
+		opened.OnPicked(default); // None
+		Test.Assert(chosen.Count == 2);
+		Test.Assert(chosen[0] == barrel.Id);
+		Test.Assert(chosen[1].IsNil);
+
+		// Opened in the picker, it sits below the slot it picks for, the current value lit.
+		let gui = new GUIContext();
+		let root = new SceneRoot(gui);
+		gui.ReleaseRef(); // the root's keeps it
+		defer root.ReleaseRef();
+		root.Size = .(800.0f, 600.0f);
+		root.EditLayoutStyle(scope (s) => { s.AlignItems = .Start; });
+		anchor.EditLayoutStyle(scope (s) =>
+			{
+				s.Width = LayoutLength.Px(200.0f);
+				s.Height = LayoutLength.Px(24.0f);
+			});
+		root.AddChild(anchor);
+		root.UpdateLayout();
+		let picker = scope Picker(PagesBed.LoadMarkup(Picker.cMarkupPath));
+		services.Pick(meshes, barrel.Id, anchor, new [=chosen] (id) => { chosen.Add(id); });
+		let asked = opened;
+		opened = null; // the picker's now
+		Test.Assert(picker.Open(root, asked, below));
+		root.UpdateLayout();
+		root.UpdateLayout();
+		let anchorAt = anchor.ConvertToRootSpace(.(0.0f, 0.0f));
+		let pickerAt = picker.Content.ConvertToRootSpace(.(0.0f, 0.0f));
+		Test.Assert(pickerAt.Y >= anchorAt.Y + 24.0f - 0.5f, "below the slot");
+		Test.Assert(picker.LitKey == AssetPicker.KeyOf(barrel.Id, .. scope .()));
+		Test.Assert(picker.NoneButton.HandleActivate());
+		Test.Assert(chosen.Count == 3);
+		Test.Assert(chosen[2].IsNil, "None clears");
+
+		// No project: nothing to pick over, no picker opened, the answer let go.
+		context.SetProject(null);
+		below = null;
+		services.Pick(meshes, crate.Id, anchor, new [=chosen] (id) => { chosen.Add(id); });
+		Test.Assert(opened == null);
+		Test.Assert(below == null);
+		Test.Assert(chosen.Count == 3);
 	}
 }

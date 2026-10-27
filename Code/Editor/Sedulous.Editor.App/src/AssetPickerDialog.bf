@@ -2,498 +2,104 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Content;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-/// A modal, read-only mirror of the asset browser for resource-ref picking: the group tree
-/// on the left, matching instances on the right, a filter across all groups. Deliberately not
-/// the browser itself: no rename, no delete, no cook actions. Only instances whose type is in
-/// the type list are shown (an empty list matches every type); favourites sort first with a
-/// * prefix regardless of the selected group; double-click or Select confirms, Clear picks
-/// none, Cancel and Escape dismiss. The result is delivered through OnPicked (Empty for
-/// cleared) before the dialog closes.
-class AssetPickerDialog : Dialog
+// The asset picker (Raptor's editor-gui spec, 5.2, layer 5): the picker over the project's assets
+// of the types a reference takes (none named, or AssetPickerSlot.cAnyAsset among them: any), each
+// under its group ("Content" for the top) in the groups' name order, its type beside its name, its
+// type's glyph, and the favourites starred (the picker lists them first). Its key is the asset's
+// guid as text; None clears the reference. With none of those types it says so, naming them.
+
+/// The asset picker's request: Picker opens it.
+static class AssetPicker
 {
-	/// The pick result: an instance id, or Empty for Clear. Fired once, before close. Owned.
-	public delegate void(Guid id) OnPicked ~ delete _;
+	/// The section the top group's assets are under: the top group has no name of its own.
+	public const String cTopGroup = "Content";
 
-	private class RowAdapter : ListAdapterBase
+	/// The picker's request over `sources`' assets of `types` (asset type names, full or short:
+	/// AssetTypeNames.Matches), those in `favourites` starred, `current` checked (nil: none). A
+	/// glyph is `icons`' for the Beef type `registry` resolves the asset's type name to (an
+	/// instance names its type in full). The caller's (Picker.Open takes it).
+	public static PickerRequest Request(ContentDatabase sources, EditorIcons icons, EditorPageRegistry registry,
+		Span<Guid> favourites, Span<String> types, Guid current)
 	{
-		private AssetPickerDialog mOwner;
-
-		public this(AssetPickerDialog owner) { mOwner = owner; }
-
-		public override int32 ItemCount => (int32)mOwner.mRows.Count;
-
-		public override View CreateView(int32 viewType)
+		let request = new PickerRequest();
+		request.Placeholder.Set("Search assets");
+		request.AllowNone = true;
+		if (!current.IsNil)
+			KeyOf(current, request.Current);
+		if (let top = sources.RootGroup)
+			Collect(top, icons, registry, favourites, types, request);
+		if (TakesAny(types))
 		{
-			let row = new FlexLayout();
-			row.Direction = .Horizontal;
-			row.Spacing = 6;
-			row.Padding = .(4, 2);
-			let iconView = new DrawableView();
-			iconView.DesiredWidth.Value = 24.0f;
-			iconView.DesiredHeight.Value = 24.0f;
-			row.AddView(iconView);
-			let label = new Label();
-			label.FontSize.Value = 12.0f;
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			row.AddView(label, grow);
-			return row;
+			request.EmptyTitle.Set("No assets yet");
 		}
-
-		public override void BindView(View view, int32 position)
+		else
 		{
-			let row = view as FlexLayout;
-			if ((row == null) || (row.ChildCount < 2) || (position < 0) || (position >= mOwner.mRows.Count))
-				return;
-			let iconView = row.GetChildAt(0) as DrawableView;
-			let label = row.GetChildAt(1) as Label;
-			if ((iconView == null) || (label == null))
-				return;
-			let instance = mOwner.Resolve(mOwner.mRows[position]);
-			if (instance == null)
-				return;
-			iconView.SetDrawable(mOwner.RetainedIconFor(instance));
-			let favorite = mOwner.mContext.IsFavorite(instance.Id);
-			let text = scope String();
-			if (favorite)
-				text.Append("* ");
-			// The full path keeps same-named assets across groups distinguishable.
-			instance.GetPath(text);
-			text.Append("   -   ");
-			text.Append(instance.TypeName);
-			label.SetText(text);
-			label.TextColor.Value = favorite ? Color(1.0f, 0.85f, 0.45f, 1.0f) : Color(0.85f, 0.85f, 0.85f, 1.0f);
-		}
-	}
-
-	/// A tile: the thumbnail (or the type icon) centred over the name, which truncates.
-	private class GridAdapter : ListAdapterBase
-	{
-		private AssetPickerDialog mOwner;
-
-		public this(AssetPickerDialog owner) { mOwner = owner; }
-
-		public override int32 ItemCount => (int32)mOwner.mRows.Count;
-
-		public override View CreateView(int32 viewType)
-		{
-			let tile = new FlexLayout();
-			tile.Direction = .Vertical;
-			tile.Padding = .(4, 4);
-			let iconRow = new FlexLayout();
-			iconRow.Direction = .Horizontal;
-			iconRow.JustifyContent = .Center;
-			// Centred on the cross axis too, or the icon stretches to the row's height.
-			iconRow.AlignItems = .Center;
-			let iconView = new DrawableView();
-			iconView.DesiredWidth.Value = 48.0f;
-			iconView.DesiredHeight.Value = 48.0f;
-			iconRow.AddView(iconView);
-			let label = new Label();
-			label.FontSize.Value = 12.0f;
-			label.HAlign.Value = .Center;
-			label.Ellipsis.Value = true;
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			grow.Width = SizeSpec.Match();
-			tile.AddView(iconRow, grow);
-			var nameStyle = LayoutStyle();
-			nameStyle.Width = SizeSpec.Match();
-			nameStyle.Height = SizeSpec.Fixed(Unit.Dp(18));
-			tile.AddView(label, nameStyle);
-			return tile;
-		}
-
-		public override void BindView(View view, int32 position)
-		{
-			let tile = view as FlexLayout;
-			if ((tile == null) || (tile.ChildCount < 2) || (position < 0) || (position >= mOwner.mRows.Count))
-				return;
-			let iconRow = tile.GetChildAt(0) as FlexLayout;
-			let label = tile.GetChildAt(1) as Label;
-			if ((iconRow == null) || (iconRow.ChildCount < 1) || (label == null))
-				return;
-			let iconView = iconRow.GetChildAt(0) as DrawableView;
-			let instance = mOwner.Resolve(mOwner.mRows[position]);
-			if ((iconView == null) || (instance == null))
-				return;
-			iconView.SetDrawable(mOwner.RetainedIconFor(instance));
-			// A tile has room for the name alone; its tooltip carries the path and type the
-			// list row shows.
-			let favorite = mOwner.mContext.IsFavorite(instance.Id);
-			label.SetText(instance.Name);
-			label.TextColor.Value = favorite ? Color(1.0f, 0.85f, 0.45f, 1.0f) : Color(0.85f, 0.85f, 0.85f, 1.0f);
-			tile.TooltipText.Clear();
-			instance.GetPath(tile.TooltipText);
-			tile.TooltipText.Append("   -   ");
-			tile.TooltipText.Append(instance.TypeName);
-		}
-	}
-
-	/// Borrowed.
-	private EditorContext mContext;
-	private List<String> mTypeNames = new .() ~ DeleteContainerAndItems!(_);
-	// Borrowed: the content owns them.
-	private TreeView mTree;
-	private ListView mList;
-	private GridView mGrid;
-	private ViewModeToggles mViewToggles;
-	private EditText mFilterEdit;
-	private Label mHint;
-	private GroupTreeAdapter mGroups = new .() ~ delete _;
-	private RowAdapter mListAdapter ~ delete _;
-	private GridAdapter mGridAdapter ~ delete _;
-	private bool mGridMode = false;
-	/// Its row's thumbnail rebinds when the service finishes one while the picker is open.
-	private uint64 mThumbnailListener = 0;
-	private List<Guid> mRows = new .() ~ delete _;
-	private Group mSelectedGroup = null;
-	private String mFilter = new .() ~ delete _;
-
-	public this(EditorContext context, Span<StringView> assetTypeNames) : base("Select asset")
-	{
-		mContext = context;
-		for (let name in assetTypeNames)
-			mTypeNames.Add(new String(name));
-		MinWidth.Value = 520.0f;
-		MinHeight.Value = 380.0f;
-		MaxWidth.Value = 640.0f;
-		MaxHeight.Value = 460.0f;
-
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 6;
-
-		mFilterEdit = new EditText();
-		mFilterEdit.Placeholder.Value.Set("Filter all groups...");
-		mFilterEdit.OnTextChanged.Add(new (edit) =>
+			request.EmptyTitle.Append("No ");
+			for (int i < types.Length)
 			{
-				mFilter.Set(edit.Text);
-				RebuildList();
-			});
-		{
-			// The filter, and the List and Grid toggles beside it.
-			let header = new FlexLayout();
-			header.Direction = .Horizontal;
-			header.Spacing = 6;
-			var grow = LayoutStyle();
-			grow.FlexGrow = 1.0f;
-			grow.AlignSelf = .Center;
-			header.AddView(mFilterEdit, grow);
-			mViewToggles = new ViewModeToggles();
-			mViewToggles.OnModeChanged = new (grid) => { SetGridMode(grid); };
-			var center = LayoutStyle();
-			center.AlignSelf = .Center;
-			header.AddView(mViewToggles, center);
-			var match = LayoutStyle();
-			match.Width = SizeSpec.Match();
-			column.AddView(header, match);
-			// Why a guid typed in the filter lists nothing, when it names an asset this slot
-			// does not take.
-			mHint = new Label();
-			mHint.FontSize.Value = 12.0f;
-			mHint.TextColor.Value = Color(1.0f, 0.75f, 0.4f, 1.0f);
-			mHint.Visibility = .Gone;
-			column.AddView(mHint, match);
-		}
-
-		let split = new SplitView();
-		split.SplitRatio = 0.32f;
-		mTree = new TreeView();
-		mTree.ItemHeight = 20.0f;
-		mTree.OnItemClick.Add(new (info) =>
-			{
-				if (let group = mGroups.GroupAt(info.NodeId))
-				{
-					mSelectedGroup = group;
-					RebuildList();
-				}
-			});
-		mListAdapter = new RowAdapter(this);
-		mList = new ListView();
-		mList.ItemHeight.Value = 28.0f; // rows carry a 24px thumbnail, not a 14px glyph
-		mList.SetAdapter(mListAdapter);
-		mList.OnItemClicked.Add(new (position, clickCount, x, y) =>
-			{
-				if (clickCount >= 2)
-					ConfirmAt(position);
-			});
-		mList.OnItemRightClicked.Add(new (position, x, y) => { ShowRowMenu(mList, position, x, y); });
-		// The grid: the same rows as tiles, a larger thumbnail over the name.
-		mGridAdapter = new GridAdapter(this);
-		mGrid = new GridView();
-		mGrid.CellWidth.Value = 96.0f;
-		mGrid.CellHeight.Value = 84.0f;
-		mGrid.Visibility = .Gone;
-		mGrid.SetAdapter(mGridAdapter);
-		mGrid.OnItemClicked.Add(new (position, clickCount, x, y) =>
-			{
-				if (clickCount >= 2)
-					ConfirmAt(position);
-			});
-		mGrid.OnItemRightClicked.Add(new (position, x, y) => { ShowRowMenu(mGrid, position, x, y); });
-		let results = new FlexLayout();
-		results.Direction = .Vertical;
-		{
-			var fill = LayoutStyle();
-			fill.Width = SizeSpec.Match();
-			fill.FlexGrow = 1.0f;
-			results.AddView(mList, fill);
-			results.AddView(mGrid, fill);
-		}
-		split.SetPanes(mTree, results);
-		var grow = LayoutStyle();
-		grow.Width = SizeSpec.Match();
-		grow.FlexGrow = 1.0f;
-		column.AddView(split, grow);
-		SetContent(column);
-
-		let select = AddButton("Select", .None);
-		select.OnClick.Add(new (b) => { ConfirmAt(SelectedPosition()); });
-		let clear = AddButton("Clear", .None);
-		clear.OnClick.Add(new (b) =>
-			{
-				if (OnPicked != null)
-					OnPicked(.Empty);
-				Close(.OK);
-			});
-		AddButton("Cancel", .Cancel);
-
-		RebuildModel();
-		ApplySavedViewMode();
-		mThumbnailListener = mContext.AddThumbnailListener(new (id) => { RefreshThumbnail(id); });
-	}
-
-	public ~this()
-	{
-		mContext.RemoveThumbnailListener(mThumbnailListener);
-		mTree.SetAdapter(null);
-		mList.SetAdapter(null);
-		mGrid.SetAdapter(null);
-	}
-
-	/// The List and Grid toggles beside the filter.
-	public ViewModeToggles ViewToggles => mViewToggles;
-	public bool IsGridMode => mGridMode;
-	/// The rows the dialog offers (instance ids), in the order both views show them.
-	public Span<Guid> Rows => mRows;
-	public ListView RowList => mList;
-	public GridView RowGrid => mGrid;
-
-	/// Shows the rows as a list or as a grid of tiles; `persist` remembers it for the project,
-	/// apart from the browser's choice: a picker is often a narrower choice (one asset type),
-	/// where tiles of thumbnails read differently.
-	public void SetGridMode(bool grid, bool persist = true)
-	{
-		mGridMode = grid;
-		mViewToggles.SetGridMode(grid);
-		mList.Visibility = grid ? .Gone : .Visible;
-		mGrid.Visibility = grid ? .Visible : .Gone;
-		Invalidate();
-		if (persist)
-		{
-			if (let store = mContext.ProjectEditorSettings)
-			{
-				store.Section<EditorAssetBrowserSettings>().PickerGridMode = grid;
-				store.MarkChanged<EditorAssetBrowserSettings>();
-				mContext.RequestProjectEditorSettingsSave();
+				if (i > 0)
+					request.EmptyTitle.Append(" or ");
+				request.EmptyTitle.Append(types[i]);
 			}
+			request.EmptyTitle.Append(" yet");
 		}
+		request.EmptyText.Set("Import or create one in the Assets panel.");
+		return request;
 	}
 
-	/// The project's saved picker view, applied without saving it again.
-	private void ApplySavedViewMode()
+	/// What a pick answers for an asset: its guid as text, appended to `outKey`.
+	public static void KeyOf(Guid id, String outKey)
 	{
-		let store = mContext.ProjectEditorSettings;
-		if (store == null)
-			return; // no project store yet: the default, list
-		if (let section = store.Find<EditorAssetBrowserSettings>())
-			SetGridMode(section.PickerGridMode, false);
+		id.ToString(outKey);
 	}
 
-	/// A thumbnail finished: its row, if the picker lists it, rebinds in both views.
-	private void RefreshThumbnail(Guid id)
+	/// Whether a picker over `types` lists an asset of type `typeName` (full or short).
+	public static bool Takes(StringView typeName, Span<String> types) =>
+		TakesAny(types) || AssetPickerSlot.Accepts(types, typeName);
+
+	/// None named, or the wildcard among them.
+	private static bool TakesAny(Span<String> types)
 	{
-		for (int32 i < (int32)mRows.Count)
+		for (let type in types)
 		{
-			if (mRows[i] == id)
-			{
-				mListAdapter.NotifyRangeChanged(i, 1);
-				mGridAdapter.NotifyRangeChanged(i, 1);
-				return;
-			}
-		}
-	}
-
-	/// The selected row in whichever view shows, or -1.
-	private int32 SelectedPosition() => mGridMode ? mGrid.Selection.FirstSelected() : mList.Selection.FirstSelected();
-
-	/// The thumbnail, or the type icon until one exists (the browser's pattern), with a
-	/// reference taken for the view that will hold it. Get also SCHEDULES a missing thumbnail,
-	/// which appears on the next rebind (scroll, filter, reopen): rows are passive re-queriers,
-	/// like the inspector's picker slots.
-	private Drawable RetainedIconFor(Instance instance)
-	{
-		Drawable drawable = null;
-		if (mContext.Thumbnails != null)
-			drawable = mContext.Thumbnails.Get(instance.Id);
-		if (drawable == null)
-			drawable = EditorIcons.ForAssetType(instance.TypeName);
-		if (drawable != null)
-			drawable.AddRef();
-		return drawable;
-	}
-
-	// ---- the model -------------------------------------------------------------------------
-
-	/// An empty filter matches every type: the generic asset page's untyped guid picker.
-	private bool TypeMatches(Instance instance)
-	{
-		if (mTypeNames.IsEmpty)
-			return true;
-		for (let typeName in mTypeNames)
-		{
-			if (AssetTypeNames.Matches(instance.TypeName, typeName))
+			if (type == AssetPickerSlot.cAnyAsset)
 				return true;
 		}
-		return false;
+		return types.IsEmpty;
 	}
 
-	private void RebuildModel()
+	/// `group`'s assets, then its groups' (kept in name order by the database), depth first.
+	private static void Collect(Group group, EditorIcons icons, EditorPageRegistry registry, Span<Guid> favourites,
+		Span<String> types, PickerRequest request)
 	{
-		let root = (mContext.Project != null) ? mContext.Project.SourceDb.RootGroup : null;
-		mGroups.Rebuild(root);
-		if (mSelectedGroup == null)
-			mSelectedGroup = root;
-		mGroups.AttachExpanded(mTree);
-		RebuildList();
-	}
-
-	private void RebuildList()
-	{
-		mRows.Clear();
-		if (mContext.Project != null)
-		{
-			// Favourites first (matching type, any group), then the scoped or filtered rest.
-			for (let id in mContext.Favorites)
-			{
-				let instance = mContext.Project.SourceDb.GetInstance(id);
-				if ((instance != null) && TypeMatches(instance) && AssetFilter.Matches(instance, mFilter))
-					mRows.Add(id);
-			}
-			if (mFilter.IsEmpty)
-			{
-				if (mSelectedGroup != null)
-					CollectGroup(mSelectedGroup, false);
-			}
-			else
-			{
-				CollectFiltered(mContext.Project.SourceDb.RootGroup);
-			}
-		}
-		mList.Selection.ClearSelection();
-		mGrid.Selection.ClearSelection();
-		mList.NotifyDataChanged();
-		mGridAdapter.NotifyDataSetChanged();
-
-		// A whole guid that names an asset this slot does not take lists nothing: say why,
-		// rather than leave an empty list that reads as "no such asset". A listed one is
-		// selected.
-		let hint = scope String();
-		if (AssetFilter.AsGuid(mFilter, let typed))
-		{
-			let named = Resolve(typed);
-			if ((named != null) && !TypeMatches(named))
-				hint.AppendF("'{}' is a {}, which this slot does not take", named.Name, named.TypeName);
-			for (int32 i < (int32)mRows.Count)
-			{
-				if (mRows[i] == typed)
-				{
-					mList.Selection.Select(i);
-					mGrid.Selection.Select(i);
-					break;
-				}
-			}
-		}
-		mHint.SetText(hint);
-		mHint.Visibility = hint.IsEmpty ? .Gone : .Visible;
-	}
-
-	/// Filters as if `text` were typed into the filter field: names, or a guid or its start.
-	public void SetFilter(StringView text)
-	{
-		mFilterEdit.SetText(text);
-		mFilter.Set(text);
-		RebuildList();
-	}
-
-	/// The line under the filter: why a guid typed there lists nothing, empty when it does.
-	public StringView FilterHint => mHint.Text.Value;
-
-	private void CollectGroup(Group group, bool recurse)
-	{
+		let section = scope String();
+		if (group.Parent == null)
+			section.Set(cTopGroup);
+		else
+			group.GetPath(section);
+		let key = scope String();
 		for (let instance in group.Instances)
 		{
-			if (!TypeMatches(instance) || mContext.IsFavorite(instance.Id))
+			if (!Takes(instance.TypeName, types))
 				continue;
-			mRows.Add(instance.Id);
-		}
-		if (recurse)
-		{
-			for (let child in group.Groups)
-				CollectGroup(child, true);
-		}
-	}
-
-	private void CollectFiltered(Group group)
-	{
-		if (group == null)
-			return;
-		for (let instance in group.Instances)
-		{
-			if (!TypeMatches(instance) || mContext.IsFavorite(instance.Id))
-				continue;
-			if (AssetFilter.Matches(instance, mFilter))
-				mRows.Add(instance.Id);
+			key.Clear();
+			KeyOf(instance.Id, key);
+			// The short name, as the slot's and the builders' type names read.
+			let item = request.Add(key, instance.Name, section, AssetTypeNames.Short(instance.TypeName));
+			for (let favourite in favourites)
+				item.Favourite = item.Favourite || (favourite == instance.Id);
+			if (let type = registry.ResolveType(instance.TypeName))
+			{
+				let icon = icons.For(type, "Asset");
+				item.Glyph.Set(icon.Source);
+				item.GlyphClass.Set(icon.Class);
+			}
 		}
 		for (let child in group.Groups)
-			CollectFiltered(child);
-	}
-
-	private Instance Resolve(Guid id) => (mContext.Project != null) ? mContext.Project.SourceDb.GetInstance(id) : null;
-
-	// ---- actions ---------------------------------------------------------------------------
-
-	private void ConfirmAt(int32 position)
-	{
-		if ((position < 0) || (position >= mRows.Count))
-			return;
-		let id = mRows[position];
-		if (OnPicked != null)
-			OnPicked(id);
-		Close(.OK);
-	}
-
-	/// `source` is the list or the grid the row was right-clicked in.
-	private void ShowRowMenu(View source, int32 position, float x, float y)
-	{
-		if ((position < 0) || (position >= mRows.Count) || (Context == null))
-			return;
-		let id = mRows[position];
-		let menu = new ContextMenu();
-		menu.AddItem(mContext.IsFavorite(id) ? "Unpin favorite" : "Pin favorite", new [=id, =this]() =>
-			{
-				mContext.ToggleFavorite(id);
-				RebuildList();
-			});
-		let screenPos = source.LocalToScreen(.(x, y));
-		menu.Show(Context, screenPos.X, screenPos.Y);
-		menu.ReleaseRef();
+			Collect(child, icons, registry, favourites, types, request);
 	}
 }
