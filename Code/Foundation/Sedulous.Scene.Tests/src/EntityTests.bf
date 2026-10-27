@@ -281,4 +281,20 @@ class EntityTests
 		Test.Assert(scene.FindChildByName(player, "Weapon") == weapon);
 		Test.Assert(!scene.FindChildByName(player, "Muzzle").IsAssigned, "a grandchild is not a child");
 	}
+
+	/// An entity reference is reflected by its id, so tooling (an inspector taking it as a
+	/// reference by that id) finds what it names by name, and reads and writes it there.
+	[Test]
+	public static void AnEntityReferenceIsReflectedByItsId()
+	{
+		let field = typeof(EntityRef).GetField("Id");
+		Test.Assert(field case .Ok);
+		Test.Assert(field.Value.FieldType == typeof(Guid));
+		var reference = EntityRef(Guid(5, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+		let read = field.Value.GetValue(reference);
+		Test.Assert(read case .Ok);
+		var value = read.Value;
+		defer value.Dispose();
+		Test.Assert(value.Get<Guid>() == reference.Id);
+	}
 }

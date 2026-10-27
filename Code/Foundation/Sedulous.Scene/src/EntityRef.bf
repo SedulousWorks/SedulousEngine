@@ -14,7 +14,10 @@ namespace Sedulous.Scene;
 /// A DUMB HOLDER, with no cached handle: resolve it at the point of use through
 /// Scene.FindEntity, which is the same "re-resolve, never borrow" rule component access
 /// follows.
-[Scriptable(.AllPublic)]
+///
+/// Reflected by its id, so tooling finds what it names by name (an inspector takes it as a
+/// reference by that id). Its serialization is unchanged: the id alone.
+[Scriptable(.AllPublic), Reflect(.NonStaticFields)]
 struct EntityRef : IHashable
 {
 	public Guid Id = .();
