@@ -59,11 +59,54 @@
             </TreeView>
         </Panel>
         <Panel class="viewport">
-            <Panel class="viewport-hud viewport-hud-start">
-                <Label class="hud-text" text="Perspective"/>
+            <!-- The HUD's fixed zones (catalog 2.6), so nothing collides in the corners: the view's
+                 menus and a tool's panel at the top start; the stats and the view gizmo at the top
+                 end; the tool's status at the bottom start; the camera preview at the bottom end. -->
+            <Panel class="hud-zone hud-top-start">
+                <Panel class="hud-bar">
+                    <Button class="hud-chip" text="Perspective" tooltip="Projection and view"/>
+                    <Button class="hud-chip" text="Lit" tooltip="Shading"/>
+                    <Button class="hud-chip" text="Overlays" tooltip="Grid, gizmos, markers"/>
+                </Panel>
+                <Panel id="tool-panel" class="hud-panel">
+                    <Panel class="hud-panel-head">
+                        <Image class="row-icon cat-terrain" src="Editor/Icons/Types/TerrainComponent.svg"/>
+                        <Label class="hud-panel-title" text="Sculpt"/>
+                        <Spacer/>
+                        <Button class="slot-button" icon="Editor/Icons/close.svg" tooltip="Close the tool (Esc)"/>
+                    </Panel>
+                    <Panel class="segmented">
+                        <Button class="segment" name="sculpt" toggle="true" checked="true" text="Raise"/>
+                        <Button class="segment" name="sculpt" toggle="true" text="Lower"/>
+                        <Button class="segment" name="sculpt" toggle="true" text="Smooth"/>
+                        <Button class="segment" name="sculpt" toggle="true" text="Flatten"/>
+                    </Panel>
+                    <Panel class="hud-row"><Label class="hud-name" text="Radius"/><Panel class="slider-field"><Slider value="8" min="1" max="128"/><NumberField value="8" min="1" max="128"/></Panel></Panel>
+                    <Panel class="hud-row"><Label class="hud-name" text="Strength"/><Panel class="slider-field"><Slider value="0.4" min="0" max="1"/><NumberField value="0.4" min="0" max="1" step="0.01"/></Panel></Panel>
+                    <Label class="hud-help" text="Drag to raise. Shift lowers, Ctrl smooths."/>
+                </Panel>
             </Panel>
-            <Panel class="viewport-hud viewport-hud-end">
-                <Label class="hud-text mono" text="60 fps  16.7 ms"/>
+            <Panel class="hud-zone hud-top-end">
+                <Label class="hud-stats mono" text="60 fps  16.7 ms"/>
+                <Panel class="view-gizmo" tooltip="Click an axis to look along it">
+                    <Label class="axis axis-y" text="Y"/>
+                    <Panel class="axis-row"><Label class="axis axis-z" text="Z"/><Panel class="axis-centre"/><Label class="axis axis-x" text="X"/></Panel>
+                </Panel>
+            </Panel>
+            <Panel class="hud-zone hud-bottom-start">
+                <Panel class="hud-status">
+                    <Image class="hud-status-icon" src="Editor/Icons/move.svg"/>
+                    <Label text="Move"/>
+                    <Label class="hud-dim" text="World"/>
+                    <Label class="hud-dim" text="Snap 0.5 m"/>
+                    <Label class="hud-dim" text="Crate"/>
+                </Panel>
+            </Panel>
+            <Panel class="hud-zone hud-bottom-end">
+                <Panel class="camera-preview">
+                    <Panel class="camera-preview-view"/>
+                    <Panel class="camera-preview-foot"><Image class="row-icon cat-rendering" src="Editor/Icons/Types/CameraComponent.svg"/><Label text="Camera"/></Panel>
+                </Panel>
             </Panel>
         </Panel>
         <Panel class="panel page-pane">

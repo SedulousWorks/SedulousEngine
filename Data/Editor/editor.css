@@ -77,6 +77,8 @@ button.primary:disabled:hover { background-color: var(--accent-fill); }
 button.icon-button:disabled:hover, button.ghost:disabled:hover { background-color: transparent; }
 
 /* === Fields === */
+/* A slider's thumb is as tall as the slider: a small one, in the row's middle. */
+slider { height: 12px; align-self: center; }
 textfield, numberfield, combobox { height: var(--control-height); border: 1px solid var(--border); padding: 0 var(--space-m); }
 textfield:hover, numberfield:hover, combobox:hover { border-color: var(--border-strong); }
 textfield:focus, numberfield:focus { border-color: var(--accent-strong); }
@@ -88,6 +90,18 @@ treerow, listviewrow, propertyrow, menuitem, menusubmenu { min-height: var(--row
 button, toolbutton, toolmenubutton, tab, .menubutton {
     transition: background-color var(--motion-fast) var(--easing), color var(--motion-fast) var(--easing);
 }
+/* A popup enters as it opens: menus, lists and tooltips slide 4 px from their anchor and fade in
+   (a submenu from its parent's side); a dialog grows from 98% and fades in, slower. Less motion
+   makes every duration nothing, so each lands at once. */
+menu, combobox > listbox, propertyflagslist, propertycolorpopup, tooltip {
+    transition: opacity var(--motion-fast) var(--easing-out), transform var(--motion-fast) var(--easing-out);
+}
+menu:entering, combobox > listbox:entering, propertyflagslist:entering, propertycolorpopup:entering, tooltip:entering {
+    opacity: 0; transform: translate(0, -4px);
+}
+menu menu:entering { transform: translate(-4px, 0); }
+window { transition: opacity var(--motion-slow) var(--easing-out), transform var(--motion-slow) var(--easing-out); }
+window:entering { opacity: 0; transform: scale(0.98); }
 
 /* === A panel's bar: its search and its actions, under the dock tab === */
 .panel { flex-grow: 1; flex-direction: column; background-color: var(--surface); }
@@ -132,10 +146,54 @@ button.chip.error.checked { color: var(--danger); border-color: var(--danger-bor
 .viewport { flex-grow: 1; flex-basis: 0; min-height: 0; min-width: 0; background-color: var(--surface-sunken); display: stack; }
 /* The mock's still of a scene, standing in for the renderer. */
 .scene-page .viewport { background-image: url(Editor/Mock/viewport.png); background-size: cover; background-position: center; }
-.viewport-hud { padding: var(--space-m); justify-self: start; align-self: start; }
-.viewport-hud-end { justify-self: end; }
-.hud-text { font-size: var(--font-small); color: var(--text-strong); background-color: rgba(0, 0, 0, 0.45);
-            padding: var(--space-xs) var(--space-m); border-radius: var(--radius-small); }
+/* The HUD's zones: each a corner of the viewport, its pieces stacked from that corner, so they
+   never meet whatever the viewport's size. Over any scene, so in the HUD's own colours in both
+   schemes. */
+.hud-zone { padding: var(--space-m); row-gap: var(--space-m); flex-direction: column; }
+.hud-top-start { justify-self: start; align-self: start; align-items: start; }
+.hud-top-end { justify-self: end; align-self: start; align-items: end; }
+.hud-bottom-start { justify-self: start; align-self: end; align-items: start; }
+.hud-bottom-end { justify-self: end; align-self: end; align-items: end; }
+.hud-bar { flex-direction: row; column-gap: 2px; padding: 2px; border-radius: var(--radius); background-color: var(--hud-background); }
+button.hud-chip { height: calc(var(--control-height) - 2px); padding: 0 var(--space-m); background-color: transparent;
+                  color: var(--hud-text); font-size: var(--font-small); border-radius: var(--radius-small); }
+button.hud-chip:hover { background-color: rgba(255, 255, 255, 0.1); }
+.hud-stats { font-size: var(--font-small); color: var(--hud-text); background-color: var(--hud-background);
+             padding: var(--space-xs) var(--space-m); border-radius: var(--radius-small); }
+.hud-status { flex-direction: row; align-items: center; column-gap: var(--space-m); padding: var(--space-xs) var(--space-m);
+              background-color: var(--hud-background); border-radius: var(--radius-small); font-size: var(--font-small); color: var(--hud-text); }
+.hud-status-icon { width: 14px; height: 14px; image-color: var(--hud-text); }
+.hud-status label, .camera-preview-foot label { color: var(--hud-text); }
+.hud-status label.hud-dim { color: var(--hud-text-dim); }
+/* The view gizmo: the axes as the gizmos colour them; one pressed looks along it. */
+.view-gizmo { width: 64px; height: 64px; border-radius: 32px; background-color: var(--hud-background);
+              flex-direction: column; align-items: center; justify-content: center; row-gap: 2px; }
+.axis-row { flex-direction: row; align-items: center; column-gap: 2px; }
+.axis { width: 18px; height: 18px; border-radius: 9px; font-size: 11px; font-weight: 600; color: #101214; text-align: center; }
+.axis-x { background-color: var(--axis-x); }
+.axis-y { background-color: var(--axis-y); }
+.axis-z { background-color: var(--axis-z); }
+.axis-centre { width: 8px; height: 8px; border-radius: 4px; background-color: var(--hud-text-dim); }
+/* The camera preview: what the selected camera sees, captioned. */
+.camera-preview { width: 200px; border-radius: var(--radius); background-color: var(--hud-background); padding: 3px; }
+.camera-preview-view { height: 112px; border-radius: var(--radius-small); background-image: url(Editor/Mock/viewport.png);
+                       background-size: cover; background-position: center; }
+.camera-preview-foot { flex-direction: row; align-items: center; column-gap: var(--space-s); padding: 3px 3px 1px;
+                       font-size: var(--font-small); color: var(--hud-text); }
+/* A tool's panel: one chrome for every tool (its name, help, close), under the view's menus. */
+.hud-panel { width: 240px; flex-direction: column; row-gap: var(--space-m); padding: var(--space-m);
+             background-color: var(--surface-overlay); border: 1px solid var(--border-strong); border-radius: var(--radius);
+             box-shadow: 0 6px 18px var(--shadow-color); }
+.hud-panel-head { flex-direction: row; align-items: center; column-gap: var(--space-s); }
+.hud-panel-title { font-weight: 600; color: var(--text-strong); }
+.hud-panel > .segmented { align-self: stretch; }
+.hud-panel button.segment { flex-grow: 1; }
+.hud-row { flex-direction: row; align-items: center; column-gap: var(--space-m); }
+.hud-name { width: 64px; color: var(--text-dim); flex-shrink: 0; }
+.hud-row > .slider-field { flex-grow: 1; min-width: 0; }
+.hud-help { font-size: var(--font-small); color: var(--text-dim); white-space: normal; }
+/* The real toast card takes the kit's frame. */
+toast { border: 1px solid var(--border-strong); }
 
 /* === The inspector's head: the selection's type and name === */
 .inspector-head { flex-direction: row; align-items: center; column-gap: var(--space-m); padding: var(--space-m);

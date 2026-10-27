@@ -73,6 +73,14 @@
     --shadow-color: rgba(0, 0, 0, 0.45);
     --scrim: rgba(0, 0, 0, 0.4); /* behind a modal dialog */
 
+    /* The axes, as the gizmos draw them; and the viewport's HUD, over any scene. */
+    --axis-x: #e5534b;
+    --axis-y: #6bc46d;
+    --axis-z: #4a8cf0;
+    --hud-background: rgba(18, 20, 24, 0.72);
+    --hud-text: #e8ebf0;
+    --hud-text-dim: #a9b0bb;
+
     /* Type categories: a type icon's tint in the lists the eye scans (the hierarchy, the assets,
        the component picker, the inspector's headers); monochrome everywhere else. A type's
        category is asked of the type (a component's reflected `category`), never listed here;
