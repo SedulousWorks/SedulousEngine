@@ -1,8 +1,8 @@
 <!--
   Preferences (Documentation/Specs/editor-gui.md, 5.1, layer 12): the user's own settings, a tab per
   category. Appearance previews as it changes; Save keeps it, Cancel (or closing) puts it back.
-  The accents' segments and the shortcuts' rows are made by code (the editor's accents, the
-  registry's actions).
+  The accents' segments, the preview resolutions' rows, the shortcuts' rows and a tab per category
+  other parts of the editor contribute are made by code.
 -->
 <Panel class="preferences">
     <TabView id="pref-tabs" class="pref-tabs">
@@ -28,6 +28,40 @@
                 <Panel class="form-field">
                     <Panel class="pref-scale"><Slider id="pref-scale" min="0.5" max="2" step="0.05"/><Label id="pref-scale-value" class="pref-scale-value"/></Panel>
                 </Panel>
+                <Label class="form-label" text="Scene views"/>
+                <Panel class="form-field">
+                    <CheckBox id="pref-auto-ortho" text="Axis views are orthographic"/>
+                    <Label class="form-help" text="Snapping a view to an axis turns it orthographic; orbiting away turns it back."/>
+                </Panel>
+            </Panel>
+        </TabPage>
+        <TabPage title="Export">
+            <Panel class="dialog-body form">
+                <Label class="form-label" text="Templates"/>
+                <Panel class="form-field">
+                    <TextField id="pref-templates-root"/>
+                    <Label class="form-help" text="Where export templates are installed. Empty: $SEDULOUS_TEMPLATES_DIR, else the editor's own folder."/>
+                </Panel>
+            </Panel>
+        </TabPage>
+        <TabPage title="Agent access">
+            <Panel class="dialog-body form">
+                <Label class="form-label" text="MCP"/>
+                <Panel class="form-field"><CheckBox id="pref-mcp-enabled" text="Serve the open project to agents"/></Panel>
+                <Label class="form-label" text="Port"/>
+                <Panel class="form-field"><TextField id="pref-mcp-port" class="pref-port"/></Panel>
+                <Label class="form-label" text="Token"/>
+                <Panel class="form-field">
+                    <TextField id="pref-mcp-token" placeholder="made on first enable"/>
+                    <Label class="form-help" text="On 127.0.0.1 only; an agent presents the token, which is also written to the user data folder's mcp-token. Applies to the open project on Save."/>
+                </Panel>
+            </Panel>
+        </TabPage>
+        <TabPage title="Game preview">
+            <Panel class="dialog-body pref-previews-page">
+                <Label class="form-help" text="Sizes the Game tab offers on this machine, after the project's own and its export presets'."/>
+                <Panel id="pref-previews" class="pref-previews"/>
+                <Button id="pref-preview-add" class="ghost pref-preview-add" text="Add a resolution"/>
             </Panel>
         </TabPage>
         <TabPage title="Shortcuts">

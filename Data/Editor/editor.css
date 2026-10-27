@@ -510,6 +510,14 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .pref-shortcut > .pref-where { flex-grow: 1; flex-shrink: 1; min-width: 0; color: var(--text-dim); font-size: var(--font-small);
                                text-overflow: ellipsis; white-space: nowrap; }
 button.shortcut-capture { width: 150px; }
+.pref-port { width: 90px; }
+.pref-previews-page { flex-direction: column; row-gap: var(--space-m); }
+.pref-previews { flex-direction: column; row-gap: var(--space-xs); }
+.pref-preview { flex-direction: row; align-items: center; column-gap: var(--space-m); }
+.pref-preview > textfield { width: 180px; }
+.pref-preview > numberfield { width: 90px; }
+button.pref-preview-add { align-self: start; }
+.pref-contributed { flex-direction: column; row-gap: var(--space-s); }
 button.shortcut-capture.capturing { color: var(--accent-strong); }
 .save-as > .dialog-buttons { padding: var(--space-l) 0 0; }
 

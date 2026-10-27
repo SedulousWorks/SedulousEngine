@@ -77,10 +77,6 @@ Name = "EditorLayoutToolsTests.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "EditorPreferencesDialogTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "ExportDialogTests.bf"
 
 [[ProjectFolder.Items]]

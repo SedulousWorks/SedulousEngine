@@ -145,10 +145,6 @@ Name = "EditorLayoutTools.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "EditorPreferencesDialog.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "EditorShell.bf"
 
 [[ProjectFolder.Items]]

@@ -12,12 +12,14 @@ namespace Sedulous.Editor.App;
 // (Raptor's editor-gui spec, 5.1, layer 12). A modal window of the editor's markup
 // (Data/Editor/Preferences.gml), a tab per category. Appearance holds the look's inputs: the
 // scheme, the accent (one of the editor's or any #rrggbb), the density, less motion and the UI
-// scale; each change shows at once. Shortcuts lists every action with its chord: a click captures
-// the next keys, Reset goes back to the declaration's. Save writes everything into the store (a
-// chord another action holds refused, named in a warning) and persists it; Cancel, its close
-// button or Escape put the look back as it was and forget the shortcuts' edits. The other tabs
-// (Export, Agent access, Game preview, the domains' categories) come in the layer's last part;
-// until then they are in the parked Sedulous.UI dialog (EditorPreferencesDialog.bf).
+// scale, and whether axis views are orthographic; each change of the look shows at once. Export
+// holds the templates' folder, Agent access the MCP host (on, its port, its token), Game preview
+// the sizes the Game tab offers. Shortcuts lists every action with its chord: a click captures the
+// next keys, Reset goes back to the declaration's. Then a tab per category other parts of the
+// editor contribute, its checks applied as they change. Save writes everything into the store (a
+// chord another action holds refused, a port out of range kept as it was, each said in a warning)
+// and persists it; Cancel, its close button or Escape put the look back as it was and forget the
+// rest.
 
 /// What an EditorPreferencesDialog works over. The store is borrowed; the delegates are its own.
 class EditorPreferencesServices
@@ -26,8 +28,16 @@ class EditorPreferencesServices
 	public Settings User = null;
 	/// The actions the Shortcuts tab lists and Save rebinds; null: the tab is empty. Borrowed.
 	public EditorActionRegistry Actions = null;
-	/// Says a warning to the user (a chord another action holds); unset: said nowhere. Owned.
+	/// Says a warning to the user (a chord another action holds, a port out of range); unset: said
+	/// nowhere. Owned.
 	public delegate void(StringView text) Warn ~ delete _;
+	/// The settings other parts of the editor contribute, a tab per category; null: none. Borrowed
+	/// (the context's): registered at boot, before the dialog is made, and kept until the editor
+	/// goes.
+	public List<EditorSettingsContribution> Contributions = null;
+	/// The MCP section was saved: the host follows it over the open project; unset: nothing
+	/// follows. Owned.
+	public delegate void() McpChanged ~ delete _;
 	/// Shows a look (the window's SetLook); unset: shown nowhere. Owned.
 	public delegate void(EditorLook look) ShowLook ~ delete _;
 	/// Persists the user's store, false when it could not be written; unset: nothing to write.
@@ -57,6 +67,10 @@ class EditorPreferencesDialog
 	private EditorLook mLook = new .() ~ delete _;
 	/// The Shortcuts tab's edits, staged; applied and persisted on Save, forgotten at the next open.
 	private ShortcutEdits mShortcutEdits = new .() ~ delete _;
+	/// A row per preview resolution, in the list's order, made again at each open.
+	private List<PreviewRow> mPreviews = new .() ~ DeleteContainerAndItems!(_);
+	/// A check per contributed field, made once (the contributions come before the dialog).
+	private List<Contributed> mContributed = new .() ~ delete _;
 	private bool mSaved = false;
 
 	/// The dialog over `services`, its body `body` (the markup's controls by id). TAKES OWNERSHIP
@@ -97,6 +111,7 @@ class EditorPreferencesDialog
 		delete mShortcutEdits;
 		mShortcutEdits = new .();
 		ShowControls();
+		ShowSettings();
 		ShowShortcuts();
 		mWindow.OpenModal(root);
 		return mWindow.IsOpen;
@@ -104,15 +119,21 @@ class EditorPreferencesDialog
 
 	public bool IsOpen => (mWindow != null) && mWindow.IsOpen;
 
-	/// Keeps the look and the shortcuts' edits: into the store, persisted, the window closed. A
-	/// chord another action holds is refused, that action keeping it, and named in a warning. False
-	/// when the store could not be written (the look is kept all the same).
+	/// Keeps the look, the other tabs and the shortcuts' edits: into the store, persisted, the
+	/// window closed. A chord another action holds is refused, that action keeping it, and named in
+	/// a warning; a port out of range is kept as it was, and said. False when the store could not
+	/// be written (the rest is kept all the same).
 	public bool Save()
 	{
 		if (mServices.User != null)
 		{
-			mLook.StoreInto(mServices.User.Section<EditorUiSettings>());
+			let ui = mServices.User.Section<EditorUiSettings>();
+			mLook.StoreInto(ui);
+			// The section marked once, the axis views' check with the look.
+			if (let ortho = Find<Sedulous.GUI.CheckBox>("pref-auto-ortho"))
+				ui.AutoOrthographic = ortho.Checked;
 			mServices.User.MarkChanged<EditorUiSettings>();
+			SaveSettings();
 			if (!mShortcutEdits.IsEmpty && (mServices.Actions != null))
 			{
 				let collisions = scope List<String>();
@@ -196,6 +217,9 @@ class EditorPreferencesDialog
 		// not under every step of a drag.
 		if (let scale = Find<Sedulous.GUI.Slider>("pref-scale"))
 			scale.SetOnValueChanged(new (chosen) => { mLook.UiScale = (float)chosen; Changed(); });
+		if (let add = Find<Sedulous.GUI.Button>("pref-preview-add"))
+			add.SetOnClick(new () => { AddPreview("Custom", 1920, 1080); });
+		AddContributions();
 		if (let save = Find<Sedulous.GUI.Button>("pref-save"))
 			save.SetOnClick(new () => { Save(); });
 		if (let cancel = Find<Sedulous.GUI.Button>("pref-cancel"))
@@ -214,6 +238,185 @@ class EditorPreferencesDialog
 		ShowControls();
 		if (mServices.ShowLook != null)
 			mServices.ShowLook(mLook);
+	}
+
+	// The tabs beside the look and the keys, as the store has them.
+	private void ShowSettings()
+	{
+		let user = mServices.User;
+		if (let ortho = Find<Sedulous.GUI.CheckBox>("pref-auto-ortho"))
+			ortho.Checked = EditorUiSettings.AutoOrthographicViews(user);
+		if (let root = Find<Sedulous.GUI.TextField>("pref-templates-root"))
+		{
+			let exportSettings = (user != null) ? user.Find<EditorExportSettings>() : null;
+			root.Text = (exportSettings != null) ? exportSettings.TemplatesRoot : "";
+			// Empty, the default is what it takes, so the default is what it shows.
+			root.Placeholder = Sedulous.Editor.Project.ExportTemplates.DefaultRoot(.. scope .());
+		}
+		let mcp = (user != null) ? user.Find<EditorMcpSettings>() : null;
+		if (let enabled = Find<Sedulous.GUI.CheckBox>("pref-mcp-enabled"))
+			enabled.Checked = (mcp != null) && mcp.Enabled;
+		if (let port = Find<Sedulous.GUI.TextField>("pref-mcp-port"))
+		{
+			let shown = (mcp != null) ? mcp.Port : EditorMcpSettings.DefaultPort;
+			port.Text = scope $"{shown}";
+		}
+		if (let token = Find<Sedulous.GUI.TextField>("pref-mcp-token"))
+			token.Text = (mcp != null) ? mcp.Token : "";
+		ShowPreviews();
+		for (let check in mContributed)
+			check.Box.Checked = (check.Field.Get != null) && check.Field.Get();
+	}
+
+	// Into the store: the templates' folder, the MCP host (the host then follows it), the preview
+	// resolutions. The axis views' check goes with the look.
+	private void SaveSettings()
+	{
+		let user = mServices.User;
+		if (let root = Find<Sedulous.GUI.TextField>("pref-templates-root"))
+		{
+			user.Section<EditorExportSettings>().TemplatesRoot.Set(root.Text);
+			user.MarkChanged<EditorExportSettings>();
+		}
+		let enabled = Find<Sedulous.GUI.CheckBox>("pref-mcp-enabled");
+		let port = Find<Sedulous.GUI.TextField>("pref-mcp-port");
+		let token = Find<Sedulous.GUI.TextField>("pref-mcp-token");
+		if ((enabled != null) && (port != null) && (token != null))
+		{
+			if (!user.Section<EditorMcpSettings>().ApplyFromPreferences(enabled.Checked, port.Text, token.Text) && (mServices.Warn != null))
+				mServices.Warn("The MCP port must be a number from 1024 to 65535; the old one is kept.");
+			user.MarkChanged<EditorMcpSettings>();
+			if (mServices.McpChanged != null)
+				mServices.McpChanged();
+		}
+		if (let previews = GamePreviewSettings.From(user))
+		{
+			ClearAndDeleteItems!(previews.Presets);
+			for (let row in mPreviews)
+			{
+				if (row.Removed || row.Name.Text.IsEmpty)
+					continue;
+				previews.Presets.Add(new .(row.Name.Text, (uint32)row.Width.Value, (uint32)row.Height.Value));
+			}
+			user.MarkChanged<GamePreviewSettings>();
+		}
+	}
+
+	// Game preview: a row per resolution (its name, width and height, Remove), Add after them.
+	private void ShowPreviews()
+	{
+		let list = Find<Node>("pref-previews");
+		if (list == null)
+			return;
+		list.RemoveAllChildren();
+		ClearAndDeleteItems!(mPreviews);
+		if (let previews = GamePreviewSettings.From(mServices.User))
+		{
+			for (let preview in previews.Presets)
+				AddPreview(preview.Name, preview.Width, preview.Height);
+		}
+	}
+
+	private void AddPreview(StringView name, uint32 width, uint32 height)
+	{
+		let list = Find<Node>("pref-previews");
+		if (list == null)
+			return;
+		let entry = new PreviewRow();
+		entry.Row = new Sedulous.GUI.Panel();
+		entry.Row.AddClass("pref-preview");
+		entry.Name = new Sedulous.GUI.TextField();
+		entry.Name.Text = name;
+		entry.Width = SizeField(width);
+		entry.Height = SizeField(height);
+		let by = new Sedulous.GUI.Label();
+		by.Text = "x";
+		let remove = new Sedulous.GUI.Button();
+		remove.AddClass("ghost");
+		remove.Text = "Remove";
+		let index = mPreviews.Count;
+		// Hidden and skipped on Save rather than taken out from under its own click. The rows are
+		// made again only at an open, when this one has left the tree.
+		remove.SetOnClick(new [=this, =index] () =>
+			{
+				let removed = mPreviews[index];
+				removed.Removed = true;
+				removed.Row.Displayed = false;
+			});
+		entry.Row.AddChild(entry.Name);
+		entry.Row.AddChild(entry.Width);
+		entry.Row.AddChild(by);
+		entry.Row.AddChild(entry.Height);
+		entry.Row.AddChild(remove);
+		list.AddChild(entry.Row);
+		// The tree's references keep them.
+		entry.Name.ReleaseRef();
+		entry.Width.ReleaseRef();
+		by.ReleaseRef();
+		entry.Height.ReleaseRef();
+		remove.ReleaseRef();
+		entry.Row.ReleaseRef();
+		mPreviews.Add(entry);
+	}
+
+	/// A whole number of pixels, 1 to 16384; its one reference is the caller's.
+	private static Sedulous.GUI.NumberField SizeField(uint32 value)
+	{
+		let field = new Sedulous.GUI.NumberField();
+		field.IsInteger = true;
+		field.Min = 1.0;
+		field.Max = 16384.0;
+		field.Step = 1.0;
+		field.Value = (double)value; // after the range, which would clamp it
+		return field;
+	}
+
+	// A tab per category other parts of the editor contribute (contributions naming one category
+	// share it), its checks applied as they change, not on Save.
+	private void AddContributions()
+	{
+		let tabs = Find<Sedulous.GUI.TabView>("pref-tabs");
+		if ((tabs == null) || (mServices.Contributions == null))
+			return;
+		let categories = scope List<StringView>();
+		let columns = scope List<Node>();
+		for (let contribution in mServices.Contributions)
+		{
+			Node column = null;
+			for (int i < categories.Count)
+			{
+				if (categories[i] == contribution.Category)
+					column = columns[i];
+			}
+			if (column == null)
+			{
+				let page = tabs.AddPage(contribution.Category);
+				let body = new Sedulous.GUI.Panel();
+				body.AddClass("dialog-body");
+				body.AddClass("pref-contributed");
+				page.AddChild(body);
+				body.ReleaseRef(); // the page's reference keeps it
+				column = body;
+				categories.Add(contribution.Category);
+				columns.Add(column);
+			}
+			for (let field in contribution.Bools)
+			{
+				let checkBox = new Sedulous.GUI.CheckBox();
+				checkBox.Text = field.Label;
+				if (!field.Description.IsEmpty)
+					checkBox.Tooltip = field.Description;
+				// The field is the context's, kept from boot: registrations come before the dialog.
+				checkBox.SetOnToggled(new [=field] (on) =>
+					{
+						if (field.Set != null)
+							field.Set(on);
+					});
+				column.AddChild(checkBox);
+				checkBox.ReleaseRef(); // the tree's reference keeps it
+				mContributed.Add(.(field, checkBox));
+			}
+		}
 	}
 
 	// The Shortcuts tab: a row per action (its name, where it is in the menus, its chord as a capture
@@ -292,4 +495,17 @@ class EditorPreferencesDialog
 		if (let shown = Find<Sedulous.GUI.Label>("pref-scale-value"))
 			shown.Text = scope $"{(int32)(mLook.UiScale * 100.0f + 0.5f)}%";
 	}
+
+	/// One preview resolution's row; its views are the tree's.
+	private class PreviewRow
+	{
+		public Sedulous.GUI.Panel Row;
+		public Sedulous.GUI.TextField Name;
+		public Sedulous.GUI.NumberField Width;
+		public Sedulous.GUI.NumberField Height;
+		public bool Removed = false;
+	}
+
+	/// A contributed field and its check, the tree's.
+	private struct Contributed : this(EditorSettingsBoolField Field, Sedulous.GUI.CheckBox Box);
 }

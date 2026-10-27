@@ -511,6 +511,15 @@ class EditorApplication : IApplication
 			services.User = mEditorSettings;
 			services.Actions = mContext.Actions;
 			services.Warn = new (text) => { mContext.Notify(.Warning, text); };
+			services.Contributions = mContext.EditorSettingsContributions;
+			services.McpChanged = new () =>
+				{
+					// The host follows the saved section over the open project: started, moved to
+					// its new port, or stopped (Start stops a running one first).
+					if ((mMcp == null) || (mSession.Project == null))
+						return;
+					mMcp.Start(mSession.Project);
+				};
 			services.ShowLook = new (look) => { mWindow.SetLook(look); };
 			// Said on the status line, or as an error, as the Sedulous.UI dialog said it.
 			services.Persist = new () =>

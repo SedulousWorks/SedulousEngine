@@ -22,9 +22,10 @@ namespace Sedulous.Editor.App.Tests;
 /// pages, the windows, the profiler and the application's own) and its hooks reached by real
 /// calls, the status lines and the log while it runs, the token minted once and saved, a
 /// start refused when disabled or without a log capture, a second start and a second stop
-/// harmless, and a port in use reported. Ports come from the OS (a listener on port 0, closed
-/// before the host takes it), so a running editor's 7405 is never touched; the user data
-/// directory is a scratch folder, so the user's own token is never touched either.
+/// harmless, a port in use reported, and Preferences' Save starting and stopping it. Ports come
+/// from the OS (a listener on port 0, closed before the host takes it), so a running editor's
+/// 7405 is never touched; the user data directory is a scratch folder, so the user's own token
+/// is never touched either.
 class EditorMcpServiceTests
 {
 	const String cToken = "sekrit";
@@ -424,5 +425,47 @@ class EditorMcpServiceTests
 		DeleteAndNullify!(holder);
 		Test.Assert(service.Start(bench.Project));
 		Test.Assert(service.Host.BoundPort == port);
+	}
+
+	/// Preferences' Save over a real host, as the application wires it (the open project's host
+	/// started again over the saved section): enabled, the host starts; turned off, it stops and
+	/// lets the port go.
+	[Test]
+	public static void PreferencesSaveStartsOrStopsTheHostOverTheOpenProject()
+	{
+		let bench = scope Bench("mcp_service_preferences");
+		bench.Preference.Token.Set(cToken);
+		let port = FreePort();
+		let services = bench.Services();
+		services.Port = port; // the command line's: the preference's port stays the dialog's
+		let service = scope EditorMcpService(services);
+
+		let context = new Sedulous.GUI.GUIContext();
+		let root = new Sedulous.GUI.SceneRoot(context);
+		context.ReleaseRef(); // the root's keeps it
+		defer root.ReleaseRef();
+		let preferences = new EditorPreferencesServices();
+		preferences.User = bench.UserSettings;
+		let project = bench.Project;
+		preferences.McpChanged = new [=service, =project] () => { service.Start(project); };
+		let dialog = new EditorPreferencesDialog(preferences, PreferencesDialogTests.LoadPreferences());
+		defer delete dialog; // before the root and the service
+		let enabled = dialog.Window.FindElement("pref-mcp-enabled") as Sedulous.GUI.CheckBox;
+		Test.Assert(enabled != null);
+
+		Test.Assert(dialog.Open(root));
+		Test.Assert(!enabled.Checked);
+		Test.Assert(enabled.HandleActivate());
+		Test.Assert(dialog.Save());
+		Test.Assert(service.IsRunning);
+		Test.Assert(service.Host.BoundPort == port);
+		Test.Assert(bench.Preference.Token == cToken, "the token shown is the token kept");
+
+		Test.Assert(dialog.Open(root));
+		Test.Assert(enabled.Checked);
+		Test.Assert(enabled.HandleActivate());
+		Test.Assert(dialog.Save());
+		Test.Assert(!service.IsRunning);
+		Test.Assert(PortIsFree(port));
 	}
 }

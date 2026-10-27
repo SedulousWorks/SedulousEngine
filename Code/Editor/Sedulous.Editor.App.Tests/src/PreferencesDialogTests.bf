@@ -14,17 +14,29 @@ namespace Sedulous.Editor.App.Tests;
 /// once; Save into the store, marked changed and persisted; Cancel, Escape, its close button, or
 /// the dialog going while open, putting the look back as it was with the store unchanged; the
 /// Shortcuts tab's edits staged, applied on Save (a chord another action holds refused, named),
-/// forgotten on Cancel, Reset going back to the declaration's.
+/// forgotten on Cancel, Reset going back to the declaration's; the orthographic check, the
+/// templates' folder (empty: the default shown), the MCP host's fields (a port out of range kept,
+/// said; the host told on Save), the preview resolutions (added, removed) and the contributed
+/// categories' tabs (shared by a category, their checks applied as they change).
 static class PreferencesDialogTests
 {
 	/// A GUI scene for the dialog to open over, the user's store (violet), two actions (Save on
-	/// Ctrl+S, Open on Ctrl+O), the looks it showed, the warnings it said and the persists it asked
-	/// for.
+	/// Ctrl+S, Open on Ctrl+O), a contributed Navigation category (one check, Snapping), the looks
+	/// it showed, the warnings it said, the persists it asked for and the times it told the MCP
+	/// host.
 	private class Bed
 	{
 		public SceneRoot Root;
 		public Settings Store = new .() ~ delete _;
 		public EditorActionRegistry Actions = new .() ~ delete _;
+		/// Outlives the dialog (the context's would): ~this deletes the dialog first.
+		public List<EditorSettingsContribution> Contributions = new .() ~ DeleteContainerAndItems!(_);
+		/// A contributed setting, Navigation's "Snap agents to the mesh".
+		public bool Snapping = true;
+		/// Two more fields: Audio's "Mute in the background" and Navigation's "Show the bake bounds".
+		public bool Muted = false;
+		public bool BakeBounds = false;
+		public int McpChanged = 0;
 		public List<String> Warnings = new .() ~ DeleteContainerAndItems!(_);
 		public List<EditorLook> Shown = new .() ~ DeleteContainerAndItems!(_);
 		public int Persisted = 0;
@@ -32,7 +44,8 @@ static class PreferencesDialogTests
 		public bool PersistHolds = true;
 		public EditorPreferencesDialog Dialog = null ~ delete _;
 
-		public this(StringView accent = "#6d5bd8", StringView density = "compact")
+		/// `moreCategories`: Audio, then a second Navigation contribution, after the first.
+		public this(StringView accent = "#6d5bd8", StringView density = "compact", bool moreCategories = false)
 		{
 			let context = new GUIContext();
 			Root = new SceneRoot(context);
@@ -46,6 +59,14 @@ static class PreferencesDialogTests
 			services.User = Store;
 			services.Actions = Actions;
 			services.Warn = new (text) => { Warnings.Add(new String(text)); };
+			Contribute("Navigation", "Snap agents to the mesh", new () => Snapping, new (on) => { Snapping = on; });
+			if (moreCategories)
+			{
+				Contribute("Audio", "Mute in the background", new () => Muted, new (on) => { Muted = on; });
+				Contribute("Navigation", "Show the bake bounds", new () => BakeBounds, new (on) => { BakeBounds = on; });
+			}
+			services.Contributions = Contributions;
+			services.McpChanged = new () => { McpChanged++; };
 			services.ShowLook = new (look) => { Shown.Add(new EditorLook()..Set(look)); };
 			services.Persist = new () =>
 				{
@@ -59,6 +80,13 @@ static class PreferencesDialogTests
 		{
 			DeleteAndNullify!(Dialog); // closed while the root is there
 			Root.ReleaseRef();
+		}
+
+		private void Contribute(StringView category, StringView label, delegate bool() get, delegate void(bool) set)
+		{
+			let contribution = new EditorSettingsContribution(category);
+			contribution.Bools.Add(new EditorSettingsBoolField(label, "", get, set));
+			Contributions.Add(contribution);
 		}
 
 		private void Declare(StringView id, StringView label, StringView keys)
@@ -78,8 +106,8 @@ static class PreferencesDialogTests
 	}
 
 	/// The dialog's body, read from the repository's Data with the GUI's elements; its one
-	/// reference is the caller's.
-	private static Node LoadPreferences()
+	/// reference is the caller's. EditorMcpServiceTests' dialog over a real host reads it too.
+	public static Node LoadPreferences()
 	{
 		let data = scope String();
 		Test.Assert(EditorSplashTests.DataRoot(data));
@@ -122,12 +150,55 @@ static class PreferencesDialogTests
 			Captures(node.GetChildAt(i), outCaptures);
 	}
 
+	/// The index of the page titled `title`, or -1.
+	private static int32 PageTitled(TabView tabs, StringView title)
+	{
+		for (int32 i < tabs.PageCount)
+		{
+			if (let page = tabs.GetPage(i) as TabPage)
+			{
+				if (page.Title == title)
+					return i;
+			}
+		}
+		return -1;
+	}
+
+	/// The check boxes under `node`, in the tree's order.
+	private static void Checks(Node node, List<Sedulous.GUI.CheckBox> outBoxes)
+	{
+		if (let checkBox = node as Sedulous.GUI.CheckBox)
+			outBoxes.Add(checkBox);
+		for (int i < node.ChildCount)
+			Checks(node.GetChildAt(i), outBoxes);
+	}
+
+	/// The one check checkBox showing `text` under `node`; null when none does, or more than one.
+	private static Sedulous.GUI.CheckBox CheckTexted(Node node, StringView text)
+	{
+		let boxes = scope List<Sedulous.GUI.CheckBox>();
+		Checks(node, boxes);
+		Sedulous.GUI.CheckBox found = null;
+		for (let checkBox in boxes)
+		{
+			if (checkBox.Text == text)
+			{
+				if (found != null)
+					return null;
+				found = checkBox;
+			}
+		}
+		return found;
+	}
+
 	/// The Shortcuts tab shown, its capture buttons in `outCaptures`.
 	private static void ShowShortcutsTab(Bed bed, List<ShortcutCaptureButton> outCaptures)
 	{
 		let tabs = Find<TabView>(bed.Window, "pref-tabs");
 		Test.Assert(tabs != null);
-		tabs.SelectedIndex = 1; // Shortcuts
+		let shortcuts = PageTitled(tabs, "Shortcuts");
+		Test.Assert(shortcuts >= 0);
+		tabs.SelectedIndex = shortcuts;
 		bed.Root.UpdateLayout();
 		outCaptures.Clear();
 		Captures(bed.Window, outCaptures);
@@ -222,14 +293,15 @@ static class PreferencesDialogTests
 		// Each look shown is the whole look, not the one input.
 		Test.Assert(!bed.Last.Dark && (bed.Last.Accent == "#0f8a7e") && (bed.Last.Density == "comfortable") && bed.Last.ReduceMotion);
 
-		// Save: into the store, marked changed, persisted, closed; nothing put back.
+		// Save: into the store, marked changed (the look's section, then the templates', the MCP
+		// host's and the preview sizes'), persisted, closed; nothing put back.
 		int changes = 0;
 		bed.Store.OnChanged.Add(new [&] (name) => { changes++; });
 		let shownAtSave = bed.Shown.Count;
 		Test.Assert(bed.Dialog.Save());
 		Test.Assert(!bed.Dialog.IsOpen);
 		Test.Assert(bed.Persisted == 1);
-		Test.Assert(changes == 1);
+		Test.Assert(changes == 4);
 		let ui = bed.Ui;
 		Test.Assert(ui.Scheme == "light");
 		Test.Assert(ui.Accent == "#0f8a7e");
@@ -450,5 +522,269 @@ static class PreferencesDialogTests
 		Test.Assert(bed.Actions.HasOverride("file.open"));
 		Test.Assert(!bed.Actions.Shortcut("file.open").IsSet);
 		Test.Assert(bed.Store.Find<EditorShortcutSettings>().Find("file.open").Keys.IsEmpty);
+	}
+
+	[Test]
+	public static void TheOtherTabsAxisViewsTemplatesTheMcpHostABadPortKeptPreviewSizesAContributedCategory()
+	{
+		let bed = scope Bed();
+		bed.Store.Section<EditorMcpSettings>().Port = 7500;
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		let window = bed.Window;
+		let tabs = Find<TabView>(window, "pref-tabs");
+		Test.Assert(tabs != null);
+		Test.Assert(tabs.PageCount == 6); // Appearance, Export, Agent access, Game preview, Shortcuts, Navigation
+		let ortho = Find<Sedulous.GUI.CheckBox>(window, "pref-auto-ortho");
+		let root = Find<Sedulous.GUI.TextField>(window, "pref-templates-root");
+		let enabled = Find<Sedulous.GUI.CheckBox>(window, "pref-mcp-enabled");
+		let port = Find<Sedulous.GUI.TextField>(window, "pref-mcp-port");
+		Test.Assert((ortho != null) && (root != null) && (enabled != null) && (port != null));
+		Test.Assert(ortho.Checked);
+		Test.Assert(port.Text == "7500");
+		Test.Assert(!enabled.Checked);
+
+		// Six preview sizes seeded; one removed, one added.
+		let previews = Find<Node>(window, "pref-previews");
+		Test.Assert(previews != null);
+		Test.Assert(previews.ChildCount == 6);
+		let remove = ButtonText(previews.GetChildAt(0), "Remove");
+		Test.Assert(remove != null);
+		Test.Assert(remove.HandleActivate());
+		Test.Assert(Find<Sedulous.GUI.Button>(window, "pref-preview-add").HandleActivate());
+		Test.Assert(previews.ChildCount == 7);
+
+		// The contributed check applies as it changes.
+		let snap = CheckTexted(window, "Snap agents to the mesh");
+		Test.Assert(snap != null);
+		Test.Assert(snap.Checked);
+		Test.Assert(snap.HandleActivate());
+		Test.Assert(!bed.Snapping);
+
+		Test.Assert(ortho.HandleActivate());
+		root.Text = "/opt/templates";
+		Test.Assert(enabled.HandleActivate());
+		port.Text = "80"; // below the range
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(!bed.Store.Find<EditorUiSettings>().AutoOrthographic);
+		Test.Assert(bed.Store.Find<EditorExportSettings>().TemplatesRoot == "/opt/templates");
+		let mcp = bed.Store.Find<EditorMcpSettings>();
+		Test.Assert(mcp.Enabled);
+		Test.Assert(mcp.Port == 7500, "kept");
+		Test.Assert(bed.Warnings.Count == 1);
+		Test.Assert(bed.McpChanged == 1);
+		let sizes = bed.Store.Find<GamePreviewSettings>();
+		Test.Assert(sizes != null);
+		Test.Assert(sizes.Presets.Count == 6, "six, less one, plus the new one");
+		Test.Assert(sizes.Presets[0].Name != "HD");
+		Test.Assert(sizes.Presets.Back.Name == "Custom");
+	}
+
+	/// Off in the store, the check shows off; turned on, Save keeps it on. Cancel keeps nothing.
+	[Test]
+	public static void TheAxisViewsCheckShowsTheStoresAndSaveStoresItEitherWay()
+	{
+		let bed = scope Bed();
+		bed.Store.Section<EditorUiSettings>().AutoOrthographic = false;
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		let ortho = Find<Sedulous.GUI.CheckBox>(bed.Window, "pref-auto-ortho");
+		Test.Assert(ortho != null);
+		Test.Assert(!ortho.Checked);
+		Test.Assert(ortho.HandleActivate());
+		bed.Dialog.Cancel();
+		Test.Assert(!bed.Ui.AutoOrthographic, "cancelled: not stored");
+
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		Test.Assert(!ortho.Checked, "as the store has it, not as it was left");
+		Test.Assert(ortho.HandleActivate());
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(bed.Ui.AutoOrthographic);
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		Test.Assert(ortho.Checked);
+	}
+
+	/// The templates' folder: what the store has; empty, the default shown in its place, and an
+	/// emptied field stored empty (the default then taken, not written down).
+	[Test]
+	public static void AnEmptyTemplatesFieldShowsTheDefaultAndIsStoredEmpty()
+	{
+		let bed = scope Bed();
+		let defaultRoot = Sedulous.Editor.Project.ExportTemplates.DefaultRoot(.. scope .());
+		Test.Assert(!defaultRoot.IsEmpty);
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		let root = Find<Sedulous.GUI.TextField>(bed.Window, "pref-templates-root");
+		Test.Assert(root != null);
+		Test.Assert(root.Text.IsEmpty, "no section: empty");
+		Test.Assert(root.Placeholder == defaultRoot);
+		bed.Dialog.Cancel();
+
+		bed.Store.Section<EditorExportSettings>().TemplatesRoot.Set("/srv/templates");
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		Test.Assert(root.Text == "/srv/templates");
+		Test.Assert(root.Placeholder == defaultRoot);
+		root.Text = "";
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(bed.Store.Find<EditorExportSettings>().TemplatesRoot.IsEmpty);
+	}
+
+	/// The MCP host's fields: what the store has (the default port with no section); a port in
+	/// range and the token stored, the host told; a port out of range, or not a number, kept as it
+	/// was and said; Cancel tells the host nothing.
+	[Test]
+	public static void TheMcpFieldsAreStoredAPortOutOfRangeIsKeptAndSaidAndTheHostIsToldOnSave()
+	{
+		let bed = scope Bed();
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		let window = bed.Window;
+		let enabled = Find<Sedulous.GUI.CheckBox>(window, "pref-mcp-enabled");
+		let port = Find<Sedulous.GUI.TextField>(window, "pref-mcp-port");
+		let token = Find<Sedulous.GUI.TextField>(window, "pref-mcp-token");
+		Test.Assert((enabled != null) && (port != null) && (token != null));
+		Test.Assert(!enabled.Checked);
+		Test.Assert(port.Text == scope $"{EditorMcpSettings.DefaultPort}");
+		Test.Assert(token.Text.IsEmpty);
+		Test.Assert(token.Placeholder == "made on first enable");
+
+		// Cancel: nothing stored, the host not told.
+		Test.Assert(enabled.HandleActivate());
+		bed.Dialog.Cancel();
+		Test.Assert(bed.McpChanged == 0);
+		Test.Assert(bed.Store.Find<EditorMcpSettings>() == null);
+
+		// In range: stored, nothing said, the host told.
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		Test.Assert(!enabled.Checked);
+		Test.Assert(enabled.HandleActivate());
+		port.Text = "7600";
+		token.Text = "sekrit";
+		Test.Assert(bed.Dialog.Save());
+		let mcp = bed.Store.Find<EditorMcpSettings>();
+		Test.Assert(mcp != null);
+		Test.Assert(mcp.Enabled && (mcp.Port == 7600) && (mcp.Token == "sekrit"));
+		Test.Assert(bed.Warnings.IsEmpty);
+		Test.Assert(bed.McpChanged == 1);
+
+		// Shown as stored; above the range: kept, said; turned off, stored, the host told.
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		Test.Assert(enabled.Checked && (port.Text == "7600") && (token.Text == "sekrit"));
+		Test.Assert(enabled.HandleActivate());
+		port.Text = "70000";
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(!mcp.Enabled);
+		Test.Assert(mcp.Port == 7600, "kept");
+		Test.Assert(bed.Warnings.Count == 1);
+		Test.Assert(bed.Warnings[0].Contains("MCP port") && bed.Warnings[0].Contains("kept"));
+		Test.Assert(bed.McpChanged == 2);
+
+		// Not a number: kept, said. An emptied token is stored empty (made again on the next enable).
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		port.Text = "port";
+		token.Text = "";
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(mcp.Port == 7600);
+		Test.Assert(mcp.Token.IsEmpty);
+		Test.Assert(bed.Warnings.Count == 2);
+		Test.Assert(bed.McpChanged == 3);
+	}
+
+	/// The preview resolutions: a row per stored size; a removed row hidden and left out on Save,
+	/// an added one (Custom, 1920 by 1080) and an edited size kept, a nameless row left out;
+	/// Cancel keeps none of it; opened again, the rows as stored, made again rather than added to.
+	[Test]
+	public static void APreviewSizeIsAddedRemovedAndEditedOnSaveAndForgottenOnCancel()
+	{
+		let bed = scope Bed();
+		let stored = bed.Store.Section<GamePreviewSettings>();
+		stored.Seeded = true; // the user's own list, not the seeded one
+		stored.Presets.Add(new .("Deck", 1280, 800));
+		stored.Presets.Add(new .("Phone", 1080, 2400));
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		let window = bed.Window;
+		let previews = Find<Node>(window, "pref-previews");
+		let add = Find<Sedulous.GUI.Button>(window, "pref-preview-add");
+		Test.Assert((previews != null) && (add != null));
+		Test.Assert(previews.ChildCount == 2);
+		// A row: its name, width, "x", height and Remove.
+		let deck = previews.GetChildAt(0);
+		Test.Assert(deck.ChildCount == 5);
+		Test.Assert((deck.GetChildAt(0) as Sedulous.GUI.TextField).Text == "Deck");
+		Test.Assert((deck.GetChildAt(1) as Sedulous.GUI.NumberField).Value == 1280.0);
+		Test.Assert((deck.GetChildAt(3) as Sedulous.GUI.NumberField).Value == 800.0);
+
+		// Cancel: nothing kept.
+		Test.Assert(add.HandleActivate());
+		Test.Assert(ButtonText(previews.GetChildAt(0), "Remove").HandleActivate());
+		bed.Dialog.Cancel();
+		Test.Assert(stored.Presets.Count == 2);
+		Test.Assert(stored.Presets[0].Name == "Deck");
+
+		// Opened again: two rows, made again.
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		Test.Assert(previews.ChildCount == 2);
+		Test.Assert(previews.GetChildAt(0).Displayed);
+		// Deck removed, Phone's width edited, one added, one added and its name emptied.
+		Test.Assert(ButtonText(previews.GetChildAt(0), "Remove").HandleActivate());
+		Test.Assert(!previews.GetChildAt(0).Displayed, "hidden");
+		(previews.GetChildAt(1).GetChildAt(1) as Sedulous.GUI.NumberField).Value = 1440.0;
+		Test.Assert(add.HandleActivate());
+		Test.Assert(add.HandleActivate());
+		Test.Assert(previews.ChildCount == 4);
+		(previews.GetChildAt(3).GetChildAt(0) as Sedulous.GUI.TextField).Text = "";
+		Test.Assert(bed.Dialog.Save());
+		Test.Assert(stored.Presets.Count == 2, "Phone and the one added");
+		Test.Assert((stored.Presets[0].Name == "Phone") && (stored.Presets[0].Width == 1440) && (stored.Presets[0].Height == 2400));
+		Test.Assert((stored.Presets[1].Name == "Custom") && (stored.Presets[1].Width == 1920) && (stored.Presets[1].Height == 1080));
+
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		Test.Assert(previews.ChildCount == 2);
+		Test.Assert((previews.GetChildAt(0).GetChildAt(0) as Sedulous.GUI.TextField).Text == "Phone");
+	}
+
+	/// A tab per contributed category, after the editor's own, contributions naming one category
+	/// sharing it; each check shows its field's value at each open and writes it as it changes,
+	/// before Save and kept on Cancel, as before.
+	[Test]
+	public static void ContributionsNamingOneCategoryShareItsTabAndTheirChecksApplyAsTheyChange()
+	{
+		let bed = scope Bed("#6d5bd8", "compact", true);
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		let tabs = Find<TabView>(bed.Window, "pref-tabs");
+		Test.Assert(tabs != null);
+		Test.Assert(tabs.PageCount == 7);
+		Test.Assert(PageTitled(tabs, "Appearance") == 0);
+		Test.Assert(PageTitled(tabs, "Export") == 1);
+		Test.Assert(PageTitled(tabs, "Agent access") == 2);
+		Test.Assert(PageTitled(tabs, "Game preview") == 3);
+		Test.Assert(PageTitled(tabs, "Shortcuts") == 4);
+		Test.Assert(PageTitled(tabs, "Navigation") == 5);
+		Test.Assert(PageTitled(tabs, "Audio") == 6);
+
+		// Both Navigation fields on its tab, in their order; Audio's on its own.
+		let navigation = scope List<Sedulous.GUI.CheckBox>();
+		Checks(tabs.GetPage(5), navigation);
+		Test.Assert(navigation.Count == 2);
+		Test.Assert(navigation[0].Text == "Snap agents to the mesh");
+		Test.Assert(navigation[1].Text == "Show the bake bounds");
+		let audio = scope List<Sedulous.GUI.CheckBox>();
+		Checks(tabs.GetPage(6), audio);
+		Test.Assert((audio.Count == 1) && (audio[0].Text == "Mute in the background"));
+
+		// As the fields have them.
+		Test.Assert(navigation[0].Checked && !navigation[1].Checked && !audio[0].Checked);
+
+		// Applied as it changes, and kept on Cancel.
+		Test.Assert(navigation[1].HandleActivate());
+		Test.Assert(bed.BakeBounds);
+		Test.Assert(audio[0].HandleActivate());
+		Test.Assert(bed.Muted);
+		Test.Assert(bed.Snapping, "the others untouched");
+		bed.Dialog.Cancel();
+		Test.Assert(bed.BakeBounds && bed.Muted);
+
+		// Changed elsewhere: opened again, shown as the field has it; the tabs made once.
+		bed.Muted = false;
+		Test.Assert(bed.Dialog.Open(bed.Root));
+		Test.Assert(tabs.PageCount == 7);
+		Test.Assert(!audio[0].Checked);
+		Test.Assert(navigation[1].Checked);
 	}
 }
