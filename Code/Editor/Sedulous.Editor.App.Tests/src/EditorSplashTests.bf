@@ -3,7 +3,6 @@ using System.Collections;
 using System.IO;
 using Sedulous.Core.IO;
 using Sedulous.Shell;
-using Sedulous.UI;
 
 namespace Sedulous.Editor.App.Tests;
 
@@ -120,10 +119,7 @@ class EditorSplashTests
 	{
 		let data = scope String();
 		Test.Assert(DataRoot(data));
-		let logo = EditorSplash.LoadLogo(data);
-		Test.Assert(logo != null);
-		logo.ReleaseRef();
-		Test.Assert(EditorSplash.LoadLogo("/nowhere") == null);
+		Test.Assert(File.Exists(PathJoin(data, EditorSplash.cEditorLogoPath, .. scope .())));
 
 		let window = scope IconWindow();
 		Test.Assert(EditorSplash.ApplyWindowIcon(window, data));

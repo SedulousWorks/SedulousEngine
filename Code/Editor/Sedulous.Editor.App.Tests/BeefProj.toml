@@ -11,10 +11,7 @@ corlib = "*"
 "Sedulous.Editor.Project" = "*"
 "Sedulous.Settings" = "*"
 "Sedulous.Xml.Serialization" = "*"
-"Sedulous.UI" = "*"
-"Sedulous.UI.Toolkit" = "*"
 "Sedulous.Editor.Core" = "*"
-"Sedulous.Editor.ViewportTools" = "*"
 "Sedulous.Shell" = "*"
 "Sedulous.Image" = "*"
 "Sedulous.Image.IO" = "*"
@@ -35,4 +32,104 @@ corlib = "*"
 "Sedulous.Editor.Mcp" = "*"
 "Sedulous.Profiler" = "*"
 "Sedulous.Profiler.Capture" = "*"
-"Sedulous.Profiler.UI" = "*"
+
+# The suites of the shell's files on the GUI so far (Raptor's editor-gui spec, 5.1); the
+# others, and the fixtures only they use, stay out of the compile, unedited, and come back with
+# their files.
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ActionSurfacesTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ActionToolsTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetPickerSlotTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetsViewTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "CommandPaletteTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ContainerListEditorTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorLayoutToolsTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorPreferencesDialogTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ExportDialogTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ImportDialogTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ImportPlanViewTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "LogViewTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "PageToolbarTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ProfilerPanelTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ProjectHomeTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ProjectLauncherTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ProjectSettingsDialogTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ShellTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ShortcutCaptureTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "TemplatesDialogTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ToolPanelTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "AutoFolder"
+Name = "Fixtures"
+
+[[ProjectFolder.Items.Items]]
+Type = "IgnoreSource"
+Name = "FakeProvider.bf"
+
+[[ProjectFolder.Items.Items]]
+Type = "IgnoreSource"
+Name = "FakeTool.bf"

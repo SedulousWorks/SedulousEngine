@@ -30,10 +30,6 @@ corlib = "*"
 "Sedulous.Fonts.Resource" = "*"
 "Sedulous.Fonts.DistanceField" = "*"
 "Sedulous.Fonts.DistanceField.Baker" = "*"
-"Sedulous.UI" = "*"
-"Sedulous.UI.Toolkit" = "*"
-"Sedulous.UI.Runtime" = "*"
-"Sedulous.UI.Application" = "*"
 "Sedulous.UI.Resource" = "*"
 "Sedulous.Engine.UI" = "*"
 "Sedulous.Engine.GUI" = "*"
@@ -44,12 +40,291 @@ corlib = "*"
 "Sedulous.Engine.Render" = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.ViewportTools" = "*"
-"Sedulous.Editor.Preview" = "*"
 # The MCP host: the shared engine surface over HTTP.
 "Sedulous.Json" = "*"
 "Sedulous.Mcp" = "*"
 "Sedulous.Mcp.Http" = "*"
 "Sedulous.Profiler" = "*"
 "Sedulous.Profiler.Capture" = "*"
-"Sedulous.Profiler.UI" = "*"
 "Sedulous.Editor.Mcp" = "*"
+
+# The shell moves onto the GUI in parts (Raptor's editor-gui spec, 5.1). A file still on
+# Sedulous.UI, or on a parked library, stays out of the compile, its source unedited, and comes
+# back with its port.
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ActionMenuBar.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ActionShortcuts.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetCell.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetCreateDialog.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetDragData.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetGroupTreeAdapter.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetNameLabel.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetPickerDialog.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetPickerSlot.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetsView.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetsViewEditing.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetsViewImport.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "AssetsViewMenus.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "BatchFileRow.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "BatchImportDialog.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "BatchImportFile.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "CategoryTabs.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "CommandPaletteDialog.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "CompactAssetSlot.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ConfirmDialog.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ContainerListEditor.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "DockLayoutNodeSerialization.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorActionTools.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorAppConfig.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorAppSerializables.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorApplication.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorApplicationExport.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorApplicationMenus.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorApplicationProject.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorAssetBrowserSettings.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorDockLayoutSettings.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorFavoritesSettings.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorIcons.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorLayoutTools.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorOpenPagesSettings.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorPreferencesDialog.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditorShell.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ExportDialog.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "GroupPickerDialog.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "GroupTreeAdapter.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "IViewportToolPanelProvider.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "IconGlyph.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ImportDialogRows.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ImportOptionsDialog.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ImportPlanView.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "InPlaceRows.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ListHeader.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "LogBucket.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "LogView.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "PagePanel.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "PageToolbar.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "PathPickerDialog.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "PendingExport.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ProfilerPanel.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ProjectEditorSettings.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ProjectHomeView.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ProjectManagerView.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ProjectPicture.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ProjectSettingsDialog.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ResourceRefEditor.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "SegmentedToggle.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ShortcutCaptureButton.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "TemplatesDialog.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ToolPanelPlacement.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ToolPanelWidgets.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "UIEditorPage.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ViewModeToggles.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ViewportToolPanelHost.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ViewportToolPanelRegistry.bf"

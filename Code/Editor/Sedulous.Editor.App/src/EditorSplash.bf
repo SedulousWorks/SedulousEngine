@@ -7,7 +7,6 @@ using Sedulous.Image;
 using Sedulous.Image.IO;
 using Sedulous.Fonts;
 using Sedulous.Fonts.TrueType;
-using Sedulous.UI;
 
 namespace Sedulous.Editor.App;
 
@@ -195,7 +194,12 @@ class EditorSplash
 		}
 	}
 
-	/// The aspect of the logo LoadEditorLogo gives (width over height).
+	/// The SedulousEngine logo (mark and wordmark, for a dark background), relative to the
+	/// data root: what a page's markup shows (`<Image src="...">`, through the editor's
+	/// resources). Its aspect is cEditorLogoAspect.
+	public const String cEditorLogoPath = "Assets/branding/sedulous-logo.svg";
+
+	/// The aspect of the logo at cEditorLogoPath (width over height).
 	public const float cEditorLogoAspect = 885.0f / 200.0f;
 
 	/// Opens the splash over a new software window of `shell` (after the main window: the
@@ -228,17 +232,6 @@ class EditorSplash
 			font.AddRange(embeddedFont);
 		}
 		return new EditorSplash(shell, window, hasLogo ? logo.PixelData : Span<uint8>(), hasLogo ? logo.Width : 0, hasLogo ? logo.Height : 0, font, version);
-	}
-
-	/// The SedulousEngine logo (mark and wordmark, for a dark background) as a drawable, from
-	/// <dataRoot>/Assets/branding/sedulous-logo.svg, the caller's reference; null when it does
-	/// not load. Its aspect is cEditorLogoAspect.
-	public static SVGDrawable LoadLogo(StringView dataRoot)
-	{
-		let svg = scope String();
-		if (System.IO.File.ReadAllText(PathJoin(dataRoot, "Assets/branding/sedulous-logo.svg", .. scope .()), svg) case .Err)
-			return null;
-		return SVGDrawable.FromString(svg);
 	}
 
 	/// The SedulousEngine icon on `window` (its title bar, the taskbar), from
