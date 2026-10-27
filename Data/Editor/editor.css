@@ -497,6 +497,12 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .picker-hint { font-size: var(--font-small); color: var(--text-placeholder); }
 .picker-empty { padding: var(--space-xl) var(--space-l); }
 .save-as-error { color: var(--danger); }
+.preferences { flex-direction: column; flex-grow: 1; }
+.pref-tabs { flex-grow: 1; }
+.pref-accent { width: 120px; }
+.pref-scale { flex-direction: row; align-items: center; column-gap: var(--space-m); }
+.pref-scale > slider { width: 200px; }
+.pref-scale-value { color: var(--text-dim); font-size: var(--font-small); }
 .save-as > .dialog-buttons { padding: var(--space-l) 0 0; }
 
 /* The command palette: the picker's frame, a row per action (its name, where it is in the menus, its

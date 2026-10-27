@@ -82,6 +82,8 @@ class EditorApplication : IApplication
 	private ActionShortcuts mShortcuts = null ~ delete _;
 	/// Every action by name (View > Command Palette), made the first time it opens.
 	private CommandPalette mPalette = null ~ delete _;
+	/// Edit > Preferences, made the first time it opens.
+	private EditorPreferencesDialog mPreferences = null ~ delete _;
 	private EditorExport mExport = null ~ delete _;
 	private EditorAssetCreation mCreation ~ delete _;
 	private EditorMcpService mMcp = null ~ delete _;
@@ -297,8 +299,7 @@ class EditorApplication : IApplication
 
 		ReportStartup("Preparing the interface", 0.30f);
 		let look = scope EditorLook();
-		if (let ui = mEditorSettings.Find<EditorUiSettings>())
-			look.UiScale = Math.Clamp(ui.UiScale, EditorUiSettings.MinUiScale, EditorUiSettings.MaxUiScale);
+		look.ReadFrom(mEditorSettings.Find<EditorUiSettings>());
 		if (mWindow.Open(host, mConfig.DataRoot, look))
 			OpenDock();
 		// The window's close button asks about unsaved pages first, as File > Exit does.
@@ -497,6 +498,34 @@ class EditorApplication : IApplication
 		mPalette.Open(root);
 	}
 
+	/// Preferences over the main window (made the first time), the look shown live in the window.
+	/// Nothing with no interface.
+	private void OpenPreferences()
+	{
+		let root = mWindow.Root;
+		if (root == null)
+			return;
+		if (mPreferences == null)
+		{
+			let services = new EditorPreferencesServices();
+			services.User = mEditorSettings;
+			services.ShowLook = new (look) => { mWindow.SetLook(look); };
+			// Said on the status line, or as an error, as the Sedulous.UI dialog said it.
+			services.Persist = new () =>
+				{
+					if (EditorSettingsStore.SaveToUserData(mEditorSettings) case .Ok)
+					{
+						mContext.SetStatus("Preferences saved.");
+						return true;
+					}
+					mContext.Notify(.Error, "Preferences save FAILED (see console).");
+					return false;
+				};
+			mPreferences = new EditorPreferencesDialog(services, mWindow.LoadMarkup(EditorPreferencesDialog.cMarkupPath));
+		}
+		mPreferences.Open(root);
+	}
+
 	/// Exits once the unsaved pages are saved or let go; true when nothing needed asking (the
 	/// shell's close handler: false keeps the window while the user is asked).
 	private bool ConfirmExit()
@@ -509,8 +538,8 @@ class EditorApplication : IApplication
 	}
 
 	/// The editor-wide actions this lifecycle can run. What a later layer brings (saving the
-	/// layout, Close Project, Preferences, the dialogs, the profiler) is given no hook here, so its
-	/// action stays out until it can run.
+	/// layout, Close Project, the dialogs, the profiler) is given no hook here, so its action stays
+	/// out until it can run.
 	private void RegisterActions()
 	{
 		let actions = mContext.Actions;
@@ -520,7 +549,9 @@ class EditorApplication : IApplication
 		file.SaveAs = new (page) => { mPages.SaveAs(page); };
 		file.Exit = new () => { ConfirmExit(); };
 		EditorAppActions.RegisterFileActions(actions, file);
-		EditorAppActions.RegisterEditActions(actions, new EditActions());
+		let edit = new EditActions();
+		edit.Preferences = new () => { OpenPreferences(); };
+		EditorAppActions.RegisterEditActions(actions, edit);
 
 		let project = new ProjectActions();
 		project.Context = mContext; // Report Resource Memory reads the session's resources through it
@@ -751,6 +782,7 @@ class EditorApplication : IApplication
 			mEmbeddedApp.OnShutdown(mEmbeddedHost);
 			mRuntimeContext.Shutdown();
 		}
+		DeleteAndNullify!(mPreferences); // closed (the look back, unsaved), while the window is there
 		DeleteAndNullify!(mPalette); // closed, while the window's root is there
 		DeleteAndNullify!(mMenus); // the bar left empty while the window's tree holds it
 		DeleteAndNullify!(mShortcuts); // its keys and the root's handlers, while both are there

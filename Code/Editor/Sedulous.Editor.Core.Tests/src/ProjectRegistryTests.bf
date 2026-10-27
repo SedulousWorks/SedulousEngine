@@ -237,6 +237,10 @@ static class ProjectRegistryTests
 		EditorSerializables.RegisterAll();
 		let store = scope Settings();
 		store.Section<EditorUiSettings>().UiScale = 1.2f;
+		store.Section<EditorUiSettings>().Scheme.Set("light");
+		store.Section<EditorUiSettings>().Accent.Set("#0f8a7e");
+		store.Section<EditorUiSettings>().Density.Set("comfortable");
+		store.Section<EditorUiSettings>().ReduceMotion = true;
 		store.Section<EditorFontSettings>().FontPath.Set("/fonts/ui.ttf");
 		ProjectRegistry.TouchRecentProject(store, "/proj/a", "A", "0.1.0");
 		let buffer = scope Sedulous.Core.IO.MemoryStream();
@@ -250,7 +254,90 @@ static class ProjectRegistryTests
 		Test.Assert((registry != null) && (registry.Entries.Count == 1) && (registry.Entries[0].Name == "A"));
 		let ui = loaded.Find<EditorUiSettings>();
 		Test.Assert((ui != null) && (Math.Abs(ui.UiScale - 1.2f) < 1e-5f));
+		Test.Assert(ui.Scheme == "light"); // the look's inputs (appended 2026-10-27)
+		Test.Assert(ui.Accent == "#0f8a7e");
+		Test.Assert(ui.Density == "comfortable");
+		Test.Assert(ui.ReduceMotion);
 		Test.Assert(loaded.Find<EditorFontSettings>().FontPath == "/fonts/ui.ttf");
+	}
+
+	/// The UI section as the editor saved it before the look's inputs: the scale and axis views
+	/// only, under the section's identity and version.
+	private class LegacyUiSection : ISerializable
+	{
+		public float UiScale = 1.0f;
+		public bool AutoOrthographic = true;
+
+		public void Serialize(ISerializer ar)
+		{
+			BeginVersionedPayload(ar, EditorUiSettings.TypeId, EditorUiSettings.DataVersion);
+			ar.BeginObject();
+			SerializeValue(ar, "uiScale", ref UiScale);
+			SerializeValue(ar, "autoOrthographic", ref AutoOrthographic);
+			ar.EndObject();
+			EndVersionedPayload(ar);
+		}
+	}
+
+	/// A settings file from before the look's inputs reads through the store: what it has comes
+	/// back, the inputs it lacks are their defaults, and saved again it carries them.
+	[Test]
+	public static void AUiSectionSavedBeforeTheLooksInputsReadsWithThemAtTheirDefaults()
+	{
+		EditorSerializables.RegisterAll();
+		let factory = XmlSerializerFactory();
+		defer delete factory;
+		let buffer = scope Sedulous.Core.IO.MemoryStream();
+		{
+			let legacy = scope LegacyUiSection();
+			legacy.UiScale = 1.5f;
+			legacy.AutoOrthographic = false;
+			let writing = factory(buffer, .Write);
+			defer delete writing;
+			let archive = writing.Serializer;
+			Test.Assert(archive.IsSelfDescribing, "a self describing file has no format version to write");
+			uint32 count = 1;
+			archive.Key("sections");
+			archive.BeginArray(ref count);
+			archive.BeginObject();
+			archive.Key("typeName");
+			archive.Text(typeof(EditorUiSettings).GetFullName(.. scope .()));
+			archive.BeginFramedRegion();
+			archive.Key("payload");
+			archive.BeginObject();
+			legacy.Serialize(archive);
+			archive.EndObject();
+			archive.EndFramedRegion();
+			archive.EndObject();
+			archive.EndArray();
+			Test.Assert(archive.IsOk);
+			writing.Flush(buffer);
+		}
+		let text = scope String((char8*)buffer.Bytes.Ptr, buffer.Bytes.Length);
+		Test.Assert(!text.Contains("scheme") && !text.Contains("accent"), "written without the inputs");
+
+		buffer.Seek(0, .Begin);
+		let loaded = scope Settings();
+		Test.Assert(loaded.Load(buffer, factory) case .Ok);
+		Test.Assert(loaded.UnknownSectionCount == 0);
+		let ui = loaded.Find<EditorUiSettings>();
+		Test.Assert(ui != null, "read, not refused");
+		Test.Assert(Math.Abs(ui.UiScale - 1.5f) < 1e-5f);
+		Test.Assert(!ui.AutoOrthographic);
+		Test.Assert(ui.Scheme == "dark");
+		Test.Assert(ui.Accent == "#2f6fdf");
+		Test.Assert(ui.Density == "compact");
+		Test.Assert(!ui.ReduceMotion);
+
+		// Saved again, the inputs are in it and read back.
+		ui.Scheme.Set("light");
+		let again = scope Sedulous.Core.IO.MemoryStream();
+		Test.Assert(loaded.Save(again, factory) case .Ok);
+		again.Seek(0, .Begin);
+		let reloaded = scope Settings();
+		Test.Assert(reloaded.Load(again, factory) case .Ok);
+		let back = reloaded.Find<EditorUiSettings>();
+		Test.Assert((back != null) && (back.Scheme == "light") && (back.Accent == "#2f6fdf") && !back.AutoOrthographic);
 	}
 
 	/// The Game tab's preview resolutions: the common sizes seed once, a user's removal stays

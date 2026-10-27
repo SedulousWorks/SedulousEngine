@@ -11,8 +11,9 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.App.Tests;
 
 /// EditorWindow's look: the sheet a look makes from the editor's files, the density's sheet after
-/// the editor's so its sizes win, the user's accent as an input after both. And with no window or
-/// device it opens no interface, and what it is then asked does nothing.
+/// the editor's so its sizes win, the user's accent as an input after both; the look from the
+/// user's settings and back into them. And with no window or device it opens no interface, and
+/// what it is then asked does nothing.
 static class EditorWindowTests
 {
 	/// No shell, no graphics, no windows: a headless run.
@@ -67,6 +68,66 @@ static class EditorWindowTests
 		let comfortable = EditorWindow.SheetFor(resources, look, .. scope .());
 		Test.Assert(comfortable.Contains("--row: 32px"));
 		Test.Assert(comfortable.Contains("--accent-input: #0f8a7e"));
+	}
+
+	[Test]
+	public static void TheLookFromTheUsersSettingsTheDefaultsForWhatIsUnsetOrNamedWronglyAndBack()
+	{
+		let none = scope EditorLook();
+		none.Dark = false; // read over: none's defaults replace what it had
+		none.ReadFrom(null);
+		Test.Assert(none.Dark);
+		Test.Assert(none.Accent == "#2f6fdf");
+		Test.Assert(none.Density == "compact");
+		Test.Assert(!none.ReduceMotion);
+		Test.Assert(none.UiScale == 1.0f);
+
+		let ui = scope EditorUiSettings();
+		ui.Scheme.Set("light");
+		ui.Accent.Set("#0f8a7e");
+		ui.Density.Set("comfortable");
+		ui.ReduceMotion = true;
+		ui.UiScale = 9.0f; // past the range
+		let look = scope EditorLook();
+		look.ReadFrom(ui);
+		Test.Assert(!look.Dark);
+		Test.Assert(look.Accent == "#0f8a7e");
+		Test.Assert(look.Density == "comfortable");
+		Test.Assert(look.ReduceMotion);
+		Test.Assert(look.UiScale == EditorUiSettings.MaxUiScale);
+
+		ui.Accent.Set("red"); // no colour
+		ui.Density.Set("roomy"); // no sheet
+		look.ReadFrom(ui);
+		Test.Assert(look.Accent == "#2f6fdf");
+		Test.Assert(look.Density == "compact");
+		ui.Accent.Set("#0f8a7"); // one digit short
+		ui.Scheme.Set("sepia"); // not light: dark
+		look.ReadFrom(ui);
+		Test.Assert(look.Accent == "#2f6fdf");
+		Test.Assert(look.Dark);
+		ui.Accent.Set("#0F8A7E"); // either case
+		look.ReadFrom(ui);
+		Test.Assert(look.Accent == "#0F8A7E");
+
+		let stored = scope EditorUiSettings();
+		stored.AutoOrthographic = false;
+		let chosen = scope EditorLook();
+		chosen.Dark = false;
+		chosen.Accent.Set("#6d5bd8");
+		chosen.Density.Set("default");
+		chosen.ReduceMotion = true;
+		chosen.UiScale = 1.25f;
+		chosen.StoreInto(stored);
+		Test.Assert(stored.Scheme == "light");
+		Test.Assert(stored.Accent == "#6d5bd8");
+		Test.Assert(stored.Density == "default");
+		Test.Assert(stored.ReduceMotion);
+		Test.Assert(stored.UiScale == 1.25f);
+		Test.Assert(!stored.AutoOrthographic, "kept");
+		chosen.Dark = true;
+		chosen.StoreInto(stored);
+		Test.Assert(stored.Scheme == "dark");
 	}
 
 	[Test]
