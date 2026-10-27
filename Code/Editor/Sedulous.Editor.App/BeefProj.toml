@@ -193,10 +193,6 @@ Name = "ProjectSettingsDialog.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "ResourceRefEditor.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "SegmentedToggle.bf"
 
 [[ProjectFolder.Items]]

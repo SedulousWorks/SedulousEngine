@@ -7,12 +7,12 @@ namespace Sedulous.Editor.App;
 
 // The asset slot (Raptor's editor-gui spec, 5.2, layer 3), as the kit draws it: the referenced
 // asset's type glyph (its category's tint), its name, and its verbs: pick (the target; a click on
-// the name picks too), open, clear. An empty slot says "None" and keeps only pick. A verb shows
-// only when its owner wired it; open and clear need something referenced. It is a drop target for
-// an asset of a type it takes, naming why not over one it does not: a drop and a pick are the same
-// assignment.
+// the name picks too), open, reveal (in the assets browser), clear. An empty slot says "None" and
+// keeps only pick. A verb shows only when its owner wired it; open, reveal and clear need something
+// referenced. It is a drop target for an asset of a type it takes, naming why not over one it does
+// not: a drop and a pick are the same assignment.
 
-/// A reference to an asset, picked, dropped on, opened and cleared. Its looks are the sheet's
+/// A reference to an asset, picked, dropped on, opened, revealed and cleared. Its looks are the sheet's
 /// (`.slot`, `.slot-glyph`, `.slot-name`, `button.slot-button`, `.slot.empty`).
 class AssetPickerSlot : UIWidget
 {
@@ -25,10 +25,12 @@ class AssetPickerSlot : UIWidget
 	private Sedulous.GUI.Label mName;
 	private Sedulous.GUI.Button mPick;
 	private Sedulous.GUI.Button mOpen;
+	private Sedulous.GUI.Button mReveal;
 	private Sedulous.GUI.Button mClear;
 
 	private delegate void() mOnPick ~ delete _;
 	private delegate void() mOnOpen ~ delete _;
+	private delegate void() mOnReveal ~ delete _;
 	private delegate void() mOnClear ~ delete _;
 	private delegate void(Guid id) mOnDropped ~ delete _;
 	private List<String> mTypes = new .() ~ DeleteContainerAndItems!(_);
@@ -57,6 +59,11 @@ class AssetPickerSlot : UIWidget
 				if (mOnOpen != null)
 					mOnOpen();
 			});
+		mReveal = Verb("Editor/Icons/folder-open.svg", "Show in Assets", new [=this] () =>
+			{
+				if (mOnReveal != null)
+					mOnReveal();
+			});
 		mClear = Verb("Editor/Icons/close.svg", "Clear", new [=this] () =>
 			{
 				if (mOnClear != null)
@@ -79,6 +86,13 @@ class AssetPickerSlot : UIWidget
 	{
 		delete mOnOpen;
 		mOnOpen = open;
+		Show();
+	}
+
+	public void SetOnReveal(delegate void() reveal)
+	{
+		delete mOnReveal;
+		mOnReveal = reveal;
 		Show();
 	}
 
@@ -151,6 +165,7 @@ class AssetPickerSlot : UIWidget
 
 	public Sedulous.GUI.Button PickButton => mPick;
 	public Sedulous.GUI.Button OpenButton => mOpen;
+	public Sedulous.GUI.Button RevealButton => mReveal;
 	public Sedulous.GUI.Button ClearButton => mClear;
 	public Sedulous.GUI.Image GlyphImage => mGlyph;
 
@@ -256,6 +271,7 @@ class AssetPickerSlot : UIWidget
 		mGlyph.Displayed = mHasValue && mHasGlyph;
 		mPick.Displayed = mOnPick != null;
 		mOpen.Displayed = (mOnOpen != null) && mHasValue;
+		mReveal.Displayed = (mOnReveal != null) && mHasValue;
 		mClear.Displayed = (mOnClear != null) && mHasValue;
 	}
 

@@ -1,229 +1,226 @@
 using System;
 using System.Collections;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
+using Sedulous.Core;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-/// A property row over an AssetPickerSlot: the referenced asset's name, its thumbnail, and
-/// the pick, edit, clear, reveal and drop verbs.
-///
-/// The accepted asset types are a CONSTRUCTOR argument, so a row that names an asset cannot be
-/// built without being a drop target for that asset: AssetPickerSlot.cAnyAsset for a genuinely
-/// untyped field, AssetPickerSlot.cEntity for an entity reference (a hierarchy row drops on it).
-/// BindAsset and BindEntity wire every verb to one assignment, so a pick and a drop are the same
-/// write.
-class ResourceRefEditor : PropertyEditor
+// The inspector's asset reference (Raptor's editor-gui spec, 5.2, layer 4): the property grid's
+// editor for GUI.Toolkit's Reference kind, an asset slot. What may fill it is asked of the builders,
+// never listed here (ruling 19): the source asset types whose builder makes the type the reference
+// points at (EditorContext.SourceAssetTypesOf). Pick, drop and clear are one write, the grid's, so
+// one undo step; open and reveal show the asset. What it asks of the editor is a table of its own
+// (ResourceRefServices), so a test gives its own and the application fills it from its context.
+//
+// An entity reference is not this editor's: an EntityRef is no reference to an asset, and only a
+// scene names its entities, so it comes with the scene page's inspector.
+
+/// What a referenced asset shows: its name, its type's glyph and the class that tints it.
+class ResourceRefShown
 {
-	public delegate void() OnPick ~ delete _;
-	public delegate void() OnEdit ~ delete _;
-	public delegate void() OnClear ~ delete _;
-	public delegate void() OnReveal ~ delete _;
-	public delegate void(Guid id) OnAssignDropped ~ delete _;
-	public delegate void(StringView assetName, StringView typeName) OnRejectedDrop ~ delete _;
+	public String Name = new .() ~ delete _;
+	/// The glyph's image; empty: none.
+	public String Glyph = new .() ~ delete _;
+	/// Its category's class (a tint); empty: the plain colour.
+	public String GlyphClass = new .() ~ delete _;
+}
 
-	private String mValueText = new .() ~ delete _;
-	/// Borrowed, from EditorIcons.
-	private SVGDrawable mPreviewIcon = null;
-	private List<String> mAcceptedTypes = new .() ~ DeleteContainerAndItems!(_);
-	private AssetPickerSlot mSlot = null;
-	/// Set by BindAsset: the context names assets and supplies the thumbnails.
-	private EditorContext mContext = null;
-	/// A bound row's value state comes from its id, not its text.
-	private bool mBoundHasValue = false;
+/// What a reference row asks of the editor. Each is optional: one unset leaves its verb out. Each
+/// is owned, assigned once.
+class ResourceRefServices
+{
+	/// The asset types, by name, that may fill a reference to `target`, appended to `outTypes` (the
+	/// caller deletes them).
+	public delegate void(Type target, List<String> outTypes) AcceptedTypes ~ delete _;
+	/// What `id` names, into `outShown`; false when the project has no such asset (a dangling
+	/// reference).
+	public delegate bool(Guid id, ResourceRefShown outShown) Describe ~ delete _;
+	/// Opens a picker over `types` (empty: any); `chosen` assigns what it picks. OWNERSHIP of
+	/// `chosen` transfers: the picker deletes it once it has answered, or given up.
+	public delegate void(Span<String> types, delegate void(Guid id) chosen) Pick ~ delete _;
+	public delegate void(Guid id) Open ~ delete _;
+	public delegate void(Guid id) Reveal ~ delete _;
 
-	/// What a bound row shows for the nil id: "(none)", or what nil means for the field (the
-	/// material page's preview mesh shows its primitive shape).
-	public String EmptyText = new .("(none)") ~ delete _;
-
-	public this(StringView name, StringView valueText, StringView category, Span<StringView> acceptedTypes)
-		: base(name, category)
+	/// A table filled from the editor's context: the builders' types (SourceAssetTypesOf), the
+	/// project's names, the type icons, the context's open and reveal. The picker comes with the
+	/// small dialogs (layer 5). `context` and `icons` outlive it; the caller deletes it.
+	public static ResourceRefServices From(EditorContext context, EditorIcons icons)
 	{
-		mValueText.Set(valueText);
-		for (let t in acceptedTypes)
-			mAcceptedTypes.Add(new String(t));
-		if (!acceptedTypes.IsEmpty && (acceptedTypes[0] != AssetPickerSlot.cAnyAsset) && (acceptedTypes[0] != AssetPickerSlot.cEntity))
-			mPreviewIcon = EditorIcons.ForAssetType(acceptedTypes[0]);
-	}
-
-	public StringView ValueText => mValueText;
-	public Span<String> AcceptedTypes => mAcceptedTypes;
-	/// Null until the row is shown.
-	public AssetPickerSlot Slot => mSlot;
-
-	/// Wires pick, drop, clear, edit and reveal to one assignment through `context`:
-	/// - pick opens the asset picker filtered by the accepted types, and its choice is assigned;
-	/// - a drop of an accepted type is assigned, the same write; a refused one is reported;
-	/// - clear assigns the nil id;
-	/// - edit and reveal open and show the asset `current` names.
-	/// `current` and `assign` are CONSUMED. The row shows `current` from then on (Refresh), and
-	/// refreshes after every assignment, so `assign` must not destroy this row synchronously: a
-	/// write that rebuilds its grid defers the rebuild, as every grid here does.
-	public void BindAsset(EditorContext context, delegate Guid() current, delegate void(Guid id) assign)
-	{
-		mContext = context;
-		delete OnPick;
-		delete OnAssignDropped;
-		delete OnClear;
-		delete OnEdit;
-		delete OnReveal;
-		delete OnRejectedDrop;
-		delete mCurrent;
-		delete mAssign;
-		mCurrent = current;
-		mAssign = assign;
-		OnPick = new [=this]() =>
-		{
-			let ui = (mSlot != null) ? mSlot.Context : null;
-			if ((ui == null) || (mContext.Project == null))
-				return;
-			let names = scope List<StringView>();
-			for (let t in mAcceptedTypes)
+		let services = new ResourceRefServices();
+		services.AcceptedTypes = new [=context] (target, outTypes) =>
 			{
-				if (t != AssetPickerSlot.cAnyAsset)
-					names.Add(t);
-			}
-			let dialog = new AssetPickerDialog(mContext, names);
-			dialog.OnPicked = new [=this](picked) => { Assign(picked); };
-			dialog.Show(ui);
-		};
-		OnAssignDropped = new [=this](id) => { Assign(id); };
-		OnClear = new [=this]() => { Assign(.()); };
-		OnEdit = new [=this]() =>
-		{
-			let id = mCurrent();
-			if (!id.IsNil && (mContext.OpenAsset != null))
-				mContext.OpenAsset(id);
-		};
-		OnReveal = new [=this]() =>
-		{
-			let id = mCurrent();
-			if (!id.IsNil && (mContext.RevealAsset != null))
-				mContext.RevealAsset(id);
-		};
-		OnRejectedDrop = new [=this](assetName, typeName) =>
-		{
-			mContext.Notify(.Warning, AssetPickerSlot.RejectionText(assetName, typeName, mAcceptedTypes, "field", .. scope .()));
-		};
-		Refresh();
+				if (context.SourceAssetTypesOf == null)
+					return;
+				let assets = scope List<Type>();
+				context.SourceAssetTypesOf(target, assets);
+				for (let asset in assets)
+					outTypes.Add(asset.GetName(.. new String()));
+			};
+		services.Describe = new [=context, =icons] (id, outShown) =>
+			{
+				let project = context.Project;
+				let instance = (project != null) ? project.SourceDb.GetInstance(id) : null;
+				if (instance == null)
+					return false;
+				outShown.Name.Set(instance.Name);
+				// The instance names its type in full; the page registry knows the Beef type by it.
+				if (let type = context.Pages.ResolveType(instance.TypeName))
+				{
+					let icon = icons.For(type, "Asset");
+					outShown.Glyph.Set(icon.Source);
+					outShown.GlyphClass.Set(icon.Class);
+				}
+				return true;
+			};
+		services.Open = new [=context] (id) =>
+			{
+				if (context.OpenAsset != null)
+					context.OpenAsset(id);
+			};
+		services.Reveal = new [=context] (id) =>
+			{
+				if (context.RevealAsset != null)
+					context.RevealAsset(id);
+			};
+		return services;
 	}
+}
 
-	/// Wires an ENTITY reference the same way: `pick` opens the scene's entity picker (the
-	/// caller's, which assigns through AssignValue), a hierarchy row dropped on the slot is
-	/// assigned, clear assigns the nil id, and `nameFor` names the entity. Build the row with
-	/// AssetPickerSlot.cEntity as its accepted type. All four are CONSUMED; the same contract
-	/// on `assign` as BindAsset.
-	public void BindEntity(delegate Guid() current, delegate void(Guid id) assign,
-		delegate void(Guid id, String outName) nameFor, delegate void() pick)
+/// A Reference property's row: an AssetPickerSlot over the asset its Guid names.
+class ResourceRefEditor : SingleControlEditor
+{
+	/// What a reference to an asset the project lacks shows: still cleared, still replaced.
+	public const String cMissingText = "(missing)";
+
+	/// Borrowed: the registrar's, outliving the editor.
+	private ResourceRefServices mServices;
+	private AssetPickerSlot mSlot ~ _.ReleaseRef();
+	private List<String> mTypes = new .() ~ DeleteContainerAndItems!(_);
+	private Guid mCurrent = .Empty;
+	private bool mMixed = false;
+
+	/// `services` outlives the editor (the registrar's).
+	public this(ResourceRefServices services)
 	{
-		mContext = null;
-		delete OnPick;
-		delete OnAssignDropped;
-		delete OnClear;
-		delete OnEdit;
-		delete OnReveal;
-		delete OnRejectedDrop;
-		delete mCurrent;
-		delete mAssign;
-		delete mNameFor;
-		OnEdit = null;
-		OnReveal = null;
-		OnRejectedDrop = null;
-		mCurrent = current;
-		mAssign = assign;
-		mNameFor = nameFor;
-		OnPick = pick;
-		OnAssignDropped = new [=this](id) => { Assign(id); };
-		OnClear = new [=this]() => { Assign(.()); };
-		Refresh();
-	}
-
-	/// Assigns through the bound write, as a pick would: for a caller's own picker.
-	public void AssignValue(Guid id) => Assign(id);
-
-	/// Re-reads the bound reference: its name, and an asset's thumbnail when the context has
-	/// one.
-	public void Refresh()
-	{
-		if ((mCurrent == null) || ((mContext == null) && (mNameFor == null)))
-			return;
-		let id = mCurrent();
-		mBoundHasValue = !id.IsNil;
-		if (id.IsNil)
-			SetValueText(EmptyText);
-		else if (mNameFor != null)
-			SetValueText(mNameFor(id, .. scope .()));
-		else
-			SetValueText(mContext.AssetNameFor(id, .. scope .()));
-		if (mSlot != null)
-			mSlot.SetValue(mValueText, HasValue);
-		if (mContext != null)
-			SetPreviewThumbnail((!id.IsNil && (mContext.Thumbnails != null)) ? mContext.Thumbnails.Get(id) : null);
-	}
-
-	public void SetValueText(StringView text)
-	{
-		if (mValueText == text)
-			return;
-		mValueText.Set(text);
-		if (mSlot != null)
-			mSlot.SetValue(mValueText, HasValue);
-	}
-
-	public void SetPreviewIcon(SVGDrawable icon) => mPreviewIcon = icon;
-
-	/// `thumbnail` is BORROWED; the slot retains its own reference.
-	public void SetPreviewThumbnail(Drawable thumbnail)
-	{
-		if (mSlot == null)
-			return;
-		if (thumbnail != null)
-			thumbnail.AddRef();
-		mSlot.SetPreviewThumbnail(thumbnail);
-	}
-
-	public override void RefreshView() => Refresh();
-
-	protected override View CreateEditorView()
-	{
+		mServices = services;
+		AddClass("reference");
 		mSlot = new AssetPickerSlot();
-		if (OnPick != null)
-			mSlot.OnPick = new [=this]() => { OnPick(); };
-		if (OnEdit != null)
-			mSlot.OnEdit = new [=this]() => { OnEdit(); };
-		if (OnClear != null)
-			mSlot.OnClear = new [=this]() => { OnClear(); };
-		if (OnReveal != null)
-			mSlot.OnReveal = new [=this]() => { OnReveal(); };
-		if (OnAssignDropped != null)
-			mSlot.OnAssignDropped = new [=this](id) => { OnAssignDropped(id); };
-		if (OnRejectedDrop != null)
-			mSlot.OnRejectedDrop = new [=this](assetName, typeName) => { OnRejectedDrop(assetName, typeName); };
-		let types = scope List<StringView>();
-		for (let t in mAcceptedTypes)
-			types.Add(t);
-		mSlot.SetAcceptedTypes(types);
-		mSlot.SetPreviewIcon(mPreviewIcon);
-		mSlot.SetValue(mValueText, HasValue);
-		Refresh();
-		return mSlot;
+		Hold(mSlot);
 	}
 
-	private delegate Guid() mCurrent ~ delete _;
-	private delegate void(Guid id) mAssign ~ delete _;
-	/// Set by BindEntity: names what the id refers to.
-	private delegate void(Guid id, String outName) mNameFor ~ delete _;
+	/// The editor for every Reference property `registry` shows; `services` outlives it.
+	public static void Register(PropertyEditorRegistry registry, ResourceRefServices services)
+	{
+		registry.RegisterKind(.Reference, new [=services] () => new ResourceRefEditor(services));
+	}
 
+	public AssetPickerSlot Slot => mSlot;
+	/// What it references: nil for none, or when the objects differ.
+	public Guid Current => mCurrent;
+
+	protected override void OnBind(PropertyInfo info, PropertyValue value)
+	{
+		mCurrent = .Empty;
+		mMixed = value.Mixed;
+		if (!mMixed)
+		{
+			var text = value.Value.AsString;
+			text.Trim();
+			if (!text.IsEmpty && (Guid.Parse(text) case .Ok(let id)))
+				mCurrent = id;
+		}
+		ClearAndDeleteItems(mTypes);
+		if ((info.ReferenceType != null) && (mServices.AcceptedTypes != null))
+			mServices.AcceptedTypes(info.ReferenceType, mTypes);
+		let types = scope List<StringView>();
+		for (let type in mTypes)
+			types.Add(type);
+		mSlot.SetAcceptedTypes(types);
+		Wire();
+		Show();
+	}
+
+	/// Its verbs, as far as the services and the property allow: a read-only one only opens (and
+	/// reveals, which changes nothing either); over objects that differ, there is no one asset to
+	/// open or reveal.
+	private void Wire()
+	{
+		let writes = !IsReadOnly;
+		if (writes && (mServices.Pick != null))
+			mSlot.SetOnPick(new [=this] () => { Pick(); });
+		else
+			mSlot.SetOnPick(null);
+		if (writes)
+		{
+			mSlot.SetOnClear(new [=this] () => { Assign(.Empty); });
+			mSlot.SetOnDropped(new [=this] (id) => { Assign(id); });
+		}
+		else
+		{
+			mSlot.SetOnClear(null);
+			mSlot.SetOnDropped(null);
+		}
+		if ((mServices.Open != null) && !mMixed)
+			mSlot.SetOnOpen(new [=this] () => { mServices.Open(mCurrent); });
+		else
+			mSlot.SetOnOpen(null);
+		if ((mServices.Reveal != null) && !mMixed)
+			mSlot.SetOnReveal(new [=this] () => { mServices.Reveal(mCurrent); });
+		else
+			mSlot.SetOnReveal(null);
+	}
+
+	private void Show()
+	{
+		if (mMixed)
+		{
+			mSlot.SetGlyph("");
+			mSlot.SetValue(MixedValueText());
+			return;
+		}
+		if (mCurrent.IsNil)
+		{
+			mSlot.SetGlyph("");
+			mSlot.SetValue("");
+			return;
+		}
+		let shown = scope ResourceRefShown();
+		if ((mServices.Describe != null) && mServices.Describe(mCurrent, shown))
+		{
+			mSlot.SetGlyph(shown.Glyph, shown.GlyphClass);
+			mSlot.SetValue(shown.Name);
+		}
+		else
+		{
+			mSlot.SetGlyph("");
+			mSlot.SetValue(cMissingText); // still cleared, still replaced
+		}
+	}
+
+	/// The picker answers later, when the row may show another property (rows are pooled): its
+	/// choice lands only on the property it was opened for. The row is held until the picker lets
+	/// its answer go.
+	private void Pick()
+	{
+		let self = this;
+		let path = new String(Path);
+		AddRef();
+		mServices.Pick(mTypes, new [=self, =path] (id) =>
+			{
+				if (self.Path == path)
+					self.Assign(id);
+			} ~ { self.ReleaseRef(); delete path; });
+	}
+
+	/// One write through the grid: a pick, a drop and a clear alike.
 	private void Assign(Guid id)
 	{
-		if (mAssign == null)
-			return;
-		mAssign(id);
-		Refresh();
+		AddRef(); // the write may rebind the row
+		defer ReleaseRef();
+		let text = scope String();
+		if (!id.IsNil)
+			id.ToString(text);
+		ApplyEdit(PropertyWrite(Sedulous.GUI.Variant(text)));
 	}
-
-	/// A bound row has a value when its id is set (a "(missing)" one can still be cleared); an
-	/// unbound row reads its text.
-	private bool HasValue => (mCurrent != null) ? mBoundHasValue : (mValueText != "(none)");
 }

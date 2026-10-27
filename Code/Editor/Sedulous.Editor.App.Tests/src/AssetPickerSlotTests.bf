@@ -18,10 +18,10 @@ class SlotPlainAsset
 {
 }
 
-/// The asset slot: a verb shows once wired (open and clear only with something referenced), an
+/// The asset slot: a verb shows once wired (open, reveal and clear only with something referenced), an
 /// empty slot says None, each verb runs once per click, a click on the slot picks, and a dragged
 /// asset of a type it takes is dropped on it while one it does not take is refused, saying why.
-/// Then what Sedulous adds so each behaviour has a test: open and clear unwired over a value, the
+/// Then what Sedulous adds so each behaviour has a test: open, reveal and clear unwired over a value, the
 /// empty look coming back, a slot with no drop callback no target, another payload not refused,
 /// the any-asset wildcard, the glyph following the type, and the kept helpers (Accepts and
 /// RejectionText) for an owner's own checks and toasts.
@@ -104,7 +104,7 @@ class AssetPickerSlotTests
 	}
 
 	[Test]
-	public static void TheVerbsShowOnceWiredOpenAndClearOnlyWithSomethingReferencedEmptySaysNone()
+	public static void TheVerbsShowOnceWiredOpenRevealAndClearOnlyWithSomethingReferencedEmptySaysNone()
 	{
 		let slot = new AssetPickerSlot();
 		defer slot.ReleaseRef();
@@ -114,12 +114,15 @@ class AssetPickerSlotTests
 		Test.Assert(!slot.PickButton.Displayed);
 		int picks = 0;
 		int opens = 0;
+		int reveals = 0;
 		int clears = 0;
 		slot.SetOnPick(new [&] () => { picks++; });
 		slot.SetOnOpen(new [&] () => { opens++; });
+		slot.SetOnReveal(new [&] () => { reveals++; });
 		slot.SetOnClear(new [&] () => { clears++; });
 		Test.Assert(slot.PickButton.Displayed);
 		Test.Assert(!slot.OpenButton.Displayed, "nothing to open yet");
+		Test.Assert(!slot.RevealButton.Displayed);
 		Test.Assert(!slot.ClearButton.Displayed);
 
 		slot.SetValue("Wood");
@@ -127,41 +130,50 @@ class AssetPickerSlotTests
 		Test.Assert(slot.HasValue);
 		Test.Assert(slot.ShownName == "Wood");
 		Test.Assert(slot.OpenButton.Displayed);
+		Test.Assert(slot.RevealButton.Displayed);
 		Test.Assert(slot.ClearButton.Displayed);
 
 		Test.Assert(slot.PickButton.HandleActivate());
 		Test.Assert(slot.OpenButton.HandleActivate());
+		Test.Assert(slot.RevealButton.HandleActivate());
 		Test.Assert(slot.ClearButton.HandleActivate());
 		Test.Assert(picks == 1, "the pick button's click is its own, not the slot's as well");
 		Test.Assert(opens == 1);
+		Test.Assert(reveals == 1, "reveal runs its own callback, not open's");
 		Test.Assert(clears == 1);
 	}
 
-	/// Something referenced is not enough: open and clear wait for their owner too.
+	/// Something referenced is not enough: open, reveal and clear wait for their owner too.
 	[Test]
-	public static void OpenAndClearUnwiredStayHiddenOverAValue()
+	public static void OpenRevealAndClearUnwiredStayHiddenOverAValue()
 	{
 		let slot = new AssetPickerSlot();
 		defer slot.ReleaseRef();
 		slot.SetValue("Wood");
 		Test.Assert(!slot.PickButton.Displayed);
 		Test.Assert(!slot.OpenButton.Displayed);
+		Test.Assert(!slot.RevealButton.Displayed);
 		Test.Assert(!slot.ClearButton.Displayed);
 		slot.SetOnOpen(new () => { });
 		Test.Assert(slot.OpenButton.Displayed);
+		Test.Assert(!slot.RevealButton.Displayed, "each verb by its own wiring");
 		Test.Assert(!slot.ClearButton.Displayed, "each verb by its own wiring");
+		slot.SetOnReveal(new () => { });
+		Test.Assert(slot.RevealButton.Displayed);
+		Test.Assert(!slot.ClearButton.Displayed);
 		slot.SetOnClear(new () => { });
 		Test.Assert(slot.ClearButton.Displayed);
 	}
 
-	/// Cleared, it says None again, looks empty and hides open and clear.
+	/// Cleared, it says None again, looks empty and hides open, reveal and clear.
 	[Test]
-	public static void ClearedItSaysNoneAgainAndHidesOpenAndClear()
+	public static void ClearedItSaysNoneAgainAndHidesOpenRevealAndClear()
 	{
 		let slot = new AssetPickerSlot();
 		defer slot.ReleaseRef();
 		slot.SetOnPick(new () => { });
 		slot.SetOnOpen(new () => { });
+		slot.SetOnReveal(new () => { });
 		slot.SetOnClear(new () => { });
 		slot.SetValue("Wood");
 		slot.SetValue("");
@@ -170,6 +182,7 @@ class AssetPickerSlotTests
 		Test.Assert(!slot.HasValue);
 		Test.Assert(slot.PickButton.Displayed, "an empty slot keeps pick");
 		Test.Assert(!slot.OpenButton.Displayed);
+		Test.Assert(!slot.RevealButton.Displayed);
 		Test.Assert(!slot.ClearButton.Displayed);
 	}
 
