@@ -24,7 +24,7 @@ namespace Sedulous.Editor.App;
 /// The editor as a runtime IApplication. It keeps the lifecycle alone (Raptor's editor-gui spec,
 /// 5.1, layer 3): it configures the engine, starts its parts in order, hands each frame to them
 /// and shuts them down. The parts are their own files: the window and its GUI (EditorWindow), its
-/// dock (EditorDock), the pages in it (EditorPages), its menu bar (ActionMenuBar) and keys (ActionShortcuts), the open project (EditorSession), export
+/// dock (EditorDock), the Console in it (LogView), the pages in it (EditorPages), its menu bar (ActionMenuBar) and keys (ActionShortcuts), the open project (EditorSession), export
 /// (EditorExport), asset creation (EditorAssetCreation), the MCP host (EditorMcpService), the
 /// project manager over the window while no project is open (ProjectManagerMode) and the
 /// editor-wide actions (EditorAppActions). Underneath are the EditorContext and the services from Editor.Core and
@@ -87,6 +87,11 @@ class EditorApplication : IApplication
 	private EditorPreferencesDialog mPreferences = null ~ delete _;
 	/// The Project panel while a project is open (made with its markup when one opens).
 	private ProjectHomeView mHome = null ~ delete _;
+	/// The Console panel's content, made with the dock.
+	private LogView mConsole = null ~ delete _;
+	/// The last log entry the Console took.
+	private uint64 mLogSequence = 0;
+	/// Started with the editor: the time each line the Console takes shows.
 	private EditorExport mExport = null ~ delete _;
 	private EditorAssetCreation mCreation ~ delete _;
 	private EditorMcpService mMcp = null ~ delete _;
@@ -492,8 +497,8 @@ class EditorApplication : IApplication
 		mEmbeddedApp.OnStartup(mEmbeddedHost);
 	}
 
-	/// The dock in the frame: the shared panels, their contents the window's markup (Assets and
-	/// Console a line each until their contents port, X4).
+	/// The dock in the frame: the shared panels, their contents the window's markup (Assets a
+	/// line until its content ports, X4), the Console the log.
 	private void OpenDock()
 	{
 		let into = mWindow.FindById("frame-dock");
@@ -505,8 +510,28 @@ class EditorApplication : IApplication
 		let contents = new EditorDockContents();
 		contents.Welcome = new () => mWindow.LoadMarkup("Editor/Welcome.gml");
 		contents.Assets = Placeholder("The asset browser is not on the new interface yet.");
-		contents.Console = Placeholder("The console is not on the new interface yet.");
+		mConsole = new LogView(mWindow.LoadMarkup(LogView.cMarkupPath));
+		mConsole.SetOnCopied(new (lines) => { mContext.Notify(.Success, (lines == 1) ? "Copied 1 log line" : scope:: $"Copied {lines} log lines"); });
+		contents.Console = new () =>
+			{
+				let content = mConsole.Content;
+				if (content != null)
+					content.AddRef(); // the dock's
+				return content;
+			};
 		mDock.Open(into, mWindow.Host, contents);
+	}
+
+	/// The log's new lines into the Console, once a frame on the main thread.
+	private void DrainLog()
+	{
+		if ((mConsole == null) || (mConfig.LogBuffer == null))
+			return;
+		let entries = scope List<EditorLogEntry>();
+		defer { ClearAndDeleteItems!(entries); }
+		mLogSequence = mConfig.LogBuffer.CollectSince(mLogSequence, entries);
+		for (let entry in entries)
+			mConsole.AddEntry(entry.Level, entry.Category, entry.Message, entry.Time);
 	}
 
 	/// A panel's content until its own ports: a line saying so. The caller owns the hook.
@@ -693,6 +718,7 @@ class EditorApplication : IApplication
 			resources.Pump(); // async loads finish
 			resources.CollectGarbage(); // products a hot reload replaced go
 		}
+		DrainLog();
 		mWindow.Update(dt);
 		mPages.Update(host, dt); // after the GUI laid out: viewport rects are current
 		if (mHome != null)
@@ -862,6 +888,7 @@ class EditorApplication : IApplication
 		DeleteAndNullify!(mMenus); // the bar left empty while the window's tree holds it
 		DeleteAndNullify!(mShortcuts); // its keys and the root's handlers, while both are there
 		mDock.Close(); // its floats' windows, then the GUI before the device goes
+		DeleteAndNullify!(mConsole); // its list let go, the dock having let go of its content
 		mWindow.Close();
 		if (mStarted)
 		{

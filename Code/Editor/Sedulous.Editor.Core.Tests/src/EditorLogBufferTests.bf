@@ -27,6 +27,21 @@ static class EditorLogBufferTests
 		Test.Assert(all[1].Category.IsEmpty && all[1].Message.EndsWith("file.png"));
 		Test.Assert((all[2].Category == "Scene.Loader") && (all[2].Message == "not: a category") && (all[2].Level == .Error));
 		Test.Assert(buffer.LatestSequence == 3);
+		// Each stamped with its time since the buffer was made, in order, and the copies carry it.
+		Test.Assert(all[0].Time >= TimeSpan(0));
+		Test.Assert((all[1].Time >= all[0].Time) && (all[2].Time >= all[1].Time));
+		{
+			// The clock moves: a line written later is stamped later, and the copy says so.
+			let timed = scope EditorLogBuffer();
+			timed.Write(.Information, "early");
+			System.Threading.Thread.Sleep(20);
+			timed.Write(.Information, "late");
+			let stamped = scope List<EditorLogEntry>();
+			defer { ClearAndDeleteItems(stamped); }
+			timed.CollectSince(0, stamped);
+			Test.Assert(stamped.Count == 2);
+			Test.Assert(stamped[1].Time - stamped[0].Time >= TimeSpan.FromMilliseconds(15));
+		}
 
 		let newer = scope List<EditorLogEntry>();
 		defer { ClearAndDeleteItems(newer); }

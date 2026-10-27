@@ -83,10 +83,6 @@ Name = "ImportPlanViewTests.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "LogViewTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "PageToolbarTests.bf"
 
 [[ProjectFolder.Items]]

@@ -296,6 +296,11 @@ listview::selection, treeview::selection, tableview::selection { border-radius: 
 .log { flex-grow: 1; background-color: var(--surface); }
 .log-row { flex-direction: row; column-gap: var(--space-m); padding: 0 var(--space-m); align-items: center; }
 .log-time { color: var(--text-disabled); font-size: var(--font-small); }
+.log-text { flex-grow: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; }
+.log-row.debug > .log-text { color: var(--text-dim); }
+.log-row.warning > .log-text { color: var(--warning); }
+.log-row.error > .log-text { color: var(--danger); }
+.console-empty { color: var(--text-dim); padding: var(--space-l); }
 
 /* === The property grid === */
 /* The rows inset from the right as the panel's bars are, so an editor's edge lines up with the

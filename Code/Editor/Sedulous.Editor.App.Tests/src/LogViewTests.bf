@@ -1,152 +1,238 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Core.Logging;
-using Sedulous.UI;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// Headless: entry accumulation with category-prefixed text, bucket filtering (Trace and
-/// Debug fold, Error and Critical fold), the entry cap, Clear, and copying a multi-row
-/// selection.
-static class LogViewTests
+/// The Console over its markup (Data/Editor/Console.gml): lines with their category, the levels'
+/// chips (Info holding trace and debug, Error holding critical) with their counts showing and
+/// hiding their lines, the search, the cap trimming the oldest, Clear, the empty line, a selection
+/// kept by entry through a trim and copied oldest first, and each line's time. Then what Sedulous
+/// adds so each behaviour has a test: the search typed into its field and its x, a selection kept
+/// through a filter for the lines still shown, rows picked out of order and ranges grown with
+/// Shift, a copy announced with its count, each row's time and level colour, the newest line
+/// followed until the user scrolls up, and the list's menu.
+class LogViewTests
 {
-	[Test]
-	public static void EntriesAccumulateWithCategoryPrefixedBucketedRows()
+	/// The Console in a GUI of its own, 800 by 400, with a clipboard the test reads.
+	private class ConsoleBed
 	{
-		let view = new LogView();
-		defer view.ReleaseRef();
-		view.AddEntry(.Information, "Editor", "opened project");
-		view.AddEntry(.Trace, "RHI", "trace detail");
-		view.AddEntry(.Critical, "RHI", "device lost");
+		public SceneRoot Root;
+		public LauncherClipboard Clipboard = new .() ~ delete _;
+		public LogView View;
 
-		Test.Assert(view.EntryCount == 3);
-		Test.Assert(view.VisibleEntryCount == 3);
-		Test.Assert(view.VisibleEntryText(0) == "[Editor] opened project");
+		public this()
+		{
+			let context = new GUIContext();
+			Root = new SceneRoot(context);
+			context.ReleaseRef(); // the root's keeps it
+			Root.Size = .(800.0f, 400.0f);
+			Root.EventDispatcher.Clipboard = Clipboard;
+			View = new LogView(PagesBed.LoadMarkup(LogView.cMarkupPath));
+			Test.Assert(View.Content != null);
+			View.Content.EditLayoutStyle(scope (s) =>
+				{
+					s.Width = LayoutLength.Px(800.0f);
+					s.Height = LayoutLength.Px(400.0f);
+				});
+			Root.AddChild(View.Content);
+		}
 
-		Test.Assert(LogBucket.Of(.Trace) == .Debug);
-		Test.Assert(LogBucket.Of(.Debug) == .Debug);
+		public ~this()
+		{
+			DeleteAndNullify!(View); // the list let go while the tree holds it
+			Root.EventDispatcher.Clipboard = null;
+			Root.ReleaseRef();
+		}
+
+		public ListView List => View.List;
+
+		public Sedulous.GUI.Button Chip(StringView id) => View.Content.FindElement(id) as Sedulous.GUI.Button;
+
+		public Sedulous.GUI.Label Empty => View.Content.FindElement("console-empty") as Sedulous.GUI.Label;
+
+		public bool Press(KeyCode key, uint32 modifiers = 0) => Root.EventDispatcher.InjectKeyDown((uint32)key, modifiers);
+
+		/// The list a fixed 800 by `height`, so it scrolls and realises its rows; laid out.
+		public void SizeList(float height)
+		{
+			List.EditLayoutStyle(scope (s) =>
+				{
+					s.Width = LayoutLength.Px(800.0f);
+					s.Height = LayoutLength.Px(height);
+				});
+			Layout();
+		}
+
+		public void Layout()
+		{
+			Root.UpdateLayout();
+			Root.UpdateLayout();
+		}
+	}
+
+	[Test]
+	public static void LinesWithTheirCategoryTheLevelsFoldedIntoThreeChipsWithTheirCounts()
+	{
+		let bed = scope ConsoleBed();
+		Test.Assert(bed.Empty.Displayed, "nothing yet");
+		Test.Assert(bed.Empty.Text == "No messages yet.");
+		bed.View.AddEntry(.Information, "Editor", "opened project");
+		bed.View.AddEntry(.Trace, "RHI", "trace detail");
+		bed.View.AddEntry(.Critical, "RHI", "device lost");
+		bed.View.AddEntry(.Warning, "", "no category");
+		Test.Assert(bed.View.EntryCount == 4);
+		Test.Assert(bed.View.ShownCount == 4);
+		Test.Assert(bed.View.ShownText(0) == "[Editor] opened project");
+		Test.Assert(bed.View.ShownText(3) == "no category");
+		Test.Assert(!bed.Empty.Displayed);
+
+		Test.Assert(LogBucket.Of(.Trace) == .Info);
+		Test.Assert(LogBucket.Of(.Debug) == .Info);
 		Test.Assert(LogBucket.Of(.Information) == .Info);
 		Test.Assert(LogBucket.Of(.Warning) == .Warning);
 		Test.Assert(LogBucket.Of(.Error) == .Error);
 		Test.Assert(LogBucket.Of(.Critical) == .Error);
+		Test.Assert(bed.View.CountOf(.Info) == 2);
+		Test.Assert(bed.View.CountOf(.Warning) == 1);
+		Test.Assert(bed.Chip("console-info").Text == "Info 2");
+		Test.Assert(bed.Chip("console-warnings").Text == "Warnings 1");
+		Test.Assert(bed.Chip("console-errors").Text == "Errors 1");
 	}
 
 	[Test]
-	public static void BucketFiltersHideAndReshowEntries()
+	public static void AChipHidesAndShowsItsLinesInTheirOrderTheSearchNarrowsThem()
 	{
-		let view = new LogView();
-		defer view.ReleaseRef();
-		view.AddEntry(.Information, "A", "info");
-		view.AddEntry(.Warning, "A", "warn");
-		view.AddEntry(.Error, "A", "error");
+		let bed = scope ConsoleBed();
+		bed.View.AddEntry(.Information, "A", "info");
+		bed.View.AddEntry(.Warning, "A", "warn");
+		bed.View.AddEntry(.Error, "A", "error");
 
-		view.SetBucketVisible(.Warning, false);
-		Test.Assert(view.EntryCount == 3);
-		Test.Assert(view.VisibleEntryCount == 2);
-		Test.Assert(view.VisibleEntryText(1) == "[A] error");
+		let warnings = bed.Chip("console-warnings");
+		Test.Assert(warnings.HasClass("checked"));
+		Test.Assert(warnings.HandleActivate()); // off
+		Test.Assert(!bed.View.IsBucketVisible(.Warning));
+		Test.Assert(!warnings.HasClass("checked"));
+		Test.Assert(bed.View.ShownCount == 2);
+		Test.Assert(bed.View.ShownText(1) == "[A] error");
+		bed.View.AddEntry(.Warning, "A", "warn2"); // hidden while its chip is off
+		Test.Assert(bed.View.ShownCount == 2);
+		Test.Assert(bed.View.CountOf(.Warning) == 2, "counted though hidden");
+		Test.Assert(warnings.HandleActivate()); // on again: in order
+		Test.Assert(warnings.HasClass("checked"));
+		Test.Assert(bed.View.ShownCount == 4);
+		Test.Assert(bed.View.ShownText(1) == "[A] warn");
+		Test.Assert(bed.View.ShownText(3) == "[A] warn2");
+		// A call moves the chip too.
+		bed.View.SetBucketVisible(.Error, false);
+		Test.Assert(!bed.Chip("console-errors").HasClass("checked"));
+		bed.View.SetBucketVisible(.Error, true);
 
-		// Entries added while filtered out stay hidden.
-		view.AddEntry(.Warning, "A", "warn2");
-		Test.Assert(view.VisibleEntryCount == 2);
-
-		// They reappear, in order, when the bucket is reshown.
-		view.SetBucketVisible(.Warning, true);
-		Test.Assert(view.VisibleEntryCount == 4);
-		Test.Assert(view.VisibleEntryText(1) == "[A] warn");
-		Test.Assert(view.VisibleEntryText(3) == "[A] warn2");
+		bed.View.SetSearch("WARN");
+		Test.Assert(bed.View.ShownCount == 2);
+		bed.View.SetSearch("[a]"); // the category is part of a line
+		Test.Assert(bed.View.ShownCount == 4);
+		bed.View.SetSearch("nowhere");
+		Test.Assert(bed.View.ShownCount == 0);
+		Test.Assert(bed.Empty.Displayed && (bed.Empty.Text == "No line matches."));
+		Test.Assert((bed.View.Content.FindElement("console-clear-search") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert(bed.View.ShownCount == 4);
 	}
 
 	[Test]
-	public static void EntryCapTrimsOldestAndClearEmpties()
+	public static void TheCapTrimsTheOldestASelectionKeptByEntryClearEmptiesIt()
 	{
-		let view = new LogView();
-		defer view.ReleaseRef();
-		view.MaxEntries = 3;
-		view.AddEntry(.Information, "A", "one");
-		view.AddEntry(.Information, "A", "two");
-		view.AddEntry(.Information, "A", "three");
-		view.AddEntry(.Information, "A", "four");
+		let bed = scope ConsoleBed();
+		for (int i < LogView.cMaxEntries)
+			bed.View.AddEntry(.Information, "N", scope $"line {i}");
+		let list = bed.List;
+		list.SelectedItem = 10; // "line 10"
+		bed.View.AddEntry(.Information, "N", "one more");
+		Test.Assert(bed.View.EntryCount == LogView.cMaxEntries);
+		Test.Assert(bed.View.ShownText(0) == "[N] line 1");
+		Test.Assert(list.IsItemSelected(9), "the same line, one up");
+		Test.Assert(bed.View.SelectedText(.. scope .()) == "[N] line 10");
 
-		Test.Assert(view.EntryCount == 3);
-		Test.Assert(view.VisibleEntryText(0) == "[A] two");
-		Test.Assert(view.VisibleEntryText(2) == "[A] four");
-
-		view.Clear();
-		Test.Assert(view.EntryCount == 0);
-		Test.Assert(view.VisibleEntryCount == 0);
+		Test.Assert((bed.View.Content.FindElement("console-clear") as Sedulous.GUI.Button).HandleActivate());
+		Test.Assert(bed.View.EntryCount == 0);
+		Test.Assert(bed.View.ShownCount == 0);
+		Test.Assert(bed.View.CountOf(.Info) == 0);
+		Test.Assert(bed.Chip("console-info").Text == "Info");
+		Test.Assert(bed.Empty.Displayed && (bed.Empty.Text == "No messages yet."));
 	}
 
-	private class TestClipboard : IClipboard
+	/// A line rolling off the cap leaves its level's count.
+	[Test]
+	public static void ALineTrimmedLeavesItsLevelsCount()
 	{
-		public String Stored = new .() ~ delete _;
-
-		public Result<void> GetText(String outText)
-		{
-			outText.Set(Stored);
-			return .Ok;
-		}
-
-		public Result<void> SetText(StringView text)
-		{
-			Stored.Set(text);
-			return .Ok;
-		}
-
-		public bool HasText => !Stored.IsEmpty;
-	}
-
-	private static void Press(ListView list, KeyCode key, KeyModifiers modifiers)
-	{
-		let e = scope KeyEventArgs();
-		e.Set(key, modifiers, false);
-		list.OnKeyDown(e);
-		Test.Assert(e.Handled);
+		let bed = scope ConsoleBed();
+		bed.View.AddEntry(.Error, "A", "e1");
+		for (int i < LogView.cMaxEntries - 1)
+			bed.View.AddEntry(.Information, "N", "line");
+		Test.Assert(bed.View.CountOf(.Error) == 1);
+		bed.View.AddEntry(.Information, "N", "line");
+		Test.Assert(bed.View.CountOf(.Error) == 0);
+		Test.Assert(bed.Chip("console-errors").Text == "Errors");
+		Test.Assert(bed.View.CountOf(.Info) == LogView.cMaxEntries);
+		Test.Assert(bed.Chip("console-info").Text == "Info 1000");
 	}
 
 	[Test]
-	public static void SelectedRowsCopyOnePerLineInOrder()
+	public static void TheSelectedLinesCopiedOldestFirstOnePerLineCtrlCOnTheList()
 	{
-		let ui = scope UIContext();
-		let clipboard = scope TestClipboard();
-		ui.SetClipboard(clipboard);
-		let root = new RootView();
-		defer root.ReleaseRef();
-		root.ViewportSize = .(800, 600);
-		ui.AddRootView(root);
-		let view = new LogView();
-		root.AddView(view);
+		let bed = scope ConsoleBed();
+		bed.View.AddEntry(.Information, "A", "first");
+		bed.View.AddEntry(.Warning, "B", "second");
+		bed.View.AddEntry(.Error, "C", "third");
+		int copied = 0;
+		bed.View.SetOnCopied(new [&](lines) => { copied = lines; });
+		let list = bed.List;
+		list.SelectAll();
+		bed.View.CopySelection();
+		Test.Assert(bed.Clipboard.Held == "[A] first\n[B] second\n[C] third");
+		Test.Assert(copied == 3);
 
-		view.AddEntry(.Information, "A", "one");
-		view.AddEntry(.Warning, "A", "two");
-		view.AddEntry(.Error, "A", "three");
+		list.ClearSelection();
+		list.SelectedItem = 2;
+		Test.Assert(list.FocusElement());
+		Test.Assert(bed.Press(.C, KeyModCtrl));
+		Test.Assert(bed.Clipboard.Held == "[C] third");
 
-		// Several rows, picked out of order, copy oldest first.
-		Test.Assert(view.List.Selection.Mode == .Multiple);
-		view.List.Selection.Toggle(2);
-		view.List.Selection.Toggle(0);
-		Press(view.List, .C, .Ctrl);
-		Test.Assert(clipboard.Stored == "[A] one\n[A] three");
+		// Rows picked out of order copy oldest first: Ctrl moves the keyboard, Ctrl+Space picks.
+		Test.Assert(bed.Press(.Up, KeyModCtrl));
+		Test.Assert(bed.Press(.Up, KeyModCtrl));
+		Test.Assert(bed.Press(.Space, KeyModCtrl));
+		Test.Assert(bed.Press(.C, KeyModCtrl));
+		Test.Assert(bed.Clipboard.Held == "[A] first\n[C] third");
+		Test.Assert(copied == 2);
 
-		// Ctrl+A selects every row, and copies them all.
-		Press(view.List, .A, .Ctrl);
-		Test.Assert(view.SelectedCount == 3);
-		Press(view.List, .C, .Ctrl);
-		Test.Assert(clipboard.Stored == "[A] one\n[A] two\n[A] three");
+		// Nothing selected copies nothing, and says nothing.
+		list.ClearSelection();
+		bed.Clipboard.Held.Set("kept");
+		copied = 0;
+		bed.View.CopySelection();
+		Test.Assert((bed.Clipboard.Held == "kept") && (copied == 0));
+	}
 
-		// The cap trims the oldest: the selection follows its rows, a trimmed one is gone.
-		view.MaxEntries = 3;
-		view.List.Selection.ClearSelection();
-		view.List.Selection.Toggle(2); // "three"
-		view.AddEntry(.Information, "A", "four");
-		Test.Assert((view.SelectedCount == 1) && (view.SelectedText(.. scope .()) == "[A] three"));
-
-		// A filter change re-numbers the rows, so the selection goes; nothing copies nothing.
-		view.SetBucketVisible(.Warning, false);
-		Test.Assert(view.SelectedCount == 0);
-		clipboard.Stored.Set("kept");
-		Press(view.List, .C, .Ctrl);
-		Test.Assert(clipboard.Stored == "kept");
+	/// A filter keeps the selection of the lines it still shows; a hidden line's goes.
+	[Test]
+	public static void AFilterKeepsTheSelectionOfTheLinesStillShown()
+	{
+		let bed = scope ConsoleBed();
+		bed.View.AddEntry(.Information, "A", "info");
+		bed.View.AddEntry(.Warning, "A", "warn");
+		bed.View.AddEntry(.Error, "A", "error");
+		bed.List.SelectAll();
+		bed.View.SetBucketVisible(.Warning, false);
+		Test.Assert(bed.List.IsItemSelected(0) && bed.List.IsItemSelected(1));
+		Test.Assert(bed.View.SelectedText(.. scope .()) == "[A] info\n[A] error");
+		bed.View.SetBucketVisible(.Warning, true);
+		Test.Assert(!bed.List.IsItemSelected(1), "hidden, it left the selection");
+		Test.Assert(bed.View.SelectedText(.. scope .()) == "[A] info\n[A] error");
 	}
 
 	/// Shift and the arrows extend ONE range from where it started, as far as the user goes:
@@ -154,29 +240,29 @@ static class LogViewTests
 	[Test]
 	public static void ShiftArrowsGrowAndShrinkOneRange()
 	{
-		let view = new LogView();
-		defer view.ReleaseRef();
+		let bed = scope ConsoleBed();
 		for (int i < 6)
-			view.AddEntry(.Information, "A", scope $"line{i}");
-
-		view.List.Selection.Select(1);
-		Press(view.List, .Down, .Shift);
-		Press(view.List, .Down, .Shift);
-		Press(view.List, .Down, .Shift);
-		Test.Assert(view.SelectedCount == 4);
-		Test.Assert(view.SelectedText(.. scope .()) == "[A] line1\n[A] line2\n[A] line3\n[A] line4");
-		Press(view.List, .Up, .Shift);
-		Test.Assert(view.SelectedText(.. scope .()) == "[A] line1\n[A] line2\n[A] line3");
+			bed.View.AddEntry(.Information, "A", scope $"line{i}");
+		let list = bed.List;
+		list.SelectedItem = 1;
+		Test.Assert(list.FocusElement());
+		bed.Press(.Down, KeyModShift);
+		bed.Press(.Down, KeyModShift);
+		bed.Press(.Down, KeyModShift);
+		Test.Assert(list.SelectionCount == 4);
+		Test.Assert(bed.View.SelectedText(.. scope .()) == "[A] line1\n[A] line2\n[A] line3\n[A] line4");
+		bed.Press(.Up, KeyModShift);
+		Test.Assert(bed.View.SelectedText(.. scope .()) == "[A] line1\n[A] line2\n[A] line3");
 
 		// Past the anchor the range flips to the other side of it.
-		Press(view.List, .Up, .Shift);
-		Press(view.List, .Up, .Shift);
-		Press(view.List, .Up, .Shift);
-		Test.Assert(view.SelectedText(.. scope .()) == "[A] line0\n[A] line1");
+		bed.Press(.Up, KeyModShift);
+		bed.Press(.Up, KeyModShift);
+		bed.Press(.Up, KeyModShift);
+		Test.Assert(bed.View.SelectedText(.. scope .()) == "[A] line0\n[A] line1");
 
 		// A plain arrow moves outright from where the range ended.
-		Press(view.List, .Down, .None);
-		Test.Assert((view.SelectedCount == 1) && (view.SelectedText(.. scope .()) == "[A] line1"));
+		bed.Press(.Down);
+		Test.Assert((list.SelectionCount == 1) && (bed.View.SelectedText(.. scope .()) == "[A] line1"));
 	}
 
 	/// A copy the user asks for says so: the console's lines, and every other copy through
@@ -188,118 +274,154 @@ static class LogViewTests
 		let notices = scope List<String>();
 		defer { ClearAndDeleteItems!(notices); }
 		context.OnNotice = new [&](kind, message) => { notices.Add(new $"{kind}: {message}"); };
-		let clipboard = scope TestClipboard();
+		let clipboard = scope LauncherClipboard();
 
 		Test.Assert(context.CopyText(clipboard, "1234", "GUID"));
-		Test.Assert((clipboard.Stored == "1234") && (notices.Back == "Success: Copied GUID"));
+		Test.Assert((clipboard.Held == "1234") && (notices.Back == "Success: Copied GUID"));
 		Test.Assert(!context.CopyText(null, "x", "path"));
 		Test.Assert(notices.Back == "Warning: Could not copy path to the clipboard");
 		context.CopyToEditorClipboard("component", scope uint8[](1, 2), "component 'Mesh'");
 		Test.Assert((context.ClipboardKind == "component") && (notices.Back == "Success: Copied component 'Mesh'"));
 
 		// The console reports how many lines it copied.
-		let ui = scope UIContext();
-		ui.SetClipboard(clipboard);
-		let root = new RootView();
-		defer root.ReleaseRef();
-		root.ViewportSize = .(800, 600);
-		ui.AddRootView(root);
-		let view = new LogView();
-		root.AddView(view);
+		let bed = scope ConsoleBed();
 		int copied = 0;
-		view.OnCopied = new [&](lines) => { copied = lines; };
-		view.AddEntry(.Information, "A", "one");
-		view.AddEntry(.Information, "A", "two");
-		Press(view.List, .A, .Ctrl);
-		Press(view.List, .C, .Ctrl);
+		bed.View.SetOnCopied(new [&](lines) => { copied = lines; });
+		bed.View.AddEntry(.Information, "A", "one");
+		bed.View.AddEntry(.Information, "A", "two");
+		Test.Assert(bed.List.FocusElement());
+		bed.Press(.A, KeyModCtrl);
+		bed.Press(.C, KeyModCtrl);
 		Test.Assert(copied == 2);
+		Test.Assert(bed.Clipboard.Held == "[A] one\n[A] two");
 	}
 
-	/// The search shows the lines containing it, ignoring case, together with the level
-	/// filters, and applies to lines that arrive while it is set.
+	/// The search field narrows the lines as the user types, together with the chips, and
+	/// applies to lines that arrive while it is set; its x shows with text and clears it.
 	[Test]
-	public static void TheSearchNarrowsToMatchingLines()
+	public static void TheSearchFieldNarrowsAsTheUserTypesItsXClearsIt()
 	{
-		let view = new LogView();
-		defer view.ReleaseRef();
-		view.AddEntry(.Information, "Editor", "opened scene 'Main'");
-		view.AddEntry(.Warning, "Resource", "bind failed for 6c26");
-		view.AddEntry(.Error, "Editor", "Cook FAILED");
+		let bed = scope ConsoleBed();
+		bed.View.AddEntry(.Information, "Editor", "opened scene 'Main'");
+		bed.View.AddEntry(.Warning, "Resource", "bind failed for 6c26");
+		bed.View.AddEntry(.Error, "Editor", "Cook FAILED");
+		let field = bed.View.Content.FindElement("console-search") as TextField;
+		let clear = bed.View.Content.FindElement("console-clear-search") as Sedulous.GUI.Button;
+		Test.Assert((field != null) && (clear != null));
+		Test.Assert(!clear.Visible);
 
-		view.SetSearch("failed");
-		Test.Assert(view.VisibleEntryCount == 2, "either case");
-		Test.Assert(view.VisibleEntryText(0) == "[Resource] bind failed for 6c26");
+		Test.Assert(field.FocusElement());
+		bed.Root.EventDispatcher.InjectText("failed");
+		Test.Assert(bed.View.Search == "failed");
+		Test.Assert(bed.View.ShownCount == 2, "either case");
+		Test.Assert(bed.View.ShownText(0) == "[Resource] bind failed for 6c26");
+		Test.Assert(clear.Visible);
 
-		// Together with the level filters.
-		view.SetBucketVisible(.Warning, false);
-		Test.Assert((view.VisibleEntryCount == 1) && (view.VisibleEntryText(0) == "[Editor] Cook FAILED"));
-		view.SetBucketVisible(.Warning, true);
+		// Together with the chips.
+		bed.View.SetBucketVisible(.Warning, false);
+		Test.Assert((bed.View.ShownCount == 1) && (bed.View.ShownText(0) == "[Editor] Cook FAILED"));
+		bed.View.SetBucketVisible(.Warning, true);
 
-		// A new line shows only when it matches; the category is part of the line.
-		view.AddEntry(.Information, "Editor", "saved");
-		Test.Assert(view.VisibleEntryCount == 2);
-		view.AddEntry(.Information, "Editor", "retry failed");
-		Test.Assert(view.VisibleEntryCount == 3);
-		view.SetSearch("resource]");
-		Test.Assert(view.VisibleEntryCount == 1);
+		// A new line shows only when it matches.
+		bed.View.AddEntry(.Information, "Editor", "saved");
+		Test.Assert(bed.View.ShownCount == 2);
+		bed.View.AddEntry(.Information, "Editor", "retry failed");
+		Test.Assert(bed.View.ShownCount == 3);
 
-		// Empty shows everything again.
-		view.SetSearch("");
-		Test.Assert(view.VisibleEntryCount == 5);
+		// The x empties the field and shows every line again, and hides.
+		Test.Assert(clear.HandleActivate());
+		Test.Assert(field.Text.IsEmpty && bed.View.Search.IsEmpty);
+		Test.Assert(bed.View.ShownCount == 5);
+		Test.Assert(!clear.Visible);
 	}
 
-	/// Each level's chip counts its lines, follows a trim and a clear, and shows or hides them.
+	/// Each row shows its line's time since the editor started and its text, in its level's
+	/// colour (the sheet's, by the row's class).
 	[Test]
-	public static void EachLevelsChipCountsItsLinesAndShowsOrHidesThem()
+	public static void EachRowShowsItsTimeAndItsLevelsColour()
 	{
-		let view = new LogView();
-		defer view.ReleaseRef();
-		view.MaxEntries = 4;
-		Test.Assert(view.LevelCountText(.Error) == "0");
-		view.AddEntry(.Error, "A", "e1");
-		view.AddEntry(.Critical, "A", "e2"); // Critical counts as an error
-		view.AddEntry(.Warning, "A", "w1");
-		view.AddEntry(.Trace, "A", "t1"); // Trace counts as debug
-		Test.Assert((view.LevelCount(.Error) == 2) && (view.LevelCount(.Warning) == 1) && (view.LevelCount(.Debug) == 1));
-		Test.Assert(view.LevelCountText(.Error) == "2");
-
-		// A line rolling off the cap leaves its level's count.
-		view.AddEntry(.Information, "A", "i1");
-		Test.Assert((view.LevelCount(.Error) == 1) && (view.LevelCountText(.Error) == "1"));
-		Test.Assert(view.LevelCount(.Info) == 1);
-
-		// A chip off hides its level's lines; on again shows them. The chip follows a call too.
-		let warnings = view.LevelChip(.Warning);
-		Test.Assert((warnings != null) && warnings.IsChecked.Value);
-		warnings.IsChecked.Value = false;
-		Test.Assert(!view.IsBucketVisible(.Warning));
-		Test.Assert(view.VisibleEntryCount == 3);
-		view.SetBucketVisible(.Warning, true);
-		Test.Assert(warnings.IsChecked.Value);
-		Test.Assert(view.VisibleEntryCount == 4);
-
-		// Clear empties every count.
-		view.Clear();
-		for (int i < LogBucket.Count)
-			Test.Assert(view.LevelCount((LogBucket)i) == 0);
-		Test.Assert(view.LevelCountText(.Info) == "0");
+		let bed = scope ConsoleBed();
+		bed.SizeList(200.0f);
+		bed.View.AddEntry(.Debug, "A", "debug", TimeSpan(0, 1, 5));
+		bed.View.AddEntry(.Information, "A", "info", TimeSpan(1, 2, 3));
+		bed.View.AddEntry(.Warning, "A", "warn");
+		bed.View.AddEntry(.Critical, "A", "critical");
+		bed.Layout();
+		StringView[4] times = .("00:01:05", "01:02:03", "00:00:00", "00:00:00");
+		StringView[4] levels = .("debug", "", "warning", "error");
+		StringView[3] classes = .("debug", "warning", "error");
+		for (int32 i < 4)
+		{
+			let row = bed.List.RowForItem(i);
+			Test.Assert(row != null);
+			let content = row.Content as UIWidget;
+			Test.Assert((content != null) && content.HasClass("log-row"));
+			Test.Assert((content.GetChildAt(0) as Sedulous.GUI.Label).Text == times[i]);
+			Test.Assert((content.GetChildAt(1) as Sedulous.GUI.Label).Text == bed.View.ShownText(i));
+			for (let level in classes)
+				Test.Assert(content.HasClass(level) == (level == levels[i]));
+		}
 	}
 
-	/// The search field's x shows with text and clears it.
+	/// The newest line is followed until the user scrolls up, and again once they are back at
+	/// the bottom.
 	[Test]
-	public static void TheSearchFieldsXShowsWithTextAndClearsIt()
+	public static void TheNewestLineIsFollowedUntilTheUserScrollsUp()
 	{
-		let view = new LogView();
-		defer view.ReleaseRef();
-		view.AddEntry(.Information, "A", "loaded");
-		view.AddEntry(.Information, "A", "failed");
-		let clear = view.ClearSearchButton;
-		Test.Assert((clear != null) && (clear.Visibility == .Hidden));
-		view.SetSearch("fail");
-		Test.Assert(view.VisibleEntryCount == 1);
-		Test.Assert(clear.Visibility == .Visible);
-		clear.FireClick();
-		Test.Assert(view.Search.IsEmpty && (view.VisibleEntryCount == 2));
-		Test.Assert(clear.Visibility == .Hidden);
+		let bed = scope ConsoleBed();
+		bed.SizeList(100.0f);
+		for (int i < 50)
+			bed.View.AddEntry(.Information, "N", scope $"line {i}");
+		bed.Layout();
+		let list = bed.List;
+		Test.Assert(list.ScrollRange.Y > 0.0f);
+		Test.Assert(list.ScrollOffset.Y >= list.ScrollRange.Y - 0.5f, "followed to the newest");
+
+		list.ScrollOffset = .(0.0f, 0.0f); // the user scrolls up
+		bed.View.AddEntry(.Information, "N", "while reading");
+		bed.Layout();
+		Test.Assert(list.ScrollOffset.Y == 0.0f, "not pulled down while reading");
+
+		list.ScrollOffset = .(0.0f, list.ScrollRange.Y); // back at the bottom
+		let bottom = list.ScrollOffset.Y;
+		bed.View.AddEntry(.Information, "N", "followed again");
+		bed.Layout();
+		Test.Assert(list.ScrollOffset.Y > bottom);
+		Test.Assert(list.ScrollOffset.Y >= list.ScrollRange.Y - 0.5f);
+	}
+
+	/// The list's menu: Copy (Ctrl+C, only with a selection), Select All, Clear.
+	[Test]
+	public static void TheListsMenuCopiesSelectsAllAndClears()
+	{
+		let bed = scope ConsoleBed();
+		bed.SizeList(200.0f);
+		bed.View.AddEntry(.Information, "A", "one");
+		bed.View.AddEntry(.Warning, "A", "two");
+		Test.Assert(bed.List.FocusElement());
+		bed.Root.EventDispatcher.InjectContextMenu();
+		var menu = bed.View.OpenMenu;
+		Test.Assert(menu != null);
+		Test.Assert(MenuRows.Is(menu, "Copy|Select All|-|Clear"));
+		var copy = MenuRows.ItemNamed(menu, "Copy");
+		Test.Assert((copy.Shortcut == "Ctrl+C") && !copy.Enabled, "nothing selected");
+		Test.Assert(MenuRows.ItemNamed(menu, "Select All").HandleActivate());
+		Test.Assert(bed.List.SelectionCount == 2);
+
+		Test.Assert(bed.List.FocusElement());
+		bed.Root.EventDispatcher.InjectContextMenu();
+		menu = bed.View.OpenMenu;
+		Test.Assert(menu != null);
+		copy = MenuRows.ItemNamed(menu, "Copy");
+		Test.Assert(copy.Enabled);
+		Test.Assert(copy.HandleActivate());
+		Test.Assert(bed.Clipboard.Held == "[A] one\n[A] two");
+
+		Test.Assert(bed.List.FocusElement());
+		bed.Root.EventDispatcher.InjectContextMenu();
+		menu = bed.View.OpenMenu;
+		Test.Assert(menu != null);
+		Test.Assert(MenuRows.ItemNamed(menu, "Clear").HandleActivate());
+		Test.Assert(bed.View.EntryCount == 0);
 	}
 }

@@ -181,14 +181,6 @@ Name = "ListHeader.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "LogBucket.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "LogView.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "PagePanel.bf"
 
 [[ProjectFolder.Items]]

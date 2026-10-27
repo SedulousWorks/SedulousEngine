@@ -14,6 +14,8 @@ class EditorLogEntry
 	public String Message = new .() ~ delete _;
 	/// 1 based across the run, never reused.
 	public uint64 Sequence = 0;
+	/// When it was written, since the buffer was made (the editor's start).
+	public TimeSpan Time = default;
 
 	public void CopyTo(EditorLogEntry other)
 	{
@@ -21,5 +23,6 @@ class EditorLogEntry
 		other.Category.Set(Category);
 		other.Message.Set(Message);
 		other.Sequence = Sequence;
+		other.Time = Time;
 	}
 }

@@ -26,6 +26,8 @@ class EditorLogBuffer : ILogger
 	private uint64 mNextSequence = 1;
 	private uint64 mDropped = 0;
 	private Monitor mLock = new .() ~ delete _;
+	/// Since it was made: each entry's time.
+	private System.Diagnostics.Stopwatch mClock = new .(true) ~ delete _;
 
 	public LogLevel MinimumLogLevel { get; set; }
 	public String Name { get; private set; } = new .() ~ delete _;
@@ -69,6 +71,7 @@ class EditorLogBuffer : ILogger
 			entry.Level = level;
 			SplitCategory(message, entry.Category, entry.Message);
 			entry.Sequence = mNextSequence++;
+			entry.Time = mClock.Elapsed;
 		}
 	}
 

@@ -2,456 +2,429 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Logging;
-using Sedulous.UI;
+using Sedulous.GUI;
 
 namespace Sedulous.Editor.App;
 
-/// The Console panel content: a header row (a chip per level with its colour, its name and how
-/// many lines it holds, on showing them; a search field matching anywhere in a line ignoring
-/// case, which an x clears; a Clear icon) over a recycled ListView of level-coloured rows, a
-/// bounded entry count, and auto-scroll to the newest entry. Fed once per frame by EditorApplication draining the
-/// EditorLogBuffer. Rows select like any list (click, Ctrl click, Shift click, Ctrl+A), and
-/// Ctrl+C or the context menu's Copy puts the selected rows on the clipboard, one per line.
-class LogView : ViewGroup
+/// The Console panel (Raptor's editor-gui spec, 5.2, layer 1). Its frame is markup
+/// (Data/Editor/Console.gml): a chip per level (Info, holding the debug and trace lines too,
+/// Warnings, Errors) with how many lines it holds, on showing them; a search matching anywhere in
+/// a line ignoring case, cleared by its x; Clear; then the lines on a virtualised list, each its
+/// time since the editor started and `[Category] message` in its level's colour. The newest line
+/// is followed until the user scrolls up, and again once they are back at the bottom. Rows select
+/// as any list's do (click, Ctrl, Shift, Ctrl+A); Ctrl+C or the menu's Copy puts the selected
+/// lines on the clipboard, oldest first, one per line. The entries are capped (the oldest
+/// trimmed); a selection is by entry, so it survives a trim. Fed once a frame from the editor's
+/// log buffer (EditorApplication.DrainLog).
+class LogView
 {
-	private struct Entry
+	/// Its frame under the data root.
+	public const String cMarkupPath = "Editor/Console.gml";
+	/// The cap on the lines kept; the oldest are trimmed.
+	public const int cMaxEntries = 1000;
+	/// This near the bottom counts as at it: a new line is followed.
+	private const float cFollowSlack = 4.0f;
+
+	private class Entry
 	{
-		public LogBucket Bucket = .Info;
-		public String Text = null;
+		public LogLevel Level = .Information;
+		/// "[Category] message", or the message alone without a category.
+		public String Text = new .() ~ delete _;
+		public TimeSpan Time;
+		/// Its own while lines come and go around it: the list's id for its row.
+		public ItemId Id;
 	}
 
-	/// A recycled row is one Label; bind sets the text and the level colour.
-	private class Adapter : ListAdapterBase
+	/// The shown lines as the list's model: a row's id its entry's, so a selection follows it.
+	private class LineModel : IModel
 	{
-		private LogView mOwner;
+		private LogView mView;
 
-		public this(LogView owner) { mOwner = owner; }
+		public this(LogView view) { mView = view; }
 
-		public override int32 ItemCount => (int32)mOwner.mFiltered.Count;
+		public override int RowCount(ModelIndex parent) => parent.IsValid ? 0 : mView.mShown.Count;
+		public override int ColumnCount() => 1;
 
-		public override View CreateView(int32 viewType)
+		public override Sedulous.GUI.Variant Data(ModelIndex index, ModelRole role = .Display)
 		{
-			let label = new Label();
-			label.FontSize.Value = 12.0f;
-			return label;
+			if ((role != .Display) || (index.Row < 0) || (index.Row >= mView.mShown.Count))
+				return .();
+			return .((StringView)mView.mEntries[mView.mShown[index.Row]].Text);
 		}
 
-		public override void BindView(View view, int32 position)
+		public override ItemId IdOf(ModelIndex index)
 		{
-			let label = view as Label;
-			if (label == null)
-				return;
-			let entry = mOwner.mEntries[mOwner.mFiltered[position]];
-			label.SetText(entry.Text);
-			label.TextColor.Value = BucketColor(entry.Bucket);
+			if ((index.Row < 0) || (index.Row >= mView.mShown.Count))
+				return NoItem;
+			return mView.mEntries[mView.mShown[index.Row]].Id;
 		}
-	}
 
-	/// The entry list: Ctrl+C copies the selection and Ctrl+A selects every row, with or
-	/// without a selection to start from.
-	private class EntryList : ListView
-	{
-		private LogView mOwner;
-
-		public this(LogView owner) { mOwner = owner; }
-
-		public override void OnKeyDown(KeyEventArgs e)
+		/// The shown lines are in entry order and the ids rise with it: a binary search, so a
+		/// large selection pruned after a trim or a filter does not walk every row per id.
+		public override ModelIndex IndexOfId(ItemId id)
 		{
-			if (e.Modifiers.HasFlag(.Ctrl) && !e.Modifiers.HasFlag(.Alt))
+			int low = 0;
+			int high = mView.mShown.Count - 1;
+			while (low <= high)
 			{
-				if (e.Key == .C)
-				{
-					mOwner.CopySelection();
-					e.Handled = true;
-					return;
-				}
-				if (e.Key == .A)
-				{
-					mOwner.SelectAll();
-					e.Handled = true;
-					return;
-				}
+				let mid = (low + high) / 2;
+				let at = mView.mEntries[mView.mShown[mid]].Id;
+				if (at == id)
+					return Index((int32)mid);
+				if (at < id)
+					low = mid + 1;
+				else
+					high = mid - 1;
 			}
-			base.OnKeyDown(e);
+			return .();
 		}
+
+		public void Inserted(int32 row) => NotifyRowsInserted(.(), row, 1);
+		public void Reset() => NotifyReset();
 	}
 
-	/// Says a copy happened (the app's toast): the number of lines copied. Owned.
-	public delegate void(int lines) OnCopied ~ delete _;
-
-	/// True while the newest entry is kept in view.
-	public bool AutoScroll = true;
-	/// The cap on retained entries; the oldest are trimmed.
-	public int MaxEntries = 1000;
-
-	private List<Entry> mEntries = new .() ~ { for (var e in _) delete e.Text; delete _; };
-	/// Indices into mEntries passing the filter.
-	private List<int> mFiltered = new .() ~ delete _;
-	private bool[LogBucket.Count] mVisible = .(true, true, true, true);
-	/// What a line must contain to show; empty shows every line.
-	private String mSearch = new .() ~ delete _;
-	/// Borrowed; the toolbar owns it.
-	private EditText mSearchEdit;
-	private Adapter mAdapter ~ delete _;
-	private ListView mList;
-	/// Borrowed; the header owns them.
-	private ToggleButton[LogBucket.Count] mChips;
-	/// Borrowed; each chip owns its own.
-	private Label[LogBucket.Count] mCountLabels;
-	private Label[LogBucket.Count] mNameLabels;
+	/// A reference of ours; the panel showing it takes its own. Declared first: it goes last,
+	/// after the model the list it holds borrows.
+	private Node mContent ~ _?.ReleaseRef();
+	/// Borrowed; the content's.
+	private ListView mList = null;
+	/// Borrowed; the content's.
+	private Sedulous.GUI.Button[LogBucket.Count] mChips;
+	private uint32 mKeyListener = 0;
+	private uint32 mMenuListener = 0;
+	private Sedulous.GUI.Menu mMenu = null ~ _?.ReleaseRef();
+	private List<Entry> mEntries = new .() ~ DeleteContainerAndItems!(_);
+	/// The entries shown, by their place in mEntries.
+	private List<int> mShown = new .() ~ delete _;
 	/// The lines each level holds now.
 	private int[LogBucket.Count] mCounts;
-	/// Borrowed; the header owns it.
-	private IconButton mClearSearch;
+	private bool[LogBucket.Count] mVisible = .(true, true, true);
+	/// What a line must contain to show; empty shows every line.
+	private String mSearch = new .() ~ delete _;
+	private ItemId mNextId = 1;
+	private delegate void(int lines) mOnCopied = null ~ delete _;
+	private LineModel mModel ~ delete _;
 
-	public this()
+	/// Over its frame `content` (the markup's: its parts by id). TAKES OWNERSHIP of a reference
+	/// to `content`; null shows nothing.
+	public this(Node content)
 	{
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-
-		// The header row: [level chips] ........ [search: icon, field, x] [clear].
-		let toolbar = new FlexLayout();
-		toolbar.Direction = .Horizontal;
-		toolbar.Spacing = 4.0f;
-		toolbar.Padding = .(6, 3);
-		toolbar.AlignItems = .Center;
-		var center = LayoutStyle();
-		center.AlignSelf = .Center;
+		mContent = content;
+		mModel = new LineModel(this);
+		if (mContent == null)
+			return;
+		mList = Find<ListView>("console-list");
+		if (mList != null)
+		{
+			let rows = new RowFactory();
+			rows.Create = new (type) => MakeRow();
+			rows.Bind = new (row, index) => { BindRow(row, index); };
+			mList.SetRowFactory(rows);
+			mList.Model = mModel;
+			// Ctrl+C before the list's own keys; the menu's Copy, Select All and Clear.
+			mKeyListener = mList.AddEventListener(.KeyDown, new (e) =>
+				{
+					let key = (KeyEvent)e;
+					if (((KeyCode)key.KeyCode == .C) && (key.Modifiers == KeyModCtrl))
+					{
+						CopySelection();
+						e.Handled = true;
+					}
+				}, true);
+			mMenuListener = mList.AddEventListener(.ContextMenu, new (e) =>
+				{
+					ShowMenu(((MouseEvent)e).Position);
+					e.Handled = true;
+				});
+		}
+		StringView[LogBucket.Count] chips = .("console-info", "console-warnings", "console-errors");
 		for (int i < LogBucket.Count)
-			toolbar.AddView(MakeLevelChip((LogBucket)i), center);
-		var grow = LayoutStyle();
-		grow.FlexGrow = 1.0f;
-		toolbar.AddView(new View(), grow); // the gap
-		// The shared icons are null before they are initialised (tests): a reference is taken
-		// for the view that holds one.
-		let searchIcon = EditorIcons.Search;
-		if (searchIcon != null)
-			searchIcon.AddRef();
-		let magnifier = new DrawableView(searchIcon, 14.0f, 14.0f);
-		magnifier.KeepAspect = true;
-		toolbar.AddView(magnifier, center);
-		mSearchEdit = new EditText();
-		mSearchEdit.SetPlaceholder("Filter lines");
-		mSearchEdit.TooltipText.Set("Show only the lines containing this (any case)");
-		mSearchEdit.OnTextChanged.Add(new [=this](edit) => { SetSearch(edit.Text); });
 		{
-			// It grows with the panel up to a comfortable width and gives way in a narrow one,
-			// so the header never runs past the panel's edge.
-			var field = LayoutStyle();
-			field.FlexGrow = 1.0f;
-			field.MinWidth = Unit.Dp(80.0f);
-			field.MaxWidth = Unit.Dp(260.0f);
-			field.AlignSelf = .Center;
-			toolbar.AddView(mSearchEdit, field);
-		}
-		mClearSearch = new IconButton(EditorIcons.Close, 10.0f);
-		mClearSearch.TooltipText.Set("Clear the filter");
-		mClearSearch.Visibility = .Hidden; // keeps its place: no jump
-		mClearSearch.OnClick.Add(new [=this](b) =>
+			mChips[i] = Find<Sedulous.GUI.Button>(chips[i]);
+			if (mChips[i] != null)
 			{
-				mSearchEdit.SetText("");
-				SetSearch("");
-			});
-		toolbar.AddView(mClearSearch, center);
-		let clear = new IconButton(EditorIcons.Remove, 16.0f);
-		clear.TooltipText.Set("Clear the console");
-		clear.OnClick.Add(new [=this](b) => { Clear(); });
-		toolbar.AddView(clear, center);
-		{
-			var row = LayoutStyle();
-			row.Width = SizeSpec.Match();
-			row.Height = SizeSpec.Fixed(Unit.Dp(28.0f));
-			column.AddView(toolbar, row);
+				let bucket = (LogBucket)i;
+				mChips[i].SetOnClick(new [=this, =bucket]() => { SetBucketVisible(bucket, !IsBucketVisible(bucket)); });
+			}
 		}
+		if (let search = Find<TextField>("console-search"))
+			search.SetOnTextChanging(new (text) => { SetSearch(text); });
+		if (let clearSearch = Find<Sedulous.GUI.Button>("console-clear-search"))
 		{
-			// A hairline under the header (the theme's separator), so it reads as chrome.
-			var line = LayoutStyle();
-			line.Width = SizeSpec.Match();
-			column.AddView(new Separator(), line);
+			clearSearch.SetOnClick(new () =>
+				{
+					if (let field = Find<TextField>("console-search"))
+						field.Text = "";
+					SetSearch("");
+				});
 		}
-		UpdateCounts();
-
-		// The entry list, recycled rows.
-		mAdapter = new Adapter(this);
-		mList = new EntryList(this);
-		mList.ItemHeight.Value = 20.0f;
-		mList.Padding = .(8, 4); // the lines off the panel's edges and the header
-		mList.Selection.Mode = .Multiple;
-		mList.SetAdapter(mAdapter);
-		mList.OnItemRightClicked.Add(new [=this](position, x, y) => { ShowContextMenu(x, y); });
-		mList.OnBackgroundRightClicked.Add(new [=this](x, y) => { ShowContextMenu(x, y); });
-		var fill = LayoutStyle();
-		fill.FlexGrow = 1.0f;
-		column.AddView(mList, fill);
-
-		AddView(column);
+		if (let clear = Find<Sedulous.GUI.Button>("console-clear"))
+			clear.SetOnClick(new () => { Clear(); });
+		ShowChrome();
 	}
 
+	/// The panel may hold the content past this view: what of the list calls back here goes
+	/// first.
 	public ~this()
 	{
-		mList.SetAdapter(null);
+		if ((mMenu != null) && mMenu.IsOpen)
+			mMenu.Close();
+		if (mList != null)
+		{
+			mList.RemoveEventListener(mKeyListener);
+			mList.RemoveEventListener(mMenuListener);
+			mList.Model = null;
+			mList.SetRowFactory(null);
+		}
 	}
 
-	public void AddEntry(LogLevel level, StringView category, StringView message)
+	/// Its frame. Ours: a caller that keeps it takes a reference.
+	public Node Content => mContent;
+
+	/// Told how many lines a copy put on the clipboard (the application's notice). TAKES
+	/// OWNERSHIP of `copied`.
+	public void SetOnCopied(delegate void(int lines) copied)
 	{
-		var entry = Entry();
-		entry.Bucket = LogBucket.Of(level);
-		entry.Text = new String();
-		entry.Text.Append("[");
-		entry.Text.Append(category);
-		entry.Text.Append("] ");
-		entry.Text.Append(message);
-		mCounts[(int)entry.Bucket]++;
+		delete mOnCopied;
+		mOnCopied = copied;
+	}
+
+	/// One line, at the end; the oldest go past the cap. `time` is when it was written, since
+	/// the editor started.
+	public void AddEntry(LogLevel level, StringView category, StringView message, TimeSpan time = default)
+	{
+		let follow = IsAtBottom();
+		let entry = new Entry();
+		entry.Level = level;
+		if (category.IsEmpty)
+			entry.Text.Set(message);
+		else
+			entry.Text.AppendF("[{}] {}", category, message);
+		entry.Time = time;
+		entry.Id = mNextId++;
+		mCounts[(int)LogBucket.Of(level)]++;
 		mEntries.Add(entry);
-
-		// Trimming shifts the indices into mEntries, so the filter is rebuilt below, and the
-		// selection moves up by the visible rows that went (a trimmed selected row is gone).
-		bool trimmed = false;
-		int32 trimmedVisible = 0;
-		while (mEntries.Count > MaxEntries)
+		bool reset = false;
+		while (mEntries.Count > cMaxEntries)
 		{
-			if (Shows(mEntries[0]))
-				trimmedVisible++;
-			mCounts[(int)mEntries[0].Bucket]--;
-			delete mEntries[0].Text;
+			let oldest = mEntries[0];
+			mCounts[(int)LogBucket.Of(oldest.Level)]--;
 			mEntries.RemoveAt(0);
-			trimmed = true;
+			delete oldest;
+			reset = true;
 		}
-
-		if (trimmed)
+		if (reset)
+			Refilter(); // the places in mEntries moved
+		else if (Shows(entry))
 		{
-			mList.Selection.ShiftIndices(0, -trimmedVisible);
-			RebuildFilter();
+			mShown.Add(mEntries.Count - 1);
+			mModel.Inserted((int32)mShown.Count - 1);
 		}
-		else if (Shows(mEntries.Back))
-		{
-			mFiltered.Add(mEntries.Count - 1);
-			mAdapter.NotifyDataSetChanged();
-		}
-		UpdateCounts();
-		ScrollToNewest();
+		ShowChrome();
+		if (follow && (mList != null) && !mShown.IsEmpty)
+			mList.ScrollToItem((int32)mShown.Count - 1);
 	}
 
 	public void Clear()
 	{
-		for (var e in mEntries)
-			delete e.Text;
-		mEntries.Clear();
-		mFiltered.Clear();
-		mList.Selection.ClearSelection();
-		mAdapter.NotifyDataSetChanged();
+		ClearAndDeleteItems(mEntries);
 		for (var count in ref mCounts)
 			count = 0;
-		UpdateCounts();
+		Refilter();
+		ShowChrome();
 	}
 
-	/// A level's chip in the header (on shows its lines), and the count it shows.
-	public ToggleButton LevelChip(LogBucket bucket) => mChips[(int)bucket];
-	public int LevelCount(LogBucket bucket) => mCounts[(int)bucket];
-	public StringView LevelCountText(LogBucket bucket) =>
-		(mCountLabels[(int)bucket] != null) ? mCountLabels[(int)bucket].Text.Value : default;
-	/// The search field's clear button, shown only while the field holds text.
-	public IconButton ClearSearchButton => mClearSearch;
-
-	/// Selects every visible row.
-	public void SelectAll()
+	public int EntryCount => mEntries.Count;
+	public int ShownCount => mShown.Count;
+	/// The lines a level holds now (shown or not).
+	public int CountOf(LogBucket bucket) => mCounts[(int)bucket];
+	/// A shown line's text ("[Category] message"); empty past the end.
+	public StringView ShownText(int row) => ((row >= 0) && (row < mShown.Count)) ? (StringView)mEntries[mShown[row]].Text : default;
+	/// A shown line's time as its row shows it (hh:mm:ss); empty past the end.
+	public void ShownTime(int row, String outText)
 	{
-		if (!mFiltered.IsEmpty)
-			mList.Selection.SelectRange(0, (int32)mFiltered.Count - 1);
-	}
-
-	public int SelectedCount => mList.Selection.SelectedCount;
-	/// The entry list: the selection, and the keys it takes (the tests drive both).
-	public ListView List => mList;
-
-	/// The selected rows' text, oldest first, one per line.
-	public void SelectedText(String outText)
-	{
-		let positions = scope List<int32>();
-		for (let position in mList.Selection.SelectedPositions)
-		{
-			if (position < mFiltered.Count)
-				positions.Add(position);
-		}
-		positions.Sort();
-		for (let position in positions)
-		{
-			if (!outText.IsEmpty)
-				outText.Append('\n');
-			outText.Append(mEntries[mFiltered[position]].Text);
-		}
-	}
-
-	/// Puts the selected rows on the system clipboard; nothing selected copies nothing.
-	public void CopySelection()
-	{
-		let text = SelectedText(.. scope .());
-		if (text.IsEmpty || (Context == null) || (Context.Clipboard == null))
-			return;
-		if ((Context.Clipboard.SetText(text) case .Ok) && (OnCopied != null))
-			OnCopied(SelectedCount);
-	}
-
-	private void ShowContextMenu(float localX, float localY)
-	{
-		if (Context == null)
-			return;
-		let menu = new ContextMenu();
-		defer menu.ReleaseRef();
-		let count = SelectedCount;
-		menu.AddItem((count > 1) ? scope $"Copy {count} Lines" : "Copy", new [=this]() => { CopySelection(); }, count > 0);
-		menu.AddItem("Select All", new [=this]() => { SelectAll(); }, !mFiltered.IsEmpty);
-		menu.AddSeparator();
-		menu.AddItem("Clear", new [=this]() => { Clear(); });
-		let at = mList.LocalToScreen(.(localX, localY));
-		menu.Show(Context, at.X, at.Y);
-	}
-
-	public void SetBucketVisible(LogBucket bucket, bool visible)
-	{
-		mVisible[(int)bucket] = visible;
-		// A filter change re-numbers the rows, so the selection goes.
-		mList.Selection.ClearSelection();
-		if (let chip = mChips[(int)bucket])
-		{
-			chip.IsChecked.SetSilent(visible); // the header follows programmatic calls
-			chip.Invalidate();
-		}
-		UpdateCounts(); // an off level's chip dims
-		RebuildFilter();
-		ScrollToNewest();
+		if ((row >= 0) && (row < mShown.Count))
+			TimeText(mEntries[mShown[row]].Time, outText);
 	}
 
 	public bool IsBucketVisible(LogBucket bucket) => mVisible[(int)bucket];
 
-	/// Shows only the lines containing `text`, ignoring case; empty shows them all. The search
-	/// box calls it as the user types.
+	public void SetBucketVisible(LogBucket bucket, bool visible)
+	{
+		if (mVisible[(int)bucket] == visible)
+			return;
+		mVisible[(int)bucket] = visible;
+		Refilter();
+		ShowChrome();
+	}
+
+	/// Shows only the lines holding `text`, ignoring case (the category is part of a line);
+	/// empty shows them all. The search field calls it as the user types.
 	public void SetSearch(StringView text)
 	{
 		if (mSearch == text)
 			return;
 		mSearch.Set(text);
-		if (mClearSearch != null)
-			mClearSearch.Visibility = mSearch.IsEmpty ? .Hidden : .Visible;
-		// The rows re-number, so the selection goes.
-		mList.Selection.ClearSelection();
-		RebuildFilter();
-		ScrollToNewest();
+		Refilter();
+		ShowChrome();
 	}
 
 	public StringView Search => mSearch;
 
-	/// Whether a line passes the level filters and the search.
+	/// The selected lines, oldest first, one per line.
+	public void SelectedText(String outText)
+	{
+		if (mList == null)
+			return;
+		for (int row < mShown.Count)
+		{
+			if (!mList.IsItemSelected((int32)row))
+				continue;
+			if (!outText.IsEmpty)
+				outText.Append('\n');
+			outText.Append(mEntries[mShown[row]].Text);
+		}
+	}
+
+	/// The selected lines on the system clipboard; nothing selected copies nothing.
+	public void CopySelection()
+	{
+		let text = SelectedText(.. scope .());
+		let dispatcher = (mContent != null) ? mContent.EventDispatcher : null;
+		if (text.IsEmpty || (dispatcher == null) || (dispatcher.Clipboard == null))
+			return;
+		dispatcher.Clipboard.SetText(text);
+		if (mOnCopied != null)
+			mOnCopied(mList.SelectionCount);
+	}
+
+	/// The list (its selection, for a test).
+	public ListView List => mList;
+	/// The menu the list's context menu opened while it is open, else null.
+	public Sedulous.GUI.Menu OpenMenu => ((mMenu != null) && mMenu.IsOpen) ? mMenu : null;
+
+	/// The frame's part with this id, as a T; null when it has none.
+	private T Find<T>(StringView id) where T : Node
+	{
+		return (mContent != null) ? (mContent.FindElement(id) as T) : null;
+	}
+
+	/// Whether a line passes the level chips and the search.
 	private bool Shows(Entry entry) =>
-		IsBucketVisible(entry.Bucket) && (mSearch.IsEmpty || entry.Text.Contains(mSearch, true));
-	public int EntryCount => mEntries.Count;
-	public int VisibleEntryCount => mFiltered.Count;
-	public StringView VisibleEntryText(int visibleIndex) => mEntries[mFiltered[visibleIndex]].Text;
+		mVisible[(int)LogBucket.Of(entry.Level)] && (mSearch.IsEmpty || entry.Text.Contains(mSearch, true));
 
-	/// Fills the available space: the default ViewGroup measure wraps to children, which
-	/// would collapse the virtualised list. The single child column fills us.
-	protected override void OnMeasure(BoxConstraints constraints)
+	private void Refilter()
 	{
-		for (int i < ChildCount)
-			GetChildAt(i).Measure(constraints);
-		MeasuredSize = .(constraints.MaxWidth, constraints.MaxHeight);
-	}
-
-	protected override void OnLayout(float left, float top, float width, float height)
-	{
-		for (int i < ChildCount)
-			GetChildAt(i).Layout(0, 0, width, height);
-	}
-
-	private static Color BucketColor(LogBucket bucket)
-	{
-		switch (bucket)
-		{
-		case .Debug: return .(150.0f / 255.0f, 150.0f / 255.0f, 150.0f / 255.0f, 1.0f);
-		case .Info: return .(80.0f / 255.0f, 180.0f / 255.0f, 255.0f / 255.0f, 1.0f);
-		case .Warning: return .(255.0f / 255.0f, 200.0f / 255.0f, 50.0f / 255.0f, 1.0f);
-		default: return .(255.0f / 255.0f, 80.0f / 255.0f, 80.0f / 255.0f, 1.0f);
-		}
-	}
-
-	/// A level's chip: a dot in the level's row colour, its name and its line count; a toggle,
-	/// on while its lines show, dimmed off.
-	private ToggleButton MakeLevelChip(LogBucket bucket)
-	{
-		StringView[LogBucket.Count] names = .("Debug", "Info", "Warning", "Error");
-		StringView[LogBucket.Count] tips = .("Show debug and trace lines", "Show info lines", "Show warnings", "Show errors");
-		let i = (int)bucket;
-		let content = new FlexLayout();
-		content.Direction = .Horizontal;
-		content.Spacing = 5.0f;
-		content.AlignItems = .Center;
-		content.AddView(new DrawableView(new RoundedRectDrawable(BucketColor(bucket), 4.0f), 8.0f, 8.0f));
-		let name = new Label(names[i]);
-		name.FontSize.Value = 12.0f;
-		content.AddView(name);
-		mNameLabels[i] = name;
-		let count = new Label("0");
-		count.FontSize.Value = 11.0f;
-		count.TextColor.Value = Color(0.6f, 0.6f, 0.62f, 1.0f);
-		content.AddView(count);
-		mCountLabels[i] = count;
-
-		let chip = new ToggleButton();
-		chip.SetContent(content);
-		chip.SetStyle(.Padding, Thickness(7.0f, 2.0f));
-		// A quiet pill rather than the theme's accent toggle: outlined when off, a soft fill
-		// when on, a touch lighter under the pointer.
-		Drawable Pill(float fill, float border) =>
-			new RoundedRectDrawable(Color(1.0f, 1.0f, 1.0f, fill), 9.0f, Color(1.0f, 1.0f, 1.0f, border), 1.0f);
-		let look = new StateListDrawable();
-		look.Set(.Normal, Pill(0.0f, 0.10f));
-		look.Set(.Hover, Pill(0.05f, 0.14f));
-		look.Set(.Checked, Pill(0.10f, 0.16f));
-		look.Set(.Checked | .Hover, Pill(0.14f, 0.20f));
-		// A checked toggle draws its CheckedBackground first (the theme's accent): this pill
-		// too. The style takes a reference for each property it is set on.
-		look.AddRef();
-		chip.SetStyle(.Background, look);
-		chip.SetStyle(.CheckedBackground, look);
-		chip.TooltipText.Set(tips[i]);
-		chip.IsChecked.SetSilent(mVisible[i]);
-		chip.OnCheckedChanged.Add(new [=this, =bucket](b, on) => { SetBucketVisible(bucket, on); });
-		mChips[i] = chip;
-		return chip;
-	}
-
-	/// Each chip's count, the lines its level holds now (capped in the text, not the count),
-	/// quieter for an empty or hidden level, and its name dimmed when the level is hidden.
-	private void UpdateCounts()
-	{
-		for (int i < LogBucket.Count)
-		{
-			if (let label = mCountLabels[i])
-			{
-				let text = (mCounts[i] > 9999) ? scope String("9999+") : scope $"{mCounts[i]}";
-				if (label.Text.Value != text)
-					label.SetText(text);
-				label.TextColor.Value = ((mCounts[i] == 0) || !mVisible[i]) ? Color(0.45f, 0.45f, 0.47f, 1.0f) : Color(0.72f, 0.72f, 0.74f, 1.0f);
-			}
-			if (let name = mNameLabels[i])
-				name.TextColor.Value = mVisible[i] ? Color(0.9f, 0.9f, 0.92f, 1.0f) : Color(0.5f, 0.5f, 0.52f, 1.0f);
-		}
-	}
-
-	private void RebuildFilter()
-	{
-		mFiltered.Clear();
+		mShown.Clear();
 		for (int i < mEntries.Count)
 		{
 			if (Shows(mEntries[i]))
-				mFiltered.Add(i);
+				mShown.Add(i);
 		}
-		mAdapter.NotifyDataSetChanged();
+		mModel.Reset();
 	}
 
-	private void ScrollToNewest()
+	/// At the bottom, or with nothing to scroll: a new line is followed.
+	private bool IsAtBottom()
 	{
-		if (AutoScroll && !mFiltered.IsEmpty)
-			mList.ScrollToPosition((int32)mFiltered.Count - 1);
+		if (mList == null)
+			return true;
+		return mList.ScrollOffset.Y >= mList.ScrollRange.Y - cFollowSlack;
+	}
+
+	/// The chips' counts and states, the search's x, the empty line.
+	private void ShowChrome()
+	{
+		StringView[LogBucket.Count] names = .("Info", "Warnings", "Errors");
+		for (int i < LogBucket.Count)
+		{
+			let chip = mChips[i];
+			if (chip == null)
+				continue;
+			let count = mCounts[i];
+			if (count == 0)
+				chip.Text = names[i];
+			else if (count > 9999)
+				chip.Text = scope $"{names[i]} 9999+"; // the count stays exact; the chip's width does not grow
+			else
+				chip.Text = scope $"{names[i]} {count}";
+			if (mVisible[i])
+				chip.AddClass("checked");
+			else
+				chip.RemoveClass("checked");
+		}
+		if (let clearSearch = Find<Sedulous.GUI.Button>("console-clear-search"))
+			clearSearch.Visible = !mSearch.IsEmpty; // keeps its place: the field does not jump
+		if (let empty = Find<Sedulous.GUI.Label>("console-empty"))
+		{
+			empty.Displayed = mShown.IsEmpty;
+			empty.Text = mEntries.IsEmpty ? "No messages yet." : "No line matches.";
+		}
+	}
+
+	/// A row: its time, then its text. A node with one reference, the row's.
+	private Node MakeRow()
+	{
+		let row = new Sedulous.GUI.Panel();
+		row.AddClass("log-row");
+		let time = new Sedulous.GUI.Label();
+		time.AddClass("log-time");
+		time.AddClass("mono");
+		row.AddChild(time);
+		time.ReleaseRef(); // the row's reference keeps it
+		let text = new Sedulous.GUI.Label();
+		text.AddClass("log-text");
+		row.AddChild(text);
+		text.ReleaseRef();
+		return row;
+	}
+
+	private void BindRow(Node node, ModelIndex index)
+	{
+		let row = node as UIWidget;
+		if ((row == null) || (index.Row < 0) || (index.Row >= mShown.Count) || (row.ChildCount < 2))
+			return;
+		let entry = mEntries[mShown[index.Row]];
+		if (let time = row.GetChildAt(0) as Sedulous.GUI.Label)
+			time.Text = TimeText(entry.Time, .. scope .());
+		if (let text = row.GetChildAt(1) as Sedulous.GUI.Label)
+			text.Text = entry.Text;
+		// Its level's colour, the sheet's: info lines in the text colour.
+		row.RemoveClass("debug");
+		row.RemoveClass("warning");
+		row.RemoveClass("error");
+		if ((entry.Level == .Trace) || (entry.Level == .Debug))
+			row.AddClass("debug");
+		else if (entry.Level == .Warning)
+			row.AddClass("warning");
+		else if (LogBucket.Of(entry.Level) == .Error)
+			row.AddClass("error");
+	}
+
+	/// hh:mm:ss since the editor started.
+	private static void TimeText(TimeSpan time, String outText)
+	{
+		let seconds = (int64)time.TotalSeconds;
+		outText.AppendF("{:D2}:{:D2}:{:D2}", seconds / 3600, (seconds / 60) % 60, seconds % 60);
+	}
+
+	private void ShowMenu(Float2 at)
+	{
+		if (mList == null)
+			return;
+		if (mMenu != null)
+		{
+			if (mMenu.IsOpen)
+				mMenu.Close();
+			mMenu.ReleaseRef();
+		}
+		mMenu = new Sedulous.GUI.Menu();
+		let copy = mMenu.AddItem("Copy", new () => { CopySelection(); });
+		copy.Shortcut = "Ctrl+C";
+		copy.Enabled = mList.SelectionCount > 0;
+		mMenu.AddItem("Select All", new () => { mList.SelectAll(); });
+		mMenu.AddSeparator();
+		mMenu.AddItem("Clear", new () => { Clear(); });
+		mMenu.Open(mList, at);
 	}
 }
