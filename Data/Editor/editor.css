@@ -35,6 +35,35 @@ statusbar { height: var(--statusbar); flex-shrink: 0; padding: 0 var(--space-m);
 /* A panel whose contents come with a later phase. */
 .panel-placeholder { flex-grow: 1; text-align: center; color: var(--text-placeholder); }
 
+/* The Project panel with a project open: its header, then Start beside Project, wrapping. */
+.home-scroll { flex-grow: 1; min-height: 0; }
+.home { flex-direction: column; row-gap: var(--space-xl); padding: var(--space-xl) calc(2 * var(--space-xl)); }
+.home-header { flex-direction: row; align-items: center; column-gap: var(--space-xl); }
+.home-identity { flex-direction: column; row-gap: var(--space-xs); flex-grow: 1; flex-basis: 0; min-width: 0; }
+.home-name { font-size: var(--font-heading); font-weight: 600; color: var(--text-strong); text-overflow: ellipsis; white-space: nowrap; }
+.home-meta { color: var(--text-dim); font-size: var(--font-small); text-overflow: ellipsis; white-space: nowrap; }
+.home-columns { flex-direction: row; flex-wrap: wrap; column-gap: calc(2 * var(--space-xl)); row-gap: var(--space-xl); }
+.home-column { flex-direction: column; row-gap: var(--space-s); }
+.home-start { width: 280px; }
+.home-project { width: 440px; }
+.home-heading { font-size: var(--font-small); font-weight: 600; color: var(--text-dim); margin-top: var(--space-m); }
+.home-open { align-self: start; }
+.home-actions { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-s); row-gap: var(--space-s); }
+.home-links { flex-direction: column; align-items: start; }
+.home-settings { flex-direction: column; row-gap: var(--space-xs); }
+.home-category { color: var(--text-strong); font-weight: 500; margin-top: var(--space-m); }
+.home-setting { flex-direction: row; align-items: start; column-gap: var(--space-m); }
+.home-label { width: 150px; flex-shrink: 0; color: var(--text-dim); }
+.home-value.dim { color: var(--text-dim); }
+.home-value.missing { color: var(--warning); }
+button.link { background-color: transparent; color: var(--accent-strong); padding: 0 var(--space-xs); height: auto; min-height: 0; }
+button.link:hover { background-color: var(--ghost-hover); }
+/* A project's picture: its thumbnail, else its initial on a quiet tile. */
+.project-picture { border-radius: var(--radius); flex-shrink: 0; }
+.project-initial { background-color: var(--element); border: 1px solid var(--border); justify-content: center; align-items: center; }
+.project-initial > label { color: var(--text-dim); font-size: 40px; }
+.home-picture { width: 192px; height: 108px; }
+
 /* === Tabs: a compact strip, its text centred === */
 /* A tab view's strip is on top: a tab rounds its top corners and meets its page square. */
 tab { height: var(--tab); padding: 0 var(--space-l); align-items: center;

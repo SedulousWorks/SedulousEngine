@@ -84,6 +84,8 @@ class EditorApplication : IApplication
 	private CommandPalette mPalette = null ~ delete _;
 	/// Edit > Preferences, made the first time it opens.
 	private EditorPreferencesDialog mPreferences = null ~ delete _;
+	/// The Project panel while a project is open (made with its markup when one opens).
+	private ProjectHomeView mHome = null ~ delete _;
 	private EditorExport mExport = null ~ delete _;
 	private EditorAssetCreation mCreation ~ delete _;
 	private EditorMcpService mMcp = null ~ delete _;
@@ -211,6 +213,13 @@ class EditorApplication : IApplication
 					};
 				if ((store == null) || !mPages.Restore(store, progress))
 					OpenDefaultScene(project);
+				// The Project panel shows the project's page; its links open assets as the pages do.
+				if (mWindow.IsOpen)
+				{
+					mHome = new ProjectHomeView(mContext, mCookService, mWindow.LoadMarkup(ProjectHomeView.cMarkupPath));
+					mHome.SetOnOpenAsset(new (id) => { mPages.Open(id); });
+					mDock.SetProjectContent(mHome.Content);
+				}
 				if (mExport != null)
 					mExport.SetProject(project);
 				mCreation.SetProject(project);
@@ -219,6 +228,8 @@ class EditorApplication : IApplication
 			};
 		services.OnClosing = new () =>
 			{
+				mDock.SetProjectContent(null); // the welcome again
+				DeleteAndNullify!(mHome);
 				mPages.CloseAll(); // their resources while the project's services live
 				if (mMcp != null)
 					mMcp.Stop(); // no agent call may run against services that are going away
@@ -241,6 +252,12 @@ class EditorApplication : IApplication
 					ShowToast(.Error, scope $"Cook: {failed} failed, {cooked} cooked (see Console).");
 				else if (cooked > 0)
 					ShowToast(.Success, scope $"Cook finished: {cooked} asset(s).");
+			};
+		// The Project page shows the settings: filled again at the next frame.
+		services.OnSettingsChanged = new () =>
+			{
+				if (mHome != null)
+					mHome.MarkChanged();
 			};
 		return services;
 	}
@@ -634,6 +651,8 @@ class EditorApplication : IApplication
 		}
 		mWindow.Update(dt);
 		mPages.Update(host, dt); // after the GUI laid out: viewport rects are current
+		if (mHome != null)
+			mHome.Refresh();
 	}
 
 	/// The status bar's job (a job's title, how far, its step of how many; else a cook, of

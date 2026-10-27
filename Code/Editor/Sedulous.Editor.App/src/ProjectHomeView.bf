@@ -4,8 +4,7 @@ using System.Reflection;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Content;
-using Sedulous.Image;
-using Sedulous.UI;
+using Sedulous.GUI;
 using Sedulous.Engine.Project;
 using Sedulous.Engine.Render;
 using Sedulous.Editor.Core;
@@ -13,38 +12,31 @@ using Sedulous.Editor.Project;
 
 namespace Sedulous.Editor.App;
 
-/// The Project page, in the panel that holds the document area's place (with every page
-/// closed, a newly opened one docks beside it rather than among the tool panels). It shows the
-/// open project: its picture, name, engine and folder; a Start column (open the default scene,
-/// the Game menu's actions, every scene in the project); and a Project column (every setting
-/// the project's settings carry, by category, each asset a link that opens it, then the
-/// Project menu's actions). Nothing here is a list of its own: the settings are
-/// ProjectSettings' [Setting] fields (SettingFields), the actions the registry's Game and
-/// Project menus, the scenes the assets of the default scene setting's type.
+/// The Project panel with a project open (Raptor's editor-gui spec, 5.1, layer 13). Its frame is
+/// markup (Data/Editor/ProjectHome.gml); it fills the project's picture, name, engine and folder;
+/// a Start column (open the default scene, the Game menu's actions, every scene in the project);
+/// and a Project column (every setting the project's settings carry, by category, each asset a
+/// link that opens it, a missing one in the warning colour, then the Project menu's actions).
+/// Nothing here is a list of its own: the settings are ProjectSettings' [Setting] fields
+/// (SettingFields), the actions the registry's Game and Project menus, the scenes the assets of
+/// the default scene setting's type.
 ///
-/// Refresh (each frame) rebuilds it when the settings changed (MarkChanged, from the settings'
+/// Refresh (each frame) fills it again when the settings changed (MarkChanged, from the settings'
 /// save), the cook revision moved (assets added, renamed or removed) or the thumbnail changed.
 class ProjectHomeView
 {
-	/// Opens the asset with this guid in its page (the app's open path). Owned.
-	public delegate void(Guid id) OnOpenAsset ~ delete _;
-
-	private static readonly Color cDim = .(0.55f, 0.55f, 0.57f, 1.0f);
-	private static readonly Color cMissing = .(0.95f, 0.6f, 0.35f, 1.0f);
-	/// A link's padding: its hover fill around the text.
-	private const float cLinkInsetX = 6.0f;
-	private const float cLinkInsetY = 3.0f;
+	/// Its frame under the data root.
+	public const String cMarkupPath = "Editor/ProjectHome.gml";
 
 	/// Borrowed.
 	private EditorContext mContext;
 	/// Borrowed; null when there is none to watch.
 	private EditorCookService mCook;
-	/// One reference, the panel showing it taking its own.
-	private ScrollView mScroll ~ _.ReleaseRef();
-	/// The scroll's one child, refilled by Rebuild. Borrowed: the scroll owns it.
-	private FlexLayout mPage;
-	/// What the header's picture borrows.
-	private List<Image> mPictures = new .() ~ DeleteContainerAndItems!(_);
+	/// What the header's picture shows: declared before the content, so they outlive it.
+	private List<Sedulous.Image.Image> mPictures = new .() ~ DeleteContainerAndItems!(_);
+	/// A reference of ours; the panel showing it takes its own.
+	private Node mContent ~ _?.ReleaseRef();
+	private delegate void(Guid id) mOnOpenAsset = null ~ delete _;
 	private bool mChanged = false;
 	private uint64 mCookRevision = 0;
 	private int64 mThumbnailTime = 0;
@@ -52,31 +44,32 @@ class ProjectHomeView
 	private List<String> mRows = new .() ~ DeleteContainerAndItems!(_);
 	private List<String> mActions = new .() ~ DeleteContainerAndItems!(_);
 
-	/// `cook` (nullable) tells when the project's assets changed.
-	public this(EditorContext context, EditorCookService cook)
+	/// Over `context`'s project, its frame `content` (the markup's: its parts by id); `cook`
+	/// (nullable) says when the project's assets changed. TAKES OWNERSHIP of a reference to
+	/// `content`; null fills nothing.
+	public this(EditorContext context, EditorCookService cook, Node content)
 	{
 		mContext = context;
 		mCook = cook;
-		mScroll = new ScrollView();
-		mScroll.VScrollBarPolicy.Value = .Auto;
-		mScroll.HScrollBarPolicy.Value = .Never;
-		mPage = new FlexLayout();
-		mPage.Direction = .Vertical;
-		mPage.Spacing = 22;
-		mPage.Padding = .(28, 24);
-		var match = LayoutStyle();
-		match.Width = SizeSpec.Match();
-		mScroll.AddView(mPage, match);
+		mContent = content;
 		Rebuild();
 	}
 
-	/// The page's view. Borrowed: a caller that keeps it takes a reference.
-	public View View => mScroll;
+	/// Opens the asset with this guid in its page (the application's open path). TAKES OWNERSHIP
+	/// of `open`.
+	public void SetOnOpenAsset(delegate void(Guid id) open)
+	{
+		delete mOnOpenAsset;
+		mOnOpenAsset = open;
+	}
 
-	/// The settings changed: rebuild at the next Refresh.
+	/// Its frame. Ours: a caller that keeps it takes a reference.
+	public Node Content => mContent;
+
+	/// The settings changed: filled again at the next Refresh.
 	public void MarkChanged() => mChanged = true;
 
-	/// Rebuilds when something it shows changed (see the class comment).
+	/// Fills it again when something it shows changed (see the class comment).
 	public void Refresh()
 	{
 		let revision = (mCook != null) ? mCook.Revision : 0;
@@ -89,32 +82,15 @@ class ProjectHomeView
 		mChanged = false;
 		mCookRevision = (mCook != null) ? mCook.Revision : 0;
 		mThumbnailTime = ThumbnailTime();
-		mPage.RemoveAllViews();
-		ClearAndDeleteItems(mPictures); // the views showing them went with the page
 		mScenes.Clear();
 		ClearAndDeleteItems(mRows);
 		ClearAndDeleteItems(mActions);
-
 		let project = mContext.Project;
-		if (project == null)
-		{
-			mPage.AddView(Text("No project is open.", 13.0f, cDim));
+		if ((mContent == null) || (project == null))
 			return;
-		}
-		mPage.AddView(Header(project));
-
-		let columns = new FlexLayout();
-		columns.Direction = .Horizontal;
-		columns.Wrap = true;
-		columns.Spacing = 40;
-		columns.LineSpacing = 22;
-		var start = LayoutStyle();
-		start.Width = SizeSpec.Fixed(Unit.Dp(280.0f));
-		columns.AddView(StartColumn(project), start);
-		var settings = LayoutStyle();
-		settings.Width = SizeSpec.Fixed(Unit.Dp(440.0f));
-		columns.AddView(ProjectColumn(project), settings);
-		mPage.AddView(columns);
+		Header(project);
+		StartColumn(project);
+		ProjectColumn(project);
 	}
 
 	/// What it shows, for tests: the scenes listed (in order), each setting row as
@@ -122,6 +98,19 @@ class ProjectHomeView
 	public List<Guid> Scenes => mScenes;
 	public List<String> SettingRows => mRows;
 	public List<String> ActionIds => mActions;
+
+	/// The frame's part with this id, as a T; null when it has none.
+	private T Find<T>(StringView id) where T : Node
+	{
+		return (mContent != null) ? (mContent.FindElement(id) as T) : null;
+	}
+
+	/// Adds `child` to `into`, the tree's reference taking the place of the one it was made with.
+	private static void Adopt(Node into, Node child)
+	{
+		into.AddChild(child);
+		child.ReleaseRef();
+	}
 
 	private int64 ThumbnailTime()
 	{
@@ -133,96 +122,72 @@ class ProjectHomeView
 		return time;
 	}
 
-	private static Label Text(StringView text, float size, Color? color = null)
+	/// A label of `text` with the sheet's `classes`: a node with one reference, the caller's.
+	private static Node Text(StringView text, StringView classes = default)
 	{
-		let label = new Label(text);
-		label.FontSize.Value = size;
-		if (color.HasValue)
-			label.TextColor.Value = color;
+		let label = new Sedulous.GUI.Label();
+		label.Text = text;
+		if (!classes.IsEmpty)
+			label.AddClasses(classes);
 		return label;
 	}
 
-	/// A setting's value as plain text, inset as a link's text is, so the column lines up.
-	private static View Value(StringView text, Color? color = null)
+	/// A link: a flat button of its text, at its own width. TAKES OWNERSHIP of `onClick`; a node
+	/// with one reference, the caller's.
+	private static Node Link(StringView text, StringView tooltip, delegate void() onClick)
 	{
-		let label = Text(text, 13.0f, color);
-		label.Ellipsis.Value = true;
-		var inset = LayoutStyle();
-		inset.Margin = Thickness(cLinkInsetX, cLinkInsetY);
-		label.SetLayout(inset);
-		return label;
-	}
-
-	private static Label Heading(StringView text) => Text(text, 11.5f, cDim);
-
-	/// A quiet button as wide as its text: a link to an asset or a scene. (A content button
-	/// centres its content, so a link is placed at its own width, at the start of its line.)
-	/// `onClick` is consumed.
-	private static ContentButton Link(StringView text, delegate void() onClick)
-	{
-		let label = Text(text, 13.0f);
-		label.Ellipsis.Value = true;
-		let button = new ContentButton(label);
-		button.SetStyle(.Padding, Thickness(cLinkInsetX, cLinkInsetY));
-		let look = new StateListDrawable();
-		look.Set(.Normal, new RoundedRectDrawable(Color(1.0f, 1.0f, 1.0f, 0.0f), 4.0f));
-		look.Set(.Hover, new RoundedRectDrawable(Color(1.0f, 1.0f, 1.0f, 0.07f), 4.0f));
-		look.Set(.Pressed, new RoundedRectDrawable(Color(1.0f, 1.0f, 1.0f, 0.11f), 4.0f));
-		button.SetStyle(.Background, look);
-		button.OnClick.Add(new [=onClick](b) => { onClick(); } ~ delete onClick);
-		return button;
+		let link = new Sedulous.GUI.Button();
+		link.AddClass("link");
+		link.Text = text;
+		if (!tooltip.IsEmpty)
+			link.Tooltip = tooltip;
+		link.SetOnClick(onClick);
+		return link;
 	}
 
 	private void OpenAsset(Guid id)
 	{
-		if (OnOpenAsset != null)
-			OnOpenAsset(id);
+		if (mOnOpenAsset != null)
+			mOnOpenAsset(id);
 	}
 
-	private View AssetLink(Guid id, StringView emptyText)
+	/// An asset as a link that opens it; an unset one by `emptyText`, a missing one in the
+	/// warning colour. A node with one reference, the caller's.
+	private Node AssetLink(Guid id, StringView emptyText)
 	{
-		if (id == Guid.Empty)
-			return Value(emptyText, cDim);
+		if (!id.IsSet)
+			return Text(emptyText, "home-value dim");
 		let instance = mContext.Project.SourceDb.GetInstance(id);
 		if (instance == null)
-			return Value("(missing)", cMissing);
-		let link = Link(instance.Name, new [=this, =id]() => { OpenAsset(id); });
-		instance.GetPath(link.TooltipText);
-		return link;
+			return Text("(missing)", "home-value missing");
+		return Link(instance.Name, instance.GetPath(.. scope .()), new [=this, =id]() => { OpenAsset(id); });
 	}
 
 	/// The picture, the name, the engine and the folder.
-	private View Header(EditorProject project)
+	private void Header(EditorProject project)
 	{
 		let settings = project.Settings;
-		let header = new FlexLayout();
-		header.Direction = .Horizontal;
-		header.AlignItems = .Center;
-		header.Spacing = 18;
-		header.AddView(ProjectPicture.Make(project.Directory, settings.Name, 192.0f, 108.0f, 8.0f, mPictures));
-		let text = new FlexLayout();
-		text.Direction = .Vertical;
-		text.Spacing = 4;
-		var match = LayoutStyle();
-		match.Width = SizeSpec.Match();
-		let name = Text(settings.Name.IsEmpty ? "(unnamed)" : StringView(settings.Name), 22.0f);
-		name.Ellipsis.Value = true;
-		text.AddView(name, match);
-		text.AddView(Text(scope $"SedulousEngine {settings.EngineVersion}", 12.5f, cDim));
-		let folder = Text(project.Directory, 12.0f, cDim);
-		folder.Ellipsis.Value = true;
-		folder.TooltipText.Set(project.Directory);
-		text.AddView(folder, match);
-		var grow = LayoutStyle();
-		grow.FlexBasis = Unit.Dp(0.0f);
-		grow.FlexGrow = 1.0f;
-		header.AddView(text, grow);
-		return header;
+		if (let slot = Find<Node>("home-picture"))
+		{
+			slot.RemoveAllChildren(); // the pictures it showed go before their images
+			ClearAndDeleteItems(mPictures);
+			Adopt(slot, ProjectPicture.Make(project.Directory, settings.Name, "home-picture", mPictures));
+		}
+		if (let name = Find<Sedulous.GUI.Label>("home-name"))
+			name.Text = settings.Name.IsEmpty ? "(unnamed)" : StringView(settings.Name);
+		if (let engine = Find<Sedulous.GUI.Label>("home-engine"))
+			engine.Text = scope $"SedulousEngine {settings.EngineVersion}";
+		if (let folder = Find<Sedulous.GUI.Label>("home-folder"))
+		{
+			folder.Text = project.Directory;
+			folder.Tooltip = project.Directory;
+		}
 	}
 
-	/// The actions under `menu` ("Game/"), by their menu order, as a row of buttons.
-	private View MenuActions(StringView menu)
+	/// The actions under `menu` ("Game/"), by their menu order, as buttons in `into`.
+	private void MenuActions(StringView menu, Node into)
 	{
+		into.RemoveAllChildren();
 		let found = scope List<EditorActionDeclaration>();
 		for (let action in mContext.Actions.Actions)
 		{
@@ -230,47 +195,41 @@ class ProjectHomeView
 				found.Add(action);
 		}
 		found.Sort(scope (a, b) => a.MenuOrder <=> b.MenuOrder);
-		let row = new FlexLayout();
-		row.Direction = .Horizontal;
-		row.Wrap = true;
-		row.Spacing = 6;
-		row.LineSpacing = 6;
+		let context = mContext;
 		for (let action in found)
 		{
-			let button = new Button(action.Label);
-			button.TooltipText.Set(action.Description);
-			button.IsEnabled = EditorActionRegistry.IsEnabled(action, null);
+			let button = new Sedulous.GUI.Button();
+			button.Text = action.Label;
+			button.Tooltip = action.Description;
+			button.Enabled = EditorActionRegistry.IsEnabled(action, null);
 			let id = new String(action.Id);
-			button.OnClick.Add(new [=this, =id](b) => { mContext.Actions.Execute(id, null); } ~ delete id);
-			var height = LayoutStyle();
-			height.Height = SizeSpec.Fixed(Unit.Dp(28.0f));
-			row.AddView(button, height);
+			button.SetOnClick(new [=context, =id]() => { context.Actions.Execute(id, null).IgnoreError(); } ~ delete id);
+			Adopt(into, button);
 			mActions.Add(new String(action.Id));
 		}
-		return row;
 	}
 
 	/// Open the default scene, play, and every scene in the project.
-	private View StartColumn(EditorProject project)
+	private void StartColumn(EditorProject project)
 	{
 		let settings = project.Settings;
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 8;
-		column.AddView(Heading("START"));
+		if (let open = Find<Sedulous.GUI.Button>("home-open-default"))
 		{
-			let scene = (settings.DefaultSceneId == Guid.Empty) ? null : project.SourceDb.GetInstance(settings.DefaultSceneId);
-			let open = new Button((scene != null) ? scope:: $"Open {scene.Name}" : "No default scene");
-			open.IsEnabled = scene != null;
+			let scene = settings.DefaultSceneId.IsSet ? project.SourceDb.GetInstance(settings.DefaultSceneId) : null;
+			open.Text = (scene != null) ? scope:: $"Open {scene.Name}" : "No default scene";
+			open.Enabled = scene != null;
 			let id = settings.DefaultSceneId;
-			open.OnClick.Add(new [=this, =id](b) => { OpenAsset(id); });
-			var height = LayoutStyle();
-			height.Height = SizeSpec.Fixed(Unit.Dp(30.0f));
-			column.AddView(open, height);
+			open.SetOnClick(new [=this, =id]() => { OpenAsset(id); });
 		}
-		column.AddView(MenuActions("Game/"));
+		if (let game = Find<Node>("home-game-actions"))
+			MenuActions("Game/", game);
 
 		// The scenes: every asset of the type the default scene setting names.
+		let list = Find<Node>("home-scenes");
+		let heading = Find<Sedulous.GUI.Label>("home-scenes-heading");
+		if (list == null)
+			return;
+		list.RemoveAllChildren();
 		var sceneType = StringView();
 		if (typeof(ProjectSettings).GetField("DefaultSceneId") case .Ok(let field))
 		{
@@ -278,29 +237,21 @@ class ProjectHomeView
 			if (setting.HasValue && (setting.Value.AssetType != null))
 				sceneType = setting.Value.AssetType;
 		}
-		if (sceneType.IsEmpty)
-			return column;
 		let scenes = scope List<Instance>();
-		// A group keeps its instances and its groups in name order, so the walk is in order.
-		CollectInstances(project.SourceDb.RootGroup, sceneType, scenes);
-		let spacer = new FlexLayout();
-		spacer.Padding = .(0, 8, 0, 0);
-		spacer.AddView(Heading(scope $"SCENES ({scenes.Count})"));
-		column.AddView(spacer);
+		if (!sceneType.IsEmpty)
+			CollectInstances(project.SourceDb.RootGroup, sceneType, scenes); // a group keeps its instances and its groups in name order, so the walk is in order
+		if (heading != null)
+			heading.Text = scope $"Scenes ({scenes.Count})";
 		for (let scene in scenes)
 		{
 			let id = scene.Id;
 			let isDefault = id == settings.DefaultSceneId;
-			let link = Link(isDefault ? scope:: $"{scene.Name}  (default)" : scene.Name, new [=this, =id]() => { OpenAsset(id); });
-			scene.GetPath(link.TooltipText);
-			var start = LayoutStyle();
-			start.AlignSelf = .Start;
-			column.AddView(link, start);
+			Adopt(list, Link(isDefault ? scope:: $"{scene.Name} (default)" : scene.Name, scene.GetPath(.. scope .()),
+				new [=this, =id]() => { OpenAsset(id); }));
 			mScenes.Add(id);
 		}
 		if (scenes.IsEmpty)
-			column.AddView(Text("No scenes yet.", 13.0f, cDim));
-		return column;
+			Adopt(list, Text("No scenes yet.", "home-value dim"));
 	}
 
 	private static void CollectInstances(Group group, StringView typeName, List<Instance> outInstances)
@@ -314,8 +265,9 @@ class ProjectHomeView
 			CollectInstances(child, typeName, outInstances);
 	}
 
-	/// A setting's value as text: a choice by its case's name, a flag as On or Off, a count,
-	/// a text ("(none)" when empty). Empty for a kind this page does not show.
+	/// A setting's value as text: a choice by its case's name, a flag as On or Off, a count (the
+	/// MSAA level by its label, as the settings dialog shows it), a text ("(none)" when empty).
+	/// Empty for a kind this page does not show.
 	private static void SettingText(ProjectSettings settings, FieldInfo field, SettingKind kind, String outText)
 	{
 		let address = SettingFields.Address(settings, field);
@@ -334,7 +286,7 @@ class ProjectHomeView
 		case .Flag:
 			outText.Append(*(bool*)address ? "On" : "Off");
 		case .Count:
-			if (field.Name == "RenderMsaaSamples") // by its level's label, as the dialog shows it
+			if (field.Name == "RenderMsaaSamples")
 				outText.Append(MsaaLevels.All[MsaaLevels.IndexForSamples(*(uint32*)address)].Label);
 			else
 				outText.AppendF("{}", *(uint32*)address);
@@ -346,14 +298,13 @@ class ProjectHomeView
 	}
 
 	/// Every setting by category, then the Project menu's actions.
-	private View ProjectColumn(EditorProject project)
+	private void ProjectColumn(EditorProject project)
 	{
+		let column = Find<Node>("home-settings");
+		if (column == null)
+			return;
+		column.RemoveAllChildren();
 		let settings = project.Settings;
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 4;
-		column.AddView(Heading("PROJECT"));
-
 		let fields = scope List<FieldInfo>();
 		SettingFields.Of(typeof(ProjectSettings), fields);
 		// The categories in the order the settings first name them.
@@ -366,10 +317,7 @@ class ProjectHomeView
 		}
 		for (let category in categories)
 		{
-			let pad = new FlexLayout();
-			pad.Padding = .(0, 8, 0, 2);
-			pad.AddView(Text(category, 13.0f, Color(0.8f, 0.8f, 0.82f, 1.0f)));
-			column.AddView(pad);
+			Adopt(column, Text(category, "home-category"));
 			for (let field in fields)
 			{
 				if (SettingFields.Category(field) != category)
@@ -377,23 +325,22 @@ class ProjectHomeView
 				let setting = SettingFields.Setting(field).Value;
 				SettingFields.KindOf(field, let kind);
 				let emptyText = (setting.EmptyText != null) ? StringView(setting.EmptyText) : "(none)";
-				View value = null;
+				Node value = null;
 				let text = scope String();
 				switch (kind)
 				{
 				case .Asset:
 					let id = *(Guid*)SettingFields.Address(settings, field);
 					value = AssetLink(id, emptyText);
-					let instance = (id == Guid.Empty) ? null : project.SourceDb.GetInstance(id);
-					text.Append((id == Guid.Empty) ? emptyText : (instance != null) ? instance.Name : "(missing)");
+					let instance = id.IsSet ? project.SourceDb.GetInstance(id) : null;
+					text.Append(!id.IsSet ? emptyText : (instance != null) ? instance.Name : "(missing)");
 				case .AssetList:
 					let ids = *(List<Guid>*)SettingFields.Address(settings, field);
-					let list = new FlexLayout();
-					list.Direction = .Vertical;
-					list.AlignItems = .Start;
+					let list = new Sedulous.GUI.Panel();
+					list.AddClass("home-links");
 					for (let id in ids)
 					{
-						list.AddView(AssetLink(id, "(none)"));
+						Adopt(list, AssetLink(id, "(none)"));
 						let instance = project.SourceDb.GetInstance(id);
 						if (!text.IsEmpty)
 							text.Append(", ");
@@ -402,47 +349,24 @@ class ProjectHomeView
 					if (ids.IsEmpty)
 					{
 						text.Append("(none)");
-						list.AddView(Value(text, cDim));
+						Adopt(list, Text(text, "home-value dim"));
 					}
 					value = list;
 				default:
 					SettingText(settings, field, kind, text);
 					if (text.IsEmpty)
 						continue; // a kind this page does not show
-					value = Value(text);
+					value = Text(text, "home-value");
 				}
 				mRows.Add(new $"{setting.Label}: {text}");
-				column.AddView(SettingRow(setting.Label, value));
+				let row = new Sedulous.GUI.Panel();
+				row.AddClass("home-setting");
+				Adopt(row, Text(setting.Label, "home-label"));
+				Adopt(row, value);
+				Adopt(column, row);
 			}
 		}
-
-		let actions = new FlexLayout();
-		actions.Padding = .(0, 14, 0, 0);
-		actions.AddView(MenuActions("Project/"));
-		column.AddView(actions);
-		return column;
-	}
-
-	/// A label and its value. `value` is consumed.
-	private static View SettingRow(StringView label, View value)
-	{
-		let row = new FlexLayout();
-		row.Direction = .Horizontal;
-		row.AlignItems = .Start;
-		row.Spacing = 10;
-		var labelWidth = LayoutStyle();
-		labelWidth.Width = SizeSpec.Fixed(Unit.Dp(150.0f));
-		labelWidth.Margin = Thickness(0, cLinkInsetY, 0, 0);
-		row.AddView(Text(label, 13.0f, cDim), labelWidth);
-		// The value at the start of the room left (a link keeps its own width).
-		let cell = new FlexLayout();
-		cell.Direction = .Vertical;
-		cell.AlignItems = .Start;
-		cell.AddView(value);
-		var grow = LayoutStyle();
-		grow.FlexBasis = Unit.Dp(0.0f);
-		grow.FlexGrow = 1.0f;
-		row.AddView(cell, grow);
-		return row;
+		if (let actions = Find<Node>("home-project-actions"))
+			MenuActions("Project/", actions);
 	}
 }

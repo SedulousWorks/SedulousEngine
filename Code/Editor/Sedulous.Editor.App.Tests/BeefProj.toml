@@ -101,10 +101,6 @@ Name = "ProfilerPanelTests.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "ProjectHomeTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "ProjectLauncherTests.bf"
 
 [[ProjectFolder.Items]]

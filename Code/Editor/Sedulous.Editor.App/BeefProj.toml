@@ -213,15 +213,7 @@ Name = "ProfilerPanel.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "ProjectHomeView.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "ProjectManagerView.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ProjectPicture.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
