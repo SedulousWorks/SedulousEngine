@@ -468,15 +468,17 @@ class EditorContext : IAssetEditSink
 	}
 
 	/// Puts text on the OS clipboard and says so: every copy the user asks for announces
-	/// itself, "Copied <what>", so they know it took. A clipboard that refuses, or none (a
-	/// headless view), is a warning instead. `clipboard` is BORROWED and may be null.
-	public bool CopyText(Sedulous.UI.IClipboard clipboard, StringView text, StringView what)
+	/// itself, "Copied <what>", so they know it took. No clipboard (a headless view) is a
+	/// warning instead; the GUI's clipboard takes text without a verdict. `clipboard` is
+	/// BORROWED and may be null.
+	public bool CopyText(Sedulous.GUI.IClipboard clipboard, StringView text, StringView what)
 	{
-		if ((clipboard == null) || !(clipboard.SetText(text) case .Ok))
+		if (clipboard == null)
 		{
 			Notify(.Warning, scope $"Could not copy {what} to the clipboard");
 			return false;
 		}
+		clipboard.SetText(text);
 		Notify(.Success, scope $"Copied {what}");
 		return true;
 	}

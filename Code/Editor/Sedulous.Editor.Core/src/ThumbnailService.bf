@@ -6,7 +6,6 @@ using Sedulous.Core.Logging;
 using Sedulous.Content;
 using Sedulous.Image;
 using Sedulous.Image.IO;
-using Sedulous.UI;
 using Sedulous.VFS;
 using Sedulous.Editor.Project;
 
@@ -132,7 +131,7 @@ class ThumbnailService
 	/// The resolved thumbnail, BORROWED, or null when none exists yet and the caller keeps
 	/// its type icon. A miss schedules a load or a generate on the light lane and
 	/// OnThumbnailReady fires when the swap in is ready. Main thread only.
-	public Drawable Get(Guid id)
+	public Sedulous.GUI.Drawable Get(Guid id)
 	{
 		if (!id.IsSet || (mJobs == null) || (mResolve == null))
 			return null;

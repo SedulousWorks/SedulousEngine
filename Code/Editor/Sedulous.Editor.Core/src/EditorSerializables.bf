@@ -16,6 +16,10 @@ static class EditorSerializables
 	{
 		EditorProjectSerializables.RegisterAll(registry);
 		EditorCoreSerializables.RegisterAll(registry);
+		// Hand written (it reads the version before its chord was text), so the generated
+		// RegisterAll does not see it.
+		let target = (registry != null) ? registry : GlobalSerializableRegistry;
+		target.Register(ShortcutOverrideEntry.TypeId, () => new ShortcutOverrideEntry());
 		// These moved from Editor.Core to the headless project half (961f2b37); what was
 		// saved before the move (the recent projects, the export presets and roots, the
 		// template manifests) still loads.

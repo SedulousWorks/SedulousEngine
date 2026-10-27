@@ -245,6 +245,33 @@ static class EditorContextTests
 		Test.Assert(changes == after, "clearing an empty selection does not notify");
 	}
 
+	/// The GUI's clipboard, in memory.
+	private class TestClipboard : Sedulous.GUI.IClipboard
+	{
+		public String Stored = new .() ~ delete _;
+
+		public bool HasText => !Stored.IsEmpty;
+		public void GetText(String outText) { outText.Append(Stored); }
+		public void SetText(StringView text) { Stored.Set(text); }
+	}
+
+	/// A copy the user asks for says so; with no clipboard to reach (a headless view) it warns.
+	[Test]
+	public static void ACopyAnnouncesItselfAndWarnsWithoutAClipboard()
+	{
+		let context = scope EditorContext();
+		let notices = scope List<String>();
+		defer { ClearAndDeleteItems!(notices); }
+		context.OnNotice = new [&](kind, message) => { notices.Add(new $"{kind}: {message}"); };
+		let clipboard = scope TestClipboard();
+
+		Test.Assert(context.CopyText(clipboard, "1234", "GUID"));
+		Test.Assert((clipboard.Stored == "1234") && (notices.Back == "Success: Copied GUID"));
+		Test.Assert(!context.CopyText(null, "x", "path"));
+		Test.Assert(notices.Back == "Warning: Could not copy path to the clipboard");
+		Test.Assert(clipboard.Stored == "1234");
+	}
+
 	[Test]
 	public static void NotifyRoutesToOnNoticeAndFallsBackToTheStatusBar()
 	{
