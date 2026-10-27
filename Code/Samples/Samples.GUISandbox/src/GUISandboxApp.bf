@@ -47,7 +47,8 @@ namespace Samples.GUISandbox;
 //
 // The file is split as Raptor's Main.cpp reads: this one builds and runs the sandbox; the native
 // hosts and the dock space are SandboxHosts.bf, the Toolkit page SandboxToolkit.bf, the checks
-// (--keys, --sweep, --soak, --mirror-audit, --image-tests, --bench) SandboxChecks.bf.
+// (--keys, --sweep, --soak, --mirror-audit, --image-tests, --bench) SandboxChecks.bf. With
+// --editor-mock it shows the editor's mock (EditorMock.bf, over MockTypes.bf) instead.
 
 /// The sandbox: one GUI, one root, on the runtime host.
 class GUISandboxApp : IApplication
@@ -72,6 +73,13 @@ class GUISandboxApp : IApplication
 	private bool mOpenMenuAtStart = false;
 	/// --light: the light colour scheme from the start.
 	private bool mLightAtStart = false;
+	/// --editor-mock: the editor's mock instead of the sandbox (EditorMock.bf).
+	private bool mEditorMockMode = false;
+	/// --mock-side-by-side: its two scene pages side by side.
+	private bool mMockSideBySide = false;
+	/// --mock-size <w>x<h>: its window; a full HD display's by default, the user's (2026-10-24).
+	private uint32 mMockWidth = 1920;
+	private uint32 mMockHeight = 1080;
 	/// A game-menu script function to call once it is up (a screenshot of a panel).
 	private String mMenuCall = new .() ~ delete _;
 	/// Keystrokes to type into the root, one every 15 frames.
@@ -198,6 +206,8 @@ class GUISandboxApp : IApplication
 	// deleted after the root, so the views and editors that point at them go first.
 	private StressPage mStress = null ~ delete _;
 	private CodePage mCode = null ~ delete _;
+	/// The editor mock, likewise: its dock controller and inspectors' sources go after the root.
+	private EditorMock mEditorMock = null ~ delete _;
 
 	// === The Viewport page ===
 
@@ -219,6 +229,17 @@ class GUISandboxApp : IApplication
 	}
 	public void SetOpenMenu(bool open) => mOpenMenuAtStart = open;
 	public void SetLightAtStart(bool light) => mLightAtStart = light;
+	public void SetEditorMock(bool on) => mEditorMockMode = on;
+	public bool IsEditorMock => mEditorMockMode;
+	public void SetMockSideBySide(bool on) => mMockSideBySide = on;
+	/// --mock-size <w>x<h>: the mock's window at another size (a large monitor, a laptop).
+	public void SetMockSize(uint32 width, uint32 height)
+	{
+		mMockWidth = width;
+		mMockHeight = height;
+	}
+	public uint32 MockWidth => mMockWidth;
+	public uint32 MockHeight => mMockHeight;
 	public void SetMenuCall(StringView name) => mMenuCall.Set(name);
 	public void SetKeys(StringView keys) => mKeys.Set(keys);
 	public void SetAlwaysRedraw(bool always) => mAlwaysRedraw = always;
@@ -289,9 +310,11 @@ class GUISandboxApp : IApplication
 		mFontService = new TrueTypeFontService();
 		LoadFonts();
 		// The window's GUI: its input, its frames, its renderer and the picture baker. The sandbox
-		// blends in linear light, as its references were drawn.
+		// blends in linear light, as its references were drawn; the mock blends as the editor will:
+		// the host's default, sRGB, as CSS does (the editor's hover tints are tuned for it).
 		mGuiHost = new GuiHost(host.Graphics, mShell, mFontService, mShaders.Set);
-		mGuiHost.BlendSpace = .Linear;
+		if (!mEditorMockMode)
+			mGuiHost.BlendSpace = .Linear;
 		mStyles = mGuiHost.Styles;
 		// The windows the host opens for a root (the Docking page's floats in OS windows) are the
 		// runtime host's.
@@ -538,6 +561,11 @@ class GUISandboxApp : IApplication
 		mRoot.DisplayScale = (mWindow != null) ? mWindow.ContentScale : 1.0f;
 		mRoot.ViewportSize = .((float)mWidth, (float)mHeight);
 		mGuiFacade.RootNode = mRoot;
+		if (mEditorMockMode)
+		{
+			BuildEditorMock();
+			return;
+		}
 
 		mShellNode = LoadMarkup(ReadText(scope $"{cSandboxDir}shell.xml", .. scope String()));
 		if (mShellNode == null)
@@ -611,6 +639,42 @@ class GUISandboxApp : IApplication
 		if (mOpenInspector)
 			ToggleInspector();
 		mRoot.EventDispatcher.TooltipDelay = 0.4f; // tooltips are the GUI's own
+	}
+
+	/// The editor's mock in place of the sandbox: the GUI's theme and its satellites' sheets as the
+	/// user agent's, the editor's sheet the mock sets over them, the inspector on Ctrl+Shift+I.
+	private void BuildEditorMock()
+	{
+		mStyles.FontService = mFontService;
+		mStyles.SetFontFaceLoader(new (face, source) => LoadFontFace(face, source));
+		mGui.FontService = mFontService;
+		mResources = new VfsResourceProvider(mDataFileSystem);
+		mStyles.ResourceProvider = mResources;
+		mGui.ResourceProvider = mResources;
+		let theme = scope $"{Theme.DefaultThemeCSS}\n{DockingSheetCSS()}\n{ToolkitSheetCSS()}\n{CodeSheetCSS()}";
+		let userAgent = scope StyleSheet();
+		CSSParser.Parse(theme, "theme", userAgent);
+		mStyles.UserAgentSheet = userAgent;
+		let host = new EditorMock.Host();
+		host.Load = new (path) =>
+			{
+				let text = ReadText(path, .. scope String());
+				return LoadMarkup(text);
+			};
+		host.Read = new (path, outText) => ReadText(path, outText);
+		mEditorMock = new EditorMock(mGui, mRoot, mStyles, host);
+		if (!mEditorMock.Build())
+			Console.Error.WriteLine("GUISandbox: the editor mock did not load");
+		if (mLightAtStart)
+			mEditorMock.SetDark(false);
+		if (mMockSideBySide)
+			mEditorMock.SetSideBySide(true);
+		mRoot.OnCommand("inspector.toggle", new (e) => { ToggleInspector(); });
+		mGui.Keymap.Bind("ctrl-shift-i", "inspector.toggle");
+		mRoot.DebugFont = mFont;
+		if (mOpenInspector)
+			ToggleInspector();
+		mRoot.EventDispatcher.TooltipDelay = 0.4f;
 	}
 
 	/// The Language page's count of files, moved by `by` (never below none).
@@ -1268,6 +1332,8 @@ class GUISandboxApp : IApplication
 			mShellNode = null;
 		}
 		mViewport = null; // its targets go with the tree, while the host and the device are here
+		if (mEditorMock != null)
+			mEditorMock.ReleaseTree(); // its frame and dock space, the tree's
 		// The widgets go with the tree, before the models and sources they read.
 		mRoot.ReleaseRef();
 		mRoot = null;
@@ -1275,6 +1341,7 @@ class GUISandboxApp : IApplication
 		ReleaseToolkit(); // the Toolkit page's sources (SandboxToolkit.bf)
 		DeleteAndNullify!(mStress);
 		DeleteAndNullify!(mCode);
+		DeleteAndNullify!(mEditorMock); // its dock controller, then its sources, then what they show
 		// The GUI lets go of what it borrows from us before the host takes it away.
 		mGui.Localization = null;
 		mGui.AccessibilityBridge = null;

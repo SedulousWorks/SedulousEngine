@@ -35,7 +35,9 @@ namespace Samples.GUISandbox;
 /// after looking at them. --bench <page> [frames]: a page's frame cost by stage. --lang <locale>:
 /// start in that language (en, ar, or pseudo: English pseudolocalized). --narrate: print what a
 /// screen reader would say. --stress <n>: start on the Stress page, built at load n (1 to 20;
-/// measure in Release). The backend: --vulkan (the default), --webgpu, --dx12. With the
+/// measure in Release). --editor-mock: the editor's mock (EditorMock.bf) instead of the sandbox,
+/// its window full HD; with --mock-side-by-side its two scene pages side by side, --mock-size
+/// <w>x<h> its window at that size, and --light the light scheme. The backend: --vulkan (the default), --webgpu, --dx12. With the
 /// framework's --screenshot flags, a picture of any of it.
 class Program
 {
@@ -50,6 +52,19 @@ class Program
 				app.SetStartPage(args[++i]);
 			else if (arg == "--showcase")
 				app.SetOpenMenu(true);
+			else if (arg == "--editor-mock")
+				app.SetEditorMock(true);
+			else if (arg == "--mock-side-by-side")
+				app.SetMockSideBySide(true);
+			else if ((arg == "--mock-size") && hasNext)
+			{
+				// <w>x<h>, both above nothing; anything else leaves the size as it was.
+				let size = StringView(args[++i]);
+				let x = size.IndexOf('x');
+				if ((x > 0) && (uint32.Parse(size.Substring(0, x)) case .Ok(let width)) &&
+					(uint32.Parse(size.Substring(x + 1)) case .Ok(let height)) && (width > 0) && (height > 0))
+					app.SetMockSize(width, height);
+			}
 			else if (arg == "--light")
 				app.SetLightAtStart(true);
 			else if ((arg == "--menu-call") && hasNext)
@@ -125,9 +140,9 @@ class Program
 		app.SetScreenshots(ScreenshotOptions.FromArguments(args));
 
 		WindowSettings windowSettings = .();
-		windowSettings.Title = "GUI Sandbox";
-		windowSettings.Width = 960;
-		windowSettings.Height = 820;
+		windowSettings.Title = app.IsEditorMock ? "Editor mock" : "GUI Sandbox";
+		windowSettings.Width = app.IsEditorMock ? app.MockWidth : 960; // the mock at a full HD display's size
+		windowSettings.Height = app.IsEditorMock ? app.MockHeight : 820;
 		windowSettings.DrawsTextComposition = true; // its fields show an IME's composition in place
 		let shell = scope SDL3Shell(windowSettings);
 		if (shell.MainWindow == null)
