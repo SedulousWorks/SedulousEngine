@@ -7,11 +7,14 @@ namespace Sedulous.GUI;
 
 // TreeView: a virtualised tree over a model (eepp's UITreeView in role). It flattens the open
 // nodes into the items ItemView realises, so a huge tree costs only the rows in view. A row shows
-// its indent, a disclosure chevron (the expander's) that opens and closes it, and its text.
+// its indent, a disclosure chevron (the expander's) that opens and closes it, its icon where the
+// model gives one (ModelRole.Icon, with ModelRole.IconClass a class on it, as a type's category
+// tints it), and its text; ModelRole.RowClass gives the row classes of its own (a state).
 // Expansion is a set of node ids, as the selection is, so both survive the flattening; closing a
 // node that holds the selection selects the node. Right opens a node (or goes to its first
 // child), Left closes it (or goes to its parent). In markup its children are nested
-// `<TreeItem text="..." expanded="true">`s, which become a model of its own.
+// `<TreeItem text="..." expanded="true" icon="..." icon-class="...">`s, which become a model of
+// its own.
 
 // A node's chevron: right when closed, down when open; a click opens or closes the node.
 class TreeArrow : UIWidget
@@ -55,19 +58,34 @@ class TreeArrow : UIWidget
 			mOnClicked();
 	}
 
+	// The click after the press is the chevron's too: a row that folds on a click of its own (a
+	// property grid's header) would fold back what the press folded.
+	protected override void OnMouseClick(MouseEvent e)
+	{
+		if (e.Button == .Left)
+			e.Handled = true;
+	}
+
 	public override void OnDraw(DrawContext ctx, Rect localBounds)
 	{
 		DrawDisclosure(ctx, LocalBounds, mExpanded, mColor, IsRightToLeft);
 	}
 }
 
-// A tree row's content: its indent, its chevron and its text (`treecell`).
+// A tree row's content: its indent, its chevron, its icon (`treeicon`, when it has one) and its
+// text (`treecell`).
 class TreeRowContent : UIWidget
 {
+	private const float cIconGap = 4.0f;
+
 	private TreeArrow mArrow ~ _.ReleaseRef();
+	private Sedulous.GUI.Image mIcon = null ~ _?.ReleaseRef();
 	private Sedulous.GUI.Label mLabel ~ _.ReleaseRef();
+	private String mIconClass = new .() ~ delete _;
+	private String mRowClasses = new .() ~ delete _; // the model's (RowClass)
 	private float mIndent = 0.0f;
 	private float mArrowSize = 16.0f;
+	private float mIconSize = 0.0f; // none shown
 
 	public this()
 	{
@@ -86,6 +104,8 @@ class TreeRowContent : UIWidget
 
 	public Sedulous.GUI.Label Label => mLabel;
 	public TreeArrow Arrow => mArrow;
+	/// Its icon, made when it first has one (none: null).
+	public Sedulous.GUI.Image Icon => mIcon;
 
 	public void Configure(float indent, float arrowSize, bool hasChildren, bool expanded)
 	{
@@ -96,11 +116,53 @@ class TreeRowContent : UIWidget
 		RequestLayout();
 	}
 
+	/// Its icon: `source` an image's (empty: none), `iconClass` a class on it, `size` its square.
+	public void SetIcon(StringView source, StringView iconClass, float size)
+	{
+		mIconSize = source.IsEmpty ? 0.0f : size;
+		if (source.IsEmpty)
+		{
+			if (mIcon != null)
+				mIcon.Displayed = false;
+			RequestLayout();
+			return;
+		}
+		if (mIcon == null)
+		{
+			mIcon = new Sedulous.GUI.Image();
+			mIcon.Tag = "treeicon";
+			mIcon.HitTestVisible = false;
+			AddChildAt(mIcon, 1); // after the arrow, before the text
+		}
+		mIcon.Displayed = true;
+		mIcon.Source = source; // the same source is not loaded again
+		if (mIconClass != iconClass)
+		{
+			if (!mIconClass.IsEmpty)
+				mIcon.RemoveClass(mIconClass);
+			mIconClass.Set(iconClass);
+			if (!mIconClass.IsEmpty)
+				mIcon.AddClass(mIconClass);
+		}
+		RequestLayout();
+	}
+
+	/// Classes the model gives the row (space separated; empty: none), in place of those it gave
+	/// before: a state a sheet styles (dimmed, a member of something).
+	public void SetRowClasses(StringView classes)
+	{
+		if (mRowClasses == classes)
+			return;
+		RemoveClasses(mRowClasses);
+		mRowClasses.Set(classes);
+		AddClasses(mRowClasses);
+	}
+
 	public override Float2 MeasureContent(Float2 available)
 	{
-		let textX = mIndent + mArrowSize + 2.0f;
+		let textX = TextStart;
 		let text = mLabel.Measure(LayoutConstraints(.(0.0f, 0.0f), .(Math.Max(0.0f, available.X - textX), cUnbounded), .(-1.0f, -1.0f), false, false));
-		return .(textX + text.X, Math.Max(text.Y, mArrowSize));
+		return .(textX + text.X, Math.Max(Math.Max(text.Y, mArrowSize), mIconSize));
 	}
 
 	public override void OnLayout()
@@ -109,7 +171,12 @@ class TreeRowContent : UIWidget
 		let @box = ContentBounds;
 		let rtl = IsRightToLeft;
 		mArrow.Arrange(Rect.MirroredIn(.(@box.X + mIndent, @box.Y, mArrowSize, @box.Height), @box, rtl));
-		let textX = mIndent + mArrowSize + 2.0f;
+		if ((mIcon != null) && (mIconSize > 0.0f))
+		{
+			let top = @box.Y + (@box.Height - mIconSize) * 0.5f;
+			mIcon.Arrange(Rect.MirroredIn(.(@box.X + mIndent + mArrowSize + 2.0f, top, mIconSize, mIconSize), @box, rtl));
+		}
+		let textX = TextStart;
 		mLabel.Arrange(Rect.MirroredIn(.(@box.X + textX, @box.Y, Math.Max(0.0f, @box.Width - textX - 2.0f), @box.Height), @box, rtl));
 	}
 
@@ -117,6 +184,9 @@ class TreeRowContent : UIWidget
 	{
 		ShareTextStyle(mLabel);
 	}
+
+	// Where its text starts: after the indent, the arrow's column and its icon with a gap.
+	private float TextStart => mIndent + mArrowSize + 2.0f + ((mIconSize > 0.0f) ? mIconSize + cIconGap : 0.0f);
 }
 
 /// A node of a tree written in markup: its text, whether it starts open, and its children.
@@ -124,6 +194,8 @@ class TreeRowContent : UIWidget
 class TreeItem : UIWidget
 {
 	private String mText = new .() ~ delete _;
+	private String mIcon = new .() ~ delete _;
+	private String mIconClass = new .() ~ delete _;
 	private bool mExpanded = false;
 
 	public this()
@@ -145,6 +217,21 @@ class TreeItem : UIWidget
 	{
 		get => mText;
 		set => mText.Set(value);
+	}
+
+	/// Its icon: an image's source, and a class on it a sheet styles.
+	[GuiProperty("icon")]
+	public StringView Icon
+	{
+		get => mIcon;
+		set => mIcon.Set(value);
+	}
+
+	[GuiProperty("icon-class")]
+	public StringView IconClass
+	{
+		get => mIconClass;
+		set => mIconClass.Set(value);
 	}
 
 	[GuiProperty("expanded")]
@@ -181,6 +268,7 @@ class TreeView : ItemView
 	private float mWidest = 0.0f; // the widest row bound (NoteRowWidth)
 	private IModel mWidestOf = null; // the model it was measured over: compared, never read through
 	private float mArrowSize = 16.0f;
+	private float mIconSize = 16.0f; // a row's icon's square
 	private TreeModel mOwnTree = null; // markup's items; let go in the destructor
 	private Node mMarkupHost = null ~ _?.ReleaseRef(); // where markup's items land, then taken in
 	private bool mAdopting = false;
@@ -192,6 +280,9 @@ class TreeView : ItemView
 		using (StyleWriteScope(this)) // its own values, which a sheet returns to
 		{
 			TextColor = .(0.88f, 0.90f, 0.94f, 1.0f);
+			// Sideways too, as a table across its columns: its rows are as wide as its widest
+			// (RowWidth), and without it a row wider than the view was only cut at its edge.
+			EditLayoutStyle(scope (s) => { s.OverflowX = .Auto; });
 		}
 	}
 
@@ -202,12 +293,38 @@ class TreeView : ItemView
 		delete mOwnTree;
 	}
 
+	/// A level's indent (`indent-width`) and the column a row keeps for its arrow (`arrow-size`),
+	/// the arrow drawn to fit it: a sheet sets them (an editor's density).
+	[GuiProperty("indent-width"), Scriptable]
 	public float IndentWidth
 	{
 		get => mIndentWidth;
 		set
 		{
 			mIndentWidth = Math.Max(0.0f, value);
+			ItemsChanged();
+		}
+	}
+
+	[GuiProperty("arrow-size"), Scriptable]
+	public float ArrowSize
+	{
+		get => mArrowSize;
+		set
+		{
+			mArrowSize = Math.Max(0.0f, value);
+			ItemsChanged();
+		}
+	}
+
+	/// A row's icon's square (`icon-size`), where the model gives one.
+	[GuiProperty("icon-size"), Scriptable]
+	public float IconSize
+	{
+		get => mIconSize;
+		set
+		{
+			mIconSize = Math.Max(0.0f, value);
 			ItemsChanged();
 		}
 	}
@@ -298,6 +415,14 @@ class TreeView : ItemView
 		let text = scope String();
 		Model.Data(index).ToString(text);
 		row.Label.Text = text;
+		let icon = scope String();
+		Model.Data(index, .Icon).ToString(icon);
+		let iconClass = scope String();
+		Model.Data(index, .IconClass).ToString(iconClass);
+		row.SetIcon(icon, iconClass, mIconSize);
+		let rowClasses = scope String();
+		Model.Data(index, .RowClass).ToString(rowClasses);
+		row.SetRowClasses(rowClasses);
 		row.Configure((float)entry.Depth * mIndentWidth, mArrowSize, entry.HasChildren, mExpanded.Contains(entry.Id));
 		NoteRowWidth(content);
 	}
@@ -305,6 +430,14 @@ class TreeView : ItemView
 	// Rows as wide as the widest one bound, or the view when it is wider: a deep level or a long
 	// name scrolls sideways, where it had been cut at the view's edge.
 	protected override float RowWidth(float width) => Math.Max(width, mWidest);
+
+	// The rows in view measured again once placed: one bound before the sheet reached it (a row
+	// just made has no font yet, its name no width) is measured as it is drawn.
+	protected override void OnLayoutDecorations()
+	{
+		for (let row in LiveRows)
+			NoteRowWidth(row);
+	}
 
 	// The arrow toward the inline end (Right, Left in right to left) opens a node, or on an open
 	// one goes to its first child; toward the start closes an open one, or goes to its parent.
@@ -370,6 +503,8 @@ class TreeView : ItemView
 	private void AddItem(TreeItem item, int32 parent)
 	{
 		let id = mOwnTree.AddNode(parent, item.Text);
+		if (!item.Icon.IsEmpty)
+			mOwnTree.SetIcon(id, item.Icon, item.IconClass);
 		if (item.Expanded)
 			mExpanded.Add((Sedulous.GUI.ItemId)id);
 		for (int i = 0; i < item.ChildCount; ++i)
@@ -435,7 +570,7 @@ class TreeView : ItemView
 			mWidestOf = Model;
 			mWidest = 0.0f;
 		}
-		let row = (content.Parent != null) ? content.Parent : content; // the row's own padding too
+		let row = (content is ItemRow) ? content : ((content.Parent != null) ? content.Parent : content); // the row's own padding too
 		let width = row.Measure(LayoutConstraints()).X;
 		if (width > mWidest + 0.5f)
 		{

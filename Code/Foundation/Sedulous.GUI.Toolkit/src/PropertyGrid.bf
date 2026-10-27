@@ -235,7 +235,6 @@ class PropertyGrip : UIWidget
 [GuiReflect]
 class PropertyCategoryContent : UIWidget
 {
-	private const float cArrow = 16.0f;
 	private PropertyGrid mGrid;
 	private TreeArrow mArrow ~ _.ReleaseRef();
 	private Sedulous.GUI.Label mLabel ~ _.ReleaseRef();
@@ -276,8 +275,9 @@ class PropertyCategoryContent : UIWidget
 	{
 		let @box = ContentBounds;
 		let rtl = IsRightToLeft;
-		mArrow.Arrange(Rect.MirroredIn(.(@box.X, @box.Y, cArrow, @box.Height), @box, rtl));
-		mLabel.Arrange(Rect.MirroredIn(.(@box.X + cArrow + 2.0f, @box.Y, Math.Max(0.0f, @box.Width - cArrow - 2.0f), @box.Height), @box, rtl));
+		let arrow = mGrid.ArrowSize;
+		mArrow.Arrange(Rect.MirroredIn(.(@box.X, @box.Y, arrow, @box.Height), @box, rtl));
+		mLabel.Arrange(Rect.MirroredIn(.(@box.X + arrow + 2.0f, @box.Y, Math.Max(0.0f, @box.Width - arrow - 2.0f), @box.Height), @box, rtl));
 	}
 
 	protected override void OnTextStyleChange()
@@ -291,7 +291,6 @@ class PropertyCategoryContent : UIWidget
 [GuiReflect]
 class PropertyRowContent : UIWidget
 {
-	private const float cArrow = 16.0f;
 	private const float cGrip = 12.0f;
 	private PropertyGrid mGrid;
 	private TreeArrow mArrow ~ _.ReleaseRef();
@@ -378,10 +377,11 @@ class PropertyRowContent : UIWidget
 		let rtl = IsRightToLeft;
 		let split = Math.Floor(@box.Width * mGrid.LabelRatio);
 		let indent = (float)mDepth * mGrid.IndentWidth;
-		mArrow.Arrange(Rect.MirroredIn(.(@box.X + indent, @box.Y, cArrow, @box.Height), @box, rtl));
+		let arrow = mGrid.ArrowSize;
+		mArrow.Arrange(Rect.MirroredIn(.(@box.X + indent, @box.Y, arrow, @box.Height), @box, rtl));
 		if (mMovable) // in the indent before the element
 			mGrip.Arrange(Rect.MirroredIn(.(@box.X + Math.Max(0.0f, indent - cGrip), @box.Y, cGrip, @box.Height), @box, rtl));
-		let textX = indent + cArrow + 2.0f;
+		let textX = indent + arrow + 2.0f;
 		mLabel.Arrange(Rect.MirroredIn(.(@box.X + textX, @box.Y, Math.Max(0.0f, split - textX - 4.0f), @box.Height), @box, rtl));
 		if (mEditor != null)
 			mEditor.Arrange(Rect.MirroredIn(.(@box.X + split + 2.0f, @box.Y + 1.0f, Math.Max(0.0f, @box.Width - split - 2.0f), Math.Max(0.0f, @box.Height - 2.0f)), @box, rtl));
@@ -445,6 +445,7 @@ class PropertyGrid : ItemView, IPropertySourceClient, IPropertyEditHost
 	private bool mReorderAfter = false;
 	private float mLabelRatio = 0.4f;
 	private float mIndentWidth = 12.0f;
+	private float mArrowSize = 16.0f;
 
 	public this()
 	{
@@ -571,6 +572,18 @@ class PropertyGrid : ItemView, IPropertySourceClient, IPropertyEditHost
 		set
 		{
 			mIndentWidth = Math.Max(0.0f, value);
+			ItemsChanged();
+		}
+	}
+
+	/// The column a row keeps for a group's arrow (`arrow-size`), the arrow drawn to fit it.
+	[GuiProperty("arrow-size")]
+	public float ArrowSize
+	{
+		get => mArrowSize;
+		set
+		{
+			mArrowSize = Math.Max(0.0f, value);
 			ItemsChanged();
 		}
 	}

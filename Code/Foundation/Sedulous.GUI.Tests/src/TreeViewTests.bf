@@ -1,5 +1,6 @@
 using System;
 using Sedulous.Core;
+using Sedulous.Fonts.TrueType;
 using Sedulous.GUI;
 
 namespace Sedulous.GUI.Tests;
@@ -31,15 +32,7 @@ class TreeViewTests
 			A1 = Model.AddNode(A, "A1");
 			A2 = Model.AddNode(A, "A2");
 			A1x = Model.AddNode(A1, "A1x");
-			Root = SceneFixtures.NewScene(400.0f, 400.0f);
-			Tree = new TreeView();
-			Tree.Size = .(260.0f, 300.0f);
-			Tree.RowHeight = 20.0f;
-			Tree.IndentWidth = 16.0f;
-			Root.AddChild(Tree);
-			Tree.ReleaseRef(); // the tree holds it
-			Tree.Model = Model;
-			Root.UpdateLayout();
+			Tree = MountTree(Model, out Root);
 		}
 
 		public ~this()
@@ -48,6 +41,40 @@ class TreeViewTests
 		}
 
 		public EventDispatcher D => Root.EventDispatcher;
+	}
+
+	/// A tree view 260 by 300 over `model` (tall enough to realise every visible row), rows 20 tall
+	/// and indented 16, in a root 400 by 400 `root` takes; the root goes before the model.
+	private static TreeView MountTree(IModel model, out SceneRoot root)
+	{
+		root = SceneFixtures.NewScene(400.0f, 400.0f);
+		let tree = new TreeView();
+		tree.Size = .(260.0f, 300.0f);
+		tree.RowHeight = 20.0f;
+		tree.IndentWidth = 16.0f;
+		root.AddChild(tree);
+		tree.ReleaseRef(); // the root holds it
+		tree.Model = model;
+		root.UpdateLayout();
+		return tree;
+	}
+
+	/// A tree whose rows' classes come from the model: what each node is now.
+	private class StatedTree : TreeModel
+	{
+		public String AClasses = new .() ~ delete _;
+
+		public override Sedulous.GUI.Variant Data(ModelIndex index, ModelRole role = .Display)
+		{
+			if (role == .RowClass)
+				return (index.InternalId == 0) ? Sedulous.GUI.Variant((StringView)AClasses) : Sedulous.GUI.Variant();
+			return base.Data(index, role);
+		}
+
+		public void Changed()
+		{
+			NotifyReset();
+		}
 	}
 
 	[Test]
@@ -159,15 +186,9 @@ class TreeViewTests
 		var parent = TreeModel.Root;
 		for (int depth < 20)
 			parent = model.AddNode(parent, "Level");
-		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		let tree = MountTree(model, let root);
 		defer root.ReleaseRef(); // before the model the view listens to
-		let tree = new TreeView();
-		tree.Size = .(260.0f, 300.0f);
-		tree.RowHeight = 20.0f;
 		tree.IndentWidth = 32.0f;
-		root.AddChild(tree);
-		tree.ReleaseRef(); // the root holds it
-		tree.Model = model;
 		root.UpdateLayout();
 		Test.Assert(tree.ContentExtent.X <= 260.0f + 0.5f, "collapsed: nothing passes the edge");
 		for (int32 item < 20)
@@ -175,8 +196,162 @@ class TreeViewTests
 		root.UpdateLayout();
 		root.UpdateLayout(); // the widest row measured as it binds; the rows take it next
 		Test.Assert(tree.ContentExtent.X > 10.0f * 32.0f, scope $"{tree.ContentExtent.X}");
+		Test.Assert(tree.ScrollRange.X > 0.0f, "and it scrolls across them, not only cut at its edge");
 		let row = tree.RowForItem(10);
 		Test.Assert(row != null);
 		Test.Assert(Math.Abs(row.Size.X - tree.ContentExtent.X) < 0.01f);
+	}
+
+	/// A long name bound before its row had a font (a row just made has none until the sheet
+	/// reaches it: the editor's hierarchy) measured nothing as it bound; placed with its font, it
+	/// is measured again.
+	[Test]
+	public static void ALongNameBoundBeforeTheRowHadAFontWidensTheRowsOnceItHasOne()
+	{
+		let service = scope TrueTypeFontService();
+		let model = scope TreeModel();
+		model.AddNode(TreeModel.Root, "An entity whose name runs far past the edge of a view two hundred and sixty wide");
+		let tree = MountTree(model, let root);
+		defer root.ReleaseRef(); // before the model the view listens to, and the font it draws in
+		Test.Assert(tree.ContentExtent.X <= 260.0f + 0.5f, "no font: no width to its name");
+		TextFixtures.Load(service, "DejaVu", TextFixtures.cDejaVuMono);
+		tree.Font = service.GetFont("DejaVu", 13.0f); // as the sheet gives it, after the bind
+		root.UpdateLayout();
+		root.UpdateLayout(); // measured as placed; the rows take it next
+		Test.Assert(tree.ContentExtent.X > 400.0f, scope $"{tree.ContentExtent.X}");
+		Test.Assert(tree.ScrollRange.X > 140.0f, "scrolled across to see the rest of the name");
+	}
+
+	[Test]
+	public static void ASheetSetsItsArrowsColumnAndItsIndent()
+	{
+		let b = scope Bed();
+		let styles = scope StyleManager();
+		WidgetFixtures.UseSheet(styles, "treeview { arrow-size: calc(5px * 2); indent-width: 8px; }");
+		styles.ApplyTree(b.Root);
+		b.Root.UpdateLayout();
+		Test.Assert(Math.Abs(b.Tree.ArrowSize - 10.0f) < 0.01f);
+		Test.Assert(Math.Abs(b.Tree.IndentWidth - 8.0f) < 0.01f);
+		// Past the 10 px arrow (inside the default 16): the row, not its arrow.
+		SceneFixtures.Click(b.D, .(13.0f, 10.0f));
+		Test.Assert(!b.Tree.IsItemExpanded(0));
+		SceneFixtures.Click(b.D, .(5.0f, 10.0f));
+		Test.Assert(b.Tree.IsItemExpanded(0));
+	}
+
+	[Test]
+	public static void ARowShowsTheModelsIconWithItsClassBetweenTheArrowAndTheText()
+	{
+		let b = scope Bed();
+		b.Model.SetIcon(b.A, "Icons/folder.svg", "cat-rendering");
+		b.Tree.IconSize = 14.0f;
+		b.Root.UpdateLayout();
+
+		let withIcon = b.Tree.RowForItem(0).Content as TreeRowContent; // A
+		let without = b.Tree.RowForItem(1).Content as TreeRowContent; // B
+		Test.Assert(withIcon != null);
+		Test.Assert(without != null);
+		Test.Assert(withIcon.Icon != null);
+		Test.Assert(withIcon.Icon.Source == "Icons/folder.svg");
+		Test.Assert(withIcon.Icon.HasClass("cat-rendering"));
+		Test.Assert(Math.Abs(withIcon.Icon.Size.X - 14.0f) < 0.01f);
+		// The icon after the arrow's column, the text after the icon; a row with none starts its
+		// text earlier.
+		Test.Assert(withIcon.Icon.Position.X >= withIcon.Arrow.Position.X + withIcon.Arrow.Size.X);
+		Test.Assert(withIcon.Label.Position.X >= withIcon.Icon.Position.X + 14.0f);
+		Test.Assert(without.Label.Position.X < withIcon.Label.Position.X);
+
+		// The icon goes when the model takes it away, and the text moves back.
+		b.Model.SetIcon(b.A, "");
+		b.Root.UpdateLayout();
+		let cleared = b.Tree.RowForItem(0).Content as TreeRowContent;
+		Test.Assert((cleared.Icon == null) || !cleared.Icon.Displayed);
+		Test.Assert(Math.Abs(cleared.Label.Position.X - without.Label.Position.X) < 0.01f);
+	}
+
+	[Test]
+	public static void ARowTakesTheClassesTheModelGivesItInPlaceOfThoseItGaveBefore()
+	{
+		let model = scope StatedTree();
+		model.AddNode(TreeModel.Root, "A"); // node 0
+		model.AddNode(TreeModel.Root, "B");
+		model.AClasses.Set("member  inactive"); // spaced as written
+		let tree = MountTree(model, let root);
+		defer root.ReleaseRef(); // before the model the view listens to
+		var a = tree.RowForItem(0).Content as TreeRowContent;
+		let b = tree.RowForItem(1).Content as TreeRowContent;
+		Test.Assert(a != null);
+		Test.Assert(b != null);
+		Test.Assert(a.HasClass("member"));
+		Test.Assert(a.HasClass("inactive"));
+		Test.Assert(!b.HasClass("member"));
+
+		model.AClasses.Set("inactive");
+		model.Changed();
+		root.UpdateLayout();
+		a = tree.RowForItem(0).Content as TreeRowContent;
+		Test.Assert(!a.HasClass("member"));
+		Test.Assert(a.HasClass("inactive"));
+	}
+
+	[Test]
+	public static void SeveralIdsSelectedFromCodeTheFirstCurrentWithoutMultiSelectionOnlyTheFirst()
+	{
+		let b = scope Bed();
+		b.Tree.ExpandItem(0); // A, A1, A2, B
+		b.Tree.SelectionMode = .Multi;
+		Sedulous.GUI.ItemId[3] ids = .((.)b.A2, (.)b.B, (.)b.A1x); // A1x under closed A1
+		b.Tree.SetSelectedIds(ids);
+		Test.Assert(b.Tree.SelectionCount == 3);
+		Test.Assert(b.Tree.IsItemSelected(2)); // A2
+		Test.Assert(b.Tree.IsItemSelected(3)); // B
+		Test.Assert(b.Tree.CurrentItem == 2);
+		b.Tree.ExpandItem(1); // A1 opens: A1x shows selected
+		Test.Assert(b.Tree.IsItemSelected(2));
+
+		b.Tree.SelectionMode = .Single;
+		b.Tree.SetSelectedIds(ids);
+		Test.Assert(b.Tree.SelectionCount == 1);
+		b.Tree.SetSelectedIds(default);
+		Test.Assert(b.Tree.SelectionCount == 0);
+	}
+
+	[Test]
+	public static void MarkupsItemsTakeAnIconAndItsClass()
+	{
+		let root = SceneFixtures.NewScene(400.0f, 400.0f);
+		defer root.ReleaseRef();
+		let loaded = MarkupFixtures.Load(
+			"<TreeView width=\"300\" height=\"300\" row-height=\"20\">\n" +
+			"    <TreeItem text=\"Sun\" icon=\"Icons/light.svg\" icon-class=\"cat-rendering\"/>\n" +
+			"    <TreeItem text=\"Group\"/>\n" +
+			"</TreeView>");
+		let tree = loaded as TreeView;
+		Test.Assert(tree != null);
+		root.AddChild(tree);
+		loaded.ReleaseRef(); // the root holds it
+		root.UpdateLayout();
+		let sun = tree.RowForItem(0).Content as TreeRowContent;
+		Test.Assert(sun != null);
+		Test.Assert(sun.Icon != null);
+		Test.Assert(sun.Icon.Source == "Icons/light.svg");
+		Test.Assert(sun.Icon.HasClass("cat-rendering"));
+		Test.Assert((tree.RowForItem(1).Content as TreeRowContent).Icon == null);
+	}
+
+	[Test]
+	public static void ItsModelTakenAwayScrolledOrNotItShowsNothingAndBindsNothingStale()
+	{
+		let b = scope Bed();
+		b.Tree.ExpandItem(0);
+		b.Tree.ExpandItem(1);
+		b.Tree.Size = .(260.0f, 40.0f); // two rows of five: it scrolls
+		b.Root.UpdateLayout();
+		b.Tree.ScrollOffset = .(0.0f, 40.0f);
+		b.Root.UpdateLayout();
+		b.Tree.Model = null;
+		b.Root.UpdateLayout();
+		Test.Assert(b.Tree.GetItemCount() == 0);
+		Test.Assert(b.Tree.VisibleRowCount == 0);
 	}
 }

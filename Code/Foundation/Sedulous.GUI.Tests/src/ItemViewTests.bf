@@ -206,6 +206,28 @@ class ItemViewTests
 		Test.Assert(((Label)top.Content).Text == "item 50");
 	}
 
+	/// Twenty rows, then three: they fit the view, so it cannot scroll. Scrolled to the third with
+	/// the layout still pending (the offset unclamped until it runs), the layout's range clamps the
+	/// offset back to the top; the rows are taken there, not left where the scroll aimed (the first
+	/// two missing, a gap over the rest).
+	[Test]
+	public static void ScrolledToAnItemBeforeALayoutThatClampsTheOffsetTheRowsFollowTheClamp()
+	{
+		let model = ItemViewFixtures.Numbered(20);
+		defer delete model;
+		let m = scope ListBed(model);
+		for (int i = 0; i < 17; ++i)
+			model.RemoveItem(3);
+		m.List.ScrollToItem(2, .Start);
+		m.Layout();
+		Test.Assert(Near(m.List.ScrollOffset.Y, 0.0f));
+		let first = m.List.RowForItem(0);
+		Test.Assert(first != null);
+		Test.Assert(((Label)first.Content).Text == "item 0");
+		Test.Assert(Near(first.ScreenBounds.Y, m.List.ScreenBounds.Y));
+		Test.Assert(m.List.RowForItem(1) != null);
+	}
+
 	[Test]
 	public static void ARowAboveMeasuringTallerThanItsEstimateLeavesTheViewWhereItIs()
 	{
@@ -544,6 +566,57 @@ class ItemViewTests
 		m.Layout();
 		Test.Assert(m.List.ColumnsAcross == 2);
 		Test.Assert(m.List.LayoutModeName == "grid");
+	}
+
+	// The rows a view shows now (its children displayed).
+	private static int ShownRows(ItemView view)
+	{
+		int count = 0;
+		for (int i = 0; i < view.ChildCount; ++i)
+		{
+			if (let row = view.GetChildAt(i) as ItemRow)
+			{
+				if (row.Displayed)
+					++count;
+			}
+		}
+		return count;
+	}
+
+	[Test]
+	public static void AGridWhoseItemsTakeAnotherRowTypeShowsOnlyTheNewRowsATilesAndListSwitch()
+	{
+		let model = ItemViewFixtures.Numbered(6);
+		defer delete model;
+		let m = scope ListBed(model, 20.0f, 200.0f);
+		uint32 kind = 0;
+		let rows = new RowFactory();
+		rows.TypeOf = new [&] (index) => kind;
+		rows.Create = new (type) => (Node)new Panel();
+		rows.Bind = new (content, index) => { };
+		m.List.SetRowFactory(rows);
+		m.List.LayoutMode = .Grid;
+		m.List.CellWidth = 60.0f;
+		m.List.CellHeight = 40.0f;
+		m.Layout();
+		Test.Assert(ShownRows(m.List) == 6);
+		kind = 1; // the other kind of row, for every item
+		// The same items, told to bind again (Raptor sets them again; here that gives them new ids,
+		// and rows of items no longer there go back on their own): each live row is kept for its
+		// item and then not taken, its item wanting the other kind.
+		m.List.OnModelReset();
+		m.Layout();
+		Test.Assert(ShownRows(m.List) == 6, "not twelve: the old rows went back to their pool");
+		// Here a row not taken is hidden either way; whether it went back is its pool's to say.
+		Test.Assert(m.List.[Friend]PoolOf(0).Rows.Count == 6, "the old rows are in their pool, to be used again");
+		for (int i = 0; i < m.List.ChildCount; ++i)
+		{
+			if (let row = m.List.GetChildAt(i) as ItemRow)
+			{
+				if (row.Displayed)
+					Test.Assert(row.RowType == 1);
+			}
+		}
 	}
 
 	[Test]

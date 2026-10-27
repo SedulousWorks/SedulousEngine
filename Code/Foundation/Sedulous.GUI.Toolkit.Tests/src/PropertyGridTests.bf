@@ -164,6 +164,22 @@ class PropertyGridTests
 		Test.Assert(bed.PathsAre("name #Check warning #Light intensity"));
 	}
 
+	// The first chevron in `node`'s subtree (depth first), or null.
+	private static Node Chevron(Node node)
+	{
+		if (node == null)
+			return null;
+		if (node is TreeArrow)
+			return node;
+		for (int i = 0; i < node.ChildCount; ++i)
+		{
+			let found = Chevron(node.GetChildAt(i));
+			if (found != null)
+				return found;
+		}
+		return null;
+	}
+
 	[Test]
 	public static void TheChevronAHeadersClickAndLeftAndRightFoldAndUnfold()
 	{
@@ -180,6 +196,21 @@ class PropertyGridTests
 		Test.Assert(!bed.Grid.IsOpen("#Physics"));
 		Test.Assert(bed.Grid.RowCount == 1);
 		bed.Grid.SetOpen("#Physics", true);
+		bed.Frame();
+
+		// The chevron: one fold per click (its press folds; the click after it does not reach the
+		// header, which would unfold it again).
+		var arrow = Chevron(bed.Grid.RowForItem(0));
+		Test.Assert(arrow != null);
+		bed.D.InjectMouseDown(GridBed.Centre(arrow), .Left);
+		bed.D.InjectMouseUp(GridBed.Centre(arrow), .Left);
+		Test.Assert(!bed.Grid.IsOpen("#Physics"));
+		bed.Frame();
+		arrow = Chevron(bed.Grid.RowForItem(0));
+		Test.Assert(arrow != null);
+		bed.D.InjectMouseDown(GridBed.Centre(arrow), .Left);
+		bed.D.InjectMouseUp(GridBed.Centre(arrow), .Left);
+		Test.Assert(bed.Grid.IsOpen("#Physics"));
 		bed.Frame();
 
 		// The group's row selected, Right opens it and Left closes it.
@@ -906,5 +937,28 @@ class PropertyGridTests
 		Test.Assert(bed.Grid.FindEditor("#Shape") == null);
 		bed.Grid.IndentWidth = -5.0f;
 		CheckNear(bed.Grid.IndentWidth, 0.0f);
+	}
+
+	[Test]
+	public static void ASheetSetsTheColumnARowKeepsForAGroupsArrow()
+	{
+		let bed = scope GridBed();
+		bed.Add("speed", .Float, Sedulous.GUI.Variant(1.0));
+		bed.Show();
+		let styles = scope StyleManager();
+		let sheet = scope StyleSheet();
+		CSSParser.Parse("propertygrid { arrow-size: 10px; }", sheet);
+		styles.StyleSheet = sheet;
+		styles.ApplyTree(bed.Root);
+		bed.Frame();
+		CheckNear(bed.Grid.ArrowSize, 10.0f);
+		let editor = bed.Grid.FindEditor("speed");
+		Test.Assert(editor != null);
+		let content = editor.Parent as PropertyRowContent;
+		Test.Assert(content != null);
+		let name = content.Label;
+		Test.Assert(name.Tag == "propertyname");
+		// The name after the 10 px column and its 2 px gap.
+		CheckNear(name.ScreenBounds.X - content.ScreenBounds.X - content.Padding.Left, 12.0f);
 	}
 }

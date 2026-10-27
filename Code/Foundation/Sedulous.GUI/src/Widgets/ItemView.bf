@@ -347,6 +347,7 @@ abstract class ItemView : UIWidget, IModelClient
 	private Sedulous.GUI.SelectionMode mSelectionMode = .Single;
 	private delegate void(ModelIndex index) mOnSelection ~ delete _;
 	private delegate void(ModelIndex index) mOnActivated ~ delete _;
+	private delegate void(DragPayload payload, Span<Sedulous.GUI.ItemId> ids) mOnDragPayload ~ delete _; // the owner's payload
 	private float mRowHeight = 24.0f;
 	private float mEstimate = 24.0f;
 	private ItemLayout mLayout = .List;
@@ -355,8 +356,7 @@ abstract class ItemView : UIWidget, IModelClient
 	private float mScrollAnchorDelta = 0.0f;
 	private bool mRealizing = false;
 	// Type-ahead.
-	private String mTyped = new .() ~ delete _;
-	private float mTypedAt = -10.0f;
+	private TypeAheadSearch mTypeAhead = new .() ~ delete _;
 	// Editing.
 	private TextField mEditor = null ~ _?.ReleaseRef();
 	private bool mEditing = false;
@@ -401,8 +401,8 @@ abstract class ItemView : UIWidget, IModelClient
 			mCurrent = NoItem;
 			mAnchorSelection = NoItem;
 			ResetScrollAnchor();
+			OnModelReset(); // its items from the new model first: the scroll's realising binds them
 			ScrollOffset = .(0.0f, 0.0f);
-			OnModelReset();
 		}
 	}
 
@@ -700,6 +700,16 @@ abstract class ItemView : UIWidget, IModelClient
 		mOnActivated = callback;
 	}
 
+	/// What a drag of its items carries, the owner's say: told the payload as the view filled it
+	/// (its own type, the view and its ids, for a drop within it) and the dragged items' ids in
+	/// item order, it may put what it carries instead (an asset browser's assets). OWNERSHIP of
+	/// `callback` transfers.
+	public void SetOnDragPayload(delegate void(DragPayload payload, Span<Sedulous.GUI.ItemId> ids) callback)
+	{
+		delete mOnDragPayload;
+		mOnDragPayload = callback;
+	}
+
 	public int SelectionCount => mSelected.Count;
 	public bool IsIdSelected(Sedulous.GUI.ItemId id) => mSelected.Contains(id);
 	public bool IsItemSelected(int32 item) => (item >= 0) && IsIdSelected(ItemIdAt(item));
@@ -835,6 +845,30 @@ abstract class ItemView : UIWidget, IModelClient
 		ActivateItem(item);
 	}
 
+	/// Selects the items with `ids` from code (one alone without multi-selection), the first the
+	/// current one and scrolled into view; no events. An id not shown now (under a closed node)
+	/// stays selected for when it is. None clears.
+	public void SetSelectedIds(Span<Sedulous.GUI.ItemId> ids)
+	{
+		mSelected.Clear();
+		mAnchorSelection = NoItem;
+		for (let id in ids)
+		{
+			if ((mSelectionMode != .Multi) && !mSelected.IsEmpty)
+				break;
+			mSelected.Add(id);
+		}
+		if (!ids.IsEmpty)
+		{
+			mCurrent = ids[0];
+			mAnchorSelection = ids[0];
+		}
+		RefreshSelectionStates();
+		let item = ids.IsEmpty ? (int32)-1 : (int32)ItemOfId(ids[0]);
+		if (item >= 0)
+			ScrollToItem(item);
+	}
+
 	[Scriptable]
 	public void ClearSelection()
 	{
@@ -850,9 +884,16 @@ abstract class ItemView : UIWidget, IModelClient
 		if (mSelectionMode != .Multi)
 			return;
 		for (int32 i = 0; i < (int32)ItemCount(); ++i)
-			mSelected.Add(ItemIdAt(i));
+		{
+			if (IsItemSelectable(i))
+				mSelected.Add(ItemIdAt(i));
+		}
 		RefreshSelectionStates();
 	}
+
+	/// Whether a user may select the item (its model's say; a section header may not).
+	public bool IsItemSelectable(int32 item) =>
+		(item >= 0) && (item < (int32)ItemCount()) && ((mModel == null) || mModel.IsSelectable(ItemToModelIndex(item)));
 
 	// === Editing ===
 
@@ -1109,7 +1150,7 @@ abstract class ItemView : UIWidget, IModelClient
 	/// Selects as a click does, with its modifiers (a subclass's own rows call it).
 	protected void SelectByUser(int32 item, uint32 modifiers)
 	{
-		if ((item < 0) || (item >= (int32)ItemCount()))
+		if (!IsItemSelectable(item))
 			return;
 		let ctrl = (modifiers & KeyModCtrl) != 0;
 		let shift = (modifiers & KeyModShift) != 0;
@@ -1220,6 +1261,17 @@ abstract class ItemView : UIWidget, IModelClient
 		case .PageDown: target = Math.Min(items - 1, Math.Max(0, current) + page);
 		default: return;
 		}
+		// Past what may not be selected (a section header), on in the key's direction; none there
+		// keeps where it is.
+		if (!IsItemSelectable(target))
+		{
+			let back = (key == .Up) || (key == .PageUp) || (key == .End) || (((key == .Left) || (key == .Right)) && (InlineStep(key) < 0));
+			let step = ((key == .Up) || (key == .Down)) ? across : 1;
+			var next = target;
+			while ((next >= 0) && (next < items) && !IsItemSelectable(next))
+				next += back ? -step : step;
+			target = ((next >= 0) && (next < items)) ? next : current;
+		}
 		// An arrow at the view's edge is given back (focus moves on).
 		let arrow = (key == .Up) || (key == .Down) || (key == .Left) || (key == .Right);
 		if (arrow && (target == current) && IsItemSelected(current))
@@ -1310,6 +1362,8 @@ abstract class ItemView : UIWidget, IModelClient
 		else
 			request.Payload.Label.AppendF("{} items", mDragIds.Count);
 		request.Payload.Allowed = DropEffectsCopy | DropEffectsMove;
+		if (mOnDragPayload != null)
+			mOnDragPayload(request.Payload, (Span<Sedulous.GUI.ItemId>)mDragIds);
 		return true;
 	}
 
@@ -1747,6 +1801,13 @@ abstract class ItemView : UIWidget, IModelClient
 				row.mTaken = false;
 
 			SetScrollExtent(.(width, inset + mHeights.Total));
+			// The new range moved the offset (a scroll aimed before a layout, clamped now): the
+			// rows are taken again where it is, since the scroll it reports is not heard here.
+			if (Math.Abs(ScrollOffset.Y - top) >= 0.5f)
+			{
+				UpdateScrollAnchor();
+				continue;
+			}
 			if (IsFlinging || IsSmoothScrolling || (mScrollAnchor >= (int32)count))
 				break;
 			let want = mHeights.Top(mScrollAnchor) + mScrollAnchorDelta;
@@ -1799,6 +1860,12 @@ abstract class ItemView : UIWidget, IModelClient
 		let next = scope List<ItemRow>();
 		for (int32 i = first; i < last; ++i)
 			TakeRow(i, next);
+		// A row kept for its item but not taken (the item's row type changed) goes back too.
+		for (let row in mLive)
+		{
+			if (!row.mTaken)
+				ReleaseRow(row);
+		}
 		TakeLive(next);
 		for (let row in mLive)
 		{
@@ -1818,37 +1885,17 @@ abstract class ItemView : UIWidget, IModelClient
 		if ((typed.Length == 0) || (ItemCount() == 0))
 			return false;
 		let d = EventDispatcher;
-		let now = (d != null) ? d.Time : 0.0f;
-		if (now - mTypedAt > 1.0f)
-			mTyped.Clear();
-		mTypedAt = now;
-		mTyped.Append(typed);
-		// One character typed again: the next item starting with it.
-		StringView prefix = mTyped;
-		int firstEnd = 0;
-		DecodeCodepoint(prefix, ref firstEnd);
-		let first = prefix.Substring(0, firstEnd);
-		bool repeated = prefix.Length > firstEnd;
-		for (int at = firstEnd; (at < prefix.Length) && repeated; at += firstEnd)
-			repeated = (prefix.Length - at >= firstEnd) && (prefix.Substring(at, firstEnd) == first);
-		if (repeated)
-			prefix = first;
-		let items = (int32)ItemCount();
-		let current = CurrentItem;
-		let start = ((prefix.Length == firstEnd) || (current < 0)) ? current + 1 : current; // one character: past the current
-		let text = scope String();
-		for (int32 n = 0; n < items; ++n)
-		{
-			let item = ((start + n) % items + items) % items;
-			text.Clear();
-			TypeAheadText(item, text);
-			if (StartsWithIgnoringCase(text, prefix))
+		// (An item a user may not select matches nothing.)
+		let item = mTypeAhead.Find(typed, (d != null) ? d.Time : 0.0f, (int32)ItemCount(), CurrentItem, scope (i, outText) =>
 			{
-				SelectOnly(item);
-				NotifySelectionByUser();
-				ScrollToItem(item);
-				break;
-			}
+				if (IsItemSelectable(i))
+					TypeAheadText(i, outText);
+			});
+		if (item >= 0)
+		{
+			SelectOnly(item);
+			NotifySelectionByUser();
+			ScrollToItem(item);
 		}
 		return true;
 	}
@@ -1984,7 +2031,10 @@ abstract class ItemView : UIWidget, IModelClient
 		let from = (anchor >= 0) ? anchor : item;
 		mSelected.Clear();
 		for (int32 i = Math.Min(from, item); i <= Math.Max(from, item); ++i)
-			mSelected.Add(ItemIdAt(i));
+		{
+			if (IsItemSelectable(i))
+				mSelected.Add(ItemIdAt(i));
+		}
 		mCurrent = ItemIdAt(item);
 		RefreshSelectionStates();
 	}
@@ -2031,6 +2081,8 @@ abstract class ItemView : UIWidget, IModelClient
 
 	private void ActivateItem(int32 item)
 	{
+		if (!IsItemSelectable(item))
+			return;
 		let index = ItemToModelIndex(item);
 		if (mOnActivated != null)
 			mOnActivated(index);

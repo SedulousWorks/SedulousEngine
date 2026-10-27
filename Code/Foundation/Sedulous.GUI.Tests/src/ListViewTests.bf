@@ -156,4 +156,46 @@ class ListViewTests
 		Test.Assert(m.List.SelectionCount == 1);
 		Test.Assert(m.List.SelectedItem == 2);
 	}
+
+	/// Rows 0 and 5 are headers.
+	private class Sections : StringListModel
+	{
+		public override bool IsSelectable(ModelIndex index) => (index.Row != 0) && (index.Row != 5);
+	}
+
+	[Test]
+	public static void AnItemItsModelSaysMayNotBeSelectedASectionHeaderIsPassedOverByClicksKeysAndSelectAll()
+	{
+		let model = scope Sections();
+		for (int i = 0; i < 10; ++i)
+			model.AddItem("item");
+		let m = scope ListBed(model, 20.0f, 220.0f);
+		int activated = 0;
+		m.List.SetOnActivated(new [&] (index) => { ++activated; });
+
+		// A click on a header selects nothing, and a second activates nothing.
+		SceneFixtures.Click(m.D, .(50.0f, 10.0f));
+		SceneFixtures.Click(m.D, .(50.0f, 10.0f));
+		Test.Assert(m.List.SelectedItem == -1);
+		Test.Assert(activated == 0);
+
+		m.List.RequestFocus();
+		m.D.InjectKeyDown((uint32)KeyCode.Down); // nothing selected: the first that may be, past the header
+		Test.Assert(m.List.SelectedItem == 1);
+		m.List.SelectedItem = 4;
+		m.D.InjectKeyDown((uint32)KeyCode.Down); // over the header at 5
+		Test.Assert(m.List.SelectedItem == 6);
+		m.D.InjectKeyDown((uint32)KeyCode.Up);
+		Test.Assert(m.List.SelectedItem == 4);
+		m.D.InjectKeyDown((uint32)KeyCode.Home); // the first that may be
+		Test.Assert(m.List.SelectedItem == 1);
+		m.D.InjectKeyDown((uint32)KeyCode.Up); // nothing before it: it stays
+		Test.Assert(m.List.SelectedItem == 1);
+
+		m.List.SelectionModeName = "multi";
+		m.List.SelectAll();
+		Test.Assert(!m.List.IsItemSelected(0));
+		Test.Assert(!m.List.IsItemSelected(5));
+		Test.Assert(m.List.IsItemSelected(9));
+	}
 }

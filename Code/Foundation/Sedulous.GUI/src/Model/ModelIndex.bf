@@ -11,8 +11,13 @@ enum ModelRole
 {
 	Display,
 	Sort,
+	/// An image's source (a path), or nothing.
 	Icon,
-	Custom
+	Custom,
+	/// A class on that image, which a sheet styles (a type's category tint).
+	IconClass,
+	/// Classes on the row's content, space separated, which a sheet styles (a state).
+	RowClass,
 }
 
 struct ModelIndex : IEquatable<ModelIndex>

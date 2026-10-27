@@ -790,6 +790,35 @@ class DragDropTests
 	}
 
 	[Test]
+	public static void AListsOwnerSaysWhatADragOfItsRowsCarriesToldTheirIdsInOrder()
+	{
+		let told = scope List<ItemId>();
+		let l = scope Lists();
+		l.A.SelectionMode = .Multi;
+		l.A.SetOnDragPayload(new [&] (payload, ids) =>
+			{
+				for (let id in ids)
+					told.Add(id);
+				payload.Type.Set("asset/instance");
+				payload.Value.Dispose();
+				payload.Value = TextVariant("the assets"); // its own, not the view's
+				payload.Label.Clear();
+				payload.Label.AppendF("{} assets", ids.Length);
+			});
+		SceneFixtures.Click(l.D, Lists.Row(l.A, 1));
+		l.D.InjectMouseDown(Lists.Row(l.A, 3), .Left, KeyModCtrl);
+		l.D.InjectMouseUp(Lists.Row(l.A, 3), .Left, KeyModCtrl);
+		l.Drag(l.A, 3, Lists.Row(l.B, 0, 0.9f));
+		Test.Assert(l.D.DragPayload.Type == "asset/instance");
+		Test.Assert(l.D.DragPayload.Label == "2 assets");
+		Test.Assert(told.Count == 2);
+		Test.Assert(told[0] == l.Left.IdOf(MakeModelIndex(1)));
+		Test.Assert(told[1] == l.Left.IdOf(MakeModelIndex(3)));
+		l.D.InjectMouseUp(Lists.Row(l.B, 0, 0.9f), .Left); // the other list takes no such payload
+		Test.Assert(Lists.Items(l.Right, "X"));
+	}
+
+	[Test]
 	public static void RowsMovedToAnotherListLeaveTheSourceCopiedCtrlTheyStay()
 	{
 		let l = scope Lists();

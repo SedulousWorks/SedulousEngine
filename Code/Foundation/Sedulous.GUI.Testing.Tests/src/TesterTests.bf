@@ -160,6 +160,27 @@ class TesterTests
 	}
 
 	[Test]
+	public static void AimingAtANodeGivesItsMiddleAndWhatLiesThereWhenItIsNotTheNode()
+	{
+		let bed = scope Bed();
+		let t = scope Tester(bed.Root);
+		Float2 at;
+		Node over;
+		Test.Assert(AimAt(bed.Root, bed.Show, out at, out over));
+		Test.Assert(TesterFixtures.Near(at.X, 50.0));
+		Test.Assert(TesterFixtures.Near(at.Y, 25.0));
+		// A part of it counts: its label, which the pointer passes through to the button.
+		Test.Assert(bed.Show.TextPart != null);
+		Test.Assert(AimAt(bed.Root, bed.Show.TextPart, out at, out over));
+		Test.Assert(over == bed.Show);
+		let cover = TesterFixtures.Add<Panel>(bed.Root, "cover", 0.0f, 0.0f, 120.0f, 60.0f);
+		defer cover.ReleaseRef();
+		t.Frame();
+		Test.Assert(!AimAt(bed.Root, bed.Show, out at, out over));
+		Test.Assert(over == cover);
+	}
+
+	[Test]
 	public static void TypingGoesToTheFocusKeysMoveItAndAHeldArrowRepeats()
 	{
 		let bed = scope Bed();

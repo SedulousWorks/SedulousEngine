@@ -42,6 +42,30 @@ static
 			}
 		}
 	}
+
+	/// The middle of `node` in `root`'s world (device pixels: where the dispatcher takes a pointer),
+	/// and whether a pointer there reaches it: the node, or a part of it (a button's label), lies
+	/// there; else `over` is what does (null: nothing). What a user's click on it would hit, so the
+	/// editor's input tools and the tests cannot disagree.
+	public static bool AimAt(SceneRoot root, Node node, out Float2 at, out Node over)
+	{
+		let @box = node.ScreenBounds;
+		at = .(@box.X + @box.Width * 0.5f, @box.Y + @box.Height * 0.5f);
+		let hit = root.OverFind(at);
+		over = hit;
+		for (var n = hit; n != null; n = n.Parent)
+		{
+			if (n == node)
+				return true;
+		}
+		// A part of it counts; what lies over it does not.
+		for (var n = node; (hit != null) && (n != null); n = n.Parent)
+		{
+			if ((n == hit) && (hit != root))
+				return true;
+		}
+		return false;
+	}
 }
 
 /// Which nodes a test means: by selector or text, within another finder's match, shown only
@@ -521,32 +545,20 @@ class Tester
 	}
 
 	// The middle of the one node `target` finds, if a pointer there reaches it (not something
-	// over it).
+	// over it): AimAt's check.
 	private bool Aim(Finder target, out Float2 at)
 	{
 		at = .(0.0f, 0.0f);
 		let node = One(target);
 		if (node == null)
 			return false;
-		let @box = node.ScreenBounds;
-		at = .(@box.X + @box.Width * 0.5f, @box.Y + @box.Height * 0.5f);
-		let hit = mRoot.OverFind(at);
-		for (var n = hit; n != null; n = n.Parent)
-		{
-			if (n == node)
-				return true;
-		}
-		// A part of it (a button's label) counts; what lies over it does not.
-		for (var n = node; (hit != null) && (n != null); n = n.Parent)
-		{
-			if ((n == hit) && (hit != mRoot))
-				return true;
-		}
+		if (AimAt(mRoot, node, out at, let over))
+			return true;
 		let message = scope String();
 		target.Describe(message);
 		message.Append(" is covered at its middle by ");
-		if (hit != null)
-			Sedulous.GUI.Inspector.Label(hit, message);
+		if (over != null)
+			Sedulous.GUI.Inspector.Label(over, message);
 		else
 			message.Append("nothing");
 		Fail(message);

@@ -127,6 +127,9 @@ abstract class IModel
 
 	// === Capabilities ===
 	public virtual bool IsEditable(ModelIndex index) => false;
+	/// Whether a user may select (and activate) the item: false for a list's section header,
+	/// which clicks, the arrows, type-ahead and Select All pass over.
+	public virtual bool IsSelectable(ModelIndex index) => true;
 	/// Writes an edited value (the model keeps its own copy); false when it is refused (the
 	/// editor then stays open).
 	public virtual bool SetData(ModelIndex index, Sedulous.GUI.Variant value) => false;

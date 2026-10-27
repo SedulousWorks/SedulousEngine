@@ -18,6 +18,8 @@ class TreeModel : IModel
 	private class Node
 	{
 		public String Text = new .() ~ delete _;
+		public String Icon = new .() ~ delete _; // its image's source, or none
+		public String IconClass = new .() ~ delete _; // a class on that image
 		public int32 Parent = -1;
 		public List<int32> Children = new .() ~ delete _;
 		/// Detached: its slot kept so ids stay stable.
@@ -61,6 +63,16 @@ class TreeModel : IModel
 		if (!IsLive(nodeId))
 			return;
 		mNodes[nodeId].Text.Set(text);
+		NotifyRowsChanged(IndexOfNode(mNodes[nodeId].Parent), RowOf(nodeId), 1);
+	}
+
+	/// A node's icon: its image's source, and a class on it a sheet styles (empty: none).
+	public void SetIcon(int32 nodeId, StringView source, StringView iconClass = default)
+	{
+		if (!IsLive(nodeId))
+			return;
+		mNodes[nodeId].Icon.Set(source);
+		mNodes[nodeId].IconClass.Set(iconClass);
 		NotifyRowsChanged(IndexOfNode(mNodes[nodeId].Parent), RowOf(nodeId), 1);
 	}
 
@@ -186,8 +198,13 @@ class TreeModel : IModel
 		let id = (int32)index.InternalId;
 		if ((id < 0) || (id >= mNodes.Count))
 			return .();
+		let node = mNodes[id];
 		if ((role == .Display) || (role == .Sort))
-			return .((StringView)mNodes[id].Text);
+			return .((StringView)node.Text);
+		if ((role == .Icon) && !node.Icon.IsEmpty)
+			return .((StringView)node.Icon);
+		if ((role == .IconClass) && !node.IconClass.IsEmpty)
+			return .((StringView)node.IconClass);
 		return .();
 	}
 
