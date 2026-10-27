@@ -71,6 +71,10 @@ button.ghost { background-color: transparent; }
 button.ghost:hover { background-color: var(--ghost-hover); opacity: 1; }
 button:hover { background-color: var(--element-hover); opacity: 1; }
 button:active { background-color: var(--element-active); opacity: 1; }
+/* A disabled button fades and stays as it is under the pointer. */
+button:disabled, button:disabled:hover, button:disabled:active { opacity: var(--disabled-opacity); }
+button.primary:disabled:hover { background-color: var(--accent-fill); }
+button.icon-button:disabled:hover, button.ghost:disabled:hover { background-color: transparent; }
 
 /* === Fields === */
 textfield, numberfield, combobox { height: var(--control-height); border: 1px solid var(--border); padding: 0 var(--space-m); }
@@ -186,3 +190,237 @@ menu, combobox > listbox, propertyflagslist { padding: var(--space-s); }
 menuitem::highlight, menusubmenu::highlight { border-radius: var(--radius-small); }
 combobox > listbox listboxitem { border-radius: var(--radius-small); }
 combobox > listbox::selection { border-radius: var(--radius-small); }
+
+/* ======================================================================================
+   The kit's pieces (editor-gui-catalog.md, section 2): designed once, used by every page.
+   Where a widget for a piece does not exist yet (the component header, the slots, the
+   problems list) these rules are its look, to move onto the widget when it is built.
+   ====================================================================================== */
+
+/* === Type icons: tinted by category where lists are scanned === */
+.row-icon { width: var(--icon-size); height: var(--icon-size); image-color: var(--icon); flex-shrink: 0; }
+.cat-render { image-color: var(--category-render); }
+.cat-light { image-color: var(--category-light); }
+.cat-camera { image-color: var(--category-camera); }
+.cat-physics { image-color: var(--category-physics); }
+.cat-audio { image-color: var(--category-audio); }
+.cat-script { image-color: var(--category-script); }
+.cat-animation { image-color: var(--category-animation); }
+.cat-gui { image-color: var(--category-gui); }
+.cat-character { image-color: var(--category-character); }
+.cat-particles { image-color: var(--category-particles); }
+
+/* === Buttons with an icon and a verb; the segmented choice === */
+button.with-icon { flex-direction: row; column-gap: var(--space-s); padding: 0 var(--space-l) 0 var(--space-m); height: var(--control-height); }
+button.danger-primary { background-color: var(--danger); color: var(--on-accent); height: var(--control-height); }
+button.danger-primary:hover { background-color: color-mix(in srgb, var(--danger) 88%, white); }
+.segmented { flex-direction: row; padding: 2px; column-gap: 2px; border-radius: var(--radius-small);
+             background-color: var(--surface-sunken); border: 1px solid var(--border); align-self: start; }
+button.segment { height: calc(var(--control-height) - 6px); padding: 0 var(--space-m); border-radius: var(--radius-small);
+                 background-color: transparent; color: var(--text-dim); font-size: var(--font-small); }
+button.segment:hover { background-color: var(--ghost-hover); color: var(--text); }
+button.segment:checked { background-color: var(--element-active); color: var(--text-strong); }
+
+/* === Fields: invalid, read-only, mixed, with a unit; the message under a field === */
+textfield.invalid, numberfield.invalid { border-color: var(--danger-border); }
+textfield.invalid:focus, numberfield.invalid:focus { border-color: var(--danger); }
+textfield.read-only { background-color: transparent; border-color: transparent; color: var(--text-dim); }
+textfield.mixed { color: var(--text-placeholder); }
+.field-message { flex-direction: row; align-items: center; column-gap: var(--space-xs); padding-top: var(--space-xs);
+                 font-size: var(--font-small); }
+.field-message.danger, .field-message.danger > label { color: var(--danger); }
+.message-icon { width: 14px; height: 14px; image-color: var(--icon); flex-shrink: 0; }
+.danger > .message-icon, .message-icon.danger, .error > .message-icon, .failed > .message-icon { image-color: var(--danger); }
+.message-icon.warning, .warning > .message-icon, .notice-row > .message-icon { image-color: var(--warning); }
+.success > .message-icon { image-color: var(--success); }
+.with-unit { flex-direction: row; align-items: center; column-gap: var(--space-s); }
+.with-unit > numberfield { flex-grow: 1; min-width: 0; }
+.unit { color: var(--text-dim); font-size: var(--font-small); flex-shrink: 0; }
+.slider-field { flex-direction: row; align-items: center; column-gap: var(--space-m); }
+.slider-field > slider { flex-grow: 1; min-width: 0; }
+.slider-field > numberfield { width: 56px; flex-shrink: 0; }
+button.search-clear { width: 16px; height: 16px; padding: 2px; background-color: transparent; border-radius: var(--radius-small); flex-shrink: 0; }
+button.search-clear > icon { width: 12px; height: 12px; image-color: var(--icon-dim); }
+button.search-clear:hover { background-color: var(--ghost-hover); }
+
+/* === Badges: a fact about a row === */
+.badge { height: 16px; padding: 0 var(--space-s); border-radius: var(--radius-small); font-size: 11px; font-weight: 500;
+         background-color: var(--element); color: var(--text-dim); flex-shrink: 0; align-self: center; }
+.badge.success { background-color: var(--success-background); color: var(--success); }
+.badge.warning { background-color: var(--warning-background); color: var(--warning); }
+.badge.danger { background-color: var(--danger-background); color: var(--danger); }
+.badge.accent { background-color: var(--accent-subtle); color: var(--accent-strong); }
+.badge-icon { width: 14px; height: 14px; flex-shrink: 0; image-color: var(--icon-dim); }
+.badge-icon.star { image-color: var(--category-light); }
+.badge-icon.danger { image-color: var(--danger); }
+.dirty-dot { width: 7px; height: 7px; border-radius: 4px; background-color: var(--accent-strong); flex-shrink: 0; align-self: center; }
+
+/* === Rows: a tree's, an asset list's === */
+.tree-row, .asset-row { flex-direction: row; align-items: center; column-gap: var(--space-s); min-height: var(--row);
+                        padding: 0 var(--space-m) 0 calc(var(--space-m) + var(--arrow)); border-radius: var(--radius-small); }
+.tree-row > .row-arrow { width: var(--arrow); height: var(--arrow); image-color: var(--icon-dim); margin-left: calc(0px - var(--arrow) - var(--space-s)); }
+.tree-row.depth-1 { padding-left: calc(var(--space-m) + var(--arrow) + var(--tree-indent)); }
+.tree-row.depth-2 { padding-left: calc(var(--space-m) + var(--arrow) + 2 * var(--tree-indent)); }
+.asset-row { padding-left: var(--space-m); }
+.row-name { flex-shrink: 1; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
+.row-name.strong { font-weight: 600; color: var(--text-strong); }
+.row-name.prefab { color: var(--accent-strong); }
+.row-kind { flex-grow: 1; color: var(--text-dim); font-size: var(--font-small); }
+.row-count { color: var(--text-dim); font-size: var(--font-small); }
+.row-trail { width: 14px; height: 14px; image-color: var(--icon-dim); }
+.hidden-entity > .row-name, .hidden-entity > .row-icon { opacity: 0.5; }
+.tree-row.renaming { padding-top: 1px; padding-bottom: 1px; }
+.rename-field { flex-grow: 1; height: calc(var(--row) - 2px); border-color: var(--accent-strong); }
+.drop-line { height: 2px; border-radius: 1px; background-color: var(--accent-strong); margin-left: calc(var(--space-m) + var(--arrow) + 2 * var(--tree-indent)); }
+
+/* === Tiles === */
+.tile { flex-direction: column; align-items: center; row-gap: var(--space-xs); padding: var(--space-s); width: 96px; border-radius: var(--radius); }
+.tile-thumb { width: 72px; height: 60px; border-radius: var(--radius-small); background-color: var(--surface-sunken);
+              align-items: center; justify-content: center; display: stack; }
+.tile-glyph { width: 24px; height: 24px; justify-self: center; align-self: center; }
+.tile-badges { justify-self: end; align-self: start; padding: var(--space-xs); flex-direction: row; }
+.tile-name { font-size: var(--font-small); max-width: 88px; text-overflow: ellipsis; white-space: nowrap; }
+
+/* === The drag ghost: what moves, its count; refused says why === */
+.drag-ghost { flex-direction: row; align-items: center; column-gap: var(--space-s); padding: var(--space-xs) var(--space-m);
+              background-color: var(--surface-overlay); border: 1px solid var(--accent-strong); border-radius: var(--radius);
+              box-shadow: 0 4px 12px var(--shadow-color); align-self: start; }
+.drag-count { font-size: 11px; color: var(--on-accent); background-color: var(--accent-fill); border-radius: 8px; padding: 0 5px; }
+.drag-ghost.refused { border-color: var(--danger-border); }
+.drag-reason { font-size: var(--font-small); color: var(--danger); }
+
+/* === The inspector: a component's header, its rows, the slots, the list editor === */
+.component-header { flex-direction: row; align-items: center; column-gap: var(--space-s); height: var(--row);
+                    padding: 0 var(--space-xs) 0 var(--space-s); background-color: var(--surface-raised);
+                    border-top-width: 1px; border-top-style: solid; border-top-color: var(--separator); }
+.component-header > .row-arrow { width: var(--arrow); height: var(--arrow); image-color: var(--icon-dim); }
+.component-name { flex-grow: 1; min-width: 0; font-weight: 600; color: var(--text-strong); text-overflow: ellipsis; white-space: nowrap; }
+.component-header > button.icon-button { width: calc(var(--row) - 4px); height: calc(var(--row) - 4px); }
+.disabled-component > .component-name { color: var(--text-disabled); }
+.disabled-component > .row-icon { opacity: 0.45; }
+.prop-row { flex-direction: row; align-items: center; column-gap: var(--space-s); min-height: var(--row);
+            padding: 1px var(--space-m) 1px calc(var(--space-m) + var(--arrow)); }
+.prop-row:hover { background-color: var(--ghost-hover); }
+.prop-name { width: 38%; flex-shrink: 0; color: var(--text-dim); text-overflow: ellipsis; white-space: nowrap; }
+.prop-row > textfield, .prop-row > combobox, .prop-row > numberfield, .prop-row > .with-unit, .prop-row > .slot, .prop-row > .prop-stack { flex-grow: 1; min-width: 0; }
+.prop-stack { flex-direction: column; }
+/* Changed from the default: a bar at the row's start and a strong name; a prefab override in the accent. */
+.change-bar { width: 2px; height: calc(var(--row) - 6px); border-radius: 1px; background-color: var(--text-dim);
+              margin-left: calc(0px - var(--arrow) + 2px); margin-right: calc(var(--arrow) - 4px - var(--space-s)); }
+.changed > .prop-name, .overridden > .prop-name { color: var(--text-strong); }
+.overridden > .change-bar { background-color: var(--accent-strong); }
+.overridden > .prop-name { font-weight: 600; }
+button.revert { width: 18px; height: 18px; padding: 2px; background-color: transparent; border-radius: var(--radius-small); flex-shrink: 0; }
+button.revert > icon { width: 14px; height: 14px; image-color: var(--icon-dim); }
+button.revert:hover { background-color: var(--ghost-hover); }
+button.revert:hover > icon { image-color: var(--text-strong); }
+.read-only-value { flex-grow: 1; color: var(--text-dim); padding-left: var(--space-m); }
+.lock { width: 12px; height: 12px; image-color: var(--icon-dim); }
+.notice-row { padding-left: var(--space-m); column-gap: var(--space-m); background-color: var(--warning-background); border-radius: var(--radius-small);
+              margin: var(--space-xs) var(--space-m); padding-top: var(--space-s); padding-bottom: var(--space-s); }
+.notice-row:hover { background-color: var(--warning-background); }
+.notice-text { flex-grow: 1; flex-shrink: 1; min-width: 0; white-space: normal; font-size: var(--font-small); color: var(--text); }
+button.key-capture { height: var(--control-height); font-family: var(--mono-font); font-size: var(--font-small); padding: 0 var(--space-m);
+                     background-color: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-small); }
+/* A slot: an asset's or an entity's, picked, dropped on, cleared. */
+.slot { flex-direction: row; align-items: center; column-gap: var(--space-s); height: var(--control-height);
+        padding: 0 2px 0 2px; background-color: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-small); }
+.slot:hover { border-color: var(--border-strong); }
+.slot-thumb { width: calc(var(--control-height) - 6px); height: calc(var(--control-height) - 6px); border-radius: 2px;
+              background-color: var(--element); align-items: center; justify-content: center; flex-shrink: 0; }
+.slot-glyph { width: 14px; height: 14px; image-color: var(--icon); flex-shrink: 0; margin-left: var(--space-xs); }
+.slot-thumb > .slot-glyph { margin-left: 0; width: 12px; height: 12px; }
+.slot-name { flex-shrink: 1; min-width: 0; color: var(--field-text); text-overflow: ellipsis; white-space: nowrap; }
+.slot-path { flex-grow: 1; flex-shrink: 1; min-width: 0; color: var(--text-dim); font-size: var(--font-small); text-overflow: ellipsis; white-space: nowrap; }
+.slot.empty > .slot-name { flex-grow: 1; color: var(--text-placeholder); font-style: italic; padding-left: var(--space-s); }
+.slot > .slot-name:last-of-type { flex-grow: 1; }
+button.slot-button { width: 18px; height: 18px; padding: 2px; background-color: transparent; border-radius: var(--radius-small); flex-shrink: 0; }
+button.slot-button > icon { width: 14px; height: 14px; image-color: var(--icon-dim); }
+button.slot-button:hover { background-color: var(--ghost-hover); }
+button.slot-button:hover > icon { image-color: var(--text-strong); }
+/* The list editor: a count and an add in its head; each item a grip, its index, its value, a remove. */
+.list-head > .row-arrow { width: var(--arrow); height: var(--arrow); image-color: var(--icon-dim); margin-left: calc(0px - var(--arrow) - var(--space-s)); }
+.list-head > .prop-name { width: auto; }
+.list-count { font-size: 11px; color: var(--text-dim); background-color: var(--element); border-radius: 8px; padding: 0 6px; }
+.list-item { flex-direction: row; align-items: center; column-gap: var(--space-s); min-height: var(--row);
+             padding: 1px var(--space-m) 1px calc(var(--space-m) + var(--arrow)); }
+.list-item:hover { background-color: var(--ghost-hover); }
+.list-item > numberfield { flex-grow: 1; flex-basis: 0; min-width: 0; padding: 0 var(--space-xs); }
+.grip { width: 12px; height: 12px; image-color: var(--icon-dim); flex-shrink: 0; cursor: grab; }
+.list-index { width: 16px; color: var(--text-dim); font-size: var(--font-small); flex-shrink: 0; }
+button.add-component { align-self: stretch; justify-content: center; margin: var(--space-m); }
+
+/* === Transport states === */
+.transport-state { font-size: var(--font-small); padding: 0 var(--space-s); border-radius: var(--radius-small); margin-left: var(--space-s); }
+.transport-state.playing { color: var(--success); background-color: var(--success-background); }
+.transport-state.paused { color: var(--warning); background-color: var(--warning-background); }
+.transport-state.faulted { color: var(--danger); background-color: var(--danger-background); }
+
+/* === Problems === */
+.problems { flex-direction: column; background-color: var(--surface); border: 1px solid var(--separator); border-radius: var(--radius); }
+.problems-head { flex-direction: row; align-items: center; column-gap: var(--space-s); height: var(--bar); padding: 0 var(--space-m);
+                 border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); }
+.problems-title { font-weight: 600; color: var(--text-strong); margin-right: var(--space-s); }
+.problem-row { flex-direction: row; align-items: center; column-gap: var(--space-m); min-height: var(--row); padding: 0 var(--space-m); }
+.problem-row:hover { background-color: var(--ghost-hover); }
+.problem-text { flex-grow: 1; flex-shrink: 1; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
+.problem-source { color: var(--accent-strong); font-size: var(--font-small); flex-shrink: 0; cursor: pointer; }
+
+/* === Empty, busy and failed: one pattern === */
+.state-box { flex-direction: column; align-items: center; justify-content: center; row-gap: var(--space-m); padding: var(--space-xl); }
+.state-icon { width: 32px; height: 32px; image-color: var(--icon-dim); }
+.state-box.failed > .state-icon { image-color: var(--danger); }
+.state-title { color: var(--text-strong); font-weight: 500; text-align: center; }
+.state-text { color: var(--text-dim); font-size: var(--font-small); text-align: center; white-space: normal; }
+.state-progress { width: 160px; height: 4px; }
+
+/* === Toasts and tooltips === */
+.kit-toast { flex-direction: row; align-items: center; column-gap: var(--space-m); width: var(--toast-width); padding: var(--space-m);
+             background-color: var(--surface-overlay); border: 1px solid var(--border-strong); border-radius: var(--radius);
+             box-shadow: 0 6px 18px var(--shadow-color); border-left-width: 3px; }
+.kit-toast.success { border-left-color: var(--success); }
+.kit-toast.warning { border-left-color: var(--warning); }
+.kit-toast.error { border-left-color: var(--danger); }
+.toast-text { flex-direction: column; flex-grow: 1; flex-shrink: 1; min-width: 0; }
+.toast-title { font-weight: 600; color: var(--text-strong); text-overflow: ellipsis; white-space: nowrap; }
+.toast-message { font-size: var(--font-small); color: var(--text-dim); text-overflow: ellipsis; white-space: nowrap; }
+button.toast-action { height: var(--control-height); padding: 0 var(--space-m); color: var(--accent-strong); flex-shrink: 0; }
+.toast-count { font-size: 11px; color: var(--text-dim); background-color: var(--element); border-radius: 8px; padding: 0 6px; }
+.kit-tooltip { flex-direction: row; align-items: center; column-gap: var(--space-m); padding: var(--space-s) var(--space-m);
+               background-color: var(--surface-overlay); border: 1px solid var(--border-strong); border-radius: var(--radius);
+               box-shadow: 0 4px 12px var(--shadow-color); align-self: start; }
+.tooltip-title { color: var(--text-strong); }
+.tooltip-reason { color: var(--text-dim); font-size: var(--font-small); }
+.key { font-family: var(--mono-font); font-size: 11px; color: var(--text-dim); padding: 0 5px; border-radius: var(--radius-small);
+       border: 1px solid var(--border-strong); }
+.job { flex-direction: row; align-items: center; column-gap: var(--space-m); height: var(--statusbar); padding: 0 var(--space-m);
+       background-color: var(--chrome); border-radius: var(--radius-small); }
+.job-name, .job-count { color: var(--text-dim); font-size: var(--font-small); }
+.job-progress { width: 120px; height: 4px; }
+
+/* === Dialogs: frame, form, confirm, picker === */
+.dialog { flex-direction: column; width: 380px; background-color: var(--surface-overlay); border: 1px solid var(--border-strong);
+          border-radius: var(--radius-large); box-shadow: 0 12px 32px var(--shadow-color); }
+.dialog-head { flex-direction: row; align-items: center; padding: var(--space-l) var(--space-l) var(--space-s) var(--space-xl); }
+.dialog-title { flex-grow: 1; font-size: var(--font-heading); font-weight: 600; color: var(--text-strong); }
+.dialog-body { flex-direction: column; row-gap: var(--space-m); padding: var(--space-m) var(--space-xl); }
+.dialog-text { color: var(--text); white-space: normal; }
+.dialog-buttons { flex-direction: row; align-items: center; column-gap: var(--space-m); padding: var(--space-l) var(--space-xl) var(--space-xl); }
+.form { display: grid; grid-template-columns: 96px 1fr; gap: var(--space-m) var(--space-l); }
+.form-label { color: var(--text-dim); align-self: start; line-height: var(--control-height); }
+.form-field { flex-direction: column; row-gap: var(--space-xs); min-width: 0; }
+.form-help { color: var(--text-dim); font-size: var(--font-small); white-space: normal; }
+.confirm-list { flex-direction: column; background-color: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-small);
+                padding: var(--space-xs); }
+.picker { padding-bottom: var(--space-s); }
+.picker-search { padding: var(--space-m); border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); margin-bottom: var(--space-s); }
+.picker-group { font-size: 11px; font-weight: 600; color: var(--text-dim); padding: var(--space-s) var(--space-l) var(--space-xs); }
+.picker > .asset-row { margin: 0 var(--space-s); }
+.picker-foot { flex-direction: row; align-items: center; padding: var(--space-s) var(--space-m) 0; margin-top: var(--space-s);
+               border-top-width: 1px; border-top-style: solid; border-top-color: var(--separator); }
+.picker-hint { font-size: var(--font-small); color: var(--text-placeholder); }
+.picker-empty { padding: var(--space-xl) var(--space-l); }
+
+/* Hover and selection on the drawn rows, as the lists draw theirs. */
+.tree-row:hover, .asset-row:hover, .tile:hover, .kit-hover { background-color: var(--ghost-hover); }
+.kit-selected, .kit-selected:hover { background-color: var(--accent-subtle); }
