@@ -39,6 +39,8 @@ corlib = "*"
 "Sedulous.Editor.Mcp" = "*"
 "Sedulous.Profiler" = "*"
 "Sedulous.Profiler.Capture" = "*"
+# The editor-wide actions' resource report, over a scratch project's cooked database.
+"Sedulous.Resource" = "*"
 
 # The suites of the shell's files on the GUI so far (Raptor's editor-gui spec, 5.1); the
 # others, and the fixtures only they use, stay out of the compile, unedited, and come back with
