@@ -25,6 +25,8 @@ corlib = "*"
 "Sedulous.GUI" = "*"
 # The layout store: the GUI dock's controller and layout document.
 "Sedulous.GUI.Docking" = "*"
+# The editor's frame read with the toolkit's elements (its status bar).
+"Sedulous.GUI.Toolkit" = "*"
 # The editor's dock with its floats in windows: a GUI host on the null device and shell.
 "Sedulous.GUI.Hosting" = "*"
 "Sedulous.Graphics.Null" = "*"

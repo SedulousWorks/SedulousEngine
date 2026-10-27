@@ -557,7 +557,7 @@ class EditorApplication : IApplication
 		mJobService.Update(scope (line) => { mContext.SetStatus(line); });
 		if (mExport != null)
 			mExport.Pump();
-		UpdateJobStatus();
+		UpdateStatusBar();
 		if (let resources = mSession.Resources)
 		{
 			resources.Pump(); // async loads finish
@@ -567,20 +567,23 @@ class EditorApplication : IApplication
 		mPages.Update(host, dt); // after the GUI laid out: viewport rects are current
 	}
 
-	/// A running job's step and percent on the status line.
-	private void UpdateJobStatus()
+	/// The status bar's job (a job's title, how far, its step of how many; else a cook, of
+	/// unknown length) and agent (the MCP host while it listens). A job's progress no longer takes
+	/// the message line.
+	private void UpdateStatusBar()
 	{
-		if (!mJobService.IsBusy)
+		let status = mWindow.StatusBar;
+		if (status == null)
 			return;
 		let progress = scope JobProgress();
-		mJobService.Progress(progress);
-		if (!progress.Active)
-			return;
-		let line = scope String(progress.Title);
-		if (!progress.Step.IsEmpty)
-			line.AppendF(": {}", progress.Step);
-		line.AppendF(" ({}%)", (int)(progress.Fraction * 100.0f + 0.5f));
-		mContext.SetStatus(line);
+		if (mJobService.IsBusy)
+			mJobService.Progress(progress);
+		status.ShowWork(progress, mCookService.IsCooking);
+		let host = (mMcp != null) ? mMcp.Host : null;
+		if ((host != null) && host.IsRunning)
+			status.SetAgent(scope $"MCP on 127.0.0.1:{host.BoundPort}");
+		else
+			status.SetAgent("");
 	}
 
 	/// Window screenshots: last frame's written, missing windows failed, the user told, and the

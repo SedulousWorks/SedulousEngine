@@ -12,7 +12,7 @@ namespace Sedulous.Editor.App.Tests;
 class EditorSplashTests
 {
 	/// The repository's Data folder, found by the font the tests already walk up to.
-	private static bool DataRoot(String outPath)
+	public static bool DataRoot(String outPath)
 	{
 		let font = scope String();
 		if (!TestFont.FindPath(font))

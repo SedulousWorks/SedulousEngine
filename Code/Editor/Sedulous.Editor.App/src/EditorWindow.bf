@@ -16,10 +16,11 @@ namespace Sedulous.Editor.App;
 // EditorWindow: the editor's GUI on its main window (Raptor's editor-gui spec, 5.1, layer 3). It
 // owns the GUI host (the window's input, frames, renderer and picture baker), the fonts the
 // editor's sheet names, the editor's own files (EditorResources) and the frame read from
-// Data/Editor/Shell.gml, with the toast host over it. Its look is the editor's sheet
-// (Editor/editor.css over its tokens), the chosen density's sheet after it and a `:root` block of
-// the user's inputs (the accent), the scheme and less motion through the GUI's media; a change to
-// those files on disk (the editor's development loop) applies at once.
+// Data/Editor/Shell.gml, with its status bar (EditorStatusBar) and the toast host over its dock.
+// Its look is the editor's sheet (Editor/editor.css over its tokens), the chosen density's sheet
+// after it and a `:root` block of the user's inputs (the accent), the scheme and less motion
+// through the GUI's media; a change to those files on disk (the editor's development loop)
+// applies at once.
 
 /// The user's appearance inputs (Preferences): the scheme, the accent, the density, less motion
 /// and the UI scale. The defaults are the editor's (rulings 6, 7, 13). A class: it owns its text;
@@ -72,6 +73,8 @@ class EditorWindow
 	private SceneRoot mRoot = null ~ _?.ReleaseRef();
 	private Node mFrame = null ~ _?.ReleaseRef();
 	private ToastHost mToasts = null ~ _?.ReleaseRef();
+	/// Over the frame's items: it goes before the frame.
+	private EditorStatusBar mStatus = null ~ delete _;
 	/// The sheet again when the editor's files change.
 	private Effect mReload = null ~ delete _;
 	private float mSinceSweep = 0.0f;
@@ -141,8 +144,9 @@ class EditorWindow
 			return false;
 		}
 		mRoot.AddChild(mFrame);
+		mStatus = new EditorStatusBar(mFrame);
 		mToasts = new ToastHost();
-		mFrame.AddChild(mToasts);
+		ToastsInto(mFrame).AddChild(mToasts);
 		SetLook(look);
 		// The editor's own files changed on disk: its sheet applies again.
 		mReload = new Effect(new () =>
@@ -186,12 +190,18 @@ class EditorWindow
 		return loader.LoadFromString(text);
 	}
 
-	/// A toast over the frame, its severity the notice's: errors stick until closed, the rest go
-	/// after five seconds.
+	/// A toast over the dock, its severity the notice's; the same message again counts on the one
+	/// shown. An error stays until it is dismissed; the rest go after five seconds.
 	public void ShowToast(NoticeKind kind, StringView message)
 	{
-		if (mToasts == null)
-			return;
+		if (mToasts != null)
+			PostNotice(mToasts, kind, message);
+	}
+
+	/// Posts a notice on `toasts` as ShowToast does: keyed by its message, so a repeat counts on
+	/// the one shown rather than stacking another.
+	public static ToastId PostNotice(ToastHost toasts, NoticeKind kind, StringView message)
+	{
 		let request = scope ToastRequest();
 		switch (kind)
 		{
@@ -201,16 +211,29 @@ class EditorWindow
 		default: request.Severity = .Info;
 		}
 		request.Title = message;
+		request.Key = message;
 		request.Duration = (kind == .Error) ? 0.0f : 5.0f;
-		mToasts.Post(request); // copied
+		return toasts.Post(request); // copied
 	}
 
-	/// The status bar's message (the frame's `status-message` label).
+	/// Where the toasts stack in `frame`: over its dock (`frame-dock`), at its bottom right, so
+	/// they sit above the status bar; the frame itself when it has no dock.
+	public static Node ToastsInto(Node frame)
+	{
+		let dock = frame.FindElement("frame-dock");
+		return (dock != null) ? dock : frame;
+	}
+
+	/// The status bar's message.
 	public void SetStatus(StringView message)
 	{
-		if (let label = FindById("status-message") as Sedulous.GUI.Label)
-			label.Text = message;
+		if (mStatus != null)
+			mStatus.SetMessage(message);
 	}
+
+	/// The status bar: its message, the job running, the agent; null with no interface. The
+	/// window's.
+	public EditorStatusBar StatusBar => mStatus;
 
 	/// A frame's node by its id (the dock's host, the status bar's items); null when none is.
 	/// The tree's.
@@ -251,6 +274,7 @@ class EditorWindow
 			mToasts.ReleaseRef();
 			mToasts = null;
 		}
+		DeleteAndNullify!(mStatus);
 		if (mFrame != null)
 		{
 			mFrame.ReleaseRef();

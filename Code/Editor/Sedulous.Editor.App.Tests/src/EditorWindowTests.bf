@@ -82,6 +82,7 @@ static class EditorWindowTests
 		Test.Assert(window.Root == null);
 		Test.Assert(window.Resources == null);
 		Test.Assert(window.FindById("status-message") == null);
+		Test.Assert(window.StatusBar == null);
 		Test.Assert(window.LoadMarkup(EditorWindow.cFramePath) == null);
 		window.SetStatus("nothing shows it");
 		window.ShowToast(.Error, "nothing shows it");
