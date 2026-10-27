@@ -1,181 +1,174 @@
 using System;
-using Sedulous.Editor.Core;
 using System.Collections;
-using Sedulous.Core;
-using Sedulous.Core.Logging;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
+using Sedulous.GUI;
+using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
-/// The asset reference slot: a horizontal composite of the asset name (grows, click picks),
-/// the preview/reveal, Edit and Clear. The name button is the picker affordance, and the
-/// three trailing buttons share one chrome: a ContentButton hosting a 14px drawable. Used by
-/// every resource-ref inspector row and the material list-slot rows. Affordances render
-/// only when their callback is wired (the entity-ref twin wires OnPick alone and degrades
-/// to a plain name button), and Edit, Clear and preview disable while the slot is empty.
-/// A type-filtered drop target for asset-browser drags; the preview icon is the asset type
-/// glyph until a real thumbnail exists.
-///
-/// Wiring order: set the callbacks first, then SetValue, which synchronises the affordances
-/// (visibility from wiring, enabled state from has-value).
-class AssetPickerSlot : FlexLayout, IDropTarget
+// The asset slot (Raptor's editor-gui spec, 5.2, layer 3), as the kit draws it: the referenced
+// asset's type glyph (its category's tint), its name, and its verbs: pick (the target; a click on
+// the name picks too), open, clear. An empty slot says "None" and keeps only pick. A verb shows
+// only when its owner wired it; open and clear need something referenced. It is a drop target for
+// an asset of a type it takes, naming why not over one it does not: a drop and a pick are the same
+// assignment.
+
+/// A reference to an asset, picked, dropped on, opened and cleared. Its looks are the sheet's
+/// (`.slot`, `.slot-glyph`, `.slot-name`, `button.slot-button`, `.slot.empty`).
+class AssetPickerSlot : UIWidget
 {
-	/// Click the name body: (re)assign via the picker dialog. Owned.
-	public delegate void() OnPick ~ delete _;
-	/// Open the referenced asset for editing. Owned.
-	public delegate void() OnEdit ~ delete _;
-	/// Clear the reference; must route the consumer's undoable command. Owned.
-	public delegate void() OnClear ~ delete _;
-	/// Reveal the referenced asset in the asset browser. Owned.
-	public delegate void() OnReveal ~ delete _;
-	/// A type-matching asset was dropped on the slot: assign it, the consumer's undoable
-	/// command, the same write the picker takes. Owned.
-	public delegate void(Guid id) OnAssignDropped ~ delete _;
-	/// A wrong-type asset was dropped: the asset display name and its type name. The slot
-	/// already logs a warning; wire this for the toast. Owned.
-	public delegate void(StringView displayName, StringView typeName) OnRejectedDrop ~ delete _;
-
-	// Owned by the children.
-	private ContentButton mPreview = null;
-	/// Owned by the preview button.
-	private DrawableView mPreviewDrawable = null;
-	private Button mBody = null;
-	private ContentButton mEdit = null;
-	private ContentButton mClear = null;
-	/// Borrowed from EditorIcons.
-	private SVGDrawable mPreviewIcon = null;
-	/// The drop filter; empty means not a drop target.
-	private List<String> mAcceptedTypes = new .() ~ DeleteContainerAndItems!(_);
-	/// An asset drag is over the slot...
-	private bool mDropHover = false;
-	/// ...and its type is accepted.
-	private bool mDropMatches = false;
-	/// Owned; wins over the icon while set.
-	private Drawable mPreviewThumbnail = null ~ { if (_ != null) _.ReleaseRef(); };
-	private bool mHasValue = false;
-
-	public this(StringView name = "")
-	{
-		Direction = .Horizontal;
-		Spacing = 2.0f;
-
-		mBody = new Button(name.Length > 0 ? name : "(none)");
-		mBody.TooltipText.Set("Choose asset");
-		mBody.OnClick.Add(new (b) => { if (OnPick != null) OnPick(); });
-		var grow = LayoutStyle();
-		grow.FlexGrow = 1.0f;
-		AddView(mBody, grow);
-
-		// The preview/reveal is a clickable drawable host: the asset type glyph now, swapped
-		// for the real thumbnail once one exists; the icon stays the fallback.
-		mPreview = MakeActionButton(null, "Reveal in asset browser", out mPreviewDrawable);
-		mPreview.OnClick.Add(new (b) => { if (OnReveal != null) OnReveal(); });
-
-		// The icons are null before EditorIcons.Initialize (tests).
-		mEdit = MakeActionButton(Retained(EditorIcons.Edit), "Edit asset", ?);
-		mEdit.OnClick.Add(new (b) => { if (OnEdit != null) OnEdit(); });
-
-		mClear = MakeActionButton(Retained(EditorIcons.Close), "Clear reference", ?);
-		mClear.OnClick.Add(new (b) => { if (OnClear != null) OnClear(); });
-
-		SyncAffordances(false);
-	}
-
-	/// The current reference display: the name text and whether a real asset is
-	/// referenced. Also synchronises the affordances; call after wiring the callbacks.
-	public void SetValue(StringView name, bool hasValue)
-	{
-		mHasValue = hasValue;
-		// The name as given, a bound row's empty text included ("Default", a preview's
-		// primitive): "(none)" only stands in for no text at all.
-		mBody.SetText((name.Length > 0) ? name : "(none)");
-		SyncAffordances(hasValue);
-	}
-
-	/// The asset type glyph for the preview (EditorIcons.ForAssetType): the fallback layer,
-	/// shown whenever no thumbnail is set. Borrowed.
-	public void SetPreviewIcon(SVGDrawable icon)
-	{
-		mPreviewIcon = icon;
-		ApplyPreview();
-		SyncAffordances(mHasValue);
-	}
-
-	/// A generated thumbnail, any drawable; wins over the type icon while set. Null falls
-	/// back to the icon. Consumes the reference.
-	public void SetPreviewThumbnail(Drawable thumbnail)
-	{
-		if (mPreviewThumbnail != null)
-			mPreviewThumbnail.ReleaseRef();
-		mPreviewThumbnail = thumbnail;
-		ApplyPreview();
-		SyncAffordances(mHasValue);
-	}
-
-	/// The body text size; list-slot rows run compact chrome.
-	public void SetFontSize(float size) => mBody.FontSize.Value = size;
-
-	/// The accepted type that means any asset: a row whose field is genuinely untyped.
+	/// The accepted type that means any asset: a field that is genuinely untyped. An empty list
+	/// takes any too; a caller that names its types spells "any" as this.
 	public const String cAnyAsset = "*";
-	/// The accepted type of an entity reference: the slot takes a hierarchy row, and no asset.
-	public const String cEntity = "@entity";
 
-	/// The asset type names this slot accepts, the picker's filter list. Non-empty makes
-	/// the slot a drop target for asset-browser drags; cAnyAsset accepts every asset type,
-	/// cEntity a hierarchy row. Empty is not a drop target at all.
+	// Owned by the tree: the slot holds its children and never lets one go.
+	private Sedulous.GUI.Image mGlyph;
+	private Sedulous.GUI.Label mName;
+	private Sedulous.GUI.Button mPick;
+	private Sedulous.GUI.Button mOpen;
+	private Sedulous.GUI.Button mClear;
+
+	private delegate void() mOnPick ~ delete _;
+	private delegate void() mOnOpen ~ delete _;
+	private delegate void() mOnClear ~ delete _;
+	private delegate void(Guid id) mOnDropped ~ delete _;
+	private List<String> mTypes = new .() ~ DeleteContainerAndItems!(_);
+	/// The category class on the glyph now, taken off when the glyph changes.
+	private String mGlyphClass = new .() ~ delete _;
+	private bool mHasValue = false;
+	private bool mHasGlyph = false;
+
+	public this()
+	{
+		Tag = "assetslot";
+		AddClass("slot");
+		mGlyph = new Sedulous.GUI.Image();
+		mGlyph.AddClass("slot-glyph");
+		mGlyph.HitTestVisible = false;
+		mName = new Sedulous.GUI.Label();
+		mName.AddClass("slot-name");
+		mName.HitTestVisible = false; // a click on it is the slot's: pick
+		AddChild(mGlyph);
+		mGlyph.ReleaseRef();
+		AddChild(mName);
+		mName.ReleaseRef();
+		mPick = Verb("Editor/Icons/target.svg", "Pick (or drop an asset here)", new [=this] () => { Pick(); });
+		mOpen = Verb("Editor/Icons/open.svg", "Open", new [=this] () =>
+			{
+				if (mOnOpen != null)
+					mOnOpen();
+			});
+		mClear = Verb("Editor/Icons/close.svg", "Clear", new [=this] () =>
+			{
+				if (mOnClear != null)
+					mOnClear();
+			});
+		SetValue("");
+	}
+
+	// The verbs, each shown once wired. OWNERSHIP of each callback transfers (one set before is
+	// deleted).
+
+	public void SetOnPick(delegate void() pick)
+	{
+		delete mOnPick;
+		mOnPick = pick;
+		Show();
+	}
+
+	public void SetOnOpen(delegate void() open)
+	{
+		delete mOnOpen;
+		mOnOpen = open;
+		Show();
+	}
+
+	public void SetOnClear(delegate void() clear)
+	{
+		delete mOnClear;
+		mOnClear = clear;
+		Show();
+	}
+
+	/// An asset of a type it takes was dropped on it: assign it (the pick's write). Unwired, it
+	/// is no drop target. OWNERSHIP transfers.
+	public void SetOnDropped(delegate void(Guid id) dropped)
+	{
+		delete mOnDropped;
+		mOnDropped = dropped;
+	}
+
+	/// The asset types it takes, by name, full or short (AssetTypeNames.Matches); empty, or
+	/// cAnyAsset among them: any.
 	public void SetAcceptedTypes(Span<StringView> types)
 	{
-		ClearAndDeleteItems(mAcceptedTypes);
+		ClearAndDeleteItems(mTypes);
 		for (let type in types)
-			mAcceptedTypes.Add(new String(type));
+			mTypes.Add(new String(type));
 	}
 
-	/// What a drag carries for a slot: an asset (its id, type and name), or a tree row that
-	/// names an entity (type cEntity). False for anything else.
-	public static bool DescribeDrag(DragData data, out Guid id, String outTypeName, String outName)
+	public Span<String> AcceptedTypes => mTypes;
+
+	/// What it references: the asset's name, or nothing (`name` empty).
+	public void SetValue(StringView name)
 	{
-		id = .();
-		if (let asset = data as AssetDragData)
-		{
-			id = asset.Id;
-			outTypeName.Set(asset.AssetTypeName);
-			outName.Set(asset.DisplayName);
-			return true;
-		}
-		if (let row = data as TreeDragData)
-		{
-			if ((row.ItemKind != "entity") || row.ItemId.IsNil)
-				return false;
-			id = row.ItemId;
-			outTypeName.Set(cEntity);
-			outName.Set(row.ItemName);
-			return true;
-		}
-		return false;
+		mHasValue = !name.IsEmpty;
+		mName.Text = mHasValue ? name : StringView("None");
+		Show();
 	}
 
-	/// Whether `typeName`, a dragged asset's type or cEntity, is one of `accepted`.
+	public bool HasValue => mHasValue;
+	public StringView ShownName => mName.Text;
+
+	/// The referenced asset type's glyph, and its category's class (a tint); empty: none.
+	public void SetGlyph(StringView path, StringView categoryClass = default)
+	{
+		if (!mGlyphClass.IsEmpty)
+			mGlyph.RemoveClass(mGlyphClass);
+		mGlyphClass.Set(categoryClass);
+		if (!mGlyphClass.IsEmpty)
+			mGlyph.AddClass(mGlyphClass);
+		mGlyph.Source = path;
+		mHasGlyph = !path.IsEmpty;
+		Show();
+	}
+
+	/// The glyph of a type, as EditorIcons found it (its icon and its category's class); null:
+	/// none.
+	public void SetGlyph(TypeIcon icon)
+	{
+		if (icon == null)
+			SetGlyph("", "");
+		else
+			SetGlyph(icon.Source, icon.Class);
+	}
+
+	/// Picks, as its target button does.
+	public void Pick()
+	{
+		if (mOnPick != null)
+			mOnPick();
+	}
+
+	public Sedulous.GUI.Button PickButton => mPick;
+	public Sedulous.GUI.Button OpenButton => mOpen;
+	public Sedulous.GUI.Button ClearButton => mClear;
+	public Sedulous.GUI.Image GlyphImage => mGlyph;
+
+	/// Whether `typeName`, a dragged asset's type, is one of `accepted` (by AssetTypeNames.Matches,
+	/// or cAnyAsset). For an owner that checks a type itself, as a list editor's append does.
 	public static bool Accepts(Span<String> accepted, StringView typeName)
 	{
-		let isEntity = typeName == cEntity;
 		for (let a in accepted)
 		{
-			if (a == cEntity)
-			{
-				if (isEntity)
-					return true;
-			}
-			else if (!isEntity && ((a == cAnyAsset) || AssetTypeNames.Matches(typeName, a)))
+			if ((a == cAnyAsset) || AssetTypeNames.Matches(typeName, a))
 				return true;
 		}
 		return false;
 	}
 
-	/// The warning for a refused drop, naming every type the refuser takes: "brick is a
-	/// TextureAsset - this field takes StaticMeshAsset or SkinnedMeshAsset". An entity and the
-	/// any-asset wildcard read as words, not as their type ids. `noun` is what refused it
-	/// ("field", "list").
+	/// A refused drop's warning, naming every type the refuser takes, for an owner's toast:
+	/// "brick is a TextureAsset - this field takes StaticMeshAsset or SkinnedMeshAsset". The
+	/// any-asset wildcard reads as words. `noun` is what refused it ("field", "list").
 	public static void RejectionText(StringView assetName, StringView typeName, Span<String> accepted,
 		StringView noun, String outText)
 	{
@@ -194,6 +187,78 @@ class AssetPickerSlot : FlexLayout, IDropTarget
 		}
 	}
 
+	protected override void OnMouseClick(MouseEvent e)
+	{
+		if ((e.Button != .Left) || (mOnPick == null))
+			return;
+		e.Handled = true;
+		Pick();
+	}
+
+	protected override void OnDragQuery(DropQuery query)
+	{
+		if (mOnDropped == null)
+			return;
+		let dragged = scope AssetDrag();
+		let why = scope String();
+		if (Takes(query.Payload, dragged, why))
+		{
+			query.Accept(.Link);
+			query.Reason.Clear();
+			query.Reason.AppendF("Use {}", dragged.Name);
+		}
+		else if (dragged.Id != Guid.Empty) // an asset, not one it takes; another payload is not ours to refuse
+			query.Refuse(why);
+	}
+
+	protected override void OnDrop(DragEvent e)
+	{
+		let dropped = scope AssetDrag();
+		let why = scope String();
+		if ((mOnDropped != null) && Takes(e.Payload, dropped, why))
+			mOnDropped(dropped.Id);
+	}
+
+	/// Whether it takes what `payload` carries (read into `outAsset`), and why not when not.
+	private bool Takes(DragPayload payload, AssetDrag outAsset, String outWhy)
+	{
+		// cAnyAsset takes any, as no types at all do.
+		Span<String> types = mTypes;
+		for (let type in mTypes)
+		{
+			if (type == cAnyAsset)
+				types = .();
+		}
+		return AssetDrag.Takes(payload, types, outAsset, outWhy);
+	}
+
+	/// A verb's button, added to the row. Borrowed: the slot holds it. OWNERSHIP of `click`
+	/// transfers.
+	private Sedulous.GUI.Button Verb(StringView icon, StringView tooltip, delegate void() click)
+	{
+		let button = new Sedulous.GUI.Button();
+		button.AddClass("slot-button");
+		button.Icon = icon;
+		button.Tooltip = tooltip;
+		button.SetOnClick(click);
+		AddChild(button);
+		button.ReleaseRef();
+		return button;
+	}
+
+	/// The verbs it has, the empty look.
+	private void Show()
+	{
+		if (mHasValue)
+			RemoveClass("empty");
+		else
+			AddClass("empty");
+		mGlyph.Displayed = mHasValue && mHasGlyph;
+		mPick.Displayed = mOnPick != null;
+		mOpen.Displayed = (mOnOpen != null) && mHasValue;
+		mClear.Displayed = (mOnClear != null) && mHasValue;
+	}
+
 	/// "an" before a vowel, "a" otherwise: the rejection text's article.
 	private static StringView Article(StringView word)
 	{
@@ -201,128 +266,11 @@ class AssetPickerSlot : FlexLayout, IDropTarget
 		return "AEIOUaeiou".Contains(first) ? "an" : "a";
 	}
 
-	/// A type as the rejection text names it: the entity and the wildcard as words.
+	/// A type as the rejection text names it: the wildcard as words.
 	private static StringView TypeLabel(StringView typeName)
 	{
-		if (typeName == cEntity)
-			return "entity";
 		if (typeName == cAnyAsset)
 			return "any asset";
 		return typeName;
-	}
-
-	// ---- IDropTarget (asset-browser and hierarchy drags) ----
-	// Any asset or entity drag is accepted at hover level so OnDrop can warn on a type
-	// mismatch (the manager never calls OnDrop for a None effect); the hover cue distinguishes
-	// a match (accent ring) from a mismatch (error ring).
-
-	public override IDropTarget AsDropTarget() => mAcceptedTypes.Count > 0 ? this : null;
-
-	public DragDropEffects CanAcceptDrop(DragData data, float localX, float localY)
-	{
-		Guid id;
-		return DescribeDrag(data, out id, scope .(), scope .()) ? .Link : .None;
-	}
-
-	public void OnDragEnter(DragData data, float localX, float localY)
-	{
-		Guid id;
-		let typeName = scope String();
-		mDropHover = DescribeDrag(data, out id, typeName, scope .());
-		mDropMatches = mDropHover && TypeAccepted(typeName);
-		Invalidate();
-	}
-
-	public void OnDragOver(DragData data, float localX, float localY) {}
-
-	public void OnDragLeave(DragData data)
-	{
-		mDropHover = false;
-		Invalidate();
-	}
-
-	public DragDropEffects OnDrop(DragData data, float localX, float localY)
-	{
-		mDropHover = false;
-		Invalidate();
-		Guid id;
-		let typeName = scope String();
-		let name = scope String();
-		if (!DescribeDrag(data, out id, typeName, name))
-			return .None;
-		if (!TypeAccepted(typeName))
-		{
-			GlobalLog(.Warning, "Assets: '{}' is a {}, this slot does not accept it", name, typeName);
-			if (OnRejectedDrop != null)
-				OnRejectedDrop(name, typeName);
-			return .None;
-		}
-		if (OnAssignDropped != null)
-			OnAssignDropped(id);
-		return .Link;
-	}
-
-	public override void OnDraw(UIDrawContext ctx)
-	{
-		base.OnDraw(ctx);
-		if (mDropHover)
-		{
-			// A match is the accent ring, a mismatch the error ring; themed, the literals
-			// are fallbacks.
-			let ring = mDropMatches
-				? ResolveStyleColor(.AccentColor, Color(80.0f / 255.0f, 150.0f / 255.0f, 240.0f / 255.0f, 1.0f))
-				: ResolveStyleColor(.ErrorColor, Color(210.0f / 255.0f, 60.0f / 255.0f, 60.0f / 255.0f, 1.0f));
-			ctx.VG.StrokeRect(.(0, 0, Width, Height), ring, 2.0f);
-		}
-	}
-
-	public bool HasValue => mHasValue;
-	public Button BodyButton => mBody;
-	public ContentButton EditButton => mEdit;
-	public ContentButton ClearButton => mClear;
-	public ContentButton PreviewButton => mPreview;
-
-	/// One chrome for every trailing action: a ContentButton hosting a 14px drawable view.
-	/// Adds the button to the row and answers it, with the drawable host. Consumes the icon
-	/// reference.
-	private ContentButton MakeActionButton(Drawable icon, StringView tooltip, out DrawableView outDrawable)
-	{
-		let content = new DrawableView(icon, 14.0f, 14.0f);
-		content.KeepAspect = true; // a short row shrinks the glyph, never squashes it
-		outDrawable = content;
-		let button = new ContentButton(content);
-		button.TooltipText.Set(tooltip);
-		AddView(button);
-		return button;
-	}
-
-	/// A shared icon, with a reference taken for the view that will hold it; null stays null.
-	private static Drawable Retained(Drawable icon)
-	{
-		if (icon != null)
-			icon.AddRef();
-		return icon;
-	}
-
-	private bool TypeAccepted(StringView typeName) => Accepts(mAcceptedTypes, typeName);
-
-	/// The thumbnail wins; the type icon is the fallback layer.
-	private void ApplyPreview()
-	{
-		let drawable = (mPreviewThumbnail != null) ? mPreviewThumbnail : mPreviewIcon;
-		mPreviewDrawable.SetDrawable(Retained(drawable));
-	}
-
-	/// Visibility follows wiring (unwired affordances take no space); the enabled state
-	/// follows the value (Edit, Clear and reveal are inert on an empty slot).
-	private void SyncAffordances(bool hasValue)
-	{
-		let preview = (OnReveal != null) || (mPreviewIcon != null) || (mPreviewThumbnail != null);
-		mPreview.Visibility = preview ? .Visible : .Gone;
-		mPreview.IsEnabled = hasValue && (OnReveal != null);
-		mEdit.Visibility = (OnEdit != null) ? .Visible : .Gone;
-		mEdit.IsEnabled = hasValue;
-		mClear.Visibility = (OnClear != null) ? .Visible : .Gone;
-		mClear.IsEnabled = hasValue;
 	}
 }

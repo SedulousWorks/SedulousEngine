@@ -81,10 +81,6 @@ Name = "AssetPickerDialog.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "AssetPickerSlot.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "AssetsView.bf"
 
 [[ProjectFolder.Items]]

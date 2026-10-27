@@ -1,143 +1,326 @@
 using System;
-using Sedulous.UI;
+using Sedulous.Core;
+using Sedulous.GUI;
+using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.App.Tests;
 
-/// The composite slot is pure widget logic and exercises headlessly: affordances render only
-/// when their callback is wired, Edit, Clear and preview disable while the slot is empty, each
-/// affordance fires its callback once per click, and drops filter on type.
-static class AssetPickerSlotTests
+/// Types to ask for a glyph: one with an icon of its own and a category, one taking the generic.
+/// AlwaysInclude, so their type data (the attribute) is there to be asked.
+[Category("Rendering"), AlwaysInclude]
+class SlotGlyphAsset
 {
-	[Test]
-	public static void AffordancesRenderOnlyWhenWired()
-	{
-		// Nothing wired: a plain name button, the entity-ref degradation.
-		let bare = new AssetPickerSlot("Thing");
-		defer bare.ReleaseRef();
-		bare.SetValue("Thing", true);
-		Test.Assert(bare.EditButton.Visibility == .Gone);
-		Test.Assert(bare.ClearButton.Visibility == .Gone);
-		Test.Assert(bare.PreviewButton.Visibility == .Gone);
-		Test.Assert(bare.BodyButton.Visibility == .Visible);
+}
 
-		// Fully wired: everything visible.
-		let slot = new AssetPickerSlot();
-		defer slot.ReleaseRef();
-		slot.OnPick = new () => {};
-		slot.OnEdit = new () => {};
-		slot.OnClear = new () => {};
-		slot.OnReveal = new () => {};
-		slot.SetValue("MyClip", true);
-		Test.Assert(slot.EditButton.Visibility == .Visible);
-		Test.Assert(slot.ClearButton.Visibility == .Visible);
-		Test.Assert(slot.PreviewButton.Visibility == .Visible);
+[AlwaysInclude]
+class SlotPlainAsset
+{
+}
+
+/// The asset slot: a verb shows once wired (open and clear only with something referenced), an
+/// empty slot says None, each verb runs once per click, a click on the slot picks, and a dragged
+/// asset of a type it takes is dropped on it while one it does not take is refused, saying why.
+/// Then what Sedulous adds so each behaviour has a test: open and clear unwired over a value, the
+/// empty look coming back, a slot with no drop callback no target, another payload not refused,
+/// the any-asset wildcard, the glyph following the type, and the kept helpers (Accepts and
+/// RejectionText) for an owner's own checks and toasts.
+class AssetPickerSlotTests
+{
+	private static readonly Guid sWood = Guid(0x1234, 0x5678, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+	/// A slot in a GUI of its own, 400 by 200, its row 200 by 24, with a panel the drags start
+	/// from. The root holds both; the bed releases the root.
+	private class SlotBed
+	{
+		public SceneRoot Root;
+		public AssetPickerSlot Slot;
+		public Panel Source;
+
+		public this()
+		{
+			let context = new GUIContext();
+			Root = new SceneRoot(context);
+			context.ReleaseRef(); // the root's keeps it
+			Root.Size = .(400.0f, 200.0f);
+			Slot = new AssetPickerSlot();
+			Slot.EditLayoutStyle(scope (s) =>
+				{
+					s.Direction = .Row; // the sheet's `.slot`, which the test loads none of
+					s.Width = LayoutLength.Px(200.0f);
+					s.Height = LayoutLength.Px(24.0f);
+				});
+			Root.AddChild(Slot);
+			Slot.ReleaseRef();
+			Source = new Panel();
+			Root.AddChild(Source);
+			Source.ReleaseRef();
+			Root.UpdateLayout();
+		}
+
+		public ~this()
+		{
+			Root.ReleaseRef();
+		}
+
+		public EventDispatcher D => Root.EventDispatcher;
+
+		/// A point on the slot, left of its verbs.
+		public Float2 Over
+		{
+			get
+			{
+				let at = Slot.ScreenBounds;
+				return .(at.X + 20.0f, at.Y + 12.0f);
+			}
+		}
+
+		/// A point on the slot past its verbs, which sit at its start in the test's row.
+		public Float2 Far
+		{
+			get
+			{
+				let at = Slot.ScreenBounds;
+				return .(at.X + 190.0f, at.Y + 12.0f);
+			}
+		}
+
+		/// Drags the asset from the source with the pointer over the slot, and asks there.
+		public void DragAsset(Guid id, StringView typeName, StringView name)
+		{
+			let request = scope DragRequest();
+			AssetDrag.Payload(id, typeName, name, request.Payload);
+			Start(request);
+		}
+
+		public void Start(DragRequest request)
+		{
+			D.InjectMouseMove(Over);
+			D.StartDrag(Source, request);
+			D.RequeryDrag();
+		}
+
+		public void Release() => D.InjectMouseUp(Over, .Left);
 	}
 
 	[Test]
-	public static void EditClearPreviewInertWhileEmptyBodyAlwaysLive()
+	public static void TheVerbsShowOnceWiredOpenAndClearOnlyWithSomethingReferencedEmptySaysNone()
 	{
 		let slot = new AssetPickerSlot();
 		defer slot.ReleaseRef();
-		slot.OnPick = new () => {};
-		slot.OnEdit = new () => {};
-		slot.OnClear = new () => {};
-		slot.OnReveal = new () => {};
-
-		slot.SetValue("", false);
-		Test.Assert(slot.BodyButton.IsEnabled, "picking an empty slot is the point");
-		Test.Assert(!slot.EditButton.IsEnabled);
-		Test.Assert(!slot.ClearButton.IsEnabled);
-		Test.Assert(!slot.PreviewButton.IsEnabled);
-
-		slot.SetValue("MyClip", true);
-		Test.Assert(slot.EditButton.IsEnabled);
-		Test.Assert(slot.ClearButton.IsEnabled);
-		Test.Assert(slot.PreviewButton.IsEnabled);
-	}
-
-	[Test]
-	public static void EachAffordanceFiresExactlyOncePerClick()
-	{
-		let slot = new AssetPickerSlot();
-		defer slot.ReleaseRef();
+		Test.Assert(slot.ShownName == "None");
+		Test.Assert(slot.HasClass("empty"));
+		Test.Assert(!slot.HasValue);
+		Test.Assert(!slot.PickButton.Displayed);
 		int picks = 0;
-		int edits = 0;
+		int opens = 0;
 		int clears = 0;
-		int reveals = 0;
-		slot.OnPick = new [&]() => { picks++; };
-		slot.OnEdit = new [&]() => { edits++; };
-		slot.OnClear = new [&]() => { clears++; };
-		slot.OnReveal = new [&]() => { reveals++; };
-		slot.SetValue("MyClip", true);
+		slot.SetOnPick(new [&] () => { picks++; });
+		slot.SetOnOpen(new [&] () => { opens++; });
+		slot.SetOnClear(new [&] () => { clears++; });
+		Test.Assert(slot.PickButton.Displayed);
+		Test.Assert(!slot.OpenButton.Displayed, "nothing to open yet");
+		Test.Assert(!slot.ClearButton.Displayed);
 
-		slot.BodyButton.FireClick();
-		slot.EditButton.FireClick();
-		slot.ClearButton.FireClick();
-		slot.PreviewButton.FireClick();
-		Test.Assert(picks == 1, "the name body is the pick affordance");
-		Test.Assert(edits == 1);
+		slot.SetValue("Wood");
+		Test.Assert(!slot.HasClass("empty"));
+		Test.Assert(slot.HasValue);
+		Test.Assert(slot.ShownName == "Wood");
+		Test.Assert(slot.OpenButton.Displayed);
+		Test.Assert(slot.ClearButton.Displayed);
+
+		Test.Assert(slot.PickButton.HandleActivate());
+		Test.Assert(slot.OpenButton.HandleActivate());
+		Test.Assert(slot.ClearButton.HandleActivate());
+		Test.Assert(picks == 1, "the pick button's click is its own, not the slot's as well");
+		Test.Assert(opens == 1);
 		Test.Assert(clears == 1);
-		Test.Assert(reveals == 1);
 	}
 
+	/// Something referenced is not enough: open and clear wait for their owner too.
 	[Test]
-	public static void EmptyTextRendersTheNonePlaceholder()
+	public static void OpenAndClearUnwiredStayHiddenOverAValue()
 	{
 		let slot = new AssetPickerSlot();
 		defer slot.ReleaseRef();
-		slot.SetValue("", false);
-		Test.Assert(slot.BodyButton.Text.Value == "(none)");
-		slot.SetValue("Grass", true);
-		Test.Assert(slot.BodyButton.Text.Value == "Grass");
+		slot.SetValue("Wood");
+		Test.Assert(!slot.PickButton.Displayed);
+		Test.Assert(!slot.OpenButton.Displayed);
+		Test.Assert(!slot.ClearButton.Displayed);
+		slot.SetOnOpen(new () => { });
+		Test.Assert(slot.OpenButton.Displayed);
+		Test.Assert(!slot.ClearButton.Displayed, "each verb by its own wiring");
+		slot.SetOnClear(new () => { });
+		Test.Assert(slot.ClearButton.Displayed);
 	}
 
+	/// Cleared, it says None again, looks empty and hides open and clear.
 	[Test]
-	public static void DropAcceptsMatchingTypesAndRejectsMismatches()
+	public static void ClearedItSaysNoneAgainAndHidesOpenAndClear()
 	{
 		let slot = new AssetPickerSlot();
 		defer slot.ReleaseRef();
-		slot.SetAcceptedTypes(scope StringView[]("TextureAsset"));
+		slot.SetOnPick(new () => { });
+		slot.SetOnOpen(new () => { });
+		slot.SetOnClear(new () => { });
+		slot.SetValue("Wood");
+		slot.SetValue("");
+		Test.Assert(slot.ShownName == "None");
+		Test.Assert(slot.HasClass("empty"));
+		Test.Assert(!slot.HasValue);
+		Test.Assert(slot.PickButton.Displayed, "an empty slot keeps pick");
+		Test.Assert(!slot.OpenButton.Displayed);
+		Test.Assert(!slot.ClearButton.Displayed);
+	}
 
+	/// A click on the slot itself (its name lets the pointer through) picks; unwired, it is not
+	/// taken.
+	[Test]
+	public static void AClickOnTheSlotPicks()
+	{
+		let bed = scope SlotBed();
+		int picks = 0;
+		bed.Slot.SetOnPick(new [&] () => { picks++; });
+		bed.Slot.SetValue("Wood");
+		bed.Root.UpdateLayout();
+		Test.Assert(bed.Root.OverFind(bed.Far) == bed.Slot, "the point is the slot's, not a verb's");
+		bed.D.InjectMouseDown(bed.Far, .Left);
+		bed.D.InjectMouseUp(bed.Far, .Left);
+		Test.Assert(picks == 1);
+
+		// A right click is not a pick.
+		bed.D.InjectMouseDown(bed.Far, .Right);
+		bed.D.InjectMouseUp(bed.Far, .Right);
+		Test.Assert(picks == 1);
+	}
+
+	[Test]
+	public static void ADraggedAssetOfATypeItTakesDropsOnItAnotherTypeIsRefusedSayingWhy()
+	{
+		let bed = scope SlotBed();
+		bed.Slot.SetAcceptedTypes(scope StringView[]("MaterialAsset"));
+		int dropped = 0;
 		Guid assigned = .Empty;
-		int assigns = 0;
-		int rejects = 0;
-		let rejectedType = scope String();
-		slot.OnAssignDropped = new [&](id) => { assigned = id; assigns++; };
-		slot.OnRejectedDrop = new [&](name, typeName) => { rejects++; rejectedType.Set(typeName); };
+		bed.Slot.SetOnDropped(new [&] (id) =>
+			{
+				dropped++;
+				assigned = id;
+			});
+		bed.Root.UpdateLayout();
 
-		// A drop target with accepted types.
-		Test.Assert(slot.AsDropTarget() === slot);
+		bed.DragAsset(sWood, "MaterialAsset", "Wood");
+		Test.Assert(bed.D.DropTarget == bed.Slot);
+		Test.Assert(bed.D.DropEffect == .Link);
+		Test.Assert(bed.D.DropReason == "Use Wood");
+		bed.Release();
+		Test.Assert(dropped == 1);
+		Test.Assert(assigned == sWood);
 
-		// A matching type: hover accepts, drop assigns exactly once.
-		let id = Guid.Create();
-		let match = new AssetDragData(id, "TextureAsset", "Grass");
-		defer match.ReleaseRef();
-		Test.Assert(slot.CanAcceptDrop(match, 0, 0) == .Link);
-		Test.Assert(slot.OnDrop(match, 0, 0) == .Link);
-		Test.Assert(assigns == 1);
-		Test.Assert(assigned == id);
-		Test.Assert(rejects == 0);
+		// Full or short, the type matches as AssetTypeNames.Matches has it.
+		bed.DragAsset(sWood, "Sedulous.Materials.MaterialAsset", "Wood");
+		Test.Assert(bed.D.DropTarget == bed.Slot);
+		bed.Release();
+		Test.Assert(dropped == 2);
 
-		// The wrong type: hover still engages so OnDrop can warn, the drop rejects, no assign.
-		let wrong = new AssetDragData(Guid.Create(), "AudioClipAsset", "Boom");
-		defer wrong.ReleaseRef();
-		Test.Assert(slot.CanAcceptDrop(wrong, 0, 0) == .Link);
-		Test.Assert(slot.OnDrop(wrong, 0, 0) == .None);
-		Test.Assert(assigns == 1);
-		Test.Assert(rejects == 1);
-		Test.Assert(rejectedType == "AudioClipAsset");
-
-		// A non-asset payload never engages.
-		let foreign = new DragData("view/reorder");
-		defer foreign.ReleaseRef();
-		Test.Assert(slot.CanAcceptDrop(foreign, 0, 0) == .None);
+		bed.DragAsset(Guid(9, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0), "TextureAsset", "Brick");
+		Test.Assert(bed.D.DropTarget == null);
+		Test.Assert(bed.D.DropReason == "Brick is a TextureAsset, not one this takes");
+		bed.Release();
+		Test.Assert(dropped == 2, "refused: nothing assigned");
 	}
 
+	/// Not a target with no one to assign a drop: an asset of any type passes it by, unrefused.
 	[Test]
-	public static void NoAcceptedTypesMeansNotADropTarget()
+	public static void WithNoDropCallbackItIsNoDropTarget()
 	{
+		let bed = scope SlotBed();
+		bed.Slot.SetAcceptedTypes(scope StringView[]("MaterialAsset"));
+		bed.DragAsset(sWood, "MaterialAsset", "Wood");
+		Test.Assert(bed.D.DropTarget == null);
+		Test.Assert(bed.D.DropReason.IsEmpty);
+		bed.D.CancelDrag();
+	}
+
+	/// What is not an asset is not the slot's to refuse: the walk goes on past it.
+	[Test]
+	public static void AnotherPayloadIsNotRefused()
+	{
+		let bed = scope SlotBed();
+		int dropped = 0;
+		bed.Slot.SetOnDropped(new [&] (id) => { dropped++; });
+		let request = scope DragRequest();
+		request.Payload.Type.Set("text");
+		request.Payload.Value = TextVariant("hello");
+		bed.Start(request);
+		Test.Assert(bed.D.DropTarget == null);
+		Test.Assert(bed.D.DropReason.IsEmpty, "no refusal: another target may take it");
+		bed.Release();
+		Test.Assert(dropped == 0);
+	}
+
+	/// No types, or the wildcard among them, takes any asset.
+	[Test]
+	public static void NoTypesOrTheWildcardTakeAnyAsset()
+	{
+		let bed = scope SlotBed();
+		int dropped = 0;
+		bed.Slot.SetOnDropped(new [&] (id) => { dropped++; });
+		bed.DragAsset(sWood, "TextureAsset", "Brick");
+		Test.Assert(bed.D.DropTarget == bed.Slot);
+		bed.Release();
+		Test.Assert(dropped == 1);
+
+		bed.Slot.SetAcceptedTypes(scope StringView[]("MaterialAsset", AssetPickerSlot.cAnyAsset));
+		bed.DragAsset(sWood, "TextureAsset", "Brick");
+		Test.Assert(bed.D.DropTarget == bed.Slot);
+		bed.Release();
+		Test.Assert(dropped == 2);
+	}
+
+	/// The glyph is the referenced type's, as EditorIcons finds it: its icon and its category's
+	/// class, the class before it taken off; shown only with something referenced.
+	[Test]
+	public static void TheGlyphFollowsTheType()
+	{
+		let icons = scope EditorIcons(new (path) => (path == "Editor/Icons/Types/SlotGlyphAsset.svg") || (path == "Editor/Icons/Types/Asset.svg"));
 		let slot = new AssetPickerSlot();
 		defer slot.ReleaseRef();
-		Test.Assert(slot.AsDropTarget() == null);
+		slot.SetGlyph(icons.For(typeof(SlotGlyphAsset), "Asset"));
+		Test.Assert(slot.GlyphImage.Source == "Editor/Icons/Types/SlotGlyphAsset.svg");
+		Test.Assert(slot.GlyphImage.HasClass("cat-rendering"));
+		Test.Assert(!slot.GlyphImage.Displayed, "nothing referenced: no glyph");
+		slot.SetValue("Wood");
+		Test.Assert(slot.GlyphImage.Displayed);
+
+		slot.SetGlyph(icons.For(typeof(SlotPlainAsset), "Asset"));
+		Test.Assert(slot.GlyphImage.Source == "Editor/Icons/Types/Asset.svg");
+		Test.Assert(!slot.GlyphImage.HasClass("cat-rendering"), "the old type's tint goes");
+		Test.Assert(slot.GlyphImage.HasClass("slot-glyph"));
+		Test.Assert(slot.GlyphImage.Displayed);
+
+		slot.SetGlyph("");
+		Test.Assert(!slot.GlyphImage.Displayed, "no glyph to show");
+	}
+
+	/// The helpers an owner checks a type with and words a refusal's toast with: the wildcard
+	/// takes any asset and reads as words; types match full or short; every type taken is named.
+	[Test]
+	public static void AcceptsAndRejectionTextNameTheTypesAndTheWildcard()
+	{
+		String[1] materials = .("MaterialAsset");
+		Test.Assert(AssetPickerSlot.Accepts(materials, "MaterialAsset"));
+		Test.Assert(AssetPickerSlot.Accepts(materials, "Sedulous.Materials.MaterialAsset"));
+		Test.Assert(!AssetPickerSlot.Accepts(materials, "TextureAsset"));
+		String[1] any = .(AssetPickerSlot.cAnyAsset);
+		Test.Assert(AssetPickerSlot.Accepts(any, "TextureAsset"));
+		Test.Assert(!AssetPickerSlot.Accepts(Span<String>(), "TextureAsset"));
+
+		String[3] meshes = .("StaticMeshAsset", "SkinnedMeshAsset", AssetPickerSlot.cAnyAsset);
+		let three = AssetPickerSlot.RejectionText("brick", "TextureAsset", meshes, "field", .. scope .());
+		Test.Assert(three == "brick is a TextureAsset - this field takes StaticMeshAsset, SkinnedMeshAsset or any asset");
+		let one = AssetPickerSlot.RejectionText("boom", "AudioClipAsset", materials, "list", .. scope .());
+		Test.Assert(one == "boom is an AudioClipAsset - this list takes MaterialAsset");
+		let none = AssetPickerSlot.RejectionText("boom", "AudioClipAsset", Span<String>(), "list", .. scope .());
+		Test.Assert(none == "boom is an AudioClipAsset - this list takes no asset");
 	}
 }
