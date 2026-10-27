@@ -221,6 +221,14 @@ class ProjectLauncherTests
 		Test.Assert(ButtonText(list.GetChildAt(0), "Open") != null);
 		Test.Assert(ButtonText(list.GetChildAt(2), "Open") == null);
 		Test.Assert((list.GetChildAt(2) as UIWidget).HasClass("missing"));
+		// Open has a slot on every row, at one place, empty for the missing one: the columns line up.
+		for (int i < list.ChildCount)
+		{
+			let row = list.GetChildAt(i);
+			let slot = row.GetChildAt(row.ChildCount - 2) as UIWidget;
+			Test.Assert((slot != null) && slot.HasClass("manager-open-slot"));
+			Test.Assert(slot.ChildCount == ((i == 2) ? 0 : 1));
+		}
 		Test.Assert(!(list.GetChildAt(0) as UIWidget).HasClass("missing"));
 		Test.Assert(TextOf(list.GetChildAt(2), "manager-name") == "Gone (missing)");
 		Test.Assert(TextOf(list.GetChildAt(0), "manager-name") == "First");

@@ -491,13 +491,17 @@ class ProjectManagerView
 		Adopt(text, path);
 		Adopt(row, text);
 		Adopt(row, Text(card.EngineVersion, "manager-version"));
+		// Open in a slot of its own, empty for a missing project: every row's columns line up.
+		let slot = new Sedulous.GUI.Panel();
+		slot.AddClass("manager-open-slot");
 		if (!card.Missing)
 		{
 			let open = new Sedulous.GUI.Button();
 			open.Text = "Open";
 			OnClickOpens(open, card.Path);
-			Adopt(row, open);
+			Adopt(slot, open);
 		}
+		Adopt(row, slot);
 		Adopt(row, MoreButton(card.Path));
 		return row;
 	}

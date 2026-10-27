@@ -85,6 +85,7 @@ button.link:hover { background-color: var(--ghost-hover); }
 .manager-path { color: var(--text-dim); font-size: var(--font-small); text-overflow: ellipsis; white-space: nowrap; }
 .manager-version { color: var(--text-dim); font-size: var(--font-small); width: 56px; text-align: end; flex-shrink: 0; }
 .manager-row-picture { width: 76px; height: 43px; }
+.manager-open-slot { width: 64px; flex-shrink: 0; justify-content: end; }
 .manager-tile { flex-direction: column; row-gap: var(--space-xs); width: 220px; padding: var(--space-s); background-color: var(--element);
                 border-radius: var(--radius); }
 .manager-tile.missing { opacity: 0.6; }
