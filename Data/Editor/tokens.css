@@ -74,18 +74,20 @@
     --scrim: rgba(0, 0, 0, 0.4); /* behind a modal dialog */
 
     /* Type categories: a type icon's tint in the lists the eye scans (the hierarchy, the assets,
-       the component picker, the inspector's headers); monochrome everywhere else. Each reads at
-       least 4.5:1 on --surface. */
-    --category-render: #6cb4ee;     /* meshes, materials, textures */
-    --category-light: #e8c35e;
-    --category-camera: #a395f2;
+       the component picker, the inspector's headers); monochrome everywhere else. A type's
+       category is asked of the type (a component's reflected `category`), never listed here;
+       one with none (Utility, Other) keeps --icon. Each reads at least 4.5:1 on --surface. */
+    --category-rendering: #6cb4ee;
     --category-physics: #ec8c5c;
     --category-audio: #e776ad;
-    --category-script: #6fd093;
+    --category-scripting: #6fd093;
     --category-animation: #4ccbc0;
     --category-gui: #c8a774;
-    --category-character: #8fb0e0;
-    --category-particles: #f09a7a;
+    --category-effects: #e8c35e;
+    --category-navigation: #a395f2;
+    --category-terrain: #a9c45f;
+    --category-networking: #9fb0c8;
+    --category-input: #d59be6;
 }
 
 /* === 2. Semantic tokens: light === */
@@ -129,16 +131,17 @@
         --shadow-color: rgba(20, 24, 32, 0.18);
         --scrim: rgba(20, 24, 32, 0.25);
 
-        --category-render: #1f6fb4;
-        --category-light: #94690a;
-        --category-camera: #5f4bc9;
+        --category-rendering: #1f6fb4;
         --category-physics: #b8501c;
         --category-audio: #b03a77;
-        --category-script: #1d8048;
+        --category-scripting: #1d8048;
         --category-animation: #0d7a72;
         --category-gui: #85622a;
-        --category-character: #3f63a6;
-        --category-particles: #b7522e;
+        --category-effects: #8c6400;
+        --category-navigation: #5f4bc9;
+        --category-terrain: #5a7417;
+        --category-networking: #4f6078;
+        --category-input: #8c3fa8;
     }
 }
 

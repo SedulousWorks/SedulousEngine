@@ -199,16 +199,18 @@ combobox > listbox::selection { border-radius: var(--radius-small); }
 
 /* === Type icons: tinted by category where lists are scanned === */
 .row-icon { width: var(--icon-size); height: var(--icon-size); image-color: var(--icon); flex-shrink: 0; }
-.cat-render { image-color: var(--category-render); }
-.cat-light { image-color: var(--category-light); }
-.cat-camera { image-color: var(--category-camera); }
+/* A class per category, as the type's reflected category names it (Rendering, Physics...). */
+.cat-rendering { image-color: var(--category-rendering); }
 .cat-physics { image-color: var(--category-physics); }
 .cat-audio { image-color: var(--category-audio); }
-.cat-script { image-color: var(--category-script); }
+.cat-scripting { image-color: var(--category-scripting); }
 .cat-animation { image-color: var(--category-animation); }
-.cat-gui { image-color: var(--category-gui); }
-.cat-character { image-color: var(--category-character); }
-.cat-particles { image-color: var(--category-particles); }
+.cat-gui, .cat-ui { image-color: var(--category-gui); }
+.cat-effects { image-color: var(--category-effects); }
+.cat-navigation { image-color: var(--category-navigation); }
+.cat-terrain { image-color: var(--category-terrain); }
+.cat-networking { image-color: var(--category-networking); }
+.cat-input { image-color: var(--category-input); }
 
 /* === Buttons with an icon and a verb; the segmented choice === */
 button.with-icon { flex-direction: row; column-gap: var(--space-s); padding: 0 var(--space-l) 0 var(--space-m); height: var(--control-height); }
