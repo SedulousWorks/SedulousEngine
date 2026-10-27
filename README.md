@@ -111,6 +111,10 @@ Code/build/Debug_Linux64/Sedulous.Tools.Editor/Sedulous.Tools.Editor <projectDir
 
 Add `--mcp` to serve the project to an agent over MCP while you work in the editor.
 
+The editor is parked while it moves onto the GUI: the editor libraries still on Sedulous.UI and
+`Sedulous.Tools.Editor` are out of the workspace until each one's port lands. Until then, build
+the editor at commit e293ee1f, and use `Sedulous.Tools.Mcp` for MCP.
+
 ## Sample projects
 
 Game projects under `Data/SampleProjects/`, opened from the editor's project manager. Each
