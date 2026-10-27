@@ -552,6 +552,7 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .form-label { color: var(--text-dim); align-self: start; line-height: var(--control-height); }
 .form-field { flex-direction: column; row-gap: var(--space-xs); min-width: 0; }
 .form-help { color: var(--text-dim); font-size: var(--font-small); white-space: normal; }
+.form-help.refused { color: var(--danger); }
 .confirm-list { flex-direction: column; background-color: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-small);
                 padding: var(--space-xs); }
 .picker { padding-bottom: var(--space-s); }
@@ -565,6 +566,8 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 /* The picker's own window: its rows a list of a fixed size, the empty state in the same room. */
 .picker-list { width: 400px; height: 300px; background-color: transparent; padding: 0 var(--space-s); }
 .picker > .state-box { width: 400px; height: 300px; }
+/* Create Asset: its group a field that opens the group picker. */
+button.group-field { justify-content: flex-start; }
 .save-as-error { color: var(--danger); }
 .preferences { flex-direction: column; flex-grow: 1; }
 .pref-tabs { flex-grow: 1; }

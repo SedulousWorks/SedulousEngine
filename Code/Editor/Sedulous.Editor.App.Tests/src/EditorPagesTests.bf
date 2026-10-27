@@ -902,7 +902,11 @@ class EditorPagesTests
 		name.Text = "Two"; // taken
 		Test.Assert(save.HandleActivate());
 		Test.Assert(window.IsOpen);
-		Test.Assert(error.Text == "That name is taken in this group.");
+		Test.Assert(error.Text == "Two is already in Content.");
+		name.Text = "One/Two"; // Create Asset's rule, all of it
+		Test.Assert(save.HandleActivate());
+		Test.Assert(window.IsOpen);
+		Test.Assert(error.Text == "A name cannot hold /.");
 		Test.Assert((page.Saves == 0) && (page.InstanceId == original), "refused: nothing saved");
 
 		name.Text = "One Again";

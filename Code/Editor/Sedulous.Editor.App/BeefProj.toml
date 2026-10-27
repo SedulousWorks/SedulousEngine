@@ -65,10 +65,6 @@ Name = "AssetCell.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "AssetCreateDialog.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "AssetGroupTreeAdapter.bf"
 
 [[ProjectFolder.Items]]
@@ -113,10 +109,6 @@ Name = "CompactAssetSlot.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "ConfirmDialog.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "ContainerListEditor.bf"
 
 [[ProjectFolder.Items]]
@@ -130,10 +122,6 @@ Name = "EditorShell.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "ExportDialog.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "GroupPickerDialog.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"

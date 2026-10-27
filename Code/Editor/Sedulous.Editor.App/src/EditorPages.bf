@@ -275,7 +275,7 @@ class EditorPages
 	}
 
 	/// Save As: the page's content into a new asset beside its own, named in a dialog (a name
-	/// empty or taken keeps the dialog open, saying why under the field); the page edits the new
+	/// AssetNames refuses keeps the dialog open, saying why under the field); the page edits the new
 	/// asset after, its panel by the new guid. Nothing with nowhere to show the dialog, or with
 	/// one open already.
 	public void SaveAs(EditorPage page)
@@ -539,8 +539,8 @@ class EditorPages
 		}
 	}
 
-	/// Save As's Save (or Enter in the name): an empty or taken name is refused under the field,
-	/// the dialog kept for the retry; else the page saves into the new asset and the dialog goes.
+	/// Save As's Save (or Enter in the name): a name AssetNames refuses (empty or taken among them)
+	/// is refused under the field, the dialog kept for the retry; else the page saves into the new asset and the dialog goes.
 	private void CommitSaveAs(Guid pageId, Sedulous.GUI.TextField name, Sedulous.GUI.Label error)
 	{
 		let sources = Sources;
@@ -552,11 +552,7 @@ class EditorPages
 		}
 		let group = original.OwningGroup;
 		let newName = scope String(name.Text);
-		StringView refused = default;
-		if (newName.IsEmpty)
-			refused = "Enter a name.";
-		else if (group.GetInstance(newName) != null)
-			refused = "That name is taken in this group.";
+		let refused = AssetNames.Refusal(group, newName, .. scope .()); // the rule Create Asset keeps
 		if (!refused.IsEmpty)
 		{
 			if (error != null)

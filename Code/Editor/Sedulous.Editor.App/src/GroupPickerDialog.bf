@@ -1,72 +1,84 @@
 using System;
 using Sedulous.Content;
-using Sedulous.UI;
 
 namespace Sedulous.Editor.App;
 
-/// The AssetPickerDialog's sibling for content groups: a modal picker over the project's
-/// group hierarchy, shown as the same left-hand group tree the asset picker uses. Used to
-/// choose an import destination group; the current group is preselected. Single-click
-/// selects, double-click or Select confirms, Cancel and Escape dismiss. The result is
-/// delivered through OnPicked before the dialog closes; Cancel fires nothing.
-class GroupPickerDialog : Dialog
+// The group picker (Raptor's editor-gui spec, 5.2, layer 5): the picker over the project's groups,
+// where an import or a new asset goes. Each group is a row by its name, what holds it beside it, in
+// the tree's order (a group, then what is under it, by name), the top one "Content"; the current
+// group is checked and lit, and the search finds a group by its name or where it is. Its key is the
+// group's place: "Content", or "Content/" and its path.
+
+/// The group picker's request, and the group a key names: Picker opens it.
+static class GroupPicker
 {
-	/// The pick result, the chosen group. Fired once, before close. Owned.
-	public delegate void(Group group) OnPicked ~ delete _;
+	/// The top group's name and key: it has no name of its own.
+	public const String cTop = AssetPicker.cTopGroup;
 
-	/// Borrowed: the content owns it.
-	private TreeView mTree;
-	private GroupTreeAdapter mGroups = new .() ~ delete _;
-	private Group mSelectedGroup = null;
-
-	public this(StringView title, Group root, Group preselect) : base(title)
+	/// The picker's request over `sources`' groups, `current` checked (null: none). The caller's
+	/// (Picker.Open takes it).
+	public static PickerRequest Request(ContentDatabase sources, Group current)
 	{
-		mSelectedGroup = preselect;
-		MinWidth.Value = 420.0f;
-		MinHeight.Value = 340.0f;
-		MaxWidth.Value = 520.0f;
-		MaxHeight.Value = 420.0f;
-
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 6;
-
-		mTree = new TreeView();
-		mTree.ItemHeight = 20.0f;
-		mTree.OnItemClick.Add(new (info) =>
-			{
-				if (let group = mGroups.GroupAt(info.NodeId))
-				{
-					mSelectedGroup = group;
-					if (info.ClickCount >= 2)
-						Confirm();
-				}
-			});
-		var grow = LayoutStyle();
-		grow.Width = SizeSpec.Match();
-		grow.FlexGrow = 1.0f;
-		column.AddView(mTree, grow);
-		SetContent(column);
-
-		let select = AddButton("Select", .None);
-		select.OnClick.Add(new (b) => { Confirm(); });
-		AddButton("Cancel", .Cancel);
-
-		mGroups.Rebuild(root);
-		if (mSelectedGroup == null)
-			mSelectedGroup = root;
-		mGroups.AttachExpanded(mTree);
+		let request = new PickerRequest();
+		request.Placeholder.Set("Search groups");
+		if (current != null)
+			KeyOf(current, request.Current);
+		if (let top = sources.RootGroup)
+			Collect(top, request);
+		return request;
 	}
 
-	public ~this()
+	/// A group's key, where it is from the top, appended to `outKey`.
+	public static void KeyOf(Group group, String outKey)
 	{
-		mTree.SetAdapter(null);
+		outKey.Append(cTop);
+		if (group.Parent == null)
+			return;
+		outKey.Append('/');
+		outKey.Append(group.GetPath(.. scope .()));
 	}
 
-	private void Confirm()
+	/// How a group is named to the user, "Content" or its path, appended to `outName`.
+	public static void ShownName(Group group, String outName)
 	{
-		if (OnPicked != null)
-			OnPicked(mSelectedGroup);
-		Close(.OK);
+		if (group.Parent == null)
+			outName.Append(cTop);
+		else
+			outName.Append(group.GetPath(.. scope .()));
+	}
+
+	/// The group `key` names in `sources`; null when there is none.
+	public static Group Find(ContentDatabase sources, StringView key)
+	{
+		var group = sources.RootGroup;
+		if ((group == null) || !key.StartsWith(cTop))
+			return null;
+		int at = cTop.Length;
+		while ((group != null) && (at < key.Length))
+		{
+			if (key[at] != '/')
+				return null; // "Contents": another word, not the top
+			var end = at + 1;
+			while ((end < key.Length) && (key[end] != '/'))
+				end++;
+			group = group.GetGroup(StringView(key, at + 1, end - at - 1));
+			at = end;
+		}
+		return group;
+	}
+
+	/// `group`'s row, then its groups' (kept in name order by the database), depth first.
+	private static void Collect(Group group, PickerRequest request)
+	{
+		let key = KeyOf(group, .. scope .());
+		let item = request.Add(key, (group.Parent == null) ? (StringView)cTop : group.Name);
+		if (let holder = group.Parent)
+		{
+			item.Detail.Append("in ");
+			ShownName(holder, item.Detail);
+		}
+		item.Glyph.Set("Editor/Icons/folder.svg");
+		for (let child in group.Groups)
+			Collect(child, request);
 	}
 }
