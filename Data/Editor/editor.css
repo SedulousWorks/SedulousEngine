@@ -231,7 +231,8 @@ listview::selection, treeview::selection, tableview::selection { border-radius: 
    search field above it (the left keeps the grid's own column for a section's arrow). */
 propertyrowcontent { padding-right: var(--space-m); }
 /* Arrows and indents follow the density, in trees and the grid alike. */
-treeview { arrow-size: var(--arrow); indent-width: var(--tree-indent); }
+treeview { arrow-size: var(--arrow); indent-width: var(--tree-indent); icon-size: var(--icon-size); }
+treeicon { image-color: var(--icon); }
 propertygrid { arrow-size: var(--arrow); indent-width: var(--grid-indent); }
 /* A vector's parts keep their room for their numbers: a small inset, not a field's full one. */
 propertyeditor.floats numberfield { padding: 0 var(--space-xs); }
@@ -274,6 +275,11 @@ combobox > listbox::selection { border-radius: var(--radius-small); }
 button.with-icon { flex-direction: row; column-gap: var(--space-s); padding: 0 var(--space-l) 0 var(--space-m); height: var(--control-height); }
 button.danger-primary { background-color: var(--danger); color: var(--on-accent); height: var(--control-height); }
 button.danger-primary:hover { background-color: color-mix(in srgb, var(--danger) 88%, white); }
+/* A dialog's buttons by their role: the default in the accent, a destructive one in danger. */
+button.dialogbutton { height: var(--control-height); padding: 0 var(--space-l); background-color: var(--element); color: var(--text); }
+button.dialogbutton.primary { background-color: var(--accent-fill); color: var(--on-accent); }
+button.dialogbutton.destructive { background-color: var(--danger); color: var(--on-accent); }
+button.dialogbutton.destructive:hover { background-color: color-mix(in srgb, var(--danger) 88%, white); }
 .segmented { flex-direction: row; padding: 2px; column-gap: 2px; border-radius: var(--radius-small);
              background-color: var(--surface-sunken); border: 1px solid var(--border); align-self: start; }
 button.segment { height: calc(var(--control-height) - 6px); padding: 0 var(--space-m); border-radius: var(--radius-small);

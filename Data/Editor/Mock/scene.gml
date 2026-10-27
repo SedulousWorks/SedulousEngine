@@ -38,23 +38,23 @@
                 <Button class="icon-button" icon="Editor/Icons/plus.svg" tooltip="Create entity (Ctrl+Shift+N)"/>
             </Panel>
             <TreeView id="hierarchy-tree" class="panel-body tree">
-                <TreeItem text="Level 1" expanded="true">
-                    <TreeItem text="Sun"/>
-                    <TreeItem text="Sky"/>
-                    <TreeItem text="Player" expanded="true">
-                        <TreeItem text="Camera"/>
-                        <TreeItem text="Model"/>
-                        <TreeItem text="Footsteps"/>
+                <TreeItem text="Level 1" icon="Editor/Icons/Types/SceneDocument.svg" expanded="true">
+                    <TreeItem text="Sun" icon="Editor/Icons/Types/LightComponent.svg" icon-class="cat-rendering"/>
+                    <TreeItem text="Sky" icon="Editor/Icons/Types/EnvironmentSettings.svg" icon-class="cat-rendering"/>
+                    <TreeItem text="Player" icon="Editor/Icons/Types/CharacterComponent.svg" icon-class="cat-physics" expanded="true">
+                        <TreeItem text="Camera" icon="Editor/Icons/Types/CameraComponent.svg" icon-class="cat-rendering"/>
+                        <TreeItem text="Model" icon="Editor/Icons/Types/MeshComponent.svg" icon-class="cat-rendering"/>
+                        <TreeItem text="Footsteps" icon="Editor/Icons/Types/AudioSourceComponent.svg" icon-class="cat-audio"/>
                     </TreeItem>
-                    <TreeItem text="Ground"/>
-                    <TreeItem text="Crates" expanded="true">
-                        <TreeItem text="Crate"/>
-                        <TreeItem text="Crate 2"/>
-                        <TreeItem text="Crate 3"/>
+                    <TreeItem text="Ground" icon="Editor/Icons/Types/ColliderComponent.svg" icon-class="cat-physics"/>
+                    <TreeItem text="Crates" icon="Editor/Icons/Types/PrefabDocument.svg" expanded="true">
+                        <TreeItem text="Crate" icon="Editor/Icons/Types/MeshComponent.svg" icon-class="cat-rendering"/>
+                        <TreeItem text="Crate 2" icon="Editor/Icons/Types/MeshComponent.svg" icon-class="cat-rendering"/>
+                        <TreeItem text="Crate 3" icon="Editor/Icons/Types/MeshComponent.svg" icon-class="cat-rendering"/>
                     </TreeItem>
-                    <TreeItem text="Barrel"/>
-                    <TreeItem text="Lamp"/>
-                    <TreeItem text="Trigger"/>
+                    <TreeItem text="Barrel" icon="Editor/Icons/Types/RigidBodyComponent.svg" icon-class="cat-physics"/>
+                    <TreeItem text="Lamp" icon="Editor/Icons/Types/LightComponent.svg" icon-class="cat-rendering"/>
+                    <TreeItem text="Trigger" icon="Editor/Icons/Types/ScriptComponent.svg" icon-class="cat-scripting"/>
                 </TreeItem>
             </TreeView>
         </Panel>

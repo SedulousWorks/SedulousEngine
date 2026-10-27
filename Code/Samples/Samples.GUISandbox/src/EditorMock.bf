@@ -284,7 +284,11 @@ class EditorMock
 	{
 		if (mDialog == null)
 			mDialog = new MessageBox();
-		mDialog.Configure("Delete 3 assets?", "These go to the project's trash. 2 scenes still use Wood.", .OkCancel);
+		mDialog.Configure("Delete 3 assets?", "These go to the project's trash. 2 scenes still use Wood.", .Ok);
+		// A confirmation names its verb: Cancel, and Delete styled as destroying.
+		mDialog.ClearButtons();
+		mDialog.AddButton("Cancel", "cancel", .Cancel);
+		mDialog.AddButton("Delete", "delete", .Destructive);
 		mDialog.OpenModal(mRoot);
 	}
 
