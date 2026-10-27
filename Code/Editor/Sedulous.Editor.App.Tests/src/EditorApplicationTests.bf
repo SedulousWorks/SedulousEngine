@@ -38,13 +38,13 @@ static class EditorApplicationTests
 	}
 
 	/// The editor-wide actions the lifecycle gives a hook to.
-	private static StringView[13] sRegistered = .("file.save", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
+	private static StringView[14] sRegistered = .("file.save", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
 		"project.reportResourceMemory", "build.cookAll", "build.rebuildAll", "game.play", "game.playNewInstance",
-		"view.resetLayout", "view.screenshot", "help.about");
+		"view.resetLayout", "view.screenshot", "view.commandPalette", "help.about");
 	/// The ones a later layer brings: no hook yet, so not registered.
-	private static StringView[10] sLeftOut = .("file.saveAs", "file.saveLayout", "file.closeProject",
+	private static StringView[9] sLeftOut = .("file.saveAs", "file.saveLayout", "file.closeProject",
 		"edit.preferences", "edit.exportTemplates", "project.settings", "project.export", "view.profiler",
-		"profiler.record", "view.commandPalette");
+		"profiler.record");
 
 	/// The registry refused `id` as not enabled (over no subject).
 	private static bool Refused(EditorActionRegistry actions, StringView id)
@@ -99,8 +99,8 @@ static class EditorApplicationTests
 		Test.Assert((app.Export === exportBefore) && (app.McpService === mcpBefore));
 		Test.Assert(actions.Count == count);
 
-		// Exit asks the host; the cooks and the Game tab need a project, Save a page; About and
-		// the screenshot do nothing with no interface and no window.
+		// Exit asks the host; the cooks and the Game tab need a project, Save a page; About, the
+		// screenshot and the palette do nothing with no interface and no window.
 		Test.Assert(actions.Execute("file.exit") case .Ok);
 		Test.Assert(host.Exits == 1);
 		Test.Assert(Refused(actions, "build.cookAll"));
@@ -111,6 +111,7 @@ static class EditorApplicationTests
 		Test.Assert(app.Pages.Count == 0);
 		Test.Assert(actions.Execute("help.about") case .Ok);
 		Test.Assert(actions.Execute("view.screenshot") case .Ok);
+		Test.Assert(actions.Execute("view.commandPalette") case .Ok);
 		// Reset Layout reaches the dock: unopened, its controller takes the default layout all the
 		// same (a panel the layout names unregistered keeps its place).
 		let layout = app.Dock.Controller.Layout;

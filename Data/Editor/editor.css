@@ -497,6 +497,17 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .picker-hint { font-size: var(--font-small); color: var(--text-placeholder); }
 .picker-empty { padding: var(--space-xl) var(--space-l); }
 
+/* The command palette: the picker's frame, a row per action (its name, where it is in the menus, its
+   chord), the lit one as a picker's current, a disabled one dimmed. */
+.palette { width: 560px; }
+.palette-list { flex-direction: column; max-height: 360px; overflow-y: auto; padding: 0 var(--space-s); }
+.palette-row { flex-direction: row; align-items: center; column-gap: var(--space-m); min-height: var(--row);
+               padding: 0 var(--space-m); border-radius: var(--radius-small); }
+.palette-row > .row-name { flex-grow: 1; }
+.palette-where { color: var(--text-dim); font-size: var(--font-small); flex-shrink: 0; }
+.palette-row.current { background-color: var(--accent-subtle); }
+.palette-row.disabled > .row-name { color: var(--text-disabled); }
+
 /* Hover and selection on the drawn rows, as the lists draw theirs. */
 .tree-row:hover, .asset-row:hover, .tile:hover, .kit-hover { background-color: var(--ghost-hover); }
 .kit-selected, .kit-selected:hover { background-color: var(--accent-subtle); }

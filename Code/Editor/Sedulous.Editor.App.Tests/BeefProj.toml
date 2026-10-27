@@ -69,10 +69,6 @@ Name = "AssetsViewTests.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "CommandPaletteTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "ContainerListEditorTests.bf"
 
 [[ProjectFolder.Items]]

@@ -121,10 +121,6 @@ Name = "CategoryTabs.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "CommandPaletteDialog.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "CompactAssetSlot.bf"
 
 [[ProjectFolder.Items]]

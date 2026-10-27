@@ -80,6 +80,8 @@ class EditorApplication : IApplication
 	private ActionMenuBar mMenus = null ~ delete _;
 	/// The actions' keys in the GUI's keymap, made with the menu bar.
 	private ActionShortcuts mShortcuts = null ~ delete _;
+	/// Every action by name (View > Command Palette), made the first time it opens.
+	private CommandPalette mPalette = null ~ delete _;
 	private EditorExport mExport = null ~ delete _;
 	private EditorAssetCreation mCreation ~ delete _;
 	private EditorMcpService mMcp = null ~ delete _;
@@ -479,9 +481,21 @@ class EditorApplication : IApplication
 		mMenus.AddLeadingItems("File", new (file) => { mCreation.AddNewItems(file); });
 	}
 
+	/// The palette over the main window, its frame the editor's markup (read the first time).
+	/// Nothing with no interface.
+	private void OpenCommandPalette()
+	{
+		let root = mWindow.Root;
+		if (root == null)
+			return;
+		if (mPalette == null)
+			mPalette = new CommandPalette(mContext.Actions, mWindow.LoadMarkup(CommandPalette.cMarkupPath));
+		mPalette.Open(root);
+	}
+
 	/// The editor-wide actions this lifecycle can run. What a later layer brings (Save As, saving
-	/// the layout, Close Project, Preferences, the dialogs, the profiler, the palette) is given no
-	/// hook here, so its action stays out until it can run.
+	/// the layout, Close Project, Preferences, the dialogs, the profiler) is given no hook here,
+	/// so its action stays out until it can run.
 	private void RegisterActions()
 	{
 		let actions = mContext.Actions;
@@ -514,6 +528,7 @@ class EditorApplication : IApplication
 		view.Context = mContext;
 		view.ResetLayout = new () => { mDock.ResetLayout(); };
 		view.Screenshot = new () => { TakeEditorScreenshot(); };
+		view.CommandPalette = new () => { OpenCommandPalette(); };
 		EditorAppActions.RegisterViewActions(actions, view);
 
 		let help = new HelpActions();
@@ -721,6 +736,7 @@ class EditorApplication : IApplication
 			mEmbeddedApp.OnShutdown(mEmbeddedHost);
 			mRuntimeContext.Shutdown();
 		}
+		DeleteAndNullify!(mPalette); // closed, while the window's root is there
 		DeleteAndNullify!(mMenus); // the bar left empty while the window's tree holds it
 		DeleteAndNullify!(mShortcuts); // its keys and the root's handlers, while both are there
 		mDock.Close(); // its floats' windows, then the GUI before the device goes
