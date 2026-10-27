@@ -69,10 +69,6 @@ Name = "AssetCreateDialog.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "AssetDragData.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "AssetGroupTreeAdapter.bf"
 
 [[ProjectFolder.Items]]
