@@ -23,6 +23,8 @@ corlib = "*"
 "Sedulous.Pipeline.Importer" = "*"
 "Sedulous.Editor.App" = "*"
 "Sedulous.GUI" = "*"
+# The layout store: the GUI dock's controller and layout document.
+"Sedulous.GUI.Docking" = "*"
 # A headless runtime host for EditorWindow.
 "Sedulous.Runtime" = "*"
 "Sedulous.Runtime.Client" = "*"

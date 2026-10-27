@@ -2,18 +2,19 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Core.Logging;
 using Sedulous.Core.Serialization;
 using Sedulous.Settings;
 using Sedulous.VFS;
 using Sedulous.Xml.Serialization;
-using Sedulous.UI.Toolkit;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.App;
 
 /// Per-project editor-state persistence, unified on the structured settings store: one
 /// file, <project>/Editor/editor.project.settings.xml, holding typed, versioned sections:
-/// the dock tree, the favourites, the open pages, the asset browser view mode. Other
+/// the dock's layout, the favourites, the open pages, the asset browser view mode. Other
 /// modules add their own sections to the same store through
 /// EditorContext.ProjectEditorSettings; their types must be registered before the app
 /// loads it.
@@ -24,28 +25,30 @@ static class ProjectEditorSettings
 
 	// ---- store to and from live state ------------------------------------------------------
 
-	/// Snapshots the dock's current layout into the store. NotFound when the dock tree is
-	/// empty.
-	public static Result<void, ErrorCode> CaptureDockLayout(DockManager dock, Settings store)
+	/// The dock's layout into the store, a copy: the dock goes on changing without it.
+	public static void CaptureDockLayout(DockController dock, Settings store)
 	{
-		let layout = dock.ExportLayout();
-		if (layout == null)
-			return .Err(.NotFound);
 		let section = store.Section<EditorDockLayoutSettings>();
-		delete section.Root;
-		section.Root = layout;
+		section.Document.Layout.Set(dock.Layout);
+		section.Captured = true;
 		store.MarkChanged<EditorDockLayoutSettings>();
-		return .Ok;
 	}
 
-	/// Rebuilds the dock from the store's snapshot, panels matched by PersistenceId.
-	/// NotFound when no snapshot was ever captured; the caller keeps its default layout.
-	public static Result<void, ErrorCode> ApplyDockLayout(DockManager dock, Settings store)
+	/// The store's layout into the dock: its registered panels placed where the layout says,
+	/// the rest at their defaults. NotFound when none was captured (the caller keeps its default
+	/// layout); InvalidArgument when the dock refuses it (a layout that breaks the dock's rules,
+	/// a file edited by hand), said in the log, the dock as it was.
+	public static Result<void, ErrorCode> ApplyDockLayout(DockController dock, Settings store)
 	{
 		let section = store.Find<EditorDockLayoutSettings>();
-		if ((section == null) || (section.Root == null))
+		if ((section == null) || !section.Captured)
 			return .Err(.NotFound);
-		dock.ApplyLayout(section.Root);
+		let outcome = dock.Adopt(section.Document.Layout);
+		if (!outcome.Ok)
+		{
+			GlobalLog(.Warning, "Editor: the saved dock layout was refused ({}); the default stands", outcome.Refused);
+			return .Err(.InvalidArgument);
+		}
 		return .Ok;
 	}
 

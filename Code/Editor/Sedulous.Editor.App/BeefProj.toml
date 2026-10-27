@@ -145,19 +145,11 @@ Name = "ContainerListEditor.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "DockLayoutNodeSerialization.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "EditorActionTools.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "EditorAppConfig.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "EditorAppSerializables.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
@@ -177,27 +169,11 @@ Name = "EditorApplicationProject.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "EditorAssetBrowserSettings.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "EditorDockLayoutSettings.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "EditorFavoritesSettings.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "EditorIcons.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "EditorLayoutTools.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "EditorOpenPagesSettings.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
@@ -274,10 +250,6 @@ Name = "PendingExport.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "ProfilerPanel.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ProjectEditorSettings.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
