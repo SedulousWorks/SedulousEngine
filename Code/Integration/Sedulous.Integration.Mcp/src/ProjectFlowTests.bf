@@ -570,6 +570,7 @@ static class ProjectFlowTests
 		}
 		// The engine GUI's sheets take the whole list, in order.
 		{
+			// The GUI's creators name no default group (as Raptor's), so the sheets land at the root.
 			let shared = CallOk(server, "asset_create", With(With(Obj(), "creator", "GUI Style Sheet"), "name", "Shared"));
 			defer delete shared;
 			let game = CallOk(server, "asset_create", With(With(Obj(), "creator", "GUI Style Sheet"), "name", "Game"));
@@ -582,7 +583,7 @@ static class ProjectFlowTests
 			let set = CallOk(server, "project_settings_set", arguments);
 			defer delete set;
 			let listed = set.Get("settings").Get("guiStyleSheetIds");
-			Test.Assert((listed.Count == 2) && (listed.At(0).Get("path").AsString() == "GUI/Shared") && (listed.At(1).Get("path").AsString() == "GUI/Game"));
+			Test.Assert((listed.Count == 2) && (listed.At(0).Get("path").AsString() == "Shared") && (listed.At(1).Get("path").AsString() == "Game"));
 			Test.Assert((session.Project.Settings.GuiStyleSheetIds.Count == 2) && (changed == 1));
 			changed = 0;
 		}
