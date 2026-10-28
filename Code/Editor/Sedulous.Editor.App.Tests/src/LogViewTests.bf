@@ -495,4 +495,39 @@ class LogViewTests
 		Test.Assert(list.ScrollOffset.Y == 0.0f);
 		Test.Assert(Math.Abs(list.ScrollRange.Y - range) < 0.5f, "the content's height holds at the top");
 	}
+
+	/// Under the editor's sheet, lines arriving, the Console keeps its panel's height (its list does
+	/// not grow past it: a scroller has no automatic minimum) and the wheel scrolls it up notch by
+	/// notch, not pulled back down by each new line.
+	[Test]
+	public static void UnderTheEditorsSheetItKeepsItsPanelsHeightAndTheWheelScrollsItUpNotchByNotch()
+	{
+		let bed = scope ConsoleBed();
+		let sheet = scope EditorSheet(); // goes first, while the tree it styled is there
+		sheet.Apply(bed.Root);
+		for (int i < 100)
+			bed.View.AddEntry(.Information, "N", scope $"line {i}");
+		sheet.Apply(bed.Root);
+		let list = bed.List;
+		let bounds = list.ScreenBounds;
+		let at = Float2(bounds.X + 100.0f, bounds.Y + bounds.Height * 0.5f);
+		let d = bed.Root.EventDispatcher;
+		d.InjectMouseMove(at);
+		list.ScrollToItem((int32)bed.View.ShownCount - 1); // at the newest, following it
+		bed.Layout();
+		Test.Assert(Math.Abs(list.ScrollOffset.Y - list.ScrollRange.Y) < 0.5f, "at the bottom");
+		var last = list.ScrollOffset.Y;
+		for (int notch < 6)
+		{
+			d.InjectMouseWheel(at, .(0.0f, 1.0f)); // up
+			bed.View.AddEntry(.Information, "N", scope $"more {notch}");
+			sheet.Apply(bed.Root);
+			bed.Root.Context.Update(TimeSpan.FromSeconds(0.1));
+			bed.Layout();
+			Test.Assert(list.Size.Y < 400.0f, scope $"its panel's height, not its rows': {list.Size.Y}");
+			Test.Assert(list.ScrollRange.Y > 0.0f);
+			Test.Assert(list.ScrollOffset.Y < last, scope $"notch {notch}: up, not pulled back down by the new line");
+			last = list.ScrollOffset.Y;
+		}
+	}
 }
