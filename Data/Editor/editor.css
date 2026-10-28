@@ -295,6 +295,9 @@ toast { border: 1px solid var(--border-strong); }
 /* A tile's marks sit in its picture's corners: a star top right, a stale or failed badge below. */
 .asset-thumb > .badge-icon { position: absolute; top: 3px; right: 3px; }
 .asset-thumb > .badge { position: absolute; left: 3px; bottom: 3px; font-size: 10px; padding: 0 3px; }
+/* Always Export: a mark in a tile's top left corner, the kit's badge in a row's own column. */
+.export-mark { position: absolute; top: 4px; left: 4px; width: 7px; height: 7px; border-radius: 4px; background-color: var(--success); }
+.asset-list .asset-row > .badge.export { width: 86px; flex-grow: 0; flex-shrink: 0; text-align: center; }
 .asset-list { flex-grow: 1; background-color: var(--surface); padding: var(--space-xs) var(--space-s); }
 /* A row: its glyph, then its name and kind on one baseline (the kind at the end, right-aligned),
    then its badge and star in columns of their own, kept when empty, so every kind ends in line. */

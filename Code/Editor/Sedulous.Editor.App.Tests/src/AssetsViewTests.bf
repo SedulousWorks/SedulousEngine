@@ -1484,4 +1484,64 @@ static class AssetsViewTests
 		bed.Root.RemoveChild(plain.Content); // before the plain view goes
 		bed.Root.AddChild(view.Content);
 	}
+
+	/// An asset or a group always exported is marked: a tile's dot in its picture's corner (its
+	/// tooltip saying what it means), a row's Always Export badge in a column every row keeps; the
+	/// menus' toggles draw the cell again at once.
+	[Test]
+	public static void AnAssetOrAGroupAlwaysExportedIsMarkedATilesCornerMarkARowsBadgeTheMenusToggleRedrawsIt()
+	{
+		let bed = scope Bed("scratch_assets_view_always_export");
+		let view = bed.View;
+		Test.Assert(view.ShowsTiles);
+		var crate = bed.Cell(bed.RowOf("Crate"));
+		Test.Assert(crate != null);
+		Test.Assert(!crate.ShowsAlwaysExport);
+		// A tile's mark: a dot in its picture, out of the layout till flagged, reached by the
+		// pointer for its tooltip.
+		let mark = crate.AlwaysExportPart;
+		Test.Assert(mark.HasClass("export-mark") && (mark.Parent !== crate), "in the picture");
+		Test.Assert(!mark.Displayed);
+		Test.Assert(mark.Tooltip == "Always exported");
+		Test.Assert(mark.HitTestVisible, "its tooltip");
+
+		// Through the asset's menu, as a user does: the cell redraws with its mark, unasked.
+		bed.Choose(bed.RowOf("Crate"), "Always Export");
+		crate = bed.Cell(bed.RowOf("Crate"));
+		Test.Assert(crate != null);
+		Test.Assert(crate.ShowsAlwaysExport, "its mark at once");
+		Test.Assert(crate.AlwaysExportPart.Displayed);
+
+		// A group's contents, and the list's badge.
+		bed.Ops.ToggleAlwaysExport(bed.Models);
+		view.SetTiles(false);
+		let models = bed.Cell(bed.RowOf("Models"));
+		Test.Assert(models != null);
+		Test.Assert(!models.IsTile);
+		Test.Assert(models.ShowsAlwaysExport, "a group marked");
+		let badge = models.AlwaysExportPart;
+		Test.Assert(badge.HasClass("badge") && badge.HasClass("export"), "the kit's badge");
+		Test.Assert((badge as Sedulous.GUI.Label).Text == "Always Export");
+		Test.Assert(badge.Parent === models, "a column of the row's own");
+		crate = bed.Cell(bed.RowOf("Crate"));
+		Test.Assert(crate != null);
+		Test.Assert(crate.ShowsAlwaysExport);
+		// A row not flagged keeps the column, empty, so every row's name stays in line.
+		let sounds = bed.Cell(bed.RowOf("Sounds"));
+		Test.Assert(sounds != null);
+		Test.Assert(!sounds.ShowsAlwaysExport);
+		Test.Assert(sounds.AlwaysExportPart.Displayed && !sounds.AlwaysExportPart.Visible, "kept, not taken out");
+
+		// Through the group's menu: its mark goes at once.
+		bed.Choose(bed.RowOf("Models"), "Always Export Its Contents");
+		Test.Assert(!bed.Project.ExportRoots.HasGroup("Models"));
+		Test.Assert(!bed.Cell(bed.RowOf("Models")).ShowsAlwaysExport, "its mark gone at once");
+
+		bed.Ops.ToggleAlwaysExport(bed.Crate.Id); // off again
+		view.Rebuild();
+		crate = bed.Cell(bed.RowOf("Crate"));
+		Test.Assert(crate != null);
+		Test.Assert(!crate.ShowsAlwaysExport);
+		Test.Assert(crate.AlwaysExportPart.Displayed, "its column kept");
+	}
 }

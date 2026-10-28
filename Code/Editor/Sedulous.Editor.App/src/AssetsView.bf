@@ -908,6 +908,7 @@ class AssetsView
 			shown.Group = true;
 			shown.Glyph = "Editor/Icons/folder.svg";
 			shown.Name = row.Group.Name; // its folder says what it is
+			shown.AlwaysExported = (mServices.Operations != null) && mServices.Operations.IsAlwaysExported(row.Group);
 		}
 		else
 		{
@@ -931,6 +932,7 @@ class AssetsView
 			if (shown.Glyph.IsEmpty)
 				shown.Glyph = "Editor/Icons/file.svg";
 			shown.Favourite = (mServices.Context != null) && mServices.Context.IsFavorite(instance.Id);
+			shown.AlwaysExported = (mServices.Operations != null) && mServices.Operations.IsAlwaysExported(instance.Id);
 			if (mServices.Picture != null)
 				shown.Picture = mServices.Picture(instance.Id);
 			if (mServices.Cook != null)
@@ -1212,7 +1214,11 @@ class AssetsView
 					mServices.Context.ToggleFavorite(id);
 				mModel.Changed(); // its star
 			});
-		let always = menu.AddItem("Always Export", new [=ops, =id] () => { ops.ToggleAlwaysExport(id); });
+		let always = menu.AddItem("Always Export", new [=this, =ops, =id] () =>
+			{
+				ops.ToggleAlwaysExport(id);
+				mModel.Changed(); // its mark
+			});
 		always.Checkable = true;
 		always.SetCheckedSilently(ops.IsAlwaysExported(id));
 		menu.AddSeparator();
@@ -1261,7 +1267,11 @@ class AssetsView
 		if (!top)
 		{
 			menu.AddItem("Rename", OnGroup(group, new [=this, =rowId] (found) => { BeginRenameGroup(found, rowId); })).Shortcut = "F2";
-			let always = menu.AddItem("Always Export Its Contents", OnGroup(group, new [=ops] (found) => { ops.ToggleAlwaysExport(found); }));
+			let always = menu.AddItem("Always Export Its Contents", OnGroup(group, new [=this, =ops] (found) =>
+				{
+					ops.ToggleAlwaysExport(found);
+					mModel.Changed(); // its mark
+				}));
 			always.Checkable = true;
 			always.SetCheckedSilently(ops.IsAlwaysExported(group));
 			menu.AddSeparator();
