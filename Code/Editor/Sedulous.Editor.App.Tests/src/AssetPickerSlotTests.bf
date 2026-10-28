@@ -20,8 +20,8 @@ class SlotPlainAsset
 
 /// The asset slot: a verb shows once wired (open, reveal and clear only with something referenced), an
 /// empty slot says None, each verb runs once per click, a click on the slot picks, and a dragged
-/// asset of a type it takes is dropped on it while one it does not take is refused, saying why.
-/// Then what Sedulous adds so each behaviour has a test: open, reveal and clear unwired over a value, the
+/// asset of a type it takes is dropped on it while one it does not take, or several, is refused,
+/// saying why. Then what Sedulous adds so each behaviour has a test: open, reveal and clear unwired over a value, the
 /// empty look coming back, a slot with no drop callback no target, another payload not refused,
 /// the any-asset wildcard, the glyph following the type, and the kept helpers (Accepts and
 /// RejectionText) for an owner's own checks and toasts.
@@ -90,6 +90,15 @@ class AssetPickerSlotTests
 		{
 			let request = scope DragRequest();
 			AssetDrag.Payload(id, typeName, name, request.Payload);
+			Start(request);
+		}
+
+		/// Drags `assets` (a browser's selection) from the source with the pointer over the slot, and
+		/// asks there.
+		public void DragAssets(Span<AssetDrag> assets)
+		{
+			let request = scope DragRequest();
+			AssetDrag.Payload(assets, request.Payload);
 			Start(request);
 		}
 
@@ -240,6 +249,37 @@ class AssetPickerSlotTests
 		Test.Assert(bed.D.DropReason == "Brick is a TextureAsset, not one this takes");
 		bed.Release();
 		Test.Assert(dropped == 2, "refused: nothing assigned");
+	}
+
+	/// A slot holds one asset: several are refused, saying it takes one, even of a type it takes;
+	/// a run of one drops as the one.
+	[Test]
+	public static void SeveralDraggedAssetsAreRefusedSayingItTakesOne()
+	{
+		let bed = scope SlotBed();
+		bed.Slot.SetAcceptedTypes(scope StringView[]("MaterialAsset"));
+		int dropped = 0;
+		Guid assigned = .Empty;
+		bed.Slot.SetOnDropped(new [&] (id) =>
+			{
+				dropped++;
+				assigned = id;
+			});
+		bed.Root.UpdateLayout();
+
+		AssetDrag[2] two = .(scope .(sWood, "MaterialAsset", "Wood"), scope .(Guid(9, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0), "MaterialAsset", "Oak"));
+		bed.DragAssets(two);
+		Test.Assert(bed.D.DropTarget == null);
+		Test.Assert(bed.D.DropReason == "This takes one asset");
+		bed.Release();
+		Test.Assert(dropped == 0, "refused: nothing assigned");
+
+		AssetDrag[1] one = .(scope .(sWood, "MaterialAsset", "Wood"));
+		bed.DragAssets(one);
+		Test.Assert(bed.D.DropTarget == bed.Slot);
+		bed.Release();
+		Test.Assert(dropped == 1);
+		Test.Assert(assigned == sWood);
 	}
 
 	/// Not a target with no one to assign a drop: an asset of any type passes it by, unrefused.

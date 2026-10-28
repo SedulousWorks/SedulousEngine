@@ -222,7 +222,7 @@ class AssetPickerSlot : UIWidget
 			query.Reason.Clear();
 			query.Reason.AppendF("Use {}", dragged.Name);
 		}
-		else if (dragged.Id != Guid.Empty) // an asset, not one it takes; another payload is not ours to refuse
+		else if (dragged.Id != Guid.Empty) // an asset it does not take, or several; another payload is not ours to refuse
 			query.Refuse(why);
 	}
 
