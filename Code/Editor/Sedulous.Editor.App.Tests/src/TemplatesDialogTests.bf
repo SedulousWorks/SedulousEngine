@@ -310,4 +310,35 @@ class TemplatesDialogTests
 		question.RequestClose();
 		Test.Assert(dialog.TemplateCount == 3);
 	}
+
+	/// A template's row under the editor's sheet: --space-l at its side and between its icon and
+	/// its text, a 28-pixel icon, a gap (--space-xs) between its name and summary. Its height is
+	/// still the list's fixed row (Raptor's c10ec7994 gives the list 52-pixel rows), so the rule's
+	/// min-height and its padding above and below wait for that.
+	[Test]
+	public static void ATemplatesRowHasRoomAtItsSidesALargerIconAGapBetweenItsLines()
+	{
+		let f = scope Fixture();
+		let dialog = f.Open();
+		let sheet = scope EditorSheet(true); // goes first, while the tree it styled is there
+		sheet.Apply(f.Ui);
+		f.SizeList();
+		let row = f.RowOf(Fixture.IndexOf(dialog, "t-linux"));
+		let icon = row.GetChildAt(0) as UIWidget;
+		let text = row.GetChildAt(1) as UIWidget;
+		Test.Assert(icon.HasClass("template-row-icon") && text.HasClass("template-row-text"));
+		let name = text.GetChildAt(0) as UIWidget;
+		let summary = text.GetChildAt(1) as UIWidget;
+		Test.Assert(name.Size.Y > 0.0f, "laid out, with its font");
+		let at = row.ConvertToRootSpace(.(0.0f, 0.0f));
+		let iconAt = icon.ConvertToRootSpace(.(0.0f, 0.0f));
+		let textAt = text.ConvertToRootSpace(.(0.0f, 0.0f));
+		let nameAt = name.ConvertToRootSpace(.(0.0f, 0.0f));
+		let summaryAt = summary.ConvertToRootSpace(.(0.0f, 0.0f));
+		Test.Assert(row.Size.Y == dialog.List.RowHeight, "the list's row, till c10ec7994");
+		Test.Assert((icon.Size.X == 28.0f) && (icon.Size.Y == 28.0f), "a slightly larger icon");
+		Test.Assert(iconAt.X - at.X == 12.0f, "--space-l at its side");
+		Test.Assert(textAt.X - (iconAt.X + icon.Size.X) == 12.0f, "--space-l between icon and text");
+		Test.Assert(summaryAt.Y - (nameAt.Y + name.Size.Y) == 2.0f, "--space-xs between the lines");
+	}
 }

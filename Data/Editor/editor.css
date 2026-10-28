@@ -634,9 +634,10 @@ button.group-field { justify-content: flex-start; }
 .template-value { white-space: normal; min-width: 0; }
 .template-value.warning, .export-card-detail.warning { color: var(--warning); }
 .templates-verbs { flex-direction: row; column-gap: var(--space-s); }
-.template-row { flex-direction: row; align-items: center; column-gap: var(--space-m); min-height: 42px; padding: 0 var(--space-m); }
-.template-row-icon { width: 26px; height: 26px; image-color: var(--icon); flex-shrink: 0; }
-.template-row-text { flex-direction: column; flex-grow: 1; min-width: 0; }
+/* A template a two-line card: room above and below its name and summary, a gap between them. */
+.template-row { flex-direction: row; align-items: center; column-gap: var(--space-l); min-height: 52px; padding: var(--space-m) var(--space-l); }
+.template-row-icon { width: 28px; height: 28px; image-color: var(--icon); flex-shrink: 0; }
+.template-row-text { flex-direction: column; flex-grow: 1; min-width: 0; row-gap: var(--space-xs); }
 .template-summary { color: var(--text-dim); font-size: var(--font-small); }
 .badge-icon.warning { image-color: var(--warning); }
 .templates > .dialog-buttons, .export > .dialog-buttons { padding: var(--space-l) 0 var(--space-xl); }
