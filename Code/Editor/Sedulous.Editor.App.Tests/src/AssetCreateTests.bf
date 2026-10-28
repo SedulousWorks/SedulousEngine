@@ -133,20 +133,23 @@ static class AssetCreateTests
 	private static String Says(Group group, StringView name, String outWhy) => AssetNames.Refusal(group, name, .. outWhy);
 
 	[Test]
-	public static void GroupPickerTheGroupsInTheTreesOrderEachByNameAndWhatHoldsItAKeyFindsItsGroupAgain()
+	public static void GroupPickerTheGroupsATreeInItsOrderEachByNameAtItsDepthAKeyFindsItsGroupAgain()
 	{
 		let bed = scope ProjectBed();
 		let request = GroupPicker.Request(bed.Sources, bed.Town);
 		defer delete request;
+		Test.Assert(request.Tree);
 		Test.Assert(request.Items.Count == 4);
 		Test.Assert(request.Items[0].Name == "Content");
-		Test.Assert(request.Items[0].Detail.IsEmpty, "the top: nothing holds it");
+		Test.Assert(request.Items[0].Depth == 0, "the top");
 		Test.Assert(request.Items[1].Name == "Models", "Models before Sounds, though made after it");
-		Test.Assert(request.Items[1].Detail == "in Content");
+		Test.Assert(request.Items[1].Depth == 1);
 		Test.Assert(request.Items[2].Name == "Town", "a group, then what is under it");
-		Test.Assert(request.Items[2].Detail == "in Models");
+		Test.Assert(request.Items[2].Depth == 2);
 		Test.Assert(request.Items[3].Name == "Sounds");
-		Test.Assert(request.Items[3].Detail == "in Content");
+		Test.Assert(request.Items[3].Depth == 1);
+		for (let item in request.Items)
+			Test.Assert(item.Detail.IsEmpty, "the tree says where it is");
 		Test.Assert(request.Current == "Content/Models/Town");
 		Test.Assert(request.Placeholder == "Search groups");
 		for (let item in request.Items)
@@ -192,10 +195,14 @@ static class AssetCreateTests
 			Test.Assert(shown != null);
 			Test.Assert(shown.ShowsCheck == (shown.ShownName == "Town"));
 		}
-		Test.Assert((scene.Groups.List.RowForItem(2).Content as PickerRow).ShownDetail == "in Models");
+		let town = scene.Groups.List.RowForItem(2).Content as PickerRow;
+		Test.Assert(town.Indent == 2, "under Models, under the top");
+		Test.Assert(town.ShownDetail.IsEmpty);
 		Test.Assert(scene.Groups.Hint == "Enter picks, Esc keeps Town");
 		scene.Groups.SetQuery("Models");
-		Test.Assert(scene.Groups.RowCount == 2, "by its name, or where it is: Models, and Town in it");
+		Test.Assert(scene.Groups.RowCount == 2, "by its name, the top above it: Content, Models");
+		Test.Assert(scene.Groups.IsContext(0) && !scene.Groups.IsContext(1));
+		Test.Assert(scene.Groups.LitKey == "Content/Models", "the match lit, not what holds it");
 	}
 
 	[Test]
@@ -262,7 +269,7 @@ static class AssetCreateTests
 		Test.Assert(pickerAt.Y >= fieldAt.Y + group.Size.Y - 0.5f, "below the group field");
 		Test.Assert(scene.Groups.LitKey == "Content", "the group now checked and lit");
 		scene.Groups.SetQuery("town");
-		scene.Groups.PickLit();
+		scene.Groups.PickLit(); // Town, not the current Content shown above it
 		Test.Assert(!scene.Groups.IsOpen);
 		Test.Assert(dialog.TargetGroup == bed.Town);
 		Test.Assert(group.Text == "Models/Town");

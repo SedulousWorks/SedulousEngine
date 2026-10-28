@@ -13,7 +13,9 @@ namespace Sedulous.Editor.App;
 // past the section headings while the search keeps the keys, and Enter, a double click or Enter on
 // the list picks. The foot says so ("Esc keeps" the current value) and holds None when the owner
 // allows nothing. With nothing to pick it says what is missing and offers the owner's next step;
-// with nothing matching, it says so and offers to clear the search. It opens as a modal popup
+// with nothing matching, it says so and offers to clear the search. A tree request (the groups')
+// indents its rows by level in its order, and a search keeps the rows above each match, dimmed, so
+// a match reads where it is. It opens as a modal popup
 // below what it picks for, or near the top of the window.
 
 /// One thing a picker offers.
@@ -31,6 +33,8 @@ class PickerItem
 	/// The class tinting it (a category's).
 	public String GlyphClass = new .() ~ delete _;
 	public bool Favourite = false;
+	/// Its level in a tree request, under the item before it one level up.
+	public uint32 Depth = 0;
 }
 
 /// What a picker is opened with.
@@ -44,6 +48,8 @@ class PickerRequest
 	public String Current = new .() ~ delete _;
 	/// The foot's None, which picks nothing (an empty key).
 	public bool AllowNone = false;
+	/// The items a tree (by Depth, in their order): a search keeps where each match is.
+	public bool Tree = false;
 	/// With nothing to pick ("No materials yet").
 	public String EmptyTitle = new .() ~ delete _;
 	public String EmptyText = new .() ~ delete _;
@@ -68,7 +74,12 @@ class PickerRequest
 /// One row: an item's glyph, name, detail, favourite star and current check.
 class PickerRow : UIWidget
 {
+	/// A level's indent, in pixels.
+	private const uint32 cIndent = 16;
+
 	// Owned by the tree: the row holds its parts and never lets one go.
+	private Sedulous.GUI.Panel mIndent;
+	private uint32 mIndentLevels = 0;
 	private Sedulous.GUI.Image mGlyph;
 	private Sedulous.GUI.Label mName;
 	private Sedulous.GUI.Label mDetail;
@@ -80,6 +91,7 @@ class PickerRow : UIWidget
 	public this()
 	{
 		AddClass("asset-row");
+		mIndent = Part<Sedulous.GUI.Panel>("picker-indent");
 		mGlyph = Part<Sedulous.GUI.Image>("row-icon");
 		mName = Part<Sedulous.GUI.Label>("row-name");
 		mDetail = Part<Sedulous.GUI.Label>("row-kind");
@@ -92,8 +104,17 @@ class PickerRow : UIWidget
 		mCheck.Tooltip = "The current value";
 	}
 
-	public void Show(PickerItem item, bool current)
+	/// `context`: a tree's item shown only as where a match is, dimmed.
+	public void Show(PickerItem item, bool current, bool context = false)
 	{
+		mIndentLevels = item.Depth;
+		mIndent.Displayed = item.Depth > 0;
+		if (item.Depth > 0)
+			mIndent.SetInlineStyle("width", scope String()..AppendF("{}px", item.Depth * cIndent));
+		if (context)
+			AddClass("context");
+		else
+			RemoveClass("context");
 		if (!mGlyphClass.IsEmpty)
 			mGlyph.RemoveClass(mGlyphClass);
 		mGlyphClass.Set(item.GlyphClass);
@@ -112,6 +133,9 @@ class PickerRow : UIWidget
 	public StringView ShownGlyph => mGlyph.Source;
 	public bool ShowsCheck => mCheck.Displayed;
 	public bool ShowsStar => mStar.Displayed;
+	/// How deep it is indented, in levels; whether it is shown only as where a match is.
+	public uint32 Indent => mIndentLevels;
+	public bool IsContext => HasClass("context");
 
 	/// A part of class `cls`, the row's: the row takes the pointer, not its parts.
 	private T Part<T>(StringView cls) where T : UIWidget, new
@@ -144,12 +168,15 @@ class Picker
 		public int Item;
 		/// Its section (a heading's text): the request's string.
 		public StringView Section;
+		/// A tree's item shown only as where a match is.
+		public bool Context;
 
-		public this(bool header, int item, StringView section)
+		public this(bool header, int item, StringView section, bool context = false)
 		{
 			Header = header;
 			Item = item;
 			Section = section;
+			Context = context;
 		}
 	}
 
@@ -345,6 +372,10 @@ class Picker
 		return r.Header ? r.Section : (StringView)mRequest.Items[r.Item].Name;
 	}
 
+	/// A tree's row: how deep it is, and whether it is shown only as where a match is.
+	public uint32 RowDepth(int32 row) => IsItemRow(row) ? mRequest.Items[mRows[row].Item].Depth : 0;
+	public bool IsContext(int32 row) => IsItemRow(row) && mRows[row].Context;
+
 	/// The lit item's key (Enter's); empty with none.
 	public StringView LitKey
 	{
@@ -446,6 +477,11 @@ class Picker
 	private void Filter(StringView query)
 	{
 		mRows.Clear();
+		if (mRequest.Tree)
+		{
+			FilterTree(query);
+			return;
+		}
 		AddSection(cFavourites, true, query);
 		mSections.Clear();
 		for (let item in mRequest.Items)
@@ -455,18 +491,59 @@ class Picker
 		}
 		for (let section in mSections)
 			AddSection(section, false, query);
+		Shown(query);
+	}
+
+	/// A tree's rows for `query`: its items in their order, those matching by name and the groups
+	/// above each, so a match reads where it is (two of one name under different parents apart).
+	/// No sections, no favourites: the tree is the order.
+	private void FilterTree(StringView query)
+	{
+		let count = mRequest.Items.Count;
+		let shown = scope bool[count];
+		let matched = scope bool[count];
+		for (int i < count)
+		{
+			if (!mRequest.Items[i].Name.Contains(query, true))
+				continue;
+			matched[i] = shown[i] = true;
+			var depth = mRequest.Items[i].Depth;
+			for (var up = i - 1; (up >= 0) && (depth > 0); up--)
+			{
+				if (mRequest.Items[up].Depth < depth)
+				{
+					shown[up] = true;
+					depth = mRequest.Items[up].Depth;
+				}
+			}
+		}
+		for (int i < count)
+		{
+			if (shown[i])
+				mRows.Add(.(false, i, default, !query.IsEmpty && !matched[i]));
+		}
+		Shown(query);
+	}
+
+	/// After filtering: the list told, the state shown, the current value lit, else the first match.
+	private void Shown(StringView query)
+	{
 		mModel.Reset();
 		ShowState(query);
-		// The current value lit, else the first.
 		int32 lit = -1;
 		for (int32 row = 0; (row < mRows.Count) && (lit < 0); row++)
 		{
-			if (!mRows[row].Header && IsCurrent(mRequest.Items[mRows[row].Item]))
+			if (!mRows[row].Header && !mRows[row].Context && IsCurrent(mRequest.Items[mRows[row].Item]))
 				lit = row;
 		}
 		if (mList != null)
 			mList.ClearSelection();
-		Light((lit >= 0) ? lit : FirstItemFrom(0, 1));
+		for (int32 row = 0; (row < mRows.Count) && (lit < 0); row++)
+		{
+			if (!mRows[row].Header && !mRows[row].Context)
+				lit = row;
+		}
+		Light(lit);
 	}
 
 	/// A section's matching items under its heading (none: no heading, nor one for the unnamed
@@ -602,7 +679,7 @@ class Picker
 		else if (let shown = node as PickerRow)
 		{
 			let item = mRequest.Items[r.Item];
-			shown.Show(item, IsCurrent(item));
+			shown.Show(item, IsCurrent(item), r.Context);
 		}
 	}
 

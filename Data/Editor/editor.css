@@ -583,6 +583,10 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .picker-search { padding: var(--space-m); border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); margin-bottom: var(--space-s); }
 .picker-group { font-size: 11px; font-weight: 600; color: var(--text-dim); padding: var(--space-s) var(--space-l) var(--space-xs); }
 .picker > .asset-row { margin: 0 var(--space-s); }
+/* A tree picker's rows: indented by level (the width is the row's), a row kept only to show where
+   a match is dimmed. */
+.picker-indent { flex-shrink: 0; }
+.asset-row.context > .row-name { color: var(--text-dim); }
 .picker-foot { flex-direction: row; align-items: center; padding: var(--space-s) var(--space-m) 0; margin-top: var(--space-s);
                border-top-width: 1px; border-top-style: solid; border-top-color: var(--separator); }
 .picker-hint { font-size: var(--font-small); color: var(--text-placeholder); }

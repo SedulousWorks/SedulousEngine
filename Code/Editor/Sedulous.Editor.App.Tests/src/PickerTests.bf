@@ -16,7 +16,8 @@ namespace Sedulous.Editor.App.Tests;
 /// what Sedulous adds so each behaviour has a test: what a row shows (its star, its check), a
 /// double click picking and closing (on a heading, nothing), Escape keeping the value, None
 /// only when the owner allows it, the states' icons, texts and verbs, and the path picker's
-/// request opened in the picker.
+/// request opened in the picker. A tree request: rows indented in its order, a search keeping
+/// the groups above each match, dimmed.
 static class PickerTests
 {
 	/// The picker in a GUI scene of its own, 800 by 600, and what it picked.
@@ -129,6 +130,62 @@ static class PickerTests
 			let row = View.List.RowForItem(item);
 			return (row != null) ? (row.Content as PickerRow) : null;
 		}
+	}
+
+	/// A tree's rows indented in its order; a search keeps the groups above each match, dimmed, so
+	/// two of one name read apart; the current lit only when it matches, else the first match.
+	[Test]
+	public static void ATreesRowsIndentedInItsOrderASearchKeepsTheGroupsAboveEachMatchDimmed()
+	{
+		let bed = scope PickerBed();
+		let request = new PickerRequest();
+		void Add(StringView key, StringView name, uint32 depth) => request.Add(key, name).Depth = depth;
+		Add("c", "Content", 0);
+		Add("c/m", "Models", 1);
+		Add("c/m/t", "Textures", 2);
+		Add("c/u", "UI", 1);
+		Add("c/u/t", "Textures", 2);
+		Add("c/s", "Sounds", 1);
+		request.Tree = true;
+		request.Current.Set("c/u/t");
+		bed.Open(request);
+		bed.SizeList();
+		let sheet = scope EditorSheet(); // goes first, while the tree it styled is there
+		sheet.Apply(bed.Root); // the row a row: its indent a width of its own
+		bed.Layout();
+		Test.Assert(bed.Rows(.. scope .()) == "Content Models Textures UI Textures Sounds");
+		Test.Assert(bed.View.RowDepth(2) == 2);
+		Test.Assert(bed.View.RowDepth(0) == 0);
+		Test.Assert(bed.View.LitKey == "c/u/t");
+		Test.Assert(!bed.View.IsContext(0));
+		// The row indented by its level, the top not at all.
+		Test.Assert(bed.ShownRow(2).Indent == 2);
+		Test.Assert(!bed.ShownRow(2).IsContext);
+		let indent = bed.ShownRow(2).GetChildAt(0) as UIWidget;
+		Test.Assert(indent.HasClass("picker-indent") && indent.Displayed);
+		Test.Assert(indent.Size.X == 32.0f, "two levels' width");
+		Test.Assert(!(bed.ShownRow(0).GetChildAt(0) as UIWidget).Displayed, "the top's none");
+
+		bed.View.SetQuery("tex");
+		Test.Assert(bed.Rows(.. scope .()) == "Content Models Textures UI Textures", "tree order, Sounds gone");
+		Test.Assert(bed.View.IsContext(0));
+		Test.Assert(bed.View.IsContext(1));
+		Test.Assert(!bed.View.IsContext(2));
+		Test.Assert(bed.View.IsContext(3));
+		Test.Assert(!bed.View.IsContext(4));
+		Test.Assert(bed.View.LitKey == "c/u/t", "still the current");
+		bed.Layout();
+		Test.Assert(bed.ShownRow(1).IsContext, "dimmed: only where a match is");
+		Test.Assert(!bed.ShownRow(2).IsContext);
+
+		bed.View.SetQuery("sound");
+		Test.Assert(bed.Rows(.. scope .()) == "Content Sounds");
+		Test.Assert(bed.View.LitKey == "c/s", "the match lit, not what holds it");
+
+		// Cleared: nothing dimmed again.
+		bed.View.SetQuery("");
+		Test.Assert(bed.View.RowCount == 6);
+		Test.Assert(!bed.View.IsContext(0));
 	}
 
 	[Test]
