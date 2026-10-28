@@ -41,9 +41,11 @@ class BrowserMeshBuilder : IAssetBuilder
 /// what it is and its star; entering a group and opening an asset; the search over every group
 /// saying where each match is, and the type filter, each with its state when nothing is left and
 /// the way back; tiles or a list kept with the project; building again when the database's shape
-/// moves; Reveal; a drag of the selection carrying its assets; and, under the editor's sheet, the
-/// toolbar keeping its height, the type menu opening below its button, and a list row's kind on
-/// its name's baseline, ending where every other row's does. Then what Sedulous adds
+/// moves; Reveal; a drag of the selection carrying its assets; assets dropped on a group's row or a
+/// group in the tree moving into it, one already there or taken there refused, saying why; and,
+/// under the editor's sheet, the toolbar keeping its height, the type menu opening below its
+/// button, and a list row's kind on its name's baseline, ending where every other row's does. Then
+/// what Sedulous adds
 /// so each behaviour has a test: the tree's click and Enter navigating, the breadcrumb's tooltip, a
 /// guid typed whole, braced or bare selecting its asset, the clear button and the state's verb, the
 /// type filter's menu and a type's display name, the toggles' checks, a type's glyph and tint, the
@@ -53,7 +55,9 @@ class BrowserMeshBuilder : IAssetBuilder
 /// item reaching what it names, opened by a right click on the list or the tree; Delete asking,
 /// naming what goes, on the list or the tree, Cancel keeping it; and a row's or a tree group's
 /// name edited in place, by the models and by F2 or the menu's Rename, a refused name saying why
-/// and keeping the edit open, the rows of a database moved since never edited.
+/// and keeping the edit open, the rows of a database moved since never edited; and a drag of the
+/// assets dropped by the pointer on a group's row, the tree and a breadcrumb segment, saying
+/// "Move into ..." or why not.
 static class AssetsViewTests
 {
 	/// The frame read from the repository's Data with the elements the editor's window registers
@@ -364,6 +368,40 @@ static class AssetsViewTests
 		}
 
 		public bool Press(KeyCode key) => Root.EventDispatcher.InjectKeyDown((uint32)key);
+
+		/// The middle of `node`, where the pointer reaches it (asserted).
+		public Float2 MiddleOf(Node node)
+		{
+			Layout();
+			let bounds = node.ScreenBounds;
+			Test.Assert((bounds.Width > 0.0f) && (bounds.Height > 0.0f), "laid out");
+			let at = Float2(bounds.X + bounds.Width * 0.5f, bounds.Y + bounds.Height * 0.5f);
+			var hit = Root.OverFind(at);
+			while ((hit != null) && (hit != node))
+				hit = hit.Parent;
+			Test.Assert(hit == node, "the pointer reaches it");
+			return at;
+		}
+
+		/// Drags the list's row `row` to `to` and lets go there, a while after any press before, so
+		/// this one is no double click (the GUI's clock moves only by Tick). What the drag said over
+		/// `to` is returned, its reason set into `outReason`.
+		public DropEffect DragRowTo(int32 row, Float2 to, String outReason)
+		{
+			let d = Root.EventDispatcher;
+			d.Tick(1.0f);
+			let from = Middle(View.List, row);
+			d.InjectMouseMove(from);
+			d.InjectMouseDown(from, .Left);
+			d.InjectMouseMove(.(from.X + 12.0f, from.Y));
+			d.InjectMouseMove(to);
+			d.InjectMouseMove(.(to.X + 1.0f, to.Y));
+			Test.Assert(d.IsDragging);
+			let effect = d.DropEffect;
+			outReason.Set(d.DropReason);
+			d.InjectMouseUp(.(to.X + 1.0f, to.Y), .Left);
+			return effect;
+		}
 	}
 
 	/// Content at the top, its subgroups then its assets; entering a group (as Enter or a double
@@ -1188,5 +1226,131 @@ static class AssetsViewTests
 		Test.Assert(tree.IsEditing);
 		Test.Assert(tree.Editor.Text == "Hamlet");
 		Test.Assert(tree.EndEdit(false));
+	}
+
+	/// Assets dropped on a group's row or a group in the tree move into it, the drop saying "Move
+	/// into ..."; between rows is no move; one already there, or whose name is taken there, is
+	/// refused, saying why.
+	[Test]
+	public static void AssetsDroppedOnAGroupsRowOrAGroupInTheTreeMoveIntoItOneAlreadyThereOrTakenThereIsRefused()
+	{
+		let bed = scope Bed("scratch_assets_view_drop");
+		let view = bed.View;
+		let rows = view.List.Model;
+		let crate = scope DragPayload();
+		AssetDrag.Payload(bed.Crate.Id, bed.MeshName, "Crate", crate);
+
+		// Onto the Models row: moved.
+		var drop = ModelDrop();
+		drop.Payload = crate;
+		drop.Index = rows.Index(bed.RowOf("Models"));
+		drop.Place = .On;
+		let why = scope String();
+		Test.Assert(rows.CanDrop(drop, why) == .Move);
+		Test.Assert(why == "Move into Models");
+		drop.Place = .After; // between rows: not a move
+		why.Clear();
+		Test.Assert(rows.CanDrop(drop, why) == .None);
+		Test.Assert(why.IsEmpty, "no reason: a place it does not take");
+		drop.Index = rows.Index(bed.RowOf("Crate"));
+		drop.Place = .On;
+		Test.Assert(rows.CanDrop(drop, why) == .None, "an asset's row is no group");
+		drop.Index = rows.Index(bed.RowOf("Models"));
+		Test.Assert(rows.Drop(drop));
+		Test.Assert(bed.Crate.OwningGroup === bed.Models);
+		Test.Assert(bed.Crate.GetPath(.. scope .()) == "Models/Crate");
+		view.Refresh();
+
+		// Into Town through the tree; then back where it is: refused.
+		let tree = view.Tree;
+		let groups = tree.Model;
+		Test.Assert((bed.TreeItem("Town") >= 0) && (bed.TreeItem("Models") >= 0));
+		var onto = ModelDrop();
+		onto.Payload = crate;
+		onto.Index = tree.GetItemIndex(bed.TreeItem("Town"));
+		onto.Place = .On;
+		Test.Assert(groups.CanDrop(onto, why) == .Move);
+		Test.Assert(why == "Move into Town");
+		Test.Assert(groups.Drop(onto));
+		Test.Assert(bed.Crate.OwningGroup === bed.Town);
+		view.Refresh();
+		onto.Index = tree.GetItemIndex(bed.TreeItem("Town"));
+		Test.Assert(groups.CanDrop(onto, why) == .None);
+		Test.Assert(why == "Already in Models/Town");
+		Test.Assert(!groups.Drop(onto));
+		// Text, which TreeModel's own drop would make a node of: the tree is the database's.
+		let text = scope DragPayload();
+		text.Type.Set("text");
+		text.Label.Set("Loose");
+		onto.Payload = text;
+		Test.Assert(groups.CanDrop(onto, why) == .None);
+		Test.Assert(!groups.Drop(onto));
+		Test.Assert(tree.GetItemCount() == 4, "no node made");
+
+		// A name taken where it would go: refused, saying so.
+		Test.Assert(bed.Models.CreateInstance("Barrel", bed.MeshName) != null);
+		view.Refresh();
+		let barrel = scope DragPayload();
+		AssetDrag.Payload(bed.Barrel.Id, bed.MeshName, "Barrel", barrel);
+		onto.Payload = barrel;
+		onto.Index = tree.GetItemIndex(bed.TreeItem("Models"));
+		Test.Assert(groups.CanDrop(onto, why) == .None);
+		Test.Assert(why == "Barrel is already in Models");
+		Test.Assert(!groups.Drop(onto));
+		Test.Assert(bed.Barrel.OwningGroup === bed.Town);
+	}
+
+	/// The pointer's drag of the browser's assets, over a group's row, a group in the tree or a
+	/// breadcrumb segment, says "Move into ..." and moves them there when let go; over the group
+	/// they are in it says so and moves nothing; the current segment takes none.
+	[Test]
+	public static void APointersDragOfAssetsOntoAGroupsRowTheTreeOrABreadcrumbSegmentMovesThem()
+	{
+		let bed = scope Bed("scratch_assets_view_drag_move");
+		let view = bed.View;
+		view.SetTiles(false);
+		let reason = scope String();
+
+		// Onto the Models row.
+		Test.Assert(bed.DragRowTo(bed.RowOf("Crate"), bed.Middle(view.List, bed.RowOf("Models")), reason) == .Move);
+		Test.Assert(reason == "Move into Models");
+		Test.Assert(bed.Crate.OwningGroup === bed.Models);
+		view.Refresh();
+
+		// Onto Town in the tree.
+		view.Navigate(bed.Models);
+		Test.Assert(bed.RowsAre("/Town Crate"));
+		Test.Assert(bed.DragRowTo(bed.RowOf("Crate"), bed.Middle(view.Tree, bed.TreeItem("Town")), reason) == .Move);
+		Test.Assert(reason == "Move into Town");
+		Test.Assert(bed.Crate.OwningGroup === bed.Town);
+		view.Refresh();
+
+		// Onto the group it is in: refused, saying so.
+		view.Navigate(bed.Town);
+		Test.Assert(bed.RowsAre("Barrel Bell Crate"));
+		Test.Assert(bed.DragRowTo(bed.RowOf("Crate"), bed.Middle(view.Tree, bed.TreeItem("Town")), reason) == .None);
+		Test.Assert(reason == "Already in Models/Town");
+		Test.Assert(bed.Crate.OwningGroup === bed.Town);
+
+		// Onto Content's breadcrumb segment: up to the top. The current segment takes none.
+		Test.Assert(view.Crumbs.ItemCount == 3);
+		// A segment sized as the editor's sheet would (no sheet, so no font, is loaded here); the
+		// bar makes its segments again as the view moves, so each is sized as it is used.
+		Node Segment(int index)
+		{
+			let segment = view.Crumbs.SegmentAt(index);
+			segment.EditLayoutStyle(scope (s) =>
+				{
+					s.Width = LayoutLength.Px(80.0f);
+					s.Height = LayoutLength.Px(20.0f);
+				});
+			return segment;
+		}
+		Test.Assert(bed.DragRowTo(bed.RowOf("Crate"), bed.MiddleOf(Segment(0)), reason) != .None);
+		Test.Assert(bed.Crate.OwningGroup === bed.Top);
+		view.Refresh();
+		Test.Assert(bed.RowsAre("Barrel Bell"));
+		Test.Assert(bed.DragRowTo(bed.RowOf("Bell"), bed.MiddleOf(Segment(2)), reason) == .None);
+		Test.Assert(bed.Bell.OwningGroup === bed.Town);
 	}
 }

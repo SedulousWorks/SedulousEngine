@@ -10,11 +10,12 @@ using Sedulous.Editor.Project;
 namespace Sedulous.Editor.App;
 
 // What can be done to the project's assets and groups (Raptor's editor-gui spec, 5.2, layer 7):
-// rename, duplicate, delete, a new group, the export flag, cook. One place for each, so the
-// assets browser's menus and keys and an agent's delete over MCP do the same thing: an asset's
-// pages close before it goes, the default scene is let go when it does, the cooked mirror follows
-// a rename, and nothing changes the databases while a cook reads them (it waits for the cook,
-// saying so). A name is checked by AssetNames, Create Asset's and Save As's rule.
+// rename, duplicate, a move into another group, delete, a new group, the export flag, cook. One
+// place for each, so the assets browser's menus, keys and drops and an agent's delete over MCP do
+// the same thing: an asset's pages close before it goes, the default scene is let go when it does,
+// the cooked mirror follows a rename and a move, and nothing changes the databases while a cook
+// reads them (it waits for the cook, saying so). A name is checked by AssetNames, Create Asset's
+// and Save As's rule.
 
 /// What an AssetOperations works over.
 class AssetOperationsServices
@@ -131,7 +132,8 @@ class AssetOperations
 		}
 		if (let cooked = GroupAt(project.CookedDb, oldPath))
 			project.CookedDb.RenameGroup(cooked, name).IgnoreError();
-		RefreshDefaultScenePath(project, oldPath, group);
+		RefreshDefaultScenePath(project);
+		MoveDefaultScenePathUnder(project, oldPath, group);
 		GlobalLog(.Information, "Assets: renamed group '{}' -> '{}'", oldPath, group.GetPath(.. scope .()));
 		return true;
 	}
@@ -193,6 +195,92 @@ class AssetOperations
 			writable.CreateDirectory(folder).IgnoreError();
 		GlobalLog(.Information, "Assets: created group '{}'", folder);
 		return created;
+	}
+
+	// === Moving ===
+
+	/// Whether the assets `ids` can move into `to`; when not, why appended to `outWhy`: they are
+	/// all there already, or one's name is taken there. One not in the project is passed by.
+	/// Borrows `ids`.
+	public bool CanMove(Span<Guid> ids, Group to, String outWhy)
+	{
+		int moving = 0;
+		for (let id in ids)
+		{
+			let instance = Find(id);
+			if ((instance == null) || (instance.OwningGroup === to))
+				continue;
+			if (to.GetInstance(instance.Name) != null)
+			{
+				outWhy.AppendF("{} is already in {}", instance.Name, GroupPicker.ShownName(to, .. scope .()));
+				return false;
+			}
+			moving++;
+		}
+		if (moving == 0)
+			outWhy.AppendF("Already in {}", GroupPicker.ShownName(to, .. scope .()));
+		return moving > 0;
+	}
+
+	/// Moves the assets `ids` into `to`: their files with them (ContentDatabase.MoveInstance), each
+	/// cooked product's place in the cooked mirror following, the default scene's path kept true.
+	/// One whose name is taken there stays, said; how many moved is said. Waiting for a cook, `to`
+	/// is found again by its path when it runs (gone by then: nothing). Borrows `ids`.
+	public void MoveTo(Span<Guid> ids, Group to)
+	{
+		let project = CurrentProject;
+		if ((project == null) || (to == null))
+			return;
+		if (Locked)
+		{
+			let path = to.GetPath(.. new .());
+			let waiting = new List<Guid>();
+			waiting.AddRange(ids);
+			Wait(new [=this, =path, =waiting] () =>
+				{
+					let sources = (CurrentProject != null) ? CurrentProject.SourceDb : null;
+					if (let found = (sources != null) ? GroupAt(sources, path) : null)
+						MoveTo(waiting, found);
+				} ~ { delete path; delete waiting; }, "Move");
+			return;
+		}
+		let shown = GroupPicker.ShownName(to, .. scope .());
+		let toPath = to.GetPath(.. scope .());
+		let settings = project.Settings;
+		int moved = 0;
+		for (let id in ids)
+		{
+			let instance = Find(id);
+			if ((instance == null) || (instance.OwningGroup === to))
+				continue;
+			if (to.GetInstance(instance.Name) != null)
+			{
+				Notify(.Warning, scope $"{instance.Name} stays: {shown} has one of that name.");
+				continue;
+			}
+			let from = instance.GetPath(.. scope .());
+			if (project.SourceDb.MoveInstance(id, to) case .Err(let error))
+			{
+				GlobalLog(.Warning, "Assets: move FAILED for '{}' ({})", from, error);
+				Notify(.Error, scope $"{instance.Name} could not be moved (see the Console).");
+				continue;
+			}
+			moved++;
+			GlobalLog(.Information, "Assets: moved '{}' -> '{}'", from, instance.GetPath(.. scope .()));
+			// Its product's place in step: everything binds by guid, but the mirror only reads true.
+			if (project.CookedDb.GetInstance(id) != null)
+			{
+				if (let cooked = MakeGroupAt(project.CookedDb, toPath))
+					project.CookedDb.MoveInstance(id, cooked).IgnoreError();
+			}
+			// A manifest with no guid names the default scene by its path: the one moving from
+			// it gives the manifest its guid, so the refresh below finds where it went.
+			if (!settings.DefaultSceneId.IsSet && (settings.DefaultScene == from))
+				settings.DefaultSceneId = id;
+		}
+		RefreshDefaultScenePath(project);
+		if (moved > 0)
+			Context.SetStatus((moved == 1) ? scope:: $"Moved 1 asset to {shown}." : scope:: $"Moved {moved} assets to {shown}.");
 	}
 
 	// === Deleting ===
@@ -390,6 +478,19 @@ class AssetOperations
 		return group;
 	}
 
+	/// The group at `path` in `db`, each group on the way made where it is not there yet (empty: the
+	/// top): where the cooked mirror files a product that moved.
+	private static Group MakeGroupAt(ContentDatabase db, StringView path)
+	{
+		var group = db.RootGroup;
+		for (let segment in path.Split('/'))
+		{
+			if (!segment.IsEmpty)
+				group = group.CreateGroup(segment);
+		}
+		return group;
+	}
+
 	/// Borrows `ids`; waiting, a copy waits.
 	private void DeleteNow(List<Guid> ids)
 	{
@@ -488,24 +589,31 @@ class AssetOperations
 		GlobalLog(.Information, "Assets: the default scene was deleted: cleared in the manifest");
 	}
 
-	/// After a group's rename from `oldPath`: the default scene's path mirror, from its guid; a
-	/// manifest with no guid has its path moved when it was under the group.
-	private static void RefreshDefaultScenePath(EditorProject project, StringView oldPath, Group renamed)
+	/// The default scene's path mirror, from its guid, after the scene may have moved (a group's
+	/// rename, a move), saved when it changed; nothing for a manifest with no guid.
+	private static void RefreshDefaultScenePath(EditorProject project)
+	{
+		let settings = project.Settings;
+		if (!settings.DefaultSceneId.IsSet)
+			return;
+		if (let scene = project.SourceDb.GetInstance(settings.DefaultSceneId))
+		{
+			let path = scene.GetPath(.. scope .());
+			if (settings.DefaultScene != path)
+			{
+				settings.DefaultScene.Set(path);
+				project.SaveSettings().IgnoreError();
+			}
+		}
+	}
+
+	/// After a group's rename from `oldPath`, in a manifest with no guid: the default scene's path
+	/// moved with the group when it was under it.
+	private static void MoveDefaultScenePathUnder(EditorProject project, StringView oldPath, Group renamed)
 	{
 		let settings = project.Settings;
 		if (settings.DefaultSceneId.IsSet)
-		{
-			if (let scene = project.SourceDb.GetInstance(settings.DefaultSceneId))
-			{
-				let path = scene.GetPath(.. scope .());
-				if (settings.DefaultScene != path)
-				{
-					settings.DefaultScene.Set(path);
-					project.SaveSettings().IgnoreError();
-				}
-			}
 			return;
-		}
 		let scene = StringView(settings.DefaultScene);
 		if ((scene.Length > oldPath.Length) && scene.StartsWith(oldPath) && (scene[oldPath.Length] == '/'))
 		{

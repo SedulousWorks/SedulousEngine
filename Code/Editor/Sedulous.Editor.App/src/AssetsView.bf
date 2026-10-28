@@ -18,8 +18,11 @@ namespace Sedulous.Editor.App;
 // match saying where it is; a whole guid selects its asset. The type filter keeps one type. With
 // nothing to show it says what is so and offers the way on (clear the search, show every type).
 // Enter or a double click opens an asset or enters a group; Reveal shows an asset where it lives.
-// A drag of the selection carries its assets (AssetDrag) to a slot. It builds again when the
-// database's shape moves, however the change came, and when a cook moves the badges.
+// A drag of the selection carries its assets (AssetDrag) to a slot; dropped on a group's row, a
+// group in the tree or a breadcrumb segment, they move into that group (AssetOperations.MoveTo),
+// the drag saying "Move into ..." over a group, or why not (all there already, a name taken there).
+// It builds again when the database's shape moves, however the change came, and when a cook moves
+// the badges.
 //
 // Its verbs are AssetOperations', the ones an agent's delete takes too: an asset's menu (open,
 // rename, duplicate, copy its guid or path, pin it, always export it; cook, rebuild or delete the
@@ -123,6 +126,19 @@ class AssetsView
 		public override bool SetData(ModelIndex index, Sedulous.GUI.Variant value) =>
 			(index.Row >= 0) && mView.RenameRow(index.Row, value.AsString);
 
+		/// Assets dropped onto a group's row move into it; between rows is no move.
+		public override DropEffect CanDrop(ModelDrop drop, String reason)
+		{
+			let group = (drop.Place == .On) ? mView.RowGroup(drop.Index.Row) : null;
+			return ((group != null) && (drop.Payload != null) && mView.CanTake(drop.Payload, group, reason)) ? .Move : .None;
+		}
+
+		public override bool Drop(ModelDrop drop)
+		{
+			let group = (drop.Place == .On) ? mView.RowGroup(drop.Index.Row) : null;
+			return (group != null) && (drop.Payload != null) && mView.Take(drop.Payload, group);
+		}
+
 		public void Reset() => NotifyReset();
 
 		public void Changed()
@@ -132,7 +148,9 @@ class AssetsView
 		}
 	}
 
-	/// The group tree's model: a group (not the top one) renamed in place.
+	/// The group tree's model: a group (not the top one) renamed in place; assets dropped onto a
+	/// group move into it. TreeModel's own drops (its nodes moved, text made a node) are replaced:
+	/// the tree is the database's, changed only through it.
 	private class GroupTreeModel : TreeModel
 	{
 		private AssetsView mView;
@@ -150,6 +168,18 @@ class AssetsView
 		{
 			let group = mView.TreeGroupAt(index);
 			return (group != null) && mView.RenameGroup(group, value.AsString);
+		}
+
+		public override DropEffect CanDrop(ModelDrop drop, String reason)
+		{
+			let group = (drop.Place == .On) ? mView.TreeGroupAt(drop.Index) : null;
+			return ((group != null) && (drop.Payload != null) && mView.CanTake(drop.Payload, group, reason)) ? .Move : .None;
+		}
+
+		public override bool Drop(ModelDrop drop)
+		{
+			let group = (drop.Place == .On) ? mView.TreeGroupAt(drop.Index) : null;
+			return (group != null) && (drop.Payload != null) && mView.Take(drop.Payload, group);
 		}
 	}
 
@@ -277,6 +307,13 @@ class AssetsView
 					if (let group = GroupAt(item.Id))
 						Navigate(group);
 				});
+			// Assets dropped on a segment (the current one takes none) move up into that group.
+			mCrumbs.SetSegmentDropTypes(AssetDrag.cType);
+			mCrumbs.SetOnSegmentDrop(new (item, payload, effect) =>
+				{
+					if (let group = GroupAt(item.Id))
+						Take(payload, group);
+				});
 		}
 		if (let search = Find<TextField>("assets-search"))
 			search.SetOnTextChanging(new (text) => { Search(text); });
@@ -319,7 +356,10 @@ class AssetsView
 		if (let state = Find<UIWidget>("assets-state"))
 			state.RemoveEventListener(mStateMenuListener);
 		if (mCrumbs != null)
+		{
 			mCrumbs.SetOnNavigate(null);
+			mCrumbs.SetOnSegmentDrop(null);
+		}
 		if (let search = Find<TextField>("assets-search"))
 			search.SetOnTextChanging(null);
 		StringView[?] buttons = .("assets-clear-search", "assets-types", "assets-tiles", "assets-list", "assets-state-verb");
@@ -1381,6 +1421,43 @@ class AssetsView
 		}
 		if (!assets.IsEmpty)
 			AssetDrag.Payload(assets, payload);
+	}
+
+	/// Whether the assets a drag carries can move into `group`: when they can, "Move into" and the
+	/// group's name set into `outWhy`; when not, why (nothing when it carries no assets).
+	private bool CanTake(DragPayload payload, Group group, String outWhy)
+	{
+		outWhy.Clear();
+		let ops = mServices.Operations;
+		let ids = scope List<Guid>();
+		if ((ops == null) || !DraggedIds(payload, ids) || !ops.CanMove(ids, group, outWhy))
+			return false;
+		outWhy.AppendF("Move into {}", (group.Parent == null) ? (StringView)cTopGroup : group.Name);
+		return true;
+	}
+
+	/// Moves the assets a drag carries into `group`; false, nothing moved, when CanTake refuses.
+	private bool Take(DragPayload payload, Group group)
+	{
+		if (!CanTake(payload, group, scope .()))
+			return false;
+		let ids = scope List<Guid>();
+		DraggedIds(payload, ids);
+		mServices.Operations.MoveTo(ids, group);
+		return true;
+	}
+
+	/// The guids of the assets `payload` carries, in order, added to `outIds`; false when it
+	/// carries none.
+	private static bool DraggedIds(DragPayload payload, List<Guid> outIds)
+	{
+		let assets = scope List<AssetDrag>();
+		defer { ClearAndDeleteItems!(assets); }
+		if (!AssetDrag.ReadAll(payload, assets))
+			return false;
+		for (let asset in assets)
+			outIds.Add(asset.Id);
+		return true;
 	}
 
 	/// The frame's button `id` runs `click` (null: nothing). OWNERSHIP of `click` transfers.

@@ -27,11 +27,13 @@ static class AppTestSerializables
 /// What can be done to a project's assets and groups, over a scratch project: a rename kept by the
 /// name rule (refused saying why, the default scene's path mirror following), a group's rename; a
 /// duplicate beside its source; a new group a folder on disk at once; a delete naming what goes, its
-/// pages closed first and the default scene let go with it; a group's delete with all it holds; and
-/// the export flag kept with the project. Then what Sedulous adds so each behaviour has a test: the
-/// cooked product's name and group following a rename, the path mirror of a manifest with no guid,
-/// a delete run after the event that asked, an agent's delete at once, and every operation waiting
-/// for a cook that reads the databases, saying so, then running.
+/// pages closed first and the default scene let go with it; a group's delete with all it holds;
+/// the export flag kept with the project; and a move into another group, its files with it, one
+/// whose name is taken there staying. Then what Sedulous adds so each behaviour has a test: the
+/// cooked product's name and group following a rename, and its place following a move; the path
+/// mirror of a manifest with no guid; a delete run after the event that asked, an agent's delete
+/// at once; and every operation waiting for a cook that reads the databases, saying so, then
+/// running.
 static class AssetOperationsTests
 {
 	/// Content (Crate, Barrel, Town (Bell)), each written, open in an editor context; the
@@ -472,5 +474,99 @@ static class AssetOperationsTests
 			bed.Locked = false;
 			Test.Assert(!bed.Cook.IsIdle, "everything asked for");
 		}
+	}
+
+	/// A move takes assets and their files into another group; all there already, it is refused,
+	/// saying so; one whose name is taken there is refused, saying so, and stays while the others
+	/// move. The cooked product's place in the cooked mirror follows (its group made there), and
+	/// the default scene's path, from its guid, or from its path in a manifest with none.
+	[Test]
+	public static void AMoveTakesAssetsAndTheirFilesIntoAnotherGroupOneWhoseNameIsTakenThereStays()
+	{
+		let bed = scope Bed("scratch_asset_ops_move");
+		let ops = bed.Ops;
+		let why = scope String();
+		Guid[2] two = .(bed.Crate.Id, bed.Barrel.Id);
+		let cooked = bed.Project.CookedDb.RootGroup.CreateInstanceWithId(bed.Crate.Id, "Crate", bed.TypeName);
+		Test.Assert(cooked != null);
+		Test.Assert(bed.Project.CookedDb.RootGroup.GetGroup("Town") == null, "no cooked Town yet");
+		bed.Project.Settings.DefaultSceneId = bed.Crate.Id;
+		bed.Project.Settings.DefaultScene.Set("Crate");
+		Test.Assert(ops.CanMove(Span<Guid>(&two[0], 2), bed.Town, why) && why.IsEmpty);
+		ops.MoveTo(Span<Guid>(&two[0], 2), bed.Town);
+		Test.Assert(bed.Crate.OwningGroup === bed.Town);
+		Test.Assert(bed.Barrel.OwningGroup === bed.Town);
+		{
+			let read = bed.Crate.ReadObject(); // its file moved with it: it reads where it is now
+			Test.Assert(read != null);
+			delete read;
+		}
+		Test.Assert(bed.LastStatus == "Moved 2 assets to Town.");
+		Test.Assert(cooked.OwningGroup.GetPath(.. scope .()) == "Town", "its product's place in step, the group made");
+		Test.Assert(bed.Project.Settings.DefaultScene == "Town/Crate", "the default scene's path, from its guid");
+		{
+			let again = EditorProject.Open(bed.Dir);
+			Test.Assert(again != null);
+			defer delete again;
+			Test.Assert(again.Settings.DefaultScene == "Town/Crate", "the manifest saved");
+			let town = again.SourceDb.RootGroup.GetGroup("Town");
+			Test.Assert((town != null) && (town.GetInstance("Crate") != null) && (town.GetInstance("Barrel") != null), "their files moved");
+			Test.Assert(again.SourceDb.RootGroup.GetInstance("Crate") == null, "none left behind");
+		}
+		Test.Assert(!ops.CanMove(Span<Guid>(&two[0], 2), bed.Town, why));
+		Test.Assert(why == "Already in Town");
+		let said = bed.Said.Count;
+		ops.MoveTo(Span<Guid>(&two[0], 2), bed.Town);
+		Test.Assert((bed.Said.Count == said) && (bed.LastStatus == "Moved 2 assets to Town."), "all there: nothing moved, nothing said");
+
+		// To the top, in a manifest with only the path: it takes the guid with the new path.
+		bed.Project.Settings.DefaultSceneId = .Empty;
+		bed.Project.Settings.DefaultScene.Set("Town/Barrel");
+		var barrel = bed.Barrel.Id;
+		ops.MoveTo(Span<Guid>(&barrel, 1), bed.Top);
+		Test.Assert(bed.Barrel.OwningGroup === bed.Top);
+		Test.Assert(bed.LastStatus == "Moved 1 asset to Content.");
+		Test.Assert(bed.Project.Settings.DefaultSceneId == bed.Barrel.Id);
+		Test.Assert(bed.Project.Settings.DefaultScene == "Barrel");
+
+		// A name taken where it would go: refused, saying so; moved with another, it stays, said.
+		let other = bed.Top.CreateInstance("Bell", bed.TypeName); // Town has a Bell
+		Test.Assert(other != null);
+		var bell = other.Id;
+		why.Clear();
+		Test.Assert(!ops.CanMove(Span<Guid>(&bell, 1), bed.Town, why));
+		Test.Assert(why == "Bell is already in Town");
+		Guid[2] both = .(other.Id, bed.Barrel.Id);
+		ops.MoveTo(Span<Guid>(&both[0], 2), bed.Town);
+		Test.Assert(other.OwningGroup === bed.Top, "stayed");
+		Test.Assert(bed.LastSaid == "Bell stays: Town has one of that name.");
+		Test.Assert(bed.Barrel.OwningGroup === bed.Town, "the other moved");
+		Test.Assert(bed.LastStatus == "Moved 1 asset to Town.");
+	}
+
+	/// While a cook reads the databases a move waits, said, nothing moved; once the cook is idle it
+	/// runs into the group found again by its path, and into none when that group went meanwhile.
+	[Test]
+	public static void AMoveWaitsForACookAndFindsItsGroupAgainByItsPath()
+	{
+		let bed = scope Bed("scratch_asset_ops_move_wait", true);
+		let ops = bed.Ops;
+		let market = bed.Top.CreateGroup("Market");
+		Test.Assert(market != null);
+		bed.Locked = true;
+		var crate = bed.Crate.Id;
+		ops.MoveTo(Span<Guid>(&crate, 1), bed.Town);
+		var barrel = bed.Barrel.Id;
+		ops.MoveTo(Span<Guid>(&barrel, 1), market);
+		Test.Assert(bed.Said.Count == 2);
+		Test.Assert(bed.Said[0] == "Move waits for the cook to finish.");
+		Test.Assert(bed.Said[1] == "Move waits for the cook to finish.");
+		Test.Assert(bed.Crate.OwningGroup === bed.Top, "nothing moved while the cook reads");
+		Test.Assert(bed.Project.SourceDb.DeleteGroup(market) case .Ok); // gone before the move runs
+
+		bed.Locked = false;
+		bed.Cook.Update();
+		Test.Assert(bed.Crate.OwningGroup === bed.Town);
+		Test.Assert(bed.Barrel.OwningGroup === bed.Top, "its group gone: it stays");
 	}
 }
