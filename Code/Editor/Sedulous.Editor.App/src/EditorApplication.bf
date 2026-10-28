@@ -25,7 +25,8 @@ namespace Sedulous.Editor.App;
 /// 5.1, layer 3): it configures the engine, starts its parts in order, hands each frame to them
 /// and shuts them down. The parts are their own files: the window and its GUI (EditorWindow), its
 /// dock (EditorDock), the Assets panel and the Console in it (AssetsView, LogView), the pages in it (EditorPages), its menu bar (ActionMenuBar) and keys (ActionShortcuts), the open project (EditorSession), export
-/// (EditorExport), asset creation (EditorAssetCreation), the MCP host (EditorMcpService), the
+/// (EditorExport), asset creation (EditorAssetCreation), files imported (AssetImport, reviewed in
+/// ImportWindow), the MCP host (EditorMcpService), the
 /// project manager over the window while no project is open (ProjectManagerMode) and the
 /// editor-wide actions (EditorAppActions). Underneath are the EditorContext and the services from Editor.Core and
 /// Editor.Project, and the EMBEDDED runtime every scene, preview and Game tab is hosted in: the
@@ -80,6 +81,9 @@ class EditorApplication : IApplication
 	/// Rename, duplicate, delete, cook: the assets browser's and an agent's. Made with the
 	/// application; after the pages its closes reach, so it goes first.
 	private AssetOperations mAssetOps ~ delete _;
+	/// Files into the project (a drop, Import...). Made with the application; after the cook and
+	/// the jobs it borrows, before the import window that borrows it.
+	private AssetImport mAssetImport ~ delete _;
 	/// The frame's menu bar, from the actions: made in OnStartup once they are all declared.
 	private ActionMenuBar mMenus = null ~ delete _;
 	/// The actions' keys in the GUI's keymap, made with the menu bar.
@@ -95,6 +99,9 @@ class EditorApplication : IApplication
 	/// What an asset slot asks of the editor, made the first time a slot needs it; after the icons
 	/// and the picker it reaches, so it goes first.
 	private ResourceRefServices mRefs = null ~ delete _;
+	/// The import's review, made the first time one needs it; after the picker its group field
+	/// opens, so it goes first.
+	private ImportWindow mImportWindow = null ~ delete _;
 	/// Project > Project Settings, made the first time it opens; its slots borrow mRefs.
 	private ProjectSettingsDialog mProjectSettings = null ~ delete _;
 	/// The Project panel while a project is open (made with its markup when one opens).
@@ -148,6 +155,13 @@ class EditorApplication : IApplication
 		mThumbnailService.OnThumbnailReady = new (id) => { mContext.NotifyThumbnailReady(id); };
 		mPages = new EditorPages(PagesServices());
 		mAssetOps = new AssetOperations(AssetOpsServices());
+		{
+			let imports = new AssetImportServices();
+			imports.Context = mContext;
+			imports.Cook = mCookService;
+			imports.Jobs = mJobService;
+			mAssetImport = new AssetImport(imports);
+		}
 		mCreation = new EditorAssetCreation(CreationServices());
 		mSession = new EditorSession(SessionServices());
 		mManagerMode = new ProjectManagerMode(ManagerModeServices());
@@ -485,8 +499,7 @@ class EditorApplication : IApplication
 		mcpServices.ClosePage = new (page) => { mPages.Close(page); };
 		// An agent's delete is the browser's own: its pages closed, the default scene let go.
 		mcpServices.DeleteAsset = new (id) => mAssetOps.DeleteOne(id);
-		// The windows' screenshots, over the same capture as View > Screenshot. The import notice
-		// comes back with its layer.
+		// The windows' screenshots, over the same capture as View > Screenshot.
 		mcpServices.Windows = new (outWindows) => { CapturableWindows(outWindows); };
 		mcpServices.RequestShots = new (requests) => { mWindowCapture.Request(requests); };
 		mcpServices.Shots = new (outShots) => { mWindowCapture.Shots(outShots); };
@@ -573,6 +586,7 @@ class EditorApplication : IApplication
 			assets.Picture = new (id) => mThumbnailService.Get(id);
 			assets.Operations = mAssetOps;
 			assets.Create = new (creator, group) => { mCreation.CreateAndOpen(creator, group); };
+			assets.Import = new (group) => { PickFilesToImport(group); };
 			mAssets = new AssetsView(assets, mWindow.LoadMarkup(AssetsView.cMarkupPath));
 			// A slot's reveal (and any other) shows the asset where it lives, the panel to the front.
 			delete mContext.RevealAsset;
@@ -789,9 +803,73 @@ class EditorApplication : IApplication
 			delete request;
 			return;
 		}
+		PickerMade().Open(root, request, anchor);
+	}
+
+	/// The one picker, made the first time.
+	private Picker PickerMade()
+	{
 		if (mPicker == null)
 			mPicker = new Picker(mWindow.LoadMarkup(Picker.cMarkupPath));
-		mPicker.Open(root, request, anchor);
+		return mPicker;
+	}
+
+	/// Imports files into a group: at once when nothing needs review, else through the import
+	/// window over the main window (made the first time), which says so when one is open already.
+	public void ImportFiles(Span<StringView> paths, Group group)
+	{
+		ImportWindow.Run(mAssetImport, mContext, paths, group, mWindow.Root, scope () =>
+			{
+				if (mImportWindow == null)
+					mImportWindow = new ImportWindow(mAssetImport, PickerMade(), mWindow.LoadMarkup(ImportWindow.cMarkupPath));
+				return mImportWindow;
+			});
+	}
+
+	/// Import... in a group's menu: files picked with the OS's dialog, imported into the group,
+	/// found again by its key when the dialog answers (it may have gone meanwhile).
+	private void PickFilesToImport(Group group)
+	{
+		let dialogs = ShellDialogs();
+		if (dialogs == null)
+		{
+			mContext.Notify(.Error, "File dialogs are unavailable.");
+			return;
+		}
+		let key = GroupPicker.KeyOf(group, .. new .());
+		// The service consumes the callback once it answers.
+		dialogs.ShowOpenFile(new [=this, =key] (paths) =>
+			{
+				if (paths.Length == 0)
+					return; // cancelled
+				let project = mSession.Project;
+				let into = (project != null) ? GroupPicker.Find(project.SourceDb, key) : null;
+				if (into == null)
+				{
+					mContext.Notify(.Warning, "The group the import goes in is gone: choose another.");
+					return;
+				}
+				let chosen = scope List<StringView>();
+				for (let path in paths)
+					chosen.Add(path);
+				ImportFiles(chosen, into);
+			} ~ delete key, .(), "", true, 0);
+	}
+
+	/// Files dropped on the editor's windows this frame, imported into the group the Assets panel
+	/// shows (else the top). With no project they are let go.
+	private void ImportDroppedFiles(IShell shell)
+	{
+		let dropped = scope List<DroppedFile>();
+		defer { ClearAndDeleteItems!(dropped); }
+		shell.DrainDroppedFiles(dropped);
+		let project = mSession.Project;
+		if (dropped.IsEmpty || (project == null))
+			return;
+		let paths = scope List<StringView>();
+		for (let file in dropped)
+			paths.Add(file.Path);
+		ImportFiles(paths, ImportWindow.DropGroup(mAssets, project.SourceDb));
 	}
 
 	/// The slots' table, from the context, the type icons and the picker (made the first time).
@@ -918,6 +996,8 @@ class EditorApplication : IApplication
 		DrainLog();
 		if (mAssets != null)
 			mAssets.Refresh(); // an agent's write, a cook's badges: shown this frame
+		if (host.Shell != null)
+			ImportDroppedFiles(host.Shell);
 		mWindow.Update(dt);
 		mPages.Update(host, dt); // after the GUI laid out: viewport rects are current
 		if (mHome != null)
@@ -1086,6 +1166,7 @@ class EditorApplication : IApplication
 		// Export Templates first: closing it tells the Export dialog under it.
 		DeleteAndNullify!(mTemplates); // closed, while the window is there
 		DeleteAndNullify!(mExportDialog); // closed, while the window and the export are there
+		DeleteAndNullify!(mImportWindow); // closed (its session let go), while the window and the picker are there
 		DeleteAndNullify!(mPicker); // closed, while the window's root is there
 		DeleteAndNullify!(mManagerMode); // its dialogs closed, while the window is there
 		DeleteAndNullify!(mPalette); // closed, while the window's root is there

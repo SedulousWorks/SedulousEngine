@@ -108,6 +108,8 @@ static class AssetsViewTests
 		/// What New ran, by its creator's label, and the groups it ran into.
 		public List<String> Created = new .() ~ DeleteContainerAndItems!(_);
 		public List<Group> CreatedIn = new .() ~ delete _;
+		/// The groups Import... asked files for.
+		public List<Group> ImportInto = new .() ~ delete _;
 		/// The notices said.
 		public List<String> Said = new .() ~ DeleteContainerAndItems!(_);
 		/// The GUI's clipboard, for the copies.
@@ -215,6 +217,7 @@ static class AssetsViewTests
 					bed.Created.Add(new String(creator.Label));
 					bed.CreatedIn.Add(group);
 				};
+			services.Import = new [=bed] (group) => { bed.ImportInto.Add(group); };
 			let view = new AssetsView(services, LoadAssets());
 			Test.Assert((view.Content != null) && (view.List != null) && (view.Tree != null) && (view.Crumbs != null));
 			view.Content.EditLayoutStyle(scope (s) =>
@@ -757,6 +760,25 @@ static class AssetsViewTests
 		Test.Assert(bed.RowsAre("/Models /Props /Sounds Anvil Crate"));
 	}
 
+	/// Files dropped on the editor go into the group the panel shows, else the top (no panel, or
+	/// no group shown).
+	[Test]
+	public static void FilesDroppedGoIntoTheGroupThePanelShowsElseTheTop()
+	{
+		let bed = scope Bed("scratch_assets_view_drop");
+		let view = bed.View;
+		let sources = bed.Project.SourceDb;
+		Test.Assert(ImportWindow.DropGroup(view, sources) == bed.Top);
+		view.Navigate(bed.Town);
+		Test.Assert(ImportWindow.DropGroup(view, sources) == bed.Town);
+		Test.Assert(ImportWindow.DropGroup(null, sources) == bed.Top, "no panel: the top");
+		bed.Context.SetProject(null);
+		view.Refresh();
+		Test.Assert(view.CurrentGroup == null);
+		Test.Assert(ImportWindow.DropGroup(view, sources) == bed.Top, "none shown: the top");
+		bed.Context.SetProject(bed.Project);
+	}
+
 	/// A drag of the selection carries its assets, in their order, labelled by how many; a group's
 	/// row carries none.
 	[Test]
@@ -930,8 +952,8 @@ static class AssetsViewTests
 	/// An asset's menu: what acts on it, then what acts on the selection holding it (else on it
 	/// alone), each item reaching what it names (the copies on the clipboard, the guid hyphened; the
 	/// star and the export flag shown after); a group's row's; the shown group's, with New from the
-	/// creators by category into it and New Group (made, shown, in the tree, a folder), Content's
-	/// cooking all and neither renamed, flagged nor deleted. A right click on a row, on the list's
+	/// creators by category into it, New Group (made, shown, in the tree, a folder) and Import...
+	/// (files asked for into it), Content's cooking all and neither renamed, flagged nor deleted. A right click on a row, on the list's
 	/// empty room or on the tree opens them.
 	[Test]
 	public static void AnAssetsMenuAGroupsAndTheShownGroupsWithNewEachItemReachingWhatItNames()
@@ -1015,7 +1037,7 @@ static class AssetsViewTests
 		// The group shown: Content's makes new things and cooks all.
 		view.Navigate(bed.Top);
 		menu = bed.MenuFor(-1);
-		Test.Assert(MenuRows.Is(menu, "New>|New Group|-|Cook All|Rebuild All"), "Content: neither renamed, flagged nor deleted");
+		Test.Assert(MenuRows.Is(menu, "New>|New Group|Import...|-|Cook All|Rebuild All"), "Content: neither renamed, flagged nor deleted");
 		let create = MenuRows.SubMenuNamed(menu, "New");
 		Test.Assert(create != null);
 		Test.Assert(MenuRows.Is(create, "Material|-|Primitives>"));
@@ -1026,9 +1048,11 @@ static class AssetsViewTests
 		// Another's, into it.
 		view.Navigate(bed.Town);
 		menu = bed.MenuFor(-1);
-		Test.Assert(MenuRows.Is(menu, "New>|New Group|-|Rename|Always Export Its Contents|-|Cook Group|Rebuild Group|-|Delete Group..."));
+		Test.Assert(MenuRows.Is(menu, "New>|New Group|Import...|-|Rename|Always Export Its Contents|-|Cook Group|Rebuild Group|-|Delete Group..."));
 		Test.Assert(MenuRows.ItemNamed(MenuRows.SubMenuNamed(MenuRows.SubMenuNamed(menu, "New"), "Primitives"), "Cube").HandleActivate());
 		Test.Assert((bed.Created.Count == 2) && (bed.Created[1] == "Cube") && (bed.CreatedIn[1] == bed.Town), "into the group shown");
+		bed.Choose(-1, "Import...");
+		Test.Assert((bed.ImportInto.Count == 1) && (bed.ImportInto[0] == bed.Town), "files asked for into the group shown");
 		bed.Choose(-1, "New Group");
 		let made = view.CurrentGroup;
 		Test.Assert((made != null) && (made.Name == "Group") && (made.Parent == bed.Town), "made and shown");
@@ -1050,7 +1074,7 @@ static class AssetsViewTests
 		Test.Assert(list.ItemAt(room) < 0, "no row there");
 		bed.RightClick(room);
 		menu = view.OpenMenu;
-		Test.Assert((menu != null) && MenuRows.Is(menu, "New>|New Group|-|Cook All|Rebuild All"), "the shown group's");
+		Test.Assert((menu != null) && MenuRows.Is(menu, "New>|New Group|Import...|-|Cook All|Rebuild All"), "the shown group's");
 		menu.Close();
 		bed.Root.MutationQueue.Drain();
 		bed.RightClick(bed.Middle(view.Tree, 0)); // Content, the group shown

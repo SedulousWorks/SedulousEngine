@@ -587,6 +587,23 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 /* The picker's own window: its rows a list of a fixed size, the empty state in the same room. */
 .picker-list { width: 400px; height: 300px; background-color: transparent; padding: 0 var(--space-s); }
 .picker > .state-box { width: 400px; height: 300px; }
+/* Import: where it goes, the files when several, the chosen file's detail, the line. */
+.import { flex-grow: 1; padding-bottom: 0; }
+.import-split { flex-direction: row; flex-grow: 1; min-height: 0; column-gap: var(--space-l); }
+.import-files { width: 220px; flex-shrink: 0; }
+.import-files-body { flex-direction: column; row-gap: var(--space-xs); }
+.import-file { flex-direction: row; align-items: center; column-gap: var(--space-s); padding: 0 var(--space-s); border-radius: var(--radius-small); min-height: var(--row); }
+.import-file.selected { background-color: var(--accent-subtle); }
+button.import-file-name { flex-grow: 1; justify-content: flex-start; background-color: transparent; padding: 0; min-width: 0; }
+.import-detail { flex-grow: 1; min-width: 0; }
+.import-detail-body { flex-direction: column; row-gap: var(--space-s); }
+.import-title { color: var(--text-strong); font-weight: 600; }
+.import-importer { flex-direction: row; align-items: center; column-gap: var(--space-m); }
+.import-kind { font-weight: 600; margin-top: var(--space-s); }
+.import-entry { flex-direction: row; align-items: center; column-gap: var(--space-s); padding-left: var(--space-xl); }
+.import-entry > textfield { flex-grow: 1; }
+.import-why.refused { color: var(--text-dim); }
+.import > .dialog-buttons { padding: var(--space-l) 0 var(--space-xl); }
 /* Create Asset: its group a field that opens the group picker. */
 button.group-field { justify-content: flex-start; }
 .save-as-error { color: var(--danger); }

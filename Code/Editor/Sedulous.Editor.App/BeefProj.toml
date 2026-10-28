@@ -61,14 +61,6 @@ corlib = "*"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "BatchFileRow.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "BatchImportDialog.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "CategoryTabs.bf"
 
 [[ProjectFolder.Items]]
@@ -94,18 +86,6 @@ Name = "IViewportToolPanelProvider.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "IconGlyph.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ImportDialogRows.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ImportOptionsDialog.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ImportPlanView.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"

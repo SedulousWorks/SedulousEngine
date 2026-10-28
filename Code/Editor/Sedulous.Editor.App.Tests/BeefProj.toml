@@ -67,14 +67,6 @@ Name = "ContainerListEditorTests.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "ImportDialogTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ImportPlanViewTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "PageToolbarTests.bf"
 
 [[ProjectFolder.Items]]

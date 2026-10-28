@@ -28,9 +28,9 @@ namespace Sedulous.Editor.App;
 // Its verbs are AssetOperations', the ones an agent's delete takes too: an asset's menu (open,
 // rename, duplicate, copy its guid or path, pin it, always export it; cook, rebuild or delete the
 // selection holding it), a group's row's, and the shown group's (New from the creators, New
-// Group, cook or rebuild it, or all at the top). Delete asks first, naming what goes. F2 or the
-// menus' Rename edit a row's name or a tree group's in place, through their models: a refused
-// name says why and keeps the edit open.
+// Group, Import... of files picked with the OS's dialog, cook or rebuild it, or all at the top).
+// Delete asks first, naming what goes. F2 or the menus' Rename edit a row's name or a tree group's
+// in place, through their models: a refused name says why and keeps the edit open.
 
 /// What the Assets panel works over.
 class AssetsViewServices
@@ -52,6 +52,8 @@ class AssetsViewServices
 	public delegate Sedulous.GUI.Drawable(Guid id) Picture ~ delete _;
 	/// Runs a creator into a group (File > New's create-and-open); unset: no New menu. Owned.
 	public delegate void(AssetCreator creator, Group group) Create ~ delete _;
+	/// Asks for files to import into a group (the OS's picker); unset: no Import.... Owned.
+	public delegate void(Group group) Import ~ delete _;
 }
 
 class AssetsView
@@ -1243,6 +1245,8 @@ class AssetsView
 						Navigate(made);
 					}
 				}));
+			if (mServices.Import != null)
+				menu.AddItem("Import...", OnGroup(group, new (into) => { mServices.Import(into); }));
 			menu.AddSeparator();
 		}
 		else

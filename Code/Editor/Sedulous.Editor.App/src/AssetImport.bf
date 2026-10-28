@@ -182,8 +182,19 @@ class AssetImport
 	/// The group the import goes in, found by its key; null when it is gone (or no project is open).
 	public Group GroupOf(Session session)
 	{
-		let project = Context.Project;
-		return (project != null) ? GroupPicker.Find(project.SourceDb, session.GroupKey) : null;
+		let sources = Sources;
+		return (sources != null) ? GroupPicker.Find(sources, session.GroupKey) : null;
+	}
+
+	/// The open project's source content, whose groups an import goes in (the import window's
+	/// group picker lists them); null with no project.
+	public ContentDatabase Sources
+	{
+		get
+		{
+			let project = Context.Project;
+			return (project != null) ? project.SourceDb : null;
+		}
 	}
 
 	/// How the import's group is named to the user, "Content" or its path, appended to `outName`.
