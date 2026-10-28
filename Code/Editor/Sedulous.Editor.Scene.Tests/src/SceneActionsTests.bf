@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Scene;
-using Sedulous.UI;
+using Sedulous.GUI;
 using Sedulous.Core.IO;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -18,6 +18,15 @@ namespace Sedulous.Editor.Scene.Tests;
 /// the same declarations.
 class SceneActionsTests
 {
+	/// A menu's items, in order (the rows AppendActionItems added).
+	private static void ItemsOf(Node node, List<MenuItem> outItems)
+	{
+		if (let item = node as MenuItem)
+			outItems.Add(item);
+		for (int i < node.ChildCount)
+			ItemsOf(node.GetChildAt(i), outItems);
+	}
+
 	class HeadlessScenePage : EditorPage, ISceneEditorPage
 	{
 		private Sedulous.Scene.Scene mScene = new .("headless") ~ delete _;
@@ -112,8 +121,11 @@ class SceneActionsTests
 		let actions = context.Actions;
 		Test.Assert(actions.Find(SceneActionIds.SimulateStart).MenuPath == "Scene/Simulate/Play");
 		Test.Assert(actions.Find(SceneActionIds.GizmoTranslate).Kind == .Toggle);
-		Test.Assert(actions.Shortcut(SceneActionIds.GizmoTranslate).Key == .W);
-		Test.Assert(actions.Shortcut(SceneActionIds.EntityDelete).Key == .Delete);
+		Test.Assert(actions.Shortcut(SceneActionIds.GizmoTranslate).Keys(.. scope .()) == "w");
+		Test.Assert(actions.Shortcut(SceneActionIds.EntityDelete).Keys(.. scope .()) == "delete");
+		Test.Assert(actions.Shortcut(SceneActionIds.GizmoRotate).Keys(.. scope .()) == "e");
+		Test.Assert(actions.Shortcut(SceneActionIds.GizmoScale).Keys(.. scope .()) == "r");
+		Test.Assert(actions.Shortcut(SceneActionIds.EntityDuplicate).Keys(.. scope .()) == "ctrl-d");
 
 		let plain = context.AdoptPage(new PlainPage());
 		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage());
@@ -199,8 +211,7 @@ class SceneActionsTests
 		SceneActions.Register(context);
 		let actions = context.Actions;
 		Test.Assert(actions.Find(SceneActionIds.FrameSelection).MenuPath == "Scene/Frame Selection");
-		Test.Assert(actions.Shortcut(SceneActionIds.FrameSelection).Key == .F);
-		Test.Assert(actions.Shortcut(SceneActionIds.FrameSelection).Modifiers == .None);
+		Test.Assert(actions.Shortcut(SceneActionIds.FrameSelection).Keys(.. scope .()) == "f", "no modifier");
 
 		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage());
 		// No viewport, or nothing selected: nothing to frame.
@@ -232,8 +243,8 @@ class SceneActionsTests
 		SceneActions.Register(context);
 		let actions = context.Actions;
 		Test.Assert(actions.Find(SceneActionIds.Orthographic).MenuPath == "Scene/Orthographic");
-		Test.Assert(actions.Shortcut(SceneActionIds.Orthographic).Key == .Keypad5);
-		Test.Assert(actions.AlternateShortcut(SceneActionIds.Orthographic).Key == .O);
+		Test.Assert(actions.Shortcut(SceneActionIds.Orthographic).Keys(.. scope .()) == "numpad5");
+		Test.Assert(actions.AlternateShortcut(SceneActionIds.Orthographic).Keys(.. scope .()) == "o");
 
 		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage());
 		Test.Assert(!actions.IsEnabled(SceneActionIds.Orthographic, page), "no viewport");
@@ -331,16 +342,18 @@ class SceneActionsTests
 		Test.Assert(actions.IsEnabled(SceneActionIds.EntityCreate, page));
 
 		// The hierarchy builds its menu items from the same declarations over the page.
-		let menu = new ContextMenu();
+		let menu = new Menu();
 		defer menu.ReleaseRef();
 		Test.Assert(actions.AppendActionItems(menu, page, SceneActionIds.EntityCreate, SceneActionIds.EntityDelete, "nobody.home") == 2);
-		Test.Assert(menu.ItemCount == 2);
-		Test.Assert(menu.ItemAt(0).Label == "Create Entity");
-		Test.Assert(menu.ItemAt(0).Enabled);
-		Test.Assert(menu.ItemAt(1).Label == "Delete");
-		Test.Assert(!menu.ItemAt(1).Enabled, "nothing selected after the delete");
+		let items = scope List<MenuItem>();
+		ItemsOf(menu, items);
+		Test.Assert(items.Count == 2);
+		Test.Assert(items[0].Text == "Create Entity");
+		Test.Assert(items[0].Enabled);
+		Test.Assert(items[1].Text == "Delete");
+		Test.Assert(!items[1].Enabled, "nothing selected after the delete");
 		let before = edit.Scene.EntityCount;
-		menu.ItemAt(0).Action();
+		items[0].HandleActivate();
 		Test.Assert(edit.Scene.EntityCount == before + 1);
 	}
 

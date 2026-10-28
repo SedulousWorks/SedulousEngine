@@ -35,7 +35,6 @@ corlib = "*"
 "Sedulous.Engine.Animation" = "*"
 "Sedulous.Engine.Script" = "*"
 "Sedulous.Script.Resource" = "*"
-"Sedulous.Editor.App" = "*"
 "Sedulous.Model.Resource" = "*"
 "Sedulous.ModelImporter" = "*"
 "Sedulous.Materials" = "*"
@@ -49,11 +48,48 @@ corlib = "*"
 "Sedulous.Particles.Pipeline" = "*"
 "Sedulous.Render.Pipeline" = "*"
 "Sedulous.Geometry" = "*"
-"Sedulous.UI" = "*"
-"Sedulous.UI.Toolkit" = "*"
 "Sedulous.Engine.Project" = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Json" = "*"
 "Sedulous.Mcp" = "*"
 "Sedulous.Editor.ViewportTools" = "*"
 "Sedulous.Editor.Scene" = "*"
+"Sedulous.Editor.Camera" = "*"
+"Sedulous.GUI" = "*"
+
+# On the GUI in parts with its library: these drive the page, the hierarchy, the inspector and the
+# picker dialogs on Sedulous.UI, or the thumbnail stage in the parked Editor.Preview; they come
+# back with those layers (Raptor's editor-gui spec, 5.3).
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "CollisionMatrixTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ComponentPickerDialogTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EntityPickerDialogTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "HierarchyViewTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "InspectorViewTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "SettingsProfileTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "SceneThumbnailTests.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "ThumbnailDownscaleTests.bf"

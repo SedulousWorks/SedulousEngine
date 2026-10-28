@@ -125,9 +125,9 @@ static class SceneActions
 		}
 
 		// ---- Gizmo: the transform mode as three toggles, the space as one ----
-		GizmoMode(actions, SceneActionIds.GizmoTranslate, "Translate", "Move the selection with the gizmo", "Scene/Gizmo/Translate", 100, .Translate, .W);
-		GizmoMode(actions, SceneActionIds.GizmoRotate, "Rotate", "Rotate the selection with the gizmo", "Scene/Gizmo/Rotate", 101, .Rotate, .E);
-		GizmoMode(actions, SceneActionIds.GizmoScale, "Scale", "Scale the selection with the gizmo", "Scene/Gizmo/Scale", 102, .Scale, .R);
+		GizmoMode(actions, SceneActionIds.GizmoTranslate, "Translate", "Move the selection with the gizmo", "Scene/Gizmo/Translate", 100, .Translate, "w");
+		GizmoMode(actions, SceneActionIds.GizmoRotate, "Rotate", "Rotate the selection with the gizmo", "Scene/Gizmo/Rotate", 101, .Rotate, "e");
+		GizmoMode(actions, SceneActionIds.GizmoScale, "Scale", "Scale the selection with the gizmo", "Scene/Gizmo/Scale", 102, .Scale, "r");
 		{
 			let d = new EditorActionDeclaration(SceneActionIds.GizmoWorldSpace, "World Space", "The gizmo's axes in world space (off: the selection's local space)", "Scene/Gizmo/World Space", 200);
 			d.Kind = .Toggle;
@@ -174,7 +174,7 @@ static class SceneActions
 		// ---- View ----
 		{
 			let d = new EditorActionDeclaration(SceneActionIds.FrameSelection, "Frame Selection", "Move the viewport camera so the selected entities fill the view, orbiting about them", "Scene/Frame Selection", 290);
-			d.Shortcut = .(.F);
+			d.Shortcut = .Of("f");
 			d.ReadOnly = true; // the camera is the page's view, not the scene
 			d.Enabled = new (page) =>
 				{
@@ -192,8 +192,8 @@ static class SceneActions
 		{
 			let d = new EditorActionDeclaration(SceneActionIds.Orthographic, "Orthographic", "Draw the viewport without perspective, every view ray parallel: what is in view stays", "Scene/Orthographic", 291);
 			d.Kind = .Toggle;
-			d.Shortcut = .(.Keypad5);
-			d.AlternateShortcut = .(.O);
+			d.Shortcut = .Of("numpad5");
+			d.AlternateShortcut = .Of("o");
 			d.ReadOnly = true; // the camera is the page's view, not the scene
 			d.Enabled = new (page) =>
 				{
@@ -274,14 +274,14 @@ static class SceneActions
 		}
 		{
 			let d = new EditorActionDeclaration(SceneActionIds.EntityDuplicate, "Duplicate", "Duplicate the selected entity's subtree beside it", "Scene/Entity/Duplicate", 200);
-			d.Shortcut = .(.D, .Ctrl);
+			d.Shortcut = .Of("ctrl-d");
 			d.Enabled = new (page) => PrimaryOf(page) != .();
 			d.Execute = new (page) => { EditablePage(page).EditContext.DuplicateEntity(PrimaryOf(page)); };
 			actions.Register(d);
 		}
 		{
 			let d = new EditorActionDeclaration(SceneActionIds.EntityDelete, "Delete", "Delete the selected entity and its subtree", "Scene/Entity/Delete", 201);
-			d.Shortcut = .(.Delete);
+			d.Shortcut = .Of("delete");
 			d.Enabled = new (page) => PrimaryOf(page) != .();
 			d.Execute = new (page) => { EditablePage(page).EditContext.DestroyEntity(PrimaryOf(page)); };
 			actions.Register(d);
@@ -350,11 +350,11 @@ static class SceneActions
 		}
 	}
 
-	private static void GizmoMode(EditorActionRegistry actions, StringView id, StringView label, StringView description, StringView menuPath, int32 order, Sedulous.Editor.Scene.GizmoMode mode, Sedulous.UI.KeyCode key)
+	private static void GizmoMode(EditorActionRegistry actions, StringView id, StringView label, StringView description, StringView menuPath, int32 order, Sedulous.Editor.Scene.GizmoMode mode, StringView key)
 	{
 		let d = new EditorActionDeclaration(id, label, description, menuPath, order);
 		d.Kind = .Toggle;
-		d.Shortcut = .(key);
+		d.Shortcut = .Of(key);
 		// Not while the camera flies: W is the camera's then, and a mode switch mid-flight
 		// would surprise.
 		d.Enabled = new (page) =>

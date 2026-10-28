@@ -277,7 +277,9 @@ static class SceneMcpEditTools
 		}
 		defer delete payload;
 		let bytes = new List<uint8>();
-		SceneEditorPage.ReadAll(payload, bytes);
+		bytes.Resize(Math.Max((int)payload.Size(), 0));
+		payload.Seek(0, .Begin);
+		bytes.Count = Math.Max(payload.Read(Span<uint8>(bytes.Ptr, bytes.Count)), 0);
 		BeginStep(edit);
 		let root = edit.SpawnPrefabInstance(prefab, bytes, parent, hasTransform ? transform : (Transform?)null);
 		EndStep(edit);
