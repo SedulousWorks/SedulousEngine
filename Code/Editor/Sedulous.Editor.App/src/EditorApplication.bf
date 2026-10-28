@@ -872,9 +872,10 @@ class EditorApplication : IApplication
 		ImportFiles(paths, ImportWindow.DropGroup(mAssets, project.SourceDb));
 	}
 
-	/// The slots' table, from the context, the type icons and the picker (made the first time).
-	/// The application's.
-	private ResourceRefServices RefServices()
+	/// What an asset slot or a page's picker asks of the editor (the scene page's prefab spawn, the
+	/// inspector's references): the accepted types, the project's names, the picker (made the first
+	/// time). The application's.
+	public ResourceRefServices RefServices()
 	{
 		if (mRefs == null)
 		{
