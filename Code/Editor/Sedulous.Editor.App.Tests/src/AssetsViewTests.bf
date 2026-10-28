@@ -42,7 +42,8 @@ class BrowserMeshBuilder : IAssetBuilder
 /// saying where each match is, and the type filter, each with its state when nothing is left and
 /// the way back; tiles or a list kept with the project; building again when the database's shape
 /// moves; Reveal; a drag of the selection carrying its assets; and, under the editor's sheet, the
-/// toolbar keeping its height and the type menu opening below its button. Then what Sedulous adds
+/// toolbar keeping its height, the type menu opening below its button, and a list row's kind on
+/// its name's baseline, ending where every other row's does. Then what Sedulous adds
 /// so each behaviour has a test: the tree's click and Enter navigating, the breadcrumb's tooltip, a
 /// guid typed whole, braced or bare selecting its asset, the clear button and the state's verb, the
 /// type filter's menu and a type's display name, the toggles' checks, a type's glyph and tint, the
@@ -212,10 +213,10 @@ static class AssetsViewTests
 		}
 
 		/// The tree styled by the editor's own sheet (the default density's), as the window makes it,
-		/// then laid out.
-		public void StyleAsTheEditor()
+		/// then laid out; its faces loaded too (`withFonts`) for a test that measures text.
+		public void StyleAsTheEditor(bool withFonts = false)
 		{
-			Sheet = new .();
+			Sheet = new .(withFonts);
 			Sheet.Apply(Root);
 			Layout();
 		}
@@ -761,5 +762,63 @@ static class AssetsViewTests
 		let at = menu.ScreenBounds;
 		Test.Assert(at.Y >= button.Y + button.Height - 1.0f, "below the button, not at the window's corner");
 		Test.Assert(at.X >= button.X - at.Width);
+	}
+
+	/// Under the editor's sheet a list row's kind is on its name's baseline (a smaller text
+	/// centred on its own sat higher) and ends where every other row's does: the name takes the
+	/// room, the kind hugs its text at the end, and the badge and the star keep their columns on
+	/// a row without them (a kind used to start wherever its name ended, and to run on into the
+	/// star's room on a row with none). Two rows of names and kinds of different lengths, one
+	/// starred and badged (a mesh a builder cooks, never cooked) and one with neither; the
+	/// editor's faces loaded, as text with no font measures nothing.
+	[Test]
+	public static void UnderTheEditorsSheetAListRowsKindIsOnItsNamesBaselineAndEndsWhereEveryOtherRowsDoes()
+	{
+		let bed = scope Bed("scratch_assets_view_row_kind", true, true, true);
+		let view = bed.View;
+		// A fine device grid: every edge rounds to its pixel on its own, and a whole pixel would
+		// hide the third of one between the baselines the row's centring left.
+		bed.Root.DisplayScale = 16.0f;
+		view.SetTiles(false);
+		bed.Context.ToggleFavorite(bed.Barrel.Id); // one row starred, one not
+		view.OpenRow(bed.RowOf("Models"));
+		view.OpenRow(bed.RowOf("Town"));
+		bed.StyleAsTheEditor(true);
+		bed.Sheet.Apply(bed.Root); // the cells the first pass realised
+		bed.Layout();
+		let barrel = bed.Cell(bed.RowOf("Barrel"));
+		let bell = bed.Cell(bed.RowOf("Bell"));
+		Test.Assert((barrel != null) && (bell != null));
+		Test.Assert(barrel.ShowsStar && barrel.ShowsBadge);
+		Test.Assert(!bell.ShowsStar && !bell.ShowsBadge);
+		Test.Assert(barrel.Kind != bell.Kind, "kinds of different widths");
+		Test.Assert(barrel.NameLabel.GetTextLayout().HasFont && barrel.KindLabel.GetTextLayout().HasFont, "the sheet's faces");
+		Test.Assert(barrel.NameLabel.Size.Y > barrel.KindLabel.Size.Y, "the kind smaller than its name");
+
+		// In the root's own units, which the display scale maps to device pixels.
+		float KindRight(AssetCell cell)
+		{
+			let kind = cell.KindLabel;
+			return kind.ConvertToRootSpace(.(kind.Size.X, 0.0f)).X;
+		}
+		let barrelRight = KindRight(barrel);
+		let bellRight = KindRight(bell);
+		Test.Assert(Math.Abs(barrelRight - bellRight) < 0.1f, scope $"the kinds end at {barrelRight} and {bellRight}: the badge's and the star's columns kept on the row without them");
+		// Each kind as wide as its text, which so ends where the kind does, not where its name did.
+		void HugsItsText(AssetCell cell)
+		{
+			let kind = cell.KindLabel;
+			let room = kind.Size.X - kind.Chrome.TotalHorizontal;
+			let text = kind.GetTextLayout().Width;
+			Test.Assert(Math.Abs(room - text) < 0.1f, scope $"the kind '{cell.Kind}' has {room} for {text} of text: its text ends at the row's end");
+		}
+		HugsItsText(barrel);
+		HugsItsText(bell);
+
+		// On one baseline: the name's and the kind's text baselines at the same height.
+		float BaselineOf(Sedulous.GUI.Label label) => label.ConvertToRootSpace(.(0.0f, label.Baseline)).Y;
+		let nameLine = BaselineOf(barrel.NameLabel);
+		let kindLine = BaselineOf(barrel.KindLabel);
+		Test.Assert(Math.Abs(nameLine - kindLine) < 0.1f, scope $"the name's baseline at {nameLine}, the kind's at {kindLine}");
 	}
 }

@@ -295,7 +295,13 @@ toast { border: 1px solid var(--border-strong); }
 .asset-thumb > .badge-icon { position: absolute; top: 3px; right: 3px; }
 .asset-thumb > .badge { position: absolute; left: 3px; bottom: 3px; font-size: 10px; padding: 0 3px; }
 .asset-list { flex-grow: 1; background-color: var(--surface); padding: var(--space-xs) var(--space-s); }
-.asset-list .asset-row > .row-kind { flex-grow: 1; }
+/* A row: its glyph, then its name and kind on one baseline (the kind at the end, right-aligned),
+   then its badge and star in columns of their own, kept when empty, so every kind ends in line. */
+.asset-row-text { flex-direction: row; align-items: baseline; flex-grow: 1; min-width: 0; column-gap: var(--space-l); }
+.asset-row-text > .row-name { flex-grow: 1; }
+.asset-row-text > .row-kind { flex-grow: 0; flex-shrink: 0; text-align: end; }
+.asset-list .asset-row > .badge { width: 52px; flex-shrink: 0; text-align: center; }
+.asset-list .asset-row > .badge-icon { margin-right: var(--space-xs); }
 .asset-tile.group > .asset-thumb > .asset-glyph, .asset-row.group > .row-icon { image-color: var(--icon); }
 .assets-state { flex-grow: 1; background-color: var(--surface); }
 

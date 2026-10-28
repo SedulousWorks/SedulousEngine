@@ -5,8 +5,9 @@ namespace Sedulous.Editor.App;
 
 /// One asset or group as the Assets panel draws it (Raptor's editor-gui spec, 5.2, layer 7): a
 /// tile's picture (its glyph, the star in a corner, a stale or failed badge in another) over its
-/// name, or a list row's glyph, name, what it is, badge and star. Its class (`asset-tile` or
-/// `asset-row`) says which, and a group's has `group` too; the sheet draws the rest.
+/// name, or a list row's glyph, its name and what it is on one baseline (what it is at the end),
+/// then its badge and star. Its class (`asset-tile` or `asset-row`) says which, and a group's has
+/// `group` too; the sheet draws the rest.
 class AssetCell : UIWidget
 {
 	/// What a cell shows; its texts borrowed for the call (Show copies them).
@@ -30,6 +31,8 @@ class AssetCell : UIWidget
 	// The tree's: the cell holds its parts and never lets one go. A tile's glyph, badge and star
 	// are in its picture (mThumb); a row's are its own.
 	private Sedulous.GUI.Panel mThumb = null;
+	/// A row's name and kind.
+	private Sedulous.GUI.Panel mText = null;
 	private Sedulous.GUI.Image mGlyph;
 	private Sedulous.GUI.Label mName;
 	private Sedulous.GUI.Label mKind;
@@ -51,8 +54,16 @@ class AssetCell : UIWidget
 		}
 		Node marks = tile ? (Node)mThumb : this;
 		mGlyph = Part<Sedulous.GUI.Image>(glyphHolder, tile ? "asset-glyph" : "row-icon");
-		mName = Part<Sedulous.GUI.Label>(this, tile ? "asset-name" : "row-name");
-		mKind = Part<Sedulous.GUI.Label>(this, "row-kind");
+		// A row's name and kind share a baseline, the kind at the end, right-aligned (each row's
+		// ends in the same place, its badge and star in columns after it).
+		Node textHolder = this;
+		if (!tile)
+		{
+			mText = Part<Sedulous.GUI.Panel>(this, "asset-row-text");
+			textHolder = mText;
+		}
+		mName = Part<Sedulous.GUI.Label>(textHolder, tile ? "asset-name" : "row-name");
+		mKind = Part<Sedulous.GUI.Label>(textHolder, "row-kind");
 		mKind.Displayed = !tile; // a tile says what it is in its tooltip
 		mBadge = Part<Sedulous.GUI.Label>(marks, "badge");
 		mStar = Part<Sedulous.GUI.Image>(marks, "badge-icon");
@@ -69,9 +80,18 @@ class AssetCell : UIWidget
 		mKind.Text = shown.Kind;
 		SwapClass(mBadge, mBadgeClass, shown.BadgeClass);
 		mBadge.Text = shown.Badge;
-		// A tile marks only what needs a look (stale, failed); a row says each state.
-		mBadge.Displayed = !shown.Badge.IsEmpty && (!mTile || (shown.BadgeClass != "success"));
-		mStar.Displayed = shown.Favourite;
+		// A tile marks only what needs a look (stale, failed); a row says each state, its badge
+		// and star keeping their columns when it has none.
+		if (mTile)
+		{
+			mBadge.Displayed = !shown.Badge.IsEmpty && (shown.BadgeClass != "success");
+			mStar.Displayed = shown.Favourite;
+		}
+		else
+		{
+			mBadge.Visible = !shown.Badge.IsEmpty;
+			mStar.Visible = shown.Favourite;
+		}
 		if (shown.Group)
 			AddClass("group");
 		else
@@ -92,9 +112,11 @@ class AssetCell : UIWidget
 	/// The badge's text, shown or not (ShowsBadge).
 	public StringView Badge => mBadge.Text;
 	public StringView BadgeClass => mBadgeClass;
-	public bool ShowsBadge => mBadge.Displayed;
-	public bool ShowsStar => mStar.Displayed;
+	public bool ShowsBadge => mBadge.Displayed && mBadge.Visible;
+	public bool ShowsStar => mStar.Displayed && mStar.Visible;
 	public bool IsTile => mTile;
+	public Sedulous.GUI.Label NameLabel => mName;
+	public Sedulous.GUI.Label KindLabel => mKind;
 
 	/// A part of class `cls` in `holder`: the tree takes the pointer, a press on it the cell's.
 	private static T Part<T>(Node holder, StringView cls) where T : UIWidget, new
