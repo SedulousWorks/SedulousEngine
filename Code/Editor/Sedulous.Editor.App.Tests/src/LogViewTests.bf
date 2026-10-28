@@ -11,7 +11,8 @@ namespace Sedulous.Editor.App.Tests;
 /// The Console over its markup (Data/Editor/Console.gml): lines with their category, the levels'
 /// chips (Info holding trace and debug, Error holding critical) with their counts showing and
 /// hiding their lines, the search, the cap trimming the oldest, Clear, the empty line, a selection
-/// kept by entry through a trim and copied oldest first, and each line's time. Then what Sedulous
+/// kept by entry through a trim and copied oldest first, each line's time, and every line one
+/// fixed height under the editor's sheet. Then what Sedulous
 /// adds so each behaviour has a test: the search typed into its field and its x, a selection kept
 /// through a filter for the lines still shown, rows picked out of order and ranges grown with
 /// Shift, a copy announced with its count, each row's time and level colour, the newest line
@@ -423,5 +424,25 @@ class LogViewTests
 		Test.Assert(menu != null);
 		Test.Assert(MenuRows.ItemNamed(menu, "Clear").HandleActivate());
 		Test.Assert(bed.View.EntryCount == 0);
+	}
+
+	/// Under the editor's sheet every line is one fixed height (the sheet's `.log`), so scrolling
+	/// moves the bar rather than resizing it.
+	[Test]
+	public static void UnderTheEditorsSheetEveryLineIsOneFixedHeight()
+	{
+		let bed = scope ConsoleBed();
+		let sheet = scope EditorSheet(); // goes first, while the tree it styled is there
+		for (int i < 200)
+			bed.View.AddEntry(.Information, "N", scope $"line {i}");
+		sheet.Apply(bed.Root);
+		let list = bed.List;
+		Test.Assert(list.RowHeight == 22.0f);
+		let range = list.ScrollRange.Y;
+		Test.Assert(range > 0.0f, "the lines overflow the list");
+		list.ScrollToItem(0);
+		bed.Layout();
+		Test.Assert(list.ScrollOffset.Y == 0.0f);
+		Test.Assert(Math.Abs(list.ScrollRange.Y - range) < 0.5f, "the content's height holds at the top");
 	}
 }

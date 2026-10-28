@@ -306,7 +306,7 @@ toast { border: 1px solid var(--border-strong); }
 listview::selection, treeview::selection, tableview::selection { border-radius: var(--radius-small); }
 
 /* === The console's rows === */
-.log { flex-grow: 1; background-color: var(--surface); }
+.log { flex-grow: 1; background-color: var(--surface); row-height: 22px; } /* every line one high: measured ones resized the bar as they came into view */
 .log-row { flex-direction: row; column-gap: var(--space-m); padding: 0 var(--space-m); align-items: center; }
 .log-time { color: var(--text-disabled); font-size: var(--font-small); }
 .log-text { flex-grow: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; }
