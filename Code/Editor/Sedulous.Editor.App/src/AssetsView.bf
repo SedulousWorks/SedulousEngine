@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Content;
+using Sedulous.Pipeline.Core;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -19,6 +20,13 @@ namespace Sedulous.Editor.App;
 // Enter or a double click opens an asset or enters a group; Reveal shows an asset where it lives.
 // A drag of the selection carries its assets (AssetDrag) to a slot. It builds again when the
 // database's shape moves, however the change came, and when a cook moves the badges.
+//
+// Its verbs are AssetOperations', the ones an agent's delete takes too: an asset's menu (open,
+// rename, duplicate, copy its guid or path, pin it, always export it; cook, rebuild or delete the
+// selection holding it), a group's row's, and the shown group's (New from the creators, New
+// Group, cook or rebuild it, or all at the top). Delete asks first, naming what goes. F2 or the
+// menus' Rename edit a row's name or a tree group's in place, through their models: a refused
+// name says why and keeps the edit open.
 
 /// What the Assets panel works over.
 class AssetsViewServices
@@ -32,6 +40,10 @@ class AssetsViewServices
 	public EditorIcons Icons;
 	/// An asset opened (its page). Owned.
 	public delegate void(Instance instance) Open ~ delete _;
+	/// Rename, duplicate, delete, cook; null: no menus and no edits in place. Borrowed.
+	public AssetOperations Operations;
+	/// Runs a creator into a group (File > New's create-and-open); unset: no New menu. Owned.
+	public delegate void(AssetCreator creator, Group group) Create ~ delete _;
 }
 
 class AssetsView
@@ -103,12 +115,41 @@ class AssetsView
 			return .();
 		}
 
+		/// A row's name is edited in place (F2, the menu's Rename): the asset or group renamed.
+		public override bool IsEditable(ModelIndex index) =>
+			(mView.mServices.Operations != null) && mView.RowsLive && (index.Row >= 0) && (index.Row < mView.mRows.Count);
+
+		/// False, the edit kept open, when the name is refused (said).
+		public override bool SetData(ModelIndex index, Sedulous.GUI.Variant value) =>
+			(index.Row >= 0) && mView.RenameRow(index.Row, value.AsString);
+
 		public void Reset() => NotifyReset();
 
 		public void Changed()
 		{
 			if (!mView.mRows.IsEmpty)
 				NotifyRowsChanged(.(), 0, (int32)mView.mRows.Count);
+		}
+	}
+
+	/// The group tree's model: a group (not the top one) renamed in place.
+	private class GroupTreeModel : TreeModel
+	{
+		private AssetsView mView;
+
+		public this(AssetsView view) { mView = view; }
+
+		public override bool IsEditable(ModelIndex index)
+		{
+			let group = mView.TreeGroupAt(index);
+			return (mView.mServices.Operations != null) && (group != null) && (group.Parent != null);
+		}
+
+		/// False, the edit kept open, when the name is refused (said).
+		public override bool SetData(ModelIndex index, Sedulous.GUI.Variant value)
+		{
+			let group = mView.TreeGroupAt(index);
+			return (group != null) && mView.RenameGroup(group, value.AsString);
 		}
 	}
 
@@ -120,8 +161,16 @@ class AssetsView
 	private TreeView mTree = null;
 	private ListView mList = null;
 	private BreadcrumbBar mCrumbs = null;
-	/// The type filter's, while it is ours.
+	/// The open menu (the type filter's, a row's, the group's), while it is ours.
 	private Sedulous.GUI.Menu mMenu = null ~ _?.ReleaseRef();
+	/// The last delete asked about, while it is ours (a test answers it).
+	private Sedulous.GUI.MessageBox mConfirm = null ~ _?.ReleaseRef();
+	// The menus' and the Delete key's listeners on the list, the tree and the state.
+	private uint32 mListMenuListener = 0;
+	private uint32 mListKeyListener = 0;
+	private uint32 mTreeMenuListener = 0;
+	private uint32 mTreeKeyListener = 0;
+	private uint32 mStateMenuListener = 0;
 	/// The database it shows (the project's), and the group: compared, reached only while the
 	/// database's revision says they are still there.
 	private ContentDatabase mDb = null;
@@ -140,7 +189,7 @@ class AssetsView
 	private List<Row> mRows = new .() ~ delete _;
 	/// By the tree's node id.
 	private List<Group> mTreeGroups = new .() ~ delete _;
-	private TreeModel mGroupModel = new .() ~ delete _;
+	private GroupTreeModel mGroupModel ~ delete _;
 	private RowModel mModel ~ delete _;
 
 	/// Over its frame `content` (the markup's: its parts by id). OWNERSHIP of `services` and of
@@ -150,6 +199,7 @@ class AssetsView
 		mServices = services;
 		mContent = content;
 		mModel = new RowModel(this);
+		mGroupModel = new GroupTreeModel(this);
 		if (mContent == null)
 			return;
 		mTree = Find<TreeView>("assets-groups");
@@ -162,6 +212,23 @@ class AssetsView
 					let node = index.InternalId;
 					if ((node >= 0) && (node < mTreeGroups.Count))
 						Navigate(mTreeGroups[(int)node]);
+				});
+			// The group it shows (a right press has selected the one under it); Delete deletes it.
+			mTreeMenuListener = mTree.AddEventListener(.ContextMenu, new (e) =>
+				{
+					if ((mServices.Operations != null) && (mCurrent != null) && Contains(mCurrent))
+						ShowGroupMenu(mTree, ((MouseEvent)e).Position, mCurrent, true);
+					e.Handled = true;
+				});
+			mTreeKeyListener = mTree.AddEventListener(.KeyDown, new (e) =>
+				{
+					let key = (KeyEvent)e;
+					// The tree's own: an edit's field keeps its Delete.
+					if ((e.Target === mTree) && ((KeyCode)key.KeyCode == .Delete) && (key.Modifiers == 0) && (mCurrent != null) && Contains(mCurrent))
+					{
+						ConfirmDeleteGroup(mCurrent);
+						e.Handled = true;
+					}
 				});
 		}
 		mList = Find<ListView>("assets-content");
@@ -176,6 +243,31 @@ class AssetsView
 			mList.SetOnActivated(new (index) => { OpenRow(index.Row); });
 			mList.DragType = AssetDrag.cType;
 			mList.SetOnDragPayload(new (payload, ids) => { DragPayloadFor(payload, ids); });
+			// A row's menu, or the group's where no row is; Delete asks to delete the selection.
+			mListMenuListener = mList.AddEventListener(.ContextMenu, new (e) =>
+				{
+					let at = ((MouseEvent)e).Position;
+					ShowMenuAt(mList, at, mList.ItemAt(at));
+					e.Handled = true;
+				});
+			mListKeyListener = mList.AddEventListener(.KeyDown, new (e) =>
+				{
+					let key = (KeyEvent)e;
+					// The list's own: an edit's field keeps its Delete.
+					if ((e.Target === mList) && ((KeyCode)key.KeyCode == .Delete) && (key.Modifiers == 0))
+					{
+						DeleteSelection();
+						e.Handled = true;
+					}
+				});
+		}
+		if (let state = Find<UIWidget>("assets-state"))
+		{
+			mStateMenuListener = state.AddEventListener(.ContextMenu, new [=this, =state] (e) =>
+				{
+					ShowMenuAt(state, ((MouseEvent)e).Position, -1);
+					e.Handled = true;
+				});
 		}
 		mCrumbs = Find<BreadcrumbBar>("assets-crumbs");
 		if (mCrumbs != null)
@@ -201,8 +293,15 @@ class AssetsView
 	{
 		if ((mMenu != null) && mMenu.IsOpen)
 			mMenu.Close();
+		// An open question would answer into a gone view.
+		if ((mConfirm != null) && mConfirm.IsOpen)
+			mConfirm.Close();
 		if (mList != null)
 		{
+			if (mList.IsEditing)
+				mList.EndEdit(false); // its commit would reach the models going
+			mList.RemoveEventListener(mListMenuListener);
+			mList.RemoveEventListener(mListKeyListener);
 			mList.Model = null;
 			mList.SetRowFactory(null);
 			mList.SetOnActivated(null);
@@ -210,9 +309,15 @@ class AssetsView
 		}
 		if (mTree != null)
 		{
+			if (mTree.IsEditing)
+				mTree.EndEdit(false);
+			mTree.RemoveEventListener(mTreeMenuListener);
+			mTree.RemoveEventListener(mTreeKeyListener);
 			mTree.Model = null;
 			mTree.SetOnSelectionChanged(null);
 		}
+		if (let state = Find<UIWidget>("assets-state"))
+			state.RemoveEventListener(mStateMenuListener);
 		if (mCrumbs != null)
 			mCrumbs.SetOnNavigate(null);
 		if (let search = Find<TextField>("assets-search"))
@@ -407,6 +512,36 @@ class AssetsView
 	public BreadcrumbBar Crumbs => mCrumbs;
 	/// The type filter's menu while it is open, for a test.
 	public Sedulous.GUI.Menu TypeMenu => ((mMenu != null) && mMenu.IsOpen) ? mMenu : null;
+	/// The open menu (the type filter's, a row's, the group's), for a test.
+	public Sedulous.GUI.Menu OpenMenu => ((mMenu != null) && mMenu.IsOpen) ? mMenu : null;
+	/// The delete asked about while it is open, for a test.
+	public Sedulous.GUI.MessageBox OpenConfirm => ((mConfirm != null) && mConfirm.IsOpen) ? mConfirm : null;
+
+	/// The menu `row` would show (-1: the group's own), opened at the list's corner.
+	public void ShowMenuFor(int32 row)
+	{
+		if (mList != null)
+			ShowMenuAt(mList, mList.ConvertToWorldSpace(.(4.0f, 4.0f)), row);
+	}
+
+	/// Asks to delete the selected assets, else the selected group's row (Delete).
+	public void DeleteSelection()
+	{
+		if ((mServices.Operations == null) || (mList == null) || !RowsLive)
+			return;
+		let selected = scope List<Instance>();
+		SelectedAssets(selected);
+		if (!selected.IsEmpty)
+		{
+			let ids = scope List<Guid>();
+			for (let instance in selected)
+				ids.Add(instance.Id);
+			ConfirmDelete(ids);
+			return;
+		}
+		if (let group = RowGroup(mList.SelectedItem))
+			ConfirmDeleteGroup(group);
+	}
 
 	// === Underneath ===
 
@@ -857,13 +992,7 @@ class AssetsView
 				let byKind = String.Compare(a.Kind, b.Kind, false);
 				return (byKind != 0) ? byKind : String.Compare(a.Name, b.Name, false);
 			});
-		if (mMenu != null)
-		{
-			if (mMenu.IsOpen)
-				mMenu.Close();
-			mMenu.ReleaseRef();
-		}
-		mMenu = new Sedulous.GUI.Menu();
+		NewMenu();
 		let every = mMenu.AddItem("Every type", new () => { SetTypeFilter(""); });
 		every.Checkable = true;
 		every.SetCheckedSilently(mType.IsEmpty);
@@ -876,6 +1005,363 @@ class AssetsView
 			item.SetCheckedSilently(!mType.IsEmpty && AssetTypeNames.Matches(choice.Name, mType));
 		}
 		mMenu.OpenBelow(anchor, anchor);
+	}
+
+	// === The verbs: renames from the models' edits, the menus, the confirmations ===
+
+	/// A row's new name, from the list's edit: false (said) when it is refused.
+	private bool RenameRow(int row, StringView name)
+	{
+		let ops = mServices.Operations;
+		if ((ops == null) || !RowsLive || (row < 0) || (row >= mRows.Count))
+			return false;
+		if (let group = mRows[row].Group)
+			return RenameGroup(group, name);
+		let why = scope String();
+		if (ops.Rename(mRows[row].Instance.Id, name, why))
+			return true;
+		Warn(why);
+		return false;
+	}
+
+	/// A group's new name, from a row's or the tree's edit: false (said) when it is refused.
+	private bool RenameGroup(Group group, StringView name)
+	{
+		let ops = mServices.Operations;
+		if (ops == null)
+			return false;
+		let why = scope String();
+		if (ops.RenameGroup(group, name, why))
+			return true;
+		Warn(why);
+		return false;
+	}
+
+	private void Warn(StringView text)
+	{
+		if (mServices.Context != null)
+			mServices.Context.Notify(.Warning, text);
+	}
+
+	/// The tree is of the database as it is now: its groups are reached only while it is.
+	private bool TreeLive
+	{
+		get
+		{
+			let db = Sources();
+			return (db != null) && (db === mDb) && (db.Revision == mDbRevision);
+		}
+	}
+
+	/// The group a tree node shows, while the tree is live; null otherwise.
+	private Group TreeGroupAt(ModelIndex index)
+	{
+		if (!TreeLive)
+			return null;
+		let node = index.InternalId;
+		return ((node >= 0) && (node < mTreeGroups.Count)) ? mTreeGroups[(int)node] : null;
+	}
+
+	private Instance FindAsset(Guid id)
+	{
+		let db = Sources();
+		return (db != null) ? db.GetInstance(id) : null;
+	}
+
+	private void OpenAsset(Guid id)
+	{
+		if (let instance = FindAsset(id))
+		{
+			if (mServices.Open != null)
+				mServices.Open(instance);
+		}
+	}
+
+	/// The menu a new one replaces closed and let go; the new one is mMenu.
+	private Sedulous.GUI.Menu NewMenu()
+	{
+		if (mMenu != null)
+		{
+			if (mMenu.IsOpen)
+				mMenu.Close();
+			mMenu.ReleaseRef();
+		}
+		mMenu = new Sedulous.GUI.Menu();
+		return mMenu;
+	}
+
+	/// A menu's action on `group`, which finds it again by its path when it runs (gone by then:
+	/// nothing). TAKES OWNERSHIP of `act`.
+	private delegate void() OnGroup(Group group, delegate void(Group found) act)
+	{
+		let path = group.GetPath(.. new .());
+		return new [=this, =path, =act] () =>
+			{
+				if (let found = GroupAt(path))
+					act(found);
+			} ~ { delete path; delete act; };
+	}
+
+	/// A row's menu at `at` (in the root's space), or the shown group's where no row is.
+	private void ShowMenuAt(Node owner, Float2 at, int32 row)
+	{
+		if ((mServices.Operations == null) || (Sources() == null))
+			return;
+		if (RowsLive && (row >= 0) && (row < mRows.Count))
+		{
+			if (let group = mRows[row].Group)
+				ShowGroupMenu(owner, at, group, false, mRows[row].Id);
+			else
+				ShowAssetMenu(owner, at, row);
+		}
+		else if ((mCurrent != null) && Contains(mCurrent))
+			ShowGroupMenu(owner, at, mCurrent, true);
+	}
+
+	// An asset's: what acts on one (open, rename, duplicate, copy, pin, export) on it, what acts on
+	// many (cook, rebuild, delete) on the selection holding it, else on it alone.
+	private void ShowAssetMenu(Node owner, Float2 at, int32 row)
+	{
+		let id = mRows[row].Instance.Id;
+		let rowId = mRows[row].Id;
+		let targets = scope List<Guid>();
+		let selected = scope List<Instance>();
+		SelectedAssets(selected);
+		for (let instance in selected)
+			targets.Add(instance.Id);
+		if (!targets.Contains(id))
+		{
+			targets.Clear();
+			targets.Add(id);
+		}
+		let ops = mServices.Operations;
+		let menu = NewMenu();
+		menu.AddItem("Open", new [=this, =id] () => { OpenAsset(id); });
+		menu.AddSeparator();
+		menu.AddItem("Rename", new [=this, =rowId] () => { BeginRename(rowId); }).Shortcut = "F2";
+		menu.AddItem("Duplicate", new [=ops, =id] () => { ops.Duplicate(id); });
+		menu.AddSeparator();
+		// The OS clipboard: the guid as a script writes it (hyphened, no braces) and the content
+		// path, for pasting into scripts and docs.
+		menu.AddItem("Copy GUID", new [=this, =id] () => { CopyText(id.ToString(.. scope .(), 'D'), "GUID"); });
+		menu.AddItem("Copy Path", new [=this, =id] () =>
+			{
+				if (let instance = FindAsset(id))
+					CopyText(instance.GetPath(.. scope .()), "path");
+			});
+		let favourite = (mServices.Context != null) && mServices.Context.IsFavorite(id);
+		menu.AddItem(favourite ? "Unpin Favourite" : "Pin as Favourite", new [=this, =id] () =>
+			{
+				if (mServices.Context != null)
+					mServices.Context.ToggleFavorite(id);
+				mModel.Changed(); // its star
+			});
+		let always = menu.AddItem("Always Export", new [=ops, =id] () => { ops.ToggleAlwaysExport(id); });
+		always.Checkable = true;
+		always.SetCheckedSilently(ops.IsAlwaysExported(id));
+		menu.AddSeparator();
+		let count = targets.Count;
+		let cooks = new List<Guid>(targets.GetEnumerator());
+		menu.AddItem((count == 1) ? "Cook" : scope:: $"Cook {count} Assets", new [=ops, =cooks] () => { ops.Cook(cooks, false); } ~ delete cooks);
+		let rebuilds = new List<Guid>(targets.GetEnumerator());
+		menu.AddItem((count == 1) ? "Rebuild" : scope:: $"Rebuild {count} Assets", new [=ops, =rebuilds] () => { ops.Cook(rebuilds, true); } ~ delete rebuilds);
+		menu.AddSeparator();
+		let deletes = new List<Guid>(targets.GetEnumerator());
+		menu.AddItem((count == 1) ? "Delete..." : scope:: $"Delete {count} Assets...", new [=this, =deletes] () => { ConfirmDelete(deletes); } ~ delete deletes).Shortcut = "Del";
+		menu.Open(owner, at);
+	}
+
+	// A group's: a row's, or the one shown (`shown`), which also makes new things in it. The top
+	// group is neither renamed, flagged nor deleted, and cooks everything.
+	private void ShowGroupMenu(Node owner, Float2 at, Group group, bool shown, ItemId rowId = NoItem)
+	{
+		let ops = mServices.Operations;
+		let menu = NewMenu();
+		let top = group.Parent == null;
+		if (shown)
+		{
+			AddNewMenu(menu, group);
+			menu.AddItem("New Group", OnGroup(group, new (into) =>
+				{
+					if (let made = mServices.Operations.CreateGroup(into))
+					{
+						Rebuild(); // the tree shows it
+						Navigate(made);
+					}
+				}));
+			menu.AddSeparator();
+		}
+		else
+		{
+			menu.AddItem("Open", OnGroup(group, new (found) => { Navigate(found); }));
+			menu.AddSeparator();
+		}
+		if (!top)
+		{
+			menu.AddItem("Rename", OnGroup(group, new [=this, =rowId] (found) => { BeginRenameGroup(found, rowId); })).Shortcut = "F2";
+			let always = menu.AddItem("Always Export Its Contents", OnGroup(group, new [=ops] (found) => { ops.ToggleAlwaysExport(found); }));
+			always.Checkable = true;
+			always.SetCheckedSilently(ops.IsAlwaysExported(group));
+			menu.AddSeparator();
+			menu.AddItem("Cook Group", OnGroup(group, new [=ops] (found) => { ops.CookGroup(found, false); }));
+			menu.AddItem("Rebuild Group", OnGroup(group, new [=ops] (found) => { ops.CookGroup(found, true); }));
+			menu.AddSeparator();
+			menu.AddItem("Delete Group...", OnGroup(group, new (found) => { ConfirmDeleteGroup(found); }));
+		}
+		else
+		{
+			menu.AddItem("Cook All", new [=ops] () => { ops.CookAll(false); });
+			menu.AddItem("Rebuild All", new [=ops] () => { ops.CookAll(true); });
+		}
+		menu.Open(owner, at);
+	}
+
+	// New: every creator into the group, those of no category first, then a submenu per category.
+	private void AddNewMenu(Sedulous.GUI.Menu menu, Group group)
+	{
+		let context = mServices.Context;
+		if ((mServices.Create == null) || (context == null))
+			return;
+		let create = menu.AddSubMenu("New");
+		let into = group.GetPath(.. scope .());
+		EditorAssetCreation.AddCreatorItems(create, context.Creators, true, scope [=this, =into] (sub, creator, inCategory) =>
+			{
+				let path = new String(into);
+				sub.AddItem(creator.Label, new [=this, =creator, =path] () =>
+					{
+						let found = GroupAt(path);
+						if ((found != null) && (mServices.Create != null))
+							mServices.Create(creator, found);
+					} ~ delete path);
+			});
+	}
+
+	/// Edits the name of the row `rowId` names in place, once the menu that asked has closed (its
+	/// close gives the focus back to the list, which would end an edit begun before it).
+	private void BeginRename(ItemId rowId)
+	{
+		Later(new [=this, =rowId] () =>
+			{
+				if ((mList == null) || !RowsLive)
+					return;
+				for (int32 row < (int32)mRows.Count)
+				{
+					if (mRows[row].Id != rowId)
+						continue;
+					mList.SelectedItem = row;
+					mList.BeginEdit(row);
+					return;
+				}
+			});
+	}
+
+	/// A group's row in place (`rowId`), else its node in the tree, once the menu has closed.
+	private void BeginRenameGroup(Group group, ItemId rowId)
+	{
+		if (rowId != NoItem)
+		{
+			BeginRename(rowId);
+			return;
+		}
+		let path = group.GetPath(.. new .());
+		Later(new [=this, =path] () =>
+			{
+				let found = GroupAt(path);
+				if ((mTree == null) || (found == null) || !TreeLive)
+					return;
+				for (int node < mTreeGroups.Count)
+				{
+					if (mTreeGroups[node] !== found)
+						continue;
+					for (int32 item < (int32)mTree.GetItemCount())
+					{
+						if (mTree.GetItemIndex(item).InternalId == node)
+							mTree.BeginEdit(item);
+					}
+				}
+			} ~ delete path);
+	}
+
+	/// `work` at the GUI's next drain; at once in no GUI. TAKES OWNERSHIP of `work`.
+	private void Later(delegate void() work)
+	{
+		let queue = (mContent != null) ? mContent.MutationQueue : null;
+		if (queue == null)
+		{
+			defer delete work;
+			work();
+			return;
+		}
+		queue.Enqueue(work);
+	}
+
+	private void CopyText(StringView text, StringView what)
+	{
+		let dispatcher = (mContent != null) ? mContent.EventDispatcher : null;
+		if (mServices.Context != null)
+			mServices.Context.CopyText((dispatcher != null) ? dispatcher.Clipboard : null, text, what);
+	}
+
+	// Asks first, naming what goes and what follows; Delete deletes. Borrows `ids`.
+	private void ConfirmDelete(Span<Guid> ids)
+	{
+		let ops = mServices.Operations;
+		if (ids.IsEmpty || (ops == null))
+			return;
+		let one = ids.Length == 1;
+		let names = ops.Names(ids, .. scope .());
+		let message = scope String();
+		message.AppendF("Delete {}? {} source {} and cooked {} go, and {} open pages close.", names, one ? "Its" : "Their",
+			one ? "file" : "files", one ? "product" : "products", one ? "its" : "their");
+		let targets = new List<Guid>();
+		targets.AddRange(ids);
+		Confirm(one ? "Delete Asset" : scope:: $"Delete {ids.Length} Assets", message,
+			new [=ops, =targets] () => { ops.Delete(targets); } ~ delete targets);
+	}
+
+	private void ConfirmDeleteGroup(Group group)
+	{
+		if ((group.Parent == null) || (mServices.Operations == null))
+			return;
+		let count = AssetOperations.CountAssets(group);
+		let message = scope String();
+		if (count == 0)
+			message.AppendF("Delete the empty group {}?", group.Name);
+		else if (count == 1)
+			message.AppendF("Delete the group {} and the asset in it? Its source file and cooked product go, and its open page closes.", group.Name);
+		else
+			message.AppendF("Delete the group {} and the {} assets in it? Their source files and cooked products go, and their open pages close.", group.Name, count);
+		// What shows it moves to its parent before it goes.
+		Confirm("Delete Group", message, OnGroup(group, new (found) =>
+			{
+				mServices.Operations.DeleteGroup(found, new (next) => { Navigate(next); });
+			}));
+	}
+
+	/// Asks `title` with `message`, Cancel or Delete; Delete runs `yes`. Nothing when there is no
+	/// GUI to ask over, or a question is open already. TAKES OWNERSHIP of `yes`.
+	private void Confirm(StringView title, StringView message, delegate void() yes)
+	{
+		let root = (mContent != null) ? mContent.RootNode : null;
+		if (!(root is SceneRoot) || ((mConfirm != null) && mConfirm.IsOpen))
+		{
+			delete yes;
+			return;
+		}
+		if (mConfirm != null)
+			mConfirm.ReleaseRef();
+		let question = new Sedulous.GUI.MessageBox();
+		mConfirm = question;
+		question.Configure(title, message, .Ok);
+		question.ClearButtons();
+		question.AddButton("Cancel", "cancel", .Cancel);
+		question.AddButton("Delete", "delete", .Destructive);
+		question.AddEventListener(.Changed, new [=question, =yes] (e) =>
+			{
+				if (question.ResultName == "delete")
+					yes();
+			} ~ delete yes);
+		question.OpenModal(root);
 	}
 
 	// A drag of the selection carries its assets (a group's row carries none).

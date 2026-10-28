@@ -196,6 +196,24 @@ class EditorPages
 			mClosing.Add(page);
 	}
 
+	/// Closes every page editing `asset` now, without asking: what deletes the asset calls it
+	/// before the instance goes, outside an event's dispatch. A close asked for one of them is
+	/// forgotten with it.
+	public void CloseAssetNow(Guid asset)
+	{
+		let pages = scope List<EditorPage>();
+		for (let open in mOpen)
+		{
+			if (open.Page.InstanceId == asset)
+				pages.Add(open.Page);
+		}
+		for (let page in pages)
+		{
+			mClosing.Remove(page);
+			CloseNow(page);
+		}
+	}
+
 	/// Closes every page now (the project closing): their resources go while the device lives.
 	public void CloseAll()
 	{

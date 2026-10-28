@@ -686,6 +686,33 @@ class EditorPagesTests
 		Test.Assert(bed.Counts.Closed == 2);
 	}
 
+	/// What deletes an asset closes its pages at once without asking, one with unsaved changes too
+	/// (said), a close asked for it forgotten; another asset's page stays, and with none open
+	/// nothing closes.
+	[Test]
+	public static void AnAssetsPagesCloseAtOnceWithoutAskingForItsDelete()
+	{
+		let bed = scope PagesBed("scratch_editor_pages_close_asset");
+		let one = bed.Pages.Open(bed.One);
+		Test.Assert(one != null);
+		Test.Assert(bed.Pages.Open(bed.Two) != null);
+		one.MarkDirty();
+		bed.Pages.Close(one); // asked for, at the next frame
+		bed.Pages.CloseAssetNow(bed.One.Id);
+		Test.Assert(bed.Pages.Count == 1, "at once");
+		Test.Assert(bed.Counts.Closed == 1);
+		Test.Assert(PagesBed.FindBox(bed.Root) == null, "nothing asked");
+		Test.Assert(bed.Statuses.Back == "Closed page had unsaved changes.");
+		Test.Assert(bed.Dock.Controller.Describe(PagesBed.PanelId(bed.One, .. scope .())) == null);
+		Test.Assert(bed.Dock.Controller.Describe(PagesBed.PanelId(bed.Two, .. scope .())) != null);
+		bed.Frame(); // the close asked for went with it
+		Test.Assert(bed.Counts.Closed == 1);
+		bed.Pages.CloseAssetNow(bed.One.Id); // none open
+		Test.Assert(bed.Pages.Count == 1);
+		Test.Assert(bed.Counts.Closed == 1);
+		bed.Pages.CloseAll();
+	}
+
 	[Test]
 	public static void ADirtyPageWithNowhereToAskStaysOpenClosingItWithoutAskingSaysItHadChanges()
 	{

@@ -84,26 +84,43 @@ class EditorAssetCreation
 	/// (the categories after the plain items, by name). The menu bar's File menu leads with these.
 	public void AddNewItems(Sedulous.GUI.Menu file)
 	{
-		let creators = mServices.Context.Creators;
+		AddCreatorItems(file, mServices.Context.Creators, false, scope [=this] (into, creator, inCategory) =>
+			{
+				if (inCategory)
+					into.AddItem(creator.Label, new [=creator, =this]() => { CreateAndOpen(creator); });
+				else
+					into.AddItem(scope $"New {creator.Label}", new [=creator, =this]() => { CreateAndOpen(creator); });
+			});
+	}
+
+	/// The creators as menu items, File > New's and the assets browser's New: `add` puts each
+	/// into `menu` (a creator with no category, in registration order) or into the submenu of its
+	/// category (`inCategory`), the categories after the plain items (`separated`: past a
+	/// separator), by name, each holding its creators in registration order.
+	public static void AddCreatorItems(Sedulous.GUI.Menu menu, AssetCreatorRegistry creators, bool separated,
+		delegate void(Sedulous.GUI.Menu into, AssetCreator creator, bool inCategory) add)
+	{
 		let categories = scope List<StringView>();
 		for (let creator in creators)
 		{
 			if (creator.Category.IsEmpty)
 			{
-				file.AddItem(scope $"New {creator.Label}", new [=creator, =this]() => { CreateAndOpen(creator); });
+				add(menu, creator, false);
 				continue;
 			}
 			if (!categories.Contains(creator.Category))
 				categories.Add(creator.Category);
 		}
 		categories.Sort(scope (a, b) => a <=> b);
+		if (separated && !categories.IsEmpty)
+			menu.AddSeparator();
 		for (let category in categories)
 		{
-			let submenu = file.AddSubMenu(category);
+			let submenu = menu.AddSubMenu(category);
 			for (let creator in creators)
 			{
 				if (creator.Category == category)
-					submenu.AddItem(creator.Label, new [=creator, =this]() => { CreateAndOpen(creator); });
+					add(submenu, creator, true);
 			}
 		}
 	}

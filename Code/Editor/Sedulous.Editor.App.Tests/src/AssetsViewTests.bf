@@ -48,7 +48,12 @@ class BrowserMeshBuilder : IAssetBuilder
 /// guid typed whole, braced or bare selecting its asset, the clear button and the state's verb, the
 /// type filter's menu and a type's display name, the toggles' checks, a type's glyph and tint, the
 /// cook badges (a tile marks only stale or failed) and the cells drawn again when a cook lands,
-/// another project's view starting at its top, and the filter's matching itself (AssetFilter).
+/// another project's view starting at its top, and the filter's matching itself (AssetFilter). And
+/// the verbs, AssetOperations': an asset's menu, a group's and the shown group's with New, each
+/// item reaching what it names, opened by a right click on the list or the tree; Delete asking,
+/// naming what goes, on the list or the tree, Cancel keeping it; and a row's or a tree group's
+/// name edited in place, by the models and by F2 or the menu's Rename, a refused name saying why
+/// and keeping the edit open, the rows of a database moved since never edited.
 static class AssetsViewTests
 {
 	/// The frame read from the repository's Data with the elements the editor's window registers
@@ -93,6 +98,15 @@ static class AssetsViewTests
 		public Instance Barrel;
 		public Instance Bell;
 		public List<Guid> Opened = new .() ~ delete _;
+		/// The verbs; borrowed by the view.
+		public AssetOperations Ops;
+		/// What New ran, by its creator's label, and the groups it ran into.
+		public List<String> Created = new .() ~ DeleteContainerAndItems!(_);
+		public List<Group> CreatedIn = new .() ~ delete _;
+		/// The notices said.
+		public List<String> Said = new .() ~ DeleteContainerAndItems!(_);
+		/// The GUI's clipboard, for the copies.
+		public LauncherClipboard Clipboard = new .() ~ delete _;
 		/// How often the store was asked to be saved.
 		public int Saves = 0;
 		/// The toolbar and the group tree are the sheet's to size.
@@ -122,6 +136,10 @@ static class AssetsViewTests
 			Context.ProjectEditorSettings = Store;
 			let bed = this;
 			Context.OnProjectEditorSettingsSaveRequested = new [=bed] () => { bed.Saves++; };
+			Context.OnNotice = new [=bed] (kind, message) => { bed.Said.Add(new String(message)); };
+			// New's creators: one with no category, one in a submenu.
+			Context.Creators.Register(new AssetCreator("Material", "", typeof(BrowserMesh), new (at) => null));
+			Context.Creators.Register(new AssetCreator("Cube", "Primitives", typeof(BrowserMesh), new (at) => null));
 			// The mesh has an icon of its own; the sound takes the generic asset's.
 			Icons = new EditorIcons(new (path) => (path == "Editor/Icons/Types/BrowserMesh.svg") || (path == "Editor/Icons/Types/Asset.svg"));
 			if (withCook)
@@ -132,10 +150,15 @@ static class AssetsViewTests
 				Cook = new .();
 				Cook.Initialize(Project, Builders);
 			}
+			let operations = new AssetOperationsServices();
+			operations.Context = Context; // no later: at once
+			operations.Cook = Cook;
+			Ops = new AssetOperations(operations);
 			let context = new GUIContext();
 			Root = new SceneRoot(context);
 			context.ReleaseRef(); // the root's keeps it
 			Root.Size = .(900.0f, 600.0f);
+			Root.EventDispatcher.Clipboard = Clipboard;
 			View = MakeView();
 			Root.AddChild(View.Content);
 			Layout();
@@ -148,6 +171,8 @@ static class AssetsViewTests
 			// store it borrows.
 			DeleteAndNullify!(Sheet);
 			DeleteAndNullify!(View);
+			delete Ops; // the view's, before the cook it reaches
+			Root.EventDispatcher.Clipboard = null;
 			if (Cook != null)
 			{
 				Cook.Shutdown();
@@ -175,6 +200,12 @@ static class AssetsViewTests
 			services.Icons = Icons;
 			let bed = this;
 			services.Open = new [=bed] (instance) => { bed.Opened.Add(instance.Id); };
+			services.Operations = Ops;
+			services.Create = new [=bed] (creator, group) =>
+				{
+					bed.Created.Add(new String(creator.Label));
+					bed.CreatedIn.Add(group);
+				};
 			let view = new AssetsView(services, LoadAssets());
 			Test.Assert((view.Content != null) && (view.List != null) && (view.Tree != null) && (view.Crumbs != null));
 			view.Content.EditLayoutStyle(scope (s) =>
@@ -302,6 +333,37 @@ static class AssetsViewTests
 		{
 			return View.Content.FindElement(id) as T;
 		}
+
+		public StringView LastSaid => Said.IsEmpty ? "" : Said.Back;
+
+		/// The open menu after `row`'s (-1: the shown group's) was asked for.
+		public Sedulous.GUI.Menu MenuFor(int32 row)
+		{
+			View.ShowMenuFor(row);
+			Layout();
+			return View.OpenMenu;
+		}
+
+		/// Activates the item `text` of the menu `row` shows (asserted there).
+		public void Choose(int32 row, StringView text)
+		{
+			let menu = MenuFor(row);
+			Test.Assert(menu != null);
+			let item = MenuRows.ItemNamed(menu, text);
+			Test.Assert(item != null, scope $"{text} in the menu");
+			Test.Assert(item.HandleActivate());
+		}
+
+		public void RightClick(Float2 at)
+		{
+			// A while after any press before, so this one is no double click.
+			Root.EventDispatcher.Tick(1.0f);
+			Root.EventDispatcher.InjectMouseMove(at);
+			Root.EventDispatcher.InjectMouseDown(at, .Right);
+			Root.EventDispatcher.InjectMouseUp(at, .Right);
+		}
+
+		public bool Press(KeyCode key) => Root.EventDispatcher.InjectKeyDown((uint32)key);
 	}
 
 	/// Content at the top, its subgroups then its assets; entering a group (as Enter or a double
@@ -820,5 +882,311 @@ static class AssetsViewTests
 		let nameLine = BaselineOf(barrel.NameLabel);
 		let kindLine = BaselineOf(barrel.KindLabel);
 		Test.Assert(Math.Abs(nameLine - kindLine) < 0.1f, scope $"the name's baseline at {nameLine}, the kind's at {kindLine}");
+	}
+
+	/// An asset's menu: what acts on it, then what acts on the selection holding it (else on it
+	/// alone), each item reaching what it names (the copies on the clipboard, the guid hyphened; the
+	/// star and the export flag shown after); a group's row's; the shown group's, with New from the
+	/// creators by category into it and New Group (made, shown, in the tree, a folder), Content's
+	/// cooking all and neither renamed, flagged nor deleted. A right click on a row, on the list's
+	/// empty room or on the tree opens them.
+	[Test]
+	public static void AnAssetsMenuAGroupsAndTheShownGroupsWithNewEachItemReachingWhatItNames()
+	{
+		let bed = scope Bed("scratch_assets_view_menus");
+		let view = bed.View;
+		let list = view.List;
+		let crate = bed.RowOf("Crate");
+		list.SelectedItem = crate;
+		var menu = bed.MenuFor(crate);
+		Test.Assert(menu != null);
+		Test.Assert(MenuRows.Is(menu, "Open|-|Rename|Duplicate|-|Copy GUID|Copy Path|Pin as Favourite|Always Export|-|Cook|Rebuild|-|Delete..."));
+		Test.Assert(MenuRows.ItemNamed(menu, "Rename").Shortcut == "F2");
+		Test.Assert(MenuRows.ItemNamed(menu, "Delete...").Shortcut == "Del");
+		let always = MenuRows.ItemNamed(menu, "Always Export");
+		Test.Assert(always.Checkable && !always.Checked);
+		Test.Assert(MenuRows.ItemNamed(menu, "Open").HandleActivate());
+		Test.Assert((bed.Opened.Count == 1) && (bed.Opened[0] == bed.Crate.Id));
+		bed.Choose(crate, "Copy GUID");
+		Test.Assert(bed.Clipboard.Held == bed.Crate.Id.ToString(.. scope .(), 'D'));
+		Test.Assert(bed.LastSaid == "Copied GUID");
+		bed.Choose(crate, "Copy Path");
+		Test.Assert(bed.Clipboard.Held == "Crate");
+		Test.Assert(bed.LastSaid == "Copied path");
+		bed.Choose(crate, "Pin as Favourite");
+		Test.Assert(bed.Context.IsFavorite(bed.Crate.Id));
+		Test.Assert(bed.Cell(crate).ShowsStar, "its star at once");
+		bed.Choose(crate, "Always Export");
+		Test.Assert(bed.Project.ExportRoots.HasInstance(bed.Crate.Id));
+		Test.Assert(bed.LastSaid == "Crate is always exported.");
+		menu = bed.MenuFor(crate);
+		Test.Assert(MenuRows.ItemNamed(menu, "Unpin Favourite") != null);
+		Test.Assert(MenuRows.ItemNamed(menu, "Always Export").Checked);
+		menu.Close();
+		bed.Choose(crate, "Duplicate");
+		Test.Assert(bed.LastSaid == "The duplicate failed (see the Console).", "the bed's assets are never written: nothing to copy");
+		bed.Choose(crate, "Delete...");
+		var confirm = view.OpenConfirm;
+		Test.Assert((confirm != null) && confirm.Message.StartsWith("Delete Crate?"));
+		Test.Assert(confirm.ButtonAt(0).HandleActivate()); // Cancel
+		Test.Assert(bed.Project.SourceDb.GetInstance(bed.Crate.Id) != null);
+
+		// The selection holding the row, else the row alone.
+		view.Navigate(bed.Town);
+		list.SelectAll();
+		menu = bed.MenuFor(bed.RowOf("Barrel"));
+		Test.Assert(MenuRows.Is(menu, "Open|-|Rename|Duplicate|-|Copy GUID|Copy Path|Pin as Favourite|Always Export|-|Cook 2 Assets|Rebuild 2 Assets|-|Delete 2 Assets..."));
+		Test.Assert(MenuRows.ItemNamed(menu, "Delete 2 Assets...").HandleActivate());
+		confirm = view.OpenConfirm;
+		Test.Assert(confirm != null);
+		Test.Assert(confirm.Title == "Delete 2 Assets");
+		Test.Assert(confirm.Message == "Delete Barrel and Bell? Their source files and cooked products go, and their open pages close.");
+		Test.Assert(confirm.ButtonAt(0).HandleActivate());
+		list.SelectedItem = bed.RowOf("Bell");
+		menu = bed.MenuFor(bed.RowOf("Barrel"));
+		Test.Assert(MenuRows.ItemNamed(menu, "Cook") != null, "the selection does not hold it: it alone");
+		Test.Assert(MenuRows.ItemNamed(menu, "Delete...") != null);
+		menu.Close();
+
+		// A group's row.
+		view.Navigate(bed.Top);
+		let models = bed.RowOf("Models");
+		menu = bed.MenuFor(models);
+		Test.Assert(MenuRows.Is(menu, "Open|-|Rename|Always Export Its Contents|-|Cook Group|Rebuild Group|-|Delete Group..."));
+		Test.Assert(MenuRows.ItemNamed(menu, "Rename").Shortcut == "F2");
+		Test.Assert(!MenuRows.ItemNamed(menu, "Always Export Its Contents").Checked);
+		menu.Close();
+		bed.Choose(models, "Always Export Its Contents");
+		Test.Assert(bed.Project.ExportRoots.HasGroup("Models"));
+		Test.Assert(bed.LastSaid == "Everything in Models is always exported.");
+		menu = bed.MenuFor(models);
+		Test.Assert(MenuRows.ItemNamed(menu, "Always Export Its Contents").Checked);
+		menu.Close();
+		bed.Choose(models, "Delete Group...");
+		confirm = view.OpenConfirm;
+		Test.Assert((confirm != null) && (confirm.Title == "Delete Group"));
+		Test.Assert(confirm.ButtonAt(0).HandleActivate());
+		bed.Choose(models, "Open");
+		Test.Assert(view.CurrentGroup == bed.Models);
+
+		// The group shown: Content's makes new things and cooks all.
+		view.Navigate(bed.Top);
+		menu = bed.MenuFor(-1);
+		Test.Assert(MenuRows.Is(menu, "New>|New Group|-|Cook All|Rebuild All"), "Content: neither renamed, flagged nor deleted");
+		let create = MenuRows.SubMenuNamed(menu, "New");
+		Test.Assert(create != null);
+		Test.Assert(MenuRows.Is(create, "Material|-|Primitives>"));
+		let primitives = MenuRows.SubMenuNamed(create, "Primitives");
+		Test.Assert((primitives != null) && MenuRows.Is(primitives, "Cube"));
+		Test.Assert(MenuRows.ItemNamed(create, "Material").HandleActivate());
+		Test.Assert((bed.Created.Count == 1) && (bed.Created[0] == "Material") && (bed.CreatedIn[0] == bed.Top));
+		// Another's, into it.
+		view.Navigate(bed.Town);
+		menu = bed.MenuFor(-1);
+		Test.Assert(MenuRows.Is(menu, "New>|New Group|-|Rename|Always Export Its Contents|-|Cook Group|Rebuild Group|-|Delete Group..."));
+		Test.Assert(MenuRows.ItemNamed(MenuRows.SubMenuNamed(MenuRows.SubMenuNamed(menu, "New"), "Primitives"), "Cube").HandleActivate());
+		Test.Assert((bed.Created.Count == 2) && (bed.Created[1] == "Cube") && (bed.CreatedIn[1] == bed.Town), "into the group shown");
+		bed.Choose(-1, "New Group");
+		let made = view.CurrentGroup;
+		Test.Assert((made != null) && (made.Name == "Group") && (made.Parent == bed.Town), "made and shown");
+		Test.Assert(bed.TreeItem("Group") >= 0, "in the tree");
+		Test.Assert(view.Tree.SelectedItem == bed.TreeItem("Group"));
+		Test.Assert(bed.Project.SourceDb.Mount.Exists("Models/Town/Group"), "a folder while empty");
+
+		// A right click: on a row its menu, on the list's empty room and on the tree the shown group's.
+		view.Navigate(bed.Top);
+		bed.Root.MutationQueue.Drain(); // the menus and questions closed, out of the tree
+		bed.Layout();
+		bed.RightClick(bed.Middle(list, bed.RowOf("Crate")));
+		menu = view.OpenMenu;
+		Test.Assert((menu != null) && (MenuRows.ItemNamed(menu, "Duplicate") != null), "a row's");
+		menu.Close();
+		bed.Root.MutationQueue.Drain(); // the closed menu out of the tree
+		bed.Layout();
+		let room = list.ConvertToWorldSpace(.(list.Size.X - 8.0f, list.Size.Y - 8.0f));
+		Test.Assert(list.ItemAt(room) < 0, "no row there");
+		bed.RightClick(room);
+		menu = view.OpenMenu;
+		Test.Assert((menu != null) && MenuRows.Is(menu, "New>|New Group|-|Cook All|Rebuild All"), "the shown group's");
+		menu.Close();
+		bed.Root.MutationQueue.Drain();
+		bed.RightClick(bed.Middle(view.Tree, 0)); // Content, the group shown
+		menu = view.OpenMenu;
+		Test.Assert((menu != null) && (MenuRows.ItemNamed(menu, "New Group") != null), "the tree's: the group shown");
+		menu.Close();
+	}
+
+	/// Delete asks first, naming what goes and what follows: on the list the selected assets, else
+	/// the selected group's row (what it holds counted); on the tree the group shown, Content
+	/// never. Cancel keeps them; Delete deletes, what showed a deleted group moving to its parent.
+	[Test]
+	public static void DeleteAsksNamingWhatGoesCancelKeepsThemDeleteDeletes()
+	{
+		let bed = scope Bed("scratch_assets_view_delete");
+		let view = bed.View;
+		let list = view.List;
+		list.SelectedItem = bed.RowOf("Crate");
+		Test.Assert(list.FocusElement());
+		bed.Press(.Delete);
+		var confirm = view.OpenConfirm;
+		Test.Assert(confirm != null);
+		Test.Assert(confirm.Title == "Delete Asset");
+		Test.Assert(confirm.Message == "Delete Crate? Its source file and cooked product go, and its open pages close.");
+		Test.Assert(confirm.ButtonCount == 2);
+		Test.Assert((confirm.ButtonAt(0).Text == "Cancel") && (confirm.ButtonAt(1).Text == "Delete"));
+		Test.Assert(confirm.GetButtonRole(1) == .Destructive);
+		Test.Assert(confirm.ButtonAt(0).HandleActivate()); // Cancel
+		Test.Assert(view.OpenConfirm == null);
+		let crate = bed.Crate.Id;
+		Test.Assert(bed.Project.SourceDb.GetInstance(crate) != null, "kept");
+		Test.Assert(list.FocusElement());
+		bed.Press(.Delete);
+		confirm = view.OpenConfirm;
+		Test.Assert(confirm != null);
+		Test.Assert(confirm.ButtonAt(1).HandleActivate()); // Delete
+		Test.Assert(bed.Project.SourceDb.GetInstance(crate) == null);
+		view.Refresh();
+		Test.Assert(bed.RowsAre("/Models /Sounds"));
+
+		// A group's row, what it holds all the way down counted.
+		view.Navigate(bed.Town);
+		list.SelectedItem = bed.RowOf("Bell");
+		Test.Assert(list.FocusElement());
+		bed.Press(.Delete);
+		confirm = view.OpenConfirm;
+		Test.Assert((confirm != null) && confirm.ButtonAt(1).HandleActivate());
+		view.Navigate(bed.Top);
+		list.SelectedItem = bed.RowOf("Models");
+		Test.Assert(list.FocusElement());
+		bed.Press(.Delete);
+		confirm = view.OpenConfirm;
+		Test.Assert(confirm != null);
+		Test.Assert(confirm.Title == "Delete Group");
+		Test.Assert(confirm.Message == "Delete the group Models and the asset in it? Its source file and cooked product go, and its open page closes.");
+		Test.Assert(confirm.ButtonAt(0).HandleActivate());
+		Test.Assert(bed.Town.CreateInstance("Keg", bed.MeshName) != null);
+		view.Refresh();
+		list.SelectedItem = bed.RowOf("Models");
+		Test.Assert(list.FocusElement());
+		bed.Press(.Delete);
+		confirm = view.OpenConfirm;
+		Test.Assert(confirm != null);
+		Test.Assert(confirm.Message == "Delete the group Models and the 2 assets in it? Their source files and cooked products go, and their open pages close.");
+		let barrel = bed.Barrel.Id;
+		view.Navigate(bed.Town); // shown inside it: moved out before it goes
+		Test.Assert(confirm.ButtonAt(1).HandleActivate());
+		Test.Assert(bed.Top.GetGroup("Models") == null);
+		Test.Assert(bed.Project.SourceDb.GetInstance(barrel) == null);
+		Test.Assert(view.CurrentGroup == bed.Top);
+		view.Refresh();
+		Test.Assert(bed.RowsAre("/Sounds"));
+		Test.Assert(bed.TreeItem("Models") < 0);
+
+		// The tree: the group shown, an empty one said so; Content never.
+		Test.Assert(view.Tree.FocusElement());
+		bed.Press(.Delete);
+		Test.Assert(view.OpenConfirm == null, "Content is not deleted");
+		view.Navigate(bed.Sounds);
+		Test.Assert(view.Tree.FocusElement());
+		bed.Press(.Delete);
+		confirm = view.OpenConfirm;
+		Test.Assert(confirm != null);
+		Test.Assert(confirm.Message == "Delete the empty group Sounds?");
+		Test.Assert(confirm.ButtonAt(1).HandleActivate());
+		Test.Assert(bed.Top.GetGroup("Sounds") == null);
+		Test.Assert(view.CurrentGroup == bed.Top, "moved to its parent first");
+	}
+
+	/// A row's name edited in place renames its asset or its group, a tree node's its group,
+	/// through the models; a refused name says why and keeps the edit open, as F2's edit shows; the
+	/// menu's Rename edits once the menu has closed, a shown group's in the tree; Content's node is
+	/// not edited, nor the rows or the tree of a database moved since, until they are built again.
+	[Test]
+	public static void ARowsNameAndATreeGroupsEditedInPlaceRenameThemARefusedNameSayingWhyAndKept()
+	{
+		let bed = scope Bed("scratch_assets_view_rename");
+		let view = bed.View;
+		let rows = view.List.Model;
+		let crate = bed.RowOf("Crate");
+		Test.Assert(rows.IsEditable(rows.Index(crate)));
+		Test.Assert(rows.SetData(rows.Index(crate), Sedulous.GUI.Variant(StringView("Box"))));
+		Test.Assert(bed.Crate.Name == "Box");
+		Test.Assert(!rows.IsEditable(rows.Index(crate)), "the database moved: its rows are not edited till built again");
+		view.Refresh();
+		let boxRow = bed.RowOf("Box");
+		Test.Assert(rows.IsEditable(rows.Index(boxRow)));
+		Test.Assert(!rows.SetData(rows.Index(boxRow), Sedulous.GUI.Variant(StringView("a:b"))));
+		Test.Assert(bed.LastSaid == "A name cannot hold :.");
+		Test.Assert(bed.Crate.Name == "Box");
+		// A group's row.
+		Test.Assert(rows.SetData(rows.Index(bed.RowOf("Models")), Sedulous.GUI.Variant(StringView("Props"))));
+		Test.Assert(bed.Models.Name == "Props");
+		view.Refresh();
+		Test.Assert(!rows.SetData(rows.Index(bed.RowOf("Props")), Sedulous.GUI.Variant(StringView("Sounds"))));
+		Test.Assert(bed.LastSaid == "Sounds is already there.");
+
+		// The tree's nodes.
+		let tree = view.Tree;
+		let groups = tree.Model;
+		Test.Assert(!groups.IsEditable(tree.GetItemIndex(0)), "Content");
+		let town = bed.TreeItem("Town");
+		Test.Assert(town >= 0);
+		Test.Assert(groups.IsEditable(tree.GetItemIndex(town)));
+		Test.Assert(groups.SetData(tree.GetItemIndex(town), Sedulous.GUI.Variant(StringView("Village"))));
+		Test.Assert(bed.Town.Name == "Village");
+		Test.Assert(!groups.IsEditable(tree.GetItemIndex(town)), "the tree of the database as it was");
+		view.Refresh();
+		let village = bed.TreeItem("Village");
+		Test.Assert(village >= 0);
+		Test.Assert(!groups.SetData(tree.GetItemIndex(village), Sedulous.GUI.Variant(StringView("a*b"))));
+		Test.Assert(bed.LastSaid == "A name cannot hold *.");
+		Test.Assert(bed.Town.Name == "Village");
+
+		// F2 on the list: a refused name keeps the edit open, marked.
+		view.SetTiles(false);
+		bed.Layout();
+		let list = view.List;
+		list.SelectedItem = bed.RowOf("Box");
+		Test.Assert(list.FocusElement());
+		bed.Press(.F2);
+		Test.Assert(list.IsEditing);
+		Test.Assert(list.Editor.Text == "Box");
+		list.Editor.Text = "a/b";
+		Test.Assert(!list.EndEdit(true));
+		Test.Assert(list.IsEditing && list.Editor.HasClass("invalid"), "kept open, marked");
+		Test.Assert(bed.LastSaid == "A name cannot hold /.");
+		list.Editor.Text = "Anvil";
+		Test.Assert(list.EndEdit(true));
+		Test.Assert(!list.IsEditing);
+		Test.Assert(bed.Crate.Name == "Anvil");
+		view.Refresh();
+
+		// F2 on the tree.
+		tree.SelectedItem = bed.TreeItem("Village");
+		Test.Assert(tree.FocusElement());
+		bed.Press(.F2);
+		Test.Assert(tree.IsEditing);
+		tree.Editor.Text = "Hamlet";
+		Test.Assert(tree.EndEdit(true));
+		Test.Assert(bed.Town.Name == "Hamlet");
+		view.Refresh();
+
+		// The menu's Rename, once the menu has closed (its close gives the list the focus back).
+		bed.Layout();
+		bed.Choose(bed.RowOf("Anvil"), "Rename");
+		Test.Assert(!list.IsEditing, "not while the menu closes");
+		bed.Root.MutationQueue.Drain();
+		Test.Assert(list.IsEditing);
+		Test.Assert(list.Editor.Text == "Anvil");
+		Test.Assert(list.EndEdit(false));
+		Test.Assert(bed.Crate.Name == "Anvil");
+		// The shown group's, in the tree.
+		view.Navigate(bed.Town);
+		bed.Choose(-1, "Rename");
+		Test.Assert(!tree.IsEditing);
+		bed.Root.MutationQueue.Drain();
+		Test.Assert(tree.IsEditing);
+		Test.Assert(tree.Editor.Text == "Hamlet");
+		Test.Assert(tree.EndEdit(false));
 	}
 }

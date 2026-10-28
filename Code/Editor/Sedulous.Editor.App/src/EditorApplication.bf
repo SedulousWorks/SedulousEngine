@@ -77,6 +77,9 @@ class EditorApplication : IApplication
 	private EditorDock mDock = new .() ~ delete _;
 	/// Made with the application: every frame hands them its hooks, a window or not.
 	private EditorPages mPages ~ delete _;
+	/// Rename, duplicate, delete, cook: the assets browser's and an agent's. Made with the
+	/// application; after the pages its closes reach, so it goes first.
+	private AssetOperations mAssetOps ~ delete _;
 	/// The frame's menu bar, from the actions: made in OnStartup once they are all declared.
 	private ActionMenuBar mMenus = null ~ delete _;
 	/// The actions' keys in the GUI's keymap, made with the menu bar.
@@ -142,6 +145,7 @@ class EditorApplication : IApplication
 		// domain folds its thumbnail generator in, runs before the project opens.
 		mContext.Thumbnails = mThumbnailService;
 		mPages = new EditorPages(PagesServices());
+		mAssetOps = new AssetOperations(AssetOpsServices());
 		mCreation = new EditorAssetCreation(CreationServices());
 		mSession = new EditorSession(SessionServices());
 		mManagerMode = new ProjectManagerMode(ManagerModeServices());
@@ -188,6 +192,33 @@ class EditorApplication : IApplication
 		services.OnOpenPage = new (instance) => { mPages.Open(instance); };
 		// The assets view shows the new row once it is on the GUI.
 		return services;
+	}
+
+	/// What the assets' verbs reach: a deleted asset's pages closed at once, a confirmed delete
+	/// run at the GUI's next drain (after the event that answered it).
+	private AssetOperationsServices AssetOpsServices()
+	{
+		let services = new AssetOperationsServices();
+		services.Context = mContext;
+		services.Cook = mCookService;
+		services.ClosePages = new (id) => { mPages.CloseAssetNow(id); };
+		services.Later = new (work) => { Later(work); };
+		return services;
+	}
+
+	/// `work` at the main window's GUI's next drain; at once with no window. TAKES OWNERSHIP of
+	/// `work`.
+	private void Later(delegate void() work)
+	{
+		let root = mWindow.Root;
+		let queue = (root != null) ? root.MutationQueue : null;
+		if (queue == null)
+		{
+			defer delete work;
+			work();
+			return;
+		}
+		queue.Enqueue(work);
 	}
 
 	/// The pages in the dock; their dialogs over the main window.
@@ -450,9 +481,10 @@ class EditorApplication : IApplication
 		// The pages, over the paths the tabs take (a close at the next frame).
 		mcpServices.OpenPage = new (id) => mPages.Open(id);
 		mcpServices.ClosePage = new (page) => { mPages.Close(page); };
+		// An agent's delete is the browser's own: its pages closed, the default scene let go.
+		mcpServices.DeleteAsset = new (id) => mAssetOps.DeleteOne(id);
 		// The windows' screenshots, over the same capture as View > Screenshot. The import notice
-		// comes back with its layer; an agent's delete takes the database's own until the assets
-		// view is on the GUI.
+		// comes back with its layer.
 		mcpServices.Windows = new (outWindows) => { CapturableWindows(outWindows); };
 		mcpServices.RequestShots = new (requests) => { mWindowCapture.Request(requests); };
 		mcpServices.Shots = new (outShots) => { mWindowCapture.Shots(outShots); };
@@ -536,6 +568,8 @@ class EditorApplication : IApplication
 			RefServices(); // the type icons
 			assets.Icons = mTypeIcons;
 			assets.Open = new (instance) => { mPages.Open(instance); };
+			assets.Operations = mAssetOps;
+			assets.Create = new (creator, group) => { mCreation.CreateAndOpen(creator, group); };
 			mAssets = new AssetsView(assets, mWindow.LoadMarkup(AssetsView.cMarkupPath));
 			// A slot's reveal (and any other) shows the asset where it lives, the panel to the front.
 			delete mContext.RevealAsset;

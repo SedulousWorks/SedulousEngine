@@ -61,19 +61,7 @@ corlib = "*"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "AssetNameLabel.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "AssetsViewEditing.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "AssetsViewImport.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "AssetsViewMenus.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
