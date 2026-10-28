@@ -718,12 +718,7 @@ class AssetsView
 		{
 			shown.Group = true;
 			shown.Glyph = "Editor/Icons/folder.svg";
-			shown.Name = row.Group.Name;
-			let count = row.Group.Groups.Count + row.Group.Instances.Count;
-			if (count == 1)
-				kind.Set("Group, 1 item");
-			else
-				kind.AppendF("Group, {} items", count);
+			shown.Name = row.Group.Name; // its folder says what it is
 		}
 		else
 		{

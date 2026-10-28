@@ -497,8 +497,9 @@ static class AssetsViewTests
 		Test.Assert(crate.Tooltip == "Crate (BrowserMesh)");
 		let models = bed.Cell(bed.RowOf("Models"));
 		Test.Assert(models.HasClass("group") && (models.Glyph == "Editor/Icons/folder.svg"));
-		Test.Assert(models.Kind == "Group, 1 item");
-		Test.Assert(bed.Cell(bed.RowOf("Sounds")).Kind == "Group, 0 items");
+		Test.Assert(models.Kind.IsEmpty, "its folder says it is a group: no words for it");
+		Test.Assert(models.Tooltip == "Models", "its tile named without an empty kind");
+		Test.Assert(bed.Cell(bed.RowOf("Sounds")).Kind.IsEmpty);
 
 		Test.Assert(list.HandleActivate());
 		Test.Assert(!view.ShowsTiles);

@@ -76,10 +76,12 @@ class AssetCell : UIWidget
 			AddClass("group");
 		else
 			RemoveClass("group");
-		if (mTile)
-			Tooltip = scope String()..AppendF("{} ({})", shown.Name, shown.Kind);
-		else
+		if (!mTile)
 			Tooltip = "";
+		else if (shown.Kind.IsEmpty)
+			Tooltip = shown.Name; // a group: its folder says what it is
+		else
+			Tooltip = scope String()..AppendF("{} ({})", shown.Name, shown.Kind);
 	}
 
 	public StringView Name => mName.Text;
