@@ -26,7 +26,7 @@ static class SceneViewPrefs
 
 	/// The stored state for `scene`, or `fallback` (the page's current state) when nothing
 	/// was saved, the store is absent, or the scene has no identity yet.
-	public static SceneViewState Load(Settings store, Guid scene, SceneViewState fallback)
+	public static SceneOverlaySettings Load(Settings store, Guid scene, SceneOverlaySettings fallback)
 	{
 		if (let pref = Find(store, scene))
 			return pref.State;
@@ -34,7 +34,7 @@ static class SceneViewPrefs
 	}
 
 	/// Upserts `scene`'s state; false, nothing written, for a null store or a nil scene.
-	public static bool Save(Settings store, Guid scene, SceneViewState state)
+	public static bool Save(Settings store, Guid scene, SceneOverlaySettings state)
 	{
 		let pref = Upsert(store, scene);
 		if (pref == null)

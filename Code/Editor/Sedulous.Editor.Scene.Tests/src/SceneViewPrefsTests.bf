@@ -17,7 +17,7 @@ class SceneViewPrefsTests
 
 		let store = scope Settings();
 		// No entry yet: the caller's fallback (the page's current state) comes back untouched.
-		let fb = SceneViewState(true, false);
+		let fb = SceneOverlaySettings(true, false);
 		Test.Assert(SceneViewPrefs.Load(store, sceneA, fb).ShowGrid == true);
 		Test.Assert(SceneViewPrefs.Load(store, sceneA, fb).ShowLodOverlay == false);
 
@@ -114,7 +114,7 @@ class SceneViewPrefsTests
 			SceneViewSplits(0.31f, 0.64f, 0.55f)));
 		Test.Assert(SceneViewPrefs.SaveView(store, sceneB, .(.(0.0f, 0.0f, 0.0f), 0.0f, 0.0f, 5.0f), Span<Guid>()));
 		// The grid's plane and style, per scene, saved with the toggles.
-		var gridState = SceneViewState();
+		var gridState = SceneOverlaySettings();
 		gridState.GridPlane = .YZ;
 		gridState.GridLines = true;
 		Test.Assert(SceneViewPrefs.Save(store, sceneA, gridState));
@@ -165,7 +165,7 @@ class SceneViewPrefsTests
 		SceneEditorSerializables.RegisterAll();
 		let sceneA = Guid(11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12);
 		let sceneB = Guid(13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14);
-		let fb = SceneViewState();
+		let fb = SceneOverlaySettings();
 		Test.Assert(!fb.ShowMarkers);
 		// A pref read from a file without the key (before version 3) keeps the field's default.
 		Test.Assert(!scope SceneViewPref().ShowMarkers);
@@ -195,7 +195,7 @@ class SceneViewPrefsTests
 		SceneEditorSerializables.RegisterAll();
 		let sceneA = Guid(15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16);
 		let sceneB = Guid(17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18);
-		let fb = SceneViewState();
+		let fb = SceneOverlaySettings();
 		Test.Assert(!fb.ShowFps);
 
 		let store = scope Settings();

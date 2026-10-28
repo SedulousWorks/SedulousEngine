@@ -1,7 +1,7 @@
 namespace Sedulous.Editor.Scene;
 
 /// The per scene view toggles a scene page keeps: what the viewport overlays.
-struct SceneViewState
+struct SceneOverlaySettings
 {
 	public bool ShowGrid = true;
 	public bool ShowLodOverlay = false;

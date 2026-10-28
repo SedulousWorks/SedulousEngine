@@ -16,12 +16,12 @@ namespace Sedulous.Editor.Scene;
 /// document types; the export's seams (a scene's text source transcoded to the binary wire, the
 /// assets a scene references for the export's closure); and a model import's prefab and scene,
 /// generated once the import lands. Taken out of SceneEditor.Register as it was, so the export
-/// and model imports work while the page moves onto the GUI (Raptor's editor-gui spec, 5.3); the
-/// page's registration calls this when it is ported, dropping its copy.
+/// and model imports worked while the page moved onto the GUI (Raptor's editor-gui spec, 5.3);
+/// SceneEditor.Register calls it beside the pages.
 static class SceneServices
 {
-	/// Called by the executable beside the pages' registration; `host` is kept by the import
-	/// listener, which rebuilds the placed instances of a regenerated prefab in its scenes.
+	/// Called by SceneEditor.Register beside the pages; `host` is kept by the import listener,
+	/// which rebuilds the placed instances of a regenerated prefab in its scenes.
 	public static void Register(EditorContext context, IApplicationHost host)
 	{
 		SceneResources.RegisterAll();

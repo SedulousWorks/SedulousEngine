@@ -6,482 +6,260 @@ using Sedulous.Core.IO;
 using Sedulous.Content;
 using Sedulous.Messaging;
 using Sedulous.Shell;
-using Sedulous.Runtime.Client;
 using Sedulous.Graphics;
-using Sedulous.RHI;
-using Sedulous.Resource;
+using Sedulous.Runtime.Client;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Engine.Scene;
 using Sedulous.Render;
 using Sedulous.Engine.Render;
 using Sedulous.Engine.UI;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
-using Sedulous.UI.Runtime;
-using Sedulous.UI.Viewport;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Camera;
-using Sedulous.Engine.DefaultApp;
-using Sedulous.Image;
 using Sedulous.Editor.ViewportTools;
-using Sedulous.Editor.PropertyAnimation;
 
 namespace Sedulous.Editor.Scene;
 
-/// A scene or prefab open for editing: the hierarchy, the viewport with its toolbar and
-/// tools, the inspector, the bottom dock with the animation panel and the tool panel, and
-/// the camera preview. The scene lives in the page's own SceneManager, registered with the
-/// scene subsystem so the engine's systems see it; simulation stays off until Simulate.
-///
-/// The context, host and UI host are borrowed; the page owns its edit context, tools, gizmo
-/// registry and views, and releases its content view on destruction.
+// SceneEditorPage: the scene (and prefab) document editor, on the GUI from markup
+// (Data/Editor/Scene.gml; Raptor's editor-gui spec, 5.3, layer 2). Each page owns its own live
+// scene, in its own scene manager (several pages are open at once; everything scene scoped is per
+// page), and is made of parts: its viewport (the renderer drawing the scene into it, the camera,
+// picking, the capture), its overlays, Simulate, the prefab flows and the view state kept per scene,
+// each a class of its own. The page holds them together: it loads the scene, edits it through its
+// edit context and its tools, saves it, follows a change made elsewhere, and says on the page when
+// the scene did not load (and then refuses to save over it). Its bar's Save, Undo and Redo act on
+// this page. The hierarchy and the inspector take their panes in the next layers.
+
+/// What a page asks of the editor. Borrowed but the markup loader, the services' own.
+class SceneEditorPageServices
+{
+	public IApplicationHost Host = null;
+	/// What draws its viewport (null: none, a test).
+	public GuiHost Gui = null;
+	/// The page's markup by its path under the data root: a node with one reference, the caller's.
+	public delegate Node(StringView path) LoadMarkup ~ delete _;
+	/// The asset picker and the rest an asset slot asks (null: no picking, a test).
+	public ResourceRefServices Refs = null;
+}
+
 class SceneEditorPage : UIEditorPage, ISceneEditorPage
 {
+	public const String cPath = "Editor/Scene.gml";
+
 	private EditorContext mContext;
-	private IApplicationHost mHost;
-	private UIHost mUiHost;
+	private SceneEditorPageServices mServices ~ delete _;
+	/// The context's (registry and tick).
 	private SceneSubsystem mScenes = null;
-	/// This page's OWN scene group.
+	/// This page's own scene group.
 	private SceneManager mSceneManager = new .() ~ delete _;
-	/// The page's run scope bus, for edit mode Simulate.
+	/// The page's run scope (edit mode Simulate).
 	private EventBus mPageEvents = new .() ~ delete _;
-	private RenderSubsystem mRender = null;
-	private UISubsystem mGameUI = null;
-	/// The engine GUI's textures seam. BORROWED.
-	private Sedulous.Engine.GUI.GuiSubsystem mGameGui = null;
-
 	private String mTitle = new .() ~ delete _;
-	/// Owned by the page's scene manager.
+	/// The scene manager's.
 	private Sedulous.Scene.Scene mScene = null;
-	private SceneEditContext mEditContext = null ~ delete _;
-	/// [hierarchy | viewport | inspector] over the bottom dock.
-	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
-	private SceneHierarchyView mHierarchy = null;
-	private SceneInspectorView mInspector = null;
-	private Toolbar mToolbar = null;
-	/// The viewport's ephemeral post flags and debug view; neither is serialized.
-	private ViewPostOverride mPostOverride = .();
-	private ViewDebugView mDebugView = new .() ~ delete _;
-
-	private ToolbarButton mPlayButton = null;
-	private ToolbarToggle mPauseToggle = null;
-	/// The bottom dock's Animation tab, from the bar.
-	private ToolbarToggle mAnimationToggle = null;
-	private ToolbarButton mStopButton = null;
-	private Label mSimLabel = null;
-	private SceneSnapshot mSimSnapshot = null ~ delete _;
-	private bool mIsSimulating = false;
-	private bool mIsPaused = false;
-	/// The camera owned the pointer and keys last frame (a fly, an orbit, a capture): the gizmo
-	/// keys are the camera's then, so the gizmo mode actions refuse.
-	private bool mCameraOwnsInput = false;
-	private ToolbarToggle mTranslateToggle = null;
-	private ToolbarToggle mRotateToggle = null;
-	private ToolbarToggle mScaleToggle = null;
-	private ToolbarToggle mSpaceToggle = null;
-	/// The gizmo's vertex snap mode.
-	private ToolbarToggle mVertexSnapToggle = null;
-	/// One dropdown over the editor's debug draws: grid, entity markers, LOD overlay, the
-	/// edit time collider wireframes and the frame rate. Borrowed; the toolbar owns it.
-	private ToolbarMenuButton mOverlaysButton = null;
-
-	// The frame rate readout samples half second windows, so it is legible rather than a blur.
-	private double mFpsWindowSeconds = 0.0;
-	private uint32 mFpsWindowFrames = 0;
-	private String mFpsText = new .() ~ delete _;
-	/// Shown for a moment after each wheel zoom.
-	private ZoomReadout mZoomReadout = new .() ~ delete _;
+	private bool mLoadFailed = false;
+	private bool mIsPrefab = false;
+	/// Every edit, as this page's commands.
+	private SceneEditContext mEditContext = null;
+	private SceneViewport mViewport ~ delete _;
+	private SceneOverlays mOverlays = new .() ~ delete _;
+	private SceneSimulation mSimulation = new .() ~ delete _;
+	private PrefabFlows mPrefabs = null ~ delete _;
+	/// After mEditContext (the tools borrow it), so deleted first.
+	private ViewportToolManager mViewportTools = new .() ~ delete _;
+	/// The manager's default tool.
+	private SelectTransformTool mSelectTool = null;
+	private GizmoRendererRegistry mComponentGizmos = new .() ~ delete _;
 	/// A press that began on the orientation gizmo, until its release.
 	private bool mViewGizmoPressed = false;
-	private SceneViewState mView = .();
-	private List<(ToolbarToggle toggle, String id)> mToolToggles = new .() ~ { for (var t in _) delete t.id; delete _; };
-	/// A category's dropdown over the tools registered under it.
-	private List<ToolMenu> mToolMenus = new .() ~ DeleteContainerAndItems!(_);
-
-	private ViewportToolManager mViewportTools = new .() ~ delete _;
-	/// Borrowed; the manager owns the default tool.
-	private SelectTransformTool mSelectTool = null;
-
-	/// The GPU pick seam the tools see: the render subsystem's RequestPick keyed by THIS
-	/// page's viewport, the same key its RenderScene call carries, hits decoded to entity
-	/// handles.
-	private class ViewportPicker : IViewportPicker
-	{
-		private SceneEditorPage mPage;
-		private PickResult mResult = new .() ~ delete _;
-
-		public this(SceneEditorPage page) { mPage = page; }
-
-		public uint32 RequestPick(int32 x, int32 y, uint32 width, uint32 height)
-		{
-			let render = mPage.mRender;
-			if ((render == null) || !render.IsReady || (mPage.mViewport == null))
-				return 0;
-			return render.RequestPick(Internal.UnsafeCastToPtr(mPage.mViewport), x, y, width, height);
-		}
-
-		public bool TryTakePick(uint32 request, List<EntityHandle> hits)
-		{
-			let render = mPage.mRender;
-			if ((render == null) || !render.TryTakePickResult(request, mResult))
-				return false;
-			hits.Clear();
-			for (let hit in mResult.Hits)
-				hits.Add(.(hit.EntityIndex, hit.Generation));
-			return true;
-		}
-	}
-	private ViewportPicker mPicker = new .(this) ~ delete _;
-	private GizmoRendererRegistry mComponentGizmos = new .() ~ delete _;
-
-	/// The dock BORROWS a tab's content and takes a reference of its own, unlike AddView,
-	/// so these two keep the page's reference and give it back in the destructor.
-	private PropertyAnimationPanel mPropAnimPanel = null ~ { if (_ != null) _.ReleaseRef(); };
-	/// The bottom dock tab a docked tool panel has, named for the tool's domain; empty when
-	/// no tool panel is docked.
-	private String mDockedToolTab = new .() ~ delete _;
-	private Panel mToolOverlay = null;
-	private AbsoluteLayout mToolFloatLayer = null;
-	private FloatingPanel mToolFloat = null;
-	private ViewportToolPanelHost mToolPanelHost = null ~ delete _;
-	private BottomDock mBottomDock = null;
-	private SplitView mViewportColumn = null;
-	/// Hierarchy | the rest, and viewport column | inspector; their positions are saved per
-	/// scene with the camera. Borrowed: the content owns them.
-	private SplitView mHierarchySplit = null;
-	private SplitView mInspectorSplit = null;
-	/// The clip open claim, removed on close.
-	private uint64 mOpenAssetInterceptorId = 0;
-	private ViewportView mViewport = null;
-
-	private ViewportView mPreviewViewport = null;
-	/// The overlay, gone when nothing is previewed.
-	private View mPreviewContainer = null;
-	private Button mPreviewPin = null;
-	private EntityHandle mPinnedCamera = .Invalid;
-	private EntityHandle mPreviewTarget = .Invalid;
-	private const uint32 cPreviewHeight = 180;
-	private InputRouter mRouter = null ~ delete _;
-	private EditorCamera mCamera = new .() ~ delete _;
-	/// The viewport capture (viewport_screenshot): armed by RequestViewportCapture, recorded in
-	/// OnAfterSceneRender off the composed colour target, completed in the next OnUpdate.
-	private ViewportCaptureRecorder mCapture = new .() ~ delete _;
-	/// The viewport rendered this frame, and at what size: what OnAfterSceneRender captures.
-	private bool mRenderedThisFrame = false;
-	private uint32 mCaptureWidth = 0;
-	private uint32 mCaptureHeight = 0;
-	/// The launcher's picture of the project (EditorProject.ThumbnailPath): the default scene's
-	/// view, taken once it has settled when there is none yet, and on every save of it. Its
-	/// capture is the scene alone: mCleanCapture holds the overlays back from the frame the
-	/// armed capture records.
-	private bool mCleanCapture = false;
+	/// The viewport's post show flags and debug view (not saved).
+	private ViewPostOverride mPostOverride = .();
+	private ViewDebugView mDebugView = new .() ~ delete _;
+	/// One reference, the page's.
+	private Node mContent = null;
+	private PageActionBar mBar = null ~ delete _;
+	private MessageBox mConfirm = null;
+	// The launcher's picture of the project: the default scene's view, taken once it settled when
+	// there is none yet, and on every save of it.
 	private bool mThumbnailChecked = false;
 	private float mThumbnailWait = 0.0f;
-	/// Borrowed; tracks dock and float moves.
-	private RenderWindow mHostWindow = null;
-	private bool mRenderedOnce = false;
 
-	public this(EditorContext context, IApplicationHost host, UIHost uiHost, Instance instance)
+	/// Takes `services`; `context` borrowed.
+	public this(EditorContext context, SceneEditorPageServices services, Instance instance)
 	{
 		mContext = context;
-		mHost = host;
-		mUiHost = uiHost;
+		mServices = services;
 		mTitle.Set(instance.Name);
+		// The id now, before the view state is read: the per scene prefs are keyed by it.
 		InstanceId = instance.Id;
+		mIsPrefab = AssetTypeNames.Matches(instance.TypeName, "PrefabDocument");
+		Build(instance);
+	}
 
-		mScenes = host.Context.GetSubsystem<SceneSubsystem>();
-		mRender = host.Context.GetSubsystem<RenderSubsystem>();
-		mGameUI = host.Context.GetSubsystem<UISubsystem>();
-		mGameGui = host.Context.GetSubsystem<Sedulous.Engine.GUI.GuiSubsystem>();
+	public ~this()
+	{
+		// The tools borrow the edit context, the flows too: they go first.
+		DeleteAndNullify!(mPrefabs);
+		DeleteAndNullify!(mViewportTools);
+		delete mEditContext;
+		if (mConfirm != null)
+			mConfirm.ReleaseRef();
+		if (mContent != null)
+			mContent.ReleaseRef();
+	}
 
+	// === UIEditorPage ===
+	public override Node Content => mContent;
+	public override StringView Title => mTitle;
+
+	// === ISceneEditorPage ===
+	public SceneEditContext EditContext => mEditContext;
+	public bool IsSimulating => mSimulation.IsRunning;
+	public bool IsPaused => mSimulation.IsPaused;
+	public GizmoController Gizmos => (mSelectTool != null) ? mSelectTool.Gizmos : null;
+	public bool CameraOwnsInput => mViewport.CameraOwnsInput;
+	public bool MarkersShown => mOverlays.Settings.ShowMarkers;
+	/// The property animation panel comes back with its editor (X6): never shown until then.
+	public bool AnimationPanelShown => false;
+	public EditorCamera ViewportCamera => mViewport.Camera;
+	public ViewportCapture LastViewportCapture => mViewport.LastCapture;
+	public Result<void, ErrorCode> RequestViewportCapture(StringView path) => mViewport.RequestCapture(path, false);
+	public void CreatePrefabFromEntity(Guid entity) { if (mPrefabs != null) mPrefabs.CreateFromEntity(entity); }
+	public void PickAndSpawnPrefab(Guid parent) { if (mPrefabs != null) mPrefabs.PickAndSpawn(parent); }
+	public void ApplyInstanceToPrefab(Guid root) { if (mPrefabs != null) mPrefabs.Apply(root); }
+	public void RevertInstance(Guid root) { if (mPrefabs != null) mPrefabs.Revert(root); }
+
+	// === For tests ===
+	public Sedulous.Scene.Scene ScenePtr => mScene;
+	/// Whether the scene failed to load (and what the page says).
+	public bool LoadFailed => mLoadFailed;
+	public bool IsPrefab => mIsPrefab;
+	public SceneOverlays Overlays => mOverlays;
+	public SceneViewport Viewport => mViewport;
+	public MessageBox OpenConfirm => ((mConfirm != null) && mConfirm.IsOpen) ? mConfirm : null;
+
+	private void Build(Instance instance)
+	{
+		let context = mContext;
+		let host = mServices.Host;
+		var view = SceneViewportServices();
+		if (host != null)
+		{
+			mScenes = host.Context.GetSubsystem<SceneSubsystem>();
+			view.Render = host.Context.GetSubsystem<RenderSubsystem>();
+			view.GameUI = host.Context.GetSubsystem<UISubsystem>();
+			view.GameGui = host.Context.GetSubsystem<Sedulous.Engine.GUI.GuiSubsystem>();
+		}
+		mViewport = new SceneViewport(view);
+
+		// Its own live scene in its own scene manager, registered with the subsystem so it ticks.
 		if (mScenes != null)
 		{
 			mScenes.RegisterManager(mSceneManager);
+			// The page is edit mode Simulate's run scope: its bus is set before the scene is made,
+			// so systems binding as it is assembled see it; OnUpdate drains it once a frame.
 			mSceneManager.SetSceneEventBus(mPageEvents);
 			mScene = mSceneManager.CreateScene(instance.Name);
-			mScene.SetSimulationEnabled(false); // edit mode is frozen; Simulate unfreezes
-			LoadSceneContent(instance);
+			mScene.SetSimulationEnabled(false); // edit mode is frozen; Simulate unfreezes it
+			let loaded = SceneLoading.LoadEditorScene(context, instance, mScene);
+			if (loaded case .Ok)
+				GlobalLog(.Information, "Editor: opened scene '{}'", mTitle);
+			else if (loaded case .Err(.NotFound))
+				GlobalLog(.Information, "Editor: new scene '{}' (no scene stream yet)", mTitle);
+			else
+			{
+				GlobalLog(.Error, "Editor: scene '{}' failed to load", mTitle);
+				mLoadFailed = true;
+			}
 		}
-
-		mViewport = new ViewportView();
-		mViewport.ClearColor = .(0.349f, 0.366f, 0.396f, 1.0f); // sRGB, like every UI colour
 
 		if (mScene != null)
 		{
 			mEditContext = new SceneEditContext(mScene, Commands);
 			mEditContext.SetResources(context.Resources);
-			mEditContext.SetPrefabResolver(SceneLoading.ProjectPrefabResolver(context));
-			// A settings edit that lands in a profile (the block's source is a profile) is
-			// written to the profile's asset by the save flow, like any live asset edit.
+			// A settings edit that lands in a profile (the block's source is a profile) is written
+			// to the profile's asset by the save flow, like any live asset edit.
 			let profileEdit = mEditContext;
 			mEditContext.OnSettingsProfileEdited = new [=context, =profileEdit](type, profile) =>
 				{
 					if (let system = profileEdit.FindSystemBySettingsType(type))
 						SettingsProfiles.QueueEdit(context, system, profile);
 				};
-			mHierarchy = new SceneHierarchyView(mEditContext);
-			// Its context menus are the scene editor's actions over THIS page.
-			mHierarchy.SetActions(context.Actions, this);
-			mHierarchy.SetEditor(context);
-			mHierarchy.OnFrameEntity = new (entity) =>
-				{
-					var one = entity;
-					FrameEntities(.(&one, 1), true);
-				};
-			mInspector = new SceneInspectorView(context, mEditContext);
-
-			mSelectTool = (SelectTransformTool)mViewportTools.Add(new SelectTransformTool(mEditContext)); // the default
-			mSelectTool.SetPicker(mPicker); // GPU pick over this page's viewport
-			var toolHost = ViewportToolHostContext();
-			toolHost.Scene = mScene;
-			toolHost.Commands = Commands;
-			toolHost.EntitySelection = mEditContext.EntitySelection;
-			toolHost.AssetEdits = context;
-			toolHost.EditorContext = context;
-			toolHost.Picker = mPicker;
-			ViewportToolProviderRegistry.CreateAll(mViewportTools, toolHost);
+			mEditContext.SetPrefabResolver(SceneLoading.ProjectPrefabResolver(context));
+			BuildTools(context);
 			BuiltinGizmoRenderers.Register(mComponentGizmos);
-		}
 
-		BuildViewportToolbar();
-		let viewportPane = new FlexLayout();
-		viewportPane.Direction = .Vertical;
-		var toolbarStyle = LayoutStyle();
-		toolbarStyle.Width = SizeSpec.Match();
-		toolbarStyle.Height = SizeSpec.Fixed(Unit.Dp(30));
-		viewportPane.AddView(mToolbar, toolbarStyle);
-		{
-			BuildCameraPreview();
-			let viewportFrame = new FrameLayout();
-			var fill = LayoutStyle();
-			fill.Gravity = .Fill;
-			viewportFrame.AddView(mViewport, fill);
-			var corner = LayoutStyle();
-			corner.Gravity = .Bottom | .Right;
-			corner.Margin = Thickness(12.0f, 12.0f, 12.0f, 12.0f);
-			viewportFrame.AddView(mPreviewContainer, corner);
-
-			mToolOverlay = new Panel();
-			mToolOverlay.StyleClasses.Add(new String("panel")); // the theme's panel background
-			mToolOverlay.Visibility = .Gone;
-			mToolOverlay.Padding = .(8.0f, 8.0f, 8.0f, 8.0f);
-			var overlayStyle = LayoutStyle();
-			overlayStyle.Gravity = .Top | .Right;
-			overlayStyle.Margin = Thickness(12.0f, 12.0f, 12.0f, 12.0f);
-			overlayStyle.Width = SizeSpec.Fixed(Unit.Dp(260.0f));
-			viewportFrame.AddView(mToolOverlay, overlayStyle);
-
-			BuildToolFloat();
-			mToolFloatLayer = new AbsoluteLayout();
-			mToolFloatLayer.IsHitTestVisible = false;
-			var layerStyle = LayoutStyle();
-			layerStyle.Gravity = .Fill;
-			layerStyle.Width = SizeSpec.Match();
-			layerStyle.Height = SizeSpec.Match();
-			viewportFrame.AddView(mToolFloatLayer, layerStyle);
-			var floatStyle = LayoutStyle();
-			floatStyle.Left = 16.0f;
-			floatStyle.Top = 16.0f;
-			mToolFloatLayer.AddView(mToolFloat, floatStyle);
-
-			var frameStyle = LayoutStyle();
-			frameStyle.Width = SizeSpec.Match();
-			frameStyle.FlexGrow = 1.0f;
-			viewportPane.AddView(viewportFrame, frameStyle);
-		}
-
-		mPropAnimPanel = new PropertyAnimationPanel(context, mScene, Commands, mEditContext.EntitySelection);
-		// The bottom dock opens from elsewhere (the toolbar's Animation toggle, a tool that
-		// docks its panel under its domain's name), and with nothing open it takes no space.
-		mBottomDock = new BottomDock();
-		mBottomDock.HideWhenCollapsed = true;
-		mBottomDock.AddTab(cAnimationTab, "Animation", mPropAnimPanel);
-		{
-			var panelCtx = ViewportToolHostContext();
-			panelCtx.Scene = mScene;
-			panelCtx.Commands = Commands;
-			panelCtx.EntitySelection = mEditContext.EntitySelection;
-			panelCtx.AssetEdits = context;
-			panelCtx.EditorContext = context;
-			mToolPanelHost = new ViewportToolPanelHost(mViewportTools, ViewportToolPanelRegistry.Global, panelCtx,
-				new [=this](view, placement) => { MountToolPanel(view, placement); },
-				new [=this](placement) => { MountToolPanel(null, placement); });
-		}
-
-		mViewportColumn = new SplitView(.Vertical);
-		mViewportColumn.SplitRatio = 0.72f;
-		mViewportColumn.SetPanes(viewportPane, mBottomDock);
-		mViewportColumn.SetPaneCollapsed(.Second, true);
-		mBottomDock.OnExpandedChanged.Add(new [=this](expanded) =>
-		{
-			mViewportColumn.SetPaneCollapsed(.Second, !expanded);
-		});
-
-		mPropAnimPanel.RequestEntityPick = new [=this](current, onPicked) =>
-		{
-			let ctx = mPropAnimPanel.Context;
-			if (ctx == null)
+			let flows = new PrefabFlowServices();
+			flows.Context = context;
+			flows.Edit = mEditContext;
+			flows.Scenes = mScenes;
+			flows.PageAsset = new [=this]() => InstanceId;
+			flows.Confirm = new [=this](title, text, verb, yes) => { Confirm(title, text, verb, yes); };
+			flows.Later = new [=this](work) => { Later(work); };
+			if ((mServices.Refs != null) && (mServices.Refs.Pick != null))
 			{
-				delete onPicked;
-				return;
+				let refs = mServices.Refs;
+				flows.PickAsset = new [=refs](types, chosen) => { refs.Pick(types, .(), null, chosen); };
 			}
-			let dialog = new EntityPickerDialog(mEditContext.Scene, current);
-			dialog.OnPicked = new [=onPicked](picked) =>
-			{
-				if (!picked.IsNil) // Clear means keep the binding
-					onPicked(picked);
-			} ~ delete onPicked;
-			dialog.Show(ctx);
-		};
-		mOpenAssetInterceptorId = mContext.AddOpenAssetInterceptor(new [=this](inst) =>
+			mPrefabs = new PrefabFlows(flows);
+		}
+
+		// The page from its markup: the bar over the hierarchy, the viewport and the inspector.
+		mContent = (mServices.LoadMarkup != null) ? mServices.LoadMarkup(cPath) : null;
+		if (mContent == null)
+			mContent = new Panel(); // no markup: still a page, with its viewport
+		let pane = Find<Node>("scene-viewport");
+		((pane != null) ? pane : mContent).AddChildAt(mViewport.View, 0);
+		mViewport.HostIn(mServices.Gui);
+		mBar = new PageActionBar(context.Actions, this);
+		mBar.Bind(Find<ButtonBase>("scene-save"), "file.save");
+		mBar.Bind(Find<ButtonBase>("scene-undo"), "edit.undo");
+		mBar.Bind(Find<ButtonBase>("scene-redo"), "edit.redo");
+		// A prefab is marked as one: the same page edits both.
+		if (let kind = Find<UIWidget>("scene-kind"))
+			kind.Displayed = mIsPrefab;
+		// A scene that did not load says so where it would show, not only in the log.
+		if (let state = Find<UIWidget>("scene-state"))
+			state.Displayed = mLoadFailed || (mScene == null);
+		if (mScene == null)
 		{
-			if (!AssetTypeNames.Matches(inst.TypeName, "PropertyAnimationClipAsset"))
-				return false; // not ours
-			if ((mContent == null) || !mContent.IsEffectivelyVisible())
-				return false;
-			mBottomDock.ActivateTab(cAnimationTab); // open the panel
-			let selection = mEditContext.EntitySelection;
-			mPropAnimPanel.RequestEditClip(inst.Id, selection.IsEmpty ? Guid() : selection.Primary);
-			return true;
-		});
+			if (let text = Find<Sedulous.GUI.Label>("scene-state-text"))
+				text.Text = "The editor has no scenes to show it in.";
+		}
 
-		mInspectorSplit = new SplitView();
-		mInspectorSplit.SplitRatio = 0.72f;
-		mInspectorSplit.SetPanes(mViewportColumn, mInspector);
-		mHierarchySplit = new SplitView();
-		mHierarchySplit.SplitRatio = 0.2f;
-		mHierarchySplit.SetPanes(mHierarchy, mInspectorSplit);
-		mContent = mHierarchySplit;
-
-		mRouter = new InputRouter(host.Shell.Input);
-		// Framed on the origin, the orbit pivot there and the horizon level - then where this
-		// scene was last left, if a page saved that.
-		mCamera.LookAt(.Zero);
+		mOverlays.Settings = SceneViewState.LoadOverlays(context.ProjectEditorSettings, InstanceId, mOverlays.Settings);
 		RestoreViewState();
 	}
 
-	public ~this()
+	private void BuildTools(EditorContext context)
 	{
-		if (mOpenAssetInterceptorId != 0)
-		{
-			mContext.RemoveOpenAssetInterceptor(mOpenAssetInterceptorId);
-			mOpenAssetInterceptorId = 0;
-		}
+		mSelectTool = (SelectTransformTool)mViewportTools.Add(new SelectTransformTool(mEditContext)); // the default
+		mSelectTool.SetPicker(mViewport.Picker); // the GPU pick over this page's viewport
+		var toolHost = ViewportToolHostContext();
+		toolHost.Scene = mScene;
+		toolHost.Commands = Commands;
+		toolHost.EntitySelection = mEditContext.EntitySelection;
+		toolHost.Picker = mViewport.Picker;
+		// A tool that edits a cooked product live (terrain sculpt) registers its write back to the
+		// source on the context; the save flow drains it.
+		toolHost.AssetEdits = context;
+		toolHost.EditorContext = context;
+		ViewportToolProviderRegistry.CreateAll(mViewportTools, toolHost);
 	}
-
-	public override View ContentView => mContent;
-	public override StringView Title => mTitle;
-
-	public Sedulous.Scene.Scene ScenePtr => mScene;
-	public EditorCamera Camera => mCamera;
-	public SceneEditContext EditContext => mEditContext;
-	public bool IsSimulating => mIsSimulating;
-	public bool IsPaused => mIsPaused;
-	public GizmoController Gizmos => (mSelectTool != null) ? mSelectTool.Gizmos : null;
-	public bool MarkersShown => mView.ShowMarkers;
-	public bool CameraOwnsInput => mCameraOwnsInput;
-	public EditorCamera ViewportCamera => (mViewport != null) ? mCamera : null;
-	public ViewportCapture LastViewportCapture => mCapture.State;
-
-	public Result<void, ErrorCode> RequestViewportCapture(StringView path)
-	{
-		if (mViewport == null)
-			return .Err(.NotSupported);
-		mCapture.Request(path);
-		mCleanCapture = false; // what the viewport shows, overlays and all
-		return .Ok;
-	}
-
-	public Result<void, ErrorCode> RequestProjectThumbnail()
-	{
-		if (mContext.Project == null)
-			return .Err(.NotSupported);
-		let path = EditorProject.ThumbnailPath(mContext.Project.Directory, .. scope .());
-		CreateDirectory(PathParent(path, .. scope .()));
-		let requested = RequestViewportCapture(path);
-		mCleanCapture = requested case .Ok;
-		return requested;
-	}
-
-	private bool IsProjectDefaultScene
-	{
-		get
-		{
-			let project = mContext.Project;
-			return (project != null) && (InstanceId != Guid.Empty) && (project.Settings.DefaultSceneId == InstanceId);
-		}
-	}
-
-	/// The frame an armed project thumbnail records: the editor's overlays stay out of it.
-	private bool CleanCaptureFrame => mCleanCapture && mCapture.Armed;
-
-	private const String cAnimationTab = "animation";
-
-	public bool AnimationPanelShown => mBottomDock.IsExpanded && (mBottomDock.ActiveTabId == cAnimationTab);
-
-	/// Shows the animation panel, or hides it: to the docked tool's tab when there is one,
-	/// else the dock goes altogether.
-	public void SetAnimationPanelShown(bool shown)
-	{
-		if (shown)
-		{
-			mBottomDock.ActivateTab(cAnimationTab);
-			return;
-		}
-		if (!AnimationPanelShown)
-			return;
-		if (!mDockedToolTab.IsEmpty)
-			mBottomDock.ActivateTab(mDockedToolTab);
-		else
-			mBottomDock.SetExpanded(false);
-	}
-
-	public void SetMarkersShown(bool shown)
-	{
-		mView.ShowMarkers = shown;
-		SaveViewPrefs();
-	}
-
-	/// Loads the instance's scene stream, then binds and spawns; a missing stream is a new
-	/// scene.
-	private void LoadSceneContent(Instance instance)
-	{
-		let loaded = SceneLoading.LoadEditorScene(mContext, instance, mScene);
-		if (loaded case .Ok)
-		{
-			GlobalLog(.Information, "Editor: opened scene '{}'", mTitle);
-		}
-		else if (loaded case .Err(.NotFound))
-		{
-			GlobalLog(.Information, "Editor: new scene '{}' (no scene stream yet)", mTitle);
-		}
-		else
-		{
-			GlobalLog(.Error, "Editor: scene '{}' failed to load", mTitle);
-		}
-	}
-
-	/// Binds the scene's references, spawns any parked prefab instances, and binds what they
-	/// brought, as a scene opens (SceneLoading).
-	private void ResolveAll() => SceneLoading.ResolveAll(mContext, mScene);
 
 	public override void OnUpdate(IApplicationHost host, float dt)
 	{
-		// A viewport capture recorded last frame: the GPU has to finish the copy.
-		mCapture.Complete((host.Graphics != null) ? host.Graphics.Raw : null);
-		EnsureViewportBound();
-		if (mHostWindow == null)
-			return;
-		// A project with no launcher picture yet gets one from its default scene, once the view
-		// has been up a moment with nothing left loading (content pops in asynchronously).
+		mViewport.CompleteCapture(host); // a capture recorded last frame: the GPU finished the copy
+		// A project with no launcher picture gets one from its default scene, once the view has been
+		// up a moment with nothing left loading (content pops in asynchronously).
 		if (!mThumbnailChecked && IsProjectDefaultScene)
 		{
 			mThumbnailWait += dt;
 			let settled = (mContext.Resources == null) || (mContext.Resources.PendingCount == 0);
-			if ((mThumbnailWait > 1.5f) && settled)
+			if ((mThumbnailWait > 1.5f) && settled && mViewport.IsShown)
 			{
 				mThumbnailChecked = true;
 				if (!FileExists(EditorProject.ThumbnailPath(mContext.Project.Directory, .. scope .())))
@@ -489,142 +267,210 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			}
 		}
 
-		if (mHierarchy != null)
-			mHierarchy.Refresh(); // the scene revision rebuilds the tree
-		if (mInspector != null)
-			mInspector.Refresh(); // the selection or structure rebuilds the grid
-
-		mViewport.SyncInputRegion();
-		mRouter.SetExternalCapture(false, mViewport.HostKeyboardFocusElsewhere);
-		mRouter.Update();
-		// A press held on the viewport keeps it the input owner wherever the pointer goes: a look
-		// drag, its pointer locked and hidden, may drift off it.
-		let viewportActive = mViewport.IsHovered() || mViewport.IsFocused()
-			|| ((mViewport.Surface != null) && mViewport.Surface.Captured);
-		// A frame glides on whether or not the viewport has the input: a hierarchy double-click
-		// frames while the mouse is over the hierarchy.
-		mCamera.Advance(dt);
-		if (viewportActive)
-		{
-			// The first consumer rule: a modal tool owns SHIFT and the wheel to resize itself,
-			// so the camera must not dolly on that same scroll. The bare wheel stays the
-			// camera's even under a brush, which is what zooming while painting needs.
-			let modalToolActive = (mViewportTools.ActiveTool != null) && (mViewportTools.ActiveTool != mSelectTool);
-			let keyboard = mViewport.Keyboard;
-			let shiftDown = (keyboard != null)
-				&& (keyboard.IsKeyDown(.LeftShift) || keyboard.IsKeyDown(.RightShift));
-			mCamera.Update(keyboard, mViewport.Mouse, dt, !(modalToolActive && shiftDown));
-			// An orbit, look or pan drag: the pointer locked meanwhile, granted by the router to
-			// this surface alone and ended with the press.
-			if (let surface = mViewport.Surface)
-				surface.SetPointerLock(mCamera.WantsPointerLock);
-			if (mCamera.ZoomedThisUpdate)
-				mZoomReadout.Zoomed();
-		}
-		else
-		{
-			mCamera.ReleaseCapture(mViewport.Mouse);
-			if (let surface = mViewport.Surface)
-				surface.SetPointerLock(false);
-		}
-		UpdateViewportTools(viewportActive, dt); // picking lives inside the select tool
-		if (mToolPanelHost != null)
-			mToolPanelHost.Sync();
-		if (mPropAnimPanel != null)
-			mPropAnimPanel.Tick(dt, mIsSimulating);
+		// A modal tool (a brush) owns Shift + wheel to size itself, so the camera leaves that wheel
+		// to it; the bare wheel stays the camera's under a brush too.
+		let modalTool = (mViewportTools.ActiveTool != null) && (mViewportTools.ActiveTool != mSelectTool);
+		let keyboard = mViewport.Keyboard;
+		let shift = (keyboard != null) && (keyboard.IsKeyDown(.LeftShift) || keyboard.IsKeyDown(.RightShift));
+		let active = mViewport.UpdateCamera(dt, !(modalTool && shift));
+		if (active && mViewport.ZoomedThisFrame)
+			mOverlays.Zoomed();
+		if (mEditContext != null)
+			UpdateTools(active, dt);
+		// The page is this scene's run scope: its bus drains once a frame (events a Simulate tick
+		// emitted last frame arrive now).
 		mPageEvents.Drain();
 
-		// None on the frame a project thumbnail is captured: the launcher shows the scene.
-		if ((mRender != null) && (mScene != null) && !CleanCaptureFrame)
+		// The overlays into this viewport's own debug list (the lists clear each frame, so they are
+		// drawn again every frame); none on the frame a project picture is captured.
+		let dd = mViewport.Overlay;
+		if ((dd != null) && (mScene != null) && !mViewport.CleanCaptureFrame)
 		{
-			let dd = mRender.DebugView(Internal.UnsafeCastToPtr(mViewport));
-			if (mView.ShowGrid)
-			{
-				DrawSceneGrid(dd);
-				dd.DrawLine(.Zero, .(1, 0, 0), .(0.9f, 0.2f, 0.2f, 1.0f));
-				dd.DrawLine(.Zero, .(0, 1, 0), .(0.2f, 0.9f, 0.2f, 1.0f));
-				dd.DrawLine(.Zero, .(0, 0, 1), .(0.2f, 0.4f, 0.95f, 1.0f));
-			}
-			DrawEntityMarkers(dd);
-			DrawFrameRate(dd, dt);
-			mZoomReadout.Advance(dt);
-			let zoomOpacity = mZoomReadout.Opacity;
-			if (zoomOpacity > 0.0f)
-				DrawZoomReadout(dd, zoomOpacity);
-			DrawViewGizmo(dd);
-			DrawGizmos(dd);
-			if (mPropAnimPanel != null)
-				mPropAnimPanel.DrawOverlay(dd); // the live preview entity marker
+			var frame = SceneOverlayFrame();
+			frame.Scene = mScene;
+			frame.Selection = (mEditContext != null) ? mEditContext.EntitySelection : null;
+			frame.Camera = mViewport.Camera;
+			frame.Width = mViewport.View.RenderWidth;
+			frame.Height = mViewport.View.RenderHeight;
+			let mouse = mViewport.Mouse;
+			frame.PointerOver = mViewport.IsHovered && (mouse != null);
+			frame.PointerX = (mouse != null) ? mouse.X : 0.0f;
+			frame.PointerY = (mouse != null) ? mouse.Y : 0.0f;
+			frame.Tools = mViewportTools;
+			frame.ComponentGizmos = mComponentGizmos;
+			frame.DeltaSeconds = dt;
+			mOverlays.Draw(dd, frame);
 		}
-		UpdateCameraPreview();
-		SyncToolbar();
+		if (mBar != null)
+			mBar.Sync();
 	}
 
+	/// The viewport tools' frame of input (picking lives in the select tool). Runs every frame so
+	/// the active tool follows selections and undo while the mouse is elsewhere (the pointer then
+	/// flagged invalid). The page keeps the camera's policy: no buttons and no keyboard for the
+	/// tools while the camera has the mouse; Simulate is editing locked.
+	private void UpdateTools(bool viewportActive, float deltaSeconds)
+	{
+		let camera = mViewport.Camera;
+		var input = ViewportToolInput();
+		input.DeltaSeconds = deltaSeconds;
+		// The draw eye: under orthographic what lies behind the eye's own plane is in view too, and
+		// the gizmo's size and the marquee take a depth from here (the eye in perspective).
+		input.CameraPosition = camera.DrawEye;
+		input.CameraForward = camera.Forward;
+		input.CameraUp = camera.Up;
+		input.FovY = camera.FovY;
+		input.OrthoHeight = camera.Orthographic ? camera.OrthoHeight : 0.0f;
+		// Simulate: edits are refused (the select tool's read only gizmo); selecting still works.
+		input.EditingLocked = mSimulation.IsRunning;
+		GizmoRay ray = ?;
+		input.PointerValid = viewportActive && mViewport.MouseRay(out ray);
+		input.Ray.Origin = ray.Origin;
+		input.Ray.Direction = ray.Direction;
+		input.PointerOver = mViewport.IsHovered;
+		if (!input.PointerValid)
+		{
+			mViewportTools.Update(input);
+			return;
+		}
+		let mouse = mViewport.Mouse;
+		let keyboard = mViewport.Keyboard;
+		// The pointer's pixel and the view's size: the GPU pick's input, in the render target's space.
+		input.PointerX = (int32)mouse.X;
+		input.PointerY = (int32)mouse.Y;
+		input.ViewportWidth = mViewport.View.RenderWidth;
+		input.ViewportHeight = mViewport.View.RenderHeight;
+		let cameraOwnsMouse = mViewport.CameraOwnsInput;
+		if (!cameraOwnsMouse)
+		{
+			input.LeftPressed = mouse.IsButtonPressed(.Left);
+			input.LeftDown = mouse.IsButtonDown(.Left);
+		}
+		// A release always reaches the tool, so a gesture can finish when a modifier goes down mid drag.
+		input.LeftReleased = mouse.IsButtonReleased(.Left) || !mouse.IsButtonDown(.Left);
+		if (keyboard != null)
+		{
+			input.Ctrl = keyboard.IsKeyDown(.LeftCtrl) || keyboard.IsKeyDown(.RightCtrl);
+			input.Shift = keyboard.IsKeyDown(.LeftShift) || keyboard.IsKeyDown(.RightShift);
+		}
+		input.WheelDelta = mouse.ScrollY;
+		// A press on the orientation gizmo is its, and the rest of that press: the select tool
+		// neither picks nor box selects under it (Alt+drag still orbits: the camera owns that press).
+		if (input.LeftPressed && mViewport.IsHovered && PressViewGizmo((float)input.PointerX, (float)input.PointerY, input.ViewportWidth))
+			mViewGizmoPressed = true;
+		if (mViewGizmoPressed)
+		{
+			let released = input.LeftReleased;
+			input.LeftPressed = false;
+			input.LeftDown = false;
+			input.LeftReleased = false;
+			mViewGizmoPressed = !released;
+		}
+		// The tools' keys (the select tool's W/E/R/X) belong to the camera while it owns the input.
+		input.Keyboard = cameraOwnsMouse ? null : keyboard;
+		mViewportTools.Update(input);
+	}
+
+	/// The orientation gizmo takes a press on a knob (or its centre) before any tool sees it.
+	private bool PressViewGizmo(float x, float y, uint32 width)
+	{
+		let camera = mViewport.Camera;
+		let gizmo = ViewGizmo.LayoutFor(camera.Right, camera.Up, camera.Forward, (float)width);
+		let hit = ViewGizmo.Hit(gizmo, x, y);
+		if (hit >= 0)
+		{
+			ViewGizmo.SnapAngles(gizmo.Poles[hit].Axis, camera.Yaw, let yaw, let pitch);
+			camera.AutoOrthographic = EditorUiSettings.AutoOrthographicViews(mContext.UserEditorSettings);
+			camera.SnapToAxis(yaw, pitch);
+			return true;
+		}
+		if (ViewGizmo.HitCentre(gizmo, x, y))
+		{
+			camera.SetOrthographic(!camera.Orthographic);
+			return true;
+		}
+		return false;
+	}
+
+	/// Inside the app's one renderer bracket, before the GUI draws.
 	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
 	{
-		if (!mViewport.IsReady || !frame.Valid)
-			return;
-		if ((mRender == null) || !mRender.IsReady || (mScene == null))
-			return;
-		let w = mViewport.RenderWidth;
-		let h = mViewport.RenderHeight;
-		if ((w == 0) || (h == 0) || !mViewport.IsEffectivelyVisible())
-			return;
-
-		if (!mRenderedOnce)
-		{
-			mRenderedOnce = true;
-			GlobalLog(.Debug, "Editor: scene page '{}' first frame ({}x{})", mTitle, w, h);
-		}
-
-		if (mGameUI != null)
-			mGameUI.RenderCanvasTextures(frame.Encoder, (int32)frame.FrameIndex);
-		if (mGameGui != null)
-			mGameGui.RenderTextures(frame.Encoder, (uint32)frame.FrameIndex); // and the engine GUI's
-
-		var camera = ViewCamera();
-		// From the draw eye (behind the eye under orthographic); Position stays the eye, for what
-		// the renderer measures from it (foliage fade, terrain, level of detail).
-		camera.View = Float4x4.LookAtRH(mCamera.DrawEye, mCamera.DrawEye + mCamera.Forward, mCamera.Up);
-		camera.Projection = mCamera.Projection((float)w / (float)h);
-		camera.Position = mCamera.Position;
-		camera.FarZ = mCamera.DrawFar;
-		camera.PullBack = mCamera.DrawPullBack;
-
-		var cameraOverride = CameraOverride();
-		cameraOverride.Camera = camera;
-		// The viewport's colour is a UI colour (sRGB); the render view takes linear.
-		let clear = mViewport.LinearClearColor;
-		cameraOverride.ClearColor = .(clear.R, clear.G, clear.B, clear.A);
-
-		let targetState = TargetState(mViewport.ColorTexture, mViewport.ColorState, .ShaderRead);
-		mRender.RenderScene(mScene, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, .(0, 0, w, h),
-			&cameraOverride, targetState, &mPostOverride, Internal.UnsafeCastToPtr(mViewport), CleanCaptureFrame ? null : mDebugView);
-		mViewport.ColorState = .ShaderRead;
-
-		mCaptureWidth = w;
-		mCaptureHeight = h;
-		mRenderedThisFrame = true;
-
-		RenderCameraPreview(); // a second RenderScene through the previewed camera
+		if (mScene != null)
+			mViewport.Render(ref frame, mScene, &mPostOverride, mViewport.CleanCaptureFrame ? null : mDebugView);
 	}
 
-	/// The requested capture, recorded AFTER the scene renderer composed this frame: RenderScene
-	/// only adds the view and EndRendering, which runs before this, writes the image. A copy
-	/// recorded earlier would read the previous frame's image, or an empty target on the first
-	/// frame a tab is shown. The target sits in ShaderRead, where the graph left it for the UI;
-	/// OnUpdate completes the capture next frame.
+	/// A requested capture, recorded once the renderer composed the frame.
 	public override void OnAfterSceneRender(IApplicationHost host, ref FrameContext frame)
 	{
-		let rendered = mRenderedThisFrame;
-		mRenderedThisFrame = false;
-		if (!rendered || !mCapture.Armed || (host.Graphics == null))
-			return;
-		mCapture.Record(host.Graphics.Raw, frame.Encoder, mViewport.ColorTexture, mViewport.ColorFormat, mCaptureWidth, mCaptureHeight, .ShaderRead);
-		mCleanCapture = false;
+		mViewport.AfterRender(host, ref frame);
 	}
 
-	/// A change on disk replaces the scene, unless there are unsaved edits here.
+	public override void OnClose()
+	{
+		// Where the scene was left: the camera, the selection, the panes, for the next open.
+		if (mScene != null)
+			SaveViewState();
+		mViewport.Close(mServices.Host);
+		if (mScene != null)
+		{
+			mSceneManager.DestroyScene(mScene); // aware subsystems are told OnSceneDestroyed
+			mScene = null;
+		}
+		if (mScenes != null)
+			mScenes.UnregisterManager(mSceneManager);
+	}
+
+	/// Saves the scene, or the prefab once it has one root and does not hold itself; a saved
+	/// prefab rebuilds its instances in every other open scene. A scene that did not load is never
+	/// saved over.
+	public override Result<void, ErrorCode> Save()
+	{
+		if ((mScene == null) || (mContext.Project == null))
+			return .Err(.NotFound);
+		let instance = mContext.Project.SourceDb.GetInstance(InstanceId);
+		if (instance == null)
+			return .Err(.NotFound);
+		// A scene that did not load is empty here: saving would write that over its source.
+		if (mLoadFailed)
+		{
+			mContext.Notify(.Warning, scope $"'{mTitle}' did not load, so it is not saved over: the Console says why.");
+			return .Err(.NotSupported);
+		}
+		let isPrefab = AssetTypeNames.Matches(instance.TypeName, "PrefabDocument");
+		if (isPrefab)
+		{
+			let refused = scope String();
+			if (PrefabFlows.SaveRefusal(mScene, InstanceId, refused))
+			{
+				mContext.Notify(.Warning, refused);
+				return .Err(.InvalidArgument);
+			}
+		}
+		let saved = isPrefab ? SceneStorage.SavePrefab(mScene, instance) : SceneStorage.SaveScene(mScene, instance);
+		if (saved case .Err)
+			return saved;
+		ClearDirty();
+		GlobalLog(.Information, "Editor: saved {} '{}'", isPrefab ? "prefab" : "scene", mTitle);
+		// The launcher's picture of the project follows its default scene as it is saved.
+		if (!isPrefab && IsProjectDefaultScene)
+			RequestProjectThumbnail();
+		// The template changed: its instances in every other open scene rebuild, their overrides kept.
+		if (isPrefab && (mPrefabs != null))
+			mPrefabs.RebuildOtherInstances(instance);
+		return saved;
+	}
+
+	public override void OnSavedAs(Instance instance)
+	{
+		base.OnSavedAs(instance);
+		mTitle.Set(instance.Name);
+		// SavePrefab stamps the document's name from the scene, so the fork gets its own.
+		if (mScene != null)
+			mScene.SetName(instance.Name);
+	}
+
+	/// The asset changed under this page (apply to prefab from another page): read again, its
+	/// history gone; unsaved edits are never clobbered, the page warns instead.
 	public override void OnAssetExternallyModified()
 	{
 		if ((mScene == null) || (mContext.Project == null))
@@ -637,127 +483,174 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mContext.Notify(.Warning, scope $"'{mTitle}' changed on disk but has unsaved edits here - not refreshed.");
 			return;
 		}
-
+		// The same entities come back from the stream; the history predates the reload and would
+		// replay onto the old content, so it goes.
 		while (mScene.FirstRoot.IsAssigned)
 			mScene.DestroyEntity(mScene.FirstRoot);
 		mScene.ClearPrefabInstances();
 		mEditContext.EntitySelection.Clear();
 		Commands.Clear();
-
-		if (SceneStorage.LoadScene(instance, mScene) case .Ok)
-			ResolveAll();
-		ClearDirty(); // Commands.Clear notifies OnChanged, which marks dirty
+		let loaded = SceneLoading.LoadEditorScene(mContext, instance, mScene);
+		mLoadFailed = (loaded case .Err(let error)) && (error != .NotFound);
+		if (let state = Find<UIWidget>("scene-state"))
+			state.Displayed = mLoadFailed;
+		ClearDirty(); // Commands.Clear told OnChanged, which marks it dirty
 	}
 
-	public override void OnSavedAs(Instance instance)
+	public void StartSimulation()
 	{
-		base.OnSavedAs(instance);
-		mTitle.Set(instance.Name);
-		if (mScene != null)
-			mScene.SetName(instance.Name);
-	}
-
-	/// Saves the scene, or the prefab after checking it has one root and does not contain
-	/// itself; a saved prefab rebuilds its instances in every other open scene.
-	public override Result<void, ErrorCode> Save()
-	{
-		if ((mScene == null) || (mContext.Project == null))
-			return .Err(.NotFound);
-		let instance = mContext.Project.SourceDb.GetInstance(InstanceId);
-		if (instance == null)
-			return .Err(.NotFound);
-
-		let isPrefab = AssetTypeNames.Matches(instance.TypeName, "PrefabDocument");
-		if (isPrefab)
-		{
-			var rootCount = 0;
-			for (var r = mScene.FirstRoot; r.IsAssigned; r = mScene.GetNextSibling(r))
-				rootCount++;
-			if (rootCount > 1)
-			{
-				mContext.Notify(.Warning, "A prefab needs exactly one root entity - parent everything under a single root, then save.");
-				return .Err(.InvalidArgument);
-			}
-			var selfReference = false;
-			mScene.ForEachPrefabInstance(scope [&](state) =>
-			{
-				if (state.PrefabId == InstanceId)
-					selfReference = true;
-			});
-			if (selfReference)
-			{
-				mContext.Notify(.Warning, "A prefab cannot contain an instance of itself - remove it, then save.");
-				return .Err(.InvalidArgument);
-			}
-		}
-		let saved = isPrefab ? SceneStorage.SavePrefab(mScene, instance) : SceneStorage.SaveScene(mScene, instance);
-		if (saved case .Ok)
-		{
-			ClearDirty();
-			GlobalLog(.Information, "Editor: saved {} '{}'", isPrefab ? "prefab" : "scene", mTitle);
-			// The launcher's picture of the project follows its default scene as it is saved.
-			if (!isPrefab && IsProjectDefaultScene)
-				RequestProjectThumbnail();
-			if (isPrefab && (mScenes != null))
-			{
-				let payload = instance.ReadData("scene");
-				if (payload != null)
-				{
-					defer delete payload;
-					let bytes = scope List<uint8>();
-					ReadAll(payload, bytes);
-					let prefabId = InstanceId;
-					mScenes.ForEachScene(scope [&](other) =>
-					{
-						if (other == mScene)
-							return;
-						let rebuilt = PrefabRebuild.Rebuild(other, prefabId, bytes, mEditContext.PrefabResolver);
-						if ((rebuilt > 0) && (mContext.Resources != null))
-							SceneResolve.ResolveSceneResources(other, mContext.Resources);
-					});
-				}
-			}
-		}
-		return saved;
-	}
-
-	public override void OnClose()
-	{
-		if (mScene != null)
-			SaveViewState(); // where the scene was left, for the next open
-		if (mOpenAssetInterceptorId != 0)
-		{
-			mContext.RemoveOpenAssetInterceptor(mOpenAssetInterceptorId);
-			mOpenAssetInterceptorId = 0;
-		}
-		mCamera.ReleaseCapture((mViewport != null) ? mViewport.Mouse : null); // never close captured
-		if (mRender != null)
-			mRender.CancelPicks(Internal.UnsafeCastToPtr(mViewport)); // the key dies with the viewport
-		if ((mHost != null) && (mHost.Graphics != null) && (mHost.Graphics.Raw != null))
-			mCapture.Release(mHost.Graphics.Raw); // the readback buffer, while the device lives
-		mViewport.Shutdown();
-		if (mPreviewViewport != null)
-			mPreviewViewport.Shutdown();
-		if (mScene != null)
-		{
-			mSceneManager.DestroyScene(mScene); // aware subsystems get OnSceneDestroyed
-			mScene = null;
-		}
-		if (mScenes != null)
-			mScenes.UnregisterManager(mSceneManager);
-	}
-
-	/// The whole of a stream into a list.
-	public static void ReadAll(IStream stream, List<uint8> outBytes)
-	{
-		outBytes.Clear();
-		let size = (int)stream.Size();
-		if (size <= 0)
+		if ((mScene == null) || !mSimulation.Start(mScene, Commands))
 			return;
-		outBytes.Resize(size);
-		stream.Seek(0, .Begin);
-		let read = stream.Read(Span<uint8>(outBytes.Ptr, size));
-		if (read < size)
-			outBytes.Resize(Math.Max(read, 0));
+		// Modal edit tools (terrain sculpt) share runtime state with the simulation (the collider):
+		// back to the default select tool for the run.
+		mViewportTools.ActivateDefault();
+	}
+
+	public void PauseSimulation(bool paused)
+	{
+		if (mScene != null)
+			mSimulation.Pause(mScene, paused);
+	}
+
+	public void StopSimulation()
+	{
+		if (mScene != null)
+			mSimulation.Stop(mScene, Commands, mContext.Resources);
+	}
+
+	public void SetMarkersShown(bool shown)
+	{
+		mOverlays.Settings.ShowMarkers = shown;
+		SaveViewState();
+	}
+
+	public void SetAnimationPanelShown(bool shown)
+	{
+		if (shown)
+			mContext.Notify(.Info, "The animation panel is not on the new editor yet: it comes with the property animation editor.");
+	}
+
+	public bool FrameEntities(Span<Guid> entities, bool ease) => (mScene != null) && mViewport.Frame(mScene, entities, ease);
+
+	public Result<void, ErrorCode> RequestProjectThumbnail()
+	{
+		if (mContext.Project == null)
+			return .Err(.NotSupported);
+		let path = EditorProject.ThumbnailPath(mContext.Project.Directory, .. scope .());
+		CreateDirectory(PathParent(path, .. scope .()));
+		return mViewport.RequestCapture(path, true);
+	}
+
+	private bool IsProjectDefaultScene
+	{
+		get
+		{
+			let project = mContext.Project;
+			return (project != null) && !InstanceId.IsNil && (project.Settings.DefaultSceneId == InstanceId);
+		}
+	}
+
+	/// The whole pref (overlays, camera, selection, panes), so saving one never brings back
+	/// another's default.
+	private void SaveViewState()
+	{
+		ScenePaneWeights? panes = null;
+		if (let body = Find<Splitter>("scene-body"))
+		{
+			let weights = scope List<float>();
+			body.GetWeights(weights);
+			if (weights.Count == 3)
+				panes = ScenePaneWeights(weights[0], weights[1], weights[2]);
+		}
+		let selection = (mEditContext != null) ? mEditContext.EntitySelection.Items : Span<Guid>();
+		if (SceneViewState.Save(mContext.ProjectEditorSettings, InstanceId, mOverlays.Settings, mViewport.Camera, panes, selection))
+			mContext.RequestProjectEditorSettingsSave();
+	}
+
+	/// The panes, the camera and the selection as this scene was left; a pref with no camera leaves
+	/// the origin's framing standing.
+	private void RestoreViewState()
+	{
+		let pref = SceneViewPrefs.Find(mContext.ProjectEditorSettings, InstanceId);
+		if (pref == null)
+			return;
+		if (pref.HasSplits)
+		{
+			if (let body = Find<Splitter>("scene-body"))
+			{
+				let panes = SceneViewState.WeightsFromSplits(pref.Splits.Hierarchy, pref.Splits.Inspector);
+				var weights = float[3](panes.Hierarchy, panes.Viewport, panes.Inspector);
+				body.SetWeights(weights);
+			}
+		}
+		if (!SceneViewState.RestoreCamera(pref, mViewport.Camera))
+			return; // never saved by a page: the origin's framing stands
+		if ((mEditContext != null) && (mScene != null))
+		{
+			let live = scope List<Guid>();
+			SceneViewState.LiveSelection(pref, mScene, live);
+			if (!live.IsEmpty)
+				mEditContext.EntitySelection.Set(live);
+		}
+	}
+
+	/// Asks `text` under `title`; `yes` (taken) runs when the user takes `verb`.
+	private void Confirm(StringView title, StringView text, StringView verb, delegate void() yes)
+	{
+		let root = (mContent != null) ? mContent.RootNode : null;
+		if (root == null)
+		{
+			delete yes;
+			return;
+		}
+		if (mConfirm != null)
+			mConfirm.ReleaseRef();
+		let question = new MessageBox();
+		mConfirm = question;
+		question.Configure(title, text, .Ok);
+		question.ClearButtons();
+		question.AddButton("Cancel", "cancel", .Cancel);
+		question.AddButton(verb, "yes", .Destructive);
+		question.AddEventListener(.Changed, new [=question, =yes](e) =>
+			{
+				if (question.ResultName == "yes")
+					yes();
+			} ~ delete yes);
+		question.OpenModal(root);
+	}
+
+	/// Runs `work` (taken) after the event that asked for it: on the GUI's mutation queue, or now
+	/// with no GUI around the page.
+	private void Later(delegate void() work)
+	{
+		let queue = (mContent != null) ? mContent.MutationQueue : null;
+		if (queue != null)
+		{
+			queue.Enqueue(work);
+			return;
+		}
+		work();
+		delete work;
+	}
+
+	/// The page's widget with this id, as a T; null when it has none.
+	private T Find<T>(StringView id) where T : Node
+	{
+		if (mContent == null)
+			return null;
+		let pending = scope List<Node>();
+		pending.Add(mContent);
+		while (!pending.IsEmpty)
+		{
+			let node = pending.PopBack();
+			if (let widget = node as UIWidget)
+			{
+				if (widget.Id == id)
+					return node as T;
+			}
+			for (int i < node.ChildCount)
+				pending.Add(node.GetChildAt(i));
+		}
+		return null;
 	}
 }

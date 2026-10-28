@@ -65,18 +65,18 @@ class SceneViewPref : ISerializable
 	public bool HasSplits = false;
 	public SceneViewSplits Splits = .();
 
-	public SceneViewState State
+	public SceneOverlaySettings State
 	{
 		get
 		{
-			var state = SceneViewState(ShowGrid, ShowLodOverlay, ShowColliders, ShowMarkers, ShowFps);
+			var state = SceneOverlaySettings(ShowGrid, ShowLodOverlay, ShowColliders, ShowMarkers, ShowFps);
 			state.GridPlane = (GridPlane <= (uint8)Sedulous.Editor.Scene.GridPlane.YZ) ? (Sedulous.Editor.Scene.GridPlane)GridPlane : .XZ;
 			state.GridLines = GridLines;
 			return state;
 		}
 	}
 
-	public void Set(Guid scene, SceneViewState state)
+	public void Set(Guid scene, SceneOverlaySettings state)
 	{
 		Scene = scene;
 		ShowGrid = state.ShowGrid;

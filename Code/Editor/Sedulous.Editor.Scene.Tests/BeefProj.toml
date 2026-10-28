@@ -60,6 +60,9 @@ corlib = "*"
 "Sedulous.Runtime.Client" = "*"
 "Sedulous.Graphics" = "*"
 "Sedulous.Engine.Composition" = "*"
+"Sedulous.Engine.Scene" = "*"
+"Sedulous.Editor.App" = "*"
+"Sedulous.GUI.Toolkit" = "*"
 
 # On the GUI in parts with its library: these drive the page, the hierarchy, the inspector and the
 # picker dialogs on Sedulous.UI, or the thumbnail stage in the parked Editor.Preview; they come

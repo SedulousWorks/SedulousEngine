@@ -75,17 +75,17 @@ corlib = "*"
 "Sedulous.Mcp" = "*"
 "Sedulous.Editor.ViewportTools" = "*"
 "Sedulous.Editor.Camera" = "*"
+"Sedulous.Editor.App" = "*"
+"Sedulous.GUI" = "*"
+"Sedulous.GUI.Hosting" = "*"
+"Sedulous.GUI.Viewport" = "*"
 "Sedulous.Editor.Navigation" = "*"
 
-# On the GUI in parts (Raptor's editor-gui spec, 5.3): its UI-free half builds. The page, the
+# On the GUI in parts (Raptor's editor-gui spec, 5.3): its UI-free half and the page build. The
 # hierarchy, the inspector and the two picker dialogs are still on Sedulous.UI, and the thumbnail
 # generators render through Editor.Preview's stage, still parked; they stay out of the compile,
 # their sources unedited, until their layers.
 [ProjectFolder]
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "SceneEditor.bf"
 
 [[ProjectFolder.Items]]
 Type = "AutoFolder"
@@ -178,38 +178,6 @@ Name = "SceneInspectorViewScripts.bf"
 [[ProjectFolder.Items.Items]]
 Type = "IgnoreSource"
 Name = "SceneInspectorViewSettings.bf"
-
-[[ProjectFolder.Items]]
-Type = "AutoFolder"
-Name = "Page"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "PrefabEditorPageFactory.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "SceneEditorPage.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "SceneEditorPageFactory.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "SceneEditorPagePrefabs.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "SceneEditorPageToolbar.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "SceneEditorPageViewport.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "ToolMenu.bf"
 
 [[ProjectFolder.Items]]
 Type = "AutoFolder"

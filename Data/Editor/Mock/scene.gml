@@ -2,7 +2,7 @@
   The scene page: its tool bar over its own hierarchy, viewport and inspector. A page carries its
   hierarchy and inspector, so two scene pages side by side each show their own scene.
 -->
-<Panel class="page scene-page">
+<Panel class="page scene-page mock">
     <ToolBar class="page-toolbar">
         <ToolButton command="mock.save" icon="Editor/Icons/save.svg"/>
         <ToolButton command="mock.undo" icon="Editor/Icons/undo.svg"/>
