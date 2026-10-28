@@ -102,6 +102,14 @@ class EditorApplication : IApplication
 	private uint64 mLogSequence = 0;
 	/// Started with the editor: the time each line the Console takes shows.
 	private EditorExport mExport = null ~ delete _;
+	/// Project > Export (its project's presets, EditorExport's), made again for each project;
+	/// after mExport, so it goes first.
+	private ExportDialog mExportDialog = null ~ delete _;
+	/// The project mExportDialog edits. Borrowed: compared, never reached.
+	private EditorProject mExportProject = null;
+	/// Edit > Export Templates, made the first time it opens; after the Export dialog its close
+	/// tells, so it goes first.
+	private TemplatesDialog mTemplates = null ~ delete _;
 	private EditorAssetCreation mCreation ~ delete _;
 	private EditorMcpService mMcp = null ~ delete _;
 	/// The open project: after the parts its hooks reach, so it closes first.
@@ -634,6 +642,92 @@ class EditorApplication : IApplication
 		mProjectSettings.Open(root);
 	}
 
+	/// The shell's native dialogs; null with no shell.
+	private IDialogService ShellDialogs() => ((mHost != null) && (mHost.Shell != null)) ? mHost.Shell.Dialogs : null;
+
+	/// Export Templates over the main window (made the first time), the templates read again;
+	/// `closed` hears when it closes. Nothing with no interface. TAKES OWNERSHIP of `closed`.
+	private void OpenTemplates(delegate void() closed = null)
+	{
+		let root = mWindow.Root;
+		if ((root == null) || (mExport == null))
+		{
+			delete closed;
+			return;
+		}
+		if (mTemplates == null)
+		{
+			let seams = new TemplatesDialogSeams();
+			seams.TemplatesRoot = new (outRoot) => { mExport.TemplatesRoot(outRoot); };
+			seams.Refresh = new (registry) => { mExport.BuildTemplateRegistry(registry); };
+			seams.PickFolder = new (chosen) =>
+				{
+					let dialogs = ShellDialogs();
+					if (dialogs == null)
+					{
+						mContext.Notify(.Error, "File dialogs are unavailable.");
+						chosen(default);
+						delete chosen;
+						return;
+					}
+					// The service consumes the callback once it answers.
+					dialogs.ShowOpenFolder(new [=chosen] (paths) =>
+						{
+							chosen((paths.Length > 0) ? StringView(paths[0]) : default);
+						} ~ delete chosen, "", false, 0);
+				};
+			seams.RevealFolder = new (folder) =>
+				{
+					if (let dialogs = ShellDialogs())
+						dialogs.OpenPath(folder);
+				};
+			mTemplates = new TemplatesDialog(mContext, seams, mWindow.LoadMarkup(TemplatesDialog.cMarkupPath));
+		}
+		mTemplates.Open(root, closed);
+	}
+
+	/// Export over the main window, for the open project (made again for each project: it edits
+	/// that project's presets). Nothing with no interface or no project.
+	private void OpenExport()
+	{
+		let root = mWindow.Root;
+		let project = mSession.Project;
+		if ((root == null) || (mExport == null) || (project == null))
+			return;
+		if ((mExportDialog == null) || (mExportProject !== project))
+		{
+			DeleteAndNullify!(mExportDialog);
+			mExportProject = project;
+			let seams = new ExportDialogSeams();
+			seams.Refresh = new (registry) => { mExport.BuildTemplateRegistry(registry); };
+			seams.Save = new () => { mExport.SavePresets(); };
+			seams.RunExport = new (preset, all) => { mExport.Run(preset, all); };
+			seams.OpenTemplates = new (closed) => { OpenTemplates(closed); };
+			seams.PickFiles = new (chosen) =>
+				{
+					let dialogs = ShellDialogs();
+					if (dialogs == null)
+					{
+						mContext.Notify(.Error, "File dialogs are unavailable.");
+						chosen(.());
+						delete chosen;
+						return;
+					}
+					// The service consumes the callback once it answers.
+					dialogs.ShowOpenFile(new [=chosen] (paths) => { chosen(paths); } ~ delete chosen, .(), "", true, 0);
+				};
+			seams.HostPlatform.Set(BuildLayout.HostPlatformName);
+			// Absolute, as the export writes it: the project directory can be relative.
+			let dist = PathJoin(project.Directory, "Dist", .. scope .());
+			if (PathIsAbsolute(dist))
+				seams.OutputRoot.Set(dist);
+			else
+				PathJoin(GetCurrentDirectory(.. scope .()), dist, seams.OutputRoot);
+			mExportDialog = new ExportDialog(mExport.Presets, seams, mWindow.LoadMarkup(ExportDialog.cMarkupPath));
+		}
+		mExportDialog.Open(root);
+	}
+
 	/// Shows a picker's request below `anchor` (else near the top), over the main window; the
 	/// picker is made the first time. OWNERSHIP of `request` transfers, shown or not.
 	private void ShowPicker(PickerRequest request, Sedulous.GUI.Node anchor)
@@ -697,11 +791,13 @@ class EditorApplication : IApplication
 		EditorAppActions.RegisterFileActions(actions, file);
 		let edit = new EditActions();
 		edit.Preferences = new () => { OpenPreferences(); };
+		edit.ExportTemplates = new () => { OpenTemplates(); };
 		EditorAppActions.RegisterEditActions(actions, edit);
 
 		let project = new ProjectActions();
 		project.Context = mContext; // Report Resource Memory reads the session's resources through it
 		project.Settings = new () => { OpenProjectSettings(); };
+		project.ExportPresets = new () => { OpenExport(); };
 		EditorAppActions.RegisterProjectActions(actions, project);
 
 		EditorAppActions.RegisterBuildActions(actions, mContext);
@@ -934,6 +1030,9 @@ class EditorApplication : IApplication
 		}
 		DeleteAndNullify!(mPreferences); // closed (the look back, unsaved), while the window is there
 		DeleteAndNullify!(mProjectSettings); // closed (the manifest unchanged), while the window is there
+		// Export Templates first: closing it tells the Export dialog under it.
+		DeleteAndNullify!(mTemplates); // closed, while the window is there
+		DeleteAndNullify!(mExportDialog); // closed, while the window and the export are there
 		DeleteAndNullify!(mPicker); // closed, while the window's root is there
 		DeleteAndNullify!(mManagerMode); // its dialogs closed, while the window is there
 		DeleteAndNullify!(mPalette); // closed, while the window's root is there

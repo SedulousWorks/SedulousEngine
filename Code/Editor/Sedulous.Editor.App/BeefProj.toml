@@ -121,10 +121,6 @@ Name = "EditorShell.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "ExportDialog.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "GroupTreeAdapter.bf"
 
 [[ProjectFolder.Items]]
@@ -170,10 +166,6 @@ Name = "ProfilerPanel.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "SegmentedToggle.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "TemplatesDialog.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"

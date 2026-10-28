@@ -40,13 +40,12 @@ static class EditorApplicationTests
 	}
 
 	/// The editor-wide actions the lifecycle gives a hook to.
-	private static StringView[17] sRegistered = .("file.save", "file.saveAs", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
-		"edit.preferences", "project.settings", "project.reportResourceMemory", "build.cookAll", "build.rebuildAll", "game.play",
-		"game.playNewInstance", "view.resetLayout", "view.screenshot", "view.commandPalette", "help.about");
+	private static StringView[19] sRegistered = .("file.save", "file.saveAs", "file.exit", "edit.undo", "edit.redo", "page.discardChanges",
+		"edit.preferences", "edit.exportTemplates", "project.settings", "project.export", "project.reportResourceMemory", "build.cookAll",
+		"build.rebuildAll", "game.play", "game.playNewInstance", "view.resetLayout", "view.screenshot", "view.commandPalette", "help.about");
 	/// The ones a later layer brings: no hook yet, so not registered. Close Project is here because
 	/// a project given on the command line keeps its one project.
-	private static StringView[6] sLeftOut = .("file.saveLayout", "file.closeProject",
-		"edit.exportTemplates", "project.export", "view.profiler", "profiler.record");
+	private static StringView[4] sLeftOut = .("file.saveLayout", "file.closeProject", "view.profiler", "profiler.record");
 
 	/// The registry refused `id` as not enabled (over no subject).
 	private static bool Refused(EditorActionRegistry actions, StringView id)
@@ -101,15 +100,16 @@ static class EditorApplicationTests
 		Test.Assert((app.Export === exportBefore) && (app.McpService === mcpBefore));
 		Test.Assert(actions.Count == count);
 
-		// Exit asks the host at once with no page unsaved; the cooks, Project Settings and the Game
-		// tab need a project, Save and Save As a page; About, the screenshot, the palette and Preferences do
-		// nothing with no interface and no window.
+		// Exit asks the host at once with no page unsaved; the cooks, Project Settings, Export and the
+		// Game tab need a project, Save and Save As a page; About, the screenshot, the palette,
+		// Preferences and Export Templates do nothing with no interface and no window.
 		Test.Assert(actions.Execute("file.exit") case .Ok);
 		Test.Assert(host.Exits == 1);
 		Test.Assert(Refused(actions, "file.saveAs"));
 		Test.Assert(Refused(actions, "build.cookAll"));
 		Test.Assert(Refused(actions, "build.rebuildAll"));
 		Test.Assert(Refused(actions, "project.settings"));
+		Test.Assert(Refused(actions, "project.export"));
 		Test.Assert(Refused(actions, "game.play"));
 		Test.Assert(Refused(actions, "game.playNewInstance"));
 		Test.Assert(Refused(actions, "file.save"));
@@ -118,6 +118,7 @@ static class EditorApplicationTests
 		Test.Assert(actions.Execute("view.screenshot") case .Ok);
 		Test.Assert(actions.Execute("view.commandPalette") case .Ok);
 		Test.Assert(actions.Execute("edit.preferences") case .Ok);
+		Test.Assert(actions.Execute("edit.exportTemplates") case .Ok);
 		// Reset Layout reaches the dock: unopened, its controller takes the default layout all the
 		// same (a panel the layout names unregistered keeps its place).
 		let layout = app.Dock.Controller.Layout;
