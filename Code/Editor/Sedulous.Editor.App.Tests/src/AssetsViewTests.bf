@@ -41,12 +41,13 @@ class BrowserMeshBuilder : IAssetBuilder
 /// what it is and its star; entering a group and opening an asset; the search over every group
 /// saying where each match is, and the type filter, each with its state when nothing is left and
 /// the way back; tiles or a list kept with the project; building again when the database's shape
-/// moves; Reveal; and a drag of the selection carrying its assets. Then what Sedulous adds so each
-/// behaviour has a test: the tree's click and Enter navigating, the breadcrumb's tooltip, a guid
-/// typed whole, braced or bare selecting its asset, the clear button and the state's verb, the type
-/// filter's menu and a type's display name, the toggles' checks, a type's glyph and tint, the cook
-/// badges (a tile marks only stale or failed) and the cells drawn again when a cook lands, another
-/// project's view starting at its top, and the filter's matching itself (AssetFilter).
+/// moves; Reveal; a drag of the selection carrying its assets; and, under the editor's sheet, the
+/// toolbar keeping its height and the type menu opening below its button. Then what Sedulous adds
+/// so each behaviour has a test: the tree's click and Enter navigating, the breadcrumb's tooltip, a
+/// guid typed whole, braced or bare selecting its asset, the clear button and the state's verb, the
+/// type filter's menu and a type's display name, the toggles' checks, a type's glyph and tint, the
+/// cook badges (a tile marks only stale or failed) and the cells drawn again when a cook lands,
+/// another project's view starting at its top, and the filter's matching itself (AssetFilter).
 static class AssetsViewTests
 {
 	/// The frame read from the repository's Data with the elements the editor's window registers
@@ -68,6 +69,7 @@ static class AssetsViewTests
 	/// Content (Crate, Models (Town (Barrel, Bell)), Sounds) open in an editor context with a
 	/// project editor store; the view in a root of a GUI of its own, 900 by 600, what it opened
 	/// in Opened. With a cook, a cook service over no builders, or the mesh's (`cooksMeshes`).
+	/// For the editor's sheet (`forSheet`), the toolbar and the group tree are left to it.
 	private class Bed
 	{
 		public String Dir = new .() ~ delete _;
@@ -92,10 +94,15 @@ static class AssetsViewTests
 		public List<Guid> Opened = new .() ~ delete _;
 		/// How often the store was asked to be saved.
 		public int Saves = 0;
+		/// The toolbar and the group tree are the sheet's to size.
+		public bool ForSheet;
+		/// The editor's sheet, once StyleAsTheEditor has styled the tree.
+		public EditorSheet Sheet = null;
 
-		public this(StringView dir, bool withCook = false, bool cooksMeshes = false)
+		public this(StringView dir, bool withCook = false, bool cooksMeshes = false, bool forSheet = false)
 		{
 			Dir.Set(dir);
+			ForSheet = forSheet;
 			RemoveDirectoryRecursive(Dir);
 			Test.Assert(EditorProject.Create(Dir, "Browse") case .Ok);
 			Project = EditorProject.Open(Dir);
@@ -135,8 +142,10 @@ static class AssetsViewTests
 
 		public ~this()
 		{
-			// The view first (its list and tree let go while the root holds them), the cook
-			// before the project it reads, the context before the store it borrows.
+			// The sheet while what it styled is there, the view (its list and tree let go while
+			// the root holds them), the cook before the project it reads, the context before the
+			// store it borrows.
+			DeleteAndNullify!(Sheet);
 			DeleteAndNullify!(View);
 			if (Cook != null)
 			{
@@ -155,7 +164,8 @@ static class AssetsViewTests
 		}
 
 		/// A view over the bed's services, built; the caller's. No sheet here: the group tree
-		/// beside the content, each a size of its own (the editor's sheet sizes them).
+		/// beside the content, each a size of its own (the editor's sheet sizes them), the toolbar
+		/// and the tree left to the sheet in a bed made for it.
 		public AssetsView MakeView()
 		{
 			let services = new AssetsViewServices();
@@ -171,18 +181,21 @@ static class AssetsViewTests
 					s.Width = LayoutLength.Px(900.0f);
 					s.Height = LayoutLength.Px(600.0f);
 				});
-			// The toolbar a row of its own height, the body under it.
-			view.Content.GetChildAt(0).EditLayoutStyle(scope (s) =>
-				{
-					s.Direction = .Row;
-					s.Height = LayoutLength.Px(30.0f);
-				});
-			view.Tree.Parent.EditLayoutStyle(scope (s) => { s.Direction = .Row; });
-			view.Tree.EditLayoutStyle(scope (s) =>
-				{
-					s.Width = LayoutLength.Px(200.0f);
-					s.Height = LayoutLength.Px(300.0f);
-				});
+			if (!ForSheet)
+			{
+				// The toolbar a row of its own height, the body under it.
+				view.Content.GetChildAt(0).EditLayoutStyle(scope (s) =>
+					{
+						s.Direction = .Row;
+						s.Height = LayoutLength.Px(30.0f);
+					});
+				view.Tree.Parent.EditLayoutStyle(scope (s) => { s.Direction = .Row; });
+				view.Tree.EditLayoutStyle(scope (s) =>
+					{
+						s.Width = LayoutLength.Px(200.0f);
+						s.Height = LayoutLength.Px(300.0f);
+					});
+			}
 			view.List.EditLayoutStyle(scope (s) =>
 				{
 					s.Width = LayoutLength.Px(600.0f);
@@ -196,6 +209,15 @@ static class AssetsViewTests
 		{
 			Root.UpdateLayout();
 			Root.UpdateLayout();
+		}
+
+		/// The tree styled by the editor's own sheet (the default density's), as the window makes it,
+		/// then laid out.
+		public void StyleAsTheEditor()
+		{
+			Sheet = new .();
+			Sheet.Apply(Root);
+			Layout();
 		}
 
 		/// The rows shown, a group's marked /.
@@ -705,5 +727,38 @@ static class AssetsViewTests
 		Test.Assert(AssetFilter.AsGuid(bare, let parsed) && (parsed == crate.Id));
 		Test.Assert(!AssetFilter.AsGuid(StringView(guid, 0, 6), ?));
 		Test.Assert(!AssetFilter.AsGuid("Crate", ?));
+	}
+
+	/// Under the editor's sheet the toolbar keeps its height however full the body (a short panel:
+	/// the body wants more room than it has, and a toolbar that shrank was squeezed to its search
+	/// box); the type menu opens below its button, not at the window's corner (its point was the
+	/// button's own where the menu takes one in the window's space).
+	[Test]
+	public static void UnderTheEditorsSheetTheToolbarKeepsItsHeightTheTypeMenuOpensBelowItsButton()
+	{
+		let bed = scope Bed("scratch_assets_view_sheet", false, false, true);
+		let view = bed.View;
+		bed.StyleAsTheEditor();
+		// A short panel: the panel fills its window, so the window is made short, and the
+		// toolbar must keep its height over a body that wants more room than there is.
+		bed.Root.Size = .(900.0f, 120.0f);
+		view.Content.EditLayoutStyle(scope (s) => { s.MinHeight = LayoutLength.Px(0.0f); });
+		bed.Layout();
+		Test.Assert(view.Content.Size.Y < 130.0f, scope $"the panel is {view.Content.Size.Y} high: not squeezed");
+		let bar = view.Crumbs.Parent;
+		Test.Assert(bar != null);
+		// The default density's --bar, its search inside it with room above and below.
+		Test.Assert(Math.Abs(bar.Size.Y - 34.0f) < 0.5f, scope $"the toolbar is {bar.Size.Y} high");
+
+		let types = bed.Part<Sedulous.GUI.Button>("assets-types");
+		Test.Assert(types != null);
+		Test.Assert(types.HandleActivate());
+		bed.Layout();
+		let menu = view.TypeMenu;
+		Test.Assert(menu != null);
+		let button = types.ScreenBounds;
+		let at = menu.ScreenBounds;
+		Test.Assert(at.Y >= button.Y + button.Height - 1.0f, "below the button, not at the window's corner");
+		Test.Assert(at.X >= button.X - at.Width);
 	}
 }

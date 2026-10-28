@@ -180,7 +180,8 @@ window:entering, window:leaving { opacity: 0; transform: scale(0.98); }
 
 /* === A panel's bar: its search and its actions, under the dock tab === */
 .panel { flex-grow: 1; flex-direction: column; background-color: var(--surface); }
-.panel-toolbar { height: var(--bar); padding: 0 var(--space-m); column-gap: var(--space-s); align-items: center;
+/* Its height holds: a column whose body wants more room does not squeeze it (the assets bar). */
+.panel-toolbar { height: var(--bar); flex-shrink: 0; padding: 0 var(--space-m); column-gap: var(--space-s); align-items: center;
                  flex-direction: row; border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); }
 
 /* === The search field: one look everywhere (2.3) === */

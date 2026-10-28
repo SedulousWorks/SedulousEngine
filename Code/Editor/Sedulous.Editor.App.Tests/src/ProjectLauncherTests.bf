@@ -95,9 +95,8 @@ class ProjectLauncherTests
 		public int Saves = 0;
 		public List<String> Opened = new .() ~ DeleteContainerAndItems!(_);
 		public List<String> Created = new .() ~ DeleteContainerAndItems!(_);
-		/// The editor's files and sheet, once StyleAsTheEditor has styled the tree.
-		public Sedulous.Editor.Core.EditorResources Resources ~ delete _;
-		public StyleManager Styles;
+		/// The editor's sheet, once StyleAsTheEditor has styled the tree.
+		public EditorSheet Sheet;
 
 		/// `more` older projects after the three, there (`real`) or no longer there.
 		public this(int more = 0, bool real = false)
@@ -144,7 +143,7 @@ class ProjectLauncherTests
 
 		public ~this()
 		{
-			DeleteAndNullify!(Styles); // while what it styled is there; the resources it reads after
+			DeleteAndNullify!(Sheet); // while what it styled is there
 			DeleteAndNullify!(View);
 			Scene.EventDispatcher.Clipboard = null;
 			Scene.ReleaseRef();
@@ -161,18 +160,8 @@ class ProjectLauncherTests
 		/// then laid out: the grid wraps and scrolls as it shows.
 		public void StyleAsTheEditor()
 		{
-			let data = scope String();
-			Test.Assert(EditorSplashTests.DataRoot(data));
-			Resources = new .(data);
-			let look = scope EditorLook();
-			look.Density.Set("default");
-			let text = EditorWindow.SheetFor(Resources, look, .. scope String());
-			let sheet = scope StyleSheet();
-			CSSParser.Parse(text, EditorWindow.cSheetPath, sheet);
-			Styles = new .(sheet);
-			Styles.ResourceProvider = Resources; // its @import of the tokens
-			Styles.ApplyTree(Scene);
-			Scene.UpdateLayout();
+			Sheet = new .();
+			Sheet.Apply(Scene);
 		}
 
 		/// The list the projects show in.
