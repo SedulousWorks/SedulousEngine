@@ -311,6 +311,35 @@ class TemplatesDialogTests
 		Test.Assert(dialog.TemplateCount == 3);
 	}
 
+	/// A long folder wraps inside the details, never past their edge: a path has no spaces to
+	/// break at, so the value breaks anywhere. Under the editor's sheet with its fonts, since
+	/// without one text has no width and the overflow cannot show.
+	[Test]
+	public static void ALongFolderWrapsInsideTheDetailsNeverPastTheirEdge()
+	{
+		let f = scope Fixture();
+		let dialog = f.Open();
+		let sheet = scope EditorSheet(true); // goes first, while the tree it styled is there
+		dialog.Select(Fixture.IndexOf(dialog, "t-linux"));
+		let folder = dialog.DetailValue("Folder");
+		Test.Assert(folder != null);
+		Test.Assert(dialog.DetailValue("Nowhere") == null);
+		// One path with no spaces to break at, far wider than the window.
+		let path = scope String("/home");
+		for (int i < 40)
+			path.Append("/averylongfoldername");
+		folder.Text = path;
+		sheet.Apply(f.Ui);
+		f.Ui.UpdateLayout();
+		let fields = folder.Parent as UIWidget;
+		Test.Assert(fields != null);
+		let edge = fields.ScreenBounds;
+		let value = folder.ScreenBounds;
+		Test.Assert(value.Width > 0.0f);
+		Test.Assert(value.X + value.Width <= edge.X + edge.Width + 0.5f, "inside the details");
+		Test.Assert(value.Height > 30.0f, "wrapped onto several lines");
+	}
+
 	/// A template's row under the editor's sheet: --space-l at its side and between its icon and
 	/// its text, a 28-pixel icon, a gap (--space-xs) between its name and summary. Its height is
 	/// still the list's fixed row (Raptor's c10ec7994 gives the list 52-pixel rows), so the rule's

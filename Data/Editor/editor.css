@@ -631,7 +631,8 @@ button.group-field { justify-content: flex-start; }
 .templates-name { font-size: var(--font-title); color: var(--text-strong); }
 .templates-id { color: var(--text-dim); }
 .templates-fields { flex-grow: 1; }
-.template-value { white-space: normal; min-width: 0; }
+/* A path has no spaces to wrap at: it breaks anywhere rather than running past the window. */
+.template-value { white-space: normal; overflow-wrap: anywhere; min-width: 0; }
 .template-value.warning, .export-card-detail.warning { color: var(--warning); }
 .templates-verbs { flex-direction: row; column-gap: var(--space-s); }
 /* A template a two-line card: room above and below its name and summary, a gap between them. */

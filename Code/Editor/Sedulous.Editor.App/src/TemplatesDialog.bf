@@ -310,6 +310,13 @@ class TemplatesDialog
 		return ((detail != null) && detail.Value.Displayed) ? detail.Value.Text : default;
 	}
 
+	/// A detail's value label by its caption (the dialog's); null with none.
+	public Sedulous.GUI.Label DetailValue(StringView label)
+	{
+		let detail = DetailFor(label);
+		return (detail != null) ? detail.Value : null;
+	}
+
 	/// Whether any of a detail's row shows (its caption or its value); an empty one is left out,
 	/// both of them.
 	public bool ShowsDetail(StringView label)
