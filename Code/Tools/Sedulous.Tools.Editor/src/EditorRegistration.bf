@@ -6,6 +6,7 @@ using Sedulous.Pipeline.Registration;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Navigation;
+using Sedulous.Editor.Scene; // SceneServices (its pages come back with their port)
 
 namespace Sedulous.Tools.Editor;
 
@@ -32,6 +33,9 @@ static class EditorRegistration
 		// The domains' Preferences contributions that live outside the parked pages.
 		NavigationEditorPreferences.Register(context);
 		GameAudioEditorSettings.Register(context);
+		// The scene editor's services: its document types, the export's scene seams (the text
+		// transcoded, the references scanned) and a model import's prefab and scene.
+		SceneServices.Register(context, host);
 
 		// File > New: every pipeline domain's creators, the scripts' among them. The script page
 		// comes back with its port.

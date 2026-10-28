@@ -39,6 +39,7 @@ corlib = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.App" = "*"
 "Sedulous.Editor.Navigation" = "*"
+"Sedulous.Editor.Scene" = "*"
 # The pages are parked while the editor moves onto the GUI (Raptor's editor-gui spec, 4.1): each
 # Sedulous.Editor.<Domain> page library comes back here with its port, and Sedulous.Editor.Spline's
 # viewport tool with the scene page's viewport.
