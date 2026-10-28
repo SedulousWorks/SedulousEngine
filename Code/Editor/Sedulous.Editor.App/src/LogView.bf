@@ -7,15 +7,15 @@ using Sedulous.GUI;
 namespace Sedulous.Editor.App;
 
 /// The Console panel (Raptor's editor-gui spec, 5.2, layer 1). Its frame is markup
-/// (Data/Editor/Console.gml): a chip per level (Info, holding the debug and trace lines too,
-/// Warnings, Errors) with how many lines it holds, on showing them; a search matching anywhere in
-/// a line ignoring case, cleared by its x; Clear; then the lines on a virtualised list, each its
-/// time since the editor started and `[Category] message` in its level's colour. The newest line
-/// is followed until the user scrolls up, and again once they are back at the bottom. Rows select
-/// as any list's do (click, Ctrl, Shift, Ctrl+A); Ctrl+C or the menu's Copy puts the selected
-/// lines on the clipboard, oldest first, one per line. The entries are capped (the oldest
-/// trimmed); a selection is by entry, so it survives a trim. Fed once a frame from the editor's
-/// log buffer (EditorApplication.DrainLog).
+/// (Data/Editor/Console.gml): a chip per level (Debug, holding the trace lines too, Info,
+/// Warnings, Errors, holding the critical ones) with how many lines it holds, on showing them; a
+/// search matching anywhere in a line ignoring case, cleared by its x; Clear; then the lines on a
+/// virtualised list, each its time since the editor started and `[Category] message` in its
+/// level's colour. The newest line is followed until the user scrolls up, and again once they
+/// are back at the bottom. Rows select as any list's do (click, Ctrl, Shift, Ctrl+A); Ctrl+C or
+/// the menu's Copy puts the selected lines on the clipboard, oldest first, one per line. The
+/// entries are capped (the oldest trimmed); a selection is by entry, so it survives a trim. Fed
+/// once a frame from the editor's log buffer (EditorApplication.DrainLog).
 class LogView
 {
 	/// Its frame under the data root.
@@ -98,7 +98,7 @@ class LogView
 	private List<int> mShown = new .() ~ delete _;
 	/// The lines each level holds now.
 	private int[LogBucket.Count] mCounts;
-	private bool[LogBucket.Count] mVisible = .(true, true, true);
+	private bool[LogBucket.Count] mVisible = .(true, true, true, true);
 	/// What a line must contain to show; empty shows every line.
 	private String mSearch = new .() ~ delete _;
 	private ItemId mNextId = 1;
@@ -137,7 +137,7 @@ class LogView
 					e.Handled = true;
 				});
 		}
-		StringView[LogBucket.Count] chips = .("console-info", "console-warnings", "console-errors");
+		StringView[LogBucket.Count] chips = .("console-debug", "console-info", "console-warnings", "console-errors");
 		for (int i < LogBucket.Count)
 		{
 			mChips[i] = Find<Sedulous.GUI.Button>(chips[i]);
@@ -335,7 +335,7 @@ class LogView
 	/// The chips' counts and states, the search's x, the empty line.
 	private void ShowChrome()
 	{
-		StringView[LogBucket.Count] names = .("Info", "Warnings", "Errors");
+		StringView[LogBucket.Count] names = .("Debug", "Info", "Warnings", "Errors");
 		for (int i < LogBucket.Count)
 		{
 			let chip = mChips[i];
@@ -393,7 +393,7 @@ class LogView
 		row.RemoveClass("debug");
 		row.RemoveClass("warning");
 		row.RemoveClass("error");
-		if ((entry.Level == .Trace) || (entry.Level == .Debug))
+		if (LogBucket.Of(entry.Level) == .Debug)
 			row.AddClass("debug");
 		else if (entry.Level == .Warning)
 			row.AddClass("warning");

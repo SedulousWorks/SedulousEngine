@@ -9,14 +9,14 @@ using Sedulous.Editor.App;
 namespace Sedulous.Editor.App.Tests;
 
 /// The Console over its markup (Data/Editor/Console.gml): lines with their category, the levels'
-/// chips (Info holding trace and debug, Error holding critical) with their counts showing and
-/// hiding their lines, the search, the cap trimming the oldest, Clear, the empty line, a selection
-/// kept by entry through a trim and copied oldest first, each line's time, and every line one
-/// fixed height under the editor's sheet. Then what Sedulous
-/// adds so each behaviour has a test: the search typed into its field and its x, a selection kept
-/// through a filter for the lines still shown, rows picked out of order and ranges grown with
-/// Shift, a copy announced with its count, each row's time and level colour, the newest line
-/// followed until the user scrolls up, and the list's menu.
+/// chips (Debug holding trace, Error holding critical) with their counts showing and hiding their
+/// lines, the search, the cap trimming the oldest, Clear, the empty line, a selection kept by
+/// entry through a trim and copied oldest first, each line's time, and every line one fixed
+/// height under the editor's sheet. Then what Sedulous adds so each behaviour has a test: the
+/// Debug chip hiding only its own lines, the search typed into its field and its x, a selection
+/// kept through a filter for the lines still shown, rows picked out of order and ranges grown
+/// with Shift, a copy announced with its count, each row's time and level colour, the newest
+/// line followed until the user scrolls up, and the list's menu.
 class LogViewTests
 {
 	/// The Console in a GUI of its own, 800 by 400, with a clipboard the test reads.
@@ -77,7 +77,7 @@ class LogViewTests
 	}
 
 	[Test]
-	public static void LinesWithTheirCategoryTheLevelsFoldedIntoThreeChipsWithTheirCounts()
+	public static void LinesWithTheirCategoryTheLevelsInFourChipsWithTheirCounts()
 	{
 		let bed = scope ConsoleBed();
 		Test.Assert(bed.Empty.Displayed, "nothing yet");
@@ -92,17 +92,66 @@ class LogViewTests
 		Test.Assert(bed.View.ShownText(3) == "no category");
 		Test.Assert(!bed.Empty.Displayed);
 
-		Test.Assert(LogBucket.Of(.Trace) == .Info);
-		Test.Assert(LogBucket.Of(.Debug) == .Info);
+		Test.Assert(LogBucket.Of(.Trace) == .Debug);
+		Test.Assert(LogBucket.Of(.Debug) == .Debug);
 		Test.Assert(LogBucket.Of(.Information) == .Info);
 		Test.Assert(LogBucket.Of(.Warning) == .Warning);
 		Test.Assert(LogBucket.Of(.Error) == .Error);
 		Test.Assert(LogBucket.Of(.Critical) == .Error);
-		Test.Assert(bed.View.CountOf(.Info) == 2);
+		Test.Assert(bed.View.CountOf(.Debug) == 1, "the trace line");
+		Test.Assert(bed.View.CountOf(.Info) == 1);
 		Test.Assert(bed.View.CountOf(.Warning) == 1);
-		Test.Assert(bed.Chip("console-info").Text == "Info 2");
+		Test.Assert(bed.View.CountOf(.Error) == 1, "the critical line");
+		Test.Assert(bed.Chip("console-debug").Text == "Debug 1");
+		Test.Assert(bed.Chip("console-info").Text == "Info 1");
 		Test.Assert(bed.Chip("console-warnings").Text == "Warnings 1");
 		Test.Assert(bed.Chip("console-errors").Text == "Errors 1");
+	}
+
+	/// The Debug chip shows and hides the trace and debug lines and no others, as the other chips
+	/// leave them be; the critical lines go with Errors.
+	[Test]
+	public static void TheDebugChipHidesOnlyTheTraceAndDebugLines()
+	{
+		let bed = scope ConsoleBed();
+		bed.View.AddEntry(.Trace, "A", "trace");
+		bed.View.AddEntry(.Debug, "A", "debug");
+		bed.View.AddEntry(.Information, "A", "info");
+		bed.View.AddEntry(.Warning, "A", "warn");
+		bed.View.AddEntry(.Error, "A", "error");
+		bed.View.AddEntry(.Critical, "A", "critical");
+		Test.Assert(bed.View.CountOf(.Debug) == 2);
+		Test.Assert(bed.View.CountOf(.Error) == 2);
+
+		let debug = bed.Chip("console-debug");
+		Test.Assert(debug.HasClass("debug"), "the sheet's colour for it");
+		Test.Assert(debug.HasClass("checked"));
+		Test.Assert(debug.HandleActivate()); // off
+		Test.Assert(!bed.View.IsBucketVisible(.Debug));
+		Test.Assert(!debug.HasClass("checked"));
+		Test.Assert(bed.View.IsBucketVisible(.Info) && bed.View.IsBucketVisible(.Warning) && bed.View.IsBucketVisible(.Error));
+		Test.Assert(bed.Chip("console-info").HasClass("checked"));
+		Test.Assert(bed.View.ShownCount == 4);
+		Test.Assert(bed.View.ShownText(0) == "[A] info");
+		Test.Assert(bed.View.ShownText(3) == "[A] critical");
+		bed.View.AddEntry(.Trace, "A", "trace2"); // hidden while its chip is off
+		Test.Assert(bed.View.ShownCount == 4);
+		Test.Assert(bed.Chip("console-debug").Text == "Debug 3", "counted though hidden");
+		Test.Assert(debug.HandleActivate()); // on again: in order
+		Test.Assert(bed.View.ShownCount == 7);
+		Test.Assert(bed.View.ShownText(0) == "[A] trace");
+		Test.Assert(bed.View.ShownText(1) == "[A] debug");
+		Test.Assert(bed.View.ShownText(6) == "[A] trace2");
+
+		// Info's chip leaves the debug lines; Errors' takes the critical one with the errors.
+		bed.View.SetBucketVisible(.Info, false);
+		Test.Assert(bed.View.ShownCount == 6);
+		Test.Assert(bed.View.ShownText(1) == "[A] debug");
+		bed.View.SetBucketVisible(.Info, true);
+		bed.View.SetBucketVisible(.Error, false);
+		Test.Assert(bed.View.ShownCount == 5);
+		Test.Assert(bed.View.ShownText(3) == "[A] warn");
+		Test.Assert(bed.View.ShownText(4) == "[A] trace2");
 	}
 
 	[Test]
@@ -347,11 +396,12 @@ class LogViewTests
 		bed.View.AddEntry(.Information, "A", "info", TimeSpan(1, 2, 3));
 		bed.View.AddEntry(.Warning, "A", "warn");
 		bed.View.AddEntry(.Critical, "A", "critical");
+		bed.View.AddEntry(.Trace, "A", "trace");
 		bed.Layout();
-		StringView[4] times = .("00:01:05", "01:02:03", "00:00:00", "00:00:00");
-		StringView[4] levels = .("debug", "", "warning", "error");
+		StringView[5] times = .("00:01:05", "01:02:03", "00:00:00", "00:00:00", "00:00:00");
+		StringView[5] levels = .("debug", "", "warning", "error", "debug");
 		StringView[3] classes = .("debug", "warning", "error");
-		for (int32 i < 4)
+		for (int32 i < 5)
 		{
 			let row = bed.List.RowForItem(i);
 			Test.Assert(row != null);

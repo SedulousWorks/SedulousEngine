@@ -211,6 +211,7 @@ button > icon { width: var(--icon-size); height: var(--icon-size); image-color: 
 button.chip { height: calc(var(--control-height) - 4px); padding: 0 var(--space-m); border-radius: 999px;
               background-color: transparent; border: 1px solid var(--border); color: var(--text-dim); font-size: var(--font-small); }
 button.chip.checked { background-color: var(--element); color: var(--text); }
+button.chip.debug.checked { color: var(--text-dim); }
 button.chip.warning.checked { color: var(--warning); border-color: var(--warning-border); }
 button.chip.error.checked { color: var(--danger); border-color: var(--danger-border); }
 
