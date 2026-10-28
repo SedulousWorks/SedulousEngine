@@ -61,19 +61,7 @@ corlib = "*"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "AssetCell.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "AssetGroupTreeAdapter.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "AssetNameLabel.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "AssetsView.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
@@ -118,10 +106,6 @@ Name = "EditorIcons.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "EditorShell.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "GroupTreeAdapter.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
@@ -174,10 +158,6 @@ Name = "ToolPanelPlacement.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "ToolPanelWidgets.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ViewModeToggles.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"

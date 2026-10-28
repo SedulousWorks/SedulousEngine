@@ -131,6 +131,15 @@ class EditorDock
 		ProjectEditorSettings.CaptureDockLayout(mController, store);
 	}
 
+	/// `panel` to the front: shown where it was closed, and its tab made its stack's current one
+	/// (Show alone leaves a docked panel behind the tab in front of it).
+	public void BringToFront(StringView panel)
+	{
+		if (mController.Layout.StackOf(panel) == cNoDock)
+			mController.Show(panel);
+		mController.Edit(scope (layout) => layout.Activate(panel));
+	}
+
 	/// The Project panel's content: the open project's page, or the welcome when null. The panel's
 	/// own content is a holder of it, so it shows wherever the panel is docked. The dock takes a
 	/// reference of its own.

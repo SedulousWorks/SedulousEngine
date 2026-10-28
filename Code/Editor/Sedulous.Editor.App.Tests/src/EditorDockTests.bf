@@ -394,4 +394,28 @@ static class EditorDockTests
 		Test.Assert(!dock.FloatsInWindows);
 		Test.Assert(bed.Into.ChildCount == 0);
 	}
+
+	/// BringToFront shows a closed panel where it belongs, and puts a docked one's tab in front of
+	/// the tab before it in its stack (Show alone refuses a docked panel): an asset slot's Reveal
+	/// reaches the Assets panel either way.
+	[Test]
+	public static void BringToFrontShowsAClosedPanelAndPutsADockedOnesTabInFront()
+	{
+		let bed = scope DockBed();
+		let controller = bed.Dock.Controller;
+		Test.Assert(controller.Close(EditorDock.cPanelAssets).Ok);
+		Test.Assert(bed.Layout.StackOf(EditorDock.cPanelAssets) == cNoDock);
+		bed.Dock.BringToFront(EditorDock.cPanelAssets);
+		let stack = bed.Layout.StackOf(EditorDock.cPanelAssets);
+		Test.Assert(stack != cNoDock, "shown again");
+
+		// The Console tabbed into its stack, in front of it.
+		Test.Assert(controller.Edit(scope (l) => l.MoveToTab(EditorDock.cPanelConsole, stack)).Ok);
+		Test.Assert(controller.Edit(scope (l) => l.Activate(EditorDock.cPanelConsole)).Ok);
+		var node = bed.Layout.FindNode(bed.Layout.StackOf(EditorDock.cPanelAssets));
+		Test.Assert((node.Panels.Count == 2) && (node.Panels[node.Active] == EditorDock.cPanelConsole));
+		bed.Dock.BringToFront(EditorDock.cPanelAssets);
+		node = bed.Layout.FindNode(bed.Layout.StackOf(EditorDock.cPanelAssets));
+		Test.Assert(node.Panels[node.Active] == EditorDock.cPanelAssets, "its tab in front");
+	}
 }

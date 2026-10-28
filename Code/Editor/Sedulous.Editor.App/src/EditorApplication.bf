@@ -24,7 +24,7 @@ namespace Sedulous.Editor.App;
 /// The editor as a runtime IApplication. It keeps the lifecycle alone (Raptor's editor-gui spec,
 /// 5.1, layer 3): it configures the engine, starts its parts in order, hands each frame to them
 /// and shuts them down. The parts are their own files: the window and its GUI (EditorWindow), its
-/// dock (EditorDock), the Console in it (LogView), the pages in it (EditorPages), its menu bar (ActionMenuBar) and keys (ActionShortcuts), the open project (EditorSession), export
+/// dock (EditorDock), the Assets panel and the Console in it (AssetsView, LogView), the pages in it (EditorPages), its menu bar (ActionMenuBar) and keys (ActionShortcuts), the open project (EditorSession), export
 /// (EditorExport), asset creation (EditorAssetCreation), the MCP host (EditorMcpService), the
 /// project manager over the window while no project is open (ProjectManagerMode) and the
 /// editor-wide actions (EditorAppActions). Underneath are the EditorContext and the services from Editor.Core and
@@ -98,6 +98,9 @@ class EditorApplication : IApplication
 	private ProjectHomeView mHome = null ~ delete _;
 	/// The Console panel's content, made with the dock.
 	private LogView mConsole = null ~ delete _;
+	/// The Assets panel's content, made with the dock; after the type icons it borrows, so it
+	/// goes first.
+	private AssetsView mAssets = null ~ delete _;
 	/// The last log entry the Console took.
 	private uint64 mLogSequence = 0;
 	/// Started with the editor: the time each line the Console takes shows.
@@ -514,8 +517,8 @@ class EditorApplication : IApplication
 		mEmbeddedApp.OnStartup(mEmbeddedHost);
 	}
 
-	/// The dock in the frame: the shared panels, their contents the window's markup (Assets a
-	/// line until its content ports, X4), the Console the log.
+	/// The dock in the frame: the shared panels, their contents the window's markup, Assets the
+	/// project's content, the Console the log.
 	private void OpenDock()
 	{
 		let into = mWindow.FindById("frame-dock");
@@ -526,7 +529,31 @@ class EditorApplication : IApplication
 		}
 		let contents = new EditorDockContents();
 		contents.Welcome = new () => mWindow.LoadMarkup("Editor/Welcome.gml");
-		contents.Assets = Placeholder("The asset browser is not on the new interface yet.");
+		{
+			let assets = new AssetsViewServices();
+			assets.Context = mContext;
+			assets.Cook = mCookService;
+			RefServices(); // the type icons
+			assets.Icons = mTypeIcons;
+			assets.Open = new (instance) => { mPages.Open(instance); };
+			mAssets = new AssetsView(assets, mWindow.LoadMarkup(AssetsView.cMarkupPath));
+			// A slot's reveal (and any other) shows the asset where it lives, the panel to the front.
+			delete mContext.RevealAsset;
+			mContext.RevealAsset = new (id) =>
+				{
+					if ((mAssets != null) && mAssets.Reveal(id))
+						mDock.BringToFront(EditorDock.cPanelAssets);
+				};
+			if (mContext.OpenAsset == null)
+				mContext.OpenAsset = new (id) => { mPages.Open(id); };
+		}
+		contents.Assets = new () =>
+			{
+				let content = mAssets.Content;
+				if (content != null)
+					content.AddRef(); // the dock's
+				return content;
+			};
 		mConsole = new LogView(mWindow.LoadMarkup(LogView.cMarkupPath));
 		mConsole.SetOnCopied(new (lines) => { mContext.Notify(.Success, (lines == 1) ? "Copied 1 log line" : scope:: $"Copied {lines} log lines"); });
 		contents.Console = new () =>
@@ -549,19 +576,6 @@ class EditorApplication : IApplication
 		mLogSequence = mConfig.LogBuffer.CollectSince(mLogSequence, entries);
 		for (let entry in entries)
 			mConsole.AddEntry(entry.Level, entry.Category, entry.Message, entry.Time);
-	}
-
-	/// A panel's content until its own ports: a line saying so. The caller owns the hook.
-	private static delegate Sedulous.GUI.Node() Placeholder(StringView text)
-	{
-		let line = new String(text);
-		return new () =>
-			{
-				let label = new Sedulous.GUI.Label();
-				label.AddClass("panel-placeholder");
-				label.Text = line;
-				return label; // its one reference, the dock's
-			} ~ delete line;
 	}
 
 	/// The frame's menu bar and keys from the action registry, File > New <creator> leading the
@@ -865,6 +879,8 @@ class EditorApplication : IApplication
 			resources.CollectGarbage(); // products a hot reload replaced go
 		}
 		DrainLog();
+		if (mAssets != null)
+			mAssets.Refresh(); // an agent's write, a cook's badges: shown this frame
 		mWindow.Update(dt);
 		mPages.Update(host, dt); // after the GUI laid out: viewport rects are current
 		if (mHome != null)
@@ -1040,6 +1056,7 @@ class EditorApplication : IApplication
 		DeleteAndNullify!(mShortcuts); // its keys and the root's handlers, while both are there
 		mDock.Close(); // its floats' windows, then the GUI before the device goes
 		DeleteAndNullify!(mConsole); // its list let go, the dock having let go of its content
+		DeleteAndNullify!(mAssets); // its list and tree let go, the dock having let go of its content
 		mWindow.Close();
 		if (mStarted)
 		{

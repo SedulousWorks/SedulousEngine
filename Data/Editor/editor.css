@@ -284,6 +284,14 @@ toast { border: 1px solid var(--border-strong); }
                align-items: center; justify-content: center; }
 .asset-glyph { width: 24px; height: 24px; image-color: var(--icon-dim); }
 .asset-name { font-size: var(--font-small); color: var(--text); }
+.asset-name { max-width: 88px; text-overflow: ellipsis; white-space: nowrap; }
+/* A tile's marks sit in its picture's corners: a star top right, a stale or failed badge below. */
+.asset-thumb > .badge-icon { position: absolute; top: 3px; right: 3px; }
+.asset-thumb > .badge { position: absolute; left: 3px; bottom: 3px; font-size: 10px; padding: 0 3px; }
+.asset-list { flex-grow: 1; background-color: var(--surface); padding: var(--space-xs) var(--space-s); }
+.asset-list .asset-row > .row-kind { flex-grow: 1; }
+.asset-tile.group > .asset-thumb > .asset-glyph, .asset-row.group > .row-icon { image-color: var(--icon); }
+.assets-state { flex-grow: 1; background-color: var(--surface); }
 
 /* A tile's hover and its selection are the cell, one shape. */
 .asset-tiles listviewrow { border-radius: var(--radius); }

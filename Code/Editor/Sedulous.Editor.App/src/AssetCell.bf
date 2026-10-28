@@ -1,58 +1,117 @@
 using System;
-using Sedulous.Core;
-using Sedulous.UI;
+using Sedulous.GUI;
 
 namespace Sedulous.Editor.App;
 
-/// A list-row or grid-tile container that overlays small status dots in its top-right
-/// corner: proper visual badges, not name-colour tints. The dots draw in local space after
-/// the children, so they sit on top of the icon in both list and grid, stacking right to
-/// left in a fixed order, export outermost. Set per bind. Also the drag source for instance
-/// rows: the input layer walks ancestors for AsDragSource on a left press, so a bound cell
-/// starts a potential drag automatically.
-class AssetCell : FlexLayout, IDragSource
+/// One asset or group as the Assets panel draws it (Raptor's editor-gui spec, 5.2, layer 7): a
+/// tile's picture (its glyph, the star in a corner, a stale or failed badge in another) over its
+/// name, or a list row's glyph, name, what it is, badge and star. Its class (`asset-tile` or
+/// `asset-row`) says which, and a group's has `group` too; the sheet draws the rest.
+class AssetCell : UIWidget
 {
-	/// Green: an "Always Export" root.
-	public bool ShowExportBadge = false;
-	/// Gold: a pinned favourite.
-	public bool ShowFavoriteBadge = false;
-
-	/// Empty means not draggable, a group row.
-	private Guid mDragId = .Empty;
-	private String mDragTypeName = new .() ~ delete _;
-	private String mDragName = new .() ~ delete _;
-
-	/// The drag identity, bound per row by the adapters; instances only, groups do not drag.
-	public void BindDragPayload(Guid id, StringView typeName, StringView displayName)
+	/// What a cell shows; its texts borrowed for the call (Show copies them).
+	public struct Shown
 	{
-		mDragId = id;
-		mDragTypeName.Set(typeName);
-		mDragName.Set(displayName);
+		public StringView Glyph;
+		/// Its category's tint ("cat-rendering"); empty: the plain icon colour.
+		public StringView GlyphClass;
+		public StringView Name;
+		/// What it is: its type's display name, or a group's count.
+		public StringView Kind;
+		/// "Cooked", "Stale", "Failed"; empty: none.
+		public StringView Badge;
+		/// success, warning, danger.
+		public StringView BadgeClass;
+		public bool Favourite;
+		public bool Group;
 	}
 
-	public void ClearDragPayload() => mDragId = .Empty;
+	private bool mTile;
+	// The tree's: the cell holds its parts and never lets one go. A tile's glyph, badge and star
+	// are in its picture (mThumb); a row's are its own.
+	private Sedulous.GUI.Panel mThumb = null;
+	private Sedulous.GUI.Image mGlyph;
+	private Sedulous.GUI.Label mName;
+	private Sedulous.GUI.Label mKind;
+	private Sedulous.GUI.Label mBadge;
+	private Sedulous.GUI.Image mStar;
+	/// The classes on the glyph and the badge now, taken off when they change.
+	private String mGlyphClass = new .() ~ delete _;
+	private String mBadgeClass = new .() ~ delete _;
 
-	public override IDragSource AsDragSource() => mDragId.IsSet ? this : null;
-
-	public DragData CreateDragData() => mDragId.IsSet ? new AssetDragData(mDragId, mDragTypeName, mDragName) : null;
-	/// The default themed ghost.
-	public View CreateDragVisual(DragData data) => null;
-	public void OnDragStarted(DragData data) {}
-	public void OnDragCompleted(DragData data, DragDropEffects effect, bool cancelled) {}
-
-	public override void OnDraw(UIDrawContext ctx)
+	public this(bool tile)
 	{
-		base.OnDraw(ctx); // the children: icon, name, meta
-		float x = Width - 7.0f;
-		if (ShowExportBadge)
+		mTile = tile;
+		AddClass(tile ? "asset-tile" : "asset-row");
+		Node glyphHolder = this;
+		if (tile)
 		{
-			ctx.VG.FillCircle(.(x, 7.0f), 3.0f, Color(80.0f / 255.0f, 180.0f / 255.0f, 80.0f / 255.0f, 1.0f));
-			x -= 8.0f;
+			mThumb = Part<Sedulous.GUI.Panel>(this, "asset-thumb");
+			glyphHolder = mThumb;
 		}
-		if (ShowFavoriteBadge)
-		{
-			ctx.VG.FillCircle(.(x, 7.0f), 3.0f, Color(242.0f / 255.0f, 204.0f / 255.0f, 89.0f / 255.0f, 1.0f));
-			x -= 8.0f;
-		}
+		Node marks = tile ? (Node)mThumb : this;
+		mGlyph = Part<Sedulous.GUI.Image>(glyphHolder, tile ? "asset-glyph" : "row-icon");
+		mName = Part<Sedulous.GUI.Label>(this, tile ? "asset-name" : "row-name");
+		mKind = Part<Sedulous.GUI.Label>(this, "row-kind");
+		mKind.Displayed = !tile; // a tile says what it is in its tooltip
+		mBadge = Part<Sedulous.GUI.Label>(marks, "badge");
+		mStar = Part<Sedulous.GUI.Image>(marks, "badge-icon");
+		mStar.AddClass("star");
+		mStar.Source = "Editor/Icons/star.svg";
+		mStar.Tooltip = "Favourite";
+	}
+
+	public void Show(Shown shown)
+	{
+		SwapClass(mGlyph, mGlyphClass, shown.GlyphClass);
+		mGlyph.Source = shown.Glyph;
+		mName.Text = shown.Name;
+		mKind.Text = shown.Kind;
+		SwapClass(mBadge, mBadgeClass, shown.BadgeClass);
+		mBadge.Text = shown.Badge;
+		// A tile marks only what needs a look (stale, failed); a row says each state.
+		mBadge.Displayed = !shown.Badge.IsEmpty && (!mTile || (shown.BadgeClass != "success"));
+		mStar.Displayed = shown.Favourite;
+		if (shown.Group)
+			AddClass("group");
+		else
+			RemoveClass("group");
+		if (mTile)
+			Tooltip = scope String()..AppendF("{} ({})", shown.Name, shown.Kind);
+		else
+			Tooltip = "";
+	}
+
+	public StringView Name => mName.Text;
+	public StringView Kind => mKind.Text;
+	public StringView Glyph => mGlyph.Source;
+	/// The class tinting the glyph now; empty: none.
+	public StringView GlyphClass => mGlyphClass;
+	/// The badge's text, shown or not (ShowsBadge).
+	public StringView Badge => mBadge.Text;
+	public StringView BadgeClass => mBadgeClass;
+	public bool ShowsBadge => mBadge.Displayed;
+	public bool ShowsStar => mStar.Displayed;
+	public bool IsTile => mTile;
+
+	/// A part of class `cls` in `holder`: the tree takes the pointer, a press on it the cell's.
+	private static T Part<T>(Node holder, StringView cls) where T : UIWidget, new
+	{
+		let part = new T();
+		part.AddClass(cls);
+		part.HitTestVisible = false;
+		holder.AddChild(part);
+		part.ReleaseRef(); // the tree's reference keeps it
+		return part;
+	}
+
+	/// `widget`'s class `now` (empty: none) in place of the one it had, `held`, which becomes it.
+	private static void SwapClass(UIWidget widget, String held, StringView now)
+	{
+		if (!held.IsEmpty)
+			widget.RemoveClass(held);
+		held.Set(now);
+		if (!held.IsEmpty)
+			widget.AddClass(held);
 	}
 }

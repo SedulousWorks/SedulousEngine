@@ -63,10 +63,6 @@ corlib = "*"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "AssetsViewTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "ContainerListEditorTests.bf"
 
 [[ProjectFolder.Items]]
