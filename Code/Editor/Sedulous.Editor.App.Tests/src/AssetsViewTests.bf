@@ -1439,4 +1439,49 @@ static class AssetsViewTests
 		Test.Assert(bed.Context.ThumbnailListenerCount == 1);
 		bed.Context.NotifyThumbnailReady(bed.Crate.Id); // nothing of it left to call into
 	}
+
+	/// A right click on a group in the tree opens its menu; a browser with no verbs opens none
+	/// (Raptor's crash at the desk, 2026-10-25).
+	[Test]
+	public static void ARightClickOnATreeGroupOpensItsMenuABrowserWithNoVerbsOpensNone()
+	{
+		let bed = scope Bed("scratch_assets_view_tree_menu");
+		let view = bed.View;
+		bed.RightClick(bed.Middle(view.Tree, bed.TreeItem("Town")));
+		let menu = view.OpenMenu;
+		Test.Assert(menu != null, "the tree group's menu");
+		Test.Assert(view.CurrentGroup == bed.Town, "the group clicked is the one shown");
+		Test.Assert(MenuRows.ItemNamed(menu, "Delete Group...") != null);
+		menu.Close();
+		bed.Root.MutationQueue.Drain();
+
+		// The same browser with no verbs: no menu, and no crash.
+		let services = new AssetsViewServices();
+		services.Context = bed.Context;
+		services.Icons = bed.Icons;
+		let plain = scope AssetsView(services, LoadAssets());
+		bed.Root.RemoveChild(view.Content);
+		plain.Content.EditLayoutStyle(scope (s) =>
+			{
+				s.Width = LayoutLength.Px(900.0f);
+				s.Height = LayoutLength.Px(600.0f);
+			});
+		plain.Content.GetChildAt(0).EditLayoutStyle(scope (s) =>
+			{
+				s.Direction = .Row;
+				s.Height = LayoutLength.Px(30.0f);
+			});
+		plain.Tree.Parent.EditLayoutStyle(scope (s) => { s.Direction = .Row; });
+		plain.Tree.EditLayoutStyle(scope (s) =>
+			{
+				s.Width = LayoutLength.Px(200.0f);
+				s.Height = LayoutLength.Px(300.0f);
+			});
+		bed.Root.AddChild(plain.Content);
+		plain.Rebuild();
+		bed.RightClick(bed.Middle(plain.Tree, 0));
+		Test.Assert(plain.OpenMenu == null, "no verbs: no menu");
+		bed.Root.RemoveChild(plain.Content); // before the plain view goes
+		bed.Root.AddChild(view.Content);
+	}
 }

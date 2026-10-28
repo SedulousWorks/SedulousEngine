@@ -1232,6 +1232,10 @@ class AssetsView
 	private void ShowGroupMenu(Node owner, Float2 at, Group group, bool shown, ItemId rowId = NoItem)
 	{
 		let ops = mServices.Operations;
+		// A browser with no verbs opens no menu, however it is asked for (a crash once, in Raptor,
+		// where one way in did not ask first).
+		if (ops == null)
+			return;
 		let menu = NewMenu();
 		let top = group.Parent == null;
 		if (shown)
