@@ -78,8 +78,8 @@ class LauncherClipboard : IClipboard
 /// back from the grid, and New Project's Browse and Cancel.
 class ProjectLauncherTests
 {
-	/// Two projects and one whose folder is gone, most recent first: First, Second, Gone; the
-	/// manager in a GUI of its own, 1280 by 800.
+	/// Two projects and one whose folder is gone, most recent first: First, Second, Gone, then any
+	/// older ones asked for; the manager in a GUI of its own, 1280 by 800.
 	private class Launcher
 	{
 		public String Root = new .() ~ delete _;
@@ -95,8 +95,12 @@ class ProjectLauncherTests
 		public int Saves = 0;
 		public List<String> Opened = new .() ~ DeleteContainerAndItems!(_);
 		public List<String> Created = new .() ~ DeleteContainerAndItems!(_);
+		/// The editor's files and sheet, once StyleAsTheEditor has styled the tree.
+		public Sedulous.Editor.Core.EditorResources Resources ~ delete _;
+		public StyleManager Styles;
 
-		public this()
+		/// `more` older projects after the three, there (`real`) or no longer there.
+		public this(int more = 0, bool real = false)
 		{
 			EditorProjectSerializables.RegisterAll();
 			PathJoin(GetCurrentDirectory(.. scope .()), "scratch_launcher", Root);
@@ -107,6 +111,14 @@ class ProjectLauncherTests
 			Test.Assert(CreateDirectory(Root));
 			Test.Assert(EditorProject.Create(First, "First") case .Ok);
 			Test.Assert(EditorProject.Create(Second, "Second") case .Ok);
+			for (int i < more) // older projects: enough to scroll, after the three
+			{
+				let name = scope $"More{i}";
+				let directory = PathJoin(Root, name, .. scope .());
+				if (real)
+					Test.Assert(EditorProject.Create(directory, name) case .Ok);
+				ProjectRegistry.TouchRecentProject(Store, directory, name, "0.1.0");
+			}
 			ProjectRegistry.TouchRecentProject(Store, Gone, "Gone", "0.1.0"); // no project there
 			ProjectRegistry.TouchRecentProject(Store, Second, "Second", "0.1.0");
 			ProjectRegistry.TouchRecentProject(Store, First, "First", "0.1.0");
@@ -132,6 +144,7 @@ class ProjectLauncherTests
 
 		public ~this()
 		{
+			DeleteAndNullify!(Styles); // while what it styled is there; the resources it reads after
 			DeleteAndNullify!(View);
 			Scene.EventDispatcher.Clipboard = null;
 			Scene.ReleaseRef();
@@ -140,6 +153,27 @@ class ProjectLauncherTests
 
 		/// The GUI's next drain: what a click asked to happen later happens.
 		public void Drain() => Scene.MutationQueue.Drain();
+
+		/// A frame of the GUI's, a sixtieth of a second: its clock (tooltips), its drain, its layout.
+		public void Frame() => Scene.Context.Update(TimeSpan((int64)(TimeSpan.TicksPerSecond / 60)));
+
+		/// The tree styled by the editor's own sheet (the default density's), as the window makes it,
+		/// then laid out: the grid wraps and scrolls as it shows.
+		public void StyleAsTheEditor()
+		{
+			let data = scope String();
+			Test.Assert(EditorSplashTests.DataRoot(data));
+			Resources = new .(data);
+			let look = scope EditorLook();
+			look.Density.Set("default");
+			let text = EditorWindow.SheetFor(Resources, look, .. scope String());
+			let sheet = scope StyleSheet();
+			CSSParser.Parse(text, EditorWindow.cSheetPath, sheet);
+			Styles = new .(sheet);
+			Styles.ResourceProvider = Resources; // its @import of the tokens
+			Styles.ApplyTree(Scene);
+			Scene.UpdateLayout();
+		}
 
 		/// The list the projects show in.
 		public Node Projects => View.Content.FindElement("manager-projects");
@@ -243,8 +277,8 @@ class ProjectLauncherTests
 		Test.Assert((list.GetChildAt(0) as UIWidget).HasClass("manager-tile"));
 		// A missing project's tile: dimmed, its picture opening nothing.
 		Test.Assert((list.GetChildAt(2) as UIWidget).HasClass("missing"));
-		Test.Assert(!(WithClass(list.GetChildAt(2), "link") as Sedulous.GUI.Button).Enabled);
-		Test.Assert((WithClass(list.GetChildAt(0), "link") as Sedulous.GUI.Button).Enabled);
+		Test.Assert(!(WithClass(list.GetChildAt(2), "manager-tile-open") as Sedulous.GUI.Button).Enabled);
+		Test.Assert((WithClass(list.GetChildAt(0), "manager-tile-open") as Sedulous.GUI.Button).Enabled);
 		Test.Assert(l.Saves == 1);
 		Test.Assert(l.Controller.Entries.GridView, "kept with the recent projects");
 		l.View.SetGridView(true);
@@ -427,5 +461,91 @@ class ProjectLauncherTests
 		Test.Assert((dialog.FindElement("new-project-cancel") as Sedulous.GUI.Button).HandleActivate());
 		Test.Assert(l.View.CreateDialog == null);
 		Test.Assert(l.Created.Count == 1, "Cancel makes nothing");
+	}
+
+	/// Over the first card, held still, frames passing between the notches (a tooltip's time): each
+	/// notch scrolls the grid on, over whatever card comes under the pointer.
+	private static void WheelOverCards(Launcher l)
+	{
+		l.View.SetGridView(true);
+		l.Drain();
+		l.StyleAsTheEditor();
+		let list = l.Projects;
+		Test.Assert(list != null);
+		var scroller = list.Parent;
+		while ((scroller != null) && !(scroller is ScrollView))
+			scroller = scroller.Parent;
+		Test.Assert(scroller != null);
+		// Every notch has room, so each one checks (the pointer comes over the second row's first
+		// card, a missing project's when the older ones are gone, by the fourth).
+		Test.Assert(scroller.ScrollRange.Y >= 8 * scroller.ScrollStep);
+		let card = list.GetChildAt(0).ScreenBounds;
+		let at = Float2(card.X + card.Width * 0.5f, card.Y + card.Height * 0.4f);
+		let d = l.Scene.EventDispatcher;
+		d.InjectMouseMove(at);
+		var last = scroller.ScrollOffset.Y;
+		for (int step = 0; (step < 8) && (last < scroller.ScrollRange.Y); step++)
+		{
+			d.InjectMouseWheel(at, .(0.0f, -1.0f));
+			for (int frame < 30)
+				l.Frame();
+			let now = scroller.ScrollOffset.Y;
+			Test.Assert(now > last, scope $"notch {step}");
+			last = now;
+		}
+	}
+
+	[Test]
+	public static void TheWheelOverTheGridsCardsScrollsNotchAfterNotchThePointerHeldStillOverAMissingProjectsCardToo()
+	{
+		let l = scope Launcher(18);
+		WheelOverCards(l);
+	}
+
+	[Test]
+	public static void TheWheelOverTheGridsCardsScrollsNotchAfterNotchOverProjectsThatAreThere()
+	{
+		let l = scope Launcher(18, true);
+		WheelOverCards(l);
+	}
+
+	[Test]
+	public static void UnderTheEditorsSheetACardsPictureButtonRingsItEvenlyInsideTheCard()
+	{
+		let l = scope Launcher();
+		l.View.SetGridView(true);
+		l.Drain();
+		l.StyleAsTheEditor();
+		let list = l.Projects;
+		Test.Assert(list != null);
+		let card = list.GetChildAt(0);
+		let button = card.GetChildAt(0) as Sedulous.GUI.Button;
+		Test.Assert(button != null);
+		Test.Assert(button.ChildCount > 0);
+		Node picture = null;
+		for (int i < button.ChildCount)
+		{
+			if (let widget = button.GetChildAt(i) as UIWidget)
+			{
+				if (widget.HasClass("manager-tile-picture"))
+				{
+					picture = widget;
+					break;
+				}
+			}
+		}
+		Test.Assert(picture != null);
+		let b = button.ScreenBounds;
+		let p = picture.ScreenBounds;
+		let c = card.ScreenBounds;
+		let left = p.X - b.X;
+		let right = b.X + b.Width - (p.X + p.Width);
+		let top = p.Y - b.Y;
+		let bottom = b.Y + b.Height - (p.Y + p.Height);
+		Test.Assert(Math.Abs(left - top) < 0.01f);
+		Test.Assert(Math.Abs(right - bottom) < 0.01f);
+		Test.Assert(Math.Abs(left - right) < 0.01f);
+		Test.Assert(b.X >= c.X, "inside the card");
+		Test.Assert(b.X + b.Width <= c.X + c.Width + 0.5f);
 	}
 }

@@ -515,7 +515,7 @@ class ProjectManagerView
 		Classes(tile, card);
 		// The picture opens it: a flat button holding it.
 		let picture = new Sedulous.GUI.Button();
-		picture.AddClass("link");
+		picture.AddClass("manager-tile-open"); // its hover rings the picture evenly
 		Adopt(picture, ProjectPicture.Make(card.Missing ? "" : StringView(card.Path), card.Name, "manager-tile-picture", mPictures));
 		picture.Tooltip = card.Path;
 		picture.Enabled = !card.Missing;

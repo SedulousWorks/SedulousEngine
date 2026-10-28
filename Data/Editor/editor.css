@@ -90,7 +90,11 @@ button.link:hover { background-color: var(--ghost-hover); }
                 border-radius: var(--radius); }
 .manager-tile.missing { opacity: 0.6; }
 .manager-tile-picture { width: 204px; height: 115px; }
-.manager-tile-foot { flex-direction: row; align-items: center; }
+/* The picture is the card's Open: its hover the same width all round, inside the card's own edge,
+   the name and the menu below in line with the picture. */
+button.manager-tile-open { padding: var(--space-s); height: auto; min-height: 0; background-color: transparent; border-radius: var(--radius-small); }
+button.manager-tile-open:hover { background-color: var(--ghost-hover); }
+.manager-tile-foot { flex-direction: row; align-items: center; padding: 0 var(--space-s); }
 .manager-empty { color: var(--text-dim); padding: var(--space-l) var(--space-xs); white-space: normal; }
 .new-project { flex-direction: column; row-gap: var(--space-m); }
 .new-project-folder { flex-direction: row; column-gap: var(--space-s); }
