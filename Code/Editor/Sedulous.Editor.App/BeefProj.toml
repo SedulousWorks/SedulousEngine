@@ -61,19 +61,11 @@ corlib = "*"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "AssetsViewImport.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "BatchFileRow.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "BatchImportDialog.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "BatchImportFile.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
