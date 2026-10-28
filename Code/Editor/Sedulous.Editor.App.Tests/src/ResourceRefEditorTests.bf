@@ -36,8 +36,8 @@ class RefSoundAsset
 /// the types its services name for what the reference points at, showing the asset's name and
 /// glyph (None for nothing, "(missing)" for a dangling id, Mixed over objects that differ); a pick,
 /// a drop and a clear are one write each; open and reveal name the asset; a read-only one only
-/// opens; the context's table asks the builders' join and routes open and reveal; and the context's
-/// pick opens the asset picker over the project's assets of the types, below the slot with the
+/// opens; the context's table asks the builders' join (else takes the type itself) and routes open
+/// and reveal; and the context's pick opens the asset picker over the project's assets of the types, below the slot with the
 /// current value, a pick or None answering. Then what Sedulous adds so each behaviour has a test: a
 /// pick answered after the row was rebound to another property is dropped, a read-only row is no
 /// drop target, a pick over a referenced asset opens with it checked, the context's pick sits below
@@ -344,8 +344,9 @@ class ResourceRefEditorTests
 		Test.Assert(types.Count == 1);
 		Test.Assert(types[0] == "RefTestMeshAsset");
 		ClearAndDeleteItems!(types);
-		services.AcceptedTypes(typeof(float), types);
-		Test.Assert(types.IsEmpty, "nothing the builders make it from");
+		services.AcceptedTypes(typeof(float), types); // no builder makes it: a source type named itself
+		Test.Assert(types.Count == 1);
+		Test.Assert(types[0] == typeof(float).GetName(.. scope .()));
 
 		let shown = scope ResourceRefShown();
 		Test.Assert(!services.Describe(Guid(1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0), shown), "no project: nothing is there");
@@ -357,12 +358,13 @@ class ResourceRefEditorTests
 		Test.Assert(revealed.Count == 1);
 		Test.Assert(revealed[0] == Guid(3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0));
 
-		// Unwired, the join names nothing: the row takes any asset, as an empty list does.
+		// Unwired, the join names nothing: the type itself, as when no builder makes it.
 		delete context.SourceAssetTypesOf;
 		context.SourceAssetTypesOf = null;
 		ClearAndDeleteItems!(types);
 		services.AcceptedTypes(typeof(RefTestMesh), types);
-		Test.Assert(types.IsEmpty);
+		Test.Assert(types.Count == 1);
+		Test.Assert(types[0] == "RefTestMesh");
 	}
 
 	[Test]

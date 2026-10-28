@@ -570,6 +570,10 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 button.group-field { justify-content: flex-start; }
 .save-as-error { color: var(--danger); }
 .preferences { flex-direction: column; flex-grow: 1; }
+/* Project Settings: the grid fills the window above its buttons. */
+.project-settings { flex-grow: 1; padding-bottom: 0; }
+.settings-grid { flex-grow: 1; min-height: 0; }
+.project-settings > .dialog-buttons { padding: var(--space-l) 0 var(--space-xl); }
 .pref-tabs { flex-grow: 1; }
 .pref-accent { width: 120px; }
 .pref-scale { flex-direction: row; align-items: center; column-gap: var(--space-m); }

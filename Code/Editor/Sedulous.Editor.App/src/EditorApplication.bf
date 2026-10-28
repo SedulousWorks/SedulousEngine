@@ -85,6 +85,15 @@ class EditorApplication : IApplication
 	private CommandPalette mPalette = null ~ delete _;
 	/// Edit > Preferences, made the first time it opens.
 	private EditorPreferencesDialog mPreferences = null ~ delete _;
+	/// A type's icon, asked of the type; made with the slots' table.
+	private EditorIcons mTypeIcons = null ~ delete _;
+	/// The one picker (assets, paths, groups), made the first time it shows.
+	private Picker mPicker = null ~ delete _;
+	/// What an asset slot asks of the editor, made the first time a slot needs it; after the icons
+	/// and the picker it reaches, so it goes first.
+	private ResourceRefServices mRefs = null ~ delete _;
+	/// Project > Project Settings, made the first time it opens; its slots borrow mRefs.
+	private ProjectSettingsDialog mProjectSettings = null ~ delete _;
 	/// The Project panel while a project is open (made with its markup when one opens).
 	private ProjectHomeView mHome = null ~ delete _;
 	/// The Console panel's content, made with the dock.
@@ -613,6 +622,46 @@ class EditorApplication : IApplication
 		mPreferences.Open(root);
 	}
 
+	/// Project Settings over the main window (made the first time), the manifest as it is now.
+	/// Nothing with no interface.
+	private void OpenProjectSettings()
+	{
+		let root = mWindow.Root;
+		if (root == null)
+			return;
+		if (mProjectSettings == null)
+			mProjectSettings = new ProjectSettingsDialog(mContext, RefServices(), mWindow.LoadMarkup(ProjectSettingsDialog.cMarkupPath));
+		mProjectSettings.Open(root);
+	}
+
+	/// Shows a picker's request below `anchor` (else near the top), over the main window; the
+	/// picker is made the first time. OWNERSHIP of `request` transfers, shown or not.
+	private void ShowPicker(PickerRequest request, Sedulous.GUI.Node anchor)
+	{
+		let root = mWindow.Root;
+		if (root == null)
+		{
+			delete request;
+			return;
+		}
+		if (mPicker == null)
+			mPicker = new Picker(mWindow.LoadMarkup(Picker.cMarkupPath));
+		mPicker.Open(root, request, anchor);
+	}
+
+	/// The slots' table, from the context, the type icons and the picker (made the first time).
+	/// The application's.
+	private ResourceRefServices RefServices()
+	{
+		if (mRefs == null)
+		{
+			let window = mWindow;
+			mTypeIcons = new EditorIcons(new [=window] (path) => (window.Resources != null) && window.Resources.Exists(path));
+			mRefs = ResourceRefServices.From(mContext, mTypeIcons, new (request, anchor) => { ShowPicker(request, anchor); });
+		}
+		return mRefs;
+	}
+
 	/// Exits once the unsaved pages are saved or let go; true when nothing needed asking (the
 	/// shell's close handler: false keeps the window while the user is asked).
 	private bool ConfirmExit()
@@ -652,6 +701,7 @@ class EditorApplication : IApplication
 
 		let project = new ProjectActions();
 		project.Context = mContext; // Report Resource Memory reads the session's resources through it
+		project.Settings = new () => { OpenProjectSettings(); };
 		EditorAppActions.RegisterProjectActions(actions, project);
 
 		EditorAppActions.RegisterBuildActions(actions, mContext);
@@ -883,6 +933,8 @@ class EditorApplication : IApplication
 			mRuntimeContext.Shutdown();
 		}
 		DeleteAndNullify!(mPreferences); // closed (the look back, unsaved), while the window is there
+		DeleteAndNullify!(mProjectSettings); // closed (the manifest unchanged), while the window is there
+		DeleteAndNullify!(mPicker); // closed, while the window's root is there
 		DeleteAndNullify!(mManagerMode); // its dialogs closed, while the window is there
 		DeleteAndNullify!(mPalette); // closed, while the window's root is there
 		DeleteAndNullify!(mMenus); // the bar left empty while the window's tree holds it

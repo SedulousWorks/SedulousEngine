@@ -169,10 +169,6 @@ Name = "ProfilerPanel.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "ProjectSettingsDialog.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "SegmentedToggle.bf"
 
 [[ProjectFolder.Items]]

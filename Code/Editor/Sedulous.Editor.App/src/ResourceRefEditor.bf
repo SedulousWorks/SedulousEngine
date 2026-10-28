@@ -44,9 +44,9 @@ class ResourceRefServices
 	public delegate void(Guid id) Open ~ delete _;
 	public delegate void(Guid id) Reveal ~ delete _;
 
-	/// A table filled from the editor's context: the builders' types (SourceAssetTypesOf), the
-	/// project's names, the type icons, the asset picker over the project's sources and the
-	/// context's favourites (`open` shows a picker's request below its anchor, taking the request;
+	/// A table filled from the editor's context: the builders' types (SourceAssetTypesOf; none,
+	/// the type itself, a reference naming a source asset type), the project's names, the type
+	/// icons, the asset picker over the project's sources and the context's favourites (`open` shows a picker's request below its anchor, taking the request;
 	/// null: no pick), the context's open and reveal. `context` and `icons` outlive it; OWNERSHIP
 	/// of `open` transfers. The caller deletes it.
 	public static ResourceRefServices From(EditorContext context, EditorIcons icons,
@@ -75,14 +75,20 @@ class ResourceRefServices
 					open(request, anchor);
 				} ~ { delete open; };
 		}
+		// What the builders make it from; none: the type itself, a reference naming a source asset
+		// type (Project Settings', ruling 20).
 		services.AcceptedTypes = new [=context] (target, outTypes) =>
 			{
-				if (context.SourceAssetTypesOf == null)
-					return;
-				let assets = scope List<Type>();
-				context.SourceAssetTypesOf(target, assets);
-				for (let asset in assets)
-					outTypes.Add(asset.GetName(.. new String()));
+				let start = outTypes.Count;
+				if (context.SourceAssetTypesOf != null)
+				{
+					let assets = scope List<Type>();
+					context.SourceAssetTypesOf(target, assets);
+					for (let asset in assets)
+						outTypes.Add(asset.GetName(.. new String()));
+				}
+				if ((outTypes.Count == start) && (target != null))
+					outTypes.Add(target.GetName(.. new String()));
 			};
 		services.Describe = new [=context, =icons] (id, outShown) =>
 			{
