@@ -44,7 +44,8 @@ class BrowserMeshBuilder : IAssetBuilder
 /// moves; Reveal; a drag of the selection carrying its assets; assets dropped on a group's row or a
 /// group in the tree moving into it, one already there or taken there refused, saying why; and,
 /// under the editor's sheet, the toolbar keeping its height, the type menu opening below its
-/// button, and a list row's kind on its name's baseline, ending where every other row's does. Then
+/// button, and a list row's kind on its name's baseline, ending where every other row's does; a
+/// tile showing its type's glyph until its thumbnail is ready, then the thumbnail. Then
 /// what Sedulous adds
 /// so each behaviour has a test: the tree's click and Enter navigating, the breadcrumb's tooltip, a
 /// guid typed whole, braced or bare selecting its asset, the clear button and the state's verb, the
@@ -117,6 +118,9 @@ static class AssetsViewTests
 		public bool ForSheet;
 		/// The editor's sheet, once StyleAsTheEditor has styled the tree.
 		public EditorSheet Sheet = null;
+		/// The asset whose thumbnail is ready (none: empty), and what it shows (ours: one reference).
+		public Guid Pictured = .Empty;
+		public Sedulous.GUI.Drawable Picture = null ~ _?.ReleaseRef();
 
 		public this(StringView dir, bool withCook = false, bool cooksMeshes = false, bool forSheet = false)
 		{
@@ -205,6 +209,7 @@ static class AssetsViewTests
 			let bed = this;
 			services.Open = new [=bed] (instance) => { bed.Opened.Add(instance.Id); };
 			services.Operations = Ops;
+			services.Picture = new [=bed] (id) => (id == bed.Pictured) ? bed.Picture : null;
 			services.Create = new [=bed] (creator, group) =>
 				{
 					bed.Created.Add(new String(creator.Label));
@@ -1352,5 +1357,62 @@ static class AssetsViewTests
 		Test.Assert(bed.RowsAre("Barrel Bell"));
 		Test.Assert(bed.DragRowTo(bed.RowOf("Bell"), bed.MiddleOf(Segment(2)), reason) == .None);
 		Test.Assert(bed.Bell.OwningGroup === bed.Town);
+	}
+
+	/// A tile shows its type's glyph until its thumbnail is ready, then the thumbnail in its place:
+	/// drawn again when the context says one is ready (as the thumbnail service tells it), not
+	/// before. One with none keeps its glyph, a list row always does, and a tile whose thumbnail
+	/// goes shows its glyph again. The view hears the context while it lives.
+	[Test]
+	public static void ATileShowsItsTypesGlyphUntilItsThumbnailIsReadyThenTheThumbnail()
+	{
+		let bed = scope Bed("scratch_assets_view_thumbnails");
+		let view = bed.View;
+		Test.Assert(view.ShowsTiles);
+		Test.Assert(bed.Context.ThumbnailListenerCount == 1, "the view hears the thumbnails");
+		var crate = bed.Cell(bed.RowOf("Crate"));
+		Test.Assert(crate != null);
+		Test.Assert(!crate.ShowsPicture && crate.ShowsGlyph, "none yet: its glyph");
+
+		bed.Picture = SvgDrawable.FromText("<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8'><rect width='8' height='8'/></svg>");
+		Test.Assert(bed.Picture != null);
+		bed.Pictured = bed.Crate.Id;
+		crate = bed.Cell(bed.RowOf("Crate"));
+		Test.Assert(!crate.ShowsPicture, "nothing told the view: nothing drawn again");
+		bed.Context.NotifyThumbnailReady(bed.Crate.Id); // as the thumbnail service tells it
+		crate = bed.Cell(bed.RowOf("Crate"));
+		Test.Assert(crate != null);
+		Test.Assert(crate.ShowsPicture && !crate.ShowsGlyph, "ready: the thumbnail in its glyph's place");
+		Test.Assert(!bed.Cell(bed.RowOf("Models")).ShowsPicture, "a group: its folder");
+		view.Navigate(bed.Town);
+		let bell = bed.Cell(bed.RowOf("Bell"));
+		Test.Assert(!bell.ShowsPicture && bell.ShowsGlyph, "no thumbnail: its glyph stays");
+
+		// A list row keeps its glyph, a thumbnail or not.
+		view.Navigate(bed.Top);
+		view.SetTiles(false);
+		crate = bed.Cell(bed.RowOf("Crate"));
+		Test.Assert((crate != null) && !crate.IsTile);
+		Test.Assert(!crate.ShowsPicture && crate.ShowsGlyph, "a row: its glyph");
+
+		// A tile whose thumbnail goes shows its glyph again.
+		let tile = new AssetCell(true);
+		defer tile.ReleaseRef();
+		var shown = AssetCell.Shown();
+		shown.Glyph = "Editor/Icons/file.svg";
+		shown.Name = "Crate";
+		shown.Picture = bed.Picture;
+		tile.Show(shown);
+		Test.Assert(tile.ShowsPicture && !tile.ShowsGlyph);
+		shown.Picture = null;
+		tile.Show(shown);
+		Test.Assert(!tile.ShowsPicture && tile.ShowsGlyph);
+
+		// Another view hears too, and stops when it goes.
+		let again = bed.MakeView();
+		Test.Assert(bed.Context.ThumbnailListenerCount == 2);
+		delete again;
+		Test.Assert(bed.Context.ThumbnailListenerCount == 1);
+		bed.Context.NotifyThumbnailReady(bed.Crate.Id); // nothing of it left to call into
 	}
 }

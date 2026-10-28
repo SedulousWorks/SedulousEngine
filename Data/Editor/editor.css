@@ -289,6 +289,7 @@ toast { border: 1px solid var(--border-strong); }
 .asset-thumb { width: 64px; height: 56px; border-radius: var(--radius-small); background-color: var(--surface-sunken);
                align-items: center; justify-content: center; }
 .asset-glyph { width: 24px; height: 24px; image-color: var(--icon-dim); }
+.asset-picture { width: 64px; height: 56px; border-radius: var(--radius-small); object-fit: cover; } /* its thumbnail, filling the frame */
 .asset-name { font-size: var(--font-small); color: var(--text); }
 .asset-name { max-width: 88px; text-overflow: ellipsis; white-space: nowrap; }
 /* A tile's marks sit in its picture's corners: a star top right, a stale or failed badge below. */

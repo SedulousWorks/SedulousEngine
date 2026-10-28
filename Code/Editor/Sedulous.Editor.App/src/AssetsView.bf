@@ -13,10 +13,11 @@ namespace Sedulous.Editor.App;
 // (Data/Editor/Assets.gml) as the mock draws it: the project's source content, the content database
 // the truth. The group tree on the left (folders, Content at the top); the toolbar's breadcrumb
 // where it is; the group's subgroups then its assets on the right, as tiles or a list (kept per
-// project), each by its type's glyph (its category's tint), its name, what it is, its cook badge
-// and a star when a favourite. The search looks in every group, by name or a guid's start, each
-// match saying where it is; a whole guid selects its asset. The type filter keeps one type. With
-// nothing to show it says what is so and offers the way on (clear the search, show every type).
+// project), each by its type's glyph (its category's tint; a tile's thumbnail in its place once
+// there is one, drawn again when it arrives), its name, what it is, its cook badge and a star when
+// a favourite. The search looks in every group, by name or a guid's start, each match saying
+// where it is; a whole guid selects its asset. The type filter keeps one type. With nothing to
+// show it says what is so and offers the way on (clear the search, show every type).
 // Enter or a double click opens an asset or enters a group; Reveal shows an asset where it lives.
 // A drag of the selection carries its assets (AssetDrag) to a slot; dropped on a group's row, a
 // group in the tree or a breadcrumb segment, they move into that group (AssetOperations.MoveTo),
@@ -45,6 +46,10 @@ class AssetsViewServices
 	public delegate void(Instance instance) Open ~ delete _;
 	/// Rename, duplicate, delete, cook; null: no menus and no edits in place. Borrowed.
 	public AssetOperations Operations;
+	/// An asset's picture (the thumbnails'), borrowed, null while there is none; unset: glyphs
+	/// only. A picture that arrives later is told through the context's thumbnail listeners.
+	/// Owned.
+	public delegate Sedulous.GUI.Drawable(Guid id) Picture ~ delete _;
 	/// Runs a creator into a group (File > New's create-and-open); unset: no New menu. Owned.
 	public delegate void(AssetCreator creator, Group group) Create ~ delete _;
 }
@@ -201,6 +206,8 @@ class AssetsView
 	private uint32 mTreeMenuListener = 0;
 	private uint32 mTreeKeyListener = 0;
 	private uint32 mStateMenuListener = 0;
+	/// The context's thumbnail listener; 0: none.
+	private uint64 mPictureListener = 0;
 	/// The database it shows (the project's), and the group: compared, reached only while the
 	/// database's revision says they are still there.
 	private ContentDatabase mDb = null;
@@ -323,11 +330,16 @@ class AssetsView
 		OnClick("assets-list", new () => { SetTiles(false); });
 		OnClick("assets-state-verb", new () => { StateVerb(); });
 		ShowLayout();
+		// A picture that arrives redraws the cells (the one showing it among them).
+		if ((mServices.Context != null) && (mServices.Picture != null))
+			mPictureListener = mServices.Context.AddThumbnailListener(new (id) => { mModel.Changed(); });
 	}
 
 	/// The panel may hold the content past this view: what of it calls back here goes first.
 	public ~this()
 	{
+		if (mPictureListener != 0)
+			mServices.Context.RemoveThumbnailListener(mPictureListener);
 		if ((mMenu != null) && mMenu.IsOpen)
 			mMenu.Close();
 		// An open question would answer into a gone view.
@@ -917,6 +929,8 @@ class AssetsView
 			if (shown.Glyph.IsEmpty)
 				shown.Glyph = "Editor/Icons/file.svg";
 			shown.Favourite = (mServices.Context != null) && mServices.Context.IsFavorite(instance.Id);
+			if (mServices.Picture != null)
+				shown.Picture = mServices.Picture(instance.Id);
 			if (mServices.Cook != null)
 			{
 				switch (mServices.Cook.BadgeFor(instance))

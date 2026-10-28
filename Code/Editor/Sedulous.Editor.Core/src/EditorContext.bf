@@ -361,8 +361,7 @@ class EditorContext : IAssetEditSink
 	}
 
 	// ---- thumbnail readiness: the thumbnail service only queues a missing thumbnail, so a
-	// view showing one (the asset picker) hears here when it lands; the browser is told by the
-	// application directly ----
+	// view showing one (the asset picker, the assets browser) hears here when it lands ----
 
 	/// TAKES OWNERSHIP; remove with the returned id when the listener goes.
 	public uint64 AddThumbnailListener(ThumbnailListener listener)

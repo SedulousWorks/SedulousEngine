@@ -144,6 +144,8 @@ class EditorApplication : IApplication
 		// Thumbnails are reachable from the constructor on: the registration block, where each
 		// domain folds its thumbnail generator in, runs before the project opens.
 		mContext.Thumbnails = mThumbnailService;
+		// A thumbnail ready is told to the views showing thumbnails (the assets browser).
+		mThumbnailService.OnThumbnailReady = new (id) => { mContext.NotifyThumbnailReady(id); };
 		mPages = new EditorPages(PagesServices());
 		mAssetOps = new AssetOperations(AssetOpsServices());
 		mCreation = new EditorAssetCreation(CreationServices());
@@ -568,6 +570,7 @@ class EditorApplication : IApplication
 			RefServices(); // the type icons
 			assets.Icons = mTypeIcons;
 			assets.Open = new (instance) => { mPages.Open(instance); };
+			assets.Picture = new (id) => mThumbnailService.Get(id);
 			assets.Operations = mAssetOps;
 			assets.Create = new (creator, group) => { mCreation.CreateAndOpen(creator, group); };
 			mAssets = new AssetsView(assets, mWindow.LoadMarkup(AssetsView.cMarkupPath));

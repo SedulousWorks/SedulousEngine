@@ -4,9 +4,9 @@ using Sedulous.GUI;
 namespace Sedulous.Editor.App;
 
 /// One asset or group as the Assets panel draws it (Raptor's editor-gui spec, 5.2, layer 7): a
-/// tile's picture (its glyph, the star in a corner, a stale or failed badge in another) over its
-/// name, or a list row's glyph, its name and what it is on one baseline (what it is at the end),
-/// then its badge and star. Its class (`asset-tile` or `asset-row`) says which, and a group's has
+/// tile's picture (its thumbnail once there is one, its type's glyph till then, the star in a
+/// corner, a stale or failed badge in another) over its name, or a list row's glyph, its name and
+/// what it is on one baseline (what it is at the end), then its badge and star. Its class (`asset-tile` or `asset-row`) says which, and a group's has
 /// `group` too; the sheet draws the rest.
 class AssetCell : UIWidget
 {
@@ -25,6 +25,8 @@ class AssetCell : UIWidget
 		public StringView BadgeClass;
 		public bool Favourite;
 		public bool Group;
+		/// Its thumbnail, a tile's in place of its glyph (Show keeps a reference); null: none yet.
+		public Sedulous.GUI.Drawable Picture;
 	}
 
 	private bool mTile;
@@ -34,6 +36,8 @@ class AssetCell : UIWidget
 	/// A row's name and kind.
 	private Sedulous.GUI.Panel mText = null;
 	private Sedulous.GUI.Image mGlyph;
+	/// A tile's thumbnail; null on a row.
+	private Sedulous.GUI.Image mPicture = null;
 	private Sedulous.GUI.Label mName;
 	private Sedulous.GUI.Label mKind;
 	private Sedulous.GUI.Label mBadge;
@@ -54,6 +58,11 @@ class AssetCell : UIWidget
 		}
 		Node marks = tile ? (Node)mThumb : this;
 		mGlyph = Part<Sedulous.GUI.Image>(glyphHolder, tile ? "asset-glyph" : "row-icon");
+		if (tile)
+		{
+			mPicture = Part<Sedulous.GUI.Image>(mThumb, "asset-picture");
+			mPicture.Displayed = false;
+		}
 		// A row's name and kind share a baseline, the kind at the end, right-aligned (each row's
 		// ends in the same place, its badge and star in columns after it).
 		Node textHolder = this;
@@ -76,6 +85,15 @@ class AssetCell : UIWidget
 	{
 		SwapClass(mGlyph, mGlyphClass, shown.GlyphClass);
 		mGlyph.Source = shown.Glyph;
+		// A tile shows the asset's picture once there is one, its type's glyph till then.
+		let pictured = (mPicture != null) && (shown.Picture != null);
+		if (mPicture != null)
+		{
+			if (mPicture.Drawable !== shown.Picture)
+				mPicture.SetDrawable(shown.Picture);
+			mPicture.Displayed = pictured;
+		}
+		mGlyph.Displayed = !pictured;
 		mName.Text = shown.Name;
 		mKind.Text = shown.Kind;
 		SwapClass(mBadge, mBadgeClass, shown.BadgeClass);
@@ -115,6 +133,10 @@ class AssetCell : UIWidget
 	public bool ShowsBadge => mBadge.Displayed && mBadge.Visible;
 	public bool ShowsStar => mStar.Displayed && mStar.Visible;
 	public bool IsTile => mTile;
+	/// A tile showing its thumbnail; a row never does.
+	public bool ShowsPicture => (mPicture != null) && mPicture.Displayed && (mPicture.Drawable != null);
+	/// Its type's glyph shown: a row's always, a tile's until its thumbnail.
+	public bool ShowsGlyph => mGlyph.Displayed;
 	public Sedulous.GUI.Label NameLabel => mName;
 	public Sedulous.GUI.Label KindLabel => mKind;
 

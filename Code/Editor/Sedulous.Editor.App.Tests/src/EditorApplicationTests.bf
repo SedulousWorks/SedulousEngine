@@ -16,7 +16,8 @@ namespace Sedulous.Editor.App.Tests;
 /// registered are the ones this lifecycle can run, Exit reaching the host, Reset Layout the dock
 /// and the cooks, the Game tab and Save off with no project; they stop in the order shutdown needs, leaving no project and no MCP host.
 /// Close Project is offered only when the project manager launched the editor, and with no window
-/// the manager never shows.
+/// the manager never shows. A thumbnail the thumbnail service says is ready is told to the
+/// context's thumbnail listeners (the assets browser's).
 ///
 /// Not here: a project opened through the application, since the session then saves the user's
 /// editor.settings.xml (EditorSessionTests drive the session over services of their own); the
@@ -175,5 +176,21 @@ static class EditorApplicationTests
 		app.StopParts(); // again: nothing left to stop
 		app.OnShutdown(host);
 		Test.Assert(app.McpService == null);
+	}
+
+	/// The thumbnail service's ready signal reaches the context's thumbnail listeners, the
+	/// assets browser's among them: nothing else tells them.
+	[Test]
+	public static void AThumbnailReadyIsToldToTheContextsListeners()
+	{
+		let app = scope EditorApplication(new EditorAppConfig());
+		let thumbnails = app.Context.Thumbnails;
+		Test.Assert((thumbnails != null) && (thumbnails.OnThumbnailReady != null));
+		let heard = scope List<Guid>();
+		let listener = app.Context.AddThumbnailListener(new [=heard] (id) => { heard.Add(id); });
+		let id = Guid(7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+		thumbnails.OnThumbnailReady(id); // as the service fires it when a thumbnail lands
+		Test.Assert((heard.Count == 1) && (heard[0] == id));
+		app.Context.RemoveThumbnailListener(listener);
 	}
 }
