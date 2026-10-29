@@ -26,6 +26,9 @@ class GizmoController
 	private Float4x4 mParentInverseWorld = .Identity();
 	private Quaternion mParentRotation = .Identity;
 	private bool mVertexSnapMode = false;
+	private bool mHandlesShown = true;
+	private bool mSnapMode = false;
+	private bool mMoveSnapsToGrid = false;
 	/// The vertex the pivot is snapped to (vertex snap), world space.
 	private Float3? mSnapTarget = null;
 	/// How far along the ray a snap target may be.
@@ -49,16 +52,44 @@ class GizmoController
 		set => mVertexSnapMode = value;
 	}
 
+	/// Whether the handles show (off: Select, where a click only picks; the mode stays for when
+	/// they show again).
+	public bool HandlesShown => mHandlesShown;
+
+	public void SetHandlesShown(bool shown)
+	{
+		if (!mGizmo.IsDragging)
+			mHandlesShown = shown;
+	}
+
+	/// Every drag snaps to the increments while on (the bar's Snap), as holding Ctrl does for one.
+	public bool SnapMode
+	{
+		get => mSnapMode;
+		set => mSnapMode = value;
+	}
+
+	/// A move snaps by the grid's cell where the camera is (the page sets the gizmo's
+	/// TranslateSnap to it each frame) rather than by its own increment.
+	public bool MoveSnapsToGrid
+	{
+		get => mMoveSnapsToGrid;
+		set => mMoveSnapsToGrid = value;
+	}
+
 	/// The vertex a vertex snapping drag holds the pivot on this frame (world); none when not
 	/// snapping, or when the cursor is over no surface.
 	public Float3? SnapTarget => mSnapTarget;
 
 	/// Mode and space changes wait for a drag to finish, so the frame it measures against
-	/// never changes under it.
+	/// never changes under it. A mode is chosen to transform with it: its handles show.
 	public void SetMode(GizmoMode mode)
 	{
 		if (!mGizmo.IsDragging)
+		{
 			mMode = mode;
+			mHandlesShown = true;
+		}
 	}
 
 	public void SetSpace(GizmoSpace space)
@@ -73,19 +104,21 @@ class GizmoController
 	{
 		if (!mGizmo.IsDragging && input.PointerValid)
 		{
+			if (input.KeySelect)
+				SetHandlesShown(false);
 			if (input.KeyTranslate)
-				mMode = .Translate;
+				SetMode(.Translate);
 			if (input.KeyRotate)
-				mMode = .Rotate;
+				SetMode(.Rotate);
 			if (input.KeyScale)
-				mMode = .Scale;
+				SetMode(.Scale);
 			if (input.KeyToggleSpace)
 				mSpace = (mSpace == .World) ? .Local : .World;
 		}
 
 		let selection = mEdit.EntitySelection;
 		let primary = selection.IsEmpty ? Guid() : selection.Primary;
-		let entity = selection.IsEmpty ? EntityHandle.Invalid : mEdit.Resolve(primary);
+		let entity = (selection.IsEmpty || !mHandlesShown) ? EntityHandle.Invalid : mEdit.Resolve(primary);
 		if (!entity.IsAssigned)
 		{
 			AbortDrag();
@@ -206,6 +239,8 @@ class GizmoController
 	{
 		get
 		{
+			if (!mHandlesShown)
+				return "Select  (Q select, W/E/R transform, Ctrl+click toggle, drag to box select)";
 			switch (mMode)
 			{
 			case .Translate:
@@ -238,7 +273,7 @@ class GizmoController
 		switch (mMode)
 		{
 		case .Translate:
-			let worldDelta = mGizmo.UpdateTranslateDrag(input.Ray, input.Snap);
+			let worldDelta = mGizmo.UpdateTranslateDrag(input.Ray, input.Snap || mSnapMode);
 			t.Position = mDragStartLocal.Position
 				+ TransformDirection(worldDelta, mParentInverseWorld);
 			// Vertex snap: the pivot ON the vertex under the cursor, whichever handle is held;
@@ -247,12 +282,12 @@ class GizmoController
 			if (mSnapTarget.HasValue)
 				t.Position = TransformPoint(mSnapTarget.Value, mParentInverseWorld);
 		case .Rotate:
-			let d = mGizmo.UpdateRotateDrag(input.Ray, input.Snap);
+			let d = mGizmo.UpdateRotateDrag(input.Ray, input.Snap || mSnapMode);
 			let worldDelta = Quaternion.FromAxisAngle(d.Axis, d.Angle);
 			t.Rotation = Normalized(Inverse(mParentRotation) * worldDelta * mParentRotation
 				* mDragStartLocal.Rotation);
 		case .Scale:
-			let d = mGizmo.UpdateScaleDrag(input.Ray, input.Snap);
+			let d = mGizmo.UpdateScaleDrag(input.Ray, input.Snap || mSnapMode);
 			t.Scale.X = Max(mDragStartLocal.Scale.X + d.X, 0.001f);
 			t.Scale.Y = Max(mDragStartLocal.Scale.Y + d.Y, 0.001f);
 			t.Scale.Z = Max(mDragStartLocal.Scale.Z + d.Z, 0.001f);

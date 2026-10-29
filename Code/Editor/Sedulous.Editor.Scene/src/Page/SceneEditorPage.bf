@@ -30,8 +30,8 @@ namespace Sedulous.Editor.Scene;
 // picking, the capture), its overlays, Simulate, the prefab flows and the view state kept per scene,
 // each a class of its own. The page holds them together: it loads the scene, edits it through its
 // edit context and its tools, saves it, follows a change made elsewhere, and says on the page when
-// the scene did not load (and then refuses to save over it). Its bar's Save, Undo and Redo act on
-// this page; its hierarchy (layer 3) is the scene's tree in its left pane, its inspector (layer 4)
+// the scene did not load (and then refuses to save over it). Its bar (SceneBar: Save, Undo, Redo
+// and the editing controls, layer 5) acts on this page; its hierarchy (layer 3) is the scene's tree in its left pane, its inspector (layer 4)
 // the selection's components in its right.
 
 /// What a page asks of the editor. Borrowed but the markup loader, the services' own.
@@ -88,7 +88,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private ViewDebugView mDebugView = new .() ~ delete _;
 	/// One reference, the page's.
 	private Node mContent = null;
-	private PageActionBar mBar = null ~ delete _;
+	private SceneBar mBar = null ~ delete _;
 	private MessageBox mConfirm = null;
 	// The launcher's picture of the project: the default scene's view, taken once it settled when
 	// there is none yet, and on every save of it.
@@ -151,6 +151,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public SceneOverlays Overlays => mOverlays;
 	public SceneViewport Viewport => mViewport;
 	public SceneHierarchyView Hierarchy => mHierarchy;
+	/// Its bar: the editing controls bound to the page's actions.
+	public SceneBar Bar => mBar;
 	public SceneInspectorView Inspector => mInspector;
 	public MessageBox OpenConfirm => ((mConfirm != null) && mConfirm.IsOpen) ? mConfirm : null;
 
@@ -227,10 +229,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		let pane = Find<Node>("scene-viewport");
 		((pane != null) ? pane : mContent).AddChildAt(mViewport.View, 0);
 		mViewport.HostIn(mServices.Gui);
-		mBar = new PageActionBar(context.Actions, this);
-		mBar.Bind(Find<ButtonBase>("scene-save"), "file.save");
-		mBar.Bind(Find<ButtonBase>("scene-undo"), "edit.undo");
-		mBar.Bind(Find<ButtonBase>("scene-redo"), "edit.redo");
+		mBar = new SceneBar(context.Actions, this, scope [=this] (id) => Find<ButtonBase>(id), new [=this] () => Gizmos);
 		// A prefab is marked as one: the same page edits both.
 		if (let kind = Find<UIWidget>("scene-kind"))
 			kind.Displayed = mIsPrefab;
@@ -356,6 +355,12 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mHierarchy.Refresh(); // the scene changed: built again
 		if (mInspector != null)
 			mInspector.Refresh(); // the selection or its components changed: built again; else its values
+		// A move snapping by the grid's cell takes the cell where the camera is now.
+		if (let gizmos = Gizmos)
+		{
+			if (gizmos.MoveSnapsToGrid)
+				gizmos.Gizmo.TranslateSnap = mOverlays.CurrentGridSpacing(mViewport.Camera).Spacing;
+		}
 		if (mBar != null)
 			mBar.Sync();
 	}

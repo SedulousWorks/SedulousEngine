@@ -39,7 +39,8 @@ namespace Sedulous.Editor.Scene.Tests;
 /// edited at once; a header's verbs; read only while the page simulates; an entity reference's
 /// slot; a component's extras (a rigid body's notice, a zone's Bake); a script component's
 /// behaviours; the scene's settings with the scene selected, the physics block's collision groups
-/// and the level script's properties.
+/// and the level script's properties. And its bar's editing controls (layer 5): the page's actions,
+/// Select, the space's icon, Snap and its increments.
 class ScenePageTests
 {
 	/// A host whose context has a scene subsystem and nothing else: no renderer, no window.
@@ -379,6 +380,17 @@ class ScenePageTests
 		{
 			Root.RemoveChild(mContent);
 			Root.ReleaseRef();
+		}
+
+		/// A press and release in the middle of `node`.
+		public void Click(Node node)
+		{
+			Root.UpdateLayout();
+			let bounds = node.ScreenBounds;
+			let at = Float2(bounds.X + bounds.Width * 0.5f, bounds.Y + bounds.Height * 0.5f);
+			Root.EventDispatcher.InjectMouseMove(at);
+			Root.EventDispatcher.InjectMouseDown(at, .Left);
+			Root.EventDispatcher.InjectMouseUp(at, .Left);
 		}
 
 		/// A press and release in the middle of the row showing `item`.
@@ -1060,6 +1072,66 @@ class ScenePageTests
 		page.Commands.Undo(); // the revert
 		Test.Assert(Settings().FindOverride(41) != null);
 		Settings().Script.SetDirect(null); // the test's class goes before the scene
+		page.OnClose();
+	}
+
+	[Test]
+	public static void SceneBarTheEditingControlsAreThePagesActionsSelectTheSpacesIconSnapAndItsIncrements()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let shown = scope Shown(page);
+		let bar = page.Bar;
+		Test.Assert(bar != null);
+		Test.Assert(bar.Bound == 11); // save, undo, redo, four transform, space, snap, vertex snap, frame
+		let gizmos = page.Gizmos;
+		Test.Assert(gizmos != null);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+
+		let select = FindId<ButtonBase>(page.Content, "scene-select");
+		let move = FindId<ButtonBase>(page.Content, "scene-move");
+		Test.Assert(select != null);
+		Test.Assert(move != null);
+		Test.Assert(move.Checked);
+		Test.Assert(!select.Checked);
+		Test.Assert(select.TooltipText == "Select (Q)");
+		shown.Click(select);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(!gizmos.HandlesShown);
+		Test.Assert(select.Checked);
+		Test.Assert(!move.Checked);
+		shown.Click(move);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(gizmos.HandlesShown);
+		Test.Assert(gizmos.Mode == .Translate);
+
+		// The space's icon is the space it is in.
+		let space = FindId<ButtonBase>(page.Content, "scene-space");
+		Test.Assert(space != null);
+		Test.Assert(space.Icon == "Editor/Icons/world.svg");
+		shown.Click(space);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(gizmos.Space == .Local);
+		Test.Assert(space.Icon == "Editor/Icons/local.svg");
+
+		// Snap, and its increments: a fixed step, then the grid's cell where the camera is.
+		let snap = FindId<ToolMenuButton>(page.Content, "scene-snap");
+		Test.Assert(snap != null);
+		Test.Assert(!gizmos.SnapMode);
+		Test.Assert(bed.Context.Actions.Execute(SceneActionIds.GizmoSnap, page) case .Ok);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(gizmos.SnapMode);
+		Test.Assert(snap.Checked);
+		bar.PickIncrement(.Rotate, 2);
+		Test.Assert(gizmos.Gizmo.RotateSnapDegrees == 45.0f);
+		bar.PickIncrement(.Move, 1);
+		Test.Assert(gizmos.Gizmo.TranslateSnap == 0.25f);
+		Test.Assert(!gizmos.MoveSnapsToGrid);
+		bar.PickIncrement(.Move, 5); // the grid's cell
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(gizmos.MoveSnapsToGrid);
+		Test.Assert(gizmos.Gizmo.TranslateSnap > 0.0f);
 		page.OnClose();
 	}
 }

@@ -107,6 +107,7 @@ class SelectTransformTool : IViewportTool
 		gizmoInput.Snap = input.Ctrl;
 		if ((input.Keyboard != null) && gizmoInput.PointerValid)
 		{
+			gizmoInput.KeySelect = input.Keyboard.IsKeyPressed(.Q);
 			gizmoInput.KeyTranslate = input.Keyboard.IsKeyPressed(.W);
 			gizmoInput.KeyRotate = input.Keyboard.IsKeyPressed(.E);
 			gizmoInput.KeyScale = input.Keyboard.IsKeyPressed(.R);

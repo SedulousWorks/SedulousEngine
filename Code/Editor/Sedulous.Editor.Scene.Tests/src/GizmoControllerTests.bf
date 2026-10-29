@@ -7,7 +7,8 @@ using static Sedulous.Editor.Scene.Tests.GizmoFixture;
 namespace Sedulous.Editor.Scene.Tests;
 
 /// The controller over the edit context: one undo entry per drag, parent space conversion,
-/// mode keys, and pose tracking while the pointer is away.
+/// mode keys, Select's hidden handles and Snap's every drag, and pose tracking while the
+/// pointer is away.
 class GizmoControllerTests
 {
 	[Test]
@@ -54,6 +55,47 @@ class GizmoControllerTests
 		Test.Assert(Near(scene.GetLocalTransform(edit.Resolve(id)).Position.X, 2.0f, 0.05f));
 		commands.Undo();
 		Test.Assert(Near(scene.GetLocalTransform(edit.Resolve(id)).Position.X, 0.0f, 0.0001f));
+	}
+
+	[Test]
+	public static void SelectHidesTheHandlesUntilAModeSnapSnapsEveryDragAsCtrlDoesOne()
+	{
+		let scene = scope Scene();
+		let commands = scope EditorCommandStack();
+		let edit = scope SceneEditContext(scene, commands);
+		let ctl = scope GizmoController(edit);
+		let id = edit.CreateEntity("Box");
+		edit.EntitySelection.Set(id);
+		let size = TransformGizmo.ScreenScale(CamPos, CamFwd, 1.0472f, .Zero);
+		let grab = Float3(size * 0.6f, 0.0f, 0.0f);
+
+		// Q: no handles, so the shaft is not hot and a click goes to picking.
+		var input = Frame(grab, false, false, false);
+		input.KeySelect = true;
+		Test.Assert(!ctl.Update(input));
+		Test.Assert(!ctl.HandlesShown);
+		Test.Assert(!ctl.IsActive);
+		Test.Assert(ctl.Mode == .Translate); // kept for when they show again
+		Test.Assert(!ctl.Update(Frame(grab, true, true, false)));
+		Test.Assert(!ctl.Gizmo.IsDragging);
+		ctl.Update(Frame(grab, false, false, true));
+
+		// W brings them back.
+		input = Frame(grab, false, false, false);
+		input.KeyTranslate = true;
+		Test.Assert(ctl.Update(input));
+		Test.Assert(ctl.HandlesShown);
+		ctl.SetHandlesShown(false);
+		ctl.SetMode(.Translate); // the bar's Move does the same
+		Test.Assert(ctl.HandlesShown);
+
+		// Snap on: a drag of 1.3 lands on the nearest 0.5 step, with no Ctrl.
+		ctl.SnapMode = true;
+		ctl.Gizmo.TranslateSnap = 0.5f;
+		Test.Assert(ctl.Update(Frame(grab, true, true, false)));
+		Test.Assert(ctl.Update(Frame(grab + Float3(1.3f, 0, 0), false, true, false)));
+		Test.Assert(ctl.Update(Frame(grab + Float3(1.3f, 0, 0), false, false, true)));
+		Test.Assert(Near(scene.GetLocalTransform(edit.Resolve(id)).Position.X, 1.5f, 0.05f));
 	}
 
 	[Test]

@@ -1,6 +1,7 @@
 <!--
-  The scene page (Raptor's editor-gui spec, 5.3, layer 2): its bar over its own hierarchy,
-  viewport and inspector, as the mock draws it (Editor/Mock/scene.gml). A prefab is marked as one.
+  The scene page (Raptor's editor-gui spec, 5.3, layers 2 and 5): its bar (the editing controls,
+  each an action) over its own hierarchy, viewport and inspector, as the mock draws it
+  (Editor/Mock/scene.gml). A prefab is marked as one.
   Code puts the viewport in its pane (under the state a scene that did not load shows), binds the
   bar to the actions, the hierarchy to the scene and the inspector to its selection.
 -->
@@ -9,7 +10,18 @@
         <ToolButton id="scene-save" icon="Editor/Icons/save.svg"/>
         <ToolButton id="scene-undo" icon="Editor/Icons/undo.svg"/>
         <ToolButton id="scene-redo" icon="Editor/Icons/redo.svg"/>
+        <Separator/>
+        <ToolButton id="scene-select" name="scene-transform" toggle="true" icon="Editor/Icons/select.svg"/>
+        <ToolButton id="scene-move" name="scene-transform" toggle="true" icon="Editor/Icons/move.svg"/>
+        <ToolButton id="scene-rotate" name="scene-transform" toggle="true" icon="Editor/Icons/rotate.svg"/>
+        <ToolButton id="scene-scale" name="scene-transform" toggle="true" icon="Editor/Icons/scale.svg"/>
+        <Separator/>
+        <ToolButton id="scene-space" toggle="true" icon="Editor/Icons/world.svg"/>
+        <ToolMenuButton id="scene-snap" toggle="true" split="true" icon="Editor/Icons/magnet.svg"/>
+        <ToolButton id="scene-vertex-snap" toggle="true" icon="Editor/Icons/target.svg"/>
         <Spacer/>
+        <ToolButton id="scene-frame" icon="Editor/Icons/frame-selection.svg"/>
+        <Separator/>
         <Label id="scene-kind" class="badge page-kind" text="Prefab" tooltip="This page edits a prefab: one root, saved to every instance"/>
     </ToolBar>
     <Splitter id="scene-body" class="page-body" axis="horizontal" weights="0.2 0.56 0.24">

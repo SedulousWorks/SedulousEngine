@@ -13,11 +13,13 @@ static class SceneActionIds
 	public const String SimulateStart = "scene.simulate.start";
 	public const String SimulatePause = "scene.simulate.pause";
 	public const String SimulateStop = "scene.simulate.stop";
+	public const String GizmoSelect = "scene.gizmo.select";
 	public const String GizmoTranslate = "scene.gizmo.translate";
 	public const String GizmoRotate = "scene.gizmo.rotate";
 	public const String GizmoScale = "scene.gizmo.scale";
 	public const String GizmoWorldSpace = "scene.gizmo.worldSpace";
 	public const String GizmoVertexSnap = "scene.gizmo.vertexSnap";
+	public const String GizmoSnap = "scene.gizmo.snap";
 	public const String Markers = "scene.view.markers";
 	public const String FrameSelection = "scene.view.frameSelection";
 	public const String Orthographic = "scene.view.orthographic";
@@ -124,12 +126,30 @@ static class SceneActions
 			actions.Register(d);
 		}
 
-		// ---- Gizmo: the transform mode as three toggles, the space as one ----
+		// ---- Gizmo: Select and the transform modes as one choice, the space as a toggle ----
+		{
+			// No handles: a click picks, a drag boxes, and nothing moves by accident.
+			let d = new EditorActionDeclaration(SceneActionIds.GizmoSelect, "Select", "Pick and box select with no handles (W, E or R brings them back)", "Scene/Gizmo/Select", 99);
+			d.Kind = .Toggle;
+			d.Shortcut = .Of("q");
+			d.Enabled = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					return (scene != null) && (scene.Gizmos != null) && !scene.CameraOwnsInput;
+				};
+			d.Checked = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					return (scene != null) && (scene.Gizmos != null) && !scene.Gizmos.HandlesShown;
+				};
+			d.Execute = new (page) => { (page as ISceneEditorPage).Gizmos.SetHandlesShown(false); };
+			actions.Register(d);
+		}
 		GizmoMode(actions, SceneActionIds.GizmoTranslate, "Translate", "Move the selection with the gizmo", "Scene/Gizmo/Translate", 100, .Translate, "w");
 		GizmoMode(actions, SceneActionIds.GizmoRotate, "Rotate", "Rotate the selection with the gizmo", "Scene/Gizmo/Rotate", 101, .Rotate, "e");
 		GizmoMode(actions, SceneActionIds.GizmoScale, "Scale", "Scale the selection with the gizmo", "Scene/Gizmo/Scale", 102, .Scale, "r");
 		{
-			let d = new EditorActionDeclaration(SceneActionIds.GizmoWorldSpace, "World Space", "The gizmo's axes in world space (off: the selection's local space)", "Scene/Gizmo/World Space", 200);
+			let d = new EditorActionDeclaration(SceneActionIds.GizmoWorldSpace, "World Space", "The gizmo's axes in world space (off: the selection's local space; X over the view)", "Scene/Gizmo/World Space", 200);
 			d.Kind = .Toggle;
 			d.Enabled = new (page) =>
 				{
@@ -167,6 +187,28 @@ static class SceneActions
 				{
 					let gizmos = (page as ISceneEditorPage).Gizmos;
 					gizmos.VertexSnapMode = !gizmos.VertexSnapMode;
+				};
+			actions.Register(d);
+		}
+
+		{
+			// Every drag snaps to the increments while on; Ctrl does it for one drag.
+			let d = new EditorActionDeclaration(SceneActionIds.GizmoSnap, "Snap", "Every gizmo drag snaps to the increments (hold Ctrl for one drag)", "Scene/Gizmo/Snap", 202);
+			d.Kind = .Toggle;
+			d.Enabled = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					return (scene != null) && (scene.Gizmos != null);
+				};
+			d.Checked = new (page) =>
+				{
+					let scene = page as ISceneEditorPage;
+					return (scene != null) && (scene.Gizmos != null) && scene.Gizmos.SnapMode;
+				};
+			d.Execute = new (page) =>
+				{
+					let gizmos = (page as ISceneEditorPage).Gizmos;
+					gizmos.SnapMode = !gizmos.SnapMode;
 				};
 			actions.Register(d);
 		}
@@ -365,7 +407,7 @@ static class SceneActions
 		d.Checked = new [=mode](page) =>
 			{
 				let scene = page as ISceneEditorPage;
-				return (scene != null) && (scene.Gizmos != null) && (scene.Gizmos.Mode == mode);
+				return (scene != null) && (scene.Gizmos != null) && scene.Gizmos.HandlesShown && (scene.Gizmos.Mode == mode);
 			};
 		d.Execute = new [=mode](page) => { (page as ISceneEditorPage).Gizmos.SetMode(mode); };
 		actions.Register(d);

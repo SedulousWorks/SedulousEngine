@@ -21,7 +21,8 @@ struct GizmoFrameInput
 	/// whichever handle it holds (an absolute place, where Ctrl's snap steps the drag's
 	/// distance).
 	public bool VertexSnap = false;
-	/// W, E, R and X, as edges.
+	/// Q (no handles, a click only picks), W, E, R and X, as edges.
+	public bool KeySelect = false;
 	public bool KeyTranslate = false;
 	public bool KeyRotate = false;
 	public bool KeyScale = false;
