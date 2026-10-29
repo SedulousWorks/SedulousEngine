@@ -24,6 +24,8 @@ namespace Sedulous.Editor.Scene;
 //   - A component's header has its verbs: copy, paste over it, reset to its defaults, revert to
 //     its prefab (while it overrides it), remove; Add Component is the picker over the component
 //     types the selection lacks, by category, each with its icon and its description.
+//   - A component's extras, asked of its type (InspectorExtrasRegistry): its notices, its actions
+//     and sections of their own, under its header.
 //   - A search narrows the rows. While the page simulates the grid is read only, and says so.
 //   - Built again when the selection, the scene's shape or the components change; otherwise only
 //     the values are shown again, so a gizmo's drag or an undo shows as it happens.
@@ -60,6 +62,162 @@ class SceneInspectorView
 		public String Title = new .() ~ delete _;
 		public Type Type;
 		public FieldPropertySource Source ~ delete _;
+		/// Null: none.
+		public Extras Extras ~ delete _;
+	}
+
+	// A component's extras: a bag under its header, its notices asked again as values show, its
+	// actions run on their rows' commits.
+	private class Extras : InspectorExtras
+	{
+		private class Notice
+		{
+			public String Name = new .() ~ delete _;
+			public delegate void(String outMessage) Message ~ delete _;
+			public String Said = new .() ~ delete _;
+		}
+
+		private class Action
+		{
+			public String Name = new .() ~ delete _;
+			public delegate void() Run ~ delete _;
+		}
+
+		private class Section
+		{
+			public IPropertySource Source ~ delete _;
+			public delegate void() Refresh ~ delete _;
+		}
+
+		public Sedulous.GUI.PropertyBag Bag ~ delete _;
+		private SceneInspectorView mView;
+		private List<Section> mSources = new .() ~ DeleteContainerAndItems!(_);
+		private List<Notice> mNotices = new .() ~ DeleteContainerAndItems!(_);
+		private List<Action> mActions = new .() ~ DeleteContainerAndItems!(_);
+
+		public this(SceneInspectorView view)
+		{
+			mView = view;
+			Bag = new .(view.mEntities.Count);
+			Bag.SetOnCommit(new (commit) =>
+				{
+					for (let action in mActions)
+					{
+						if ((action.Name == commit.Path) && (action.Run != null))
+							action.Run();
+					}
+				});
+		}
+
+		public override SceneEditContext Edit => mView.mEdit;
+		public override EditorContext Context => mView.mServices.Context;
+		public override Span<Guid> Entities => mView.mEntities;
+
+		public override void AddNotice(StringView name, delegate void(String outMessage) message)
+		{
+			let info = Bag.Add(name, .String, Sedulous.GUI.Variant(""));
+			info.Hint.Set(NoticePropertyEditor.cHint);
+			info.ReadOnly = true;
+			info.Visible = false; // until it says something
+			let notice = new Notice();
+			notice.Name.Set(name);
+			notice.Message = message;
+			mNotices.Add(notice);
+		}
+
+		public override void AddAction(StringView name, StringView label, StringView description, delegate void() run)
+		{
+			let info = Bag.Add(name, .String, Sedulous.GUI.Variant(label));
+			info.Hint.Set(ActionPropertyEditor.cHint);
+			info.Description.Set(description);
+			for (int i < Bag.ObjectCount)
+				Bag.SetValue(name, i, Sedulous.GUI.Variant(label));
+			let action = new Action();
+			action.Name.Set(name);
+			action.Run = run;
+			mActions.Add(action);
+		}
+
+		public override void AddSection(IPropertySource source, delegate void() refresh)
+		{
+			let section = new Section();
+			section.Source = source;
+			section.Refresh = refresh;
+			mSources.Add(section);
+		}
+
+		public bool HasRows => !mNotices.IsEmpty || !mActions.IsEmpty;
+		public bool IsEmpty => !HasRows && mSources.IsEmpty;
+		public int SourceCount => mSources.Count;
+		public IPropertySource SourceAt(int i) => mSources[i].Source;
+
+		/// Each notice as it says now; shown while it says something.
+		public void Refresh()
+		{
+			for (let section in mSources)
+			{
+				if (section.Refresh != null)
+					section.Refresh();
+			}
+			var shown = false;
+			let message = scope String();
+			for (let notice in mNotices)
+			{
+				message.Clear();
+				if (notice.Message != null)
+					notice.Message(message);
+				if (message != notice.Said)
+				{
+					notice.Said.Set(message);
+					for (int i < Bag.ObjectCount)
+						Bag.SetValue(notice.Name, i, Sedulous.GUI.Variant(message));
+				}
+				let info = Bag.FindInfo(notice.Name);
+				if ((info != null) && (info.Visible == message.IsEmpty))
+				{
+					info.Visible = !message.IsEmpty;
+					shown = true;
+				}
+			}
+			if (shown)
+				Bag.PropertiesChanged();
+		}
+
+		/// A notice's text as it says now, or an action's label; appended.
+		public void Text(StringView name, String outText)
+		{
+			for (let notice in mNotices)
+			{
+				if (notice.Name == name)
+				{
+					outText.Append(notice.Said);
+					return;
+				}
+			}
+			for (let action in mActions)
+			{
+				if (action.Name == name)
+				{
+					var value = Bag.GetValue(name, 0);
+					defer value.Dispose();
+					outText.Append(value.AsString);
+					return;
+				}
+			}
+		}
+
+		public bool Run(StringView name)
+		{
+			for (let action in mActions)
+			{
+				if ((action.Name == name) && (action.Run != null))
+				{
+					action.Run();
+					return true;
+				}
+			}
+			return false;
+		}
 	}
 
 	private SceneEditContext mEdit;
@@ -104,6 +262,7 @@ class SceneInspectorView
 			if (mServices.Pick != null)
 				mEntityRefs.Pick = new (request, anchor) => { mServices.Pick(request, anchor); };
 			EntityRefEditor.Register(mGrid.Editors, mEntityRefs);
+			PropertyExtras.Register(mGrid.Editors); // a component's notices and actions
 			mGrid.Source = mSections;
 			mGrid.SetOnRowMenu(new (menu, row) => { HeaderMenu(menu, row); });
 		}
@@ -160,8 +319,10 @@ class SceneInspectorView
 			return;
 		}
 		// The values as they are now (a gizmo's drag, an undo): the transforms read again, the
-		// grid told, except while it is editing one (its row is the gesture's).
+		// notices asked again, the grid told, except while it is editing one (its row is the
+		// gesture's).
 		PullTransforms();
+		RefreshExtras();
 		if ((mGrid != null) && !mGrid.IsEditing)
 		{
 			for (let section in mComponents)
@@ -252,6 +413,31 @@ class SceneInspectorView
 	}
 
 	// === For tests ===
+
+	/// A component section's extras' row at `name` (a notice's text, an action's label), appended;
+	/// nothing when there is none or it is hidden.
+	public void ExtraText(StringView title, StringView name, String outText)
+	{
+		for (let section in mComponents)
+		{
+			if ((section.Title == title) && (section.Extras != null))
+			{
+				section.Extras.Text(name, outText);
+				return;
+			}
+		}
+	}
+
+	/// Runs a component section's action `name`, as its button does.
+	public bool RunExtra(StringView title, StringView name)
+	{
+		for (let section in mComponents)
+		{
+			if ((section.Title == title) && (section.Extras != null))
+				return section.Extras.Run(name);
+		}
+		return false;
+	}
 
 	public PropertyGrid Grid => mGrid;
 	public PropertySections Sections => mSections;
@@ -495,8 +681,36 @@ class SceneInspectorView
 					new [=this, =type] (apply) => { CommitComponent(type, apply); },
 					mServices.Resources);
 				mSections.Add(section.Key, section.Title, section.Source);
+				BuildExtras(section);
 				mComponents.Add(section);
 			});
+	}
+
+	private void BuildExtras(ComponentSection section)
+	{
+		let extras = new Extras(this);
+		InspectorExtrasRegistry.ForEach(section.Type, scope [&] (provider) => { provider(extras); });
+		if (extras.IsEmpty)
+		{
+			delete extras;
+			return;
+		}
+		extras.Refresh();
+		// Under the component's header: the grid groups a title's rows together.
+		if (extras.HasRows)
+			mSections.Add(scope $"x{section.Key}", section.Title, extras.Bag);
+		for (int i < extras.SourceCount)
+			mSections.Add(scope $"y{section.Key}.{i}", section.Title, extras.SourceAt(i));
+		section.Extras = extras;
+	}
+
+	private void RefreshExtras()
+	{
+		for (let section in mComponents)
+		{
+			if (section.Extras != null)
+				section.Extras.Refresh();
+		}
 	}
 
 	// Object `object`'s live component of `type`, found again (a pool moves).

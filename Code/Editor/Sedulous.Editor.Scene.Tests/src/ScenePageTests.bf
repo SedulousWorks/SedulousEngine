@@ -13,6 +13,10 @@ using Sedulous.Scene.Resource;
 using Sedulous.Engine.Scene;
 using Sedulous.Engine.Render; // LightComponent, InstanceMemberComponent
 using Sedulous.Engine.Composition; // the full scene composition
+using Sedulous.Engine.Physics;
+using Sedulous.Engine.Navigation;
+using Sedulous.Engine.Script;
+using Sedulous.Script.Resource;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -33,7 +37,8 @@ namespace Sedulous.Editor.Scene.Tests;
 /// actions. And its inspector (layer 4): nothing selected says so; an entity's head and sections;
 /// Add Component; a transform's and a component's edits, each one undo step; several entities
 /// edited at once; a header's verbs; read only while the page simulates; an entity reference's
-/// slot.
+/// slot; a component's extras (a rigid body's notice, a zone's Bake); a script component's
+/// behaviours.
 class ScenePageTests
 {
 	/// A host whose context has a scene subsystem and nothing else: no renderer, no window.
@@ -794,6 +799,96 @@ class ScenePageTests
 		Test.Assert(Member().InstancedMesh.Id == bed.Crate);
 		slot.Assign(.Empty);
 		Test.Assert(Member().InstancedMesh.IsNil);
+		page.OnClose();
+	}
+
+	[Test]
+	public static void InspectorAComponentsExtrasUnderItsHeaderARigidBodysNoticeWhileItHasNoColliderAZonesBake()
+	{
+		BuiltinInspectorExtras.Register();
+		let bed = scope Bed();
+		let said = scope String();
+		bed.Context.OnNotice = new [&] (kind, message) => { said.Set(message); };
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.AddComponent("RigidBodyComponent"));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.ExtraText("Rigid Body", "Collision", .. scope String()).IsEmpty); // a box: it has its collider
+
+		// Cooked with no shape: said, and gone again once it is a box (a value edit, not a rebuild).
+		let bodies = page.ScenePtr.GetSystem<RigidBodyComponentManager>();
+		Test.Assert(bodies != null);
+		bodies.Get(page.ScenePtr.FindEntity(bed.Crate)).Shape = .Cooked;
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.ExtraText("Rigid Body", "Collision", .. scope String()) == BuiltinInspectorExtras.cNoColliderText);
+		bodies.Get(page.ScenePtr.FindEntity(bed.Crate)).Shape = .Box;
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.ExtraText("Rigid Body", "Collision", .. scope String()).IsEmpty);
+
+		// A zone's Bake: its button, and with no asset assigned it says what to do.
+		Test.Assert(inspector.AddComponent("NavMeshZoneComponent"));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.ExtraText("Nav Mesh Zone", "Navigation", .. scope String()) == "Bake Navigation");
+		Test.Assert(inspector.RunExtra("Nav Mesh Zone", "Navigation"));
+		Test.Assert(said == "Assign a Navigation Zone asset to this zone before baking.");
+		page.OnClose();
+	}
+
+	[Test]
+	public static void ScriptBehaviorsAListOfBehavioursEachItsScriptEnabledAndIntervalEveryEditOneUndoStepARevertItsDefault()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let edit = page.EditContext;
+		edit.AddComponent(bed.Crate, typeof(ScriptComponent));
+		Guid[1] crate = .(bed.Crate);
+		let source = scope ScriptBehaviorsSource(edit, bed.Context, crate);
+		let manager = page.ScenePtr.GetSystem<ScriptComponentManager>();
+		Test.Assert(manager != null);
+		ScriptComponent* Component() => manager.Get(page.ScenePtr.FindEntity(bed.Crate));
+
+		let top = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(top); }
+		source.GetProperties(default, top);
+		Test.Assert(top.Count == 1);
+		Test.Assert(top[0].Kind == .List);
+		Test.Assert(source.GetValue("behaviors", 0).AsInt == 0);
+
+		let insert = scope ListEdit();
+		insert.Kind = .Insert;
+		insert.Index = 0;
+		Test.Assert(source.EditList("behaviors", insert));
+		Test.Assert(Component().Behaviors.Count == 1);
+		let elements = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(elements); }
+		source.GetProperties("behaviors", elements);
+		Test.Assert(elements.Count == 1);
+		Test.Assert(elements[0].DisplayName == "Behavior 1");
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		source.GetProperties("behaviors.0", rows);
+		Test.Assert(rows.Count == 3); // no script yet: its own rows only
+		Test.Assert(rows[0].Kind == .Reference);
+		Test.Assert(rows[0].ReferenceType == typeof(ScriptClass));
+
+		source.CommitEdit("behaviors.0.enabled", PropertyWrite(Sedulous.GUI.Variant(false)));
+		Test.Assert(!Component().Behaviors[0].Enabled);
+		source.CommitEdit("behaviors.0.interval", PropertyWrite(Sedulous.GUI.Variant(0.5)));
+		Test.Assert(Component().Behaviors[0].UpdateInterval == 0.5f);
+		page.Commands.Undo(); // the interval alone
+		Test.Assert(Component().Behaviors[0].UpdateInterval == 0.0f);
+		Test.Assert(!Component().Behaviors[0].Enabled);
+		Test.Assert(source.Revert("behaviors.0.enabled"));
+		Test.Assert(Component().Behaviors[0].Enabled);
+		page.Commands.Undo(); // the revert
+		page.Commands.Undo(); // the edit
+		Test.Assert(Component().Behaviors[0].Enabled);
+		page.Commands.Undo(); // the insert
+		Test.Assert(Component().Behaviors.IsEmpty);
 		page.OnClose();
 	}
 }

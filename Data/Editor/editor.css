@@ -233,6 +233,8 @@ treerowcontent.inactive { opacity: 0.45; }
 /* The inspector: what a simulation leaves read only says so over the grid; nothing selected fills the pane. */
 .inspector-note { padding: var(--space-s) var(--space-m); }
 .inspector-state { flex-grow: 1; }
+/* An editor grid's notice: what it says wraps, in the warning's colour. */
+.notice-text { white-space: normal; color: var(--warning); }
 /* The HUD's zones: each a corner of the viewport, its pieces stacked from that corner, so they
    never meet whatever the viewport's size. Over any scene, so in the HUD's own colours in both
    schemes. */

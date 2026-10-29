@@ -29,8 +29,8 @@ class SceneEditorPageFactory : IEditorPageFactory
 
 /// Wires the scene editor into the editor (Raptor's editor-gui spec, 5.3, layer 2): its services
 /// (the document types, the export's scene seams, a model import's prefab and scene), the
-/// thumbnail generators, the scene and prefab pages, the scene actions and the MCP live tools.
-/// The inspector comes back with its layer.
+/// thumbnail generators, the scene and prefab pages, the inspector's extras for the engine's own
+/// components, the scene actions and the MCP live tools.
 static class SceneEditor
 {
 	/// `context`, `host` and `app` borrowed; they outlive the pages.
@@ -46,6 +46,8 @@ static class SceneEditor
 		context.Pages.Register(new SceneEditorPageFactory(typeof(SceneDocument), new [=host, =app]() => PageServices(host, app)));
 		context.Pages.Register(new SceneEditorPageFactory(typeof(PrefabDocument), new [=host, =app]() => PageServices(host, app)));
 
+		// What the inspector shows under the engine's own components besides their rows.
+		BuiltinInspectorExtras.Register();
 		// The scene editor's actions: the Scene menu, the keys and the page's bar are served from
 		// them; the palette and the MCP bridge read them.
 		SceneActions.Register(context);
