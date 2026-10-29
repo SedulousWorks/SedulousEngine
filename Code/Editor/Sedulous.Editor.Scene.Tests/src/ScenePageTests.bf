@@ -1467,4 +1467,64 @@ class ScenePageTests
 		}
 		page.OnClose();
 	}
+
+	// The first `T` in `node`'s tree, itself first.
+	static T FirstOf<T>(Node node) where T : Node
+	{
+		if (let found = node as T)
+			return found;
+		for (int i < node.ChildCount)
+		{
+			if (let found = FirstOf<T>(node.GetChildAt(i)))
+				return found;
+		}
+		return null;
+	}
+
+	[Test]
+	public static void InspectorAValueTypedIntoTheGridStaysFramesOnNotPutBack()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		let shown = scope Shown(page);
+		page.EditContext.AddComponent(bed.Crate, typeof(LightComponent));
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		shown.Restyle();
+		shown.Root.UpdateLayout();
+
+		let grid = inspector.Grid;
+		Test.Assert(grid != null);
+		let path = inspector.PathOf("Light", "Intensity", .. scope String());
+		let item = grid.FindRow(path);
+		Test.Assert(item >= 0);
+		grid.ScrollToItem(item);
+		shown.Root.UpdateLayout();
+		let row = grid.RowForItem(item);
+		Test.Assert(row != null);
+		let field = FirstOf<NumberField>(row);
+		Test.Assert(field != null);
+
+		// Typed: click into it, select all, type, Return; then frames go by.
+		let d = shown.Root.EventDispatcher;
+		let bounds = field.ScreenBounds;
+		let at = Float2(bounds.X + bounds.Width * 0.5f, bounds.Y + bounds.Height * 0.5f);
+		d.InjectMouseMove(at);
+		d.InjectMouseDown(at, .Left);
+		d.InjectMouseUp(at, .Left);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		d.InjectKeyDown((uint32)Sedulous.GUI.KeyCode.A, KeyModCtrl);
+		d.InjectText("7.5");
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		d.InjectKeyDown((uint32)Sedulous.GUI.KeyCode.Return);
+		for (int i < 5)
+		{
+			page.OnUpdate(bed.Host, 1.0f / 60.0f);
+			shown.Root.UpdateLayout();
+		}
+		Test.Assert(LightOf(page, bed.Crate).Intensity == 7.5f);
+		page.OnClose();
+	}
 }
