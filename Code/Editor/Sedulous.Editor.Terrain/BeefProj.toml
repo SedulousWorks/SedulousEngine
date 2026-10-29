@@ -27,10 +27,32 @@ corlib = "*"
 "Sedulous.Engine.Render" = "*"
 "Sedulous.Engine.Terrain" = "*"
 "Sedulous.Runtime.Client" = "*"
-"Sedulous.UI" = "*"
-"Sedulous.UI.Toolkit" = "*"
-"Sedulous.UI.Runtime" = "*"
+"Sedulous.GUI" = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.ViewportTools" = "*"
 "Sedulous.Editor.App" = "*"
-"Sedulous.Editor.Preview" = "*"
+
+# The terrain's editing on the GUI so far (Raptor's editor-gui spec, 5.3, layer 5, part 3): the scene
+# view's brushes, their panels and the splatmap thumbnails. The Terrain asset page stays out of the
+# compile, unedited, until its port.
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "EditTerrainCommand.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "TerrainEditorPage.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "TerrainEditorPageFactory.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "TerrainEditorPageFields.bf"
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "TerrainStats.bf"

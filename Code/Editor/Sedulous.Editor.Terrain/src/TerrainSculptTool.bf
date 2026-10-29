@@ -48,9 +48,6 @@ class TerrainSculptTool : IViewportTool
 	private HeightfieldRegion mRegion = .();
 	private String mStatus = new .() ~ delete _;
 
-	/// The panel's radius readout follows wheel sizing through this. Owned.
-	public delegate void(float radius) OnRadiusChanged = null ~ delete _;
-
 	public this(Scene scene, EditorCommandStack commands, IAssetEditSink assetEdits)
 	{
 		mScene = scene;
@@ -60,7 +57,8 @@ class TerrainSculptTool : IViewportTool
 	}
 
 	public StringView Id => "terrain.sculpt";
-	public StringView DisplayName => "Sculpt Terrain";
+	public StringView DisplayName => "Sculpt";
+	public StringView Icon => "Editor/Icons/Types/TerrainComponent.svg";
 	public StringView Category => "Terrain";
 	public StringView StatusText => mStatus;
 
@@ -71,8 +69,6 @@ class TerrainSculptTool : IViewportTool
 	public void SetRadius(float radius)
 	{
 		mRadius = Math.Clamp(radius, cMinRadius, cMaxRadius);
-		if (OnRadiusChanged != null)
-			OnRadiusChanged(mRadius);
 	}
 
 	public float Strength => mStrength;
@@ -114,7 +110,6 @@ class TerrainSculptTool : IViewportTool
 		if (mStroking)
 			EndStroke(); // never leave a half open stroke on a tool switch
 		mHasHover = false;
-		DeleteAndNullify!(OnRadiusChanged);
 	}
 
 	public bool Update(in ViewportToolInput input)

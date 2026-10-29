@@ -47,9 +47,6 @@ class TerrainHoleTool : IViewportTool
 	private HeightfieldRegion mRegion = .();
 	private String mStatus = new .() ~ delete _;
 
-	/// The panel's radius readout follows wheel sizing through this. Owned.
-	public delegate void(float radius) OnRadiusChanged = null ~ delete _;
-
 	public this(Scene scene, EditorCommandStack commands, IAssetEditSink assetEdits)
 	{
 		mScene = scene;
@@ -60,6 +57,7 @@ class TerrainHoleTool : IViewportTool
 
 	public StringView Id => "terrain.hole";
 	public StringView DisplayName => "Cut Holes";
+	public StringView Icon => "Editor/Icons/minus.svg";
 	public StringView Category => "Terrain";
 	public StringView StatusText => mStatus;
 
@@ -80,8 +78,6 @@ class TerrainHoleTool : IViewportTool
 	{
 		mRadius = Math.Clamp(radius, cMinRadius, cMaxRadius);
 		UpdateStatus();
-		if (OnRadiusChanged != null)
-			OnRadiusChanged(mRadius);
 	}
 
 	public bool IsStroking => mStroking;
@@ -94,7 +90,6 @@ class TerrainHoleTool : IViewportTool
 		if (mStroking)
 			EndStroke(); // never leave a half open stroke on a tool switch
 		mHasHover = false;
-		DeleteAndNullify!(OnRadiusChanged);
 	}
 
 	public bool Update(in ViewportToolInput input)

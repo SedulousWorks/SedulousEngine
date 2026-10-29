@@ -146,17 +146,13 @@ class SculptToolTests
 		Test.Assert(tool.Strength == TerrainSculptTool.cMaxStrength);
 
 		tool.SetRadius(10.0f);
-		float reported = 0.0f;
-		tool.OnRadiusChanged = new [&reported](r) => { reported = r; };
 		var wheel = TerrainFixture.RayAt(0, 0);
 		wheel.WheelDelta = 1.0f;
 		wheel.Shift = true;
 		tool.Update(wheel);
-		Test.Assert(tool.Radius > 10.0f);
-		Test.Assert(reported == tool.Radius);
+		Test.Assert(tool.Radius > 10.0f); // the panel asks it each frame, so it shows the wheel's size
 		Test.Assert(tool.StatusText.StartsWith("Sculpt [Raise]"));
-		tool.OnDeactivate(); // drops the panel's callback
-		Test.Assert(tool.OnRadiusChanged == null);
+		tool.OnDeactivate();
 	}
 
 	/// A save persists to the SOURCE asset: the imported file name is cleared, the sidecar

@@ -59,9 +59,6 @@ class TerrainSplatTool : IViewportTool
 	private float mAirbrushClock = 0.0f;
 	private String mStatus = new .() ~ delete _;
 
-	/// The panel's radius readout follows wheel sizing through this. Owned.
-	public delegate void(float radius) OnRadiusChanged = null ~ delete _;
-
 	public this(Scene scene, EditorCommandStack commands, IAssetEditSink assetEdits)
 	{
 		mScene = scene;
@@ -71,7 +68,8 @@ class TerrainSplatTool : IViewportTool
 	}
 
 	public StringView Id => "terrain.splat";
-	public StringView DisplayName => "Paint Splat";
+	public StringView DisplayName => "Paint Layers";
+	public StringView Icon => "Editor/Icons/texture.svg";
 	public StringView Category => "Terrain";
 	public StringView StatusText => mStatus;
 
@@ -108,8 +106,6 @@ class TerrainSplatTool : IViewportTool
 	public void SetRadius(float radius)
 	{
 		mRadius = Math.Clamp(radius, cMinRadius, cMaxRadius);
-		if (OnRadiusChanged != null)
-			OnRadiusChanged(mRadius);
 	}
 
 	public float Strength => mStrength;
@@ -124,7 +120,7 @@ class TerrainSplatTool : IViewportTool
 	/// Any terrain in the scene with resolved, non empty weights AND heightfield: the
 	/// heightfield is what the ray hits.
 	public StringView UnavailableReason =>
-		"Paint Splat needs a terrain whose splatmap and heightfield resolve.";
+		"Paint Layers needs a terrain whose splatmap and heightfield resolve.";
 
 	public bool IsAvailable
 	{
@@ -157,7 +153,6 @@ class TerrainSplatTool : IViewportTool
 		if (mStroking)
 			EndStroke(); // never leave a half open stroke on a tool switch
 		mHasHover = false;
-		DeleteAndNullify!(OnRadiusChanged);
 	}
 
 	public bool Update(in ViewportToolInput input)
@@ -382,10 +377,10 @@ class TerrainSplatTool : IViewportTool
 	{
 		let radius = (int32)(mRadius + 0.5f);
 		if (mSmooth)
-			mStatus.Set(scope $"Paint Splat [SMOOTH]  radius {radius}  (1-9 layer, 0 eraser, - smooth, Shift+wheel size)");
+			mStatus.Set(scope $"Paint Layers [SMOOTH]  radius {radius}  (1-9 layer, 0 eraser, - smooth, Shift+wheel size)");
 		else if (mErase)
-			mStatus.Set(scope $"Paint Splat [ERASER]  radius {radius}  (1-9 layer, 0 eraser, - smooth, Shift+wheel size)");
+			mStatus.Set(scope $"Paint Layers [ERASER]  radius {radius}  (1-9 layer, 0 eraser, - smooth, Shift+wheel size)");
 		else
-			mStatus.Set(scope $"Paint Splat [layer {mPaletteIndex}]  radius {radius}  (1-9 layer, 0 eraser, - smooth, Shift+wheel size)");
+			mStatus.Set(scope $"Paint Layers [layer {mPaletteIndex + 1}]  radius {radius}  (1-9 layer, 0 eraser, - smooth, Shift+wheel size)");
 	}
 }

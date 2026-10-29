@@ -21,8 +21,15 @@ corlib = "*"
 "Sedulous.Terrain.Pipeline" = "*"
 "Sedulous.Pipeline.Core" = "*"
 "Sedulous.Engine.Terrain" = "*"
-"Sedulous.UI" = "*"
+"Sedulous.GUI" = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.ViewportTools" = "*"
 "Sedulous.Editor.App" = "*"
 "Sedulous.Editor.Terrain" = "*"
+
+# The Terrain asset page's suite comes back with its port.
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "TerrainEditorPageTests.bf"

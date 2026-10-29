@@ -191,6 +191,9 @@ class SceneTools
 		}
 		if (mHost != null)
 			mHost.Sync();
+		// A panel made of the kit shows what the tool has now (its keys change it too).
+		if (let body = mBody as ToolPanelBody)
+			body.Sync();
 		if (mPanelShown)
 			Clamp();
 	}

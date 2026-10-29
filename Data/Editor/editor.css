@@ -295,6 +295,13 @@ treerowcontent.inactive { opacity: 0.45; }
 .hud-name { width: 64px; color: var(--text-dim); flex-shrink: 0; }
 .hud-row > .slider-field { flex-grow: 1; min-width: 0; }
 .hud-help { font-size: var(--font-small); color: var(--text-dim); white-space: normal; }
+/* A tool panel's body (its kit: choices, sliders, checks, help), under its chrome's head. */
+.tool-panel-body { flex-direction: column; row-gap: var(--space-m); }
+.tool-panel-body > .segmented { align-self: stretch; }
+.tool-panel-body button.segment { flex-grow: 1; }
+.tool-panel-body button.segment.picture { flex-grow: 0; padding: 2px; }
+.segment-picture { width: 24px; height: 24px; border-radius: var(--radius-small); object-fit: cover; }
+.hud-heading { font-size: var(--font-small); font-weight: 600; color: var(--text-dim); }
 /* The real toast card takes the kit's frame. */
 toast { border: 1px solid var(--border-strong); }
 

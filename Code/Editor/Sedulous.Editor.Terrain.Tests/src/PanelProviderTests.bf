@@ -5,30 +5,20 @@ using Sedulous.Scene;
 using Sedulous.Heightfield;
 using Sedulous.Terrain.Resource;
 using Sedulous.Engine.Terrain;
-using Sedulous.UI;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.ViewportTools;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Terrain.Tests;
 
-/// The brush panels: both providers register, each builds a panel for its tool, and the
-/// splat panel's slots follow the scene's palette rather than a fixed cap.
+/// The brush panels: each provider registers, each builds its panel of the kit for its concrete
+/// tool, which shows what the tool has and sets it, the keys' changes too (a Sync after them); the
+/// Paint Layers panel's layers follow the scene's palette rather than a fixed cap, numbered from 1.
 class PanelProviderTests
 {
-	private static void CountTooltips(View view, ref int32 count)
-	{
-		if (!view.TooltipText.IsEmpty)
-			count++;
-		if (let group = view as ViewGroup)
-		{
-			for (int k < group.ChildCount)
-				CountTooltips(group.GetChildAt(k), ref count);
-		}
-	}
-
 	[Test]
-	public static void ProvidersRegisterAndBuildAPanelForEachBrush()
+	public static void APanelOfTheKitForEachBrushItShowsTheToolAndSetsItTheKeysChangesToo()
 	{
 		TerrainEditor.RegisterToolPanels();
 		TerrainEditor.RegisterToolPanels(); // idempotent, first wins per tool id
@@ -36,10 +26,7 @@ class PanelProviderTests
 		let sculptProvider = registry.FindByToolId("terrain.sculpt");
 		let splatProvider = registry.FindByToolId("terrain.splat");
 		let holeProvider = registry.FindByToolId("terrain.hole");
-		Test.Assert(sculptProvider != null);
-		Test.Assert(splatProvider != null);
-		Test.Assert(holeProvider != null);
-		Test.Assert(sculptProvider.Placement == .Float);
+		Test.Assert((sculptProvider != null) && (splatProvider != null) && (holeProvider != null));
 		Test.Assert(registry.FindByToolId("select") == null); // the default tool has no panel
 
 		let scene = scope Scene();
@@ -57,43 +44,67 @@ class PanelProviderTests
 		let commands = scope EditorCommandStack();
 		let sculpt = scope TerrainSculptTool(scene, commands, null);
 		let splat = scope TerrainSplatTool(scene, commands, null);
+		let hole = scope TerrainHoleTool(scene, commands, null);
 		splat.SetPaletteIndex(5); // a slot past the retired four layer cap
-		Test.Assert(splat.PaletteIndex == 5);
-
 		var context = ViewportToolHostContext();
 		context.Scene = scene;
 		context.Commands = commands;
-		let hole = scope TerrainHoleTool(scene, commands, null);
-		let sculptPanel = sculptProvider.CreatePanel(sculpt, context);
-		let splatPanel = splatProvider.CreatePanel(splat, context);
-		let holePanel = holeProvider.CreatePanel(hole, context);
-		defer { sculptPanel.ReleaseRef(); splatPanel.ReleaseRef(); holePanel.ReleaseRef(); }
-		Test.Assert(holePanel != null);
-		Test.Assert(sculptPanel != null);
-		Test.Assert(splatPanel != null); // the six palette slots plus the eraser and smooth
+		let sculptNode = sculptProvider.CreatePanel(sculpt, context);
+		let splatNode = splatProvider.CreatePanel(splat, context);
+		let holeNode = holeProvider.CreatePanel(hole, context);
+		defer { sculptNode.ReleaseRef(); splatNode.ReleaseRef(); holeNode.ReleaseRef(); }
+		let sculptPanel = sculptNode as ToolPanelBody;
+		let splatPanel = splatNode as ToolPanelBody;
+		let holePanel = holeNode as ToolPanelBody;
+		Test.Assert((sculptPanel != null) && (splatPanel != null) && (holePanel != null));
 
-		int32 tooltipped = 0;
-		CountTooltips(splatPanel, ref tooltipped);
-		Test.Assert(tooltipped >= 7); // six palette slots plus the eraser, at least
+		// Sculpt: its four modes by word, the chosen one checked; a key's change shows after a Sync.
+		Test.Assert(sculptPanel.ChoiceCount(0) == 4);
+		Test.Assert(sculptPanel.ChoiceAt(0, 0).Text == "Raise");
+		Test.Assert(sculptPanel.ChoiceAt(0, 0).Checked);
+		sculpt.SetMode(.Flatten); // as the 4 key does
+		sculpt.SetRadius(20.0f); // as Shift + wheel does
+		sculptPanel.Sync();
+		Test.Assert(sculptPanel.ChoiceAt(0, 3).Checked);
+		Test.Assert(!sculptPanel.ChoiceAt(0, 0).Checked);
+		Test.Assert(sculptPanel.NumberAt(0).Value == 20.0);
+		sculptPanel.ChoiceAt(0, 1).HandleActivate(); // Lower, as a click
+		Test.Assert(sculpt.Mode == .Lower);
+		sculpt.SetStrength(12.0f);
+		sculptPanel.Sync();
+		Test.Assert(sculptPanel.SliderAt(1).Value == 12.0); // Strength's slider follows the tool
 
-		// The panel wired the radius readout: wheel sizing reaches it through the tool.
-		Test.Assert(sculpt.OnRadiusChanged != null);
-		Test.Assert(splat.OnRadiusChanged != null);
-		sculpt.SetRadius(20.0f);
-		splat.SetRadius(12.0f);
-
-		splat.SetEraser(true);
+		// Paint Layers: the six layers numbered from 1 (as their keys), each named in its tooltip,
+		// the sixth checked; its mode a row of words (they were letters on the layer row).
+		Test.Assert(splatPanel.ChoiceCount(0) == 6);
+		Test.Assert(splatPanel.ChoiceAt(0, 0).Text == "1");
+		Test.Assert(splatPanel.ChoiceAt(0, 5).Checked);
+		for (int i < 6)
+			Test.Assert(!splatPanel.ChoiceAt(0, i).Tooltip.IsEmpty);
+		Test.Assert(splatPanel.ChoiceCount(1) == 3);
+		Test.Assert(splatPanel.ChoiceAt(1, 0).Checked); // painting
+		splatPanel.ChoiceAt(1, 1).HandleActivate(); // Erase
 		Test.Assert(splat.IsEraser);
-		splat.SetSmooth(true);
-		Test.Assert(splat.IsSmooth);
-		Test.Assert(!splat.IsEraser);
-		splat.SetSmooth(false);
-		Test.Assert(splat.PaletteIndex == 5); // the selection survives leaving eraser and smooth
+		splatPanel.ChoiceAt(1, 2).HandleActivate(); // Smooth
+		Test.Assert(splat.IsSmooth && !splat.IsEraser);
+		splatPanel.ChoiceAt(1, 0).HandleActivate(); // back to painting, the layer kept
+		Test.Assert(!splat.IsSmooth);
+		Test.Assert(splat.PaletteIndex == 5);
+		splatPanel.ChoiceAt(0, 2).HandleActivate(); // layer 3
+		Test.Assert(splat.PaletteIndex == 2);
+		splatPanel.CheckAt(0).HandleActivate(); // Airbrush
+		Test.Assert(splat.IsAirbrush);
+
+		// Cut Holes: Cut or Fill.
+		Test.Assert(holePanel.ChoiceCount(0) == 2);
+		holePanel.ChoiceAt(0, 1).HandleActivate();
+		Test.Assert(hole.Mode == .Fill);
 
 		// A tool of the wrong type for a matched id builds nothing.
 		Test.Assert(sculptProvider.CreatePanel(splat, context) == null);
 		sculpt.OnDeactivate();
 		splat.OnDeactivate();
+		hole.OnDeactivate();
 	}
 
 	[Test]

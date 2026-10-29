@@ -260,13 +260,13 @@ class SplatToolTests
 		Test.Assert(tool.PaletteIndex == 255); // what an eight bit index holds
 		tool.SetPaletteIndex(3);
 		tool.Update(TerrainFixture.RayAt(0, 0));
-		Test.Assert(tool.StatusText.StartsWith("Paint Splat [layer 3]"));
+		Test.Assert(tool.StatusText.StartsWith("Paint Layers [layer 4]")); // from 1, as its key and the panel
 		tool.SetEraser(true);
 		tool.Update(TerrainFixture.RayAt(0, 0));
-		Test.Assert(tool.StatusText.StartsWith("Paint Splat [ERASER]"));
+		Test.Assert(tool.StatusText.StartsWith("Paint Layers [ERASER]"));
 		tool.SetSmooth(true);
 		tool.Update(TerrainFixture.RayAt(0, 0));
-		Test.Assert(tool.StatusText.StartsWith("Paint Splat [SMOOTH]"));
+		Test.Assert(tool.StatusText.StartsWith("Paint Layers [SMOOTH]"));
 		Test.Assert(tool.HasHover);
 	}
 
