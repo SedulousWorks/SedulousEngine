@@ -51,6 +51,7 @@ class SceneMcpEditToolsTests
 		public void PauseSimulation(bool paused) {}
 		public bool IsSimulating => Simulating;
 		public bool IsPaused => false;
+		public Sedulous.Editor.ViewportTools.ViewportToolManager ViewportTools => null;
 		public GizmoController Gizmos => null;
 		public bool CameraOwnsInput => false;
 		public Sedulous.Editor.Camera.EditorCamera ViewportCamera => null;

@@ -76,19 +76,3 @@ Name = "ProfilerPanelTests.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "ShellTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ToolPanelTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "AutoFolder"
-Name = "Fixtures"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "FakeProvider.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "FakeTool.bf"

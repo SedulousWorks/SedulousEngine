@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sedulous.Core;
 using Sedulous.Settings;
 
 namespace Sedulous.Editor.Scene;
@@ -49,7 +50,7 @@ static class SceneViewPrefs
 	///
 	/// Written when a page closes, so the next open comes back where the scene was left.
 	public static bool SaveView(Settings store, Guid scene, SceneViewCamera camera, Span<Guid> selection,
-		SceneViewSplits? splits = null)
+		SceneViewSplits? splits = null, Float2? toolPanelPlace = null)
 	{
 		let pref = Upsert(store, scene);
 		if (pref == null)
@@ -65,6 +66,8 @@ static class SceneViewPrefs
 			pref.HasSplits = true;
 			pref.Splits = splits.Value;
 		}
+		pref.HasToolPanelPlace = toolPanelPlace.HasValue;
+		pref.ToolPanelPlace = toolPanelPlace.HasValue ? toolPanelPlace.Value : .(0.0f, 0.0f);
 		store.MarkChanged<SceneViewSettings>();
 		return true;
 	}

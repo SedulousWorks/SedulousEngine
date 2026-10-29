@@ -51,7 +51,8 @@ class SplineEditTool : IViewportTool
 	}
 
 	public StringView Id => "spline.edit";
-	public StringView DisplayName => "Spline";
+	public StringView DisplayName => "Edit Spline"; // as its refusal names it
+	public StringView Icon => "Editor/Icons/Types/SplineComponent.svg";
 	public bool IsAvailable => TargetComponent() != null;
 	public StringView UnavailableReason =>
 		"Edit Spline needs a selected entity with a Spline component.";

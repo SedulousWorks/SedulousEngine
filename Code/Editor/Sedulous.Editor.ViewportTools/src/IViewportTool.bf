@@ -17,6 +17,10 @@ interface IViewportTool
 	/// category with two or more tools folds into one dropdown labelled by it, so a domain
 	/// takes one slot on the bar however many brushes it registers. Never localised here.
 	StringView Category => "";
+	/// Its icon, by its path under the data folder ("Editor/Icons/Types/SplineComponent.svg"):
+	/// the palette's picture of it. Data the host draws, so the framework stays UI-free; empty:
+	/// the host shows its name.
+	StringView Icon => "";
 	/// Registration is unconditional, relevance is contextual (a terrain brush needs a
 	/// terrain). Checked every frame for the active tool; the manager falls back to the
 	/// default tool when it turns false.

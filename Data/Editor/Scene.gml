@@ -20,8 +20,9 @@
         <ToolMenuButton id="scene-snap" toggle="true" split="true" icon="Editor/Icons/magnet.svg"/>
         <ToolButton id="scene-vertex-snap" toggle="true" icon="Editor/Icons/target.svg"/>
         <Spacer/>
+        <!-- The viewport tools, from the tool registry, go here (code adds them before this). -->
+        <Separator id="scene-tools-end"/>
         <ToolButton id="scene-frame" icon="Editor/Icons/frame-selection.svg"/>
-        <Separator/>
         <Label id="scene-kind" class="badge page-kind" text="Prefab" tooltip="This page edits a prefab: one root, saved to every instance"/>
     </ToolBar>
     <Splitter id="scene-body" class="page-body" axis="horizontal" weights="0.2 0.56 0.24">
@@ -40,7 +41,7 @@
             <!-- The HUD's zones (layer 5, part 2): the view's chips at the top start; the stats and
                  the view gizmo (code adds it) at the top end; the zoom readout and the tool's status
                  at the bottom start. Code fills the chips' menus and what each shows. -->
-            <Panel class="hud-zone hud-top-start">
+            <Panel id="hud-top-start" class="hud-zone hud-top-start">
                 <Panel class="hud-bar">
                     <ToolMenuButton id="chip-projection" class="hud-chip" text="Perspective" tooltip="Projection and the axis views"/>
                     <ToolMenuButton id="chip-shading" class="hud-chip" text="Lit" tooltip="Shading, debug views and effects"/>

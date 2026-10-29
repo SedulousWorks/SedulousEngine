@@ -55,10 +55,11 @@ static class SceneViewState
 	public static SceneOverlaySettings LoadOverlays(Settings store, Guid scene, SceneOverlaySettings current)
 		=> SceneViewPrefs.Load(store, scene, current);
 
-	/// The whole pref as the page has it now: the overlays, the camera, the selection and, when
-	/// given, the panes. False, nothing written, for a null store or a nil scene.
+	/// The whole pref as the page has it now: the overlays, the camera, the selection, where the
+	/// tool panel was moved (null: under the chips) and, when given, the panes. False, nothing
+	/// written, for a null store or a nil scene.
 	public static bool Save(Settings store, Guid scene, SceneOverlaySettings overlays, EditorCamera camera,
-		ScenePaneWeights? panes, Span<Guid> selection)
+		ScenePaneWeights? panes, Span<Guid> selection, Float2? toolPanelPlace = null)
 	{
 		if (!SceneViewPrefs.Save(store, scene, overlays))
 			return false;
@@ -72,7 +73,7 @@ static class SceneViewState
 			splits = kept;
 		}
 		let view = SceneViewCamera(camera.Position, camera.Yaw, camera.Pitch, camera.FocusDistance, camera.Orthographic);
-		return SceneViewPrefs.SaveView(store, scene, view, selection, splits);
+		return SceneViewPrefs.SaveView(store, scene, view, selection, splits, toolPanelPlace);
 	}
 
 	/// The camera where the pref left it; false when no page saved one (the caller's framing stands).

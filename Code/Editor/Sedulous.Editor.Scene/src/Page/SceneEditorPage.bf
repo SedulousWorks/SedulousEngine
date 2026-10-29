@@ -77,6 +77,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private SceneHierarchyView mHierarchy = null;
 	private SceneInspectorView mInspector = null;
 	/// After mEditContext (the tools borrow it), so deleted first.
+	/// What the tools and their panels were made with.
+	private ViewportToolHostContext mToolHost = .();
 	private ViewportToolManager mViewportTools = new .() ~ delete _;
 	/// The manager's default tool.
 	private SelectTransformTool mSelectTool = null;
@@ -89,6 +91,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private SceneBar mBar = null ~ delete _;
 	// Over the viewport.
 	private SceneHud mHud = null ~ delete _;
+	// The viewport tools on the bar, the active one's panel.
+	private SceneTools mTools = null ~ delete _;
 	private MessageBox mConfirm = null;
 	// The launcher's picture of the project: the default scene's view, taken once it settled when
 	// there is none yet, and on every save of it.
@@ -155,6 +159,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public SceneBar Bar => mBar;
 	/// Its HUD over the viewport.
 	public SceneHud Hud => mHud;
+	/// Its viewport tools on the bar, and the active one's panel.
+	public SceneTools ToolsView => mTools;
+	public ViewportToolManager ViewportTools => mViewportTools;
 	public SceneInspectorView Inspector => mInspector;
 	public MessageBox OpenConfirm => ((mConfirm != null) && mConfirm.IsOpen) ? mConfirm : null;
 
@@ -250,6 +257,17 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 				hud.Pick = new [=this] (request, anchor) => { mServices.Pick(request, anchor); };
 			hud.OverlaysChanged = new [=this] () => { SaveViewState(); };
 			mHud = new SceneHud(hud, scope [=this] (id) => Find<Node>(id));
+			// The viewport tools on the bar, and the active one's panel over the view.
+			let tools = new SceneToolsServices();
+			tools.Context = context;
+			tools.Page = this;
+			tools.Tools = mViewportTools;
+			tools.HostContext = mToolHost;
+			tools.BarEnd = Find<Node>("scene-tools-end");
+			tools.Pane = Find<Node>("scene-viewport");
+			tools.Zone = Find<Node>("hud-top-start");
+			tools.PlaceChanged = new [=this] () => { SaveViewState(); };
+			mTools = new SceneTools(tools);
 		}
 		mBar = new SceneBar(context.Actions, this, scope [=this] (id) => Find<ButtonBase>(id), new [=this] () => Gizmos);
 		// A prefab is marked as one: the same page edits both.
@@ -310,16 +328,15 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	{
 		mSelectTool = (SelectTransformTool)mViewportTools.Add(new SelectTransformTool(mEditContext)); // the default
 		mSelectTool.SetPicker(mViewport.Picker); // the GPU pick over this page's viewport
-		var toolHost = ViewportToolHostContext();
-		toolHost.Scene = mScene;
-		toolHost.Commands = Commands;
-		toolHost.EntitySelection = mEditContext.EntitySelection;
-		toolHost.Picker = mViewport.Picker;
+		mToolHost.Scene = mScene;
+		mToolHost.Commands = Commands;
+		mToolHost.EntitySelection = mEditContext.EntitySelection;
+		mToolHost.Picker = mViewport.Picker;
 		// A tool that edits a cooked product live (terrain sculpt) registers its write back to the
 		// source on the context; the save flow drains it.
-		toolHost.AssetEdits = context;
-		toolHost.EditorContext = context;
-		ViewportToolProviderRegistry.CreateAll(mViewportTools, toolHost);
+		mToolHost.AssetEdits = context;
+		mToolHost.EditorContext = context;
+		ViewportToolProviderRegistry.CreateAll(mViewportTools, mToolHost);
 	}
 
 	public override void OnUpdate(IApplicationHost host, float dt)
@@ -368,6 +385,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			frame.ComponentGizmos = mComponentGizmos;
 			mOverlays.Draw(dd, frame);
 		}
+		if (mTools != null)
+			mTools.Sync();
 		if (mHud != null)
 			mHud.Update(dt, mViewport.View.RenderHeight);
 		if (mHierarchy != null)
@@ -458,6 +477,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		// Where the scene was left: the camera, the selection, the panes, for the next open.
 		if (mScene != null)
 			SaveViewState();
+		DeleteAndNullify!(mTools); // a tool's panel goes before the scene it shows
 		mViewport.Close(mServices.Host);
 		if (mScene != null)
 		{
@@ -611,7 +631,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 				panes = ScenePaneWeights(weights[0], weights[1], weights[2]);
 		}
 		let selection = (mEditContext != null) ? mEditContext.EntitySelection.Items : Span<Guid>();
-		if (SceneViewState.Save(mContext.ProjectEditorSettings, InstanceId, mOverlays.Settings, mViewport.Camera, panes, selection))
+		if (SceneViewState.Save(mContext.ProjectEditorSettings, InstanceId, mOverlays.Settings, mViewport.Camera, panes, selection,
+			(mTools != null) ? mTools.Place : null))
 			mContext.RequestProjectEditorSettingsSave();
 	}
 
@@ -631,6 +652,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 				body.SetWeights(weights);
 			}
 		}
+		if (mTools != null)
+			mTools.SetPlace(pref.HasToolPanelPlace ? (Float2?)pref.ToolPanelPlace : null);
 		if (!SceneViewState.RestoreCamera(pref, mViewport.Camera))
 			return; // never saved by a page: the origin's framing stands
 		if ((mEditContext != null) && (mScene != null))

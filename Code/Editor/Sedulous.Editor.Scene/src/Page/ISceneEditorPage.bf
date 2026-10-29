@@ -1,6 +1,7 @@
 using System;
 using Sedulous.Core;
 using Sedulous.Editor.Camera;
+using Sedulous.Editor.ViewportTools;
 
 namespace Sedulous.Editor.Scene;
 
@@ -59,6 +60,9 @@ interface ISceneEditorPage
 	bool IsSimulating { get; }
 	bool IsPaused { get; }
 
+	/// The page's viewport tools (the select tool and the domains'); null on a page without a
+	/// viewport. The tool actions toggle through it.
+	ViewportToolManager ViewportTools { get; }
 	/// The select tool's gizmo (mode, space); null on a page without a viewport.
 	GizmoController Gizmos { get; }
 

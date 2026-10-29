@@ -46,6 +46,7 @@ class SceneMcpToolsTests
 		public void PauseSimulation(bool paused) {}
 		public bool IsSimulating => mSimulating;
 		public bool IsPaused => false;
+		public Sedulous.Editor.ViewportTools.ViewportToolManager ViewportTools => null;
 		public GizmoController Gizmos => null;
 		public bool CameraOwnsInput => false;
 		// A viewport is pretended when HasViewport: the camera is real, the capture advances

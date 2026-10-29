@@ -65,6 +65,7 @@ class SceneActionsTests
 		public void PauseSimulation(bool paused) { Paused = paused; }
 		public bool IsSimulating => Simulating;
 		public bool IsPaused => Paused;
+		public Sedulous.Editor.ViewportTools.ViewportToolManager ViewportTools => null;
 		public GizmoController Gizmos => GizmosSeen;
 		public bool CameraOwnsInput => Flying;
 		/// A viewport is pretended when HasViewport; FrameEntities records what it was asked.

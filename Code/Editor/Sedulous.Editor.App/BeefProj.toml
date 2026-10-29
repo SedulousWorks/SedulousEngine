@@ -82,10 +82,6 @@ Name = "EditorShell.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "IViewportToolPanelProvider.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "IconGlyph.bf"
 
 [[ProjectFolder.Items]]
@@ -114,16 +110,4 @@ Name = "SegmentedToggle.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
-Name = "ToolPanelPlacement.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
 Name = "ToolPanelWidgets.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ViewportToolPanelHost.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ViewportToolPanelRegistry.bf"

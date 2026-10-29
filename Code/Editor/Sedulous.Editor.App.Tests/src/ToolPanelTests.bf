@@ -1,14 +1,15 @@
 using System;
-using Sedulous.UI;
+using Sedulous.GUI;
 using Sedulous.Editor.ViewportTools;
 
 namespace Sedulous.Editor.App.Tests;
 
 /// The registry (keyed by tool id, idempotent, first wins) and ViewportToolPanelHost are pure
 /// logic, so they exercise headlessly: fake tools drive a ViewportToolManager, fake providers
-/// build throwaway views, and mount and clear callbacks record what the host asked the page
-/// to dock. The panel appears and disappears with the tool, an unknown or panel-less tool
-/// docks nothing, and switching between two panelled tools clears before mounting.
+/// build throwaway panels, and mount and clear callbacks record what the host asked the page
+/// to show. The panel appears and disappears with the tool (mount told the tool it is for), an
+/// unknown or panel-less tool shows nothing, and switching between two panelled tools clears
+/// before mounting.
 static class ToolPanelTests
 {
 	private static void AddTool(ViewportToolManager tools, StringView id) => tools.Add(new FakeTool(id));
@@ -50,10 +51,11 @@ static class ToolPanelTests
 
 		int mounts = 0;
 		int clears = 0;
-		View lastMounted = null;
+		Node lastMounted = null;
+		let mountedFor = scope String();
 		let host = scope ViewportToolPanelHost(tools, registry, .(),
-			new [&](v, p) => { mounts++; lastMounted = v; },
-			new [&](p) => { clears++; lastMounted = null; });
+			new [&](v, tool) => { mounts++; lastMounted = v; mountedFor.Set(tool.Id); },
+			new [&]() => { clears++; lastMounted = null; });
 
 		// The default tool is active and has no panel, so the first Sync docks nothing.
 		host.Sync();
@@ -68,6 +70,7 @@ static class ToolPanelTests
 		Test.Assert(clears == 0, "nothing to clear: the tool left had no panel");
 		Test.Assert(host.CurrentPanel != null);
 		Test.Assert(lastMounted === host.CurrentPanel);
+		Test.Assert(mountedFor == "anim", "the tool it is for, for its chrome");
 		Test.Assert(animPanel.CreateCount == 1);
 
 		// A Sync with no active-tool change is a no-op; the view is not rebuilt every frame.
@@ -84,7 +87,7 @@ static class ToolPanelTests
 	}
 
 	[Test]
-	public static void UnknownOrPanelLessToolDocksNothing()
+	public static void UnknownOrPanelLessToolShowsNothing()
 	{
 		let tools = scope ViewportToolManager();
 		AddTool(tools, "select");
@@ -95,7 +98,7 @@ static class ToolPanelTests
 		int mounts = 0;
 		int clears = 0;
 		let host = scope ViewportToolPanelHost(tools, registry, .(),
-			new [&](v, p) => { mounts++; }, new [&](p) => { clears++; });
+			new [&](v, tool) => { mounts++; }, new [&]() => { clears++; });
 
 		Test.Assert(tools.ActivateById("anim"));
 		host.Sync(); // no provider for "anim": no panel, no crash
@@ -106,7 +109,7 @@ static class ToolPanelTests
 	}
 
 	[Test]
-	public static void ProviderYieldingNoViewMountsNothing()
+	public static void ProviderYieldingNoPanelMountsNothing()
 	{
 		let tools = scope ViewportToolManager();
 		AddTool(tools, "select");
@@ -119,7 +122,7 @@ static class ToolPanelTests
 		int mounts = 0;
 		int clears = 0;
 		let host = scope ViewportToolPanelHost(tools, registry, .(),
-			new [&](v, p) => { mounts++; }, new [&](p) => { clears++; });
+			new [&](v, tool) => { mounts++; }, new [&]() => { clears++; });
 
 		Test.Assert(tools.ActivateById("anim"));
 		host.Sync();
@@ -149,7 +152,7 @@ static class ToolPanelTests
 		int mounts = 0;
 		int clears = 0;
 		let host = scope ViewportToolPanelHost(tools, registry, .(),
-			new [&](v, p) => { mounts++; }, new [&](p) => { clears++; });
+			new [&](v, tool) => { mounts++; }, new [&]() => { clears++; });
 
 		Test.Assert(tools.ActivateById("a"));
 		host.Sync();
@@ -163,37 +166,5 @@ static class ToolPanelTests
 		Test.Assert(host.CurrentToolId == "b");
 		Test.Assert(panelA.CreateCount == 1);
 		Test.Assert(panelB.CreateCount == 1);
-	}
-
-	[Test]
-	public static void ForwardsTheProvidersPlacementHintToMountAndClear()
-	{
-		let tools = scope ViewportToolManager();
-		AddTool(tools, "select");
-		AddTool(tools, "anim");
-
-		let registry = scope ViewportToolPanelRegistry();
-		let animPanel = scope FakeProvider("anim");
-		animPanel.PlacementHint = .ViewportOverlay; // the provider wants an overlay
-		registry.Register(animPanel);
-
-		ToolPanelPlacement mountedAt = .Dock;
-		ToolPanelPlacement clearedAt = .Dock;
-		int mounts = 0;
-		int clears = 0;
-		let host = scope ViewportToolPanelHost(tools, registry, .(),
-			new [&](v, p) => { mounts++; mountedAt = p; },
-			new [&](p) => { clears++; clearedAt = p; });
-
-		Test.Assert(tools.ActivateById("anim"));
-		host.Sync();
-		Test.Assert(mounts == 1);
-		Test.Assert(mountedAt == .ViewportOverlay, "the hint reached the host's mount");
-
-		// Leaving the tool tears down at the same placement the panel was mounted to.
-		tools.ActivateDefault();
-		host.Sync();
-		Test.Assert(clears == 1);
-		Test.Assert(clearedAt == .ViewportOverlay);
 	}
 }

@@ -22,6 +22,8 @@ using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Scene;
+using Sedulous.Editor.ViewportTools;
+using Sedulous.Render; // DebugDraw
 
 namespace Sedulous.Editor.Scene.Tests;
 
@@ -41,7 +43,8 @@ namespace Sedulous.Editor.Scene.Tests;
 /// behaviours; the scene's settings with the scene selected, the physics block's collision groups
 /// and the level script's properties. And its bar's editing controls (layer 5): the page's actions,
 /// Select, the space's icon, Snap and its increments. Its HUD (layer 5): the chips, the stats, the
-/// view gizmo, the zoom readout and the tool's status.
+/// view gizmo, the zoom readout and the tool's status. Its viewport tools: each an action, on the bar
+/// by category, the active one's panel under the chips, moved, kept and put back.
 class ScenePageTests
 {
 	/// A host whose context has a scene subsystem and nothing else: no renderer, no window.
@@ -376,6 +379,9 @@ class ScenePageTests
 			mStyles.ApplyTree(Root);
 			Root.UpdateLayout();
 		}
+
+		/// The sheet over the tree again, for nodes added after it was applied.
+		public void Restyle() => mStyles.ApplyTree(Root);
 
 		public ~this()
 		{
@@ -1223,6 +1229,158 @@ class ScenePageTests
 		page.Gizmos.SetHandlesShown(false);
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(hud.StatusText(.. scope String()) == "Select | Crate");
+		page.OnClose();
+	}
+
+	// Two brushes of one category, one with a panel; the second available only when told.
+	class FakeBrush : IViewportTool
+	{
+		private String mId = new .() ~ delete _;
+		private String mName = new .() ~ delete _;
+		private bool* mAvailable;
+
+		public this(StringView id, StringView name, bool* available)
+		{
+			mId.Set(id);
+			mName.Set(name);
+			mAvailable = available;
+		}
+
+		public StringView Id => mId;
+		public StringView DisplayName => mName;
+		public StringView Category => "Brushes";
+		public StringView Icon => "Editor/Icons/cube.svg";
+		public bool IsAvailable => (mAvailable == null) || *mAvailable;
+		public StringView UnavailableReason => "Paint needs something to paint.";
+		public void OnActivate() {}
+		public void OnDeactivate() {}
+		public bool Update(in ViewportToolInput input) => false;
+		public void Draw(DebugDraw drawList) {}
+		public StringView StatusText => "";
+	}
+
+	static bool sPaintAvailable = false;
+
+	class FakeBrushes : IViewportToolProvider
+	{
+		public void CreateTools(ViewportToolManager manager, in ViewportToolHostContext context)
+		{
+			manager.Add(new FakeBrush("test.sculpt", "Sculpt", null));
+			manager.Add(new FakeBrush("test.paint", "Paint", &sPaintAvailable));
+		}
+	}
+
+	class FakeSculptPanel : IViewportToolPanelProvider
+	{
+		public StringView ToolId => "test.sculpt";
+
+		public Node CreatePanel(IViewportTool tool, in ViewportToolHostContext context)
+		{
+			let body = new Panel();
+			let radius = new Label();
+			radius.Text = "Radius";
+			body.AddChild(radius);
+			radius.ReleaseRef(); // the body's keeps it
+			return body;
+		}
+	}
+
+	static FakeBrushes sBrushes = new .() ~ delete _;
+	static FakeSculptPanel sSculptPanel = new .() ~ delete _;
+
+	[Test]
+	public static void SceneToolsEachToolAnActionAndOnTheBarByCategoryItsPanelUnderTheChipsMovedKeptPutBack()
+	{
+		ViewportToolProviderRegistry.Register(sBrushes);
+		ViewportToolPanelRegistry.Global.Register(sSculptPanel);
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let shown = scope Shown(page);
+		let tools = page.ToolsView;
+		Test.Assert(tools != null);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+
+		// The actions: Paint disabled, saying why.
+		let actions = bed.Context.Actions;
+		let sculpt = SceneTools.ActionOf("test.sculpt", .. scope String());
+		let paint = SceneTools.ActionOf("test.paint", .. scope String());
+		Test.Assert(actions.Find(sculpt) != null);
+		Test.Assert(actions.Find(sculpt).MenuPath == "Scene/Tools/Brushes/Sculpt");
+		Test.Assert(actions.IsEnabled(sculpt, page));
+		Test.Assert(!actions.IsEnabled(paint, page));
+		Test.Assert(actions.DisabledReason(paint, page, .. scope String()) == "Paint needs something to paint.");
+
+		// On the bar: the category one menu, its items as the actions are.
+		let category = tools.CategoryButton("Brushes");
+		Test.Assert(category != null);
+		Test.Assert(category.Icon == "Editor/Icons/cube.svg");
+		Test.Assert(!category.Checked);
+
+		// Sculpt on: the category lit, its panel under the chips in the tool's chrome.
+		Test.Assert(actions.Execute(sculpt, page) case .Ok);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(category.Checked);
+		Test.Assert(actions.IsChecked(sculpt, page));
+		Test.Assert(tools.Panel != null);
+		Test.Assert(tools.PanelTitle == "Sculpt");
+		Test.Assert(!tools.Place.HasValue);
+
+		// Under the chips until moved; dragged by its head anywhere in the view, kept inside it.
+		shown.Restyle(); // the panel came after the sheet was applied
+		shown.Root.UpdateLayout();
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		shown.Root.UpdateLayout();
+		let chips = FindId<Node>(page.Content, "hud-top-start").ScreenBounds;
+		let viewport = FindId<Node>(page.Content, "scene-viewport").ScreenBounds;
+		let under = Float2(tools.Panel.ScreenBounds.X - viewport.X, tools.Panel.ScreenBounds.Y - viewport.Y);
+		Test.Assert(Math.Abs(tools.Panel.ScreenBounds.Y - (chips.Y + chips.Height)) < 0.5f); // under the chips
+		let head = tools.Head;
+		Test.Assert(head != null);
+		let bounds = head.ScreenBounds;
+		let grab = Float2(bounds.X + 10.0f, bounds.Y + bounds.Height * 0.5f);
+		let d = shown.Root.EventDispatcher;
+		d.InjectMouseMove(grab);
+		d.InjectMouseDown(grab, .Left);
+		d.InjectMouseMove(grab + Float2(120.0f, 80.0f));
+		d.InjectMouseUp(grab + Float2(120.0f, 80.0f), .Left);
+		Test.Assert(tools.Place.HasValue);
+		let place = tools.Place.Value;
+		Test.Assert(Math.Abs(place.X - (under.X + 120.0f)) < 0.5f);
+		Test.Assert(Math.Abs(place.Y - (under.Y + 80.0f)) < 0.5f);
+		d.InjectMouseDown(grab + Float2(120.0f, 80.0f), .Left);
+		d.InjectMouseMove(grab + Float2(-5000.0f, 9000.0f)); // far outside: kept inside the view
+		d.InjectMouseUp(grab + Float2(-5000.0f, 9000.0f), .Left);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		shown.Root.UpdateLayout();
+		Test.Assert(tools.Place.HasValue);
+		Test.Assert(Math.Abs(tools.Place.Value.X) < 0.5f);
+		let pane = FindId<Node>(page.Content, "scene-viewport").Size;
+		Test.Assert(tools.Place.Value.Y <= pane.Y - tools.Panel.Size.Y + 0.5f);
+
+		// Folded to its head, and back.
+		tools.SetFolded(true);
+		Test.Assert(tools.Folded);
+		tools.SetFolded(false);
+
+		// Put back under the chips: no place.
+		tools.SetPlace(null);
+		Test.Assert(!tools.Place.HasValue);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		shown.Root.UpdateLayout();
+		Test.Assert(Math.Abs(tools.Panel.ScreenBounds.X - viewport.X - under.X) < 0.5f);
+
+		// Sculpt again: back to Select, no panel. Paint refused while unavailable, then taken.
+		Test.Assert(actions.Execute(sculpt, page) case .Ok);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(tools.Panel == null);
+		Test.Assert(!category.Checked);
+		sPaintAvailable = true;
+		Test.Assert(actions.Execute(paint, page) case .Ok);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(actions.IsChecked(paint, page));
+		Test.Assert(tools.Panel == null); // Paint has no panel
+		sPaintAvailable = false;
 		page.OnClose();
 	}
 }
