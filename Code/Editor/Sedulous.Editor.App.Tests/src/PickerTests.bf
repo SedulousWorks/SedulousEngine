@@ -77,7 +77,8 @@ static class PickerTests
 			Root.UpdateLayout();
 		}
 
-		/// The list a fixed 400 by 300, as the editor's sheet makes it, so it realises its rows.
+		/// The list a fixed 400 by 300 (about what the editor's sheet gives it), so it realises
+		/// its rows without the sheet.
 		public void SizeList()
 		{
 			View.List.EditLayoutStyle(scope (s) =>
@@ -510,5 +511,22 @@ static class PickerTests
 		Test.Assert(!picker.IsOpen);
 		picker.Close(); // nothing to close
 		picker.PickLit(); // nothing lit
+	}
+
+	/// Under the editor's sheet the list fits its frame (a list wider than the dialog ran its rows
+	/// past the edge: Raptor's user's screenshot of the render textures).
+	[Test]
+	public static void UnderTheEditorsSheetItsListFitsItsFrame()
+	{
+		let bed = scope PickerBed();
+		bed.Open(bed.Materials());
+		let sheet = scope EditorSheet(); // goes first, while the tree it styled is there
+		sheet.Apply(bed.Root);
+		bed.Layout();
+		let frame = bed.View.Content.ScreenBounds;
+		let list = bed.View.List.ScreenBounds;
+		Test.Assert(list.X >= frame.X);
+		Test.Assert(list.X + list.Width <= frame.X + frame.Width + 0.5f, scope $"the list ends at {list.X + list.Width}, the frame at {frame.X + frame.Width}");
+		bed.View.Close();
 	}
 }

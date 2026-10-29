@@ -609,7 +609,7 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .form-help.refused { color: var(--danger); }
 .confirm-list { flex-direction: column; background-color: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-small);
                 padding: var(--space-xs); }
-.picker { padding-bottom: var(--space-s); }
+.picker { padding-bottom: var(--space-s); width: 420px; } /* its own width: a dialog's 380 is a form's */
 .picker-search { padding: var(--space-m); border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); margin-bottom: var(--space-s); }
 .picker-group { font-size: 11px; font-weight: 600; color: var(--text-dim); padding: var(--space-s) var(--space-l) var(--space-xs); }
 .picker > .asset-row { margin: 0 var(--space-s); }
@@ -625,8 +625,8 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
 .texture-picker { width: 460px; }
 .texture-tree { height: 360px; }
 /* The picker's own window: its rows a list of a fixed size, the empty state in the same room. */
-.picker-list { width: 400px; height: 300px; background-color: transparent; padding: 0 var(--space-s); }
-.picker > .state-box { width: 400px; height: 300px; }
+.picker-list { align-self: stretch; height: 300px; background-color: transparent; padding: 0 var(--space-s); } /* the frame's width, not one of its own */
+.picker > .state-box { align-self: stretch; height: 300px; }
 /* Import: where it goes, the files when several, the chosen file's detail, the line. */
 .import { flex-grow: 1; padding-bottom: 0; }
 .import-split { flex-direction: row; flex-grow: 1; min-height: 0; column-gap: var(--space-l); }
