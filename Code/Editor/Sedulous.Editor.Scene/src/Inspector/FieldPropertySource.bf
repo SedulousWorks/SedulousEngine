@@ -17,13 +17,15 @@ namespace Sedulous.Editor.Scene;
 /// fields), so the editor reads it as ComponentJson and the MCP tools do. Its rows are the shown
 /// fields (public, instance, not [Hidden]) by path, as the toolkit's are:
 ///   - bool, every integer width, float, double and text are values; an enum is choices from its
-///     cases; a Color is a colour; a Guid is a reference, and a Ref<T> one to its T.
+///     cases; a Color is a colour; a Guid is a reference, and a Ref<T> one to its T; an EntityRef
+///     is a reference by its id, hinted "EntityRef" (the scene's entity slot, chosen before the
+///     asset one).
 ///   - Float2, Float3 and Float4 are groups hinted with their names, their parts x, y, z, w; a
 ///     Quaternion is a Float3 group of Euler degrees (pitch, yaw, roll).
 ///   - A List<T> is a list, its elements by index; one of plain values (no text, no objects) may
 ///     have elements added, removed and moved.
-///   - A structure or an object with shown fields is a group of them; an EntityRef, and any other
-///     type, a group hinted with its type's name, which no editor takes yet.
+///   - A structure or an object with shown fields is a group of them; any other type a group
+///     hinted with its type's name, which no editor takes yet.
 ///   - A row says its [DisplayName], else its field's name made readable; its [Description], its
 ///     [Range] (a ranged float a slider), [ReadOnly] and [VisibleWhen] ("Kind" or "Kind=1,2",
 ///     a sibling's; shown when it holds for every object).
@@ -69,6 +71,9 @@ class FieldPropertySource : IPropertySource
 
 		public this() { }
 	}
+
+	/// An EntityRef's hint: the entity slot's.
+	public const String cEntityRefHint = "EntityRef";
 
 	private Type mType;
 	private int mCount;
@@ -373,7 +378,7 @@ class FieldPropertySource : IPropertySource
 			return; // a list keeps its elements
 		if ((shape != .Group) && (shape != .Float2) && (shape != .Float3) && (shape != .Float4) && (shape != .Quaternion))
 		{
-			if ((shape != .EntityRef) && (shape != .Other) && !target.ReadOnly)
+			if ((shape != .Other) && !target.ReadOnly)
 				outPaths.Add(new String(path));
 			return;
 		}
@@ -503,7 +508,10 @@ class FieldPropertySource : IPropertySource
 				info.ListOps = PropertyListAdd | PropertyListRemove | PropertyListMove;
 		case .Group:
 			info.Kind = .Group;
-		case .EntityRef, .Other:
+		case .EntityRef:
+			info.Kind = .Reference;
+			info.Hint.Set(cEntityRefHint);
+		case .Other:
 			// For an application's editor by its type's name; none yet says no editor fits.
 			info.Kind = .Group;
 			type.GetName(info.Hint);
@@ -721,6 +729,8 @@ class FieldPropertySource : IPropertySource
 			if (ReferenceShape.Id(target.Type, address) case .Ok(let id))
 				return GuidText(id);
 			return Sedulous.GUI.Variant("").Copy();
+		case .EntityRef:
+			return GuidText(((EntityRef*)address).Id);
 		case .List:
 			let list = ListAt(target);
 			return Sedulous.GUI.Variant((int64)((list != null) ? list.Count : 0));
@@ -768,6 +778,8 @@ class FieldPropertySource : IPropertySource
 			*(Guid*)address = GuidOf(value.AsString);
 		case .Reference:
 			return ReferenceShape.Assign(target.Type, address, GuidOf(value.AsString), mResources) case .Ok;
+		case .EntityRef:
+			((EntityRef*)address).Id = GuidOf(value.AsString);
 		default:
 			return false;
 		}
@@ -796,7 +808,7 @@ class FieldPropertySource : IPropertySource
 			var color = ComponentJson.LeafVariant(typeof(Color), json);
 			defer color.Dispose();
 			return color.HasValue ? Sedulous.GUI.Variant(color.Get<Color>()) : .();
-		case .Guid, .Reference:
+		case .Guid, .Reference, .EntityRef:
 			if (json.IsNull)
 				return Sedulous.GUI.Variant("").Copy();
 			return (json.IsString && (Guid.Parse(json.AsString()) case .Ok)) ? Sedulous.GUI.Variant(json.AsString()).Copy() : .();

@@ -11,7 +11,7 @@ using Sedulous.Shell;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Engine.Scene;
-using Sedulous.Engine.Render; // LightComponent
+using Sedulous.Engine.Render; // LightComponent, InstanceMemberComponent
 using Sedulous.Engine.Composition; // the full scene composition
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
@@ -32,7 +32,8 @@ namespace Sedulous.Editor.Scene.Tests;
 /// selection both ways; the search; a rename; drops; the menus and the add button as the scene's
 /// actions. And its inspector (layer 4): nothing selected says so; an entity's head and sections;
 /// Add Component; a transform's and a component's edits, each one undo step; several entities
-/// edited at once; a header's verbs; read only while the page simulates.
+/// edited at once; a header's verbs; read only while the page simulates; an entity reference's
+/// slot.
 class ScenePageTests
 {
 	/// A host whose context has a scene subsystem and nothing else: no renderer, no window.
@@ -740,6 +741,59 @@ class ScenePageTests
 		page.StopSimulation();
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(!inspector.Sections.ReadOnly);
+		page.OnClose();
+	}
+
+	[Test]
+	public static void InspectorAnEntityReferenceIsASlotOverTheScenesEntitiesItsNameAPickFromTheTreeADraggedEntityOneUndoEach()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		let lamp = page.EditContext.CreateEntity("Lamp");
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.AddComponent("InstanceMemberComponent"));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let shown = scope Shown(page);
+		let path = inspector.PathOf("Instance Member", "InstancedMesh", .. scope String());
+		Test.Assert(!path.IsEmpty);
+		var slot = inspector.Grid.FindEditor(path) as EntityRefEditor;
+		Test.Assert(slot != null); // the entity slot, not the asset one
+		Test.Assert(slot.Slot.ShownName == "None");
+
+		// The pick: the scene's entities as a tree, None allowed.
+		let before = page.Commands.UndoIndex;
+		let request = slot.Request();
+		defer delete request;
+		Test.Assert(request.Tree);
+		Test.Assert(request.AllowNone);
+		Test.Assert(request.Items.Count == 2);
+		Test.Assert(request.Items[1].Name == "Lamp");
+		request.OnPicked(request.Items[1].Key);
+		Test.Assert(page.Commands.UndoIndex > before);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		shown.Root.UpdateLayout();
+		let manager = page.EditContext.FindManager(typeof(InstanceMemberComponent));
+		Test.Assert(manager != null);
+		InstanceMemberComponent* Member() => (InstanceMemberComponent*)manager.GetComponentAddress(page.ScenePtr.FindEntity(bed.Crate));
+		Test.Assert(Member().InstancedMesh.Id == lamp);
+		slot = inspector.Grid.FindEditor(path) as EntityRefEditor;
+		Test.Assert(slot != null);
+		Test.Assert(slot.Slot.ShownName == "Lamp");
+		page.Commands.Undo(); // one step (the index counts a group's markers too)
+		Test.Assert(page.Commands.UndoIndex == before);
+		Test.Assert(Member().InstancedMesh.IsNil);
+
+		// A dragged entity, as from the hierarchy; a clear.
+		let dragged = scope DragPayload();
+		Guid[1] crate = .(bed.Crate);
+		EntityDrag.Payload(crate, "Crate", dragged);
+		Test.Assert(slot.Take(dragged));
+		Test.Assert(Member().InstancedMesh.Id == bed.Crate);
+		slot.Assign(.Empty);
+		Test.Assert(Member().InstancedMesh.IsNil);
 		page.OnClose();
 	}
 }

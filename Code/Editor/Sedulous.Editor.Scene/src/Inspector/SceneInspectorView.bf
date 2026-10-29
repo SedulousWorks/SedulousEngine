@@ -15,7 +15,8 @@ namespace Sedulous.Editor.Scene;
 // several selected say how many), and one grid of sections (the editor's PropertySections): the
 // entity's Active, its Transform (a copy of each entity's, its rotation in Euler degrees), then
 // each component every selected entity has, its reflected rows with the editors by hint (an asset
-// reference a slot taking what the builders make). Several entities are edited at once, a row
+// reference a slot taking what the builders make, an entity reference a slot over the scene's
+// entities: EntityRef taken as a reference by its id). Several entities are edited at once, a row
 // differing among them shown mixed.
 //   - Every edit is one undo step on the page's stack: a component's as its edit context's paste
 //     of each entity's component as the edit left it (the components found again by entity and
@@ -67,6 +68,8 @@ class SceneInspectorView
 	private PropertyGrid mGrid = null;
 	private TextField mName = null;
 	private PropertySections mSections = new .() ~ delete _;
+	// What the entity slots ask (the grid's registry borrows it).
+	private EntityRefServices mEntityRefs = new .() ~ delete _;
 	// The selection it shows, in order.
 	private List<Guid> mEntities = new .() ~ delete _;
 	// Active: a value per entity.
@@ -95,6 +98,12 @@ class SceneInspectorView
 		{
 			if (mServices.Refs != null)
 				ResourceRefEditor.Register(mGrid.Editors, mServices.Refs);
+			// An entity reference: a slot over this scene's entities, chosen before the asset slot.
+			mEntityRefs.Edit = mEdit;
+			mEntityRefs.Icons = mServices.Icons;
+			if (mServices.Pick != null)
+				mEntityRefs.Pick = new (request, anchor) => { mServices.Pick(request, anchor); };
+			EntityRefEditor.Register(mGrid.Editors, mEntityRefs);
 			mGrid.Source = mSections;
 			mGrid.SetOnRowMenu(new (menu, row) => { HeaderMenu(menu, row); });
 		}
