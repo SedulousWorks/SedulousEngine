@@ -55,8 +55,10 @@ class EditorMock
 	/// Its toasts' host and the dialog it shows: our references, let go by ReleaseTree.
 	private ToastHost mToasts = null;
 	private MessageBox mDialog = null;
-	/// The render textures picker, once opened: our reference, let go by ReleaseTree.
+	/// The render textures picker and the asset picker, once opened: our references, let go by
+	/// ReleaseTree.
 	private Node mTextures = null;
+	private Node mAssetPicker = null;
 	private int mToastsShown = 0;
 	/// What each page's inspector shows, and the sources over them.
 	private List<Object> mShown = new .();
@@ -99,6 +101,11 @@ class EditorMock
 		{
 			mTextures.ReleaseRef();
 			mTextures = null;
+		}
+		if (mAssetPicker != null)
+		{
+			mAssetPicker.ReleaseRef();
+			mAssetPicker = null;
 		}
 		if (mToasts != null)
 		{
@@ -230,6 +237,7 @@ class EditorMock
 		Define("mock.about", "About AssiduousEngine");
 		Define("mock.toast", "Show a Toast");
 		Define("mock.dialog", "Show a Dialog");
+		Define("mock.asset-picker", "Show the Asset Picker");
 		mContext.DefineCommand("mock.grid").Checked = true;
 		mContext.DefineCommand("mock.space").Checked = true;
 		let pause = mContext.DefineCommand("mock.pause");
@@ -244,7 +252,8 @@ class EditorMock
 		// a dialog.
 		mRoot.OnCommand("mock.toast", new (e) => { ShowToast(); });
 		mRoot.OnCommand("mock.dialog", new (e) => { ShowDialog(); });
-		mRoot.OnCommand("mock.textures", new (e) => { ShowTextures(); });
+		mRoot.OnCommand("mock.textures", new (e) => { ShowPicker(ref mTextures, "Editor/Mock/textures.gml"); });
+		mRoot.OnCommand("mock.asset-picker", new (e) => { ShowPicker(ref mAssetPicker, "Editor/Mock/asset-picker.gml"); });
 		mRoot.OnCommand("mock.side-by-side", new (e) => { SetSideBySide(!mSideBySide); });
 		Define("look.dark", "Dark");
 		Define("look.light", "Light");
@@ -304,14 +313,18 @@ class EditorMock
 		mToasts.Post(request); // copied
 	}
 
-	// The render textures picker (ruling 21), as the editor's picker opens: modal, under the
-	// window's top.
-	private void ShowTextures()
+	// A picker as the editor's opens: modal, under the window's top (the render textures picker of
+	// ruling 21; the asset picker with its groups beside it).
+	private void ShowPicker(ref Node picker, StringView path)
 	{
-		if (mTextures == null)
-			mTextures = mHost.Load("Editor/Mock/textures.gml");
+		if (picker == null)
+		{
+			picker = mHost.Load(path);
+			if (picker != null)
+				PickerViews(picker);
+		}
 		let dispatcher = mRoot.EventDispatcher;
-		if ((mTextures == null) || (dispatcher == null) || dispatcher.IsPopupOpen(mTextures))
+		if ((picker == null) || (dispatcher == null) || dispatcher.IsPopupOpen(picker))
 			return;
 		let options = new PopupOptions();
 		options.Kind = .Auto;
@@ -322,7 +335,40 @@ class EditorMock
 		options.AnchorRect = Rect(0.0f, 0.0f, mRoot.Size.X, mRoot.Size.Y * 0.2f);
 		options.Placement.Side = .Below;
 		options.Placement.Align = .Center;
-		dispatcher.OpenPopup(mRoot, mTextures, options);
+		dispatcher.OpenPopup(mRoot, picker, options);
+	}
+
+	// The asset picker's chosen group (Props: Favourites, All, Content, Materials, Props) and its
+	// two views, the buttons switching them (the editor keeps the last one).
+	private void PickerViews(Node picker)
+	{
+		if (let groups = picker.FindElement("asset-picker-groups") as TreeView)
+			groups.SelectedItem = 4;
+		let rows = picker.FindElement("asset-picker-rows");
+		let tiles = picker.FindElement("asset-picker-tiles-view");
+		let tilesButton = picker.FindElement("asset-picker-tiles") as Sedulous.GUI.Button;
+		let listButton = picker.FindElement("asset-picker-list") as Sedulous.GUI.Button;
+		if ((rows == null) || (tiles == null) || (tilesButton == null) || (listButton == null))
+			return;
+		ShowPickerView(rows, tiles, tilesButton, listButton, false);
+		tilesButton.SetOnClick(new () => { ShowPickerView(rows, tiles, tilesButton, listButton, true); });
+		listButton.SetOnClick(new () => { ShowPickerView(rows, tiles, tilesButton, listButton, false); });
+	}
+
+	private static void ShowPickerView(Node rows, Node tiles, Sedulous.GUI.Button tilesButton, Sedulous.GUI.Button listButton, bool asTiles)
+	{
+		rows.Displayed = !asTiles;
+		tiles.Displayed = asTiles;
+		if (asTiles)
+		{
+			tilesButton.AddClass("checked");
+			listButton.RemoveClass("checked");
+		}
+		else
+		{
+			listButton.AddClass("checked");
+			tilesButton.RemoveClass("checked");
+		}
 	}
 
 	// A dialog, as the editor confirms a destructive verb.

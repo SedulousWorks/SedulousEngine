@@ -628,6 +628,16 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
                border-top-width: 1px; border-top-style: solid; border-top-color: var(--separator); }
 .picker-hint { font-size: var(--font-small); color: var(--text-placeholder); }
 .picker-empty { padding: var(--space-xl) var(--space-l); }
+/* The asset picker: its groups a tree beside what the chosen one holds, as the assets browser. */
+.dialog.asset-picker { width: 640px; }
+.asset-picker-body { flex-direction: row; height: 320px; border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--separator); }
+.asset-picker-groups { width: 220px; flex-shrink: 0; background-color: transparent; border-right-width: 1px; border-right-style: solid;
+                       border-right-color: var(--separator); }
+.asset-picker-items { flex-grow: 1; min-width: 0; flex-direction: column; padding: var(--space-xs) var(--space-s); }
+.asset-picker-where { font-size: var(--font-small); color: var(--text-dim); padding: var(--space-xs) var(--space-m) var(--space-s); }
+.asset-picker-bar { flex-direction: row; align-items: center; column-gap: var(--space-s); }
+.asset-picker-grid { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-s); row-gap: var(--space-s); padding: var(--space-xs) var(--space-s); }
+.asset-picker-grid > .asset-tile { width: 88px; }
 /* The render textures picker: its passes a tree, wide enough for a texture's size and format. */
 .texture-picker { width: 460px; }
 .texture-tree { height: 360px; }
