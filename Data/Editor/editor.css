@@ -244,9 +244,13 @@ treerowcontent.inactive { opacity: 0.45; }
 .hud-bottom-start { justify-self: start; align-self: end; align-items: start; }
 .hud-bottom-end { justify-self: end; align-self: end; align-items: end; }
 .hud-bar { flex-direction: row; column-gap: 2px; padding: 2px; border-radius: var(--radius); background-color: var(--hud-background); }
-button.hud-chip { height: calc(var(--control-height) - 2px); padding: 0 var(--space-m); background-color: transparent;
-                  color: var(--hud-text); font-size: var(--font-small); border-radius: var(--radius-small); }
-button.hud-chip:hover { background-color: rgba(255, 255, 255, 0.1); }
+/* A chip: what the view shows, its menu below it; one off its default (a debug view, an axis view)
+   in the accent, so it is not forgotten. */
+.hud-chip { height: calc(var(--control-height) - 2px); padding: 0 var(--space-s) 0 var(--space-m); background-color: transparent;
+            color: var(--hud-text); font-size: var(--font-small); border-radius: var(--radius-small); }
+.hud-chip:hover { background-color: rgba(255, 255, 255, 0.1); }
+.hud-chip.on { background-color: var(--accent); color: #ffffff; }
+.hud-chip.on:hover { background-color: var(--accent-strong); }
 .hud-stats { font-size: var(--font-small); color: var(--hud-text); background-color: var(--hud-background);
              padding: var(--space-xs) var(--space-m); border-radius: var(--radius-small); }
 .hud-status { flex-direction: row; align-items: center; column-gap: var(--space-m); padding: var(--space-xs) var(--space-m);
@@ -603,6 +607,9 @@ button.toast-action { height: var(--control-height); padding: 0 var(--space-m); 
                border-top-width: 1px; border-top-style: solid; border-top-color: var(--separator); }
 .picker-hint { font-size: var(--font-small); color: var(--text-placeholder); }
 .picker-empty { padding: var(--space-xl) var(--space-l); }
+/* The render textures picker: its passes a tree, wide enough for a texture's size and format. */
+.texture-picker { width: 460px; }
+.texture-tree { height: 360px; }
 /* The picker's own window: its rows a list of a fixed size, the empty state in the same room. */
 .picker-list { width: 400px; height: 300px; background-color: transparent; padding: 0 var(--space-s); }
 .picker > .state-box { width: 400px; height: 300px; }

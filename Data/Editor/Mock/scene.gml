@@ -3,29 +3,57 @@
   hierarchy and inspector, so two scene pages side by side each show their own scene.
 -->
 <Panel class="page scene-page mock">
+    <!-- The bar keeps the editing controls (ruling 22): the transform tools as one choice, the
+         space, Snap with its increments, Vertex Snap; Simulate; the scene tools by category; Frame. -->
     <ToolBar class="page-toolbar">
         <ToolButton command="mock.save" icon="Editor/Icons/save.svg"/>
         <ToolButton command="mock.undo" icon="Editor/Icons/undo.svg"/>
         <ToolButton command="mock.redo" icon="Editor/Icons/redo.svg"/>
         <Separator/>
-        <ToolButton name="mock-tool" toggle="true" checked="true" icon="Editor/Icons/select.svg" tooltip="Select (Q)"/>
-        <ToolButton name="mock-tool" toggle="true" icon="Editor/Icons/move.svg" tooltip="Move (W)"/>
-        <ToolButton name="mock-tool" toggle="true" icon="Editor/Icons/rotate.svg" tooltip="Rotate (E)"/>
-        <ToolButton name="mock-tool" toggle="true" icon="Editor/Icons/scale.svg" tooltip="Scale (R)"/>
+        <ToolButton command="mock.tool-select" name="mock-tool" toggle="true" icon="Editor/Icons/select.svg"/>
+        <ToolButton command="mock.tool-move" name="mock-tool" toggle="true" checked="true" icon="Editor/Icons/move.svg"/>
+        <ToolButton command="mock.tool-rotate" name="mock-tool" toggle="true" icon="Editor/Icons/rotate.svg"/>
+        <ToolButton command="mock.tool-scale" name="mock-tool" toggle="true" icon="Editor/Icons/scale.svg"/>
         <Separator/>
         <ToolButton command="mock.space" toggle="true" icon="Editor/Icons/world.svg"/>
-        <ToolButton command="mock.grid" toggle="true" icon="Editor/Icons/grid.svg"/>
-        <ToolButton command="mock.snap" toggle="true" icon="Editor/Icons/magnet.svg"/>
+        <ToolMenuButton command="mock.snap" toggle="true" split="true" icon="Editor/Icons/magnet.svg">
+            <Menu text="Move">
+                <MenuItem text="0.1 m" checkable="true"/>
+                <MenuItem text="0.25 m" checkable="true"/>
+                <MenuItem text="0.5 m" checkable="true" checked="true"/>
+                <MenuItem text="1 m" checkable="true"/>
+                <MenuItem text="2 m" checkable="true"/>
+                <MenuItem text="The grid's cell" checkable="true"/>
+            </Menu>
+            <Menu text="Rotate">
+                <MenuItem text="5&#176;" checkable="true"/>
+                <MenuItem text="15&#176;" checkable="true" checked="true"/>
+                <MenuItem text="45&#176;" checkable="true"/>
+                <MenuItem text="90&#176;" checkable="true"/>
+            </Menu>
+            <Menu text="Scale">
+                <MenuItem text="0.1" checkable="true"/>
+                <MenuItem text="0.25" checkable="true" checked="true"/>
+                <MenuItem text="0.5" checkable="true"/>
+            </Menu>
+        </ToolMenuButton>
+        <ToolButton command="mock.vertex-snap" toggle="true" icon="Editor/Icons/target.svg"/>
         <Spacer/>
         <ToolButton command="mock.play" icon="Editor/Icons/play.svg"/>
         <ToolButton command="mock.pause" icon="Editor/Icons/pause.svg"/>
         <ToolButton command="mock.stop" icon="Editor/Icons/stop.svg"/>
         <Spacer/>
-        <ToolMenuButton text="Lit" shows-text="true" icon="Editor/Icons/sun.svg">
-            <MenuItem command="mock.view-lit"/>
-            <MenuItem command="mock.view-unlit"/>
-            <MenuItem command="mock.view-wire"/>
+        <ToolMenuButton id="mock-terrain-tools" text="Terrain" icon="Editor/Icons/Types/TerrainComponent.svg" tooltip="Terrain tools">
+            <MenuItem command="mock.terrain-sculpt"/>
+            <MenuItem command="mock.terrain-paint"/>
+            <MenuItem command="mock.terrain-holes"/>
         </ToolMenuButton>
+        <ToolMenuButton text="Vegetation" icon="Editor/Icons/Types/TerrainVegetationComponent.svg" tooltip="Vegetation tools">
+            <MenuItem command="mock.vegetation-paint"/>
+            <MenuItem command="mock.vegetation-props"/>
+        </ToolMenuButton>
+        <ToolButton command="mock.spline" toggle="true" icon="Editor/Icons/Types/SplineComponent.svg"/>
+        <Separator/>
         <ToolButton command="mock.frame" icon="Editor/Icons/frame-selection.svg"/>
     </ToolBar>
     <Splitter class="page-body" axis="horizontal" weights="0.2 0.56 0.24">
@@ -63,10 +91,60 @@
                  menus and a tool's panel at the top start; the stats and the view gizmo at the top
                  end; the tool's status at the bottom start; the camera preview at the bottom end. -->
             <Panel class="hud-zone hud-top-start">
+                <!-- The view's controls (ruling 22), each chip saying what is on. -->
                 <Panel class="hud-bar">
-                    <Button class="hud-chip" text="Perspective" tooltip="Projection and view"/>
-                    <Button class="hud-chip" text="Lit" tooltip="Shading"/>
-                    <Button class="hud-chip" text="Overlays" tooltip="Grid, gizmos, markers"/>
+                    <ToolMenuButton id="chip-projection" class="hud-chip" text="Perspective" tooltip="Projection and the axis views">
+                        <MenuItem text="Perspective" checkable="true" checked="true"/>
+                        <MenuItem text="Orthographic" checkable="true"/>
+                        <MenuSeparator/>
+                        <MenuItem text="Top"/>
+                        <MenuItem text="Bottom"/>
+                        <MenuItem text="Front"/>
+                        <MenuItem text="Back"/>
+                        <MenuItem text="Right"/>
+                        <MenuItem text="Left"/>
+                    </ToolMenuButton>
+                    <ToolMenuButton id="chip-shading" class="hud-chip" text="Lit" tooltip="Shading, debug views and effects">
+                        <MenuItem text="Lit" checkable="true" checked="true"/>
+                        <MenuItem text="Unlit" checkable="true"/>
+                        <Menu text="Debug View">
+                            <MenuItem text="Normals" checkable="true"/>
+                            <MenuItem text="Roughness" checkable="true"/>
+                            <MenuItem text="Metallic" checkable="true"/>
+                            <MenuItem text="Shadow Cascades" checkable="true"/>
+                            <MenuItem text="Light Clusters" checkable="true"/>
+                            <MenuItem text="Overbright" checkable="true"/>
+                        </Menu>
+                        <MenuItem command="mock.textures"/>
+                        <MenuSeparator/>
+                        <Menu text="Effects">
+                            <MenuItem text="Bloom" checkable="true" checked="true"/>
+                            <MenuItem text="Ambient Occlusion" checkable="true" checked="true"/>
+                            <MenuItem text="Reflections (SSR)" checkable="true" checked="true"/>
+                            <MenuItem text="Global Illumination (SSGI)" checkable="true" checked="true"/>
+                            <MenuItem text="Anti-aliasing" checkable="true" checked="true"/>
+                            <MenuSeparator/>
+                            <MenuItem text="Frustum Culling" checkable="true" checked="true"/>
+                        </Menu>
+                        <Menu text="MSAA">
+                            <MenuItem text="Off" checkable="true" checked="true"/>
+                            <MenuItem text="2x" checkable="true"/>
+                            <MenuItem text="4x" checkable="true"/>
+                        </Menu>
+                    </ToolMenuButton>
+                    <ToolMenuButton id="chip-overlays" class="hud-chip" text="Overlays" tooltip="What the editor draws over the scene">
+                        <MenuItem text="Grid" checkable="true" checked="true"/>
+                        <Menu text="Grid Plane">
+                            <MenuItem text="XZ (ground)" checkable="true" checked="true"/>
+                            <MenuItem text="XY" checkable="true"/>
+                            <MenuItem text="YZ" checkable="true"/>
+                        </Menu>
+                        <MenuItem text="Entity Markers" checkable="true"/>
+                        <MenuItem text="Colliders" checkable="true"/>
+                        <MenuItem text="LOD Tint" checkable="true"/>
+                        <MenuSeparator/>
+                        <MenuItem text="Stats" checkable="true" checked="true"/>
+                    </ToolMenuButton>
                 </Panel>
                 <Panel id="tool-panel" class="hud-panel">
                     <Panel class="hud-panel-head">

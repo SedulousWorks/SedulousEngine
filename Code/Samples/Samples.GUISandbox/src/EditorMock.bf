@@ -55,6 +55,8 @@ class EditorMock
 	/// Its toasts' host and the dialog it shows: our references, let go by ReleaseTree.
 	private ToastHost mToasts = null;
 	private MessageBox mDialog = null;
+	/// The render textures picker, once opened: our reference, let go by ReleaseTree.
+	private Node mTextures = null;
 	private int mToastsShown = 0;
 	/// What each page's inspector shows, and the sources over them.
 	private List<Object> mShown = new .();
@@ -92,6 +94,11 @@ class EditorMock
 		{
 			mDialog.ReleaseRef();
 			mDialog = null;
+		}
+		if (mTextures != null)
+		{
+			mTextures.ReleaseRef();
+			mTextures = null;
 		}
 		if (mToasts != null)
 		{
@@ -198,11 +205,28 @@ class EditorMock
 		Define("mock.stop", "Stop", "shift-f5", "Editor/Icons/stop.svg");
 		Define("mock.frame", "Frame Selection", "f", "Editor/Icons/frame-selection.svg");
 		Define("mock.grid", "Grid", default, "Editor/Icons/grid.svg");
-		Define("mock.snap", "Snap", default, "Editor/Icons/magnet.svg");
-		Define("mock.space", "World Space", default, "Editor/Icons/world.svg");
-		Define("mock.view-lit", "Lit");
-		Define("mock.view-unlit", "Unlit");
-		Define("mock.view-wire", "Wireframe");
+		// The bar's editing controls (layer 5, part 1), each with its key.
+		Define("mock.tool-select", "Select", "q", "Editor/Icons/select.svg");
+		Define("mock.tool-move", "Move", "w", "Editor/Icons/move.svg");
+		Define("mock.tool-rotate", "Rotate", "e", "Editor/Icons/rotate.svg");
+		Define("mock.tool-scale", "Scale", "r", "Editor/Icons/scale.svg");
+		Define("mock.snap", "Snap Every Drag (Ctrl for one)", default, "Editor/Icons/magnet.svg");
+		Define("mock.space", "World Space", "x", "Editor/Icons/world.svg");
+		Define("mock.vertex-snap", "Vertex Snap (V for one drag)", default, "Editor/Icons/target.svg");
+		Define("mock.terrain-sculpt", "Sculpt", default, "Editor/Icons/Types/TerrainComponent.svg");
+		Define("mock.terrain-paint", "Paint Layers", default, "Editor/Icons/texture.svg");
+		Define("mock.terrain-holes", "Cut Holes", default, "Editor/Icons/minus.svg");
+		Define("mock.vegetation-paint", "Paint Vegetation", default, "Editor/Icons/Types/TerrainVegetationComponent.svg");
+		Define("mock.vegetation-props", "Paint Props", default, "Editor/Icons/Types/VegetationMaskAsset.svg");
+		Define("mock.spline", "Edit Spline", default, "Editor/Icons/Types/SplineComponent.svg");
+		Define("mock.textures", "Render Textures...", default, "Editor/Icons/texture.svg");
+		mContext.DefineCommand("mock.terrain-sculpt").Checked = true;
+		let props = mContext.DefineCommand("mock.vegetation-props");
+		props.Enabled = false;
+		props.DisabledReason = "No Terrain Vegetation component has a prop layer";
+		let spline = mContext.DefineCommand("mock.spline");
+		spline.Enabled = false;
+		spline.DisabledReason = "Select an entity with a Spline component";
 		Define("mock.about", "About AssiduousEngine");
 		Define("mock.toast", "Show a Toast");
 		Define("mock.dialog", "Show a Dialog");
@@ -220,6 +244,7 @@ class EditorMock
 		// a dialog.
 		mRoot.OnCommand("mock.toast", new (e) => { ShowToast(); });
 		mRoot.OnCommand("mock.dialog", new (e) => { ShowDialog(); });
+		mRoot.OnCommand("mock.textures", new (e) => { ShowTextures(); });
 		mRoot.OnCommand("mock.side-by-side", new (e) => { SetSideBySide(!mSideBySide); });
 		Define("look.dark", "Dark");
 		Define("look.light", "Light");
@@ -277,6 +302,27 @@ class EditorMock
 		if (!sample.action.IsEmpty)
 			request.AddAction("action", sample.action, "");
 		mToasts.Post(request); // copied
+	}
+
+	// The render textures picker (ruling 21), as the editor's picker opens: modal, under the
+	// window's top.
+	private void ShowTextures()
+	{
+		if (mTextures == null)
+			mTextures = mHost.Load("Editor/Mock/textures.gml");
+		let dispatcher = mRoot.EventDispatcher;
+		if ((mTextures == null) || (dispatcher == null) || dispatcher.IsPopupOpen(mTextures))
+			return;
+		let options = new PopupOptions();
+		options.Kind = .Auto;
+		options.Modal = true;
+		options.TakesFocus = true;
+		options.FitContent = true;
+		options.HasAnchorRect = true;
+		options.AnchorRect = Rect(0.0f, 0.0f, mRoot.Size.X, mRoot.Size.Y * 0.2f);
+		options.Placement.Side = .Below;
+		options.Placement.Align = .Center;
+		dispatcher.OpenPopup(mRoot, mTextures, options);
 	}
 
 	// A dialog, as the editor confirms a destructive verb.
@@ -422,6 +468,18 @@ class EditorMock
 			// A scene has settings, not components: nothing to add.
 			if (let add = content.FindElement("add-component"))
 				add.Displayed = false;
+			// A render texture shown: the shading chip names it and stands out, so a debug view
+			// left on is seen.
+			if (let shading = content.FindElement("chip-shading") as Sedulous.GUI.Button)
+			{
+				shading.Text = "ssgi.filtered";
+				shading.AddClass("on");
+			}
+			if (let projection = content.FindElement("chip-projection") as Sedulous.GUI.Button)
+			{
+				projection.Text = "Top";
+				projection.AddClass("on");
+			}
 		}
 		else
 		{
