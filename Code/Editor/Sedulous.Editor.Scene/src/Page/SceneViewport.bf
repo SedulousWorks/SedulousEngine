@@ -283,14 +283,19 @@ class SceneViewport
 	}
 
 	/// Before the page goes: the camera never closes captured, the picks keyed by it are
-	/// cancelled, the readback buffer goes while the device lives.
+	/// cancelled, a picture recorded and not yet written is written (it waits for the GPU: a save's
+	/// launcher picture, the editor closing that same frame, was freed while the copy was still
+	/// running), then the readback buffer goes while the device lives.
 	public void Close(IApplicationHost host)
 	{
 		mCamera.ReleaseCapture(Mouse);
 		if (mServices.Render != null)
 			mServices.Render.CancelPicks(Key);
 		if ((host != null) && (host.Graphics != null) && (host.Graphics.Raw != null))
+		{
+			CompleteCapture(host);
 			mCapture.Release(host.Graphics.Raw);
+		}
 	}
 
 	/// The GPU pick seam the tools see: the renderer's picks keyed by this viewport (the key its
