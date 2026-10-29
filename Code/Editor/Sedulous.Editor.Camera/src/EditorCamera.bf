@@ -239,24 +239,24 @@ class EditorCamera
 
 	/// `allowZoom` goes false while a modal viewport tool owns the scroll, a brush resizing
 	/// on SHIFT and the wheel: the first consumer rule keeps that same scroll from dollying
-	/// the camera as well. The bare wheel stays the camera's, brush or no brush.
+	/// the camera as well. The bare wheel stays the camera's, brush or no brush. `keyboard` is null
+	/// while the view has no keyboard focus: the mouse still works it (the wheel over a view that
+	/// was not clicked into zooms it), the keys wait for the focus.
 	public void Update(IKeyboard keyboard, IMouse mouse, float dt, bool allowZoom = true)
 	{
 		ZoomedThisUpdate = false;
 		mWantsLock = false;
-		if (keyboard == null)
-			return;
 		if (mouse != null)
 		{
-			if (keyboard.IsKeyPressed(.Tab))
+			if ((keyboard != null) && keyboard.IsKeyPressed(.Tab))
 			{
 				MouseCaptured = !MouseCaptured;
 				mouse.SetRelativeMode(MouseCaptured);
 				mouse.SetCursorVisible(!MouseCaptured);
 			}
-			if (MouseCaptured && keyboard.IsKeyPressed(.Escape))
+			if (MouseCaptured && (keyboard != null) && keyboard.IsKeyPressed(.Escape))
 				ReleaseCapture(mouse);
-			let alt = keyboard.IsKeyDown(.LeftAlt) || keyboard.IsKeyDown(.RightAlt);
+			let alt = (keyboard != null) && (keyboard.IsKeyDown(.LeftAlt) || keyboard.IsKeyDown(.RightAlt));
 			mWantsLock = !MouseCaptured && ((alt && mouse.IsButtonDown(.Left)) || mouse.IsButtonDown(.Right)
 				|| mouse.IsButtonDown(.Middle));
 			if (alt && mouse.IsButtonDown(.Left))
@@ -296,7 +296,7 @@ class EditorCamera
 			}
 		}
 		let flying = MouseCaptured || ((mouse != null) && mouse.IsButtonDown(.Right));
-		if (!flying)
+		if (!flying || (keyboard == null))
 			return;
 		let forward = Forward;
 		let right = Right;

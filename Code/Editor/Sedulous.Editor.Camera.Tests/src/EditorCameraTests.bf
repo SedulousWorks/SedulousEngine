@@ -350,11 +350,34 @@ static class EditorCameraTests
 		mouse.Rmb = true;
 		cam.Update(keyboard, mouse, 0.016f);
 		Test.Assert(!cam.WantsPointerLock);
-		// No input this frame (the keyboard gone): no ask left over.
+		// The drag let go with no keyboard (the view never had the focus): no ask left over.
 		cam.MouseCaptured = false;
 		cam.Update(keyboard, mouse, 0.016f);
 		Test.Assert(cam.WantsPointerLock);
+		mouse.Rmb = false;
 		cam.Update(null, mouse, 0.016f);
 		Test.Assert(!cam.WantsPointerLock);
+	}
+
+	[Test]
+	public static void TheMouseWorksItWithNoKeyboardTheWheelZoomsTheKeysWait()
+	{
+		let cam = scope EditorCamera();
+		let mouse = scope StubMouse();
+		let before = cam.FocusDistance;
+		mouse.Scroll = 1.0f;
+		cam.Update(null, mouse, 0.016f);
+		Test.Assert(cam.FocusDistance < before);
+		Test.Assert(cam.ZoomedThisUpdate);
+		mouse.Scroll = 0.0f;
+		// A right-button look turns it; with no keyboard there is no fly.
+		let at = cam.Position;
+		let yaw = cam.Yaw;
+		mouse.Rmb = true;
+		mouse.Dx = 10.0f;
+		cam.Update(null, mouse, 0.5f);
+		Test.Assert(cam.Yaw != yaw);
+		Test.Assert(cam.Position.X == at.X);
+		Test.Assert(cam.Position.Z == at.Z);
 	}
 }
