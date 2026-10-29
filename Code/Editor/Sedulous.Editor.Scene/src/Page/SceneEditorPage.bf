@@ -31,8 +31,8 @@ namespace Sedulous.Editor.Scene;
 // each a class of its own. The page holds them together: it loads the scene, edits it through its
 // edit context and its tools, saves it, follows a change made elsewhere, and says on the page when
 // the scene did not load (and then refuses to save over it). Its bar's Save, Undo and Redo act on
-// this page; its hierarchy (layer 3) is the scene's tree in its left pane. The inspector takes its
-// pane in the next layer.
+// this page; its hierarchy (layer 3) is the scene's tree in its left pane, its inspector (layer 4)
+// the selection's components in its right.
 
 /// What a page asks of the editor. Borrowed but the markup loader, the services' own.
 class SceneEditorPageServices
@@ -44,8 +44,11 @@ class SceneEditorPageServices
 	public delegate Node(StringView path) LoadMarkup ~ delete _;
 	/// The asset picker and the rest an asset slot asks (null: no picking, a test).
 	public ResourceRefServices Refs = null;
-	/// The type icons the hierarchy shows entities by (null: none).
+	/// The type icons the hierarchy and the inspector show by (null: none).
 	public EditorIcons Icons = null;
+	/// Opens the picker for a request below an anchor (the inspector's Add Component); OWNERSHIP
+	/// of the request transfers. Null: no picking, a test.
+	public delegate void(PickerRequest request, Node anchor) Pick ~ delete _;
 }
 
 class SceneEditorPage : UIEditorPage, ISceneEditorPage
@@ -72,6 +75,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private SceneSimulation mSimulation = new .() ~ delete _;
 	private PrefabFlows mPrefabs = null ~ delete _;
 	private SceneHierarchyView mHierarchy = null;
+	private SceneInspectorView mInspector = null;
 	/// After mEditContext (the tools borrow it), so deleted first.
 	private ViewportToolManager mViewportTools = new .() ~ delete _;
 	/// The manager's default tool.
@@ -105,7 +109,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	public ~this()
 	{
-		// The tools borrow the edit context, the flows and the hierarchy too: they go first.
+		// The tools borrow the edit context, the flows, the hierarchy and the inspector too: they go
+		// first.
+		DeleteAndNullify!(mInspector);
 		DeleteAndNullify!(mHierarchy);
 		DeleteAndNullify!(mPrefabs);
 		DeleteAndNullify!(mViewportTools);
@@ -145,6 +151,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public SceneOverlays Overlays => mOverlays;
 	public SceneViewport Viewport => mViewport;
 	public SceneHierarchyView Hierarchy => mHierarchy;
+	public SceneInspectorView Inspector => mInspector;
 	public MessageBox OpenConfirm => ((mConfirm != null) && mConfirm.IsOpen) ? mConfirm : null;
 
 	private void Build(Instance instance)
@@ -253,6 +260,24 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			}
 		}
 
+		// The inspector in its pane: the selection's entities and components.
+		if (mEditContext != null)
+		{
+			if (let pane = Find<Node>("scene-inspector"))
+			{
+				let inspector = new SceneInspectorServices();
+				inspector.Context = context;
+				inspector.Page = this;
+				inspector.Icons = mServices.Icons;
+				inspector.Refs = mServices.Refs;
+				inspector.Resources = context.Resources;
+				if (mServices.Pick != null)
+					inspector.Pick = new [=this](request, anchor) => { mServices.Pick(request, anchor); };
+				inspector.Simulating = new [=this]() => mSimulation.IsRunning;
+				mInspector = new SceneInspectorView(mEditContext, inspector, pane);
+			}
+		}
+
 		mOverlays.Settings = SceneViewState.LoadOverlays(context.ProjectEditorSettings, InstanceId, mOverlays.Settings);
 		RestoreViewState();
 	}
@@ -326,6 +351,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		}
 		if (mHierarchy != null)
 			mHierarchy.Refresh(); // the scene changed: built again
+		if (mInspector != null)
+			mInspector.Refresh(); // the selection or its components changed: built again; else its values
 		if (mBar != null)
 			mBar.Sync();
 	}
@@ -432,6 +459,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	public override void OnClose()
 	{
+		DeleteAndNullify!(mInspector); // the grid lets its sources go before the scene does
 		DeleteAndNullify!(mHierarchy); // it lets the selection and the tree go before the scene does
 		// Where the scene was left: the camera, the selection, the panes, for the next open.
 		if (mScene != null)

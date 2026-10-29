@@ -13,7 +13,10 @@ namespace Sedulous.Scene;
 /// references silently left pointing at the template. Attaching the reflection to the
 /// attribute that says "this is a component" removes the chance to forget: declaring one
 /// IS asking.
-[AttributeUsage(.Struct, .ReflectAttribute, ReflectUser = .Type | .NonStaticFields)]
+///
+/// Its default constructor is reflected too: an inspector's Reset reads the type's defaults
+/// from an instance it makes.
+[AttributeUsage(.Struct, .ReflectAttribute, ReflectUser = .Type | .NonStaticFields | .DefaultConstructor)]
 struct ComponentAttribute : Attribute
 {
 }

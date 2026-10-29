@@ -81,9 +81,9 @@ corlib = "*"
 "Sedulous.GUI.Viewport" = "*"
 "Sedulous.Editor.Navigation" = "*"
 
-# On the GUI in parts (Raptor's editor-gui spec, 5.3): its UI-free half and the page build. The
-# inspector and the two picker dialogs are still on Sedulous.UI; they stay out of the compile,
-# their sources unedited, until their layers.
+# On the GUI in parts (Raptor's editor-gui spec, 5.3): the page, its hierarchy and its inspector
+# build. The two picker dialogs are still on Sedulous.UI; they stay out of the compile, their
+# sources unedited, until their layers.
 [ProjectFolder]
 
 [[ProjectFolder.Items]]
@@ -104,61 +104,5 @@ Name = "Inspector"
 
 [[ProjectFolder.Items.Items]]
 Type = "IgnoreSource"
-Name = "CollisionMatrixEditor.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
 Name = "ComponentPickerDialog.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "IInspectorOwner.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "InspectorEntry.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "InspectorRegistry.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "InspectorRows.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "InspectorSection.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "NoticeEditor.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "SceneInspectors.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "SceneInspectorView.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "SceneInspectorViewComponents.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "SceneInspectorViewEntity.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "SceneInspectorViewMenus.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "SceneInspectorViewScripts.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "SceneInspectorViewSettings.bf"
 

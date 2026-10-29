@@ -795,7 +795,7 @@ class EditorApplication : IApplication
 
 	/// Shows a picker's request below `anchor` (else near the top), over the main window; the
 	/// picker is made the first time. OWNERSHIP of `request` transfers, shown or not.
-	private void ShowPicker(PickerRequest request, Sedulous.GUI.Node anchor)
+	public void ShowPicker(PickerRequest request, Sedulous.GUI.Node anchor)
 	{
 		let root = mWindow.Root;
 		if (root == null)

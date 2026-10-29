@@ -2,7 +2,7 @@
   The scene page (Raptor's editor-gui spec, 5.3, layer 2): its bar over its own hierarchy,
   viewport and inspector, as the mock draws it (Editor/Mock/scene.gml). A prefab is marked as one.
   Code puts the viewport in its pane (under the state a scene that did not load shows), binds the
-  bar to the actions and the hierarchy to the scene; the inspector fills its pane in the next layer.
+  bar to the actions, the hierarchy to the scene and the inspector to its selection.
 -->
 <Panel class="page scene-page">
     <ToolBar id="scene-bar" class="page-toolbar">
@@ -31,6 +31,26 @@
                 <Label id="scene-state-text" class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
             </Panel>
         </Panel>
-        <Panel id="scene-inspector" class="panel page-pane"/>
+        <Panel id="scene-inspector" class="panel page-pane">
+            <Panel class="inspector-head">
+                <Image id="inspector-icon" class="type-icon" src="Editor/Icons/cube.svg"/>
+                <TextField id="inspector-name" class="name-field"/>
+                <Label id="inspector-kind" class="inspector-kind"/>
+            </Panel>
+            <Panel class="panel-toolbar">
+                <Panel class="search">
+                    <Image class="search-icon" src="Editor/Icons/search.svg"/>
+                    <TextField id="inspector-search" class="search-field" placeholder="Search properties"/>
+                </Panel>
+                <Button id="inspector-add" class="icon-button" icon="Editor/Icons/plus.svg" tooltip="Add a component"/>
+            </Panel>
+            <Label id="inspector-note" class="form-help inspector-note" text="Simulating: the values follow the run; edits wait until it stops."/>
+            <Panel id="inspector-state" class="state-box inspector-state">
+                <Image class="state-icon" src="Editor/Icons/cube.svg"/>
+                <Label class="state-title" text="Nothing selected"/>
+                <Label class="state-text" text="Select an entity in the hierarchy or the viewport to see its components."/>
+            </Panel>
+            <PropertyGrid id="inspector-grid" class="panel-body"/>
+        </Panel>
     </Splitter>
 </Panel>

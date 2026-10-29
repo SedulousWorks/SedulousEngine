@@ -230,6 +230,9 @@ button.chip.error.checked { color: var(--danger); border-color: var(--danger-bor
 /* The hierarchy: a prefab's members read apart, an entity that is not active dims (with its icon). */
 treerowcontent.member > treecell { color: var(--accent-strong); }
 treerowcontent.inactive { opacity: 0.45; }
+/* The inspector: what a simulation leaves read only says so over the grid; nothing selected fills the pane. */
+.inspector-note { padding: var(--space-s) var(--space-m); }
+.inspector-state { flex-grow: 1; }
 /* The HUD's zones: each a corner of the viewport, its pieces stacked from that corner, so they
    never meet whatever the viewport's size. Over any scene, so in the HUD's own colours in both
    schemes. */

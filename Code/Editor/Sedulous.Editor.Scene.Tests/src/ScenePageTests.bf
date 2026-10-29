@@ -11,6 +11,8 @@ using Sedulous.Shell;
 using Sedulous.Scene;
 using Sedulous.Scene.Resource;
 using Sedulous.Engine.Scene;
+using Sedulous.Engine.Render; // LightComponent
+using Sedulous.Engine.Composition; // the full scene composition
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -28,7 +30,9 @@ namespace Sedulous.Editor.Scene.Tests;
 /// And the parts: the panes' weights against the prefs' nested ratios, and a prefab's own instance
 /// refused. And its hierarchy (layer 3): the scene its top row, its entities nesting, what opens; the
 /// selection both ways; the search; a rename; drops; the menus and the add button as the scene's
-/// actions.
+/// actions. And its inspector (layer 4): nothing selected says so; an entity's head and sections;
+/// Add Component; a transform's and a component's edits, each one undo step; several entities
+/// edited at once; a header's verbs; read only while the page simulates.
 class ScenePageTests
 {
 	/// A host whose context has a scene subsystem and nothing else: no renderer, no window.
@@ -38,7 +42,8 @@ class ScenePageTests
 
 		public this()
 		{
-			Context.AddSubsystem<SceneSubsystem>();
+			// The engine's full composition, so a scene's entities take its components.
+			Context.AddSubsystem<SceneSubsystem>().SetComposition(EngineSceneComposition.Build());
 			Context.Startup();
 		}
 
@@ -581,6 +586,160 @@ class ScenePageTests
 		defer delete page;
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(RowsAre(page.Hierarchy, "Level |   Crate"));
+		page.OnClose();
+	}
+
+	/// The inspector's section titles, by " | ".
+	static bool TitlesAre(SceneInspectorView inspector, StringView expected)
+	{
+		let titles = inspector.SectionTitles(.. scope String());
+		if (titles != expected)
+		{
+			Console.WriteLine("the sections: \"{}\"", titles);
+			return false;
+		}
+		return true;
+	}
+
+	/// The scene's light on `entity`.
+	static LightComponent* LightOf(SceneEditorPage page, Guid entity)
+	{
+		let manager = page.EditContext.FindManager(typeof(LightComponent));
+		Test.Assert(manager != null);
+		return (LightComponent*)manager.GetComponentAddress(page.ScenePtr.FindEntity(entity));
+	}
+
+	/// An edit of `path` through the inspector's sections to `value`, as the grid makes one, and a
+	/// frame.
+	static void Commit(SceneEditorPage page, Bed bed, StringView path, double value)
+	{
+		let write = PropertyWrite(Sedulous.GUI.Variant(value));
+		page.Inspector.Sections.BeginEdit(path);
+		page.Inspector.Sections.CommitEdit(path, write);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+	}
+
+	[Test]
+	public static void InspectorNothingSelectedSaysSoAnEntityShowsItsHeadEntityTransformAndEachComponentAddComponentAndItsUndo()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		Test.Assert(inspector != null);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let content = page.Content;
+		Test.Assert(FindId<Node>(content, "inspector-state").Displayed);
+		Test.Assert(!inspector.Grid.Displayed);
+
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(!FindId<Node>(content, "inspector-state").Displayed);
+		Test.Assert(FindId<TextField>(content, "inspector-name").Text == "Crate");
+		Test.Assert(inspector.Kind == "Entity");
+		Test.Assert(TitlesAre(inspector, "Entity | Transform"));
+
+		let addable = scope List<String>();
+		defer { ClearAndDeleteItems!(addable); }
+		inspector.AddableComponents(addable);
+		var light = false;
+		for (let name in addable)
+			light = light || (name == "LightComponent");
+		Test.Assert(light);
+		Test.Assert(inspector.AddComponent("LightComponent"));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(TitlesAre(inspector, "Entity | Transform | Light"));
+		page.Commands.Undo(); // one step
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(TitlesAre(inspector, "Entity | Transform"));
+		page.OnClose();
+	}
+
+	[Test]
+	public static void InspectorATransformEditAndAComponentEditAreEachOneUndoStepTwoEditsOfOneRowAreTwo()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.AddComponent("LightComponent"));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let scene = page.ScenePtr;
+
+		Commit(page, bed, inspector.PathOf("Transform", "Position.x", .. scope String()), 4.0);
+		Test.Assert(scene.GetLocalTransform(scene.FindEntity(bed.Crate)).Position.X == 4.0f);
+		let intensity = inspector.PathOf("Light", "Intensity", .. scope String());
+		Commit(page, bed, intensity, 7.0);
+		Commit(page, bed, intensity, 9.0);
+		Test.Assert(LightOf(page, bed.Crate).Intensity == 9.0f);
+		page.Commands.Undo();
+		Test.Assert(LightOf(page, bed.Crate).Intensity == 7.0f); // the second edit alone
+		page.Commands.Undo();
+		Test.Assert(LightOf(page, bed.Crate).Intensity != 7.0f);
+		page.Commands.Redo();
+		Test.Assert(LightOf(page, bed.Crate).Intensity == 7.0f);
+		page.Commands.Undo();
+		page.Commands.Undo(); // the transform
+		Test.Assert(scene.GetLocalTransform(scene.FindEntity(bed.Crate)).Position.X == 0.0f);
+		page.OnClose();
+	}
+
+	[Test]
+	public static void InspectorSeveralEntitiesEditedAtOnceAComponentsHeaderHasItsVerbsReadOnlyWhileThePageSimulates()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		let lamp = page.EditContext.CreateEntity("Lamp");
+		Guid[2] both = .(bed.Crate, lamp);
+		page.EditContext.EntitySelection.Set(Span<Guid>(&both[0], 2));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.Kind == "2 entities");
+		Test.Assert(inspector.AddComponent("LightComponent")); // to both
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(TitlesAre(inspector, "Entity | Transform | Light"));
+		let intensity = inspector.PathOf("Light", "Intensity", .. scope String());
+		Commit(page, bed, intensity, 3.0);
+		Test.Assert(LightOf(page, lamp).Intensity == 3.0f);
+		Test.Assert(LightOf(page, bed.Crate).Intensity == 3.0f);
+
+		// The header's verbs: Remove Component takes it from both, one undo brings it back.
+		let shown = scope Shown(page);
+		Test.Assert(inspector.OpenHeaderMenu("#Light"));
+		let menu = inspector.Grid.RowMenu;
+		Test.Assert(menu != null);
+		Sedulous.GUI.MenuItem remove = null;
+		for (int i < menu.ChildCount)
+		{
+			if (let item = menu.GetChildAt(i) as Sedulous.GUI.MenuItem)
+			{
+				if (item.Text == "Remove Component")
+					remove = item;
+			}
+		}
+		Test.Assert(remove != null);
+		remove.HandleActivate();
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(TitlesAre(inspector, "Entity | Transform"));
+		page.Commands.Undo();
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(TitlesAre(inspector, "Entity | Transform | Light"));
+
+		// Simulating: read only, and said.
+		page.StartSimulation();
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.Sections.ReadOnly);
+		Test.Assert(FindId<Node>(page.Content, "inspector-note").Displayed);
+		let write = PropertyWrite(Sedulous.GUI.Variant(5.0));
+		inspector.Sections.BeginEdit(intensity);
+		inspector.Sections.CommitEdit(intensity, write);
+		Test.Assert(LightOf(page, lamp).Intensity == 3.0f);
+		page.StopSimulation();
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(!inspector.Sections.ReadOnly);
 		page.OnClose();
 	}
 }

@@ -13,7 +13,10 @@ namespace Sedulous.Scene;
 ///
 /// Implies everything ComponentAttribute does, so a serializable component needs only this
 /// one.
-[AttributeUsage(.Struct, .ReflectAttribute, ReflectUser = .Type | .NonStaticFields)]
+///
+/// Its default constructor is reflected too: an inspector's Reset reads the type's defaults
+/// from an instance it makes.
+[AttributeUsage(.Struct, .ReflectAttribute, ReflectUser = .Type | .NonStaticFields | .DefaultConstructor)]
 struct SerializableComponentAttribute : Attribute
 {
 	public String TypeId;
