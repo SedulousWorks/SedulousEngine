@@ -981,6 +981,8 @@ class EditorApplication : IApplication
 			mEmbeddedApp.OnUpdate(mEmbeddedHost, dt);
 		}
 		UpdateCaptures(host, dt);
+		if (let stage = mSession.Stage)
+			stage.Update(); // take and stage the next queued GPU thumbnail
 		LeakProbe.Update(dt);
 		// The cook's and the jobs' progress to the status line; an export waiting on its cook
 		// starts.
@@ -1093,6 +1095,8 @@ class EditorApplication : IApplication
 			if (mSceneRenderer != null)
 				mSceneRenderer.BeginRendering(frame.Encoder, frame.FrameIndex);
 			mPages.Render(host, ref frame);
+			if (let stage = mSession.Stage)
+				stage.Render(ref frame); // a thumbnail in the same bracket
 			if (mSceneRenderer != null)
 				mSceneRenderer.EndRendering();
 			mPages.AfterSceneRender(host, ref frame); // overlays on the composed targets (the Game tab's UI)

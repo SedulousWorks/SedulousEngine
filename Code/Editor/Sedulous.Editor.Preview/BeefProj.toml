@@ -20,9 +20,14 @@ corlib = "*"
 "Sedulous.Render.Api" = "*"
 "Sedulous.Render" = "*"
 "Sedulous.Engine.Render" = "*"
-"Sedulous.UI" = "*"
-"Sedulous.UI.Runtime" = "*"
-"Sedulous.UI.Viewport" = "*"
-"Sedulous.VG.Renderer" = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Editor.Camera" = "*"
+
+# On the GUI in parts (Raptor's editor-gui spec, 5.3): the thumbnail stage, the GPU half of asset
+# thumbnails, is UI-free and builds; the preview viewport the asset pages contain is still on
+# Sedulous.UI and stays out of the compile, unedited, until the asset pages port (X6).
+[ProjectFolder]
+
+[[ProjectFolder.Items]]
+Type = "IgnoreSource"
+Name = "PreviewViewport.bf"

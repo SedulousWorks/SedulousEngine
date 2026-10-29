@@ -45,6 +45,7 @@ corlib = "*"
 "Sedulous.Engine.Project" = "*"
 "Sedulous.Engine.Render" = "*"
 "Sedulous.Editor.Core" = "*"
+"Sedulous.Editor.Preview" = "*"
 "Sedulous.Editor.ViewportTools" = "*"
 # The MCP host: the shared engine surface over HTTP.
 "Sedulous.Json" = "*"

@@ -28,15 +28,19 @@ class SceneEditorPageFactory : IEditorPageFactory
 }
 
 /// Wires the scene editor into the editor (Raptor's editor-gui spec, 5.3, layer 2): its services
-/// (the document types, the export's scene seams, a model import's prefab and scene), the scene
-/// and prefab pages, the scene actions and the MCP live tools. The hierarchy, the inspector and
-/// the thumbnails come back with their layers.
+/// (the document types, the export's scene seams, a model import's prefab and scene), the
+/// thumbnail generators, the scene and prefab pages, the scene actions and the MCP live tools.
+/// The hierarchy and the inspector come back with their layers.
 static class SceneEditor
 {
 	/// `context`, `host` and `app` borrowed; they outlive the pages.
 	public static void Register(EditorContext context, IApplicationHost host, EditorApplication app)
 	{
 		SceneServices.Register(context, host);
+		// The pictures of meshes, materials, prefabs, scenes and effects: the generators queue,
+		// the application's thumbnail stage renders.
+		if (context.Thumbnails != null)
+			SceneThumbnailGenerators.Register(context.Thumbnails, context);
 
 		// The factories own one maker each.
 		context.Pages.Register(new SceneEditorPageFactory(typeof(SceneDocument), new [=host, =app]() => PageServices(host, app)));

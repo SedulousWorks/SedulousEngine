@@ -5,6 +5,10 @@ using System.Threading;
 using Sedulous.Core;
 using Sedulous.Core.IO;
 using Sedulous.Settings;
+using Sedulous.Graphics;
+using Sedulous.Runtime;
+using Sedulous.Runtime.Client;
+using Sedulous.Shell;
 using Sedulous.GUI; // the dock's layout
 using Sedulous.Pipeline.Core;
 using Sedulous.Editor.Core;
@@ -22,9 +26,25 @@ namespace Sedulous.Editor.App.Tests;
 /// store loads with the project, saves on a favourite's change and on close, what the views
 /// captured into it included; the dock's layout is captured into it each time it is written and
 /// before the views close, and a project that opens takes its saved layout, else the default; a
-/// close is idempotent and runs in the destructor.
+/// close is idempotent and runs in the destructor; the thumbnails' stage lives with a project over
+/// an embedded runtime's host, and only then.
 class EditorSessionTests
 {
+	/// An embedded runtime's host with no shell, graphics or subsystems: enough for the
+	/// thumbnails' stage to be made over it (and to sit disabled).
+	class HostOnly : IApplicationHost
+	{
+		public Context Context { get; } = new .() ~ delete _;
+
+		public IShell Shell => null;
+		public GraphicsDevice Graphics => null;
+		public RenderWindow MainRenderWindow => null;
+
+		public RenderWindow OpenWindow(WindowSettings windowSettings, RenderWindowDesc renderDesc) => null;
+		public void CloseWindow(RenderWindow window) {}
+		public void RequestExit(int code = 0) {}
+	}
+
 	/// The services a session runs on; the status lines land in Said, the hooks in Events.
 	class Bench
 	{
@@ -601,5 +621,32 @@ class EditorSessionTests
 		Test.Assert(session.Open(first));
 		Test.Assert(layout.StackOf(EditorDock.cPanelConsole) != cNoDock);
 		Test.Assert(layout.StackOf(EditorDock.cPanelConsole) == layout.StackOf(EditorDock.cPanelAssets));
+	}
+
+	/// The stage is made as a project opens over an embedded runtime's host, after its resources,
+	/// and goes as it closes; a headless session, with no host, has none.
+	[Test]
+	public static void TheThumbnailsStageLivesWithAProjectOverAnEmbeddedHost()
+	{
+		let bench = scope Bench();
+		let dir = bench.MadeProject("scratch_editor_session_stage", "Staged");
+		let host = scope HostOnly();
+		{
+			let session = scope EditorSession(bench.Services());
+			bench.Session = session;
+			Test.Assert(session.Open(dir));
+			Test.Assert(session.Stage == null, "headless: no host to render on");
+			session.Close();
+
+			session.SetEmbedded(host, null);
+			Test.Assert(session.Stage == null, "no project yet");
+			Test.Assert(session.Open(dir));
+			Test.Assert(session.Stage != null);
+			Test.Assert(!session.Stage.IsBusy);
+			session.Stage.Update(); // no scene or render subsystem on this host: it stays idle
+			Test.Assert(!session.Stage.IsBusy);
+			session.Close();
+			Test.Assert(session.Stage == null);
+		}
 	}
 }

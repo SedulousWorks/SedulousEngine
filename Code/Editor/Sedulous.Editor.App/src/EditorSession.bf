@@ -13,6 +13,7 @@ using Sedulous.Engine.DefaultApp;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
 using Sedulous.Editor.Mcp;
+using Sedulous.Editor.Preview;
 
 namespace Sedulous.Editor.App;
 
@@ -89,6 +90,8 @@ class EditorSession
 	private EditorProject mProject = null ~ delete _;
 	private Settings mStore = null ~ delete _;
 	private ResourceManager mResources = null ~ delete _;
+	/// The thumbnails' GPU stage while a project is open over an embedded runtime.
+	private ThumbnailStage mThumbnailStage = null ~ delete _;
 
 	/// TAKES OWNERSHIP of the services.
 	public this(EditorSessionServices services)
@@ -140,6 +143,11 @@ class EditorSession
 		}
 		OpenProjectStore();
 		AttachResources();
+		// The GPU half of the thumbnails, once the resources exist (the stage keeps them: a null
+		// one stalls every queued job), on the embedded host whose context holds the scene and
+		// render subsystems. It goes before the service resets, so a job in flight unstages.
+		if ((mServices.EmbeddedHost != null) && (mServices.Thumbnails != null))
+			mThumbnailStage = new ThumbnailStage(mServices.EmbeddedHost, mServices.Thumbnails, mResources);
 		// Raptor loads the project's native module here: not in Sedulous's editor (RaptorSync.md,
 		// "Standing differences").
 		let app = mServices.EmbeddedApp;
@@ -196,6 +204,7 @@ class EditorSession
 			mServices.OnClosing();
 		mServices.Cook.Shutdown(); // joins a cook in flight before the databases go
 		DeleteAndNullify!(mServices.Cook.OnCookFinished); // it reaches this session
+		DeleteAndNullify!(mThumbnailStage); // unstages and drops its GPU objects while the renderer lives
 		mServices.Thumbnails.Reset(); // in-flight slots outlive harmlessly; the entries drop
 		// What the views put in it as they closed (the open pages), the views not captured again:
 		// what they were is in it already, and what they are now is closing.
@@ -238,6 +247,9 @@ class EditorSession
 	public Settings Store => mStore;
 	/// The resources over the project's cooked database; null with no project.
 	public ResourceManager Resources => mResources;
+	/// The thumbnails' GPU stage while a project is open over an embedded runtime: the
+	/// application stages a job each frame and renders it in the scene renderer's bracket.
+	public ThumbnailStage Stage => mThumbnailStage;
 
 	/// Writes the per-project store, the views' state captured into it first.
 	public void SaveStore()

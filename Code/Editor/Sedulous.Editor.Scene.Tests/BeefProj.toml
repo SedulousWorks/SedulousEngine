@@ -37,6 +37,7 @@ corlib = "*"
 "Sedulous.Script.Resource" = "*"
 "Sedulous.Model.Resource" = "*"
 "Sedulous.ModelImporter" = "*"
+"Sedulous.Editor.Preview" = "*"
 "Sedulous.Materials" = "*"
 "Sedulous.Materials.Resource" = "*"
 "Sedulous.Materials.Pipeline" = "*"
@@ -64,9 +65,8 @@ corlib = "*"
 "Sedulous.Editor.App" = "*"
 "Sedulous.GUI.Toolkit" = "*"
 
-# On the GUI in parts with its library: these drive the page, the hierarchy, the inspector and the
-# picker dialogs on Sedulous.UI, or the thumbnail stage in the parked Editor.Preview; they come
-# back with those layers (Raptor's editor-gui spec, 5.3).
+# On the GUI in parts with its library: these drive the hierarchy, the inspector and the picker
+# dialogs on Sedulous.UI; they come back with those layers (Raptor's editor-gui spec, 5.3).
 [ProjectFolder]
 
 [[ProjectFolder.Items]]
@@ -92,11 +92,3 @@ Name = "InspectorViewTests.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "SettingsProfileTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "SceneThumbnailTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "ThumbnailDownscaleTests.bf"
