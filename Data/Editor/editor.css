@@ -334,7 +334,7 @@ toast { border: 1px solid var(--border-strong); }
 .asset-list .asset-row > .badge-icon { margin-left: var(--space-xs); image-color: var(--icon-dim); opacity: var(--disabled-opacity); }
 .asset-list .asset-row > .badge-icon:last-child { margin-right: var(--space-xs); }
 .asset-list .asset-row > .badge-icon.on { opacity: 1; }
-.asset-list .asset-row > .badge-icon.star.on { image-color: var(--category-light); }
+.asset-list .asset-row > .badge-icon.star.on { image-color: var(--favourite); }
 .asset-list .asset-row > .badge-icon.always-export.on { image-color: var(--success); }
 .asset-tile.group > .asset-thumb > .asset-glyph, .asset-row.group > .row-icon { image-color: var(--icon); }
 .assets-state { flex-grow: 1; background-color: var(--surface); }
@@ -447,7 +447,7 @@ button.search-clear:hover { background-color: var(--ghost-hover); }
 .badge.danger { background-color: var(--danger-background); color: var(--danger); }
 .badge.accent { background-color: var(--accent-subtle); color: var(--accent-strong); }
 .badge-icon { width: 14px; height: 14px; flex-shrink: 0; image-color: var(--icon-dim); }
-.badge-icon.star { image-color: var(--category-light); }
+.badge-icon.star { image-color: var(--favourite); }
 .badge-icon.danger { image-color: var(--danger); }
 .dirty-dot { width: 7px; height: 7px; border-radius: 4px; background-color: var(--accent-strong); flex-shrink: 0; align-self: center; }
 

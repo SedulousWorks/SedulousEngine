@@ -941,6 +941,14 @@ static class AssetsViewTests
 		Test.Assert(Math.Abs(barrel.GetChildAt(barrel.ChildCount - 2).Size.X - 14.0f) < 0.1f); // Always Export
 		Test.Assert(barrel.ShowsAlwaysExport);
 		Test.Assert(!bell.ShowsAlwaysExport);
+		// Lit, a favourite's star is gold (its token defined: an undefined one left it white), and
+		// greyed when not.
+		Sedulous.GUI.Image StarOf(AssetCell cell) => cell.GetChildAt(cell.ChildCount - 1) as Sedulous.GUI.Image;
+		Test.Assert(StarOf(barrel) != null);
+		let gold = StarOf(barrel).ImageColor;
+		Test.Assert(gold.R > gold.B + 0.3f, "yellow: red and green well over blue");
+		Test.Assert(gold.G > gold.B + 0.2f);
+		Test.Assert(StarOf(bell).ImageColor.R < gold.R);
 		let barrelRight = KindRight(barrel);
 		let bellRight = KindRight(bell);
 		Test.Assert(Math.Abs(barrelRight - bellRight) < 0.1f, scope $"the kinds end at {barrelRight} and {bellRight}: the badge's, the export's and the star's columns kept on the row without them");

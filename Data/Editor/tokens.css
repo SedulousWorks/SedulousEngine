@@ -67,6 +67,7 @@
     /* Status, each a colour for text and icons, a background and a border. */
     --danger: #f06b63;    --danger-background: #3a1d1e;  --danger-border: #6e2f2d;
     --warning: #e3b14f;   --warning-background: #3a2f17; --warning-border: #6b5321;
+    --favourite: #f2c14e; /* a favourite's star, gold */
     --success: #4fbd85;   --success-background: #173326; --success-border: #25583d;
     --info: #63a4ff;      --info-background: #172a44;    --info-border: #24497a;
 
@@ -133,6 +134,7 @@
 
         --danger: #c8372d;    --danger-background: #fbe7e5;  --danger-border: #f0b7b1;
         --warning: #9a6a00;   --warning-background: #fbf1d9; --warning-border: #ead08c;
+        --favourite: #b07d00;
         --success: #1e8a55;   --success-background: #e1f4ea; --success-border: #a6dcbf;
         --info: #1f6fd6;      --info-background: #e3eefc;    --info-border: #a9c8f3;
 
