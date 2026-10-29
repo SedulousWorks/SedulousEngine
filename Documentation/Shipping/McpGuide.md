@@ -37,8 +37,9 @@ the zoom in either projection); editor state only, no undo step. `viewport_frame
 default the selection), each with everything under it, as the user's F does: the camera stands
 back along its view until they fit and orbits about them, at once, so a screenshot after shows
 it. `viewport_screenshot` writes what the viewport renders to a
-PNG and returns its path and size: the scene with the grid, the markers, the selection's
-gizmo and the tool's hint text, not the panels docked over the viewport. It brings the page to front first, since a
+PNG and returns its path and size: the scene with the grid, the markers and the selection's
+gizmo, not the HUD over the view (its chips, the stats, the view gizmo, the tool's status) or
+the panels docked over the viewport. It brings the page to front first, since a
 hidden viewport never renders. Move the camera, shoot, read the file. `editor_screenshot`
 writes the whole editor window as the user sees it (panels, pages, menus, dialogs, toasts) the
 same way, `window: "all"` adding each floating window beside it, for checking the editor's own
