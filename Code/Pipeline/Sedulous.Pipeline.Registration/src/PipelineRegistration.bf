@@ -142,6 +142,7 @@ static class PipelineRegistration
 		TerrainPipeline.RegisterAll();
 		TexturePipeline.RegisterAll();
 		UIPipeline.RegisterAll();
+		VegetationPipeline.RegisterAll();
 		VGPipeline.RegisterAll();
 		GuiPipeline.RegisterAll();
 

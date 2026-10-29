@@ -83,6 +83,24 @@ static class PipelineRegistrationTests
 			});
 	}
 
+	/// Every builder's asset type is a registered serializable too: a source asset is read back by
+	/// its type name, so one whose pipeline's registry was never run writes (its creator works) and
+	/// then never reads (the vegetation mask was such, its registry run only by the parked editor
+	/// page).
+	[Test]
+	public static void EveryBuildersAssetTypeIsARegisteredSerializable()
+	{
+		PipelineRegistration.RegisterPipelineTypes();
+		defer PipelineRegistration.Teardown();
+		let registry = scope BuilderRegistry();
+		PipelineRegistration.RegisterAllBuilders(registry, FindDataRoot(.. scope .()));
+		registry.ForEach(scope (builder) =>
+			{
+				let name = builder.AssetType.GetFullName(.. scope .());
+				Test.Assert(GlobalSerializableRegistry.IsRegistered(TypeIdOf(name)), scope $"asset {name} is not a registered serializable");
+			});
+	}
+
 	/// Every creator the engine ships registers, three per script language on top of the
 	/// fixed set, and each makes an instance of its own type in a plain source database, with
 	/// no editor: the headless host's creation and the editor's are the same code.
