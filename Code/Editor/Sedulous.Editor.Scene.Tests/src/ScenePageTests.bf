@@ -179,11 +179,19 @@ class ScenePageTests
 		}
 
 		/// The page over `instance`; the caller's.
+		/// What the page last asked its picker to show; the bed's.
+		public PickerRequest Picked = null ~ delete _;
+
 		public SceneEditorPage Open(Instance instance)
 		{
 			let services = new SceneEditorPageServices();
 			services.Host = Host;
 			services.LoadMarkup = new (path) => LoadMarkup(path);
+			services.Pick = new [=this] (request, anchor) =>
+				{
+					delete Picked;
+					Picked = request;
+				};
 			return new SceneEditorPage(Context, services, instance);
 		}
 	}
@@ -1425,6 +1433,38 @@ class ScenePageTests
 		page.Commands.Undo();
 		Test.Assert(Mesh().Mesh.Id.IsNil);
 		Test.Assert(Mesh().Mesh.Get == null); // and let go on undo
+		page.OnClose();
+	}
+
+	[Test]
+	public static void InspectorAddComponentsPickerListsEachComponentByItsDisplayNameUnderItsCategoryTheCategoriesTogether()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		page.Inspector.OpenAddComponent(null);
+		Test.Assert((bed.Picked != null) && !bed.Picked.Items.IsEmpty);
+		let items = bed.Picked.Items;
+		PickerItem light = null;
+		for (let item in items)
+		{
+			if (item.Key == "LightComponent")
+				light = item;
+		}
+		Test.Assert(light != null);
+		Test.Assert(light.Name == "Light"); // its display name, not its type's name
+		Test.Assert(light.Section == "Rendering"); // its category
+		Test.Assert(!light.Detail.IsEmpty); // its description
+		// Each category's rows together, so a section shows once.
+		for (int i = 2; i < items.Count; i++)
+		{
+			if (items[i].Section == items[i - 1].Section)
+				continue;
+			for (int j = 0; j + 1 < i; j++)
+				Test.Assert(items[j].Section != items[i].Section);
+		}
 		page.OnClose();
 	}
 }

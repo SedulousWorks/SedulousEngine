@@ -427,6 +427,13 @@ class SceneInspectorView
 				item.GlyphClass.Set(icon.Class);
 			}
 		}
+		// Sections show where their first item is: sorted, each category's rows together (by the
+		// categories' names, then the components').
+		request.Items.Sort(scope (a, b) =>
+			{
+				let section = String.Compare(a.Section, b.Section, false);
+				return (section != 0) ? section : String.Compare(a.Name, b.Name, false);
+			});
 		request.EmptyTitle.Set("Nothing more to add");
 		request.EmptyText.Set("Every component the scene knows is on the selection.");
 		request.OnPicked = new (key) => { AddComponent(key); };
