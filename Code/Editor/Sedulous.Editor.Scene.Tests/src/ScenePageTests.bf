@@ -38,7 +38,8 @@ namespace Sedulous.Editor.Scene.Tests;
 /// Add Component; a transform's and a component's edits, each one undo step; several entities
 /// edited at once; a header's verbs; read only while the page simulates; an entity reference's
 /// slot; a component's extras (a rigid body's notice, a zone's Bake); a script component's
-/// behaviours.
+/// behaviours; the scene's settings with the scene selected, the physics block's collision groups
+/// and the level script's properties.
 class ScenePageTests
 {
 	/// A host whose context has a scene subsystem and nothing else: no renderer, no window.
@@ -889,6 +890,176 @@ class ScenePageTests
 		Test.Assert(Component().Behaviors[0].Enabled);
 		page.Commands.Undo(); // the insert
 		Test.Assert(Component().Behaviors.IsEmpty);
+		page.OnClose();
+	}
+
+	[Test]
+	public static void InspectorTheSceneSelectedShowsItsSettingsABlockASectionAnEditLandsInTheScenesBlockOneUndoStep()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		let shown = scope Shown(page);
+		shown.Click(page.Hierarchy.Tree, 0); // the scene's row
+		Test.Assert(page.Hierarchy.SceneSelected);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.Kind == "Scene");
+		Test.Assert(FindId<TextField>(page.Content, "inspector-name").Text == "Level");
+		Test.Assert(!FindId<Node>(page.Content, "inspector-add").Displayed); // no components to add
+		let environment = inspector.SettingsOf("Environment");
+		Test.Assert(environment != null);
+
+		let system = page.EditContext.FindSystemBySettingsType(typeof(EnvironmentSettings));
+		Test.Assert(system != null);
+		float Turbidity() => ((EnvironmentSettings*)page.EditContext.SettingsEditTarget(typeof(EnvironmentSettings), .Empty)).Turbidity;
+		let before = Turbidity();
+		environment.BeginEdit("Turbidity");
+		environment.CommitEdit("Turbidity", PropertyWrite(Sedulous.GUI.Variant(7.5)));
+		Test.Assert(Turbidity() == 7.5f);
+		page.Commands.Undo();
+		Test.Assert(Turbidity() == before);
+		page.Commands.Redo();
+		Test.Assert(Turbidity() == 7.5f);
+
+		// A block that can use a profile offers to make one while it uses its own values.
+		if (system.SettingsProfileType != null)
+		{
+			Test.Assert(inspector.ShowsProfileAction("Environment", "Make Profile"));
+			Test.Assert(!inspector.ShowsProfileAction("Environment", "Open Profile"));
+		}
+
+		// An entity selected again: its inspector, not the scene's.
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(inspector.Kind == "Entity");
+		page.OnClose();
+	}
+
+	[Test]
+	public static void InspectorThePhysicsBlocksCollisionGroupsDefaultFirstANewGroupCollidesWithAllAPairBothWaysOnlyTheLastRemoved()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		let shown = scope Shown(page);
+		shown.Click(page.Hierarchy.Tree, 0); // the scene's row
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let groups = inspector.ExtraSource("Physics", 0);
+		Test.Assert(groups != null);
+		Test.Assert(!inspector.PathOf("Physics", "groups", .. scope String()).IsEmpty);
+		PhysicsSceneSettings Settings() => (PhysicsSceneSettings)Internal.UnsafeCastToObject(page.EditContext.FindSystemBySettingsType(typeof(PhysicsSceneSettings)).SettingsInstance);
+		int64 IntOf(StringView path) => groups.GetValue(path, 0).AsInt;
+
+		// None stored: one, Default.
+		Test.Assert(IntOf("groups") == 1);
+		var name = groups.GetValue("groups.0.name", 0);
+		Test.Assert(name.AsString == "Default");
+		name.Dispose();
+		let add = scope ListEdit();
+		add.Kind = .Insert;
+		add.Index = 0; // at the end whatever the place
+		Test.Assert(groups.EditList("groups", add));
+		Test.Assert(Settings().GroupNames.Count == 2);
+		Test.Assert(Settings().GroupNames[0] == "Default");
+		Test.Assert(Settings().GroupNames[1] == "Group 1");
+		Test.Assert(IntOf("groups.1.collides") == 3);
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		groups.GetProperties("groups.1", rows);
+		Test.Assert(rows.Count == 2);
+		Test.Assert(rows[1].Kind == .Flags);
+		Test.Assert(rows[1].Choices.Count == 2);
+		Test.Assert(rows[1].Choices[1].Name == "Group 1");
+
+		// Group 1 no longer collides with Default: both rows say so.
+		var off = PropertyWrite(Sedulous.GUI.Variant((int64)2));
+		off.Mask = 1;
+		groups.CommitEdit("groups.1.collides", off);
+		Test.Assert((Settings().GroupCollides[1] & 1) == 0);
+		Test.Assert((Settings().GroupCollides[0] & 2) == 0);
+		Test.Assert(IntOf("groups.0.collides") == 1);
+		groups.CommitEdit("groups.1.name", PropertyWrite(Sedulous.GUI.Variant("Players")));
+		Test.Assert(Settings().GroupNames[1] == "Players");
+		page.Commands.Undo(); // the rename alone
+		Test.Assert(Settings().GroupNames[1] == "Group 1");
+		Test.Assert((Settings().GroupCollides[0] & 2) == 0);
+
+		// Only the last: the others keep their bodies' indices.
+		let remove = scope ListEdit();
+		remove.Kind = .Remove;
+		remove.Index = 0;
+		Test.Assert(!groups.EditList("groups", remove));
+		remove.Index = 1;
+		Test.Assert(groups.EditList("groups", remove));
+		Test.Assert(IntOf("groups") == 1);
+		remove.Index = 0;
+		Test.Assert(!groups.EditList("groups", remove)); // Default stays
+		page.Commands.Undo(); // the remove
+		Test.Assert(IntOf("groups") == 2);
+		page.OnClose();
+	}
+
+	[Test]
+	public static void LevelScriptTheLevelClasssPropertiesAsRowsAnEditAnOverrideOnTheScenesBlockOneUndoStepARevertDropsIt()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let edit = page.EditContext;
+		SceneScriptSettings Settings() => (SceneScriptSettings)Internal.UnsafeCastToObject(edit.FindSystemBySettingsType(typeof(SceneScriptSettings)).SettingsInstance);
+		let source = scope LevelScriptSource(edit, bed.Context);
+		let none = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(none); }
+		source.GetProperties(default, none);
+		Test.Assert(none.IsEmpty); // no Level class: nothing to author
+
+		let level = scope ScriptClass();
+		level.ClassName.Set("Level");
+		let speed = new ScriptPropertyDesc();
+		speed.Name.Set("speed");
+		speed.Hash = 41;
+		speed.Type = .Float;
+		speed.Default = ScriptPropertyValue.Float(2.0);
+		level.Properties.Add(speed);
+		let spawn = new ScriptPropertyDesc();
+		spawn.Name.Set("spawn");
+		spawn.Hash = 42;
+		spawn.Type = .Vec3;
+		spawn.Default = ScriptPropertyValue.Vec3(.(0, 0, 0));
+		level.Properties.Add(spawn);
+		Settings().Script.SetDirect(level);
+		source.Refresh();
+
+		let rows = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(rows); }
+		source.GetProperties(default, rows);
+		Test.Assert(rows.Count == 2);
+		Test.Assert(rows[0].DisplayName == "speed");
+		Test.Assert(rows[0].Kind == .Float);
+		Test.Assert(rows[1].Kind == .Group);
+		let parts = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(parts); }
+		source.GetProperties(rows[1].Name, parts);
+		Test.Assert(parts.Count == 3);
+		Test.Assert(source.GetValue("p41", 0).AsFloat == 2.0);
+
+		source.CommitEdit("p41", PropertyWrite(Sedulous.GUI.Variant(5.0)));
+		Test.Assert(Settings().FindOverride(41) != null);
+		Test.Assert(source.GetValue("p41", 0).AsFloat == 5.0);
+		source.CommitEdit("p42.y", PropertyWrite(Sedulous.GUI.Variant(3.0)));
+		Test.Assert(Settings().FindOverride(42) != null);
+		Test.Assert(Settings().FindOverride(42).Value.Vector.Y == 3.0f);
+		page.Commands.Undo(); // the part alone
+		Test.Assert(Settings().FindOverride(42) == null);
+		Test.Assert(Settings().FindOverride(41) != null);
+		Test.Assert(source.Revert("p41"));
+		Test.Assert(Settings().FindOverride(41) == null);
+		Test.Assert(source.GetValue("p41", 0).AsFloat == 2.0);
+		page.Commands.Undo(); // the revert
+		Test.Assert(Settings().FindOverride(41) != null);
+		Settings().Script.SetDirect(null); // the test's class goes before the scene
 		page.OnClose();
 	}
 }

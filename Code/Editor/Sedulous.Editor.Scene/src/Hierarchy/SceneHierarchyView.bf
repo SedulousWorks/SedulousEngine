@@ -414,6 +414,10 @@ class SceneHierarchyView
 		}
 	}
 
+	/// Whether the scene's own row is selected (ruling 12: the scene's settings are the scene
+	/// selected; the inspector shows them).
+	public bool SceneSelected => (mTree != null) && mTree.IsIdSelected(cSceneRowId);
+
 	/// The in-place rename of an entity's row (F2, the menu's Rename).
 	public void BeginRename(Guid entity)
 	{

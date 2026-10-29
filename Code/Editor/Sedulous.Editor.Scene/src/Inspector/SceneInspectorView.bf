@@ -26,6 +26,10 @@ namespace Sedulous.Editor.Scene;
 //     types the selection lacks, by category, each with its icon and its description.
 //   - A component's extras, asked of its type (InspectorExtrasRegistry): its notices, its actions
 //     and sections of their own, under its header.
+//   - The scene selected (its hierarchy row), the scene's settings: a section per system's block,
+//     each property showing and editing where it lands (the block's own values, or its profile's
+//     while it uses one), a block's profile actions under its header (open it, make one from these
+//     values, copy its values into the scene).
 //   - A search narrows the rows. While the page simulates the grid is read only, and says so.
 //   - Built again when the selection, the scene's shape or the components change; otherwise only
 //     the values are shown again, so a gizmo's drag or an undo shows as it happens.
@@ -49,6 +53,11 @@ class SceneInspectorServices
 	public delegate void(PickerRequest request, Node anchor) Pick ~ delete _;
 	/// Whether the page simulates (the grid read only meanwhile).
 	public delegate bool() Simulating ~ delete _;
+	/// Whether the scene's own row is selected (ruling 12: then the scene's settings show).
+	public delegate bool() SceneSelected ~ delete _;
+	/// The scene's icon (a prefab's or a scene's document) and name, for its head.
+	public String SceneIcon = new .() ~ delete _;
+	public delegate StringView() SceneName ~ delete _;
 }
 
 class SceneInspectorView
@@ -81,6 +90,8 @@ class SceneInspectorView
 		{
 			public String Name = new .() ~ delete _;
 			public delegate void() Run ~ delete _;
+			/// Null: always shown.
+			public delegate bool() Shown ~ delete _;
 		}
 
 		private class Section
@@ -91,14 +102,19 @@ class SceneInspectorView
 
 		public Sedulous.GUI.PropertyBag Bag ~ delete _;
 		private SceneInspectorView mView;
+		// A settings block's: no entities.
+		private bool mOfEntities;
 		private List<Section> mSources = new .() ~ DeleteContainerAndItems!(_);
 		private List<Notice> mNotices = new .() ~ DeleteContainerAndItems!(_);
 		private List<Action> mActions = new .() ~ DeleteContainerAndItems!(_);
 
-		public this(SceneInspectorView view)
+		/// A component's over the view's entities, or a settings block's (`ofEntities` false: one
+		/// object, no entities).
+		public this(SceneInspectorView view, bool ofEntities)
 		{
 			mView = view;
-			Bag = new .(view.mEntities.Count);
+			mOfEntities = ofEntities;
+			Bag = new .(ofEntities ? view.mEntities.Count : 1);
 			Bag.SetOnCommit(new (commit) =>
 				{
 					for (let action in mActions)
@@ -111,7 +127,7 @@ class SceneInspectorView
 
 		public override SceneEditContext Edit => mView.mEdit;
 		public override EditorContext Context => mView.mServices.Context;
-		public override Span<Guid> Entities => mView.mEntities;
+		public override Span<Guid> Entities => mOfEntities ? mView.mEntities : default;
 
 		public override void AddNotice(StringView name, delegate void(String outMessage) message)
 		{
@@ -136,6 +152,21 @@ class SceneInspectorView
 			action.Name.Set(name);
 			action.Run = run;
 			mActions.Add(action);
+		}
+
+		/// An action shown only while `shown` (taken) says so.
+		public void AddShownAction(StringView name, StringView label, StringView description, delegate void() run, delegate bool() shown)
+		{
+			AddAction(name, label, description, run);
+			mActions.Back.Shown = shown;
+			if (let info = Bag.FindInfo(name))
+				info.Visible = shown();
+		}
+
+		public bool IsShown(StringView name)
+		{
+			let info = Bag.FindInfo(name);
+			return (info != null) && info.Visible;
 		}
 
 		public override void AddSection(IPropertySource source, delegate void() refresh)
@@ -176,6 +207,18 @@ class SceneInspectorView
 				if ((info != null) && (info.Visible == message.IsEmpty))
 				{
 					info.Visible = !message.IsEmpty;
+					shown = true;
+				}
+			}
+			for (let action in mActions)
+			{
+				if (action.Shown == null)
+					continue;
+				let visible = action.Shown();
+				let info = Bag.FindInfo(action.Name);
+				if ((info != null) && (info.Visible != visible))
+				{
+					info.Visible = visible;
 					shown = true;
 				}
 			}
@@ -236,6 +279,20 @@ class SceneInspectorView
 	private List<Transform> mTransforms = new .() ~ delete _;
 	private FieldPropertySource mTransform = null ~ delete _;
 	private List<ComponentSection> mComponents = new .() ~ DeleteContainerAndItems!(_);
+
+	// The scene's settings while it is selected: a source per block, a block's profile actions.
+	private class SettingsSection
+	{
+		public String Key = new .() ~ delete _;
+		public String Title = new .() ~ delete _;
+		public SceneSettingsSource Source ~ delete _;
+		/// Null: the block has no profile.
+		public Extras Profile ~ delete _;
+		/// Null: none.
+		public Extras Extras ~ delete _;
+	}
+
+	private List<SettingsSection> mSettings = new .() ~ DeleteContainerAndItems!(_);
 	private String mFilter = new .() ~ delete _;
 	private uint64 mSignature = ~(uint64)0;
 	private bool mReadOnly = false;
@@ -414,29 +471,75 @@ class SceneInspectorView
 
 	// === For tests ===
 
-	/// A component section's extras' row at `name` (a notice's text, an action's label), appended;
-	/// nothing when there is none or it is hidden.
+	/// A section's extras' row at `name` (a notice's text, an action's label), appended; nothing
+	/// when there is none or it is hidden.
 	public void ExtraText(StringView title, StringView name, String outText)
 	{
-		for (let section in mComponents)
-		{
-			if ((section.Title == title) && (section.Extras != null))
-			{
-				section.Extras.Text(name, outText);
-				return;
-			}
-		}
+		if (let extras = ExtrasOf(title))
+			extras.Text(name, outText);
 	}
 
-	/// Runs a component section's action `name`, as its button does.
+	/// Runs a section's action `name`, as its button does.
 	public bool RunExtra(StringView title, StringView name)
+	{
+		let extras = ExtrasOf(title);
+		return (extras != null) && extras.Run(name);
+	}
+
+	/// A section's extras' source `index` (a script component's behaviours, a block's collision
+	/// groups); null: none.
+	public IPropertySource ExtraSource(StringView title, int index)
+	{
+		let extras = ExtrasOf(title);
+		return ((extras != null) && (index < extras.SourceCount)) ? extras.SourceAt(index) : null;
+	}
+
+	/// A settings block's section by its title; null: none.
+	public SceneSettingsSource SettingsOf(StringView title)
+	{
+		for (let section in mSettings)
+		{
+			if (section.Title == title)
+				return section.Source;
+		}
+		return null;
+	}
+
+	/// A settings block's profile action `name` ("Open Profile", "Make Profile", "Copy Into
+	/// Scene"): whether it shows now; RunProfileAction runs it.
+	public bool ShowsProfileAction(StringView title, StringView name)
+	{
+		for (let section in mSettings)
+		{
+			if ((section.Title == title) && (section.Profile != null))
+				return section.Profile.IsShown(name);
+		}
+		return false;
+	}
+
+	public bool RunProfileAction(StringView title, StringView name)
+	{
+		for (let section in mSettings)
+		{
+			if ((section.Title == title) && (section.Profile != null))
+				return section.Profile.Run(name);
+		}
+		return false;
+	}
+
+	private Extras ExtrasOf(StringView title)
 	{
 		for (let section in mComponents)
 		{
-			if ((section.Title == title) && (section.Extras != null))
-				return section.Extras.Run(name);
+			if (section.Title == title)
+				return section.Extras;
 		}
-		return false;
+		for (let section in mSettings)
+		{
+			if (section.Title == title)
+				return section.Extras;
+		}
+		return null;
 	}
 
 	public PropertyGrid Grid => mGrid;
@@ -451,6 +554,12 @@ class SceneInspectorView
 			outText.Append(" | Transform");
 		for (let section in mComponents)
 			outText.AppendF(" | {}", section.Title);
+		for (let section in mSettings)
+		{
+			if (!outText.IsEmpty)
+				outText.Append(" | ");
+			outText.Append(section.Title);
+		}
 	}
 
 	/// The grid's path of `property` in the section titled `title`, appended; nothing when there
@@ -475,6 +584,39 @@ class SceneInspectorView
 				return;
 			}
 		}
+		// A settings block's: its own rows, else an extra source's (the collision groups).
+		for (let section in mSettings)
+		{
+			if (section.Title != title)
+				continue;
+			if (Holds(section.Source, property))
+			{
+				mSections.PathIn(section.Key, property, outPath);
+				return;
+			}
+			for (int i < ((section.Extras != null) ? section.Extras.SourceCount : 0))
+			{
+				if (Holds(section.Extras.SourceAt(i), property))
+				{
+					mSections.PathIn(scope $"y{section.Key}.{i}", property, outPath);
+					return;
+				}
+			}
+		}
+	}
+
+	// Whether `source` has a top-level row named `property`.
+	private static bool Holds(IPropertySource source, StringView property)
+	{
+		let top = scope List<PropertyInfo>();
+		defer { ClearAndDeleteItems!(top); }
+		source.GetProperties(default, top);
+		for (let info in top)
+		{
+			if (info.Name == property)
+				return true;
+		}
+		return false;
 	}
 
 	/// The component a section's header path ("#Light") stands for; null: none.
@@ -513,6 +655,7 @@ class SceneInspectorView
 	{
 		let scene = mEdit.Scene;
 		var hash = Mix(14695981039346656037UL, scene.Revision);
+		hash = Mix(hash, ShowsScene ? 1 : 0);
 		for (let entity in mEdit.EntitySelection.Items)
 		{
 			hash = Mix(hash, (uint64)entity.GetHashCode());
@@ -534,6 +677,7 @@ class SceneInspectorView
 	{
 		mSections.Clear();
 		ClearAndDeleteItems!(mComponents);
+		ClearAndDeleteItems!(mSettings);
 		DeleteAndNullify!(mTransform);
 		DeleteAndNullify!(mActive);
 		mTransforms.Clear();
@@ -550,13 +694,21 @@ class SceneInspectorView
 				mEntities.Add(entity);
 		}
 		let any = !mEntities.IsEmpty;
+		let sceneShown = !any && ShowsScene;
 		if (let state = Find<Node>("inspector-state"))
-			state.Displayed = !any;
+			state.Displayed = !any && !sceneShown;
 		if (mGrid != null)
-			mGrid.Displayed = any;
+			mGrid.Displayed = any || sceneShown;
 		if (let add = Find<Node>("inspector-add"))
-			add.Displayed = any;
+			add.Displayed = any; // a scene has settings, not components
 		BuildHead();
+		if (sceneShown)
+		{
+			BuildScene();
+			if ((mGrid != null) && !mFilter.IsEmpty)
+				mGrid.Filter = mFilter;
+			return;
+		}
 		if (!any)
 			return;
 
@@ -587,6 +739,19 @@ class SceneInspectorView
 		let kind = Find<Label>("inspector-kind");
 		let icon = Find<Image>("inspector-icon");
 		let count = mEntities.Count;
+		if ((count == 0) && ShowsScene)
+		{
+			if (mName != null)
+			{
+				mName.Text = (mServices.SceneName != null) ? mServices.SceneName() : "";
+				mName.Enabled = false; // the asset's name: Save As names another
+			}
+			if (kind != null)
+				kind.Text = "Scene";
+			if (icon != null)
+				icon.Source = mServices.SceneIcon.IsEmpty ? "Editor/Icons/Types/SceneDocument.svg" : (StringView)mServices.SceneIcon;
+			return;
+		}
 		if (mName != null)
 		{
 			mName.Text = (count == 1) ? scene.GetEntityName(scene.FindEntity(mEntities[0])) : "";
@@ -681,31 +846,103 @@ class SceneInspectorView
 					new [=this, =type] (apply) => { CommitComponent(type, apply); },
 					mServices.Resources);
 				mSections.Add(section.Key, section.Title, section.Source);
-				BuildExtras(section);
+				section.Extras = BuildExtras(type, section.Key, section.Title, true);
 				mComponents.Add(section);
 			});
 	}
 
-	private void BuildExtras(ComponentSection section)
+	// A type's extras (a component's over the entities, a settings block's) under its section; null:
+	// none. The caller takes them.
+	private Extras BuildExtras(Type type, StringView key, StringView title, bool ofEntities)
 	{
-		let extras = new Extras(this);
-		InspectorExtrasRegistry.ForEach(section.Type, scope [&] (provider) => { provider(extras); });
+		let extras = new Extras(this, ofEntities);
+		InspectorExtrasRegistry.ForEach(type, scope [&] (provider) => { provider(extras); });
 		if (extras.IsEmpty)
 		{
 			delete extras;
-			return;
+			return null;
 		}
 		extras.Refresh();
-		// Under the component's header: the grid groups a title's rows together.
+		// Under the section's header: the grid groups a title's rows together.
 		if (extras.HasRows)
-			mSections.Add(scope $"x{section.Key}", section.Title, extras.Bag);
+			mSections.Add(scope $"x{key}", title, extras.Bag);
 		for (int i < extras.SourceCount)
-			mSections.Add(scope $"y{section.Key}.{i}", section.Title, extras.SourceAt(i));
-		section.Extras = extras;
+			mSections.Add(scope $"y{key}.{i}", title, extras.SourceAt(i));
+		return extras;
+	}
+
+	private bool ShowsScene => (mServices.SceneSelected != null) && mServices.SceneSelected();
+
+	// The scene's settings: a section per system's block, a block that can use a profile with the
+	// profile's verbs over it.
+	private void BuildScene()
+	{
+		let context = mServices.Context;
+		let edit = mEdit;
+		let types = scope List<Type>();
+		for (let system in mEdit.Scene.Systems)
+		{
+			if (system.SettingsType != null)
+				types.Add(system.SettingsType);
+		}
+		for (let type in types)
+		{
+			let section = new SettingsSection();
+			TitleOf(type, section.Title);
+			if (section.Title.EndsWith(" Settings"))
+				section.Title.RemoveFromEnd(9);
+			section.Source = new SceneSettingsSource(mEdit, type);
+			section.Key.AppendF("s{}", mSettings.Count);
+			// A block that can use a profile: where its values are, and the profile's verbs.
+			let system = mEdit.FindSystemBySettingsType(type);
+			if ((system != null) && (system.SettingsProfileType != null) && (context != null))
+			{
+				let profile = new Extras(this, false);
+				profile.AddShownAction("Open Profile", "Open Profile", "The values below are this profile's: an edit changes every scene using it (written to the profile on save).",
+					new [=context, =edit, =type] () =>
+					{
+						let inUse = ProfileInUse(edit, type);
+						if ((context.OpenAsset != null) && !inUse.IsNil)
+							context.OpenAsset(inUse);
+					},
+					new [=edit, =type] () => !ProfileInUse(edit, type).IsNil);
+				let profileName = new String()..AppendF("{} {}", mEdit.Scene.Name, section.Title);
+				profile.AddShownAction("Make Profile", "Make Profile", "Saves these values as a new profile asset, and this scene uses it.",
+					new [=context, =edit, =type, =profileName] () =>
+					{
+						if (let made = SettingsProfiles.Make(context, edit, type, profileName))
+							context.Notify(.Success, scope $"Made profile '{made.Name}'; this scene uses it.");
+					} ~ delete profileName,
+					new [=edit, =type] () => ProfileInUse(edit, type).IsNil);
+				profile.AddShownAction("Copy Into Scene", "Copy Into Scene", "Copies the profile's values into this scene, which then uses its own (the profile is unchanged).",
+					new [=edit, =type] () => { edit.MutateSceneSettings(type, scope (s) => { s.CopySettingsProfileIntoScene(); }); },
+					new [=edit, =type] () => !ProfileInUse(edit, type).IsNil);
+				mSections.Add(scope $"p{section.Key}", section.Title, profile.Bag);
+				section.Profile = profile;
+			}
+			mSections.Add(section.Key, section.Title, section.Source);
+			section.Extras = BuildExtras(type, section.Key, section.Title, false);
+			mSettings.Add(section);
+		}
+	}
+
+	// The profile a block uses now; nil: its own values.
+	private static Guid ProfileInUse(SceneEditContext edit, Type type)
+	{
+		let system = edit.FindSystemBySettingsType(type);
+		return (system != null) ? system.SettingsProfile : .Empty;
 	}
 
 	private void RefreshExtras()
 	{
+		for (let section in mSettings)
+		{
+			section.Source.Refresh();
+			if (section.Profile != null)
+				section.Profile.Refresh();
+			if (section.Extras != null)
+				section.Extras.Refresh();
+		}
 		for (let section in mComponents)
 		{
 			if (section.Extras != null)

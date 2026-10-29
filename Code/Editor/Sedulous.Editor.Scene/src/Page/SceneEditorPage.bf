@@ -274,6 +274,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 				if (mServices.Pick != null)
 					inspector.Pick = new [=this](request, anchor) => { mServices.Pick(request, anchor); };
 				inspector.Simulating = new [=this]() => mSimulation.IsRunning;
+				inspector.SceneSelected = new [=this]() => (mHierarchy != null) && mHierarchy.SceneSelected;
+				inspector.SceneIcon.Set(mIsPrefab ? "Editor/Icons/Types/PrefabDocument.svg" : "Editor/Icons/Types/SceneDocument.svg");
+				inspector.SceneName = new [=this]() => mTitle;
 				mInspector = new SceneInspectorView(mEditContext, inspector, pane);
 			}
 		}

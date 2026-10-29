@@ -5,15 +5,17 @@ using Sedulous.Editor.Core;
 
 namespace Sedulous.Editor.Scene;
 
-// What a component's section in the inspector shows besides its reflected rows (Raptor's
-// editor-gui spec, 5.3, layer 4, part 3): notices that hold while something is so (a rigid body
-// with no collider), actions (a zone's Bake) and sections of their own (a script component's
-// behaviours). The inspector asks the component's type for them, so it names no component: a
-// domain registers its type's extras (SceneEditor.Register registers the built-in ones), and the
-// inspector adds what a provider gives under the component's header, a notice shown only while its
-// message is not empty.
+// What a section in the inspector shows besides its reflected rows, a component's or, while the
+// scene is selected, a settings block's (Raptor's editor-gui spec, 5.3, layer 4, parts 3 and 4):
+// notices that hold while something is so (a rigid body with no collider), actions (a zone's Bake)
+// and sections of their own (a script component's behaviours, the physics block's collision
+// groups). The inspector asks the section's type for them, so it names no type: a domain registers
+// its type's extras (SceneEditor.Register registers the built-in ones), and the inspector adds
+// what a provider gives under the section's header, a notice shown only while its message is not
+// empty.
 
-/// What a provider fills, for the entities the inspector shows (each has the component).
+/// What a provider fills, for the entities the inspector shows (each has the component; none for a
+/// settings block's).
 abstract class InspectorExtras
 {
 	public abstract SceneEditContext Edit { get; }

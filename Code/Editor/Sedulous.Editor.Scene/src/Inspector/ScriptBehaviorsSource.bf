@@ -24,7 +24,6 @@ namespace Sedulous.Editor.Scene;
 class ScriptBehaviorsSource : IPropertySource
 {
 	private const String cList = "behaviors";
-	private static StringView[3] sParts = .("x", "y", "z");
 
 	// What a path names: the list, a behaviour, one of its rows, a property's part.
 	private struct Where
@@ -45,8 +44,6 @@ class ScriptBehaviorsSource : IPropertySource
 	private List<Guid> mEntities = new .() ~ delete _;
 	private uint64 mSignature = 0;
 	private uint64 mGroups = 0;
-	// The product types script properties name, by name (null: none of that name).
-	private Dictionary<String, Type> mAssetTypes = new .() ~ DeleteDictionaryAndKeys!(_);
 
 	/// The behaviours of `entities`' script components; `edit` and `context` are borrowed and
 	/// outlive it.
@@ -116,16 +113,8 @@ class ScriptBehaviorsSource : IPropertySource
 		{
 			// A vector property's parts.
 			let property = PropertyOf(place.Behavior, place.Row);
-			if ((property != null) && (property.Type == .Vec3) && (place.Part < 0))
-			{
-				for (let part in sParts)
-				{
-					let info = new PropertyInfo();
-					info.Name.Set(part);
-					info.Kind = .Float;
-					outInfos.Add(info);
-				}
-			}
+			if ((property != null) && (place.Part < 0))
+				ScriptPropertyRows.Parts(property, outInfos);
 			return;
 		}
 		let script = new PropertyInfo();
@@ -149,38 +138,8 @@ class ScriptBehaviorsSource : IPropertySource
 		interval.Max = 3600.0;
 		interval.Step = 0.05;
 		outInfos.Add(interval);
-		let type = ClassOf(first.Behaviors[place.Behavior]);
-		if (type == null)
-			return;
-		for (let property in type.Properties)
-		{
-			let info = new PropertyInfo();
-			switch (property.Type)
-			{
-			case .Float: info.Kind = .Float;
-			case .Int: info.Kind = .Integer;
-			case .Bool: info.Kind = .Bool;
-			case .String: info.Kind = .String;
-			case .Color: info.Kind = .Color;
-			case .Vec3:
-				info.Kind = .Group;
-				info.Hint.Set("Float3");
-			case .Entity:
-				info.Kind = .Reference;
-				info.Hint.Set(FieldPropertySource.cEntityRefHint);
-				info.ReferenceType = typeof(EntityRef);
-			case .Asset:
-				info.Kind = .Reference;
-				info.ReferenceType = AssetType(property.AssetType);
-			default:
-				delete info;
-				continue;
-			}
-			RowOf(property, info.Name);
-			info.DisplayName.Set(property.Name);
-			info.Description.Set(property.Description);
-			outInfos.Add(info);
-		}
+		if (let type = ClassOf(first.Behaviors[place.Behavior]))
+			ScriptPropertyRows.Describe(type, outInfos);
 	}
 
 	public override Sedulous.GUI.Variant GetValue(StringView path, int object)
@@ -194,7 +153,7 @@ class ScriptBehaviorsSource : IPropertySource
 		let behavior = component.Behaviors[place.Behavior];
 		switch (place.Row)
 		{
-		case "script": return GuidText(behavior.Script.Id);
+		case "script": return ScriptPropertyRows.GuidText(behavior.Script.Id);
 		case "enabled": return Sedulous.GUI.Variant(behavior.Enabled);
 		case "interval": return Sedulous.GUI.Variant((double)behavior.UpdateInterval);
 		default:
@@ -203,7 +162,7 @@ class ScriptBehaviorsSource : IPropertySource
 		if (property == null)
 			return .();
 		let over = behavior.FindOverride(property.Hash);
-		return ToGrid((over != null) ? over.Value : property.Default, property.Type, place.Part);
+		return ScriptPropertyRows.ToGrid((over != null) ? over.Value : property.Default, property.Type, place.Part);
 	}
 
 	public override void BeginEdit(StringView path) {}
@@ -264,7 +223,7 @@ class ScriptBehaviorsSource : IPropertySource
 					return;
 				let behavior = c.Behaviors[index];
 				let over = behavior.FindOverride(hash);
-				behavior.SetOverride(hash, FromGrid((over != null) ? over.Value : fallback, kind, part, value));
+				behavior.SetOverride(hash, ScriptPropertyRows.FromGrid((over != null) ? over.Value : fallback, kind, part, value));
 			});
 	}
 
@@ -312,7 +271,7 @@ class ScriptBehaviorsSource : IPropertySource
 		default:
 		}
 		let property = PropertyOf(place.Behavior, place.Row);
-		return (property != null) ? ToGrid(property.Default, property.Type, place.Part) : .();
+		return (property != null) ? ScriptPropertyRows.ToGrid(property.Default, property.Type, place.Part) : .();
 	}
 
 	public override bool Revert(StringView path)
@@ -399,12 +358,7 @@ class ScriptBehaviorsSource : IPropertySource
 		let type = ClassOf(component.Behaviors[behavior]);
 		if (type == null)
 			return null;
-		for (let property in type.Properties)
-		{
-			if (RowOf(property, .. scope String()) == row)
-				return property;
-		}
-		return null;
+		return ScriptPropertyRows.Find(type, row);
 	}
 
 	private uint64 Signature()
@@ -443,36 +397,7 @@ class ScriptBehaviorsSource : IPropertySource
 		Refresh();
 	}
 
-	// The product type a script's asset property names ("AudioClip"), found by its name.
-	private Type AssetType(StringView name)
-	{
-		if (name.IsEmpty)
-			return null;
-		if (mAssetTypes.TryGetAlt(name, let known, let found))
-			return found;
-		Type type = null;
-		let text = scope String();
-		for (let candidate in Type.Types)
-		{
-			// What is no named type instance (a tuple's GetName fatals) cannot be one.
-			if (!(candidate is TypeInstance) || candidate.IsBoxed || candidate.IsPointer || candidate.IsArray
-				|| candidate.IsSizedArray || candidate.IsGenericParam || candidate.IsTuple)
-				continue;
-			text.Clear();
-			candidate.GetFullName(text);
-			if (AssetTypeNames.Matches(text, name))
-			{
-				type = candidate;
-				break;
-			}
-		}
-		mAssetTypes[new String(name)] = type;
-		return type;
-	}
-
 	// === Paths and values ===
-
-	private static void RowOf(ScriptPropertyDesc property, String outRow) => outRow.AppendF("p{}", property.Hash);
 
 	// `path` read: "behaviors", "behaviors.<i>", "behaviors.<i>.<row>", "behaviors.<i>.<row>.<part>".
 	private static Where Parse(StringView path)
@@ -498,31 +423,139 @@ class ScriptBehaviorsSource : IPropertySource
 		place.Behavior = index;
 		if (at == rest.Length)
 			return place;
-		rest = rest.Substring(at + 1);
+		ScriptPropertyRows.ParseRow(rest.Substring(at + 1), out place.Row, out place.Part);
+		return place;
+	}
+}
+
+/// A script class's properties as a grid's rows (a behaviour's, a level's): each row named
+/// `p<hash>`, its kind from the property's, a vector its three parts; values to and from the
+/// grid's.
+static class ScriptPropertyRows
+{
+	private static StringView[3] sParts = .("x", "y", "z");
+	// The product types script properties name, by name (null: none of that name).
+	private static Dictionary<String, Type> sAssetTypes = new .() ~ DeleteDictionaryAndKeys!(_);
+
+	/// The rows of `type`'s properties.
+	public static void Describe(ScriptClass type, List<PropertyInfo> outInfos)
+	{
+		for (let property in type.Properties)
+		{
+			let info = new PropertyInfo();
+			switch (property.Type)
+			{
+			case .Float: info.Kind = .Float;
+			case .Int: info.Kind = .Integer;
+			case .Bool: info.Kind = .Bool;
+			case .String: info.Kind = .String;
+			case .Color: info.Kind = .Color;
+			case .Vec3:
+				info.Kind = .Group;
+				info.Hint.Set("Float3");
+			case .Entity:
+				info.Kind = .Reference;
+				info.Hint.Set(FieldPropertySource.cEntityRefHint);
+				info.ReferenceType = typeof(EntityRef);
+			case .Asset:
+				info.Kind = .Reference;
+				info.ReferenceType = AssetType(property.AssetType);
+			default:
+				delete info;
+				continue;
+			}
+			RowOf(property, info.Name);
+			info.DisplayName.Set(property.Name);
+			info.Description.Set(property.Description);
+			outInfos.Add(info);
+		}
+	}
+
+	/// A vector property's parts (`x`, `y`, `z`), under its row; none for any other.
+	public static void Parts(ScriptPropertyDesc property, List<PropertyInfo> outInfos)
+	{
+		if (property.Type != .Vec3)
+			return;
+		for (let part in sParts)
+		{
+			let info = new PropertyInfo();
+			info.Name.Set(part);
+			info.Kind = .Float;
+			outInfos.Add(info);
+		}
+	}
+
+	/// The property a row names (`p<hash>`); null when none.
+	public static ScriptPropertyDesc Find(ScriptClass type, StringView row)
+	{
+		for (let property in type.Properties)
+		{
+			if (RowOf(property, .. scope String()) == row)
+				return property;
+		}
+		return null;
+	}
+
+	/// A row's name (`p<hash>`) and a part's index (`x`: 0; else -1) parsed from what follows a
+	/// source's own path; `outRow` is a view of `rest`.
+	public static void ParseRow(StringView rest, out StringView outRow, out int32 outPart)
+	{
 		var dot = rest.IndexOf('.');
 		if (dot < 0)
 			dot = rest.Length;
-		place.Row = rest.Substring(0, dot);
+		outRow = rest.Substring(0, dot);
+		outPart = -1;
 		if (dot < rest.Length)
 		{
 			let part = rest.Substring(dot + 1);
 			for (int32 i < 3)
 			{
 				if (part == sParts[i])
-					place.Part = i;
+					outPart = i;
 			}
 		}
-		return place;
 	}
 
-	private static Sedulous.GUI.Variant GuidText(Guid id)
+	/// A property's row name (`p<hash>`), appended.
+	public static void RowOf(ScriptPropertyDesc property, String outRow) => outRow.AppendF("p{}", property.Hash);
+
+	// The product type a script's asset property names ("AudioClip"), found by its name.
+	private static Type AssetType(StringView name)
+	{
+		if (name.IsEmpty)
+			return null;
+		if (sAssetTypes.TryGetAlt(name, let known, let found))
+			return found;
+		Type type = null;
+		let text = scope String();
+		for (let candidate in Type.Types)
+		{
+			// What is no named type instance (a tuple's GetName fatals) cannot be one.
+			if (!(candidate is TypeInstance) || candidate.IsBoxed || candidate.IsPointer || candidate.IsArray
+				|| candidate.IsSizedArray || candidate.IsGenericParam || candidate.IsTuple)
+				continue;
+			text.Clear();
+			candidate.GetFullName(text);
+			if (AssetTypeNames.Matches(text, name))
+			{
+				type = candidate;
+				break;
+			}
+		}
+		sAssetTypes[new String(name)] = type;
+		return type;
+	}
+
+	/// An id as a reference row shows it: empty for nil.
+	public static Sedulous.GUI.Variant GuidText(Guid id)
 	{
 		if (id.IsNil)
 			return Sedulous.GUI.Variant("").Copy();
 		return Sedulous.GUI.Variant(id.ToString(.. scope String())).Copy();
 	}
 
-	private static Sedulous.GUI.Variant ToGrid(ScriptPropertyValue value, ScriptPropertyType type, int32 part)
+	/// A row's value: `value` as the property's kind (`part` a vector's, else -1).
+	public static Sedulous.GUI.Variant ToGrid(ScriptPropertyValue value, ScriptPropertyType type, int32 part)
 	{
 		switch (type)
 		{
@@ -544,8 +577,8 @@ class ScriptBehaviorsSource : IPropertySource
 		}
 	}
 
-	// `write` over `old` as the property's kind; a text is a new string the override takes.
-	private static ScriptPropertyValue FromGrid(ScriptPropertyValue old, ScriptPropertyType type, int32 part, Sedulous.GUI.Variant write)
+	/// `write` over `old` as the property's kind; a text is a new string the override takes.
+	public static ScriptPropertyValue FromGrid(ScriptPropertyValue old, ScriptPropertyType type, int32 part, Sedulous.GUI.Variant write)
 	{
 		var value = old;
 		value.Kind = type;

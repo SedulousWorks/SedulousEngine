@@ -32,7 +32,9 @@ namespace Sedulous.Editor.Scene;
 /// Its values are re-resolved on every call (a pool moves). An edit previews on the live values;
 /// its commit puts the originals back and hands the owner the write to apply as one change, the
 /// owner's undo (a component's through its edit context, a transform's through its command).
-/// Defaults are the type's, from an instance its default constructor makes.
+/// Defaults are the type's, from an instance its default constructor makes. An object type's value
+/// is the object itself at its address (a settings block a system keeps as a class); a field that
+/// holds one is the reference to it.
 class FieldPropertySource : IPropertySource
 {
 	/// Object `object`'s live value; null when it is gone.
@@ -68,6 +70,8 @@ class FieldPropertySource : IPropertySource
 		public Type Type = null;
 		public int32 Euler = -1;
 		public bool ReadOnly = false;
+		/// The address is an object's own, not a reference to one: the root of an object type.
+		public bool Direct = false;
 
 		public this() { }
 	}
@@ -284,6 +288,24 @@ class FieldPropertySource : IPropertySource
 		return true;
 	}
 
+	/// Object `object`'s values: each value row's path (none read only, no list's) and its value,
+	/// appended (the caller deletes the paths and disposes the values). What an undo puts back.
+	public void ReadValues(int object, List<String> outPaths, List<Sedulous.GUI.Variant> outValues)
+	{
+		let start = outPaths.Count;
+		CollectValues("", outPaths);
+		for (int i = start; i < outPaths.Count; ++i)
+			outValues.Add(GetValue(outPaths[i], object));
+	}
+
+	/// Writes `values` at `paths` (ReadValues') into object `object`'s value, as they are.
+	public void WriteValues(int object, Span<String> paths, Span<Sedulous.GUI.Variant> values)
+	{
+		let root = Address(object);
+		for (int i < Math.Min(paths.Length, values.Length))
+			Write(Resolve(paths[i], root), values[i]);
+	}
+
 	// === Paths ===
 
 	private void* Address(int object) => ((object >= 0) && (object < mCount)) ? mResolve(object) : null;
@@ -319,6 +341,7 @@ class FieldPropertySource : IPropertySource
 		var target = Target();
 		target.Address = root;
 		target.Type = mType;
+		target.Direct = mType.IsObject;
 		if ((root == null) || (path.Length == 0))
 			return target;
 		for (let segment in path.Split('.'))
@@ -347,7 +370,7 @@ class FieldPropertySource : IPropertySource
 			case .Group:
 				var address = target.Address;
 				var type = target.Type;
-				if (type.IsObject)
+				if (type.IsObject && !target.Direct)
 				{
 					let held = *(Object*)address;
 					if (held == null)
@@ -359,6 +382,7 @@ class FieldPropertySource : IPropertySource
 					return Target();
 				target.Address = (uint8*)address + field.MemberOffset;
 				target.Type = field.FieldType;
+				target.Direct = false;
 				target.ReadOnly = target.ReadOnly || field.HasCustomAttribute<ReadOnlyAttribute>();
 			default:
 				return Target();
@@ -403,7 +427,7 @@ class FieldPropertySource : IPropertySource
 	private void ListFields(StringView parent, Target group, List<PropertyInfo> outInfos)
 	{
 		var type = group.Type;
-		if (type.IsObject)
+		if (type.IsObject && !group.Direct)
 		{
 			let held = *(Object*)group.Address;
 			if (held == null)
