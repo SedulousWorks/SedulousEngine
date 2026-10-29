@@ -908,6 +908,7 @@ static class AssetsViewTests
 		bed.Root.DisplayScale = 16.0f;
 		view.SetTiles(false);
 		bed.Context.ToggleFavorite(bed.Barrel.Id); // one row starred, one not
+		bed.Ops.ToggleAlwaysExport(bed.Barrel.Id); // and always exported, one not
 		view.OpenRow(bed.RowOf("Models"));
 		view.OpenRow(bed.RowOf("Town"));
 		bed.StyleAsTheEditor(true);
@@ -928,9 +929,21 @@ static class AssetsViewTests
 			let kind = cell.KindLabel;
 			return kind.ConvertToRootSpace(.(kind.Size.X, 0.0f)).X;
 		}
+		// Every row's Always Export and star in the same columns, each an icon's width (a class of
+		// another dialog's once stretched the row's).
+		for (int i < Math.Min(barrel.ChildCount, bell.ChildCount))
+		{
+			let a = barrel.GetChildAt(i).ScreenBounds;
+			let b = bell.GetChildAt(i).ScreenBounds;
+			Test.Assert(Math.Abs(a.X - b.X) < 0.1f);
+			Test.Assert(Math.Abs(a.Width - b.Width) < 0.1f);
+		}
+		Test.Assert(Math.Abs(barrel.GetChildAt(barrel.ChildCount - 2).Size.X - 14.0f) < 0.1f); // Always Export
+		Test.Assert(barrel.ShowsAlwaysExport);
+		Test.Assert(!bell.ShowsAlwaysExport);
 		let barrelRight = KindRight(barrel);
 		let bellRight = KindRight(bell);
-		Test.Assert(Math.Abs(barrelRight - bellRight) < 0.1f, scope $"the kinds end at {barrelRight} and {bellRight}: the badge's and the star's columns kept on the row without them");
+		Test.Assert(Math.Abs(barrelRight - bellRight) < 0.1f, scope $"the kinds end at {barrelRight} and {bellRight}: the badge's, the export's and the star's columns kept on the row without them");
 		// Each kind as wide as its text, which so ends where the kind does, not where its name did.
 		void HugsItsText(AssetCell cell)
 		{
@@ -1486,10 +1499,10 @@ static class AssetsViewTests
 	}
 
 	/// An asset or a group always exported is marked: a tile's dot in its picture's corner (its
-	/// tooltip saying what it means), a row's Always Export badge in a column every row keeps; the
+	/// tooltip saying what it means), a row's Always Export icon, lit when so and greyed when not, on every row; the
 	/// menus' toggles draw the cell again at once.
 	[Test]
-	public static void AnAssetOrAGroupAlwaysExportedIsMarkedATilesCornerMarkARowsBadgeTheMenusToggleRedrawsIt()
+	public static void AnAssetOrAGroupAlwaysExportedIsMarkedATilesCornerMarkARowsLitIconTheMenusToggleRedrawsIt()
 	{
 		let bed = scope Bed("scratch_assets_view_always_export");
 		let view = bed.View;
@@ -1512,25 +1525,27 @@ static class AssetsViewTests
 		Test.Assert(crate.ShowsAlwaysExport, "its mark at once");
 		Test.Assert(crate.AlwaysExportPart.Displayed);
 
-		// A group's contents, and the list's badge.
+		// A group's contents, and the list's icon.
 		bed.Ops.ToggleAlwaysExport(bed.Models);
 		view.SetTiles(false);
 		let models = bed.Cell(bed.RowOf("Models"));
 		Test.Assert(models != null);
 		Test.Assert(!models.IsTile);
 		Test.Assert(models.ShowsAlwaysExport, "a group marked");
-		let badge = models.AlwaysExportPart;
-		Test.Assert(badge.HasClass("badge") && badge.HasClass("export"), "the kit's badge");
-		Test.Assert((badge as Sedulous.GUI.Label).Text == "Always Export");
-		Test.Assert(badge.Parent === models, "a column of the row's own");
+		let icon = models.AlwaysExportPart;
+		Test.Assert(icon.HasClass("badge-icon") && icon.HasClass("always-export") && !icon.HasClass("export"), "an icon, not the export dialog's class");
+		Test.Assert(icon.HasClass("on"), "lit");
+		Test.Assert(icon.Tooltip == "Always exported");
+		Test.Assert(icon.Parent === models, "a column of the row's own");
 		crate = bed.Cell(bed.RowOf("Crate"));
 		Test.Assert(crate != null);
 		Test.Assert(crate.ShowsAlwaysExport);
-		// A row not flagged keeps the column, empty, so every row's name stays in line.
+		// A row not flagged shows the icon greyed, so every row's name stays in line.
 		let sounds = bed.Cell(bed.RowOf("Sounds"));
 		Test.Assert(sounds != null);
 		Test.Assert(!sounds.ShowsAlwaysExport);
-		Test.Assert(sounds.AlwaysExportPart.Displayed && !sounds.AlwaysExportPart.Visible, "kept, not taken out");
+		Test.Assert(sounds.AlwaysExportPart.Displayed && sounds.AlwaysExportPart.Visible && !sounds.AlwaysExportPart.HasClass("on"), "shown, greyed");
+		Test.Assert(sounds.AlwaysExportPart.Tooltip == "Exported when something it ships uses it");
 
 		// Through the group's menu: its mark goes at once.
 		bed.Choose(bed.RowOf("Models"), "Always Export Its Contents");

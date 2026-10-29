@@ -6,8 +6,9 @@ namespace Sedulous.Editor.App;
 /// One asset or group as the Assets panel draws it (Raptor's editor-gui spec, 5.2, layer 7): a
 /// tile's picture (its thumbnail once there is one, its type's glyph till then, the star in a
 /// corner, a stale or failed badge in another) over its name, or a list row's glyph, its name and
-/// what it is on one baseline (what it is at the end), then its badge, its Always Export badge and
-/// star (a tile marks Always Export with a dot in its picture's corner). Its class (`asset-tile`
+/// what it is on one baseline (what it is at the end), then its badge, its Always Export icon and
+/// star, on every row, lit when so and greyed when not (a tile marks Always Export with a dot in
+/// its picture's corner). Its class (`asset-tile`
 /// or `asset-row`) says which, and a group's has `group` too; the sheet draws the rest.
 class AssetCell : UIWidget
 {
@@ -44,8 +45,8 @@ class AssetCell : UIWidget
 	private Sedulous.GUI.Label mName;
 	private Sedulous.GUI.Label mKind;
 	private Sedulous.GUI.Label mBadge;
-	/// A row's Always Export badge; null on a tile.
-	private Sedulous.GUI.Label mExportBadge = null;
+	/// A row's Always Export icon; null on a tile.
+	private Sedulous.GUI.Image mExportIcon = null;
 	/// A tile's Always Export mark; null on a row.
 	private Sedulous.GUI.Panel mExportMark = null;
 	private Sedulous.GUI.Image mStar;
@@ -82,7 +83,8 @@ class AssetCell : UIWidget
 		mKind = Part<Sedulous.GUI.Label>(textHolder, "row-kind");
 		mKind.Displayed = !tile; // a tile says what it is in its tooltip
 		mBadge = Part<Sedulous.GUI.Label>(marks, "badge");
-		// Always Export: the kit's badge on a row, a mark in a tile's corner.
+		// Always Export: a mark in a tile's corner; a row's icon in a column of its own, lit when it
+		// is so, greyed when not, as its star is (every row shows both, so each column lines up).
 		if (tile)
 		{
 			mExportMark = Part<Sedulous.GUI.Panel>(mThumb, "export-mark");
@@ -91,14 +93,17 @@ class AssetCell : UIWidget
 		}
 		else
 		{
-			mExportBadge = Part<Sedulous.GUI.Label>(this, "badge");
-			mExportBadge.AddClass("export");
-			mExportBadge.Text = "Always Export";
+			mExportIcon = Part<Sedulous.GUI.Image>(this, "badge-icon");
+			mExportIcon.AddClass("always-export"); // not `export`: the export dialog's class
+			mExportIcon.Source = "Editor/Icons/export.svg";
+			mExportIcon.HitTestVisible = true; // its tooltip
 		}
 		mStar = Part<Sedulous.GUI.Image>(marks, "badge-icon");
 		mStar.AddClass("star");
 		mStar.Source = "Editor/Icons/star.svg";
 		mStar.Tooltip = "Favourite";
+		if (!tile)
+			mStar.HitTestVisible = true; // its tooltip
 	}
 
 	public void Show(Shown shown)
@@ -119,7 +124,7 @@ class AssetCell : UIWidget
 		SwapClass(mBadge, mBadgeClass, shown.BadgeClass);
 		mBadge.Text = shown.Badge;
 		// A tile marks only what needs a look (stale, failed); a row says each state, its badge
-		// and star keeping their columns when it has none.
+		// keeping its column when it has none, its Always Export and star lit or greyed.
 		if (mTile)
 		{
 			mBadge.Displayed = !shown.Badge.IsEmpty && (shown.BadgeClass != "success");
@@ -129,8 +134,10 @@ class AssetCell : UIWidget
 		else
 		{
 			mBadge.Visible = !shown.Badge.IsEmpty;
-			mExportBadge.Visible = shown.AlwaysExported;
-			mStar.Visible = shown.Favourite;
+			Lit(mExportIcon, shown.AlwaysExported);
+			mExportIcon.Tooltip = shown.AlwaysExported ? "Always exported" : "Exported when something it ships uses it";
+			Lit(mStar, shown.Favourite);
+			mStar.Tooltip = shown.Favourite ? "Favourite" : "Not a favourite";
 		}
 		if (shown.Group)
 			AddClass("group");
@@ -153,11 +160,12 @@ class AssetCell : UIWidget
 	public StringView Badge => mBadge.Text;
 	public StringView BadgeClass => mBadgeClass;
 	public bool ShowsBadge => mBadge.Displayed && mBadge.Visible;
-	public bool ShowsStar => mStar.Displayed && mStar.Visible;
-	/// Marked always exported: a tile's corner mark shown, a row's badge visible in its column.
-	public bool ShowsAlwaysExport => mTile ? mExportMark.Displayed : mExportBadge.Visible;
-	/// A tile's Always Export mark, a row's badge: the part that shows it.
-	public UIWidget AlwaysExportPart => mTile ? (UIWidget)mExportMark : mExportBadge;
+	/// A tile's star shows; a row's is lit.
+	public bool ShowsStar => mTile ? mStar.Displayed : mStar.HasClass("on");
+	/// Marked always exported: a tile's corner mark shown, a row's icon lit.
+	public bool ShowsAlwaysExport => mTile ? mExportMark.Displayed : mExportIcon.HasClass("on");
+	/// A tile's Always Export mark, a row's icon: the part that shows it.
+	public UIWidget AlwaysExportPart => mTile ? (UIWidget)mExportMark : mExportIcon;
 	public bool IsTile => mTile;
 	/// A tile showing its thumbnail; a row never does.
 	public bool ShowsPicture => (mPicture != null) && mPicture.Displayed && (mPicture.Drawable != null);
@@ -185,5 +193,13 @@ class AssetCell : UIWidget
 		held.Set(now);
 		if (!held.IsEmpty)
 			widget.AddClass(held);
+	}
+
+	private static void Lit(Sedulous.GUI.Image icon, bool on)
+	{
+		if (on)
+			icon.AddClass("on");
+		else
+			icon.RemoveClass("on");
 	}
 }
