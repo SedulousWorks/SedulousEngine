@@ -44,7 +44,8 @@ namespace Sedulous.Editor.Scene.Tests;
 /// and the level script's properties. And its bar's editing controls (layer 5): the page's actions,
 /// Select, the space's icon, Snap and its increments. Its HUD (layer 5): the chips, the stats, the
 /// view gizmo, the zoom readout and the tool's status. Its viewport tools: each an action, on the bar
-/// by category, the active one's panel under the chips, moved, kept and put back.
+/// by category, the active one's panel under the chips, moved, kept and put back. A reference set
+/// in the inspector binds at once.
 class ScenePageTests
 {
 	/// A host whose context has a scene subsystem and nothing else: no renderer, no window.
@@ -1381,6 +1382,49 @@ class ScenePageTests
 		Test.Assert(actions.IsChecked(paint, page));
 		Test.Assert(tools.Panel == null); // Paint has no panel
 		sPaintAvailable = false;
+		page.OnClose();
+	}
+
+	// A mesh for any instance: what the inspector's mesh slot binds to.
+	class AnyMesh : Sedulous.Resource.IResourceFactory
+	{
+		public uint64 ProductTypeId => Sedulous.Resource.ResourceManager.ProductTypeIdOf<Sedulous.Geometry.StaticMesh>();
+		public Type CookedType => typeof(Sedulous.Geometry.StaticMesh);
+		public Object Create(Sedulous.Resource.ResourceManager manager, Instance instance) => new Sedulous.Geometry.StaticMesh();
+	}
+
+	[Test]
+	public static void InspectorAReferenceSetInTheGridBindsAtOnceItsUndoLetsItGo()
+	{
+		let bed = scope Bed();
+		let factory = scope AnyMesh();
+		let resources = scope Sedulous.Resource.ResourceManager(bed.Project.SourceDb);
+		resources.AddFactory(factory);
+		bed.Context.Resources = resources;
+		defer { bed.Context.Resources = null; }
+		let rock = bed.Project.SourceDb.RootGroup.CreateInstance("Rock", typeof(SceneDocument).GetFullName(.. scope .()));
+		Test.Assert(rock != null);
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let inspector = page.Inspector;
+		page.EditContext.AddComponent(bed.Crate, typeof(MeshComponent));
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let meshes = page.ScenePtr.GetSystem<MeshComponentManager>();
+		Test.Assert(meshes != null);
+		MeshComponent* Mesh() => meshes.Get(page.ScenePtr.FindEntity(bed.Crate));
+		Test.Assert(Mesh().Mesh.Get == null);
+
+		let path = inspector.PathOf("Mesh", "Mesh", .. scope String());
+		Test.Assert(!path.IsEmpty);
+		let id = rock.Id.ToString(.. scope String());
+		inspector.Sections.BeginEdit(path);
+		inspector.Sections.CommitEdit(path, PropertyWrite(Sedulous.GUI.Variant(id)));
+		Test.Assert(Mesh().Mesh.Id == rock.Id);
+		Test.Assert(Mesh().Mesh.Get != null); // bound now: it draws without a reopen
+		page.Commands.Undo();
+		Test.Assert(Mesh().Mesh.Id.IsNil);
+		Test.Assert(Mesh().Mesh.Get == null); // and let go on undo
 		page.OnClose();
 	}
 }

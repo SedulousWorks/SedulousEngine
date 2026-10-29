@@ -245,6 +245,7 @@ class SettingsProfileEditCommand : EditorCommand
 			new [=this] (object) => mEdit.SettingsEditTarget(mType, mProfile),
 			new (apply) => {});
 		source.WriteValues(0, Paths, values);
+		mEdit.ResolveRestoredResources(); // a reference's id written: bound to what it names
 		mEdit.NoteSettingsProfileEdited(mType, mProfile);
 		return true;
 	}
