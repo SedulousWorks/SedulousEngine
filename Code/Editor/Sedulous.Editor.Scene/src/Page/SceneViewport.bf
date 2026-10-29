@@ -60,6 +60,8 @@ class SceneViewport
 
 	public Sedulous.GUI.Viewport View => mView;
 	public EditorCamera Camera => mCamera;
+	/// The renderer it draws with; null in a host with none.
+	public RenderSubsystem Renderer => mServices.Render;
 	public IViewportPicker Picker => mPicker;
 	/// What its debug list and its picks are keyed by.
 	public void* Key => Internal.UnsafeCastToPtr(mView);

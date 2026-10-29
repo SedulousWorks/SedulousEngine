@@ -81,14 +81,14 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	/// The manager's default tool.
 	private SelectTransformTool mSelectTool = null;
 	private GizmoRendererRegistry mComponentGizmos = new .() ~ delete _;
-	/// A press that began on the orientation gizmo, until its release.
-	private bool mViewGizmoPressed = false;
 	/// The viewport's post show flags and debug view (not saved).
 	private ViewPostOverride mPostOverride = .();
 	private ViewDebugView mDebugView = new .() ~ delete _;
 	/// One reference, the page's.
 	private Node mContent = null;
 	private SceneBar mBar = null ~ delete _;
+	// Over the viewport.
+	private SceneHud mHud = null ~ delete _;
 	private MessageBox mConfirm = null;
 	// The launcher's picture of the project: the default scene's view, taken once it settled when
 	// there is none yet, and on every save of it.
@@ -153,6 +153,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public SceneHierarchyView Hierarchy => mHierarchy;
 	/// Its bar: the editing controls bound to the page's actions.
 	public SceneBar Bar => mBar;
+	/// Its HUD over the viewport.
+	public SceneHud Hud => mHud;
 	public SceneInspectorView Inspector => mInspector;
 	public MessageBox OpenConfirm => ((mConfirm != null) && mConfirm.IsOpen) ? mConfirm : null;
 
@@ -229,6 +231,26 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		let pane = Find<Node>("scene-viewport");
 		((pane != null) ? pane : mContent).AddChildAt(mViewport.View, 0);
 		mViewport.HostIn(mServices.Gui);
+		if (mEditContext != null)
+		{
+			// The HUD over the viewport: the chips, the stats and the view gizmo, the tool's status.
+			let hud = new SceneHudServices();
+			hud.Context = context;
+			hud.Edit = mEditContext;
+			hud.Camera = mViewport.Camera;
+			hud.Overlays = mOverlays;
+			hud.Post = &mPostOverride;
+			hud.DebugView = mDebugView;
+			hud.Tools = mViewportTools;
+			hud.SelectTool = mSelectTool;
+			hud.Gizmos = new [=this] () => Gizmos;
+			if (let renderer = mViewport.Renderer)
+				hud.DebugResources = new [=renderer] (rows) => { renderer.GetDebugResources(rows); };
+			if (mServices.Pick != null)
+				hud.Pick = new [=this] (request, anchor) => { mServices.Pick(request, anchor); };
+			hud.OverlaysChanged = new [=this] () => { SaveViewState(); };
+			mHud = new SceneHud(hud, scope [=this] (id) => Find<Node>(id));
+		}
 		mBar = new SceneBar(context.Actions, this, scope [=this] (id) => Find<ButtonBase>(id), new [=this] () => Gizmos);
 		// A prefab is marked as one: the same page edits both.
 		if (let kind = Find<UIWidget>("scene-kind"))
@@ -323,8 +345,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		let keyboard = mViewport.Keyboard;
 		let shift = (keyboard != null) && (keyboard.IsKeyDown(.LeftShift) || keyboard.IsKeyDown(.RightShift));
 		let active = mViewport.UpdateCamera(dt, !(modalTool && shift));
-		if (active && mViewport.ZoomedThisFrame)
-			mOverlays.Zoomed();
+		if (active && mViewport.ZoomedThisFrame && (mHud != null))
+			mHud.Zoomed();
 		if (mEditContext != null)
 			UpdateTools(active, dt);
 		// The page is this scene's run scope: its bus drains once a frame (events a Simulate tick
@@ -342,15 +364,12 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			frame.Camera = mViewport.Camera;
 			frame.Width = mViewport.View.RenderWidth;
 			frame.Height = mViewport.View.RenderHeight;
-			let mouse = mViewport.Mouse;
-			frame.PointerOver = mViewport.IsHovered && (mouse != null);
-			frame.PointerX = (mouse != null) ? mouse.X : 0.0f;
-			frame.PointerY = (mouse != null) ? mouse.Y : 0.0f;
 			frame.Tools = mViewportTools;
 			frame.ComponentGizmos = mComponentGizmos;
-			frame.DeltaSeconds = dt;
 			mOverlays.Draw(dd, frame);
 		}
+		if (mHud != null)
+			mHud.Update(dt, mViewport.View.RenderHeight);
 		if (mHierarchy != null)
 			mHierarchy.Refresh(); // the scene changed: built again
 		if (mInspector != null)
@@ -414,42 +433,9 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			input.Shift = keyboard.IsKeyDown(.LeftShift) || keyboard.IsKeyDown(.RightShift);
 		}
 		input.WheelDelta = mouse.ScrollY;
-		// A press on the orientation gizmo is its, and the rest of that press: the select tool
-		// neither picks nor box selects under it (Alt+drag still orbits: the camera owns that press).
-		if (input.LeftPressed && mViewport.IsHovered && PressViewGizmo((float)input.PointerX, (float)input.PointerY, input.ViewportWidth))
-			mViewGizmoPressed = true;
-		if (mViewGizmoPressed)
-		{
-			let released = input.LeftReleased;
-			input.LeftPressed = false;
-			input.LeftDown = false;
-			input.LeftReleased = false;
-			mViewGizmoPressed = !released;
-		}
 		// The tools' keys (the select tool's W/E/R/X) belong to the camera while it owns the input.
 		input.Keyboard = cameraOwnsMouse ? null : keyboard;
 		mViewportTools.Update(input);
-	}
-
-	/// The orientation gizmo takes a press on a knob (or its centre) before any tool sees it.
-	private bool PressViewGizmo(float x, float y, uint32 width)
-	{
-		let camera = mViewport.Camera;
-		let gizmo = ViewGizmo.LayoutFor(camera.Right, camera.Up, camera.Forward, (float)width);
-		let hit = ViewGizmo.Hit(gizmo, x, y);
-		if (hit >= 0)
-		{
-			ViewGizmo.SnapAngles(gizmo.Poles[hit].Axis, camera.Yaw, let yaw, let pitch);
-			camera.AutoOrthographic = EditorUiSettings.AutoOrthographicViews(mContext.UserEditorSettings);
-			camera.SnapToAxis(yaw, pitch);
-			return true;
-		}
-		if (ViewGizmo.HitCentre(gizmo, x, y))
-		{
-			camera.SetOrthographic(!camera.Orthographic);
-			return true;
-		}
-		return false;
 	}
 
 	/// Inside the app's one renderer bracket, before the GUI draws.

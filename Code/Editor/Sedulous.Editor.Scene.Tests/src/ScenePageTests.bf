@@ -40,7 +40,8 @@ namespace Sedulous.Editor.Scene.Tests;
 /// slot; a component's extras (a rigid body's notice, a zone's Bake); a script component's
 /// behaviours; the scene's settings with the scene selected, the physics block's collision groups
 /// and the level script's properties. And its bar's editing controls (layer 5): the page's actions,
-/// Select, the space's icon, Snap and its increments.
+/// Select, the space's icon, Snap and its increments. Its HUD (layer 5): the chips, the stats, the
+/// view gizmo, the zoom readout and the tool's status.
 class ScenePageTests
 {
 	/// A host whose context has a scene subsystem and nothing else: no renderer, no window.
@@ -1132,6 +1133,96 @@ class ScenePageTests
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		Test.Assert(gizmos.MoveSnapsToGrid);
 		Test.Assert(gizmos.Gizmo.TranslateSnap > 0.0f);
+		page.OnClose();
+	}
+
+	[Test]
+	public static void SceneHudTheChipsSayWhatIsOnAndChangeItTheStatsTheViewGizmoTheZoomReadoutAndTheToolsStatus()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let shown = scope Shown(page);
+		let hud = page.Hud;
+		Test.Assert(hud != null);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let camera = page.ViewportCamera;
+
+		// Projection: the chip names it, an axis view by its name, in the accent off perspective.
+		Test.Assert(hud.ChipText("chip-projection") == "Perspective");
+		Test.Assert(!hud.ChipOn("chip-projection"));
+		hud.SetProjection(.Orthographic);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(camera.Orthographic);
+		Test.Assert(hud.ChipText("chip-projection") == "Orthographic");
+		Test.Assert(hud.ChipOn("chip-projection"));
+		hud.LookAlong(.(0, 1, 0));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(hud.ChipText("chip-projection") == "Top");
+
+		// Shading: Unlit is the albedo term; a texture names itself; Lit is the default, not marked.
+		Test.Assert(hud.ChipText("chip-shading") == "Lit");
+		hud.SetShading(.Albedo);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(hud.ChipText("chip-shading") == "Unlit");
+		Test.Assert(hud.ChipOn("chip-shading"));
+		hud.ShowTexture("ssgi.filtered");
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(hud.ChipText("chip-shading") == "ssgi.filtered");
+		hud.SetShading(.Off);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(hud.ChipText("chip-shading") == "Lit");
+		Test.Assert(!hud.ChipOn("chip-shading"));
+
+		// The menus are built, their checks following the state.
+		Test.Assert(hud.ChipMenu("chip-overlays") != null);
+		Test.Assert(!hud.StatsShown);
+		page.Overlays.Settings.ShowFps = true;
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(hud.StatsShown);
+
+		// The view gizmo's centre switches the projection; a knob looks along its axis.
+		let gizmo = hud.Gizmo;
+		Test.Assert(gizmo != null);
+		shown.Root.UpdateLayout();
+		hud.SetProjection(.Perspective);
+		camera.Yaw = 0.3f;
+		camera.Pitch = -0.3f;
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		shown.Root.UpdateLayout();
+		Test.Assert(gizmo.PressAt(gizmo.Layout.Center));
+		Test.Assert(camera.Orthographic);
+		let layout = gizmo.Layout;
+		var plusX = -1;
+		for (int i < 6)
+		{
+			if (layout.Poles[i].Positive && (layout.Poles[i].Axis.X > 0.5f))
+				plusX = i;
+		}
+		Test.Assert(plusX >= 0);
+		Test.Assert(gizmo.PressAt(layout.Poles[plusX].Screen));
+		Test.Assert(Dot(camera.Forward, .(-1, 0, 0)) > 0.999f); // looking down -X, from +X
+
+		// The zoom readout shows after a wheel zoom, then fades.
+		Test.Assert(!hud.ZoomShown);
+		hud.Zoomed();
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(hud.ZoomShown);
+		for (int i < 4)
+			page.OnUpdate(bed.Host, 1.0f);
+		Test.Assert(!hud.ZoomShown);
+
+		// The select tool's status in parts: its mode, space, snap and what is selected.
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(hud.StatusText(.. scope String()) == "Move | World | Crate");
+		page.Gizmos.SnapMode = true;
+		page.Gizmos.Gizmo.TranslateSnap = 0.5f;
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(hud.StatusText(.. scope String()) == "Move | World | Snap 0.5 m | Crate");
+		page.Gizmos.SetHandlesShown(false);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(hud.StatusText(.. scope String()) == "Select | Crate");
 		page.OnClose();
 	}
 }

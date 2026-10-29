@@ -47,9 +47,13 @@ static class ViewGizmo
 	/// Where the knobs sit for a camera whose basis is `right`, `up`, `forward`, in a viewport
 	/// `viewportWidth` pixels wide: each axis seen along the view, as the tripod shows it.
 	public static ViewGizmoLayout LayoutFor(Float3 right, Float3 up, Float3 forward, float viewportWidth)
+		=> LayoutAround(right, up, forward, .(viewportWidth - cMargin - cArm - 0.5f * cKnob, cTop + cArm + 0.5f * cKnob));
+
+	/// The knobs around `center` (the HUD's widget, its own middle).
+	public static ViewGizmoLayout LayoutAround(Float3 right, Float3 up, Float3 forward, Float2 center)
 	{
 		var layout = ViewGizmoLayout();
-		layout.Center = .(viewportWidth - cMargin - cArm - 0.5f * cKnob, cTop + cArm + 0.5f * cKnob);
+		layout.Center = center;
 		Float3[6] axes = .(.(1, 0, 0), .(0, 1, 0), .(0, 0, 1), .(-1, 0, 0), .(0, -1, 0), .(0, 0, -1));
 		for (int i < 6)
 		{

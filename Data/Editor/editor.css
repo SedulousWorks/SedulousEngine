@@ -238,7 +238,7 @@ treerowcontent.inactive { opacity: 0.45; }
 /* The HUD's zones: each a corner of the viewport, its pieces stacked from that corner, so they
    never meet whatever the viewport's size. Over any scene, so in the HUD's own colours in both
    schemes. */
-.hud-zone { padding: var(--space-m); row-gap: var(--space-m); flex-direction: column; }
+.hud-zone { padding: var(--space-m); row-gap: var(--space-m); flex-direction: column; pointer-events: none; } /* its pieces take the pointer, the space between them is the view's */
 .hud-top-start { justify-self: start; align-self: start; align-items: start; }
 .hud-top-end { justify-self: end; align-self: start; align-items: end; }
 .hud-bottom-start { justify-self: start; align-self: end; align-items: start; }
@@ -267,6 +267,16 @@ treerowcontent.inactive { opacity: 0.45; }
 .axis-y { background-color: var(--axis-y); }
 .axis-z { background-color: var(--axis-z); }
 .axis-centre { width: 8px; height: 8px; border-radius: 4px; background-color: var(--hud-text-dim); }
+/* The real view gizmo: on a disc, its knobs drawn, their letters these. */
+.hud-gizmo { border-radius: 45px; background-color: var(--hud-background); } /* a disc: half its 90 px side */
+.axis-label { font-size: 11px; font-weight: 600; color: #101214; }
+.axis-label.negative { color: var(--hud-text); }
+/* The zoom readout, a moment after a wheel zoom: the distance to the focus, the grid's cell and a
+   scale bar of a round length. */
+.hud-zoom { flex-direction: column; row-gap: 2px; padding: var(--space-s) var(--space-m); border-radius: var(--radius-small);
+            background-color: var(--hud-background); font-size: var(--font-small); color: var(--hud-text); }
+.hud-zoom label { color: var(--hud-text); }
+.hud-zoom-bar { flex-direction: row; align-items: center; column-gap: var(--space-s); color: var(--hud-text); }
 /* The camera preview: what the selected camera sees, captioned. */
 .camera-preview { width: 200px; border-radius: var(--radius); background-color: var(--hud-background); padding: 3px; }
 .camera-preview-view { height: 112px; border-radius: var(--radius-small); background-image: url(Editor/Mock/viewport.png);

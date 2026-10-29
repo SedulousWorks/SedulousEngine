@@ -10,7 +10,7 @@ struct SceneOverlaySettings
 	/// The origin cross on every entity. Off by default: the viewport shows the scene, and the
 	/// selected entity keeps its own cross; the Overlays menu turns them on.
 	public bool ShowMarkers = false;
-	/// The frame rate readout in the viewport's top right corner.
+	/// The HUD's stats: the frame rate in the viewport's top end.
 	public bool ShowFps = false;
 	/// The plane the grid lies on.
 	public GridPlane GridPlane = .XZ;

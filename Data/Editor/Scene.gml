@@ -37,6 +37,33 @@
             <TreeView id="hierarchy-tree" class="panel-body tree"/>
         </Panel>
         <Panel id="scene-viewport" class="viewport">
+            <!-- The HUD's zones (layer 5, part 2): the view's chips at the top start; the stats and
+                 the view gizmo (code adds it) at the top end; the zoom readout and the tool's status
+                 at the bottom start. Code fills the chips' menus and what each shows. -->
+            <Panel class="hud-zone hud-top-start">
+                <Panel class="hud-bar">
+                    <ToolMenuButton id="chip-projection" class="hud-chip" text="Perspective" tooltip="Projection and the axis views"/>
+                    <ToolMenuButton id="chip-shading" class="hud-chip" text="Lit" tooltip="Shading, debug views and effects"/>
+                    <ToolMenuButton id="chip-overlays" class="hud-chip" text="Overlays" tooltip="What the editor draws over the scene"/>
+                </Panel>
+            </Panel>
+            <Panel id="hud-top-end" class="hud-zone hud-top-end">
+                <Label id="hud-stats" class="hud-stats mono"/>
+            </Panel>
+            <Panel class="hud-zone hud-bottom-start">
+                <Panel id="hud-zoom" class="hud-zoom">
+                    <Label id="hud-zoom-focus"/>
+                    <Label id="hud-zoom-cell"/>
+                    <Panel id="hud-zoom-bar" class="hud-zoom-bar"><Label id="hud-zoom-length"/></Panel>
+                </Panel>
+                <Panel id="hud-status" class="hud-status">
+                    <Image id="hud-status-icon" class="hud-status-icon"/>
+                    <Label id="hud-status-mode"/>
+                    <Label id="hud-status-space" class="hud-dim"/>
+                    <Label id="hud-status-snap" class="hud-dim"/>
+                    <Label id="hud-status-selection" class="hud-dim"/>
+                </Panel>
+            </Panel>
             <Panel id="scene-state" class="state-box failed scene-state">
                 <Image class="state-icon" src="Editor/Icons/warning.svg"/>
                 <Label class="state-title" text="This scene did not load"/>
