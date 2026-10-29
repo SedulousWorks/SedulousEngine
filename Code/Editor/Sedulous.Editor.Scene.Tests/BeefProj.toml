@@ -65,8 +65,8 @@ corlib = "*"
 "Sedulous.Editor.App" = "*"
 "Sedulous.GUI.Toolkit" = "*"
 
-# On the GUI in parts with its library: these drive the hierarchy, the inspector and the picker
-# dialogs on Sedulous.UI; they come back with those layers (Raptor's editor-gui spec, 5.3).
+# On the GUI in parts with its library: these drive the inspector and the picker dialogs on
+# Sedulous.UI; they come back with those layers (Raptor's editor-gui spec, 5.3).
 [ProjectFolder]
 
 [[ProjectFolder.Items]]
@@ -80,10 +80,6 @@ Name = "ComponentPickerDialogTests.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "EntityPickerDialogTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "HierarchyViewTests.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"

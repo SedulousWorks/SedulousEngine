@@ -1,8 +1,8 @@
 <!--
   The scene page (Raptor's editor-gui spec, 5.3, layer 2): its bar over its own hierarchy,
   viewport and inspector, as the mock draws it (Editor/Mock/scene.gml). A prefab is marked as one.
-  Code puts the viewport in its pane (under the state a scene that did not load shows) and binds the
-  bar to the actions; the hierarchy and the inspector fill their panes in the next layers.
+  Code puts the viewport in its pane (under the state a scene that did not load shows), binds the
+  bar to the actions and the hierarchy to the scene; the inspector fills its pane in the next layer.
 -->
 <Panel class="page scene-page">
     <ToolBar id="scene-bar" class="page-toolbar">
@@ -13,7 +13,17 @@
         <Label id="scene-kind" class="badge page-kind" text="Prefab" tooltip="This page edits a prefab: one root, saved to every instance"/>
     </ToolBar>
     <Splitter id="scene-body" class="page-body" axis="horizontal" weights="0.2 0.56 0.24">
-        <Panel id="scene-hierarchy" class="panel page-pane"/>
+        <Panel id="scene-hierarchy" class="panel page-pane">
+            <Panel class="panel-toolbar">
+                <Panel class="search">
+                    <Image class="search-icon" src="Editor/Icons/search.svg"/>
+                    <TextField id="hierarchy-search" class="search-field" placeholder="Search the scene"/>
+                    <Button id="hierarchy-clear" class="slot-button" icon="Editor/Icons/close.svg" tooltip="Clear the search"/>
+                </Panel>
+                <ToolButton id="hierarchy-add" class="icon-button" icon="Editor/Icons/plus.svg"/>
+            </Panel>
+            <TreeView id="hierarchy-tree" class="panel-body tree"/>
+        </Panel>
         <Panel id="scene-viewport" class="viewport">
             <Panel id="scene-state" class="state-box failed scene-state">
                 <Image class="state-icon" src="Editor/Icons/warning.svg"/>

@@ -886,6 +886,14 @@ class EditorApplication : IApplication
 		return mRefs;
 	}
 
+	/// A type's icon, asked of the type (made the first time, with the slots' table). The
+	/// application's.
+	public EditorIcons TypeIcons()
+	{
+		RefServices();
+		return mTypeIcons;
+	}
+
 	/// Exits once the unsaved pages are saved or let go; true when nothing needed asking (the
 	/// shell's close handler: false keeps the window while the user is asked).
 	private bool ConfirmExit()

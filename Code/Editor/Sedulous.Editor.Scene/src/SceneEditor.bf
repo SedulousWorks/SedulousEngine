@@ -30,7 +30,7 @@ class SceneEditorPageFactory : IEditorPageFactory
 /// Wires the scene editor into the editor (Raptor's editor-gui spec, 5.3, layer 2): its services
 /// (the document types, the export's scene seams, a model import's prefab and scene), the
 /// thumbnail generators, the scene and prefab pages, the scene actions and the MCP live tools.
-/// The hierarchy and the inspector come back with their layers.
+/// The inspector comes back with its layer.
 static class SceneEditor
 {
 	/// `context`, `host` and `app` borrowed; they outlive the pages.
@@ -62,6 +62,7 @@ static class SceneEditor
 		let window = app.Window;
 		services.LoadMarkup = new [=window](path) => window.LoadMarkup(path);
 		services.Refs = app.RefServices();
+		services.Icons = app.TypeIcons();
 		return services;
 	}
 }

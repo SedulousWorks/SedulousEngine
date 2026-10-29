@@ -26,7 +26,9 @@ namespace Sedulous.Editor.Scene.Tests;
 /// and refused a second root; Simulate locks the edits and gives the scene back; where the scene
 /// was left (the camera, the selection, the panes, the overlays) comes back when it opens again.
 /// And the parts: the panes' weights against the prefs' nested ratios, and a prefab's own instance
-/// refused.
+/// refused. And its hierarchy (layer 3): the scene its top row, its entities nesting, what opens; the
+/// selection both ways; the search; a rename; drops; the menus and the add button as the scene's
+/// actions.
 class ScenePageTests
 {
 	/// A host whose context has a scene subsystem and nothing else: no renderer, no window.
@@ -327,6 +329,258 @@ class ScenePageTests
 		said.Clear();
 		Test.Assert(!flows.Spawn(.(), .()), "nothing picked");
 		Test.Assert(said.IsEmpty, "nothing picked is no warning");
+		page.OnClose();
+	}
+
+	/// The page laid out in a GUI of its own under the editor's sheet, for its hierarchy's rows to
+	/// be pressed where they show.
+	class Shown
+	{
+		public SceneRoot Root;
+		private Node mContent;
+		private EditorResources mResources ~ delete _;
+		private StyleManager mStyles ~ delete _;
+
+		public this(SceneEditorPage page)
+		{
+			let data = scope String();
+			Test.Assert(DataRoot(data));
+			mResources = new .(data);
+			let look = scope EditorLook();
+			look.Density.Set("default");
+			let text = EditorWindow.SheetFor(mResources, look, .. scope String());
+			let sheet = scope StyleSheet();
+			CSSParser.Parse(text, EditorWindow.cSheetPath, sheet);
+			mStyles = new .(sheet);
+			mStyles.ResourceProvider = mResources;
+			let context = new GUIContext();
+			Root = new SceneRoot(context);
+			context.ReleaseRef(); // the root's keeps it
+			Root.Size = .(1200.0f, 700.0f);
+			mContent = page.Content;
+			Root.AddChild(mContent);
+			mStyles.ApplyTree(Root);
+			Root.UpdateLayout();
+		}
+
+		public ~this()
+		{
+			Root.RemoveChild(mContent);
+			Root.ReleaseRef();
+		}
+
+		/// A press and release in the middle of the row showing `item`.
+		public void Click(TreeView tree, int32 item, uint32 modifiers = 0)
+		{
+			Root.UpdateLayout();
+			let row = tree.RowForItem(item);
+			Test.Assert(row != null, "realised");
+			let bounds = row.ScreenBounds;
+			let at = Float2(bounds.X + bounds.Width * 0.5f, bounds.Y + bounds.Height * 0.5f);
+			Root.EventDispatcher.InjectMouseMove(at);
+			Root.EventDispatcher.InjectMouseDown(at, .Left, modifiers);
+			Root.EventDispatcher.InjectMouseUp(at, .Left, modifiers);
+		}
+	}
+
+	static bool RowsAre(SceneHierarchyView tree, StringView expected)
+	{
+		let rows = tree.Rows(.. scope .());
+		return rows == expected;
+	}
+
+	[Test]
+	public static void TheHierarchyShowsTheSceneOnTopItsEntitiesNestingAndSharesTheSelection()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let tree = page.Hierarchy;
+		Test.Assert(tree != null);
+		let lid = page.EditContext.CreateEntity("Lid", bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(RowsAre(tree, "Level |   Crate |     Lid"), "Crate gained a child: it opens");
+		let knob = page.EditContext.CreateEntity("Knob", lid);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(RowsAre(tree, "Level |   Crate |     Lid |       Knob"));
+		tree.Tree.CollapseItem(tree.ItemOf(lid)); // closed by the user: it stays closed
+		page.EditContext.CreateEntity("Spring", lid);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(RowsAre(tree, "Level |   Crate |     Lid"));
+		Test.Assert(!knob.IsNil);
+
+		// The page's selection (a viewport pick) shows in the tree; a click on a row is the page's.
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		Test.Assert(tree.Tree.IsItemSelected(tree.ItemOf(bed.Crate)));
+		{
+			let shown = scope Shown(page);
+			shown.Click(tree.Tree, tree.ItemOf(lid));
+			Test.Assert(page.EditContext.EntitySelection.Contains(lid));
+			Test.Assert(!page.EditContext.EntitySelection.Contains(bed.Crate));
+			shown.Click(tree.Tree, tree.ItemOf(bed.Crate), KeyModCtrl); // several
+			Test.Assert(page.EditContext.EntitySelection.Count == 2);
+			shown.Click(tree.Tree, 0); // the scene's row: no entity
+			Test.Assert(tree.Tree.SelectionCount == 1);
+			Test.Assert(tree.Tree.IsItemSelected(0));
+			Test.Assert(page.EditContext.EntitySelection.IsEmpty);
+		}
+
+		// An entity that is not active dims; the model says so for its row.
+		page.EditContext.SetEntityActive(lid, false);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let classes = tree.Tree.Model.Data(tree.IndexOf(lid), .RowClass);
+		Test.Assert(classes.AsString == "inactive");
+		page.OnClose();
+	}
+
+	[Test]
+	public static void TheHierarchysSearchKeepsAMatchsWayAWholeGuidSelectsAndARenameIsOneUndo()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let tree = page.Hierarchy;
+		Test.Assert(tree != null);
+		let lid = page.EditContext.CreateEntity("Lid", bed.Crate);
+		page.EditContext.CreateEntity("Barrel");
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		tree.Search("lid");
+		Test.Assert(RowsAre(tree, "Level |   Crate |     Lid"));
+		page.EditContext.EntitySelection.Clear();
+		tree.Search(lid.ToString(.. scope .(), 'D'));
+		Test.Assert(page.EditContext.EntitySelection.Contains(lid));
+		tree.Search("");
+		Test.Assert(RowsAre(tree, "Level |   Crate |     Lid |   Barrel"));
+
+		Test.Assert(tree.Tree.Model.SetData(tree.IndexOf(lid), .("Hatch")));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(RowsAre(tree, "Level |   Crate |     Hatch |   Barrel"));
+		page.Commands.Undo();
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(RowsAre(tree, "Level |   Crate |     Lid |   Barrel"));
+		page.OnClose();
+	}
+
+	[Test]
+	public static void AHierarchyRowDroppedGoesUnderBetweenOrToTheRootsNeverInsideItself()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let tree = page.Hierarchy;
+		Test.Assert(tree != null);
+		let barrel = page.EditContext.CreateEntity("Barrel");
+		let lid = page.EditContext.CreateEntity("Lid", bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let model = tree.Tree.Model;
+		ItemId[1] moving = default;
+		ModelDrop Drop(Guid moved, Guid onto, DropPlace place)
+		{
+			moving[0] = model.IdOf(tree.IndexOf(moved));
+			var drop = ModelDrop();
+			drop.Source = model;
+			drop.Ids = .(&moving[0], 1);
+			drop.Index = tree.IndexOf(onto);
+			drop.Place = place;
+			return drop;
+		}
+
+		Test.Assert(tree.Take(Drop(barrel, bed.Crate, .On)));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(RowsAre(tree, "Level |   Crate |     Lid |     Barrel"));
+		Test.Assert(tree.Take(Drop(barrel, lid, .Before)));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(RowsAre(tree, "Level |   Crate |     Barrel |     Lid"));
+		Test.Assert(tree.Take(Drop(lid, .(), .On)), "onto the scene's row");
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(RowsAre(tree, "Level |   Crate |     Barrel |   Lid"));
+		Test.Assert(!tree.CanTake(Drop(bed.Crate, barrel, .On)), "inside itself");
+		Test.Assert(!tree.CanTake(Drop(.(), barrel, .On)), "the scene stays");
+
+		// A drag carries its entities, for an entity slot.
+		let payload = scope DragPayload();
+		var one = lid;
+		tree.DragOf(.(&one, 1), payload);
+		let carried = scope List<Guid>();
+		Test.Assert(EntityDrag.Read(payload, carried));
+		Test.Assert((carried.Count == 1) && (carried[0] == lid));
+		Test.Assert(payload.Label == "Lid");
+		page.OnClose();
+	}
+
+	[Test]
+	public static void APrefabDroppedIsSpawnedUnderTheRowAndTheMenusAndAddAreTheScenesActions()
+	{
+		let bed = scope Bed();
+		{
+			// The prefab needs content: one root.
+			let authored = scope Sedulous.Scene.Scene("barrel");
+			authored.CreateEntity("Barrel");
+			Test.Assert(SceneStorage.SavePrefab(authored, bed.Barrel) case .Ok);
+		}
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let tree = page.Hierarchy;
+		Test.Assert(tree != null);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let prefabType = typeof(PrefabDocument).GetFullName(.. scope .());
+		let asset = scope DragPayload();
+		AssetDrag.Payload(bed.Barrel.Id, prefabType, "Barrel", asset);
+		var drop = ModelDrop();
+		drop.Payload = asset;
+		drop.Index = tree.IndexOf(bed.Crate);
+		drop.Place = .On;
+		Test.Assert(tree.Take(drop));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(RowsAre(tree, "Level |   Crate |     Barrel"));
+		let level = scope DragPayload();
+		AssetDrag.Payload(bed.Level.Id, typeof(SceneDocument).GetFullName(.. scope .()), "Level", level);
+		drop.Payload = level;
+		Test.Assert(!tree.CanTake(drop), "only a prefab goes in");
+
+		// A row's menu: its actions over the page.
+		{
+			let shown = scope Shown(page);
+			tree.ShowMenu(tree.ItemOf(bed.Crate), .(10.0f, 10.0f));
+			let menu = tree.OpenMenu;
+			Test.Assert(menu != null);
+			Test.Assert(page.EditContext.EntitySelection.Contains(bed.Crate), "the row it was asked over");
+			var hasDelete = false;
+			for (int i < menu.ChildCount)
+			{
+				if (let item = menu.GetChildAt(i) as MenuItem)
+					hasDelete = hasDelete || (item.Text == "Delete");
+			}
+			Test.Assert(hasDelete);
+			menu.Close();
+		}
+
+		let add = FindId<ToolButton>(page.Content, "hierarchy-add");
+		Test.Assert(add != null);
+		Test.Assert(add.Enabled);
+		Test.Assert(add.TooltipText.StartsWith("Create Entity"));
+		page.StartSimulation();
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(!add.Enabled, "refused visibly while it simulates");
+		page.StopSimulation();
+		page.OnClose();
+	}
+
+	[Test]
+	public static void AHierarchyOpensWithItsTopLevelShownWhatIsUnderAnEntityWaiting()
+	{
+		let bed = scope Bed();
+		{
+			let page = bed.Open(bed.Level);
+			defer delete page;
+			page.EditContext.CreateEntity("Lid", bed.Crate);
+			Test.Assert(page.Save() case .Ok);
+			page.OnClose();
+		}
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(RowsAre(page.Hierarchy, "Level |   Crate"));
 		page.OnClose();
 	}
 }

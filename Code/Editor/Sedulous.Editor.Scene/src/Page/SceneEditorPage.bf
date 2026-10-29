@@ -31,7 +31,8 @@ namespace Sedulous.Editor.Scene;
 // each a class of its own. The page holds them together: it loads the scene, edits it through its
 // edit context and its tools, saves it, follows a change made elsewhere, and says on the page when
 // the scene did not load (and then refuses to save over it). Its bar's Save, Undo and Redo act on
-// this page. The hierarchy and the inspector take their panes in the next layers.
+// this page; its hierarchy (layer 3) is the scene's tree in its left pane. The inspector takes its
+// pane in the next layer.
 
 /// What a page asks of the editor. Borrowed but the markup loader, the services' own.
 class SceneEditorPageServices
@@ -43,6 +44,8 @@ class SceneEditorPageServices
 	public delegate Node(StringView path) LoadMarkup ~ delete _;
 	/// The asset picker and the rest an asset slot asks (null: no picking, a test).
 	public ResourceRefServices Refs = null;
+	/// The type icons the hierarchy shows entities by (null: none).
+	public EditorIcons Icons = null;
 }
 
 class SceneEditorPage : UIEditorPage, ISceneEditorPage
@@ -68,6 +71,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private SceneOverlays mOverlays = new .() ~ delete _;
 	private SceneSimulation mSimulation = new .() ~ delete _;
 	private PrefabFlows mPrefabs = null ~ delete _;
+	private SceneHierarchyView mHierarchy = null;
 	/// After mEditContext (the tools borrow it), so deleted first.
 	private ViewportToolManager mViewportTools = new .() ~ delete _;
 	/// The manager's default tool.
@@ -101,7 +105,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	public ~this()
 	{
-		// The tools borrow the edit context, the flows too: they go first.
+		// The tools borrow the edit context, the flows and the hierarchy too: they go first.
+		DeleteAndNullify!(mHierarchy);
 		DeleteAndNullify!(mPrefabs);
 		DeleteAndNullify!(mViewportTools);
 		delete mEditContext;
@@ -139,6 +144,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public bool IsPrefab => mIsPrefab;
 	public SceneOverlays Overlays => mOverlays;
 	public SceneViewport Viewport => mViewport;
+	public SceneHierarchyView Hierarchy => mHierarchy;
 	public MessageBox OpenConfirm => ((mConfirm != null) && mConfirm.IsOpen) ? mConfirm : null;
 
 	private void Build(Instance instance)
@@ -230,6 +236,23 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 				text.Text = "The editor has no scenes to show it in.";
 		}
 
+		// The hierarchy in its pane: the scene's tree, the page's selection.
+		if (mEditContext != null)
+		{
+			if (let pane = Find<Node>("scene-hierarchy"))
+			{
+				let tree = new SceneHierarchyServices();
+				tree.Context = context;
+				tree.Page = this;
+				tree.Icons = mServices.Icons;
+				tree.SceneIcon.Set(mIsPrefab ? "Editor/Icons/Types/PrefabDocument.svg" : "Editor/Icons/Types/SceneDocument.svg");
+				tree.SceneName = new [=this]() => mTitle;
+				tree.Frame = new [=this](entity) => { var one = entity; FrameEntities(.(&one, 1), true); };
+				tree.SpawnPrefab = new [=this](prefab, parent) => (mPrefabs != null) && mPrefabs.Spawn(prefab, parent);
+				mHierarchy = new SceneHierarchyView(mEditContext, tree, pane);
+			}
+		}
+
 		mOverlays.Settings = SceneViewState.LoadOverlays(context.ProjectEditorSettings, InstanceId, mOverlays.Settings);
 		RestoreViewState();
 	}
@@ -301,6 +324,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			frame.DeltaSeconds = dt;
 			mOverlays.Draw(dd, frame);
 		}
+		if (mHierarchy != null)
+			mHierarchy.Refresh(); // the scene changed: built again
 		if (mBar != null)
 			mBar.Sync();
 	}
@@ -407,6 +432,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 
 	public override void OnClose()
 	{
+		DeleteAndNullify!(mHierarchy); // it lets the selection and the tree go before the scene does
 		// Where the scene was left: the camera, the selection, the panes, for the next open.
 		if (mScene != null)
 			SaveViewState();
