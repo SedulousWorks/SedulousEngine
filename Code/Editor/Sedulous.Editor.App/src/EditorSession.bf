@@ -89,6 +89,8 @@ class EditorSession
 	private EditorSessionServices mServices ~ delete _;
 	private EditorProject mProject = null ~ delete _;
 	private Settings mStore = null ~ delete _;
+	/// Close is closing the views: a save writes, captures nothing.
+	private bool mClosingViews = false;
 	private ResourceManager mResources = null ~ delete _;
 	/// The thumbnails' GPU stage while a project is open over an embedded runtime.
 	private ThumbnailStage mThumbnailStage = null ~ delete _;
@@ -200,8 +202,13 @@ class EditorSession
 			return;
 		let context = mServices.Context;
 		SaveStore(); // the views' state, while they are up
+		// The pages close next, and a page saves its own state as it goes (a scene its view), which
+		// asks for a save: that writes what they add without capturing the views again, or the
+		// open pages would be written as they close, the last leaving none to reopen.
+		mClosingViews = true;
 		if (mServices.OnClosing != null)
 			mServices.OnClosing();
+		mClosingViews = false;
 		mServices.Cook.Shutdown(); // joins a cook in flight before the databases go
 		DeleteAndNullify!(mServices.Cook.OnCookFinished); // it reaches this session
 		DeleteAndNullify!(mThumbnailStage); // unstages and drops its GPU objects while the renderer lives
@@ -251,12 +258,13 @@ class EditorSession
 	/// application stages a job each frame and renders it in the scene renderer's bracket.
 	public ThumbnailStage Stage => mThumbnailStage;
 
-	/// Writes the per-project store, the views' state captured into it first.
+	/// Writes the per-project store, the views' state captured into it first (not while they
+	/// close: what they were is already in it).
 	public void SaveStore()
 	{
 		if ((mProject == null) || (mStore == null))
 			return;
-		if (mServices.CaptureState != null)
+		if ((mServices.CaptureState != null) && !mClosingViews)
 			mServices.CaptureState(mStore);
 		WriteStore();
 	}

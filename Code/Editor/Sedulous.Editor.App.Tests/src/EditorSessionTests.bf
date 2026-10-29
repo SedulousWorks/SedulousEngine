@@ -68,6 +68,10 @@ class EditorSessionTests
 		/// The closing hook closes the console, as views going might change the dock.
 		public bool CloseConsoleOnClosing = false;
 		/// How often the views' state was captured, and whether the closing hook had run by then.
+		/// The open pages the views' capture writes while they are up, and that a closing view
+		/// takes away, asking for a save as a scene page does as it closes.
+		public List<Guid> LivePages = new .() ~ delete _;
+		public bool RequestSaveOnClosing = false;
 		public int Captures = 0;
 		public bool CapturedAfterClosing = false;
 		/// The services' state each hook saw.
@@ -146,6 +150,11 @@ class EditorSessionTests
 						ProjectEditorSettings.CaptureOpenPages(bench.Session.Store, bench.PagesToCapture, bench.PagesToCapture[0]);
 					if (bench.CloseConsoleOnClosing && (bench.DockBed != null))
 						Test.Assert(bench.DockBed.Dock.Controller.Close(EditorDock.cPanelConsole).Ok);
+					if (bench.RequestSaveOnClosing)
+					{
+						bench.LivePages.Clear(); // the page goes, saving its own state as it does
+						context.RequestProjectEditorSettingsSave();
+					}
 					bench.Events.Add(new .("closing"));
 				};
 			services.CaptureState = new [=bench](store) =>
@@ -155,6 +164,8 @@ class EditorSessionTests
 					bench.CapturedAfterClosing = bench.CapturedAfterClosing || bench.HasEvent("closing");
 					if (bench.DockBed != null)
 						bench.DockBed.Dock.CaptureLayout(store);
+					if (bench.RequestSaveOnClosing)
+						ProjectEditorSettings.CaptureOpenPages(store, bench.LivePages, bench.LivePages.IsEmpty ? Guid() : bench.LivePages[0]);
 				};
 			services.OnCookFinished = new [=bench]() =>
 				{
@@ -590,6 +601,33 @@ class EditorSessionTests
 			Test.Assert(ProjectEditorSettings.ApplyOpenPages(read, pages, let active) case .Ok);
 			Test.Assert((pages.Count == 1) && (pages[0] == page) && (active == page));
 		}
+	}
+
+	/// A project closed with a page open writes that page, and the page's own save as it closes
+	/// keeps it: a save asked for while the views close captures nothing again (a page saving its
+	/// state as it goes would write the open pages as they close, the last leaving none to reopen:
+	/// Raptor's user report, a project closed with a scene open opening with none).
+	[Test]
+	public static void AProjectClosedWithAPageOpenWritesThatPageItsOwnSaveAsItClosesKeepsIt()
+	{
+		let bench = scope Bench();
+		let dir = bench.MadeProject("scratch_editor_session_close_pages", "Session");
+		let page = Guid.Create();
+		let session = scope EditorSession(bench.Services());
+		bench.Session = session;
+		Test.Assert(session.Open(dir));
+		bench.LivePages.Add(page);
+		bench.RequestSaveOnClosing = true;
+		session.Close();
+
+		// Opened again: the page is there to reopen.
+		let read = scope Settings();
+		ReadStore(dir, read);
+		let pages = scope List<Guid>();
+		Test.Assert(ProjectEditorSettings.ApplyOpenPages(read, pages, let active) case .Ok);
+		Test.Assert(pages.Count == 1);
+		Test.Assert(pages[0] == page);
+		Test.Assert(active == page);
 	}
 
 	/// A project that opens takes the layout saved with it; one with none saved takes the
