@@ -9,6 +9,7 @@ using Sedulous.Editor.Navigation;
 using Sedulous.Editor.Scene;
 using Sedulous.Editor.Spline;
 using Sedulous.Editor.Terrain;
+using Sedulous.Editor.Vegetation;
 
 namespace Sedulous.Tools.Editor;
 
@@ -19,8 +20,7 @@ namespace Sedulous.Tools.Editor;
 ///
 /// The pages are parked while the editor moves onto the GUI (Raptor's editor-gui spec, 4.1):
 /// each one's Register comes back here with its port, and with them the thumbnail generators
-/// they fold in, the viewport tools and their panels (vegetation), and the code
-/// pages' language services (AngelScriptEditorUI, HlslEditorUI).
+/// they fold in and the code pages' language services (AngelScriptEditorUI, HlslEditorUI).
 static class EditorRegistration
 {
 	public static void RegisterEditors(EditorApplication app, IApplicationHost host)
@@ -40,6 +40,8 @@ static class EditorRegistration
 		SceneEditor.Register(context, host, app);
 		// The scene view's tools by domain; the bar shows them in this order (layer 5, part 3).
 		TerrainEditor.RegisterSceneTools(context); // sculpt, paint layers, cut holes; their panels; splatmap thumbnails
+		VegetationEditor.RegisterViewportTools(); // paint vegetation, paint props
+		VegetationEditor.RegisterToolPanels();
 		SplineEditor.RegisterViewportTools(); // the spline control-point editor
 
 		// File > New: every pipeline domain's creators, the scripts' among them. The script page

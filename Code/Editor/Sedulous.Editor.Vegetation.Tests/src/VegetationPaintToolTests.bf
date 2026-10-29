@@ -107,7 +107,7 @@ class VegetationPaintToolTests
 		tool.SetPlane(0);
 		Test.Assert(tool.IsEraser);
 		Test.Assert(tool.Plane == 0);
-		Test.Assert(tool.StatusText.Contains("ERASE plane 0"));
+		Test.Assert(tool.StatusText.Contains("ERASE plane 1")); // from 1, as its key and the panel
 
 		tool.SetEraser(false);
 		Test.Assert(!tool.IsEraser);

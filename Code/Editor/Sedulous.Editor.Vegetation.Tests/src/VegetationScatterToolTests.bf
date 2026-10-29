@@ -3,7 +3,7 @@ using System.Collections;
 using Sedulous.Core;
 using Sedulous.Render;
 using Sedulous.Heightfield;
-using Sedulous.UI;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.ViewportTools;
@@ -71,7 +71,7 @@ class VegetationScatterToolTests
 		tool.SetEraser(true);
 		tool.SetLayer(0);
 		Test.Assert(tool.IsEraser);
-		Test.Assert(tool.StatusText.Contains("ERASE layer 0"));
+		Test.Assert(tool.StatusText.Contains("ERASE layer 1"));
 		fx.Stroke(tool, -20.0f, 10.0f, -10.0f, 10.0f, 4);
 		Test.Assert(fx.Rocks.Count < placed.Count);
 		for (let m in fx.Rocks)
@@ -179,7 +179,6 @@ class VegetationScatterToolTests
 		VegetationEditor.RegisterToolPanels();
 		let provider = ViewportToolPanelRegistry.Global.FindByToolId("vegetation.scatter");
 		Test.Assert(provider != null);
-		Test.Assert(provider.Placement == .Float);
 
 		let fx = scope ScatterFixture();
 		let commands = scope EditorCommandStack();
@@ -189,15 +188,19 @@ class VegetationScatterToolTests
 		context.Scene = fx.Scene;
 		context.Commands = commands;
 
-		let panel = provider.CreatePanel(tool, context);
+		let node = provider.CreatePanel(tool, context);
+		Test.Assert(node != null);
+		defer node.ReleaseRef();
+		let panel = node as ToolPanelBody;
 		Test.Assert(panel != null);
-		defer panel.ReleaseRef();
-		Test.Assert(tool.Layer == 0);
-
-		// Wheel sizing feeds the radius row back, which is what the panel wired up.
-		Test.Assert(tool.OnRadiusChanged != null);
+		// The layers by name, the chosen one checked; a wheel resize shows after a Sync.
+		Test.Assert(panel.ChoiceCount(0) >= 1);
+		Test.Assert(panel.ChoiceAt(0, 0).Checked);
 		tool.SetRadius(9.0f);
-		Test.Assert(tool.Radius == 9.0f);
+		panel.Sync();
+		Test.Assert(panel.NumberAt(0).Value == 9.0);
+		panel.ChoiceAt(1, 1).HandleActivate(); // Erase
+		Test.Assert(tool.IsEraser);
 	}
 
 	/// A layer whose mesh does not resolve is NAMED in the status: props would place and

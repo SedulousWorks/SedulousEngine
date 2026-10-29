@@ -2,122 +2,59 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Scene;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.ViewportTools;
 using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Vegetation.Tests;
 
-/// The brush's settings panel: it registers, it builds, and its rows drive the tool. The
-/// mode row is what keeps the erase target visible rather than implied.
+/// The brush's panel, of the kit: it registers, it builds, and its rows drive the tool. The planes
+/// from 1, the chosen one checked; the mode a row of its own, so the erase target stays lit; a
+/// wheel resize shows after a Sync.
 class VegetationPanelTests
 {
-	/// The panel's property grid, wherever it sits in the tree.
-	private static PropertyGrid FindGrid(View view)
-	{
-		if (let grid = view as PropertyGrid)
-			return grid;
-		if (let group = view as ViewGroup)
-		{
-			for (int k < group.ChildCount)
-			{
-				if (let found = FindGrid(group.GetChildAt(k)))
-					return found;
-			}
-		}
-		return null;
-	}
-
-	private static PropertyEditor Find(View view, StringView name)
-	{
-		let grid = FindGrid(view);
-		if (grid == null)
-			return null;
-		for (int i < grid.PropertyCount)
-		{
-			if (grid.PropertyAt(i).Name == name)
-				return grid.PropertyAt(i);
-		}
-		return null;
-	}
-
-	private static int32 CountToggles(View view)
-	{
-		var n = (int32)0;
-		if (view is ToggleButton)
-			n++;
-		if (let group = view as ViewGroup)
-		{
-			for (int k < group.ChildCount)
-				n += CountToggles(group.GetChildAt(k));
-		}
-		return n;
-	}
-
 	[Test]
-	public static void TheProviderRegistersAndBuildsAPanelForTheBrush()
+	public static void TheProviderRegistersAndBuildsAPanelOfTheKitForTheBrush()
 	{
 		VegetationEditor.RegisterToolPanels();
 		VegetationEditor.RegisterToolPanels(); // idempotent, first wins per tool id
-
-		let registry = ViewportToolPanelRegistry.Global;
-		let provider = registry.FindByToolId("vegetation.paint");
-		Test.Assert(provider != null);
-		Test.Assert(provider.Placement == .Float);
-
-		let fx = scope VegetationFixture();
-		let commands = scope EditorCommandStack();
-		let tool = scope VegetationPaintTool(fx.Scene, commands, null);
-		var context = ViewportToolHostContext();
-		context.Scene = fx.Scene;
-		context.Commands = commands;
-
-		let panel = provider.CreatePanel(tool, context);
-		Test.Assert(panel != null);
-		defer panel.ReleaseRef();
-
-		// A mode row of three and a plane row of four: the erase target stays visible.
-		Test.Assert(CountToggles(panel) == 7);
-	}
-
-	[Test]
-	public static void ThePanelRowsDriveTheToolAndTheWheelFeedsTheRadiusBack()
-	{
-		VegetationEditor.RegisterToolPanels();
 		let provider = ViewportToolPanelRegistry.Global.FindByToolId("vegetation.paint");
 		Test.Assert(provider != null);
 
 		let fx = scope VegetationFixture();
 		let commands = scope EditorCommandStack();
 		let tool = scope VegetationPaintTool(fx.Scene, commands, null);
+		tool.SetPlane(1);
 		var context = ViewportToolHostContext();
 		context.Scene = fx.Scene;
 		context.Commands = commands;
-
-		let panel = provider.CreatePanel(tool, context);
+		let node = provider.CreatePanel(tool, context);
+		Test.Assert(node != null);
+		defer node.ReleaseRef();
+		let panel = node as ToolPanelBody;
 		Test.Assert(panel != null);
-		defer panel.ReleaseRef();
 
-		let radius = Find(panel, "Radius") as FloatEditor;
-		let strength = Find(panel, "Strength") as FloatEditor;
-		let spacing = Find(panel, "Stamp spacing") as FloatEditor;
-		let airbrush = Find(panel, "Airbrush") as BoolEditor;
-		Test.Assert((radius != null) && (strength != null) && (spacing != null)
-			&& (airbrush != null));
-
-		radius.Setter(24.0);
-		Test.Assert(tool.Radius == 24.0f);
-		strength.Setter(0.4);
-		Test.Assert(Math.Abs(tool.Strength - 0.4f) < 0.001f);
-		spacing.Setter(0.8);
-		Test.Assert(Math.Abs(tool.Spacing - 0.8f) < 0.001f);
-		airbrush.Setter(true);
+		// The planes from 1, the chosen one checked; a wheel resize shows after a Sync.
+		Test.Assert(panel.ChoiceCount(0) >= 2);
+		Test.Assert(panel.ChoiceAt(0, 0).Text == "1");
+		Test.Assert(panel.ChoiceAt(0, 1).Checked);
+		Test.Assert(!panel.ChoiceAt(0, 1).Tooltip.IsEmpty, "what grows on it");
+		tool.SetRadius(12.0f);
+		panel.Sync();
+		Test.Assert(panel.NumberAt(0).Value == 12.0);
+		// The mode: Erase, then Smooth, each one at a time.
+		Test.Assert(panel.ChoiceCount(1) == 3);
+		panel.ChoiceAt(1, 1).HandleActivate();
+		Test.Assert(tool.IsEraser);
+		panel.ChoiceAt(1, 2).HandleActivate();
+		Test.Assert(tool.IsSmooth);
+		Test.Assert(!tool.IsEraser);
+		Test.Assert(tool.Plane == 1, "the plane kept through the modes");
+		panel.ChoiceAt(0, 0).HandleActivate();
+		Test.Assert(tool.Plane == 0);
+		panel.CheckAt(0).HandleActivate(); // Airbrush
 		Test.Assert(tool.IsAirbrush);
-
-		// Wheel sizing pushes the new radius back into the row.
-		tool.SetRadius(11.0f);
-		Test.Assert(Math.Abs((float)radius.Value - 11.0f) < 0.001f);
+		tool.OnDeactivate();
 	}
 }

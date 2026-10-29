@@ -75,8 +75,6 @@ class VegetationScatterTool : IViewportTool
 	private List<BodyId> mOverlapScratch = new .() ~ delete _;
 	private String mStatus = new .() ~ delete _;
 
-	/// The panel's radius readout follows wheel sizing through this. Owned.
-	public delegate void(float radius) OnRadiusChanged = null ~ delete _;
 
 	public this(Scene scene, EditorCommandStack commands)
 	{
@@ -87,6 +85,7 @@ class VegetationScatterTool : IViewportTool
 
 	public StringView Id => "vegetation.scatter";
 	public StringView DisplayName => "Paint Props";
+	public StringView Icon => "Editor/Icons/Types/VegetationMaskAsset.svg";
 	public StringView Category => "Vegetation";
 	public StringView StatusText => mStatus;
 
@@ -114,8 +113,6 @@ class VegetationScatterTool : IViewportTool
 	{
 		mRadius = Math.Clamp(radius, cMinRadius, cMaxRadius);
 		UpdateStatus();
-		if (OnRadiusChanged != null)
-			OnRadiusChanged(mRadius);
 	}
 
 	public float Density => mDensity;
@@ -175,7 +172,6 @@ class VegetationScatterTool : IViewportTool
 		if (mStroking)
 			EndStroke(); // never leave a half open stroke on a tool switch
 		mHasHover = false;
-		DeleteAndNullify!(OnRadiusChanged);
 	}
 
 	public bool Update(in ViewportToolInput input)
@@ -402,13 +398,13 @@ class VegetationScatterTool : IViewportTool
 		let keys = "(1-9 layer, 0 erase, Shift+wheel size)";
 		// The mode AND the layer, so the erase target is never a guess.
 		let mode = mErase ? "ERASE" : "paint";
-		mStatus.Set(scope $"Paint Props [{mode} layer {mLayer}]  radius {radius}  {keys}");
+		mStatus.Set(scope $"Paint Props [{mode} layer {mLayer + 1}]  radius {radius}  {keys}");
 		if (mErase)
 			return;
 
 		// Props would place and nothing would draw, which without saying so reads as a brush
 		// that does not work.
 		if (!mLayerHasMesh)
-			mStatus.AppendF("  - layer {} has no mesh: props place but nothing draws", mLayer);
+			mStatus.AppendF("  - layer {} has no mesh: props place but nothing draws", mLayer + 1);
 	}
 }

@@ -63,8 +63,6 @@ class VegetationPaintTool : IViewportTool
 	private float mAirbrushClock = 0.0f;
 	private String mStatus = new .() ~ delete _;
 
-	/// The panel's radius readout follows wheel sizing through this. Owned.
-	public delegate void(float radius) OnRadiusChanged = null ~ delete _;
 
 	public this(Scene scene, EditorCommandStack commands, IAssetEditSink assetEdits)
 	{
@@ -76,6 +74,7 @@ class VegetationPaintTool : IViewportTool
 
 	public StringView Id => "vegetation.paint";
 	public StringView DisplayName => "Paint Vegetation";
+	public StringView Icon => "Editor/Icons/Types/TerrainVegetationComponent.svg";
 	public StringView Category => "Vegetation";
 	public StringView StatusText => mStatus;
 
@@ -117,8 +116,6 @@ class VegetationPaintTool : IViewportTool
 	{
 		mRadius = Math.Clamp(radius, cMinRadius, cMaxRadius);
 		UpdateStatus();
-		if (OnRadiusChanged != null)
-			OnRadiusChanged(mRadius);
 	}
 
 	public float Strength => mStrength;
@@ -144,7 +141,6 @@ class VegetationPaintTool : IViewportTool
 		if (mStroking)
 			EndStroke(); // never leave a half open stroke on a tool switch
 		mHasHover = false;
-		DeleteAndNullify!(OnRadiusChanged);
 	}
 
 	public bool Update(in ViewportToolInput input)
@@ -367,6 +363,6 @@ class VegetationPaintTool : IViewportTool
 		let keys = "(1-9 plane, 0 erase, - smooth, Shift+wheel size)";
 		// The mode AND the plane, so the erase target is never a guess.
 		let mode = mSmooth ? "SMOOTH" : (mErase ? "ERASE" : "paint");
-		mStatus.Set(scope $"Paint Vegetation [{mode} plane {mPlane}]  radius {radius}  {keys}");
+		mStatus.Set(scope $"Paint Vegetation [{mode} plane {mPlane + 1}]  radius {radius}  {keys}");
 	}
 }
