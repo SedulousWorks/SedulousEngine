@@ -158,8 +158,8 @@ class ActionMenuBar
 			Fill(title, mBar.AddMenu(title));
 	}
 
-	/// What each action item of `menu` shows that the registry answers at the moment: enabled,
-	/// and checked for a checkable one.
+	/// What each action item of `menu` shows that the registry answers at the moment: enabled (and
+	/// why not), and checked for a checkable one.
 	public void Refresh(Menu menu)
 	{
 		for (let item in mItems)
@@ -167,6 +167,7 @@ class ActionMenuBar
 			if (item.Holder != menu)
 				continue;
 			item.Row.Enabled = mActions.IsEnabled(item.Action.Id);
+			item.Row.Tooltip = mActions.DisabledReason(item.Action.Id, .. scope String()); // why it is disabled, when it says
 			if (item.Row.Checkable)
 				item.Row.SetCheckedSilently(mActions.IsChecked(item.Action.Id));
 		}

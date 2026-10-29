@@ -70,7 +70,7 @@ static class EditorActionTools
 	{
 		let listSchema = scope SchemaBuilder();
 		server.RegisterTool("action_list",
-			"Every editor action - what a user can do by menu, chord, toolbar or context menu - with its state over the ACTIVE page: id, label, description, menuPath, kind (command / toggle / window), readOnly, shortcut, enabled, checked. Page-bound actions are disabled when no page of their kind is active: page_open one first.",
+			"Every editor action - what a user can do by menu, chord, toolbar or context menu - with its state over the ACTIVE page: id, label, description, menuPath, kind (command / toggle / window), readOnly, shortcut, enabled, checked, and disabledReason (why it is disabled, where the action says). Page-bound actions are disabled when no page of their kind is active: page_open one first.",
 			listSchema.Build(), .ReadOnly,
 			new (arguments, outResult, outError) =>
 			{
@@ -101,7 +101,7 @@ static class EditorActionTools
 		let executeSchema = scope SchemaBuilder();
 		executeSchema.Str("id", "the action's id (from action_list)", true);
 		server.RegisterTool("action_execute",
-			"Run an editor action over the active page, exactly as a menu click or its chord would - through the one funnel every surface uses. REFUSED when the action is not enabled over the active page (action_state says why to look). Runs UNATTENDED: any dialog the action would open is kept off the screen and closed as cancelled, and the result lists it under `suppressedDialogs` - the action then most likely did nothing; use a dedicated tool for that step, or ask the user. Returns {id, executed, suppressedDialogs, enabled, checked} (the state after).",
+			"Run an editor action over the active page, exactly as a menu click or its chord would - through the one funnel every surface uses. REFUSED when the action is not enabled over the active page, with its disabledReason when it gives one (action_state says why to look). Runs UNATTENDED: any dialog the action would open is kept off the screen and closed as cancelled, and the result lists it under `suppressedDialogs` - the action then most likely did nothing; use a dedicated tool for that step, or ask the user. Returns {id, executed, suppressedDialogs, enabled, checked} (the state after).",
 			executeSchema.Build(), .Overwrites,
 			new (arguments, outResult, outError) =>
 			{
@@ -112,6 +112,13 @@ static class EditorActionTools
 				let subject = actions.Subject;
 				if (!EditorActionRegistry.IsEnabled(action, subject))
 				{
+					let reason = actions.DisabledReason(action.Id, subject, .. scope String());
+					if (!reason.IsEmpty)
+					{
+						outError.AppendF("action '{}' is not enabled over the active page ({}): {}",
+							action.Id, (subject != null) ? subject.Title : "no page is active", reason);
+						return false;
+					}
 					outError.AppendF("action '{}' is not enabled over the active page ({}) - page_open the page it needs, or select what it acts on",
 						action.Id, (subject != null) ? subject.Title : "no page is active");
 					return false;
@@ -171,6 +178,10 @@ static class EditorActionTools
 		let subject = actions.Subject;
 		outResult.Set("enabled", JsonValue.MakeBool(EditorActionRegistry.IsEnabled(action, subject)));
 		outResult.Set("checked", JsonValue.MakeBool(EditorActionRegistry.IsChecked(action, subject)));
+		// Why it is disabled, when it says (a tool with nothing to work on): what to change.
+		let reason = actions.DisabledReason(action.Id, subject, .. scope String());
+		if (!reason.IsEmpty)
+			outResult.Set("disabledReason", JsonValue.MakeString(reason));
 	}
 
 	private static EditorActionDeclaration FindAction(EditorActionRegistry actions, JsonValue arguments, String outError)

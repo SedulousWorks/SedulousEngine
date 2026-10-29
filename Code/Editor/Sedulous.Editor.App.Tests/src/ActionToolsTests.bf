@@ -131,6 +131,7 @@ class ActionToolsTests
 			d.Kind = .Toggle;
 			d.Shortcut = EditorShortcut.Of("ctrl-f");
 			d.Enabled = new (page) => page != null;
+			d.DisabledReason = new (page, outReason) => { outReason.Append("Open a page to flip."); };
 			d.Checked = new (page) => (page != null) && ((TogglePage)page).On; // asked while disabled too
 			d.Execute = new (page) =>
 				{
@@ -160,6 +161,7 @@ class ActionToolsTests
 			Test.Assert(flip.Get("kind").AsString() == "toggle");
 			Test.Assert(flip.Get("shortcut").AsString() == "Ctrl+F");
 			Test.Assert(!flip.Get("enabled").AsBool());
+			Test.Assert(flip.Get("disabledReason").AsString() == "Open a page to flip."); // said where it has one
 			Test.Assert(!flip.Get("checked").AsBool());
 			let exit = FindById(listed.Payload.Get("actions"), "file.exit");
 			Test.Assert(exit.Get("menuPath").AsString() == "File/Exit");
@@ -180,7 +182,7 @@ class ActionToolsTests
 			let refused = Call(server, "action_execute", "{\"id\":\"page.flip\"}");
 			defer delete refused;
 			Test.Assert(!refused.Ok);
-			Test.Assert(refused.Error.StartsWith("action 'page.flip' is not enabled over the active page (no page is active)"), refused.Error);
+			Test.Assert(refused.Error == "action 'page.flip' is not enabled over the active page (no page is active): Open a page to flip.", refused.Error);
 		}
 		// An unknown id is the tool's error, from either tool.
 		{

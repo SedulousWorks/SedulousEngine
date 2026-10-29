@@ -9,8 +9,8 @@ namespace Sedulous.Editor.App;
 // spec, 5.3, layer 2). The GUI's commands keep one state each for the whole window, but a page's
 // Save, Undo or Simulate acts on and shows its own page: two pages side by side each have theirs.
 // So each button is bound to an action id; a click executes the action with the page as its
-// subject, and Sync, once a frame, gives the button the action's label and keys (its tooltip) and
-// whether it is enabled and checked over the page, each only when it changed.
+// subject, and Sync, once a frame, gives the button the action's label and keys (its tooltip),
+// whether it is enabled and checked over the page and why it is disabled, each only when it changed.
 
 /// A page's buttons bound to actions over that page. The page's: its buttons outlive it.
 class PageActionBar
@@ -22,6 +22,8 @@ class PageActionBar
 		public String Id = new .() ~ delete _;
 		public String Label = new .() ~ delete _;
 		public String Keys = new .() ~ delete _;
+		/// Why it is disabled, its tooltip's last line.
+		public String Reason = new .() ~ delete _;
 		public bool Enabled;
 		public bool Checked;
 		public bool Shown;
@@ -77,14 +79,19 @@ class PageActionBar
 			bound.Label.Set(label);
 			bound.Keys.Set(keys);
 		}
-		if (!bound.Shown || (enabled != bound.Enabled) || (isChecked != bound.Checked))
+		let reason = scope String();
+		if (!enabled && (action != null))
+			mActions.DisabledReason(bound.Id, mPage, reason);
+		if (!bound.Shown || (enabled != bound.Enabled) || (isChecked != bound.Checked) || (reason != bound.Reason))
 		{
 			var state = BoundCommandState();
 			state.Available = enabled;
 			state.Checked = isChecked;
+			state.Reason = reason;
 			bound.Button.OnBoundCommandState(state);
 			bound.Enabled = enabled;
 			bound.Checked = isChecked;
+			bound.Reason.Set(reason);
 		}
 		bound.Shown = true;
 	}

@@ -24,7 +24,8 @@ along the window's edge or floating, as dragging its tab does, `share` setting i
 room it splits), the whole-window capture
 (`editor_screenshot`), the action bridge (`action_list`,
 `action_state`, `action_execute`: everything a user can do by menu, chord, toolbar or context
-menu, over the active page, executed unattended; a dialog an action would open is closed as
+menu, over the active page, executed unattended; a disabled action may say why as
+`disabledReason`, in its state and in a refused execute; a dialog an action would open is closed as
 cancelled and named under `suppressedDialogs`, so the action most likely did nothing: use a
 dedicated tool or ask the user) and the scene page's live tools
 (`selection_get`, `selection_set`, `simulate_start`, `simulate_stop`, `entity_inspect`,

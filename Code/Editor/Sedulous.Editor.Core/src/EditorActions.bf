@@ -110,6 +110,9 @@ class EditorActionDeclaration
 	public delegate bool(EditorPage subject) Enabled ~ delete _;
 	/// A Toggle or Window's state; null is never checked. OWNED.
 	public delegate bool(EditorPage subject) Checked ~ delete _;
+	/// Why it is disabled over the subject, appended, said where it shows (a tool with nothing to
+	/// work on); null or nothing appended: nothing to say. OWNED.
+	public delegate void(EditorPage subject, String outReason) DisabledReason ~ delete _;
 
 	public this() {}
 
@@ -191,6 +194,17 @@ class EditorActionRegistry
 
 	public static bool IsEnabled(EditorActionDeclaration action, EditorPage subject)
 		=> (action.Enabled == null) || action.Enabled(subject);
+
+	public void DisabledReason(StringView id, String outReason) => DisabledReason(id, Subject, outReason);
+
+	/// Why `id` is disabled over `subject`, appended; nothing when it is enabled or says nothing.
+	public void DisabledReason(StringView id, EditorPage subject, String outReason)
+	{
+		let action = Find(id);
+		if ((action == null) || IsEnabled(action, subject) || (action.DisabledReason == null))
+			return;
+		action.DisabledReason(subject, outReason);
+	}
 
 	public bool IsChecked(StringView id) => IsChecked(id, Subject);
 
