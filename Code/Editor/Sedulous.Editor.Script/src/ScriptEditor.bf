@@ -4,17 +4,22 @@ using Sedulous.Core.Logging;
 using Sedulous.Script;
 using Sedulous.Script.Pipeline;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Script;
 
-/// The script editor's composition: the asset serializables, the page against the host's
-/// script surface, and a Behavior, Level and Game creator per backend that has a cook.
+/// The script editor's composition: the asset serializables and the page against the host's script
+/// surface. The New Asset creators (one per tier per backend with a cook) are the script pipeline's
+/// (ScriptCreators).
 static class ScriptEditor
 {
-	public static void Register(EditorContext context, ScriptSurface surface)
+	/// A page asks `services` (borrowed: the editor's, or a test's, which outlives the context) for
+	/// its services when it is made; `surface` (borrowed, may be null) is what its API is described
+	/// against.
+	public static void Register(EditorContext context, AssetPageServicesSource services, ScriptSurface surface)
 	{
 		ScriptPipeline.RegisterAll();
-		context.Pages.Register(new ScriptClassPageFactory(surface));
+		context.Pages.Register(new ScriptClassPageFactory(services, surface));
 
 		let languages = scope List<String>();
 		defer { ClearAndDeleteItems!(languages); }

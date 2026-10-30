@@ -1,0 +1,54 @@
+<!--
+  The shader page (Raptor's editor-gui spec, 5.4, layer 6, part 4): the kit's bar (Save,
+  Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page; its kind
+  at the end) over the code and its problems, one above the other, beside the preview (a sphere
+  drawn with the code being edited, its material laid out by the properties block at its defaults)
+  over the shader's grid (its name and entry points). The preview has its own bar: Frame, and, while
+  the code does not compile, a note that it shows the last version that did. An asset that did not
+  read says so in place of the grid.
+-->
+<Panel class="page code-page shader-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Separator/>
+        <ToolButton id="page-cook" icon="Editor/Icons/cook.svg"/>
+        <ToolButton id="page-rebuild" icon="Editor/Icons/rebuild.svg"/>
+        <Separator id="page-own"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <Splitter id="page-body" class="page-body" axis="horizontal" weights="0.6 0.4">
+        <Splitter class="code-pane" axis="vertical" weights="0.8 0.2">
+            <CodeEditor id="page-code" class="page-code"/>
+            <Panel id="page-problems" class="panel page-problems"/>
+        </Splitter>
+        <Splitter class="page-pane" axis="vertical" weights="0.65 0.35">
+            <Panel class="panel page-pane preview-pane">
+                <Panel id="preview-bar" class="panel-toolbar preview-bar">
+                    <ToolButton id="preview-frame" icon="Editor/Icons/frame-selection.svg" tooltip="Frame it (F)"/>
+                    <Separator id="preview-own"/>
+                    <Label id="shader-stale" class="preview-stale" text="Showing the last version that compiled"/>
+                    <Spacer/>
+                    <Label id="preview-hint" class="preview-hint" text="Alt drag orbits · right drag looks, WASD flies · middle drag pans · wheel zooms"/>
+                </Panel>
+                <Panel id="preview-stage" class="preview-stage"/>
+                <Panel id="preview-empty" class="state-box preview-empty">
+                    <Image class="state-icon" src="Editor/Icons/material.svg"/>
+                    <Label id="preview-empty-title" class="state-title" text="Nothing to preview yet"/>
+                    <Label id="preview-empty-text" class="state-text" text="It shows once the code compiles."/>
+                </Panel>
+            </Panel>
+            <Panel class="panel page-pane">
+                <Panel id="page-state" class="state-box failed page-state">
+                    <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+                    <Label class="state-title" text="This asset did not read"/>
+                    <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+                </Panel>
+                <PropertyGrid id="page-grid" class="panel-body"/>
+            </Panel>
+        </Splitter>
+    </Splitter>
+</Panel>

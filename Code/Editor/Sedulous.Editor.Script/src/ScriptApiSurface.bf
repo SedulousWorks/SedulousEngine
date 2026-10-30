@@ -5,9 +5,10 @@ using Sedulous.Script;
 
 namespace Sedulous.Editor.Script;
 
-/// The one bound API source the completion and the browser read: a throwaway runtime for
-/// the language, bound against the script surface, asked to describe what it bound. Built
-/// once on first use; a language without a backend, or no surface, stays empty.
+/// What a script may call, as the runtime binds it for one language: a throwaway runtime for the
+/// language, bound against the script surface, asked to describe what it bound. Built once per page
+/// and read by its completion, its hover and its API browser alike, so they cannot disagree. Built
+/// on first use; a language without a backend, or no surface, stays empty.
 class ScriptApiSurface
 {
 	private String mLanguage = new .() ~ delete _;
@@ -45,6 +46,17 @@ class ScriptApiSurface
 			runtime.DescribeBoundApi(mTypes);
 			return mTypes;
 		}
+	}
+
+	/// The type or namespace bound under `name`; null when none is.
+	public ScriptApiType FindType(StringView name)
+	{
+		for (let type in Types)
+		{
+			if (type.ScriptName == name)
+				return type;
+		}
+		return null;
 	}
 
 	/// A binding whose surface type is outside the runtime domain, which a shipped player
