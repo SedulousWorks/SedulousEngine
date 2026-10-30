@@ -9,6 +9,7 @@ using Sedulous.Resource;
 using Sedulous.Script.Resource;
 using Sedulous.Engine.Script;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 
@@ -203,7 +204,7 @@ static class SceneMcpEditTools
 		edit.DestroyEntity(id);
 		EndStep(edit);
 		outResult.Set("page", SceneMcpTools.PageJson(page));
-		outResult.Set("deleted", ComponentJson.GuidJson(id));
+		outResult.Set("deleted", FieldJson.GuidJson(id));
 		return true;
 	}
 

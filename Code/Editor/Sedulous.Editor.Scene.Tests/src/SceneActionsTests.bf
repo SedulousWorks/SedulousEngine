@@ -93,6 +93,10 @@ class SceneActionsTests
 		}
 		private ViewportCapture mCapture = new .() ~ delete _;
 		public ViewportCapture LastViewportCapture => mCapture;
+		public bool BeginScriptedInput(Sedulous.Input.ScriptedInputSource source) { delete source; return false; }
+		public void EndScriptedInput() {}
+		public double ScriptedInputTime => -1.0;
+		public Float2 ViewportPixels => .Zero;
 		public bool MarkersShown => Markers;
 		public void SetMarkersShown(bool shown) { Markers = shown; }
 		public bool Animation = false;
@@ -120,7 +124,8 @@ class SceneActionsTests
 		let context = scope EditorContext();
 		SceneActions.Register(context);
 		let actions = context.Actions;
-		Test.Assert(actions.Find(SceneActionIds.SimulateStart).MenuPath == "Scene/Simulate/Play");
+		Test.Assert(actions.Find(SceneActionIds.SimulateStart).MenuPath == "Scene/Simulate/Start");
+		Test.Assert(actions.Find(SceneActionIds.SimulateStart).Label == "Simulate", "Play is the Game tab's");
 		Test.Assert(actions.Find(SceneActionIds.GizmoTranslate).Kind == .Toggle);
 		Test.Assert(actions.Shortcut(SceneActionIds.GizmoTranslate).Keys(.. scope .()) == "w");
 		Test.Assert(actions.Shortcut(SceneActionIds.EntityDelete).Keys(.. scope .()) == "delete");

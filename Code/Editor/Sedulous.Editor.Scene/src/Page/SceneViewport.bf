@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Shell;
+using Sedulous.Input; // ScriptedInputSource (a playtest of the view)
 using Sedulous.Graphics;
 using Sedulous.RHI;
 using Sedulous.Runtime.Client;
@@ -46,6 +47,11 @@ class SceneViewport
 	private bool mRenderedThisFrame = false;
 	private uint32 mCaptureWidth = 0;
 	private uint32 mCaptureHeight = 0;
+	/// A playtest's devices (BeginScripted), OWNED; null while none runs.
+	private ScriptedInputSource mScripted ~ delete _;
+	private double mScriptedTime = 0;
+	private bool mScriptedEnding = false;
+	private bool mScriptedReleased = false;
 
 	public this(SceneViewportServices services)
 	{
@@ -82,23 +88,52 @@ class SceneViewport
 	{
 		get
 		{
+			if (mScripted != null)
+				return true; // a playtest of the view holds it
 			let surface = mView.HostedSurface;
 			return mView.Hovered || mView.IsFocused || ((surface != null) && surface.Captured);
 		}
 	}
 
-	public bool IsHovered => mView.Hovered;
+	public bool IsHovered => (mScripted != null) ? ScriptedPointerInside : mView.Hovered;
 	/// The mouse, in the targets' pixels.
-	public IMouse Mouse => mView.Mouse;
+	public IMouse Mouse => (mScripted != null) ? mScripted.Mouse : mView.Mouse;
 
 	/// The keyboard while it has the focus or holds a press; null otherwise.
 	public IKeyboard Keyboard
 	{
 		get
 		{
+			if (mScripted != null)
+				return mScripted.Keyboard; // as if focused: the playtest's keys are the view's
 			let surface = mView.HostedSurface;
 			return (mView.IsFocused || ((surface != null) && surface.Captured)) ? mView.Keyboard : null;
 		}
+	}
+
+	/// Whether Shift is held for what the pointer does over the view (a brush's Shift + wheel resize, a
+	/// Shift click): read with the pointer, so it holds while the keys' focus is elsewhere (the
+	/// brush's own panel, picked a moment ago).
+	public bool ShiftHeld
+	{
+		get
+		{
+			if (mScripted != null)
+				return ShiftHeldOver(mScripted.Keyboard, null, true);
+			let surface = mView.HostedSurface;
+			let raw = (surface != null) ? surface.Raw : null;
+			return ShiftHeldOver(Keyboard, (raw != null) ? raw.Keyboard : null, mView.Hovered);
+		}
+	}
+
+	/// Whether Shift is held for what the pointer does over a view: the keyboard the view has while
+	/// focused, else, while the pointer is over it, the device's own (a wheel goes where the pointer
+	/// is, whatever has the keys). Pure, so tested without a window.
+	public static bool ShiftHeldOver(IKeyboard focused, IKeyboard device, bool hovered)
+	{
+		if (focused != null)
+			return focused.IsKeyDown(.LeftShift) || focused.IsKeyDown(.RightShift);
+		return hovered && (device != null) && (device.IsKeyDown(.LeftShift) || device.IsKeyDown(.RightShift));
 	}
 
 	/// The camera's frame: flown while the viewport has the input (`wheel` false leaves the wheel
@@ -112,8 +147,8 @@ class SceneViewport
 		{
 			mCamera.Update(Keyboard, Mouse, deltaSeconds, wheel);
 			// An orbit, look or pan drag: the pointer locked meanwhile, granted by the router to
-			// this surface alone and ended with the press.
-			if (surface != null)
+			// this surface alone and ended with the press (not the user's pointer for a playtest's).
+			if ((surface != null) && (mScripted == null))
 				surface.SetPointerLock(mCamera.WantsPointerLock);
 		}
 		else
@@ -130,6 +165,63 @@ class SceneViewport
 	}
 
 	public bool ZoomedThisFrame => mCamera.ZoomedThisUpdate;
+
+	// === A playtest of the view (viewport_run) ===
+
+	/// `source` (OWNED from here) stands for the devices over the view from now: its mouse in the
+	/// targets' pixels, its keys as if the view had the focus, the pointer over the view while
+	/// inside it. Nothing real is merged in: where the user's mouse is must not change a playtest.
+	/// A run already in hand is dropped for it.
+	public void BeginScripted(ScriptedInputSource source)
+	{
+		if (mScripted != source)
+			delete mScripted;
+		mScripted = source;
+		mScriptedTime = 0;
+		mScriptedEnding = false;
+		mScriptedReleased = false;
+	}
+
+	/// Ends it: everything held is let go for a frame (a brush lifts, the camera stops), then the
+	/// devices are the view's again.
+	public void EndScripted()
+	{
+		if (mScripted != null)
+			mScriptedEnding = true;
+	}
+
+	/// Once a frame, before the view's input is read: the playtest's next frame.
+	public void AdvanceScripted(float deltaSeconds)
+	{
+		if (mScripted == null)
+			return;
+		if (!mScriptedEnding)
+		{
+			mScriptedTime += (double)deltaSeconds;
+			mScripted.Advance(mScriptedTime);
+			return;
+		}
+		if (!mScriptedReleased)
+		{
+			mScripted.ReleaseAll();
+			mScriptedReleased = true;
+			return;
+		}
+		DeleteAndNullify!(mScripted);
+	}
+
+	/// Seconds the playtest has run; negative when none does.
+	public double ScriptedTime => (mScripted != null) ? mScriptedTime : -1.0;
+
+	/// A playtest's pointer is over the view while it is inside its targets.
+	private bool ScriptedPointerInside
+	{
+		get
+		{
+			let mouse = mScripted.Mouse;
+			return (mouse.X >= 0.0f) && (mouse.Y >= 0.0f) && (mouse.X < (float)mView.RenderWidth) && (mouse.Y < (float)mView.RenderHeight);
+		}
+	}
 
 	/// Alt orbit, right button fly, or the Tab captured fly (which owns WASD too).
 	public bool CameraOwnsInput

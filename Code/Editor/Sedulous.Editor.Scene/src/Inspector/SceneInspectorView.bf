@@ -48,9 +48,11 @@ class SceneInspectorServices
 	public ResourceRefServices Refs = null;
 	/// What a reference written binds through; null: on its next resolve. Not owned.
 	public ResourceManager Resources = null;
-	/// Opens the picker for a request below an anchor (Add Component); OWNERSHIP of the request
+	/// Opens the picker for a request (Add Component); OWNERSHIP of the request transfers.
+	public delegate void(PickerRequest request) Pick ~ delete _;
+	/// Opens the entity picker for a request (an entity slot's pick); OWNERSHIP of the request
 	/// transfers.
-	public delegate void(PickerRequest request, Node anchor) Pick ~ delete _;
+	public delegate void(EntityPickRequest request) PickEntity ~ delete _;
 	/// Whether the page simulates (the grid read only meanwhile).
 	public delegate bool() Simulating ~ delete _;
 	/// Whether the scene's own row is selected (ruling 12: then the scene's settings show).
@@ -316,8 +318,8 @@ class SceneInspectorView
 			// An entity reference: a slot over this scene's entities, chosen before the asset slot.
 			mEntityRefs.Edit = mEdit;
 			mEntityRefs.Icons = mServices.Icons;
-			if (mServices.Pick != null)
-				mEntityRefs.Pick = new (request, anchor) => { mServices.Pick(request, anchor); };
+			if (mServices.PickEntity != null)
+				mEntityRefs.Pick = new (request) => { mServices.PickEntity(request); };
 			EntityRefEditor.Register(mGrid.Editors, mEntityRefs);
 			PropertyExtras.Register(mGrid.Editors); // a component's notices and actions
 			mGrid.Source = mSections;
@@ -326,7 +328,7 @@ class SceneInspectorView
 		if (let search = Find<TextField>("inspector-search"))
 			search.SetOnTextChanging(new (text) => { Search(text); });
 		if (let add = Find<Sedulous.GUI.Button>("inspector-add"))
-			add.SetOnClick(new [=this, =add] () => { OpenAddComponent(add); });
+			add.SetOnClick(new [=this] () => { OpenAddComponent(); });
 		mName = Find<TextField>("inspector-name");
 		// Enter, or the focus leaving with a new name: one entity's rename (several name no one).
 		if (mName != null)
@@ -398,8 +400,8 @@ class SceneInspectorView
 			mGrid.Filter = text;
 	}
 
-	/// Add Component's picker, below `anchor`.
-	public void OpenAddComponent(Node anchor)
+	/// Add Component's picker.
+	public void OpenAddComponent()
 	{
 		if ((mServices.Pick == null) || mEntities.IsEmpty)
 			return;
@@ -419,7 +421,7 @@ class SceneInspectorView
 			else
 				item.Section.Set("Other");
 			if (type.GetCustomAttribute<DescriptionAttribute>() case .Ok(let description))
-				item.Detail.Set(description.Text);
+				item.Description.Set(description.Text); // a sentence: the foot's, not the row's
 			if (mServices.Icons != null)
 			{
 				let icon = mServices.Icons.For(type, "Component");
@@ -437,7 +439,7 @@ class SceneInspectorView
 		request.EmptyTitle.Set("Nothing more to add");
 		request.EmptyText.Set("Every component the scene knows is on the selection.");
 		request.OnPicked = new (key) => { AddComponent(key); };
-		mServices.Pick(request, anchor);
+		mServices.Pick(request);
 	}
 
 	/// What Add Component offers the selection now, by type name, appended (the caller deletes

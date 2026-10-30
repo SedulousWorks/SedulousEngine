@@ -1,0 +1,41 @@
+<!--
+  The Game tab (Raptor's editor-gui spec, 5.3, layer 7, part 3): a fresh run of the project
+  as the player runs it. Its bar is the kit's transport (Restart, Play, Pause, Stop, the state named
+  beside them and the scene it runs; a Play waiting for the cook says so), then the resolution the
+  game draws at, the phone held upright, and the script debugger's toggle. Under it the game (code
+  puts its viewport in the pane) beside the debugger in a split, which opens by its toggle or at a break.
+-->
+<Panel class="page game-page">
+    <ToolBar id="game-bar" class="page-toolbar">
+        <ToolButton id="game-restart" icon="Editor/Icons/restart.svg" tooltip="Restart: stop the run and play again from the start"/>
+        <ToolButton id="game-play" icon="Editor/Icons/play.svg" tooltip="Play: run the project as the player runs it (Play New Instance in the Game menu opens another)"/>
+        <ToolButton id="game-pause" toggle="true" icon="Editor/Icons/pause.svg" tooltip="Pause: hold the run, its sound with it; again resumes"/>
+        <ToolButton id="game-stop" icon="Editor/Icons/stop.svg" tooltip="Stop: end the run; nothing it did is kept"/>
+        <Label id="game-state" class="transport-state stopped" text="Stopped"/>
+        <Label id="game-scene" class="game-scene"/>
+        <Spacer/>
+        <Label id="game-cook" class="badge warning" text="Waiting for cook" tooltip="Play starts once the cook finishes, so the run binds what was just built"/>
+        <ComboBox id="game-resolution" class="game-resolution" tooltip="The resolution the game draws at, fitted into the tab as the player fits it into its window"/>
+        <ToolButton id="game-phone" toggle="true" icon="Editor/Icons/phone.svg" tooltip="Phone: the game on a phone's screen held upright, turned when it is held the other way"/>
+        <Separator/>
+        <ToolButton id="game-debugger-toggle" toggle="true" icon="Editor/Icons/bug.svg" tooltip="Script debugger: the call stack and the locals at a break"/>
+    </ToolBar>
+    <!-- The game beside the debugger, a handle between them to give either the room; the debugger
+         leaves the split while it is off, the game taking it all. -->
+    <Splitter id="game-stage" class="page-body game-stage" axis="horizontal" weights="0.78 0.22">
+        <Panel id="game-view-pane" class="game-view-pane"/>
+        <Panel id="game-debugger" class="panel game-debugger">
+            <Panel class="panel-toolbar game-debugger-bar">
+                <Button id="game-debugger-continue" class="icon-button" icon="Editor/Icons/resume.svg" tooltip="Continue: run on from the break"/>
+                <Button id="game-debugger-step-into" class="icon-button" icon="Editor/Icons/step-into.svg" tooltip="Step Into: the next line, into a call it makes"/>
+                <Button id="game-debugger-step-over" class="icon-button" icon="Editor/Icons/step-over.svg" tooltip="Step Over: the next line, a call it makes run whole"/>
+                <Button id="game-debugger-break" class="icon-button" icon="Editor/Icons/pause.svg" tooltip="Break: stop the scripts at the next line they run"/>
+            </Panel>
+            <Label id="game-debugger-state" class="game-debugger-state"/>
+            <Label class="game-debugger-heading" text="Call stack"/>
+            <TreeView id="game-debugger-stack" class="tree game-debugger-stack"/>
+            <Label class="game-debugger-heading" text="Locals"/>
+            <TreeView id="game-debugger-locals" class="tree game-debugger-locals"/>
+        </Panel>
+    </Splitter>
+</Panel>

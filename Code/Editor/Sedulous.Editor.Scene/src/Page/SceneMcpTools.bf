@@ -13,6 +13,8 @@ using Sedulous.Script.Resource;
 using Sedulous.Engine.Script;
 using Sedulous.Engine.Navigation;
 using Sedulous.Editor.Navigation;
+using Sedulous.Editor.App;
+using Sedulous.Input; // ScriptedInputSource, ScriptedInputJson (viewport_run)
 
 namespace Sedulous.Editor.Scene;
 
@@ -27,7 +29,7 @@ namespace Sedulous.Editor.Scene;
 static class SceneMcpTools
 {
 	/// How many tools Register registers; a tripwire like the page tools'.
-	public const int cSceneLiveToolCount = 11 + SceneMcpEditTools.cEditToolCount;
+	public const int cSceneLiveToolCount = 12 + SceneMcpEditTools.cEditToolCount;
 
 	private const String cPageArgument = "the scene or prefab page's asset guid (default: the active page)";
 
@@ -256,7 +258,7 @@ static class SceneMcpTools
 				let type = manager.ComponentType;
 				let property = scope String(arguments.Get("property")?.AsString() ?? "");
 				FieldInfo field = default;
-				if (!(type.GetField(property) case .Ok(out field)) || !ComponentJson.IsShown(field))
+				if (!(type.GetField(property) case .Ok(out field)) || !FieldJson.IsShown(field))
 				{
 					outError.AppendF("component '{}' has no field '{}' (entity_inspect lists them)", component, property);
 					return false;
@@ -289,9 +291,9 @@ static class SceneMcpTools
 				else if (fieldType.IsEnum)
 				{
 					int64 raw = 0;
-					if (!ComponentJson.EnumValueOf(fieldType, value, out raw))
+					if (!FieldJson.EnumValueOf(fieldType, value, out raw))
 					{
-						outError.AppendF("field '{}' takes one of: {}", property, ComponentJson.EnumNames(fieldType, .. scope .()));
+						outError.AppendF("field '{}' takes one of: {}", property, FieldJson.EnumNames(fieldType, .. scope .()));
 						return false;
 					}
 					commands.BeginGroup("mcp");
@@ -327,31 +329,31 @@ static class SceneMcpTools
 					edit.SetComponentString(id, type, property, value.AsString());
 					commands.EndGroup();
 				}
-				else if ((ComponentJson.ListElement(fieldType) != null) && ComponentJson.IsWritableElement(ComponentJson.ListElement(fieldType)))
+				else if ((FieldJson.ListElement(fieldType) != null) && FieldJson.IsWritableElement(FieldJson.ListElement(fieldType)))
 				{
 					if (!SetList(context, edit, id, manager, handle, field, component, value, outError))
 						return false;
 				}
-				else if ((ComponentJson.ListElement(fieldType) != null) && ComponentJson.IsObjectElement(ComponentJson.ListElement(fieldType)))
+				else if ((FieldJson.ListElement(fieldType) != null) && FieldJson.IsObjectElement(FieldJson.ListElement(fieldType)))
 				{
 					if (!SetObjectList(context, edit, id, manager, handle, field, component, value, outError))
 						return false;
 				}
 				else
 				{
-					let shape = ComponentJson.Shape(fieldType);
+					let shape = FieldJson.Shape(fieldType);
 					if (shape == null)
 					{
-						let kind = ComponentJson.NestedKind(fieldType);
+						let kind = FieldJson.NestedKind(fieldType);
 						if (kind == "list")
-							outError.AppendF("field '{}' of '{}' is a list of {} - component_set writes lists of references, entity references, enums and numbers or vectors (scene_write edits the source)", property, component, ComponentJson.ListElement(fieldType).GetName(.. scope .()));
+							outError.AppendF("field '{}' of '{}' is a list of {} - component_set writes lists of references, entity references, enums and numbers or vectors (scene_write edits the source)", property, component, FieldJson.ListElement(fieldType).GetName(.. scope .()));
 						else if (!kind.IsEmpty)
 							outError.AppendF("field '{}' of '{}' is a {} - not writable through component_set yet (scene_write edits the source)", property, component, kind);
 						else
 							outError.AppendF("field '{}' of '{}' is a {} - not writable through component_set yet", property, component, fieldType.GetFullName(.. scope .()));
 						return false;
 					}
-					let leaf = ComponentJson.LeafVariant(fieldType, value);
+					let leaf = FieldJson.LeafVariant(fieldType, value);
 					if (!leaf.HasValue)
 					{
 						outError.AppendF("field '{}' of '{}' takes {} - `value` has the wrong shape (entity_inspect shows the current value)", property, component, shape);
@@ -368,10 +370,10 @@ static class SceneMcpTools
 					return false;
 				}
 				outResult.Set("page", PageJson(page));
-				outResult.Set("entity", ComponentJson.GuidJson(id));
+				outResult.Set("entity", FieldJson.GuidJson(id));
 				outResult.Set("component", JsonValue.MakeString(manager.SerializationTypeId));
 				outResult.Set("property", JsonValue.MakeString(property));
-				outResult.Set("value", ComponentJson.ValueJson(fieldType, (uint8*)manager.GetComponentAddress(handle) + field.MemberOffset));
+				outResult.Set("value", FieldJson.ValueJson(fieldType, (uint8*)manager.GetComponentAddress(handle) + field.MemberOffset));
 				outResult.Set("undoSteps", JsonValue.MakeNumber(1));
 				return true;
 			});
@@ -393,16 +395,16 @@ static class SceneMcpTools
 	private static bool SetList(EditorContext context, SceneEditContext edit, Guid id, ComponentManagerBase manager,
 		EntityHandle handle, FieldInfo field, StringView component, JsonValue value, String outError)
 	{
-		let element = ComponentJson.ListElement(field.FieldType);
+		let element = FieldJson.ListElement(field.FieldType);
 		let shape = scope String();
 		if (ReferenceShape.Is(element))
 			shape.Append("asset guids or nulls");
 		else if (element == typeof(EntityRef))
 			shape.Append("entity guids or nulls");
 		else if (element.IsEnum)
-			shape.AppendF("case names ({})", ComponentJson.EnumNames(element, .. scope .()));
+			shape.AppendF("case names ({})", FieldJson.EnumNames(element, .. scope .()));
 		else
-			shape.AppendF("{} values", ComponentJson.Shape(element));
+			shape.AppendF("{} values", FieldJson.Shape(element));
 		if ((value == null) || !value.IsArray)
 		{
 			outError.AppendF("field '{}' of '{}' is a list - `value` is an array of {}", field.Name, component, shape);
@@ -425,10 +427,10 @@ static class SceneMcpTools
 			if (ReferenceShape.Is(element) || (element == typeof(EntityRef)))
 				shaped = json.IsNull || (json.IsString && (Guid.Parse(json.AsString()) case .Ok(out item.Id)));
 			else if (element.IsEnum)
-				shaped = ComponentJson.EnumValueOf(element, json, out item.Raw);
+				shaped = FieldJson.EnumValueOf(element, json, out item.Raw);
 			else
 			{
-				item.Leaf = ComponentJson.LeafVariant(element, json);
+				item.Leaf = FieldJson.LeafVariant(element, json);
 				shaped = item.Leaf.HasValue;
 			}
 			if (!shaped)
@@ -497,7 +499,7 @@ static class SceneMcpTools
 	private static bool SetObjectList(EditorContext context, SceneEditContext edit, Guid id, ComponentManagerBase manager,
 		EntityHandle handle, FieldInfo field, StringView component, JsonValue value, String outError)
 	{
-		let element = ComponentJson.ListElement(field.FieldType);
+		let element = FieldJson.ListElement(field.FieldType);
 		if ((value == null) || !value.IsArray)
 		{
 			outError.AppendF("field '{}' of '{}' is a list of {} - `value` is an array of objects, each naming the fields it sets",
@@ -544,12 +546,12 @@ static class SceneMcpTools
 			for (let key in item.Keys)
 			{
 				FieldInfo f = default;
-				if (!(element.GetField(key) case .Ok(out f)) || !ComponentJson.IsShown(f))
+				if (!(element.GetField(key) case .Ok(out f)) || !FieldJson.IsShown(f))
 				{
 					let known = scope String();
 					for (let shown in element.GetFields())
 					{
-						if (!ComponentJson.IsShown(shown))
+						if (!FieldJson.IsShown(shown))
 							continue;
 						if (!known.IsEmpty)
 							known.Append(", ");
@@ -573,9 +575,9 @@ static class SceneMcpTools
 				else if (type.IsEnum)
 				{
 					w.Kind = 1;
-					shaped = ComponentJson.EnumValueOf(type, json, out w.Raw);
+					shaped = FieldJson.EnumValueOf(type, json, out w.Raw);
 					if (!shaped)
-						outError.AppendF("element {} of '{}': '{}' takes one of {}", i, field.Name, key, ComponentJson.EnumNames(type, .. scope .()));
+						outError.AppendF("element {} of '{}': '{}' takes one of {}", i, field.Name, key, FieldJson.EnumNames(type, .. scope .()));
 				}
 				else if (type == typeof(String))
 				{
@@ -588,8 +590,8 @@ static class SceneMcpTools
 				}
 				else
 				{
-					let shape = ComponentJson.Shape(type);
-					w.Leaf = (shape != null) ? ComponentJson.LeafVariant(type, json) : .();
+					let shape = FieldJson.Shape(type);
+					w.Leaf = (shape != null) ? FieldJson.LeafVariant(type, json) : .();
 					shaped = w.Leaf.HasValue;
 					if (!shaped && (shape != null))
 						outError.AppendF("element {} of '{}': '{}' takes {}", i, field.Name, key, shape);
@@ -656,6 +658,31 @@ static class SceneMcpTools
 
 	/// Frames: ten seconds at 60 Hz, then the tool gives up.
 	private const int cCapturePumpLimit = 600;
+
+	/// One viewport_run in flight: re-entered every pump until its run time is up, taking its
+	/// screenshots as their times come.
+	private class PendingRun
+	{
+		/// BORROWED; null while nothing runs.
+		public EditorPage Page = null;
+		public double Duration = 0;
+		public int Inputs = 0;
+		public List<double> ShotTimes = new .() ~ delete _;
+		public int NextShot = 0;
+		/// A capture asked for and not yet written.
+		public bool Shooting = false;
+		public double ShotAt = 0;
+		public String ShotDir = new .() ~ delete _;
+		/// The screenshots written so far, handed to the answer; OWNED until then.
+		public JsonValue Shots ~ delete _;
+		public int Pumps = 0;
+		public int Serial = 0;
+	}
+
+	/// Run seconds one call takes.
+	private const double cRunLongest = 600.0;
+	/// Pumps, about ten minutes at 100 Hz: a run that stopped advancing gives up.
+	private const int cRunPumpLimit = 60000;
 
 	private static void RegisterViewportTools(McpServer server, EditorContext context)
 	{
@@ -893,16 +920,180 @@ static class SceneMcpTools
 				pending.Pumps = 0;
 				return .NotFinished;
 			}, pending);
+
+		// A timeline entry, as pie_run's (the pads' read by nothing in a scene view).
+		let entry = scope SchemaBuilder();
+		entry.Number("at", "seconds since the run starts", true);
+		entry.Str("key", "a KeyCode case name");
+		entry.Str("mouseButton", "a MouseButton case name");
+		entry.Arr("mouseMove", "number", "[x, y] in the viewport's render pixels");
+		entry.Arr("wheel", "number", "[x, y]");
+		entry.Boolean("down", "pressed (default true) or let go");
+		let runSchema = scope SchemaBuilder();
+		runSchema.Str("page", cPageArgument);
+		runSchema.Number("duration", "seconds to run, up to 600", true);
+		runSchema.ObjectArr("input", entry, "the timeline: entries {at, key, down} | {at, mouseButton, down} | {at, mouseMove: [x, y]} | {at, wheel: [x, y]}");
+		runSchema.Arr("screenshots", "number", "run seconds at which to write the viewport as a PNG");
+		runSchema.Str("screenshotDir", "an existing directory for the screenshots");
+		let running = new PendingRun();
+		server.RegisterTool("viewport_run",
+			"Plays a device-level input timeline into a scene page's viewport for `duration` seconds, as a user's hands would over it: the mouse in the viewport's render pixels (the size viewport_screenshot reports; the answer's width and height), its buttons and wheel, and keys as if the viewport had the focus. So the scene's tools act as they do for a user: a brush paints along a drag (pick its tool first, action_execute scene.tool.<id>), Shift + wheel sizes it, the select tool picks and the gizmo drags, the camera orbits (Alt drag), flies (right drag, WASD) and zooms (wheel). The timeline's entries are pie_run's: {at, key, down} | {at, mouseButton, down} | {at, mouseMove: [x, y]} | {at, wheel: [x, y]}, `at` in seconds since the run starts, `down` true by default. The user's own mouse and keys do not reach the viewport meanwhile; what is held is let go when it ends. `screenshots` writes the viewport at those times (in `screenshotDir`, an existing directory; default <user-data>/screenshots). Brings the page to front. Returns {page, runTime, inputs, width, height, screenshots: [{at, path}]}. Edits it makes are the page's, undone as the user's are; nothing is saved.",
+			runSchema.Build(), .Creates,
+			new (arguments, outResult, outError) =>
+			{
+				let page = ResolveScenePage(context, arguments, outError);
+				if (page == null)
+				{
+					running.Page = null; // its page closed mid-run
+					return .Failed;
+				}
+				let scene = page as ISceneEditorPage;
+				if (running.Page == page)
+				{
+					// Re-entered: the same run, one pump later.
+					running.Pumps++;
+					let t = scene.ScriptedInputTime;
+					if (running.Shooting)
+					{
+						let capture = scene.LastViewportCapture;
+						if (capture.State == .Pending)
+							return .NotFinished;
+						if (capture.State == .Failed)
+						{
+							scene.EndScriptedInput();
+							running.Page = null;
+							outError.AppendF("a screenshot of page '{}' failed (log_read, category Screenshot, says why)", page.Title);
+							return .Failed;
+						}
+						let shot = JsonValue.MakeObject();
+						shot.Set("at", JsonValue.MakeNumber(running.ShotAt));
+						shot.Set("path", JsonValue.MakeString(capture.Path));
+						running.Shots.Add(shot);
+						running.Shooting = false;
+					}
+					if (t < 0.0)
+						return FinishRun(running, scene, page, running.Duration, outResult); // the run let go already (another took the viewport)
+					if ((running.NextShot < running.ShotTimes.Count) && (running.ShotTimes[running.NextShot] <= t))
+					{
+						running.Serial++;
+						let path = PathJoin(running.ShotDir, scope $"{FileStemOf(page.Title, .. scope .())}-{System.Diagnostics.Process.CurrentId}-run-{running.Serial}.png", .. scope .());
+						if (scene.RequestViewportCapture(path) case .Ok)
+						{
+							running.Shooting = true;
+							running.ShotAt = t;
+						}
+						running.NextShot++;
+						return .NotFinished;
+					}
+					if ((t >= running.Duration) && (running.NextShot >= running.ShotTimes.Count))
+						return FinishRun(running, scene, page, t, outResult);
+					if (running.Pumps > cRunPumpLimit)
+					{
+						scene.EndScriptedInput();
+						running.Page = null;
+						outError.AppendF("page '{}' stopped advancing the run - is its viewport visible?", page.Title);
+						return .Failed;
+					}
+					return .NotFinished;
+				}
+				if (running.Page != null)
+				{
+					outError.AppendF("a viewport_run is already running on page '{}': one at a time", running.Page.Title);
+					return .Failed;
+				}
+				if (scene.ViewportCamera == null)
+				{
+					outError.AppendF("page '{}' has no viewport", page.Title);
+					return .Failed;
+				}
+				let durationArg = arguments.Get("duration");
+				if ((durationArg == null) || !durationArg.IsNumber || (durationArg.AsNumber() <= 0.0) || (durationArg.AsNumber() > cRunLongest))
+				{
+					outError.AppendF("`duration` takes seconds, above 0 and at most {}", cRunLongest);
+					return .Failed;
+				}
+				let duration = durationArg.AsNumber();
+				var source = new ScriptedInputSource();
+				defer { if (source != null) delete source; }
+				if (let input = arguments.Get("input"))
+				{
+					if (!ScriptedInputJson.AddScriptedTimeline(input, duration, source, outError))
+						return .Failed;
+				}
+				running.ShotTimes.Clear();
+				if (let times = arguments.Get("screenshots"))
+				{
+					for (int i = 0; times.IsArray && (i < times.Count); i++)
+					{
+						let at = times.At(i);
+						if (!at.IsNumber || (at.AsNumber() < 0.0) || (at.AsNumber() > duration))
+						{
+							outError.AppendF("screenshots[{}]: a run second from 0 to the duration", i);
+							return .Failed;
+						}
+						running.ShotTimes.Add(at.AsNumber());
+					}
+					running.ShotTimes.Sort(scope (a, b) => a <=> b);
+				}
+				running.ShotDir.Clear();
+				let dirArg = arguments.Get("screenshotDir");
+				if ((dirArg != null) && dirArg.IsString)
+					running.ShotDir.Set(dirArg.AsString());
+				if (running.ShotDir.IsEmpty && !running.ShotTimes.IsEmpty)
+				{
+					PathJoin(GetUserDataDirectory(.. scope .()), "screenshots", running.ShotDir);
+					if (!CreateDirectory(running.ShotDir))
+					{
+						outError.AppendF("could not create '{}'", running.ShotDir);
+						return .Failed;
+					}
+				}
+				let inputs = source.Count;
+				context.RevealPage(page); // to front: a background tab's viewport never renders or reads input
+				let begun = scene.BeginScriptedInput(source);
+				source = null; // the page's now, begun or not
+				if (!begun)
+				{
+					outError.AppendF("page '{}' has no viewport", page.Title);
+					return .Failed;
+				}
+				running.Page = page;
+				running.Duration = duration;
+				running.Inputs = inputs;
+				running.NextShot = 0;
+				running.Shooting = false;
+				delete running.Shots;
+				running.Shots = JsonValue.MakeArray();
+				running.Pumps = 0;
+				return .NotFinished;
+			}, running);
+	}
+
+	/// A viewport_run's answer: what is held let go, the run's time, its inputs, the viewport's
+	/// size and the screenshots written.
+	private static ToolOutcome FinishRun(PendingRun running, ISceneEditorPage scene, EditorPage page, double at, JsonValue outResult)
+	{
+		scene.EndScriptedInput();
+		outResult.Set("page", PageJson(page));
+		outResult.Set("runTime", JsonValue.MakeNumber(at));
+		outResult.Set("inputs", JsonValue.MakeNumber(running.Inputs));
+		let size = scene.ViewportPixels;
+		outResult.Set("width", JsonValue.MakeNumber(size.X));
+		outResult.Set("height", JsonValue.MakeNumber(size.Y));
+		outResult.Set("screenshots", running.Shots);
+		running.Shots = null;
+		running.Page = null;
+		return .Answered;
 	}
 
 	private static void WriteCamera(EditorPage page, EditorCamera camera, JsonValue outResult)
 	{
 		outResult.Set("page", PageJson(page));
-		outResult.Set("position", ComponentJson.ValueJson(typeof(Float3), &camera.Position));
+		outResult.Set("position", FieldJson.ValueJson(typeof(Float3), &camera.Position));
 		outResult.Set("yawDegrees", JsonValue.MakeNumber(RadiansToDegrees(camera.Yaw)));
 		outResult.Set("pitchDegrees", JsonValue.MakeNumber(RadiansToDegrees(camera.Pitch)));
 		var forward = camera.Forward;
-		outResult.Set("forward", ComponentJson.ValueJson(typeof(Float3), &forward));
+		outResult.Set("forward", FieldJson.ValueJson(typeof(Float3), &forward));
 		outResult.Set("focusDistance", JsonValue.MakeNumber(camera.FocusDistance));
 		outResult.Set("orthographic", JsonValue.MakeBool(camera.Orthographic));
 		outResult.Set("orthoHeight", JsonValue.MakeNumber(camera.OrthoHeight));
@@ -1021,20 +1212,20 @@ static class SceneMcpTools
 	public static JsonValue EntityJson(Sedulous.Scene.Scene scene, EntityHandle handle, ResourceManager resources = null)
 	{
 		let json = JsonValue.MakeObject();
-		json.Set("guid", ComponentJson.GuidJson(scene.GetEntityId(handle)));
+		json.Set("guid", FieldJson.GuidJson(scene.GetEntityId(handle)));
 		json.Set("name", JsonValue.MakeString(scene.GetEntityName(handle)));
 		json.Set("active", JsonValue.MakeBool(scene.IsActive(handle)));
 		let parent = scene.GetParent(handle);
-		json.Set("parent", parent.IsAssigned ? ComponentJson.GuidJson(scene.GetEntityId(parent)) : JsonValue.MakeNull());
+		json.Set("parent", parent.IsAssigned ? FieldJson.GuidJson(scene.GetEntityId(parent)) : JsonValue.MakeNull());
 		let children = JsonValue.MakeArray();
 		for (var child = scene.GetFirstChild(handle); child.IsAssigned; child = scene.GetNextSibling(child))
-			children.Add(ComponentJson.GuidJson(scene.GetEntityId(child)));
+			children.Add(FieldJson.GuidJson(scene.GetEntityId(child)));
 		json.Set("children", children);
 		var local = scene.GetLocalTransform(handle);
 		let transform = JsonValue.MakeObject();
-		transform.Set("position", ComponentJson.ValueJson(typeof(Float3), &local.Position));
-		transform.Set("rotation", ComponentJson.ValueJson(typeof(Quaternion), &local.Rotation));
-		transform.Set("scale", ComponentJson.ValueJson(typeof(Float3), &local.Scale));
+		transform.Set("position", FieldJson.ValueJson(typeof(Float3), &local.Position));
+		transform.Set("rotation", FieldJson.ValueJson(typeof(Quaternion), &local.Rotation));
+		transform.Set("scale", FieldJson.ValueJson(typeof(Float3), &local.Scale));
 		json.Set("transform", transform);
 		let components = JsonValue.MakeArray();
 		scene.ForEachManager(scope [&](manager) =>
@@ -1048,7 +1239,7 @@ static class SceneMcpTools
 				if ((type != null) && (address != null))
 				{
 					component.Set("typeName", JsonValue.MakeString(type.GetName(.. scope .())));
-					component.Set("properties", ComponentJson.FieldsJson(type, address));
+					component.Set("properties", FieldJson.FieldsJson(type, address));
 				}
 				else
 				{
@@ -1076,7 +1267,7 @@ static class SceneMcpTools
 		{
 			let json = JsonValue.MakeObject();
 			let id = behavior.Script.Id;
-			json.Set("script", ComponentJson.GuidJson(id));
+			json.Set("script", FieldJson.GuidJson(id));
 			let scriptClass = (behavior.Script.Get != null) ? behavior.Script.Get
 				: (((resources != null) && id.IsSet) ? resources.Bind<ScriptClass>(id).Get : null);
 			json.Set("class", (scriptClass != null) ? JsonValue.MakeString(scriptClass.ClassName) : JsonValue.MakeNull());
@@ -1121,9 +1312,9 @@ static class SceneMcpTools
 		case .Int: return JsonValue.MakeNumber(value.Number);
 		case .Bool: return JsonValue.MakeBool(value.Boolean);
 		case .String: return JsonValue.MakeString((value.Text != null) ? StringView(value.Text) : "");
-		case .Vec3: return ComponentJson.ValueJson(typeof(Float3), &value.Vector);
-		case .Color: return ComponentJson.ValueJson(typeof(Color), &value.Color);
-		case .Entity, .Asset: return value.Id.IsSet ? ComponentJson.GuidJson(value.Id) : JsonValue.MakeNull();
+		case .Vec3: return FieldJson.ValueJson(typeof(Float3), &value.Vector);
+		case .Color: return FieldJson.ValueJson(typeof(Color), &value.Color);
+		case .Entity, .Asset: return value.Id.IsSet ? FieldJson.GuidJson(value.Id) : JsonValue.MakeNull();
 		case .None: return JsonValue.MakeNull();
 		}
 	}

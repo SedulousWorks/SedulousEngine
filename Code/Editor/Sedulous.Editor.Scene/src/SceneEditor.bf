@@ -65,7 +65,7 @@ static class SceneEditor
 		services.LoadMarkup = new [=window](path) => window.LoadMarkup(path);
 		services.Refs = app.RefServices();
 		services.Icons = app.TypeIcons();
-		services.Pick = new [=app] (request, anchor) => { app.ShowPicker(request, anchor); };
+		services.Pick = new [=app] (request) => { app.ShowPicker(request); };
 		return services;
 	}
 }

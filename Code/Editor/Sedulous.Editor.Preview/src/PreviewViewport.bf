@@ -8,46 +8,39 @@ using Sedulous.Scene;
 using Sedulous.Engine.Scene;
 using Sedulous.Render;
 using Sedulous.Engine.Render;
-using Sedulous.UI;
-using Sedulous.UI.Runtime;
-using Sedulous.UI.Viewport;
-using Sedulous.VG.Renderer;
+using Sedulous.GUI;
 using Sedulous.Editor.Camera;
 
 namespace Sedulous.Editor.Preview;
 
-/// The shared 3D-preview substrate for the bespoke asset editor pages (mesh, clip, skeleton,
-/// material, particle, animgraph, collision): a ViewportView, a private preview Scene with
-/// simulation off in its own SceneManager, an EditorCamera, the InputRouter, and the bind,
-/// camera-update and RenderScene loop. A page contains one instead of hand-rolling it:
-/// populate Scene with its entities, drive Update from OnUpdate and RenderFrame from
-/// OnRenderWindow, mount View in the layout, draw overlays into SceneDebugDraw.
-///
-/// The view: the layout that mounts View consumes the creation reference; the preview holds
-/// one of its own and drops it on Shutdown, so a viewport that was never mounted is freed too.
+/// The shared 3D-preview substrate for the asset pages (mesh, clip, skeleton, material, particle,
+/// animgraph, collision; Raptor's editor-gui spec, 5.4, layer 3): a GUI.Viewport the GUI host
+/// binds, places and routes, a private preview Scene with simulation off in its own SceneManager,
+/// and an EditorCamera flown as the scene view's is (the mouse while it is hovered or holds a
+/// press, the keyboard only with the focus), F framing. A page holds one instead of hand-rolling
+/// it: populate Scene with its entities, drive Update from OnUpdate and RenderFrame from
+/// OnRenderWindow, put View in its markup, draw overlays into SceneDebugDraw.
 class PreviewViewport
 {
-	private IApplicationHost mHost;
-	private UIHost mUiHost;
+	/// The backdrop every preview shares (sRGB), a page's own only where it must differ.
+	public static readonly Color cBackdrop = .(0.349f, 0.366f, 0.396f, 1.0f);
+
 	private SceneSubsystem mScenes = null;
 	/// This preview's own scene group.
 	private SceneManager mSceneManager = new .() ~ delete _;
 	private RenderSubsystem mRender = null;
-	private Scene mScene = null;
+	private Sedulous.Scene.Scene mScene = null;
 	/// A preview looks at one asset close up: a nearer near plane and a shorter reach than the
 	/// scene view's.
 	private EditorCamera mCamera = new .() { NearZ = 0.05f, FarZ = 500.0f } ~ delete _;
-	private InputRouter mRouter ~ delete _;
-	private ViewportView mViewport = null;
-	private bool mMounted = false;
-	private RenderWindow mHostWindow = null;
+	/// One reference, this one's: the page's markup holds its own.
+	private Sedulous.GUI.Viewport mView ~ _.ReleaseRef();
 
-	/// Builds the viewport and a private preview scene named `sceneName` ("mesh.preview").
-	public this(IApplicationHost host, UIHost uiHost, StringView sceneName)
+	/// Builds the viewport and a private preview scene named `sceneName` ("mesh.preview"), hosted
+	/// by `gui` (null: not hosted, a test: it neither draws nor takes input). `host` and `gui` are
+	/// borrowed.
+	public this(IApplicationHost host, GuiHost gui, StringView sceneName)
 	{
-		mHost = host;
-		mUiHost = uiHost;
-		mRouter = new InputRouter(host.Shell.Input);
 		mScenes = host.Context.GetSubsystem<SceneSubsystem>();
 		mRender = host.Context.GetSubsystem<RenderSubsystem>();
 		if (mScenes != null)
@@ -56,9 +49,11 @@ class PreviewViewport
 			mScene = mSceneManager.CreateScene(sceneName);
 			mScene.SetSimulationEnabled(false);
 		}
-		mViewport = new ViewportView();
-		mViewport.AddRef();
-		mViewport.ClearColor = .(0.349f, 0.366f, 0.396f, 1.0f); // sRGB, like every UI colour
+		mView = new Sedulous.GUI.Viewport();
+		mView.AddClass("preview-view");
+		mView.ClearColor = cBackdrop;
+		if (gui != null)
+			mView.HostIn(gui);
 	}
 
 	public ~this()
@@ -67,12 +62,12 @@ class PreviewViewport
 	}
 
 	public bool IsValid => mScene != null;
-	public Scene Scene => mScene;
+	public Sedulous.Scene.Scene Scene => mScene;
 
-	/// Starts over with an empty scene, the old one and everything in it destroyed: a page
-	/// that previews on other content (a profile on one of the project's scenes) swaps it.
-	/// Null when the viewport has no scenes to make one in.
-	public Scene ResetScene()
+	/// Starts over with an empty scene, the old one and everything in it destroyed: a page that
+	/// previews on other content (a profile on one of the project's scenes) swaps it. Null when
+	/// the viewport has no scenes to make one in.
+	public Sedulous.Scene.Scene ResetScene()
 	{
 		if (mScenes == null)
 			return null;
@@ -83,22 +78,29 @@ class PreviewViewport
 		mScene.SetSimulationEnabled(false);
 		return mScene;
 	}
-	/// The viewport as a base View, for layout.
-	public View View => mViewport;
+
+	/// The viewport, for a page's markup to hold (it takes its own reference).
+	public Sedulous.GUI.Viewport View => mView;
 	public EditorCamera Camera => mCamera;
 
-	/// The overlay draw target for this preview scene; valid only while IsValid and the
-	/// render subsystem is present.
-	public DebugDraw SceneDebugDraw => mRender.DebugScene(mScene);
-
-	/// The backdrop; a neutral dark grey by default.
-	public void SetClearColor(Color color)
+	/// The camera framed on a sphere at `center` of `radius`, eased there.
+	public void Frame(Float3 center, float radius)
 	{
-		mViewport.ClearColor = .(color.R, color.G, color.B, color.A);
+		mCamera.FrameBounds(center, radius);
 	}
 
-	/// Off by default: static previews pose their content directly. The particle page turns
-	/// it on so the effect runs.
+	/// The overlay draw target for this preview scene; valid only while IsValid and the render
+	/// subsystem is present.
+	public DebugDraw SceneDebugDraw => mRender.DebugScene(mScene);
+
+	/// The backdrop (cBackdrop by default). sRGB, as every colour is entered.
+	public void SetClearColor(Color color)
+	{
+		mView.ClearColor = color;
+	}
+
+	/// Off by default: static previews pose their content directly. The particle page turns it on
+	/// so the effect runs.
 	public void SetSimulationEnabled(bool enabled)
 	{
 		if (mScene != null)
@@ -112,50 +114,42 @@ class PreviewViewport
 	}
 
 	/// Per-frame input and camera drive, from the page's OnUpdate before anything reads the
-	/// camera. A no-op until the viewport is bound.
-	public void Update(float dt)
+	/// camera. True when F was pressed over it this frame (the page frames what it shows).
+	public bool Update(float dt)
 	{
-		if (mViewport == null)
-			return;
-		if (mViewport.Parent != null)
-			mMounted = true;
-		EnsureViewportBound();
-		if (mHostWindow == null)
-			return;
-		mViewport.SyncInputRegion();
-		if (mRouter != null)
+		let surface = mView.HostedSurface;
+		var frame = false;
+		if (IsActive)
 		{
-			// One app keyboard: while the editor UI's keyboard focus is on any view but this
-			// viewport, drop surface focus so the camera's keys never fire while the user
-			// types into an editor widget.
-			mRouter.SetExternalCapture(false, mViewport.HostKeyboardFocusElsewhere);
-			mRouter.Update();
-		}
-		let surface = mViewport.Surface;
-		if (mViewport.IsHovered() || mViewport.IsFocused() || ((surface != null) && surface.Captured))
-		{
-			mCamera.Update(mViewport.Keyboard, mViewport.Mouse, dt);
+			let keyboard = Keyboard;
+			mCamera.Update(keyboard, mView.Mouse, dt);
+			// An orbit, look or pan drag: the pointer locked meanwhile, ended with the press.
 			if (surface != null)
-				surface.SetPointerLock(mCamera.WantsPointerLock); // an orbit, look or pan drag
+				surface.SetPointerLock(mCamera.WantsPointerLock);
+			// F frames, as the scene view's does (not while the camera flies on WASD).
+			frame = (keyboard != null) && keyboard.IsKeyPressed(.F) && !mCamera.WantsPointerLock;
 		}
-		else if (surface != null)
+		else
 		{
-			surface.SetPointerLock(false);
+			// Losing the input releases a captured fly at once.
+			mCamera.ReleaseCapture(mView.Mouse);
+			if (surface != null)
+				surface.SetPointerLock(false);
 		}
+		mCamera.Advance(dt); // a framing glides on either way
+		return frame;
 	}
 
-	/// Renders the preview scene into the viewport, from the page's OnRenderWindow.
+	/// Renders the preview scene into the viewport, from the page's OnRenderWindow: nothing while
+	/// hidden (a tab not in front) or not placed yet.
 	public void RenderFrame(ref FrameContext frame)
 	{
-		let vp = mViewport;
-		if ((vp == null) || !vp.IsReady || !frame.Valid)
+		if (!frame.Valid || (mRender == null) || !mRender.IsReady || (mScene == null))
 			return;
-		if ((mRender == null) || !mRender.IsReady || (mScene == null))
+		if (!mView.IsReady || !mView.IsTreeVisible || (mView.RenderWidth == 0) || (mView.RenderHeight == 0))
 			return;
-		let w = vp.RenderWidth;
-		let h = vp.RenderHeight;
-		if ((w == 0) || (h == 0) || !vp.IsEffectivelyVisible())
-			return;
+		let w = mView.RenderWidth;
+		let h = mView.RenderHeight;
 
 		var camera = ViewCamera();
 		camera.View = Float4x4.LookAtRH(mCamera.Position, mCamera.Position + mCamera.Forward, mCamera.Up);
@@ -166,26 +160,20 @@ class PreviewViewport
 		var cameraOverride = CameraOverride();
 		cameraOverride.Camera = camera;
 		// The viewport's colour is a UI colour (sRGB); the render view takes linear.
-		let clear = vp.LinearClearColor;
+		let clear = mView.LinearClearColor;
 		cameraOverride.ClearColor = .(clear.R, clear.G, clear.B, clear.A);
 
-		let targetState = TargetState(vp.ColorTexture, vp.ColorState, .ShaderRead);
-		mRender.RenderScene(mScene, vp.ColorTargetView, vp.ColorFormat, w, h, .(0, 0, w, h),
-			&cameraOverride, targetState);
-		vp.ColorState = .ShaderRead;
+		// The graph imports the colour target and owns its transitions: from the viewport's state
+		// to ShaderRead for the GUI to sample.
+		let targetState = TargetState(mView.ColorTexture, mView.ColorState, .ShaderRead);
+		mRender.RenderScene(mScene, mView.ColorView, mView.ColorFormat, w, h, .(0, 0, w, h), &cameraOverride, targetState);
+		mView.ColorState = .ShaderRead;
 	}
 
-	/// Tears down the viewport and destroys the preview scene, from the page's OnClose.
+	/// Destroys the preview scene and lets the camera go, from the page's OnClose.
 	public void Shutdown()
 	{
-		if (mViewport != null)
-		{
-			mViewport.Shutdown();
-			if (!mMounted && (mViewport.Parent == null))
-				mViewport.ReleaseRef(); // the mount reference nobody took
-			mViewport.ReleaseRef();
-			mViewport = null;
-		}
+		mCamera.ReleaseCapture(mView.Mouse);
 		if (mScene != null)
 		{
 			mSceneManager.DestroyScene(mScene);
@@ -198,29 +186,24 @@ class PreviewViewport
 		}
 	}
 
-	/// Binds on the first frame the view has a window, and re-binds when its panel moves to
-	/// another window, once that window's renderer exists.
-	private void EnsureViewportBound()
+	/// Its content has the input: hovered, focused, or holding a press (a look drag, its pointer
+	/// locked and hidden, may drift off it).
+	private bool IsActive
 	{
-		let root = mViewport.Root();
-		if (root == null)
-			return;
-		let window = mUiHost.WindowForRoot(root);
-		if ((window == null) || (window == mHostWindow))
-			return;
-		let renderer = mUiHost.RendererFor(window);
-		if (renderer == null)
-			return;
-		if (mHostWindow == null)
+		get
 		{
-			mViewport.Initialize(mHost.Graphics.Raw, renderer, mHost.Shell.Input, window.Window.Id);
-			if (mViewport.Surface != null)
-				mRouter.AddSurface(mViewport.Surface);
+			let surface = mView.HostedSurface;
+			return mView.Hovered || mView.IsFocused || ((surface != null) && surface.Captured);
 		}
-		else
+	}
+
+	/// The keyboard while it has the focus or holds a press; null otherwise.
+	private IKeyboard Keyboard
+	{
+		get
 		{
-			mViewport.AttachToWindow(renderer, window.Window.Id);
+			let surface = mView.HostedSurface;
+			return (mView.IsFocused || ((surface != null) && surface.Captured)) ? mView.Keyboard : null;
 		}
-		mHostWindow = window;
 	}
 }

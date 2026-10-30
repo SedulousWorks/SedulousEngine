@@ -1,68 +1,58 @@
 using System;
 using System.Collections;
 using Sedulous.Script;
-using Sedulous.UI;
+using Sedulous.GUI;
 
 namespace Sedulous.Editor.Play;
 
-/// The Game tab's script debugger strip: continue, step and break, the state line, the call
-/// stack, and the locals with expandable objects. The debugger is borrowed from the run
-/// host and forgotten when the run stops.
+/// The Game tab's script debugger beside the game (its markup in Game.gml): Continue, Step Into,
+/// Step Over and Break; the state line; the call stack; the locals, an object's members one level
+/// under it (closed until opened). It reads only the neutral IScriptDebugger, so the same panel
+/// would drive a remote debugger; the page rebuilds it from its update, never mid-script. The
+/// debugger is borrowed from the run host and forgotten when the run stops.
 class DebuggerPanel
 {
-	private View mRoot;
-	private Label mStatus;
-	private FlexLayout mStackList;
-	private FlexLayout mLocalsList;
+	// The pane's: the tree holds them.
+	private Sedulous.GUI.Label mStatus = null;
+	private TreeView mStack = null;
+	private TreeView mLocals = null;
+	private TreeModel mStackModel = new .() ~ delete _;
+	private TreeModel mLocalsModel = new .() ~ delete _;
 	private IScriptDebugger mDebugger = null;
-	/// The object refs expanded in the locals, per break.
-	private List<uint64> mExpanded = new .() ~ delete _;
-	private bool mDirty = false;
 
-	public this()
+	/// The pane may hold the trees past this panel: they let go of its models first.
+	public ~this()
 	{
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		column.Spacing = 4.0f;
-		column.Padding = .(6, 6);
-
-		let bar = new FlexLayout();
-		bar.Direction = .Horizontal;
-		bar.Spacing = 4.0f;
-		AddToolButton(bar, "Continue", new [=this]() => { if (mDebugger != null) mDebugger.Continue(); });
-		AddToolButton(bar, "Step Into", new [=this]() => { if (mDebugger != null) mDebugger.StepInto(); });
-		AddToolButton(bar, "Step Over", new [=this]() => { if (mDebugger != null) mDebugger.StepOver(); });
-		AddToolButton(bar, "Break", new [=this]() => { if (mDebugger != null) mDebugger.Break(); });
-		column.AddView(bar, MatchWidth());
-
-		mStatus = new Label("Debugger: not running");
-		mStatus.FontSize.Value = 12.0f;
-		column.AddView(mStatus, MatchWidth());
-
-		column.AddView(new Label("Call Stack"), MatchWidth());
-		mStackList = new FlexLayout();
-		mStackList.Direction = .Vertical;
-		column.AddView(mStackList, MatchWidth());
-
-		column.AddView(new Label("Locals"), MatchWidth());
-		mLocalsList = new FlexLayout();
-		mLocalsList.Direction = .Vertical;
-		var grow = LayoutStyle();
-		grow.FlexGrow = 1.0f;
-		grow.Width = SizeSpec.Match();
-		column.AddView(mLocalsList, grow);
-		mRoot = column;
+		if (mStack != null)
+			mStack.Model = null;
+		if (mLocals != null)
+			mLocals.Model = null;
 	}
 
-	/// BORROWED by the page's layout, which takes its own reference.
-	public View RootView => mRoot;
+	/// Over `pane` (the markup's `game-debugger-continue`, `-step-into`, `-step-over`, `-break`,
+	/// `-state`, `-stack` and `-locals`, by id). `pane` is borrowed.
+	public void Bind(Node pane)
+	{
+		mStatus = pane.FindElement("game-debugger-state") as Sedulous.GUI.Label;
+		mStack = pane.FindElement("game-debugger-stack") as TreeView;
+		mLocals = pane.FindElement("game-debugger-locals") as TreeView;
+		if (mStack != null)
+			mStack.Model = mStackModel;
+		if (mLocals != null)
+			mLocals.Model = mLocalsModel;
+		Verb(pane, "game-debugger-continue", new (debugger) => { debugger.Continue(); });
+		Verb(pane, "game-debugger-step-into", new (debugger) => { debugger.StepInto(); });
+		Verb(pane, "game-debugger-step-over", new (debugger) => { debugger.StepOver(); });
+		Verb(pane, "game-debugger-break", new (debugger) => { debugger.Break(); });
+		SetIdle();
+	}
 
 	public IScriptDebugger Debugger => mDebugger;
 
+	/// The active debugger for the run (null when not debugging). Clears the panel.
 	public void SetDebugger(IScriptDebugger debugger)
 	{
 		mDebugger = debugger;
-		mExpanded.Clear();
 		if (debugger == null)
 			Clear();
 	}
@@ -75,115 +65,72 @@ class DebuggerPanel
 			Clear();
 			return;
 		}
-		mStatus.SetText("Debugger: paused");
-		mStackList.RemoveAllViews();
+		if (mStatus != null)
+			mStatus.Text = "Paused";
+		mStackModel.Clear();
 		let frames = scope List<ScriptStackFrame>();
 		defer { ClearAndDeleteItems(frames); }
 		mDebugger.CaptureStackFrames(frames);
 		for (let frame in frames)
-			AddRow(mStackList, scope $"{frame.Function}  ({frame.File}:{frame.Line})", 0.0f);
-		mLocalsList.RemoveAllViews();
+			mStackModel.AddNode(TreeModel.Root, scope $"{frame.Function}  ({frame.File}:{frame.Line})");
+		// The locals, an object's members one level under it.
+		mLocalsModel.Clear();
 		let locals = scope List<ScriptVariable>();
 		defer { ClearAndDeleteItems(locals); }
 		mDebugger.CaptureLocals(0, locals);
+		let text = scope String();
 		for (let local in locals)
-			AddLocalRow(local, 0.0f);
+		{
+			text.Clear();
+			text.AppendF("{} = {}", local.Name, local.Value);
+			if (!local.TypeName.IsEmpty)
+				text.AppendF("  ({})", local.TypeName);
+			let node = mLocalsModel.AddNode(TreeModel.Root, text);
+			if (local.ObjectRef == 0)
+				continue;
+			let members = scope List<ScriptVariable>();
+			defer { ClearAndDeleteItems(members); }
+			mDebugger.CaptureObject(local.ObjectRef, members);
+			for (let member in members)
+				mLocalsModel.AddNode(node, scope $"{member.Name} = {member.Value}");
+		}
 	}
 
 	public void Clear()
 	{
-		mStatus.SetText("Debugger: running");
-		mStackList.RemoveAllViews();
-		mLocalsList.RemoveAllViews();
+		if (mStatus != null)
+			mStatus.Text = "Running";
+		mStackModel.Clear();
+		mLocalsModel.Clear();
 	}
 
 	public void SetIdle()
 	{
 		mDebugger = null;
-		mExpanded.Clear();
-		mStatus.SetText("Debugger: not running");
-		mStackList.RemoveAllViews();
-		mLocalsList.RemoveAllViews();
+		if (mStatus != null)
+			mStatus.Text = "Not running";
+		mStackModel.Clear();
+		mLocalsModel.Clear();
 	}
 
-	/// Whether an expand toggle asked for a refresh; answering clears it.
-	public bool ConsumeDirty()
-	{
-		let was = mDirty;
-		mDirty = false;
-		return was;
-	}
+	// === What it shows (for tests) ===
 
-	private static LayoutStyle MatchWidth()
-	{
-		var lp = LayoutStyle();
-		lp.Width = SizeSpec.Match();
-		return lp;
-	}
+	public StringView State => (mStatus != null) ? mStatus.Text : default;
+	public int StackCount => mStackModel.RowCount(.());
 
-	/// CONSUMES `onClick`, which the button's handler owns.
-	private static void AddToolButton(FlexLayout bar, StringView label, delegate void() onClick)
+	/// The button `id` in `pane` runs `run` (taken) on the debugger, while there is one.
+	private void Verb(Node pane, StringView id, delegate void(IScriptDebugger debugger) run)
 	{
-		let button = new Button(label);
-		button.FontSize.Value = 12.0f;
-		button.OnClick.Add(new [=onClick](b) => { onClick(); } ~ delete onClick);
-		bar.AddView(button);
-	}
-
-	private static void AddRow(FlexLayout list, StringView text, float indent)
-	{
-		let label = new Label(text);
-		label.FontSize.Value = 12.0f;
-		var lp = LayoutStyle();
-		lp.Width = SizeSpec.Match();
-		lp.Margin = Thickness(indent, 0, 0, 0);
-		list.AddView(label, lp);
-	}
-
-	private void AddLocalRow(ScriptVariable variable, float indent)
-	{
-		let text = scope String();
-		text.AppendF("{} = {}", variable.Name, variable.Value);
-		if (!variable.TypeName.IsEmpty)
-			text.AppendF("  ({})", variable.TypeName);
-		let expandable = variable.ObjectRef != 0;
-		let expanded = expandable && IsExpanded(variable.ObjectRef);
-		if (!expandable)
+		let button = pane.FindElement(id) as ButtonBase;
+		if (button == null)
 		{
-			AddRow(mLocalsList, text, indent);
+			delete run;
 			return;
 		}
-		let row = new FlexLayout();
-		row.Direction = .Horizontal;
-		row.Spacing = 4.0f;
-		let toggle = new Button(expanded ? "-" : "+");
-		toggle.FontSize.Value = 12.0f;
-		let reference = variable.ObjectRef;
-		toggle.OnClick.Add(new [=this, =reference](b) => { ToggleExpand(reference); });
-		row.AddView(toggle);
-		let label = new Label(text);
-		label.FontSize.Value = 12.0f;
-		row.AddView(label);
-		var lp = LayoutStyle();
-		lp.Width = SizeSpec.Match();
-		lp.Margin = Thickness(indent, 0, 0, 0);
-		mLocalsList.AddView(row, lp);
-		if (expanded && (mDebugger != null))
-		{
-			let members = scope List<ScriptVariable>();
-			defer { ClearAndDeleteItems(members); }
-			mDebugger.CaptureObject(reference, members);
-			for (let member in members)
-				AddRow(mLocalsList, scope $"{member.Name} = {member.Value}", indent + 18.0f);
-		}
-	}
-
-	private bool IsExpanded(uint64 reference) => mExpanded.Contains(reference);
-
-	private void ToggleExpand(uint64 reference)
-	{
-		if (!mExpanded.Remove(reference))
-			mExpanded.Add(reference);
-		mDirty = true;
+		button.SetOnClick(new [=this, =run] () =>
+			{
+				if (mDebugger != null)
+					run(mDebugger);
+			} ~ delete run);
 	}
 }

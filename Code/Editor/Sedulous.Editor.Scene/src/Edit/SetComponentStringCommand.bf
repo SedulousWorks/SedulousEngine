@@ -2,6 +2,7 @@ using System;
 using Sedulous.Core;
 using Sedulous.Scene;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 

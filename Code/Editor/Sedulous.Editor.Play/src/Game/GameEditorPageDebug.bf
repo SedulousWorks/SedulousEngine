@@ -69,8 +69,11 @@ extension GameEditorPage
 					mSimPausedByDebugger = true;
 				}
 				// A paused run shows why: the panel opens if it was hidden.
-				if (!mDebuggerToggle.IsChecked)
-					mDebuggerToggle.IsChecked = true;
+				if ((mDebuggerToggle != null) && !mDebuggerToggle.Checked)
+				{
+					mDebuggerToggle.Checked = true;
+					ShowDebugger(true);
+				}
 				mDebuggerPanel.Refresh();
 				if (let debugger = mDebuggerPanel.Debugger)
 				{
@@ -92,8 +95,6 @@ extension GameEditorPage
 				mContext.ClearScriptExecutionPoint();
 			}
 		}
-		if (mDebuggerPanel.ConsumeDirty())
-			mDebuggerPanel.Refresh();
 	}
 
 	/// Mirrors the editor's breakpoint store onto the debugger: removed ones cleared, new

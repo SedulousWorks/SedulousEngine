@@ -59,6 +59,10 @@ class SceneMcpEditToolsTests
 		public Result<void, ErrorCode> RequestViewportCapture(StringView path) => .Err(.NotSupported);
 		public Result<void, ErrorCode> RequestProjectThumbnail() => .Err(.NotSupported);
 		public ViewportCapture LastViewportCapture => null;
+		public bool BeginScriptedInput(Sedulous.Input.ScriptedInputSource source) { delete source; return false; }
+		public void EndScriptedInput() {}
+		public double ScriptedInputTime => -1.0;
+		public Float2 ViewportPixels => .Zero;
 		public bool MarkersShown => true;
 		public void SetMarkersShown(bool shown) {}
 		public bool AnimationPanelShown => false;

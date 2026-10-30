@@ -9,7 +9,8 @@ namespace Sedulous.Editor.Scene;
 // The scene page's bar (Raptor's editor-gui spec, 5.3, layer 5, part 1): Save, Undo and Redo;
 // Select, Move, Rotate and Scale as one choice; the space, its icon the space it is in; Snap,
 // every drag snapping while it is on, with its increments in its menu (they had no UI: Ctrl
-// snapped by fixed steps); Vertex Snap; Frame. Each button is an action over the page
+// snapped by fixed steps); Vertex Snap; Simulate, Pause and Stop, the state named beside them
+// while it runs (layer 7, part 1: Simulate is named so, Play is the Game tab's); Frame. Each button is an action over the page
 // (PageActionBar), so its tooltip says its keys and it is disabled where the action is (the
 // transform choice while the camera owns the keys). The view's own controls are the HUD's chips,
 // not the bar's (ruling 22).
@@ -40,6 +41,12 @@ class SceneBar
 	}
 
 	private PageActionBar mBar ~ delete _;
+	/// Borrowed: it outlives its bar.
+	private EditorPage mPage;
+	/// The page's: the label naming Simulate's state; null: none.
+	private Sedulous.GUI.Label mState;
+	private bool mPaused = false;
+	private bool mStateShown = false;
 	private delegate GizmoController() mGizmos ~ delete _;
 	// The page's, which outlives its bar.
 	private ButtonBase mSpace = null;
@@ -51,15 +58,20 @@ class SceneBar
 	private List<MenuItem> mScaleItems = new .() ~ delete _;
 
 	/// The bar's buttons, by their markup ids (`scene-save` ... `scene-frame`), found by `find`;
-	/// `gizmos` (taken) the page's controller, asked each time (the tool may come later).
-	/// `actions` and `page` are borrowed and outlive it.
-	public this(EditorActionRegistry actions, EditorPage page, delegate ButtonBase(StringView id) find, delegate GizmoController() gizmos)
+	/// `state` the label naming Simulate's state (null: none); `gizmos` (taken) the page's
+	/// controller, asked each time (the tool may come later). `actions`, `page` and `state` are
+	/// borrowed and outlive it.
+	public this(EditorActionRegistry actions, EditorPage page, delegate ButtonBase(StringView id) find, Sedulous.GUI.Label state,
+		delegate GizmoController() gizmos)
 	{
 		mBar = new .(actions, page);
+		mPage = page;
+		mState = state;
 		mGizmos = gizmos;
 		mBar.Bind(find("scene-save"), "file.save");
 		mBar.Bind(find("scene-undo"), "edit.undo");
 		mBar.Bind(find("scene-redo"), "edit.redo");
+		mBar.Bind(find("scene-discard"), "page.discardChanges");
 		mBar.Bind(find("scene-select"), SceneActionIds.GizmoSelect);
 		mBar.Bind(find("scene-move"), SceneActionIds.GizmoTranslate);
 		mBar.Bind(find("scene-rotate"), SceneActionIds.GizmoRotate);
@@ -69,19 +81,27 @@ class SceneBar
 		let snap = find("scene-snap");
 		mBar.Bind(snap, SceneActionIds.GizmoSnap);
 		mBar.Bind(find("scene-vertex-snap"), SceneActionIds.GizmoVertexSnap);
+		mBar.Bind(find("scene-simulate"), SceneActionIds.SimulateStart);
+		mBar.Bind(find("scene-pause"), SceneActionIds.SimulatePause);
+		mBar.Bind(find("scene-stop"), SceneActionIds.SimulateStop);
 		mBar.Bind(find("scene-frame"), SceneActionIds.FrameSelection);
 		if (let menuButton = snap as ToolMenuButton)
 			BuildSnapMenu(menuButton.Menu);
+		SyncState(); // hidden until it runs
 	}
 
 	/// How many buttons are bound to actions.
 	public int Bound => mBar.Count;
+
+	/// What the state label says ("Simulating", "Paused"); empty while it shows nothing.
+	public StringView State => ((mState != null) && mState.Displayed) ? mState.Text : default;
 
 	/// Once a frame: each button as its action is now over the page; the space's icon and the
 	/// increments' checks as the gizmo has them.
 	public void Sync()
 	{
 		mBar.Sync();
+		SyncState();
 		let gizmos = (mGizmos != null) ? mGizmos() : null;
 		if (gizmos == null)
 			return;
@@ -96,6 +116,26 @@ class SceneBar
 		Check(mMoveItems, sMoveIncrements, gizmos.MoveSnapsToGrid ? 0.0f : gizmo.TranslateSnap);
 		Check(mRotateItems, sRotateIncrements, gizmo.RotateSnapDegrees);
 		Check(mScaleItems, sScaleIncrements, gizmo.ScaleSnap);
+	}
+
+	// Simulate's state beside its buttons: shown while it runs, the edits locked meanwhile.
+	private void SyncState()
+	{
+		if (mState == null)
+			return;
+		let scene = mPage as ISceneEditorPage;
+		let running = (scene != null) && scene.IsSimulating;
+		let paused = running && scene.IsPaused;
+		if (mState.Displayed != running)
+			mState.Displayed = running;
+		if (!running || (mStateShown && (paused == mPaused)))
+			return;
+		mState.Text = paused ? "Paused" : "Simulating";
+		mState.RemoveClass(paused ? "playing" : "paused");
+		mState.AddClass(paused ? "paused" : "playing");
+		mState.Tooltip = "The scene runs here; edits wait until Stop, which puts it back as it was";
+		mPaused = paused;
+		mStateShown = true;
 	}
 
 	/// Picks the `index`th increment of `kind`, as its menu item does.

@@ -229,8 +229,8 @@ class SceneHudServices
 	/// The graph's textures of the last frame, appended (the caller deletes them); null: none to
 	/// offer.
 	public delegate void(List<DebugResourceInfo> outRows) DebugResources ~ delete _;
-	/// Opens the picker for a request below an anchor; OWNERSHIP of the request transfers.
-	public delegate void(PickerRequest request, Node anchor) Pick ~ delete _;
+	/// Opens the picker for a request; OWNERSHIP of the request transfers.
+	public delegate void(PickerRequest request) Pick ~ delete _;
 	/// An overlay changed: the page keeps its view state.
 	public delegate void() OverlaysChanged ~ delete _;
 }
@@ -412,8 +412,8 @@ class SceneHud
 		}
 	}
 
-	/// The graph's textures in the picker, by their pass, below `anchor`.
-	public void OpenTextures(Node anchor)
+	/// The graph's textures in the picker, by their pass.
+	public void OpenTextures()
 	{
 		if ((mServices.DebugResources == null) || (mServices.Pick == null))
 			return;
@@ -459,7 +459,7 @@ class SceneHud
 				if (!key.IsEmpty)
 					ShowTexture(key);
 			};
-		mServices.Pick(request, anchor);
+		mServices.Pick(request);
 	}
 
 	// === For tests ===
@@ -544,7 +544,7 @@ class SceneHud
 			let semantic = term.Semantic;
 			AddCheck(terms, term.Label, new [=debug, =semantic] () => debug.Resource.IsEmpty && (debug.Semantic == semantic), new [=this, =semantic] () => { SetShading(semantic); });
 		}
-		let textures = AddCheck(menu, "Render Textures...", new [=debug] () => !debug.Resource.IsEmpty, new () => { OpenTextures(mShading.Button); });
+		let textures = AddCheck(menu, "Render Textures...", new [=debug] () => !debug.Resource.IsEmpty, new () => { OpenTextures(); });
 		textures.Enabled = (mServices.DebugResources != null) && (mServices.Pick != null);
 		menu.AddSeparator();
 		let effects = menu.AddSubMenu("Effects");

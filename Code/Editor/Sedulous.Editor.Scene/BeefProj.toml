@@ -82,21 +82,9 @@ corlib = "*"
 "Sedulous.Editor.Navigation" = "*"
 
 # On the GUI in parts (Raptor's editor-gui spec, 5.3): the page, its hierarchy and its inspector
-# build. The two picker dialogs are still on Sedulous.UI; they stay out of the compile, their
-# sources unedited, until their layers.
+# build. The component picker dialog is still on Sedulous.UI; it stays out of the compile, its
+# source unedited, until its layer.
 [ProjectFolder]
-
-[[ProjectFolder.Items]]
-Type = "AutoFolder"
-Name = "Hierarchy"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "EntityPickerDialog.bf"
-
-[[ProjectFolder.Items.Items]]
-Type = "IgnoreSource"
-Name = "EntityTreeAdapter.bf"
 
 [[ProjectFolder.Items]]
 Type = "AutoFolder"

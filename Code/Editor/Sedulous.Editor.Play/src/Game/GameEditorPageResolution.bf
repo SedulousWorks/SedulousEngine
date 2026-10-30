@@ -2,8 +2,7 @@ using System;
 using System.Collections;
 using Sedulous.Core;
 using Sedulous.Core.Serialization;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
+using Sedulous.GUI;
 using Sedulous.VFS;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Project;
@@ -23,17 +22,19 @@ class GamePageSettings
 	public bool PhonePreview = false;
 }
 
-/// The resolution the Game tab draws at (GameResolution.Collect says the choices). A fixed
-/// choice is fitted into the panel by the project's render fit, as the player fits it into its
-/// window, and turned when the game is held to the other orientation. The Phone toggle makes the
-/// tab's screen a phone held upright, letterboxed in the panel.
+/// The resolution the Game tab draws at (GameResolution.Collect says the choices), in the bar's
+/// dropdown from the markup. A fixed choice is fitted into the panel by the project's render fit,
+/// as the player fits it into its window, and turned when the game is held to the other
+/// orientation. The phone toggle makes the tab's screen a phone held upright, letterboxed in the
+/// panel.
 extension GameEditorPage
 {
 	/// Seconds between looks at whether the choices changed (a preset, the project's
 	/// resolution): cheap, and a reopened dropdown is fresh within one.
 	private const float cResolutionRefreshSeconds = 1.0f;
 
-	private ComboBox mResolutionCombo;
+	/// The content's: null with no markup (a test), the chosen key's entry then the choice.
+	private ComboBox mResolutionCombo = null;
 	private List<GameResolutionChoice> mResolutionChoices = new .() ~ DeleteContainerAndItems!(_);
 	/// What the choices were built from; rebuilt only when it changes.
 	private String mResolutionSignature = new .() ~ delete _;
@@ -51,37 +52,46 @@ extension GameEditorPage
 	/// previews a phone held upright.
 	private ScreenOrientation mOrientation = .Any;
 	private bool mPhonePreview = false;
-	private ToolbarToggle mPhoneToggle;
+	private ButtonBase mPhoneToggle = null;
 
-	private void CreateResolutionCombo()
+	private void BindResolution()
 	{
-		mResolutionCombo = new ComboBox();
-		var style = LayoutStyle();
-		style.Width = SizeSpec.Fixed(Unit.Dp(220));
-		mToolbar.AddItem(mResolutionCombo, style);
-		mResolutionCombo.OnSelectionChanged.Add(new [=this](combo, index) =>
-		{
-			if (mResolutionRebuilding || (index < 0) || (index >= mResolutionChoices.Count))
-				return;
-			mResolutionKey.Set(mResolutionChoices[index].Key);
-			SaveResolutionKey();
-			ApplyResolution();
-		});
+		mResolutionCombo = Find<ComboBox>("game-resolution");
+		if (mResolutionCombo != null)
+			mResolutionCombo.SetOnSelectionChanged(new [=this] (index) =>
+				{
+					if (mResolutionRebuilding || (index < 0) || (index >= mResolutionChoices.Count))
+						return;
+					mResolutionKey.Set(mResolutionChoices[index].Key);
+					SaveResolutionKey();
+					ApplyResolution();
+				});
 		// A phone held upright: the game as a phone would show it, turned when it is held the
 		// other way (mouse and touch map through the same turn).
-		mPhoneToggle = mToolbar.AddToggle("Phone");
-		mPhoneToggle.OnCheckedChanged.Add(new [=this](toggle, on) =>
-		{
-			if (mResolutionRebuilding)
-				return;
-			SetPhonePreview(on);
-			SaveResolutionKey();
-		});
+		mPhoneToggle = Find<ButtonBase>("game-phone");
+		if (mPhoneToggle != null)
+			mPhoneToggle.SetOnToggled(new [=this] (on) =>
+				{
+					SetPhonePreview(on);
+					SaveResolutionKey();
+				});
 		LoadResolutionKey();
-		mResolutionRebuilding = true;
-		mPhoneToggle.IsChecked = mPhonePreview;
-		mResolutionRebuilding = false;
+		if (mPhoneToggle != null)
+			mPhoneToggle.Checked = mPhonePreview; // code's change: its handler stays out
 		RefreshResolutionChoices(true);
+	}
+
+	/// The chosen entry's index: the dropdown's, or with none (no markup) the chosen key's.
+	private int32 SelectedResolution()
+	{
+		if (mResolutionCombo != null)
+			return mResolutionCombo.SelectedIndex;
+		for (int32 i < (int32)mResolutionChoices.Count)
+		{
+			if (mResolutionChoices[i].Key == mResolutionKey)
+				return i;
+		}
+		return mResolutionChoices.IsEmpty ? -1 : 0;
 	}
 
 	public List<GameResolutionChoice> ResolutionChoices()
@@ -99,10 +109,11 @@ extension GameEditorPage
 		{
 			if (mResolutionChoices[i].Key != key)
 				continue;
-			mResolutionRebuilding = true; // the dropdown shows it; its handler stays out
-			mResolutionCombo.SetSelectedIndex(i);
-			mResolutionRebuilding = false;
 			mResolutionKey.Set(mResolutionChoices[i].Key);
+			mResolutionRebuilding = true; // the dropdown shows it; its handler stays out
+			if (mResolutionCombo != null)
+				mResolutionCombo.SelectedIndex = i;
+			mResolutionRebuilding = false;
 			SaveResolutionKey();
 			ApplyResolution();
 			return true;
@@ -114,9 +125,8 @@ extension GameEditorPage
 
 	public void SelectPhonePreview(bool on)
 	{
-		mResolutionRebuilding = true; // the toggle shows it; its handler stays out
-		mPhoneToggle.IsChecked = on;
-		mResolutionRebuilding = false;
+		if (mPhoneToggle != null)
+			mPhoneToggle.Checked = on; // code's change: its handler stays out
 		SetPhonePreview(on);
 		SaveResolutionKey();
 	}
@@ -162,13 +172,16 @@ extension GameEditorPage
 			if (mResolutionChoices[i].Key == mResolutionKey)
 				selected = i;
 		}
-		mResolutionRebuilding = true;
-		mResolutionCombo.ClearItems();
-		for (let choice in mResolutionChoices)
-			mResolutionCombo.AddItem(choice.Label);
-		mResolutionCombo.SetSelectedIndex(selected);
-		mResolutionRebuilding = false;
 		mResolutionKey.Set(mResolutionChoices[selected].Key);
+		if (mResolutionCombo != null)
+		{
+			mResolutionRebuilding = true;
+			mResolutionCombo.ItemsText = "";
+			for (let choice in mResolutionChoices)
+				mResolutionCombo.AddItem(choice.Label);
+			mResolutionCombo.SelectedIndex = selected;
+			mResolutionRebuilding = false;
+		}
 		ApplyResolution();
 	}
 
@@ -191,7 +204,7 @@ extension GameEditorPage
 	/// pointer maps into it.
 	private void ApplyResolution()
 	{
-		let index = mResolutionCombo.SelectedIndex;
+		let index = SelectedResolution();
 		if ((index < 0) || (index >= mResolutionChoices.Count))
 			return;
 		let choice = mResolutionChoices[index];

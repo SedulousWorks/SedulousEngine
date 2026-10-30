@@ -86,7 +86,7 @@ static class SceneActions
 
 		// ---- Simulate: snapshot, run, restore ----
 		{
-			let d = new EditorActionDeclaration(SceneActionIds.SimulateStart, "Play", "Start the page's edit-mode Simulate from a snapshot (Stop restores it)", "Scene/Simulate/Play", 100);
+			let d = new EditorActionDeclaration(SceneActionIds.SimulateStart, "Simulate", "Run the scene here from a snapshot, the edits locked meanwhile (Stop restores it; Play is the Game tab's)", "Scene/Simulate/Start", 100);
 			d.Enabled = new (page) =>
 				{
 					let scene = page as ISceneEditorPage;
@@ -96,7 +96,7 @@ static class SceneActions
 			actions.Register(d);
 		}
 		{
-			let d = new EditorActionDeclaration(SceneActionIds.SimulatePause, "Pause", "Hold the running Simulate; again resumes", "Scene/Simulate/Pause", 101);
+			let d = new EditorActionDeclaration(SceneActionIds.SimulatePause, "Pause", "Hold the running Simulate; again resumes it", "Scene/Simulate/Pause", 101);
 			d.Kind = .Toggle;
 			d.Enabled = new (page) =>
 				{

@@ -14,35 +14,51 @@ using Sedulous.Engine.Render;
 using Sedulous.Engine.Input;
 using Sedulous.Engine.GameInstance;
 using Sedulous.Engine.DefaultApp;
-using Sedulous.UI;
-using Sedulous.UI.Toolkit;
-using Sedulous.UI.Runtime;
-using Sedulous.UI.Viewport;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.App;
 using Sedulous.Editor.Scene;
 
 namespace Sedulous.Editor.Play;
 
+/// What the Game tab asks of the editor.
+class GameEditorPageServices
+{
+	/// Hosts its viewport; null: none (a test). Not owned.
+	public GuiHost Gui = null;
+	/// Its markup by its path under the data root, a node with one reference the page takes; null:
+	/// a bare panel (a test).
+	public delegate Node(StringView path) LoadMarkup ~ delete _;
+}
+
 /// The Game tab: plays the project's default scene through its OWN game instance, with the
-/// startup script, the default input map and bus layout, a play/pause/stop/restart toolbar,
-/// the resolution it draws at (the project's by default), and the script debugger beside the viewport (hidden until the
-/// Debugger toggle, or a breakpoint, shows it).
+/// startup script, the default input map and bus layout, the resolution it draws at (the project's
+/// by default), and the script debugger beside the game (hidden until its toggle, or a breakpoint,
+/// shows it).
 ///
-/// The context, host, UI host and embedded application are borrowed. The game instance is
-/// borrowed from the application and released back to it on close.
+/// On the GUI (Raptor's editor-gui spec, 5.3, layer 7, part 3), from its markup (Data/Editor/
+/// Game.gml): the kit's transport (Restart, Play, Pause, Stop, the state named beside them and the
+/// scene it runs, a Play waiting for the cook said so), the resolution and the phone, the debugger's
+/// toggle; the game on GUI.Viewport, which the GUI host binds, places and routes, and which keeps
+/// every key while it runs and has the focus (Shift+F1 gives them back).
+///
+/// The context, host and embedded application are borrowed. The game instance is borrowed from
+/// the application and released back to it on close.
 class GameEditorPage : UIEditorPage, IPieInstancePage
 {
+	/// Its markup, under the data root.
+	public const String cMarkupPath = "Editor/Game.gml";
+
 	/// The tab's PIE id (IPieInstancePage.PieId).
 	private String mPieId = new .() ~ delete _;
+	/// TitleFor(mPieId).
+	private String mTitle = new .() ~ delete _;
 	private EditorContext mContext;
 	private IApplicationHost mHost;
-	private UIHost mUiHost;
+	private GameEditorPageServices mServices ~ delete _;
 	private DefaultApplication mApp;
 	/// THIS tab's running game: its own run host and scenes.
 	private GameInstance mGameInstance;
-	/// Tracks dock and float moves.
-	private RenderWindow mHostWindow = null;
 	private SceneSubsystem mScenes = null;
 	private RenderSubsystem mRender = null;
 	private Sedulous.Scene.Scene mScene = null;
@@ -50,25 +66,37 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	private IInputManager mShellInput = null;
 	private GameViewportInputSource mViewportSource = new .() ~ delete _;
 
-	private View mContent = null ~ { if (_ != null) _.ReleaseRef(); };
-	private Toolbar mToolbar;
-	private ToolbarButton mPlayButton;
-	private ToolbarButton mStopButton;
-	private ToolbarToggle mPauseToggle;
-	private ToolbarButton mRestartButton;
-	/// Shows the script debugger beside the viewport. Off by default: it takes room the game
-	/// wants, and is opened when needed (and by a breakpoint that pauses the run).
-	private ToolbarToggle mDebuggerToggle;
+	/// One reference, the page's.
+	private Node mContent = null ~ { if (_ != null) _.ReleaseRef(); };
+	// The content's: the tree holds them.
+	private ButtonBase mRestartButton = null;
+	private ButtonBase mPlayButton = null;
+	private ButtonBase mPauseToggle = null;
+	private ButtonBase mStopButton = null;
+	/// The transport's state: Stopped, Playing, Paused, Script error.
+	private Sedulous.GUI.Label mStateLabel = null;
+	/// The scene it runs.
+	private Sedulous.GUI.Label mSceneLabel = null;
+	/// Shown while a Play waits for the cook.
+	private Sedulous.GUI.Label mCookBadge = null;
+	/// Shows the script debugger beside the game. Off by default: it takes room the game wants,
+	/// and is opened when needed (and by a breakpoint that pauses the run).
+	private ButtonBase mDebuggerToggle = null;
+	/// Held while it is out of the split.
+	private Node mDebuggerPane = null ~ _?.ReleaseRef();
+	/// The game beside the debugger (the markup's).
+	private Splitter mStage = null;
+	/// The debugger's share of the split, kept while it is off.
+	private float mDebuggerShare = 0.22f;
+	/// After the content: the trees it binds let go of its models first.
 	private DebuggerPanel mDebuggerPanel = new .() ~ delete _;
 	private GameDebugListener mDebugListener = new .() ~ delete _;
 	/// The simulation was frozen for a breakpoint.
 	private bool mSimPausedByDebugger = false;
 	/// The breakpoints mirrored onto the debugger.
 	private List<ScriptBreakpoint> mAppliedBreakpoints = new .() ~ DeleteContainerAndItems!(_);
-	private Label mStatusLabel;
-	private ViewportView mViewport;
-	/// Gates the viewport surface: hover and focus.
-	private InputRouter mRouter = null ~ delete _;
+	/// One reference, the page's: its pane holds its own.
+	private Sedulous.GUI.Viewport mViewport ~ _.ReleaseRef();
 	/// The placeholder scene group when there is no game instance.
 	private SceneManager mFallbackScenes = new .() ~ delete _;
 
@@ -92,13 +120,16 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	private uint32 mCaptureWidth = 0;
 	private uint32 mCaptureHeight = 0;
 
-	public this(EditorContext context, IApplicationHost host, UIHost uiHost, DefaultApplication embeddedApp,
+	/// `services` it takes; `pieId` names the tab: the id its dock panel persists under and the PIE
+	/// tools address it by (`game-page`, then `game-page-1`, ...).
+	public this(EditorContext context, IApplicationHost host, GameEditorPageServices services, DefaultApplication embeddedApp,
 		GameInstance instance, StringView pieId)
 	{
 		mPieId.Set(pieId);
+		TitleFor(pieId, mTitle);
 		mContext = context;
 		mHost = host;
-		mUiHost = uiHost;
+		mServices = services;
 		mApp = embeddedApp;
 		mGameInstance = instance;
 
@@ -107,12 +138,30 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mInput = host.Context.GetSubsystem<InputSubsystem>();
 		mShellInput = (host.Shell != null) ? host.Shell.Input : null;
 
-		mViewport = new ViewportView();
+		mViewport = new Sedulous.GUI.Viewport();
+		mViewport.AddClass("game-view");
 		mViewport.ClearColor = .(0.248f, 0.248f, 0.272f, 1.0f); // sRGB, like every UI colour
 		// The finished game, as the player draws it into its sRGB window: 8-bit sRGB rather than the
 		// viewports' float default, so the Game tab matches the player and its screen UI can blend
 		// encoded values through the target's UNORM view (RenderOverlays).
 		mViewport.SetFormats(.RGBA8UnormSrgb, mViewport.DepthFormat);
+		// Shift+F1 (the GUI's capture release) gives the keyboard back to the editor: the game view
+		// lets the focus go too, as the game reads its keys while the view has it; a click in the
+		// view takes it, and the capture, again.
+		{
+			let view = mViewport;
+			mViewport.AddNamedListener("keysreleased", new [=view] (e) =>
+				{
+					let dispatcher = view.EventDispatcher;
+					if ((dispatcher != null) && (dispatcher.FocusNode == view))
+						dispatcher.FocusNode = null;
+				});
+		}
+		// The game's input is the viewport's surface, gated to it (hover the mouse, focus the keys).
+		mViewportSource.Viewport = mViewport;
+		mViewportSource.ShellInput = mShellInput;
+		if (mInput != null)
+			mInput.SetSourceProvider(ActiveSource, null);
 
 		// THIS instance's exit request stops THIS tab's run, whichever tab it is: the script
 		// asking fires inside the embedded app's update, which runs before the pages, so the
@@ -124,58 +173,49 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 					mExitRequested = true;
 				});
 
-		mToolbar = new Toolbar();
-		mPlayButton = mToolbar.AddButton("Play");
-		mPlayButton.OnClick.Add(new [=this](b) => { Play(); });
-		mPauseToggle = mToolbar.AddToggle("Pause");
-		mPauseToggle.OnCheckedChanged.Add(new [=this](t, paused) =>
+		// The tab from its markup: the bar over the stage, the game beside the debugger.
+		mContent = (mServices.LoadMarkup != null) ? mServices.LoadMarkup(cMarkupPath) : null;
+		if (mContent == null)
+			mContent = new Panel(); // no markup: still a tab, with its viewport
+		let stage = Find<Node>("game-view-pane");
+		((stage != null) ? stage : mContent).AddChildAt(mViewport, 0);
+		if (mServices.Gui != null)
+			mViewport.HostIn(mServices.Gui);
+		mStage = Find<Splitter>("game-stage");
+		mDebuggerPane = Find<Node>("game-debugger");
+		if (mDebuggerPane != null)
 		{
-			if ((mScene != null) && mRunning)
-				mScene.SetSimulationEnabled(!paused);
-		});
-		mStopButton = mToolbar.AddButton("Stop");
-		mStopButton.OnClick.Add(new [=this](b) => { Stop(); });
-		mRestartButton = mToolbar.AddButton("Restart");
-		mRestartButton.OnClick.Add(new [=this](b) => { Stop(); Play(); });
-		mDebuggerToggle = mToolbar.AddToggle("Debugger");
-		mDebuggerToggle.OnCheckedChanged.Add(new [=this](t, shown) =>
-		{
-			mDebuggerPanel.RootView.Visibility = shown ? .Visible : .Gone;
-		});
-		mStatusLabel = new Label("");
-		mStatusLabel.FontSize.Value = 13.0f;
-		CreateResolutionCombo();
-		mToolbar.AddItem(mStatusLabel);
-
-		let column = new FlexLayout();
-		column.Direction = .Vertical;
-		var toolbarStyle = LayoutStyle();
-		toolbarStyle.Width = SizeSpec.Match();
-		toolbarStyle.Height = SizeSpec.Fixed(Unit.Dp(30));
-		column.AddView(mToolbar, toolbarStyle);
-		let stage = new FlexLayout();
-		stage.Direction = .Horizontal;
-		var viewportStyle = LayoutStyle();
-		viewportStyle.FlexGrow = 1.0f;
-		viewportStyle.Height = SizeSpec.Match();
-		stage.AddView(mViewport, viewportStyle);
-		var debugStyle = LayoutStyle();
-		debugStyle.Width = SizeSpec.Fixed(Unit.Dp(300));
-		debugStyle.Height = SizeSpec.Match();
-		stage.AddView(mDebuggerPanel.RootView, debugStyle);
-		mDebuggerPanel.RootView.Visibility = .Gone; // until the Debugger toggle shows it
-		var stageStyle = LayoutStyle();
-		stageStyle.Width = SizeSpec.Match();
-		stageStyle.FlexGrow = 1.0f;
-		column.AddView(stage, stageStyle);
-		mContent = column;
+			mDebuggerPane.AddRef();
+			mDebuggerPanel.Bind(mDebuggerPane);
+			ShowDebugger(false); // it takes room the game wants: opened by its toggle or a break
+		}
+		BindBar();
 		RefreshToolbar();
 	}
 
-	public override StringView Title => "Game";
+	public override StringView Title => mTitle;
+
+	/// A Game tab's name from its play id, into `outTitle`: the first "Game", Play New Instance's
+	/// "Game 2", "Game 3" (its id's number and one), so tabs side by side are told apart.
+	public static void TitleFor(StringView pieId, String outTitle)
+	{
+		const String cNewInstance = "game-page-";
+		if (!pieId.StartsWith(cNewInstance))
+		{
+			outTitle.Append("Game");
+			return;
+		}
+		if (int64.Parse(pieId.Substring(cNewInstance.Length)) case .Ok(let number))
+			outTitle.AppendF("Game {}", number + 1);
+		else
+			outTitle.Append(pieId);
+	}
+
+	/// The game's view (for tests: its focus and capture).
+	public Sedulous.GUI.Viewport View => mViewport;
 	/// Nothing here is a document.
 	public override Result<void, ErrorCode> Save() => .Ok;
-	public override View ContentView => mContent;
+	public override Node Content => mContent;
 
 	public bool IsRunning => mRunning;
 	public Sedulous.Scene.Scene RunningScene => mScene;
@@ -215,6 +255,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		mPendingPlay = true;
 		if (mContext.IsCookBusy)
 			mContext.SetStatus("Game: waiting for cook...");
+		RefreshToolbar();
 	}
 
 	public override void OnUpdate(IApplicationHost host, float dt)
@@ -233,19 +274,16 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		}
 		FollowInstanceScene();
 		AdvanceScriptedInput();
-		EnsureViewportBound();
 		TickResolution(dt);
 		SyncGameFit(); // the target may have changed shape: the turn, and so the pointer's map
-		mViewport.SyncInputRegion();
-		// A running game owns the keys its focused viewport receives: the editor's arrow key
-		// focus moves and single key bindings stay out of it.
-		mViewport.CapturesKeys = mRunning;
-		if (mRouter != null)
-		{
-			// Hover gates the mouse, a click the keyboard focus.
-			mRouter.SetExternalCapture(false, mViewport.HostKeyboardFocusElsewhere);
-			mRouter.Update();
-		}
+		// A running game owns every key while its view has the focus (the editor's focus moves and
+		// its bindings stay out of it); Shift+F1 gives the keyboard back, the focus with it, until a
+		// click in the view. Armed only while focused: armed whenever it ran, the release was undone
+		// the next frame and the game kept the keys.
+		let capture = mRunning && mViewport.IsFocused;
+		if (mViewport.CapturesAllKeys != capture)
+			mViewport.CapturesAllKeys = capture;
+		RefreshToolbar();
 		// The game UI's input (one pump for every Game tab) goes to the tab a playtest is
 		// scripting, or failing that to the tab the keyboard is in; with neither, it stays with
 		// the tab that took it last, so a lone tab keeps it from Play on. A focused tab leaves
@@ -254,9 +292,12 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		if (mRunning && (mInput != null))
 		{
 			let anotherPlaytest = (mInput.ActiveSource is ScriptedInputSource) && (mInput.ActiveSource !== mScripted);
-			if (IsScripted || (mViewport.HostKeyboardFocusHere && !anotherPlaytest))
+			let focused = mViewport.IsFocused && (mViewport.HostedSurface != null) && mViewport.HostedSurface.Focused;
+			if (IsScripted || (focused && !anotherPlaytest))
 				mInput.SetSourceProvider(ActiveSource, (mScene != null) ? Internal.UnsafeCastToPtr(mScene) : null);
 		}
+		// The window's text input follows the GAME UI's focus: the viewport (the GUI's focused node
+		// while playing) says the game's context wants text, and the GUI's bridge starts it.
 		mViewport.SetHostedTextInputWanted((mApp != null) && (mApp.UI != null) && mApp.UI.UiContext.WantsTextInput());
 		DrainDebuggerState();
 		SyncRunAudio();
@@ -266,16 +307,14 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 	{
 		if (!mViewport.IsReady || !frame.Valid)
 			return;
+		// Idle (no run): the viewport keeps what it was cleared to (Stop asks for the clear).
 		if (mScene == null)
-		{
-			mViewport.ClearContent(frame.Encoder);
 			return;
-		}
 		if ((mRender == null) || !mRender.IsReady)
 			return;
 		let w = mViewport.RenderWidth;
 		let h = mViewport.RenderHeight;
-		if ((w == 0) || (h == 0) || !mViewport.IsEffectivelyVisible())
+		if ((w == 0) || (h == 0) || !mViewport.IsTreeVisible)
 			return;
 
 		if ((mApp != null) && (mApp.UI != null))
@@ -295,7 +334,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			// window; the capture is the game's image, without the bars.
 			let dst = fit.DstRect();
 			let viewport = ViewportRect((int32)dst.X, (int32)dst.Y, (uint32)Math.Max(dst.Width, 1.0f), (uint32)Math.Max(dst.Height, 1.0f));
-			mRender.RenderScene(mScene, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, viewport,
+			mRender.RenderScene(mScene, mViewport.ColorView, mViewport.ColorFormat, w, h, viewport,
 				null, targetState, null, null, null, SceneSize.FromFit(fit));
 			mCaptureX = (uint32)Math.Max(viewport.X, 0);
 			mCaptureY = (uint32)Math.Max(viewport.Y, 0);
@@ -304,7 +343,7 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 		}
 		else
 		{
-			mRender.RenderScene(mScene, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, .(0, 0, w, h),
+			mRender.RenderScene(mScene, mViewport.ColorView, mViewport.ColorFormat, w, h, .(0, 0, w, h),
 				null, targetState);
 		}
 		mViewport.ColorState = .ShaderRead;
@@ -339,8 +378,8 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			mApp.Gui.SetRenderRun(mGameInstance);
 		}
 		// Through the viewport's UNORM view: the screen UI blends encoded values, as in the player.
-		mRender.RenderOverlays(frame.Encoder, mViewport.ColorTargetView, mViewport.ColorFormat, w, h, frame.FrameIndex,
-			mViewport.ColorTargetAlternateView);
+		mRender.RenderOverlays(frame.Encoder, mViewport.ColorView, mViewport.ColorFormat, w, h, frame.FrameIndex,
+			mViewport.ColorAlternateView);
 		if ((mApp != null) && (mApp.UI != null))
 			mApp.UI.SetRenderRun(null);
 		if ((mApp != null) && (mApp.Gui != null))
@@ -367,50 +406,126 @@ class GameEditorPage : UIEditorPage, IPieInstancePage
 			mApp.ReleaseInstance(mGameInstance);
 		mGameInstance = null;
 		if (mHost.Graphics != null)
+		{
+			// A copy recorded last frame completes first: freeing its buffer in flight is the
+			// device's error (the scene viewport's, 2026-10-25).
+			mCapture.Complete(mHost.Graphics.Raw);
 			mCapture.Release(mHost.Graphics.Raw); // the readback buffer, while the device lives
-		mViewport.Shutdown();
+		}
 	}
 
-	/// Binds on the first frame the view has a window, and re-binds when its panel moves to
-	/// another window, once that window's renderer exists.
-	private void EnsureViewportBound()
+	/// The content's part with this id, as a T; null when it has none.
+	private T Find<T>(StringView id) where T : Node
 	{
-		let root = mViewport.Root();
-		if (root == null)
-			return;
-		let window = mUiHost.WindowForRoot(root);
-		if ((window == null) || (window == mHostWindow))
-			return;
-		let renderer = mUiHost.RendererFor(window);
-		if (renderer == null)
-			return; // the float's AttachWindow has not run yet
-		if (mHostWindow == null)
-		{
-			mViewport.Initialize(mHost.Graphics.Raw, renderer, mHost.Shell.Input, window.Window.Id);
-			mViewportSource.Viewport = mViewport;
-			mViewportSource.ShellInput = mShellInput;
-			if (mRouter == null)
-				mRouter = new InputRouter(mHost.Shell.Input);
-			if (mViewport.Surface != null)
-				mRouter.AddSurface(mViewport.Surface);
-			if (mInput != null)
-				mInput.SetSourceProvider(ActiveSource, mRunning ? Internal.UnsafeCastToPtr(mScene) : null);
-		}
-		else
-		{
-			mViewport.AttachToWindow(renderer, window.Window.Id);
-		}
-		mHostWindow = window;
+		return (mContent != null) ? (mContent.FindElement(id) as T) : null;
 	}
 
+	/// The bar from the markup: the transport, the resolutions and the phone, the debugger.
+	private void BindBar()
+	{
+		mRestartButton = Find<ButtonBase>("game-restart");
+		mPlayButton = Find<ButtonBase>("game-play");
+		mPauseToggle = Find<ButtonBase>("game-pause");
+		mStopButton = Find<ButtonBase>("game-stop");
+		mStateLabel = Find<Sedulous.GUI.Label>("game-state");
+		mSceneLabel = Find<Sedulous.GUI.Label>("game-scene");
+		mCookBadge = Find<Sedulous.GUI.Label>("game-cook");
+		mDebuggerToggle = Find<ButtonBase>("game-debugger-toggle");
+		if (mRestartButton != null)
+			mRestartButton.SetOnClick(new [=this] () =>
+				{
+					Stop();
+					Play();
+				});
+		if (mPlayButton != null)
+			mPlayButton.SetOnClick(new [=this] () => { Play(); });
+		if (mPauseToggle != null)
+			mPauseToggle.SetOnToggled(new [=this] (paused) =>
+				{
+					if ((mScene != null) && mRunning)
+						mScene.SetSimulationEnabled(!paused);
+					RefreshToolbar();
+				});
+		if (mStopButton != null)
+			mStopButton.SetOnClick(new [=this] () => { Stop(); });
+		if (mDebuggerToggle != null)
+			mDebuggerToggle.SetOnToggled(new [=this] (shown) => { ShowDebugger(shown); });
+		BindResolution();
+	}
 
+	private void ShowDebugger(bool shown)
+	{
+		if (mDebuggerPane == null)
+			return;
+		if (mStage == null)
+		{
+			mDebuggerPane.Displayed = shown; // no split: the stage gives the game the room back
+			return;
+		}
+		// In the split while it is on, at the share it was last given; out of it while it is off,
+		// the game taking the whole stage (a hidden pane would keep its share empty).
+		let inSplit = mDebuggerPane.Parent == mStage;
+		if (shown && !inSplit)
+		{
+			mStage.AddChild(mDebuggerPane);
+			float[2] weights = .(1.0f - mDebuggerShare, mDebuggerShare);
+			mStage.SetWeights(Span<float>(&weights[0], 2));
+		}
+		else if (!shown && inSplit)
+		{
+			let weights = scope List<float>();
+			mStage.GetWeights(weights);
+			if ((weights.Count == 2) && (weights[1] > 0.0f))
+				mDebuggerShare = weights[1];
+			mStage.RemoveChild(mDebuggerPane);
+		}
+	}
+
+	/// Whether the script debugger is beside the game now.
+	public bool DebuggerShown
+	{
+		get
+		{
+			if (mDebuggerPane == null)
+				return false;
+			return (mStage != null) ? (mDebuggerPane.Parent == mStage) : mDebuggerPane.Displayed;
+		}
+	}
+
+	/// The kit's transport as the run is now: Play while stopped, Pause and Stop while it runs (or
+	/// waits for the cook), Restart either way; its state named beside it (Playing, Paused, a
+	/// script's fault) and the scene it runs.
 	private void RefreshToolbar()
 	{
-		if (mStatusLabel == null)
-			return;
-		if (mRunning)
-			mStatusLabel.SetText(scope $"  Running: {mSceneTitle}");
-		else
-			mStatusLabel.SetText("  Stopped");
+		let faulted = mRunning && (ScriptState == .Faulted);
+		let paused = mRunning && (mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.Checked));
+		if (mPlayButton != null)
+			mPlayButton.Enabled = !mRunning && !mPendingPlay;
+		if (mPauseToggle != null)
+			mPauseToggle.Enabled = mRunning;
+		if (mStopButton != null)
+			mStopButton.Enabled = mRunning || mPendingPlay;
+		if ((mCookBadge != null) && (mCookBadge.Displayed != mPendingPlay))
+			mCookBadge.Displayed = mPendingPlay;
+		if (mStateLabel != null)
+		{
+			let state = !mRunning ? "Stopped" : (faulted ? "Script error" : (paused ? "Paused" : "Playing"));
+			let kind = !mRunning ? "stopped" : (faulted ? "faulted" : (paused ? "paused" : "playing"));
+			if (mStateLabel.Text != state)
+			{
+				mStateLabel.Text = state;
+				StringView[4] kinds = .("stopped", "faulted", "paused", "playing");
+				for (let old in kinds)
+					mStateLabel.RemoveClass(old);
+				mStateLabel.AddClass(kind);
+				mStateLabel.Tooltip = faulted ? ScriptFault : "";
+			}
+		}
+		if (mSceneLabel != null)
+		{
+			let scene = mRunning ? (StringView)mSceneTitle : "";
+			if (mSceneLabel.Text != scene)
+				mSceneLabel.Text = scene;
+		}
 	}
 }

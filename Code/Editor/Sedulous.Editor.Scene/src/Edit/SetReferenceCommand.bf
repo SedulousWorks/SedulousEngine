@@ -3,6 +3,7 @@ using Sedulous.Core;
 using Sedulous.Resource;
 using Sedulous.Scene;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 

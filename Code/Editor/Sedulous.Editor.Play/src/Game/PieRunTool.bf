@@ -12,6 +12,7 @@ using Sedulous.Script;
 using Sedulous.Engine.Script;
 using Sedulous.Editor.Core;
 using Sedulous.Editor.Scene;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Play;
 
@@ -184,27 +185,8 @@ static class PieRunTool
 		defer { if (source != null) delete source; }
 		if (let input = arguments.Get("input"))
 		{
-			if (!input.IsArray)
-			{
-				outError.Append("`input` takes an array of timeline entries");
+			if (!ScriptedInputJson.AddScriptedTimeline(input, run.Duration, source, outError))
 				return .Failed;
-			}
-			for (int i < input.Count)
-			{
-				ScriptedInput entry;
-				if (!ParseInput(input.At(i), i, out entry, outError))
-					return .Failed;
-				if (entry.At > run.Duration)
-				{
-					outError.AppendF("input[{}]: `at` {} is after the run's end ({})", i, entry.At, run.Duration);
-					return .Failed;
-				}
-				if (!source.Add(entry))
-				{
-					outError.AppendF("input[{}]: `gamepad` takes 0 to {}", i, ScriptedInputSource.cMaxGamepads - 1);
-					return .Failed;
-				}
-			}
 		}
 		run.InputCount = source.Count;
 
@@ -455,103 +437,6 @@ static class PieRunTool
 		return true;
 	}
 
-	// ---- The timeline ----
-
-	private static bool ParseInput(JsonValue entry, int i, out ScriptedInput outInput, String outError)
-	{
-		outInput = .();
-		if ((entry == null) || !entry.IsObject)
-		{
-			outError.AppendF("input[{}]: an object", i);
-			return false;
-		}
-		let at = entry.Get("at");
-		if ((at == null) || !at.IsNumber || (at.AsNumber() < 0))
-		{
-			outError.AppendF("input[{}]: `at` takes run seconds from 0", i);
-			return false;
-		}
-		outInput.At = at.AsNumber();
-		let downArg = entry.Get("down");
-		outInput.Down = (downArg == null) || downArg.AsBool(true);
-		let gamepadArg = entry.Get("gamepad");
-		outInput.Gamepad = ((gamepadArg != null) && gamepadArg.IsNumber) ? (int32)gamepadArg.AsInt() : 0;
-
-		if (let key = entry.Get("key"))
-		{
-			outInput.Kind = .Key;
-			if (!ScriptedInputSource.ParseKey(key.AsString(), out outInput.Key))
-			{
-				outError.AppendF("input[{}]: no key '{}' (KeyCode names: A to Z, Num0 to Num9, F1 to F24, Space, Return, Escape, Tab, Left, Right, Up, Down, LeftShift, LeftCtrl, LeftAlt, ...)", i, key.AsString());
-				return false;
-			}
-			return true;
-		}
-		if (let button = entry.Get("mouseButton"))
-		{
-			outInput.Kind = .MouseButton;
-			if (!ScriptedInputSource.ParseMouseButton(button.AsString(), out outInput.Button))
-			{
-				outError.AppendF("input[{}]: no mouse button '{}' (Left, Middle, Right, X1, X2)", i, button.AsString());
-				return false;
-			}
-			return true;
-		}
-		if (let move = entry.Get("mouseMove"))
-		{
-			outInput.Kind = .MouseMove;
-			return ReadPair(move, i, "mouseMove", out outInput.X, out outInput.Y, outError);
-		}
-		if (let wheel = entry.Get("wheel"))
-		{
-			outInput.Kind = .MouseWheel;
-			return ReadPair(wheel, i, "wheel", out outInput.X, out outInput.Y, outError);
-		}
-		if (let button = entry.Get("button"))
-		{
-			outInput.Kind = .PadButton;
-			if (!ScriptedInputSource.ParsePadButton(button.AsString(), out outInput.PadButton))
-			{
-				outError.AppendF("input[{}]: no gamepad button '{}' (South, East, West, North, LeftShoulder, RightShoulder, DPadUp, DPadDown, DPadLeft, DPadRight, Start, Back, ...)", i, button.AsString());
-				return false;
-			}
-			return true;
-		}
-		if (let axis = entry.Get("axis"))
-		{
-			outInput.Kind = .PadAxis;
-			if (!ScriptedInputSource.ParsePadAxis(axis.AsString(), out outInput.PadAxis))
-			{
-				outError.AppendF("input[{}]: no gamepad axis '{}' (LeftX, LeftY, RightX, RightY, LeftTrigger, RightTrigger)", i, axis.AsString());
-				return false;
-			}
-			let value = entry.Get("value");
-			if ((value == null) || !value.IsNumber || (value.AsNumber() < -1) || (value.AsNumber() > 1))
-			{
-				outError.AppendF("input[{}]: an axis takes `value` from -1 to 1", i);
-				return false;
-			}
-			outInput.Value = (float)value.AsNumber();
-			return true;
-		}
-		outError.AppendF("input[{}]: name one of `key`, `mouseButton`, `mouseMove`, `wheel`, `button` or `axis`", i);
-		return false;
-	}
-
-	private static bool ReadPair(JsonValue value, int i, StringView name, out float outX, out float outY, String outError)
-	{
-		outX = 0;
-		outY = 0;
-		if (!value.IsArray || (value.Count != 2) || !value.At(0).IsNumber || !value.At(1).IsNumber)
-		{
-			outError.AppendF("input[{}]: `{}` takes [x, y]", i, name);
-			return false;
-		}
-		outX = (float)value.At(0).AsNumber();
-		outY = (float)value.At(1).AsNumber();
-		return true;
-	}
-
 	// ---- Probes ----
 
 	private static bool ParseProbes(JsonValue entry, int i, List<Probe> outProbes, String outError)
@@ -712,16 +597,16 @@ static class PieRunTool
 		{
 		case "worldPosition":
 			var world = scene.GetWorldPosition(handle);
-			root = ComponentJson.ValueJson(typeof(Float3), &world);
+			root = FieldJson.ValueJson(typeof(Float3), &world);
 		case "position":
 			var position = scene.GetLocalTransform(handle).Position;
-			root = ComponentJson.ValueJson(typeof(Float3), &position);
+			root = FieldJson.ValueJson(typeof(Float3), &position);
 		case "rotation":
 			var rotation = scene.GetLocalTransform(handle).Rotation;
-			root = ComponentJson.ValueJson(typeof(Quaternion), &rotation);
+			root = FieldJson.ValueJson(typeof(Quaternion), &rotation);
 		case "scale":
 			var scale = scene.GetLocalTransform(handle).Scale;
-			root = ComponentJson.ValueJson(typeof(Float3), &scale);
+			root = FieldJson.ValueJson(typeof(Float3), &scale);
 		case "active":
 			root = JsonValue.MakeBool(scene.IsActive(handle));
 		default:
@@ -746,9 +631,9 @@ static class PieRunTool
 				if ((manager == null) || (manager.ComponentType == null))
 					continue;
 				FieldInfo field = default;
-				if (!(manager.ComponentType.GetField(scope String(segments[k])) case .Ok(out field)) || !ComponentJson.IsShown(field))
+				if (!(manager.ComponentType.GetField(scope String(segments[k])) case .Ok(out field)) || !FieldJson.IsShown(field))
 					continue;
-				root = ComponentJson.ValueJson(field.FieldType, (uint8*)manager.GetComponentAddress(handle) + field.MemberOffset);
+				root = FieldJson.ValueJson(field.FieldType, (uint8*)manager.GetComponentAddress(handle) + field.MemberOffset);
 				rest = k + 1;
 				break;
 			}

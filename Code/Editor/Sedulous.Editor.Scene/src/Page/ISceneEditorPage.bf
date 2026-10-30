@@ -101,6 +101,18 @@ interface ISceneEditorPage
 	/// The latest request's state, as it advances frame by frame. BORROWED.
 	ViewportCapture LastViewportCapture { get; }
 
+	/// A playtest of the viewport (viewport_run): `source` stands for the devices over it from
+	/// now (its mouse in the viewport's render pixels, its keys as if the viewport had the focus),
+	/// advanced by each frame's time. Takes `source` either way (OWNED): false, and it is deleted,
+	/// on a page without a viewport.
+	bool BeginScriptedInput(Sedulous.Input.ScriptedInputSource source);
+	/// Ends it: what is held is let go for a frame, then the devices are the viewport's again.
+	void EndScriptedInput();
+	/// Seconds the playtest has run; negative when none does.
+	double ScriptedInputTime { get; }
+	/// The viewport's render size in pixels, the scripted mouse's space (0 x 0 without one).
+	Float2 ViewportPixels { get; }
+
 	/// The prefab flows the page owns (they open the page's dialogs and write assets): a prefab
 	/// asset from an entity subtree; an instance spawned under `parent` (nil is the scene root)
 	/// through the asset picker; an instance's deltas written back to its prefab; an instance's

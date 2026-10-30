@@ -187,7 +187,7 @@ class ScenePageTests
 			let services = new SceneEditorPageServices();
 			services.Host = Host;
 			services.LoadMarkup = new (path) => LoadMarkup(path);
-			services.Pick = new [=this] (request, anchor) =>
+			services.Pick = new [=this] (request) =>
 				{
 					delete Picked;
 					Picked = request;
@@ -779,7 +779,7 @@ class ScenePageTests
 	}
 
 	[Test]
-	public static void InspectorAnEntityReferenceIsASlotOverTheScenesEntitiesItsNameAPickFromTheTreeADraggedEntityOneUndoEach()
+	public static void InspectorAnEntityReferenceIsASlotOverTheScenesEntitiesItsNameAPickFromTheEntityPickerADraggedEntityOneUndoEach()
 	{
 		let bed = scope Bed();
 		let page = bed.Open(bed.Level);
@@ -795,17 +795,29 @@ class ScenePageTests
 		Test.Assert(!path.IsEmpty);
 		var slot = inspector.Grid.FindEditor(path) as EntityRefEditor;
 		Test.Assert(slot != null); // the entity slot, not the asset one
-		Test.Assert(slot.Slot.ShownName == "None");
+		Test.Assert(slot.Slot.ShownName == "Not set");
 
-		// The pick: the scene's entities as a tree, None allowed.
+		// The pick: the entity picker, the scene as the hierarchy shows it; a search keeps a match.
 		let before = page.Commands.UndoIndex;
-		let request = slot.Request();
-		defer delete request;
-		Test.Assert(request.Tree);
-		Test.Assert(request.AllowNone);
-		Test.Assert(request.Items.Count == 2);
-		Test.Assert(request.Items[1].Name == "Lamp");
-		request.OnPicked(request.Items[1].Key);
+		Test.Assert(page.PickEntity(slot.Request()));
+		let picker = page.EntityPicker;
+		Test.Assert(picker != null);
+		Test.Assert(picker.IsOpen);
+		Test.Assert(picker.Rows(.. scope .()) == page.Hierarchy.Rows(.. scope .()), "the same tree");
+		Test.Assert(picker.Rows(.. scope .()) == "Level |   Crate |   Lamp");
+		Test.Assert(picker.LitName(.. scope .()).IsEmpty, "nothing current");
+		Test.Assert(picker.Hint == "Enter picks, Esc closes");
+		picker.Step(-1); // the scene's row: no pick
+		picker.PickLit();
+		Test.Assert(picker.IsOpen);
+		picker.Search("la");
+		Test.Assert(picker.Rows(.. scope .()) == "Level |   Lamp");
+		Test.Assert(picker.LitName(.. scope .()) == "Lamp", "the first match");
+		picker.Search("nothing like it");
+		Test.Assert(picker.State == "No entity matches \"nothing like it\".");
+		picker.Search("la");
+		picker.PickLit();
+		Test.Assert(!picker.IsOpen);
 		Test.Assert(page.Commands.UndoIndex > before);
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
 		shown.Root.UpdateLayout();
@@ -816,6 +828,16 @@ class ScenePageTests
 		slot = inspector.Grid.FindEditor(path) as EntityRefEditor;
 		Test.Assert(slot != null);
 		Test.Assert(slot.Slot.ShownName == "Lamp");
+		// Again: the current entity lit, the foot saying Esc keeps it; its close writes nothing (no
+		// None to slip onto: the slot's own clear sets nothing).
+		let picked = page.Commands.UndoIndex;
+		Test.Assert(page.PickEntity(slot.Request()));
+		Test.Assert(picker.LitName(.. scope .()) == "Lamp");
+		Test.Assert(picker.Hint == "Enter picks, Esc keeps Lamp");
+		Test.Assert(picker.CloseButton != null);
+		Test.Assert(picker.CloseButton.HandleActivate());
+		Test.Assert(!picker.IsOpen);
+		Test.Assert(page.Commands.UndoIndex == picked);
 		page.Commands.Undo(); // one step (the index counts a group's markers too)
 		Test.Assert(page.Commands.UndoIndex == before);
 		Test.Assert(Member().InstancedMesh.IsNil);
@@ -903,6 +925,8 @@ class ScenePageTests
 		Test.Assert(rows.Count == 3); // no script yet: its own rows only
 		Test.Assert(rows[0].Kind == .Reference);
 		Test.Assert(rows[0].ReferenceType == typeof(ScriptClass));
+		// By its name, what the asset picker asks the builders for.
+		Test.Assert(rows[0].ReferenceType.GetName(.. scope .()) == "ScriptClass");
 
 		source.CommitEdit("behaviors.0.enabled", PropertyWrite(Sedulous.GUI.Variant(false)));
 		Test.Assert(!Component().Behaviors[0].Enabled);
@@ -1100,7 +1124,7 @@ class ScenePageTests
 		let shown = scope Shown(page);
 		let bar = page.Bar;
 		Test.Assert(bar != null);
-		Test.Assert(bar.Bound == 11); // save, undo, redo, four transform, space, snap, vertex snap, frame
+		Test.Assert(bar.Bound == 15); // save, undo, redo, discard, four transform, space, snap, vertex snap, Simulate's three, frame
 		let gizmos = page.Gizmos;
 		Test.Assert(gizmos != null);
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
@@ -1444,7 +1468,7 @@ class ScenePageTests
 		defer delete page;
 		page.EditContext.EntitySelection.Set(bed.Crate);
 		page.OnUpdate(bed.Host, 1.0f / 60.0f);
-		page.Inspector.OpenAddComponent(null);
+		page.Inspector.OpenAddComponent();
 		Test.Assert((bed.Picked != null) && !bed.Picked.Items.IsEmpty);
 		let items = bed.Picked.Items;
 		PickerItem light = null;
@@ -1456,7 +1480,8 @@ class ScenePageTests
 		Test.Assert(light != null);
 		Test.Assert(light.Name == "Light"); // its display name, not its type's name
 		Test.Assert(light.Section == "Rendering"); // its category
-		Test.Assert(!light.Detail.IsEmpty); // its description
+		Test.Assert(!light.Description.IsEmpty); // its description, for the foot while lit
+		Test.Assert(light.Detail.IsEmpty); // not on its row, where a sentence overran the name
 		// Each category's rows together, so a section shows once.
 		for (int i = 2; i < items.Count; i++)
 		{
@@ -1526,5 +1551,126 @@ class ScenePageTests
 		}
 		Test.Assert(LightOf(page, bed.Crate).Intensity == 7.5f);
 		page.OnClose();
+	}
+
+	[Test]
+	public static void CameraPreviewTheSelectedCamerasViewTitledWithItsNameAtItsAspectAPinKeepsItAStalePinClears()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let preview = page.CameraPreview;
+		Test.Assert(preview != null);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(!preview.IsShown, "no camera selected");
+
+		// A camera selected: shown, titled with it, at its aspect.
+		let eye = page.EditContext.CreateEntity("Eye");
+		page.EditContext.EntitySelection.Set(eye);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(page.Inspector.AddComponent("CameraComponent"));
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(preview.IsShown);
+		Test.Assert(preview.Target == eye);
+		Test.Assert(preview.Title == "Eye");
+		Test.Assert(preview.PictureSize.X == SceneCameraPreview.cPictureWidth);
+		Test.Assert(preview.PictureSize.Y == 109.0f, "16:9");
+		let scene = page.ScenePtr;
+		let cameras = scene.GetSystem<CameraComponentManager>();
+		Test.Assert(cameras != null);
+		cameras.Get(scene.FindEntity(eye)).Aspect = 1.0f;
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(preview.PictureSize.Y == SceneCameraPreview.cPictureWidth, "square");
+
+		// Another entity selected: hidden, unless the camera is pinned.
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(!preview.IsShown);
+		page.EditContext.EntitySelection.Set(eye);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		preview.TogglePin();
+		Test.Assert(preview.Pinned == eye);
+		page.EditContext.EntitySelection.Set(bed.Crate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(preview.IsShown);
+		Test.Assert(preview.Target == eye);
+		preview.TogglePin(); // unpinned: the selection's again
+		Test.Assert(preview.Pinned.IsNil);
+		Test.Assert(!preview.IsShown);
+		page.EditContext.EntitySelection.Set(eye);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		preview.TogglePin();
+
+		// The pinned camera deleted: the pin clears and the preview goes.
+		page.EditContext.DestroyEntity(eye);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(preview.Pinned.IsNil);
+		Test.Assert(!preview.IsShown);
+		page.OnClose();
+	}
+
+	[Test]
+	public static void SceneBarSimulatePauseAndStopAreThePagesActionsItsStateNamedBesideThemWhileItRuns()
+	{
+		let bed = scope Bed();
+		let page = bed.Open(bed.Level);
+		defer delete page;
+		let shown = scope Shown(page);
+		let bar = page.Bar;
+		Test.Assert(bar != null);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		let simulate = FindId<ButtonBase>(page.Content, "scene-simulate");
+		let pause = FindId<ButtonBase>(page.Content, "scene-pause");
+		let stop = FindId<ButtonBase>(page.Content, "scene-stop");
+		Test.Assert((simulate != null) && (pause != null) && (stop != null));
+		Test.Assert(simulate.TooltipText.StartsWith("Simulate"));
+		Test.Assert(simulate.Enabled);
+		Test.Assert(!pause.Enabled);
+		Test.Assert(!stop.Enabled);
+		Test.Assert(bar.State.IsEmpty);
+
+		shown.Click(simulate);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(page.IsSimulating);
+		Test.Assert(bar.State == "Simulating");
+		Test.Assert(!simulate.Enabled);
+		Test.Assert(stop.Enabled);
+		shown.Click(pause);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(page.IsPaused);
+		Test.Assert(bar.State == "Paused");
+		Test.Assert(pause.Checked);
+		shown.Click(stop);
+		page.OnUpdate(bed.Host, 1.0f / 60.0f);
+		Test.Assert(!page.IsSimulating);
+		Test.Assert(bar.State.IsEmpty);
+		page.OnClose();
+	}
+
+	/// A keyboard holding the key it is given.
+	private class HeldKeys : IKeyboard
+	{
+		public Sedulous.Shell.KeyCode Held = .Unknown;
+		public bool IsKeyDown(Sedulous.Shell.KeyCode key) => key == Held;
+		public bool IsKeyPressed(Sedulous.Shell.KeyCode key) => false;
+		public bool IsKeyReleased(Sedulous.Shell.KeyCode key) => false;
+		public KeyModifiers Modifiers => .None;
+	}
+
+	[Test]
+	public static void ShiftIsReadWithThePointerSoABrushsShiftWheelWorksWhileItsPanelHasTheKeys()
+	{
+		let device = scope HeldKeys();
+		device.Held = .LeftShift;
+		let focusedUp = scope HeldKeys(); // the view focused, Shift not held
+		// The view focused: its own keyboard says.
+		Test.Assert(SceneViewport.ShiftHeldOver(device, device, false));
+		Test.Assert(!SceneViewport.ShiftHeldOver(focusedUp, device, true));
+		// Not focused (the brush's panel has the keys): the device's Shift while the pointer is over it.
+		Test.Assert(SceneViewport.ShiftHeldOver(null, device, true));
+		Test.Assert(!SceneViewport.ShiftHeldOver(null, device, false)); // the pointer elsewhere
+		device.Held = .RightShift;
+		Test.Assert(SceneViewport.ShiftHeldOver(null, device, true));
+		Test.Assert(!SceneViewport.ShiftHeldOver(null, null, true));
 	}
 }

@@ -84,6 +84,31 @@ class SceneMcpToolsTests
 			Capture.Height = height;
 		}
 		public void FailCapture() { Capture.State = .Failed; }
+		// A playtest of the pretended viewport: the test moves its clock (AdvanceRun).
+		public Sedulous.Input.ScriptedInputSource Scripted ~ delete _;
+		public double ScriptedTime = 0;
+		public bool RunEnded = false;
+		public bool BeginScriptedInput(Sedulous.Input.ScriptedInputSource source)
+		{
+			if (!HasViewport)
+			{
+				delete source;
+				return false;
+			}
+			delete Scripted;
+			Scripted = source;
+			ScriptedTime = 0;
+			RunEnded = false;
+			return true;
+		}
+		public void EndScriptedInput() { RunEnded = true; }
+		public double ScriptedInputTime => (Scripted != null) ? ScriptedTime : -1.0;
+		public Float2 ViewportPixels => .(800.0f, 600.0f);
+		public void AdvanceRun(double to)
+		{
+			ScriptedTime = to;
+			Scripted.Advance(to);
+		}
 		public bool MarkersShown => true;
 		public void SetMarkersShown(bool shown) {}
 		public bool AnimationPanelShown => false;
@@ -159,7 +184,7 @@ class SceneMcpToolsTests
 		let server = scope McpServer();
 		SceneMcpTools.Register(server, context);
 		Test.Assert(server.ToolCount == SceneMcpTools.cSceneLiveToolCount);
-		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 19, "a tripwire: bump deliberately when a live tool comes or goes");
+		Test.Assert(SceneMcpTools.cSceneLiveToolCount == 20, "a tripwire: bump deliberately when a live tool comes or goes");
 		let onA = scope $"{{\"page\":\"{sceneA}\"}}";
 
 		// Default addressing: the active page, a scene page, then a page that is not one.
@@ -1070,5 +1095,72 @@ class SceneMcpToolsTests
 		defer delete answer;
 		Test.Assert(!answer.Ok);
 		Test.Assert(answer.Error.StartsWith("the capture of page 'Bistro' failed"), answer.Error);
+	}
+
+	/// viewport_run plays a timeline into a page's viewport, its screenshots taken as their times
+	/// come; a wrong entry, a duration out of range and a page with no viewport are refused.
+	[Test]
+	public static void ViewportRunPlaysATimelineIntoAPagesViewport()
+	{
+		let context = scope EditorContext();
+		let sceneId = Guid.Create();
+		let page = (HeadlessScenePage)context.AdoptPage(new HeadlessScenePage("Meadow", sceneId));
+		let sceneGuid = GuidText(sceneId, .. scope .());
+		page.HasViewport = true;
+		context.SetActivePage(page);
+		let server = scope McpServer();
+		SceneMcpTools.Register(server, context);
+		let args = scope $"{{\"page\":\"{sceneGuid}\",\"duration\":1,\"input\":[{{\"at\":0.1,\"mouseMove\":[100,50]}},{{\"at\":0.2,\"mouseButton\":\"Left\"}}],\"screenshots\":[0.5],\"screenshotDir\":\"/tmp\"}}";
+
+		// Begun: the page holds the playtest's devices, and the call waits on its clock.
+		Answer answer;
+		Test.Assert(Pump(server, "viewport_run", args, out answer) == .NotFinished);
+		Test.Assert(page.Scripted != null);
+		page.AdvanceRun(0.3);
+		Test.Assert(Pump(server, "viewport_run", args, out answer) == .NotFinished);
+		Test.Assert(Near(page.Scripted.Mouse.X, 100));
+		Test.Assert(page.Scripted.Mouse.IsButtonDown(.Left));
+
+		// Its screenshot's time came: asked for, waited on, kept.
+		page.AdvanceRun(0.6);
+		Test.Assert(Pump(server, "viewport_run", args, out answer) == .NotFinished);
+		Test.Assert(page.CaptureRequests == 1);
+		Test.Assert(page.Capture.Path.StartsWith("/tmp/"), page.Capture.Path);
+		Test.Assert(Pump(server, "viewport_run", args, out answer) == .NotFinished, "not rendered yet");
+		page.CompleteCapture(800, 600);
+		Test.Assert(Pump(server, "viewport_run", args, out answer) == .NotFinished, "the run goes on");
+
+		// Its time up: what is held let go, the answer.
+		page.AdvanceRun(1.0);
+		Test.Assert(Pump(server, "viewport_run", args, out answer) == .Answered);
+		{
+			defer delete answer;
+			Test.Assert(answer.Ok, answer.Error);
+			Test.Assert(page.RunEnded);
+			Test.Assert(answer.Payload.Get("inputs").AsNumber() == 2);
+			Test.Assert(answer.Payload.Get("width").AsNumber() == 800);
+			let shots = answer.Payload.Get("screenshots");
+			Test.Assert(shots.Count == 1);
+			Test.Assert(Near(shots.At(0).Get("at").AsNumber(), 0.6));
+		}
+
+		// Refused: a wrong entry, a duration out of range, a page with no viewport.
+		{
+			let got = Call(server, "viewport_run", scope $"{{\"page\":\"{sceneGuid}\",\"duration\":1,\"input\":[{{\"at\":0.1,\"key\":\"Nope\"}}]}}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+			Test.Assert(got.Error.StartsWith("input[0]: no key 'Nope'"), got.Error);
+		}
+		{
+			let got = Call(server, "viewport_run", scope $"{{\"page\":\"{sceneGuid}\",\"duration\":0}}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+		}
+		page.HasViewport = false;
+		{
+			let got = Call(server, "viewport_run", scope $"{{\"page\":\"{sceneGuid}\",\"duration\":1}}");
+			defer delete got;
+			Test.Assert(!got.Ok);
+		}
 	}
 }

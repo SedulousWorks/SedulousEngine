@@ -52,6 +52,7 @@ corlib = "*"
 "Sedulous.Engine.Project" = "*"
 "Sedulous.Editor.Core" = "*"
 "Sedulous.Json" = "*"
+"Sedulous.Input" = "*"
 "Sedulous.Mcp" = "*"
 "Sedulous.Editor.ViewportTools" = "*"
 "Sedulous.Editor.Scene" = "*"
@@ -76,10 +77,6 @@ Name = "CollisionMatrixTests.bf"
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"
 Name = "ComponentPickerDialogTests.bf"
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "EntityPickerDialogTests.bf"
 
 [[ProjectFolder.Items]]
 Type = "IgnoreSource"

@@ -89,78 +89,23 @@ class SceneHierarchyServices
 
 class SceneHierarchyView
 {
-	/// The scene's row: an id no entity's guid gives (they are masked apart from it).
-	private const ItemId cSceneRowId = 0x5ce4e0000000001UL;
+	private const ItemId cSceneRowId = SceneTreeModel.cSceneRowId;
 
-	// The tree's model over the rows as built: the scene's row (node 0), its entities under it.
-	// A row's id is its entity's guid (the scene's row a fixed one), so the view keeps what is
-	// open and selected across builds; a build tells the view once.
-	private class Model : IModel
+	// The tree's model: the scene as the shared tree shows it (SceneTreeModel), plus rename in
+	// place and drops (a reparent, a reorder, a prefab spawned). A build tells the view once.
+	private class Model : SceneTreeModel
 	{
 		private SceneHierarchyView mView;
 
 		public this(SceneHierarchyView view) { mView = view; }
 
-		public override int RowCount(ModelIndex parent)
-		{
-			if (!parent.IsValid)
-				return mView.mRows.IsEmpty ? 0 : 1;
-			let node = parent.InternalId;
-			return ((node >= 0) && (node < mView.mRows.Count)) ? mView.mRows[(int)node].Children.Count : 0;
-		}
-
-		public override int ColumnCount() => 1;
-
-		public override ModelIndex Index(int32 row, int32 column, ModelIndex parent)
-		{
-			if (!parent.IsValid)
-				return ((row == 0) && !mView.mRows.IsEmpty) ? MakeModelIndex(0, column, 0) : .();
-			let node = parent.InternalId;
-			if ((node < 0) || (node >= mView.mRows.Count))
-				return .();
-			let children = mView.mRows[(int)node].Children;
-			return ((row >= 0) && (row < children.Count)) ? MakeModelIndex(row, column, children[row]) : .();
-		}
-
-		public override ModelIndex ParentIndex(ModelIndex child)
-		{
-			let node = child.InternalId;
-			if ((node <= 0) || (node >= mView.mRows.Count))
-				return .();
-			let parent = mView.mRows[(int)node].Parent;
-			return (parent >= 0) ? MakeModelIndex(mView.mRows[parent].RowInParent, 0, parent) : .();
-		}
-
-		public override ItemId IdOf(ModelIndex index)
-		{
-			if (!index.IsValid)
-				return NoItem;
-			return IdOfEntity(mView.EntityOfNode(index.InternalId));
-		}
-
-		public override Sedulous.GUI.Variant Data(ModelIndex index, ModelRole role = .Display)
-		{
-			let node = index.InternalId;
-			if ((node < 0) || (node >= mView.mRows.Count))
-				return .();
-			let row = mView.mRows[(int)node];
-			switch (role)
-			{
-			case .Display, .Sort: return .(row.Name);
-			case .Icon: return row.Icon.IsEmpty ? .() : .(row.Icon);
-			case .IconClass: return row.IconClass.IsEmpty ? .() : .(row.IconClass);
-			case .RowClass: return row.Classes.IsEmpty ? .() : .(row.Classes);
-			default: return .();
-			}
-		}
-
 		/// An entity's name is edited in place (F2, the menu's Rename); the scene's row is not.
-		public override bool IsEditable(ModelIndex index) => !mView.EntityOfNode(index.InternalId).IsNil;
+		public override bool IsEditable(ModelIndex index) => !EntityOfNode(index.InternalId).IsNil;
 
 		/// The rename, one undo; refused for an empty name.
 		public override bool SetData(ModelIndex index, Sedulous.GUI.Variant value)
 		{
-			let entity = mView.EntityOfNode(index.InternalId);
+			let entity = EntityOfNode(index.InternalId);
 			let name = value.AsString;
 			if (entity.IsNil || name.IsEmpty)
 				return false;
@@ -179,7 +124,7 @@ class SceneHierarchyView
 			{
 				for (let id in drop.Ids)
 				{
-					let entity = mView.EntityOfId(id);
+					let entity = EntityOfId(id);
 					if (entity.IsNil)
 					{
 						reason.Set("The scene stays where it is");
@@ -222,7 +167,7 @@ class SceneHierarchyView
 				// What moves, read before the first move builds nothing (the rows are as dropped).
 				let moved = scope List<Guid>();
 				for (let id in drop.Ids)
-					moved.Add(mView.EntityOfId(id));
+					moved.Add(EntityOfId(id));
 				for (let entity in moved)
 				{
 					if ((entity == before) || (entity == parent))
@@ -242,30 +187,11 @@ class SceneHierarchyView
 				spawned = mView.mServices.SpawnPrefab(asset.Id, parent) || spawned;
 			return spawned;
 		}
-
-		public void Reset() => NotifyReset();
-	}
-
-	private class Row
-	{
-		/// Nil: the scene's row.
-		public Guid Entity;
-		public int32 Parent = -1;
-		public int32 RowInParent = 0;
-		public List<int32> Children = new .() ~ delete _;
-		public String Name = new .() ~ delete _;
-		/// "member", "inactive".
-		public String Classes = new .() ~ delete _;
-		public String Icon = new .() ~ delete _;
-		public String IconClass = new .() ~ delete _;
 	}
 
 	private SceneEditContext mEdit;
 	private SceneHierarchyServices mServices ~ delete _;
 	private Model mModel ~ delete _;
-	/// By node id.
-	private List<Row> mRows = new .() ~ DeleteContainerAndItems!(_);
-	private Dictionary<ItemId, Guid> mEntityOfId = new .() ~ delete _;
 	/// Rows built with children before: one new to children opens.
 	private HashSet<ItemId> mKnown = new .() ~ delete _;
 	private TreeView mTree = null;
@@ -537,35 +463,15 @@ class SceneHierarchyView
 	public bool Take(ModelDrop drop) => CanTake(drop) && mModel.Drop(drop);
 
 	/// The model index of `entity` (nil: the scene's row).
-	public ModelIndex IndexOf(Guid entity)
-	{
-		for (int32 node < (int32)mRows.Count)
-		{
-			if (mRows[node].Entity == entity)
-				return MakeModelIndex(mRows[node].RowInParent, 0, node);
-		}
-		return .();
-	}
+	public ModelIndex IndexOf(Guid entity) => mModel.IndexOf(entity);
 
 	// === Underneath ===
 
 	private void Build()
 	{
 		mBuilt = true;
-		ClearAndDeleteItems!(mRows);
-		mEntityOfId.Clear();
 		let scene = mEdit.Scene;
-		let top = new Row();
-		top.Name.Set((mServices.SceneName != null) ? mServices.SceneName() : scene.Name);
-		top.Icon.Set(mServices.SceneIcon);
-		mRows.Add(top);
-		// Roots in list order (the order reordering keeps and saving writes), then each one's
-		// children depth first; with a search, an entity whose subtree holds a match.
-		for (var r = scene.FirstRoot; r.IsAssigned; r = scene.GetNextSibling(r))
-		{
-			if (SubtreeMatches(scene, r))
-				AddEntity(scene, r, 0);
-		}
+		mModel.Build(scene, (mServices.SceneName != null) ? mServices.SceneName() : scene.Name, mServices.SceneIcon, mServices.Icons, mFilter);
 		// The scene's row is always open. The scene opens with its top level shown (a model's
 		// skeleton stays closed); after that an entity seen with children for the first time
 		// opens (what an edit makes shows), and one the user closed stays closed.
@@ -574,7 +480,7 @@ class SceneHierarchyView
 			mTree.SetIdExpanded(cSceneRowId, true);
 			let first = !mOpened;
 			mOpened = true;
-			for (let row in mRows)
+			for (let row in mModel.Rows)
 			{
 				if (row.Entity.IsNil || row.Children.IsEmpty)
 					continue;
@@ -585,7 +491,7 @@ class SceneHierarchyView
 			// A search opens every way to its matches.
 			if (!mFilter.IsEmpty)
 			{
-				for (let row in mRows)
+				for (let row in mModel.Rows)
 				{
 					if (!row.Entity.IsNil && !row.Children.IsEmpty)
 						mTree.SetIdExpanded(IdOfEntity(row.Entity), true);
@@ -594,66 +500,6 @@ class SceneHierarchyView
 		}
 		mModel.Reset();
 		SyncSelectionToTree();
-	}
-
-	private void AddEntity(Sedulous.Scene.Scene scene, EntityHandle e, int32 parent)
-	{
-		let node = (int32)mRows.Count;
-		let row = new Row();
-		row.Entity = scene.GetEntityId(e);
-		row.Parent = parent;
-		row.RowInParent = (int32)mRows[parent].Children.Count;
-		row.Name.Set(scene.GetEntityName(e));
-		if (row.Name.IsEmpty)
-			row.Name.Set("(unnamed)");
-		// A prefab's members read apart; an entity that is not active, with what is under it, dims.
-		if (PrefabOverrides.FindMember(scene, row.Entity, let member))
-			row.Classes.Set("member");
-		if (!scene.IsEffectivelyActive(e))
-		{
-			if (!row.Classes.IsEmpty)
-				row.Classes.Append(' ');
-			row.Classes.Append("inactive");
-		}
-		IconOf(e, row);
-		mEntityOfId[IdOfEntity(row.Entity)] = row.Entity;
-		mRows[parent].Children.Add(node);
-		mRows.Add(row);
-		for (var c = scene.GetFirstChild(e); c.IsAssigned; c = scene.GetNextSibling(c))
-		{
-			if (SubtreeMatches(scene, c))
-				AddEntity(scene, c, node);
-		}
-	}
-
-	/// An entity by its first component that has an icon of its own; a plain entity by the
-	/// generic one.
-	private void IconOf(EntityHandle e, Row row)
-	{
-		if (mServices.Icons == null)
-			return;
-		mEdit.Scene.ForEachManager(scope [&](manager) =>
-			{
-				if (!row.Icon.IsEmpty || (manager.ComponentType == null) || !manager.HasComponent(e))
-					return;
-				let icon = mServices.Icons.For(manager.ComponentType, "");
-				row.Icon.Set(icon.Source);
-				row.IconClass.Set(icon.Class);
-			});
-		if (row.Icon.IsEmpty)
-			row.Icon.Set("Editor/Icons/cube.svg");
-	}
-
-	private bool SubtreeMatches(Sedulous.Scene.Scene scene, EntityHandle e)
-	{
-		if (mFilter.IsEmpty || SearchFilter.NameOrGuidMatches(scene.GetEntityName(e), scene.GetEntityId(e), mFilter))
-			return true;
-		for (var c = scene.GetFirstChild(e); c.IsAssigned; c = scene.GetNextSibling(c))
-		{
-			if (SubtreeMatches(scene, c))
-				return true;
-		}
-		return false;
 	}
 
 	/// A drop's target: the entity it goes under (nil: a root) and the sibling it goes before
@@ -740,19 +586,11 @@ class SceneHierarchyView
 		}
 	}
 
-	private Guid EntityOfNode(int64 node) => ((node >= 0) && (node < mRows.Count)) ? mRows[(int)node].Entity : .();
+	private Guid EntityOfNode(int64 node) => mModel.EntityOfNode(node);
 
-	private Guid EntityOfId(ItemId id) => mEntityOfId.TryGetValue(id, let entity) ? entity : .();
+	private Guid EntityOfId(ItemId id) => mModel.EntityOfId(id);
 
-	/// An entity's row id from its guid, masked apart from the scene's row.
-	private static ItemId IdOfEntity(Guid entity)
-	{
-		if (entity.IsNil)
-			return cSceneRowId;
-		var id = entity;
-		let words = (uint64*)&id;
-		return (words[0] ^ (words[1] * 31)) & ~cSceneRowId;
-	}
+	private static ItemId IdOfEntity(Guid entity) => SceneTreeModel.IdOfEntity(entity);
 
 	private static T Find<T>(Node under, StringView id) where T : Node
 	{

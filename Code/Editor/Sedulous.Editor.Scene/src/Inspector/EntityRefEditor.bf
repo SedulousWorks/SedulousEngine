@@ -11,9 +11,9 @@ namespace Sedulous.Editor.Scene;
 // The inspector's entity reference (Raptor's editor-gui spec, 5.3, layer 4, part 2): a component's
 // EntityRef as a slot, the grid's row for it (the field source takes EntityRef as a reference by its
 // id, hinted "EntityRef", so this editor is chosen before the asset slot). It shows the entity
-// referenced by its type icon and its name, "None", or "(missing)" when no entity of the scene has
-// that id; its pick is the picker over the scene's entities as a tree (the current one checked,
-// None to clear); an entity dragged from the hierarchy drops on it. A pick, a drop and a clear are
+// referenced by its type icon and its name, "Not set", or "(missing)" when no entity of the scene has
+// that id; its pick is the entity picker, the scene as its hierarchy shows it (the current one
+// lit, None to clear); an entity dragged from the hierarchy drops on it. A pick, a drop and a clear are
 // one write through the grid, so one undo step.
 
 /// What the entity slots ask of their page. The registrar's; borrowed by the editors.
@@ -23,9 +23,8 @@ class EntityRefServices
 	public SceneEditContext Edit = null;
 	/// The entities' type icons; null: the plain entity's. Not owned.
 	public EditorIcons Icons = null;
-	/// Opens the picker for a request below an anchor; OWNERSHIP of the request transfers. Null:
-	/// no pick.
-	public delegate void(PickerRequest request, Node anchor) Pick ~ delete _;
+	/// Opens the entity picker for a request; OWNERSHIP of the request transfers. Null: no pick.
+	public delegate void(EntityPickRequest request) Pick ~ delete _;
 }
 
 class EntityRefEditor : SingleControlEditor
@@ -57,36 +56,22 @@ class EntityRefEditor : SingleControlEditor
 	/// What it references: nil for none, or when the objects differ.
 	public Guid Current => mCurrent;
 
-	/// The picker's request it opens: the scene's entities as a tree, the current one checked. The
+	/// The entity picker's request it opens: its value, and an answer that writes the pick. The
 	/// caller takes it. Its pick lands only while the row still shows the property it was made for
 	/// (rows are pooled); the row is held until the request lets its answer go.
-	public PickerRequest Request()
+	public EntityPickRequest Request()
 	{
-		let request = new PickerRequest();
-		request.Placeholder.Set("Search the scene");
-		request.Tree = true;
-		request.AllowNone = true;
-		if (!mCurrent.IsNil && !mMixed)
-			mCurrent.ToString(request.Current);
-		if (mServices.Edit != null)
-		{
-			let scene = mServices.Edit.Scene;
-			for (var r = scene.FirstRoot; r.IsAssigned; r = scene.GetNextSibling(r))
-				Collect(scene, r, 0, request.Items);
-		}
-		request.EmptyTitle.Set("No entities yet");
-		request.EmptyText.Set("The scene has no entity to point at.");
+		let request = new EntityPickRequest();
+		if (!mMixed)
+			request.Current = mCurrent;
 		let self = this;
 		let path = new String(Path);
 		AddRef();
-		request.OnPicked = new [=self, =path] (key) =>
+		request.Chosen = new [=self, =path] (id) =>
 			{
 				if (self.Path != path)
 					return; // the row shows another property now
-				var id = Guid.Empty; // None: nil
-				if (Guid.Parse(key) case .Ok(let parsed))
-					id = parsed;
-				self.Assign(id);
+				self.Assign(id); // None: nil
 			} ~ { self.ReleaseRef(); delete path; };
 		return request;
 	}
@@ -126,7 +111,7 @@ class EntityRefEditor : SingleControlEditor
 		}
 		let writes = !IsReadOnly && (mServices.Edit != null);
 		if (writes && (mServices.Pick != null))
-			mSlot.SetOnPick(new [=this] () => { mServices.Pick(Request(), mSlot); });
+			mSlot.SetOnPick(new [=this] () => { mServices.Pick(Request()); });
 		else
 			mSlot.SetOnPick(null);
 		if (writes)
@@ -188,21 +173,6 @@ class EntityRefEditor : SingleControlEditor
 		let tint = scope String();
 		IconOf(scene, e, source, tint);
 		mSlot.SetGlyph(source, tint);
-	}
-
-	// The scene's entities in their tree's order, each at its depth.
-	private void Collect(Sedulous.Scene.Scene scene, EntityHandle e, uint32 depth, List<PickerItem> outItems)
-	{
-		let item = new PickerItem();
-		scene.GetEntityId(e).ToString(item.Key);
-		item.Name.Set(scene.GetEntityName(e));
-		if (item.Name.IsEmpty)
-			item.Name.Set("(unnamed)");
-		IconOf(scene, e, item.Glyph, item.GlyphClass);
-		item.Depth = depth;
-		outItems.Add(item);
-		for (var c = scene.GetFirstChild(e); c.IsAssigned; c = scene.GetNextSibling(c))
-			Collect(scene, c, depth + 1, outItems);
 	}
 
 	// An entity's first component's icon, else the plain entity's.

@@ -85,7 +85,7 @@ extension GameEditorPage
 
 		mRunning = true;
 		if (mPauseToggle != null)
-			mPauseToggle.IsChecked = false;
+			mPauseToggle.Checked = false;
 		if (mGameInstance != null)
 			mScene = mGameInstance.GetScene();
 		mSceneTitle.Set((mScene != null) ? mScene.Name : "(no scene)");
@@ -144,6 +144,7 @@ extension GameEditorPage
 			mScene = null;
 		}
 		mRunning = false;
+		mViewport.ClearPicture(); // the run's last frame does not linger
 		RefreshToolbar();
 	}
 
@@ -174,7 +175,7 @@ extension GameEditorPage
 		if (mScene != null)
 		{
 			EnsureCamera(mScene);
-			let paused = mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.IsChecked);
+			let paused = mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.Checked);
 			if (paused)
 				mScene.SetSimulationEnabled(false);
 			mSceneTitle.Set(mScene.Name);
@@ -243,10 +244,10 @@ extension GameEditorPage
 			return;
 		// The toolbar's pause and a debugger break freeze the run's sound with the game (a
 		// game's own pause menu is time scale nought, the game's business: its music plays on).
-		let paused = mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.IsChecked);
+		let paused = mSimPausedByDebugger || ((mPauseToggle != null) && mPauseToggle.Checked);
 		audio.SetRunPaused(mGameInstance, paused);
 		// Clicking into this tab's viewport makes its run the one heard.
-		if (mViewport.HostKeyboardFocusHere && (audio.FocusedRun !== mGameInstance))
+		if (mViewport.IsFocused && (audio.FocusedRun !== mGameInstance))
 			audio.SetFocusedRun(mGameInstance);
 	}
 

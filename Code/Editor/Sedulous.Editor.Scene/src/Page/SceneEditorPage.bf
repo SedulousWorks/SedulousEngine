@@ -46,9 +46,9 @@ class SceneEditorPageServices
 	public ResourceRefServices Refs = null;
 	/// The type icons the hierarchy and the inspector show by (null: none).
 	public EditorIcons Icons = null;
-	/// Opens the picker for a request below an anchor (the inspector's Add Component); OWNERSHIP
-	/// of the request transfers. Null: no picking, a test.
-	public delegate void(PickerRequest request, Node anchor) Pick ~ delete _;
+	/// Opens the picker for a request (the inspector's Add Component); OWNERSHIP of the request
+	/// transfers. Null: no picking, a test.
+	public delegate void(PickerRequest request) Pick ~ delete _;
 }
 
 class SceneEditorPage : UIEditorPage, ISceneEditorPage
@@ -76,6 +76,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private PrefabFlows mPrefabs = null ~ delete _;
 	private SceneHierarchyView mHierarchy = null;
 	private SceneInspectorView mInspector = null;
+	/// An entity slot's pick, made the first time.
+	private EntityPickerWindow mEntityPicker = null;
 	/// After mEditContext (the tools borrow it), so deleted first.
 	/// What the tools and their panels were made with.
 	private ViewportToolHostContext mToolHost = .();
@@ -91,6 +93,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	private SceneBar mBar = null ~ delete _;
 	// Over the viewport.
 	private SceneHud mHud = null ~ delete _;
+	/// The HUD's bottom end: what a camera sees.
+	private SceneCameraPreview mCameraPreview = null ~ delete _;
 	// The viewport tools on the bar, the active one's panel.
 	private SceneTools mTools = null ~ delete _;
 	private MessageBox mConfirm = null;
@@ -115,6 +119,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	{
 		// The tools borrow the edit context, the flows, the hierarchy and the inspector too: they go
 		// first.
+		DeleteAndNullify!(mEntityPicker);
 		DeleteAndNullify!(mInspector);
 		DeleteAndNullify!(mHierarchy);
 		DeleteAndNullify!(mPrefabs);
@@ -142,6 +147,14 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public EditorCamera ViewportCamera => mViewport.Camera;
 	public ViewportCapture LastViewportCapture => mViewport.LastCapture;
 	public Result<void, ErrorCode> RequestViewportCapture(StringView path) => mViewport.RequestCapture(path, false);
+	public bool BeginScriptedInput(Sedulous.Input.ScriptedInputSource source)
+	{
+		mViewport.BeginScripted(source);
+		return true;
+	}
+	public void EndScriptedInput() { mViewport.EndScripted(); }
+	public double ScriptedInputTime => mViewport.ScriptedTime;
+	public Float2 ViewportPixels => .((float)mViewport.View.RenderWidth, (float)mViewport.View.RenderHeight);
 	public void CreatePrefabFromEntity(Guid entity) { if (mPrefabs != null) mPrefabs.CreateFromEntity(entity); }
 	public void PickAndSpawnPrefab(Guid parent) { if (mPrefabs != null) mPrefabs.PickAndSpawn(parent); }
 	public void ApplyInstanceToPrefab(Guid root) { if (mPrefabs != null) mPrefabs.Apply(root); }
@@ -159,10 +172,13 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	public SceneBar Bar => mBar;
 	/// Its HUD over the viewport.
 	public SceneHud Hud => mHud;
+	/// Its camera preview at the HUD's bottom end.
+	public SceneCameraPreview CameraPreview => mCameraPreview;
 	/// Its viewport tools on the bar, and the active one's panel.
 	public SceneTools ToolsView => mTools;
 	public ViewportToolManager ViewportTools => mViewportTools;
 	public SceneInspectorView Inspector => mInspector;
+	public EntityPickerWindow EntityPicker => mEntityPicker;
 	public MessageBox OpenConfirm => ((mConfirm != null) && mConfirm.IsOpen) ? mConfirm : null;
 
 	private void Build(Instance instance)
@@ -226,7 +242,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			if ((mServices.Refs != null) && (mServices.Refs.Pick != null))
 			{
 				let refs = mServices.Refs;
-				flows.PickAsset = new [=refs](types, chosen) => { refs.Pick(types, .(), null, chosen); };
+				flows.PickAsset = new [=refs](types, chosen) => { refs.Pick(types, .(), chosen); };
 			}
 			mPrefabs = new PrefabFlows(flows);
 		}
@@ -254,9 +270,19 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			if (let renderer = mViewport.Renderer)
 				hud.DebugResources = new [=renderer] (rows) => { renderer.GetDebugResources(rows); };
 			if (mServices.Pick != null)
-				hud.Pick = new [=this] (request, anchor) => { mServices.Pick(request, anchor); };
+				hud.Pick = new [=this] (request) => { mServices.Pick(request); };
 			hud.OverlaysChanged = new [=this] () => { SaveViewState(); };
 			mHud = new SceneHud(hud, scope [=this] (id) => Find<Node>(id));
+			// The camera preview at the HUD's bottom end: the selected or pinned camera's view.
+			if (pane != null)
+			{
+				var preview = SceneCameraPreviewServices();
+				preview.Edit = mEditContext;
+				preview.Icons = mServices.Icons;
+				preview.Render = mViewport.Renderer;
+				mCameraPreview = new SceneCameraPreview(preview, pane);
+				mCameraPreview.HostIn(mServices.Gui);
+			}
 			// The viewport tools on the bar, and the active one's panel over the view.
 			let tools = new SceneToolsServices();
 			tools.Context = context;
@@ -269,7 +295,7 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			tools.PlaceChanged = new [=this] () => { SaveViewState(); };
 			mTools = new SceneTools(tools);
 		}
-		mBar = new SceneBar(context.Actions, this, scope [=this] (id) => Find<ButtonBase>(id), new [=this] () => Gizmos);
+		mBar = new SceneBar(context.Actions, this, scope [=this] (id) => Find<ButtonBase>(id), Find<Sedulous.GUI.Label>("scene-simulate-state"), new [=this] () => Gizmos);
 		// A prefab is marked as one: the same page edits both.
 		if (let kind = Find<UIWidget>("scene-kind"))
 			kind.Displayed = mIsPrefab;
@@ -311,7 +337,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 				inspector.Refs = mServices.Refs;
 				inspector.Resources = context.Resources;
 				if (mServices.Pick != null)
-					inspector.Pick = new [=this](request, anchor) => { mServices.Pick(request, anchor); };
+					inspector.Pick = new [=this](request) => { mServices.Pick(request); };
+				inspector.PickEntity = new [=this](request) => { PickEntity(request); };
 				inspector.Simulating = new [=this]() => mSimulation.IsRunning;
 				inspector.SceneSelected = new [=this]() => (mHierarchy != null) && mHierarchy.SceneSelected;
 				inspector.SceneIcon.Set(mIsPrefab ? "Editor/Icons/Types/PrefabDocument.svg" : "Editor/Icons/Types/SceneDocument.svg");
@@ -356,12 +383,12 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			}
 		}
 
+		mViewport.AdvanceScripted(dt); // a playtest's frame (viewport_run), before the view's input is read
 		// A modal tool (a brush) owns Shift + wheel to size itself, so the camera leaves that wheel
 		// to it; the bare wheel stays the camera's under a brush too.
 		let modalTool = (mViewportTools.ActiveTool != null) && (mViewportTools.ActiveTool != mSelectTool);
-		let keyboard = mViewport.Keyboard;
-		let shift = (keyboard != null) && (keyboard.IsKeyDown(.LeftShift) || keyboard.IsKeyDown(.RightShift));
-		let active = mViewport.UpdateCamera(dt, !(modalTool && shift));
+		// Its Shift read with the pointer: the brush's panel, just used, may have the keys.
+		let active = mViewport.UpdateCamera(dt, !(modalTool && mViewport.ShiftHeld));
 		if (active && mViewport.ZoomedThisFrame && (mHud != null))
 			mHud.Zoomed();
 		if (mEditContext != null)
@@ -389,6 +416,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 			mTools.Sync();
 		if (mHud != null)
 			mHud.Update(dt, mViewport.View.RenderHeight);
+		if (mCameraPreview != null)
+			mCameraPreview.Update();
 		if (mHierarchy != null)
 			mHierarchy.Refresh(); // the scene changed: built again
 		if (mInspector != null)
@@ -449,8 +478,8 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		if (keyboard != null)
 		{
 			input.Ctrl = keyboard.IsKeyDown(.LeftCtrl) || keyboard.IsKeyDown(.RightCtrl);
-			input.Shift = keyboard.IsKeyDown(.LeftShift) || keyboard.IsKeyDown(.RightShift);
 		}
+		input.Shift = mViewport.ShiftHeld; // with the pointer, focused or not (a brush's Shift + wheel)
 		input.WheelDelta = mouse.ScrollY;
 		// The tools' keys (the select tool's W/E/R/X) belong to the camera while it owns the input.
 		input.Keyboard = cameraOwnsMouse ? null : keyboard;
@@ -460,8 +489,11 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 	/// Inside the app's one renderer bracket, before the GUI draws.
 	public override void OnRenderWindow(IApplicationHost host, ref FrameContext frame)
 	{
-		if (mScene != null)
-			mViewport.Render(ref frame, mScene, &mPostOverride, mViewport.CleanCaptureFrame ? null : mDebugView);
+		if (mScene == null)
+			return;
+		mViewport.Render(ref frame, mScene, &mPostOverride, mViewport.CleanCaptureFrame ? null : mDebugView);
+		if (mCameraPreview != null)
+			mCameraPreview.Render(ref frame);
 	}
 
 	/// A requested capture, recorded once the renderer composed the frame.
@@ -470,8 +502,32 @@ class SceneEditorPage : UIEditorPage, ISceneEditorPage
 		mViewport.AfterRender(host, ref frame);
 	}
 
+	/// Opens the entity picker over the page's GUI for `request` (made the first time); false with
+	/// no markup, no edit context, or the page in no GUI. OWNERSHIP of `request` transfers, opened
+	/// or not.
+	public bool PickEntity(EntityPickRequest request)
+	{
+		let root = (mContent != null) ? (mContent.RootNode as SceneRoot) : null;
+		if ((mEditContext == null) || (root == null) || (mServices.LoadMarkup == null))
+		{
+			delete request;
+			return false;
+		}
+		if (mEntityPicker == null)
+		{
+			let services = new EntityPickerServices();
+			services.Icons = mServices.Icons;
+			services.SceneIcon.Set(mIsPrefab ? "Editor/Icons/Types/PrefabDocument.svg" : "Editor/Icons/Types/SceneDocument.svg");
+			services.SceneName = new [=this]() => mTitle;
+			mEntityPicker = new EntityPickerWindow(mEditContext, services, mServices.LoadMarkup(EntityPickerWindow.cMarkupPath));
+		}
+		return mEntityPicker.Open(root, request);
+	}
+
 	public override void OnClose()
 	{
+		DeleteAndNullify!(mEntityPicker); // it lets the scene's tree go before the scene does
+		DeleteAndNullify!(mCameraPreview); // its picture's targets go with the viewports, before the scene
 		DeleteAndNullify!(mInspector); // the grid lets its sources go before the scene does
 		DeleteAndNullify!(mHierarchy); // it lets the selection and the tree go before the scene does
 		// Where the scene was left: the camera, the selection, the panes, for the next open.

@@ -8,6 +8,7 @@ using Sedulous.Script.Resource;
 using Sedulous.Engine.Script;
 using Sedulous.GUI;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 
 namespace Sedulous.Editor.Scene;
 

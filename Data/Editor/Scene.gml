@@ -1,6 +1,6 @@
 <!--
-  The scene page (Raptor's editor-gui spec, 5.3, layers 2 and 5): its bar (the editing controls,
-  each an action) over its own hierarchy, viewport and inspector, as the mock draws it
+  The scene page (Raptor's editor-gui spec, 5.3, layers 2, 5 and 7): its bar (the editing controls
+  and Simulate, each an action) over its own hierarchy, viewport and inspector, as the mock draws it
   (Editor/Mock/scene.gml). A prefab is marked as one.
   Code puts the viewport in its pane (under the state a scene that did not load shows), binds the
   bar to the actions, the hierarchy to the scene and the inspector to its selection.
@@ -10,6 +10,7 @@
         <ToolButton id="scene-save" icon="Editor/Icons/save.svg"/>
         <ToolButton id="scene-undo" icon="Editor/Icons/undo.svg"/>
         <ToolButton id="scene-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="scene-discard" icon="Editor/Icons/revert.svg"/>
         <Separator/>
         <ToolButton id="scene-select" name="scene-transform" toggle="true" icon="Editor/Icons/select.svg"/>
         <ToolButton id="scene-move" name="scene-transform" toggle="true" icon="Editor/Icons/move.svg"/>
@@ -19,6 +20,12 @@
         <ToolButton id="scene-space" toggle="true" icon="Editor/Icons/world.svg"/>
         <ToolMenuButton id="scene-snap" toggle="true" split="true" icon="Editor/Icons/magnet.svg"/>
         <ToolButton id="scene-vertex-snap" toggle="true" icon="Editor/Icons/target.svg"/>
+        <Spacer/>
+        <!-- Simulate (layer 7): run the scene here; its state named beside it while it runs. -->
+        <ToolButton id="scene-simulate" icon="Editor/Icons/play.svg"/>
+        <ToolButton id="scene-pause" toggle="true" icon="Editor/Icons/pause.svg"/>
+        <ToolButton id="scene-stop" icon="Editor/Icons/stop.svg"/>
+        <Label id="scene-simulate-state" class="transport-state playing" text="Simulating"/>
         <Spacer/>
         <!-- The viewport tools, from the tool registry, go here (code adds them before this). -->
         <Separator id="scene-tools-end"/>
@@ -40,7 +47,8 @@
         <Panel id="scene-viewport" class="viewport">
             <!-- The HUD's zones (layer 5, part 2): the view's chips at the top start; the stats and
                  the view gizmo (code adds it) at the top end; the zoom readout and the tool's status
-                 at the bottom start. Code fills the chips' menus and what each shows. -->
+                 at the bottom start; the camera preview at the bottom end (layer 6; code adds its
+                 picture). Code fills the chips' menus and what each shows. -->
             <Panel id="hud-top-start" class="hud-zone hud-top-start">
                 <Panel class="hud-bar">
                     <ToolMenuButton id="chip-projection" class="hud-chip" text="Perspective" tooltip="Projection and the axis views"/>
@@ -63,6 +71,16 @@
                     <Label id="hud-status-space" class="hud-dim"/>
                     <Label id="hud-status-snap" class="hud-dim"/>
                     <Label id="hud-status-selection" class="hud-dim"/>
+                </Panel>
+            </Panel>
+            <Panel class="hud-zone hud-bottom-end">
+                <Panel id="camera-preview" class="camera-preview">
+                    <Panel id="camera-preview-view" class="camera-preview-frame"/>
+                    <Panel class="camera-preview-foot">
+                        <Image id="camera-preview-icon" class="row-icon"/>
+                        <Label id="camera-preview-name" class="camera-preview-name"/>
+                        <Button id="camera-preview-pin" class="icon-button camera-preview-pin" icon="Editor/Icons/pin.svg" tooltip="Pin: keep showing this camera"/>
+                    </Panel>
                 </Panel>
             </Panel>
             <Panel id="scene-state" class="state-box failed scene-state">
