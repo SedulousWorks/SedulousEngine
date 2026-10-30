@@ -22,10 +22,3 @@ corlib = "*"
 "Sedulous.Content" = "*"
 "Sedulous.GUI" = "*"
 "Sedulous.GUI.Toolkit" = "*"
-
-# The graph page's old tests: out of the build with its page until its parts.
-[ProjectFolder]
-
-[[ProjectFolder.Items]]
-Type = "IgnoreSource"
-Name = "AnimationGraphPageTests.bf"

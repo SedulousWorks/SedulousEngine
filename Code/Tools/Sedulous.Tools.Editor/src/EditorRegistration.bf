@@ -86,6 +86,7 @@ static class EditorRegistration
 		ParticleEditor.Register(context, pageServices); // the particle effect
 		AnimationClipEditor.Register(context, pageServices); // the animation clip
 		SkeletonEditor.Register(context, pageServices); // the skeleton
+		AnimationGraphEditor.Register(context, pageServices); // the animation graph
 		GenericAssetPageFactory.Register(context, pageServices);
 
 		// File > New: every pipeline domain's creators, the scripts' among them.

@@ -3,18 +3,44 @@ using System.Collections;
 using System.IO;
 using Sedulous.Core;
 using Sedulous.Core.IO;
+using Sedulous.Core.Serialization;
+using Sedulous.Content;
+using Sedulous.Animation;
 using Sedulous.Animation.Resource;
 using Sedulous.Animation.Pipeline;
+using Sedulous.GUI;
 using Sedulous.Editor.Core;
+using Sedulous.Editor.App;
 using Sedulous.Editor.Project;
 using Sedulous.Pipeline.Core;
 
 namespace Sedulous.Editor.Animation.Tests;
 
-/// The graph page's headless halves: the seed, the nested edit model over the flat source,
-/// its structural edits, the layout sync, the undo snapshot and the creator.
+/// The animation graph page over its markup (Data/Editor/AnimationGraphPage.gml) and a scratch project,
+/// without a host (no preview): the layers and parameters as lists, the chosen layer on the graph view,
+/// the grid showing what is chosen (a layer, a parameter, a state, a transition) with each row where
+/// what it is uses it, each edit one undo step; a parameter added by its type and removed, a layer
+/// added and removed; the preview's parameters a section of the page's own, never the graph's. And the
+/// graph's data as the page writes it: the seed, the nested edit model over the flat source and its
+/// structural edits, the layout squared to the states, the asset's round trip through the serializer
+/// its undo snapshots ride, and the creator.
 class AnimationGraphPageTests
 {
+	// The whole asset through the binary serializer (the undo snapshot's path), into `outAsset`.
+	private static void RoundTrip(AnimationGraphAsset asset, AnimationGraphAsset outAsset)
+	{
+		let stream = scope Sedulous.Core.IO.MemoryStream();
+		{
+			let ar = scope BinarySerializer(stream, .Write);
+			ISerializable serializable = asset;
+			serializable.Serialize(ar);
+		}
+		stream.Seek(0, .Begin);
+		let ar = scope BinarySerializer(stream, .Read);
+		ISerializable serializable = outAsset;
+		serializable.Serialize(ar);
+	}
+
 	/// The domain's "Animation Graph" creator, as File > New runs it. Leaks nothing: the registry is
 	/// static to the test class.
 	private static AssetCreatorRegistry sCreators = null ~ delete _;
@@ -69,7 +95,7 @@ class AnimationGraphPageTests
 		layer.MaskWeights.Add(0.5f);
 		doc.AddLayer("Upper").Weight = 0.5f;
 		doc.Store(a.Source);
-		AnimationGraphEdit.SyncLayouts(a, doc);
+		AnimationGraphEdits.SquareLayout(a, doc);
 		a.LayerLayouts[0].StatePositions[1] = .(420.0f, 200.0f);
 		a.LayerLayouts[0].AnyStatePosition = .(25.0f, 75.0f);
 
@@ -82,10 +108,8 @@ class AnimationGraphPageTests
 		Test.Assert((s.TransitionConditionStart[0] == 0) && (s.TransitionConditionCount[0] == 1));
 
 		// Through the serializer, the undo blob path, and back into a fresh model.
-		let blob = scope List<uint8>();
-		AnimationGraphEdit.Snapshot(a, blob);
 		let b = scope AnimationGraphAsset();
-		Test.Assert(AnimationGraphEdit.Apply(b, blob));
+		RoundTrip(a, b);
 		let back = scope GraphDocument();
 		back.Load(b.Source);
 		Test.Assert(back.Layers.Count == 2);
@@ -103,8 +127,6 @@ class AnimationGraphPageTests
 		Test.Assert(b.LayerLayouts.Count == 2);
 		Test.Assert(b.LayerLayouts[0].StatePositions[1].X == 420.0f);
 		Test.Assert(b.LayerLayouts[0].AnyStatePosition.Y == 75.0f);
-		// The same bytes again is a no-op.
-		Test.Assert(!AnimationGraphEdit.Apply(b, blob));
 	}
 
 	[Test]
@@ -178,19 +200,20 @@ class AnimationGraphPageTests
 		for (int i < 7)
 			layer.AddState(scope $"S{i}", 0);
 		doc.AddLayer("Upper");
-		AnimationGraphEdit.SyncLayouts(asset, doc);
+		AnimationGraphEdits.SquareLayout(asset, doc);
 		Test.Assert(asset.LayerLayouts.Count == 2);
 		Test.Assert(asset.LayerLayouts[0].StatePositions.Count == 7);
 		// Five per row, then the next row down.
 		Test.Assert(asset.LayerLayouts[0].StatePositions[0] == Float2(240.0f, 90.0f));
-		Test.Assert(asset.LayerLayouts[0].StatePositions[5] == Float2(240.0f, 160.0f));
+		Test.Assert(asset.LayerLayouts[0].StatePositions[1] == Float2(440.0f, 90.0f));
+		Test.Assert(asset.LayerLayouts[0].StatePositions[5] == Float2(240.0f, 200.0f));
 		Test.Assert(asset.LayerLayouts[1].StatePositions.IsEmpty);
 
 		// Removing trims; the kept positions stay put.
 		asset.LayerLayouts[0].StatePositions[0] = .(1.0f, 2.0f);
 		Test.Assert(layer.DeleteState(6));
 		Test.Assert(doc.RemoveLayer(1));
-		AnimationGraphEdit.SyncLayouts(asset, doc);
+		AnimationGraphEdits.SquareLayout(asset, doc);
 		Test.Assert((asset.LayerLayouts.Count == 1) && (asset.LayerLayouts[0].StatePositions.Count == 6));
 		Test.Assert(asset.LayerLayouts[0].StatePositions[0] == Float2(1.0f, 2.0f));
 	}
@@ -223,5 +246,270 @@ class AnimationGraphPageTests
 		let doc = scope GraphDocument();
 		doc.Load(readBack.Source);
 		Test.Assert((doc.Layers[0].States.Count == 1) && (doc.Layers[0].States[0].Name == "Idle"));
+	}
+
+	// === The page ===
+
+	static bool DataRoot(String outPath)
+	{
+		var dir = GetCurrentDirectory(.. scope .());
+		for (int i < 8)
+		{
+			let data = PathJoin(dir, "Data", .. scope .());
+			if (DirectoryExists(PathJoin(data, "Editor", .. scope .())))
+			{
+				outPath.Set(data);
+				return true;
+			}
+			let parent = PathParent(dir, .. scope .());
+			if (parent == dir)
+				break;
+			dir.Set(parent);
+		}
+		return false;
+	}
+
+	static Node LoadMarkup(StringView relative)
+	{
+		let data = scope String();
+		Test.Assert(DataRoot(data));
+		let text = scope String();
+		Test.Assert(System.IO.File.ReadAllText(PathJoin(data, relative, .. scope .()), text) case .Ok);
+		RegisterGuiElements();
+		RegisterToolkitElements();
+		let elements = ElementSet.All();
+		defer delete elements;
+		let loader = scope MarkupLoader(elements);
+		return loader.LoadFromString(text);
+	}
+
+	/// A scratch project holding one graph: the seed (Base, Idle, Speed) and a Run state.
+	private class Bed
+	{
+		public String Dir = new .("scratch_graph_page_project") ~ delete _;
+		public EditorProject Project;
+		public EditorContext Context = new .() ~ delete _;
+		public AnimationGraphEditorPage Page;
+
+		public this()
+		{
+			AnimationPipeline.RegisterAll();
+			RemoveDirectoryRecursive(Dir);
+			Test.Assert(EditorProject.Create(Dir, "P") case .Ok);
+			Project = EditorProject.Open(Dir);
+			Test.Assert(Project != null);
+			Context.SetProject(Project);
+			let instance = Project.SourceDb.RootGroup.CreateInstance("Hero", typeof(AnimationGraphAsset).GetFullName(.. scope .()));
+			Test.Assert(instance != null);
+			let asset = scope AnimationGraphAsset();
+			AnimationCreators.SeedDefaultGraph(asset);
+			AnimationGraphEdits.AddState(asset, 0, "Run", .Clip, .(500.0f, 120.0f));
+			Test.Assert(instance.WriteObject(asset) case .Ok);
+			let services = new AssetPageServices();
+			services.LoadMarkup = new (path) => LoadMarkup(path);
+			Page = new AnimationGraphEditorPage(Context, services, instance);
+			Test.Assert(!Page.LoadFailed);
+		}
+
+		public ~this()
+		{
+			delete Page;
+			Context.SetProject(null);
+			delete Project;
+			RemoveDirectoryRecursive(Dir);
+		}
+
+		/// The graph as the page holds it now.
+		public GraphDocument Doc => Page.Doc;
+
+		public static void Edit(Sedulous.GUI.PropertyBag rows, StringView path, Sedulous.GUI.Variant value)
+		{
+			rows.BeginEdit(path);
+			rows.CommitEdit(path, PropertyWrite(value));
+		}
+
+		/// The row `name` under `parent`, into `outInfo`; false when there is none.
+		public static bool Info(Sedulous.GUI.PropertyBag rows, StringView parent, StringView name, PropertyInfo outInfo)
+		{
+			let found = scope List<PropertyInfo>();
+			defer { ClearAndDeleteItems!(found); }
+			rows.GetProperties(parent, found);
+			for (let info in found)
+			{
+				if (info.Name == name)
+				{
+					outInfo.Set(info);
+					return true;
+				}
+			}
+			return false;
+		}
+
+		public static bool Shown(Sedulous.GUI.PropertyBag rows, StringView parent, StringView name)
+		{
+			let info = scope PropertyInfo();
+			Test.Assert(Info(rows, parent, name, info), scope String()..AppendF("no row {}", name));
+			return info.Visible;
+		}
+
+		/// `rows`' value at `path` as text (its owned copy let go).
+		public static void Text(Sedulous.GUI.PropertyBag rows, StringView path, String outText)
+		{
+			var value = rows.GetValue(path, 0);
+			defer value.Dispose();
+			outText.Append(value.AsString);
+		}
+
+		public String Layers(String outText)
+		{
+			Page.LayerList(outText);
+			return outText;
+		}
+
+		public String Parameters(String outText)
+		{
+			Page.ParameterList(outText);
+			return outText;
+		}
+
+		public String Fact(StringView name, String outText)
+		{
+			Page.Fact(name, outText);
+			return outText;
+		}
+	}
+
+	[Test]
+	public static void TheLayersAndParametersAsListsTheChosenLayerOnTheViewALayersRows()
+	{
+		let bed = scope Bed();
+		Test.Assert(bed.Layers(.. scope .()) == "Base");
+		Test.Assert(bed.Parameters(.. scope .()) == "Speed  Float");
+		Test.Assert(bed.Fact("States", .. scope .()) == "2");
+		Test.Assert(bed.Page.Chosen.Kind == .Layer);
+		let nodes = scope List<GraphId>();
+		bed.Page.States.GetNodes(nodes);
+		Test.Assert(nodes.Count == 3, "Any State, Idle, Run");
+
+		Test.Assert(Bed.Text(bed.Page.LayerRows, "name", .. scope .()) == "Base");
+		let start = scope PropertyInfo();
+		Test.Assert(Bed.Info(bed.Page.LayerRows, "", "start", start));
+		Test.Assert(start.Choices.Count == 2, "the layer's states by name");
+		Test.Assert(start.Choices[1].Name == "Run");
+		Bed.Edit(bed.Page.LayerRows, "start", .((int64)1));
+		Test.Assert(bed.Doc.Layers[0].DefaultState == 1);
+		bed.Page.Commands.Undo();
+		Test.Assert(bed.Doc.Layers[0].DefaultState == 0);
+	}
+
+	[Test]
+	public static void AStatesRowsShownWhereWhatItPlaysUsesThemItsEntriesAListOneStepEach()
+	{
+		let bed = scope Bed();
+		bed.Page.Choose(.(.State, 1));
+		Test.Assert(Bed.Text(bed.Page.StateRows, "name", .. scope .()) == "Run");
+		Test.Assert(Bed.Shown(bed.Page.StateRows, "", "clip"));
+		Test.Assert(!Bed.Shown(bed.Page.StateRows, "", "driver"));
+		Test.Assert(!Bed.Shown(bed.Page.StateRows, "", "entries"));
+
+		// A blend by one parameter: its driver and entries, each at a threshold.
+		Bed.Edit(bed.Page.StateRows, "kind", .((int64)1));
+		Test.Assert(bed.Doc.Layers[0].States[1].NodeKind == 1);
+		Test.Assert(!Bed.Shown(bed.Page.StateRows, "", "clip"));
+		let driver = scope PropertyInfo();
+		Test.Assert(Bed.Info(bed.Page.StateRows, "", "driver", driver));
+		Test.Assert(driver.Visible);
+		Test.Assert(driver.Choices.Count == 2, "Nothing, Speed");
+		Test.Assert(driver.Choices[1].Name == "Speed");
+		Bed.Edit(bed.Page.StateRows, "driver", .((int64)0));
+		Test.Assert(bed.Page.StateRows.EditList("entries", scope ListEdit(.Insert, 0)));
+		Test.Assert(bed.Page.StateRows.EditList("entries", scope ListEdit(.Insert, 1)));
+		let state = bed.Doc.Layers[0].States[1];
+		Test.Assert(state.EntryClips.Count == 2);
+		Test.Assert(Math.Abs(state.EntryThresholds[1] - 1.0f) < 1e-5f, "a step past the last");
+		Bed.Edit(bed.Page.StateRows, "entries.1.threshold", .(4.0));
+		Test.Assert(Math.Abs(bed.Doc.Layers[0].States[1].EntryThresholds[1] - 4.0f) < 1e-5f);
+		Test.Assert(Bed.Shown(bed.Page.StateRows, "entries.0", "threshold"));
+		Test.Assert(!Bed.Shown(bed.Page.StateRows, "entries.0", "x"));
+
+		for (int i < 5)
+			bed.Page.Commands.Undo();
+		Test.Assert(bed.Doc.Layers[0].States[1].NodeKind == 0);
+		Test.Assert(bed.Doc.Layers[0].States[1].EntryClips.IsEmpty);
+	}
+
+	[Test]
+	public static void ATransitionMadeOnTheViewIsOneStepItsConditionsAListReadAsWhatTheySay()
+	{
+		let bed = scope Bed();
+		var link = GraphLinkInfo();
+		link.Kind = .Nodes;
+		link.FromNode = bed.Page.States.StateId(0);
+		link.ToNode = bed.Page.States.StateId(1);
+		let made = bed.Page.States.Connect(link);
+		Test.Assert(made != 0);
+		Test.Assert(bed.Doc.Layers[0].Transitions.Count == 1);
+		Test.Assert(bed.Page.Commands.CanUndo);
+
+		bed.Page.Choose(.(.Transition, 0));
+		Test.Assert(Bed.Text(bed.Page.TransitionRows, "from", .. scope .()) == "Idle");
+		Test.Assert(Bed.Text(bed.Page.TransitionRows, "to", .. scope .()) == "Run");
+		Test.Assert(!Bed.Shown(bed.Page.TransitionRows, "", "exitTime"));
+		Bed.Edit(bed.Page.TransitionRows, "exit", .(true));
+		Test.Assert(Bed.Shown(bed.Page.TransitionRows, "", "exitTime"));
+		Test.Assert(bed.Page.TransitionRows.EditList("conditions", scope ListEdit(.Insert, 0)));
+		Bed.Edit(bed.Page.TransitionRows, "conditions.0.compare", .((int64)2));
+		Bed.Edit(bed.Page.TransitionRows, "conditions.0.value", .(0.5));
+		let condition = bed.Doc.Layers[0].Transitions[0].Conditions[0];
+		Test.Assert(condition.ParamIndex == 0);
+		Test.Assert(condition.Op == 2);
+		Test.Assert(Math.Abs(condition.Threshold - 0.5f) < 1e-5f);
+		let closed = scope PropertyInfo();
+		Test.Assert(Bed.Info(bed.Page.TransitionRows, "conditions", "0", closed));
+		Test.Assert(closed.Summary == "Speed is above 0.5", closed.Summary);
+
+		for (int i < 4)
+			bed.Page.Commands.Undo();
+		Test.Assert(bed.Doc.Layers[0].Transitions[0].Conditions.IsEmpty);
+		bed.Page.Commands.Undo(); // the transition itself
+		Test.Assert(bed.Doc.Layers[0].Transitions.IsEmpty);
+		Test.Assert(bed.Page.Chosen.Kind == .Layer, "what was chosen went with it");
+	}
+
+	[Test]
+	public static void ParametersAddedByTypeAndRemovedLayersAddedAndRemovedThePreviewsParametersItsOwn()
+	{
+		let bed = scope Bed();
+		bed.Page.AddParameter(.Trigger);
+		Test.Assert(bed.Parameters(.. scope .()) == "Speed  Float\nTrigger  Trigger");
+		Test.Assert(bed.Page.Chosen.Kind == .Parameter);
+		Test.Assert(bed.Page.Chosen.Index == 1);
+		Test.Assert(!Bed.Shown(bed.Page.ParameterRows, "", "float"), "a trigger has no default");
+		let fire = scope PropertyInfo();
+		Test.Assert(Bed.Info(bed.Page.LiveRows, "", "p1", fire));
+		Test.Assert(fire.DisplayName == "Fire Trigger");
+
+		// The preview's values are never the graph's.
+		let canUndo = bed.Page.Commands.CanUndo;
+		let dirty = bed.Page.IsDirty;
+		bed.Page.SetLive(0, 0.75);
+		Bed.Edit(bed.Page.LiveRows, "p0", .(0.5));
+		Test.Assert(bed.Doc.Params[0].FloatValue == 0.0f);
+		Test.Assert((bed.Page.Commands.CanUndo == canUndo) && (bed.Page.IsDirty == dirty));
+		bed.Page.Commands.Undo();
+		Test.Assert(bed.Parameters(.. scope .()) == "Speed  Float", "the last step was the parameter added");
+		bed.Page.Commands.Redo();
+
+		bed.Page.Choose(.(.Parameter, 0));
+		Test.Assert(bed.Page.RemoveParameter());
+		Test.Assert(bed.Parameters(.. scope .()) == "Trigger  Trigger");
+		Test.Assert(!Bed.Info(bed.Page.LiveRows, "", "p1", scope PropertyInfo()), "made again for one parameter");
+
+		bed.Page.AddLayer();
+		Test.Assert(bed.Layers(.. scope .()) == "Base\nLayer");
+		Test.Assert(bed.Page.Layer == 1);
+		Test.Assert(bed.Page.RemoveLayer());
+		Test.Assert(bed.Layers(.. scope .()) == "Base");
+		Test.Assert(!bed.Page.RemoveLayer(), "the last stays");
 	}
 }

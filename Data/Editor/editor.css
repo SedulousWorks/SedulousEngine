@@ -644,6 +644,7 @@ button.add-component { align-self: stretch; justify-content: center; margin: var
 .transport-state.faulted { color: var(--danger); background-color: var(--danger-background); }
 .transport-state.stopped { color: var(--text-dim); }
 .clip-time { width: 116px; flex-shrink: 0; } /* a running time never moves what follows it */
+.graph-playing { width: 168px; flex-shrink: 0; } /* nor does the state a graph plays */
 /* The Game tab: the game beside the script debugger, the bar's resolution a fixed width. */
 .game-view-pane { flex-grow: 1; flex-basis: 0; min-width: 0; min-height: 0; background-color: var(--surface-sunken); }
 .game-view { flex-grow: 1; }

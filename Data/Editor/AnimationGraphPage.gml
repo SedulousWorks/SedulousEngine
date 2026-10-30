@@ -1,0 +1,79 @@
+<!--
+  The animation graph page (Raptor's editor-gui spec, 5.4, layer 10, part 5): the kit's bar
+  (Save, Undo, Redo, Discard Changes, Cook and Rebuild this asset, each an action over the page; its
+  kind at the end) over three panes. The graph's layers and parameters as lists, each with its bar
+  (Add, Remove; a parameter added by its type). The chosen layer's states and transitions on the
+  graph view (a state added from its menu, a transition dragged from a state's edge), the preview
+  under it with the kit's transport, the state it plays lit on the graph and named beside the
+  transport, and the preview's own choices (the skeleton and mesh it plays on, kept per graph). The
+  grid shows what is chosen (a layer, a parameter, a state or a transition), and the preview's
+  parameters, whose values are the page's alone, never the graph's. An asset that did not read says
+  so in place of the grid. Code puts the viewport in its stage and fills the lists and the grid.
+-->
+<Panel class="page preview-page graph-page">
+    <ToolBar id="page-bar" class="page-toolbar">
+        <ToolButton id="page-save" icon="Editor/Icons/save.svg"/>
+        <ToolButton id="page-undo" icon="Editor/Icons/undo.svg"/>
+        <ToolButton id="page-redo" icon="Editor/Icons/redo.svg"/>
+        <ToolButton id="page-discard" icon="Editor/Icons/revert.svg"/>
+        <Separator/>
+        <ToolButton id="page-cook" icon="Editor/Icons/cook.svg"/>
+        <ToolButton id="page-rebuild" icon="Editor/Icons/rebuild.svg"/>
+        <Separator id="page-own"/>
+        <Spacer/>
+        <Label id="page-kind" class="badge page-kind"/>
+    </ToolBar>
+    <Splitter id="page-body" class="page-body" axis="horizontal" weights="0.18 0.52 0.3">
+        <Splitter class="panel page-pane graph-lists" axis="vertical" weights="0.4 0.6">
+            <Panel class="graph-list-pane">
+                <Panel class="panel-toolbar">
+                    <Label class="panel-title" text="Layers"/>
+                    <Spacer/>
+                    <ToolButton id="graph-add-layer" icon="Editor/Icons/plus.svg" tooltip="Add a layer"/>
+                    <ToolButton id="graph-remove-layer" icon="Editor/Icons/trash.svg" tooltip="Remove the chosen layer (while another remains)"/>
+                </Panel>
+                <TreeView id="graph-layers" class="panel-body tree graph-layers"/>
+            </Panel>
+            <Panel class="graph-list-pane">
+                <Panel class="panel-toolbar">
+                    <Label class="panel-title" text="Parameters"/>
+                    <Spacer/>
+                    <ToolMenuButton id="graph-add-parameter" icon="Editor/Icons/plus.svg" tooltip="Add a parameter, by its type"/>
+                    <ToolButton id="graph-remove-parameter" icon="Editor/Icons/trash.svg" tooltip="Remove the chosen parameter (its conditions go, the blends it drives read nothing)"/>
+                </Panel>
+                <TreeView id="graph-parameters" class="panel-body tree graph-parameters"/>
+            </Panel>
+        </Splitter>
+        <Splitter class="panel page-pane graph-center" axis="vertical" weights="0.6 0.4">
+            <GraphView id="graph-view" class="graph-view"/>
+            <Panel class="preview-pane">
+                <Panel id="preview-bar" class="panel-toolbar preview-bar">
+                    <ToolButton id="preview-frame" icon="Editor/Icons/frame-selection.svg" tooltip="Frame it (F)"/>
+                    <Separator/>
+                    <ToolButton id="graph-restart" icon="Editor/Icons/restart.svg"/>
+                    <ToolButton id="graph-play" toggle="true" icon="Editor/Icons/play.svg" checked-icon="Editor/Icons/pause.svg"/>
+                    <ToolButton id="graph-stop" icon="Editor/Icons/stop.svg"/>
+                    <Label id="graph-state" class="transport-state graph-playing" text=""/>
+                    <Separator/>
+                    <ToolButton id="graph-travel" toggle="true" text="Travel" shows-text="true" tooltip="Walk by the graph's root motion (off: it plays in place); this page's alone"/>
+                    <Separator id="preview-own"/>
+                    <Spacer/>
+                </Panel>
+                <Panel id="preview-stage" class="preview-stage"/>
+                <Panel id="preview-empty" class="state-box preview-empty">
+                    <Image class="state-icon" src="Editor/Icons/animation.svg"/>
+                    <Label id="preview-empty-title" class="state-title" text="No preview"/>
+                    <Label id="preview-empty-text" class="state-text" text="The preview needs the editor's renderer."/>
+                </Panel>
+            </Panel>
+        </Splitter>
+        <Panel class="panel page-pane">
+            <Panel id="page-state" class="state-box failed page-state">
+                <Image class="state-icon" src="Editor/Icons/warning.svg"/>
+                <Label class="state-title" text="This asset did not read"/>
+                <Label class="state-text" text="Its source could not be read; the Console says why. It is not saved over while it shows this."/>
+            </Panel>
+            <PropertyGrid id="page-grid" class="panel-body"/>
+        </Panel>
+    </Splitter>
+</Panel>
